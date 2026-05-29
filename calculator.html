@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简易计算器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        .calculator {
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 25px;
+            width: 340px;
+        }
+
+        .display {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: right;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .display .expression {
+            color: #6c757d;
+            font-size: 16px;
+            min-height: 24px;
+        }
+
+        .display .result {
+            color: #212529;
+            font-size: 36px;
+            font-weight: bold;
+            min-height: 44px;
+            transition: font-size 0.2s;
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        button {
+            padding: 18px;
+            font-size: 20px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-weight: 500;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        /* 数字按钮 */
+        .number {
+            background: #e9ecef;
+            color: #212529;
+        }
+
+        .number:hover {
+            background: #dee2e6;
+        }
+
+        /* 运算符按钮 */
+        .operator {
+            background: #667eea;
+            color: #fff;
+        }
+
+        .operator:hover {
+            background: #5a6fd6;
+        }
+
+        /* 功能按钮 (C, ±, %) */
+        .function {
+            background: #e2e3f0;
+            color: #495057;
+        }
+
+        .function:hover {
+            background: #d1d3e8;
+        }
+
+        /* 等于按钮 */
+        .equal {
+            background: #764ba2;
+            color: #fff;
+        }
+
+        .equal:hover {
+            background: #6a4292;
+        }
+
+        /* 清空按钮特殊样式 */
+        .clear {
+            background: #fa5252;
+            color: #fff;
+        }
+
+        .clear:hover {
+            background: #e74545;
+        }
+
+        /* 跨列 */
+        .span-2 {
+            grid-column: span 2;
+        }
+
+        /* 页脚 */
+        .footer {
+            margin-top: 15px;
+            text-align: center;
+            color: #adb5bd;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <div class="display">
+            <div class="expression" id="expression"></div>
+            <div class="result" id="result">0</div>
+        </div>
+        <div class="buttons">
+            <button class="function clear" onclick="clearAll()">C</button>
+            <button class="function" onclick="toggleSign()">±</button>
+            <button class="function" onclick="appendOperator('%')">%</button>
+            <button class="operator" onclick="appendOperator('÷')">÷</button>
+
+            <button class="number" onclick="appendNumber(7)">7</button>
+            <button class="number" onclick="appendNumber(8)">8</button>
+            <button class="number" onclick="appendNumber(9)">9</button>
+            <button class="operator" onclick="appendOperator('×')">×</button>
+
+            <button class="number" onclick="appendNumber(4)">4</button>
+            <button class="number" onclick="appendNumber(5)">5</button>
+            <button class="number" onclick="appendNumber(6)">6</button>
+            <button class="operator" onclick="appendOperator('-')">−</button>
+
+            <button class="number" onclick="appendNumber(1)">1</button>
+            <button class="number" onclick="appendNumber(2)">2</button>
+            <button class="number" onclick="appendNumber(3)">3</button>
+            <button class="operator" onclick="appendOperator('+')">+</button>
+
+            <button class="number span-2" onclick="appendNumber(0)">0</button>
+            <button class="number" onclick="appendDecimal()">.</button>
+            <button class="equal" onclick="calculate()">=</button>
+        </div>
+        <div class="footer">简易计算器</div>
+    </div>
+
+    <script>
+        // 状态变量
+        let currentInput = '0';      // 当前输入的数字
+        let previousInput = '';      // 前一个数字
+        let currentOperator = '';    // 当前运算符
+        let shouldResetInput = false; // 是否需要重置输入
+        let expression = '';         // 显示的表达式
+
+        const resultDisplay = document.getElementById('result');
+        const expressionDisplay = document.getElementById('expression');
+
+        // 更新显示
+        function updateDisplay() {
+            // 格式化大数字显示
+            const num = parseFloat(currentInput);
+            if (!isNaN(num) && currentInput.length > 12) {
+                resultDisplay.textContent = num.toExponential(4);
+            } else {
+                resultDisplay.textContent = currentInput;
+            }
+            expressionDisplay.textContent = expression;
+        }
+
+        // 追加数字
+        function appendNumber(num) {
+            if (shouldResetInput) {
+                currentInput = '';
+                shouldResetInput = false;
+            }
+            if (currentInput === '0' && num !== 0) {
+                currentInput = '';
+            }
+            // 限制输入长度
+            if (currentInput.replace('-', '').replace('.', '').length >= 15) {
+                return;
+            }
+            currentInput += num;
+            updateDisplay();
+        }
+
+        // 追加小数点
+        function appendDecimal() {
+            if (shouldResetInput) {
+                currentInput = '0';
+                shouldResetInput = false;
+            }
+            if (!currentInput.includes('.')) {
+                currentInput += '.';
+            }
+            updateDisplay();
+        }
+
+        // 切换正负号
+        function toggleSign() {
+            if (currentInput === '0') return;
+            currentInput = currentInput.startsWith('-')
+                ? currentInput.slice(1)
+                : '-' + currentInput;
+            updateDisplay();
+        }
+
+        // 运算符
+        function appendOperator(op) {
+            if (currentOperator && !shouldResetInput) {
+                calculate(true);
+            }
+            previousInput = currentInput;
+            currentOperator = op;
+            shouldResetInput = true;
+
+            // 更新表达式显示
+            expression = previousInput + ' ' + getOperatorSymbol(op);
+            updateDisplay();
+        }
+
+        // 获取运算符显示符号
+        function getOperatorSymbol(op) {
+            const symbols = {
+                '+': '+',
+                '-': '−',
+                '×': '×',
+                '÷': '÷',
+                '%': '%'
+            };
+            return symbols[op] || op;
+        }
+
+        // 将用户可见的符号转为实际计算符号
+        function getActualOperator(op) {
+            const map = {
+                '+': '+',
+                '−': '-',
+                '-': '-',
+                '×': '*',
+                '÷': '/',
+                '%': '%'
+            };
+            return map[op] || op;
+        }
+
+        // 执行计算
+        function calculate(isChained = false) {
+            if (!currentOperator || !previousInput) return;
+
+            const prev = parseFloat(previousInput);
+            const curr = parseFloat(currentInput);
+            const op = getActualOperator(currentOperator);
+
+            let result;
+            switch (op) {
+                case '+':
+                    result = prev + curr;
+                    break;
+                case '-':
+                    result = prev - curr;
+                    break;
+                case '*':
+                    result = prev * curr;
+                    break;
+                case '/':
+                    if (curr === 0) {
+                        result = 'Error';
+                    } else {
+                        result = prev / curr;
+                    }
+                    break;
+                case '%':
+                    result = prev % curr;
+                    break;
+                default:
+                    return;
+            }
+
+            // 处理小数精度
+            if (typeof result === 'number' && !Number.isInteger(result)) {
+                result = parseFloat(result.toFixed(10));
+            }
+
+            // 显示完整表达式
+            if (!isChained) {
+                expression = previousInput + ' ' + getOperatorSymbol(currentOperator) + ' ' + currentInput + ' =';
+            }
+
+            currentInput = result.toString();
+            previousInput = '';
+            currentOperator = '';
+            shouldResetInput = true;
+
+            updateDisplay();
+        }
+
+        // 计算百分比快捷方式: 直接算 a % b
+        function appendPercent() {
+            appendOperator('%');
+            // 稍微改一下: 直接让用户按 % 键相当于取余
+            // 如果当前已经有数字，则作为运算符处理
+        }
+
+        // 全部清空
+        function clearAll() {
+            currentInput = '0';
+            previousInput = '';
+            currentOperator = '';
+            shouldResetInput = false;
+            expression = '';
+            updateDisplay();
+        }
+
+        // 键盘支持
+        document.addEventListener('keydown', (e) => {
+            const key = e.key;
+
+            if (key >= '0' && key <= '9') {
+                appendNumber(parseInt(key));
+            } else if (key === '.') {
+                appendDecimal();
+            } else if (key === '+' || key === '-') {
+                appendOperator(key === '+' ? '+' : '-');
+            } else if (key === '*') {
+                appendOperator('×');
+            } else if (key === '/') {
+                e.preventDefault();
+                appendOperator('÷');
+            } else if (key === '%') {
+                appendOperator('%');
+            } else if (key === 'Enter' || key === '=') {
+                e.preventDefault();
+                calculate();
+            } else if (key === 'Escape' || key === 'c' || key === 'C') {
+                clearAll();
+            } else if (key === 'Backspace') {
+                // 退格删除最后一位
+                if (!shouldResetInput && currentInput.length > 1) {
+                    currentInput = currentInput.slice(0, -1);
+                    if (currentInput === '-' || currentInput === '') {
+                        currentInput = '0';
+                    }
+                } else {
+                    currentInput = '0';
+                }
+                updateDisplay();
+            }
+        });
+
+        // 初始化显示
+        updateDisplay();
+    </script>
+</body>
+</html>
