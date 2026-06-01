@@ -1,5 +1,0 @@
-pandas==2.0.3
-jieba==0.42.1
-geopandas==0.14.0
-requests==2.31.0
-jupyter==1.0.0
