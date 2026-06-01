@@ -60,7 +60,8 @@
 - **产出**：无（含7个NLP任务与课题的对应关系）
 
 ### Q9 | pip install 这几个库分别是什么？有什么功能？
-- **标签**：概念 Python库 pandas jieba snownlp equests eautifulsoup4 jupyter
+- **标签**：概念 Python库 pandas jieba snownlp 
+equests eautifulsoup4 jupyter
 - **一句话**：六个库各自的功能和协作关系
 - **产出**：无（含六库协作流水线示意图）
 
