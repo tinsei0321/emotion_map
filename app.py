@@ -192,3 +192,5 @@ st.markdown("""
 """)
 
 
+# 启动终端：python -m streamlit run app.py --server.headless true --server.port 8501
+# 虚拟环境启动：.\venv\Scripts\python -m streamlit run app.py --server.headless true --server.port 8501
