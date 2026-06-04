@@ -1,6 +1,6 @@
-# 这是一个代码联系测试
-# 测试项目为 评论 → 字典 → 列表 → dataframe 代码实践
-# 成果形式用streamlit展示
+from snownlp import SnowNLP
+import pandas as pd
+import altair as alt
 
 comments = [
     "小区绿化特别好，住着很舒服",
@@ -10,13 +10,10 @@ comments = [
     "公园很美，适合跑步散步"
 ]
 
-# 生成空列表，准备给字典用
 all_comments = []
 
-# for循环处理评论，用snownlp进行情绪打分，并对分数进行极性判断，大于0.5为正面，小于0.5为负面，等于0.5为中性
-from snownlp import SnowNLP
 for i, text in enumerate(comments):
-    s = SnowNLP(text).sentiments    # s = score，情绪打分
+    s = SnowNLP(text).sentiments
     if s > 0.5:
         polarity = "正面"
     elif s < 0.5:
@@ -24,17 +21,21 @@ for i, text in enumerate(comments):
     else:
         polarity = "中性"
     dict_comments = {
-        "id": f"e{i+1:03d}",    # e001, e002, e003...
+        "id": f"e{i+1:03d}",
         "content": text,
         "score": round(s, 2),
         "polarity": polarity
     }
-
-    # 将字典添加到列表中
     all_comments.append(dict_comments)
 
-    # 将list转为dataframe
-import pandas as pd
 df_comments = pd.DataFrame(all_comments)
-print(df_comments)
 
+hist = alt.Chart(df_comments).mark_bar().encode(
+    x=alt.X('polarity:N', title='情感极性'),
+    y=alt.Y('count()', title='评论数量'),
+    color=alt.Color('polarity:N', legend=None)
+).properties(
+    title='评论情感极性分布'
+)
+
+hist  # ← 直接写变量名，Jupyter 会自动显示图表
