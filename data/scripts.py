@@ -43,21 +43,21 @@ hist = alt.Chart(df_count).mark_bar().encode(
 )
 # Altair 饼图
 pie = alt.Chart(df_count).mark_arc().encode(
-    theta=alt.Theta(field="count:Q", type="quantitative", aggregate="sum"),
-    color=alt.Color(field="polarity", type="nominal", legend=None)
+    theta=alt.Theta(field="count:Q", type="quantitative"),  # 直接用 count 列，不聚合
+    color=alt.Color(field="polarity", type="nominal")
 ).properties(
     title='评论情绪极性分布'
 )
 
 # 在streamlit中显示结果
 # 不加端口（默认端口8501）：python -m streamlit run data/scripts.py
-# 加端口：python -m streamlit run data/scripts.py --server.port 850x
+# 加端口：python -m streamlit run data/scripts.py --server.port 8504
 # Streamlit动不占用终端，后台运行：Start-Process -WindowStyle Hidden -FilePath "python" -ArgumentList "-m streamlit run data/scripts.py --server.port 850x"
 # 1）显示表格
 st.dataframe(df_comments)
 # 2）显示直方图
 st.altair_chart(hist, width='stretch')
-# 3）显示饼图
+# 在 Streamlit 中显示饼图
 st.altair_chart(pie, width='stretch')
 
 
@@ -65,3 +65,6 @@ st.altair_chart(pie, width='stretch')
 # 加端口：python -m notebook --port 8891
 # Jupyter 后台运行：Start-Process -WindowStyle Hidden -FilePath "python" -ArgumentList "-m notebook --port 8891"
 hist.show()
+
+
+
