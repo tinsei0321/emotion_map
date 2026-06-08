@@ -44,7 +44,7 @@ hist = alt.Chart(df_count).mark_bar().encode(
 st.dataframe(df_comments)
 st.altair_chart(hist, width='stretch')
 
-# 饼图 - 用原始数据 df_comments 聚合，测试通过的写法
+# 饼图 - 用原始数据 df_comments 聚合
 pie = alt.Chart(df_comments).mark_arc().encode(
     theta=alt.Theta(field="count()", type="quantitative", aggregate="count"),
     color=alt.Color(field="polarity", type="nominal")
