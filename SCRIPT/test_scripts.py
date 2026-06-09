@@ -121,3 +121,5 @@ print(f"\n GEOJSON结果已保存至：{geojson_path}")
 
 # 调整工作目录：cd C:\Users\admin\Documents\GitHub\emotion_map
 # 运行命令：python SCRIPT/test_scripts.py
+
+# Streamlit展示：python -m streamlit run streamlit_app.py --server.port 8502 2>&1
