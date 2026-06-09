@@ -49,6 +49,47 @@ else:
 
                         gdf = gpd.GeoDataFrame.from_features(data_copy['features'])
 
+                        # ───── 坐标重复度分析 ─────
+                        with st.expander('\U0001f4ca 坐标重复度分析', expanded=False):
+                            coords_list = [
+                                (round(g.x, 5), round(g.y, 5))
+                                for g in gdf.geometry
+                            ]
+                            from collections import Counter
+                            coord_counter = Counter(coords_list)
+                            unique_coords = len(coord_counter)
+                            total_points = len(coords_list)
+                            dup_ratio = (1 - unique_coords / total_points) * 100
+
+                            col1, col2, col3 = st.columns(3)
+                            col1.metric('总点数', total_points)
+                            col2.metric('唯一坐标数', unique_coords)
+                            col3.metric('重复率', f'{dup_ratio:.0f}%')
+
+                            if dup_ratio > 0:
+                                st.caption(f'平均每个坐标堆积 {total_points/unique_coords:.1f} 个点')
+                                # 堆积排名表
+                                dup_ranking = sorted(
+                                    coord_counter.items(), key=lambda x: x[1], reverse=True
+                                )
+                                rank_data = []
+                                for (lon, lat), count in dup_ranking:
+                                    pois = gdf[
+                                        (gdf.geometry.x.round(5) == lon) &
+                                        (gdf.geometry.y.round(5) == lat)
+                                    ]['poi' if 'poi' in gdf.columns else 'id_e'].unique()
+                                    rank_data.append({
+                                        '坐标': f'({lon}, {lat})',
+                                        '堆积数': count,
+                                        '涉及POI': ', '.join(pois[:4]) + ('...' if len(pois) > 4 else ''),
+                                    })
+                                st.dataframe(
+                                    pd.DataFrame(rank_data),
+                                    use_container_width=True,
+                                    hide_index=True,
+                                )
+
+                        # ───── 地图可视化 ─────
                         center_lat = gdf.geometry.y.mean()
                         center_lon = gdf.geometry.x.mean()
 

@@ -12,7 +12,6 @@ from tqdm import tqdm
 
 # 增加数据预处理环节，去除无效数据、空数据、重复数据等，确保数据质量
 # 思路（一）：小规模数据测试。for循环逐条生成emotion_dict，字典新增列，再生成DataFrame
-# 思路（二）：大规模生产。向量化直接处理DataFrame，新增列
 
 
 # 环境准备
