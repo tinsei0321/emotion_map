@@ -14,7 +14,7 @@ comments = [
 all_comments = []
 
 for i, text in enumerate(comments):
-    s = SnowNLP(text).sentiments
+    s = SnowNLP(text).sentiments    # 获取情绪得分
     if s > 0.5:
         polarity = "正面"
     elif s < 0.5:
@@ -22,9 +22,9 @@ for i, text in enumerate(comments):
     else:
         polarity = "中性"
     dict_comments = {
-        "id": f"e{i+1:03d}",
+        "id": f"e{i+1:03d}",    # 生成唯一 ID，格式为 e001、e002 等
         "content": text,
-        "score": round(s, 2),
+        "score": round(s, 2),    # 保留两位小数的情绪得分
         "polarity": polarity
     }
     all_comments.append(dict_comments)
