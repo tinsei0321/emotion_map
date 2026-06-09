@@ -56,47 +56,62 @@ else:
                         # 获取 Key：https://console.tianditu.gov.cn → 创建应用 → 应用类型选"浏览器端"
                         TIANDITU_KEY = '4d4dc85287c003c8a18d5520b8920796'
 
-                        # 天地图影像底图
-                        tiles_url = (
-                            'https://t0.tianditu.gov.cn/img_w/wmts?'
-                            'SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0'
-                            '&LAYER=img&STYLE=default&TILEMATRIXSET=w'
-                            '&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}'
-                            f'&tk={TIANDITU_KEY}'
-                        )
+                        # Streamlit 侧边栏开关：控制中文注记显示
+                        show_labels = st.sidebar.checkbox('显示中文注记', value=True)
 
                         m = folium.Map(
                             location=[center_lat, center_lon],
                             zoom_start=12,
                             control_scale=True,
-                            tiles=tiles_url,
-                            attr='天地图',
-                            max_zoom=18,
+                            tiles=None,
                         )
 
-                        # 叠加天地图中文注记层
+                        # 天地图影像底图
                         folium.TileLayer(
                             tiles=(
-                                'https://t0.tianditu.gov.cn/cva_w/wmts?'
+                                'https://t0.tianditu.gov.cn/img_w/wmts?'
                                 'SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0'
-                                '&LAYER=cva&STYLE=default&TILEMATRIXSET=w'
+                                '&LAYER=img&STYLE=default&TILEMATRIXSET=w'
                                 '&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}'
                                 f'&tk={TIANDITU_KEY}'
                             ),
                             attr='天地图',
-                            name='天地图注记',
+                            name='天地图影像',
                             max_zoom=18,
                         ).add_to(m)
 
-                        folium.LayerControl().add_to(m)
+                        # 天地图中文注记（由侧边栏开关控制）
+                        if show_labels:
+                            folium.TileLayer(
+                                tiles=(
+                                    'https://t0.tianditu.gov.cn/cva_w/wmts?'
+                                    'SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0'
+                                    '&LAYER=cva&STYLE=default&TILEMATRIXSET=w'
+                                    '&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}'
+                                    f'&tk={TIANDITU_KEY}'
+                                ),
+                                attr='天地图',
+                                name='天地图注记',
+                                overlay=True,
+                                show=True,
+                                max_zoom=18,
+                            ).add_to(m)
 
                         color_map = {'Positive': 'green', 'Neutral': 'gray', 'Negative': 'red'}
 
+                        import random
+                        # 使用基于 id_e 的固定种子，保证每次渲染偏移一致
                         for feature in data['features']:
                             props = feature['properties']
                             coords = feature['geometry']['coordinates']
                             polarity = props.get('polarity', 'Neutral')
                             color = color_map.get(polarity, 'blue')
+
+                            # 同坐标点添加微小随机偏移（约 ±30m），避免完全重叠
+                            seed = hash(props.get('id_e', '')) % 10000
+                            rng = random.Random(seed)
+                            lat = coords[1] + rng.uniform(-0.0003, 0.0003)
+                            lon = coords[0] + rng.uniform(-0.0003, 0.0003)
 
                             tooltip_html = (
                                 f"<b>ID:</b> {props.get('id_e', '')}<br>"
@@ -107,7 +122,7 @@ else:
                             )
 
                             folium.CircleMarker(
-                                location=[coords[1], coords[0]],
+                                location=[lat, lon],
                                 radius=8,
                                 fill=True,
                                 fill_color=color,
