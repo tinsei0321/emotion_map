@@ -44,32 +44,47 @@ else:
                         from streamlit_folium import st_folium
                         import geopandas as gpd
 
-                        gdf = gpd.GeoDataFrame.from_features(data['features'])
+                        # 移除 CRS 字段（部分 GeoJSON 的 CRS 可能导致兼容问题）
+                        data_copy = {k: v for k, v in data.items() if k != 'crs'}
+
+                        gdf = gpd.GeoDataFrame.from_features(data_copy['features'])
 
                         center_lat = gdf.geometry.y.mean()
                         center_lon = gdf.geometry.x.mean()
 
-                        # 使用高德地图底图（适合中国大陆，无需token）
+                        # ───── 底图配置 ─────
+                        # 获取 Key：https://console.tianditu.gov.cn → 创建应用 → 应用类型选"浏览器端"
+                        TIANDITU_KEY = '4d4dc85287c003c8a18d5520b8920796'
+
+                        # 天地图影像底图
+                        tiles_url = (
+                            'https://t0.tianditu.gov.cn/img_w/wmts?'
+                            'SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0'
+                            '&LAYER=img&STYLE=default&TILEMATRIXSET=w'
+                            '&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}'
+                            f'&tk={TIANDITU_KEY}'
+                        )
+
                         m = folium.Map(
                             location=[center_lat, center_lon],
                             zoom_start=12,
                             control_scale=True,
-                        )
-                        m.tiles = None
-
-                        # 高德矢量图
-                        folium.TileLayer(
-                            tiles='https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}',
-                            attr='高德地图',
-                            name='高德矢量',
+                            tiles=tiles_url,
+                            attr='天地图',
                             max_zoom=18,
-                        ).add_to(m)
+                        )
 
-                        # 高德影像图
+                        # 叠加天地图中文注记层
                         folium.TileLayer(
-                            tiles='https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}',
-                            attr='高德地图',
-                            name='高德影像',
+                            tiles=(
+                                'https://t0.tianditu.gov.cn/cva_w/wmts?'
+                                'SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0'
+                                '&LAYER=cva&STYLE=default&TILEMATRIXSET=w'
+                                '&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}'
+                                f'&tk={TIANDITU_KEY}'
+                            ),
+                            attr='天地图',
+                            name='天地图注记',
                             max_zoom=18,
                         ).add_to(m)
 
@@ -77,36 +92,40 @@ else:
 
                         color_map = {'Positive': 'green', 'Neutral': 'gray', 'Negative': 'red'}
 
-                        # 直接用 folium.GeoJson 加载全部点
-                        def style_function(feature):
-                            polarity = feature['properties'].get('polarity', 'Neutral')
+                        for feature in data['features']:
+                            props = feature['properties']
+                            coords = feature['geometry']['coordinates']
+                            polarity = props.get('polarity', 'Neutral')
                             color = color_map.get(polarity, 'blue')
-                            return {
-                                'fillColor': color,
-                                'color': color,
-                                'fillOpacity': 0.7,
-                                'weight': 2,
-                                'radius': 8,
-                            }
 
-                        folium.GeoJson(
-                            data,
-                            name='情绪点',
-                            style_function=style_function,
-                            tooltip=folium.GeoJsonTooltip(
-                                fields=['id_e', 'comments', 'score', 'polarity'],
-                                aliases=['ID', '评论', '得分', '极性'],
-                                max_width=300,
-                            ),
-                        ).add_to(m)
+                            tooltip_html = (
+                                f"<b>ID:</b> {props.get('id_e', '')}<br>"
+                                f"<b>POI:</b> {props.get('poi', '')}<br>"
+                                f"<b>评论:</b> {props.get('comments', '')}<br>"
+                                f"<b>得分:</b> {props.get('score', '')}<br>"
+                                f"<b>极性:</b> {polarity}"
+                            )
 
-                        st_folium(m, width=800, height=500)
+                            folium.CircleMarker(
+                                location=[coords[1], coords[0]],
+                                radius=8,
+                                fill=True,
+                                fill_color=color,
+                                fill_opacity=0.7,
+                                color=color,
+                                weight=2,
+                                tooltip=folium.Tooltip(tooltip_html, max_width=300),
+                            ).add_to(m)
+
+                        st_folium(m, width=800, height=500, key='emotion_map')
 
                         st.subheader('\U0001f4cb 数据表格')
                         st.dataframe(gdf.drop(columns=['geometry']))
 
                     except Exception as map_err:
-                        st.warning(f'地图加载失败，显示JSON格式: {map_err}')
+                        import traceback
+                        st.warning(f'地图加载失败: {map_err}')
+                        st.text(traceback.format_exc())
                         st.json(data)
                 else:
                     st.json(data)
