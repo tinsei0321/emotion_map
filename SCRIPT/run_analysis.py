@@ -10,6 +10,7 @@
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from emotion_analysis_v1 import create_analyzer, run_pipeline, export_results
 
