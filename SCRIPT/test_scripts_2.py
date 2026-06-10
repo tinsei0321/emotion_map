@@ -37,3 +37,4 @@ print(f"原始数据条数: {len(df_raw)}")
 df_clean = df_raw.dropna(subset=['comments'])                  # 去 NaN
 df_clean = df_clean[df_clean['comments'].str.strip() != '']    # 去空字符串
 print(f"清洗后数据条数: {len(df_clean)}")       
+
