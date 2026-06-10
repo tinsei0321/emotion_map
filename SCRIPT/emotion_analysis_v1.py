@@ -183,7 +183,7 @@ class LLMAnalyzer(AnalyzerBase):
     """
     LLM 大模型情绪分析引擎（占位 / 模板）。
 
-    接入溯佰科时，只需：
+    接入中文语料分析模型时，只需：
     1. 实现 _call_api() 方法
     2. 实现 _parse_response() 方法
     3. 在工厂函数中注册
