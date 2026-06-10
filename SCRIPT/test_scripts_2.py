@@ -77,9 +77,9 @@ df_clean['polarity'] = np.select(conditions, choices, default='Positive')
 df_clean['id_e'] = 'e' + (df_clean.index + 1).astype(str).str.zfill(4)
 
 # ─── Step 4: 向量化坐标处理 ───
-# 直接保留 lon/lat 为浮点数列（比元组更高效，geopandas 直接可用）
-df_clean['lon'] = df_clean['lon'].astype(float).round(2)
-df_clean['lat'] = df_clean['lat'].astype(float).round(2)
+# 直接保留 lon/lat 为浮点数列，保留4位小数避免坐标重叠（~11m精度）
+df_clean['lon'] = df_clean['lon'].astype(float).round(4)
+df_clean['lat'] = df_clean['lat'].astype(float).round(4)
 
 # ─── Step 5: 整理输出列 ───
 # 构建最终结果 DataFrame（纯向量化列选择）
