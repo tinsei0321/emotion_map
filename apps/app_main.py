@@ -1,8 +1,13 @@
 """
 情绪地图主应用 v3 — 与 streamlit_app_v2 完全一致，基于模块化架构
 ══════════════════════════════════════════════════════════════
-启动: streamlit run apps/app_main.py
+启动: python -m streamlit run apps/app_main.py
 """
+# 地址
+# 本地访问：http://localhost:8501
+# 网络访问：http://192.168.123.104:8501
+
+
 import os, sys
 from collections import Counter
 import streamlit as st
