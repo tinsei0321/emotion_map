@@ -9,7 +9,7 @@ import pandas as pd
 import streamlit as st
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from emotion_map.config import (
+from core.config import (
     FOLDER_OPTIONS, TIANDITU_IMG_URL, TIANDITU_CVA_URL,
     FOLIUM_COLOR_MAP, DEFAULT_CENTER, DEFAULT_ZOOM,
 )

@@ -1,13 +1,18 @@
 # 这是一个测试脚本，用于练习数据处理和分析
 
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import pandas as pd
 import geopandas as gpd
 import numpy as np
 import csv
 import json
-import os
 from snownlp import SnowNLP
 from tqdm import tqdm
+
+# 现在可以导入 emotion_map 包了
+from core.config import PROCESSED_DIR, SCORE_POSITIVE, SCORE_NEGATIVE
 
 
 # 增加数据预处理环节，去除无效数据、空数据、重复数据等，确保数据质量
@@ -18,7 +23,7 @@ from tqdm import tqdm
 
 # 环境准备
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # 确保工作目录为项目根目录
-os.makedirs('data/processed', exist_ok=True)    # 创建阶段性（复用）成果目录
+os.makedirs(PROCESSED_DIR, exist_ok=True)    # 创建阶段性（复用）成果目录
 
 
 # ─── 安全读取csv文件 ───
@@ -67,8 +72,8 @@ df_clean['score'] = df_clean['comments'].progress_apply(
 # ─── Step 2: 向量化极性分类 ───
 # 使用 np.select 一次性完成全列条件判断，避免逐行 if-else
 conditions = [
-    df_clean['score'] < 0.3,
-    df_clean['score'] < 0.7,
+    df_clean['score'] < SCORE_NEGATIVE,
+    df_clean['score'] < SCORE_POSITIVE,
 ]
 choices = ['Negative', 'Neutral']
 df_clean['polarity'] = np.select(conditions, choices, default='Positive')
@@ -99,7 +104,7 @@ print(f"评分均值: {df_result['score'].mean():.2f}，中位数: {df_result['s
 # ═══════════════════════════════════════════════════════════
 
 # ─── 保存为 CSV ───
-csv_path = 'data/processed/test_0609_2_result_csv.csv'
+csv_path = f'{PROCESSED_DIR}/test_0609_2_result_csv.csv'
 df_result.to_csv(csv_path, index=False, encoding='utf-8')
 print(f"\n✅ CSV 结果已保存至: {csv_path}")
 
@@ -114,7 +119,7 @@ gdf = gpd.GeoDataFrame(
 # 删除冗余的 lon/lat 列（geometry 已包含坐标信息）
 gdf_result = gdf.drop(columns=['lon', 'lat'])
 
-geojson_path = 'data/processed/test_0609_2_result_geojson.geojson'
+geojson_path = f'{PROCESSED_DIR}/test_0609_2_result_geojson.geojson'
 gdf_result.to_file(geojson_path, driver='GeoJSON', encoding='utf-8')
 print(f"✅ GeoJSON 结果已保存至: {geojson_path}")
 
