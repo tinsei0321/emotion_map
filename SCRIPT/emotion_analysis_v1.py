@@ -134,7 +134,7 @@ class SnowNLPAnalyzer(AnalyzerBase):
             return EmotionResult(score=0.5, polarity='Neutral', confidence=0.0)
 
         s = SnowNLP(text).sentiments
-        score = round(s, 4)
+        score = round(s, 2)
 
         if score >= self.pos_thresh:
             polarity = 'Positive'
@@ -150,7 +150,7 @@ class SnowNLPAnalyzer(AnalyzerBase):
         from snownlp import SnowNLP
         tqdm.pandas(desc=self.name)
         scores = pd.Series(texts).progress_apply(
-            lambda x: round(SnowNLP(str(x).strip()).sentiments, 4)
+            lambda x: round(SnowNLP(str(x).strip()).sentiments, 2)
         )
         results = []
         for s in scores:
