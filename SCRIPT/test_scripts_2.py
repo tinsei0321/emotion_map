@@ -17,6 +17,7 @@ from tqdm import tqdm
 
 
 # 环境准备
+os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # 确保工作目录为项目根目录
 os.makedirs('data/processed', exist_ok=True)    # 创建阶段性（复用）成果目录
 
 
