@@ -1,0 +1,32 @@
+"""
+导出工具 — DataFrame → CSV / GeoJSON
+══════════════════════════════════════════════════════════════
+"""
+import os
+import pandas as pd
+import geopandas as gpd
+
+
+def export_to_csv(df: pd.DataFrame, output_path: str):
+    """DataFrame → CSV"""
+    os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
+    df.to_csv(output_path, index=False, encoding='utf-8')
+    return output_path
+
+
+def export_to_geojson(df: pd.DataFrame, output_path: str,
+                      lon_col='lon', lat_col='lat'):
+    """DataFrame → GeoJSON（需含 lon/lat 列）"""
+    os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
+
+    gdf = gpd.GeoDataFrame(
+        df,
+        geometry=gpd.points_from_xy(df[lon_col], df[lat_col]),
+        crs="EPSG:4326",
+    )
+
+    cols_to_drop = [c for c in [lon_col, lat_col] if c in gdf.columns]
+    gdf.drop(columns=cols_to_drop, inplace=True)
+
+    gdf.to_file(output_path, driver='GeoJSON', encoding='utf-8')
+    return output_path
