@@ -98,7 +98,7 @@ print(f"评分均值: {df_result['score'].mean():.2f}，中位数: {df_result['s
 # ═══════════════════════════════════════════════════════════
 
 # ─── 保存为 CSV ───
-csv_path = 'data/processed/test_0609_1_result_csv.csv'
+csv_path = 'data/processed/test_0609_2_result_csv.csv'
 df_result.to_csv(csv_path, index=False, encoding='utf-8')
 print(f"\n✅ CSV 结果已保存至: {csv_path}")
 
@@ -113,7 +113,7 @@ gdf = gpd.GeoDataFrame(
 # 删除冗余的 lon/lat 列（geometry 已包含坐标信息）
 gdf_result = gdf.drop(columns=['lon', 'lat'])
 
-geojson_path = 'data/processed/test_0609_1_result_geojson.geojson'
+geojson_path = 'data/processed/test_0609_2_result_geojson.geojson'
 gdf_result.to_file(geojson_path, driver='GeoJSON', encoding='utf-8')
 print(f"✅ GeoJSON 结果已保存至: {geojson_path}")
 
