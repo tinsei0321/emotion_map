@@ -10,7 +10,7 @@
 未来接入溯佰科大模型时，只需实现 AnalyzerBase 接口即可。
 ══════════════════════════════════════════════════════════════
 """
-import os, re, json
+import os, re, json, sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Optional
@@ -18,6 +18,12 @@ from typing import Optional
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
+
+# 确保可导入 core
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from core.config import SCORE_POSITIVE, SCORE_NEGATIVE, PROCESSED_DIR
+from core.data_loader import load_emotion_data
+from core.export import export_to_csv, export_to_geojson
 
 # ═══════════════════════════════════════════════════════════
 # 一、数据结构定义
@@ -108,10 +114,9 @@ class SnowNLPAnalyzer(AnalyzerBase):
     局限：粒度粗（仅正面/负面分数），无情绪分类
     """
 
-    def __init__(self, positive_threshold: float = 0.7,
-                 negative_threshold: float = 0.3):
-        self.pos_thresh = positive_threshold
-        self.neg_thresh = negative_threshold
+    def __init__(self):
+        self.pos_thresh = SCORE_POSITIVE
+        self.neg_thresh = SCORE_NEGATIVE
 
     @property
     def name(self) -> str:
@@ -263,109 +268,69 @@ def create_analyzer(engine: str = 'snownlp', **kwargs) -> AnalyzerBase:
 
 
 # ═══════════════════════════════════════════════════════════
-# 六、数据管道（Data Pipeline）
+# 六、数据管道（基于 core 模块）
 # ═══════════════════════════════════════════════════════════
 
-def load_raw_csv(file_path: str) -> pd.DataFrame:
-    """加载原始 CSV（兼容旧格式）"""
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            reader = __import__('csv').DictReader(f)
-            data = list(reader)
-        return pd.DataFrame(data)
-    except Exception as e:
-        print(f'CSV 加载失败: {e}')
-        return pd.DataFrame()
-
-
-def preprocess(df: pd.DataFrame, text_col: str = 'comments') -> pd.DataFrame:
-    """
-    数据预处理管道。
-
-    步骤:
-        1. 去除 NaN
-        2. 去除空字符串
-        3. 去除重复评论
-        4. 重置索引
-    """
-    return (
-        df
-        .dropna(subset=[text_col])
-        .loc[lambda d: d[text_col].str.strip() != '']
-        .drop_duplicates(subset=[text_col])
-        .reset_index(drop=True)
-    )
-
-
-def run_pipeline(file_path: str, engine: AnalyzerBase = None,
-                 text_col: str = 'comments') -> pd.DataFrame:
+def run_pipeline(file_path: str, engine: AnalyzerBase = None) -> pd.DataFrame | None:
     """
     一键执行完整分析管道。
 
     参数:
-        file_path: 原始 CSV 路径
+        file_path: 原始 CSV/GeoJSON 路径
         engine: 分析引擎（默认 SnowNLP）
-        text_col: 评论文本列名
 
     返回:
-        包含分析结果的 DataFrame（新增 score / polarity 列）
+        包含 score / polarity 列的 DataFrame，失败返回 None
     """
     if engine is None:
         engine = create_analyzer('snownlp')
 
-    # 1. 加载
-    df = load_raw_csv(file_path)
-    if df.empty:
-        return df
+    # 1. 统一数据加载（core/data_loader）
+    data = load_emotion_data(file_path)
+    if not data:
+        print(f'无法加载: {file_path}')
+        return None
 
-    # 2. 清洗
-    df = preprocess(df, text_col)
-    print(f'清洗后: {len(df)} 条')
+    df = data['df']
+    print(f'加载: {data["n_points"]} 条')
 
-    # 3. 分析
-    texts = df[text_col].tolist()
+    # 2. 分析
+    texts = df['comments'].tolist() if 'comments' in df.columns else []
+    if not texts:
+        print('无评论文本列')
+        return None
+
     results = engine.analyze_batch(texts)
 
-    # 4. 合并结果
+    # 3. 合并结果
     df['score'] = [r.score for r in results]
     df['polarity'] = [r.polarity for r in results]
 
-    # 5. 生成 ID
+    # 4. 生成 ID
     df['id_e'] = 'e' + (df.index + 1).astype(str).str.zfill(4)
 
-    # 6. 坐标处理
+    # 5. 坐标处理
     for col in ['lon', 'lat']:
         if col in df.columns:
             df[col] = df[col].astype(float).round(4)
 
-    print(f'\n分析完成: {len(df)} 条')
+    print(f'分析完成: {len(df)} 条')
     print(df['polarity'].value_counts().to_string())
 
     return df
 
 
-# ═══════════════════════════════════════════════════════════
-# 七、导出
-# ═══════════════════════════════════════════════════════════
-
 def export_results(df: pd.DataFrame, base_name: str,
-                   output_dir: str = 'data/processed'):
-    """导出 CSV + GeoJSON"""
-    os.makedirs(output_dir, exist_ok=True)
-
+                   output_dir: str = PROCESSED_DIR):
+    """导出（使用 core/export）"""
+    # CSV
     csv_path = os.path.join(output_dir, f'{base_name}_result_csv.csv')
-    df.to_csv(csv_path, index=False, encoding='utf-8')
-    print(f'✅ CSV → {csv_path}')
+    export_to_csv(df, csv_path)
 
+    # GeoJSON（需要坐标列）
     if 'lon' in df.columns and 'lat' in df.columns:
-        import geopandas as gpd
-        gdf = gpd.GeoDataFrame(
-            df, geometry=gpd.points_from_xy(df['lon'], df['lat']),
-            crs='EPSG:4326',)
-        gdf.drop(columns=['lon', 'lat'], inplace=True)
         geojson_path = os.path.join(output_dir, f'{base_name}_result_geojson.geojson')
-        gdf.to_file(geojson_path, driver='GeoJSON', encoding='utf-8')
-        print(f'✅ GeoJSON → {geojson_path}')
+        export_to_geojson(df, geojson_path)
 
 
 # ═══════════════════════════════════════════════════════════

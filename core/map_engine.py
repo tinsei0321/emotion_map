@@ -57,12 +57,9 @@ def add_point_layer(m: folium.Map, lats, lons, scores,
                     props_list=None, jitter=True):
     """
     添加点状情绪标记层。
-
-    参数:
-        m: folium 地图对象
-        lats, lons, scores: 坐标和得分
-        props_list: 属性字典列表（用于 tooltip）
-        jitter: 是否添加随机偏移避免重叠
+    props_list 支持两种格式:
+      1. dict 列表: [{'id_e':..., 'comments':...}, ...]
+      2. GeoJSON feature 列表: [{'properties':{...}}, ...]
     """
     import random
     for i, (lat, lon, s) in enumerate(zip(lats, lons, scores)):
@@ -70,17 +67,24 @@ def add_point_layer(m: folium.Map, lats, lons, scores,
             'Negative' if s <= SCORE_NEGATIVE else 'Neutral')
         color = FOLIUM_COLOR_MAP.get(polarity, 'blue')
 
-        if jitter:
-            seed = hash(str(props_list[i].get('id_e', i)) if props_list else i) % 10000
+        if jitter and props_list:
+            id_str = str(i)
+            if i < len(props_list):
+                p = props_list[i]
+                props = p.get('properties', p)  # 兼容 GeoJSON feature
+                id_str = str(props.get('id_e', props.get('id', i)))
+            seed = hash(id_str) % 10000
             rng = random.Random(seed)
             lat += rng.uniform(-0.0003, 0.0003)
             lon += rng.uniform(-0.0003, 0.0003)
 
         tooltip_parts = []
         if props_list and i < len(props_list):
+            p = props_list[i]
+            props = p.get('properties', p)  # 兼容 GeoJSON feature
             for key in ['id_e', 'poi', 'comments', 'score', 'polarity']:
-                if key in props_list[i]:
-                    tooltip_parts.append(f"<b>{key}:</b> {props_list[i][key]}")
+                if key in props:
+                    tooltip_parts.append(f"<b>{key}:</b> {props[key]}")
         tooltip_html = '<br>'.join(tooltip_parts) if tooltip_parts else f'点 {i}'
 
         folium.CircleMarker(

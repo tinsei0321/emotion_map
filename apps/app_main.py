@@ -3,9 +3,8 @@
 ══════════════════════════════════════════════════════════════
 启动: streamlit run apps/app_main.py
 """
-import os, sys, json
+import os, sys
 from collections import Counter
-import pandas as pd
 import streamlit as st
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -13,6 +12,8 @@ from core.config import (
     FOLDER_OPTIONS, TIANDITU_IMG_URL, TIANDITU_CVA_URL,
     FOLIUM_COLOR_MAP, DEFAULT_CENTER, DEFAULT_ZOOM,
 )
+from core.map_engine import create_base_map, add_point_layer
+from core.data_loader import load_emotion_data
 
 st.set_page_config(page_title='情绪地图L2_test', layout='wide')
 DEBUG_MODE = True
@@ -160,65 +161,6 @@ def show_settings_dialog():
 
 
 # ═══════════════════════════════════════════════════════════
-# 地图渲染（与 v2 完全一致）
-# ═══════════════════════════════════════════════════════════
-def render_map(df, geo_data):
-    import folium; from streamlit_folium import st_folium
-
-    if geo_data is not None:
-        import geopandas as gpd
-        dc = {k:v for k,v in geo_data.items() if k!='crs'}
-        gdf = gpd.GeoDataFrame.from_features(dc['features'])
-        clat = gdf.geometry.y.mean(); clon = gdf.geometry.x.mean()
-    else:
-        lc = next((c for c in ['lon','longitude','lng'] if c in df.columns), None)
-        pc = next((c for c in ['lat','latitude'] if c in df.columns), None)
-        if not lc or not pc: return None
-        clat = df[pc].mean(); clon = df[lc].mean()
-
-    m = folium.Map(location=[clat, clon], zoom_start=12,
-                   control_scale=True, tiles=None)
-    folium.TileLayer(tiles=TIANDITU_IMG_URL, attr='天地图',
-                     name='天地图影像', max_zoom=18).add_to(m)
-    if st.session_state.get('show_labels', True):
-        folium.TileLayer(tiles=TIANDITU_CVA_URL, attr='天地图注记',
-                         overlay=True, show=True, max_zoom=18).add_to(m)
-
-    import random
-    if geo_data is not None:
-        feats = geo_data['features']
-        for f in feats:
-            p = f['properties']; c = f['geometry']['coordinates']
-            pol = str(p.get('polarity','Neutral'))
-            col = FOLIUM_COLOR_MAP.get(pol, 'blue')
-            seed = hash(str(p.get('id_e','')))%10000; rng = random.Random(seed)
-            lt = c[1]+rng.uniform(-.0003,.0003); ln = c[0]+rng.uniform(-.0003,.0003)
-            tp = [f"<b>{k}:</b> {p[k]}" for k in ['id_e','poi','comments','score','polarity'] if k in p]
-            folium.CircleMarker([lt,ln], radius=8, fill=True, fill_color=col,
-                fill_opacity=.7, color=col, weight=2,
-                tooltip=folium.Tooltip('<br>'.join(tp), max_width=300)).add_to(m)
-        st_folium(m, width=None, height=700, key='geojson_map')
-        return {'gdf': gdf, 'center': (clat, clon), 'n_features': len(feats)}
-    else:
-        lc = next((c for c in ['lon','longitude','lng'] if c in df.columns), None)
-        pc = next((c for c in ['lat','latitude'] if c in df.columns), None)
-        for _,r in df.iterrows():
-            pol = str(r.get('polarity','Neutral'))
-            col = FOLIUM_COLOR_MAP.get(pol, 'blue')
-            idv = str(r.get('id_e', r.get('id','')))
-            seed = hash(idv)%10000; rng = random.Random(seed)
-            lt = float(r[pc])+rng.uniform(-.0003,.0003)
-            ln = float(r[lc])+rng.uniform(-.0003,.0003)
-            tp = [f"<b>{k}:</b> {r[k]}" for k in ['id_e','poi','comments','score','polarity'] if k in df.columns]
-            th = '<br>'.join(tp) if tp else f'点 {idv}'
-            folium.CircleMarker([lt,ln], radius=8, fill=True, fill_color=col,
-                fill_opacity=.7, color=col, weight=2,
-                tooltip=folium.Tooltip(th, max_width=300)).add_to(m)
-        st_folium(m, width=None, height=700, key='csv_map')
-        return {'center': (clat, clon)}
-
-
-# ═══════════════════════════════════════════════════════════
 # 主流程
 # ═══════════════════════════════════════════════════════════
 def main():
@@ -327,16 +269,10 @@ def main():
             unsafe_allow_html=True)
 
     # ── 数据加载 + 地图 ──
+    import folium; from streamlit_folium import st_folium
     fp = st.session_state.get('file_path', '')
     if not fp or not os.path.exists(fp):
-        import folium; from streamlit_folium import st_folium
-        m = folium.Map(location=DEFAULT_CENTER, zoom_start=DEFAULT_ZOOM,
-                       control_scale=True, tiles=None)
-        folium.TileLayer(tiles=TIANDITU_IMG_URL, attr='天地图',
-                         name='天地图影像', max_zoom=18).add_to(m)
-        if st.session_state.get('show_labels', True):
-            folium.TileLayer(tiles=TIANDITU_CVA_URL, attr='天地图注记',
-                             overlay=True, show=True, max_zoom=18).add_to(m)
+        m = create_base_map(show_labels=st.session_state.get('show_labels', True))
         st_folium(m, width=None, height=700, key='default_map')
         _,c,_ = st.columns([3,2,3])
         with c:
@@ -345,33 +281,27 @@ def main():
                 show_data_source_dialog()
         return
 
-    ext = os.path.splitext(fp)[1].lower().lstrip('.')
-    df = None; geo_data = None; map_meta = None
+    data = load_emotion_data(fp)
+    if not data:
+        st.error('无法加载数据'); st.stop()
 
-    if ext in ('csv','tsv'):
-        sep = '\t' if ext=='tsv' else ','
-        df = pd.read_csv(fp, sep=sep)
-    elif ext in ('json','geojson'):
-        with open(fp, encoding='utf-8') as f: geo_data = json.load(f)
-        if isinstance(geo_data, dict) and geo_data.get('type')=='FeatureCollection':
-            import geopandas as gpd
-            dc = {k:v for k,v in geo_data.items() if k!='crs'}
-            gdf = gpd.GeoDataFrame.from_features(dc['features'])
-            df = pd.DataFrame(gdf.drop(columns=['geometry']))
+    df = data['df']
+    st.session_state['current_df'] = df
+    st.session_state['current_file_choice'] = fc
+    st.session_state['data_loaded'] = True
 
-    if df is not None:
-        st.session_state['current_df'] = df
-        st.session_state['current_file_choice'] = fc
-        st.session_state['data_loaded'] = True
+    m = create_base_map(data['lats'], data['lons'],
+                        show_labels=st.session_state.get('show_labels', True))
+
+    geo = data.get('geo_data')
+    if geo:
+        add_point_layer(m, data['lats'], data['lons'], data['scores'],
+                       props_list=geo['features'])
     else:
-        st.session_state['data_loaded'] = False
+        add_point_layer(m, data['lats'], data['lons'], data['scores'],
+                       props_list=df.to_dict('records'))
 
-    if ext in ('csv','tsv') or (geo_data and geo_data.get('type')=='FeatureCollection'):
-        map_meta = render_map(df, geo_data)
-    elif ext in ('json','geojson'):
-        st.json(geo_data)
-
-    st.session_state['current_map_meta'] = map_meta
+    st_folium(m, width=None, height=700, key='geojson_map')
 
 
 if __name__ == '__main__':
