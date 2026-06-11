@@ -43,6 +43,16 @@ from tqdm import tqdm
 # 确保可导入 core
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# 安全 print — 防止 Windows GBK 控制台崩溃
+import builtins as _bi
+_real_print = _bi.print
+
+def _safe_print(*args, **kwargs):
+    try:
+        _real_print(*args, **kwargs)
+    except UnicodeEncodeError:
+        _real_print(*(str(a).encode('ascii', errors='replace').decode('ascii') for a in args), **kwargs)
+
 # 修复 Windows GBK 控制台 emoji 编码问题
 try:
     sys.stdout.reconfigure(encoding='utf-8')
@@ -916,19 +926,19 @@ def run_pipeline(file_path: str,
     # 1. 统一数据加载
     data = load_emotion_data(file_path)
     if not data:
-        print(f'无法加载: {file_path}')
+        _safe_print(f'无法加载: {file_path}')
         return None
 
     df = data['df']
-    print(f'[LOAD] 加载: {data["n_points"]} 条')
+    _safe_print(f'[LOAD] 加载: {data["n_points"]} 条')
 
     # 2. 分析
     texts = df['comments'].tolist() if 'comments' in df.columns else []
     if not texts:
-        print('[WARN] 无评论文本列')
+        _safe_print('[WARN] 无评论文本列')
         return None
 
-    print(f'[{engine.phase}] {engine.name} v{engine.version} 分析中...')
+    _safe_print(f'[{engine.phase}] {engine.name} v{engine.version} 分析中...')
     results = engine.analyze_batch(texts)
 
     # 3. 合并 L2 基础字段
@@ -968,21 +978,21 @@ def run_pipeline(file_path: str,
             df[col] = df[col].astype(float).round(4)
 
     # 8. 统计概览
-    print(f'\n[OK] 分析完成: {len(df)} 条')
-    print(f'  --- 五级极性分布:')
+    _safe_print(f'\n[OK] 分析完成: {len(df)} 条')
+    _safe_print(f'  --- 五级极性分布:')
     polarity_order = ['Very Negative', 'Negative', 'Neutral',
                       'Positive', 'Very Positive']
     for pol in polarity_order:
         count = (df['polarity'] == pol).sum()
         if count > 0:
-            print(f'   {pol:16s} {count:5d} 条 ({count/len(df)*100:4.1f}%)')
+            _safe_print(f'   {pol:16s} {count:5d} 条 ({count/len(df)*100:4.1f}%)')
 
     # 城市治理视角的统计
     actionable = sum(1 for r in results if r.is_actionable())
     benchmark = sum(1 for r in results if r.is_benchmark())
-    print(f'\n  --- 城市治理视角:')
-    print(f'   需干预项 (Negative + Very Negative): {actionable} 条')
-    print(f'   标杆项   (Very Positive):              {benchmark} 条')
+    _safe_print(f'\n  --- 城市治理视角:')
+    _safe_print(f'   需干预项 (Negative + Very Negative): {actionable} 条')
+    _safe_print(f'   标杆项   (Very Positive):              {benchmark} 条')
 
     return df
 
@@ -1049,7 +1059,7 @@ def run_full_pipeline(file_path: str,
 
     # L3（仅对负面文本调用 LLM，节省成本）
     if l3_api_key:
-        print('\n── L3 LLM 语义增强 ──')
+        _safe_print('\n── L3 LLM 语义增强 ──')
         engine_l3 = create_analyzer('llm', api_key=l3_api_key)
         neg_mask = df['polarity'].isin(['Negative', 'Very Negative'])
         neg_texts = df.loc[neg_mask, 'comments'].tolist()
@@ -1059,13 +1069,13 @@ def run_full_pipeline(file_path: str,
                 df.loc[neg_mask, col] = [
                     getattr(r, col, '') or '' for r in l3_results
                 ]
-            print(f'   L3 增强 {len(neg_texts)} 条负面文本')
+            _safe_print(f'   L3 增强 {len(neg_texts)} 条负面文本')
         else:
-            print('   无负面文本，跳过 L3')
+            _safe_print('   无负面文本，跳过 L3')
 
     # L4（对需干预的文本进行归因）
     if l4_api_key:
-        print('\n── L4 多维归因分析 ──')
+        _safe_print('\n── L4 多维归因分析 ──')
         engine_l4 = create_analyzer('corpus', api_key=l4_api_key,
                                      corpus_path=l4_corpus_path)
         actionable_mask = df['polarity'].isin(['Negative', 'Very Negative'])
@@ -1082,9 +1092,9 @@ def run_full_pipeline(file_path: str,
                 if r.suggestions else ''
                 for r in l4_results
             ]
-            print(f'   L4 归因 {len(actionable_texts)} 条需干预文本')
+            _safe_print(f'   L4 归因 {len(actionable_texts)} 条需干预文本')
         else:
-            print('   无需归因文本，跳过 L4')
+            _safe_print('   无需归因文本，跳过 L4')
 
     return df
 
@@ -1098,10 +1108,10 @@ if __name__ == '__main__':
 
     # 默认使用 L2 SnowNLP
     engine = create_analyzer('snownlp')
-    print(f'引擎: {engine.name} v{engine.version} [{engine.phase}]')
-    print(f'能力: {json.dumps(engine.get_capabilities(), ensure_ascii=False)}')
+    _safe_print(f'引擎: {engine.name} v{engine.version} [{engine.phase}]')
+    _safe_print(f'能力: {json.dumps(engine.get_capabilities(), ensure_ascii=False)}')
 
     df = run_pipeline('data/raw/test_0609_1.csv', engine)
     if df is not None and not df.empty:
         export_results(df, 'emotion_analysis_output')
-        print('\n[OK] 全流程完成！')
+        _safe_print('\n[OK] 全流程完成！')
