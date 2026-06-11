@@ -1,7 +1,9 @@
 """
-情绪地图主应用 v3 — 与 streamlit_app_v2 完全一致，基于模块化架构
+情绪地图主应用 v1.0 — 基于模块化架构
 ══════════════════════════════════════════════════════════════
-启动: python -m streamlit run apps/app_main.py
+启动: python launch.py                    # 一键启动全部（推荐）
+      python launch.py --map              # 仅启动地图
+      python -m streamlit run apps/app_main.py
 """
 # 地址
 # 本地访问：http://localhost:8501
@@ -15,12 +17,13 @@ import streamlit as st
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.config import (
     FOLDER_OPTIONS, TIANDITU_IMG_URL, TIANDITU_CVA_URL,
-    FOLIUM_COLOR_MAP, DEFAULT_CENTER, DEFAULT_ZOOM,
+    FOLIUM_COLOR_MAP, DEFAULT_CENTER, DEFAULT_ZOOM, RAW_DIR, PROCESSED_DIR,
 )
 from core.map_engine import create_base_map, add_point_layer
 from core.data_loader import load_emotion_data
+from SCRIPT.emotion_analysis_v1 import create_analyzer, run_pipeline
 
-st.set_page_config(page_title='情绪地图L2_test', layout='wide')
+st.set_page_config(page_title='情绪地图 v1.0', layout='wide')
 DEBUG_MODE = True
 
 # ═══════════════════════════════════════════════════════════
@@ -85,25 +88,34 @@ def show_overview_dialog():
     if has_pol or has_sc:
         st.subheader('情绪分析', divider='gray')
         if has_pol:
+            total = len(df)
+            # 五级极性统计
+            vpos = (df['polarity'] == 'Very Positive').sum()
             pos = (df['polarity'] == 'Positive').sum()
             neu = (df['polarity'] == 'Neutral').sum()
-            neg = (df['polarity'] == 'Negative').sum(); total = len(df)
-            c1,c2,c3,c4 = st.columns(4)
-            c1.metric('总数', total)
-            c2.metric('😊 正面', pos, delta=f'{pos/total*100:.0f}%' if total else '')
-            c3.metric('😐 中性', neu); c4.metric('😞 负面', neg)
+            neg = (df['polarity'] == 'Negative').sum()
+            vneg = (df['polarity'] == 'Very Negative').sum()
+            c1,c2,c3,c4,c5 = st.columns(5)
+            c1.metric('🟢 非常正面', vpos)
+            c2.metric('✅ 正面', pos)
+            c3.metric('➖ 中性', neu)
+            c4.metric('⚠️ 负面', neg)
+            c5.metric('🔴 非常负面', vneg)
+            st.caption(f"需干预 (负面+非常负面): **{neg + vneg}** 条 ({(neg+vneg)/total*100:.1f}%) | "
+                       f"标杆 (非常正面): **{vpos}** 条 ({vpos/total*100:.1f}%)")
         if has_sc:
             st.caption(f"得分 — 均值: **{df['score'].mean():.2f}** | "
                        f"中位数: **{df['score'].median():.2f}** | "
                        f"标准差: **{df['score'].std():.2f}**")
         if has_pol:
             import altair as alt
+            pol_order = ['Very Negative','Negative','Neutral','Positive','Very Positive']
+            pol_colors = ['#dc3545','#e8590c','#6c757d','#28a745','#1a7a1a']
             chart = alt.Chart(df).mark_bar().encode(
-                x=alt.X('polarity:N', title=None, sort=['Positive','Neutral','Negative']),
+                x=alt.X('polarity:N', title=None, sort=pol_order),
                 y=alt.Y('count()', title=None),
                 color=alt.Color('polarity:N', scale=alt.Scale(
-                    domain=['Positive','Neutral','Negative'],
-                    range=['#28a745','#6c757d','#dc3545']), legend=None)
+                    domain=pol_order, range=pol_colors), legend=None)
             ).properties(height=200)
             st.altair_chart(chart, width='stretch')
 
@@ -166,6 +178,98 @@ def show_settings_dialog():
 
 
 # ═══════════════════════════════════════════════════════════
+# 弹窗：运行情绪分析
+# ═══════════════════════════════════════════════════════════
+@st.dialog('🔬 运行情绪分析', width='large')
+def show_analysis_dialog():
+    st.markdown('选择原始情绪DATA文件并运行情绪分析引擎，结果自动加载到地图。')
+
+    # ── 选择文件 ──
+    raw_files = []
+    if os.path.exists(RAW_DIR):
+        raw_files = sorted([f for f in os.listdir(RAW_DIR)
+                           if os.path.isfile(os.path.join(RAW_DIR, f))
+                           and f.lower().endswith(('.csv', '.tsv', '.json', '.geojson'))])
+    if not raw_files:
+        st.warning(f'`{RAW_DIR}/` 中没有可分析的文件。请先将原始数据放入该目录。')
+        return
+
+    file_choice = st.selectbox('📄 原始情绪DATA文件（L1）', raw_files,
+                               help=f'来自 {RAW_DIR}/')
+    st.caption(f'路径: `{os.path.join(RAW_DIR, file_choice)}`')
+
+    st.divider()
+
+    # ── 选择引擎 ──
+    engine_choice = st.radio(
+        '🧠 分析引擎',
+        ['L2 · SnowNLP粗粒度分析 (离线)', 'L3 · LLM 细粒度语义解析 (需 API Key)', 'L4 · 语料库 + LLM 多维归因处理 (需语料库 和 API Key)'],
+        help='L2 轻量免费; L3 需接入大模型 API; L4 需情绪语料库和大模型API'
+    )
+
+    api_key = ''
+    if 'LLM' in engine_choice:
+        api_key = st.text_input('🔑 API Key',
+                                type='password',
+                                placeholder='sk-...',
+                                help='DeepSeek/Qwen/GLM 等模型的 API Key')
+
+    st.divider()
+
+    # ── 执行 ──
+    c1, c2 = st.columns([1, 3])
+    with c1:
+        run_clicked = st.button('🚀 开始分析', type='primary',
+                                use_container_width=True)
+    with c2:
+        if run_clicked:
+            engine_type = 'llm' if 'LLM' in engine_choice else 'snownlp'
+            kwargs = {}
+            if api_key:
+                kwargs['api_key'] = api_key
+            engine = create_analyzer(engine_type, **kwargs)
+
+            with st.status(f'[{engine.phase}] {engine.name} 分析中…', expanded=True) as status:
+                st.write(f'📂 加载: `{file_choice}`')
+                input_path = os.path.join(RAW_DIR, file_choice)
+                df = run_pipeline(input_path, engine)
+
+                if df is not None and not df.empty:
+                    # 保存到 processed（文件名含阶段标识）
+                    base_name = os.path.splitext(file_choice)[0]
+                    from core.export import export_to_csv, export_to_geojson
+                    os.makedirs(PROCESSED_DIR, exist_ok=True)
+                    csv_path = os.path.join(PROCESSED_DIR,
+                                            f'{base_name}_{engine.phase}_result_csv.csv')
+                    export_to_csv(df, csv_path)
+                    if 'lon' in df.columns and 'lat' in df.columns:
+                        geojson_path = os.path.join(PROCESSED_DIR,
+                            f'{base_name}_{engine.phase}_result_geojson.geojson')
+                        export_to_geojson(df, geojson_path)
+                    st.write(f'✅ 导出: `{csv_path}`')
+                    status.update(label=f'✅ 分析完成！{len(df)} 条数据',
+                                  state='complete')
+
+                    # 自动加载到地图
+                    st.session_state['folder_key'] = list(FOLDER_OPTIONS.keys())[0]
+                    st.session_state['file_choice'] = os.path.basename(csv_path)
+                    st.session_state['file_path'] = csv_path
+                    st.session_state['current_df'] = df
+                    st.session_state['current_file_choice'] = os.path.basename(csv_path)
+                    st.session_state['data_loaded'] = True
+
+                    st.success(f'🎉 已自动加载到地图！')
+                    st.caption('关闭此弹窗即可查看。')
+                    st.markdown(
+                        '[🔬 打开分析控制台查看详细报告 →](http://localhost:8502)',
+                        help='在新标签页中打开情绪分析控制台（需先在终端启动: python -m streamlit run apps/analysis_console.py --server.port 8502）'
+                    )
+                else:
+                    status.update(label='❌ 分析失败', state='error')
+                    st.error('请检查数据文件格式（需含 comments 列）')
+
+
+# ═══════════════════════════════════════════════════════════
 # 主流程
 # ═══════════════════════════════════════════════════════════
 def main():
@@ -205,13 +309,15 @@ def main():
     [data-testid="stAppViewContainer"] button{
         position:relative!important;z-index:10000!important;}
     .st-key-d button,.st-key-lbl button,.st-key-leg button,.st-key-s button,
-    .st-key-o button,.st-key-t button{
+    .st-key-o button,.st-key-t button,.st-key-a button{
         width:44px!important;height:44px!important;border-radius:10px!important;
         font-size:1.2rem!important;padding:0!important;
         background:rgba(30,30,30,0.75)!important;color:#fff!important;
         border:1px solid rgba(255,255,255,0.15)!important;
         backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
     .st-key-d{position:fixed!important;top:calc(50% - 22px)!important;
+        left:14px!important;z-index:9999!important;}
+    .st-key-a{position:fixed!important;top:calc(50% + 26px)!important;
         left:14px!important;z-index:9999!important;}
     .st-key-s{position:fixed!important;bottom:50px!important;
         left:14px!important;z-index:9999!important;}
@@ -247,10 +353,11 @@ def main():
             f'<span style="font-size:0.95rem;font-weight:600;color:#fff;'
             f'text-shadow:0 1px 3px rgba(0,0,0,0.7);'
             f'background:rgba(0,0,0,0.4);padding:4px 16px;border-radius:20px;'
-            f'backdrop-filter:blur(4px);">情绪地图L2_test "{fc}"</span></div>',
+            f'backdrop-filter:blur(4px);">情绪地图 v1.0 "{fc}"</span></div>',
             unsafe_allow_html=True)
 
     if st.button('📂', help='选择数据源', key='d'): show_data_source_dialog()
+    if st.button('🔬', help='运行情绪分析', key='a'): show_analysis_dialog()
     if st.button('⚙', help='更多设置', key='s'): show_settings_dialog()
 
     sl = st.session_state.get('show_labels', True)
@@ -268,9 +375,11 @@ def main():
             'pointer-events:none;background:rgba(0,0,0,0.55);padding:8px 12px;'
             'border-radius:8px;color:#fff;font-size:0.8rem;line-height:1.6;'
             'backdrop-filter:blur(4px);">'
-            '<span style="color:#28a745;">●</span> 正面 Positive<br>'
-            '<span style="color:#6c757d;">●</span> 中性 Neutral<br>'
-            '<span style="color:#dc3545;">●</span> 负面 Negative</div>',
+            '<span style="color:#1a7a1a;">●</span> 非常正面<br>'
+            '<span style="color:#28a745;">●</span> 正面<br>'
+            '<span style="color:#6c757d;">●</span> 中性<br>'
+            '<span style="color:#e8590c;">●</span> 负面<br>'
+            '<span style="color:#dc3545;">●</span> 非常负面</div>',
             unsafe_allow_html=True)
 
     # ── 数据加载 + 地图 ──

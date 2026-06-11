@@ -102,9 +102,11 @@ def render_legend_overlay(mode='point', **kwargs):
         <div style="position:fixed;bottom:28px;right:14px;z-index:9999;pointer-events:none;
         background:rgba(0,0,0,0.55);padding:8px 12px;border-radius:8px;color:#fff;
         font-size:0.8rem;line-height:1.6;backdrop-filter:blur(4px);">
+        <span style="color:#1a7a1a;">●</span> 非常正面 Very Positive<br>
         <span style="color:#28a745;">●</span> 正面 Positive<br>
         <span style="color:#6c757d;">●</span> 中性 Neutral<br>
-        <span style="color:#dc3545;">●</span> 负面 Negative</div>""",
+        <span style="color:#e8590c;">●</span> 负面 Negative<br>
+        <span style="color:#dc3545;">●</span> 非常负面 Very Negative</div>""",
             unsafe_allow_html=True)
 
     elif mode == 'hotcold':

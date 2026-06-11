@@ -34,22 +34,43 @@ FOLDER_OPTIONS = {
     '📂 raw（原始数据）': RAW_DIR,
 }
 
-# ── 情绪颜色映射 ──
+# ── 情绪极性阈值（五级制，为城市更新/治理/运营优化）──
+# 设计思路：
+#   - 三级制（正面/中性/负面）太粗糙，无法区分"严重问题"和"一般不满"
+#   - 五级制让决策者更精确地定位问题等级和资源投入优先级
+#   - 区间划分参考 SnowNLP 实际分布特征（中部集中、两端稀疏）
+POLARITY_THRESHOLDS = {
+    'Very Negative':   (0.00, 0.20),   # 严重不满 → 需紧急干预
+    'Negative':        (0.20, 0.40),   # 一般负面 → 需关注改善
+    'Neutral':         (0.40, 0.60),   # 中性/无明显情绪
+    'Positive':        (0.60, 0.80),   # 一般正面 → 维持即可
+    'Very Positive':   (0.80, 1.00),   # 非常满意 → 可作为标杆
+}
+
+# ── 三级极性（保持向后兼容）──
+SCORE_POSITIVE = 0.7   # ≥ 此值 = 正面
+SCORE_NEGATIVE = 0.3   # ≤ 此值 = 负面
+
+# ── 情绪颜色映射（五级制）──
 COLOR_MAP = {
-    'Positive': '#28a745',
-    'Neutral': '#6c757d',
-    'Negative': '#dc3545',
+    'Very Positive': '#1a7a1a',
+    'Positive':      '#28a745',
+    'Neutral':       '#6c757d',
+    'Negative':      '#e8590c',
+    'Very Negative': '#dc3545',
 }
 
 FOLIUM_COLOR_MAP = {
-    'Positive': 'green',
-    'Neutral': 'gray',
-    'Negative': 'red',
+    'Very Positive': 'darkgreen',
+    'Positive':      'green',
+    'Neutral':       'gray',
+    'Negative':      'orange',
+    'Very Negative': 'red',
 }
 
-# ── 情绪阈值 ──
-SCORE_POSITIVE = 0.7   # ≥ 此值 = 正面
-SCORE_NEGATIVE = 0.3   # ≤ 此值 = 负面
+# ── L2 情绪关键词提取配置 ──
+KEYWORD_MIN_LEN = 2        # 关键词最小长度
+KEYWORD_TOP_N = 5          # 每条文本提取关键词数
 
 # ── 热点图默认参数 ──
 HEATMAP_DEFAULTS = {

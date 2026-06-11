@@ -56,22 +56,43 @@ def create_base_map(lats=None, lons=None, show_labels=True,
 def add_point_layer(m: folium.Map, lats, lons, scores,
                     props_list=None, jitter=True):
     """
-    添加点状情绪标记层。
+    添加点状情绪标记层（支持五级极性自动识别）。
+
     props_list 支持两种格式:
-      1. dict 列表: [{'id_e':..., 'comments':...}, ...]
+      1. dict 列表: [{'id_e':..., 'comments':..., 'polarity':...}, ...]
       2. GeoJSON feature 列表: [{'properties':{...}}, ...]
+
+    极性获取优先级: props 中的 polarity 列 > 根据 score 计算（向后兼容）
     """
     import random
     for i, (lat, lon, s) in enumerate(zip(lats, lons, scores)):
-        polarity = 'Positive' if s >= SCORE_POSITIVE else (
-            'Negative' if s <= SCORE_NEGATIVE else 'Neutral')
+        # 优先从 props 读取 polarity，否则从 score 计算
+        polarity = None
+        if props_list and i < len(props_list):
+            p = props_list[i]
+            props = p.get('properties', p)  # 兼容 GeoJSON feature
+            polarity = props.get('polarity')
+
+        if polarity is None:
+            # 向后兼容：从 score 计算五级极性
+            if s >= 0.80:
+                polarity = 'Very Positive'
+            elif s >= 0.60:
+                polarity = 'Positive'
+            elif s >= 0.40:
+                polarity = 'Neutral'
+            elif s >= 0.20:
+                polarity = 'Negative'
+            else:
+                polarity = 'Very Negative'
+
         color = FOLIUM_COLOR_MAP.get(polarity, 'blue')
 
         if jitter and props_list:
             id_str = str(i)
             if i < len(props_list):
                 p = props_list[i]
-                props = p.get('properties', p)  # 兼容 GeoJSON feature
+                props = p.get('properties', p)
                 id_str = str(props.get('id_e', props.get('id', i)))
             seed = hash(id_str) % 10000
             rng = random.Random(seed)
@@ -81,9 +102,10 @@ def add_point_layer(m: folium.Map, lats, lons, scores,
         tooltip_parts = []
         if props_list and i < len(props_list):
             p = props_list[i]
-            props = p.get('properties', p)  # 兼容 GeoJSON feature
-            for key in ['id_e', 'poi', 'comments', 'score', 'polarity']:
-                if key in props:
+            props = p.get('properties', p)
+            for key in ['id_e', 'poi', 'comments', 'score', 'polarity',
+                        'category', 'target_type', 'target_detail']:
+                if key in props and props[key]:
                     tooltip_parts.append(f"<b>{key}:</b> {props[key]}")
         tooltip_html = '<br>'.join(tooltip_parts) if tooltip_parts else f'点 {i}'
 
