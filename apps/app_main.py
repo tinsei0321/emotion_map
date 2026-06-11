@@ -252,7 +252,7 @@ def show_analysis_dialog():
                             export_to_geojson(df, geojson_path)
                         status.update(label=f'分析完成！{len(df)} 条数据', state='complete')
 
-                        st.session_state['folder_key'] = list(FOLDER_OPTIONS.keys())[0]
+                        st.session_state['folder_key'] = '[DATA] raw（原始数据）'
                         st.session_state['file_choice'] = os.path.basename(csv_path)
                         st.session_state['file_path'] = csv_path
                         st.session_state['current_df'] = df
@@ -476,7 +476,7 @@ def main():
 
     for k,v in {
         'show_labels':True,'show_legend':True,
-        'folder_key':list(FOLDER_OPTIONS.keys())[0],
+        'folder_key':'[DATA] raw（原始数据）',
         'file_choice':'','file_path':'',
         'current_df':None,'current_map_meta':None,
         'current_file_choice':'','data_loaded':False,
