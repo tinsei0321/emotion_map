@@ -42,6 +42,13 @@ from tqdm import tqdm
 
 # 确保可导入 core
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# 修复 Windows GBK 控制台 emoji 编码问题
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+except Exception:
+    pass
+
 from core.config import (
     SCORE_POSITIVE, SCORE_NEGATIVE, PROCESSED_DIR,
 )
@@ -913,15 +920,15 @@ def run_pipeline(file_path: str,
         return None
 
     df = data['df']
-    print(f'📂 加载: {data["n_points"]} 条')
+    print(f'[LOAD] 加载: {data["n_points"]} 条')
 
     # 2. 分析
     texts = df['comments'].tolist() if 'comments' in df.columns else []
     if not texts:
-        print('⚠️ 无评论文本列')
+        print('[WARN] 无评论文本列')
         return None
 
-    print(f'🔬 [{engine.phase}] {engine.name} v{engine.version} 分析中…')
+    print(f'[{engine.phase}] {engine.name} v{engine.version} 分析中...')
     results = engine.analyze_batch(texts)
 
     # 3. 合并 L2 基础字段
@@ -961,8 +968,8 @@ def run_pipeline(file_path: str,
             df[col] = df[col].astype(float).round(4)
 
     # 8. 统计概览
-    print(f'\n✅ 分析完成: {len(df)} 条')
-    print(f'📊 五级极性分布:')
+    print(f'\n[OK] 分析完成: {len(df)} 条')
+    print(f'  --- 五级极性分布:')
     polarity_order = ['Very Negative', 'Negative', 'Neutral',
                       'Positive', 'Very Positive']
     for pol in polarity_order:
@@ -973,7 +980,7 @@ def run_pipeline(file_path: str,
     # 城市治理视角的统计
     actionable = sum(1 for r in results if r.is_actionable())
     benchmark = sum(1 for r in results if r.is_benchmark())
-    print(f'\n🏙  城市治理视角:')
+    print(f'\n  --- 城市治理视角:')
     print(f'   需干预项 (Negative + Very Negative): {actionable} 条')
     print(f'   标杆项   (Very Positive):              {benchmark} 条')
 
@@ -1097,4 +1104,4 @@ if __name__ == '__main__':
     df = run_pipeline('data/raw/test_0609_1.csv', engine)
     if df is not None and not df.empty:
         export_results(df, 'emotion_analysis_output')
-        print('\n✅ 全流程完成！')
+        print('\n[OK] 全流程完成！')

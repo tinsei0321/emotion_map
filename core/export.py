@@ -11,7 +11,7 @@ def export_to_csv(df: pd.DataFrame, output_path: str):
     """DataFrame → CSV"""
     os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
     df.to_csv(output_path, index=False, encoding='utf-8')
-    print(f'✅ CSV 已保存: {output_path} ({len(df)} 行)')
+    print(f'[OK] CSV 已保存: {output_path} ({len(df)} 行)')
     return output_path
 
 
@@ -30,5 +30,5 @@ def export_to_geojson(df: pd.DataFrame, output_path: str,
     gdf.drop(columns=cols_to_drop, inplace=True)
 
     gdf.to_file(output_path, driver='GeoJSON', encoding='utf-8')
-    print(f'✅ GeoJSON 已保存: {output_path} ({len(df)} 条)')
+    print(f'[OK] GeoJSON 已保存: {output_path} ({len(df)} 条)')
     return output_path

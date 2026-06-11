@@ -3,6 +3,7 @@
 ══════════════════════════════════════════════════════════════
 启动: python launch.py                    # 一键启动全部（推荐）
       python launch.py --map              # 仅启动地图
+      python launch.py --console          # 只要控制台
       python -m streamlit run apps/app_main.py
 """
 # 地址
@@ -50,7 +51,7 @@ def _panel_coord_dup_analysis(df_or_gdf, geom_col=None):
 # ═══════════════════════════════════════════════════════════
 # 弹窗：数据源
 # ═══════════════════════════════════════════════════════════
-@st.dialog('📂 数据源', width='small')
+@st.dialog('[DATA] 数据源', width='small')
 def show_data_source_dialog():
     keys = list(FOLDER_OPTIONS.keys())
     folder_key = st.selectbox('数据文件夹', keys,
@@ -229,8 +230,11 @@ def show_analysis_dialog():
                 kwargs['api_key'] = api_key
             engine = create_analyzer(engine_type, **kwargs)
 
+            # ── 执行分析 ──
+            run_success = False
+            result_df = None
+
             with st.status(f'[{engine.phase}] {engine.name} 分析中…', expanded=True) as status:
-                st.write(f'📂 加载: `{file_choice}`')
                 input_path = os.path.join(RAW_DIR, file_choice)
                 df = run_pipeline(input_path, engine)
 
@@ -246,9 +250,7 @@ def show_analysis_dialog():
                         geojson_path = os.path.join(PROCESSED_DIR,
                             f'{base_name}_{engine.phase}_result_geojson.geojson')
                         export_to_geojson(df, geojson_path)
-                    st.write(f'✅ 导出: `{csv_path}`')
-                    status.update(label=f'✅ 分析完成！{len(df)} 条数据',
-                                  state='complete')
+                    status.update(label=f'分析完成！{len(df)} 条数据', state='complete')
 
                     # 自动加载到地图
                     st.session_state['folder_key'] = list(FOLDER_OPTIONS.keys())[0]
@@ -257,16 +259,45 @@ def show_analysis_dialog():
                     st.session_state['current_df'] = df
                     st.session_state['current_file_choice'] = os.path.basename(csv_path)
                     st.session_state['data_loaded'] = True
-
-                    st.success(f'🎉 已自动加载到地图！')
-                    st.caption('关闭此弹窗即可查看。')
-                    st.markdown(
-                        '[🔬 打开分析控制台查看详细报告 →](http://localhost:8502)',
-                        help='在新标签页中打开情绪分析控制台（需先在终端启动: python -m streamlit run apps/analysis_console.py --server.port 8502）'
-                    )
+                    run_success = True
+                    result_df = df
+                    result_csv = csv_path
                 else:
-                    status.update(label='❌ 分析失败', state='error')
+                    status.update(label='分析失败', state='error')
                     st.error('请检查数据文件格式（需含 comments 列）')
+
+            # ── 结果子面板（状态条外部，自动可见）──
+            if run_success and result_df is not None:
+                st.divider()
+                st.subheader('分析结果预览')
+                df = result_df
+                total = len(df)
+                vpos = int((df['polarity'] == 'Very Positive').sum())
+                pos_ = int((df['polarity'] == 'Positive').sum())
+                neu_ = int((df['polarity'] == 'Neutral').sum())
+                neg_ = int((df['polarity'] == 'Negative').sum())
+                vneg = int((df['polarity'] == 'Very Negative').sum())
+
+                m1, m2, m3, m4, m5 = st.columns(5)
+                m1.metric('非常正面', vpos)
+                m2.metric('正面', pos_)
+                m3.metric('中性', neu_)
+                m4.metric('负面', neg_)
+                m5.metric('非常负面', vneg)
+                st.caption(
+                    f"共 {total} 条 | 均分 {df['score'].mean():.2f} | "
+                    f"需干预 {neg_ + vneg} 条 ({(neg_+vneg)/total*100:.1f}%)"
+                )
+
+                # ── 跳转按钮 ──
+                _, btn_col, _ = st.columns([1, 2, 1])
+                with btn_col:
+                    st.link_button(
+                        '打开分析控制台查看详细报告',
+                        url=f'http://localhost:8502?file={result_csv}',
+                        type='primary',
+                        use_container_width=True,
+                    )
 
 
 # ═══════════════════════════════════════════════════════════
@@ -356,7 +387,7 @@ def main():
             f'backdrop-filter:blur(4px);">情绪地图 v1.0 "{fc}"</span></div>',
             unsafe_allow_html=True)
 
-    if st.button('📂', help='选择数据源', key='d'): show_data_source_dialog()
+    if st.button('[DATA]', help='选择数据源', key='d'): show_data_source_dialog()
     if st.button('🔬', help='运行情绪分析', key='a'): show_analysis_dialog()
     if st.button('⚙', help='更多设置', key='s'): show_settings_dialog()
 
@@ -391,7 +422,7 @@ def main():
         _,c,_ = st.columns([3,2,3])
         with c:
             st.markdown('<div style="height:30vh"></div>', unsafe_allow_html=True)
-            if st.button('📂 选择数据文件', type='primary', use_container_width=True):
+            if st.button('[DATA] 选择数据文件', type='primary', use_container_width=True):
                 show_data_source_dialog()
         return
 

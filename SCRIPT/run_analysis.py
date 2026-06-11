@@ -15,6 +15,12 @@ import sys, os, json, argparse, threading
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# 修复 Windows GBK 控制台 emoji 编码问题
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+except Exception:
+    pass
+
 from emotion_analysis_v1 import run_analysis_task
 
 
@@ -54,7 +60,7 @@ def launch_gui():
     main_frm.pack(fill='both', expand=True, padx=12, pady=12)
 
     # ── 卡片：文件选择 ──
-    file_card = ttk.Labelframe(main_frm, text='  📂  原始情绪DATA文件（L1）', style='Card.TLabelframe')
+    file_card = ttk.Labelframe(main_frm, text='  [DATA]  原始情绪DATA文件（L1）', style='Card.TLabelframe')
     file_card.pack(fill='x', pady=(0, 8))
 
     file_inner = tk.Frame(file_card, bg='white')
@@ -241,7 +247,7 @@ def main_cli():
     )
 
     if result['success']:
-        print(f"\n✅ {result['message']}")
+        print(f"\n[OK] {result['message']}")
         print(f"   输出: {result['csv_path']}")
         if result['geojson_path']:
             print(f"         {result['geojson_path']}")
@@ -252,7 +258,7 @@ def main_cli():
               f"Pos={stats['Positive']} "
               f"V.Pos={stats['Very Positive']}")
     else:
-        print(f"\n❌ {result['message']}")
+        print(f"\n[ERR] {result['message']}")
 
 
 if __name__ == '__main__':

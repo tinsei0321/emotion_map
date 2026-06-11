@@ -26,7 +26,7 @@ TIANDITU_KEY = '4d4dc85287c003c8a18d5520b8920796'
 # ═══════════════════════════════════════════════════════════
 # 数据加载
 # ═══════════════════════════════════════════════════════════
-st.sidebar.header('📂 数据源')
+st.sidebar.header('[DATA] 数据源')
 folder = st.sidebar.selectbox('文件夹', ['data/processed', 'data/raw'])
 folder_path = folder
 files = sorted([f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))])

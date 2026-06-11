@@ -30,8 +30,8 @@ PROCESSED_DIR = 'data/processed'
 
 # ── 文件夹选项 ──
 FOLDER_OPTIONS = {
-    '📂 processed（处理结果）': PROCESSED_DIR,
-    '📂 raw（原始数据）': RAW_DIR,
+    '[DATA] processed（处理结果）': PROCESSED_DIR,
+    '[DATA] raw（原始数据）': RAW_DIR,
 }
 
 # ── 情绪极性阈值（五级制，为城市更新/治理/运营优化）──

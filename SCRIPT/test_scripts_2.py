@@ -14,6 +14,12 @@ from tqdm import tqdm
 # 现在可以导入 emotion_map 包了
 from core.config import PROCESSED_DIR, SCORE_POSITIVE, SCORE_NEGATIVE
 
+# 修复 Windows GBK 控制台 emoji 编码问题
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+except Exception:
+    pass
+
 
 # 增加数据预处理环节，去除无效数据、空数据、重复数据等，确保数据质量
 # 思路（二）：大规模生产。向量化直接处理DataFrame，新增列
@@ -101,7 +107,7 @@ try:
     )
 except ImportError:
     df_clean['keywords'] = ''
-    print("⚠️ jieba 未安装，跳过关键词提取。安装: pip install jieba")
+    print("[WARN] jieba 未安装，跳过关键词提取。安装: pip install jieba")
 
 # ─── Step 4: 置信度（文本长度归一化）──
 df_clean['confidence'] = df_clean['comments'].str.strip().str.len().clip(upper=100) / 100.0
@@ -132,7 +138,7 @@ print(f"评分均值: {df_result['score'].mean():.2f}，中位数: {df_result['s
 # 城市治理视角
 actionable = df_result['polarity'].isin(['Very Negative', 'Negative']).sum()
 benchmark = (df_result['polarity'] == 'Very Positive').sum()
-print(f"\n🏙  城市治理视角:")
+print(f"\n  --- 城市治理视角:")
 print(f"   需干预项 (Negative + Very Negative): {actionable} 条")
 print(f"   标杆项   (Very Positive):              {benchmark} 条")
 
@@ -144,7 +150,7 @@ print(f"   标杆项   (Very Positive):              {benchmark} 条")
 # ─── 保存为 CSV ───
 csv_path = f'{PROCESSED_DIR}/test_0609_2_L2_result_csv.csv'
 df_result.to_csv(csv_path, index=False, encoding='utf-8')
-print(f"\n✅ CSV 结果已保存至: {csv_path}")
+print(f"\n[OK] CSV 结果已保存至: {csv_path}")
 
 # ─── 保存为 GeoJSON（向量化方式） ───
 # 直接用 lon/lat 列创建 GeoDataFrame，无需中间元组转换
@@ -159,9 +165,9 @@ gdf_result = gdf.drop(columns=['lon', 'lat'])
 
 geojson_path = f'{PROCESSED_DIR}/test_0609_2_L2_result_geojson.geojson'
 gdf_result.to_file(geojson_path, driver='GeoJSON', encoding='utf-8')
-print(f"✅ GeoJSON 结果已保存至: {geojson_path}")
+print(f"[OK] GeoJSON 结果已保存至: {geojson_path}")
 
-print("\n🎉 向量化处理流程全部完成！")
+print("\n[OK] 向量化处理流程全部完成！")
 print(f"   输出文件: {csv_path}")
 print(f"   输出文件: {geojson_path}")
 
