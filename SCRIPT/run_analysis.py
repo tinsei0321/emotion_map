@@ -7,7 +7,7 @@
     python SCRIPT/run_analysis.py --file data/raw/xxx.csv --engine snownlp
     python SCRIPT/run_analysis.py --engine llm --api-key sk-xxx
 
-    # GUI 模式（无参数启动默认进入 GUI）
+    # GUI 模式启动（无参数启动默认进入 GUI）
     python SCRIPT/run_analysis.py --gui
 """
 import sys, os, json, argparse, threading
