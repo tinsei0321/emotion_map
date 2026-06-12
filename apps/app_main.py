@@ -179,75 +179,49 @@ def show_settings_dialog():
 # ═══════════════════════════════════════════════════════════
 @st.dialog('[RNG] 分析范围', width='small')
 def show_range_dialog():
-    # 确认后自动关闭
     if st.session_state.get('_range_just_set'):
         del st.session_state['_range_just_set']
         return
 
-    # 每次打开清空上次对话框内的上传/选择痕迹
-    st.caption('上传 GIS 矢量文件（GeoJSON / SHP）定义分析范围。')
+    st.caption('分析范围由 `data/boundaries/` 目录定义。')
 
-    # ── 缓存：边界文件数据只加载一次 ──
-    files = list_boundary_files()
-    if files != st.session_state.get('_boundary_files', []):
-        st.session_state['_boundary_files'] = files
-        st.session_state['_boundary_ranges'] = None
-        st.session_state['_boundary_crs'] = None
-
-    if files:
-        path = get_active_boundary_path()
-        if path and st.session_state.get('_boundary_ranges') is None:
-            st.session_state['_boundary_ranges'] = load_boundaries(path)
-            st.session_state['_boundary_crs'] = get_boundary_crs_info()
-
-        ranges = st.session_state.get('_boundary_ranges', {})
-        names = list(ranges.keys())
-        st.success(f'已加载: **{files[0]}** ({len(names)} 个区域)')
-        crs = st.session_state.get('_boundary_crs')
-        if crs:
-            st.caption(f"{crs['note']}")
-    else:
-        st.info('未上传矢量文件 — 使用默认中心城区范围')
-
-    st.divider()
-
-    # ── 上传（每次打开 key 不同，强制清空旧文件列表）──
-    upload_key = f"upload_{st.session_state.get('_dialog_open_count', 0)}"
-    uploaded_files = st.file_uploader(
-        '拖入或选择矢量文件',
+    # ── 上传（放在前面，上传完成后 Streamlit 自动重跑对话框）──
+    upload_key = f'up_{st.session_state.get("_upload_seq", 0)}'
+    uploaded = st.file_uploader(
+        '上传矢量文件', key=upload_key,
         type=['geojson', 'json', 'gpkg', 'shp', 'shx', 'dbf', 'prj', 'cpg', 'zip'],
         accept_multiple_files=True,
-        key=upload_key,
         help='GeoJSON 选 1 个；Shapefile 按住 Ctrl 多选 .shp/.shx/.dbf',
     )
-    if uploaded_files:
+    if uploaded:
         try:
-            save_uploaded_file(uploaded_files)
-            st.session_state['_boundary_files'] = []  # 触发缓存刷新
-            st.success('上传成功，文件列表已更新')
-            st.rerun()
+            save_uploaded_file(uploaded)
+            st.session_state['_upload_seq'] = st.session_state.get('_upload_seq', 0) + 1
+            # 不调 st.rerun()——Streamlit 上传完成后自动重跑对话框
         except Exception as e:
             st.error(f'保存失败: {e}')
 
-    # ── 范围选择 ──
+    st.divider()
+
+    # ── 文件列表（上传处理之后读取，保证新鲜）──
+    files = list_boundary_files()
     if files:
-        available = get_available_ranges()
-        names = [r['name'] for r in available]
+        path = get_active_boundary_path()
+        ranges = load_boundaries(path)
+        names = list(ranges.keys())
+        crs_info = get_boundary_crs_info()
+        st.success(f'{files[0]}  |  {len(names)} 区域  |  {crs_info["note"] if crs_info else ""}')
+    else:
+        names = []
+        st.info('暂无矢量文件')
+
+    # ── 范围选择 ──
+    if names:
         selected = st.multiselect(
-            '目标区域（可多选）',
-            options=names,
-            default=names,
-            help='默认全选，可取消不需要的区域',
-        )
-        if not selected:
-            st.warning('将使用全部区域')
-            selected = names
+            '目标区域', options=names, default=names,
+            help='默认全选',
+        ) or names
 
-        for r in available:
-            if r['name'] in selected:
-                st.caption(f"✓ {r['name']}  |  {r['area_km2']:.0f} km²")
-
-        st.divider()
         if st.button('[确认范围]', type='primary', use_container_width=True):
             st.session_state['selected_ranges'] = selected
             st.session_state['_range_just_set'] = True
@@ -584,7 +558,6 @@ def main():
         'file_choice': '', 'file_path': '',
         'current_df': None, 'current_map_meta': None,
         'current_file_choice': '', 'data_loaded': False,
-        '_boundary_files': [], '_boundary_ranges': None, '_boundary_crs': None,
     }.items():
         if k not in st.session_state:
             st.session_state[k] = v
@@ -592,9 +565,6 @@ def main():
     # ── Dialog 确认标记检测 ──
     if st.session_state.get('_data_confirmed'):
         st.session_state['_data_confirmed'] = False
-        st.rerun()
-    if st.session_state.get('_range_confirmed'):
-        st.session_state['_range_confirmed'] = False
         st.rerun()
 
     # ── 路由：?page=console → 分析控制台 ──
@@ -614,7 +584,7 @@ def main():
     if fc:
         render_title_bar(f'情绪地图 v1.0 "{fc}"')
 
-    if st.button('R', help='[R] 分析范围 | 上传矢量文件定义分析区域', key='rng'): show_range_dialog()
+    if st.button('R', help='[R] 分析范围 | 选择分析区域', key='rng'): show_range_dialog()
     if st.button('D', help='[D] 数据源 | 选择情绪数据文件 (CSV/GeoJSON)', key='d'): show_data_source_dialog()
     if st.button('A', help='[A] 分析引擎 | 运行 L2/L3/L4 情绪分析管道', key='a'): show_analysis_dialog()
     if st.button('[*]', help='设置与调试', key='s'): show_settings_dialog()
@@ -636,8 +606,8 @@ def main():
     fp = st.session_state.get('file_path', '')
     if not fp or not os.path.exists(fp):
         m = create_base_map(show_labels=st.session_state.get('show_labels', True))
-        # 空状态也叠加边界
-        _add_boundary_if_exists(m)
+        if st.session_state.get('selected_ranges'):
+            _add_boundary_if_exists(m)
         st_folium(m, width=None, height=700, key='default_map')
         return
 

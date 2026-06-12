@@ -34,9 +34,10 @@ class RangeConfig:
 
 
 def _find_shp_in_dir(dir_path: str) -> Optional[str]:
-    """在目录中查找 .shp 文件（Shapefile 数据集）。"""
-    for f in os.listdir(dir_path):
-        if f.lower().endswith('.shp'):
+    """在目录中查找 .shp 或 .geojson 文件。"""
+    for f in sorted(os.listdir(dir_path)):
+        low = f.lower()
+        if low.endswith(('.shp', '.geojson', '.json', '.gpkg')):
             return os.path.join(dir_path, f)
     return None
 
@@ -49,11 +50,13 @@ def list_boundary_files() -> List[str]:
     for item in os.listdir(_BOUNDARIES_DIR):
         item_path = os.path.join(_BOUNDARIES_DIR, item)
         if os.path.isdir(item_path):
-            if _find_shp_in_dir(item_path):
-                datasets.add(item)  # Shapefile 文件夹
-        elif item.endswith(('.geojson', '.json', '.gpkg')):
-            datasets.add(item)  # 单文件格式
-        # 忽略裸 .shp / .shx / .dbf / .prj / .cpg（不能单独使用）
+            # 子目录中有 .shp/.geojson/.gpkg 任一即视为有效数据集
+            for f in os.listdir(item_path):
+                if f.lower().endswith(('.shp', '.geojson', '.json', '.gpkg')):
+                    datasets.add(item)
+                    break
+        elif item.lower().endswith(('.geojson', '.json', '.gpkg')):
+            datasets.add(item)
     return sorted(datasets)
 
 

@@ -51,33 +51,47 @@
 | 2 | ⬜ | 西陵区真实数据落图 | `data/raw/xiling_v1.csv` | 第一份真实情绪地图快照 |
 | 3 | ✅ | Agent 协作体系搭建：程序开发/调试/进度管理/审查/测试/文档 Agent | `.github/agents/*.agent.md`, `AGENTS.md` | 6 Agent + AGENTS.md + 架构记忆 + 使用场景，基础搭建完成 |
 | 4 | ✅ | 系统架构优化：七层架构 + 空间分析引擎重定义 + 溯佰科定位修正 | `docs/architecture.md`, `docs/decisions.md`, `docs/dev-notes.md`, `memories/repo/architecture-pattern.md`, `SCRIPT/emotion_analysis_v1.py`, `core/map_engine.py` | PM 研判 → Developer 改代码 → PM 同步文档，SOP 首次实战 |
-| 5 | ✅ | 环境同步：requirements.txt 补全 + 新增环境管家 Agent | `requirements.txt`, `.github/agents/ops.agent.md`, `AGENTS.md` | Scrapy 未装、streamlit-folium/shapely/pyproj 漏登记，三合一修复 |
-| 6 | ✅ | 跨机协作体系：会话交接卡 + ops 自检 + PM 交接流程 | `memories/repo/session-handoff.md`, `.github/agents/ops.agent.md`, `.github/agents/pm.agent.md`, `AGENTS.md` | 换机启动 `@pm 同步上下文`，下班 `@pm 下班交接` |
+| 5 | ✅ | 环境同步：requirements.txt 补全 + 新增环境管家 Agent | `requirements.txt`, `.github/agents/ops.agent.md`, `AGENTS.md` | Scrapy 未装、streamlit-folium/shapely/pyproj 漏登记 |
+| 6 | ✅ | 跨机协作体系：会话交接卡 + ops 自检 + PM 交接流程 | `memories/repo/session-handoff.md`, `ops.agent.md`, `pm.agent.md`, `AGENTS.md` | 换机 `@pm 同步上下文`，下班 `@pm 下班交接` |
+| 7 | ✅ | Agent 扩展：UI设计师/设计审查员/GIS开发员（10 Agent） | `.github/agents/designer.agent.md`, `design-reviewer.agent.md`, `gis-developer.agent.md`, `AGENTS.md` | 设计→审查→迭代闭环，GIS 专项能力 |
+| 8 | ✅ | 初始页面重构：左侧三功能按钮 R/D/A + 全屏地图 | `app_main.py`, `core/ui_components.py` | 极简风格，CSS 统一到 ui_components，emoji 全清 |
+| 9 | ✅ | 范围选择引擎：矢量文件上传/CRS检测/缓存/边界叠加 | `core/range_selector.py`, `app_main.py`, `data/boundaries/` | 支持 .shp/.geojson/.gpkg，自动投影转换 |
+| 10 | ✅ | 坐标转换工具（WGS84/GCJ02/BD09）+ 宜昌标准 CGCS2000 | `core/coord_transform.py` | 社交媒体→WGS84→CGCS2000 投影完整链路 |
+| 11 | ✅ | 爬虫验证：Scrapy 2.16 兼容修复 + 24条小红书数据采集 | `SCRAPER/spiders/xiaohongshu_spider.py` | start_urls 兼容 + explore 页 SSR 提取 |
+| 12 | ✅ | 全局代码审查 + UI审查 + 交互审查（三 Agent 并行） | `app_main.py`, `ui_components.py`, `export.py` | 16 项问题全部修复，通过 Tester 验证 |
 
 ### 📝 开发日志
 
-**关键字**：架构优化, 七层架构, 空间分析, 溯佰科, SOP实战
+**关键字**：Agent扩展, UI重构, 范围引擎, 坐标转换, 跨机协作, 审查闭环, Scrapy兼容
 
 #### 做了什么
-- Scrapy 数据采集系统搭建完成：9 个文件，标准 Spider/Pipeline/Items，小红书搜索页 SSR 数据可无登录提取
-- 系统架构从 6 层扩展为 7 层：新增数据采集层(SCRAPER/)
-- 地图引擎层 → 空间分析引擎层：明确了 MVP 三功能（热点/缓冲区/行政单元聚合）和工具选型（geopandas+shapely）
-- 分析引擎层 → 数据分析引擎层：明确了 L1~L4 四级数据加工管道
-- 纠正溯佰科定位：从"LLM大模型"→"城市规划时空大模型平台"
-- 同步更新了 6 个文件（architecture.md / decisions.md(ADR-007) / dev-notes.md / architecture-pattern.md / emotion_analysis_v1.py / map_engine.py）
+- Agent 阵容从 6 → 10 个（新增 Ops/Designer/Design Reviewer/GIS Developer）
+- 初始页面重构：左侧 R/D/A 三按钮 + 全屏地图，极简 ASCII 统一风格
+- 范围选择引擎：支持 .shp/.geojson/.gpkg 上传，CRS 自动检测转换，边界叠加
+- 坐标转换工具：GCJ02/BD09→WGS84，宜昌标准 CGCS2000_3_Degree_GK_CM_111E
+- Scrapy 2.16 兼容修复：start_urls 空列表 bug + explore 页 SSR 数据提取
+- 全局代码/UI/交互三 Agent 并行审查，16 项问题全部修复
+- 跨机环境同步 + 会话交接卡体系
+- CSS 统一收归 ui_components.py，空状态引导，emoji 全清
 
 #### 踩坑 & 收获
-- PM Agent 调度流程首次实战：PM 研判→Developer 代码修改→PM 文档同步，流程顺畅
-- 好的架构命名反映对问题域的理解深度——不是改名字，是重新定义职责边界
+- Streamlit @st.dialog 内 st.rerun() 导致对话框消失 → 去掉 rerun，利用自动重跑
+- file_uploader 残留问题 → 最终去掉对话框内上传，改为读取 data/boundaries/ 目录
+- 旧建成区文件 11280 区域导致卡顿 → 清理残留，0.1s 秒开
+- Shapefile 单文件无法读取 → 多文件上传 + 子文件夹组织
+- Scrapy 2.16 要求 start_urls 非空 → 加占位 start_urls 兼容
+- geom.crs 不存在 → 改为 gdf.crs
+- 边界只在数据加载后显示 → 空状态也叠加（selected_ranges 判定）
 
 #### 碎片想法
-- 如果爬取受阻，备用方案：采取购买数据的方式（手动爬取没有实际意义，未来不可能手动爬取数据，而且稳定获得大量数据是非常重要的环节，必须有能够批量获取数据的稳定途径）
-- 空间分析引擎的缓冲区分析和行政单元聚合功能需要尽快编码实现，这是 MVP 的核心差异化能力
+- Tester Agent 必须每次都用，不通过不提交
+- GIS 开发员和 Tester 交叉核实 CRS 很有价值
+- SHP→GeoJSON 当前方案已足够，暂不需要独立转换工具
 
 #### 🔜 06-13(周六)
-- 数据爬取方案确定（Scrapy vs 购买）
-- 西陵区首个真实样本数据爬取
-- ⚠️ 家里环境同步（办公室已补全 requirements.txt + 新增 ops Agent）
+- 西陵区真实数据落图（L1 数据治理 + 坐标转换 + 范围过滤）
+- 数据爬取方案最终确定（登录 API vs 购买数据）
+- 空间分析引擎 MVP（缓冲区分析 + 行政单元聚合）开始编码
 
 
 ## 📅 2026-06-11（周四）
