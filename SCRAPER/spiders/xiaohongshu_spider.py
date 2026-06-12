@@ -37,6 +37,7 @@ from items import EmotionItem
 class XiaohongshuSpider(scrapy.Spider):
     name = 'xiaohongshu'
     allowed_domains = ['xiaohongshu.com', 'xhslink.com']
+    start_urls = ['https://www.xiaohongshu.com/']  # Scrapy 2.16 兼容：必须有非空 start_urls，否则 start_requests() 不被调用
 
     # ── 搜索配置 ──
     search_keyword = '\u897f\u9675\u533a'   # 西陵区（宜昌市）
@@ -50,6 +51,11 @@ class XiaohongshuSpider(scrapy.Spider):
             self.target_area = area
         self.max_pages = int(max_pages)
         self.page_count = 0
+
+    def parse(self, response):
+        """默认回调：由 start_urls 触发时直接丢弃，跳转到搜索逻辑。"""
+        # start_urls 是 Scrapy 2.16 兼容占位，实际爬取走 start_requests()
+        pass
 
     def start_requests(self):
         """

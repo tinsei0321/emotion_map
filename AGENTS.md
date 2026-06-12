@@ -6,12 +6,13 @@
 
 | Agent | 文件 | 职责 | 可调用 |
 |-------|------|------|--------|
-| 📋 进度管理员 | `.github/agents/pm.agent.md` | 任务分配、进度跟踪、状态更新 | developer, debugger, reviewer, tester, docs |
+| 📋 进度管理员 | `.github/agents/pm.agent.md` | 任务分配、进度跟踪、状态更新、跨机上下文同步 | developer, debugger, reviewer, tester, docs, ops |
 | 🛠 程序开发员 | `.github/agents/developer.agent.md` | 编写代码、实现功能 | — |
 | 🐛 Debug 师 | `.github/agents/debugger.agent.md` | 诊断错误、定位根因 | — |
 | 🔍 代码审查员 | `.github/agents/reviewer.agent.md` | 审查代码质量与规范 | — |
 | 🧪 测试工程师 | `.github/agents/tester.agent.md` | 运行测试、验证功能 | debugger |
 | 📝 文档维护员 | `.github/agents/docs.agent.md` | 维护文档体系 | — |
+| 🖥 环境管家 | `.github/agents/ops.agent.md` | 环境诊断、依赖同步、requirements.txt 维护 | — |
 
 ## 标准开发流程 (SOP)
 
@@ -72,11 +73,13 @@
 > 每个 Agent 都有专属触发词和典型场景，方便快速指派任务。
 
 ### 📋 PM — 进度管理员 `@pm`
-**关键词**：规划任务、分配工作、查看进度、更新状态、拆解需求
-**场景**：开始一天工作、启动 SOP、多人协作 | **可调用**：developer, debugger, reviewer, tester, docs
+**关键词**：规划任务、分配工作、查看进度、更新状态、拆解需求、同步上下文、下班交接
+**场景**：开始一天工作、启动 SOP、换机恢复上下文 | **可调用**：developer, debugger, reviewer, tester, docs, ops
 > `@pm 开始处理 2026-06-12 的任务 1：情绪数据爬取方案调研`
 > `@pm 今天有什么任务？帮我规划优先级` 
 > `@pm 今天的任务都完成了，更新 todo.md 做日结`
+> `@pm 同步上下文`（换机后恢复上一次会话）
+> `@pm 下班交接`（离开前保存上下文到 Git）
 
 ### 🛠 Developer — 程序开发员 `@developer`
 **关键词**：写代码、实现功能、新建文件、修改逻辑、加页面、重构、优化性能
@@ -107,6 +110,42 @@
 **场景**：功能完成后同步、踩坑记录、架构变更 | **只碰文档，不改代码**
 > `@docs 功能"三级分析架构重构"已完成，更新 docs/dev-notes.md`
 > `@docs 在长期备忘里加一条：Docker 部署方案`
+
+### 🖥 Ops — 环境管家 `@ops`
+**关键词**：环境同步、依赖更新、pip install、两机协同、缺什么包、虚拟环境、venv
+**场景**：办公室↔家里环境同步、新增依赖后更新清单、排查导入报错是否缺包 | **只碰环境，不改代码**
+> `@ops 检查当前环境和 requirements.txt 是否一致，列出差异`
+> `@ops 我刚 pip install 了新包，帮我更新 requirements.txt`
+> `@ops 生成一份家里电脑的环境同步脚本`
+
+## 跨机协作（办公室 ↔ 家里）
+
+> 两台电脑通过 Git 同步代码和上下文。每天换机后的标准操作流程：
+
+### 换机启动（到新机器后第一件事）
+```
+@pm 同步上下文
+```
+PM 会自动：
+1. 读取 `memories/repo/session-handoff.md` 恢复上次会话上下文
+2. 调用 ops 执行环境自检（`@ops 环境自检`）
+3. 汇报当前任务状态 + 今日计划
+
+### 下班交接（离开前最后一件事）
+```
+@pm 下班交接
+```
+PM 会自动：
+1. 汇总今日完成 + 关键决策 + 待办
+2. 更新 `memories/repo/session-handoff.md`
+3. 提醒你 git commit + push
+
+### 原理
+| 同步方式 | 内容 |
+|----------|------|
+| **Git** | 代码 + docs/ + requirements.txt + `memories/repo/`（会话交接卡） |
+| **pip** | `pip install -r requirements.txt`（ops 自检） |
+| **手动** | VS Code 设置/扩展（暂无自动同步） |
 
 ### ⚡ 跳过流程（仅简单改动）
 单文件小改、注释修正、变量重命名等可直接 `@developer` 跳过 SOP。

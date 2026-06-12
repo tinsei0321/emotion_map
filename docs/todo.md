@@ -51,6 +51,8 @@
 | 2 | ⬜ | 西陵区真实数据落图 | `data/raw/xiling_v1.csv` | 第一份真实情绪地图快照 |
 | 3 | ✅ | Agent 协作体系搭建：程序开发/调试/进度管理/审查/测试/文档 Agent | `.github/agents/*.agent.md`, `AGENTS.md` | 6 Agent + AGENTS.md + 架构记忆 + 使用场景，基础搭建完成 |
 | 4 | ✅ | 系统架构优化：七层架构 + 空间分析引擎重定义 + 溯佰科定位修正 | `docs/architecture.md`, `docs/decisions.md`, `docs/dev-notes.md`, `memories/repo/architecture-pattern.md`, `SCRIPT/emotion_analysis_v1.py`, `core/map_engine.py` | PM 研判 → Developer 改代码 → PM 同步文档，SOP 首次实战 |
+| 5 | ✅ | 环境同步：requirements.txt 补全 + 新增环境管家 Agent | `requirements.txt`, `.github/agents/ops.agent.md`, `AGENTS.md` | Scrapy 未装、streamlit-folium/shapely/pyproj 漏登记，三合一修复 |
+| 6 | ✅ | 跨机协作体系：会话交接卡 + ops 自检 + PM 交接流程 | `memories/repo/session-handoff.md`, `.github/agents/ops.agent.md`, `.github/agents/pm.agent.md`, `AGENTS.md` | 换机启动 `@pm 同步上下文`，下班 `@pm 下班交接` |
 
 ### 📝 开发日志
 
@@ -75,6 +77,7 @@
 #### 🔜 06-13(周六)
 - 数据爬取方案确定（Scrapy vs 购买）
 - 西陵区首个真实样本数据爬取
+- ⚠️ 家里环境同步（办公室已补全 requirements.txt + 新增 ops Agent）
 
 
 ## 📅 2026-06-11（周四）
