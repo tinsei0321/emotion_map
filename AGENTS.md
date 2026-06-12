@@ -6,13 +6,16 @@
 
 | Agent | 文件 | 职责 | 可调用 |
 |-------|------|------|--------|
-| 📋 进度管理员 | `.github/agents/pm.agent.md` | 任务分配、进度跟踪、状态更新、跨机上下文同步 | developer, debugger, reviewer, tester, docs, ops |
+| 📋 进度管理员 | `.github/agents/pm.agent.md` | 任务分配、进度跟踪、状态更新、跨机上下文同步 | developer, debugger, reviewer, tester, docs, ops, designer, design-reviewer |
 | 🛠 程序开发员 | `.github/agents/developer.agent.md` | 编写代码、实现功能 | — |
 | 🐛 Debug 师 | `.github/agents/debugger.agent.md` | 诊断错误、定位根因 | — |
 | 🔍 代码审查员 | `.github/agents/reviewer.agent.md` | 审查代码质量与规范 | — |
 | 🧪 测试工程师 | `.github/agents/tester.agent.md` | 运行测试、验证功能 | debugger |
 | 📝 文档维护员 | `.github/agents/docs.agent.md` | 维护文档体系 | — |
 | 🖥 环境管家 | `.github/agents/ops.agent.md` | 环境诊断、依赖同步、requirements.txt 维护 | — |
+| 🎨 UI 设计师 | `.github/agents/designer.agent.md` | 前端视觉设计、布局优化、交互体验 | — |
+| 👁 设计审查员 | `.github/agents/design-reviewer.agent.md` | 审查 UI 设计质量、审美一致性、设计迭代把关 | designer |
+| 🗺 GIS 开发员 | `.github/agents/gis-developer.agent.md` | 地理空间数据处理、坐标系转换、空间分析 | — |
 
 ## 标准开发流程 (SOP)
 
@@ -117,6 +120,31 @@
 > `@ops 检查当前环境和 requirements.txt 是否一致，列出差异`
 > `@ops 我刚 pip install 了新包，帮我更新 requirements.txt`
 > `@ops 生成一份家里电脑的环境同步脚本`
+
+### 🎨 Designer — UI 设计师 `@designer`
+**关键词**：界面、布局、颜色、按钮、样式、交互、美观、UI、UX
+**场景**：页面不好看、布局需调整、组件风格不统一、交互流程优化 | **只碰 UI，不改业务逻辑**
+> `@designer 优化 app_main.py 的 HUD 按钮布局，统一半透明圆角风格`
+> `@designer 重新设计初始载入页，去掉居中按钮，用左侧纵向三按钮导航`
+
+### 👁 Design Reviewer — 设计审查员 `@design-reviewer`
+**关键词**：设计审查、审美、风格、一致性、配色、间距、交互审查、设计走查
+**场景**：设计师交付后把关审美质量、检查视觉一致性、迭代修改直到合格 | **可调用 designer**
+> `@design-reviewer 审查 app_main.py 界面，重点看颜色和间距一致性`
+> `@design-reviewer 设计师提交了新方案，帮我做一轮设计走查`
+
+### 设计审查流程（子 SOP）
+```
+用户需求 → Designer(设计) → Design Reviewer(审美审查)
+                              ↙              ↘
+                           通过              有问题
+                            ↓                 ↓
+                           PM              Designer(修改)
+                                              ↓
+                                        Design Reviewer(复审)
+                                              ↓
+                                           ...迭代...
+```
 
 ## 跨机协作（办公室 ↔ 家里）
 

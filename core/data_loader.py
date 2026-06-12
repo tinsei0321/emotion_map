@@ -65,6 +65,18 @@ def _load_csv(file_path: str, ext: str) -> dict:
               if 'score' in df.columns
               else [0.5] * len(lats))
 
+    # 过滤 NaN 坐标（兜底）
+    valid_indices = [
+        i for i in range(len(lats))
+        if (isinstance(lats[i], (int, float)) and isinstance(lons[i], (int, float))
+            and not (pd.isna(lats[i]) or pd.isna(lons[i])))
+    ]
+    if len(valid_indices) < len(lats):
+        lats = [lats[i] for i in valid_indices]
+        lons = [lons[i] for i in valid_indices]
+        scores = [scores[i] for i in valid_indices]
+        df = df.iloc[valid_indices].reset_index(drop=True)
+
     return {
         'lats': lats,
         'lons': lons,

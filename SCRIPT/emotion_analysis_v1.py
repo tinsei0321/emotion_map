@@ -941,10 +941,15 @@ def run_pipeline(file_path: str,
     df = data['df']
     _safe_print(f'[LOAD] 加载: {data["n_points"]} 条')
 
-    # 2. 分析
-    texts = df['comments'].tolist() if 'comments' in df.columns else []
+    # 2. 分析 — 优先 'comments'，兜底 'text'
+    if 'comments' in df.columns:
+        texts = df['comments'].tolist()
+    elif 'text' in df.columns:
+        texts = df['text'].tolist()
+    else:
+        texts = []
     if not texts:
-        _safe_print('[WARN] 无评论文本列')
+        _safe_print('[WARN] 无评论文本列 (需要 comments 或 text 列)')
         return None
 
     _safe_print(f'[{engine.phase}] {engine.name} v{engine.version} 分析中...')

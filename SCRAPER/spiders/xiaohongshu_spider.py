@@ -37,7 +37,7 @@ from items import EmotionItem
 class XiaohongshuSpider(scrapy.Spider):
     name = 'xiaohongshu'
     allowed_domains = ['xiaohongshu.com', 'xhslink.com']
-    start_urls = ['https://www.xiaohongshu.com/']  # Scrapy 2.16 兼容：必须有非空 start_urls，否则 start_requests() 不被调用
+    start_urls = ['https://www.xiaohongshu.com/explore']
 
     # ── 搜索配置 ──
     search_keyword = '\u897f\u9675\u533a'   # 西陵区（宜昌市）
@@ -53,89 +53,33 @@ class XiaohongshuSpider(scrapy.Spider):
         self.page_count = 0
 
     def parse(self, response):
-        """默认回调：由 start_urls 触发时直接丢弃，跳转到搜索逻辑。"""
-        # start_urls 是 Scrapy 2.16 兼容占位，实际爬取走 start_requests()
-        pass
-
-    def start_requests(self):
-        """
-        入口：构建搜索 URL 并发送请求。
-
-        小红书 web 版搜索 URL 格式（供参考，实际可能变动）:
-          https://www.xiaohongshu.com/search_result?keyword={keyword}
-        """
-        # ── 方案 C: web 版搜索页（无需登录的基础抓取）──
-        search_url = (
-            'https://www.xiaohongshu.com/search_result'
-            f'?keyword={self.search_keyword}&source=web_search_result_notes'
-        )
-        yield Request(
-            url=search_url,
-            callback=self.parse_search_results,
-            headers={
-                'Referer': 'https://www.xiaohongshu.com/',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            },
-            meta={'page': 1},
-        )
-
-        # ── 快速验证: 用 requests 尝试直接请求 ──
-        self._quick_verify(search_url)
-
-    def parse_search_results(self, response):
-        """
-        解析搜索结果页。
-
-        web 版搜索结果页结构（供参考）:
-          - 笔记卡片: div.note-item 或 section.note-item
-          - 标题: a.title 或 span.title
-          - 链接: a[href] 指向 /explore/{note_id}
-          - 点赞数: span.like-count
-
-        注意: 小红书 web 版大量使用 JS 渲染，直接 HTML 解析
-        可能拿不到数据。实际对接时需用 Selenium/Playwright 预渲染。
-        """
+        """解析探索页：从 __INITIAL_STATE__ 的 feed.feeds 提取 noteCard 列表。"""
         self.page_count += 1
         current_page = response.meta.get('page', 1)
 
         self.logger.info(
-            f'[LOAD] Parsing page {current_page}/{self.max_pages}: {response.url}'
+            f'[LOAD] Parsing explore page {current_page}: {response.url}'
         )
 
-        # ── 尝试从 HTML 中提取笔记信息 ──
-        # 小红书 web 版会在 <script> 中嵌入初始数据 (SSR)
-        # 格式: window.__INITIAL_STATE__ = {...}
         script_data = self._extract_initial_state(response.text)
-        if script_data:
-            # 从 JSON 中提取笔记列表
-            notes = self._parse_notes_from_json(script_data)
-            for note in notes:
-                yield self._build_item(note)
-        else:
-            # 退而求其次: HTML 解析
-            notes = response.css('div.note-item, section.note-item')
-            self.logger.info(
-                f'[LOAD] Found {len(notes)} note cards via CSS selector'
-            )
-            for note in notes:
-                yield self._build_item_from_html(note, response)
+        if not script_data:
+            self.logger.warning('[WARN] No __INITIAL_STATE__ found')
+            return
 
-        # ── 翻页 ──
-        if self.page_count < self.max_pages:
-            # 小红书搜索翻页参数: ?keyword=xxx&page=N
-            next_page = current_page + 1
-            next_url = (
-                'https://www.xiaohongshu.com/search_result'
-                f'?keyword={self.search_keyword}'
-                f'&page={next_page}'
-                f'&source=web_search_result_notes'
-            )
-            yield Request(
-                url=next_url,
-                callback=self.parse_search_results,
-                headers={'Referer': response.url},
-                meta={'page': next_page},
-            )
+        # 从 feed.feeds 提取笔记
+        feed_data = script_data.get('feed', {})
+        feeds = feed_data.get('feeds', [])
+        self.logger.info(f'[LOAD] Found {len(feeds)} feed items')
+
+        note_count = 0
+        for feed_item in feeds:
+            note_card = feed_item.get('noteCard', {})
+            if not note_card:
+                continue
+            note_count += 1
+            yield self._build_item_from_note_card(feed_item.get('id', ''), note_card)
+
+        self.logger.info(f'[OK] Scraped {note_count} notes from page {current_page}')
 
     def _extract_initial_state(self, html):
         """从 HTML 中提取 window.__INITIAL_STATE__ JSON 数据。"""
@@ -154,34 +98,56 @@ class XiaohongshuSpider(scrapy.Spider):
         return None
 
     def _parse_notes_from_json(self, data):
-        """从 __INITIAL_STATE__ JSON 中提取笔记列表。"""
+        """从 __INITIAL_STATE__ JSON 中提取笔记列表（兼容 explore 页 feed 结构）。"""
+        feed_data = data.get('feed', {})
+        feeds = feed_data.get('feeds', [])
         notes = []
-        try:
-            # 路径依赖小红书实际数据结构，以下为参考
-            search_data = data.get('search', {})
-            note_list = search_data.get('notes', [])
-            for item in note_list:
-                note_card = item.get('noteCard', item)
+        for feed_item in feeds:
+            note_card = feed_item.get('noteCard', {})
+            if note_card:
+                note_card['_feed_id'] = feed_item.get('id', '')
                 notes.append(note_card)
-        except Exception as e:
-            self.logger.warning(f'[WARN] JSON note extraction error: {e}')
         return notes
 
-    def _build_item(self, note_data):
-        """从 JSON note 数据构建 EmotionItem。"""
+    @staticmethod
+    def _parse_count(value):
+        """解析小红书计数格式: '5.7万' -> 57000, '8800' -> 8800, '' -> 0"""
+        if not value:
+            return 0
+        if isinstance(value, (int, float)):
+            return int(value)
+        value = str(value).strip()
+        if not value:
+            return 0
+        if '万' in value:
+            try:
+                return int(float(value.replace('万', '')) * 10000)
+            except ValueError:
+                return 0
+        try:
+            return int(value.replace(',', ''))
+        except ValueError:
+            return 0
+
+    def _build_item_from_note_card(self, feed_id, note_card):
+        """从 noteCard 构建 EmotionItem（explore 页格式）。"""
         item = EmotionItem()
         item['source'] = 'xiaohongshu'
-        item['title'] = note_data.get('displayTitle', note_data.get('title', ''))
-        item['text'] = note_data.get('desc', '')
-        item['url'] = (
-            f'https://www.xiaohongshu.com/explore/'
-            f'{note_data.get("noteId", note_data.get("id", ""))}'
-        )
+        title = note_card.get('displayTitle', note_card.get('title', ''))
+        desc = note_card.get('desc', '')
+        item['title'] = title
+        # 探索页通常只有标题，desc 可能为空，合并 title 作为正文
+        item['text'] = desc if desc and len(desc.strip()) >= 5 else title
+        item['url'] = f'https://www.xiaohongshu.com/explore/{feed_id}'
         item['area'] = self.target_area
-        item['tags'] = note_data.get('tagList', [])
-        item['like_count'] = int(note_data.get('likedCount', 0) or 0)
-        item['comment_count'] = int(note_data.get('commentsCount', 0) or 0)
-        item['publish_time'] = note_data.get('time', '')
+        item['tags'] = [
+            t.get('name', str(t)) for t in note_card.get('tagList', [])
+            if isinstance(t, dict)
+        ]
+        interact = note_card.get('interactInfo', {})
+        item['like_count'] = self._parse_count(interact.get('likedCount', 0))
+        item['comment_count'] = self._parse_count(interact.get('commentCount', 0))
+        item['publish_time'] = note_card.get('time', '')
         item['crawl_time'] = datetime.now().isoformat()
         return item
 

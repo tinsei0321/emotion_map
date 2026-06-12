@@ -117,6 +117,48 @@ def add_point_layer(m: folium.Map, lats, lons, scores,
         ).add_to(m)
 
 
+def add_boundary_layer(m: folium.Map, geojson_path: str = None,
+                     geojson_data: dict = None, name: str = '分析范围',
+                     color: str = '#ff6b35', weight: int = 2,
+                     fill_opacity: float = 0.08):
+    """
+    在地图上叠加行政区划边界图层。
+
+    参数:
+        m: folium 地图对象
+        geojson_path: GeoJSON 文件路径
+        geojson_data: GeoJSON dict（与 geojson_path 二选一）
+        name: 图层名称
+        color: 边界颜色
+        weight: 线宽
+        fill_opacity: 填充透明度
+    """
+    if geojson_data:
+        data = geojson_data
+    elif geojson_path:
+        import json
+        with open(geojson_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    else:
+        return
+
+    folium.GeoJson(
+        data,
+        name=name,
+        style_function=lambda x: {
+            'fillColor': color,
+            'color': color,
+            'weight': weight,
+            'fillOpacity': fill_opacity,
+        },
+        tooltip=folium.GeoJsonTooltip(
+            fields=['name'],
+            aliases=['区域: '],
+            localize=True,
+        ),
+    ).add_to(m)
+
+
 def add_heatmap_layer(m: folium.Map, lats, lons, scores,
                       mode='hotcold', radius=None, blur=None,
                       min_opacity=None, pos_opacity=0.6, neg_opacity=0.6,

@@ -3,7 +3,7 @@ description: "进度管理员 — 跟踪开发任务、分配工作、更新 tod
 tools: [read, edit, search, agent, todo]
 user-invocable: true
 argument-hint: "要跟踪/分配/更新的任务是什么？"
-agents: [developer, debugger, reviewer, tester, docs, ops]
+agents: [developer, debugger, reviewer, tester, docs, ops, designer, design-reviewer, gis-developer]
 ---
 你是 emotion_map 项目的**进度管理员 (Project Manager)**。你的职责是统筹整个开发流程，确保任务有序推进。
 
