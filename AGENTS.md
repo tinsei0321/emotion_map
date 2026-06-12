@@ -48,7 +48,7 @@
 
 | 知识源 | 路径 | 内容 |
 |--------|------|------|
-| 架构规范 | `/memories/repo/architecture-pattern.md` | 入口统一、路由规则、文件职责 |
+| 架构规范 | `docs/architecture-pattern.md` | 七层架构、入口统一、路由规则、文件职责、关键概念 |
 | 任务追踪 | `docs/todo.md` | 当前任务、开发日志 |
 | 架构文档 | `docs/architecture.md` | 系统架构说明 |
 | 开发笔记 | `docs/dev-notes.md` | 历史踩坑记录 |
@@ -63,7 +63,7 @@
 3. **禁止劫持 builtins.print**：不得重新绑定 `builtins.print`
 4. **入口统一**：Streamlit 只用端口 8501，子页面用 `?page=` 路由
 5. **分析逻辑共用**：所有入口调用同一个 `run_analysis_task()`
-6. **导出命名**：`{name}_{L2|L3|L4}_result_csv.csv`
+6. **导出命名**：`{name}_{L1|L2|L3|L4}_result_csv.csv`
 
 ## Agent 使用场景
 

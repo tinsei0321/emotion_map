@@ -29,6 +29,27 @@
 
 <!-- 在此按时间倒序添加日志 -->
 
+### 2026-06-12 | Scrapy 数据采集系统搭建 — 确定爬取技术方案
+
+**关键词**：Scrapy, 数据采集, 小红书, Spider, Pipeline
+
+#### 做了什么
+- 完成数据爬取技术选型：Scrapy 框架（选项对比：自研脚本 / Scrapy / 购买数据）
+- 搭建 SCRAPER/ 标准 Scrapy 项目（settings / items / pipelines / middlewares / spiders）
+- 编写首个 Spider：xiaohongshu_spider（目标：西陵区笔记搜索）
+- 实现 EmotionDataPipeline：URL 去重 → 文本清洗 → 自动导出 CSV 到 data/raw/
+- 实现 UA 轮换中间件、礼貌爬取策略（延迟 2s、并发=1）
+- 测试验证：小红书搜索页 HTTP 200，SSR 数据可提取（无需登录）
+- 编写统一入口 data_scraper.py（EmotionScraper 类 + CLI argparse）
+- 全流程 SOP 实战：PM 拆解 → Developer 搭建 → Reviewer 审查（通过）→ Tester 验证（通过）
+
+#### 收获 / 心得
+- Scrapy 框架非常适合多源持续采集场景，内置的 Pipeline/去重/限速省去大量手写代码
+- 小红书搜索页目前无需登录即可访问，SSR 数据（__INITIAL_STATE__）可直接解析，这是提取数据的可行路径
+- _safe_print 在 SCRAPER/ 中有 3 处重复定义，长期考虑提取到 core/ 统一导入
+
+---
+
 ### 2026-06-12 | 系统架构优化 — 七层架构 + 空间分析引擎重定义
 
 **关键词**：架构, 重构, 数据采集, 空间分析, 溯佰科
