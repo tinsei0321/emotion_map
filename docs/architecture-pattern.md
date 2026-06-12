@@ -40,13 +40,23 @@
 | `core/map_engine.py` | 空间分析引擎（底图/点状/热力图/空间分析） |
 | `core/ui_components.py` | 可复用 Streamlit UI 组件 |
 | `core/export.py` | CSV/GeoJSON 导出 |
-| `SCRAPER/data_scraper.py` | 多源数据爬取引擎（待建） |
+| `SCRAPER/data_scraper.py` | 多源数据爬取统一入口（EmotionScraper 类 + CLI） |
+| `SCRAPER/spiders/` | Scrapy Spider 目录（首个：xiaohongshu_spider） |
+| `SCRAPER/settings.py` | Scrapy 全局配置 |
 | `launch.py` | 一键启动 Streamlit |
 
 ## 关键概念
 - **溯佰科**：城市规划时空大模型平台（数据底座+GIS工具+NL工作台），非 LLM 大模型。情绪地图未来以 Agent 嵌入
 - **L0~L4 数据分级**：L0=原始爬取 → L1=治理后城市情绪DATA → L2=SnowNLP情绪地图DATA → L3=LLM增强DATA → L4=多维归因DATA
 - **空间分析 MVP**：geopandas + shapely 自研，3个核心功能（热点分析/缓冲区分析/行政单元聚合）
+- **数据采集铁律（空间范围优先）**：
+  1. 第一优先级：加载行政区划边界 Polygon → 搜索边界内的地理位置内容
+  2. 关键词搜索仅作为发现内部地名/POI的辅助手段
+  3. 坐标生成必须用 point-in-polygon 约束（排除水域/山体等非建成区）
+  4. 此策略适用于所有平台：大众点评/美团/小红书/微博/12345
+- **数据隐私规范**：
+  - 输出数据中禁止包含用户名、用户ID等个人身份信息
+  - 保留：标题/正文（已公开发布的内容）、发布时间、点赞数、来源平台、子区域标签
 
 ## Agent 协作体系
 - 项目使用 6 个专用 Agent 协作开发，定义在 `.github/agents/*.agent.md`
