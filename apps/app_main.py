@@ -17,13 +17,11 @@ import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
 import altair as alt
-import folium
-from streamlit_folium import st_folium
+import pydeck as pdk
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.config import (
-    FOLDER_OPTIONS, TIANDITU_IMG_URL, TIANDITU_CVA_URL,
-    FOLIUM_COLOR_MAP, DEFAULT_CENTER, DEFAULT_ZOOM, RAW_DIR, PROCESSED_DIR,
+    FOLDER_OPTIONS, DEFAULT_CENTER, DEFAULT_ZOOM, RAW_DIR, PROCESSED_DIR,
     MAX_DISPLAY_POINTS, MAX_TABLE_ROWS, LARGE_FILE_WARN_MB,
     BOUNDARY_SHP,
 )
@@ -50,6 +48,7 @@ from SCRIPT.data_governance import (
     step2_filter_by_boundary,
     anonymize_dataframe,
     step3_export_filtered,
+    step4_run_l2_analysis,
 )
 from SCRIPT.relevance_filter import keyword_prefilter, _build_text_for_classification
 from core.tracker import track, TrackContext, trace_log, trace_error, trace_warn, register_track_id
@@ -84,17 +83,17 @@ def _panel_coord_dup_analysis(df_or_gdf, geom_col=None):
 @track("MOD_APP.F_005", track_args=False)
 @st.dialog('[DATA] 数据源', width='small')
 def show_data_source_dialog():
-    if st.session_state.get('_data_confirmed'):
-        del st.session_state['_data_confirmed']
+    """数据源选择弹窗 — 仅列出 PROCESSED_DIR 中的 L1/L2 结果文件。"""
+    folder_path = PROCESSED_DIR
+    st.caption(f'数据目录: `{PROCESSED_DIR}`')
+    if not os.path.exists(folder_path):
+        st.warning(f'不存在: {folder_path}')
         return
-    keys = list(FOLDER_OPTIONS.keys())
-    folder_key = st.selectbox('数据文件夹', keys,
-        index=keys.index(st.session_state.get('folder_key', keys[0])))
-    folder_path = FOLDER_OPTIONS[folder_key]
-    if not os.path.exists(folder_path): st.warning(f'不存在: {folder_path}'); return
     files = sorted([f for f in os.listdir(folder_path)
                     if os.path.isfile(os.path.join(folder_path, f))])
-    if not files: st.info('空'); return
+    if not files:
+        st.info('暂无数据文件。请先生成 L1 模拟数据：`python SCRIPT/generate_l1_mock.py`')
+        return
     cur = st.session_state.get('file_choice', files[0])
     idx = files.index(cur) if cur in files else 0
     file_choice = st.selectbox('选择文件', files, index=idx)
@@ -103,18 +102,17 @@ def show_data_source_dialog():
     if file_size > LARGE_FILE_WARN_MB:
         st.warning(f'文件较大 ({file_size:.0f} MB)，地图将自动采样显示。')
     if st.button('[确认加载]', use_container_width=True, type='primary'):
-        st.session_state['folder_key'] = folder_key
+        st.session_state['folder_key'] = '[DATA] processed（处理结果）'
         st.session_state['file_choice'] = file_choice
         st.session_state['file_path'] = os.path.join(folder_path, file_choice)
-        st.session_state['_data_confirmed'] = True
         st.session_state['_load_triggered'] = True
-        # 注册加载的文件到图层列表
+        st.session_state['_all_layers_hidden'] = False
         _register_layer(
             name=file_choice,
             file_path=os.path.join(folder_path, file_choice),
-            level='L0',
-            range_label=folder_key,
-            color='#d97d5c',  # 主色橙
+            level='L1',
+            range_label='processed',
+            color='#48C9B0',
         )
         st.rerun()
 
@@ -159,7 +157,7 @@ def show_overview_dialog():
         with c2:
             poi_chart = alt.Chart(poi_counts.reset_index().set_axis(['POI','数量'], axis=1)
                 ).mark_bar().encode(y=alt.Y('POI:N', sort='-x', title=None),
-                x=alt.X('数量:Q', title=None), color=alt.value('#4a90d9')
+                x=alt.X('数量:Q', title=None), color=alt.value('#5DADE2')
                 ).properties(height=300)
             st.altair_chart(poi_chart, width='stretch')
 
@@ -173,8 +171,22 @@ def show_overview_dialog():
 @track("MOD_APP.F_007", track_args=False)
 @st.dialog('[TB] 数据表格', width='large')
 def show_table_dialog():
+    processed_files = []
+    if os.path.exists(PROCESSED_DIR):
+        processed_files = sorted([f for f in os.listdir(PROCESSED_DIR)
+                                  if os.path.isfile(os.path.join(PROCESSED_DIR, f))
+                                  and f.lower().endswith(('.csv', '.tsv'))])
     df = st.session_state.get('current_df')
     fc = st.session_state.get('current_file_choice', '')
+    if processed_files:
+        choice = st.selectbox('选择数据文件', processed_files,
+                             index=processed_files.index(fc) if fc in processed_files else 0)
+        if choice != fc:
+            fp = os.path.join(PROCESSED_DIR, choice)
+            data = load_emotion_data(fp)
+            if data:
+                df = data['df']
+                fc = choice
     if df is None: return
     st.caption(f'文件: `{fc}` | 共 **{len(df)}** 条记录')
     search = st.text_input('[*] 搜索（任意列匹配）', placeholder='输入关键词过滤...')
@@ -259,8 +271,39 @@ def show_range_dialog():
             help='默认全选',
         ) or names
 
+        # ── 边界样式调节 ──
+        st.divider()
+        st.caption('边界线样式')
+
+        # 粗细选择
+        line_weight = st.slider(
+            '线宽', min_value=1, max_value=20,
+            value=st.session_state.get('_boundary_weight', 4),
+            step=1, help='边界线粗细（像素）'
+        )
+
+        # 颜色选择
+        boundary_colors = {
+            '蓝色': '#5DADE2',
+            '青蓝 (Kepler)': '#1DBAD4',
+            '活力橙': '#d97d5c',
+            '自然绿': '#48C9B0',
+            '警示红': '#E06050',
+            '白色': '#FFFFFF',
+            '亮黄': '#F0A050',
+        }
+        color_name = st.selectbox(
+            '颜色', options=list(boundary_colors.keys()),
+            index=list(boundary_colors.keys()).index(
+                st.session_state.get('_boundary_color_name', '蓝色')
+            )
+        )
+
         if st.button('[确认范围]', type='primary', use_container_width=True):
             st.session_state['selected_ranges'] = selected
+            st.session_state['_boundary_weight'] = line_weight
+            st.session_state['_boundary_color'] = boundary_colors[color_name]
+            st.session_state['_boundary_color_name'] = color_name
             st.session_state['_range_just_set'] = True
             st.rerun()
 
@@ -273,16 +316,19 @@ def show_range_dialog():
 def show_governance_dialog():
     """数据治理弹窗：L0原始数据 → L1城市情绪DATA
 
-    治理步骤:
+    治理步骤 (v1.0 关键词模式):
       1. 坐标转换 (GCJ-02 → WGS84 → CGCS2000)
       2. 范围过滤 (规划范围 Polygon 内)
       3. 相关性筛选 (关键词粗筛)
       4. 数据脱敏 → 导出 L1 CSV
+
+    注意: v2.0 LLM 批量分类模式请通过 CLI 运行:
+      python SCRIPT/data_governance.py
     """
     # ── 区域1: 选择 L0 文件 ──
     raw_files = sorted([
         f for f in os.listdir(RAW_DIR)
-        if f.endswith('.csv')
+        if f.endswith('.csv') and '_result_' not in f.lower()
     ]) if os.path.exists(RAW_DIR) else []
     if not raw_files:
         st.warning(f'`{RAW_DIR}/` 中没有可治理的 L0 文件。请先采集原始数据。')
@@ -294,12 +340,14 @@ def show_governance_dialog():
     st.caption(f'大小: {file_size_mb:.1f} MB | 路径: `{input_path}`')
 
     # ── 区域2: 治理步骤说明 ──
-    with st.expander('[步骤说明] 治理管道详情'):
+    with st.expander('[步骤说明] 治理管道详情 (v1.0 关键词模式)'):
         st.markdown(
-            '1. 坐标转换 GCJ-02 -> WGS84 -> CGCS2000\n'
-            '2. 范围过滤\n'
-            '3. 相关性筛选\n'
-            '4. 数据脱敏+导出'
+            '1. 坐标转换 GCJ-02 -> WGS84 -> CGCS2000 EPSG:4546\n'
+            '2. 范围过滤 (规划边界 Polygon point-in-polygon)\n'
+            '3. 相关性筛选 (关键词正负信号评分)\n'
+            '4. 数据脱敏 + 导出 L1 CSV\n\n'
+            '[INFO] v2.0 LLM 批量分类模式（更精准）请通过 CLI 运行:\n'
+            '`python SCRIPT/data_governance.py`'
         )
 
     # ── 区域3: [开始数据治理] ──
@@ -337,16 +385,18 @@ def show_governance_dialog():
             df_relevant['filter_layer'] = 'keyword'
             df_relevant.drop(columns=['_kw_pass'], inplace=True, errors='ignore')
 
-            # Step 4: 脱敏+导出
-            status.update(label='[4/4] 脱敏+导出...')
-            progress.progress(0.9, text='导出 L1')
+            # Step 4: 脱敏+导出 L1
+            status.update(label='[4/4] 脱敏+导出 L1...')
+            progress.progress(0.9, text='导出 L1 CSV')
             df_relevant = anonymize_dataframe(df_relevant)
             output_name = os.path.splitext(file_choice)[0].replace('_raw', '')
+            # 添加范围后缀（与 data_governance.py v2.0 命名一致）
+            output_name = f'{output_name}_规划范围'
             l1_path = os.path.join(PROCESSED_DIR, f'{output_name}_L1_result_csv.csv')
             export_to_csv(df_relevant, l1_path)
 
-            status.update(label='[OK] 治理完成', state='complete')
-            progress.progress(1.0, text=f'L1: {len(df_relevant)} 条')
+            status.update(label=f'[OK] L1 治理完成: {len(df_relevant)} 条', state='complete')
+            progress.progress(1.0, text=f'L1: {len(df_relevant)} 条 ({input_n} → {len(df_relevant)})')
 
             # 记录结果
             st.session_state['_governance_done'] = True
@@ -377,25 +427,50 @@ def show_governance_dialog():
             c3.metric('过滤率', f"{(1 - r['l1_n'] / max(r['input_n'], 1)) * 100:.1f}%")
             st.caption(f"输出: `{r['l1_path']}`")
 
-            if st.button('[加载到地图]', type='primary', use_container_width=True):
-                st.session_state['file_path'] = r['l1_path']
-                st.session_state['file_choice'] = os.path.basename(r['l1_path'])
-                st.session_state['_load_triggered'] = True
-                _register_layer(
-                    name=os.path.basename(r['l1_path']),
-                    file_path=r['l1_path'],
-                    level='L1',
-                    range_label='当前范围',
-                    color='#c4a855'
-                )
-                st.rerun()
+            col_map, col_l2 = st.columns(2)
+            with col_map:
+                if st.button('[加载到地图]', type='primary', use_container_width=True):
+                    st.session_state['file_path'] = r['l1_path']
+                    st.session_state['file_choice'] = os.path.basename(r['l1_path'])
+                    st.session_state['_load_triggered'] = True
+                    _register_layer(
+                        name=os.path.basename(r['l1_path']),
+                        file_path=r['l1_path'],
+                        level='L1',
+                        range_label='当前范围',
+                        color='#48C9B0'
+                    )
+                    st.rerun()
+            with col_l2:
+                if st.button('[运行 L2 情绪分析]', use_container_width=True,
+                            help='对刚生成的 L1 数据运行 SnowNLP 情绪分析'):
+                    with st.status('L2 分析中...', expanded=True) as l2_status:
+                        l2_result = step4_run_l2_analysis(r['l1_path'], r['output_name'])
+                        if l2_result['success']:
+                            l2_status.update(label=f'[OK] L2 完成: {l2_result["n_points"]} 条', state='complete')
+                            st.session_state['folder_key'] = list(FOLDER_OPTIONS.keys())[1]
+                            st.session_state['file_choice'] = os.path.basename(l2_result['csv_path'])
+                            st.session_state['file_path'] = l2_result['csv_path']
+                            st.session_state['current_df'] = l2_result['df']
+                            st.session_state['data_loaded'] = True
+                            _register_layer(
+                                name=os.path.basename(l2_result['csv_path']),
+                                file_path=l2_result['csv_path'],
+                                level='L2',
+                                range_label='分析结果',
+                                color='#48C9B0',
+                            )
+                            st.rerun()
+                        else:
+                            l2_status.update(label='[ERR] L2 失败', state='error')
+                            st.error(l2_result['message'])
 
 
 # ═══════════════════════════════════════════════════════════
 # 弹窗：图层控制
 # ═══════════════════════════════════════════════════════════
 @track("MOD_APP.F_004", track_args=True)
-def _register_layer(name, file_path, level='L1', range_label='', color='#c4a855'):
+def _register_layer(name, file_path, level='L1', range_label='', color='#48C9B0'):
     """注册或更新一个图层到 session_state['layers']。
 
     参数:
@@ -428,66 +503,51 @@ def _register_layer(name, file_path, level='L1', range_label='', color='#c4a855'
 @track("MOD_APP.F_010", track_args=False)
 @st.dialog('[LY] 图层控制', width='small')
 def show_layer_dialog():
-    """图层控制弹窗：管理地图叠加层的显示/隐藏。
+    """图层控制弹窗：checkbox 控制图层显示/隐藏。
 
-    图层来源:
-      - 数据治理 (GV) 输出的 L1 文件
-      - 分析引擎 (A) 输出的 L2/L3/L4 文件
-      - 手动加载 (D) 的文件
-
-    每行: 圆点颜色 + 图层名 + 范围·层级标签 + toggle 开关
-    底部: [全部打开] [全部关闭] 批量操作
+    每行: 颜色圆点 + 图层名 + checkbox
+    底部: [全部打开] [全部关闭]
     """
     layers = st.session_state.get('layers', [])
 
     if not layers:
-        st.info('暂无注册图层。\n\n通过 [D] 加载数据、[GV] 治理数据 或 [A] 分析数据后，图层自动注册到此列表。')
+        st.info('暂无注册图层。\n\n通过 [D] 加载数据后，图层自动注册到此列表。')
         return
 
-    st.caption(f'共 **{len(layers)}** 个图层')
+    st.caption(f'共 {len(layers)} 个图层')
     st.divider()
 
-    # ── 图层行 ──
-    changed = False
     for i, lyr in enumerate(layers):
-        col_dot, col_name, col_toggle = st.columns([0.5, 6, 2])
+        col_dot, col_name, col_check = st.columns([0.3, 3.7, 0.8])
         with col_dot:
             st.markdown(
-                f'<div style="width:12px;height:12px;border-radius:50%;'
-                f'background:{lyr["color"]};margin-top:8px;'
-                f'opacity:{1.0 if lyr["visible"] else 0.3};"></div>',
+                f'<span style="color:{lyr["color"]};font-size:1.2rem;">●</span>',
                 unsafe_allow_html=True)
         with col_name:
-            st.caption(f'**{lyr["name"]}**  ')
-            st.caption(f'`{lyr["range_label"]}`')
-        with col_toggle:
-            new_val = st.toggle(
-                '显示', value=lyr['visible'],
-                key=f'lyr_toggle_{i}',
-                label_visibility='collapsed',
-            )
-            if new_val != lyr['visible']:
-                layers[i]['visible'] = new_val
-                changed = True
-
-    if changed:
-        st.session_state['layers'] = layers
+            st.caption(f'{lyr["name"]}  `{lyr.get("level","")}`')
+        with col_check:
+            checked = st.checkbox('', value=lyr.get('visible', True),
+                                  key=f'lyr_{i}',
+                                  label_visibility='collapsed')
+            if checked != lyr.get('visible', True):
+                layers[i]['visible'] = checked
+                st.session_state['layers'] = layers
 
     st.divider()
-
-    # ── 批量操作 ──
-    bc1, bc2, _ = st.columns([1, 1, 2])
+    bc1, bc2 = st.columns(2)
     with bc1:
-        if st.button('[全部打开]', use_container_width=True):
+        if st.button('[全部打开]', use_container_width=True, key='lyr_all_on'):
             for lyr in layers:
                 lyr['visible'] = True
             st.session_state['layers'] = layers
+            st.session_state['_all_layers_hidden'] = False
             st.rerun()
     with bc2:
-        if st.button('[全部关闭]', use_container_width=True):
+        if st.button('[全部关闭]', use_container_width=True, key='lyr_all_off'):
             for lyr in layers:
                 lyr['visible'] = False
             st.session_state['layers'] = layers
+            st.session_state['_all_layers_hidden'] = True
             st.rerun()
 
 
@@ -497,32 +557,50 @@ def show_layer_dialog():
 @track("MOD_APP.F_011", track_args=False)
 @st.dialog('[ANA] 运行情绪分析', width='large')
 def show_analysis_dialog():
-    st.markdown('选择原始情绪DATA文件并运行情绪分析引擎，结果自动加载到地图。')
+    st.markdown('选择已完成治理的 L1 数据文件并运行情绪分析引擎，结果自动加载到地图。')
 
-    # ── 选择文件 ──
-    raw_files = []
-    if os.path.exists(RAW_DIR):
-        raw_files = sorted([f for f in os.listdir(RAW_DIR)
-                           if os.path.isfile(os.path.join(RAW_DIR, f))
-                           and f.lower().endswith(('.csv', '.tsv', '.json', '.geojson'))])
-    if not raw_files:
-        st.warning(f'`{RAW_DIR}/` 中没有可分析的文件。请先将原始数据放入该目录。')
+    # ── 选择文件（仅从 PROCESSED_DIR 选择 L1 文件）──
+    l1_files = []
+    if os.path.exists(PROCESSED_DIR):
+        l1_files = sorted([f for f in os.listdir(PROCESSED_DIR)
+                          if os.path.isfile(os.path.join(PROCESSED_DIR, f))
+                          and f.lower().endswith(('.csv', '.tsv', '.json', '.geojson'))
+                          and not f.lower().endswith('.geojson')])  # 排除 GeoJSON 文件，允许所有 CSV/TSV
+
+    if not l1_files:
+        st.warning(f'`{PROCESSED_DIR}/` 中没有可分析的文件。请先生成 L1 模拟数据：`python SCRIPT/generate_l1_mock.py`')
         return
 
-    file_choice = st.selectbox('[FILE] 原始情绪DATA文件（L1）', raw_files,
-                               help=f'来自 {RAW_DIR}/')
-    st.caption(f'路径: `{os.path.join(RAW_DIR, file_choice)}`')
+    source_dir = PROCESSED_DIR
+    source_label = 'PROCESSED_DIR (L1)'
+
+    file_choice = st.selectbox('[FILE] 待分析数据文件', l1_files,
+                               help=f'来自 {source_label}: {source_dir}/')
+    st.caption(f'路径: `{os.path.join(source_dir, file_choice)}`')
+
+    # ── 输入数据校验 ──
+    input_path = os.path.join(source_dir, file_choice)
+    try:
+        sample = pd.read_csv(input_path, nrows=1)
+        has_l1_markers = ('relevance' in sample.columns or 'in_scope' in sample.columns)
+        if not has_l1_markers:
+            st.warning('[WARN] 所选文件缺少 L1 治理标记列（relevance/in_scope）。建议使用 `generate_l1_mock.py` 生成标准 L1 数据。')
+        n_rows = len(pd.read_csv(input_path))
+        if n_rows > 10000:
+            st.info(f'文件包含 {n_rows:,} 条记录。分析可能需要较长时间。')
+    except Exception as e:
+        st.warning(f'无法预览文件: {e}')
 
     # ── L1 数据概览（折叠，默认收起）──
     with st.expander('[L1 数据概览]', expanded=False):
         gov_result = st.session_state.get('_governance_result')
         if gov_result:
             c1, c2 = st.columns(2)
-            c1.metric('L1 输出', gov_result['l1_n'])
+            c1.metric('最近 L1 输出', gov_result['l1_n'])
             c2.metric('输入', gov_result['input_n'])
             st.caption(f"路径: `{gov_result['l1_path']}`")
         else:
-            st.caption('暂无治理记录。点击左侧 [GV] 按钮先执行 L1 治理管道。')
+            st.caption('暂无治理记录。使用 `python SCRIPT/generate_l1_mock.py` 生成 L1 模拟数据。')
 
     st.divider()
 
@@ -542,15 +620,26 @@ def show_analysis_dialog():
 
     st.divider()
 
+    # ── 文件变更检测：新文件重置分析状态 ──
+    if st.session_state.get('_last_analyzed_file', '') != file_choice:
+        st.session_state['_analysis_done'] = False
+        st.session_state['_last_analyzed_file'] = ''
+
     # ── 执行 ──
-    run_clicked = st.button('[开始分析]', type='primary',
-                             use_container_width=True)
+    analysis_done = st.session_state.get('_analysis_done', False) and \
+                    st.session_state.get('_last_analyzed_file', '') == file_choice
+    btn_label = '[已加载到地图]' if analysis_done else '[开始分析]'
+    run_clicked = st.button(btn_label, type='primary',
+                             use_container_width=True, disabled=analysis_done)
 
     if run_clicked:
         engine_type = 'llm' if 'LLM' in engine_choice else 'snownlp'
-        input_path = os.path.join(RAW_DIR, file_choice)
-        base_name = os.path.splitext(file_choice)[0]
-        file_size_mb = os.path.getsize(input_path) / (1024 * 1024)
+        # 使用 source_dir（可能为 PROCESSED_DIR 或 RAW_DIR 兜底）
+        _input_path = os.path.join(source_dir, file_choice)
+        # 规范化输出名称：移除 _raw 后缀 + 清理非字母数字字符
+        _base_name = os.path.splitext(file_choice)[0]
+        _base_name = _base_name.replace('_raw', '').replace('_RAW', '')
+        file_size_mb = os.path.getsize(_input_path) / (1024 * 1024)
 
         # 进度条容器
         progress_bar = st.progress(0, text='准备分析...')
@@ -559,13 +648,13 @@ def show_analysis_dialog():
             progress_bar.progress(step / total, text=message)
 
         with st.status('分析中...', expanded=True) as status:
-            status.update(label=f'文件: {base_name} ({file_size_mb:.0f} MB)')
+            status.update(label=f'文件: {_base_name} ({file_size_mb:.0f} MB)')
 
             try:
                 result = run_analysis_task(
-                    file_path=input_path,
+                    file_path=_input_path,
                     engine_type=engine_type,
-                    output_name=base_name,
+                    output_name=_base_name,
                     api_key=api_key,
                     progress_callback=update_progress,
                 )
@@ -587,8 +676,10 @@ def show_analysis_dialog():
                         file_path=result['csv_path'],
                         level='L2',
                         range_label='分析结果',
-                        color='#d97d5c',  # 主色橙
+                        color='#48C9B0',
                     )
+                    st.session_state['_analysis_done'] = True
+                    st.session_state['_last_analyzed_file'] = file_choice
                     run_success = True
                     result_df = result['df']
                     result_csv = result['csv_path']
@@ -757,32 +848,34 @@ def _render_auto_loaded_view(params: dict):
 def _render_new_analysis_view(engine_cfg: dict):
     """模式 B: 选择新文件并运行分析（文件选择 + 分析触发）。"""
     st.subheader('选择新数据文件', divider='gray')
-    tab1, tab2 = st.tabs(['从 raw 目录选择', '上传新文件'])
+    tab1, tab2 = st.tabs(['从 processed 目录选择 (L1)', '上传新文件'])
     new_file_selected = False
     input_path = ''
+    source_dir = PROCESSED_DIR
 
     with tab1:
-        raw_files = []
-        if os.path.exists(RAW_DIR):
-            raw_files = sorted([
-                f for f in os.listdir(RAW_DIR)
-                if os.path.isfile(os.path.join(RAW_DIR, f))
+        l1_files = []
+        if os.path.exists(PROCESSED_DIR):
+            l1_files = sorted([
+                f for f in os.listdir(PROCESSED_DIR)
+                if os.path.isfile(os.path.join(PROCESSED_DIR, f))
                 and f.lower().endswith(('.csv', '.tsv', '.json', '.geojson'))
-                and '_result_' not in f
+                and not f.lower().endswith('.geojson')  # 排除 GeoJSON 文件，允许所有 CSV/TSV
             ])
-        if raw_files:
-            file_choice = st.selectbox('原始数据文件', raw_files, key='console_raw')
-            input_path = os.path.join(RAW_DIR, file_choice)
+        if l1_files:
+            file_choice = st.selectbox('L1 治理后数据', l1_files, key='console_l1')
+            input_path = os.path.join(PROCESSED_DIR, file_choice)
             st.caption(f'`{input_path}`')
             new_file_selected = True
+            source_dir = PROCESSED_DIR
         else:
-            st.info('无可用原始文件')
+            st.info('无可用 L1 文件。请先生成 L1 模拟数据：`python SCRIPT/generate_l1_mock.py`')
 
     with tab2:
         uploaded = st.file_uploader('上传文件', type=['csv', 'tsv', 'json', 'geojson'])
         if uploaded:
-            os.makedirs(RAW_DIR, exist_ok=True)
-            save_path = os.path.join(RAW_DIR, uploaded.name)
+            os.makedirs(PROCESSED_DIR, exist_ok=True)
+            save_path = os.path.join(PROCESSED_DIR, uploaded.name)
             with open(save_path, 'wb') as f:
                 f.write(uploaded.getbuffer())
             st.success('已保存')
@@ -791,8 +884,10 @@ def _render_new_analysis_view(engine_cfg: dict):
 
     if new_file_selected and input_path:
         st.divider()
-        output_name = st.text_input('输出文件名',
-            value=os.path.splitext(os.path.basename(input_path))[0])
+        # 规范化输出名称：移除 _raw 后缀
+        _default_name = os.path.splitext(os.path.basename(input_path))[0]
+        _default_name = _default_name.replace('_raw', '').replace('_RAW', '')
+        output_name = st.text_input('输出文件名', value=_default_name)
         if st.button('开始分析', type='primary'):
             eng_type = 'snownlp'; is_full = False
             engine_choice = engine_cfg['engine_choice']
@@ -815,7 +910,7 @@ def _render_new_analysis_view(engine_cfg: dict):
                         file_path=result['csv_path'],
                         level='L2',
                         range_label='分析结果',
-                        color='#d97d5c',
+                        color='#48C9B0',
                     )
                     st.rerun()
                 else:
@@ -823,12 +918,15 @@ def _render_new_analysis_view(engine_cfg: dict):
                     st.error(result['message'])
 
 
-def _add_boundary_if_exists(m):
+def _add_boundary_if_exists(deck):
     """如果存在边界文件，叠加到地图。"""
     try:
         geojson = get_boundary_geojson()
         if geojson:
-            add_boundary_layer(m, geojson_data=geojson, name='分析范围')
+            color = st.session_state.get('_boundary_color', '#5DADE2')
+            weight = st.session_state.get('_boundary_weight', 15)
+            add_boundary_layer(deck, geojson_data=geojson,
+                             name='分析范围', color=color, weight=weight)
     except Exception:
         pass
 
@@ -862,8 +960,8 @@ def show_console_page():
 def main():
     # ── session_state 初始化（所有页面共享，必须在路由判断前）──
     for k, v in {
-        'show_labels': False, 'show_legend': True,
-        'folder_key': '[DATA] raw（原始数据）',
+        'show_labels': False,
+        'folder_key': '[DATA] processed（处理结果）',
         'file_choice': '', 'file_path': '',
         'current_df': None, 'current_map_meta': None,
         'current_file_choice': '', 'data_loaded': False,
@@ -872,6 +970,10 @@ def main():
         'governance_last_stats': None,
         '_governance_done': False,
         '_governance_result': None,
+        '_all_layers_hidden': False,
+        '_boundary_weight': 15,
+        '_boundary_color': '#5DADE2',
+        '_boundary_color_name': '蓝色',
     }.items():
         if k not in st.session_state:
             st.session_state[k] = v
@@ -889,11 +991,6 @@ def main():
         st.session_state['current_df'] = None
         st.session_state['_data_crashed'] = False
         st.warning('上次加载数据量过大导致页面异常，已自动清除。请选择较小的数据文件。')
-
-    # ── Dialog 确认标记检测 ──
-    if st.session_state.get('_data_confirmed'):
-        st.session_state['_data_confirmed'] = False
-        st.rerun()
 
     # ── 路由：?page=console → 分析控制台 ──
     page = st.query_params.get('page', None)
@@ -918,25 +1015,23 @@ def main():
     # 左侧数据管道列
     if st.button('[R]', help='[R] 分析范围 | 选择分析区域', key='rng'): show_range_dialog()
     if st.button('[D]', help='[D] 数据加载 | 选择数据文件 (CSV/GeoJSON)', key='d'): show_data_source_dialog()
-    if st.button('[GV]', help='[GV] 数据治理 | L0原始数据→L1城市情绪DATA', key='gv'): show_governance_dialog()
+    # [DISABLED] GV 按钮 — L0 数据治理功能已关闭，仅使用预生成的 L1 数据
+    # if st.button('[GV]', help='[GV] 数据治理 | L0原始数据→L1城市情绪DATA', key='gv'): show_governance_dialog()
     if st.button('[A]', help='[A] 分析引擎 | 运行 L2/L3/L4 情绪分析管道', key='a'): show_analysis_dialog()
 
     # 底部地图控制栏
     if st.button('[*]', help='设置与调试', key='s'): show_settings_dialog()
 
     sl = st.session_state.get('show_labels', False)
-    if st.button('[LB]', help='注记: 开' if sl else '注记: 关', key='lbl'):
+    if st.button('[LB]', help=f'注记: 开' if sl else '注记: 关', key='lbl'):
         st.session_state['show_labels'] = not sl; st.rerun()
-    sg = st.session_state.get('show_legend', True)
-    if st.button('[LG]', help='图例: 开' if sg else '图例: 关', key='leg'):
-        st.session_state['show_legend'] = not sg; st.rerun()
     if st.button('[LY]', help='[LY] 图层 | 切换地图图层显示', key='ly'): show_layer_dialog()
 
     # 右侧工具按钮
     if st.button('[OV]', help='数据概览', key='o', disabled=btn_dis): show_overview_dialog()
     if st.button('[TB]', help='数据表格', key='t', disabled=btn_dis): show_table_dialog()
 
-    if st.session_state.get('show_legend', True) and not btn_dis:
+    if not btn_dis:
         render_legend_overlay(mode='point')
 
     # ── 数据加载 + 地图 ──
@@ -944,14 +1039,10 @@ def main():
     if not fp or not os.path.exists(fp):
         center = st.session_state.get('_map_center', None)
         zoom = st.session_state.get('_map_zoom', None)
-        m = create_base_map(show_labels=st.session_state.get('show_labels', False),
-                            center=center, zoom_start=zoom)
+        deck = create_base_map(center=center, zoom_start=zoom)
         if st.session_state.get('selected_ranges'):
-            _add_boundary_if_exists(m)
-        map_state = st_folium(m, width=None, height=700, key='default_map')
-        if map_state and map_state.get('last_center'):
-            st.session_state['_map_center'] = [map_state['last_center']['lat'], map_state['last_center']['lng']]
-            st.session_state['_map_zoom'] = map_state.get('last_zoom', DEFAULT_ZOOM)
+            _add_boundary_if_exists(deck)
+        st.pydeck_chart(deck, use_container_width=True, height=700)
         return
 
     # ── 数据加载安全守卫 ──
@@ -989,12 +1080,11 @@ def main():
         with st.spinner('渲染地图中...'):
             center = st.session_state.get('_map_center', None)
             zoom = st.session_state.get('_map_zoom', None)
-            m = create_base_map(data['lats'], data['lons'],
-                                show_labels=st.session_state.get('show_labels', False),
+            deck = create_base_map(data['lats'], data['lons'],
                                 center=center, zoom_start=zoom)
 
             # 叠加范围边界
-            _add_boundary_if_exists(m)
+            _add_boundary_if_exists(deck)
 
             # ── 叠加可见图层 ──
             layers = st.session_state.get('layers', [])
@@ -1009,17 +1099,21 @@ def main():
                     continue
                 layer_data = load_emotion_data(fp_layer)
                 if layer_data:
-                    add_point_layer(m, layer_data['lats'], layer_data['lons'],
+                    add_point_layer(deck, layer_data['lats'], layer_data['lons'],
                                    layer_data['scores'],
                                    props_list=layer_data['df'].to_dict('records'))
 
-            geo = data.get('geo_data')
-            if geo:
-                add_point_layer(m, data['lats'], data['lons'], data['scores'],
-                               props_list=geo['features'])
+            # ── 渲染主数据点层（受 _all_layers_hidden 控制）──
+            if not st.session_state.get('_all_layers_hidden', False):
+                geo = data.get('geo_data')
+                if geo:
+                    add_point_layer(deck, data['lats'], data['lons'], data['scores'],
+                                   props_list=geo['features'])
+                else:
+                    add_point_layer(deck, data['lats'], data['lons'], data['scores'],
+                                   props_list=df_display.to_dict('records'))
             else:
-                add_point_layer(m, data['lats'], data['lons'], data['scores'],
-                               props_list=df_display.to_dict('records'))
+                trace_log("MOD_APP.D_013", detail='main data layer hidden by _all_layers_hidden')
 
         # ── 数据摘要浮层（左上角）──
         n = len(df_display)
@@ -1033,10 +1127,7 @@ def main():
         render_data_summary_overlay(n=n, area_label=area_label,
                                      range_label=range_label, date_label=date_label)
 
-        map_state = st_folium(m, width=None, height=700, key='geojson_map')
-        if map_state and map_state.get('last_center'):
-            st.session_state['_map_center'] = [map_state['last_center']['lat'], map_state['last_center']['lng']]
-            st.session_state['_map_zoom'] = map_state.get('last_zoom', DEFAULT_ZOOM)
+        st.pydeck_chart(deck, use_container_width=True, height=700)
 
     except Exception as e:
         trace_error("MOD_APP.F_002", f'主流程数据加载异常: {str(e)[:200]}')
@@ -1058,6 +1149,10 @@ register_track_id("MOD_APP.F_008", "设置与调试弹窗")
 register_track_id("MOD_APP.F_009", "分析范围选择弹窗")
 register_track_id("MOD_APP.F_010", "图层控制弹窗")
 register_track_id("MOD_APP.F_011", "情绪分析弹窗")
+register_track_id("MOD_APP.D_010", "图层控制：单个图层圆点点击切换 visible")
+register_track_id("MOD_APP.D_011", "图层控制：[全部打开] 批量显示所有图层")
+register_track_id("MOD_APP.D_012", "图层控制：[全部关闭] 批量隐藏所有图层")
+register_track_id("MOD_APP.D_013", "主数据点层：_all_layers_hidden 隐藏主数据")
 
 
 if __name__ == '__main__':

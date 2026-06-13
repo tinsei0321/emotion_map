@@ -72,8 +72,9 @@ def _load_csv(file_path: str, ext: str, max_rows: int = None) -> dict:
     else:
         return None
 
-    scores = (df['score'].astype(float).tolist()
-              if 'score' in df.columns
+    score_col = next((c for c in ['l2_score', 'score'] if c in df.columns), None)
+    scores = (df[score_col].astype(float).tolist()
+              if score_col
               else [0.5] * len(lats))
 
     # 过滤 NaN 坐标（兜底）
@@ -112,7 +113,8 @@ def _load_geojson(file_path: str) -> dict:
         c = feat['geometry']['coordinates']
         lons.append(c[0])
         lats.append(c[1])
-        scores.append(float(feat['properties'].get('score', 0.5)))
+        s = feat['properties'].get('l2_score', feat['properties'].get('score', 0.5))
+        scores.append(float(s))
 
     # 构建 DataFrame（不含 geometry，方便表格展示）
     props = [feat['properties'] for feat in data['features']]

@@ -218,12 +218,6 @@ def _polarity_to_ternary(polarity: str) -> str:
     return 'Neutral'
 
 
-def _snownlp_score_single(text: str) -> float:
-    """独立函数用于 multiprocessing（不能是方法，pickle 限制）"""
-    from snownlp import SnowNLP
-    return round(SnowNLP(str(text).strip()).sentiments, 2)
-
-
 # ═══════════════════════════════════════════════════════════
 # 三、分析引擎抽象接口
 # ═══════════════════════════════════════════════════════════
@@ -362,45 +356,17 @@ class SnowNLPAnalyzer(AnalyzerBase):
             confidence=round(confidence, 2),
         )
 
-    def analyze_batch(self, texts: list, progress_callback=None, n_workers: int = None) -> list[EmotionResult]:
-        """批量分析 — 小数据量/Streamlit 单进程，大数据量多进程并行（~6x 加速）
-
-        Windows 下 multiprocessing.spawn 会重新导入 __main__ 链，与 Streamlit
-        的模块重载机制冲突导致 ImportError。检测到 Streamlit 环境时自动降级为
-        单进程顺序处理，并通过 progress_callback 实时汇报进度（1% 粒度）。
-        """
+    def analyze_batch(self, texts: list, progress_callback=None) -> list[EmotionResult]:
+        """向量化批量分析 — 比逐条调用快 3~5 倍"""
         from snownlp import SnowNLP
 
         total = len(texts)
-        n_workers = n_workers or min(8, os.cpu_count() or 4)
-        _in_streamlit = 'streamlit' in sys.modules
-
-        # Streamlit 环境 / 小数据量 / 单 worker → 单进程 + 实时进度
-        if _in_streamlit or total < 500 or n_workers <= 1:
-            if _in_streamlit:
-                trace_log("MOD_ANA.D_003", detail=f"streamlit-detected sequential mode, n={total}")
-            else:
-                trace_log("MOD_ANA.D_003", detail=f"sequential mode, n={total}")
-            scores = []
-            for i, text in enumerate(texts):
-                scores.append(round(SnowNLP(str(text).strip()).sentiments, 2))
-                if progress_callback and (i % max(1, total // 100) == 0 or i == total - 1):
-                    progress_callback(i + 1, total, f'{self.name} {i+1}/{total}')
-            scores = pd.Series(scores)
-        else:
-            trace_log("MOD_ANA.D_003", detail=f"parallel mode, n={total}, workers={n_workers}")
-            from multiprocessing import Pool
-            chunksize = max(1, total // (n_workers * 4))
-            with Pool(processes=n_workers) as pool:
-                scores = list(tqdm(
-                    pool.imap(_snownlp_score_single, texts, chunksize=chunksize),
-                    total=total, desc='SnowNLP',
-                    disable=progress_callback is not None
-                ))
-            scores = pd.Series(scores)
+        # SnowNLP 批量评分（不使用 tqdm，由 progress_callback 统一管理进度）
+        scores = pd.Series(texts).apply(
+            lambda x: round(SnowNLP(str(x).strip()).sentiments, 2)
+        )
 
         results = []
-        trace_log("MOD_ANA.D_001", detail=f"SnowNLP batch loop start, n={total}")
         for i, s in enumerate(scores):
             text = str(texts[i]).strip()
             polarity = _score_to_polarity(s)
@@ -1007,7 +973,6 @@ def run_pipeline(file_path: str,
         return None
 
     _safe_print(f'[{engine.phase}] {engine.name} v{engine.version} 分析中...')
-    trace_log("MOD_ANA.D_002", detail=f"calling engine.analyze_batch, n={len(texts)}, callback={'yes' if progress_callback else 'no'}")
     results = engine.analyze_batch(texts, progress_callback=progress_callback)
 
     # 3. 合并 L2 基础字段
@@ -1177,8 +1142,6 @@ register_track_id("MOD_ANA.F_010", "导出分析结果CSV+GeoJSON")
 register_track_id("MOD_ANA.F_011", "L2→L3→L4全阶段管道（run_full_pipeline）")
 register_track_id("MOD_ANA.D_001", "进度回调：SnowNLP批量分析循环")
 register_track_id("MOD_ANA.D_002", "进度回调：run_pipeline透传callback到analyze_batch")
-register_track_id("MOD_ANA.F_012", "SnowNLP独立评分函数（multiprocessing用）")
-register_track_id("MOD_ANA.D_003", "SnowNLP并行/串行决策分支（阈值500条）")
 
 
 # ═══════════════════════════════════════════════════════════

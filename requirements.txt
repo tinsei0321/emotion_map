@@ -6,7 +6,6 @@
 
 # ── Web 应用 ──
 streamlit==1.58.0
-streamlit-folium==0.27.2
 
 # ── 数据处理 ──
 pandas==3.0.3

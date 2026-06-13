@@ -62,7 +62,7 @@ def launch_gui():
     main_frm.pack(fill='both', expand=True, padx=12, pady=12)
 
     # ── 卡片：文件选择 ──
-    file_card = ttk.Labelframe(main_frm, text='  [DATA]  原始情绪DATA文件（L1）', style='Card.TLabelframe')
+    file_card = ttk.Labelframe(main_frm, text='  [DATA]  情绪DATA文件（L1 治理后）', style='Card.TLabelframe')
     file_card.pack(fill='x', pady=(0, 8))
 
     file_inner = tk.Frame(file_card, bg='white')
@@ -73,7 +73,7 @@ def launch_gui():
     ttk.Button(file_inner, text='📁 浏览', style='Browse.TButton',
                command=lambda: file_var.set(
                    filedialog.askopenfilename(
-                       initialdir='data/raw',
+                       initialdir='DATA/processed',
                        filetypes=[('数据文件', '*.csv *.tsv *.json *.geojson'), ('全部', '*.*')]
                    ) or file_var.get()
                )).pack(side='right', padx=(8, 0))
@@ -203,7 +203,7 @@ def main_cli():
 示例:
   python SCRIPT/run_analysis.py                             # 启动 GUI
   python SCRIPT/run_analysis.py --cli                       # 命令行默认参数
-  python SCRIPT/run_analysis.py --cli --file data/raw/my_data.csv
+  python SCRIPT/run_analysis.py --cli --file DATA/processed/my_l1_data.csv
   python SCRIPT/run_analysis.py --cli --engine llm --api-key sk-xxx
         """,
     )
@@ -214,8 +214,8 @@ def main_cli():
     parser.add_argument('--engine', default='snownlp',
                         choices=['snownlp', 'llm', 'corpus'],
                         help='分析引擎')
-    parser.add_argument('--file', default='data/raw/test_0609_1.csv',
-                        help='输入文件路径')
+    parser.add_argument('--file', default='DATA/raw/simulated_20260613_100k_raw.csv',
+                        help='输入文件路径 (L1 治理后数据)')
     parser.add_argument('--output', default='emotion_analysis_output',
                         help='输出文件基础名')
     parser.add_argument('--api-key', default='',

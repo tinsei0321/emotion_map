@@ -32,7 +32,7 @@ from design.tokens import (
     COLOR_FUNCTIONAL_TEXT_ON_DARK,
     COLOR_FUNCTIONAL_TEXT_SECONDARY,
     COLOR_FUNCTIONAL_TEXT_TERTIARY,
-    COLOR_FUNCTIONAL_GLOW_ORANGE,
+    COLOR_FUNCTIONAL_GLOW_CYAN,
     COMPONENT_HUD_BUTTON_WIDTH,
     COMPONENT_HUD_BUTTON_HEIGHT,
     COMPONENT_HUD_BUTTON_BORDER_RADIUS,
@@ -160,6 +160,11 @@ def inject_fullscreen_css():
         width:100vw!important;height:100vh!important;
         z-index:0!important;border:none!important;
     }
+    iframe[title*="deck.gl"]{
+        position:fixed!important;top:0!important;left:0!important;
+        width:100vw!important;height:100vh!important;
+        z-index:0!important;border:none!important;
+    }
     .leaflet-control-attribution a{display:none!important}
     .leaflet-control-scale-line{background:rgba(0,0,0,0.5)!important;
         color:#fff!important;border-color:rgba(255,255,255,0.25)!important;
@@ -172,9 +177,11 @@ def inject_fullscreen_css():
     components.html("""
     <script>
     function fixIframeSize(){
-        var f=parent.document.querySelector('iframe[title*="streamlit_folium"]');
-        if(f){f.style.position='fixed';f.style.top='0px';f.style.left='0px';
-        f.style.width=parent.window.innerWidth+'px';f.style.height=parent.window.innerHeight+'px';f.style.zIndex='0';}
+        var iframes=parent.document.querySelectorAll('iframe[title*="streamlit_folium"], iframe[title*="deck.gl"]');
+        iframes.forEach(function(f){
+            f.style.position='fixed';f.style.top='0px';f.style.left='0px';
+            f.style.width=parent.window.innerWidth+'px';f.style.height=parent.window.innerHeight+'px';f.style.zIndex='0';
+        });
     }
     parent.window.addEventListener('resize',fixIframeSize);
     setTimeout(fixIframeSize,500);setTimeout(fixIframeSize,2000);
@@ -196,12 +203,12 @@ def hud_button_style_css():
 
     布局:
       左侧数据管道列:  [R] 分析范围 / [D] 数据加载 / [GV] 数据治理 / [A] 分析引擎
-      底部地图控制栏:  [*] 设置 / [LB] 注记 / [LG] 图例 / [LY] 图层
+      底部地图控制栏:  [*] 设置 / [LB] 注记 / [LY] 图层
       右侧工具栏:      [OV] 数据概览 / [TB] 数据表格
     """
     st.markdown("""
     <style>
-    .st-key-d button,.st-key-lbl button,.st-key-leg button,.st-key-s button,
+    .st-key-d button,.st-key-lbl button,.st-key-s button,
     .st-key-o button,.st-key-t button,.st-key-rng button,.st-key-a button,
     .st-key-gv button,.st-key-ly button{
         width:var(--component-hud-button-width)!important;
@@ -216,7 +223,7 @@ def hud_button_style_css():
         -webkit-backdrop-filter:var(--component-hud-button-backdrop-filter);
         transition:var(--component-hud-button-transition);
     }
-    .st-key-d button:hover,.st-key-lbl button:hover,.st-key-leg button:hover,
+    .st-key-d button:hover,.st-key-lbl button:hover,
     .st-key-s button:hover,.st-key-o button:hover,.st-key-t button:hover,
     .st-key-rng button:hover,.st-key-a button:hover,
     .st-key-gv button:hover,.st-key-ly button:hover{
@@ -232,17 +239,15 @@ def hud_button_style_css():
         left:14px!important;z-index:9999!important;}
     .st-key-gv{position:fixed!important;top:calc(50% + 28px)!important;
         left:14px!important;z-index:9999!important;}
-    .st-key-a{position:fixed!important;top:calc(50% + 78px)!important;
+    .st-key-a{position:fixed!important;top:calc(50% + 28px)!important;
         left:14px!important;z-index:9999!important;}
     /* 底部地图控制栏 */
     .st-key-s{position:fixed!important;bottom:50px!important;
         left:14px!important;z-index:9999!important;}
     .st-key-lbl{position:fixed!important;bottom:50px!important;
         left:64px!important;z-index:9999!important;}
-    .st-key-leg{position:fixed!important;bottom:50px!important;
-        left:114px!important;z-index:9999!important;}
     .st-key-ly{position:fixed!important;bottom:50px!important;
-        left:164px!important;z-index:9999!important;}
+        left:114px!important;z-index:9999!important;}
     /* 右侧工具按钮 */
     .st-key-o{position:fixed!important;top:calc(50% - 50px)!important;
         right:14px!important;z-index:9999!important;}
@@ -400,7 +405,8 @@ def render_polarity_stats(df, show_score=True):
     neu = int((df['polarity'] == 'Neutral').sum())
     neg = int((df['polarity'] == 'Negative').sum())
     vneg = int((df['polarity'] == 'Very Negative').sum())
-    score_mean = round(float(df['score'].mean()), 2) if 'score' in df.columns else 0.0
+    score_col = next((c for c in ['l2_score', 'score'] if c in df.columns), None)
+    score_mean = round(float(df[score_col].mean()), 2) if score_col else 0.0
 
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric('非常正面', vpos)
