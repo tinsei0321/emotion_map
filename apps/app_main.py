@@ -51,8 +51,8 @@ def _panel_coord_dup_analysis(df_or_gdf, geom_col=None):
     if geom_col is not None:
         coords_list = [(round(g.x, 5), round(g.y, 5)) for g in geom_col]
     else:
-        lc = next((c for c in ['lon','longitude','lng'] if c in df_or_gdf.columns), None)
-        pc = next((c for c in ['lat','latitude'] if c in df_or_gdf.columns), None)
+        lc = next((c for c in ['lon','longitude','lng','lon_gcj02'] if c in df_or_gdf.columns), None)
+        pc = next((c for c in ['lat','latitude','lat_gcj02'] if c in df_or_gdf.columns), None)
         if not lc or not pc: return
         coords_list = [(round(r[lc],5), round(r[pc],5)) for _,r in df_or_gdf.iterrows()]
     coord_counter = Counter(coords_list)

@@ -46,8 +46,8 @@ def _load_csv(file_path: str, ext: str) -> dict:
     lats, lons = [], []
 
     # 方式 A：独立的 lon/lat 列
-    lon_col = next((c for c in ['lon', 'longitude', 'lng'] if c in df.columns), None)
-    lat_col = next((c for c in ['lat', 'latitude'] if c in df.columns), None)
+    lon_col = next((c for c in ['lon', 'longitude', 'lng', 'lon_gcj02'] if c in df.columns), None)
+    lat_col = next((c for c in ['lat', 'latitude', 'lat_gcj02'] if c in df.columns), None)
     if lon_col and lat_col:
         lats = df[lat_col].astype(float).tolist()
         lons = df[lon_col].astype(float).tolist()

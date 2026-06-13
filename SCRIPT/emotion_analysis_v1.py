@@ -925,7 +925,7 @@ def run_pipeline(file_path: str,
     返回:
         包含分析结果的多列 DataFrame，失败返回 None
 
-    L2 输出列: score, polarity, polarity_ternary, keywords, confidence, id_e
+    L2 输出列: score, polarity, keywords, confidence
     L3 输出列: L2全部 + category, intensity, target_type, target_detail
     L4 输出列: L3全部 + attributions, suggestions
     """
@@ -941,11 +941,11 @@ def run_pipeline(file_path: str,
     df = data['df']
     _safe_print(f'[LOAD] 加载: {data["n_points"]} 条')
 
-    # 2. 分析 — 优先 'comments'，兜底 'text'
-    if 'comments' in df.columns:
-        texts = df['comments'].tolist()
-    elif 'text' in df.columns:
+    # 2. 分析 — 优先 'text'（L1 脱敏后 comments 已被清空）
+    if 'text' in df.columns:
         texts = df['text'].tolist()
+    elif 'comments' in df.columns and df['comments'].notna().any() and (df['comments'] != '').any():
+        texts = df['comments'].tolist()
     else:
         texts = []
     if not texts:
@@ -958,7 +958,6 @@ def run_pipeline(file_path: str,
     # 3. 合并 L2 基础字段
     df['score'] = [r.score for r in results]
     df['polarity'] = [r.polarity for r in results]
-    df['polarity_ternary'] = [_polarity_to_ternary(r.polarity) for r in results]
     df['keywords'] = [','.join(r.keywords) if r.keywords else '' for r in results]
     df['confidence'] = [r.confidence for r in results]
 
@@ -983,15 +982,12 @@ def run_pipeline(file_path: str,
             for r in results
         ]
 
-    # 6. 生成 ID
-    df['id_e'] = 'e' + (df.index + 1).astype(str).str.zfill(4)
-
-    # 7. 坐标处理
+    # 6. 坐标处理
     for col in ['lon', 'lat']:
         if col in df.columns:
             df[col] = df[col].astype(float).round(4)
 
-    # 8. 统计概览
+    # 7. 统计概览
     _safe_print(f'\n[OK] 分析完成: {len(df)} 条')
     _safe_print(f'  --- 五级极性分布:')
     polarity_order = ['Very Negative', 'Negative', 'Neutral',
@@ -1071,12 +1067,15 @@ def run_full_pipeline(file_path: str,
     if df is None:
         return None
 
+    # 确定可用文本列（text 优先，L1 脱敏后 comments 已被清空）
+    text_col = 'text' if 'text' in df.columns else ('comments' if 'comments' in df.columns else None)
+
     # L3（仅对负面文本调用 LLM，节省成本）
     if l3_api_key:
         _safe_print('\n── L3 LLM 语义增强 ──')
         engine_l3 = create_analyzer('llm', api_key=l3_api_key)
         neg_mask = df['polarity'].isin(['Negative', 'Very Negative'])
-        neg_texts = df.loc[neg_mask, 'comments'].tolist()
+        neg_texts = df.loc[neg_mask, text_col].tolist() if text_col else []
         if neg_texts:
             l3_results = engine_l3.analyze_batch(neg_texts)
             for col in ['category', 'intensity', 'target_type', 'target_detail']:
@@ -1093,7 +1092,7 @@ def run_full_pipeline(file_path: str,
         engine_l4 = create_analyzer('corpus', api_key=l4_api_key,
                                      corpus_path=l4_corpus_path)
         actionable_mask = df['polarity'].isin(['Negative', 'Very Negative'])
-        actionable_texts = df.loc[actionable_mask, 'comments'].tolist()
+        actionable_texts = df.loc[actionable_mask, text_col].tolist() if text_col else []
         if actionable_texts:
             l4_results = engine_l4.analyze_batch(actionable_texts)
             df.loc[actionable_mask, 'attributions'] = [

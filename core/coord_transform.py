@@ -148,8 +148,8 @@ def convert_coords(lon: float, lat: float, source_crs: str,
     return lon, lat  # fallback
 
 
-def normalize_dataframe_coords(df: pd.DataFrame, lon_col: str = 'lon',
-                                lat_col: str = 'lat',
+def normalize_dataframe_coords(df: pd.DataFrame, lon_col: str = 'lon_gcj02',
+                                lat_col: str = 'lat_gcj02',
                                 platform: str = 'unknown') -> pd.DataFrame:
     """
     L0 → L1 坐标标准化：根据平台自动将坐标转为 WGS84。

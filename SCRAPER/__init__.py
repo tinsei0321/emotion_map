@@ -16,7 +16,7 @@
 快速启动:
   cd SCRAPER
   scrapy crawl xiaohongshu              # 运行小红书爬虫
-  scrapy crawl xiaohongshu -a keyword=西陵区 -a max_pages=5  # 自定义参数
+  scrapy crawl xiaohongshu -a keyword=规划范围 -a max_pages=5  # 自定义参数
 """
 
 # ── 统一入口 ──

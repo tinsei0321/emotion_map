@@ -157,9 +157,93 @@ graph LR
 
 ---
 
-## 四、核心模块设计
+## 四、数据层字段规范 (L0~L4)
 
-### 4.1 数据分析引擎 — 可插拔 + 逐级叠加
+> L0→L4 逐级叠加，每级不破坏前级字段。L0/L1/L2 已明确，L3/L4 接口预留。
+
+### 4.1 存储位置与命名
+
+| 层级 | 目录 | 命名模板 | 格式 |
+|------|------|----------|------|
+| L0 | `DATA/raw/` | `{source}_{YYYYMMDD}_{scope}_raw.csv` | CSV |
+| L1 | `DATA/processed/` | `{name}_L1_result_csv.csv` | CSV |
+| L2 | `DATA/processed/` | `{name}_L2_result_csv.csv` / `.geojson` | CSV + GeoJSON |
+| L3 | `DATA/processed/` | `{name}_L3_result_csv.csv` | CSV |
+| L4 | `DATA/processed/` | `{name}_L4_result_csv.csv` | CSV |
+
+### 4.2 字段逐级对照
+
+| # | 字段 | L0 | L1 | L2 | L3 | L4 | 类型 | 说明 |
+|----|------|:--:|:--:|:--:|:--:|:--:|------|------|
+| 1 | `source` | ✅ | ✅ | ✅ | ✅ | ✅ | str | 数据来源平台（xiaohongshu/dianping/…） |
+| 2 | `url` | ✅ | ✅ | ✅ | ✅ | ✅ | str | 原文链接 |
+| 3 | `crawl_time` | ✅ | ✅ | ✅ | ✅ | ✅ | datetime | 爬取时间（ISO 8601） |
+| 4 | `title` | ✅ | ✅ | ✅ | ✅ | ✅ | str | 标题 |
+| 5 | `text` | ✅ | ✅ | ✅ | ✅ | ✅ | str | 正文（情绪分析主文本源） |
+| 6 | `comments` | ✅ | ✅ | ✅ | ✅ | ✅ | str | 评论（L1 脱敏清空；L2 以 text 为优先分析源） |
+| 7 | `area` | ✅ | ✅ | ✅ | ✅ | ✅ | str | 爬取时的区域标签 |
+| 8 | `tags` | ✅ | ✅ | ✅ | ✅ | ✅ | str | 原始标签 |
+| 9 | `like_count` | ✅ | ✅ | ✅ | ✅ | ✅ | int | 点赞数 |
+| 10 | `comment_count` | ✅ | ✅ | ✅ | ✅ | ✅ | int | 评论数 |
+| 11 | `publish_time` | ✅ | ✅ | ✅ | ✅ | ✅ | str | 发布时间 |
+| 12 | `lon_gcj02` | ✅ | ✅ | ✅ | ✅ | ✅ | float | 原始 GCJ-02 经度 |
+| 13 | `lat_gcj02` | ✅ | ✅ | ✅ | ✅ | ✅ | float | 原始 GCJ-02 纬度 |
+| 14 | `lon` | — | ✅ | ✅ | ✅ | ✅ | float | **规范经度 WGS84**（GeoJSON 导出用） |
+| 15 | `lat` | — | ✅ | ✅ | ✅ | ✅ | float | **规范纬度 WGS84**（GeoJSON 导出用） |
+| 16 | `x_cgcs2000` | — | ✅ | ✅ | ✅ | ✅ | float | EPSG:4546 投影 X（米） |
+| 17 | `y_cgcs2000` | — | ✅ | ✅ | ✅ | ✅ | float | EPSG:4546 投影 Y（米） |
+| 18 | `id_e` | — | ✅ | ✅ | ✅ | ✅ | str | 稳定行标识符（e0001~eNNNN，L1 生成，贯穿全管道） |
+| 19 | `scope` | — | ✅ | ✅ | ✅ | ✅ | str | 空间过滤使用的边界名称 |
+| 20 | `in_scope` | — | ✅ | ✅ | ✅ | ✅ | bool | 是否通过范围过滤（True=在边界内） |
+| 21 | `score` | — | — | ✅ | ✅ | ✅ | float | L2 SnowNLP 综合情绪得分 0~1 |
+| 22 | `polarity` | — | — | ✅ | ✅ | ✅ | str | 五级极性：Very Negative / Negative / Neutral / Positive / Very Positive |
+| 23 | `keywords` | — | — | ✅ | ✅ | ✅ | str | jieba 情绪关键词（逗号分隔） |
+| 24 | `confidence` | — | — | ✅ | ✅ | ✅ | float | 置信度 0~1（L2 默认 1.0） |
+| 25 | `category` | — | — | — | ✅ | ✅ | str | L3 情绪类别（喜悦/愤怒/悲伤/惊讶/厌恶/恐惧/中性） |
+| 26 | `intensity` | — | — | — | ✅ | ✅ | float | L3 情绪强度 0~1 |
+| 27 | `target_type` | — | — | — | ✅ | ✅ | str | L3 情绪对象类型（设施/环境/服务/文化/事件） |
+| 28 | `target_detail` | — | — | — | ✅ | ✅ | str | L3 情绪对象具体描述 |
+| 29 | `attributions` | — | — | — | — | ✅ | json | L4 归因列表 [{"cause":…, "weight":…, …}] |
+| 30 | `suggestions` | — | — | — | — | ✅ | json | L4 改善建议 ["建议1", "建议2", …] |
+
+> **列数**：L0=13 → L1=20（+7） → L2=24（+4） → L3=28（+4） → L4=30（+2）
+
+### 4.3 坐标规范
+
+| 列名 | 坐标系 | 用途 | 生成阶段 |
+|------|--------|------|----------|
+| `lon_gcj02` / `lat_gcj02` | GCJ-02（火星坐标） | 原始记录留存，不可溯源时置 None | L0→L1 保留 |
+| `lon` / `lat` | **WGS84 (EPSG:4326)** | 规范坐标，所有地图渲染/GeoJSON 导出/空间分析均以此为准 | L1 由 GCJ-02 数学转换 |
+| `x_cgcs2000` / `y_cgcs2000` | CGCS2000 EPSG:4546 | 宜昌城市规划标准投影（米制），buffer/面积等运算用 | L1 由 WGS84 投影转换 |
+
+> 转换链路：**GCJ-02 → WGS84（数学，~100-700m 偏移）→ CGCS2000 EPSG:4546（投影，<1m 偏差）**
+
+### 4.4 处理关系
+
+```mermaid
+flowchart LR
+    L0["L0 原始爬取<br/>DATA/raw/<br/>13 列 | GCJ-02"] -->|"data_governance.py<br/>坐标转换 + 脱敏"| L1["L1 数据治理<br/>DATA/processed/<br/>20 列 | WGS84 规范"]
+    L1 -->|"范围过滤<br/>buffer 100m → Polygon"| L1F["L1 过滤后<br/>in_scope=True"]
+    L1F -->|"run_analysis_task()<br/>SnowNLP (text 列)"| L2["L2 情绪分析<br/>DATA/processed/<br/>24 列 | +score/polarity..."]
+    L2 -->|"LLM API<br/>(预留)"| L3["L3 语义增强<br/>+category/intensity..."]
+    L3 -->|"语料库 + LLM<br/>(预留)"| L4["L4 多维归因<br/>+attributions/suggestions"]
+```
+
+### 4.5 关键设计决策
+
+| 决策 | 说明 |
+|------|------|
+| `lon`/`lat` = WGS84 | 规范坐标列，`export_to_geojson()` 默认使用，GeoJSON EPSG:4326 语义正确 |
+| `id_e` 在 L1 生成 | 稳定行标识，贯穿 L2/L3/L4 不变，比在 L2 生成更早更可靠 |
+| `comments` 置空不删除 | 保留列结构一致性；`run_pipeline` 文本优先级 `text` > `comments` |
+| 不存储 `polarity_ternary` | 三级极性可从五级动态推导，避免冗余 |
+| `scope` + `in_scope` | 明确记录边界名称和过滤结果，L1 全量保存包含被过滤的行 |
+
+---
+
+## 五、核心模块设计
+
+### 5.1 数据分析引擎 — 可插拔 + 逐级叠加
 
 详见 `emotion_analysis_v1.py`
 
@@ -183,18 +267,18 @@ graph LR
 
 **设计理念**：Pipe and Filter — 每个阶段独立、可替换、可测试。L1→L2→L3→L4 逐级叠加，每级输出可独立消费。
 
-### 4.2 数据加载 — 统一入口
+### 5.2 数据加载 — 统一入口
 
 `data_loader.load_emotion_data()` 自动识别文件类型和列名：
 - CSV/TSV：检测 `lon/lat` 列或 `coordinate` 元组列
 - GeoJSON：解析 FeatureCollection → 结构化数据
 - 返回统一字典格式：`{lats, lons, scores, df, n_points}`
 
-### 4.3 空间分析引擎 — 双模式可视化 + 空间分析
+### 5.3 空间分析引擎 — 双模式可视化 + 空间分析
 
 **底图方案**：天地图 WMTS（影像 + 注记），CDN 自动替换为国内镜像。
 
-#### 4.3.1 空间可视化（已实现）
+#### 5.3.1 空间可视化（已实现）
 
 | 模式 | 用途 | 实现 |
 |------|------|------|
@@ -203,7 +287,7 @@ graph LR
 | └ 冷热分布 (Hot/Cold) | 等权重密度，看"哪里讨论多" | gradient 白→黄→橙→红 |
 | └ 极性分布 (Polarity) | 情绪分数加权，看"正面/负面聚集" | 绿渐变(正面) / 灰渐变(负面) |
 
-#### 4.3.2 空间分析（MVP 规划）
+#### 5.3.2 空间分析（MVP 规划）
 
 | # | 功能 | 说明 | 实现路径 | 优先级 |
 |---|------|------|----------|--------|
@@ -211,7 +295,7 @@ graph LR
 | 2 | **缓冲区分析** | 围绕 POI/设施（如地铁站、公园、学校）的辐射范围情绪聚合 | geopandas + shapely 自研 | ⭐⭐⭐ |
 | 3 | **行政单元聚合** | 按行政区划/街道/社区汇总情绪均值、标准差、正负比 | geopandas spatial join | ⭐⭐ |
 
-#### 4.3.3 空间分析工具选型建议
+#### 5.3.3 空间分析工具选型建议
 
 | 方案 | 优点 | 缺点 | 建议 |
 |------|------|------|------|
@@ -226,7 +310,7 @@ graph LR
 3. 结果可直接导出为 GeoJSON，无缝对接到 Folium 地图
 4. 未来如需更复杂的空间统计（Moran's I、Getis-Ord Gi*），pysal 库可平滑集成
 
-#### 4.3.4 成果展示形式
+#### 5.3.4 成果展示形式
 
 | 成果类型 | 格式 | 用途 |
 |----------|------|------|
@@ -235,7 +319,7 @@ graph LR
 | 统计图表 | Altair (嵌入 Streamlit) | 情绪分布直方图、时序折线图 |
 | 聚合报表 | CSV / DataFrame | 按行政单元的汇总指标表 |
 
-### 4.4 数据采集层 — 空间范围优先策略
+### 5.4 数据采集层 — 空间范围优先策略
 
 > 状态：Scrapy 框架已搭建，空间边界已获取（`data/xiling_boundary.geojson`）
 
@@ -286,7 +370,7 @@ Bounding Box: 111.2664°E ~ 111.3722°E, 30.6783°N ~ 30.7579°N
 
 ---
 
-## 五、技术选型
+## 六、技术选型
 
 | 层级 | 技术 | 选型理由 |
 |------|------|----------|
@@ -317,7 +401,7 @@ Bounding Box: 111.2664°E ~ 111.3722°E, 30.6783°N ~ 30.7579°N
 
 ---
 
-## 六、落地场景（7 大应用场景）
+## 七、落地场景（7 大应用场景）
 
 | # | 场景 | 核心能力 | 典型问题 |
 |---|------|----------|----------|
@@ -331,7 +415,7 @@ Bounding Box: 111.2664°E ~ 111.3722°E, 30.6783°N ~ 30.7579°N
 
 ---
 
-## 七、演进路线
+## 八、演进路线
 
 ```
 Phase 1 ✅  已完成 (2026-05-28 ~ 06-11)

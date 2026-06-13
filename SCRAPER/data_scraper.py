@@ -12,15 +12,15 @@
 
 使用方式:
   # 方式1: 命令行
-  cd SCRAPER && scrapy crawl xiaohongshu -a area=西陵区
+  cd SCRAPER && scrapy crawl xiaohongshu -a area=规划范围
 
   # 方式2: Python API
   from SCRAPER.data_scraper import run_scraper
-  run_scraper('xiaohongshu', area='西陵区', max_pages=3)
+  run_scraper('xiaohongshu', area='规划范围', max_pages=3)
 
   # 方式3: 单独调用
   from SCRAPER.data_scraper import scrape_xiaohongshu
-  scrape_xiaohongshu(area='西陵区', max_pages=3)
+  scrape_xiaohongshu(area='规划范围', max_pages=3)
 
 输出格式: {source}_{date}_{area}_raw.csv → data/raw/
 """
@@ -113,12 +113,12 @@ def run_scraper(spider_name='xiaohongshu', **kwargs):
 
 # ── 平台专用快捷函数 ──
 
-def scrape_xiaohongshu(area='西陵区', keyword=None, max_pages=3):
+def scrape_xiaohongshu(area='规划范围', keyword=None, max_pages=3):
     """
     爬取小红书搜索笔记。
 
     Args:
-        area: 区域标签，默认 '西陵区'
+        area: 区域标签，默认 '规划范围'
         keyword: 搜索关键词，默认与 area 相同
         max_pages: 最大翻页数，默认 3
 
@@ -139,25 +139,25 @@ def scrape_xiaohongshu(area='西陵区', keyword=None, max_pages=3):
     )
 
 
-def scrape_dianping(area='西陵区', keyword=None, max_pages=3):
+def scrape_dianping(area='规划范围', keyword=None, max_pages=3):
     """爬取大众点评 POI 评价。[待实现]"""
     _safe_print('[WARN] dianping spider not yet implemented.')
     return 1
 
 
-def scrape_meituan(area='西陵区', keyword=None, max_pages=3):
+def scrape_meituan(area='规划范围', keyword=None, max_pages=3):
     """爬取美团商户评论。[待实现]"""
     _safe_print('[WARN] meituan spider not yet implemented.')
     return 1
 
 
-def scrape_weibo(area='西陵区', keyword=None, max_pages=3):
+def scrape_weibo(area='规划范围', keyword=None, max_pages=3):
     """爬取微博签到/话题。[待实现]"""
     _safe_print('[WARN] weibo spider not yet implemented.')
     return 1
 
 
-def scrape_su12345(area='西陵区', keyword=None, max_pages=3):
+def scrape_su12345(area='规划范围', keyword=None, max_pages=3):
     """爬取 12345 热线投诉工单。[待实现]"""
     _safe_print('[WARN] su12345 spider not yet implemented.')
     return 1
@@ -176,8 +176,8 @@ if __name__ == '__main__':
         help='Spider name to run (default: xiaohongshu)'
     )
     parser.add_argument(
-        '--area', default='西陵区',
-        help='Target area label (default: 西陵区)'
+        '--area', default='规划范围',
+        help='Target area label (default: 规划范围)'
     )
     parser.add_argument(
         '--keyword', default=None,

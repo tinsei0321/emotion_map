@@ -35,7 +35,7 @@ class EmotionItem(scrapy.Item):
     """纬度 (float, 可选)"""
 
     area = scrapy.Field()
-    """区域标签，如 '西陵区'"""
+    """区域标签，如 '规划范围'"""
 
     # ── 扩展字段 ──
     tags = scrapy.Field()

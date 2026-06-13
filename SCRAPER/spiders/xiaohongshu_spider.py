@@ -2,7 +2,7 @@
 小红书爬虫 — 城市情绪数据采集
 ================================
 爬虫名: xiaohongshu
-目标: 搜索"西陵区"相关笔记，提取标题 + 正文
+目标: 搜索"规划范围"相关笔记，提取标题 + 正文
 输出: EmotionItem → EmotionalDataPipeline → data/raw/
 
 === 小红书反爬注意事项（实际对接时务必处理）===
@@ -40,8 +40,8 @@ class XiaohongshuSpider(scrapy.Spider):
     start_urls = ['https://www.xiaohongshu.com/explore']
 
     # ── 搜索配置 ──
-    search_keyword = '\u897f\u9675\u533a'   # 西陵区（宜昌市）
-    target_area = '\u897f\u9675\u533a'       # 西陵区
+    search_keyword = '\u89c4\u5212\u8303\u56f4'   # 规划范围
+    target_area = '\u89c4\u5212\u8303\u56f4'       # 规划范围
 
     def __init__(self, keyword=None, area=None, max_pages=3, *args, **kwargs):
         super().__init__(*args, **kwargs)

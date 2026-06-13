@@ -41,6 +41,58 @@
 
 ---
 
+## 📅 2026-06-13（周六）
+
+### ☑ TODO List
+
+| # | 状态 | 任务 | 涉及文件 | 备注 |
+|---|------|------|----------|------|
+| 1 | ✅ | 规划范围真实数据落图（L1治理+坐标转换+范围过滤管道） | `SCRIPT/data_governance.py`（新建）, `core/coord_transform.py`, `core/range_selector.py` | 边界=规划范围(LineString→buffer Polygon)；管道已就绪，24条占位坐标全部被过滤（预期行为），待真实坐标数据后完整验证 |
+| 2 | ⬜ | 数据爬取方案最终确定 | 调研文档 | 登录 API vs 购买数据 |
+| 3 | ⬜ | 空间分析引擎 MVP 开始编码 | `core/map_engine.py` | 缓冲区分析 + 行政单元聚合 |
+
+> 💡 标准启动指令：`@pm 开始处理 YYYY-MM-DD 的任务 N：任务名称`
+
+### 📝 开发日志
+
+**关键字**：L1治理, 坐标转换, 规划范围, LineString, 管道, 全局重命名, 文件清理, L0-L4字段规范
+
+#### 做了什么
+- 新建 `SCRIPT/data_governance.py` L1 数据治理管道
+- 规划范围 LineString buffer 100m → Polygon 范围过滤 + L1 全量保存
+- 全局替换：6 个 `.py` 文件"西陵区"→"规划范围"
+- **L0-L4 字段规范化重构（5 项）**：
+  1. 坐标重命名：`lon`→`lon_gcj02`、`lon_wgs84`→`lon`（WGS84 成规范坐标，GeoJSON 语义正确）
+  2. `id_e` 行标识从 L2 提升到 L1 生成
+  3. 删除冗余 `polarity_ternary` 列（三级可从五级推导）
+  4. 新增 `scope`（边界名称）+ `in_scope`（范围过滤标记）列
+  5. `comments` 列置空保留而非删除，`run_pipeline` 文本优先级改为 `text` > `comments`
+- 修复阻断性 bug：comments 置空导致 L2 全 Neutral（文本优先级冲突）
+
+#### 踩坑 & 收获
+- 规划范围 Shapefile 是 LineString，需 buffer 后使用
+- `comments` 置空 ≠ 删除 — 列存在但为空会导致 `run_pipeline` 优先取空字符串，需颠倒文本列优先级
+- 坐标列重命名影响面广（6 个文件），需同步更新 data_loader/app_main 的列检测列表保持向后兼容
+- _polarity_to_ternary 死代码残留，后续应清理
+
+#### 碎片想法
+- 管道已就绪，等爬虫产出真实坐标后可直接跑通全流程
+- L3/L4 字段框架已预留，字段语义与 L2 连贯一致
+
+#### 🔜 次日计划 (2026-06-14)
+- 数据爬取方案最终确定（登录 API vs 购买数据）
+- 空间分析引擎 MVP 开始编码
+
+#### 碎片想法
+- 管道已就绪，等爬虫产出真实坐标后可直接跑通全流程
+- 当前 LineString 边界不够理想，后续建议替换为 Polygon 类型边界
+
+#### 🔜 次日计划 (2026-06-14)
+- 数据爬取方案最终确定（登录 API vs 购买数据）
+- 空间分析引擎 MVP 开始编码
+
+---
+
 ## 📅 2026-06-12（周五）
 
 ### ☑ TODO List
@@ -48,7 +100,7 @@
 | # | 状态 | 任务 | 涉及文件 | 备注 |
 |---|------|------|----------|------|
 | 1 | ✅ | 情绪数据爬取方案调研+小范围测试（西陵区） | `SCRAPER/data_scraper.py`（新建） | Scrapy 框架搭建完成 + 小红书 Spider 测试通过（HTTP 200） |
-| 2 | ⬜ | 西陵区真实数据落图 | `data/raw/xiling_v1.csv` | 第一份真实情绪地图快照 |
+| 2 | ✅ | ~~西陵区真实数据落图~~ → 移至 06-13 任务1，范围改为规划范围 | — | 边界从西陵区改为用户上传的规划范围 Shapefile |
 | 3 | ✅ | Agent 协作体系搭建：程序开发/调试/进度管理/审查/测试/文档 Agent | `.github/agents/*.agent.md`, `AGENTS.md` | 6 Agent + AGENTS.md + 架构记忆 + 使用场景，基础搭建完成 |
 | 4 | ✅ | 系统架构优化：七层架构 + 空间分析引擎重定义 + 溯佰科定位修正 | `docs/architecture.md`, `docs/decisions.md`, `docs/dev-notes.md`, `memories/repo/architecture-pattern.md`, `SCRIPT/emotion_analysis_v1.py`, `core/map_engine.py` | PM 研判 → Developer 改代码 → PM 同步文档，SOP 首次实战 |
 | 5 | ✅ | 环境同步：requirements.txt 补全 + 新增环境管家 Agent | `requirements.txt`, `.github/agents/ops.agent.md`, `AGENTS.md` | Scrapy 未装、streamlit-folium/shapely/pyproj 漏登记 |

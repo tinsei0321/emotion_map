@@ -2,7 +2,7 @@
 Selenium 数据提取 — 小红书搜索页动态渲染抓取
 ==============================================
 用于绕过 JS 动态加载限制，直接渲染页面提取笔记数据。
-输出: data/raw/xiaohongshu_{YYYYMMDD}_xiling_raw.csv
+输出: data/raw/xiaohongshu_{YYYYMMDD}_规划范围_raw.csv
 
 运行方式:
     python SCRAPER/selenium_extract.py
@@ -55,7 +55,7 @@ def _safe_print(*args, **kwargs):
 # =====================================================================
 
 CHROME_BINARY_PATH = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
-SEARCH_URL = "https://www.xiaohongshu.com/search_result?keyword=西陵区"
+SEARCH_URL = "https://www.xiaohongshu.com/search_result?keyword=规划范围"
 SCROLL_COUNT = 3
 SCROLL_PAUSE = 2.0          # 每次滚动后等待秒数
 PAGE_LOAD_WAIT = 5          # 初始加载等待秒数
@@ -456,7 +456,7 @@ def run():
 
         # ── 4. 保存 CSV ──
         date_str = datetime.now().strftime("%Y%m%d")
-        filename = f"xiaohongshu_{date_str}_xiling_raw.csv"
+        filename = f"xiaohongshu_{date_str}_规划范围_raw.csv"
         output_path = os.path.join(OUTPUT_DIR, filename)
         save_to_csv(notes, output_path)
 
