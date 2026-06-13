@@ -14,6 +14,7 @@ import os, sys
 from collections import Counter
 import re as _re
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import altair as alt
 import folium
@@ -23,7 +24,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.config import (
     FOLDER_OPTIONS, TIANDITU_IMG_URL, TIANDITU_CVA_URL,
     FOLIUM_COLOR_MAP, DEFAULT_CENTER, DEFAULT_ZOOM, RAW_DIR, PROCESSED_DIR,
+    MAX_DISPLAY_POINTS, MAX_TABLE_ROWS, LARGE_FILE_WARN_MB,
+    BOUNDARY_SHP,
 )
+from core.export import export_to_csv
 from core.map_engine import create_base_map, add_point_layer, add_boundary_layer
 from core.data_loader import load_emotion_data
 from core.range_selector import (
@@ -36,10 +40,19 @@ from core.ui_components import (
     render_title_bar, render_legend_overlay,
     render_data_summary_overlay,
     render_polarity_stats, render_polarity_chart,
+    inject_theme_css,
 )
 from SCRIPT.emotion_analysis_v1 import (
     create_analyzer, run_pipeline, run_analysis_task, _safe_print,
 )
+from SCRIPT.data_governance import (
+    step1_load_and_transform,
+    step2_filter_by_boundary,
+    anonymize_dataframe,
+    step3_export_filtered,
+)
+from SCRIPT.relevance_filter import keyword_prefilter, _build_text_for_classification
+from core.tracker import track, TrackContext, trace_log, trace_error, trace_warn, register_track_id
 
 st.set_page_config(page_title='情绪地图 v1.0', layout='wide')
 DEBUG_MODE = True
@@ -68,8 +81,12 @@ def _panel_coord_dup_analysis(df_or_gdf, geom_col=None):
 # ═══════════════════════════════════════════════════════════
 # 弹窗：数据源
 # ═══════════════════════════════════════════════════════════
+@track("MOD_APP.F_005", track_args=False)
 @st.dialog('[DATA] 数据源', width='small')
 def show_data_source_dialog():
+    if st.session_state.get('_data_confirmed'):
+        del st.session_state['_data_confirmed']
+        return
     keys = list(FOLDER_OPTIONS.keys())
     folder_key = st.selectbox('数据文件夹', keys,
         index=keys.index(st.session_state.get('folder_key', keys[0])))
@@ -81,17 +98,31 @@ def show_data_source_dialog():
     cur = st.session_state.get('file_choice', files[0])
     idx = files.index(cur) if cur in files else 0
     file_choice = st.selectbox('选择文件', files, index=idx)
-    st.caption(f'路径: `{os.path.join(folder_path, file_choice)}`')
+    file_size = os.path.getsize(os.path.join(folder_path, file_choice)) / (1024 * 1024)
+    st.caption(f'大小: {file_size:.1f} MB | 路径: `{os.path.join(folder_path, file_choice)}`')
+    if file_size > LARGE_FILE_WARN_MB:
+        st.warning(f'文件较大 ({file_size:.0f} MB)，地图将自动采样显示。')
     if st.button('[确认加载]', use_container_width=True, type='primary'):
         st.session_state['folder_key'] = folder_key
         st.session_state['file_choice'] = file_choice
         st.session_state['file_path'] = os.path.join(folder_path, file_choice)
         st.session_state['_data_confirmed'] = True
+        st.session_state['_load_triggered'] = True
+        # 注册加载的文件到图层列表
+        _register_layer(
+            name=file_choice,
+            file_path=os.path.join(folder_path, file_choice),
+            level='L0',
+            range_label=folder_key,
+            color='#d97d5c',  # 主色橙
+        )
+        st.rerun()
 
 
 # ═══════════════════════════════════════════════════════════
 # 弹窗：数据概览
 # ═══════════════════════════════════════════════════════════
+@track("MOD_APP.F_006", track_args=False)
 @st.dialog('[OV] 数据概览', width='large')
 def show_overview_dialog():
     df = st.session_state.get('current_df')
@@ -139,6 +170,7 @@ def show_overview_dialog():
 # ═══════════════════════════════════════════════════════════
 # 弹窗：数据表格
 # ═══════════════════════════════════════════════════════════
+@track("MOD_APP.F_007", track_args=False)
 @st.dialog('[TB] 数据表格', width='large')
 def show_table_dialog():
     df = st.session_state.get('current_df')
@@ -152,6 +184,9 @@ def show_table_dialog():
         disp = disp[mask]; st.caption(f'筛选结果: {len(disp)} / {len(df)} 条')
     ch = [c for c in ['lon','lat','longitude','latitude','geometry'] if c in df.columns]
     sc = [c for c in disp.columns if c not in ch]
+    if len(disp) > MAX_TABLE_ROWS:
+        disp = disp.head(MAX_TABLE_ROWS)
+        st.caption(f'表格仅显示前 {MAX_TABLE_ROWS} 行（共 {len(df)} 行）')
     st.dataframe(disp[sc], width='stretch', height=500)
     st.download_button('[下载] 筛选结果为 CSV', disp.to_csv(index=False).encode('utf-8'),
                        file_name=fc, mime='text/csv')
@@ -160,6 +195,7 @@ def show_table_dialog():
 # ═══════════════════════════════════════════════════════════
 # 弹窗：设置
 # ═══════════════════════════════════════════════════════════
+@track("MOD_APP.F_008", track_args=False)
 @st.dialog('[*] 设置与调试', width='small')
 def show_settings_dialog():
     st.caption('调试信息面板')
@@ -177,6 +213,7 @@ def show_settings_dialog():
 # ═══════════════════════════════════════════════════════════
 # 弹窗：范围选择
 # ═══════════════════════════════════════════════════════════
+@track("MOD_APP.F_009", track_args=False)
 @st.dialog('[RNG] 分析范围', width='small')
 def show_range_dialog():
     if st.session_state.get('_range_just_set'):
@@ -229,8 +266,235 @@ def show_range_dialog():
 
 
 # ═══════════════════════════════════════════════════════════
+# 弹窗：数据治理
+# ═══════════════════════════════════════════════════════════
+@track("MOD_APP.F_003", track_args=False)
+@st.dialog('[GV] 数据治理', width='large')
+def show_governance_dialog():
+    """数据治理弹窗：L0原始数据 → L1城市情绪DATA
+
+    治理步骤:
+      1. 坐标转换 (GCJ-02 → WGS84 → CGCS2000)
+      2. 范围过滤 (规划范围 Polygon 内)
+      3. 相关性筛选 (关键词粗筛)
+      4. 数据脱敏 → 导出 L1 CSV
+    """
+    # ── 区域1: 选择 L0 文件 ──
+    raw_files = sorted([
+        f for f in os.listdir(RAW_DIR)
+        if f.endswith('.csv')
+    ]) if os.path.exists(RAW_DIR) else []
+    if not raw_files:
+        st.warning(f'`{RAW_DIR}/` 中没有可治理的 L0 文件。请先采集原始数据。')
+        return
+
+    file_choice = st.selectbox('[L0] 原始数据文件', raw_files)
+    input_path = os.path.join(RAW_DIR, file_choice)
+    file_size_mb = os.path.getsize(input_path) / (1024 * 1024)
+    st.caption(f'大小: {file_size_mb:.1f} MB | 路径: `{input_path}`')
+
+    # ── 区域2: 治理步骤说明 ──
+    with st.expander('[步骤说明] 治理管道详情'):
+        st.markdown(
+            '1. 坐标转换 GCJ-02 -> WGS84 -> CGCS2000\n'
+            '2. 范围过滤\n'
+            '3. 相关性筛选\n'
+            '4. 数据脱敏+导出'
+        )
+
+    # ── 区域3: [开始数据治理] ──
+    if st.button('[开始数据治理]', type='primary', use_container_width=True):
+        with st.status('治理中...', expanded=True) as status:
+            progress = st.progress(0, text='准备...')
+
+            # Step 1: 坐标转换
+            status.update(label='[1/4] 坐标转换...')
+            progress.progress(0.25, text='GCJ-02 -> WGS84 -> CGCS2000')
+            df = step1_load_and_transform(input_path)
+            input_n = len(df)
+
+            # Step 2: 范围过滤
+            status.update(label='[2/4] 范围过滤...')
+            progress.progress(0.5, text='Point-in-Polygon')
+            boundary_path = get_active_boundary_path()
+            if boundary_path and os.path.exists(boundary_path):
+                df_filtered = step2_filter_by_boundary(df, boundary_path)
+            elif os.path.exists(BOUNDARY_SHP):
+                df_filtered = step2_filter_by_boundary(df, BOUNDARY_SHP)
+            else:
+                _safe_print('[WARN] 无边界文件，跳过范围过滤')
+                progress.progress(0.5, text='[WARN] 跳过范围过滤（无边界文件）')
+                df_filtered = df
+
+            # Step 3: 关键词粗筛
+            status.update(label='[3/4] 相关性筛选...')
+            progress.progress(0.75, text='关键词粗筛')
+            df_filtered['_kw_pass'] = df_filtered.apply(
+                lambda row: keyword_prefilter(_build_text_for_classification(row)) == 'pass',
+                axis=1)
+            df_relevant = df_filtered[df_filtered['_kw_pass']].copy()
+            df_relevant['relevance'] = 'relevant'
+            df_relevant['filter_layer'] = 'keyword'
+            df_relevant.drop(columns=['_kw_pass'], inplace=True, errors='ignore')
+
+            # Step 4: 脱敏+导出
+            status.update(label='[4/4] 脱敏+导出...')
+            progress.progress(0.9, text='导出 L1')
+            df_relevant = anonymize_dataframe(df_relevant)
+            output_name = os.path.splitext(file_choice)[0].replace('_raw', '')
+            l1_path = os.path.join(PROCESSED_DIR, f'{output_name}_L1_result_csv.csv')
+            export_to_csv(df_relevant, l1_path)
+
+            status.update(label='[OK] 治理完成', state='complete')
+            progress.progress(1.0, text=f'L1: {len(df_relevant)} 条')
+
+            # 记录结果
+            st.session_state['_governance_done'] = True
+            st.session_state['_governance_result'] = {
+                'input_n': input_n,
+                'l1_n': len(df_relevant),
+                'l1_path': l1_path,
+                'output_name': output_name,
+            }
+            # 保持向后兼容
+            st.session_state['governance_completed'] = True
+            st.session_state['governance_last_stats'] = {
+                'input_file': file_choice,
+                'input_n': input_n,
+                'output_n': len(df_relevant),
+                'relevant_n': len(df_relevant),
+                'irrelevant_n': input_n - len(df_relevant),
+                'time_elapsed': '—',
+                'output_path': l1_path,
+            }
+
+        # ── 区域4: 结果面板 ──
+        if st.session_state.get('_governance_done'):
+            r = st.session_state['_governance_result']
+            c1, c2, c3 = st.columns(3)
+            c1.metric('输入', r['input_n'])
+            c2.metric('L1 输出', r['l1_n'])
+            c3.metric('过滤率', f"{(1 - r['l1_n'] / max(r['input_n'], 1)) * 100:.1f}%")
+            st.caption(f"输出: `{r['l1_path']}`")
+
+            if st.button('[加载到地图]', type='primary', use_container_width=True):
+                st.session_state['file_path'] = r['l1_path']
+                st.session_state['file_choice'] = os.path.basename(r['l1_path'])
+                st.session_state['_load_triggered'] = True
+                _register_layer(
+                    name=os.path.basename(r['l1_path']),
+                    file_path=r['l1_path'],
+                    level='L1',
+                    range_label='当前范围',
+                    color='#c4a855'
+                )
+                st.rerun()
+
+
+# ═══════════════════════════════════════════════════════════
+# 弹窗：图层控制
+# ═══════════════════════════════════════════════════════════
+@track("MOD_APP.F_004", track_args=True)
+def _register_layer(name, file_path, level='L1', range_label='', color='#c4a855'):
+    """注册或更新一个图层到 session_state['layers']。
+
+    参数:
+        name: 图层显示名称
+        file_path: 数据文件路径（用于去重和加载）
+        level: 数据层级标签 (L0/L1/L2/L3/L4)
+        range_label: 范围/来源标签
+        color: 图层颜色标识
+    """
+    layers = st.session_state.get('layers', [])
+    # 去重：同路径已存在则更新
+    for lyr in layers:
+        if lyr['file_path'] == file_path:
+            lyr['name'] = name
+            lyr['level'] = level
+            lyr['range_label'] = range_label
+            lyr['color'] = color
+            return
+    layers.append({
+        'name': name,
+        'file_path': file_path,
+        'level': level,
+        'range_label': range_label,
+        'color': color,
+        'visible': True,
+    })
+    st.session_state['layers'] = layers
+
+
+@track("MOD_APP.F_010", track_args=False)
+@st.dialog('[LY] 图层控制', width='small')
+def show_layer_dialog():
+    """图层控制弹窗：管理地图叠加层的显示/隐藏。
+
+    图层来源:
+      - 数据治理 (GV) 输出的 L1 文件
+      - 分析引擎 (A) 输出的 L2/L3/L4 文件
+      - 手动加载 (D) 的文件
+
+    每行: 圆点颜色 + 图层名 + 范围·层级标签 + toggle 开关
+    底部: [全部打开] [全部关闭] 批量操作
+    """
+    layers = st.session_state.get('layers', [])
+
+    if not layers:
+        st.info('暂无注册图层。\n\n通过 [D] 加载数据、[GV] 治理数据 或 [A] 分析数据后，图层自动注册到此列表。')
+        return
+
+    st.caption(f'共 **{len(layers)}** 个图层')
+    st.divider()
+
+    # ── 图层行 ──
+    changed = False
+    for i, lyr in enumerate(layers):
+        col_dot, col_name, col_toggle = st.columns([0.5, 6, 2])
+        with col_dot:
+            st.markdown(
+                f'<div style="width:12px;height:12px;border-radius:50%;'
+                f'background:{lyr["color"]};margin-top:8px;'
+                f'opacity:{1.0 if lyr["visible"] else 0.3};"></div>',
+                unsafe_allow_html=True)
+        with col_name:
+            st.caption(f'**{lyr["name"]}**  ')
+            st.caption(f'`{lyr["range_label"]}`')
+        with col_toggle:
+            new_val = st.toggle(
+                '显示', value=lyr['visible'],
+                key=f'lyr_toggle_{i}',
+                label_visibility='collapsed',
+            )
+            if new_val != lyr['visible']:
+                layers[i]['visible'] = new_val
+                changed = True
+
+    if changed:
+        st.session_state['layers'] = layers
+
+    st.divider()
+
+    # ── 批量操作 ──
+    bc1, bc2, _ = st.columns([1, 1, 2])
+    with bc1:
+        if st.button('[全部打开]', use_container_width=True):
+            for lyr in layers:
+                lyr['visible'] = True
+            st.session_state['layers'] = layers
+            st.rerun()
+    with bc2:
+        if st.button('[全部关闭]', use_container_width=True):
+            for lyr in layers:
+                lyr['visible'] = False
+            st.session_state['layers'] = layers
+            st.rerun()
+
+
+# ═══════════════════════════════════════════════════════════
 # 弹窗：运行情绪分析
 # ═══════════════════════════════════════════════════════════
+@track("MOD_APP.F_011", track_args=False)
 @st.dialog('[ANA] 运行情绪分析', width='large')
 def show_analysis_dialog():
     st.markdown('选择原始情绪DATA文件并运行情绪分析引擎，结果自动加载到地图。')
@@ -248,6 +512,17 @@ def show_analysis_dialog():
     file_choice = st.selectbox('[FILE] 原始情绪DATA文件（L1）', raw_files,
                                help=f'来自 {RAW_DIR}/')
     st.caption(f'路径: `{os.path.join(RAW_DIR, file_choice)}`')
+
+    # ── L1 数据概览（折叠，默认收起）──
+    with st.expander('[L1 数据概览]', expanded=False):
+        gov_result = st.session_state.get('_governance_result')
+        if gov_result:
+            c1, c2 = st.columns(2)
+            c1.metric('L1 输出', gov_result['l1_n'])
+            c2.metric('输入', gov_result['input_n'])
+            st.caption(f"路径: `{gov_result['l1_path']}`")
+        else:
+            st.caption('暂无治理记录。点击左侧 [GV] 按钮先执行 L1 治理管道。')
 
     st.divider()
 
@@ -275,16 +550,27 @@ def show_analysis_dialog():
         engine_type = 'llm' if 'LLM' in engine_choice else 'snownlp'
         input_path = os.path.join(RAW_DIR, file_choice)
         base_name = os.path.splitext(file_choice)[0]
+        file_size_mb = os.path.getsize(input_path) / (1024 * 1024)
+
+        # 进度条容器
+        progress_bar = st.progress(0, text='准备分析...')
+
+        def update_progress(step, total, message):
+            progress_bar.progress(step / total, text=message)
 
         with st.status('分析中...', expanded=True) as status:
+            status.update(label=f'文件: {base_name} ({file_size_mb:.0f} MB)')
+
             try:
                 result = run_analysis_task(
                     file_path=input_path,
                     engine_type=engine_type,
                     output_name=base_name,
                     api_key=api_key,
+                    progress_callback=update_progress,
                 )
                 if result['success']:
+                    progress_bar.progress(1.0, text=f'[OK] {result["n_points"]} 条完成')
                     status.update(
                         label=f'[OK] 分析完成！{result["n_points"]} 条数据',
                         state='complete')
@@ -295,19 +581,30 @@ def show_analysis_dialog():
                     st.session_state['current_df'] = result['df']
                     st.session_state['current_file_choice'] = os.path.basename(result['csv_path'])
                     st.session_state['data_loaded'] = True
+                    # 注册分析结果到图层列表
+                    _register_layer(
+                        name=os.path.basename(result['csv_path']),
+                        file_path=result['csv_path'],
+                        level='L2',
+                        range_label='分析结果',
+                        color='#d97d5c',  # 主色橙
+                    )
                     run_success = True
                     result_df = result['df']
                     result_csv = result['csv_path']
                 else:
+                    progress_bar.progress(1.0, text='[WARN] 分析失败')
                     status.update(label='[WARN] 分析失败', state='error')
                     st.error(f'分析失败: {result["message"][:200]}')
                     run_success = False
                     result_df = None
                     result_csv = None
             except Exception as e:
+                progress_bar.progress(1.0, text='[ERR] 分析失败')
                 status.update(label='[ERR] 分析出错', state='error')
                 st.error(f'分析失败: {str(e)[:200]}')
                 _safe_print(f'[ERR] show_analysis_dialog 分析出错: {e}')
+                trace_error("MOD_APP.F_011", f'分析执行异常: {str(e)[:200]}')
                 run_success = False
                 result_df = None
                 result_csv = None
@@ -512,6 +809,14 @@ def _render_new_analysis_view(engine_cfg: dict):
                 )
                 if result['success']:
                     status.update(label=f'完成！{result["n_points"]} 条', state='complete')
+                    # 注册分析结果到图层列表
+                    _register_layer(
+                        name=os.path.basename(result['csv_path']),
+                        file_path=result['csv_path'],
+                        level='L2',
+                        range_label='分析结果',
+                        color='#d97d5c',
+                    )
                     st.rerun()
                 else:
                     status.update(label='失败', state='error')
@@ -528,10 +833,13 @@ def _add_boundary_if_exists(m):
         pass
 
 
+@track("MOD_APP.F_001", track_args=False)
 def show_console_page():
     """分析控制台主入口 — 委托给 4 个子函数处理。"""
-    st.title('情绪分析控制台')
-    st.caption('从地图浏览器跳转而来')
+    components.html(
+        '<script>window.parent.document.title = "情绪地图v1.0：情绪控制台";</script>',
+        height=0, width=0)
+    st.title('情绪地图v1.0：情绪控制台')
 
     # 1. 解析 URL 参数
     params = _parse_console_params()
@@ -550,17 +858,37 @@ def show_console_page():
 # ═══════════════════════════════════════════════════════════
 # 主流程
 # ═══════════════════════════════════════════════════════════
+@track("MOD_APP.F_002", track_args=False)
 def main():
     # ── session_state 初始化（所有页面共享，必须在路由判断前）──
     for k, v in {
-        'show_labels': True, 'show_legend': True,
+        'show_labels': False, 'show_legend': True,
         'folder_key': '[DATA] raw（原始数据）',
         'file_choice': '', 'file_path': '',
         'current_df': None, 'current_map_meta': None,
         'current_file_choice': '', 'data_loaded': False,
+        'layers': [],
+        'governance_completed': False,
+        'governance_last_stats': None,
+        '_governance_done': False,
+        '_governance_result': None,
     }.items():
         if k not in st.session_state:
             st.session_state[k] = v
+
+    # ── 强制清除：每次新鲜页面加载时不自动重载旧数据 ──
+    if '_load_triggered' not in st.session_state:
+        st.session_state['_load_triggered'] = False
+        st.session_state['file_path'] = ''
+        st.session_state['current_df'] = None
+        st.session_state['data_loaded'] = False
+
+    # ── 崩溃恢复：上次加载大文件导致页面异常，自动清除残留 ──
+    if st.session_state.get('_data_crashed', False):
+        st.session_state['file_path'] = ''
+        st.session_state['current_df'] = None
+        st.session_state['_data_crashed'] = False
+        st.warning('上次加载数据量过大导致页面异常，已自动清除。请选择较小的数据文件。')
 
     # ── Dialog 确认标记检测 ──
     if st.session_state.get('_data_confirmed'):
@@ -573,6 +901,9 @@ def main():
         show_console_page()
         return
 
+    # ── 注入 Design Token CSS 变量（必须在其他 CSS 之前）──
+    inject_theme_css()
+
     # ── CSS 注入（统一由 ui_components 管理）──
     inject_fullscreen_css()
     hud_button_style_css()
@@ -584,18 +915,24 @@ def main():
     if fc:
         render_title_bar(f'情绪地图 v1.0 "{fc}"')
 
-    if st.button('R', help='[R] 分析范围 | 选择分析区域', key='rng'): show_range_dialog()
-    if st.button('D', help='[D] 数据源 | 选择情绪数据文件 (CSV/GeoJSON)', key='d'): show_data_source_dialog()
-    if st.button('A', help='[A] 分析引擎 | 运行 L2/L3/L4 情绪分析管道', key='a'): show_analysis_dialog()
+    # 左侧数据管道列
+    if st.button('[R]', help='[R] 分析范围 | 选择分析区域', key='rng'): show_range_dialog()
+    if st.button('[D]', help='[D] 数据加载 | 选择数据文件 (CSV/GeoJSON)', key='d'): show_data_source_dialog()
+    if st.button('[GV]', help='[GV] 数据治理 | L0原始数据→L1城市情绪DATA', key='gv'): show_governance_dialog()
+    if st.button('[A]', help='[A] 分析引擎 | 运行 L2/L3/L4 情绪分析管道', key='a'): show_analysis_dialog()
+
+    # 底部地图控制栏
     if st.button('[*]', help='设置与调试', key='s'): show_settings_dialog()
 
-    sl = st.session_state.get('show_labels', True)
+    sl = st.session_state.get('show_labels', False)
     if st.button('[LB]', help='注记: 开' if sl else '注记: 关', key='lbl'):
         st.session_state['show_labels'] = not sl; st.rerun()
     sg = st.session_state.get('show_legend', True)
     if st.button('[LG]', help='图例: 开' if sg else '图例: 关', key='leg'):
         st.session_state['show_legend'] = not sg; st.rerun()
+    if st.button('[LY]', help='[LY] 图层 | 切换地图图层显示', key='ly'): show_layer_dialog()
 
+    # 右侧工具按钮
     if st.button('[OV]', help='数据概览', key='o', disabled=btn_dis): show_overview_dialog()
     if st.button('[TB]', help='数据表格', key='t', disabled=btn_dis): show_table_dialog()
 
@@ -605,52 +942,122 @@ def main():
     # ── 数据加载 + 地图 ──
     fp = st.session_state.get('file_path', '')
     if not fp or not os.path.exists(fp):
-        m = create_base_map(show_labels=st.session_state.get('show_labels', True))
+        center = st.session_state.get('_map_center', None)
+        zoom = st.session_state.get('_map_zoom', None)
+        m = create_base_map(show_labels=st.session_state.get('show_labels', False),
+                            center=center, zoom_start=zoom)
         if st.session_state.get('selected_ranges'):
             _add_boundary_if_exists(m)
-        st_folium(m, width=None, height=700, key='default_map')
+        map_state = st_folium(m, width=None, height=700, key='default_map')
+        if map_state and map_state.get('last_center'):
+            st.session_state['_map_center'] = [map_state['last_center']['lat'], map_state['last_center']['lng']]
+            st.session_state['_map_zoom'] = map_state.get('last_zoom', DEFAULT_ZOOM)
         return
 
-    with st.spinner('加载数据中...'):
-        data = load_emotion_data(fp)
-    if not data:
-        st.error('无法加载数据，请检查文件格式或重新选择数据源')
-        return
+    # ── 数据加载安全守卫 ──
+    file_size_mb = os.path.getsize(fp) / (1024 * 1024)
+    if file_size_mb > LARGE_FILE_WARN_MB:
+        st.warning(f'文件过大 ({file_size_mb:.0f} MB)，地图仅显示采样点。')
 
-    df = data['df']
-    st.session_state['current_df'] = df
-    st.session_state['current_file_choice'] = fc
-    st.session_state['data_loaded'] = True
-    st.toast('[OK] 数据加载成功')
+    # ── 加载数据（含异常保护，崩溃自动清除 session state）──
+    try:
+        with st.spinner('加载数据中...'):
+            data = load_emotion_data(fp)
+        if not data:
+            st.error('无法加载数据，请检查文件格式或重新选择数据源')
+            return
 
-    with st.spinner('渲染地图中...'):
-        m = create_base_map(data['lats'], data['lons'],
-                            show_labels=st.session_state.get('show_labels', True))
+        df = data['df']
+        total_rows = len(df)
 
-        # 叠加范围边界
-        _add_boundary_if_exists(m)
-
-        geo = data.get('geo_data')
-        if geo:
-            add_point_layer(m, data['lats'], data['lons'], data['scores'],
-                           props_list=geo['features'])
+        # ── 大数据采样（地图渲染用，完整数据保留在 data['df'] 中）──
+        if total_rows > MAX_DISPLAY_POINTS:
+            import random as _random
+            sample_idx = _random.Random(42).sample(range(total_rows), MAX_DISPLAY_POINTS)
+            df_display = df.iloc[sample_idx].reset_index(drop=True)
+            st.info(f'数据共 {total_rows} 条，地图显示采样 {MAX_DISPLAY_POINTS} 条。完整数据请在数据表格中查看。')
         else:
-            add_point_layer(m, data['lats'], data['lons'], data['scores'],
-                           props_list=df.to_dict('records'))
+            df_display = df
 
-    # ── 数据摘要浮层（左上角）──
-    n = len(df)
-    ranges = st.session_state.get('selected_ranges', [])
-    area_label = ranges[0] if ranges else ''
-    range_label = f'共 {len(ranges)} 区' if len(ranges) > 1 else ''
-    date_label = ''
-    m_date = _re.search(r'(\d{8})', fc)
-    if m_date:
-        date_label = m_date.group(1)
-    render_data_summary_overlay(n=n, area_label=area_label,
-                                 range_label=range_label, date_label=date_label)
+        st.session_state['current_df'] = df_display
+        st.session_state['_total_rows'] = total_rows
+        st.session_state['current_file_choice'] = fc
+        st.session_state['data_loaded'] = True
+        st.toast('[OK] 数据加载成功')
+        st.session_state['_load_triggered'] = False
 
-    st_folium(m, width=None, height=700, key='geojson_map')
+        with st.spinner('渲染地图中...'):
+            center = st.session_state.get('_map_center', None)
+            zoom = st.session_state.get('_map_zoom', None)
+            m = create_base_map(data['lats'], data['lons'],
+                                show_labels=st.session_state.get('show_labels', False),
+                                center=center, zoom_start=zoom)
+
+            # 叠加范围边界
+            _add_boundary_if_exists(m)
+
+            # ── 叠加可见图层 ──
+            layers = st.session_state.get('layers', [])
+            for lyr in layers:
+                if not lyr.get('visible', True):
+                    continue
+                fp_layer = lyr.get('file_path', '')
+                if not fp_layer or not os.path.exists(fp_layer):
+                    continue
+                # 跳过当前已加载的主数据（避免重复渲染）
+                if fp_layer == fp:
+                    continue
+                layer_data = load_emotion_data(fp_layer)
+                if layer_data:
+                    add_point_layer(m, layer_data['lats'], layer_data['lons'],
+                                   layer_data['scores'],
+                                   props_list=layer_data['df'].to_dict('records'))
+
+            geo = data.get('geo_data')
+            if geo:
+                add_point_layer(m, data['lats'], data['lons'], data['scores'],
+                               props_list=geo['features'])
+            else:
+                add_point_layer(m, data['lats'], data['lons'], data['scores'],
+                               props_list=df_display.to_dict('records'))
+
+        # ── 数据摘要浮层（左上角）──
+        n = len(df_display)
+        ranges = st.session_state.get('selected_ranges', [])
+        area_label = ranges[0] if ranges else ''
+        range_label = f'共 {len(ranges)} 区' if len(ranges) > 1 else ''
+        date_label = ''
+        m_date = _re.search(r'(\d{8})', fc)
+        if m_date:
+            date_label = m_date.group(1)
+        render_data_summary_overlay(n=n, area_label=area_label,
+                                     range_label=range_label, date_label=date_label)
+
+        map_state = st_folium(m, width=None, height=700, key='geojson_map')
+        if map_state and map_state.get('last_center'):
+            st.session_state['_map_center'] = [map_state['last_center']['lat'], map_state['last_center']['lng']]
+            st.session_state['_map_zoom'] = map_state.get('last_zoom', DEFAULT_ZOOM)
+
+    except Exception as e:
+        trace_error("MOD_APP.F_002", f'主流程数据加载异常: {str(e)[:200]}')
+        st.session_state['_data_crashed'] = True
+        st.session_state['file_path'] = ''
+        st.session_state['current_df'] = None
+        st.error(f'加载失败: {e}。数据已清除，请重新选择文件。')
+        st.rerun()
+
+# ── 追踪 ID 注册表 ──
+register_track_id("MOD_APP.F_001", "分析控制台子页面（?page=console）")
+register_track_id("MOD_APP.F_002", "主应用入口（地图浏览器 + 路由分发）")
+register_track_id("MOD_APP.F_003", "数据治理弹窗（L0→L1 治理管道）")
+register_track_id("MOD_APP.F_004", "注册/更新图层到 session_state")
+register_track_id("MOD_APP.F_005", "数据源选择弹窗")
+register_track_id("MOD_APP.F_006", "数据概览弹窗")
+register_track_id("MOD_APP.F_007", "数据表格弹窗")
+register_track_id("MOD_APP.F_008", "设置与调试弹窗")
+register_track_id("MOD_APP.F_009", "分析范围选择弹窗")
+register_track_id("MOD_APP.F_010", "图层控制弹窗")
+register_track_id("MOD_APP.F_011", "情绪分析弹窗")
 
 
 if __name__ == '__main__':

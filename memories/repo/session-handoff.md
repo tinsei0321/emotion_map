@@ -22,8 +22,8 @@
 - `text` 列优先于 `comments`（L1 脱敏后 comments 为空）
 
 ### 文件状态
-- `DATA/processed/` → `xiaohongshu_20260612_规划范围_L1_result_csv.csv`（20 列）
-- `DATA/raw/` → `xiaohongshu_20260612_规划范围_raw.csv`（表头已更新）
+- `DATA/processed/` → `simulated_20260613_规划范围_L1_result_csv.csv`（20 列）
+- `DATA/raw/` → `simulated_20260613_100k_raw.csv`（10 万条模拟数据）
 
 ### 待办 06-14
 1. 数据爬取方案最终确定

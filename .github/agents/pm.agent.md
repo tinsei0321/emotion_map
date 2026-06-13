@@ -29,6 +29,7 @@ agents: [developer, debugger, reviewer, tester, docs, ops, designer, design-revi
 - 代码任务的标准流程：developer → reviewer → (有问题则 debugger → developer) → tester → docs
 - 遇到架构/规范疑问时，先读 `/memories/repo/architecture-pattern.md`
 - 每次完成任务后，在 todo.md 的"开发日志"中记录关键进展
+- **确保所有新增代码遵守决策追踪规范（铁律 9/10），Reviewer 审查时必须验证追踪点完整性**
 
 ## 输出格式
 完成委派后，向用户汇报：

@@ -6,7 +6,7 @@
 |------|------|------|
 | 数据层 | `data/` | L0(原始爬取) / L1~L4(分析结果)，格式 csv/geojson |
 | 数据采集层 | `SCRAPER/` | 多源数据爬取（大众点评/美团/小红书/微博/12345），基于 Scrapy，输出到 data/raw/ |
-| 基础设施层 | `core/` | config / data_loader / export |
+| 基础设施层 | `core/` | config / data_loader / export / **tracker(决策追踪)** |
 | 数据分析引擎层 | `SCRIPT/` | L1(数据治理)→L2(SnowNLP)→L3(LLM/溯佰科)→L4(多维归因) 四级管道 |
 | 空间分析引擎层 | `core/` | 底图渲染 + 空间可视化(点状/热力图) + 空间分析(热点/缓冲区/聚合) |
 | UI 组件层 | `core/` | Streamlit 可复用组件（HUD/弹窗/图例/CSS） |
@@ -43,6 +43,7 @@
 | `SCRAPER/data_scraper.py` | 多源数据爬取统一入口（EmotionScraper 类 + CLI） |
 | `SCRAPER/spiders/` | Scrapy Spider 目录（首个：xiaohongshu_spider） |
 | `SCRAPER/settings.py` | Scrapy 全局配置 |
+| `core/tracker.py` | 决策追踪系统（装饰器/上下文管理器/日志/ID注册表） |
 | `launch.py` | 一键启动 Streamlit |
 
 ## 关键概念
@@ -59,8 +60,79 @@
   - 保留：标题/正文（已公开发布的内容）、发布时间、点赞数、来源平台、子区域标签
 
 ## Agent 协作体系
-- 项目使用 6 个专用 Agent 协作开发，定义在 `.github/agents/*.agent.md`
+- 项目使用 11 个专用 Agent 协作开发，定义在 `.github/agents/*.agent.md`
 - 全局协作规则见根目录 `AGENTS.md`
 - 标准流程：PM 分配 → Developer 编码 → Reviewer 审查 → Tester 测试 → Docs 文档 → PM 闭环
+- 数据采集/治理：PM → Data Agent (L0采集+L1治理) → Developer → Reviewer → Tester
 - 遇到 Bug 时由 Debugger 诊断，不改代码，输出修复方案交给 Developer
 - 所有 Agent 启动时自动加载本文件了解架构规范
+
+## 决策追踪系统 (Decision Tracking System)
+
+### 目的
+将 bug 定位从 O(n) 全量代码搜索降为 O(1) 决策 ID 精准跳转。
+
+### 核心概念
+每个功能/行为/代码块分配唯一决策 ID，运行时自动记录追踪日志：
+
+| ID 层级 | 格式 | 含义 | 示例 |
+|---------|------|------|------|
+| 模块级 | `MOD_XXX` | 整个 .py 文件 | `MOD_GOV` |
+| 函数级 | `MOD_XXX.F_NNN` | 某个函数 | `MOD_GOV.F_001` |
+| 决策点 | `MOD_XXX.D_NNN` | if/else/循环分支 | `MOD_GOV.D_003` |
+
+### 运行时日志格式
+```
+[TRACE] 14:30:01 | MOD_GOV.F_001 | enter | in: len=24
+[TRACE] 14:30:01 | MOD_GOV.D_003 | enter | in: n=24
+[TRACE] 14:30:01 | MOD_GOV.D_003 | exit | out: n=21 | 12.4ms
+[TRACE] 14:30:01 | MOD_GOV.D_003 | [ERR] | KeyError: 'lon'
+```
+
+### 使用方式
+
+```python
+from core.tracker import track, TrackContext, trace_log, trace_error, register_track_id
+
+# 注册 ID
+register_track_id("MOD_GOV.F_001", "坐标转换入口")
+
+# 函数追踪
+@track("MOD_GOV.F_001", track_args=True)
+def transform_coordinates(df):
+    ...
+
+# 决策点追踪
+with TrackContext("MOD_GOV.D_003", input_n=24):
+    df = do_filter(df)
+
+# 手动埋点
+trace_log("MOD_GOV.D_005", detail=f"filtered {n} rows")
+
+# 异常追踪
+except Exception as e:
+    trace_error("MOD_GOV.F_001", "transform failed", exc=e)
+```
+
+### 模块 ID 分配表
+
+| 模块 ID | 文件 |
+|---------|------|
+| `MOD_GOV` | `SCRIPT/data_governance.py` |
+| `MOD_ANA` | `SCRIPT/emotion_analysis_v1.py` |
+| `MOD_REL` | `SCRIPT/relevance_filter.py` |
+| `MOD_RUN` | `SCRIPT/run_analysis.py` |
+| `MOD_LOADER` | `core/data_loader.py` |
+| `MOD_MAP` | `core/map_engine.py` |
+| `MOD_TRANSFORM` | `core/coord_transform.py` |
+| `MOD_RANGE` | `core/range_selector.py` |
+| `MOD_EXPORT` | `core/export.py` |
+| `MOD_UI` | `core/ui_components.py` |
+| `MOD_APP` | `apps/app_main.py` |
+| `MOD_SCRAPER` | `SCRAPER/spiders/` |
+| `MOD_TRACKER` | `core/tracker.py` |
+
+### Debug 工作流
+```
+报错 → 看 [TRACE] 日志 → 定位出错决策 ID → grep 跳转代码 → 精准修复
+```

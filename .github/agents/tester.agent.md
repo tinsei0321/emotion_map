@@ -43,6 +43,7 @@ agents: [debugger]
 - [ ] 输出 GeoJSON 格式正确
 - [ ] Streamlit 页面可正常加载（地图、控制台子页面）
 - [ ] GBK 编码无崩溃
+- [ ] **[TRACE] 日志正常输出（无 [ERR] 标记，追踪链完整）**
 
 ## 输出格式
 ```markdown

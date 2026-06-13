@@ -23,6 +23,7 @@ import math
 from typing import Tuple, List, Optional
 import pandas as pd
 
+from core.tracker import track, TrackContext, trace_log, trace_error, register_track_id
 
 # ── 宜昌标准 ──
 TARGET_CRS = 'CGCS2000_3_Degree_GK_CM_111E'
@@ -63,6 +64,7 @@ def wgs84_to_gcj02(lon: float, lat: float) -> Tuple[float, float]:
     return lon + dlon, lat + dlat
 
 
+@track("MOD_TRANSFORM.F_001", track_args=False)
 def gcj02_to_wgs84(lon: float, lat: float) -> Tuple[float, float]:
     """GCJ-02（火星坐标）→ WGS84（精确迭代法）"""
     if _out_of_china(lon, lat):
@@ -76,6 +78,7 @@ def gcj02_to_wgs84(lon: float, lat: float) -> Tuple[float, float]:
     return wgs_lon, wgs_lat
 
 
+@track("MOD_TRANSFORM.F_002", track_args=False)
 def bd09_to_wgs84(lon: float, lat: float) -> Tuple[float, float]:
     """BD-09（百度坐标）→ WGS84"""
     # BD-09 → GCJ-02
@@ -89,6 +92,7 @@ def bd09_to_wgs84(lon: float, lat: float) -> Tuple[float, float]:
     return gcj02_to_wgs84(gcj_lon, gcj_lat)
 
 
+@track("MOD_TRANSFORM.F_003", track_args=False)
 def wgs84_to_bd09(lon: float, lat: float) -> Tuple[float, float]:
     """WGS84 → BD-09（百度坐标）"""
     gcj_lon, gcj_lat = wgs84_to_gcj02(lon, lat)
@@ -121,6 +125,7 @@ PLATFORM_CRS = {
 
 # ── 批量转换 ──
 
+@track("MOD_TRANSFORM.F_004", track_args=False)
 def convert_coords(lon: float, lat: float, source_crs: str,
                    target_crs: str = TARGET_CRS) -> Tuple[float, float]:
     """单点坐标转换。source_crs 支持 'WGS84'/'GCJ-02'/'BD-09'。"""
@@ -148,6 +153,7 @@ def convert_coords(lon: float, lat: float, source_crs: str,
     return lon, lat  # fallback
 
 
+@track("MOD_TRANSFORM.F_005", track_args=True)
 def normalize_dataframe_coords(df: pd.DataFrame, lon_col: str = 'lon_gcj02',
                                 lat_col: str = 'lat_gcj02',
                                 platform: str = 'unknown') -> pd.DataFrame:
@@ -189,6 +195,7 @@ def normalize_dataframe_coords(df: pd.DataFrame, lon_col: str = 'lon_gcj02',
     return df
 
 
+@track("MOD_TRANSFORM.F_006", track_args=False)
 def get_crs_info(platform: str) -> dict:
     """获取指定平台的坐标系信息。"""
     crs = PLATFORM_CRS.get(platform, PLATFORM_CRS['unknown'])
@@ -202,3 +209,11 @@ def get_crs_info(platform: str) -> dict:
         'needs_conversion': needs_conv,
         'note': note,
     }
+
+# ── 追踪 ID 注册表 ──
+register_track_id("MOD_TRANSFORM.F_001", "GCJ-02 → WGS84 坐标转换（精确迭代）")
+register_track_id("MOD_TRANSFORM.F_002", "BD-09 → WGS84 坐标转换")
+register_track_id("MOD_TRANSFORM.F_003", "WGS84 → BD-09 坐标转换")
+register_track_id("MOD_TRANSFORM.F_004", "单点坐标转换入口（支持多源坐标系）")
+register_track_id("MOD_TRANSFORM.F_005", "DataFrame 批量坐标标准化")
+register_track_id("MOD_TRANSFORM.F_006", "获取平台坐标系信息")

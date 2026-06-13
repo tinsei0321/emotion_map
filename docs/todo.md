@@ -48,48 +48,68 @@
 | # | 状态 | 任务 | 涉及文件 | 备注 |
 |---|------|------|----------|------|
 | 1 | ✅ | 规划范围真实数据落图（L1治理+坐标转换+范围过滤管道） | `SCRIPT/data_governance.py`（新建）, `core/coord_transform.py`, `core/range_selector.py` | 边界=规划范围(LineString→buffer Polygon)；管道已就绪，24条占位坐标全部被过滤（预期行为），待真实坐标数据后完整验证 |
-| 2 | ⬜ | 数据爬取方案最终确定 | 调研文档 | 登录 API vs 购买数据 |
-| 3 | ⬜ | 空间分析引擎 MVP 开始编码 | `core/map_engine.py` | 缓冲区分析 + 行政单元聚合 |
+| 2 | ✅ | Data Agent 创建 + L0→L1 相关性筛选模块 | `SCRIPT/relevance_filter.py`（新建）, `data_governance.py`（重构 v1.1）, `.github/agents/data.agent.md`, `AGENTS.md` | 两层漏斗：关键词粗筛 + DeepSeek LLM 精分类；Agent 整合入全局调度 |
+| 3 | ➡ | L1 治理 + L2 分析 端到端验证 | `data_governance.py`, `emotion_analysis_v1.py`, `DATA/` | 数据爬取暂时放弃，MVP 专注 L0→L2 管线跑通，确保各层数据有价值 |
+| 4 | ✅ | 情绪点显示样式优化（颜色/光晕/描边） | `core/config.py`, `core/map_engine.py`, `core/ui_components.py` | Designer 重设计：双层光晕 + Material色板 + Neutral改琥珀色 |
+| 5 | ✅ | Design Token 体系搭建（设计令牌系统） | `design/tokens.json`, `design/generate_css.py`, `design/tokens.css`, `design/tokens.py` | Designer 创建完整设计体系：7大类150+token + 自动生成器 + ui_components.py 全部 Token 化 |
+| 6 | ✅ | Token 双模式 (Light/Dark) + 设计系统展示页 | `design/tokens.json`(重构), `design/generate_css.py`(重写), `design/tokens.css`, `design/tokens.py`, `core/ui_components.py`, `apps/app_design_system.py`(新建) | Dark/Light 镜像双主题 + prefers-color-scheme 自动跟随 + [data-theme] 手动切换 + 独立 Kitchen Sink 展示页 |
+| 7 | ✅ | 主应用集成新 Design Token（低饱和色卡+CSS变量） | `apps/app_main.py`, `design/tokens.css`, `design/tokens.py` | 添加 inject_theme_css() 调用 + 重新生成 Token CSS/Python |
+| 8 | ✅ | 修复注记开关 [LB] 导致底图偏移/复位 | `apps/app_main.py` | st_folium() 返回值保存 last_center/last_zoom 到 session_state，rerun 后视图保持 |
+| 7 | ✅ | 决策追踪系统 (Decision Tracking System) | `core/tracker.py`(新建), `.github/agents/debugger.agent.md`, `developer.agent.md`, `reviewer.agent.md`, `AGENTS.md`, `docs/architecture-pattern.md`, `docs/decisions.md` | 决策 ID + 行为 + Log + Tracking 体系；bug 定位 O(n)→O(1)；全局配套更新 |
 
 > 💡 标准启动指令：`@pm 开始处理 YYYY-MM-DD 的任务 N：任务名称`
 
+> ⚠️ 策略调整 (2026-06-13)：数据爬取暂时放弃（后期购买稳定数据），MVP 焦点转为 **L1 数据治理 + L2 数据分析 端到端跑通**，确保每一层产出的数据都有实际价值。
+
 ### 📝 开发日志
 
-**关键字**：L1治理, 坐标转换, 规划范围, LineString, 管道, 全局重命名, 文件清理, L0-L4字段规范
+**关键字**：Data Agent, 相关性筛选, DeepSeek LLM, 两层漏斗, L0→L1 治理重构, 人民城市, 情绪点样式重设计, Design Token 体系, **决策追踪系统, Decision Tracking, Trace ID**
 
 #### 做了什么
-- 新建 `SCRIPT/data_governance.py` L1 数据治理管道
-- 规划范围 LineString buffer 100m → Polygon 范围过滤 + L1 全量保存
-- 全局替换：6 个 `.py` 文件"西陵区"→"规划范围"
-- **L0-L4 字段规范化重构（5 项）**：
-  1. 坐标重命名：`lon`→`lon_gcj02`、`lon_wgs84`→`lon`（WGS84 成规范坐标，GeoJSON 语义正确）
-  2. `id_e` 行标识从 L2 提升到 L1 生成
-  3. 删除冗余 `polarity_ternary` 列（三级可从五级推导）
-  4. 新增 `scope`（边界名称）+ `in_scope`（范围过滤标记）列
-  5. `comments` 列置空保留而非删除，`run_pipeline` 文本优先级改为 `text` > `comments`
-- 修复阻断性 bug：comments 置空导致 L2 全 Neutral（文本优先级冲突）
+- 创建新 Agent：📡 数据管家（Data Agent），定义在 `.github/agents/data.agent.md`
+  - 职责：L0 多源数据采集 + L1 数据治理（坐标转换/范围过滤/相关性筛选/脱敏/字段规范化）
+  - 可调用：developer, gis-developer
+  - 已整合入 AGENTS.md 全局调度体系（Agent 从 10 → 11）
+- 新建 `SCRIPT/relevance_filter.py` L0→L1 相关性筛选模块（~330 行）
+  - 第一层：关键词粗筛（30 个广告/灌水关键词），旅游/美食/探店全部放行
+  - 第二层：DeepSeek LLM 精分类，判断市民城市感受 → 映射五要素（设施/环境/服务/文化/事件）
+  - 批量并发（ThreadPoolExecutor，每批 5 条），3 次指数退避重试
+  - 新增 L1 字段：relevance, relevance_dimensions, relevance_emotion, relevance_urban_value, relevance_summary, filter_layer
+- 重构 `SCRIPT/data_governance.py` v1.0 → v1.1
+  - 管线从 4 步扩展为 5 步：坐标转换 → 范围过滤 → **相关性筛选（新）** → 脱敏+导出 → L2 分析
+  - 脱敏时机后移（LLM 需要原始文本做分类）
+  - 无 API Key 时优雅降级跳过
+- 全部走完整 SOP：Developer → Reviewer（发现 1 个 bug + 1 个优化）→ Developer 修复 → Reviewer 复审 → Tester 测试（17/17 用例通过）
+- Designer 重设计情绪点显示样式：双层光晕（外层 radius=13 opacity=0.12 + 内层 radius=7 opacity=0.92 stroke=#fff）+ Neutral 从灰色改为亮琥珀色 #ffd740 → 卫星底图上可见性大幅提升
+- Designer 创建完整 Design Token 体系：7 大类 150+ token（color/typography/spacing/radius/shadow/effect/component），含 JSON 单源 + CSS/Python 自动生成器 + ui_components.py 全部 Token 化
+- Designer 扩展 Token 体系为 Light/Dark 双模式：tokens.json 增加 theme 层级，Dark/Light 镜像对称（深色半透明底↔浅色半透明底），CSS 支持 prefers-color-scheme 自动跟随 + [data-theme] 手动切换
+- Designer 创建设计系统展示页 `apps/app_design_system.py`：独立 Streamlit Kitchen Sink，含主题切换/色板/字体/间距/圆角/阴影/组件全展示
+- **PM 搭建决策追踪系统 (Decision Tracking System)**：
+  - 新建 `core/tracker.py`（~280 行）：装饰器 `@track()` / 上下文管理器 `TrackContext` / 快捷函数 `trace_*()` / 全局注册表
+  - 更新 debugger.agent.md：新诊断流程基于 [TRACE] 日志 + 决策 ID 精准定位
+  - 更新 developer.agent.md：新增决策追踪编码标准 + 模块 ID 分配表 + 埋点规则
+  - 更新 reviewer.agent.md：新增追踪点完整性审查清单
+  - 更新 AGENTS.md：铁律 9/10 + 决策追踪系统说明 + 共享知识库
+  - 更新 docs/architecture-pattern.md：增加决策追踪系统章节
+  - 更新 docs/decisions.md：ADR-008 决策追踪系统
+  - **渐进式埋点完成（13文件55追踪ID）**：全部 core/ + SCRIPT/ + apps/ + SCRAPER/ 模块已添加 @track() 装饰器和 register_track_id() 注册
+
+#### 关键设计决策
+- **相关性筛选理念**：从"是否属于城市规划领域"转变为"感知市民对城市的感受与需求"，践行"人民城市"理念
+- **宽容原则**：旅游打卡、美食探店、街区体验全部保留（城市活力信号），不确定时倾向于保留
+- **LLM 选型**：DeepSeek-V3（已有 API Key + 推理能力强 + 中文理解好）
+- **两层漏斗**：先关键词快筛（免费），再 LLM 精分类（API），减少 API 调用量
+- **决策追踪系统**：自研 `core/tracker.py`（~280 行），用决策 ID（MOD_XXX.F_NNN / D_NNN）装饰器 + 上下文管理器实现 O(1) 精准 bug 定位；全员遵守铁律 9/10 埋点规范
 
 #### 踩坑 & 收获
-- 规划范围 Shapefile 是 LineString，需 buffer 后使用
-- `comments` 置空 ≠ 删除 — 列存在但为空会导致 `run_pipeline` 优先取空字符串，需颠倒文本列优先级
-- 坐标列重命名影响面广（6 个文件），需同步更新 data_loader/app_main 的列检测列表保持向后兼容
-- _polarity_to_ternary 死代码残留，后续应清理
-
-#### 碎片想法
-- 管道已就绪，等爬虫产出真实坐标后可直接跑通全流程
-- L3/L4 字段框架已预留，字段语义与 L2 连贯一致
+- Reviewer 发现 relevance_summary 在 error 分支被覆盖 → 详细字段填充移入 else 互斥分支
+- 并发累加计数器是代码异味 → 改为批次完成后从 DataFrame 列值统计
+- 情绪点 Neutral 用灰色在天地图卫星底图上完全不可见 → Designer 改用亮琥珀色 #ffd740（绿→黄→红灯语义），双层光晕（外层 radius=13 opacity=0.12 + 内层 radius=7 opacity=0.92 stroke=#fff）大幅提升可见性
 
 #### 🔜 次日计划 (2026-06-14)
-- 数据爬取方案最终确定（登录 API vs 购买数据）
-- 空间分析引擎 MVP 开始编码
-
-#### 碎片想法
-- 管道已就绪，等爬虫产出真实坐标后可直接跑通全流程
-- 当前 LineString 边界不够理想，后续建议替换为 Polygon 类型边界
-
-#### 🔜 次日计划 (2026-06-14)
-- 数据爬取方案最终确定（登录 API vs 购买数据）
-- 空间分析引擎 MVP 开始编码
+- L0→L1→L2 端到端管线验证（准备有意义的测试数据 + 跑通全流程）
+- L2 SnowNLP 分析结果质量评估（极性分布合理性、关键词有效性）
+- 优化 L2 输出：情绪关键词提取质量 + 可视化落图
 
 ---
 

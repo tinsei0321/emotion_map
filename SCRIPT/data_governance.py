@@ -1,13 +1,22 @@
 """
-数据治理管道 v1.0 — Data Governance Pipeline (L1)
+数据治理管道 v2.0 — Data Governance Pipeline (L1)
 ==================================================
-L0(原始爬取) → L1(数据治理): 坐标转换 + 范围过滤 + 数据脱敏 → L2(SnowNLP分析)
+L0(原始爬取) -> 批量LLM筛选+分类 -> L1(治理后城市情绪DATA) -> L2(SnowNLP分析)
 
-步骤:
-  1. 加载原始数据 + 坐标转换 (GCJ-02 → WGS84 → CGCS2000 EPSG:4546)
-  2. 范围过滤 (加载规划范围边界 LineString → buffer 100m → Polygon → point-in-polygon)
-  3. 数据脱敏 + 导出 L1
-  4. 调用 L2 SnowNLP 分析
+新流程 (v2.0):
+  1. 加载原始数据 + 坐标转换 (GCJ-02 -> WGS84 -> CGCS2000 EPSG:4546)
+  2. 批量 DeepSeek LLM 一次完成: relevance? + 五要素 + 情绪 + 地点 + 城市价值
+  3. 筛选 relevant + has_location
+  4. 字段整理 + 脱敏
+  5. 导出 L1 CSV
+  6. 调用 L2 SnowNLP 分析
+
+不再需要关键词层 (keyword_prefilter) 作为独立过滤步骤。
+LLM 批量处理足够快且更准。
+
+命名规范:
+  L1 输出: {name}_L1_result_csv.csv (仅 relevant + has_location 的有效城市情绪数据)
+  L2 输出: {name}_L2_result_csv.csv (SnowNLP 分析结果)
 
 用法:
     python SCRIPT/data_governance.py
@@ -47,6 +56,7 @@ except Exception:
 
 from core.coord_transform import gcj02_to_wgs84
 from core.export import export_to_csv
+from core.tracker import track, TrackContext, trace_log, trace_error, register_track_id
 from SCRIPT.emotion_analysis_v1 import run_analysis_task
 
 # ═══════════════════════════════════════════════════════════
@@ -59,23 +69,42 @@ PROCESSED_DIR = os.path.join(PROJECT_ROOT, 'DATA', 'processed')
 BOUNDARY_DIR = os.path.join(PROJECT_ROOT, 'DATA', 'boundaries', '规划范围')
 
 # 输入文件
-RAW_CSV = os.path.join(RAW_DIR, 'xiaohongshu_20260612_规划范围_raw.csv')
-BOUNDARY_SHP = os.path.join(BOUNDARY_DIR, '规划范围.shp')
+RAW_CSV = os.path.join(RAW_DIR, 'simulated_20260613_100k_raw.csv')
 
 # 输出命名
-L1_OUTPUT_NAME = 'xiaohongshu_20260612_规划范围'
+L1_OUTPUT_NAME = 'simulated_20260613_规划范围'
 L1_CSV_OUTPUT = os.path.join(PROCESSED_DIR, f'{L1_OUTPUT_NAME}_L1_result_csv.csv')
-# 过滤后数据（供 L2 分析使用，不同于 L1 全量数据）
-L2_INPUT_CSV = os.path.join(PROCESSED_DIR, f'{L1_OUTPUT_NAME}_L2_input_csv.csv')
 
-# 范围 buffer 距离（米，在投影坐标系下）
-BUFFER_DISTANCE_M = 100
+BUFFER_DISTANCE_M = 3000  # [DEPRECATED v2.0] LineString buffer距离，v2.0不再调用此函数
+
+# ═══════════════════════════════════════════════════════════
+# L1 字段定义 (v2.0)
+# ═══════════════════════════════════════════════════════════
+
+L1_COLUMNS = [
+    # 标识
+    'id_e',
+    # 来源
+    'source', 'url', 'crawl_time', 'publish_time',
+    # 内容
+    'title', 'text', 'text_length',
+    # 坐标
+    'lon', 'lat', 'x_cgcs2000', 'y_cgcs2000',
+    # 空间
+    'scope', 'location_mentioned', 'has_location',
+    # 相关性（LLM）
+    'relevance', 'relevance_category', 'primary_emotion',
+    'emotion_intensity', 'urban_value', 'ai_summary', 'ai_confidence',
+    # 社交
+    'like_count', 'comment_count', 'tags',
+]
 
 
 # ═══════════════════════════════════════════════════════════
 # 步骤 1: 加载原始数据 + 坐标转换
 # ═══════════════════════════════════════════════════════════
 
+@track("MOD_GOV.F_001", track_args=True)
 def step1_load_and_transform(csv_path: str) -> pd.DataFrame:
     """
     加载原始 CSV，完成 GCJ-02 → WGS84 → CGCS2000 EPSG:4546 坐标转换。
@@ -165,11 +194,12 @@ def step1_load_and_transform(csv_path: str) -> pd.DataFrame:
 # 步骤 2: 范围过滤
 # ═══════════════════════════════════════════════════════════
 
+@track("MOD_GOV.F_002", track_args=True)
 def step2_filter_by_boundary(df: pd.DataFrame, shp_path: str) -> pd.DataFrame:
     """
-    加载规划范围边界，buffer 生成 Polygon，用 WGS84 坐标过滤。
+    [DEPRECATED v2.0] 加载规划范围边界，buffer 生成 Polygon，用 WGS84 坐标过滤。
 
-    边界为 LineString（EPSG:4546），需 buffer 100m 转为 Polygon，
+    边界为 LineString（EPSG:4546），需 buffer 3000m 转为 Polygon，
     再转为 EPSG:4326 与数据点的 WGS84 坐标做 point-in-polygon 判断。
 
     Returns:
@@ -211,7 +241,7 @@ def step2_filter_by_boundary(df: pd.DataFrame, shp_path: str) -> pd.DataFrame:
             f'边界坐标系不是投影坐标系: {gdf_boundary.crs}。buffer 需要米制投影坐标系。'
         )
 
-    # ── Buffer 100m 生成 Polygon（在原投影坐标系下操作，单位=米）──
+    # ── Buffer 3000m 生成 Polygon（在原投影坐标系下操作，单位=米）──
     _safe_print(f'[TRANSFORM] LineString → Polygon (buffer={BUFFER_DISTANCE_M}m) ...')
     try:
         gdf_boundary['geometry'] = gdf_boundary.geometry.buffer(BUFFER_DISTANCE_M)
@@ -259,9 +289,10 @@ def step2_filter_by_boundary(df: pd.DataFrame, shp_path: str) -> pd.DataFrame:
 # 步骤 3: 数据脱敏 + 导出 L1
 # ═══════════════════════════════════════════════════════════
 
+@track("MOD_GOV.F_003", track_args=False)
 def anonymize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """
-    数据脱敏处理：清空敏感列（comments）。
+    [DEPRECATED v2.0] 数据脱敏处理：清空敏感列（comments）。
 
     脱敏规则:
       - 清空 'comments' 列（可能包含其他用户评论中的个人身份信息）
@@ -288,9 +319,10 @@ def anonymize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+@track("MOD_GOV.F_004", track_args=True)
 def step3_export_filtered(df: pd.DataFrame, output_path: str) -> str:
     """
-    导出过滤后数据 CSV（脱敏已在步骤 1 后完成，此处仅导出）。
+    [DEPRECATED v2.0] 导出过滤后数据 CSV（脱敏已在步骤 1 后完成，此处仅导出）。
 
     Returns:
         导出的 CSV 文件路径
@@ -305,6 +337,7 @@ def step3_export_filtered(df: pd.DataFrame, output_path: str) -> str:
 # 步骤 4: 调用 L2 SnowNLP 分析
 # ═══════════════════════════════════════════════════════════
 
+@track("MOD_GOV.F_005", track_args=True)
 def step4_run_l2_analysis(l1_csv_path: str, output_name: str) -> dict:
     """
     调用 emotion_analysis_v1.run_analysis_task() 执行 L2 SnowNLP 分析。
@@ -343,93 +376,217 @@ def step4_run_l2_analysis(l1_csv_path: str, output_name: str) -> dict:
 
 
 # ═══════════════════════════════════════════════════════════
-# 主流程
+# 主流程 (v2.0)
 # ═══════════════════════════════════════════════════════════
 
+@track("MOD_GOV.F_006", track_args=False)
 def main():
-    """L1 数据治理管道主入口。
+    """L1 数据治理管道主入口 (v2.0)。
 
     流程:
-      1. 加载原始数据 + 坐标转换 → 脱敏
-      2. 范围过滤（基于规划范围边界 Polygon，添加 in_scope 列）
-      3. 导出 L1（含 in_scope 标记的全量数据）
-      4. 导出过滤后数据 + L2 SnowNLP 分析（仅当过滤后有数据时执行）
+      1. 加载原始数据 + 坐标转换
+      2. 批量 DeepSeek LLM: relevance? + 五要素 + 情绪 + 地点 + 城市价值
+      3. 筛选 relevant + has_location
+      4. 字段整理
+      5. 数据脱敏
+      6. 导出 L1 CSV
+      7. L2 SnowNLP 分析
     """
     _safe_print('=' * 60)
-    _safe_print('  数据治理管道 v1.0 — L0 → L1 → L2')
+    _safe_print('  数据治理管道 v2.0 — L0 -> L1 -> L2')
+    _safe_print('  (批量 LLM 一次完成筛选+分类)')
     _safe_print('=' * 60)
 
-    # ── 步骤 1: 加载原始数据 + 坐标转换 + 脱敏 ──
+    # ── 步骤 1: 加载原始数据 + 坐标转换 ──
     _safe_print('\n' + '-' * 40)
-    _safe_print('[STEP 1/4] 加载原始数据 + 坐标转换')
+    _safe_print('[STEP 1/7] 加载原始数据 + 坐标转换')
     _safe_print('-' * 40)
     try:
         df = step1_load_and_transform(RAW_CSV)
     except Exception as e:
+        trace_error("MOD_GOV.F_006", "step1 failed", exc=e)
         _safe_print(f'[ERR] 步骤 1 失败: {e}')
         sys.exit(1)
 
-    # ── 步骤 1 后立即脱敏 ──
+    # ── 步骤 2: 批量 LLM 筛选+分类 ──
     _safe_print('\n' + '-' * 40)
-    _safe_print('[ANONYMIZE] 数据脱敏')
+    _safe_print('[STEP 2/7] 批量 LLM 筛选+分类 (DeepSeek)')
     _safe_print('-' * 40)
-    df = anonymize_dataframe(df)
 
-    # ── 步骤 2: 范围过滤（先过滤以获取 in_scope 列）──
-    _safe_print('\n' + '-' * 40)
-    _safe_print('[STEP 2/4] 范围过滤')
-    _safe_print('-' * 40)
-    try:
-        df_filtered = step2_filter_by_boundary(df, BOUNDARY_SHP)
-    except Exception as e:
-        _safe_print(f'[ERR] 步骤 2 失败: {e}')
+    api_key = os.environ.get('DEEPSEEK_API_KEY', '')
+    if not api_key:
+        _safe_print('[ERR] 需要设置 DEEPSEEK_API_KEY 环境变量')
+        _safe_print('[ERR] PowerShell: $env:DEEPSEEK_API_KEY="sk-xxx"')
         sys.exit(1)
 
-    # ── 步骤 2 后导出 L1（含 in_scope 标记的全量数据）──
-    _safe_print('\n' + '-' * 40)
-    _safe_print('[EXPORT L1] 导出 L1 全量数据（含 in_scope 标记）')
-    _safe_print('-' * 40)
-    export_to_csv(df, L1_CSV_OUTPUT)
-    _safe_print(f'[OK] L1 全量数据已保存: {L1_CSV_OUTPUT} ({len(df)} 条)')
+    # 准备发送给 LLM 的数据
+    texts = []
+    skipped_empty = 0
+    for _, row in df.iterrows():
+        title = str(row.get('title', '') or '').strip()
+        text = str(row.get('text', '') or '').strip()
+        content = f"{title} {text}".strip()
+        if len(content) < 3:
+            skipped_empty += 1
+            continue
+        texts.append({
+            'id_e': row['id_e'],
+            'text': text,
+            'title': title,
+            'source': str(row.get('source', '') or ''),
+        })
 
-    if df_filtered.empty:
-        _safe_print('[WARN] 过滤后无数据落在规划范围内。')
-        _safe_print('[WARN] 当前所有数据点坐标均为占位值 (111.295, 30.71 GCJ-02)，')
-        _safe_print('[WARN] 不在规划范围 LineString 的 100m buffer 区域内，属预期行为。')
-        _safe_print('[WARN] L2 分析跳过（无过滤后数据）。')
+    if skipped_empty > 0:
+        _safe_print(f'[WARN] 跳过 {skipped_empty} 条空内容文本')
+
+    _safe_print(f'[LOAD] 准备发送 {len(texts)} 条文本到 LLM (batch_size=50)')
+
+    # 调用批量 LLM
+    from SCRIPT.relevance_filter import llm_classify_batch
+
+    def _progress_callback(current, total, message):
+        pct = min(100, round(current / total * 100, 1))
+        _safe_print(f'  [LOAD] {message} | {current}/{total} ({pct}%)')
+
+    try:
+        with TrackContext("MOD_GOV.D_004", total_texts=len(texts)):
+            results = llm_classify_batch(
+                texts,
+                api_key=api_key,
+                batch_size=50,
+                progress_callback=_progress_callback,
+            )
+        trace_log("MOD_GOV.D_004", detail=f"LLM batch complete, got {len(results)} results")
+    except Exception as e:
+        trace_error("MOD_GOV.F_006", "batch LLM classify failed", exc=e)
+        _safe_print(f'[ERR] 批量 LLM 分类失败: {e}')
+        sys.exit(1)
+
+    # ── 合并 LLM 结果到 df ──
+    _safe_print('\n[MERGE] 合并 LLM 分类结果到 DataFrame ...')
+
+    with TrackContext("MOD_GOV.D_005", n_results=len(results)):
+        # 初始化新列
+        for col in ['relevance', 'relevance_category', 'primary_emotion',
+                     'emotion_intensity', 'has_location', 'location_mentioned',
+                     'urban_value', 'ai_summary', 'ai_confidence']:
+            if col not in df.columns:
+                df[col] = None
+
+        df['relevance'] = 'irrelevant'
+        df['has_location'] = False
+        df['emotion_intensity'] = 0
+        df['ai_confidence'] = 0.0
+
+        n_merged = 0
+        for r in results:
+            idx_list = df.index[df['id_e'] == r['id_e']]
+            if len(idx_list) == 0:
+                continue
+            idx = idx_list[0]
+            n_merged += 1
+
+            df.at[idx, 'relevance'] = r.get('relevance', 'irrelevant')
+            df.at[idx, 'relevance_category'] = r.get('relevance_category', '') or ''
+            df.at[idx, 'primary_emotion'] = r.get('primary_emotion', '') or ''
+            df.at[idx, 'emotion_intensity'] = int(r.get('emotion_intensity', 0) or 0)
+            df.at[idx, 'has_location'] = bool(r.get('has_location', False))
+            df.at[idx, 'location_mentioned'] = r.get('location_mentioned', '') or ''
+            df.at[idx, 'urban_value'] = r.get('urban_value', 'low') or 'low'
+            df.at[idx, 'ai_summary'] = r.get('ai_summary', '') or ''
+            df.at[idx, 'ai_confidence'] = float(r.get('ai_confidence', 0.0) or 0.0)
+
+        trace_log("MOD_GOV.D_005", detail=f"merged {n_merged} LLM results into df")
+
+    # ── 统计 LLM 分类结果 ──
+    n_relevant = int((df['relevance'] == 'relevant').sum())
+    n_location = int(df['has_location'].sum())
+    _safe_print(f'[OK] LLM 分类统计:')
+    _safe_print(f'     relevant: {n_relevant} / {len(df)}')
+    _safe_print(f'     has_location: {n_location} / {len(df)}')
+
+    # ── 步骤 3: 筛选 relevant + has_location ──
+    _safe_print('\n' + '-' * 40)
+    _safe_print('[STEP 3/7] 筛选 relevant + has_location')
+    _safe_print('-' * 40)
+
+    with TrackContext("MOD_GOV.D_006", input_n=len(df)):
+        df_relevant = df[(df['relevance'] == 'relevant') & (df['has_location'] == True)].copy()
+        trace_log("MOD_GOV.D_006",
+                  detail=f"filtered: {len(df)} -> {len(df_relevant)} "
+                         f"(relevant+has_location)")
+
+    _safe_print(f'[OK] 筛选后保留: {len(df_relevant)} / {len(df)} 条')
+
+    if df_relevant.empty:
+        _safe_print('[WARN] 筛选后无数据（无 relevant + has_location 的记录）。')
+        _safe_print('[WARN] 可能原因: LLM 判定所有文本为 irrelevant 或 has_location=false。')
+        _safe_print('[WARN] 全量数据仍保留在 DataFrame 中（可手动检查）。')
         _safe_print('\n' + '=' * 60)
-        _safe_print('  数据治理管道完成 (仅 L1)!')
+        _safe_print('  数据治理管道完成 (仅 L1, 无有效数据)!')
         _safe_print('=' * 60)
-        _safe_print(f'  L1 输出: {L1_CSV_OUTPUT}')
-        _safe_print('  L2 输出: (跳过 — 过滤后无数据)')
         _safe_print('')
         sys.exit(0)
 
-    # ── 步骤 3: 导出过滤后数据（脱敏已在步骤 1 后完成）──
+    # ── 步骤 4: 字段整理 ──
     _safe_print('\n' + '-' * 40)
-    _safe_print('[STEP 3/4] 导出过滤后数据')
+    _safe_print('[STEP 4/7] 字段整理')
     _safe_print('-' * 40)
+
+    df_relevant['text_length'] = df_relevant['text'].astype(str).str.len()
+
+    # 选择 L1 列（仅保留存在的列）
+    existing_cols = [c for c in L1_COLUMNS if c in df_relevant.columns]
+    missing_cols = [c for c in L1_COLUMNS if c not in df_relevant.columns]
+    if missing_cols:
+        _safe_print(f'[WARN] L1_COLUMNS 中以下列不存在，已跳过: {missing_cols}')
+
+    df_l1 = df_relevant[existing_cols].copy()
+    _safe_print(f'[OK] L1 DataFrame 字段: {list(df_l1.columns)}')
+
+    # ── 步骤 5: 脱敏 ──
+    _safe_print('\n' + '-' * 40)
+    _safe_print('[STEP 5/7] 数据脱敏')
+    _safe_print('-' * 40)
+
+    if 'comments' in df_l1.columns:
+        df_l1['comments'] = ''
+        _safe_print('[OK] 已清空 comments 列')
+    else:
+        _safe_print('[OK] 无需脱敏（无 comments 列）')
+
+    # ── 步骤 6: 导出 L1 ──
+    _safe_print('\n' + '-' * 40)
+    _safe_print('[STEP 6/7] 导出 L1 CSV')
+    _safe_print('-' * 40)
+
     try:
-        l2_input_path = step3_export_filtered(df_filtered, L2_INPUT_CSV)
+        export_to_csv(df_l1, L1_CSV_OUTPUT)
+        _safe_print(f'[OK] L1 已保存: {L1_CSV_OUTPUT} ({len(df_l1)} 条)')
     except Exception as e:
-        _safe_print(f'[ERR] 步骤 3 失败: {e}')
+        trace_error("MOD_GOV.F_006", "L1 export failed", exc=e)
+        _safe_print(f'[ERR] L1 导出失败: {e}')
         sys.exit(1)
 
-    # ── 步骤 4: 调用 L2 SnowNLP 分析（仅当过滤后有数据时执行）──
+    # ── 步骤 7 (额外): L2 SnowNLP 分析 ──
     _safe_print('\n' + '-' * 40)
-    _safe_print('[STEP 4/4] 调用 L2 SnowNLP 分析')
+    _safe_print('[STEP 7/7] L2 SnowNLP 情绪分析')
     _safe_print('-' * 40)
+
     try:
-        l2_result = step4_run_l2_analysis(l2_input_path, L1_OUTPUT_NAME)
+        l2_result = step4_run_l2_analysis(L1_CSV_OUTPUT, L1_OUTPUT_NAME)
     except Exception as e:
-        _safe_print(f'[ERR] 步骤 4 失败: {e}')
+        trace_error("MOD_GOV.F_006", "L2 analysis failed", exc=e)
+        _safe_print(f'[ERR] L2 分析失败: {e}')
         sys.exit(1)
 
     # ── 汇总 ──
     _safe_print('\n' + '=' * 60)
     _safe_print('  数据治理管道完成!')
     _safe_print('=' * 60)
-    _safe_print(f'  L1 输出: {L1_CSV_OUTPUT}')
+    _safe_print(f'  L0 输入:     {len(df)} 条')
+    _safe_print(f'  LLM relevant: {n_relevant} 条')
+    _safe_print(f'  L1 输出:     {L1_CSV_OUTPUT} ({len(df_l1)} 条)')
     if l2_result.get('success'):
         _safe_print(f'  L2 CSV:      {l2_result["csv_path"]}')
         _safe_print(f'  L2 GeoJSON:  {l2_result["geojson_path"]}')
@@ -438,3 +595,14 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+# ── 追踪 ID 注册表 ──
+register_track_id("MOD_GOV.F_001", "步骤1: 加载原始数据 + GCJ-02->WGS84->CGCS2000坐标转换")
+register_track_id("MOD_GOV.F_002", "[DEPRECATED v2.0] 范围过滤（v2.0已不再调用）")
+register_track_id("MOD_GOV.F_003", "[DEPRECATED v2.0] 数据脱敏（v2.0已不再调用）")
+register_track_id("MOD_GOV.F_004", "[DEPRECATED v2.0] 导出过滤后数据（v2.0已不再调用）")
+register_track_id("MOD_GOV.F_005", "调用L2 SnowNLP分析管道")
+register_track_id("MOD_GOV.F_006", "数据治理主入口 (v2.0: 批量LLM筛选+分类)")
+register_track_id("MOD_GOV.D_004", "批量LLM分类调用 (llm_classify_batch)")
+register_track_id("MOD_GOV.D_005", "合并LLM分类结果到DataFrame")
+register_track_id("MOD_GOV.D_006", "筛选relevant+has_location")

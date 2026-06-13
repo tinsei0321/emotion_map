@@ -7,6 +7,8 @@ import builtins as _bi
 import pandas as pd
 import geopandas as gpd
 
+from core.tracker import track, TrackContext, trace_log, trace_error, register_track_id
+
 
 # 安全 print — 防止 Windows GBK 控制台崩溃
 _real_print = _bi.print
@@ -18,6 +20,7 @@ def _safe_print(*args, **kwargs):
         _real_print(*(str(a).encode('ascii', errors='replace').decode('ascii') for a in args), **kwargs)
 
 
+@track("MOD_EXPORT.F_001", track_args=True)
 def export_to_csv(df: pd.DataFrame, output_path: str):
     """DataFrame → CSV"""
     os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
@@ -26,6 +29,7 @@ def export_to_csv(df: pd.DataFrame, output_path: str):
     return output_path
 
 
+@track("MOD_EXPORT.F_002", track_args=True)
 def export_to_geojson(df: pd.DataFrame, output_path: str,
                       lon_col='lon', lat_col='lat'):
     """DataFrame → GeoJSON（需含 lon/lat 列）"""
@@ -43,3 +47,7 @@ def export_to_geojson(df: pd.DataFrame, output_path: str,
     gdf.to_file(output_path, driver='GeoJSON', encoding='utf-8')
     _safe_print(f'[OK] GeoJSON 已保存: {output_path} ({len(df)} 条)')
     return output_path
+
+# ── 追踪 ID 注册表 ──
+register_track_id("MOD_EXPORT.F_001", "DataFrame → CSV 导出")
+register_track_id("MOD_EXPORT.F_002", "DataFrame → GeoJSON 导出（含 geometry 构建）")

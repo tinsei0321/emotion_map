@@ -13,6 +13,8 @@ import geopandas as gpd
 import pandas as pd
 from shapely.geometry import Point
 
+from core.tracker import track, TrackContext, trace_log, trace_error, register_track_id
+
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _BOUNDARIES_DIR = os.path.join(_PROJECT_ROOT, 'data', 'boundaries')
@@ -42,6 +44,7 @@ def _find_shp_in_dir(dir_path: str) -> Optional[str]:
     return None
 
 
+@track("MOD_RANGE.F_001", track_args=False)
 def list_boundary_files() -> List[str]:
     """列出 data/boundaries/ 下所有可用的矢量数据集。"""
     if not os.path.exists(_BOUNDARIES_DIR):
@@ -60,6 +63,7 @@ def list_boundary_files() -> List[str]:
     return sorted(datasets)
 
 
+@track("MOD_RANGE.F_002", track_args=False)
 def get_active_boundary_path() -> Optional[str]:
     """获取当前激活的边界数据集路径。"""
     files = list_boundary_files()
@@ -72,6 +76,7 @@ def get_active_boundary_path() -> Optional[str]:
     return full
 
 
+@track("MOD_RANGE.F_003", track_args=True)
 def load_boundaries(file_path: str) -> Dict[str, RangeConfig]:
     """加载矢量文件所有 feature → {name: RangeConfig}。"""
     if not os.path.exists(file_path):
@@ -146,6 +151,7 @@ def load_boundaries(file_path: str) -> Dict[str, RangeConfig]:
     return ranges
 
 
+@track("MOD_RANGE.F_004", track_args=True)
 def save_uploaded_file(uploaded_files) -> list:
     """保存上传的矢量文件到 data/boundaries/ 子文件夹，返回路径列表。"""
     if not isinstance(uploaded_files, list):
@@ -173,6 +179,7 @@ def save_uploaded_file(uploaded_files) -> list:
     return saved
 
 
+@track("MOD_RANGE.F_005", track_args=False)
 def point_in_range(lon: float, lat: float, ranges: Dict[str, RangeConfig]) -> List[str]:
     """判断点属于哪些范围。"""
     point = Point(lon, lat)
@@ -180,6 +187,7 @@ def point_in_range(lon: float, lat: float, ranges: Dict[str, RangeConfig]) -> Li
             if rc.geometry and rc.geometry.contains(point)]
 
 
+@track("MOD_RANGE.F_006", track_args=True)
 def filter_by_range(df: pd.DataFrame, lon_col: str, lat_col: str,
                     ranges: Dict[str, RangeConfig],
                     selected_names: Optional[List[str]] = None) -> gpd.GeoDataFrame:
@@ -206,6 +214,7 @@ def filter_by_range(df: pd.DataFrame, lon_col: str, lat_col: str,
     return gpd.GeoDataFrame(rows) if rows else gpd.GeoDataFrame()
 
 
+@track("MOD_RANGE.F_007", track_args=False)
 def get_available_ranges() -> List[Dict]:
     """获取可用范围列表（供 UI）。"""
     path = get_active_boundary_path()
@@ -221,6 +230,7 @@ def get_available_ranges() -> List[Dict]:
                  'area_km2': DEFAULT_RANGE['area_km2']}]
 
 
+@track("MOD_RANGE.F_008", track_args=False)
 def get_boundary_crs_info() -> Optional[Dict[str, str]]:
     """返回当前边界文件的 CRS 信息 {original, display, note}。"""
     path = get_active_boundary_path()
@@ -248,6 +258,7 @@ def get_boundary_crs_info() -> Optional[Dict[str, str]]:
         return None
 
 
+@track("MOD_RANGE.F_009", track_args=False)
 def get_boundary_geojson() -> Optional[dict]:
     """返回当前边界文件的 GeoJSON dict（地图叠加用），自动转为 WGS84。"""
     path = get_active_boundary_path()
@@ -263,3 +274,14 @@ def get_boundary_geojson() -> Optional[dict]:
         return json.loads(gdf[['name', 'geometry']].to_json())
     except Exception:
         return None
+
+# ── 追踪 ID 注册表 ──
+register_track_id("MOD_RANGE.F_001", "列出可用矢量数据集")
+register_track_id("MOD_RANGE.F_002", "获取当前激活的边界路径")
+register_track_id("MOD_RANGE.F_003", "加载矢量文件 → {name: RangeConfig}")
+register_track_id("MOD_RANGE.F_004", "保存上传的矢量文件到 data/boundaries/")
+register_track_id("MOD_RANGE.F_005", "判断点属于哪些范围")
+register_track_id("MOD_RANGE.F_006", "按范围筛选 DataFrame")
+register_track_id("MOD_RANGE.F_007", "获取可用范围列表（供 UI）")
+register_track_id("MOD_RANGE.F_008", "获取边界文件 CRS 信息")
+register_track_id("MOD_RANGE.F_009", "获取边界 GeoJSON（地图叠加用）")

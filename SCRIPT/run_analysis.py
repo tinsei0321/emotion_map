@@ -22,12 +22,14 @@ except Exception:
     pass
 
 from emotion_analysis_v1 import run_analysis_task
+from core.tracker import track, trace_log, trace_error, register_track_id
 
 
 # ═══════════════════════════════════════════════════════════
 # GUI 模式（Tkinter）
 # ═══════════════════════════════════════════════════════════
 
+@track("MOD_RUN.F_001", track_args=False)
 def launch_gui():
     import tkinter as tk
     from tkinter import filedialog, messagebox, ttk
@@ -192,6 +194,7 @@ def launch_gui():
 # 命令行模式
 # ═══════════════════════════════════════════════════════════
 
+@track("MOD_RUN.F_002", track_args=False)
 def main_cli():
     parser = argparse.ArgumentParser(
         description='情绪地图 v1.0 — L2/L3/L4 情绪分析引擎',
@@ -263,3 +266,7 @@ def main_cli():
 
 if __name__ == '__main__':
     main_cli()
+
+# ── 追踪 ID 注册表 ──
+register_track_id("MOD_RUN.F_001", "Tkinter GUI 启动入口")
+register_track_id("MOD_RUN.F_002", "CLI 命令行入口")

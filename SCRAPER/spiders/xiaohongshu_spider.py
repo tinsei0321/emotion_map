@@ -32,6 +32,7 @@ import scrapy
 from scrapy.http import Request
 
 from items import EmotionItem
+from core.tracker import trace_log, trace_error, register_track_id
 
 
 class XiaohongshuSpider(scrapy.Spider):
@@ -225,3 +226,8 @@ if __name__ == '__main__':
     cmdline.execute(
         ['scrapy', 'runspider', __file__, '-a', 'max_pages=1']
     )
+
+# ── 追踪 ID 注册表 ──
+register_track_id("MOD_SCRAPER.F_001", "小红书Spider初始化/搜索页抓取")
+register_track_id("MOD_SCRAPER.F_002", "小红书笔记详情页解析")
+register_track_id("MOD_SCRAPER.D_001", "SSR数据提取成功/失败分支")
