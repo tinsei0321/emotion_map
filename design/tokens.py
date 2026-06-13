@@ -96,7 +96,7 @@ COLOR_BRAND_SECONDARY_HOVER = '#7DBDE8'
 COLOR_CHART_POLARITY_NEGATIVE = '#C4956A'
 COLOR_CHART_POLARITY_NEUTRAL = '#C0C0C0'
 COLOR_CHART_POLARITY_POSITIVE = '#5DADE2'
-COLOR_CHART_POLARITY_VERY_NEGATIVE = '#8B5A2B'
+COLOR_CHART_POLARITY_VERY_NEGATIVE = '#B92D2D'
 COLOR_CHART_POLARITY_VERY_POSITIVE = '#78DC32'
 COLOR_EMOTION_NEGATIVE = '#C4956A'
 COLOR_EMOTION_NEUTRAL = '#C0C0C0'
@@ -355,12 +355,12 @@ DARK_TOKENS = {
     'color-chart-polarity-negative': '#C4956A',
     'color-chart-polarity-neutral': '#C0C0C0',
     'color-chart-polarity-positive': '#5DADE2',
-    'color-chart-polarity-very-negative': '#8B5A2B',
+    'color-chart-polarity-very-negative': '#B92D2D',
     'color-chart-polarity-very-positive': '#78DC32',
     'color-emotion-negative': '#C4956A',
     'color-emotion-neutral': '#C0C0C0',
     'color-emotion-positive': '#5DADE2',
-    'color-emotion-very-negative': '#8B5A2B',
+    'color-emotion-very-negative': '#B92D2D',
     'color-emotion-very-positive': '#78DC32',
     'color-functional-border-light': 'rgba(72,201,176,0.15)',
     'color-functional-border-medium': 'rgba(72,201,176,0.22)',
@@ -528,10 +528,10 @@ LIGHT_TOKENS = {
     'color-brand-secondary-active': '#1E6BA0',
     'color-brand-secondary-hover': '#5DADE2',
     'color-chart-polarity-negative': '#C4956A',
-    'color-chart-polarity-neutral': '#888888',
-    'color-chart-polarity-positive': '#2980B9',
-    'color-chart-polarity-very-negative': '#8B5A2B',
-    'color-chart-polarity-very-positive': '#16A085',
+    'color-chart-polarity-neutral': '#C0C0C0',
+    'color-chart-polarity-positive': '#5DADE2',
+    'color-chart-polarity-very-negative': '#B92D2D',
+    'color-chart-polarity-very-positive': '#78DC32',
     'color-emotion-negative': '#D68910',
     'color-emotion-neutral': '#888888',
     'color-emotion-positive': '#2980B9',

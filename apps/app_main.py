@@ -1,7 +1,7 @@
 """
 情绪地图 v1.0 — 地图浏览器 + 分析控制台
 ══════════════════════════════════════════════════════════════
-启动: python launch.py                    # 一键启动
+启动: py launch.py                    # 一键启动
       python -m streamlit run apps/app_main.py
 
 页面: 默认 = 地图浏览器
@@ -26,7 +26,7 @@ from core.config import (
     BOUNDARY_SHP,
 )
 from core.export import export_to_csv
-from core.map_engine import create_base_map, add_point_layer, add_boundary_layer
+from core.map_engine import create_base_map, add_point_layer, add_boundary_layer, add_heatmap_layer, MAP_STYLE_LABELS, MAP_STYLE_PREVIEW_COLORS
 from core.data_loader import load_emotion_data
 from core.range_selector import (
     load_boundaries, get_available_ranges, filter_by_range,
@@ -295,7 +295,7 @@ def show_range_dialog():
         color_name = st.selectbox(
             '颜色', options=list(boundary_colors.keys()),
             index=list(boundary_colors.keys()).index(
-                st.session_state.get('_boundary_color_name', '蓝色')
+                st.session_state.get('_boundary_color_name', '活力橙')
             )
         )
 
@@ -500,7 +500,69 @@ def _register_layer(name, file_path, level='L1', range_label='', color='#48C9B0'
     st.session_state['layers'] = layers
 
 
+# ═══════════════════════════════════════════════════════════
+# 弹窗：底图切换
+# ═══════════════════════════════════════════════════════════
 @track("MOD_APP.F_010", track_args=False)
+@st.dialog('[Map] 底图切换', width='small')
+def show_basemap_dialog():
+    """底图切换弹窗：单选切换底图样式，即刻生效。"""
+    current = st.session_state.get('_map_style', 'carto_dark')
+
+    st.caption('点击底图样式即刻切换，地图自动刷新')
+
+    options = list(MAP_STYLE_LABELS.keys())
+
+    # ── 颜色预览条（顶部快速视觉扫描）──
+    swatch_parts = []
+    for key in options:
+        color = MAP_STYLE_PREVIEW_COLORS.get(key, 'var(--color-neutral-300)')
+        is_active = (key == current)
+        border = (
+            'var(--color-brand-primary)'
+            if is_active
+            else 'var(--color-functional-border-light)'
+        )
+        shadow = 'var(--shadow-glow)' if is_active else 'none'
+        tooltip = MAP_STYLE_LABELS.get(key, key)
+        if is_active:
+            tooltip += ' (current)'
+        swatch_parts.append(
+            f'<span style="display:inline-block;'
+            f'width:44px;height:22px;'
+            f'border-radius:var(--radius-sm);'
+            f'background:{color};'
+            f'border:2px solid {border};'
+            f'box-shadow:{shadow};'
+            f'margin-right:6px;'
+            f'transition:border-color var(--effect-transition-fast),'
+            f'box-shadow var(--effect-transition-fast);"'
+            f'title="{tooltip}"></span>'
+        )
+
+    st.markdown(
+        f'<div style="display:flex;align-items:center;'
+        f'padding:2px 0 12px 0;">'
+        f'{"".join(swatch_parts)}'
+        f'</div>',
+        unsafe_allow_html=True
+    )
+
+    # ── 单选控件（唯一交互入口，取代原来的静态列表 + 隐藏 selectbox）──
+    choice = st.radio(
+        '底图样式',
+        options=options,
+        format_func=lambda k: MAP_STYLE_LABELS.get(k, k),
+        index=options.index(current) if current in options else 0,
+        label_visibility='collapsed',
+    )
+
+    if choice != current:
+        st.session_state['_map_style'] = choice
+        st.rerun()
+
+
+@track("MOD_APP.F_011", track_args=False)
 @st.dialog('[LY] 图层控制', width='small')
 def show_layer_dialog():
     """图层控制弹窗：checkbox 控制图层显示/隐藏。
@@ -624,84 +686,101 @@ def show_analysis_dialog():
     if st.session_state.get('_last_analyzed_file', '') != file_choice:
         st.session_state['_analysis_done'] = False
         st.session_state['_last_analyzed_file'] = ''
+        st.session_state['_last_analysis_result'] = None
+        st.session_state['_analysis_show_results'] = False
 
     # ── 执行 ──
     analysis_done = st.session_state.get('_analysis_done', False) and \
                     st.session_state.get('_last_analyzed_file', '') == file_choice
-    btn_label = '[已加载到地图]' if analysis_done else '[开始分析]'
+    btn_label = '[在地图上显示]' if analysis_done else '[开始分析]'
     run_clicked = st.button(btn_label, type='primary',
-                             use_container_width=True, disabled=analysis_done)
+                             use_container_width=True)
 
     if run_clicked:
-        engine_type = 'llm' if 'LLM' in engine_choice else 'snownlp'
-        # 使用 source_dir（可能为 PROCESSED_DIR 或 RAW_DIR 兜底）
-        _input_path = os.path.join(source_dir, file_choice)
-        # 规范化输出名称：移除 _raw 后缀 + 清理非字母数字字符
-        _base_name = os.path.splitext(file_choice)[0]
-        _base_name = _base_name.replace('_raw', '').replace('_RAW', '')
-        file_size_mb = os.path.getsize(_input_path) / (1024 * 1024)
-
-        # 进度条容器
-        progress_bar = st.progress(0, text='准备分析...')
-
-        def update_progress(step, total, message):
-            progress_bar.progress(step / total, text=message)
-
-        with st.status('分析中...', expanded=True) as status:
-            status.update(label=f'文件: {_base_name} ({file_size_mb:.0f} MB)')
-
-            try:
-                result = run_analysis_task(
-                    file_path=_input_path,
-                    engine_type=engine_type,
-                    output_name=_base_name,
-                    api_key=api_key,
-                    progress_callback=update_progress,
+        if analysis_done:
+            # ── 模式 B: 加载到地图 ──
+            saved = st.session_state.get('_last_analysis_result')
+            if saved:
+                st.session_state['folder_key'] = list(FOLDER_OPTIONS.keys())[1]
+                st.session_state['file_choice'] = os.path.basename(saved['csv_path'])
+                st.session_state['file_path'] = saved['csv_path']
+                st.session_state['current_df'] = saved['df']
+                st.session_state['current_file_choice'] = os.path.basename(saved['csv_path'])
+                st.session_state['data_loaded'] = True
+                _register_layer(
+                    name=os.path.basename(saved['csv_path']),
+                    file_path=saved['csv_path'],
+                    level='L2',
+                    range_label='分析结果',
+                    color='#48C9B0',
                 )
-                if result['success']:
-                    progress_bar.progress(1.0, text=f'[OK] {result["n_points"]} 条完成')
-                    status.update(
-                        label=f'[OK] 分析完成！{result["n_points"]} 条数据',
-                        state='complete')
-                    # 设置 session_state 使地图加载结果
-                    st.session_state['folder_key'] = list(FOLDER_OPTIONS.keys())[1]  # processed
-                    st.session_state['file_choice'] = os.path.basename(result['csv_path'])
-                    st.session_state['file_path'] = result['csv_path']
-                    st.session_state['current_df'] = result['df']
-                    st.session_state['current_file_choice'] = os.path.basename(result['csv_path'])
-                    st.session_state['data_loaded'] = True
-                    # 注册分析结果到图层列表
-                    _register_layer(
-                        name=os.path.basename(result['csv_path']),
-                        file_path=result['csv_path'],
-                        level='L2',
-                        range_label='分析结果',
-                        color='#48C9B0',
-                    )
-                    st.session_state['_analysis_done'] = True
-                    st.session_state['_last_analyzed_file'] = file_choice
-                    run_success = True
-                    result_df = result['df']
-                    result_csv = result['csv_path']
-                else:
-                    progress_bar.progress(1.0, text='[WARN] 分析失败')
-                    status.update(label='[WARN] 分析失败', state='error')
-                    st.error(f'分析失败: {result["message"][:200]}')
-                    run_success = False
-                    result_df = None
-                    result_csv = None
-            except Exception as e:
-                progress_bar.progress(1.0, text='[ERR] 分析失败')
-                status.update(label='[ERR] 分析出错', state='error')
-                st.error(f'分析失败: {str(e)[:200]}')
-                _safe_print(f'[ERR] show_analysis_dialog 分析出错: {e}')
-                trace_error("MOD_APP.F_011", f'分析执行异常: {str(e)[:200]}')
-                run_success = False
-                result_df = None
-                result_csv = None
+                st.success(f'已加载 {saved["n_points"]} 条数据到地图。关闭对话框查看。')
+        else:
+            # ── 模式 A: 运行分析 ──
+            engine_type = 'llm' if 'LLM' in engine_choice else 'snownlp'
+            _input_path = os.path.join(source_dir, file_choice)
+            _base_name = os.path.splitext(file_choice)[0]
+            _base_name = _base_name.replace('_raw', '').replace('_RAW', '')
+            file_size_mb = os.path.getsize(_input_path) / (1024 * 1024)
 
-        # ── 结果子面板（共享极性统计函数）──
-        if run_success and result_df is not None:
+            progress_bar = st.progress(0, text='准备分析...')
+
+            def update_progress(step, total, message):
+                progress_bar.progress(step / total, text=message)
+
+            with st.status('分析中...', expanded=True) as status:
+                status.update(label=f'文件: {_base_name} ({file_size_mb:.0f} MB)')
+
+                try:
+                    result = run_analysis_task(
+                        file_path=_input_path,
+                        engine_type=engine_type,
+                        output_name=_base_name,
+                        api_key=api_key,
+                        progress_callback=update_progress,
+                    )
+                    if result['success']:
+                        progress_bar.progress(1.0, text=f'[OK] {result["n_points"]} 条完成')
+                        status.update(
+                            label=f'[OK] 分析完成！{result["n_points"]} 条数据',
+                            state='complete')
+                        # 保存结果 + 自动加载到地图 + 标记完成
+                        st.session_state['_analysis_done'] = True
+                        st.session_state['_last_analyzed_file'] = file_choice
+                        st.session_state['_last_analysis_result'] = result
+                        st.session_state['_analysis_show_results'] = True
+                        # 自动加载到地图
+                        st.session_state['folder_key'] = list(FOLDER_OPTIONS.keys())[1]
+                        st.session_state['file_choice'] = os.path.basename(result['csv_path'])
+                        st.session_state['file_path'] = result['csv_path']
+                        st.session_state['current_df'] = result['df']
+                        st.session_state['current_file_choice'] = os.path.basename(result['csv_path'])
+                        st.session_state['data_loaded'] = True
+                        _register_layer(
+                            name=os.path.basename(result['csv_path']),
+                            file_path=result['csv_path'],
+                            level='L2',
+                            range_label='分析结果',
+                            color='#48C9B0',
+                        )
+                        st.rerun()  # 刷新对话框，按钮变为"[在地图上显示]"
+                    else:
+                        progress_bar.progress(1.0, text='[WARN] 分析失败')
+                        status.update(label='[WARN] 分析失败', state='error')
+                        st.error(f'分析失败: {result["message"][:200]}')
+                except Exception as e:
+                    progress_bar.progress(1.0, text='[ERR] 分析失败')
+                    status.update(label='[ERR] 分析出错', state='error')
+                    st.error(f'分析失败: {str(e)[:200]}')
+                    _safe_print(f'[ERR] show_analysis_dialog 分析出错: {e}')
+                    trace_error("MOD_APP.F_011", f'分析执行异常: {str(e)[:200]}')
+
+    # ── 结果子面板（分析完成后持久显示）──
+    if analysis_done and st.session_state.get('_analysis_show_results'):
+        saved = st.session_state.get('_last_analysis_result')
+        if saved and saved.get('df') is not None:
+            result_df = saved['df']
+            result_csv = saved['csv_path']
             st.divider()
             st.subheader('分析结果预览')
             if 'polarity' in result_df.columns:
@@ -710,7 +789,6 @@ def show_analysis_dialog():
             else:
                 st.caption(f'共 {len(result_df)} 条数据（无极性列）')
 
-            # ── 跳转按钮 ──
             _, btn_col, _ = st.columns([1, 2, 1])
             with btn_col:
                 st.link_button(
@@ -888,23 +966,25 @@ def _render_new_analysis_view(engine_cfg: dict):
         _default_name = os.path.splitext(os.path.basename(input_path))[0]
         _default_name = _default_name.replace('_raw', '').replace('_RAW', '')
         output_name = st.text_input('输出文件名', value=_default_name)
-        if st.button('开始分析', type='primary'):
-            eng_type = 'snownlp'; is_full = False
-            engine_choice = engine_cfg['engine_choice']
-            if 'L3' in engine_choice: eng_type = 'llm'
-            elif 'L4' in engine_choice: eng_type = 'corpus'
-            elif '全管道' in engine_choice: is_full = True
-            with st.status('分析中...', expanded=True) as status:
-                result = run_analysis_task(
-                    file_path=input_path, engine_type=eng_type,
-                    output_name=output_name, api_key=engine_cfg['api_key'],
-                    corpus_path=engine_cfg['corpus_path'],
-                    enable_keywords=engine_cfg['enable_keywords'],
-                    full_pipeline=is_full,
-                )
-                if result['success']:
-                    status.update(label=f'完成！{result["n_points"]} 条', state='complete')
-                    # 注册分析结果到图层列表
+        # ── 文件变更检测：新文件重置分析状态 ──
+        current_file_key = f'{input_path}|{output_name}'
+        if st.session_state.get('_console_last_analyzed', '') != current_file_key:
+            st.session_state['_console_analysis_done'] = False
+            st.session_state['_console_last_result'] = None
+        # ── 判断分析是否已完成 ──
+        analysis_done = st.session_state.get('_console_analysis_done', False)
+        btn_label = '[在地图上显示]' if analysis_done else '[开始分析]'
+        if st.button(btn_label, type='primary', use_container_width=True):
+            if analysis_done:
+                # ── 模式 B: 加载到地图 ──
+                result = st.session_state.get('_console_last_result')
+                if result:
+                    st.session_state['folder_key'] = list(FOLDER_OPTIONS.keys())[1]  # processed
+                    st.session_state['file_choice'] = os.path.basename(result['csv_path'])
+                    st.session_state['file_path'] = result['csv_path']
+                    st.session_state['current_df'] = result['df']
+                    st.session_state['current_file_choice'] = os.path.basename(result['csv_path'])
+                    st.session_state['data_loaded'] = True
                     _register_layer(
                         name=os.path.basename(result['csv_path']),
                         file_path=result['csv_path'],
@@ -912,10 +992,39 @@ def _render_new_analysis_view(engine_cfg: dict):
                         range_label='分析结果',
                         color='#48C9B0',
                     )
-                    st.rerun()
-                else:
-                    status.update(label='失败', state='error')
-                    st.error(result['message'])
+                    st.success(f'已加载 {result["n_points"]} 条数据到地图。切换至地图浏览器查看。')
+            else:
+                # ── 模式 A: 运行分析 ──
+                eng_type = 'snownlp'; is_full = False
+                engine_choice = engine_cfg['engine_choice']
+                if 'L3' in engine_choice: eng_type = 'llm'
+                elif 'L4' in engine_choice: eng_type = 'corpus'
+                elif '全管道' in engine_choice: is_full = True
+                with st.status('分析中...', expanded=True) as status:
+                    result = run_analysis_task(
+                        file_path=input_path, engine_type=eng_type,
+                        output_name=output_name, api_key=engine_cfg['api_key'],
+                        corpus_path=engine_cfg['corpus_path'],
+                        enable_keywords=engine_cfg['enable_keywords'],
+                        full_pipeline=is_full,
+                    )
+                    if result['success']:
+                        status.update(label=f'完成！{result["n_points"]} 条', state='complete')
+                        _register_layer(
+                            name=os.path.basename(result['csv_path']),
+                            file_path=result['csv_path'],
+                            level='L2',
+                            range_label='分析结果',
+                            color='#48C9B0',
+                        )
+                        # ── 保存分析状态 ──
+                        st.session_state['_console_analysis_done'] = True
+                        st.session_state['_console_last_analyzed'] = current_file_key
+                        st.session_state['_console_last_result'] = result
+                        st.rerun()
+                    else:
+                        status.update(label='失败', state='error')
+                        st.error(result['message'])
 
 
 def _add_boundary_if_exists(deck):
@@ -923,7 +1032,7 @@ def _add_boundary_if_exists(deck):
     try:
         geojson = get_boundary_geojson()
         if geojson:
-            color = st.session_state.get('_boundary_color', '#5DADE2')
+            color = st.session_state.get('_boundary_color', '#d97d5c')
             weight = st.session_state.get('_boundary_weight', 15)
             add_boundary_layer(deck, geojson_data=geojson,
                              name='分析范围', color=color, weight=weight)
@@ -960,7 +1069,7 @@ def show_console_page():
 def main():
     # ── session_state 初始化（所有页面共享，必须在路由判断前）──
     for k, v in {
-        'show_labels': False,
+        '_map_style': 'carto_dark',
         'folder_key': '[DATA] processed（处理结果）',
         'file_choice': '', 'file_path': '',
         'current_df': None, 'current_map_meta': None,
@@ -972,8 +1081,8 @@ def main():
         '_governance_result': None,
         '_all_layers_hidden': False,
         '_boundary_weight': 15,
-        '_boundary_color': '#5DADE2',
-        '_boundary_color_name': '蓝色',
+        '_boundary_color': '#d97d5c',
+        '_boundary_color_name': '活力橙',
     }.items():
         if k not in st.session_state:
             st.session_state[k] = v
@@ -992,7 +1101,7 @@ def main():
         st.session_state['_data_crashed'] = False
         st.warning('上次加载数据量过大导致页面异常，已自动清除。请选择较小的数据文件。')
 
-    # ── 路由：?page=console → 分析控制台 ──
+    # ── 路由分发 ──
     page = st.query_params.get('page', None)
     if page == 'console':
         show_console_page()
@@ -1022,10 +1131,18 @@ def main():
     # 底部地图控制栏
     if st.button('[*]', help='设置与调试', key='s'): show_settings_dialog()
 
-    sl = st.session_state.get('show_labels', False)
-    if st.button('[LB]', help=f'注记: 开' if sl else '注记: 关', key='lbl'):
-        st.session_state['show_labels'] = not sl; st.rerun()
+    # ── 底图切换 ──
+    current_style = st.session_state.get('_map_style', 'carto_dark')
+    style_label = MAP_STYLE_LABELS.get(current_style, 'CartoDB 深色')
+    if st.button('[Map]', help=f'底图: {style_label} | 点击切换底图', key='lbl'):
+        show_basemap_dialog()
     if st.button('[LY]', help='[LY] 图层 | 切换地图图层显示', key='ly'): show_layer_dialog()
+    # ── 热力图切换 ──
+    heat_on = st.session_state.get('_heatmap_mode', False)
+    heat_label = '[H]' if not heat_on else '[H*]'
+    if st.button(heat_label, help='[H] 热力图 | 切换热力图/散点视图', key='heat_toggle'):
+        st.session_state['_heatmap_mode'] = not heat_on
+        st.rerun()
 
     # 右侧工具按钮
     if st.button('[OV]', help='数据概览', key='o', disabled=btn_dis): show_overview_dialog()
@@ -1039,7 +1156,8 @@ def main():
     if not fp or not os.path.exists(fp):
         center = st.session_state.get('_map_center', None)
         zoom = st.session_state.get('_map_zoom', None)
-        deck = create_base_map(center=center, zoom_start=zoom)
+        _ms = st.session_state.get('_map_style', 'carto_dark')
+        deck = create_base_map(center=center, zoom_start=zoom, map_style=_ms)
         if st.session_state.get('selected_ranges'):
             _add_boundary_if_exists(deck)
         st.pydeck_chart(deck, use_container_width=True, height=700)
@@ -1080,8 +1198,9 @@ def main():
         with st.spinner('渲染地图中...'):
             center = st.session_state.get('_map_center', None)
             zoom = st.session_state.get('_map_zoom', None)
+            _ms = st.session_state.get('_map_style', 'carto_dark')
             deck = create_base_map(data['lats'], data['lons'],
-                                center=center, zoom_start=zoom)
+                                center=center, zoom_start=zoom, map_style=_ms)
 
             # 叠加范围边界
             _add_boundary_if_exists(deck)
@@ -1103,15 +1222,23 @@ def main():
                                    layer_data['scores'],
                                    props_list=layer_data['df'].to_dict('records'))
 
-            # ── 渲染主数据点层（受 _all_layers_hidden 控制）──
+            # ── 渲染主数据层（受 _all_layers_hidden / _heatmap_mode 控制）──
             if not st.session_state.get('_all_layers_hidden', False):
-                geo = data.get('geo_data')
-                if geo:
-                    add_point_layer(deck, data['lats'], data['lons'], data['scores'],
-                                   props_list=geo['features'])
+                if st.session_state.get('_heatmap_mode', False):
+                    # 热力图模式
+                    add_heatmap_layer(deck, data['lats'], data['lons'],
+                                     scores=data['scores'],
+                                     radius=30, intensity=0.6, opacity=0.75,
+                                     max_points=MAX_DISPLAY_POINTS)
                 else:
-                    add_point_layer(deck, data['lats'], data['lons'], data['scores'],
-                                   props_list=df_display.to_dict('records'))
+                    # 散点模式
+                    geo = data.get('geo_data')
+                    if geo:
+                        add_point_layer(deck, data['lats'], data['lons'], data['scores'],
+                                       props_list=geo['features'])
+                    else:
+                        add_point_layer(deck, data['lats'], data['lons'], data['scores'],
+                                       props_list=df_display.to_dict('records'))
             else:
                 trace_log("MOD_APP.D_013", detail='main data layer hidden by _all_layers_hidden')
 

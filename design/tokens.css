@@ -114,7 +114,7 @@
   --color-gradient-hotcold4: #E06050;
   --color-gradient-neg0: #641E16;
   --color-gradient-neg1: #922B21;
-  --color-gradient-neg2: #B92D2D;
+  --color-gradient-neg2: #C0392B;
   --color-gradient-neg3: #E6B0AA;
   --color-gradient-neg4: #FADBD8;
   --color-gradient-pos0: #0E6655;
@@ -265,14 +265,14 @@
     --color-brand-secondary-active: #1E6BA0;
     --color-brand-secondary-hover: #5DADE2;
     --color-chart-polarity-negative: #C4956A;
-    --color-chart-polarity-neutral: #888888;
-    --color-chart-polarity-positive: #2980B9;
+    --color-chart-polarity-neutral: #C0C0C0;
+    --color-chart-polarity-positive: #5DADE2;
     --color-chart-polarity-very-negative: #B92D2D;
-    --color-chart-polarity-very-positive: #16A085;
-    --color-emotion-negative: #C4956A;
+    --color-chart-polarity-very-positive: #78DC32;
+    --color-emotion-negative: #D68910;
     --color-emotion-neutral: #888888;
     --color-emotion-positive: #2980B9;
-    --color-emotion-very-negative: #B92D2D;
+    --color-emotion-very-negative: #C0392B;
     --color-emotion-very-positive: #16A085;
     --color-functional-border-light: rgba(22,160,133,0.15);
     --color-functional-border-medium: rgba(22,160,133,0.22);
@@ -291,11 +291,11 @@
     --color-gradient-hotcold0: #16A085;
     --color-gradient-hotcold1: #2980B9;
     --color-gradient-hotcold2: #909090;
-    --color-gradient-hotcold3: #C4956A;
-    --color-gradient-hotcold4: #B92D2D;
+    --color-gradient-hotcold3: #D68910;
+    --color-gradient-hotcold4: #C0392B;
     --color-gradient-neg0: #641E16;
     --color-gradient-neg1: #922B21;
-    --color-gradient-neg2: #B92D2D;
+    --color-gradient-neg2: #C0392B;
     --color-gradient-neg3: #E6B0AA;
     --color-gradient-neg4: #FADBD8;
     --color-gradient-pos0: #0A5344;
@@ -314,10 +314,10 @@
     --color-neutral-700: #404040;
     --color-neutral-800: #2A2A2A;
     --color-neutral-900: #1A1A1A;
-    --color-semantic-error: #B92D2D;
+    --color-semantic-error: #C0392B;
     --color-semantic-info: #2980B9;
     --color-semantic-success: #16A085;
-    --color-semantic-warning: #C4956A;
+    --color-semantic-warning: #D68910;
 
     /* component */
     --component-badge-border-radius: 12px;
@@ -420,11 +420,11 @@
     --component-toast-background: rgba(42,42,42,0.92);
     --component-toast-border-radius: 8px;
     --component-toast-color: #F0F0F0;
-    --component-toast-error-icon-color: #B92D2D;
+    --component-toast-error-icon-color: #C0392B;
     --component-toast-font-size: 0.85rem;
     --component-toast-padding: 10px 20px;
     --component-toast-success-icon-color: #16A085;
-    --component-toast-warning-icon-color: #C4956A;
+    --component-toast-warning-icon-color: #D68910;
     --component-tooltip-backdrop-filter: blur(8px);
     --component-tooltip-background: rgba(42,42,42,0.94);
     --component-tooltip-border-radius: 6px;
@@ -446,14 +446,14 @@
   --color-brand-secondary-active: #1E6BA0;
   --color-brand-secondary-hover: #5DADE2;
   --color-chart-polarity-negative: #C4956A;
-  --color-chart-polarity-neutral: #888888;
-  --color-chart-polarity-positive: #2980B9;
+  --color-chart-polarity-neutral: #C0C0C0;
+  --color-chart-polarity-positive: #5DADE2;
   --color-chart-polarity-very-negative: #B92D2D;
-  --color-chart-polarity-very-positive: #16A085;
-  --color-emotion-negative: #C4956A;
+  --color-chart-polarity-very-positive: #78DC32;
+  --color-emotion-negative: #D68910;
   --color-emotion-neutral: #888888;
   --color-emotion-positive: #2980B9;
-  --color-emotion-very-negative: #B92D2D;
+  --color-emotion-very-negative: #C0392B;
   --color-emotion-very-positive: #16A085;
   --color-functional-border-light: rgba(22,160,133,0.15);
   --color-functional-border-medium: rgba(22,160,133,0.22);
@@ -472,11 +472,11 @@
   --color-gradient-hotcold0: #16A085;
   --color-gradient-hotcold1: #2980B9;
   --color-gradient-hotcold2: #909090;
-  --color-gradient-hotcold3: #C4956A;
-  --color-gradient-hotcold4: #B92D2D;
+  --color-gradient-hotcold3: #D68910;
+  --color-gradient-hotcold4: #C0392B;
   --color-gradient-neg0: #641E16;
   --color-gradient-neg1: #922B21;
-  --color-gradient-neg2: #B92D2D;
+  --color-gradient-neg2: #C0392B;
   --color-gradient-neg3: #E6B0AA;
   --color-gradient-neg4: #FADBD8;
   --color-gradient-pos0: #0A5344;
@@ -495,10 +495,10 @@
   --color-neutral-700: #404040;
   --color-neutral-800: #2A2A2A;
   --color-neutral-900: #1A1A1A;
-  --color-semantic-error: #B92D2D;
+  --color-semantic-error: #C0392B;
   --color-semantic-info: #2980B9;
   --color-semantic-success: #16A085;
-  --color-semantic-warning: #C4956A;
+  --color-semantic-warning: #D68910;
 
   /* component */
   --component-badge-border-radius: 12px;
@@ -601,11 +601,11 @@
   --component-toast-background: rgba(42,42,42,0.92);
   --component-toast-border-radius: 8px;
   --component-toast-color: #F0F0F0;
-  --component-toast-error-icon-color: #B92D2D;
+  --component-toast-error-icon-color: #C0392B;
   --component-toast-font-size: 0.85rem;
   --component-toast-padding: 10px 20px;
   --component-toast-success-icon-color: #16A085;
-  --component-toast-warning-icon-color: #C4956A;
+  --component-toast-warning-icon-color: #D68910;
   --component-tooltip-backdrop-filter: blur(8px);
   --component-tooltip-background: rgba(42,42,42,0.94);
   --component-tooltip-border-radius: 6px;
@@ -655,7 +655,7 @@
   --color-gradient-hotcold4: #E06050;
   --color-gradient-neg0: #641E16;
   --color-gradient-neg1: #922B21;
-  --color-gradient-neg2: #B92D2D;
+  --color-gradient-neg2: #C0392B;
   --color-gradient-neg3: #E6B0AA;
   --color-gradient-neg4: #FADBD8;
   --color-gradient-pos0: #0E6655;

@@ -14,15 +14,41 @@ from .config import (
 from core.tracker import track, TrackContext, trace_log, register_track_id
 
 
+# ── 底图样式 ──
+# CartoDB basemaps（免费无需 API Key，数据源 OpenStreetMap）
+# Tianditu（天地图，需 API Key，运行时动态生成 MapLibre 样式）
+MAP_STYLES = {
+    'carto_dark':    'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+    'carto_light':   'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+    'carto_voyager': 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+}
+
+MAP_STYLE_LABELS = {
+    'carto_dark':        'CartoDB 深色',
+    'carto_light':       'CartoDB 浅色',
+    'carto_voyager':     'CartoDB 标准',
+    'tianditu_nolabel':  '天地图 无注记 (预览)',
+    'tianditu_label':    '天地图 有注记 (预览)',
+}
+
+# 底图预览色（用于对话框缩略图示意）
+MAP_STYLE_PREVIEW_COLORS = {
+    'carto_dark':        '#1a1a2e',
+    'carto_light':       '#f0f0f0',
+    'carto_voyager':     '#e8e0d8',
+    'tianditu_nolabel':  '#e8f0e8',
+    'tianditu_label':    '#f0f4e8',
+}
+
+
 @track("MOD_MAP.F_001", track_args=False)
 def create_base_map(lats=None, lons=None, show_labels=True,
-                    center=None, zoom_start=None):
-    """创建 pydeck 基础地图（OpenStreetMap 底图）。
+                    center=None, zoom_start=None, map_style='carto_dark'):
+    """创建 pydeck 基础地图。
 
     参数:
-        lats, lons: 坐标列表（用于自动计算中心点）
-        center: 手动指定中心 [lat, lon]
-        zoom_start: 手动指定缩放级别
+        map_style: carto_dark | carto_light | carto_voyager
+                   tianditu_nolabel | tianditu_label (预览，暂不可用)
     """
     if center is None:
         if lats and lons:
@@ -37,10 +63,16 @@ def create_base_map(lats=None, lons=None, show_labels=True,
         pitch=0,
     )
 
+    # 天地图暂不可用，优雅降级为 CartoDB 浅色
+    if map_style in ('tianditu_nolabel', 'tianditu_label'):
+        style_url = MAP_STYLES['carto_light']
+    else:
+        style_url = MAP_STYLES.get(map_style, MAP_STYLES['carto_dark'])
+
     return pdk.Deck(
         initial_view_state=view_state,
         map_provider='mapbox',
-        map_style='https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+        map_style=style_url,
         layers=[],
     )
 
@@ -181,6 +213,54 @@ def add_boundary_layer(deck, geojson_path=None, geojson_data=None,
     return deck
 
 
+@track("MOD_MAP.F_004", track_args=False)
+def add_heatmap_layer(deck, lats, lons, scores=None, radius=30, intensity=0.5,
+                      threshold=0.05, opacity=0.7, max_points=None):
+    """添加热力图图层（pydeck HeatmapLayer）。
+
+    参数:
+        deck: pydeck Deck 对象
+        lats, lons: 坐标列表
+        scores: 权重列表（None 则等权），值越大 = 越"热"
+        radius: 热力半径（像素）
+        intensity: 热力强度倍数
+        threshold: 低于此权重的点不参与热力计算
+        opacity: 图层不透明度
+        max_points: 最大采样点数
+    """
+    n = len(lats)
+    if n == 0:
+        return deck
+
+    # 采样
+    if max_points and n > max_points:
+        indices = random.Random(42).sample(range(n), max_points)
+        lats = [lats[i] for i in indices]
+        lons = [lons[i] for i in indices]
+        if scores:
+            scores = [scores[i] for i in indices]
+
+    if scores is None:
+        scores = [1.0] * len(lats)
+
+    records = [{'lat': la, 'lon': lo, 'weight': float(w)}
+               for la, lo, w in zip(lats, lons, scores)]
+
+    layer = pdk.Layer(
+        'HeatmapLayer',
+        data=records,
+        get_position=['lon', 'lat'],
+        get_weight='weight',
+        radius_pixels=radius,
+        intensity=intensity,
+        threshold=threshold,
+        opacity=opacity,
+    )
+
+    deck.layers.append(layer)
+    return deck
+
+
 def _get_polarity(props_list, i, score):
     """获取极性：优先 props，否则从 score 计算（向后兼容）"""
     polarity = None
@@ -206,4 +286,5 @@ def _get_polarity(props_list, i, score):
 register_track_id("MOD_MAP.F_001", "创建 pydeck 基础地图（支持暗色/亮色/卫星三档底图切换）")
 register_track_id("MOD_MAP.F_002", "添加情绪点标记层（pydeck ScatterplotLayer + 五级极性）")
 register_track_id("MOD_MAP.F_003", "添加行政区划边界叠加层（pydeck GeoJsonLayer）")
+register_track_id("MOD_MAP.F_004", "添加热力图图层（pydeck HeatmapLayer）")
 

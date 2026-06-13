@@ -436,11 +436,11 @@ def render_polarity_chart(df, height=200):
     pol_order = ['Very Negative', 'Negative', 'Neutral', 'Positive', 'Very Positive']
     # token: chart.polarityVeryNegative .. chart.polarityVeryPositive (design/tokens.json)
     pol_colors = [
-        COLOR_CHART_POLARITY_VERY_NEGATIVE,  # '#dc3545'
-        COLOR_CHART_POLARITY_NEGATIVE,       # '#e8590c'
-        COLOR_CHART_POLARITY_NEUTRAL,        # '#6c757d'
-        COLOR_CHART_POLARITY_POSITIVE,       # '#28a745'
-        COLOR_CHART_POLARITY_VERY_POSITIVE,  # '#1a7a1a'
+        COLOR_CHART_POLARITY_VERY_NEGATIVE,  # '#B92D2D'
+        COLOR_CHART_POLARITY_NEGATIVE,       # '#C4956A'
+        COLOR_CHART_POLARITY_NEUTRAL,        # '#C0C0C0'
+        COLOR_CHART_POLARITY_POSITIVE,       # '#5DADE2'
+        COLOR_CHART_POLARITY_VERY_POSITIVE,  # '#78DC32'
     ]
     chart = alt.Chart(df).mark_bar().encode(
         x=alt.X('polarity:N', title=None, sort=pol_order),
