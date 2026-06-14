@@ -114,23 +114,7 @@ except Exception as e:
     trace_error("MOD_GOV.F_001", "transform failed", exc=e)
 ```
 
-### 模块 ID 分配表
-
-| 模块 ID | 文件 |
-|---------|------|
-| `MOD_GOV` | `SCRIPT/data_governance.py` |
-| `MOD_ANA` | `SCRIPT/emotion_analysis_v1.py` |
-| `MOD_REL` | `SCRIPT/relevance_filter.py` |
-| `MOD_RUN` | `SCRIPT/run_analysis.py` |
-| `MOD_LOADER` | `core/data_loader.py` |
-| `MOD_MAP` | `core/map_engine.py` |
-| `MOD_TRANSFORM` | `core/coord_transform.py` |
-| `MOD_RANGE` | `core/range_selector.py` |
-| `MOD_EXPORT` | `core/export.py` |
-| `MOD_UI` | `core/ui_components.py` |
-| `MOD_APP` | `apps/app_main.py` |
-| `MOD_SCRAPER` | `SCRAPER/spiders/` |
-| `MOD_TRACKER` | `core/tracker.py` |
+> 模块 ID 分配表详见 `AGENTS.md` 铁律9说明 + `core/tracker.py` 注册表（代码即真相）。
 
 ### Debug 工作流
 ```

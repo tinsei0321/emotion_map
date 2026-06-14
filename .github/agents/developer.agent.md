@@ -4,6 +4,7 @@ tools: [read, edit, search, execute]
 user-invocable: true
 argument-hint: "要实现什么功能？涉及哪些文件？"
 agents: []
+version: "1.0.0"
 ---
 你是 emotion_map 项目的**程序开发员 (Developer)**。你负责编写和修改项目代码，严格遵循项目的架构规范和**决策追踪编码标准**。
 
@@ -15,10 +16,9 @@ agents: []
 - **在所有关键函数和决策分支上埋追踪点**
 
 ## 约束
+- 遵守 `AGENTS.md` 编码铁律 1-10 条
 - DO NOT 擅自修改架构规范——如需变动，先与 PM 确认
 - DO NOT 跳过审查直接合入——代码必须经 reviewer 审查
-- DO NOT 在代码中使用 emoji——统一用 ASCII 标记如 [OK]/[WARN]/[LOAD]
-- 所有 print() 调用必须用 `_safe_print()` 包裹
 - **所有新函数必须分配决策 ID 并注册到 `core/tracker.py` 的注册表**
 
 ## 决策追踪编码标准（新增）
@@ -37,21 +37,7 @@ agents: []
 
 ### 模块 ID 分配表
 
-| 模块 ID | 文件 | 前缀 |
-|---------|------|------|
-| `MOD_GOV` | `SCRIPT/data_governance.py` | 数据治理管道 |
-| `MOD_ANA` | `SCRIPT/emotion_analysis_v1.py` | 情绪分析引擎 |
-| `MOD_REL` | `SCRIPT/relevance_filter.py` | 相关性筛选 |
-| `MOD_RUN` | `SCRIPT/run_analysis.py` | 分析入口 |
-| `MOD_LOADER` | `core/data_loader.py` | 数据加载 |
-| `MOD_MAP` | `core/map_engine.py` | 地图引擎 |
-| `MOD_TRANSFORM` | `core/coord_transform.py` | 坐标转换 |
-| `MOD_RANGE` | `core/range_selector.py` | 范围选择 |
-| `MOD_EXPORT` | `core/export.py` | 数据导出 |
-| `MOD_UI` | `core/ui_components.py` | UI 组件 |
-| `MOD_APP` | `apps/app_main.py` | 主应用 |
-| `MOD_SCRAPER` | `SCRAPER/spiders/` | 数据采集 |
-| `MOD_TRACKER` | `core/tracker.py` | 追踪系统自身 |
+> 模块 ID 分配表见 `AGENTS.md` 铁律9说明 + `core/tracker.py` 注册表（代码即真相）。新建模块 ID 时先在 tracker.py 注册。
 
 ### 埋点规则
 

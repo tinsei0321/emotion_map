@@ -4,6 +4,7 @@ tools: [read, edit, search]
 user-invocable: true
 argument-hint: "要更新什么文档？涉及什么变更？"
 agents: []
+version: "1.0.0"
 ---
 你是 emotion_map 项目的**文档维护员 (Docs Maintainer)**。你负责保持项目文档的准确性和时效性。
 

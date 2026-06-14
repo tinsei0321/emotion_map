@@ -391,3 +391,193 @@ def list_track_ids() -> Dict[str, str]:
 def lookup_track_id(track_id: str) -> str:
     """查找追踪 ID 的描述"""
     return _TRACKING_REGISTRY.get(track_id, "unknown")
+
+
+# ── 合规性验证（Reviewer 审查时使用）──
+
+def validate_tracking_compliance(file_path: str) -> dict:
+    """
+    检查 Python 文件中追踪埋点的合规性。
+
+    检查项：
+      1. 所有公开函数（非 _ 前缀）是否有 @track() 装饰
+      2. >5 行的 if/for/while/try 块是否有 TrackContext
+      3. I/O 操作（open/read_csv/to_csv/requests）是否有追踪埋点
+      4. except 块是否有 trace_error()
+
+    返回:
+        {
+            "file": str,
+            "public_functions": {"total": int, "tracked": int, "missing": [...]},
+            "large_blocks": {"total": int, "tracked": int, "missing": [...]},
+            "io_operations": {"total": int, "tracked": int, "missing": [...]},
+            "except_blocks": {"total": int, "with_trace_error": int, "missing": [...]},
+            "issues": [...],
+            "verdict": "PASS" | "FAIL"
+        }
+    """
+    import ast
+    import os
+
+    result = {
+        "file": file_path,
+        "public_functions": {"total": 0, "tracked": 0, "missing": []},
+        "large_blocks": {"total": 0, "tracked": 0, "missing": []},
+        "io_operations": {"total": 0, "tracked": 0, "missing": []},
+        "except_blocks": {"total": 0, "with_trace_error": 0, "missing": []},
+        "issues": [],
+        "verdict": "PASS",
+    }
+
+    if not os.path.exists(file_path):
+        result["issues"].append(f"File not found: {file_path}")
+        result["verdict"] = "FAIL"
+        return result
+
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            source = f.read()
+        tree = ast.parse(source, filename=file_path)
+    except SyntaxError as e:
+        result["issues"].append(f"Syntax error: {e}")
+        result["verdict"] = "FAIL"
+        return result
+
+    # ── 辅助：检查节点所在行是否在 TrackContext 或 @track 装饰器内部 ──
+    def _has_track_decorator(node):
+        """检查函数是否有 @track 装饰器"""
+        for dec in getattr(node, 'decorator_list', []):
+            if isinstance(dec, ast.Call):
+                if isinstance(dec.func, ast.Name) and dec.func.id == 'track':
+                    return True
+                if isinstance(dec.func, ast.Attribute) and dec.func.attr == 'track':
+                    return True
+        return False
+
+    def _source_lines(start_lineno, end_lineno):
+        """获取节点对应的源码行"""
+        lines = source.split('\n')
+        return '\n'.join(lines[start_lineno-1:end_lineno])
+
+    # ── 检查 1: 公开函数是否有 @track ──
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.name.startswith('_'):
+                continue  # 跳过私有函数
+            # 跳过类内部的 __init__ 等 dunder 方法（它们通常不需要追踪）
+            if node.name.startswith('__') and node.name.endswith('__'):
+                continue
+            result["public_functions"]["total"] += 1
+            if _has_track_decorator(node):
+                result["public_functions"]["tracked"] += 1
+            else:
+                result["public_functions"]["missing"].append(
+                    f"Line {node.lineno}: {node.name}()"
+                )
+
+    # ── 检查 2: >5 行的 if/for/while/try 块 ──
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.If, ast.For, ast.While, ast.Try)):
+            if hasattr(node, 'end_lineno') and node.end_lineno:
+                n_lines = node.end_lineno - node.lineno + 1
+                if n_lines > 5:
+                    result["large_blocks"]["total"] += 1
+                    # 简单启发式：检查源码中附近是否有 TrackContext
+                    context_start = max(0, node.lineno - 3)
+                    context_end = node.end_lineno + 1
+                    nearby = _source_lines(context_start, context_end)
+                    has_tc = 'TrackContext' in nearby
+                    if has_tc:
+                        result["large_blocks"]["tracked"] += 1
+                    else:
+                        node_type = type(node).__name__.lower()
+                        result["large_blocks"]["missing"].append(
+                            f"Line {node.lineno}: {node_type} block ({n_lines} lines)"
+                        )
+
+    # ── 检查 3: I/O 操作 ──
+    io_patterns = ['open(', 'pd.read_csv', 'pd.read_excel', 'df.to_csv',
+                   'df.to_excel', 'json.load', 'json.dump', 'requests.get',
+                   'requests.post', 'aiohttp.', 'sqlite3.']
+    lines = source.split('\n')
+    for i, line in enumerate(lines, 1):
+        for pat in io_patterns:
+            if pat in line:
+                result["io_operations"]["total"] += 1
+                # 检查前后 5 行是否有追踪相关调用
+                check_start = max(0, i - 5)
+                check_end = min(len(lines), i + 5)
+                nearby = '\n'.join(lines[check_start:check_end])
+                has_tracking = any(t in nearby for t in
+                    ['TrackContext', 'trace_log', 'trace_enter', '@track', 't.log', 't.enter'])
+                if has_tracking:
+                    result["io_operations"]["tracked"] += 1
+                else:
+                    result["io_operations"]["missing"].append(
+                        f"Line {i}: {line.strip()[:60]}"
+                    )
+                break  # 每行只计一次
+
+    # ── 检查 4: except 块是否有 trace_error ──
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ExceptHandler):
+            result["except_blocks"]["total"] += 1
+            except_code = _source_lines(node.lineno,
+                                        node.end_lineno if hasattr(node, 'end_lineno') and node.end_lineno else node.lineno + 3)
+            if 'trace_error' in except_code:
+                result["except_blocks"]["with_trace_error"] += 1
+            else:
+                result["except_blocks"]["missing"].append(
+                    f"Line {node.lineno}: except block"
+                )
+
+    # ── 汇总 issues ──
+    if result["public_functions"]["missing"]:
+        result["issues"].append(
+            f"PUBLIC_FUNC: {len(result['public_functions']['missing'])} untracked: "
+            + ", ".join(result["public_functions"]["missing"])
+        )
+    if result["large_blocks"]["missing"]:
+        result["issues"].append(
+            f"LARGE_BLOCK: {len(result['large_blocks']['missing'])} untracked: "
+            + ", ".join(result["large_blocks"]["missing"])
+        )
+    if result["io_operations"]["missing"]:
+        result["issues"].append(
+            f"IO_OP: {len(result['io_operations']['missing'])} untracked: "
+            + ", ".join(result["io_operations"]["missing"])
+        )
+    if result["except_blocks"]["missing"]:
+        result["issues"].append(
+            f"EXCEPT: {len(result['except_blocks']['missing'])} missing trace_error: "
+            + ", ".join(result["except_blocks"]["missing"])
+        )
+
+    if result["issues"]:
+        result["verdict"] = "FAIL"
+
+    return result
+
+
+def print_compliance_report(file_path: str) -> None:
+    """
+    打印合规性报告（供 Reviewer 直接使用）。
+
+    用法:
+        from core.tracker import print_compliance_report
+        print_compliance_report("SCRIPT/data_governance.py")
+    """
+    r = validate_tracking_compliance(file_path)
+    _safe_print(f"\n{'='*60}")
+    _safe_print(f"  Tracking Compliance Report: {r['file']}")
+    _safe_print(f"{'='*60}")
+    _safe_print(f"  Verdict: {r['verdict']}")
+    _safe_print(f"  Public Functions: {r['public_functions']['tracked']}/{r['public_functions']['total']} tracked")
+    _safe_print(f"  Large Blocks:     {r['large_blocks']['tracked']}/{r['large_blocks']['total']} tracked")
+    _safe_print(f"  I/O Operations:   {r['io_operations']['tracked']}/{r['io_operations']['total']} tracked")
+    _safe_print(f"  Except Blocks:    {r['except_blocks']['with_trace_error']}/{r['except_blocks']['total']} with trace_error")
+    if r['issues']:
+        _safe_print(f"\n  [ISSUES]")
+        for issue in r['issues']:
+            _safe_print(f"    - {issue}")
+    _safe_print(f"{'='*60}\n")

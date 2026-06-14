@@ -6,12 +6,12 @@
 
 | Agent | 文件 | 职责 | 可调用 |
 |-------|------|------|--------|
-| 📋 进度管理员 | `.github/agents/pm.agent.md` | 任务分配、进度跟踪、状态更新、跨机上下文同步 | data, developer, debugger, reviewer, tester, docs, ops, designer, design-reviewer |
-| 📡 数据管家 | `.github/agents/data.agent.md` | L0 多源数据采集 + L1 数据治理（坐标/范围/相关性筛选/脱敏） | developer, gis-developer |
-| 🛠 程序开发员 | `.github/agents/developer.agent.md` | 编写代码、实现功能 | — |
+| 📋 进度管理员 | `.github/agents/pm.agent.md` | 任务分配、进度跟踪、状态更新、跨机上下文同步 | data, developer, debugger, reviewer, tester, docs, ops, designer, design-reviewer, gis-developer |
+| 📡 数据管家 | `.github/agents/data.agent.md` | L0 多源数据采集 + L1 数据治理（调度 GIS Developer 执行坐标转换/范围过滤 + 相关性筛选/脱敏） | developer, gis-developer |
+| 🛠 程序开发员 | `.github/agents/developer.agent.md` | 编写代码、实现功能 | debugger, gis-developer |
 | 🐛 Debug 师 | `.github/agents/debugger.agent.md` | 诊断错误、定位根因 | — |
 | 🔍 代码审查员 | `.github/agents/reviewer.agent.md` | 审查代码质量与规范 | — |
-| 🧪 测试工程师 | `.github/agents/tester.agent.md` | 运行测试、验证功能 | debugger |
+| 🧪 测试工程师 | `.github/agents/tester.agent.md` | 运行测试、验证功能 | debugger, gis-developer |
 | 📝 文档维护员 | `.github/agents/docs.agent.md` | 维护文档体系 | — |
 | 🖥 环境管家 | `.github/agents/ops.agent.md` | 环境诊断、依赖同步、requirements.txt 维护 | — |
 | 🎨 UI 设计师 | `.github/agents/designer.agent.md` | 前端视觉设计、布局优化、交互体验 | — |
@@ -20,36 +20,109 @@
 
 ## 标准开发流程 (SOP)
 
+> PM 根据任务类型将需求路由到不同管线：纯逻辑走代码线，纯 UI 走设计线，逻辑+UI 两线并行。
+
 ```
-用户需求 → PM(拆解任务) → Developer(编码)
-                              ↓
-                         Reviewer(审查)
-                         ↙          ↘
-                    通过            有问题
-                     ↓                ↓
-                  Tester(测试)    Debugger(诊断)
-                  ↙       ↘        ↓
-               通过      失败   Developer(修复)
-                ↓        ↓        ↓
-              Docs     Debugger  Reviewer(复审)
-              (文档)   (诊断)       ↓
-                ↓                Tester(重测)
-              PM(闭环)              ↓
-                                  ...
+                        用户需求
+                           ↓
+                      PM(拆解+路由)
+                           │
+              ┌────────────┼────────────┐
+              ↓            ↓            ↓
+          纯 UI 任务   逻辑+UI 任务   纯逻辑任务
+              │            │            │
+    ┌─────────┘    ┌───────┴───────┐    │
+    ↓              ↓               ↓    │
+ Designer     Designer         Developer │
+    ↓         (设计稿)             │     │
+  Design         ↓               │     │
+ Reviewer    Developer           │     │
+    ↓         (编码)             │     │
+  通过?          ↓               │     │
+  ├─ 否→迭代   合并              │     │
+  ↓              │               │     │
+  PM             ↓               ↓     ↓
+              Reviewer ──────────┘     │
+              ↙          ↘            │
+           通过          有问题        │
+            ↓              ↓           │
+         Tester       Debugger(诊断)   │
+         ↙    ↘          ↓            │
+      通过   失败    Developer(修复)   │
+       ↓      ↓          ↓            │
+     Docs  Debugger   Reviewer(复审)   │
+       ↓   (诊断)        ↓            │
+       ↓               Tester(重测)    │
+       ↓                  ↓            │
+       └──────────┬───────┘            │
+                  ↓                    │
+              用户验收 ←───────────────┘
+              ↙      ↘
+           通过       失败 → PM 路由回对应 Agent
+            ↓                   ├─ 逻辑问题 → Developer → Reviewer → Tester
+         PM(闭环)               ├─ UI 问题   → Designer → Design Reviewer
+                                └─ 性能问题 → Developer → Reviewer（快速审）→ Tester
 ```
+
+### 三种任务路由
+
+| 任务类型 | 管线 | 示例 |
+|----------|------|------|
+| **纯逻辑** | PM → Developer → Reviewer → Tester → Docs → 验收 | 新增分析算法、修改数据管道 |
+| **纯 UI** | PM → Designer → Design Reviewer → 验收 | 调整按钮样式、重新布局 |
+| **逻辑 + UI** | 设计线先行 → 设计稿交付后代码线启动 → 合并 → Tester → Docs → 验收 | 新增热力图页面、重构分析控制台 |
+
+> 逻辑+UI 任务中，Designer 交付后 Developer 按设计稿编码，Design Reviewer 在最终验收阶段复审设计还原度。
+
+### UI 改动在流程中的位置
+
+所有 UI 相关改动（无论任务类型）都经过 Designer → Design Reviewer 闭环：
+- **纯 UI 任务**：Designer 设计 → Design Reviewer 审查 → PM 放行 → 用户验收 → PM 闭环
+- **逻辑+UI 任务**：Designer 先出设计稿 → Design Reviewer 审查通过 → Developer 按稿编码 → Reviewer → Tester → 用户验收（Design Reviewer 在此阶段复审设计还原度）
+- **纯逻辑任务**：不涉及 UI，跳过设计审查
 
 ### 流程规则
 
-1. **PM 驱动**：所有开发任务由 PM 从 `docs/todo.md` 中取任务发起
-2. **先审查再测试**：代码必须经过 Reviewer 审查通过后才能交给 Tester
-3. **测试失败回 Debug**：Tester 发现问题时调用 Debugger 诊断，不直接改代码
-4. **修复后重审**：Debugger 输出修复方案 → Developer 修改 → Reviewer 复审
-5. **文档同步**：功能验证通过后，Docs Agent 更新相关文档
-6. **PM 闭环**：所有步骤完成后 PM 在 `docs/todo.md` 标记 ✅
+1. **PM 驱动**：所有开发任务由 PM 从 `docs/todo.md` 中取任务发起，按任务类型路由
+2. **设计先行**：逻辑+UI 任务必须先出设计稿，Developer 再按稿编码
+3. **先审查再测试**：代码必须经过 Reviewer 审查通过后才能交给 Tester
+4. **测试失败回 Debug**：Tester 发现问题时调用 Debugger 诊断，不直接改代码
+5. **修复后重审**：Debugger 输出修复方案 → Developer 修改 → Reviewer 复审
+6. **文档同步**：功能验证通过后，Docs Agent 更新相关文档
+7. **用户验收**：用真实数据跑一遍，确认效果满足预期（含设计还原度检查）
+8. **PM 闭环**：所有步骤完成后 PM 在 `docs/todo.md` 标记 ✅
+
+### 用户验收失败路径
+
+用户验收不通过时，PM 判断问题类型并路由回对应 Agent：
+- 数据结果/分析逻辑问题 → Developer 修改 → Reviewer → Tester → 用户验收
+- UI 交互/视觉效果问题 → Designer 修改 → Design Reviewer → 用户验收
+- 性能不达标 → Developer 优化 → Reviewer（快速审）→ Tester 重测 → 用户验收
+
+### 任务就绪定义 (Definition of Ready)
+
+Developer / Designer 接任务前必须满足：
+
+- [ ] 任务目标一句话可描述（做什么、为什么做）
+- [ ] 涉及的文件/模块已明确列出
+- [ ] 依赖的其他 Agent 产出已就绪（如 Designer 稿、Data Agent 数据集）
+- [ ] 验收标准已与 PM 对齐（怎么算"做完"）
+- [ ] 阻塞项已提前识别并记录
+
+### 完成定义 (Definition of Done)
+
+任务标记 ✅ 前必须全部满足：
+
+- [ ] 代码通过 Reviewer 审查（审查报告结论为"通过"）
+- [ ] 测试全部通过（Tester 报告结论为"通过"）
+- [ ] 新增追踪 ID 已注册到 `core/tracker.py` 注册表
+- [ ] 相关文档已更新（Docs Agent 确认）
+- [ ] **用户验收**：用真实数据跑一遍，确认效果满足预期
+- [ ] 无未提交的调试代码 / 临时文件残留
 
 ## 共享知识库
 
-所有 Agent 在开始工作前，应先读取以下文件了解项目上下文：
+Agent 启动时根据下表选择性阅读知识源。如需深入了解特定领域，再查阅对应文件：
 
 | 知识源 | 路径 | 内容 |
 |--------|------|------|
@@ -59,6 +132,24 @@
 | 架构文档 | `docs/architecture.md` | 系统架构说明 |
 | 开发笔记 | `docs/dev-notes.md` | 历史踩坑记录 |
 | 决策记录 | `docs/decisions.md` | 架构决策 (ADR) |
+
+### 按角色推荐阅读
+
+> 不必全读。下表标注各 Agent 的必读与选读知识源。
+
+| Agent | 必读 | 选读 |
+|-------|------|------|
+| **PM** | `architecture-pattern.md`, `todo.md` | `decisions.md`, `dev-notes.md` |
+| **Developer** | `architecture-pattern.md`, `tracker.py` | `decisions.md`, `dev-notes.md` |
+| **Reviewer** | `architecture-pattern.md`, `tracker.py` | `decisions.md` |
+| **Tester** | `architecture-pattern.md` | `tracker.py`, `dev-notes.md` |
+| **Debugger** | `tracker.py`, `architecture-pattern.md` | `dev-notes.md` |
+| **Data Agent** | `architecture-pattern.md`, `config.py` | `decisions.md` |
+| **GIS Developer** | `architecture-pattern.md`（空间分析章节）, `config.py` | `tracker.py` |
+| **Designer** | `architecture-pattern.md`（文件职责章节）, `design/tokens.css` | — |
+| **Design Reviewer** | `architecture-pattern.md`（文件职责章节）, `design/tokens.css` | — |
+| **Docs** | `architecture-pattern.md`, `decisions.md` | `dev-notes.md`, `tracker.py` |
+| **Ops** | `requirements.txt`, `architecture-pattern.md` | — |
 
 ## 编码铁律
 
@@ -113,85 +204,22 @@
 
 ## Agent 使用场景
 
-> 每个 Agent 都有专属触发词和典型场景，方便快速指派任务。
+> **调用方式**：Agent 之间通过你（用户）手动 `@agent` 调用来串联流程，并非自动编排。
+> 例如：PM 会输出"请 @developer 实现 X"，然后由你手动切换。
 
-### 📋 PM — 进度管理员 `@pm`
-**关键词**：规划任务、分配工作、查看进度、更新状态、拆解需求、同步上下文、下班交接
-**场景**：开始一天工作、启动 SOP、换机恢复上下文 | **可调用**：data, developer, debugger, reviewer, tester, docs, ops
-> `@pm 开始处理 2026-06-12 的任务 1：情绪数据爬取方案调研`
-> `@pm 今天有什么任务？帮我规划优先级` 
-> `@pm 今天的任务都完成了，更新 todo.md 做日结`
-> `@pm 同步上下文`（换机后恢复上一次会话）
-> `@pm 下班交接`（离开前保存上下文到 Git）
-
-### 📡 Data — 数据管家 `@data`
-**关键词**：爬数据、采集、数据治理、L0、L1、相关性筛选、坐标转换、范围过滤
-**场景**：需要采集新数据、治理原始数据、筛选城市情绪有效数据 | **可调用**：developer, gis-developer
-> `@data 用 Selenium 采集小红书"规划范围"相关笔记，目标 1000 条`
-> `@data 对 L0 原始数据执行 L1 治理管道（含相关性筛选）`
-> `@data 检查最新 L1 数据的质量报告`
-
-### 🛠 Developer — 程序开发员 `@developer`
-**关键词**：写代码、实现功能、新建文件、修改逻辑、加页面、重构、优化性能
-**场景**：实现功能、修改代码、创建模块 | **调用者**：你/PM/Debugger | 多文件必须走 SOP
-> `@developer 在 app_main.py 中新增 show_heatmap_page() 子页面`
-> `@developer 按 debugger 的修复方案修改 emotion_analysis_v1.py L234`
-
-### 🐛 Debugger — Debug 师 `@debugger`
-**关键词**：报错、崩溃、异常、bug、不工作、排查、定位根因、诊断
-**场景**：程序报错、测试失败、编码问题(GBK/emoji)、不确定问题在哪 | **只诊断不改代码**
-> `@debugger 诊断 app_main.py 中的报错：UnicodeEncodeError: 'gbk' codec...`
-> `@debugger 跑 run_analysis.py 时报错，帮我定位根因`
-
-### 🔍 Reviewer — 代码审查员 `@reviewer`
-**关键词**：审查、review、检查代码、架构合规、编码规范、代码质量、复审
-**场景**：代码写完后把关、重大改动前检查 | **纯静态审查，不改不跑**
-> `@reviewer 审查 apps/app_main.py 的架构合规性`
-> `@reviewer 审查最近修改的所有 .py 文件` | `@reviewer 重点检查 _safe_print 使用情况`
-
-### 🧪 Tester — 测试工程师 `@tester`
-**关键词**：测试、验证、跑脚本、检查输出、回归、确认功能
-**场景**：审查通过后验证、发版前回归 | **发现问题找 Debugger，不改代码**
-> `@tester 用 data/raw/test_0609_1.csv 跑完整分析流程，检查输出`
-> `@tester 验证 Streamlit 子页面是否能正常加载`
-
-### 📝 Docs — 文档维护员 `@docs`
-**关键词**：文档、更新说明、changelog、记录、写纪要、同步、架构决策
-**场景**：功能完成后同步、踩坑记录、架构变更 | **只碰文档，不改代码**
-> `@docs 功能"三级分析架构重构"已完成，更新 docs/dev-notes.md`
-> `@docs 在长期备忘里加一条：Docker 部署方案`
-
-### 🖥 Ops — 环境管家 `@ops`
-**关键词**：环境同步、依赖更新、pip install、两机协同、缺什么包、虚拟环境、venv
-**场景**：办公室↔家里环境同步、新增依赖后更新清单、排查导入报错是否缺包 | **只碰环境，不改代码**
-> `@ops 检查当前环境和 requirements.txt 是否一致，列出差异`
-> `@ops 我刚 pip install 了新包，帮我更新 requirements.txt`
-> `@ops 生成一份家里电脑的环境同步脚本`
-
-### 🎨 Designer — UI 设计师 `@designer`
-**关键词**：界面、布局、颜色、按钮、样式、交互、美观、UI、UX
-**场景**：页面不好看、布局需调整、组件风格不统一、交互流程优化 | **只碰 UI，不改业务逻辑**
-> `@designer 优化 app_main.py 的 HUD 按钮布局，统一半透明圆角风格`
-> `@designer 重新设计初始载入页，去掉居中按钮，用左侧纵向三按钮导航`
-
-### 👁 Design Reviewer — 设计审查员 `@design-reviewer`
-**关键词**：设计审查、审美、风格、一致性、配色、间距、交互审查、设计走查
-**场景**：设计师交付后把关审美质量、检查视觉一致性、迭代修改直到合格 | **可调用 designer**
-> `@design-reviewer 审查 app_main.py 界面，重点看颜色和间距一致性`
-> `@design-reviewer 设计师提交了新方案，帮我做一轮设计走查`
-
-### 设计审查流程（子 SOP）
-```
-用户需求 → Designer(设计) → Design Reviewer(审美审查)
-                              ↙              ↘
-                           通过              有问题
-                            ↓                 ↓
-                           PM              Designer(修改)
-                                              ↓
-                                        Design Reviewer(复审)
-                                              ↓
-                                           ...迭代...
-```
+| Agent | 触发词 | 场景 | 可调用 | 详细定义 |
+|-------|--------|------|--------|----------|
+| 📋 PM | 规划任务、分配工作、查看进度、拆解需求、同步上下文、下班交接 | 开始一天工作、启动 SOP、换机恢复上下文 | data, developer, debugger, reviewer, tester, docs, ops, designer, design-reviewer, gis-developer | `pm.agent.md` |
+| 📡 Data | 爬数据、采集、数据治理、L0、L1、相关性筛选、坐标转换、范围过滤 | 采集新数据、治理原始数据、筛选有效数据 | developer, gis-developer | `data.agent.md` |
+| 🛠 Developer | 写代码、实现功能、新建文件、修改逻辑、加页面、重构、优化性能 | 实现功能、修改代码、创建模块 | debugger, gis-developer | `developer.agent.md` |
+| 🐛 Debugger | 报错、崩溃、异常、bug、排查、定位根因、诊断 | 程序报错、测试失败、编码问题 | — | `debugger.agent.md` |
+| 🔍 Reviewer | 审查、review、检查代码、架构合规、编码规范、代码质量、复审 | 代码写完后把关、重大改动前检查 | — | `reviewer.agent.md` |
+| 🧪 Tester | 测试、验证、跑脚本、检查输出、回归、确认功能 | 审查通过后验证、发版前回归 | debugger, gis-developer | `tester.agent.md` |
+| 📝 Docs | 文档、更新说明、changelog、写纪要、同步、架构决策 | 功能完成后同步、踩坑记录、架构变更 | — | `docs.agent.md` |
+| 🖥 Ops | 环境同步、依赖更新、pip install、两机协同、虚拟环境、venv | 环境同步、新增依赖、排查缺包 | — | `ops.agent.md` |
+| 🎨 Designer | 界面、布局、颜色、按钮、样式、交互、美观、UI、UX | 页面设计、布局调整、交互流程优化 | — | `designer.agent.md` |
+| 👁 Design Reviewer | 设计审查、审美、风格、一致性、配色、间距、交互审查、设计走查 | 设计师交付后把关审美质量、检查视觉一致性 | designer | `design-reviewer.agent.md` |
+| 🗺 GIS Dev | 坐标转换、CRS、投影、空间分析、GeoJSON、Shapely | 地理空间数据处理、坐标系转换 | — | `gis-developer.agent.md` |
 
 ## 跨机协作（办公室 ↔ 家里）
 
@@ -223,8 +251,40 @@ PM 会自动：
 | **手动** | VS Code 设置/扩展（暂无自动同步） |
 
 ### ⚡ 跳过流程（仅简单改动）
-单文件小改、注释修正、变量重命名等可直接 `@developer` 跳过 SOP。
-> ⚠️ 涉及架构、多文件、新功能时**必须走完整 SOP**。
+
+以下情况可跳过 SOP，直接 `@developer` 执行：
+- 仅修改注释 / 文档字符串
+- 变量 / 函数重命名（不改变签名）
+- 单文件内的格式化 / 代码风格调整
+- 修复明显的拼写错误
+
+以下情况**必须走完整 SOP**：
+- 新增或删除函数 / 类
+- 修改函数签名（参数 / 返回值）
+- **任何控制流逻辑修改（if/else/for/while/try-except，无论行数）**
+- 涉及 I/O 操作（文件读写 / API 调用 / DB）
+- 涉及 2 个及以上文件
+- 修改 `core/tracker.py` 或追踪基础设施
+
+> ⚠️ 不确定时，走 SOP（宁可多一步审查，不放一个隐患）。
+
+### 🔄 紧急回滚流程
+
+如果已部署的变更需要紧急回滚：
+
+```
+发现问题 → PM 判断严重程度
+              ↙           ↘
+          紧急回滚        标准修复
+           ↓                ↓
+    PM 直接 git revert   走 SOP 流程
+     + @tester 验证      (Debugger → Developer → Reviewer → Tester)
+     + @reviewer 快速审查回滚 diff
+           ↓
+    PM 记录到 todo.md
+```
+
+> 紧急回滚标准：系统无法启动、核心功能崩溃、数据损坏。
 
 ## 快速启动
 

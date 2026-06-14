@@ -20,6 +20,7 @@
 | 3 | ⬜ | 做什么 | `xxx.py` | |
 
 > 💡 标准启动指令：`@pm 开始处理 YYYY-MM-DD 的任务 N：任务名称`
+> ⚠️ 编号规则：每日任务从 1 开始连续编号，不跳号、不重复。跨日引用使用 `MMDD-NN` 格式（如 `0613-07`）。
 
 ### 📝 开发日志
 <!-- 记录实际做了什么、踩了什么坑、收获了什么 -->
@@ -56,9 +57,9 @@
 | 7 | ✅ | 主应用集成新 Design Token（低饱和色卡+CSS变量） | `apps/app_main.py`, `design/tokens.css`, `design/tokens.py` | 添加 inject_theme_css() 调用 + 重新生成 Token CSS/Python |
 | 8 | ✅ | 修复注记开关 [LB] 导致底图偏移/复位 | `apps/app_main.py` | st_folium() 返回值保存 last_center/last_zoom 到 session_state，rerun 后视图保持 |
 | 9 | ✅ | 边界线粗细+颜色可调节（[R]窗口内） | `apps/app_main.py`, `core/map_engine.py` | show_range_dialog 新增 slider(1-20) + 7色 selectbox；add_boundary_layer 动态 hex→RGB + weight 参数 |
-| 7 | ✅ | 决策追踪系统 (Decision Tracking System) | `core/tracker.py`(新建), `.github/agents/debugger.agent.md`, `developer.agent.md`, `reviewer.agent.md`, `AGENTS.md`, `docs/architecture-pattern.md`, `docs/decisions.md` | 决策 ID + 行为 + Log + Tracking 体系；bug 定位 O(n)→O(1)；全局配套更新 |
-| 10 | ✅ | 分析控制台柱状图颜色统一 + 按钮状态逻辑重构 | `design/tokens.json`, `design/tokens.py`, `design/tokens.css`, `core/ui_components.py`, `apps/app_main.py` | 图表颜色与地图 POLARITY_RGBA 对齐；按钮"开始分析"→"在地图上显示"双态切换 |
-| 11 | ✅ | [LB] 按钮：注记死开关 → 地图底图 Dark/Light 切换 | `apps/app_main.py`, `core/map_engine.py` | 移除 _theme JS 注入；_map_style 控制 CartoDB dark-matter/positron 底图切换；[LM]/[LB] 图标自动切换 |
+| 10 | ✅ | 决策追踪系统 (Decision Tracking System) | `core/tracker.py`(新建), `.github/agents/debugger.agent.md`, `developer.agent.md`, `reviewer.agent.md`, `AGENTS.md`, `docs/architecture-pattern.md`, `docs/decisions.md` | 决策 ID + 行为 + Log + Tracking 体系；bug 定位 O(n)→O(1)；全局配套更新 |
+| 11 | ✅ | 分析控制台柱状图颜色统一 + 按钮状态逻辑重构 | `design/tokens.json`, `design/tokens.py`, `design/tokens.css`, `core/ui_components.py`, `apps/app_main.py` | 图表颜色与地图 POLARITY_RGBA 对齐；按钮"开始分析"→"在地图上显示"双态切换 |
+| 12 | ✅ | [LB] 按钮：注记死开关 → 地图底图 Dark/Light 切换 | `apps/app_main.py`, `core/map_engine.py` | 移除 _theme JS 注入；_map_style 控制 CartoDB dark-matter/positron 底图切换；[LM]/[LB] 图标自动切换 |
 | 13 | ✅ | R 默认颜色→活力橙 + 新增 [Map] 底图切换 | `apps/app_main.py`, `core/map_engine.py` | 边界色默认 #d97d5c；5种底图(CartoDB深/浅/标准 + 天地图无/有注记)；Designer 优化为 radio+色条预览 |
 
 

@@ -4,6 +4,7 @@ tools: [read, edit, search, execute]
 user-invocable: true
 argument-hint: "环境出了什么问题？要同步什么？"
 agents: []
+version: "1.0.0"
 ---
 你是 emotion_map 项目的**环境管家 (Ops / Environment Steward)**。你负责保持开发环境健康、依赖清晰、多机同步。
 
