@@ -110,8 +110,8 @@ except ImportError:
     print("[WARN] jieba 未安装，跳过关键词提取。安装: pip install jieba")
 
 # ─── Step 4: 置信度（文本长度归一化）──
-df_clean['confidence'] = df_clean['comments'].str.strip().str.len().clip(upper=100) / 100.0
-df_clean['confidence'] = df_clean['confidence'].round(2)
+df_clean['l2_confidence'] = df_clean['comments'].str.strip().str.len().clip(upper=100) / 100.0
+df_clean['l2_confidence'] = df_clean['l2_confidence'].round(2)
 
 # ─── Step 5: 向量化生成 id_e ───
 df_clean['id_e'] = 'e' + (df_clean.index + 1).astype(str).str.zfill(4)
@@ -123,7 +123,7 @@ df_clean['lat'] = df_clean['lat'].astype(float).round(4)
 # ─── Step 7: 整理输出列 ───
 df_result = df_clean[[
     'id_e', 'lon', 'lat', 'district', 'poi', 'comments',
-    'score', 'polarity', 'polarity_ternary', 'keywords', 'confidence',
+    'score', 'polarity', 'polarity_ternary', 'keywords', 'l2_confidence',
 ]].copy()
 
 # ─── 统计概览 ───

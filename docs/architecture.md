@@ -198,15 +198,17 @@ graph LR
 | 21 | `score` | — | — | ✅ | ✅ | ✅ | float | L2 SnowNLP 综合情绪得分 0~1 |
 | 22 | `polarity` | — | — | ✅ | ✅ | ✅ | str | 五级极性：Very Negative / Negative / Neutral / Positive / Very Positive |
 | 23 | `keywords` | — | — | ✅ | ✅ | ✅ | str | jieba 情绪关键词（逗号分隔） |
-| 24 | `confidence` | — | — | ✅ | ✅ | ✅ | float | 置信度 0~1（L2 默认 1.0） |
-| 25 | `category` | — | — | — | ✅ | ✅ | str | L3 情绪类别（喜悦/愤怒/悲伤/惊讶/厌恶/恐惧/中性） |
-| 26 | `intensity` | — | — | — | ✅ | ✅ | float | L3 情绪强度 0~1 |
-| 27 | `target_type` | — | — | — | ✅ | ✅ | str | L3 情绪对象类型（设施/环境/服务/文化/事件） |
-| 28 | `target_detail` | — | — | — | ✅ | ✅ | str | L3 情绪对象具体描述 |
-| 29 | `attributions` | — | — | — | — | ✅ | json | L4 归因列表 [{"cause":…, "weight":…, …}] |
-| 30 | `suggestions` | — | — | — | — | ✅ | json | L4 改善建议 ["建议1", "建议2", …] |
+| 24 | `l2_confidence` | — | — | ✅ | — | — | float | L2 置信度 0~1（SnowNLP 文本长度归一化） |
+| 25 | `l3_confidence` | — | — | — | ✅ | — | float | L3 置信度 0~1（LLM 提供） |
+| 26 | `l4_confidence` | — | — | — | — | ✅ | float | L4 置信度 0~1（LLM 归因分析提供） |
+| 27 | `category` | — | — | — | ✅ | ✅ | str | L3 情绪类别（喜悦/愤怒/悲伤/惊讶/厌恶/恐惧/中性） |
+| 28 | `intensity` | — | — | — | ✅ | ✅ | float | L3 情绪强度 0~1 |
+| 29 | `target_type` | — | — | — | ✅ | ✅ | str | L3 情绪对象类型（设施/环境/服务/文化/事件） |
+| 30 | `target_detail` | — | — | — | ✅ | ✅ | str | L3 情绪对象具体描述 |
+| 31 | `attributions` | — | — | — | — | ✅ | json | L4 归因列表 [{"cause":…, "weight":…, …}] |
+| 32 | `suggestions` | — | — | — | — | ✅ | json | L4 改善建议 ["建议1", "建议2", …] |
 
-> **列数**：L0=13 → L1=20（+7） → L2=24（+4） → L3=28（+4） → L4=30（+2）
+> **列数**：L0=13 → L1=20（+7） → L2=25（+5） → L3=30（+5） → L4=32（+2）
 
 ### 4.3 坐标规范
 

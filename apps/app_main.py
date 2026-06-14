@@ -45,9 +45,6 @@ from SCRIPT.emotion_analysis_v1 import (
 )
 from SCRIPT.data_governance import (
     step1_load_and_transform,
-    step2_filter_by_boundary,
-    anonymize_dataframe,
-    step3_export_filtered,
     step4_run_l2_analysis,
 )
 from SCRIPT.relevance_filter import keyword_prefilter, _build_text_for_classification
@@ -594,8 +591,28 @@ def show_layer_dialog():
             if checked != lyr.get('visible', True):
                 layers[i]['visible'] = checked
                 st.session_state['layers'] = layers
+                # ── 同步主数据层可见性 ──
+                if lyr['file_path'] == st.session_state.get('file_path', ''):
+                    st.session_state['_all_layers_hidden'] = not checked
 
     st.divider()
+    # ── 确定按钮（红色，凸显重要性）──
+    st.markdown("""
+    <style>
+    button[kind="danger"] {
+        background-color: #E06050 !important;
+        border-color: #C0392B !important;
+        color: #fff !important;
+    }
+    button[kind="danger"]:hover {
+        background-color: #C0392B !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    if st.button('[确定]', key='lyr_confirm', type='primary',
+                use_container_width=True):
+        st.rerun()
+    st.caption('— 批量操作 —')
     bc1, bc2 = st.columns(2)
     with bc1:
         if st.button('[全部打开]', use_container_width=True, key='lyr_all_on'):
@@ -627,17 +644,20 @@ def show_analysis_dialog():
         l1_files = sorted([f for f in os.listdir(PROCESSED_DIR)
                           if os.path.isfile(os.path.join(PROCESSED_DIR, f))
                           and f.lower().endswith(('.csv', '.tsv', '.json', '.geojson'))
-                          and not f.lower().endswith('.geojson')])  # 排除 GeoJSON 文件，允许所有 CSV/TSV
+                          and not f.lower().endswith('.geojson')
+                          and '_L2_result' not in f
+                          and '_L3_result' not in f
+                          and '_L4_result' not in f])  # 仅 L1 文件，排除 L2/L3/L4 结果
 
     if not l1_files:
-        st.warning(f'`{PROCESSED_DIR}/` 中没有可分析的文件。请先生成 L1 模拟数据：`python SCRIPT/generate_l1_mock.py`')
+        st.warning(f'`{PROCESSED_DIR}/` 中没有可分析的 L1 文件。请先生成 L1 模拟数据：`python SCRIPT/generate_l1_mock.py`')
         return
 
     source_dir = PROCESSED_DIR
     source_label = 'PROCESSED_DIR (L1)'
 
     file_choice = st.selectbox('[FILE] 待分析数据文件', l1_files,
-                               help=f'来自 {source_label}: {source_dir}/')
+                               help=f'仅 L1 治理后数据 (不含 _L2/L3/L4_result)。来自 {source_label}: {source_dir}/')
     st.caption(f'路径: `{os.path.join(source_dir, file_choice)}`')
 
     # ── 输入数据校验 ──
@@ -938,10 +958,14 @@ def _render_new_analysis_view(engine_cfg: dict):
                 f for f in os.listdir(PROCESSED_DIR)
                 if os.path.isfile(os.path.join(PROCESSED_DIR, f))
                 and f.lower().endswith(('.csv', '.tsv', '.json', '.geojson'))
-                and not f.lower().endswith('.geojson')  # 排除 GeoJSON 文件，允许所有 CSV/TSV
+                and not f.lower().endswith('.geojson')
+                and '_L2_result' not in f
+                and '_L3_result' not in f
+                and '_L4_result' not in f  # 仅 L1 文件，排除 L2/L3/L4 结果
             ])
         if l1_files:
-            file_choice = st.selectbox('L1 治理后数据', l1_files, key='console_l1')
+            file_choice = st.selectbox('L1 治理后数据', l1_files, key='console_l1',
+                                       help='仅 L1 文件，不含 _L2/L3/L4_result')
             input_path = os.path.join(PROCESSED_DIR, file_choice)
             st.caption(f'`{input_path}`')
             new_file_selected = True

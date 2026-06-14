@@ -119,6 +119,48 @@
 
 ---
 
+## 📅 2026-06-14（周日）
+
+### ☑ TODO List
+
+| # | 状态 | 任务 | 涉及文件 | 备注 |
+|---|------|------|----------|------|
+| 1 | ✅ | LY 图层 checkbox 修复 + [确定] 按钮 | `apps/app_main.py` | 修复 _all_layers_hidden 不联动 + 新增红色确定按钮（未走 SOP，用户确认跳过） |
+| 2 | ✅ | 数据层架构优化：L1_COLUMNS 重排 + v1.0 代码清理 | `SCRIPT/data_governance.py`, `apps/app_main.py` | 走完整 SOP Developer→Reviewer(2轮)→Tester；9组分组重排 + 3个DEPRECATED函数删除 + 残留导入/常量清理 |
+| 3 | ✅ | L2 字段规范：confidence→l2_confidence + 新增 L2_COLUMNS | `SCRIPT/emotion_analysis_v1.py` | L2 CSV 列名改为 l2_confidence 避免与 L1 ai_confidence 冲突；新增 L2_COLUMNS 常量(9字段) |
+| 4 | ⬜ | 端到端管线验证 L0→L1→L2 | `data_governance.py`, `emotion_analysis_v1.py` | 06-13 延续 |
+| 5 | ✅ | L1~L4 confidence 列全局重命名：l1_confidence / l2_confidence / l3_confidence / l4_confidence | `SCRIPT/emotion_analysis_v1.py`, `docs/architecture.md`, `check_data_quality.py`, `SCRIPT/test_scripts_2.py` | 走完整 SOP；L2_COLUMNS 新增 l2/l3/l4_confidence；run_pipeline 按 phase 写入；run_full_pipeline L3/L4 写入对应置信度；架构文档字段表拆分；4 个 TrackContext 埋点 + 4 个追踪 ID 注册；Reviewer 两轮审查 + Tester 9/9 通过 |
+
+> 💡 标准启动指令：`@pm 开始处理 2026-06-14 的任务 N：任务名称`
+
+### 📝 开发日志
+
+**关键字**：LY图层, 数据层架构审查, L1_COLUMNS, v1.0清退, **confidence列重命名, l1/l2/l3/l4_confidence**
+
+#### 做了什么
+- 修复 LY 图层控制 checkbox 不生效（_all_layers_hidden 与 checkbox 不联动）
+- 新增红色 [确定] 按钮 + 批量操作分区优化交互
+- PM 审查 L0→L2 数据管线架构，发现 5 个问题（同前）
+- 数据层架构优化走完整 SOP 管线（同前）
+- **L1~L4 confidence 列全局重命名走完整 SOP**：
+  - PM 全局搜索 → 定位 4 文件 13 处引用
+  - Developer 执行：`L2_COLUMNS` 新增 `l2_confidence`/`l3_confidence`/`l4_confidence`；`run_pipeline` 按 phase 条件写入对应置信度列；`run_full_pipeline` L3/L4 步骤分别写入 `l3_confidence`/`l4_confidence`；`docs/architecture.md` 字段表拆分 `confidence` → `l2/l3/l4_confidence`（列数 24→25/28→30/30→32）；`check_data_quality.py` / `test_scripts_2.py` 更新列名
+  - Reviewer 首轮发现 3 个问题：① `run_pipeline` 硬编码 `l2_confidence` 未按 phase 区分 ② 4 个 >5 行块缺少 `TrackContext` ③ `TrackContext` 导入未使用
+  - Developer 修复：if/elif/else 按 phase 写入 + 4 个 `TrackContext` 包裹（D_003~D_006）+ 追踪 ID 注册
+  - Reviewer 复审通过 ✅
+  - Tester 9/9 测试用例全部通过 ✅
+
+#### 踩坑 & 收获
+- Streamlit `st.dialog` 关闭时不自动触发 rerun → 需要显式"确定"按钮
+- 数据层字段顺序对 CSV 可读性影响极大（人工检查时需反复滚动）
+- `from pyproj import Transformer, CRS` 中 `CRS` 在函数删除后变为未使用导入，reviewer 静态分析是必要的
+
+#### 🔜 次日计划 (2026-06-15)
+- L0→L1→L2 端到端管线验证
+- 用户验收本次所有改动
+
+---
+
 ## 📅 2026-06-12（周五）
 
 ### ☑ TODO List

@@ -71,6 +71,21 @@ from core.data_loader import load_emotion_data
 from core.export import export_to_csv, export_to_geojson
 from core.tracker import track, TrackContext, trace_log, trace_error, register_track_id
 
+# ═══════════════════════════════════════════════════════════
+# L2 输出字段定义
+# ═══════════════════════════════════════════════════════════
+
+L2_COLUMNS = [
+    # 情绪核心（替代 L1 的 primary_emotion/emotion_intensity）
+    'score', 'polarity', 'keywords',
+    # 置信度（按阶段区分）
+    'l2_confidence',
+    # L3 前置字段（L2 阶段为 None，L3 填充）
+    'category', 'intensity', 'target_type', 'target_detail', 'l3_confidence',
+    # L4 前置字段（L2 阶段为 None，L4 填充）
+    'attributions', 'suggestions', 'l4_confidence',
+]
+
 
 # ═══════════════════════════════════════════════════════════
 # 一、数据结构定义（L2 → L3 → L4 逐级叠加）
@@ -81,9 +96,9 @@ class EmotionResult:
     """
     统一情绪分析结果 — 字段按 L2→L3→L4 逐级叠加。
 
-    L2 (SnowNLP)          — score, polarity, keywords, confidence
-    L3 (LLM) 在 L2 基础上 — category, intensity, target_type, target_detail
-    L4 (Corpus+LLM) 在 L3 基础上 — attributions, suggestions
+    L2 (SnowNLP)          — score, polarity, keywords, l2_confidence
+    L3 (LLM) 在 L2 基础上 — category, intensity, target_type, target_detail, l3_confidence
+    L4 (Corpus+LLM) 在 L3 基础上 — attributions, suggestions, l4_confidence
     """
 
     phase: str = 'L2'                     # 分析阶段标识: 'L2' | 'L3' | 'L4'
@@ -93,7 +108,7 @@ class EmotionResult:
     polarity: str = 'Neutral'             # 五级极性: Very Negative / Negative / Neutral
                                           #            Positive / Very Positive
     keywords: list = field(default_factory=list)   # 情绪关键词（jieba 分词提取）
-    confidence: float = 1.0               # 置信度（L2 默认 1.0，L3/L4 由模型提供）
+    confidence: float = 1.0               # 置信度（内部字段；CSV 输出按阶段映射为 l2/l3/l4_confidence）
 
     # ── L3: LLM 语义增强（在 L2 基础上叠加）──
     category: Optional[str] = None        # 情绪类别: 喜悦/愤怒/悲伤/惊讶/厌恶/恐惧/中性
@@ -298,7 +313,7 @@ class SnowNLPAnalyzer(AnalyzerBase):
       · score       — 综合情绪得分 0~1
       · polarity    — 五级极性（Very Negative ~ Very Positive）
       · keywords    — 情绪关键词（jieba TF-IDF 提取）
-      · confidence  — 置信度（基于文本长度归一化）
+      · l2_confidence — L2 置信度（基于文本长度归一化，CSV 输出列名）
 
     优点：轻量(~10MB)、离线、中文友好、无 API 费用
     局限：仅正面/负面分数，无情绪细分类、无对象识别
@@ -427,7 +442,7 @@ class LLMAnalyzer(AnalyzerBase):
       · intensity     — 情绪强度 0~1
       · target_type   — 情绪对象类型（设施/环境/服务/文化/事件）
       · target_detail — 情绪对象具体描述
-      · confidence    — 由 LLM 提供的置信度
+      · l3_confidence — L3 置信度（由 LLM 提供，CSV 输出列名）
 
     L3 的定位：
       - 不替代 L2 的 score/polarity，而是在其上叠加语义维度
@@ -945,9 +960,9 @@ def run_pipeline(file_path: str,
     返回:
         包含分析结果的多列 DataFrame，失败返回 None
 
-    L2 输出列: score, polarity, keywords, confidence
-    L3 输出列: L2全部 + category, intensity, target_type, target_detail
-    L4 输出列: L3全部 + attributions, suggestions
+    L2 输出列: score, polarity, keywords, l2_confidence
+    L3 输出列: L2全部 + category, intensity, target_type, target_detail, l3_confidence
+    L4 输出列: L3全部 + attributions, suggestions, l4_confidence
     """
     if engine is None:
         engine = create_analyzer('snownlp')
@@ -979,28 +994,36 @@ def run_pipeline(file_path: str,
     df['score'] = [r.score for r in results]
     df['polarity'] = [r.polarity for r in results]
     df['keywords'] = [','.join(r.keywords) if r.keywords else '' for r in results]
-    df['confidence'] = [r.confidence for r in results]
+    # 按分析阶段写入对应置信度列
+    if phase == 'L3':
+        df['l3_confidence'] = [r.confidence for r in results]
+    elif phase == 'L4':
+        df['l4_confidence'] = [r.confidence for r in results]
+    else:
+        df['l2_confidence'] = [r.confidence for r in results]
 
     # 4. 合并 L3 增强字段（如果引擎产出）
     if any(r.category is not None for r in results):
-        df['category'] = [r.category or '' for r in results]
-        df['intensity'] = [r.intensity if r.intensity is not None else np.nan
-                          for r in results]
-        df['target_type'] = [r.target_type or '' for r in results]
-        df['target_detail'] = [r.target_detail or '' for r in results]
+        with TrackContext("MOD_ANA.D_005", n_results=len(results)):
+            df['category'] = [r.category or '' for r in results]
+            df['intensity'] = [r.intensity if r.intensity is not None else np.nan
+                              for r in results]
+            df['target_type'] = [r.target_type or '' for r in results]
+            df['target_detail'] = [r.target_detail or '' for r in results]
 
     # 5. 合并 L4 归因字段（如果引擎产出）
     if any(r.attributions is not None for r in results):
-        df['attributions'] = [
-            json.dumps(r.attributions, ensure_ascii=False)
-            if r.attributions else ''
-            for r in results
-        ]
-        df['suggestions'] = [
-            json.dumps(r.suggestions, ensure_ascii=False)
-            if r.suggestions else ''
-            for r in results
-        ]
+        with TrackContext("MOD_ANA.D_006", n_results=len(results)):
+            df['attributions'] = [
+                json.dumps(r.attributions, ensure_ascii=False)
+                if r.attributions else ''
+                for r in results
+            ]
+            df['suggestions'] = [
+                json.dumps(r.suggestions, ensure_ascii=False)
+                if r.suggestions else ''
+                for r in results
+            ]
 
     # 6. 坐标处理
     for col in ['lon', 'lat']:
@@ -1100,10 +1123,15 @@ def run_full_pipeline(file_path: str,
         neg_mask = df['polarity'].isin(['Negative', 'Very Negative'])
         neg_texts = df.loc[neg_mask, text_col].tolist() if text_col else []
         if neg_texts:
-            l3_results = engine_l3.analyze_batch(neg_texts, progress_callback=progress_callback)
-            for col in ['category', 'intensity', 'target_type', 'target_detail']:
-                df.loc[neg_mask, col] = [
-                    getattr(r, col, '') or '' for r in l3_results
+            with TrackContext("MOD_ANA.D_003", n_texts=len(neg_texts)):
+                l3_results = engine_l3.analyze_batch(neg_texts, progress_callback=progress_callback)
+                for col in ['category', 'intensity', 'target_type', 'target_detail']:
+                    df.loc[neg_mask, col] = [
+                        getattr(r, col, '') or '' for r in l3_results
+                    ]
+                # 写入 L3 置信度
+                df.loc[neg_mask, 'l3_confidence'] = [
+                    r.confidence for r in l3_results
                 ]
             _safe_print(f'   L3 增强 {len(neg_texts)} 条负面文本')
         else:
@@ -1117,17 +1145,22 @@ def run_full_pipeline(file_path: str,
         actionable_mask = df['polarity'].isin(['Negative', 'Very Negative'])
         actionable_texts = df.loc[actionable_mask, text_col].tolist() if text_col else []
         if actionable_texts:
-            l4_results = engine_l4.analyze_batch(actionable_texts, progress_callback=progress_callback)
-            df.loc[actionable_mask, 'attributions'] = [
-                json.dumps(r.attributions, ensure_ascii=False)
-                if r.attributions else ''
-                for r in l4_results
-            ]
-            df.loc[actionable_mask, 'suggestions'] = [
-                json.dumps(r.suggestions, ensure_ascii=False)
-                if r.suggestions else ''
-                for r in l4_results
-            ]
+            with TrackContext("MOD_ANA.D_004", n_texts=len(actionable_texts)):
+                l4_results = engine_l4.analyze_batch(actionable_texts, progress_callback=progress_callback)
+                df.loc[actionable_mask, 'attributions'] = [
+                    json.dumps(r.attributions, ensure_ascii=False)
+                    if r.attributions else ''
+                    for r in l4_results
+                ]
+                df.loc[actionable_mask, 'suggestions'] = [
+                    json.dumps(r.suggestions, ensure_ascii=False)
+                    if r.suggestions else ''
+                    for r in l4_results
+                ]
+                # 写入 L4 置信度
+                df.loc[actionable_mask, 'l4_confidence'] = [
+                    r.confidence for r in l4_results
+                ]
             _safe_print(f'   L4 归因 {len(actionable_texts)} 条需干预文本')
         else:
             _safe_print('   无需归因文本，跳过 L4')
@@ -1142,6 +1175,10 @@ register_track_id("MOD_ANA.F_010", "导出分析结果CSV+GeoJSON")
 register_track_id("MOD_ANA.F_011", "L2→L3→L4全阶段管道（run_full_pipeline）")
 register_track_id("MOD_ANA.D_001", "进度回调：SnowNLP批量分析循环")
 register_track_id("MOD_ANA.D_002", "进度回调：run_pipeline透传callback到analyze_batch")
+register_track_id("MOD_ANA.D_003", "run_full_pipeline L3 LLM语义增强块")
+register_track_id("MOD_ANA.D_004", "run_full_pipeline L4 多维归因块")
+register_track_id("MOD_ANA.D_005", "run_pipeline L3 字段合并块")
+register_track_id("MOD_ANA.D_006", "run_pipeline L4 字段合并块")
 
 
 # ═══════════════════════════════════════════════════════════

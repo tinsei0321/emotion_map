@@ -27,9 +27,7 @@ import sys
 import builtins as _bi
 
 import pandas as pd
-import geopandas as gpd
-from shapely.geometry import Point
-from pyproj import Transformer, CRS
+from pyproj import Transformer
 
 # 确保可导入 core 和 SCRIPT 模块
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -75,29 +73,29 @@ RAW_CSV = os.path.join(RAW_DIR, 'simulated_20260613_100k_raw.csv')
 L1_OUTPUT_NAME = 'simulated_20260613_规划范围'
 L1_CSV_OUTPUT = os.path.join(PROCESSED_DIR, f'{L1_OUTPUT_NAME}_L1_result_csv.csv')
 
-BUFFER_DISTANCE_M = 3000  # [DEPRECATED v2.0] LineString buffer距离，v2.0不再调用此函数
-
 # ═══════════════════════════════════════════════════════════
 # L1 字段定义 (v2.0)
 # ═══════════════════════════════════════════════════════════
 
 L1_COLUMNS = [
-    # 标识
+    # ① 标识
     'id_e',
-    # 空间定位
-    'scope', 'location_mentioned',
-    # 核心内容
-    'text', 'title', 'text_length',
-    # 情绪分析
-    'relevance', 'relevance_category', 'primary_emotion',
-    'emotion_intensity', 'urban_value', 'ai_summary', 'ai_confidence',
-    'filter_layer', 'has_location',
-    # 社交指标
-    'like_count', 'comment_count', 'tags',
-    # 来源追溯
-    'source', 'url', 'crawl_time', 'publish_time',
-    # 坐标（最后，技术字段）
-    'lon', 'lat', 'x_cgcs2000', 'y_cgcs2000',
+    # ② 时间
+    'publish_time', 'crawl_time',
+    # ③ 空间
+    'scope', 'location_mentioned', 'poi', 'lon', 'lat',
+    # ④ 原始内容
+    'title', 'text', 'text_length', 'tags',
+    # ⑤ 相关性判定（L1 治理结果）
+    'relevance', 'relevance_category', 'filter_layer', 'has_location',
+    # ⑥ 情绪分析（L1 LLM 产出）
+    'primary_emotion', 'emotion_intensity', 'urban_value', 'ai_summary', 'l1_confidence',
+    # ⑦ 社交指标
+    'like_count', 'comment_count',
+    # ⑧ 溯源
+    'source', 'url',
+    # ⑨ 技术坐标（按需使用）
+    'x_cgcs2000', 'y_cgcs2000',
 ]
 
 
@@ -192,150 +190,7 @@ def step1_load_and_transform(csv_path: str) -> pd.DataFrame:
 
 
 # ═══════════════════════════════════════════════════════════
-# 步骤 2: 范围过滤
-# ═══════════════════════════════════════════════════════════
-
-@track("MOD_GOV.F_002", track_args=True)
-def step2_filter_by_boundary(df: pd.DataFrame, shp_path: str) -> pd.DataFrame:
-    """
-    [DEPRECATED v2.0] 加载规划范围边界，buffer 生成 Polygon，用 WGS84 坐标过滤。
-
-    边界为 LineString（EPSG:4546），需 buffer 3000m 转为 Polygon，
-    再转为 EPSG:4326 与数据点的 WGS84 坐标做 point-in-polygon 判断。
-
-    Returns:
-        过滤后的 DataFrame（仅保留边界内的数据点）
-    """
-    _safe_print(f'[LOAD] 加载边界文件: {shp_path}')
-
-    if not os.path.exists(shp_path):
-        raise FileNotFoundError(f'边界文件不存在: {shp_path}')
-
-    # 检查 .shx 伴生文件
-    shx_path = shp_path[:-4] + '.shx'
-    if not os.path.exists(shx_path):
-        raise FileNotFoundError(
-            f'Shapefile 缺少 .shx 索引文件: {shx_path}\n'
-            f'请确保 .shp / .shx / .dbf 三个文件都在同一目录。'
-        )
-
-    try:
-        gdf_boundary = gpd.read_file(shp_path)
-    except Exception as e:
-        _safe_print(f'[ERR] 边界文件读取失败: {e}')
-        raise
-
-    orig_crs = gdf_boundary.crs
-    _safe_print(f'[LOAD] 边界 CRS: {orig_crs}')
-    _safe_print(f'[LOAD] 边界几何类型: {[g.geom_type for g in gdf_boundary.geometry]}')
-    _safe_print(f'[LOAD] 边界要素数: {len(gdf_boundary)}')
-
-    # ── 校验边界 CRS 是否为投影坐标系（buffer 需要米制单位）──
-    crs_obj = CRS.from_user_input(gdf_boundary.crs)
-    if not crs_obj.is_projected:
-        _safe_print(
-            f'[ERR] 边界 CRS 为地理坐标系 ({gdf_boundary.crs})，'
-            f'buffer 需要投影坐标系（单位为米）。'
-        )
-        _safe_print('[ERR] 请将边界转换为投影坐标系（如 EPSG:4546）后再使用。')
-        raise ValueError(
-            f'边界坐标系不是投影坐标系: {gdf_boundary.crs}。buffer 需要米制投影坐标系。'
-        )
-
-    # ── Buffer 3000m 生成 Polygon（在原投影坐标系下操作，单位=米）──
-    _safe_print(f'[TRANSFORM] LineString → Polygon (buffer={BUFFER_DISTANCE_M}m) ...')
-    try:
-        gdf_boundary['geometry'] = gdf_boundary.geometry.buffer(BUFFER_DISTANCE_M)
-        _safe_print(f'[OK] Buffer 后几何类型: {[g.geom_type for g in gdf_boundary.geometry]}')
-    except Exception as e:
-        _safe_print(f'[ERR] Buffer 操作失败: {e}')
-        raise
-
-    # ── 转为 EPSG:4326 用于 point-in-polygon ──
-    _safe_print('[TRANSFORM] 边界 Polygon → EPSG:4326 ...')
-    try:
-        gdf_wgs84 = gdf_boundary.to_crs('EPSG:4326')
-    except Exception as e:
-        _safe_print(f'[ERR] 边界坐标系转换失败: {e}')
-        raise
-
-    # ── point-in-polygon 过滤 ──
-    boundary_polygon = gdf_wgs84.union_all()  # 合并所有 Polygon 为一个几何体
-    _safe_print(f'[LOAD] 合并后边界几何类型: {boundary_polygon.geom_type}')
-
-    input_count = len(df)
-    keep_mask = []
-    for _, row in df.iterrows():
-        try:
-            lon = float(row['lon'])
-            lat = float(row['lat'])
-            pt = Point(lon, lat)
-            keep_mask.append(boundary_polygon.contains(pt))
-        except (ValueError, TypeError):
-            keep_mask.append(False)
-
-    df['in_scope'] = keep_mask
-    df_filtered = df[df['in_scope']].copy()
-    dropped_count = input_count - len(df_filtered)
-
-    _safe_print(f'[OK] 范围过滤完成: {input_count} → {len(df_filtered)} 条 (过滤掉 {dropped_count} 条)')
-
-    if df_filtered.empty:
-        _safe_print('[WARN] 过滤后数据为空！请检查边界范围是否与数据点坐标匹配。')
-
-    return df_filtered
-
-
-# ═══════════════════════════════════════════════════════════
-# 步骤 3: 数据脱敏 + 导出 L1
-# ═══════════════════════════════════════════════════════════
-
-@track("MOD_GOV.F_003", track_args=False)
-def anonymize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    [DEPRECATED v2.0] 数据脱敏处理：清空敏感列（comments）。
-
-    脱敏规则:
-      - 清空 'comments' 列（可能包含其他用户评论中的个人身份信息）
-      - 保留 'title' 和 'text'（公开发布内容）
-      - 保留所有其他列
-
-    Returns:
-        脱敏后的 DataFrame（原地修改）
-    """
-    _safe_print('[ANONYMIZE] 数据脱敏处理...')
-
-    sensitive_cols = ['comments']
-    removed = []
-    for col in sensitive_cols:
-        if col in df.columns:
-            df[col] = ''
-            removed.append(col)
-
-    if removed:
-        _safe_print(f'[OK] 已清空敏感列: {removed}')
-    else:
-        _safe_print('[OK] 无需脱敏的列（comments 列不存在）')
-
-    return df
-
-
-@track("MOD_GOV.F_004", track_args=True)
-def step3_export_filtered(df: pd.DataFrame, output_path: str) -> str:
-    """
-    [DEPRECATED v2.0] 导出过滤后数据 CSV（脱敏已在步骤 1 后完成，此处仅导出）。
-
-    Returns:
-        导出的 CSV 文件路径
-    """
-    _safe_print(f'[EXPORT] 导出过滤后数据: {output_path}')
-    export_to_csv(df, output_path)
-
-    return output_path
-
-
-# ═══════════════════════════════════════════════════════════
-# 步骤 4: 调用 L2 SnowNLP 分析
+# 步骤 2: 调用 L2 SnowNLP 分析
 # ═══════════════════════════════════════════════════════════
 
 @track("MOD_GOV.F_005", track_args=True)
@@ -470,14 +325,14 @@ def main():
         # 初始化新列
         for col in ['relevance', 'relevance_category', 'primary_emotion',
                      'emotion_intensity', 'has_location', 'location_mentioned',
-                     'urban_value', 'ai_summary', 'ai_confidence']:
+                     'urban_value', 'ai_summary', 'l1_confidence']:
             if col not in df.columns:
                 df[col] = None
 
         df['relevance'] = 'irrelevant'
         df['has_location'] = False
         df['emotion_intensity'] = 0
-        df['ai_confidence'] = 0.0
+        df['l1_confidence'] = 0.0
 
         n_merged = 0
         for r in results:
@@ -495,7 +350,7 @@ def main():
             df.at[idx, 'location_mentioned'] = r.get('location_mentioned', '') or ''
             df.at[idx, 'urban_value'] = r.get('urban_value', 'low') or 'low'
             df.at[idx, 'ai_summary'] = r.get('ai_summary', '') or ''
-            df.at[idx, 'ai_confidence'] = float(r.get('ai_confidence', 0.0) or 0.0)
+            df.at[idx, 'l1_confidence'] = float(r.get('ai_confidence', 0.0) or 0.0)
 
         trace_log("MOD_GOV.D_005", detail=f"merged {n_merged} LLM results into df")
 
@@ -599,9 +454,6 @@ if __name__ == '__main__':
 
 # ── 追踪 ID 注册表 ──
 register_track_id("MOD_GOV.F_001", "步骤1: 加载原始数据 + GCJ-02->WGS84->CGCS2000坐标转换")
-register_track_id("MOD_GOV.F_002", "[DEPRECATED v2.0] 范围过滤（v2.0已不再调用）")
-register_track_id("MOD_GOV.F_003", "[DEPRECATED v2.0] 数据脱敏（v2.0已不再调用）")
-register_track_id("MOD_GOV.F_004", "[DEPRECATED v2.0] 导出过滤后数据（v2.0已不再调用）")
 register_track_id("MOD_GOV.F_005", "调用L2 SnowNLP分析管道")
 register_track_id("MOD_GOV.F_006", "数据治理主入口 (v2.0: 批量LLM筛选+分类)")
 register_track_id("MOD_GOV.D_004", "批量LLM分类调用 (llm_classify_batch)")

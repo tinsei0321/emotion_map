@@ -257,10 +257,10 @@ _safe_print(f"\n─── score 分布区间 ───")
 score_dist = df_l2['score_bin'].value_counts().sort_index()
 _safe_print(score_dist.to_string())
 
-# confidence 统计
-_safe_print(f"\n─── confidence 统计 ───")
-if 'confidence' in df_l2.columns:
-    conf = df_l2['confidence'].dropna()
+# l2_confidence 统计
+_safe_print(f"\n─── l2_confidence 统计 ───")
+if 'l2_confidence' in df_l2.columns:
+    conf = df_l2['l2_confidence'].dropna()
     _safe_print(f"  mean:   {conf.mean():.4f}")
     _safe_print(f"  median: {conf.median():.4f}")
     _safe_print(f"  min:    {conf.min():.4f}")
