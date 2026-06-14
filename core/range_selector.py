@@ -13,7 +13,7 @@ import geopandas as gpd
 import pandas as pd
 from shapely.geometry import Point
 
-from core.tracker import track, TrackContext, trace_log, trace_error, register_track_id
+from core.tracker import track, TrackContext, trace_log, trace_error, trace_warn, register_track_id
 
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -275,6 +275,149 @@ def get_boundary_geojson() -> Optional[dict]:
     except Exception:
         return None
 
+def _count_features(geojson: dict) -> int:
+    """统计 GeoJSON 中的 feature 数量。"""
+    geojson_type = geojson.get("type", "")
+    if geojson_type == "FeatureCollection":
+        return len(geojson.get("features", []))
+    elif geojson_type == "Feature":
+        return 1
+    return 0
+
+
+def _extract_features(geojson: dict) -> list:
+    """从 GeoJSON 中提取 feature 列表。"""
+    geojson_type = geojson.get("type", "")
+    if geojson_type == "FeatureCollection":
+        return geojson.get("features", [])
+    elif geojson_type == "Feature":
+        return [geojson]
+    return []
+
+
+def _flatten_coords(geometry: dict) -> list:
+    """从几何对象中提取所有坐标点，返回 [(lon, lat), ...]"""
+    coords = []
+    geom_type = geometry.get("type", "")
+
+    if geom_type == "Polygon":
+        for ring in geometry.get("coordinates", []):
+            coords.extend([(pt[0], pt[1]) for pt in ring])
+    elif geom_type == "MultiPolygon":
+        for polygon in geometry.get("coordinates", []):
+            for ring in polygon:
+                coords.extend([(pt[0], pt[1]) for pt in ring])
+
+    return coords
+
+
+# ── 安全阈值与简化 ──
+@track("MOD_RANGE.F_010", track_args=True)
+def count_vertices(geojson: dict) -> int:
+    """统计 GeoJSON 中所有几何的顶点总数。
+
+    用于判断是否需要道格拉斯-普克简化。
+    """
+    total = 0
+    try:
+        features = _extract_features(geojson)
+        for feat in features:
+            geom = feat.get("geometry", {})
+            coords = _flatten_coords(geom)
+            total += len(coords)
+    except Exception:
+        return 999999  # 解析失败视为超大，触发简化
+    return total
+
+
+@track("MOD_RANGE.F_011", track_args=True)
+def simplify_geojson(geojson: dict, tolerance: float = 0.0001) -> dict:
+    """对 GeoJSON 执行道格拉斯-普克几何简化。
+
+    Args:
+        geojson: 原始 GeoJSON 字典
+        tolerance: 简化容差（度），默认 0.0001 ≈ 10m @ 赤道
+
+    Returns:
+        简化后的 GeoJSON 深拷贝
+    """
+    import copy
+    from shapely.geometry import shape
+
+    simplified = copy.deepcopy(geojson)
+    features = _extract_features(simplified)
+
+    for feat in features:
+        geom = feat.get("geometry", {})
+        try:
+            shp = shape(geom)
+            simplified_shp = shp.simplify(tolerance, preserve_topology=True)
+            feat["geometry"] = simplified_shp.__geo_interface__
+        except Exception:
+            trace_warn("MOD_RANGE.F_011", f"简化失败，保留原始几何: {feat.get('id', '?')}")
+            continue
+
+    # 更新顶层结构
+    geojson_type = simplified.get("type", "")
+    if geojson_type == "FeatureCollection":
+        simplified["features"] = features
+    elif geojson_type == "Feature":
+        if features:
+            simplified["geometry"] = features[0].get("geometry", simplified.get("geometry", {}))
+    return simplified
+
+
+@track("MOD_RANGE.F_012", track_args=True)
+def validate_upload_safety(
+    geojson: dict,
+    file_size_mb: float = 0,
+    max_vertices: int = 50000,
+    max_features: int = 20000,
+    max_file_mb: int = 100,
+    simplify_tolerance: float = 0.0001,
+) -> dict:
+    """校验上传矢量文件的安全性，必要时自动简化。
+
+    Returns:
+        {"safe": True/False, "geojson": 处理后的GeoJSON,
+         "warnings": [...], "simplified": bool, "error": str|None}
+    """
+    result = {"safe": True, "geojson": geojson, "warnings": [], "simplified": False, "error": None}
+
+    # 1. 文件大小检查
+    if file_size_mb > max_file_mb:
+        result["safe"] = False
+        result["error"] = f"[ERR] 文件过大 ({file_size_mb:.1f} MB > {max_file_mb} MB 上限)，请简化数据后重新上传"
+        return result
+    if file_size_mb > max_file_mb * 0.5:
+        result["warnings"].append(f"[WARN] 文件较大 ({file_size_mb:.1f} MB)，加载可能较慢")
+
+    # 2. 要素数检查
+    feature_count = _count_features(geojson)
+    if feature_count > max_features:
+        result["safe"] = False
+        result["error"] = f"[ERR] 要素数过多 ({feature_count} > {max_features})"
+        return result
+    if feature_count > max_features * 0.5:
+        result["warnings"].append(f"[WARN] 要素数较多 ({feature_count})，可能影响渲染性能")
+
+    # 3. 顶点数检查 + 自动简化
+    vertex_count = count_vertices(geojson)
+    if vertex_count > max_vertices:
+        with TrackContext("MOD_RANGE.D_010", action="auto_simplify",
+                           vertex_count=vertex_count, tolerance=simplify_tolerance):
+            geojson = simplify_geojson(geojson, tolerance=simplify_tolerance)
+            new_count = count_vertices(geojson)
+            result["geojson"] = geojson
+            result["simplified"] = True
+            result["warnings"].append(
+                f"[WARN] 顶点过多 ({vertex_count})，已自动简化为 {new_count} 顶点 "
+                f"(容差={simplify_tolerance}度 ~10m)"
+            )
+
+    return result
+
+
 # ── 追踪 ID 注册表 ──
 register_track_id("MOD_RANGE.F_001", "列出可用矢量数据集")
 register_track_id("MOD_RANGE.F_002", "获取当前激活的边界路径")
@@ -285,3 +428,7 @@ register_track_id("MOD_RANGE.F_006", "按范围筛选 DataFrame")
 register_track_id("MOD_RANGE.F_007", "获取可用范围列表（供 UI）")
 register_track_id("MOD_RANGE.F_008", "获取边界文件 CRS 信息")
 register_track_id("MOD_RANGE.F_009", "获取边界 GeoJSON（地图叠加用）")
+register_track_id("MOD_RANGE.F_010", "统计 GeoJSON 顶点总数")
+register_track_id("MOD_RANGE.F_011", "道格拉斯-普克几何简化")
+register_track_id("MOD_RANGE.F_012", "矢量文件安全阈值校验 + 自动简化")
+register_track_id("MOD_RANGE.D_010", "顶点数超限 → 自动简化")

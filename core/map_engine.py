@@ -166,7 +166,8 @@ def _hex_to_rgb(hex_color):
 
 @track("MOD_MAP.F_003", track_args=False)
 def add_boundary_layer(deck, geojson_path=None, geojson_data=None,
-                     name='分析范围', color='#1DBAD4', weight=4):
+                     name='分析范围', color='#1DBAD4', weight=4,
+                     fill=False, fill_color=None, fill_opacity=0.3):
     """添加边界图层（pydeck GeoJsonLayer）。
 
     参数:
@@ -174,8 +175,11 @@ def add_boundary_layer(deck, geojson_path=None, geojson_data=None,
         geojson_path: GeoJSON 文件路径
         geojson_data: GeoJSON dict（与 geojson_path 二选一）
         name: 图层名称
-        color: 边界颜色 (hex 格式 #RRGGBB)
+        color: 边界颜色 (hex 格式 #RRGGBB 或 [R,G,B] 列表)
         weight: 内层线宽（像素），外发光层使用 2x 宽度
+        fill: 是否填充面域
+        fill_color: 面填充颜色 ([R,G,B,A] 或 hex)
+        fill_opacity: 面不透明度 (0.0-1.0)
     """
     if geojson_data:
         data = geojson_data
@@ -186,7 +190,11 @@ def add_boundary_layer(deck, geojson_path=None, geojson_data=None,
     else:
         return deck
 
-    rgb = _hex_to_rgb(color)
+    # 支持两种颜色格式：hex 字符串 或 [R,G,B] 列表
+    if isinstance(color, str):
+        rgb = _hex_to_rgb(color)
+    else:
+        rgb = list(color[:3])
 
     # ── 发光描边层（外层，更宽更透明）──
     glow_layer = pdk.Layer(
@@ -194,10 +202,21 @@ def add_boundary_layer(deck, geojson_path=None, geojson_data=None,
         data=data,
         get_line_color=rgb + [60],
         get_line_width=weight * 2,
-        get_fill_color=rgb + [10],
+        get_fill_color=[0, 0, 0, 0],
         pickable=False,
     )
     deck.layers.append(glow_layer)
+
+    # ── 填充颜色处理 ──
+    if fill and fill_color:
+        if isinstance(fill_color, str):
+            frgb = _hex_to_rgb(fill_color) + [int(255 * fill_opacity)]
+        elif len(fill_color) == 4:
+            frgb = list(fill_color)
+        else:
+            frgb = list(fill_color[:3]) + [int(255 * fill_opacity)]
+    else:
+        frgb = [0, 0, 0, 0]
 
     # ── 主边界层（内层，较细较实）──
     layer = pdk.Layer(
@@ -205,12 +224,76 @@ def add_boundary_layer(deck, geojson_path=None, geojson_data=None,
         data=data,
         get_line_color=rgb + [220],
         get_line_width=weight,
-        get_fill_color=rgb + [40],
+        get_fill_color=frgb if fill else [0, 0, 0, 0],
+        stroked=True,
+        filled=fill,
+        extruded=False,
         pickable=False,
     )
 
     deck.layers.append(layer)
     return deck
+
+
+@track("MOD_MAP.F_005", track_args=False)
+def add_multiple_boundary_layers(deck, polygon_layers: list) -> None:
+    """添加多个矢量范围图层到地图（每个图层独立样式）。
+
+    参数:
+        deck: pydeck Deck 对象
+        polygon_layers: [{name, geojson, visible, style}, ...]
+            style = {line_color: [R,G,B], line_width: int,
+                     fill: bool, fill_color: [R,G,B,A], fill_opacity: float}
+    """
+    for layer_info in polygon_layers:
+        if not layer_info.get("visible", True):
+            continue
+        geojson = layer_info.get("geojson")
+        if geojson is None:
+            continue
+        style = layer_info.get("style", {})
+        color = style.get("line_color", [255, 140, 0])
+        weight = style.get("line_width", 20)
+        fill = style.get("fill", False)
+        fill_color = style.get("fill_color", [255, 140, 0, 120])
+        fill_opacity = style.get("fill_opacity", 0.5)
+
+        # 发光层
+        rgb = list(color[:3]) if isinstance(color, (list, tuple)) else _hex_to_rgb(str(color))
+        glow = pdk.Layer(
+            "GeoJsonLayer",
+            data=geojson,
+            get_line_color=rgb + [60],
+            get_line_width=weight * 2,
+            get_fill_color=[0, 0, 0, 0],
+            pickable=False,
+        )
+        deck.layers.append(glow)
+
+        # 填充色：使用显式 RGBA 数组
+        if fill:
+            if isinstance(fill_color, (list, tuple)) and len(fill_color) >= 3:
+                a = int(fill_color[3]) if len(fill_color) >= 4 else int(fill_opacity * 255)
+                frgb = [int(fill_color[0]), int(fill_color[1]), int(fill_color[2]), a]
+            else:
+                frgb = _hex_to_rgb(str(fill_color)) + [int(fill_opacity * 255)]
+        else:
+            frgb = [0, 0, 0, 0]
+
+        # 主线层
+        main = pdk.Layer(
+            "GeoJsonLayer",
+            data=geojson,
+            get_line_color=rgb + [220],
+            get_line_width=weight,
+            line_width_min_pixels=1,
+            get_fill_color=frgb,
+            stroked=True,
+            filled=fill,
+            extruded=False,
+            pickable=False,
+        )
+        deck.layers.append(main)
 
 
 @track("MOD_MAP.F_004", track_args=False)
@@ -285,6 +368,7 @@ def _get_polarity(props_list, i, score):
 # ── 追踪 ID 注册表 ──
 register_track_id("MOD_MAP.F_001", "创建 pydeck 基础地图（支持暗色/亮色/卫星三档底图切换）")
 register_track_id("MOD_MAP.F_002", "添加情绪点标记层（pydeck ScatterplotLayer + 五级极性）")
-register_track_id("MOD_MAP.F_003", "添加行政区划边界叠加层（pydeck GeoJsonLayer）")
+register_track_id("MOD_MAP.F_003", "添加行政区划边界叠加层（pydeck GeoJsonLayer），支持独立填充/线宽/颜色")
 register_track_id("MOD_MAP.F_004", "添加热力图图层（pydeck HeatmapLayer）")
+register_track_id("MOD_MAP.F_005", "添加多个矢量范围图层（每图层独立样式）")
 

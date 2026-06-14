@@ -78,6 +78,34 @@ MAX_DISPLAY_POINTS = 5000      # 地图最大显示点数，超出自动采样
 MAX_TABLE_ROWS = 2000          # 数据表格最大行数
 LARGE_FILE_WARN_MB = 50        # 文件大小警告阈值 (MB)
 
+# ── 矢量文件上载安全阈值 ──
+UPLOAD_MAX_FILE_SIZE_MB = 100        # 单文件最大大小 (MB)
+UPLOAD_MAX_GEOJSON_VERTICES = 50000  # GeoJSON 顶点总数上限，超出自动简化
+UPLOAD_MAX_SHAPEFILE_FEATURES = 20000 # Shapefile 要素数上限，超出自动简化
+UPLOAD_SIMPLIFY_TOLERANCE = 0.0001   # 道格拉斯-普克简化容差（约10m@赤道）
+UPLOAD_PARSE_TIMEOUT_SEC = 30        # 文件解析超时 (秒)
+
+# ── 矢量图层默认样式 ──
+# 多图层自动差异化配色方案（HSL 色相均匀分布，支持无限数量图层）
+DEFAULT_BOUNDARY_STYLE = {
+    "line_color": [255, 140, 0],     # 橙色 RGB
+    "line_width": 20,                 # 线宽 px
+    "fill": False,                    # 默认不填充面
+    "fill_color": [255, 140, 0, 80], # 面颜色 RGBA
+    "fill_opacity": 0.3,             # 面不透明度
+}
+# 自动差异化色板（前8个图层的默认颜色，超出则HSL计算）
+LAYER_PALETTE = [
+    [255, 140, 0],     # 橙色
+    [0, 200, 255],     # 青色
+    [255, 80, 80],     # 红色
+    [80, 255, 120],    # 绿色
+    [255, 220, 0],     # 黄色
+    [180, 130, 255],   # 紫色
+    [255, 160, 180],   # 粉色
+    [100, 220, 200],   # 蓝绿
+]
+
 # ── 初始默认坐标（宜昌）──
 DEFAULT_CENTER = [30.708, 111.286]
 DEFAULT_ZOOM = 12
