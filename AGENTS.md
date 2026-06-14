@@ -10,14 +10,14 @@
 
 | Agent | 文件 | 职责 | 可调用 |
 |-------|------|------|--------|
-| 🛠 Developer | `.github/agents/developer.agent.md` | 编写代码 + 诊断修复 bug + 决策追踪埋点 | gis-developer |
-| 🔍 Reviewer | `.github/agents/reviewer.agent.md` | 审查代码质量、架构合规、追踪点完整性 | — |
-| 🧪 Tester | `.github/agents/tester.agent.md` | 运行测试、验证功能、CRS 交叉核实 | gis-developer |
-| 📡 Data | `.github/agents/data.agent.md` | L0 多源数据采集 + L1 数据治理 | developer, gis-developer |
-| 🎨 Designer | `.github/agents/designer.agent.md` | UI 视觉设计 + 交互优化 + 设计自审 | — |
-| 🗺 GIS Dev | `.github/agents/gis-developer.agent.md` | 地理空间数据处理、坐标系转换、空间分析 | — |
-| 📝 Docs | `.github/agents/docs.agent.md` | 维护文档体系、更新开发日志、记录 ADR | — |
-| 🖥 Ops | `.github/agents/ops.agent.md` | 环境诊断、依赖同步、requirements.txt 维护 | — |
+| 🛠 Developer | `.claude/agents/developer.agent.md` | 编写代码 + 诊断修复 bug + 决策追踪埋点 | gis-developer |
+| 🔍 Reviewer | `.claude/agents/reviewer.agent.md` | 审查代码质量、架构合规、追踪点完整性 | — |
+| 🧪 Tester | `.claude/agents/tester.agent.md` | 运行测试、验证功能、CRS 交叉核实 | gis-developer |
+| 📡 Data | `.claude/agents/data.agent.md` | L0 多源数据采集 + L1 数据治理 | developer, gis-developer |
+| 🎨 Designer | `.claude/agents/designer.agent.md` | UI 视觉设计 + 交互优化 + 设计自审 | — |
+| 🗺 GIS Dev | `.claude/agents/gis-developer.agent.md` | 地理空间数据处理、坐标系转换、空间分析 | — |
+| 📝 Docs | `.claude/agents/docs.agent.md` | 维护文档体系、更新开发日志、记录 ADR | — |
+| 🖥 Ops | `.claude/agents/ops.agent.md` | 环境诊断、依赖同步、requirements.txt 维护 | — |
 
 > **v1.0 → v2.0 变化**：
 > - 🐛 Debugger 并入 Developer — Developer 现在同时具备开发和诊断能力

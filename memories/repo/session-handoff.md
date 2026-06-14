@@ -74,7 +74,7 @@
 | # | 任务 | 关键成果 |
 |---|------|----------|
 | 1 | 规划范围真实数据落图 | L1 治理管道：坐标转换(GCJ02→WGS84→CGCS2000 EPSG:4546) + LineString buffer→Polygon 范围过滤 |
-| 2 | Data Agent + 相关性筛选模块 | `.github/agents/data.agent.md` + `SCRIPT/relevance_filter.py`（两层漏斗：关键词+DeepSeek LLM），Agent 10→11 |
+| 2 | Data Agent + 相关性筛选模块 | `.claude/agents/data.agent.md` + `SCRIPT/relevance_filter.py`（两层漏斗：关键词+DeepSeek LLM），Agent 10→11 |
 | 3 | L1+L2 端到端验证 | ➡ 延续至 06-14（数据爬取放弃，MVP 专注管线跑通） |
 | 4 | 情绪点样式重设计 | 双层光晕（外 radius=13 opacity=0.12 + 内 radius=7 opacity=0.92 stroke=#fff）+ Neutral 灰→琥珀色 #ffd740 |
 | 5 | Design Token 体系 | `design/tokens.json` 7 大类 150+ token + CSS/Python 自动生成器 |

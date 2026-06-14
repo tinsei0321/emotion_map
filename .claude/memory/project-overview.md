@@ -46,7 +46,7 @@ metadata:
 10. 所有追踪 ID 必须在 `core/tracker.py` 注册表登记
 
 ## 多 Agent 协作
-- 8 个专业 Agent 定义在 `.github/agents/`（v2.0 精简自 11 个）
+- 8 个专业 Agent 定义在 `.claude/agents/`（v2.0 精简自 11 个）
 - Claude Code 主线程 = PM，自动编排 Developer → Reviewer → Tester → Docs 全流程
 - 跨机协作：同步上下文 恢复 → 下班交接 保存
 - v1→v2：Debugger 并入 Developer，Design Reviewer 并入 Designer 自审清单

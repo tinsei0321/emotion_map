@@ -20,35 +20,35 @@
   "agents": {
     "developer": {
       "description": "🛠 程序开发员 — 编写代码、实现功能 + 诊断修复 bug + 决策追踪埋点",
-      "agentPath": ".github/agents/developer.agent.md"
+      "agentPath": ".claude/agents/developer.agent.md"
     },
     "reviewer": {
       "description": "🔍 代码审查员 — 审查代码质量、架构合规、追踪点完整性",
-      "agentPath": ".github/agents/reviewer.agent.md"
+      "agentPath": ".claude/agents/reviewer.agent.md"
     },
     "tester": {
       "description": "🧪 测试工程师 — 运行测试、验证功能、CRS 交叉核实",
-      "agentPath": ".github/agents/tester.agent.md"
+      "agentPath": ".claude/agents/tester.agent.md"
     },
     "data": {
       "description": "📡 数据管家 — L0 多源数据采集 + L1 数据治理",
-      "agentPath": ".github/agents/data.agent.md"
+      "agentPath": ".claude/agents/data.agent.md"
     },
     "designer": {
       "description": "🎨 UI 设计师 — 视觉设计、交互优化 + 设计自审",
-      "agentPath": ".github/agents/designer.agent.md"
+      "agentPath": ".claude/agents/designer.agent.md"
     },
     "gis-developer": {
       "description": "🗺 GIS 开发员 — 地理空间数据处理、坐标系转换、空间分析",
-      "agentPath": ".github/agents/gis-developer.agent.md"
+      "agentPath": ".claude/agents/gis-developer.agent.md"
     },
     "docs": {
       "description": "📝 文档维护员 — 维护文档体系、更新开发日志",
-      "agentPath": ".github/agents/docs.agent.md"
+      "agentPath": ".claude/agents/docs.agent.md"
     },
     "ops": {
       "description": "🖥 环境管家 — 环境诊断、依赖同步、requirements.txt 维护",
-      "agentPath": ".github/agents/ops.agent.md"
+      "agentPath": ".claude/agents/ops.agent.md"
     }
   },
   "project": {

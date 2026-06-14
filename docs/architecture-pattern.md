@@ -60,7 +60,7 @@
   - 保留：标题/正文（已公开发布的内容）、发布时间、点赞数、来源平台、子区域标签
 
 ## Agent 协作体系
-- 项目使用 11 个专用 Agent 协作开发，定义在 `.github/agents/*.agent.md`
+- 项目使用 8 个专用 Agent 协作开发，定义在 `.claude/agents/*.agent.md`（v2.0）
 - 全局协作规则见根目录 `AGENTS.md`
 - 标准流程：PM 分配 → Developer 编码 → Reviewer 审查 → Tester 测试 → Docs 文档 → PM 闭环
 - 数据采集/治理：PM → Data Agent (L0采集+L1治理) → Developer → Reviewer → Tester

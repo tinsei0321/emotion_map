@@ -324,7 +324,7 @@ _PROJECT_ROOT/
   apps/               # 应用层
   design/             # Design Token 系统
   docs/               # 文档
-  .github/agents/     # Agent 定义
+  .claude/agents/     # Agent 定义
   .claude/            # Claude Code 配置
 ```
 
