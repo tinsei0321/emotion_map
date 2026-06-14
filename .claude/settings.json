@@ -1,27 +1,22 @@
 {
   "permissions": {
-    "Bash": {
-      "python *.py": "allow",
-      "pip install *": "allow",
-      "pip list": "allow",
-      "pip freeze *": "allow",
-      "streamlit run *": "allow",
-      "git status": "allow",
-      "git diff *": "allow",
-      "git add *": "allow",
-      "git commit *": "allow",
-      "git push *": "allow",
-      "git pull *": "allow",
-      "git branch *": "allow",
-      "git log *": "allow",
-      "git checkout *": "allow",
-      "git stash *": "allow",
-      "git remote *": "allow",
-      "mkdir *": "allow",
-      "ls *": "allow",
-      "npm *": "deny"
-    }
+    "allow": [
+      "Read",
+      "Write",
+      "Bash(git *)",
+      "Bash(npm *)",
+      "Bash(node *)",
+      "Bash(python *)",
+      "Bash(pip *)",
+      "Bash(streamlit *)",
+      "Bash(mkdir *)",
+      "Bash(ls *)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)"
+    ]
   },
+   "autoCompactThreshold": 85,
   "agents": {
     "pm": {
       "description": "📋 进度管理员 — 任务分配、进度跟踪、跨机上下文同步",
