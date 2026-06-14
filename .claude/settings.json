@@ -1,0 +1,78 @@
+{
+  "permissions": {
+    "Bash": {
+      "python *.py": "allow",
+      "pip install *": "allow",
+      "pip list": "allow",
+      "pip freeze *": "allow",
+      "streamlit run *": "allow",
+      "git status": "allow",
+      "git diff *": "allow",
+      "git add *": "allow",
+      "git commit *": "allow",
+      "git push *": "allow",
+      "git pull *": "allow",
+      "git branch *": "allow",
+      "git log *": "allow",
+      "git checkout *": "allow",
+      "git stash *": "allow",
+      "git remote *": "allow",
+      "mkdir *": "allow",
+      "ls *": "allow",
+      "npm *": "deny"
+    }
+  },
+  "agents": {
+    "pm": {
+      "description": "📋 进度管理员 — 任务分配、进度跟踪、跨机上下文同步",
+      "agentPath": ".github/agents/pm.agent.md"
+    },
+    "data": {
+      "description": "📡 数据管家 — L0 多源数据采集 + L1 数据治理",
+      "agentPath": ".github/agents/data.agent.md"
+    },
+    "developer": {
+      "description": "🛠 程序开发员 — 编写代码、实现功能",
+      "agentPath": ".github/agents/developer.agent.md"
+    },
+    "debugger": {
+      "description": "🐛 Debug 师 — 诊断错误、定位根因",
+      "agentPath": ".github/agents/debugger.agent.md"
+    },
+    "reviewer": {
+      "description": "🔍 代码审查员 — 审查代码质量与规范",
+      "agentPath": ".github/agents/reviewer.agent.md"
+    },
+    "tester": {
+      "description": "🧪 测试工程师 — 运行测试、验证功能",
+      "agentPath": ".github/agents/tester.agent.md"
+    },
+    "docs": {
+      "description": "📝 文档维护员 — 维护文档体系",
+      "agentPath": ".github/agents/docs.agent.md"
+    },
+    "ops": {
+      "description": "🖥 环境管家 — 环境诊断、依赖同步",
+      "agentPath": ".github/agents/ops.agent.md"
+    },
+    "designer": {
+      "description": "🎨 UI 设计师 — 前端视觉设计、布局优化",
+      "agentPath": ".github/agents/designer.agent.md"
+    },
+    "design-reviewer": {
+      "description": "👁 设计审查员 — 审查 UI 设计质量、审美一致性",
+      "agentPath": ".github/agents/design-reviewer.agent.md"
+    },
+    "gis-developer": {
+      "description": "🗺 GIS 开发员 — 地理空间数据处理、坐标系转换",
+      "agentPath": ".github/agents/gis-developer.agent.md"
+    }
+  },
+  "project": {
+    "name": "emotion_map",
+    "description": "情绪地图 — 基于多源社交数据的城市情绪空间分析平台",
+    "pythonVersion": "3.10+",
+    "entryPoint": "launch.py",
+    "port": 8501
+  }
+}
