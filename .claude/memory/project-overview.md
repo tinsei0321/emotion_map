@@ -46,9 +46,10 @@ metadata:
 10. 所有追踪 ID 必须在 `core/tracker.py` 注册表登记
 
 ## 多 Agent 协作
-- 11 个专业 Agent 定义在 `.github/agents/`
-- PM 驱动 SOP 流程：PM → Developer/Designer → Reviewer/Design Reviewer → Tester → Docs → 验收
-- 跨机协作：`@pm 同步上下文` 恢复 → `@pm 下班交接` 保存
+- 8 个专业 Agent 定义在 `.github/agents/`（v2.0 精简自 11 个）
+- Claude Code 主线程 = PM，自动编排 Developer → Reviewer → Tester → Docs 全流程
+- 跨机协作：同步上下文 恢复 → 下班交接 保存
+- v1→v2：Debugger 并入 Developer，Design Reviewer 并入 Designer 自审清单
 
 ## 核心文档
 - `docs/prd.md` — 产品需求文档（做什么、为谁做、优先级）

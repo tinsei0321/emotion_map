@@ -258,6 +258,54 @@ Folium 默认使用 OpenStreetMap 瓦片，国内加载缓慢甚至失败。
 
 ---
 
+### ADR-009 | 2026-06-15 | 创建 PRD + Spec 产品文档体系
+
+**状态**：✅ 已采纳
+
+**背景**：
+项目已有架构文档和开发笔记，但缺少产品层面的需求和规范文档。Developer 和 Reviewer 在"怎么做才对"上缺乏统一参考基准。
+
+**决策**：
+创建两份核心产品文档：
+1. `docs/prd.md` — 产品需求文档（5 类用户画像 + 27 项功能 MoSCoW + 12 项验收标准）
+2. `docs/spec.md` — 产品规范文档（数据管道字段逐级定义 + UI 规格 + 性能预算 + 编码铁律）
+
+**后果**：
+- ✅ Developer / Reviewer / Tester 有了统一的技术基准
+- ✅ 新成员可通过 PRD → Spec → Architecture 三层递进理解项目
+- ✅ MoSCoW 优先级让 MVP 边界清晰
+- ⚠️ 需要随项目演进持续更新
+
+---
+
+### ADR-010 | 2026-06-15 | Agent 架构 v2.0：11→8 精简 + 自动编排
+
+**状态**：✅ 已采纳
+
+**背景**：
+v1.0 的 11 Agent 手动编排模式存在三个问题：
+1. 用户需要手动逐一切换 Agent（`@pm` → `@developer` → `@reviewer`），纯手动开销大
+2. Agent 数量偏多，存在职责重叠（Debugger/Reviewer、Design Reviewer/Designer）
+3. Agent 定义完整但未真正被自动调用——是"给人看的 SOP"而非"自动执行的编排"
+
+**决策**：
+1. **精简阵容**：11→8 Agent
+   - Debugger 并入 Developer（Developer 同时具备诊断修复能力）
+   - Design Reviewer 并入 Designer（自审清单把关，交付前自查）
+   - PM 角色由 Claude Code 主线程承担（不再独立 Agent）
+2. **自动编排**：用户一句话给任务，Claude 内部自动 spawn Agent 走 SOP
+3. **保留独立**：Developer / Reviewer / Tester / Designer / Data / GIS Dev / Docs / Ops
+
+**后果**：
+- ✅ 用户不再需要手动 `@agent` 切换，任务启动成本降为零
+- ✅ Agent 数量减少 27%，角色边界更清晰
+- ✅ Developer 诊断能力增强（基于追踪系统的 O(1) 定位）
+- ✅ Designer 自审清单确保交付质量不降低
+- ⚠️ Developer 职责更重（开发+调试），需要更全面的能力
+- ⚠️ Designer 自审不能完全替代独立审查，重大 UI 改动仍需额外把关
+
+---
+
 ## 🔖 ADR 索引
 
 | 编号 | 日期 | 标题 | 状态 |
@@ -270,3 +318,5 @@ Folium 默认使用 OpenStreetMap 瓦片，国内加载缓慢甚至失败。
 | ADR-006 | 2026-06-11 | 建立文档体系 | ✅ |
 | ADR-007 | 2026-06-12 | 架构层级优化 + 空间分析引擎重定义 | ✅ |
 | ADR-008 | 2026-06-12 | Scrapy 作为数据采集框架 | ✅ |
+| ADR-009 | 2026-06-15 | 创建 PRD + Spec 产品文档体系 | ✅ |
+| ADR-010 | 2026-06-15 | Agent 架构 v2.0：11→8 精简 + 自动编排 | ✅ |

@@ -5,6 +5,37 @@
 
 ---
 
+## 📅 2026-06-15（周一）
+
+### ☑ TODO List
+
+| # | 状态 | 任务 | 涉及文件 | 备注 |
+|---|------|------|----------|------|
+| 1 | ✅ | Agent 架构 v2.0 升级：11→8 精简 + 自动编排 | `AGENTS.md`, `developer.agent.md`, `designer.agent.md`, `tester.agent.md`, `pm.agent.md`, `settings.json`, `debugger.agent.md`→archived, `design-reviewer.agent.md`→archived | Debugger→Developer, Design Reviewer→Designer自审, PM→Claude主线程 |
+| 2 | ✅ | 产品需求文档 PRD + 产品规范 Spec | `docs/prd.md`, `docs/spec.md` | 27 项功能 MoSCoW 优先级 + 数据管道/UI/追踪/性能全规范 |
+| 3 | ✅ | .claude 项目配置初始化 | `.claude/settings.json`, `.claude/memory/`, `MEMORY.md` | 权限白名单 + 记忆体系 + 中文对话偏好 |
+
+### 📝 开发日志
+
+**关键字**：Agent架构, 自动编排, PRD, Spec, Claude Code配置
+
+#### 做了什么
+- Agent 架构 v2.0 升级：Debugger 并入 Developer（Developer 同时具备诊断能力），Design Reviewer 并入 Designer（自审清单把关），PM 不再作为独立 Agent（Claude Code 主线程承担编排角色）
+- 创建 `docs/prd.md`：产品需求文档（5 类用户画像 + 27 项功能 MoSCoW + 12 项 MVP 验收标准 + Phase 1~3 路线图）
+- 创建 `docs/spec.md`：产品规范文档（数据管道字段逐级定义 + UI 组件规格 + 追踪系统规范 + 性能预算 + 编码铁律）
+- 初始化 `.claude/`：settings.json（8 Agent 注册 + 权限白名单 + autoCompactThreshold=85）+ memory/project-overview.md + MEMORY.md
+- 配置中文对话偏好 + 打开应用三页面验证启动正常
+
+#### 关键设计决策
+- **自动编排 > 手动 @agent**：用户一句话触发，Claude 内部自动 spawn Agent 走完整 SOP
+- **精简原则**：Agent 数量从 11→8，减少角色切换成本，Developer 和 Designer 职责扩展但边界清晰
+
+#### 🔜 次日计划 (2026-06-16)
+- L0→L1→L2 端到端管线验证
+- 用户验收本次所有改动
+
+---
+
 ## 📋 每日模板
 
 ```markdown
