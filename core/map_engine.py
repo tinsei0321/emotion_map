@@ -125,7 +125,8 @@ def add_point_layer(deck, lats, lons, scores, props_list=None,
             props = p.get('properties', p)
             parts = []
             for key in ['id_e', 'polarity', 'score', 'relevance_category',
-                        'primary_emotion', 'location_mentioned', 'ai_summary']:
+                        'primary_emotion', 'location_mentioned', 'ai_summary',
+                        'comments', 'poi']:
                 val = props.get(key, '')
                 if val:
                     parts.append(f'{key}: {val}')
@@ -344,6 +345,58 @@ def add_heatmap_layer(deck, lats, lons, scores=None, radius=30, intensity=0.5,
     return deck
 
 
+@track("MOD_MAP.F_006", track_args=False)
+def add_selection_marker(deck, lat, lon, radius=150, color=None):
+    """添加选中点的高亮轮廓圆环（半透明金色圆环 + 中心实心点）。
+
+    参数:
+        deck: pydeck Deck 对象
+        lat, lon: 选中点坐标
+        radius: 圆环半径（像素），默认 150
+        color: 轮廓颜色 [R,G,B]，默认金色 [255, 215, 0]
+    """
+    if lat is None or lon is None:
+        return deck
+
+    if color is None:
+        color = [255, 215, 0]  # 金色
+
+    records = [{
+        'lat': lat, 'lon': lon,
+        'color_r': color[0], 'color_g': color[1], 'color_b': color[2],
+        'radius': radius,
+    }]
+
+    # ── 外层发光圆环（大半径，低不透明度）──
+    glow = pdk.Layer(
+        'ScatterplotLayer',
+        data=records,
+        get_position=['lon', 'lat'],
+        get_fill_color=['color_r', 'color_g', 'color_b', 80],
+        get_radius='radius',
+        radius_scale=1,
+        radius_min_pixels=radius,
+        radius_max_pixels=radius,
+        pickable=False,
+    )
+    deck.layers.append(glow)
+
+    # ── 内层实心微点（标记精确位置）──
+    inner = pdk.Layer(
+        'ScatterplotLayer',
+        data=records,
+        get_position=['lon', 'lat'],
+        get_fill_color=['color_r', 'color_g', 'color_b', 220],
+        get_radius=20,
+        radius_scale=1,
+        radius_min_pixels=10,
+        radius_max_pixels=10,
+        pickable=False,
+    )
+    deck.layers.append(inner)
+    return deck
+
+
 def _get_polarity(props_list, i, score):
     """获取极性：优先 props，否则从 score 计算（向后兼容）"""
     polarity = None
@@ -371,4 +424,5 @@ register_track_id("MOD_MAP.F_002", "添加情绪点标记层（pydeck Scatterplo
 register_track_id("MOD_MAP.F_003", "添加行政区划边界叠加层（pydeck GeoJsonLayer），支持独立填充/线宽/颜色")
 register_track_id("MOD_MAP.F_004", "添加热力图图层（pydeck HeatmapLayer）")
 register_track_id("MOD_MAP.F_005", "添加多个矢量范围图层（每图层独立样式）")
+register_track_id("MOD_MAP.F_006", "添加选中点高亮轮廓圆环（金色半透明圆环 + 中心微点）")
 

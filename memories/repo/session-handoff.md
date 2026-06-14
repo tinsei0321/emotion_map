@@ -12,13 +12,59 @@
 
 ### 📌 上下文快照
 - **当前分支**：`main`
-- **最新 commit**：—
-- **工作目录**：干净 / 有未提交改动（见下方）
-- **Streamlit**：能启动 / 有报错（错误信息）
-- **Python 环境**：—
+- **最新 commit**：`b1acdfd`
+- **工作目录**：有未提交改动（见下方）⚠️ 需 commit
+- **Streamlit**：能启动
+- **Python 环境**：ok
 
 ### ⚠️ 风险 & 卡点
-- —
+- **⚠ 未 commit**：今日 5 个任务改动未提交，下班前必须 commit + push
+- 端到端管线验证（任务4）连续两天延续，需优先解决
+
+---
+
+## 2026-06-14 (周日) | 家里
+
+### 完成（4/5 大任务 ✅）
+| # | 任务 | 关键成果 |
+|---|------|----------|
+| 1 | LY 图层 checkbox 修复 + [确定] 按钮 | 修复 _all_layers_hidden 不联动；新增红色确定按钮（跳过 SOP，用户确认） |
+| 2 | 数据层架构优化：L1_COLUMNS 重排 + v1.0 代码清理 | L1_COLUMNS 9 组分组重排 + 3 个 DEPRECATED 函数删除 + 残留导入/常量清理；走完整 SOP |
+| 3 | L2 字段规范：confidence→l2_confidence + 新增 L2_COLUMNS | L2 CSV 列名改为 l2_confidence 避免与 L1 ai_confidence 冲突；新增 L2_COLUMNS 常量(9 字段) |
+| 4 | 端到端管线验证 L0→L1→L2 | ⬜ **再次延续至 06-15** |
+| 5 | L1~L4 confidence 列全局重命名 | `l1_confidence`/`l2_confidence`/`l3_confidence`/`l4_confidence` 全局统一；4 文件 13 处引用；`docs/architecture.md` 字段表拆分；4 个 TrackContext 埋点 + 4 个追踪 ID；Reviewer 两轮 + Tester 9/9 通过 |
+
+### 关键决策
+- **L1_COLUMNS 分组重排**：9 组逻辑分组（ID→元数据→地理→内容→治理→置信度→分析→导出→版本），CSV 可读性大幅提升
+- **confidence 列命名规范**：各层 confidence 统一带层级前缀（l1/l2/l3/l4_confidence），避免跨层混淆
+- **v1.0 清退原则**：DEPRECATED 函数逐个移除 + 残留导入检查，确保干净交棒
+
+### 踩坑 & 收获
+- Streamlit `st.dialog` 关闭时不自动 trigger rerun → 需显式"确定"按钮
+- 数据层字段顺序对 CSV 可读性影响极大（人工检查时需反复滚动）
+- `from pyproj import Transformer, CRS` 中 `CRS` 在函数删除后变未使用导入 → Reviewer 静态分析必要
+
+### 文件变更（未提交）
+```
+ M apps/app_main.py
+ M core/map_engine.py
+ M SCRIPT/data_governance.py
+ M SCRIPT/emotion_analysis_v1.py
+ M docs/architecture.md
+ M docs/todo.md
+ M check_data_quality.py
+ M SCRIPT/test_scripts_2.py
+ M core/tracker.py
+?? _diag_check.py
+?? _sop_restart.bat
+?? _sop_verify.py
+?? _test_import.py
+?? _sop_result.txt
+```
+
+### 待办 06-15（周日）
+1. **【P0】** L0→L1→L2 端到端管线验证（连续两天延续）
+2. 用户验收本次所有改动
 
 ---
 

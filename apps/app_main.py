@@ -33,6 +33,7 @@ from core.export import export_to_csv
 from core.map_engine import (
     create_base_map, add_point_layer, add_boundary_layer,
     add_heatmap_layer, add_multiple_boundary_layers,
+    add_selection_marker,
     MAP_STYLE_LABELS, MAP_STYLE_PREVIEW_COLORS,
 )
 from core.data_loader import load_emotion_data
@@ -234,6 +235,7 @@ def show_settings_dialog():
 
 # ── 辅助函数 ──
 
+@track("MOD_APP.F_017", track_args=False)
 def _get_default_style(index: int) -> dict:
     """获取第 index 个图层的默认样式。
 
@@ -264,6 +266,7 @@ def _get_default_style(index: int) -> dict:
     }
 
 
+@track("MOD_APP.F_018", track_args=False)
 def _parse_vector_file(uploaded_file) -> dict | None:
     """解析上传的矢量文件为 GeoJSON dict。
 
@@ -490,6 +493,7 @@ def show_range_dialog():
             st.rerun()
 
 
+@track("MOD_APP.F_019", track_args=False)
 def _render_layer_row(layer: dict, idx: int):
     """渲染单个图层的横条控件：名称 + Switch + 样式按钮 + 移除。
 
@@ -566,6 +570,7 @@ _COLOR_PRESETS_LIST = [
 ]
 
 
+@track("MOD_APP.F_020", track_args=False)
 def _render_style_editor(layer: dict, style: dict, idx: int):
     """紧凑样式编辑：线宽 + 颜色选择 + 填充。"""
     cur_color = style.get("line_color", [255, 140, 0])
@@ -671,10 +676,16 @@ def show_governance_dialog():
             status.update(label='[2/4] 范围过滤...')
             progress.progress(0.5, text='Point-in-Polygon')
             boundary_path = get_active_boundary_path()
+            if not boundary_path and os.path.exists(BOUNDARY_SHP):
+                boundary_path = BOUNDARY_SHP
             if boundary_path and os.path.exists(boundary_path):
-                df_filtered = step2_filter_by_boundary(df, boundary_path)
-            elif os.path.exists(BOUNDARY_SHP):
-                df_filtered = step2_filter_by_boundary(df, BOUNDARY_SHP)
+                try:
+                    ranges = load_boundaries(boundary_path)
+                    gdf_filtered = filter_by_range(df, 'lon', 'lat', ranges, None)
+                    df_filtered = pd.DataFrame(gdf_filtered) if len(gdf_filtered) > 0 else df.iloc[:0]
+                except Exception as _e:
+                    _safe_print(f'[WARN] 范围过滤失败: {_e}，跳过')
+                    df_filtered = df
             else:
                 _safe_print('[WARN] 无边界文件，跳过范围过滤')
                 progress.progress(0.5, text='[WARN] 跳过范围过滤（无边界文件）')
@@ -694,7 +705,10 @@ def show_governance_dialog():
             # Step 4: 脱敏+导出 L1
             status.update(label='[4/4] 脱敏+导出 L1...')
             progress.progress(0.9, text='导出 L1 CSV')
-            df_relevant = anonymize_dataframe(df_relevant)
+            # 脱敏：清空个人身份信息列
+            if 'comments' in df_relevant.columns:
+                df_relevant['comments'] = ''
+            _safe_print('[OK] 数据脱敏完成')
             output_name = os.path.splitext(file_choice)[0].replace('_raw', '')
             # 添加范围后缀（与 data_governance.py v2.0 命名一致）
             output_name = f'{output_name}_规划范围'
@@ -868,7 +882,7 @@ def show_basemap_dialog():
         st.rerun()
 
 
-@track("MOD_APP.F_011", track_args=False)
+@track("MOD_APP.F_013", track_args=False)
 @st.dialog('[LY] 图层控制', width='small')
 def show_layer_dialog():
     """图层控制弹窗：checkbox 控制图层显示/隐藏。
@@ -1407,6 +1421,84 @@ def show_console_page():
 
 
 # ═══════════════════════════════════════════════════════════
+# 选中点详情卡片
+# ═══════════════════════════════════════════════════════════
+@track("MOD_APP.F_012", track_args=False)
+def _render_selection_detail():
+    """渲染地图点击选中点的详情卡片（地图上方）。"""
+    # ── 检测 pydeck 选择事件 ──
+    selection = st.session_state.get('selection')
+    if not selection or not isinstance(selection, dict):
+        return
+
+    objects = selection.get('objects', {})
+    if not objects or not isinstance(objects, dict):
+        return
+
+    # ── pydeck selection.objects 结构: {"ScatterplotLayer": [{...}]} ──
+    point_data = None
+    for layer_name, items in objects.items():
+        if items and isinstance(items, list) and len(items) > 0:
+            point_data = items[0]
+            break
+
+    if point_data is None:
+        return
+
+    tooltip_str = point_data.get('tooltip', '')
+    lat = point_data.get('lat')
+    lon = point_data.get('lon')
+
+    if not tooltip_str and lat is None:
+        return
+
+    # ── 保存选中状态到 session ──
+    with TrackContext("MOD_APP.D_022", action="selection_detected",
+                      lat=lat, lon=lon):
+        st.session_state['_selected_point'] = {
+            'lat': lat,
+            'lon': lon,
+            'tooltip': tooltip_str,
+        }
+
+    # ── 渲染详情卡片 ──
+    sel = st.session_state.get('_selected_point')
+    if not sel:
+        return
+
+    st.divider()
+    st.markdown('### [SEL] 选中点详情')
+
+    # 金色轮廓提示
+    st.markdown(
+        '<span style="color:#FFD700;font-size:0.85rem;">'
+        '金色圆环 = 选中的情绪点</span>',
+        unsafe_allow_html=True)
+
+    # 坐标
+    if sel.get('lat') and sel.get('lon'):
+        st.caption(f'坐标: {sel["lat"]:.6f}, {sel["lon"]:.6f}')
+
+    # 解析 tooltip 字段逐行展示
+    raw_tooltip = sel.get('tooltip', '')
+    if raw_tooltip:
+        st.divider()
+        lines = raw_tooltip.strip().split('\n')
+        for line in lines:
+            if ':' in line:
+                key, _, val = line.partition(':')
+                st.markdown(f'**{key.strip()}**: {val.strip()}')
+            else:
+                st.text(line)
+
+    # ── 清除选中按钮 ──
+    if st.button('[清除选中]', key='clear_selection', use_container_width=True):
+        st.session_state.pop('_selected_point', None)
+        st.session_state.pop('selection', None)
+        st.rerun()
+
+
+# ═══════════════════════════════════════════════════════════
 # 主流程
 # ═══════════════════════════════════════════════════════════
 @track("MOD_APP.F_002", track_args=False)
@@ -1458,6 +1550,18 @@ def main():
     inject_fullscreen_css()
     hud_button_style_css()
 
+    # ── 覆盖 pydeck pickable 图层的 cursor: pointer ──
+    # deck.gl 对 pickable 图层默认设 cursor: pointer（"小手"），
+    # 这里恢复为默认箭头，仅拖拽时由 deck.gl 自动设 grabbing。
+    st.markdown("""
+    <style>
+    #vg-tooltip-element,
+    canvas[data-testid="stDeckGlJsonChart"] {
+        cursor: auto !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     # ── HUD ──
     fc = st.session_state.get('file_choice', '')
     btn_dis = st.session_state.get('current_df') is None
@@ -1492,6 +1596,9 @@ def main():
     if st.button('[OV]', help='数据概览', key='o', disabled=btn_dis): show_overview_dialog()
     if st.button('[TB]', help='数据表格', key='t', disabled=btn_dis): show_table_dialog()
 
+    # ── 选中点详情卡片 ──
+    _render_selection_detail()
+
     if not btn_dis:
         render_legend_overlay(mode='point')
 
@@ -1504,7 +1611,20 @@ def main():
         deck = create_base_map(center=center, zoom_start=zoom, map_style=_ms)
         if st.session_state.get('selected_ranges'):
             _add_boundary_if_exists(deck)
-        st.pydeck_chart(deck, use_container_width=True, height=700)
+        deck.tooltip = {
+            'html': '<b>{tooltip}</b>',
+            'style': {
+                'backgroundColor': 'rgba(20,20,40,0.92)',
+                'color': '#e0e0e0',
+                'borderRadius': '6px',
+                'padding': '8px 12px',
+                'fontSize': '12px',
+                'maxWidth': '320px',
+                'whiteSpace': 'pre-line',
+            },
+        }
+        st.pydeck_chart(deck, use_container_width=True, height=700,
+                       selection_mode='single-object', on_select='rerun')
         return
 
     # ── 数据加载安全守卫 ──
@@ -1595,10 +1715,28 @@ def main():
         m_date = _re.search(r'(\d{8})', fc)
         if m_date:
             date_label = m_date.group(1)
+        # ── 叠加选中点轮廓 ──
+        sel_pt = st.session_state.get('_selected_point')
+        if sel_pt and sel_pt.get('lat') and sel_pt.get('lon'):
+            add_selection_marker(deck, sel_pt['lat'], sel_pt['lon'])
+
+        deck.tooltip = {
+            'html': '<b>{tooltip}</b>',
+            'style': {
+                'backgroundColor': 'rgba(20,20,40,0.92)',
+                'color': '#e0e0e0',
+                'borderRadius': '6px',
+                'padding': '8px 12px',
+                'fontSize': '12px',
+                'maxWidth': '320px',
+                'whiteSpace': 'pre-line',
+            },
+        }
         render_data_summary_overlay(n=n, area_label=area_label,
                                      range_label=range_label, date_label=date_label)
 
-        st.pydeck_chart(deck, use_container_width=True, height=700)
+        st.pydeck_chart(deck, use_container_width=True, height=700,
+                       selection_mode='single-object', on_select='rerun')
 
     except Exception as e:
         trace_error("MOD_APP.F_002", f'主流程数据加载异常: {str(e)[:200]}')
@@ -1618,8 +1756,9 @@ register_track_id("MOD_APP.F_006", "数据概览弹窗")
 register_track_id("MOD_APP.F_007", "数据表格弹窗")
 register_track_id("MOD_APP.F_008", "设置与调试弹窗")
 register_track_id("MOD_APP.F_009", "分析范围选择弹窗")
-register_track_id("MOD_APP.F_010", "图层控制弹窗")
+register_track_id("MOD_APP.F_010", "底图切换弹窗")
 register_track_id("MOD_APP.F_011", "情绪分析弹窗")
+register_track_id("MOD_APP.F_013", "图层控制弹窗（[LY]）")
 register_track_id("MOD_APP.D_010", "图层控制：单个图层圆点点击切换 visible")
 register_track_id("MOD_APP.D_011", "图层控制：[全部打开] 批量显示所有图层")
 register_track_id("MOD_APP.D_012", "图层控制：[全部关闭] 批量隐藏所有图层")
@@ -1630,6 +1769,8 @@ register_track_id("MOD_APP.F_019", "A功能：渲染单图层横条控件（名�
 register_track_id("MOD_APP.F_020", "A功能：渲染样式编辑面板（线宽/颜色/填充/不透明度）")
 register_track_id("MOD_APP.D_020", "A功能：解析矢量文件决策点")
 register_track_id("MOD_APP.D_021", "A功能：安全阈值校验 + 自动简化决策点")
+register_track_id("MOD_APP.F_012", "选中点详情卡片渲染（pydeck selection 事件 → 详情面板）")
+register_track_id("MOD_APP.D_022", "pydeck selection 事件检测与选中状态保存决策点")
 
 
 if __name__ == '__main__':
