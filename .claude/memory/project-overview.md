@@ -50,5 +50,15 @@ metadata:
 - PM 驱动 SOP 流程：PM → Developer/Designer → Reviewer/Design Reviewer → Tester → Docs → 验收
 - 跨机协作：`@pm 同步上下文` 恢复 → `@pm 下班交接` 保存
 
+## 核心文档
+- `docs/prd.md` — 产品需求文档（做什么、为谁做、优先级）
+- `docs/spec.md` — 产品规范文档（怎么做才对、验收标准）
+- `docs/architecture.md` — 系统架构设计
+- `docs/architecture-pattern.md` — 架构规范（编码约束）
+- `docs/decisions.md` — 技术决策记录 (ADR)
+- `docs/todo.md` — 任务追踪 + 开发日志
+- `docs/scenarios.md` — 应用场景灵感
+- `docs/dev-notes.md` — 开发笔记（踩坑记录）
+
 **Why:** 初始化项目 Claude Code 配置时需要了解完整项目上下文。
-**How to apply:** 每次在此项目工作时，参考本文件理解架构和约束。与 [[agent-workflow]] [[coding-rules]] 配合使用。
+**How to apply:** 每次在此项目工作时，参考本文件理解架构和约束。PRD/Spec 是需求与规范的权威来源。与 [[agent-workflow]] [[coding-rules]] 配合使用。
