@@ -48,6 +48,7 @@ TRACKING_VERBOSE = False          # 是否输出 DEBUG 级别追踪
 TRACKING_LOG_FILE = None          # 若设置路径，同时写入文件（None=仅 stderr）
 
 # ── 安全打印（避免 GBK 崩溃，保持与项目一致）──
+from core.utils import safe_print
 
 
 # ── 追踪器核心 ──
@@ -552,7 +553,6 @@ def print_compliance_report(file_path: str) -> None:
 
     用法:
         from core.tracker import print_compliance_report
-from core.utils import safe_print
         print_compliance_report("SCRIPT/data_governance.py")
     """
     r = validate_tracking_compliance(file_path)
