@@ -1,45 +1,42 @@
 ---
 name: volcengine-vision
-description: 火山引擎多模态 Embedding API — 提取图片和文本的联合向量表示。用于图片相似度搜索、图文匹配、多模态语义理解。触发场景：用户提到识图、图片理解、多模态、图片搜索、以图搜图、图片特征提取。
+description: 火山引擎视觉理解 + 多模态 Embedding。支持识图、图片内容描述、图片相似度搜索、图文匹配。触发场景：用户提到识图、看图、图片里有什么、描述图片、多模态、以图搜图。
 ---
 
-# 火山引擎多模态识图 (Volcengine Multimodal Vision)
+# 火山引擎视觉 (Volcengine Vision)
 
-基于火山引擎 Ark 平台的多模态 Embedding API，支持图片+文本的联合向量提取。
+基于火山引擎 Ark 平台，提供两大能力：
 
-## 功能
+## 1. 视觉理解 (Vision Chat) — 识图
 
-- **图片特征提取**：将图片编码为向量表示
-- **图文联合编码**：同时输入文本+图片，获取多模态联合向量
-- **相似度搜索**：通过向量距离实现以图搜图、以文搜图
-
-## Quick Start
+**输入图片 → 输出文字描述。** 真正的"看图说话"。
 
 ```bash
-# 提取图片特征向量
-python scripts/multimodal_embed.py /path/to/image.png
+# 本地图片识图
+python scripts/vision_chat.py image.png
 
-# 图片+文本联合编码
-python scripts/multimodal_embed.py /path/to/image.png --text "图片描述文字"
+# 自定义提问
+python scripts/vision_chat.py image.png --prompt "图里有几个人？什么颜色？"
 
-# 从 URL 提取
-python scripts/multimodal_embed.py --url "https://example.com/image.jpg"
+# 从 URL 识图
+python scripts/vision_chat.py --url "https://..." --prompt "描述建筑风格"
 
-# 保存结果到文件
-python scripts/multimodal_embed.py /path/to/image.png -o result.json
+# 保存结果
+python scripts/vision_chat.py image.png -o result.txt
+```
+
+## 2. 多模态 Embedding — 向量提取
+
+**输入图片(+文字) → 输出 2048 维向量。** 用于相似度搜索、以图搜图。
+
+```bash
+python scripts/multimodal_embed.py image.png
+python scripts/multimodal_embed.py image.png --text "描述"
+python scripts/multimodal_embed.py --url "https://..."
 ```
 
 ## 环境变量
 
 - `ARK_API_KEY`: 火山引擎 Ark API Key
-- `ARK_VISION_MODEL`: 模型端点 ID (默认: ep-20260615134152-wzt8b)
-
-## API 端点
-
-`https://ark.cn-beijing.volces.com/api/v3/embeddings/multimodal`
-
-## 限制
-
-- 这是多模态 **Embedding** API（向量提取），不是图片描述生成 API
-- 图片支持 URL 或 base64 编码
-- 返回高维向量，适合用于相似度计算和搜索
+- `ARK_VISION_MODEL`: 视觉理解模型端点 (默认: ep-20260615141017-zrwzz)
+- `ARK_EMBED_MODEL`: Embedding 模型端点 (默认: ep-20260615134152-wzt8b)
