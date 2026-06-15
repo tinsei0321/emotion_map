@@ -51,6 +51,18 @@
       "agentPath": ".claude/agents/ops.agent.md"
     }
   },
+  "hooks": {
+    "SessionStart": [
+      {
+        "command": "python .claude/hooks/on_session_start.py"
+      }
+    ],
+    "SessionEnd": [
+      {
+        "command": "python .claude/hooks/on_session_end.py"
+      }
+    ]
+  },
   "project": {
     "name": "emotion_map",
     "description": "情绪地图 — 基于多源社交数据的城市情绪空间分析平台",

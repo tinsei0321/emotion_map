@@ -104,6 +104,7 @@ Claude Code 主线程 = PM，自动 spawn Agent 走 SOP。详见 `AGENTS.md`。
 | 开发日志 | `docs/todo.md` | 每日任务 + 踩坑记录 |
 | Agent 规范 | `AGENTS.md` | Agent 协作、SOP、DoD |
 | 会话交接 | `memories/repo/session-handoff.md` | 跨机协作 |
+| Skills 索引 | `.claude/SKILLS_INDEX.md` | 项目相关 Skill 精选列表 |
 
 ## 模块级 CLAUDE.md
 
