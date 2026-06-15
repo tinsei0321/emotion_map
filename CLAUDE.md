@@ -1,46 +1,35 @@
-# 情绪地图 (Emotion Map) — 项目级 CLAUDE.md
+# 情绪地图 (Emotion Map)
 
-> 最后更新: 2026-06-15 | Agent v2.0 | Skill 包 464
+> Agent v2.0 | Skill 464 | 2026-06-15
 
-## 项目定位
+## 项目概述
 
-基于多源社交数据（大众点评/美团/小红书/微博/12345）的城市情绪空间分析平台。让城市规划者能"看见"市民情绪的空间分布。
+基于多源社交数据（大众点评/美团/小红书/微博/12345热线）的城市情绪空间分析平台。通过 NLP + GIS，让城市规划者能"看见"市民情绪的空间分布——用数据替代直觉，用地图承载叙事。
 
 ## 技术栈
 
-| 层 | 技术 | 版本 |
-|----|------|------|
-| 语言 | Python | 3.14.5 |
-| 前端 | Streamlit | 1.58.0 (端口 8501) |
-| 情感分析 | SnowNLP | — |
-| 分词 | jieba | — |
-| 地图 | Folium + 天地图瓦片 | — |
-| 空间分析 | Shapely + pyproj (EPSG:4546) | — |
-| 数据采集 | Scrapy | 2.16 |
-| LLM 分类 | DeepSeek API (deepseek-chat) | — |
-| 包管理 | pip + requirements.txt | — |
+- **语言**：Python 3.14.5
+- **前端**：Streamlit 1.58.0（端口 8501，`?page=` 路由）
+- **情感分析**：SnowNLP + jieba 分词
+- **空间分析**：Shapely + pyproj（EPSG:4546），Folium + 天地图瓦片
+- **数据采集**：Scrapy 2.16
+- **LLM**：DeepSeek API (deepseek-chat)，火山引擎 API，讯飞 API
+- **包管理**：pip + requirements.txt
+- **坐标系（宜昌专项）**：
+  - 社交媒体 → GCJ-02 → **WGS84 EPSG:4326**（统一基准）→ CGCS2000 EPSG:4546（CM 111E）
+  - 规划矢量 → CGCS2000 投影 → WGS84（地图渲染）
+  - 灵活输入：支持自定义 EPSG，不硬编码单一投影
 
-### 坐标系（宜昌专项）
-
-本项目处理两类数据源，坐标转换模块需灵活处理：
-
-| 数据源 | 典型 CRS | 转换路径 |
-|--------|----------|----------|
-| 社交媒体原文 | GCJ-02（火星坐标） | GCJ-02 → WGS84 → CGCS2000 |
-| 规划矢量数据 | CGCS2000 投影（EPSG:4546, CM 111E） | CGCS2000 → WGS84（地图渲染） |
-| 地图底图渲染 | **WGS84 EPSG:4326**（统一基准） | — |
-
-- 宜昌标准投影：CGCS2000 3-degree Gauss-Kruger **CM 111E (EPSG:4546)**
-- 备用投影：EPSG:4547 (CM 114E)、4548 (CM 117E) — 省内其他城市
-- 模块支持自定义 EPSG 输入，不硬编码单一投影
-
-## 目录结构
+## 项目结构
 
 ```
 emotion_map/
 ├── apps/           # Streamlit 应用层（app_main.py + 子页面）
+│   └── CLAUDE.md   ── 模块级约定
 ├── core/           # 基础设施层（config/loader/export/tracker/map/UI）
+│   └── CLAUDE.md   ── 模块级约定
 ├── SCRIPT/         # 分析引擎层（L0→L1→L2→L3→L4 管道）
+│   └── CLAUDE.md   ── 模块级约定
 ├── SCRAPER/        # 数据采集层（Scrapy spiders）
 ├── DATA/           # 数据层（raw/ + processed/ + boundaries/）
 ├── design/         # 设计令牌系统（tokens.json + CSS）
@@ -49,66 +38,64 @@ emotion_map/
 └── memories/repo/  # 跨机会话交接卡
 ```
 
-## 四层数据管道
-
-```
-L0(原始采集) → L1(治理:坐标+相关+脱敏) → L2(SnowNLP情绪) → L3(LLM语义) → L4(归因)
-```
-
+**数据管道**：`L0(原始采集) → L1(治理:坐标+相关+脱敏) → L2(SnowNLP情绪) → L3(LLM语义) → L4(归因)`
 - L0→L1: `SCRIPT/data_governance.py`（需 DEEPSEEK_API_KEY）
 - L1→L2: `SCRIPT/emotion_analysis_v1.py` → `run_analysis_task()`
-- 所有入口（CLI/Tkinter/Streamlit）共用 `run_analysis_task()`
-- 导出命名: `{name}_{L1|L2|L3|L4}_result_csv.csv`
+- 所有入口（CLI/Tkinter/Streamlit）共用同一个 `run_analysis_task()`
 
-## 编码铁律（10 条，不可违反）
+## 编码规范
 
-1. **禁用 emoji** → ASCII 标记 `[OK]` `[WARN]` `[LOAD]` `[ERR]`
-2. **安全打印** → 所有 `print()` 通过 `_safe_print()` 调用
-3. **禁止劫持 builtins.print**
-4. **入口统一** → Streamlit 端口 8501，子页面 `?page=` 路由
-5. **分析逻辑共用** → 所有入口调用同一个 `run_analysis_task()`
-6. **导出命名规范** → `{name}_{L1|L2|L3|L4}_result_csv.csv`
-7. **数据脱敏** → 输出禁止包含用户名/用户ID
-8. **空间范围优先** → 范围 Polygon 为第一过滤条件
-9. **决策追踪必埋点** → 每个公开函数 `@track()`，关键分支 `TrackContext`
-10. **追踪 ID 必注册** → 所有 ID 在 `core/tracker.py` 注册表登记
+1. **禁用 emoji** — 代码中只允许 ASCII 标记：`[OK]` `[WARN]` `[LOAD]` `[ERR]`
+2. **安全打印** — 所有 `print()` 必须通过 `_safe_print()` 调用（Windows GBK 兼容）
+3. **禁止劫持 `builtins.print`** — 不得重新绑定
+4. **入口统一** — Streamlit 唯一端口 8501，所有页面通过 `?page=` 路由
+5. **分析逻辑共用** — 所有入口调用同一个 `run_analysis_task()`
+6. **导出命名规范** — `{name}_{L1|L2|L3|L4}_result_csv.csv`
+7. **数据脱敏** — 分析结果中禁止包含用户名、用户ID 等个人身份信息
+8. **空间范围优先** — 数据采集以范围 Polygon 为第一过滤条件，关键词仅作辅助
+9. **决策追踪必埋点** — 公开函数 `@track("MOD_XXX.F_NNN")`，关键分支 `TrackContext("MOD_XXX.D_NNN")`
+10. **追踪 ID 必注册** — 所有 ID 在 `core/tracker.py` 的 `_REGISTRY` 中登记，编号连续不跳号
 
-## 决策追踪系统
+**Bug 定位流程**：`[TRACE] 日志 → 决策 ID → 代码跳转（O(1)）`
 
-- 基础设施: `core/tracker.py`（`@track()` / `TrackContext` / `trace_*()`）
-- 模块 ID 分配: 见 `AGENTS.md` 模块 ID 分配表
-- Bug 定位: [TRACE] 日志 → 决策 ID → 代码跳转（O(1)）
+**模块 ID 分配** 详见 `AGENTS.md`
 
-## Agent 协作（v2.0，8 Agent + 自动编排）
+## 当前开发状态
 
-Claude Code 主线程 = PM，自动 spawn Agent 走 SOP。详见 `AGENTS.md`。
+- ✅ 项目框架搭建完成（Streamlit 三页面 + 七层架构）
+- ✅ L0→L1→L2 数据管道实现（L1 LLM 分类需 API Key）
+- ✅ 决策追踪系统（`core/tracker.py`，13 模块 55+ 追踪 ID）
+- ✅ 坐标转换工具（GCJ-02 ↔ WGS84 ↔ CGCS2000）
+- ✅ 范围选择引擎（Shapefile/GeoJSON/GPKG 上传 + CRS 检测）
+- ✅ Design Token 体系（双主题 Light/Dark + 150+ Token）
+- ✅ Agent 协作体系（v2.0，8 Agent 自动编排）
+- ✅ Claude Code Harness（CLAUDE.md + Hooks + Skills + Subagents）
+- 🔄 L0→L1 完整管线待验证（需 DeepSeek API Key 已配置）
+- ⬜ L3（LLM 语义增强）接口已预留，待接入
+- ⬜ L4（多维归因）框架已预留，待实现
+- ⬜ 空间分析引擎 MVP（缓冲区 + 行政单元聚合）
+- ⬜ UI 设计优化（布局、色彩、交互）
 
-## 禁止事项
+## 注意事项
 
-- 不要修改 `DATA/raw/` 原始数据文件
-- 不要在未走 SOP 的情况下修改核心管道代码（`data_governance.py` / `emotion_analysis_v1.py`）
-- 不要修改 `core/tracker.py` 的追踪 ID 注册表格式
-- 不要增加新的 Python 依赖而不更新 `requirements.txt`
-- 不要使用 emoji 在任何代码文件中
-- 不要直接 commit 到 main（应走 feature branch，紧急修复除外）
+- **数据安全**：`DATA/raw/` 原始数据不要修改；`.env` 文件不提交到 Git（API Key）
+- **核心管道保护**：修改 `data_governance.py` / `emotion_analysis_v1.py` 必须走完整 SOP
+- **基础设施保护**：不要修改 `core/tracker.py` 的 `@track()` 签名和 `_REGISTRY` 格式
+- **依赖管理**：新增 Python 包必须同步更新 `requirements.txt`
+- **Git 规范**：不要直接 commit 到 main（紧急修复除外），每天下班前提交并推送
+- **SOP 门槛**：涉及 2+ 文件 / 控制流修改 / I/O 操作 → 走 Developer→Reviewer→Tester 完整流程
+- **编码禁忌**：代码中禁止使用 emoji；API Key 禁止硬编码在 `.py` 文件中
 
-## 详细文档索引
+## 参考文档
 
-| 文档 | 路径 | 内容 |
+| 文档 | 路径 | 用途 |
 |------|------|------|
 | 产品需求 | `docs/prd.md` | 用户画像、功能优先级、验收标准 |
 | 产品规范 | `docs/spec.md` | 字段定义、UI 规格、性能预算 |
 | 架构设计 | `docs/architecture.md` | 系统架构说明 |
 | 架构规范 | `docs/architecture-pattern.md` | 七层架构、路由、代码组织 |
-| 决策记录 | `docs/decisions.md` | 10 个 ADR |
+| 决策记录 | `docs/decisions.md` | 10 个架构决策（ADR） |
 | 开发日志 | `docs/todo.md` | 每日任务 + 踩坑记录 |
-| Agent 规范 | `AGENTS.md` | Agent 协作、SOP、DoD |
-| 会话交接 | `memories/repo/session-handoff.md` | 跨机协作 |
-| Skills 索引 | `.claude/SKILLS_INDEX.md` | 项目相关 Skill 精选列表 |
-
-## 模块级 CLAUDE.md
-
-子目录的 `CLAUDE.md` 包含模块专属约定，优先级 **高于** 本文件：
-- `SCRIPT/CLAUDE.md` — 数据管道编码规范
-- `core/CLAUDE.md` — 基础设施层规范
-- `apps/CLAUDE.md` — Streamlit 应用层规范
+| Agent 规范 | `AGENTS.md` | Agent 协作、SOP、完成定义 |
+| Skills 索引 | `.claude/SKILLS_INDEX.md` | 项目相关 Skill 精选 |
+| 会话交接 | `memories/repo/session-handoff.md` | 跨机协作上下文 |
