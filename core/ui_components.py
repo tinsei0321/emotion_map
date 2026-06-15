@@ -157,6 +157,14 @@ def inject_fullscreen_css():
        只有按钮/确定操作才关闭弹窗，点击遮罩层无效。 */
     div[data-testid="stDialog"]{pointer-events:none!important;}
     div[data-testid="stDialog"] > div{pointer-events:auto!important;}
+    /* 弹窗强制上下左右居中 */
+    div[data-testid="stDialog"]{
+        display:flex!important;align-items:center!important;justify-content:center!important;
+    }
+    /* 弹窗小倒角 */
+    [data-testid="stDialog"] div[data-testid="stVerticalBlock"]{
+        border-radius:2px!important;
+    }
 
     /* ═══ geojson.io 全局控件样式 ═══ */
     /* Primary: 蓝色填充 (确认/上传/显示 等正向操作) */
@@ -176,7 +184,7 @@ def inject_fullscreen_css():
     /* Toggle + Checkbox: 蓝色主题 */
     [data-testid="stToggle"] input,[data-testid="stCheckbox"] input,
     input[type="checkbox"]{accent-color:#007afc!important;}
-    [data-testid="stCheckbox"] label div:first-child{border-radius:4px!important;}
+    [data-testid="stCheckbox"] label div:first-child{border-radius:2px!important;}
     /* Toggle 背景也蓝色 */
     [data-testid="stToggle"] div[role="switch"][aria-checked="true"]{{
         background:#007afc!important;
@@ -741,20 +749,18 @@ def render_data_panel(range_names: list = None, data_layers: list = None,
 
 @track("MOD_UI.F_011", track_args=False)
 def show_toast(message: str, duration_ms: int = 2000):
-    """居中 Toast 通知，自动淡出。
-
-    用于数据加载、图层切换、底图更换等需要"确认感"的场景。
-    """
-    st.markdown(f"""
+    """居中 Toast 通知，自动淡出。st.empty() 确保每次新建 DOM 元素。"""
+    st.empty().markdown(f"""
     <div style="
         position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
         z-index:999999;background:rgba(36,39,48,0.94);color:#D3D8E0;
         padding:6px 24px;border-radius:100px;font-size:0.82rem;
-        font-weight:500;animation:toastFadeOut 0.4s ease {duration_ms}ms forwards;
-        pointer-events:none;white-space:nowrap;
+        font-weight:500;pointer-events:none;white-space:nowrap;
+        animation:toastIn 0.15s ease,toastOut 0.4s ease {duration_ms}ms forwards;
     ">{message}</div>
     <style>
-    @keyframes toastFadeOut{{from{{opacity:1}}to{{opacity:0}}}}
+    @keyframes toastIn{{from{{opacity:0;transform:translate(-50%,-50%) scale(0.9)}}to{{opacity:1;transform:translate(-50%,-50%) scale(1)}}}}
+    @keyframes toastOut{{to{{opacity:0}}}}
     </style>
     """, unsafe_allow_html=True)
 

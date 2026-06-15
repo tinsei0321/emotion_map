@@ -515,6 +515,7 @@ def show_range_dialog():
             st.session_state.polygon_layers.clear()
             st.session_state.selected_ranges = []
             st.session_state.analysis_layers = []
+            st.session_state['_toast'] = '[OK] 范围已清空'
             st.rerun()
 
 
@@ -857,7 +858,6 @@ def show_basemap_dialog():
         unsafe_allow_html=True
     )
 
-    # ── 单选控件（唯一交互入口，取代原来的静态列表 + 隐藏 selectbox）──
     choice = st.radio(
         '底图样式',
         options=options,
@@ -1292,11 +1292,6 @@ def main():
     inject_fullscreen_css()
     hud_button_style_css()
 
-    # ── 消费 Toast 通知（各弹窗/操作设置 _toast，此处渲染）──
-    pending = st.session_state.pop('_toast', None)
-    if pending:
-        show_toast(pending)
-
     # ── 覆盖 pydeck pickable 图层的 cursor: pointer ──
     # deck.gl 对 pickable 图层默认设 cursor: pointer（"小手"），
     # 这里恢复为默认箭头，仅拖拽时由 deck.gl 自动设 grabbing。
@@ -1333,6 +1328,8 @@ def main():
     heat_label = 'H' if not heat_on else 'H*'
     if st.button(heat_label, key='tb_heat', help='热力图切换'):
         st.session_state['_heatmap_mode'] = not heat_on
+        new_mode = '热力图' if st.session_state['_heatmap_mode'] else '散点图'
+        st.session_state['_toast'] = f'[OK] 已切换至{new_mode}'
         st.rerun()
 
     # ── 选中点详情卡片 ──
@@ -1489,6 +1486,11 @@ def main():
                 if _sampled:
                     _mode_text += f' (采样 {_sampled} 点)'
                 st.caption(_mode_text)
+
+    # ── 消费 Toast（放在数据加载之后，保证数据加载 toast 能在同帧显示）──
+    pending = st.session_state.pop('_toast', None)
+    if pending:
+        show_toast(pending)
 
     # ── 统一渲染点（始终同一代码位置 → Streamlit 保持 Deck.gl 状态 → 视角不丢失）──
     deck.tooltip = {

@@ -1,91 +1,67 @@
 # 会话交接卡
 
-> **用途**：每天收工前更新，换机后通过此文件恢复上下文。
+> 换机后读取此文件恢复上下文。
 
-## 🔄 进行中（未完成）
+## 🔄 进行中
 
-| Agent | 任务 | 进度% | 下一步 | 阻塞 |
-|-------|------|-------|--------|------|
-| — | L0→L1→L2 端到端管线验证 | 0% | 暂缓至下周 | ⏸️ 本周不考虑 |
-| — | — | — | — | — |
+| 任务 | 状态 |
+|------|------|
+| L0→L1→L2 端到端管线验证 | ⏸️ 暂缓至下周 |
+| UI 重构 Phase 1 (双层顶栏+左面板) | ✅ 基本完成 |
 
-### 📌 上下文快照
-- **当前分支**：`main`
-- **最新 commit**：`36fdf68`
-- **Streamlit**：能启动（已验证）
-- **Python 环境**：ok（Python 3.13.2 + streamlit 1.58.0）
+## 📌 上下文快照
+- **分支**: `main`
+- **Streamlit**: 运行中 (端口 8501)
+- **Python**: 3.13.2
 
-### ⚠️ 风险 & 卡点
-- 端到端管线验证连续三天延续（06-13→06-14→06-15），⏸️ 暂缓至下周
-- 昨日所有改动已 commit + push，无需担心中断
+## 2026-06-15/16 完成
 
----
+| # | 任务 |
+|---|------|
+| 1 | UI 重构：geojson.io 风格双层顶栏 (标题栏 48px 深蓝 + 工具栏 44px 白底) |
+| 2 | 工具栏按钮：36px 方形/72px 长条, 4px 圆角, 粗体, hover 灰底 |
+| 3 | 左侧信息面板：260px 白底, <details> 折叠 (数据一览/图层一览) |
+| 4 | Toast 通知：全屏居中, 2s 自动淡出, 地图任何变化触发 |
+| 5 | Primary 按钮 #007afc 蓝, Secondary 白底灰框 |
+| 6 | Streamlit 主题 primaryColor=#007afc |
+| 7 | 按钮间距设计规则文档化 |
+| 8 | 记忆体系完善 (6 个 memory 文件) |
+| 9 | Playwright 截图工具安装 |
 
-## 2026-06-15 (周一) | 家里
+## 关键设计决策
 
-### 完成（3 大任务 ✅）
+- **双层顶栏**: 标题栏 48px #1a2940 + 工具栏 44px #fff
+- **按钮设计语言**: S=36px, G=8px, R=4px, 定位公式 left/right=12+Σ(prev_w+G)
+- **Toast 规则**: 地图任何变化→中央提示条, st.empty() 强制新 DOM
+- **Streamlit 限制**: st.radio 不可自定义 CSS; @st.dialog 不可强制居中/改倒角
+- **LY 弹窗保留**: 面板仅展示, 开关通过 LY 弹窗控制
 
-| # | 任务 | 关键成果 |
-|---|------|----------|
-| 1 | **Agent 架构 v2.0 升级** | 11→8 Agent 精简 + Debugger→Developer + Design Reviewer→Designer(自审) + PM→Claude 主线程 + 自动编排；更新 12 个文件 |
-| 2 | **产品需求文档 + 产品规范** | `docs/prd.md`：5 类用户画像 + 27 功能 MoSCoW + 12 验收标准；`docs/spec.md`：数据管道字段 + UI 组件 + 性能预算 + 编码铁律 |
-| 3 | **.claude 项目配置初始化** | `settings.json`（权限白名单 + 8 Agent 注册 + autoCompactThreshold=85）+ `memory/`（project-overview + user-prefs 中文）+ Agent 文件全部迁移至 `.claude/agents/` |
-
-### 关键决策
-- **自动编排 > 手动 @agent**：用户一句话，Claude 内部自动 spawn Agent 走 SOP，不再需要手动切换
-- **Agent 从 11→8**：Debugger 并入 Developer（诊断能力增强），Design Reviewer 并入 Designer（自审清单），PM 由 Claude 主线程承担
-- **PRD + Spec 文档体系**：PRD=做什么，Spec=怎么做才对，Architecture=怎么做——三层递进
-- **Agent 文件位置**：从 `.github/agents/` 迁移至 `.claude/agents/`（语义正确、可发现性更好）
-- **对话语言**：中文（已记录在 `.claude/memory/user-prefs.md`）
-
-### 文件变更（未提交）
+## 文件变更 (未提交)
 ```
- M AGENTS.md                          (重写：8 Agent + 自动编排)
- M .claude/settings.json              (8 Agent 注册 + orchestration:auto)
- M .github/agents/ → .claude/agents/  (全部迁移)
-   .claude/agents/developer.agent.md  (重写：+Debug 能力)
-   .claude/agents/designer.agent.md   (重写：+自审清单)
-   .claude/agents/tester.agent.md     (更新：去掉 debugger 引用)
-   .claude/agents/pm.agent.md         (更新：精简可调用列表)
-   .claude/agents/_archived/          (debugger + design-reviewer 归档)
- M docs/prd.md                        (新建：产品需求文档)
- M docs/spec.md                       (新建：产品规范文档)
- M docs/decisions.md                  (新增 ADR-009 + ADR-010)
- M docs/todo.md                       (0615 任务记录)
- M docs/architecture-pattern.md       (Agent 数量 + 路径更新)
- M .claude/memory/project-overview.md (Agent 数量 + 编排说明)
- M .claude/memory/user-prefs.md       (新建：中文偏好)
- M MEMORY.md                          (文档索引)
- M memories/repo/session-handoff.md   (本文件)
+ M apps/app_main.py
+ M core/ui_components.py
+ M core/map_engine.py
+ M core/layer_registry.py
+ M docs/todo.md
+ M docs/ui-redesign-plan.md
+ M docs/prd.md
+ M docs/decisions.md
+ M docs/vision-inbox/latest.md
+ M docs/spec.md
+ M docs/architecture-pattern.md
+ M AGENTS.md
+ M MEMORY.md
+ M .claude/settings.json
+ M memories/repo/session-handoff.md
+?? .streamlit/
+?? .claude/agents/
+?? .claude/memory/
+?? design/backups/
+?? docs/vision-inbox/*.png
 ```
-
-### 待办 06-16（周二）
-1. **【P0】** L0→L1→L2 端到端管线验证（连续三天延续，需优先解决）
-2. 用户验收本次所有改动
-3. git commit + push 今日变更
-
----
-
-## 2026-06-14 (周日) | 家里
-
-### 完成（4/5 大任务 ✅）
-| # | 任务 | 关键成果 |
-|---|------|----------|
-| 1 | LY 图层 checkbox 修复 + [确定] 按钮 | 修复 _all_layers_hidden 不联动；新增红色确定按钮（跳过 SOP） |
-| 2 | 数据层架构优化：L1_COLUMNS 重排 + v1.0 代码清理 | 9 组分组重排 + 3 个 DEPRECATED 函数删除 + 残留清理；走完整 SOP |
-| 3 | L2 字段规范：confidence→l2_confidence + 新增 L2_COLUMNS | L2 CSV 列名改为 l2_confidence；新增 L2_COLUMNS 常量(9 字段) |
-| 5 | L1~L4 confidence 列全局重命名 | 4 文件 13 处引用 + 4 TrackContext + 4 追踪 ID；Reviewer 两轮 + Tester 9/9 |
-| 4 | 端到端管线验证 L0→L1→L2 | ⬜ **延续至 06-15** |
-
----
 
 ## 每日启动
-
 ```powershell
-# 启动 Streamlit 地图浏览器（端口 8501）
-py launch.py
-
-# 浏览器访问
-#   http://localhost:8501              — 地图浏览器
-#   http://localhost:8501/?page=console — 分析控制台
+py -m streamlit run apps/app_main.py --server.port 8501
+# http://localhost:8501
 ```
