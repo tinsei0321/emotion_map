@@ -10,8 +10,11 @@ Streamlit 前端应用。所有页面通过 `?page=` 路由统一管理。
 
 | 文件 | 职责 |
 |------|------|
-| `app_main.py` | 主应用入口 + 路由分发 + 所有子页面 |
+| `app_main.py` | 主应用入口 + 路由分发 + 地图/对话框/图例 (~1470行) |
+| `app_console.py` | 分析控制台页面（?page=console） — 独立拆分 |
 | `app_design_system.py` | 设计系统展示页（Kitchen Sink） |
+
+> `register_layer()` 函数已提取至 `core/layer_registry.py`，被 `app_main.py` 和 `app_console.py` 共享。
 
 ## 路由规范
 
