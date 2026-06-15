@@ -109,6 +109,20 @@ def show_data_source_dialog():
     file_choice = st.selectbox('选择文件', files, index=idx)
     file_size = os.path.getsize(os.path.join(folder_path, file_choice)) / (1024 * 1024)
     st.caption(f'大小: {file_size:.1f} MB | 路径: `{os.path.join(folder_path, file_choice)}`')
+
+    # ── 限制提示 ──
+    with st.expander('分级渲染说明', expanded=False):
+        st.markdown(f'''
+        | 数据量 | 渲染模式 | 点样式 |
+        |--------|----------|--------|
+        | < 5k | S·标准 | 100m 半径，情绪颜色清晰 |
+        | 5k–20k | M·密集 | 60m 半径，半透明描边 |
+        | 20k–50k | L·紧凑 | 30m 微点，无描边 |
+        | 50k–100k | XL·热力 | 自动切换热力图 |
+        | > 100k | XXL·抽样 | 分层抽样 + 热力图 |
+        > 文件限制: {UPLOAD_MAX_FILE_SIZE_MB} MB / 最多 {MAX_DISPLAY_POINTS:,} 点同时渲染
+        ''')
+
     if file_size > LARGE_FILE_WARN_MB:
         st.warning(f'文件较大 ({file_size:.0f} MB)，地图将自动采样显示。')
     if st.button('[确认加载]', use_container_width=True, type='primary'):
@@ -1414,14 +1428,16 @@ def main():
                                      radius=30, intensity=0.6, opacity=0.75,
                                      max_points=MAX_DISPLAY_POINTS)
                 else:
-                    # 散点模式
+                    # 散点模式 — 分级渲染
                     geo = data.get('geo_data')
-                    if geo:
-                        add_point_layer(deck, data['lats'], data['lons'], data['scores'],
-                                       props_list=geo['features'])
-                    else:
-                        add_point_layer(deck, data['lats'], data['lons'], data['scores'],
-                                       props_list=df_display.to_dict('records'))
+                    props = geo['features'] if geo else df_display.to_dict('records')
+                    _deck, _meta = add_point_layer(
+                        deck, data['lats'], data['lons'], data['scores'],
+                        props_list=props, n_total=total_rows, return_meta=True)
+                    _tier_label, _tier_idx, _sampled = _meta
+                    # 记录渲染模式供 UI 提示
+                    st.session_state['_render_tier'] = _tier_label
+                    st.session_state['_render_sampled'] = _sampled
             else:
                 trace_log("MOD_APP.D_013", detail='main data layer hidden by _all_layers_hidden')
 
@@ -1453,6 +1469,15 @@ def main():
         }
         render_data_summary_overlay(n=n, area_label=area_label,
                                      range_label=range_label, date_label=date_label)
+
+        # ── 渲染模式指示 ──
+        _tier = st.session_state.get('_render_tier', '')
+        _sampled = st.session_state.get('_render_sampled', 0)
+        if _tier:
+            _mode_text = f'渲染: {_tier}'
+            if _sampled:
+                _mode_text += f' (采样 {_sampled} 点)'
+            st.caption(_mode_text)
 
         st.pydeck_chart(deck, use_container_width=True, height=700,
                        selection_mode='single-object', on_select='rerun')

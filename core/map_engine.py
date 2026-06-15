@@ -79,22 +79,46 @@ def create_base_map(lats=None, lons=None, show_labels=True,
 
 @track("MOD_MAP.F_002", track_args=False)
 def add_point_layer(deck, lats, lons, scores, props_list=None,
-                    jitter=True, max_points=None):
-    """添加情绪点图层（pydeck ScatterplotLayer）。
+                    jitter=True, n_total=None, return_meta=False):
+    """添加情绪点图层（pydeck ScatterplotLayer）— 支持分级渲染。
 
-    props_list 支持两种格式:
-      1. dict 列表: [{'id_e':..., 'comments':..., 'polarity':...}, ...]
-      2. GeoJSON feature 列表: [{'properties':{...}}, ...]
+    根据数据总量自动切换渲染策略 (参考 Kepler.gl LOD / Mapbox cluster):
+      S  (<5k):  标准点 radius=100m, opacity=0.85, 描边
+      M  (5-20k): 密集点 radius=60m, opacity=0.75, 半描边
+      L  (20-50k): 紧凑点 radius=30m, opacity=0.65, 无描边
+      XL (50-100k): 无点, 建议切热力图
 
-    极性获取优先级: props 中的 polarity 列 > 根据 score 计算（向后兼容）
+    Args:
+        n_total: 数据总量（用于分级，默认=len(lats)）
+        return_meta: 是否返回渲染元信息
 
-    大数据优化: 点数 > max_points 时随机采样（seed=42，保证同数据多次渲染一致）
+    Returns:
+        deck (始终), 若 return_meta=True 则附加 (tier_label, tier_index, sampled)
     """
-    max_points = max_points or MAX_DISPLAY_POINTS
+    total = n_total or len(lats)
+
+    # ── 分级检测 ──
+    tier_idx = 0
+    tier_label = 'S·标准'
+    for i, (max_n, label, *_rest) in enumerate(RENDER_TIERS):
+        if total <= max_n:
+            tier_idx = i; tier_label = label; break
+
+    radius, opacity, stroke_w = RENDER_TIERS[tier_idx][2:5]
+
+    # ── XL 及以上：不渲染点（应使用热力图）──
+    if radius is None:  # XL / XXL tier — only heatmap
+        if return_meta:
+            return deck, (tier_label, tier_idx, 0)
+        return deck
+
+    max_points = MAX_DISPLAY_POINTS
     n = len(lats)
+    sampled = 0
 
     # ── 大数据采样（固定种子 seed=42，保证同数据多次渲染一致）──
     if n > max_points:
+        sampled = n - max_points
         indices = random.Random(42).sample(range(n), max_points)
         lats = [lats[i] for i in indices]
         lons = [lons[i] for i in indices]
@@ -136,26 +160,40 @@ def add_point_layer(deck, lats, lons, scores, props_list=None,
             'lat': lat, 'lon': lon,
             'polarity': polarity,
             'color_r': color[0], 'color_g': color[1], 'color_b': color[2],
-            'radius': 80,
+            'radius': radius,
             'tooltip': tooltip_text or f'点 {i}',
         })
 
     df = pd.DataFrame(records)
 
+    # ── 分级像素控制 ──
+    # 数据量大时用更小的像素约束，减少视觉过载
+    px_min = {0: 5, 1: 3, 2: 2, 3: 1, 4: 1}.get(tier_idx, 4)
+    px_max = {0: 14, 1: 10, 2: 6, 3: 4, 4: 3}.get(tier_idx, 12)
+
     layer = pdk.Layer(
         'ScatterplotLayer',
         data=df,
         get_position=['lon', 'lat'],
-        get_fill_color=['color_r', 'color_g', 'color_b', 230],
+        get_fill_color=['color_r', 'color_g', 'color_b', int(opacity * 255)],
         get_radius='radius',
         radius_scale=1,
-        radius_min_pixels=4,
-        radius_max_pixels=12,
+        radius_min_pixels=px_min,
+        radius_max_pixels=px_max,
         pickable=True,
         auto_highlight=True,
     )
 
+    # 无描边模式 (L tier)
+    if stroke_w > 0:
+        layer.get_line_color = [255, 255, 255, int(opacity * 200)]
+        layer.get_line_width = stroke_w
+        layer.line_width_units = 'meters'
+        layer.stroked = True
+
     deck.layers.append(layer)
+    if return_meta:
+        return deck, (tier_label, tier_idx, sampled)
     return deck
 
 

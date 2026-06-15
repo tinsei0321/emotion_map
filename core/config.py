@@ -74,9 +74,22 @@ POLARITY_RGBA = {
 }
 
 # ── 地图渲染安全阈值 ──
-MAX_DISPLAY_POINTS = 5000      # 地图最大显示点数，超出自动采样
 MAX_TABLE_ROWS = 2000          # 数据表格最大行数
 LARGE_FILE_WARN_MB = 50        # 文件大小警告阈值 (MB)
+
+# ── 分级渲染策略 (Tiered Rendering) ──
+# 根据数据量自动调整点样式，确保 10~100k+ 数据流畅渲染。
+# 参考: Kepler.gl LOD、Mapbox cluster、Deck.gl radiusScale
+RENDER_TIERS = [
+    # (max_points, label,   radius_m, opacity, stroke_w,  description)
+    (5000,    'S·标准',      100,      0.85,    1.0,       '所有点完整显示，情绪颜色清晰可辨'),
+    (20000,   'M·密集',       60,      0.75,    0.5,       '点半径缩小、半透明描边，减少重叠遮挡'),
+    (50000,   'L·紧凑',       30,      0.65,    0.0,       '无描边微点，适合宏观分布观察'),
+    (100000,  'XL·热力',      None,    None,    None,      '自动切换热力图模式 (可手动切回散点)'),
+    (float('inf'), 'XXL·抽样', None,  None,    None,      '分层抽样保留情绪分布 + 热力图叠加'),
+]
+# 向后兼容
+MAX_DISPLAY_POINTS = RENDER_TIERS[-2][0]  # 100k — 超出任何一级即触发最后一层
 
 # ── 矢量文件上载安全阈值 ──
 UPLOAD_MAX_FILE_SIZE_MB = 100        # 单文件最大大小 (MB)
