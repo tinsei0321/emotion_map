@@ -165,6 +165,15 @@ def inject_fullscreen_css():
         width:100vw!important;height:100vh!important;
         z-index:0!important;border:none!important;
     }
+    /* pydeck canvas — Streamlit 用 canvas 渲染 deck.gl，非 iframe */
+    canvas[data-testid="stDeckGlJsonChart"]{
+        width:100vw!important;height:100vh!important;
+    }
+    [data-testid="stDeckGlJsonChart"]{
+        width:100vw!important;height:100vh!important;
+        position:fixed!important;top:0!important;left:0!important;
+        z-index:0!important;
+    }
     .leaflet-control-attribution a{display:none!important}
     .leaflet-control-scale-line{background:rgba(0,0,0,0.5)!important;
         color:#fff!important;border-color:rgba(255,255,255,0.25)!important;

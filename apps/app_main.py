@@ -1358,7 +1358,7 @@ def main():
                 'whiteSpace': 'pre-line',
             },
         }
-        st.pydeck_chart(deck, use_container_width=True, height=700,
+        st.pydeck_chart(deck, use_container_width=True,
                        selection_mode='single-object', on_select='rerun')
         return
 
@@ -1481,7 +1481,7 @@ def main():
                 _mode_text += f' (采样 {_sampled} 点)'
             st.caption(_mode_text)
 
-        st.pydeck_chart(deck, use_container_width=True, height=700,
+        st.pydeck_chart(deck, use_container_width=True,
                        selection_mode='single-object', on_select='rerun')
 
     except Exception as e:
