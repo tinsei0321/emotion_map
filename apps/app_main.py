@@ -12,7 +12,6 @@
 
 import os, sys
 from collections import Counter
-import re as _re
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
@@ -46,7 +45,7 @@ from core.range_selector import (
 from core.ui_components import (
     inject_fullscreen_css, hud_button_style_css,
     render_title_bar, render_legend_overlay,
-    render_data_summary_overlay,
+    render_data_panel,
     render_polarity_stats, render_polarity_chart,
     inject_theme_css, show_toast,
 )
@@ -85,6 +84,17 @@ def _panel_coord_dup_analysis(df_or_gdf, geom_col=None):
     c3.metric('重复率', f'{dup_ratio:.1f}%')
     if dup_ratio>0: st.caption(f'平均每个坐标堆积 {total/unique:.1f} 个点')
     return coord_counter
+
+
+def _guess_level(filename: str) -> str:
+    """从文件名推断数据层级。"""
+    if '_L2_' in filename or 'L2_result' in filename:
+        return 'L2'
+    if '_L1_' in filename or 'L1_result' in filename:
+        return 'L1'
+    if '_L0_' in filename or 'raw' in filename.lower():
+        return 'L0'
+    return 'L1'  # 默认
 
 
 # ═══════════════════════════════════════════════════════════
@@ -126,18 +136,15 @@ def show_data_source_dialog():
     if file_size > LARGE_FILE_WARN_MB:
         st.warning(f'文件较大 ({file_size:.0f} MB)，地图将自动采样显示。')
     if st.button('[确认加载]', use_container_width=True, type='primary'):
+        full_path = os.path.join(folder_path, file_choice)
         st.session_state['folder_key'] = '[DATA] processed（处理结果）'
         st.session_state['file_choice'] = file_choice
-        st.session_state['file_path'] = os.path.join(folder_path, file_choice)
+        st.session_state['file_path'] = full_path
         st.session_state['_load_triggered'] = True
         st.session_state['_all_layers_hidden'] = False
         register_layer(
-            name=file_choice,
-            file_path=os.path.join(folder_path, file_choice),
-            level='L1',
-            range_label='processed',
-            color='#48C9B0',
-        )
+            name=file_choice, file_path=full_path,
+            level=_guess_level(file_choice), kind='data', color='#48C9B0')
         st.rerun()
 
 
@@ -774,10 +781,7 @@ def show_governance_dialog():
                     register_layer(
                         name=os.path.basename(r['l1_path']),
                         file_path=r['l1_path'],
-                        level='L1',
-                        range_label='当前范围',
-                        color='#48C9B0'
-                    )
+                        level='L1', kind='data', color='#48C9B0')
                     st.rerun()
             with col_l2:
                 if st.button('[运行 L2 情绪分析]', use_container_width=True,
@@ -794,9 +798,7 @@ def show_governance_dialog():
                             register_layer(
                                 name=os.path.basename(l2_result['csv_path']),
                                 file_path=l2_result['csv_path'],
-                                level='L2',
-                                range_label='分析结果',
-                                color='#48C9B0',
+                                level='L2', kind='data', color='#48C9B0',
                             )
                             st.rerun()
                         else:
@@ -889,13 +891,15 @@ def show_layer_dialog():
 
     for i, lyr in enumerate(layers):
         level = lyr.get('level', '')
+        kind = lyr.get('kind', 'data')
+        kind_tag = 'RNG' if kind == 'range' else level
         col_dot, col_name, col_toggle = st.columns([0.3, 3.2, 1.0])
         with col_dot:
             st.markdown(
                 f'<span style="color:{lyr["color"]};font-size:1.2rem;">●</span>',
                 unsafe_allow_html=True)
         with col_name:
-            st.caption(f'**[{level}]** {lyr["name"]}')
+            st.caption(f'**[{kind_tag}]** {lyr["name"]}')
         with col_toggle:
             current_val = lyr.get('visible', True)
             new_val = st.toggle('', value=current_val, key=f'lyr_tgl_{i}',
@@ -1309,13 +1313,10 @@ def main():
     fc = st.session_state.get('file_choice', '')
     btn_dis = st.session_state.get('current_df') is None
 
-    if fc:
-        render_title_bar(f'情绪地图 v1.0 "{fc}"')
+    # ── 居中标题：始终显示 ──
+    render_title_bar('宜昌市情绪地图 v1.0')
 
-    # 左上角: 设置
-    if st.button('[*]', key='s'): show_settings_dialog()
-
-    # ── 右侧工具栏 (从上到下) ──
+    # ── 右侧工具栏 (从上到下: [R] [D] [A] [H]) ──
     if st.button('[R]', key='rng'): show_range_dialog()
     if st.button('[D]', key='d'): show_data_source_dialog()
     if st.button('[A]', key='a'): show_analysis_dialog()
@@ -1328,6 +1329,7 @@ def main():
         st.rerun()
 
     # ── 底部左下角 ──
+    if st.button('[*]', key='s'): show_settings_dialog()
     if st.button('[M]', key='lbl'):
         show_basemap_dialog()
     if st.button('[OV]', key='o', disabled=btn_dis): show_overview_dialog()
@@ -1342,72 +1344,94 @@ def main():
 
     # ── 数据加载 + 地图 ──
     fp = st.session_state.get('file_path', '')
-    if not fp or not os.path.exists(fp):
-        center = st.session_state.get('_map_center', None)
-        zoom = st.session_state.get('_map_zoom', None)
-        _ms = st.session_state.get('_map_style', 'carto_standard')
+    _ms = st.session_state.get('_map_style', 'carto_standard')
+    center = st.session_state.get('_map_center', None)
+    zoom = st.session_state.get('_map_zoom', None)
+    data = None
+    df_display = None
+    total_rows = 0
+    has_data_file = bool(fp and os.path.exists(fp))
+
+    if not has_data_file:
+        # ── 空地图（无数据）──
         deck = create_base_map(center=center, zoom_start=zoom, map_style=_ms)
         if st.session_state.get('selected_ranges'):
             _add_boundary_if_exists(deck)
-        deck.tooltip = {
-            'html': '<b>{tooltip}</b>',
-            'style': {
-                'backgroundColor': 'rgba(20,20,40,0.92)',
-                'color': '#e0e0e0',
-                'borderRadius': '6px',
-                'padding': '8px 12px',
-                'fontSize': '12px',
-                'maxWidth': '320px',
-                'whiteSpace': 'pre-line',
-            },
-        }
-        st.pydeck_chart(deck, use_container_width=True,
-                       selection_mode='single-object', on_select='rerun')
-        return
 
-    # ── 数据加载安全守卫 ──
-    file_size_mb = os.path.getsize(fp) / (1024 * 1024)
-    if file_size_mb > LARGE_FILE_WARN_MB:
-        st.warning(f'文件过大 ({file_size_mb:.0f} MB)，地图仅显示采样点。')
+    else:
+        # ── 有数据：仅在首次加载或文件变更时从磁盘读取 ──
+        _need_load = (
+            st.session_state.get('_load_triggered', False) or
+            not st.session_state.get('data_loaded', False) or
+            st.session_state.get('current_file_choice', '') != fc
+        )
+        if _need_load:
+            file_size_mb = os.path.getsize(fp) / (1024 * 1024)
+            if file_size_mb > LARGE_FILE_WARN_MB:
+                st.warning(f'文件过大 ({file_size_mb:.0f} MB)，地图仅显示采样点。')
 
-    # ── 加载数据（含异常保护，崩溃自动清除 session state）──
-    try:
-        with st.spinner('加载数据中...'):
-            data = load_emotion_data(fp)
-        if not data:
-            st.error('无法加载数据，请检查文件格式或重新选择数据源')
-            return
+            try:
+                with st.spinner('加载数据中...'):
+                    data = load_emotion_data(fp)
+            except Exception as e:
+                trace_error("MOD_APP.F_002", f'主流程数据加载异常: {str(e)[:200]}')
+                st.session_state['_data_crashed'] = True
+                st.session_state['file_path'] = ''
+                st.session_state['current_df'] = None
+                st.error(f'加载失败: {e}。数据已清除，请重新选择文件。')
+                st.rerun()
 
-        df = data['df']
-        total_rows = len(df)
+            if not data:
+                st.error('无法加载数据，请检查文件格式或重新选择数据源')
+                st.session_state['data_loaded'] = False
+                deck = create_base_map(center=center, zoom_start=zoom, map_style=_ms)
+                if st.session_state.get('selected_ranges'):
+                    _add_boundary_if_exists(deck)
+                # 落到下方统一 st.pydeck_chart 渲染
+                has_data_file = False
 
-        # ── 大数据采样（地图渲染用，完整数据保留在 data['df'] 中）──
-        if total_rows > MAX_DISPLAY_POINTS:
-            import random as _random
-            sample_idx = _random.Random(42).sample(range(total_rows), MAX_DISPLAY_POINTS)
-            df_display = df.iloc[sample_idx].reset_index(drop=True)
-            st.info(f'数据共 {total_rows} 条，地图显示采样 {MAX_DISPLAY_POINTS} 条。完整数据请在数据表格中查看。')
+            df = data['df']
+            total_rows = len(df)
+
+            if total_rows > MAX_DISPLAY_POINTS:
+                import random as _random
+                sample_idx = _random.Random(42).sample(range(total_rows), MAX_DISPLAY_POINTS)
+                df_display = df.iloc[sample_idx].reset_index(drop=True)
+                st.info(f'数据共 {total_rows} 条，地图显示采样 {MAX_DISPLAY_POINTS} 条。完整数据请在数据表格中查看。')
+            else:
+                df_display = df
+
+            st.session_state['current_df'] = df_display
+            st.session_state['_total_rows'] = total_rows
+            st.session_state['current_file_choice'] = fc
+            st.session_state['data_loaded'] = True
+            st.session_state['_load_triggered'] = False
+            st.session_state['_toast'] = '[OK] 数据加载成功'
         else:
-            df_display = df
+            # ── 使用缓存数据（避免每次 rerun 重读文件）──
+            df_display = st.session_state.get('current_df')
+            total_rows = st.session_state.get('_total_rows', 0)
+            # 从缓存重建 data dict（map_engine 需要的格式）
+            if df_display is not None:
+                data = {
+                    'lats': df_display['lat'].tolist() if 'lat' in df_display else [],
+                    'lons': df_display['lon'].tolist() if 'lon' in df_display else [],
+                    'scores': df_display['score'].tolist() if 'score' in df_display else [0.5]*len(df_display),
+                    'df': df_display,
+                }
 
-        st.session_state['current_df'] = df_display
-        st.session_state['_total_rows'] = total_rows
-        st.session_state['current_file_choice'] = fc
-        st.session_state['data_loaded'] = True
-        st.session_state['_load_triggered'] = False
-        st.session_state['_toast'] = '[OK] 数据加载成功'
+        # ── 构建 deck ──
+        with st.spinner('渲染地图中...' if _need_load else None):
+            if _need_load:
+                st.caption('')  # placeholder
+            deck = create_base_map(
+                data['lats'] if data else None,
+                data['lons'] if data else None,
+                center=center, zoom_start=zoom, map_style=_ms)
 
-        with st.spinner('渲染地图中...'):
-            center = st.session_state.get('_map_center', None)
-            zoom = st.session_state.get('_map_zoom', None)
-            _ms = st.session_state.get('_map_style', 'carto_standard')
-            deck = create_base_map(data['lats'], data['lons'],
-                                center=center, zoom_start=zoom, map_style=_ms)
-
-            # 叠加范围边界
             _add_boundary_if_exists(deck)
 
-            # ── 叠加可见图层 ──
+            # 叠加可见图层
             layers = st.session_state.get('layers', [])
             for lyr in layers:
                 if not lyr.get('visible', True):
@@ -1415,7 +1439,6 @@ def main():
                 fp_layer = lyr.get('file_path', '')
                 if not fp_layer or not os.path.exists(fp_layer):
                     continue
-                # 跳过当前已加载的主数据（避免重复渲染）
                 if fp_layer == fp:
                     continue
                 layer_data = load_emotion_data(fp_layer)
@@ -1424,76 +1447,65 @@ def main():
                                    layer_data['scores'],
                                    props_list=layer_data['df'].to_dict('records'))
 
-            # ── 渲染主数据层（受 _all_layers_hidden / _heatmap_mode 控制）──
-            if not st.session_state.get('_all_layers_hidden', False):
+            # 主数据层
+            if not st.session_state.get('_all_layers_hidden', False) and data:
                 if st.session_state.get('_heatmap_mode', False):
-                    # 热力图模式
                     add_heatmap_layer(deck, data['lats'], data['lons'],
                                      scores=data['scores'],
                                      radius=30, intensity=0.6, opacity=0.75,
                                      max_points=MAX_DISPLAY_POINTS)
                 else:
-                    # 散点模式 — 分级渲染
                     geo = data.get('geo_data')
                     props = geo['features'] if geo else df_display.to_dict('records')
                     _deck, _meta = add_point_layer(
                         deck, data['lats'], data['lons'], data['scores'],
                         props_list=props, n_total=total_rows, return_meta=True)
                     _tier_label, _tier_idx, _sampled = _meta
-                    # 记录渲染模式供 UI 提示
                     st.session_state['_render_tier'] = _tier_label
                     st.session_state['_render_sampled'] = _sampled
-            else:
+            elif st.session_state.get('_all_layers_hidden', False):
                 trace_log("MOD_APP.D_013", detail='main data layer hidden by _all_layers_hidden')
 
-        # ── 数据摘要浮层（左上角）──
-        n = len(df_display)
-        ranges = st.session_state.get('selected_ranges', [])
-        area_label = ranges[0] if ranges else ''
-        range_label = f'共 {len(ranges)} 区' if len(ranges) > 1 else ''
-        date_label = ''
-        m_date = _re.search(r'(\d{8})', fc)
-        if m_date:
-            date_label = m_date.group(1)
-        # ── 叠加选中点轮廓 ──
-        sel_pt = st.session_state.get('_selected_point')
-        if sel_pt and sel_pt.get('lat') and sel_pt.get('lon'):
-            add_selection_marker(deck, sel_pt['lat'], sel_pt['lon'])
+        # 数据摘要浮层
+        if data and df_display is not None:
+            n = len(df_display)
 
-        deck.tooltip = {
-            'html': '<b>{tooltip}</b>',
-            'style': {
-                'backgroundColor': 'rgba(20,20,40,0.92)',
-                'color': '#e0e0e0',
-                'borderRadius': '6px',
-                'padding': '8px 12px',
-                'fontSize': '12px',
-                'maxWidth': '320px',
-                'whiteSpace': 'pre-line',
-            },
-        }
-        render_data_summary_overlay(n=n, area_label=area_label,
-                                     range_label=range_label, date_label=date_label)
+            sel_pt = st.session_state.get('_selected_point')
+            if sel_pt and sel_pt.get('lat') and sel_pt.get('lon'):
+                add_selection_marker(deck, sel_pt['lat'], sel_pt['lon'])
 
-        # ── 渲染模式指示 ──
-        _tier = st.session_state.get('_render_tier', '')
-        _sampled = st.session_state.get('_render_sampled', 0)
-        if _tier:
-            _mode_text = f'渲染: {_tier}'
-            if _sampled:
-                _mode_text += f' (采样 {_sampled} 点)'
-            st.caption(_mode_text)
+            visible_layers = [lyr for lyr in st.session_state.get('layers', [])
+                             if lyr.get('visible', True)]
+            render_data_panel(
+                range_names=st.session_state.get('selected_ranges', []),
+                data_layers=visible_layers,
+                file_name=fc,
+                n_records=n if not st.session_state.get('_all_layers_hidden', False) else 0,
+            )
 
-        st.pydeck_chart(deck, use_container_width=True,
-                       selection_mode='single-object', on_select='rerun')
+            _tier = st.session_state.get('_render_tier', '')
+            _sampled = st.session_state.get('_render_sampled', 0)
+            if _tier:
+                _mode_text = f'渲染: {_tier}'
+                if _sampled:
+                    _mode_text += f' (采样 {_sampled} 点)'
+                st.caption(_mode_text)
 
-    except Exception as e:
-        trace_error("MOD_APP.F_002", f'主流程数据加载异常: {str(e)[:200]}')
-        st.session_state['_data_crashed'] = True
-        st.session_state['file_path'] = ''
-        st.session_state['current_df'] = None
-        st.error(f'加载失败: {e}。数据已清除，请重新选择文件。')
-        st.rerun()
+    # ── 统一渲染点（始终同一代码位置 → Streamlit 保持 Deck.gl 状态 → 视角不丢失）──
+    deck.tooltip = {
+        'html': '<b>{tooltip}</b>',
+        'style': {
+            'backgroundColor': 'rgba(20,20,40,0.92)',
+            'color': '#e0e0e0',
+            'borderRadius': '6px',
+            'padding': '8px 12px',
+            'fontSize': '12px',
+            'maxWidth': '320px',
+            'whiteSpace': 'pre-line',
+        },
+    }
+    st.pydeck_chart(deck, use_container_width=True,
+                   selection_mode='single-object', on_select='rerun')
 
 # ── 追踪 ID 注册表 ──
 register_track_id("MOD_APP.F_001", "分析控制台子页面（?page=console）")

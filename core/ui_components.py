@@ -153,6 +153,10 @@ def inject_fullscreen_css():
     section[data-testid="stAppViewContainer"]>section>div{
         transform:none!important;filter:none!important;
         perspective:none!important;will-change:auto!important;}
+    /* ── Dialog: 禁止点击外部关闭 ──
+       只有按钮/确定操作才关闭弹窗，点击遮罩层无效。 */
+    div[data-testid="stDialog"]{pointer-events:none!important;}
+    div[data-testid="stDialog"] > div{pointer-events:auto!important;}
     iframe[title*="streamlit_folium"]{
         position:fixed!important;top:0!important;left:0!important;
         width:100vw!important;height:100vh!important;
@@ -195,6 +199,13 @@ def inject_fullscreen_css():
     parent.document.addEventListener('error',function(e){
         if(e.target&&e.target.tagName==='IMG'&&e.target.classList.contains('leaflet-tile')){
             console.warn('[MAP] 天地图瓦片加载失败，请检查网络连接或 API Key');
+        }
+    },true);
+    /* 阻止 Streamlit dialog 点击外部关闭 */
+    parent.document.addEventListener('click',function(e){
+        var dlg=parent.document.querySelector('[data-testid="stDialog"]');
+        if(dlg && !dlg.contains(e.target)){
+            e.stopPropagation();e.stopImmediatePropagation();
         }
     },true);
     </script>
@@ -257,10 +268,9 @@ def hud_button_style_css():
         right:{RIGHT}!important;z-index:9000!important;}}
     .st-key-heat_toggle{{position:fixed!important;top:calc(50% - {0 - 12}px)!important;
         right:{RIGHT}!important;z-index:9000!important;}}
-    /* ── 左上角: 设置 ── */
-    .st-key-s{{position:fixed!important;top:12px!important;
-        left:12px!important;z-index:9000!important;}}
     /* ── 底部左下角 ── */
+    .st-key-s{{position:fixed!important;bottom:56px!important;
+        left:12px!important;z-index:9000!important;}}
     .st-key-lbl{{position:fixed!important;bottom:12px!important;
         left:12px!important;z-index:9000!important;}}
     .st-key-o{{position:fixed!important;bottom:12px!important;
@@ -307,12 +317,11 @@ def hud_button_style_css():
     .st-key-a button::after{{content:"分析引擎";left:auto;right:100%;margin-right:12px;top:50%;transform:translateY(-50%);}}
     .st-key-heat_toggle button::after{{content:"热力图";left:auto;right:100%;margin-right:12px;top:50%;transform:translateY(-50%);}}
     /* ─ 底部按钮 — tooltip 向上 ─ */
+    .st-key-s button::after{{content:"设置与调试";top:auto;bottom:100%;margin-bottom:8px;left:50%;transform:translateX(-50%);}}
     .st-key-lbl button::after{{content:"底图切换";top:auto;bottom:100%;margin-bottom:8px;left:50%;transform:translateX(-50%);}}
     .st-key-o button::after{{content:"数据概览";top:auto;bottom:100%;margin-bottom:8px;left:50%;transform:translateX(-50%);}}
     .st-key-t button::after{{content:"数据表格";top:auto;bottom:100%;margin-bottom:8px;left:50%;transform:translateX(-50%);}}
     .st-key-ly button::after{{content:"图层控制";top:auto;bottom:100%;margin-bottom:8px;left:50%;transform:translateX(-50%);}}
-    /* ─ 左上角 — tooltip 向下 ─ */
-    .st-key-s button::after{{content:"设置与调试";bottom:auto;top:100%;margin-top:8px;left:50%;transform:translateX(-50%);}}
     </style>
     """, unsafe_allow_html=True)
 
@@ -429,21 +438,18 @@ def render_legend_overlay(mode='point', **kwargs):
 
 @track("MOD_UI.F_006", track_args=False)
 def render_title_bar(text: str):
-    """渲染居中浮动标题，使用 CSS 变量支持双主题。"""
+    """渲染居中浮动标题 — 白色底胶囊形，始终显示。"""
     st.markdown(
         f'<div style="position:fixed;'
-        f'top:var(--component-title-bar-top);left:0;right:0;text-align:center;'
-        f'z-index:var(--component-title-bar-z-index);'
-        f'pointer-events:var(--component-title-bar-pointer-events);">'
-        f'<span style="font-size:var(--component-title-bar-font-size);'
-        f'font-weight:var(--component-title-bar-font-weight);'
-        f'color:var(--component-title-bar-color);'
-        f'text-shadow:var(--component-title-bar-text-shadow);'
-        f'background:var(--component-title-bar-background);'
-        f'padding:var(--component-title-bar-padding);'
-        f'border-radius:var(--component-title-bar-border-radius);'
-        f'backdrop-filter:var(--component-title-bar-backdrop-filter);'
-        f'-webkit-backdrop-filter:var(--component-title-bar-backdrop-filter);">'
+        f'top:12px;left:0;right:0;text-align:center;'
+        f'z-index:9800;pointer-events:none;">'
+        f'<span style="font-size:0.95rem;'
+        f'font-weight:600;'
+        f'color:#374151;'
+        f'background:rgba(255,255,255,0.88);'
+        f'padding:5px 24px;'
+        f'border-radius:100px;'
+        f'box-shadow:0 1px 8px rgba(0,0,0,0.10);">'
         f'{text}</span></div>',
         unsafe_allow_html=True)
 
@@ -535,34 +541,88 @@ def render_empty_state_overlay():
 
 
 @track("MOD_UI.F_010", track_args=False)
-def render_data_summary_overlay(n: int, area_label: str = '',
-                                 range_label: str = '', date_label: str = ''):
-    """数据加载后的左上角摘要浮层，使用 CSS 变量支持双主题。"""
-    parts = [f'[OK] {n} records']
-    if area_label:
-        parts.append(f'[AREA] {area_label}')
-    if range_label:
-        parts.append(f'{range_label}')
-    if date_label:
-        parts.append(f'[DATE] {date_label}')
-    line = ' &nbsp; '.join(parts)
+def render_data_panel(range_names: list = None, data_layers: list = None,
+                      file_name: str = '', n_records: int = 0):
+    """左上角数据信息面板 — 表格对齐：载入范围 / DATA / 载入文件。"""
+
+    _LEVEL_LABEL = {
+        'L0': '原始采集数据L0',
+        'L1': '城市情绪数据L1',
+        'L2': '情绪地图数据L2',
+        'L3': '语义增强数据L3',
+        'L4': '多维归因数据L4',
+    }
+
+    range_names = range_names or []
+    data_layers = data_layers or []
+    rows = []
+
+    # ── 第一行：载入范围 ──
+    if range_names:
+        rng_text = ', '.join(range_names[:3])
+        if len(range_names) > 3:
+            rng_text += f' +{len(range_names) - 3}'
+        rows.append(
+            f'<div style="margin-bottom:3px">'
+            f'<span style="display:inline-block;width:52px;color:#8B929A;'
+            f'font-size:0.65rem;vertical-align:top;">载入范围</span>'
+            f'<span style="color:#C8CCD2;">{rng_text}</span>'
+            f'</div>'
+        )
+
+    # ── 第二行：DATA ──
+    if data_layers:
+        for lyr in data_layers[:3]:
+            lvl = lyr.get('level', '')
+            lvl_full = _LEVEL_LABEL.get(lvl, lvl)
+            n = lyr.get('n_records', 0)
+            count_str = f'{n:,} 条' if n else ''
+            rows.append(
+                f'<div style="margin-bottom:3px">'
+                f'<span style="display:inline-block;width:52px;color:#8B929A;'
+                f'font-size:0.65rem;vertical-align:top;">DATA</span>'
+                f'<span style="color:#C8CCD2;">{lvl_full} &middot; {count_str}</span>'
+                f'</div>'
+            )
+    elif n_records:
+        rows.append(
+            f'<div style="margin-bottom:3px">'
+            f'<span style="display:inline-block;width:52px;color:#8B929A;'
+            f'font-size:0.65rem;vertical-align:top;">DATA</span>'
+            f'<span style="color:#C8CCD2;">{n_records:,} 条</span>'
+            f'</div>'
+        )
+
+    # ── 第三行：载入文件 ──
+    if file_name:
+        rows.append(
+            f'<div>'
+            f'<span style="display:inline-block;width:52px;color:#8B929A;'
+            f'font-size:0.65rem;vertical-align:top;">载入文件</span>'
+            f'<span style="color:#9CA3AF;word-break:break-all;">{file_name}</span>'
+            f'</div>'
+        )
+
+    if not rows:
+        return
+
+    body = '\n'.join(rows)
     st.markdown(f"""
     <div style="position:fixed;
-    top:var(--component-data-overlay-top);
-    left:var(--component-data-overlay-left);
-    z-index:var(--component-data-overlay-z-index);
-    pointer-events:var(--component-data-overlay-pointer-events);
-    background:var(--component-data-overlay-background);
-    padding:var(--component-data-overlay-padding);
-    border-radius:var(--component-data-overlay-border-radius);
-    backdrop-filter:var(--component-data-overlay-backdrop-filter);
-    -webkit-backdrop-filter:var(--component-data-overlay-backdrop-filter);
-    border:var(--component-data-overlay-border);">
-    <span style="color:var(--component-data-overlay-color);
-    font-size:var(--component-data-overlay-font-size);
-    line-height:var(--component-data-overlay-line-height);">
-    {line}
-    </span></div>
+    top:12px;left:12px;
+    z-index:9800;
+    pointer-events:none;
+    background:rgba(20,24,32,0.58);
+    padding:10px 14px;
+    border-radius:8px;
+    border:1px solid rgba(255,255,255,0.07);
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    font-size:0.7rem;
+    line-height:1.45;
+    max-width:210px;">
+    {body}
+    </div>
     """, unsafe_allow_html=True)
 
 @track("MOD_UI.F_011", track_args=False)
@@ -595,5 +655,5 @@ register_track_id("MOD_UI.F_006", "渲染标题栏")
 register_track_id("MOD_UI.F_007", "渲染极性统计面板")
 register_track_id("MOD_UI.F_008", "渲染极性分布图表")
 register_track_id("MOD_UI.F_009", "渲染空状态引导页")
-register_track_id("MOD_UI.F_010", "渲染数据摘要叠加层")
+register_track_id("MOD_UI.F_010", "渲染左上角数据信息面板")
 register_track_id("MOD_UI.F_011", "渲染居中 Toast 通知")
