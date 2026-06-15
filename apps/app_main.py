@@ -1115,6 +1115,30 @@ def show_analysis_dialog():
 
 
 
+def _add_boundary_if_exists(deck):
+    """叠加所有已确认的分析范围图层到地图。
+
+    优先使用 polygon_layers（新 A 功能），
+    回退到旧的 _boundary_color / _boundary_weight 方式（向后兼容）。
+    """
+    try:
+        # 新方式：多图层
+        layers = st.session_state.get("analysis_layers", [])
+        if layers:
+            add_multiple_boundary_layers(deck, layers)
+            return
+
+        # 旧方式：单一边界（向后兼容）
+        geojson = get_boundary_geojson()
+        if geojson:
+            color = st.session_state.get('_boundary_color', '#d97d5c')
+            weight = st.session_state.get('_boundary_weight', 15)
+            add_boundary_layer(deck, geojson_data=geojson,
+                             name='分析范围', color=color, weight=weight)
+    except Exception:
+        pass
+
+
 # ═══════════════════════════════════════════════════════════
 # 选中点详情卡片
 # ═══════════════════════════════════════════════════════════
