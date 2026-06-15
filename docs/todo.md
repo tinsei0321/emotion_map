@@ -28,16 +28,40 @@
 
 ### 📝 开发日志
 
-**关键字**：端到端管线, 验收, 清理
+**关键字**：端到端管线, 验收, Skill包, L1→L2验证, SnowNLP
 
 #### 做了什么
-- 
+- **Task 1**: L1→L2 管线验证通过（因缺 DeepSeek API Key，仅验证 L1→L2 段）
+  - 用现有 L1 2000行数据跑 SnowNLP L2 分析：2000行全量通过
+  - 极性分布：Very Positive 672 / Positive 275 / Neutral 232 / Negative 269 / Very Negative 552（U型分布，模拟数据预期正常）
+  - CSV + GeoJSON 正确导出
+  - 全部追踪点触发 (MOD_ANA.F_008/F_009/F_010, MOD_EXPORT.F_001/F_002)
+  - check_data_quality.py 硬编码路径已修复，但 L1 段因列不匹配无法运行（旧脚本，技术债务）
+- **Task 2**: 用户验收周末改动全部通过
+  - 8 Agent 注册正确（pm.agent.md 未注册，作为行为指南保留）
+  - PRD (294行) + Spec (436行) 完整
+  - .claude 配置：权限/Memory/编排均正确
+  - Streamlit 8501 正常启动，所有模块导入正常
+- **Task 4**: 安装 .claude Skill 包
+  - 4 源合入：anthropics(17) + daymade(64) + python-skills(12) + laurigates(362) = **455 技能**
+  - 官方 anthropics/skills 从 Gitea 镜像拉取（GitHub 直连失败）
+  - 以 anthropic- 前缀命名空间存放
 
 #### 踩坑 & 收获
-- 
+- GitHub 直连被重置（网络限制），通过 cncfstack Gitea 镜像成功拉取 anthropics/skills
+- check_data_quality.py 是旧版脚本，L1 段期望 `in_scope`/`_kw_pass` 列，与当前 L1 CSV 26列格式不兼容——需后续全面重构
+- L2 SnowNLP 2000行 ~6秒，比预期的 10 秒更快
+- 455 个 Skill 文件总量 ~11MB，对 Git 仓库体积影响可接受
+
+#### 发现的文档不一致（待修正）
+- Python 版本：文档 3.10+/3.13.2，实际 3.14.5
+- L1 列数：spec.md 写 20 列，实际 CSV 26 列
+- pm.agent.md 未注册但仍在 agents/ 目录（行为指南角色）
 
 #### 🔜 次日计划 (2026-06-16)
-- 
+- 配置 DEEPSEEK_API_KEY，跑完整 L0→L1→L2 端到端管线
+- 修复 check_data_quality.py 适配当前 L1 数据格式
+- 修正文档中的 Python 版本和 L1 列数不一致
 
 ---
 
