@@ -7,32 +7,37 @@
 
 ## 📅 2026-06-15（周一）
 
-### ☑ TODO List
+### 🌙 凌晨完成（06-14 残余，commit `f044ca1`）
+
+| # | 状态 | 任务 | 备注 |
+|---|------|------|------|
+| M1 | ✅ | Agent 架构 v2.0 升级 | 11→8 精简 + 自动编排 |
+| M2 | ✅ | PRD + Spec 文档 | 27 功能 MoSCoW + 全规范 |
+| M3 | ✅ | .claude 配置初始化 | 权限 + 记忆体系 + 中文偏好 |
+
+### ☑ TODO List（今日，08:00+）
 
 | # | 状态 | 任务 | 涉及文件 | 备注 |
 |---|------|------|----------|------|
-| 1 | ✅ | Agent 架构 v2.0 升级：11→8 精简 + 自动编排 | `AGENTS.md`, `developer.agent.md`, `designer.agent.md`, `tester.agent.md`, `pm.agent.md`, `settings.json`, `debugger.agent.md`→archived, `design-reviewer.agent.md`→archived | Debugger→Developer, Design Reviewer→Designer自审, PM→Claude主线程 |
-| 2 | ✅ | 产品需求文档 PRD + 产品规范 Spec | `docs/prd.md`, `docs/spec.md` | 27 项功能 MoSCoW 优先级 + 数据管道/UI/追踪/性能全规范 |
-| 3 | ✅ | .claude 项目配置初始化 | `.claude/settings.json`, `.claude/memory/`, `MEMORY.md` | 权限白名单 + 记忆体系 + 中文对话偏好 |
+| 1 | ⬜ | L0→L1→L2 端到端管线验证 | `SCRIPT/data_governance.py`, `SCRIPT/emotion_analysis_v1.py`, `DATA/` | **P0 跨日遗留**：准备测试数据 → 跑 L0→L1 治理 → 跑 L1→L2 情感分析 → 验证各层输出 |
+| 2 | ⬜ | 用户验收周末改动 | 全项目 | Agent v2.0 架构 + PRD/Spec 文档 + 启动应用验证 + L1_COLUMNS 重排 + confidence 重命名 |
+| 3 | ⬜ | Git 清理 + commit + push | — | 处理未提交 geojson + 提交今日变更 |
+| 4 | ✅ | 安装 .claude Skill 包 | `.claude/skills/` | 4 源合入 455 技能：daymade(64) + python-skills(12) + laurigates(362) + **anthropics(17)** |
+
+> 💡 标准启动指令：`@pm 开始处理 2026-06-15 的任务 N：任务名称`
 
 ### 📝 开发日志
 
-**关键字**：Agent架构, 自动编排, PRD, Spec, Claude Code配置
+**关键字**：端到端管线, 验收, 清理
 
 #### 做了什么
-- Agent 架构 v2.0 升级：Debugger 并入 Developer（Developer 同时具备诊断能力），Design Reviewer 并入 Designer（自审清单把关），PM 不再作为独立 Agent（Claude Code 主线程承担编排角色）
-- 创建 `docs/prd.md`：产品需求文档（5 类用户画像 + 27 项功能 MoSCoW + 12 项 MVP 验收标准 + Phase 1~3 路线图）
-- 创建 `docs/spec.md`：产品规范文档（数据管道字段逐级定义 + UI 组件规格 + 追踪系统规范 + 性能预算 + 编码铁律）
-- 初始化 `.claude/`：settings.json（8 Agent 注册 + 权限白名单 + autoCompactThreshold=85）+ memory/project-overview.md + MEMORY.md
-- 配置中文对话偏好 + 打开应用三页面验证启动正常
+- 
 
-#### 关键设计决策
-- **自动编排 > 手动 @agent**：用户一句话触发，Claude 内部自动 spawn Agent 走完整 SOP
-- **精简原则**：Agent 数量从 11→8，减少角色切换成本，Developer 和 Designer 职责扩展但边界清晰
+#### 踩坑 & 收获
+- 
 
 #### 🔜 次日计划 (2026-06-16)
-- L0→L1→L2 端到端管线验证
-- 用户验收本次所有改动
+- 
 
 ---
 
