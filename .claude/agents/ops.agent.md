@@ -22,7 +22,7 @@ version: "1.0.0"
 - 优先使用 `pip freeze` 精确版本，而非模糊版本
 
 ## 环境标准
-- **Python 版本**：3.13.x（当前 3.13.2）
+- **Python 版本**：3.14.x（当前 3.14.5）
 - **包管理器**：pip（暂不使用 poetry/pipenv/conda）
 - **虚拟环境**：推荐在项目根目录创建 `.venv/`，不强制
 - **平台兼容**：Windows 优先，macOS/Linux 备用
@@ -67,7 +67,7 @@ version: "1.0.0"
 执行步骤：
 1. 读取 requirements.txt 获取期望依赖清单
 2. 用 Python importlib 逐个验证所有包是否可导入、版本是否匹配
-3. 检查 Python 版本是否为 3.13.x
+3. 检查 Python 版本是否为 3.14.x
 4. 检查 pip 版本
 5. 输出诊断报告：[OK] / [MISSING] / [VERSION_MISMATCH]
 6. 如有缺失：自动执行 pip install -r requirements.txt

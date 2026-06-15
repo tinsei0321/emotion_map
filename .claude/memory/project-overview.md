@@ -11,7 +11,7 @@ metadata:
 
 ## 技术栈
 - **前端/UI**：Streamlit (端口 8501)，`?page=` 路由
-- **后端分析**：Python 3.10+，SnowNLP 情感分析，四级数据管道 (L0~L4)
+- **后端分析**：Python 3.14.5，SnowNLP 情感分析，四级数据管道 (L0~L4)
 - **空间引擎**：Folium 底图 + Shapely 空间分析 + 天地图瓦片
 - **数据采集**：Scrapy 多源爬虫
 - **跨机协作**：Git 同步代码 + memories/repo/session-handoff.md 交接

@@ -213,7 +213,7 @@
 | 维度 | 要求 |
 |------|------|
 | 操作系统 | Windows 10/11 优先，macOS/Linux 兼容 |
-| Python 版本 | 3.10+ |
+| Python 版本 | 3.14.5 |
 | 浏览器 | Chrome/Edge 最新版（Streamlit 推荐） |
 | 屏幕分辨率 | 1920×1080 及以上（推荐的规划师工作站配置） |
 | 编码 | UTF-8，Windows GBK 兼容通过 `_safe_print()` |

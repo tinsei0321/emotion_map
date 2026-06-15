@@ -167,7 +167,7 @@ def manual_judge_relevance(text):
 # ═══════════════════════════════════════════════════════════
 
 _safe_print("=" * 70)
-_safe_print("═══ L1 CSV 分析: simulated_20260613_规划范围_L1_result_csv.csv ═══")
+_safe_print(f"═══ L1 CSV 分析: {os.path.basename(L1_FILE)} ═══")
 _safe_print("=" * 70)
 
 df_l1 = pd.read_csv(L1_FILE, encoding='utf-8-sig')
@@ -175,46 +175,68 @@ _safe_print(f"\n[1] 总行数: {len(df_l1)}")
 _safe_print(f"[2] 总列数: {len(df_l1.columns)}")
 _safe_print(f"[3] 列名: {list(df_l1.columns)}")
 
-# in_scope 分布
-_safe_print(f"\n─── in_scope 分布 ───")
-scope_counts = df_l1['in_scope'].value_counts()
-_safe_print(scope_counts.to_string())
-_safe_print(f"  in_scope=True 比例: {scope_counts.get(True, 0) / len(df_l1) * 100:.1f}%")
-
-# _kw_pass 分布
-_safe_print(f"\n─── _kw_pass 分布 ───")
-kw_counts = df_l1['_kw_pass'].value_counts()
-_safe_print(kw_counts.to_string())
-_safe_print(f"  _kw_pass=True 比例: {kw_counts.get(True, 0) / len(df_l1) * 100:.1f}%")
-
 # relevance 分布
 _safe_print(f"\n─── relevance 分布 ───")
 rel_counts = df_l1['relevance'].value_counts()
 _safe_print(rel_counts.to_string())
 _safe_print(f"  relevance='relevant' 比例: {rel_counts.get('relevant', 0) / len(df_l1) * 100:.1f}%")
 
-# filter_layer 分布
-_safe_print(f"\n─── filter_layer 分布 ───")
-if 'filter_layer' in df_l1.columns:
-    fl_counts = df_l1['filter_layer'].value_counts()
-    _safe_print(fl_counts.to_string())
+# relevance_category 分布
+_safe_print(f"\n─── relevance_category 分布 ───")
+if 'relevance_category' in df_l1.columns:
+    rc_counts = df_l1['relevance_category'].value_counts()
+    _safe_print(rc_counts.to_string())
 else:
-    _safe_print("  (filter_layer 列不存在)")
+    _safe_print("  (列不存在)")
 
-# 交叉分析: in_scope & _kw_pass & relevance
-_safe_print(f"\n─── 交叉分析 (in_scope / _kw_pass / relevance) ───")
-cross = df_l1.groupby(['in_scope', '_kw_pass', 'relevance']).size()
-_safe_print(cross.to_string())
+# primary_emotion 分布
+_safe_print(f"\n─── primary_emotion 分布 ───")
+if 'primary_emotion' in df_l1.columns:
+    pe_counts = df_l1['primary_emotion'].value_counts()
+    _safe_print(pe_counts.to_string())
 
-# 管道各步骤数据量变化
+# emotion_intensity 分布
+_safe_print(f"\n─── emotion_intensity 分布 ───")
+if 'emotion_intensity' in df_l1.columns:
+    ei_counts = df_l1['emotion_intensity'].value_counts().sort_index()
+    _safe_print(ei_counts.to_string())
+    _safe_print(f"  平均强度: {df_l1['emotion_intensity'].mean():.2f}")
+
+# urban_value 分布
+_safe_print(f"\n─── urban_value 分布 ───")
+if 'urban_value' in df_l1.columns:
+    uv_counts = df_l1['urban_value'].value_counts()
+    _safe_print(uv_counts.to_string())
+
+# l1_confidence 统计
+_safe_print(f"\n─── l1_confidence 统计 ───")
+if 'l1_confidence' in df_l1.columns:
+    c = df_l1['l1_confidence']
+    _safe_print(f"  mean={c.mean():.3f} median={c.median():.3f} min={c.min():.3f} max={c.max():.3f}")
+
+# has_location 分布
+_safe_print(f"\n─── has_location 分布 ───")
+if 'has_location' in df_l1.columns:
+    hl_counts = df_l1['has_location'].value_counts()
+    _safe_print(hl_counts.to_string())
+
+# source 分布
+_safe_print(f"\n─── source 分布 ───")
+src_counts = df_l1['source'].value_counts()
+_safe_print(src_counts.to_string())
+
+# 管道数据流
 _safe_print(f"\n─── 管道数据流 ───")
-_safe_print(f"  L1 总入池:              {len(df_l1)}")
-in_scope_true = df_l1[df_l1['in_scope'] == True]
-_safe_print(f"  范围过滤后 (in_scope=T): {len(in_scope_true)} (过滤率 {(1-len(in_scope_true)/len(df_l1))*100:.1f}%)")
-kw_pass_true = df_l1[df_l1['_kw_pass'] == True]
-_safe_print(f"  关键词通过 (_kw_pass=T): {len(kw_pass_true)} (过滤率 {(1-len(kw_pass_true)/len(df_l1))*100:.1f}%)")
-relevant = df_l1[df_l1['relevance'] == 'relevant']
-_safe_print(f"  最终 relevant:           {len(relevant)} (占比 {len(relevant)/len(df_l1)*100:.1f}%)")
+_safe_print(f"  L1 总入池:           {len(df_l1)}")
+if 'relevance' in df_l1.columns:
+    relevant = df_l1[df_l1['relevance'] == 'relevant']
+    _safe_print(f"  relevant:             {len(relevant)} ({len(relevant)/len(df_l1)*100:.1f}%)")
+if 'has_location' in df_l1.columns:
+    with_location = df_l1[df_l1['has_location'] == True]
+    _safe_print(f"  has_location=True:    {len(with_location)} ({len(with_location)/len(df_l1)*100:.1f}%)")
+if 'urban_value' in df_l1.columns:
+    high_value = df_l1[df_l1['urban_value'] == 'high']
+    _safe_print(f"  urban_value=high:     {len(high_value)} ({len(high_value)/len(df_l1)*100:.1f}%)")
 
 # ═══════════════════════════════════════════════════════════
 # 2. L2 CSV 分析
@@ -442,9 +464,9 @@ _safe_print(f"""
 ┌─────────────────────────────────────────────────────────┐
 │  L1 数据质量                                            │
 │    总入池:           {len(df_l1):>6}                            │
-│    范围过滤后:       {len(in_scope_true):>6} ({(1-len(in_scope_true)/len(df_l1))*100:.1f}% 过滤)              │
-│    关键词通过:       {len(kw_pass_true):>6} ({(1-len(kw_pass_true)/len(df_l1))*100:.1f}% 过滤)              │
-│    最终 relevant:    {len(relevant):>6} ({len(relevant)/len(df_l1)*100:.1f}%)                      │
+│    relevant:         {len(relevant):>6} ({len(relevant)/len(df_l1)*100:.1f}%)                      │
+│    has_location:     {len(with_location):>6} ({len(with_location)/len(df_l1)*100:.1f}%)                      │
+│    urban_value=high: {len(high_value):>6} ({len(high_value)/len(df_l1)*100:.1f}%)                      │
 ├─────────────────────────────────────────────────────────┤
 │  L2 数据质量                                            │
 │    总行数:           {total_l2:>6}                            │
