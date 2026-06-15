@@ -19,14 +19,16 @@ from core.tracker import track, TrackContext, trace_log, register_track_id
 # CartoDB basemaps（免费无需 API Key，数据源 OpenStreetMap）
 # Tianditu（天地图，需 API Key，运行时动态生成 MapLibre 样式）
 MAP_STYLES = {
-    'carto_dark':    'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-    'carto_light':   'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+    'carto_dark':      'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+    'carto_light':     'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+    'carto_standard':  'https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json',
     'carto_voyager': 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
 }
 
 MAP_STYLE_LABELS = {
     'carto_dark':        'CartoDB 深色',
     'carto_light':       'CartoDB 浅色',
+    'carto_standard':    'CartoDB 标准',
     'carto_voyager':     'CartoDB 标准',
     'tianditu_nolabel':  '天地图 无注记 (预览)',
     'tianditu_label':    '天地图 有注记 (预览)',
@@ -36,6 +38,7 @@ MAP_STYLE_LABELS = {
 MAP_STYLE_PREVIEW_COLORS = {
     'carto_dark':        '#1a1a2e',
     'carto_light':       '#f0f0f0',
+    'carto_standard':    '#e8e0d8',
     'carto_voyager':     '#e8e0d8',
     'tianditu_nolabel':  '#e8f0e8',
     'tianditu_label':    '#f0f4e8',

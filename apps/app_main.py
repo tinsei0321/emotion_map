@@ -813,7 +813,7 @@ def show_governance_dialog():
 @st.dialog('[Map] 底图切换', width='small')
 def show_basemap_dialog():
     """底图切换弹窗：单选切换底图样式，即刻生效。"""
-    current = st.session_state.get('_map_style', 'carto_dark')
+    current = st.session_state.get('_map_style', 'carto_standard')
 
     st.caption('点击底图样式即刻切换，地图自动刷新')
 
@@ -886,23 +886,24 @@ def show_layer_dialog():
     st.divider()
 
     for i, lyr in enumerate(layers):
-        col_dot, col_name, col_check = st.columns([0.3, 3.7, 0.8])
+        level = lyr.get('level', '')
+        col_dot, col_name, col_toggle = st.columns([0.3, 3.2, 1.0])
         with col_dot:
             st.markdown(
                 f'<span style="color:{lyr["color"]};font-size:1.2rem;">●</span>',
                 unsafe_allow_html=True)
         with col_name:
-            st.caption(f'{lyr["name"]}  `{lyr.get("level","")}`')
-        with col_check:
-            checked = st.checkbox('', value=lyr.get('visible', True),
-                                  key=f'lyr_{i}',
-                                  label_visibility='collapsed')
-            if checked != lyr.get('visible', True):
-                layers[i]['visible'] = checked
+            st.caption(f'**[{level}]** {lyr["name"]}')
+        with col_toggle:
+            current_val = lyr.get('visible', True)
+            new_val = st.toggle('', value=current_val, key=f'lyr_tgl_{i}',
+                                label_visibility='collapsed')
+            if new_val != current_val:
+                layers[i]['visible'] = new_val
                 st.session_state['layers'] = layers
-                # ── 同步主数据层可见性 ──
                 if lyr['file_path'] == st.session_state.get('file_path', ''):
-                    st.session_state['_all_layers_hidden'] = not checked
+                    st.session_state['_all_layers_hidden'] = not new_val
+                st.rerun()
 
     st.divider()
     # ── 确定按钮（红色，凸显重要性）──
@@ -1238,7 +1239,7 @@ def _render_selection_detail():
 def main():
     # ── session_state 初始化（所有页面共享，必须在路由判断前）──
     for k, v in {
-        '_map_style': 'carto_light',
+        '_map_style': 'carto_standard',
         'folder_key': '[DATA] processed（处理结果）',
         'file_choice': '', 'file_path': '',
         'current_df': None, 'current_map_meta': None,
@@ -1338,7 +1339,7 @@ def main():
     if not fp or not os.path.exists(fp):
         center = st.session_state.get('_map_center', None)
         zoom = st.session_state.get('_map_zoom', None)
-        _ms = st.session_state.get('_map_style', 'carto_light')
+        _ms = st.session_state.get('_map_style', 'carto_standard')
         deck = create_base_map(center=center, zoom_start=zoom, map_style=_ms)
         if st.session_state.get('selected_ranges'):
             _add_boundary_if_exists(deck)
@@ -1387,13 +1388,25 @@ def main():
         st.session_state['_total_rows'] = total_rows
         st.session_state['current_file_choice'] = fc
         st.session_state['data_loaded'] = True
-        st.toast('[OK] 数据加载成功')
         st.session_state['_load_triggered'] = False
+        # ── 自定通知: 居中, 2秒自动淡出 ──
+        st.markdown("""
+        <div id="load-notify" style="
+            position:fixed;top:8px;left:50%;transform:translateX(-50%);
+            z-index:99999;background:rgba(36,39,48,0.92);color:#D3D8E0;
+            padding:6px 20px;border-radius:4px;font-size:0.85rem;
+            font-weight:600;animation:fadeOut 0.5s ease 2s forwards;
+            pointer-events:none;
+        ">[OK] 数据加载成功</div>
+        <style>
+        @keyframes fadeOut{from{opacity:1}to{opacity:0}}
+        </style>
+        """, unsafe_allow_html=True)
 
         with st.spinner('渲染地图中...'):
             center = st.session_state.get('_map_center', None)
             zoom = st.session_state.get('_map_zoom', None)
-            _ms = st.session_state.get('_map_style', 'carto_dark')
+            _ms = st.session_state.get('_map_style', 'carto_standard')
             deck = create_base_map(data['lats'], data['lons'],
                                 center=center, zoom_start=zoom, map_style=_ms)
 

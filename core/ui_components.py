@@ -304,17 +304,17 @@ def hud_button_style_css():
         opacity:1;
     }}
     /* ─ 右侧按钮 — tooltip 向左 ─ */
-    .st-key-rng button::after{{content:"分析范围";right:calc(100%+8px);top:50%;transform:translateY(-50%);}}
-    .st-key-d button::after{{content:"数据加载";right:calc(100%+8px);top:50%;transform:translateY(-50%);}}
-    .st-key-a button::after{{content:"分析引擎";right:calc(100%+8px);top:50%;transform:translateY(-50%);}}
-    .st-key-heat_toggle button::after{{content:"热力图";right:calc(100%+8px);top:50%;transform:translateY(-50%);}}
+    .st-key-rng button::after{{content:"分析范围";left:auto;right:100%;margin-right:12px;top:50%;transform:translateY(-50%);}}
+    .st-key-d button::after{{content:"数据加载";left:auto;right:100%;margin-right:12px;top:50%;transform:translateY(-50%);}}
+    .st-key-a button::after{{content:"分析引擎";left:auto;right:100%;margin-right:12px;top:50%;transform:translateY(-50%);}}
+    .st-key-heat_toggle button::after{{content:"热力图";left:auto;right:100%;margin-right:12px;top:50%;transform:translateY(-50%);}}
     /* ─ 底部按钮 — tooltip 向上 ─ */
-    .st-key-lbl button::after{{content:"底图切换";bottom:calc(100%+6px);left:50%;transform:translateX(-50%);}}
-    .st-key-o button::after{{content:"数据概览";bottom:calc(100%+6px);left:50%;transform:translateX(-50%);}}
-    .st-key-t button::after{{content:"数据表格";bottom:calc(100%+6px);left:50%;transform:translateX(-50%);}}
-    .st-key-ly button::after{{content:"图层控制";bottom:calc(100%+6px);left:50%;transform:translateX(-50%);}}
+    .st-key-lbl button::after{{content:"底图切换";top:auto;bottom:100%;margin-bottom:8px;left:50%;transform:translateX(-50%);}}
+    .st-key-o button::after{{content:"数据概览";top:auto;bottom:100%;margin-bottom:8px;left:50%;transform:translateX(-50%);}}
+    .st-key-t button::after{{content:"数据表格";top:auto;bottom:100%;margin-bottom:8px;left:50%;transform:translateX(-50%);}}
+    .st-key-ly button::after{{content:"图层控制";top:auto;bottom:100%;margin-bottom:8px;left:50%;transform:translateX(-50%);}}
     /* ─ 左上角 — tooltip 向下 ─ */
-    .st-key-s button::after{{content:"设置与调试";top:calc(100%+6px);left:50%;transform:translateX(-50%);}}
+    .st-key-s button::after{{content:"设置与调试";bottom:auto;top:100%;margin-top:8px;left:50%;transform:translateX(-50%);}}
     </style>
     """, unsafe_allow_html=True)
 
@@ -376,11 +376,11 @@ def render_legend_overlay(mode='point', **kwargs):
         font-size:0.8rem;
         line-height:var(--component-legend-line-height);
         backdrop-filter:var(--component-legend-backdrop-filter);">
-        <span style="color:var(--color-emotion-very-positive);">●</span> Very Positive<br>
-        <span style="color:var(--color-emotion-positive);">●</span> Positive<br>
-        <span style="color:var(--color-emotion-neutral);">●</span> Neutral<br>
-        <span style="color:var(--color-emotion-negative);">●</span> Negative<br>
-        <span style="color:var(--color-emotion-very-negative);">●</span> Very Negative</div>""",
+        <span style="color:var(--color-emotion-very-positive);">●</span> 非常积极<br>
+        <span style="color:var(--color-emotion-positive);">●</span> 积极<br>
+        <span style="color:var(--color-emotion-neutral);">●</span> 中性<br>
+        <span style="color:var(--color-emotion-negative);">●</span> 消极<br>
+        <span style="color:var(--color-emotion-very-negative);">●</span> 非常消极</div>""",
             unsafe_allow_html=True)
 
     elif mode == 'hotcold':
