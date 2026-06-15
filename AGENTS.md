@@ -139,8 +139,10 @@ Agent 启动时根据下表选择性阅读知识源：
 | `MOD_EXPORT` | `core/export.py` |
 | `MOD_UI` | `core/ui_components.py` |
 | `MOD_APP` | `apps/app_main.py` |
+| `MOD_GEN` | `SCRIPT/generate_l1_mock.py` |
 | `MOD_SCRAPER` | `SCRAPER/spiders/` |
 | `MOD_TRACKER` | `core/tracker.py` |
+| `MOD_UTILS` | `core/utils.py` |
 
 **埋点规则**：
 - 公开函数（非 `_` 前缀）→ `@track("MOD_XXX.F_NNN")`

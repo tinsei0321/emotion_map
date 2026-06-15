@@ -7,3 +7,5 @@ __pycache__/
 apps/static/tianditu_*.json
 .env
 .claude/settings.local.json
+design/tokens.py
+design/tokens.css

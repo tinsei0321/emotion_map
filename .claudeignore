@@ -1,0 +1,41 @@
+# .claudeignore — Claude Code 不需要关注的目录和文件
+# 这些内容不会发送给 AI，节省上下文窗口
+
+# 依赖包
+venv/
+.venv/
+node_modules/
+
+# 构建产物
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+dist/
+build/
+
+# 运行时文件
+*.log
+.claude/.last-session
+
+# 敏感信息
+.env
+
+# 数据文件（太大，按需手动引用）
+DATA/raw/*.csv
+
+# 自动生成的设计文件
+design/tokens.py
+design/tokens.css
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# 临时文件
+*.tmp
+*.temp
