@@ -16,6 +16,12 @@ import os
 import sys
 from pathlib import Path
 
+# 修复 Windows GBK 控制台编码问题
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+except Exception:
+    pass
+
 import requests
 
 
