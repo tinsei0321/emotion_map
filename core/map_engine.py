@@ -10,6 +10,7 @@ from .config import (
     DEFAULT_CENTER, DEFAULT_ZOOM,
     SCORE_POSITIVE, SCORE_NEGATIVE,
     POLARITY_RGBA, MAX_DISPLAY_POINTS,
+    RENDER_TIERS,
 )
 from core.tracker import track, TrackContext, trace_log, register_track_id
 
