@@ -1282,11 +1282,6 @@ def main():
     # ── CSS 注入（统一由 ui_components 管理）──
     inject_fullscreen_css()
     hud_button_style_css()
-    # ── Dialog 尺寸: TB表格 2/3 宽度居中 ──
-    st.markdown("""
-    <style>
-    [data-testid="stDialog"] {max-width:66vw!important;margin:0 auto!important;}
-    </style>""", unsafe_allow_html=True)
 
     # ── 覆盖 pydeck pickable 图层的 cursor: pointer ──
     # deck.gl 对 pickable 图层默认设 cursor: pointer（"小手"），
@@ -1311,28 +1306,28 @@ def main():
         render_title_bar(f'情绪地图 v1.0 "{fc}"')
 
     # 左上角: 设置
-    if st.button('[*]', help='设置与调试', key='s'): show_settings_dialog()
+    if st.button('[*]', key='s'): show_settings_dialog()
 
     # ── 右侧工具栏 (从上到下) ──
-    if st.button('[R]', help='分析范围', key='rng'): show_range_dialog()
-    if st.button('[D]', help='数据加载', key='d'): show_data_source_dialog()
-    if st.button('[A]', help='分析引擎', key='a'): show_analysis_dialog()
+    if st.button('[R]', key='rng'): show_range_dialog()
+    if st.button('[D]', key='d'): show_data_source_dialog()
+    if st.button('[A]', key='a'): show_analysis_dialog()
 
     # 热力图切换
     heat_on = st.session_state.get('_heatmap_mode', False)
     heat_label = '[H]' if not heat_on else '[H*]'
-    if st.button(heat_label, help='热力图', key='heat_toggle'):
+    if st.button(heat_label, key='heat_toggle'):
         st.session_state['_heatmap_mode'] = not heat_on
         st.rerun()
 
     # ── 底部左下角 ──
     current_style = st.session_state.get('_map_style', 'carto_light')
     style_label = MAP_STYLE_LABELS.get(current_style, 'CartoDB')
-    if st.button('[M]', help=f'底图: {style_label}', key='lbl'):
+    if st.button('[M]', key='lbl'):
         show_basemap_dialog()
-    if st.button('[OV]', help='数据概览', key='o', disabled=btn_dis): show_overview_dialog()
-    if st.button('[TB]', help='数据表格', key='t', disabled=btn_dis): show_table_dialog()
-    if st.button('[LY]', help='图层控制', key='ly'): show_layer_dialog()
+    if st.button('[OV]', key='o', disabled=btn_dis): show_overview_dialog()
+    if st.button('[TB]', key='t', disabled=btn_dis): show_table_dialog()
+    if st.button('[LY]', key='ly'): show_layer_dialog()
 
     # ── 选中点详情卡片 ──
     _render_selection_detail()

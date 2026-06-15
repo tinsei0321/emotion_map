@@ -272,22 +272,22 @@ def hud_button_style_css():
     .st-key-ly{{position:fixed!important;bottom:12px!important;
         left:144px!important;z-index:9000!important;}}
 
-    /* ═══ 自定义 Tooltip 系统 ═══
-       浏览器原生 title tooltip 不可定位/不可样式化。
-       用 CSS ::after + attr(data-tooltip) 创建可定位tooltip。
-       Streamlit 将 help= 写入 aria-label，JS 读取并注入 data-tooltip。
+    /* ═══ 自定义 Tooltip — 纯 CSS，文本硬编码 ═══
+       原因: 浏览器原生 title tooltip 不可定位。JS 注入在 Streamlit iframe 沙箱中不稳定。
+       方案: 每个按钮的 ::after 中直接写 content，按位置定义方向。
     */
     .st-key-rng button,.st-key-d button,.st-key-a button,
     .st-key-lbl button,.st-key-heat_toggle button,.st-key-s button,
     .st-key-o button,.st-key-t button,.st-key-ly button {{
         position:relative!important;
     }}
-    /* 右侧按钮 — tooltip 向左 */
+    /* 共享 tooltip 样式 */
     .st-key-rng button::after,.st-key-d button::after,
-    .st-key-a button::after,.st-key-heat_toggle button::after {{
-        content:attr(data-tooltip);
-        position:absolute;right:calc(100% + 8px);top:50%;
-        transform:translateY(-50%);
+    .st-key-a button::after,.st-key-lbl button::after,
+    .st-key-heat_toggle button::after,.st-key-s button::after,
+    .st-key-o button::after,.st-key-t button::after,
+    .st-key-ly button::after {{
+        position:absolute;
         background:rgba(36,39,48,0.95);color:#D3D8E0;
         padding:4px 10px;border-radius:4px;
         font-size:0.75rem;font-weight:400;
@@ -295,32 +295,7 @@ def hud_button_style_css():
         opacity:0;transition:opacity 150ms ease;
         z-index:99999;
     }}
-    /* 底部按钮 — tooltip 向上 */
-    .st-key-lbl button::after,.st-key-o button::after,
-    .st-key-t button::after,.st-key-ly button::after {{
-        content:attr(data-tooltip);
-        position:absolute;bottom:calc(100% + 6px);left:50%;
-        transform:translateX(-50%);
-        background:rgba(36,39,48,0.95);color:#D3D8E0;
-        padding:4px 10px;border-radius:4px;
-        font-size:0.75rem;font-weight:400;
-        white-space:nowrap;pointer-events:none;
-        opacity:0;transition:opacity 150ms ease;
-        z-index:99999;
-    }}
-    /* 左上角 — tooltip 向下 */
-    .st-key-s button::after {{
-        content:attr(data-tooltip);
-        position:absolute;top:calc(100% + 6px);left:50%;
-        transform:translateX(-50%);
-        background:rgba(36,39,48,0.95);color:#D3D8E0;
-        padding:4px 10px;border-radius:4px;
-        font-size:0.75rem;font-weight:400;
-        white-space:nowrap;pointer-events:none;
-        opacity:0;transition:opacity 150ms ease;
-        z-index:99999;
-    }}
-    /* hover 显示 tooltip */
+    /* hover 显示 */
     .st-key-rng button:hover::after,.st-key-d button:hover::after,
     .st-key-a button:hover::after,.st-key-lbl button:hover::after,
     .st-key-heat_toggle button:hover::after,.st-key-s button:hover::after,
@@ -328,28 +303,39 @@ def hud_button_style_css():
     .st-key-ly button:hover::after {{
         opacity:1;
     }}
+    /* ─ 右侧按钮 — tooltip 向左 ─ */
+    .st-key-rng button::after{{content:"分析范围";right:calc(100%+8px);top:50%;transform:translateY(-50%);}}
+    .st-key-d button::after{{content:"数据加载";right:calc(100%+8px);top:50%;transform:translateY(-50%);}}
+    .st-key-a button::after{{content:"分析引擎";right:calc(100%+8px);top:50%;transform:translateY(-50%);}}
+    .st-key-heat_toggle button::after{{content:"热力图";right:calc(100%+8px);top:50%;transform:translateY(-50%);}}
+    /* ─ 底部按钮 — tooltip 向上 ─ */
+    .st-key-lbl button::after{{content:"底图切换";bottom:calc(100%+6px);left:50%;transform:translateX(-50%);}}
+    .st-key-o button::after{{content:"数据概览";bottom:calc(100%+6px);left:50%;transform:translateX(-50%);}}
+    .st-key-t button::after{{content:"数据表格";bottom:calc(100%+6px);left:50%;transform:translateX(-50%);}}
+    .st-key-ly button::after{{content:"图层控制";bottom:calc(100%+6px);left:50%;transform:translateX(-50%);}}
+    /* ─ 左上角 — tooltip 向下 ─ */
+    .st-key-s button::after{{content:"设置与调试";top:calc(100%+6px);left:50%;transform:translateX(-50%);}}
+
+    /* ═══ Dialog 样式修复 ═══ */
+    /* 2. 移除 Streamlit 弹窗下方的灰色半透明填充层 */
+    [data-testid="stDialog"] + div,
+    div[data-testid="stDialog"] ~ div:has(+ *) {{
+        display:none!important;
+    }}
+    /* dialog overlay 背景改为极暗 */
+    div[role="dialog"] {{
+        background:rgba(0,0,0,0.55)!important;
+        backdrop-filter:blur(4px);
+        -webkit-backdrop-filter:blur(4px);
+    }}
+    /* 3. dialog 内容区固定宽高比 16:9 3/4 宽 */
+    [data-testid="stDialog"] > div > div > div {{
+        width:75vw!important;max-width:1200px!important;
+        aspect-ratio:16/9!important;
+        margin:0 auto!important;
+    }}
     </style>
     """, unsafe_allow_html=True)
-
-    # ── JS: 将 aria-label 内容注入到 data-tooltip 属性 ──
-    # Streamlit 把 help= 写入按钮的 aria-label，原生 title tooltip 不可样式化。
-    # 此 JS 读取 aria-label → 写入 data-tooltip → CSS ::after 显示可定位 tooltip。
-    components.html("""
-    <script>
-    (function(){
-        var btns=parent.document.querySelectorAll(
-            '[data-testid=\"stAppViewContainer\"] button'
-        );
-        btns.forEach(function(b){
-            var label=b.getAttribute('aria-label')||'';
-            if(label&&!b.getAttribute('data-tooltip')){
-                b.setAttribute('data-tooltip',label);
-                b.removeAttribute('title'); // suppress native tooltip
-            }
-        });
-    })();
-    </script>
-    """, height=0, width=0)
 
 
 @track("MOD_UI.F_004", track_args=False)
