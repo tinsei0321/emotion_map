@@ -9,3 +9,4 @@ apps/static/tianditu_*.json
 .claude/settings.local.json
 design/tokens.py
 design/tokens.css
+.claude/.last-session
