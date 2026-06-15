@@ -132,3 +132,4 @@ Agent 在工作过程中自动记录的隐形知识：
 | Agent 规范 | `AGENTS.md` | Agent 协作、SOP、完成定义 |
 | Skills 索引 | `.claude/SKILLS_INDEX.md` | 项目相关 Skill 精选 |
 | 会话交接 | `memories/repo/session-handoff.md` | 跨机协作上下文 |
+| 视觉中转站 | `docs/vision-inbox/latest.md` | 跨 Chat 图片识别结果（由另一个支持图片的 Chat 写入） |
