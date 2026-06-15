@@ -29,23 +29,13 @@ import os
 import sys
 import subprocess
 from datetime import datetime
+from core.utils import safe_print
 
 # ── 确保 SCRAPER/ 目录可被 Python 导入 ──
 _SCRAPER_DIR = os.path.dirname(os.path.abspath(__file__))
 if _SCRAPER_DIR not in sys.path:
     sys.path.insert(0, _SCRAPER_DIR)
 
-
-def _safe_print(*args, **kwargs):
-    """安全打印，兼容 Windows GBK 控制台编码。"""
-    try:
-        print(*args, **kwargs)
-    except UnicodeEncodeError:
-        safe_args = tuple(
-            str(a).encode('ascii', errors='replace').decode('ascii')
-            for a in args
-        )
-        print(*safe_args, **kwargs)
 
 
 class EmotionScraper:
@@ -77,8 +67,8 @@ class EmotionScraper:
             int: 进程退出码 (0=成功)
         """
         if spider_name not in self.available_spiders:
-            _safe_print(f'[WARN] Unknown spider: {spider_name}')
-            _safe_print(f'[LOAD] Available spiders: {self.available_spiders}')
+            safe_print(f'[WARN] Unknown spider: {spider_name}')
+            safe_print(f'[LOAD] Available spiders: {self.available_spiders}')
             return 1
 
         cmd = ['scrapy', 'crawl', spider_name]
@@ -86,7 +76,7 @@ class EmotionScraper:
         for key, value in kwargs.items():
             cmd.extend(['-a', f'{key}={value}'])
 
-        _safe_print(f'[LOAD] Running: {" ".join(cmd)}')
+        safe_print(f'[LOAD] Running: {" ".join(cmd)}')
         result = subprocess.run(
             cmd,
             cwd=_SCRAPER_DIR,
@@ -105,9 +95,9 @@ def run_scraper(spider_name='xiaohongshu', **kwargs):
     scraper = EmotionScraper()
     exit_code = scraper.run(spider_name, **kwargs)
     if exit_code == 0:
-        _safe_print(f'[OK] Spider "{spider_name}" completed successfully.')
+        safe_print(f'[OK] Spider "{spider_name}" completed successfully.')
     else:
-        _safe_print(f'[ERR] Spider "{spider_name}" exited with code {exit_code}.')
+        safe_print(f'[ERR] Spider "{spider_name}" exited with code {exit_code}.')
     return exit_code
 
 
@@ -127,7 +117,7 @@ def scrape_xiaohongshu(area='规划范围', keyword=None, max_pages=3):
     """
     if keyword is None:
         keyword = area
-    _safe_print(
+    safe_print(
         f'[LOAD] Starting xiaohongshu scraper: '
         f'area={area}, keyword={keyword}, max_pages={max_pages}'
     )
@@ -141,25 +131,25 @@ def scrape_xiaohongshu(area='规划范围', keyword=None, max_pages=3):
 
 def scrape_dianping(area='规划范围', keyword=None, max_pages=3):
     """爬取大众点评 POI 评价。[待实现]"""
-    _safe_print('[WARN] dianping spider not yet implemented.')
+    safe_print('[WARN] dianping spider not yet implemented.')
     return 1
 
 
 def scrape_meituan(area='规划范围', keyword=None, max_pages=3):
     """爬取美团商户评论。[待实现]"""
-    _safe_print('[WARN] meituan spider not yet implemented.')
+    safe_print('[WARN] meituan spider not yet implemented.')
     return 1
 
 
 def scrape_weibo(area='规划范围', keyword=None, max_pages=3):
     """爬取微博签到/话题。[待实现]"""
-    _safe_print('[WARN] weibo spider not yet implemented.')
+    safe_print('[WARN] weibo spider not yet implemented.')
     return 1
 
 
 def scrape_su12345(area='规划范围', keyword=None, max_pages=3):
     """爬取 12345 热线投诉工单。[待实现]"""
-    _safe_print('[WARN] su12345 spider not yet implemented.')
+    safe_print('[WARN] su12345 spider not yet implemented.')
     return 1
 
 
@@ -192,7 +182,7 @@ if __name__ == '__main__':
 
     if args.spider == 'list':
         scraper = EmotionScraper()
-        _safe_print(f'Available spiders: {scraper.list_spiders()}')
+        safe_print(f'Available spiders: {scraper.list_spiders()}')
     else:
         run_scraper(
             args.spider,

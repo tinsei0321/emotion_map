@@ -14,6 +14,7 @@ import re
 from datetime import datetime
 
 from scrapy.exceptions import DropItem
+from core.utils import safe_print
 
 # ── 项目根目录（SCRAPER/ 的父目录）──
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -21,17 +22,6 @@ _RAW_DIR = os.path.join(_PROJECT_ROOT, 'data', 'raw')
 
 
 # ── 安全打印（兼容 Windows GBK 控制台）──
-def _safe_print(*args, **kwargs):
-    """安全打印，自动处理 Windows GBK 编码问题。"""
-    try:
-        print(*args, **kwargs)
-    except UnicodeEncodeError:
-        safe_args = tuple(
-            str(a).encode('ascii', errors='replace').decode('ascii')
-            for a in args
-        )
-        print(*safe_args, **kwargs)
-
 
 class EmotionDataPipeline:
     """
@@ -53,7 +43,7 @@ class EmotionDataPipeline:
         self._csv_files = {}    # key: source → file handle
 
     def open_spider(self, spider):
-        _safe_print(f'[LOAD] Pipeline opened for spider: {spider.name}')
+        safe_print(f'[LOAD] Pipeline opened for spider: {spider.name}')
         os.makedirs(_RAW_DIR, exist_ok=True)
 
     def _get_csv_writer(self, source, area):
@@ -77,7 +67,7 @@ class EmotionDataPipeline:
 
             self._csv_writers[key] = writer
             self._csv_files[key] = f
-            _safe_print(f'[OK] Output file created: {filepath}')
+            safe_print(f'[OK] Output file created: {filepath}')
 
         return self._csv_writers[key]
 
@@ -122,7 +112,7 @@ class EmotionDataPipeline:
 
         # ── 5. 进度日志 ──
         if self._count_passed % 10 == 0:
-            _safe_print(
+            safe_print(
                 f'[OK] processed {self._count_passed} items '
                 f'(total seen: {self._count_total})'
             )
@@ -133,7 +123,7 @@ class EmotionDataPipeline:
         # 关闭所有文件
         for f in self._csv_files.values():
             f.close()
-        _safe_print(
+        safe_print(
             f'[OK] Pipeline closed: {self._count_passed}/'
             f'{self._count_total} items passed.'
         )

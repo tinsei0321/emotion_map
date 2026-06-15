@@ -19,11 +19,6 @@ from pyproj import Transformer
 
 _real_print = _bi.print
 
-def _safe_print(*args, **kwargs):
-    try:
-        _real_print(*args, **kwargs)
-    except UnicodeEncodeError:
-        _real_print(*(str(a).encode('ascii','replace').decode('ascii') for a in args), **kwargs)
 
 try:
     sys.stdout.reconfigure(encoding='utf-8')
@@ -32,6 +27,7 @@ except Exception:
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.tracker import track, TrackContext, trace_error, register_track_id
+from core.utils import safe_print
 
 # ═══════════════ 全局配置 ═══════════════
 random.seed(2606)
@@ -212,7 +208,7 @@ def load_boundary():
     from shapely.geometry import Polygon
     from shapely.ops import unary_union
 
-    _safe_print(f'[LOAD] 边界: {BOUNDARY_SHP}')
+    safe_print(f'[LOAD] 边界: {BOUNDARY_SHP}')
     gdf = gpd.read_file(BOUNDARY_SHP)
     gdf_wgs = gdf.to_crs('EPSG:4326')
 
@@ -246,9 +242,9 @@ def load_boundary():
     else:
         boundary = raw_poly
 
-    _safe_print(f'  类型: {boundary.geom_type}, 有效: {boundary.is_valid}')
-    _safe_print(f'  面积: {boundary.area:.6f} deg²')
-    _safe_print(f'  范围: lon {boundary.bounds[0]:.4f}~{boundary.bounds[2]:.4f}, lat {boundary.bounds[1]:.4f}~{boundary.bounds[3]:.4f}')
+    safe_print(f'  类型: {boundary.geom_type}, 有效: {boundary.is_valid}')
+    safe_print(f'  面积: {boundary.area:.6f} deg²')
+    safe_print(f'  范围: lon {boundary.bounds[0]:.4f}~{boundary.bounds[2]:.4f}, lat {boundary.bounds[1]:.4f}~{boundary.bounds[3]:.4f}')
     return boundary
 
 # ═══════════════ STEP 1: 生成空间分布 ═══════════════
@@ -268,7 +264,7 @@ def generate_spatial_points(boundary, n=2000):
     n_cor = int(n * 0.30)
     n_bg = n - n_hot - n_cor
 
-    _safe_print(f'[SPATIAL] 热点{n_hot} | 廊道{n_cor} | 密度撒点{n_bg}')
+    safe_print(f'[SPATIAL] 热点{n_hot} | 廊道{n_cor} | 密度撒点{n_bg}')
 
     weights = [h[3] for h in HOTSPOTS]
     total_w = sum(weights)
@@ -351,29 +347,29 @@ def generate_spatial_points(boundary, n=2000):
         if pt:
             points.append(pt)
         if rejected > n * 30:
-            _safe_print(f'[WARN] 重试过多({rejected})，停止')
+            safe_print(f'[WARN] 重试过多({rejected})，停止')
             break
 
     points = points[:n]
-    _safe_print(f'[SPATIAL] 最终: {len(points)} 点 (拒绝: {rejected})')
+    safe_print(f'[SPATIAL] 最终: {len(points)} 点 (拒绝: {rejected})')
     tc = Counter(p[3] for p in points)
     for t, c in sorted(tc.items(), key=lambda x: -x[1]):
-        _safe_print(f'  {t}: {c}')
+        safe_print(f'  {t}: {c}')
     return points
 
 # ═══════════════ STEP 2-8: 数据处理（同 v2.1）═══════════════
 @track("MOD_GEN.F_001", track_args=False)
 def load_and_filter(pts):
-    _safe_print(f'[LOAD] {RAW_CSV}')
+    safe_print(f'[LOAD] {RAW_CSV}')
     if not os.path.exists(RAW_CSV):
         raise FileNotFoundError(RAW_CSV)
     df = pd.read_csv(RAW_CSV, encoding='utf-8')
-    _safe_print(f'  {len(df)} 条')
+    safe_print(f'  {len(df)} 条')
     with TrackContext("MOD_GEN.D_001", input_n=len(df)):
         p = '|'.join(CITY_TAGS)
         m = df['tags'].astype(str).str.contains(p, case=False, na=False)
         df_c = df[m].copy()
-        _safe_print(f'  城市相关: {len(df_c)}')
+        safe_print(f'  城市相关: {len(df_c)}')
     if len(df_c) < TARGET:
         df_c = df_c.sample(n=TARGET, replace=True, random_state=2606).reset_index(drop=True)
     else:
@@ -386,7 +382,7 @@ def load_and_filter(pts):
 
 @track("MOD_GEN.F_002", track_args=False)
 def transform_coords(df):
-    _safe_print('[TRANSFORM] WGS84->EPSG:4546')
+    safe_print('[TRANSFORM] WGS84->EPSG:4546')
     t = Transformer.from_crs('EPSG:4326', 'EPSG:4546', always_xy=True)
     xs, ys = [], []
     for _, row in df.iterrows():
@@ -398,7 +394,7 @@ def transform_coords(df):
             xs.append(None); ys.append(None)
     df['x_cgcs2000'] = xs
     df['y_cgcs2000'] = ys
-    _safe_print(f'  完成: {sum(1 for v in xs if v is not None)}')
+    safe_print(f'  完成: {sum(1 for v in xs if v is not None)}')
     return df
 
 def _map_tag(t):
@@ -422,12 +418,12 @@ def inject_l1_fields(df):
     df['urban_value'] = [random.choice(URBAN_VALUES) for _ in range(n)]
     df['l1_confidence'] = [round(random.uniform(0.70,0.99),2) for _ in range(n)]
     if 'comments' in df.columns: df['comments'] = ''
-    _safe_print(f'[INJECT] {len(df.columns)} 列')
+    safe_print(f'[INJECT] {len(df.columns)} 列')
     return df
 
 @track("MOD_GEN.F_008", track_args=False)
 def fill_keywords(df):
-    _safe_print('[KEYWORDS] jieba TF-IDF')
+    safe_print('[KEYWORDS] jieba TF-IDF')
     try:
         import jieba.analyse
     except ImportError:
@@ -446,7 +442,7 @@ def fill_keywords(df):
         except Exception:
             kw.append('')
     df['keywords'] = kw
-    _safe_print(f'  有效: {sum(1 for k in kw if k)}/{len(df)}')
+    safe_print(f'  有效: {sum(1 for k in kw if k)}/{len(df)}')
     return df
 
 @track("MOD_GEN.F_004", track_args=False)
@@ -463,14 +459,14 @@ def export_and_stats(df):
         if c not in cols and c not in EXCLUDE: cols.append(c)
     df = df[cols]
     df.to_csv(OUTPUT_CSV, index=False, encoding='utf-8')
-    _safe_print(f'[OK] CSV: {OUTPUT_CSV} ({len(df)}行 {len(df.columns)}列)')
-    _safe_print('\n' + '='*50 + '\n  统计报告\n' + '='*50)
+    safe_print(f'[OK] CSV: {OUTPUT_CSV} ({len(df)}行 {len(df.columns)}列)')
+    safe_print('\n' + '='*50 + '\n  统计报告\n' + '='*50)
     if 'spatial_type' in df.columns:
         for t, c in df['spatial_type'].value_counts().items():
-            _safe_print(f'  {t}: {c}')
+            safe_print(f'  {t}: {c}')
     if 'lon' in df.columns:
-        _safe_print(f'  lon: {df["lon"].min():.4f}~{df["lon"].max():.4f}')
-        _safe_print(f'  lat: {df["lat"].min():.4f}~{df["lat"].max():.4f}')
+        safe_print(f'  lon: {df["lon"].min():.4f}~{df["lon"].max():.4f}')
+        safe_print(f'  lat: {df["lat"].min():.4f}~{df["lat"].max():.4f}')
     return OUTPUT_CSV
 
 @track("MOD_GEN.F_009", track_args=False)
@@ -478,37 +474,37 @@ def final_check(df, boundary):
     from shapely.geometry import Point
     bad = sum(1 for _,r in df.iterrows() if not boundary.contains(Point(r['lon'],r['lat'])))
     if bad == 0:
-        _safe_print(f'[CHECK] {len(df)}/{len(df)} 全部在范围内 [OK]')
+        safe_print(f'[CHECK] {len(df)}/{len(df)} 全部在范围内 [OK]')
     else:
-        _safe_print(f'[CHECK] {bad}/{len(df)} 超出范围! [ERR]')
+        safe_print(f'[CHECK] {bad}/{len(df)} 超出范围! [ERR]')
     return bad == 0
 
 # ═══════════════ 主流程 ═══════════════
 @track("MOD_GEN.F_005", track_args=False)
 def main():
-    _safe_print('='*50)
-    _safe_print('  L1 模拟数据生成 v2.2')
-    _safe_print(f'  边界: {BOUNDARY_SHP} | 目标: {TARGET}')
-    _safe_print('='*50)
+    safe_print('='*50)
+    safe_print('  L1 模拟数据生成 v2.2')
+    safe_print(f'  边界: {BOUNDARY_SHP} | 目标: {TARGET}')
+    safe_print('='*50)
     try:
         boundary = load_boundary()
-        _safe_print('[0] 边界就绪')
+        safe_print('[0] 边界就绪')
         pts = generate_spatial_points(boundary, TARGET)
-        _safe_print(f'[1] 坐标: {len(pts)}')
+        safe_print(f'[1] 坐标: {len(pts)}')
         df = load_and_filter(pts)
-        _safe_print(f'[2] 数据: {len(df)}')
+        safe_print(f'[2] 数据: {len(df)}')
         df = transform_coords(df)
-        _safe_print('[3] 坐标转换完成')
+        safe_print('[3] 坐标转换完成')
         df = inject_l1_fields(df)
-        _safe_print('[4] 字段注入完成')
+        safe_print('[4] 字段注入完成')
         df = fill_keywords(df)
-        _safe_print('[5] keywords完成')
+        safe_print('[5] keywords完成')
         final_check(df, boundary)
         export_and_stats(df)
-        _safe_print('[7] 导出完成')
-        _safe_print('\n[OK] 全部完成！')
+        safe_print('[7] 导出完成')
+        safe_print('\n[OK] 全部完成！')
     except Exception as e:
-        _safe_print(f'\n[ERR] {e}')
+        safe_print(f'\n[ERR] {e}')
         import traceback; traceback.print_exc()
         trace_error("MOD_GEN.F_005", str(e)[:200])
         raise

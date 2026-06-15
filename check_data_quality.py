@@ -14,12 +14,8 @@ import pandas as pd
 import numpy as np
 
 _real_print = _bi.print
+from core.utils import safe_print
 
-def _safe_print(*args, **kwargs):
-    try:
-        _real_print(*args, **kwargs)
-    except UnicodeEncodeError:
-        _real_print(*(str(a).encode('ascii', errors='replace').decode('ascii') for a in args), **kwargs)
 
 # Fix Windows console
 try:
@@ -166,144 +162,144 @@ def manual_judge_relevance(text):
 # 1. L1 CSV 分析
 # ═══════════════════════════════════════════════════════════
 
-_safe_print("=" * 70)
-_safe_print(f"═══ L1 CSV 分析: {os.path.basename(L1_FILE)} ═══")
-_safe_print("=" * 70)
+safe_print("=" * 70)
+safe_print(f"═══ L1 CSV 分析: {os.path.basename(L1_FILE)} ═══")
+safe_print("=" * 70)
 
 df_l1 = pd.read_csv(L1_FILE, encoding='utf-8-sig')
-_safe_print(f"\n[1] 总行数: {len(df_l1)}")
-_safe_print(f"[2] 总列数: {len(df_l1.columns)}")
-_safe_print(f"[3] 列名: {list(df_l1.columns)}")
+safe_print(f"\n[1] 总行数: {len(df_l1)}")
+safe_print(f"[2] 总列数: {len(df_l1.columns)}")
+safe_print(f"[3] 列名: {list(df_l1.columns)}")
 
 # relevance 分布
-_safe_print(f"\n─── relevance 分布 ───")
+safe_print(f"\n─── relevance 分布 ───")
 rel_counts = df_l1['relevance'].value_counts()
-_safe_print(rel_counts.to_string())
-_safe_print(f"  relevance='relevant' 比例: {rel_counts.get('relevant', 0) / len(df_l1) * 100:.1f}%")
+safe_print(rel_counts.to_string())
+safe_print(f"  relevance='relevant' 比例: {rel_counts.get('relevant', 0) / len(df_l1) * 100:.1f}%")
 
 # relevance_category 分布
-_safe_print(f"\n─── relevance_category 分布 ───")
+safe_print(f"\n─── relevance_category 分布 ───")
 if 'relevance_category' in df_l1.columns:
     rc_counts = df_l1['relevance_category'].value_counts()
-    _safe_print(rc_counts.to_string())
+    safe_print(rc_counts.to_string())
 else:
-    _safe_print("  (列不存在)")
+    safe_print("  (列不存在)")
 
 # primary_emotion 分布
-_safe_print(f"\n─── primary_emotion 分布 ───")
+safe_print(f"\n─── primary_emotion 分布 ───")
 if 'primary_emotion' in df_l1.columns:
     pe_counts = df_l1['primary_emotion'].value_counts()
-    _safe_print(pe_counts.to_string())
+    safe_print(pe_counts.to_string())
 
 # emotion_intensity 分布
-_safe_print(f"\n─── emotion_intensity 分布 ───")
+safe_print(f"\n─── emotion_intensity 分布 ───")
 if 'emotion_intensity' in df_l1.columns:
     ei_counts = df_l1['emotion_intensity'].value_counts().sort_index()
-    _safe_print(ei_counts.to_string())
-    _safe_print(f"  平均强度: {df_l1['emotion_intensity'].mean():.2f}")
+    safe_print(ei_counts.to_string())
+    safe_print(f"  平均强度: {df_l1['emotion_intensity'].mean():.2f}")
 
 # urban_value 分布
-_safe_print(f"\n─── urban_value 分布 ───")
+safe_print(f"\n─── urban_value 分布 ───")
 if 'urban_value' in df_l1.columns:
     uv_counts = df_l1['urban_value'].value_counts()
-    _safe_print(uv_counts.to_string())
+    safe_print(uv_counts.to_string())
 
 # l1_confidence 统计
-_safe_print(f"\n─── l1_confidence 统计 ───")
+safe_print(f"\n─── l1_confidence 统计 ───")
 if 'l1_confidence' in df_l1.columns:
     c = df_l1['l1_confidence']
-    _safe_print(f"  mean={c.mean():.3f} median={c.median():.3f} min={c.min():.3f} max={c.max():.3f}")
+    safe_print(f"  mean={c.mean():.3f} median={c.median():.3f} min={c.min():.3f} max={c.max():.3f}")
 
 # has_location 分布
-_safe_print(f"\n─── has_location 分布 ───")
+safe_print(f"\n─── has_location 分布 ───")
 if 'has_location' in df_l1.columns:
     hl_counts = df_l1['has_location'].value_counts()
-    _safe_print(hl_counts.to_string())
+    safe_print(hl_counts.to_string())
 
 # source 分布
-_safe_print(f"\n─── source 分布 ───")
+safe_print(f"\n─── source 分布 ───")
 src_counts = df_l1['source'].value_counts()
-_safe_print(src_counts.to_string())
+safe_print(src_counts.to_string())
 
 # 管道数据流
-_safe_print(f"\n─── 管道数据流 ───")
-_safe_print(f"  L1 总入池:           {len(df_l1)}")
+safe_print(f"\n─── 管道数据流 ───")
+safe_print(f"  L1 总入池:           {len(df_l1)}")
 if 'relevance' in df_l1.columns:
     relevant = df_l1[df_l1['relevance'] == 'relevant']
-    _safe_print(f"  relevant:             {len(relevant)} ({len(relevant)/len(df_l1)*100:.1f}%)")
+    safe_print(f"  relevant:             {len(relevant)} ({len(relevant)/len(df_l1)*100:.1f}%)")
 if 'has_location' in df_l1.columns:
     with_location = df_l1[df_l1['has_location'] == True]
-    _safe_print(f"  has_location=True:    {len(with_location)} ({len(with_location)/len(df_l1)*100:.1f}%)")
+    safe_print(f"  has_location=True:    {len(with_location)} ({len(with_location)/len(df_l1)*100:.1f}%)")
 if 'urban_value' in df_l1.columns:
     high_value = df_l1[df_l1['urban_value'] == 'high']
-    _safe_print(f"  urban_value=high:     {len(high_value)} ({len(high_value)/len(df_l1)*100:.1f}%)")
+    safe_print(f"  urban_value=high:     {len(high_value)} ({len(high_value)/len(df_l1)*100:.1f}%)")
 
 # ═══════════════════════════════════════════════════════════
 # 2. L2 CSV 分析
 # ═══════════════════════════════════════════════════════════
 
-_safe_print("\n\n")
-_safe_print("=" * 70)
-_safe_print("═══ L2 CSV 分析: simulated_20260613_规划范围_L2_result_csv.csv ═══")
-_safe_print("=" * 70)
+safe_print("\n\n")
+safe_print("=" * 70)
+safe_print("═══ L2 CSV 分析: simulated_20260613_规划范围_L2_result_csv.csv ═══")
+safe_print("=" * 70)
 
 df_l2 = pd.read_csv(L2_FILE, encoding='utf-8-sig')
-_safe_print(f"\n[1] 总行数: {len(df_l2)}")
+safe_print(f"\n[1] 总行数: {len(df_l2)}")
 
 # polarity 分布
-_safe_print(f"\n─── polarity 五级分布 ───")
+safe_print(f"\n─── polarity 五级分布 ───")
 pol_counts = df_l2['polarity'].value_counts()
-_safe_print(pol_counts.to_string())
+safe_print(pol_counts.to_string())
 for pol in ['Very Negative', 'Negative', 'Neutral', 'Positive', 'Very Positive']:
     cnt = pol_counts.get(pol, 0)
     pct = cnt / len(df_l2) * 100
     bar = '█' * int(pct / 2)
-    _safe_print(f"  {pol:>15}: {cnt:>6} ({pct:5.1f}%) {bar}")
+    safe_print(f"  {pol:>15}: {cnt:>6} ({pct:5.1f}%) {bar}")
 
 # score 统计
-_safe_print(f"\n─── score 统计 ───")
+safe_print(f"\n─── score 统计 ───")
 scores = df_l2['score'].dropna()
-_safe_print(f"  mean:   {scores.mean():.4f}")
-_safe_print(f"  median: {scores.median():.4f}")
-_safe_print(f"  std:    {scores.std():.4f}")
-_safe_print(f"  min:    {scores.min():.4f}")
-_safe_print(f"  max:    {scores.max():.4f}")
-_safe_print(f"  Q1:     {scores.quantile(0.25):.4f}")
-_safe_print(f"  Q3:     {scores.quantile(0.75):.4f}")
+safe_print(f"  mean:   {scores.mean():.4f}")
+safe_print(f"  median: {scores.median():.4f}")
+safe_print(f"  std:    {scores.std():.4f}")
+safe_print(f"  min:    {scores.min():.4f}")
+safe_print(f"  max:    {scores.max():.4f}")
+safe_print(f"  Q1:     {scores.quantile(0.25):.4f}")
+safe_print(f"  Q3:     {scores.quantile(0.75):.4f}")
 
 # score 分布区间
 bins = [0, 0.2, 0.4, 0.6, 0.8, 1.0]
 labels = ['0.0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1.0']
 df_l2['score_bin'] = pd.cut(df_l2['score'], bins=bins, labels=labels, include_lowest=True)
-_safe_print(f"\n─── score 分布区间 ───")
+safe_print(f"\n─── score 分布区间 ───")
 score_dist = df_l2['score_bin'].value_counts().sort_index()
-_safe_print(score_dist.to_string())
+safe_print(score_dist.to_string())
 
 # l2_confidence 统计
-_safe_print(f"\n─── l2_confidence 统计 ───")
+safe_print(f"\n─── l2_confidence 统计 ───")
 if 'l2_confidence' in df_l2.columns:
     conf = df_l2['l2_confidence'].dropna()
-    _safe_print(f"  mean:   {conf.mean():.4f}")
-    _safe_print(f"  median: {conf.median():.4f}")
-    _safe_print(f"  min:    {conf.min():.4f}")
-    _safe_print(f"  max:    {conf.max():.4f}")
+    safe_print(f"  mean:   {conf.mean():.4f}")
+    safe_print(f"  median: {conf.median():.4f}")
+    safe_print(f"  min:    {conf.min():.4f}")
+    safe_print(f"  max:    {conf.max():.4f}")
 
 # source 分布
-_safe_print(f"\n─── source 分布 ───")
+safe_print(f"\n─── source 分布 ───")
 src_counts = df_l2['source'].value_counts()
-_safe_print(src_counts.to_string())
+safe_print(src_counts.to_string())
 
 # ═══════════════════════════════════════════════════════════
 # 3. 核心分析：L2 中误判为 relevant 的无关内容
 # ═══════════════════════════════════════════════════════════
 
-_safe_print("\n\n")
-_safe_print("=" * 70)
-_safe_print("═══ 核心分析：L2 关键词层误判率 ═══")
-_safe_print("=" * 70)
+safe_print("\n\n")
+safe_print("=" * 70)
+safe_print("═══ 核心分析：L2 关键词层误判率 ═══")
+safe_print("=" * 70)
 
 # 对 L2 所有条目进行人工抽检逻辑判断
-_safe_print(f"\n[1] 对 L2 全部 {len(df_l2)} 条数据进行逐条判断...")
+safe_print(f"\n[1] 对 L2 全部 {len(df_l2)} 条数据进行逐条判断...")
 
 judgments = []
 for idx, row in df_l2.iterrows():
@@ -331,59 +327,59 @@ manual_rel = df_judge['manual_relevant'].sum()
 manual_irr = total_l2 - manual_rel
 misclass_rate = manual_irr / total_l2 * 100
 
-_safe_print(f"\n─── 人工抽检结果 ───")
-_safe_print(f"  L2 总数:                {total_l2}")
-_safe_print(f"  人工判定 '真正相关':     {manual_rel} ({manual_rel/total_l2*100:.1f}%)")
-_safe_print(f"  人工判定 '误判为相关':   {manual_irr} ({misclass_rate:.1f}%)")
-_safe_print(f"  *** 误判率:             {misclass_rate:.1f}% ***")
+safe_print(f"\n─── 人工抽检结果 ───")
+safe_print(f"  L2 总数:                {total_l2}")
+safe_print(f"  人工判定 '真正相关':     {manual_rel} ({manual_rel/total_l2*100:.1f}%)")
+safe_print(f"  人工判定 '误判为相关':   {manual_irr} ({misclass_rate:.1f}%)")
+safe_print(f"  *** 误判率:             {misclass_rate:.1f}% ***")
 
 # 按误判原因分组
-_safe_print(f"\n─── 误判原因分布 ───")
+safe_print(f"\n─── 误判原因分布 ───")
 false_positives = df_judge[~df_judge['manual_relevant']]
 reason_counts = false_positives['manual_reason'].value_counts()
-_safe_print(reason_counts.to_string())
+safe_print(reason_counts.to_string())
 
 # 展示误判样本（前 20 条）
-_safe_print(f"\n─── 误判样本展示 (前 20 条) ───")
-_safe_print(f"{'ID':<8} {'原因':<45} {'文本':<80}")
-_safe_print("-" * 140)
+safe_print(f"\n─── 误判样本展示 (前 20 条) ───")
+safe_print(f"{'ID':<8} {'原因':<45} {'文本':<80}")
+safe_print("-" * 140)
 for i, (_, row) in enumerate(false_positives.head(20).iterrows()):
-    _safe_print(f"{row['id_e']:<8} {row['manual_reason']:<45} {row['text'][:78]}")
+    safe_print(f"{row['id_e']:<8} {row['manual_reason']:<45} {row['text'][:78]}")
 
 # ═══════════════════════════════════════════════════════════
 # 4. 抽样 10 条详细展示
 # ═══════════════════════════════════════════════════════════
 
-_safe_print("\n\n")
-_safe_print("=" * 70)
-_safe_print("═══ 抽样 10 条详细展示（均匀抽样） ═══")
-_safe_print("=" * 70)
+safe_print("\n\n")
+safe_print("=" * 70)
+safe_print("═══ 抽样 10 条详细展示（均匀抽样） ═══")
+safe_print("=" * 70)
 
 # 均匀抽样
 sample_indices = np.linspace(0, len(df_l2) - 1, 10, dtype=int)
 sample = df_l2.iloc[sample_indices]
 
-_safe_print(f"\n{'#':<3} {'ID':<8} {'文本':<70} {'polarity':<15} {'score':<7} {'人工判定':<10} {'原因'}")
-_safe_print("-" * 160)
+safe_print(f"\n{'#':<3} {'ID':<8} {'文本':<70} {'polarity':<15} {'score':<7} {'人工判定':<10} {'原因'}")
+safe_print("-" * 160)
 for i, (orig_idx, row) in enumerate(sample.iterrows()):
     text = str(row.get('text', ''))[:68]
     title = str(row.get('title', ''))
     combined = f"{title} {text}"
     is_rel, reason = manual_judge_relevance(combined)
     status = "[OK] 相关" if is_rel else "[!!] 误判"
-    _safe_print(f"{i+1:<3} {row.get('id_e', ''):<8} {text:<70} {str(row.get('polarity', '')):<15} {row.get('score', 0):<7.2f} {status:<10} {reason}")
+    safe_print(f"{i+1:<3} {row.get('id_e', ''):<8} {text:<70} {str(row.get('polarity', '')):<15} {row.get('score', 0):<7.2f} {status:<10} {reason}")
 
 # ═══════════════════════════════════════════════════════════
 # 5. 误判严重程度分析
 # ═══════════════════════════════════════════════════════════
 
-_safe_print("\n\n")
-_safe_print("=" * 70)
-_safe_print("═══ 误判严重程度分析 ═══")
-_safe_print("=" * 70)
+safe_print("\n\n")
+safe_print("=" * 70)
+safe_print("═══ 误判严重程度分析 ═══")
+safe_print("=" * 70)
 
 # 按 score 分布看误判
-_safe_print(f"\n─── 按 score 区间的误判分布 ───")
+safe_print(f"\n─── 按 score 区间的误判分布 ───")
 df_judge['score'] = df_l2['score'].values
 score_bins = [0, 0.2, 0.4, 0.6, 0.8, 1.0]
 score_labels = ['0.0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1.0']
@@ -395,72 +391,72 @@ for bin_label in score_labels:
         continue
     misclass = (~bin_data['manual_relevant']).sum()
     rate = misclass / len(bin_data) * 100
-    _safe_print(f"  {bin_label}: 总数={len(bin_data):>5}, 误判={misclass:>5} ({rate:5.1f}%)")
+    safe_print(f"  {bin_label}: 总数={len(bin_data):>5}, 误判={misclass:>5} ({rate:5.1f}%)")
 
 # 高 score 但误判的案例（最危险的误判）
-_safe_print(f"\n─── 高 score (>=0.8) 但误判的案例 ───")
+safe_print(f"\n─── 高 score (>=0.8) 但误判的案例 ───")
 high_score_fp = df_judge[(df_judge['score'] >= 0.8) & (~df_judge['manual_relevant'])]
-_safe_print(f"  数量: {len(high_score_fp)}")
+safe_print(f"  数量: {len(high_score_fp)}")
 for _, row in high_score_fp.head(10).iterrows():
-    _safe_print(f"  [{row['id_e']}] score={row['score']:.2f} | {row['text'][:70]}")
+    safe_print(f"  [{row['id_e']}] score={row['score']:.2f} | {row['text'][:70]}")
 
 # 按 polarity 的误判分布
-_safe_print(f"\n─── 按 polarity 的误判分布 ───")
+safe_print(f"\n─── 按 polarity 的误判分布 ───")
 for pol in ['Very Negative', 'Negative', 'Neutral', 'Positive', 'Very Positive']:
     pol_data = df_judge[df_judge['polarity'] == pol]
     if len(pol_data) == 0:
         continue
     misclass = (~pol_data['manual_relevant']).sum()
     rate = misclass / len(pol_data) * 100
-    _safe_print(f"  {pol:>15}: 总数={len(pol_data):>5}, 误判={misclass:>5} ({rate:5.1f}%)")
+    safe_print(f"  {pol:>15}: 总数={len(pol_data):>5}, 误判={misclass:>5} ({rate:5.1f}%)")
 
 # source 层面的误判分布
-_safe_print(f"\n─── 按 source 的误判分布 ───")
+safe_print(f"\n─── 按 source 的误判分布 ───")
 for src in df_judge['source'].unique():
     src_data = df_judge[df_judge['source'] == src]
     misclass = (~src_data['manual_relevant']).sum()
     rate = misclass / len(src_data) * 100
-    _safe_print(f"  {src:<15}: 总数={len(src_data):>5}, 误判={misclass:>5} ({rate:5.1f}%)")
+    safe_print(f"  {src:<15}: 总数={len(src_data):>5}, 误判={misclass:>5} ({rate:5.1f}%)")
 
 # ═══════════════════════════════════════════════════════════
 # 6. L2 GeoJSON 分析
 # ═══════════════════════════════════════════════════════════
 
-_safe_print("\n\n")
-_safe_print("=" * 70)
-_safe_print("═══ L2 GeoJSON 分析 ═══")
-_safe_print("=" * 70)
+safe_print("\n\n")
+safe_print("=" * 70)
+safe_print("═══ L2 GeoJSON 分析 ═══")
+safe_print("=" * 70)
 
 if os.path.exists(GEOJSON_FILE):
-    _safe_print(f"\n[OK] GeoJSON 文件存在: {GEOJSON_FILE}")
+    safe_print(f"\n[OK] GeoJSON 文件存在: {GEOJSON_FILE}")
     file_size = os.path.getsize(GEOJSON_FILE)
-    _safe_print(f"     文件大小: {file_size / 1024:.1f} KB")
+    safe_print(f"     文件大小: {file_size / 1024:.1f} KB")
 
     with open(GEOJSON_FILE, 'r', encoding='utf-8') as f:
         geojson_data = json.load(f)
 
     features = geojson_data.get('features', [])
-    _safe_print(f"     Feature 数量: {len(features)}")
-    _safe_print(f"     CRS: {geojson_data.get('crs', {}).get('properties', {}).get('name', 'N/A')}")
+    safe_print(f"     Feature 数量: {len(features)}")
+    safe_print(f"     CRS: {geojson_data.get('crs', {}).get('properties', {}).get('name', 'N/A')}")
 
     if len(features) > 0:
         # 检查第一个 feature 结构
         first = features[0]
-        _safe_print(f"     首个 Feature properties keys: {list(first.get('properties', {}).keys())}")
-        _safe_print(f"     首个 Feature geometry type: {first.get('geometry', {}).get('type', 'N/A')}")
+        safe_print(f"     首个 Feature properties keys: {list(first.get('properties', {}).keys())}")
+        safe_print(f"     首个 Feature geometry type: {first.get('geometry', {}).get('type', 'N/A')}")
 else:
-    _safe_print(f"\n[ERR] GeoJSON 文件不存在: {GEOJSON_FILE}")
+    safe_print(f"\n[ERR] GeoJSON 文件不存在: {GEOJSON_FILE}")
 
 # ═══════════════════════════════════════════════════════════
 # 7. 总结
 # ═══════════════════════════════════════════════════════════
 
-_safe_print("\n\n")
-_safe_print("=" * 70)
-_safe_print("═══ 数据质量总结 ═══")
-_safe_print("=" * 70)
+safe_print("\n\n")
+safe_print("=" * 70)
+safe_print("═══ 数据质量总结 ═══")
+safe_print("=" * 70)
 
-_safe_print(f"""
+safe_print(f"""
 ┌─────────────────────────────────────────────────────────┐
 │  L1 数据质量                                            │
 │    总入池:           {len(df_l1):>6}                            │
@@ -480,16 +476,16 @@ _safe_print(f"""
 """)
 
 # 是否需要 LLM 层的判断
-_safe_print("\n─── 结论与建议 ───")
+safe_print("\n─── 结论与建议 ───")
 if misclass_rate > 20:
-    _safe_print(f"[!!] 误判率 {misclass_rate:.1f}% 过高 (>20%)，关键词层无法有效区分城市相关内容。")
-    _safe_print("      强烈建议启用 LLM 精分类层 (DeepSeek) 进行二次过滤。")
-    _safe_print("      当前关键词层主要问题:")
+    safe_print(f"[!!] 误判率 {misclass_rate:.1f}% 过高 (>20%)，关键词层无法有效区分城市相关内容。")
+    safe_print("      强烈建议启用 LLM 精分类层 (DeepSeek) 进行二次过滤。")
+    safe_print("      当前关键词层主要问题:")
     # 列出 top 误判原因
     top_reasons = reason_counts.head(3)
     for reason, count in top_reasons.items():
-        _safe_print(f"        - {reason}: {count} 条")
+        safe_print(f"        - {reason}: {count} 条")
 elif misclass_rate > 10:
-    _safe_print(f"[WARN] 误判率 {misclass_rate:.1f}% 偏高 (10-20%)，建议启用 LLM 层提升精度。")
+    safe_print(f"[WARN] 误判率 {misclass_rate:.1f}% 偏高 (10-20%)，建议启用 LLM 层提升精度。")
 else:
-    _safe_print(f"[OK] 误判率 {misclass_rate:.1f}% 可接受 (<10%)，关键词层基本可用。")
+    safe_print(f"[OK] 误判率 {misclass_rate:.1f}% 可接受 (<10%)，关键词层基本可用。")

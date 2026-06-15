@@ -31,7 +31,7 @@
     DeepSeek API Key (环境变量 DEEPSEEK_API_KEY 或函数参数传入)
 
 编码铁律:
-    - 所有 print() 使用 _safe_print()
+    - 所有 print() 使用 safe_print()
     - 无 emoji，仅 ASCII 标记 [OK]/[WARN]/[ERR]/[LOAD]
     - API Key 不硬编码，从环境变量读取
 """
@@ -48,19 +48,11 @@ import pandas as pd
 import requests
 
 from core.tracker import track, TrackContext, trace_log, trace_error, register_track_id
+from core.utils import safe_print
 
 # ── 安全 print — 防止 Windows GBK 控制台崩溃 ──
 _real_print = _bi.print
 
-
-def _safe_print(*args, **kwargs):
-    try:
-        _real_print(*args, **kwargs)
-    except UnicodeEncodeError:
-        _real_print(
-            *(str(a).encode('ascii', errors='replace').decode('ascii') for a in args),
-            **kwargs,
-        )
 
 
 # 修复 Windows GBK 控制台编码问题
@@ -311,13 +303,13 @@ def keyword_prefilter(text: str) -> str:
 
     if not text or not isinstance(text, str):
         if debug_mode:
-            _safe_print(f'[KEYWORD-DEBUG] reject: empty or non-string')
+            safe_print(f'[KEYWORD-DEBUG] reject: empty or non-string')
         return 'reject'
 
     text_stripped = text.strip()
     if not text_stripped:
         if debug_mode:
-            _safe_print(f'[KEYWORD-DEBUG] reject: whitespace only')
+            safe_print(f'[KEYWORD-DEBUG] reject: whitespace only')
         return 'reject'
 
     chinese_count = _count_chinese(text_stripped)
@@ -325,7 +317,7 @@ def keyword_prefilter(text: str) -> str:
     # ── 直接 reject: 中文字符过少 (纯灌水/纯emoji) ──
     if chinese_count < MIN_CHINESE_CHARS:
         if debug_mode:
-            _safe_print(
+            safe_print(
                 f'[KEYWORD-DEBUG] reject: chinese_chars={chinese_count} '
                 f'< {MIN_CHINESE_CHARS} | text={text_stripped[:80]}'
             )
@@ -335,7 +327,7 @@ def keyword_prefilter(text: str) -> str:
     import re as _re
     if _re.search(r'(.)\1{4,}', text_stripped):
         if debug_mode:
-            _safe_print(
+            safe_print(
                 f'[KEYWORD-DEBUG] reject: repeated_char_pattern '
                 f'| text={text_stripped[:80]}'
             )
@@ -344,7 +336,7 @@ def keyword_prefilter(text: str) -> str:
     # ── 直接 reject: 连续重复短词灌水 (如"笑死笑死笑死") ──
     if _re.search(r'(.{2,3})\1{2,}', text_stripped):
         if debug_mode:
-            _safe_print(
+            safe_print(
                 f'[KEYWORD-DEBUG] reject: repeated_phrase_pattern '
                 f'| text={text_stripped[:80]}'
             )
@@ -356,7 +348,7 @@ def keyword_prefilter(text: str) -> str:
         non_chinese_ratio = 1.0 - (chinese_count / text_len)
         if non_chinese_ratio > NON_CHINESE_RATIO_THRESHOLD:
             if debug_mode:
-                _safe_print(
+                safe_print(
                     f'[KEYWORD-DEBUG] reject: non_chinese_ratio={non_chinese_ratio:.1%} '
                     f'> {NON_CHINESE_RATIO_THRESHOLD:.0%} | text={text_stripped[:80]}'
                 )
@@ -366,7 +358,7 @@ def keyword_prefilter(text: str) -> str:
     for place in YICHANG_SAFEGUARD_PLACES:
         if place in text_stripped:
             if debug_mode:
-                _safe_print(
+                safe_print(
                     f'[KEYWORD-DEBUG] direct-pass: yichang_place="{place}" '
                     f'| text={text_stripped[:80]}'
                 )
@@ -375,7 +367,7 @@ def keyword_prefilter(text: str) -> str:
     # ── 直接 pass: 具体地址格式 ──
     if _has_address_pattern(text_stripped):
         if debug_mode:
-            _safe_print(
+            safe_print(
                 f'[KEYWORD-DEBUG] direct-pass: address_pattern '
                 f'| text={text_stripped[:80]}'
             )
@@ -392,7 +384,7 @@ def keyword_prefilter(text: str) -> str:
         )
         if not has_pos_signal:
             if debug_mode:
-                _safe_print(
+                safe_print(
                     f'[KEYWORD-DEBUG] reject: pure_ad_no_pos_signal '
                     f'| text={text_stripped[:80]}'
                 )
@@ -407,7 +399,7 @@ def keyword_prefilter(text: str) -> str:
         )
         if not has_pos:
             if debug_mode:
-                _safe_print(
+                safe_print(
                     f'[KEYWORD-DEBUG] reject: low_quality_short '
                     f'(chinese_chars={chinese_count}, no_pos_signal) '
                     f'| text={text_stripped[:80]}'
@@ -418,7 +410,7 @@ def keyword_prefilter(text: str) -> str:
     score, reasons = _score_keyword_relevance(text_stripped)
 
     if debug_mode:
-        _safe_print(
+        safe_print(
             f'[KEYWORD-DEBUG] {"reject" if score < 20 else "pass"} '
             f'| {" | ".join(reasons)} | text={text_stripped[:120]}'
         )
@@ -647,7 +639,7 @@ def llm_classify(text: str, api_key: Optional[str] = None) -> dict:
             elif resp.status_code == 429:
                 # 限流 — 指数退避
                 wait_time = RETRY_DELAY_BASE ** attempt
-                _safe_print(
+                safe_print(
                     f'[WARN] API 限流 (429)，第 {attempt}/{MAX_RETRIES} 次重试，'
                     f'等待 {wait_time}s ...'
                 )
@@ -657,7 +649,7 @@ def llm_classify(text: str, api_key: Optional[str] = None) -> dict:
             elif resp.status_code in (500, 502, 503, 504):
                 # 服务端错误 — 重试
                 wait_time = RETRY_DELAY_BASE ** attempt
-                _safe_print(
+                safe_print(
                     f'[WARN] API 服务端错误 ({resp.status_code})，'
                     f'第 {attempt}/{MAX_RETRIES} 次重试，等待 {wait_time}s ...'
                 )
@@ -667,7 +659,7 @@ def llm_classify(text: str, api_key: Optional[str] = None) -> dict:
             else:
                 # 不可恢复的错误
                 error_msg = f'API 返回非预期状态码: {resp.status_code}'
-                _safe_print(f'[ERR] {error_msg}')
+                safe_print(f'[ERR] {error_msg}')
                 return {
                     'relevant': False,
                     'dimensions': [],
@@ -679,14 +671,14 @@ def llm_classify(text: str, api_key: Optional[str] = None) -> dict:
                 }
 
         except requests.exceptions.Timeout:
-            _safe_print(
+            safe_print(
                 f'[WARN] API 请求超时，第 {attempt}/{MAX_RETRIES} 次重试 ...'
             )
             time.sleep(RETRY_DELAY_BASE ** attempt)
             last_error = '请求超时'
 
         except requests.exceptions.ConnectionError as e:
-            _safe_print(
+            safe_print(
                 f'[WARN] 网络连接错误: {e}，'
                 f'第 {attempt}/{MAX_RETRIES} 次重试 ...'
             )
@@ -694,7 +686,7 @@ def llm_classify(text: str, api_key: Optional[str] = None) -> dict:
             last_error = f'网络连接错误: {e}'
 
         except Exception as e:
-            _safe_print(f'[ERR] LLM 分类异常: {e}')
+            safe_print(f'[ERR] LLM 分类异常: {e}')
             return {
                 'relevant': False,
                 'dimensions': [],
@@ -836,7 +828,7 @@ def llm_classify_batch(texts: list[dict], api_key: str = None, batch_size: int =
 
     total_batches = (total + batch_size - 1) // batch_size
 
-    _safe_print(f'[LOAD] 批量 LLM 分类开始: {total} 条文本, '
+    safe_print(f'[LOAD] 批量 LLM 分类开始: {total} 条文本, '
                 f'batch_size={batch_size}, 共 {total_batches} 批')
 
     for batch_num in range(0, total, batch_size):
@@ -884,7 +876,7 @@ def llm_classify_batch(texts: list[dict], api_key: str = None, batch_size: int =
 
                     elif resp.status_code == 429:
                         wait_time = RETRY_DELAY_BASE ** attempt
-                        _safe_print(
+                        safe_print(
                             f'[WARN] 批量 API 限流 (429)，'
                             f'批次 {current_batch_no}/{total_batches}, '
                             f'第 {attempt}/{MAX_RETRIES} 次重试，等待 {wait_time}s ...'
@@ -894,7 +886,7 @@ def llm_classify_batch(texts: list[dict], api_key: str = None, batch_size: int =
 
                     elif resp.status_code in (500, 502, 503, 504):
                         wait_time = RETRY_DELAY_BASE ** attempt
-                        _safe_print(
+                        safe_print(
                             f'[WARN] 批量 API 服务端错误 ({resp.status_code})，'
                             f'批次 {current_batch_no}/{total_batches}, '
                             f'第 {attempt}/{MAX_RETRIES} 次重试，等待 {wait_time}s ...'
@@ -904,13 +896,13 @@ def llm_classify_batch(texts: list[dict], api_key: str = None, batch_size: int =
 
                     else:
                         error_msg = f'API 返回非预期状态码: {resp.status_code}'
-                        _safe_print(f'[ERR] 批量 {error_msg}')
+                        safe_print(f'[ERR] 批量 {error_msg}')
                         trace_error("MOD_REL.D_004", error_msg)
                         last_error = error_msg
                         break
 
                 except requests.exceptions.Timeout:
-                    _safe_print(
+                    safe_print(
                         f'[WARN] 批量 API 请求超时，'
                         f'批次 {current_batch_no}/{total_batches}, '
                         f'第 {attempt}/{MAX_RETRIES} 次重试 ...'
@@ -919,7 +911,7 @@ def llm_classify_batch(texts: list[dict], api_key: str = None, batch_size: int =
                     last_error = '请求超时'
 
                 except requests.exceptions.ConnectionError as e:
-                    _safe_print(
+                    safe_print(
                         f'[WARN] 批量 网络连接错误: {e}，'
                         f'批次 {current_batch_no}/{total_batches}, '
                         f'第 {attempt}/{MAX_RETRIES} 次重试 ...'
@@ -928,7 +920,7 @@ def llm_classify_batch(texts: list[dict], api_key: str = None, batch_size: int =
                     last_error = f'网络连接错误: {e}'
 
                 except Exception as e:
-                    _safe_print(f'[ERR] 批量 LLM 分类异常: {e}')
+                    safe_print(f'[ERR] 批量 LLM 分类异常: {e}')
                     trace_error("MOD_REL.D_004", f"batch LLM exception", exc=e)
                     last_error = str(e)
                     break
@@ -936,7 +928,7 @@ def llm_classify_batch(texts: list[dict], api_key: str = None, batch_size: int =
             # ── 处理本批结果 ──
             if batch_results is None:
                 # 所有重试耗尽，生成默认结果
-                _safe_print(f'[WARN] 批次 {current_batch_no}/{total_batches} '
+                safe_print(f'[WARN] 批次 {current_batch_no}/{total_batches} '
                             f'失败: {last_error}, 生成默认 irrelevant 结果')
                 batch_results = [
                     {
@@ -1009,7 +1001,7 @@ def llm_classify_batch(texts: list[dict], api_key: str = None, batch_size: int =
     # ── 汇总统计 ──
     n_relevant = sum(1 for r in all_results if r['relevance'] == 'relevant')
     n_location = sum(1 for r in all_results if r.get('has_location'))
-    _safe_print(f'[OK] 批量 LLM 分类完成: {total} 条输入 → '
+    safe_print(f'[OK] 批量 LLM 分类完成: {total} 条输入 → '
                 f'{n_relevant} relevant, {n_location} has_location')
 
     return all_results
@@ -1072,7 +1064,7 @@ def filter_relevance(
     Returns:
         添加了 relevance 系列列的 DataFrame（不删除行，由调用方决定过滤策略）
     """
-    _safe_print(f'[LOAD] 相关性筛选开始，共 {len(df)} 条数据')
+    safe_print(f'[LOAD] 相关性筛选开始，共 {len(df)} 条数据')
 
     total = len(df)
 
@@ -1086,7 +1078,7 @@ def filter_relevance(
     df['filter_layer'] = ''
 
     # ── 第一层: 关键词粗筛 ──
-    _safe_print('[LAYER 1] 关键词粗筛 ...')
+    safe_print('[LAYER 1] 关键词粗筛 ...')
     keyword_pass_indices = []
     keyword_reject_count = 0
 
@@ -1100,17 +1092,17 @@ def filter_relevance(
             df.at[idx, 'filter_layer'] = 'keyword'
             keyword_reject_count += 1
 
-    _safe_print(
+    safe_print(
         f'[OK] 关键词粗筛完成: {len(keyword_pass_indices)} 条 pass, '
         f'{keyword_reject_count} 条 reject'
     )
 
     if not keyword_pass_indices:
-        _safe_print('[WARN] 关键词粗筛后无数据通过，跳过 LLM 分类')
+        safe_print('[WARN] 关键词粗筛后无数据通过，跳过 LLM 分类')
         return df
 
     # ── 第二层: LLM 精分类 (批量并发) ──
-    _safe_print(f'[LAYER 2] LLM 精分类 (DeepSeek {DEEPSEEK_MODEL}) ...')
+    safe_print(f'[LAYER 2] LLM 精分类 (DeepSeek {DEEPSEEK_MODEL}) ...')
 
     key = _get_api_key(api_key)  # 提前校验 API Key
     llm_processed = 0
@@ -1177,7 +1169,7 @@ def filter_relevance(
         batch_irrelevant = ((df['relevance'] == 'irrelevant') & (df['filter_layer'] == 'llm')).sum()
         batch_errors = (df['relevance'] == 'error').sum()
         pct = min(100, round(llm_processed / len(pass_list) * 100, 1))
-        _safe_print(
+        safe_print(
             f'  [LOAD] 批次 {current_batch}/{total_batches} '
             f'({llm_processed}/{len(pass_list)}, {pct}%) '
             f'| relevant: {batch_relevant} | irrelevant: {batch_irrelevant} '
@@ -1189,16 +1181,16 @@ def filter_relevance(
     llm_irrelevant = ((df['relevance'] == 'irrelevant') & (df['filter_layer'] == 'llm')).sum()
     llm_errors = (df['relevance'] == 'error').sum()
 
-    _safe_print('\n' + '=' * 50)
-    _safe_print('  相关性筛选完成')
-    _safe_print('=' * 50)
-    _safe_print(f'  总数据:        {total}')
-    _safe_print(f'  关键词剔除:    {keyword_reject_count}')
-    _safe_print(f'  LLM 判定相关:  {llm_relevant}')
-    _safe_print(f'  LLM 判定无关:  {llm_irrelevant}')
-    _safe_print(f'  LLM 错误:      {llm_errors}')
-    _safe_print(f'  最终相关:      {llm_relevant}')
-    _safe_print('')
+    safe_print('\n' + '=' * 50)
+    safe_print('  相关性筛选完成')
+    safe_print('=' * 50)
+    safe_print(f'  总数据:        {total}')
+    safe_print(f'  关键词剔除:    {keyword_reject_count}')
+    safe_print(f'  LLM 判定相关:  {llm_relevant}')
+    safe_print(f'  LLM 判定无关:  {llm_irrelevant}')
+    safe_print(f'  LLM 错误:      {llm_errors}')
+    safe_print(f'  最终相关:      {llm_relevant}')
+    safe_print('')
 
     return df
 
@@ -1215,16 +1207,16 @@ def print_relevance_stats(df: pd.DataFrame):
     包括: 各维度计数、urban_value 分布。
     """
     if 'relevance' not in df.columns:
-        _safe_print('[WARN] DataFrame 无 relevance 列，跳过统计')
+        safe_print('[WARN] DataFrame 无 relevance 列，跳过统计')
         return
 
     relevant_df = df[df['relevance'] == 'relevant']
 
-    _safe_print('\n--- 相关性分布统计 ---')
-    _safe_print(f'  相关数据: {len(relevant_df)} / {len(df)} 条')
+    safe_print('\n--- 相关性分布统计 ---')
+    safe_print(f'  相关数据: {len(relevant_df)} / {len(df)} 条')
 
     if relevant_df.empty:
-        _safe_print('  (无相关数据，跳过维度统计)')
+        safe_print('  (无相关数据，跳过维度统计)')
         return
 
     # ── 各维度计数 ──
@@ -1240,27 +1232,27 @@ def print_relevance_stats(df: pd.DataFrame):
                 pass
 
     if dim_counter:
-        _safe_print('\n  维度分布:')
+        safe_print('\n  维度分布:')
         for dim, count in dim_counter.most_common():
-            _safe_print(f'    {dim}: {count}')
+            safe_print(f'    {dim}: {count}')
 
     # ── urban_value 分布 ──
     uv_counts = relevant_df['relevance_urban_value'].value_counts()
     if not uv_counts.empty:
-        _safe_print('\n  urban_value 分布:')
+        safe_print('\n  urban_value 分布:')
         for val, count in uv_counts.items():
             if val:
-                _safe_print(f'    {val}: {count}')
+                safe_print(f'    {val}: {count}')
 
     # ── 情绪分布 ──
     emo_counts = relevant_df['relevance_emotion'].value_counts()
     if not emo_counts.empty:
-        _safe_print('\n  情绪分布:')
+        safe_print('\n  情绪分布:')
         for emo, count in emo_counts.head(10).items():
             if emo:
-                _safe_print(f'    {emo}: {count}')
+                safe_print(f'    {emo}: {count}')
 
-    _safe_print('')
+    safe_print('')
 
 # ── 追踪 ID 注册表 ──
 register_track_id("MOD_REL.F_001", "关键词预筛选（正负信号加权评分）")

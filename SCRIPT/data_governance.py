@@ -19,32 +19,19 @@ LLM 批量处理足够快且更准。
   L2 输出: {name}_L2_result_csv.csv (SnowNLP 分析结果)
 
 用法:
-    python SCRIPT/data_governance.py
+    python SCRIPT/data_governance.py                          # 使用默认路径
+    python SCRIPT/data_governance.py --input DATA/raw/my_data.csv --output my_project
 """
 
+import argparse
 import os
 import sys
-import builtins as _bi
 
 import pandas as pd
 from pyproj import Transformer
 
 # 确保可导入 core 和 SCRIPT 模块
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# ── 安全 print — 防止 Windows GBK 控制台崩溃 ──
-_real_print = _bi.print
-
-
-def _safe_print(*args, **kwargs):
-    try:
-        _real_print(*args, **kwargs)
-    except UnicodeEncodeError:
-        _real_print(
-            *(str(a).encode('ascii', errors='replace').decode('ascii') for a in args),
-            **kwargs,
-        )
-
 
 # 修复 Windows GBK 控制台编码问题
 try:
@@ -55,6 +42,7 @@ except Exception:
 from core.coord_transform import gcj02_to_wgs84
 from core.export import export_to_csv
 from core.tracker import track, TrackContext, trace_log, trace_error, register_track_id
+from core.utils import safe_print
 from SCRIPT.emotion_analysis_v1 import run_analysis_task
 
 # ═══════════════════════════════════════════════════════════
@@ -66,12 +54,9 @@ RAW_DIR = os.path.join(PROJECT_ROOT, 'DATA', 'raw')
 PROCESSED_DIR = os.path.join(PROJECT_ROOT, 'DATA', 'processed')
 BOUNDARY_DIR = os.path.join(PROJECT_ROOT, 'DATA', 'boundaries', '规划范围')
 
-# 输入文件
-RAW_CSV = os.path.join(RAW_DIR, 'simulated_20260613_100k_raw.csv')
-
-# 输出命名
-L1_OUTPUT_NAME = 'simulated_20260613_规划范围'
-L1_CSV_OUTPUT = os.path.join(PROCESSED_DIR, f'{L1_OUTPUT_NAME}_L1_result_csv.csv')
+# 默认路径（可通过 CLI 参数覆盖）
+DEFAULT_RAW_CSV = os.path.join(RAW_DIR, 'simulated_20260613_100k_raw.csv')
+DEFAULT_OUTPUT_NAME = 'simulated_20260613_规划范围'
 
 # ═══════════════════════════════════════════════════════════
 # L1 字段定义 (v2.0)
@@ -114,13 +99,13 @@ def step1_load_and_transform(csv_path: str) -> pd.DataFrame:
     Returns:
         含转换后坐标的 DataFrame
     """
-    _safe_print(f'[LOAD] 读取原始数据: {csv_path}')
+    safe_print(f'[LOAD] 读取原始数据: {csv_path}')
 
     if not os.path.exists(csv_path):
         raise FileNotFoundError(f'原始数据文件不存在: {csv_path}')
 
     df = pd.read_csv(csv_path, encoding='utf-8')
-    _safe_print(f'[LOAD] 共加载 {len(df)} 条原始记录')
+    safe_print(f'[LOAD] 共加载 {len(df)} 条原始记录')
 
     # 兼容旧格式: 将 raw CSV 中的 lon/lat 重命名为 lon_gcj02/lat_gcj02
     df.rename(columns={'lon': 'lon_gcj02', 'lat': 'lat_gcj02'}, inplace=True)
@@ -132,7 +117,7 @@ def step1_load_and_transform(csv_path: str) -> pd.DataFrame:
         raise ValueError(f'原始 CSV 缺少必需列: {missing}')
 
     # ── 坐标转换: GCJ-02 → WGS84 ──
-    _safe_print('[TRANSFORM] GCJ-02 → WGS84 (数学转换) ...')
+    safe_print('[TRANSFORM] GCJ-02 → WGS84 (数学转换) ...')
     wgs84_lons = []
     wgs84_lats = []
     for _, row in df.iterrows():
@@ -143,21 +128,21 @@ def step1_load_and_transform(csv_path: str) -> pd.DataFrame:
             wgs84_lons.append(round(wlon, 6))
             wgs84_lats.append(round(wlat, 6))
         except (ValueError, TypeError) as e:
-            _safe_print(f'[WARN] 坐标转换失败 (行索引={_.name}): {e}, 标记为无效')
+            safe_print(f'[WARN] 坐标转换失败 (行索引={_.name}): {e}, 标记为无效')
             wgs84_lons.append(None)
             wgs84_lats.append(None)
 
     df['lon'] = wgs84_lons
     df['lat'] = wgs84_lats
-    _safe_print(f'[OK] WGS84 转换完成, 示例: ({df["lon"].iloc[0]}, {df["lat"].iloc[0]})')
+    safe_print(f'[OK] WGS84 转换完成, 示例: ({df["lon"].iloc[0]}, {df["lat"].iloc[0]})')
 
     # ── 坐标投影: WGS84 → CGCS2000 EPSG:4546 ──
-    _safe_print('[TRANSFORM] WGS84 → CGCS2000 EPSG:4546 (投影转换) ...')
+    safe_print('[TRANSFORM] WGS84 → CGCS2000 EPSG:4546 (投影转换) ...')
     try:
         transformer = Transformer.from_crs('EPSG:4326', 'EPSG:4546', always_xy=True)
     except Exception as e:
-        _safe_print(f'[ERR] 无法创建 pyproj Transformer: {e}')
-        _safe_print('[WARN] 跳过 EPSG:4546 投影，x_cgcs2000/y_cgcs2000 将为空')
+        safe_print(f'[ERR] 无法创建 pyproj Transformer: {e}')
+        safe_print('[WARN] 跳过 EPSG:4546 投影，x_cgcs2000/y_cgcs2000 将为空')
         df['x_cgcs2000'] = None
         df['y_cgcs2000'] = None
         return df
@@ -170,21 +155,21 @@ def step1_load_and_transform(csv_path: str) -> pd.DataFrame:
             x_cgcs.append(round(x, 2))
             y_cgcs.append(round(y, 2))
         except Exception as e:
-            _safe_print(f'[WARN] EPSG:4546 投影失败 (索引={_.name}): {e}')
+            safe_print(f'[WARN] EPSG:4546 投影失败 (索引={_.name}): {e}')
             x_cgcs.append(None)
             y_cgcs.append(None)
 
     df['x_cgcs2000'] = x_cgcs
     df['y_cgcs2000'] = y_cgcs
-    _safe_print(f'[OK] EPSG:4546 投影完成, 示例: ({df["x_cgcs2000"].iloc[0]}, {df["y_cgcs2000"].iloc[0]})')
+    safe_print(f'[OK] EPSG:4546 投影完成, 示例: ({df["x_cgcs2000"].iloc[0]}, {df["y_cgcs2000"].iloc[0]})')
 
     # 生成稳定行标识符
     df['id_e'] = 'e' + (df.index + 1).astype(str).str.zfill(4)
-    _safe_print(f'[OK] 生成行标识符 id_e: e0001 ~ e{len(df):04d}')
+    safe_print(f'[OK] 生成行标识符 id_e: e0001 ~ e{len(df):04d}')
 
     # 添加范围标识
     df['scope'] = '规划范围'
-    _safe_print(f'[OK] 范围标识 scope = "规划范围"')
+    safe_print(f'[OK] 范围标识 scope = "规划范围"')
 
     return df
 
@@ -205,9 +190,9 @@ def step4_run_l2_analysis(l1_csv_path: str, output_name: str) -> dict:
     Returns:
         run_analysis_task 返回的结果 dict
     """
-    _safe_print(f'[L2] 启动 SnowNLP 情绪分析...')
-    _safe_print(f'[L2] 输入: {l1_csv_path}')
-    _safe_print(f'[L2] 输出基础名: {output_name}')
+    safe_print(f'[L2] 启动 SnowNLP 情绪分析...')
+    safe_print(f'[L2] 输入: {l1_csv_path}')
+    safe_print(f'[L2] 输出基础名: {output_name}')
 
     result = run_analysis_task(
         file_path=l1_csv_path,
@@ -217,16 +202,16 @@ def step4_run_l2_analysis(l1_csv_path: str, output_name: str) -> dict:
     )
 
     if result['success']:
-        _safe_print(f'\n[OK] L2 分析完成!')
-        _safe_print(f'  数据条数: {result["n_points"]}')
-        _safe_print(f'  综合得分均值: {result["score_mean"]}')
-        _safe_print(f'  五级极性分布:')
+        safe_print(f'\n[OK] L2 分析完成!')
+        safe_print(f'  数据条数: {result["n_points"]}')
+        safe_print(f'  综合得分均值: {result["score_mean"]}')
+        safe_print(f'  五级极性分布:')
         for pol, count in result.get('polarity_stats', {}).items():
-            _safe_print(f'    {pol}: {count}')
-        _safe_print(f'  CSV 输出: {result["csv_path"]}')
-        _safe_print(f'  GeoJSON 输出: {result["geojson_path"]}')
+            safe_print(f'    {pol}: {count}')
+        safe_print(f'  CSV 输出: {result["csv_path"]}')
+        safe_print(f'  GeoJSON 输出: {result["geojson_path"]}')
     else:
-        _safe_print(f'[ERR] L2 分析失败: {result["message"]}')
+        safe_print(f'[ERR] L2 分析失败: {result["message"]}')
 
     return result
 
@@ -236,8 +221,12 @@ def step4_run_l2_analysis(l1_csv_path: str, output_name: str) -> dict:
 # ═══════════════════════════════════════════════════════════
 
 @track("MOD_GOV.F_006", track_args=False)
-def main():
+def main(csv_path=None, output_name=None):
     """L1 数据治理管道主入口 (v2.0)。
+
+    Args:
+        csv_path:    L0 原始 CSV 路径（默认 DATA/raw/simulated_20260613_100k_raw.csv）
+        output_name: L1/L2 输出命名前缀（默认 simulated_20260613_规划范围）
 
     流程:
       1. 加载原始数据 + 坐标转换
@@ -248,31 +237,37 @@ def main():
       6. 导出 L1 CSV
       7. L2 SnowNLP 分析
     """
-    _safe_print('=' * 60)
-    _safe_print('  数据治理管道 v2.0 — L0 -> L1 -> L2')
-    _safe_print('  (批量 LLM 一次完成筛选+分类)')
-    _safe_print('=' * 60)
+    csv_path = csv_path or DEFAULT_RAW_CSV
+    output_name = output_name or DEFAULT_OUTPUT_NAME
+    l1_csv_output = os.path.join(PROCESSED_DIR, f'{output_name}_L1_result_csv.csv')
+
+    safe_print('=' * 60)
+    safe_print('  数据治理管道 v2.0 — L0 -> L1 -> L2')
+    safe_print(f'  输入: {csv_path}')
+    safe_print(f'  输出: {output_name}')
+    safe_print('  (批量 LLM 一次完成筛选+分类)')
+    safe_print('=' * 60)
 
     # ── 步骤 1: 加载原始数据 + 坐标转换 ──
-    _safe_print('\n' + '-' * 40)
-    _safe_print('[STEP 1/7] 加载原始数据 + 坐标转换')
-    _safe_print('-' * 40)
+    safe_print('\n' + '-' * 40)
+    safe_print('[STEP 1/7] 加载原始数据 + 坐标转换')
+    safe_print('-' * 40)
     try:
-        df = step1_load_and_transform(RAW_CSV)
+        df = step1_load_and_transform(csv_path)
     except Exception as e:
         trace_error("MOD_GOV.F_006", "step1 failed", exc=e)
-        _safe_print(f'[ERR] 步骤 1 失败: {e}')
+        safe_print(f'[ERR] 步骤 1 失败: {e}')
         sys.exit(1)
 
     # ── 步骤 2: 批量 LLM 筛选+分类 ──
-    _safe_print('\n' + '-' * 40)
-    _safe_print('[STEP 2/7] 批量 LLM 筛选+分类 (DeepSeek)')
-    _safe_print('-' * 40)
+    safe_print('\n' + '-' * 40)
+    safe_print('[STEP 2/7] 批量 LLM 筛选+分类 (DeepSeek)')
+    safe_print('-' * 40)
 
     api_key = os.environ.get('DEEPSEEK_API_KEY', '')
     if not api_key:
-        _safe_print('[ERR] 需要设置 DEEPSEEK_API_KEY 环境变量')
-        _safe_print('[ERR] PowerShell: $env:DEEPSEEK_API_KEY="sk-xxx"')
+        safe_print('[ERR] 需要设置 DEEPSEEK_API_KEY 环境变量')
+        safe_print('[ERR] PowerShell: $env:DEEPSEEK_API_KEY="sk-xxx"')
         sys.exit(1)
 
     # 准备发送给 LLM 的数据
@@ -293,16 +288,16 @@ def main():
         })
 
     if skipped_empty > 0:
-        _safe_print(f'[WARN] 跳过 {skipped_empty} 条空内容文本')
+        safe_print(f'[WARN] 跳过 {skipped_empty} 条空内容文本')
 
-    _safe_print(f'[LOAD] 准备发送 {len(texts)} 条文本到 LLM (batch_size=50)')
+    safe_print(f'[LOAD] 准备发送 {len(texts)} 条文本到 LLM (batch_size=50)')
 
     # 调用批量 LLM
     from SCRIPT.relevance_filter import llm_classify_batch
 
     def _progress_callback(current, total, message):
         pct = min(100, round(current / total * 100, 1))
-        _safe_print(f'  [LOAD] {message} | {current}/{total} ({pct}%)')
+        safe_print(f'  [LOAD] {message} | {current}/{total} ({pct}%)')
 
     try:
         with TrackContext("MOD_GOV.D_004", total_texts=len(texts)):
@@ -315,11 +310,11 @@ def main():
         trace_log("MOD_GOV.D_004", detail=f"LLM batch complete, got {len(results)} results")
     except Exception as e:
         trace_error("MOD_GOV.F_006", "batch LLM classify failed", exc=e)
-        _safe_print(f'[ERR] 批量 LLM 分类失败: {e}')
+        safe_print(f'[ERR] 批量 LLM 分类失败: {e}')
         sys.exit(1)
 
     # ── 合并 LLM 结果到 df ──
-    _safe_print('\n[MERGE] 合并 LLM 分类结果到 DataFrame ...')
+    safe_print('\n[MERGE] 合并 LLM 分类结果到 DataFrame ...')
 
     with TrackContext("MOD_GOV.D_005", n_results=len(results)):
         # 初始化新列
@@ -357,14 +352,14 @@ def main():
     # ── 统计 LLM 分类结果 ──
     n_relevant = int((df['relevance'] == 'relevant').sum())
     n_location = int(df['has_location'].sum())
-    _safe_print(f'[OK] LLM 分类统计:')
-    _safe_print(f'     relevant: {n_relevant} / {len(df)}')
-    _safe_print(f'     has_location: {n_location} / {len(df)}')
+    safe_print(f'[OK] LLM 分类统计:')
+    safe_print(f'     relevant: {n_relevant} / {len(df)}')
+    safe_print(f'     has_location: {n_location} / {len(df)}')
 
     # ── 步骤 3: 筛选 relevant + has_location ──
-    _safe_print('\n' + '-' * 40)
-    _safe_print('[STEP 3/7] 筛选 relevant + has_location')
-    _safe_print('-' * 40)
+    safe_print('\n' + '-' * 40)
+    safe_print('[STEP 3/7] 筛选 relevant + has_location')
+    safe_print('-' * 40)
 
     with TrackContext("MOD_GOV.D_006", input_n=len(df)):
         df_relevant = df[(df['relevance'] == 'relevant') & (df['has_location'] == True)].copy()
@@ -372,22 +367,22 @@ def main():
                   detail=f"filtered: {len(df)} -> {len(df_relevant)} "
                          f"(relevant+has_location)")
 
-    _safe_print(f'[OK] 筛选后保留: {len(df_relevant)} / {len(df)} 条')
+    safe_print(f'[OK] 筛选后保留: {len(df_relevant)} / {len(df)} 条')
 
     if df_relevant.empty:
-        _safe_print('[WARN] 筛选后无数据（无 relevant + has_location 的记录）。')
-        _safe_print('[WARN] 可能原因: LLM 判定所有文本为 irrelevant 或 has_location=false。')
-        _safe_print('[WARN] 全量数据仍保留在 DataFrame 中（可手动检查）。')
-        _safe_print('\n' + '=' * 60)
-        _safe_print('  数据治理管道完成 (仅 L1, 无有效数据)!')
-        _safe_print('=' * 60)
-        _safe_print('')
+        safe_print('[WARN] 筛选后无数据（无 relevant + has_location 的记录）。')
+        safe_print('[WARN] 可能原因: LLM 判定所有文本为 irrelevant 或 has_location=false。')
+        safe_print('[WARN] 全量数据仍保留在 DataFrame 中（可手动检查）。')
+        safe_print('\n' + '=' * 60)
+        safe_print('  数据治理管道完成 (仅 L1, 无有效数据)!')
+        safe_print('=' * 60)
+        safe_print('')
         sys.exit(0)
 
     # ── 步骤 4: 字段整理 ──
-    _safe_print('\n' + '-' * 40)
-    _safe_print('[STEP 4/7] 字段整理')
-    _safe_print('-' * 40)
+    safe_print('\n' + '-' * 40)
+    safe_print('[STEP 4/7] 字段整理')
+    safe_print('-' * 40)
 
     df_relevant['text_length'] = df_relevant['text'].astype(str).str.len()
 
@@ -395,62 +390,68 @@ def main():
     existing_cols = [c for c in L1_COLUMNS if c in df_relevant.columns]
     missing_cols = [c for c in L1_COLUMNS if c not in df_relevant.columns]
     if missing_cols:
-        _safe_print(f'[WARN] L1_COLUMNS 中以下列不存在，已跳过: {missing_cols}')
+        safe_print(f'[WARN] L1_COLUMNS 中以下列不存在，已跳过: {missing_cols}')
 
     df_l1 = df_relevant[existing_cols].copy()
-    _safe_print(f'[OK] L1 DataFrame 字段: {list(df_l1.columns)}')
+    safe_print(f'[OK] L1 DataFrame 字段: {list(df_l1.columns)}')
 
     # ── 步骤 5: 脱敏 ──
-    _safe_print('\n' + '-' * 40)
-    _safe_print('[STEP 5/7] 数据脱敏')
-    _safe_print('-' * 40)
+    safe_print('\n' + '-' * 40)
+    safe_print('[STEP 5/7] 数据脱敏')
+    safe_print('-' * 40)
 
     if 'comments' in df_l1.columns:
         df_l1['comments'] = ''
-        _safe_print('[OK] 已清空 comments 列')
+        safe_print('[OK] 已清空 comments 列')
     else:
-        _safe_print('[OK] 无需脱敏（无 comments 列）')
+        safe_print('[OK] 无需脱敏（无 comments 列）')
 
     # ── 步骤 6: 导出 L1 ──
-    _safe_print('\n' + '-' * 40)
-    _safe_print('[STEP 6/7] 导出 L1 CSV')
-    _safe_print('-' * 40)
+    safe_print('\n' + '-' * 40)
+    safe_print('[STEP 6/7] 导出 L1 CSV')
+    safe_print('-' * 40)
 
     try:
-        export_to_csv(df_l1, L1_CSV_OUTPUT)
-        _safe_print(f'[OK] L1 已保存: {L1_CSV_OUTPUT} ({len(df_l1)} 条)')
+        export_to_csv(df_l1, l1_csv_output)
+        safe_print(f'[OK] L1 已保存: {l1_csv_output} ({len(df_l1)} 条)')
     except Exception as e:
         trace_error("MOD_GOV.F_006", "L1 export failed", exc=e)
-        _safe_print(f'[ERR] L1 导出失败: {e}')
+        safe_print(f'[ERR] L1 导出失败: {e}')
         sys.exit(1)
 
     # ── 步骤 7 (额外): L2 SnowNLP 分析 ──
-    _safe_print('\n' + '-' * 40)
-    _safe_print('[STEP 7/7] L2 SnowNLP 情绪分析')
-    _safe_print('-' * 40)
+    safe_print('\n' + '-' * 40)
+    safe_print('[STEP 7/7] L2 SnowNLP 情绪分析')
+    safe_print('-' * 40)
 
     try:
-        l2_result = step4_run_l2_analysis(L1_CSV_OUTPUT, L1_OUTPUT_NAME)
+        l2_result = step4_run_l2_analysis(l1_csv_output, output_name)
     except Exception as e:
         trace_error("MOD_GOV.F_006", "L2 analysis failed", exc=e)
-        _safe_print(f'[ERR] L2 分析失败: {e}')
+        safe_print(f'[ERR] L2 分析失败: {e}')
         sys.exit(1)
 
     # ── 汇总 ──
-    _safe_print('\n' + '=' * 60)
-    _safe_print('  数据治理管道完成!')
-    _safe_print('=' * 60)
-    _safe_print(f'  L0 输入:     {len(df)} 条')
-    _safe_print(f'  LLM relevant: {n_relevant} 条')
-    _safe_print(f'  L1 输出:     {L1_CSV_OUTPUT} ({len(df_l1)} 条)')
+    safe_print('\n' + '=' * 60)
+    safe_print('  数据治理管道完成!')
+    safe_print('=' * 60)
+    safe_print(f'  L0 输入:     {len(df)} 条')
+    safe_print(f'  LLM relevant: {n_relevant} 条')
+    safe_print(f'  L1 输出:     {l1_csv_output} ({len(df_l1)} 条)')
     if l2_result.get('success'):
-        _safe_print(f'  L2 CSV:      {l2_result["csv_path"]}')
-        _safe_print(f'  L2 GeoJSON:  {l2_result["geojson_path"]}')
-    _safe_print('')
+        safe_print(f'  L2 CSV:      {l2_result["csv_path"]}')
+        safe_print(f'  L2 GeoJSON:  {l2_result["geojson_path"]}')
+    safe_print('')
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='数据治理管道 v2.0 — L0 → L1 → L2')
+    parser.add_argument('--input', type=str, default=None,
+                        help=f'L0 原始 CSV 路径 (默认: {DEFAULT_RAW_CSV})')
+    parser.add_argument('--output', type=str, default=None,
+                        help=f'输出命名前缀 (默认: {DEFAULT_OUTPUT_NAME})')
+    args = parser.parse_args()
+    main(csv_path=args.input, output_name=args.output)
 
 # ── 追踪 ID 注册表 ──
 register_track_id("MOD_GOV.F_001", "步骤1: 加载原始数据 + GCJ-02->WGS84->CGCS2000坐标转换")

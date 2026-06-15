@@ -23,6 +23,7 @@ except Exception:
 
 from emotion_analysis_v1 import run_analysis_task
 from core.tracker import track, trace_log, trace_error, register_track_id
+from core.utils import safe_print
 
 
 # ═══════════════════════════════════════════════════════════

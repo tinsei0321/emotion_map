@@ -20,7 +20,7 @@
     py SCRIPT/label_training_data.py
 
 编码铁律:
-    - 所有 print() 使用 _safe_print()
+    - 所有 print() 使用 safe_print()
     - 无 emoji，仅 ASCII 标记 [OK]/[WARN]/[ERR]/[LOAD]
     - API Key 从环境变量读取
 """
@@ -34,6 +34,7 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
+from core.utils import safe_print
 
 # 确保项目根目录在 sys.path 中
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -42,12 +43,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
     from SCRIPT.relevance_filter import (
         llm_classify,
-        _safe_print,
+        safe_print,
         _build_text_for_classification,
         DEEPSEEK_MODEL,
     )
 except ImportError:
-    def _safe_print(*args, **kwargs):
+    def safe_print(*args, **kwargs):
         print(*args, **kwargs)
 
 # ═══════════════════════════════════════════════════════════
@@ -255,8 +256,8 @@ def sample_for_labeling(df: pd.DataFrame, n: int = TOTAL_SAMPLES) -> pd.DataFram
     Returns:
         采样后的 DataFrame (保留原始索引作为 id_e)
     """
-    _safe_print(f'[LOAD] 开始分层采样，目标 {n} 条 ...')
-    _safe_print(f'  输入数据: {len(df)} 条')
+    safe_print(f'[LOAD] 开始分层采样，目标 {n} 条 ...')
+    safe_print(f'  输入数据: {len(df)} 条')
 
     random.seed(SEED)
     np.random.seed(SEED)
@@ -278,9 +279,9 @@ def sample_for_labeling(df: pd.DataFrame, n: int = TOTAL_SAMPLES) -> pd.DataFram
 
     # 打印分类分布
     cat_counts = df['_sample_category'].value_counts()
-    _safe_print(f'\n  标签分类分布:')
+    safe_print(f'\n  标签分类分布:')
     for cat, count in cat_counts.items():
-        _safe_print(f'    {cat}: {count}')
+        safe_print(f'    {cat}: {count}')
 
     # ── Step 2: 分层采样 ──
     sampled_dfs = []
@@ -313,7 +314,7 @@ def sample_for_labeling(df: pd.DataFrame, n: int = TOTAL_SAMPLES) -> pd.DataFram
     shortage = n - current_total
 
     if shortage > 0:
-        _safe_print(f'\n  [WARN] 部分类别样本不足，需补充 {shortage} 条')
+        safe_print(f'\n  [WARN] 部分类别样本不足，需补充 {shortage} 条')
         # 从 "其他" 池和已采样不足的类别中补充
         already_sampled_idx = set()
         for sdf in sampled_dfs:
@@ -324,7 +325,7 @@ def sample_for_labeling(df: pd.DataFrame, n: int = TOTAL_SAMPLES) -> pd.DataFram
             extra_n = min(shortage, len(other_pool))
             extra = other_pool.sample(n=extra_n, random_state=SEED)
             sampled_dfs.append(extra)
-            _safe_print(f'  从剩余池补充 {extra_n} 条')
+            safe_print(f'  从剩余池补充 {extra_n} 条')
 
     # ── Step 4: 合并 & 去重 ──
     result = pd.concat(sampled_dfs, ignore_index=False)
@@ -347,14 +348,14 @@ def sample_for_labeling(df: pd.DataFrame, n: int = TOTAL_SAMPLES) -> pd.DataFram
     result = result.drop(columns=['_sample_category'], errors='ignore')
 
     # ── 打印采样汇总 ──
-    _safe_print(f'\n  === 采样汇总 ===')
-    _safe_print(f'  {"类别":<6} {"目标":<6} {"可用":<6} {"实采":<6} {"达成率":<8}')
-    _safe_print(f'  {"-" * 38}')
+    safe_print(f'\n  === 采样汇总 ===')
+    safe_print(f'  {"类别":<6} {"目标":<6} {"可用":<6} {"实采":<6} {"达成率":<8}')
+    safe_print(f'  {"-" * 38}')
     for cat, info in sample_summary.items():
         rate = f"{info['sampled'] / info['target'] * 100:.0f}%" if info['target'] > 0 else 'N/A'
-        _safe_print(f'  {cat:<6} {info["target"]:<6} {info["available"]:<6} {info["sampled"]:<6} {rate:<8}')
+        safe_print(f'  {cat:<6} {info["target"]:<6} {info["available"]:<6} {info["sampled"]:<6} {rate:<8}')
 
-    _safe_print(f'\n  [OK] 采样完成: {len(result)} 条')
+    safe_print(f'\n  [OK] 采样完成: {len(result)} 条')
 
     return result
 
@@ -405,10 +406,10 @@ def label_batch(
                 already_labeled += 1
 
     to_label = total - already_labeled
-    _safe_print(f'\n[LOAD] LLM 标注开始: 共 {total} 条, 已标注 {already_labeled} 条, 待标注 {to_label} 条')
+    safe_print(f'\n[LOAD] LLM 标注开始: 共 {total} 条, 已标注 {already_labeled} 条, 待标注 {to_label} 条')
 
     if to_label == 0:
-        _safe_print('[OK] 所有数据已标注完成，无需重复标注')
+        safe_print('[OK] 所有数据已标注完成，无需重复标注')
         return df
 
     processed = 0
@@ -464,7 +465,7 @@ def label_batch(
         else:
             eta_str = ''
 
-        _safe_print(
+        safe_print(
             f'  [LOAD] 第 {already_labeled + processed}/{total} 条 '
             f'({pct:.0f}%) '
             f'| 相关: {relevant_count} | 无关: {irrelevant_count} '
@@ -476,9 +477,9 @@ def label_batch(
         if processed % 10 == 0:
             _save_checkpoint(df)
 
-    _safe_print(f'\n[OK] LLM 标注完成!')
-    _safe_print(f'  相关: {relevant_count} | 无关: {irrelevant_count} | 错误: {error_count}')
-    _safe_print(f'  耗时: {time.time() - start_time:.0f}s')
+    safe_print(f'\n[OK] LLM 标注完成!')
+    safe_print(f'  相关: {relevant_count} | 无关: {irrelevant_count} | 错误: {error_count}')
+    safe_print(f'  耗时: {time.time() - start_time:.0f}s')
 
     return df
 
@@ -524,7 +525,7 @@ def _save_checkpoint(df: pd.DataFrame):
         out_df.to_csv(OUTPUT_CSV, index=True, index_label='id_e',
                       encoding='utf-8-sig')
     except Exception as e:
-        _safe_print(f'  [WARN] 保存中间结果失败: {e}')
+        safe_print(f'  [WARN] 保存中间结果失败: {e}')
 
 
 # ═══════════════════════════════════════════════════════════
@@ -533,9 +534,9 @@ def _save_checkpoint(df: pd.DataFrame):
 
 def print_statistics(df: pd.DataFrame):
     """打印标注结果统计。"""
-    _safe_print('\n' + '=' * 60)
-    _safe_print('  标注结果统计')
-    _safe_print('=' * 60)
+    safe_print('\n' + '=' * 60)
+    safe_print('  标注结果统计')
+    safe_print('=' * 60)
 
     total = len(df)
 
@@ -548,14 +549,14 @@ def print_statistics(df: pd.DataFrame):
     n_irrelevant = irrelevant_mask.sum()
     n_error = error_mask.sum()
 
-    _safe_print(f'\n  [相关/无关比例]')
-    _safe_print(f'    总样本:    {total}')
-    _safe_print(f'    相关:      {n_relevant} ({n_relevant / total * 100:.1f}%)')
-    _safe_print(f'    无关:      {n_irrelevant} ({n_irrelevant / total * 100:.1f}%)')
-    _safe_print(f'    错误:      {n_error} ({n_error / total * 100:.1f}%)')
+    safe_print(f'\n  [相关/无关比例]')
+    safe_print(f'    总样本:    {total}')
+    safe_print(f'    相关:      {n_relevant} ({n_relevant / total * 100:.1f}%)')
+    safe_print(f'    无关:      {n_irrelevant} ({n_irrelevant / total * 100:.1f}%)')
+    safe_print(f'    错误:      {n_error} ({n_error / total * 100:.1f}%)')
 
     # ── 五要素分布 ──
-    _safe_print(f'\n  [五要素分布] (相关样本中)')
+    safe_print(f'\n  [五要素分布] (相关样本中)')
     if n_relevant > 0:
         dim_counter = {}
         for idx in df[relevant_mask].index:
@@ -570,35 +571,35 @@ def print_statistics(df: pd.DataFrame):
 
         if dim_counter:
             for dim, count in sorted(dim_counter.items(), key=lambda x: -x[1]):
-                _safe_print(f'    {dim}: {count}')
+                safe_print(f'    {dim}: {count}')
         else:
-            _safe_print(f'    (无维度数据)')
+            safe_print(f'    (无维度数据)')
     else:
-        _safe_print(f'    (无相关样本)')
+        safe_print(f'    (无相关样本)')
 
     # ── 情绪分布 ──
-    _safe_print(f'\n  [情绪分布] (相关样本中)')
+    safe_print(f'\n  [情绪分布] (相关样本中)')
     if n_relevant > 0:
         emotion_counts = df.loc[relevant_mask, 'relevance_emotion'].value_counts()
         for emotion, count in emotion_counts.items():
             if emotion:
-                _safe_print(f'    {emotion}: {count}')
+                safe_print(f'    {emotion}: {count}')
         if emotion_counts.empty:
-            _safe_print(f'    (无情绪数据)')
+            safe_print(f'    (无情绪数据)')
     else:
-        _safe_print(f'    (无相关样本)')
+        safe_print(f'    (无相关样本)')
 
     # ── urban_value 分布 ──
-    _safe_print(f'\n  [urban_value 分布] (相关样本中)')
+    safe_print(f'\n  [urban_value 分布] (相关样本中)')
     if n_relevant > 0:
         uv_counts = df.loc[relevant_mask, 'relevance_urban_value'].value_counts()
         for uv, count in uv_counts.items():
             if uv:
-                _safe_print(f'    {uv}: {count}')
+                safe_print(f'    {uv}: {count}')
         if uv_counts.empty:
-            _safe_print(f'    (无 urban_value 数据)')
+            safe_print(f'    (无 urban_value 数据)')
 
-    _safe_print(f'\n' + '=' * 60)
+    safe_print(f'\n' + '=' * 60)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -607,36 +608,36 @@ def print_statistics(df: pd.DataFrame):
 
 def main():
     """主入口: 采样 + 标注 + 保存 + 统计。"""
-    _safe_print('=' * 60)
-    _safe_print('  标注训练数据 v1.0')
-    _safe_print(f'  输出: {OUTPUT_CSV}')
-    _safe_print('=' * 60)
+    safe_print('=' * 60)
+    safe_print('  标注训练数据 v1.0')
+    safe_print(f'  输出: {OUTPUT_CSV}')
+    safe_print('=' * 60)
 
     # ── 0. 获取 API Key ──
     api_key = os.environ.get('DEEPSEEK_API_KEY', '')
     if not api_key:
-        _safe_print('\n[ERR] 环境变量 DEEPSEEK_API_KEY 未设置!')
-        _safe_print('  请先设置: $env:DEEPSEEK_API_KEY = "sk-xxx"')
+        safe_print('\n[ERR] 环境变量 DEEPSEEK_API_KEY 未设置!')
+        safe_print('  请先设置: $env:DEEPSEEK_API_KEY = "sk-xxx"')
         sys.exit(1)
-    _safe_print(f'\n[OK] API Key 已就绪 (model: {DEEPSEEK_MODEL})')
+    safe_print(f'\n[OK] API Key 已就绪 (model: {DEEPSEEK_MODEL})')
 
     # ── 1. 加载原始数据 ──
-    _safe_print(f'\n[LOAD] 加载原始数据: {INPUT_CSV}')
+    safe_print(f'\n[LOAD] 加载原始数据: {INPUT_CSV}')
     if not os.path.exists(INPUT_CSV):
-        _safe_print(f'[ERR] 输入文件不存在: {INPUT_CSV}')
+        safe_print(f'[ERR] 输入文件不存在: {INPUT_CSV}')
         sys.exit(1)
 
     df_raw = pd.read_csv(INPUT_CSV, encoding='utf-8-sig')
-    _safe_print(f'[OK] 已加载 {len(df_raw)} 条数据')
+    safe_print(f'[OK] 已加载 {len(df_raw)} 条数据')
 
     # ── 2. 分层采样 (固定 seed，确定性复现) ──
     df_to_label = sample_for_labeling(df_raw, TOTAL_SAMPLES)
 
     # ── 3. 检查是否已有标注进度 (断点续传) ──
     if os.path.exists(OUTPUT_CSV):
-        _safe_print(f'\n[LOAD] 检测到已有标注文件: {OUTPUT_CSV}')
+        safe_print(f'\n[LOAD] 检测到已有标注文件: {OUTPUT_CSV}')
         df_existing = pd.read_csv(OUTPUT_CSV, encoding='utf-8-sig', index_col='id_e')
-        _safe_print(f'  已有 {len(df_existing)} 条记录')
+        safe_print(f'  已有 {len(df_existing)} 条记录')
 
         # 检查是否已完成
         if 'relevance' in df_existing.columns:
@@ -645,11 +646,11 @@ def main():
             already_done = 0
 
         if already_done >= TOTAL_SAMPLES:
-            _safe_print(f'[OK] 标注已完成 ({already_done} 条)，直接打印统计')
+            safe_print(f'[OK] 标注已完成 ({already_done} 条)，直接打印统计')
             print_statistics(df_existing)
             return
         elif already_done > 0:
-            _safe_print(f'  其中已标注 {already_done} 条，将 merge 标注列到重采样数据上继续')
+            safe_print(f'  其中已标注 {already_done} 条，将 merge 标注列到重采样数据上继续')
             # 确定性复现: 重采样后再 merge checkpoint 的标注列
             # 不依赖原始 CSV 的行序，只依赖 seed 固定的重采样结果
             label_cols = ['relevance', 'relevance_dimensions', 'relevance_emotion',
@@ -662,24 +663,24 @@ def main():
                     common_idx = df_to_label.index.intersection(df_existing.index)
                     df_to_label.loc[common_idx, col] = df_existing.loc[common_idx, col]
         else:
-            _safe_print(f'  [WARN] 文件中无有效标注数据，将使用新采样结果')
+            safe_print(f'  [WARN] 文件中无有效标注数据，将使用新采样结果')
 
     # ── 4. LLM 标注 ──
     df_labeled = label_batch(df_to_label, api_key=api_key, skip_labeled=True)
 
     # ── 5. 保存最终结果 ──
-    _safe_print(f'\n[SAVE] 保存标注结果到: {OUTPUT_CSV}')
+    safe_print(f'\n[SAVE] 保存标注结果到: {OUTPUT_CSV}')
     os.makedirs(os.path.dirname(OUTPUT_CSV), exist_ok=True)
 
     out_df = _build_output_df(df_labeled)
     out_df.to_csv(OUTPUT_CSV, index=True, index_label='id_e',
                   encoding='utf-8-sig')
-    _safe_print(f'[OK] 已保存 {len(out_df)} 条记录')
+    safe_print(f'[OK] 已保存 {len(out_df)} 条记录')
 
     # ── 6. 打印统计 ──
     print_statistics(df_labeled)
 
-    _safe_print(f'\n[OK] 全部完成!')
+    safe_print(f'\n[OK] 全部完成!')
 
 
 if __name__ == '__main__':

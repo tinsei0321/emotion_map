@@ -49,19 +49,6 @@ TRACKING_LOG_FILE = None          # 若设置路径，同时写入文件（None=
 
 # ── 安全打印（避免 GBK 崩溃，保持与项目一致）──
 
-def _safe_print(*args, **kwargs):
-    """安全打印——兼容 Windows GBK 终端"""
-    try:
-        print(*args, **kwargs)
-    except UnicodeEncodeError:
-        safe_args = []
-        for a in args:
-            if isinstance(a, str):
-                safe_args.append(a.encode('ascii', errors='replace').decode('ascii'))
-            else:
-                safe_args.append(a)
-        print(*safe_args, **kwargs)
-
 
 # ── 追踪器核心 ──
 
@@ -164,7 +151,7 @@ class DecisionTracker:
 
     def _emit(self, line: str):
         """输出日志行"""
-        _safe_print(line, flush=True)
+        safe_print(line, flush=True)
         if TRACKING_LOG_FILE:
             try:
                 with open(TRACKING_LOG_FILE, 'a', encoding='utf-8') as f:
@@ -369,7 +356,7 @@ def replay_from_log(log_file: str, target_track_id: str = None):
                 }
                 records.append(record)
     except FileNotFoundError:
-        _safe_print(f"[WARN] Log file not found: {log_file}")
+        safe_print(f"[WARN] Log file not found: {log_file}")
     return records
 
 
@@ -565,19 +552,20 @@ def print_compliance_report(file_path: str) -> None:
 
     用法:
         from core.tracker import print_compliance_report
+from core.utils import safe_print
         print_compliance_report("SCRIPT/data_governance.py")
     """
     r = validate_tracking_compliance(file_path)
-    _safe_print(f"\n{'='*60}")
-    _safe_print(f"  Tracking Compliance Report: {r['file']}")
-    _safe_print(f"{'='*60}")
-    _safe_print(f"  Verdict: {r['verdict']}")
-    _safe_print(f"  Public Functions: {r['public_functions']['tracked']}/{r['public_functions']['total']} tracked")
-    _safe_print(f"  Large Blocks:     {r['large_blocks']['tracked']}/{r['large_blocks']['total']} tracked")
-    _safe_print(f"  I/O Operations:   {r['io_operations']['tracked']}/{r['io_operations']['total']} tracked")
-    _safe_print(f"  Except Blocks:    {r['except_blocks']['with_trace_error']}/{r['except_blocks']['total']} with trace_error")
+    safe_print(f"\n{'='*60}")
+    safe_print(f"  Tracking Compliance Report: {r['file']}")
+    safe_print(f"{'='*60}")
+    safe_print(f"  Verdict: {r['verdict']}")
+    safe_print(f"  Public Functions: {r['public_functions']['tracked']}/{r['public_functions']['total']} tracked")
+    safe_print(f"  Large Blocks:     {r['large_blocks']['tracked']}/{r['large_blocks']['total']} tracked")
+    safe_print(f"  I/O Operations:   {r['io_operations']['tracked']}/{r['io_operations']['total']} tracked")
+    safe_print(f"  Except Blocks:    {r['except_blocks']['with_trace_error']}/{r['except_blocks']['total']} with trace_error")
     if r['issues']:
-        _safe_print(f"\n  [ISSUES]")
+        safe_print(f"\n  [ISSUES]")
         for issue in r['issues']:
-            _safe_print(f"    - {issue}")
-    _safe_print(f"{'='*60}\n")
+            safe_print(f"    - {issue}")
+    safe_print(f"{'='*60}\n")

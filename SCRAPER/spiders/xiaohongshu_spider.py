@@ -33,6 +33,7 @@ from scrapy.http import Request
 
 from items import EmotionItem
 from core.tracker import trace_log, trace_error, register_track_id
+from core.utils import safe_print
 
 
 class XiaohongshuSpider(scrapy.Spider):
@@ -193,32 +194,22 @@ class XiaohongshuSpider(scrapy.Spider):
                 timeout=15,
                 allow_redirects=True,
             )
-            _safe_print(
+            safe_print(
                 f'[QUICK-VERIFY] {url[:80]}... '
                 f'status={resp.status_code}, '
                 f'len={len(resp.text)} chars'
             )
             # 检查是否被重定向到登录页
             if 'login' in resp.url.lower() or '验证' in resp.text[:2000]:
-                _safe_print(
+                safe_print(
                     '[WARN] xiaohongshu likely requires login/verification. '
                     'Consider Selenium/Playwright approach.'
                 )
         except Exception as e:
-            _safe_print(f'[QUICK-VERIFY] Failed: {e}')
+            safe_print(f'[QUICK-VERIFY] Failed: {e}')
 
 
 # ── 安全打印（兼容 Windows GBK 控制台）──
-def _safe_print(*args, **kwargs):
-    try:
-        print(*args, **kwargs)
-    except UnicodeEncodeError:
-        safe_args = tuple(
-            str(a).encode('ascii', errors='replace').decode('ascii')
-            for a in args
-        )
-        print(*safe_args, **kwargs)
-
 
 # ── 独立运行入口（快速测试）──
 if __name__ == '__main__':

@@ -32,22 +32,12 @@ from selenium.common.exceptions import (
     WebDriverException,
 )
 from webdriver_manager.chrome import ChromeDriverManager
+from core.utils import safe_print
 
 
 # =====================================================================
 # 安全打印 (兼容 Windows GBK 控制台)
 # =====================================================================
-
-def _safe_print(*args, **kwargs):
-    """安全打印，兼容 Windows GBK 控制台编码。"""
-    try:
-        print(*args, **kwargs)
-    except UnicodeEncodeError:
-        safe_args = tuple(
-            str(a).encode('ascii', errors='replace').decode('ascii')
-            for a in args
-        )
-        print(*safe_args, **kwargs)
 
 
 # =====================================================================
@@ -111,7 +101,7 @@ def build_chrome_options():
 
 def create_driver():
     """创建并返回配置好的 Chrome WebDriver 实例。"""
-    _safe_print("[LOAD] Setting up ChromeDriver via webdriver-manager ...")
+    safe_print("[LOAD] Setting up ChromeDriver via webdriver-manager ...")
     service = Service(ChromeDriverManager().install())
     opts = build_chrome_options()
     driver = webdriver.Chrome(service=service, options=opts)
@@ -121,7 +111,7 @@ def create_driver():
         "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
     )
 
-    _safe_print("[OK] ChromeDriver initialized")
+    safe_print("[OK] ChromeDriver initialized")
     return driver
 
 
@@ -131,7 +121,7 @@ def create_driver():
 
 def load_search_page(driver, url, wait_seconds=PAGE_LOAD_WAIT):
     """打开搜索页并等待基础渲染完成。"""
-    _safe_print(f"[LOAD] Opening: {url}")
+    safe_print(f"[LOAD] Opening: {url}")
     driver.get(url)
 
     # 等待页面基础加载
@@ -141,11 +131,11 @@ def load_search_page(driver, url, wait_seconds=PAGE_LOAD_WAIT):
     page_text = driver.page_source.lower()
 
     if "login" in driver.current_url or "登录" in driver.page_source[:2000]:
-        _safe_print("[WARN] Login required — page redirected to login")
+        safe_print("[WARN] Login required — page redirected to login")
         return False
 
     if "验证" in driver.page_source[:5000] or "captcha" in driver.page_source[:5000]:
-        _safe_print("[WARN] Captcha detected, manual intervention needed")
+        safe_print("[WARN] Captcha detected, manual intervention needed")
         save_debug_artifacts(driver)
         return False
 
@@ -154,14 +144,14 @@ def load_search_page(driver, url, wait_seconds=PAGE_LOAD_WAIT):
 
 def scroll_to_load(driver, count=SCROLL_COUNT, pause=SCROLL_PAUSE):
     """滚动页面多次以触发更多内容加载。"""
-    _safe_print(f"[LOAD] Scrolling page {count} times to load more notes ...")
+    safe_print(f"[LOAD] Scrolling page {count} times to load more notes ...")
     for i in range(count):
         driver.execute_script(
             "window.scrollTo(0, document.body.scrollHeight);"
         )
         time.sleep(pause)
-        _safe_print(f"  Scroll {i + 1}/{count} done")
-    _safe_print("[OK] Scroll complete")
+        safe_print(f"  Scroll {i + 1}/{count} done")
+    safe_print("[OK] Scroll complete")
 
 
 # =====================================================================
@@ -240,7 +230,7 @@ def _try_selectors_all(driver, selectors):
     for sel in selectors:
         elements = driver.find_elements(By.CSS_SELECTOR, sel)
         if elements:
-            _safe_print(f"  Matched selector: {sel} -> {len(elements)} elements")
+            safe_print(f"  Matched selector: {sel} -> {len(elements)} elements")
             return elements
     return []
 
@@ -252,18 +242,18 @@ def extract_notes(driver):
     Returns:
         list[dict]: 笔记数据列表，每项包含 title, text, like_count, url
     """
-    _safe_print("[LOAD] Extracting notes from rendered page ...")
+    safe_print("[LOAD] Extracting notes from rendered page ...")
 
     # 先尝试用卡片级选择器找到每张卡片
     cards = _try_selectors_all(driver, NOTE_CARD_SELECTORS)
 
     if not cards:
-        _safe_print("[WARN] No note cards found with any CSS selector")
+        safe_print("[WARN] No note cards found with any CSS selector")
         save_debug_artifacts(driver)
         # 尝试从页面 JSON 中提取（__INITIAL_STATE__）
         notes = _extract_from_initial_state(driver.page_source)
         if notes:
-            _safe_print(f"[OK] Extracted {len(notes)} notes from __INITIAL_STATE__")
+            safe_print(f"[OK] Extracted {len(notes)} notes from __INITIAL_STATE__")
         return notes
 
     notes = []
@@ -309,7 +299,7 @@ def extract_notes(driver):
             # 单个卡片解析失败不影响整体
             continue
 
-    _safe_print(f"[OK] Extracted {len(notes)} notes from CSS selectors")
+    safe_print(f"[OK] Extracted {len(notes)} notes from CSS selectors")
     return notes
 
 
@@ -377,16 +367,16 @@ def save_debug_artifacts(driver):
     """保存截图和完整 HTML 源码到文件，便于人工诊断。"""
     try:
         driver.save_screenshot(SCREENSHOT_PATH)
-        _safe_print(f"[WARN] Screenshot saved to: {SCREENSHOT_PATH}")
+        safe_print(f"[WARN] Screenshot saved to: {SCREENSHOT_PATH}")
     except Exception as e:
-        _safe_print(f"[ERR] Failed to save screenshot: {e}")
+        safe_print(f"[ERR] Failed to save screenshot: {e}")
 
     try:
         with open(PAGE_SOURCE_PATH, "w", encoding="utf-8") as f:
             f.write(driver.page_source)
-        _safe_print(f"[WARN] Page source saved to: {PAGE_SOURCE_PATH}")
+        safe_print(f"[WARN] Page source saved to: {PAGE_SOURCE_PATH}")
     except Exception as e:
-        _safe_print(f"[ERR] Failed to save page source: {e}")
+        safe_print(f"[ERR] Failed to save page source: {e}")
 
 
 # =====================================================================
@@ -419,7 +409,7 @@ def save_to_csv(notes, output_path):
                 "like_count": note.get("like_count", 0),
             })
 
-    _safe_print(f"[OK] CSV saved: {output_path}")
+    safe_print(f"[OK] CSV saved: {output_path}")
 
 
 # =====================================================================
@@ -428,11 +418,11 @@ def save_to_csv(notes, output_path):
 
 def run():
     """主入口：执行完整的 Selenium 搜索 + 提取 + 保存流程。"""
-    _safe_print("=" * 60)
-    _safe_print("  Selenium Xiaohongshu Search Extractor")
-    _safe_print(f"  Target: {SEARCH_URL}")
-    _safe_print(f"  Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    _safe_print("=" * 60)
+    safe_print("=" * 60)
+    safe_print("  Selenium Xiaohongshu Search Extractor")
+    safe_print(f"  Target: {SEARCH_URL}")
+    safe_print(f"  Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    safe_print("=" * 60)
 
     driver = None
     try:
@@ -440,7 +430,7 @@ def run():
 
         # ── 1. 打开搜索页 ──
         if not load_search_page(driver, SEARCH_URL):
-            _safe_print("[ERR] Page load failed — aborting")
+            safe_print("[ERR] Page load failed — aborting")
             return
 
         # ── 2. 滚动加载更多内容 ──
@@ -450,7 +440,7 @@ def run():
         notes = extract_notes(driver)
 
         if not notes:
-            _safe_print("[WARN] No notes extracted — saving debug artifacts")
+            safe_print("[WARN] No notes extracted — saving debug artifacts")
             save_debug_artifacts(driver)
             return
 
@@ -463,26 +453,26 @@ def run():
         # ── 5. 打印统计 ──
         total_likes = sum(n.get("like_count", 0) for n in notes)
         titles_with_content = sum(1 for n in notes if n.get("title") and n.get("text"))
-        _safe_print("-" * 60)
-        _safe_print(f"  [OK] Extracted {len(notes)} notes from xiaohongshu")
-        _safe_print(f"  Total likes: {total_likes}")
-        _safe_print(f"  Notes with full content: {titles_with_content}/{len(notes)}")
-        _safe_print("-" * 60)
+        safe_print("-" * 60)
+        safe_print(f"  [OK] Extracted {len(notes)} notes from xiaohongshu")
+        safe_print(f"  Total likes: {total_likes}")
+        safe_print(f"  Notes with full content: {titles_with_content}/{len(notes)}")
+        safe_print("-" * 60)
 
     except WebDriverException as e:
-        _safe_print(f"[ERR] WebDriver error: {e}")
-        _safe_print("[WARN] Check if Chrome is installed at: " + CHROME_BINARY_PATH)
-        _safe_print("[WARN] Check if webdriver-manager can download ChromeDriver")
+        safe_print(f"[ERR] WebDriver error: {e}")
+        safe_print("[WARN] Check if Chrome is installed at: " + CHROME_BINARY_PATH)
+        safe_print("[WARN] Check if webdriver-manager can download ChromeDriver")
     except Exception as e:
-        _safe_print(f"[ERR] Unexpected error: {e}")
+        safe_print(f"[ERR] Unexpected error: {e}")
         if driver:
             save_debug_artifacts(driver)
         raise
     finally:
         if driver:
-            _safe_print("[LOAD] Closing browser ...")
+            safe_print("[LOAD] Closing browser ...")
             driver.quit()
-            _safe_print("[OK] Browser closed")
+            safe_print("[OK] Browser closed")
 
 
 # =====================================================================

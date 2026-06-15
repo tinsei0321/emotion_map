@@ -51,7 +51,7 @@ from core.ui_components import (
     inject_theme_css,
 )
 from SCRIPT.emotion_analysis_v1 import (
-    create_analyzer, run_pipeline, run_analysis_task, _safe_print,
+    create_analyzer, run_pipeline, run_analysis_task, safe_print,
 )
 from SCRIPT.data_governance import (
     step1_load_and_transform,
@@ -59,6 +59,7 @@ from SCRIPT.data_governance import (
 )
 from SCRIPT.relevance_filter import keyword_prefilter, _build_text_for_classification
 from core.tracker import track, TrackContext, trace_log, trace_error, trace_warn, register_track_id
+from core.utils import safe_print
 
 st.set_page_config(page_title='情绪地图 v1.0', layout='wide')
 DEBUG_MODE = True
@@ -684,10 +685,10 @@ def show_governance_dialog():
                     gdf_filtered = filter_by_range(df, 'lon', 'lat', ranges, None)
                     df_filtered = pd.DataFrame(gdf_filtered) if len(gdf_filtered) > 0 else df.iloc[:0]
                 except Exception as _e:
-                    _safe_print(f'[WARN] 范围过滤失败: {_e}，跳过')
+                    safe_print(f'[WARN] 范围过滤失败: {_e}，跳过')
                     df_filtered = df
             else:
-                _safe_print('[WARN] 无边界文件，跳过范围过滤')
+                safe_print('[WARN] 无边界文件，跳过范围过滤')
                 progress.progress(0.5, text='[WARN] 跳过范围过滤（无边界文件）')
                 df_filtered = df
 
@@ -708,7 +709,7 @@ def show_governance_dialog():
             # 脱敏：清空个人身份信息列
             if 'comments' in df_relevant.columns:
                 df_relevant['comments'] = ''
-            _safe_print('[OK] 数据脱敏完成')
+            safe_print('[OK] 数据脱敏完成')
             output_name = os.path.splitext(file_choice)[0].replace('_raw', '')
             # 添加范围后缀（与 data_governance.py v2.0 命名一致）
             output_name = f'{output_name}_规划范围'
@@ -1115,7 +1116,7 @@ def show_analysis_dialog():
                     progress_bar.progress(1.0, text='[ERR] 分析失败')
                     status.update(label='[ERR] 分析出错', state='error')
                     st.error(f'分析失败: {str(e)[:200]}')
-                    _safe_print(f'[ERR] show_analysis_dialog 分析出错: {e}')
+                    safe_print(f'[ERR] show_analysis_dialog 分析出错: {e}')
                     trace_error("MOD_APP.F_011", f'分析执行异常: {str(e)[:200]}')
 
     # ── 结果子面板（分析完成后持久显示）──
@@ -1192,7 +1193,7 @@ def _parse_console_params():
                 'is_auto_mode': True,
             })
     except Exception:
-        _safe_print(f'[WARN] 无法加载自动文件: {auto_file}')
+        safe_print(f'[WARN] 无法加载自动文件: {auto_file}')
 
     return result
 

@@ -26,15 +26,8 @@ import pandas as pd
 
 # ── 安全 print — 防止 Windows GBK 控制台崩溃 ──
 _real_print = _bi.print
+from core.utils import safe_print
 
-def _safe_print(*args, **kwargs):
-    try:
-        _real_print(*args, **kwargs)
-    except UnicodeEncodeError:
-        _real_print(
-            *(str(a).encode('ascii', errors='replace').decode('ascii') for a in args),
-            **kwargs,
-        )
 
 # 修复 Windows GBK 控制台编码
 try:
@@ -1021,11 +1014,11 @@ def generate_title(source: str, text: str, category: str) -> str:
 # ═══════════════════════════════════════════════════════════
 
 def main():
-    _safe_print('=' * 60)
-    _safe_print('[LOAD] 模拟数据生成脚本 v1.0')
-    _safe_print(f'[LOAD] 目标: 生成 {TOTAL_COUNT:,} 条 L0 模拟数据')
-    _safe_print(f'[LOAD] 随机种子: 42')
-    _safe_print('=' * 60)
+    safe_print('=' * 60)
+    safe_print('[LOAD] 模拟数据生成脚本 v1.0')
+    safe_print(f'[LOAD] 目标: 生成 {TOTAL_COUNT:,} 条 L0 模拟数据')
+    safe_print(f'[LOAD] 随机种子: 42')
+    safe_print('=' * 60)
 
     # ── 1. 计算各类别数量 ──
     # 无关内容 90% = 90000, 城市相关 10% = 10000
@@ -1050,7 +1043,7 @@ def main():
         'meituan': 0.05, 'su12345': 0.05,
     }
 
-    _safe_print('[CALC] 内容配比计算...')
+    safe_print('[CALC] 内容配比计算...')
     irr_counts = {k: int(v * n_irrelevant) for k, v in irrelevant_dist.items()}
     # 修正舍入误差
     irr_diff = n_irrelevant - sum(irr_counts.values())
@@ -1060,16 +1053,16 @@ def main():
     city_diff = n_city - sum(city_counts.values())
     city_counts['environment'] += city_diff
 
-    _safe_print(f'  无关内容: {sum(irr_counts.values()):,} 条')
+    safe_print(f'  无关内容: {sum(irr_counts.values()):,} 条')
     for k, v in irr_counts.items():
-        _safe_print(f'    {k}: {v:,}')
+        safe_print(f'    {k}: {v:,}')
 
-    _safe_print(f'  城市相关: {sum(city_counts.values()):,} 条')
+    safe_print(f'  城市相关: {sum(city_counts.values()):,} 条')
     for k, v in city_counts.items():
-        _safe_print(f'    {k}: {v:,}')
+        safe_print(f'    {k}: {v:,}')
 
     # ── 2. 构建类别+平台序列 ──
-    _safe_print('[GEN] 构建类别-平台分配序列...')
+    safe_print('[GEN] 构建类别-平台分配序列...')
 
     # 为每条数据预分配 (category, is_city, platform)
     # 无关内容
@@ -1097,11 +1090,11 @@ def main():
     )
 
     # ── 3. 生成坐标 ──
-    _safe_print('[GEN] 生成坐标 (高斯混合模型 + 均匀噪声)...')
+    safe_print('[GEN] 生成坐标 (高斯混合模型 + 均匀噪声)...')
     lons, lats = generate_coordinates(TOTAL_COUNT)
 
     # ── 4. 逐条生成内容 ──
-    _safe_print('[GEN] 开始生成内容数据...')
+    safe_print('[GEN] 开始生成内容数据...')
 
     crawl_time_str = CRAWL_TIME.strftime('%Y-%m-%dT%H:%M:%S.%f')
 
@@ -1152,12 +1145,12 @@ def main():
         comments_list[i] = comments_text
 
         if (i + 1) % report_interval == 0:
-            _safe_print(f'  [PROGRESS] 已生成 {i + 1:,} / {TOTAL_COUNT:,} 条...')
+            safe_print(f'  [PROGRESS] 已生成 {i + 1:,} / {TOTAL_COUNT:,} 条...')
 
-    _safe_print(f'  [OK] 内容生成完成: {TOTAL_COUNT:,} 条')
+    safe_print(f'  [OK] 内容生成完成: {TOTAL_COUNT:,} 条')
 
     # ── 5. 构建 DataFrame 并写出 CSV ──
-    _safe_print('[EXPORT] 构建 DataFrame 并写出 CSV...')
+    safe_print('[EXPORT] 构建 DataFrame 并写出 CSV...')
 
     df = pd.DataFrame({
         'source': sources,
@@ -1180,59 +1173,59 @@ def main():
 
     df.to_csv(OUTPUT_FILE, index=False, encoding='utf-8', quoting=1)  # QUOTE_ALL
     file_size_mb = os.path.getsize(OUTPUT_FILE) / (1024 * 1024)
-    _safe_print(f'[OK] 已写出: {OUTPUT_FILE}')
-    _safe_print(f'[OK] 文件大小: {file_size_mb:.1f} MB')
+    safe_print(f'[OK] 已写出: {OUTPUT_FILE}')
+    safe_print(f'[OK] 文件大小: {file_size_mb:.1f} MB')
 
     # ── 6. 打印统计信息 ──
-    _safe_print('')
-    _safe_print('=' * 60)
-    _safe_print('  生成统计')
-    _safe_print('=' * 60)
-    _safe_print(f'  总条数:            {TOTAL_COUNT:>8,}')
-    _safe_print(f'  无关内容:          {n_irrelevant:>8,}  ({n_irrelevant/TOTAL_COUNT*100:.1f}%)')
-    _safe_print(f'  城市相关:          {n_city:>8,}  ({n_city/TOTAL_COUNT*100:.1f}%)')
-    _safe_print('')
+    safe_print('')
+    safe_print('=' * 60)
+    safe_print('  生成统计')
+    safe_print('=' * 60)
+    safe_print(f'  总条数:            {TOTAL_COUNT:>8,}')
+    safe_print(f'  无关内容:          {n_irrelevant:>8,}  ({n_irrelevant/TOTAL_COUNT*100:.1f}%)')
+    safe_print(f'  城市相关:          {n_city:>8,}  ({n_city/TOTAL_COUNT*100:.1f}%)')
+    safe_print('')
 
-    _safe_print('  平台分布:')
+    safe_print('  平台分布:')
     for platform in ['xiaohongshu', 'weibo', 'dianping', 'meituan', 'su12345']:
         cnt = sources.count(platform)
-        _safe_print(f'    {platform:>14s}: {cnt:>8,}  ({cnt/TOTAL_COUNT*100:.1f}%)')
+        safe_print(f'    {platform:>14s}: {cnt:>8,}  ({cnt/TOTAL_COUNT*100:.1f}%)')
 
-    _safe_print('')
-    _safe_print('  无关内容子类:')
+    safe_print('')
+    safe_print('  无关内容子类:')
     for cat in ['beauty', 'fashion', 'emotion', 'daily', 'pet', 'joke', 'ad', 'study', 'other']:
         cnt = all_categories.count(cat)
-        _safe_print(f'    {cat:>10s}: {cnt:>8,}  ({cnt/TOTAL_COUNT*100:.1f}%)')
+        safe_print(f'    {cat:>10s}: {cnt:>8,}  ({cnt/TOTAL_COUNT*100:.1f}%)')
 
-    _safe_print('')
-    _safe_print('  城市相关内容子类:')
+    safe_print('')
+    safe_print('  城市相关内容子类:')
     for cat in ['facility', 'environment', 'service', 'culture', 'event']:
         cnt = all_categories.count(cat)
-        _safe_print(f'    {cat:>10s}: {cnt:>8,}  ({cnt/TOTAL_COUNT*100:.1f}%)')
+        safe_print(f'    {cat:>10s}: {cnt:>8,}  ({cnt/TOTAL_COUNT*100:.1f}%)')
 
-    _safe_print('')
-    _safe_print('  坐标范围:')
-    _safe_print(f'    lon_gcj02: [{lons.min():.4f}, {lons.max():.4f}]')
-    _safe_print(f'    lat_gcj02: [{lats.min():.4f}, {lats.max():.4f}]')
+    safe_print('')
+    safe_print('  坐标范围:')
+    safe_print(f'    lon_gcj02: [{lons.min():.4f}, {lons.max():.4f}]')
+    safe_print(f'    lat_gcj02: [{lats.min():.4f}, {lats.max():.4f}]')
 
-    _safe_print('')
-    _safe_print('  like_count 分布:')
-    _safe_print(f'    min={np.min(like_counts):,}, max={np.max(like_counts):,}')
-    _safe_print(f'    median={np.median(like_counts):.0f}, mean={np.mean(like_counts):.0f}')
+    safe_print('')
+    safe_print('  like_count 分布:')
+    safe_print(f'    min={np.min(like_counts):,}, max={np.max(like_counts):,}')
+    safe_print(f'    median={np.median(like_counts):.0f}, mean={np.mean(like_counts):.0f}')
     pct_0_20 = sum(1 for lc in like_counts if lc <= 20) / TOTAL_COUNT * 100
     pct_20_200 = sum(1 for lc in like_counts if 20 < lc <= 200) / TOTAL_COUNT * 100
     pct_200_2000 = sum(1 for lc in like_counts if 200 < lc <= 2000) / TOTAL_COUNT * 100
     pct_2000_plus = sum(1 for lc in like_counts if lc > 2000) / TOTAL_COUNT * 100
-    _safe_print(f'    0-20: {pct_0_20:.1f}%, 20-200: {pct_20_200:.1f}%, 200-2000: {pct_200_2000:.1f}%, >2000: {pct_2000_plus:.1f}%')
+    safe_print(f'    0-20: {pct_0_20:.1f}%, 20-200: {pct_20_200:.1f}%, 200-2000: {pct_200_2000:.1f}%, >2000: {pct_2000_plus:.1f}%')
 
-    _safe_print('')
-    _safe_print(f'  comments 非空比例: {sum(1 for c in comments_list if c) / TOTAL_COUNT * 100:.1f}%')
+    safe_print('')
+    safe_print(f'  comments 非空比例: {sum(1 for c in comments_list if c) / TOTAL_COUNT * 100:.1f}%')
 
-    _safe_print('')
-    _safe_print('=' * 60)
-    _safe_print('[OK] 生成完毕!')
-    _safe_print(f'[OK] 输出文件: {OUTPUT_FILE}')
-    _safe_print('=' * 60)
+    safe_print('')
+    safe_print('=' * 60)
+    safe_print('[OK] 生成完毕!')
+    safe_print(f'[OK] 输出文件: {OUTPUT_FILE}')
+    safe_print('=' * 60)
 
 
 if __name__ == '__main__':

@@ -8,16 +8,11 @@ import pandas as pd
 import geopandas as gpd
 
 from core.tracker import track, TrackContext, trace_log, trace_error, register_track_id
+from core.utils import safe_print
 
 
 # 安全 print — 防止 Windows GBK 控制台崩溃
 _real_print = _bi.print
-
-def _safe_print(*args, **kwargs):
-    try:
-        _real_print(*args, **kwargs)
-    except UnicodeEncodeError:
-        _real_print(*(str(a).encode('ascii', errors='replace').decode('ascii') for a in args), **kwargs)
 
 
 @track("MOD_EXPORT.F_001", track_args=True)
@@ -25,7 +20,7 @@ def export_to_csv(df: pd.DataFrame, output_path: str):
     """DataFrame → CSV"""
     os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
     df.to_csv(output_path, index=False, encoding='utf-8')
-    _safe_print(f'[OK] CSV 已保存: {output_path} ({len(df)} 行)')
+    safe_print(f'[OK] CSV 已保存: {output_path} ({len(df)} 行)')
     return output_path
 
 
@@ -45,7 +40,7 @@ def export_to_geojson(df: pd.DataFrame, output_path: str,
     gdf.drop(columns=cols_to_drop, inplace=True)
 
     gdf.to_file(output_path, driver='GeoJSON', encoding='utf-8')
-    _safe_print(f'[OK] GeoJSON 已保存: {output_path} ({len(df)} 条)')
+    safe_print(f'[OK] GeoJSON 已保存: {output_path} ({len(df)} 条)')
     return output_path
 
 # ── 追踪 ID 注册表 ──
