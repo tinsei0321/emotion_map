@@ -16,6 +16,7 @@
       "Bash(rm -rf *)"
     ]
   },
+  "model": "claude-haiku-4-5-20251001",
   "autoCompactThreshold": 85,
   "agents": {
     "developer": {
