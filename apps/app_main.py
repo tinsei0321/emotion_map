@@ -193,7 +193,7 @@ def show_overview_dialog():
 # 弹窗：数据表格
 # ═══════════════════════════════════════════════════════════
 @track("MOD_APP.F_007", track_args=False)
-@st.dialog('[TB] 数据表格', width='small')
+@st.dialog('[TB] 数据表格', width='large')
 def show_table_dialog():
     processed_files = []
     if os.path.exists(PROCESSED_DIR):
@@ -1321,8 +1321,6 @@ def main():
         st.rerun()
 
     # ── 底部左下角 ──
-    current_style = st.session_state.get('_map_style', 'carto_light')
-    style_label = MAP_STYLE_LABELS.get(current_style, 'CartoDB')
     if st.button('[M]', key='lbl'):
         show_basemap_dialog()
     if st.button('[OV]', key='o', disabled=btn_dis): show_overview_dialog()

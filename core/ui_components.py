@@ -315,25 +315,6 @@ def hud_button_style_css():
     .st-key-ly button::after{{content:"图层控制";bottom:calc(100%+6px);left:50%;transform:translateX(-50%);}}
     /* ─ 左上角 — tooltip 向下 ─ */
     .st-key-s button::after{{content:"设置与调试";top:calc(100%+6px);left:50%;transform:translateX(-50%);}}
-
-    /* ═══ Dialog 样式修复 ═══ */
-    /* 2. 移除 Streamlit 弹窗下方的灰色半透明填充层 */
-    [data-testid="stDialog"] + div,
-    div[data-testid="stDialog"] ~ div:has(+ *) {{
-        display:none!important;
-    }}
-    /* dialog overlay 背景改为极暗 */
-    div[role="dialog"] {{
-        background:rgba(0,0,0,0.55)!important;
-        backdrop-filter:blur(4px);
-        -webkit-backdrop-filter:blur(4px);
-    }}
-    /* 3. dialog 内容区固定宽高比 16:9 3/4 宽 */
-    [data-testid="stDialog"] > div > div > div {{
-        width:75vw!important;max-width:1200px!important;
-        aspect-ratio:16/9!important;
-        margin:0 auto!important;
-    }}
     </style>
     """, unsafe_allow_html=True)
 
