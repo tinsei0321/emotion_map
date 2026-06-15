@@ -1392,11 +1392,12 @@ def main():
         # ── 自定通知: 居中, 2秒自动淡出 ──
         st.markdown("""
         <div id="load-notify" style="
-            position:fixed;top:8px;left:50%;transform:translateX(-50%);
+            position:fixed;top:48px;left:50%;transform:translateX(-50%);
             z-index:99999;background:rgba(36,39,48,0.92);color:#D3D8E0;
-            padding:6px 20px;border-radius:4px;font-size:0.85rem;
-            font-weight:600;animation:fadeOut 0.5s ease 2s forwards;
+            padding:5px 22px;border-radius:16px;font-size:0.8rem;
+            font-weight:500;animation:fadeOut 0.5s ease 2s forwards;
             pointer-events:none;
+            white-space:nowrap;
         ">[OK] 数据加载成功</div>
         <style>
         @keyframes fadeOut{from{opacity:1}to{opacity:0}}

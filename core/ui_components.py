@@ -289,7 +289,7 @@ def hud_button_style_css():
     .st-key-ly button::after {{
         position:absolute;
         background:rgba(36,39,48,0.95);color:#D3D8E0;
-        padding:4px 10px;border-radius:4px;
+        padding:4px 12px;border-radius:16px;
         font-size:0.75rem;font-weight:400;
         white-space:nowrap;pointer-events:none;
         opacity:0;transition:opacity 150ms ease;
