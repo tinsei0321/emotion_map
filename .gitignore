@@ -10,3 +10,4 @@ apps/static/tianditu_*.json
 design/tokens.py
 design/tokens.css
 .claude/.last-session
+docs/vision-inbox/latest.md
