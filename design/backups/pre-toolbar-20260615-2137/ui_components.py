@@ -157,42 +157,6 @@ def inject_fullscreen_css():
        只有按钮/确定操作才关闭弹窗，点击遮罩层无效。 */
     div[data-testid="stDialog"]{pointer-events:none!important;}
     div[data-testid="stDialog"] > div{pointer-events:auto!important;}
-
-    /* ═══ geojson.io 全局控件样式 ═══ */
-    /* Primary: 蓝色填充 (确认/上传/显示 等正向操作) */
-    button[kind="primary"]{
-        background:#007afc!important;border-color:#007afc!important;color:#fff!important;
-    }
-    button[kind="primary"]:hover{
-        background:#0060c7!important;border-color:#0060c7!important;
-    }
-    /* Secondary/Danger: 白底+灰框 (取消等反向操作) */
-    button[kind="secondary"],button[kind="danger"]{
-        background:#fff!important;border:1px solid #d4d4d4!important;color:#525252!important;
-    }
-    button[kind="secondary"]:hover,button[kind="danger"]:hover{
-        background:#f5f5f5!important;
-    }
-    /* Toggle + Checkbox: 蓝色主题 */
-    [data-testid="stToggle"] input,[data-testid="stCheckbox"] input,
-    input[type="checkbox"]{accent-color:#007afc!important;}
-    [data-testid="stCheckbox"] label div:first-child{border-radius:4px!important;}
-    /* Toggle 背景也蓝色 */
-    [data-testid="stToggle"] div[role="switch"][aria-checked="true"]{{
-        background:#007afc!important;
-    }}
-
-    /* 表单控件焦点: 蓝色 */
-    input:focus,select:focus,[data-testid="stSelectbox"]:focus *,
-    [data-testid="stTextInput"] input:focus{{outline-color:#007afc!important;}}
-    [data-testid="stSelectbox"] div[role="listbox"]:focus,
-    div[data-baseweb="select"]:focus > div{{border-color:#007afc!important;}}
-
-    /* Tooltip: 增加阴影 */
-    [data-testid="stTooltip"] > div,.stTooltip > div,div[role="tooltip"]{{
-        box-shadow:0 2px 8px rgba(0,0,0,0.15)!important;
-    }}
-
     iframe[title*="streamlit_folium"]{
         position:fixed!important;top:0!important;left:0!important;
         width:100vw!important;height:100vh!important;
@@ -248,130 +212,116 @@ def inject_fullscreen_css():
     """, height=0, width=0)
 
 
-@track("MOD_UI.F_012", track_args=False)
-def render_toolbar_shell():
-    """双层顶栏 — geojson.io 风格:
-       标题栏 (48px 深蓝底) + 工具栏 (44px 白底方按钮)。
-    """
-    st.markdown("""
-    <div style="
-        position:fixed;top:0;left:0;right:0;height:48px;
-        background:#1a2940;z-index:9499;pointer-events:none;
-        display:flex;align-items:center;padding:0 18px;
-    "><span style="color:#ffffff;font-size:1rem;font-weight:600;
-        letter-spacing:0.02em;">宜昌市情绪地图 v1.0</span></div>
-    <div style="
-        position:fixed;top:48px;left:0;right:0;height:44px;
-        background:#ffffff;border-bottom:1px solid #e5e5e5;
-        z-index:9499;pointer-events:none;
-    "></div>
-    """, unsafe_allow_html=True)
-
-
 @track("MOD_UI.F_003", track_args=False)
 def hud_button_style_css():
-    """工具栏按钮 — geojson.io 风格: 36px 方按钮, 白底, hover 天蓝。"""
-    # ── 按钮设计语言 ──
-    # 方形按钮: S×S px, 间距 G px, 圆角 R px
-    # 长条按钮: 宽度=2*S, 高度=S (如 Import/Export)
-    # 定位规则: 从左到右 left=12 + Σ(prev_w + G)  或从右到左 right=12 + Σ(prev_w + G)
-    S = 36           # square size (px)
-    R = 4            # border-radius (px)
-    G = 8            # button gap (px)
-    FS = "0.75rem"   # font size
-    BLUE = "#007afc" # geojson.io brand blue
-    TOOLBAR_TOP = "52px"  # top of toolbar buttons (48px title + 4px padding)
+    """Kepler.gl 风格 HUD — 右侧竖排浮动工具栏 + 底部工具按钮。
+
+    参考 Kepler.gl 源码 theme/base.ts 色板:
+      按钮背景: #29323C (Kepler inputBg)
+      悬停:     #3A404F (Kepler inputBgdHover)
+      文字:     #D3D8E0 (Kepler textColor)
+      圆角:     4px   (Kepler 默认)
+
+    布局（从右上到右下）:
+      右侧工具栏: [R] [D] [A] [M] [H] [*]  — 竖排居右中
+      底部左侧:   [OV] [TB]                   — 数据辅助按钮
+    """
+    BTN_SIZE = "40px"
+    BTN_RADIUS = "4px"
+    BTN_BG_GLASS = "rgba(41, 50, 60, 0.28)"   # 极透 — 地图可见
+    BTN_HOVER = "rgba(58, 64, 79, 0.94)"       # 鼠标悬停 — 加深
+    BTN_COLOR = "#D3D8E0"
+    BTN_BORDER = "1px solid rgba(255,255,255,0.06)"
+    RIGHT = "12px"
 
     st.markdown(f"""
     <style>
-    /* ═══ 工具栏方按钮 ═══ */
-    .st-key-tb_import button,.st-key-tb_export button,
-    .st-key-tb_analysis button,
-    .st-key-tb_layers button,.st-key-tb_range button,
-    .st-key-tb_overview button,.st-key-tb_table button,
-    .st-key-tb_basemap button,.st-key-tb_settings button,
-    .st-key-tb_heat button,.st-key-tb_m button {{
-        width:{S}px!important;height:{S}px!important;min-width:{S}px!important;max-width:{S}px!important;
-        min-height:{S}px!important;max-height:{S}px!important;
-        border-radius:{R}px!important;
-        font-size:{FS}!important;font-weight:700!important;
-        padding:0!important;margin:0!important;
-        line-height:{S}px!important;
-        background:#ffffff!important;color:#525252!important;
-        border:none!important;
-        transition:all 150ms cubic-bezier(.4,0,.2,1);
+    /* ── 通用 HUD 按钮样式 ── */
+    .st-key-rng button,.st-key-d button,.st-key-a button,
+    .st-key-lbl button,.st-key-heat_toggle button,.st-key-s button,
+    .st-key-o button,.st-key-t button,.st-key-ly button {{
+        width:{BTN_SIZE}!important;height:{BTN_SIZE}!important;
+        border-radius:{BTN_RADIUS}!important;
+        font-size:0.85rem!important;font-weight:600!important;
+        padding:0!important;min-width:0!important;
+        background:{BTN_BG_GLASS}!important;
+        color:{BTN_COLOR}!important;
+        border:{BTN_BORDER}!important;
+        transition:background 120ms ease,opacity 120ms ease;
     }}
-    /* inner text bold */
-    .st-key-tb_import button p,.st-key-tb_export button p,
-    .st-key-tb_analysis button p,
-    .st-key-tb_layers button p,.st-key-tb_range button p,
-    .st-key-tb_overview button p,.st-key-tb_table button p,
-    .st-key-tb_basemap button p,.st-key-tb_settings button p,
-    .st-key-tb_heat button p,.st-key-tb_m button p{{
-        font-weight:700!important;
+    /* hover — 加深，清晰可辨 */
+    .st-key-rng button:hover,.st-key-d button:hover,.st-key-a button:hover,
+    .st-key-lbl button:hover,.st-key-heat_toggle button:hover,.st-key-s button:hover,
+    .st-key-o button:hover,.st-key-t button:hover,.st-key-ly button:hover {{
+        background:{BTN_HOVER}!important;
     }}
-
-    .st-key-tb_import button:hover,.st-key-tb_export button:hover,
-    .st-key-tb_analysis button:hover,
-    .st-key-tb_layers button:hover,.st-key-tb_range button:hover,
-    .st-key-tb_overview button:hover,.st-key-tb_table button:hover,
-    .st-key-tb_basemap button:hover,.st-key-tb_settings button:hover,
-    .st-key-tb_heat button:hover,.st-key-tb_m button:hover {{
-        background:#d4d4d4!important;color:#171717!important;
+    /* 禁用态 */
+    .st-key-o button:disabled,.st-key-t button:disabled {{
+        opacity:0.35!important;cursor:not-allowed;
     }}
+    /* ── 右侧竖排工具栏 ── */
+    .st-key-rng{{position:fixed!important;top:calc(50% - 132px)!important;
+        right:{RIGHT}!important;z-index:9000!important;}}
+    .st-key-d{{position:fixed!important;top:calc(50% - {88 - 4}px)!important;
+        right:{RIGHT}!important;z-index:9000!important;}}
+    .st-key-a{{position:fixed!important;top:calc(50% - {44 - 8}px)!important;
+        right:{RIGHT}!important;z-index:9000!important;}}
+    .st-key-heat_toggle{{position:fixed!important;top:calc(50% - {0 - 12}px)!important;
+        right:{RIGHT}!important;z-index:9000!important;}}
+    /* ── 底部左下角 ── */
+    .st-key-s{{position:fixed!important;bottom:56px!important;
+        left:12px!important;z-index:9000!important;}}
+    .st-key-lbl{{position:fixed!important;bottom:12px!important;
+        left:12px!important;z-index:9000!important;}}
+    .st-key-o{{position:fixed!important;bottom:12px!important;
+        left:56px!important;z-index:9000!important;}}
+    .st-key-t{{position:fixed!important;bottom:12px!important;
+        left:100px!important;z-index:9000!important;}}
+    .st-key-ly{{position:fixed!important;bottom:12px!important;
+        left:144px!important;z-index:9000!important;}}
 
-    /* ── 工具栏第二层按钮定位 (top=48+4=52) ── */
-    /* 左侧组: [R] [LY] [A] [OV] [TB] */
-    .st-key-tb_range{{position:fixed!important;top:{TOOLBAR_TOP}!important;
-        left:{12}px!important;z-index:9600!important;}}
-    .st-key-tb_layers{{position:fixed!important;top:{TOOLBAR_TOP}!important;
-        left:{12+S+G}px!important;z-index:9600!important;}}
-    .st-key-tb_analysis{{position:fixed!important;top:{TOOLBAR_TOP}!important;
-        left:{12+(S+G)*2}px!important;z-index:9600!important;}}
-    .st-key-tb_overview{{position:fixed!important;top:{TOOLBAR_TOP}!important;
-        left:{12+(S+G)*3}px!important;z-index:9600!important;}}
-    .st-key-tb_table{{position:fixed!important;top:{TOOLBAR_TOP}!important;
-        left:{12+(S+G)*4}px!important;z-index:9600!important;}}
-
-    /* 中央: [H] */
-    .st-key-tb_heat{{position:fixed!important;top:{TOOLBAR_TOP}!important;
-        left:50%!important;transform:translateX(-50%)!important;z-index:9600!important;}}
-
-    /* 右侧组: [Import] [Export] */
-    .st-key-tb_import{{position:fixed!important;top:{TOOLBAR_TOP}!important;
-        right:{12+2*S+G}px!important;z-index:9600!important;}}
-    .st-key-tb_export{{position:fixed!important;top:{TOOLBAR_TOP}!important;
-        right:{12}px!important;z-index:9600!important;}}
-
-    /* Import + Export: 长条矩形 (2*S × S) */
-    .st-key-tb_import button,.st-key-tb_export button{{
-        width:{2*S}px!important;min-width:{2*S}px!important;max-width:{2*S}px!important;
+    /* ═══ 自定义 Tooltip — 纯 CSS，文本硬编码 ═══
+       原因: 浏览器原生 title tooltip 不可定位。JS 注入在 Streamlit iframe 沙箱中不稳定。
+       方案: 每个按钮的 ::after 中直接写 content，按位置定义方向。
+    */
+    .st-key-rng button,.st-key-d button,.st-key-a button,
+    .st-key-lbl button,.st-key-heat_toggle button,.st-key-s button,
+    .st-key-o button,.st-key-t button,.st-key-ly button {{
+        position:relative!important;
     }}
-
-    /* ═══ 左侧面板内部按钮样式 ═══ */
-    .st-key-pnl_data_btn button,.st-key-pnl_layers_btn button{{
-        width:100%!important;height:28px!important;padding:0 12px!important;
-        text-align:left!important;font-size:0.75rem!important;font-weight:600!important;
-        color:#525252!important;background:transparent!important;border:none!important;
-        border-radius:0!important;
+    /* 共享 tooltip 样式 */
+    .st-key-rng button::after,.st-key-d button::after,
+    .st-key-a button::after,.st-key-lbl button::after,
+    .st-key-heat_toggle button::after,.st-key-s button::after,
+    .st-key-o button::after,.st-key-t button::after,
+    .st-key-ly button::after {{
+        position:absolute;
+        background:rgba(36,39,48,0.95);color:#D3D8E0;
+        padding:4px 14px;border-radius:100px;
+        font-size:0.75rem;font-weight:400;
+        white-space:nowrap;pointer-events:none;
+        opacity:0;transition:opacity 150ms ease;
+        z-index:99999;
     }}
-    .st-key-pnl_data_btn button:hover,.st-key-pnl_layers_btn button:hover{{
-        background:#f5f5f5!important;
+    /* hover 显示 */
+    .st-key-rng button:hover::after,.st-key-d button:hover::after,
+    .st-key-a button:hover::after,.st-key-lbl button:hover::after,
+    .st-key-heat_toggle button:hover::after,.st-key-s button:hover::after,
+    .st-key-o button:hover::after,.st-key-t button:hover::after,
+    .st-key-ly button:hover::after {{
+        opacity:1;
     }}
-    /* 面板内 toggle 靠右对齐 */
-    .st-key-pnl_all_tgl,.st-key-pnl_lyr_0,.st-key-pnl_lyr_1,
-    .st-key-pnl_lyr_2,.st-key-pnl_lyr_3,.st-key-pnl_lyr_4,
-    .st-key-pnl_lyr_5,.st-key-pnl_lyr_6,.st-key-pnl_lyr_7{{
-        display:flex!important;justify-content:flex-end!important;
-    }}
-
-    /* ═══ 左下角: 底图 [M] ═══ */
-    .st-key-tb_m{{position:fixed!important;bottom:12px!important;
-        left:12px!important;z-index:9600!important;}}
-
-    /* ═══ 右下角: 热力图 [H] ═══ */
-    .st-key-tb_heat{{position:fixed!important;bottom:12px!important;
-        right:12px!important;z-index:9600!important;}}
+    /* ─ 右侧按钮 — tooltip 向左 ─ */
+    .st-key-rng button::after{{content:"分析范围";left:auto;right:100%;margin-right:12px;top:50%;transform:translateY(-50%);}}
+    .st-key-d button::after{{content:"数据加载";left:auto;right:100%;margin-right:12px;top:50%;transform:translateY(-50%);}}
+    .st-key-a button::after{{content:"分析引擎";left:auto;right:100%;margin-right:12px;top:50%;transform:translateY(-50%);}}
+    .st-key-heat_toggle button::after{{content:"热力图";left:auto;right:100%;margin-right:12px;top:50%;transform:translateY(-50%);}}
+    /* ─ 底部按钮 — tooltip 向上 ─ */
+    .st-key-s button::after{{content:"设置与调试";top:auto;bottom:100%;margin-bottom:8px;left:50%;transform:translateX(-50%);}}
+    .st-key-lbl button::after{{content:"底图切换";top:auto;bottom:100%;margin-bottom:8px;left:50%;transform:translateX(-50%);}}
+    .st-key-o button::after{{content:"数据概览";top:auto;bottom:100%;margin-bottom:8px;left:50%;transform:translateX(-50%);}}
+    .st-key-t button::after{{content:"数据表格";top:auto;bottom:100%;margin-bottom:8px;left:50%;transform:translateX(-50%);}}
+    .st-key-ly button::after{{content:"图层控制";top:auto;bottom:100%;margin-bottom:8px;left:50%;transform:translateX(-50%);}}
     </style>
     """, unsafe_allow_html=True)
 
@@ -486,84 +436,20 @@ def render_legend_overlay(mode='point', **kwargs):
                 unsafe_allow_html=True)
 
 
-@track("MOD_UI.F_013", track_args=False)
-def render_side_panel(visible_layers: list = None, selected_ranges: list = None,
-                      file_name: str = '', n_records: int = 0):
-    """左侧信息面板 — HTML <details> 可折叠，纯展示（开关通过 LY 弹窗控制）。"""
-    visible_layers = visible_layers or []
-    selected_ranges = selected_ranges or []
-    all_layers = st.session_state.get('layers', [])
-
-    _LEVEL_LABEL = {
-        'L0': '原始采集数据 L0', 'L1': '城市情绪数据 L1',
-        'L2': '情绪地图数据 L2', 'L3': '语义增强数据 L3', 'L4': '多维归因数据 L4',
-    }
-
-    has_content = selected_ranges or all_layers or file_name or n_records
-    if not has_content:
-        return
-
-    # ── 数据段 ──
-    data_rows = ''
-    if selected_ranges:
-        rng_text = ', '.join(selected_ranges[:3])
-        if len(selected_ranges) > 3:
-            rng_text += f' +{len(selected_ranges) - 3}'
-        data_rows += f'<div style="font-size:0.72rem;color:#737373;padding:2px 14px;">范围 <span style="color:#171717;">{rng_text}</span></div>'
-    if visible_layers:
-        for lyr in visible_layers[:5]:
-            lvl = lyr.get('level', '')
-            lvl_full = _LEVEL_LABEL.get(lvl, lvl)
-            n = lyr.get('n_records', 0)
-            count = f'{n:,} 条' if n else ''
-            data_rows += f'<div style="font-size:0.72rem;color:#737373;padding:2px 14px;"><span style="color:#171717;">{lvl_full} &middot; {count}</span></div>'
-    elif n_records:
-        data_rows += f'<div style="font-size:0.72rem;color:#737373;padding:2px 14px;"><span style="color:#171717;">{n_records:,} 条</span></div>'
-    if file_name:
-        data_rows += f'<div style="font-size:0.68rem;color:#a3a3a3;padding:2px 14px 5px 14px;word-break:break-all;">文件 {file_name}</div>'
-
-    # ── 图层段 ──
-    layer_rows = ''
-    for lyr in all_layers:
-        lvl = lyr.get('level', '')
-        name = lyr.get('name', '')
-        vis = lyr.get('visible', True)
-        dot = '<span style="color:#007afc;">●</span>' if vis else '<span style="color:#d4d4d4;">○</span>'
-        layer_rows += (
-            f'<div style="font-size:0.7rem;color:#737373;padding:2px 14px;">'
-            f'{dot} [{lvl}] {name[:30]}</div>'
-        )
-
-    st.markdown(f"""
-    <div style="position:fixed;
-    top:100px;left:8px;width:260px;
-    max-height:calc(100vh - 116px);overflow-y:auto;
-    background:#ffffff;border:1px solid #e5e5e5;border-radius:4px;
-    box-shadow:0 1px 3px 0 rgb(0 0 0/.1),0 1px 2px -1px rgb(0 0 0/.1);
-    z-index:9400;font-family:Inter,Open Sans,sans-serif;">
-    <details open style="border-bottom:1px solid #e5e5e5;">
-    <summary style="padding:8px 14px;font-size:0.75rem;font-weight:600;color:#525252;cursor:pointer;outline:none;">数据一览</summary>
-    <div style="padding-bottom:4px;">{data_rows}</div>
-    </details>
-    <details open>
-    <summary style="padding:8px 14px;font-size:0.75rem;font-weight:600;color:#525252;cursor:pointer;outline:none;">图层一览</summary>
-    <div style="padding-bottom:4px;">{layer_rows}</div>
-    </details>
-    </div>
-    """, unsafe_allow_html=True)
-
-
 @track("MOD_UI.F_006", track_args=False)
 def render_title_bar(text: str):
     """渲染居中浮动标题 — 白色底胶囊形，始终显示。"""
-    # geojson.io 风格：品牌名左对齐，16px 粗体
     st.markdown(
         f'<div style="position:fixed;'
-        f'top:20px;left:18px;'
+        f'top:12px;left:0;right:0;text-align:center;'
         f'z-index:9800;pointer-events:none;">'
-        f'<span style="font-size:1rem;'
-        f'font-weight:700;'
-        f'color:#171717;">'
+        f'<span style="font-size:0.95rem;'
+        f'font-weight:600;'
+        f'color:#374151;'
+        f'background:rgba(255,255,255,0.88);'
+        f'padding:5px 24px;'
+        f'border-radius:100px;'
+        f'box-shadow:0 1px 8px rgba(0,0,0,0.10);">'
         f'{text}</span></div>',
         unsafe_allow_html=True)
 
@@ -747,7 +633,7 @@ def show_toast(message: str, duration_ms: int = 2000):
     """
     st.markdown(f"""
     <div style="
-        position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+        position:fixed;top:48px;left:50%;transform:translateX(-50%);
         z-index:999999;background:rgba(36,39,48,0.94);color:#D3D8E0;
         padding:6px 24px;border-radius:100px;font-size:0.82rem;
         font-weight:500;animation:toastFadeOut 0.4s ease {duration_ms}ms forwards;
@@ -762,9 +648,7 @@ def show_toast(message: str, duration_ms: int = 2000):
 # ── 追踪 ID 注册表 ──
 register_track_id("MOD_UI.F_001", "注入 Design Token CSS 变量")
 register_track_id("MOD_UI.F_002", "注入全覆盖地图 CSS + JS")
-register_track_id("MOD_UI.F_003", "工具栏 + 底部按钮 CSS")
-register_track_id("MOD_UI.F_012", "渲染顶部工具栏底条")
-register_track_id("MOD_UI.F_013", "渲染左侧信息面板")
+register_track_id("MOD_UI.F_003", "HUD 按钮统一样式 CSS")
 register_track_id("MOD_UI.F_004", "渲染 HUD 按钮")
 register_track_id("MOD_UI.F_005", "渲染图例叠加层")
 register_track_id("MOD_UI.F_006", "渲染标题栏")
