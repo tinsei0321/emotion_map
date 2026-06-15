@@ -239,9 +239,15 @@ def hud_button_style_css():
         background:{BTN_BG}!important;
         color:{BTN_COLOR}!important;
         border:{BTN_BORDER}!important;
+        transition:background 100ms ease;
+    }}
+    /* 毛玻璃效果 — 通过父容器 wrapper 实现 */
+    .st-key-rng,.st-key-d,.st-key-a,
+    .st-key-lbl,.st-key-heat_toggle,.st-key-s,
+    .st-key-o,.st-key-t,.st-key-ly {{
         backdrop-filter:blur(8px);
         -webkit-backdrop-filter:blur(8px);
-        transition:background 100ms ease;
+        border-radius:{BTN_RADIUS}!important;
     }}
     .st-key-rng button:hover,.st-key-d button:hover,.st-key-a button:hover,
     .st-key-lbl button:hover,.st-key-heat_toggle button:hover,.st-key-s button:hover,
@@ -259,19 +265,20 @@ def hud_button_style_css():
         right:{RIGHT}!important;z-index:9000!important;}}
     .st-key-a{{position:fixed!important;top:calc(50% - {44 - 8}px)!important;
         right:{RIGHT}!important;z-index:9000!important;}}
-    .st-key-lbl{{position:fixed!important;top:calc(50% - {0 - 12}px)!important;
+    .st-key-heat_toggle{{position:fixed!important;top:calc(50% - {0 - 12}px)!important;
         right:{RIGHT}!important;z-index:9000!important;}}
-    .st-key-heat_toggle{{position:fixed!important;top:calc(50% + {44 + 16}px)!important;
-        right:{RIGHT}!important;z-index:9000!important;}}
-    .st-key-s{{position:fixed!important;top:calc(50% + {88 + 20}px)!important;
-        right:{RIGHT}!important;z-index:9000!important;}}
-    /* ── 底部左下角 ── */
-    .st-key-o{{position:fixed!important;bottom:12px!important;
+    /* ── 左上角: 设置 ── */
+    .st-key-s{{position:fixed!important;top:12px!important;
         left:12px!important;z-index:9000!important;}}
-    .st-key-t{{position:fixed!important;bottom:12px!important;
+    /* ── 底部左下角 ── */
+    .st-key-lbl{{position:fixed!important;bottom:12px!important;
+        left:12px!important;z-index:9000!important;}}
+    .st-key-o{{position:fixed!important;bottom:12px!important;
         left:56px!important;z-index:9000!important;}}
-    .st-key-ly{{position:fixed!important;bottom:12px!important;
+    .st-key-t{{position:fixed!important;bottom:12px!important;
         left:100px!important;z-index:9000!important;}}
+    .st-key-ly{{position:fixed!important;bottom:12px!important;
+        left:144px!important;z-index:9000!important;}}
     </style>
     """, unsafe_allow_html=True)
 
