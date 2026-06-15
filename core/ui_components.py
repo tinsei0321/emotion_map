@@ -196,63 +196,73 @@ def inject_fullscreen_css():
 
 @track("MOD_UI.F_003", track_args=False)
 def hud_button_style_css():
-    """HUD 按钮统一样式 + 定位（10 键全覆盖）
+    """Kepler.gl 风格 HUD — 右侧竖排浮动工具栏 + 底部工具按钮。
 
-    使用 CSS 变量引用 design/tokens.css，支持 Light/Dark 双主题自动切换。
-    定位值与 HUD 布局耦合，仍保留硬编码。
+    参考 Kepler.gl 源码 theme/base.ts 色板:
+      按钮背景: #29323C (Kepler inputBg)
+      悬停:     #3A404F (Kepler inputBgdHover)
+      文字:     #D3D8E0 (Kepler textColor)
+      圆角:     4px   (Kepler 默认)
 
-    布局:
-      左侧数据管道列:  [R] 分析范围 / [D] 数据加载 / [GV] 数据治理 / [A] 分析引擎
-      底部地图控制栏:  [*] 设置 / [LB] 注记 / [LY] 图层
-      右侧工具栏:      [OV] 数据概览 / [TB] 数据表格
+    布局（从右上到右下）:
+      右侧工具栏: [R] [D] [A] [M] [H] [*]  — 竖排居右中
+      底部左侧:   [OV] [TB]                   — 数据辅助按钮
     """
-    st.markdown("""
+    BTN_SIZE = "40px"
+    BTN_RADIUS = "4px"
+    BTN_BG = "rgba(41, 50, 60, 0.92)"       # Kepler inputBg
+    BTN_HOVER = "#3A404F"                     # Kepler inputBgdHover
+    BTN_COLOR = "#D3D8E0"                     # Kepler textColor
+    BTN_BORDER = "1px solid rgba(255,255,255,0.06)"
+    BTN_GAP = "4px"
+    RIGHT = "12px"
+
+    st.markdown(f"""
     <style>
-    .st-key-d button,.st-key-lbl button,.st-key-s button,
-    .st-key-o button,.st-key-t button,.st-key-rng button,.st-key-a button,
-    .st-key-gv button,.st-key-ly button{
-        width:var(--component-hud-button-width)!important;
-        height:var(--component-hud-button-height)!important;
-        border-radius:var(--component-hud-button-border-radius)!important;
-        font-size:var(--component-hud-button-font-size)!important;
-        padding:0!important;
-        background:var(--component-hud-button-background)!important;
-        color:var(--component-hud-button-color)!important;
-        border:var(--component-hud-button-border)!important;
-        backdrop-filter:var(--component-hud-button-backdrop-filter);
-        -webkit-backdrop-filter:var(--component-hud-button-backdrop-filter);
-        transition:var(--component-hud-button-transition);
-    }
-    .st-key-d button:hover,.st-key-lbl button:hover,
-    .st-key-s button:hover,.st-key-o button:hover,.st-key-t button:hover,
-    .st-key-rng button:hover,.st-key-a button:hover,
-    .st-key-gv button:hover,.st-key-ly button:hover{
-        background:var(--component-hud-button-hover-background)!important;
-    }
-    [data-testid="stAppViewContainer"] button{
-        position:relative!important;z-index:10000!important;
-    }
-    /* 左侧数据管道列 — 纵向排列 */
-    .st-key-rng{position:fixed!important;top:calc(50% - 72px)!important;
-        left:14px!important;z-index:9999!important;}
-    .st-key-d{position:fixed!important;top:calc(50% - 22px)!important;
-        left:14px!important;z-index:9999!important;}
-    .st-key-gv{position:fixed!important;top:calc(50% + 28px)!important;
-        left:14px!important;z-index:9999!important;}
-    .st-key-a{position:fixed!important;top:calc(50% + 28px)!important;
-        left:14px!important;z-index:9999!important;}
-    /* 底部地图控制栏 */
-    .st-key-s{position:fixed!important;bottom:50px!important;
-        left:14px!important;z-index:9999!important;}
-    .st-key-lbl{position:fixed!important;bottom:50px!important;
-        left:64px!important;z-index:9999!important;}
-    .st-key-ly{position:fixed!important;bottom:50px!important;
-        left:114px!important;z-index:9999!important;}
-    /* 右侧工具按钮 */
-    .st-key-o{position:fixed!important;top:calc(50% - 50px)!important;
-        right:14px!important;z-index:9999!important;}
-    .st-key-t{position:fixed!important;top:calc(50% + 2px)!important;
-        right:14px!important;z-index:9999!important;}
+    /* ── 右侧工具栏按钮通用样式 ── */
+    .st-key-rng button,.st-key-d button,.st-key-a button,
+    .st-key-lbl button,.st-key-heat_toggle button,.st-key-s button,
+    .st-key-o button,.st-key-t button,.st-key-ly button {{
+        width:{BTN_SIZE}!important;height:{BTN_SIZE}!important;
+        border-radius:{BTN_RADIUS}!important;
+        font-size:0.85rem!important;font-weight:600!important;
+        padding:0!important;min-width:0!important;
+        background:{BTN_BG}!important;
+        color:{BTN_COLOR}!important;
+        border:{BTN_BORDER}!important;
+        backdrop-filter:blur(8px);
+        -webkit-backdrop-filter:blur(8px);
+        transition:background 100ms ease;
+    }}
+    .st-key-rng button:hover,.st-key-d button:hover,.st-key-a button:hover,
+    .st-key-lbl button:hover,.st-key-heat_toggle button:hover,.st-key-s button:hover,
+    .st-key-o button:hover,.st-key-t button:hover,.st-key-ly button:hover {{
+        background:{BTN_HOVER}!important;
+    }}
+    /* 禁用态 */
+    .st-key-o button:disabled,.st-key-t button:disabled {{
+        opacity:0.35;cursor:not-allowed;
+    }}
+    /* ── 右侧竖排工具栏 ── */
+    .st-key-rng{{position:fixed!important;top:calc(50% - 132px)!important;
+        right:{RIGHT}!important;z-index:9000!important;}}
+    .st-key-d{{position:fixed!important;top:calc(50% - {88 - 4}px)!important;
+        right:{RIGHT}!important;z-index:9000!important;}}
+    .st-key-a{{position:fixed!important;top:calc(50% - {44 - 8}px)!important;
+        right:{RIGHT}!important;z-index:9000!important;}}
+    .st-key-lbl{{position:fixed!important;top:calc(50% - {0 - 12}px)!important;
+        right:{RIGHT}!important;z-index:9000!important;}}
+    .st-key-heat_toggle{{position:fixed!important;top:calc(50% + {44 + 16}px)!important;
+        right:{RIGHT}!important;z-index:9000!important;}}
+    .st-key-s{{position:fixed!important;top:calc(50% + {88 + 20}px)!important;
+        right:{RIGHT}!important;z-index:9000!important;}}
+    /* ── 底部左下角 ── */
+    .st-key-o{{position:fixed!important;bottom:12px!important;
+        left:12px!important;z-index:9000!important;}}
+    .st-key-t{{position:fixed!important;bottom:12px!important;
+        left:56px!important;z-index:9000!important;}}
+    .st-key-ly{{position:fixed!important;bottom:12px!important;
+        left:100px!important;z-index:9000!important;}}
     </style>
     """, unsafe_allow_html=True)
 

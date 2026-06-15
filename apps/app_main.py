@@ -1295,39 +1295,41 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
-    # ── HUD ──
+    # ── Kepler 风格 HUD ──
+    # 所有按钮通过 hud_button_style_css() 定位为浮动工具栏
+    # 右侧竖排: [R] [D] [A] [M] [H] [*]
+    # 底部左侧: [OV] [TB] [LY]
     fc = st.session_state.get('file_choice', '')
     btn_dis = st.session_state.get('current_df') is None
 
     if fc:
         render_title_bar(f'情绪地图 v1.0 "{fc}"')
 
-    # 左侧数据管道列
-    if st.button('[R]', help='[R] 分析范围 | 选择分析区域', key='rng'): show_range_dialog()
-    if st.button('[D]', help='[D] 数据加载 | 选择数据文件 (CSV/GeoJSON)', key='d'): show_data_source_dialog()
-    # [DISABLED] GV 按钮 — L0 数据治理功能已关闭，仅使用预生成的 L1 数据
-    # if st.button('[GV]', help='[GV] 数据治理 | L0原始数据→L1城市情绪DATA', key='gv'): show_governance_dialog()
-    if st.button('[A]', help='[A] 分析引擎 | 运行 L2/L3/L4 情绪分析管道', key='a'): show_analysis_dialog()
+    # ── 右侧工具栏 (从上到下) ──
+    if st.button('[R]', help='分析范围', key='rng'): show_range_dialog()
+    if st.button('[D]', help='数据加载', key='d'): show_data_source_dialog()
+    if st.button('[A]', help='分析引擎', key='a'): show_analysis_dialog()
 
-    # 底部地图控制栏
-    if st.button('[*]', help='设置与调试', key='s'): show_settings_dialog()
-
-    # ── 底图切换 ──
-    current_style = st.session_state.get('_map_style', 'carto_dark')
-    style_label = MAP_STYLE_LABELS.get(current_style, 'CartoDB 深色')
-    if st.button('[Map]', help=f'底图: {style_label} | 点击切换底图', key='lbl'):
+    # 底图切换
+    current_style = st.session_state.get('_map_style', 'carto_light')
+    style_label = MAP_STYLE_LABELS.get(current_style, 'CartoDB')
+    if st.button('[M]', help=f'底图: {style_label}', key='lbl'):
         show_basemap_dialog()
-    if st.button('[LY]', help='[LY] 图层 | 切换地图图层显示', key='ly'): show_layer_dialog()
-    # ── 热力图切换 ──
+
+    # 热力图切换
     heat_on = st.session_state.get('_heatmap_mode', False)
     heat_label = '[H]' if not heat_on else '[H*]'
-    if st.button(heat_label, help='[H] 热力图 | 切换热力图/散点视图', key='heat_toggle'):
+    if st.button(heat_label, help='热力图', key='heat_toggle'):
         st.session_state['_heatmap_mode'] = not heat_on
         st.rerun()
 
-    # 右侧工具按钮
+    # 设置
+    if st.button('[*]', help='设置', key='s'): show_settings_dialog()
+
+    # ── 底部左下角 ──
     if st.button('[OV]', help='数据概览', key='o', disabled=btn_dis): show_overview_dialog()
     if st.button('[TB]', help='数据表格', key='t', disabled=btn_dis): show_table_dialog()
+    if st.button('[LY]', help='图层控制', key='ly'): show_layer_dialog()
 
     # ── 选中点详情卡片 ──
     _render_selection_detail()
@@ -1340,7 +1342,7 @@ def main():
     if not fp or not os.path.exists(fp):
         center = st.session_state.get('_map_center', None)
         zoom = st.session_state.get('_map_zoom', None)
-        _ms = st.session_state.get('_map_style', 'carto_dark')
+        _ms = st.session_state.get('_map_style', 'carto_light')
         deck = create_base_map(center=center, zoom_start=zoom, map_style=_ms)
         if st.session_state.get('selected_ranges'):
             _add_boundary_if_exists(deck)
