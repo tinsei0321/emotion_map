@@ -150,9 +150,7 @@ def inject_fullscreen_css():
     .main>div:first-child{padding:0!important}
     [data-testid="stAppViewContainer"]>section{padding:0!important}
     [data-testid="stVerticalBlock"]{gap:0!important}
-    section[data-testid="stAppViewContainer"]>section>div,
-    section[data-testid="stAppViewContainer"]>section>div>div,
-    section[data-testid="stAppViewContainer"]>section>div>div>div{
+    section[data-testid="stAppViewContainer"]>section>div{
         transform:none!important;filter:none!important;
         perspective:none!important;will-change:auto!important;}
     iframe[title*="streamlit_folium"]{
@@ -567,6 +565,26 @@ def render_data_summary_overlay(n: int, area_label: str = '',
     </span></div>
     """, unsafe_allow_html=True)
 
+@track("MOD_UI.F_011", track_args=False)
+def show_toast(message: str, duration_ms: int = 2000):
+    """居中 Toast 通知，自动淡出。
+
+    用于数据加载、图层切换、底图更换等需要"确认感"的场景。
+    """
+    st.markdown(f"""
+    <div style="
+        position:fixed;top:48px;left:50%;transform:translateX(-50%);
+        z-index:999999;background:rgba(36,39,48,0.94);color:#D3D8E0;
+        padding:6px 24px;border-radius:100px;font-size:0.82rem;
+        font-weight:500;animation:toastFadeOut 0.4s ease {duration_ms}ms forwards;
+        pointer-events:none;white-space:nowrap;
+    ">{message}</div>
+    <style>
+    @keyframes toastFadeOut{{from{{opacity:1}}to{{opacity:0}}}}
+    </style>
+    """, unsafe_allow_html=True)
+
+
 # ── 追踪 ID 注册表 ──
 register_track_id("MOD_UI.F_001", "注入 Design Token CSS 变量")
 register_track_id("MOD_UI.F_002", "注入全覆盖地图 CSS + JS")
@@ -578,3 +596,4 @@ register_track_id("MOD_UI.F_007", "渲染极性统计面板")
 register_track_id("MOD_UI.F_008", "渲染极性分布图表")
 register_track_id("MOD_UI.F_009", "渲染空状态引导页")
 register_track_id("MOD_UI.F_010", "渲染数据摘要叠加层")
+register_track_id("MOD_UI.F_011", "渲染居中 Toast 通知")

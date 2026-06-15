@@ -28,8 +28,8 @@ MAP_STYLES = {
 MAP_STYLE_LABELS = {
     'carto_dark':        'CartoDB 深色',
     'carto_light':       'CartoDB 浅色',
-    'carto_standard':    'CartoDB 标准',
-    'carto_voyager':     'CartoDB 标准',
+    'carto_standard':    'CartoDB 浅色 (无注记)',
+    'carto_voyager':     'CartoDB Voyager',
     'tianditu_nolabel':  '天地图 无注记 (预览)',
     'tianditu_label':    '天地图 有注记 (预览)',
 }
@@ -39,7 +39,7 @@ MAP_STYLE_PREVIEW_COLORS = {
     'carto_dark':        '#1a1a2e',
     'carto_light':       '#f0f0f0',
     'carto_standard':    '#e8e0d8',
-    'carto_voyager':     '#e8e0d8',
+    'carto_voyager':     '#d8e4f0',
     'tianditu_nolabel':  '#e8f0e8',
     'tianditu_label':    '#f0f4e8',
 }

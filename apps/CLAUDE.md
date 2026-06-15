@@ -38,7 +38,10 @@ Streamlit 前端应用。所有页面通过 `?page=` 路由统一管理。
 ## Streamlit 特殊约定
 
 - 使用 `st.session_state` 保持地图中心/缩放（避免 rerun 后复位）
-- `@st.dialog` 内不要调用 `st.rerun()`（会导致对话框消失）
+- **`@st.dialog` 内 `st.rerun()` 规则**（详见 `.claude/memory/streamlit-dialog-patterns.md`）：
+  - ❌ toggle/checkbox/radio 等控件的值变更回调中**禁止** `st.rerun()` — Streamlit 自动重绘 dialog
+  - ✅ "确定"/"确认"/"关闭"按钮 + 批量操作按钮中**需要** `st.rerun()` — 用户明确表示操作完成
+  - ✅ Toast 通知使用 `st.session_state['_toast']` 模式，不在 dialog 内直接 `st.markdown`
 - CSS 统一注入: 通过 `core/ui_components.py` 管理
 - Design Token: 使用 `design/tokens.py` 中的 Python Token，不硬编码颜色
 - Dark/Light 主题: 通过 CSS `[data-theme]` 切换
@@ -53,7 +56,7 @@ Streamlit 前端应用。所有页面通过 `?page=` 路由统一管理。
 ## 禁止事项
 
 - 不要创建新的 Streamlit 端口（统一用 8501）
-- 不要在 `@st.dialog` 内调用 `st.rerun()`
+- 不要在 `@st.dialog` 的控件回调中调用 `st.rerun()`（明确按钮除外，见上方约定）
 - 不要硬编码颜色值（使用 Design Token）
 - 不要绕过 `core/ui_components.py` 直接写内联 CSS
 - 不要修改路由表格式（保持 `if page == 'xxx':` 模式）

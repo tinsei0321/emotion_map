@@ -48,7 +48,7 @@ from core.ui_components import (
     render_title_bar, render_legend_overlay,
     render_data_summary_overlay,
     render_polarity_stats, render_polarity_chart,
-    inject_theme_css,
+    inject_theme_css, show_toast,
 )
 from SCRIPT.emotion_analysis_v1 import (
     create_analyzer, run_pipeline, run_analysis_task, safe_print,
@@ -501,6 +501,7 @@ def show_range_dialog():
             st.session_state.selected_ranges = [l["name"] for l in visible_layers]
             st.session_state.analysis_layers = visible_layers
             st.session_state._range_confirmed = True
+            st.session_state['_toast'] = f'[OK] {len(visible_layers)} 个范围已确认'
             st.rerun()
     with col_clr:
         if st.button("清空", use_container_width=True, key="clear_all"):
@@ -865,6 +866,7 @@ def show_basemap_dialog():
 
     if choice != current:
         st.session_state['_map_style'] = choice
+        st.session_state['_toast'] = f'[OK] {MAP_STYLE_LABELS.get(choice, choice)}'
         st.rerun()
 
 
@@ -903,7 +905,6 @@ def show_layer_dialog():
                 st.session_state['layers'] = layers
                 if lyr['file_path'] == st.session_state.get('file_path', ''):
                     st.session_state['_all_layers_hidden'] = not new_val
-                st.rerun()
 
     st.divider()
     # ── 确定按钮（红色，凸显重要性）──
@@ -1284,6 +1285,11 @@ def main():
     inject_fullscreen_css()
     hud_button_style_css()
 
+    # ── 消费 Toast 通知（各弹窗/操作设置 _toast，此处渲染）──
+    pending = st.session_state.pop('_toast', None)
+    if pending:
+        show_toast(pending)
+
     # ── 覆盖 pydeck pickable 图层的 cursor: pointer ──
     # deck.gl 对 pickable 图层默认设 cursor: pointer（"小手"），
     # 这里恢复为默认箭头，仅拖拽时由 deck.gl 自动设 grabbing。
@@ -1389,20 +1395,7 @@ def main():
         st.session_state['current_file_choice'] = fc
         st.session_state['data_loaded'] = True
         st.session_state['_load_triggered'] = False
-        # ── 自定通知: 居中, 2秒自动淡出 ──
-        st.markdown("""
-        <div id="load-notify" style="
-            position:fixed;top:48px;left:50%;transform:translateX(-50%);
-            z-index:99999;background:rgba(36,39,48,0.92);color:#D3D8E0;
-            padding:5px 22px;border-radius:16px;font-size:0.8rem;
-            font-weight:500;animation:fadeOut 0.5s ease 2s forwards;
-            pointer-events:none;
-            white-space:nowrap;
-        ">[OK] 数据加载成功</div>
-        <style>
-        @keyframes fadeOut{from{opacity:1}to{opacity:0}}
-        </style>
-        """, unsafe_allow_html=True)
+        st.session_state['_toast'] = '[OK] 数据加载成功'
 
         with st.spinner('渲染地图中...'):
             center = st.session_state.get('_map_center', None)
