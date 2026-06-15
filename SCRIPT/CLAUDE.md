@@ -40,26 +40,11 @@ data_governance.py (L0→L1)
 - L1 输出 26 列（不含 in_scope / _kw_pass）
 - L2 输出 29 列（keywords 已上移至 L1）
 
-## 坐标系转换链（宜昌双源策略）
+## 坐标系转换
 
-```
-数据源 A：社交媒体原文（地理坐标系）        数据源 B：规划矢量（投影坐标系）
-  GCJ-02(火星) / 偶有 WGS84                  CGCS2000 EPSG:4546 (宜昌 CM 111E)
-        ↓                                           ↓
-  coord_transform.gcj02_to_wgs84()            pyproj.Transformer.from_crs()
-        ↓                                           ↓
-               WGS84 EPSG:4326 ← 统一中转基准
-                        ↓
-              ┌─────────┴─────────┐
-              ↓                   ↓
-    CGCS2000 EPSG:4546       WGS84 EPSG:4326
-    (米制空间运算)            (Folium 地图渲染)
-```
+详见 `core/CLAUDE.md` 坐标转换规范。
 
-- `core/coord_transform.py` 负责 GCJ-02→WGS84（数学转换）
-- `pyproj.Transformer` 负责 WGS84↔CGCS2000（投影/逆投影）
-- **灵活原则**：不假设输入 CRS，规划数据可能自带不同投影参数，需显式检测
-- 宜昌基准：CM 111E (EPSG:4546)，备用 114E (4547) / 117E (4548)
+简记：`GCJ-02 → WGS84 (EPSG:4326) → CGCS2000 (EPSG:4546, 宜昌 CM 111E)`
 
 ## API 依赖
 
