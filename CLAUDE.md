@@ -20,6 +20,20 @@
 | LLM 分类 | DeepSeek API (deepseek-chat) | — |
 | 包管理 | pip + requirements.txt | — |
 
+### 坐标系（宜昌专项）
+
+本项目处理两类数据源，坐标转换模块需灵活处理：
+
+| 数据源 | 典型 CRS | 转换路径 |
+|--------|----------|----------|
+| 社交媒体原文 | GCJ-02（火星坐标） | GCJ-02 → WGS84 → CGCS2000 |
+| 规划矢量数据 | CGCS2000 投影（EPSG:4546, CM 111E） | CGCS2000 → WGS84（地图渲染） |
+| 地图底图渲染 | **WGS84 EPSG:4326**（统一基准） | — |
+
+- 宜昌标准投影：CGCS2000 3-degree Gauss-Kruger **CM 111E (EPSG:4546)**
+- 备用投影：EPSG:4547 (CM 114E)、4548 (CM 117E) — 省内其他城市
+- 模块支持自定义 EPSG 输入，不硬编码单一投影
+
 ## 目录结构
 
 ```
@@ -31,7 +45,7 @@ emotion_map/
 ├── DATA/           # 数据层（raw/ + processed/ + boundaries/）
 ├── design/         # 设计令牌系统（tokens.json + CSS）
 ├── docs/           # 文档体系（prd/spec/architecture/decisions/todo/dev-notes）
-├── .claude/        # Claude Code 配置（agents/skills/memory/settings）
+├── .claude/        # Claude Code Harness（agents/skills/memory/settings/commands/hooks）
 └── memories/repo/  # 跨机会话交接卡
 ```
 

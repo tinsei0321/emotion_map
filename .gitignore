@@ -6,3 +6,4 @@ __pycache__/
 .DS_Store
 apps/static/tianditu_*.json
 .env
+.claude/settings.local.json
