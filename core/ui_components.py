@@ -219,16 +219,15 @@ def hud_button_style_css():
     """
     BTN_SIZE = "40px"
     BTN_RADIUS = "4px"
-    BTN_BG = "rgba(41, 50, 60, 0.92)"       # Kepler inputBg
-    BTN_HOVER = "#3A404F"                     # Kepler inputBgdHover
-    BTN_COLOR = "#D3D8E0"                     # Kepler textColor
+    BTN_BG_GLASS = "rgba(41, 50, 60, 0.28)"   # 极透 — 地图可见
+    BTN_HOVER = "rgba(58, 64, 79, 0.94)"       # 鼠标悬停 — 加深
+    BTN_COLOR = "#D3D8E0"
     BTN_BORDER = "1px solid rgba(255,255,255,0.06)"
-    BTN_GAP = "4px"
     RIGHT = "12px"
 
     st.markdown(f"""
     <style>
-    /* ── 右侧工具栏按钮通用样式 ── */
+    /* ── 通用 HUD 按钮样式 ── */
     .st-key-rng button,.st-key-d button,.st-key-a button,
     .st-key-lbl button,.st-key-heat_toggle button,.st-key-s button,
     .st-key-o button,.st-key-t button,.st-key-ly button {{
@@ -236,19 +235,12 @@ def hud_button_style_css():
         border-radius:{BTN_RADIUS}!important;
         font-size:0.85rem!important;font-weight:600!important;
         padding:0!important;min-width:0!important;
-        background:{BTN_BG}!important;
+        background:{BTN_BG_GLASS}!important;
         color:{BTN_COLOR}!important;
         border:{BTN_BORDER}!important;
-        transition:background 100ms ease;
+        transition:background 120ms ease,opacity 120ms ease;
     }}
-    /* 毛玻璃效果 — 通过父容器 wrapper 实现 */
-    .st-key-rng,.st-key-d,.st-key-a,
-    .st-key-lbl,.st-key-heat_toggle,.st-key-s,
-    .st-key-o,.st-key-t,.st-key-ly {{
-        backdrop-filter:blur(8px);
-        -webkit-backdrop-filter:blur(8px);
-        border-radius:{BTN_RADIUS}!important;
-    }}
+    /* hover — 加深，清晰可辨 */
     .st-key-rng button:hover,.st-key-d button:hover,.st-key-a button:hover,
     .st-key-lbl button:hover,.st-key-heat_toggle button:hover,.st-key-s button:hover,
     .st-key-o button:hover,.st-key-t button:hover,.st-key-ly button:hover {{
@@ -256,7 +248,7 @@ def hud_button_style_css():
     }}
     /* 禁用态 */
     .st-key-o button:disabled,.st-key-t button:disabled {{
-        opacity:0.35;cursor:not-allowed;
+        opacity:0.35!important;cursor:not-allowed;
     }}
     /* ── 右侧竖排工具栏 ── */
     .st-key-rng{{position:fixed!important;top:calc(50% - 132px)!important;
@@ -279,8 +271,85 @@ def hud_button_style_css():
         left:100px!important;z-index:9000!important;}}
     .st-key-ly{{position:fixed!important;bottom:12px!important;
         left:144px!important;z-index:9000!important;}}
+
+    /* ═══ 自定义 Tooltip 系统 ═══
+       浏览器原生 title tooltip 不可定位/不可样式化。
+       用 CSS ::after + attr(data-tooltip) 创建可定位tooltip。
+       Streamlit 将 help= 写入 aria-label，JS 读取并注入 data-tooltip。
+    */
+    .st-key-rng button,.st-key-d button,.st-key-a button,
+    .st-key-lbl button,.st-key-heat_toggle button,.st-key-s button,
+    .st-key-o button,.st-key-t button,.st-key-ly button {{
+        position:relative!important;
+    }}
+    /* 右侧按钮 — tooltip 向左 */
+    .st-key-rng button::after,.st-key-d button::after,
+    .st-key-a button::after,.st-key-heat_toggle button::after {{
+        content:attr(data-tooltip);
+        position:absolute;right:calc(100% + 8px);top:50%;
+        transform:translateY(-50%);
+        background:rgba(36,39,48,0.95);color:#D3D8E0;
+        padding:4px 10px;border-radius:4px;
+        font-size:0.75rem;font-weight:400;
+        white-space:nowrap;pointer-events:none;
+        opacity:0;transition:opacity 150ms ease;
+        z-index:99999;
+    }}
+    /* 底部按钮 — tooltip 向上 */
+    .st-key-lbl button::after,.st-key-o button::after,
+    .st-key-t button::after,.st-key-ly button::after {{
+        content:attr(data-tooltip);
+        position:absolute;bottom:calc(100% + 6px);left:50%;
+        transform:translateX(-50%);
+        background:rgba(36,39,48,0.95);color:#D3D8E0;
+        padding:4px 10px;border-radius:4px;
+        font-size:0.75rem;font-weight:400;
+        white-space:nowrap;pointer-events:none;
+        opacity:0;transition:opacity 150ms ease;
+        z-index:99999;
+    }}
+    /* 左上角 — tooltip 向下 */
+    .st-key-s button::after {{
+        content:attr(data-tooltip);
+        position:absolute;top:calc(100% + 6px);left:50%;
+        transform:translateX(-50%);
+        background:rgba(36,39,48,0.95);color:#D3D8E0;
+        padding:4px 10px;border-radius:4px;
+        font-size:0.75rem;font-weight:400;
+        white-space:nowrap;pointer-events:none;
+        opacity:0;transition:opacity 150ms ease;
+        z-index:99999;
+    }}
+    /* hover 显示 tooltip */
+    .st-key-rng button:hover::after,.st-key-d button:hover::after,
+    .st-key-a button:hover::after,.st-key-lbl button:hover::after,
+    .st-key-heat_toggle button:hover::after,.st-key-s button:hover::after,
+    .st-key-o button:hover::after,.st-key-t button:hover::after,
+    .st-key-ly button:hover::after {{
+        opacity:1;
+    }}
     </style>
     """, unsafe_allow_html=True)
+
+    # ── JS: 将 aria-label 内容注入到 data-tooltip 属性 ──
+    # Streamlit 把 help= 写入按钮的 aria-label，原生 title tooltip 不可样式化。
+    # 此 JS 读取 aria-label → 写入 data-tooltip → CSS ::after 显示可定位 tooltip。
+    components.html("""
+    <script>
+    (function(){
+        var btns=parent.document.querySelectorAll(
+            '[data-testid=\"stAppViewContainer\"] button'
+        );
+        btns.forEach(function(b){
+            var label=b.getAttribute('aria-label')||'';
+            if(label&&!b.getAttribute('data-tooltip')){
+                b.setAttribute('data-tooltip',label);
+                b.removeAttribute('title'); // suppress native tooltip
+            }
+        });
+    })();
+    </script>
+    """, height=0, width=0)
 
 
 @track("MOD_UI.F_004", track_args=False)
