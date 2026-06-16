@@ -1,0 +1,44 @@
+- generic [ref=e8]:
+  - generic:
+    - iframe
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic: 宜昌市情绪地图 v1.0
+  - button "R" [ref=e14] [cursor=pointer]:
+    - paragraph [ref=e18]: R
+  - button "LY" [ref=e24] [cursor=pointer]:
+    - paragraph [ref=e28]: LY
+  - button "A" [disabled] [ref=e34]:
+    - paragraph [ref=e38]: A
+  - button "OV" [disabled] [ref=e44]:
+    - paragraph [ref=e48]: OV
+  - button "TB" [disabled] [ref=e54]:
+    - paragraph [ref=e58]: TB
+  - button "Import" [ref=e64] [cursor=pointer]:
+    - paragraph [ref=e68]: Import
+  - button "Export" [disabled] [ref=e74]:
+    - paragraph [ref=e78]: Export
+  - button "M" [ref=e84] [cursor=pointer]:
+    - paragraph [ref=e88]: M
+  - button "H" [ref=e94] [cursor=pointer]:
+    - paragraph [ref=e98]: H
+  - generic [ref=e101]:
+    - button "Fullscreen" [ref=e106] [cursor=pointer]:
+      - img [ref=e107]
+    - generic [ref=e114]:
+      - generic [ref=e116]:
+        - region "Map" [ref=e117]
+        - list [ref=e119]:
+          - text: ©
+          - link "CARTO" [ref=e120] [cursor=pointer]:
+            - /url: https://carto.com/about-carto/
+          - text: ", ©"
+          - link "OpenStreetMap" [ref=e121] [cursor=pointer]:
+            - /url: http://www.openstreetmap.org/about/
+          - text: contributors
+      - generic [ref=e124]:
+        - button "Zoom In" [ref=e125] [cursor=pointer]
+        - button "Zoom Out" [ref=e127] [cursor=pointer]
