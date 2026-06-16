@@ -1493,16 +1493,37 @@ def main():
         show_toast(pending)
 
     # ── 统一渲染点（始终同一代码位置 → Streamlit 保持 Deck.gl 状态 → 视角不丢失）──
+    # deck.gl tooltip 模板：{列名} 被替换为行数据中的纯文本值，HTML 标签在模板中硬编码
+    # 注意：deck.gl 对 {列名} 替换后的值做 textContent 插入（安全转义），
+    # 所以 HTML 标签必须先写到模板里，不能放在数据列中。
     deck.tooltip = {
-        'html': '<b>{tooltip}</b>',
+        'html': (
+            '<div style="margin-bottom:4px;">'
+            '<b style="font-size:13px;color:#e8e8e8;">{tt_id}</b>'
+            '<span style="color:#aaa;margin-left:6px;">{tt_score}</span>'
+            '</div>'
+            '<div style="font-size:12px;color:#c8ccd2;line-height:1.5;margin-bottom:4px;'
+            'padding:4px 6px;background:rgba(255,255,255,0.05);border-radius:3px;">'
+            '{tt_text}</div>'
+            '<div style="font-size:11px;color:#aaa;margin-bottom:2px;">'
+            '{tt_location}</div>'
+            '<div style="font-size:11px;margin-bottom:2px;display:flex;align-items:center;gap:5px;">'
+            '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;'
+            'background:{tt_color};"></span>'
+            '<span style="font-weight:600;color:#e0e0e0;">{tt_polarity}</span>'
+            '<span style="color:#ccc;">{tt_emotion}</span>'
+            '</div>'
+            '<div style="font-size:10px;color:#7eb8da;">{tt_category}</div>'
+            '<div style="font-size:10px;color:#666;margin-top:1px;">{tt_keywords}</div>'
+        ),
         'style': {
-            'backgroundColor': 'rgba(20,20,40,0.92)',
-            'color': '#e0e0e0',
-            'borderRadius': '6px',
-            'padding': '8px 12px',
+            'backgroundColor': 'rgba(20,22,32,0.95)',
+            'color': '#ccc',
+            'borderRadius': '8px',
+            'padding': '10px 12px',
             'fontSize': '12px',
-            'maxWidth': '320px',
-            'whiteSpace': 'pre-line',
+            'maxWidth': '380px',
+            'whiteSpace': 'normal',
         },
     }
     st.pydeck_chart(deck, use_container_width=True,

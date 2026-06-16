@@ -147,26 +147,23 @@ def add_point_layer(deck, lats, lons, scores, props_list=None,
             lat += rng.uniform(-0.0003, 0.0003)
             lon += rng.uniform(-0.0003, 0.0003)
 
-        # Tooltip 信息
-        tooltip_text = ''
-        if props_list and i < len(props_list):
-            p = props_list[i]
-            props = p.get('properties', p)
-            parts = []
-            for key in ['id_e', 'polarity', 'score', 'relevance_category',
-                        'primary_emotion', 'location_mentioned', 'ai_summary',
-                        'comments', 'poi']:
-                val = props.get(key, '')
-                if val:
-                    parts.append(f'{key}: {val}')
-            tooltip_text = '\n'.join(parts)
+        # Tooltip 纯文本字段
+        tip = _extract_tooltip_fields(props_list, i)
 
         records.append({
             'lat': lat, 'lon': lon,
             'polarity': polarity,
             'color_r': color[0], 'color_g': color[1], 'color_b': color[2],
             'radius': radius,
-            'tooltip': tooltip_text or f'点 {i}',
+            'tt_id': tip['tt_id'],
+            'tt_score': tip['tt_score'],
+            'tt_text': tip['tt_text'],
+            'tt_location': tip['tt_location'],
+            'tt_polarity': tip['tt_polarity'],
+            'tt_emotion': tip['tt_emotion'],
+            'tt_category': tip['tt_category'],
+            'tt_keywords': tip['tt_keywords'],
+            'tt_color': tip['tt_color'],
         })
 
     df = pd.DataFrame(records)
@@ -438,6 +435,91 @@ def add_selection_marker(deck, lat, lon, radius=150, color=None):
     )
     deck.layers.append(inner)
     return deck
+
+
+def _extract_tooltip_fields(props_list, i):
+    """从数据行提取 tooltip 纯文本字段（不含 HTML 标签）。
+
+    返回 dict：各字段均为纯文本，空值对应空字符串。
+    HTML 结构由 Deck tooltip 模板负责，此处只提供干净数据。
+    """
+    empty = {
+        'tt_id': '', 'tt_score': '', 'tt_text': '', 'tt_location': '',
+        'tt_polarity': '', 'tt_emotion': '', 'tt_category': '',
+        'tt_keywords': '', 'tt_color': '#888',
+    }
+    if not props_list or i >= len(props_list):
+        return empty
+
+    p = props_list[i]
+    props = p.get('properties', p)
+
+    def _s(v, default=''):
+        """安全取字符串值。"""
+        if v is None:
+            return default
+        return str(v).strip()
+
+    fields = {}
+
+    # ID + 来源 + 分数
+    id_e = _s(props.get('id_e', ''))
+    source = _s(props.get('source', ''))
+    score_val = props.get('score', None)
+    header_parts = [id_e] if id_e else []
+    if source:
+        header_parts.append(f'| {source}')
+    fields['tt_id'] = ' '.join(header_parts) if header_parts else ''
+    fields['tt_score'] = f'{float(score_val):.2f}' if score_val is not None else ''
+
+    # 评论文本（截断）
+    text = _s(props.get('text', '') or props.get('comments', ''))
+    if len(text) > 120:
+        text = text[:120] + '...'
+    fields['tt_text'] = text
+
+    # 地点 / POI
+    loc_parts = []
+    for key in ['location_mentioned', 'spatial_hotspot']:
+        v = _s(props.get(key, ''))
+        if v:
+            loc_parts.append(v)
+    spatial_type = _s(props.get('spatial_type', ''))
+    loc_line = ' | '.join(loc_parts)
+    if spatial_type:
+        loc_line += f' [{spatial_type}]'
+    fields['tt_location'] = loc_line
+
+    # 极性（含色标用于模板中生成圆点）
+    polarity = _s(props.get('polarity', ''))
+    pol_hex = {
+        'Very Positive': '#78dc32', 'Positive': '#5dade2',
+        'Neutral': '#ffd740', 'Negative': '#c4956a',
+        'Very Negative': '#b92d2d',
+    }
+    fields['tt_polarity'] = polarity
+    fields['tt_color'] = pol_hex.get(polarity, '#888')
+
+    # 情绪 + 强度
+    emotion = _s(props.get('primary_emotion', ''))
+    intensity = props.get('emotion_intensity', '')
+    emo_parts = []
+    if emotion:
+        emo_parts.append(emotion)
+    if intensity:
+        emo_parts.append(f'I{intensity}/5')
+    fields['tt_emotion'] = ' '.join(emo_parts)
+
+    # 城市要素类别
+    fields['tt_category'] = _s(props.get('relevance_category', ''))
+
+    # 关键词
+    keywords = _s(props.get('keywords', ''))
+    if len(keywords) > 60:
+        keywords = keywords[:60] + '...'
+    fields['tt_keywords'] = keywords
+
+    return fields
 
 
 def _get_polarity(props_list, i, score):
