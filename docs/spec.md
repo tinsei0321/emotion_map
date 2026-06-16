@@ -364,7 +364,7 @@ _PROJECT_ROOT/
 - **Python**：PEP 8（4 空格缩进，120 字符行宽）
 - **导入顺序**：标准库 → 第三方库 → 本地模块
 - **文档字符串**：Google style（`Args:` / `Returns:` / `Raises:`）
-- **类型注解**：公开函数建议添加（Python 3.10+ 语法）
+- **类型注解**：公开函数建议添加（Python 3.14+ 语法）
 - **私有函数**：`_` 前缀（如 `_build_text_for_classification`）
 
 ### 8.3 文件组织

@@ -22,7 +22,7 @@
 > **v1.0 → v2.0 变化**：
 > - 🐛 Debugger 并入 Developer — Developer 现在同时具备开发和诊断能力
 > - 👁 Design Reviewer 并入 Designer — Designer 交付前通过自审清单自行把关
-> - 📋 PM 不再作为独立 Agent — Claude Code 主线程承担编排角色
+> - 📋 PM 不再作为独立 Agent — Claude Code 主线程承担编排角色；`pm.agent.md` 保留在 `.claude/agents/` 目录作为行为指南参考，未注册到 Agent 列表
 > - 🔄 从手动 `@agent` 切换 → Claude 自动编排
 
 ## 自动编排流程

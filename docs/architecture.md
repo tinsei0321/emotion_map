@@ -224,9 +224,9 @@ graph LR
 
 ```mermaid
 flowchart LR
-    L0["L0 原始爬取<br/>DATA/raw/<br/>13 列 | GCJ-02"] -->|"data_governance.py<br/>坐标转换 + 脱敏"| L1["L1 数据治理<br/>DATA/processed/<br/>20 列 | WGS84 规范"]
+    L0["L0 原始爬取<br/>DATA/raw/<br/>13 列 | GCJ-02"] -->|"data_governance.py<br/>坐标转换 + 脱敏"| L1["L1 数据治理<br/>DATA/processed/<br/>26 列 | WGS84 规范"]
     L1 -->|"范围过滤<br/>buffer 100m → Polygon"| L1F["L1 过滤后<br/>in_scope=True"]
-    L1F -->|"run_analysis_task()<br/>SnowNLP (text 列)"| L2["L2 情绪分析<br/>DATA/processed/<br/>24 列 | +score/polarity..."]
+    L1F -->|"run_analysis_task()<br/>SnowNLP (text 列)"| L2["L2 情绪分析<br/>DATA/processed/<br/>29 列 | +score/polarity..."]
     L2 -->|"LLM API<br/>(预留)"| L3["L3 语义增强<br/>+category/intensity..."]
     L3 -->|"语料库 + LLM<br/>(预留)"| L4["L4 多维归因<br/>+attributions/suggestions"]
 ```
