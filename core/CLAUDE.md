@@ -15,7 +15,7 @@
 | `data_loader.py` | 统一数据加载入口 | 中 |
 | `export.py` | CSV/GeoJSON 导出 | 中 |
 | `coord_transform.py` | GCJ-02↔WGS84 数学转换 | 中 |
-| `map_engine.py` | Folium 底图 + 标记 + 热力 + 边界 | 中 |
+| `map_engine.py` | pydeck 底图 + 标记 + 热力 + 边界 | 中 |
 | `range_selector.py` | 范围 Shapefile 加载 + CRS 检测 | 中 |
 | `ui_components.py` | Streamlit 可复用 UI 组件 | 低（UI 调整） |
 
@@ -48,7 +48,7 @@
                WGS84 (EPSG:4326) ← 统一中转基准
                         ↓
               按需投影 → CGCS2000 EPSG:4546 (宜昌 CM 111E)
-                        → 或保持 WGS84 用于 Folium 地图渲染
+                        → 或保持 WGS84 用于 pydeck 地图渲染
 ```
 
 ### 宜昌标准

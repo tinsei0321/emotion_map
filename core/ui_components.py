@@ -759,6 +759,57 @@ def show_toast(message: str, duration_ms: int = 2000):
     st.toast(message, icon=":material/info:")
 
 
+# ═══════════════════════════════════════════════════════════
+# 点击详情面板
+# ═══════════════════════════════════════════════════════════
+
+@track("MOD_UI.F_014", track_args=False)
+def render_point_detail_overlay(point_data: dict):
+    """渲染地图右下角浮动详情卡片（CSS position:fixed 浮在地图上方）。"""
+    if not point_data:
+        return
+
+    import streamlit.components.v1 as components
+
+    pol = point_data.get('tt_polarity', '—')
+    score = point_data.get('tt_score', '—')
+    text = point_data.get('tt_text', '')[:200]
+    location = point_data.get('tt_location', '')
+    emotion = point_data.get('tt_emotion', '')
+    category = point_data.get('tt_category', '')
+    keywords = point_data.get('tt_keywords', '')
+    pol_color = point_data.get('tt_color', '#888')
+    point_id = point_data.get('tt_id', '')
+
+    loc_html = f'<div style="color:#737373;font-size:11px;margin:2px 0;">{location}</div>' if location else ''
+    emo_html = f'<span style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-size:11px;margin-right:4px;">{emotion}</span>' if emotion else ''
+    cat_html = f'<span style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-size:11px;">{category}</span>' if category else ''
+
+    html = f"""
+    <div id="emotion-detail-card" style="
+        position:fixed; bottom:80px; right:16px; z-index:10000;
+        background:#fff; border:1px solid #e5e5e5; border-radius:6px;
+        box-shadow:0 4px 12px rgba(0,0,0,0.15);
+        padding:16px; width:300px; max-height:400px; overflow-y:auto;
+        font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    ">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <span style="display:inline-block;background:{pol_color};color:#fff;
+                padding:3px 10px;border-radius:4px;font-weight:600;font-size:13px;">{pol}</span>
+            <span style="font-size:18px;font-weight:700;color:#171717;">{score}</span>
+        </div>
+        {loc_html}
+        <div style="margin:8px 0;font-size:13px;color:#525252;">{emo_html}{cat_html}</div>
+        <div style="font-size:13px;line-height:1.5;color:#171717;margin:6px 0;">{text}</div>
+        <div style="font-size:11px;color:#a3a3a3;margin-top:4px;">{keywords}</div>
+        <div style="font-size:10px;color:#d4d4d4;margin-top:8px;">{point_id}</div>
+        <button onclick="document.getElementById('emotion-detail-card').remove()"
+            style="position:absolute;top:8px;right:8px;background:none;border:none;
+            font-size:16px;cursor:pointer;color:#a3a3a3;line-height:1;">x</button>
+    </div>
+    """
+    components.html(html, height=0)
+
 
 # ── 追踪 ID 注册表 ──
 register_track_id("MOD_UI.F_001", "注入 Design Token CSS 变量")
@@ -774,3 +825,4 @@ register_track_id("MOD_UI.F_008", "渲染极性分布图表")
 register_track_id("MOD_UI.F_009", "渲染空状态引导页")
 register_track_id("MOD_UI.F_010", "渲染左上角数据信息面板")
 register_track_id("MOD_UI.F_011", "渲染居中 Toast 通知")
+register_track_id("MOD_UI.F_014", "渲染地图点详情浮动卡片")

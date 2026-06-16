@@ -49,13 +49,30 @@
 
 ### 何时走 SOP
 
-以下情况自动走**完整 SOP**（Developer → Reviewer → Tester）：
+以下情况自动走 SOP，但按风险等级区分流程深度：
+
+#### SOP 风险分级（v2.1 | 2026-06-16）
+
+| 等级 | 触发条件 | 流程 | 示例 |
+|------|----------|------|------|
+| **轻量** | 仅 UI/CSS/文案修改、单文件格式调整、注释修改 | Developer 直出 + Reviewer 快速扫（不 spawn Tester） | 改按钮颜色、调间距、修拼写 |
+| **标准** | 涉及 2+ 文件、I/O 操作、函数签名修改 | Developer → Reviewer → Tester | 新增 API 端点、修改数据加载逻辑 |
+| **严格** | 控制流修改（if/else/loop/try-except）、核心管道、追踪基础设施 | Developer → Reviewer → Tester → Reviewer 复审 | 修改 data_governance.py、tracker.py、分析算法 |
+
+**严格模式附加要求：**
+- 必须通过 `python -m pytest tests/ -q` 全部测试
+- 必须验证端到端管道（L0→L1→L2）不退化
+- 追踪 ID 变更必须在 PR 描述中列出
+
+#### 触发条件详情
+
+以下情况自动走**标准 SOP** 或以上：
 - 新增或删除函数 / 类
 - 修改函数签名（参数 / 返回值）
-- **任何控制流逻辑修改（if/else/for/while/try-except）**
+- **任何控制流逻辑修改（if/else/for/while/try-except）** → 严格
 - 涉及 I/O 操作（文件读写 / API 调用）
 - 涉及 2 个及以上文件
-- 修改 `core/tracker.py` 或追踪基础设施
+- 修改 `core/tracker.py` 或追踪基础设施 → 严格
 
 ### 何时跳过（直接 Developer 执行）
 

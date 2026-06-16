@@ -11,7 +11,7 @@
 - **语言**：Python 3.14.5
 - **前端**：Streamlit 1.58.0（端口 8501，`?page=` 路由）
 - **情感分析**：SnowNLP + jieba 分词
-- **空间分析**：Shapely + pyproj（EPSG:4546），Folium + 天地图瓦片
+- **空间分析**：Shapely + pyproj（EPSG:4546），pydeck GPU 渲染 + 天地图瓦片
 - **数据采集**：Scrapy 2.16
 - **LLM**：DeepSeek API (deepseek-chat)，火山引擎 API，讯飞 API
 - **包管理**：pip + requirements.txt

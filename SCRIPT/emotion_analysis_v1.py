@@ -526,27 +526,118 @@ target_type 分类说明：
 
     def _call_api(self, text: str) -> dict:
         """
-        调用 LLM API（待实现）。
+        调用 DeepSeek API 进行情绪分析。
 
-        预期接入方式示例：
-            import requests
-            resp = requests.post(
-                self.api_url,
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                json={"model": self.model, "messages": [
-                    {"role": "user", "content": self._build_prompt(text)}
-                ]}
-            )
-            return resp.json()["choices"][0]["message"]["content"]
+        支持 DeepSeek 兼容 API（deepseek-chat / deepseek-reasoner），
+        也兼容其他 OpenAI 风格的 API 端点（Qwen / GLM 等）。
+
+        返回: LLM 响应的 JSON dict
+        异常: 网络错误/API 错误/JSON 解析错误均会抛出
         """
-        raise NotImplementedError(
-            f'LLM API 未接入。\n'
-            f'当前模型: {self.model}\n'
-            f'推荐接入: DeepSeek-V3 / Qwen-Max / GLM-4 / ERNIE 4.0\n'
-            f'预期输入: text="{text[:50]}..."\n'
-            f'预期输出: {{"score":0.8, "polarity":"Positive", '
-            f'"category":"喜悦", "intensity":0.7, "target_type":"服务", ...}}'
-        )
+        import requests
+
+        if not self.api_key:
+            raise ValueError(
+                'LLM API Key 未配置。\n'
+                '设置环境变量 DEEPSEEK_API_KEY 或传入 api_key 参数。\n'
+                '获取 Key: https://platform.deepseek.com/api_keys'
+            )
+
+        api_url = self.api_url or 'https://api.deepseek.com/v1/chat/completions'
+
+        payload = {
+            'model': self.model,
+            'messages': [
+                {'role': 'system', 'content': '你是一个专业的文本情绪分析系统。始终输出严格的 JSON 格式，不要包含任何 markdown 标记。'},
+                {'role': 'user', 'content': self._build_prompt(text)},
+            ],
+            'temperature': 0.1,
+            'max_tokens': 500,
+            'stream': False,
+        }
+
+        headers = {
+            'Authorization': f'Bearer {self.api_key}',
+            'Content-Type': 'application/json',
+        }
+
+        max_retries = 3
+        last_error = None
+
+        for attempt in range(max_retries):
+            try:
+                resp = requests.post(
+                    api_url,
+                    json=payload,
+                    headers=headers,
+                    timeout=(10, 60),  # (connect, read)
+                )
+
+                if resp.status_code == 200:
+                    body = resp.json()
+                    content = body['choices'][0]['message']['content']
+
+                    # 剥离可能的 markdown 代码块标记
+                    content = content.strip()
+                    if content.startswith('```'):
+                        # 移除 ```json 或 ``` 开头
+                        content = re.sub(r'^```(?:json)?\s*', '', content)
+                        content = re.sub(r'\s*```$', '', content)
+
+                    try:
+                        return json.loads(content)
+                    except json.JSONDecodeError:
+                        # 尝试从文本中提取 JSON 对象
+                        match = re.search(r'\{[^}]+\}', content, re.DOTALL)
+                        if match:
+                            return json.loads(match.group())
+                        raise
+
+                elif resp.status_code == 429:
+                    # Rate limit — 指数退避
+                    wait = 2 ** attempt
+                    safe_print(f'[WARN] API 限流 (429)，{wait}s 后重试...')
+                    import time
+                    time.sleep(wait)
+                    last_error = f'HTTP 429: rate limited after {max_retries} retries'
+
+                elif resp.status_code == 401:
+                    raise ValueError(
+                        f'API Key 无效 (401)。请检查 DEEPSEEK_API_KEY 是否正确。\n'
+                        f'当前 Key: {self.api_key[:8]}...{self.api_key[-4:]}'
+                    )
+
+                elif resp.status_code == 402:
+                    raise ValueError(
+                        'API 余额不足 (402)。请充值后重试。\n'
+                        'https://platform.deepseek.com/top_up'
+                    )
+
+                else:
+                    last_error = f'HTTP {resp.status_code}: {resp.text[:200]}'
+                    if attempt < max_retries - 1:
+                        import time
+                        time.sleep(2 ** attempt)
+
+            except requests.exceptions.Timeout:
+                last_error = f'API 请求超时 (attempt {attempt + 1}/{max_retries})'
+                if attempt < max_retries - 1:
+                    safe_print(f'[WARN] {last_error}，重试中...')
+            except requests.exceptions.ConnectionError:
+                last_error = '无法连接到 API 服务器，请检查网络'
+                break  # 网络错误不重试
+            except ValueError:
+                raise  # 认证/配额错误直接抛出
+            except json.JSONDecodeError as e:
+                last_error = f'JSON 解析失败: {e}'
+                break  # JSON 解析错误不重试
+            except Exception as e:
+                last_error = f'API 调用异常: {str(e)[:200]}'
+                if attempt < max_retries - 1:
+                    import time
+                    time.sleep(2 ** attempt)
+
+        raise RuntimeError(f'LLM API 调用失败 ({max_retries} 次重试后): {last_error}')
 
     def _parse_response(self, raw: dict) -> EmotionResult:
         """
@@ -608,6 +699,100 @@ target_type 分类说明：
             'supports_category': True,
             'supports_intensity': True,
             'supports_target': True,
+            'supports_attribution': False,
+            'supports_confidence': True,
+        }
+# ═══════════════════════════════════════════════════════════
+# 五-B、DeepSeek L2 引擎 — 用 LLM 替代 SnowNLP 做精确评分
+# ═══════════════════════════════════════════════════════════
+
+class DeepSeekL2Analyzer(LLMAnalyzer):
+    """
+    【L2+】基于 DeepSeek API 的基础情绪分析引擎。
+
+    与 SnowNLP 定位相同（L2 基础评分），但准确率显著提升：
+      - 理解中文口语/网络用语/方言表达
+      - 上下文感知（不是简单词袋模型）
+      - 输出 score + polarity + keywords + confidence
+
+    使用方式:
+        engine = DeepSeekL2Analyzer(api_key='sk-xxx')
+        result = engine.analyze_single('这个公园太美了！')
+
+    成本估算: 每条约 200 tokens 输出，DeepSeek-V3 约 0.001 元/条。
+    批量分析时建议控制并发数，避免触发 API 限流。
+    """
+
+    def __init__(self, api_key: str = '', model: str = 'deepseek-chat'):
+        super().__init__(api_key=api_key, model=model)
+
+    @property
+    def name(self) -> str:
+        return f'DeepSeek-L2-{self.model}'
+
+    @property
+    def version(self) -> str:
+        return '1.0.0-L2'
+
+    @property
+    def phase(self) -> str:
+        return 'L2'
+
+    def _build_prompt(self, text: str) -> str:
+        """L2 简化版 prompt — 只输出 score/polarity/keywords/confidence。"""
+        return f"""你是一个专业的文本情绪分析系统，面向城市规划与城市治理场景。
+请分析以下文本的情绪，输出严格 JSON 格式（不要包含 markdown 代码块标记）：
+
+{{
+    "score": 0.0~1.0之间的浮点数（综合情绪得分，0=极端负面，1=极端正面）,
+    "polarity": "Very Negative" / "Negative" / "Neutral" / "Positive" / "Very Positive",
+    "keywords": ["关键词1", "关键词2", "关键词3"],
+    "confidence": 0.0~1.0之间的浮点数（你对本次分析的置信度）
+}}
+
+评分参考：
+- 0.0-0.2: 严重投诉/安全隐患/极度不满
+- 0.2-0.4: 一般不满/吐槽/抱怨
+- 0.4-0.6: 中性陈述/无明显情感
+- 0.6-0.8: 一般满意/认可/正面评价
+- 0.8-1.0: 非常满意/自发推荐/高度赞扬
+
+待分析文本：
+"{text}"
+"""
+
+    def _parse_response(self, raw: dict) -> EmotionResult:
+        """解析 L2 简化响应。"""
+        score = float(raw.get('score', 0.5))
+        polarity = raw.get('polarity', _score_to_polarity(score))
+        valid_polarities = {'Very Negative', 'Negative', 'Neutral',
+                           'Positive', 'Very Positive'}
+        if polarity not in valid_polarities:
+            polarity = _score_to_polarity(score)
+
+        keywords = raw.get('keywords', [])
+        if isinstance(keywords, str):
+            keywords = [k.strip() for k in keywords.split(',') if k.strip()]
+        confidence = float(raw.get('confidence', 0.8))
+
+        return EmotionResult(
+            phase='L2',
+            score=score,
+            polarity=polarity,
+            keywords=keywords,
+            confidence=round(confidence, 2),
+        )
+
+    def get_capabilities(self) -> dict:
+        return {
+            'name': self.name,
+            'version': self.version,
+            'phase': self.phase,
+            'supports_batch': True,
+            'supports_keywords': True,
+            'supports_category': False,
+            'supports_intensity': False,
+            'supports_target': False,
             'supports_attribution': False,
             'supports_confidence': True,
         }
@@ -813,6 +998,7 @@ def create_analyzer(engine: str = 'snownlp', **kwargs) -> AnalyzerBase:
     """
     engines = {
         'snownlp': SnowNLPAnalyzer,
+        'deepseek-l2': DeepSeekL2Analyzer,
         'llm': LLMAnalyzer,
         'corpus': CorpusAnalyzer,
     }
@@ -820,14 +1006,16 @@ def create_analyzer(engine: str = 'snownlp', **kwargs) -> AnalyzerBase:
     if cls is None:
         raise ValueError(
             f'未知引擎: {engine}。可用: {list(engines.keys())}\n'
-            f'  snownlp → L2 基础情绪分析\n'
-            f'  llm     → L3 语义增强分析\n'
-            f'  corpus  → L4 多维归因分析'
+            f'  snownlp     → L2 基础情绪分析（离线，免费）\n'
+            f'  deepseek-l2 → L2 精确情绪分析（DeepSeek API，约0.001元/条）\n'
+            f'  llm         → L3 语义增强分析\n'
+            f'  corpus      → L4 多维归因分析'
         )
 
     # 只传目标引擎接受的参数，避免 TypeError
     valid_params = {
         'snownlp': {'enable_keywords'},
+        'deepseek-l2': {'api_key', 'model'},
         'llm':     {'api_key', 'api_url', 'model'},
         'corpus':  {'corpus_path', 'api_key', 'api_url', 'model'},
     }
