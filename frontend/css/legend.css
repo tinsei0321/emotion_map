@@ -1,9 +1,9 @@
-/* ═══ Legend — floating bottom-right, geojson.io style ═══ */
+/* ═══ Legend — floating bottom-left (popup occupies bottom-right) ═══ */
 
 #legend {
   position: fixed;
   bottom: var(--geojson-spacing-3);
-  right: calc(var(--geojson-layout-panel-width) + var(--geojson-spacing-3));
+  left: 56px;                                       /* clears the nav control (~10..46) */
   z-index: 80;
   padding: var(--geojson-spacing-2) var(--geojson-spacing-3);
   background: var(--geojson-color-surface-page);
@@ -13,11 +13,6 @@
   font-size: var(--geojson-typography-size-xs);
   color: var(--geojson-color-text-secondary);
   pointer-events: none;
-  transition: right var(--geojson-transition);
-}
-/* when right panel collapsed, legend slides to screen edge */
-body.panel-collapsed #legend {
-  right: var(--geojson-spacing-3);
 }
 .legend-title {
   font-weight: var(--geojson-typography-weight-semibold);

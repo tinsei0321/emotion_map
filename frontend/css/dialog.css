@@ -101,7 +101,5 @@
   border-radius: var(--geojson-radius-xs);
   border: 1px solid var(--geojson-color-border-default);
 }
-.bm-light   { background: #f8f8f8; }
-.bm-dark    { background: #1a1a2e; }
-.bm-voyager { background: linear-gradient(135deg, #d8e4f0, #e8e0d8); }
 .bm-sat     { background: linear-gradient(135deg, #2d3a2e, #4a5d3a); }
+.bm-vec     { background: linear-gradient(135deg, #eef3f0, #dfe7e2); }

@@ -1,8 +1,15 @@
-/* ═══ Layout — geojson.io 1:1 shell ═══
-   Fixed 64px header + flex(map | right-panel).
+/* ═══ Layout — geojson.io 1:1 shell (2-tier dark header + 3-panel) ═══
+   Header = title bar (40px) + toolbar (48px) = 88px.
+   Main   = left-panel | gutter-left | map | gutter-right | right-panel.
+   Panels draggable (vars --left-w / --right-w) + collapsible (prominent mid-edge buttons).
    Tokens: single source via css/tokens.css (--geojson-*). */
 
 * { box-sizing: border-box; }
+
+:root {
+  --left-w: 0px;                          /* left panel width (0 = folded by default) */
+  --right-w: 340px;                       /* default = geojson.layout.right-panel-width; JS drag overrides */
+}
 
 html, body {
   margin: 0;
@@ -19,74 +26,118 @@ html, body {
 
 button { font-family: inherit; }
 
+/* ── Header: dark chrome, 2 tiers ── */
 #app-header {
   position: fixed;
   top: 0; left: 0; right: 0;
-  height: var(--geojson-layout-header-height);     /* 64px */
+  display: flex;
+  flex-direction: column;
+  height: var(--geojson-layout-header-height);     /* 88px */
+  z-index: 100;
+  box-shadow: var(--geojson-shadow-toolbar);
+}
+
+#title-bar {
+  height: var(--geojson-layout-title-bar-height);  /* 40px */
+  flex: 0 0 var(--geojson-layout-title-bar-height);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 var(--geojson-spacing-4);             /* 16px */
-  background: var(--geojson-color-surface-page);
+  padding: 0 var(--geojson-spacing-4);
+  background: var(--geojson-color-chrome-title-bar-bg);  /* #0c1c2e navy */
+  color: #ffffff;
   border-bottom: 1px solid var(--geojson-color-border-default);
-  box-shadow: var(--geojson-shadow-toolbar);
-  z-index: 100;
 }
-
-.header-left {
-  display: flex;
-  align-items: baseline;
-  gap: var(--geojson-spacing-2);
-}
-.brand {
+.title-text {
   font-size: var(--geojson-typography-size-base);  /* 16px */
   font-weight: var(--geojson-typography-weight-bold);
-  color: var(--geojson-color-text-primary);
-  letter-spacing: 0.01em;
-}
-.brand-version {
-  font-size: var(--geojson-typography-size-xs);
-  color: var(--geojson-color-text-tertiary);
+  letter-spacing: 0.02em;
+  color: #ffffff;
 }
 
+/* ── Main: 3-panel flex ── */
 #app-main {
   position: fixed;
   top: var(--geojson-layout-header-height);
   left: 0; right: 0; bottom: 0;
   display: flex;
+  align-items: stretch;
 }
+
+#left-panel {
+  width: var(--left-w);
+  flex: 0 0 var(--left-w);
+  display: flex;
+  flex-direction: column;
+  background: var(--geojson-color-surface-panel);
+  border-right: 1px solid var(--geojson-color-border-default);
+  overflow: hidden;
+  transition: width var(--geojson-transition), flex-basis var(--geojson-transition);
+}
+body.dragging #left-panel,
+body.dragging #right-panel { transition: none; }
 
 #map {
   flex: 1 1 auto;
   min-width: 0;
+  position: relative;
   background: var(--geojson-color-surface-map-bg);
 }
-
 #map canvas { outline: none; }
 
-/* Right editor panel — fixed width, geojson.io style */
 #right-panel {
-  width: var(--geojson-layout-panel-width);        /* 320px */
-  flex: 0 0 var(--geojson-layout-panel-width);
+  width: var(--right-w);
+  flex: 0 0 var(--right-w);
   display: flex;
   flex-direction: column;
   background: var(--geojson-color-surface-panel);
   border-left: 1px solid var(--geojson-color-border-default);
   overflow: hidden;
-  transition: flex-basis var(--geojson-transition), width var(--geojson-transition);
-}
-#right-panel.collapsed {
-  flex-basis: 0;
-  width: 0;
-  border-left: none;
+  transition: width var(--geojson-transition), flex-basis var(--geojson-transition);
 }
 
-#panel-expand {
-  position: fixed;
-  top: calc(var(--geojson-layout-header-height) + var(--geojson-spacing-2));
-  right: var(--geojson-spacing-2);
-  z-index: 90;
+/* ── Drag gutters (col-resize hit areas) ── */
+.gutter {
+  width: var(--geojson-layout-splitter-width);     /* 8px */
+  flex: 0 0 var(--geojson-layout-splitter-width);
+  background: transparent;
+  cursor: col-resize;
+  position: relative;
+  z-index: 60;
 }
+.gutter:hover { background: rgba(0,122,252,0.10); }
+.gutter.is-hidden { display: none; }
+
+/* ── Collapse/expand handles — slender vertical pill on the panel edge
+      (geojson.io-style): dark strip, rounded on the map-facing side, flat on
+      the panel side. Chevron flips via JS to show fold/expand direction. ── */
+.collapse-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  color: #404040;
+  background: #ffffff;
+  border: 1px solid #d4d4d4;
+  cursor: pointer;
+  z-index: 76;
+  transition: background var(--geojson-transition), color var(--geojson-transition), border-color var(--geojson-transition);
+}
+.collapse-btn:hover {
+  background: var(--geojson-color-brand-primary);
+  color: #ffffff;
+  border-color: var(--geojson-color-brand-primary);
+}
+/* left handle: flat on panel side (left), rounded toward map (right) */
+.collapse-left  { left:  max(0px, calc(var(--left-w)  - 12px)); border-radius: 0 8px 8px 0; }
+/* right handle: rounded toward map (left), flat on panel side (right) */
+.collapse-right { right: max(0px, calc(var(--right-w) - 12px)); border-radius: 8px 0 0 8px; }
 
 /* Utility */
 .muted { color: var(--geojson-color-text-secondary); }

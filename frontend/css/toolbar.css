@@ -1,74 +1,71 @@
-/* ═══ Toolbar buttons — geojson.io three-tier system ═══
-   Text/icon buttons: transparent bg + gray-600 text + hover gray-100.
-   No absolute positioning — flexbox groups in header. */
+/* ═══ Toolbar — dark chrome (geojson.io 1:1) ═══
+   Left  group: draw tools (Select/Point/Line/Polygon/Rectangle/Circle/more) — 32px rounded
+                squares, bold English initials, transparent → hover overlay → active blue.
+   Right group: Import / Export (rounded-rect text, bold) + M (Change Basemap, square). */
 
-.header-tools {
+#toolbar {
+  height: var(--geojson-layout-toolbar-height);   /* 48px */
+  flex: 0 0 var(--geojson-layout-toolbar-height);
   display: flex;
   align-items: center;
-  gap: var(--geojson-spacing-3);                    /* 12px between groups */
+  justify-content: space-between;
+  padding: 0 var(--geojson-spacing-3);
+  background: var(--geojson-color-chrome-toolbar-bg);
+  border-bottom: 1px solid var(--geojson-color-chrome-border-bottom);
 }
 
-.tool-group {
+.tb-group {
   display: flex;
   align-items: center;
-  gap: var(--geojson-spacing-1);                    /* 4px within group */
-}
-.tool-group + .tool-group {
-  padding-left: var(--geojson-spacing-3);
-  border-left: 1px solid var(--geojson-color-border-default);
+  gap: var(--geojson-spacing-2);                    /* 8px */
 }
 
-/* Base text/icon button */
-.tbtn {
+/* Draw-tool icon square (S/Pt/L/Po/R/C/more) — geojson.io: dark text on light chrome, 2px radius */
+.draw-tool {
+  width: 32px;
   height: 32px;
   min-width: 32px;
-  padding: 0 var(--geojson-spacing-3);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--geojson-typography-size-sm);     /* 14px */
-  font-weight: var(--geojson-typography-weight-medium);
-  color: var(--geojson-color-gray-600);
+  font-size: 12px;
+  font-weight: var(--geojson-typography-weight-bold);
+  color: var(--geojson-color-chrome-text);          /* #404040 dark text on light bg */
   background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--geojson-radius-sm);          /* 4px */
+  border: none;
+  border-radius: var(--geojson-radius-sm);          /* 4px (geojson.io rounded) */
   cursor: pointer;
   transition: background var(--geojson-transition), color var(--geojson-transition);
 }
-.tbtn:hover {
-  background: var(--geojson-color-gray-100);
-  color: var(--geojson-color-text-primary);
+.draw-tool:hover {
+  background: var(--geojson-color-chrome-hover-overlay);
 }
-.tbtn:focus-visible {
+.draw-tool:focus-visible {
   outline: 2px solid var(--geojson-color-brand-focus);
   outline-offset: 1px;
 }
-.tbtn:disabled,
-.tbtn[aria-disabled="true"] {
-  opacity: 0.5;
-  cursor: not-allowed;
+/* Active / pressed tool — stays lit blue (geojson.io active) */
+.draw-tool[aria-pressed="true"] {
+  background: var(--geojson-color-chrome-active-fill);
 }
-.tbtn[aria-pressed="true"] {
-  background: var(--geojson-color-gray-100);
-  color: var(--geojson-color-brand-primary);
-}
+.draw-more { font-size: 10px; }
 
-.tbtn-icon {
-  width: 32px;
-  min-width: 32px;
-  padding: 0;
-  font-weight: var(--geojson-typography-weight-bold);
-}
-
-#panel-expand {
+/* Import / Export — rounded-rect text buttons, height = square side (32px) */
+.tb-text {
   height: 32px;
-  width: 24px;
-  padding: 0;
-  font-size: var(--geojson-typography-size-sm);
-  color: var(--geojson-color-gray-600);
-  background: var(--geojson-color-surface-panel);
-  border: 1px solid var(--geojson-color-border-default);
-  border-radius: var(--geojson-radius-sm);
+  padding: 0 var(--geojson-spacing-3);              /* 12px */
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--geojson-typography-size-sm);     /* 14px */
+  font-weight: var(--geojson-typography-weight-bold);
+  color: var(--geojson-color-chrome-text);          /* dark text on light chrome */
+  background: transparent;
+  border: none;
+  border-radius: var(--geojson-radius-md);          /* 6px (geojson.io action buttons) */
   cursor: pointer;
+  transition: background var(--geojson-transition);
 }
-#panel-expand:hover { background: var(--geojson-color-gray-100); }
+.tb-text:hover { background: var(--geojson-color-chrome-hover-overlay); }
+
+/* M (Change Basemap) — reuses .draw-tool square look */
+.tb-m { /* inherits .draw-tool */ }

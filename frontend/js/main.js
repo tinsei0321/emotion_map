@@ -1,45 +1,59 @@
-// ═══ main.js — entry: wire map + layers + panel + toolbar ═══
-import { initMap, addEmotionPoints, setBasemap, setHeatmap } from './map.js';
-import { initPanel, setOverview, fillDetail } from './panel.js';
-import { initToolbar } from './toolbar.js';
-import { samplePoints, polarityStats } from './state.js';
+// ═══ main.js — entry: wire map + sidebar + panel + toolbar + popup ═══
+import { initMap, addEmotionPoints, setBasemap } from './map.js';
+import { initPanel, setInfoCard, setOverview, setTable } from './panel.js';
+import { initToolbar, setActiveBasemap } from './toolbar.js';
+import { initSidebar, openImport } from './sidebar.js';
+import { initPopup, showPopup } from './popup.js';
+import { samplePoints, polarityStats, emotionColors } from './state.js';
 
 function main() {
   // 1. Sample emotion data (Phase 1; Phase 2 → api.fetchPoints)
   const fc = samplePoints(80, 42);
   const { stats, total, scoreMean } = polarityStats(fc);
 
-  // 2. Map (single init) + points layer + click → detail card
+  // 2. Map (single init) + points layer + click → bottom-right popup
   const map = initMap('map');
+  window.__map = map;   // dev hook (query/click in console + tests)
   map.on('load', () => {
-    addEmotionPoints(fc, (feature, colors) => fillDetail(feature, colors));
+    const colors = emotionColors();
+    addEmotionPoints(fc, (feature) => showPopup(feature, colors));
   });
 
-  // 3. Right panel: overview + interactions
+  // 3. Right panel: info card + overview + table
   initPanel();
+  setInfoCard({
+    file: 'sample_points.json',
+    layers: '情绪点',
+    l1: '—',
+    l2: total,
+    total,
+  });
   setOverview({ stats, total, scoreMean });
+  setTable(fc);
 
-  // 4. Toolbar
-  initToolbar({
-    onTool: (tool) => {
-      if (tool === 'overview') activateTabById('overview');
-      else if (tool === 'analysis') activateTabById('analysis');
-      else if (tool === 'detail') activateTabById('detail');
-      else console.log('[tool]', tool, '(Phase 2+ wiring)');
+  // 4. Popup (close button)
+  initPopup();
+
+  // 5. Left sidebar (collapse/expand, drag, import→sections, section toggles)
+  initSidebar({
+    onImport: (file) => {
+      // Phase 1: just reflect the loaded file name; real parse is Phase 2
+      setInfoCard({ file: file.name, layers: '情绪点', l1: '—', l2: total, total });
+      console.log('[import] file =', file.name, '(Phase 2 parse)');
     },
-    onBasemap: (key) => setBasemap(key),
-    onHeatToggle: (on) => setHeatmap(on),
-    onExport: ({ format }) => console.log('[export]', format, '(Phase 2)'),
   });
 
-  console.log('[OK] emotion-map frontend loaded —', total, 'sample points');
-}
+  // 6. Toolbar (draw-tool placeholders, Import/Export/M, basemap switch)
+  initToolbar({
+    onTool: (tool) => console.log('[tool]', tool),
+    onImport: () => openImport(),
+    onExport: ({ format, desensitize }) =>
+      console.log('[export]', format, 'desensitize=' + desensitize, '(Phase 2)'),
+    onBasemap: (key) => setBasemap(key),
+  });
+  setActiveBasemap('tianditu-img-nolabel');
 
-function activateTabById(name) {
-  document.querySelectorAll('.ptab').forEach((t) =>
-    t.classList.toggle('is-active', t.dataset.tab === name));
-  document.querySelectorAll('.tab-pane').forEach((p) =>
-    p.classList.toggle('is-active', p.dataset.pane === name));
+  console.log('[OK] emotion-map frontend (geojson.io v2) loaded —', total, 'sample points');
 }
 
 document.addEventListener('DOMContentLoaded', main);

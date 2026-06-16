@@ -1,25 +1,9 @@
-// ═══ panel.js — right editor panel: tabs, collapse, overview, detail card ═══
+// ═══ panel.js — right panel: Overview + Table tabs (geojson.io 1:1) ═══
 import { POLARITY_ORDER, POLARITY_LABEL } from './state.js';
 
 export function initPanel() {
-  // Tab switching
   document.querySelectorAll('.ptab').forEach((tab) => {
     tab.addEventListener('click', () => activateTab(tab.dataset.tab));
-  });
-
-  // Collapse
-  const panel = document.getElementById('right-panel');
-  const collapseBtn = document.getElementById('panel-collapse');
-  const expandBtn = document.getElementById('panel-expand');
-  collapseBtn.addEventListener('click', () => {
-    panel.classList.add('collapsed');
-    expandBtn.hidden = false;
-    document.body.classList.add('panel-collapsed');
-  });
-  expandBtn.addEventListener('click', () => {
-    panel.classList.remove('collapsed');
-    expandBtn.hidden = true;
-    document.body.classList.remove('panel-collapsed');
   });
 }
 
@@ -30,7 +14,28 @@ export function activateTab(name) {
     p.classList.toggle('is-active', p.dataset.pane === name));
 }
 
-/** Fill overview tab: 5 polarity stat cells + mini bar chart + score mean. */
+function readColors() {
+  const g = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  return {
+    'Very Positive': g('--geojson-color-emotion-very-positive') || '#78DC32',
+    'Positive':      g('--geojson-color-emotion-positive')      || '#5DADE2',
+    'Neutral':       g('--geojson-color-emotion-neutral')       || '#C0C0C0',
+    'Negative':      g('--geojson-color-emotion-negative')      || '#C4956A',
+    'Very Negative': g('--geojson-color-emotion-very-negative') || '#B92D2D',
+  };
+}
+
+/** Fill Overview info card (file / layers / L1 / L2 / total). */
+export function setInfoCard({ file, layers, l1, l2, total }) {
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('ov-file', file ?? '—');
+  set('ov-layers', layers ?? '—');
+  set('ov-l1', l1 ?? '—');
+  set('ov-l2', l2 ?? '—');
+  set('ov-total', total ?? '—');
+}
+
+/** Fill Overview: 5 polarity stat cells + mini bar chart + score mean. */
 export function setOverview({ stats, total, scoreMean }) {
   const grid = document.getElementById('polarity-stats');
   const colors = readColors();
@@ -46,7 +51,6 @@ export function setOverview({ stats, total, scoreMean }) {
   }
   grid.innerHTML = html;
 
-  // mini bar chart (no Chart.js dependency in Phase 1)
   let bars = '';
   for (const pol of POLARITY_ORDER) {
     const n = stats[pol] || 0;
@@ -57,45 +61,35 @@ export function setOverview({ stats, total, scoreMean }) {
     </div>`;
   }
   const wrap = document.querySelector('.chart-wrap');
-  wrap.innerHTML = `<div class="barchart">${bars}</div>`;
+  if (wrap) wrap.innerHTML = `<div class="barchart">${bars}</div>`;
 
-  document.getElementById('score-mean').textContent = `均分 ${scoreMean.toFixed(2)}`;
-  document.getElementById('record-count').textContent = `共 ${total} 条`;
+  document.getElementById('score-mean').textContent = `均分 ${(scoreMean ?? 0).toFixed(2)}`;
 }
 
-/** Fill detail card from a clicked feature (revives SHELVED F_014). */
-export function fillDetail(feature, colors) {
-  const p = feature.properties || {};
-  const pol = p.polarity || 'Neutral';
-  document.getElementById('detail-empty').hidden = true;
-  const card = document.getElementById('detail-card');
-  card.hidden = false;
+/** Fill Table tab with features as a geojson.io-style table. */
+export function setTable(fc, maxRows = 200) {
+  const colors = readColors();
+  const tbl = document.getElementById('data-table');
+  const feats = fc.features.slice(0, maxRows);
 
-  const badge = document.getElementById('d-polarity');
-  badge.textContent = POLARITY_LABEL[pol] || pol;
-  badge.style.background = colors[pol] || colors['Neutral'];
+  const head = `<thead><tr>
+    <th>极性</th><th>分数</th><th>文本</th><th>位置</th><th>ID</th>
+  </tr></thead>`;
 
-  document.getElementById('d-score').textContent = (p.score ?? 0).toFixed(2);
-  document.getElementById('d-location').textContent = p.location ? `📍 ${p.location}` : '';
-  document.getElementById('d-text').textContent = p.text || '';
+  const body = `<tbody>${feats.map((f) => {
+    const p = f.properties || {};
+    const pol = p.polarity || 'Neutral';
+    const c = colors[pol] || colors['Neutral'];
+    const txt = (p.text || '').replace(/[<>]/g, '');
+    const loc = (p.location || '').replace(/[<>]/g, '');
+    return `<tr>
+      <td><span class="td-dot" style="background:${c}"></span>${POLARITY_LABEL[pol] || pol}</td>
+      <td>${(p.score ?? 0).toFixed(2)}</td>
+      <td>${txt}</td>
+      <td>${loc}</td>
+      <td>${p.id_e || ''}</td>
+    </tr>`;
+  }).join('')}</tbody>`;
 
-  const tags = document.getElementById('d-tags');
-  tags.innerHTML = p.category ? `<span class="detail-tag">${p.category}</span>` : '';
-
-  document.getElementById('d-keywords').textContent =
-    Array.isArray(p.keywords) && p.keywords.length ? `关键词: ${p.keywords.join('、')}` : '';
-  document.getElementById('d-id').textContent = p.id_e || '';
-
-  activateTab('detail');
-}
-
-function readColors() {
-  const g = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  return {
-    'Very Positive': g('--geojson-color-emotion-very-positive') || '#78DC32',
-    'Positive':      g('--geojson-color-emotion-positive')      || '#5DADE2',
-    'Neutral':       g('--geojson-color-emotion-neutral')       || '#C0C0C0',
-    'Negative':      g('--geojson-color-emotion-negative')      || '#C4956A',
-    'Very Negative': g('--geojson-color-emotion-very-negative') || '#B92D2D',
-  };
+  tbl.innerHTML = head + body;
 }

@@ -11,3 +11,4 @@ design/tokens.py
 design/tokens.css
 .claude/.last-session
 docs/vision-inbox/latest.md
+.playwright-mcp/

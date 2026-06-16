@@ -1,13 +1,17 @@
 // ═══ map.js — MapLibre GL JS instance + basemap switch ═══
 import { emotionColors, getTier, token } from './state.js';
 
-// Basemap styles. CartoDB GL styles via CDN; 天地图 via local MapLibre style JSON (apps/static).
+// Basemap styles — 天地图 only (CartoDB blocked in CN). 4 variants:
+//   影像 img (+ 影像注记 cia) · 常规矢量 vec (+ 矢量注记 cva), 各有 有/无注记 两版.
+// Default = 影像无注记 (tianditu-img-nolabel). All tile-based WMTS raster (reuses embedded key).
 export const BASEMAPS = {
-  'carto-light':   'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-  'carto-dark':    'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-  'carto-voyager': 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
-  'tianditu-label': '../apps/static/tianditu_label.json',
+  'tianditu-img-nolabel': '../apps/static/tianditu_img_nolabel.json',   // 影像（无注记）[默认]
+  'tianditu-img':         '../apps/static/tianditu_img.json',           // 影像（含注记）
+  'tianditu-vec-nolabel': '../apps/static/tianditu_nolabel.json',       // 常规（无注记）
+  'tianditu-vec':         '../apps/static/tianditu_label.json',         // 常规（含注记）
 };
+
+export const DEFAULT_BASEMAP = 'tianditu-img-nolabel';
 
 const YICHANG = { center: [111.286, 30.708], zoom: 12 };
 
@@ -15,21 +19,19 @@ let map = null;
 let _emotionFC = null;        // current emotion FeatureCollection (re-applied on style change)
 let _onPointClick = null;
 let _heatmapOn = false;
+let _interactionsBound = false;
 
 export function initMap(container = 'map') {
   map = new maplibregl.Map({
     container,
-    style: BASEMAPS['tianditu-label'],   // default: 天地图 (CN-accessible; CartoDB blocked in CN)
+    style: BASEMAPS[DEFAULT_BASEMAP],   // default: 天地图影像（无注记）
     center: YICHANG.center,
     zoom: YICHANG.zoom,
     attributionControl: true,
   });
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), 'bottom-left');
-
-  // After any setStyle, re-apply emotion layers (setStyle wipes sources/layers).
-  map.on('style.load', () => {
-    if (_emotionFC) applyEmotionLayers();
-  });
+  // Emotion layers survive basemap switches via setBasemap's transformStyle (declarative carry-over,
+  // no wipe → no re-add timing race). Click/hover handlers are bound once and key off the stable layer id.
   return map;
 }
 
@@ -37,9 +39,22 @@ export function getMap() { return map; }
 
 export function setBasemap(key) {
   if (!map || !BASEMAPS[key]) return;
-  // Re-apply emotion layers after the new style loads (setStyle wipes sources/layers).
-  map.once('style.load', () => { if (_emotionFC) applyEmotionLayers(); });
-  map.setStyle(BASEMAPS[key]);
+  // transformStyle carries our emotion-* sources/layers into the new style so they aren't wiped
+  // by setStyle (the reliable cross-version pattern; avoids style.load/styledata timing races).
+  map.setStyle(BASEMAPS[key], {
+    transformStyle: (previousStyle, nextStyle) => {
+      const carrySources = {};
+      for (const [id, spec] of Object.entries(previousStyle?.sources || {})) {
+        if (id.startsWith('emotion-')) carrySources[id] = spec;
+      }
+      const carryLayers = (previousStyle?.layers || []).filter((l) => l.id.startsWith('emotion-'));
+      return {
+        ...nextStyle,
+        sources: { ...(nextStyle.sources || {}), ...carrySources },
+        layers: [...(nextStyle.layers || []), ...carryLayers],
+      };
+    },
+  });
 }
 
 /** Add emotion points + selection halo. Keeps data for re-apply after style change. */
@@ -108,17 +123,19 @@ function applyEmotionLayers() {
     },
   });
 
-  // Hover cursor + popup tooltip
-  map.on('mouseenter', LAYER_POINTS, () => { map.getCanvas().style.cursor = 'pointer'; });
-  map.on('mouseleave', LAYER_POINTS, () => { map.getCanvas().style.cursor = ''; });
-
-  // Click → selection halo + callback (revives SHELVED F_014 detail)
-  map.on('click', LAYER_POINTS, (e) => {
-    const f = e.features[0];
-    if (!f) return;
-    showSelectionHalo(f, colors);
-    if (_onPointClick) _onPointClick(f, colors);
-  });
+  // Hover cursor + click → selection halo + popup. Bound once (handlers survive re-adds
+  // since the layer id is stable); avoids accumulating listeners across style switches.
+  if (!_interactionsBound) {
+    _interactionsBound = true;
+    map.on('mouseenter', LAYER_POINTS, () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', LAYER_POINTS, () => { map.getCanvas().style.cursor = ''; });
+    map.on('click', LAYER_POINTS, (e) => {
+      const f = e.features[0];
+      if (!f) return;
+      showSelectionHalo(f, emotionColors());
+      if (_onPointClick) _onPointClick(f, emotionColors());
+    });
+  }
 }
 
 /** Selection halo — geojson.io blue ring behind the selected point. */

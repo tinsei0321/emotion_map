@@ -1,0 +1,100 @@
+/* ═══ Click popup — floating bottom-right (geojson.io detail, corner-anchored) ═══
+   Replaces the old right-panel "detail" tab. Compact (280px), not centered. */
+
+.popup {
+  position: fixed;
+  right: var(--geojson-spacing-4);                   /* 16px */
+  bottom: var(--geojson-spacing-4);
+  width: var(--geojson-layout-popup-width);          /* 280px */
+  max-width: calc(100vw - 32px);
+  max-height: 400px;
+  overflow-y: auto;
+  padding: var(--geojson-spacing-3);
+  background: var(--geojson-color-surface-page);
+  border: 1px solid var(--geojson-color-border-default);
+  border-radius: var(--geojson-radius-sm);           /* 4px */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  color: var(--geojson-color-text-primary);
+  z-index: 90;
+  animation: popupFade 0.2s ease-out;
+}
+@keyframes popupFade {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.popup-close {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--geojson-color-text-tertiary);
+  background: transparent;
+  border: none;
+  border-radius: var(--geojson-radius-xs);
+  cursor: pointer;
+}
+.popup-close:hover {
+  color: var(--geojson-color-text-primary);
+  background: var(--geojson-color-gray-100);
+}
+
+.popup-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--geojson-spacing-2);
+  margin-bottom: var(--geojson-spacing-2);
+  padding-right: 20px;
+}
+.popup-badge {
+  display: inline-block;
+  padding: 2px var(--geojson-spacing-2);
+  border-radius: var(--geojson-radius-sm);
+  font-size: var(--geojson-typography-size-xs);
+  font-weight: var(--geojson-typography-weight-semibold);
+  color: var(--geojson-color-text-inverse);
+  background: var(--geojson-color-gray-500);
+}
+.popup-score {
+  font-size: var(--geojson-typography-size-lg);
+  font-weight: var(--geojson-typography-weight-bold);
+}
+.popup-text {
+  font-size: var(--geojson-typography-size-sm);
+  line-height: 1.5;
+  margin-bottom: var(--geojson-spacing-2);
+}
+.popup-kv {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.popup-kv .kv-row {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: var(--geojson-spacing-2);
+  align-items: baseline;
+  font-size: var(--geojson-typography-size-xs);
+  border-top: 1px solid var(--geojson-color-border-default);
+  padding: 4px 0;
+}
+.popup-kv .kv-k {
+  color: var(--geojson-color-text-secondary);
+  font-weight: var(--geojson-typography-weight-semibold);
+}
+.popup-kv .kv-v {
+  color: var(--geojson-color-text-primary);
+  word-break: break-all;
+}
+.popup-id {
+  font-size: 10px;
+  color: var(--geojson-color-text-tertiary);
+  margin-top: var(--geojson-spacing-2);
+}

@@ -93,6 +93,38 @@ cd d:/Github/emotion_map && py -m http.server 8080
 - A 分析 tab、Import/Export modal、TB 表格 modal 目前是占位（Phase 2 接真实端点）。
 - 边界范围层、热力图切换、空间分析 tab 待 Phase 2-3。
 
+## 前端 v2 — geojson.io 1:1 精细化重做（2026-06-17 家用机，已 Playwright 全验证）
+
+> 计划 Part F（取代 Part E 的 E4/E5/E6）。用户基于 6 张 geojson.io 截图给 8 点指令，全部落地。
+
+### 布局重构（`frontend/`）— **最终外壳已定稿（06-17 晚）**
+> 配色历经一次纠正：最初误做成全深色 chrome → 用户明确"默认浅色主题" → 改为**浅色为主 + 深蓝标题带**。**别再做成全深色 chrome。**
+- **两层头栏**：上层标题带「宜昌市情绪地图 v1.0」= **深海军蓝 `#0c1c2e` + 白字加粗**（天地图品牌蓝，截图吸色）；下层工具栏 = **浅色白底**，左 `S/Pt/L/Po/R/C/▼` 绘制工具占位（加粗首字母、深字 `#404040`、圆角 4px、hover `#f5f5f5`、选中常亮蓝 `#007afc`+白字）+ 右 `Import/Export`(圆角 6px)/`M`。注：Point 用 `Pt`（与 Polygon 区分）。
+- **三栏**：左栏(默认折叠) | 地图 | 右栏(默认展开)。左右各 8px `col-resize` 拖拽条（**max 1800px、JS clamp 到视口-220，可拖很宽看表格**）。
+- **折叠钮**：白色竖向药丸条 `#ffffff`（24×44px、1px `#d4d4d4` 边、**朝地图那侧圆角/贴面板那侧直角**、深色 `‹`/`›` 箭头 22px、hover 变品牌蓝+白箭头）；箭头随折叠/展开自动翻转（JS）。
+- **左栏状态机**：Import 面板（拖放+支持类型）→ 上传文件后切换为 `Range/Layers/Analysis` 三个可折叠区段（**浅头 `#f5f5f5` + 深字 UPPERCASE + chevron**，非深石板蓝）。**已用真实 xiling_boundary.geojson 上传验证**。
+- **右栏** `Overview`(文件/图层/L1·L2 信息卡 + 五级统计 + 迷你柱状图) + `Table`(geojson.io 浅表：列头 `#f5f5f5`、白格、hover `#f5f5f5`、`#e5e5e5` 边，80 行样本)。tab 用**品牌色下划线**选中态（非深色填充）。
+- **点击 → 右下角浮窗** `#feature-popup`（280px，非居中、非贴点），取代旧右栏详情 tab。
+- **底图**：仅 4 张天地图（影像 img 有/无注记 + 常规 vec 有/无注记），**默认影像无注记**，CartoDB 已移除。新建 `apps/static/tianditu_img.json`(img+cia)、`tianditu_img_nolabel.json`(img)；复用 key，**无需新 API**。
+
+### 新增/改动文件
+- 新建：`css/sidebar.css` `css/popup.css` `js/sidebar.js` `js/popup.js` `apps/static/tianditu_img*.json`。
+- 改：`index.html` `css/{layout,toolbar,panel,legend,dialog}.css` `js/{main,map,panel,toolbar}.js` `design/tokens.json`(加 chrome/section/table/import-panel/layout 段) + `apps/CLAUDE.md`(UI 规则改 geojson.io)。
+- `generate_css.py` 重生成 → `frontend/css/tokens.css` 110 变量（单源未破）。
+
+### 关键修复（Playwright 跑出来才改的）
+1. **var-of-var 初始化失败**：`--right-w: var(--geojson-...)` 静默解析为 0px → 改为字面 `--right-w: 340px`（JS 拖拽覆盖）。
+2. **工具栏无背景/高度**：`#toolbar` 漏了 `background`+`height:48px` → 补。
+3. **切底图后情绪点消失**：`style.load`/`styledata`/轮询三套 re-apply 机制在 MapLibre 5.x 都不稳（有 double-add race 重置 geojson tile 处理 → queryRenderedFeatures 返 0）→ 改用 `setStyle(url, { transformStyle })` **声明式 carry-over emotion-* 源/图层**，永不 wipe。验证：4 张底图来回切，80 点 + 点击浮窗全保留。
+
+### 预览 / 验证
+```
+cd d:/Github/emotion_map && py -m http.server 8080   # 必须从项目根起，../apps/static 才可达
+# 浏览器 http://127.0.0.1:8080/frontend/index.html
+```
+- 临时验证截图：`v2-shell.png` `v2-shell-fixed.png` `v2-final.png`（repo 根，可删）。
+- `main.js` 有 `window.__map = map` dev hook（控制台/测试用，可留可删）。
+
 ## 下一阶段
 
 **Phase 2**：接真实数据（新增 `/api/v1/points` 端点 + `api.js` fetch）、A 分析接 `/analyze`、Import/Export/TB modal 功能化。

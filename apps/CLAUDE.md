@@ -48,10 +48,17 @@ Streamlit 前端应用。所有页面通过 `?page=` 路由统一管理。
 
 ## UI 组件规范
 
-- 左侧面板: R(范围)/D(数据)/A(分析) 三功能按钮
-- 地图标记: 双层光晕 + Material 色板
-- 情绪颜色: 绿(正面)→黄(中性)→红(负面) 渐变
-- 所有 UI 文本使用 ASCII 标记（无 emoji）
+> **主 UI 面 = `frontend/`（MapLibre GL JS，geojson.io 1:1）**。Streamlit(`app_main.py` :8501) 为迁移期遗留，新功能一律进 `frontend/`。
+> geojson.io 设计语言权威规格见 [docs/vision-inbox/latest.md](../docs/vision-inbox/latest.md) 与计划 Part F；颜色一律走 `design/tokens.json` 的 `geojson` 段（单源，经 `generate_css.py` 生成 `frontend/css/tokens.css`）。
+
+- **两层深色头栏**（`#1a1a1a` chrome）：上层标题「宜昌市情绪地图 v1.0」加粗；下层工具栏 = 左对齐绘制工具 `Select/Point/Line/Polygon/Rectangle/Circle/(more)`（占位，加粗英文首字母 S/P/L/Po/R/C，圆角方形 32px，hover 浅亮、选中常亮蓝 `#007afc`）+ 右对齐 `Import / Export`（圆角矩形文字按钮）+ `M`(切换底图)。
+- **左侧栏**（默认折叠，可拖拽宽）：`Import` 面板（拖放 + 支持类型列表）→ 导入后切换为 `Range / Layers / Analysis` 三个可折叠区段（深石板蓝 `#2c3e50` 头、白字 UPPERCASE、chevron）。
+- **右侧栏**（可拖拽宽）：`Overview`（文件/图层/L1·L2 信息卡 + 五级统计 + 迷你柱状图）+ `Table`（geojson.io 表格：深列头 `#343a40`、悬停 `#f1f3f5`）。
+- **点击交互**：点情绪点 / 范围线 → 右下角浮动浮窗（`#feature-popup`，280px，非居中、非贴点），`×` 关闭。
+- **折叠/拖拽**：左右侧栏各有显眼折叠钮（面板边缘竖向中点，40×40 半透明深底 + 白边）与 8px `col-resize` 拖拽条。
+- **底图**：仅 4 张天地图（影像 img 有/无注记 + 常规 vec 有/无注记），默认影像无注记，WMTS 瓦片加载；CartoDB 已移除（CN 被墙）。
+- **情绪点**：保留五级语义色（`geojson.emotion`，唯一非 chrome-蓝处）；选中态 `#007afc` 光环。
+- 所有 UI 文本使用 ASCII 标记（无 emoji）。
 
 ## 禁止事项
 
