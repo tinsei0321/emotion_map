@@ -1,0 +1,28 @@
+[     179ms] [LOG] [OK] emotion-map frontend loaded — 80 sample points @ http://127.0.0.1:8080/frontend/js/main.js:34
+[     221ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8080/favicon.ico:0
+[   65035ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://tiles.basemaps.cartocdn.com/vector/carto.streets/v1/tiles.json:0
+[   65035ms] [ERROR] nt: AJAXError: Failed to fetch (0): https://tiles.basemaps.cartocdn.com/vector/carto.streets/v1/tiles.json
+    at https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js:42:8690
+    at Generator.throw (<anonymous>)
+    at o (https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js:42:192) @ https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js:41
+[   67102ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json:0
+[   67102ms] [ERROR] nt: AJAXError: Failed to fetch (0): https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json
+    at https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js:42:8690
+    at Generator.throw (<anonymous>)
+    at o (https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js:42:192) @ https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js:41
+[   71734ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://tiles.basemaps.cartocdn.com/gl/dark-matter-gl-style/sprite@2x.json:0
+[   71734ms] [ERROR] nt: AJAXError: Failed to fetch (0): https://tiles.basemaps.cartocdn.com/gl/dark-matter-gl-style/sprite@2x.json
+    at https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js:42:8690
+    at Generator.throw (<anonymous>)
+    at o (https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js:42:192) @ https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js:41
+[   72028ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://tiles.basemaps.cartocdn.com/gl/dark-matter-gl-style/sprite@2x.png:0
+[   72326ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://tiles.basemaps.cartocdn.com/gl/voyager-gl-style/sprite@2x.json:0
+[   72327ms] [ERROR] nt: AJAXError: Failed to fetch (0): https://tiles.basemaps.cartocdn.com/gl/voyager-gl-style/sprite@2x.json
+    at https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js:42:8690
+    at Generator.throw (<anonymous>)
+    at o (https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js:42:192) @ https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js:41
+[   72825ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://tiles.basemaps.cartocdn.com/gl/voyager-gl-style/sprite@2x.png:0
+[  136081ms] [ERROR] nt @ https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js:41
+[  139576ms] [ERROR] nt @ https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js:41
+[  153585ms] [LOG] [tool] range (Phase 2+ wiring) @ http://127.0.0.1:8080/frontend/js/main.js:27
+[  228717ms] [LOG] [tool] table (Phase 2+ wiring) @ http://127.0.0.1:8080/frontend/js/main.js:27

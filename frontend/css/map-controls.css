@@ -1,0 +1,36 @@
+/* ═══ MapLibre control overrides — geojson.io minimal style ═══ */
+
+#map .maplibregl-ctrl-group {
+  border-radius: var(--geojson-radius-sm);
+  border: 1px solid var(--geojson-color-border-default);
+  box-shadow: var(--geojson-shadow-sm);
+  overflow: hidden;
+}
+#map .maplibregl-ctrl-group button {
+  width: 32px;
+  height: 32px;
+  background: var(--geojson-color-surface-page);
+}
+#map .maplibregl-ctrl-group button:hover {
+  background: var(--geojson-color-gray-100);
+}
+#map .maplibregl-ctrl-zoom-in,
+#map .maplibregl-ctrl-zoom-out {
+  font-size: var(--geojson-typography-size-base);
+}
+
+#map .maplibregl-ctrl-attrib {
+  font-size: 10px;
+  background: rgba(255,255,255,0.7);
+}
+#map .maplibregl-ctrl-attrib a { color: var(--geojson-color-text-secondary); }
+
+/* Popup (point click) — geojson.io Mapbox popup style (3px radius) */
+.maplibregl-popup-content {
+  border-radius: var(--geojson-radius-xs);
+  box-shadow: var(--geojson-shadow-md);
+  padding: var(--geojson-spacing-2) var(--geojson-spacing-3);
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-primary);
+}
+.maplibregl-popup-tip { border-top-color: var(--geojson-color-surface-page); }

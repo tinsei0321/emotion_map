@@ -61,6 +61,17 @@
       {
         "command": "python .claude/hooks/on_session_end.py"
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py .claude/hooks/on_post_edit.py"
+          }
+        ]
+      }
     ]
   },
   "project": {

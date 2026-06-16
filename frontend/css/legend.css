@@ -1,0 +1,37 @@
+/* ═══ Legend — floating bottom-right, geojson.io style ═══ */
+
+#legend {
+  position: fixed;
+  bottom: var(--geojson-spacing-3);
+  right: calc(var(--geojson-layout-panel-width) + var(--geojson-spacing-3));
+  z-index: 80;
+  padding: var(--geojson-spacing-2) var(--geojson-spacing-3);
+  background: var(--geojson-color-surface-page);
+  border: 1px solid var(--geojson-color-border-default);
+  border-radius: var(--geojson-radius-sm);
+  box-shadow: var(--geojson-shadow-sm);
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-secondary);
+  pointer-events: none;
+  transition: right var(--geojson-transition);
+}
+/* when right panel collapsed, legend slides to screen edge */
+body.panel-collapsed #legend {
+  right: var(--geojson-spacing-3);
+}
+.legend-title {
+  font-weight: var(--geojson-typography-weight-semibold);
+  color: var(--geojson-color-text-primary);
+  margin-bottom: 4px;
+}
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.6;
+}
+.legend-row .dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  border: 1px solid var(--geojson-color-gray-300);
+}

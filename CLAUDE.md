@@ -159,8 +159,15 @@ Agent 在工作过程中自动记录的隐形知识：
 
 ## 开发工作流
 
-每次修改 Python 代码后，自动执行：
+修改 Python 代码后的标准动作（**清缓存已自动化，重启与测试按需手动**）：
 
-1. **清理缓存**：`find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null; find . -name "*.pyc" -delete 2>/dev/null`
-2. **重启 Streamlit**：杀掉旧进程 → 重新启动 `py launch.py`（后台运行）
-3. **验证**：`python -m pytest tests/ -q` 确认 56 tests 通过
+1. **清理缓存（自动）**：每次 `Edit`/`Write`/`MultiEdit` 作用于 `.py` 后，
+   `PostToolUse` hook（`.claude/hooks/on_post_edit.py`）自动删除被编辑模块在
+   `__pycache__` 中的过期 `.pyc`，无需手动 `find ... -delete`。
+2. **重启 Streamlit（手动，按需）**：改动影响 `apps/`/`core/` 运行态时，
+   杀旧进程 → `py launch.py`（后台）；未改运行逻辑可跳过。
+3. **跑测试（手动，提交前必做）**：`py -m pytest tests/ -q` 确认全过；
+   走 SOP 时由 Tester 统一执行。
+
+> 注：hook 命令用 `py`（Windows launcher）；若环境 `python` 可用亦可。
+> 重启 Streamlit 与 pytest 不纳入 hook——它们耗时会打断会话，由人按需触发。

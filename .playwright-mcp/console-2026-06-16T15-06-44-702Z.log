@@ -1,0 +1,12 @@
+[      57ms] [LOG] [OK] emotion-map frontend loaded — 80 sample points @ http://127.0.0.1:8080/frontend/js/main.js:37
+[    1598ms] [LOG] [tool] table (Phase 2+ wiring) @ http://127.0.0.1:8080/frontend/js/main.js:30
+[    4258ms] [LOG] [tool] layers (Phase 2+ wiring) @ http://127.0.0.1:8080/frontend/js/main.js:30
+[    4807ms] [LOG] [tool] range (Phase 2+ wiring) @ http://127.0.0.1:8080/frontend/js/main.js:30
+[    9547ms] [LOG] [tool] import (Phase 2+ wiring) @ http://127.0.0.1:8080/frontend/js/main.js:30
+[   22333ms] [ERROR] Error: The layer 'emotion-points-circle' does not exist in the map's style and cannot be queried for features.
+    at gi.queryRenderedFeatures (https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js:46:281659)
+    at bs.queryRenderedFeatures (https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js:46:487882)
+    at eval (eval at <anonymous> (eval at evaluate (:303:30)), <anonymous>:4:21)
+    at eval (eval at evaluate (:303:30), <anonymous>:4:50)
+    at UtilityScript.evaluate (<anonymous>:305:16)
+    at UtilityScript.<anonymous> (<anonymous>:1:44) @ https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js:41

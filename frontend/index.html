@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>宜昌情绪地图 v1.0</title>
+
+  <!-- Design tokens (single source, generated from design/tokens.json `geojson` section) -->
+  <link rel="stylesheet" href="css/tokens.css" />
+  <!-- MapLibre GL JS (CDN; if blocked, vendor locally under assets/) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.css" />
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js"></script>
+
+  <!-- App styles -->
+  <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/toolbar.css" />
+  <link rel="stylesheet" href="css/panel.css" />
+  <link rel="stylesheet" href="css/dialog.css" />
+  <link rel="stylesheet" href="css/legend.css" />
+  <link rel="stylesheet" href="css/map-controls.css" />
+</head>
+<body>
+
+  <!-- ═══ Header (geojson.io: 64px white, border-bottom, toolbar shadow) ═══ -->
+  <header id="app-header">
+    <div class="header-left">
+      <span class="brand">宜昌情绪地图</span>
+      <span class="brand-version">v1.0</span>
+    </div>
+
+    <!-- Toolbar button groups (flexbox layout, no absolute positioning) -->
+    <nav class="header-tools">
+      <div class="tool-group">
+        <button class="tbtn" data-tool="range" title="分析范围 (R)">范围</button>
+        <button class="tbtn" data-tool="layers" title="图层 (LY)">图层</button>
+        <button class="tbtn" data-tool="analysis" title="情绪分析 (A)">分析</button>
+        <button class="tbtn" data-tool="overview" title="数据概览 (OV)">概览</button>
+        <button class="tbtn" data-tool="table" title="数据表格 (TB)">表格</button>
+      </div>
+      <div class="tool-group">
+        <button class="tbtn tbtn-icon" data-tool="heat" title="热力图 (H)" aria-pressed="false">H</button>
+      </div>
+      <div class="tool-group">
+        <button class="tbtn" data-tool="import" title="导入数据">导入</button>
+        <button class="tbtn" data-tool="export" title="导出数据">导出</button>
+        <button class="tbtn tbtn-icon" data-tool="basemap" title="切换底图 (M)">M</button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- ═══ Main: map (flex:1) + right panel (320px) ═══ -->
+  <main id="app-main">
+    <div id="map"></div>
+
+    <!-- Right editor panel (collapsible, geojson.io style) -->
+    <aside id="right-panel">
+      <div class="panel-header">
+        <div class="panel-tabs" role="tablist">
+          <button class="ptab is-active" data-tab="overview" role="tab">概览</button>
+          <button class="ptab" data-tab="analysis" role="tab">分析</button>
+          <button class="ptab" data-tab="detail" role="tab">详情</button>
+          <button class="ptab" data-tab="geojson" role="tab">Geo</button>
+        </div>
+        <button class="panel-collapse" id="panel-collapse" title="折叠面板">«</button>
+      </div>
+
+      <div class="panel-body">
+        <!-- 概览 OV -->
+        <section class="tab-pane is-active" data-pane="overview">
+          <div class="stats-grid" id="polarity-stats"><!-- filled by JS --></div>
+          <div class="stat-row" id="score-mean">均分 —</div>
+          <div class="stat-row muted" id="record-count">共 0 条</div>
+          <div class="chart-wrap"><canvas id="polarity-chart" height="160"></canvas></div>
+        </section>
+
+        <!-- 分析 A -->
+        <section class="tab-pane" data-pane="analysis">
+          <div class="form-label">分析引擎</div>
+          <label class="engine-opt"><input type="radio" name="engine" value="snownlp" checked /> <span>L2 · SnowNLP 粗粒度（离线）</span></label>
+          <label class="engine-opt"><input type="radio" name="engine" value="deepseek-l2" /> <span>L3 · LLM 细粒度（DeepSeek）</span></label>
+          <label class="engine-opt"><input type="radio" name="engine" value="corpus" disabled /> <span>L4 · 语料库归因（未接入）</span></label>
+          <div class="key-status" id="key-status">Key: —</div>
+          <button class="btn btn-primary btn-block" id="run-analysis">开始分析</button>
+          <div class="progress" id="analysis-progress" hidden></div>
+        </section>
+
+        <!-- 详情 (revives SHELVED F_014) -->
+        <section class="tab-pane" data-pane="detail">
+          <div class="empty-hint" id="detail-empty">点击地图上的情绪点查看详情</div>
+          <div class="detail-card" id="detail-card" hidden>
+            <div class="detail-top">
+              <span class="detail-badge" id="d-polarity">—</span>
+              <span class="detail-score" id="d-score">—</span>
+            </div>
+            <div class="detail-loc muted" id="d-location"></div>
+            <div class="detail-tags" id="d-tags"></div>
+            <div class="detail-text" id="d-text"></div>
+            <div class="detail-kw muted" id="d-keywords"></div>
+            <div class="detail-id muted" id="d-id"></div>
+          </div>
+        </section>
+
+        <!-- GeoJSON (optional) -->
+        <section class="tab-pane" data-pane="geojson">
+          <div class="empty-hint">当前数据的 GeoJSON（占位，Phase 2 接入）</div>
+          <pre class="geo-pre" id="geo-preview">{}</pre>
+        </section>
+      </div>
+    </aside>
+
+    <!-- collapsed-edge button (when panel collapsed) -->
+    <button id="panel-expand" title="展开面板" hidden>»</button>
+  </main>
+
+  <!-- ═══ Legend (floating bottom-right) ═══ -->
+  <div id="legend">
+    <div class="legend-title">情绪极性</div>
+    <div class="legend-row"><span class="dot" style="background:var(--geojson-color-emotion-very-positive)"></span>非常积极</div>
+    <div class="legend-row"><span class="dot" style="background:var(--geojson-color-emotion-positive)"></span>积极</div>
+    <div class="legend-row"><span class="dot" style="background:var(--geojson-color-emotion-neutral)"></span>中性</div>
+    <div class="legend-row"><span class="dot" style="background:var(--geojson-color-emotion-negative)"></span>消极</div>
+    <div class="legend-row"><span class="dot" style="background:var(--geojson-color-emotion-very-negative)"></span>非常消极</div>
+  </div>
+
+  <!-- ═══ Basemap switcher (Layers-style popover) ═══ -->
+  <div id="basemap-popover" class="popover" hidden>
+    <div class="popover-title">底图</div>
+    <div class="basemap-grid">
+      <button class="bm-cell" data-basemap="carto-light"><span class="bm-swatch bm-light"></span>浅色</button>
+      <button class="bm-cell" data-basemap="carto-dark"><span class="bm-swatch bm-dark"></span>深色</button>
+      <button class="bm-cell" data-basemap="carto-voyager"><span class="bm-swatch bm-voyager"></span>标准</button>
+      <button class="bm-cell is-active" data-basemap="tianditu-label"><span class="bm-swatch bm-sat"></span>天地图</button>
+    </div>
+  </div>
+
+  <!-- ═══ Modal dialog (Export-style, Phase 1: Export placeholder) ═══ -->
+  <dialog id="modal-export" class="app-dialog">
+    <div class="dialog-head">
+      <span class="dialog-title">导出数据</span>
+      <button class="dialog-close" data-close>×</button>
+    </div>
+    <div class="dialog-body">
+      <div class="form-label">文件格式</div>
+      <select class="select" id="export-format">
+        <option value="csv">CSV</option>
+        <option value="geojson">GeoJSON</option>
+      </select>
+      <label class="check-opt">
+        <input type="checkbox" id="export-desensitize" checked />
+        <span>
+          <span class="check-label">脱敏输出</span>
+          <span class="check-desc">移除用户名/用户ID等个人身份信息（铁律 7）</span>
+        </span>
+      </label>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn btn-secondary" data-close>取消</button>
+      <button class="btn btn-primary" id="export-confirm">导出</button>
+    </div>
+  </dialog>
+
+  <!-- App scripts (ES modules) -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

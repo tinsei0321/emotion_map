@@ -306,9 +306,10 @@ def create_hex_grid(
         )
 
     # 为每个点分配 H3 索引
+    # h3 v4 API: latlng_to_cell(lat, lng, res)（v3 为 geo_to_h3）
     h3_indices = []
     for _, row in gdf.iterrows():
-        h3_idx = h3.geo_to_h3(row.geometry.y, row.geometry.x, resolution)
+        h3_idx = h3.latlng_to_cell(row.geometry.y, row.geometry.x, resolution)
         h3_indices.append(h3_idx)
 
     gdf = gdf.copy()
@@ -330,10 +331,12 @@ def create_hex_grid(
             )
 
     # 生成六边形 geometry
+    # h3 v4 API: cell_to_boundary(cell) 返回 (lat, lng) 对，
+    # Polygon 需 (lng, lat) 顺序，故逐对反转。
     hex_geoms = []
     for h3_idx in stats.index:
-        boundary = h3.h3_to_geo_boundary(h3_idx, geo_json=True)
-        hex_geoms.append(Polygon(boundary))
+        boundary = h3.cell_to_boundary(h3_idx)
+        hex_geoms.append(Polygon([(lng, lat) for lat, lng in boundary]))
 
     hex_gdf = gpd.GeoDataFrame(stats, geometry=hex_geoms, crs='EPSG:4326')
     hex_gdf['h3_idx'] = stats.index

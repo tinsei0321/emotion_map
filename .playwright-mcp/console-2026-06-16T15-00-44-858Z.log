@@ -1,0 +1,10 @@
+[    3518ms] [LOG] [OK] emotion-map frontend loaded — 80 sample points @ http://127.0.0.1:8080/frontend/js/main.js:34
+[    3529ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8080/favicon.ico:0
+[    8780ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://tiles.basemaps.cartocdn.com/vector/carto.streets/v1/tiles.json:0
+[    8781ms] [ERROR] nt: AJAXError: Failed to fetch (0): https://tiles.basemaps.cartocdn.com/vector/carto.streets/v1/tiles.json
+    at https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js:42:8690
+    at Generator.throw (<anonymous>)
+    at o (https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js:42:192) @ https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js:41
+[   58542ms] [LOG] [tool] table (Phase 2+ wiring) @ http://127.0.0.1:8080/frontend/js/main.js:27
+[   60555ms] [LOG] [tool] range (Phase 2+ wiring) @ http://127.0.0.1:8080/frontend/js/main.js:27
+[   61308ms] [LOG] [tool] layers (Phase 2+ wiring) @ http://127.0.0.1:8080/frontend/js/main.js:27

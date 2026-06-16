@@ -1,0 +1,57 @@
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: 宜昌情绪地图
+      - generic [ref=e5]: v1.0
+    - navigation [ref=e6]:
+      - generic [ref=e7]:
+        - button "范围" [active] [ref=e8] [cursor=pointer]
+        - button "图层" [ref=e9] [cursor=pointer]
+        - button "分析" [ref=e10] [cursor=pointer]
+        - button "概览" [ref=e11] [cursor=pointer]
+        - button "表格" [ref=e12] [cursor=pointer]
+      - button "H" [ref=e14] [cursor=pointer]
+      - generic [ref=e15]:
+        - button "导入" [ref=e16] [cursor=pointer]
+        - button "导出" [ref=e17] [cursor=pointer]
+        - button "M" [ref=e18] [cursor=pointer]
+  - main [ref=e19]:
+    - generic [ref=e20]:
+      - region "Map" [ref=e21]
+      - generic:
+        - generic [ref=e22]:
+          - button "Zoom in" [ref=e23] [cursor=pointer]
+          - button "Zoom out" [ref=e25] [cursor=pointer]
+          - button "Reset bearing to north" [ref=e27]
+        - group [ref=e29]:
+          - generic "Toggle attribution" [ref=e30] [cursor=pointer]
+          - link "MapLibre" [ref=e32] [cursor=pointer]:
+            - /url: https://maplibre.org/
+    - complementary [ref=e33]:
+      - generic [ref=e34]:
+        - tablist [ref=e35]:
+          - tab "概览" [ref=e36] [cursor=pointer]
+          - tab "分析" [ref=e37] [cursor=pointer]
+          - tab "详情" [ref=e38] [cursor=pointer]
+          - tab "Geo" [ref=e39] [cursor=pointer]
+        - button "«" [ref=e40] [cursor=pointer]
+      - generic [ref=e93]:
+        - generic [ref=e94]: 分析引擎
+        - generic [ref=e95] [cursor=pointer]:
+          - radio "L2 · SnowNLP 粗粒度（离线）" [checked] [ref=e96]
+          - generic [ref=e97]: L2 · SnowNLP 粗粒度（离线）
+        - generic [ref=e98] [cursor=pointer]:
+          - radio "L3 · LLM 细粒度（DeepSeek）" [ref=e99]
+          - generic [ref=e100]: L3 · LLM 细粒度（DeepSeek）
+        - generic [ref=e101]:
+          - radio "L4 · 语料库归因（未接入）" [disabled] [ref=e102]
+          - generic [ref=e103]: L4 · 语料库归因（未接入）
+        - generic [ref=e104]: "Key: —"
+        - button "开始分析" [ref=e105] [cursor=pointer]
+  - generic:
+    - generic: 情绪极性
+    - generic: 非常积极
+    - generic: 积极
+    - generic: 中性
+    - generic: 消极
+    - generic: 非常消极

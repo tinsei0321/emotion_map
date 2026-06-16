@@ -94,61 +94,47 @@ async def run_analysis(req: AnalysisRequest):
 
 @router.post("/governance")
 async def run_governance(req: GovernanceRequest):
-    """运行 L0→L1 数据治理管道。
+    """运行 L0→L1 数据治理管道（复用 run_governance_pipeline，含 LLM 相关性漏斗）。
 
-    步骤: 坐标转换 → 范围过滤 → 相关性筛选 → 脱敏 → 导出 L1
+    步骤: 坐标转换 → (可选)空间范围过滤 → DeepSeek LLM 相关性分类 →
+          筛 relevant+has_location → 脱敏 → 导出 L1。
+
+    需要 DEEPSEEK_API_KEY 环境变量；缺失或 LLM 失败时返回明确错误，
+    **不静默降级为 keyword-only 假 L1**（与 CLI/Streamlit 走同一管道）。
     """
     if not os.path.exists(req.file_path):
         raise HTTPException(status_code=404, detail=f"文件不存在: {req.file_path}")
 
-    from SCRIPT.data_governance import step1_load_and_transform
-    from core.range_selector import load_boundaries, filter_by_range, get_active_boundary_path
-    from core.export import export_to_csv
+    from SCRIPT.data_governance import run_governance_pipeline
+    from core.range_selector import get_active_boundary_path
 
-    # Step 1: 坐标转换
-    df = step1_load_and_transform(req.file_path)
-    input_n = len(df)
-
-    # Step 2: 范围过滤
-    boundary_path = req.boundary_path or get_active_boundary_path()
-    if not boundary_path and os.path.exists(BOUNDARY_SHP):
-        boundary_path = BOUNDARY_SHP
-
-    if boundary_path and os.path.exists(boundary_path):
-        import pandas as pd
-        ranges = load_boundaries(boundary_path)
-        df_filtered = filter_by_range(df, 'lon', 'lat', ranges, None)
-        df = pd.DataFrame(df_filtered)
-    else:
-        import pandas as pd
-        df = pd.DataFrame(df)
-
-    # Step 3: 关键词粗筛
-    from SCRIPT.relevance_filter import keyword_prefilter, _build_text_for_classification
-    df['_kw_pass'] = df.apply(
-        lambda row: keyword_prefilter(_build_text_for_classification(row)) == 'pass',
-        axis=1
-    )
-    df = df[df['_kw_pass']].copy()
-    df['relevance'] = 'relevant'
-    df['filter_layer'] = 'keyword'
-    df.drop(columns=['_kw_pass'], inplace=True, errors='ignore')
-
-    # Step 4: 脱敏 + 导出
-    if 'comments' in df.columns:
-        df['comments'] = ''
-
+    # 输出命名（保持向后兼容的 _规划范围 后缀）
     output_name = req.output_name or os.path.splitext(
         os.path.basename(req.file_path)
     )[0].replace('_raw', '').replace('_RAW', '')
     output_name = f'{output_name}_规划范围'
-    l1_path = os.path.join(PROCESSED_DIR, f'{output_name}_L1_result_csv.csv')
-    export_to_csv(df, l1_path)
+
+    # 边界解析优先级: 显式传参 > 激活态范围 > 默认规划范围 Shapefile
+    boundary_path = req.boundary_path or get_active_boundary_path()
+    if not boundary_path and os.path.exists(BOUNDARY_SHP):
+        boundary_path = BOUNDARY_SHP
+
+    result = run_governance_pipeline(
+        csv_path=req.file_path,
+        output_name=output_name,
+        boundary_path=boundary_path,
+        run_l2=False,
+    )
+
+    if not result['success']:
+        raise HTTPException(status_code=500, detail=result.get('message', '治理失败'))
 
     return {
         'success': True,
-        'input_n': input_n,
-        'output_n': len(df),
-        'l1_path': l1_path,
-        'message': f'L1 治理完成: {input_n} → {len(df)} 条',
+        'input_n': result['input_n'],
+        'spatial_n': result['spatial_n'],
+        'relevant_n': result['relevant_n'],
+        'output_n': result['output_n'],
+        'l1_path': result['l1_path'],
+        'message': result['message'],
     }

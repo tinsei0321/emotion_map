@@ -1,0 +1,2 @@
+[      47ms] [LOG] [OK] emotion-map frontend loaded — 80 sample points @ http://127.0.0.1:8080/frontend/js/main.js:37
+[ 1777904ms] [LOG] [tool] range (Phase 2+ wiring) @ http://127.0.0.1:8080/frontend/js/main.js:30

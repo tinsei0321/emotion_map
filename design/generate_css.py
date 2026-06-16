@@ -27,6 +27,7 @@ DESIGN_DIR = Path(__file__).resolve().parent
 TOKENS_JSON = DESIGN_DIR / 'tokens.json'
 OUT_CSS = DESIGN_DIR / 'tokens.css'
 OUT_PY = DESIGN_DIR / 'tokens.py'
+OUT_FRONTEND_CSS = DESIGN_DIR.parent / 'frontend' / 'css' / 'tokens.css'
 
 
 # ── 工具函数 ──────────────────────────────────────────────
@@ -314,6 +315,50 @@ def get_token(name: str, theme: str = 'dark') -> str:
     return '\n'.join(lines)
 
 
+# ── 前端 Token 生成 (geojson.io 1:1, Light-first) ─────────
+def generate_frontend_css(geojson_data: dict) -> str:
+    """将 tokens.json 的 `geojson` 段展平为前端 CSS 变量 (Light-first)。
+
+    输出扁平 :root 变量, 命名 --geojson-{path}-{key}。
+    frontend/css/tokens.css 是此生成物的落盘副本 (单一源 = tokens.json)。
+    """
+    flat = {}
+
+    def _walk(obj, prefix):
+        for k, v in obj.items():
+            if k.startswith('_'):
+                continue  # 跳过 _doc 等注释键
+            key = f'{prefix}-{camel_to_kebab(k)}'
+            if isinstance(v, dict):
+                _walk(v, key)
+            else:
+                flat[key] = str(v)
+
+    _walk(geojson_data, 'geojson')
+
+    lines = [
+        '/* ════════════════════════════════════════════════════════════',
+        '   Frontend Design Tokens — Auto-generated from tokens.json `geojson` section',
+        '   DO NOT EDIT MANUALLY — Run: python design/generate_css.py',
+        '   geojson.io 1:1 design language, Light-first, single source of truth',
+        '   ════════════════════════════════════════════════════════════ */',
+        '',
+        ':root {',
+    ]
+    # 按 geojson 后第一段分组 (color / radius / shadow / typography / spacing / layout / feature ...)
+    cats = {}
+    for k in sorted(flat):
+        seg = k.split('-')[1] if len(k.split('-')) > 1 else 'misc'
+        cats.setdefault(seg, []).append((k, flat[k]))
+    for seg in sorted(cats):
+        lines.append(f'  /* {seg} */')
+        for k, v in cats[seg]:
+            lines.append(f'  --{k}: {v};')
+        lines.append('')
+    lines.append('}')
+    return '\n'.join(lines)
+
+
 # ── 主流程 ─────────────────────────────────────────────────
 def main():
     if not TOKENS_JSON.exists():
@@ -357,7 +402,19 @@ def main():
     py_const_count = len([l for l in py_content.splitlines() if ' = ' in l and not l.strip().startswith('#')])
     print(f'[OK] 生成 Python → {OUT_PY} ({len(py_content)} bytes, {py_const_count} constants)')
 
-    # 7. 验证
+    # 7. 前端 Token (geojson.io Light-first, 单一源)
+    geojson_data = data.get('geojson', {})
+    if geojson_data:
+        OUT_FRONTEND_CSS.parent.mkdir(parents=True, exist_ok=True)
+        fe_css = generate_frontend_css(geojson_data)
+        with open(OUT_FRONTEND_CSS, 'w', encoding='utf-8') as f:
+            f.write(fe_css)
+        fe_var_count = len([l for l in fe_css.splitlines() if l.strip().startswith('--')])
+        print(f'[OK] 生成前端 Token → {OUT_FRONTEND_CSS} ({fe_var_count} CSS variables)')
+    else:
+        print('[WARN] tokens.json 无 geojson 段, 跳过前端 token 生成')
+
+    # 8. 验证
     print(f'\n{"=" * 60}')
     print(f'Design Token 体系构建完成 (Light/Dark 双主题)')
     print(f'{"=" * 60}')

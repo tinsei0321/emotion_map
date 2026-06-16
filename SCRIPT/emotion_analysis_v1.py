@@ -915,13 +915,20 @@ class CorpusAnalyzer(AnalyzerBase):
                        l2_result: Optional[EmotionResult] = None,
                        l3_result: Optional[EmotionResult] = None) -> EmotionResult:
         """
-        L4 分析 — 在 L2/L3 基础上进行归因。
+        L4 归因分析（API/CLI/pipeline 共用单一入口）。
 
-        理想流程：
+        在 L2/L3 基础上进行因果归因；无前置结果时用空 EmotionResult()
+        降级为基础归因（_call_api 当前抛 NotImplementedError，待语料库接入）。
+
+        理想 pipeline 流程：
           1. L2 (SnowNLP)    → 基础 score + polarity + keywords
           2. L3 (LLM)        → category + intensity + target
           3. L4 (Corpus+LLM) → attributions + suggestions
         """
+        # l2_result 缺省时用空结果，避免 _build_attribution_prompt 访问 None 属性
+        if l2_result is None:
+            l2_result = EmotionResult()
+
         prompt = self._build_attribution_prompt(text, l2_result, l3_result)
         raw = self._call_api(prompt)
         parsed = self._parse_attribution_response(raw)
@@ -929,32 +936,16 @@ class CorpusAnalyzer(AnalyzerBase):
         return EmotionResult(
             phase='L4',
             # 继承 L2
-            score=l2_result.score if l2_result else 0.5,
-            polarity=l2_result.polarity if l2_result else 'Neutral',
-            keywords=l2_result.keywords if l2_result else [],
-            confidence=l2_result.confidence if l2_result else 1.0,
-            # 继承 L3
+            score=l2_result.score,
+            polarity=l2_result.polarity,
+            keywords=l2_result.keywords,
+            confidence=l2_result.confidence,
+            # 继承 L3（l3_result 可能为 None）
             category=l3_result.category if l3_result else None,
             intensity=l3_result.intensity if l3_result else None,
             target_type=l3_result.target_type if l3_result else None,
             target_detail=l3_result.target_detail if l3_result else None,
             # L4 新增
-            attributions=parsed.get('attributions'),
-            suggestions=parsed.get('suggestions'),
-            raw_response=json.dumps(raw, ensure_ascii=False),
-        )
-
-    def analyze_single(self, text: str) -> EmotionResult:
-        """
-        降级模式：无 L2/L3 前置结果时，仅做基础归因。
-        生产环境建议使用 pipeline 模式按 L2→L3→L4 顺序调用。
-        """
-        prompt = self._build_attribution_prompt(text, EmotionResult())
-        raw = self._call_api(prompt)
-        parsed = self._parse_attribution_response(raw)
-
-        return EmotionResult(
-            phase='L4',
             attributions=parsed.get('attributions'),
             suggestions=parsed.get('suggestions'),
             raw_response=json.dumps(raw, ensure_ascii=False),
