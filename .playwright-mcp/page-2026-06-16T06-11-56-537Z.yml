@@ -1,0 +1,20 @@
+- generic [ref=e3]:
+  - banner [ref=e6]:
+    - generic [ref=e9]:
+      - button "Deploy" [ref=e11] [cursor=pointer]:
+        - generic [ref=e13]: Deploy
+      - button "Main menu" [ref=e15] [cursor=pointer]:
+        - img [ref=e16]
+  - alert [ref=e22]:
+    - generic [ref=e24]:
+      - generic [ref=e25]: "ImportError: cannot import name 'export_boundaries_geojson' from 'core.export' (C:\\Users\\admin\\Documents\\GitHub\\emotion_map\\core\\export.py)"
+      - generic [ref=e26]:
+        - generic [ref=e27]: "Traceback:"
+        - code [ref=e30]:
+          - generic [ref=e31]: File "C:\Users\admin\Documents\GitHub\emotion_map\apps\app_main.py", line 31, in <module> from core.export import export_to_csv, export_boundaries_geojson, get_export_preview
+      - generic [ref=e32]:
+        - button "Copy" [ref=e33] [cursor=pointer]
+        - link "Ask Google" [ref=e34] [cursor=pointer]:
+          - /url: https://www.google.com/search?q=ImportError%3A%20cannot%20import%20name%20'export_boundaries_geojson'%20from%20'core.export'%20(C%3A%5CUsers%5Cadmin%5CDocuments%5CGitHub%5Cemotion_map%5Ccore%5Cexport.py)
+        - link "Ask ChatGPT" [ref=e35] [cursor=pointer]:
+          - /url: https://chatgpt.com/?q=ImportError%3A%20cannot%20import%20name%20'export_boundaries_geojson'%20from%20'core.export'%20(C%3A%5CUsers%5Cadmin%5CDocuments%5CGitHub%5Cemotion_map%5Ccore%5Cexport.py)%0A%0AFile%20%22C%3A%5CUsers%5Cadmin%5CDocuments%5CGitHub%5Cemotion_map%5Capps%5Capp_main.py%22%2C%20line%2031%2C%20in%20%3Cmodule%3E%0A%20%20%20%20from%20core.export%20import%20export_to_csv%2C%20export_boundaries_geojson%2C%20get_export_preview
