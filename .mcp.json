@@ -13,6 +13,11 @@
       },
       "description": "GitHub Issues/PRs 操作 — 需 Personal Access Token",
       "disabled": true
+    },
+    "vision-bridge": {
+      "command": "python",
+      "args": [".claude/mcp_servers/vision_bridge_server.py"],
+      "description": "视觉桥接 — 调用火山引擎 Ark Vision API 识图，让不支持图片的模型也能看图"
     }
   }
 }

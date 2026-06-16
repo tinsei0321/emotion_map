@@ -122,3 +122,18 @@ LAYER_PALETTE = [
 # ── 初始默认坐标（宜昌）──
 DEFAULT_CENTER = [30.708, 111.286]
 DEFAULT_ZOOM = 12
+
+# ── 多模态 API 端点（L3 Vision + OCR + Audio）──
+# 火山引擎 Ark Vision (Chat Completions API)
+VOLCENGINE_VISION_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
+# 火山引擎 Ark 多模态 Embedding
+VOLCENGINE_EMBED_URL = 'https://ark.cn-beijing.volces.com/api/v3/embeddings/multimodal'
+# 讯飞 OCR API
+IFLYTEK_OCR_URL = 'https://api.xf-yun.com/v1/ocr'
+
+# ── 多模态分析阈值 ──
+VISION_CONFIDENCE_THRESHOLD = 0.6     # 视觉分析最低置信度（低于此值结果标记为低置信）
+VISION_MAX_IMAGES_PER_POST = 9        # 单条数据最多分析图片数（小红书最多9图）
+VISION_REQUEST_TIMEOUT = 120          # Vision API 单次请求超时（秒）
+OCR_REQUEST_TIMEOUT = 60              # OCR API 单次请求超时（秒）
+AUDIO_REQUEST_TIMEOUT = 300           # ASR API 单次请求超时（秒）

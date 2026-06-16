@@ -142,6 +142,7 @@ Agent 启动时根据下表选择性阅读知识源：
 | `MOD_GEN` | `SCRIPT/generate_l1_mock.py` |
 | `MOD_SCRAPER` | `SCRAPER/spiders/` |
 | `MOD_TRACKER` | `core/tracker.py` |
+| `MOD_MM` | `SCRIPT/multimodal_analysis.py` |
 | `MOD_UTILS` | `core/utils.py` |
 
 **埋点规则**：

@@ -749,20 +749,15 @@ def render_data_panel(range_names: list = None, data_layers: list = None,
 
 @track("MOD_UI.F_011", track_args=False)
 def show_toast(message: str, duration_ms: int = 2000):
-    """居中 Toast 通知，自动淡出。st.empty() 确保每次新建 DOM 元素。"""
-    st.empty().markdown(f"""
-    <div style="
-        position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-        z-index:999999;background:rgba(36,39,48,0.94);color:#D3D8E0;
-        padding:6px 24px;border-radius:100px;font-size:0.82rem;
-        font-weight:500;pointer-events:none;white-space:nowrap;
-        animation:toastIn 0.15s ease,toastOut 0.4s ease {duration_ms}ms forwards;
-    ">{message}</div>
-    <style>
-    @keyframes toastIn{{from{{opacity:0;transform:translate(-50%,-50%) scale(0.9)}}to{{opacity:1;transform:translate(-50%,-50%) scale(1)}}}}
-    @keyframes toastOut{{to{{opacity:0}}}}
-    </style>
-    """, unsafe_allow_html=True)
+    """居中 Toast 通知。使用 st.toast() 确保跨 iframe 渲染可靠。
+
+    2026-06-16 修复: 原 st.empty()+CSS动画 方案在 Folium iframe 加载
+    期间不可靠（动画在 iframe 瓦片加载完成前就已结束）。
+    换用 Streamlit 原生 st.toast()，框架保证生命周期正确。
+    duration_ms 参数保留以兼容旧调用，st.toast 自行管理显示时长。
+    """
+    st.toast(message, icon=":material/info:")
+
 
 
 # ── 追踪 ID 注册表 ──

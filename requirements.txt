@@ -27,3 +27,8 @@ jieba==0.42.1
 # ── 数据采集（2026-06-12 新增）──
 scrapy==2.16.0
 requests==2.34.2
+
+# ── 多模态分析（2026-06-16 新增）──
+# requests 已在数据采集中声明，多模态 API 调用共用
+# Pillow>=10.0.0     # 图片预处理（OCR 需要时启用）
+# websocket-client   # 讯飞 OCR/ASR WebSocket 连接（接入 OCR/AudioAnalyzer 时启用）

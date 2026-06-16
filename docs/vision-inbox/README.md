@@ -1,22 +1,29 @@
 # 视觉中转站 (Vision Inbox)
 
-> 跨 Chat 图片识别中转机制。项目 Claude（deepseek）不能直接看图，
-> 但可以通过本目录接收另一个支持图片的 Chat 的识图结果。
+> **首选方式**：[vision-bridge MCP Server](../.claude/mcp_servers/vision_bridge_server.py)
+> 自动调火山引擎 Ark Vision API 识图，无需手动操作。
+> 下文的手动文本桥接仅在 MCP Server 不可用时作为备用方案。
 
-## 工作流
+## 首选工作流（MCP 自动化）
 
 ```
-                支持图片的 Chat                   本项目 Claude
-                ──────────────                    ────────────
-你: [粘贴图片]                                       我: "我看到 latest.md
-   + "描述并写入文件"                                      有新内容了"
-         │                                              │
-         ▼                                              ▼
-该 Chat: 识图，写出文字描述                     Read latest.md
-         │                                              │
-         ▼                                              ▼
-   Write: docs/vision-inbox/latest.md        基于文字描述回复你
+你: [粘贴图片到对话框]
+         │
+         ▼
+VS Code 自动保存到 %LOCALAPPDATA%\Temp\ScreenShot_*.png
+         │
+         ▼
+本项目 Claude 自动调用 mcp__vision-bridge__analyze_image 工具
+         │
+         ▼
+火山引擎 Ark Vision API 识图 → 返回文字描述 → 回复你
 ```
+
+**无需任何手动操作**。CLAUDE.md 第 11 条规则确保自动触发。
+
+## 备用工作流（手动文本桥接）
+
+MCP Server 不可用时：在另一个支持图片的 Chat 中粘贴图片，让其写入 `latest.md`。
 
 ## 文件约定
 

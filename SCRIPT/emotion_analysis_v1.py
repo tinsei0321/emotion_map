@@ -82,6 +82,12 @@ L2_COLUMNS = [
     'attributions', 'suggestions', 'l4_confidence',
 ]
 
+# L3 多模态增强字段（Vision + OCR，L2 阶段为 None）
+L3_MM_COLUMNS = [
+    'vision_score', 'vision_scene', 'vision_objects', 'vision_summary', 'vision_confidence',
+    'ocr_text', 'ocr_confidence',
+]
+
 
 # ═══════════════════════════════════════════════════════════
 # 一、数据结构定义（L2 → L3 → L4 逐级叠加）
@@ -121,6 +127,15 @@ class EmotionResult:
     attributions: Optional[list] = None   # 归因列表 [{"cause":str, "cause_category":str,
                                           #            "weight":float, "evidence":str}, …]
     suggestions: Optional[list] = None    # 改善建议 ["建议1", "建议2", …]
+
+    # ── L3 多模态增强字段（VisionAnalyzer / OCRAnalyzer 产出）──
+    vision_score: Optional[float] = None      # 视觉情绪得分 0~1（VisionAnalyzer）
+    vision_scene: Optional[str] = None        # 场景分类（公园/街道/商店/…）
+    vision_objects: Optional[list] = None     # 检测到的城市相关物体
+    vision_summary: Optional[str] = None      # 图像内容摘要
+    vision_confidence: Optional[float] = None # 视觉分析置信度
+    ocr_text: Optional[str] = None            # OCR 提取的文字
+    ocr_confidence: Optional[float] = None    # OCR 置信度
 
     # ── 调试用 ──
     raw_response: Optional[str] = None    # 原始模型返回（调试/审计用）
@@ -836,6 +851,8 @@ def run_analysis_task(
     full_pipeline: bool = False,
     l3_api_key: str = '',
     l4_api_key: str = '',
+    multimodal: bool = False,
+    image_url_col: str = 'image_url',
     progress_callback=None,
 ) -> dict:
     """
@@ -851,6 +868,8 @@ def run_analysis_task(
         full_pipeline:    是否运行全管道 L2→L3→L4
         l3_api_key:       全管道 L3 Key
         l4_api_key:       全管道 L4 Key
+        multimodal:       是否启用 L3 多模态视觉分析（需 ARK_API_KEY）
+        image_url_col:    图片 URL 列名（默认 'image_url'）
 
     返回:
         {
@@ -883,6 +902,8 @@ def run_analysis_task(
                 l3_api_key=l3_api_key,
                 l4_api_key=l4_api_key,
                 l4_corpus_path=corpus_path or '',
+                multimodal=multimodal,
+                image_url_col=image_url_col,
                 progress_callback=progress_callback,
             )
         else:
@@ -1087,6 +1108,8 @@ def run_full_pipeline(file_path: str,
                       l3_api_key: str = '',
                       l4_api_key: str = '',
                       l4_corpus_path: str = '',
+                      multimodal: bool = False,
+                      image_url_col: str = 'image_url',
                       progress_callback=None) -> pd.DataFrame | None:
     """
     L2→L3→L4 全管道顺序执行。
@@ -1095,13 +1118,16 @@ def run_full_pipeline(file_path: str,
       1. L2 SnowNLP: 所有文本 → 基础 score/polarity/keywords
       2. L3 LLM:     负面文本（Negative/Very Negative）→ 细粒度语义增强
                      正面/中性文本保留 L2 结果（节省 API 调用）
-      3. L4 Corpus:  负面+需归因文本 → 因果归因 + 改善建议
+      3. L3 Multimodal (NEW): 对有图片的数据 → Vision 视觉情绪分析
+      4. L4 Corpus:  负面+需归因文本 → 因果归因 + 改善建议
 
     参数:
         file_path:      原始数据路径
         l3_api_key:     L3 LLM API Key（为空则跳过 L3）
         l4_api_key:     L4 LLM API Key（为空则跳过 L4）
         l4_corpus_path: 多维归因语料库路径
+        multimodal:     是否启用 L3 多模态视觉分析
+        image_url_col:  图片 URL 列名（默认 'image_url'）
     """
     # L2
     engine_l2 = create_analyzer('snownlp')
@@ -1111,6 +1137,12 @@ def run_full_pipeline(file_path: str,
 
     # 确定可用文本列（text 优先，L1 脱敏后 comments 已被清空）
     text_col = 'text' if 'text' in df.columns else ('comments' if 'comments' in df.columns else None)
+
+    # 初始化 L3 多模态字段（L2 阶段为 None，L3 multimodal 或 L3 LLM 时填充）
+    if multimodal or l3_api_key:
+        for col in L3_MM_COLUMNS:
+            if col not in df.columns:
+                df[col] = None
 
     # L3（仅对负面文本调用 LLM，节省成本）
     if l3_api_key:
@@ -1132,6 +1164,37 @@ def run_full_pipeline(file_path: str,
             safe_print(f'   L3 增强 {len(neg_texts)} 条负面文本')
         else:
             safe_print('   无负面文本，跳过 L3')
+
+    # L3 Multimodal: Vision 视觉情绪分析（对有图片的数据）
+    if multimodal and image_url_col in df.columns:
+        safe_print('\n── L3 多模态视觉分析 ──')
+        with TrackContext("MOD_ANA.D_007", multimodal='vision'):
+            try:
+                from SCRIPT.multimodal_analysis import (
+                    create_multimodal_analyzer, merge_multimodal_to_df,
+                )
+                vision_engine = create_multimodal_analyzer('vision')
+                if vision_engine._check_ready() is None:
+                    safe_print(f'   Vision 引擎就绪: {vision_engine.name} '
+                               f'v{vision_engine.version}')
+                    # 批量视觉分析
+                    from SCRIPT.multimodal_analysis import analyze_images
+                    vision_results = analyze_images(
+                        df, text_col=text_col, image_url_col=image_url_col,
+                        engine=vision_engine,
+                        progress_callback=progress_callback,
+                    )
+                    merge_multimodal_to_df(df, vision_results=vision_results)
+                else:
+                    safe_print(f'   [WARN] Vision 引擎未就绪 (ARK_API_KEY/ARK_VISION_MODEL 未设置)，跳过')
+            except ImportError as e:
+                safe_print(f'   [WARN] 多模态模块导入失败: {e}')
+            except Exception as e:
+                safe_print(f'   [ERR] 多模态分析异常: {e}')
+                trace_error("MOD_ANA.D_007", "multimodal vision analysis failed", exc=e)
+    elif multimodal:
+        safe_print(f'\n── L3 多模态视觉分析 ──')
+        safe_print(f'   [WARN] DataFrame 无 "{image_url_col}" 列，跳过多模态分析')
 
     # L4（对需干预的文本进行归因）
     if l4_api_key:
@@ -1175,6 +1238,7 @@ register_track_id("MOD_ANA.D_003", "run_full_pipeline L3 LLM语义增强块")
 register_track_id("MOD_ANA.D_004", "run_full_pipeline L4 多维归因块")
 register_track_id("MOD_ANA.D_005", "run_pipeline L3 字段合并块")
 register_track_id("MOD_ANA.D_006", "run_pipeline L4 字段合并块")
+register_track_id("MOD_ANA.D_007", "run_full_pipeline L3 多模态视觉分析块")
 
 
 # ═══════════════════════════════════════════════════════════

@@ -55,6 +55,7 @@ emotion_map/
 8. **空间范围优先** — 数据采集以范围 Polygon 为第一过滤条件，关键词仅作辅助
 9. **决策追踪必埋点** — 公开函数 `@track("MOD_XXX.F_NNN")`，关键分支 `TrackContext("MOD_XXX.D_NNN")`
 10. **追踪 ID 必注册** — 所有 ID 在 `core/tracker.py` 的 `_REGISTRY` 中登记，编号连续不跳号
+11. **图像粘贴自动识别** — 用户粘贴图片后，自动查找 `%LOCALAPPDATA%\Temp\ScreenShot_*.png` 中最新的文件，调用 `mcp__vision-bridge__analyze_image` 工具识图。不需要等待用户明确说"看图"
 
 **Bug 定位流程**：`[TRACE] 日志 → 决策 ID → 代码跳转（O(1)）`
 
@@ -132,4 +133,5 @@ Agent 在工作过程中自动记录的隐形知识：
 | Agent 规范 | `AGENTS.md` | Agent 协作、SOP、完成定义 |
 | Skills 索引 | `.claude/SKILLS_INDEX.md` | 项目相关 Skill 精选 |
 | 会话交接 | `memories/repo/session-handoff.md` | 跨机协作上下文 |
-| 视觉中转站 | `docs/vision-inbox/latest.md` | 跨 Chat 图片识别结果（由另一个支持图片的 Chat 写入） |
+| 视觉中转站 | `docs/vision-inbox/latest.md` | MCP 自动识图（vision-bridge server），备用手动文本桥接 |
+| MCP 视觉桥接 | `.claude/mcp_servers/vision_bridge_server.py` | 火山引擎 Ark Vision MCP Server — 让不支持图片的模型也能看图 |

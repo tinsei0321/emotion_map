@@ -9,6 +9,7 @@
 | L0→L1→L2 端到端管线验证 | ⏸️ 50% | **用户搁置至下周**：L1→L2 已验证通过，完整三阶段届时再跑 | 用户决策 |
 | Kepler UI 改造 | 80% | Token 体系补全 / 弹窗暗色主题统一 | 须保持当前基准 |
 | 文档修正 | 0% | Python 版本 3.14.5、L1 列数 26、pm.agent.md 角色澄清 | — |
+| **多模态分析引擎** (NEW) | **90%** | VisionAnalyzer 已验证可用；OCRAnalyzer/AudioAnalyzer API 接入待实现 | iFlytek SDK |
 
 ## 📌 上下文快照
 
@@ -35,6 +36,35 @@ git pull origin main
 pip install -r requirements.txt
 python -m streamlit run apps/app_main.py
 ```
+
+---
+
+## 2026-06-16 (周二) — 多模态 + MCP 视觉桥接
+
+### 新增
+
+| # | 任务 | 关键成果 |
+|---|------|----------|
+| 1 | `SCRIPT/multimodal_analysis.py` | 多模态分析引擎（~480行）：VisionAnalyzer / OCRAnalyzer / AudioAnalyzer + 工厂函数 + 批量分析 |
+| 2 | `emotion_analysis_v1.py` 扩展 | L3_MM_COLUMNS（7列）、EmotionResult 多模态字段、run_full_pipeline multimodal 参数 |
+| 3 | `core/config.py` 更新 | 多模态 API 端点 + 阈值常量（7 个新配置项） |
+| 4 | **vision-bridge MCP Server** | `.claude/mcp_servers/vision_bridge_server.py` — 火山引擎 Ark Vision 桥接 |
+| 5 | `.mcp.json` 注册 | vision-bridge server 已注册（`python .claude/mcp_servers/vision_bridge_server.py`） |
+| 6 | CLAUDE.md 更新 | 第 11 条规则：图像粘贴自动调 MCP 识图 |
+| 7 | 文档更新 | api-conventions.md / spec.md / architecture.md / vision-inbox README |
+
+### 模块 ID
+
+| ID | 文件 | 数量 |
+|----|------|------|
+| `MOD_MM` | `SCRIPT/multimodal_analysis.py` | 13 IDs (F_001~F_006 + D_001~D_007) |
+| `MOD_ANA.D_007` | `emotion_analysis_v1.py` | L3 多模态视觉分析块 |
+
+### 换机注意事项
+
+- **新 MCP 依赖**：`pip install mcp requests`（MCP SDK + HTTP 客户端）
+- **API Key**：需 `.env` 中配置 `ARK_API_KEY` + `ARK_VISION_MODEL`
+- **MCP Server 路径**：`.claude/mcp_servers/vision_bridge_server.py`（项目内，无需额外安装）
 
 ---
 

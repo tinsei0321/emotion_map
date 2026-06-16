@@ -9,6 +9,11 @@
 | 服务 | 环境变量 | 使用模块 |
 |------|----------|----------|
 | DeepSeek | `DEEPSEEK_API_KEY` | `SCRIPT/relevance_filter.py` |
+| 火山引擎 Ark Vision | `ARK_API_KEY`, `ARK_VISION_MODEL` | `SCRIPT/multimodal_analysis.py` |
+| 火山引擎 Ark Embed | `ARK_API_KEY`, `ARK_EMBED_MODEL` | `SCRIPT/multimodal_analysis.py` |
+| 讯飞 OCR | `IFLYTEK_API_KEY` | `SCRIPT/multimodal_analysis.py` |
+| 讯飞 ASR | `IFLYTEK_API_KEY` | `SCRIPT/multimodal_analysis.py` |
+| 字节 ASR/TTS | `VOLCENGINE_API_KEY` | `SCRIPT/multimodal_analysis.py` |
 | 讯飞 OCR/翻译 | `IFLYTEK_API_KEY` | `.claude/skills/ifly-*` |
 | 火山引擎 | `VOLCENGINE_API_KEY` | `.claude/skills/byted-*` |
 
@@ -43,6 +48,9 @@ for attempt in range(MAX_RETRIES):
 
 - 常规请求：30 秒
 - LLM 批量请求：120 秒
+- Vision 视觉分析：120 秒
+- OCR 文字提取：60 秒
+- ASR 语音转写：300 秒
 - 文件上传：300 秒
 
 ## 返回格式约定

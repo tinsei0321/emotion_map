@@ -254,6 +254,7 @@ flowchart LR
 | **L1** | 数据治理管道 | L0 原始CSV | 城市情绪DATA（清洗/去重/校准） | ⬜ 待建 |
 | **L2** | `SnowNLPAnalyzer` | L1 DATA | 情绪地图DATA（score + polarity + keywords） | ✅ 已实现 |
 | **L3** | `LLMAnalyzer` | L2 DATA | 增强DATA（+ category + intensity + target） | ⚠️ 接口预留 |
+| **L3** | `VisionAnalyzer` (NEW) | L2 DATA + images | 视觉增强DATA（+ vision_score + vision_scene + ...） | ✅ 已实现 |
 | **L4** | 归因引擎 | L3 DATA | 归因DATA（+ attributions + suggestions） | 🔮 框架预留 |
 
 **关于溯佰科**：溯佰科不是一个大语言模型，而是我公司正在开发中的**城市规划时空大模型平台**——集成城市数据底座、各种 GIS 工具的自然语言工作平台。情绪地图未来将以 **Agent** 的方式嵌入溯佰科平台，依托其数据底座、自然语言对话模组以及本地部署的算力来搭建成熟化产品。MVP 阶段先用开源方案跑通全流程。
