@@ -1463,12 +1463,12 @@ def main():
                     _mode_text += f' (采样 {_sampled} 点)'
                 st.caption(_mode_text)
 
-    # ── 消费 Toast（放在数据加载之后，保证数据加载 toast 能在同帧显示）──
+    st.pydeck_chart(deck, use_container_width=True)
+
+    # ── 消费 Toast（放在 pydeck 之后，避免被 PyDeck iframe 遮挡）──
     pending = st.session_state.pop('_toast', None)
     if pending:
         show_toast(pending)
-
-    st.pydeck_chart(deck, use_container_width=True)
 
 # ── 追踪 ID 注册表 ──
 register_track_id("MOD_APP.F_001", "分析控制台子页面（?page=console）")
