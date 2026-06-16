@@ -44,8 +44,8 @@ from core.range_selector import (
 )
 from core.ui_components import (
     inject_fullscreen_css, hud_button_style_css,
-    render_toolbar_shell, render_side_panel,
     render_title_bar, render_legend_overlay,
+    render_data_panel,
     render_polarity_stats, render_polarity_chart,
     inject_theme_css, show_toast,
 )
@@ -515,7 +515,6 @@ def show_range_dialog():
             st.session_state.polygon_layers.clear()
             st.session_state.selected_ranges = []
             st.session_state.analysis_layers = []
-            st.session_state['_toast'] = '[OK] 范围已清空'
             st.rerun()
 
 
@@ -858,6 +857,7 @@ def show_basemap_dialog():
         unsafe_allow_html=True
     )
 
+    # ── 单选控件（唯一交互入口，取代原来的静态列表 + 隐藏 selectbox）──
     choice = st.radio(
         '底图样式',
         options=options,
@@ -926,7 +926,6 @@ def show_layer_dialog():
     """, unsafe_allow_html=True)
     if st.button('[确定]', key='lyr_confirm', type='primary',
                 use_container_width=True):
-        st.session_state['_toast'] = '[OK] 图层状态已更新'
         st.rerun()
     st.caption('— 批量操作 —')
     bc1, bc2 = st.columns(2)
@@ -936,7 +935,6 @@ def show_layer_dialog():
                 lyr['visible'] = True
             st.session_state['layers'] = layers
             st.session_state['_all_layers_hidden'] = False
-            st.session_state['_toast'] = '[OK] 全部图层已显示'
             st.rerun()
     with bc2:
         if st.button('[全部关闭]', use_container_width=True, key='lyr_all_off'):
@@ -944,7 +942,6 @@ def show_layer_dialog():
                 lyr['visible'] = False
             st.session_state['layers'] = layers
             st.session_state['_all_layers_hidden'] = True
-            st.session_state['_toast'] = '[OK] 全部图层已隐藏'
             st.rerun()
 
 
@@ -1292,6 +1289,11 @@ def main():
     inject_fullscreen_css()
     hud_button_style_css()
 
+    # ── 消费 Toast 通知（各弹窗/操作设置 _toast，此处渲染）──
+    pending = st.session_state.pop('_toast', None)
+    if pending:
+        show_toast(pending)
+
     # ── 覆盖 pydeck pickable 图层的 cursor: pointer ──
     # deck.gl 对 pickable 图层默认设 cursor: pointer（"小手"），
     # 这里恢复为默认箭头，仅拖拽时由 deck.gl 自动设 grabbing。
@@ -1304,33 +1306,35 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
-    # ── geojson.io 风格双层顶栏 ──
-    render_toolbar_shell()  # 标题栏(深蓝) + 工具栏(白底)
+    # ── Kepler 风格 HUD ──
+    # (CSS定位在 hud_button_style_css)
+    # 左上角: [*]  右侧竖排: [R] [D] [A] [H]
+    # 底部左下: [M] [OV] [TB] [LY]
     fc = st.session_state.get('file_choice', '')
     btn_dis = st.session_state.get('current_df') is None
 
-    # 工具栏 — 左侧组: R LY A OV TB
-    if st.button('R', key='tb_range', help='分析范围'): show_range_dialog()
-    if st.button('LY', key='tb_layers', help='图层控制'): show_layer_dialog()
-    if st.button('A', key='tb_analysis', help='情绪分析', disabled=btn_dis): show_analysis_dialog()
-    if st.button('OV', key='tb_overview', help='数据概览', disabled=btn_dis): show_overview_dialog()
-    if st.button('TB', key='tb_table', help='数据表格', disabled=btn_dis): show_table_dialog()
+    # ── 居中标题：始终显示 ──
+    render_title_bar('宜昌市情绪地图 v1.0')
 
-    # 工具栏 — 右侧组: Import Export
-    if st.button('Import', key='tb_import', help='导入数据'): show_data_source_dialog()
-    if st.button('Export', key='tb_export', help='导出数据', disabled=btn_dis): pass
+    # ── 右侧工具栏 (从上到下: [R] [D] [A] [H]) ──
+    if st.button('[R]', key='rng'): show_range_dialog()
+    if st.button('[D]', key='d'): show_data_source_dialog()
+    if st.button('[A]', key='a'): show_analysis_dialog()
 
-    # 左下角: 底图 M
-    if st.button('M', key='tb_m', help='切换底图'): show_basemap_dialog()
-
-    # 工具栏中央: H
+    # 热力图切换
     heat_on = st.session_state.get('_heatmap_mode', False)
-    heat_label = 'H' if not heat_on else 'H*'
-    if st.button(heat_label, key='tb_heat', help='热力图切换'):
+    heat_label = '[H]' if not heat_on else '[H*]'
+    if st.button(heat_label, key='heat_toggle'):
         st.session_state['_heatmap_mode'] = not heat_on
-        new_mode = '热力图' if st.session_state['_heatmap_mode'] else '散点图'
-        st.session_state['_toast'] = f'[OK] 已切换至{new_mode}'
         st.rerun()
+
+    # ── 底部左下角 ──
+    if st.button('[*]', key='s'): show_settings_dialog()
+    if st.button('[M]', key='lbl'):
+        show_basemap_dialog()
+    if st.button('[OV]', key='o', disabled=btn_dis): show_overview_dialog()
+    if st.button('[TB]', key='t', disabled=btn_dis): show_table_dialog()
+    if st.button('[LY]', key='ly'): show_layer_dialog()
 
     # ── 选中点详情卡片 ──
     _render_selection_detail()
@@ -1472,9 +1476,9 @@ def main():
 
             visible_layers = [lyr for lyr in st.session_state.get('layers', [])
                              if lyr.get('visible', True)]
-            render_side_panel(
-                visible_layers=visible_layers,
-                selected_ranges=st.session_state.get('selected_ranges', []),
+            render_data_panel(
+                range_names=st.session_state.get('selected_ranges', []),
+                data_layers=visible_layers,
                 file_name=fc,
                 n_records=n if not st.session_state.get('_all_layers_hidden', False) else 0,
             )
@@ -1486,11 +1490,6 @@ def main():
                 if _sampled:
                     _mode_text += f' (采样 {_sampled} 点)'
                 st.caption(_mode_text)
-
-    # ── 消费 Toast（放在数据加载之后，保证数据加载 toast 能在同帧显示）──
-    pending = st.session_state.pop('_toast', None)
-    if pending:
-        show_toast(pending)
 
     # ── 统一渲染点（始终同一代码位置 → Streamlit 保持 Deck.gl 状态 → 视角不丢失）──
     deck.tooltip = {

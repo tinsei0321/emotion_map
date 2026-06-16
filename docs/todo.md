@@ -19,7 +19,7 @@
 
 | # | 状态 | 任务 | 涉及文件 | 备注 |
 |---|------|------|----------|------|
-| 1 | ⬜ | L0→L1→L2 端到端管线验证 | `SCRIPT/data_governance.py`, `SCRIPT/emotion_analysis_v1.py`, `DATA/` | **P0 跨日遗留**：准备测试数据 → 跑 L0→L1 治理 → 跑 L1→L2 情感分析 → 验证各层输出 |
+| 1 | ⏸️ | L0→L1→L2 端到端管线验证 | `SCRIPT/data_governance.py`, `SCRIPT/emotion_analysis_v1.py`, `DATA/` | **暂缓至下周**：准备测试数据 → 跑 L0→L1 治理 → 跑 L1→L2 情感分析 → 验证各层输出 |
 | 2 | ⬜ | 用户验收周末改动 | 全项目 | Agent v2.0 架构 + PRD/Spec 文档 + 启动应用验证 + L1_COLUMNS 重排 + confidence 重命名 |
 | 3 | ⬜ | Git 清理 + commit + push | — | 处理未提交 geojson + 提交今日变更 |
 | 4 | ✅ | 安装 .claude Skill 包 | `.claude/skills/` | 4 源合入 455 技能：daymade(64) + python-skills(12) + laurigates(362) + **anthropics(17)** |

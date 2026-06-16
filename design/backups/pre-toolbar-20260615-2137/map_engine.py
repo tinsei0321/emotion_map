@@ -74,7 +74,6 @@ def create_base_map(lats=None, lons=None, show_labels=True,
         style_url = MAP_STYLES.get(map_style, MAP_STYLES['carto_dark'])
 
     return pdk.Deck(
-        views=[pdk.View(type='MapView', controller=True)],
         initial_view_state=view_state,
         map_provider='mapbox',
         map_style=style_url,

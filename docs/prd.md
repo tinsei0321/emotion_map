@@ -124,7 +124,7 @@
 | F09 | 相关性筛选（两层漏斗：关键词 + LLM） | ✅ 已交付 |
 | F10 | 决策追踪系统（@track / TrackContext） | ✅ 已交付 |
 | F11 | Design Token 体系（Light/Dark 双主题） | ✅ 已交付 |
-| F12 | 端到端管线跑通 L0→L1→L2 | 待验证 (06-15) |
+| F12 | 端到端管线跑通 L0→L1→L2 | ⏸️ 暂缓至下周 |
 
 #### P1 — Should Have（MVP 补充）
 
