@@ -12,6 +12,25 @@ import streamlit as st
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# ── 加载 .env 到环境变量（Streamlit 进程不会自动继承）──
+def _load_dotenv():
+    """手动加载 .env 文件（无需 python-dotenv 依赖）。"""
+    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
+    if not os.path.exists(env_path):
+        return
+    with open(env_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if '=' in line:
+                key, _, value = line.partition('=')
+                key, value = key.strip(), value.strip()
+                if key and key not in os.environ:
+                    os.environ[key] = value
+
+_load_dotenv()
+
 from core.config import (
     MAX_DISPLAY_POINTS, LARGE_FILE_WARN_MB,
 )
@@ -127,6 +146,27 @@ def main():
     canvas[data-testid="stDeckGlJsonChart"] { cursor: auto !important; }
     </style>
     """, unsafe_allow_html=True)
+
+    # ── Import 触发数据加载（在工具栏前处理，避免按钮状态滞后）──
+    if st.session_state.get('_load_triggered'):
+        fp = st.session_state.get('file_path', '')
+        if fp and os.path.exists(fp):
+            try:
+                data = load_emotion_data(fp)
+                if data:
+                    df = data['df']
+                    total = len(df)
+                    if total > MAX_DISPLAY_POINTS:
+                        import random as _random
+                        idx = _random.Random(42).sample(range(total), MAX_DISPLAY_POINTS)
+                        df = df.iloc[idx].reset_index(drop=True)
+                    st.session_state['current_df'] = df
+                    st.session_state['_total_rows'] = total
+                    st.session_state['current_file_choice'] = st.session_state.get('file_choice', '')
+                    st.session_state['data_loaded'] = True
+                    st.session_state['_load_triggered'] = False
+            except Exception:
+                st.session_state['_load_triggered'] = False
 
     # ── geojson.io 风格双层顶栏 ──
     render_toolbar_shell()

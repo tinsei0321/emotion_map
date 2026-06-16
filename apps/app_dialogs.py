@@ -96,9 +96,11 @@ def _panel_coord_dup_analysis(df_or_gdf, geom_col=None):
 # ═══════════════════════════════════════════════════════════
 
 @track("MOD_APP.F_005", track_args=False)
-@st.dialog('[DATA] 数据源', width='small')
+@st.dialog('DATA 数据源', width='small')
 def show_data_source_dialog():
     """数据源选择弹窗。"""
+    if st.session_state.pop('_import_done', False):
+        return
     folder_path = PROCESSED_DIR
     st.caption(f'数据目录: `{PROCESSED_DIR}`')
     if not os.path.exists(folder_path):
@@ -129,9 +131,9 @@ def show_data_source_dialog():
 
     if file_size > LARGE_FILE_WARN_MB:
         st.warning(f'文件较大 ({file_size:.0f} MB)，地图将自动采样显示。')
-    if st.button('[确认加载]', use_container_width=True, type='primary'):
+    if st.button('确认加载', use_container_width=True, type='primary'):
         full_path = os.path.join(folder_path, file_choice)
-        st.session_state['folder_key'] = '[DATA] processed（处理结果）'
+        st.session_state['folder_key'] = 'DATA processed（处理结果）'
         st.session_state['file_choice'] = file_choice
         st.session_state['file_path'] = full_path
         st.session_state['_load_triggered'] = True
@@ -139,6 +141,7 @@ def show_data_source_dialog():
         register_layer(
             name=file_choice, file_path=full_path,
             level=_guess_level(file_choice), kind='data', color='#48C9B0')
+        st.session_state['_import_done'] = True
         st.rerun()
 
 
@@ -147,7 +150,7 @@ def show_data_source_dialog():
 # ═══════════════════════════════════════════════════════════
 
 @track("MOD_APP.F_006", track_args=False)
-@st.dialog('[OV] 数据概览', width='large')
+@st.dialog('OV 数据概览', width='large')
 def show_overview_dialog():
     df = st.session_state.get('current_df')
     map_meta = st.session_state.get('current_map_meta')
@@ -195,7 +198,7 @@ def show_overview_dialog():
 # ═══════════════════════════════════════════════════════════
 
 @track("MOD_APP.F_007", track_args=False)
-@st.dialog('[TB] 数据表格', width='large')
+@st.dialog('TB 数据表格', width='large')
 def show_table_dialog():
     processed_files = []
     if os.path.exists(PROCESSED_DIR):
@@ -235,7 +238,7 @@ def show_table_dialog():
 # ═══════════════════════════════════════════════════════════
 
 @track("MOD_APP.F_021", track_args=False)
-@st.dialog('[Export] 导出数据', width='small')
+@st.dialog('Export 导出数据', width='small')
 def show_export_dialog():
     from core.export import get_export_preview, export_boundaries_geojson
     df = st.session_state.get('current_df')
@@ -293,7 +296,7 @@ def show_export_dialog():
 # ═══════════════════════════════════════════════════════════
 
 @track("MOD_APP.F_008", track_args=False)
-@st.dialog('[*] 设置与调试', width='small')
+@st.dialog('* 设置与调试', width='small')
 def show_settings_dialog():
     st.caption('调试信息面板')
     st.divider()
@@ -502,7 +505,7 @@ def _render_style_editor(layer: dict, style: dict, idx: int):
 # ═══════════════════════════════════════════════════════════
 
 @track("MOD_APP.F_009", track_args=False)
-@st.dialog('[RNG] 分析范围', width='medium')
+@st.dialog('RNG 分析范围', width='medium')
 def show_range_dialog():
     if st.session_state.get("_range_confirmed"):
         del st.session_state["_range_confirmed"]
@@ -628,7 +631,7 @@ def show_range_dialog():
 # ═══════════════════════════════════════════════════════════
 
 @track("MOD_APP.F_003", track_args=False)
-@st.dialog('[GV] 数据治理', width='large')
+@st.dialog('GV 数据治理', width='large')
 def show_governance_dialog():
     raw_files = sorted([
         f for f in os.listdir(RAW_DIR)
@@ -652,7 +655,7 @@ def show_governance_dialog():
             '[INFO] v2.0 LLM 批量分类模式（更精准）请通过 CLI 运行:\n'
             '`python SCRIPT/data_governance.py`')
 
-    if st.button('[开始数据治理]', type='primary', use_container_width=True):
+    if st.button('开始数据治理', type='primary', use_container_width=True):
         with st.status('治理中...', expanded=True) as status:
             progress = st.progress(0, text='准备...')
             status.update(label='[1/4] 坐标转换...')
@@ -720,7 +723,7 @@ def show_governance_dialog():
 
             col_map, col_l2 = st.columns(2)
             with col_map:
-                if st.button('[加载到地图]', type='primary', use_container_width=True):
+                if st.button('加载到地图', type='primary', use_container_width=True):
                     st.session_state['file_path'] = r['l1_path']
                     st.session_state['file_choice'] = os.path.basename(r['l1_path'])
                     st.session_state['_load_triggered'] = True
@@ -728,7 +731,7 @@ def show_governance_dialog():
                                  file_path=r['l1_path'], level='L1', kind='data', color='#48C9B0')
                     st.rerun()
             with col_l2:
-                if st.button('[运行 L2 情绪分析]', use_container_width=True):
+                if st.button('运行 L2 情绪分析', use_container_width=True):
                     with st.status('L2 分析中...', expanded=True) as l2_status:
                         l2_result = step4_run_l2_analysis(r['l1_path'], r['output_name'])
                         if l2_result['success']:
@@ -751,7 +754,7 @@ def show_governance_dialog():
 # ═══════════════════════════════════════════════════════════
 
 @track("MOD_APP.F_010", track_args=False)
-@st.dialog('[Map] 底图切换', width='small')
+@st.dialog('Map 底图切换', width='small')
 def show_basemap_dialog():
     current = st.session_state.get('_map_style', 'carto_standard')
     st.caption('点击底图样式即刻切换，地图自动刷新')
@@ -788,7 +791,7 @@ def show_basemap_dialog():
 # ═══════════════════════════════════════════════════════════
 
 @track("MOD_APP.F_013", track_args=False)
-@st.dialog('[LY] 图层控制', width='small')
+@st.dialog('LY 图层控制', width='small')
 def show_layer_dialog():
     layers = st.session_state.get('layers', [])
     if not layers:
@@ -819,20 +822,20 @@ def show_layer_dialog():
                     st.session_state['_all_layers_hidden'] = not new_val
 
     st.divider()
-    if st.button('[确定]', key='lyr_confirm', type='primary', use_container_width=True):
+    if st.button('确定', key='lyr_confirm', type='primary', use_container_width=True):
         st.session_state['_toast'] = '[OK] 图层状态已更新'
         st.rerun()
     st.caption('— 批量操作 —')
     bc1, bc2 = st.columns(2)
     with bc1:
-        if st.button('[全部打开]', use_container_width=True, key='lyr_all_on'):
+        if st.button('全部打开', use_container_width=True, key='lyr_all_on'):
             for lyr in layers: lyr['visible'] = True
             st.session_state['layers'] = layers
             st.session_state['_all_layers_hidden'] = False
             st.session_state['_toast'] = '[OK] 全部图层已显示'
             st.rerun()
     with bc2:
-        if st.button('[全部关闭]', use_container_width=True, key='lyr_all_off'):
+        if st.button('全部关闭', use_container_width=True, key='lyr_all_off'):
             for lyr in layers: lyr['visible'] = False
             st.session_state['layers'] = layers
             st.session_state['_all_layers_hidden'] = True
@@ -845,9 +848,12 @@ def show_layer_dialog():
 # ═══════════════════════════════════════════════════════════
 
 @track("MOD_APP.F_011", track_args=False)
-@st.dialog('[ANA] 运行情绪分析', width='large')
+@track("MOD_APP.F_011", track_args=False)
+@st.dialog('ANA 运行情绪分析', width='large')
 def show_analysis_dialog():
-    st.markdown('选择已完成治理的 L1 数据文件并运行情绪分析引擎，结果自动加载到地图。')
+    if st.session_state.pop('_analysis_done_flag', False):
+        return
+    st.markdown('选择 L1 数据文件并运行情绪分析引擎，结果自动加载到地图。')
 
     l1_files = []
     if os.path.exists(PROCESSED_DIR):
@@ -864,22 +870,21 @@ def show_analysis_dialog():
         return
 
     source_dir = PROCESSED_DIR
-    file_choice = st.selectbox('[FILE] 待分析数据文件', l1_files)
+    file_choice = st.selectbox('FILE 待分析数据文件', l1_files)
     st.caption(f'路径: `{os.path.join(source_dir, file_choice)}`')
 
     input_path = os.path.join(source_dir, file_choice)
     try:
         sample = pd.read_csv(input_path, nrows=1)
-        has_l1_markers = ('relevance' in sample.columns or 'in_scope' in sample.columns)
-        if not has_l1_markers:
-            st.warning('[WARN] 所选文件缺少 L1 治理标记列')
+        if not ('relevance' in sample.columns or 'in_scope' in sample.columns):
+            st.warning('WARN 所选文件缺少 L1 治理标记列')
         n_rows = len(pd.read_csv(input_path))
         if n_rows > 10000:
             st.info(f'文件包含 {n_rows:,} 条记录。分析可能需要较长时间。')
     except Exception as e:
         st.warning(f'无法预览文件: {e}')
 
-    with st.expander('[L1 数据概览]', expanded=False):
+    with st.expander('L1 数据概览', expanded=False):
         gov_result = st.session_state.get('_governance_result')
         if gov_result:
             c1, c2 = st.columns(2)
@@ -889,14 +894,26 @@ def show_analysis_dialog():
     st.divider()
 
     engine_choice = st.radio(
-        '[ENG] 分析引擎',
-        ['L2 · SnowNLP粗粒度分析 (离线)',
-         'L3 · LLM 细粒度语义解析 (需 API Key)',
-         'L4 · 语料库 + LLM 多维归因处理 (需语料库 和 API Key)'])
+        'ENG 分析引擎',
+        ['L2 . SnowNLP粗粒度分析 (离线)',
+         'L3 . LLM 细粒度语义解析 (DeepSeek)',
+         'L4 . 语料库多维归因 (需 LLM + 语料库)'])
 
     api_key = ''
-    if 'LLM' in engine_choice:
-        api_key = st.text_input('[KEY] API Key', type='password', placeholder='sk-...')
+    engine_type = 'snownlp'
+
+    if 'L3' in engine_choice:
+        engine_type = 'llm'
+        api_key = os.environ.get('DEEPSEEK_API_KEY', '')
+        if api_key:
+            st.caption(f'Key: `{api_key[:8]}...{api_key[-4:]}` (已配置)')
+        else:
+            st.warning('WARN 未检测到 DEEPSEEK_API_KEY。')
+    elif 'L4' in engine_choice:
+        engine_type = 'corpus'
+        api_key = os.environ.get('DEEPSEEK_API_KEY', '')
+        if not api_key:
+            api_key = st.text_input('KEY LLM API Key', type='password', placeholder='sk-...')
 
     st.divider()
 
@@ -908,7 +925,7 @@ def show_analysis_dialog():
 
     analysis_done = st.session_state.get('_analysis_done', False) and \
                     st.session_state.get('_last_analyzed_file', '') == file_choice
-    btn_label = '[在地图上显示]' if analysis_done else '[开始分析]'
+    btn_label = '在地图上显示' if analysis_done else '开始分析'
     run_clicked = st.button(btn_label, type='primary', use_container_width=True)
 
     if run_clicked:
@@ -924,9 +941,8 @@ def show_analysis_dialog():
                 register_layer(name=os.path.basename(saved['csv_path']),
                              file_path=saved['csv_path'], level='L2',
                              range_label='分析结果', color='#48C9B0')
-                st.success(f'已加载 {saved["n_points"]} 条数据到地图。关闭对话框查看。')
+                st.success(f'已加载 {saved["n_points"]} 条数据到地图。')
         else:
-            engine_type = 'llm' if 'LLM' in engine_choice else 'snownlp'
             _input_path = os.path.join(source_dir, file_choice)
             _base_name = os.path.splitext(file_choice)[0].replace('_raw', '').replace('_RAW', '')
             file_size_mb = os.path.getsize(_input_path) / (1024 * 1024)
@@ -936,15 +952,15 @@ def show_analysis_dialog():
                 progress_bar.progress(step / total, text=message)
 
             with st.status('分析中...', expanded=True) as status:
-                status.update(label=f'文件: {_base_name} ({file_size_mb:.0f} MB)')
+                status.update(label=f'文件: {_base_name} ({file_size_mb:.0f} MB)  |  引擎: {engine_type}')
                 try:
                     result = run_analysis_task(
                         file_path=_input_path, engine_type=engine_type,
                         output_name=_base_name, api_key=api_key,
                         progress_callback=update_progress)
                     if result['success']:
-                        progress_bar.progress(1.0, text=f'[OK] {result["n_points"]} 条完成')
-                        status.update(label=f'[OK] 分析完成！{result["n_points"]} 条数据', state='complete')
+                        progress_bar.progress(1.0, text=f'OK {result["n_points"]} 条完成')
+                        status.update(label=f'OK 分析完成！{result["n_points"]} 条数据', state='complete')
                         st.session_state['_analysis_done'] = True
                         st.session_state['_last_analyzed_file'] = file_choice
                         st.session_state['_last_analysis_result'] = result
@@ -958,14 +974,15 @@ def show_analysis_dialog():
                         register_layer(name=os.path.basename(result['csv_path']),
                                      file_path=result['csv_path'], level='L2',
                                      range_label='分析结果', color='#48C9B0')
+                        st.session_state['_analysis_done_flag'] = True
                         st.rerun()
                     else:
-                        progress_bar.progress(1.0, text='[WARN] 分析失败')
-                        status.update(label='[WARN] 分析失败', state='error')
+                        progress_bar.progress(1.0, text='WARN 分析失败')
+                        status.update(label='WARN 分析失败', state='error')
                         st.error(f'分析失败: {result["message"][:200]}')
                 except Exception as e:
-                    progress_bar.progress(1.0, text='[ERR] 分析失败')
-                    status.update(label='[ERR] 分析出错', state='error')
+                    progress_bar.progress(1.0, text='ERR 分析失败')
+                    status.update(label='ERR 分析出错', state='error')
                     st.error(f'分析失败: {str(e)[:200]}')
                     trace_error("MOD_APP.F_011", f'分析执行异常: {str(e)[:200]}')
 
@@ -989,11 +1006,10 @@ def show_analysis_dialog():
                              type='primary', use_container_width=True)
 
 
-# ── 追踪 ID 注册表（从 app_main.py 迁移）──
+# ── 追踪 ID 注册表 ──
 
 def _register_dialog_track_ids():
-    """注册所有弹窗相关的追踪 ID（在 app_main 启动时调用）。"""
-    register_track_id("MOD_APP.F_003", "数据治理弹窗（L0→L1 治理管道）")
+    register_track_id("MOD_APP.F_003", "数据治理弹窗（L0->L1 治理管道）")
     register_track_id("MOD_APP.F_005", "数据源选择弹窗")
     register_track_id("MOD_APP.F_006", "数据概览弹窗")
     register_track_id("MOD_APP.F_007", "数据表格弹窗")
@@ -1001,15 +1017,16 @@ def _register_dialog_track_ids():
     register_track_id("MOD_APP.F_009", "分析范围选择弹窗")
     register_track_id("MOD_APP.F_010", "底图切换弹窗")
     register_track_id("MOD_APP.F_011", "情绪分析弹窗")
-    register_track_id("MOD_APP.F_013", "图层控制弹窗（[LY]）")
-    register_track_id("MOD_APP.F_017", "A功能：获取图层默认样式")
-    register_track_id("MOD_APP.F_018", "A功能：解析上传矢量文件")
-    register_track_id("MOD_APP.F_019", "A功能：渲染单图层横条控件")
-    register_track_id("MOD_APP.F_020", "A功能：渲染样式编辑面板")
+    register_track_id("MOD_APP.F_013", "图层控制弹窗（LY）")
+    register_track_id("MOD_APP.F_017", "获取图层默认样式")
+    register_track_id("MOD_APP.F_018", "解析上传矢量文件")
+    register_track_id("MOD_APP.F_019", "渲染单图层横条控件")
+    register_track_id("MOD_APP.F_020", "渲染样式编辑面板")
     register_track_id("MOD_APP.F_021", "Export 导出数据弹窗")
-    register_track_id("MOD_APP.D_010", "图层控制：单图层toggle切换")
-    register_track_id("MOD_APP.D_011", "图层控制：[全部打开]")
-    register_track_id("MOD_APP.D_012", "图层控制：[全部关闭]")
-    register_track_id("MOD_APP.D_020", "A功能：解析矢量文件决策点")
-    register_track_id("MOD_APP.D_021", "A功能：安全阈值校验")
+    register_track_id("MOD_APP.D_010", "图层控制：单个图层toggle切换")
+    register_track_id("MOD_APP.D_011", "图层控制：全部打开")
+    register_track_id("MOD_APP.D_012", "图层控制：全部关闭")
+    register_track_id("MOD_APP.D_020", "解析矢量文件决策点")
+    register_track_id("MOD_APP.D_021", "安全阈值校验")
     register_track_id("MOD_APP.D_023", "Export对话框：导出格式选择")
+

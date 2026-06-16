@@ -1,0 +1,59 @@
+- generic [ref=e8]:
+  - generic:
+    - iframe
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic: 宜昌市情绪地图 v1.0
+  - button "R" [ref=e14] [cursor=pointer]:
+    - paragraph [ref=e18]: R
+  - button "LY" [ref=e24] [cursor=pointer]:
+    - paragraph [ref=e28]: LY
+  - button "A" [disabled] [ref=e34]:
+    - paragraph [ref=e38]: A
+  - button "OV" [disabled] [ref=e44]:
+    - paragraph [ref=e48]: OV
+  - button "TB" [disabled] [ref=e54]:
+    - paragraph [ref=e58]: TB
+  - button "Import" [active] [ref=e64] [cursor=pointer]:
+    - paragraph [ref=e68]: Import
+  - button "Export" [disabled] [ref=e74]:
+    - paragraph [ref=e78]: Export
+  - button "M" [ref=e84] [cursor=pointer]:
+    - paragraph [ref=e88]: M
+  - button "H" [ref=e94] [cursor=pointer]:
+    - paragraph [ref=e98]: H
+  - generic [ref=e186]:
+    - group [ref=e187]:
+      - generic "数据一览" [ref=e188] [cursor=pointer]
+      - generic [ref=e189]:
+        - generic [ref=e190]: 城市情绪数据 L1 ·
+        - generic [ref=e191]: 文件 simulated_l1_2000_规划范围_L1_result_csv.csv
+    - group [ref=e192]:
+      - generic "图层一览" [ref=e193] [cursor=pointer]
+      - generic [ref=e195]: ● [L1] simulated_l1_2000_规划范围_L1_resu
+  - paragraph [ref=e200]: "渲染: S·标准"
+  - generic [ref=e203]:
+    - button "Fullscreen" [ref=e208] [cursor=pointer]:
+      - img [ref=e209]
+    - generic [ref=e216]:
+      - generic [ref=e218]:
+        - region "Map" [ref=e219]
+        - list [ref=e221]:
+          - text: ©
+          - link "CARTO" [ref=e222] [cursor=pointer]:
+            - /url: https://carto.com/about-carto/
+          - text: ", ©"
+          - link "OpenStreetMap" [ref=e223] [cursor=pointer]:
+            - /url: http://www.openstreetmap.org/about/
+          - text: contributors
+      - generic [ref=e226]:
+        - button "Zoom In" [ref=e227] [cursor=pointer]
+        - button "Zoom Out" [ref=e229] [cursor=pointer]
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic: "[OK] 数据加载成功"

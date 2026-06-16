@@ -760,12 +760,19 @@ def show_toast(message: str, duration_ms: int = 2000):
 
 
 # ═══════════════════════════════════════════════════════════
-# 点击详情面板
+# 点击详情面板 [SHELVED — 2026-06-16]
+# 功能代码已就绪，但 pydeck click 事件接入有 bug，搁置后续开发。
+# 待 P2 阶段与 Kepler.gl / MapLibre GL JS 迁移一起处理。
 # ═══════════════════════════════════════════════════════════
 
 @track("MOD_UI.F_014", track_args=False)
 def render_point_detail_overlay(point_data: dict):
-    """渲染地图右下角浮动详情卡片（CSS position:fixed 浮在地图上方）。"""
+    """[SHELVED] 渲染地图右下角浮动详情卡片。
+
+    注意: 当前未接入地图点击事件。pydeck 在 Streamlit 中的
+    click event 需要通过 st.pydeck_chart 的 on_select 参数实现，
+    此功能待 P2 阶段（Kepler.gl 迁移或 on_select 适配）完成。
+    """
     if not point_data:
         return
 

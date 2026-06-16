@@ -1048,9 +1048,9 @@ def run_analysis_task(
 
     参数:
         file_path:        原始情绪DATA文件（L1）路径
-        engine_type:      'snownlp' | 'llm' | 'corpus'
+        engine_type:      'snownlp' | 'deepseek-l2' | 'llm' | 'corpus'
         output_name:      输出文件基础名（不含扩展名）
-        api_key:          LLM API Key（L3/L4 需要）
+        api_key:          LLM API Key（deepseek-l2/L3/L4 需要）
         corpus_path:      L4 语料库路径
         enable_keywords:  是否提取关键词
         full_pipeline:    是否运行全管道 L2→L3→L4
@@ -1098,6 +1098,13 @@ def run_analysis_task(
             kwargs = {}
             if engine_type == 'snownlp':
                 kwargs['enable_keywords'] = enable_keywords
+            elif engine_type == 'deepseek-l2':
+                if api_key:
+                    kwargs['api_key'] = api_key
+                elif not api_key:
+                    api_key = os.environ.get('DEEPSEEK_API_KEY', '')
+                    if api_key:
+                        kwargs['api_key'] = api_key
             elif engine_type in ('llm', 'corpus'):
                 if api_key:
                     kwargs['api_key'] = api_key

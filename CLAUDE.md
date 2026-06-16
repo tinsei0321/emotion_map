@@ -135,3 +135,32 @@ Agent 在工作过程中自动记录的隐形知识：
 | 会话交接 | `memories/repo/session-handoff.md` | 跨机协作上下文 |
 | 视觉中转站 | `docs/vision-inbox/latest.md` | MCP 自动识图（vision-bridge server），备用手动文本桥接 |
 | MCP 视觉桥接 | `.claude/mcp_servers/vision_bridge_server.py` | 火山引擎 Ark Vision MCP Server — 让不支持图片的模型也能看图 |
+
+## 沟通方式
+
+- 默认中文回复；代码、命令、变量名、文件路径保持英文
+- 结论先行，简洁直接，不先铺垫背景
+- 不谄媚，不夸"这是个很好的问题"，不以"当然可以"开头
+- 给真实判断——方案有问题直接指出，发现更好做法主动说明
+
+## Git
+
+- 提交前先展示将要提交的变更摘要
+- commit message 使用简洁英文
+
+## 红线操作
+
+以下操作即使在 auto-accept 模式下也必须先问：
+
+- 删除文件、目录或 git 历史
+- 修改 `.env`、密钥、token、证书、CI/CD 配置
+- `git push`、`git rebase`、`git reset --hard`、强制推送
+- 公开发布（`npm publish`、生产部署等）
+
+## 开发工作流
+
+每次修改 Python 代码后，自动执行：
+
+1. **清理缓存**：`find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null; find . -name "*.pyc" -delete 2>/dev/null`
+2. **重启 Streamlit**：杀掉旧进程 → 重新启动 `py launch.py`（后台运行）
+3. **验证**：`python -m pytest tests/ -q` 确认 56 tests 通过
