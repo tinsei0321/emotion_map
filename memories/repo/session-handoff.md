@@ -2,6 +2,23 @@
 
 > 换机后读取此文件恢复上下文。
 
+## ⚠ 到公司第一步（2026-06-17，必做，否则前端底图 404）
+
+前端 4 张天地图底图里，**影像(img) 2 个 JSON 被 `.gitignore` 屏了**（含内嵌 key），`git pull` 不会带过去。公司机 `git pull` 后**必须手动补这 2 个文件**（key 已在 `core/config.py` 公开、core/CLAUDE.md 批准前端可用）：
+
+**① 在 `apps/static/` 下新建 `tianditu_img_nolabel.json`**（影像·无注记 = 默认底图），内容**原样**粘贴：
+```json
+{"version": 8, "sources": {"tianditu-img": {"type": "raster", "tiles": ["http://t0.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=img&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=4d4dc85287c003c8a18d5520b8920796"], "tileSize": 256}}, "layers": [{"id": "tianditu-img", "type": "raster", "source": "tianditu-img"}]}
+```
+
+**② 在 `apps/static/` 下新建 `tianditu_img.json`**（影像·有注记），内容**原样**粘贴：
+```json
+{"version": 8, "sources": {"tianditu-img": {"type": "raster", "tiles": ["http://t0.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=img&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=4d4dc85287c003c8a18d5520b8920796"], "tileSize": 256}, "tianditu-cia": {"type": "raster", "tiles": ["http://t0.tianditu.gov.cn/cia_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cia&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=4d4dc85287c003c8a18d5520b8920796"], "tileSize": 256}}, "layers": [{"id": "tianditu-img", "type": "raster", "source": "tianditu-img"}, {"id": "tianditu-cia", "type": "raster", "source": "tianditu-cia"}]}
+```
+
+> 另两张（常规 vec）`tianditu_label.json`/`tianditu_nolabel.json` 同样在本地、不在 git——公司机若已存在就别动；若丢了，把上面 img 版里的 `img`→`vec`、`cia`→`cva` 即得。
+> 补完后启动见 [`frontend/README.md`](../../frontend/README.md)「启动」一节。
+
 ## 当前节点 — 2026-06-16 傍晚
 
 ### 代码状态

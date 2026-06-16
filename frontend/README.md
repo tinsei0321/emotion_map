@@ -1,0 +1,86 @@
+# 情绪地图 — 前端启动手册（初学者版）
+
+> 这是**新的主界面**：MapLibre GL JS 前端（geojson.io 1:1 风格外壳）。
+> Streamlit 旧页面**仍在、没删、作为遗留 MVP 暂时保留**（见文末），但**新功能一律写进这里**。
+
+---
+
+## 一、每次启动测试页面（3 步）
+
+> 用 VS Code 操作最省事。命令里的 `py` 是 Windows 的 Python 启动器（别用 `python`，本机 `python` 会报错）。
+
+**第 1 步：打开终端**
+- VS Code 打开项目文件夹 `d:\Github\emotion_map`
+- 顶部菜单 **Terminal → New Terminal**（或按 `` Ctrl+` ``）
+- 确认终端**当前路径在项目根** `d:/Github/emotion_map`（不是在 `frontend/` 里！）
+  - 不确定就先敲：`cd d:/Github/emotion_map` 回车
+
+**第 2 步：启动本地服务器**
+在终端输入并回车：
+```
+py -m http.server 8080
+```
+看到这行就成了：
+```
+Serving HTTP on :: port 8080 (http://[::]:8080) ...
+```
+（这个终端窗口要**一直开着**，关了页面就打不开了。）
+
+**第 3 步：浏览器打开**
+地址栏粘贴：
+```
+http://127.0.0.1:8080/frontend/index.html
+```
+看到 **深蓝标题栏「宜昌市情绪地图 v1.0」+ 工具栏 + 天地图影像底图**，就成了。
+
+**停止服务器**：回到那个终端，按 `Ctrl + C`。
+
+---
+
+## 二、改完代码怎么看效果
+
+| 改了什么 | 怎么刷新 |
+|----------|----------|
+| `frontend/` 下的 CSS / JS / HTML | 浏览器按 **F5**（或 `Ctrl+R`）即可 |
+| `design/tokens.json`（配色/尺寸 token） | 终端先跑 `py design/generate_css.py`，再 F5 |
+| 怀疑浏览器缓存作怪 | **Ctrl+Shift+R** 硬刷新 |
+
+---
+
+## 三、为什么必须从「项目根」启动
+
+前端底图引用的是相对路径 `../apps/static/tianditu_*.json`。
+- 从**项目根**起服务器 → `../apps/static/` 指向真实文件 ✅
+- 从 `frontend/` 里起服务器 → 路径越界，底图 **404**（地图灰屏）❌
+
+所以第 1 步一定要确认终端在 `d:/Github/emotion_map`，不是在 `frontend/`。
+
+---
+
+## 四、常见问题
+
+- **"Address already in use"（端口被占）**：换个端口，`py -m http.server 8081`，浏览器地址也改成 `8081`。
+- **地图灰屏 / 底图瓦片不出**：检查 `apps/static/` 下有没有 `tianditu_img_nolabel.json` 等 4 个底图 JSON。
+  这几个文件**被 gitignore（含 key）不会随 git 同步**，换机器要手动补，见 `memories/repo/session-handoff.md`「到公司第一步」。
+- **页面全白**：浏览器按 **F12** → Console 看红字报错，多半是某个 JS 路径或语法问题。
+- **终端敲 `python` 报 "exit 49"**：本机要用 `py`，不要用 `python`。
+
+---
+
+## 五、Streamlit 旧页面（遗留，可选）
+
+- **状态**：代码仍在 `apps/`，**没删**，作为遗留 MVP 暂时保留。
+- **要跑的话**：终端 `py launch.py`，浏览器开 `http://localhost:8501`。
+- **定位**：不再加新功能；MapLibre 前端（本目录）是主界面，迁移收尾时 Streamlit 下线。
+
+---
+
+## 六、目录速览
+
+```
+frontend/
+├── index.html          ← 入口（浏览器打开的就是它）
+├── css/                ← 样式（layout/toolbar/sidebar/panel/popup/...）
+├── js/                 ← 逻辑（main/map/panel/toolbar/sidebar/popup/state）
+└── (设计 token 单源在 ../design/tokens.json，经 generate_css.py 生成 css/tokens.css)
+```
