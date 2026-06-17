@@ -112,9 +112,11 @@ export function initControls(map, { getFC } = {}) {
   group.append(btnReset, btnView, btnZoomIn, btnZoomOut, btnNorth);
 
   // ── one-segment scale bar (white, auto-adaptive) ──
+  // Label sits ABOVE the bar (standard layout) so the value can't dangle off the
+  // bottom edge on short screens — the bar is the lowest element.
   const scale = document.createElement('div');
   scale.className = 'emotion-scale-ctrl';
-  scale.innerHTML = '<div class="emotion-scale"><span class="emotion-scale-label">—</span></div>';
+  scale.innerHTML = '<span class="emotion-scale-label">—</span><div class="emotion-scale"></div>';
 
   root.append(group, scale);
 

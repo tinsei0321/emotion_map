@@ -68,28 +68,29 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  margin-bottom: 14px;          /* lift the whole cluster off the bottom edge a bit */
 }
 .emotion-scale-ctrl {
   margin-top: 6px;
-  padding-left: 1px;           /* align the bar's left tick with the cluster's left edge */
+  padding-left: 1px;            /* align the bar's left tick with the cluster's left edge */
+  display: flex;
+  flex-direction: column;
+  align-items: center;          /* center the label over the bar */
+}
+.emotion-scale-label {
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: var(--geojson-typography-weight-semibold);
+  line-height: 1;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7);    /* legibility over satellite imagery */
 }
 .emotion-scale {
-  position: relative;
   height: 8px;
   border-bottom: 2px solid #ffffff;
   border-left: 2px solid #ffffff;
   border-right: 2px solid #ffffff;
-}
-.emotion-scale-label {
-  position: absolute;
-  top: 11px;
-  left: 50%;
-  transform: translateX(-50%);
-  color: #ffffff;
-  font-size: 10px;
-  font-weight: var(--geojson-typography-weight-semibold);
-  white-space: nowrap;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.7);    /* legibility over satellite imagery */
 }
 
 /* The legend also lives bottom-left. The scale bar can span up to ~120px from the
