@@ -1,22 +1,32 @@
 /* ═══ Click popup — anchored top-right of #map (follows right panel) ═══
    Compact (280px), corner-anchored. */
 
-.popup {
+#popup-stack {
   position: absolute;                               /* anchored to #map → follows right panel */
   right: var(--geojson-spacing-2);
   top: var(--geojson-spacing-2);
-  width: 200px;                                      /* ~2/3 of 280px */
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: calc(100% - 16px);
+}
+
+.popup {
+  position: relative;                               /* stacked inside #popup-stack */
+  top: auto;
+  right: auto;
+  width: 200px;
   max-width: calc(100vw - 32px);
-  min-height: 200px;
+  min-height: 120px;
   max-height: 320px;
   overflow-y: auto;
   padding: var(--geojson-spacing-2);
   background: var(--geojson-color-surface-page);
   border: 1px solid var(--geojson-color-border-default);
-  border-radius: 28px;                               /* 契合胶囊弧度（可继续到 radius-full 纯胶囊） */
+  border-radius: 28px;                               /* 契合胶囊弧度 */
   box-shadow: 0 2px 8px rgba(0,0,0,0.12);
   color: var(--geojson-color-text-primary);
-  z-index: 90;
   display: flex;
   flex-direction: column;
   animation: popupFade 0.2s ease-out;
@@ -129,10 +139,49 @@
 .popup.is-collapsed .popup-text,
 .popup.is-collapsed .popup-kv,
 .popup.is-collapsed .popup-id,
-.popup.is-collapsed .popup-close {
+.popup.is-collapsed .popup-close,
+.popup.is-collapsed .rp-name {
   display: none;
 }
 .popup.is-collapsed .popup-top {
   margin-bottom: 0;
   padding-right: 0;
 }
+
+/* ── Range polygon popup (navy accent = outline color, set inline) ── */
+/* All collapsed capsules share ONE fixed width (regularity); overflow → uppercase + ellipsis. */
+.popup.is-collapsed .popup-badge {
+  width: 64px;
+  min-width: 64px;
+  box-sizing: border-box;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+/* Expanded: badge de-emphasized (xs, medium) so "范围" reads like a tag, not a title. */
+.popup-range .rp-badge {
+  font-size: var(--geojson-typography-size-xs);
+  font-weight: var(--geojson-typography-weight-medium);
+  white-space: nowrap;                              /* "范围" stays horizontal */
+}
+/* Collapsed: bold "Range" capsule sized to match the emotion popup's capsule. */
+.popup-range.is-collapsed .rp-badge {
+  font-size: var(--geojson-typography-size-sm);
+  font-weight: var(--geojson-typography-weight-bold);
+}
+
+/* ── Range hover tooltip (MapLibre Popup, navy) ── */
+.range-tooltip .maplibregl-popup-content {
+  padding: 3px 8px;
+  font-size: var(--geojson-typography-size-xs);
+  background: var(--geojson-color-chrome-title-bar-bg);
+  color: #fff;
+  border-radius: var(--geojson-radius-sm);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+.range-tooltip .maplibregl-popup-tip {
+  border-top-color: var(--geojson-color-chrome-title-bar-bg);
+}
+.range-tooltip .rt-name { white-space: nowrap; }

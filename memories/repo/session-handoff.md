@@ -44,6 +44,44 @@
 > 另两张（常规 vec）`tianditu_label.json`/`tianditu_nolabel.json` 同样在本地、不在 git——公司机若已存在就别动；若丢了，把上面 img 版里的 `img`→`vec`、`cia`→`cva` 即得。
 > 补完后启动见 [`frontend/README.md`](../../frontend/README.md)「启动」一节。
 
+## 当前节点 — 2026-06-18（Import 功能落地，待 push）
+
+> 本会话把前端 Import 从纯 UI 占位做成 **1:1 geojson.io 导入 + 图层显示**。三批：v1 管道 / v2 批1 修bug+显示 / 细化轮。全部 Playwright file-upload 端到端验证通过。详见 `docs/todo.md` 06-18 条目。
+
+### Git
+- 本会话改动：`frontend/`（12 改 + 4 新：`import.js`/`dialog.js`/`toast.js`/`toast.css`）+ `design/tokens.json` + `docs/todo.md` + 本文件。
+- 提交在 main（本地），**用户手动 push**。pull 后 `git log origin/main..HEAD` 应为空。
+
+### 完成（frontend/，纯 HTML/CSS/JS + MapLibre + 4 个 CDN 解析库）
+- **导入管道**：两处 Import（工具栏+左栏）+ 页面拖放 → 原生文件窗 → **每次弹确认弹窗**（单文件=文件名+格式下拉可改写；组合包="Import {name} (n/N)"+文件名列表）→ `groupFiles`(shapefile成组) → `detectType` → `parseGroup`(GeoJSON/CSV/KML/Shapefile) → `reprojectFC`(proj4 读 .prj→WGS84) → `splitByGeometry` → `detectColorMode`(polarity/confidence/needsAnalysis) → **merge 追加** + fitBounds。
+- **图层管理器**：左栏 Layers 区，每层一行（hover 变灰 + 左侧眼睛显隐 + × 删除 + 区段头清空）。
+- **L1 橙色置信度着色**（Kepler 风）：有 l1_confidence 无 polarity → 橙序列按置信度深浅、小点无描边；图例显橙色色带。
+- **polygon/范围**：闭合 LineString 归为 polygon（GIS 常识）；默认 fillOff + 海军 `#0c1c2e` 轮廓 + 透明 hit 层(宽12)易悬停；点击 → 范围第二 popup（海军主题、堆叠情绪 popup 下、名称下沉第二层、面积/周长/类型/顶点/bbox；收起显粗体"Range"）。
+- **点大小密度自适应**：`densityStops` ≤1000→14-18 / ≤20000→8-12 / >20000→4-6，随 zoom 插值（取代固定倍数）。
+- **选中**=灰白(#E8E8E8)加粗(3.5)描边、不填充。**收起胶囊**定宽 64px + 大写 + 省略。
+- **图例按层显隐**：polarity / confidence / range 三块，无对应层全隐（首屏空地图图例也隐）。
+- **全局胶囊 toast**：所有成功/失败/数据变化/操作完成都弹。
+- **L2 配色提浅**：very-negative #B92D2D 不变，其余按明度比例提浅（tokens.css + tokens.json 单源同步）。
+- **CDN 库**（index.html）：csv2geojson / shpjs / proj4 / fflate（UMD，jsdelivr CN 可达）；@tmcw/togeojson 走 esm.sh 动态导入（CN 不可达则 KML 降级报错 toast）。
+
+### 怎么跑
+```
+py -m http.server 8080          # 必须从仓库根起（天地图底图 ../apps/static + DATA/ 可达）
+# 浏览器 http://127.0.0.1:8080/frontend/index.html
+```
+首屏空地图 + 左栏默认展开凸显 Import。导入测试数据：`DATA/processed/`（L1 CSV / L2 GeoJSON）、`DATA/boundaries/规划范围/`（5 件包 shapefile，CGCS2000 CM_111E）。
+
+### 踩坑（换机也适用）
+- **shpjs `combine([geometries, properties])`** shp 在前 dbf 在后；写反→geometry/properties 颠倒→静默无操作。验证几何用 `map.getStyle().layers[].paint`（paint.get 返回 zoom 求值态，看不到原始表达式）。
+- **map.project() 返回地图容器内坐标**，Playwright/点击用视口坐标，差左栏+头栏偏移。
+- **规划范围 .prj = CGCS2000 3-degree GK CM_111E，False_Easting=500000**（EPSG:4538，非 4546 的 37500000）。proj4 直接解析 WKT OK。
+
+### 下轮路线图
+1. **Import 批2**：要素按钮（点/面 marker 变可点按钮 + 深灰激活框）+ Kepler 设置弹窗（预设色板长条点选 + opacity + 线宽 + fill 开关）+ 预设色序列（橙/蓝/绿/紫/红）。线暂不开发。
+2. 用户视觉复验反馈微调（点密度档阈值 / L2 配色 / 范围 popup 字段）。
+3. roadmap 原项：Overview 3 层级重构、Analysis L1→L2 接线（FastAPI /analyze）。
+4. MCP 收尾（github PAT 失效 / web_reader 重复 / 4_5v_mcp 来源）—— 06-17 遗留。
+
 ## 当前节点 — 2026-06-17 夜（办公机收工，待 push）
 
 > 本会话在 v2 外壳上做了**地图控件 + 排版体系 + 外壳打磨**三大批前端工作。全部 commit（最新 `d010ffb`，本地），用户**手动 push**。换机 `git pull` 后应在 `d010ffb`。

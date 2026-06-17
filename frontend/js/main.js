@@ -1,49 +1,98 @@
-// ═══ main.js — entry: wire map + sidebar + panel + toolbar + popup ═══
-import { initMap, addEmotionPoints, setBasemap } from './map.js';
+// ═══ main.js — entry: wire map + sidebar + panel + toolbar + popup + import ═══
+import { initMap, setBasemap, setClickHandler, renderLayer, fitBoundsTo } from './map.js';
 import { initPanel, setInfoCard, setOverview, setTable } from './panel.js';
 import { initToolbar, setActiveBasemap } from './toolbar.js';
-import { initSidebar, openImport } from './sidebar.js';
+import { initSidebar, openImport, renderLayerList, showLayerManager, refreshLegend } from './sidebar.js';
 import { initPopup, showPopup } from './popup.js';
-import { samplePoints, polarityStats, emotionColors } from './state.js';
+import { polarityStats, addLayer, mergedPointFC } from './state.js';
+import {
+  groupFiles, detectGroupType, parseGroup, reprojectFC, readPrj,
+  splitByGeometry, detectColorMode, fcBBox,
+} from './import.js';
+import { openImportDialog } from './dialog.js';
+import { toast } from './toast.js';
 
-function main() {
-  // 1. Sample emotion data (Phase 1; Phase 2 → api.fetchPoints)
-  const fc = samplePoints(80, 42);
+function layerName(group) {
+  if (group.kind === 'bundle') {
+    const shp = group.files.find((f) => /\.shp$/i.test(f.name));
+    return (shp ? shp.name : group.files[0].name).replace(/\.[^.]+$/, '');
+  }
+  return group.files[0].name;
+}
+
+/** Right panel aggregated over visible point layers. */
+function refreshOverview() {
+  const fc = mergedPointFC();
   const { stats, total, scoreMean } = polarityStats(fc);
-
-  // 2. Map (single init) + points layer + click → bottom-right popup
-  const map = initMap('map');
-  window.__map = map;   // dev hook (query/click in console + tests)
-  map.on('load', () => {
-    const colors = emotionColors();
-    addEmotionPoints(fc, (feature) => showPopup(feature, colors));
-  });
-
-  // 3. Right panel: info card + overview + table
-  initPanel();
-  setInfoCard({
-    file: 'sample_points.json',
-    layers: '情绪点',
-    l1: '—',
-    l2: total,
-    total,
-  });
+  setInfoCard({ file: total ? '已导入数据' : '未导入', layers: total ? '情绪点' : '—', l1: '—', l2: total, total });
   setOverview({ stats, total, scoreMean });
   setTable(fc);
+}
 
-  // 4. Popup (close + empty-map collapse + capsule-click expand)
-  initPopup(map);
+/** Import pipeline: group → detect → confirm dialog → parse → CRS → split → register. */
+async function runImport(files) {
+  const groups = groupFiles(files);
+  if (!groups.length) return;
+  const detected = groups.map(detectGroupType);
 
-  // 5. Left sidebar (collapse/expand, drag, import→sections, section toggles)
-  initSidebar({
-    onImport: (file) => {
-      // Phase 1: just reflect the loaded file name; real parse is Phase 2
-      setInfoCard({ file: file.name, layers: '情绪点', l1: '—', l2: total, total });
-      console.log('[import] file =', file.name, '(Phase 2 parse)');
+  openImportDialog({
+    groups,
+    detectedTypes: detected,
+    onCancel: () => toast.info('已取消导入'),
+    onConfirm: async (chosen) => {
+      let added = 0, needsAny = false, crsAny = false;
+      for (let i = 0; i < groups.length; i++) {
+        const type = chosen[i];
+        const base = layerName(groups[i]);
+        if (!type) { toast.error(`${base}：无法识别格式，已跳过`); continue; }
+        try {
+          const prj = type === 'shapefile' ? await readPrj(groups[i]) : null;
+          let fc = await parseGroup(groups[i], type);
+          const r = reprojectFC(fc, prj);
+          if (r && r._crsWarn) { crsAny = true; fc = r.fc; } else fc = r;
+
+          const { points, lines, polygons } = splitByGeometry(fc);
+          if (lines.features.length)    { const L = addLayer({ name: base, kind: 'line',    fc: lines });    renderLayer(L); added++; }
+          if (polygons.features.length) { const L = addLayer({ name: base, kind: 'polygon', fc: polygons }); renderLayer(L); added++; }
+          if (points.features.length) {
+            const { fc: pfc, colorMode, needsAnalysis } = detectColorMode(points);
+            const L = addLayer({ name: base, kind: 'point', fc: pfc, needsAnalysis, colorMode });
+            renderLayer(L); added++;
+            if (needsAnalysis) needsAny = true;
+          }
+          const bb = fcBBox(fc);
+          if (bb) fitBoundsTo(bb);
+        } catch (e) {
+          console.error('[import]', e);
+          toast.error(`${base}：${e.message || '解析失败'}`);
+        }
+      }
+
+      renderLayerList();
+      refreshLegend();
+      refreshOverview();
+      if (added) {
+        showLayerManager();                 // B5: switch to sections + expand Layers
+        toast.success(`已导入 ${added} 个图层`);
+        if (needsAny) setTimeout(() => toast.info('部分点缺少情绪/置信度字段，标记为「需分析」', 4500), 400);
+        if (crsAny)   setTimeout(() => toast.info('部分数据坐标系未知，按 WGS84 加载', 4500), 800);
+      }
     },
   });
+}
 
-  // 6. Toolbar (draw-tool placeholders, Import/Export/M, basemap switch)
+function main() {
+  const map = initMap('map');
+  window.__map = map;   // dev hook
+  // No seed sample — map starts empty; Import brings real data.
+  setClickHandler((feature, colors, colorMode) => showPopup(feature, colors, colorMode));
+
+  initPanel();
+  initPopup(map);
+  refreshOverview();    // empty-state overview
+
+  initSidebar({ onFiles: runImport });
+
   initToolbar({
     onTool: (tool) => console.log('[tool]', tool),
     onImport: () => openImport(),
@@ -53,7 +102,14 @@ function main() {
   });
   setActiveBasemap('tianditu-img-nolabel');
 
-  console.log('[OK] emotion-map frontend (geojson.io v2) loaded —', total, 'sample points');
+  // Layer delete/clear → refresh list + legend + overview.
+  document.addEventListener('layers:changed', () => {
+    renderLayerList();
+    refreshLegend();
+    refreshOverview();
+  });
+
+  console.log('[OK] emotion-map frontend (Import v2 batch1) loaded');
 }
 
 document.addEventListener('DOMContentLoaded', main);

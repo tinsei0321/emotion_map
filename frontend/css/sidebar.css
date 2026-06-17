@@ -174,3 +174,106 @@
 .sec-btn:hover { background: var(--geojson-color-brand-hover); }
 .sec-run { background: var(--geojson-color-gray-700); }
 .sec-run:hover { background: var(--geojson-color-gray-600); }
+
+/* ── Layer manager (Layers section) — geojson.io-style list ── */
+.section-head .layers-clear {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--geojson-color-text-tertiary);
+  border-radius: var(--geojson-radius-xs);
+  cursor: pointer;
+  transition: background var(--geojson-transition), color var(--geojson-transition);
+}
+.section-head .layers-clear:hover {
+  background: var(--geojson-color-gray-300);
+  color: var(--geojson-color-text-primary);
+}
+
+.layer-list { display: flex; flex-direction: column; }
+.layer-empty {
+  padding: var(--geojson-spacing-3) var(--geojson-spacing-2);
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-tertiary);
+  text-align: center;
+}
+.layer-row {
+  display: flex;
+  align-items: center;
+  gap: var(--geojson-spacing-2);
+  padding: 6px var(--geojson-spacing-2);
+  border-radius: var(--geojson-radius-sm);
+  cursor: default;
+  transition: background var(--geojson-transition);
+}
+.layer-row:hover { background: var(--geojson-color-gray-100); }     /* hover → grey */
+.layer-row.is-off { opacity: 0.5; }
+.layer-eye {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--geojson-color-text-secondary);
+  cursor: pointer;
+  opacity: 0.45;                    /* faintly visible as a hint, full on hover/off-state */
+  transition: opacity var(--geojson-transition), color var(--geojson-transition);
+}
+.layer-row:hover .layer-eye,
+.layer-row.is-off .layer-eye { opacity: 1; }
+.layer-eye:hover { color: var(--geojson-color-brand-primary); }
+.layer-eye svg { width: 19px; height: 19px; }
+.layer-kind {
+  flex: 0 0 auto;
+  font-size: var(--geojson-typography-size-2xs);
+  font-weight: var(--geojson-typography-weight-bold);
+  color: var(--geojson-color-text-tertiary);
+  background: var(--geojson-color-gray-100);
+  border-radius: var(--geojson-radius-xs);
+  padding: 1px 5px;
+}
+.layer-row:hover .layer-kind { background: var(--geojson-color-gray-200); }
+.layer-name {
+  flex: 1 1 auto;
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.layer-tag {
+  flex: 0 0 auto;
+  font-size: var(--geojson-typography-size-2xs);
+  font-weight: var(--geojson-typography-weight-bold);
+  color: var(--geojson-color-brand-primary);
+  background: var(--geojson-color-gray-100);
+  border-radius: var(--geojson-radius-xs);
+  padding: 1px 5px;
+}
+.layer-del {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  font-size: var(--geojson-typography-size-lg);
+  line-height: 1;
+  color: var(--geojson-color-text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--geojson-transition), color var(--geojson-transition);
+}
+.layer-row:hover .layer-del { opacity: 1; }
+.layer-del:hover { color: var(--geojson-color-emotion-very-negative, #b92d2d); }
+

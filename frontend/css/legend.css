@@ -1,10 +1,9 @@
-/* ═══ Legend — anchored bottom-right of #map (follows right panel; clears attribution) ═══ */
+/* ═══ Legend — anchored bottom-right of #map (follows right panel; clears attribution) ═══
+   Three blocks (#legend-polarity / #legend-confidence / #legend-range), each shown only
+   when its layer type is loaded (sidebar.refreshLegend toggles [hidden]). */
 
-#legend {
-  position: absolute;                               /* anchored to #map → follows right panel */
-  right: var(--geojson-spacing-2);
-  bottom: 60px;                                     /* 再上抬 30px 拉开 attribution；与左簇底同高 */
-  z-index: 80;
+.legend {
+  position: relative;
   padding: var(--geojson-spacing-1) var(--geojson-spacing-2);
   background: var(--geojson-color-surface-page);
   border: 1px solid var(--geojson-color-border-default);
@@ -14,6 +13,17 @@
   color: var(--geojson-color-text-secondary);
   pointer-events: none;
 }
+.legend[hidden] { display: none; }
+#legend-stack {
+  position: absolute;                               /* anchored to #map → follows right panel */
+  right: var(--geojson-spacing-2);
+  bottom: 60px;                                     /* 抬开 attribution；与左簇底同高 */
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .legend-title {
   font-size: var(--geojson-typography-size-sm);
   font-weight: var(--geojson-typography-weight-semibold);
@@ -30,4 +40,26 @@
   width: 10px; height: 10px;
   border-radius: 50%;
   border: 1px solid var(--geojson-color-gray-300);
+}
+.legend-row .range-dot {
+  width: 14px; height: 0;
+  border: none;
+  border-top: 2px solid #0c1c2e;     /* navy outline swatch */
+  border-radius: 0;
+}
+
+/* confidence ramp (L1 orange, low→dark) */
+.legend-ramp {
+  width: 120px;
+  height: 8px;
+  border-radius: var(--geojson-radius-xs);
+  background: linear-gradient(90deg, #FFD9A0 0%, #FFB347 25%, #FF9800 50%, #FB8C00 75%, #E65100 100%);
+  margin: 2px 0;
+}
+.legend-ramp-labels {
+  display: flex;
+  justify-content: space-between;
+  width: 120px;
+  font-size: var(--geojson-typography-size-2xs);
+  color: var(--geojson-color-text-tertiary);
 }

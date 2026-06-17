@@ -103,3 +103,46 @@
 }
 .bm-sat     { background: linear-gradient(135deg, #2d3a2e, #4a5d3a); }
 .bm-vec     { background: linear-gradient(135deg, #eef3f0, #dfe7e2); }
+
+/* ── Import confirm dialog (single / bundle / multi-group) ── */
+.app-dialog .dialog-body { display: flex; flex-direction: column; gap: var(--geojson-spacing-3); }
+.imp-group {
+  padding: var(--geojson-spacing-2) 0;
+  border-bottom: 1px solid var(--geojson-color-gray-100);
+}
+.imp-group:last-of-type { border-bottom: none; }
+.imp-name {
+  font-size: var(--geojson-typography-size-sm);
+  font-weight: var(--geojson-typography-weight-semibold);
+  color: var(--geojson-color-text-primary);
+  word-break: break-all;
+}
+.imp-meta {
+  margin-left: var(--geojson-spacing-2);
+  font-size: var(--geojson-typography-size-2xs);
+  font-weight: var(--geojson-typography-weight-medium);
+  color: var(--geojson-color-text-tertiary);
+}
+.imp-files {
+  list-style: none;
+  margin: var(--geojson-spacing-2) 0;
+  padding: 0 var(--geojson-spacing-2);
+  border-left: 2px solid var(--geojson-color-gray-200);
+}
+.imp-files li {
+  font-family: var(--geojson-typography-mono);
+  font-size: var(--geojson-typography-size-2xs);
+  color: var(--geojson-color-text-secondary);
+  padding: 2px 0;
+  word-break: break-all;
+}
+.imp-format { margin-top: var(--geojson-spacing-2); }
+.imp-warn {
+  margin-top: var(--geojson-spacing-1);
+  padding: var(--geojson-spacing-2) var(--geojson-spacing-3);
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-secondary);
+  background: var(--geojson-color-gray-100);
+  border-radius: var(--geojson-radius-sm);
+}
+

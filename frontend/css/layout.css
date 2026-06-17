@@ -7,7 +7,7 @@
 * { box-sizing: border-box; }
 
 :root {
-  --left-w: 0px;                          /* left panel width (0 = folded by default) */
+  --left-w: 300px;                        /* left panel default OPEN (凸显 Import) */
   --right-w: 340px;                       /* default = geojson.layout.right-panel-width; JS drag overrides */
 }
 

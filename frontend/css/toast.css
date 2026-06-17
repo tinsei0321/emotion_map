@@ -1,0 +1,63 @@
+/* ═══ toast.css — capsule toast (geojson.io-style, extra-rounded) ═══ */
+
+#toast-container {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;   /* let clicks fall through between toasts */
+}
+
+.toast {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  max-width: min(80vw, 520px);
+  padding: 8px 18px 8px 8px;     /* tight on the icon side, room on text side */
+  background: var(--geojson-chrome-bg, #ffffff);
+  color: var(--geojson-text-strong, #262626);
+  border: 1px solid var(--geojson-border, #e2e2e2);
+  border-radius: 999px;          /* capsule — radius ≈ height/2 */
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.14), 0 1px 3px rgba(0, 0, 0, 0.08);
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 500;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast-icon {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.toast-icon svg { width: 14px; height: 14px; }
+
+.toast-success .toast-icon { background: #22b14c; }   /* green circle check */
+.toast-error   .toast-icon { background: #e04848; }   /* red circle X */
+.toast-info    .toast-icon { background: var(--geojson-brand, #007afc); }
+
+.toast-msg {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

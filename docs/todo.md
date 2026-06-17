@@ -5,6 +5,47 @@
 
 ---
 
+## 📅 2026-06-18（周四）
+
+### ☑ TODO List
+
+| # | 状态 | 任务 | 涉及文件 | 备注 |
+|---|------|------|----------|------|
+| 1 | ✅ | Import v1：1:1 geojson.io 导入管道 | `frontend/js/{import,dialog,toast,state,map,sidebar,main,popup}.js` `frontend/css/{toast,dialog,sidebar,popup,legend,layout}.css` `frontend/index.html` | groupFiles/detectType/parse(GeoJSON/CSV/KML/Shapefile)/proj4 CRS/几何分流/polarity探测/merge/fitBounds；导入确认弹窗（单/组合文件）；全局胶囊 toast；左栏图层管理器（眼睛/删除/清空） |
+| 2 | ✅ | Import v2 批1：bug 修复 + 核心显示 | 同上 + `tokens.css` | 7 bug（polygon 线层泄漏/Import 误切模式/删 seed/左栏默认展开/Layers 自动展开/shapefile 5件包/眼睛放大）+ L1 橙色置信度着色 + 图例按层显隐 + polygon 海军轮廓 + 范围第二 popup |
+| 3 | ✅ | Import 细化轮 | 同上 | 闭合线归为 polygon（GIS 常识）；范围 popup 重构（名称下沉第二层、收起显 Range）；点大小改密度自适应（稀疏14-18/高8-12/超高4-6，随zoom插值）；选中=灰白加粗描边不填充；收起胶囊定宽64px；L2 配色提浅（最深不变） |
+| 4 | ⬜ | Import 批2：要素按钮 + Kepler 设置弹窗 + 预设色板 | 待定 | 点/面 marker 变可点按钮（深灰激活框）；设置弹窗（预设色板长条点选 + opacity + 线宽 + fill 开关）；线暂不开发 |
+
+> 💡 标准启动指令：`@pm 开始处理 2026-06-18 的任务 N：任务名称`
+
+### 📝 开发日志
+
+**关键字**：Import, geojson.io 1:1, shapefile, proj4 CRS, L1 置信度, 密度自适应, 图层管理器, 范围 popup
+
+#### 做了什么
+- **Import v1**：geojson.io 1:1 导入。两处 Import（工具栏+左栏）+ 页面拖放 → 原生文件窗 → **每次导入都弹确认弹窗**（单文件=文件名+格式下拉可改写；组合包="Import {name} (n/N)"+文件名列表；Cancel/Import）。管道：`groupFiles`(shapefile 多文件成组) → `detectType`(扩展名/JSON内容sniff) → `parseGroup`(GeoJSON/CSV/KML/Shapefile) → `reprojectFC`(proj4 读 .prj → WGS84) → `splitByGeometry`(Point/Line/Polygon 分流) → `detectColorMode`(polarity/confidence/needsAnalysis) → **merge 追加** + fitBounds。全局胶囊 toast。左栏图层管理器（眼睛显隐/×删除/区段头清空）。
+- **Import v2 批1**（用户实测后 7 bug + 显示）：①polygon 开关失效=fill(`lyr-{id}`)+line(`lyr-{id}-line`)两图层泄漏，改同步增删 ②顶端 Import 误切 sections，改仅加载成功后切 ③删 seed 模拟数据，首屏空 ④左栏默认展开凸显 Import ⑤加载后自动展开 Layers ⑥**shapefile 5件包失效**=shpjs `combine` 参数顺序写反(应[几何,属性])，改走 parseShp/parseDbf/combine 直读 ⑦眼睛放大。+ L1 橙色置信度着色（Kepler 风、小点无描边、置信度越高越深）+ 图例按层显隐（polarity/confidence/range 三块）+ polygon 默认 fillOff 海军轮廓 + 范围第二 popup（海军主题、面积/周长/类型/顶点/bbox）。
+- **细化轮**：①闭合 LineString 归为 polygon（首尾点重合=面边界，GIS 常识）→ marker 显「面」②范围 popup 重构：名称下沉第二层(.popup-text，类评论)、「范围」badge 去强调、收起显粗体"Range"、与情绪胶囊同宽 ③点大小**密度自适应**(densityStops：≤1000→14-18/≤20000→8-12/>20000→4-6，随zoom插值，取代固定3x) ④选中=灰白(#E8E8E8)加粗(3.5)描边、不填充 ⑤收起胶囊定宽64px+大写+省略 ⑥L2 配色提浅（very-negative #B92D2D 不变，其余按明度比例提浅）⑦范围透明 hit 层(宽12)易悬停/点击。
+- **配置**：index.html 加 CDN 解析库（csv2geojson/shpjs/proj4/fflate；@tmcw/togeojson 走 esm.sh 动态导入，CN 不可达则降级）。tokens.json/tokens.css 情绪五色单源同步。
+
+#### 踩坑 & 收获
+- **shpjs combine 参数顺序**：`combine([geometries, properties])` shp 在前 dbf 在后；写反 → geometry/properties 颠倒，splitByGeometry 无可识别几何→静默无操作（不抛异常）。用 getStyle() 取原始 paint 表达式才看出。
+- **map.project 坐标系**：返回**地图容器内坐标**，Playwright `page.mouse.click` 用**视口坐标**，差左栏+头栏偏移 → 测试点击老偏。修正：+ getContainer().getBoundingClientRect() 偏移。
+- **CGCS2000 .prj**：规划范围.shp 的 .prj = CGCS2000 3-degree GK CM_111E，**False_Easting=500000**(EPSG:4538)，非 4546 的 37500000。proj4 能直接解析 WKT，实测 [525439,3398933]→[111.266,30.711] 宜昌正确。
+- **paint.get() 返回求值态**：MapLibre `layer.paint.get('circle-radius')` 返回当前 zoom 求值后的值，看不到原始表达式；改用 `map.getStyle().layers[].paint` 取原始表达式验证。
+- **闭合线=面**：CAD 导出的 LWPolyline shapefile 几何类型是 LineString 但首尾闭合，本质是面边界。splitByGeometry 据此归为 polygon。
+
+#### 验证
+- Playwright file-upload 喂真实文件端到端：L2 GeoJSON（polarity 5色）/ L1 CSV（橙色置信度）/ shapefile 5件包（CRS重投影到宜昌）/ 测试 polygon（B1开关+范围popup）。控制台全程仅 favicon 404。
+- 密度半径表达式 `interpolate(zoom,8→8px,14→12px)` 实测；选中 halo `stroke #E8E8E8 width 3.5 opacity 0` 实测；收起胶囊 `width 64px uppercase` 实测。
+
+#### 🔜 次日计划
+- Import 批2：要素按钮 + Kepler 设置弹窗 + 预设色板
+- 用户视觉复验反馈微调（点密度档阈值 / L2 配色深浅 / 范围 popup 字段）
+- MCP 收尾（github PAT / web_reader 重复）—— 06-17 遗留
+
+---
+
 ## 📅 2026-06-17（周三）
 
 ### ☑ TODO List

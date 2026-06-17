@@ -26,6 +26,35 @@ export function emotionColors() {
   };
 }
 
+/** L1 confidence orange ramp (Kepler-style): light→dark = low→high confidence.
+ *  Used by point coloring (map.js interpolate) + popup badge (confidenceColor). */
+export const CONFIDENCE_RAMP = ['#FFD9A0', '#FFB347', '#FF9800', '#FB8C00', '#E65100'];
+const CONFIDENCE_STOPS = [0, 0.25, 0.5, 0.75, 1];
+
+/** Map a 0..1 confidence score to a ramp color (hex). Unknown → mid. */
+export function confidenceColor(score) {
+  const s = (typeof score === 'number' && !Number.isNaN(score)) ? Math.max(0, Math.min(1, score)) : 0.5;
+  for (let i = 1; i < CONFIDENCE_STOPS.length; i++) {
+    if (s <= CONFIDENCE_STOPS[i]) {
+      const a = CONFIDENCE_STOPS[i - 1], b = CONFIDENCE_STOPS[i];
+      const t = b === a ? 0 : (s - a) / (b - a);
+      return lerpHex(CONFIDENCE_RAMP[i - 1], CONFIDENCE_RAMP[i], t);
+    }
+  }
+  return CONFIDENCE_RAMP[CONFIDENCE_RAMP.length - 1];
+}
+function lerpHex(h1, h2, t) {
+  const a = hexToRgb(h1), b = hexToRgb(h2);
+  const r = Math.round(a[0] + (b[0] - a[0]) * t);
+  const g = Math.round(a[1] + (b[1] - a[1]) * t);
+  const bl = Math.round(a[2] + (b[2] - a[2]) * t);
+  return `#${[r, g, bl].map((x) => x.toString(16).padStart(2, '0')).join('')}`;
+}
+function hexToRgb(h) {
+  const s = h.replace('#', '');
+  return [parseInt(s.slice(0, 2), 16), parseInt(s.slice(2, 4), 16), parseInt(s.slice(4, 6), 16)];
+}
+
 /**
  * Tiered rendering — port of core/config.py RENDER_TIERS (pixel-based for MapLibre).
  * Returns radius + label. Sampling (>100k) / heatmap downgrade handled by caller.
@@ -91,3 +120,69 @@ export function polarityStats(fc) {
   }
   return { stats, total: fc.features.length, scoreMean: fc.features.length ? scoreSum / fc.features.length : 0 };
 }
+
+// ── Layer registry ────────────────────────────────────────────────────────
+// One entry per imported file (or the seed sample). Drives the left-panel
+// layer manager (eye toggle / trash delete) and multi-layer map rendering.
+//   kind: 'point' | 'line' | 'polygon'
+//   colorMode (point): 'polarity' (L2 5-color) | 'confidence' (L1 orange ramp) | 'needsAnalysis' (grey)
+//   paint (polygon/line): { color, fillOn, lineWidth, fillOpacity }
+
+const NAVY = '#0c1c2e';   // title-bar navy (range outline default)
+const _layers = new Map();   // id -> layer object
+let _seq = 0;
+
+export function addLayer({ name, kind, fc, needsAnalysis = false, colorMode, paint }) {
+  const id = 'L' + (++_seq).toString().padStart(3, '0');
+  const defaultPaint = kind === 'polygon'
+    ? { color: NAVY, fillOn: false, lineWidth: 2, fillOpacity: 0.3 }
+    : kind === 'line'
+      ? { color: NAVY, lineWidth: 2 }
+      : {};
+  const layer = {
+    id, name, kind, fc, visible: true, needsAnalysis,
+    colorMode: colorMode || (needsAnalysis ? 'needsAnalysis' : 'polarity'),
+    paint: { ...defaultPaint, ...(paint || {}) },
+  };
+  _layers.set(id, layer);
+  return layer;
+}
+
+/** Update a layer's paint field (used by the settings popover in batch 2; kept here for symmetry). */
+export function setLayerPaint(id, patch) {
+  const l = _layers.get(id);
+  if (l) l.paint = { ...(l.paint || {}), ...patch };
+  return l;
+}
+
+export function removeLayer(id) { return _layers.delete(id); }
+export function getLayer(id) { return _layers.get(id); }
+export function getLayers() { return Array.from(_layers.values()); }
+export function setLayerVisible(id, visible) {
+  const l = _layers.get(id);
+  if (l) l.visible = visible;
+  return l;
+}
+
+/** All features from visible POINT layers — feeds Overview stats / Table. */
+export function mergedPointFC() {
+  const features = [];
+  for (const l of _layers.values()) {
+    if (l.kind === 'point' && l.visible) features.push(...l.fc.features);
+  }
+  return { type: 'FeatureCollection', features };
+}
+
+/** Generate a fresh unique point id (geojson.io-style merge: never clash). */
+export function newPointId() {
+  return 'e' + String(++_seq + 10000).padStart(5, '0');
+}
+
+/** Field-name synonyms → canonical polarity/score. Lets imported CSV/GeoJSON
+ *  with variant column names (sentiment, l2_confidence, 情绪…) map cleanly. */
+export const FIELD_SYNONYMS = {
+  polarity: ['polarity', 'sentiment', 'label', 'emotion', '情绪', '极性'],
+  score: ['score', 'l2_confidence', 'sentiment_score', 'confidence', '分数', '得分'],
+  text: ['text', 'content', 'comment', 'review', '评论', '文本', '内容'],
+  location: ['location', 'place', 'address', '地点', '位置'],
+};
