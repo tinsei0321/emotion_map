@@ -34,3 +34,66 @@
   color: var(--geojson-color-text-primary);
 }
 .maplibregl-popup-tip { border-top-color: var(--geojson-color-surface-page); }
+
+/* ═══ Emotion custom controls — bottom-left unified cluster + scale bar ═══
+   The cluster reuses .maplibregl-ctrl-group (inherits the geojson.io rounded white
+   box + 32×32 buttons + gray-100 hover already defined above), so it reads as ONE
+   bar with the existing zoom buttons. Hover is the SAME token everywhere → changing
+   the hover-gray depth later is a one-line global change (per user's unity rule). */
+
+/* cluster buttons: center glyphs/letters, unified color + weight */
+.emotion-nav-ctrl button {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--geojson-color-chrome-text);     /* #404040 */
+  font-size: 14px;
+  font-weight: var(--geojson-typography-weight-bold);
+  line-height: 1;
+  cursor: pointer;
+}
+.emotion-nav-ctrl button svg { display: block; pointer-events: none; }
+
+/* 2D/3D active (in 3D) — brand accent signals the current mode */
+.emotion-ctrl-view.is-active {
+  color: var(--geojson-color-brand-primary);
+}
+
+/* ── One-segment scale bar (white, auto-adaptive) — per reference 图1 ──
+   Sits directly below the cluster, left-aligned. */
+.emotion-controls-root {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.emotion-scale-ctrl {
+  margin-top: 6px;
+  padding-left: 1px;           /* align the bar's left tick with the cluster's left edge */
+}
+.emotion-scale {
+  position: relative;
+  height: 8px;
+  border-bottom: 2px solid #ffffff;
+  border-left: 2px solid #ffffff;
+  border-right: 2px solid #ffffff;
+}
+.emotion-scale-label {
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: var(--geojson-typography-weight-semibold);
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7);    /* legibility over satellite imagery */
+}
+
+/* The legend also lives bottom-left. The scale bar can span up to ~120px from the
+   map's left edge; move the legend right of that lane so they never collide at any
+   zoom. (Position-only tweak; legend content/behavior unchanged. Left panel is folded
+   by default; when expanded the legend stays put — pre-existing, not changed here.) */
+#legend { left: 150px; }

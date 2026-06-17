@@ -1,5 +1,6 @@
 // ═══ map.js — MapLibre GL JS instance + basemap switch ═══
 import { emotionColors, getTier, token } from './state.js';
+import { initControls } from './map-controls.js';
 
 // Basemap styles — 天地图 only (CartoDB blocked in CN). 4 variants:
 //   影像 img (+ 影像注记 cia) · 常规矢量 vec (+ 矢量注记 cva), 各有 有/无注记 两版.
@@ -29,7 +30,11 @@ export function initMap(container = 'map') {
     zoom: YICHANG.zoom,
     attributionControl: true,
   });
-  map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), 'bottom-left');
+  // Bottom-left unified cluster (reset / 2D-3D / +/- / north) + one-segment scale.
+  // Replaces the native NavigationControl; zoom+/- and reset-north stay functionally
+  // identical. Anchored to #map → rides along when the left panel folds. Needs the
+  // current emotion FC for the reset→fitBounds, hence the lazy getter.
+  initControls(map, { getFC: () => _emotionFC });
   // Emotion layers survive basemap switches via setBasemap's transformStyle (declarative carry-over,
   // no wipe → no re-add timing race). Click/hover handlers are bound once and key off the stable layer id.
   return map;
