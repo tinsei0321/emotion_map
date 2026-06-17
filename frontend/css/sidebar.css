@@ -17,7 +17,7 @@
 .lp-hint {
   font-size: var(--geojson-typography-size-xs);
   color: var(--geojson-color-import-panel-tertiary-text);
-  line-height: 1.5;
+  line-height: var(--geojson-typography-line-height-normal);
   margin: 0 0 var(--geojson-spacing-3);
 }
 .import-btn {
@@ -77,7 +77,7 @@
 }
 .lp-types .lp-ext {
   font-family: var(--geojson-typography-mono);
-  font-size: 10px;
+  font-size: var(--geojson-typography-size-2xs);
   color: var(--geojson-color-import-panel-tertiary-text);
 }
 
@@ -95,17 +95,17 @@
   font-size: var(--geojson-typography-size-sm);
   font-weight: var(--geojson-typography-weight-bold);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--geojson-typography-letter-spacing-wider);
   border-bottom: 1px solid var(--geojson-color-section-header-border);
   cursor: pointer;
   user-select: none;
   transition: background var(--geojson-transition);
 }
-.section-head:hover { background: #ebebeb; }
+.section-head:hover { background: var(--geojson-color-gray-200); }
 .section-head .chev {
   color: var(--geojson-color-section-chevron);
   margin-right: var(--geojson-spacing-2);
-  font-size: 10px;
+  font-size: var(--geojson-typography-size-2xs);
   transition: transform var(--geojson-transition);
 }
 .lp-section.open .section-head .chev { transform: rotate(90deg); }

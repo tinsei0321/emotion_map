@@ -28,7 +28,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: var(--geojson-typography-size-xs);
   font-weight: var(--geojson-typography-weight-bold);
   color: var(--geojson-color-chrome-text);          /* #404040 dark text on light bg */
   background: transparent;
@@ -48,7 +48,7 @@
 .draw-tool[aria-pressed="true"] {
   background: var(--geojson-color-chrome-active-fill);
 }
-.draw-more { font-size: 10px; }
+.draw-more { font-size: var(--geojson-typography-size-2xs); }
 
 /* Import / Export — rounded-rect text buttons, height = square side (32px) */
 .tb-text {

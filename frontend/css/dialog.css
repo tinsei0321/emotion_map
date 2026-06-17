@@ -38,7 +38,7 @@
   font-size: var(--geojson-typography-size-lg);
   color: var(--geojson-color-text-tertiary);
   cursor: pointer;
-  line-height: 1;
+  line-height: var(--geojson-typography-line-height-none);
 }
 .dialog-close:hover { color: var(--geojson-color-text-secondary); }
 

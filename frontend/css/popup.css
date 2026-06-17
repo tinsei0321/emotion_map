@@ -32,8 +32,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  line-height: 1;
+  font-size: var(--geojson-typography-size-lg);
+  line-height: var(--geojson-typography-line-height-none);
   color: var(--geojson-color-text-tertiary);
   background: transparent;
   border: none;
@@ -63,12 +63,15 @@
   background: var(--geojson-color-gray-500);
 }
 .popup-score {
-  font-size: var(--geojson-typography-size-lg);
+  font-size: var(--geojson-typography-size-xl);
   font-weight: var(--geojson-typography-weight-bold);
+  color: var(--geojson-color-text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--geojson-typography-line-height-none);
 }
 .popup-text {
   font-size: var(--geojson-typography-size-sm);
-  line-height: 1.5;
+  line-height: var(--geojson-typography-line-height-normal);
   margin-bottom: var(--geojson-spacing-2);
 }
 .popup-kv {
@@ -94,7 +97,7 @@
   word-break: break-all;
 }
 .popup-id {
-  font-size: 10px;
+  font-size: var(--geojson-typography-size-2xs);
   color: var(--geojson-color-text-tertiary);
   margin-top: var(--geojson-spacing-2);
 }

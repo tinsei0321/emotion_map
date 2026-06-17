@@ -43,6 +43,8 @@
   --geojson-color-import-panel-secondary-text: #4A5568;
   --geojson-color-import-panel-tertiary-text: #718096;
   --geojson-color-overlay: rgba(0,0,0,0.2);
+  --geojson-color-pill-bg: rgba(0,122,252,0.10);
+  --geojson-color-pill-fg: #007afc;
   --geojson-color-section-body-bg: #ffffff;
   --geojson-color-section-chevron: #737373;
   --geojson-color-section-header-bg: #f5f5f5;
@@ -60,9 +62,10 @@
   --geojson-color-table-header-bg: #f5f5f5;
   --geojson-color-table-header-text: #171717;
   --geojson-color-table-row-hover: #f5f5f5;
-  --geojson-color-text-disabled: #d4d4d4;
+  --geojson-color-text-disabled: #cfcfcf;
   --geojson-color-text-inverse: #ffffff;
-  --geojson-color-text-primary: #171717;
+  --geojson-color-text-inverse-soft: rgba(255,255,255,0.7);
+  --geojson-color-text-primary: #404040;
   --geojson-color-text-secondary: #737373;
   --geojson-color-text-tertiary: #a3a3a3;
 
@@ -120,11 +123,22 @@
   --geojson-transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
 
   /* typography */
+  --geojson-typography-letter-spacing-normal: 0;
+  --geojson-typography-letter-spacing-tight: -0.01em;
+  --geojson-typography-letter-spacing-wide: 0.02em;
+  --geojson-typography-letter-spacing-wider: 0.04em;
+  --geojson-typography-line-height-none: 1;
+  --geojson-typography-line-height-normal: 1.5;
+  --geojson-typography-line-height-relaxed: 1.625;
+  --geojson-typography-line-height-tight: 1.25;
   --geojson-typography-mono: 'Source Code Pro', ui-monospace, 'Cascadia Code', Consolas, monospace;
-  --geojson-typography-sans: 'Open Sans', 'Inter', system-ui, -apple-system, 'Microsoft YaHei', sans-serif;
+  --geojson-typography-sans: 'Open Sans', 'Inter', system-ui, -apple-system, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --geojson-typography-size-2xl: 1.5rem;
+  --geojson-typography-size-2xs: 0.625rem;
   --geojson-typography-size-base: 1rem;
   --geojson-typography-size-lg: 1.125rem;
   --geojson-typography-size-sm: 0.875rem;
+  --geojson-typography-size-xl: 1.25rem;
   --geojson-typography-size-xs: 0.75rem;
   --geojson-typography-weight-bold: 700;
   --geojson-typography-weight-medium: 500;

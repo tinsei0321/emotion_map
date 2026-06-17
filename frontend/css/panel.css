@@ -60,7 +60,8 @@
 .info-k { color: var(--geojson-color-text-secondary); }
 .info-v {
   color: var(--geojson-color-text-primary);
-  font-weight: var(--geojson-typography-weight-semibold);
+  font-size: var(--geojson-typography-size-sm);
+  font-weight: var(--geojson-typography-weight-bold);
   text-align: right;
   word-break: break-all;
 }
@@ -70,7 +71,7 @@
   font-weight: var(--geojson-typography-weight-semibold);
   color: var(--geojson-color-text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--geojson-typography-letter-spacing-wider);
   margin: var(--geojson-spacing-3) 0 var(--geojson-spacing-2);
 }
 
@@ -88,9 +89,11 @@
   border-radius: var(--geojson-radius-sm);
 }
 .stat-cell .n {
-  font-size: var(--geojson-typography-size-lg);
+  font-size: var(--geojson-typography-size-xl);
   font-weight: var(--geojson-typography-weight-bold);
   color: var(--geojson-color-text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--geojson-typography-line-height-none);
 }
 .stat-cell .l {
   font-size: var(--geojson-typography-size-xs);
@@ -139,13 +142,14 @@
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--geojson-typography-size-sm);
 }
 .data-table thead th {
   position: sticky;
   top: 0;
   background: var(--geojson-color-table-header-bg);   /* #f5f5f5 light */
-  color: var(--geojson-color-table-header-text);      /* #fff */
+  color: var(--geojson-color-text-tertiary);          /* de-emphasized header (信息层级: 弱化表头) */
+  font-size: var(--geojson-typography-size-xs);
   font-weight: var(--geojson-typography-weight-semibold);
   text-align: left;
   padding: 8px var(--geojson-spacing-3);

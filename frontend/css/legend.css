@@ -15,6 +15,7 @@
   pointer-events: none;
 }
 .legend-title {
+  font-size: var(--geojson-typography-size-sm);
   font-weight: var(--geojson-typography-weight-semibold);
   color: var(--geojson-color-text-primary);
   margin-bottom: 4px;
@@ -23,7 +24,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  line-height: 1.6;
+  line-height: var(--geojson-typography-line-height-relaxed);
 }
 .legend-row .dot {
   width: 10px; height: 10px;

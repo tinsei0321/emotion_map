@@ -20,7 +20,7 @@
 }
 
 #map .maplibregl-ctrl-attrib {
-  font-size: 10px;
+  font-size: var(--geojson-typography-size-2xs);
   background: rgba(255,255,255,0.7);
 }
 #map .maplibregl-ctrl-attrib a { color: var(--geojson-color-text-secondary); }
@@ -49,10 +49,10 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  color: var(--geojson-color-chrome-text);     /* #404040 */
-  font-size: 14px;
+  color: var(--geojson-color-chrome-text);     /* #404040 = text-secondary */
+  font-size: var(--geojson-typography-size-sm);
   font-weight: var(--geojson-typography-weight-bold);
-  line-height: 1;
+  line-height: var(--geojson-typography-line-height-none);
   cursor: pointer;
 }
 .emotion-nav-ctrl button svg { display: block; pointer-events: none; }
@@ -78,19 +78,19 @@
   align-items: center;          /* center the label over the bar */
 }
 .emotion-scale-label {
-  color: #ffffff;
-  font-size: 10px;
+  color: var(--geojson-color-text-inverse);
+  font-size: var(--geojson-typography-size-2xs);
   font-weight: var(--geojson-typography-weight-semibold);
-  line-height: 1;
+  line-height: var(--geojson-typography-line-height-none);
   margin-bottom: 2px;
   white-space: nowrap;
   text-shadow: 0 1px 2px rgba(0,0,0,0.7);    /* legibility over satellite imagery */
 }
 .emotion-scale {
   height: 8px;
-  border-bottom: 2px solid #ffffff;
-  border-left: 2px solid #ffffff;
-  border-right: 2px solid #ffffff;
+  border-bottom: 2px solid var(--geojson-color-text-inverse);
+  border-left: 2px solid var(--geojson-color-text-inverse);
+  border-right: 2px solid var(--geojson-color-text-inverse);
 }
 
 /* The legend also lives bottom-left. The scale bar can span up to ~120px from the

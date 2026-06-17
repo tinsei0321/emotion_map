@@ -43,15 +43,15 @@ button { font-family: inherit; }
   display: flex;
   align-items: center;
   padding: 0 var(--geojson-spacing-4);
-  background: var(--geojson-color-chrome-title-bar-bg);  /* #0c1c2e navy */
-  color: #ffffff;
+  background: var(--geojson-color-chrome-title-bar-bg);  /* #0c1c2e navy (dark surface) */
+  color: var(--geojson-color-text-inverse);
   border-bottom: 1px solid var(--geojson-color-border-default);
 }
 .title-text {
   font-size: var(--geojson-typography-size-base);  /* 16px */
   font-weight: var(--geojson-typography-weight-bold);
-  letter-spacing: 0.02em;
-  color: #ffffff;
+  letter-spacing: var(--geojson-typography-letter-spacing-wide);
+  color: var(--geojson-color-text-inverse);
 }
 
 /* ── Main: 3-panel flex ── */
@@ -104,7 +104,7 @@ body.dragging #right-panel { transition: none; }
   position: relative;
   z-index: 60;
 }
-.gutter:hover { background: rgba(0,122,252,0.10); }
+.gutter:hover { background: var(--geojson-color-pill-bg); }
 .gutter.is-hidden { display: none; }
 
 /* ── Collapse/expand handles — slender vertical pill on the panel edge
@@ -119,19 +119,19 @@ body.dragging #right-panel { transition: none; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1;
-  color: #404040;
-  background: #ffffff;
-  border: 1px solid #d4d4d4;
+  font-size: var(--geojson-typography-size-2xl);
+  font-weight: var(--geojson-typography-weight-bold);
+  line-height: var(--geojson-typography-line-height-none);
+  color: var(--geojson-color-text-secondary);
+  background: var(--geojson-color-surface-page);
+  border: 1px solid var(--geojson-color-border-strong);
   cursor: pointer;
   z-index: 76;
   transition: background var(--geojson-transition), color var(--geojson-transition), border-color var(--geojson-transition);
 }
 .collapse-btn:hover {
   background: var(--geojson-color-brand-primary);
-  color: #ffffff;
+  color: var(--geojson-color-text-inverse);
   border-color: var(--geojson-color-brand-primary);
 }
 /* left handle: flat on panel side (left), rounded toward map (right) */
