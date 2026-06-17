@@ -29,6 +29,25 @@
 
 <!-- 在此按时间倒序添加日志 -->
 
+### 2026-06-17 | 前端外壳打磨 — 地图控件 / 排版体系 / popup / 光标 / 悬停
+
+**关键词**：MapLibre 控件, design token, 3级字体浓度, popup 折叠胶囊, geojson.io 光标, 悬停高亮
+
+#### 做了什么
+- **地图控件**（`map-controls.js` 新建）：左下统一簇 复位/2D-3D(pitch 60°)/+/-/复北 + 一段式白色比例尺（Web Mercator 公式，pitch 无关）；替换原生 NavigationControl。
+- **排版体系**（`design/tokens.json` geojson 段）：3 级字体浓度（`#404040/#737373/#a3a3a3`，禁纯黑）+ size 补档(2xs/xl/2xl) + lineHeight/letterSpacing/胶囊 token；8 组件 CSS 硬编码扫平到 token；`brand-visual.md` 新增「字体系统」整章（信息层级原则 + 深/浅底配字规则 + 场景表）。
+- **外壳打磨**：标题拆分（中文加大粗 + 24px + 英文小细）；图例→右下、popup→右上（absolute 锚 `#map` 跟随右栏）；popup 4 层级 + 胶囊圆角(28px) + **点空白折叠成极性色分数胶囊**（复用 badge）+ 评论 2 行省略 + `[hidden]` 修复；左簇改 absolute 与图例底平齐；Overview/Table 标签**深蓝激活态(#004691)+白粗**；Table 字号缩小密度提高；地图光标 **geojson.io 式**（箭头/pointer/grabbing 三态 class 切换，样式表 `!important` 压过 MapLibre 行内 grab，无点击闪手）；点**悬停轮廓环**；S 工具→空心指针 SVG；激活工具统一**蓝底白字**。
+- 提交：`ba6b0ad` `b8097c0` `2b4315b` `d010ffb`（59 tests 全程过）。
+
+#### 收获 / 心得
+- **同源定位才能真平齐**：左簇（MapLibre 控件 + margin）与图例（absolute）两套机制靠调像素永远对不齐 → 都改成 absolute 锚 `#map` 同 `bottom` → 几何必然平齐（实测 829=829）。
+- **`display:flex` 会压过 HTML `hidden`**：`.popup{display:flex}` 优先级高于 `[hidden]{display:none}` → 首屏空白 popup + × 关不掉 + 连锁折叠失效；`.popup[hidden]{display:none}` 一处修复全部。
+- **地图光标稳压 MapLibre**：行内 `style.cursor`（非 !important）必输给样式表 `!important`；用 class(`is-pointer`/`is-grabbing`)+`dragstart/dragend` 切换，既保留点的 pointer、又只在真拖拽变手（无点击闪手）。
+- **验证节奏**：视觉/布局小改 → 起页交用户肉眼验（**不上 Playwright**，识图对 UI 不准）；控制流/异步（折叠、光标、比例尺）才上 Playwright——这条已写进 Auto Memory。
+- 数据侧摸清：**CSV/GeoJSON 文件，非数据库**；FastAPI `api/` 已就绪可跑（下轮 Analysis 接线即可）。
+
+---
+
 ### 2026-06-17 | 闭环补强 — 把开环的 harness×agent×MCP×skill 补成闭环（ADR-014）
 
 **关键词**：闭环, 反馈链, trace 落盘, pre-commit, emoji hook, PII guard, Auto Memory, CI

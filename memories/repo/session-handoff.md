@@ -44,6 +44,43 @@
 > 另两张（常规 vec）`tianditu_label.json`/`tianditu_nolabel.json` 同样在本地、不在 git——公司机若已存在就别动；若丢了，把上面 img 版里的 `img`→`vec`、`cia`→`cva` 即得。
 > 补完后启动见 [`frontend/README.md`](../../frontend/README.md)「启动」一节。
 
+## 当前节点 — 2026-06-17 夜（办公机收工，待 push）
+
+> 本会话在 v2 外壳上做了**地图控件 + 排版体系 + 外壳打磨**三大批前端工作。全部 commit（最新 `d010ffb`，本地），用户**手动 push**。换机 `git pull` 后应在 `d010ffb`。
+
+### Git
+- 本会话提交：`ba6b0ad`(地图控件) · `b8097c0`(比例尺) · `2b4315b`(排版体系/3级浓度) · `d010ffb`(外壳打磨)。
+- `2b4315b` 已 push；`d010ffb` 用户手动 push。pull 后 `git log origin/main..HEAD` 应为空。
+
+### 完成（前端 `frontend/`，纯 HTML/CSS/JS + 少量 JS）
+- **地图控件**：左下统一簇（复位 / 2D-3D 切换[pitch 60°] / +/- / 复北）+ 一段式白色比例尺（Web Mercator 公式，pitch 无关）。
+- **排版体系**：3 级字体浓度（深`#404040`/中`#737373`/浅`#a3a3a3`，**禁纯黑**）+ 字号/字重/行高/字距/胶囊 token；8 组件 CSS 硬编码扫平到 token；`docs/brand-visual.md` 新增「字体系统」整章（信息层级原则 + 深/浅底配字规则）。
+- **外壳打磨**（`d010ffb`）：标题拆分（中文加大粗 + 24px + 英文小细）；图例→右下、popup→右上（absolute 锚 `#map` 跟随右栏）；popup 4 层级 + 胶囊圆角 + **点空白折叠成极性色分数胶囊** + 评论 2 行省略 + `[hidden]` 修复；左簇改 absolute 与图例底平齐；Overview/Table 标签**深蓝激活态**；Table 字号缩小密度提高；地图光标 **geojson.io 式**（箭头/pointer/grabbing class 切换，无点击闪手）；点**悬停轮廓环**；S 工具→空心指针 SVG；激活工具统一**蓝底白字**。
+
+### 怎么跑（换机必读）
+```
+py -m http.server 8080          # 必须从仓库根起（天地图底图 ../apps/static）
+# 浏览器 http://127.0.0.1:8080/frontend/index.html
+```
+前端 light-only，无后端依赖（Phase 2 才接）。
+
+### 下轮路线图（已与用户排定）
+1. **Toolbox / Heatmap 独立化**（Layers 移出 → Analysis 下新增 TOOLBOX 折叠入口 + 右侧工具对话框）——**细节未定**（对话框内容/UI 风格/热力图配色待用户定），先别做。
+2. **Import**（范围 + 数据；数据是 **CSV/GeoJSON 文件非数据库**，见 `DATA/`）。
+3. **Analysis L1→L2**：FastAPI `api/` **已就绪可跑**（`uvicorn api.main:app --port 8000`，`/analyze` 调 `run_analysis_task` SnowNLP；样例 L1 在 `DATA/processed/simulated_l1_2000_...`）。`api.js.runAnalyze` 已是真 fetch，接线即可；`/analyze` 现返回 `geojson_path`（路径非内容），需小改（内联 GeoJSON 或静态伺服 DATA/）。
+4. **Overview 3 层级重构**（用户已定**不加独立控制台**，信息收右栏；L1 标题/L2 范围数据/L3 分析+结果>50%，参考 kepler·google·geojson）。
+
+### 保持的约定
+- 激活态统一**蓝底白字**；地图光标 geojson.io 式；popup 折叠复用极性 badge；左簇/图例同源 absolute 平齐。
+- 验证节奏：视觉/布局小改 → 起页交用户肉眼验（**不上 Playwright**）；控制流/异步才上 Playwright。
+- pre-commit hook 跑 pytest（本会话全程 **59 passed**）。
+
+### 踩坑
+- `.popup{display:flex}` 压过 HTML `hidden` → 首屏空白 popup + × 关不掉 → 加 `.popup[hidden]{display:none}`。
+- 左簇（MapLibre 控件）与图例（absolute）两套机制靠调像素对不齐 → 左簇也改 absolute 同源 `bottom` → 几何必然平齐。
+- `git add frontend/`（目录）被 auto-mode 分类器拦 → 用显式文件路径。
+- push 到 github 间歇超时多为网络抖动，先重试。
+
 ## 当前节点 — 2026-06-16 傍晚
 
 ### 代码状态
