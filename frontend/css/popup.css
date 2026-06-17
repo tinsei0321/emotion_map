@@ -1,23 +1,27 @@
-/* ═══ Click popup — floating bottom-right (geojson.io detail, corner-anchored) ═══
-   Replaces the old right-panel "detail" tab. Compact (280px), not centered. */
+/* ═══ Click popup — anchored top-right of #map (follows right panel) ═══
+   Compact (280px), corner-anchored. */
 
 .popup {
-  position: fixed;
-  right: var(--geojson-spacing-4);                   /* 16px */
-  bottom: var(--geojson-spacing-4);
-  width: var(--geojson-layout-popup-width);          /* 280px */
+  position: absolute;                               /* anchored to #map → follows right panel */
+  right: var(--geojson-spacing-2);
+  top: var(--geojson-spacing-2);
+  width: 200px;                                      /* ~2/3 of 280px */
   max-width: calc(100vw - 32px);
-  max-height: 400px;
+  min-height: 200px;
+  max-height: 320px;
   overflow-y: auto;
-  padding: var(--geojson-spacing-3);
+  padding: var(--geojson-spacing-2);
   background: var(--geojson-color-surface-page);
   border: 1px solid var(--geojson-color-border-default);
-  border-radius: var(--geojson-radius-sm);           /* 4px */
+  border-radius: 28px;                               /* 契合胶囊弧度（可继续到 radius-full 纯胶囊） */
   box-shadow: 0 2px 8px rgba(0,0,0,0.12);
   color: var(--geojson-color-text-primary);
   z-index: 90;
+  display: flex;
+  flex-direction: column;
   animation: popupFade 0.2s ease-out;
 }
+.popup[hidden] { display: none; }       /* [hidden] must override .popup{display:flex} */
 @keyframes popupFade {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -50,14 +54,14 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--geojson-spacing-2);
-  margin-bottom: var(--geojson-spacing-2);
+  margin-bottom: var(--geojson-spacing-1);            /* L1 收紧 */
   padding-right: 20px;
 }
 .popup-badge {
   display: inline-block;
-  padding: 2px var(--geojson-spacing-2);
-  border-radius: var(--geojson-radius-sm);
-  font-size: var(--geojson-typography-size-xs);
+  padding: 3px var(--geojson-spacing-2);
+  border-radius: var(--geojson-radius-full);          /* 胶囊形，活泼 */
+  font-size: var(--geojson-typography-size-sm);
   font-weight: var(--geojson-typography-weight-semibold);
   color: var(--geojson-color-text-inverse);
   background: var(--geojson-color-gray-500);
@@ -71,22 +75,31 @@
 }
 .popup-text {
   font-size: var(--geojson-typography-size-sm);
+  font-weight: var(--geojson-typography-weight-bold);   /* L2 评论粗体 */
+  color: var(--geojson-color-text-primary);
   line-height: var(--geojson-typography-line-height-normal);
+  background: var(--geojson-color-gray-100);            /* 浅灰胶囊底（换行向下加宽） */
+  border-radius: var(--geojson-radius-md);
+  padding: var(--geojson-spacing-1) var(--geojson-spacing-2);
   margin-bottom: var(--geojson-spacing-2);
+  display: -webkit-box;                                 /* 最多 2 行，超出 ···（hover 见 title 全文） */
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .popup-kv {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  justify-content: space-between;     /* 评论 2 行时收紧、1 行时放开（自适应间距比例） */
+  flex: 1 1 auto;
 }
 .popup-kv .kv-row {
   display: grid;
-  grid-template-columns: 64px 1fr;
+  grid-template-columns: 48px 1fr;
   gap: var(--geojson-spacing-2);
   align-items: baseline;
-  font-size: var(--geojson-typography-size-xs);
-  border-top: 1px solid var(--geojson-color-border-default);
-  padding: 4px 0;
+  font-size: var(--geojson-typography-size-xs);        /* L3 比评论略小 */
+  padding: 2px 0;                                       /* 去横杠分隔线，三行更紧凑 */
 }
 .popup-kv .kv-k {
   color: var(--geojson-color-text-secondary);
@@ -99,5 +112,27 @@
 .popup-id {
   font-size: var(--geojson-typography-size-2xs);
   color: var(--geojson-color-text-tertiary);
-  margin-top: var(--geojson-spacing-2);
+  margin-top: var(--geojson-spacing-1);               /* L4 收紧 */
+}
+
+/* ── Collapsed: shrink into the polarity-color score capsule (reuses the badge) ──
+   Click empty map → collapse; click capsule → expand (wired in popup.js). */
+.popup.is-collapsed {
+  width: auto;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+.popup.is-collapsed .popup-score,
+.popup.is-collapsed .popup-text,
+.popup.is-collapsed .popup-kv,
+.popup.is-collapsed .popup-id,
+.popup.is-collapsed .popup-close {
+  display: none;
+}
+.popup.is-collapsed .popup-top {
+  margin-bottom: 0;
+  padding-right: 0;
 }

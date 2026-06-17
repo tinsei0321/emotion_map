@@ -35,6 +35,12 @@ export function initMap(container = 'map') {
   // identical. Anchored to #map → rides along when the left panel folds. Needs the
   // current emotion FC for the reset→fitBounds, hence the lazy getter.
   initControls(map, { getFC: () => _emotionFC });
+
+  // Cursor: arrow by default (CSS !important overrides MapLibre's grab); grabbing only while
+  // actually dragging (dragstart/dragend — no flash on simple clicks).
+  const canvas = map.getCanvas();
+  map.on('dragstart', () => canvas.classList.add('is-grabbing'));
+  map.on('dragend', () => canvas.classList.remove('is-grabbing'));
   // Emotion layers survive basemap switches via setBasemap's transformStyle (declarative carry-over,
   // no wipe → no re-add timing race). Click/hover handlers are bound once and key off the stable layer id.
   return map;
@@ -132,8 +138,15 @@ function applyEmotionLayers() {
   // since the layer id is stable); avoids accumulating listeners across style switches.
   if (!_interactionsBound) {
     _interactionsBound = true;
-    map.on('mouseenter', LAYER_POINTS, () => { map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', LAYER_POINTS, () => { map.getCanvas().style.cursor = ''; });
+    map.on('mouseenter', LAYER_POINTS, (e) => {
+      map.getCanvas().classList.add('is-pointer');      // CSS .is-pointer → pointer cursor
+      const f = e.features && e.features[0];
+      if (f) showHoverRing(f);                           // outline highlight on hover
+    });
+    map.on('mouseleave', LAYER_POINTS, () => {
+      map.getCanvas().classList.remove('is-pointer');
+      removeHoverRing();
+    });
     map.on('click', LAYER_POINTS, (e) => {
       const f = e.features[0];
       if (!f) return;
@@ -170,4 +183,42 @@ function showSelectionHalo(feature, colors) {
       'circle-stroke-opacity': 0.6,
     },
   });
+}
+
+/**
+ * Hover ring — crisp OUTLINE around the hovered point (distinct from the filled selection
+ * halo). Same add-source/layer pattern as showSelectionHalo; removed on mouseleave.
+ * Pattern reuses for future line/polygon layers (thicker stroke / fill highlight).
+ */
+function showHoverRing(feature) {
+  const SRC = 'emotion-hover';
+  const LAYER = 'emotion-hover-ring';
+  if (map.getLayer(LAYER)) map.removeLayer(LAYER);
+  if (map.getSource(SRC)) map.removeSource(SRC);
+
+  const ringColor = token('--geojson-feature-selection-halo-color') || '#007afc';
+  const tier = getTier(_emotionFC.features.length);
+
+  map.addSource(SRC, {
+    type: 'geojson',
+    data: { type: 'Feature', geometry: feature.geometry, properties: {} },
+  });
+  map.addLayer({
+    id: LAYER, type: 'circle', source: SRC,
+    paint: {
+      'circle-radius': tier.radius * 1.6,
+      'circle-color': 'rgba(0,0,0,0)',     // no fill — outline only
+      'circle-opacity': 0,
+      'circle-stroke-color': ringColor,
+      'circle-stroke-width': 2,
+      'circle-stroke-opacity': 0.8,
+    },
+  });
+}
+
+function removeHoverRing() {
+  const SRC = 'emotion-hover';
+  const LAYER = 'emotion-hover-ring';
+  if (map.getLayer(LAYER)) map.removeLayer(LAYER);
+  if (map.getSource(SRC)) map.removeSource(SRC);
 }

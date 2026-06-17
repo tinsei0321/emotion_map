@@ -31,8 +31,8 @@ function main() {
   setOverview({ stats, total, scoreMean });
   setTable(fc);
 
-  // 4. Popup (close button)
-  initPopup();
+  // 4. Popup (close + empty-map collapse + capsule-click expand)
+  initPopup(map);
 
   // 5. Left sidebar (collapse/expand, drag, import→sections, section toggles)
   initSidebar({

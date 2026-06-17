@@ -1,11 +1,11 @@
-/* ═══ Legend — floating bottom-left (popup occupies bottom-right) ═══ */
+/* ═══ Legend — anchored bottom-right of #map (follows right panel; clears attribution) ═══ */
 
 #legend {
-  position: fixed;
-  bottom: var(--geojson-spacing-3);
-  left: 56px;                                       /* clears the nav control (~10..46) */
+  position: absolute;                               /* anchored to #map → follows right panel */
+  right: var(--geojson-spacing-2);
+  bottom: 60px;                                     /* 再上抬 30px 拉开 attribution；与左簇底同高 */
   z-index: 80;
-  padding: var(--geojson-spacing-2) var(--geojson-spacing-3);
+  padding: var(--geojson-spacing-1) var(--geojson-spacing-2);
   background: var(--geojson-color-surface-page);
   border: 1px solid var(--geojson-color-border-default);
   border-radius: var(--geojson-radius-sm);
@@ -18,13 +18,13 @@
   font-size: var(--geojson-typography-size-sm);
   font-weight: var(--geojson-typography-weight-semibold);
   color: var(--geojson-color-text-primary);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 .legend-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  line-height: var(--geojson-typography-line-height-relaxed);
+  gap: var(--geojson-spacing-1);
+  line-height: var(--geojson-typography-line-height-normal);
 }
 .legend-row .dot {
   width: 10px; height: 10px;

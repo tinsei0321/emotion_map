@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>宜昌市情绪地图 v1.0</title>
+  <title>宜昌市情绪地图 prototype v0.1.0-alpha.1</title>
 
   <!-- Design tokens (single source, generated from design/tokens.json `geojson` section) -->
   <link rel="stylesheet" href="css/tokens.css" />
@@ -27,13 +27,13 @@
   <header id="app-header">
     <!-- 上层：标题栏 -->
     <div id="title-bar">
-      <span class="title-text">宜昌市情绪地图 v1.0</span>
+      <span class="title-text"><span class="title-zh">宜昌市情绪地图</span><span class="title-version">prototype v0.1.0-alpha.1</span></span>
     </div>
 
     <!-- 下层：工具栏（左对齐绘制工具 / 右对齐 Import·Export·M） -->
     <nav id="toolbar">
       <div class="tb-group tb-left">
-        <button class="draw-tool is-active" data-tool="select" title="Select (S)" aria-pressed="true">S</button>
+        <button class="draw-tool is-active" data-tool="select" title="Select (S)" aria-pressed="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg></button>
         <button class="draw-tool" data-tool="point" title="Point (Pt)" aria-pressed="false">Pt</button>
         <button class="draw-tool" data-tool="line" title="Line (L)" aria-pressed="false">L</button>
         <button class="draw-tool" data-tool="polygon" title="Polygon (Po)" aria-pressed="false">Po</button>
@@ -116,7 +116,30 @@
     <div class="gutter gutter-left" data-side="left"></div>
 
     <!-- 地图 -->
-    <div id="map"></div>
+    <!-- 地图 — legend(右下)/popup(右上) 以 absolute 锚定 #map，随 #map 跟随左右栏拖拽 -->
+    <div id="map">
+      <!-- Legend (bottom-right) -->
+      <div id="legend">
+        <div class="legend-title">情绪极性</div>
+        <div class="legend-row"><span class="dot" style="background:var(--geojson-color-emotion-very-positive)"></span>非常积极</div>
+        <div class="legend-row"><span class="dot" style="background:var(--geojson-color-emotion-positive)"></span>积极</div>
+        <div class="legend-row"><span class="dot" style="background:var(--geojson-color-emotion-neutral)"></span>中性</div>
+        <div class="legend-row"><span class="dot" style="background:var(--geojson-color-emotion-negative)"></span>消极</div>
+        <div class="legend-row"><span class="dot" style="background:var(--geojson-color-emotion-very-negative)"></span>非常消极</div>
+      </div>
+
+      <!-- Click popup (top-right) -->
+      <div id="feature-popup" class="popup" hidden>
+        <button class="popup-close" id="popup-close" title="关闭">&times;</button>
+        <div class="popup-top">
+          <span class="popup-badge" id="pp-polarity">—</span>
+          <span class="popup-score" id="pp-score">—</span>
+        </div>
+        <div class="popup-text" id="pp-text"></div>
+        <div class="popup-kv" id="pp-kv"><!-- key-value rows --></div>
+        <div class="popup-id" id="pp-id"></div>
+      </div>
+    </div>
 
     <!-- 右拖拽分隔条 -->
     <div class="gutter gutter-right" data-side="right"></div>
@@ -160,27 +183,7 @@
     <button class="collapse-btn collapse-right" data-side="right" title="折叠/展开右侧栏">&#8250;</button>
   </main>
 
-  <!-- ═══ Legend (bottom-left; popup occupies bottom-right) ═══ -->
-  <div id="legend">
-    <div class="legend-title">情绪极性</div>
-    <div class="legend-row"><span class="dot" style="background:var(--geojson-color-emotion-very-positive)"></span>非常积极</div>
-    <div class="legend-row"><span class="dot" style="background:var(--geojson-color-emotion-positive)"></span>积极</div>
-    <div class="legend-row"><span class="dot" style="background:var(--geojson-color-emotion-neutral)"></span>中性</div>
-    <div class="legend-row"><span class="dot" style="background:var(--geojson-color-emotion-negative)"></span>消极</div>
-    <div class="legend-row"><span class="dot" style="background:var(--geojson-color-emotion-very-negative)"></span>非常消极</div>
-  </div>
-
-  <!-- ═══ Click popup (floating, bottom-right) ═══ -->
-  <div id="feature-popup" class="popup" hidden>
-    <button class="popup-close" id="popup-close" title="关闭">&times;</button>
-    <div class="popup-top">
-      <span class="popup-badge" id="pp-polarity">—</span>
-      <span class="popup-score" id="pp-score">—</span>
-    </div>
-    <div class="popup-text" id="pp-text"></div>
-    <div class="popup-kv" id="pp-kv"><!-- key-value rows --></div>
-    <div class="popup-id" id="pp-id"></div>
-  </div>
+  <!-- Legend + popup 已移入 #map（右下/右上，随 #map 跟随左右栏） -->
 
   <!-- ═══ Basemap popover (4 天地图 variants) ═══ -->
   <div id="basemap-popover" class="popover" hidden>

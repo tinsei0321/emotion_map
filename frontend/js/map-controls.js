@@ -171,13 +171,12 @@ export function initControls(map, { getFC } = {}) {
   map.on('move', updateScale);
   updateScale();
 
-  // expose as a MapLibre control (plain object with onAdd/onRemove is sufficient).
-  const control = {
-    onAdd() { return root; },
-    onRemove() { /* DOM removed by MapLibre; listeners die with the map */ },
-    getDefaultPosition() { return 'bottom-left'; },
-  };
-  map.addControl(control, 'bottom-left');
+  // Anchor directly to #map (absolute, bottom-left) instead of a MapLibre control.
+  // This puts the cluster on the SAME positioning mechanism as the legend/popup
+  // (absolute, bottom:60) so their bottoms are geometrically level — MapLibre's
+  // ctrl-container offset otherwise makes them un-alignable. Button/scale handlers
+  // are bound to the elements and work regardless of DOM host.
+  map.getContainer().appendChild(root);
 
-  return { root, control };
+  return { root };
 }

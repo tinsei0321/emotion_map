@@ -48,10 +48,18 @@ button { font-family: inherit; }
   border-bottom: 1px solid var(--geojson-color-border-default);
 }
 .title-text {
-  font-size: var(--geojson-typography-size-base);  /* 16px */
-  font-weight: var(--geojson-typography-weight-bold);
-  letter-spacing: var(--geojson-typography-letter-spacing-wide);
+  display: inline-flex;
+  align-items: baseline;
   color: var(--geojson-color-text-inverse);
+}
+.title-zh {
+  font-size: var(--geojson-typography-size-xl);       /* 中文加大 20px */
+  font-weight: var(--geojson-typography-weight-bold);
+}
+.title-version {
+  font-size: var(--geojson-typography-size-xs);       /* 英文缩小 12px */
+  font-weight: 300;                                   /* 细体 */
+  margin-left: 24px;                                   /* 与中文 24px 间距 */
 }
 
 /* ── Main: 3-panel flex ── */
@@ -82,7 +90,9 @@ body.dragging #right-panel { transition: none; }
   position: relative;
   background: var(--geojson-color-surface-map-bg);
 }
-#map canvas { outline: none; }
+#map canvas { outline: none; cursor: default !important; }   /* 默认箭头，压过 MapLibre 的 grab */
+#map canvas.is-pointer { cursor: pointer !important; }       /* 悬停点/线/面 → pointer */
+#map canvas.is-grabbing { cursor: grabbing !important; }     /* 拖拽 → grabbing（源序最后，优先级最高） */
 
 #right-panel {
   width: var(--right-w);

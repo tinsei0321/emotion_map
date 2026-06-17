@@ -65,10 +65,14 @@
 /* ── One-segment scale bar (white, auto-adaptive) — per reference 图1 ──
    Sits directly below the cluster, left-aligned. */
 .emotion-controls-root {
+  position: absolute;           /* anchor to #map (same mechanism as legend) → bottoms align */
+  bottom: 28px;                 /* 再下移 16px */
+  left: 10px;
+  z-index: 20;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  margin-bottom: 14px;          /* lift the whole cluster off the bottom edge a bit */
+  margin: 0;
 }
 .emotion-scale-ctrl {
   margin-top: 6px;
@@ -92,9 +96,3 @@
   border-left: 2px solid var(--geojson-color-text-inverse);
   border-right: 2px solid var(--geojson-color-text-inverse);
 }
-
-/* The legend also lives bottom-left. The scale bar can span up to ~120px from the
-   map's left edge; move the legend right of that lane so they never collide at any
-   zoom. (Position-only tweak; legend content/behavior unchanged. Left panel is folded
-   by default; when expanded the legend stays put — pre-existing, not changed here.) */
-#legend { left: 150px; }

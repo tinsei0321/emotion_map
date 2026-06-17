@@ -47,7 +47,9 @@
 /* Active / pressed tool — stays lit blue (geojson.io active) */
 .draw-tool[aria-pressed="true"] {
   background: var(--geojson-color-chrome-active-fill);
+  color: var(--geojson-color-text-inverse);          /* 白字/白图标（蓝底，含 select 指针） */
 }
+.draw-tool svg { display: block; pointer-events: none; }
 .draw-more { font-size: var(--geojson-typography-size-2xs); }
 
 /* Import / Export — rounded-rect text buttons, height = square side (32px) */
