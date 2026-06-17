@@ -29,6 +29,24 @@
 
 <!-- 在此按时间倒序添加日志 -->
 
+### 2026-06-17 | MCP 能力层纳入 vibe coding — 实测 + 智谱优先路由策略
+
+**关键词**：MCP, 智谱优先, vibe coding, ADR-013, vision-bridge, zai-mcp-server, github PAT
+
+#### 做了什么
+- 全量冒烟测试 9 个 MCP（项目 `.mcp.json` 3 + 用户 `~/.claude.json` 4 + 插件来源 2）：7 通 / github 认证失败 / web-reader 与 web_reader 重复
+- 新建 `docs/mcp-strategy.md`：原则（智谱优先 + 回退阶梯）、清单、任务→MCP 路由表、分家族手册、运维、测试日志
+- CLAUDE.md：头部戳更新（`Skill 464`→`MCP 7`，06-15→06-17）、规则 11 视觉主备改（zai 主 / vision-bridge 备）、新增规则 12（智谱优先）、登记文档×2、补开发状态行
+- AGENTS.md 升 v2.1：新增「MCP 能力外挂」子节（按 Agent/场景给首选 MCP）、知识库表登记
+- ADR-013 落档：MCP 能力层 + 智谱优先，选项 A/B/C 对比
+
+#### 收获 / 心得
+- 「同功能多 provider」是 MCP 时代的常见混乱源——需一份路由表 + 选型铁律收敛，否则凭直觉选、付费能力被埋没
+- MCP 的 `disabled:true` 不可靠：github 标了禁用仍被加载并报认证错——要禁干净得移除条目或重启确认
+- 主循环模型本就是 GLM 系，智谱 MCP 与之同源，认证/延迟统一，「智谱优先」既是偏好也是工程合理
+
+---
+
 ### 2026-06-12 | Scrapy 数据采集系统搭建 — 确定爬取技术方案
 
 **关键词**：Scrapy, 数据采集, 小红书, Spider, Pipeline

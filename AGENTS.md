@@ -1,6 +1,6 @@
 # Emotion Map — Agent 协作规范
 
-> v2.0 | 8 Agent + 自动编排 | 2026-06-15
+> v2.1 | 8 Agent + 自动编排 + MCP 外挂 | 2026-06-17
 
 ## 核心理念
 
@@ -46,6 +46,21 @@
 | **纯逻辑** | 拆解 → Developer(编码) → Reviewer(审查) → Tester(测试) → Docs(同步) |
 | **纯 UI** | 拆解 → Designer(设计+自审) → 汇报 |
 | **逻辑+UI** | 拆解 → Designer(出设计稿) → Developer(按稿编码) → Reviewer(审查) → Tester(测试) → Designer(复审还原度) |
+
+### MCP 能力外挂（v2.1 | 2026-06-17）
+
+Agent 在任何阶段可按需调用 MCP 扩充能力，**同类优先智谱**（完整路由见 `docs/mcp-strategy.md`）：
+
+| Agent / 场景 | 首选 MCP | 备注 |
+|--------------|----------|------|
+| Developer / GIS — 理解开源依赖、读第三方仓库 | `zread` | zread 未收录的仓退 github MCP / 直接 clone |
+| Developer — 查最新 API 用法、库变更 | `web-search-prime` | |
+| Developer — 读某个文档/网页 URL | `web-reader` | 勿用下划线重复项 `web_reader` |
+| Designer / Reviewer — 看设计稿、报错截图、UI 比对 | `zai-mcp-server` | 智谱主；不通退 `vision-bridge`（火山引擎） |
+| Tester — 前端 E2E、异步/数据流隐患验证 | `playwright` | 按 CLAUDE.md 验证节奏，非常规改动不滥用 |
+| Docs / Ops — GitHub Issue/PR 操作 | `github` MCP | 当前 PAT 失效，修复前用 `gh` CLI |
+
+> 选型铁律：同类功能优先智谱（`zai`/`web-search-prime`/`web-reader`/`zread`），连不上再退备选。
 
 ### 何时走 SOP
 
@@ -106,6 +121,7 @@ Agent 启动时根据下表选择性阅读知识源：
 | 架构文档 | `docs/architecture.md` | 系统架构说明（含 frontend/MapLibre 前端层） |
 | 开发笔记 | `docs/dev-notes.md` | 历史踩坑记录 |
 | 决策记录 | `docs/decisions.md` | 架构决策 (ADR) |
+| MCP 策略 | `docs/mcp-strategy.md` | MCP 路由手册、智谱优先、清单与测试日志 |
 
 ### 按角色推荐阅读
 

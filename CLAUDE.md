@@ -1,6 +1,6 @@
 # 情绪地图 (Emotion Map)
 
-> Agent v2.0 | Skill 464 | 2026-06-15
+> Agent v2.0 | MCP 7 | 2026-06-17
 
 ## 项目概述
 
@@ -56,7 +56,8 @@ emotion_map/
 8. **空间范围优先** — 数据采集以范围 Polygon 为第一过滤条件，关键词仅作辅助
 9. **决策追踪必埋点** — 公开函数 `@track("MOD_XXX.F_NNN")`，关键分支 `TrackContext("MOD_XXX.D_NNN")`
 10. **追踪 ID 必注册** — 所有 ID 在 `core/tracker.py` 的 `_REGISTRY` 中登记，编号连续不跳号
-11. **图像粘贴自动识别** — 用户粘贴图片后，自动查找 `%LOCALAPPDATA%\Temp\ScreenShot_*.png` 中最新的文件，调用 `mcp__vision-bridge__analyze_image` 工具识图。不需要等待用户明确说"看图"
+11. **图像粘贴自动识别** — 用户粘贴图片后，自动查找 `%LOCALAPPDATA%\Temp\ScreenShot_*.png` 中最新的文件，调用 `mcp__zai-mcp-server__analyze_image`（智谱，主）识图；智谱不可用退 `mcp__vision-bridge__analyze_image`（火山引擎）。不需要等待用户明确说"看图"
+12. **MCP 同类择优选智谱** — 同功能 MCP 优先智谱（Z.AI/BigModel），连不上再退备选：视觉=`zai-mcp-server`（主）→`vision-bridge`（火山引擎，备）；联网搜索=`web-search-prime`；读网页=`web-reader`；读开源仓=`zread`。完整路由见 `docs/mcp-strategy.md`
 
 **Bug 定位流程**：`[TRACE] 日志 → 决策 ID → 代码跳转（O(1)）`
 
@@ -73,6 +74,7 @@ emotion_map/
 - ✅ Design Token 体系（双主题 Light/Dark + 150+ Token）
 - ✅ Agent 协作体系（v2.0，8 Agent 自动编排）
 - ✅ Claude Code Harness（CLAUDE.md + Hooks + Skills + Subagents）
+- ✅ MCP 能力层（7 服务 2026-06-17 实测，智谱优先，`docs/mcp-strategy.md`）
 - 🔄 L0→L1 完整管线待验证（需 DeepSeek API Key 已配置）
 - ⬜ L3（LLM 语义增强）接口已预留，待接入
 - ⬜ L4（多维归因）框架已预留，待实现
@@ -116,6 +118,7 @@ Agent 在工作过程中自动记录的隐形知识：
 | 修改前端视觉、调颜色、调间距 | `docs/brand-visual.md` |
 | 写产品文案、按钮文字、提示语 | `docs/copywriting-style.md` |
 | 写 API 调用、定义返回格式、对接外部服务 | `docs/api-conventions.md` |
+| 选 MCP、识图/搜索/读仓工具 | `docs/mcp-strategy.md` |
 
 > 只在"需要的时候"才去读完整文档——保证准确性，不占多余上下文。
 
@@ -124,6 +127,7 @@ Agent 在工作过程中自动记录的隐形知识：
 | 文档 | 路径 | 用途 |
 |------|------|------|
 | **前端启动** | `frontend/README.md` | MapLibre 主界面启动手册（http.server + 天地图底图） |
+| **MCP 策略** | `docs/mcp-strategy.md` | MCP 路由手册、智谱优先策略、清单与测试日志 |
 | 产品需求 | `docs/prd.md` | 用户画像、功能优先级、验收标准 |
 | 产品规范 | `docs/spec.md` | 字段定义、UI 规格、性能预算 |
 | 品牌视觉 | `docs/brand-visual.md` | 颜色、主题、标记样式 |

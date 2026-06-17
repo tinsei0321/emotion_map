@@ -34,6 +34,41 @@
 
 ## 决策列表
 
+### ADR-013 | 2026-06-17 | MCP 能力层纳入 vibe coding 体系 + 同类择优选智谱
+
+**状态**：✅ 已采纳
+
+**背景**：
+项目 vibe coding 推进依赖 Agent 编排（AGENTS.md）+ Skills，但 Agent 的「外部感知」能力（看图 / 联网 / 读网页 / 读开源仓 / 操作浏览器 / 操作 GitHub）此前散落无章：
+1. 视觉识图只有自建 `vision-bridge`（火山引擎），CLAUDE.md 规则 11 硬绑它，智谱的 `zai` 视觉能力被埋没。
+2. 已配 7 个 MCP（项目 `.mcp.json`：`playwright`/`github`/`vision-bridge`；用户 `~/.claude.json`：`zai`/`web-search-prime`/`web-reader`/`zread`），但无统一路由文档，选型凭直觉。
+3. 同功能多 provider 并存（视觉三家、读网页两份重复），易误用次优或重复服务。
+4. `github` MCP PAT 失效、`web_reader` 重复服务等问题无档可查。
+
+**选项**：
+
+| 选项 | 优点 | 缺点 |
+|------|------|------|
+| A. 维持现状，MCP 随手用 | 零文档成本 | 选型混乱、重复/失效服务无人发现、智谱已付费能力被埋没 |
+| B. 收敛到单一 provider（智谱） | 选型极简 | 放弃火山引擎等备选容错 |
+| C. 智谱优先 + 明确回退阶梯 + 路由文档 | 用足已付费智谱、保留容错、可审计 | 需维护一份路由手册 |
+
+**决策**：
+选择 C —— MCP 升级为 vibe coding 的正式「能力层」，同类优先智谱。
+1. **智谱优先铁律**：同功能 MCP 首选智谱（Z.AI/BigModel），连不上再退备选。写入 CLAUDE.md 规则 12 + AGENTS.md v2.1。
+2. **路由手册**：新建 `docs/mcp-strategy.md`（清单 / 路由表 / 分家族手册 / 运维 / 测试日志）。
+3. **规则 11 改主备**：视觉识图主 = `zai-mcp-server`（智谱），备 = `vision-bridge`（火山引擎）。
+4. **实测入档**：2026-06-17 全量冒烟测试 9 个服务，结果写入手册（7 通 / github 认证失败 / web-reader 重复）。
+
+**后果**：
+- ✅ Agent 选 MCP 有据可依，智谱已付费能力（GLM Coding Plan）被充分用足
+- ✅ 容错保留：智谱挂了有火山引擎 / 4_5v / skill 兜底
+- ✅ 失效服务（github PAT）与重复服务（web_reader）曝光，进入修复清单
+- ⚠️ 需维护 `docs/mcp-strategy.md`：新增 MCP 时回填清单 + 路由表
+- 🔜 待修：github MCP PAT；待清理：`web_reader` 重复服务；`4_5v_mcp` 来源待核实
+
+---
+
 ### ADR-012 | 2026-06-17 | 前端迁移：Streamlit → MapLibre GL JS (frontend/)
 
 **状态**：✅ 已采纳
@@ -357,3 +392,4 @@ v1.0 的 11 Agent 手动编排模式存在三个问题：
 | ADR-010 | 2026-06-15 | Agent 架构 v2.0：11→8 精简 + 自动编排 | ✅ |
 | ADR-011 | 2026-06-13 | 引入决策追踪系统 (Decision Tracking) | ✅ |
 | ADR-012 | 2026-06-17 | 前端迁移：Streamlit → MapLibre GL JS (frontend/) | ✅ |
+| ADR-013 | 2026-06-17 | MCP 能力层 + 智谱优先路由策略 | ✅ |
