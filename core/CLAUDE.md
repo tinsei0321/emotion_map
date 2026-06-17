@@ -32,7 +32,7 @@
 - 模块 ID: `MOD_TRACKER`
 - 追踪 ID 格式: `MOD_XXX.F_NNN`（函数）或 `MOD_XXX.D_NNN`（决策分支）
 - 编号必须连续，不跳号
-- 新增追踪 ID 必须同步更新注册表 `_REGISTRY`
+- 新增追踪 ID 必须同步更新注册表 `_TRACKING_REGISTRY`
 - 不删除已有追踪 ID（保留兼容性）
 
 ## 坐标转换规范 (core/coord_transform.py)
@@ -82,5 +82,5 @@
 - 不要修改 `tracker.py` 的 `@track()` 装饰器签名
 - 不要在 `config.py` 中存储 API Key 或敏感信息
 - 不要修改坐标转换算法的数学常量
-- 不要删除 `_REGISTRY` 中已注册的追踪 ID
+- 不要删除 `_TRACKING_REGISTRY` 中已注册的追踪 ID
 - 不要硬编码文件路径（使用 `config.py` 中的路径常量）

@@ -62,6 +62,17 @@
         "command": "python .claude/hooks/on_session_end.py"
       }
     ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py .claude/hooks/on_pre_edit_lint.py"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",
@@ -77,10 +88,12 @@
   "project": {
     "name": "emotion_map",
     "description": "情绪地图 — 基于多源社交数据的城市情绪空间分析平台",
-    "pythonVersion": "3.10+",
-    "entryPoint": "launch.py",
+    "pythonVersion": "3.14.5",
+    "entryPoint": "frontend/index.html",
+    "frontendPort": 8080,
+    "legacyEntry": "launch.py",
     "port": 8501,
-    "agentVersion": "2.0.0",
+    "agentVersion": "2.1.0",
     "orchestration": "auto"
   }
 }

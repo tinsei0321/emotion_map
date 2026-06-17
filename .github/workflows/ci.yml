@@ -1,0 +1,34 @@
+# GitHub Actions CI（闭环补强 Wave7 — best-effort）
+# ===========================================================================
+# 作用：push/PR 到 main 时跑 pytest，给远端一道自动化回归。
+# 定位：**辅助**闸。主闸是本地的 `/verify` slash command + `.githooks/pre-commit`
+# （用户本地 GitHub 直连受限，不能依赖本 CI 作为唯一门禁）。
+# 极简：只跑 pytest，不加大盘 lint（避免误伤 + 超时）。
+# ===========================================================================
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest tests/ -q

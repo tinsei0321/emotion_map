@@ -34,6 +34,34 @@
 
 ## 决策列表
 
+### ADR-014 | 2026-06-17 | 闭环补强：把开环的 harness×agent×MCP×skill 补成闭环
+
+**状态**：✅ 已采纳
+
+**背景**：
+评估发现协作体系"形已具、耦合松"，闭环体系"前向通、反馈断"——三处反馈断点：① trace 不落盘（debug 史蒸发）② 无 CI/pre-commit（pytest 全靠自觉、直推 main）③ Auto Memory 空转（教训不复利，且 MEMORY.md 索引从不存在致 6 条记忆暗写不召回）。用户选定彻底工程化（9 项）。
+
+**决策**：分 8 波补反馈链（第 9 波 skill 物理移除经评估后暂缓）：
+
+| 波次 | 内容 | 关键产物 |
+|------|------|----------|
+| W1 地基 | settings 去漂移(3.14.5/frontend/v2.1)；tracker 落盘 `TRACKING_LOG_FILE` 默认 `.trace/trace.log` + `recent_errors()` | `core/tracker.py`, `.claude/settings.json` |
+| W2 门禁 | `/verify` slash command（pytest+合规+trace+PII）+ `.githooks/pre-commit`（`core.hooksPath`，离线、随 Git 共享） | `.claude/commands/verify.md`, `.githooks/` |
+| W3 拦截 | emoji PreToolUse hook（精确拦 U+1F000–1FAFF，不误伤中文/箭头）+ PII guard 测试 | `.claude/hooks/on_pre_edit_lint.py`, `tests/test_pii_guard.py` |
+| W4 回灌 | SessionEnd 把新增 trace ERR/WARN 摘要沉淀到 `docs/trace-digest.md`（游标防重复） | `.claude/hooks/on_session_end.py`, `docs/trace-digest.md` |
+| W5 下沉 | 8 agent 升 v2.1 + 各加「MCP 能力」段 + 铁律 1-12 | `.claude/agents/*.agent.md` |
+| W6 记忆 | 建 `MEMORY.md` 索引（原缺失）+ 修正 3 条陈旧记忆 + 3 条种子 + CLAUDE.md 反馈规则 | `~/.claude/projects/.../memory/` |
+| W7 CI | GitHub Actions 极简 pytest（best-effort，本地门禁为主） | `.github/workflows/ci.yml` |
+| W8 skill | SKILLS_INDEX.md 已精选 ~47（物理移除 1521 文件经评估暂缓） | `.claude/SKILLS_INDEX.md` |
+
+**后果**：
+- ✅ 反馈链闭合：trace 落盘→摘要回灌、提交有闸（pre-commit+`/verify`）、记忆可召回、emoji 自动拦。pytest 59 passed（+3 PII）零回归。
+- ✅ 修掉 3 条陈旧记忆（auto-restart/dev-workflow/image-paste 原与新版 CLAUDE.md 冲突）。
+- ⚠️ CI 受用户本地网络限，作辅助闸；PreToolUse/SessionEnd 新 hook 下个会话才生效（本会话已注册）。
+- 🔜 待办：github MCP PAT；`web_reader` 重复服务清理；skill 物理瘦身按需再议。
+
+---
+
 ### ADR-013 | 2026-06-17 | MCP 能力层纳入 vibe coding 体系 + 同类择优选智谱
 
 **状态**：✅ 已采纳
@@ -393,3 +421,4 @@ v1.0 的 11 Agent 手动编排模式存在三个问题：
 | ADR-011 | 2026-06-13 | 引入决策追踪系统 (Decision Tracking) | ✅ |
 | ADR-012 | 2026-06-17 | 前端迁移：Streamlit → MapLibre GL JS (frontend/) | ✅ |
 | ADR-013 | 2026-06-17 | MCP 能力层 + 智谱优先路由策略 | ✅ |
+| ADR-014 | 2026-06-17 | 闭环补强：harness×agent×MCP×skill 开环→闭环 | ✅ |

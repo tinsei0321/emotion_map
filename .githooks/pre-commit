@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# ===========================================================================
+# 共享 pre-commit 钩子（闭环补强 Wave2）
+# 作用：提交前跑 pytest 快速子集，失败则阻断 commit（exit 1）
+# 设计：离线可用、免外部依赖（不用 python pre-commit 框架）、随 Git 共享
+# ---------------------------------------------------------------------------
+# 一次性启用（每台机器跑一次）：
+#   git config core.hooksPath .githooks
+# 临时跳过（紧急修复）：
+#   git commit --no-verify
+# 永久关闭：
+#   git config --unset core.hooksPath
+# ===========================================================================
+set -e
+
+echo "[HOOK] pre-commit: running pytest (fast, -x stop on first fail)..."
+py -m pytest tests/ -q -x --tb=short
+echo "[HOOK] pre-commit: [OK] tests passed, allowing commit"

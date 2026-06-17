@@ -29,6 +29,23 @@
 
 <!-- 在此按时间倒序添加日志 -->
 
+### 2026-06-17 | 闭环补强 — 把开环的 harness×agent×MCP×skill 补成闭环（ADR-014）
+
+**关键词**：闭环, 反馈链, trace 落盘, pre-commit, emoji hook, PII guard, Auto Memory, CI
+
+#### 做了什么
+- 诊断：协作体系=半成品（agent 孤岛、MCP/skill 未下沉进 agent 定义），闭环体系=开环（trace 不落盘、无提交门禁、Auto Memory 空转且索引缺失）
+- 8 波补强：①tracker 落盘+recent_errors ②/verify+pre-commit ③emoji PreToolUse hook+PII 测试 ④SessionEnd trace 摘要回灌 ⑤8 agent v2.1+MCP 能力段 ⑥MEMORY.md 索引+修陈旧记忆+种子 ⑦GitHub Actions CI ⑧skill 索引(物理移除暂缓)
+- 验证：pytest 56→59 passed 零回归；emoji hook 精确拦 U+1F389 放行中文/箭头；trace 落盘+recent_errors 实测；digest 生成+游标防重实测；pre-commit hook 实测放行
+
+#### 收获 / 心得
+- **闭环的关键是反馈，不是前向**：前向链（dev→review→test→docs）早就齐，缺的是"经验回灌"——trace 落盘+摘要、提交门禁、记忆召回，这三处补上才从开环变闭环
+- **索引是召回的前提**：Auto Memory 写了 6 条但没 MEMORY.md 索引，等于全废——写记忆必须同步写索引
+- **Windows hook 必须 UTF-8 显式解码**：emoji hook 初版被 cp936 坑到静默放行，`sys.stdin.buffer.read().decode('utf-8')` 是正解
+- **红线项要敢暂停确认**：skill 物理移除 1521 文件、卸载行为不确定，及时停下问用户比盲执行好——选了"保留现状"
+
+---
+
 ### 2026-06-17 | MCP 能力层纳入 vibe coding — 实测 + 智谱优先路由策略
 
 **关键词**：MCP, 智谱优先, vibe coding, ADR-013, vision-bridge, zai-mcp-server, github PAT

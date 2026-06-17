@@ -38,17 +38,32 @@ ID 命名规范：
 
 import functools
 import inspect
+import os
 import time
 import threading
+from pathlib import Path
 from typing import Any, Callable, Optional, Dict
 
 # ── 全局开关 ──
 TRACKING_ENABLED = True           # 主开关
 TRACKING_VERBOSE = False          # 是否输出 DEBUG 级别追踪
-TRACKING_LOG_FILE = None          # 若设置路径，同时写入文件（None=仅 stderr）
+TRACKING_LOG_FILE = None          # 兼容占位；下方 _resolve_log_file() 覆盖默认值
 
 # ── 安全打印（避免 GBK 崩溃，保持与项目一致）──
 from core.utils import safe_print
+
+
+# ── 追踪日志落盘路径解析（闭环补强 Wave1）──
+# env EMOTION_TRACE_LOG 可覆盖；未设则默认 <项目根>/.trace/trace.log；设为空串则关闭落盘。
+# 落盘后 debug 史可检索、可回灌 dev-notes（见 tracker.recent_errors）。
+def _resolve_log_file():
+    _env = os.environ.get("EMOTION_TRACE_LOG")
+    if _env is not None:
+        return _env  # 显式设值（含空串=关闭）
+    return str(Path(__file__).resolve().parents[1] / ".trace" / "trace.log")
+
+
+TRACKING_LOG_FILE = _resolve_log_file()
 
 
 # ── 追踪器核心 ──
@@ -155,7 +170,9 @@ class DecisionTracker:
         safe_print(line, flush=True)
         if TRACKING_LOG_FILE:
             try:
-                with open(TRACKING_LOG_FILE, 'a', encoding='utf-8') as f:
+                _lf = Path(TRACKING_LOG_FILE)
+                _lf.parent.mkdir(parents=True, exist_ok=True)
+                with open(_lf, 'a', encoding='utf-8') as f:
                     f.write(line + '\n')
             except Exception:
                 pass  # 静默失败，不影响主流程
@@ -359,6 +376,33 @@ def replay_from_log(log_file: str, target_track_id: str = None):
     except FileNotFoundError:
         safe_print(f"[WARN] Log file not found: {log_file}")
     return records
+
+
+def recent_errors(log_file: str = None, limit: int = 50) -> list:
+    """
+    读取追踪日志中最近的 ERR/WARN 行（闭环补强 Wave4：供 SessionEnd
+    摘要回灌 / dev-notes 沉淀，让 debug 史不再蒸发）。
+
+    参数:
+        log_file: 日志路径；None 则用当前 TRACKING_LOG_FILE
+        limit: 最多返回最近 N 行（0=全部）
+
+    返回: List[str] 原始日志行（按时间正序，取末尾 limit 条）
+    """
+    path = log_file or TRACKING_LOG_FILE
+    if not path:
+        return []
+    hits = []
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            for line in f:
+                if '[ERR]' in line or '[WARN]' in line:
+                    hits.append(line.rstrip('\n'))
+    except FileNotFoundError:
+        return []
+    except Exception:
+        return []
+    return hits[-limit:] if limit else hits
 
 
 # ── 模块注册表：记录项目中所有已注册的追踪 ID ──

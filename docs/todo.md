@@ -16,6 +16,7 @@
 | 3 | ✅ | 新增 ADR-012 前端迁移决策 | `docs/decisions.md` | 历史审计连续，旧 ADR-001~011 不动 |
 | 4 | ✅ | 补录 06-16 晚~06-17 凌晨工作 + 换机清单 | 本文件 + `session-handoff.md` | 昨晚工作原只记于交接卡，todo.md 漏更（见日志） |
 | 5 | ✅ | MCP 能力层纳入 vibe coding + 智谱优先策略 | 根`CLAUDE.md`/`AGENTS.md`/`docs/mcp-strategy.md`(新)/`docs/decisions.md`(ADR-013)/本文件 | 9 服务实测 7 通；github PAT 失效、web_reader 重复待修 |
+| 6 | ✅ | 闭环补强 9 波：开环→闭环 | `core/tracker.py`/`.claude/{settings,agents/*,hooks/*,commands/verify}`/`.githooks/`/`tests/test_pii_guard.py`/`docs/{trace-digest,decisions}.md`/memory/ | pytest 59 passed；trace 落盘+回灌、提交门禁、emoji 拦截、记忆索引全到位；ADR-014 |
 
 > 💡 标准启动指令：`@pm 开始处理 2026-06-17 的任务 N：任务名称`
 
@@ -31,6 +32,7 @@
 - **启动说明定位**：= `frontend/README.md`（cee9da9，86 行），未丢失
 - **换机清单**：写入 session-handoff.md「换机前必做」，防止 todo.md 再漏更
 - **MCP 能力层**：实测全部 9 个 MCP（7 通 / github 认证失败 / web-reader 重复）；新建 `docs/mcp-strategy.md` 路由手册；CLAUDE.md 规则 11 视觉改智谱为主、新增规则 12、补 MCP 状态行 + 文档登记；AGENTS.md 升 v2.1 加「MCP 能力外挂」子节；ADR-013 落档
+- **闭环补强（9 波，ADR-014）**：诊断=协作半成品/闭环开环；补反馈链——①tracker 落盘 `.trace/trace.log`+`recent_errors()` ②`/verify`+`.githooks/pre-commit`(core.hooksPath) ③emoji PreToolUse hook(精确拦 U+1F000-1FAFF)+PII guard 测试 ④SessionEnd trace 摘要回灌 `docs/trace-digest.md`(游标防重) ⑤8 agent v2.1+MCP 能力段+铁律 1-12 ⑥建 MEMORY.md 索引(原缺失！)+修 3 陈旧记忆+3 种子 ⑦GitHub Actions CI(best-effort) ⑧skill 索引已精选(物理移除暂缓)。pytest 56→59 passed 零回归
 
 #### 踩坑 & 收获
 - **todo.md vs session-handoff 职责分裂**：两者都承载工作状态，昨晚只更交接卡、漏正式日志 → 新会话/Agent 读 todo.md 误判「06-16 后没干活」。根因：无「换机前必更两文件」强制清单
@@ -38,6 +40,8 @@
 - **lint 区分**：MD028（我引入的 callout 紧跟 blockquote）修了；MD060/MD032/MD040（原文既有表格/标题接列表风格）不逐处改，保全文一致性
 - **github MCP `disabled:true` 被忽略**：`.mcp.json` 标了禁用仍被加载，且 PAT 失效致 `Bad credentials`——禁用标记未必生效，需移除条目或重启确认
 - **web-reader 重复服务**：`web-reader`（连字符）与 `web_reader`（下划线）指向同一智谱端点，保留连字符一份即可
+- **Auto Memory 暗写不召回**：memory 目录有 6 条记忆但 MEMORY.md 索引从不存在——召回靠读索引，等于 6 条全废。已补建索引。根因：写记忆的流程没同步写索引
+- **emoji hook UTF-8 陷阱**：初版用 `sys.stdin.read()` 在 Windows cp936 下把 emoji 读坏→JSON 解析失败→被 except 吞掉静默放行。改 `sys.stdin.buffer.read().decode('utf-8')` 才真拦住。教训：Windows 下读 stdin 必显式 UTF-8
 
 #### 🔜 次日计划 (2026-06-18)
 - 办公机补验证：pytest 56 回归 + FastAPI governance 冒烟（交接卡 P0 待办）
