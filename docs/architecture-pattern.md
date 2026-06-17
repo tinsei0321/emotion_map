@@ -8,16 +8,21 @@
 | 数据采集层 | `SCRAPER/` | 多源数据爬取（大众点评/美团/小红书/微博/12345），基于 Scrapy，输出到 data/raw/ |
 | 基础设施层 | `core/` | config / data_loader / export / **tracker(决策追踪)** |
 | 数据分析引擎层 | `SCRIPT/` | L1(数据治理)→L2(SnowNLP)→L3(LLM/溯佰科)→L4(多维归因) 四级管道 |
-| 空间分析引擎层 | `core/` | 底图渲染 + 空间可视化(点状/热力图) + 空间分析(热点/缓冲区/聚合) |
-| UI 组件层 | `core/` | Streamlit 可复用组件（HUD/弹窗/图例/CSS） |
-| 应用层 | `apps/` | Streamlit 主应用，所有页面通过 ?page= 路由 |
+| 空间分析引擎层 | `core/` | 底图渲染 + 空间可视化(点状/热力图) + 空间分析(热点/缓冲区/聚合)（遗留 Streamlit 栈，前端用 MapLibre） |
+| UI 组件层（遗留） | `core/` | Streamlit 可复用组件（HUD/弹窗/图例/CSS） |
+| **前端层（主）** | `frontend/` | **MapLibre GL JS** 主界面（geojson.io 1:1），新功能一律在此 |
+| 应用层（遗留） | `apps/` | Streamlit 遗留主应用，所有页面通过 ?page= 路由（仅维护不扩展） |
 
 ## 入口统一原则
-- 项目只有一个 Streamlit 端口 (8501)，所有页面在 `app_main.py` 内通过 `st.query_params['page']` 路由
-- `launch.py` 只启动一个 Streamlit 进程
+- **前端主入口** = `frontend/index.html`（`py -m http.server 8080` 从项目根启动），新功能一律进 `frontend/`
+- **遗留 Streamlit**：仅一个端口 (8501)，`app_main.py` 内 `?page=` 路由（迁移期遗留，不再新增页面）；`launch.py` 启动遗留 Streamlit 进程
 - `run_analysis.py` 是独立的 CLI + Tkinter 桌面入口，不依赖 Streamlit
+- 所有入口（CLI / Tkinter / 遗留 Streamlit / 前端 API）共用同一个 `run_analysis_task()`
 
 ## 新增子页面流程
+
+> **⚠ 新功能一律进 `frontend/`**（MapLibre）。以下流程仅适用于维护遗留 Streamlit 页面。
+
 1. 在 `app_main.py` 中新建 `show_xxx_page()` 函数
 2. 在 `main()` 顶部路由表中注册：`if page == 'xxx': show_xxx_page(); return`
 3. 侧边栏放 `[返回地图浏览器](/)` 链接
@@ -32,7 +37,8 @@
 ## 文件职责
 | 文件 | 职责 |
 |------|------|
-| `apps/app_main.py` | Streamlit 主应用（地图 + 所有子页面路由） |
+| `frontend/` | **前端主界面**（MapLibre GL JS，geojson.io 1:1），HTML/CSS/JS |
+| `apps/app_main.py` | 遗留 Streamlit 主应用（地图 + 子页面路由，迁移期遗留） |
 | `SCRIPT/emotion_analysis_v1.py` | 核心分析引擎（数据结构、管道、任务入口） |
 | `SCRIPT/run_analysis.py` | CLI + Tkinter 桌面入口 |
 | `core/config.py` | 全局配置（天地图Key、情绪阈值、颜色映射等） |
@@ -44,7 +50,7 @@
 | `SCRAPER/spiders/` | Scrapy Spider 目录（首个：xiaohongshu_spider） |
 | `SCRAPER/settings.py` | Scrapy 全局配置 |
 | `core/tracker.py` | 决策追踪系统（装饰器/上下文管理器/日志/ID注册表） |
-| `launch.py` | 一键启动 Streamlit |
+| `launch.py` | 一键启动遗留 Streamlit（:8501） |
 
 ## 关键概念
 - **溯佰科**：城市规划时空大模型平台（数据底座+GIS工具+NL工作台），非 LLM 大模型。情绪地图未来以 Agent 嵌入

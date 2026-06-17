@@ -34,6 +34,41 @@
 
 ## 决策列表
 
+### ADR-012 | 2026-06-17 | 前端迁移：Streamlit → MapLibre GL JS (frontend/)
+
+**状态**：✅ 已采纳
+
+**背景**：
+MVP 阶段前端基于 Streamlit（`apps/` :8501）+ Folium/pydeck。随产品演进暴露三个问题：
+1. Streamlit 是数据应用框架，其 rerun 模型与全屏交互地图（拖拽/弹窗/实时筛选）天然冲突，状态管理反复踩坑（`@st.dialog` / `st.rerun` 规则复杂）。
+2. Folium 是 Leaflet 的 Python 封装，定制深度有限，无法实现 geojson.io 级别的精细外壳（两层头栏 / 三栏 / 点击浮窗 / 底图 popover）。
+3. 设计语言要从「毛玻璃/大圆角/暗底」切换到 geojson.io 简洁专业风格，Streamlit 的 chrome 难以彻底剥离。
+
+**选项**：
+
+| 选项 | 优点 | 缺点 |
+|------|------|------|
+| A. 继续 Streamlit + Folium | 零迁移成本、纯 Python | 交互天花板低、设计语言无法对齐 geojson.io |
+| B. Streamlit + pydeck/组件库 | 仍纯 Python | pydeck 定制弱、Streamlit chrome 仍是束缚 |
+| C. 独立前端 frontend/（MapLibre GL JS） | 交互自由、geojson.io 1:1、设计完全可控 | 引入 JS 栈、需 API 桥接数据 |
+
+**决策**：
+选择 C —— 新建 `frontend/`（纯 HTML/CSS/JS + MapLibre GL JS），geojson.io 1:1 外壳。
+1. **MapLibre GL JS** 替代 Folium/pydeck：circle 层渲染情绪点 + 4 张天地图 WMTS 底图（CartoDB 因 CN 被墙移除）。
+2. **配色单源**：`design/tokens.json` 新增 `geojson` 段，经 `generate_css.py` 生成 `frontend/css/tokens.css`（与原 Streamlit token 系统并存）。
+3. **Streamlit 降级为迁移期遗留**：`apps/`（:8501）保留代码，仅维护不扩展；新功能一律进 `frontend/`；迁移收尾时下线。
+4. **Phase 1** 已落地外壳（两层头栏 + 三栏 + 点击浮窗 + 底图切换），Playwright 全验证；Phase 2 接 `/api/v1/points` 真实数据。
+
+**后果**：
+- ✅ 交互天花板解除，geojson.io 设计语言 1:1 还原
+- ✅ 配色单源未破（`tokens.json` 双套：原系统 + `geojson` 段）
+- ✅ Streamlit 遗留代码保留，可回退、可对照
+- ⚠️ 引入 JS 栈，前后端通过 API 桥接（Phase 2 待接 `/api/v1/points`）
+- ⚠️ 两套前端并存期间，文档/配色/组件存在双轨，需持续去陈对齐（本次 9 份文档清理即为此）
+- 🔜 迁移收尾：Streamlit 下线、folium/pydeck 依赖移除、配色单源合并
+
+---
+
 ### ADR-011 | 2026-06-13 | 引入决策追踪系统 (Decision Tracking System)
 
 **状态**：✅ 已采纳
@@ -321,3 +356,4 @@ v1.0 的 11 Agent 手动编排模式存在三个问题：
 | ADR-009 | 2026-06-15 | 创建 PRD + Spec 产品文档体系 | ✅ |
 | ADR-010 | 2026-06-15 | Agent 架构 v2.0：11→8 精简 + 自动编排 | ✅ |
 | ADR-011 | 2026-06-13 | 引入决策追踪系统 (Decision Tracking) | ✅ |
+| ADR-012 | 2026-06-17 | 前端迁移：Streamlit → MapLibre GL JS (frontend/) | ✅ |

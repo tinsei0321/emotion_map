@@ -5,6 +5,42 @@
 
 ---
 
+## 📅 2026-06-17（周三）
+
+### ☑ TODO List
+
+| # | 状态 | 任务 | 涉及文件 | 备注 |
+|---|------|------|----------|------|
+| 1 | ✅ | 交接恢复：补 4 个天地图底图 JSON | `apps/static/tianditu_*.json` | gitignore 不同步，办公机手动补（img/vec × 有/无注记），否则默认底图 404 灰屏 |
+| 2 | ✅ | 文档去陈：9 份权威文档对齐前端迁移 | 根`CLAUDE.md`/`apps/CLAUDE.md`/`AGENTS.md`/`docs/{architecture,architecture-pattern,spec,prd,brand-visual,ui-redesign-plan}.md` | Streamlit→MapLibre，全部标「迁移期遗留」，+130/−49 |
+| 3 | ✅ | 新增 ADR-012 前端迁移决策 | `docs/decisions.md` | 历史审计连续，旧 ADR-001~011 不动 |
+| 4 | ✅ | 补录 06-16 晚~06-17 凌晨工作 + 换机清单 | 本文件 + `session-handoff.md` | 昨晚工作原只记于交接卡，todo.md 漏更（见日志） |
+
+> 💡 标准启动指令：`@pm 开始处理 2026-06-17 的任务 N：任务名称`
+
+### 📝 开发日志
+
+**关键字**：交接恢复, 文档去陈, ADR-012, 同步诊断, todo.md 漏更, 换机清单
+
+#### 做了什么
+- **交接恢复**：办公机 `git pull` 到 cee9da9（与家用机同步健康，HEAD=origin），补 4 个被 gitignore 的天地图底图 JSON（img/vec × 有/无注记）
+- **文档去陈**（+130/−49，10 文件）：根 CLAUDE.md / apps/CLAUDE.md / AGENTS.md / docs 6 份全部对齐「frontend/ MapLibre 为主、Streamlit 迁移期遗留」；ASCII 架构图内部不动（破坏对齐），改用 callout 兜底
+- **新增 ADR-012**：记录前端迁移决策（背景/选项 A-C/决策/后果），保持 ADR 审计连续
+- **同步诊断**：查明 todo.md 漏更真相——git 同步正常，但昨晚工作（前端 v2 / P0 债 / 启动说明）只写进 session-handoff + frontend/README，未同步进 todo.md
+- **启动说明定位**：= `frontend/README.md`（cee9da9，86 行），未丢失
+- **换机清单**：写入 session-handoff.md「换机前必做」，防止 todo.md 再漏更
+
+#### 踩坑 & 收获
+- **todo.md vs session-handoff 职责分裂**：两者都承载工作状态，昨晚只更交接卡、漏正式日志 → 新会话/Agent 读 todo.md 误判「06-16 后没干活」。根因：无「换机前必更两文件」强制清单
+- **git 同步本身健康**：HEAD=origin/main=cee9da9，无未推送/未拉取，.claude/ 配置全在 git。问题在内容写入策略，不在 git
+- **lint 区分**：MD028（我引入的 callout 紧跟 blockquote）修了；MD060/MD032/MD040（原文既有表格/标题接列表风格）不逐处改，保全文一致性
+
+#### 🔜 次日计划 (2026-06-18)
+- 办公机补验证：pytest 56 回归 + FastAPI governance 冒烟（交接卡 P0 待办）
+- Phase 2：前端接真实数据 `/api/v1/points` + A 分析接 `/analyze`
+
+---
+
 ## 📅 2026-06-16（周二）
 
 ### ☑ TODO List
@@ -24,13 +60,17 @@
 > ⚠️ L0→L2 端到端管线验证已由用户明确搁置至下周，本周不再排入计划。
 
 #### 做了什么
-- 
+- **P0 阻断债清理（5 项，家用机）**：①h3 v3→v4 API ②CorpusAnalyzer 双 `analyze_single` 合并 ③ADR 编号消解（ADR-008→011，避与 Scrapy 冲突）④PostToolUse hook 对齐（仅清 .pyc，不重启/不测试）⑤`run_governance_pipeline()` 抽取（API/CLI 共用、不含 sys.exit）——函数级已验证，pytest/FastAPI 冒烟待办公机补跑
+- **前端 Phase 1 落地（家用机）**：`frontend/` MapLibre GL JS geojson.io 外壳，Token 单源（tokens.json `geojson` 段 → frontend/css/tokens.css），Playwright 验证通过
+- **文档一致性修正**：d02dd36 提交（Python 版本/L1 列数/pm.agent 角色）
 
 #### 踩坑 & 收获
-- 
+- 家用机 Python 实为 3.13.2（非文档 3.14.5），pypi 直连被墙致 pytest/FastAPI 未跑成
+- 前端 v2 配色纠正：误做全深色 chrome → 改「浅色为主 + 深蓝标题带」
+- 切底图后情绪点消失：MapLibre 5.x re-apply 三套机制不稳 → 改 `setStyle(transformStyle)` 声明式 carry-over emotion-* 源/图层
 
 #### 🔜 次日计划 (2026-06-17)
-- 
+- （已完成，见上方 06-17 条目：交接恢复 + 文档去陈 + ADR-012）
 
 ---
 

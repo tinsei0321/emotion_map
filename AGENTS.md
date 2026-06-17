@@ -100,10 +100,10 @@ Agent 启动时根据下表选择性阅读知识源：
 |--------|------|------|
 | 产品需求 | `docs/prd.md` | 产品愿景、用户画像、功能优先级、验收标准 |
 | 产品规范 | `docs/spec.md` | 技术实现规范、数据管道字段定义、性能预算 |
-| 架构规范 | `docs/architecture-pattern.md` | 七层架构、入口统一、路由规则、决策追踪体系 |
+| 架构规范 | `docs/architecture-pattern.md` | 七层架构、入口统一、路由规则、决策追踪体系、前端/frontend 迁移 |
 | 追踪基础设施 | `core/tracker.py` | 决策追踪系统 API、ID 注册表、使用示例 |
 | 任务追踪 | `docs/todo.md` | 当前任务、开发日志 |
-| 架构文档 | `docs/architecture.md` | 系统架构说明 |
+| 架构文档 | `docs/architecture.md` | 系统架构说明（含 frontend/MapLibre 前端层） |
 | 开发笔记 | `docs/dev-notes.md` | 历史踩坑记录 |
 | 决策记录 | `docs/decisions.md` | 架构决策 (ADR) |
 
@@ -127,7 +127,7 @@ Agent 启动时根据下表选择性阅读知识源：
 1. **禁用 emoji**：代码中只允许 ASCII 标记 `[OK]` `[WARN]` `[LOAD]` `[ERR]`
 2. **安全打印**：所有 `print()` 必须通过 `_safe_print()` 调用
 3. **禁止劫持 builtins.print**：不得重新绑定 `builtins.print`
-4. **入口统一**：Streamlit 只用端口 8501，子页面用 `?page=` 路由
+4. **入口统一**：前端主界面 = `frontend/`（MapLibre GL JS，`py -m http.server`）；Streamlit（:8501）为迁移期遗留，仅维护不扩展，不再新增页面
 5. **分析逻辑共用**：所有入口调用同一个 `run_analysis_task()`
 6. **导出命名**：`{name}_{L1|L2|L3|L4}_result_csv.csv`
 7. **数据脱敏**：输出的分析结果中禁止包含用户名/用户ID等个人身份信息

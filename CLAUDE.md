@@ -9,9 +9,9 @@
 ## 技术栈
 
 - **语言**：Python 3.14.5
-- **前端**：Streamlit 1.58.0（端口 8501，`?page=` 路由）
+- **前端**：MapLibre GL JS（`frontend/`，geojson.io 1:1 外壳，主 UI 面）；Streamlit 1.58.0 为迁移期遗留（`apps/` :8501）
 - **情感分析**：SnowNLP + jieba 分词
-- **空间分析**：Shapely + pyproj（EPSG:4546），pydeck GPU 渲染 + 天地图瓦片
+- **空间分析**：Shapely + pyproj（EPSG:4546）；地图渲染 = MapLibre GL JS + 天地图瓦片（`frontend/`），pydeck 仅遗留
 - **数据采集**：Scrapy 2.16
 - **LLM**：DeepSeek API (deepseek-chat)，火山引擎 API，讯飞 API
 - **包管理**：pip + requirements.txt
@@ -24,7 +24,8 @@
 
 ```
 emotion_map/
-├── apps/           # Streamlit 应用层（app_main.py + 子页面）
+├── frontend/       # 前端主界面（MapLibre GL JS，geojson.io 1:1 外壳）
+├── apps/           # Streamlit 迁移期遗留层（app_main.py + 子页面，:8501）
 │   └── CLAUDE.md   ── 模块级约定
 ├── core/           # 基础设施层（config/loader/export/tracker/map/UI）
 │   └── CLAUDE.md   ── 模块级约定
@@ -48,7 +49,7 @@ emotion_map/
 1. **禁用 emoji** — 代码中只允许 ASCII 标记：`[OK]` `[WARN]` `[LOAD]` `[ERR]`
 2. **安全打印** — 所有 `print()` 必须通过 `_safe_print()` 调用（Windows GBK 兼容）
 3. **禁止劫持 `builtins.print`** — 不得重新绑定
-4. **入口统一** — Streamlit 唯一端口 8501，所有页面通过 `?page=` 路由
+4. **入口统一** — 前端主入口 = `frontend/index.html`（`py -m http.server 8080`）；Streamlit（:8501）为迁移期遗留，仅维护不扩展
 5. **分析逻辑共用** — 所有入口调用同一个 `run_analysis_task()`
 6. **导出命名规范** — `{name}_{L1|L2|L3|L4}_result_csv.csv`
 7. **数据脱敏** — 分析结果中禁止包含用户名、用户ID 等个人身份信息
@@ -63,7 +64,8 @@ emotion_map/
 
 ## 当前开发状态
 
-- ✅ 项目框架搭建完成（Streamlit 三页面 + 七层架构）
+- ✅ 项目框架搭建完成（七层架构；初版基于 Streamlit）
+- ✅ 前端迁移 Phase 1（`frontend/` MapLibre GL JS，geojson.io 1:1 外壳，已 Playwright 验证）
 - ✅ L0→L1→L2 数据管道实现（L1 LLM 分类需 API Key）
 - ✅ 决策追踪系统（`core/tracker.py`，13 模块 55+ 追踪 ID）
 - ✅ 坐标转换工具（GCJ-02 ↔ WGS84 ↔ CGCS2000）
@@ -121,6 +123,7 @@ Agent 在工作过程中自动记录的隐形知识：
 
 | 文档 | 路径 | 用途 |
 |------|------|------|
+| **前端启动** | `frontend/README.md` | MapLibre 主界面启动手册（http.server + 天地图底图） |
 | 产品需求 | `docs/prd.md` | 用户画像、功能优先级、验收标准 |
 | 产品规范 | `docs/spec.md` | 字段定义、UI 规格、性能预算 |
 | 品牌视觉 | `docs/brand-visual.md` | 颜色、主题、标记样式 |
@@ -128,7 +131,7 @@ Agent 在工作过程中自动记录的隐形知识：
 | API 约定 | `docs/api-conventions.md` | Key 管理、重试、返回格式 |
 | 架构设计 | `docs/architecture.md` | 系统架构说明 |
 | 架构规范 | `docs/architecture-pattern.md` | 七层架构、路由、代码组织 |
-| 决策记录 | `docs/decisions.md` | 10 个架构决策（ADR） |
+| 决策记录 | `docs/decisions.md` | 12 个架构决策（ADR，含 ADR-012 前端迁移） |
 | 开发日志 | `docs/todo.md` | 每日任务 + 踩坑记录 |
 | Agent 规范 | `AGENTS.md` | Agent 协作、SOP、完成定义 |
 | Skills 索引 | `.claude/SKILLS_INDEX.md` | 项目相关 Skill 精选 |
@@ -164,8 +167,9 @@ Agent 在工作过程中自动记录的隐形知识：
 1. **清理缓存（自动）**：每次 `Edit`/`Write`/`MultiEdit` 作用于 `.py` 后，
    `PostToolUse` hook（`.claude/hooks/on_post_edit.py`）自动删除被编辑模块在
    `__pycache__` 中的过期 `.pyc`，无需手动 `find ... -delete`。
-2. **重启 Streamlit（手动，按需）**：改动影响 `apps/`/`core/` 运行态时，
-   杀旧进程 → `py launch.py`（后台）；未改运行逻辑可跳过。
+2. **重启服务（手动，按需）**：
+   - **前端**（`frontend/`，主）：改 HTML/CSS/JS 后浏览器 F5 即可，无需重启。
+   - **遗留 Streamlit**（`apps/`/`core/`，:8501）：仅改动影响遗留运行态时，杀旧进程 → `py launch.py`（后台）；未改运行逻辑可跳过。
 3. **跑测试（手动，提交前必做）**：`py -m pytest tests/ -q` 确认全过；
    走 SOP 时由 Tester 统一执行。
 4. **验证节奏（不每次跑 Playwright/识图）**：常规前端/CSS/HTML/JS 改动 → 实现后
@@ -178,4 +182,4 @@ Agent 在工作过程中自动记录的隐形知识：
    默认链路：**实现 → 交付 → 用户验证**。
 
 > 注：hook 命令用 `py`（Windows launcher）；若环境 `python` 可用亦可。
-> 重启 Streamlit 与 pytest 不纳入 hook——它们耗时会打断会话，由人按需触发。
+> 重启服务（前端 http.server / 遗留 Streamlit）与 pytest 不纳入 hook——它们耗时会打断会话，由人按需触发。

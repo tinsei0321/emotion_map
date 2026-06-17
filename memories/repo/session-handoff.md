@@ -2,6 +2,31 @@
 
 > 换机后读取此文件恢复上下文。
 
+## 🔄 换机前必做（离开当前机器前 — 防 todo.md 再漏更）
+
+> **教训（2026-06-17）**：06-16 晚~06-17 凌晨的工作只写进本交接卡 + `frontend/README.md`，**漏更 `docs/todo.md`**，导致办公机读 todo.md 误以为「06-16 后没干活」。git 同步健康，问题在**内容写入策略**——两个状态文件只更了一个。
+
+**离开前 5 步**：
+
+1. `git status` 清空 — 所有改动 commit（**含 `docs/todo.md`**）
+2. `git push` — 然后 `git log origin/main..HEAD` 确认输出为空（无未推送）
+3. **两个状态文件都要更**：
+   - `docs/todo.md` — 正式开发日志（每日任务 + 踩坑），Agent 共享知识库
+   - `memories/repo/session-handoff.md` — 本文件，换机恢复上下文
+   - 不能只更一个（这是 06-17 漏更的根因）
+4. `.claude/` 配置改动（agent / hook / skill）也要 commit — 工作策略同步
+5. 记下「下次到机第一步」（见下方「到公司第一步」段，含 gitignore 文件手动补）
+
+**到机后第一步**：
+
+1. `git pull`
+2. `git log origin/main..HEAD` 确认同步（应为空）
+3. 读本文件「到公司第一步」段，补 gitignore 文件（如天地图底图 JSON）
+4. `git status` 确认工作区状态
+5. （建议）`git diff` 扫一眼最近提交，确认家用机工作已到位
+
+> **文件职责**：`docs/todo.md` = 正式日志（每日任务 + 踩坑，倒序）；本文件 = 跨机交接（换机恢复上下文 + 临时阻断项）。**职责不同，换机前都要更新**。
+
 ## ⚠ 到公司第一步（2026-06-17，必做，否则前端底图 404）
 
 前端 4 张天地图底图里，**影像(img) 2 个 JSON 被 `.gitignore` 屏了**（含内嵌 key），`git pull` 不会带过去。公司机 `git pull` 后**必须手动补这 2 个文件**（key 已在 `core/config.py` 公开、core/CLAUDE.md 批准前端可用）：

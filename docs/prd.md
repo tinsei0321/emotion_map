@@ -87,7 +87,7 @@
 │   ├── 点状情绪标记（五级极性配色 + 双层光晕）
 │   ├── 热力图（冷热分布 + 极性加权）
 │   ├── 边界叠加（多文件支持，颜色/粗细可调）
-│   ├── 多种底图切换（CartoDB深/浅/标准 + 天地图无/有注记）
+│   ├── 多种底图切换（天地图影像有/无注记 + 常规 vec 有/无注记，共 4 张）
 │   ├── 图例/统计面板 HUD 叠加
 │   └── 数据概览弹窗
 │
@@ -200,9 +200,9 @@
 
 | 指标 | 目标 | 测量方式 |
 |------|------|----------|
-| 地图首次加载 | < 3 秒 | Streamlit 页面完全渲染 |
-| 1000 点渲染 | < 2 秒 | Folium marker 批量添加 |
-| 5000 点热力图 | < 3 秒 | HeatMap 数据生成 |
+| 地图首次加载 | < 3 秒 | frontend/ MapLibre 页面完全渲染（遗留 Streamlit 同口径） |
+| 1000 点渲染 | < 2 秒 | MapLibre circle 层批量渲染（遗留 Folium marker 同口径） |
+| 5000 点热力图 | < 3 秒 | MapLibre heatmap 层（遗留 HeatMap 同口径） |
 | L2 分析 1000 条 | < 10 秒 | SnowNLP pipeline 运行时间 |
 | LLM 分类 50 条 | < 30 秒 | DeepSeek API 并发 5 条 |
 | CSV 导出 10000 行 | < 1 秒 | Pandas to_csv |
@@ -214,7 +214,7 @@
 |------|------|
 | 操作系统 | Windows 10/11 优先，macOS/Linux 兼容 |
 | Python 版本 | 3.14.5 |
-| 浏览器 | Chrome/Edge 最新版（Streamlit 推荐） |
+| 浏览器 | Chrome/Edge 最新版（MapLibre GL JS + 遗留 Streamlit 均依赖现代浏览器） |
 | 屏幕分辨率 | 1920×1080 及以上（推荐的规划师工作站配置） |
 | 编码 | UTF-8，Windows GBK 兼容通过 `_safe_print()` |
 

@@ -16,6 +16,10 @@
 ## 二、系统架构总览
 
 > 架构按**从下至上**的顺序组织：数据从底层流入，逐层加工，最终在应用层呈现。
+>
+> **⚠ 前端迁移（2026-06-17）**：前端主 UI 面 = [`frontend/`](../frontend/)（MapLibre GL JS，geojson.io 1:1 外壳）。
+> 下图「应用层 (apps/)」= Streamlit 迁移期遗留，仅维护不扩展；新前端层在 `frontend/`，详见 [`frontend/README.md`](../frontend/README.md)。
+> 「UI 组件层 / 空间分析引擎层」描述的 `core/map_engine.py` + `core/ui_components.py` 亦为遗留 Streamlit/Folium 栈，前端改用 MapLibre GL JS + 天地图瓦片。
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -145,7 +149,7 @@ graph LR
     E -->|"export"| G
     F -->|"export"| G
     G -->|"data_loader 加载"| H["🌐 空间分析引擎<br/>点状 / 热力图 / 缓冲区 / 聚合"]
-    H -->|"streamlit_folium"| I["🖥 Streamlit HUD<br/>全屏交互"]
+    H -->|"streamlit_folium (遗留)"| I["🖥 应用层<br/>frontend/ MapLibre (主) + apps/ Streamlit (遗留)"]
 ```
 
 **管道流程**：数据采集 → 原始数据(L0) → 数据治理(L1) → 情绪分析(L2→L3→L4) → 逐级导出(CSV/GeoJSON) → 空间可视化与分析 → 交互浏览
@@ -279,6 +283,9 @@ flowchart LR
 
 ### 5.3 空间分析引擎 — 双模式可视化 + 空间分析
 
+> **⚠ 定位（2026-06-17）**：本节的 `core/map_engine.py`（Folium/pydeck）= 迁移期遗留组件，服务于 `apps/` Streamlit。
+> 前端主界面 `frontend/` 改用 MapLibre GL JS 渲染（情绪点 circle 层 + 4 张天地图底图），见 [`frontend/README.md`](../frontend/README.md)。
+
 **底图方案**：天地图 WMTS（影像 + 注记），CDN 自动替换为国内镜像。
 
 #### 5.3.1 空间可视化（已实现）
@@ -317,9 +324,10 @@ flowchart LR
 
 | 成果类型 | 格式 | 用途 |
 |----------|------|------|
-| 交互式地图 | Folium HTML (嵌入 Streamlit) | 在线浏览、探索式分析 |
-| 矢量图层 | GeoJSON | 导入 QGIS/ArcGIS 进一步分析 |
-| 统计图表 | Altair (嵌入 Streamlit) | 情绪分布直方图、时序折线图 |
+| 交互式地图（主） | `frontend/` MapLibre GL JS | 在线浏览、探索式分析（新主界面） |
+| 交互式地图（遗留） | Folium HTML（嵌入 Streamlit） | 迁移期遗留 |
+| 矢量图层 | GeoJSON | 导入 QGIS/ArcGIS 进一步分析；frontend/ 直接消费 |
+| 统计图表（遗留） | Altair（嵌入 Streamlit） | 情绪分布直方图、时序折线图 |
 | 聚合报表 | CSV / DataFrame | 按行政单元的汇总指标表 |
 
 ### 5.4 数据采集层 — 空间范围优先策略
@@ -377,14 +385,16 @@ Bounding Box: 111.2664°E ~ 111.3722°E, 30.6783°N ~ 30.7579°N
 
 | 层级 | 技术 | 选型理由 |
 |------|------|----------|
-| 前端框架 | **Streamlit** | Python 原生，零前端代码，适合数据科学原型 |
-| 地图可视化 | **Folium** | Leaflet.js 的 Python 封装，轻量成熟 |
+| 前端框架（主） | **MapLibre GL JS**（`frontend/`） | geojson.io 1:1 交互外壳，矢量瓦片渲染，适合交互地图 |
+| 前端框架（遗留） | **Streamlit**（`apps/`） | 迁移期遗留，仅维护不扩展；Python 原生数据应用框架 |
+| 地图可视化（主） | **MapLibre GL JS + 天地图 WMTS** | frontend/ 渲染情绪点 circle 层 + 4 张天地图底图 |
+| 地图可视化（遗留） | **Folium / pydeck** | 迁移期遗留，core/map_engine.py 使用 |
 | 底图服务 | **天地图 WMTS** | 国内访问稳定，无需翻墙，影像清晰 |
 | 空间分析 | **geopandas + shapely**（MVP） | 与现有栈统一，核心空间运算成熟；未来可接 pysal（空间统计） |
 | 情绪分析 | **SnowNLP**（L2） | 轻量（~10MB）、离线、中文优化 |
 | LLM 增强 | **溯佰科平台**（L3 预留） | 城市规划时空大模型平台（数据底座+GIS+NL工作台），情绪地图以 Agent 嵌入 |
 | 数据处理 | **Pandas + GeoPandas** | 表格/地理数据的事实标准 |
-| 图表 | **Altair** | 声明式语法，与 Streamlit 深度集成 |
+| 图表 | **Altair** | 声明式语法（遗留 Streamlit 嵌入）；frontend/ 迷你柱状图为原生 JS |
 | 数据采集 | **Scrapy**（拟定） | 开源成熟爬虫框架，插件丰富；备用方案为购买数据 |
 | 分词/关键词 | **jieba** | 中文分词事实标准，轻量高效 |
 
@@ -432,6 +442,7 @@ Phase 1 ✅  已完成 (2026-05-28 ~ 06-11)
 └── 入口统一（CLI/Tkinter/Streamlit 共用 run_analysis_task）
 
 Phase 2 ⬜  进行中 (2026-06-12 ~ )
+├── ✅ 前端迁移：Streamlit → frontend/ MapLibre GL JS（geojson.io 1:1，2026-06-17 落地）
 ├── 系统架构优化（数据采集层 + 空间分析引擎层 + L1数据治理）
 ├── 数据爬取方案确定 + 西陵区真实数据采集
 ├── 空间分析 MVP（缓冲区分析 + 行政单元聚合）

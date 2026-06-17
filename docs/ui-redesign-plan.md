@@ -1,7 +1,10 @@
-# UI Plan v3 — geojson.io 设计语言迁移
+# UI 设计 — geojson.io 设计语言（已实施）
 
-> 2026-06-15 | 基于 vision-inbox/latest.md 完整设计分析
+> 2026-06-15 规划 | **2026-06-17 已落地**于 `frontend/`（MapLibre GL JS，geojson.io 1:1 外壳）
 > **原则：抛弃旧风格（毛玻璃/大圆角/暗底），全面采用 geojson.io 设计系统**
+>
+> **⚠ 状态**：本计划已实施完成，落地实现见 [`frontend/README.md`](../frontend/README.md)。
+> 下方规格为设计参考；实际外壳（两层头栏 / 三栏 / 点击浮窗 / 4 张天地图底图）以 `frontend/` 代码为准，部分细节（底图从 CartoDB 收敛为 4 张天地图、pydeck → MapLibre）已迭代。
 
 ---
 
@@ -66,7 +69,7 @@ Danger:    红底红字
 ├──────────────────────────────────────────────────────────┤
 │ ┌──── 260px ────┐                                       │
 │ │ ▲ 数据        │                                       │
-│ │   xxxx        │          MAP (pydeck 全屏)              │
+│ │   xxxx        │          MAP (MapLibre 全屏)            │
 │ │               │                                       │
 │ │ ▼ 分析        │                                       │
 │ │   情绪分析    │                                       │
@@ -83,7 +86,7 @@ Danger:    红底红字
 |------------|-------------|
 | 顶栏 (h-16, 64px) | 顶栏 64px |
 | 右侧编辑器 (~320px) | 左侧面板 260px（数据+工具+图层） |
-| 地图 flex:1 | 地图全屏（Streamlit 无 flex 布局，用 fixed 遮盖方式） |
+| 地图 flex:1 | 地图全屏（MapLibre GL JS flex 布局；遗留 Streamlit 用 fixed 遮盖） |
 
 ---
 
@@ -197,7 +200,7 @@ Danger:    红底红字
 | 内容区 | padding: 16px, 选项间距 12px |
 | 按钮栏 | 右对齐，主操作 + 取消 |
 | 遮罩 | `rgba(0,0,0,0.2)` |
-| 动画 | 400ms ease-out (Streamlit 原生) |
+| 动画 | 400ms ease-out（MapLibre/原生 CSS；遗留 Streamlit 原生） |
 
 ### 3.5 地图浮动控件（右下角）
 

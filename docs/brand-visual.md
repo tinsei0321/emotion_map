@@ -1,6 +1,13 @@
 # 品牌视觉规范 (Brand Visual Guidelines)
 
 > 修改前端视觉、调颜色、调间距时必读本文档。
+>
+> **⚠ 双套 token（2026-06-17）**：`design/tokens.json` 含两套系统：
+>
+> - **原 Streamlit 系统**（`--em-*`）：服务于遗留 `apps/` Streamlit + `core/ui_components.py`。
+> - **`geojson` 段**（`--geojson-*`）：服务于前端主界面 `frontend/`（MapLibre GL JS，geojson.io 1:1），经 `generate_css.py` 生成 `frontend/css/tokens.css`。
+>
+> **改前端配色** → 改 `geojson` 段；本文档下半「色彩体系/地图标记样式」同时适用于两套（情绪五级色板语义一致）。
 
 ## 色彩体系
 
@@ -42,5 +49,6 @@
 
 ## 源文件
 
-- **唯一源**：`design/tokens.json`（手动编辑）
-- **生成文件**：`design/tokens.py` + `design/tokens.css`（由 `design/generate_css.py` 生成）
+- **唯一源**：`design/tokens.json`（手动编辑，含原系统 + `geojson` 段两套）
+- **生成文件（遗留 Streamlit）**：`design/tokens.py` + `design/tokens.css`（由 `design/generate_css.py` 生成）
+- **生成文件（前端 frontend/）**：`frontend/css/tokens.css`（由 `design/generate_css.py` 从 `geojson` 段生成）

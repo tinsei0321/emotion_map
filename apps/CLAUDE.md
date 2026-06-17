@@ -1,10 +1,14 @@
-# apps/ — Streamlit 应用层 CLAUDE.md
+# apps/ — Streamlit 迁移期遗留层 CLAUDE.md
 
 > 优先级: 本文件 > 项目根 CLAUDE.md > 全局 CLAUDE.md
+>
+> **⚠ 定位（2026-06-17）**：`apps/`（Streamlit :8501）= **迁移期遗留层，仅维护不扩展**。
+> 前端主 UI 面 = [`frontend/`](../frontend/)（MapLibre GL JS，geojson.io 1:1），**新功能一律进 `frontend/`**，权威前端规范见 [`frontend/README.md`](../frontend/README.md)。
+> 本文件：前半（模块职责/文件清单/路由/约定）= 遗留 Streamlit 维护规范；末尾「UI 组件规范」段 = `frontend/` 设计规格备查。
 
 ## 模块职责
 
-Streamlit 前端应用。所有页面通过 `?page=` 路由统一管理。
+遗留 Streamlit 前端应用。所有页面通过 `?page=` 路由统一管理（遗留，不再新增页面）。
 
 ## 文件清单
 
