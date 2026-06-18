@@ -140,10 +140,13 @@ export function confidenceStats(fc) {
 
 // ── Layer registry ────────────────────────────────────────────────────────
 // One entry per imported file. Drives the left-panel layer manager + map rendering.
-//   kind: 'point' | 'line' | 'polygon' | 'group'   (group = L2 container, non-rendered)
+//   kind: 'point' | 'line' | 'polygon' | 'group' | 'heatmap'
+//         (group = L2 container, non-rendered; heatmap = native MapLibre density layer)
 //   colorMode (point): 'l2-positive' | 'l2-neutral' | 'l2-negative' | 'confidence'(L1) | 'needsAnalysis'(L0)
+//   colorMode (heatmap): 'heatmap-negative'
 //   parentId: set on group children; group itself has children[]
 //   paint: polygon/line {color,fillOn,lineWidth,fillOpacity}; point {ramp?,opacity?,radius?}
+//          heatmap {radius,opacity,intensity} (Kepler Color/Opacity/Radius/Weight — blur fixed internally)
 
 const NAVY = '#0c1c2e';   // title-bar navy (range outline default)
 const _layers = new Map();   // id -> layer object
@@ -154,13 +157,29 @@ export const L2_POSITIVE = { 'Very Positive': '#86E61C', 'Positive': '#3DBA9E' }
 export const L2_NEGATIVE = { 'Very Negative': '#A3321A', 'Negative': '#E07142' };    // 暗橘红→浅橘红
 export const L2_NEUTRAL_COLOR = '#3A7CA5';                                            // 忧郁蓝（会合色）
 
+// ── Heatmap color stops (Kepler-aligned: density-mapped ramp, NOT polarity) ──
+// 消极热力图：稀疏消极区→冷蓝，密集消极区→深红。density 0 必须透明（低密度不显示）。
+// 格式 = [densityStop, color][]，喂给 MapLibre heatmap-color 的 interpolate 表达式。
+export const HEATMAP_NEGATIVE_STOPS = [
+  [0.00, 'rgba(58,124,165,0)'],   // 透明（无密度）
+  [0.10, '#3A7CA5'],              // 中性浅（消极点稀疏）
+  [0.25, '#5288A0'],
+  [0.40, '#6A9BB5'],              // 中性深
+  [0.55, '#E07142'],              // 消极浅（L2 Negative 浅橘红）
+  [0.70, '#C44A2E'],
+  [0.85, '#A3321A'],              // 非常消极（L2 Very Negative 暗橘红）
+  [1.00, '#7A1E16'],              // 高密度深红
+];
+
 export function addLayer({ name, kind, fc, needsAnalysis = false, colorMode, paint, parentId }) {
   const id = 'L' + (++_seq).toString().padStart(3, '0');
   const defaultPaint = kind === 'polygon'
     ? { color: NAVY, fillOn: false, lineWidth: 2, fillOpacity: 0.3 }
     : kind === 'line'
       ? { color: NAVY, lineWidth: 2 }
-      : {};
+      : kind === 'heatmap'
+        ? { radius: 30, opacity: 0.7, intensity: 1 }   // deck.gl defaults: radiusPixels=30 / intensity=1.0
+        : {};
   const layer = {
     id, name, kind, fc, visible: true, needsAnalysis, parentId: parentId || null,
     colorMode: colorMode || (needsAnalysis ? 'needsAnalysis' : 'polarity'),
@@ -227,6 +246,7 @@ export function setLayerVisible(id, visible) {
 export function layerLevel(layer) {
   if (!layer) return null;
   if (layer.kind === 'group') return 'L2';
+  if (layer.kind === 'heatmap') return 'L2';          // heatmap = L2 density visualization
   if (layer.kind === 'polygon' || layer.kind === 'line') return 'range';
   if (layer.colorMode === 'confidence') return 'L1';
   if (layer.colorMode === 'l2-positive' || layer.colorMode === 'l2-negative' || layer.colorMode === 'l2-neutral' || layer.colorMode === 'polarity') return 'L2';
@@ -245,6 +265,7 @@ export function focusLayer(layer) {
 export function layerDisplayColor(layer) {
   if (!layer) return '#a3a3a3';
   if (layer.kind === 'polygon' || layer.kind === 'line') return (layer.paint && layer.paint.color) || NAVY;
+  if (layer.kind === 'heatmap') return L2_NEGATIVE['Negative'];   // representative mid-negative (orange-red)
   const cm = layer.colorMode;
   if (cm === 'confidence') {
     const ramp = (layer.paint && layer.paint.ramp) || CONFIDENCE_RAMP;

@@ -1,5 +1,5 @@
 // ═══ map.js — MapLibre GL JS instance, multi-layer registry, basemap switch ═══
-import { emotionColors, token, POLARITY_ORDER, getLayers, CONFIDENCE_RAMP, confidenceColor, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR } from './state.js';
+import { emotionColors, token, POLARITY_ORDER, getLayers, CONFIDENCE_RAMP, confidenceColor, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS } from './state.js';
 import { initControls } from './map-controls.js';
 import { showRangePopup } from './popup.js';
 
@@ -115,6 +115,8 @@ export function renderLayer(layer) {
   } else if (layer.kind === 'line') {
     addLinePaint(layer, sid, lid, hitLid);
     bindRangeInteractions(layer, hitLid, lid);
+  } else if (layer.kind === 'heatmap') {
+    addHeatmapPaint(layer, sid, lid);   // density overlay — no hit layer, no click
   }
   restackZ();   // keep z-order tied to list order (survives toggles)
 }
@@ -235,6 +237,33 @@ function addLinePaint(layer, sid, lid, hitLid) {
 function addHitLayer(hitLid, sid) {
   map.addLayer({ id: hitLid, type: 'line', source: sid, layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: { 'line-color': '#000', 'line-width': HIT_WIDTH, 'line-opacity': 0 } });
+}
+
+/** Heatmap (Kepler-aligned): native MapLibre `type:'heatmap'` = Gaussian KDE (same algo as
+ *  deck.gl HeatmapLayer under Kepler). Color maps DENSITY (not polarity); polarity enters via
+ *  weight (lower score = more negative = burns redder). 4 Kepler attributes: Color/Opacity/Radius/Weight;
+ *  blur fixed internally (Kepler doesn't expose it). */
+function addHeatmapPaint(layer, sid, lid) {
+  const p = layer.paint || {};
+  const radius = p.radius ?? 30;
+  const opacity = p.opacity ?? 0.7;
+  const intensity = p.intensity ?? 1;
+  // HEATMAP_NEGATIVE_STOPS = [[density, color], ...] → flatten to [0, c0, 0.1, c1, ...] for interpolate
+  const colorStops = HEATMAP_NEGATIVE_STOPS.flat();
+  map.addLayer({
+    id: lid, type: 'heatmap', source: sid,
+    paint: {
+      'heatmap-radius': radius,
+      'heatmap-opacity': opacity,
+      'heatmap-intensity': intensity,
+      // Weight by score: lower score (more negative) → higher weight → burns redder.
+      // coalesce fallback so missing-score points still render. (MapLibre has no
+      // heatmap-blur — blur is baked into radius/weight, unlike deck.gl/Mapbox.)
+      'heatmap-weight': ['interpolate', ['linear'], ['coalesce', ['get', 'score'], 0.3],
+        0, 1, 0.25, 0.8, 0.5, 0.5, 1, 0],
+      'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], ...colorStops],
+    },
+  });
 }
 
 // ── Interactions ──────────────────────────────────────────────────────────

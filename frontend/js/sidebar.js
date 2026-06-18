@@ -1,5 +1,5 @@
 // ═══ sidebar.js — left panel: collapse/expand, drag, import trigger, layer manager ═══
-import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, layerDisplayColor, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, CONFIDENCE_RAMP, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR } from './state.js';
+import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, layerDisplayColor, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, addLayer, getChildren, CONFIDENCE_RAMP, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR } from './state.js';
 import { renderLayer, removeLayerFromMap, reorderAllZ } from './map.js';
 import { toast } from './toast.js';
 import { openSettingsPopover, closeSettingsPopover, openSettingsLayerId, isOpen } from './settings.js';
@@ -134,7 +134,7 @@ export function refreshLegend() {
 function sethidden(id, hidden) { const el = document.getElementById(id); if (el) el.hidden = hidden; }
 
 // ── Layer manager (left panel) ────────────────────────────────────────────
-const KIND_LABEL = { point: '点', line: '线', polygon: '面' };
+const KIND_LABEL = { point: '点', line: '线', polygon: '面', heatmap: 'H' };
 const eyeOpen = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 const eyeOff = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
 // drag grip = three horizontal bars (movable hint), revealed on hover/drag
@@ -171,7 +171,7 @@ function groupRowHtml(g, children) {
 
 /** A single layer row (standalone or indented child). */
 function layerRowHtml(l, openId, selId, isChild) {
-  const kindEl = (l.kind === 'point' || l.kind === 'polygon')
+  const kindEl = (l.kind === 'point' || l.kind === 'polygon' || l.kind === 'heatmap')
     ? `<button class="layer-kind${openId === l.id ? ' is-active' : ''}" data-feat="${l.id}" title="要素设置">${KIND_LABEL[l.kind]}</button>`
     : `<span class="layer-kind is-disabled" title="线暂未开放设置">${KIND_LABEL[l.kind] || '层'}</span>`;
   const sel = selId === l.id ? ' is-selected' : '';
@@ -330,6 +330,27 @@ function deleteLayer(id) {
   toast.success(`已删除：${l.name}`);
 }
 
+/** Build a heatmap layer from L2 negative points (VN+N). Kepler-style density overlay:
+ *  maps density through HEATMAP_NEGATIVE_STOPS, weights by score (more negative = hotter).
+ *  First variant = 'negative' (积极/综合 待后续). */
+export function createHeatmap(variant = 'negative') {
+  const group = getLayers().find((l) => l.kind === 'group');
+  if (!group) { toast.error('请先导入 L2 情绪数据'); return; }
+  // L2 negative child already holds VN+N features (shared orange-red palette)
+  const child = getChildren(group.id).find((c) => c.colorMode === 'l2-negative');
+  if (!child || !child.fc.features.length) { toast.error('未找到消极情绪数据'); return; }
+  const layer = addLayer({
+    name: 'HeatMap · 消极',
+    kind: 'heatmap',
+    colorMode: 'heatmap-negative',
+    fc: child.fc,   // shallow ref — read-only overlay
+  });
+  renderLayer(layer);
+  renderLayerList();
+  refreshLegend();
+  toast.success('已创建消极热力图');
+}
+
 export function initSidebar({ onFiles } = {}) {
   _onFiles = onFiles;
 
@@ -358,6 +379,7 @@ export function initSidebar({ onFiles } = {}) {
   document.getElementById('data-source')?.addEventListener('change', (e) => log('data-source=' + e.target.value));
   document.getElementById('run-governance')?.addEventListener('click', () => log('run-governance'));
   document.getElementById('run-analysis')?.addEventListener('click', () => log('run-analysis'));
+  document.getElementById('tool-heatmap')?.addEventListener('click', () => createHeatmap('negative'));
 
   // Import: native file picker (multi). Both the panel button and toolbar route here.
   const input = document.getElementById('import-input');
