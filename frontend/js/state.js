@@ -94,6 +94,20 @@ export function samplePoints(n = 60, seed = 42) {
     const texts = SAMPLE_TEXTS[pol];
     const lon = cx + (rnd() - 0.5) * 0.06;
     const lat = cy + (rnd() - 0.5) * 0.05;
+    // Emotion type assignment based on polarity + text
+    const emoTypeByPolarity = {
+      'Very Negative': ['愤怒', '不满抱怨', '失望厌恶'],
+      'Negative': ['不满抱怨', '焦虑担忧', '失望厌恶'],
+      'Neutral': ['期待建议', '怀旧认同'],
+      'Positive': ['喜悦满意', '怀旧认同'],
+      'Very Positive': ['喜悦满意'],
+    };
+    const candidates = emoTypeByPolarity[pol] || ['期待建议'];
+    const emoType = candidates[Math.floor(rnd() * candidates.length)];
+    const emoIntensity = pol === 'Very Negative' || pol === 'Very Positive'
+      ? 0.7 + rnd() * 0.3 : pol === 'Negative' || pol === 'Positive'
+      ? 0.4 + rnd() * 0.4 : rnd() * 0.4;
+
     features.push({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [lon, lat] },
@@ -106,6 +120,8 @@ export function samplePoints(n = 60, seed = 42) {
         location: SAMPLE_LOCATIONS[Math.floor(rnd() * SAMPLE_LOCATIONS.length)],
         category: ['设施', '环境', '服务', '文化', '事件'][Math.floor(rnd() * 5)],
         keywords: ['关键词A', '关键词B'].slice(0, 1 + Math.floor(rnd() * 2)),
+        emotion_type: emoType,
+        emotion_intensity: Math.round(emoIntensity * 1000) / 1000,
       },
     });
   }
@@ -146,7 +162,13 @@ export function confidenceStats(fc) {
 //   colorMode (heatmap): 'heatmap-negative'
 //   parentId: set on group children; group itself has children[]
 //   paint: polygon/line {color,fillOn,lineWidth,fillOpacity}; point {ramp?,opacity?,radius?}
-//          heatmap {radius,opacity,intensity} (Kepler Color/Opacity/Radius/Weight — blur fixed internally)
+//          heatmap {
+//            unit: 'm'|'px', radius (m or px), opacity, intensity,
+//            rampKey, weightField, weightCurve,
+//            typesFilter: string[] | null,    // L2 emotion_type 多选筛选
+//            intensityMin: 0..1,              // emotion_intensity 下限
+//            blurFactor, minzoom?, maxzoom?,
+//          }
 
 const NAVY = '#0c1c2e';   // title-bar navy (range outline default)
 const _layers = new Map();   // id -> layer object
@@ -171,6 +193,137 @@ export const HEATMAP_NEGATIVE_STOPS = [
   [1.00, '#7A1E16'],              // 高密度深红
 ];
 
+// ── Heatmap color ramp presets (6 themes for emotion-map use cases) ──
+// Each ramp = { name, stops: [[density,color], ...] }. density 0 always transparent.
+export const HEATMAP_RAMPS = {
+  negative: {
+    name: '消极红',
+    stops: HEATMAP_NEGATIVE_STOPS,
+  },
+  positive: {
+    name: '积极绿',
+    stops: [
+      [0.00, 'rgba(30,120,80,0)'],
+      [0.10, '#A8E6A0'],
+      [0.25, '#6BCF6B'],
+      [0.40, '#3DBA3D'],
+      [0.55, '#219A21'],
+      [0.70, '#167A16'],
+      [0.85, '#0E5C0E'],
+      [1.00, '#083D08'],
+    ],
+  },
+  neutral: {
+    name: '中性蓝',
+    stops: [
+      [0.00, 'rgba(100,140,180,0)'],
+      [0.10, '#B0C8E0'],
+      [0.25, '#8AA8C8'],
+      [0.40, '#6088B0'],
+      [0.55, '#4A7098'],
+      [0.70, '#385878'],
+      [0.85, '#284060'],
+      [1.00, '#1A2C48'],
+    ],
+  },
+  anxiety: {
+    name: '焦虑紫',
+    stops: [
+      [0.00, 'rgba(120,80,160,0)'],
+      [0.10, '#C8B0E8'],
+      [0.25, '#A890D0'],
+      [0.40, '#8870B8'],
+      [0.55, '#6A4E9E'],
+      [0.70, '#4E3680'],
+      [0.85, '#362260'],
+      [1.00, '#241448'],
+    ],
+  },
+  rainbow: {
+    name: '综合彩虹',
+    stops: [
+      [0.00, 'rgba(0,0,255,0)'],
+      [0.15, '#0000FF'],
+      [0.30, '#00FF00'],
+      [0.50, '#FFFF00'],
+      [0.70, '#FF8800'],
+      [0.85, '#FF4400'],
+      [1.00, '#FF0000'],
+    ],
+  },
+  mono: {
+    name: '单色热力',
+    stops: [
+      [0.00, 'rgba(0,0,0,0)'],
+      [0.15, 'rgba(60,60,60,0.25)'],
+      [0.35, 'rgba(120,120,120,0.45)'],
+      [0.55, 'rgba(180,180,180,0.65)'],
+      [0.75, 'rgba(220,220,220,0.82)'],
+      [1.00, 'rgba(255,255,255,0.95)'],
+    ],
+  },
+  // 6 级色板（论文方法 + 用户需求）：3 级情绪 + 3 级中性过渡，density 0 透明
+  'positive-6': {
+    name: '积极6级',
+    stops: [
+      [0.00, 'rgba(30,120,80,0)'],
+      [0.15, '#C8E6C9'],   // 中性浅
+      [0.30, '#A5D6A7'],   // 中性
+      [0.45, '#81C784'],   // 中性→积极过渡
+      [0.62, '#4CAF50'],   // 积极浅
+      [0.80, '#2E7D32'],   // 积极
+      [1.00, '#1B5E20'],   // 非常积极（深绿）
+    ],
+  },
+  'negative-6': {
+    name: '消极6级',
+    stops: [
+      [0.00, 'rgba(120,80,160,0)'],
+      [0.15, '#E0E0E0'],   // 中性浅
+      [0.30, '#BCAAA4'],   // 中性
+      [0.45, '#A1887F'],   // 中性→消极过渡
+      [0.62, '#E07142'],   // 消极浅
+      [0.80, '#C44A2E'],   // 消极
+      [1.00, '#7A1E16'],   // 非常消极（深红）
+    ],
+  },
+};
+
+// sorted keys for UI iteration
+export const HEATMAP_RAMP_KEYS = ['negative', 'positive', 'neutral', 'anxiety', 'rainbow', 'mono', 'positive-6', 'negative-6'];
+
+// ── Emotion type palette — 论文双层体系（微观具体情绪，7 类，每类对齐治理动作）──
+// 类型与 SCRIPT/emotion_lexicon.py EMOTION_LEXICON 保持一致。
+// 治理动作映射供未来"点格网看建议"用。
+export const EMOTION_TYPE_COLORS = {
+  '不满抱怨': '#E07142',   // 设施/服务整改（脏乱/老旧/同质化）
+  '焦虑担忧': '#9B59B6',   // 安全/出行治理（拥堵/停车/租房）
+  '失望厌恶': '#7F8C8D',   // 环境整治（扰民/噪音/水臭）
+  '愤怒': '#C0392B',       // 紧急响应（事故类极端负面）
+  '期待建议': '#3498DB',   // 献策纳规（诉求类）
+  '喜悦满意': '#2ECC71',   // 标杆保护（太阳/花朵/美食）
+  '怀旧认同': '#F39C12',   // 文化传承（武侯祠/历史文化）
+};
+export const EMOTION_TYPE_ORDER = ['不满抱怨', '焦虑担忧', '失望厌恶', '愤怒', '期待建议', '喜悦满意', '怀旧认同'];
+export const EMOTION_TYPE_ACTION = {
+  '不满抱怨': '设施/服务整改',
+  '焦虑担忧': '安全/出行治理',
+  '失望厌恶': '环境整治',
+  '愤怒': '紧急响应',
+  '期待建议': '献策纳规',
+  '喜悦满意': '标杆保护',
+  '怀旧认同': '文化传承',
+};
+
+// ── Heatmap source tracking: sourceKey → heatmap layer id ──
+// sourceKey = sanitized string identifying the data source (group id / child layer id).
+// When generating a new heatmap for the same sourceKey, the old one is removed first.
+const _heatmapSources = new Map();
+export function getHeatmapForSource(sourceKey) { return _heatmapSources.get(sourceKey); }
+export function setHeatmapForSource(sourceKey, layerId) { _heatmapSources.set(sourceKey, layerId); }
+export function removeHeatmapSource(sourceKey) { _heatmapSources.delete(sourceKey); }
+export function clearHeatmapSources() { _heatmapSources.clear(); }
+
 export function addLayer({ name, kind, fc, needsAnalysis = false, colorMode, paint, parentId }) {
   const id = 'L' + (++_seq).toString().padStart(3, '0');
   const defaultPaint = kind === 'polygon'
@@ -178,7 +331,18 @@ export function addLayer({ name, kind, fc, needsAnalysis = false, colorMode, pai
     : kind === 'line'
       ? { color: NAVY, lineWidth: 2 }
       : kind === 'heatmap'
-        ? { radius: 30, opacity: 0.7, intensity: 1 }   // deck.gl defaults: radiusPixels=30 / intensity=1.0
+        ? {
+            unit: 'm',           // 'm' (geographic meters, default) | 'px' (screen pixels)
+            radius: 300,         // 300 m default — 城市规划尺度核密度带宽
+            opacity: 0.7,
+            intensity: 1,
+            rampKey: 'rainbow',  // 中立色带，不暗示极性
+            weightField: 'emotion_intensity',  // 强度做权重（v2 L2 颗粒度）
+            weightCurve: 'linear',
+            typesFilter: null,   // null = 全部；数组 = 仅显示 emotion_type ∈ 数组的点
+            intensityMin: 0,     // emotion_intensity ≥ 阈值 才进入热力图
+            blurFactor: 1.0,     // 预留：blur = radius * blurFactor（MapLibre 内部固定，留接口）
+          }
         : {};
   const layer = {
     id, name, kind, fc, visible: true, needsAnalysis, parentId: parentId || null,
@@ -229,6 +393,20 @@ export function removeLayer(id) {
   if (l.parentId) {
     const p = _layers.get(l.parentId);
     if (p && p.children) p.children = p.children.filter((c) => c !== id);
+  }
+  // Clean heatmap source tracking when source layer or heatmap is removed
+  if (l.kind === 'heatmap') {
+    for (const [key, lid] of _heatmapSources) {
+      if (lid === id) { _heatmapSources.delete(key); break; }
+    }
+  }
+  // If a point layer used as heatmap source is removed, clean its heatmap tracking
+  if (l.kind === 'point') {
+    for (const [key, lid] of _heatmapSources) {
+      if (key === `child:${id}` || key === `layer:${id}`) {
+        _heatmapSources.delete(key);
+      }
+    }
   }
   return _layers.delete(id);
 }
@@ -322,4 +500,6 @@ export const FIELD_SYNONYMS = {
   score: ['score', 'l2_confidence', 'sentiment_score', 'confidence', '分数', '得分'],
   text: ['text', 'content', 'comment', 'review', '评论', '文本', '内容'],
   location: ['location', 'place', 'address', '地点', '位置'],
+  emotion_type: ['emotion_type', 'emotionType', '情绪类型', '情感类型', 'emotion'],
+  emotion_intensity: ['emotion_intensity', 'emotionIntensity', '情绪强度', '情感强度', 'intensity'],
 };

@@ -1,20 +1,18 @@
 // ═══ map.js — MapLibre GL JS instance, multi-layer registry, basemap switch ═══
-import { emotionColors, token, POLARITY_ORDER, getLayers, CONFIDENCE_RAMP, confidenceColor, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS } from './state.js';
+import { emotionColors, token, POLARITY_ORDER, getLayers, CONFIDENCE_RAMP, confidenceColor, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS } from './state.js';
 import { initControls } from './map-controls.js';
 import { showRangePopup } from './popup.js';
 
 export const BASEMAPS = {
-  // 天地图 raster (CN government, label variants)
-  'tianditu-img-nolabel': '../apps/static/tianditu_img_nolabel.json',
-  'tianditu-img':         '../apps/static/tianditu_img.json',
-  'tianditu-vec-nolabel': '../apps/static/tianditu_nolabel.json',
-  'tianditu-vec':         '../apps/static/tianditu_label.json',
-  // CARTO raster (DarkMatter/Light/Voyager, no-labels variants)
-  'dark':      '../apps/static/carto_dark.json',
-  'positron':  '../apps/static/carto_light.json',
-  'bright':    '../apps/static/carto_voyager.json',
+  // CARTO GL 矢量素图（kepler/MVP 同款，无注记，CDN 矢量瓦片，细节丰富+缩放清晰+快）
+  'positron':    'https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json',
+  'dark-matter': 'https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json',
+  'voyager':     'https://basemaps.cartocdn.com/gl/voyager-nolabels-gl-style/style.json',
+  // 天地图（可选，非默认；HTTP+影像/矢量大瓦片，较慢）
+  'tianditu-img': '../apps/static/tianditu_img.json',
+  'tianditu-vec': '../apps/static/tianditu_label.json',
 };
-export const DEFAULT_BASEMAP = 'tianditu-img-nolabel';
+export const DEFAULT_BASEMAP = 'positron';
 const YICHANG = { center: [111.286, 30.708], zoom: 12 };
 const NAVY = '#0c1c2e';
 const HIT_WIDTH = 12;           // transparent hit-line width (easy hover/click on thin outlines)
@@ -241,29 +239,90 @@ function addHitLayer(hitLid, sid) {
 
 /** Heatmap (Kepler-aligned): native MapLibre `type:'heatmap'` = Gaussian KDE (same algo as
  *  deck.gl HeatmapLayer under Kepler). Color maps DENSITY (not polarity); polarity enters via
- *  weight (lower score = more negative = burns redder). 4 Kepler attributes: Color/Opacity/Radius/Weight;
- *  blur fixed internally (Kepler doesn't expose it). */
+ *  weight. Full parameter set: Color/Opacity/Radius/Weight/Intensity/Curve/ZoomRange/Unit.
+ *
+ *  Radius 单位语义（v2）：
+ *  - 'm'（默认，GIS 核密度语义）: radius=真实米数，按 zoom 换算成 px，缩放时地理覆盖稳定。
+ *    公式 px(z)=meters/mpp(z,lat)，mpp(z,lat)≈156543.03*cos(lat)/2^z。
+ *  - 'px'（高级）: 固定屏幕像素，缩放时屏幕半径不变但地理面积随 zoom 漂移。
+ *  L2 类型/强度筛选（typesFilter/intensityMin）在 heatmap-tool.js 生成时已过滤 fc，
+ *  这里只负责渲染。 */
 function addHeatmapPaint(layer, sid, lid) {
   const p = layer.paint || {};
-  const radius = p.radius ?? 30;
+  const unit = p.unit || 'm';                       // 'm' default, 'px' advanced
+  const radius = p.radius ?? (unit === 'm' ? 300 : 45);
   const opacity = p.opacity ?? 0.7;
   const intensity = p.intensity ?? 1;
-  // HEATMAP_NEGATIVE_STOPS = [[density, color], ...] → flatten to [0, c0, 0.1, c1, ...] for interpolate
-  const colorStops = HEATMAP_NEGATIVE_STOPS.flat();
-  map.addLayer({
-    id: lid, type: 'heatmap', source: sid,
-    paint: {
-      'heatmap-radius': radius,
-      'heatmap-opacity': opacity,
-      'heatmap-intensity': intensity,
-      // Weight by score: lower score (more negative) → higher weight → burns redder.
-      // coalesce fallback so missing-score points still render. (MapLibre has no
-      // heatmap-blur — blur is baked into radius/weight, unlike deck.gl/Mapbox.)
-      'heatmap-weight': ['interpolate', ['linear'], ['coalesce', ['get', 'score'], 0.3],
-        0, 1, 0.25, 0.8, 0.5, 0.5, 1, 0],
-      'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], ...colorStops],
-    },
-  });
+  const weightField = p.weightField || 'emotion_intensity';
+  const weightCurve = p.weightCurve || 'linear';
+  const rampKey = p.rampKey || 'rainbow';
+  const ramp = (HEATMAP_RAMPS[rampKey] && HEATMAP_RAMPS[rampKey].stops) || HEATMAP_NEGATIVE_STOPS;
+  const colorStops = ramp.flat();
+  const weightExpr = buildWeightExpression(weightField, weightCurve);
+
+  const paint = {
+    'heatmap-radius': radius,
+    'heatmap-opacity': opacity,
+    'heatmap-intensity': intensity,
+    'heatmap-weight': weightExpr,
+    'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], ...colorStops],
+  };
+
+  if (unit === 'm') {
+    // 地理米 → 各 zoom 下应渲染的 px。宜昌纬度 30.7°N 常量。
+    const latRad = 30.7 * Math.PI / 180;
+    const cosLat = Math.cos(latRad);
+    const mpp = (z) => 156543.03 * cosLat / Math.pow(2, z);
+    const pxAt = (z) => radius / mpp(z);
+    paint['heatmap-radius'] = ['interpolate', ['linear'], ['zoom'],
+      8, pxAt(8),
+      10, pxAt(10),
+      12, pxAt(12),
+      14, pxAt(14),
+      16, pxAt(16),
+      18, pxAt(18),
+      20, pxAt(20),
+    ];
+  } else if (p.geoRadius) {
+    // 向后兼容：旧 px + geoRadius 标志（已弃用，保留以防旧图层）
+    paint['heatmap-radius'] = ['interpolate', ['linear'], ['zoom'],
+      0, Math.max(2, radius * 0.02),
+      8, Math.max(4, radius * 0.3),
+      12, Math.max(8, radius * 0.6),
+      16, radius,
+      20, radius * 1.5,
+    ];
+  }
+
+  const opts = { id: lid, type: 'heatmap', source: sid, paint };
+  if (p.minzoom != null) opts.minzoom = p.minzoom;
+  if (p.maxzoom != null && p.maxzoom < 22) opts.maxzoom = p.maxzoom;
+
+  map.addLayer(opts);
+}
+
+/** Build a heatmap-weight expression from field + curve mode.
+ *  Modes: linear|exponential × normal|inverse. "inverse" = lower value → higher weight. */
+function buildWeightExpression(field, curve) {
+  if (field === 'uniform') return 1;
+  const get = ['coalesce', ['get', field], 0.3];
+  const inverse = curve.endsWith('-inverse');
+  const mode = inverse ? curve.replace('-inverse', '') : curve;
+
+  if (mode === 'exponential') {
+    // exponential via pre-computed stops: weight = e^(3*val) mapped over 5 stops
+    const stops = inverse
+      ? [0, 1, 0.25, 0.7, 0.5, 0.3, 0.75, 0.08, 1, 0.01]
+      : [0, 0.01, 0.25, 0.08, 0.5, 0.3, 0.75, 0.7, 1, 1];
+    return ['interpolate', ['linear'], get, ...stops];
+  }
+  // linear: direct mapping or inverse
+  if (inverse) {
+    return ['interpolate', ['linear'], get,
+      0, 1, 0.25, 0.8, 0.5, 0.5, 0.75, 0.2, 1, 0];
+  }
+  return ['interpolate', ['linear'], get,
+    0, 0, 0.25, 0.2, 0.5, 0.5, 0.75, 0.8, 1, 1];
 }
 
 // ── Interactions ──────────────────────────────────────────────────────────

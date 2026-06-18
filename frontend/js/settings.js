@@ -6,7 +6,7 @@
 //   • line                 → (no popover; marker non-interactive)
 // Live: control change → setLayerPaint + renderLayer (re-renders that layer).
 
-import { getLayer, setLayerPaint, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS } from './state.js';
+import { getLayer, setLayerPaint, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS } from './state.js';
 import { renderLayer, effectivePointRadius } from './map.js';
 import { refreshPopupForLayer } from './popup.js';
 
@@ -105,11 +105,15 @@ function build(layer) {
   } else if (layer.kind === 'polygon') {
     body = sectionFill(p.fillOn) + sectionColor(p.color || '#0c1c2e') + sectionLineWidth(p.lineWidth ?? 2) + sectionFillOpacity(p.fillOpacity ?? 0.3, p.fillOn);
   } else if (layer.kind === 'heatmap') {
-    // Kepler 4 attributes: Color (legend) + Radius + Opacity + intensity (= Weight gain). blur/weight not exposed.
-    body = sectionHeatmapLegend()
-      + rangeSection('半径', p.radius ?? 30, 'data-radius', 'px', 10, 80, 1)
+    // Full parameter set: Color (ramp legend) + Radius + Opacity + Intensity
+    const rampName = (HEATMAP_RAMPS[p.rampKey] && HEATMAP_RAMPS[p.rampKey].name) || '消极红';
+    body = sectionHeatmapLegend(p.rampKey)
+      + `<div class="set-section"><div class="set-label">色带 <span class="set-val">${rampName}</span></div></div>`
+      + rangeSection('半径', p.radius ?? 45, 'data-radius', 'px', 5, 150, 1)
       + rangeSection('透明度', Math.round((p.opacity ?? 0.7) * 100), 'data-op')
-      + rangeSection('强度', p.intensity ?? 1, 'data-intensity', '', 0, 3, 0.1);
+      + rangeSection('强度', p.intensity ?? 1, 'data-intensity', '', 0, 3, 0.1)
+      + `<div class="set-section"><div class="set-label">权重字段 <span class="set-val">${p.weightField || 'score'}</span></div></div>`
+      + `<div class="set-section"><div class="set-label">权重曲线 <span class="set-val">${p.weightCurve || 'linear-inverse'}</span></div></div>`;
   }
   pop.innerHTML = header + `<div class="set-body">${body}</div>`;
   wire(layer);
@@ -155,12 +159,13 @@ function l2PaletteLegend(cm) {
   else if (cm === 'l2-neutral') inner = sw(L2_NEUTRAL_COLOR, '中性');
   return `<div class="set-section"><div class="set-label">色板（固定）</div><div class="set-legend">${inner}</div></div>`;
 }
-/** Read-only density gradient bar for heatmap (Kepler Color). 稀疏(冷蓝)→密集(深红). */
-function sectionHeatmapLegend() {
-  // skip the transparent density-0 stop → solid visible ramp (blue → red)
-  const grad = HEATMAP_NEGATIVE_STOPS.slice(1).map(([, c]) => c).join(',');
+/** Read-only density gradient bar for heatmap (Kepler Color). 稀疏→密集. */
+function sectionHeatmapLegend(rampKey) {
+  const stops = (HEATMAP_RAMPS[rampKey] && HEATMAP_RAMPS[rampKey].stops) || HEATMAP_NEGATIVE_STOPS;
+  const grad = stops.slice(1).map(([, c]) => c).join(',');
+  const name = (HEATMAP_RAMPS[rampKey] && HEATMAP_RAMPS[rampKey].name) || '消极红';
   return `<div class="set-section">
-    <div class="set-label">色带 / Color（密度）</div>
+    <div class="set-label">色带 / Color（${name}）</div>
     <div class="set-legend-heat" style="background:linear-gradient(90deg, ${grad})"></div>
     <div class="set-legend-cap"><span>稀疏</span><span>密集</span></div>
   </div>`;

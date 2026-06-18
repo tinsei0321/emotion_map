@@ -3,6 +3,7 @@ import {
   POLARITY_ORDER, POLARITY_LABEL, emotionColors,
   layerLevel, focusLayer, polarityStats, confidenceStats, CONFIDENCE_RAMP,
   L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR,
+  EMOTION_TYPE_COLORS, EMOTION_TYPE_ORDER,
 } from './state.js';
 import { geomStats } from './popup.js';
 
@@ -105,7 +106,7 @@ function tier3(layer, lv) {
         <span class="hbar-n">${n}</span></div>`).join('');
     body = `<div class="ov-tier-sub">置信度分布</div><div class="hchart">${bars}</div>
       <div class="ov-mean">均值 ${mean.toFixed(2)} · 共 ${total} 条</div>${spatialPlaceholder()}`;
-  } else { // L2 — polarity distribution (aggregate of all sub-layers)
+  } else { // L2 — polarity distribution + emotion type distribution
     const { stats, total, scoreMean } = polarityStats(layer.fc);
     const max = Math.max(1, ...POLARITY_ORDER.map((p) => stats[p] || 0));
     const colorOf = (p) => p === 'Very Positive' ? L2_POSITIVE['Very Positive']
@@ -119,8 +120,25 @@ function tier3(layer, lv) {
         <span class="hbar-track"><span class="hbar-fill" style="width:${(n / max) * 100}%;background:${colorOf(p)}"></span></span>
         <span class="hbar-n">${n}</span></div>`;
     }).join('');
+
+    // Emotion type distribution (if emotion_type field exists in data)
+    const etStats = emotionTypeStats(layer.fc);
+    let etBars = '';
+    if (etStats.total > 0) {
+      const etMax = Math.max(1, ...EMOTION_TYPE_ORDER.map((et) => etStats.stats[et] || 0));
+      etBars = EMOTION_TYPE_ORDER.filter((et) => (etStats.stats[et] || 0) > 0).map((et) => {
+        const n = etStats.stats[et] || 0;
+        const bg = EMOTION_TYPE_COLORS[et] || '#95A5A6';
+        return `<div class="hbar-row"><span class="hbar-label">${et}</span>
+          <span class="hbar-track"><span class="hbar-fill" style="width:${(n / etMax) * 100}%;background:${bg}"></span></span>
+          <span class="hbar-n">${n}</span></div>`;
+      }).join('');
+    }
+
     body = `<div class="ov-tier-sub">极性分布</div><div class="hchart">${bars}</div>
-      <div class="ov-mean">均分 ${scoreMean.toFixed(2)} · 共 ${total} 条</div>${spatialPlaceholder()}`;
+      <div class="ov-mean">均分 ${scoreMean.toFixed(2)} · 共 ${total} 条</div>
+      ${etBars ? `<div class="ov-tier-sub" style="margin-top:12px">情绪类型分布</div><div class="hchart">${etBars}</div>` : ''}
+      ${spatialPlaceholder()}`;
   }
   return `<div class="ov-tier ov-t3"><div class="ov-tier-head">数据展示</div>${body}</div>`;
 }
@@ -146,6 +164,17 @@ function rangeStats(layer) {
     area += s.area || 0; perimeter += s.perimeter || 0; vertices += s.vertices || 0;
   }
   return { area, perimeter, vertices };
+}
+
+/** Compute emotion_type distribution from a FeatureCollection. */
+function emotionTypeStats(fc) {
+  const stats = {};
+  let total = 0;
+  for (const f of fc.features) {
+    const et = f.properties && f.properties.emotion_type;
+    if (et) { stats[et] = (stats[et] || 0) + 1; total++; }
+  }
+  return { stats, total };
 }
 
 // ── Table tab (kept; geojson.io-style) ──

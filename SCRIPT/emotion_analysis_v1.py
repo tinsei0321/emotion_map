@@ -66,6 +66,7 @@ from core.data_loader import load_emotion_data
 from core.export import export_to_csv, export_to_geojson
 from core.tracker import track, TrackContext, trace_log, trace_error, register_track_id
 from core.utils import safe_print
+from SCRIPT.emotion_lexicon import classify_emotion_type, calc_emotion_intensity, analyze_emotion
 
 # ═══════════════════════════════════════════════════════════
 # L2 输出字段定义
@@ -73,7 +74,11 @@ from core.utils import safe_print
 
 L2_COLUMNS = [
     # 情绪核心（替代 L1 的 primary_emotion/emotion_intensity）
-    'score', 'polarity', 'keywords',
+    'score', 'polarity',
+    # L2 情绪颗粒度增强（基于关键词规则 + score 偏离度）
+    'emotion_type', 'emotion_intensity',
+    # 情绪关键词
+    'keywords',
     # 置信度（按阶段区分）
     'l2_confidence',
     # L3 前置字段（L2 阶段为 None，L3 填充）
@@ -373,6 +378,8 @@ class SnowNLPAnalyzer(AnalyzerBase):
         polarity = _score_to_polarity(score)
         confidence = self._calc_confidence(text)
         keywords = _extract_keywords(text) if self.enable_keywords else []
+        # v2 lexicon: single-pass classification + intensity (shared scan)
+        emotion_type, emotion_intensity = analyze_emotion(text, score, len(keywords))
 
         return EmotionResult(
             phase='L2',
@@ -380,6 +387,8 @@ class SnowNLPAnalyzer(AnalyzerBase):
             polarity=polarity,
             keywords=keywords,
             confidence=round(confidence, 2),
+            category=emotion_type,
+            intensity=emotion_intensity,
         )
 
     def analyze_batch(self, texts: list, progress_callback=None) -> list[EmotionResult]:
@@ -398,12 +407,18 @@ class SnowNLPAnalyzer(AnalyzerBase):
             polarity = _score_to_polarity(s)
             confidence = self._calc_confidence(text)
             keywords = _extract_keywords(text) if self.enable_keywords else []
+            # L2 granularity: emotion type + intensity (single-pass v2 lexicon)
+            emotion_type, emotion_intensity = analyze_emotion(text, s, len(keywords))
             results.append(EmotionResult(
                 phase='L2',
                 score=s,
                 polarity=polarity,
                 keywords=keywords,
                 confidence=round(confidence, 2),
+                # Store L2 granularity in L3 fields (category/intensity) as pass-through
+                # — they'll be written to dedicated L2 columns in run_pipeline()
+                category=emotion_type,
+                intensity=emotion_intensity,
             ))
             if progress_callback and (i % max(1, total // 20) == 0 or i == total - 1):
                 progress_callback(i + 1, total, f'{self.name} {i+1}/{total}')
@@ -416,8 +431,8 @@ class SnowNLPAnalyzer(AnalyzerBase):
             'phase': self.phase,
             'supports_batch': True,
             'supports_keywords': self.enable_keywords,
-            'supports_category': False,
-            'supports_intensity': False,
+            'supports_category': True,    # L2 规则分类 (emotion_type)
+            'supports_intensity': True,   # L2 score 偏离度 (emotion_intensity)
             'supports_target': False,
             'supports_attribution': False,
             'supports_confidence': True,
@@ -1204,6 +1219,11 @@ def run_pipeline(file_path: str,
         df['l4_confidence'] = [r.confidence for r in results]
     else:
         df['l2_confidence'] = [r.confidence for r in results]
+
+    # L2 颗粒度增强：情绪类型 + 情绪强度（规则分类，来自 SnowNLPAnalyzer）
+    if phase == 'L2' and any(r.category is not None for r in results):
+        df['emotion_type'] = [r.category if r.category else '其他' for r in results]
+        df['emotion_intensity'] = [r.intensity if r.intensity is not None else 0.0 for r in results]
 
     # 4. 合并 L3 增强字段（如果引擎产出）
     if any(r.category is not None for r in results):

@@ -175,6 +175,43 @@
 .sec-run { background: var(--geojson-color-gray-700); }
 .sec-run:hover { background: var(--geojson-color-gray-600); }
 
+/* ── Toolbox section — 与 Layers 同款 row 节奏 ── */
+.tool-list {
+  display: flex;
+  flex-direction: column;
+}
+.tool-row {
+  display: flex;
+  align-items: center;
+  gap: var(--geojson-spacing-2);
+  width: 100%;
+  padding: 6px var(--geojson-spacing-2);
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-primary);
+  border-radius: var(--geojson-radius-sm);
+  cursor: pointer;
+  transition: background var(--geojson-transition);
+}
+.tool-row:hover { background: var(--geojson-color-gray-100); }
+.tool-row:active { background: var(--geojson-color-gray-200); }
+.tool-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--geojson-color-text-tertiary);
+  flex-shrink: 0;
+}
+.tool-row:hover .tool-icon { color: var(--geojson-color-brand-primary); }
+.tool-name {
+  flex: 1;
+  font-weight: var(--geojson-typography-weight-medium);
+}
+
 /* ── Layer manager (Layers section) — geojson.io-style list ── */
 .section-head .layers-clear {
   margin-left: auto;

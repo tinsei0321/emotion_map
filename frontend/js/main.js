@@ -10,6 +10,7 @@ import {
   splitByGeometry, detectColorMode, fcBBox,
 } from './import.js';
 import { openImportDialog } from './dialog.js';
+import { initHeatmapTool } from './heatmap-tool.js';
 import { toast } from './toast.js';
 
 function layerName(group) {
@@ -116,6 +117,7 @@ function main() {
   refreshOverview();    // empty-state overview
 
   initSidebar({ onFiles: runImport });
+  initHeatmapTool();
 
   initToolbar({
     onTool: (tool) => console.log('[tool]', tool),
@@ -124,7 +126,7 @@ function main() {
       console.log('[export]', format, 'desensitize=' + desensitize, '(Phase 2)'),
     onBasemap: (key) => setBasemap(key),
   });
-  setActiveBasemap('tianditu-img-nolabel');
+  setActiveBasemap('positron');
 
   // Layer delete/clear → refresh list + legend + overview.
   document.addEventListener('layers:changed', () => {

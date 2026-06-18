@@ -3,6 +3,7 @@ import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, l
 import { renderLayer, removeLayerFromMap, reorderAllZ } from './map.js';
 import { toast } from './toast.js';
 import { openSettingsPopover, closeSettingsPopover, openSettingsLayerId, isOpen } from './settings.js';
+import { openHeatmapDialog } from './heatmap-tool.js';
 
 const expandedWidth = { left: 0, right: 0 };
 
@@ -225,6 +226,8 @@ export function renderLayerList() {
       const id = b.dataset.feat;
       const l = getLayer(id);
       if (!l) return;
+      // Bug 2 fix: heatmap 图层的 H 按钮统一转调 HeatMap 弹窗（与 Toolbox 同入口、同参数集）
+      if (l.kind === 'heatmap') { openHeatmapDialog(); return; }
       if (isOpen() && openSettingsLayerId() === id) closeSettingsPopover();
       else {
         openSettingsPopover(l, b);
@@ -332,23 +335,10 @@ function deleteLayer(id) {
 
 /** Build a heatmap layer from L2 negative points (VN+N). Kepler-style density overlay:
  *  maps density through HEATMAP_NEGATIVE_STOPS, weights by score (more negative = hotter).
- *  First variant = 'negative' (积极/综合 待后续). */
+ *  First variant = 'negative' (积极/综合 待后续).
+ *  v2: 废弃直接生成逻辑，统一转调 HeatMap 弹窗（避免旧入口与新入口并存导致 Bug 1）。 */
 export function createHeatmap(variant = 'negative') {
-  const group = getLayers().find((l) => l.kind === 'group');
-  if (!group) { toast.error('请先导入 L2 情绪数据'); return; }
-  // L2 negative child already holds VN+N features (shared orange-red palette)
-  const child = getChildren(group.id).find((c) => c.colorMode === 'l2-negative');
-  if (!child || !child.fc.features.length) { toast.error('未找到消极情绪数据'); return; }
-  const layer = addLayer({
-    name: 'HeatMap · 消极',
-    kind: 'heatmap',
-    colorMode: 'heatmap-negative',
-    fc: child.fc,   // shallow ref — read-only overlay
-  });
-  renderLayer(layer);
-  renderLayerList();
-  refreshLegend();
-  toast.success('已创建消极热力图');
+  openHeatmapDialog();
 }
 
 export function initSidebar({ onFiles } = {}) {
@@ -379,7 +369,7 @@ export function initSidebar({ onFiles } = {}) {
   document.getElementById('data-source')?.addEventListener('change', (e) => log('data-source=' + e.target.value));
   document.getElementById('run-governance')?.addEventListener('click', () => log('run-governance'));
   document.getElementById('run-analysis')?.addEventListener('click', () => log('run-analysis'));
-  document.getElementById('tool-heatmap')?.addEventListener('click', () => createHeatmap('negative'));
+  document.getElementById('tool-heatmap')?.addEventListener('click', () => openHeatmapDialog());
 
   // Import: native file picker (multi). Both the panel button and toolbar route here.
   const input = document.getElementById('import-input');

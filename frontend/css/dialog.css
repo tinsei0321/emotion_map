@@ -149,3 +149,266 @@
   border-radius: var(--geojson-radius-sm);
 }
 
+/* ── HeatMap parameter dialog ── */
+.hm-dialog {
+  width: 360px;
+  max-height: 80vh;
+}
+.hm-dialog .dialog-body {
+  overflow-y: auto;
+  max-height: 60vh;
+  padding: var(--geojson-spacing-3) var(--geojson-spacing-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--geojson-spacing-3);
+}
+.hm-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hm-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--geojson-typography-size-xs);
+  font-weight: var(--geojson-typography-weight-medium);
+  color: var(--geojson-color-text-primary);
+}
+.hm-val {
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-secondary);
+  min-width: 36px;
+  text-align: right;
+}
+.hm-hint {
+  font-size: var(--geojson-typography-size-2xs);
+  color: var(--geojson-color-text-tertiary);
+  margin-top: 2px;
+}
+.hm-ramp-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.hm-ramp-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px;
+  font-size: 10px;
+  color: var(--geojson-color-text-secondary);
+  background: var(--geojson-color-surface-page);
+  border: 1px solid var(--geojson-color-gray-300);
+  border-radius: var(--geojson-radius-sm);
+  cursor: pointer;
+  transition: border-color var(--geojson-transition);
+}
+.hm-ramp-btn:hover {
+  border-color: var(--geojson-color-brand-primary);
+}
+.hm-ramp-btn.is-sel {
+  border-color: var(--geojson-color-brand-primary);
+  background: var(--geojson-color-gray-100);
+  box-shadow: 0 0 0 1px var(--geojson-color-brand-primary);
+}
+.hm-ramp-bar {
+  width: 100%;
+  height: 16px;
+  border-radius: 2px;
+  border: 1px solid var(--geojson-color-gray-200);
+}
+.hm-zoom-range {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 4px 6px;
+  align-items: center;
+  font-size: var(--geojson-typography-size-2xs);
+  color: var(--geojson-color-text-secondary);
+}
+.hm-zoom-range .hm-val {
+  font-size: var(--geojson-typography-size-2xs);
+}
+.hm-zoom-range .set-range {
+  width: 100%;
+}
+.hm-dialog .dialog-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--geojson-spacing-2);
+}
+.hm-dialog .dialog-foot .sec-btn {
+  width: auto;
+  padding: 0 var(--geojson-spacing-3);
+  margin-top: 0;
+}
+
+/* ── HeatMap v2: 分组 / 类型筛选 chips / 单位切换 / 高级折叠 ── */
+.hm-dialog { width: 380px; }
+
+.hm-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--geojson-spacing-3);
+  padding: var(--geojson-spacing-2) 0;
+  border-top: 1px solid var(--geojson-color-gray-200);
+}
+.hm-group:first-child { border-top: none; padding-top: 0; }
+.hm-group-title {
+  font-size: var(--geojson-typography-size-2xs);
+  font-weight: var(--geojson-typography-weight-medium);
+  color: var(--geojson-color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.hm-hint-inline {
+  font-weight: normal;
+  font-size: var(--geojson-typography-size-2xs);
+  color: var(--geojson-color-text-tertiary);
+  margin-left: 6px;
+}
+
+/* 类型筛选 chips — 复用 EMOTION_TYPE_COLORS 通过 --chip-color 注入 */
+.hm-type-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.hm-type-chip {
+  --chip-color: #888;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px 3px 6px;
+  font-size: var(--geojson-typography-size-2xs);
+  color: var(--geojson-color-text-secondary);
+  background: var(--geojson-color-surface-page);
+  border: 1px solid var(--geojson-color-gray-300);
+  border-radius: 999px;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--geojson-transition), border-color var(--geojson-transition), opacity var(--geojson-transition);
+}
+.hm-type-chip input { display: none; }
+.hm-type-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--chip-color);
+  flex-shrink: 0;
+}
+.hm-type-chip.is-on {
+  border-color: var(--chip-color);
+  background: color-mix(in srgb, var(--chip-color) 12%, transparent);
+  color: var(--geojson-color-text-primary);
+}
+.hm-type-chip:not(.is-on) {
+  opacity: 0.45;
+}
+.hm-type-chip:not(.is-on) .hm-type-dot {
+  background: var(--geojson-color-gray-300);
+}
+.hm-type-chip:hover { opacity: 1; }
+.hm-type-name { font-weight: var(--geojson-typography-weight-medium); }
+.hm-type-count {
+  font-size: 10px;
+  color: var(--geojson-color-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 参数名旁的 ⓘ 悬停解释（纯 CSS hover，解决"参数难理解"痛点）── */
+.hm-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 5px;
+  border-radius: 50%;
+  background: var(--geojson-color-gray-300);
+  color: var(--geojson-color-text-inverse, #fff);
+  font-size: 9px;
+  font-weight: 700;
+  font-style: italic;
+  font-family: Georgia, serif;
+  cursor: help;
+  vertical-align: middle;
+  position: relative;
+  transition: background var(--geojson-transition);
+  flex-shrink: 0;
+}
+.hm-info:hover { background: var(--geojson-color-brand-primary); }
+/* .hm-tip 仅作内容载体（display:none），由 JS 读取后填入 #hm-tooltip 显示。
+ * #hm-tooltip 挂在 #heatmap-dialog 内（随 dialog 进 top layer，不被 dialog 遮挡），
+ * position:fixed 不受 .hm-dialog .dialog-body 的 overflow:auto 裁剪。 */
+.hm-info .hm-tip { display: none; }
+
+/* tooltip：挂在 dialog 内，fixed 定位，随 dialog 进 top layer（不被遮挡）、不被 overflow 裁剪 */
+.hm-tooltip {
+  position: fixed;
+  z-index: 10000;
+  max-width: 264px;
+  padding: 8px 10px;
+  background: #1f2937;
+  color: #fff;
+  font-size: 11px;
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1.5;
+  border-radius: var(--geojson-radius-sm);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.28);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+  text-align: left;
+  white-space: normal;
+}
+.hm-tooltip.is-show { opacity: 1; }
+
+/* 单位切换链接 */
+.hm-link {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 0;
+  font-size: var(--geojson-typography-size-2xs);
+  color: var(--geojson-color-brand-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+.hm-link:hover { color: var(--geojson-color-brand-hover); }
+
+/* 高级折叠区 */
+.hm-advanced {
+  border-top: 1px solid var(--geojson-color-gray-200);
+  padding-top: var(--geojson-spacing-2);
+}
+.hm-advanced > summary {
+  font-size: var(--geojson-typography-size-2xs);
+  font-weight: var(--geojson-typography-weight-medium);
+  color: var(--geojson-color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  list-style: none;
+  padding: 4px 0;
+}
+.hm-advanced > summary::before {
+  content: '▶';
+  display: inline-block;
+  font-size: 9px;
+  margin-right: 6px;
+  transition: transform var(--geojson-transition);
+}
+.hm-advanced[open] > summary::before { transform: rotate(90deg); }
+.hm-advanced[open] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--geojson-spacing-3);
+}
+.hm-advanced .hm-section { margin-top: var(--geojson-spacing-2); }
+

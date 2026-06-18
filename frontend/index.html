@@ -110,9 +110,18 @@
             <label class="sec-radio"><input type="radio" name="engine" value="corpus" disabled /> L4 · 语料库归因</label>
             <button class="sec-btn sec-run" id="run-governance">数据治理</button>
             <button class="sec-btn sec-run" id="run-analysis">开始分析</button>
-            <div class="sec-label">Toolbox</div>
-            <div class="toolbox-row">
-              <button class="sec-btn" id="tool-heatmap">HeatMap</button>
+          </div>
+        </section>
+
+        <section class="lp-section" data-section="toolbox">
+          <div class="section-head"><span class="chev">&#9654;</span> Toolbox</div>
+          <div class="section-body">
+            <div class="sec-note">空间分析工具集</div>
+            <div class="tool-list">
+              <button class="tool-row" id="tool-heatmap" data-tool="heatmap">
+                <span class="tool-icon"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="5" width="3" height="8" rx="0.5"/><rect x="6.5" y="2" width="3" height="11" rx="0.5"/><rect x="12" y="7" width="3" height="6" rx="0.5"/></svg></span>
+                <span class="tool-name">HeatMap · 核密度分析</span>
+              </button>
             </div>
           </div>
         </section>
@@ -200,18 +209,112 @@
   <div id="basemap-popover" class="popover" hidden>
     <div class="popover-title">底图 / Basemap</div>
     <div class="basemap-grid">
-      <button class="bm-cell is-active" data-basemap="tianditu-img-nolabel"><span class="bm-swatch bm-sat"></span>影像（无注记）</button>
-      <button class="bm-cell" data-basemap="tianditu-img"><span class="bm-swatch bm-sat"></span>影像（有注记）</button>
-      <button class="bm-cell" data-basemap="tianditu-vec-nolabel"><span class="bm-swatch bm-vec"></span>常规（无注记）</button>
-      <button class="bm-cell" data-basemap="tianditu-vec"><span class="bm-swatch bm-vec"></span>常规（有注记）</button>
-      <button class="bm-cell" data-basemap="dark"><span class="bm-swatch bm-dark"></span>暗色</button>
-      <button class="bm-cell" data-basemap="positron"><span class="bm-swatch bm-light"></span>浅色</button>
-      <button class="bm-cell" data-basemap="bright"><span class="bm-swatch bm-voyager"></span>Voyager</button>
+      <button class="bm-cell is-active" data-basemap="positron"><span class="bm-swatch bm-light"></span>浅色（无注记）</button>
+      <button class="bm-cell" data-basemap="dark-matter"><span class="bm-swatch bm-dark"></span>暗色（无注记）</button>
+      <button class="bm-cell" data-basemap="voyager"><span class="bm-swatch bm-voyager"></span>Voyager（无注记）</button>
+      <button class="bm-cell" data-basemap="tianditu-img"><span class="bm-swatch bm-sat"></span>影像（天地图）</button>
+      <button class="bm-cell" data-basemap="tianditu-vec"><span class="bm-swatch bm-vec"></span>常规（天地图·带注记）</button>
     </div>
   </div>
 
   <!-- ═══ Settings popover (layer 要素按钮) — built by settings.js ═══ -->
   <div id="settings-popover" hidden></div>
+
+  <!-- ═══ HeatMap parameter dialog ═══ -->
+  <dialog id="heatmap-dialog" class="app-dialog hm-dialog">
+    <div class="dialog-head">
+      <span class="dialog-title">HeatMap · 核密度分析</span>
+      <button class="dialog-close" data-close>&times;</button>
+    </div>
+    <div class="dialog-body">
+
+      <!-- A. 数据与显示 -->
+      <div class="hm-group">
+        <div class="hm-group-title">A. 数据与显示</div>
+        <div class="hm-section">
+          <div class="hm-label">数据层级 / Level <span class="hm-info">i<span class="hm-tip">选择分析的数据层级。L2 = 已完成情绪分析（积极/消极/中性）；L1 = 治理相关性（置信度）；L3/L4 开发中。热力图分析以 L2 为主。</span></span></div>
+          <select class="sec-select" id="hm-level"></select>
+        </div>
+        <div class="hm-section">
+          <div class="hm-label">极性子集 / Subset <span class="hm-info">i<span class="hm-tip">L2 下选择极性范围。P = 只看积极情绪；N = 只看消极情绪；PN = 综合（含中性点）。无单独 Neutral 选项——中性点计入"综合"。L1 无极性，此项禁用。</span></span></div>
+          <select class="sec-select" id="hm-subset">
+            <option value="PN" selected>综合 PN（积极+消极，含中性点）</option>
+            <option value="P">积极 P</option>
+            <option value="N">消极 N</option>
+          </select>
+        </div>
+        <div class="hm-section">
+          <div class="hm-label">情绪类型 / Types <span class="hm-info">i<span class="hm-tip">筛选进入热力图的情绪类型（论文 7 类，每类对应一个治理动作）。默认全选；取消勾选的类型不计入。数据若无 emotion_type 字段，按极性派生（积极→喜悦满意，消极→不满抱怨等）。</span></span></div>
+          <div class="hm-type-filter" id="hm-types"><!-- chips by JS --></div>
+        </div>
+        <div class="hm-section">
+          <div class="hm-label">色带 / Color <span class="hm-info">i<span class="hm-tip">热力图颜色随密度变化的映射。综合彩虹 = 中立（推荐起步）；积极绿 6 级 / 消极红 6 级 = 强化极性倾向；单色 = 纯密度不暗示情绪。</span></span></div>
+          <div class="hm-ramp-list" id="hm-ramps"><!-- built by heatmap-tool.js --></div>
+        </div>
+        <div class="hm-section">
+          <div class="hm-label" id="hm-radius-label">半径 / Radius <span class="hm-val" id="hm-radius-val">300 m</span> <span class="hm-info">i<span class="hm-tip">核密度带宽（地理米）。值越大越平滑、热点越融合；越小越尖锐、细节越多。街区级分析用 150–300 m，城区级用 500–1000 m。默认 300 m 适合多数城市场景。</span></span></div>
+          <input type="range" class="set-range" id="hm-radius" min="50" max="2000" value="300" step="10">
+        </div>
+        <div class="hm-section">
+          <div class="hm-label">透明度 / Opacity <span class="hm-val" id="hm-opacity-val">70%</span> <span class="hm-info">i<span class="hm-tip">热力图叠加在底图上的不透明度。值高则热力图更突出，值低则底图更清晰。规划汇报建议 60–80%。</span></span></div>
+          <input type="range" class="set-range" id="hm-opacity" min="0" max="100" value="70" step="1">
+        </div>
+      </div>
+
+      <!-- B. 权重与建模 -->
+      <div class="hm-group">
+        <div class="hm-group-title">B. 权重与建模</div>
+        <div class="hm-section">
+          <div class="hm-label">权重字段 / Weight <span class="hm-info">i<span class="hm-tip">决定每个点对热核的贡献来源。emotion_intensity = 情绪浓淡（0 中性、1 极端，推荐，直观）；score = 情绪分数（需配"反转"曲线才让消极更热）；l2_confidence = 分析置信度；uniform = 等权，纯看密度不看情绪。</span></span></div>
+          <select class="sec-select" id="hm-weight-field">
+            <option value="emotion_intensity" selected>emotion_intensity（情绪强度，推荐）</option>
+            <option value="score">score（情绪分数）</option>
+            <option value="l2_confidence">l2_confidence（置信度）</option>
+            <option value="uniform">uniform（等权重）</option>
+          </select>
+        </div>
+        <div class="hm-section">
+          <div class="hm-label">权重曲线 / Curve <span class="hm-info">i<span class="hm-tip">字段值映射成权重的形状。linear = 值越高权重越高（配 emotion_intensity）；linear-inverse = 反转，配 score 让消极更热；exponential = 高值急剧拉升，热点更尖更集中。</span></span></div>
+          <select class="sec-select" id="hm-curve">
+            <option value="linear" selected>线性正向（高值越热）</option>
+            <option value="linear-inverse">线性反转（低值越热，配 score）</option>
+            <option value="exponential">指数正向（高值急剧加热）</option>
+            <option value="exponential-inverse">指数反转（低值急剧加热）</option>
+          </select>
+          <div class="hm-hint" id="hm-curve-hint">当前：值越高 → 权重越高 → 颜色越热（推荐配 emotion_intensity）</div>
+        </div>
+        <div class="hm-section">
+          <div class="hm-label">强度系数 / Intensity <span class="hm-val" id="hm-intensity-val">1.0</span> <span class="hm-info">i<span class="hm-tip">热核整体强度倍率。值越大整体颜色越浓烈（但不改变热点相对位置）。默认 1.0；想让热点更醒目可调到 1.2–1.5。</span></span></div>
+          <input type="range" class="set-range" id="hm-intensity" min="0" max="3" value="1" step="0.1">
+        </div>
+        <div class="hm-section">
+          <div class="hm-label">强度阈值 / Min Intensity <span class="hm-val" id="hm-int-min-val">0.00</span> <span class="hm-info">i<span class="hm-tip">过滤"假热点"——emotion_intensity 低于此值的点不计入热力图。调高可剔除零散中性长文本，只保留真正有情绪浓度的点。默认 0 = 不过滤。</span></span></div>
+          <input type="range" class="set-range" id="hm-int-min" min="0" max="1" value="0" step="0.05">
+        </div>
+      </div>
+
+      <!-- C. 高级（默认折叠） -->
+      <details class="hm-advanced" id="hm-advanced">
+        <summary>C. 高级 / Advanced</summary>
+        <div class="hm-section">
+          <div class="hm-label">可见缩放范围</div>
+          <div class="hm-zoom-range">
+            <span>Min Zoom</span>
+            <input type="range" class="set-range" id="hm-minzoom" min="0" max="22" value="0" step="1">
+            <span class="hm-val" id="hm-minzoom-val">0</span>
+            <span>Max Zoom</span>
+            <input type="range" class="set-range" id="hm-maxzoom" min="0" max="22" value="22" step="1">
+            <span class="hm-val" id="hm-maxzoom-val">22</span>
+          </div>
+        </div>
+      </details>
+
+    </div>
+    <div class="dialog-foot">
+      <button class="sec-btn sec-run" data-close>取消</button>
+      <button class="sec-btn" id="hm-generate">生成热力图</button>
+    </div>
+  </dialog>
 
   <!-- ═══ Modal dialog (Export) ═══ -->
   <dialog id="modal-export" class="app-dialog">

@@ -64,6 +64,8 @@ export function showPopup(feature, colors, colorMode) {
   const rows = [];
   if (p.location) rows.push(['位置', p.location]);
   if (p.category) rows.push(['类别', p.category]);
+  if (p.emotion_type) rows.push(['情绪类型', p.emotion_type]);
+  if (p.emotion_intensity != null) rows.push(['情绪强度', Number(p.emotion_intensity).toFixed(2)]);
   if (Array.isArray(p.keywords) && p.keywords.length) rows.push(['关键词', p.keywords.join('、')]);
   const c = feature.geometry && feature.geometry.coordinates;
   if (c) rows.push(['坐标', Array.isArray(c[0]) ? feature.geometry.type : `${c[1].toFixed(4)}, ${c[0].toFixed(4)}`]);
