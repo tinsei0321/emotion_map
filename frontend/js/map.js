@@ -14,16 +14,16 @@ const YICHANG = { center: [111.286, 30.708], zoom: 12 };
 const NAVY = '#0c1c2e';
 const HIT_WIDTH = 12;           // transparent hit-line width (easy hover/click on thin outlines)
 
-/** Density-adaptive point radius (user spec): by point count → tier, and within a tier
- *  the radius breathes with zoom (zoom in = fewer on screen = bigger).
- *    sparse  (≤1000)   → 14–18px
- *    high    (≤20000)  → 8–12px
- *    ultra   (>20000)  → 4–6px
+/** Density-adaptive point radius (user spec, L0-L4 uniform): by point count → tier,
+ *  and within a tier the radius breathes with zoom (zoom in = bigger).
+ *    < 500           → 14–18px (= current sparse baseline)
+ *    500 ≤ n < 2000  → 8–11px  (≈ 1/2 ~ 2/3)
+ *    ≥ 2000          → 3–5px   (≈ 1/4, even smaller)
  *  Returns [rAtZoom8, rAtZoom14]. */
 function densityStops(count) {
-  if (count <= 1000) return [14, 18];
-  if (count <= 20000) return [8, 12];
-  return [4, 6];
+  if (count < 500) return [14, 18];
+  if (count < 2000) return [8, 11];
+  return [3, 5];
 }
 function densityRadiusExpr(count) {
   const [r8, r14] = densityStops(count);
@@ -37,6 +37,7 @@ function densityRadiusAt(count, zoom) {
 
 let map = null;
 let _onPointClick = null;
+let _selectedLayerId = null;   // which layer the selection halo belongs to (clear on hide/remove)
 const _boundPoint = new Set();
 const _boundRange = new Set();
 let _tooltip = null;
@@ -86,7 +87,11 @@ export function renderLayer(layer) {
   const hitLid = lyrHitLid(layer.id);
   for (const l of [hitLid, lineLid, lid]) if (map.getLayer(l)) map.removeLayer(l);
   if (map.getSource(sid)) map.removeSource(sid);
-  if (!layer.visible || !layer.fc.features.length) return;
+  if (!layer.visible || !layer.fc.features.length) {
+    // hiding a point layer → its selection halo must go too
+    if (!layer.visible && layer.kind === 'point') clearSelectionHalo(layer.id);
+    return;
+  }
 
   map.addSource(sid, { type: 'geojson', data: layer.fc });
   if (layer.kind === 'point') {
@@ -107,8 +112,19 @@ export function removeLayerFromMap(id) {
   for (const l of [hitLid, lineLid, lid]) if (map.getLayer(l)) map.removeLayer(l);
   if (map.getSource(sid)) map.removeSource(sid);
   _boundPoint.delete(id); _boundRange.delete(id);
-  for (const h of ['emotion-selected-halo', 'emotion-hover-ring']) if (map.getLayer(h)) map.removeLayer(h);
-  for (const s of ['emotion-selected', 'emotion-hover']) if (map.getSource(s)) map.removeSource(s);
+  clearSelectionHalo();   // a layer going away → selection halo can't stay (resets _selectedLayerId)
+  removeHoverRing();
+}
+
+/** Remove the selection halo. Pass `id` to clear only if it matches the selected layer
+ *  (used when hiding a specific point layer). No arg = clear unconditionally. */
+export function clearSelectionHalo(id) {
+  if (id != null && _selectedLayerId != null && _selectedLayerId !== id) return;
+  _selectedLayerId = null;
+  if (!map) return;
+  const LAYER = 'emotion-selected-halo', SRC = 'emotion-selected';
+  if (map.getLayer(LAYER)) map.removeLayer(LAYER);
+  if (map.getSource(SRC)) map.removeSource(SRC);
 }
 
 export function applyAllLayers() { for (const layer of getLayers()) renderLayer(layer); }
@@ -117,21 +133,24 @@ export function applyAllLayers() { for (const layer of getLayers()) renderLayer(
 function addPointPaint(layer, sid, lid) {
   const count = layer.fc.features.length;
   const radiusExpr = densityRadiusExpr(count);   // density-adaptive, zoom-interpolated
+  const p = layer.paint || {};
   let colorExpr, strokeW, opacity;
   if (layer.colorMode === 'confidence') {
+    // per-layer ramp (set via settings popover) or the default orange ramp
+    const ramp = p.ramp || CONFIDENCE_RAMP;
     colorExpr = ['interpolate', ['linear'], ['get', 'score'],
-      0, CONFIDENCE_RAMP[0], 0.25, CONFIDENCE_RAMP[1], 0.5, CONFIDENCE_RAMP[2], 0.75, CONFIDENCE_RAMP[3], 1, CONFIDENCE_RAMP[4]];
-    strokeW = 0; opacity = 0.75;
+      0, ramp[0], 0.25, ramp[1], 0.5, ramp[2], 0.75, ramp[3], 1, ramp[4]];
+    strokeW = 0; opacity = p.opacity ?? 0.75;
   } else if (layer.colorMode === 'needsAnalysis' || layer.needsAnalysis) {
     colorExpr = token('--geojson-color-emotion-neutral') || '#a3a3a3';
-    strokeW = 1; opacity = 0.85;
+    strokeW = 1; opacity = p.opacity ?? 0.85;
   } else {
     const colors = emotionColors();
     colorExpr = ['match', ['get', 'polarity'],
       'Very Positive', colors['Very Positive'], 'Positive', colors['Positive'],
       'Neutral', colors['Neutral'], 'Negative', colors['Negative'],
       'Very Negative', colors['Very Negative'], colors['Neutral']];
-    strokeW = 1; opacity = 0.9;
+    strokeW = 1; opacity = p.opacity ?? 0.9;
   }
   map.addLayer({
     id: lid, type: 'circle', source: sid,
@@ -184,6 +203,7 @@ function bindPointInteractions(layer, lid) {
   map.on('mouseleave', lid, () => { map.getCanvas().classList.remove('is-pointer'); removeHoverRing(); });
   map.on('click', lid, (e) => {
     const f = e.features && e.features[0]; if (!f) return;
+    _selectedLayerId = layer.id;       // remember which layer the halo belongs to
     showSelectionHalo(f);
     if (_onPointClick) _onPointClick(f, emotionColors(), mode);
   });

@@ -2,6 +2,7 @@
 import { token, getLayers, getLayer, setLayerVisible, removeLayer } from './state.js';
 import { renderLayer, removeLayerFromMap } from './map.js';
 import { toast } from './toast.js';
+import { openSettingsPopover, closeSettingsPopover, openSettingsLayerId, isOpen } from './settings.js';
 
 const expandedWidth = { left: 0, right: 0 };
 
@@ -107,20 +108,38 @@ export function renderLayerList() {
     list.innerHTML = '<div class="layer-empty">尚未导入数据</div>';
     return;
   }
-  list.innerHTML = layers.map((l) => `
+  const openId = openSettingsLayerId();
+  list.innerHTML = layers.map((l) => {
+    // 要素按钮: point/polygon clickable (opens settings); line stays a non-interactive chip.
+    const kindEl = (l.kind === 'point' || l.kind === 'polygon')
+      ? `<button class="layer-kind${openId === l.id ? ' is-active' : ''}" data-feat="${l.id}" title="要素设置">${KIND_LABEL[l.kind]}</button>`
+      : `<span class="layer-kind is-disabled" title="线暂未开放设置">${KIND_LABEL[l.kind] || '层'}</span>`;
+    return `
     <div class="layer-row${l.visible ? '' : ' is-off'}" data-id="${l.id}">
       <button class="layer-eye" data-eye="${l.id}" title="${l.visible ? '隐藏' : '显示'}">${l.visible ? eyeOpen : eyeOff}</button>
-      <span class="layer-kind">${KIND_LABEL[l.kind] || '层'}</span>
+      ${kindEl}
       <span class="layer-name" title="${l.name}">${l.name}</span>
       ${l.needsAnalysis ? '<span class="layer-tag">需分析</span>' : ''}
       <button class="layer-del" data-del="${l.id}" title="删除">&times;</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   list.querySelectorAll('[data-eye]').forEach((b) => {
     b.addEventListener('click', (e) => { e.stopPropagation(); toggleEye(b.dataset.eye); });
   });
   list.querySelectorAll('[data-del]').forEach((b) => {
     b.addEventListener('click', (e) => { e.stopPropagation(); deleteLayer(b.dataset.del); });
+  });
+  list.querySelectorAll('[data-feat]').forEach((b) => {
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = b.dataset.feat;
+      const l = getLayer(id);
+      if (!l) return;
+      if (isOpen() && openSettingsLayerId() === id) closeSettingsPopover();
+      else openSettingsPopover(l, b);
+      renderLayerList();   // refresh .is-active on the kind marker
+    });
   });
 }
 
@@ -136,6 +155,7 @@ function toggleEye(id) {
 function deleteLayer(id) {
   const l = getLayer(id);
   if (!l) return;
+  if (openSettingsLayerId() === id) closeSettingsPopover();
   removeLayer(id);
   removeLayerFromMap(id);
   renderLayerList();
@@ -156,11 +176,15 @@ export function initSidebar({ onFiles } = {}) {
   document.getElementById('layers-clear')?.addEventListener('click', () => {
     const layers = getLayers();
     if (!layers.length) { toast.info('没有可删除的图层'); return; }
+    closeSettingsPopover();
     for (const l of layers) { removeLayer(l.id); removeLayerFromMap(l.id); }
     renderLayerList();
     document.dispatchEvent(new CustomEvent('layers:changed'));
     toast.success('已清空全部图层');
   });
+
+  // popover closed via outside-click/Escape → clear the kind marker's active state
+  document.addEventListener('layer-settings:closed', renderLayerList);
 
   // placeholder Analysis handlers
   const log = (id) => console.log('[sidebar]', id, '(Phase 2 wiring)');

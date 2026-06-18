@@ -14,7 +14,7 @@
 | 1 | ✅ | Import v1：1:1 geojson.io 导入管道 | `frontend/js/{import,dialog,toast,state,map,sidebar,main,popup}.js` `frontend/css/{toast,dialog,sidebar,popup,legend,layout}.css` `frontend/index.html` | groupFiles/detectType/parse(GeoJSON/CSV/KML/Shapefile)/proj4 CRS/几何分流/polarity探测/merge/fitBounds；导入确认弹窗（单/组合文件）；全局胶囊 toast；左栏图层管理器（眼睛/删除/清空） |
 | 2 | ✅ | Import v2 批1：bug 修复 + 核心显示 | 同上 + `tokens.css` | 7 bug（polygon 线层泄漏/Import 误切模式/删 seed/左栏默认展开/Layers 自动展开/shapefile 5件包/眼睛放大）+ L1 橙色置信度着色 + 图例按层显隐 + polygon 海军轮廓 + 范围第二 popup |
 | 3 | ✅ | Import 细化轮 | 同上 | 闭合线归为 polygon（GIS 常识）；范围 popup 重构（名称下沉第二层、收起显 Range）；点大小改密度自适应（稀疏14-18/高8-12/超高4-6，随zoom插值）；选中=灰白加粗描边不填充；收起胶囊定宽64px；L2 配色提浅（最深不变） |
-| 4 | ⬜ | Import 批2：要素按钮 + Kepler 设置弹窗 + 预设色板 | 待定 | 点/面 marker 变可点按钮（深灰激活框）；设置弹窗（预设色板长条点选 + opacity + 线宽 + fill 开关）；线暂不开发 |
+| 4 | 🔄 | Import 批2：要素按钮 + Kepler 设置弹窗 + 预设色板 | `frontend/js/settings.js` `frontend/css/settings.css` `frontend/js/{sidebar,map}.js` `frontend/index.html` | 点/面 marker 变可点「要素按钮」（激活=深灰粗圆角框）；Kepler 设置弹窗（预设色板横条/色块 + 透明度/线宽滑块 + 面填充开关）；线暂不开放。实现完成待肉眼验 |
 
 > 💡 标准启动指令：`@pm 开始处理 2026-06-18 的任务 N：任务名称`
 
@@ -26,6 +26,8 @@
 - **Import v1**：geojson.io 1:1 导入。两处 Import（工具栏+左栏）+ 页面拖放 → 原生文件窗 → **每次导入都弹确认弹窗**（单文件=文件名+格式下拉可改写；组合包="Import {name} (n/N)"+文件名列表；Cancel/Import）。管道：`groupFiles`(shapefile 多文件成组) → `detectType`(扩展名/JSON内容sniff) → `parseGroup`(GeoJSON/CSV/KML/Shapefile) → `reprojectFC`(proj4 读 .prj → WGS84) → `splitByGeometry`(Point/Line/Polygon 分流) → `detectColorMode`(polarity/confidence/needsAnalysis) → **merge 追加** + fitBounds。全局胶囊 toast。左栏图层管理器（眼睛显隐/×删除/区段头清空）。
 - **Import v2 批1**（用户实测后 7 bug + 显示）：①polygon 开关失效=fill(`lyr-{id}`)+line(`lyr-{id}-line`)两图层泄漏，改同步增删 ②顶端 Import 误切 sections，改仅加载成功后切 ③删 seed 模拟数据，首屏空 ④左栏默认展开凸显 Import ⑤加载后自动展开 Layers ⑥**shapefile 5件包失效**=shpjs `combine` 参数顺序写反(应[几何,属性])，改走 parseShp/parseDbf/combine 直读 ⑦眼睛放大。+ L1 橙色置信度着色（Kepler 风、小点无描边、置信度越高越深）+ 图例按层显隐（polarity/confidence/range 三块）+ polygon 默认 fillOff 海军轮廓 + 范围第二 popup（海军主题、面积/周长/类型/顶点/bbox）。
 - **细化轮**：①闭合 LineString 归为 polygon（首尾点重合=面边界，GIS 常识）→ marker 显「面」②范围 popup 重构：名称下沉第二层(.popup-text，类评论)、「范围」badge 去强调、收起显粗体"Range"、与情绪胶囊同宽 ③点大小**密度自适应**(densityStops：≤1000→14-18/≤20000→8-12/>20000→4-6，随zoom插值，取代固定3x) ④选中=灰白(#E8E8E8)加粗(3.5)描边、不填充 ⑤收起胶囊定宽64px+大写+省略 ⑥L2 配色提浅（very-negative #B92D2D 不变，其余按明度比例提浅）⑦范围透明 hit 层(宽12)易悬停/点击。
+- **Import 批2**：要素按钮 + Kepler 设置弹窗。图层行「点/面」marker 由 span 改可点 button（激活=gray-700 `#404040` 粗圆角框、放大到 ~22px 与眼睛齐；线为禁用 chip）；点开 `#settings-popover`（`position:fixed`，靠左栏右边+8px、240px、圆角 8px=radius-lg 同左簇/图例）：点·L1 confidence=**序列色板横条点选**(→`paint.ramp`)+透明度滑块；点·L2/needsAnalysis=仅透明度（颜色由极性/灰决定）；面=**填充开关**(→`paint.fillOn`)+**单色色块**(→`paint.color`)+线宽滑块+填充透明度滑块。控件 change → `setLayerPaint`+`renderLayer` 实时重渲（renderLayer 的 remove+readd 已支持 live）。预设 6 序列色板（橙默认/蓝/绿/紫/红/灰）+ 10 单色块。一次一弹窗；外部点/ESC/删图层关闭。`map.js addPointPaint` 改读 per-layer `paint.ramp`/`paint.opacity`。
+- **点密度策略再修订**（用户定）：`densityStops` 阈值收紧——`<500→[14,18]` / `500-2000→[8,11]` / `≥2000→[3,5]`（原 ≤1000/≤20000/>20000）。用户 2000 点数据 ~10.7px→~4px。L0-L4 统一（radius 本就 colorMode 无关）。
 - **配置**：index.html 加 CDN 解析库（csv2geojson/shpjs/proj4/fflate；@tmcw/togeojson 走 esm.sh 动态导入，CN 不可达则降级）。tokens.json/tokens.css 情绪五色单源同步。
 
 #### 踩坑 & 收获

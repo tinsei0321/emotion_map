@@ -109,7 +109,7 @@ function main() {
     refreshOverview();
   });
 
-  console.log('[OK] emotion-map frontend (Import v2 batch1) loaded');
+  console.log('[OK] emotion-map frontend (Import v2 batch2) loaded');
 }
 
 document.addEventListener('DOMContentLoaded', main);
