@@ -6,8 +6,8 @@
 //   • line                 → (no popover; marker non-interactive)
 // Live: control change → setLayerPaint + renderLayer (re-renders that layer).
 
-import { getLayer, setLayerPaint } from './state.js';
-import { renderLayer } from './map.js';
+import { getLayer, setLayerPaint, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR } from './state.js';
+import { renderLayer, effectivePointRadius } from './map.js';
 import { refreshPopupForLayer } from './popup.js';
 
 // ── Presets ────────────────────────────────────────────────────────────────
@@ -69,11 +69,14 @@ export function closeSettingsPopover() {
 function position(anchorBtn) {
   const pop = el();
   if (!pop || !anchorBtn) return;
-  const lp = document.getElementById('left-panel').getBoundingClientRect();
+  // align with the bottom-left map cluster (same left offset — "浮窗对齐边栏"基本逻辑)
+  const cluster = document.querySelector('.emotion-controls-root');
+  const leftX = cluster ? cluster.getBoundingClientRect().left
+    : document.getElementById('left-panel').getBoundingClientRect().right + 10;
   const btn = anchorBtn.getBoundingClientRect();
-  const top = Math.max(80, Math.min(btn.top, window.innerHeight - 260));
+  const top = Math.max(80, Math.min(btn.top, window.innerHeight - 320));
   pop.style.top = `${top}px`;
-  pop.style.left = `${lp.right + 8}px`;
+  pop.style.left = `${leftX}px`;
 }
 
 // ── Build popover DOM for a layer ──────────────────────────────────────────
@@ -91,12 +94,13 @@ function build(layer) {
   let body = '';
   if (layer.kind === 'point') {
     if (layer.colorMode === 'confidence') {
-      body = sectionRamp(p.ramp) + sectionOpacity(p.opacity ?? 0.75);
+      body = sectionRamp(p.ramp) + sectionPointSize(layer) + sectionOpacity(p.opacity ?? 0.75);
+    } else if (layer.colorMode === 'l2-positive' || layer.colorMode === 'l2-negative' || layer.colorMode === 'l2-neutral') {
+      body = l2PaletteLegend(layer.colorMode) + sectionPointSize(layer) + sectionOpacity(p.opacity ?? 0.18);
+    } else if (layer.colorMode === 'needsAnalysis') {
+      body = `<div class="set-note">颜色：暂无情绪字段（需治理）</div>` + sectionPointSize(layer) + sectionOpacity(p.opacity ?? 0.5);
     } else {
-      const whyFixed = layer.colorMode === 'needsAnalysis'
-        ? '颜色：暂无情绪字段（需分析）'
-        : '颜色：由极性决定（L2）';
-      body = `<div class="set-note">${whyFixed}</div>` + sectionOpacity(p.opacity ?? (layer.colorMode === 'needsAnalysis' ? 0.85 : 0.9));
+      body = `<div class="set-note">颜色：由极性决定</div>` + sectionPointSize(layer) + sectionOpacity(p.opacity ?? 0.9);
     }
   } else if (layer.kind === 'polygon') {
     body = sectionFill(p.fillOn) + sectionColor(p.color || '#0c1c2e') + sectionLineWidth(p.lineWidth ?? 2) + sectionFillOpacity(p.fillOpacity ?? 0.3, p.fillOn);
@@ -130,6 +134,20 @@ function sectionFillOpacity(op, fillOn) {
 }
 function sectionFill(fillOn) {
   return `<div class="set-section"><label class="set-toggle"><input type="checkbox" ${fillOn ? 'checked' : ''} data-fill><span>填充面域</span></label></div>`;
+}
+/** Point size slider (px). Default = effective radius (density or paint.radius override). */
+function sectionPointSize(layer) {
+  const r = effectivePointRadius(layer);
+  return rangeSection('点大小', Number(r.toFixed(1)), 'data-radius', 'px', 1, 30, 0.5);
+}
+/** Read-only palette legend for L2 sub-layers (colors are fixed presets). */
+function l2PaletteLegend(cm) {
+  const sw = (hex, label) => `<span class="set-sw" style="background:${hex}"></span>${label}`;
+  let inner = '';
+  if (cm === 'l2-positive') inner = sw(L2_POSITIVE['Very Positive'], '非常积极') + sw(L2_POSITIVE['Positive'], '积极');
+  else if (cm === 'l2-negative') inner = sw(L2_NEGATIVE['Very Negative'], '非常消极') + sw(L2_NEGATIVE['Negative'], '消极');
+  else if (cm === 'l2-neutral') inner = sw(L2_NEUTRAL_COLOR, '中性');
+  return `<div class="set-section"><div class="set-label">色板（固定）</div><div class="set-legend">${inner}</div></div>`;
 }
 function rangeSection(label, val, attr, unit = '%', min = 0, max = 100, step = 1) {
   return `<div class="set-section">
@@ -176,6 +194,7 @@ function wire(layer) {
   bindRange(pop, '[data-op]', (v) => applyPaint({ opacity: v / 100 }), '%');
   bindRange(pop, '[data-width]', (v) => applyPaint({ lineWidth: v }), 'px');
   bindRange(pop, '[data-fillop]', (v) => applyPaint({ fillOpacity: v / 100 }), '%');
+  bindRange(pop, '[data-radius]', (v) => applyPaint({ radius: v }), 'px');
 }
 function bindRange(pop, sel, fn, unit) {
   const r = pop.querySelector(sel);

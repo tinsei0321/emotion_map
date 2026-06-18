@@ -139,17 +139,22 @@ export function confidenceStats(fc) {
 }
 
 // ── Layer registry ────────────────────────────────────────────────────────
-// One entry per imported file (or the seed sample). Drives the left-panel
-// layer manager (eye toggle / trash delete) and multi-layer map rendering.
-//   kind: 'point' | 'line' | 'polygon'
-//   colorMode (point): 'polarity' (L2 5-color) | 'confidence' (L1 orange ramp) | 'needsAnalysis' (grey)
-//   paint (polygon/line): { color, fillOn, lineWidth, fillOpacity }
+// One entry per imported file. Drives the left-panel layer manager + map rendering.
+//   kind: 'point' | 'line' | 'polygon' | 'group'   (group = L2 container, non-rendered)
+//   colorMode (point): 'l2-positive' | 'l2-neutral' | 'l2-negative' | 'confidence'(L1) | 'needsAnalysis'(L0)
+//   parentId: set on group children; group itself has children[]
+//   paint: polygon/line {color,fillOn,lineWidth,fillOpacity}; point {ramp?,opacity?,radius?}
 
 const NAVY = '#0c1c2e';   // title-bar navy (range outline default)
 const _layers = new Map();   // id -> layer object
 let _seq = 0;
 
-export function addLayer({ name, kind, fc, needsAnalysis = false, colorMode, paint }) {
+// ── L2 palettes (polarity split: Positive green / Negative orange-red / Neutral moody blue) ──
+export const L2_POSITIVE = { 'Very Positive': '#86E61C', 'Positive': '#3DBA9E' };   // 鲜艳荧光绿→蓝绿(teal)
+export const L2_NEGATIVE = { 'Very Negative': '#A3321A', 'Negative': '#E07142' };    // 暗橘红→浅橘红
+export const L2_NEUTRAL_COLOR = '#3A7CA5';                                            // 忧郁蓝（会合色）
+
+export function addLayer({ name, kind, fc, needsAnalysis = false, colorMode, paint, parentId }) {
   const id = 'L' + (++_seq).toString().padStart(3, '0');
   const defaultPaint = kind === 'polygon'
     ? { color: NAVY, fillOn: false, lineWidth: 2, fillOpacity: 0.3 }
@@ -157,12 +162,34 @@ export function addLayer({ name, kind, fc, needsAnalysis = false, colorMode, pai
       ? { color: NAVY, lineWidth: 2 }
       : {};
   const layer = {
-    id, name, kind, fc, visible: true, needsAnalysis,
+    id, name, kind, fc, visible: true, needsAnalysis, parentId: parentId || null,
     colorMode: colorMode || (needsAnalysis ? 'needsAnalysis' : 'polarity'),
     paint: { ...defaultPaint, ...(paint || {}) },
   };
   _layers.set(id, layer);
+  if (parentId) {
+    const parent = _layers.get(parentId);
+    if (parent && parent.kind === 'group') parent.children.push(id);
+  }
   return layer;
+}
+
+/** Create an L2 group container (non-rendered) holding the full L2 FC for Overview. */
+export function addGroup({ name, fc }) {
+  const id = 'G' + (++_seq).toString().padStart(3, '0');
+  const group = { id, name, kind: 'group', fc, visible: true, children: [], parentId: null };
+  _layers.set(id, group);
+  return group;
+}
+export function getChildren(groupId) {
+  const g = _layers.get(groupId);
+  return g ? g.children.map((cid) => _layers.get(cid)).filter(Boolean) : [];
+}
+/** Full FC of a group (all children merged) — for Overview aggregate. */
+export function groupFC(groupId) {
+  const feats = [];
+  for (const c of getChildren(groupId)) if (c.visible) feats.push(...(c.fc.features || []));
+  return { type: 'FeatureCollection', features: feats };
 }
 
 /** Update a layer's paint field (used by the settings popover in batch 2; kept here for symmetry). */
@@ -173,7 +200,17 @@ export function setLayerPaint(id, patch) {
 }
 
 export function removeLayer(id) {
+  const l = _layers.get(id);
+  if (!l) return false;
   if (_selectedLayerId === id) _selectedLayerId = null;
+  if (l.kind === 'group') {
+    // cascade: remove all children
+    for (const cid of [...(l.children || [])]) removeLayer(cid);
+  }
+  if (l.parentId) {
+    const p = _layers.get(l.parentId);
+    if (p && p.children) p.children = p.children.filter((c) => c !== id);
+  }
   return _layers.delete(id);
 }
 export function getLayer(id) { return _layers.get(id); }
@@ -185,14 +222,38 @@ export function setLayerVisible(id, visible) {
 }
 
 /** Data level for display (tags / Overview / popup branches):
- *   point needsAnalysis → 'L0' (raw, 需治理) · confidence → 'L1' (可分析) · polarity → 'L2'
- *   polygon/line → 'range'. */
+ *   point needsAnalysis → 'L0' · confidence → 'L1' · l2-positive/neutral/negative → 'L2'
+ *   polygon/line → 'range' · group → 'L2' (L2 group container). */
 export function layerLevel(layer) {
   if (!layer) return null;
+  if (layer.kind === 'group') return 'L2';
   if (layer.kind === 'polygon' || layer.kind === 'line') return 'range';
   if (layer.colorMode === 'confidence') return 'L1';
-  if (layer.colorMode === 'polarity') return 'L2';
-  return 'L0';   // needsAnalysis / unknown
+  if (layer.colorMode === 'l2-positive' || layer.colorMode === 'l2-negative' || layer.colorMode === 'l2-neutral' || layer.colorMode === 'polarity') return 'L2';
+  return 'L0';
+}
+
+/** Resolve a layer to its "focus layer" for Overview linkage: an L2 child → its parent group;
+ *  group/standalone → itself. (Overview recognizes the big level, not sub-layers.) */
+export function focusLayer(layer) {
+  if (!layer) return null;
+  if (layer.parentId) return _layers.get(layer.parentId) || layer;
+  return layer;
+}
+
+/** Display color for hint chip / badges — synced with the layer's current paint. */
+export function layerDisplayColor(layer) {
+  if (!layer) return '#a3a3a3';
+  if (layer.kind === 'polygon' || layer.kind === 'line') return (layer.paint && layer.paint.color) || NAVY;
+  const cm = layer.colorMode;
+  if (cm === 'confidence') {
+    const ramp = (layer.paint && layer.paint.ramp) || CONFIDENCE_RAMP;
+    return rampColor(ramp, 0.6);   // mid-high confidence → representative hue
+  }
+  if (cm === 'l2-positive') return L2_POSITIVE['Positive'];      // 翠绿
+  if (cm === 'l2-negative') return L2_NEGATIVE['Negative'];      // 浅橘红
+  if (cm === 'l2-neutral') return L2_NEUTRAL_COLOR;              // 忧郁蓝
+  return '#a3a3a3';   // L0 grey
 }
 
 // ── Selection ──────────────────────────────────────────────────────────────

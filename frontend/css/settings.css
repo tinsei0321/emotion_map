@@ -164,3 +164,22 @@
   border: 2px solid #ffffff;
   cursor: pointer;
 }
+
+/* ── Palette legend (read-only, L2 sub-layers) ── */
+.set-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--geojson-typography-size-2xs);
+  color: var(--geojson-color-text-secondary);
+}
+.set-sw {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--geojson-radius-xs, 2px);
+  border: 1px solid var(--geojson-color-border-default, #e5e5e5);
+  margin-right: 3px;
+  vertical-align: middle;
+}

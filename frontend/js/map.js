@@ -1,5 +1,5 @@
 // ═══ map.js — MapLibre GL JS instance, multi-layer registry, basemap switch ═══
-import { emotionColors, token, POLARITY_ORDER, getLayers, CONFIDENCE_RAMP, confidenceColor } from './state.js';
+import { emotionColors, token, POLARITY_ORDER, getLayers, CONFIDENCE_RAMP, confidenceColor, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR } from './state.js';
 import { initControls } from './map-controls.js';
 import { showRangePopup } from './popup.js';
 
@@ -33,6 +33,12 @@ function densityRadiusAt(count, zoom) {
   const [r8, r14] = densityStops(count);
   const z = Math.max(8, Math.min(14, zoom));
   return r8 + (r14 - r8) * (z - 8) / 6;
+}
+/** Effective point radius for the settings slider default: paint.radius override, else density value at the current zoom. */
+export function effectivePointRadius(layer) {
+  const p = layer.paint || {};
+  if (p.radius != null) return p.radius;
+  return densityRadiusAt(layer.fc.features.length, map ? map.getZoom() : 11);
 }
 
 let map = null;
@@ -81,6 +87,7 @@ const lyrHitLid = (id) => `lyr-${id}-hit`;
 /** (Re)render one registry layer. Hidden layers are fully removed (fill + outline + hit). */
 export function renderLayer(layer) {
   if (!map) return;
+  if (layer.kind === 'group') return;   // group container is not rendered on the map
   const sid = lyrSrc(layer.id);
   const lid = lyrLid(layer.id);
   const lineLid = lyrLineLid(layer.id);
@@ -103,6 +110,23 @@ export function renderLayer(layer) {
   } else if (layer.kind === 'line') {
     addLinePaint(layer, sid, lid, hitLid);
     bindRangeInteractions(layer, hitLid, lid);
+  }
+  restackZ();   // keep z-order tied to list order (survives toggles)
+}
+
+/** Lightweight z-order fix using moveLayer (no re-render). Moves all lyr-* layers
+ *  to match list order: list-top = map-top. Called after every renderLayer so
+ *  toggling visibility doesn't scramble the stacking. */
+export function restackZ() {
+  if (!map) return;
+  const layers = getLayers();
+  for (let i = layers.length - 1; i >= 0; i--) {
+    const l = layers[i];
+    if (l.kind === 'group') continue;
+    const ids = [lyrLid(l.id), lyrLineLid(l.id), lyrHitLid(l.id)];
+    for (const id of ids) {
+      if (map.getLayer(id)) map.moveLayer(id);   // move to top (no beforeId)
+    }
   }
 }
 
@@ -139,20 +163,29 @@ export function reorderAllZ() {
 // ── Paint per kind ────────────────────────────────────────────────────────
 function addPointPaint(layer, sid, lid) {
   const count = layer.fc.features.length;
-  const radiusExpr = densityRadiusExpr(count);   // density-adaptive, zoom-interpolated
   const p = layer.paint || {};
+  // px override (settings slider) else density-adaptive zoom-interpolated radius
+  const radius = (p.radius != null) ? p.radius : densityRadiusExpr(count);
   let colorExpr, strokeW, opacity;
   if (layer.colorMode === 'confidence') {
-    // per-layer ramp (set via settings popover) or the default orange ramp
     const ramp = p.ramp || CONFIDENCE_RAMP;
     colorExpr = ['interpolate', ['linear'], ['get', 'score'],
       0, ramp[0], 0.25, ramp[1], 0.5, ramp[2], 0.75, ramp[3], 1, ramp[4]];
     strokeW = 0; opacity = p.opacity ?? 0.75;
+  } else if (layer.colorMode === 'l2-positive') {
+    colorExpr = ['match', ['get', 'polarity'], 'Very Positive', L2_POSITIVE['Very Positive'], 'Positive', L2_POSITIVE['Positive'], L2_POSITIVE['Positive']];
+    strokeW = 0; opacity = p.opacity ?? 0.18;
+  } else if (layer.colorMode === 'l2-negative') {
+    colorExpr = ['match', ['get', 'polarity'], 'Very Negative', L2_NEGATIVE['Very Negative'], 'Negative', L2_NEGATIVE['Negative'], L2_NEGATIVE['Negative']];
+    strokeW = 0; opacity = p.opacity ?? 0.18;
+  } else if (layer.colorMode === 'l2-neutral') {
+    colorExpr = L2_NEUTRAL_COLOR;
+    strokeW = 0; opacity = p.opacity ?? 0.18;
   } else if (layer.colorMode === 'needsAnalysis' || layer.needsAnalysis) {
-    // L0: raw data — grey, semi-transparent, NO stroke.
     colorExpr = token('--geojson-color-emotion-neutral') || '#a3a3a3';
     strokeW = 0; opacity = p.opacity ?? 0.5;
   } else {
+    // legacy single polarity layer (frozen) — keep 5-color
     const colors = emotionColors();
     colorExpr = ['match', ['get', 'polarity'],
       'Very Positive', colors['Very Positive'], 'Positive', colors['Positive'],
@@ -163,7 +196,7 @@ function addPointPaint(layer, sid, lid) {
   map.addLayer({
     id: lid, type: 'circle', source: sid,
     paint: {
-      'circle-radius': radiusExpr,
+      'circle-radius': radius,
       'circle-color': colorExpr,
       'circle-stroke-color': token('--geojson-feature-point-stroke') || '#ffffff',
       'circle-stroke-width': strokeW,
@@ -206,7 +239,6 @@ function bindPointInteractions(layer, lid) {
   const mode = layer.colorMode;
   map.on('mouseenter', lid, (e) => {
     map.getCanvas().classList.add('is-pointer');
-    const f = e.features && e.features[0]; if (f) showHoverRing(f);
   });
   map.on('mouseleave', lid, () => { map.getCanvas().classList.remove('is-pointer'); removeHoverRing(); });
   map.on('click', lid, (e) => {

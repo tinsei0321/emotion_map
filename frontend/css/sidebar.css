@@ -324,3 +324,40 @@ button.layer-kind:hover { background: var(--geojson-color-gray-200); color: var(
   background: var(--geojson-color-brand-primary, #007afc);
 }
 
+/* ── Hint char (R / L0·L1·L2, colored by display color) ── */
+.layer-hint {
+  flex: 0 0 auto;
+  min-width: 20px;
+  text-align: center;
+  font-size: var(--geojson-typography-size-2xs);
+  font-weight: var(--geojson-typography-weight-bold);
+  letter-spacing: 0.3px;
+}
+
+/* ── L2 group header (draggable to reorder; no select/eye/del) ── */
+.layer-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 8px 2px;
+  cursor: grab;
+}
+.layer-group:active { cursor: grabbing; }
+.layer-group.is-dragging { opacity: 0.5; }
+.layer-group .layer-grip { opacity: 0; }
+.layer-group:hover .layer-grip { opacity: 0.6; }
+.layer-group-chev { color: var(--geojson-color-text-tertiary); font-size: 9px; }
+.layer-group-name {
+  font-size: var(--geojson-typography-size-xs);
+  font-weight: var(--geojson-typography-weight-bold);
+  color: var(--geojson-color-text-secondary);
+}
+.layer-group-count {
+  font-size: var(--geojson-typography-size-2xs);
+  color: var(--geojson-color-text-tertiary);
+}
+
+/* ── Child rows (indented, fixed order, no drag grip) ── */
+.layer-row.is-child { padding-left: 28px; }
+.layer-grip-spacer { flex: 0 0 14px; width: 14px; }
+

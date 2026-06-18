@@ -1,5 +1,5 @@
 // ═══ sidebar.js — left panel: collapse/expand, drag, import trigger, layer manager ═══
-import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, CONFIDENCE_RAMP } from './state.js';
+import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, layerDisplayColor, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, CONFIDENCE_RAMP, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR } from './state.js';
 import { renderLayer, removeLayerFromMap, reorderAllZ } from './map.js';
 import { toast } from './toast.js';
 import { openSettingsPopover, closeSettingsPopover, openSettingsLayerId, isOpen } from './settings.js';
@@ -97,8 +97,21 @@ export function refreshLegend() {
   const sel = getSelectedLayer();
   const has = (pred) => vis.some(pred);
 
-  // polarity (L2) — token colors, frozen
-  sethidden('legend-polarity', !has((l) => l.kind === 'point' && l.colorMode === 'polarity'));
+  // polarity (L2) — 5-color gradient bar (VP lime → P teal → Neutral blue → N orange → VN dark red)
+  const l2 = vis.find((l) => l.colorMode === 'l2-positive' || l.colorMode === 'l2-neutral' || l.colorMode === 'l2-negative' || l.colorMode === 'polarity');
+  sethidden('legend-polarity', !l2);
+  if (l2) {
+    const items = [
+      ['非常积极', L2_POSITIVE['Very Positive']],
+      ['积极',     L2_POSITIVE['Positive']],
+      ['中性',     L2_NEUTRAL_COLOR],
+      ['消极',     L2_NEGATIVE['Negative']],
+      ['非常消极', L2_NEGATIVE['Very Negative']],
+    ];
+    const rows = document.getElementById('legend-l2-rows');
+    if (rows) rows.innerHTML = items.map(([label, color]) =>
+      `<div class="legend-row"><span class="dot" style="background:${color};border-color:${color}"></span>${label}</div>`).join('');
+  }
 
   // confidence (L1) — ramp colored from the focus layer's paint.ramp
   const conf = (sel && sel.colorMode === 'confidence' && sel.visible) ? sel : vis.find((l) => l.colorMode === 'confidence');
@@ -137,33 +150,67 @@ function levelTag(l) {
   return '';
 }
 
-/** Re-render the layer list from the registry. Called after import/delete/toggle/reorder/select. */
+/** Hint letter between 要素按钮 and name: R (range) / L0·L1·L2 (point), colored by the layer's display color. */
+function hintChip(l) {
+  const lv = layerLevel(l);
+  const text = lv === 'range' ? 'R' : (lv || 'L0');
+  return `<span class="layer-hint" style="color:${layerDisplayColor(l)}">${text}</span>`;
+}
+
+/** Group header row (draggable to reorder; no select/eye/del — those are on children). */
+function groupRowHtml(g, childCount) {
+  return `<div class="layer-group" data-id="${g.id}" draggable="true" title="拖拽排序">
+    ${GRIP}
+    <span class="layer-group-chev">&#9662;</span>
+    <span class="layer-group-name">${g.name}</span>
+    <span class="layer-group-count">${childCount}</span>
+  </div>`;
+}
+
+/** A single layer row (standalone or indented child). */
+function layerRowHtml(l, openId, selId, isChild) {
+  const kindEl = (l.kind === 'point' || l.kind === 'polygon')
+    ? `<button class="layer-kind${openId === l.id ? ' is-active' : ''}" data-feat="${l.id}" title="要素设置">${KIND_LABEL[l.kind]}</button>`
+    : `<span class="layer-kind is-disabled" title="线暂未开放设置">${KIND_LABEL[l.kind] || '层'}</span>`;
+  const sel = selId === l.id ? ' is-selected' : '';
+  const childCls = isChild ? ' is-child' : '';
+  const dragAttr = isChild ? '' : ' draggable="true"';   // children fixed order (P→Neutral→N)
+  const grip = isChild ? '<span class="layer-grip-spacer"></span>' : GRIP;
+  return `<div class="layer-row${sel}${childCls}${l.visible ? '' : ' is-off'}" data-id="${l.id}"${dragAttr}>
+    ${grip}
+    <button class="layer-eye" data-eye="${l.id}" title="${l.visible ? '隐藏' : '显示'}">${l.visible ? eyeOpen : eyeOff}</button>
+    ${kindEl}
+    ${hintChip(l)}
+    <span class="layer-name" title="${l.name}">${l.name}</span>
+    ${levelTag(l)}
+    <button class="layer-del" data-del="${l.id}" title="删除">&times;</button>
+  </div>`;
+}
+
+/** Re-render the layer list (groups + nested children + standalone layers). */
 export function renderLayerList() {
   const list = document.getElementById('layer-list');
   if (!list) return;
-  const layers = getLayers();
-  if (!layers.length) {
-    list.innerHTML = '<div class="layer-empty">尚未导入数据</div>';
-    return;
-  }
+  const all = getLayers();
+  if (!all.length) { list.innerHTML = '<div class="layer-empty">尚未导入数据</div>'; return; }
   const openId = openSettingsLayerId();
   const selId = getSelectedLayerId();
-  list.innerHTML = layers.map((l) => {
-    const kindEl = (l.kind === 'point' || l.kind === 'polygon')
-      ? `<button class="layer-kind${openId === l.id ? ' is-active' : ''}" data-feat="${l.id}" title="要素设置">${KIND_LABEL[l.kind]}</button>`
-      : `<span class="layer-kind is-disabled" title="线暂未开放设置">${KIND_LABEL[l.kind] || '层'}</span>`;
-    const sel = selId === l.id ? ' is-selected' : '';
-    return `
-    <div class="layer-row${sel}${l.visible ? '' : ' is-off'}" data-id="${l.id}" draggable="true">
-      ${GRIP}
-      <button class="layer-eye" data-eye="${l.id}" title="${l.visible ? '隐藏' : '显示'}">${l.visible ? eyeOpen : eyeOff}</button>
-      ${kindEl}
-      <span class="layer-name" title="${l.name}">${l.name}</span>
-      ${levelTag(l)}
-      <button class="layer-del" data-del="${l.id}" title="删除">&times;</button>
-    </div>`;
-  }).join('');
+  const byId = new Map(all.map((l) => [l.id, l]));
+  const top = all.filter((l) => !l.parentId);   // groups + standalone layers
 
+  let html = '';
+  for (const l of top) {
+    if (l.kind === 'group') {
+      const kids = (l.children || []).map((cid) => byId.get(cid)).filter(Boolean);
+      html += groupRowHtml(l, kids.length);
+      for (const c of kids) html += layerRowHtml(c, openId, selId, true);
+    } else {
+      html += layerRowHtml(l, openId, selId, false);
+    }
+  }
+  list.innerHTML = html;
+
+  // wire button events (eye / del / feat)
   list.querySelectorAll('[data-eye]').forEach((b) =>
     b.addEventListener('click', (e) => { e.stopPropagation(); toggleEye(b.dataset.eye); }));
   list.querySelectorAll('[data-del]').forEach((b) =>
@@ -174,40 +221,41 @@ export function renderLayerList() {
       const id = b.dataset.feat;
       const l = getLayer(id);
       if (!l) return;
-      if (isOpen() && openSettingsLayerId() === id) {
-        closeSettingsPopover();
-      } else {
+      if (isOpen() && openSettingsLayerId() === id) closeSettingsPopover();
+      else {
         openSettingsPopover(l, b);
-        // editing a layer → make it the focus so Overview/legend track its color
         selectLayer(id);
         document.dispatchEvent(new CustomEvent('layer:selected', { detail: id }));
       }
       renderLayerList();
     }));
 
-  // row click → select (highlight + open Overview); drag → reorder z-order
-  list.querySelectorAll('.layer-row').forEach((row) => {
-    row.addEventListener('click', () => selectLayerRow(row.dataset.id));
-    row.addEventListener('dragstart', (e) => {
-      _dragId = row.dataset.id;
-      row.classList.add('is-dragging');
+  // row click → select (rows only, not groups)
+  list.querySelectorAll('.layer-row').forEach((row) =>
+    row.addEventListener('click', () => selectLayerRow(row.dataset.id)));
+
+  // drag → reorder z-order (bind to ALL draggable: top-level rows + L2 groups; children excluded)
+  list.querySelectorAll('[draggable]').forEach((el) => {
+    el.addEventListener('dragstart', (e) => {
+      _dragId = el.dataset.id;
+      el.classList.add('is-dragging');
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', _dragId);
     });
-    row.addEventListener('dragend', () => { row.classList.remove('is-dragging'); clearDropHints(); });
-    row.addEventListener('dragover', (e) => { e.preventDefault(); row.classList.add('is-drop-over'); });
-    row.addEventListener('dragleave', () => row.classList.remove('is-drop-over'));
-    row.addEventListener('drop', (e) => {
+    el.addEventListener('dragend', () => { el.classList.remove('is-dragging'); clearDropHints(); });
+    el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('is-drop-over'); });
+    el.addEventListener('dragleave', () => el.classList.remove('is-drop-over'));
+    el.addEventListener('drop', (e) => {
       e.preventDefault(); e.stopPropagation();
-      const targetId = row.dataset.id;
+      const targetId = el.dataset.id;
       if (_dragId && _dragId !== targetId) {
-        const rect = row.getBoundingClientRect();
+        const rect = el.getBoundingClientRect();
         const after = (e.clientY - rect.top) > rect.height / 2;
         const ls = getLayers();
         const idx = ls.findIndex((x) => x.id === targetId);
         const toId = after ? (ls[idx + 1] ? ls[idx + 1].id : null) : targetId;
         reorderLayers(_dragId, toId);
-        reorderAllZ();            // re-stack map: list top = map top
+        reorderAllZ();
       }
       _dragId = null;
       clearDropHints();
@@ -243,8 +291,19 @@ function deleteLayer(id) {
   const l = getLayer(id);
   if (!l) return;
   if (openSettingsLayerId() === id) closeSettingsPopover();
-  removeLayer(id);
-  removeLayerFromMap(id);
+  if (l.kind === 'group') {
+    // remove children's map layers first, then state-cascade the group
+    for (const cid of [...(l.children || [])]) removeLayerFromMap(cid);
+    removeLayer(id);
+  } else {
+    const pid = l.parentId;
+    removeLayerFromMap(id);
+    removeLayer(id);
+    if (pid) {   // child removed → drop the group if now empty
+      const p = getLayer(pid);
+      if (p && p.kind === 'group' && (!p.children || !p.children.length)) removeLayer(pid);
+    }
+  }
   renderLayerList();
   document.dispatchEvent(new CustomEvent('layers:changed'));
   toast.success(`已删除：${l.name}`);

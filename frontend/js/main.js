@@ -4,7 +4,7 @@ import { initPanel, activateTab, setOverview, setTable } from './panel.js';
 import { initToolbar, setActiveBasemap } from './toolbar.js';
 import { initSidebar, openImport, openRightPanel, renderLayerList, showLayerManager, refreshLegend } from './sidebar.js';
 import { initPopup, showPopup } from './popup.js';
-import { addLayer, getSelectedLayer } from './state.js';
+import { addLayer, addGroup, getSelectedLayer } from './state.js';
 import {
   groupFiles, detectGroupType, parseGroup, reprojectFC, readPrj,
   splitByGeometry, detectColorMode, fcBBox,
@@ -55,9 +55,26 @@ async function runImport(files) {
           if (polygons.features.length) { const L = addLayer({ name: base, kind: 'polygon', fc: polygons }); renderLayer(L); added++; }
           if (points.features.length) {
             const { fc: pfc, colorMode, needsAnalysis } = detectColorMode(points);
-            const L = addLayer({ name: base, kind: 'point', fc: pfc, needsAnalysis, colorMode });
-            renderLayer(L); added++;
-            if (needsAnalysis) needsAny = true;
+            if (colorMode === 'polarity') {
+              // L2 → split into Positive / Neutral / Negative under an L2 group (P→Neutral→N order)
+              const pos = [], neu = [], neg = [];
+              for (const f of pfc.features) {
+                const pol = f.properties && f.properties.polarity;
+                if (pol === 'Very Positive' || pol === 'Positive') pos.push(f);
+                else if (pol === 'Very Negative' || pol === 'Negative') neg.push(f);
+                else neu.push(f);
+              }
+              const group = addGroup({ name: `${base} · L2`, fc: pfc });
+              const paint = { opacity: 0.80, radius: 8 };   // 80% opacity + fixed 8px
+              const fcOf = (arr) => ({ type: 'FeatureCollection', features: arr });
+              if (pos.length) { const L = addLayer({ name: 'L2-Positive', kind: 'point', parentId: group.id, colorMode: 'l2-positive', fc: fcOf(pos), paint }); renderLayer(L); added++; }
+              if (neu.length) { const L = addLayer({ name: 'L2-Neutral',  kind: 'point', parentId: group.id, colorMode: 'l2-neutral',  fc: fcOf(neu), paint }); renderLayer(L); added++; }
+              if (neg.length) { const L = addLayer({ name: 'L2-Negative', kind: 'point', parentId: group.id, colorMode: 'l2-negative', fc: fcOf(neg), paint }); renderLayer(L); added++; }
+            } else {
+              const L = addLayer({ name: base, kind: 'point', fc: pfc, needsAnalysis, colorMode });
+              renderLayer(L); added++;
+              if (needsAnalysis) needsAny = true;
+            }
           }
           const bb = fcBBox(fc);
           if (bb) fitBoundsTo(bb);

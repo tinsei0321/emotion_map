@@ -1,7 +1,8 @@
 // ═══ panel.js — right panel: Overview (per-layer 3-tier) + Table ═══
 import {
   POLARITY_ORDER, POLARITY_LABEL, emotionColors,
-  layerLevel, confidenceStats, CONFIDENCE_RAMP,
+  layerLevel, focusLayer, polarityStats, confidenceStats, CONFIDENCE_RAMP,
+  L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR,
 } from './state.js';
 import { geomStats } from './popup.js';
 
@@ -26,8 +27,10 @@ export function setOverview(layer) {
   const pane = document.getElementById('overview-pane');
   if (!pane) return;
   if (!layer) { pane.innerHTML = emptyState(); return; }
-  const lv = layerLevel(layer);
-  pane.innerHTML = tier1(layer, lv) + tier2(layer, lv) + tier3(layer, lv);
+  // Overview recognizes the BIG level: an L2 child → its parent group's aggregate.
+  const focus = focusLayer(layer) || layer;
+  const lv = layerLevel(focus);
+  pane.innerHTML = tier1(focus, lv) + tier2(focus, lv) + tier3(focus, lv);
 }
 
 function emptyState() {
@@ -70,8 +73,12 @@ function tier2(layer, lv) {
       <div class="ov-prop"><span>透明度</span><span>${Math.round((p.opacity ?? 0.75) * 100)}%</span></div>
       <div class="ov-prop"><span>下一步</span><span class="ov-tag-blue">可分析</span></div>
     </div>`;
-  } else { // L2 — frozen
-    body = `<div class="ov-placeholder">L2 表达待重做</div>`;
+  } else { // L2 — dual palette (Positive green / Negative orange-red / Neutral blue)
+    body = `<div class="ov-props">
+      <div class="ov-prop"><span>积极色板</span><span><span class="ov-swatch" style="background:${L2_POSITIVE['Very Positive']}"></span><span class="ov-swatch" style="background:${L2_POSITIVE['Positive']}"></span></span></div>
+      <div class="ov-prop"><span>消极色板</span><span><span class="ov-swatch" style="background:${L2_NEGATIVE['Negative']}"></span><span class="ov-swatch" style="background:${L2_NEGATIVE['Very Negative']}"></span></span></div>
+      <div class="ov-prop"><span>中性</span><span class="ov-swatch" style="background:${L2_NEUTRAL_COLOR}"></span></div>
+    </div>`;
   }
   return `<div class="ov-tier ov-t2"><div class="ov-tier-head">数据属性</div>${body}</div>`;
 }
@@ -98,8 +105,22 @@ function tier3(layer, lv) {
         <span class="hbar-n">${n}</span></div>`).join('');
     body = `<div class="ov-tier-sub">置信度分布</div><div class="hchart">${bars}</div>
       <div class="ov-mean">均值 ${mean.toFixed(2)} · 共 ${total} 条</div>${spatialPlaceholder()}`;
-  } else { // L2 — frozen
-    body = `<div class="ov-placeholder">L2 表达待重做</div>`;
+  } else { // L2 — polarity distribution (aggregate of all sub-layers)
+    const { stats, total, scoreMean } = polarityStats(layer.fc);
+    const max = Math.max(1, ...POLARITY_ORDER.map((p) => stats[p] || 0));
+    const colorOf = (p) => p === 'Very Positive' ? L2_POSITIVE['Very Positive']
+      : p === 'Positive' ? L2_POSITIVE['Positive']
+      : p === 'Neutral' ? L2_NEUTRAL_COLOR
+      : p === 'Negative' ? L2_NEGATIVE['Negative']
+      : L2_NEGATIVE['Very Negative'];
+    const bars = POLARITY_ORDER.map((p) => {
+      const n = stats[p] || 0;
+      return `<div class="hbar-row"><span class="hbar-label">${POLARITY_LABEL[p]}</span>
+        <span class="hbar-track"><span class="hbar-fill" style="width:${(n / max) * 100}%;background:${colorOf(p)}"></span></span>
+        <span class="hbar-n">${n}</span></div>`;
+    }).join('');
+    body = `<div class="ov-tier-sub">极性分布</div><div class="hchart">${bars}</div>
+      <div class="ov-mean">均分 ${scoreMean.toFixed(2)} · 共 ${total} 条</div>${spatialPlaceholder()}`;
   }
   return `<div class="ov-tier ov-t3"><div class="ov-tier-head">数据展示</div>${body}</div>`;
 }
