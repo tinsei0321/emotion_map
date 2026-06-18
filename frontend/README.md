@@ -15,23 +15,26 @@
 - 确认终端**当前路径在项目根** `d:/Github/emotion_map`（不是在 `frontend/` 里！）
   - 不确定就先敲：`cd d:/Github/emotion_map` 回车
 
-**第 2 步：启动本地服务器**
+**第 2 步：启动本地服务器（no-cache，推荐）**
 在终端输入并回车：
 ```
-py -m http.server 8080
+py frontend/serve.py 8080
 ```
 看到这行就成了：
 ```
-Serving HTTP on :: port 8080 (http://[::]:8080) ...
+[OK] frontend serve on http://localhost:8080 (no-cache)
 ```
 （这个终端窗口要**一直开着**，关了页面就打不开了。）
+
+> **为什么用 `serve.py` 不用 `py -m http.server`**：`serve.py` 对所有响应发 `Cache-Control: no-store` 头，浏览器**每次都加载最新 JS/CSS**，彻底告别"改了代码不生效、换个浏览器才正常"的缓存残留问题。无需再手动 Ctrl+Shift+R 硬刷新。
+> （临时回退：`py -m http.server 8080` 仍可用，但会有缓存问题。）
 
 **第 3 步：浏览器打开**
 地址栏粘贴：
 ```
 http://127.0.0.1:8080/frontend/index.html
 ```
-看到 **深蓝标题栏「宜昌市情绪地图 v1.0」+ 工具栏 + 天地图影像底图**，就成了。
+看到 **深蓝标题栏「宜昌市情绪地图 v1.0」+ 工具栏 + 浅色矢量底图（CARTO Positron）**，就成了。
 
 **停止服务器**：回到那个终端，按 `Ctrl + C`。
 
@@ -41,9 +44,9 @@ http://127.0.0.1:8080/frontend/index.html
 
 | 改了什么 | 怎么刷新 |
 |----------|----------|
-| `frontend/` 下的 CSS / JS / HTML | 浏览器按 **F5**（或 `Ctrl+R`）即可 |
+| `frontend/` 下的 CSS / JS / HTML | 浏览器按 **F5** 即可（用 `serve.py` 启动则**无缓存**，必定加载最新版） |
 | `design/tokens.json`（配色/尺寸 token） | 终端先跑 `py design/generate_css.py`，再 F5 |
-| 怀疑浏览器缓存作怪 | **Ctrl+Shift+R** 硬刷新 |
+| 极少数情况仍怀疑缓存 | **Ctrl+Shift+R** 硬刷新（用 `serve.py` 一般无需此操作） |
 
 ---
 

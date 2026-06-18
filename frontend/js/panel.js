@@ -4,6 +4,7 @@ import {
   layerLevel, focusLayer, polarityStats, confidenceStats, CONFIDENCE_RAMP,
   L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR,
   EMOTION_TYPE_COLORS, EMOTION_TYPE_ORDER,
+  HEATMAP_RAMPS,
 } from './state.js';
 import { geomStats } from './popup.js';
 
@@ -74,6 +75,19 @@ function tier2(layer, lv) {
       <div class="ov-prop"><span>透明度</span><span>${Math.round((p.opacity ?? 0.75) * 100)}%</span></div>
       <div class="ov-prop"><span>下一步</span><span class="ov-tag-blue">可分析</span></div>
     </div>`;
+  } else if (layer.kind === 'heatmap') { // 热力图参数概览
+    const p = layer.paint || {};
+    const rampName = (HEATMAP_RAMPS[p.rampKey] && HEATMAP_RAMPS[p.rampKey].name) || '—';
+    const rampStops = (HEATMAP_RAMPS[p.rampKey] && HEATMAP_RAMPS[p.rampKey].stops) || [];
+    const grad = rampStops.slice(1).map(([, c]) => c).join(',');
+    const typesLabel = (p.typesFilter && p.typesFilter.length) ? p.typesFilter.join('、') : '全部';
+    body = `<div class="ov-props">
+      <div class="ov-prop"><span>色带</span><span class="ov-ramp-legend" style="background:linear-gradient(90deg,${grad})"></span> ${rampName}</div>
+      <div class="ov-prop"><span>半径</span><span>${p.radius ?? 300} m</span></div>
+      <div class="ov-prop"><span>权重字段</span><span>${p.weightField || 'emotion_intensity'}</span></div>
+      <div class="ov-prop"><span>情绪类型</span><span>${typesLabel}</span></div>
+      <div class="ov-prop"><span>数据点</span><span>${layer.fc.features.length}</span></div>
+    </div>`;
   } else { // L2 — dual palette (Positive green / Negative orange-red / Neutral blue)
     body = `<div class="ov-props">
       <div class="ov-prop"><span>积极色板</span><span><span class="ov-swatch" style="background:${L2_POSITIVE['Very Positive']}"></span><span class="ov-swatch" style="background:${L2_POSITIVE['Positive']}"></span></span></div>
@@ -106,6 +120,14 @@ function tier3(layer, lv) {
         <span class="hbar-n">${n}</span></div>`).join('');
     body = `<div class="ov-tier-sub">置信度分布</div><div class="hchart">${bars}</div>
       <div class="ov-mean">均值 ${mean.toFixed(2)} · 共 ${total} 条</div>${spatialPlaceholder()}`;
+  } else if (layer.kind === 'heatmap') { // 热力图：密度可视化特征（不依赖极性字段，鲁棒）
+    const p = layer.paint || {};
+    const n = layer.fc.features.length;
+    body = `<div class="ov-stats">
+      <div class="ov-stat"><span class="ov-stat-n">${n}</span><span class="ov-stat-l">聚合点</span></div>
+      <div class="ov-stat"><span class="ov-stat-n">${p.radius ?? 300}</span><span class="ov-stat-l">半径 m</span></div>
+      <div class="ov-stat"><span class="ov-stat-n">${(p.intensity ?? 1).toFixed(1)}</span><span class="ov-stat-l">强度系数</span></div>
+    </div><div class="ov-placeholder">核密度可视化 · 颜色越深表示该处情绪点越密集/权重越高 · 详见地图热区</div>${spatialPlaceholder()}`;
   } else { // L2 — polarity distribution + emotion type distribution
     const { stats, total, scoreMean } = polarityStats(layer.fc);
     const max = Math.max(1, ...POLARITY_ORDER.map((p) => stats[p] || 0));

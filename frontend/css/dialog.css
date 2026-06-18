@@ -345,20 +345,22 @@
  * position:fixed 不受 .hm-dialog .dialog-body 的 overflow:auto 裁剪。 */
 .hm-info .hm-tip { display: none; }
 
-/* tooltip：挂在 dialog 内，fixed 定位，随 dialog 进 top layer（不被遮挡）、不被 overflow 裁剪 */
+/* tooltip：挂在 dialog 内，fixed 定位，随 dialog 进 top layer（不被遮挡）、不被 overflow 裁剪。
+ * 配色：白底 + 深灰小字 + 细边框（低调不抢眼，但保证可读）。 */
 .hm-tooltip {
   position: fixed;
   z-index: 10000;
   max-width: 264px;
-  padding: 8px 10px;
-  background: #1f2937;
-  color: #fff;
-  font-size: 11px;
+  padding: 7px 9px;
+  background: #ffffff;
+  color: #4b5563;
+  font-size: 10px;
   font-weight: normal;
   font-style: normal;
   line-height: 1.5;
+  border: 1px solid var(--geojson-color-gray-200, #e5e5e5);
   border-radius: var(--geojson-radius-sm);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.28);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.12s;

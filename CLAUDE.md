@@ -49,7 +49,7 @@ emotion_map/
 1. **禁用 emoji** — 代码中只允许 ASCII 标记：`[OK]` `[WARN]` `[LOAD]` `[ERR]`
 2. **安全打印** — 所有 `print()` 必须通过 `_safe_print()` 调用（Windows GBK 兼容）
 3. **禁止劫持 `builtins.print`** — 不得重新绑定
-4. **入口统一** — 前端主入口 = `frontend/index.html`（`py -m http.server 8080`）；Streamlit（:8501）为迁移期遗留，仅维护不扩展
+4. **入口统一** — 前端主入口 = `frontend/index.html`（`py frontend/serve.py 8080`，no-cache 开发服务器，替代 `http.server` 避免浏览器缓存残留）；Streamlit（:8501）为迁移期遗留，仅维护不扩展
 5. **分析逻辑共用** — 所有入口调用同一个 `run_analysis_task()`
 6. **导出命名规范** — `{name}_{L1|L2|L3|L4}_result_csv.csv`
 7. **数据脱敏** — 分析结果中禁止包含用户名、用户ID 等个人身份信息
@@ -127,7 +127,7 @@ Agent 在工作过程中自动记录的隐形知识：
 
 | 文档 | 路径 | 用途 |
 |------|------|------|
-| **前端启动** | `frontend/README.md` | MapLibre 主界面启动手册（http.server + 天地图底图） |
+| **前端启动** | `frontend/README.md` | MapLibre 主界面启动手册（`serve.py` no-cache + CARTO 矢量底图） |
 | **MCP 策略** | `docs/mcp-strategy.md` | MCP 路由手册、智谱优先策略、清单与测试日志 |
 | 产品需求 | `docs/prd.md` | 用户画像、功能优先级、验收标准 |
 | 产品规范 | `docs/spec.md` | 字段定义、UI 规格、性能预算 |

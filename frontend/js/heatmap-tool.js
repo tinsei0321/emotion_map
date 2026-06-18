@@ -1,7 +1,7 @@
 // ═══ heatmap-tool.js — HeatMap parameter dialog + generation + source overwrite ═══
 // v2 (2026-06-18): 默认地理米 + 类型筛选 + 强度阈值 + 中立色带
 import {
-  getLayers, getChildren, addLayer, removeLayer, getLayer, setLayerVisible,
+  getLayers, getChildren, addLayer, removeLayer, getLayer, setLayerVisible, selectLayer,
   HEATMAP_RAMPS, HEATMAP_RAMP_KEYS,
   EMOTION_TYPE_COLORS, EMOTION_TYPE_ORDER,
   getHeatmapForSource, setHeatmapForSource, removeHeatmapSource,
@@ -362,7 +362,10 @@ function generateHeatmap() {
     if (l.visible) { setLayerVisible(l.id, false); renderLayer(l); }
   }
 
+  // 选中新热力图 → 右端栏 Overview 切到它（否则还指向被隐藏的旧点层，显示空/错）
+  selectLayer(layer.id);
   document.dispatchEvent(new CustomEvent('layers:changed'));
+  document.dispatchEvent(new CustomEvent('layer:selected', { detail: layer.id }));
   toast.success(`已生成热力图：${rampName} · ${radiusLabel} · ${fc.features.length} 点`);
 
   closeDialog();
