@@ -41,6 +41,124 @@
 .tab-pane { display: none; }
 .tab-pane.is-active { display: block; }
 
+/* ── Overview: per-layer 3-tier (摘要 / 属性 / 展示) ── */
+#overview-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 100%;
+}
+.ov-tier {
+  border: 1px solid var(--geojson-color-border-default);
+  border-radius: var(--geojson-radius-md);
+  padding: 10px 12px;
+  background: var(--geojson-color-surface-panel, #fff);
+}
+.ov-t3 { flex: 1 1 auto; min-height: 220px; display: flex; flex-direction: column; gap: 8px; }   /* 占 >50% */
+.ov-tier-head {
+  font-size: var(--geojson-typography-size-2xs);
+  font-weight: var(--geojson-typography-weight-bold);
+  color: var(--geojson-color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: var(--geojson-typography-letter-spacing-wider);
+  margin-bottom: 6px;
+}
+.ov-tier-sub {
+  font-size: var(--geojson-typography-size-xs);
+  font-weight: var(--geojson-typography-weight-semibold);
+  color: var(--geojson-color-text-secondary);
+  margin-top: 4px;
+}
+
+/* T1 摘要 */
+.ov-t1 { background: var(--geojson-color-gray-100, #f5f5f5); }
+.ov-t1-name {
+  font-size: var(--geojson-typography-size-base);
+  font-weight: var(--geojson-typography-weight-bold);
+  color: var(--geojson-color-text-primary);
+  word-break: break-all;
+}
+.ov-t1-meta {
+  margin-top: 4px;
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.ov-t1-meta i { color: var(--geojson-color-text-tertiary); font-style: normal; }
+
+/* T2 属性 */
+.ov-props { display: flex; flex-direction: column; gap: 5px; }
+.ov-prop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-primary);
+}
+.ov-prop > span:first-child { color: var(--geojson-color-text-secondary); }
+.ov-swatch { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--geojson-color-border-default); vertical-align: middle; }
+.ov-ramp-legend { display: inline-block; width: 90px; height: 10px; border-radius: var(--geojson-radius-xs); border: 1px solid var(--geojson-color-border-default); }
+.ov-tag-blue {
+  font-size: var(--geojson-typography-size-2xs);
+  font-weight: var(--geojson-typography-weight-bold);
+  color: var(--geojson-color-text-inverse, #fff);
+  background: var(--geojson-color-brand-primary, #007afc);
+  border-radius: var(--geojson-radius-xs);
+  padding: 1px 6px;
+}
+
+/* T3 展示 */
+.ov-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ov-stat {
+  text-align: center;
+  padding: 8px 4px;
+  background: var(--geojson-color-gray-100, #f5f5f5);
+  border-radius: var(--geojson-radius-sm);
+}
+.ov-stat-n { display: block; font-size: var(--geojson-typography-size-lg); font-weight: var(--geojson-typography-weight-bold); color: var(--geojson-color-text-primary); font-variant-numeric: tabular-nums; }
+.ov-stat-l { display: block; font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-secondary); }
+
+.hchart { display: flex; flex-direction: column; gap: 4px; }
+.hbar-row {
+  display: grid;
+  grid-template-columns: 56px 1fr 32px;
+  align-items: center;
+  gap: var(--geojson-spacing-2);
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-secondary);
+}
+.hbar-label { text-align: right; font-variant-numeric: tabular-nums; }
+.hbar-track { height: 10px; background: var(--geojson-color-gray-100); border-radius: var(--geojson-radius-full); overflow: hidden; }
+.hbar-fill { display: block; height: 100%; border-radius: var(--geojson-radius-full); }
+.hbar-n { color: var(--geojson-color-text-primary); font-weight: var(--geojson-typography-weight-semibold); }
+.ov-mean { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.ov-placeholder {
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-tertiary);
+  padding: 18px 12px;
+  text-align: center;
+  background: var(--geojson-color-gray-100, #f5f5f5);
+  border-radius: var(--geojson-radius-sm);
+}
+
+/* Empty state */
+.ov-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--geojson-color-text-tertiary);
+  padding: 40px 20px;
+}
+.ov-empty-title { font-size: var(--geojson-typography-size-base); font-weight: var(--geojson-typography-weight-semibold); color: var(--geojson-color-text-secondary); }
+.ov-empty-hint { font-size: var(--geojson-typography-size-xs); margin-top: 8px; }
+.ov-empty-hint b { color: var(--geojson-color-brand-primary, #007afc); }
+
 /* ── Overview: loaded-data info card ── */
 .info-card {
   margin-bottom: var(--geojson-spacing-3);

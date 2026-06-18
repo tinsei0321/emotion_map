@@ -295,3 +295,32 @@ button.layer-kind:hover { background: var(--geojson-color-gray-200); color: var(
 .layer-row:hover .layer-del { opacity: 1; }
 .layer-del:hover { color: var(--geojson-color-emotion-very-negative, #b92d2d); }
 
+/* ── Layer selection + drag-reorder (geojson-style) ── */
+.layer-row { position: relative; }
+.layer-row.is-selected { background: rgba(0, 122, 252, 0.12); }     /* light blue */
+.layer-row.is-selected:hover { background: rgba(0, 122, 252, 0.18); }
+.layer-row.is-drop-over { box-shadow: inset 0 2px 0 var(--geojson-color-brand-primary, #007afc); }
+.layer-row.is-dragging { opacity: 0.5; }
+
+.layer-grip {
+  flex: 0 0 14px;
+  width: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--geojson-color-text-tertiary);
+  opacity: 0;
+  cursor: grab;
+  transition: opacity var(--geojson-transition);
+}
+.layer-grip svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; fill: none; }
+.layer-row:hover .layer-grip,
+.layer-row.is-dragging .layer-grip { opacity: 0.7; }
+.layer-row.is-dragging .layer-grip { cursor: grabbing; }
+
+/* action tag (blue) — L0 需治理 / L1 可分析 */
+.layer-tag.is-action {
+  color: var(--geojson-color-text-inverse, #ffffff);
+  background: var(--geojson-color-brand-primary, #007afc);
+}
+

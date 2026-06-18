@@ -129,6 +129,13 @@ export function clearSelectionHalo(id) {
 
 export function applyAllLayers() { for (const layer of getLayers()) renderLayer(layer); }
 
+/** Re-stack so list order = map z-order (list top = map top). Render in reverse
+ *  list order → last rendered (list[0]) ends on top. Called after drag-reorder. */
+export function reorderAllZ() {
+  const layers = getLayers();
+  for (let i = layers.length - 1; i >= 0; i--) renderLayer(layers[i]);
+}
+
 // ── Paint per kind ────────────────────────────────────────────────────────
 function addPointPaint(layer, sid, lid) {
   const count = layer.fc.features.length;
@@ -142,8 +149,9 @@ function addPointPaint(layer, sid, lid) {
       0, ramp[0], 0.25, ramp[1], 0.5, ramp[2], 0.75, ramp[3], 1, ramp[4]];
     strokeW = 0; opacity = p.opacity ?? 0.75;
   } else if (layer.colorMode === 'needsAnalysis' || layer.needsAnalysis) {
+    // L0: raw data — grey, semi-transparent, NO stroke.
     colorExpr = token('--geojson-color-emotion-neutral') || '#a3a3a3';
-    strokeW = 1; opacity = p.opacity ?? 0.85;
+    strokeW = 0; opacity = p.opacity ?? 0.5;
   } else {
     const colors = emotionColors();
     colorExpr = ['match', ['get', 'polarity'],

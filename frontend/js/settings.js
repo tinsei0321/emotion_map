@@ -8,6 +8,7 @@
 
 import { getLayer, setLayerPaint } from './state.js';
 import { renderLayer } from './map.js';
+import { refreshPopupForLayer } from './popup.js';
 
 // ── Presets ────────────────────────────────────────────────────────────────
 const PRESET_RAMPS = [
@@ -33,12 +34,19 @@ const el = () => document.getElementById('settings-popover');
 export function openSettingsLayerId() { return _layerId; }
 export function isOpen() { return _layerId != null; }
 
-/** Apply a paint patch to the open layer + re-render it on the map. */
-function applyPaint(patch) {
+/** Apply a paint patch: live-update map + popup (on every input tick).
+ *  Pass commit=true on discrete actions / slider release to also fan out the
+ *  change to legend + Overview (the "element-property tracks everywhere" rule). */
+function applyPaint(patch, commit = false) {
   const l = getLayer(_layerId);
   if (!l) return;
   setLayerPaint(_layerId, patch);
   renderLayer(l);
+  refreshPopupForLayer(_layerId);            // live-sync popup capsule
+  if (commit) commitPaint();
+}
+function commitPaint() {
+  document.dispatchEvent(new CustomEvent('layer:paint', { detail: _layerId }));
 }
 
 /** Open (or switch to) the popover for a layer, anchored beside the clicked button. */
@@ -137,29 +145,29 @@ function wire(layer) {
 
   pop.querySelector('#set-close')?.addEventListener('click', closeSettingsPopover);
 
-  // ramp (point confidence)
+  // ramp (point confidence) — discrete click → commit
   pop.querySelectorAll('[data-ramp-id]').forEach((b) => {
     b.addEventListener('click', () => {
       const r = PRESET_RAMPS.find((x) => x.id === b.dataset.rampId);
       if (!r) return;
-      applyPaint({ ramp: r.stops });
+      applyPaint({ ramp: r.stops }, true);
       pop.querySelectorAll('[data-ramp-id]').forEach((x) => x.classList.remove('is-sel'));
       b.classList.add('is-sel');
     });
   });
 
-  // color swatch (polygon)
+  // color swatch (polygon) — discrete click → commit
   pop.querySelectorAll('[data-color]').forEach((b) => {
     b.addEventListener('click', () => {
-      applyPaint({ color: b.dataset.color });
+      applyPaint({ color: b.dataset.color }, true);
       pop.querySelectorAll('[data-color]').forEach((x) => x.classList.remove('is-sel'));
       b.classList.add('is-sel');
     });
   });
 
-  // fill toggle (polygon)
+  // fill toggle (polygon) — change → commit
   pop.querySelector('[data-fill]')?.addEventListener('change', (e) => {
-    applyPaint({ fillOn: e.target.checked });
+    applyPaint({ fillOn: e.target.checked }, true);
     const wrap = pop.querySelector('[data-fillop-wrap]');
     if (wrap) wrap.classList.toggle('is-hidden', !e.target.checked);
   });
@@ -174,10 +182,12 @@ function bindRange(pop, sel, fn, unit) {
   if (!r) return;
   const valFor = sel.replace(/[[\]]/g, '');   // "data-op" → matches data-val-for
   const label = pop.querySelector(`[data-val-for="${valFor}"]`);
+  // input = live (map + popup); change = release → commit (legend + Overview)
   r.addEventListener('input', (e) => {
     fn(Number(e.target.value));
     if (label) label.textContent = e.target.value + unit;
   });
+  r.addEventListener('change', commitPaint);
 }
 
 // ── Outside-click / Escape to close ────────────────────────────────────────

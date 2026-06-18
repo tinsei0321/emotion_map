@@ -163,11 +163,11 @@
       </div>
     </div>
 
-    <!-- 右拖拽分隔条 -->
-    <div class="gutter gutter-right" data-side="right"></div>
+    <!-- 右拖拽分隔条（右栏默认折叠 → 初始隐藏） -->
+    <div class="gutter gutter-right is-hidden" data-side="right"></div>
 
-    <!-- 右侧栏 — Overview + Table -->
-    <aside id="right-panel">
+    <!-- 右侧栏 — Overview + Table（默认折叠；选中图层后自动弹开） -->
+    <aside id="right-panel" class="folded">
       <div class="panel-header">
         <div class="panel-tabs" role="tablist">
           <button class="ptab is-active" data-tab="overview" role="tab">Overview</button>
@@ -176,20 +176,8 @@
       </div>
 
       <div class="panel-body">
-        <!-- Overview：载入数据 + 分析结果 -->
-        <section class="tab-pane is-active" data-pane="overview">
-          <div class="info-card">
-            <div class="info-row"><span class="info-k">文件</span><span class="info-v" id="ov-file">sample_points.json</span></div>
-            <div class="info-row"><span class="info-k">图层</span><span class="info-v" id="ov-layers">情绪点</span></div>
-            <div class="info-row"><span class="info-k">L1 记录</span><span class="info-v" id="ov-l1">—</span></div>
-            <div class="info-row"><span class="info-k">L2 记录</span><span class="info-v" id="ov-l2">—</span></div>
-            <div class="info-row"><span class="info-k">总数</span><span class="info-v" id="ov-total">—</span></div>
-          </div>
-          <div class="sub-title">极性分布</div>
-          <div class="stats-grid" id="polarity-stats"><!-- filled by JS --></div>
-          <div class="stat-row" id="score-mean">均分 —</div>
-          <div class="chart-wrap"><canvas id="polarity-chart" height="160"></canvas></div>
-        </section>
+        <!-- Overview：按选中层 3 层级（摘要/属性/展示）— 由 panel.js setOverview 填充 -->
+        <section class="tab-pane is-active" data-pane="overview" id="overview-pane"></section>
 
         <!-- Table：geojson.io 风格表格 -->
         <section class="tab-pane" data-pane="table">
@@ -202,7 +190,7 @@
 
     <!-- 折叠/展开按钮（面板边缘竖向中点，显眼版） -->
     <button class="collapse-btn collapse-left" data-side="left" title="折叠/展开左侧栏">&#8249;</button>
-    <button class="collapse-btn collapse-right" data-side="right" title="折叠/展开右侧栏">&#8250;</button>
+    <button class="collapse-btn collapse-right" data-side="right" title="折叠/展开右侧栏">&#8249;</button>
   </main>
 
   <!-- Legend + popup 已移入 #map（右下/右上，随 #map 跟随左右栏） -->

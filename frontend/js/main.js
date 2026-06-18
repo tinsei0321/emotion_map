@@ -1,10 +1,10 @@
 // ═══ main.js — entry: wire map + sidebar + panel + toolbar + popup + import ═══
-import { initMap, setBasemap, setClickHandler, renderLayer, fitBoundsTo } from './map.js';
-import { initPanel, setInfoCard, setOverview, setTable } from './panel.js';
+import { initMap, setBasemap, setClickHandler, renderLayer, fitBoundsTo, reorderAllZ } from './map.js';
+import { initPanel, activateTab, setOverview, setTable } from './panel.js';
 import { initToolbar, setActiveBasemap } from './toolbar.js';
-import { initSidebar, openImport, renderLayerList, showLayerManager, refreshLegend } from './sidebar.js';
+import { initSidebar, openImport, openRightPanel, renderLayerList, showLayerManager, refreshLegend } from './sidebar.js';
 import { initPopup, showPopup } from './popup.js';
-import { polarityStats, addLayer, mergedPointFC } from './state.js';
+import { addLayer, getSelectedLayer } from './state.js';
 import {
   groupFiles, detectGroupType, parseGroup, reprojectFC, readPrj,
   splitByGeometry, detectColorMode, fcBBox,
@@ -20,12 +20,11 @@ function layerName(group) {
   return group.files[0].name;
 }
 
-/** Right panel aggregated over visible point layers. */
+/** Overview reflects the SELECTED layer (per-layer 3-tier); empty state if none. */
 function refreshOverview() {
-  const fc = mergedPointFC();
-  const { stats, total, scoreMean } = polarityStats(fc);
-  setInfoCard({ file: total ? '已导入数据' : '未导入', layers: total ? '情绪点' : '—', l1: '—', l2: total, total });
-  setOverview({ stats, total, scoreMean });
+  const layer = getSelectedLayer();
+  setOverview(layer);
+  const fc = (layer && layer.kind === 'point') ? layer.fc : { type: 'FeatureCollection', features: [] };
   setTable(fc);
 }
 
@@ -71,6 +70,7 @@ async function runImport(files) {
       renderLayerList();
       refreshLegend();
       refreshOverview();
+      reorderAllZ();             // align map z-order with list order (list-top = map-top)
       if (added) {
         showLayerManager();                 // B5: switch to sections + expand Layers
         toast.success(`已导入 ${added} 个图层`);
@@ -109,7 +109,20 @@ function main() {
     refreshOverview();
   });
 
-  console.log('[OK] emotion-map frontend (Import v2 batch2) loaded');
+  // Layer row selected → open right panel + show that layer's Overview.
+  document.addEventListener('layer:selected', () => {
+    openRightPanel();
+    activateTab('overview');
+    refreshOverview();
+  });
+
+  // Layer color edited (settings popover) → legend + Overview track the change.
+  document.addEventListener('layer:paint', () => {
+    refreshLegend();
+    refreshOverview();
+  });
+
+  console.log('[OK] emotion-map frontend (layer select + Overview per-layer) loaded');
 }
 
 document.addEventListener('DOMContentLoaded', main);

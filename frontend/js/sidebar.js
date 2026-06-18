@@ -1,6 +1,6 @@
 // ═══ sidebar.js — left panel: collapse/expand, drag, import trigger, layer manager ═══
-import { token, getLayers, getLayer, setLayerVisible, removeLayer } from './state.js';
-import { renderLayer, removeLayerFromMap } from './map.js';
+import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, CONFIDENCE_RAMP } from './state.js';
+import { renderLayer, removeLayerFromMap, reorderAllZ } from './map.js';
 import { toast } from './toast.js';
 import { openSettingsPopover, closeSettingsPopover, openSettingsLayerId, isOpen } from './settings.js';
 
@@ -84,13 +84,39 @@ export function showLayerManager() {
   if (sec) sec.classList.add('open');
 }
 
-/** Show only the legend block(s) matching loaded, visible layers. */
+/** Expand the right panel if folded (used when a layer is selected → show Overview). */
+export function openRightPanel() {
+  if (readVarPx('--right-w') < 1) togglePanel('right');
+}
+
+/** Show + color the legend block(s) for visible layers. The ramp/outline color
+ *  tracks the SELECTED layer's paint (or the first visible layer of that type),
+ *  so the legend stays in sync when a layer's color is edited. */
 export function refreshLegend() {
-  const layers = getLayers();
-  const has = (pred) => layers.some((l) => l.visible && pred(l));
-  sethidden('legend-polarity',    !has((l) => l.kind === 'point' && l.colorMode === 'polarity'));
-  sethidden('legend-confidence',  !has((l) => l.kind === 'point' && l.colorMode === 'confidence'));
-  sethidden('legend-range',       !has((l) => l.kind === 'polygon' || l.kind === 'line'));
+  const vis = getLayers().filter((l) => l.visible);
+  const sel = getSelectedLayer();
+  const has = (pred) => vis.some(pred);
+
+  // polarity (L2) — token colors, frozen
+  sethidden('legend-polarity', !has((l) => l.kind === 'point' && l.colorMode === 'polarity'));
+
+  // confidence (L1) — ramp colored from the focus layer's paint.ramp
+  const conf = (sel && sel.colorMode === 'confidence' && sel.visible) ? sel : vis.find((l) => l.colorMode === 'confidence');
+  sethidden('legend-confidence', !conf);
+  if (conf) {
+    const ramp = (conf.paint && conf.paint.ramp) || CONFIDENCE_RAMP;
+    const rampEl = document.querySelector('#legend-confidence .legend-ramp');
+    if (rampEl) rampEl.style.background = `linear-gradient(90deg, ${ramp.join(',')})`;
+  }
+
+  // range — outline color from the focus range layer's paint.color
+  const range = (sel && (sel.kind === 'polygon' || sel.kind === 'line') && sel.visible) ? sel : vis.find((l) => l.kind === 'polygon' || l.kind === 'line');
+  sethidden('legend-range', !range);
+  if (range) {
+    const color = (range.paint && range.paint.color) || '#0c1c2e';
+    const dot = document.querySelector('#legend-range .range-dot');
+    if (dot) dot.style.borderTopColor = color;
+  }
 }
 function sethidden(id, hidden) { const el = document.getElementById(id); if (el) el.hidden = hidden; }
 
@@ -98,8 +124,20 @@ function sethidden(id, hidden) { const el = document.getElementById(id); if (el)
 const KIND_LABEL = { point: '点', line: '线', polygon: '面' };
 const eyeOpen = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 const eyeOff = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+// drag grip = three horizontal bars (movable hint), revealed on hover/drag
+const GRIP = '<span class="layer-grip" title="拖拽排序"><svg viewBox="0 0 16 16" width="12" height="12"><line x1="3" y1="4" x2="13" y2="4"/><line x1="3" y1="8" x2="13" y2="8"/><line x1="3" y1="12" x2="13" y2="12"/></svg></span>';
 
-/** Re-render the layer list from the registry. Called after import/delete/toggle. */
+let _dragId = null;   // id of the row being dragged
+
+/** Level → next-action tag (blue). L2/range get none. */
+function levelTag(l) {
+  const lv = layerLevel(l);
+  if (lv === 'L0') return '<span class="layer-tag is-action">需治理</span>';
+  if (lv === 'L1') return '<span class="layer-tag is-action">可分析</span>';
+  return '';
+}
+
+/** Re-render the layer list from the registry. Called after import/delete/toggle/reorder/select. */
 export function renderLayerList() {
   const list = document.getElementById('layer-list');
   if (!list) return;
@@ -109,38 +147,87 @@ export function renderLayerList() {
     return;
   }
   const openId = openSettingsLayerId();
+  const selId = getSelectedLayerId();
   list.innerHTML = layers.map((l) => {
-    // 要素按钮: point/polygon clickable (opens settings); line stays a non-interactive chip.
     const kindEl = (l.kind === 'point' || l.kind === 'polygon')
       ? `<button class="layer-kind${openId === l.id ? ' is-active' : ''}" data-feat="${l.id}" title="要素设置">${KIND_LABEL[l.kind]}</button>`
       : `<span class="layer-kind is-disabled" title="线暂未开放设置">${KIND_LABEL[l.kind] || '层'}</span>`;
+    const sel = selId === l.id ? ' is-selected' : '';
     return `
-    <div class="layer-row${l.visible ? '' : ' is-off'}" data-id="${l.id}">
+    <div class="layer-row${sel}${l.visible ? '' : ' is-off'}" data-id="${l.id}" draggable="true">
+      ${GRIP}
       <button class="layer-eye" data-eye="${l.id}" title="${l.visible ? '隐藏' : '显示'}">${l.visible ? eyeOpen : eyeOff}</button>
       ${kindEl}
       <span class="layer-name" title="${l.name}">${l.name}</span>
-      ${l.needsAnalysis ? '<span class="layer-tag">需分析</span>' : ''}
+      ${levelTag(l)}
       <button class="layer-del" data-del="${l.id}" title="删除">&times;</button>
     </div>`;
   }).join('');
 
-  list.querySelectorAll('[data-eye]').forEach((b) => {
-    b.addEventListener('click', (e) => { e.stopPropagation(); toggleEye(b.dataset.eye); });
-  });
-  list.querySelectorAll('[data-del]').forEach((b) => {
-    b.addEventListener('click', (e) => { e.stopPropagation(); deleteLayer(b.dataset.del); });
-  });
-  list.querySelectorAll('[data-feat]').forEach((b) => {
+  list.querySelectorAll('[data-eye]').forEach((b) =>
+    b.addEventListener('click', (e) => { e.stopPropagation(); toggleEye(b.dataset.eye); }));
+  list.querySelectorAll('[data-del]').forEach((b) =>
+    b.addEventListener('click', (e) => { e.stopPropagation(); deleteLayer(b.dataset.del); }));
+  list.querySelectorAll('[data-feat]').forEach((b) =>
     b.addEventListener('click', (e) => {
       e.stopPropagation();
       const id = b.dataset.feat;
       const l = getLayer(id);
       if (!l) return;
-      if (isOpen() && openSettingsLayerId() === id) closeSettingsPopover();
-      else openSettingsPopover(l, b);
-      renderLayerList();   // refresh .is-active on the kind marker
+      if (isOpen() && openSettingsLayerId() === id) {
+        closeSettingsPopover();
+      } else {
+        openSettingsPopover(l, b);
+        // editing a layer → make it the focus so Overview/legend track its color
+        selectLayer(id);
+        document.dispatchEvent(new CustomEvent('layer:selected', { detail: id }));
+      }
+      renderLayerList();
+    }));
+
+  // row click → select (highlight + open Overview); drag → reorder z-order
+  list.querySelectorAll('.layer-row').forEach((row) => {
+    row.addEventListener('click', () => selectLayerRow(row.dataset.id));
+    row.addEventListener('dragstart', (e) => {
+      _dragId = row.dataset.id;
+      row.classList.add('is-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', _dragId);
+    });
+    row.addEventListener('dragend', () => { row.classList.remove('is-dragging'); clearDropHints(); });
+    row.addEventListener('dragover', (e) => { e.preventDefault(); row.classList.add('is-drop-over'); });
+    row.addEventListener('dragleave', () => row.classList.remove('is-drop-over'));
+    row.addEventListener('drop', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const targetId = row.dataset.id;
+      if (_dragId && _dragId !== targetId) {
+        const rect = row.getBoundingClientRect();
+        const after = (e.clientY - rect.top) > rect.height / 2;
+        const ls = getLayers();
+        const idx = ls.findIndex((x) => x.id === targetId);
+        const toId = after ? (ls[idx + 1] ? ls[idx + 1].id : null) : targetId;
+        reorderLayers(_dragId, toId);
+        reorderAllZ();            // re-stack map: list top = map top
+      }
+      _dragId = null;
+      clearDropHints();
+      renderLayerList();
+      toast.info('图层顺序已更新');
     });
   });
+}
+
+function clearDropHints() {
+  document.querySelectorAll('.layer-row.is-drop-over').forEach((r) => r.classList.remove('is-drop-over'));
+}
+
+/** Select a layer row → highlight + tell main.js to open the right panel + Overview. */
+function selectLayerRow(id) {
+  const l = getLayer(id);
+  if (!l) return;
+  selectLayer(id);
+  renderLayerList();
+  document.dispatchEvent(new CustomEvent('layer:selected', { detail: id }));
 }
 
 function toggleEye(id) {

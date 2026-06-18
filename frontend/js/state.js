@@ -31,18 +31,20 @@ export function emotionColors() {
 export const CONFIDENCE_RAMP = ['#FFD9A0', '#FFB347', '#FF9800', '#FB8C00', '#E65100'];
 const CONFIDENCE_STOPS = [0, 0.25, 0.5, 0.75, 1];
 
-/** Map a 0..1 confidence score to a ramp color (hex). Unknown → mid. */
-export function confidenceColor(score) {
+/** Map a 0..1 score to a color on a 5-stop ramp (hex). Unknown → mid. */
+export function rampColor(ramp, score) {
   const s = (typeof score === 'number' && !Number.isNaN(score)) ? Math.max(0, Math.min(1, score)) : 0.5;
   for (let i = 1; i < CONFIDENCE_STOPS.length; i++) {
     if (s <= CONFIDENCE_STOPS[i]) {
       const a = CONFIDENCE_STOPS[i - 1], b = CONFIDENCE_STOPS[i];
       const t = b === a ? 0 : (s - a) / (b - a);
-      return lerpHex(CONFIDENCE_RAMP[i - 1], CONFIDENCE_RAMP[i], t);
+      return lerpHex(ramp[i - 1], ramp[i], t);
     }
   }
-  return CONFIDENCE_RAMP[CONFIDENCE_RAMP.length - 1];
+  return ramp[ramp.length - 1];
 }
+/** Map a 0..1 confidence score to the default orange ramp color. */
+export function confidenceColor(score) { return rampColor(CONFIDENCE_RAMP, score); }
 function lerpHex(h1, h2, t) {
   const a = hexToRgb(h1), b = hexToRgb(h2);
   const r = Math.round(a[0] + (b[0] - a[0]) * t);
@@ -121,6 +123,21 @@ export function polarityStats(fc) {
   return { stats, total: fc.features.length, scoreMean: fc.features.length ? scoreSum / fc.features.length : 0 };
 }
 
+/** Confidence distribution for L1 layers: 5 equal buckets over 0..1 + mean.
+ *  Buckets align with the orange ramp stops so the histogram colors match the points. */
+export function confidenceStats(fc) {
+  const buckets = [0, 0, 0, 0, 0];
+  let sum = 0, n = 0;
+  for (const f of fc.features) {
+    const s = Number(f.properties && f.properties.score);
+    if (Number.isFinite(s)) {
+      const i = Math.min(4, Math.max(0, Math.floor(s * 5 - 0.0001)));
+      buckets[i]++; sum += s; n++;
+    }
+  }
+  return { buckets, total: n, mean: n ? sum / n : 0 };
+}
+
 // ── Layer registry ────────────────────────────────────────────────────────
 // One entry per imported file (or the seed sample). Drives the left-panel
 // layer manager (eye toggle / trash delete) and multi-layer map rendering.
@@ -155,13 +172,51 @@ export function setLayerPaint(id, patch) {
   return l;
 }
 
-export function removeLayer(id) { return _layers.delete(id); }
+export function removeLayer(id) {
+  if (_selectedLayerId === id) _selectedLayerId = null;
+  return _layers.delete(id);
+}
 export function getLayer(id) { return _layers.get(id); }
 export function getLayers() { return Array.from(_layers.values()); }
 export function setLayerVisible(id, visible) {
   const l = _layers.get(id);
   if (l) l.visible = visible;
   return l;
+}
+
+/** Data level for display (tags / Overview / popup branches):
+ *   point needsAnalysis → 'L0' (raw, 需治理) · confidence → 'L1' (可分析) · polarity → 'L2'
+ *   polygon/line → 'range'. */
+export function layerLevel(layer) {
+  if (!layer) return null;
+  if (layer.kind === 'polygon' || layer.kind === 'line') return 'range';
+  if (layer.colorMode === 'confidence') return 'L1';
+  if (layer.colorMode === 'polarity') return 'L2';
+  return 'L0';   // needsAnalysis / unknown
+}
+
+// ── Selection ──────────────────────────────────────────────────────────────
+let _selectedLayerId = null;
+export function selectLayer(id) { _selectedLayerId = id; }
+export function getSelectedLayer() { return _selectedLayerId ? _layers.get(_selectedLayerId) : null; }
+export function getSelectedLayerId() { return _selectedLayerId; }
+export function clearSelection() { _selectedLayerId = null; }
+
+/** Reorder layers: move `fromId` to the position of `toId` (before it). toId=null
+ *  appends to the end. List order (top→bottom) = map z-order (top→bottom). */
+export function reorderLayers(fromId, toId) {
+  if (!fromId || fromId === toId || !_layers.has(fromId)) return;
+  if (toId != null && !_layers.has(toId)) return;
+  const order = Array.from(_layers.keys());
+  const from = order.indexOf(fromId);
+  if (from < 0) return;
+  order.splice(from, 1);
+  if (toId == null) order.push(fromId);
+  else { const to = order.indexOf(toId); order.splice(to, 0, fromId); }
+  const next = new Map();
+  for (const k of order) next.set(k, _layers.get(k));
+  _layers.clear();
+  for (const [k, v] of next) _layers.set(k, v);
 }
 
 /** All features from visible POINT layers — feeds Overview stats / Table. */

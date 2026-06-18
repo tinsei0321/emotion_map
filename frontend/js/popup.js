@@ -3,12 +3,23 @@
 //   • #feature-popup — clicked emotion point (L2 polarity badge | L1 置信度 badge)
 //   • #range-popup   — clicked range polygon (navy accent = outline color)
 // Each independently expand/collapse (capsule) + close. Click empty map → collapse both.
-import { POLARITY_LABEL, confidenceColor } from './state.js';
+import { POLARITY_LABEL, rampColor, CONFIDENCE_RAMP, getLayer } from './state.js';
 
 const emoEl = () => document.getElementById('feature-popup');
 const rngEl = () => document.getElementById('range-popup');
-let _emo = null;   // { colorMode, label, score|scoreText }
-let _rng = null;   // { name, color }
+let _emo = null;          // { colorMode, label?, score?, scoreText? }
+let _rng = null;          // { name, color }
+let _popupLayerId = null; // layer id of the feature shown in the emotion popup (for color sync)
+let _rngLayerId = null;   // layer id of the feature shown in the range popup
+
+const GREY = '#a3a3a3';
+
+/** Resolve the registry layer a queried feature came from (MapLibre sets feature.source). */
+function layerFromFeature(f) {
+  const s = f && f.source;
+  if (!s || typeof s !== 'string' || !s.startsWith('lyr-')) return null;
+  return getLayer(s.replace('lyr-', ''));
+}
 
 // ── Emotion point popup ────────────────────────────────────────────────────
 export function showPopup(feature, colors, colorMode) {
@@ -17,21 +28,31 @@ export function showPopup(feature, colors, colorMode) {
   popup.hidden = false;
   popup.classList.remove('is-collapsed');
 
+  const layer = layerFromFeature(feature);
+  _popupLayerId = layer ? layer.id : null;
   const badge = document.getElementById('pp-polarity');
   const scoreEl = document.getElementById('pp-score');
 
-  if (colorMode === 'confidence') {           // L1: confidence orange badge
+  if (colorMode === 'needsAnalysis') {        // L0: raw — grey capsule, NO polarity/score written
+    badge.textContent = '';
+    badge.style.background = GREY;
+    scoreEl.hidden = true;
+    _emo = { colorMode: 'needsAnalysis' };
+  } else if (colorMode === 'confidence') {    // L1: confidence badge, color from the layer's ramp
     const score = (typeof p.score === 'number') ? p.score : 0.5;
+    const ramp = (layer && layer.paint && layer.paint.ramp) || CONFIDENCE_RAMP;
     badge.textContent = '置信度';
-    badge.style.background = confidenceColor(score);
+    badge.style.background = rampColor(ramp, score);
+    scoreEl.hidden = false;
     scoreEl.textContent = score.toFixed(1);
     _emo = { colorMode: 'confidence', label: '置信度', score };
-  } else {                                    // L2: polarity badge
+  } else {                                    // L2: polarity badge (frozen rendering)
     const pol = p.polarity || 'Neutral';
     const label = POLARITY_LABEL[pol] || pol;
     const scoreText = (p.score ?? 0).toFixed(2);
     badge.textContent = label;
     badge.style.background = (colors && colors[pol]) || '#999';
+    scoreEl.hidden = false;
     scoreEl.textContent = scoreText;
     _emo = { colorMode: 'polarity', label, scoreText };
   }
@@ -55,17 +76,19 @@ export function showPopup(feature, colors, colorMode) {
 export function collapsePopup() {
   const popup = emoEl();
   if (!popup || popup.hidden || !_emo) return;
-  document.getElementById('pp-polarity').textContent =
-    _emo.colorMode === 'confidence' ? _emo.score.toFixed(1) : _emo.scoreText;
+  // L0 stays a grey empty capsule; L1 shows score, L2 shows scoreText.
+  if (_emo.colorMode === 'confidence') document.getElementById('pp-polarity').textContent = _emo.score.toFixed(1);
+  else if (_emo.colorMode === 'polarity') document.getElementById('pp-polarity').textContent = _emo.scoreText;
+  // needsAnalysis: badge already empty grey — leave as-is
   popup.classList.add('is-collapsed');
 }
 export function expandPopup() {
   const popup = emoEl();
   if (!popup || popup.hidden || !_emo) return;
-  document.getElementById('pp-polarity').textContent = _emo.label;
+  if (_emo.label != null) document.getElementById('pp-polarity').textContent = _emo.label;
   popup.classList.remove('is-collapsed');
 }
-export function hidePopup() { const p = emoEl(); if (p) p.hidden = true; }
+export function hidePopup() { _popupLayerId = null; const p = emoEl(); if (p) p.hidden = true; }
 
 // ── Range polygon popup ────────────────────────────────────────────────────
 // Layout mirrors the emotion popup: badge (de-emphasized "范围") on top, then
@@ -100,6 +123,7 @@ export function showRangePopup(feature, layer) {
     `<div class="kv-row"><span class="kv-k">${k}</span><span class="kv-v">${v}</span></div>`).join('');
 
   _rng = { name, color };
+  _rngLayerId = layer ? layer.id : null;
 }
 
 export function collapseRangePopup() {
@@ -114,7 +138,27 @@ export function expandRangePopup() {
   document.getElementById('rp-badge').textContent = '范围';
   popup.classList.remove('is-collapsed');
 }
-export function hideRangePopup() { const p = rngEl(); if (p) p.hidden = true; }
+export function hideRangePopup() { _rngLayerId = null; const p = rngEl(); if (p) p.hidden = true; }
+
+/** Live-sync: when a layer's color/ramp changes via the settings popover, refresh
+ *  the open popup's capsule color if it belongs to that layer. */
+export function refreshPopupForLayer(id) {
+  if (!id) return;
+  const layer = getLayer(id);
+  if (!layer) return;
+  const e = emoEl();
+  if (_popupLayerId === id && _emo && e && !e.hidden && _emo.colorMode === 'confidence') {
+    const ramp = (layer.paint && layer.paint.ramp) || CONFIDENCE_RAMP;
+    document.getElementById('pp-polarity').style.background = rampColor(ramp, _emo.score);
+  }
+  const r = rngEl();
+  if (_rngLayerId === id && _rng && r && !r.hidden) {
+    const color = (layer.paint && layer.paint.color) || '#0c1c2e';
+    document.getElementById('rp-badge').style.background = color;
+    r.style.borderColor = color;
+    _rng.color = color;
+  }
+}
 
 // ── Init: close/expand/collapse wiring ─────────────────────────────────────
 export function initPopup(map) {
@@ -135,7 +179,7 @@ export function initPopup(map) {
 
 // ── Geometry stats (spherical area + haversine perimeter; no turf dep) ──────
 const rad = (d) => d * Math.PI / 180;
-function geomStats(geom) {
+export function geomStats(geom) {
   if (!geom || !geom.coordinates) return {};
   const rings = collectRings(geom);
   let area = 0, perimeter = 0, vertices = 0;
