@@ -35,19 +35,20 @@
     <!-- 下层：工具栏（左对齐绘制工具 / 右对齐 Import·Export·M） -->
     <nav id="toolbar">
       <div class="tb-group tb-left">
-        <button class="draw-tool is-active" data-tool="select" title="Select (S)" aria-pressed="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg></button>
-        <button class="draw-tool" data-tool="point" title="Point (Pt)" aria-pressed="false">Pt</button>
-        <button class="draw-tool" data-tool="line" title="Line (L)" aria-pressed="false">L</button>
-        <button class="draw-tool" data-tool="polygon" title="Polygon (Po)" aria-pressed="false">Po</button>
-        <button class="draw-tool" data-tool="rectangle" title="Rectangle (R)" aria-pressed="false">R</button>
-        <button class="draw-tool" data-tool="circle" title="Circle (C)" aria-pressed="false">C</button>
-        <button class="draw-tool draw-more" data-tool="more" title="More tools" aria-pressed="false">&#9660;</button>
+        <button class="draw-tool is-active" data-tool="select" title="选择" aria-pressed="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg></button>
+        <button class="draw-tool" data-tool="point" title="点" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor"/></svg></button>
+        <button class="draw-tool" data-tool="line" title="线" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="18" x2="18" y2="6"/></svg></button>
+        <button class="draw-tool" data-tool="polygon" title="多边形" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 3L20 8L18 18L6 18L4 8Z"/></svg></button>
+        <button class="draw-tool" data-tool="rectangle" title="矩形" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="6" width="16" height="12" rx="1"/></svg></button>
+        <button class="draw-tool" data-tool="circle" title="圆" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/></svg></button>
+        <button class="draw-tool draw-more" data-tool="more" title="更多工具" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9L12 15L18 9"/></svg></button>
       </div>
 
       <div class="tb-group tb-right">
         <button class="tb-text" data-action="import" title="导入数据">Import</button>
-        <button class="tb-text" data-action="export" title="导出数据">Export</button>
-        <button class="draw-tool tb-m" data-action="basemap" title="Change Basemap (M)" aria-pressed="false">M</button>
+        <button class="tb-text" data-action="export" title="导出数据" id="btn-export">Export</button>
+        <button class="draw-tool tb-m" data-action="basemap" title="底图" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3L22 8L12 13L2 8L12 3Z"/><path d="M2 12L12 17L22 12"/><path d="M2 16L12 21L22 16"/></svg></button>
+        <button class="draw-tool tb-info" data-action="info" title="关于"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01" stroke-linecap="round"/></svg></button>
       </div>
     </nav>
   </header>
@@ -199,6 +200,9 @@
       <button class="bm-cell" data-basemap="tianditu-img"><span class="bm-swatch bm-sat"></span>影像（有注记）</button>
       <button class="bm-cell" data-basemap="tianditu-vec-nolabel"><span class="bm-swatch bm-vec"></span>常规（无注记）</button>
       <button class="bm-cell" data-basemap="tianditu-vec"><span class="bm-swatch bm-vec"></span>常规（有注记）</button>
+      <button class="bm-cell" data-basemap="dark"><span class="bm-swatch bm-dark"></span>暗色</button>
+      <button class="bm-cell" data-basemap="positron"><span class="bm-swatch bm-light"></span>浅色</button>
+      <button class="bm-cell" data-basemap="bright"><span class="bm-swatch bm-voyager"></span>Voyager</button>
     </div>
   </div>
 
@@ -228,6 +232,121 @@
     <div class="dialog-foot">
       <button class="btn btn-secondary" data-close>取消</button>
       <button class="btn btn-primary" id="export-confirm">导出</button>
+    </div>
+  </dialog>
+
+  <!-- ═══ Modal dialog (Info / 产品介绍) ═══ -->
+  <dialog id="modal-info" class="app-dialog app-dialog-info">
+    <div class="dialog-head">
+      <span class="dialog-title">关于 · 宜昌市情绪地图</span>
+      <button class="dialog-close" data-close>&times;</button>
+    </div>
+    <div class="dialog-body info-body">
+
+      <!-- 产品定位 -->
+      <div class="info-hero">
+        <div class="info-hero-title">宜昌市情绪地图</div>
+        <div class="info-hero-version">prototype v0.1.0</div>
+        <div class="info-hero-tagline">基于多源社交数据（大众点评 / 美团 / 小红书 / 微博 / 12345 热线）的城市情绪空间分析平台 — 用数据替代直觉，用地图承载叙事。</div>
+      </div>
+
+      <!-- 数据管线（可视化流程） -->
+      <div class="info-section">
+        <div class="info-section-title">数据管线</div>
+        <div class="info-pipeline">
+          <div class="pl-step"><span class="pl-id">L0</span><span class="pl-name">原始采集</span><span class="pl-note">Scrapy 爬虫</span></div>
+          <span class="pl-arrow">&rarr;</span>
+          <div class="pl-step"><span class="pl-id">L1</span><span class="pl-name">数据治理</span><span class="pl-note">坐标 + 脱敏</span></div>
+          <span class="pl-arrow">&rarr;</span>
+          <div class="pl-step"><span class="pl-id">L2</span><span class="pl-name">情绪极性</span><span class="pl-note">SnowNLP</span></div>
+          <span class="pl-arrow">&rarr;</span>
+          <div class="pl-step"><span class="pl-id">L3</span><span class="pl-name">语义增强</span><span class="pl-note">DeepSeek LLM</span></div>
+          <span class="pl-arrow">&rarr;</span>
+          <div class="pl-step"><span class="pl-id">L4</span><span class="pl-name">多维归因</span><span class="pl-note">空间统计</span></div>
+        </div>
+      </div>
+
+      <!-- 七层架构（分层图） -->
+      <div class="info-section">
+        <div class="info-section-title">项目架构 &mdash; 七层功能（数据自底向上流转）</div>
+        <div class="arch-diagram">
+          <div class="arch-layer" style="--lc:#007afc"><span class="arch-name">应用层</span><span class="arch-desc"><b>frontend/</b> MapLibre 主界面 + <b>apps/</b> Streamlit 遗留 &mdash; 地图 / 图层 / 导入 / 分析控制台</span></div>
+          <div class="arch-layer" style="--lc:#22b14c"><span class="arch-name">UI 组件层</span><span class="arch-desc"><b>core/ui_components</b> HUD 按钮 / 图例叠加 / 标题栏（Streamlit 遗留，前端已迁 MapLibre）</span></div>
+          <div class="arch-layer" style="--lc:#1abc9c"><span class="arch-name">空间分析引擎</span><span class="arch-desc"><b>core/map_engine</b> 天地图底图 / 点状情绪标记 / 热力图 / 缓冲区分析 / 行政聚合</span></div>
+          <div class="arch-layer" style="--lc:#e67e22"><span class="arch-name">数据分析引擎</span><span class="arch-desc"><b>SCRIPT/</b> L0&rarr;L1 治理 / L1&rarr;L2 SnowNLP 情绪 / L3 DeepSeek 语义 / L4 归因 &mdash; 统一 <code>run_analysis_task()</code></span></div>
+          <div class="arch-layer" style="--lc:#7f8c8d"><span class="arch-name">基础设施层</span><span class="arch-desc"><b>core/</b> config 配置 / data_loader 加载 / export 导出 / tracker 决策追踪</span></div>
+          <div class="arch-layer" style="--lc:#9b59b6"><span class="arch-name">数据采集层</span><span class="arch-desc"><b>SCRAPER/</b> Scrapy 2.16 多源爬虫 &mdash; 大众点评 / 美团 / 小红书 / 微博 / 12345 热线</span></div>
+          <div class="arch-layer" style="--lc:#e04848"><span class="arch-name">数据层</span><span class="arch-desc"><b>DATA/</b> raw 原始 / processed L1~L4 治理+分析结果 / boundaries 边界范围</span></div>
+        </div>
+      </div>
+
+      <!-- 技术架构 -->
+      <div class="info-section">
+        <div class="info-section-title">技术架构 &mdash; 代码目录</div>
+        <div class="info-tags">
+          <span class="info-tag">frontend/ MapLibre 主界面</span>
+          <span class="info-tag">core/ 基础设施</span>
+          <span class="info-tag">SCRIPT/ 分析管道</span>
+          <span class="info-tag">SCRAPER/ 数据采集</span>
+          <span class="info-tag">DATA/ 数据存储</span>
+          <span class="info-tag">design/ 设计令牌</span>
+          <span class="info-tag">docs/ 文档体系</span>
+          <span class="info-tag">apps/ Streamlit 遗留</span>
+        </div>
+      </div>
+
+      <!-- 技术栈 -->
+      <div class="info-section">
+        <div class="info-section-title">技术栈</div>
+        <div class="info-tags">
+          <span class="info-tag">Python 3.14</span>
+          <span class="info-tag">MapLibre GL JS 5.x</span>
+          <span class="info-tag">SnowNLP + jieba</span>
+          <span class="info-tag">Shapely + proj4</span>
+          <span class="info-tag">shpjs (Shapefile)</span>
+          <span class="info-tag">csv2geojson</span>
+          <span class="info-tag">FastAPI</span>
+          <span class="info-tag">Scrapy 2.16</span>
+          <span class="info-tag">CARTO 瓦片</span>
+        </div>
+      </div>
+
+      <!-- 应用场景 — 4 类 × 5 要素 -->
+      <div class="info-section">
+        <div class="info-section-title">应用场景 &mdash; 4 类需求 &times; 5 要素</div>
+        <table class="scenario-matrix">
+          <thead><tr><th></th><th>设施</th><th>环境</th><th>服务</th><th>文化</th><th>事件</th></tr></thead>
+          <tbody>
+            <tr><td class="sc-cat"><b>城市规划</b></td><td class="sc-hit">设施选址评估</td><td class="sc-hit">绿地/水系感知</td><td class="sc-miss">&mdash;</td><td class="sc-hit">文化设施布局</td><td class="sc-miss">&mdash;</td></tr>
+            <tr><td class="sc-cat"><b>城市更新</b></td><td class="sc-hit">老旧设施改造</td><td class="sc-hit">环境品质提升</td><td class="sc-hit">公共服务优化</td><td class="sc-miss">&mdash;</td><td class="sc-miss">&mdash;</td></tr>
+            <tr><td class="sc-cat"><b>城市运营</b></td><td class="sc-hit">设施运维监测</td><td class="sc-miss">&mdash;</td><td class="sc-hit">服务效率评估</td><td class="sc-miss">&mdash;</td><td class="sc-hit">突发事件响应</td></tr>
+            <tr><td class="sc-cat"><b>城市治理</b></td><td class="sc-hit">设施投诉热点</td><td class="sc-hit">环境问题定位</td><td class="sc-hit">服务质量追踪</td><td class="sc-hit">文化活动效果</td><td class="sc-hit">舆情事件预警</td></tr>
+          </tbody>
+        </table>
+        <div class="info-text" style="margin-top:8px"><b>5 要素</b>是市民情绪的核心指向：<b>设施</b>（交通/教育/医疗）、<b>环境</b>（绿化/空气/噪音）、<b>服务</b>（政务/商业/公共）、<b>文化</b>（历史/休闲/体育）、<b>事件</b>（施工/事故/活动）。</div>
+      </div>
+
+      <!-- 未来展望 -->
+      <div class="info-section">
+        <div class="info-section-title">未来展望</div>
+        <div class="info-roadmap">
+          <div class="rm-item"><span class="rm-dot"></span><b>L3 语义增强</b> — DeepSeek 细粒度情感（ sarcasm / irony / aspect-based）</div>
+          <div class="rm-item"><span class="rm-dot"></span><b>L4 多维归因</b> — Gi* 热点 / Moran's I 空间自相关 / H3 网格聚合</div>
+          <div class="rm-item"><span class="rm-dot"></span><b>实时流</b> — Kafka + Flink 实时情绪流接入</div>
+          <div class="rm-item"><span class="rm-dot"></span><b>多城市</b> — 武汉 / 襄阳 / 宜昌 都市圈扩展</div>
+          <div class="rm-item"><span class="rm-dot"></span><b>暗色主题</b> — 数据展示场景适配</div>
+        </div>
+      </div>
+
+      <!-- 坐标系（次要信息） -->
+      <div class="info-section info-section-minor">
+        <div class="info-section-title">坐标系</div>
+        <div class="info-text">社交媒体 GCJ-02 &rarr; WGS84 EPSG:4324（统一基准）&rarr; CGCS2000 EPSG:4546（宜昌投影）。导入时自动读 .prj &rarr; proj4 重投影。</div>
+      </div>
+
+    </div>
+    <div class="dialog-foot">
+      <button class="btn btn-primary" data-close>关闭</button>
     </div>
   </dialog>
 

@@ -30,7 +30,7 @@ export function initToolbar({ onTool, onImport, onExport, onBasemap } = {}) {
     });
   });
 
-  // ── Right group: Import / Export / M ──
+  // ── Right group: Import / Export / M / i ──
   document.querySelector('[data-action="import"]')?.addEventListener('click', () => {
     if (onImport) onImport();
   });
@@ -40,6 +40,9 @@ export function initToolbar({ onTool, onImport, onExport, onBasemap } = {}) {
   document.querySelector('[data-action="basemap"]')?.addEventListener('click', (e) => {
     e.stopPropagation();
     togglePopover();
+  });
+  document.querySelector('[data-action="info"]')?.addEventListener('click', () => {
+    document.getElementById('modal-info')?.showModal();
   });
 
   // ── Basemap popover cells ──
@@ -58,9 +61,9 @@ export function initToolbar({ onTool, onImport, onExport, onBasemap } = {}) {
     if (!pop.contains(e.target) && !e.target.closest('[data-action="basemap"]')) pop.hidden = true;
   });
 
-  // ── Export modal buttons ──
+  // ── Modal close buttons (Export + Info) ──
   document.querySelectorAll('[data-close]').forEach((b) =>
-    b.addEventListener('click', () => document.getElementById('modal-export').close()));
+    b.addEventListener('click', () => { b.closest('dialog')?.close(); }));
   document.getElementById('export-confirm')?.addEventListener('click', () => {
     const format = document.getElementById('export-format').value;
     const desensitize = document.getElementById('export-desensitize').checked;

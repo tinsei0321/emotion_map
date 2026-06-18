@@ -4,10 +4,15 @@ import { initControls } from './map-controls.js';
 import { showRangePopup } from './popup.js';
 
 export const BASEMAPS = {
+  // 天地图 raster (CN government, label variants)
   'tianditu-img-nolabel': '../apps/static/tianditu_img_nolabel.json',
   'tianditu-img':         '../apps/static/tianditu_img.json',
   'tianditu-vec-nolabel': '../apps/static/tianditu_nolabel.json',
   'tianditu-vec':         '../apps/static/tianditu_label.json',
+  // CARTO raster (DarkMatter/Light/Voyager, no-labels variants)
+  'dark':      '../apps/static/carto_dark.json',
+  'positron':  '../apps/static/carto_light.json',
+  'bright':    '../apps/static/carto_voyager.json',
 };
 export const DEFAULT_BASEMAP = 'tianditu-img-nolabel';
 const YICHANG = { center: [111.286, 30.708], zoom: 12 };

@@ -157,13 +157,15 @@ function hintChip(l) {
   return `<span class="layer-hint" style="color:${layerDisplayColor(l)}">${text}</span>`;
 }
 
-/** Group header row (draggable to reorder; no select/eye/del — those are on children). */
-function groupRowHtml(g, childCount) {
+/** Group header row (draggable + eye to toggle all children; no select/del — those are on children). */
+function groupRowHtml(g, children) {
+  const allVis = children.length > 0 && children.every((c) => c.visible);
   return `<div class="layer-group" data-id="${g.id}" draggable="true" title="拖拽排序">
     ${GRIP}
+    <button class="layer-eye" data-group-eye="${g.id}" title="${allVis ? '隐藏全部' : '显示全部'}">${allVis ? eyeOpen : eyeOff}</button>
     <span class="layer-group-chev">&#9662;</span>
     <span class="layer-group-name">${g.name}</span>
-    <span class="layer-group-count">${childCount}</span>
+    <span class="layer-group-count">${children.length}</span>
   </div>`;
 }
 
@@ -202,7 +204,7 @@ export function renderLayerList() {
   for (const l of top) {
     if (l.kind === 'group') {
       const kids = (l.children || []).map((cid) => byId.get(cid)).filter(Boolean);
-      html += groupRowHtml(l, kids.length);
+      html += groupRowHtml(l, kids);
       for (const c of kids) html += layerRowHtml(c, openId, selId, true);
     } else {
       html += layerRowHtml(l, openId, selId, false);
@@ -215,6 +217,8 @@ export function renderLayerList() {
     b.addEventListener('click', (e) => { e.stopPropagation(); toggleEye(b.dataset.eye); }));
   list.querySelectorAll('[data-del]').forEach((b) =>
     b.addEventListener('click', (e) => { e.stopPropagation(); deleteLayer(b.dataset.del); }));
+  list.querySelectorAll('[data-group-eye]').forEach((b) =>
+    b.addEventListener('click', (e) => { e.stopPropagation(); toggleGroupEye(b.dataset.groupEye); }));
   list.querySelectorAll('[data-feat]').forEach((b) =>
     b.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -230,9 +234,11 @@ export function renderLayerList() {
       renderLayerList();
     }));
 
-  // row click → select (rows only, not groups)
+  // row click → select (rows + L2 groups — both open Overview)
   list.querySelectorAll('.layer-row').forEach((row) =>
     row.addEventListener('click', () => selectLayerRow(row.dataset.id)));
+  list.querySelectorAll('.layer-group').forEach((grp) =>
+    grp.addEventListener('click', () => selectLayerRow(grp.dataset.id)));
 
   // drag → reorder z-order (bind to ALL draggable: top-level rows + L2 groups; children excluded)
   list.querySelectorAll('[draggable]').forEach((el) => {
@@ -284,7 +290,22 @@ function toggleEye(id) {
   setLayerVisible(id, !l.visible);
   renderLayer(l);
   renderLayerList();
+  refreshLegend();   // legend syncs with visibility (hidden layer → legend hides)
   toast.info(`${l.visible ? '显示' : '隐藏'}图层：${l.name}`);
+}
+
+/** L2 group eye: toggle ALL children at once (any hidden → show all; all visible → hide all). */
+function toggleGroupEye(groupId) {
+  const children = getLayers().filter((l) => l.parentId === groupId);
+  if (!children.length) return;
+  const showAll = !children.every((c) => c.visible);
+  for (const c of children) {
+    setLayerVisible(c.id, showAll);
+    renderLayer(c);
+  }
+  renderLayerList();
+  refreshLegend();
+  toast.info(`${showAll ? '显示' : '隐藏'}全部子图层`);
 }
 
 function deleteLayer(id) {

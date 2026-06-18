@@ -4,7 +4,7 @@ import { initPanel, activateTab, setOverview, setTable } from './panel.js';
 import { initToolbar, setActiveBasemap } from './toolbar.js';
 import { initSidebar, openImport, openRightPanel, renderLayerList, showLayerManager, refreshLegend } from './sidebar.js';
 import { initPopup, showPopup } from './popup.js';
-import { addLayer, addGroup, getSelectedLayer } from './state.js';
+import { addLayer, addGroup, getLayers, getSelectedLayer } from './state.js';
 import {
   groupFiles, detectGroupType, parseGroup, reprojectFC, readPrj,
   splitByGeometry, detectColorMode, fcBBox,
@@ -18,6 +18,13 @@ function layerName(group) {
     return (shp ? shp.name : group.files[0].name).replace(/\.[^.]+$/, '');
   }
   return group.files[0].name;
+}
+
+/** Enable/disable Export button based on whether any data layers exist. */
+function updateExportState() {
+  const has = getLayers().some((l) => l.kind !== 'group');
+  const btn = document.getElementById('btn-export');
+  if (btn) btn.disabled = !has;
 }
 
 /** Overview reflects the SELECTED layer (per-layer 3-tier); empty state if none. */
@@ -124,6 +131,7 @@ function main() {
     renderLayerList();
     refreshLegend();
     refreshOverview();
+    updateExportState();
   });
 
   // Layer row selected → open right panel + show that layer's Overview.
@@ -139,7 +147,9 @@ function main() {
     refreshOverview();
   });
 
-  console.log('[OK] emotion-map frontend (layer select + Overview per-layer) loaded');
+  updateExportState();   // Export disabled initially (no data)
+
+  console.log('[OK] emotion-map frontend (OpenFreeMap + toolbar icons + L2 group eye) loaded');
 }
 
 document.addEventListener('DOMContentLoaded', main);
