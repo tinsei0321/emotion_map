@@ -721,11 +721,11 @@ export function initHeatmapTool() {
     const lockReason = key === 'positive' ? 'positive' : key === 'negative' ? 'negative' : null;
     const lv = dlg.querySelector('#hm-level').value;
     constrainPolarityOptions(dlg, lv, lockReason);
-    if (lockReason === 'positive') applyPolarityToMacros(dlg, 'P');
-    else if (lockReason === 'negative') applyPolarityToMacros(dlg, 'N');
     const polNow = dlg.querySelector('#hm-subset').value;
     const resolved = resolveSource(sources, lv, polNow);
     renderMacroChips(dlg, lv);
+    // 传导：极性 → 大类 → 小类（对所有分析类型生效，renderMacroChips 之后执行以免被清空）
+    applyPolarityToMacros(dlg, polNow);
     renderTypeChips(dlg, resolved ? resolved.fc : { features: [] }, lv);
     applyMacroToTypes(dlg);
     renderStyles(dlg);
@@ -752,6 +752,8 @@ export function initHeatmapTool() {
     const polNow = dlg.querySelector('#hm-subset').value;
     const resolved = resolveSource(sources, lv, polNow);
     renderMacroChips(dlg, lv);
+    // 传导：极性 → 大类 → 小类（对所有分析类型生效，renderMacroChips 之后执行以免被清空）
+    applyPolarityToMacros(dlg, polNow);
     renderTypeChips(dlg, resolved ? resolved.fc : { features: [] }, lv);
     applyMacroToTypes(dlg);
     renderStyles(dlg);
