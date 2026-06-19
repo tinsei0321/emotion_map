@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160">
+  <rect width="200" height="160" fill="#f7f8fa"/>
+  <!-- 7 大类彩色点散布：喜=#EFC616 乐=#BC1F8C 怒=#DA1F4A 哀=#2D3A8E 愁=#6F2BA8 急=#EE5A1F 盼=#3FA34D -->
+  <g opacity="0.92">
+    <circle cx="40"  cy="38"  r="10" fill="#EFC616"/>
+    <circle cx="68"  cy="55"  r="8"  fill="#EFC616"/>
+    <circle cx="88"  cy="34"  r="7"  fill="#BC1F8C"/>
+    <circle cx="115" cy="48"  r="9"  fill="#BC1F8C"/>
+    <circle cx="148" cy="32"  r="8"  fill="#DA1F4A"/>
+    <circle cx="170" cy="56"  r="7"  fill="#DA1F4A"/>
+
+    <circle cx="32"  cy="78"  r="9"  fill="#2D3A8E"/>
+    <circle cx="62"  cy="92"  r="8"  fill="#2D3A8E"/>
+    <circle cx="92"  cy="78"  r="10" fill="#6F2BA8"/>
+    <circle cx="124" cy="92"  r="8"  fill="#6F2BA8"/>
+    <circle cx="156" cy="80"  r="9"  fill="#EE5A1F"/>
+
+    <circle cx="48"  cy="120" r="8"  fill="#EE5A1F"/>
+    <circle cx="80"  cy="130" r="9"  fill="#3FA34D"/>
+    <circle cx="112" cy="120" r="8"  fill="#3FA34D"/>
+    <circle cx="146" cy="130" r="10" fill="#3FA34D"/>
+    <circle cx="174" cy="118" r="7"  fill="#EFC616"/>
+  </g>
+</svg>

@@ -175,6 +175,20 @@
 .sec-run { background: var(--geojson-color-gray-700); }
 .sec-run:hover { background: var(--geojson-color-gray-600); }
 
+/* 取消按钮：弱化 — 白底 + 深灰字 + 细线框 + 悬停变灰，不填充
+ * 全站所有"取消"按钮统一用 .sec-cancel 这一类。 */
+.sec-btn.sec-cancel,
+.btn.sec-cancel {
+  background: var(--geojson-color-surface-page);
+  color: var(--geojson-color-gray-700);
+  border: 1px solid var(--geojson-color-gray-300);
+}
+.sec-btn.sec-cancel:hover,
+.btn.sec-cancel:hover {
+  background: var(--geojson-color-gray-100);
+  color: var(--geojson-color-gray-700);
+}
+
 /* ── Toolbox section — 与 Layers 同款 row 节奏 ── */
 .tool-list {
   display: flex;

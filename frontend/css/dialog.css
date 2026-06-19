@@ -151,12 +151,12 @@
 
 /* ── HeatMap parameter dialog ── */
 .hm-dialog {
-  width: 360px;
-  max-height: 80vh;
+  width: 480px;
+  max-height: 92vh;
 }
 .hm-dialog .dialog-body {
   overflow-y: auto;
-  max-height: 60vh;
+  max-height: 78vh;
   padding: var(--geojson-spacing-3) var(--geojson-spacing-4);
   display: flex;
   flex-direction: column;
@@ -245,7 +245,7 @@
 }
 
 /* ── HeatMap v2: 分组 / 类型筛选 chips / 单位切换 / 高级折叠 ── */
-.hm-dialog { width: 380px; }
+.hm-dialog { width: 420px; }
 
 .hm-group {
   display: flex;
@@ -270,7 +270,9 @@
   margin-left: 6px;
 }
 
-/* 类型筛选 chips — 复用 EMOTION_TYPE_COLORS 通过 --chip-color 注入 */
+/* 类型筛选 chips — 复用 EMOTION_TYPE_COLORS 通过 --chip-color 注入
+ * v3：去掉"未选中变灰" — 改为"选中颜色填充 / 未选中浅底中性"，避免视觉歧义。
+ * v4（"选项"语义）：未选中 = 浅灰底（与 Layers 行 hover 一致），选中 = 粗蓝框 + 浅灰填充。 */
 .hm-type-filter {
   display: flex;
   flex-wrap: wrap;
@@ -285,11 +287,11 @@
   font-size: var(--geojson-typography-size-2xs);
   color: var(--geojson-color-text-secondary);
   background: var(--geojson-color-surface-page);
-  border: 1px solid var(--geojson-color-gray-300);
+  border: 1px solid transparent;
   border-radius: 999px;
   cursor: pointer;
   user-select: none;
-  transition: background var(--geojson-transition), border-color var(--geojson-transition), opacity var(--geojson-transition);
+  transition: background var(--geojson-transition), border-color var(--geojson-transition);
 }
 .hm-type-chip input { display: none; }
 .hm-type-dot {
@@ -299,23 +301,60 @@
   background: var(--chip-color);
   flex-shrink: 0;
 }
-.hm-type-chip.is-on {
-  border-color: var(--chip-color);
-  background: color-mix(in srgb, var(--chip-color) 12%, transparent);
-  color: var(--geojson-color-text-primary);
-}
+/* 小类（表现）"选项"：未选中 = 中性浅底，选中 = 粗蓝框 + 浅灰填充 */
 .hm-type-chip:not(.is-on) {
-  opacity: 0.45;
+  background: var(--geojson-color-gray-100);
+  color: var(--geojson-color-text-tertiary);
 }
 .hm-type-chip:not(.is-on) .hm-type-dot {
   background: var(--geojson-color-gray-300);
 }
-.hm-type-chip:hover { opacity: 1; }
+.hm-type-chip:hover { background: var(--geojson-color-gray-100); }
+.hm-type-chip.is-on {
+  border: 2px solid var(--geojson-color-brand-primary);
+  background: var(--geojson-color-gray-100);
+  color: var(--geojson-color-text-primary);
+  padding: 2px 7px 2px 5px;   /* 抵消 border 厚度 +1px，外形不跳变 */
+}
 .hm-type-name { font-weight: var(--geojson-typography-weight-medium); }
 .hm-type-count {
   font-size: 10px;
   color: var(--geojson-color-text-tertiary);
   font-variant-numeric: tabular-nums;
+}
+
+/* 大类（类型）：固定 7 类，胶囊更醒目 — 选中 = 颜色填充 + 粗线框 */
+.hm-macro-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 6px;
+}
+.hm-macro-chip {
+  --chip-color: #888;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 13px;
+  min-width: 44px;
+  justify-content: center;
+  font-size: var(--geojson-typography-size-xs);
+  font-weight: var(--geojson-typography-weight-semibold);
+  color: var(--geojson-color-text-tertiary);
+  background: var(--geojson-color-surface-page);
+  border: 1px solid transparent;   /* v4：去线框；hover/选中靠 background 表达 */
+  border-radius: 999px;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--geojson-transition), color var(--geojson-transition);
+}
+.hm-macro-chip input { display: none; }
+.hm-macro-chip:hover { background: var(--geojson-color-gray-100); }
+/* 大类选中：颜色填充（去掉线框，按用户要求"类型胶囊去掉线框"） */
+.hm-macro-chip.is-on {
+  border-color: transparent;
+  background: var(--chip-color);
+  color: #fff;
 }
 
 /* ── 参数名旁的 ⓘ 悬停解释（纯 CSS hover，解决"参数难理解"痛点）── */
@@ -413,4 +452,202 @@
   gap: var(--geojson-spacing-3);
 }
 .hm-advanced .hm-section { margin-top: var(--geojson-spacing-2); }
+
+/* ── 三阶引导：Step 序号 / 类型卡 / 折叠区 / ③ 样式 ── */
+.hm-step-no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--geojson-color-brand-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+.hm-step-label {
+  font-size: var(--geojson-typography-size-sm);
+  font-weight: 700;
+  color: var(--geojson-color-text-primary);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.hm-group-title {
+  display: flex;
+  align-items: center;
+  /* 覆盖更上面的小灰大写小标题；保留组标题语义但样式由 hm-step-* 主导 */
+  font-size: var(--geojson-typography-size-sm);
+  font-weight: 700;
+  color: var(--geojson-color-text-primary);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Step1 分析类型卡区 */
+.hm-analysis {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.hm-analysis-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--geojson-color-gray-300);
+  border-radius: var(--geojson-radius-sm);
+  background: var(--geojson-color-surface-page);
+  color: var(--geojson-color-text-primary);
+  font-size: 12px;
+  font-weight: var(--geojson-typography-weight-medium);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--geojson-transition), background var(--geojson-transition);
+}
+/* hover：浅灰背景，与 Layers 行 hover 一致；不再变蓝边 */
+.hm-analysis-card:hover { background: var(--geojson-color-gray-100); border-color: var(--geojson-color-gray-300); }
+.hm-analysis-card.is-placeholder { opacity: 0.6; }
+.hm-ac-name { flex: 1; line-height: 1.2; }
+
+/* ── 折叠区（类型 / 表现） ── */
+.hm-fold {
+  border-top: 1px dashed var(--geojson-color-gray-200);
+  padding-top: 4px;
+}
+.hm-fold > .hm-fold-summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: var(--geojson-typography-size-xs);
+  font-weight: var(--geojson-typography-weight-medium);
+  color: var(--geojson-color-text-primary);
+  cursor: pointer;
+}
+.hm-fold > .hm-fold-summary::-webkit-details-marker { display: none; }
+.hm-fold-arrow {
+  font-size: 9px;
+  color: var(--geojson-color-text-tertiary);
+  transition: transform var(--geojson-transition);
+}
+.hm-fold[open] .hm-fold-arrow { transform: rotate(90deg); }
+.hm-fold-spacer { flex: 1; }
+.hm-fold-summary-cnt {
+  font-size: var(--geojson-typography-size-2xs);
+  color: var(--geojson-color-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── ③ 显示样式（"栏"语义：每条独占整行，浅蓝填充无边框） ── */
+.hm-style-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hm-style-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--geojson-radius-sm);
+  background: var(--geojson-color-surface-page);
+  color: var(--geojson-color-text-primary);
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--geojson-transition);
+  width: 100%;
+  min-height: 28px;
+}
+.hm-style-btn:hover { background: var(--geojson-color-gray-100); }
+.hm-style-btn.is-dev { opacity: 0.7; }
+/* 离散色块条：kepler 风格分段（无渐变、每段独立色块），占整行宽度 */
+.hm-style-bar {
+  flex: 1;
+  height: 18px;
+  border-radius: 2px;
+  overflow: hidden;
+  display: flex;
+  border: 1px solid var(--geojson-color-gray-200);
+}
+.hm-style-seg {
+  flex: 1;
+  height: 100%;
+}
+.hm-style-name { display: none; }   /* v3：去掉名称文字（多余），用 i 悬停看说明 */
+
+/* ── Infopanel（analysis-card hover 弹出图+文看板，圆角正方形） ── */
+.hm-infopanel {
+  position: fixed;
+  width: 220px;
+  height: 220px;
+  z-index: 10001;
+  background: var(--geojson-color-surface-page);
+  border: 1px solid var(--geojson-color-border-default);
+  border-radius: var(--geojson-radius-lg);
+  box-shadow: var(--geojson-shadow-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.hm-infopanel.is-show { opacity: 1; }
+.hm-infopanel-img {
+  flex: 3;
+  min-height: 0;
+  background: var(--geojson-color-gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid var(--geojson-color-gray-200);
+}
+.hm-infopanel-img img {
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+  object-fit: contain;
+}
+.hm-infopanel-text {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: var(--geojson-typography-size-2xs);
+  line-height: 1.4;
+  color: var(--geojson-color-text-secondary);
+  overflow: hidden;
+}
+
+/* ── 全局选中态语义类 ─────────────────────────────────────
+ *  .is-bar-sel — 占满整行的"栏"选中：浅蓝填充，无线框
+ *  .is-opt-sel — 一行多条的"选项"选中：粗蓝框 + 浅灰填充
+ *  弹窗内 analysis-card / style-btn / dim-btn / grid-btn / ramp-btn 统一用 .is-opt-sel
+ *  Layers 行的浅蓝填充已在 sidebar.css，用 .is-bar-sel 语义对齐 */
+.is-bar-sel {
+  background: rgba(0, 122, 252, 0.12) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.is-opt-sel {
+  border-color: var(--geojson-color-brand-primary) !important;
+  border-width: 2.5px !important;
+  border-style: solid !important;
+  background: var(--geojson-color-gray-100) !important;
+  box-shadow: none !important;
+  color: var(--geojson-color-text-primary) !important;
+}
+/* analysis-card 在选中时仍保留品牌色填充感（更醒目） */
+.hm-analysis-card.is-opt-sel {
+  background: var(--geojson-color-gray-100) !important;
+  padding: 6.5px 8.5px;   /* 抵消 border 增厚 1.5px */
+}
+/* style-btn 选中时让色带预览更突出 */
+.hm-style-btn.is-bar-sel { background: rgba(0, 122, 252, 0.12) !important; border-color: transparent !important; }
+.hm-style-btn.is-bar-sel:hover { background: rgba(0, 122, 252, 0.18) !important; }
 

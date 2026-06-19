@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160">
+  <defs>
+    <radialGradient id="pg1" cx="40%" cy="50%" r="40%">
+      <stop offset="0%" stop-color="#083D08"/>
+      <stop offset="35%" stop-color="#3DBA3D" stop-opacity=".85"/>
+      <stop offset="70%" stop-color="#A8E6A0" stop-opacity=".5"/>
+      <stop offset="100%" stop-color="#A8E6A0" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="pg2" cx="72%" cy="65%" r="25%">
+      <stop offset="0%" stop-color="#167A16"/>
+      <stop offset="60%" stop-color="#3DBA3D" stop-opacity=".5"/>
+      <stop offset="100%" stop-color="#A8E6A0" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="160" fill="#f7f8fa"/>
+  <rect width="200" height="160" fill="url(#pg1)"/>
+  <rect width="200" height="160" fill="url(#pg2)"/>
+</svg>

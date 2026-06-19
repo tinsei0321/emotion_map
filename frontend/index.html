@@ -228,44 +228,74 @@
     </div>
     <div class="dialog-body">
 
-      <!-- A. 数据与显示 -->
+      <!-- ① 选择分析类型（强引导入口：选类型即套推荐默认；卡片悬停弹出图+文 infopanel） -->
       <div class="hm-group">
-        <div class="hm-group-title">A. 数据与显示</div>
+        <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">选择分析类型</span></div>
+        <div class="hm-analysis" id="hm-analysis"><!-- 类型卡 by JS --></div>
+      </div>
+
+      <!-- ② 选择数据源（数据 / 极性下拉；类型 / 表现 胶囊可折叠） -->
+      <div class="hm-group">
+        <div class="hm-group-title"><span class="hm-step-no">2</span><span class="hm-step-label">选择数据源</span></div>
         <div class="hm-section">
-          <div class="hm-label">数据层级 / Level <span class="hm-info">i<span class="hm-tip">选择分析的数据层级。L2 = 已完成情绪分析（积极/消极/中性）；L1 = 治理相关性（置信度）；L3/L4 开发中。热力图分析以 L2 为主。</span></span></div>
+          <div class="hm-label">数据</div>
           <select class="sec-select" id="hm-level"></select>
         </div>
         <div class="hm-section">
-          <div class="hm-label">极性子集 / Subset <span class="hm-info">i<span class="hm-tip">L2 下选择极性范围。P = 只看积极情绪；N = 只看消极情绪；PN = 综合（含中性点）。无单独 Neutral 选项——中性点计入"综合"。L1 无极性，此项禁用。</span></span></div>
+          <div class="hm-label">极性</div>
           <select class="sec-select" id="hm-subset">
-            <option value="PN" selected>综合 PN（积极+消极，含中性点）</option>
-            <option value="P">积极 P</option>
-            <option value="N">消极 N</option>
+            <option value="ALL" selected>综合</option>
+            <option value="P">积极</option>
+            <option value="N">消极</option>
+            <option value="O">中性</option>
           </select>
         </div>
+
+        <!-- 类型（7 大类胶囊；默认展开；颜色填充无线框；选项 hover 弹 popup 提示） -->
+        <details class="hm-fold" id="hm-macro-fold" open>
+          <summary class="hm-fold-summary">
+            <span class="hm-fold-arrow">▶</span>
+            <span class="hm-fold-label">类型</span>
+            <span class="hm-fold-spacer"></span>
+            <span class="hm-fold-summary-cnt" id="hm-macro-cnt"></span>
+          </summary>
+          <div class="hm-macro-filter" id="hm-macros"><!-- 大类胶囊 by JS --></div>
+        </details>
+
+        <!-- 表现（小类胶囊；默认展开；按数据动态归纳；选中粗蓝框+浅灰） -->
+        <details class="hm-fold" id="hm-type-fold" open>
+          <summary class="hm-fold-summary">
+            <span class="hm-fold-arrow">▶</span>
+            <span class="hm-fold-label">表现</span>
+            <span class="hm-info" data-tip="情绪小类（按当前数据动态归纳，无固定数量）。是大类的具体表现；选大类会自动选中其下所有小类。">i</span>
+            <span class="hm-fold-spacer"></span>
+            <span class="hm-fold-summary-cnt" id="hm-type-cnt"></span>
+          </summary>
+          <div class="hm-type-filter" id="hm-types"><!-- 小类胶囊 by JS --></div>
+        </details>
+      </div>
+
+      <!-- ③ 显示样式（随①+②联动；每个色带带独立 i 悬停） -->
+      <div class="hm-group">
+        <div class="hm-group-title"><span class="hm-step-no">3</span><span class="hm-step-label">显示样式</span></div>
         <div class="hm-section">
-          <div class="hm-label">情绪类型 / Types <span class="hm-info">i<span class="hm-tip">筛选进入热力图的情绪类型（论文 7 类，每类对应一个治理动作）。默认全选；取消勾选的类型不计入。数据若无 emotion_type 字段，按极性派生（积极→喜悦满意，消极→不满抱怨等）。</span></span></div>
-          <div class="hm-type-filter" id="hm-types"><!-- chips by JS --></div>
-        </div>
-        <div class="hm-section">
-          <div class="hm-label">色带 / Color <span class="hm-info">i<span class="hm-tip">热力图颜色随密度变化的映射。综合彩虹 = 中立（推荐起步）；积极绿 6 级 / 消极红 6 级 = 强化极性倾向；单色 = 纯密度不暗示情绪。</span></span></div>
-          <div class="hm-ramp-list" id="hm-ramps"><!-- built by heatmap-tool.js --></div>
-        </div>
-        <div class="hm-section">
-          <div class="hm-label" id="hm-radius-label">半径 / Radius <span class="hm-val" id="hm-radius-val">300 m</span> <span class="hm-info">i<span class="hm-tip">核密度带宽（地理米）。值越大越平滑、热点越融合；越小越尖锐、细节越多。街区级分析用 150–300 m，城区级用 500–1000 m。默认 300 m 适合多数城市场景。</span></span></div>
-          <input type="range" class="set-range" id="hm-radius" min="50" max="2000" value="300" step="10">
-        </div>
-        <div class="hm-section">
-          <div class="hm-label">透明度 / Opacity <span class="hm-val" id="hm-opacity-val">70%</span> <span class="hm-info">i<span class="hm-tip">热力图叠加在底图上的不透明度。值高则热力图更突出，值低则底图更清晰。规划汇报建议 60–80%。</span></span></div>
-          <input type="range" class="set-range" id="hm-opacity" min="0" max="100" value="70" step="1">
+          <div class="hm-style-list" id="hm-styles"><!-- 样式胶囊 by JS（含 i 提示） --></div>
         </div>
       </div>
 
-      <!-- B. 权重与建模 -->
-      <div class="hm-group">
-        <div class="hm-group-title">B. 权重与建模</div>
+      <!-- 高级（默认折叠；含半径/透明度/权重/曲线/强度/阈值/缩放范围） -->
+      <details class="hm-advanced" id="hm-advanced">
+        <summary>高级 / Advanced</summary>
         <div class="hm-section">
-          <div class="hm-label">权重字段 / Weight <span class="hm-info">i<span class="hm-tip">决定每个点对热核的贡献来源。emotion_intensity = 情绪浓淡（0 中性、1 极端，推荐，直观）；score = 情绪分数（需配"反转"曲线才让消极更热）；l2_confidence = 分析置信度；uniform = 等权，纯看密度不看情绪。</span></span></div>
+          <div class="hm-label" id="hm-radius-label">半径 / Radius <span class="hm-val" id="hm-radius-val">300 m</span></div>
+          <input type="range" class="set-range" id="hm-radius" min="50" max="2000" value="300" step="10">
+        </div>
+        <div class="hm-section">
+          <div class="hm-label">透明度 / Opacity <span class="hm-val" id="hm-opacity-val">70%</span></div>
+          <input type="range" class="set-range" id="hm-opacity" min="0" max="100" value="70" step="1">
+        </div>
+        <div class="hm-section">
+          <div class="hm-label">权重字段 / Weight</div>
           <select class="sec-select" id="hm-weight-field">
             <option value="emotion_intensity" selected>emotion_intensity（情绪强度，推荐）</option>
             <option value="score">score（情绪分数）</option>
@@ -274,7 +304,7 @@
           </select>
         </div>
         <div class="hm-section">
-          <div class="hm-label">权重曲线 / Curve <span class="hm-info">i<span class="hm-tip">字段值映射成权重的形状。linear = 值越高权重越高（配 emotion_intensity）；linear-inverse = 反转，配 score 让消极更热；exponential = 高值急剧拉升，热点更尖更集中。</span></span></div>
+          <div class="hm-label">权重曲线 / Curve</div>
           <select class="sec-select" id="hm-curve">
             <option value="linear" selected>线性正向（高值越热）</option>
             <option value="linear-inverse">线性反转（低值越热，配 score）</option>
@@ -284,18 +314,13 @@
           <div class="hm-hint" id="hm-curve-hint">当前：值越高 → 权重越高 → 颜色越热（推荐配 emotion_intensity）</div>
         </div>
         <div class="hm-section">
-          <div class="hm-label">强度系数 / Intensity <span class="hm-val" id="hm-intensity-val">1.0</span> <span class="hm-info">i<span class="hm-tip">热核整体强度倍率。值越大整体颜色越浓烈（但不改变热点相对位置）。默认 1.0；想让热点更醒目可调到 1.2–1.5。</span></span></div>
+          <div class="hm-label">强度系数 / Intensity <span class="hm-val" id="hm-intensity-val">1.0</span></div>
           <input type="range" class="set-range" id="hm-intensity" min="0" max="3" value="1" step="0.1">
         </div>
         <div class="hm-section">
-          <div class="hm-label">强度阈值 / Min Intensity <span class="hm-val" id="hm-int-min-val">0.00</span> <span class="hm-info">i<span class="hm-tip">过滤"假热点"——emotion_intensity 低于此值的点不计入热力图。调高可剔除零散中性长文本，只保留真正有情绪浓度的点。默认 0 = 不过滤。</span></span></div>
+          <div class="hm-label">强度阈值 / Min Intensity <span class="hm-val" id="hm-int-min-val">0.00</span></div>
           <input type="range" class="set-range" id="hm-int-min" min="0" max="1" value="0" step="0.05">
         </div>
-      </div>
-
-      <!-- C. 高级（默认折叠） -->
-      <details class="hm-advanced" id="hm-advanced">
-        <summary>C. 高级 / Advanced</summary>
         <div class="hm-section">
           <div class="hm-label">可见缩放范围</div>
           <div class="hm-zoom-range">
@@ -311,7 +336,7 @@
 
     </div>
     <div class="dialog-foot">
-      <button class="sec-btn sec-run" data-close>取消</button>
+      <button class="sec-btn sec-cancel" data-close>取消</button>
       <button class="sec-btn" id="hm-generate">生成热力图</button>
     </div>
   </dialog>
@@ -337,7 +362,7 @@
       </label>
     </div>
     <div class="dialog-foot">
-      <button class="btn btn-secondary" data-close>取消</button>
+      <button class="btn btn-secondary sec-cancel" data-close>取消</button>
       <button class="btn btn-primary" id="export-confirm">导出</button>
     </div>
   </dialog>

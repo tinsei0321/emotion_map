@@ -252,45 +252,68 @@ export const HEATMAP_RAMPS = {
     ],
   },
   mono: {
+    // 单色热力（L1 默认色，舆情热度）— 橙红色调（参考 ColorBrewer Reds 暖段）
     name: '单色热力',
     stops: [
-      [0.00, 'rgba(0,0,0,0)'],
-      [0.15, 'rgba(60,60,60,0.25)'],
-      [0.35, 'rgba(120,120,120,0.45)'],
-      [0.55, 'rgba(180,180,180,0.65)'],
-      [0.75, 'rgba(220,220,220,0.82)'],
-      [1.00, 'rgba(255,255,255,0.95)'],
+      [0.00, 'rgba(255,245,240,0)'],
+      [0.15, '#FCBBA1'],
+      [0.30, '#FC9272'],
+      [0.50, '#FB6A4A'],
+      [0.70, '#EF3B2C'],
+      [0.85, '#CB181D'],
+      [1.00, '#99000D'],
     ],
   },
-  // 6 级色板（论文方法 + 用户需求）：3 级情绪 + 3 级中性过渡，density 0 透明
-  'positive-6': {
-    name: '积极6级',
+  // 红/蓝/绿渐变（3D 综合情绪地形高程着色）：高地 = 积极绿（凸），洼地 = 消极红（凹），
+  // 中间过渡用"消极红色板"里的蓝段（#3A7CA5 系列）作零值/中性基准。
+  // density 0→1 对应 z 值由低到高：洼地（消极红）→ 中性蓝 → 高地（积极绿）。
+  'diverging-rg': {
+    name: '红蓝绿地形',
     stops: [
-      [0.00, 'rgba(30,120,80,0)'],
-      [0.15, '#C8E6C9'],   // 中性浅
-      [0.30, '#A5D6A7'],   // 中性
-      [0.45, '#81C784'],   // 中性→积极过渡
-      [0.62, '#4CAF50'],   // 积极浅
-      [0.80, '#2E7D32'],   // 积极
-      [1.00, '#1B5E20'],   // 非常积极（深绿）
+      [0.00, 'rgba(122,30,22,0)'],
+      [0.10, '#7A1E16'],   // 洼地底（深消极，红）
+      [0.22, '#A3321A'],
+      [0.34, '#C44A2E'],
+      [0.45, '#E07142'],
+      [0.50, '#3A7CA5'],   // 中性零值（消极红色板里的蓝段）
+      [0.55, '#A8E6A0'],
+      [0.66, '#3DBA3D'],
+      [0.78, '#167A16'],
+      [1.00, '#083D08'],   // 高地顶（深积极，绿）
     ],
   },
-  'negative-6': {
-    name: '消极6级',
+  // 网格暖色谱（采样自用户提供的图1，近似 kepler "Global Warming" 6 色插值）
+  'grid-warm': {
+    name: '热力网格暖色',
     stops: [
-      [0.00, 'rgba(120,80,160,0)'],
-      [0.15, '#E0E0E0'],   // 中性浅
-      [0.30, '#BCAAA4'],   // 中性
-      [0.45, '#A1887F'],   // 中性→消极过渡
-      [0.62, '#E07142'],   // 消极浅
-      [0.80, '#C44A2E'],   // 消极
-      [1.00, '#7A1E16'],   // 非常消极（深红）
+      [0.00, 'rgba(79,15,42,0)'],
+      [0.15, '#4F0F2A'],
+      [0.30, '#8E1D3C'],
+      [0.45, '#DC2440'],
+      [0.62, '#ED5C28'],
+      [0.80, '#F08828'],
+      [1.00, '#F4C518'],
+    ],
+  },
+  // 7 色情绪分类色板（采样自图2 6 色 + 第 7 色柔和绿，对应喜怒哀乐愁急盼）
+  'classify-7': {
+    name: '情绪 7 类',
+    stops: [
+      // 注：分类色板用作 chip / legend 调色源，不直接走 heatmap-color 插值
+      [0.00, 'rgba(45,58,142,0)'],
+      [0.15, '#2D3A8E'],
+      [0.30, '#6F2BA8'],
+      [0.45, '#BC1F8C'],
+      [0.58, '#DA1F4A'],
+      [0.72, '#EE5A1F'],
+      [0.86, '#EFC616'],
+      [1.00, '#3FA34D'],
     ],
   },
 };
 
-// sorted keys for UI iteration
-export const HEATMAP_RAMP_KEYS = ['negative', 'positive', 'neutral', 'anxiety', 'rainbow', 'mono', 'positive-6', 'negative-6'];
+// sorted keys for UI iteration（3D 红绿渐变与网格暖色为新增；删除原积极/消极 6 级）
+export const HEATMAP_RAMP_KEYS = ['rainbow', 'positive', 'negative', 'neutral', 'anxiety', 'mono', 'diverging-rg', 'grid-warm', 'classify-7'];
 
 // ── Emotion type palette — 论文双层体系（微观具体情绪，7 类，每类对齐治理动作）──
 // 类型与 SCRIPT/emotion_lexicon.py EMOTION_LEXICON 保持一致。
@@ -314,6 +337,42 @@ export const EMOTION_TYPE_ACTION = {
   '喜悦满意': '标杆保护',
   '怀旧认同': '文化传承',
 };
+
+// ── 情绪大类（7 类，固定）：喜怒哀乐愁急盼 + Tol Bright 7 色（图2 采样 6 色 + 柔和绿） ──
+// 大类 = 高度抽象固定分类；小类（emotion_type）= 数据动态归纳，无固定数量。
+// polarity 字段用于"选极性 → 自动选大类胶囊"的传导：
+//   positive → 喜+乐, negative → 怒+哀+愁, neutral → 急+盼
+// 配色按用户指定：喜（黄绿）/ 乐（橙黄）/ 怒（红）/ 哀（紫）/ 愁（蓝紫）/ 急（蓝）/ 盼（深蓝）
+// 视觉冷暖渐变，从暖到冷整体形成情绪强度→恢复理性的色彩节奏。
+export const EMOTION_MACRO = {
+  '喜': { color: '#A6CE39', polarity: 'positive', desc: '满意/愉悦/赞美（黄绿）' },
+  '乐': { color: '#F0B540', polarity: 'positive', desc: '欢愉/欣赏/认同（橙黄）' },
+  '怒': { color: '#DC143C', polarity: 'negative', desc: '愤怒/侵权/极端不满（红）' },
+  '哀': { color: '#9B59B6', polarity: 'negative', desc: '失望/沮丧/无奈（紫）' },
+  '愁': { color: '#6A4E9E', polarity: 'negative', desc: '焦虑/担忧/隐患（蓝紫）' },
+  '急': { color: '#2E7CD6', polarity: 'neutral',  desc: '紧迫/催促/呼吁（蓝）' },
+  '盼': { color: '#1A3A8C', polarity: 'neutral',  desc: '期待/希望/建议（深蓝）' },
+};
+export const EMOTION_MACRO_ORDER = ['喜', '乐', '怒', '哀', '愁', '急', '盼'];
+
+// 小类（微观 emotion_type）→ 大类 默认归属。数据中未列出的小类按 polarity 派生兜底。
+export const EMOTION_MACRO_MAP = {
+  '喜悦满意': '喜',
+  '怀旧认同': '乐',
+  '失望厌恶': '哀',
+  '愤怒': '怒',
+  '焦虑担忧': '愁',
+  '不满抱怨': '愁',   // 抱怨多源于焦虑/担忧情绪
+  '期待建议': '盼',
+};
+
+/** 从 polarity 兜底派生大类（小类未在 EMOTION_MACRO_MAP 中时使用）。 */
+export function macroOfPolarity(polarity) {
+  if (polarity === 'Very Positive' || polarity === 'Positive') return '喜';
+  if (polarity === 'Very Negative') return '怒';
+  if (polarity === 'Negative') return '哀';
+  return '盼';   // Neutral / 未知
+}
 
 // ── Heatmap source tracking: sourceKey → heatmap layer id ──
 // sourceKey = sanitized string identifying the data source (group id / child layer id).
