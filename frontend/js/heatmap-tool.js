@@ -412,9 +412,10 @@ function constrainPolarityOptions(dlg, level, lockReason) {
     sel.value = 'ALL';
     sel.disabled = false;   // 还允许查看，但只能选综合
   }
-  // 分析类型锁定（积极/消极 → 只能 L2 + 对应极性）
+  // 分析类型锁定（积极/消极 → 对应极性；归类 → 综合；均锁死不可切换）
   if (lockReason === 'positive') { sel.value = 'P'; sel.disabled = true; }
   if (lockReason === 'negative') { sel.value = 'N'; sel.disabled = true; }
+  if (lockReason === 'classify') { sel.value = 'ALL'; sel.disabled = true; }
 }
 
 /** 按当前 ① 约束数据下拉。
@@ -435,8 +436,8 @@ function constrainLevelOptions(dlg, sources, analysis) {
     const tag = !has ? '（无数据）' : (!ok ? '（仅 L2 适用）' : '');
     return `<option value="${lv}" ${ok ? '' : 'disabled'}>${lv}${tag}</option>`;
   }).join('');
-  // 选中：保持当前值（如果可用），否则选第一个可用项
-  const target = (present.has(cur) && (!onlyL2 || cur === 'L2')) ? cur : (firstAvailable || 'L2');
+  // 选中：L1 优先（有数据且未被 onlyL2 排除时默认选 L1），否则取第一个可用项
+  const target = firstAvailable || 'L2';
   sel.value = target;
 }
 
@@ -474,7 +475,7 @@ export function openHeatmapDialog(layerId) {
   const defaultLevel = dlg.querySelector('#hm-level').value;
 
   // ② 极性下拉（按 ① 约束 + 套种子值）
-  const lockReason = initAnalysis === 'positive' ? 'positive' : initAnalysis === 'negative' ? 'negative' : null;
+  const lockReason = initAnalysis === 'positive' ? 'positive' : initAnalysis === 'negative' ? 'negative' : initAnalysis === 'classify' ? 'classify' : null;
   constrainPolarityOptions(dlg, defaultLevel, lockReason);
   const initPolarity = (seed && seed.polarity) || 'ALL';
   dlg.querySelector('#hm-subset').value = initPolarity;
@@ -718,7 +719,7 @@ export function initHeatmapTool() {
     card.classList.add('is-opt-sel');
     const sources = collectSources();
     constrainLevelOptions(dlg, sources, key);
-    const lockReason = key === 'positive' ? 'positive' : key === 'negative' ? 'negative' : null;
+    const lockReason = key === 'positive' ? 'positive' : key === 'negative' ? 'negative' : key === 'classify' ? 'classify' : null;
     const lv = dlg.querySelector('#hm-level').value;
     constrainPolarityOptions(dlg, lv, lockReason);
     const polNow = dlg.querySelector('#hm-subset').value;
@@ -746,7 +747,7 @@ export function initHeatmapTool() {
   dlg.querySelector('#hm-level')?.addEventListener('change', (e) => {
     const lv = e.target.value;
     const an = dlg.querySelector('.hm-analysis-card.is-opt-sel')?.dataset?.analysis || DEFAULT_ANALYSIS;
-    const lockReason = an === 'positive' ? 'positive' : an === 'negative' ? 'negative' : null;
+    const lockReason = an === 'positive' ? 'positive' : an === 'negative' ? 'negative' : an === 'classify' ? 'classify' : null;
     constrainPolarityOptions(dlg, lv, lockReason);
     const sources = collectSources();
     const polNow = dlg.querySelector('#hm-subset').value;
