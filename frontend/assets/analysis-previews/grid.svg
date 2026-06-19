@@ -1,52 +1,87 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160">
-  <rect width="200" height="160" fill="#f7f8fa"/>
-  <g>
-    <rect x="10"  y="10" width="22" height="22" fill="#F4C518"/>
-    <rect x="34"  y="10" width="22" height="22" fill="#F08828"/>
-    <rect x="58"  y="10" width="22" height="22" fill="#ED5C28"/>
-    <rect x="82"  y="10" width="22" height="22" fill="#DC2440"/>
-    <rect x="106" y="10" width="22" height="22" fill="#8E1D3C"/>
-    <rect x="130" y="10" width="22" height="22" fill="#4F0F2A"/>
-    <rect x="154" y="10" width="22" height="22" fill="#8E1D3C"/>
-
-    <rect x="10"  y="34" width="22" height="22" fill="#F08828"/>
-    <rect x="34"  y="34" width="22" height="22" fill="#ED5C28"/>
-    <rect x="58"  y="34" width="22" height="22" fill="#DC2440"/>
-    <rect x="82"  y="34" width="22" height="22" fill="#8E1D3C"/>
-    <rect x="106" y="34" width="22" height="22" fill="#4F0F2A"/>
-    <rect x="130" y="34" width="22" height="22" fill="#DC2440"/>
-    <rect x="154" y="34" width="22" height="22" fill="#ED5C28"/>
-
-    <rect x="10"  y="58" width="22" height="22" fill="#ED5C28"/>
-    <rect x="34"  y="58" width="22" height="22" fill="#F08828"/>
-    <rect x="58"  y="58" width="22" height="22" fill="#F4C518"/>
-    <rect x="82"  y="58" width="22" height="22" fill="#F08828"/>
-    <rect x="106" y="58" width="22" height="22" fill="#ED5C28"/>
-    <rect x="130" y="58" width="22" height="22" fill="#F4C518"/>
-    <rect x="154" y="58" width="22" height="22" fill="#F08828"/>
-
-    <rect x="10"  y="82" width="22" height="22" fill="#F4C518"/>
-    <rect x="34"  y="82" width="22" height="22" fill="#F08828"/>
-    <rect x="58"  y="82" width="22" height="22" fill="#F4C518"/>
-    <rect x="82"  y="82" width="22" height="22" fill="#ED5C28"/>
-    <rect x="106" y="82" width="22" height="22" fill="#DC2440"/>
-    <rect x="130" y="82" width="22" height="22" fill="#ED5C28"/>
-    <rect x="154" y="82" width="22" height="22" fill="#F4C518"/>
-
-    <rect x="10"  y="106" width="22" height="22" fill="#F4C518"/>
-    <rect x="34"  y="106" width="22" height="22" fill="#F4C518"/>
-    <rect x="58"  y="106" width="22" height="22" fill="#F08828"/>
-    <rect x="82"  y="106" width="22" height="22" fill="#F08828"/>
-    <rect x="106" y="106" width="22" height="22" fill="#F4C518"/>
-    <rect x="130" y="106" width="22" height="22" fill="#F08828"/>
-    <rect x="154" y="106" width="22" height="22" fill="#F4C518"/>
-
-    <rect x="10"  y="130" width="22" height="22" fill="#F4C518"/>
-    <rect x="34"  y="130" width="22" height="22" fill="#F4C518"/>
-    <rect x="58"  y="130" width="22" height="22" fill="#F4C518"/>
-    <rect x="82"  y="130" width="22" height="22" fill="#F08828"/>
-    <rect x="106" y="130" width="22" height="22" fill="#F4C518"/>
-    <rect x="130" y="130" width="22" height="22" fill="#F4C518"/>
-    <rect x="154" y="130" width="22" height="22" fill="#F4C518"/>
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160">
+  <defs>
+    <linearGradient id="gbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1A1A2E"/>
+      <stop offset="100%" stop-color="#0D1117"/>
+    </linearGradient>
+    <linearGradient id="gy" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F4C518"/>
+      <stop offset="100%" stop-color="#D4990A"/>
+    </linearGradient>
+    <linearGradient id="gor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F08828"/>
+      <stop offset="100%" stop-color="#C86818"/>
+    </linearGradient>
+    <linearGradient id="gr" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#DC2440"/>
+      <stop offset="100%" stop-color="#A4182C"/>
+    </linearGradient>
+    <linearGradient id="gdr" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8E1D3C"/>
+      <stop offset="100%" stop-color="#5E1028"/>
+    </linearGradient>
+    <linearGradient id="gmag" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#BC1F8C"/>
+      <stop offset="100%" stop-color="#881460"/>
+    </linearGradient>
+  </defs>
+  <!-- Kepler 风格 3D 暗色底图 -->
+  <rect width="200" height="160" fill="url(#gbg)"/>
+  <!-- 伪 3D 网格底（地面上细线） -->
+  <g opacity="0.12" stroke="#FFF" stroke-width="0.4">
+    <line x1="10" y1="130" x2="190" y2="130"/>
+    <line x1="10" y1="125" x2="190" y2="125"/>
+    <line x1="10" y1="120" x2="190" y2="120"/>
+    <line x1="10" y1="135" x2="190" y2="135"/>
+    <line x1="20" y1="105" x2="20" y2="145"/>
+    <line x1="40" y1="100" x2="40" y2="145"/>
+    <line x1="60" y1="95" x2="60" y2="145"/>
+    <line x1="80" y1="90" x2="80" y2="145"/>
+    <line x1="100" y1="88" x2="100" y2="145"/>
+    <line x1="120" y1="90" x2="120" y2="145"/>
+    <line x1="140" y1="95" x2="140" y2="145"/>
+    <line x1="160" y1="100" x2="160" y2="145"/>
+    <line x1="180" y1="105" x2="180" y2="145"/>
   </g>
+  <!-- 3D 柱体（kepler grid 挤出，前高后低透视） -->
+  <!-- 后排（矮） -->
+  <rect x="25" y="60" width="14" height="58" fill="url(#gdr)" opacity="0.7" rx="1"/>
+  <rect x="43" y="55" width="14" height="63" fill="url(#gr)" opacity="0.75" rx="1"/>
+  <rect x="61" y="50" width="14" height="68" fill="url(#gor)" opacity="0.8" rx="1"/>
+  <rect x="79" y="48" width="14" height="70" fill="url(#gy)" opacity="0.85" rx="1"/>
+  <rect x="97" y="45" width="14" height="73" fill="url(#gor)" opacity="0.8" rx="1"/>
+  <rect x="115" y="52" width="14" height="66" fill="url(#gr)" opacity="0.75" rx="1"/>
+  <rect x="133" y="58" width="14" height="60" fill="url(#gdr)" opacity="0.7" rx="1"/>
+  <rect x="151" y="62" width="14" height="56" fill="url(#gdr)" opacity="0.65" rx="1"/>
+  <rect x="169" y="65" width="14" height="53" fill="url(#gmag)" opacity="0.6" rx="1"/>
+  <!-- 前排（高，带顶面 3D 效果） -->
+  <polygon points="38,73 50,73 50,128 38,128" fill="url(#gy)" opacity="0.9"/>
+  <polygon points="56,68 68,68 68,128 56,128" fill="url(#gor)" opacity="0.9"/>
+  <polygon points="74,66 86,66 86,128 74,128" fill="url(#gy)" opacity="0.95"/>
+  <polygon points="92,63 104,63 104,128 92,128" fill="url(#gor)" opacity="0.9"/>
+  <polygon points="110,65 122,65 122,128 110,128" fill="url(#gr)" opacity="0.85"/>
+  <polygon points="128,68 140,68 140,128 128,128" fill="url(#gdr)" opacity="0.8"/>
+  <polygon points="146,72 158,72 158,128 146,128" fill="url(#gmag)" opacity="0.75"/>
+  <polygon points="164,74 176,74 176,128 164,128" fill="url(#gdr)" opacity="0.7"/>
+  <!-- 柱顶亮面（3D 上表面） -->
+  <polygon points="30,73 44,63 58,73 44,83" fill="#F4C518" opacity="0.35"/>
+  <polygon points="48,68 62,58 76,68 62,78" fill="#F08828" opacity="0.3"/>
+  <polygon points="66,66 80,56 94,66 80,76" fill="#F4C518" opacity="0.35"/>
+  <polygon points="84,63 98,53 112,63 98,73" fill="#F08828" opacity="0.3"/>
+  <polygon points="102,65 116,55 130,65 116,75" fill="#DC2440" opacity="0.28"/>
+  <polygon points="120,68 134,58 148,68 134,78" fill="#8E1D3C" opacity="0.25"/>
+  <polygon points="138,72 152,62 166,72 152,82" fill="#BC1F8C" opacity="0.22"/>
+  <!-- 地面线 -->
+  <rect x="16" y="128" width="168" height="4" fill="#FFF" opacity="0.06" rx="1"/>
+  <!-- 图例色条（暖色渐变） -->
+  <g transform="translate(14,142)">
+    <rect width="7" height="9" rx="1.5" fill="#F4C518"/>
+    <rect x="8" width="7" height="9" rx="1.5" fill="#F08828"/>
+    <rect x="16" width="7" height="9" rx="1.5" fill="#ED5C28"/>
+    <rect x="24" width="7" height="9" rx="1.5" fill="#DC2440"/>
+    <rect x="32" width="7" height="9" rx="1.5" fill="#8E1D3C"/>
+    <rect x="40" width="7" height="9" rx="1.5" fill="#4F0F2A"/>
+  </g>
+  <!-- 底部标题 -->
+  <text x="100" y="155" text-anchor="middle" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="9" font-weight="500" fill="#AAA">热力网格 · 3D 网格柱体</text>
 </svg>

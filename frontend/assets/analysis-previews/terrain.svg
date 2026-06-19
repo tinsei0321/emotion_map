@@ -1,25 +1,54 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160">
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160">
   <defs>
-    <radialGradient id="t1" cx="35%" cy="55%" r="35%">
-      <stop offset="0%" stop-color="#FF0000"/>
-      <stop offset="35%" stop-color="#FF8800" stop-opacity=".85"/>
-      <stop offset="65%" stop-color="#FFFF00" stop-opacity=".55"/>
-      <stop offset="90%" stop-color="#00FF00" stop-opacity=".25"/>
-      <stop offset="100%" stop-color="#0000FF" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="t2" cx="70%" cy="35%" r="28%">
-      <stop offset="0%" stop-color="#FF4400"/>
-      <stop offset="50%" stop-color="#FFFF00" stop-opacity=".5"/>
-      <stop offset="100%" stop-color="#0000FF" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="t3" cx="60%" cy="78%" r="22%">
-      <stop offset="0%" stop-color="#FF8800"/>
-      <stop offset="60%" stop-color="#00FF00" stop-opacity=".4"/>
-      <stop offset="100%" stop-color="#0000FF" stop-opacity="0"/>
-    </radialGradient>
+    <linearGradient id="tbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F5F7FA"/>
+      <stop offset="100%" stop-color="#E8ECF1"/>
+    </linearGradient>
   </defs>
-  <rect width="200" height="160" fill="#f7f8fa"/>
-  <rect width="200" height="160" fill="url(#t1)"/>
-  <rect width="200" height="160" fill="url(#t2)"/>
-  <rect width="200" height="160" fill="url(#t3)"/>
+  <!-- Kepler 风格 2D 地图底图 -->
+  <rect width="200" height="160" fill="url(#tbg)"/>
+  <!-- 多边形地块（橙红半透明，kepler 分层着色） -->
+  <path d="M20,60 L48,44 L80,52 L95,72 L72,92 L38,88 L18,76 Z" fill="#E06030" opacity="0.28" stroke="#C44A2E" stroke-width="0.8"/>
+  <path d="M100,58 L130,42 L158,50 L170,68 L152,86 L122,84 L98,74 Z" fill="#E06030" opacity="0.20" stroke="#C44A2E" stroke-width="0.7"/>
+  <path d="M50,80 L68,72 L88,78 L82,98 L58,100 L42,92 Z" fill="#D05028" opacity="0.22" stroke="#B84020" stroke-width="0.6"/>
+  <!-- 青绿散点（kepler point layer 风格，带描边仿真实点位） -->
+  <g>
+    <circle cx="32" cy="56" r="2.2" fill="#00D4D4" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="48" cy="66" r="2.0" fill="#00D4D4" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="58" cy="52" r="2.4" fill="#00E0E0" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="72" cy="68" r="1.8" fill="#00D4D4" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="68" cy="54" r="2.6" fill="#00E8E8" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="84" cy="60" r="2.0" fill="#00D4D4" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="40" cy="78" r="2.2" fill="#00D0D0" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="62" cy="82" r="2.4" fill="#00D4D4" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="88" cy="72" r="1.8" fill="#00E0E0" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="28" cy="72" r="1.6" fill="#00E8E8" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="108" cy="58" r="2.4" fill="#00D4D4" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="128" cy="64" r="2.0" fill="#00D0D0" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="144" cy="56" r="2.2" fill="#00E0E0" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="158" cy="66" r="2.0" fill="#00D4D4" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="118" cy="76" r="2.4" fill="#00E8E8" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="138" cy="80" r="1.8" fill="#00D4D4" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="152" cy="72" r="2.2" fill="#00D0D0" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="164" cy="62" r="1.8" fill="#00E0E0" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="126" cy="50" r="1.6" fill="#00E8E8" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="172" cy="74" r="2.0" fill="#00D4D4" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="54" cy="74" r="1.6" fill="#00D4D4" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="96" cy="56" r="1.8" fill="#00D0D0" stroke="#FFF" stroke-width="0.5"/>
+    <circle cx="148" cy="82" r="1.6" fill="#00D4D4" stroke="#FFF" stroke-width="0.5"/>
+  </g>
+  <!-- 热力密度叠加（半透明椭圆，kepler heatmap 风格） -->
+  <ellipse cx="62" cy="68" rx="28" ry="20" fill="#FF6B35" opacity="0.10"/>
+  <ellipse cx="138" cy="66" rx="30" ry="20" fill="#FF6B35" opacity="0.08"/>
+  <ellipse cx="50" cy="76" rx="20" ry="14" fill="#FF4400" opacity="0.12"/>
+  <!-- 图例色条（kepler 配色分段条，5 段） -->
+  <g transform="translate(14,130)">
+    <rect width="8" height="12" rx="1.5" fill="#D4E4F8"/>
+    <rect x="9" width="8" height="12" rx="1.5" fill="#A0C8F0"/>
+    <rect x="18" width="8" height="12" rx="1.5" fill="#F0B040"/>
+    <rect x="27" width="8" height="12" rx="1.5" fill="#F06820"/>
+    <rect x="36" width="8" height="12" rx="1.5" fill="#CC3810"/>
+  </g>
+  <!-- 底部标题 -->
+  <text x="100" y="154" text-anchor="middle" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="9" font-weight="500" fill="#999">城市舆情热度 · 2D 热力地形</text>
 </svg>
