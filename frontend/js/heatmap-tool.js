@@ -19,38 +19,38 @@ const DEFAULTS = {
   intensityMin: 0, minzoom: 0, maxzoom: 22,
 };
 
-// ── ① 分析类型预设（6 卡，2 列）；preview = 预览图（assets/analysis-previews/*.svg）──
+// ── ① 分析类型预设（6 卡，2 列）；preview = 预览图（kepler 官方图层截图）──
 const DEFAULT_ANALYSIS = 'terrain';
 const ANALYSIS_PRESETS = {
   terrain: {
     label: '情绪地形（2D/3D）',
     desc: '一图看城市情绪起伏。L1 = 综合舆情热度（彩虹 2D）；L2 综合 = 红绿渐变（积极凸/消极凹，3D 待开发）。',
-    preview: 'assets/analysis-previews/terrain.svg',
+    preview: 'assets/analysis-previews/heatmap.png',
   },
   grid: {
     label: '情绪网格（2D/3D）',
     desc: '小尺度网格聚合（街区/社区）。每格 = 范围内点数或平均强度。2D 色块 / 3D 网格柱体。',
-    preview: 'assets/analysis-previews/grid.svg',
+    preview: 'assets/analysis-previews/grid3d.png',
   },
   positive: {
     label: '积极情绪',
     desc: '只看积极点的密度（仅 L2）。色板：积极绿。识别市民满意/标杆区域。',
-    preview: 'assets/analysis-previews/positive.svg',
+    preview: 'assets/analysis-previews/point.png',
   },
   negative: {
     label: '消极情绪',
     desc: '只看消极点的密度（仅 L2）。色板：消极红。定位整改优先级与问题片区。',
-    preview: 'assets/analysis-previews/negative.svg',
+    preview: 'assets/analysis-previews/point.png',
   },
   classify: {
     label: '情绪归类',
     desc: '按 7 大类（喜怒哀乐愁急盼）分别成色，分类热力图（仅 L2）。',
-    preview: 'assets/analysis-previews/classify.svg',
+    preview: 'assets/analysis-previews/cluster.png',
   },
   factor: {
     label: '情绪因子',
     desc: '4 应用领域 × 5 因子要素 = 20 个归因视角，看"消极是因为什么"。待后续批次。',
-    preview: 'assets/analysis-previews/factor.svg',
+    preview: 'assets/analysis-previews/cluster.png',
     placeholder: true,
   },
 };
