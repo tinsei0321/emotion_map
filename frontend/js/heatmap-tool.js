@@ -64,9 +64,13 @@ function computeStyles(analysis, level, polarity) {
       return [{ key: 'terrain-l1-rainbow', name: '综合彩虹（城市舆情热度，2D）', dim: '2d', ramp: 'rainbow',
         tip: 'L1 综合舆情热度。冷蓝 → 黄 → 暖红，体现密度与关注度，不暗示极性。' }];
     }
-    if (level === 'L2' && (polarity === 'ALL' || polarity === 'O')) {
+    if (level === 'L2' && polarity === 'ALL') {
       return [{ key: 'terrain-l2-rg-3d', name: '红蓝绿地形（3D 高程：积极凸/消极凹）', dim: '3d', ramp: 'diverging-rg', dev: true,
         tip: '3D 综合情绪地形。高地（积极绿凸）/ 洼地（消极红凹），中线蓝为零值。3D 渲染待开发。' }];
+    }
+    if (level === 'L2' && polarity === 'O') {
+      return [{ key: 'terrain-l2-neutral', name: '中性蓝（急/盼）', dim: '2d', ramp: 'neutral',
+        tip: '只看中性点。蓝色系色板，与"急（蓝）+ 盼（深蓝）"胶囊色系呼应。' }];
     }
     if (level === 'L2' && polarity === 'P') {
       return [{ key: 'terrain-l2-positive', name: '积极绿', dim: '2d', ramp: 'positive',
@@ -258,7 +262,8 @@ function renderTypeChips(dlg, fc) {
 }
 
 /** 渲染 ③ 显示样式胶囊（按 ①+② 联动）—
- *  v3：色板预览改为"离散色块条"（kepler 风格，无渐变），去掉名称文字（仅保留 i 悬停说明）。 */
+ *  v3：色板预览改为"离散色块条"（kepler 风格，无渐变），去掉名称文字（仅保留 i 悬停说明）。
+ *  v4：默认选第一个非 dev 项（避免开箱即点"生成"却被 dev 拦截，给人按钮失效感）；末尾刷新生成按钮态。 */
 function renderStyles(dlg) {
   const wrap = dlg.querySelector('#hm-styles');
   if (!wrap) return;
@@ -268,20 +273,43 @@ function renderStyles(dlg) {
   const styles = computeStyles(analysis, level, polarity);
   if (!styles.length) {
     wrap.innerHTML = `<div class="hm-hint">当前 ①+② 组合无可用样式</div>`;
+    refreshGenerateBtn(dlg);
     return;
   }
+  // 默认选中：优先第一个非 dev 项；都是 dev 时退回第一项
+  const defIdx = styles.findIndex((s) => !s.dev);
+  const selIdx = defIdx >= 0 ? defIdx : 0;
   wrap.innerHTML = styles.map((s, i) => {
     const ramp = HEATMAP_RAMPS[s.ramp];
     // 离散色块：取所有非透明 stop 的颜色，平均切片，每格一个 div（kepler 分段条风格）
     const segs = ramp ? ramp.stops.filter(([d]) => d > 0).map(([, c]) => c) : ['#ccc'];
     const segHtml = segs.map((c) => `<span class="hm-style-seg" style="background:${c}"></span>`).join('');
     const tip = s.tip || (s.name + (s.dev ? '（开发中）' : ''));
-    return `<button class="hm-style-btn${i === 0 ? ' is-bar-sel' : ''}${s.dev ? ' is-dev' : ''}"
+    return `<button class="hm-style-btn${i === selIdx ? ' is-bar-sel' : ''}${s.dev ? ' is-dev' : ''}"
               data-style-key="${s.key}" data-dim="${s.dim}" data-ramp="${s.ramp}" type="button">
       <span class="hm-style-bar">${segHtml}</span>
+      ${s.dev ? '<span class="hm-style-dev-tag">开发中</span>' : ''}
       <span class="hm-info" data-tip="${tip.replace(/"/g, '&quot;')}">i</span>
     </button>`;
   }).join('');
+  refreshGenerateBtn(dlg);
+}
+
+/** 刷新"生成热力图"按钮的禁用态/文案：
+ *  - 未选样式 → 禁用 + "请选择显示样式"
+ *  - 选中样式是 dev → 禁用 + "该样式开发中，暂不可生成"
+ *  - 否则 → 启用 + "生成热力图" */
+function refreshGenerateBtn(dlg) {
+  const gen = dlg.querySelector('#hm-generate');
+  if (!gen) return;
+  const styleBtn = dlg.querySelector('.hm-style-btn.is-bar-sel');
+  if (!styleBtn) {
+    gen.disabled = true; gen.textContent = '请选择显示样式'; return;
+  }
+  if (styleBtn.classList.contains('is-dev')) {
+    gen.disabled = true; gen.textContent = '该样式开发中，暂不可生成'; return;
+  }
+  gen.disabled = false; gen.textContent = '生成热力图';
 }
 
 /** 选大类胶囊 → 自动选/取消其下小类（传导） */
@@ -378,17 +406,27 @@ function constrainPolarityOptions(dlg, level, lockReason) {
   if (lockReason === 'negative') { sel.value = 'N'; sel.disabled = true; }
 }
 
-/** 按当前 ① 约束数据下拉（积极/消极/归类 → 只能 L2） */
+/** 按当前 ① 约束数据下拉。
+ *  v4：始终列 L1/L2/L3/L4 四项；无数据 → disabled 灰显（结构始终可见，避免用户误以为某层级"消失了"）。
+ *  分析类型为积极/消极/归类时，非 L2 项强制 disabled（这些分析只属 L2 字段）。 */
 function constrainLevelOptions(dlg, sources, analysis) {
   const sel = dlg.querySelector('#hm-level');
   if (!sel) return;
-  const levels = availableLevels(sources);
+  const present = new Set(sources.map((s) => s.level));
   const onlyL2 = analysis === 'positive' || analysis === 'negative' || analysis === 'classify';
-  const allowed = onlyL2 ? levels.filter((l) => l === 'L2') : levels;
+  const FIXED = ['L1', 'L2', 'L3', 'L4'];
   const cur = sel.value;
-  sel.innerHTML = allowed.map((lv) =>
-    `<option value="${lv}" ${lv === (allowed.includes(cur) ? cur : allowed[0]) ? 'selected' : ''}>${lv}</option>`).join('')
-    + (allowed.length === 0 ? '<option value="">— 无数据 —</option>' : '');
+  let firstAvailable = null;
+  sel.innerHTML = FIXED.map((lv) => {
+    const has = present.has(lv);
+    const ok = has && (!onlyL2 || lv === 'L2');
+    if (ok && !firstAvailable) firstAvailable = lv;
+    const tag = !has ? '（无数据）' : (!ok ? '（仅 L2 适用）' : '');
+    return `<option value="${lv}" ${ok ? '' : 'disabled'}>${lv}${tag}</option>`;
+  }).join('');
+  // 选中：保持当前值（如果可用），否则选第一个可用项
+  const target = (present.has(cur) && (!onlyL2 || cur === 'L2')) ? cur : (firstAvailable || 'L2');
+  sel.value = target;
 }
 
 /** 打开热核分析弹窗 */
@@ -674,6 +712,7 @@ export function initHeatmapTool() {
     if (!btn) return;
     dlg.querySelectorAll('.hm-style-btn').forEach((b) => b.classList.remove('is-bar-sel'));
     btn.classList.add('is-bar-sel');
+    refreshGenerateBtn(dlg);
   });
 
   // 高级参数实时显示

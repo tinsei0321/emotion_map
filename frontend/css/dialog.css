@@ -651,3 +651,32 @@
 .hm-style-btn.is-bar-sel { background: rgba(0, 122, 252, 0.12) !important; border-color: transparent !important; }
 .hm-style-btn.is-bar-sel:hover { background: rgba(0, 122, 252, 0.18) !important; }
 
+/* 显示样式"开发中"角标（dev 项明示） */
+.hm-style-dev-tag {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--geojson-color-text-tertiary);
+  background: var(--geojson-color-gray-200);
+  border-radius: 3px;
+  padding: 1px 6px;
+  letter-spacing: 0.04em;
+}
+
+/* "生成热力图"禁用态（dev 样式选中或未选时）：白底深灰字、不响应点击 */
+#hm-generate:disabled,
+#hm-generate[disabled] {
+  background: var(--geojson-color-surface-page);
+  color: var(--geojson-color-text-tertiary);
+  border: 1px solid var(--geojson-color-gray-300);
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+#hm-generate:disabled:hover,
+#hm-generate[disabled]:hover {
+  background: var(--geojson-color-surface-page);
+}
+
+/* 数据下拉无数据/不适用项（disabled）灰显 */
+.sec-select option:disabled { color: var(--geojson-color-text-tertiary); }
+
