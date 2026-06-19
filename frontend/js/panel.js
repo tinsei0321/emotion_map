@@ -70,8 +70,9 @@ function tier2(layer, lv) {
   } else if (lv === 'L1') {
     const p = layer.paint || {};
     const ramp = p.ramp || CONFIDENCE_RAMP;
+    const confSegs = ramp.map(c => `<span class="ov-ramp-seg" style="background:${c}"></span>`).join('');
     body = `<div class="ov-props">
-      <div class="ov-prop"><span>置信度色带</span><span class="ov-ramp-legend" style="background:linear-gradient(90deg,${ramp.join(',')})"></span></div>
+      <div class="ov-prop"><span>置信度色带</span><span class="ov-ramp-legend ov-ramp-segmented">${confSegs}</span></div>
       <div class="ov-prop"><span>透明度</span><span>${Math.round((p.opacity ?? 0.75) * 100)}%</span></div>
       <div class="ov-prop"><span>下一步</span><span class="ov-tag-blue">可分析</span></div>
     </div>`;
@@ -79,10 +80,10 @@ function tier2(layer, lv) {
     const p = layer.paint || {};
     const rampName = (HEATMAP_RAMPS[p.rampKey] && HEATMAP_RAMPS[p.rampKey].name) || '—';
     const rampStops = (HEATMAP_RAMPS[p.rampKey] && HEATMAP_RAMPS[p.rampKey].stops) || [];
-    const grad = rampStops.slice(1).map(([, c]) => c).join(',');
+    const rampSegs = rampStops.slice(1).map(([, c]) => `<span class="ov-ramp-seg" style="background:${c}"></span>`).join('');
     const typesLabel = (p.typesFilter && p.typesFilter.length) ? p.typesFilter.join('、') : '全部';
     body = `<div class="ov-props">
-      <div class="ov-prop"><span>色带</span><span class="ov-ramp-legend" style="background:linear-gradient(90deg,${grad})"></span> ${rampName}</div>
+      <div class="ov-prop"><span>色带</span><span class="ov-ramp-legend ov-ramp-segmented">${rampSegs}</span> ${rampName}</div>
       <div class="ov-prop"><span>半径</span><span>${p.radius ?? 300} m</span></div>
       <div class="ov-prop"><span>权重字段</span><span>${p.weightField || 'emotion_intensity'}</span></div>
       <div class="ov-prop"><span>情绪类型</span><span>${typesLabel}</span></div>

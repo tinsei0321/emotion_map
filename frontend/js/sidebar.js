@@ -227,7 +227,7 @@ export function renderLayerList() {
       const l = getLayer(id);
       if (!l) return;
       // Bug 2 fix: heatmap 图层的 H 按钮统一转调 HeatMap 弹窗（与 Toolbox 同入口、同参数集）
-      if (l.kind === 'heatmap') { openHeatmapDialog(); return; }
+      if (l.kind === 'heatmap') { openHeatmapDialog(id); return; }
       if (isOpen() && openSettingsLayerId() === id) closeSettingsPopover();
       else {
         openSettingsPopover(l, b);

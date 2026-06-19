@@ -101,6 +101,8 @@
 .ov-prop > span:first-child { color: var(--geojson-color-text-secondary); }
 .ov-swatch { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--geojson-color-border-default); vertical-align: middle; }
 .ov-ramp-legend { display: inline-block; width: 90px; height: 10px; border-radius: var(--geojson-radius-xs); border: 1px solid var(--geojson-color-border-default); }
+.ov-ramp-segmented { display: inline-flex; overflow: hidden; border-radius: var(--geojson-radius-xs); vertical-align: middle; }
+.ov-ramp-seg { flex: 1; height: 100%; }
 .ov-tag-blue {
   font-size: var(--geojson-typography-size-2xs);
   font-weight: var(--geojson-typography-weight-bold);
