@@ -312,16 +312,16 @@ function refreshGenerateBtn(dlg) {
   gen.disabled = false; gen.textContent = '生成热力图';
 }
 
-/** 选大类胶囊 → 自动选/取消其下小类（传导） */
+/** 选大类胶囊 → 自动选/取消其下小类（传导）。
+ *  v4：大类全空 = 小类全空（与用户直觉对齐：取消全部大类 = 一个都不要）。
+ *      想全部展示 → 极性下拉切回"综合"。 */
 function applyMacroToTypes(dlg) {
   const onMacros = new Set(
     [...dlg.querySelectorAll('.hm-macro-chip.is-on')].map((el) => el.dataset.macro)
   );
-  // 大类全空：小类全选
-  const macroAll = onMacros.size === 0;
   dlg.querySelectorAll('.hm-type-chip').forEach((chip) => {
     const macro = chip.dataset.macro;
-    const on = macroAll ? true : onMacros.has(macro);
+    const on = onMacros.has(macro);
     chip.classList.toggle('is-on', on);
     const cb = chip.querySelector('input'); if (cb) cb.checked = on;
   });
@@ -512,10 +512,12 @@ function closeDialog() {
   if (dlg) dlg.close();
 }
 
-/** 按选中小类 + 强度阈值过滤 features */
+/** 按选中小类 + 强度阈值过滤 features。
+ *  v4：selectedTypes 始终是数组（可能为空）；空数组 = 一个都不留（generateHeatmap 提前拦截，
+ *  这里仍按规则执行以便单元测试一致性）。 */
 function filterFc(fc, selectedTypes, intensityMin) {
   if (!fc || !fc.features) return { type: 'FeatureCollection', features: [] };
-  const needTypeFilter = Array.isArray(selectedTypes) && selectedTypes.length > 0;
+  const needTypeFilter = Array.isArray(selectedTypes);
   const needIntensityFilter = intensityMin > 0;
   if (!needTypeFilter && !needIntensityFilter) return fc;
   const set = needTypeFilter ? new Set(selectedTypes) : null;
@@ -528,13 +530,13 @@ function filterFc(fc, selectedTypes, intensityMin) {
   return { type: 'FeatureCollection', features };
 }
 
-/** 收集当前选中的小类（全选返回 null = 不过滤） */
+/** 收集当前选中的小类。
+ *  v4：始终返回数组（可能为空），不再"全选=null=不过滤"。
+ *      让用户每次点击都看得到落图变化；空数组在 generateHeatmap 中显式拦截。 */
 function getSelectedTypes(dlg) {
   const all = [...dlg.querySelectorAll('.hm-type-chip')];
-  if (!all.length) return null;
-  const sel = all.filter((el) => el.querySelector('input').checked).map((el) => el.dataset.type);
-  if (sel.length === all.length) return null;
-  return sel;
+  if (!all.length) return [];
+  return all.filter((el) => el.querySelector('input').checked).map((el) => el.dataset.type);
 }
 
 /** 生成热力图 */
@@ -573,9 +575,23 @@ function generateHeatmap() {
   if (!resolved) { toast.error('请选择有效数据'); return; }
   const sourceKey = resolved.sourceKey;
 
+  // v4：空数组 = 用户取消了所有小类，明确拦截（不再"全选=不过滤"）。
+  if (selectedTypes.length === 0) {
+    toast.error('未选中任何"表现"小类，请至少勾选一项（或在"类型"中选大类自动传导）');
+    return;
+  }
+
+  const beforeN = (resolved.fc && resolved.fc.features ? resolved.fc.features.length : 0);
   const fc = filterFc(resolved.fc, selectedTypes, intensityMin);
+  // 调试日志：让用户在 DevTools 看到实际过滤效果（小类→落图）
+  // eslint-disable-next-line no-console
+  console.info('[HeatMap] filter', {
+    level, polarity, intensityMin,
+    selectedTypes, typeCount: selectedTypes.length,
+    beforeN, afterN: fc.features.length,
+  });
   if (!fc.features.length) {
-    toast.error('筛选后无数据点。请放宽情绪类型或强度阈值。');
+    toast.error(`筛选后无数据点（源 ${beforeN} 点 → 0）。请放宽小类勾选或强度阈值。`);
     return;
   }
 
@@ -584,7 +600,10 @@ function generateHeatmap() {
 
   const ramp = HEATMAP_RAMPS[rampKey];
   const rampName = ramp ? ramp.name : '自定义';
-  const typeLabel = selectedTypes ? `[${selectedTypes.join('/')}]` : '[全类型]';
+  // 类型标签：全选 → [全类型]；否则列出选中小类
+  const allTypes = [...dlg.querySelectorAll('.hm-type-chip')].map((el) => el.dataset.type);
+  const typeLabel = (selectedTypes.length === allTypes.length && allTypes.length > 0)
+    ? '[全类型]' : `[${selectedTypes.join('/')}]`;
   const radiusLabel = `${radius}m`;
 
   const layer = addLayer({
