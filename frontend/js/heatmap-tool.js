@@ -220,10 +220,15 @@ function typeCountsFor(fc) {
   return counts;
 }
 
-/** 渲染大类胶囊（7 类固定；每个胶囊带 data-tip 供 hover popup 使用） */
-function renderMacroChips(dlg) {
+/** 渲染大类胶囊（7 类固定；每个胶囊带 data-tip 供 hover popup 使用）。
+ *  v5：L1/L3/L4 无情绪分类字段 → 渲染禁用提示，不显示胶囊。 */
+function renderMacroChips(dlg, level) {
   const wrap = dlg.querySelector('#hm-macros');
   if (!wrap) return;
+  if (level !== 'L2') {
+    wrap.innerHTML = `<div class="hm-hint hm-empty">${level || '当前层级'} 无情绪分类字段（仅 L2 适用）</div>`;
+    return;
+  }
   wrap.innerHTML = EMOTION_MACRO_ORDER.map((k) => {
     const m = EMOTION_MACRO[k];
     const tip = `${k} · ${m.desc}`.replace(/"/g, '&quot;');
@@ -234,10 +239,16 @@ function renderMacroChips(dlg) {
   }).join('');
 }
 
-/** 渲染小类胶囊（按当前 fc 动态归纳） */
-function renderTypeChips(dlg, fc) {
+/** 渲染小类胶囊（按当前 fc 动态归纳）。
+ *  v5：L1/L3/L4 无 emotion_type 字段 → 渲染禁用提示，不显示胶囊。 */
+function renderTypeChips(dlg, fc, level) {
   const wrap = dlg.querySelector('#hm-types');
   if (!wrap) return;
+  if (level !== 'L2') {
+    wrap.innerHTML = `<div class="hm-hint hm-empty">${level || '当前层级'} 无情绪分类字段（仅 L2 适用）</div>`;
+    updateFoldCount(dlg, 'type');
+    return;
+  }
   const counts = typeCountsFor(fc);
   const types = Object.keys(counts);
   types.sort((a, b) => {
@@ -429,8 +440,11 @@ function constrainLevelOptions(dlg, sources, analysis) {
   sel.value = target;
 }
 
-/** 打开热核分析弹窗 */
-export function openHeatmapDialog() {
+/** 打开热核分析弹窗。
+ *  v5：layerId 可选 — 当从 H 要素按钮点击进来时传入该热力图层 id，
+ *      弹窗的所有参数会从 layer.paint._ui + layer.paint 反推恢复（"以当初参数继续编辑"语义），
+ *      而不是回到默认值。 */
+export function openHeatmapDialog(layerId) {
   const dlg = dialogEl();
   if (!dlg) return;
   if (dlg.open) dlg.close();
@@ -438,23 +452,50 @@ export function openHeatmapDialog() {
   const sources = collectSources();
   if (!sources.length) { toast.error('请先导入 L2 情绪数据'); return; }
 
-  // ① 默认套综合"情绪地形"
-  renderAnalysisCards(dlg);
+  // 反推种子（编辑模式）：从已有热力图层的 paint 抓 _ui + 参数
+  let seed = null;
+  if (layerId) {
+    const lyr = getLayer(layerId);
+    if (lyr && lyr.kind === 'heatmap' && lyr.paint) {
+      seed = { ...(lyr.paint._ui || {}), paint: lyr.paint, layerId };
+    }
+  }
+  const initAnalysis = (seed && seed.analysisKey) || DEFAULT_ANALYSIS;
 
-  // ② 数据下拉（按 ① 约束）
-  constrainLevelOptions(dlg, sources, DEFAULT_ANALYSIS);
+  // ① 分析类型卡（套种子选中态）
+  renderAnalysisCards(dlg);
+  if (seed && seed.analysisKey) {
+    dlg.querySelectorAll('.hm-analysis-card').forEach((c) => c.classList.toggle('is-opt-sel', c.dataset.analysis === seed.analysisKey));
+  }
+
+  // ② 数据下拉（按 ① 约束 + 套种子值）
+  constrainLevelOptions(dlg, sources, initAnalysis);
+  if (seed && seed.level) dlg.querySelector('#hm-level').value = seed.level;
   const defaultLevel = dlg.querySelector('#hm-level').value;
 
-  // ② 极性下拉（按 ① 约束）
-  constrainPolarityOptions(dlg, defaultLevel, null);
-  dlg.querySelector('#hm-subset').value = 'ALL';
+  // ② 极性下拉（按 ① 约束 + 套种子值）
+  const lockReason = initAnalysis === 'positive' ? 'positive' : initAnalysis === 'negative' ? 'negative' : null;
+  constrainPolarityOptions(dlg, defaultLevel, lockReason);
+  const initPolarity = (seed && seed.polarity) || 'ALL';
+  dlg.querySelector('#hm-subset').value = initPolarity;
 
-  // ② 大类 + 小类胶囊
-  renderMacroChips(dlg);
-  applyPolarityToMacros(dlg, 'ALL');
-  const resolved0 = resolveSource(sources, defaultLevel, 'ALL');
-  renderTypeChips(dlg, resolved0 ? resolved0.fc : { features: [] });
-  applyMacroToTypes(dlg);
+  // ② 大类 + 小类胶囊（L1/L3/L4 渲染禁用提示）
+  renderMacroChips(dlg, defaultLevel);
+  applyPolarityToMacros(dlg, initPolarity);
+  const resolved0 = resolveSource(sources, defaultLevel, initPolarity);
+  renderTypeChips(dlg, resolved0 ? resolved0.fc : { features: [] }, defaultLevel);
+  // 编辑模式：按种子的 typesFilter 还原小类勾选；否则按大类传导
+  if (seed && Array.isArray(seed.paint.typesFilter)) {
+    const want = new Set(seed.paint.typesFilter);
+    dlg.querySelectorAll('.hm-type-chip').forEach((chip) => {
+      const on = want.has(chip.dataset.type);
+      chip.classList.toggle('is-on', on);
+      const cb = chip.querySelector('input'); if (cb) cb.checked = on;
+    });
+    updateFoldCount(dlg, 'type');
+  } else {
+    applyMacroToTypes(dlg);
+  }
 
   // 折叠区默认展开（v3：类型 + 表现 默认打开）
   const macroFold = dlg.querySelector('#hm-macro-fold');
@@ -462,34 +503,48 @@ export function openHeatmapDialog() {
   if (macroFold) macroFold.open = true;
   if (typeFold) typeFold.open = true;
 
-  // ③ 显示样式
+  // ③ 显示样式（编辑模式：套种子选中态）
   renderStyles(dlg);
+  if (seed && seed.styleKey) {
+    const want = dlg.querySelector(`.hm-style-btn[data-style-key="${seed.styleKey}"]`);
+    if (want) {
+      dlg.querySelectorAll('.hm-style-btn').forEach((b) => b.classList.remove('is-bar-sel'));
+      want.classList.add('is-bar-sel');
+      refreshGenerateBtn(dlg);
+    }
+  }
 
-  // 高级参数默认值
+  // 高级参数（编辑模式：从 seed.paint 恢复；否则走默认值）
+  const sp = (seed && seed.paint) || {};
   const nPts = resolved0 && resolved0.fc ? resolved0.fc.features.length : 0;
-  const autoRadius = nPts < 1000 ? 500 : nPts < 10000 ? 300 : 150;
+  const autoRadius = sp.radius ?? (nPts < 1000 ? 500 : nPts < 10000 ? 300 : 150);
   const radiusInput = dlg.querySelector('#hm-radius');
   const radiusVal = dlg.querySelector('#hm-radius-val');
   if (radiusInput) { radiusInput.value = autoRadius; radiusInput.min = 50; radiusInput.max = 2000; radiusInput.step = 10; }
   if (radiusVal) radiusVal.textContent = `${autoRadius} m`;
   dlg.dataset.unit = 'm';
 
-  dlg.querySelector('#hm-opacity').value = DEFAULTS.opacity;
-  dlg.querySelector('#hm-opacity-val').textContent = `${DEFAULTS.opacity}%`;
-  dlg.querySelector('#hm-weight-field').value = DEFAULTS.weightField;
-  dlg.querySelector('#hm-intensity').value = DEFAULTS.intensity;
-  dlg.querySelector('#hm-intensity-val').textContent = DEFAULTS.intensity.toFixed(1);
-  dlg.querySelector('#hm-curve').value = DEFAULTS.curve;
+  dlg.querySelector('#hm-opacity').value = sp.opacity ?? DEFAULTS.opacity;
+  dlg.querySelector('#hm-opacity-val').textContent = `${Math.round((sp.opacity ?? DEFAULTS.opacity) * 100)}%`;
+  dlg.querySelector('#hm-weight-field').value = sp.weightField ?? DEFAULTS.weightField;
+  dlg.querySelector('#hm-intensity').value = sp.intensity ?? DEFAULTS.intensity;
+  dlg.querySelector('#hm-intensity-val').textContent = (sp.intensity ?? DEFAULTS.intensity).toFixed(1);
+  dlg.querySelector('#hm-curve').value = sp.weightCurve ?? DEFAULTS.curve;
   updateCurveHint(dlg);
-  dlg.querySelector('#hm-int-min').value = DEFAULTS.intensityMin;
-  dlg.querySelector('#hm-int-min-val').textContent = DEFAULTS.intensityMin.toFixed(2);
-  dlg.querySelector('#hm-minzoom').value = DEFAULTS.minzoom;
-  dlg.querySelector('#hm-minzoom-val').textContent = String(DEFAULTS.minzoom);
-  dlg.querySelector('#hm-maxzoom').value = DEFAULTS.maxzoom;
-  dlg.querySelector('#hm-maxzoom-val').textContent = String(DEFAULTS.maxzoom);
+  dlg.querySelector('#hm-int-min').value = sp.intensityMin ?? DEFAULTS.intensityMin;
+  dlg.querySelector('#hm-int-min-val').textContent = (sp.intensityMin ?? DEFAULTS.intensityMin).toFixed(2);
+  const mz = sp.minzoom ?? DEFAULTS.minzoom;
+  dlg.querySelector('#hm-minzoom').value = mz;
+  dlg.querySelector('#hm-minzoom-val').textContent = String(mz);
+  const xz = sp.maxzoom ?? DEFAULTS.maxzoom;
+  dlg.querySelector('#hm-maxzoom').value = xz;
+  dlg.querySelector('#hm-maxzoom-val').textContent = String(xz);
 
   const adv = dlg.querySelector('#hm-advanced');
   if (adv && adv.tagName === 'DETAILS') adv.open = false;
+
+  // 记住正在编辑的图层 id（覆盖模式会删旧+添新，届时替换）
+  dlg.dataset.editLayerId = layerId || '';
 
   dlg.showModal();
 }
@@ -513,8 +568,9 @@ function closeDialog() {
 }
 
 /** 按选中小类 + 强度阈值过滤 features。
- *  v4：selectedTypes 始终是数组（可能为空）；空数组 = 一个都不留（generateHeatmap 提前拦截，
- *  这里仍按规则执行以便单元测试一致性）。 */
+ *  v5：selectedTypes 语义见 getSelectedTypes。
+ *    - null：跳过 type 过滤（L1 无字段）
+ *    - 数组：按数组过滤（空数组 = 一个都不留，generateHeatmap 提前拦截） */
 function filterFc(fc, selectedTypes, intensityMin) {
   if (!fc || !fc.features) return { type: 'FeatureCollection', features: [] };
   const needTypeFilter = Array.isArray(selectedTypes);
@@ -531,11 +587,13 @@ function filterFc(fc, selectedTypes, intensityMin) {
 }
 
 /** 收集当前选中的小类。
- *  v4：始终返回数组（可能为空），不再"全选=null=不过滤"。
- *      让用户每次点击都看得到落图变化；空数组在 generateHeatmap 中显式拦截。 */
+ *  v5：返回值语义
+ *    - null = 无小类胶囊（L1/L3/L4 没有 emotion_type 字段，不参与过滤）
+ *    - []   = 用户全部取消（明确"一个都不要"，generateHeatmap 拦截）
+ *    - 其他 = 选中的小类数组（filterFc 按数组过滤） */
 function getSelectedTypes(dlg) {
   const all = [...dlg.querySelectorAll('.hm-type-chip')];
-  if (!all.length) return [];
+  if (!all.length) return null;
   return all.filter((el) => el.querySelector('input').checked).map((el) => el.dataset.type);
 }
 
@@ -575,8 +633,8 @@ function generateHeatmap() {
   if (!resolved) { toast.error('请选择有效数据'); return; }
   const sourceKey = resolved.sourceKey;
 
-  // v4：空数组 = 用户取消了所有小类，明确拦截（不再"全选=不过滤"）。
-  if (selectedTypes.length === 0) {
+  // v5：null = L1/L3/L4 无类型字段，跳过此项校验；空数组 = 用户取消所有小类，明确拦截。
+  if (Array.isArray(selectedTypes) && selectedTypes.length === 0) {
     toast.error('未选中任何"表现"小类，请至少勾选一项（或在"类型"中选大类自动传导）');
     return;
   }
@@ -587,7 +645,7 @@ function generateHeatmap() {
   // eslint-disable-next-line no-console
   console.info('[HeatMap] filter', {
     level, polarity, intensityMin,
-    selectedTypes, typeCount: selectedTypes.length,
+    selectedTypes, typeCount: selectedTypes ? selectedTypes.length : 'N/A (no field)',
     beforeN, afterN: fc.features.length,
   });
   if (!fc.features.length) {
@@ -600,10 +658,12 @@ function generateHeatmap() {
 
   const ramp = HEATMAP_RAMPS[rampKey];
   const rampName = ramp ? ramp.name : '自定义';
-  // 类型标签：全选 → [全类型]；否则列出选中小类
+  // 类型标签：null（L1 无字段）→ [全数据]；全选 → [全类型]；否则列出选中小类
   const allTypes = [...dlg.querySelectorAll('.hm-type-chip')].map((el) => el.dataset.type);
-  const typeLabel = (selectedTypes.length === allTypes.length && allTypes.length > 0)
-    ? '[全类型]' : `[${selectedTypes.join('/')}]`;
+  let typeLabel;
+  if (selectedTypes === null) typeLabel = '[全数据]';
+  else if (selectedTypes.length === allTypes.length && allTypes.length > 0) typeLabel = '[全类型]';
+  else typeLabel = `[${selectedTypes.join('/')}]`;
   const radiusLabel = `${radius}m`;
 
   const layer = addLayer({
@@ -616,6 +676,11 @@ function generateHeatmap() {
       typesFilter: selectedTypes, intensityMin,
       minzoom: minzoom > 0 ? minzoom : undefined,
       maxzoom: maxzoom < 22 ? maxzoom : undefined,
+      // v5：持久化 UI 原始选择，供 H 要素按钮再次打开时反推参数（"按当初设置参数继续编辑"语义）
+      _ui: {
+        analysisKey, styleKey: styleBtn.dataset.styleKey, dim,
+        level, polarity,
+      },
     },
   });
   setHeatmapForSource(sourceKey, layer.id);
@@ -660,7 +725,8 @@ export function initHeatmapTool() {
     else if (lockReason === 'negative') applyPolarityToMacros(dlg, 'N');
     const polNow = dlg.querySelector('#hm-subset').value;
     const resolved = resolveSource(sources, lv, polNow);
-    renderTypeChips(dlg, resolved ? resolved.fc : { features: [] });
+    renderMacroChips(dlg, lv);
+    renderTypeChips(dlg, resolved ? resolved.fc : { features: [] }, lv);
     applyMacroToTypes(dlg);
     renderStyles(dlg);
   });
@@ -685,7 +751,8 @@ export function initHeatmapTool() {
     const sources = collectSources();
     const polNow = dlg.querySelector('#hm-subset').value;
     const resolved = resolveSource(sources, lv, polNow);
-    renderTypeChips(dlg, resolved ? resolved.fc : { features: [] });
+    renderMacroChips(dlg, lv);
+    renderTypeChips(dlg, resolved ? resolved.fc : { features: [] }, lv);
     applyMacroToTypes(dlg);
     renderStyles(dlg);
   });
@@ -697,7 +764,7 @@ export function initHeatmapTool() {
     applyPolarityToMacros(dlg, polarity);
     const sources = collectSources();
     const resolved = resolveSource(sources, lv, polarity);
-    renderTypeChips(dlg, resolved ? resolved.fc : { features: [] });
+    renderTypeChips(dlg, resolved ? resolved.fc : { features: [] }, lv);
     applyMacroToTypes(dlg);
     renderStyles(dlg);
   });
