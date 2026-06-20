@@ -675,6 +675,58 @@
   letter-spacing: 0.02em;
 }
 
+/* ── v7：①3 排分组 + ③只读色板预览 + 生成按钮拆分 ── */
+.hm-tier { margin-bottom: 8px; }
+.hm-tier:last-child { margin-bottom: 0; }
+.hm-tier-label {
+  font-size: var(--geojson-typography-size-2xs);
+  color: var(--geojson-color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 2px 0 4px;
+  font-weight: var(--geojson-typography-weight-medium);
+}
+.hm-tier-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+/* ③ 只读色板预览（色板随类型自动，不可选） */
+.hm-style-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--geojson-color-gray-200);
+  border-radius: var(--geojson-radius-sm);
+  background: var(--geojson-color-gray-100);
+}
+.hm-style-preview .hm-style-bar { flex: 1; height: 18px; }
+.hm-style-preview .hm-style-name {
+  display: inline;
+  flex-shrink: 0;
+  font-size: var(--geojson-typography-size-xs);
+  font-weight: var(--geojson-typography-weight-medium);
+  color: var(--geojson-color-text-primary);
+}
+
+/* 生成按钮容器（2D/3D 拆分，动态 1–2 个按钮） */
+.hm-generate-row { display: flex; gap: 6px; margin-left: auto; }
+.hm-generate-row .sec-btn { width: auto; padding: 0 var(--geojson-spacing-3); margin-top: 0; }
+.hm-generate-row .sec-btn.is-primary {
+  background: var(--geojson-color-brand-primary);
+  color: var(--geojson-color-text-inverse);
+}
+.hm-generate-row .sec-btn.is-primary:hover { background: var(--geojson-color-brand-hover); }
+.hm-generate-row .sec-btn.is-dev {
+  background: var(--geojson-color-gray-100);
+  color: var(--geojson-color-text-tertiary);
+  border: 1px dashed var(--geojson-color-gray-300);
+  cursor: not-allowed;
+}
+
+
 /* ── 全局选中态语义类 ─────────────────────────────────────
  *  .is-bar-sel — 占满整行的"栏"选中：浅蓝填充，无线框
  *  .is-opt-sel — 一行多条的"选项"选中：粗蓝框 + 浅灰填充

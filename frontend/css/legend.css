@@ -63,3 +63,17 @@
   font-size: var(--geojson-typography-size-2xs);
   color: var(--geojson-color-text-tertiary);
 }
+
+/* 核密度热力图例：离散分段色带（与③/Overview/要素设置同设计语言） */
+.legend-heat-ramp {
+  display: flex;
+  width: 120px;
+  height: 12px;
+  border-radius: var(--geojson-radius-xs);
+  overflow: hidden;
+  border: 1px solid var(--geojson-color-border-default);
+}
+.legend-heat-seg {
+  flex: 1;
+  height: 100%;
+}

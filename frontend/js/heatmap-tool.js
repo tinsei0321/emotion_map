@@ -19,100 +19,69 @@ const DEFAULTS = {
   intensityMin: 0, minzoom: 0, maxzoom: 22,
 };
 
-// ── ① 分析类型预设（6 卡，2 列）；preview = 预览图（kepler 风格 SVG）──
+// ── ① 分析类型预设（3 排分组：总体情况 / 类型细分 / 多维归因）──
+// tier 决定 ①排版分组 + ②类型/表现胶囊是否启用（overall 禁用、segment 启用）。
 const DEFAULT_ANALYSIS = 'terrain';
 const ANALYSIS_PRESETS = {
-  terrain: {
-    label: '情绪地形',
-    shortDesc: '城市情绪起伏一览',
-    desc: '将城市情绪分布渲染为连续热力面。L1 综合舆情热度（彩虹色阶）；L2 按极性着色（积极凸起/消极凹陷），3D 模式待开发。',
-    tags: ['L1', 'L2', '2D', '3D'],
-    preview: 'assets/analysis-previews/terrain.svg',
-  },
-  grid: {
-    label: '情绪网格',
-    shortDesc: '街区尺度聚合视图',
-    desc: '将空间划分为规则网格，每格聚合范围内点数或平均强度。2D 色块或 3D 柱体，适合街区/社区尺度分析。',
-    tags: ['L1', 'L2', '2D', '3D'],
-    preview: 'assets/analysis-previews/grid.svg',
-  },
-  positive: {
-    label: '积极情绪',
-    shortDesc: '满意区域密度分布',
-    desc: '仅筛选积极情绪点，渲染密度热力图。绿色色阶，快速识别市民满意区域与标杆地段。',
-    tags: ['L2', '2D'],
-    preview: 'assets/analysis-previews/positive.svg',
-  },
-  negative: {
-    label: '消极情绪',
-    shortDesc: '问题区域密度分布',
-    desc: '仅筛选消极情绪点，渲染密度热力图。红色色阶，定位整改优先级与问题片区。',
-    tags: ['L2', '2D'],
-    preview: 'assets/analysis-previews/negative.svg',
-  },
-  classify: {
-    label: '情绪归类',
-    shortDesc: '七大类分色地图',
-    desc: '按喜怒哀乐愁急盼七大类分别着色，生成分类热力图。直观呈现各类情绪的空间分布差异。',
-    tags: ['L2', '2D'],
-    preview: 'assets/analysis-previews/classify.svg',
-  },
-  factor: {
-    label: '情绪因子',
-    shortDesc: '多维归因分析',
-    desc: '4 应用领域 x 5 因子要素 = 20 个归因视角，揭示"消极情绪因何而起"。后续批次开发。',
-    tags: ['L4', '2D'],
-    preview: 'assets/analysis-previews/factor.svg',
-    placeholder: true,
-  },
+  terrain: { label: '情绪地形（2D/3D）', tier: 'overall',
+    desc: '综合情绪密度/强度表达。L1=综合舆情热度（2D 彩虹）；L2=正负面情绪高低洼地（3D 地形，红洼/蓝中/绿高）。',
+    preview: 'assets/analysis-previews/terrain.svg' },
+  grid:    { label: '情绪网格（2D/3D）', tier: 'overall',
+    desc: '小尺度网格聚合。L1=2D 网格/3D 柱体（暖色）；L2=3D 柱体，按特性显积极/消极/中性高点分布。',
+    preview: 'assets/analysis-previews/grid.svg' },
+  positive:{ label: '积极', tier: 'segment',
+    desc: '类型细分：只看积极情绪密度（仅 L2）。胶囊色（喜→乐）渐变 7 段。',
+    preview: 'assets/analysis-previews/positive.svg' },
+  negative:{ label: '消极', tier: 'segment',
+    desc: '类型细分：只看消极情绪密度（仅 L2）。胶囊色（怒→哀→愁）渐变 7 段。',
+    preview: 'assets/analysis-previews/negative.svg' },
+  neutral: { label: '中性', tier: 'segment',
+    desc: '类型细分：只看中性情绪密度（仅 L2）。胶囊色（急→盼）渐变 7 段。',
+    preview: 'assets/analysis-previews/classify.svg' },
+  factor:      { label: '情绪因子', tier: 'attribution',
+    desc: '多维归因：4 应用 × 5 因子 = 20 视角，"消极因何而起"。待后续批次。',
+    preview: 'assets/analysis-previews/factor.svg', placeholder: true },
+  attribution: { label: '要素归因', tier: 'attribution',
+    desc: '多维归因：按空间要素归因。待后续批次。',
+    preview: 'assets/analysis-previews/factor.svg', placeholder: true },
 };
+const ANALYSIS_TIERS = [
+  { key: 'overall',     label: '总体情况', order: ['terrain', 'grid'] },
+  { key: 'segment',     label: '类型细分', order: ['positive', 'negative', 'neutral'] },
+  { key: 'attribution', label: '多维归因', order: ['factor', 'attribution'] },
+];
 
-// ── ③ 显示样式（按 ①+②+level 联动出可选项）──
-// 返回 [{ key, name, dim, ramp, dev, tip }]，name = 显示标签，dim = '2d'|'3d'，ramp = HEATMAP_RAMPS key，
-// tip = 该样式的 i 悬停说明（含 2D/3D 差异等额外信息）。
-function computeStyles(analysis, level, polarity) {
+// ── ③ 自动色板（按 analysis + level + 特性）—— 色板随类型自动选定，用户不再手选 ──
+// 返回 { ramp, name, dev?, tip, buttons:[{dim,label,dev?}] }：
+//   ramp  = HEATMAP_RAMPS key；name = ③只读预览标签；buttons = 生成按钮（2D/3D 拆分）。
+function computeStyle(analysis, level, polarity) {
   if (analysis === 'terrain') {
-    if (level === 'L1') {
-      return [{ key: 'terrain-l1-rainbow', name: '综合彩虹（城市舆情热度，2D）', dim: '2d', ramp: 'rainbow',
-        tip: 'L1 综合舆情热度。冷蓝 → 黄 → 暖红，体现密度与关注度，不暗示极性。' }];
-    }
-    if (level === 'L2' && polarity === 'ALL') {
-      return [{ key: 'terrain-l2-rg-3d', name: '红蓝绿地形（3D 高程：积极凸/消极凹）', dim: '3d', ramp: 'diverging-rg', dev: true,
-        tip: '3D 综合情绪地形。高地（积极绿凸）/ 洼地（消极红凹），中线蓝为零值。3D 渲染待开发。' }];
-    }
-    if (level === 'L2' && polarity === 'O') {
-      return [{ key: 'terrain-l2-neutral', name: '中性蓝（急/盼）', dim: '2d', ramp: 'neutral',
-        tip: '只看中性点。蓝色系色板，与"急（蓝）+ 盼（深蓝）"胶囊色系呼应。' }];
-    }
-    if (level === 'L2' && polarity === 'P') {
-      return [{ key: 'terrain-l2-positive', name: '积极绿', dim: '2d', ramp: 'positive',
-        tip: '只看积极点。绿色越深 = 满意度越集中。' }];
-    }
-    if (level === 'L2' && polarity === 'N') {
-      return [{ key: 'terrain-l2-negative', name: '消极红', dim: '2d', ramp: 'negative',
-        tip: '只看消极点。红色越深 = 抱怨/焦虑越集中。' }];
-    }
-    return [{ key: 'terrain-rainbow', name: '综合彩虹', dim: '2d', ramp: 'rainbow', tip: '综合彩虹色板。' }];
+    if (level === 'L1') return { ramp: 'rainbow', name: '综合彩虹',
+      tip: 'L1 综合舆情热度（2D 彩虹），体现密度与关注度，不暗示极性。',
+      buttons: [{ dim: '2d', label: '生成 2D 彩虹图' }] };
+    return { ramp: 'terrain-9', name: '红蓝绿地形（9 段）', dev: true,
+      tip: 'L2 3D 情绪地形：山顶积极绿 / 山腰中性蓝 / 山底消极红。',
+      buttons: [{ dim: '3d', label: '生成 3D 地形图', dev: true }] };
   }
   if (analysis === 'grid') {
-    return [{ key: 'grid-warm', name: '热力网格（暖色暗红→金黄）', dim: '2d', ramp: 'grid-warm',
-      tip: '小尺度网格聚合（街区/社区），每格 = 范围内点数或平均强度。2D = 色块网格；3D = 同色板的网格柱体（柱高表达密度），3D 待开发。' }];
+    // 网格聚合渲染（binning）本次未实现，2D/3D 均占位待后续批次
+    if (level === 'L1') return { ramp: 'grid-warm', name: '网格暖色', dev: true,
+      tip: 'L1 小尺度舆情热度：2D 色块网格 / 3D 网格柱体（聚合渲染待开发）。',
+      buttons: [{ dim: '2d', label: '生成 2D 网格图', dev: true }, { dim: '3d', label: '生成 3D 柱体图', dev: true }] };
+    const ramp = { ALL: 'terrain-9', P: 'green-3', N: 'red-3', O: 'blue-3' }[polarity] || 'terrain-9';
+    const nm = { ALL: '综合（红蓝绿 9 段）', P: '积极（绿 3 段）', N: '消极（红 3 段）', O: '中性（蓝 3 段）' }[polarity] || '综合';
+    return { ramp, name: nm, dev: true,
+      tip: 'L2 3D 网格柱体：积极/消极/中性各自高点的空间分布。',
+      buttons: [{ dim: '3d', label: '生成 3D 柱体图', dev: true }] };
   }
-  if (analysis === 'positive') {
-    return [{ key: 'positive-l2-green', name: '积极绿', dim: '2d', ramp: 'positive', tip: '只看积极点的密度（仅 L2）。' }];
-  }
-  if (analysis === 'negative') {
-    return [{ key: 'negative-l2-red', name: '消极红', dim: '2d', ramp: 'negative', tip: '只看消极点的密度（仅 L2）。' }];
-  }
-  if (analysis === 'classify') {
-    return [{ key: 'classify-7', name: '7 类分色（喜怒哀乐愁急盼）', dim: '2d', ramp: 'classify-7',
-      tip: '按 7 大类（喜怒哀乐愁急盼）分别成色（仅 L2）。色板顺序：黄绿/橙黄/红/紫/蓝紫/蓝/深蓝。' }];
-  }
-  if (analysis === 'factor') {
-    return [{ key: 'factor-tbd', name: '归因矩阵（开发中）', dim: '2d', ramp: 'rainbow', dev: true,
-      tip: '4 应用领域 × 5 因子要素 = 20 个归因视角。待后续批次。' }];
-  }
-  return [];
+  if (analysis === 'positive') return { ramp: 'positive', name: '积极（喜→乐）',
+    tip: '类型细分：积极情绪密度（仅 L2）。', buttons: [{ dim: '2d', label: '生成 2D 积极图' }] };
+  if (analysis === 'negative') return { ramp: 'negative', name: '消极（怒→哀→愁）',
+    tip: '类型细分：消极情绪密度（仅 L2）。', buttons: [{ dim: '2d', label: '生成 2D 消极图' }] };
+  if (analysis === 'neutral')  return { ramp: 'neutral',  name: '中性（急→盼）',
+    tip: '类型细分：中性情绪密度（仅 L2）。', buttons: [{ dim: '2d', label: '生成 2D 中性图' }] };
+  // factor / attribution：占位
+  return { ramp: null, name: '待开发', dev: true, tip: '多维归因，后续批次开发。', buttons: [] };
 }
 
 // ── infopanel：analysis-card hover 弹出 Kepler 风格看板（预览图 + 标题 + 描述 + 标签）──
@@ -175,11 +144,31 @@ function hideInfoPanel() { if (_infoPanelEl) _infoPanelEl.classList.remove('is-s
 function renderAnalysisCards(dlg) {
   const wrap = dlg.querySelector('#hm-analysis');
   if (!wrap) return;
-  wrap.innerHTML = Object.entries(ANALYSIS_PRESETS).map(([key, p]) =>
-    `<button class="hm-analysis-card${key === DEFAULT_ANALYSIS ? ' is-opt-sel' : ''}${p.placeholder ? ' is-placeholder' : ''}" data-analysis="${key}" type="button">
-      <span class="hm-ac-name">${p.label}</span>
-      <span class="hm-info hm-info-card" data-analysis-key="${key}">i</span>
-    </button>`).join('');
+  // 3 排分组（总体情况 / 类型细分 / 多维归因），每排一个标题 + 卡片网格
+  wrap.innerHTML = ANALYSIS_TIERS.map((tier) => {
+    const cards = tier.order.map((key) => {
+      const p = ANALYSIS_PRESETS[key];
+      if (!p) return '';
+      return `<button class="hm-analysis-card${key === DEFAULT_ANALYSIS ? ' is-opt-sel' : ''}${p.placeholder ? ' is-placeholder' : ''}" data-analysis="${key}" data-tier="${tier.key}" type="button">
+        <span class="hm-ac-name">${p.label}</span>
+        <span class="hm-info hm-info-card" data-analysis-key="${key}">i</span>
+      </button>`;
+    }).join('');
+    return `<div class="hm-tier" data-tier="${tier.key}">
+      <div class="hm-tier-label">${tier.label}</div>
+      <div class="hm-tier-cards">${cards}</div>
+    </div>`;
+  }).join('');
+}
+
+/** 当前选中的分析类型 key */
+function selectedAnalysis(dlg) {
+  return dlg.querySelector('.hm-analysis-card.is-opt-sel')?.dataset?.analysis || DEFAULT_ANALYSIS;
+}
+/** 当前分析类型所属 tier（overall/segment/attribution） */
+function selectedTier(dlg) {
+  const key = selectedAnalysis(dlg);
+  return ANALYSIS_PRESETS[key]?.tier || 'overall';
 }
 
 function dialogEl() { return document.getElementById(DIALOG_ID); }
@@ -249,12 +238,14 @@ function typeCountsFor(fc) {
 }
 
 /** 渲染大类胶囊（7 类固定；每个胶囊带 data-tip 供 hover popup 使用）。
- *  v5：L1/L3/L4 无情绪分类字段 → 渲染禁用提示，不显示胶囊。 */
+ *  禁用条件：非 L2（无情绪字段），或 tier=overall/attribution（总体/归因不涉及类型细分）。 */
 function renderMacroChips(dlg, level) {
   const wrap = dlg.querySelector('#hm-macros');
   if (!wrap) return;
-  if (level !== 'L2') {
-    wrap.innerHTML = `<div class="hm-hint hm-empty">${level || '当前层级'} 无情绪分类字段（仅 L2 适用）</div>`;
+  const tier = selectedTier(dlg);
+  if (level !== 'L2' || tier !== 'segment') {
+    const why = level !== 'L2' ? `${level || '当前层级'} 无情绪分类字段（仅 L2）` : '总体/归因分析不涉及类型细分';
+    wrap.innerHTML = `<div class="hm-hint hm-empty">${why}</div>`;
     return;
   }
   wrap.innerHTML = EMOTION_MACRO_ORDER.map((k) => {
@@ -272,8 +263,8 @@ function renderMacroChips(dlg, level) {
 function renderTypeChips(dlg, fc, level) {
   const wrap = dlg.querySelector('#hm-types');
   if (!wrap) return;
-  if (level !== 'L2') {
-    wrap.innerHTML = `<div class="hm-hint hm-empty">${level || '当前层级'} 无情绪分类字段（仅 L2 适用）</div>`;
+  if (level !== 'L2' || selectedTier(dlg) !== 'segment') {
+    wrap.innerHTML = `<div class="hm-hint hm-empty">总体/归因分析或非 L2，无类型/表现筛选</div>`;
     updateFoldCount(dlg, 'type');
     return;
   }
@@ -300,55 +291,46 @@ function renderTypeChips(dlg, fc, level) {
   updateFoldCount(dlg, 'type');
 }
 
-/** 渲染 ③ 显示样式胶囊（按 ①+② 联动）—
- *  v3：色板预览改为"离散色块条"（kepler 风格，无渐变），去掉名称文字（仅保留 i 悬停说明）。
- *  v4：默认选第一个非 dev 项（避免开箱即点"生成"却被 dev 拦截，给人按钮失效感）；末尾刷新生成按钮态。 */
-function renderStyles(dlg) {
+/** 渲染 ③ 只读色板预览（色板随 analysis+level+特性自动；用户不再手选）。
+ *  显示当前自动选定色板的离散分段条 + 名称 + i 说明。 */
+function renderStylePreview(dlg) {
   const wrap = dlg.querySelector('#hm-styles');
   if (!wrap) return;
-  const analysis = dlg.querySelector('.hm-analysis-card.is-opt-sel')?.dataset?.analysis || DEFAULT_ANALYSIS;
+  const analysis = selectedAnalysis(dlg);
   const level = dlg.querySelector('#hm-level').value;
   const polarity = dlg.querySelector('#hm-subset').value;
-  const styles = computeStyles(analysis, level, polarity);
-  if (!styles.length) {
-    wrap.innerHTML = `<div class="hm-hint">当前 ①+② 组合无可用样式</div>`;
-    refreshGenerateBtn(dlg);
+  const st = computeStyle(analysis, level, polarity);
+  // 占位（factor/attribution）
+  if (!st.buttons.length) {
+    wrap.innerHTML = `<div class="hm-hint">${st.name}（后续批次）</div>`;
+    renderGenerateButtons(dlg, st);
     return;
   }
-  // 默认选中：优先第一个非 dev 项；都是 dev 时退回第一项
-  const defIdx = styles.findIndex((s) => !s.dev);
-  const selIdx = defIdx >= 0 ? defIdx : 0;
-  wrap.innerHTML = styles.map((s, i) => {
-    const ramp = HEATMAP_RAMPS[s.ramp];
-    // 离散色块：取所有非透明 stop 的颜色，平均切片，每格一个 div（kepler 分段条风格）
-    const segs = ramp ? ramp.stops.filter(([d]) => d > 0).map(([, c]) => c) : ['#ccc'];
-    const segHtml = segs.map((c) => `<span class="hm-style-seg" style="background:${c}"></span>`).join('');
-    const tip = s.tip || (s.name + (s.dev ? '（开发中）' : ''));
-    return `<button class="hm-style-btn${i === selIdx ? ' is-bar-sel' : ''}${s.dev ? ' is-dev' : ''}"
-              data-style-key="${s.key}" data-dim="${s.dim}" data-ramp="${s.ramp}" type="button">
-      <span class="hm-style-bar">${segHtml}</span>
-      ${s.dev ? '<span class="hm-style-dev-tag">开发中</span>' : ''}
-      <span class="hm-info" data-tip="${tip.replace(/"/g, '&quot;')}">i</span>
-    </button>`;
-  }).join('');
-  refreshGenerateBtn(dlg);
+  const ramp = st.ramp ? HEATMAP_RAMPS[st.ramp] : null;
+  const segs = ramp ? ramp.stops.filter(([d]) => d > 0).map(([, c]) => c) : ['#ccc'];
+  const segHtml = segs.map((c) => `<span class="hm-style-seg" style="background:${c}"></span>`).join('');
+  const tip = st.tip.replace(/"/g, '&quot;');
+  wrap.innerHTML = `<div class="hm-style-preview">
+    <span class="hm-style-bar">${segHtml}</span>
+    <span class="hm-style-name">${st.name}</span>
+    ${st.dev ? '<span class="hm-style-dev-tag">3D 待开发</span>' : ''}
+    <span class="hm-info" data-tip="${tip}">i</span>
+  </div>`;
+  renderGenerateButtons(dlg, st);
 }
 
-/** 刷新"生成热力图"按钮的禁用态/文案：
- *  - 未选样式 → 禁用 + "请选择显示样式"
- *  - 选中样式是 dev → 禁用 + "该样式开发中，暂不可生成"
- *  - 否则 → 启用 + "生成热力图" */
-function refreshGenerateBtn(dlg) {
-  const gen = dlg.querySelector('#hm-generate');
-  if (!gen) return;
-  const styleBtn = dlg.querySelector('.hm-style-btn.is-bar-sel');
-  if (!styleBtn) {
-    gen.disabled = true; gen.textContent = '请选择显示样式'; return;
+/** 渲染生成按钮区（按 computeStyle.buttons 动态拆 2D/3D；单/双按钮）。 */
+function renderGenerateButtons(dlg, st) {
+  const foot = dlg.querySelector('#hm-generate-row');
+  if (!foot) return;
+  if (!st.buttons.length) {
+    foot.innerHTML = `<button class="sec-btn" disabled>该分析待开发</button>`;
+    return;
   }
-  if (styleBtn.classList.contains('is-dev')) {
-    gen.disabled = true; gen.textContent = '该样式开发中，暂不可生成'; return;
-  }
-  gen.disabled = false; gen.textContent = '生成热力图';
+  foot.innerHTML = st.buttons.map((b, i) =>
+    `<button class="sec-btn${i === 0 ? ' is-primary' : ''}${b.dev ? ' is-dev' : ''}"
+       data-dim="${b.dim}" data-ramp="${st.ramp || ''}" ${b.dev ? 'disabled' : ''} type="button">
+       ${b.label}${b.dev ? '（待开发）' : ''}</button>`).join('');
 }
 
 /** 选大类胶囊 → 自动选/取消其下小类（传导）。
@@ -426,24 +408,40 @@ function resolveSource(sources, level, polarity) {
   return { fc: src.fc, sourceKey: src.sourceKey, label: src.label };
 }
 
-/** 按当前 ② 设置约束极性下拉的可选项（L1 = 仅"综合"；L2 = 4 项全开） */
-function constrainPolarityOptions(dlg, level, lockReason) {
+/** 按 analysis + level 约束"特性"下拉（原极性）：
+ *   - terrain（总体）：始终综合，不可选
+ *   - grid（总体）：L1 综合（不可选）；L2 综合/积极/消极/中性 4 选
+ *   - positive/negative/neutral（细分）：锁定 积极/消极/中性
+ *   - attribution：综合，不可选
+ *   - 非 L2：仅综合 */
+function constrainPolarityOptions(dlg, level, analysis) {
   const sel = dlg.querySelector('#hm-subset');
   if (!sel) return;
   const opts = sel.querySelectorAll('option');
-  if (level === 'L2') {
-    opts.forEach((o) => { o.disabled = false; o.hidden = false; });
-    sel.disabled = false;
-  } else {
-    // 非 L2：仅"综合"可选
-    opts.forEach((o) => { const ok = o.value === 'ALL'; o.disabled = !ok; o.hidden = !ok; });
-    sel.value = 'ALL';
-    sel.disabled = false;   // 还允许查看，但只能选综合
+  const tier = ANALYSIS_PRESETS[analysis]?.tier || 'overall';
+  const allOff = (val) => { opts.forEach((o) => { const ok = o.value === val; o.disabled = !ok; o.hidden = !ok; }); };
+  const allOn = () => { opts.forEach((o) => { o.disabled = false; o.hidden = false; }); };
+
+  let locked = null;   // 锁定值（不可切换）
+  if (analysis === 'positive') locked = 'P';
+  else if (analysis === 'negative') locked = 'N';
+  else if (analysis === 'neutral') locked = 'O';
+  else if (tier === 'overall' || tier === 'attribution') {
+    // 总体/归因：grid+L2 可 4 选，其余综合不可选
+    if (analysis === 'grid' && level === 'L2') { allOn(); sel.disabled = false; if (!['ALL', 'P', 'N', 'O'].includes(sel.value)) sel.value = 'ALL'; return; }
+    locked = 'ALL';
   }
-  // 分析类型锁定（积极/消极 → 对应极性；归类 → 综合；均锁死不可切换）
-  if (lockReason === 'positive') { sel.value = 'P'; sel.disabled = true; }
-  if (lockReason === 'negative') { sel.value = 'N'; sel.disabled = true; }
-  if (lockReason === 'classify') { sel.value = 'ALL'; sel.disabled = true; }
+
+  if (locked) {
+    allOff(locked);
+    sel.value = locked;
+    sel.disabled = true;   // 锁死（值固定，不可切换）
+    return;
+  }
+  // 类型细分但未命中 locked（理论上不出现）：非 L2 仅综合
+  if (level !== 'L2') { allOff('ALL'); sel.value = 'ALL'; sel.disabled = false; return; }
+  allOn();
+  sel.disabled = false;
 }
 
 /** 按当前 ① 约束数据下拉。
@@ -503,8 +501,7 @@ export function openHeatmapDialog(layerId) {
   const defaultLevel = dlg.querySelector('#hm-level').value;
 
   // ② 极性下拉（按 ① 约束 + 套种子值）
-  const lockReason = initAnalysis === 'positive' ? 'positive' : initAnalysis === 'negative' ? 'negative' : initAnalysis === 'classify' ? 'classify' : null;
-  constrainPolarityOptions(dlg, defaultLevel, lockReason);
+  constrainPolarityOptions(dlg, defaultLevel, initAnalysis);
   const initPolarity = (seed && seed.polarity) || 'ALL';
   dlg.querySelector('#hm-subset').value = initPolarity;
 
@@ -532,16 +529,8 @@ export function openHeatmapDialog(layerId) {
   if (macroFold) macroFold.open = true;
   if (typeFold) typeFold.open = true;
 
-  // ③ 显示样式（编辑模式：套种子选中态）
-  renderStyles(dlg);
-  if (seed && seed.styleKey) {
-    const want = dlg.querySelector(`.hm-style-btn[data-style-key="${seed.styleKey}"]`);
-    if (want) {
-      dlg.querySelectorAll('.hm-style-btn').forEach((b) => b.classList.remove('is-bar-sel'));
-      want.classList.add('is-bar-sel');
-      refreshGenerateBtn(dlg);
-    }
-  }
+  // ③ 只读色板预览 + 生成按钮（编辑模式：色板由 analysis+level+特性自动，无需选种）
+  renderStylePreview(dlg);
 
   // 高级参数（编辑模式：从 seed.paint 恢复；否则走默认值）
   const sp = (seed && seed.paint) || {};
@@ -626,26 +615,21 @@ function getSelectedTypes(dlg) {
   return all.filter((el) => el.querySelector('input').checked).map((el) => el.dataset.type);
 }
 
-/** 生成热力图 */
-function generateHeatmap() {
+/** 生成热力图 —— 由生成按钮（#hm-generate-row 内）触发，按钮自带 dim/ramp/dev。
+ *  v6：色板随 analysis+level+特性自动（computeStyle），不再从 ③手选 style-btn 读。 */
+function generateHeatmap(btn) {
   const dlg = dialogEl();
   if (!dlg) return;
 
-  const analysisKey = dlg.querySelector('.hm-analysis-card.is-opt-sel')?.dataset?.analysis || DEFAULT_ANALYSIS;
-  const styleBtn = dlg.querySelector('.hm-style-btn.is-bar-sel');
-  if (!styleBtn) { toast.error('请选择显示样式'); return; }
-  const dim = styleBtn.dataset.dim;
-  const rampKey = styleBtn.dataset.ramp;
-  const isDev = styleBtn.classList.contains('is-dev');
+  const analysisKey = selectedAnalysis(dlg);
+  const preset = ANALYSIS_PRESETS[analysisKey];
+  const dim = btn ? btn.dataset.dim : '2d';
+  const rampKey = btn ? btn.dataset.ramp : '';
+  const isDev = btn ? btn.classList.contains('is-dev') : true;
 
-  if (isDev || dim === '3d') {
-    const styleName = (computeStyles(analysisKey, dlg.querySelector('#hm-level').value, dlg.querySelector('#hm-subset').value)
-      .find((s) => s.key === styleBtn.dataset.styleKey) || {}).name || '该样式';
-    toast.info(`样式"${styleName}"待后续批次开发，UI 已就位`);
-    return;
-  }
-  if (analysisKey === 'factor') { toast.info('情绪因子归因（4×5 矩阵）待后续批次'); return; }
-  if (analysisKey === 'grid') { toast.info('情绪网格聚合渲染待后续批次（4 档格网）'); return; }
+  // 占位拦截：dev 按钮（3D / 网格聚合）/ 占位分析类型
+  if (isDev || dim === '3d') { toast.info('该表达（3D / 网格聚合）待后续批次开发，UI 已就位'); return; }
+  if (preset && preset.placeholder) { toast.info(`${preset.label} 待后续批次`); return; }
 
   const level = dlg.querySelector('#hm-level').value;
   const polarity = dlg.querySelector('#hm-subset').value;
@@ -707,10 +691,10 @@ function generateHeatmap() {
       typesFilter: selectedTypes, intensityMin,
       minzoom: minzoom > 0 ? minzoom : undefined,
       maxzoom: maxzoom < 22 ? maxzoom : undefined,
-      // v5：持久化 UI 原始选择，供 H 要素按钮再次打开时反推参数（"按当初设置参数继续编辑"语义）
+      // v5/v6：持久化 UI 原始选择，供 H 要素按钮再次打开时反推参数（"继续编辑"语义）
       _ui: {
-        analysisKey, styleKey: styleBtn.dataset.styleKey, dim,
-        level, polarity,
+        analysisKey, dim,
+        level, polarity, rampKey,
         macroFilter: [...dlg.querySelectorAll('.hm-macro-chip.is-on')].map((el) => el.dataset.macro),
       },
     },
@@ -748,9 +732,8 @@ export function initHeatmapTool() {
     card.classList.add('is-opt-sel');
     const sources = collectSources();
     constrainLevelOptions(dlg, sources, key);
-    const lockReason = key === 'positive' ? 'positive' : key === 'negative' ? 'negative' : key === 'classify' ? 'classify' : null;
     const lv = dlg.querySelector('#hm-level').value;
-    constrainPolarityOptions(dlg, lv, lockReason);
+    constrainPolarityOptions(dlg, lv, key);
     const polNow = dlg.querySelector('#hm-subset').value;
     const resolved = resolveSource(sources, lv, polNow);
     renderMacroChips(dlg, lv);
@@ -758,7 +741,7 @@ export function initHeatmapTool() {
     applyPolarityToMacros(dlg, polNow);
     renderTypeChips(dlg, resolved ? resolved.fc : { features: [] }, lv);
     applyMacroToTypes(dlg);
-    renderStyles(dlg);
+    renderStylePreview(dlg);
   });
 
   // analysis-card 上的 i：hover 弹 infopanel
@@ -772,12 +755,11 @@ export function initHeatmapTool() {
     if (e.target.closest('.hm-info-card')) hideInfoPanel();
   });
 
-  // ② 数据下拉切换 → 重算极性约束 + 小类 + ③
+  // ② 数据下拉切换 → 重算特性约束 + 小类 + ③
   dlg.querySelector('#hm-level')?.addEventListener('change', (e) => {
     const lv = e.target.value;
-    const an = dlg.querySelector('.hm-analysis-card.is-opt-sel')?.dataset?.analysis || DEFAULT_ANALYSIS;
-    const lockReason = an === 'positive' ? 'positive' : an === 'negative' ? 'negative' : an === 'classify' ? 'classify' : null;
-    constrainPolarityOptions(dlg, lv, lockReason);
+    const an = selectedAnalysis(dlg);
+    constrainPolarityOptions(dlg, lv, an);
     const sources = collectSources();
     const polNow = dlg.querySelector('#hm-subset').value;
     const resolved = resolveSource(sources, lv, polNow);
@@ -786,7 +768,7 @@ export function initHeatmapTool() {
     applyPolarityToMacros(dlg, polNow);
     renderTypeChips(dlg, resolved ? resolved.fc : { features: [] }, lv);
     applyMacroToTypes(dlg);
-    renderStyles(dlg);
+    renderStylePreview(dlg);
   });
 
   // ② 极性下拉切换 → 传导大类 → 传导小类 → 重算 ③
@@ -798,7 +780,7 @@ export function initHeatmapTool() {
     const resolved = resolveSource(sources, lv, polarity);
     renderTypeChips(dlg, resolved ? resolved.fc : { features: [] }, lv);
     applyMacroToTypes(dlg);
-    renderStyles(dlg);
+    renderStylePreview(dlg);
   });
 
   // ② 大类胶囊点击 toggle + 传导小类 + 更新计数
@@ -824,13 +806,12 @@ export function initHeatmapTool() {
     });
   });
 
-  // ③ 显示样式胶囊点击 → 单选（"栏"语义：浅蓝填充无边框）
-  dlg.querySelector('#hm-styles')?.addEventListener('click', (e) => {
-    const btn = e.target.closest('.hm-style-btn');
-    if (!btn) return;
-    dlg.querySelectorAll('.hm-style-btn').forEach((b) => b.classList.remove('is-bar-sel'));
-    btn.classList.add('is-bar-sel');
-    refreshGenerateBtn(dlg);
+  // ③ 只读色板预览，不可点选（色板随 analysis+level+特性自动）。
+  // 生成按钮（#hm-generate-row）委托：点击 → generateHeatmap(该按钮)
+  dlg.querySelector('#hm-generate-row')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.sec-btn[data-dim]');
+    if (!btn || btn.disabled) return;
+    generateHeatmap(btn);
   });
 
   // 高级参数实时显示
@@ -854,8 +835,7 @@ export function initHeatmapTool() {
     dlg.querySelector('#hm-maxzoom-val').textContent = e.target.value;
   });
 
-  // 生成
-  dlg.querySelector('#hm-generate')?.addEventListener('click', generateHeatmap);
+  // 生成按钮由 #hm-generate-row 委托（上方已绑），这里不再绑 #hm-generate。
 
   // 通用 i tooltip（覆盖 .hm-info[data-tip] 与原 .hm-info > .hm-tip 两种写法）
   initInfoTooltip();

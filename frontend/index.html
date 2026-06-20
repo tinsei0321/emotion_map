@@ -149,6 +149,11 @@
           <div class="legend-title">范围</div>
           <div class="legend-row"><span class="dot range-dot"></span>范围轮廓</div>
         </div>
+        <div id="legend-heatmap" class="legend" hidden>
+          <div class="legend-title">核密度</div>
+          <div class="legend-heat-ramp"></div>
+          <div class="legend-ramp-labels"><span id="legend-heat-lo">稀疏</span><span id="legend-heat-hi">密集</span></div>
+        </div>
       </div>
 
       <!-- Popup stack (top-right): emotion point + range polygon, stacked vertically -->
@@ -230,19 +235,19 @@
 
       <!-- ① 选择分析类型（强引导入口：选类型即套推荐默认；卡片悬停弹出图+文 infopanel） -->
       <div class="hm-group">
-        <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">选择分析类型</span></div>
+        <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">分析类型</span></div>
         <div class="hm-analysis" id="hm-analysis"><!-- 类型卡 by JS --></div>
       </div>
 
       <!-- ② 选择数据源（数据 / 极性下拉；类型 / 表现 胶囊可折叠） -->
       <div class="hm-group">
-        <div class="hm-group-title"><span class="hm-step-no">2</span><span class="hm-step-label">选择数据源</span></div>
+        <div class="hm-group-title"><span class="hm-step-no">2</span><span class="hm-step-label">数据源</span></div>
         <div class="hm-section">
           <div class="hm-label">数据</div>
           <select class="sec-select" id="hm-level"></select>
         </div>
         <div class="hm-section">
-          <div class="hm-label">极性</div>
+          <div class="hm-label">特性</div>
           <select class="sec-select" id="hm-subset">
             <option value="ALL" selected>综合</option>
             <option value="P">积极</option>
@@ -275,9 +280,9 @@
         </details>
       </div>
 
-      <!-- ③ 显示样式（随①+②联动；每个色带带独立 i 悬停） -->
+      <!-- ③ 色板预览（随①+②自动；只读，不再手选） -->
       <div class="hm-group">
-        <div class="hm-group-title"><span class="hm-step-no">3</span><span class="hm-step-label">显示样式</span></div>
+        <div class="hm-group-title"><span class="hm-step-no">3</span><span class="hm-step-label">色板预览</span></div>
         <div class="hm-section">
           <div class="hm-style-list" id="hm-styles"><!-- 样式胶囊 by JS（含 i 提示） --></div>
         </div>
@@ -337,7 +342,7 @@
     </div>
     <div class="dialog-foot">
       <button class="sec-btn sec-cancel" data-close>取消</button>
-      <button class="sec-btn" id="hm-generate">生成热力图</button>
+      <div class="hm-generate-row" id="hm-generate-row"><!-- 生成按钮 by JS（2D/3D 拆分） --></div>
     </div>
   </dialog>
 

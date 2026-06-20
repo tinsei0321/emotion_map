@@ -11,6 +11,7 @@ import {
 } from './import.js';
 import { openImportDialog } from './dialog.js';
 import { initHeatmapTool } from './heatmap-tool.js';
+import { initHeatmapLegend } from './heatmap-legend.js';
 import { toast } from './toast.js';
 
 function layerName(group) {
@@ -118,6 +119,7 @@ function main() {
 
   initSidebar({ onFiles: runImport });
   initHeatmapTool();
+  initHeatmapLegend();
 
   initToolbar({
     onTool: (tool) => console.log('[tool]', tool),
