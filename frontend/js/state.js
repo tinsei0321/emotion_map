@@ -193,39 +193,34 @@ export const HEATMAP_NEGATIVE_STOPS = [
   [1.00, '#7A1E16'],              // 高密度深红
 ];
 
-// ── Heatmap color ramp presets (6 themes for emotion-map use cases) ──
+// ── Heatmap color ramp presets ──
 // Each ramp = { name, stops: [[density,color], ...] }. density 0 always transparent.
+
+// gradientStops：从端点色（hex[]）线性插值出 n 段渐变 stops（density 0 透明）。
+// 用于"积极/消极/中性"由 7 大类胶囊色派生的分段色板（胶囊色 ↔ 色板一一对应）。
+function _hex2rgb(h) { h = String(h).replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; }
+function _rgb2hex(rgb) { return '#' + rgb.map((x) => Math.round(x).toString(16).padStart(2, '0')).join(''); }
+export function gradientStops(colors, n) {
+  const pts = colors.map(_hex2rgb);
+  const stops = [[0, `rgba(${pts[0][0]},${pts[0][1]},${pts[0][2]},0)`]];
+  for (let i = 1; i <= n; i++) {
+    const t = (i - 1) / (n - 1) * (pts.length - 1);   // 0..len-1
+    const lo = Math.floor(t), hi = Math.min(pts.length - 1, lo + 1), f = t - lo;
+    const c = [0, 1, 2].map((k) => pts[lo][k] + (pts[hi][k] - pts[lo][k]) * f);
+    stops.push([i / n, _rgb2hex(c)]);
+  }
+  return stops;
+}
+
+// 7 大类胶囊色（喜怒哀乐愁急盼 = 绿/橙/红/紫红/紫/深蓝/天蓝）—— 单一调色源。
+// 胶囊(EMOTION_MACRO)、classify-7、积极/消极/中性格色板均派生自此，保证全局一致。
+export const MACRO_COLORS = ['#43C063', '#F5A623', '#E53935', '#C2185B', '#8E44AD', '#1A3A8C', '#4FC3F7'];
+
 export const HEATMAP_RAMPS = {
-  negative: {
-    name: '消极红',
-    stops: HEATMAP_NEGATIVE_STOPS,
-  },
-  positive: {
-    name: '积极绿',
-    stops: [
-      [0.00, 'rgba(30,120,80,0)'],
-      [0.10, '#A8E6A0'],
-      [0.25, '#6BCF6B'],
-      [0.40, '#3DBA3D'],
-      [0.55, '#219A21'],
-      [0.70, '#167A16'],
-      [0.85, '#0E5C0E'],
-      [1.00, '#083D08'],
-    ],
-  },
-  neutral: {
-    name: '中性蓝',
-    stops: [
-      [0.00, 'rgba(100,140,180,0)'],
-      [0.10, '#B0C8E0'],
-      [0.25, '#8AA8C8'],
-      [0.40, '#6088B0'],
-      [0.55, '#4A7098'],
-      [0.70, '#385878'],
-      [0.85, '#284060'],
-      [1.00, '#1A2C48'],
-    ],
-  },
+  // 类型细分色板：胶囊色渐变 7 段（积极=喜→乐；消极=怒→哀→愁；中性=急→盼）
+  positive: { name: '积极（喜→乐）',     stops: gradientStops(['#43C063', '#F5A623'], 7) },
+  negative: { name: '消极（怒→哀→愁）', stops: gradientStops(['#E53935', '#C2185B', '#8E44AD'], 7) },
+  neutral:  { name: '中性（急→盼）',     stops: gradientStops(['#1A3A8C', '#4FC3F7'], 7) },
   anxiety: {
     name: '焦虑紫',
     stops: [
@@ -295,25 +290,45 @@ export const HEATMAP_RAMPS = {
       [1.00, '#F4C518'],
     ],
   },
-  // 7 色情绪分类色板（采样自图2 6 色 + 第 7 色柔和绿，对应喜怒哀乐愁急盼）
+  // 7 色情绪分类色板 = 7 大类胶囊色同源同序（喜怒哀乐愁急盼）。作 chip/legend 调色源。
   'classify-7': {
     name: '情绪 7 类',
     stops: [
-      // 注：分类色板用作 chip / legend 调色源，不直接走 heatmap-color 插值
-      [0.00, 'rgba(45,58,142,0)'],
-      [0.15, '#2D3A8E'],
-      [0.30, '#6F2BA8'],
-      [0.45, '#BC1F8C'],
-      [0.58, '#DA1F4A'],
-      [0.72, '#EE5A1F'],
-      [0.86, '#EFC616'],
-      [1.00, '#3FA34D'],
+      [0.00, 'rgba(67,192,99,0)'],
+      [0.14, '#43C063'],   // 喜 绿
+      [0.28, '#F5A623'],   // 乐 橙
+      [0.42, '#E53935'],   // 怒 红
+      [0.56, '#C2185B'],   // 哀 紫红
+      [0.70, '#8E44AD'],   // 愁 紫
+      [0.84, '#1A3A8C'],   // 急 深蓝
+      [1.00, '#4FC3F7'],   // 盼 天蓝
     ],
   },
+  // 总体情况色板（地形/网格，红蓝绿高程语义；与类型细分的胶囊色渐变不同源）
+  // density 0→1 = 洼地(消极红) → 中性蓝 → 高地(积极绿)
+  'terrain-9': {
+    name: '红蓝绿地形（9段）',
+    stops: [
+      [0.00, 'rgba(122,30,22,0)'],
+      [0.11, '#7A1E16'],   // 洼地 深红
+      [0.22, '#C44A2E'],
+      [0.33, '#E07142'],   // 浅红（近中性）
+      [0.44, '#6A9BB5'],   // 中性 浅蓝
+      [0.55, '#3A7CA5'],   // 中性 蓝
+      [0.66, '#A8E6A0'],   // 浅绿（近中性）
+      [0.77, '#3DBA3D'],
+      [0.88, '#167A16'],
+      [1.00, '#083D08'],   // 高地 深绿
+    ],
+  },
+  // 网格+L2 积极/消极/中性 各 3 段（取 terrain-9 的绿/红/蓝段）
+  'green-3':  { name: '积极 3 段（绿）', stops: gradientStops(['#A8E6A0', '#3DBA3D', '#083D08'], 3) },
+  'red-3':    { name: '消极 3 段（红）', stops: gradientStops(['#E07142', '#C44A2E', '#7A1E16'], 3) },
+  'blue-3':   { name: '中性 3 段（蓝）', stops: gradientStops(['#6A9BB5', '#5288A0', '#3A7CA5'], 3) },
 };
 
-// sorted keys for UI iteration（3D 红绿渐变与网格暖色为新增；删除原积极/消极 6 级）
-export const HEATMAP_RAMP_KEYS = ['rainbow', 'positive', 'negative', 'neutral', 'anxiety', 'mono', 'diverging-rg', 'grid-warm', 'classify-7'];
+// sorted keys for UI iteration（类型细分渐变 + 总体情况红蓝绿地形 + 网格 3 段）
+export const HEATMAP_RAMP_KEYS = ['rainbow', 'positive', 'negative', 'neutral', 'anxiety', 'mono', 'diverging-rg', 'grid-warm', 'classify-7', 'terrain-9', 'green-3', 'red-3', 'blue-3'];
 
 // ── Emotion type palette — 论文双层体系（微观具体情绪，7 类，每类对齐治理动作）──
 // 类型与 SCRIPT/emotion_lexicon.py EMOTION_LEXICON 保持一致。
@@ -342,16 +357,16 @@ export const EMOTION_TYPE_ACTION = {
 // 大类 = 高度抽象固定分类；小类（emotion_type）= 数据动态归纳，无固定数量。
 // polarity 字段用于"选极性 → 自动选大类胶囊"的传导：
 //   positive → 喜+乐, negative → 怒+哀+愁, neutral → 急+盼
-// 配色按用户指定：喜（黄绿）/ 乐（橙黄）/ 怒（红）/ 哀（紫）/ 愁（蓝紫）/ 急（蓝）/ 盼（深蓝）
-// 视觉冷暖渐变，从暖到冷整体形成情绪强度→恢复理性的色彩节奏。
+// 7 大类胶囊色 ↔ classify-7 色板同源同序（喜绿/乐橙/怒红/哀紫红/愁紫/急深蓝/盼天蓝）。
+// 改色须同步：classify-7 色板、积极/消极/中性格色板、Overview/图例（全局一致规范）。
 export const EMOTION_MACRO = {
-  '喜': { color: '#A6CE39', polarity: 'positive', desc: '满意/愉悦/赞美（黄绿）' },
-  '乐': { color: '#F0B540', polarity: 'positive', desc: '欢愉/欣赏/认同（橙黄）' },
-  '怒': { color: '#DC143C', polarity: 'negative', desc: '愤怒/侵权/极端不满（红）' },
-  '哀': { color: '#9B59B6', polarity: 'negative', desc: '失望/沮丧/无奈（紫）' },
-  '愁': { color: '#6A4E9E', polarity: 'negative', desc: '焦虑/担忧/隐患（蓝紫）' },
-  '急': { color: '#2E7CD6', polarity: 'neutral',  desc: '紧迫/催促/呼吁（蓝）' },
-  '盼': { color: '#1A3A8C', polarity: 'neutral',  desc: '期待/希望/建议（深蓝）' },
+  '喜': { color: '#43C063', polarity: 'positive', desc: '满意/愉悦/赞美（绿）' },
+  '乐': { color: '#F5A623', polarity: 'positive', desc: '欢愉/欣赏/认同（橙）' },
+  '怒': { color: '#E53935', polarity: 'negative', desc: '愤怒/侵权/极端不满（红）' },
+  '哀': { color: '#C2185B', polarity: 'negative', desc: '失望/沮丧/无奈（紫红）' },
+  '愁': { color: '#8E44AD', polarity: 'negative', desc: '焦虑/担忧/隐患（紫）' },
+  '急': { color: '#1A3A8C', polarity: 'neutral',  desc: '紧迫/催促/呼吁（深蓝）' },
+  '盼': { color: '#4FC3F7', polarity: 'neutral',  desc: '期待/希望/建议（天蓝）' },
 };
 export const EMOTION_MACRO_ORDER = ['喜', '乐', '怒', '哀', '愁', '急', '盼'];
 
