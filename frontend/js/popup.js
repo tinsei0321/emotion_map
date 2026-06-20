@@ -3,7 +3,7 @@
 //   • #feature-popup — clicked emotion point (L2 polarity badge | L1 置信度 badge)
 //   • #range-popup   — clicked range polygon (navy accent = outline color)
 // Each independently expand/collapse (capsule) + close. Click empty map → collapse both.
-import { POLARITY_LABEL, rampColor, CONFIDENCE_RAMP, getLayer } from './state.js';
+import { POLARITY_LABEL, rampColor, CONFIDENCE_RAMP, getLayer, computeHotness, hotnessColor } from './state.js';
 
 const emoEl = () => document.getElementById('feature-popup');
 const rngEl = () => document.getElementById('range-popup');
@@ -38,14 +38,15 @@ export function showPopup(feature, colors, colorMode) {
     badge.style.background = GREY;
     scoreEl.hidden = true;
     _emo = { colorMode: 'needsAnalysis' };
-  } else if (colorMode === 'confidence') {    // L1: confidence badge, color from the layer's ramp
-    const score = (typeof p.score === 'number') ? p.score : 0.5;
-    const ramp = (layer && layer.paint && layer.paint.ramp) || CONFIDENCE_RAMP;
-    badge.textContent = '置信度';
-    badge.style.background = rampColor(ramp, score);
+  } else if (colorMode === 'confidence') {    // L1: 热度值 = 情绪强度 × 置信度（3 段色）
+    const hotness = computeHotness(feature);
+    const buckets = (layer && layer.paint && layer.paint.hotnessBuckets) || [0.33, 0.66];
+    badge.textContent = '热度值';
+    badge.title = '热度值 = 情绪强度 × 置信度（0~1）。情绪越浓且与城市规划相关性越高，热度值越大；按当前图层分布动态分 3 段（浅橙→橙→深橙红）。';
+    badge.style.background = hotnessColor(buckets, hotness);
     scoreEl.hidden = false;
-    scoreEl.textContent = score.toFixed(1);
-    _emo = { colorMode: 'confidence', label: '置信度', score };
+    scoreEl.textContent = hotness.toFixed(2);
+    _emo = { colorMode: 'confidence', label: '热度值', score: hotness };
   } else {                                    // L2: polarity badge (frozen rendering)
     const pol = p.polarity || 'Neutral';
     const label = POLARITY_LABEL[pol] || pol;
@@ -61,16 +62,19 @@ export function showPopup(feature, colors, colorMode) {
   textEl.textContent = p.text || '';
   textEl.title = p.text || '';
 
+  // rows = [key, value, tip?, dim?] —— tip 挂 kv-k 的 title；dim 弱化（坐标同 ID 级小字灰）
   const rows = [];
   if (p.location) rows.push(['位置', p.location]);
   if (p.category) rows.push(['类别', p.category]);
   if (p.emotion_type) rows.push(['情绪类型', p.emotion_type]);
   if (p.emotion_intensity != null) rows.push(['情绪强度', Number(p.emotion_intensity).toFixed(2)]);
+  if (p.l1_confidence != null) rows.push(['置信度', Number(p.l1_confidence).toFixed(2),
+    'L1 治理阶段由 LLM（DeepSeek）判断的数据相关性置信度（0~1）：该条数据与城市规划情绪分析的相关程度。可收集、可复现。']);
   if (Array.isArray(p.keywords) && p.keywords.length) rows.push(['关键词', p.keywords.join('、')]);
   const c = feature.geometry && feature.geometry.coordinates;
-  if (c) rows.push(['坐标', Array.isArray(c[0]) ? feature.geometry.type : `${c[1].toFixed(4)}, ${c[0].toFixed(4)}`]);
-  document.getElementById('pp-kv').innerHTML = rows.map(([k, v]) =>
-    `<div class="kv-row"><span class="kv-k">${k}</span><span class="kv-v">${v}</span></div>`).join('');
+  if (c) rows.push(['坐标', Array.isArray(c[0]) ? feature.geometry.type : `${c[1].toFixed(4)}, ${c[0].toFixed(4)}`, '', 'dim']);
+  document.getElementById('pp-kv').innerHTML = rows.map(([k, v, tip, dim]) =>
+    `<div class="kv-row${dim ? ' kv-dim' : ''}"><span class="kv-k"${tip ? ` title="${tip}"` : ''}>${k}</span><span class="kv-v">${v}</span></div>`).join('');
 
   document.getElementById('pp-id').textContent = p.id_e ? `ID ${p.id_e}` : '';
 }
@@ -78,8 +82,8 @@ export function showPopup(feature, colors, colorMode) {
 export function collapsePopup() {
   const popup = emoEl();
   if (!popup || popup.hidden || !_emo) return;
-  // L0 stays a grey empty capsule; L1 shows score, L2 shows scoreText.
-  if (_emo.colorMode === 'confidence') document.getElementById('pp-polarity').textContent = _emo.score.toFixed(1);
+  // L0 stays a grey empty capsule; L1 shows hotness, L2 shows scoreText.
+  if (_emo.colorMode === 'confidence') document.getElementById('pp-polarity').textContent = _emo.score.toFixed(2);
   else if (_emo.colorMode === 'polarity') document.getElementById('pp-polarity').textContent = _emo.scoreText;
   // needsAnalysis: badge already empty grey — leave as-is
   popup.classList.add('is-collapsed');

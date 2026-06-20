@@ -1,5 +1,5 @@
 // ═══ sidebar.js — left panel: collapse/expand, drag, import trigger, layer manager ═══
-import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, layerDisplayColor, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, addLayer, getChildren, CONFIDENCE_RAMP, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR } from './state.js';
+import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, layerDisplayColor, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, addLayer, getChildren, CONFIDENCE_RAMP, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HOTNESS_RAMP } from './state.js';
 import { renderLayer, removeLayerFromMap, reorderAllZ } from './map.js';
 import { toast } from './toast.js';
 import { openSettingsPopover, closeSettingsPopover, openSettingsLayerId, isOpen } from './settings.js';
@@ -118,9 +118,9 @@ export function refreshLegend() {
   const conf = (sel && sel.colorMode === 'confidence' && sel.visible) ? sel : vis.find((l) => l.colorMode === 'confidence');
   sethidden('legend-confidence', !conf);
   if (conf) {
-    const ramp = (conf.paint && conf.paint.ramp) || CONFIDENCE_RAMP;
+    // L1 热度值 3 段离散色带（浅橙→橙→深橙红）
     const rampEl = document.querySelector('#legend-confidence .legend-ramp');
-    if (rampEl) rampEl.style.background = `linear-gradient(90deg, ${ramp.join(',')})`;
+    if (rampEl) rampEl.innerHTML = HOTNESS_RAMP.map((c) => `<span class="legend-heat-seg" style="background:${c}"></span>`).join('');
   }
 
   // range — outline color from the focus range layer's paint.color

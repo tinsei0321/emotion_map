@@ -1,5 +1,5 @@
 // ═══ map.js — MapLibre GL JS instance, multi-layer registry, basemap switch ═══
-import { emotionColors, token, POLARITY_ORDER, getLayers, CONFIDENCE_RAMP, confidenceColor, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS } from './state.js';
+import { emotionColors, token, POLARITY_ORDER, getLayers, CONFIDENCE_RAMP, confidenceColor, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets } from './state.js';
 import { initControls } from './map-controls.js';
 import { showRangePopup } from './popup.js';
 
@@ -173,9 +173,18 @@ function addPointPaint(layer, sid, lid) {
   const radius = (p.radius != null) ? p.radius : densityRadiusExpr(count);
   let colorExpr, strokeW, opacity;
   if (layer.colorMode === 'confidence') {
-    const ramp = p.ramp || CONFIDENCE_RAMP;
-    colorExpr = ['interpolate', ['linear'], ['get', 'score'],
-      0, ramp[0], 0.25, ramp[1], 0.5, ramp[2], 0.75, ramp[3], 1, ramp[4]];
+    // L1 热度值 = 情绪强度 × 置信度，按图层分位分 3 段（浅橙→橙→深橙红）。
+    // enrich hotness 进 properties（幂等），算动态分位 buckets 存 paint 供 popup/legend。
+    const feats = layer.fc.features;
+    for (const f of feats) {
+      if (!f.properties) f.properties = {};
+      if (f.properties.hotness == null) f.properties.hotness = computeHotness(f);
+    }
+    const buckets = hotnessBuckets(feats);
+    layer.paint = layer.paint || {};
+    layer.paint.hotnessBuckets = buckets;
+    colorExpr = ['step', ['get', 'hotness'], HOTNESS_RAMP[0],
+      buckets[0], HOTNESS_RAMP[1], buckets[1], HOTNESS_RAMP[2]];
     strokeW = 0; opacity = p.opacity ?? 0.75;
   } else if (layer.colorMode === 'l2-positive') {
     colorExpr = ['match', ['get', 'polarity'], 'Very Positive', L2_POSITIVE['Very Positive'], 'Positive', L2_POSITIVE['Positive'], L2_POSITIVE['Positive']];

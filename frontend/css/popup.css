@@ -119,6 +119,15 @@
   color: var(--geojson-color-text-primary);
   word-break: break-all;
 }
+/* 弱化行（坐标等）：与 ID 同级的小字灰，降低视觉权重 */
+.popup-kv .kv-row.kv-dim {
+  margin-top: 2px;
+}
+.popup-kv .kv-row.kv-dim .kv-k,
+.popup-kv .kv-row.kv-dim .kv-v {
+  font-size: var(--geojson-typography-size-2xs);
+  color: var(--geojson-color-text-tertiary);
+}
 .popup-id {
   font-size: var(--geojson-typography-size-2xs);
   color: var(--geojson-color-text-tertiary);

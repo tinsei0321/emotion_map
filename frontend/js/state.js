@@ -43,6 +43,36 @@ export function rampColor(ramp, score) {
   }
   return ramp[ramp.length - 1];
 }
+
+// ── L1 热度值（hotness）= 情绪强度 × 置信度，3 段动态分位色板 ──
+// 置信度 = L1 治理阶段 LLM 判断的数据相关性置信度（l1_confidence，0~1，可收集可复现）。
+// 热度值语义 = 该数据点作为"情绪热点"的可信强度（情绪浓且与城规相关）。
+export const HOTNESS_RAMP = ['#FFD9A0', '#FF9800', '#E65100'];   // 浅橙 → 橙 → 深橙红（低→高）
+
+/** 热度值 = emotion_intensity × l1_confidence（clamp 0~1）。 */
+export function computeHotness(f) {
+  const p = (f && f.properties) || {};
+  const inten = Number(p.emotion_intensity ?? 0);
+  const conf = Number(p.l1_confidence ?? 0);
+  const h = inten * conf;
+  return Number.isFinite(h) ? Math.max(0, Math.min(1, h)) : 0;
+}
+
+/** 按图层 features 的 hotness 分布算 33%/66% 分位阈值 → [t1, t2]（动态 3 段区间）。 */
+export function hotnessBuckets(features) {
+  const hs = (features || []).map(computeHotness).filter((h) => h > 0).sort((a, b) => a - b);
+  if (!hs.length) return [0.33, 0.66];
+  const at = (q) => hs[Math.min(hs.length - 1, Math.floor(hs.length * q))];
+  return [at(0.33), at(0.66)];
+}
+
+/** 热度值 → 3 段色（分段，非插值）。 */
+export function hotnessColor(buckets, hotness) {
+  const [t1, t2] = buckets;
+  if (hotness <= t1) return HOTNESS_RAMP[0];
+  if (hotness <= t2) return HOTNESS_RAMP[1];
+  return HOTNESS_RAMP[2];
+}
 /** Map a 0..1 confidence score to the default orange ramp color. */
 export function confidenceColor(score) { return rampColor(CONFIDENCE_RAMP, score); }
 function lerpHex(h1, h2, t) {

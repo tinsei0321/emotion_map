@@ -6,7 +6,7 @@
 //   • line                 → (no popover; marker non-interactive)
 // Live: control change → setLayerPaint + renderLayer (re-renders that layer).
 
-import { getLayer, setLayerPaint, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS } from './state.js';
+import { getLayer, setLayerPaint, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS, HOTNESS_RAMP } from './state.js';
 import { renderLayer, effectivePointRadius } from './map.js';
 import { refreshPopupForLayer } from './popup.js';
 
@@ -94,7 +94,12 @@ function build(layer) {
   let body = '';
   if (layer.kind === 'point') {
     if (layer.colorMode === 'confidence') {
-      body = sectionRamp(p.ramp) + sectionPointSize(layer) + sectionOpacity(p.opacity ?? 0.75);
+      // L1 热度值 = 强度 × 置信度，3 段动态分位（只读，色板随图层自动）
+      const segs = HOTNESS_RAMP.map((c) => `<span class="set-legend-seg" style="background:${c}"></span>`).join('');
+      body = `<div class="set-section"><div class="set-label">热度值（3 段·自动分位）</div>`
+        + `<div class="set-legend-heat set-legend-segmented">${segs}</div>`
+        + `<div class="set-legend-cap"><span>低</span><span>高</span></div></div>`
+        + sectionPointSize(layer) + sectionOpacity(p.opacity ?? 0.75);
     } else if (layer.colorMode === 'l2-positive' || layer.colorMode === 'l2-negative' || layer.colorMode === 'l2-neutral') {
       body = l2PaletteLegend(layer.colorMode) + sectionPointSize(layer) + sectionOpacity(p.opacity ?? 0.18);
     } else if (layer.colorMode === 'needsAnalysis') {
