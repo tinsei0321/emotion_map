@@ -186,6 +186,14 @@
   color: var(--geojson-color-text-tertiary);
   margin-top: 2px;
 }
+/* 类型/表现胶囊区无可用数据（L1/L3/L4 无 emotion_type 字段）的禁用态提示 */
+.hm-empty {
+  padding: 6px 8px;
+  border-radius: var(--geojson-radius-sm);
+  background: var(--geojson-color-gray-100);
+  color: var(--geojson-color-text-tertiary);
+  text-align: center;
+}
 .hm-ramp-list {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -579,6 +587,15 @@
 .hm-style-seg {
   flex: 1;
   height: 100%;
+}
+/* dev 样式标签：占位开发的样式行内标注 */
+.hm-style-dev-tag {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  font-size: 9px;
+  color: var(--geojson-color-text-tertiary);
+  background: var(--geojson-color-gray-200);
+  border-radius: 3px;
 }
 .hm-style-name { display: none; }   /* v3：去掉名称文字（多余），用 i 悬停看说明 */
 

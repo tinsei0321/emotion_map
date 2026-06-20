@@ -184,12 +184,21 @@
   vertical-align: middle;
 }
 
-/* ── Heatmap density gradient bar (read-only, Kepler Color) ── */
+/* ── Heatmap density bar (read-only, Kepler Color) ──
+ *   分段版（离散色块拼接，与热核弹窗 ③ 显示样式 / Overview 保持一致设计语言）*/
 .set-legend-heat {
   width: 100%;
   height: 12px;
   border-radius: var(--geojson-radius-xs, 2px);
   border: 1px solid var(--geojson-color-border-default, #e5e5e5);
+}
+.set-legend-segmented {
+  display: flex;
+  overflow: hidden;
+}
+.set-legend-seg {
+  flex: 1;
+  height: 100%;
 }
 .set-legend-cap {
   display: flex;

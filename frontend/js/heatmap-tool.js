@@ -639,7 +639,9 @@ function generateHeatmap() {
   const isDev = styleBtn.classList.contains('is-dev');
 
   if (isDev || dim === '3d') {
-    toast.info(`样式"${styleBtn.querySelector('.hm-style-name').textContent}"待后续批次开发，UI 已就位`);
+    const styleName = (computeStyles(analysisKey, dlg.querySelector('#hm-level').value, dlg.querySelector('#hm-subset').value)
+      .find((s) => s.key === styleBtn.dataset.styleKey) || {}).name || '该样式';
+    toast.info(`样式"${styleName}"待后续批次开发，UI 已就位`);
     return;
   }
   if (analysisKey === 'factor') { toast.info('情绪因子归因（4×5 矩阵）待后续批次'); return; }

@@ -162,11 +162,11 @@ function l2PaletteLegend(cm) {
 /** Read-only density gradient bar for heatmap (Kepler Color). 稀疏→密集. */
 function sectionHeatmapLegend(rampKey) {
   const stops = (HEATMAP_RAMPS[rampKey] && HEATMAP_RAMPS[rampKey].stops) || HEATMAP_NEGATIVE_STOPS;
-  const grad = stops.slice(1).map(([, c]) => c).join(',');
+  const segs = stops.slice(1).map(([, c]) => `<span class="set-legend-seg" style="background:${c}"></span>`).join('');
   const name = (HEATMAP_RAMPS[rampKey] && HEATMAP_RAMPS[rampKey].name) || '消极红';
   return `<div class="set-section">
     <div class="set-label">色带 / Color（${name}）</div>
-    <div class="set-legend-heat" style="background:linear-gradient(90deg, ${grad})"></div>
+    <div class="set-legend-heat set-legend-segmented">${segs}</div>
     <div class="set-legend-cap"><span>稀疏</span><span>密集</span></div>
   </div>`;
 }
