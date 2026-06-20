@@ -217,10 +217,12 @@ export function gradientStops(colors, n) {
 export const MACRO_COLORS = ['#43C063', '#F5A623', '#E53935', '#C2185B', '#8E44AD', '#1A3A8C', '#4FC3F7'];
 
 export const HEATMAP_RAMPS = {
-  // 类型细分色板：胶囊色渐变 7 段（积极=喜→乐；消极=怒→哀→愁；中性=急→盼）
-  positive: { name: '积极（喜→乐）',     stops: gradientStops(['#43C063', '#F5A623'], 7) },
-  negative: { name: '消极（怒→哀→愁）', stops: gradientStops(['#E53935', '#C2185B', '#8E44AD'], 7) },
-  neutral:  { name: '中性（急→盼）',     stops: gradientStops(['#1A3A8C', '#4FC3F7'], 7) },
+  // 类型细分色板：胶囊色渐变 7 段。高密度(高值) = 高值色（在 density 高端）：
+  //   积极：喜(绿)高 / 乐(橙)低；消极：怒(红)高 / 哀(紫红)中 / 愁(紫)低；中性：急(深蓝)高 / 盼(天蓝)低。
+  //   端点顺序 = [低值色 ... 高值色]（gradientStops 从低 density 到高 density）。
+  positive: { name: '积极', stops: gradientStops(['#F5A623', '#43C063'], 7) },              // 乐橙(低) → 喜绿(高)
+  negative: { name: '消极', stops: gradientStops(['#8E44AD', '#C2185B', '#E53935'], 7) },    // 愁紫(低) → 哀紫红(中) → 怒红(高)
+  neutral:  { name: '中性', stops: gradientStops(['#4FC3F7', '#1A3A8C'], 7) },               // 盼天蓝(低) → 急深蓝(高)
   anxiety: {
     name: '焦虑紫',
     stops: [
