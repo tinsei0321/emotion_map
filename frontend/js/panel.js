@@ -58,7 +58,25 @@ function tier1(layer, lv) {
 /** T2 属性：图例/参数（随数据类型） */
 function tier2(layer, lv) {
   let body;
-  if (lv === 'range') {
+  // 热力图层优先判断（lv 分支会拦截：L1 彩虹热力图 lv=L1，须先走 heatmap 分支）
+  if (layer.kind === 'heatmap') {
+    const p = layer.paint || {};
+    const rampName = (HEATMAP_RAMPS[p.rampKey] && HEATMAP_RAMPS[p.rampKey].name) || '—';
+    const rampStops = (HEATMAP_RAMPS[p.rampKey] && HEATMAP_RAMPS[p.rampKey].stops) || [];
+    const rampSegs = rampStops.slice(1).map(([, c]) => `<span class="ov-ramp-seg" style="background:${c}"></span>`).join('');
+    const macroLabel = (p._ui && Array.isArray(p._ui.macroFilter) ? p._ui.macroFilter : (Array.isArray(p.typesFilter) ? [...new Set(p.typesFilter.map((t) => EMOTION_MACRO_MAP[t]).filter(Boolean))] : []));
+    const macros = EMOTION_MACRO_ORDER.filter((m) => macroLabel.includes(m));
+    const macroTxt = macros.length === EMOTION_MACRO_ORDER.length ? '全（喜怒哀乐愁急盼）' : (macros.length ? macros.join('、') : '—');
+    const microTxt = p.typesFilter === null ? '全（无分类字段）' : (Array.isArray(p.typesFilter) && p.typesFilter.length ? p.typesFilter.join('、') : '全部');
+    body = `<div class="ov-props">
+      <div class="ov-prop"><span>色带</span><span class="ov-ramp-legend ov-ramp-segmented">${rampSegs}</span> ${rampName}</div>
+      <div class="ov-prop"><span>半径</span><span>${p.radius ?? 300} m</span></div>
+      <div class="ov-prop"><span>权重字段</span><span>${p.weightField || 'emotion_intensity'}</span></div>
+      <div class="ov-prop"><span>情绪类型（大类）</span><span>${macroTxt}</span></div>
+      <div class="ov-prop"><span>情绪表现（小类）</span><span>${microTxt}</span></div>
+      <div class="ov-prop"><span>数据点</span><span>${layer.fc.features.length}</span></div>
+    </div>`;
+  } else if (lv === 'range') {
     const p = layer.paint || {};
     body = `<div class="ov-props">
       <div class="ov-prop"><span>轮廓色</span><span class="ov-swatch" style="background:${p.color || '#0c1c2e'}"></span></div>
@@ -80,30 +98,6 @@ function tier2(layer, lv) {
       <div class="ov-prop"><span>透明度</span><span>${Math.round((p.opacity ?? 0.75) * 100)}%</span></div>
       <div class="ov-prop"><span>数据点</span><span>${layer.fc.features.length}</span></div>
     </div>`;
-  } else if (layer.kind === 'heatmap') { // 热力图参数概览
-    const p = layer.paint || {};
-    const rampName = (HEATMAP_RAMPS[p.rampKey] && HEATMAP_RAMPS[p.rampKey].name) || '—';
-    const rampStops = (HEATMAP_RAMPS[p.rampKey] && HEATMAP_RAMPS[p.rampKey].stops) || [];
-    const rampSegs = rampStops.slice(1).map(([, c]) => `<span class="ov-ramp-seg" style="background:${c}"></span>`).join('');
-    // 类型（大类）：优先 _ui.macroFilter；旧图层无此字段 → 从小类经 EMOTION_MACRO_MAP 反推去重
-    let macros = (p._ui && Array.isArray(p._ui.macroFilter)) ? p._ui.macroFilter.slice()
-      : (Array.isArray(p.typesFilter) ? [...new Set(p.typesFilter.map((t) => EMOTION_MACRO_MAP[t]).filter(Boolean))] : []);
-    macros = EMOTION_MACRO_ORDER.filter((m) => macros.includes(m));   // 按固定顺序排
-    const macroLabel = macros.length === EMOTION_MACRO_ORDER.length ? `全（${EMOTION_MACRO_ORDER.join('')}）`
-      : macros.length ? macros.join('、') : '—';
-    // 表现（小类）：null = 无分类字段；数组 = 选中（全选 → 全部）
-    let microLabel;
-    if (p.typesFilter === null) microLabel = '全（无分类字段）';
-    else if (Array.isArray(p.typesFilter) && p.typesFilter.length) microLabel = p.typesFilter.join('、');
-    else microLabel = '全部';
-    body = `<div class="ov-props">
-      <div class="ov-prop"><span>色带</span><span class="ov-ramp-legend ov-ramp-segmented">${rampSegs}</span> ${rampName}</div>
-      <div class="ov-prop"><span>半径</span><span>${p.radius ?? 300} m</span></div>
-      <div class="ov-prop"><span>权重字段</span><span>${p.weightField || 'emotion_intensity'}</span></div>
-      <div class="ov-prop"><span>情绪类型（大类）</span><span>${macroLabel}</span></div>
-      <div class="ov-prop"><span>情绪表现（小类）</span><span>${microLabel}</span></div>
-      <div class="ov-prop"><span>数据点</span><span>${layer.fc.features.length}</span></div>
-    </div>`;
   } else { // L2 — dual palette (Positive green / Negative orange-red / Neutral blue)
     body = `<div class="ov-props">
       <div class="ov-prop"><span>积极色板</span><span><span class="ov-swatch" style="background:${L2_POSITIVE['Very Positive']}"></span><span class="ov-swatch" style="background:${L2_POSITIVE['Positive']}"></span></span></div>
@@ -117,7 +111,16 @@ function tier2(layer, lv) {
 /** T3 展示（flex:1 >50%）：治理/分析结论 */
 function tier3(layer, lv) {
   let body;
-  if (lv === 'range') {
+  // 热力图层优先（同 tier2：避免 L1 热力图被 L1 情绪点分支拦截）
+  if (layer.kind === 'heatmap') {
+    const p = layer.paint || {};
+    const n = layer.fc.features.length;
+    body = `<div class="ov-stats">
+      <div class="ov-stat"><span class="ov-stat-n">${n}</span><span class="ov-stat-l">聚合点</span></div>
+      <div class="ov-stat"><span class="ov-stat-n">${p.radius ?? 300}</span><span class="ov-stat-l">半径 m</span></div>
+      <div class="ov-stat"><span class="ov-stat-n">${(p.intensity ?? 1).toFixed(1)}</span><span class="ov-stat-l">强度系数</span></div>
+    </div><div class="ov-placeholder">核密度可视化 · 颜色越深表示该处情绪点越密集/权重越高 · 详见地图热区</div>${spatialPlaceholder()}`;
+  } else if (lv === 'range') {
     const st = rangeStats(layer);
     body = `<div class="ov-stats">
       <div class="ov-stat"><span class="ov-stat-n">${st.area.toFixed(2)}</span><span class="ov-stat-l">面积 km²</span></div>
@@ -145,14 +148,6 @@ function tier3(layer, lv) {
         <span class="hbar-n">${n}</span></div>`).join('');
     body = `<div class="ov-tier-sub">热度值分布</div><div class="hchart">${bars}</div>
       <div class="ov-mean">均值 ${mean.toFixed(2)} · 共 ${total} 条</div>${spatialPlaceholder()}`;
-  } else if (layer.kind === 'heatmap') { // 热力图：密度可视化特征（不依赖极性字段，鲁棒）
-    const p = layer.paint || {};
-    const n = layer.fc.features.length;
-    body = `<div class="ov-stats">
-      <div class="ov-stat"><span class="ov-stat-n">${n}</span><span class="ov-stat-l">聚合点</span></div>
-      <div class="ov-stat"><span class="ov-stat-n">${p.radius ?? 300}</span><span class="ov-stat-l">半径 m</span></div>
-      <div class="ov-stat"><span class="ov-stat-n">${(p.intensity ?? 1).toFixed(1)}</span><span class="ov-stat-l">强度系数</span></div>
-    </div><div class="ov-placeholder">核密度可视化 · 颜色越深表示该处情绪点越密集/权重越高 · 详见地图热区</div>${spatialPlaceholder()}`;
   } else { // L2 — polarity distribution + emotion type distribution
     const { stats, total, scoreMean } = polarityStats(layer.fc);
     const max = Math.max(1, ...POLARITY_ORDER.map((p) => stats[p] || 0));

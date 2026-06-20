@@ -313,7 +313,6 @@ function renderStylePreview(dlg) {
   const tip = `${st.name}。${st.tip}${st.dev ? '（3D 渲染待后续批次接入）' : ''}`.replace(/"/g, '&quot;');
   wrap.innerHTML = `<button class="hm-style-btn is-bar-sel" data-ramp="${st.ramp || ''}" type="button">
     <span class="hm-style-bar">${segHtml}</span>
-    ${st.dev ? '<span class="hm-style-dev-tag">3D</span>' : ''}
     <span class="hm-info" data-tip="${tip}">i</span>
   </button>`;
   renderGenerateButtons(dlg, st);

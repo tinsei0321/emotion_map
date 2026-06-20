@@ -293,6 +293,7 @@ function toggleEye(id) {
   renderLayer(l);
   renderLayerList();
   refreshLegend();   // legend syncs with visibility (hidden layer → legend hides)
+  document.dispatchEvent(new CustomEvent('layers:changed'));   // 显隐 → popup/Overview 同步
   toast.info(`${l.visible ? '显示' : '隐藏'}图层：${l.name}`);
 }
 
@@ -307,6 +308,7 @@ function toggleGroupEye(groupId) {
   }
   renderLayerList();
   refreshLegend();
+  document.dispatchEvent(new CustomEvent('layers:changed'));   // 组显隐 → popup/Overview 同步
   toast.info(`${showAll ? '显示' : '隐藏'}全部子图层`);
 }
 

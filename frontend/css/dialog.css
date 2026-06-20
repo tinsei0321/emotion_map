@@ -694,7 +694,7 @@
 }
 .hm-tier-cards {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));   /* 卡片等宽、自适应填满组宽，三组并列对齐 */
   gap: 2px;                                    /* B1：卡片左右间隔 2px */
 }
 

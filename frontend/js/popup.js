@@ -189,6 +189,18 @@ export function initPopup(map) {
       if (!hitRange) collapseRangePopup();
     });
   }
+  // 图层隐藏/删除时同步隐藏对应 popup：情绪点 popup 跟 _popupLayerId，范围 popup 跟 _rngLayerId。
+  // layers:changed 在 setLayerVisible / removeLayer 后由 sidebar/main 触发。
+  document.addEventListener('layers:changed', () => {
+    if (_popupLayerId) {
+      const l = getLayer(_popupLayerId);
+      if (!l || !l.visible) hidePopup();          // 点层隐藏/删除 → 情绪点 popup 消失
+    }
+    if (_rngLayerId) {
+      const l = getLayer(_rngLayerId);
+      if (!l || !l.visible) hideRangePopup();     // 面层隐藏/删除 → 范围 popup 消失
+    }
+  });
 }
 
 // ── Geometry stats (spherical area + haversine perimeter; no turf dep) ──────

@@ -27,17 +27,23 @@ export function refreshHeatmapLegend(layer) {
   box.hidden = false;
 }
 
+/** 当前选中的图层（从 sidebar 高亮行取，fallback 到 selected 状态）。 */
+function selectedLayer() {
+  const row = document.querySelector('.layer-row.is-selected');
+  if (row) return getLayer(row.dataset.id);
+  return null;
+}
+
 /** 初始化：监听选中/变更事件。 */
 export function initHeatmapLegend() {
   document.addEventListener('layer:selected', (e) => {
-    const l = getLayer(e.detail);
-    refreshHeatmapLegend(l);
+    refreshHeatmapLegend(getLayer(e.detail));
   });
+  // 图层显隐/删除（toggleEye/toggleGroupEye/removeLayer）→ 图例同步：
+  // 选中层非热力图或不可见 → 隐藏；热力图且可见 → 显色带。
   document.addEventListener('layers:changed', () => {
-    // layers 变更（删除/清空）后，若当前无选中热力图层则隐藏
-    const box = boxEl();
-    if (!box || box.hidden) return;
-    const sel = document.querySelector('.layer-row.is-selected');
-    if (!sel) { box.hidden = true; }
+    const l = selectedLayer();
+    if (l && l.kind === 'heatmap' && l.visible) refreshHeatmapLegend(l);
+    else { const box = boxEl(); if (box) box.hidden = true; }
   });
 }
