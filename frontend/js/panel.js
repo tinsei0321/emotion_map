@@ -4,6 +4,7 @@ import {
   layerLevel, focusLayer, polarityStats, confidenceStats, CONFIDENCE_RAMP,
   L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR,
   EMOTION_TYPE_COLORS, EMOTION_TYPE_ORDER,
+  EMOTION_MACRO_ORDER, EMOTION_MACRO_MAP,
   HEATMAP_RAMPS,
 } from './state.js';
 import { geomStats } from './popup.js';
@@ -81,12 +82,23 @@ function tier2(layer, lv) {
     const rampName = (HEATMAP_RAMPS[p.rampKey] && HEATMAP_RAMPS[p.rampKey].name) || '—';
     const rampStops = (HEATMAP_RAMPS[p.rampKey] && HEATMAP_RAMPS[p.rampKey].stops) || [];
     const rampSegs = rampStops.slice(1).map(([, c]) => `<span class="ov-ramp-seg" style="background:${c}"></span>`).join('');
-    const typesLabel = (p.typesFilter && p.typesFilter.length) ? p.typesFilter.join('、') : '全部';
+    // 类型（大类）：优先 _ui.macroFilter；旧图层无此字段 → 从小类经 EMOTION_MACRO_MAP 反推去重
+    let macros = (p._ui && Array.isArray(p._ui.macroFilter)) ? p._ui.macroFilter.slice()
+      : (Array.isArray(p.typesFilter) ? [...new Set(p.typesFilter.map((t) => EMOTION_MACRO_MAP[t]).filter(Boolean))] : []);
+    macros = EMOTION_MACRO_ORDER.filter((m) => macros.includes(m));   // 按固定顺序排
+    const macroLabel = macros.length === EMOTION_MACRO_ORDER.length ? `全（${EMOTION_MACRO_ORDER.join('')}）`
+      : macros.length ? macros.join('、') : '—';
+    // 表现（小类）：null = 无分类字段；数组 = 选中（全选 → 全部）
+    let microLabel;
+    if (p.typesFilter === null) microLabel = '全（无分类字段）';
+    else if (Array.isArray(p.typesFilter) && p.typesFilter.length) microLabel = p.typesFilter.join('、');
+    else microLabel = '全部';
     body = `<div class="ov-props">
       <div class="ov-prop"><span>色带</span><span class="ov-ramp-legend ov-ramp-segmented">${rampSegs}</span> ${rampName}</div>
       <div class="ov-prop"><span>半径</span><span>${p.radius ?? 300} m</span></div>
       <div class="ov-prop"><span>权重字段</span><span>${p.weightField || 'emotion_intensity'}</span></div>
-      <div class="ov-prop"><span>情绪类型</span><span>${typesLabel}</span></div>
+      <div class="ov-prop"><span>情绪类型（大类）</span><span>${macroLabel}</span></div>
+      <div class="ov-prop"><span>情绪表现（小类）</span><span>${microLabel}</span></div>
       <div class="ov-prop"><span>数据点</span><span>${layer.fc.features.length}</span></div>
     </div>`;
   } else { // L2 — dual palette (Positive green / Negative orange-red / Neutral blue)

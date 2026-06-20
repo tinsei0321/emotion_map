@@ -711,6 +711,7 @@ function generateHeatmap() {
       _ui: {
         analysisKey, styleKey: styleBtn.dataset.styleKey, dim,
         level, polarity,
+        macroFilter: [...dlg.querySelectorAll('.hm-macro-chip.is-on')].map((el) => el.dataset.macro),
       },
     },
   });
