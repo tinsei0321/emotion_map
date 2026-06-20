@@ -143,11 +143,10 @@ const GRIP = '<span class="layer-grip" title="拖拽排序"><svg viewBox="0 0 16
 
 let _dragId = null;   // id of the row being dragged
 
-/** Level → next-action tag (blue). L2/range get none. */
+/** Level → next-action tag (blue). L0 需治理；L1/L2/range 无标记。 */
 function levelTag(l) {
   const lv = layerLevel(l);
   if (lv === 'L0') return '<span class="layer-tag is-action">需治理</span>';
-  if (lv === 'L1') return '<span class="layer-tag is-action">可分析</span>';
   return '';
 }
 

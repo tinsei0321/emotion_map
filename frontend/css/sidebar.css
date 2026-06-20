@@ -369,7 +369,7 @@ button.layer-kind:hover { background: var(--geojson-color-gray-200); color: var(
 .layer-row.is-dragging .layer-grip { opacity: 0.7; }
 .layer-row.is-dragging .layer-grip { cursor: grabbing; }
 
-/* action tag (blue) — L0 需治理 / L1 可分析 */
+/* action tag (blue) — L0 需治理 */
 .layer-tag.is-action {
   color: var(--geojson-color-text-inverse, #ffffff);
   background: var(--geojson-color-brand-primary, #007afc);
