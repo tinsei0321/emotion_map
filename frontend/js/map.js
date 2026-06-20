@@ -103,6 +103,18 @@ export function renderLayer(layer) {
     return;
   }
 
+  // 预处理：L1 confidence 层在 addSource 前把 hotness 写入 properties ——
+  // MapLibre source 持有 addSource 时的快照，enrich 在 addSource 之后则 step 表达式
+  // ['get','hotness'] 读到 undefined，Chrome 下图层不渲染（regression 根因）。
+  if (layer.kind === 'point' && layer.colorMode === 'confidence') {
+    const feats = layer.fc.features;
+    for (const f of feats) {
+      if (!f.properties) f.properties = {};
+      if (f.properties.hotness == null) f.properties.hotness = computeHotness(f);
+    }
+    layer.paint = layer.paint || {};
+    layer.paint.hotnessBuckets = hotnessBuckets(feats);
+  }
   map.addSource(sid, { type: 'geojson', data: layer.fc });
   if (layer.kind === 'point') {
     addPointPaint(layer, sid, lid);
@@ -173,16 +185,9 @@ function addPointPaint(layer, sid, lid) {
   const radius = (p.radius != null) ? p.radius : densityRadiusExpr(count);
   let colorExpr, strokeW, opacity;
   if (layer.colorMode === 'confidence') {
-    // L1 热度值 = 情绪强度 × 置信度，按图层分位分 3 段（浅橙→橙→深橙红）。
-    // enrich hotness 进 properties（幂等），算动态分位 buckets 存 paint 供 popup/legend。
-    const feats = layer.fc.features;
-    for (const f of feats) {
-      if (!f.properties) f.properties = {};
-      if (f.properties.hotness == null) f.properties.hotness = computeHotness(f);
-    }
-    const buckets = hotnessBuckets(feats);
-    layer.paint = layer.paint || {};
-    layer.paint.hotnessBuckets = buckets;
+    // L1 热度值 = 情绪强度 × 置信度，3 段动态分位。hotness/buckets 已在 renderLayer
+    // addSource 前预处理（写入 properties + paint.hotnessBuckets），此处直接落色。
+    const buckets = p.hotnessBuckets || [0.33, 0.66];
     colorExpr = ['step', ['get', 'hotness'], HOTNESS_RAMP[0],
       buckets[0], HOTNESS_RAMP[1], buckets[1], HOTNESS_RAMP[2]];
     strokeW = 0; opacity = p.opacity ?? 0.75;
