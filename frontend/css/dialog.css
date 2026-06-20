@@ -502,7 +502,6 @@
 .hm-analysis-card {
   position: relative;
   display: flex;
-  flex: 1;                   /* 组内等宽填满（横向排列时） */
   align-items: center;
   justify-content: space-between;
   gap: 4px;
@@ -695,9 +694,8 @@
 }
 .hm-tier-cards {
   display: flex;
-  flex-direction: row;      /* 组内选项从左至右横向排列 */
-  flex-wrap: nowrap;        /* 不换行（杜绝 2+1） */
-  gap: 2px;                 /* 选项左右间隔 2px */
+  flex-direction: column;   /* 组内选项纵向（每个独占一行） */
+  gap: 2px;                 /* 选项上下间隔 2px */
 }
 
 /* ③ 只读色板预览（色板随类型自动，不可选） */
