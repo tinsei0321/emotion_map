@@ -1,18 +1,49 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 180">
   <defs>
-    <radialGradient id="ng1" cx="55%" cy="48%" r="42%">
-      <stop offset="0%" stop-color="#7A1E16"/>
-      <stop offset="35%" stop-color="#C44A2E" stop-opacity=".85"/>
-      <stop offset="70%" stop-color="#E07142" stop-opacity=".45"/>
-      <stop offset="100%" stop-color="#E07142" stop-opacity="0"/>
+    <radialGradient id="ng1" cx="42%" cy="48%" r="36%">
+      <stop offset="0%" stop-color="#7A1E16" stop-opacity="0.9"/>
+      <stop offset="30%" stop-color="#C44A2E" stop-opacity="0.65"/>
+      <stop offset="60%" stop-color="#E88A6A" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#FDDACA" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="ng2" cx="28%" cy="72%" r="22%">
-      <stop offset="0%" stop-color="#A3321A"/>
-      <stop offset="60%" stop-color="#E07142" stop-opacity=".5"/>
-      <stop offset="100%" stop-color="#E07142" stop-opacity="0"/>
+    <radialGradient id="ng2" cx="70%" cy="60%" r="24%">
+      <stop offset="0%" stop-color="#A3321A" stop-opacity="0.55"/>
+      <stop offset="50%" stop-color="#E07142" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#FDDACA" stop-opacity="0"/>
     </radialGradient>
+    <linearGradient id="legend-n" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FDDACA"/>
+      <stop offset="25%" stop-color="#E88A6A"/>
+      <stop offset="50%" stop-color="#C44A2E"/>
+      <stop offset="75%" stop-color="#A3321A"/>
+      <stop offset="100%" stop-color="#7A1E16"/>
+    </linearGradient>
   </defs>
-  <rect width="200" height="160" fill="#f7f8fa"/>
-  <rect width="200" height="160" fill="url(#ng1)"/>
-  <rect width="200" height="160" fill="url(#ng2)"/>
+  <rect width="280" height="180" fill="#1a1a2e"/>
+  <!-- 暗色底图线 -->
+  <path d="M0,86 Q70,80 140,90 T280,84" stroke="#252545" stroke-width="1.2" fill="none"/>
+  <path d="M0,116 Q100,106 200,120 T280,112" stroke="#252545" stroke-width="0.8" fill="none"/>
+  <path d="M95,0 Q88,55 98,110 T90,180" stroke="#252545" stroke-width="0.8" fill="none"/>
+  <!-- 红色热力叠加 -->
+  <rect width="280" height="180" fill="url(#ng1)"/>
+  <rect width="280" height="180" fill="url(#ng2)"/>
+  <!-- 微弱数据点 -->
+  <g opacity="0.3">
+    <circle cx="100" cy="72" r="1.3" fill="#C44A2E"/>
+    <circle cx="116" cy="58" r="1.1" fill="#E07142"/>
+    <circle cx="84" cy="84" r="1.5" fill="#A3321A"/>
+    <circle cx="126" cy="76" r="1" fill="#C44A2E"/>
+    <circle cx="106" cy="92" r="1.2" fill="#E07142"/>
+    <circle cx="90" cy="50" r="0.9" fill="#A3321A"/>
+    <circle cx="136" cy="66" r="1.3" fill="#C44A2E"/>
+    <circle cx="146" cy="82" r="1.1" fill="#E07142"/>
+    <circle cx="76" cy="68" r="0.9" fill="#A3321A"/>
+    <circle cx="156" cy="74" r="1.3" fill="#C44A2E"/>
+    <circle cx="120" cy="46" r="0.9" fill="#A3321A"/>
+    <circle cx="166" cy="88" r="1.1" fill="#E07142"/>
+  </g>
+  <!-- 色阶图例 -->
+  <rect x="16" y="150" width="110" height="7" rx="3.5" fill="url(#legend-n)"/>
+  <text x="16" y="172" font-family="Inter,-apple-system,system-ui,sans-serif" font-size="7.5" fill="#555">Low</text>
+  <text x="126" y="172" font-family="Inter,-apple-system,system-ui,sans-serif" font-size="7.5" fill="#555" text-anchor="end">High</text>
 </svg>

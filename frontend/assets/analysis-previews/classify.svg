@@ -1,24 +1,86 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160">
-  <rect width="200" height="160" fill="#f7f8fa"/>
-  <!-- 7 大类彩色点散布：喜=#EFC616 乐=#BC1F8C 怒=#DA1F4A 哀=#2D3A8E 愁=#6F2BA8 急=#EE5A1F 盼=#3FA34D -->
-  <g opacity="0.92">
-    <circle cx="40"  cy="38"  r="10" fill="#EFC616"/>
-    <circle cx="68"  cy="55"  r="8"  fill="#EFC616"/>
-    <circle cx="88"  cy="34"  r="7"  fill="#BC1F8C"/>
-    <circle cx="115" cy="48"  r="9"  fill="#BC1F8C"/>
-    <circle cx="148" cy="32"  r="8"  fill="#DA1F4A"/>
-    <circle cx="170" cy="56"  r="7"  fill="#DA1F4A"/>
-
-    <circle cx="32"  cy="78"  r="9"  fill="#2D3A8E"/>
-    <circle cx="62"  cy="92"  r="8"  fill="#2D3A8E"/>
-    <circle cx="92"  cy="78"  r="10" fill="#6F2BA8"/>
-    <circle cx="124" cy="92"  r="8"  fill="#6F2BA8"/>
-    <circle cx="156" cy="80"  r="9"  fill="#EE5A1F"/>
-
-    <circle cx="48"  cy="120" r="8"  fill="#EE5A1F"/>
-    <circle cx="80"  cy="130" r="9"  fill="#3FA34D"/>
-    <circle cx="112" cy="120" r="8"  fill="#3FA34D"/>
-    <circle cx="146" cy="130" r="10" fill="#3FA34D"/>
-    <circle cx="174" cy="118" r="7"  fill="#EFC616"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 180">
+  <defs>
+    <!-- 7 大类径向渐变（半透明热力底） -->
+    <radialGradient id="c1" cx="25%" cy="30%" r="20%">
+      <stop offset="0%" stop-color="#EFC616" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#EFC616" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c2" cx="50%" cy="25%" r="18%">
+      <stop offset="0%" stop-color="#BC1F8C" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#BC1F8C" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c3" cx="75%" cy="28%" r="19%">
+      <stop offset="0%" stop-color="#DA1F4A" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#DA1F4A" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c4" cx="22%" cy="65%" r="18%">
+      <stop offset="0%" stop-color="#2D3A8E" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#2D3A8E" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c5" cx="48%" cy="68%" r="20%">
+      <stop offset="0%" stop-color="#6F2BA8" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#6F2BA8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c6" cx="74%" cy="62%" r="18%">
+      <stop offset="0%" stop-color="#EE5A1F" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#EE5A1F" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c7" cx="50%" cy="90%" r="22%">
+      <stop offset="0%" stop-color="#3FA34D" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#3FA34D" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="280" height="180" fill="#1a1a2e"/>
+  <!-- 暗色底图线 -->
+  <path d="M0,90 Q70,84 140,94 T280,88" stroke="#252545" stroke-width="1" fill="none"/>
+  <path d="M80,0 Q74,60 84,120 T76,180" stroke="#252545" stroke-width="0.8" fill="none"/>
+  <!-- 7 大类热力底 -->
+  <rect width="280" height="180" fill="url(#c1)"/>
+  <rect width="280" height="180" fill="url(#c2)"/>
+  <rect width="280" height="180" fill="url(#c3)"/>
+  <rect width="280" height="180" fill="url(#c4)"/>
+  <rect width="280" height="180" fill="url(#c5)"/>
+  <rect width="280" height="180" fill="url(#c6)"/>
+  <rect width="280" height="180" fill="url(#c7)"/>
+  <!-- 7 大类彩色散点（较大、半透明，kepler cluster 风格） -->
+  <g>
+    <!-- 喜 (gold) -->
+    <circle cx="60" cy="48" r="4" fill="#EFC616" opacity="0.8"/>
+    <circle cx="78" cy="56" r="3.2" fill="#EFC616" opacity="0.6"/>
+    <circle cx="68" cy="62" r="2.5" fill="#EFC616" opacity="0.45"/>
+    <!-- 乐 (magenta) -->
+    <circle cx="128" cy="40" r="4" fill="#BC1F8C" opacity="0.8"/>
+    <circle cx="142" cy="50" r="3.2" fill="#BC1F8C" opacity="0.6"/>
+    <circle cx="134" cy="32" r="2.5" fill="#BC1F8C" opacity="0.45"/>
+    <!-- 怒 (red) -->
+    <circle cx="198" cy="44" r="4" fill="#DA1F4A" opacity="0.8"/>
+    <circle cx="212" cy="54" r="3.2" fill="#DA1F4A" opacity="0.6"/>
+    <circle cx="204" cy="60" r="2.5" fill="#DA1F4A" opacity="0.45"/>
+    <!-- 哀 (indigo) -->
+    <circle cx="54" cy="108" r="4" fill="#2D3A8E" opacity="0.8"/>
+    <circle cx="68" cy="118" r="3.2" fill="#2D3A8E" opacity="0.6"/>
+    <circle cx="60" cy="124" r="2.5" fill="#2D3A8E" opacity="0.45"/>
+    <!-- 愁 (purple) -->
+    <circle cx="124" cy="112" r="4" fill="#6F2BA8" opacity="0.8"/>
+    <circle cx="138" cy="122" r="3.2" fill="#6F2BA8" opacity="0.6"/>
+    <circle cx="130" cy="104" r="2.5" fill="#6F2BA8" opacity="0.45"/>
+    <!-- 急 (orange) -->
+    <circle cx="194" cy="104" r="4" fill="#EE5A1F" opacity="0.8"/>
+    <circle cx="208" cy="114" r="3.2" fill="#EE5A1F" opacity="0.6"/>
+    <circle cx="200" cy="120" r="2.5" fill="#EE5A1F" opacity="0.45"/>
+    <!-- 盼 (green) -->
+    <circle cx="128" cy="152" r="4" fill="#3FA34D" opacity="0.8"/>
+    <circle cx="144" cy="158" r="3.2" fill="#3FA34D" opacity="0.6"/>
+    <circle cx="136" cy="144" r="2.5" fill="#3FA34D" opacity="0.45"/>
+  </g>
+  <!-- 图例：7 色圆点 -->
+  <g transform="translate(16,158)">
+    <circle cx="4" cy="4" r="4" fill="#EFC616"/>
+    <circle cx="16" cy="4" r="4" fill="#BC1F8C"/>
+    <circle cx="28" cy="4" r="4" fill="#DA1F4A"/>
+    <circle cx="40" cy="4" r="4" fill="#2D3A8E"/>
+    <circle cx="52" cy="4" r="4" fill="#6F2BA8"/>
+    <circle cx="64" cy="4" r="4" fill="#EE5A1F"/>
+    <circle cx="76" cy="4" r="4" fill="#3FA34D"/>
   </g>
 </svg>

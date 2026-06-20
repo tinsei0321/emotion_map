@@ -19,38 +19,50 @@ const DEFAULTS = {
   intensityMin: 0, minzoom: 0, maxzoom: 22,
 };
 
-// ── ① 分析类型预设（6 卡，2 列）；preview = 预览图（kepler 官方图层截图）──
+// ── ① 分析类型预设（6 卡，2 列）；preview = 预览图（kepler 风格 SVG）──
 const DEFAULT_ANALYSIS = 'terrain';
 const ANALYSIS_PRESETS = {
   terrain: {
-    label: '情绪地形（2D/3D）',
-    desc: '一图看城市情绪起伏。L1 = 综合舆情热度（彩虹 2D）；L2 综合 = 红绿渐变（积极凸/消极凹，3D 待开发）。',
-    preview: 'assets/analysis-previews/heatmap.png',
+    label: '情绪地形',
+    shortDesc: '城市情绪起伏一览',
+    desc: '将城市情绪分布渲染为连续热力面。L1 综合舆情热度（彩虹色阶）；L2 按极性着色（积极凸起/消极凹陷），3D 模式待开发。',
+    tags: ['L1', 'L2', '2D', '3D'],
+    preview: 'assets/analysis-previews/terrain.svg',
   },
   grid: {
-    label: '情绪网格（2D/3D）',
-    desc: '小尺度网格聚合（街区/社区）。每格 = 范围内点数或平均强度。2D 色块 / 3D 网格柱体。',
-    preview: 'assets/analysis-previews/grid3d.png',
+    label: '情绪网格',
+    shortDesc: '街区尺度聚合视图',
+    desc: '将空间划分为规则网格，每格聚合范围内点数或平均强度。2D 色块或 3D 柱体，适合街区/社区尺度分析。',
+    tags: ['L1', 'L2', '2D', '3D'],
+    preview: 'assets/analysis-previews/grid.svg',
   },
   positive: {
     label: '积极情绪',
-    desc: '只看积极点的密度（仅 L2）。色板：积极绿。识别市民满意/标杆区域。',
-    preview: 'assets/analysis-previews/point.png',
+    shortDesc: '满意区域密度分布',
+    desc: '仅筛选积极情绪点，渲染密度热力图。绿色色阶，快速识别市民满意区域与标杆地段。',
+    tags: ['L2', '2D'],
+    preview: 'assets/analysis-previews/positive.svg',
   },
   negative: {
     label: '消极情绪',
-    desc: '只看消极点的密度（仅 L2）。色板：消极红。定位整改优先级与问题片区。',
-    preview: 'assets/analysis-previews/point.png',
+    shortDesc: '问题区域密度分布',
+    desc: '仅筛选消极情绪点，渲染密度热力图。红色色阶，定位整改优先级与问题片区。',
+    tags: ['L2', '2D'],
+    preview: 'assets/analysis-previews/negative.svg',
   },
   classify: {
     label: '情绪归类',
-    desc: '按 7 大类（喜怒哀乐愁急盼）分别成色，分类热力图（仅 L2）。',
-    preview: 'assets/analysis-previews/cluster.png',
+    shortDesc: '七大类分色地图',
+    desc: '按喜怒哀乐愁急盼七大类分别着色，生成分类热力图。直观呈现各类情绪的空间分布差异。',
+    tags: ['L2', '2D'],
+    preview: 'assets/analysis-previews/classify.svg',
   },
   factor: {
     label: '情绪因子',
-    desc: '4 应用领域 × 5 因子要素 = 20 个归因视角，看"消极是因为什么"。待后续批次。',
-    preview: 'assets/analysis-previews/cluster.png',
+    shortDesc: '多维归因分析',
+    desc: '4 应用领域 x 5 因子要素 = 20 个归因视角，揭示"消极情绪因何而起"。后续批次开发。',
+    tags: ['L4', '2D'],
+    preview: 'assets/analysis-previews/factor.svg',
     placeholder: true,
   },
 };
@@ -103,7 +115,7 @@ function computeStyles(analysis, level, polarity) {
   return [];
 }
 
-// ── infopanel：analysis-card hover 弹出"图+文"看板（圆角正方形，dialog 右侧 +8px、上端对齐）──
+// ── infopanel：analysis-card hover 弹出 Kepler 风格看板（预览图 + 标题 + 描述 + 标签）──
 let _infoPanelEl = null;
 function ensureInfoPanel() {
   if (_infoPanelEl) return _infoPanelEl;
@@ -112,8 +124,13 @@ function ensureInfoPanel() {
   el.className = 'hm-infopanel';
   el.id = 'hm-infopanel';
   el.innerHTML = `
-    <div class="hm-infopanel-img"><img alt="" id="hm-infopanel-img"></div>
-    <div class="hm-infopanel-text" id="hm-infopanel-text"></div>`;
+    <div class="hm-infopanel-preview"><img alt="" id="hm-infopanel-img"></div>
+    <div class="hm-infopanel-body">
+      <div class="hm-infopanel-title" id="hm-infopanel-title"></div>
+      <div class="hm-infopanel-shortdesc" id="hm-infopanel-shortdesc"></div>
+      <div class="hm-infopanel-desc" id="hm-infopanel-desc"></div>
+      <div class="hm-infopanel-tags" id="hm-infopanel-tags"></div>
+    </div>`;
   (dlg || document.body).appendChild(el);
   _infoPanelEl = el;
   return el;
@@ -123,21 +140,32 @@ function showInfoPanel(card, key) {
   if (!p) return;
   const el = ensureInfoPanel();
   const img = el.querySelector('#hm-infopanel-img');
-  const txt = el.querySelector('#hm-infopanel-text');
+  const title = el.querySelector('#hm-infopanel-title');
+  const shortDesc = el.querySelector('#hm-infopanel-shortdesc');
+  const desc = el.querySelector('#hm-infopanel-desc');
+  const tags = el.querySelector('#hm-infopanel-tags');
+
   img.src = p.preview || '';
-  img.onerror = () => { img.style.visibility = 'hidden'; };
-  img.onload = () => { img.style.visibility = 'visible'; };
-  txt.textContent = p.desc || p.label;
-  // 定位：弹窗右侧 +8px，上端对齐（用 dialog 的 rect 而非 card 的 rect，保证锚定一致）
+  img.onerror = () => { img.style.display = 'none'; };
+  img.onload = () => { img.style.display = 'block'; };
+  title.textContent = p.label;
+  shortDesc.textContent = p.shortDesc || '';
+  desc.textContent = p.desc || '';
+  tags.innerHTML = (p.tags || []).map((t) =>
+    `<span class="hm-infopanel-tag">${t}</span>`
+  ).join('');
+
+  // 定位：弹窗右侧 +8px，上端对齐
   const dlg = document.getElementById(DIALOG_ID);
   const r = dlg.getBoundingClientRect();
   el.classList.add('is-show');
-  // 显示后再测尺寸
   const ew = el.offsetWidth;
   let left = r.right + 8;
   let top = r.top;
-  // 右侧不够则换到左侧
   if (left + ew > window.innerWidth - 8) left = Math.max(8, r.left - ew - 8);
+  // 下溢保护
+  const eh = el.offsetHeight;
+  if (top + eh > window.innerHeight - 8) top = Math.max(8, window.innerHeight - eh - 8);
   el.style.left = left + 'px';
   el.style.top = top + 'px';
 }

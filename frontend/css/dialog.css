@@ -582,46 +582,80 @@
 }
 .hm-style-name { display: none; }   /* v3：去掉名称文字（多余），用 i 悬停看说明 */
 
-/* ── Infopanel（analysis-card hover 弹出图+文看板，圆角正方形） ── */
+/* ── Infopanel（Kepler 风格竖向卡片：预览图 + 标题 + 描述 + 标签） ── */
 .hm-infopanel {
   position: fixed;
-  width: 220px;
-  height: 220px;
+  width: 240px;
   z-index: 10001;
   background: var(--geojson-color-surface-page);
   border: 1px solid var(--geojson-color-border-default);
   border-radius: var(--geojson-radius-lg);
-  box-shadow: var(--geojson-shadow-lg);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.06);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.12s;
+  transform: translateY(4px);
+  transition: opacity 0.15s, transform 0.15s;
 }
-.hm-infopanel.is-show { opacity: 1; }
-.hm-infopanel-img {
-  flex: 3;
-  min-height: 0;
+.hm-infopanel.is-show { opacity: 1; transform: translateY(0); }
+.hm-infopanel-preview {
+  width: 100%;
+  height: 120px;
   background: var(--geojson-color-gray-100);
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   border-bottom: 1px solid var(--geojson-color-gray-200);
 }
-.hm-infopanel-img img {
-  max-width: 100%;
-  max-height: 100%;
+.hm-infopanel-preview img {
+  width: 100%;
+  height: 100%;
   display: block;
-  object-fit: contain;
+  object-fit: cover;
 }
-.hm-infopanel-text {
-  flex: 1;
-  padding: 8px 10px;
+.hm-infopanel-body {
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hm-infopanel-title {
+  font-size: var(--geojson-typography-size-sm);
+  font-weight: var(--geojson-typography-weight-semibold);
+  color: var(--geojson-color-text-primary);
+  line-height: var(--geojson-line-height-tight);
+}
+.hm-infopanel-shortdesc {
+  font-size: var(--geojson-typography-size-xs);
+  font-weight: var(--geojson-typography-weight-medium);
+  color: var(--geojson-color-brand-primary);
+  line-height: var(--geojson-line-height-normal);
+}
+.hm-infopanel-desc {
   font-size: var(--geojson-typography-size-2xs);
-  line-height: 1.4;
+  font-weight: var(--geojson-typography-weight-normal);
   color: var(--geojson-color-text-secondary);
-  overflow: hidden;
+  line-height: var(--geojson-line-height-relaxed);
+}
+.hm-infopanel-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.hm-infopanel-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--geojson-color-gray-100);
+  color: var(--geojson-color-text-tertiary);
+  font-size: var(--geojson-typography-size-2xs);
+  font-weight: var(--geojson-typography-weight-medium);
+  line-height: var(--geojson-line-height-none);
+  letter-spacing: 0.02em;
 }
 
 /* ── 全局选中态语义类 ─────────────────────────────────────
