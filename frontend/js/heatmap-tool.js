@@ -451,7 +451,10 @@ function constrainLevelOptions(dlg, sources, analysis) {
   const sel = dlg.querySelector('#hm-level');
   if (!sel) return;
   const present = new Set(sources.map((s) => s.level));
-  const onlyL2 = analysis === 'positive' || analysis === 'negative' || analysis === 'classify';
+  // 类型细分（积极/消极/中性）是 L2 专属字段 → 锁 L2；其余层级无此字段自动排除。
+  // 全局逻辑：各选择栏联动，无对应字段的层级 disabled。
+  const tier = ANALYSIS_PRESETS[analysis]?.tier;
+  const onlyL2 = tier === 'segment';
   const FIXED = ['L1', 'L2', 'L3', 'L4'];
   const cur = sel.value;
   let firstAvailable = null;
@@ -702,9 +705,15 @@ function generateHeatmap(btn) {
   setHeatmapForSource(sourceKey, layer.id);
   renderLayer(layer);
 
-  // bug⑤ fix：不再"独占隐藏其他图层"——旧策略会把已存在的 L1 彩虹等热力图隐藏，
-  // 且开关眼睛表象"无效"（实为被新层遮挡/状态混乱）。同 sourceKey 的旧热力图已在上方
-  // removeLayer 覆盖；不同源的图层保持共存，交由图层管理（眼睛/分组）控制显隐。
+  // 独占显示：生成新热力图时隐藏其他所有图层（点/面/旧热力图），让新图独占视野。
+  // 这是底层交互逻辑，须一路保持——之前一度误删导致"关闭其他图层"失效。
+  // 安全性：setLayerVisible(false)+renderLayer 移除图层；用户经侧栏眼睛可随时
+  // setLayerVisible(true)+renderLayer 恢复；下方 dispatch layers:changed 保证侧栏
+  // 眼睛状态同步（bug⑤ 真因是当时缺此事件 → 眼睛状态与实际不一致，表象"无效"）。
+  for (const l of [...getLayers()]) {
+    if (l.id === layer.id) continue;
+    if (l.visible) { setLayerVisible(l.id, false); renderLayer(l); }
+  }
   selectLayer(layer.id);
   document.dispatchEvent(new CustomEvent('layers:changed'));
   document.dispatchEvent(new CustomEvent('layer:selected', { detail: layer.id }));

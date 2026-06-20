@@ -75,7 +75,6 @@ function tier2(layer, lv) {
     body = `<div class="ov-props">
       <div class="ov-prop"><span>置信度色带</span><span class="ov-ramp-legend ov-ramp-segmented">${confSegs}</span></div>
       <div class="ov-prop"><span>透明度</span><span>${Math.round((p.opacity ?? 0.75) * 100)}%</span></div>
-      <div class="ov-prop"><span>下一步</span><span class="ov-tag-blue">可分析</span></div>
     </div>`;
   } else if (layer.kind === 'heatmap') { // 热力图参数概览
     const p = layer.paint || {};
