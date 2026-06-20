@@ -483,7 +483,13 @@ export function setLayerVisible(id, visible) {
 export function layerLevel(layer) {
   if (!layer) return null;
   if (layer.kind === 'group') return 'L2';
-  if (layer.kind === 'heatmap') return 'L2';          // heatmap = L2 density visualization
+  // bug④ fix：热力图层 level 不再硬判 L2——L1 彩虹热力图会被错标成 L2。
+  // 从生成时持久化的 paint._ui.level 推断；无 _ui（旧层）时按 colorMode 兜底。
+  if (layer.kind === 'heatmap') {
+    const uiLevel = layer.paint && layer.paint._ui && layer.paint._ui.level;
+    if (uiLevel) return uiLevel;
+    return 'L2';   // 兜底（多数热力图源出 L2）
+  }
   if (layer.kind === 'polygon' || layer.kind === 'line') return 'range';
   if (layer.colorMode === 'confidence') return 'L1';
   if (layer.colorMode === 'l2-positive' || layer.colorMode === 'l2-negative' || layer.colorMode === 'l2-neutral' || layer.colorMode === 'polarity') return 'L2';

@@ -718,11 +718,9 @@ function generateHeatmap() {
   setHeatmapForSource(sourceKey, layer.id);
   renderLayer(layer);
 
-  // 独占显示：隐藏其他图层
-  for (const l of [...getLayers()]) {
-    if (l.id === layer.id) continue;
-    if (l.visible) { setLayerVisible(l.id, false); renderLayer(l); }
-  }
+  // bug⑤ fix：不再"独占隐藏其他图层"——旧策略会把已存在的 L1 彩虹等热力图隐藏，
+  // 且开关眼睛表象"无效"（实为被新层遮挡/状态混乱）。同 sourceKey 的旧热力图已在上方
+  // removeLayer 覆盖；不同源的图层保持共存，交由图层管理（眼睛/分组）控制显隐。
   selectLayer(layer.id);
   document.dispatchEvent(new CustomEvent('layers:changed'));
   document.dispatchEvent(new CustomEvent('layer:selected', { detail: layer.id }));

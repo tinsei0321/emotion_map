@@ -109,7 +109,8 @@ export function showRangePopup(feature, layer) {
   const badge = document.getElementById('rp-badge');
   badge.textContent = '范围';
   badge.style.background = color;
-  popup.style.borderColor = color;            // accent ties to outline color
+  // 注：不再给范围 popup 设 accent border —— f9da7c1 引入的实色 navy 轮廓会让看板
+  // 出现突兀边框（用户反馈"突然出现的轮廓线框"）。范围 popup 仅靠 box-shadow + badge 区分。
   const nameEl = document.getElementById('rp-name');
   nameEl.textContent = name;
   nameEl.title = name;
@@ -157,7 +158,7 @@ export function refreshPopupForLayer(id) {
   if (_rngLayerId === id && _rng && r && !r.hidden) {
     const color = (layer.paint && layer.paint.color) || '#0c1c2e';
     document.getElementById('rp-badge').style.background = color;
-    r.style.borderColor = color;
+    // accent border 同上移除（避免突兀轮廓）
     _rng.color = color;
   }
 }
@@ -173,8 +174,14 @@ export function initPopup(map) {
     map.on('click', (ev) => {
       const tgt = ev.originalEvent && ev.originalEvent.target;
       if (tgt && tgt.closest && (tgt.closest('#feature-popup') || tgt.closest('#range-popup'))) return;
+      // bug fix：原判定 feats.length===0 才折叠，但热力图层覆盖大片像素，点哪都命中 feature
+      // → 永不折叠。改为只看"可交互要素"（点/面/符号），排除 heatmap/raster 等背景层。
       const feats = map.queryRenderedFeatures(ev.point);
-      if (!feats || feats.length === 0) { collapsePopup(); collapseRangePopup(); }
+      const interactive = (feats || []).some((f) => {
+        const t = f.layer && f.layer.type;
+        return t === 'circle' || t === 'fill' || t === 'symbol' || t === 'line';
+      });
+      if (!interactive) { collapsePopup(); collapseRangePopup(); }
     });
   }
 }
