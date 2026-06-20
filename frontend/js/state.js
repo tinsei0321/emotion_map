@@ -49,21 +49,26 @@ export function rampColor(ramp, score) {
 // 热度值语义 = 该数据点作为"情绪热点"的可信强度（情绪浓且与城规相关）。
 export const HOTNESS_RAMP = ['#FFD9A0', '#FF9800', '#E65100'];   // 浅橙 → 橙 → 深橙红（低→高）
 
-/** 热度值 = emotion_intensity × l1_confidence（clamp 0~1）。 */
+/** 热度值 = emotion_intensity × l1_confidence（clamp 0~1）。
+ *  intensity 兼容两种量表：0~1 比例（SnowNLP）或 1~5 等级（模拟数据）——>1 时按 5 级归一化。 */
 export function computeHotness(f) {
   const p = (f && f.properties) || {};
-  const inten = Number(p.emotion_intensity ?? 0);
+  let inten = Number(p.emotion_intensity ?? 0);
+  if (inten > 1) inten = inten / 5;        // 1~5 等级 → 0~1
   const conf = Number(p.l1_confidence ?? 0);
   const h = inten * conf;
   return Number.isFinite(h) ? Math.max(0, Math.min(1, h)) : 0;
 }
 
-/** 按图层 features 的 hotness 分布算 33%/66% 分位阈值 → [t1, t2]（动态 3 段区间）。 */
+/** 按图层 features 的 hotness 分布算 33%/66% 分位阈值 → [t1, t2]（动态 3 段区间）。
+ *  退化（数据全相等/不足）兜底 [0.33,0.66]——避免 MapLibre step 阈值不严格递增在 Chrome 下 throw。 */
 export function hotnessBuckets(features) {
   const hs = (features || []).map(computeHotness).filter((h) => h > 0).sort((a, b) => a - b);
-  if (!hs.length) return [0.33, 0.66];
+  if (hs.length < 2) return [0.33, 0.66];
   const at = (q) => hs[Math.min(hs.length - 1, Math.floor(hs.length * q))];
-  return [at(0.33), at(0.66)];
+  let t1 = at(0.33), t2 = at(0.66);
+  if (!(t1 < t2)) { t1 = 0.33; t2 = 0.66; }   // 全相等/退化 → 兜底
+  return [t1, t2];
 }
 
 /** 热度值 → 3 段色（分段，非插值）。 */
