@@ -156,7 +156,7 @@
 }
 .hm-dialog .dialog-body {
   overflow-y: auto;
-  max-height: 78vh;
+  max-height: calc(90vh - 120px);   /* B2：留缓冲，默认内容（不展开高级）不触发滑动 */
   padding: var(--geojson-spacing-3) var(--geojson-spacing-4);
   display: flex;
   flex-direction: column;
@@ -253,14 +253,14 @@
 }
 
 /* ── HeatMap v2: 分组 / 类型筛选 chips / 单位切换 / 高级折叠 ── */
-.hm-dialog { width: 420px; }
+.hm-dialog { width: 460px; }   /* B2：加宽，默认内容免滑动 */
 
 .hm-group {
   display: flex;
   flex-direction: column;
   gap: var(--geojson-spacing-3);
   padding: var(--geojson-spacing-2) 0;
-  border-top: 1px solid var(--geojson-color-gray-200);
+  border-top: 2px solid var(--geojson-color-gray-300);   /* B4：①②③分割线加粗加深 */
 }
 .hm-group:first-child { border-top: none; padding-top: 0; }
 .hm-group-title {
@@ -506,7 +506,7 @@
   justify-content: space-between;
   gap: 4px;
   padding: 8px 10px;
-  border: 1px solid var(--geojson-color-gray-300);
+  border: none;                                   /* B1：无线框，靠阴影区分 */
   border-radius: var(--geojson-radius-sm);
   background: var(--geojson-color-surface-page);
   color: var(--geojson-color-text-primary);
@@ -514,10 +514,10 @@
   font-weight: var(--geojson-typography-weight-medium);
   text-align: left;
   cursor: pointer;
-  transition: border-color var(--geojson-transition), background var(--geojson-transition);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);         /* 无线框也能区分 */
+  transition: background var(--geojson-transition), box-shadow var(--geojson-transition);
 }
-/* hover：浅灰背景，与 Layers 行 hover 一致；不再变蓝边 */
-.hm-analysis-card:hover { background: var(--geojson-color-gray-100); border-color: var(--geojson-color-gray-300); }
+.hm-analysis-card:hover { background: var(--geojson-color-gray-100); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
 .hm-analysis-card.is-placeholder { opacity: 0.6; }
 .hm-ac-name { flex: 1; line-height: 1.2; }
 
@@ -676,20 +676,26 @@
 }
 
 /* ── v7：①3 排分组 + ③只读色板预览 + 生成按钮拆分 ── */
-.hm-tier { margin-bottom: 8px; }
+/* B1：三组各为浅灰圆角背景，组间 4px 间隙，等宽对齐 */
+.hm-tier {
+  margin-bottom: 4px;
+  padding: 8px;
+  background: var(--geojson-color-gray-100);
+  border-radius: var(--geojson-radius-md);
+}
 .hm-tier:last-child { margin-bottom: 0; }
 .hm-tier-label {
-  font-size: var(--geojson-typography-size-2xs);
-  color: var(--geojson-color-text-tertiary);
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-primary);   /* B1：最深浓度字体 */
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  margin: 2px 0 4px;
-  font-weight: var(--geojson-typography-weight-medium);
+  margin: 0 0 6px;
+  font-weight: var(--geojson-typography-weight-bold);
 }
 .hm-tier-cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 2px;                                    /* B1：卡片左右间隔 2px */
 }
 
 /* ③ 只读色板预览（色板随类型自动，不可选） */
@@ -728,27 +734,21 @@
 
 
 /* ── 全局选中态语义类 ─────────────────────────────────────
- *  .is-bar-sel — 占满整行的"栏"选中：浅蓝填充，无线框
- *  .is-opt-sel — 一行多条的"选项"选中：粗蓝框 + 浅灰填充
- *  弹窗内 analysis-card / style-btn / dim-btn / grid-btn / ramp-btn 统一用 .is-opt-sel
- *  Layers 行的浅蓝填充已在 sidebar.css，用 .is-bar-sel 语义对齐 */
+ *  三组件设计 token（栏/选项/胶囊）：
+ *  .is-bar-sel — "栏"选中：浅蓝填充、无线框（Layers 行 / ③色板选择）
+ *  .is-opt-sel — "选项"选中：蓝底白字（参考工具条；分析类型卡等一行多个选项）
+ *  胶囊 — 颜色填充（类型/表现，.hm-macro-chip/.hm-type-chip）
+ *  未选中：白/透明；悬停：浅灰（栏与选项一致） */
 .is-bar-sel {
   background: rgba(0, 122, 252, 0.12) !important;
   border-color: transparent !important;
   box-shadow: none !important;
 }
 .is-opt-sel {
-  border-color: var(--geojson-color-brand-primary) !important;
-  border-width: 2.5px !important;
-  border-style: solid !important;
-  background: var(--geojson-color-gray-100) !important;
+  background: var(--geojson-color-brand-primary) !important;   /* B1：选中蓝底 */
+  border-color: transparent !important;
   box-shadow: none !important;
-  color: var(--geojson-color-text-primary) !important;
-}
-/* analysis-card 在选中时仍保留品牌色填充感（更醒目） */
-.hm-analysis-card.is-opt-sel {
-  background: var(--geojson-color-gray-100) !important;
-  padding: 6.5px 8.5px;   /* 抵消 border 增厚 1.5px */
+  color: var(--geojson-color-text-inverse, #fff) !important;  /* 选中白字 */
 }
 /* style-btn 选中时让色带预览更突出 */
 .hm-style-btn.is-bar-sel { background: rgba(0, 122, 252, 0.12) !important; border-color: transparent !important; }

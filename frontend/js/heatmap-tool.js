@@ -69,7 +69,7 @@ function computeStyle(analysis, level, polarity) {
       tip: 'L1 小尺度舆情热度：2D 色块网格 / 3D 网格柱体（聚合渲染待开发）。',
       buttons: [{ dim: '2d', label: '生成 2D 网格图', dev: true }, { dim: '3d', label: '生成 3D 柱体图', dev: true }] };
     const ramp = { ALL: 'terrain-9', P: 'green-3', N: 'red-3', O: 'blue-3' }[polarity] || 'terrain-9';
-    const nm = { ALL: '综合（红蓝绿 9 段）', P: '积极（绿 3 段）', N: '消极（红 3 段）', O: '中性（蓝 3 段）' }[polarity] || '综合';
+    const nm = { ALL: '综合', P: '积极', N: '消极', O: '中性' }[polarity] || '综合';
     return { ramp, name: nm, dev: true,
       tip: 'L2 3D 网格柱体：积极/消极/中性各自高点的空间分布。',
       buttons: [{ dim: '3d', label: '生成 3D 柱体图', dev: true }] };
@@ -291,8 +291,8 @@ function renderTypeChips(dlg, fc, level) {
   updateFoldCount(dlg, 'type');
 }
 
-/** 渲染 ③ 只读色板预览（色板随 analysis+level+特性自动；用户不再手选）。
- *  显示当前自动选定色板的离散分段条 + 名称 + i 说明。 */
+/** 渲染 ③ 色板选择（栏语义：随 analysis+level+特性 自动选定当前色板，默认选中；
+ *  当前各组合单色板，未来可多选；色段等宽，名称/段数/开发说明纳入 i）。 */
 function renderStylePreview(dlg) {
   const wrap = dlg.querySelector('#hm-styles');
   if (!wrap) return;
@@ -309,13 +309,13 @@ function renderStylePreview(dlg) {
   const ramp = st.ramp ? HEATMAP_RAMPS[st.ramp] : null;
   const segs = ramp ? ramp.stops.filter(([d]) => d > 0).map(([, c]) => c) : ['#ccc'];
   const segHtml = segs.map((c) => `<span class="hm-style-seg" style="background:${c}"></span>`).join('');
-  const tip = st.tip.replace(/"/g, '&quot;');
-  wrap.innerHTML = `<div class="hm-style-preview">
+  // i：名称 + tip + 开发说明（待开发/未来开发 一律进 i）
+  const tip = `${st.name}。${st.tip}${st.dev ? '（3D 渲染待后续批次接入）' : ''}`.replace(/"/g, '&quot;');
+  wrap.innerHTML = `<button class="hm-style-btn is-bar-sel" data-ramp="${st.ramp || ''}" type="button">
     <span class="hm-style-bar">${segHtml}</span>
-    <span class="hm-style-name">${st.name}</span>
-    ${st.dev ? '<span class="hm-style-dev-tag">3D 待开发</span>' : ''}
+    ${st.dev ? '<span class="hm-style-dev-tag">3D</span>' : ''}
     <span class="hm-info" data-tip="${tip}">i</span>
-  </div>`;
+  </button>`;
   renderGenerateButtons(dlg, st);
 }
 
