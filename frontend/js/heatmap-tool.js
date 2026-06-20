@@ -469,7 +469,7 @@ function constrainLevelOptions(dlg, sources, analysis) {
   sel.value = target;
 }
 
-/** 打开热核分析弹窗。
+/** 打开核密度分析（KDE）弹窗。
  *  v5：layerId 可选 — 当从 H 要素按钮点击进来时传入该热力图层 id，
  *      弹窗的所有参数会从 layer.paint._ui + layer.paint 反推恢复（"以当初参数继续编辑"语义），
  *      而不是回到默认值。 */

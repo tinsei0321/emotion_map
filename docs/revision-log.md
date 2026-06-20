@@ -30,6 +30,7 @@
 | **选项** | 一行多条、需单选/多选（如分析类型卡、类型/表现胶囊） | 选中态=粗蓝框+浅灰填充 |
 | **L0–L4** | 数据分级：L0 原始 → L1 治理(置信度) → L2 情绪(SnowNLP) → L3 LLM → L4 归因 | L1 无情绪字段，仅 L2 有类型/表现 |
 | **色带分段条** | kepler 风格离散色块拼接（非无极渐变） | 全站色带统一用此形式 |
+| **核密度分析（KDE）** | Kernel Density Estimation，热力图底层算法（点→连续密度面） | **禁用"热核"简称**；英文标识符 `heatmap` 保留 |
 
 ---
 
@@ -37,7 +38,7 @@
 
 | 板块 | 状态 | 主文件 | 最近活跃 |
 |------|------|--------|----------|
-| 前端 · 热核分析弹窗 | 🔄 活跃 | `frontend/js/heatmap-tool.js` `css/dialog.css` | 2026-06-20 |
+| 前端 · 核密度分析（KDE）弹窗 | 🔄 活跃 | `frontend/js/heatmap-tool.js` `css/dialog.css` | 2026-06-20 |
 | 前端 · Import 管道 | ✅ 稳定 | `frontend/js/import.js` | 2026-06-18 |
 | 前端 · 图层/设置/Overview | 🔄 活跃 | `sidebar.js` `settings.js` `panel.js` | 2026-06-20 |
 | 前端 · 外壳/控件/视觉 | ✅ 稳定 | `map-controls.js` `popup.css` `tokens` | 2026-06-17 |
@@ -53,7 +54,7 @@ flowchart LR
     L2 --> L3[L3 语义<br/>LLM]
     L3 --> L4[L4 归因]
   end
-  L1 & L2 --> HM[前端 · 热核分析弹窗]
+  L1 & L2 --> HM[前端 · 核密度分析（KDE）弹窗]
   HM --> MAP[MapLibre 地图渲染]
 ```
 
@@ -66,7 +67,7 @@ flowchart LR
 ### 4.1 配色统一 kepler 化
 - 所有色带改为 **kepler 离散分段条**（色块拼接），不用无极 linear-gradient——视觉更专业、与 kepler 一致。
 - 色板取值采样自 kepler 源码内置方案：网格暖色谱 ≈ Global Warming；7 色分类 ≈ UberPool 6 色 + 补 1 色；L1 默认单色改橙红（ColorBrewer Reds）。
-- **全站色带位置一致**：热核弹窗 ③、Overview、要素设置弹窗都用 `.segmented` 分段条。
+- **全站色带位置一致**：核密度分析（KDE）弹窗 ③、Overview、要素设置弹窗都用 `.segmented` 分段条。
 
 ### 4.2 术语二分：类型 ↔ 表现
 - 早期"情绪类型"一词既指大类又指小类，混乱。
@@ -148,6 +149,7 @@ flowchart TD
 5. **再次打开图层配置** = 继承当初参数（`paint._ui` 反推），非空白默认。
 6. **次要/取消按钮** = 白底 + 深灰字 + 细线框 + 悬停变灰，不填充；主操作按钮蓝底白字。
 7. **新弹窗**按三阶引导（①分析类型 → ②数据源 → ③显示样式），参数进"高级"折叠。
+8. **术语**：核密度分析（KDE），**禁用"热核"简称**；英文标识符 `heatmap` 保留。
 
 ---
 
@@ -155,10 +157,11 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-### 5.1 前端 · 热核分析弹窗（核心）
+### 5.1 前端 · 核密度分析（KDE）弹窗（核心）
 
 | 日期 | commit | 用户意图 → 落地 | 文件 |
 |------|--------|----------------|------|
+| 06-20 | `（本次）` | "热核"是非规范简称 → 全局改为"核密度分析（KDE）"（UI 文案与 `heatmap` 英文标识符本就正确，不动）；术语表 + 4.10 公约 + memory 各加一条术语铁律 | `revision-log.md` `settings.css` `heatmap-tool.js` |
 | 06-20 | `4454225` | Overview 的"情绪类型"显示的是小类却叫"类型"，术语冲突 → 拆"情绪类型（大类）"+"情绪表现（小类）"两行；持久化 `_ui.macroFilter`，旧图层用 `EMOTION_MACRO_MAP` 反推 | `panel.js` `heatmap-tool.js` |
 | 06-20 | `cec784a` | ① 选 L1 却出现"期待建议"胶囊（L1 无情绪字段）→ L1/L3/L4 不渲染胶囊、显禁用提示；② H 按钮应继承图层参数继续编辑 → `openHeatmapDialog(layerId)` 反推；③ Overview 渐变色带改离散分段（设计语言统一） | `heatmap-tool.js` `settings.js` `dialog.css` |
 | 06-20 | `7332a0d` | ① 色带改 kepler 离散分段条（不要无极渐变、去文字）；② 弹窗加长免滚动；③ L2+中性色板应为蓝系（与急/盼胶囊呼应）；④ 类型/表现默认展开、类型去线框、7 类按喜怒哀乐愁急盼配色（黄绿→深蓝）；⑤ 网格 2D/3D 合并一条；⑥ 选项选中=粗蓝框+浅灰、栏=浅蓝、悬停浅灰；⑦ 取消按钮弱化 | `dialog.css` `heatmap-tool.js` 6×SVG |
@@ -171,7 +174,7 @@ flowchart TD
 | 06-19 | `e9bd0d0` | 选大类/小类对落图无影响 → 打破"全选=不过滤"；大类全空=全不要；生成时打 filter 日志 | `heatmap-tool.js` |
 | 06-19 | `6863515` | 取消按钮弱化 + 选中态二分（栏/选项）初版 | `dialog.css` `heatmap-tool.js` |
 | 06-19 | `354296e` | 借鉴 kepler 重做色板/样式：三阶引导、6 张预览图、离散色板、7 大类喜怒哀乐愁急盼、栏/选项选中态（重构主体） | `heatmap-tool.js` `state.js` `dialog.css` `index.html` 6×SVG |
-| 06-19 | `0390e3d` | 新增热核分析工具（首版 500 行）+ 情绪词典 7 类微观标签 + L2 极性着色 | `heatmap-tool.js` `emotion_lexicon.py` `state.js` |
+| 06-19 | `0390e3d` | 新增核密度分析（KDE）工具（首版 500 行）+ 情绪词典 7 类微观标签 + L2 极性着色 | `heatmap-tool.js` `emotion_lexicon.py` `state.js` |
 
 ### 5.2 前端 · Import 管道（06-18，提炼自 todo.md）
 
