@@ -5,7 +5,7 @@ import {
   L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR,
   EMOTION_TYPE_COLORS, EMOTION_TYPE_ORDER,
   EMOTION_MACRO_ORDER, EMOTION_MACRO_MAP,
-  HEATMAP_RAMPS,
+  HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets,
 } from './state.js';
 import { geomStats } from './popup.js';
 
@@ -70,11 +70,15 @@ function tier2(layer, lv) {
       <div class="ov-prop"><span>下一步</span><span class="ov-tag-blue">需治理</span></div></div>`;
   } else if (lv === 'L1') {
     const p = layer.paint || {};
-    const ramp = p.ramp || CONFIDENCE_RAMP;
-    const confSegs = ramp.map(c => `<span class="ov-ramp-seg" style="background:${c}"></span>`).join('');
+    const hotSegs = HOTNESS_RAMP.map(c => `<span class="ov-ramp-seg" style="background:${c}"></span>`).join('');
+    const buckets = p.hotnessBuckets || [0.33, 0.66];
     body = `<div class="ov-props">
-      <div class="ov-prop"><span>置信度色带</span><span class="ov-ramp-legend ov-ramp-segmented">${confSegs}</span></div>
+      <div class="ov-prop"><span>热度值色带（3 段）</span><span class="ov-ramp-legend ov-ramp-segmented">${hotSegs}</span></div>
+      <div class="ov-prop" title="热度值 = 情绪强度 × 置信度（0~1），按图层分布动态分 3 段"><span>算法</span><span>强度 × 置信度</span></div>
+      <div class="ov-prop"><span>分段阈值</span><span>${buckets[0].toFixed(2)} / ${buckets[1].toFixed(2)}</span></div>
+      <div class="ov-prop" title="L1 治理阶段 LLM 判断的数据相关性置信度（0~1）"><span>置信度</span><span>相关性（LLM）</span></div>
       <div class="ov-prop"><span>透明度</span><span>${Math.round((p.opacity ?? 0.75) * 100)}%</span></div>
+      <div class="ov-prop"><span>数据点</span><span>${layer.fc.features.length}</span></div>
     </div>`;
   } else if (layer.kind === 'heatmap') { // 热力图参数概览
     const p = layer.paint || {};
@@ -123,14 +127,23 @@ function tier3(layer, lv) {
   } else if (lv === 'L0') {
     body = `<div class="ov-placeholder">需先治理（L0→L1）后展示分析结论</div>${spatialPlaceholder()}`;
   } else if (lv === 'L1') {
-    const { buckets, total, mean } = confidenceStats(layer.fc);
-    const max = Math.max(1, ...buckets);
-    const ramp = (layer.paint && layer.paint.ramp) || CONFIDENCE_RAMP;
-    const bars = buckets.map((n, i) =>
-      `<div class="hbar-row"><span class="hbar-label">${(i * 0.2).toFixed(1)}–${((i + 1) * 0.2).toFixed(1)}</span>
-        <span class="hbar-track"><span class="hbar-fill" style="width:${(n / max) * 100}%;background:${ramp[i]}"></span></span>
+    // 热度值分布（3 段，按 hotness buckets）—— 与 popup/图例/弹窗色板同步
+    const buckets = (layer.paint && layer.paint.hotnessBuckets) || hotnessBuckets(layer.fc.features);
+    const hs = layer.fc.features.map(computeHotness);
+    const counts = [
+      hs.filter((h) => h <= buckets[0]).length,
+      hs.filter((h) => h > buckets[0] && h <= buckets[1]).length,
+      hs.filter((h) => h > buckets[1]).length,
+    ];
+    const total = hs.length;
+    const mean = total ? hs.reduce((a, b) => a + b, 0) / total : 0;
+    const max = Math.max(1, ...counts);
+    const labels = ['低', '中', '高'];
+    const bars = counts.map((n, i) =>
+      `<div class="hbar-row"><span class="hbar-label">${labels[i]}</span>
+        <span class="hbar-track"><span class="hbar-fill" style="width:${(n / max) * 100}%;background:${HOTNESS_RAMP[i]}"></span></span>
         <span class="hbar-n">${n}</span></div>`).join('');
-    body = `<div class="ov-tier-sub">置信度分布</div><div class="hchart">${bars}</div>
+    body = `<div class="ov-tier-sub">热度值分布</div><div class="hchart">${bars}</div>
       <div class="ov-mean">均值 ${mean.toFixed(2)} · 共 ${total} 条</div>${spatialPlaceholder()}`;
   } else if (layer.kind === 'heatmap') { // 热力图：密度可视化特征（不依赖极性字段，鲁棒）
     const p = layer.paint || {};

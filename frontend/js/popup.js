@@ -178,14 +178,15 @@ export function initPopup(map) {
     map.on('click', (ev) => {
       const tgt = ev.originalEvent && ev.originalEvent.target;
       if (tgt && tgt.closest && (tgt.closest('#feature-popup') || tgt.closest('#range-popup'))) return;
-      // bug fix：原判定 feats.length===0 才折叠，但热力图层覆盖大片像素，点哪都命中 feature
-      // → 永不折叠。改为只看"可交互要素"（点/面/符号），排除 heatmap/raster 等背景层。
+      // 严格收起规则（用户要求）：
+      //   情绪点 popup —— 只有命中"点(circle)"才保持，否则收起
+      //   范围 popup    —— 只有命中"面/线(fill|line)"才保持，否则收起
+      //   这样点空白/别的要素/热力图 都会收起对应 popup，杜绝"偶尔失效"。
       const feats = map.queryRenderedFeatures(ev.point);
-      const interactive = (feats || []).some((f) => {
-        const t = f.layer && f.layer.type;
-        return t === 'circle' || t === 'fill' || t === 'symbol' || t === 'line';
-      });
-      if (!interactive) { collapsePopup(); collapseRangePopup(); }
+      const hitPoint = (feats || []).some((f) => f.layer && f.layer.type === 'circle');
+      const hitRange = (feats || []).some((f) => f.layer && (f.layer.type === 'fill' || f.layer.type === 'line'));
+      if (!hitPoint) collapsePopup();
+      if (!hitRange) collapseRangePopup();
     });
   }
 }
