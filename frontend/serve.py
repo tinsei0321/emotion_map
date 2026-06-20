@@ -19,6 +19,7 @@ import socketserver
 import sys
 import os
 import re
+import subprocess
 
 # 本地 css/js 引用（相对路径 css/.. js/..）→ 注入 ?v=<mtime>
 _LOCAL_REF = re.compile(r'((?:href|src)=["\'])(css|js)/([^"\']+?\.(?:css|js))(["\'])')
@@ -73,8 +74,34 @@ class ReuseTCPServer(socketserver.TCPServer):
     allow_reuse_address = True   # 重启不报 "Address already in use"
 
 
+def _free_port(port):
+    """启动前杀掉占用该端口的旧 serve 进程（Windows: netstat+taskkill），
+    避免僵尸 serve 残留导致返回旧版（之前多次后台启动的残留根因）。非 Windows 跳过。"""
+    if sys.platform != 'win32':
+        return
+    try:
+        out = subprocess.check_output(['netstat', '-ano'], text=True, stderr=subprocess.DEVNULL)
+    except Exception:
+        return
+    pids = set()
+    for line in out.splitlines():
+        if f':{port}' in line and 'LISTENING' in line.upper():
+            parts = line.split()
+            if parts:
+                pids.add(parts[-1])
+    me = str(os.getpid())
+    for pid in pids:
+        if pid and pid != me:
+            try:
+                subprocess.run(['taskkill', '/PID', pid, '/F'], capture_output=True)
+                print(f'[OK] 已清理端口 {port} 上的旧进程 PID {pid}')
+            except Exception:
+                pass
+
+
 def main():
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8080
+    _free_port(port)   # 清掉同端口的僵尸 serve，避免返回旧版
     with ReuseTCPServer(('', port), NoCacheHandler) as httpd:
         print(f'[OK] frontend serve on http://localhost:{port} (no-cache + ?v auto-inject)')
         print('     访问 http://localhost:{}/frontend/index.html'.format(port))
