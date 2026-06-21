@@ -193,6 +193,7 @@
 .tool-list {
   display: flex;
   flex-direction: column;
+  gap: 4px;
 }
 .tool-row {
   display: flex;
@@ -207,9 +208,10 @@
   color: var(--geojson-color-text-primary);
   border-radius: var(--geojson-radius-sm);
   cursor: pointer;
-  transition: background var(--geojson-transition);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  transition: background var(--geojson-transition), box-shadow var(--geojson-transition);
 }
-.tool-row:hover { background: var(--geojson-color-gray-100); }
+.tool-row:hover { background: var(--geojson-color-gray-100); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
 .tool-row:active { background: var(--geojson-color-gray-200); }
 .tool-icon {
   display: inline-flex;
@@ -226,29 +228,28 @@
   font-weight: var(--geojson-typography-weight-medium);
 }
 /* 工具行尾的 i 信息图标（hover 弹 .tool-tooltip 介绍应用场景）。
- * 视觉与 KDE 弹窗内 .hm-info 同语言（圆圈 i、hover 变蓝），但独立类、
- * 独立 tooltip（挂 body），不依赖/不干扰 #heatmap-dialog 内的 #hm-tooltip。 */
+ * 视觉与 KDE 弹窗内 .hm-info 同语言：浅灰填充圆圈 + 白色衬线斜体 i，hover 变蓝。
+ * 独立类、独立 tooltip（挂 body），不依赖/不干扰 #heatmap-dialog 内的 #hm-tooltip。 */
 .tool-info {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 15px;
-  height: 15px;
-  min-width: 15px;
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
   border-radius: 50%;
-  border: 1px solid var(--geojson-color-gray-400);
-  font-size: 10px;
+  background: var(--geojson-color-gray-300);
+  color: var(--geojson-color-text-inverse, #fff);
+  font-size: 9px;
   font-style: italic;
-  font-weight: var(--geojson-typography-weight-bold);
-  color: var(--geojson-color-text-tertiary);
+  font-weight: 700;
+  font-family: Georgia, serif;
   flex-shrink: 0;
   cursor: help;
-  transition: background var(--geojson-transition), color var(--geojson-transition), border-color var(--geojson-transition);
+  transition: background var(--geojson-transition);
 }
 .tool-info:hover {
   background: var(--geojson-color-brand-primary);
-  color: #fff;
-  border-color: var(--geojson-color-brand-primary);
 }
 /* tooltip 挂 body、fixed 定位（工具栏非 top-layer，body 上的 fixed 可正常覆盖）。
  * 配色与 .hm-tooltip 一致：白底 + 深灰小字 + 细边框。 */
