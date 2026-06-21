@@ -156,7 +156,7 @@
 }
 .hm-dialog .dialog-body {
   overflow-y: auto;
-  max-height: calc(90vh - 120px);   /* B2：留缓冲，默认内容（不展开高级）不触发滑动 */
+  max-height: calc(90vh - 80px);    /* 少一排卡片，缓冲收紧；默认内容不触发滑动 */
   padding: var(--geojson-spacing-3) var(--geojson-spacing-4);
   display: flex;
   flex-direction: column;

@@ -19,7 +19,7 @@ const DEFAULTS = {
   intensityMin: 0, minzoom: 0, maxzoom: 22,
 };
 
-// ── ① 分析类型预设（3 排分组：总体情况 / 类型细分 / 多维归因）──
+// ── ① 分析类型预设（2 排分组：总体情况 / 类型细分）──
 // tier 决定 ①排版分组 + ②类型/表现胶囊是否启用（overall 禁用、segment 启用）。
 const DEFAULT_ANALYSIS = 'terrain';
 const ANALYSIS_PRESETS = {
@@ -38,17 +38,10 @@ const ANALYSIS_PRESETS = {
   neutral: { label: '中性', tier: 'segment',
     desc: '类型细分：只看中性情绪密度（仅 L2）。胶囊色（急→盼）渐变 7 段。',
     preview: 'assets/analysis-previews/classify.svg' },
-  factor:      { label: '情绪因子', tier: 'attribution',
-    desc: '多维归因：4 应用 × 5 因子 = 20 视角，"消极因何而起"。待后续批次。',
-    preview: 'assets/analysis-previews/factor.svg', placeholder: true },
-  attribution: { label: '要素归因', tier: 'attribution',
-    desc: '多维归因：按空间要素归因。待后续批次。',
-    preview: 'assets/analysis-previews/factor.svg', placeholder: true },
 };
 const ANALYSIS_TIERS = [
   { key: 'overall',     label: '总体情况', order: ['terrain', 'grid'] },
   { key: 'segment',     label: '类型细分', order: ['positive', 'negative', 'neutral'] },
-  { key: 'attribution', label: '多维归因', order: ['factor', 'attribution'] },
 ];
 
 // ── ③ 自动色板（按 analysis + level + 特性）—— 色板随类型自动选定，用户不再手选 ──
@@ -80,8 +73,8 @@ function computeStyle(analysis, level, polarity) {
     tip: '类型细分：消极情绪密度（仅 L2）。', buttons: [{ dim: '2d', label: '生成 2D 消极图' }] };
   if (analysis === 'neutral')  return { ramp: 'neutral',  name: '中性（急→盼）',
     tip: '类型细分：中性情绪密度（仅 L2）。', buttons: [{ dim: '2d', label: '生成 2D 中性图' }] };
-  // factor / attribution：占位
-  return { ramp: null, name: '待开发', dev: true, tip: '多维归因，后续批次开发。', buttons: [] };
+  // 兜底（未知 analysis 防御）
+  return { ramp: null, name: '', tip: '', buttons: [] };
 }
 
 // ── infopanel：analysis-card hover 弹出 Kepler 风格看板（预览图 + 标题 + 描述 + 标签）──
@@ -144,7 +137,7 @@ function hideInfoPanel() { if (_infoPanelEl) _infoPanelEl.classList.remove('is-s
 function renderAnalysisCards(dlg) {
   const wrap = dlg.querySelector('#hm-analysis');
   if (!wrap) return;
-  // 3 排分组（总体情况 / 类型细分 / 多维归因），每排一个标题 + 卡片网格
+  // 2 排分组（总体情况 / 类型细分），每排一个标题 + 卡片网格
   wrap.innerHTML = ANALYSIS_TIERS.map((tier) => {
     const cards = tier.order.map((key) => {
       const p = ANALYSIS_PRESETS[key];
@@ -165,7 +158,7 @@ function renderAnalysisCards(dlg) {
 function selectedAnalysis(dlg) {
   return dlg.querySelector('.hm-analysis-card.is-opt-sel')?.dataset?.analysis || DEFAULT_ANALYSIS;
 }
-/** 当前分析类型所属 tier（overall/segment/attribution） */
+/** 当前分析类型所属 tier（overall/segment） */
 function selectedTier(dlg) {
   const key = selectedAnalysis(dlg);
   return ANALYSIS_PRESETS[key]?.tier || 'overall';
@@ -238,7 +231,7 @@ function typeCountsFor(fc) {
 }
 
 /** 渲染大类胶囊（7 类固定；每个胶囊带 data-tip 供 hover popup 使用）。
- *  禁用条件：非 L2（无情绪字段），或 tier=overall/attribution（总体/归因不涉及类型细分）。 */
+ *  禁用条件：非 L2（无情绪字段），或 tier=overall（总体不涉及类型细分）。 */
 function renderMacroChips(dlg, level) {
   const wrap = dlg.querySelector('#hm-macros');
   if (!wrap) return;
@@ -300,7 +293,7 @@ function renderStylePreview(dlg) {
   const level = dlg.querySelector('#hm-level').value;
   const polarity = dlg.querySelector('#hm-subset').value;
   const st = computeStyle(analysis, level, polarity);
-  // 占位（factor/attribution）
+  // 占位兜底（buttons 为空）
   if (!st.buttons.length) {
     wrap.innerHTML = `<div class="hm-hint">${st.name}（后续批次）</div>`;
     renderGenerateButtons(dlg, st);
@@ -411,7 +404,6 @@ function resolveSource(sources, level, polarity) {
  *   - terrain（总体）：始终综合，不可选
  *   - grid（总体）：L1 综合（不可选）；L2 综合/积极/消极/中性 4 选
  *   - positive/negative/neutral（细分）：锁定 积极/消极/中性
- *   - attribution：综合，不可选
  *   - 非 L2：仅综合 */
 function constrainPolarityOptions(dlg, level, analysis) {
   const sel = dlg.querySelector('#hm-subset');
@@ -425,8 +417,8 @@ function constrainPolarityOptions(dlg, level, analysis) {
   if (analysis === 'positive') locked = 'P';
   else if (analysis === 'negative') locked = 'N';
   else if (analysis === 'neutral') locked = 'O';
-  else if (tier === 'overall' || tier === 'attribution') {
-    // 总体/归因：grid+L2 可 4 选，其余综合不可选
+  else if (tier === 'overall') {
+    // 总体：grid+L2 可 4 选，其余综合不可选
     if (analysis === 'grid' && level === 'L2') { allOn(); sel.disabled = false; if (!['ALL', 'P', 'N', 'O'].includes(sel.value)) sel.value = 'ALL'; return; }
     locked = 'ALL';
   }

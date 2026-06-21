@@ -33,6 +33,8 @@ emotion_map（根）
 │  ├─ 列表视图
 │  ├─ 筛选
 │  └─ 导出
+├─ Toolbox 工具箱 [🔄]
+│  └─ 多维归因分析 ⬜（自 KDE 弹窗①剥离）
 ├─ 图层/设置/Overview [🔄] ── 联动修复 ✅
 ├─ 数据管道 L0→L4 [🔄] ── L1→L2 验证
 ├─ Import 管道 [✅]
@@ -52,6 +54,7 @@ emotion_map（根）
   - 批3 3D 渲染 [⬜]：地形凸凹 + 网格柱体（deck.gl）
   - 批4 时间对比 [⬜]：A/B 双窗（依赖批2）
   - 批5 图层分组 [⬜]：5A 自动归类；5B 自由编组
+  - 结构清理 [✅ 06-21]：多维归因卡片组（factor/attribution）剥离至 Toolbox，①回归 2 排（总体情况 / 类型细分）
   - 待决策：批1预览图；批2粒度；批3地形 vs 柱体
   - 依赖链：批2 转折 → 批3/4；批5 独立
 
@@ -60,6 +63,7 @@ emotion_map（根）
 - **Range 范围分析**：polygon 空间分析扩展（面积/周长/类型已实现，待缓冲区/叠加/行政聚合）
 - **Analysis 情绪分析接入**：L2 管道接前端（`FastAPI api/` 已就绪）；空间分析 MVP（缓冲区+行政聚合，todo L11）
 - **Table 数据表格**：右栏 Table tab（`panel.js` 预留，列表/筛选/导出）
+- **Toolbox · 多维归因分析**：自 KDE 弹窗①剥离的归因卡片组，独立成工具。含情绪因子（4 应用 × 5 因子 = 20 视角）+ 要素归因（按空间要素）。[⬜ 待启动]
 
 **已完成/稳定模块**（✅/🔄）：Import 稳定；图层/设置/Overview 活跃（联动✅）；外壳稳定；数据管道待验证；Scrapy 框架；Harness v2.1。
 
@@ -229,6 +233,7 @@ flowchart TD
 
 | 日期 | commit | 用户意图 → 落地 | 文件 |
 |------|--------|----------------|------|
+| 06-21 | `e5bc20` | 剔除 KDE 弹窗归因卡片组（factor/attribution），改作 Toolbox 独立工具；①回归 2 排，窗口高度收紧（120→80）。加多维归因入口 + 工具栏 i 介绍（独立 .tool-tooltip 隔离 KDE） | `heatmap-tool.js` `dialog.css` `index.html` `sidebar.css` `sidebar.js` |
 | 06-20 | `4454225` | Overview 的"情绪类型"显示的是小类却叫"类型"，术语冲突 → 拆"情绪类型（大类）"+"情绪表现（小类）"两行；持久化 `_ui.macroFilter`，旧图层用 `EMOTION_MACRO_MAP` 反推 | `panel.js` `heatmap-tool.js` |
 | 06-20 | `cec784a` | ① 选 L1 却出现"期待建议"胶囊（L1 无情绪字段）→ L1/L3/L4 不渲染胶囊、显禁用提示；② H 按钮应继承图层参数继续编辑 → `openHeatmapDialog(layerId)` 反推；③ Overview 渐变色带改离散分段（设计语言统一） | `heatmap-tool.js` `settings.js` `dialog.css` |
 | 06-20 | `7332a0d` | ① 色带改 kepler 离散分段条（不要无极渐变、去文字）；② 弹窗加长免滚动；③ L2+中性色板应为蓝系（与急/盼胶囊呼应）；④ 类型/表现默认展开、类型去线框、7 类按喜怒哀乐愁急盼配色（黄绿→深蓝）；⑤ 网格 2D/3D 合并一条；⑥ 选项选中=粗蓝框+浅灰、栏=浅蓝、悬停浅灰；⑦ 取消按钮弱化 | `dialog.css` `heatmap-tool.js` 6×SVG |

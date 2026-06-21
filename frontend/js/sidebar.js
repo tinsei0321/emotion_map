@@ -342,6 +342,43 @@ export function createHeatmap(variant = 'negative') {
   openHeatmapDialog();
 }
 
+// ── 工具栏 i 信息图标 tooltip（独立于 KDE 弹窗内的 #hm-tooltip）──
+// 挂 body、触发 .tool-info[data-tip]，hover 显示应用场景简介；click 不冒泡到 .tool-row。
+let _toolTipInit = false;
+function initToolInfoTooltip() {
+  if (_toolTipInit) return;
+  _toolTipInit = true;
+  const tip = document.createElement('div');
+  tip.className = 'tool-tooltip';
+  document.body.appendChild(tip);
+  const show = (info) => {
+    const text = info.dataset.tip || '';
+    if (!text) return;
+    tip.textContent = text;
+    tip.classList.add('is-show');
+    const r = info.getBoundingClientRect();
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let left = r.left + r.width / 2 - tw / 2;
+    let top = r.top - th - 8;
+    if (top < 8) top = r.bottom + 8;
+    left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+  };
+  const hide = () => tip.classList.remove('is-show');
+  document.addEventListener('mouseover', (e) => {
+    const info = e.target.closest('.tool-info');
+    if (info) show(info);
+  });
+  document.addEventListener('mouseout', (e) => {
+    if (e.target.closest('.tool-info')) hide();
+  });
+  // 点 i 仅看介绍，不触发所在 .tool-row（避免误开工具弹窗）
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.tool-info')) e.stopPropagation();
+  }, true);
+}
+
 export function initSidebar({ onFiles } = {}) {
   _onFiles = onFiles;
 
@@ -371,6 +408,10 @@ export function initSidebar({ onFiles } = {}) {
   document.getElementById('run-governance')?.addEventListener('click', () => log('run-governance'));
   document.getElementById('run-analysis')?.addEventListener('click', () => log('run-analysis'));
   document.getElementById('tool-heatmap')?.addEventListener('click', () => openHeatmapDialog());
+  document.getElementById('tool-attribution')?.addEventListener('click', () => {
+    toast.info('多维归因分析（Toolbox 独立工具，开发中）');
+  });
+  initToolInfoTooltip();
 
   // Import: native file picker (multi). Both the panel button and toolbar route here.
   const input = document.getElementById('import-input');

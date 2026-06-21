@@ -225,6 +225,50 @@
   flex: 1;
   font-weight: var(--geojson-typography-weight-medium);
 }
+/* 工具行尾的 i 信息图标（hover 弹 .tool-tooltip 介绍应用场景）。
+ * 视觉与 KDE 弹窗内 .hm-info 同语言（圆圈 i、hover 变蓝），但独立类、
+ * 独立 tooltip（挂 body），不依赖/不干扰 #heatmap-dialog 内的 #hm-tooltip。 */
+.tool-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  min-width: 15px;
+  border-radius: 50%;
+  border: 1px solid var(--geojson-color-gray-400);
+  font-size: 10px;
+  font-style: italic;
+  font-weight: var(--geojson-typography-weight-bold);
+  color: var(--geojson-color-text-tertiary);
+  flex-shrink: 0;
+  cursor: help;
+  transition: background var(--geojson-transition), color var(--geojson-transition), border-color var(--geojson-transition);
+}
+.tool-info:hover {
+  background: var(--geojson-color-brand-primary);
+  color: #fff;
+  border-color: var(--geojson-color-brand-primary);
+}
+/* tooltip 挂 body、fixed 定位（工具栏非 top-layer，body 上的 fixed 可正常覆盖）。
+ * 配色与 .hm-tooltip 一致：白底 + 深灰小字 + 细边框。 */
+.tool-tooltip {
+  position: fixed;
+  z-index: 10000;
+  max-width: 264px;
+  padding: 7px 9px;
+  background: #ffffff;
+  color: #4b5563;
+  font-size: 10px;
+  line-height: 1.5;
+  border: 1px solid var(--geojson-color-gray-200, #e5e5e5);
+  border-radius: var(--geojson-radius-sm);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--geojson-transition);
+}
+.tool-tooltip.is-show { opacity: 1; }
 
 /* ── Layer manager (Layers section) — geojson.io-style list ── */
 .section-head .layers-clear {
