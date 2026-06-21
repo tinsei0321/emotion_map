@@ -60,8 +60,8 @@ async function runImport(files) {
           if (r && r._crsWarn) { crsAny = true; fc = r.fc; } else fc = r;
 
           const { points, lines, polygons } = splitByGeometry(fc);
-          if (lines.features.length)    { const L = addLayer({ name: base, kind: 'line',    fc: lines });    renderLayer(L); added++; }
-          if (polygons.features.length) { const L = addLayer({ name: base, kind: 'polygon', fc: polygons }); renderLayer(L); added++; }
+          if (lines.features.length)    { const L = addLayer({ name: base, kind: 'line',    fc: lines });    L.srcName = base; renderLayer(L); added++; }
+          if (polygons.features.length) { const L = addLayer({ name: base, kind: 'polygon', fc: polygons }); L.srcName = base; renderLayer(L); added++; }
           if (points.features.length) {
             const { fc: pfc, colorMode, needsAnalysis } = detectColorMode(points);
             if (colorMode === 'polarity') {
@@ -73,14 +73,16 @@ async function runImport(files) {
                 else if (pol === 'Very Negative' || pol === 'Negative') neg.push(f);
                 else neu.push(f);
               }
-              const group = addGroup({ name: `${base} · L2`, fc: pfc });
+              const group = addGroup({ name: 'L2 · 情绪地图 DATA', fc: pfc });
+              group.srcName = base;
               const paint = { opacity: 0.80, radius: 8 };   // 80% opacity + fixed 8px
               const fcOf = (arr) => ({ type: 'FeatureCollection', features: arr });
-              if (pos.length) { const L = addLayer({ name: 'L2-Positive', kind: 'point', parentId: group.id, colorMode: 'l2-positive', fc: fcOf(pos), paint }); renderLayer(L); added++; }
-              if (neu.length) { const L = addLayer({ name: 'L2-Neutral',  kind: 'point', parentId: group.id, colorMode: 'l2-neutral',  fc: fcOf(neu), paint }); renderLayer(L); added++; }
-              if (neg.length) { const L = addLayer({ name: 'L2-Negative', kind: 'point', parentId: group.id, colorMode: 'l2-negative', fc: fcOf(neg), paint }); renderLayer(L); added++; }
+              if (pos.length) { const L = addLayer({ name: `积极 · ${base}`, kind: 'point', parentId: group.id, colorMode: 'l2-positive', fc: fcOf(pos), paint }); L.srcName = base; renderLayer(L); added++; }
+              if (neu.length) { const L = addLayer({ name: `中性 · ${base}`, kind: 'point', parentId: group.id, colorMode: 'l2-neutral',  fc: fcOf(neu), paint }); L.srcName = base; renderLayer(L); added++; }
+              if (neg.length) { const L = addLayer({ name: `消极 · ${base}`, kind: 'point', parentId: group.id, colorMode: 'l2-negative', fc: fcOf(neg), paint }); L.srcName = base; renderLayer(L); added++; }
             } else {
-              const L = addLayer({ name: base, kind: 'point', fc: pfc, needsAnalysis, colorMode });
+              const L = addLayer({ name: colorMode === 'confidence' ? `热度分布 · ${base}` : base, kind: 'point', fc: pfc, needsAnalysis, colorMode });
+              L.srcName = base;
               renderLayer(L); added++;
               if (needsAnalysis) needsAny = true;
             }

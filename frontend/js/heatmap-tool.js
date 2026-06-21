@@ -675,8 +675,10 @@ function generateHeatmap(btn) {
   else typeLabel = `[${selectedTypes.join('/')}]`;
   const radiusLabel = `${radius}m`;
 
+  const tierLabel = (ANALYSIS_TIERS.find((t) => t.order.includes(analysisKey)) || {}).label || '';
+  const analysisLabel = (ANALYSIS_PRESETS[analysisKey] || {}).label || '';
   const layer = addLayer({
-    name: `HeatMap · ${rampName} ${typeLabel} ${radiusLabel}`,
+    name: `${tierLabel} · ${analysisLabel} · [${radiusLabel}]`,
     kind: 'heatmap',
     colorMode: 'heatmap-negative',
     fc,
@@ -693,6 +695,10 @@ function generateHeatmap(btn) {
       },
     },
   });
+  // 数据源头文件名：从 sourceKey（group:Gxxx / layer:Lxxx，可带 #P/#N/#O/#ALL）解析源层
+  const _srcMatch = sourceKey.match(/^(?:group|layer):([^#]+)/);
+  const _srcLayer = _srcMatch ? getLayer(_srcMatch[1]) : null;
+  layer.srcName = _srcLayer ? (_srcLayer.srcName || '') : '';
   setHeatmapForSource(sourceKey, layer.id);
   renderLayer(layer);
 

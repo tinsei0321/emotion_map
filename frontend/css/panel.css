@@ -78,6 +78,7 @@
   color: var(--geojson-color-text-primary);
   word-break: break-all;
 }
+.ov-t1-src { margin-top: 2px; font-size: var(--geojson-typography-size-xs); font-weight: normal; color: var(--geojson-color-text-tertiary); }
 .ov-t1-meta {
   margin-top: 4px;
   font-size: var(--geojson-typography-size-xs);

@@ -43,12 +43,20 @@ function emptyState() {
   </div>`;
 }
 
-/** T1 摘要：文件名+类型 / 图层名 / 数据类型 / 数量或面积 */
+/** T1 摘要：目的(加粗标题) / 数据类型 / 数量；文件名另起一行弱化。
+ *  全局规则：Overview 必带数据源文件名。目的 = name 去掉尾部 ' · {src}'；
+ *  文件名行仅当标题不是裸文件名时显示（L0/边界 name===src 不重复）。 */
 function tier1(layer, lv) {
   const ext = guessExt(layer.name);
   const qty = lv === 'range' ? rangeAreaLabel(layer) : `${layer.fc.features.length} 条`;
+  const name = layer.name || '';
+  const src = layer.srcName || '';
+  let purpose = name;
+  if (src && name.endsWith(' · ' + src)) purpose = name.slice(0, name.length - (' · ' + src).length);
+  const srcLine = (src && purpose !== src) ? `<div class="ov-t1-src">文件名：${src}</div>` : '';
   return `<div class="ov-tier ov-t1">
-    <div class="ov-t1-name" title="${layer.name}">${layer.name}</div>
+    <div class="ov-t1-name" title="${name}">${purpose}</div>
+    ${srcLine}
     <div class="ov-t1-meta">
       <span>${ext || '数据'}</span><i>·</i><span>${LEVEL_NAME[lv] || '—'}</span><i>·</i><span>${qty}</span>
     </div>

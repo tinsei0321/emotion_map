@@ -209,6 +209,11 @@ const NAVY = '#0c1c2e';   // title-bar navy (range outline default)
 const _layers = new Map();   // id -> layer object
 let _seq = 0;
 
+// ── Layer category grouping (render-layer aggregation; UI state only — never stored in _layers) ──
+export const CATEGORY_LABEL = { heatmap: '热力图', l2: 'L2 · 情绪地图 DATA', l1: 'L1 · 城市情绪 DATA', l0: 'L0 · 原始', range: '范围边界', other: '其他' };
+let _groupOrder = ['heatmap', 'l2', 'l1', 'l0', 'range', 'other'];   // 成果在上、原始在下（list-top = map-top）
+const _groupCollapse = new Set();                                    // collapsed category set
+
 // ── L2 palettes (polarity split: Positive green / Negative orange-red / Neutral moody blue) ──
 export const L2_POSITIVE = { 'Very Positive': '#86E61C', 'Positive': '#3DBA9E' };   // 鲜艳荧光绿→蓝绿(teal)
 export const L2_NEGATIVE = { 'Very Negative': '#A3321A', 'Negative': '#E07142' };    // 暗橘红→浅橘红
@@ -594,6 +599,63 @@ export function reorderLayers(fromId, toId) {
   for (const k of order) next.set(k, _layers.get(k));
   _layers.clear();
   for (const [k, v] of next) _layers.set(k, v);
+}
+
+/** Derive a layer's display category (UI grouping only — never stored on the object).
+ *  Mutually exclusive order: heatmap > group/l2-* > confidence > needsAnalysis > polygon|line > other.
+ *  L2 group AND its 3 polarity children all derive 'l2', so the whole block stays contiguous
+ *  through applyGroupOrder (children never separate from their group). */
+export function categoryOf(l) {
+  if (!l) return 'other';
+  if (l.kind === 'heatmap') return 'heatmap';
+  if (l.kind === 'group') return 'l2';
+  if (typeof l.colorMode === 'string' && l.colorMode.indexOf('l2-') === 0) return 'l2';
+  if (l.colorMode === 'confidence') return 'l1';
+  if (l.needsAnalysis || l.colorMode === 'needsAnalysis') return 'l0';
+  if (l.kind === 'polygon' || l.kind === 'line') return 'range';
+  return 'other';
+}
+
+export function getGroupOrder() { return _groupOrder.slice(); }
+export function isCollapsed(cat) { return _groupCollapse.has(cat); }
+export function toggleCollapsed(cat) {
+  if (_groupCollapse.has(cat)) _groupCollapse.delete(cat);
+  else _groupCollapse.add(cat);
+}
+
+/** Normalize _layers order to match _groupOrder (stable within each category; children stay
+ *  attached to their group). Idempotent — returns false when already in order so callers can
+ *  skip the z-sync. Keeps the list-top = map-top invariant once the list is grouped by category. */
+export function applyGroupOrder() {
+  const keys = Array.from(_layers.keys());
+  const desired = [];
+  const used = new Set();
+  for (const cat of _groupOrder) {
+    for (const k of keys) {
+      const l = _layers.get(k);
+      if (l && categoryOf(l) === cat) { desired.push(k); used.add(k); }
+    }
+  }
+  for (const k of keys) if (!used.has(k)) desired.push(k);   // categories missing from _groupOrder
+  const same = desired.length === keys.length && desired.every((k, i) => k === keys[i]);
+  if (same) return false;
+  const nxt = new Map();
+  for (const k of desired) nxt.set(k, _layers.get(k));
+  _layers.clear();
+  for (const [k, v] of nxt) _layers.set(k, v);
+  return true;
+}
+
+/** Inter-category reorder (group-card drag): move fromCat's segment before/after toCat,
+ *  then apply to _layers. */
+export function reorderGroupSegment(fromCat, toCat, before) {
+  if (!fromCat || fromCat === toCat) return;
+  const order = _groupOrder.filter((c) => c !== fromCat);
+  let idx = order.indexOf(toCat);
+  if (idx < 0) idx = order.length;
+  order.splice(before ? idx : idx + 1, 0, fromCat);
+  _groupOrder = order;
+  applyGroupOrder();
 }
 
 /** All features from visible POINT layers — feeds Overview stats / Table. */

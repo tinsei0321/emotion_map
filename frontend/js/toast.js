@@ -25,7 +25,7 @@ function container() {
   return _container;
 }
 
-function show(message, type = 'info', ms = 3200) {
+function show(message, type = 'info', ms = 2000) {
   const el = document.createElement('div');
   el.className = `toast toast-${type}`;
   el.setAttribute('role', type === 'error' ? 'alert' : 'status');
@@ -49,6 +49,6 @@ function show(message, type = 'info', ms = 3200) {
 
 export const toast = {
   success: (m, ms) => show(m, 'success', ms),
-  error:   (m, ms) => show(m, 'error', ms ?? 5000),
+  error:   (m, ms) => show(m, 'error', ms ?? 2000),
   info:    (m, ms) => show(m, 'info', ms),
 };

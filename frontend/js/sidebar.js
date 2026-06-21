@@ -1,6 +1,6 @@
 // ═══ sidebar.js — left panel: collapse/expand, drag, import trigger, layer manager ═══
-import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, layerDisplayColor, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, addLayer, getChildren, CONFIDENCE_RAMP, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HOTNESS_RAMP } from './state.js';
-import { renderLayer, removeLayerFromMap, reorderAllZ } from './map.js';
+import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, layerDisplayColor, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, addLayer, getChildren, categoryOf, CATEGORY_LABEL, applyGroupOrder, reorderGroupSegment, isCollapsed, toggleCollapsed, getGroupOrder, CONFIDENCE_RAMP, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HOTNESS_RAMP } from './state.js';
+import { renderLayer, removeLayerFromMap, reorderAllZ, restackZ } from './map.js';
 import { toast } from './toast.js';
 import { openSettingsPopover, closeSettingsPopover, openSettingsLayerId, isOpen } from './settings.js';
 import { openHeatmapDialog } from './heatmap-tool.js';
@@ -141,7 +141,8 @@ const eyeOff = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
 // drag grip = three horizontal bars (movable hint), revealed on hover/drag
 const GRIP = '<span class="layer-grip" title="拖拽排序"><svg viewBox="0 0 16 16" width="12" height="12"><line x1="3" y1="4" x2="13" y2="4"/><line x1="3" y1="8" x2="13" y2="8"/><line x1="3" y1="12" x2="13" y2="12"/></svg></span>';
 
-let _dragId = null;   // id of the row being dragged
+let _dragId = null;   // id of the layer row being dragged
+let _dragCat = null;  // category of the group card being dragged (inter-category reorder)
 
 /** Level → next-action tag (blue). L0 需治理；L1/L2/range 无标记。 */
 function levelTag(l) {
@@ -157,29 +158,32 @@ function hintChip(l) {
   return `<span class="layer-hint" style="color:${layerDisplayColor(l)}">${text}</span>`;
 }
 
-/** Group header row (draggable + eye to toggle all children; no select/del — those are on children). */
-function groupRowHtml(g, children) {
-  const allVis = children.length > 0 && children.every((c) => c.visible);
-  return `<div class="layer-group" data-id="${g.id}" draggable="true" title="拖拽排序">
+/** Group header row. Real L2 group (virtual=false, eye→toggleGroupEye) or virtual category
+ *  card (virtual=true, eye→toggleCategoryEye). Always draggable (inter-category reorder);
+ *  chev toggles collapse for its category. */
+function groupRowHtml(g, members, cat, collapsed, virtual) {
+  const anyVis = members.length > 0 && members.some((c) => c.visible);
+  const idAttr = g.id ? ` data-id="${g.id}"` : '';
+  const collCls = collapsed ? ' is-collapsed' : '';
+  const eyeAttr = virtual ? `data-category-eye="${cat}"` : `data-group-eye="${g.id}"`;
+  return `<div class="layer-group${collCls}"${idAttr} data-cat="${cat}" draggable="true" title="拖拽排序 / 点击箭头折叠">
     ${GRIP}
-    <button class="layer-eye" data-group-eye="${g.id}" title="${allVis ? '隐藏全部' : '显示全部'}">${allVis ? eyeOpen : eyeOff}</button>
-    <span class="layer-group-chev">&#9662;</span>
+    <button class="layer-eye" ${eyeAttr} title="${anyVis ? '隐藏全部' : '显示全部'}">${anyVis ? eyeOpen : eyeOff}</button>
     <span class="layer-group-name">${g.name}</span>
-    <span class="layer-group-count">${children.length}</span>
+    <span class="layer-group-count">${members.length}</span>
+    <span class="layer-group-chev" data-collapse-cat="${cat}">&#9662;</span>
   </div>`;
 }
 
-/** A single layer row (standalone or indented child). */
-function layerRowHtml(l, openId, selId, isChild) {
+/** A single layer row (standalone or indented child; both draggable within their category). */
+function layerRowHtml(l, openId, selId, isChild, cat) {
   const kindEl = (l.kind === 'point' || l.kind === 'polygon' || l.kind === 'heatmap')
     ? `<button class="layer-kind${openId === l.id ? ' is-active' : ''}" data-feat="${l.id}" title="要素设置">${KIND_LABEL[l.kind]}</button>`
     : `<span class="layer-kind is-disabled" title="线暂未开放设置">${KIND_LABEL[l.kind] || '层'}</span>`;
   const sel = selId === l.id ? ' is-selected' : '';
   const childCls = isChild ? ' is-child' : '';
-  const dragAttr = isChild ? '' : ' draggable="true"';   // children fixed order (P→Neutral→N)
-  const grip = isChild ? '<span class="layer-grip-spacer"></span>' : GRIP;
-  return `<div class="layer-row${sel}${childCls}${l.visible ? '' : ' is-off'}" data-id="${l.id}"${dragAttr}>
-    ${grip}
+  return `<div class="layer-row${sel}${childCls}${l.visible ? '' : ' is-off'}" data-id="${l.id}" data-cat="${cat}" draggable="true">
+    ${GRIP}
     <button class="layer-eye" data-eye="${l.id}" title="${l.visible ? '隐藏' : '显示'}">${l.visible ? eyeOpen : eyeOff}</button>
     ${kindEl}
     ${hintChip(l)}
@@ -189,10 +193,12 @@ function layerRowHtml(l, openId, selId, isChild) {
   </div>`;
 }
 
-/** Re-render the layer list (groups + nested children + standalone layers). */
+/** Re-render the layer list, aggregated into category group cards (render-layer aggregation:
+ *  _layers structure untouched; grouping is a UI projection in _groupOrder order). */
 export function renderLayerList() {
   const list = document.getElementById('layer-list');
   if (!list) return;
+  if (applyGroupOrder()) restackZ();   // keep _layers order == visual == z-order (covers heatmap-gen path)
   const all = getLayers();
   if (!all.length) { list.innerHTML = '<div class="layer-empty">尚未导入数据</div>'; return; }
   const openId = openSettingsLayerId();
@@ -200,25 +206,50 @@ export function renderLayerList() {
   const byId = new Map(all.map((l) => [l.id, l]));
   const top = all.filter((l) => !l.parentId);   // groups + standalone layers
 
-  let html = '';
+  // bucket top-level items by category (preserve _layers order within each bucket)
+  const buckets = new Map();
   for (const l of top) {
-    if (l.kind === 'group') {
-      const kids = (l.children || []).map((cid) => byId.get(cid)).filter(Boolean);
-      html += groupRowHtml(l, kids);
-      for (const c of kids) html += layerRowHtml(c, openId, selId, true);
+    const cat = categoryOf(l);
+    if (!buckets.has(cat)) buckets.set(cat, []);
+    buckets.get(cat).push(l);
+  }
+
+  let html = '';
+  for (const cat of getGroupOrder()) {
+    const items = buckets.get(cat);
+    if (!items || !items.length) continue;
+    const collapsed = isCollapsed(cat);
+    if (cat === 'l2') {
+      // real L2 groups first (own cards + children); any stray standalone l2 → one virtual card
+      const groups = items.filter((g) => g.kind === 'group');
+      const stray = items.filter((g) => g.kind !== 'group');
+      for (const g of groups) {
+        const kids = (g.children || []).map((cid) => byId.get(cid)).filter(Boolean);
+        html += groupRowHtml(g, kids, cat, collapsed, false);
+        if (!collapsed) for (const c of kids) html += layerRowHtml(c, openId, selId, true, cat);
+      }
+      if (stray.length) {
+        html += groupRowHtml({ id: null, name: CATEGORY_LABEL[cat] }, stray, cat, collapsed, true);
+        if (!collapsed) for (const l of stray) html += layerRowHtml(l, openId, selId, false, cat);
+      }
     } else {
-      html += layerRowHtml(l, openId, selId, false);
+      html += groupRowHtml({ id: null, name: CATEGORY_LABEL[cat] }, items, cat, collapsed, true);
+      if (!collapsed) for (const l of items) html += layerRowHtml(l, openId, selId, false, cat);
     }
   }
   list.innerHTML = html;
 
-  // wire button events (eye / del / feat)
+  // wire button events (eye / del / feat / group-eye / category-eye / collapse)
   list.querySelectorAll('[data-eye]').forEach((b) =>
     b.addEventListener('click', (e) => { e.stopPropagation(); toggleEye(b.dataset.eye); }));
   list.querySelectorAll('[data-del]').forEach((b) =>
     b.addEventListener('click', (e) => { e.stopPropagation(); deleteLayer(b.dataset.del); }));
   list.querySelectorAll('[data-group-eye]').forEach((b) =>
     b.addEventListener('click', (e) => { e.stopPropagation(); toggleGroupEye(b.dataset.groupEye); }));
+  list.querySelectorAll('[data-category-eye]').forEach((b) =>
+    b.addEventListener('click', (e) => { e.stopPropagation(); toggleCategoryEye(b.dataset.categoryEye); }));
+  list.querySelectorAll('[data-collapse-cat]').forEach((b) =>
+    b.addEventListener('click', (e) => { e.stopPropagation(); toggleCollapsed(b.dataset.collapseCat); renderLayerList(); }));
   list.querySelectorAll('[data-feat]').forEach((b) =>
     b.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -236,45 +267,77 @@ export function renderLayerList() {
       renderLayerList();
     }));
 
-  // row click → select (rows + L2 groups — both open Overview)
+  // row click → select (only layer rows open Overview; group cards are collapse-only)
   list.querySelectorAll('.layer-row').forEach((row) =>
     row.addEventListener('click', () => selectLayerRow(row.dataset.id)));
+  // group card double-click → toggle collapse (single-click is a no-op; chev has its own click)
   list.querySelectorAll('.layer-group').forEach((grp) =>
-    grp.addEventListener('click', () => selectLayerRow(grp.dataset.id)));
+    grp.addEventListener('dblclick', (e) => {
+      if (e.target.closest('.layer-eye, .layer-group-chev')) return;   // those have own handlers
+      const cat = grp.dataset.cat;
+      if (!cat) return;
+      toggleCollapsed(cat);
+      renderLayerList();
+    }));
 
-  // drag → reorder z-order (bind to ALL draggable: top-level rows + L2 groups; children excluded)
+  // drag → reorder (dual flavor: group-card = inter-category; layer-row = within-category)
   list.querySelectorAll('[draggable]').forEach((el) => {
     el.addEventListener('dragstart', (e) => {
-      _dragId = el.dataset.id;
+      if (el.classList.contains('layer-group')) { _dragCat = el.dataset.cat; _dragId = null; }
+      else { _dragId = el.dataset.id; _dragCat = null; }
       el.classList.add('is-dragging');
       e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', _dragId);
+      e.dataTransfer.setData('text/plain', _dragId || _dragCat);
     });
-    el.addEventListener('dragend', () => { el.classList.remove('is-dragging'); clearDropHints(); });
+    el.addEventListener('dragend', () => { el.classList.remove('is-dragging'); clearDropHints(); _dragId = null; _dragCat = null; });
     el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('is-drop-over'); });
     el.addEventListener('dragleave', () => el.classList.remove('is-drop-over'));
     el.addEventListener('drop', (e) => {
       e.preventDefault(); e.stopPropagation();
-      const targetId = el.dataset.id;
-      if (_dragId && _dragId !== targetId) {
+      const tIsGroup = el.classList.contains('layer-group');
+      const tCat = el.dataset.cat;
+      const tId = el.dataset.id;
+      let moved = false;
+      if (_dragCat && tIsGroup && _dragCat !== tCat) {
+        // group-card drag → reorder whole category segment before/after target category
         const rect = el.getBoundingClientRect();
-        const after = (e.clientY - rect.top) > rect.height / 2;
-        const ls = getLayers();
-        const idx = ls.findIndex((x) => x.id === targetId);
-        const toId = after ? (ls[idx + 1] ? ls[idx + 1].id : null) : targetId;
-        reorderLayers(_dragId, toId);
+        const before = (e.clientY - rect.top) <= rect.height / 2;
+        reorderGroupSegment(_dragCat, tCat, before);
         reorderAllZ();
+        moved = true;
+      } else if (_dragId && !tIsGroup && _dragId !== tId) {
+        // layer drag → within same category only (cross-category move deferred)
+        const src = getLayer(_dragId);
+        if (src && categoryOf(src) === tCat) {
+          const rect = el.getBoundingClientRect();
+          const after = (e.clientY - rect.top) > rect.height / 2;
+          const ls = getLayers();
+          const idx = ls.findIndex((x) => x.id === tId);
+          const toId = after ? (ls[idx + 1] ? ls[idx + 1].id : null) : tId;
+          reorderLayers(_dragId, toId);
+          reorderAllZ();
+          moved = true;
+        }
       }
-      _dragId = null;
+      _dragId = null; _dragCat = null;
       clearDropHints();
       renderLayerList();
-      toast.info('图层顺序已更新');
+      if (moved) toast.info('图层顺序已更新');
     });
   });
+
+  // refresh the Layers header eye (aggregate visibility across all layers)
+  const _hdr = document.getElementById('layers-toggle-all');
+  if (_hdr) {
+    const _renderable = getLayers().filter((l) => l.kind !== 'group');
+    const _anyVis = _renderable.length > 0 && _renderable.some((l) => l.visible);
+    _hdr.innerHTML = _anyVis ? eyeOpen : eyeOff;
+    _hdr.title = _anyVis ? '隐藏全部图层' : '显示全部图层';
+  }
 }
 
 function clearDropHints() {
-  document.querySelectorAll('.layer-row.is-drop-over').forEach((r) => r.classList.remove('is-drop-over'));
+  document.querySelectorAll('.layer-row.is-drop-over, .layer-group.is-drop-over').forEach((r) => r.classList.remove('is-drop-over'));
 }
 
 /** Select a layer row → highlight + tell main.js to open the right panel + Overview. */
@@ -301,7 +364,7 @@ function toggleEye(id) {
 function toggleGroupEye(groupId) {
   const children = getLayers().filter((l) => l.parentId === groupId);
   if (!children.length) return;
-  const showAll = !children.every((c) => c.visible);
+  const showAll = !children.some((c) => c.visible);
   for (const c of children) {
     setLayerVisible(c.id, showAll);
     renderLayer(c);
@@ -310,6 +373,37 @@ function toggleGroupEye(groupId) {
   refreshLegend();
   document.dispatchEvent(new CustomEvent('layers:changed'));   // 组显隐 → popup/Overview 同步
   toast.info(`${showAll ? '显示' : '隐藏'}全部子图层`);
+}
+
+/** Virtual category eye: toggle every layer in the category at once
+ *  (any hidden → show all; all visible → hide all). */
+function toggleCategoryEye(cat) {
+  const members = getLayers().filter((l) => categoryOf(l) === cat);
+  if (!members.length) return;
+  const showAll = !members.some((c) => c.visible);
+  for (const l of members) {
+    setLayerVisible(l.id, showAll);
+    renderLayer(l);
+  }
+  renderLayerList();
+  refreshLegend();
+  document.dispatchEvent(new CustomEvent('layers:changed'));   // 组显隐 → popup/Overview 同步
+  toast.info(`${showAll ? '显示' : '隐藏'}${CATEGORY_LABEL[cat] || ''}分组`);
+}
+
+/** Layers header eye: toggle ALL layers at once (any hidden → show all; all visible → hide all). */
+function toggleAllLayers() {
+  const layers = getLayers().filter((l) => l.kind !== 'group');
+  if (!layers.length) return;
+  const showAll = !layers.some((l) => l.visible);
+  for (const l of layers) {
+    setLayerVisible(l.id, showAll);
+    renderLayer(l);
+  }
+  renderLayerList();
+  refreshLegend();
+  document.dispatchEvent(new CustomEvent('layers:changed'));   // 显隐 → popup/Overview 同步
+  toast.info(`${showAll ? '显示' : '隐藏'}全部图层`);
 }
 
 function deleteLayer(id) {
@@ -398,6 +492,9 @@ export function initSidebar({ onFiles } = {}) {
     document.dispatchEvent(new CustomEvent('layers:changed'));
     toast.success('已清空全部图层');
   });
+
+  // header eye: toggle visibility of ALL layers at once
+  document.getElementById('layers-toggle-all')?.addEventListener('click', toggleAllLayers);
 
   // popover closed via outside-click/Escape → clear the kind marker's active state
   document.addEventListener('layer-settings:closed', renderLayerList);
