@@ -319,7 +319,7 @@ function addHeatmapPaint(layer, sid, lid) {
  *  Modes: linear|exponential × normal|inverse. "inverse" = lower value → higher weight. */
 function buildWeightExpression(field, curve) {
   if (field === 'uniform') return 1;
-  const get = ['coalesce', ['get', field], 0.3];
+  const get = ['coalesce', ['to-number', ['get', field]], 0.3];
   const inverse = curve.endsWith('-inverse');
   const mode = inverse ? curve.replace('-inverse', '') : curve;
 

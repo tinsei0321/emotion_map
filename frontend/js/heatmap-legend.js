@@ -1,7 +1,7 @@
 // ═══ heatmap-legend.js — 右下图例：随选中热力图层显隐 + 离散分段色带 ═══
 // 与极性/置信度/范围图例同处 #legend-stack（右下），保持设计语言统一。
 // 监听 layer:selected / layers:changed，自包含；main.js 只需 initHeatmapLegend()。
-import { getLayer, HEATMAP_RAMPS } from './state.js';
+import { getLayer, HEATMAP_RAMPS, rampDisplaySegs } from './state.js';
 
 const OVERALL_RAMPS = ['rainbow', 'terrain-9', 'grid-warm', 'green-3', 'red-3', 'blue-3', 'diverging-rg'];
 
@@ -18,12 +18,14 @@ export function refreshHeatmapLegend(layer) {
   const rampKey = (layer.paint && layer.paint.rampKey) || null;
   const ramp = rampKey ? HEATMAP_RAMPS[rampKey] : null;
   if (!ramp) { box.hidden = true; return; }
-  const segs = ramp.stops.filter(([d]) => d > 0).map(([, c]) => c);
+  const segs = rampDisplaySegs(rampKey, ramp);
   const re = rampEl();
   if (re) re.innerHTML = segs.map((c) => `<span class="legend-heat-seg" style="background:${c}"></span>`).join('');
+  // 类型细分色带显示已反转（rampDisplaySegs 高→低），标注随之反转：左=密集(强情绪·热核) / 右=稀疏(弱)
   const overall = OVERALL_RAMPS.includes(rampKey);
-  if (loEl()) loEl().textContent = overall ? '洼地/稀疏' : '稀疏';
-  if (hiEl()) hiEl().textContent = overall ? '高地/密集' : '密集';
+  const segment = ['positive', 'negative', 'neutral'].includes(rampKey);
+  if (loEl()) loEl().textContent = overall ? '洼地/稀疏' : (segment ? '密集' : '稀疏');
+  if (hiEl()) hiEl().textContent = overall ? '高地/密集' : (segment ? '稀疏' : '密集');
   box.hidden = false;
 }
 

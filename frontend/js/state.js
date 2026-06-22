@@ -257,12 +257,13 @@ export function gradientStops(colors, n) {
 export const MACRO_COLORS = ['#43C063', '#F5A623', '#E53935', '#C2185B', '#8E44AD', '#1A3A8C', '#4FC3F7'];
 
 export const HEATMAP_RAMPS = {
-  // 类型细分色板：胶囊色渐变 7 段。高密度(高值) = 高值色（在 density 高端）：
-  //   积极：喜(绿)高 / 乐(橙)低；消极：怒(红)高 / 哀(紫红)中 / 愁(紫)低；中性：急(深蓝)高 / 盼(天蓝)低。
-  //   端点顺序 = [低值色 ... 高值色]（gradientStops 从低 density 到高 density）。
-  positive: { name: '积极', stops: gradientStops(['#F5A623', '#43C063'], 7) },              // 乐橙(低) → 喜绿(高)
-  negative: { name: '消极', stops: gradientStops(['#8E44AD', '#C2185B', '#E53935'], 7) },    // 愁紫(低) → 哀紫红(中) → 怒红(高)
-  neutral:  { name: '中性', stops: gradientStops(['#4FC3F7', '#1A3A8C'], 7) },               // 盼天蓝(低) → 急深蓝(高)
+  // 类型细分色板：density 弱→强（stops 低→高），高值=热核=该极性最强情绪（不可变约束）。
+  //   积极：乐(橙)弱 → 喜(绿)强；消极：愁(紫)弱 → 哀(紫红)中 → 怒(红)强；中性：盼(天蓝)弱 → 急(深蓝)强。
+  //   色带"显示"由 rampDisplaySegs() 对类型细分反转（高→低，对齐 EMOTION_MACRO_ORDER 胶囊序）；
+  //   地图 paint（map.js heatmap-color）用本 stops 原序（density 0→1=弱→强，热核=强情绪）——数据轴与显示轴分离。
+  positive: { name: '积极', stops: gradientStops(['#F5A623', '#43C063'], 7) },              // 乐橙(弱/低) → 喜绿(强/高·热核)
+  negative: { name: '消极', stops: gradientStops(['#8E44AD', '#C2185B', '#E53935'], 7) },    // 愁紫(弱) → 哀紫红(中) → 怒红(强/高·热核)
+  neutral:  { name: '中性', stops: gradientStops(['#4FC3F7', '#1A3A8C'], 7) },               // 盼天蓝(弱/低) → 急深蓝(强/高·热核)
   anxiety: {
     name: '焦虑紫',
     stops: [
@@ -372,17 +373,28 @@ export const HEATMAP_RAMPS = {
 // sorted keys for UI iteration（类型细分渐变 + 总体情况红蓝绿地形 + 网格 3 段）
 export const HEATMAP_RAMP_KEYS = ['rainbow', 'positive', 'negative', 'neutral', 'anxiety', 'mono', 'diverging-rg', 'grid-warm', 'classify-7', 'terrain-9', 'green-3', 'red-3', 'blue-3'];
 
-// ── Emotion type palette — 论文双层体系（微观具体情绪，7 类，每类对齐治理动作）──
-// 类型与 SCRIPT/emotion_lexicon.py EMOTION_LEXICON 保持一致。
-// 治理动作映射供未来"点格网看建议"用。
+/** 色带"显示用"离散色块（供弹窗③ / 图例 / Overview 的分段条渲染）。
+ *  类型细分(positive/negative/neutral) → 反转：density 高→低显示（左端=强情绪=热核，对齐 EMOTION_MACRO_ORDER 胶囊序）。
+ *  其他 density 色板 → 原序：低→高（总体情况有地形/彩虹语义，不反）。
+ *  地图 paint（map.js heatmap-color）直接用 ramp.stops 原序（density 0→1=弱→强，热核=强情绪），与此显示方向无关——数据轴与显示轴分离。 */
+export function rampDisplaySegs(rampKey, ramp) {
+  if (!ramp || !ramp.stops) return ['#ccc'];
+  const segs = ramp.stops.filter(([d]) => d > 0).map(([, c]) => c);
+  return ['positive', 'negative', 'neutral'].includes(rampKey) ? segs.reverse() : segs;
+}
+
+// ── Emotion type palette — 小类色 = 所属大类色系派生 ──
+// 单小类大类：小类色 = 大类色（见 EMOTION_MACRO）；愁类 2 小类（焦虑担忧/不满抱怨）用紫色系明度梯度区分。
+// 改大类色（EMOTION_MACRO / MACRO_COLORS）须同步此处，保证小类归属大类色系。
+// 治理动作映射（EMOTION_TYPE_ACTION）与 SCRIPT/emotion_lexicon.py EMOTION_LEXICON 保持一致。
 export const EMOTION_TYPE_COLORS = {
-  '不满抱怨': '#E07142',   // 设施/服务整改（脏乱/老旧/同质化）
-  '焦虑担忧': '#9B59B6',   // 安全/出行治理（拥堵/停车/租房）
-  '失望厌恶': '#7F8C8D',   // 环境整治（扰民/噪音/水臭）
-  '愤怒': '#C0392B',       // 紧急响应（事故类极端负面）
-  '期待建议': '#3498DB',   // 献策纳规（诉求类）
-  '喜悦满意': '#2ECC71',   // 标杆保护（太阳/花朵/美食）
-  '怀旧认同': '#F39C12',   // 文化传承（武侯祠/历史文化）
+  '不满抱怨': '#7D3C98',   // 愁·深紫（大类 #8E44AD 加深）—— 设施/服务整改
+  '焦虑担忧': '#A569BD',   // 愁·中紫（大类 #8E44AD 提浅）—— 安全/出行治理
+  '失望厌恶': '#C2185B',   // = 哀·紫红 —— 环境整治
+  '愤怒': '#E53935',       // = 怒·红 —— 紧急响应
+  '期待建议': '#4FC3F7',   // = 盼·天蓝 —— 献策纳规
+  '喜悦满意': '#43C063',   // = 喜·绿 —— 标杆保护
+  '怀旧认同': '#F5A623',   // = 乐·橙 —— 文化传承
 };
 export const EMOTION_TYPE_ORDER = ['不满抱怨', '焦虑担忧', '失望厌恶', '愤怒', '期待建议', '喜悦满意', '怀旧认同'];
 export const EMOTION_TYPE_ACTION = {

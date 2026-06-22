@@ -38,6 +38,26 @@ def _inject_versions(html, basedir):
     return _LOCAL_REF.sub(repl, html)
 
 
+# ES module import/export 的相对 .js 引用 → 注入 ?v=<目标 mtime>。
+# 破除 Chrome module graph 缓存：子 module（如 heatmap-tool.js）改动后 URL 随之变化，
+# 浏览器必然拉新——否则 main.js ?v 不变时 Chrome 复用整个 module graph，子 module 缓存旧版
+# （实测：改 heatmap-tool.js 后 F5 仍跑旧版，根因即此）。
+_JS_IMPORT = re.compile(r'''(['"])(\.{1,2}/[^'"]+?\.js)(?:\?[^'"]*)?(['"])''')
+
+
+def _inject_import_versions(content, basedir):
+    """把 JS 里 import/export 的相对 .js 路径加上 ?v=<目标 mtime>。"""
+    def repl(m):
+        q1, ref, q2 = m.group(1), m.group(2), m.group(3)
+        full = os.path.normpath(os.path.join(basedir, ref))
+        try:
+            v = int(os.path.getmtime(full))
+        except OSError:
+            v = 0
+        return f'{q1}{ref}?v={v}{q2}'
+    return _JS_IMPORT.sub(repl, content)
+
+
 class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
     """对每个响应强制 no-store，并对 index.html 注入 ?v 绕缓存。"""
 
@@ -60,6 +80,22 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
                 body = html.encode('utf-8')
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/html; charset=utf-8')
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
+        # 拦截 .js：把 import/export 的相对 .js 引用注入 ?v=<目标 mtime>，
+        # 破除 Chrome module graph 缓存（否则 main.js ?v 不变时子 module 缓存旧版）
+        if norm.endswith('.js'):
+            fs = self.translate_path(norm)
+            if os.path.isfile(fs):
+                basedir = os.path.dirname(fs)
+                with open(fs, 'rb') as f:
+                    content = f.read().decode('utf-8')
+                content = _inject_import_versions(content, basedir)
+                body = content.encode('utf-8')
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/javascript; charset=utf-8')
                 self.send_header('Content-Length', str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)

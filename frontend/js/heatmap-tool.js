@@ -2,7 +2,7 @@
 // v3 (2026-06-19): kepler 配色语言；7 大类喜怒哀乐愁急盼；样式按 ①+② 联动；analysis-card hover infopanel
 import {
   getLayers, getChildren, addLayer, removeLayer, getLayer, setLayerVisible, selectLayer,
-  HEATMAP_RAMPS, HEATMAP_RAMP_KEYS,
+  HEATMAP_RAMPS, HEATMAP_RAMP_KEYS, rampDisplaySegs,
   EMOTION_TYPE_COLORS, EMOTION_TYPE_ORDER,
   EMOTION_MACRO, EMOTION_MACRO_ORDER, EMOTION_MACRO_MAP, macroOfPolarity,
   getHeatmapForSource, setHeatmapForSource, removeHeatmapSource,
@@ -300,7 +300,7 @@ function renderStylePreview(dlg) {
     return;
   }
   const ramp = st.ramp ? HEATMAP_RAMPS[st.ramp] : null;
-  const segs = ramp ? ramp.stops.filter(([d]) => d > 0).map(([, c]) => c) : ['#ccc'];
+  const segs = ramp ? rampDisplaySegs(st.ramp, ramp) : ['#ccc'];
   const segHtml = segs.map((c) => `<span class="hm-style-seg" style="background:${c}"></span>`).join('');
   // i：名称 + tip + 开发说明（待开发/未来开发 一律进 i）
   const tip = `${st.name}。${st.tip}${st.dev ? '（3D 渲染待后续批次接入）' : ''}`.replace(/"/g, '&quot;');
@@ -536,8 +536,11 @@ export function openHeatmapDialog(layerId) {
   if (radiusVal) radiusVal.textContent = `${autoRadius} m`;
   dlg.dataset.unit = 'm';
 
-  dlg.querySelector('#hm-opacity').value = sp.opacity ?? DEFAULTS.opacity;
-  dlg.querySelector('#hm-opacity-val').textContent = `${Math.round((sp.opacity ?? DEFAULTS.opacity) * 100)}%`;
+  // opacity：sp.opacity 是 0~1 比例（paint 存储），DEFAULTS.opacity 是百分比；控件用百分比 → 统一换算。
+  // （曾因混用致 H 重生成 opacity=0.7→clamp 1→0.01 几乎透明 = 热力图"消失"）
+  const _opPct = (sp.opacity != null) ? Math.round(sp.opacity * 100) : DEFAULTS.opacity;
+  dlg.querySelector('#hm-opacity').value = _opPct;
+  dlg.querySelector('#hm-opacity-val').textContent = `${_opPct}%`;
   dlg.querySelector('#hm-weight-field').value = sp.weightField ?? DEFAULTS.weightField;
   dlg.querySelector('#hm-intensity').value = sp.intensity ?? DEFAULTS.intensity;
   dlg.querySelector('#hm-intensity-val').textContent = (sp.intensity ?? DEFAULTS.intensity).toFixed(1);
@@ -662,9 +665,7 @@ function generateHeatmap(btn) {
     return;
   }
 
-  const oldId = getHeatmapForSource(sourceKey);
-  if (oldId) { removeLayerFromMap(oldId); removeLayer(oldId); removeHeatmapSource(sourceKey); }
-
+  // ── 公共参数（编辑分支 + 首次生成都用）──
   const ramp = HEATMAP_RAMPS[rampKey];
   const rampName = ramp ? ramp.name : '自定义';
   // 类型标签：null（L1 无字段）→ [全数据]；全选 → [全类型]；否则列出选中小类
@@ -674,9 +675,51 @@ function generateHeatmap(btn) {
   else if (selectedTypes.length === allTypes.length && allTypes.length > 0) typeLabel = '[全类型]';
   else typeLabel = `[${selectedTypes.join('/')}]`;
   const radiusLabel = `${radius}m`;
-
   const tierLabel = (ANALYSIS_TIERS.find((t) => t.order.includes(analysisKey)) || {}).label || '';
   const analysisLabel = (ANALYSIS_PRESETS[analysisKey] || {}).label || '';
+  // 数据源头文件名：从 sourceKey（group:Gxxx / layer:Lxxx，可带 #P/#N/#O/#ALL）解析源层
+  const _srcMatch = sourceKey.match(/^(?:group|layer):([^#]+)/);
+  const _srcLayer = _srcMatch ? getLayer(_srcMatch[1]) : null;
+  const srcName = _srcLayer ? (_srcLayer.srcName || '') : '';
+
+  // ── H「继续编辑」语义：H 按钮打开（editLayerId 存在）→ 原地更新该层，不删旧新建 ──
+  // 幂等：原样重生成 = 刷新自己（layer id 稳定，侧栏眼睛始终有效，不消失）。
+  //   违背此语义（曾走"删旧新建"）导致 H 重生成后热力图消失且眼睛救不回（revision-log 4.6）。
+  const editLayerId = dlg.dataset.editLayerId;
+  const editingLayer = editLayerId ? getLayer(editLayerId) : null;
+  if (editingLayer && editingLayer.kind === 'heatmap') {
+    const _oldSourceKey = editingLayer.sourceKey;
+    editingLayer.paint = {
+      ...editingLayer.paint,
+      unit: 'm', radius, opacity, intensity, weightField, weightCurve, rampKey,
+      typesFilter: selectedTypes, intensityMin,
+      minzoom: minzoom > 0 ? minzoom : undefined,
+      maxzoom: maxzoom < 22 ? maxzoom : undefined,
+      _ui: {
+        analysisKey, dim, level, polarity, rampKey,
+        macroFilter: [...dlg.querySelectorAll('.hm-macro-chip.is-on')].map((el) => el.dataset.macro),
+      },
+    };
+    editingLayer.fc = fc;
+    editingLayer.name = `${tierLabel} · ${analysisLabel} · [${radiusLabel}]`;
+    editingLayer.srcName = srcName;
+    editingLayer.sourceKey = sourceKey;
+    // sourceKey 变（用户改极性/数据级）→ 清旧映新；不变 → 覆盖写回（幂等）
+    if (_oldSourceKey && _oldSourceKey !== sourceKey) removeHeatmapSource(_oldSourceKey);
+    setHeatmapForSource(sourceKey, editLayerId);
+    renderLayer(editingLayer);
+    selectLayer(editLayerId);
+    document.dispatchEvent(new CustomEvent('layers:changed'));
+    document.dispatchEvent(new CustomEvent('layer:selected', { detail: editLayerId }));
+    toast.success(`已更新热力图：${rampName} · ${radiusLabel} · ${fc.features.length} 点`);
+    closeDialog();
+    return;
+  }
+
+  // ── 首次生成：删同 sourceKey 旧图 + 新建 ──
+  const oldId = getHeatmapForSource(sourceKey);
+  if (oldId) { removeLayerFromMap(oldId); removeLayer(oldId); removeHeatmapSource(sourceKey); }
+
   const layer = addLayer({
     name: `${tierLabel} · ${analysisLabel} · [${radiusLabel}]`,
     kind: 'heatmap',
@@ -695,10 +738,8 @@ function generateHeatmap(btn) {
       },
     },
   });
-  // 数据源头文件名：从 sourceKey（group:Gxxx / layer:Lxxx，可带 #P/#N/#O/#ALL）解析源层
-  const _srcMatch = sourceKey.match(/^(?:group|layer):([^#]+)/);
-  const _srcLayer = _srcMatch ? getLayer(_srcMatch[1]) : null;
-  layer.srcName = _srcLayer ? (_srcLayer.srcName || '') : '';
+  layer.srcName = srcName;
+  layer.sourceKey = sourceKey;   // 持久化供 H 编辑分支同步 sourceKey 映射
   setHeatmapForSource(sourceKey, layer.id);
   renderLayer(layer);
 

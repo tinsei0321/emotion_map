@@ -5,6 +5,85 @@
 
 ---
 
+## 📅 2026-06-22（周一）
+
+### ☑ TODO List
+
+| # | 状态 | 任务 | 涉及文件 | 备注 |
+|---|------|------|----------|------|
+| 1 | ✅ | 批1·1b 小类配色按大类派生 | `frontend/js/state.js` | `EMOTION_TYPE_COLORS` 7 色派生自 `EMOTION_MACRO`；愁类 2 小类紫色系明度梯度 |
+| 2 | ✅ | 类型细分色板方向翻转对齐胶囊顺序 | `frontend/js/state.js` | `positive/negative/neutral` 三 ramp 端点反转，对齐 `EMOTION_MACRO_ORDER`；放弃"高密度=最强情绪"旧语义 |
+| 3 | ✅ | 补 todo.md 06-19~06-21 断档 | `docs/todo.md` | 核密度弹窗重构 7 项 + 开发日志（交接卡遗留） |
+
+> 💡 标准启动指令：`py frontend/serve.py 8080` → `http://127.0.0.1:8080/frontend/index.html`
+
+### 📝 开发日志
+
+**关键字**：小类配色派生, 色板方向翻转, EMOTION_MACRO_ORDER 对齐, density 语义放弃
+
+#### 做了什么
+- **批1·1b 小类配色按大类派生**：小类独立色板（`EMOTION_TYPE_COLORS`）与大类色板（`MACRO_COLORS`/`EMOTION_MACRO`）冲突——"不满抱怨"=橙却属大类"愁"=紫。改为派生：单小类=大类色，愁类 2 小类（焦虑担忧/不满抱怨）用紫色系明度梯度（中紫 `#A569BD` / 深紫 `#7D3C98`）。调用点不动（`heatmap-tool.js:274` `EMOTION_TYPE_COLORS[t]` 值变即生效）。
+- **类型细分色板方向翻转**：`positive/negative/neutral` 三 ramp 端点顺序与胶囊 `EMOTION_MACRO_ORDER` 反向（积极胶囊 喜→乐，色板却 乐→喜）。反转三 ramp 端点对齐胶囊顺序（积极 喜→乐、消极 怒→哀→愁、中性 急→盼）。放弃"高密度=最强情绪"旧语义——色板是单维 density 渐变，颜色仅借大类色做视觉编码，无真实"密度段=情绪"含义。消费方（图例 / Overview / 设置 / 地图 paint）单源自动跟。
+- **补 todo.md 06-19~06-21 断档**：核密度弹窗重构 7 项 + 开发日志（交接卡遗留项）。
+
+#### 踩坑 & 收获
+- **色板方向 vs 胶囊顺序**：色板设计遵循 density 语义（左低右高），胶囊遵循情绪分类顺序（`EMOTION_MACRO_ORDER`），两者语义轴不同向导致全局反向。统一为胶囊顺序（视觉一致优先于牵强的 density-情绪绑定语义）。
+- **小类派生 vs 直接读大类色**：愁类 2 小类若直接读大类色会撞色（焦虑担忧=不满抱怨=愁紫），保留小科级 + 值派生自大类色系，兼顾统一与区分。
+
+#### 验证
+- `node --check frontend/js/state.js` 语法通过。
+- 起页肉眼验（`py frontend/serve.py 8080`）：核密度弹窗 ①选「类型细分」→ ②小类胶囊色对齐大类色系 → ③色板分段条方向对齐胶囊顺序。未上 Playwright（配色/方向小改）。
+
+#### 🔜 次日计划
+- 批1·1a 预览图换 terrain/factor Kepler 截图（等素材补齐，⏸ 搁置）。
+- 任务树下一模块（Range 范围分析 / Analysis 接入 / Table 表格）。
+
+---
+
+## 📅 2026-06-19~06-21（周五~周日）
+
+### ☑ TODO List
+
+| # | 状态 | 任务 | 涉及文件 | 备注 |
+|---|------|------|----------|------|
+| 1 | ✅ | 核密度弹窗三阶引导重构 | `frontend/js/heatmap-tool.js` `frontend/css/dialog.css` | ①分析类型(总体/类型细分/多维归因) ②数据源 ③显示样式；①三组纵向排版 |
+| 2 | ✅ | kepler 离散分段色板 + 栏/选项/胶囊三组件 token | `frontend/js/state.js` `design/tokens.json` `frontend/css/dialog.css` | 全站色带统一 `.segmented`，取代无极渐变 |
+| 3 | ✅ | L1 热度值 | `frontend/js/heatmap-tool.js` | 强度×置信度，3 段动态分位 |
+| 4 | ✅ | 7 大类配色 + 类型细分色板方向修复 | `frontend/js/state.js` | `MACRO_COLORS` 单一调色源(UberPool 6+1)；端点顺序低→高 |
+| 5 | ✅ | 联动（Overview/popup/图例） | `frontend/js/sidebar.js` `frontend/js/popup.js` `legend` | `layers:changed` 事件三处同步 |
+| 6 | ✅ | serve.py 自动 ?v 注入 + 启动清端口 | `frontend/serve.py` | `?v=<mtime>` 改文件即拉新，零手动 bump |
+| 7 | ✅ | revision-log 任务树 + 工作机制 memory | `docs/revision-log.md` `~/.claude/` | 模块化任务树；session-handoff/token-saving/revision-log/kde-loadbearing |
+
+> 💡 标准启动指令：`py frontend/serve.py 8080` → `http://127.0.0.1:8080/frontend/index.html`
+
+### 📝 开发日志
+
+**关键字**：核密度弹窗(KDE), 三阶引导, kepler 离散分段色板, L1 热度值, 7 大类配色, 类型细分色板方向修复, layers:changed 联动, serve ?v 注入, revision-log 任务树
+
+#### 做了什么
+- **核密度弹窗三阶引导重构**：①分析类型(总体情况/类型细分/多维归因) → ②数据源 → ③显示样式。①三组纵向排版（kepler 风），取代旧版杂糅表单。
+- **kepler 离散分段色板**：全站色带统一 `.segmented`（色块拼接，非无极 linear-gradient）。色板采样自 kepler 源码——网格暖色谱≈Global Warming；7 色分类≈UberPool 6 色+补 1 色；L1 默认单色改橙红(ColorBrewer Reds)。栏/选项/胶囊三组件设计 token。
+- **L1 热度值**：L1 综合舆情热度 = 强度×置信度，3 段动态分位（取代静态阈值）。
+- **7 大类配色**：喜怒哀乐愁急盼 = 绿/橙/红/紫红/紫/深蓝/天蓝（`MACRO_COLORS` 单一调色源；胶囊/classify-7/积极·消极·中性格色板均派生自此，保证全局一致）。
+- **类型细分色板方向修复**：端点顺序 = [低值色 … 高值色]（gradientStops 从低 density 到高 density）。积极=喜(绿)高/乐(橙)低；消极=怒(红)高/哀(紫红)中/愁(紫)低；中性=急(深蓝)高/盼(天蓝)低。
+- **三处联动**：Overview / popup / 图例 通过 `layers:changed` 事件同步。
+- **serve.py `?v=<mtime>` 自动注入**：返回 index.html 时给本地 css/js 引用自动注入 `?v=<mtime>`，文件一改浏览器即拉新，开发者零手动 bump；启动时清占用端口。
+- **revision-log 任务树 + 工作机制 memory**：revision-log 顶部建模块化任务树（根→模块→批→叶，AI 全程维护）；建 4 条工作机制 memory（session-handoff / token-saving / revision-log / kde-loadbearing）。
+
+#### 踩坑 & 收获
+- **kde-loadbearing 两条底层逻辑（勿破坏）**：①**联动排除**——无字段层级自动排除（类型细分锁 L2、L1 无情绪字段时胶囊禁用）；②**独占显示**——生成新热力图隐藏其他层 + `dispatch layers:changed` 保侧栏眼睛同步。
+- **类型细分色板端点顺序**：gradientStops 从低 density 到高 density，端点顺序 = [低值色 … 高值色]；方向搞反会让"高密度=低值色"，视觉语义倒置。
+
+#### 验证
+- 起页肉眼验（`py frontend/serve.py 8080`），未上 Playwright（配色/布局小改，遵循 no-routine-playwright-verify）。
+- 核密度弹窗三阶引导、L1 热度值分位、7 大类胶囊色、类型细分色板方向、三处联动均肉眼确认。
+
+#### 🔜 次日计划
+- 批1·1b：小类配色按大类派生（小类色继承所属大类色相基调；愁类 2 小类用紫色系明度梯度）。
+- 批1·1a：预览图换 terrain/factor Kepler 截图（等素材补齐，⏸ 搁置）。
+
+---
+
 ## 📅 2026-06-18（周四）
 
 ### ☑ TODO List

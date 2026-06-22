@@ -5,7 +5,7 @@ import {
   L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR,
   EMOTION_TYPE_COLORS, EMOTION_TYPE_ORDER,
   EMOTION_MACRO_ORDER, EMOTION_MACRO_MAP,
-  HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets,
+  HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets, rampDisplaySegs,
 } from './state.js';
 import { geomStats } from './popup.js';
 
@@ -70,8 +70,7 @@ function tier2(layer, lv) {
   if (layer.kind === 'heatmap') {
     const p = layer.paint || {};
     const rampName = (HEATMAP_RAMPS[p.rampKey] && HEATMAP_RAMPS[p.rampKey].name) || '—';
-    const rampStops = (HEATMAP_RAMPS[p.rampKey] && HEATMAP_RAMPS[p.rampKey].stops) || [];
-    const rampSegs = rampStops.slice(1).map(([, c]) => `<span class="ov-ramp-seg" style="background:${c}"></span>`).join('');
+    const rampSegs = rampDisplaySegs(p.rampKey, HEATMAP_RAMPS[p.rampKey]).map((c) => `<span class="ov-ramp-seg" style="background:${c}"></span>`).join('');
     const macroLabel = (p._ui && Array.isArray(p._ui.macroFilter) ? p._ui.macroFilter : (Array.isArray(p.typesFilter) ? [...new Set(p.typesFilter.map((t) => EMOTION_MACRO_MAP[t]).filter(Boolean))] : []));
     const macros = EMOTION_MACRO_ORDER.filter((m) => macroLabel.includes(m));
     const macroTxt = macros.length === EMOTION_MACRO_ORDER.length ? '全（喜怒哀乐愁急盼）' : (macros.length ? macros.join('、') : '—');
