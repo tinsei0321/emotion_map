@@ -44,6 +44,35 @@
 > 另两张（常规 vec）`tianditu_label.json`/`tianditu_nolabel.json` 同样在本地、不在 git——公司机若已存在就别动；若丢了，把上面 img 版里的 `img`→`vec`、`cia`→`cva` 即得。
 > 补完后启动见 [`frontend/README.md`](../../frontend/README.md)「启动」一节。
 
+## 当前节点 — 2026-06-21（核密度弹窗重构 + 工作机制调整，待 push）
+
+> 本会话把核密度分析弹窗从旧版重构成 kepler 配色三阶引导 + 模块化任务跟踪 + token/session 工作机制。详细见 `docs/revision-log.md`（顶部任务树 + 第 5 节修订记录）。
+
+### Git
+- 本会话 commit：`065e8f6`→`00067bc`（约 20 个）。**待 push**。pull 后 `git log origin/main..HEAD` 应为空。
+
+### 完成
+- **核密度弹窗重构**：三阶引导（①分析类型[总体/类型细分/多维归因] ②数据源 ③显示样式）；kepler 离散分段色板；栏/选项/胶囊三组件设计 token；L1 热度值（强度×置信度，3 段动态分位）；7 大类喜怒哀乐愁急盼配色；类型细分色板方向修复；同步联动（Overview/popup/图例 `layers:changed`）；①三组排版纵向；serve.py 自动 `?v` 注入 + 启动清端口。
+- **revision-log 任务树**（`docs/revision-log.md` 顶部）：模块化生长树（根→模块→批→叶），AI 全程维护，开发主视图。
+- **工作机制 memory**（`~/.claude/`，换机**必须复制**）：revision-log 维护 / session-handoff（4 件套）/ token-saving / kde-loadbearing / 术语纠正 / 中文交付。
+- **auto-compact**：`CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000`（晚压缩）。
+
+### 怎么跑
+```
+py frontend/serve.py 8080          # 自动 ?v 注入 + 清端口
+# http://127.0.0.1:8080/frontend/index.html
+```
+
+### ⚠ 换机必做（除原 5 步外）
+1. **复制 `~/.claude/`**（settings.json + projects/d--Github-emotion-map/memory/）到新电脑——memory 是工作机制载体，丢了机制丢。
+2. **项目放 `d:\Github\emotion_map`**（memory 目录 hash 依赖路径）。
+3. **Python 3.14**（家庭电脑已更新）。
+4. 新会话第一句：读 `docs/revision-log.md` 顶部任务树接上。
+
+### 下轮
+- **批1 快赢**：预览图换 kepler 截图 + 小类配色按大类派生。或用户指定。任务全貌看 revision-log 任务树。
+- **todo.md 待补**：本会话（06-19~06-21）工作未记入 `docs/todo.md`，新会话补。
+
 ## 当前节点 — 2026-06-18（Import 功能落地，待 push）
 
 > 本会话把前端 Import 从纯 UI 占位做成 **1:1 geojson.io 导入 + 图层显示**。三批：v1 管道 / v2 批1 修bug+显示 / 细化轮。全部 Playwright file-upload 端到端验证通过。详见 `docs/todo.md` 06-18 条目。
