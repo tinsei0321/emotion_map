@@ -55,6 +55,15 @@
 - **核密度弹窗重构**：三阶引导（①分析类型[总体/类型细分/多维归因] ②数据源 ③显示样式）；kepler 离散分段色板；栏/选项/胶囊三组件设计 token；L1 热度值（强度×置信度，3 段动态分位）；7 大类喜怒哀乐愁急盼配色；类型细分色板方向修复；同步联动（Overview/popup/图例 `layers:changed`）；①三组排版纵向；serve.py 自动 `?v` 注入 + 启动清端口。
 - **revision-log 任务树**（`docs/revision-log.md` 顶部）：模块化生长树（根→模块→批→叶），AI 全程维护，开发主视图。
 - **工作机制 memory**（`~/.claude/`，换机**必须复制**）：revision-log 维护 / session-handoff（4 件套）/ token-saving / kde-loadbearing / 术语纠正 / 中文交付。
+
+**工作机制速查**（双保险——换机若 memory 丢，看此速查也能恢复；详细在 `~/.claude/projects/d--Github-emotion-map/memory/`）：
+- **session-handoff**：会话满载（轮次>15-20 / 多次读大文件 / 用户改 SVG 多次）/ 任务自然边界 / 用户提 token / 主题大切换 → 主动给 **4 件套**（①提示+理由 ②新会话衔接说明 ③衔接操作 ④小结 commit+状态）。不等用户问。
+- **token-saving-workstyle**：①**分会话**（最有效，做完一批换会话）②**subagent 分流**（探索/规划/大读走 subagent，结果摘要返回）③**少全读**（grep+offset/limit，读过的记结构）。**不降 effortLevel**。
+- **maintain-revision-log**：每次 commit → revision-log 第 5 节追加一行（日期|commit|意图|文件）；任务树（顶部 ★）全程维护（新分支即追加 + 状态⬜🔄✅⏸❌）；同级平衡（叶收敛摘要、后续模块补第二级）。
+- **kde-loadbearing**（底层逻辑勿破坏）：①**联动排除**（无字段层级自动排除，如类型细分锁 L2、L1 无情绪字段胶囊禁用）②**独占显示**（生成新热力图隐藏其他层 + `dispatch layers:changed` 保侧栏眼睛同步）。
+- **auto-compact**：`CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000`（晚压缩，尽量保留原始上下文；80% 反方向已否决）。
+- **术语纠正**：回复时顺带专业化（如"那个颜色不对"→"L2 中性色板应与急/盼胶囊蓝色系呼应"）。
+- **中文交付**：所有交付（plan/报告/docs）中文；代码/路径/标识符英文。
 - **auto-compact**：`CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000`（晚压缩）。
 
 ### 怎么跑
