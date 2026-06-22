@@ -240,6 +240,62 @@ export const HEATMAP_NEGATIVE_STOPS = [
 // 用于"积极/消极/中性"由 7 大类胶囊色派生的分段色板（胶囊色 ↔ 色板一一对应）。
 function _hex2rgb(h) { h = String(h).replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; }
 function _rgb2hex(rgb) { return '#' + rgb.map((x) => Math.round(x).toString(16).padStart(2, '0')).join(''); }
+
+// ── HSL 工具：色相插值（替 RGB lerpHex）—— 色相旋转保持明度，中间色明亮
+//    （绿↔黄 中间黄绿，非 RGB 土黄；红↔紫 逆时针经品红）
+function _hex2hsl(h) {
+  const [r, g, b] = _hex2rgb(h).map((x) => x / 255);
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  let s = 0, hue = 0;
+  if (d !== 0) {
+    s = d / (1 - Math.abs(2 * l - 1));
+    if (max === r) hue = ((g - b) / d) % 6;
+    else if (max === g) hue = (b - r) / d + 2;
+    else hue = (r - g) / d + 4;
+    hue *= 60;
+    if (hue < 0) hue += 360;
+  }
+  return [hue, s * 100, l * 100];
+}
+function _hsl2hex(hsl) {
+  const [h, s, l] = hsl;
+  const _s = s / 100, _l = l / 100;
+  const c = (1 - Math.abs(2 * _l - 1)) * _s;
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  const m = _l - c / 2;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) [r, g, b] = [c, x, 0];
+  else if (h < 120) [r, g, b] = [x, c, 0];
+  else if (h < 180) [r, g, b] = [0, c, x];
+  else if (h < 240) [r, g, b] = [0, x, c];
+  else if (h < 300) [r, g, b] = [x, 0, c];
+  else [r, g, b] = [c, 0, x];
+  return _rgb2hex([r, g, b].map((v) => Math.round((v + m) * 255)));
+}
+/** HSL 插值（hue 最短路径，sat/lightness 线性）—— 色相旋转保明度，中间明亮。 */
+export function lerpHsl(h1, h2, t) {
+  const a = _hex2hsl(h1), b = _hex2hsl(h2);
+  let dh = b[0] - a[0];
+  if (dh > 180) dh -= 360;
+  if (dh < -180) dh += 360;
+  const hue = (a[0] + dh * t + 360) % 360;
+  const sat = a[1] + (b[1] - a[1]) * t;
+  const light = a[2] + (b[2] - a[2]) * t;
+  return _hsl2hex([hue, sat, light]);
+}
+/** HSL 空间插值生成 n 段 stops（色相渐变，中间明亮不土黄）。 */
+export function gradientStopsHsl(colors, n) {
+  const stops = [[0, `rgba(${_hex2rgb(colors[0]).join(',')},0)`]];
+  for (let i = 1; i <= n; i++) {
+    const t = (i - 1) / (n - 1) * (colors.length - 1);
+    const lo = Math.floor(t), hi = Math.min(colors.length - 1, lo + 1), f = t - lo;
+    stops.push([i / n, lerpHsl(colors[lo], colors[hi], f)]);
+  }
+  return stops;
+}
+
 export function gradientStops(colors, n) {
   const pts = colors.map(_hex2rgb);
   const stops = [[0, `rgba(${pts[0][0]},${pts[0][1]},${pts[0][2]},0)`]];
@@ -441,6 +497,32 @@ export function macroOfPolarity(polarity) {
   if (polarity === 'Very Negative') return '怒';
   if (polarity === 'Negative') return '哀';
   return '盼';   // Neutral / 未知
+}
+
+// 各极性大类按 density 弱→强序（强情绪在高 density 端 = 热核）。
+//   积极：乐(弱)→喜(强)；消极：愁(弱)→哀(中)→怒(强)；中性：盼(弱)→急(强)。
+//   与 HEATMAP_RAMPS.positive/negative/neutral 的端点序一致 → 全选时 buildMacroRamp 等同固定 ramp。
+export const MACRO_DENSITY_ORDER = {
+  positive: ['乐', '喜'],
+  negative: ['愁', '哀', '怒'],
+  neutral: ['盼', '急'],
+};
+
+/** 按选中大类 + 极性生成 inline ramp（类色 HSL 色相插值，每类占 3 段）。
+ *  段数 = 选中类数 × 3：积极 6 / 消极 9 / 中性 6 / 单类 3。
+ *  整体色相连续渐变（类间不割裂，HSL 中间明亮不土黄）；density 弱→强（热核=最强情绪）。
+ *  色带"显示"由 rampDisplaySegs 据 polarity reverse（高→低 = 胶囊序）。 */
+export function buildMacroRamp(selectedMacros, polarity) {
+  const order = MACRO_DENSITY_ORDER[polarity];
+  if (!order) return null;
+  const macros = order.filter((m) => selectedMacros.includes(m));   // density 序 ∩ 选中
+  if (!macros.length) return null;
+  const colors = macros.map((m) => EMOTION_MACRO[m] && EMOTION_MACRO[m].color).filter(Boolean);
+  if (!colors.length) return null;
+  return {
+    name: macros.slice().reverse().join('→'),                        // 强→弱（胶囊序展示）
+    stops: gradientStopsHsl(colors, colors.length * 3),              // 类色 HSL 插值，每类 3 段色相（整体连续渐变）
+  };
 }
 
 // ── Heatmap source tracking: sourceKey → heatmap layer id ──

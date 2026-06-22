@@ -270,7 +270,7 @@ function addHeatmapPaint(layer, sid, lid) {
   const weightField = p.weightField || 'emotion_intensity';
   const weightCurve = p.weightCurve || 'linear';
   const rampKey = p.rampKey || 'rainbow';
-  const ramp = (HEATMAP_RAMPS[rampKey] && HEATMAP_RAMPS[rampKey].stops) || HEATMAP_NEGATIVE_STOPS;
+  const ramp = p.rampStops || (HEATMAP_RAMPS[rampKey] && HEATMAP_RAMPS[rampKey].stops) || HEATMAP_NEGATIVE_STOPS;
   const colorStops = ramp.flat();
   const weightExpr = buildWeightExpression(weightField, weightCurve);
 

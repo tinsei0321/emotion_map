@@ -16,7 +16,7 @@ export function refreshHeatmapLegend(layer) {
   if (!box) return;
   if (!layer || layer.kind !== 'heatmap') { box.hidden = true; return; }
   const rampKey = (layer.paint && layer.paint.rampKey) || null;
-  const ramp = rampKey ? HEATMAP_RAMPS[rampKey] : null;
+  const ramp = (layer.paint && layer.paint.rampStops) ? { stops: layer.paint.rampStops } : (rampKey ? HEATMAP_RAMPS[rampKey] : null);
   if (!ramp) { box.hidden = true; return; }
   const segs = rampDisplaySegs(rampKey, ramp);
   const re = rampEl();

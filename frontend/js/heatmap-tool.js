@@ -2,7 +2,7 @@
 // v3 (2026-06-19): kepler 配色语言；7 大类喜怒哀乐愁急盼；样式按 ①+② 联动；analysis-card hover infopanel
 import {
   getLayers, getChildren, addLayer, removeLayer, getLayer, setLayerVisible, selectLayer,
-  HEATMAP_RAMPS, HEATMAP_RAMP_KEYS, rampDisplaySegs,
+  HEATMAP_RAMPS, HEATMAP_RAMP_KEYS, rampDisplaySegs, buildMacroRamp,
   EMOTION_TYPE_COLORS, EMOTION_TYPE_ORDER,
   EMOTION_MACRO, EMOTION_MACRO_ORDER, EMOTION_MACRO_MAP, macroOfPolarity,
   getHeatmapForSource, setHeatmapForSource, removeHeatmapSource,
@@ -47,7 +47,19 @@ const ANALYSIS_TIERS = [
 // ── ③ 自动色板（按 analysis + level + 特性）—— 色板随类型自动选定，用户不再手选 ──
 // 返回 { ramp, name, dev?, tip, buttons:[{dim,label,dev?}] }：
 //   ramp  = HEATMAP_RAMPS key；name = ③只读预览标签；buttons = 生成按钮（2D/3D 拆分）。
-function computeStyle(analysis, level, polarity) {
+/** 类型细分 style：macroFilter 非空 → buildMacroRamp 生成 inline rampStops（只含选中大类色）；
+ *  ramp 保持 polarity（rampDisplaySegs 据 polarity reverse 显示）；macroFilter 空 = 固定 ramp（全选等价）。 */
+function _segmentStyle(polarity, label, macroFilter, fixedInside, base) {
+  const built = macroFilter && macroFilter.length ? buildMacroRamp(macroFilter, polarity) : null;
+  return {
+    ramp: polarity,
+    rampStops: built ? built.stops : undefined,
+    name: `${label}（${built ? built.name : fixedInside}）`,
+    ...base,
+  };
+}
+
+function computeStyle(analysis, level, polarity, macroFilter) {
   if (analysis === 'terrain') {
     if (level === 'L1') return { ramp: 'rainbow', name: '综合彩虹',
       tip: 'L1 综合舆情热度（2D 彩虹），体现密度与关注度，不暗示极性。',
@@ -67,12 +79,12 @@ function computeStyle(analysis, level, polarity) {
       tip: 'L2 3D 网格柱体：积极/消极/中性各自高点的空间分布。',
       buttons: [{ dim: '3d', label: '生成 3D 柱体图', dev: true }] };
   }
-  if (analysis === 'positive') return { ramp: 'positive', name: '积极（喜→乐）',
-    tip: '类型细分：积极情绪密度（仅 L2）。', buttons: [{ dim: '2d', label: '生成 2D 积极图' }] };
-  if (analysis === 'negative') return { ramp: 'negative', name: '消极（怒→哀→愁）',
-    tip: '类型细分：消极情绪密度（仅 L2）。', buttons: [{ dim: '2d', label: '生成 2D 消极图' }] };
-  if (analysis === 'neutral')  return { ramp: 'neutral',  name: '中性（急→盼）',
-    tip: '类型细分：中性情绪密度（仅 L2）。', buttons: [{ dim: '2d', label: '生成 2D 中性图' }] };
+  if (analysis === 'positive') return _segmentStyle('positive', '积极', macroFilter, '喜→乐',
+    { tip: '类型细分：积极情绪密度（仅 L2）。', buttons: [{ dim: '2d', label: '生成 2D 积极图' }] });
+  if (analysis === 'negative') return _segmentStyle('negative', '消极', macroFilter, '怒→哀→愁',
+    { tip: '类型细分：消极情绪密度（仅 L2）。', buttons: [{ dim: '2d', label: '生成 2D 消极图' }] });
+  if (analysis === 'neutral')  return _segmentStyle('neutral', '中性', macroFilter, '急→盼',
+    { tip: '类型细分：中性情绪密度（仅 L2）。', buttons: [{ dim: '2d', label: '生成 2D 中性图' }] });
   // 兜底（未知 analysis 防御）
   return { ramp: null, name: '', tip: '', buttons: [] };
 }
@@ -292,14 +304,16 @@ function renderStylePreview(dlg) {
   const analysis = selectedAnalysis(dlg);
   const level = dlg.querySelector('#hm-level').value;
   const polarity = dlg.querySelector('#hm-subset').value;
-  const st = computeStyle(analysis, level, polarity);
+  const macroFilter = EMOTION_MACRO_ORDER.filter((m) =>
+    dlg.querySelector(`.hm-macro-chip[data-macro="${m}"]`)?.classList.contains('is-on'));
+  const st = computeStyle(analysis, level, polarity, macroFilter);
   // 占位兜底（buttons 为空）
   if (!st.buttons.length) {
     wrap.innerHTML = `<div class="hm-hint">${st.name}（后续批次）</div>`;
     renderGenerateButtons(dlg, st);
     return;
   }
-  const ramp = st.ramp ? HEATMAP_RAMPS[st.ramp] : null;
+  const ramp = st.rampStops ? { stops: st.rampStops } : (st.ramp ? HEATMAP_RAMPS[st.ramp] : null);
   const segs = ramp ? rampDisplaySegs(st.ramp, ramp) : ['#ccc'];
   const segHtml = segs.map((c) => `<span class="hm-style-seg" style="background:${c}"></span>`).join('');
   // i：名称 + tip + 开发说明（待开发/未来开发 一律进 i）
@@ -621,7 +635,6 @@ function generateHeatmap(btn) {
   const analysisKey = selectedAnalysis(dlg);
   const preset = ANALYSIS_PRESETS[analysisKey];
   const dim = btn ? btn.dataset.dim : '2d';
-  const rampKey = btn ? btn.dataset.ramp : '';
   const isDev = btn ? btn.classList.contains('is-dev') : true;
 
   // 占位拦截：dev 按钮（3D / 网格聚合）/ 占位分析类型
@@ -630,6 +643,12 @@ function generateHeatmap(btn) {
 
   const level = dlg.querySelector('#hm-level').value;
   const polarity = dlg.querySelector('#hm-subset').value;
+  // 色板：computeStyle 随选中大类动态生成（类型细分 → inline rampStops；其他 → 固定 rampKey）
+  const _macroFilter = EMOTION_MACRO_ORDER.filter((m) =>
+    dlg.querySelector(`.hm-macro-chip[data-macro="${m}"]`)?.classList.contains('is-on'));
+  const _sty = computeStyle(analysisKey, level, polarity, _macroFilter);
+  const rampKey = _sty.ramp || (btn ? btn.dataset.ramp : '');
+  const rampStops = _sty.rampStops;
   const radius = Number(dlg.querySelector('#hm-radius').value);
   const opacity = Number(dlg.querySelector('#hm-opacity').value) / 100;
   const weightField = dlg.querySelector('#hm-weight-field').value;
@@ -691,7 +710,7 @@ function generateHeatmap(btn) {
     const _oldSourceKey = editingLayer.sourceKey;
     editingLayer.paint = {
       ...editingLayer.paint,
-      unit: 'm', radius, opacity, intensity, weightField, weightCurve, rampKey,
+      unit: 'm', radius, opacity, intensity, weightField, weightCurve, rampKey, rampStops,
       typesFilter: selectedTypes, intensityMin,
       minzoom: minzoom > 0 ? minzoom : undefined,
       maxzoom: maxzoom < 22 ? maxzoom : undefined,
@@ -726,7 +745,7 @@ function generateHeatmap(btn) {
     colorMode: 'heatmap-negative',
     fc,
     paint: {
-      unit: 'm', radius, opacity, intensity, weightField, weightCurve, rampKey,
+      unit: 'm', radius, opacity, intensity, weightField, weightCurve, rampKey, rampStops,
       typesFilter: selectedTypes, intensityMin,
       minzoom: minzoom > 0 ? minzoom : undefined,
       maxzoom: maxzoom < 22 ? maxzoom : undefined,
@@ -830,16 +849,18 @@ export function initHeatmapTool() {
     renderStylePreview(dlg);
   });
 
-  // ② 大类胶囊点击 toggle + 传导小类 + 更新计数
-  dlg.querySelector('#hm-macros')?.addEventListener('click', (e) => {
-    const chip = e.target.closest('.hm-macro-chip');
+  // ② 大类胶囊 toggle + 传导小类 + 更新计数 + 色带实时更新
+  // 用 change 事件（input toggle 后同步触发，cb.checked 已是新值）——click+rAF 在 label
+  // 默认行为时序下会让 is-on 滞后于 input.checked，致 renderStylePreview 取到旧选中态。
+  dlg.querySelector('#hm-macros')?.addEventListener('change', (e) => {
+    const cb = e.target.closest('input[type=checkbox]');
+    if (!cb) return;
+    const chip = cb.closest('.hm-macro-chip');
     if (!chip) return;
-    const cb = chip.querySelector('input');
-    requestAnimationFrame(() => {
-      chip.classList.toggle('is-on', cb.checked);
-      updateFoldCount(dlg, 'macro');
-      applyMacroToTypes(dlg);
-    });
+    chip.classList.toggle('is-on', cb.checked);
+    updateFoldCount(dlg, 'macro');
+    applyMacroToTypes(dlg);
+    renderStylePreview(dlg);   // 色带随选中大类实时更新（inline rampStops）
   });
 
   // ② 小类胶囊点击 toggle + 更新计数

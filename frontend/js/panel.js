@@ -70,7 +70,8 @@ function tier2(layer, lv) {
   if (layer.kind === 'heatmap') {
     const p = layer.paint || {};
     const rampName = (HEATMAP_RAMPS[p.rampKey] && HEATMAP_RAMPS[p.rampKey].name) || '—';
-    const rampSegs = rampDisplaySegs(p.rampKey, HEATMAP_RAMPS[p.rampKey]).map((c) => `<span class="ov-ramp-seg" style="background:${c}"></span>`).join('');
+    const _hmRamp = (p.rampStops) ? { stops: p.rampStops } : HEATMAP_RAMPS[p.rampKey];
+    const rampSegs = rampDisplaySegs(p.rampKey, _hmRamp).map((c) => `<span class="ov-ramp-seg" style="background:${c}"></span>`).join('');
     const macroLabel = (p._ui && Array.isArray(p._ui.macroFilter) ? p._ui.macroFilter : (Array.isArray(p.typesFilter) ? [...new Set(p.typesFilter.map((t) => EMOTION_MACRO_MAP[t]).filter(Boolean))] : []));
     const macros = EMOTION_MACRO_ORDER.filter((m) => macroLabel.includes(m));
     const macroTxt = macros.length === EMOTION_MACRO_ORDER.length ? '全（喜怒哀乐愁急盼）' : (macros.length ? macros.join('、') : '—');
