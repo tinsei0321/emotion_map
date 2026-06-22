@@ -11,6 +11,7 @@ import {
 } from './import.js';
 import { openImportDialog } from './dialog.js';
 import { initHeatmapTool } from './heatmap-tool.js';
+import { initBufferTool } from './buffer-tool.js';
 import { initHeatmapLegend } from './heatmap-legend.js';
 import { toast } from './toast.js';
 
@@ -81,7 +82,8 @@ async function runImport(files) {
               if (neu.length) { const L = addLayer({ name: `中性 · ${base}`, kind: 'point', parentId: group.id, colorMode: 'l2-neutral',  fc: fcOf(neu), paint }); L.srcName = base; renderLayer(L); added++; }
               if (neg.length) { const L = addLayer({ name: `消极 · ${base}`, kind: 'point', parentId: group.id, colorMode: 'l2-negative', fc: fcOf(neg), paint }); L.srcName = base; renderLayer(L); added++; }
             } else {
-              const L = addLayer({ name: colorMode === 'confidence' ? `热度分布 · ${base}` : base, kind: 'point', fc: pfc, needsAnalysis, colorMode });
+              const paint = needsAnalysis ? { color: '#4a4a4a', opacity: 0.80, radius: 4 } : undefined;  // L0 默认深灰 + 80% + 4px
+              const L = addLayer({ name: colorMode === 'confidence' ? `热度分布 · ${base}` : base, kind: 'point', fc: pfc, needsAnalysis, colorMode, paint });
               L.srcName = base;
               renderLayer(L); added++;
               if (needsAnalysis) needsAny = true;
@@ -162,6 +164,7 @@ function main() {
 
   initSidebar({ onFiles: runImport, onRangeFiles: runRangeImport });
   initHeatmapTool();
+  initBufferTool();
   initHeatmapLegend();
 
   initToolbar({

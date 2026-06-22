@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from api.schemas import (
     AnalysisRequest, AnalysisResponse, PolarityStats,
     HealthResponse, DataListResponse, GovernanceRequest,
+    BufferRequest,
 )
 from core.config import RAW_DIR, PROCESSED_DIR, BOUNDARY_SHP
 
@@ -137,4 +138,36 @@ async def run_governance(req: GovernanceRequest):
         'output_n': result['output_n'],
         'l1_path': result['l1_path'],
         'message': result['message'],
+    }
+
+
+@router.post("/spatial/buffer")
+async def create_buffer_route(req: BufferRequest):
+    """缓冲区分析（覆盖范围）：对输入图层做 N 米缓冲，返回缓冲区 GeoJSON。
+
+    内部重投影到 EPSG:4546（CGCS2000 CM 111E，米制）保证米级精度；
+    适配两类数据源（投影 shp / 地理坐标）——输入统一为 WGS84 GeoJSON，
+    源 CRS 在前端导入时已消解。用 shapely+pyproj（非 geopandas），3.14 友好。
+    """
+    from core.buffer_analysis import create_buffer
+
+    fc = req.geojson or {}
+    feats = fc.get('features') if isinstance(fc, dict) else None
+    if not feats:
+        raise HTTPException(status_code=400, detail="输入图层为空或非 GeoJSON")
+
+    distance_m = req.distance * (1000.0 if req.unit == 'km' else 1.0)
+    try:
+        out_fc, total_area = create_buffer(fc, distance_m=distance_m, dissolve=req.dissolve)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"缓冲分析失败: {e}")
+
+    return {
+        'success': True,
+        'buffer_geojson': out_fc,
+        'covered_area_km2': total_area,
+        'feature_count': len(out_fc['features']),
+        'message': f'已生成 {len(out_fc["features"])} 个缓冲区，总覆盖 {total_area} km²',
     }

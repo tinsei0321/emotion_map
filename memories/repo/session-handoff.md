@@ -44,6 +44,34 @@
 > 另两张（常规 vec）`tianditu_label.json`/`tianditu_nolabel.json` 同样在本地、不在 git——公司机若已存在就别动；若丢了，把上面 img 版里的 `img`→`vec`、`cia`→`cva` 即得。
 > 补完后启动见 [`frontend/README.md`](../../frontend/README.md)「启动」一节。
 
+## 当前节点 — 2026-06-22（buffer 工具端到端 + L0 精修 + F5 工作流，待 push）
+
+> **机器 = 家庭电脑**。memory **已在本机生效**（MEMORY.md 9 条，本轮新加 `tool-layer-convention`）——上轮"未拷回"提示过时，家用机/办公机 memory 已同步。
+
+### Git
+- 本会话 commit：buffer 工具端到端 + L0 精修 + buffer 7 项精修 + serve.py 自动后端 + 公约/memory。**待 push**。pull 后 `git log origin/main..HEAD` 应为空。
+- 上轮 popup 修复 + Range 模块已在 `9012c3f`（下方"06-22 续"节点，历史）。
+
+### 完成
+- **缓冲分析（Buffer）工具**：后端 `core/buffer_analysis.py`（geopandas，EPSG:4546 米制 buffer + dissolve，F_005）+ `POST /api/v1/spatial/buffer`；前端 `buffer-tool.js`（3 段弹窗）+ Toolbox `#tool-buffer`（紧跟 HeatMap）+ `api.js runBuffer`。测试数据 `DATA/processed/宜昌市医疗点.geojson`（30 点）。geopandas 已手动装好（Python 3.14.6）。
+- **L0 点**：默认 4px + 80% + 深灰 #4a4a4a；颜色用全局预设色板 `PRESET_COLORS`（不自由调色）。
+- **buffer 弹窗**：距离手动输入+m（默认 1000）；显示样式 4 参数（线型胶囊实线/虚线 / 线宽 1-8 / 预设色·默认天蓝 #4FC3F7 / 填充透明度 15%）；轮廓=填充色；生成键 btn-primary。
+- **buffer 精修 7 项**：①要素按钮 **B**；②色板 26px；③**B 按钮开缓冲弹窗**（镜像 H：路由 + seed 回填 + edit-mode 原地更新，layer id 稳定）；④距离去重；⑤独立组卡"**缓冲分析**"；⑥popup 复用 Range（badge"缓冲"+右侧距离+文件名+只类型+收起显距离）；⑦**serve.py 自动起后端**。
+- **F5 工作流**：`py frontend/serve.py 8080` 一条命令起前端+后端（uvicorn 自动 spawn + health 等 + cleanup），F5 迭代，Ctrl+C 同停；`--no-backend` 仅前端。
+- **公约 + memory**：revision-log §4.10 加 #9（工具生成层=独立组卡 + 要素按钮开本工具弹窗，新增工具落 6 点）；memory `tool-layer-convention`。
+
+### 怎么跑
+```
+py frontend/serve.py 8080   # 自动带后端（geopandas 已装）；F5 迭代；Ctrl+C 同停
+# http://127.0.0.1:8080/frontend/index.html
+```
+
+### 下轮（明天）
+- Analysis（L1→L2 接入）/ Table 实现，或用户指定。
+- 肉眼复验：buffer popup 排版、组卡双击折叠、色板尺寸等视觉细节（自动识图对 UI 配色不准，交用户开页验）。
+
+---
+
 ## 当前节点 — 2026-06-22 续（家庭电脑 · popup 修复 + Range 模块，待 commit/push/肉眼验）
 
 > **机器 = 家庭电脑**。⚠ **memory 忘记拷回**——`~/.claude/projects/d--Github-emotion-map/memory/` 本机缺失，工作机制类 memory（session-handoff / token-saving / kde-loadbearing / maintain-revision-log 等）**不在本机**。靠本卡「工作机制速查」段（见下方 06-22 节）+ CLAUDE.md 明规则兜底，机制不丢。**回办公机记得把 memory 拷回**。

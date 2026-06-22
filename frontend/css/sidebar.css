@@ -290,6 +290,98 @@
   justify-content: center;
   width: 100%;
 }
+
+/* ── Buffer 对话框补丁：预设档 / 单选项 / 取色（其余复用 hm-/sec- 类）── */
+.buf-presets {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.buf-preset {
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--geojson-color-text-secondary);
+  border: 1px solid var(--geojson-color-gray-300);
+  border-radius: var(--geojson-radius-sm);
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--geojson-transition), color var(--geojson-transition);
+}
+.buf-preset:hover {
+  background: var(--geojson-color-gray-100);
+  color: var(--geojson-color-brand-primary);
+}
+.buf-radio-row {
+  display: flex;
+  gap: 16px;
+}
+.buf-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-primary);
+  cursor: pointer;
+}
+.set-color {
+  width: 44px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--geojson-color-gray-300);
+  border-radius: var(--geojson-radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+
+/* ── Buffer 对话框补丁 II：距离手动输入框 + 线型胶囊 ── */
+.buf-dist-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.buf-dist-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.buf-num {
+  width: 56px;
+  padding: 2px 4px;
+  font-size: 11px;
+  color: var(--geojson-color-text-primary);
+  border: 1px solid var(--geojson-color-gray-300);
+  border-radius: var(--geojson-radius-sm);
+  background: #fff;
+}
+.buf-unit {
+  font-size: 11px;
+  color: var(--geojson-color-text-secondary);
+}
+/* 线型胶囊（实线/虚线）：阴影 + hover 灰 + 选中品牌蓝 */
+.buf-capsules {
+  display: flex;
+  gap: 6px;
+}
+.buf-cap {
+  padding: 4px 16px;
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-primary);
+  background: #fff;
+  border: 1px solid var(--geojson-color-gray-300);
+  border-radius: 999px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  cursor: pointer;
+  transition: background var(--geojson-transition), color var(--geojson-transition), border-color var(--geojson-transition);
+}
+.buf-cap:hover {
+  background: var(--geojson-color-gray-100);
+}
+.buf-cap.is-sel {
+  background: var(--geojson-color-brand-primary);
+  color: var(--geojson-color-text-inverse, #fff);
+  border-color: var(--geojson-color-brand-primary);
+}
 /* tooltip 挂 body、fixed 定位（工具栏非 top-layer，body 上的 fixed 可正常覆盖）。
  * 配色与 .hm-tooltip 一致：白底 + 深灰小字 + 细边框。 */
 .tool-tooltip {

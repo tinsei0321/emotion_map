@@ -107,40 +107,56 @@ export function showRangePopup(feature, layer) {
   popup.classList.remove('is-collapsed');
 
   const color = (layer && layer.paint && layer.paint.color) || '#0c1c2e';
-  const name = (layer && layer.name) || (feature.properties && feature.properties.name) || '范围';
-  const { area, perimeter, type } = geomStats(feature.geometry);
+  const isBuffer = !!(layer && layer.paint && layer.paint._ui && layer.paint._ui.tool === 'buffer');
+  popup.classList.toggle('is-buffer', isBuffer);   // CSS：收起胶囊距离（非大写、稍小字号）
+  const ui = (layer && layer.paint && layer.paint._ui) || {};
+  const distLabel = ui.distance != null ? `${ui.distance} m` : '';
 
   const badge = document.getElementById('rp-badge');
-  badge.textContent = '范围';
+  const distEl = document.getElementById('rp-distance');
   badge.style.background = color;
-  // 注：不再给范围 popup 设 accent border —— f9da7c1 引入的实色 navy 轮廓会让看板
-  // 出现突兀边框（用户反馈"突然出现的轮廓线框"）。范围 popup 仅靠 box-shadow + badge 区分。
   const nameEl = document.getElementById('rp-name');
-  nameEl.textContent = name;
-  nameEl.title = name;
+  const { type } = geomStats(feature.geometry);
 
-  const rows = [
-    ['面积', area != null ? `${area.toFixed(3)} km²` : '—'],
-    ['周长', perimeter != null ? `${perimeter.toFixed(3)} km` : '—'],
-    ['类型', type || '—'],
-  ];
-  document.getElementById('rp-kv').innerHTML = rows.map(([k, v]) =>
-    `<div class="kv-row"><span class="kv-k">${k}</span><span class="kv-v">${v}</span></div>`).join('');
-
-  _rng = { name, color };
+  if (isBuffer) {
+    // 缓冲：badge「缓冲」+ 右侧距离 + 灰色文件名 + 仅「类型」行
+    badge.textContent = '缓冲';
+    if (distEl) { distEl.textContent = distLabel; distEl.hidden = !distLabel; }
+    const fname = (layer && (layer.srcName || layer.name)) || '缓冲';
+    nameEl.textContent = fname; nameEl.title = fname;
+    document.getElementById('rp-kv').innerHTML =
+      `<div class="kv-row"><span class="kv-k">类型</span><span class="kv-v">${type || '—'}</span></div>`;
+    _rng = { name: fname, color, isBuffer: true, distance: distLabel };
+  } else {
+    // 范围：badge「范围」+ 名称 + 面积/周长/类型
+    badge.textContent = '范围';
+    if (distEl) distEl.hidden = true;
+    const { area, perimeter } = geomStats(feature.geometry);
+    const name = (layer && layer.name) || (feature.properties && feature.properties.name) || '范围';
+    nameEl.textContent = name; nameEl.title = name;
+    const rows = [
+      ['面积', area != null ? `${area.toFixed(3)} km²` : '—'],
+      ['周长', perimeter != null ? `${perimeter.toFixed(3)} km` : '—'],
+      ['类型', type || '—'],
+    ];
+    document.getElementById('rp-kv').innerHTML = rows.map(([k, v]) =>
+      `<div class="kv-row"><span class="kv-k">${k}</span><span class="kv-v">${v}</span></div>`).join('');
+    _rng = { name, color, isBuffer: false };
+  }
   _rngLayerId = layer ? layer.id : null;
 }
 
 export function collapseRangePopup() {
   const popup = rngEl();
   if (!popup || popup.hidden || !_rng) return;
-  document.getElementById('rp-badge').textContent = 'Range';   // bold English capsule
+  // 缓冲：收起胶囊显示距离；范围：bold English 'Range'
+  document.getElementById('rp-badge').textContent = _rng.isBuffer ? (_rng.distance || '缓冲') : 'Range';
   popup.classList.add('is-collapsed');
 }
 export function expandRangePopup() {
   const popup = rngEl();
   if (!popup || popup.hidden || !_rng) return;
-  document.getElementById('rp-badge').textContent = '范围';
+  document.getElementById('rp-badge').textContent = _rng.isBuffer ? '缓冲' : '范围';
   popup.classList.remove('is-collapsed');
 }
 export function hideRangePopup() { _rngLayerId = null; const p = rngEl(); if (p) p.hidden = true; }

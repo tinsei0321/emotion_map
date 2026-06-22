@@ -210,8 +210,8 @@ const _layers = new Map();   // id -> layer object
 let _seq = 0;
 
 // ── Layer category grouping (render-layer aggregation; UI state only — never stored in _layers) ──
-export const CATEGORY_LABEL = { heatmap: '热力图', l2: 'L2 · 情绪地图 DATA', l1: 'L1 · 城市情绪 DATA', l0: 'L0 · 原始', range: '范围边界', other: '其他' };
-let _groupOrder = ['heatmap', 'l2', 'l1', 'l0', 'range', 'other'];   // 成果在上、原始在下（list-top = map-top）
+export const CATEGORY_LABEL = { heatmap: '热力图', l2: 'L2 · 情绪地图 DATA', l1: 'L1 · 城市情绪 DATA', l0: 'L0 · 原始', range: '范围边界', buffer: '缓冲分析', other: '其他' };
+let _groupOrder = ['heatmap', 'l2', 'l1', 'l0', 'range', 'buffer', 'other'];   // 成果在上、原始在下（list-top = map-top）
 const _groupCollapse = new Set();                                    // collapsed category set
 
 // ── L2 palettes (polarity split: Positive green / Negative orange-red / Neutral moody blue) ──
@@ -706,7 +706,10 @@ export function categoryOf(l) {
   if (typeof l.colorMode === 'string' && l.colorMode.indexOf('l2-') === 0) return 'l2';
   if (l.colorMode === 'confidence') return 'l1';
   if (l.needsAnalysis || l.colorMode === 'needsAnalysis') return 'l0';
-  if (l.kind === 'polygon' || l.kind === 'line') return 'range';
+  if (l.kind === 'polygon' || l.kind === 'line') {
+    if (l.paint && l.paint._ui && l.paint._ui.tool === 'buffer') return 'buffer';
+    return 'range';
+  }
   return 'other';
 }
 

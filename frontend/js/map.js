@@ -18,14 +18,15 @@ const HIT_WIDTH = 20;           // transparent hit-line width (easy hover/open o
 
 /** Density-adaptive point radius (user spec, L0-L4 uniform): by point count → tier,
  *  and within a tier the radius breathes with zoom (zoom in = bigger).
- *    < 500           → 14–18px (= current sparse baseline)
- *    500 ≤ n < 2000  → 8–11px  (≈ 1/2 ~ 2/3)
- *    ≥ 2000          → 3–5px   (≈ 1/4, even smaller)
+ *  Cap: 默认最大 ≤10px（密度大可更小，但稀疏档顶 10px——不再 14–18）。
+ *    < 500           → 6–10px (sparse, capped at 10)
+ *    500 ≤ n < 2000  → 4–7px
+ *    ≥ 2000          → 2–4px
  *  Returns [rAtZoom8, rAtZoom14]. */
 function densityStops(count) {
-  if (count < 500) return [14, 18];
-  if (count < 2000) return [8, 11];
-  return [3, 5];
+  if (count < 500) return [6, 10];
+  if (count < 2000) return [4, 7];
+  return [2, 4];
 }
 function densityRadiusExpr(count) {
   const [r8, r14] = densityStops(count);
@@ -200,8 +201,8 @@ function addPointPaint(layer, sid, lid) {
     colorExpr = L2_NEUTRAL_COLOR;
     strokeW = 0; opacity = p.opacity ?? 0.18;
   } else if (layer.colorMode === 'needsAnalysis' || layer.needsAnalysis) {
-    colorExpr = token('--geojson-color-emotion-neutral') || '#a3a3a3';
-    strokeW = 0; opacity = p.opacity ?? 0.5;
+    colorExpr = p.color || '#4a4a4a';   // L0 默认深灰；paint.color（预设色板）可覆盖
+    strokeW = 0; opacity = p.opacity ?? 0.80;
   } else {
     // legacy single polarity layer (frozen) — keep 5-color
     const colors = emotionColors();
@@ -231,9 +232,10 @@ function addPolygonPaint(layer, sid, lid, lineLid, hitLid) {
     map.addLayer({ id: lid, type: 'fill', source: sid,
       paint: { 'fill-color': color, 'fill-opacity': p.fillOpacity ?? 0.3 } });
   }
-  // visible outline (thin navy by default)
-  map.addLayer({ id: lineLid, type: 'line', source: sid,
-    paint: { 'line-color': color, 'line-width': p.lineWidth ?? 2, 'line-opacity': 0.9 } });
+  // visible outline (color shared with fill)；lineStyle=dashed → 虚线
+  const linePaint = { 'line-color': color, 'line-width': p.lineWidth ?? 2, 'line-opacity': 0.9 };
+  if (p.lineStyle === 'dashed') linePaint['line-dasharray'] = [2, 1.5];
+  map.addLayer({ id: lineLid, type: 'line', source: sid, paint: linePaint });
   // transparent wide hit layer → easy hover/click without thickening the visible outline
   addHitLayer(hitLid, sid);
 }

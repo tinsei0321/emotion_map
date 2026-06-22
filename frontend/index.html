@@ -142,6 +142,11 @@
                 <span class="tool-name">HeatMap · 核密度分析</span>
                 <span class="tool-info" data-tip="基于点状数据进行核密度分析，识别不同空间尺度下，城市情绪的舆情热度、情绪地形图以及积极/消极/中性情绪分布情况等。">i</span>
               </button>
+              <button class="tool-row" id="tool-buffer" data-tool="buffer">
+                <span class="tool-icon"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="7"/></svg></span>
+                <span class="tool-name">Buffer · 覆盖范围分析</span>
+                <span class="tool-info" data-tip="对一类设施（点/线/面）做 N 米缓冲，看服务覆盖范围与盲区。整层缓冲，可选合并。后端 EPSG:4546 米制精确；不涉及情绪聚合。">i</span>
+              </button>
               <button class="tool-row" id="tool-attribution" data-tool="attribution">
                 <span class="tool-icon"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="3" cy="4" r="1.5"/><circle cx="3" cy="12" r="1.5"/><circle cx="13" cy="8" r="2"/><line x1="4.4" y1="4.6" x2="11.2" y2="7.4"/><line x1="4.4" y1="11.4" x2="11.2" y2="8.6"/></svg></span>
                 <span class="tool-name">多维归因分析</span>
@@ -196,7 +201,10 @@
 
         <div id="range-popup" class="popup popup-range" hidden>
           <button class="popup-close" id="range-close" title="关闭">&times;</button>
-          <div class="popup-top"><span class="popup-badge rp-badge" id="rp-badge">范围</span></div>
+          <div class="popup-top">
+            <span class="popup-badge rp-badge" id="rp-badge">范围</span>
+            <span class="popup-score rp-distance" id="rp-distance" hidden>—</span>
+          </div>
           <div class="popup-text" id="rp-name">—</div>
           <div class="popup-kv" id="rp-kv"><!-- stats rows --></div>
         </div>
@@ -368,6 +376,83 @@
     <div class="dialog-foot">
       <button class="sec-btn sec-cancel" data-close>取消</button>
       <div class="hm-generate-row" id="hm-generate-row"><!-- 生成按钮 by JS（2D/3D 拆分） --></div>
+    </div>
+  </dialog>
+
+  <!-- ═══ Buffer parameter dialog（覆盖范围分析，镜像 HeatMap 3 段） ═══ -->
+  <dialog id="buffer-dialog" class="app-dialog hm-dialog">
+    <div class="dialog-head">
+      <span class="dialog-title">Buffer · 覆盖范围分析</span>
+      <button class="dialog-close" data-close>&times;</button>
+    </div>
+    <div class="dialog-body">
+
+      <!-- ① 输入图层（缓冲对象：已加载的点/线/面图层，整层缓冲） -->
+      <div class="hm-group">
+        <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">输入图层</span></div>
+        <div class="hm-section">
+          <div class="hm-label">设施图层（整层缓冲） <span class="hm-info" data-tip="选一个已加载的点/线/面图层作为缓冲对象。地图数据均统一为 WGS84，源 CRS（投影 shp / 地理坐标）在导入时已消解。">i</span></div>
+          <select class="sec-select" id="buf-layer"></select>
+        </div>
+      </div>
+
+      <!-- ② 缓冲参数（距离手动输入 + 滑块 + 预设 + Dissolve） -->
+      <div class="hm-group">
+        <div class="hm-group-title"><span class="hm-step-no">2</span><span class="hm-step-label">缓冲参数</span></div>
+        <div class="hm-section">
+          <div class="hm-label buf-dist-label">
+            <span>缓冲距离</span>
+            <span class="buf-dist-controls">
+              <input type="number" class="buf-num" id="buf-distance-num" value="1000" min="0" step="50">
+              <span class="buf-unit">m</span>
+            </span>
+          </div>
+          <input type="range" class="set-range" id="buf-distance" min="50" max="5000" value="1000" step="50">
+          <div class="buf-presets" id="buf-presets">
+            <button type="button" class="buf-preset" data-dist="100">100</button>
+            <button type="button" class="buf-preset" data-dist="300">300</button>
+            <button type="button" class="buf-preset" data-dist="500">500</button>
+            <button type="button" class="buf-preset" data-dist="800">800</button>
+            <button type="button" class="buf-preset" data-dist="1000">1000</button>
+          </div>
+        </div>
+        <div class="hm-section">
+          <div class="hm-label">Dissolve（合并） <span class="hm-info" data-tip="各自独立=每个设施单独缓冲，便于对比；合并覆盖区=unary_union 成一片，看总覆盖与服务盲区。">i</span></div>
+          <div class="buf-radio-row">
+            <label class="buf-radio"><input type="radio" name="buf-dissolve" value="false" checked> 各自独立</label>
+            <label class="buf-radio"><input type="radio" name="buf-dissolve" value="true"> 合并覆盖区</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ③ 显示样式（线型 / 线宽 / 颜色 / 填充透明度；轮廓与填充同色） -->
+      <div class="hm-group">
+        <div class="hm-group-title"><span class="hm-step-no">3</span><span class="hm-step-label">显示样式</span></div>
+        <div class="hm-section">
+          <div class="hm-label">线型</div>
+          <div class="buf-capsules" id="buf-linestyle">
+            <button type="button" class="buf-cap is-sel" data-linestyle="solid">实线</button>
+            <button type="button" class="buf-cap" data-linestyle="dashed">虚线</button>
+          </div>
+        </div>
+        <div class="hm-section">
+          <div class="hm-label">线宽 <span class="hm-val" id="buf-linewidth-val">1 px</span></div>
+          <input type="range" class="set-range" id="buf-linewidth" min="1" max="8" value="1" step="1">
+        </div>
+        <div class="hm-section">
+          <div class="hm-label">颜色 <span class="hm-info" data-tip="轮廓与填充同色。预设可选，不自由调色（与 L0 点一致）。">i</span></div>
+          <div class="swatch-list" id="buf-color-list"><!-- swatches by JS --></div>
+        </div>
+        <div class="hm-section">
+          <div class="hm-label">填充透明度 <span class="hm-val" id="buf-opacity-val">15%</span></div>
+          <input type="range" class="set-range" id="buf-opacity" min="0" max="100" value="15" step="5">
+        </div>
+      </div>
+
+    </div>
+    <div class="dialog-foot">
+      <button class="btn btn-secondary" data-close>取消</button>
+      <button class="btn btn-primary" id="buf-generate">生成缓冲区</button>
     </div>
   </dialog>
 

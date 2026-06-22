@@ -62,3 +62,11 @@ class GovernanceRequest(BaseModel):
     file_path: str = Field(..., description="L0 原始数据文件路径")
     output_name: Optional[str] = Field(default=None, description="输出文件名（不含扩展名）")
     boundary_path: Optional[str] = Field(default=None, description="边界文件路径")
+
+
+class BufferRequest(BaseModel):
+    """缓冲分析请求（覆盖范围）。"""
+    geojson: dict = Field(..., description="输入图层 GeoJSON FeatureCollection")
+    distance: float = Field(..., gt=0, description="缓冲距离（数值）")
+    unit: str = Field(default="m", description="距离单位: m | km")
+    dissolve: bool = Field(default=False, description="True=合并所有缓冲为单一覆盖区")

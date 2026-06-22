@@ -4,6 +4,7 @@ import { renderLayer, removeLayerFromMap, reorderAllZ, restackZ } from './map.js
 import { toast } from './toast.js';
 import { openSettingsPopover, closeSettingsPopover, openSettingsLayerId, isOpen } from './settings.js';
 import { openHeatmapDialog } from './heatmap-tool.js';
+import { openBufferDialog } from './buffer-tool.js';
 
 const expandedWidth = { left: 0, right: 0 };
 
@@ -154,8 +155,9 @@ function levelTag(l) {
 
 /** Hint letter between 要素按钮 and name: R (range) / L0·L1·L2 (point), colored by the layer's display color. */
 function hintChip(l) {
+  const isBuffer = !!(l && l.paint && l.paint._ui && l.paint._ui.tool === 'buffer');
   const lv = layerLevel(l);
-  const text = lv === 'range' ? 'R' : (lv || 'L0');
+  const text = isBuffer ? 'B' : (lv === 'range' ? 'R' : (lv || 'L0'));
   return `<span class="layer-hint" style="color:${layerDisplayColor(l)}">${text}</span>`;
 }
 
@@ -259,6 +261,7 @@ export function renderLayerList() {
       if (!l) return;
       // Bug 2 fix: heatmap 图层的 H 按钮统一转调 HeatMap 弹窗（与 Toolbox 同入口、同参数集）
       if (l.kind === 'heatmap') { openHeatmapDialog(id); return; }
+      if (l.paint && l.paint._ui && l.paint._ui.tool === 'buffer') { openBufferDialog(id); return; }
       if (isOpen() && openSettingsLayerId() === id) closeSettingsPopover();
       else {
         openSettingsPopover(l, b);
@@ -507,6 +510,7 @@ export function initSidebar({ onFiles, onRangeFiles } = {}) {
   document.getElementById('run-governance')?.addEventListener('click', () => log('run-governance'));
   document.getElementById('run-analysis')?.addEventListener('click', () => log('run-analysis'));
   document.getElementById('tool-heatmap')?.addEventListener('click', () => openHeatmapDialog());
+  document.getElementById('tool-buffer')?.addEventListener('click', () => openBufferDialog());
   document.getElementById('tool-attribution')?.addEventListener('click', () => {
     toast.info('多维归因分析（Toolbox 独立工具，开发中）');
   });

@@ -180,6 +180,12 @@
   font-size: var(--geojson-typography-size-sm);
   font-weight: var(--geojson-typography-weight-bold);
 }
+/* Buffer collapsed：胶囊显示缓冲距离（如 "1000 m"）—— 非大写、稍小字号以适配长距离。 */
+.popup-range.is-collapsed.is-buffer .rp-badge {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--geojson-typography-size-xs);
+}
 
 /* ── Range hover tooltip (MapLibre Popup, navy) ── */
 .range-tooltip .maplibregl-popup-content {

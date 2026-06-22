@@ -135,17 +135,67 @@ def _free_port(port):
                 pass
 
 
+def _port_free(port):
+    """端口是否空闲（仅检测，不杀进程——避免误杀用户已起的后端）。"""
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.bind(('127.0.0.1', port)); s.close(); return True
+    except OSError:
+        return False
+
+
+def _spawn_backend(repo_root, backend_port=8000):
+    """若后端端口空闲，启动 uvicorn 子进程并等 /health 就绪；返回 proc（已运行/失败返回 None）。"""
+    if not _port_free(backend_port):
+        print(f'[OK] backend 已在 :{backend_port} 运行（复用，不另起）')
+        return None
+    try:
+        proc = subprocess.Popen(
+            ['py', '-m', 'uvicorn', 'api.main:app', '--port', str(backend_port)],
+            cwd=repo_root, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+    except Exception as e:
+        print(f'[WARN] 后端启动失败（{e}）；前端照常，缓冲/分析需手动起 uvicorn')
+        return None
+    print(f'[OK] backend uvicorn 启动中（:{backend_port}, PID {proc.pid}），等待就绪…')
+    import urllib.request, time
+    for _ in range(40):   # ≤8s
+        if proc.poll() is not None:
+            print('[WARN] backend 进程已退出（查 api/ 依赖或语法）'); return None
+        try:
+            urllib.request.urlopen(f'http://127.0.0.1:{backend_port}/api/v1/health', timeout=1).read()
+            print(f'[OK] backend 就绪 (:{backend_port})')
+            return proc
+        except Exception:
+            time.sleep(0.2)
+    print('[WARN] backend 8s 未就绪（可能仍在初始化）；前端照常')
+    return proc
+
+
 def main():
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8080
+    args = sys.argv[1:]
+    port = int(args[0]) if args and args[0].isdigit() else 8080
+    no_backend = '--no-backend' in args
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # frontend/ 的上一层 = repo root
     _free_port(port)   # 清掉同端口的僵尸 serve，避免返回旧版
+    backend_proc = None if no_backend else _spawn_backend(repo_root)
     with ReuseTCPServer(('', port), NoCacheHandler) as httpd:
         print(f'[OK] frontend serve on http://localhost:{port} (no-cache + ?v auto-inject)')
         print('     访问 http://localhost:{}/frontend/index.html'.format(port))
-        print('     Ctrl+C 停止')
+        print('     Ctrl+C 停止' + ('（同时停后端）' if backend_proc else ''))
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
             print('\n[OK] 已停止')
+        finally:
+            if backend_proc and backend_proc.poll() is None:
+                backend_proc.terminate()
+                try:
+                    backend_proc.wait(timeout=5)
+                except Exception:
+                    backend_proc.kill()
+                print('[OK] backend 已停止')
 
 
 if __name__ == '__main__':

@@ -106,10 +106,10 @@
 .ramp-bar { display: block; width: 100%; height: 100%; }
 
 /* ── Color swatches (polygon) ── */
-.swatch-list { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.swatch-list { display: grid; grid-template-columns: repeat(auto-fill, 26px); gap: 6px; justify-content: start; }
 .swatch {
-  width: 100%;
-  aspect-ratio: 1 / 1;
+  width: 26px;
+  height: 26px;
   padding: 0;
   border: 1px solid var(--geojson-color-border-default);
   border-radius: 50%;

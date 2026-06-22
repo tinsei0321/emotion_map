@@ -1,11 +1,14 @@
-// ═══ api.js — FastAPI backend bridge (Phase 2 wiring; Phase 1 stubs) ═══
-// Endpoints (to be added to api/routes.py per migration plan §八):
-//   GET  /api/v1/points        → emotion points GeoJSON (?bbox=)
-//   GET  /api/v1/points/stats  → polarity stats
-//   POST /api/v1/analyze       → run analysis (run_analysis_task)
-//   POST /api/v1/governance    → L0→L1 pipeline (run_governance_pipeline)
+// ═══ api.js — FastAPI backend bridge ═══
+// Backend (FastAPI) runs on :8000 (uvicorn api.main:app --port 8000).
+// Frontend served on :8080 (frontend/serve.py). BASE is absolute so fetches
+// reach the backend, not the frontend server. CORS is allow_origins=["*"].
+//   GET  /api/v1/points          → emotion points GeoJSON (?bbox=) [stub]
+//   POST /api/v1/analyze         → run analysis (run_analysis_task)
+//   POST /api/v1/governance      → L0→L1 pipeline (run_governance_pipeline)
+//   POST /api/v1/spatial/buffer  → buffer (覆盖范围, EPSG:4546)
 
-const BASE = '/api/v1';
+const BACKEND = 'http://127.0.0.1:8000';
+const BASE = `${BACKEND}/api/v1`;
 
 export async function fetchPoints() {
   // Phase 2: const r = await fetch(`${BASE}/points`); return r.json();
@@ -33,5 +36,20 @@ export async function runGovernance(payload) {
     body: JSON.stringify(payload),
   });
   if (!r.ok) throw new Error(`治理失败: ${r.status}`);
+  return r.json();
+}
+
+export async function runBuffer(payload) {
+  // payload: { geojson: FeatureCollection, distance: number, unit: 'm'|'km', dissolve: bool }
+  const r = await fetch(`${BASE}/spatial/buffer`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) {
+    let detail = `缓冲失败: ${r.status}`;
+    try { const j = await r.json(); detail = j.detail || detail; } catch (_) {}
+    throw new Error(detail);
+  }
   return r.json();
 }
