@@ -14,6 +14,10 @@
 | 1 | ✅ | 批1·1b 小类配色按大类派生 | `frontend/js/state.js` | `EMOTION_TYPE_COLORS` 7 色派生自 `EMOTION_MACRO`；愁类 2 小类紫色系明度梯度 |
 | 2 | ✅ | 类型细分色板方向翻转对齐胶囊顺序 | `frontend/js/state.js` | `positive/negative/neutral` 三 ramp 端点反转，对齐 `EMOTION_MACRO_ORDER`；放弃"高密度=最强情绪"旧语义 |
 | 3 | ✅ | 补 todo.md 06-19~06-21 断档 | `docs/todo.md` | 核密度弹窗重构 7 项 + 开发日志（交接卡遗留） |
+| 4 | ✅ | H 按钮重生成消失 bug | `heatmap-tool.js` `map.js` `serve.py` | opacity 反推百分比/比例混用（0.01 几乎透明）→ `*100`；附带 `to-number` + `serve.py` import ?v（破 Chrome module 缓存）+ 编辑分支原地更新（`editLayerId`） |
+| 5 | ✅ | 色带随大类胶囊动态变化 | `state.js` `heatmap-tool.js` `map.js` `heatmap-legend.js` `panel.js` | `buildMacroRamp` inline rampStops（选中大类→只含选中类色）；消费方优先 inline；rampKey 保持 polarity（reverse 显示对齐胶囊序） |
+| 6 | ✅ | 色带 HSL 色相插值 + 每类 3 段 | `state.js` | 取消 macroShades 明度变体；类色 HSL 插值（`gradientStopsHsl`），每类占 3 段色相；段数 积极 6/消极 9/中性 6/单类 3；HSL 替 RGB（中间黄绿明亮非土黄） |
+| 7 | ✅ | #hm-macros click→change 事件 | `heatmap-tool.js` | label-click 时序 is-on 滞后 input.checked，单选色带不更新 → change 同步 |
 
 > 💡 标准启动指令：`py frontend/serve.py 8080` → `http://127.0.0.1:8080/frontend/index.html`
 
@@ -25,6 +29,11 @@
 - **批1·1b 小类配色按大类派生**：小类独立色板（`EMOTION_TYPE_COLORS`）与大类色板（`MACRO_COLORS`/`EMOTION_MACRO`）冲突——"不满抱怨"=橙却属大类"愁"=紫。改为派生：单小类=大类色，愁类 2 小类（焦虑担忧/不满抱怨）用紫色系明度梯度（中紫 `#A569BD` / 深紫 `#7D3C98`）。调用点不动（`heatmap-tool.js:274` `EMOTION_TYPE_COLORS[t]` 值变即生效）。
 - **类型细分色板方向翻转**：`positive/negative/neutral` 三 ramp 端点顺序与胶囊 `EMOTION_MACRO_ORDER` 反向（积极胶囊 喜→乐，色板却 乐→喜）。反转三 ramp 端点对齐胶囊顺序（积极 喜→乐、消极 怒→哀→愁、中性 急→盼）。放弃"高密度=最强情绪"旧语义——色板是单维 density 渐变，颜色仅借大类色做视觉编码，无真实"密度段=情绪"含义。消费方（图例 / Overview / 设置 / 地图 paint）单源自动跟。
 - **补 todo.md 06-19~06-21 断档**：核密度弹窗重构 7 项 + 开发日志（交接卡遗留项）。
+- **H 按钮重生成消失 bug**（5bab6d4）：H 按钮重生成（原样再点生成）→ 热力图消失、眼睛救不回。Playwright + paint 查证：`openHeatmapDialog` 反推 opacity 百分比/比例混用（`sp.opacity` 0~1 直接赋百分比控件 0~100 → type=range clamp 1 → `generateHeatmap` 读 `1/100=0.01` 几乎透明）。修复：反推 `Math.round(sp.opacity*100)`。附带：`buildWeightExpression` `to-number`（MapLibre worker string 健壮）；`serve.py` 拦截 .js 注入 `import ?v=<mtime>`（破 Chrome module graph 缓存——旧 serve 只 main.js 带 ?v，子 module 缓存旧版致 F5 失效）；编辑分支原地更新（激活 `editLayerId`，4.6「继续编辑」语义）。
+- **色带演进**（62724d1）：
+  - **随胶囊动态**：`buildMacroRamp`（state.js）按选中大类生成 inline rampStops（选中大类 → 只含选中类色；全选 = 等同固定 ramp）；消费方优先 inline、fallback rampKey；rampKey 保持 polarity（rampDisplaySegs 据 polarity reverse，色带与胶囊同向）。
+  - **每类 3 段 + HSL 色相插值**：取消 macroShades 明度变体（跨类明度跳变割裂），类色直接 HSL 插值（`gradientStopsHsl`，hue 最短路径），每类占 3 段色相，整体连续不割裂。段数 积极 6/消极 9/中性 6/单类 3。HSL 替 RGB（RGB 绿↔黄中间土黄 `rgb(152,148,65)`，HSL 中间黄绿明亮 `rgb(123,218,87)`）。
+  - **#hm-macros click→change**：label-click 时序下 is-on class 滞后 input.checked（rAF 读旧值），单选时 renderStylePreview 取旧选中态、色带不更新 → 改 `change` 事件（input toggle 后同步触发）。
 
 #### 踩坑 & 收获
 - **色板方向 vs 胶囊顺序**：色板设计遵循 density 语义（左低右高），胶囊遵循情绪分类顺序（`EMOTION_MACRO_ORDER`），两者语义轴不同向导致全局反向。统一为胶囊顺序（视觉一致优先于牵强的 density-情绪绑定语义）。

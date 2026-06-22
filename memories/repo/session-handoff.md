@@ -44,6 +44,47 @@
 > 另两张（常规 vec）`tianditu_label.json`/`tianditu_nolabel.json` 同样在本地、不在 git——公司机若已存在就别动；若丢了，把上面 img 版里的 `img`→`vec`、`cia`→`cva` 即得。
 > 补完后启动见 [`frontend/README.md`](../../frontend/README.md)「启动」一节。
 
+## 当前节点 — 2026-06-22（H bug 修复 + 色带演进，待 push）
+
+> 本会话修了 H 按钮重生成消失 bug + 把类型细分色带做成随大类胶囊动态生成（HSL 色相细分，每类 3 段）。详细见 `docs/revision-log.md`（顶部任务树 + 第 5 节）。
+
+### Git
+- 本会话 commit：`5bab6d4`（H bug）+ `62724d1`（色带演进）。**待 push**。pull 后 `git log origin/main..HEAD` 应为空。
+
+### 完成
+- **H bug 修复**：H 按钮重生成（原样再点生成）→ 热力图消失、眼睛救不回。根因：`openHeatmapDialog` 反推 opacity 百分比/比例混用（`sp.opacity` 0~1 直接赋百分比控件 → clamp 1 → opacity=0.01 几乎透明）。修复：`Math.round(sp.opacity*100)`。**附带**：`buildWeightExpression` 加 `to-number`（MapLibre worker string 类型健壮）；`serve.py` 拦截 .js 注入 `import ?v=<mtime>`（破 Chrome module graph 缓存——旧 serve 只 main.js 带 ?v，子 module 缓存旧版致 F5 失效）；编辑分支原地更新（激活 `editLayerId`，4.6「继续编辑」语义，layer id 稳定）。
+- **色带演进**（类型细分）：
+  - **随胶囊动态**：`buildMacroRamp`（state.js）按选中大类生成 inline rampStops（选中大类 → 只含选中类色；全选 = 等同固定 ramp）；消费方（addHeatmapPaint/legend/panel/renderStylePreview）优先 inline、fallback rampKey；rampKey 保持 polarity（rampDisplaySegs 据 polarity reverse 显示，色带与胶囊同向）。
+  - **每类 3 段 + HSL 色相插值**：取消 macroShades 明度变体（跨类明度跳变割裂），类色直接 HSL 插值（`gradientStopsHsl`，hue 最短路径），每类占色带 3 段（色相细分），整体连续渐变、类间不割裂。段数 积极 6/消极 9/中性 6/单类 3。HSL 替 RGB（RGB 绿↔黄中间土黄，HSL 中间黄绿明亮）。
+  - **小类配色按大类派生**：愁类 2 小类（焦虑担忧/不满抱怨）紫色系明度梯度。
+  - 乐色 橙→黄→橙（最终 #F5A623）。
+- **bug 修**：`#hm-macros` 大类胶囊 click+rAF 改 `change` 事件（label-click 时序 is-on 滞后 input.checked，单选时 renderStylePreview 取旧选中态、色带不更新）。
+
+**工作机制速查**（双保险——换机若 memory 丢，看此速查也能恢复；详细在 `~/.claude/projects/d--Github-emotion-map/memory/`）：
+- **session-handoff**：会话满载 / 任务自然边界 / 用户提 token / 主题大切换 → 主动给 **4 件套**（①提示+理由 ②新会话衔接说明 ③衔接操作 ④小结 commit+状态）。
+- **token-saving-workstyle**：①**分会话**（最有效）②**subagent 分流**（探索/规划/大读）③**少全读**（grep+offset/limit）。**不降 effortLevel**。
+- **maintain-revision-log**：每次 commit → revision-log 第 5 节追加一行；任务树（顶部 ★）全程维护。
+- **kde-loadbearing**（底层逻辑勿破坏）：①**联动排除**（无字段层级自动排除）②**独占显示**（新热力图隐藏其他层 + dispatch layers:changed）。
+- **auto-compact**：`CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000`（晚压缩）。
+- **术语纠正** + **中文交付**（plan/报告/docs 中文；代码/路径英文）。
+
+### 怎么跑
+```
+py frontend/serve.py 8080          # 自动 ?v 注入（含 import ?v）+ 清端口
+# http://127.0.0.1:8080/frontend/index.html
+```
+
+### ⚠ 换机必做（除原 5 步外）
+1. **复制 `~/.claude/`**（settings.json + projects/d--Github-emotion-map/memory/）到新电脑——memory 是工作机制载体，丢了机制丢。
+2. **项目放 `d:\Github\emotion_map`**（memory 目录 hash 依赖路径）。
+3. **Python 3.14**。
+4. 新会话第一句：读 `docs/revision-log.md` 顶部任务树接上。
+
+### 下轮
+- **色带线收尾** ✅（批1 1b + HSL + 色相细分）。
+- **下一步候选**：Range 范围分析 / Analysis 接入 / Table 表格 / KDE 批2 时间轴 / Toolbox 多维归因。或用户指定。任务全貌看 revision-log 任务树。
+- **⏸ 批1 1a** 预览图等 terrain/factor Kepler 截图补齐。
+
 ## 当前节点 — 2026-06-21（核密度弹窗重构 + 工作机制调整，待 push）
 
 > 本会话把核密度分析弹窗从旧版重构成 kepler 配色三阶引导 + 模块化任务跟踪 + token/session 工作机制。详细见 `docs/revision-log.md`（顶部任务树 + 第 5 节修订记录）。
