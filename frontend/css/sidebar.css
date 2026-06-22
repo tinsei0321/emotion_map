@@ -251,6 +251,45 @@
 .tool-info:hover {
   background: var(--geojson-color-brand-primary);
 }
+
+/* ── Range 模块：两组卡片（复用 .tool-row 圆角+阴影语言，内含多内容）── */
+.range-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.range-card {
+  padding: 6px var(--geojson-spacing-2);
+  background: transparent;
+  border-radius: var(--geojson-radius-sm);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+.range-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.range-card-title {
+  font-size: var(--geojson-typography-size-xs);
+  font-weight: var(--geojson-typography-weight-medium);
+  color: var(--geojson-color-text-primary);
+}
+.range-draw-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.range-draw-grid .draw-tool {
+  width: 100%;
+  height: 30px;
+}
+.range-upload {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
 /* tooltip 挂 body、fixed 定位（工具栏非 top-layer，body 上的 fixed 可正常覆盖）。
  * 配色与 .hm-tooltip 一致：白底 + 深灰小字 + 细边框。 */
 .tool-tooltip {

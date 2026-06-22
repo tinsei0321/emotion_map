@@ -33,10 +33,10 @@ emotion_map（根）
 │  │  ├─ 批4 时间对比 ⬜  A/B 双窗（依赖批2）
 │  │  └─ 批5 图层分组 🔄  5A 自动归类 ✅｜5B 自由编组 ⬜
 │  ├─ 图层/设置/Overview 🔄  联动 ✅｜Layers 分组重做 ✅
-│  ├─ Toolbox 工具箱 🔄  多维归因分析 ⬜（自 KDE ① 剥离）
-│  ├─ Range 范围分析 ⬜  缓冲区 / 叠加 / 行政单元聚合
+│  ├─ Toolbox 工具箱 🔄  多维归因分析 ⬜（自 KDE ① 剥离）｜缓冲分析 ⬜（待讨论 UI/参数/坐标系）
+│  ├─ Range 范围 🔄  上载模块 ✅（绘制工具迁入 + 两组卡 + 自动 popup）｜范围分析 ⬜（缓冲/叠加/聚合）
 │  ├─ Analysis 情绪分析接入 ⬜  L2 管道接前端 / 空间分析 MVP
-│  └─ Table 数据表格 ⬜  列表 / 筛选 / 导出
+│  └─ Table 数据表格 ⬜  列表 / 筛选 / 导出（联动管线已预留）
 │
 └─ 临时分支（搁置 / 待决策）
    ├─ KDE 批1 1a 预览图 ⏸  等 terrain/factor kepler 截图补齐
@@ -265,6 +265,14 @@ flowchart TD
 
 - MCP 实测 7 通，确立"智谱优先 + 回退阶梯"路由（`docs/mcp-strategy.md`）。
 - Agent 协作 v2.1（8 agent + MCP 能力段）；闭环补强（trace 落盘/pre-commit/emoji hook/PII guard/Auto Memory 索引/CI）。
+
+### 5.7 前端 · Range 模块 + popup 收起修复 + 三区架构（06-22）
+
+| 日期 | 用户意图 → 落地 |
+|------|----------------|
+| 06-22 | **Range popup 收起 bug（DRY，与情绪点同源）**：用户报"点轮廓线以外区域 popup 不收起"。根因 = 范围层透明 hit 带（`lyr-{id}-hit`，宽、opacity 0）被 `queryRenderedFeatures` 当 line 层 → 点不可见 hit 带时 `hitRange=true` 不收起。修：popup.js 抽 `classifyMapClick()` 单一处理，hit 带**分态**（popup 关→开/易命中，开→收），可见轮廓（非 `-hit`）始终保持；map.js 删 `hitLid` click opener（并入中心处理消除开/收竞争）、`HIT_WIDTH` 12→20、hover 加宽轮廓 + tooltip 全保留。**测试追加修同质漏网**：原 `hitRange` 未过滤底图层 → positron `landcover`(fill) 误判点中范围，加 `lyr-` 前缀只认本项目层。删 range popup「顶点」「bbox」两行（用户不要）。Playwright 真实点击 4 态全过（空白→收 / hit 带关→开 / hit 带开→收 / 可见轮廓→开）。 |
+| 06-22 | **Range 模块（范围上载）**：用户定"绘制工具服务于指定范围 → 迁入 Range"。6 绘制按钮（点/线/多边形/矩形/圆/更多）从工具栏迁入左栏 Range **上组卡**（`.range-card` 复用 `.tool-row` 圆角+阴影+"i"，3×2 网格）；**下组卡** = + Upload Range（accept 去 csv/gpkg；`runRangeImport` 滤 csv + 跳 points）；上传后自动弹展开 popup（用户要求）。`select` 留工具栏；绘制功能仍 Phase 2 占位。 |
+| 06-22 | **三区设计逻辑**（用户提出：上端工具区 / 左端工作区 / 右端展示区）→ `docs/architecture.md` 第九节：三区职责 + `--left-w/--right-w` 折叠机制 + `layers:changed`/`layer:selected`/`layer:paint` 联动事件总线 + Table 联动管线预留。 |
 
 ---
 

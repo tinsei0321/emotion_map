@@ -7,7 +7,8 @@ import { openHeatmapDialog } from './heatmap-tool.js';
 
 const expandedWidth = { left: 0, right: 0 };
 
-let _onFiles = null;   // (FileList) => void — registered by main.js pipeline
+let _onFiles = null;       // (FileList) => void — registered by main.js pipeline (Import)
+let _onRangeFiles = null;   // (FileList) => void — registered by main.js pipeline (Range upload)
 
 function readVarPx(name) {
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -473,8 +474,9 @@ function initToolInfoTooltip() {
   }, true);
 }
 
-export function initSidebar({ onFiles } = {}) {
+export function initSidebar({ onFiles, onRangeFiles } = {}) {
   _onFiles = onFiles;
+  _onRangeFiles = onRangeFiles;
 
   document.querySelectorAll('.collapse-btn').forEach((btn) =>
     btn.addEventListener('click', () => togglePanel(btn.dataset.side)));
@@ -521,6 +523,16 @@ export function initSidebar({ onFiles } = {}) {
     });
   }
   // Left-panel Import = native <label>→<input> (no JS; avoids double picker).
+
+  // Range upload: native file picker — drops CSV/points upstream (main.js runRangeImport).
+  const rangeInput = document.getElementById('range-input');
+  if (rangeInput) {
+    rangeInput.addEventListener('change', (e) => {
+      const fs = e.target.files;
+      if (fs && fs.length && _onRangeFiles) _onRangeFiles(fs);
+      e.target.value = '';
+    });
+  }
 
   // Page-level drag-drop onto the map (1:1 geojson.io). Also keeps the dropzone hint.
   const mapEl = document.getElementById('map');

@@ -108,7 +108,7 @@ export function showRangePopup(feature, layer) {
 
   const color = (layer && layer.paint && layer.paint.color) || '#0c1c2e';
   const name = (layer && layer.name) || (feature.properties && feature.properties.name) || '范围';
-  const { area, perimeter, type, vertices, bbox } = geomStats(feature.geometry);
+  const { area, perimeter, type } = geomStats(feature.geometry);
 
   const badge = document.getElementById('rp-badge');
   badge.textContent = '范围';
@@ -123,8 +123,6 @@ export function showRangePopup(feature, layer) {
     ['面积', area != null ? `${area.toFixed(3)} km²` : '—'],
     ['周长', perimeter != null ? `${perimeter.toFixed(3)} km` : '—'],
     ['类型', type || '—'],
-    ['顶点', vertices != null ? String(vertices) : '—'],
-    ['bbox', bbox || '—'],
   ];
   document.getElementById('rp-kv').innerHTML = rows.map(([k, v]) =>
     `<div class="kv-row"><span class="kv-k">${k}</span><span class="kv-v">${v}</span></div>`).join('');
@@ -167,6 +165,26 @@ export function refreshPopupForLayer(id) {
   }
 }
 
+// ── Click classification (single source of truth for popup open/collapse) ──
+// 透明 hit 带（lyr-{id}-hit，宽 HIT_WIDTH、opacity 0，为好点细轮廓）单独成类：
+//   popup 展开时点 hit 带（用户感知"轮廓以外"）= 收起；popup 关着时点 hit 带 = 开（易命中）。
+//   可见轮廓（fill/line 非 -hit，2px）= 始终保持/刷新。一处判定驱动两个 popup，杜绝同质 bug。
+function classifyMapClick(feats, ev) {
+  const tgt = ev.originalEvent && ev.originalEvent.target;
+  if (tgt && tgt.closest && (tgt.closest('#feature-popup') || tgt.closest('#range-popup'))) return 'popup';
+  // 只认本项目数据层（id 以 lyr- 开头），排除底图 fill/line/circle（landcover/water/road…）——
+  // 否则点底图水面/土地利用也会被当成"点中范围/点"，误开 popup（原 hitRange 逻辑的同质漏网）。
+  const ours = feats.filter((f) => f.layer && String(f.layer.id).startsWith('lyr-'));
+  if (ours.some((f) => f.layer.type === 'circle')) return 'point';
+  if (ours.some((f) => (f.layer.type === 'fill' || f.layer.type === 'line') && !String(f.layer.id).endsWith('-hit'))) return 'range-visible';
+  if (ours.some((f) => String(f.layer.id).endsWith('-hit'))) return 'range-hitband';
+  return 'blank';
+}
+function isRangePopupExpanded() {
+  const p = rngEl();
+  return !!p && !p.hidden && !p.classList.contains('is-collapsed') && !!_rng;
+}
+
 // ── Init: close/expand/collapse wiring ─────────────────────────────────────
 export function initPopup(map) {
   const e = emoEl(), r = rngEl();
@@ -176,17 +194,27 @@ export function initPopup(map) {
   r?.addEventListener('click', () => { if (r.classList.contains('is-collapsed')) expandRangePopup(); });
   if (map) {
     map.on('click', (ev) => {
-      const tgt = ev.originalEvent && ev.originalEvent.target;
-      if (tgt && tgt.closest && (tgt.closest('#feature-popup') || tgt.closest('#range-popup'))) return;
-      // 严格收起规则（用户要求）：
-      //   情绪点 popup —— 只有命中"点(circle)"才保持，否则收起
-      //   范围 popup    —— 只有命中"面/线(fill|line)"才保持，否则收起
-      //   这样点空白/别的要素/热力图 都会收起对应 popup，杜绝"偶尔失效"。
-      const feats = map.queryRenderedFeatures(ev.point);
-      const hitPoint = (feats || []).some((f) => f.layer && f.layer.type === 'circle');
-      const hitRange = (feats || []).some((f) => f.layer && (f.layer.type === 'fill' || f.layer.type === 'line'));
-      if (!hitPoint) collapsePopup();
-      if (!hitRange) collapseRangePopup();
+      const feats = map.queryRenderedFeatures(ev.point) || [];
+      const k = classifyMapClick(feats, ev);
+      if (k === 'popup') return;
+      // 情绪点：非命中即收（开 popup 仍由 map.js 点层 click 负责）
+      if (k !== 'point') collapsePopup();
+      // 范围：可见轮廓→保持/刷新；hit 带→未展开则开(易命中)/已展开则收；都没有→收
+      if (k === 'range-visible') {
+        const f = feats.find((ff) => ff.layer && String(ff.layer.id).startsWith('lyr-') && (ff.layer.type === 'fill' || ff.layer.type === 'line') && !String(ff.layer.id).endsWith('-hit'));
+        const layer = f && layerFromFeature(f);
+        if (layer) showRangePopup(f, layer);
+      } else if (k === 'range-hitband') {
+        if (!isRangePopupExpanded()) {
+          const f = feats.find((ff) => ff.layer && String(ff.layer.id).startsWith('lyr-') && String(ff.layer.id).endsWith('-hit'));
+          const layer = f && layerFromFeature(f);
+          if (layer) showRangePopup(f, layer); else collapseRangePopup();
+        } else {
+          collapseRangePopup();
+        }
+      } else {
+        collapseRangePopup();
+      }
     });
   }
   // 图层隐藏/删除时同步隐藏对应 popup：情绪点 popup 跟 _popupLayerId，范围 popup 跟 _rngLayerId。

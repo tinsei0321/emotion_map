@@ -1,7 +1,6 @@
 // ═══ map.js — MapLibre GL JS instance, multi-layer registry, basemap switch ═══
 import { emotionColors, token, POLARITY_ORDER, getLayers, CONFIDENCE_RAMP, confidenceColor, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets } from './state.js';
 import { initControls } from './map-controls.js';
-import { showRangePopup } from './popup.js';
 
 export const BASEMAPS = {
   // CARTO GL 矢量素图（kepler/MVP 同款，无注记，CDN 矢量瓦片，细节丰富+缩放清晰+快）
@@ -15,7 +14,7 @@ export const BASEMAPS = {
 export const DEFAULT_BASEMAP = 'positron';
 const YICHANG = { center: [111.286, 30.708], zoom: 12 };
 const NAVY = '#0c1c2e';
-const HIT_WIDTH = 12;           // transparent hit-line width (easy hover/click on thin outlines)
+const HIT_WIDTH = 20;           // transparent hit-line width (easy hover/open on thin outlines; visible line stays 2px)
 
 /** Density-adaptive point radius (user spec, L0-L4 uniform): by point count → tier,
  *  and within a tier the radius breathes with zoom (zoom in = bigger).
@@ -356,7 +355,9 @@ function bindPointInteractions(layer, lid) {
   });
 }
 
-/** Range hover/click bound to the transparent hit layer; hover widens the visible outline. */
+/** Range hover bound to the transparent hit layer; hover widens the visible outline + tooltip.
+ *  Click-to-open moved to popup.js central handler (classifyMapClick) so open/collapse share
+ *  one decision (no open-then-collapse race); hover behaviour preserved unchanged. */
 function bindRangeInteractions(layer, hitLid, outlineLid) {
   if (_boundRange.has(layer.id)) return;
   _boundRange.add(layer.id);
@@ -371,10 +372,6 @@ function bindRangeInteractions(layer, hitLid, outlineLid) {
     map.getCanvas().classList.remove('is-pointer');
     try { map.setPaintProperty(outlineLid, 'line-width', baseW); } catch (_) {}
     hideRangeTooltip();
-  });
-  map.on('click', hitLid, (e) => {
-    const f = e.features && e.features[0]; if (!f) return;
-    showRangePopup(f, layer);
   });
 }
 

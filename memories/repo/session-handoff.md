@@ -44,6 +44,35 @@
 > 另两张（常规 vec）`tianditu_label.json`/`tianditu_nolabel.json` 同样在本地、不在 git——公司机若已存在就别动；若丢了，把上面 img 版里的 `img`→`vec`、`cia`→`cva` 即得。
 > 补完后启动见 [`frontend/README.md`](../../frontend/README.md)「启动」一节。
 
+## 当前节点 — 2026-06-22 续（家庭电脑 · popup 修复 + Range 模块，待 commit/push/肉眼验）
+
+> **机器 = 家庭电脑**。⚠ **memory 忘记拷回**——`~/.claude/projects/d--Github-emotion-map/memory/` 本机缺失，工作机制类 memory（session-handoff / token-saving / kde-loadbearing / maintain-revision-log 等）**不在本机**。靠本卡「工作机制速查」段（见下方 06-22 节）+ CLAUDE.md 明规则兜底，机制不丢。**回办公机记得把 memory 拷回**。
+
+### Git
+- 本会话改动（**未 commit**）：`frontend/js/{popup,map,main,sidebar}.js` + `frontend/css/sidebar.css` + `frontend/index.html` + `docs/architecture.md`（三区段）+ 本文件。
+- 上轮 `f26c43c`（交接卡）仍待 push；更早的 `5bab6d4`/`62724d1` **已推**（下方 06-22 节写的"待 push"已过时）。
+
+### 完成
+- **Range popup 收起 bug（DRY）**：根因 = 范围层透明 hit 带（`lyr-{id}-hit`，宽、opacity 0）被 `queryRenderedFeatures` 算作 line 层 → 点"轮廓外不可见 hit 带"时 `hitRange=true` 不收起。修：`popup.js` 抽 `classifyMapClick(feats,ev)` 单一处理，hit 带**分态**（popup 关→开/易命中，popup 开→收=修 bug），可见轮廓（id 非 `-hit`）始终保持；`map.js` 删 `hitLid` click opener（并入中心处理，消除开/收竞争）、`HIT_WIDTH` 12→20、**hover 加宽轮廓 + tooltip 全保留**（`bindRangeInteractions` 仅删 click）；删 range popup「顶点」「bbox」两行。
+- **Range 模块**：工具栏 6 绘制按钮（点/线/多边形/矩形/圆/更多）迁入左栏 Range **上组卡**（`.range-card` 复用 `.tool-row` 圆角+阴影+"i" 语言，3×2 网格）；**下组卡** = + Upload Range（`#range-input`，accept 去 csv/gpkg）；`main.js runRangeImport` 复用 Import 管道但滤 csv、跳 points、首层自动 `showRangePopup`（展开态）；`sidebar.js` 加 `onRangeFiles`。`select` 留工具栏。绘制功能仍 Phase 2 占位。
+- **三区设计逻辑**：`docs/architecture.md` 第九节（上端工具区/左端工作区/右端展示区 + 折叠机制 + `layers:changed`/`layer:selected`/`layer:paint` 联动事件总线 + Table 联动管线预留）。
+
+### 怎么跑
+```
+py frontend/serve.py 8080          # 自动 ?v 注入（含 import ?v）+ 清端口
+# http://127.0.0.1:8080/frontend/index.html
+```
+
+### 待用户
+- **肉眼验**（配色/布局小改，未上 Playwright）：Range 两组卡片样式、6 按钮两排、Upload Range 触发文件窗、工具栏仅剩 select。
+- **Playwright 回归**（控制流，CLAUDE.md 情形 b，本会话未跑）：上传 range→自动弹展开 popup（无顶点/bbox）→点空白两者收→点可见轮廓开→点情绪点情绪开/range 收→**点 hit 带（轮廓外）popup 开着则收、关着则开**（核心回归）。交用户或下会话补。
+
+### 下轮
+- **缓冲分析（Toolbox）**：UI/参数/坐标系（客户端 Turf·WGS84 vs 后端·EPSG:4546）**待一步步讨论**——见计划 `C:\Users\Hi\.claude\plans\reflective-noodling-volcano.md` 第 4 节讨论材料。
+- Analysis（L1→L2 接入）/ Table 实现，或用户指定。
+
+---
+
 ## 当前节点 — 2026-06-22（H bug 修复 + 色带演进，待 push）
 
 > 本会话修了 H 按钮重生成消失 bug + 把类型细分色带做成随大类胶囊动态生成（HSL 色相细分，每类 3 段）。详细见 `docs/revision-log.md`（顶部任务树 + 第 5 节）。

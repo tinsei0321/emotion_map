@@ -3,7 +3,7 @@ import { initMap, setBasemap, setClickHandler, renderLayer, fitBoundsTo, reorder
 import { initPanel, activateTab, setOverview, setTable } from './panel.js';
 import { initToolbar, setActiveBasemap } from './toolbar.js';
 import { initSidebar, openImport, openRightPanel, renderLayerList, showLayerManager, refreshLegend } from './sidebar.js';
-import { initPopup, showPopup } from './popup.js';
+import { initPopup, showPopup, showRangePopup } from './popup.js';
 import { addLayer, addGroup, getLayers, getSelectedLayer } from './state.js';
 import {
   groupFiles, detectGroupType, parseGroup, reprojectFC, readPrj,
@@ -109,6 +109,47 @@ async function runImport(files) {
   });
 }
 
+/** Range upload: same pipeline as Import but drops CSV + point data; auto-opens the
+ *  first range layer's popup (expanded) per spec. No confirm dialog (focused action). */
+async function runRangeImport(files) {
+  const filtered = Array.from(files || []).filter((f) => !/\.csv$/i.test(f.name));
+  if (!filtered.length) { toast.info('Range 仅接受 GeoJSON / KML / Shapefile（不含 CSV）'); return; }
+  const groups = groupFiles(filtered);
+  let added = 0, firstRange = null, crsAny = false;
+  for (const g of groups) {
+    const type = detectGroupType(g);
+    const base = layerName(g);
+    if (!type) { toast.error(`${base}：无法识别格式，已跳过`); continue; }
+    try {
+      const prj = type === 'shapefile' ? await readPrj(g) : null;
+      let fc = await parseGroup(g, type);
+      const r = reprojectFC(fc, prj);
+      if (r && r._crsWarn) { crsAny = true; fc = r.fc; } else fc = r;
+      const { lines, polygons } = splitByGeometry(fc);   // points intentionally dropped (Range = 面/线)
+      if (lines.features.length)    { const L = addLayer({ name: base, kind: 'line',    fc: lines });    L.srcName = base; renderLayer(L); if (!firstRange) firstRange = L; added++; }
+      if (polygons.features.length) { const L = addLayer({ name: base, kind: 'polygon', fc: polygons }); L.srcName = base; renderLayer(L); if (!firstRange) firstRange = L; added++; }
+      const bb = fcBBox(fc);
+      if (bb) fitBoundsTo(bb);
+    } catch (e) {
+      console.error('[range-import]', e);
+      toast.error(`${base}：${e.message || '解析失败'}`);
+    }
+  }
+  renderLayerList();
+  refreshLegend();
+  refreshOverview();
+  reorderAllZ();
+  if (added) {
+    showLayerManager();
+    toast.success(`已上载 ${added} 个范围图层`);
+    if (crsAny) setTimeout(() => toast.info('部分数据坐标系未知，按 WGS84 加载', 4500), 400);
+    // 自动弹首个 range 层 popup（展开态）——用户要求
+    if (firstRange && firstRange.fc && firstRange.fc.features && firstRange.fc.features.length) {
+      showRangePopup(firstRange.fc.features[0], firstRange);
+    }
+  }
+}
+
 function main() {
   const map = initMap('map');
   window.__map = map;   // dev hook
@@ -119,7 +160,7 @@ function main() {
   initPopup(map);
   refreshOverview();    // empty-state overview
 
-  initSidebar({ onFiles: runImport });
+  initSidebar({ onFiles: runImport, onRangeFiles: runRangeImport });
   initHeatmapTool();
   initHeatmapLegend();
 

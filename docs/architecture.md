@@ -460,3 +460,38 @@ Phase 3 ⬜  规划中
 ├── Web 部署（Docker + 云服务器）
 └── 移动端适配
 ```
+
+## 九、前端布局架构（三区设计）
+
+> 前端主界面（`frontend/`，MapLibre GL JS）采用**三区布局**，是所有功能模块归属与联动的顶层约定。新增前端功能须先归入对应区。
+
+### 9.1 三区划分
+
+| 区 | DOM 锚 | 默认态 | 职责 |
+|----|--------|--------|------|
+| **上端 · 工具区** | `#app-header`（`#title-bar` + `#toolbar`，高 88px，固定） | 常驻 | 账号登入/登出（未开发）、选择/测量/标记等自定义工具、Import/Export、底图切换、图层选择等**全局工具**。不含数据本身。 |
+| **左端 · 工作区** | `#left-panel`（宽 `--left-w`，默认 300px 展开） | 展开 | 对数据的**操作**：① 上载数据（点/线/面，多类型多格式）② 调整数据（样式/颜色/图层顺序/显隐）③ 分析数据（Toolbox + 参数设置）。含 `Range` / `Layers` / `Analysis` / `Toolbox` 四个可折叠区段。 |
+| **右端 · 展示区** | `#right-panel`（宽 `--right-w`，默认 0px 折叠） | 折叠 | 选中数据/分析结果的**展示**：`Overview`（摘要/属性/图表三级）+ `Table`（详细表格）。二者均为展示模块，**核心价值 = 联动**（随选中图层/分析结果实时刷新）。 |
+
+地图 `#map` 占据中央剩余空间（`flex: 1 1 auto`）。
+
+### 9.2 折叠机制
+
+- 左/右栏宽度由 CSS 变量 `--left-w` / `--right-w` 驱动（`layout.css`）；拖拽 `col-resize` 条改宽度，`.collapse-btn` 竖向药丸钮切换展开/折叠（`sidebar.js togglePanel`）。
+- 默认：左栏展开（凸显工作区）、右栏折叠（有选中时自动展开，见 9.3 `layer:selected`）。
+
+### 9.3 联动事件总线
+
+跨区/跨模块联动统一走 `document` 上的三个自定义事件（**Table 等展示模块接入联动只需监听这三个事件**）：
+
+| 事件 | 触发时机 | 监听方（现状） |
+|------|----------|----------------|
+| `layers:changed` | 图层显隐/删除/清空/重排（`sidebar.js` 多处 dispatch） | `main.js` 集线 → `renderLayerList` + `refreshLegend` + `refreshOverview` + `updateExportState`；`popup.js`（隐藏已删层的 popup）；`heatmap-legend.js` |
+| `layer:selected` | 点选图层行 / 新生成图层（heatmap、range 上载等） | `main.js` → `openRightPanel` + `activateTab('overview')` + `refreshOverview`；`heatmap-legend.js` |
+| `layer:paint` | 设置弹窗改图层样式/颜色（`settings.js`） | `main.js` → `refreshLegend` + `refreshOverview` |
+
+> **Table 联动管线（预留）**：`Table` 当前为静态表（`panel.js setTable`，未接线）。后续接入时挂 `layers:changed`（刷新行）+ `layer:selected`（加载选中图层行）+ `layer:paint`（同步配色）即可，事件总线已就绪，无需改其他模块。
+
+### 9.4 区段与三区映射（左栏工作区）
+
+左栏 `.lp-mode[data-mode=sections]` 内四个 `.lp-section`：`Range`（范围上载 + 绘制工具）→ `Layers`（图层管理）→ `Analysis`（治理/分析引擎）→ `Toolbox`（空间分析工具集，如 HeatMap、缓冲分析、多维归因）。区段头点击折叠/展开（`sidebar.js`）。

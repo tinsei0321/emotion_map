@@ -36,12 +36,7 @@
     <nav id="toolbar">
       <div class="tb-group tb-left">
         <button class="draw-tool is-active" data-tool="select" title="选择" aria-pressed="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg></button>
-        <button class="draw-tool" data-tool="point" title="点" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor"/></svg></button>
-        <button class="draw-tool" data-tool="line" title="线" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="18" x2="18" y2="6"/></svg></button>
-        <button class="draw-tool" data-tool="polygon" title="多边形" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 3L20 8L18 18L6 18L4 8Z"/></svg></button>
-        <button class="draw-tool" data-tool="rectangle" title="矩形" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="6" width="16" height="12" rx="1"/></svg></button>
-        <button class="draw-tool" data-tool="circle" title="圆" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/></svg></button>
-        <button class="draw-tool draw-more" data-tool="more" title="更多工具" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9L12 15L18 9"/></svg></button>
+        <!-- 绘制工具（点/线/多边形/矩形/圆/更多）已迁至左栏 Range 模块——它们服务于"指定范围"，属工作区。 -->
       </div>
 
       <div class="tb-group tb-right">
@@ -78,11 +73,34 @@
 
       <!-- 模式 2：Range / Layers / Analysis 可折叠区段（1:1 图3） -->
       <div class="lp-mode lp-sections" data-mode="sections" hidden>
-        <section class="lp-section" data-section="range">
+        <section class="lp-section open" data-section="range">
           <div class="section-head"><span class="chev">&#9654;</span> Range</div>
           <div class="section-body">
-            <div class="sec-note">分析范围上载与选择（Phase 2 接 range_selector）。</div>
-            <label class="sec-btn"><span>+ Upload Range</span><input type="file" accept=".zip,.geojson,.gpkg" hidden /></label>
+            <div class="range-cards">
+              <!-- 上组：绘制范围要素（点/线/多边形/矩形/圆/更多）——功能开发中，先就位 -->
+              <div class="range-card">
+                <div class="range-card-head">
+                  <span class="range-card-title">绘制范围</span>
+                  <span class="tool-info" data-tip="用绘制工具指定范围要素（点/线/多边形/矩形/圆）。点、线暂不涉及范围，底层逻辑类似——均为指定一个要素，功能开发中。">i</span>
+                </div>
+                <div class="range-draw-grid">
+                  <button class="draw-tool" data-tool="point" title="点" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor"/></svg></button>
+                  <button class="draw-tool" data-tool="line" title="线" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="18" x2="18" y2="6"/></svg></button>
+                  <button class="draw-tool" data-tool="polygon" title="多边形" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 3L20 8L18 18L6 18L4 8Z"/></svg></button>
+                  <button class="draw-tool" data-tool="rectangle" title="矩形" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="6" width="16" height="12" rx="1"/></svg></button>
+                  <button class="draw-tool" data-tool="circle" title="圆" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/></svg></button>
+                  <button class="draw-tool draw-more" data-tool="more" title="更多工具" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9L12 15L18 9"/></svg></button>
+                </div>
+              </div>
+              <!-- 下组：上载范围文件（面/线；同 Import 格式，不含 CSV、不上传点数据） -->
+              <div class="range-card">
+                <div class="range-card-head">
+                  <span class="range-card-title">上载范围</span>
+                  <span class="tool-info" data-tip="从文件上载范围（面/线）。格式同 Import：GeoJSON / KML / Shapefile；不接受 CSV，不导入点数据。上载后自动弹出该范围 popup。">i</span>
+                </div>
+                <label class="sec-btn range-upload"><span>+ Upload Range</span><input type="file" id="range-input" accept=".geojson,.json,.kml,.shp,.dbf,.shx,.prj,.cpg,.zip" hidden /></label>
+              </div>
+            </div>
           </div>
         </section>
 
