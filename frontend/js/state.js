@@ -564,7 +564,7 @@ export function addLayer({ name, kind, fc, needsAnalysis = false, colorMode, pai
         : {};
   const layer = {
     id, name, kind, fc, visible: true, needsAnalysis, parentId: parentId || null,
-    colorMode: colorMode || (needsAnalysis ? 'needsAnalysis' : 'polarity'),
+    colorMode: colorMode || (kind === 'point' ? (needsAnalysis ? 'needsAnalysis' : 'polarity') : 'range'),  // 情绪色系(polarity)是 point 专属；polygon/line 默认 'range'，避免误触发极性图例
     paint: { ...defaultPaint, ...(paint || {}) },
   };
   _layers.set(id, layer);

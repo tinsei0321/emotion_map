@@ -101,7 +101,8 @@ export function refreshLegend() {
   const has = (pred) => vis.some(pred);
 
   // polarity (L2) — 5-color gradient bar (VP lime → P teal → Neutral blue → N orange → VN dark red)
-  const l2 = vis.find((l) => l.colorMode === 'l2-positive' || l.colorMode === 'l2-neutral' || l.colorMode === 'l2-negative' || l.colorMode === 'polarity');
+  // 仅 point 层（L2 情绪点）触发；polygon/line 即便误带 polarity colorMode 也不显（防范围/缓冲层误弹极性图例）
+  const l2 = vis.find((l) => l.kind === 'point' && (l.colorMode === 'l2-positive' || l.colorMode === 'l2-neutral' || l.colorMode === 'l2-negative' || l.colorMode === 'polarity'));
   sethidden('legend-polarity', !l2);
   if (l2) {
     const items = [
