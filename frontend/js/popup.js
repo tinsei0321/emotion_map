@@ -128,8 +128,10 @@ export function showRangePopup(feature, layer) {
       `<div class="kv-row"><span class="kv-k">类型</span><span class="kv-v">${type || '—'}</span></div>`;
     _rng = { name: fname, color, isBuffer: true, distance: distLabel };
   } else {
-    // 范围：badge「范围」+ 名称 + 面积/周长/类型
-    badge.textContent = '范围';
+    // 范围：badge 依来源（绘制→形状「多边形/矩形」；上载→「上载」）+ 名称 + 面积/周长/类型
+    const drawn = ui.tool === 'draw';
+    const badgeText = drawn ? (ui.shape || '多边形') : '上载';
+    badge.textContent = badgeText;
     if (distEl) distEl.hidden = true;
     const { area, perimeter } = geomStats(feature.geometry);
     const name = (layer && layer.name) || (feature.properties && feature.properties.name) || '范围';
@@ -141,7 +143,7 @@ export function showRangePopup(feature, layer) {
     ];
     document.getElementById('rp-kv').innerHTML = rows.map(([k, v]) =>
       `<div class="kv-row"><span class="kv-k">${k}</span><span class="kv-v">${v}</span></div>`).join('');
-    _rng = { name, color, isBuffer: false };
+    _rng = { name, color, isBuffer: false, expandedText: badgeText, area };
   }
   _rngLayerId = layer ? layer.id : null;
 }
@@ -149,14 +151,17 @@ export function showRangePopup(feature, layer) {
 export function collapseRangePopup() {
   const popup = rngEl();
   if (!popup || popup.hidden || !_rng) return;
-  // 缓冲：收起胶囊显示距离；范围：bold English 'Range'
-  document.getElementById('rp-badge').textContent = _rng.isBuffer ? (_rng.distance || '缓冲') : 'Range';
+  // 缓冲：收起胶囊显示距离；范围：收起胶囊显示面积（2 位小数 + km²）
+  const badge = document.getElementById('rp-badge');
+  badge.textContent = _rng.isBuffer
+    ? (_rng.distance || '缓冲')
+    : (_rng.area != null ? `${_rng.area.toFixed(2)} km²` : (_rng.expandedText || '范围'));
   popup.classList.add('is-collapsed');
 }
 export function expandRangePopup() {
   const popup = rngEl();
   if (!popup || popup.hidden || !_rng) return;
-  document.getElementById('rp-badge').textContent = _rng.isBuffer ? '缓冲' : '范围';
+  document.getElementById('rp-badge').textContent = _rng.isBuffer ? '缓冲' : (_rng.expandedText || '范围');
   popup.classList.remove('is-collapsed');
 }
 export function hideRangePopup() { _rngLayerId = null; const p = rngEl(); if (p) p.hidden = true; }
