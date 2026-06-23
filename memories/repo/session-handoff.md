@@ -19,43 +19,39 @@
 
 > 文件职责：`docs/todo.md` = 正式日志（每日任务+踩坑，倒序）；本文件 = 跨机交接（单节点快照）。职责不同，换机前都更。
 
-## 当前节点 — 2026-06-23（办公机 · 换机恢复 + 方向重定）
+## 当前节点 — 2026-06-24（家用机 · 任务一模拟器 v3.0→v3.1 pivot → 8 点换办公机）
 
 ### 机器 & 同步
-- **机器 = 办公机**（`C:\Users\admin\`；家用机 = `C:\Users\Hi\`）。auto-memory 已同步（9 条在本机生效）。
-- Git：HEAD = `dab9a86`（buffer），`origin/main..HEAD` 与 `HEAD..origin/main` 均空 → 完全同步、工作区干净。家用机标"待 push"的 buffer 已 push。
-- 天地图 4 张底图 JSON 全在，不用手补。
+- **机器 = 家用机**（`C:\Users\Hi\`；办公机 = `C:\Users\admin\`）。auto-memory 9 条本机生效。
+- Git：**GitHub 此刻可达（200）**；c68f3de（export 修复）已 push（origin/main..HEAD 空）。本轮任务一工作（Phase A + v3.0 + 边界 + 本卡）**已 commit + push**，办公机 `git pull` 即同步。
+- 天地图 4 底图 JSON 全在。
 
-### 上轮产出（家用机，已同步、待肉眼验）
-- **缓冲分析（Buffer）工具** ✅ 端到端：后端 [core/buffer_analysis.py](../../core/buffer_analysis.py)（geopandas EPSG:4546 米制）+ `POST /api/v1/spatial/buffer`；前端 [buffer-tool.js](../../frontend/js/buffer-tool.js)（3 段弹窗）+ Toolbox `#tool-buffer` + `api.js runBuffer`；B 要素按钮开弹窗（编辑态 `paint._ui` 回填 + 原地更新，layer id 稳定）；独立组卡；popup 复用 Range。**待肉眼验**：popup 排版 / 组卡双击折叠 / 色板尺寸（自动识图对 UI 配色不准，开页验）。
-- L0 点精修（4px / 80% / 深灰 #4a4a4a + 全局 `PRESET_COLORS`）；`serve.py` 自动起后端（`py frontend/serve.py 8080` 一条命令 + F5 迭代）。
+### 本轮产出（任务一 模拟器，家用机）
+- **边界到位**：`DATA/boundaries/西陵伍家核心主城.geojson`（139.6km²，4229 顶点）+ `大南门二马路滨江片区.geojson`（0.599km²，42 顶点），均 WGS84 valid 嵌套。用户提供。
+- **Phase A（保留，v3.1 复用）✅**：[emotion_text_pool.py](../../SCRIPT/emotion_text_pool.py)（78 条 SnowNLP 预筛文本，**L2 锚定 100%**）；[snapshot_config.py](../../SCRIPT/snapshot_config.py)（3 快照叙事，二马路 T1 消极 60%→T3 积极 65%）；[poi_data/](../../SCRIPT/poi_data/)（158 POI 种子 WGS84 + 4×5 映射 75 条）。
+- **v3.0 [generate_l1_mock.py](../../SCRIPT/generate_l1_mock.py) ✅ 跑通但点位不可用**：3 快照 × 2500 点 + 二马路加密 + 埋点 + L1→L2（score 0.46→0.57→0.65 叙事弧 + 埋点迁移表）。**但空间生成是"158 POI 种子高斯聚类"→ 离散光斑 + 伍家空白**（数据证实：75% 网格空、伍家 0 点、最大光斑 388 点/格）→ **用户判"完全不可用"**。
+- **环境补**：snownlp/jieba/tqdm 原缺（在 requirements 但没装），已 pip install。
 
-### 本轮方向（用户重定，跨会话大盘）
+### 下轮（8 点办公机）— v3.1 重做空间生成
+**plan 文件在本机 `C:\Users\Hi\.claude\plans\...`（不跨机），方案要点写此卡**：
+- **换空间生成**：**高德真实 POI**（全类目 ~13 类，`restapi.amap.com/v3/place/text`，GCJ-02→WGS84，boundary 过滤，缓存）→ **numpy 核密度曲面**（histogram2d + 高斯卷积平滑，**不引 scipy**，3.14 稳）→ **全域按密度拒绝采样**（密的区域多采、boundary.contains() 掩膜）。替 v3.0 的 POI 种子聚类。
+- **复用**：Phase A（文本池/叙事/4×5）+ v3.0 非空间部分（inject_fields 的 domain/element/polarity、apply_anchors 埋点、transform_coords、fill_keywords、export_l1 GeoJSON、run_l2、main 3 快照循环）。**只改 generate_zone_points**（→ DensityField 拒绝采样）。
+- **新文件**：`SCRIPT/poi_data/pull_amap_poi.py`（高德拉取，读 `AMAP_KEY`）、`SCRIPT/poi_data/poi_density.py`（核密度 + 拒绝采样）。
+- **AMAP_KEY 待补 `.env`**（高德 Web 服务 Key，lbs.amap.com 个人免费；**用户暂无**）。无 Key 时 pull 脚本报错退出（不静默跳过）。
+- **二马路**：密度曲面在 +150m buffer 内乘 boost 因子凑 ~700 点（平滑加密，非团）。
+- **验证指标**（"不可用"的反面）：伍家 POI >15%（v3.0 是 0%）、网格填充 >60%（v3.0 是 25%）、无 >50 点/格光斑、叙事弧/L2 锚定/埋点不变。
 
-**✅ 快赢**：① 本文件翻新（单节点）；② skill 精简 `.claude/skills/` 465→235（230 个 `git mv` 归档 `skills_archive/`，零删除可逆）。
-
-**✅ 多边形/矩形绘制 + 图层导出（本轮主产出）**——国内登不上 geojson.io → 把多边形绘制（原任务三.1）提前：
-- **绘制**：移植 geojson.io 自实现 handler（不用 mapbox-gl-draw，与 MapLibre 5 不兼容）→ 新 [frontend/js/draw-tool.js](../../frontend/js/draw-tool.js)。多边形（点顶点→双击/回车/点起点完成）+ 矩形（拖拽，Shift 锁正方形）；[state.js](../../frontend/js/state.js) 加 mode 状态机；提交走 buffer 同款链路 → range popup；**绘制卡提为 `#left-panel` 常驻（空地图态即可画，无需先导入）**。Range 面 settings 加线型切换（实线/点划线 [6,3,1,3]+round，区别缓冲短虚线 [2,1.5]）。Playwright 验证通过。
-- **导出**：客户端 shp-write 无 UMD 死路 → **后端 geopandas** `POST /api/v1/export`（[core/export.py](../../core/export.py) `export_layer` F_005）。GeoJSON(WGS84)/CSV(WKT·lonlat·仅属性)/Shapefile.zip(WGS84·CGCS2000 4546，混合几何按类型分组) + 脱敏。模态加 CRS(仅shp)/CSV几何/范围(选中·全部)选项。4 路径 + CRS 实转（.prj GEOGCS↔PROJCS）验证通过。
-- 借鉴固化 [docs/geojson-io-reference.md](../../docs/geojson-io-reference.md)（**以后不翻 docs/geojson.io/ 文件夹**）。
-
-**⚠ 开发摩擦（记下）**：[serve.py](../../frontend/serve.py) 的 uvicorn **无 --reload** → 后端路由/代码改动需重启 serve；TaskStop serve 会**孤儿化 uvicorn**（占 :8000 提供陈旧路由，新 uvicorn 起不来 → 表现为 404）。修复：`netstat -ano|grep :8000` 找 PID → `taskkill //F //PID <pid>` → 重启 serve。后续可考虑给 serve.py 加 --reload 或起前清端口。
-
-- **任务一（模拟数据 L0/L1/L2，MapLibre 标签）✅ 边界已解锁**：
-  - 西陵伍家核心主城（~140km²）= **用户提供 shp 包**（Import）。
-  - 二马路历史街区（~2km²）= **用新绘制工具画**（或绘制后导出复用）。
-  - 两尺度嵌套（二马路 ⊂ 核心主城），只模拟核心主城一套，二马路区域加密。
-  - 设计骨架（我的意见，待逐条对齐）：① 坐标 = 统一 WGS84 渲染 + CGCS2000 EPSG:4546 米制分析（GCJ-02/BD09 入库即转，**无需人工偏移修复**）；② L1 加 `domain`（规划/更新/运营/治理）+ `element`（设施/环境/服务/文化/事件）两列，与 7 类情绪正交；③ 点位 = POI 密度加权 + 陆地掩膜（百度热力 API 拿不到实时人流，付费数据商超范围）；④ 3 快照 = 2025-01 / 2025-09 / 2026-04（跨至 2026-07），讲二马路更新叙事（前消极→后积极）+ 季节调制 + 空间焦点漂移；⑤ L2 = 工程化文本锚定极性带（SnowNLP 确定性）。
-- **任务二**（热点图，KDE 之上加 L1/L2 热点切换，参考百度 MapV）/ **任务三**（① 多边形范围选取 **✅ 本轮交付（多边形/矩形；点/线/圆待续）** ② 工具栏测量 ③ 地点检索接入百度 geocoding）。
+**办公机第一步**：`git pull` → 读本卡 → 实现 v3.1（plan 已与用户对齐过：高德 POI + KDE + 拒绝采样；AMAP_KEY 后补；全类目；不引 scipy）→ 写 pull + density → 改 generate_zone_points → 跑 + 肉眼验。
 
 ### 怎么跑
 ```
-py frontend/serve.py 8080   # 自动带后端（geopandas 已装）；F5 迭代；Ctrl+C 同停
-# http://127.0.0.1:8080/frontend/index.html
+py frontend/serve.py 8080   # F5 迭代；后端无 --reload，改路由要重启 serve
+py SCRIPT/generate_l1_mock.py   # v3.1 改完再跑（需 AMAP_KEY + 已拉 POI 缓存）
 ```
 
-### 下轮
-- 边界到位（西陵伍家 shp Import + 二马路用绘制工具画）→ 任务一设计逐条定稿（坐标/字段 4×5/点位 POI 代理/3 快照叙事）→ 模拟器脚本构建（3 份 L1 MapLibre 标签 + L1→L2）。用户肉眼复验：绘制交互/提示条/导出模态选项/绘制卡常驻位。
+### ⚠ 换机注意
+- v3.0 输出（`DATA/processed/xiling_wujia_L*`）+ `docs/minimax-workspace/` 参考包 **未 commit**（家用机本地）；办公机没有。输出 v3.1 会重新生成；参考包用户可重投（Phase A 已吸收其精华，非必需）。
+- `DATA/boundaries/规划范围/` 旧 shp 在家用机工作区标删除，**未 commit**（避红线"删文件先问"）；办公机仍有（无害，v2.2 遗留）。
 
 ## 工作机制速查（memory 在线时的快查；若 memory 丢失看此恢复）
 
