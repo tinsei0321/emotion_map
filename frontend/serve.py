@@ -58,8 +58,14 @@ def _inject_import_versions(content, basedir):
     return _JS_IMPORT.sub(repl, content)
 
 
+# 后端 origin（uvicorn :8000）—— /api 反向代理的目标。
+# 前端同源 fetch /api/* → serve.py 透传此后端，消除浏览器跨域这一跳
+#（修 export "Failed to fetch"：浏览器只跟 :8080 说话，:8000 这跳在服务端完成）。
+BACKEND_ORIGIN = 'http://127.0.0.1:8000'
+
+
 class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
-    """对每个响应强制 no-store，并对 index.html 注入 ?v 绕缓存。"""
+    """对每个响应强制 no-store，并对 index.html 注入 ?v 绕缓存；/api/* 反代后端。"""
 
     def end_headers(self):
         self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
@@ -68,6 +74,9 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_GET(self):
+        # /api/* → 反代后端（同源，消除浏览器跨域这一跳）
+        if self.path.split('?')[0].startswith('/api/'):
+            return self._proxy_api()
         # 拦截 index.html：注入 ?v=<mtime> 到本地 css/js 引用（绕浏览器缓存）
         norm = self.path.split('?')[0]
         if norm.endswith('index.html'):
@@ -101,6 +110,53 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(body)
                 return
         super().do_GET()
+
+    def do_POST(self):
+        # /api/* POST（export/buffer/analyze/governance）→ 反代后端
+        if self.path.split('?')[0].startswith('/api/'):
+            return self._proxy_api()
+        self.send_error(405, 'Method Not Allowed')
+
+    def _proxy_api(self):
+        """同源 /api/* → 后端 :8000 透传（method/body/headers/响应全转发）。
+        浏览器只跟 :8080 说话，后端这一跳在服务端完成——绕开一切浏览器跨域拦截。"""
+        import urllib.request, urllib.error
+        length = int(self.headers.get('Content-Length') or 0)
+        body = self.rfile.read(length) if length else None
+        # 转发请求头：剔除 hop-by-hop 与会干扰后端的（host/accept-encoding 等）
+        drop = {'host', 'content-length', 'connection', 'transfer-encoding',
+                'accept-encoding', 'keep-alive', 'upgrade'}
+        fwd = {k: v for k, v in self.headers.items() if k.lower() not in drop}
+        req = urllib.request.Request(BACKEND_ORIGIN + self.path, data=body,
+                                     method=self.command, headers=fwd)
+        try:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                status, rbody = resp.getcode(), resp.read()
+                rheaders = list(resp.getheaders())
+        except urllib.error.HTTPError as e:   # 后端 4xx/5xx 也要透传
+            status, rbody = e.code, e.read()
+            rheaders = list(e.headers.items())
+        except Exception as e:                # 后端连不上
+            msg = f'[proxy] backend unreachable: {e}'.encode('utf-8')
+            self.send_response(502)
+            self.send_header('Content-Type', 'text/plain; charset=utf-8')
+            self.send_header('Content-Length', str(len(msg)))
+            self.end_headers()
+            self.wfile.write(msg)
+            return
+        self.send_response(status)
+        ct_sent = False
+        for k, v in rheaders:
+            if k.lower() in ('content-type', 'content-disposition',
+                             'content-language', 'etag', 'last-modified'):
+                self.send_header(k, v)
+                if k.lower() == 'content-type':
+                    ct_sent = True
+        if not ct_sent:
+            self.send_header('Content-Type', 'application/octet-stream')
+        self.send_header('Content-Length', str(len(rbody)))
+        self.end_headers()
+        self.wfile.write(rbody)
 
     def log_message(self, fmt, *args):
         sys.stderr.write(f'[serve] {self.address_string()} - {fmt % args}\n')

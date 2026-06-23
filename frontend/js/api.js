@@ -1,14 +1,13 @@
 // ═══ api.js — FastAPI backend bridge ═══
-// Backend (FastAPI) runs on :8000 (uvicorn api.main:app --port 8000).
-// Frontend served on :8080 (frontend/serve.py). BASE is absolute so fetches
-// reach the backend, not the frontend server. CORS is allow_origins=["*"].
+// Same-origin: fetches go to /api/v1/* on the frontend server (:8080), which
+// serve.py reverse-proxies to the uvicorn backend (:8000). No cross-origin hop
+// → no CORS / browser-extension / proxy interference (fix: export "Failed to fetch").
 //   GET  /api/v1/points          → emotion points GeoJSON (?bbox=) [stub]
 //   POST /api/v1/analyze         → run analysis (run_analysis_task)
 //   POST /api/v1/governance      → L0→L1 pipeline (run_governance_pipeline)
 //   POST /api/v1/spatial/buffer  → buffer (覆盖范围, EPSG:4546)
 
-const BACKEND = 'http://127.0.0.1:8000';
-const BASE = `${BACKEND}/api/v1`;
+const BASE = '/api/v1';
 
 export async function fetchPoints() {
   // Phase 2: const r = await fetch(`${BASE}/points`); return r.json();

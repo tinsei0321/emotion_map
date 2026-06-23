@@ -197,7 +197,18 @@ async def export_route(req: ExportRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"导出失败: {e}")
 
+    # Content-Disposition 头强制 latin-1,CJK 文件名会 UnicodeEncodeError → 未捕获 500。
+    # 用 RFC 6266 双声明:filename= ASCII 兜底 + filename*=UTF-8 百分号编码
+    #（浏览器优先 filename*，保留中文文件名；修手画层「绘制多边形」导出 500）。
+    from urllib.parse import quote
+    try:
+        fname.encode('ascii')
+        ascii_fb = fname                  # 本身 ASCII,直接作 filename=
+    except UnicodeEncodeError:
+        ext = fname.rsplit('.', 1)[-1] if '.' in fname else ''
+        ascii_fb = f'export.{ext}' if ext else 'export'   # CJK → ASCII 兜底
+    cd = f"attachment; filename=\"{ascii_fb}\"; filename*=UTF-8''{quote(fname)}"
     return Response(
         content=data, media_type=media,
-        headers={'Content-Disposition': f'attachment; filename="{fname}"'},
+        headers={'Content-Disposition': cd},
     )
