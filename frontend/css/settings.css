@@ -122,30 +122,34 @@
   border-color: #ffffff;
 }
 
-/* ── Line style capsule（Range 面：实线 / 点划线）── */
+/* ── 胶囊按钮设计语言（Range 面线型；复用于选项类选择器，见 memory: capsule-button-design-language）──
+ *   无线框 + 阴影 + 选中蓝(蓝底白字) + 悬停灰 + 紧凑规整。区别于"细线框次要按钮"(§4.7) 与圆形色板 swatch。 */
 .linestyle-row { display: flex; gap: 6px; }
 .linestyle-cap {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 3px;
-  padding: 5px 4px;
-  border: 1px solid var(--geojson-color-border-default, #e5e5e5);
-  border-radius: var(--geojson-radius-xs, 4px);
-  background: #fff;
+  padding: 5px 6px;                                    /* 紧凑，不过大 */
+  border: none;                                        /* 无线框 */
+  border-radius: 6px;                                  /* 胶囊小圆角，规整 */
+  background: #ffffff;
   color: var(--geojson-color-text-secondary, #737373);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.10);           /* 阴影 */
   cursor: pointer;
   font-size: var(--geojson-typography-size-2xs);
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
 }
 .linestyle-cap svg { display: block; }
-.linestyle-cap:hover { border-color: var(--geojson-color-gray-400, #a3a3a3); }
+.linestyle-cap:hover {
+  background: var(--geojson-color-gray-200, #e5e5e5);  /* 悬停变灰 */
+}
 .linestyle-cap.is-sel {
-  border: 2px solid var(--geojson-color-brand-primary, #007afc);
-  padding: 4px 3px;                       /* 抵消 2px 边框，避免布局跳动 */
-  color: var(--geojson-color-brand-primary, #007afc);
-  background: var(--geojson-color-gray-100, #f5f5f5);
+  background: var(--geojson-color-chrome-active-fill, #007afc);  /* 选中蓝色 */
+  color: var(--geojson-color-text-inverse, #ffffff);             /* 白字/白线 */
+  box-shadow: 0 1px 4px rgba(0, 122, 252, 0.30);                 /* 选中阴影带蓝调 */
 }
 
 /* ── Fill toggle ── */
