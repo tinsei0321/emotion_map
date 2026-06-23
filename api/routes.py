@@ -3,14 +3,14 @@ API 路由 — 分析 / 治理 / 数据查询
 """
 import os
 import sys
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from api.schemas import (
     AnalysisRequest, AnalysisResponse, PolarityStats,
     HealthResponse, DataListResponse, GovernanceRequest,
-    BufferRequest,
+    BufferRequest, ExportRequest,
 )
 from core.config import RAW_DIR, PROCESSED_DIR, BOUNDARY_SHP
 
@@ -171,3 +171,33 @@ async def create_buffer_route(req: BufferRequest):
         'feature_count': len(out_fc['features']),
         'message': f'已生成 {len(out_fc["features"])} 个缓冲区，总覆盖 {total_area} km²',
     }
+
+
+@router.post("/export")
+async def export_route(req: ExportRequest):
+    """图层导出：GeoJSON FeatureCollection → geojson / csv / shp(.zip) 下载流。
+
+    geopandas 后端（core/export.export_layer）—— shp.zip 含 .shp/.dbf/.shx/.prj/.cpg，
+    CRS 可选 WGS84 / CGCS2000(4546)；geojson 固定 WGS84（RFC 7946）；脱敏剥 PII。
+    """
+    from core.export import export_layer
+
+    fc = req.geojson or {}
+    feats = fc.get('features') if isinstance(fc, dict) else None
+    if not feats:
+        raise HTTPException(status_code=400, detail="输入图层为空或非 GeoJSON")
+
+    try:
+        data, fname, media = export_layer(
+            fc, fmt=req.format, crs=req.crs, geom_csv=req.geom_csv,
+            desensitize=req.desensitize, filename=req.filename or 'export',
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"导出失败: {e}")
+
+    return Response(
+        content=data, media_type=media,
+        headers={'Content-Disposition': f'attachment; filename="{fname}"'},
+    )

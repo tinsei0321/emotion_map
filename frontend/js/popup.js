@@ -3,7 +3,7 @@
 //   • #feature-popup — clicked emotion point (L2 polarity badge | L1 置信度 badge)
 //   • #range-popup   — clicked range polygon (navy accent = outline color)
 // Each independently expand/collapse (capsule) + close. Click empty map → collapse both.
-import { POLARITY_LABEL, rampColor, CONFIDENCE_RAMP, getLayer, computeHotness, hotnessColor } from './state.js';
+import { POLARITY_LABEL, rampColor, CONFIDENCE_RAMP, getLayer, computeHotness, hotnessColor, isDrawActive } from './state.js';
 
 const emoEl = () => document.getElementById('feature-popup');
 const rngEl = () => document.getElementById('range-popup');
@@ -210,6 +210,7 @@ export function initPopup(map) {
   r?.addEventListener('click', () => { if (r.classList.contains('is-collapsed')) expandRangePopup(); });
   if (map) {
     map.on('click', (ev) => {
+      if (isDrawActive()) return;   // 绘制中：click 归 draw-tool，不触发 popup
       const feats = map.queryRenderedFeatures(ev.point) || [];
       const k = classifyMapClick(feats, ev);
       if (k === 'popup') return;

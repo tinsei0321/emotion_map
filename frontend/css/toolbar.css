@@ -293,3 +293,26 @@
   margin-top: 6px;
 }
 .rm-item b { color: var(--geojson-color-text-primary, #262626); }
+
+/* ── Draw hint banner（geojson.io mode_hints 风格，地图左上角）── */
+.draw-hint {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 5;
+  padding: 5px 10px;
+  font-size: var(--geojson-typography-size-sm, 13px);
+  color: var(--geojson-color-text-primary, #262626);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--geojson-color-border-default, #e5e5e5);
+  border-radius: var(--geojson-radius-sm, 4px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+}
+.draw-hint[hidden] { display: none; }
+
+/* ── 常驻绘制卡（空地图态也可见，脱离 import/sections 模式门控）── */
+.lp-draw {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--geojson-color-border-default, #e5e5e5);
+}

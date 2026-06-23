@@ -53,6 +53,24 @@
 
     <!-- 左侧栏（默认展开，凸显 Import） -->
     <aside id="left-panel">
+      <!-- 绘制范围（常驻可见——空地图态即可画边界/范围，无需先导入；多边形/矩形已开放） -->
+      <div class="lp-draw">
+        <div class="range-card">
+          <div class="range-card-head">
+            <span class="range-card-title">绘制范围</span>
+            <span class="tool-info" data-tip="用绘制工具指定范围要素。多边形：点击顶点→双击/回车/点起点完成；矩形：按下拖拽（Shift 锁正方形）。点/线/圆待开放。">i</span>
+          </div>
+          <div class="range-draw-grid">
+            <button class="draw-tool" data-tool="point" title="点" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor"/></svg></button>
+            <button class="draw-tool" data-tool="line" title="线" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="18" x2="18" y2="6"/></svg></button>
+            <button class="draw-tool" data-tool="polygon" title="多边形" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 3L20 8L18 18L6 18L4 8Z"/></svg></button>
+            <button class="draw-tool" data-tool="rectangle" title="矩形" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="6" width="16" height="12" rx="1"/></svg></button>
+            <button class="draw-tool" data-tool="circle" title="圆" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/></svg></button>
+            <button class="draw-tool draw-more" data-tool="more" title="更多工具" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9L12 15L18 9"/></svg></button>
+          </div>
+        </div>
+      </div>
+
       <!-- 模式 1：Import 面板（1:1 图2） -->
       <div class="lp-mode lp-import" data-mode="import">
         <div class="lp-title">Import a file</div>
@@ -77,22 +95,8 @@
           <div class="section-head"><span class="chev">&#9654;</span> Range</div>
           <div class="section-body">
             <div class="range-cards">
-              <!-- 上组：绘制范围要素（点/线/多边形/矩形/圆/更多）——功能开发中，先就位 -->
-              <div class="range-card">
-                <div class="range-card-head">
-                  <span class="range-card-title">绘制范围</span>
-                  <span class="tool-info" data-tip="用绘制工具指定范围要素（点/线/多边形/矩形/圆）。点、线暂不涉及范围，底层逻辑类似——均为指定一个要素，功能开发中。">i</span>
-                </div>
-                <div class="range-draw-grid">
-                  <button class="draw-tool" data-tool="point" title="点" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor"/></svg></button>
-                  <button class="draw-tool" data-tool="line" title="线" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="18" x2="18" y2="6"/></svg></button>
-                  <button class="draw-tool" data-tool="polygon" title="多边形" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 3L20 8L18 18L6 18L4 8Z"/></svg></button>
-                  <button class="draw-tool" data-tool="rectangle" title="矩形" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="6" width="16" height="12" rx="1"/></svg></button>
-                  <button class="draw-tool" data-tool="circle" title="圆" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/></svg></button>
-                  <button class="draw-tool draw-more" data-tool="more" title="更多工具" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9L12 15L18 9"/></svg></button>
-                </div>
-              </div>
-              <!-- 下组：上载范围文件（面/线；同 Import 格式，不含 CSV、不上传点数据） -->
+              <!-- 上载范围文件（面/线；同 Import 格式，不含 CSV、不上传点数据）。
+                   绘制范围卡已提为常驻（空地图态即可画），见 #left-panel 顶部 .lp-draw。 -->
               <div class="range-card">
                 <div class="range-card-head">
                   <span class="range-card-title">上载范围</span>
@@ -465,9 +469,34 @@
     <div class="dialog-body">
       <div class="form-label">文件格式 / Format</div>
       <select class="select" id="export-format">
-        <option value="csv">CSV</option>
         <option value="geojson">GeoJSON</option>
+        <option value="csv">CSV</option>
+        <option value="shp">Shapefile (.zip)</option>
       </select>
+
+      <div id="export-crs-row" hidden>
+        <div class="form-label" style="margin-top:10px">坐标系 / CRS（Shapefile）</div>
+        <select class="select" id="export-crs">
+          <option value="wgs84">WGS84 (EPSG:4326)</option>
+          <option value="cgcs2000">CGCS2000 3度带 CM111E (EPSG:4546)</option>
+        </select>
+      </div>
+
+      <div id="export-geom-row" hidden>
+        <div class="form-label" style="margin-top:10px">几何表示（CSV）</div>
+        <select class="select" id="export-geom">
+          <option value="wkt">WKT 列</option>
+          <option value="lonlat">经度 / 纬度列（仅点）</option>
+          <option value="none">仅属性（去几何）</option>
+        </select>
+      </div>
+
+      <div class="form-label" style="margin-top:10px">导出范围 / Scope</div>
+      <select class="select" id="export-scope">
+        <option value="selected">选中图层</option>
+        <option value="all">全部图层</option>
+      </select>
+
       <label class="check-opt">
         <input type="checkbox" id="export-desensitize" checked />
         <span>

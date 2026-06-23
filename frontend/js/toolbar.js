@@ -64,10 +64,24 @@ export function initToolbar({ onTool, onImport, onExport, onBasemap } = {}) {
   // ── Modal close buttons (Export + Info) ──
   document.querySelectorAll('[data-close]').forEach((b) =>
     b.addEventListener('click', () => { b.closest('dialog')?.close(); }));
+  // 格式切换 → 显隐 CRS（仅 shp）/ 几何表示（仅 csv）行
+  const fmtSel = document.getElementById('export-format');
+  const syncExportRows = () => {
+    const f = fmtSel ? fmtSel.value : 'geojson';
+    const crsRow = document.getElementById('export-crs-row');
+    const geomRow = document.getElementById('export-geom-row');
+    if (crsRow) crsRow.hidden = (f !== 'shp');
+    if (geomRow) geomRow.hidden = (f !== 'csv');
+  };
+  fmtSel?.addEventListener('change', syncExportRows);
+
   document.getElementById('export-confirm')?.addEventListener('click', () => {
     const format = document.getElementById('export-format').value;
     const desensitize = document.getElementById('export-desensitize').checked;
-    if (onExport) onExport({ format, desensitize });
+    const crs = document.getElementById('export-crs')?.value || 'wgs84';
+    const geom_csv = document.getElementById('export-geom')?.value || 'wkt';
+    const scope = document.getElementById('export-scope')?.value || 'selected';
+    if (onExport) onExport({ format, crs, geom_csv, scope, desensitize });
     document.getElementById('modal-export').close();
   });
 }

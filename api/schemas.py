@@ -70,3 +70,13 @@ class BufferRequest(BaseModel):
     distance: float = Field(..., gt=0, description="缓冲距离（数值）")
     unit: str = Field(default="m", description="距离单位: m | km")
     dissolve: bool = Field(default=False, description="True=合并所有缓冲为单一覆盖区")
+
+
+class ExportRequest(BaseModel):
+    """图层导出请求。"""
+    geojson: dict = Field(..., description="待导出图层 GeoJSON FeatureCollection（WGS84）")
+    format: str = Field(default="geojson", description="格式: geojson | csv | shp")
+    crs: str = Field(default="wgs84", description="坐标系: wgs84 | cgcs2000（仅 shp 生效；geojson 固定 WGS84）")
+    geom_csv: str = Field(default="wkt", description="CSV 几何表示: wkt | lonlat | none（仅 csv 生效）")
+    desensitize: bool = Field(default=True, description="脱敏：剥用户名/ID/手机等 PII 字段（铁律 7）")
+    filename: str = Field(default="export", description="输出文件名（不含扩展名）")

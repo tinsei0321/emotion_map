@@ -534,6 +534,14 @@ export function setHeatmapForSource(sourceKey, layerId) { _heatmapSources.set(so
 export function removeHeatmapSource(sourceKey) { _heatmapSources.delete(sourceKey); }
 export function clearHeatmapSources() { _heatmapSources.clear(); }
 
+// ── Draw mode state (neutral hub — draw-tool/popup/main all import state, avoids cycles) ──
+// Mode values mirror geojson.io state/mode.ts (NONE + DRAW_*). isDrawActive gates popup/selection
+// handlers so draw clicks don't trigger feature popups.
+let _drawMode = 'NONE';
+export function getMode() { return _drawMode; }
+export function setMode(m) { _drawMode = m; }
+export function isDrawActive() { return _drawMode !== 'NONE'; }
+
 export function addLayer({ name, kind, fc, needsAnalysis = false, colorMode, paint, parentId }) {
   const id = 'L' + (++_seq).toString().padStart(3, '0');
   const defaultPaint = kind === 'polygon'
