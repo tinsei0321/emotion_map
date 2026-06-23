@@ -232,10 +232,16 @@ function addPolygonPaint(layer, sid, lid, lineLid, hitLid) {
     map.addLayer({ id: lid, type: 'fill', source: sid,
       paint: { 'fill-color': color, 'fill-opacity': p.fillOpacity ?? 0.3 } });
   }
-  // visible outline (color shared with fill)；lineStyle=dashed → 虚线
+  // visible outline (color shared with fill)；lineStyle: dashed=缓冲短虚线 / dashdot=Range 点划线
   const linePaint = { 'line-color': color, 'line-width': p.lineWidth ?? 2, 'line-opacity': 0.9 };
-  if (p.lineStyle === 'dashed') linePaint['line-dasharray'] = [2, 1.5];
-  map.addLayer({ id: lineLid, type: 'line', source: sid, paint: linePaint });
+  const lineLayout = {};
+  if (p.lineStyle === 'dashed') {
+    linePaint['line-dasharray'] = [2, 1.5];                    // 缓冲面域：短虚线
+  } else if (p.lineStyle === 'dashdot') {
+    linePaint['line-dasharray'] = [6, 3, 1, 3];                // Range：点划线（线段+点+线段）
+    lineLayout['line-cap'] = 'round';                          // round cap 让 1-unit 短段呈圆点（line-cap 属 layout）
+  }
+  map.addLayer({ id: lineLid, type: 'line', source: sid, layout: lineLayout, paint: linePaint });
   // transparent wide hit layer → easy hover/click without thickening the visible outline
   addHitLayer(hitLid, sid);
 }

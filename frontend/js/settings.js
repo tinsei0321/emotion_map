@@ -109,7 +109,7 @@ function build(layer) {
       body = `<div class="set-note">颜色：由极性决定</div>` + sectionPointSize(layer) + sectionOpacity(p.opacity ?? 0.9);
     }
   } else if (layer.kind === 'polygon') {
-    body = sectionFill(p.fillOn) + sectionColor(p.color || '#0c1c2e') + sectionLineWidth(p.lineWidth ?? 2) + sectionFillOpacity(p.fillOpacity ?? 0.3, p.fillOn);
+    body = sectionFill(p.fillOn) + sectionColor(p.color || '#0c1c2e') + sectionLineWidth(p.lineWidth ?? 2) + sectionLineStyle(p.lineStyle || 'solid') + sectionFillOpacity(p.fillOpacity ?? 0.3, p.fillOn);
   } else if (layer.kind === 'heatmap') {
     // Full parameter set: Color (ramp legend) + Radius + Opacity + Intensity
     const rampName = (HEATMAP_RAMPS[p.rampKey] && HEATMAP_RAMPS[p.rampKey].name) || '消极红';
@@ -144,6 +144,21 @@ function sectionOpacity(op) {
 }
 function sectionLineWidth(w) {
   return rangeSection('线宽', w, 'data-width', 'px', 1, 8, 1);
+}
+/** 线型（仅 Range 面）：实线 / 点划线。点划线（线段+点+线段）刻意区别于缓冲面域的短虚线。
+ *  默认实线不变；dashdot = [6,3,1,3] + round cap（圆点），与 map.js addPolygonPaint 一致。 */
+function sectionLineStyle(ls) {
+  const cur = ls || 'solid';
+  const cap = (v, label, dash, linecap) =>
+    `<button class="linestyle-cap${v === cur ? ' is-sel' : ''}" data-linestyle="${v}" title="${label}">
+       <svg width="52" height="10" viewBox="0 0 52 10"><line x1="2" y1="5" x2="50" y2="5" stroke="currentColor" stroke-width="2" stroke-linecap="${linecap}" ${dash ? `stroke-dasharray="${dash}"` : ''}></line></svg>
+       <span>${label}</span>
+     </button>`;
+  return `<div class="set-section"><div class="set-label">线型 / Line</div>
+    <div class="linestyle-row">
+      ${cap('solid', '实线', '', 'butt')}
+      ${cap('dashdot', '点划线', '6,3,1,3', 'round')}
+    </div></div>`;
 }
 function sectionFillOpacity(op, fillOn) {
   return `<div class="set-section${fillOn ? '' : ' is-hidden'}" data-fillop-wrap>${rangeSection('填充透明度', Math.round(op * 100), 'data-fillop')}</div>`;
@@ -206,6 +221,15 @@ function wire(layer) {
     b.addEventListener('click', () => {
       applyPaint({ color: b.dataset.color }, true);
       pop.querySelectorAll('[data-color]').forEach((x) => x.classList.remove('is-sel'));
+      b.classList.add('is-sel');
+    });
+  });
+
+  // line style (range polygon) — 实线 / 点划线；点划线区别于缓冲面域的短虚线
+  pop.querySelectorAll('[data-linestyle]').forEach((b) => {
+    b.addEventListener('click', () => {
+      applyPaint({ lineStyle: b.dataset.linestyle }, true);
+      pop.querySelectorAll('[data-linestyle]').forEach((x) => x.classList.remove('is-sel'));
       b.classList.add('is-sel');
     });
   });

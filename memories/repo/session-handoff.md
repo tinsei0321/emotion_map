@@ -35,7 +35,7 @@
 **✅ 快赢**：① 本文件翻新（单节点）；② skill 精简 `.claude/skills/` 465→235（230 个 `git mv` 归档 `skills_archive/`，零删除可逆）。
 
 **✅ 多边形/矩形绘制 + 图层导出（本轮主产出）**——国内登不上 geojson.io → 把多边形绘制（原任务三.1）提前：
-- **绘制**：移植 geojson.io 自实现 handler（不用 mapbox-gl-draw，与 MapLibre 5 不兼容）→ 新 [frontend/js/draw-tool.js](../../frontend/js/draw-tool.js)。多边形（点顶点→双击/回车/点起点完成）+ 矩形（拖拽，Shift 锁正方形）；[state.js](../../frontend/js/state.js) 加 mode 状态机；提交走 buffer 同款链路 → range popup；**绘制卡提为 `#left-panel` 常驻（空地图态即可画，无需先导入）**。Playwright 验证通过。
+- **绘制**：移植 geojson.io 自实现 handler（不用 mapbox-gl-draw，与 MapLibre 5 不兼容）→ 新 [frontend/js/draw-tool.js](../../frontend/js/draw-tool.js)。多边形（点顶点→双击/回车/点起点完成）+ 矩形（拖拽，Shift 锁正方形）；[state.js](../../frontend/js/state.js) 加 mode 状态机；提交走 buffer 同款链路 → range popup；**绘制卡提为 `#left-panel` 常驻（空地图态即可画，无需先导入）**。Range 面 settings 加线型切换（实线/点划线 [6,3,1,3]+round，区别缓冲短虚线 [2,1.5]）。Playwright 验证通过。
 - **导出**：客户端 shp-write 无 UMD 死路 → **后端 geopandas** `POST /api/v1/export`（[core/export.py](../../core/export.py) `export_layer` F_005）。GeoJSON(WGS84)/CSV(WKT·lonlat·仅属性)/Shapefile.zip(WGS84·CGCS2000 4546，混合几何按类型分组) + 脱敏。模态加 CRS(仅shp)/CSV几何/范围(选中·全部)选项。4 路径 + CRS 实转（.prj GEOGCS↔PROJCS）验证通过。
 - 借鉴固化 [docs/geojson-io-reference.md](../../docs/geojson-io-reference.md)（**以后不翻 docs/geojson.io/ 文件夹**）。
 
