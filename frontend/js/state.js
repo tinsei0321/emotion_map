@@ -213,6 +213,7 @@ let _seq = 0;
 export const CATEGORY_LABEL = { heatmap: '热力图', l2: 'L2 · 情绪地图 DATA', l1: 'L1 · 城市情绪 DATA', l0: 'L0 · 原始', range: '范围边界', buffer: '缓冲分析', other: '其他' };
 let _groupOrder = ['heatmap', 'l2', 'l1', 'l0', 'range', 'buffer', 'other'];   // 成果在上、原始在下（list-top = map-top）
 const _groupCollapse = new Set();                                    // collapsed category set
+const _groupFold = new Set();                                        // folded real-group set（真 L2 组单独折叠，按 group id；区别于 category 级 _groupCollapse）
 
 // ── L2 palettes (polarity split: Positive green / Negative orange-red / Neutral moody blue) ──
 export const L2_POSITIVE = { 'Very Positive': '#86E61C', 'Positive': '#3DBA9E' };   // 鲜艳荧光绿→蓝绿(teal)
@@ -726,6 +727,12 @@ export function isCollapsed(cat) { return _groupCollapse.has(cat); }
 export function toggleCollapsed(cat) {
   if (_groupCollapse.has(cat)) _groupCollapse.delete(cat);
   else _groupCollapse.add(cat);
+}
+export function isGroupFold(id) { return id != null && _groupFold.has(id); }
+export function toggleGroupFold(id) {
+  if (id == null) return;
+  if (_groupFold.has(id)) _groupFold.delete(id);
+  else _groupFold.add(id);
 }
 
 /** Normalize _layers order to match _groupOrder (stable within each category; children stay

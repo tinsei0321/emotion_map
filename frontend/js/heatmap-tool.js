@@ -19,6 +19,26 @@ const DEFAULTS = {
   intensityMin: 0, minzoom: 0, maxzoom: 22,
 };
 
+// 类型细分（segment）各极性默认参数 —— 更小空间尺度 + 更细粒度表达。
+// overall（terrain/grid）仍走 DEFAULTS + autoRadius 点数自适应。
+const SEGMENT_DEFAULTS = {
+  positive: { radius: 150, opacity: 80, intensity: 1.5 },
+  negative: { radius: 100, opacity: 75, intensity: 0.5 },
+  neutral:  { radius: 150, opacity: 85, intensity: 1.5 },
+};
+/** 类型细分默认参数套到半径/透明度/强度控件（按极性）。overall(terrain/grid) 不动。 */
+function applySegmentDefaults(dlg, analysis) {
+  const def = (ANALYSIS_PRESETS[analysis] && ANALYSIS_PRESETS[analysis].tier === 'segment')
+    ? SEGMENT_DEFAULTS[analysis] : null;
+  if (!def) return;
+  const r = dlg.querySelector('#hm-radius'); if (r) r.value = def.radius;
+  const rv = dlg.querySelector('#hm-radius-val'); if (rv) rv.textContent = `${def.radius} m`;
+  const o = dlg.querySelector('#hm-opacity'); if (o) o.value = def.opacity;
+  const ov = dlg.querySelector('#hm-opacity-val'); if (ov) ov.textContent = `${def.opacity}%`;
+  const it = dlg.querySelector('#hm-intensity'); if (it) it.value = def.intensity;
+  const itv = dlg.querySelector('#hm-intensity-val'); if (itv) itv.textContent = def.intensity.toFixed(1);
+}
+
 // ── ① 分析类型预设（2 排分组：总体情况 / 类型细分）──
 // tier 决定 ①排版分组 + ②类型/表现胶囊是否启用（overall 禁用、segment 启用）。
 const DEFAULT_ANALYSIS = 'terrain';
@@ -543,7 +563,10 @@ export function openHeatmapDialog(layerId) {
   // 高级参数（编辑模式：从 seed.paint 恢复；否则走默认值）
   const sp = (seed && seed.paint) || {};
   const nPts = resolved0 && resolved0.fc ? resolved0.fc.features.length : 0;
-  const autoRadius = sp.radius ?? (nPts < 1000 ? 500 : nPts < 10000 ? 300 : 150);
+  // 类型细分：默认参数按极性（更小空间尺度 + 更细粒度）；overall 走 autoRadius 点数自适应
+  const _segDef = (ANALYSIS_PRESETS[initAnalysis] && ANALYSIS_PRESETS[initAnalysis].tier === 'segment')
+    ? SEGMENT_DEFAULTS[initAnalysis] : null;
+  const autoRadius = sp.radius ?? (_segDef ? _segDef.radius : (nPts < 1000 ? 500 : nPts < 10000 ? 300 : 150));
   const radiusInput = dlg.querySelector('#hm-radius');
   const radiusVal = dlg.querySelector('#hm-radius-val');
   if (radiusInput) { radiusInput.value = autoRadius; radiusInput.min = 50; radiusInput.max = 2000; radiusInput.step = 10; }
@@ -552,12 +575,13 @@ export function openHeatmapDialog(layerId) {
 
   // opacity：sp.opacity 是 0~1 比例（paint 存储），DEFAULTS.opacity 是百分比；控件用百分比 → 统一换算。
   // （曾因混用致 H 重生成 opacity=0.7→clamp 1→0.01 几乎透明 = 热力图"消失"）
-  const _opPct = (sp.opacity != null) ? Math.round(sp.opacity * 100) : DEFAULTS.opacity;
+  const _opPct = (sp.opacity != null) ? Math.round(sp.opacity * 100) : (_segDef ? _segDef.opacity : DEFAULTS.opacity);
   dlg.querySelector('#hm-opacity').value = _opPct;
   dlg.querySelector('#hm-opacity-val').textContent = `${_opPct}%`;
   dlg.querySelector('#hm-weight-field').value = sp.weightField ?? DEFAULTS.weightField;
-  dlg.querySelector('#hm-intensity').value = sp.intensity ?? DEFAULTS.intensity;
-  dlg.querySelector('#hm-intensity-val').textContent = (sp.intensity ?? DEFAULTS.intensity).toFixed(1);
+  const _intDef = _segDef ? _segDef.intensity : DEFAULTS.intensity;
+  dlg.querySelector('#hm-intensity').value = sp.intensity ?? _intDef;
+  dlg.querySelector('#hm-intensity-val').textContent = (sp.intensity ?? _intDef).toFixed(1);
   dlg.querySelector('#hm-curve').value = sp.weightCurve ?? DEFAULTS.curve;
   updateCurveHint(dlg);
   dlg.querySelector('#hm-int-min').value = sp.intensityMin ?? DEFAULTS.intensityMin;
@@ -808,6 +832,7 @@ export function initHeatmapTool() {
     renderTypeChips(dlg, resolved ? resolved.fc : { features: [] }, lv);
     applyMacroToTypes(dlg);
     renderStylePreview(dlg);
+    applySegmentDefaults(dlg, key);   // 类型细分：半径/透明度/强度按极性默认（overall 不动）
   });
 
   // analysis-card 上的 i：hover 弹 infopanel
