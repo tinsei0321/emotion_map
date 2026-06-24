@@ -1,0 +1,67 @@
+{
+  "metadata": {
+    "description": "宜昌核心主城情绪分区类型（zone_id × zone_type）。zone_id=叙事区（模拟器分配+corpus分桶+徽章），zone_type=时序行为型（快照加权+上限桶）。",
+    "schema_version": "1.0",
+    "created": "2026-06-24",
+    "zone_types": {
+      "festival": "节假日型（二马路老街：春节/五一爆满）",
+      "weekend": "周末型（商圈：周末/暑期旺）",
+      "commute": "通勤型（交通枢纽：节假日出行减）",
+      "steady": "常态型（公园/居住/政府/医院/学校：日均稳态）"
+    },
+    "match_rule": "resolve_zone 优先级：area 后缀子串命中 area_subtags → name 命中 name_keywords → 边界 contains → general",
+    "boundary_rule": "boundary_path 显式边界优先；否则由该 zone 种子 POI 的 radius_m buffer 并集构建"
+  },
+  "zones": [
+    {
+      "id": "ermalu_oldstreet",
+      "name_zh": "二马路-解放路核心老街",
+      "zone_type": "festival",
+      "color": "#E76F51",
+      "boundary_path": "DATA/boundaries/大南门二马路滨江片区.geojson",
+      "area_subtags": ["二马路", "大南门", "红星路", "解放路", "献福路", "文庙", "古佛寺", "屈原园", "滨江夜市", "二马路社区"],
+      "name_keywords": ["二马路", "大南门", "解放路", "红星路", "献福路", "文庙", "古佛寺", "老街", "步行街", "夜市", "小吃", "打卡"]
+    },
+    {
+      "id": "wanda_cbd",
+      "name_zh": "万达-国贸商圈",
+      "zone_type": "weekend",
+      "color": "#F4A261",
+      "area_subtags": ["万达", "CBD", "国贸", "大洋", "新世纪", "卓悦", "水悦城", "太古里", "夷陵广场", "兴发", "悦活里", "雅斯", "影院", "万达影城", "KTV", "健身", "奥体", "CBD住宅"],
+      "name_keywords": ["万达", "国贸", "大洋", "商场", "购物中心", "广场", "影城", "影院", "KTV", "健身", "奥体", "步行街"]
+    },
+    {
+      "id": "riverside",
+      "name_zh": "滨江公园广场",
+      "zone_type": "steady",
+      "color": "#2A9D8F",
+      "area_subtags": ["滨江", "滨江步道", "长江沿线", "至喜桥北", "沿江大道", "儿童公园", "磨基山", "东山", "城东", "求索", "和平", "博物馆", "规划馆", "美术馆", "图书馆", "科技馆"],
+      "name_keywords": ["滨江", "公园", "广场", "步道", "绿道", "江边", "磨基山", "博物馆", "图书馆", "广场舞", "夜景"]
+    },
+    {
+      "id": "transit_hub",
+      "name_zh": "交通枢纽",
+      "zone_type": "commute",
+      "color": "#457B9D",
+      "area_subtags": ["宜昌站", "宜昌东", "三峡机场", "宜昌港", "客运中心", "BRT", "公交", "夷陵桥", "宜昌桥", "伍家桥", "至喜桥", "加油站", "充电站", "停车场", "东山大道", "夷陵大道"],
+      "name_keywords": ["东站", "火车站", "机场", "港口", "客运", "BRT", "公交", "大桥", "停车", "加油", "充电"]
+    },
+    {
+      "id": "residential",
+      "name_zh": "居住社区",
+      "zone_type": "steady",
+      "color": "#8AB17D",
+      "area_subtags": ["北山", "樵湖岭", "东山花园", "住宅", "北住宅", "老居住", "上上城", "香格里拉", "中建星"],
+      "name_keywords": ["小区", "住宅", "花园", "社区", "居住", "公寓", "物业"]
+    },
+    {
+      "id": "general",
+      "name_zh": "通用市区",
+      "zone_type": "steady",
+      "color": "#6C757D",
+      "area_subtags": [],
+      "name_keywords": [],
+      "note": "兜底区：政府/医院/学校/酒店/银行/消防/工业/通信/物流等一切未命中上述叙事区的 POI。最大桶，承载核心区主体点量。"
+    }
+  ]
+}

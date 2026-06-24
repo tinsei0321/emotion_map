@@ -177,6 +177,7 @@ Agent 启动时根据下表选择性阅读知识源：
 | `MOD_TRACKER` | `core/tracker.py` |
 | `MOD_MM` | `SCRIPT/multimodal_analysis.py` |
 | `MOD_UTILS` | `core/utils.py` |
+| `MOD_PLACE` | `core/place_layer.py` |
 
 **埋点规则**：
 - 公开函数（非 `_` 前缀）→ `@track("MOD_XXX.F_NNN")`
