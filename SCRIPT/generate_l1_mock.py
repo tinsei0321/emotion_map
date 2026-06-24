@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """
-L1 模拟数据生成 v3.0 — 3 快照 × 西陵伍家+二马路（任务一）
+L1 模拟数据生成 v3.1 — 3 快照 × 西陵伍家+二马路（任务一）
 =====================================================
+v3.1 变更（任务一，空间生成重做）:
+  - 空间生成换「核密度曲面 + 密度引导采样」（POI 投影 4546 -> histogram2d
+    -> 可分离高斯卷积 -> 按 P 采样），替 v3.0 的 POI 锚点高斯聚类
+  - 解决 v3.0 离散光斑（388 点/格）+ 伍家空白 + 75% 网格空
+  - 仅改 generate_zone_points；Phase A + v3.0 非空间部分全复用
 v3.0 变更（任务一）:
   - 3 快照（T1 2025-01 / T2 2025-09 / T3 2026-04），二马路叙事弧（前消极后积极）
   - 158 真实 POI 种子作锚点（+ 既有的密度梯度背景填充）
@@ -44,7 +49,10 @@ np.random.seed(2606)
 PROJECT_ROOT = _PARENT
 BOUNDARY_MAIN = os.path.join(PROJECT_ROOT, 'DATA', 'boundaries', '西陵伍家核心主城.geojson')
 BOUNDARY_ERMALU = os.path.join(PROJECT_ROOT, 'DATA', 'boundaries', '大南门二马路滨江片区.geojson')
+BOUNDARY_WATER = os.path.join(PROJECT_ROOT, 'DATA', 'boundaries', '现状水系.geojson')   # 长江+主城水域，扣江得陆域掩膜
 POI_SEEDS_FILE = os.path.join(_HERE, 'poi_data', 'yichang_poi_wgs84.json')
+POI_AMAP_FILE = os.path.join(_HERE, 'poi_data', 'amap_poi_wgs84.json')   # 阶段2：高德真实 POI 缓存（pull_amap_poi.py 产出）
+USE_AMAP_POI = os.environ.get('USE_AMAP_POI') == '1'                     # 阶段2：补 Key 拉取后启用换源
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, 'DATA', 'processed')
 SCOPE = 'xiling_wujia'
 
@@ -84,23 +92,27 @@ def _density_weight(lon, lat):
 # ═══════════════ STEP 0: 加载资产 + 边界 ═══════════════
 @track("MOD_GEN.F_001", track_args=False)
 def load_assets():
-    """加载 POI 种子 + 文本池。"""
-    data = json.load(open(POI_SEEDS_FILE, encoding='utf-8'))
+    """加载 POI 种子 + 文本池。
+    POI 源：默认 158 种子；USE_AMAP_POI=1 且高德缓存存在时换高德真实 POI（阶段2）。"""
+    use_amap = USE_AMAP_POI and os.path.exists(POI_AMAP_FILE)
+    path = POI_AMAP_FILE if use_amap else POI_SEEDS_FILE
+    data = json.load(open(path, encoding='utf-8'))
     pois = data.get('pois', [])
     pool = load_pool()
-    safe_print('[LOAD] POI 种子 {} 条 | 文本池 {} 格'.format(len(pois), len(pool)))
+    safe_print('[LOAD] POI 源 {} | {} 条 | 文本池 {} 格'.format(
+        'amap(高德)' if use_amap else 'seeds(158)', len(pois), len(pool)))
     return pois, pool
 
 
 @track("MOD_GEN.F_006", track_args=False)
 def load_boundaries():
-    """加载主城 + 二马路边界（WGS84），二马路 +150m buffer（4546 米制）。
-    返回 (main_poly, ermalu_buffered_poly, ermalu_poly)。"""
+    """加载主城 + 二马路边界（WGS84），扣水系（长江+河沟塘）得陆域掩膜；二马路 +150m buffer。
+    返回 (main_land, ermalu_buf_land, ermalu_land) —— 均已扣水域，contains() 自然避江。"""
     import geopandas as gpd
     from shapely.geometry import Point
     main = gpd.read_file(BOUNDARY_MAIN).to_crs('EPSG:4326').geometry.union_all()
     ermalu = gpd.read_file(BOUNDARY_ERMALU).to_crs('EPSG:4326').geometry.union_all()
-    # 二马路 + buffer（在 4546 米制下 buffer，回 WGS84）
+    # 二马路 + buffer（4546 米制 buffer，回 WGS84）
     ermalu_buf = (
         gpd.GeoDataFrame({'geometry': [ermalu]}, crs='EPSG:4326')
         .to_crs('EPSG:4546')
@@ -108,9 +120,16 @@ def load_boundaries():
         .to_crs('EPSG:4326')
         .geometry.iloc[0]
     )
+    # 扣水系（长江水面 + 内部河沟塘）—— 解决点落江
+    water = None
+    if os.path.exists(BOUNDARY_WATER):
+        water = gpd.read_file(BOUNDARY_WATER).to_crs('EPSG:4326').geometry.union_all()
+        main = main.difference(water)
+        ermalu = ermalu.difference(water)
+        ermalu_buf = ermalu_buf.difference(water)
     _km2 = lambda g: gpd.GeoDataFrame({'geometry': [g]}, crs='EPSG:4326').to_crs('EPSG:4546').geometry.iloc[0].area / 1e6
-    safe_print('[LOAD] 主城 {:.2f} km2 | 二马路 {:.3f} km2 | 二马路+buffer {:.3f} km2'.format(
-        _km2(main), _km2(ermalu), _km2(ermalu_buf)))
+    safe_print('[LOAD] 主城陆域 {:.2f} km2 | 二马路陆域 {:.3f} | 二马路+buffer {:.3f}{}'.format(
+        _km2(main), _km2(ermalu), _km2(ermalu_buf), ' (已扣水系)' if water is not None else ''))
     return main, ermalu_buf, ermalu
 
 
@@ -124,34 +143,31 @@ def _split_poi_seeds(pois, ermalu_poly):
     return ermalu_seeds, main_seeds
 
 
-# ═══════════════ STEP 1: 空间生成（POI 锚点 + 密度背景）═══════════════
+# ═══════════════ STEP 1: 空间生成（核密度曲面 + 密度引导采样，v3.1）═══════════════
 @track("MOD_GEN.F_010", track_args=False)
 def generate_zone_points(zone_poly, seeds, n, rng, area_tag):
-    """在 zone_poly 内生成 n 点：70% 围绕 POI 锚点（gaussian within radius），
-    30% 密度背景（按 _density_weight 拒绝采样）。全部 contains() 校验。"""
+    """在 zone_poly 内生成 n 点。v3.1：POI 核密度曲面 -> 密度引导采样
+    （替 v3.0 的 POI 锚点高斯聚类，消离散光斑 + 伍家空白）。无种子时退化为
+    区域内均匀。返回 (pts, tries)，pts 同契约 [{'lon','lat','seed','area_tag'}, ...]。"""
     from shapely.geometry import Point
+    if seeds:
+        from poi_data.poi_density import DensityField
+        df = DensityField(seeds, zone_poly)
+        pts = df.sample(n, rng, area_tag)
+        return pts, len(pts)
+    # 无 POI 种子 -> 区域内均匀采样（密度引导不可用）
+    safe_print('[SPATIAL][WARN] {} 无 POI 种子，退化为均匀采样'.format(area_tag))
     out = []
-    sw = [max(float(s.get('weight', 1.0)), 0.01) for s in seeds] if seeds else []
     b = zone_poly.bounds
     pad = 0.003
     tries = 0
     max_tries = max(n * 100, 8000)
     while len(out) < n and tries < max_tries:
         tries += 1
-        if seeds and rng.random() < 0.70:
-            s = rng.choices(seeds, weights=sw, k=1)[0]
-            sigma = max(float(s.get('radius_m', 400)), 50) / 111000.0 * 0.4
-            lon = rng.gauss(s['lng'], sigma)
-            lat = rng.gauss(s['lat'], sigma)
-            anchor = s
-        else:
-            lon = rng.uniform(b[0] - pad, b[2] + pad)
-            lat = rng.uniform(b[1] - pad, b[3] + pad)
-            if rng.random() > _density_weight(lon, lat) * 3:
-                continue
-            anchor = None
+        lon = rng.uniform(b[0] - pad, b[2] + pad)
+        lat = rng.uniform(b[1] - pad, b[3] + pad)
         if zone_poly.contains(Point(lon, lat)):
-            out.append({'lon': lon, 'lat': lat, 'seed': anchor, 'area_tag': area_tag})
+            out.append({'lon': lon, 'lat': lat, 'seed': None, 'area_tag': area_tag})
     return out, tries
 
 
@@ -343,7 +359,8 @@ def validate_snapshot(df, snapshot_id, main_poly, ermalu_buf):
 @track("MOD_GEN.F_005", track_args=False)
 def main():
     safe_print('=' * 56)
-    safe_print('  L1 模拟数据生成 v3.0 — 3 快照 × 西陵伍家+二马路')
+    safe_print('  L1 模拟数据生成 v3.1 — 3 快照 × 西陵伍家+二马路')
+    safe_print('  空间生成：核密度曲面 + 密度引导采样（替 v3.0 锚点聚类）')
     safe_print('  主城目标 {} | 二马路 {} (含在总量) | buffer {}m'.format(
         TARGET_TOTAL, ERMALU_TARGET, ERMALU_BUFFER_M))
     safe_print('=' * 56)
@@ -425,7 +442,7 @@ register_track_id("MOD_GEN.F_005", "主流程 3 快照循环")
 register_track_id("MOD_GEN.F_006", "加载边界 + 二马路 buffer")
 register_track_id("MOD_GEN.F_008", "jieba keywords + 季节话题")
 register_track_id("MOD_GEN.F_009", "快照校验（边界 + 极性）")
-register_track_id("MOD_GEN.F_010", "空间生成（POI 锚点 + 密度）")
+register_track_id("MOD_GEN.F_010", "空间生成（核密度曲面 + 密度引导采样 v3.1）")
 register_track_id("MOD_GEN.F_011", "重点区域埋点（极性迁移）")
 register_track_id("MOD_GEN.F_012", "L1->L2 管线（待接）")
 register_track_id("MOD_GEN.D_001", "标签筛选（v2.2 保留）")
