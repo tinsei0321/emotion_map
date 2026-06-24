@@ -1,5 +1,5 @@
 // ═══ sidebar.js — left panel: collapse/expand, drag, import trigger, layer manager ═══
-import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, layerDisplayColor, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, addLayer, getChildren, categoryOf, CATEGORY_LABEL, applyGroupOrder, reorderGroupSegment, isCollapsed, toggleCollapsed, getGroupOrder, CONFIDENCE_RAMP, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HOTNESS_RAMP } from './state.js';
+import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, layerDisplayColor, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, addLayer, getChildren, categoryOf, CATEGORY_LABEL, applyGroupOrder, reorderGroupSegment, isCollapsed, toggleCollapsed, isGroupFold, toggleGroupFold, getGroupOrder, CONFIDENCE_RAMP, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HOTNESS_RAMP } from './state.js';
 import { renderLayer, removeLayerFromMap, reorderAllZ, restackZ } from './map.js';
 import { toast } from './toast.js';
 import { openSettingsPopover, closeSettingsPopover, openSettingsLayerId, isOpen } from './settings.js';
@@ -146,6 +146,7 @@ const GRIP = '<span class="layer-grip" title="拖拽排序"><svg viewBox="0 0 16
 
 let _dragId = null;   // id of the layer row being dragged
 let _dragCat = null;  // category of the group card being dragged (inter-category reorder)
+let _dragGroupId = null;  // id of the group card being dragged (same-category multi-group reorder, e.g. L2 T1/T2/T3)
 
 /** Level → next-action tag (blue). L0 需治理；L1/L2/range 无标记。 */
 function levelTag(l) {
@@ -229,8 +230,9 @@ export function renderLayerList() {
       const stray = items.filter((g) => g.kind !== 'group');
       for (const g of groups) {
         const kids = (g.children || []).map((cid) => byId.get(cid)).filter(Boolean);
-        html += groupRowHtml(g, kids, cat, collapsed, false);
-        if (!collapsed) for (const c of kids) html += layerRowHtml(c, openId, selId, true, cat);
+        const gfold = isGroupFold(g.id);   // 真 L2 组单独折叠（双击该组只折该组，不波及其他 L2 组）
+        html += groupRowHtml(g, kids, cat, gfold, false);
+        if (!gfold) for (const c of kids) html += layerRowHtml(c, openId, selId, true, cat);
       }
       if (stray.length) {
         html += groupRowHtml({ id: null, name: CATEGORY_LABEL[cat] }, stray, cat, collapsed, true);
@@ -275,26 +277,27 @@ export function renderLayerList() {
   // row click → select (only layer rows open Overview; group cards are collapse-only)
   list.querySelectorAll('.layer-row').forEach((row) =>
     row.addEventListener('click', () => selectLayerRow(row.dataset.id)));
-  // group card double-click → toggle collapse (single-click is a no-op; chev has its own click)
+  // 双击 group card 折叠：真 group（data-id）→ 只折叠该组；虚拟 group（无 data-id）→ 折叠整个 category
   list.querySelectorAll('.layer-group').forEach((grp) =>
     grp.addEventListener('dblclick', (e) => {
-      if (e.target.closest('.layer-eye, .layer-group-chev')) return;   // those have own handlers
+      if (e.target.closest('.layer-eye, .layer-group-chev')) return;
       const cat = grp.dataset.cat;
+      const gid = grp.dataset.id;
       if (!cat) return;
-      toggleCollapsed(cat);
+      if (gid) toggleGroupFold(gid); else toggleCollapsed(cat);
       renderLayerList();
     }));
 
   // drag → reorder (dual flavor: group-card = inter-category; layer-row = within-category)
   list.querySelectorAll('[draggable]').forEach((el) => {
     el.addEventListener('dragstart', (e) => {
-      if (el.classList.contains('layer-group')) { _dragCat = el.dataset.cat; _dragId = null; }
-      else { _dragId = el.dataset.id; _dragCat = null; }
+      if (el.classList.contains('layer-group')) { _dragCat = el.dataset.cat; _dragGroupId = el.dataset.id || null; _dragId = null; }
+      else { _dragId = el.dataset.id; _dragCat = null; _dragGroupId = null; }
       el.classList.add('is-dragging');
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', _dragId || _dragCat);
     });
-    el.addEventListener('dragend', () => { el.classList.remove('is-dragging'); clearDropHints(); _dragId = null; _dragCat = null; });
+    el.addEventListener('dragend', () => { el.classList.remove('is-dragging'); clearDropHints(); _dragId = null; _dragCat = null; _dragGroupId = null; });
     el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('is-drop-over'); });
     el.addEventListener('dragleave', () => el.classList.remove('is-drop-over'));
     el.addEventListener('drop', (e) => {
@@ -303,13 +306,32 @@ export function renderLayerList() {
       const tCat = el.dataset.cat;
       const tId = el.dataset.id;
       let moved = false;
-      if (_dragCat && tIsGroup && _dragCat !== tCat) {
-        // group-card drag → reorder whole category segment before/after target category
+      if (_dragCat && tIsGroup) {
         const rect = el.getBoundingClientRect();
         const before = (e.clientY - rect.top) <= rect.height / 2;
-        reorderGroupSegment(_dragCat, tCat, before);
+        if (_dragCat !== tCat) {
+          reorderGroupSegment(_dragCat, tCat, before);   // 跨 category：移整段
+        } else if (_dragGroupId && el.dataset.id && _dragGroupId !== el.dataset.id) {
+          // 同 category 多 group（如多个 L2 组 T1/T2/T3）：按 group id 重排 _layers
+          const ls = getLayers();
+          const idx = ls.findIndex((x) => x.id === el.dataset.id);
+          const toId = before ? el.dataset.id : (ls[idx + 1] ? ls[idx + 1].id : null);
+          reorderLayers(_dragGroupId, toId);
+        }
         reorderAllZ();
         moved = true;
+      } else if (_dragGroupId && !tIsGroup) {
+        // group 拖到 layer-row（目标 group 的子层）→ 找父 group 整组重排（覆盖 group 展开时 drop 到子层）
+        const tLayer = getLayer(tId);
+        const tgtGroupId = tLayer && tLayer.parentId;
+        if (tgtGroupId && tgtGroupId !== _dragGroupId) {
+          const ls = getLayers();
+          const gidx = ls.findIndex((x) => x.id === tgtGroupId);
+          const toId = gidx >= 0 ? (ls[gidx + 1] ? ls[gidx + 1].id : null) : null;
+          reorderLayers(_dragGroupId, toId);
+          reorderAllZ();
+          moved = true;
+        }
       } else if (_dragId && !tIsGroup && _dragId !== tId) {
         // layer drag → within same category only (cross-category move deferred)
         const src = getLayer(_dragId);
@@ -324,7 +346,7 @@ export function renderLayerList() {
           moved = true;
         }
       }
-      _dragId = null; _dragCat = null;
+      _dragId = null; _dragCat = null; _dragGroupId = null;
       clearDropHints();
       renderLayerList();
       if (moved) toast.info('图层顺序已更新');

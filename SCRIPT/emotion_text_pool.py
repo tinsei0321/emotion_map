@@ -29,6 +29,19 @@ import random
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 POOL_FILE = os.path.join(_HERE, 'poi_data', 'emotion_text_pool.json')
+CORPUS_FILE = os.path.join(_HERE, 'poi_data', 'emotion_corpus.json')   # v3.3 地域化语料（zone|polarity）
+
+
+def load_corpus_candidates():
+    """加载地域化语料原始候选（zone|polarity -> [text]）。emotion_corpus.json 不存在返回 {}。
+    DeepSeek 扩充脚本（generate_corpus.py）往此文件追加，本函数零改动即生效。"""
+    if not os.path.exists(CORPUS_FILE):
+        return {}
+    try:
+        data = json.load(open(CORPUS_FILE, encoding='utf-8'))
+        return data.get('candidates', data)
+    except Exception:
+        return {}
 
 # ── 极性带（与 L1->L2 管线阈值对齐）──
 POLARITY_BANDS = {
@@ -211,6 +224,19 @@ def build_pool(verbose=True):
         pool['neutral|{}'.format(elem)] = list(neu_kept)
     stats['neutral|*'] = (len(neu_kept), len(NEUTRAL_CANDIDATES))
 
+    # v3.3 地域化语料：zone|polarity -> 落带的文本（locality 文本，sample_text 地域优先抽）
+    corpus = load_corpus_candidates()
+    for key, texts in corpus.items():
+        parts = key.split('|')
+        if len(parts) != 2:
+            continue
+        _zone, pol = parts[0], parts[1]
+        if pol not in POLARITY_BANDS:
+            continue
+        kept = [t for t in texts if _in_band(_snownlp_score(t), pol)]
+        pool[key] = kept
+        stats[key] = (len(kept), len(texts))
+
     os.makedirs(os.path.dirname(POOL_FILE), exist_ok=True)
     json.dump(pool, open(POOL_FILE, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
 
@@ -234,11 +260,20 @@ def load_pool(rebuild=False):
     return json.load(open(POOL_FILE, encoding='utf-8'))
 
 
-def sample_text(polarity, element, pool=None, rng=random):
-    """从校验池采样一条文本。polarity ∈ {positive,negative,neutral}；element ∈ 5 类。
-    若该 (polarity,element) 格为空，回退到同 polarity 任意 element。"""
+def sample_text(polarity, element, pool=None, rng=random, zone=None, flavor=None, locality_bias=0.65):
+    """从校验池采样一条文本。
+    v3.3 地域化：若给 zone 且 rng<locality_bias 且该 zone|polarity 地域桶非空 -> 抽地域文本
+    （含 place_keywords = 本地相关）；否则退通用 (polarity,element) 池。
+    polarity ∈ {positive,negative,neutral}；element ∈ 5 类；zone ∈ place_layer zone_id。
+    flavor 预留（corpus 含 flavor 变体时优先；起步语料未分 flavor，暂不影响）。"""
     if pool is None:
         pool = load_pool()
+    # 地域优先（v3.3）—— zone|polarity 桶
+    if zone:
+        ztexts = pool.get('{}|{}'.format(zone, polarity)) or []
+        if ztexts and rng.random() < locality_bias:
+            return rng.choice(ztexts)
+    # 通用 (polarity, element)；空则回退同 polarity 任意 element 格
     key = '{}|{}'.format(polarity, element)
     texts = pool.get(key) or []
     if not texts:

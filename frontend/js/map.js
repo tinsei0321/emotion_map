@@ -98,6 +98,7 @@ export function renderLayer(layer) {
   for (const l of [hitLid, lineLid, lid]) if (map.getLayer(l)) map.removeLayer(l);
   if (map.getSource(sid)) map.removeSource(sid);
   if (!layer.visible || !layer.fc.features.length) {
+    if (layer._deckOverlay) layer._deckOverlay.setProps({ layers: [] });   // 隐藏 hotpoint（deck.gl）
     // hiding a point layer → its selection halo must go too
     if (!layer.visible && layer.kind === 'point') clearSelectionHalo(layer.id);
     return;
@@ -149,6 +150,8 @@ export function restackZ() {
 
 export function removeLayerFromMap(id) {
   if (!map) return;
+  const _layer = getLayers().find((l) => l.id === id);
+  if (_layer && _layer._deckOverlay) { map.removeControl(_layer._deckOverlay); _layer._deckOverlay = null; }
   const sid = lyrSrc(id), lid = lyrLid(id), lineLid = lyrLineLid(id), hitLid = lyrHitLid(id);
   for (const l of [hitLid, lineLid, lid]) if (map.getLayer(l)) map.removeLayer(l);
   if (map.getSource(sid)) map.removeSource(sid);
@@ -181,8 +184,10 @@ export function reorderAllZ() {
 function addPointPaint(layer, sid, lid) {
   const count = layer.fc.features.length;
   const p = layer.paint || {};
-  // px override (settings slider) else density-adaptive zoom-interpolated radius
-  const radius = (p.radius != null) ? p.radius : densityRadiusExpr(count);
+  // px override (settings slider) else L2 情绪点 3-6px zoom 自适应 / 其他 density-adaptive
+  const _isL2 = layer.colorMode === 'l2-positive' || layer.colorMode === 'l2-negative' || layer.colorMode === 'l2-neutral';
+  const _l2Radius = ['interpolate', ['linear'], ['zoom'], 8, 3, 14, 6];
+  const radius = (p.radius != null) ? p.radius : (_isL2 ? _l2Radius : densityRadiusExpr(count));
   let colorExpr, strokeW, opacity;
   if (layer.colorMode === 'confidence') {
     // L1 热度值 = 情绪强度 × 置信度，3 段动态分位。hotness/buckets 已在 renderLayer
@@ -320,6 +325,50 @@ function addHeatmapPaint(layer, sid, lid) {
   if (p.maxzoom != null && p.maxzoom < 22) opts.maxzoom = p.maxzoom;
 
   map.addLayer(opts);
+}
+
+/* global deck */  // deck.gl standalone UMD（index.html CDN 引入）
+/** 热点图（deck.gl）：ScreenGridLayer 屏幕方格聚合 + MapboxOverlay 叠 MapLibre。
+ *  bloom 先靠 CSS filter（map canvas）近似；效果不足再引 @luma.gl/postprocessing。 */
+function addHotpointLayer(layer, sid, lid) {
+  if (typeof deck === 'undefined' || !deck.ScreenGridLayer || !deck.MapboxOverlay) {
+    console.error('[Hotpoint] deck.gl 未加载（ScreenGridLayer/MapboxOverlay 缺失），检查 index.html CDN');
+    return;
+  }
+  const p = layer.paint || {};
+  const weightField = p.weightField || 'emotion_intensity';
+  const rampKey = p.rampKey || 'rainbow';
+  const ramp = p.rampStops || (HEATMAP_RAMPS[rampKey] && HEATMAP_RAMPS[rampKey].stops) || HEATMAP_NEGATIVE_STOPS;
+  const opacity = p.opacity ?? 0.8;
+  const cellSize = Math.max(4, Math.min(40, Math.round((p.radius ?? 100) / 6)));  // radius(m)→cellSize(px) 近似
+  // ramp stops 是 [t, '#hex'|'rgba(...)'] 格式 → deck colorRange 需 [[r,g,b],...]（6 色）
+  const _toRgb = (c) => {
+    if (Array.isArray(c)) return c;
+    if (typeof c !== 'string') return [255, 255, 255];
+    const m = c.match(/rgba?\(([^)]+)\)/i);
+    if (m) { const p = m[1].split(',').map(Number); return [p[0] || 0, p[1] || 0, p[2] || 0]; }
+    let h = c.replace('#', '');
+    if (h.length === 3) h = h.split('').map((x) => x + x).join('');
+    const n = parseInt(h, 16);
+    return isNaN(n) ? [255, 255, 255] : [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  };
+  const _cols = ramp.map((x) => _toRgb(x[1]));
+  const colorRange = [];
+  for (let i = 0; i < 6; i++) colorRange.push(_cols[i] || _cols[_cols.length - 1] || [255, 255, 255]);
+  const sgl = new deck.ScreenGridLayer({
+    id: lid,
+    data: layer.fc.features,
+    getPosition: (f) => f.geometry.coordinates,
+    getWeight: (f) => Number((f.properties || {})[weightField] ?? 0.5),
+    cellSize, colorRange, opacity,
+    pickable: false,
+  });
+  if (layer._deckOverlay) {
+    layer._deckOverlay.setProps({ layers: [sgl] });
+  } else {
+    layer._deckOverlay = new deck.MapboxOverlay({ layers: [sgl] });
+    map.addControl(layer._deckOverlay);
+  }
 }
 
 /** Build a heatmap-weight expression from field + curve mode.

@@ -78,7 +78,7 @@ async function runImport(files) {
               }
               const group = addGroup({ name: 'L2 · 情绪地图 DATA', fc: pfc });
               group.srcName = base;
-              const paint = { opacity: 0.80, radius: 8 };   // 80% opacity + fixed 8px
+              const paint = { opacity: 0.80 };   // 80% opacity；radius 走 addPointPaint L2 自适应 3-6px
               const fcOf = (arr) => ({ type: 'FeatureCollection', features: arr });
               if (pos.length) { const L = addLayer({ name: `积极 · ${base}`, kind: 'point', parentId: group.id, colorMode: 'l2-positive', fc: fcOf(pos), paint }); L.srcName = base; renderLayer(L); added++; }
               if (neu.length) { const L = addLayer({ name: `中性 · ${base}`, kind: 'point', parentId: group.id, colorMode: 'l2-neutral',  fc: fcOf(neu), paint }); L.srcName = base; renderLayer(L); added++; }
