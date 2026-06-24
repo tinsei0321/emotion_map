@@ -38,9 +38,10 @@ sys.path.insert(0, _HERE)     # for snapshot_config / emotion_text_pool / poi_da
 
 from core.tracker import track, TrackContext, trace_error, register_track_id
 from core.utils import safe_print
-from snapshot_config import SNAPSHOTS, pick_polarity, pick_domain_element
+from snapshot_config import SNAPSHOTS, pick_polarity, pick_domain_element, get_ermalu_target, pick_flavor
 from emotion_text_pool import load_pool, sample_text
 from poi_data.poi_4x5_map import DOMAIN_CN, ELEMENT_CN
+from core.place_layer import get_place_layer
 
 random.seed(2606)
 np.random.seed(2606)
@@ -52,13 +53,12 @@ BOUNDARY_ERMALU = os.path.join(PROJECT_ROOT, 'DATA', 'boundaries', '大南门二
 BOUNDARY_WATER = os.path.join(PROJECT_ROOT, 'DATA', 'boundaries', '现状水系.geojson')   # 长江+主城水域，扣江得陆域掩膜
 POI_SEEDS_FILE = os.path.join(_HERE, 'poi_data', 'yichang_poi_wgs84.json')
 POI_AMAP_FILE = os.path.join(_HERE, 'poi_data', 'amap_poi_wgs84.json')   # 阶段2：高德真实 POI 缓存（pull_amap_poi.py 产出）
-USE_AMAP_POI = os.environ.get('USE_AMAP_POI') == '1'                     # 阶段2：补 Key 拉取后启用换源
+USE_AMAP_POI = os.environ.get('USE_AMAP_POI', '1') != '0'                # v3.3：默认用 1270 高德真实 POI（真实密度）
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, 'DATA', 'processed')
 SCOPE = 'xiling_wujia'
 
 ERMALU_BUFFER_M = 150        # 二马路向外缓冲（情绪/POI 定位 fuzziness）
-TARGET_TOTAL = 2500          # 主城每快照目标（2000-3000 中值）
-ERMALU_TARGET = 700          # 二马路每快照（600-800 中值，含在总量内）
+TARGET_TOTAL_DEFAULT = 2500  # 默认主城每快照总量（可被 snapshot_config.target_total 覆盖）
 ANCHOR_COUNT = 6             # 重点区域埋点 POI 数
 ANCHOR_RADIUS_DEG = 0.0008   # ~88m，埋点影响半径
 
@@ -76,7 +76,7 @@ L1_COLUMNS = [
     'domain', 'element', 'primary_emotion', 'emotion_intensity', 'polarity_hint', 'intensity',
     'urban_value', 'l1_confidence', 'has_location', 'location_mentioned',
     'relevance', 'relevance_category', 'like_count', 'comment_count', 'tags', 'url',
-    'time_label', 'area_seed', 'area_tag',
+    'time_label', 'area_seed', 'area_tag', 'zone',
     'lon', 'lat', 'x_cgcs2000', 'y_cgcs2000', 'spatial_hotspot', 'spatial_type',
 ]
 
@@ -171,14 +171,17 @@ def generate_zone_points(zone_poly, seeds, n, rng, area_tag):
     return out, tries
 
 
-def generate_snapshot_spatial(main_poly, ermalu_buf, ermalu_seeds, main_seeds, rng):
-    """主城一套：二马路加密（在 ermalu_buf 内）+ 主城其余（在 main 去除 ermalu_buf 内）。"""
+def generate_snapshot_spatial(main_poly, ermalu_buf, ermalu_seeds, main_seeds, rng, snapshot_id):
+    """主城一套：二马路按 zone_caps 占比（v3.3 替硬编码 700）+ 主城其余按 POI 密度。"""
+    snap = SNAPSHOTS[snapshot_id]
+    total = snap.get('target_total', TARGET_TOTAL_DEFAULT)
+    ermalu_n = get_ermalu_target(snapshot_id, total)
     main_minus_ermalu = main_poly.difference(ermalu_buf)
-    e_pts, e_tries = generate_zone_points(ermalu_buf, ermalu_seeds, ERMALU_TARGET, rng, 'ermalu')
-    n_main = TARGET_TOTAL - len(e_pts)
+    e_pts, e_tries = generate_zone_points(ermalu_buf, ermalu_seeds, ermalu_n, rng, 'ermalu')
+    n_main = total - len(e_pts)
     m_pts, m_tries = generate_zone_points(main_minus_ermalu, main_seeds, n_main, rng, 'main')
-    safe_print('[SPATIAL] 二马路 {} (拒 {}) | 主城 {} (拒 {})'.format(
-        len(e_pts), e_tries, len(m_pts), m_tries))
+    safe_print('[SPATIAL] {} 二马路 {}/{} ({:.0%}) (拒 {}) | 主城 {} (拒 {})'.format(
+        snapshot_id, len(e_pts), total, len(e_pts) / total, e_tries, len(m_pts), m_tries))
     return e_pts + m_pts
 
 
@@ -189,17 +192,21 @@ def inject_fields(pts, snapshot_id, pool, rng):
     domain/element/polarity 由 snapshot_config 叙事驱动；text 由校验池采样。"""
     snap = SNAPSHOTS[snapshot_id]
     d0, d1 = snap['date_range']
+    pl = get_place_layer()
     rows = []
     for i, p in enumerate(pts):
         area_tag = p['area_tag']
+        zone = pl.classify_point(p['lon'], p['lat'])
         polarity = pick_polarity(snapshot_id, area_tag, rng)
         domain, element = pick_domain_element(snapshot_id, area_tag, rng)
-        text = sample_text(polarity, element, pool, rng)
+        flavor = pick_flavor(snapshot_id, area_tag)
+        text = sample_text(polarity, element, pool, rng, zone=zone, flavor=flavor)
         seed = p.get('seed') or {}
         rows.append({
             'lon': p['lon'],
             'lat': p['lat'],
             'area_tag': area_tag,
+            'zone': zone,
             'area_seed': seed.get('name', '') or (snap['ermalu_focus'] if area_tag == 'ermalu' else '背景'),
             'spatial_hotspot': seed.get('name', ''),
             'spatial_type': seed.get('baidu_level1', '') or ('ermalu' if area_tag == 'ermalu' else 'background'),
@@ -260,7 +267,7 @@ def apply_anchors(df, snapshot_id, anchors, pool, rng):
         near = df.apply(lambda r: ap.distance(Point(r['lon'], r['lat'])) < ANCHOR_RADIUS_DEG, axis=1)
         for idx in df.index[near]:
             df.at[idx, 'polarity_hint'] = forced
-            df.at[idx, 'text'] = sample_text(forced, df.at[idx, 'element'], pool, rng)
+            df.at[idx, 'text'] = sample_text(forced, df.at[idx, 'element'], pool, rng, zone=df.at[idx, 'zone'])
             df.at[idx, 'primary_emotion'] = rng.choice(EMOTION_BY_POLARITY[forced])
             df.at[idx, 'area_seed'] = (a.get('name', '') or 'anchor') + '@埋点'
             mask[idx] = True
@@ -361,8 +368,9 @@ def main():
     safe_print('=' * 56)
     safe_print('  L1 模拟数据生成 v3.1 — 3 快照 × 西陵伍家+二马路')
     safe_print('  空间生成：核密度曲面 + 密度引导采样（替 v3.0 锚点聚类）')
-    safe_print('  主城目标 {} | 二马路 {} (含在总量) | buffer {}m'.format(
-        TARGET_TOTAL, ERMALU_TARGET, ERMALU_BUFFER_M))
+    safe_print('  主城目标 {} | 二马路 cap T1={}/T2={}/T3={} | buffer {}m'.format(
+        TARGET_TOTAL_DEFAULT, get_ermalu_target('T1'), get_ermalu_target('T2'),
+        get_ermalu_target('T3'), ERMALU_BUFFER_M))
     safe_print('=' * 56)
     try:
         pois, pool = load_assets()
@@ -374,7 +382,7 @@ def main():
             snap = SNAPSHOTS[sid]
             safe_print('\n--- {} {} ---'.format(sid, snap['label']))
             rng = random.Random(2606 + ord(sid[1]))   # 每快照可复现
-            pts = generate_snapshot_spatial(main_poly, ermalu_buf, ermalu_seeds, main_seeds, rng)
+            pts = generate_snapshot_spatial(main_poly, ermalu_buf, ermalu_seeds, main_seeds, rng, sid)
             df = inject_fields(pts, sid, pool, rng)
             df, mask, _ = apply_anchors(df, sid, anchors, pool, rng)
             df = transform_coords(df)

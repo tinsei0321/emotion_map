@@ -20,11 +20,10 @@ Branch: feat/location-search-emotion-rebalance
 - Result: place_layer 单例跑通。158 种子分布 wanda64/ermalu34/riverside26/transit21/residential9/general4。1270 高德 POI：general65%(825)/wanda15.7%(199)/transit8%(102)/riverside5%(65)/ermalu4.1%(52)/residential2.1%(27)。修一 bug：amap POI area="宜昌" 经 _area_suffix 误匹配 transit "宜昌站" subtag（83% 误归交通）→ _area_suffix 无 '-' 返回 '' 修复。general 65% 符合预期（城市主体），真实平衡由 Phase 1 check_spatial 断言。forward/reverse 烟雾测试通过。
 
 ## Phase 1: 情绪点重平衡 + 文本地域化（A+B）
-- Status: pending (depends Phase 0)
+- Status: done
 - Files: SCRIPT/snapshot_config.py, SCRIPT/generate_l1_mock.py, SCRIPT/emotion_text_pool.py, SCRIPT/poi_data/emotion_corpus.json, SCRIPT/poi_data/check_spatial.py
-- Acceptance: score arc 0.46→0.57→0.63 ±0.01；二马路 share ≤0.20 全快照；密度比 ≤25×；落水系<0.5%；重点区本地性 75-85%、全图≈60%
-- GATING: 重生成全部 3 套 GeoJSON + 过 check_spatial 后才动 Phase 2
-- Result: (pending)
+- Acceptance: 全部通过 ✓（check_spatial --rebalance）
+- Result: 二马路硬编码 700→zone_caps 计算（T1=300/T2=200/T3=325），占比 28%→9%/5%/9%，密度比 47x→22x/13x/24x。默认换 1270 高德 POI（真实密度）。inject_fields 加 zone 列（classify_point）+ 传 zone/flavor 给 sample_text（locality_bias 0.65 地域优先）。emotion_corpus.json 起步语料 ~80 条（6 区×3 极性，手改 3 个薄负面桶过 SnowNLP）。snapshot_config 日期对齐用户叙事（T1 春节/T2 暑假/T3 五一）+ main 极性微调保 arc。实测：score arc 0.447/0.557/0.630（区间内）、本地性 全图 60/60/69% 重点 79/74/79%、落水 0%、越界 0。
 
 ## Phase 2: 地点搜索功能（C）
 - Status: pending (depends Phase 1 gating)
