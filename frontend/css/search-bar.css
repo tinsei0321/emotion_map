@@ -17,21 +17,20 @@
   height: var(--geojson-layout-search-collapsed-size);     /* 32px */
   width: var(--geojson-layout-search-width);               /* 200px 展开 */
   padding: 0;
-  border: 1px solid var(--geojson-color-gray-200, #e5e5e5); /* 灰发丝线框 */
+  border: none;                                            /* 无线框（展开/折叠均无线框，靠阴影区分） */
   border-radius: calc(var(--geojson-layout-search-collapsed-size) / 2);  /* 胶囊（非圆角矩形） */
   background: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);               /* 展开态：中阴影 */
   overflow: hidden;                                        /* 折叠时裁掉右侧 input/kbd */
   transition: width var(--geojson-transition),
-              box-shadow var(--geojson-transition),
-              border-color var(--geojson-transition);
+              box-shadow var(--geojson-transition);
 }
 .search-bar.is-collapsed {
   width: var(--geojson-layout-search-collapsed-size);      /* 32px 圆 */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.10);               /* 折叠态：弱阴影（与展开态拉开差距） */
 }
 .search-bar.is-focused {
-  border-color: var(--geojson-color-chrome-active-fill, #007afc);
-  box-shadow: 0 1px 6px rgba(0, 122, 252, 0.22);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.20);              /* 聚焦态：最强阴影，凸显点击后差别 */
 }
 
 /* 放大镜按钮（折叠态唯一可见元素） */

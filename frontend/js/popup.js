@@ -4,7 +4,6 @@
 //   • #range-popup   — clicked range polygon (navy accent = outline color)
 // Each independently expand/collapse (capsule) + close. Click empty map → collapse both.
 import { POLARITY_LABEL, rampColor, CONFIDENCE_RAMP, getLayer, computeHotness, hotnessColor, isDrawActive } from './state.js';
-import { reverseGeocode } from './api.js';
 
 const emoEl = () => document.getElementById('feature-popup');
 const rngEl = () => document.getElementById('range-popup');
@@ -12,8 +11,6 @@ let _emo = null;          // { colorMode, label?, score?, scoreText? }
 let _rng = null;          // { name, color }
 let _popupLayerId = null; // layer id of the feature shown in the emotion popup (for color sync)
 let _rngLayerId = null;   // layer id of the feature shown in the range popup
-let _map = null;          // map 实例（反查 chip addTo 用）
-let _placeChip = null;    // 空白点击反查地名 chip（独立 DOM，下次非空点击清空）
 
 const GREY = '#a3a3a3';
 
@@ -209,29 +206,6 @@ function isRangePopupExpanded() {
   return !!p && !p.hidden && !p.classList.contains('is-collapsed') && !!_rng;
 }
 
-// ── 反查 chip（空白点击 → reverse-geocode → 地名胶囊；独立 DOM，非空点击清空）──
-function _pcEsc(s) {
-  return String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-function clearPlaceChip() {
-  if (_placeChip) { _placeChip.remove(); _placeChip = null; }
-}
-function showPlaceChip(lngLat, res) {
-  if (!_map) return;
-  clearPlaceChip();
-  const r = res || {};
-  const zone = r.zone_name || '';
-  const near = r.nearest_poi;
-  const poi = near ? (near.name + (near.dist_m != null ? ' · ' + near.dist_m + 'm' : '')) : '';
-  const addr = r.formatted_address || '';
-  if (!zone && !poi && !addr) return;       // 三者皆空 → 不显示
-  const sub = poi || addr;
-  const html = '<span class="pc-zone">' + _pcEsc(zone || '未知区域') + '</span>'
-    + (sub ? '<span class="pc-poi">' + _pcEsc(sub) + '</span>' : '');
-  _placeChip = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 14, className: 'place-chip' })
-    .setHTML(html).setLngLat(lngLat).addTo(_map);
-}
-
 // ── Init: close/expand/collapse wiring ─────────────────────────────────────
 export function initPopup(map) {
   const e = emoEl(), r = rngEl();
@@ -240,22 +214,11 @@ export function initPopup(map) {
   e?.addEventListener('click', () => { if (e.classList.contains('is-collapsed')) expandPopup(); });
   r?.addEventListener('click', () => { if (r.classList.contains('is-collapsed')) expandRangePopup(); });
   if (map) {
-    _map = map;
     map.on('click', (ev) => {
       if (isDrawActive()) return;   // 绘制中：click 归 draw-tool，不触发 popup
       const feats = map.queryRenderedFeatures(ev.point) || [];
       const k = classifyMapClick(feats, ev);
       if (k === 'popup') return;
-      // 空白点击 → 反查地名 chip（独立 DOM）；下次非空点击（point/range）清空 chip
-      if (k === 'blank') {
-        clearPlaceChip();
-        const lngLat = [ev.lngLat.lng, ev.lngLat.lat];
-        reverseGeocode(lngLat[0], lngLat[1])
-          .then((res) => showPlaceChip(lngLat, res))
-          .catch(() => {});
-      } else {
-        clearPlaceChip();
-      }
       // 情绪点：非命中即收（开 popup 仍由 map.js 点层 click 负责）
       if (k !== 'point') collapsePopup();
       // 范围：可见轮廓→保持/刷新；hit 带→未展开则开(易命中)/已展开则收；都没有→收

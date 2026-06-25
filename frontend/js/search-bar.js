@@ -21,6 +21,7 @@ let _input = null;
 let _results = null;     // .sb-results <ul>
 let _state = 'collapsed';
 let _hits = [];          // 当前联想结果
+let _hitsFor = '';       // 产生当前 _hits 的 query（Enter 陈旧守卫）
 let _active = -1;        // ↑↓ 高亮索引
 let _debounce = null;
 let _marker = null;      // 选中结果的标记（navigating 态）
@@ -70,6 +71,7 @@ function _hideResults() {
   _results.innerHTML = '';
   _active = -1;
   _hits = [];
+  _hitsFor = '';
 }
 
 function _row(hit, idx, sub) {
@@ -94,6 +96,7 @@ function _renderActive() {
 }
 
 function _showHistory() {
+  _hitsFor = '';                                 // 历史非 query 匹配，Enter 守卫按新词处理
   _setState('history');
   _results.innerHTML = '';
   const hist = _loadHistory();
@@ -113,6 +116,7 @@ function _showHistory() {
 function _showSuggestions(query) {
   searchPlaces(query, 10).then((res) => {
     if (_input.value.trim() !== query) return;   // 过期响应丢弃
+    _hitsFor = query;                              // 标记当前 _hits 对应的 query（Enter 守卫）
     _setState('suggesting');
     _results.innerHTML = '';
     const hits = (res && res.hits) || [];
@@ -164,6 +168,23 @@ function _navigate(idx) {
       .setLngLat(lngLat).addTo(map);
     _marker = new maplibregl.Marker().setLngLat(lngLat).addTo(map);
   }
+}
+
+async function _enterNavigate() {
+  // Enter 跳旧结果 bug 修复：若当前联想不对应输入（陈旧/空），先即时取新结果首条再导航
+  const q = _input.value.trim();
+  if (!q) return;
+  if (q !== _hitsFor) {
+    try {
+      const res = await searchPlaces(q, 10);
+      _hits = (res && res.hits) || [];
+      if (!_hits.length) return;
+      _hitsFor = q; _active = 0;
+      _navigate(0);
+    } catch (_) { /* 静默，用户可重试 */ }
+    return;
+  }
+  _navigate(_active >= 0 ? _active : 0);
 }
 
 function _esc(s) {
@@ -258,7 +279,7 @@ export function initSearchBar() {
       _active = (_active - 1 + _hits.length) % _hits.length; _renderActive();
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      _navigate(_active >= 0 ? _active : 0);
+      _enterNavigate();
     }
   });
 
