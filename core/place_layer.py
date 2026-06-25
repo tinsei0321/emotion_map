@@ -176,7 +176,9 @@ class PlaceLayer:
     """place 层单例。模块导入时由 get_place_layer() 懒加载一次。"""
 
     # 区解析优先级（ermalu 最具体优先，general 永远兜底最后）
-    _ZONE_PRIORITY = ['ermalu_oldstreet', 'wanda_cbd', 'riverside', 'transit_hub', 'residential']
+    _ZONE_PRIORITY = ['ermalu_oldstreet', 'yiling_cbd', 'shuiyuecheng', 'zhongnan_road',
+                      'wuyi_square', 'yiling_wanda', 'wanda_plaza', 'wuyue_square',
+                      'riverside', 'transit_hub', 'residential']
 
     def __init__(self):
         self.zones_cfg = []          # zone_typology.json 的 zones 列表
@@ -206,7 +208,7 @@ class PlaceLayer:
         # POI
         self.seed_pois = self._read_pois(_SEED_POI_PATH)
         self.amap_pois = self._read_pois(_AMAP_POI_PATH)
-        self.all_pois = self.seed_pois + self.amap_pois
+        self.all_pois = self.amap_pois   # 搜索/导出宇宙 = amap only（坐标准确）；seed 退命名不参与（坐标粗糙）
 
         # 预计算每条 POI 的拼音（连写 + 首字母），供 forward 拼音模糊匹配
         for _p in self.all_pois:
@@ -260,12 +262,9 @@ class PlaceLayer:
         return out
 
     def _build_zone_boundaries(self):
-        """ermalu 用显式 geojson；其余用该 zone 种子 POI 的 radius_m buffer 并集（4546 米制 buffer）。"""
-        seed_by_zone = {zid: [] for zid in self.zone_by_id}
-        for p in self.seed_pois:
-            zid = self._match_by_subtag_keyword(p['name'], p['area'])
-            seed_by_zone.setdefault(zid, []).append(p)
-
+        """v2.2：只给「有边界」的 zone 建 polygon —— boundary_path（ermalu 显式）或 center（商圈圆）。
+        全市型 zone（riverside/transit_hub/residential）不建边界——它们是名称型（停车场/小区全市分布），
+        按 name 归（resolve_zone 处理），classify_point 不返回它们。"""
         for zid, cfg in self.zone_by_id.items():
             if zid == 'general':
                 continue
@@ -273,14 +272,12 @@ class PlaceLayer:
             bp = cfg.get('boundary_path')
             if bp:
                 poly = _load_geojson_poly(os.path.join(_ROOT, bp) if not os.path.isabs(bp) else bp)
-            if poly is None and seed_by_zone.get(zid):
-                bufs = []
-                for p in seed_by_zone[zid]:
-                    pt = Point(_T.transform(p['lng'], p['lat'])) if _T else Point(p['lng'], p['lat'])
-                    bufs.append(pt.buffer(float(p.get('radius_m', 200))))
-                if bufs:
-                    poly_4546 = unary_union(bufs)
-                    poly = _to_wgs84(poly_4546) if _T else poly_4546
+            center = cfg.get('center')
+            if poly is None and center and len(center) == 2:
+                radius = float(cfg.get('radius_m', 300))
+                pt = Point(_T.transform(center[0], center[1])) if _T else Point(center[0], center[1])
+                poly_4546 = pt.buffer(radius)
+                poly = _to_wgs84(poly_4546) if _T else poly_4546
             if poly is not None:
                 self.zone_polys[zid] = poly
                 # 面积（4546 米制）
@@ -404,9 +401,9 @@ class PlaceLayer:
                 'baidu_level1': p.get('baidu_level1', ''),
                 'baidu_level2': p.get('baidu_level2', ''),
                 'area': p.get('area', ''),
-                'zone_id': self.classify_point(p['lng'], p['lat']),
+                'zone_id': self.resolve_zone(p['name'], p.get('area', ''), p['lng'], p['lat']),
                 'zone_name': self.zone_by_id.get(
-                    self.classify_point(p['lng'], p['lat']), {}).get('name_zh', ''),
+                    self.resolve_zone(p['name'], p.get('area', ''), p['lng'], p['lat']), {}).get('name_zh', ''),
                 'score': round(s, 1),
                 'source': 'local',
                 'data_source': p.get('source') or 'seed',   # 审计：amap 库 / seed 手标

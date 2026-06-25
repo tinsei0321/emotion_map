@@ -208,21 +208,22 @@ class TestTieredRanking:
 
 
 # ── 落水过滤（Search v2.1：现状水系内的 POI 不进搜索结果，导出标 in_water）──
+# v2.2：all_pois 改 amap-only，落水点 ~5（seed 退命名不再入库）。
 
 class TestWaterFilter:
     def test_in_water_flag_set(self):
         from core.place_layer import get_place_layer
         pl = get_place_layer()
         flagged = [p for p in pl.all_pois if p.get('_in_water')]
-        assert 10 < len(flagged) < 60   # 宜昌贴/落水点 ~28
+        assert 0 < len(flagged) < 20   # amap-only 贴/落水点 ~5
 
     def test_forward_excludes_water(self):
-        """落水 POI（如「二马路（主街）」seed）不应出现在搜索结果。"""
+        """落水 POI（如「求索溪」）不应出现在搜索结果。"""
         from core.place_layer import get_place_layer
         pl = get_place_layer()
         water_names = {p['name'] for p in pl.all_pois if p.get('_in_water')}
-        assert '二马路（主街）' in water_names
-        hits = pl.forward('二马路', 30)
+        assert any('求索溪' in n or '垂钓' in n for n in water_names), '应有已知落水点'
+        hits = pl.forward('求索', 30)
         result_names = {h['name'] for h in hits}
         leak = result_names & water_names
         assert not leak, '搜索结果含落水点: ' + str(leak)
@@ -232,3 +233,49 @@ class TestWaterFilter:
         pl = get_place_layer()
         hits = pl.forward('二马路', 10)
         assert hits and any('二马路' in h['name'] for h in hits)
+
+
+# ── Zone v2.2 归类（12 zone：7 商圈 + 4 非商业 + general）──
+# 基于本地知识校准：水悦城/中南路/万达/夷陵CBD 等独立商圈分离。
+
+class TestZoneV2:
+    def _zone_of(self, q):
+        from core.place_layer import get_place_layer
+        pl = get_place_layer()
+        for p in pl.all_pois:
+            if q in (p.get('name') or ''):
+                return pl.resolve_zone(p['name'], p.get('area', ''), p['lng'], p['lat'])
+        return None
+
+    def test_shuiyuecheng_zone(self):
+        assert self._zone_of('水悦城') == 'shuiyuecheng'
+
+    def test_xingfa_zhongnan(self):
+        # 兴发广场在中南路（非夷陵CBD）—— seed 坐标曾错标
+        assert self._zone_of('兴发广场') == 'zhongnan_road'
+
+    def test_wanda_plaza(self):
+        assert self._zone_of('伍家岗万达') == 'wanda_plaza'
+
+    def test_yiling_cbd_guomao(self):
+        # 国贸大厦在夷陵广场CBD
+        assert self._zone_of('国贸大厦') == 'yiling_cbd'
+
+    def test_wuyue_square(self):
+        assert self._zone_of('吾悦广场') == 'wuyue_square'
+
+    def test_yiling_wanda_separate(self):
+        # 夷陵万达（夷陵区）≠ 万达广场（wanda_plaza）
+        assert self._zone_of('夷陵万达') == 'yiling_wanda'
+
+    def test_fujiuyuan_wuyi(self):
+        # 福久源在五一广场
+        assert self._zone_of('福久源') == 'wuyi_square'
+
+    def test_no_wanda_cbd(self):
+        """wanda_cbd zone 应已删除（拆成 7 商圈）。"""
+        from core.place_layer import get_place_layer
+        pl = get_place_layer()
+        assert 'wanda_cbd' not in pl.zone_by_id
+        assert 'yiling_cbd' in pl.zone_by_id
+        assert 'shuiyuecheng' in pl.zone_by_id

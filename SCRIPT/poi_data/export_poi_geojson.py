@@ -35,7 +35,7 @@ def main():
         lng, lat = p.get('lng'), p.get('lat')
         if lng is None or lat is None:
             continue
-        zid = pl.classify_point(lng, lat)
+        zid = pl.resolve_zone(p.get('name', ''), p.get('area', ''), lng, lat)   # name 优先（全市型 zone 按名归）→ 边界 → general
         zname = pl.zone_by_id.get(zid, {}).get('name_zh', '')
         feats.append({
             'type': 'Feature',
