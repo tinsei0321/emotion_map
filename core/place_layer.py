@@ -401,11 +401,15 @@ class PlaceLayer:
                 'lng': p['lng'],
                 'lat': p['lat'],
                 'category': p.get('baidu_level1', '') or p.get('baidu_level2', ''),
+                'baidu_level1': p.get('baidu_level1', ''),
+                'baidu_level2': p.get('baidu_level2', ''),
+                'area': p.get('area', ''),
                 'zone_id': self.classify_point(p['lng'], p['lat']),
                 'zone_name': self.zone_by_id.get(
                     self.classify_point(p['lng'], p['lat']), {}).get('name_zh', ''),
                 'score': round(s, 1),
                 'source': 'local',
+                'data_source': p.get('source') or 'seed',   # 审计：amap 库 / seed 手标
             })
         return hits
 

@@ -228,9 +228,15 @@ export function showPointPopup(hit) {
   badge.style.color = '#fff';
   document.getElementById('pt-name').textContent = hit.name || '';
   const rows = [];
+  const _dsLabel = { amap: '高德POI库', seed: '种子(手标)', 'amap-api': '高德API补全' };
+  rows.push(_ptRow('数据源', _dsLabel[hit.data_source] || hit.source || '-'));
+  const _lv = (hit.baidu_level1 && hit.baidu_level2)
+    ? hit.baidu_level1 + ' / ' + hit.baidu_level2
+    : (hit.baidu_level1 || hit.baidu_level2 || hit.category || '');
+  if (_lv) rows.push(_ptRow('类别', _lv));
   if (hit.zone_name) rows.push(_ptRow('区域', hit.zone_name));
-  if (hit.category) rows.push(_ptRow('类别', hit.category));
-  rows.push(_ptRow('坐标', Number(hit.lat).toFixed(4) + ', ' + Number(hit.lng).toFixed(4)));
+  if (hit.area) rows.push(_ptRow('片区', hit.area));
+  rows.push(_ptRow('坐标', Number(hit.lat).toFixed(6) + ', ' + Number(hit.lng).toFixed(6)));
   document.getElementById('pt-kv').innerHTML = rows.join('');
   _point = { name: hit.name, lng: hit.lng, lat: hit.lat };
 }

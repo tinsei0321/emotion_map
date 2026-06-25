@@ -220,6 +220,7 @@ def search_place(query, limit=10):
             'address': poi.get('address', '') or '',
             'score': 0.0,
             'source': 'amap',
+            'data_source': 'amap-api',   # 审计：高德 place/text API 补全（非本地库）
         })
         if len(local_hits) + len(amap_hits) >= limit:
             break

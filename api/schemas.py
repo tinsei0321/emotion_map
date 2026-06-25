@@ -90,11 +90,15 @@ class PlaceHit(BaseModel):
     lng: float
     lat: float
     category: str = Field(default="", description="类别（本地 baidu_level / 高德 type）")
+    baidu_level1: str = Field(default="", description="高德一级类别（审计用）")
+    baidu_level2: str = Field(default="", description="高德二级类别（审计用）")
+    area: str = Field(default="", description="片区（area 字段，审计用）")
     zone_id: str = Field(default="", description="所在叙事区 ID（本地命中时填）")
     zone_name: str = Field(default="", description="所在区中文名（本地命中时填）")
     address: str = Field(default="", description="街道地址（高德命中时填）")
     score: float = Field(default=0.0, description="匹配分（本地模糊分；高德=0）")
     source: str = Field(default="local", description="local | amap")
+    data_source: str = Field(default="", description="数据源审计：amap(高德库) | seed(手标) | amap-api(补全)")
 
 
 class PlaceSearchResponse(BaseModel):
