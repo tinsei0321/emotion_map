@@ -143,6 +143,16 @@ function _renderActive() {
   });
 }
 
+function _showLoading() {
+  _results.innerHTML = '';
+  const li = document.createElement('li'); li.className = 'sb-loading';
+  const sp = document.createElement('span'); sp.className = 'sb-spinner';
+  li.appendChild(sp);
+  li.appendChild(document.createTextNode('搜索中...'));
+  _results.appendChild(li);
+  _results.hidden = false;
+}
+
 function _showHistory() {
   _hitsFor = '';                                 // 历史非 query 匹配，Enter 守卫按新词处理
   _setState('history');
@@ -150,7 +160,8 @@ function _showHistory() {
   const hist = _loadHistory();
   if (!hist.length) {
     const e = document.createElement('li'); e.className = 'sb-empty';
-    e.textContent = '暂无历史搜索'; _results.appendChild(e);
+    e.innerHTML = '<div class="sb-empty-title">暂无历史搜索</div><div class="sb-empty-hint">输入地点名称开始搜索</div>';
+    _results.appendChild(e);
   } else {
     const t = document.createElement('li'); t.className = 'sb-section'; t.textContent = '历史';
     _results.appendChild(t);
@@ -171,7 +182,8 @@ function _showSuggestions(query) {
     _hits = hits;
     if (!hits.length) {
       const e = document.createElement('li'); e.className = 'sb-empty';
-      e.textContent = '无匹配地点'; _results.appendChild(e);
+      e.innerHTML = '<div class="sb-empty-title">无匹配地点</div><div class="sb-empty-hint">试试其他关键词，或搜索商圈名、类别</div>';
+      _results.appendChild(e);
     } else {
       hits.forEach((h, i) => _results.appendChild(_row(h, i, query)));
     }
@@ -182,7 +194,7 @@ function _showSuggestions(query) {
     _setState('suggesting');
     _results.innerHTML = '';
     const li = document.createElement('li'); li.className = 'sb-empty';
-    li.textContent = '搜索失败：' + (e.message || '网络错误');
+    li.innerHTML = '<div class="sb-empty-title">搜索失败</div><div class="sb-empty-hint">' + (e.message || '网络错误') + '</div>';
     _results.appendChild(li);
     _results.hidden = false;
   });
@@ -296,6 +308,8 @@ function _queueSearch() {
   const q = _input.value.trim();
   if (_debounce) clearTimeout(_debounce);
   if (!q) { _showHistory(); return; }
+  // P5: 输入即显示 loading spinner（不等 debounce）
+  _showLoading();
   _debounce = setTimeout(() => _showSuggestions(q), DEBOUNCE_MS);
 }
 

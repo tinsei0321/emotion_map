@@ -185,10 +185,35 @@
 .sb-item:hover .sb-sub-sep,
 .sb-item.is-active .sb-sub-sep { color: rgba(255, 255, 255, 0.5); }
 .sb-empty {                              /* 无结果 / 无历史 提示行 */
-  padding: 6px 8px;
+  padding: 10px 8px;
+  text-align: center;
+}
+.sb-empty-title {
+  font-size: 13px;
+  color: var(--geojson-color-text, #1a1a1a);
+  margin-bottom: 2px;
+}
+.sb-empty-hint {
+  font-size: 11px;
+  color: var(--geojson-color-text-secondary, #737373);
+}
+.sb-loading {                            /* P5 loading 态：spinner + 文字 */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 8px;
   font-size: 12px;
   color: var(--geojson-color-text-secondary, #737373);
 }
+.sb-spinner {                            /* 旋转动画小圆环 */
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--geojson-color-gray-200, #e5e5e5);
+  border-top-color: var(--geojson-color-chrome-active-fill, #007afc);
+  border-radius: 50%;
+  animation: sb-spin 0.7s linear infinite;
+}
+@keyframes sb-spin { to { transform: rotate(360deg); } }
 .sb-section {                            /* 历史列表小标题 */
   padding: 4px 8px 2px;
   font-size: 10px;

@@ -25,6 +25,7 @@
 | 12 | ✅ | 合并 + 清理 + L0 popup 对齐 | git `main` / `frontend/js/popup.js` | merge feat→main(14 commits)；删 2 分支；main-only 工作流；L0 badge "原始"对齐 L1/L2 节奏 |
 | 13 | ✅ | P2 geocode 离线退化 | `core/place_layer.py` `core/geocode.py` `tests/test_geocode.py` | `forward()` 加 `min_fuzzy_score` 参数；离线时 55→35 返回更多近似命中；pytest 35/37 全过 |
 | 14 | ✅ | P3 下拉结果丰富化 | `core/place_layer.py` `api/schemas.py` `frontend/js/search-bar.js` `frontend/css/search-bar.css` `tests/test_geocode.py` | zone 色点 + 双副信息（zone+地址/类别同时显示）+ 匹配类型标签（精确/前缀/拼音/子串）|
+| 15 | ✅ | P5 UX loading 态 + 无结果引导 | `frontend/js/search-bar.js` `frontend/css/search-bar.css` | 输入即显 spinner "搜索中..."；空态显示标题+引导文案 |
 
 > 💡 开发工作流（solo）: 以后在 main 上直接工作 → `git commit` → `git push`。不做分支/PR。
 
