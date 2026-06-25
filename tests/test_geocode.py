@@ -1,0 +1,159 @@
+"""
+测试地理编码模块（core/geocode.py）— Phase 2
+
+重点（红线 #2）：高德返回 GCJ-02 必须转 WGS84，漏转 = 50-500m 静默偏移。
+用 _gcj_loc_to_wgs 的往返误差 <1m 守住这条红线（模拟正向地理编码链路）。
+
+本地路径（search_place / reverse_geocode）走 place_layer，不依赖网络；
+结构测试 monkeypatch AMAP_KEY='' 强制 local-only，保证确定性。
+"""
+import math
+import pytest
+
+import core.geocode as geocode
+from core.geocode import (
+    search_place,
+    geocode_address,
+    reverse_geocode,
+    _gcj_loc_to_wgs,
+)
+from core.coord_transform import wgs84_to_gcj02
+
+
+def _haversine_m(lng1, lat1, lng2, lat2):
+    """两点（度）球面距离（米）—— 断言偏移量用。"""
+    R = 6371000.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dlat = math.radians(lat2 - lat1)
+    dlng = math.radians(lng2 - lng1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dlng / 2) ** 2
+    return 2 * R * math.asin(math.sqrt(a))
+
+
+# ── 红线 #2：CRS 转换正确性（核心单测）──
+
+class TestCrsRoundtrip:
+    """高德 location(GCJ-02) → _gcj_loc_to_wgs → WGS84 往返误差须 <1m。
+
+    模拟正向链路：真实 WGS84 点 → wgs84_to_gcj02（= 高德会返回的坐标）
+    → 格式化为 'lng,lat' → _gcj_loc_to_wgs 还原。漏转/错转会造成 50-500m 偏移。
+    """
+
+    @pytest.mark.parametrize("lng,lat", [
+        (111.2877, 30.6919),   # 万达广场（wanda_cbd）
+        (111.2905, 30.7050),   # 西陵 core
+        (111.3300, 30.7420),   # 伍家岗
+        (111.3500, 30.7000),   # 东郊
+    ])
+    def test_roundtrip_within_1m(self, lng, lat):
+        gcj_lng, gcj_lat = wgs84_to_gcj02(lng, lat)
+        loc_str = '{:.6f},{:.6f}'.format(gcj_lng, gcj_lat)
+        wgs = _gcj_loc_to_wgs(loc_str)
+        assert wgs is not None
+        d = _haversine_m(lng, lat, wgs[0], wgs[1])
+        assert d < 1.0, 'GCJ-02->WGS84 往返偏移 {:.2f}m（应 <1m，漏转红线）'.format(d)
+
+    def test_bad_location_returns_none(self):
+        assert _gcj_loc_to_wgs('') is None
+        assert _gcj_loc_to_wgs(None) is None
+        assert _gcj_loc_to_wgs('not-a-coord') is None
+
+    def test_out_of_china_passthrough(self):
+        """境外点（无偏移算法）应原样返回，不报错。"""
+        wgs = _gcj_loc_to_wgs('0.000000,0.000000')
+        assert wgs == (0.0, 0.0)
+
+
+# ── 本地搜索（place_layer 主；强制 local-only 不触网）──
+
+class TestSearchPlaceLocal:
+    """本地 1270 POI 即时搜索（rapidfuzz/difflib）。"""
+
+    def test_known_poi_returns_hits(self, monkeypatch):
+        monkeypatch.setattr(geocode, 'AMAP_KEY', '')   # 强制 local-only
+        hits = search_place('万达', limit=10)
+        assert isinstance(hits, list)
+        assert len(hits) > 0
+        h = hits[0]
+        assert 'name' in h and 'lng' in h and 'lat' in h
+        assert h['source'] == 'local'
+        # 万达应在 wanda_cbd 叙事区（zone_name 非空）
+        assert h.get('zone_name', '') != ''
+
+    def test_empty_query_returns_empty(self, monkeypatch):
+        monkeypatch.setattr(geocode, 'AMAP_KEY', '')
+        assert search_place('', limit=10) == []
+        assert search_place('   ', limit=10) == []
+        assert search_place(None, limit=10) == []
+
+    def test_hits_are_wgs84_in_yichang(self, monkeypatch):
+        monkeypatch.setattr(geocode, 'AMAP_KEY', '')
+        hits = search_place('广场', limit=5)
+        for h in hits:
+            # 宜昌经度 111-112、纬度 30-31；落此区间即 WGS84 合理（GCJ-02 偏移也在度级内）
+            assert 110.0 < h['lng'] < 112.0
+            assert 30.0 < h['lat'] < 31.0
+
+    def test_limit_respected(self, monkeypatch):
+        monkeypatch.setattr(geocode, 'AMAP_KEY', '')
+        hits = search_place('路', limit=3)
+        assert len(hits) <= 3
+
+
+# ── 逆地理编码（本地 reverse 主；强制 local-only）──
+
+class TestReverseGeocodeLocal:
+    """坐标 → 所在区 + 最近 POI（place_layer.reverse）。"""
+
+    def test_structure(self, monkeypatch):
+        monkeypatch.setattr(geocode, 'AMAP_KEY', '')   # local-only，不触网
+        res = reverse_geocode(111.29, 30.69)
+        assert isinstance(res, dict)
+        for key in ('zone_id', 'zone_name', 'nearest_poi', 'formatted_address', 'source'):
+            assert key in res
+        # local-only 时无街道地址、source=local
+        assert res['formatted_address'] == ''
+        assert res['source'] == 'local'
+
+    def test_nearest_poi_shape(self, monkeypatch):
+        monkeypatch.setattr(geocode, 'AMAP_KEY', '')
+        res = reverse_geocode(111.29, 30.69)
+        near = res['nearest_poi']
+        assert near is None or ('name' in near and 'dist_m' in near)
+
+
+# ── amap 兜底降级（红线 #1：Key 缺失只 local）──
+
+class TestAmapDisabledFallback:
+    """AMAP_KEY 缺失/requests 不可用时，高德分支优雅降级。"""
+
+    def test_search_local_only_when_key_missing(self, monkeypatch):
+        monkeypatch.setattr(geocode, 'AMAP_KEY', '')
+        assert geocode._amap_enabled() is False
+        # 本地仍可用
+        hits = search_place('万达', limit=5)
+        assert len(hits) > 0
+        assert all(h['source'] == 'local' for h in hits)
+
+    def test_geocode_returns_none_when_key_missing(self, monkeypatch):
+        monkeypatch.setattr(geocode, 'AMAP_KEY', '')
+        assert geocode_address('宜昌万达广场') is None
+
+    def test_reverse_still_local_when_key_missing(self, monkeypatch):
+        monkeypatch.setattr(geocode, 'AMAP_KEY', '')
+        res = reverse_geocode(111.29, 30.69)
+        assert res['source'] == 'local'
+
+
+# ── 追踪 ID 已注册（铁律 10：编号入 _TRACKING_REGISTRY）──
+
+class TestTrackingRegistered:
+    def test_mod_geocode_ids_registered(self):
+        from core.tracker import list_track_ids
+        ids = list_track_ids()
+        for tid in (
+            'MOD_GEOCODE.F_001', 'MOD_GEOCODE.F_002',
+            'MOD_GEOCODE.F_003', 'MOD_GEOCODE.F_004',
+            'MOD_GEOCODE.D_001', 'MOD_GEOCODE.D_002',
+        ):
+            assert tid in ids, '未注册: {}'.format(tid)

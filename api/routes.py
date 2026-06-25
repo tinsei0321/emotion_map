@@ -3,7 +3,7 @@ API 路由 — 分析 / 治理 / 数据查询
 """
 import os
 import sys
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Query, Response
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -11,8 +11,10 @@ from api.schemas import (
     AnalysisRequest, AnalysisResponse, PolarityStats,
     HealthResponse, DataListResponse, GovernanceRequest,
     BufferRequest, ExportRequest,
+    PlaceHit, PlaceSearchResponse, GeocodeResult, ReverseGeocodeResult,
 )
 from core.config import RAW_DIR, PROCESSED_DIR, BOUNDARY_SHP
+from core.geocode import search_place, geocode_address, reverse_geocode
 
 router = APIRouter()
 
@@ -211,4 +213,73 @@ async def export_route(req: ExportRequest):
     return Response(
         content=data, media_type=media,
         headers={'Content-Disposition': cd},
+    )
+
+
+# ── 地点搜索 / 地理编码（Phase 2）──────────────────────────────────
+# 红线：AMAP_KEY 只在服务端 core/geocode.py 读 .env，绝不进前端；
+#       高德返回 GCJ-02，core/geocode.py 已统一 gcj02_to_wgs84（坐标一律 WGS84 出）。
+# 前端同源 fetch：GET /api/v1/place/search | /geocode | /reverse-geocode（serve.py 反代 :8000）。
+
+@router.get("/place/search", response_model=PlaceSearchResponse)
+async def place_search_route(
+    q: str = Query(..., min_length=1, description="搜索关键词（地名/POI/类别）"),
+    limit: int = Query(10, ge=1, le=30, description="返回条数上限"),
+):
+    """地点搜索：本地 1270 POI 即时（rapidfuzz）+ 高德 place/text 兜底。坐标 WGS84。"""
+    try:
+        hits = search_place(q, limit)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"地点搜索失败: {e}")
+    local_n = sum(1 for h in hits if h.get('source') == 'local')
+    if not hits:
+        source = ""
+    elif local_n == len(hits):
+        source = "local"
+    elif local_n == 0:
+        source = "amap"
+    else:
+        source = "mixed"
+    return PlaceSearchResponse(success=True, query=q, hits=hits, source=source)
+
+
+@router.get("/geocode", response_model=GeocodeResult)
+async def geocode_route(
+    q: str = Query(..., min_length=1, description="地址字符串"),
+):
+    """正向地理编码：地址 → 坐标（WGS84）。高德 geo 正向（GCJ-02→WGS84）。"""
+    try:
+        res = geocode_address(q)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"地理编码失败: {e}")
+    if not res:
+        return GeocodeResult(success=False, query=q)
+    return GeocodeResult(
+        success=True, query=q,
+        lng=res['lng'], lat=res['lat'],
+        formatted_address=res.get('formatted_address', ''),
+        source=res.get('source', 'amap'),
+    )
+
+
+@router.get("/reverse-geocode", response_model=ReverseGeocodeResult)
+async def reverse_geocode_route(
+    lng: float = Query(..., description="经度（WGS84）"),
+    lat: float = Query(..., description="纬度（WGS84）"),
+):
+    """逆地理编码：坐标(WGS84) → 所在区 + 最近 POI + 街道地址。
+
+    本地 place_layer.reverse 主（瞬时）；最近 POI > 500m 且高德可用 → regeo 补街道。
+    """
+    try:
+        res = reverse_geocode(lng, lat)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"逆地理编码失败: {e}")
+    return ReverseGeocodeResult(
+        success=True, lng=lng, lat=lat,
+        zone_id=res.get('zone_id', ''),
+        zone_name=res.get('zone_name', ''),
+        nearest_poi=res.get('nearest_poi'),
+        formatted_address=res.get('formatted_address', ''),
+        source=res.get('source', 'local'),
     )

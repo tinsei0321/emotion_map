@@ -80,3 +80,48 @@ class ExportRequest(BaseModel):
     geom_csv: str = Field(default="wkt", description="CSV 几何表示: wkt | lonlat | none（仅 csv 生效）")
     desensitize: bool = Field(default=True, description="脱敏：剥用户名/ID/手机等 PII 字段（铁律 7）")
     filename: str = Field(default="export", description="输出文件名（不含扩展名）")
+
+
+# ── 地点搜索 / 地理编码（Phase 2）──
+
+class PlaceHit(BaseModel):
+    """单条地点搜索命中。坐标一律 WGS84。"""
+    name: str
+    lng: float
+    lat: float
+    category: str = Field(default="", description="类别（本地 baidu_level / 高德 type）")
+    zone_id: str = Field(default="", description="所在叙事区 ID（本地命中时填）")
+    zone_name: str = Field(default="", description="所在区中文名（本地命中时填）")
+    address: str = Field(default="", description="街道地址（高德命中时填）")
+    score: float = Field(default=0.0, description="匹配分（本地模糊分；高德=0）")
+    source: str = Field(default="local", description="local | amap")
+
+
+class PlaceSearchResponse(BaseModel):
+    """地点搜索响应。"""
+    success: bool = True
+    query: str = ""
+    hits: List[PlaceHit] = Field(default_factory=list)
+    source: str = Field(default="", description="主力源：local | amap | mixed")
+
+
+class GeocodeResult(BaseModel):
+    """正向地理编码（地址→坐标）。坐标 WGS84。"""
+    success: bool
+    query: str = ""
+    lng: float = 0.0
+    lat: float = 0.0
+    formatted_address: str = ""
+    source: str = ""
+
+
+class ReverseGeocodeResult(BaseModel):
+    """逆地理编码（坐标→地名）。输入输出坐标均为 WGS84。"""
+    success: bool = True
+    lng: float
+    lat: float
+    zone_id: str = ""
+    zone_name: str = ""
+    nearest_poi: Optional[dict] = None
+    formatted_address: str = Field(default="", description="街道地址（高德 regeo 命中时填）")
+    source: str = ""
