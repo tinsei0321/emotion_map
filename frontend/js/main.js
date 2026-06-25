@@ -14,6 +14,7 @@ import { initHeatmapTool } from './heatmap-tool.js';
 import { initBufferTool } from './buffer-tool.js';
 import { initDrawTool, startDraw, stopDraw } from './draw-tool.js';
 import { initHeatmapLegend } from './heatmap-legend.js';
+import { initSearchBar } from './search-bar.js';
 import { toast } from './toast.js';
 import { runExport } from './api.js';
 
@@ -212,6 +213,7 @@ function main() {
   initSidebar({ onFiles: runImport, onRangeFiles: runRangeImport });
   initHeatmapTool();
   initBufferTool();
+  initSearchBar();
   initDrawTool(map);
   initHeatmapLegend();
 
