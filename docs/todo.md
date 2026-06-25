@@ -5,6 +5,55 @@
 
 ---
 
+## 📅 2026-06-25（周三）
+
+### ☑ TODO List
+
+| # | 状态 | 任务 | 涉及文件 | 备注 |
+|---|------|------|----------|------|
+| 1 | ✅ | Phase 2 地点搜索 — 后端 | `core/geocode.py` `api/routes.py` `api/schemas.py` `requirements.txt` | MOD_GEOCODE：本地 rapidfuzz + 高德兜底，`_amap_request` 双向 GCJ-02↔WGS84；3 GET 路由 |
+| 2 | ✅ | Phase 2 地点搜索 — 前端搜索栏 | `frontend/js/search-bar.js` `css/search-bar.css` `js/api.js` `index.html` `main.js` `popup.js` `design/tokens.json` | 6 态状态机（不用 maplibre-gl-geocoder），胶囊折叠 32px→200px；空白点击反查 chip |
+| 3 | ✅ | Search v2 — 拼音匹配 + 高亮 | `core/place_layer.py` `frontend/js/search-bar.js` | pypinyin 模糊匹配（wd/wanda→万达）；结果高亮子串 |
+| 4 | ✅ | Search v2 — 红大头针 + Point 卡 + 交互 | `frontend/js/search-bar.js` `popup.js` | 自定义红色 pushpin，hover tooltip，click popup，激活放大，点外收起，x 关闭 |
+| 5 | ✅ | Search v2.1 — 排名分层 | `core/place_layer.py` `tests/test_geocode.py` | exact(300) > prefix(250) > pinyin-exact(220) > substring(180+) > fuzzy；修"金缔华城→苏宁易购"bug |
+| 6 | ✅ | Search v2.1 — 落水 POI 过滤 + 导出标记 | `core/place_layer.py` `export_poi_geojson.py` `DATA/place/pois_wgs84.geojson` | 28/1428 落现状水系，`__init__` 预标 `_in_water`，`forward()` 跳过，导出标 in_water |
+| 7 | ✅ | Search v2.1 — Point 卡审计字段 | `frontend/js/popup.js` `core/place_layer.py` `api/schemas.py` | 数据源(高德POI库/种子手标) + baidu_level1/2 + area + 坐标 6 位精度 |
+| 8 | ✅ | Search v2.1 — L0 数据点 popup 增强 | `frontend/js/popup.js` | showPopup 坐标 6 位不灰 + async 反查"区域 / 最近 POI" |
+| 9 | ✅ | Zone v2.2 — POI/zone 审计 | `docs/poi-zone-audit.md` `audit_poi_zones.py` `audit_zones_local.py` | seed 121 条无 amap 对照（部分伪造）+ 坐标偏 1–9km；万达≠国贸 2731m；太古里伪造。根因报告 |
+| 10 | ✅ | Zone v2.2 — 数据根基重建（Stage 1） | `DATA/place/zone_typology.json` `core/place_layer.py` | amap 重建 12 zone（7 商圈 + 4 非商业 + general）+ center+radius 商圈圆 + 删 wanda_cbd + all_pois=amap |
+| 11 | ✅ | Zone v2.2 — 情绪叙事级联（Stage 2） | `emotion_corpus.json` `snapshot_config.py` `generate_l1_mock.py` `check_spatial.py` `place_keywords.json` | corpus 桶扩 12 zone × 3 极性；zone_caps 重算；mock 打标；check_spatial 适配 |
+| 12 | ✅ | 合并到 main + 清分支 | git | merge feat/search-v2-marker → main (14 commits)；删本地/远端 2 分支；以后 main-only 开发 |
+
+> 💡 开发工作流（solo）: 以后在 main 上直接工作 → `git commit` → `git push`。不做分支/PR。
+
+### 📝 开发日志
+
+**关键字**：地点搜索, 高德地理编码, CRS 红线, rapidfuzz 模糊匹配, 6 态搜索栏状态机, 拼音匹配, 分层排名, 落水过滤, zone 重建, amap 数据校准, 商圈本地知识
+
+#### 做了什么
+- **Phase 2 全栈地点搜索**（后端 `core/geocode.py` MOD_GEOCODE + 3 GET 路由 → 前端 6 态搜索栏 + 反查 chip）。两大红线：AMAP_KEY 仅服务端 .env（`_load_env()` 自加载——api/main.py 不加载 .env）；高德 GCJ-02 一律 `_gcj_loc_to_wgs`（正向）+ regeo 入参 `wgs84_to_gcj02`（反向），1m 往返单测守住。
+- **Search v2**：pypinyin 拼音模糊（wd/wanda→万达）+ 结果高亮；红色大头针标记（hover tooltip + click Point 卡 + 激活态放大 + 点外收起 + x 关闭）。
+- **Search v2.1 数据质量**：① 排名分层（exact>prefix>substring）修"金缔华城→苏宁易购"bug——原 partial_ratio 同分按数据顺序误排；② 28/1428 落现状水系→forward 跳过+导出标 in_water；③ Point 卡加审计字段（数据源/baidu_level/area/坐标 6 位）④ L0 数据点 popup async 反查区域+最近 POI。
+- **Zone v2.2 根基重建**：审计发现 seed 158 条中 121 条 amap 无对照、坐标偏 1–9km（宜昌东站 9334m/国贸大厦 1019m/水悦城 671m）、太古里（西陵）伪造。用户本地知识校准——宜昌 9 商圈（夷陵CBD≠万达；CBD 专指夷陵广场；万达=万达广场唯一；水悦城/中南路/五一广场/吾悦/夷陵万达 各自独立）。重写 zone_typology 为 12 zone（7 商圈 center+radius 圆 + 4 非商圈子区 amap 锚点 buffer + general）；all_pois=amap only（seed 退命名不参与坐标/边界）。Stage 2 级联情绪叙事 12 zone（corpus/zone_caps/generate_l1_mock/check_spatial）。模拟数据暂不动。华翔CAZ/江南URD 数据 0 命中→归 general。
+- **工作流切换**：合并全部到 main，删分支，以后 solo main-only 开发（commit→push 即完成）。
+
+#### 踩坑 & 收获
+- **数据信源不可信**：seed 158 条是手标/模板生成的，坐标大面积错+含伪造条目。amap 1270 条准。zone 边界原由 seed buffer 构建→种子错边界全错。教训：生成数据不能当初信源（边界/坐标），只能用真实 API 数据做锚。
+- **排名同分陷阱**：`partial_ratio` 对"金缔华城"和"苏宁易购(金缔华城店)"都给 100 分——排序本质是 tiebreaker，不在数据层而在排层。分层打分才是正解。
+- **zone 命名需本地人校准**：AI 从数据推断"万达簇""万达-国贸商圈"，但本地知识是万达=万达广场（唯一）、CBD=夷陵广场（≠万达）、万达和国贸 2731m 两个商圈。不加本地校验的 zone 分类不可靠。
+
+#### 验证
+- `py -m pytest tests/ -q`：geocode 25 全过（CRS 1m 往返 + 排名分层 + 落水过滤）。全量 80+/81（1 既有 L2 test_capabilities 与本批无关）。
+- Playwright：搜索→flyTo CRS 自洽（center==hit 坐标）；Point 卡字段全显；L0 popup async 反查挂载；落水点不在结果中。
+- curl `/place/search?q=金缔华城` → 金缔华城(300) 首条；`/reverse-geocode` → zone 正确。
+
+#### 🔜 下一步
+- 情绪真实数据 pipeline（L0→L1→L2 完整跑通，待 DeepSeek API Key 验证）。
+- KDE 批2 时间轴。
+- 华翔CAZ/江南URD 数据补齐后升 zone。
+
+---
+
 ## 📅 2026-06-22（周一）
 
 ### ☑ TODO List
