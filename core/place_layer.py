@@ -386,11 +386,16 @@ class PlaceLayer:
     # ── 搜索（C 用；本地优先，高德兜底在 core/geocode.py） ──
 
     @track("MOD_PLACE.F_004")
-    def forward(self, query, limit=10):
-        """关键词 -> 本地 POI 命中（rapidfuzz/difflib 模糊，按 name + baidu_level）。"""
+    def forward(self, query, limit=10, min_fuzzy_score=None):
+        """关键词 -> 本地 POI 命中（rapidfuzz/difflib 模糊，按 name + baidu_level）。
+
+        min_fuzzy_score: 模糊匹配最低分值（None=默认55）。P2 离线退化时调低至
+        35 以返回更多近似结果（"聊胜于无"），在线保持默认不变。
+        """
         if not query or len(query.strip()) < 1:
             return []
         q = query.strip()
+        _threshold = min_fuzzy_score if min_fuzzy_score is not None else 55
         scored = []   # (score, p)
         for p in self.all_pois:
             name = p['name'] or ''
@@ -399,7 +404,7 @@ class PlaceLayer:
             if p.get('_in_water'):
                 continue
             tier, s = _match_score(q, name, p)
-            if tier is None and s < 55:
+            if tier is None and s < _threshold:
                 continue
             scored.append((s, p))
         # 分降序；同分保持数据顺序（稳定排序）。tier 分已保证 exact > substring。

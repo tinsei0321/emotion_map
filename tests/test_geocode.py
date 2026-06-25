@@ -279,3 +279,47 @@ class TestZoneV2:
         assert 'wanda_cbd' not in pl.zone_by_id
         assert 'yiling_cbd' in pl.zone_by_id
         assert 'shuiyuecheng' in pl.zone_by_id
+
+
+# ── P2 离线退化：AMAP 不可用时模糊阈值从 55 降至 35 ──
+
+class TestOfflineDegradation:
+    """P2 geocode 离线退化：离线时 forward() 使用更低的模糊阈值获取更多近似结果。"""
+
+    def test_relaxed_threshold_returns_more(self):
+        """min_fuzzy_score=35 应 >= default(=55) 的结果数。"""
+        from core.place_layer import get_place_layer
+        pl = get_place_layer()
+        hits_default = pl.forward('东站', 30)
+        hits_relaxed = pl.forward('东站', 30, min_fuzzy_score=35)
+        # 东站 mid_35-55=5 条 → relaxed > default
+        assert len(hits_relaxed) > len(hits_default), \
+            'relaxed(35)={} 应 > default(55)={}'.format(
+                len(hits_relaxed), len(hits_default))
+
+    def test_relaxed_has_low_scores(self):
+        """松弛后应有 score < 55 的命中（证明阈值真被降低了）。"""
+        from core.place_layer import get_place_layer
+        pl = get_place_layer()
+        hits = pl.forward('东站', 30, min_fuzzy_score=35)
+        low_scores = [h for h in hits if h['score'] < 55]
+        assert len(low_scores) > 0, \
+            '松弛阈值应产生 score<55 的命中，实际 {} 条'.format(len(hits))
+
+    def test_search_offline_all_local(self, monkeypatch):
+        """离线 search_place 所有结果 source='local'。"""
+        monkeypatch.setattr(geocode, 'AMAP_KEY', '')
+        assert geocode._amap_enabled() is False
+        hits = search_place('万达', limit=5)
+        assert len(hits) > 0, '离线应至少返回一些结果'
+        assert all(h['source'] == 'local' for h in hits)
+
+    def test_default_threshold_unchanged(self):
+        """min_fuzzy_score=None 时阈值仍为 55（在线行为不变）。"""
+        from core.place_layer import get_place_layer
+        pl = get_place_layer()
+        hits = pl.forward('万达', 10)
+        # 默认阈值 55：所有结果 score >= 55
+        assert len(hits) > 0
+        assert all(h['score'] >= 55 for h in hits), \
+            '默认阈值应为 55，不应有低分命中'

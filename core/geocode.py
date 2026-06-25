@@ -79,6 +79,7 @@ RETRY_DELAY_BASE = 2          # 指数退避基数（秒），镜像 relevance_f
 REQUEST_TIMEOUT = 20          # 单次请求超时（秒）
 _LOCAL_MIN_HITS = 3           # 本地命中 ≥ 此数 → 不调高德
 _REVERSE_DIST_M = 500         # 最近 POI 超此距离 → 高德 regeo 补街道
+_OFFLINE_FUZZY_SCORE = 35    # P2 离线退化：AMAP 不可用时模糊阈值从 55 降至 35
 
 
 def _load_env():
@@ -190,10 +191,13 @@ def search_place(query, limit=10):
         return []
     q = query.strip()
     pl = get_place_layer() if get_place_layer else None
-    local_hits = pl.forward(q, limit) if pl else []
+    is_offline = not _amap_enabled()
+    min_fuzzy = _OFFLINE_FUZZY_SCORE if is_offline else None
+    local_hits = pl.forward(q, limit, min_fuzzy_score=min_fuzzy) if pl else []
 
-    with TrackContext("MOD_GEOCODE.D_001", local_n=len(local_hits), amap_on=_amap_enabled()):
-        if len(local_hits) >= _LOCAL_MIN_HITS or not _amap_enabled():
+    with TrackContext("MOD_GEOCODE.D_001", local_n=len(local_hits), amap_on=_amap_enabled(),
+                      offline_relax=is_offline):
+        if len(local_hits) >= _LOCAL_MIN_HITS or is_offline:
             return local_hits[:limit]
 
     # 本地命中不足且高德可用 → place/text 补全
