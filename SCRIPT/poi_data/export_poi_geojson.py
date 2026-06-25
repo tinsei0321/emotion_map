@@ -48,6 +48,7 @@ def main():
                 'baidu_level2': p.get('baidu_level2', ''),
                 'area': p.get('area', ''),
                 'source': p.get('source', ''),
+                'in_water': bool(p.get('_in_water', False)),
             },
         })
     fc = {'type': 'FeatureCollection', 'features': feats}
@@ -61,7 +62,8 @@ def main():
         p = ft['properties']
         by_zone[p['zone_name'] or '(无)'] = by_zone.get(p['zone_name'] or '(无)', 0) + 1
         by_cat[p['baidu_level1'] or '(无)'] = by_cat.get(p['baidu_level1'] or '(无)', 0) + 1
-    _safe_print('[OK] {} POI → {}'.format(len(feats), OUT))
+    _n_water = sum(1 for ft in feats if ft['properties']['in_water'])
+    _safe_print('[OK] {} POI → {}（其中 {} 落水已标记 in_water）'.format(len(feats), OUT, _n_water))
     _safe_print('[STAT] by zone: ' + ', '.join('{}={}'.format(k, v) for k, v in sorted(by_zone.items(), key=lambda x: -x[1])))
     _safe_print('[STAT] top categories: ' + ', '.join('{}={}'.format(k, v) for k, v in sorted(by_cat.items(), key=lambda x: -x[1])[:6]))
 

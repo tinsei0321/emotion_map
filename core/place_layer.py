@@ -128,6 +128,7 @@ _PLACE_KW_PATH = os.path.join(_PLACE_DIR, 'place_keywords.json')
 _SEED_POI_PATH = os.path.join(_ROOT, 'SCRIPT', 'poi_data', 'yichang_poi_wgs84.json')
 _AMAP_POI_PATH = os.path.join(_ROOT, 'SCRIPT', 'poi_data', 'amap_poi_wgs84.json')
 _MAIN_BOUNDARY = os.path.join(_ROOT, 'DATA', 'boundaries', '西陵伍家核心主城.geojson')
+_WATER_POLY_PATH = os.path.join(_ROOT, 'DATA', 'boundaries', '现状水系.geojson')
 
 
 def _to_4546(geom):
@@ -210,6 +211,19 @@ class PlaceLayer:
         # 预计算每条 POI 的拼音（连写 + 首字母），供 forward 拼音模糊匹配
         for _p in self.all_pois:
             _p['_py_full'], _p['_py_init'] = _pinyin_of(_p.get('name', ''))
+
+        # 预算每个 POI 是否落在现状水系内（forward 过滤；导航到江里是错的）
+        self._water = _load_geojson_poly(_WATER_POLY_PATH)
+        if self._water is not None:
+            from shapely.geometry import Point as _ShpPoint
+            for _p in self.all_pois:
+                _p['_in_water'] = self._water.contains(_ShpPoint(_p['lng'], _p['lat']))
+            _nw = sum(1 for _p in self.all_pois if _p['_in_water'])
+            safe_print('[LOAD] place_layer: in_water POIs={}/{}'.format(_nw, len(self.all_pois)))
+        else:
+            for _p in self.all_pois:
+                _p['_in_water'] = False
+            safe_print('[WARN] place_layer: 现状水系 未加载，_in_water 全 False')
 
         # 区边界
         self._build_zone_boundaries()
@@ -371,6 +385,8 @@ class PlaceLayer:
         for p in self.all_pois:
             name = p['name'] or ''
             if not name:
+                continue
+            if p.get('_in_water'):
                 continue
             tier, s = _match_score(q, name, p)
             if tier is None and s < 55:

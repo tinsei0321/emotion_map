@@ -205,3 +205,30 @@ class TestTieredRanking:
         pl = get_place_layer()
         hits = pl.forward('苏宁', 5)
         assert hits and '苏宁' in hits[0]['name']
+
+
+# ── 落水过滤（Search v2.1：现状水系内的 POI 不进搜索结果，导出标 in_water）──
+
+class TestWaterFilter:
+    def test_in_water_flag_set(self):
+        from core.place_layer import get_place_layer
+        pl = get_place_layer()
+        flagged = [p for p in pl.all_pois if p.get('_in_water')]
+        assert 10 < len(flagged) < 60   # 宜昌贴/落水点 ~28
+
+    def test_forward_excludes_water(self):
+        """落水 POI（如「二马路（主街）」seed）不应出现在搜索结果。"""
+        from core.place_layer import get_place_layer
+        pl = get_place_layer()
+        water_names = {p['name'] for p in pl.all_pois if p.get('_in_water')}
+        assert '二马路（主街）' in water_names
+        hits = pl.forward('二马路', 30)
+        result_names = {h['name'] for h in hits}
+        leak = result_names & water_names
+        assert not leak, '搜索结果含落水点: ' + str(leak)
+
+    def test_search_still_returns_dry_pois(self):
+        from core.place_layer import get_place_layer
+        pl = get_place_layer()
+        hits = pl.forward('二马路', 10)
+        assert hits and any('二马路' in h['name'] for h in hits)
