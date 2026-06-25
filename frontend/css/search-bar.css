@@ -21,7 +21,6 @@
   border-radius: calc(var(--geojson-layout-search-collapsed-size) / 2);  /* 胶囊（非圆角矩形） */
   background: #ffffff;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);               /* 展开态：中阴影 */
-  overflow: hidden;                                        /* 折叠时裁掉右侧 input/kbd */
   transition: width var(--geojson-transition),
               box-shadow var(--geojson-transition);
 }
@@ -79,7 +78,7 @@
 
 /* 折叠态：非 toggle 元素不可交互（视觉已裁，双保险） */
 .search-bar.is-collapsed .sb-input,
-.search-bar.is-collapsed .sb-kbd { pointer-events: none; }
+.search-bar.is-collapsed .sb-kbd { opacity: 0; pointer-events: none; }
 
 /* ── 下拉（联想 + 历史）：胶囊语言，hover 灰 ── */
 .sb-results {
@@ -118,17 +117,26 @@
 }
 .sb-item:hover .sb-item-name,
 .sb-item.is-active .sb-item-name { color: var(--geojson-color-text-inverse, #ffffff); }
+.sb-item-name mark {                 /* 命中子串高亮：加粗，不改色/底（hover 蓝底下仍清晰） */
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+}
+
+/* 行 1：名称 + 匹配标签（同行 flex） */
+.sb-item-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
 .sb-item-name {
   font-size: var(--geojson-typography-size-xs, 13px);
   color: var(--geojson-color-text, #1a1a1a);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.sb-item-name mark {                 /* 命中子串高亮：加粗，不改色/底（hover 蓝底下仍清晰） */
-  background: transparent;
-  color: inherit;
-  font-weight: 700;
+  min-width: 0;
 }
 
 /* ── P3 下拉丰富化：匹配类型标签（精确/前缀/拼音/子串） ── */

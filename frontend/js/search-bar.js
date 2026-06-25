@@ -92,15 +92,16 @@ function _row(hit, idx, q) {
   btn.dataset.idx = String(idx);
 
   // 行 1：名称 + 匹配类型标签
+  const topRow = document.createElement('span'); topRow.className = 'sb-item-top';
   const nm = document.createElement('span'); nm.className = 'sb-item-name'; nm.innerHTML = _hl(hit.name, q);
-  btn.appendChild(nm);
+  topRow.appendChild(nm);
 
-  // 匹配类型标签（非 fuzzy）
   const tier = _scoreTier(hit.score);
   if (tier) {
     const tag = document.createElement('span'); tag.className = 'sb-tier-tag';
-    tag.textContent = tier; btn.appendChild(tag);
+    tag.textContent = tier; topRow.appendChild(tag);
   }
+  btn.appendChild(topRow);
 
   // 行 2：zone 色点 + zone_name · address/category
   const subRow = document.createElement('span'); subRow.className = 'sb-item-sub-row';
