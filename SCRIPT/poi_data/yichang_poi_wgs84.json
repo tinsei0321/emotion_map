@@ -107,20 +107,6 @@
       "radius_m": 300
     },
     {
-      "id": "yc_poi_007",
-      "name": "太古里（西陵）",
-      "baidu_level1": "购物",
-      "baidu_level2": "购物中心",
-      "lng": 111.318,
-      "lat": 30.707,
-      "weight": 1.0,
-      "domain": "urban_operation",
-      "element": "service",
-      "area": "西陵-太古里",
-      "address_hint": "西陵区太古里",
-      "radius_m": 300
-    },
-    {
       "id": "yc_poi_008",
       "name": "伍家岗万达",
       "baidu_level1": "购物",

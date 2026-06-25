@@ -70,6 +70,57 @@ except Exception:
     import difflib
     _HAVE_RAPIDFUZZ = False
 
+# ── 拼音匹配（中文 POI 模糊搜索：输 wd/wanda → 万达；业界标配）──
+try:
+    from pypinyin import lazy_pinyin as _lazy_pinyin, Style as _PyStyle
+    _HAVE_PYPINYIN = True
+except Exception:
+    _HAVE_PYPINYIN = False
+
+
+def _pinyin_of(name):
+    """name → (连写 pinyin_full, 首字母 pinyin_initial)，小写。无 pypinyin/空名返回 ('','')."""
+    if not _HAVE_PYPINYIN or not name:
+        return '', ''
+    try:
+        return ''.join(_lazy_pinyin(name)).lower(), ''.join(_lazy_pinyin(name, style=_PyStyle.FIRST_LETTER)).lower()
+    except Exception:
+        return '', ''
+
+
+def _pr(q, s):
+    """partial_ratio（rapidfuzz）或 SequenceMatcher 回退，返回 0-100。"""
+    if _HAVE_RAPIDFUZZ:
+        return _rf_fuzz.partial_ratio(q, s or '')
+    return difflib.SequenceMatcher(None, q, s or '').ratio() * 100
+
+
+def _match_score(q, name, p):
+    """分层打分（业界做法：exact > prefix > pinyin-exact > substring > fuzzy）。
+
+    精确名匹配永远排在子串匹配之前（修「金缔华城→苏宁易购(金缔华城店)」类 bug：
+    partial_ratio 对二者都给 100，旧逻辑同分按数据顺序误排）。
+    返回 (tier, score)：tier 非 None = 直通档（exact/prefix/pinyin-exact/substring）；
+    tier None = fuzzy，调用方按 score>=55 门槛判。
+    """
+    if q == name:
+        return 'exact', 300.0
+    if name.startswith(q):
+        return 'prefix', 250.0
+    if _HAVE_PYPINYIN and q.isascii():      # pinyin-exact：拉丁 q == 全拼/首字母
+        ql = q.lower()
+        if ql == p.get('_py_full', '') or ql == p.get('_py_init', ''):
+            return 'pinyin-exact', 220.0
+    if q in name:
+        return 'substring', 180.0 + _pr(q, name) * 0.2   # 子串：基底 180 + 细排
+    # fuzzy：name + 类别 + 拼音 取 max
+    s = _pr(q, name)
+    s = max(s, _pr(q, p.get('baidu_level1', '')) * 0.7, _pr(q, p.get('baidu_level2', '')) * 0.7)
+    if _HAVE_PYPINYIN and q.isascii():
+        ql = q.lower()
+        s = max(s, _pr(ql, p.get('_py_full', '')), _pr(ql, p.get('_py_init', '')) * 1.05)
+    return None, s
+
 # ── 路径常量（相对项目根，不硬编码绝对路径） ──
 _PLACE_DIR = os.path.join(_ROOT, 'DATA', 'place')
 _ZONE_TYPE_PATH = os.path.join(_PLACE_DIR, 'zone_typology.json')
@@ -77,6 +128,7 @@ _PLACE_KW_PATH = os.path.join(_PLACE_DIR, 'place_keywords.json')
 _SEED_POI_PATH = os.path.join(_ROOT, 'SCRIPT', 'poi_data', 'yichang_poi_wgs84.json')
 _AMAP_POI_PATH = os.path.join(_ROOT, 'SCRIPT', 'poi_data', 'amap_poi_wgs84.json')
 _MAIN_BOUNDARY = os.path.join(_ROOT, 'DATA', 'boundaries', '西陵伍家核心主城.geojson')
+_WATER_POLY_PATH = os.path.join(_ROOT, 'DATA', 'boundaries', '现状水系.geojson')
 
 
 def _to_4546(geom):
@@ -124,7 +176,9 @@ class PlaceLayer:
     """place 层单例。模块导入时由 get_place_layer() 懒加载一次。"""
 
     # 区解析优先级（ermalu 最具体优先，general 永远兜底最后）
-    _ZONE_PRIORITY = ['ermalu_oldstreet', 'wanda_cbd', 'riverside', 'transit_hub', 'residential']
+    _ZONE_PRIORITY = ['ermalu_oldstreet', 'yiling_cbd', 'shuiyuecheng', 'zhongnan_road',
+                      'wuyi_square', 'yiling_wanda', 'wanda_plaza', 'wuyue_square',
+                      'riverside', 'transit_hub', 'residential']
 
     def __init__(self):
         self.zones_cfg = []          # zone_typology.json 的 zones 列表
@@ -154,7 +208,24 @@ class PlaceLayer:
         # POI
         self.seed_pois = self._read_pois(_SEED_POI_PATH)
         self.amap_pois = self._read_pois(_AMAP_POI_PATH)
-        self.all_pois = self.seed_pois + self.amap_pois
+        self.all_pois = self.amap_pois   # 搜索/导出宇宙 = amap only（坐标准确）；seed 退命名不参与（坐标粗糙）
+
+        # 预计算每条 POI 的拼音（连写 + 首字母），供 forward 拼音模糊匹配
+        for _p in self.all_pois:
+            _p['_py_full'], _p['_py_init'] = _pinyin_of(_p.get('name', ''))
+
+        # 预算每个 POI 是否落在现状水系内（forward 过滤；导航到江里是错的）
+        self._water = _load_geojson_poly(_WATER_POLY_PATH)
+        if self._water is not None:
+            from shapely.geometry import Point as _ShpPoint
+            for _p in self.all_pois:
+                _p['_in_water'] = self._water.contains(_ShpPoint(_p['lng'], _p['lat']))
+            _nw = sum(1 for _p in self.all_pois if _p['_in_water'])
+            safe_print('[LOAD] place_layer: in_water POIs={}/{}'.format(_nw, len(self.all_pois)))
+        else:
+            for _p in self.all_pois:
+                _p['_in_water'] = False
+            safe_print('[WARN] place_layer: 现状水系 未加载，_in_water 全 False')
 
         # 区边界
         self._build_zone_boundaries()
@@ -191,12 +262,9 @@ class PlaceLayer:
         return out
 
     def _build_zone_boundaries(self):
-        """ermalu 用显式 geojson；其余用该 zone 种子 POI 的 radius_m buffer 并集（4546 米制 buffer）。"""
-        seed_by_zone = {zid: [] for zid in self.zone_by_id}
-        for p in self.seed_pois:
-            zid = self._match_by_subtag_keyword(p['name'], p['area'])
-            seed_by_zone.setdefault(zid, []).append(p)
-
+        """v2.2：只给「有边界」的 zone 建 polygon —— boundary_path（ermalu 显式）或 center（商圈圆）。
+        全市型 zone（riverside/transit_hub/residential）不建边界——它们是名称型（停车场/小区全市分布），
+        按 name 归（resolve_zone 处理），classify_point 不返回它们。"""
         for zid, cfg in self.zone_by_id.items():
             if zid == 'general':
                 continue
@@ -204,14 +272,12 @@ class PlaceLayer:
             bp = cfg.get('boundary_path')
             if bp:
                 poly = _load_geojson_poly(os.path.join(_ROOT, bp) if not os.path.isabs(bp) else bp)
-            if poly is None and seed_by_zone.get(zid):
-                bufs = []
-                for p in seed_by_zone[zid]:
-                    pt = Point(_T.transform(p['lng'], p['lat'])) if _T else Point(p['lng'], p['lat'])
-                    bufs.append(pt.buffer(float(p.get('radius_m', 200))))
-                if bufs:
-                    poly_4546 = unary_union(bufs)
-                    poly = _to_wgs84(poly_4546) if _T else poly_4546
+            center = cfg.get('center')
+            if poly is None and center and len(center) == 2:
+                radius = float(cfg.get('radius_m', 300))
+                pt = Point(_T.transform(center[0], center[1])) if _T else Point(center[0], center[1])
+                poly_4546 = pt.buffer(radius)
+                poly = _to_wgs84(poly_4546) if _T else poly_4546
             if poly is not None:
                 self.zone_polys[zid] = poly
                 # 面积（4546 米制）
@@ -312,23 +378,18 @@ class PlaceLayer:
         if not query or len(query.strip()) < 1:
             return []
         q = query.strip()
-        scored = []
+        scored = []   # (score, p)
         for p in self.all_pois:
             name = p['name'] or ''
             if not name:
                 continue
-            if _HAVE_RAPIDFUZZ:
-                s = max(
-                    _rf_fuzz.partial_ratio(q, name),
-                    _rf_fuzz.partial_ratio(q, p.get('baidu_level1', '')) * 0.7,
-                    _rf_fuzz.partial_ratio(q, p.get('baidu_level2', '')) * 0.7,
-                )
-            else:
-                s = difflib.SequenceMatcher(None, q, name).ratio() * 100
-                if q in name:
-                    s = max(s, 90.0)
-            if s >= 55:
-                scored.append((s, p))
+            if p.get('_in_water'):
+                continue
+            tier, s = _match_score(q, name, p)
+            if tier is None and s < 55:
+                continue
+            scored.append((s, p))
+        # 分降序；同分保持数据顺序（稳定排序）。tier 分已保证 exact > substring。
         scored.sort(key=lambda t: t[0], reverse=True)
         hits = []
         for s, p in scored[:limit]:
@@ -337,11 +398,15 @@ class PlaceLayer:
                 'lng': p['lng'],
                 'lat': p['lat'],
                 'category': p.get('baidu_level1', '') or p.get('baidu_level2', ''),
-                'zone_id': self.classify_point(p['lng'], p['lat']),
+                'baidu_level1': p.get('baidu_level1', ''),
+                'baidu_level2': p.get('baidu_level2', ''),
+                'area': p.get('area', ''),
+                'zone_id': self.resolve_zone(p['name'], p.get('area', ''), p['lng'], p['lat']),
                 'zone_name': self.zone_by_id.get(
-                    self.classify_point(p['lng'], p['lat']), {}).get('name_zh', ''),
+                    self.resolve_zone(p['name'], p.get('area', ''), p['lng'], p['lat']), {}).get('name_zh', ''),
                 'score': round(s, 1),
                 'source': 'local',
+                'data_source': p.get('source') or 'seed',   # 审计：amap 库 / seed 手标
             })
         return hits
 

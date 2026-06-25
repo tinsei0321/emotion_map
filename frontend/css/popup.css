@@ -182,6 +182,13 @@
   text-transform: none;
   letter-spacing: 0;
 }
+/* Point popup（搜索结果标记）：折叠胶囊非大写显示 "Point" */
+.popup-point.is-collapsed .pt-badge {
+  font-size: var(--geojson-typography-size-xs);
+  font-weight: var(--geojson-typography-weight-bold);
+  text-transform: none;
+  letter-spacing: 0;
+}
 
 /* ── Range hover tooltip (MapLibre Popup, navy) ── */
 .range-tooltip .maplibregl-popup-content {

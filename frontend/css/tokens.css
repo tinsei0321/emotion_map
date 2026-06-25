@@ -21,11 +21,11 @@
   --geojson-color-chrome-title-bar-bg: #0c1c2e;
   --geojson-color-chrome-toolbar-bg: #ffffff;
   --geojson-color-danger: #dc2626;
-  --geojson-color-emotion-negative: #D2AB8B;
-  --geojson-color-emotion-neutral: #E6E6E6;
-  --geojson-color-emotion-positive: #7FC0EC;
+  --geojson-color-emotion-negative: #C4956A;
+  --geojson-color-emotion-neutral: #C0C0C0;
+  --geojson-color-emotion-positive: #5DADE2;
   --geojson-color-emotion-very-negative: #B92D2D;
-  --geojson-color-emotion-very-positive: #9CE365;
+  --geojson-color-emotion-very-positive: #78DC32;
   --geojson-color-gray-100: #f5f5f5;
   --geojson-color-gray-200: #e5e5e5;
   --geojson-color-gray-300: #d4d4d4;
@@ -93,6 +93,9 @@
   --geojson-layout-right-panel-max: 1800px;
   --geojson-layout-right-panel-min: 240px;
   --geojson-layout-right-panel-width: 340px;
+  --geojson-layout-search-collapsed-size: 32px;
+  --geojson-layout-search-width: 200px;
+  --geojson-layout-search-z-index: 96;
   --geojson-layout-splitter-width: 8px;
   --geojson-layout-title-bar-height: 40px;
   --geojson-layout-toolbar-height: 48px;

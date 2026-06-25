@@ -1,8 +1,9 @@
 {
   "metadata": {
-    "description": "分区特征关键词表。用途双重：(1) corpus 生成与本地性校验的命中词源（评论命中任意一词即计为本地相关）；(2) 搜索联想时的区名/地标提示。三块（模拟器/corpus/搜索）共用同一 getter，单一来源。",
-    "schema_version": "1.0",
+    "description": "分区特征关键词表。用途双重：(1) corpus 生成与本地性校验的命中词源（评论命中任意一词即计为本地相关）；(2) 搜索联想时的区名/地标提示。三块（模拟器/corpus/搜索）共用同一 getter，单一来源。v2.2（2026-06-25）：拆 wanda_cbd 为 7 真实商圈。",
+    "schema_version": "2.2",
     "created": "2026-06-24",
+    "updated": "2026-06-25",
     "locality_rule": "评论含 place_keywords[zone].place_keywords 或 characteristic_keywords 任意一词 = 本地相关"
   },
   "zones": {
@@ -10,13 +11,37 @@
       "place_keywords": ["二马路", "大南门", "解放路", "红星路", "献福路", "文庙", "古佛寺"],
       "characteristic_keywords": ["老街", "步行街", "夜市", "小吃", "打卡", "一期", "改造", "人多", "拥挤", "人气", "滨江", "历史", "老城", "市集"]
     },
-    "wanda_cbd": {
-      "place_keywords": ["万达", "国贸", "大洋", "新世纪", "卓悦", "夷陵广场", "水悦城", "太古里"],
-      "characteristic_keywords": ["商场", "购物中心", "购物", "停车", "餐饮", "周末", "人流", "排队", "品牌", "影城", "逛街"]
+    "yiling_cbd": {
+      "place_keywords": ["夷陵广场", "国贸", "大洋百货", "卓悦", "铁路坝"],
+      "characteristic_keywords": ["商场", "购物中心", "CBD", "购物", "停车", "餐饮", "周末", "人流", "排队", "品牌", "逛街", "人气"]
+    },
+    "shuiyuecheng": {
+      "place_keywords": ["水悦城", "泰富广场"],
+      "characteristic_keywords": ["商场", "购物中心", "购物", "餐饮", "影院", "健身", "停车", "品牌", "周末"]
+    },
+    "zhongnan_road": {
+      "place_keywords": ["中南路", "兴发广场", "环球港"],
+      "characteristic_keywords": ["商场", "购物中心", "购物", "餐饮", "停车", "堵车", "品牌", "人流"]
+    },
+    "wuyi_square": {
+      "place_keywords": ["五一广场", "福久源", "新天地"],
+      "characteristic_keywords": ["商场", "购物", "餐饮", "停车", "居住", "发展", "配套"]
+    },
+    "yiling_wanda": {
+      "place_keywords": ["夷陵万达", "小溪塔"],
+      "characteristic_keywords": ["商场", "购物中心", "购物", "餐饮", "停车", "通勤", "新区"]
+    },
+    "wanda_plaza": {
+      "place_keywords": ["万达广场", "万达影城", "万达瑞华", "九码头"],
+      "characteristic_keywords": ["商场", "购物中心", "影城", "餐饮", "停车", "品牌", "周末", "人流"]
+    },
+    "wuyue_square": {
+      "place_keywords": ["吾悦广场", "吾悦"],
+      "characteristic_keywords": ["商场", "购物中心", "购物", "餐饮", "停车", "品牌", "周末"]
     },
     "riverside": {
       "place_keywords": ["滨江", "儿童公园", "磨基山", "滨江公园", "滨江步道", "博物馆", "图书馆"],
-      "characteristic_keywords": ["公园", "广场", "步道", "绿道", "江边", "散步", "广场舞", "夜景", "遛弯", "锻炼", "休闲"]
+      "characteristic_keywords": ["公园", "步道", "绿道", "江边", "散步", "广场舞", "夜景", "遛弯", "锻炼", "休闲"]
     },
     "transit_hub": {
       "place_keywords": ["东站", "宜昌站", "三峡机场", "宜昌港", "客运中心", "BRT"],

@@ -8,6 +8,7 @@ import { POLARITY_LABEL, rampColor, CONFIDENCE_RAMP, getLayer, computeHotness, h
 const emoEl = () => document.getElementById('feature-popup');
 const rngEl = () => document.getElementById('range-popup');
 let _emo = null;          // { colorMode, label?, score?, scoreText? }
+let _popupRevToken = 0;   // 反查 token：切换点时过期旧响应，防串台
 let _rng = null;          // { name, color }
 let _popupLayerId = null; // layer id of the feature shown in the emotion popup (for color sync)
 let _rngLayerId = null;   // layer id of the feature shown in the range popup
@@ -72,11 +73,31 @@ export function showPopup(feature, colors, colorMode) {
     'L1 治理阶段由 LLM（DeepSeek）判断的数据相关性置信度（0~1）：该条数据与城市规划情绪分析的相关程度。可收集、可复现。']);
   if (Array.isArray(p.keywords) && p.keywords.length) rows.push(['关键词', p.keywords.join('、')]);
   const c = feature.geometry && feature.geometry.coordinates;
-  if (c) rows.push(['坐标', Array.isArray(c[0]) ? feature.geometry.type : `${c[1].toFixed(4)}, ${c[0].toFixed(4)}`, '', 'dim']);
+  const isPoint = !!(c && !Array.isArray(c[0]));
+  if (c) rows.push(['坐标', isPoint ? `${c[1].toFixed(6)}, ${c[0].toFixed(6)}` : feature.geometry.type]);   // 6 位精度、不再 dim（核查要清楚）
   document.getElementById('pp-kv').innerHTML = rows.map(([k, v, tip, dim]) =>
     `<div class="kv-row${dim ? ' kv-dim' : ''}"><span class="kv-k"${tip ? ` title="${tip}"` : ''}>${k}</span><span class="kv-v">${v}</span></div>`).join('');
 
   document.getElementById('pp-id').textContent = p.id_e ? `ID ${p.id_e}` : '';
+
+  // 地点信息（区域 + 最近 POI）— async 反查，便于核查「这条数据落在哪、贴哪个 POI」
+  if (isPoint) {
+    const myToken = ++_popupRevToken;
+    reverseGeocode(c[0], c[1]).then((res) => {
+      if (myToken !== _popupRevToken || popup.hidden) return;   // 过期（已切别的点）/已关 → 丢弃
+      const r = res || {};
+      const extras = [];
+      if (r.zone_name) extras.push(['区域', r.zone_name]);
+      if (r.nearest_poi && r.nearest_poi.name) {
+        extras.push(['最近 POI', r.nearest_poi.name + (r.nearest_poi.dist_m != null ? ' · ' + r.nearest_poi.dist_m + 'm' : '')]);
+      }
+      if (extras.length) {
+        const kv = document.getElementById('pp-kv');
+        kv.innerHTML += extras.map(([k, v]) =>
+          `<div class="kv-row"><span class="kv-k">${_pEsc(k)}</span><span class="kv-v">${_pEsc(v)}</span></div>`).join('');
+      }
+    }).catch(() => {});
+  }
 }
 
 export function collapsePopup() {
@@ -192,7 +213,7 @@ export function refreshPopupForLayer(id) {
 //   可见轮廓（fill/line 非 -hit，2px）= 始终保持/刷新。一处判定驱动两个 popup，杜绝同质 bug。
 function classifyMapClick(feats, ev) {
   const tgt = ev.originalEvent && ev.originalEvent.target;
-  if (tgt && tgt.closest && (tgt.closest('#feature-popup') || tgt.closest('#range-popup'))) return 'popup';
+  if (tgt && tgt.closest && (tgt.closest('#feature-popup') || tgt.closest('#range-popup') || tgt.closest('#point-popup'))) return 'popup';
   // 只认本项目数据层（id 以 lyr- 开头），排除底图 fill/line/circle（landcover/water/road…）——
   // 否则点底图水面/土地利用也会被当成"点中范围/点"，误开 popup（原 hitRange 逻辑的同质漏网）。
   const ours = feats.filter((f) => f.layer && String(f.layer.id).startsWith('lyr-'));
@@ -206,19 +227,81 @@ function isRangePopupExpanded() {
   return !!p && !p.hidden && !p.classList.contains('is-collapsed') && !!_rng;
 }
 
+// ── Point popup（搜索结果标记 → 第三张胶囊卡，顺序在 Range 之下）──
+const ptEl = () => document.getElementById('point-popup');
+let _point = null;   // { name, lng, lat }
+
+function _pEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function _ptRow(k, v) {
+  return '<div class="kv-row"><span class="kv-k">' + _pEsc(k) + '</span><span class="kv-v">' + _pEsc(v) + '</span></div>';
+}
+
+export function showPointPopup(hit) {
+  const p = ptEl();
+  if (!p || !hit) return;
+  p.hidden = false;
+  p.classList.remove('is-collapsed');
+  const badge = document.getElementById('pt-badge');
+  badge.textContent = 'Point';
+  badge.style.background = '#e53935';   // 与红色大头针同色，视觉绑定
+  badge.style.color = '#fff';
+  document.getElementById('pt-name').textContent = hit.name || '';
+  const rows = [];
+  const _dsLabel = { amap: '高德POI库', seed: '种子(手标)', 'amap-api': '高德API补全' };
+  rows.push(_ptRow('数据源', _dsLabel[hit.data_source] || hit.source || '-'));
+  const _lv = (hit.baidu_level1 && hit.baidu_level2)
+    ? hit.baidu_level1 + ' / ' + hit.baidu_level2
+    : (hit.baidu_level1 || hit.baidu_level2 || hit.category || '');
+  if (_lv) rows.push(_ptRow('类别', _lv));
+  if (hit.zone_name) rows.push(_ptRow('区域', hit.zone_name));
+  if (hit.area) rows.push(_ptRow('片区', hit.area));
+  rows.push(_ptRow('坐标', Number(hit.lat).toFixed(6) + ', ' + Number(hit.lng).toFixed(6)));
+  document.getElementById('pt-kv').innerHTML = rows.join('');
+  _point = { name: hit.name, lng: hit.lng, lat: hit.lat };
+}
+
+export function collapsePointPopup() {
+  const p = ptEl();
+  if (!p || p.hidden || !_point) return;
+  p.classList.add('is-collapsed');
+}
+
+export function expandPointPopup() {
+  const p = ptEl();
+  if (!p || p.hidden || !_point) return;
+  p.classList.remove('is-collapsed');
+}
+
+export function hidePointPopup() {
+  _point = null;
+  const p = ptEl();
+  if (p) p.hidden = true;
+}
+
 // ── Init: close/expand/collapse wiring ─────────────────────────────────────
 export function initPopup(map) {
   const e = emoEl(), r = rngEl();
   document.getElementById('popup-close')?.addEventListener('click', hidePopup);
   document.getElementById('range-close')?.addEventListener('click', hideRangePopup);
+  document.getElementById('point-close')?.addEventListener('click', () => {
+    hidePointPopup();
+    document.dispatchEvent(new CustomEvent('point:hide'));   // 通知 search-bar 移除标记
+  });
   e?.addEventListener('click', () => { if (e.classList.contains('is-collapsed')) expandPopup(); });
   r?.addEventListener('click', () => { if (r.classList.contains('is-collapsed')) expandRangePopup(); });
+  const pt = ptEl();
+  pt?.addEventListener('click', () => { if (pt.classList.contains('is-collapsed')) expandPointPopup(); });
   if (map) {
     map.on('click', (ev) => {
       if (isDrawActive()) return;   // 绘制中：click 归 draw-tool，不触发 popup
       const feats = map.queryRenderedFeatures(ev.point) || [];
       const k = classifyMapClick(feats, ev);
       if (k === 'popup') return;
+      // 搜索标记以外（地图任意点击）→ 收起 Point 卡 + 缩小搜索标记
+      collapsePointPopup();
+      document.dispatchEvent(new CustomEvent('point:collapse'));
       // 情绪点：非命中即收（开 popup 仍由 map.js 点层 click 负责）
       if (k !== 'point') collapsePopup();
       // 范围：可见轮廓→保持/刷新；hit 带→未展开则开(易命中)/已展开则收；都没有→收

@@ -1,0 +1,179 @@
+/* ═══ search-bar.css — 地点搜索栏 + 反查 chip（Phase 2）═══
+   设计语言镜像 .linestyle-cap（settings.css）：无线框 + 阴影 + 白底 + hover 灰 +
+   选中蓝 + 紧凑圆角。容器 toolbar 下方居中，折叠 32px 圆 → 展开 200px 胶囊。
+   状态机 6 态由 search-bar.js 驱动：collapsed / expanded / focused / suggesting / history / navigating。
+   过渡统一 var(--geojson-transition)（150ms）。
+   ═══════════════════════════════════════════════════════ */
+
+/* ── 容器：折叠圆 ⇄ 展开胶囊（width 过渡 + overflow 裁剪内嵌 input/kbd） ── */
+.search-bar {
+  position: absolute;
+  top: 8px;                                                /* #map 顶部 = toolbar 之下；与 popup-stack 同基准 */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--geojson-layout-search-z-index);           /* 96：toolbar 与 popup 之间 */
+  display: flex;
+  align-items: center;
+  height: var(--geojson-layout-search-collapsed-size);     /* 32px */
+  width: var(--geojson-layout-search-width);               /* 200px 展开 */
+  padding: 0;
+  border: none;                                            /* 无线框（展开/折叠均无线框，靠阴影区分） */
+  border-radius: calc(var(--geojson-layout-search-collapsed-size) / 2);  /* 胶囊（非圆角矩形） */
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);               /* 展开态：中阴影 */
+  overflow: hidden;                                        /* 折叠时裁掉右侧 input/kbd */
+  transition: width var(--geojson-transition),
+              box-shadow var(--geojson-transition);
+}
+.search-bar.is-collapsed {
+  width: var(--geojson-layout-search-collapsed-size);      /* 32px 圆 */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.10);               /* 折叠态：弱阴影（与展开态拉开差距） */
+}
+.search-bar.is-focused {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.20);              /* 聚焦态：最强阴影，凸显点击后差别 */
+}
+
+/* 放大镜按钮（折叠态唯一可见元素） */
+.sb-toggle {
+  flex: 0 0 var(--geojson-layout-search-collapsed-size);
+  width: var(--geojson-layout-search-collapsed-size);
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: var(--geojson-color-text-secondary, #737373);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.sb-toggle:hover { color: var(--geojson-color-text, #1a1a1a); }
+.sb-toggle svg { display: block; }
+
+/* 输入框：展开时填满 toggle 与 kbd 之间；折叠时被 overflow 裁掉 */
+.sb-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: var(--geojson-typography-size-xs, 13px);
+  color: var(--geojson-color-text, #1a1a1a);
+  padding: 0;
+}
+.sb-input::placeholder { color: var(--geojson-color-text-secondary, #737373); }
+
+/* 右侧 Ctrl+K 提示 */
+.sb-kbd {
+  flex: 0 0 auto;
+  margin-right: 8px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--geojson-color-gray-200, #e5e5e5);
+  color: var(--geojson-color-text-secondary, #737373);
+  font-size: 10px;
+  line-height: 1.5;
+  user-select: none;
+}
+
+/* 折叠态：非 toggle 元素不可交互（视觉已裁，双保险） */
+.search-bar.is-collapsed .sb-input,
+.search-bar.is-collapsed .sb-kbd { pointer-events: none; }
+
+/* ── 下拉（联想 + 历史）：胶囊语言，hover 灰 ── */
+.sb-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: #ffffff;
+  border: 1px solid var(--geojson-color-gray-200, #e5e5e5);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: var(--geojson-layout-search-z-index);
+}
+.sb-results[hidden] { display: none; }
+.sb-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.sb-item:hover,
+.sb-item.is-active {                                   /* ↑↓ 高亮 = 选中蓝 + 白字（镜像 .is-sel） */
+  background: var(--geojson-color-chrome-active-fill, #007afc);
+}
+.sb-item:hover .sb-item-name,
+.sb-item.is-active .sb-item-name { color: var(--geojson-color-text-inverse, #ffffff); }
+.sb-item:hover .sb-item-sub,
+.sb-item.is-active .sb-item-sub { color: rgba(255, 255, 255, 0.85); }
+.sb-item-name {
+  font-size: var(--geojson-typography-size-xs, 13px);
+  color: var(--geojson-color-text, #1a1a1a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sb-item-name mark {                 /* 命中子串高亮：加粗，不改色/底（hover 蓝底下仍清晰） */
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+}
+.sb-item-sub {                                          /* zone_name / category / address */
+  font-size: 11px;
+  color: var(--geojson-color-text-secondary, #737373);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sb-empty {                              /* 无结果 / 无历史 提示行 */
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--geojson-color-text-secondary, #737373);
+}
+.sb-section {                            /* 历史列表小标题 */
+  padding: 4px 8px 2px;
+  font-size: 10px;
+  color: var(--geojson-color-text-secondary, #737373);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── 搜索结果标记：红色大头针（自定义 MapLibre Marker element） ── */
+.search-marker {
+  cursor: pointer;
+  pointer-events: auto;
+}
+.search-pin {
+  display: block;
+  transform: scale(1);
+  transform-origin: bottom center;          /* 缩放以尖端为原点，定位不漂 */
+  transition: transform var(--geojson-transition);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+}
+.search-marker.is-active .search-pin { transform: scale(1.35); }   /* 导航/展开态放大凸出 */
+
+/* ── 标记 hover tooltip（仅地名，镜像 .range-tooltip 简洁样式） ── */
+.point-tooltip .maplibregl-popup-content {
+  padding: 3px 8px;
+  font-size: var(--geojson-typography-size-xs, 12px);
+  background: var(--geojson-color-chrome-title-bar-bg, #0c1c2e);
+  color: #fff;
+  border-radius: var(--geojson-radius-sm, 4px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+.point-tooltip .maplibregl-popup-tip { border-top-color: var(--geojson-color-chrome-title-bar-bg, #0c1c2e); }
+.point-tooltip .pt-name { white-space: nowrap; }

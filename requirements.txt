@@ -42,6 +42,14 @@ libpysal>=4.12.0
 esda>=2.7.0
 h3>=4.0.0
 
+# ── 地点搜索 / 地理编码（2026-06-25 新增 — Phase 2）──
+# rapidfuzz：本地 POI 模糊匹配（core/place_layer.py 用）。py3.14 无 wheel 时
+# 自动回退 difflib（place_layer 已实现回退），故为可选；有则更快更准。
+rapidfuzz>=3.0.0
+# pypinyin：POI 名拼音匹配（输 wd/wanda → 万达；Search v2）。纯 Python 无 C 扩展，
+# py3.14 友好；不可用时 forward 退化为仅汉字/类别匹配（place_layer 已守 _HAVE_PYPINYIN）。
+pypinyin>=0.50.0
+
 # ── 数据库（2026-06-16 新增 — SQLite 替代 CSV）──
 # sqlite3 为 Python 内置模块，无需额外安装
 # 如需 SpatiaLite 空间扩展，安装: pip install spatialite

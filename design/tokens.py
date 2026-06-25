@@ -116,6 +116,9 @@ GEOJSON_LAYOUT_POPUP_WIDTH = '280px'
 GEOJSON_LAYOUT_RIGHT_PANEL_MAX = '1800px'
 GEOJSON_LAYOUT_RIGHT_PANEL_MIN = '240px'
 GEOJSON_LAYOUT_RIGHT_PANEL_WIDTH = '340px'
+GEOJSON_LAYOUT_SEARCH_COLLAPSED_SIZE = '32px'
+GEOJSON_LAYOUT_SEARCH_WIDTH = '200px'
+GEOJSON_LAYOUT_SEARCH_Z_INDEX = 96
 GEOJSON_LAYOUT_SPLITTER_WIDTH = '8px'
 GEOJSON_LAYOUT_TITLE_BAR_HEIGHT = '40px'
 GEOJSON_LAYOUT_TOOLBAR_HEIGHT = '48px'
@@ -225,11 +228,11 @@ COLOR_CHART_POLARITY_NEUTRAL = '#C0C0C0'
 COLOR_CHART_POLARITY_POSITIVE = '#5DADE2'
 COLOR_CHART_POLARITY_VERY_NEGATIVE = '#B92D2D'
 COLOR_CHART_POLARITY_VERY_POSITIVE = '#78DC32'
-COLOR_EMOTION_NEGATIVE = '#C4956A'
-COLOR_EMOTION_NEUTRAL = '#C0C0C0'
-COLOR_EMOTION_POSITIVE = '#5DADE2'
+COLOR_EMOTION_NEGATIVE = '#D2AB8B'
+COLOR_EMOTION_NEUTRAL = '#E6E6E6'
+COLOR_EMOTION_POSITIVE = '#7FC0EC'
 COLOR_EMOTION_VERY_NEGATIVE = '#B92D2D'
-COLOR_EMOTION_VERY_POSITIVE = '#78DC32'
+COLOR_EMOTION_VERY_POSITIVE = '#9CE365'
 COLOR_FUNCTIONAL_BORDER_LIGHT = 'rgba(72,201,176,0.15)'
 COLOR_FUNCTIONAL_BORDER_MEDIUM = 'rgba(72,201,176,0.22)'
 COLOR_FUNCTIONAL_BORDER_STRONG = 'rgba(72,201,176,0.35)'
@@ -484,11 +487,11 @@ DARK_TOKENS = {
     'color-chart-polarity-positive': '#5DADE2',
     'color-chart-polarity-very-negative': '#B92D2D',
     'color-chart-polarity-very-positive': '#78DC32',
-    'color-emotion-negative': '#C4956A',
-    'color-emotion-neutral': '#C0C0C0',
-    'color-emotion-positive': '#5DADE2',
+    'color-emotion-negative': '#D2AB8B',
+    'color-emotion-neutral': '#E6E6E6',
+    'color-emotion-positive': '#7FC0EC',
     'color-emotion-very-negative': '#B92D2D',
-    'color-emotion-very-positive': '#78DC32',
+    'color-emotion-very-positive': '#9CE365',
     'color-functional-border-light': 'rgba(72,201,176,0.15)',
     'color-functional-border-medium': 'rgba(72,201,176,0.22)',
     'color-functional-border-strong': 'rgba(72,201,176,0.35)',

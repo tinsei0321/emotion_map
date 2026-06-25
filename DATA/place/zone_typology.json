@@ -1,8 +1,9 @@
 {
   "metadata": {
-    "description": "宜昌核心主城情绪分区类型（zone_id × zone_type）。zone_id=叙事区（模拟器分配+corpus分桶+徽章），zone_type=时序行为型（快照加权+上限桶）。",
-    "schema_version": "1.0",
+    "description": "宜昌核心主城情绪分区类型（zone_id × zone_type）。v2.2（2026-06-25）：基于本地知识校准——拆 wanda_cbd 为 7 个真实商圈（显式 center+radius 圆）+ 保留 4 非商圈子区（amap 锚点 buffer）+ general。seed 退命名，不供坐标/边界。",
+    "schema_version": "2.2",
     "created": "2026-06-24",
+    "updated": "2026-06-25",
     "zone_types": {
       "festival": "节假日型（二马路老街：春节/五一爆满）",
       "weekend": "周末型（商圈：周末/暑期旺）",
@@ -10,7 +11,7 @@
       "steady": "常态型（公园/居住/政府/医院/学校：日均稳态）"
     },
     "match_rule": "resolve_zone 优先级：area 后缀子串命中 area_subtags → name 命中 name_keywords → 边界 contains → general",
-    "boundary_rule": "boundary_path 显式边界优先；否则由该 zone 种子 POI 的 radius_m buffer 并集构建"
+    "boundary_rule": "boundary_path 显式边界优先；center 字段 → center+radius_m 圆（商圈用，精确）；否则 amap POI 文本匹簇 buffer 并集（非商圈子区用）。均 4546 米制"
   },
   "zones": [
     {
@@ -18,31 +19,98 @@
       "name_zh": "二马路-解放路核心老街",
       "zone_type": "festival",
       "color": "#E76F51",
+      "radius_m": 200,
       "boundary_path": "DATA/boundaries/大南门二马路滨江片区.geojson",
       "area_subtags": ["二马路", "大南门", "红星路", "解放路", "献福路", "文庙", "古佛寺", "屈原园", "滨江夜市", "二马路社区"],
       "name_keywords": ["二马路", "大南门", "解放路", "红星路", "献福路", "文庙", "古佛寺", "老街", "步行街", "夜市", "小吃", "打卡"]
     },
     {
-      "id": "wanda_cbd",
-      "name_zh": "万达-国贸商圈",
+      "id": "yiling_cbd",
+      "name_zh": "夷陵广场CBD",
       "zone_type": "weekend",
       "color": "#F4A261",
-      "area_subtags": ["万达", "CBD", "国贸", "大洋", "新世纪", "卓悦", "水悦城", "太古里", "夷陵广场", "兴发", "悦活里", "雅斯", "影院", "万达影城", "KTV", "健身", "奥体", "CBD住宅"],
-      "name_keywords": ["万达", "国贸", "大洋", "商场", "购物中心", "广场", "影城", "影院", "KTV", "健身", "奥体", "步行街"]
+      "center": [111.2905, 30.7050],
+      "radius_m": 500,
+      "area_subtags": ["夷陵广场", "大洋", "国贸", "卓悦", "铁路坝"],
+      "name_keywords": ["夷陵广场", "大洋百货", "国贸", "卓悦", "铁路坝"]
+    },
+    {
+      "id": "shuiyuecheng",
+      "name_zh": "水悦城",
+      "zone_type": "weekend",
+      "color": "#E9C46A",
+      "center": [111.3105, 30.7086],
+      "radius_m": 500,
+      "area_subtags": ["水悦城"],
+      "name_keywords": ["水悦城"]
+    },
+    {
+      "id": "zhongnan_road",
+      "name_zh": "中南路",
+      "zone_type": "weekend",
+      "color": "#D4A373",
+      "center": [111.3250, 30.6820],
+      "radius_m": 500,
+      "area_subtags": ["中南路", "兴发", "环球港"],
+      "name_keywords": ["中南路", "兴发广场", "环球港"]
+    },
+    {
+      "id": "wuyi_square",
+      "name_zh": "五一广场",
+      "zone_type": "weekend",
+      "color": "#CC9B6E",
+      "center": [111.3550, 30.6500],
+      "radius_m": 500,
+      "area_subtags": ["五一广场", "福久源"],
+      "name_keywords": ["五一广场", "福久源"]
+    },
+    {
+      "id": "yiling_wanda",
+      "name_zh": "夷陵万达",
+      "zone_type": "weekend",
+      "color": "#B08968",
+      "center": [111.3400, 30.7430],
+      "radius_m": 500,
+      "area_subtags": ["夷陵万达"],
+      "name_keywords": ["夷陵万达"],
+      "note": "夷陵区（行政区划）的万达，≠ 西陵区夷陵广场。priority 在 wanda_plaza 前，免「夷陵万达广场」误归 wanda_plaza。"
+    },
+    {
+      "id": "wanda_plaza",
+      "name_zh": "万达国际广场",
+      "zone_type": "weekend",
+      "color": "#F4A261",
+      "center": [111.3025, 30.6830],
+      "radius_m": 500,
+      "area_subtags": ["万达广场", "万达国际", "九码头"],
+      "name_keywords": ["万达广场", "万达国际", "万达影城", "万达瑞华", "九码头"],
+      "note": "万达=万达广场（唯一），无「万达簇」。含九码头（同商圈）。"
+    },
+    {
+      "id": "wuyue_square",
+      "name_zh": "吾悦广场",
+      "zone_type": "weekend",
+      "color": "#A98467",
+      "center": [111.3290, 30.7420],
+      "radius_m": 500,
+      "area_subtags": ["吾悦"],
+      "name_keywords": ["吾悦"]
     },
     {
       "id": "riverside",
       "name_zh": "滨江公园广场",
       "zone_type": "steady",
       "color": "#2A9D8F",
+      "radius_m": 300,
       "area_subtags": ["滨江", "滨江步道", "长江沿线", "至喜桥北", "沿江大道", "儿童公园", "磨基山", "东山", "城东", "求索", "和平", "博物馆", "规划馆", "美术馆", "图书馆", "科技馆"],
-      "name_keywords": ["滨江", "公园", "广场", "步道", "绿道", "江边", "磨基山", "博物馆", "图书馆", "广场舞", "夜景"]
+      "name_keywords": ["滨江", "公园", "步道", "绿道", "江边", "磨基山", "博物馆", "图书馆", "广场舞", "夜景"]
     },
     {
       "id": "transit_hub",
       "name_zh": "交通枢纽",
       "zone_type": "commute",
       "color": "#457B9D",
+      "radius_m": 300,
       "area_subtags": ["宜昌站", "宜昌东", "三峡机场", "宜昌港", "客运中心", "BRT", "公交", "夷陵桥", "宜昌桥", "伍家桥", "至喜桥", "加油站", "充电站", "停车场", "东山大道", "夷陵大道"],
       "name_keywords": ["东站", "火车站", "机场", "港口", "客运", "BRT", "公交", "大桥", "停车", "加油", "充电"]
     },
@@ -51,6 +119,7 @@
       "name_zh": "居住社区",
       "zone_type": "steady",
       "color": "#8AB17D",
+      "radius_m": 300,
       "area_subtags": ["北山", "樵湖岭", "东山花园", "住宅", "北住宅", "老居住", "上上城", "香格里拉", "中建星"],
       "name_keywords": ["小区", "住宅", "花园", "社区", "居住", "公寓", "物业"]
     },
@@ -59,9 +128,10 @@
       "name_zh": "通用市区",
       "zone_type": "steady",
       "color": "#6C757D",
+      "radius_m": 0,
       "area_subtags": [],
       "name_keywords": [],
-      "note": "兜底区：政府/医院/学校/酒店/银行/消防/工业/通信/物流等一切未命中上述叙事区的 POI。最大桶，承载核心区主体点量。"
+      "note": "兜底区：一切未命中上述叙事区的 POI。华翔CAZ / 江南URD（数据暂缺）的 POI 落此，后续补数据时升 zone。"
     }
   ]
 }

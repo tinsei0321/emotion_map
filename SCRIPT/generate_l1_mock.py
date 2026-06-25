@@ -196,7 +196,8 @@ def inject_fields(pts, snapshot_id, pool, rng):
     rows = []
     for i, p in enumerate(pts):
         area_tag = p['area_tag']
-        zone = pl.classify_point(p['lon'], p['lat'])
+        _seed_p = p.get('seed') or {}
+        zone = pl.resolve_zone(_seed_p.get('name', ''), _seed_p.get('area', ''), p['lon'], p['lat'])   # name 优先（全市型 zone 按名归）→ 边界 → general
         polarity = pick_polarity(snapshot_id, area_tag, rng)
         domain, element = pick_domain_element(snapshot_id, area_tag, rng)
         flavor = pick_flavor(snapshot_id, area_tag)

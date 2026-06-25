@@ -67,3 +67,30 @@ export async function runExport(payload) {
   }
   return r.blob();
 }
+
+// ── 地点搜索 / 地理编码（Phase 2；同源 GET，高德 Key 只在服务端 core/geocode.py）──
+//   GET /api/v1/place/search?q=&limit=   → { success, query, hits:[{name,lng,lat,category,zone_name,address,source}], source }
+//   GET /api/v1/geocode?q=               → { success, lng, lat, formatted_address, source }
+//   GET /api/v1/reverse-geocode?lng=&lat= → { success, zone_id, zone_name, nearest_poi, formatted_address, source }
+//   坐标一律 WGS84（高德 GCJ-02 已在服务端 core/geocode.py 转好，红线 #2）。
+
+export async function searchPlaces(q, limit = 10) {
+  const url = `${BASE}/place/search?q=${encodeURIComponent(q)}&limit=${limit}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`地点搜索失败: ${r.status}`);
+  return r.json();
+}
+
+export async function geocodeAddress(q) {
+  const url = `${BASE}/geocode?q=${encodeURIComponent(q)}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`地理编码失败: ${r.status}`);
+  return r.json();
+}
+
+export async function reverseGeocode(lng, lat) {
+  const url = `${BASE}/reverse-geocode?lng=${lng}&lat=${lat}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`逆地理编码失败: ${r.status}`);
+  return r.json();
+}
