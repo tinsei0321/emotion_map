@@ -8,6 +8,7 @@ import { POLARITY_LABEL, rampColor, CONFIDENCE_RAMP, getLayer, computeHotness, h
 const emoEl = () => document.getElementById('feature-popup');
 const rngEl = () => document.getElementById('range-popup');
 let _emo = null;          // { colorMode, label?, score?, scoreText? }
+let _popupRevToken = 0;   // 反查 token：切换点时过期旧响应，防串台
 let _rng = null;          // { name, color }
 let _popupLayerId = null; // layer id of the feature shown in the emotion popup (for color sync)
 let _rngLayerId = null;   // layer id of the feature shown in the range popup
@@ -72,11 +73,31 @@ export function showPopup(feature, colors, colorMode) {
     'L1 治理阶段由 LLM（DeepSeek）判断的数据相关性置信度（0~1）：该条数据与城市规划情绪分析的相关程度。可收集、可复现。']);
   if (Array.isArray(p.keywords) && p.keywords.length) rows.push(['关键词', p.keywords.join('、')]);
   const c = feature.geometry && feature.geometry.coordinates;
-  if (c) rows.push(['坐标', Array.isArray(c[0]) ? feature.geometry.type : `${c[1].toFixed(4)}, ${c[0].toFixed(4)}`, '', 'dim']);
+  const isPoint = !!(c && !Array.isArray(c[0]));
+  if (c) rows.push(['坐标', isPoint ? `${c[1].toFixed(6)}, ${c[0].toFixed(6)}` : feature.geometry.type]);   // 6 位精度、不再 dim（核查要清楚）
   document.getElementById('pp-kv').innerHTML = rows.map(([k, v, tip, dim]) =>
     `<div class="kv-row${dim ? ' kv-dim' : ''}"><span class="kv-k"${tip ? ` title="${tip}"` : ''}>${k}</span><span class="kv-v">${v}</span></div>`).join('');
 
   document.getElementById('pp-id').textContent = p.id_e ? `ID ${p.id_e}` : '';
+
+  // 地点信息（区域 + 最近 POI）— async 反查，便于核查「这条数据落在哪、贴哪个 POI」
+  if (isPoint) {
+    const myToken = ++_popupRevToken;
+    reverseGeocode(c[0], c[1]).then((res) => {
+      if (myToken !== _popupRevToken || popup.hidden) return;   // 过期（已切别的点）/已关 → 丢弃
+      const r = res || {};
+      const extras = [];
+      if (r.zone_name) extras.push(['区域', r.zone_name]);
+      if (r.nearest_poi && r.nearest_poi.name) {
+        extras.push(['最近 POI', r.nearest_poi.name + (r.nearest_poi.dist_m != null ? ' · ' + r.nearest_poi.dist_m + 'm' : '')]);
+      }
+      if (extras.length) {
+        const kv = document.getElementById('pp-kv');
+        kv.innerHTML += extras.map(([k, v]) =>
+          `<div class="kv-row"><span class="kv-k">${_pEsc(k)}</span><span class="kv-v">${_pEsc(v)}</span></div>`).join('');
+      }
+    }).catch(() => {});
+  }
 }
 
 export function collapsePopup() {
