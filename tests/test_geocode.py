@@ -181,3 +181,27 @@ class TestPinyinForward:
         pl = get_place_layer()
         hits = pl.forward('万达', 5)
         assert any('万达' in h['name'] for h in hits)
+
+
+# ── 分层排名（Search v2.1：exact > prefix > substring，修「金缔华城→苏宁易购」类 bug）──
+
+class TestTieredRanking:
+    def test_exact_beats_substring_jindihuacheng(self):
+        """金缔华城（本体，exact 300）必须排在 苏宁易购(金缔华城店)（substring 200）之前。"""
+        from core.place_layer import get_place_layer
+        pl = get_place_layer()
+        hits = pl.forward('金缔华城', 10)
+        assert hits, '金缔华城 应有命中'
+        assert hits[0]['name'] == '金缔华城', '首条应为精确匹配，实为 ' + repr(hits[0]['name'])
+
+    def test_exact_beats_substring_shuiyuecheng(self):
+        from core.place_layer import get_place_layer
+        pl = get_place_layer()
+        hits = pl.forward('水悦城', 10)
+        assert hits[0]['name'] == '水悦城'
+
+    def test_prefix_ranking_suning(self):
+        from core.place_layer import get_place_layer
+        pl = get_place_layer()
+        hits = pl.forward('苏宁', 5)
+        assert hits and '苏宁' in hits[0]['name']

@@ -87,6 +87,40 @@ def _pinyin_of(name):
     except Exception:
         return '', ''
 
+
+def _pr(q, s):
+    """partial_ratio（rapidfuzz）或 SequenceMatcher 回退，返回 0-100。"""
+    if _HAVE_RAPIDFUZZ:
+        return _rf_fuzz.partial_ratio(q, s or '')
+    return difflib.SequenceMatcher(None, q, s or '').ratio() * 100
+
+
+def _match_score(q, name, p):
+    """分层打分（业界做法：exact > prefix > pinyin-exact > substring > fuzzy）。
+
+    精确名匹配永远排在子串匹配之前（修「金缔华城→苏宁易购(金缔华城店)」类 bug：
+    partial_ratio 对二者都给 100，旧逻辑同分按数据顺序误排）。
+    返回 (tier, score)：tier 非 None = 直通档（exact/prefix/pinyin-exact/substring）；
+    tier None = fuzzy，调用方按 score>=55 门槛判。
+    """
+    if q == name:
+        return 'exact', 300.0
+    if name.startswith(q):
+        return 'prefix', 250.0
+    if _HAVE_PYPINYIN and q.isascii():      # pinyin-exact：拉丁 q == 全拼/首字母
+        ql = q.lower()
+        if ql == p.get('_py_full', '') or ql == p.get('_py_init', ''):
+            return 'pinyin-exact', 220.0
+    if q in name:
+        return 'substring', 180.0 + _pr(q, name) * 0.2   # 子串：基底 180 + 细排
+    # fuzzy：name + 类别 + 拼音 取 max
+    s = _pr(q, name)
+    s = max(s, _pr(q, p.get('baidu_level1', '')) * 0.7, _pr(q, p.get('baidu_level2', '')) * 0.7)
+    if _HAVE_PYPINYIN and q.isascii():
+        ql = q.lower()
+        s = max(s, _pr(ql, p.get('_py_full', '')), _pr(ql, p.get('_py_init', '')) * 1.05)
+    return None, s
+
 # ── 路径常量（相对项目根，不硬编码绝对路径） ──
 _PLACE_DIR = os.path.join(_ROOT, 'DATA', 'place')
 _ZONE_TYPE_PATH = os.path.join(_PLACE_DIR, 'zone_typology.json')
@@ -333,33 +367,16 @@ class PlaceLayer:
         if not query or len(query.strip()) < 1:
             return []
         q = query.strip()
-        scored = []
+        scored = []   # (score, p)
         for p in self.all_pois:
             name = p['name'] or ''
             if not name:
                 continue
-            if _HAVE_RAPIDFUZZ:
-                s = max(
-                    _rf_fuzz.partial_ratio(q, name),
-                    _rf_fuzz.partial_ratio(q, p.get('baidu_level1', '')) * 0.7,
-                    _rf_fuzz.partial_ratio(q, p.get('baidu_level2', '')) * 0.7,
-                )
-                if _HAVE_PYPINYIN and q.isascii():      # 拼音匹配（拉丁输入）：wd/wanda → 万达
-                    ql = q.lower()
-                    s = max(s,
-                            _rf_fuzz.partial_ratio(ql, p.get('_py_full', '')),
-                            _rf_fuzz.partial_ratio(ql, p.get('_py_init', '')) * 1.05)  # 首字母精准略加权
-            else:
-                s = difflib.SequenceMatcher(None, q, name).ratio() * 100
-                if q in name:
-                    s = max(s, 90.0)
-                if _HAVE_PYPINYIN and q.isascii():
-                    ql = q.lower()
-                    s = max(s,
-                            difflib.SequenceMatcher(None, ql, p.get('_py_full', '')).ratio() * 100,
-                            difflib.SequenceMatcher(None, ql, p.get('_py_init', '')).ratio() * 100)
-            if s >= 55:
-                scored.append((s, p))
+            tier, s = _match_score(q, name, p)
+            if tier is None and s < 55:
+                continue
+            scored.append((s, p))
+        # 分降序；同分保持数据顺序（稳定排序）。tier 分已保证 exact > substring。
         scored.sort(key=lambda t: t[0], reverse=True)
         hits = []
         for s, p in scored[:limit]:
