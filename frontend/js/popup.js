@@ -60,8 +60,8 @@ export function showPopup(feature, colors, colorMode) {
   }
 
   const textEl = document.getElementById('pp-text');
-  textEl.textContent = p.text || '';
-  textEl.title = p.text || '';
+  textEl.textContent = p.text || p.name || '';
+  textEl.title = p.text || p.name || '';
 
   // rows = [key, value, tip?, dim?] —— tip 挂 kv-k 的 title；dim 弱化（坐标同 ID 级小字灰）
   const rows = [];
@@ -72,6 +72,12 @@ export function showPopup(feature, colors, colorMode) {
   if (p.l1_confidence != null) rows.push(['置信度', Number(p.l1_confidence).toFixed(2),
     'L1 治理阶段由 LLM（DeepSeek）判断的数据相关性置信度（0~1）：该条数据与城市规划情绪分析的相关程度。可收集、可复现。']);
   if (Array.isArray(p.keywords) && p.keywords.length) rows.push(['关键词', p.keywords.join('、')]);
+  // POI / 地点属性（导入 pois_wgs84.geojson 等 POI 数据时显示；情绪数据无这些字段、自然跳过）
+  if (p.zone_name) rows.push(['区域', p.zone_name]);
+  if (p.baidu_level1) rows.push(['类别', p.baidu_level1 + (p.baidu_level2 ? ' / ' + p.baidu_level2 : '')]);
+  if (p.area) rows.push(['片区', p.area]);
+  if (p.source) rows.push(['数据源', p.source]);
+  if (p.in_water === true || p.in_water === 'true') rows.push(['落水', '是']);
   const c = feature.geometry && feature.geometry.coordinates;
   const isPoint = !!(c && !Array.isArray(c[0]));
   if (c) rows.push(['坐标', isPoint ? `${c[1].toFixed(6)}, ${c[0].toFixed(6)}` : feature.geometry.type]);   // 6 位精度、不再 dim（核查要清楚）
@@ -87,7 +93,7 @@ export function showPopup(feature, colors, colorMode) {
       if (myToken !== _popupRevToken || popup.hidden) return;   // 过期（已切别的点）/已关 → 丢弃
       const r = res || {};
       const extras = [];
-      if (r.zone_name) extras.push(['区域', r.zone_name]);
+      if (r.zone_name && !p.zone_name) extras.push(['区域', r.zone_name]);   // 静态已有 zone_name 就跳过
       if (r.nearest_poi && r.nearest_poi.name) {
         extras.push(['最近 POI', r.nearest_poi.name + (r.nearest_poi.dist_m != null ? ' · ' + r.nearest_poi.dist_m + 'm' : '')]);
       }
