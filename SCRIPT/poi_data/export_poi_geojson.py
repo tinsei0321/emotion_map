@@ -25,7 +25,7 @@ if _ROOT not in sys.path:
 from core.place_layer import get_place_layer
 from core.utils import safe_print as _safe_print
 
-OUT = os.path.join(_ROOT, 'DATA', 'place', 'pois_wgs84.geojson')
+OUT = os.path.join(_ROOT, 'DATA', 'place', 'pois_wgs84_v2.geojson')
 
 
 def main():
@@ -35,7 +35,7 @@ def main():
         lng, lat = p.get('lng'), p.get('lat')
         if lng is None or lat is None:
             continue
-        zid = pl.resolve_zone(p.get('name', ''), p.get('area', ''), lng, lat)   # name 优先（全市型 zone 按名归）→ 边界 → general
+        zid = pl.classify_point(lng, lat)   # 空间边界优先（不再按 name 模糊匹配——防泛词误归）
         zname = pl.zone_by_id.get(zid, {}).get('name_zh', '')
         feats.append({
             'type': 'Feature',
