@@ -34,11 +34,11 @@ export function showPopup(feature, colors, colorMode) {
   const badge = document.getElementById('pp-polarity');
   const scoreEl = document.getElementById('pp-score');
 
-  if (colorMode === 'needsAnalysis') {        // L0: raw — grey capsule, NO polarity/score written
-    badge.textContent = '';
+  if (colorMode === 'needsAnalysis') {        // L0: raw — grey capsule, label only (no score); matches L1/L2 rhythm
+    badge.textContent = '原始';
     badge.style.background = GREY;
     scoreEl.hidden = true;
-    _emo = { colorMode: 'needsAnalysis' };
+    _emo = { colorMode: 'needsAnalysis', label: '原始' };
   } else if (colorMode === 'confidence') {    // L1: 热度值 = 情绪强度 × 置信度（3 段色）
     const hotness = computeHotness(feature);
     const buckets = (layer && layer.paint && layer.paint.hotnessBuckets) || [0.33, 0.66];
@@ -103,10 +103,10 @@ export function showPopup(feature, colors, colorMode) {
 export function collapsePopup() {
   const popup = emoEl();
   if (!popup || popup.hidden || !_emo) return;
-  // L0 stays a grey empty capsule; L1 shows hotness, L2 shows scoreText.
+  // L0 stays grey '原始' capsule; L1 shows hotness, L2 shows scoreText.
   if (_emo.colorMode === 'confidence') document.getElementById('pp-polarity').textContent = _emo.score.toFixed(2);
   else if (_emo.colorMode === 'polarity') document.getElementById('pp-polarity').textContent = _emo.scoreText;
-  // needsAnalysis: badge already empty grey — leave as-is
+  // needsAnalysis: badge stays '原始' grey — label set in showPopup, no score to condense
   popup.classList.add('is-collapsed');
 }
 export function expandPopup() {
