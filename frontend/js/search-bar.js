@@ -75,13 +75,22 @@ function _hideResults() {
   _hitsFor = '';
 }
 
-function _row(hit, idx, sub) {
+function _hl(name, q) {
+  // 高亮 name 中命中 q 的子串（小写不敏感；拼音查询 q 不在 name 内则不高亮）
+  const e = _esc(name);
+  if (!q) return e;
+  const i = name.toLowerCase().indexOf(q.toLowerCase());
+  if (i < 0) return e;
+  return _esc(name.slice(0, i)) + '<mark>' + _esc(name.slice(i, i + q.length)) + '</mark>' + _esc(name.slice(i + q.length));
+}
+
+function _row(hit, idx, sub, q) {
   const li = document.createElement('li');
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'sb-item';
   btn.dataset.idx = String(idx);
-  const nm = document.createElement('span'); nm.className = 'sb-item-name'; nm.textContent = hit.name;
+  const nm = document.createElement('span'); nm.className = 'sb-item-name'; nm.innerHTML = _hl(hit.name, q);
   const sp = document.createElement('span'); sp.className = 'sb-item-sub'; sp.textContent = sub || '';
   btn.appendChild(nm); btn.appendChild(sp);
   btn.addEventListener('mouseenter', () => { _active = idx; _renderActive(); });
@@ -108,7 +117,7 @@ function _showHistory() {
     const t = document.createElement('li'); t.className = 'sb-section'; t.textContent = '历史';
     _results.appendChild(t);
     _hits = hist;
-    hist.forEach((h, i) => _results.appendChild(_row(h, i, h.zone_name || h.category || '')));
+    hist.forEach((h, i) => _results.appendChild(_row(h, i, h.zone_name || h.category || '', '')));
   }
   _results.hidden = false;
   _active = -1;
@@ -128,7 +137,7 @@ function _showSuggestions(query) {
     } else {
       hits.forEach((h, i) => {
         const sub = h.zone_name || h.address || h.category || '';
-        _results.appendChild(_row(h, i, sub));
+        _results.appendChild(_row(h, i, sub, query));
       });
     }
     _results.hidden = false;

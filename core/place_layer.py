@@ -70,6 +70,23 @@ except Exception:
     import difflib
     _HAVE_RAPIDFUZZ = False
 
+# ── 拼音匹配（中文 POI 模糊搜索：输 wd/wanda → 万达；业界标配）──
+try:
+    from pypinyin import lazy_pinyin as _lazy_pinyin, Style as _PyStyle
+    _HAVE_PYPINYIN = True
+except Exception:
+    _HAVE_PYPINYIN = False
+
+
+def _pinyin_of(name):
+    """name → (连写 pinyin_full, 首字母 pinyin_initial)，小写。无 pypinyin/空名返回 ('','')."""
+    if not _HAVE_PYPINYIN or not name:
+        return '', ''
+    try:
+        return ''.join(_lazy_pinyin(name)).lower(), ''.join(_lazy_pinyin(name, style=_PyStyle.FIRST_LETTER)).lower()
+    except Exception:
+        return '', ''
+
 # ── 路径常量（相对项目根，不硬编码绝对路径） ──
 _PLACE_DIR = os.path.join(_ROOT, 'DATA', 'place')
 _ZONE_TYPE_PATH = os.path.join(_PLACE_DIR, 'zone_typology.json')
@@ -155,6 +172,10 @@ class PlaceLayer:
         self.seed_pois = self._read_pois(_SEED_POI_PATH)
         self.amap_pois = self._read_pois(_AMAP_POI_PATH)
         self.all_pois = self.seed_pois + self.amap_pois
+
+        # 预计算每条 POI 的拼音（连写 + 首字母），供 forward 拼音模糊匹配
+        for _p in self.all_pois:
+            _p['_py_full'], _p['_py_init'] = _pinyin_of(_p.get('name', ''))
 
         # 区边界
         self._build_zone_boundaries()
@@ -323,10 +344,20 @@ class PlaceLayer:
                     _rf_fuzz.partial_ratio(q, p.get('baidu_level1', '')) * 0.7,
                     _rf_fuzz.partial_ratio(q, p.get('baidu_level2', '')) * 0.7,
                 )
+                if _HAVE_PYPINYIN and q.isascii():      # 拼音匹配（拉丁输入）：wd/wanda → 万达
+                    ql = q.lower()
+                    s = max(s,
+                            _rf_fuzz.partial_ratio(ql, p.get('_py_full', '')),
+                            _rf_fuzz.partial_ratio(ql, p.get('_py_init', '')) * 1.05)  # 首字母精准略加权
             else:
                 s = difflib.SequenceMatcher(None, q, name).ratio() * 100
                 if q in name:
                     s = max(s, 90.0)
+                if _HAVE_PYPINYIN and q.isascii():
+                    ql = q.lower()
+                    s = max(s,
+                            difflib.SequenceMatcher(None, ql, p.get('_py_full', '')).ratio() * 100,
+                            difflib.SequenceMatcher(None, ql, p.get('_py_init', '')).ratio() * 100)
             if s >= 55:
                 scored.append((s, p))
         scored.sort(key=lambda t: t[0], reverse=True)

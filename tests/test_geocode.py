@@ -157,3 +157,27 @@ class TestTrackingRegistered:
             'MOD_GEOCODE.D_001', 'MOD_GEOCODE.D_002',
         ):
             assert tid in ids, '未注册: {}'.format(tid)
+
+
+# ── 拼音模糊匹配（Search v2 · Phase D；依赖 pypinyin，缺失则跳过）──
+
+class TestPinyinForward:
+    def test_initial_pinyin_matches_wanda(self):
+        pytest.importorskip('pypinyin')
+        from core.place_layer import get_place_layer
+        pl = get_place_layer()
+        hits = pl.forward('wd', 5)
+        assert any('万达' in h['name'] for h in hits), 'wd 应命中万达（首字母拼音）'
+
+    def test_full_pinyin_matches_wanda(self):
+        pytest.importorskip('pypinyin')
+        from core.place_layer import get_place_layer
+        pl = get_place_layer()
+        hits = pl.forward('wanda', 5)
+        assert any('万达' in h['name'] for h in hits), 'wanda 应命中万达（全拼）'
+
+    def test_chinese_still_matches(self):
+        from core.place_layer import get_place_layer
+        pl = get_place_layer()
+        hits = pl.forward('万达', 5)
+        assert any('万达' in h['name'] for h in hits)

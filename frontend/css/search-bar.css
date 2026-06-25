@@ -127,6 +127,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.sb-item-name mark {                 /* 命中子串高亮：加粗，不改色/底（hover 蓝底下仍清晰） */
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+}
 .sb-item-sub {                                          /* zone_name / category / address */
   font-size: 11px;
   color: var(--geojson-color-text-secondary, #737373);
