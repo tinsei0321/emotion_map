@@ -84,19 +84,56 @@ function _hl(name, q) {
   return _esc(name.slice(0, i)) + '<mark>' + _esc(name.slice(i, i + q.length)) + '</mark>' + _esc(name.slice(i + q.length));
 }
 
-function _row(hit, idx, sub, q) {
+function _row(hit, idx, q) {
   const li = document.createElement('li');
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'sb-item';
   btn.dataset.idx = String(idx);
+
+  // 行 1：名称 + 匹配类型标签
   const nm = document.createElement('span'); nm.className = 'sb-item-name'; nm.innerHTML = _hl(hit.name, q);
-  const sp = document.createElement('span'); sp.className = 'sb-item-sub'; sp.textContent = sub || '';
-  btn.appendChild(nm); btn.appendChild(sp);
+  btn.appendChild(nm);
+
+  // 匹配类型标签（非 fuzzy）
+  const tier = _scoreTier(hit.score);
+  if (tier) {
+    const tag = document.createElement('span'); tag.className = 'sb-tier-tag';
+    tag.textContent = tier; btn.appendChild(tag);
+  }
+
+  // 行 2：zone 色点 + zone_name · address/category
+  const subRow = document.createElement('span'); subRow.className = 'sb-item-sub-row';
+  if (hit.zone_name) {
+    const dot = document.createElement('span'); dot.className = 'sb-zone-dot';
+    if (hit.zone_color) dot.style.backgroundColor = hit.zone_color;
+    subRow.appendChild(dot);
+    const zn = document.createElement('span'); zn.className = 'sb-zone-name'; zn.textContent = hit.zone_name;
+    subRow.appendChild(zn);
+  }
+  const extra = hit.address || hit.category || '';
+  if (extra && extra !== hit.zone_name) {
+    if (subRow.children.length) {
+      const sep = document.createElement('span'); sep.className = 'sb-sub-sep'; sep.textContent = '\xB7';
+      subRow.appendChild(sep);
+    }
+    const ex = document.createElement('span'); ex.className = 'sb-sub-extra'; ex.textContent = extra;
+    subRow.appendChild(ex);
+  }
+  if (subRow.children.length) btn.appendChild(subRow);
+
   btn.addEventListener('mouseenter', () => { _active = idx; _renderActive(); });
   btn.addEventListener('click', (e) => { e.preventDefault(); _navigate(idx); });
   li.appendChild(btn);
   return li;
+}
+
+function _scoreTier(score) {
+  if (score >= 300) return '精确';   // 精确
+  if (score >= 250) return '前缀';   // 前缀
+  if (score >= 220) return '拼音';   // 拼音
+  if (score >= 180) return '子串';   // 子串
+  return '';                                  // fuzzy 不标
 }
 
 function _renderActive() {
@@ -117,7 +154,7 @@ function _showHistory() {
     const t = document.createElement('li'); t.className = 'sb-section'; t.textContent = '历史';
     _results.appendChild(t);
     _hits = hist;
-    hist.forEach((h, i) => _results.appendChild(_row(h, i, h.zone_name || h.category || '', '')));
+    hist.forEach((h, i) => _results.appendChild(_row(h, i, '')));
   }
   _results.hidden = false;
   _active = -1;
@@ -135,10 +172,7 @@ function _showSuggestions(query) {
       const e = document.createElement('li'); e.className = 'sb-empty';
       e.textContent = '无匹配地点'; _results.appendChild(e);
     } else {
-      hits.forEach((h, i) => {
-        const sub = h.zone_name || h.address || h.category || '';
-        _results.appendChild(_row(h, i, sub, query));
-      });
+      hits.forEach((h, i) => _results.appendChild(_row(h, i, query)));
     }
     _results.hidden = false;
     _active = hits.length ? 0 : -1;

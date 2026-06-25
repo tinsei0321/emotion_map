@@ -24,6 +24,7 @@
 | 11 | ✅ | Zone v2.2 — 情绪叙事级联（Stage 2） | `emotion_corpus.json` `snapshot_config.py` `generate_l1_mock.py` `check_spatial.py` `place_keywords.json` | corpus 桶扩 12 zone × 3 极性；zone_caps 重算；mock 打标；check_spatial 适配 |
 | 12 | ✅ | 合并 + 清理 + L0 popup 对齐 | git `main` / `frontend/js/popup.js` | merge feat→main(14 commits)；删 2 分支；main-only 工作流；L0 badge "原始"对齐 L1/L2 节奏 |
 | 13 | ✅ | P2 geocode 离线退化 | `core/place_layer.py` `core/geocode.py` `tests/test_geocode.py` | `forward()` 加 `min_fuzzy_score` 参数；离线时 55→35 返回更多近似命中；pytest 35/37 全过 |
+| 14 | ✅ | P3 下拉结果丰富化 | `core/place_layer.py` `api/schemas.py` `frontend/js/search-bar.js` `frontend/css/search-bar.css` `tests/test_geocode.py` | zone 色点 + 双副信息（zone+地址/类别同时显示）+ 匹配类型标签（精确/前缀/拼音/子串）|
 
 > 💡 开发工作流（solo）: 以后在 main 上直接工作 → `git commit` → `git push`。不做分支/PR。
 

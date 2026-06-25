@@ -118,8 +118,6 @@
 }
 .sb-item:hover .sb-item-name,
 .sb-item.is-active .sb-item-name { color: var(--geojson-color-text-inverse, #ffffff); }
-.sb-item:hover .sb-item-sub,
-.sb-item.is-active .sb-item-sub { color: rgba(255, 255, 255, 0.85); }
 .sb-item-name {
   font-size: var(--geojson-typography-size-xs, 13px);
   color: var(--geojson-color-text, #1a1a1a);
@@ -132,13 +130,52 @@
   color: inherit;
   font-weight: 700;
 }
-.sb-item-sub {                                          /* zone_name / category / address */
+
+/* ── P3 下拉丰富化：匹配类型标签（精确/前缀/拼音/子串） ── */
+.sb-tier-tag {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-size: 9px;
+  padding: 0px 4px;
+  border-radius: 3px;
+  background: var(--geojson-color-gray-100, #f5f5f5);
+  color: var(--geojson-color-text-secondary, #737373);
+  line-height: 1.6;
+}
+.sb-item:hover .sb-tier-tag,
+.sb-item.is-active .sb-tier-tag {
+  background: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ── P3 下拉丰富化：副行 = zone色点 + zone名 · address/category ── */
+.sb-item-sub-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 11px;
   color: var(--geojson-color-text-secondary, #737373);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.sb-item:hover .sb-item-sub-row,
+.sb-item.is-active .sb-item-sub-row { color: rgba(255, 255, 255, 0.78); }
+.sb-zone-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sb-zone-name { white-space: nowrap; }
+.sb-sub-sep { color: var(--geojson-color-gray-300, #ccc); flex-shrink: 0; }
+.sb-sub-extra {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sb-item:hover .sb-sub-sep,
+.sb-item.is-active .sb-sub-sep { color: rgba(255, 255, 255, 0.5); }
 .sb-empty {                              /* 无结果 / 无历史 提示行 */
   padding: 6px 8px;
   font-size: 12px;

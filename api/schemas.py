@@ -95,6 +95,7 @@ class PlaceHit(BaseModel):
     area: str = Field(default="", description="片区（area 字段，审计用）")
     zone_id: str = Field(default="", description="所在叙事区 ID（本地命中时填）")
     zone_name: str = Field(default="", description="所在区中文名（本地命中时填）")
+    zone_color: str = Field(default="", description="zone 颜色 hex（前端色点用）")
     address: str = Field(default="", description="街道地址（高德命中时填）")
     score: float = Field(default=0.0, description="匹配分（本地模糊分；高德=0）")
     source: str = Field(default="local", description="local | amap")

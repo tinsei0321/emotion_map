@@ -411,6 +411,8 @@ class PlaceLayer:
         scored.sort(key=lambda t: t[0], reverse=True)
         hits = []
         for s, p in scored[:limit]:
+            zid = self.resolve_zone(p['name'], p.get('area', ''), p['lng'], p['lat'])
+            zcfg = self.zone_by_id.get(zid, {})
             hits.append({
                 'name': p['name'],
                 'lng': p['lng'],
@@ -419,9 +421,9 @@ class PlaceLayer:
                 'baidu_level1': p.get('baidu_level1', ''),
                 'baidu_level2': p.get('baidu_level2', ''),
                 'area': p.get('area', ''),
-                'zone_id': self.resolve_zone(p['name'], p.get('area', ''), p['lng'], p['lat']),
-                'zone_name': self.zone_by_id.get(
-                    self.resolve_zone(p['name'], p.get('area', ''), p['lng'], p['lat']), {}).get('name_zh', ''),
+                'zone_id': zid,
+                'zone_name': zcfg.get('name_zh', ''),
+                'zone_color': zcfg.get('color', ''),
                 'score': round(s, 1),
                 'source': 'local',
                 'data_source': p.get('source') or 'seed',   # 审计：amap 库 / seed 手标

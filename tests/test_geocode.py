@@ -77,7 +77,9 @@ class TestSearchPlaceLocal:
         h = hits[0]
         assert 'name' in h and 'lng' in h and 'lat' in h
         assert h['source'] == 'local'
-        # 万达应在 wanda_cbd 叙事区（zone_name 非空）
+        # P3: zone_color 字段（前端色点用）
+        assert 'zone_color' in h and h['zone_color'].startswith('#')
+        # 万达应在 wanda_plaza 叙事区（zone_name 非空）
         assert h.get('zone_name', '') != ''
 
     def test_empty_query_returns_empty(self, monkeypatch):
