@@ -35,10 +35,10 @@ export function showPopup(feature, colors, colorMode) {
   const scoreEl = document.getElementById('pp-score');
 
   if (colorMode === 'needsAnalysis') {        // L0: raw — grey capsule, label only (no score); matches L1/L2 rhythm
-    badge.textContent = '原始';
+    badge.textContent = 'L0';
     badge.style.background = GREY;
     scoreEl.hidden = true;
-    _emo = { colorMode: 'needsAnalysis', label: '原始' };
+    _emo = { colorMode: 'needsAnalysis', label: 'L0' };
   } else if (colorMode === 'confidence') {    // L1: 热度值 = 情绪强度 × 置信度（3 段色）
     const hotness = computeHotness(feature);
     const buckets = (layer && layer.paint && layer.paint.hotnessBuckets) || [0.33, 0.66];
