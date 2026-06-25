@@ -79,13 +79,21 @@ except Exception:
 
 
 def _pinyin_of(name):
-    """name → (连写 pinyin_full, 首字母 pinyin_initial)，小写。无 pypinyin/空名返回 ('','')."""
+    """name → (pinyin_full, pinyin_init, pinyin_init_cjk)，小写。
+    init_cjk：去掉名字开头的 ASCII/数字前缀（如 'CBD '）后算首字母——让 'wd'→万达 匹配 'CBD 万达广场'。
+    """
     if not _HAVE_PYPINYIN or not name:
-        return '', ''
+        return '', '', ''
     try:
-        return ''.join(_lazy_pinyin(name)).lower(), ''.join(_lazy_pinyin(name, style=_PyStyle.FIRST_LETTER)).lower()
+        full = ''.join(_lazy_pinyin(name)).lower()
+        init = ''.join(_lazy_pinyin(name, style=_PyStyle.FIRST_LETTER)).lower()
+        # 去前导 ASCII/数字 + 空格 → 只留 CJK 部分的首字母
+        import re
+        cjk_part = re.sub(r'^[a-zA-Z0-9\s]+', '', name)
+        init_cjk = (''.join(_lazy_pinyin(cjk_part, style=_PyStyle.FIRST_LETTER)).lower()) if cjk_part else init
+        return full, init, init_cjk
     except Exception:
-        return '', ''
+        return '', '', ''
 
 
 def _pr(q, s):
@@ -109,7 +117,7 @@ def _match_score(q, name, p):
         return 'prefix', 250.0
     if _HAVE_PYPINYIN and q.isascii():      # pinyin-exact：拉丁 q == 全拼/首字母
         ql = q.lower()
-        if ql == p.get('_py_full', '') or ql == p.get('_py_init', ''):
+        if ql == p.get('_py_full', '') or ql == p.get('_py_init', '') or ql == p.get('_py_init_cjk', ''):
             return 'pinyin-exact', 220.0
     if q in name:
         return 'substring', 180.0 + _pr(q, name) * 0.2   # 子串：基底 180 + 细排
@@ -120,8 +128,9 @@ def _match_score(q, name, p):
         ql = q.lower()
         s = max(s, _pr(ql, p.get('_py_full', '')), _pr(ql, p.get('_py_init', '')) * 1.05)
         # 拼音前缀 boost：q 是拼音首字母/全拼的前缀 → +15（"wd"→万达广场 init="wdgc"）
-        # 不 boost 嵌入匹配（CBD万达→"cbdwdgc"，wd 非前缀）→ 自然低于前缀匹配
-        if p.get('_py_init', '').startswith(ql) or p.get('_py_full', '').startswith(ql):
+        # 同时 check _py_init_cjk（去前导 ASCII——"CBD 万达广场"→"wdgc" 也能匹配 "wd"）
+        if (p.get('_py_init', '').startswith(ql) or p.get('_py_full', '').startswith(ql)
+                or p.get('_py_init_cjk', '').startswith(ql)):
             s += 15
     return None, s
 
@@ -216,7 +225,7 @@ class PlaceLayer:
 
         # 预计算每条 POI 的拼音（连写 + 首字母），供 forward 拼音模糊匹配
         for _p in self.all_pois:
-            _p['_py_full'], _p['_py_init'] = _pinyin_of(_p.get('name', ''))
+            _p['_py_full'], _p['_py_init'], _p['_py_init_cjk'] = _pinyin_of(_p.get('name', ''))
 
         # 预算每个 POI 是否落在现状水系内（forward 过滤；导航到江里是错的）
         self._water = _load_geojson_poly(_WATER_POLY_PATH)
