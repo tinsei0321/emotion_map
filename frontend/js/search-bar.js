@@ -11,6 +11,7 @@
 
 import { getMap } from './map.js';
 import { searchPlaces } from './api.js';
+import { showPointPopup, expandPointPopup, collapsePointPopup } from './popup.js';
 
 const HISTORY_KEY = 'emotion-map:search-history';
 const HISTORY_MAX = 8;
@@ -145,9 +146,33 @@ function _showSuggestions(query) {
 
 // ── 导航（选中结果）──
 
+let _markerEl = null;      // 标记 DOM 元素（自定义红大头针）
+let _markerActive = false;
+let _pointTooltip = null;  // 标记 hover tooltip
+let _curHit = null;        // 当前导航的 hit（tooltip 用）
+
+function _hidePointTooltip() {
+  if (_pointTooltip) { _pointTooltip.remove(); _pointTooltip = null; }
+}
+
+function _setMarkerActive(on) {
+  _markerActive = on;
+  if (_markerEl) _markerEl.classList.toggle('is-active', on);
+}
+
+function _pushpinSvg() {
+  // 红色大头针（22×30，anchor bottom：尖端贴坐标）
+  return '<svg class="search-pin" width="22" height="30" viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">'
+    + '<path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20C24 5.4 18.6 0 12 0z" fill="#e53935" stroke="#b71c1c" stroke-width="1"/>'
+    + '<circle cx="12" cy="12" r="5" fill="#ffffff"/></svg>';
+}
+
 function _clearMarker() {
   if (_marker) { _marker.remove(); _marker = null; }
   if (_popup) { _popup.remove(); _popup = null; }
+  _hidePointTooltip();
+  _markerEl = null;
+  _markerActive = false;
 }
 
 function _navigate(idx) {
@@ -158,16 +183,30 @@ function _navigate(idx) {
   _hideResults();
   _pushHistory(hit);
   _setState('navigating');
-  if (map) {
-    map.flyTo({ center: [hit.lng, hit.lat], zoom: 16, essential: true });   // WGS84 直接用（红线 #2 服务端已转）
-    _clearMarker();
-    const lngLat = [hit.lng, hit.lat];
-    _popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 18, className: 'place-chip' })
-      .setHTML('<span class="pc-zone">' + _esc(hit.name) + '</span>'
-        + (hit.zone_name ? '<span class="pc-poi">' + _esc(hit.zone_name) + '</span>' : ''))
-      .setLngLat(lngLat).addTo(map);
-    _marker = new maplibregl.Marker().setLngLat(lngLat).addTo(map);
-  }
+  _curHit = hit;
+  if (!map) return;
+  map.flyTo({ center: [hit.lng, hit.lat], zoom: 16, essential: true });   // WGS84 直接用（红线 #2 服务端已转）
+  _clearMarker();
+  // 自定义红色大头针标记（一次一个：_clearMarker 已清旧）
+  const el = document.createElement('div');
+  el.className = 'search-marker';
+  el.innerHTML = _pushpinSvg();
+  el.addEventListener('mouseenter', () => {
+    if (!_curHit) return;
+    if (!_pointTooltip) _pointTooltip = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: 'point-tooltip', offset: 34 });
+    _pointTooltip.setHTML('<div class="pt-name">' + _esc(_curHit.name) + '</div>')
+      .setLngLat([_curHit.lng, _curHit.lat]).addTo(map);
+  });
+  el.addEventListener('mouseleave', _hidePointTooltip);
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();   // 不冒泡到 map（防 map-click 收起）
+    if (_markerActive) { _setMarkerActive(false); collapsePointPopup(); }
+    else { _setMarkerActive(true); expandPointPopup(); }
+  });
+  _markerEl = el;
+  _marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([hit.lng, hit.lat]).addTo(map);
+  _setMarkerActive(true);          // 导航后放大凸出
+  showPointPopup(hit);             // Point 卡展开
 }
 
 async function _enterNavigate() {
@@ -298,4 +337,8 @@ export function initSearchBar() {
       else _input.select();
     }
   });
+
+  // Point 卡外部信号（popup.js 派发）：collapse→缩标记；hide→移除标记
+  document.addEventListener('point:collapse', () => _setMarkerActive(false));
+  document.addEventListener('point:hide', () => _clearMarker());
 }

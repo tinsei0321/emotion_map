@@ -147,21 +147,28 @@
   letter-spacing: 0.04em;
 }
 
-/* ── 反查 chip（空白点击 → MapLibre Popup.place-chip） ── */
-.place-chip .maplibre-popup-content {
-  padding: 4px 10px;
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--geojson-color-text, #1a1a1a);
+/* ── 搜索结果标记：红色大头针（自定义 MapLibre Marker element） ── */
+.search-marker {
+  cursor: pointer;
+  pointer-events: auto;
 }
-.place-chip .maplibre-popup-tip { display: none; }       /* 无小尖角，纯胶囊 */
-.place-chip .pc-zone { font-weight: 600; }
-.place-chip .pc-poi {
+.search-pin {
   display: block;
-  margin-top: 1px;
-  color: var(--geojson-color-text-secondary, #737373);
-  font-weight: 400;
+  transform: scale(1);
+  transform-origin: bottom center;          /* 缩放以尖端为原点，定位不漂 */
+  transition: transform var(--geojson-transition);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
 }
+.search-marker.is-active .search-pin { transform: scale(1.35); }   /* 导航/展开态放大凸出 */
+
+/* ── 标记 hover tooltip（仅地名，镜像 .range-tooltip 简洁样式） ── */
+.point-tooltip .maplibregl-popup-content {
+  padding: 3px 8px;
+  font-size: var(--geojson-typography-size-xs, 12px);
+  background: var(--geojson-color-chrome-title-bar-bg, #0c1c2e);
+  color: #fff;
+  border-radius: var(--geojson-radius-sm, 4px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+.point-tooltip .maplibregl-popup-tip { border-top-color: var(--geojson-color-chrome-title-bar-bg, #0c1c2e); }
+.point-tooltip .pt-name { white-space: nowrap; }
