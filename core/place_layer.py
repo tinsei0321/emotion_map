@@ -119,6 +119,10 @@ def _match_score(q, name, p):
     if _HAVE_PYPINYIN and q.isascii():
         ql = q.lower()
         s = max(s, _pr(ql, p.get('_py_full', '')), _pr(ql, p.get('_py_init', '')) * 1.05)
+        # 拼音前缀 boost：q 是拼音首字母/全拼的前缀 → +15（"wd"→万达广场 init="wdgc"）
+        # 不 boost 嵌入匹配（CBD万达→"cbdwdgc"，wd 非前缀）→ 自然低于前缀匹配
+        if p.get('_py_init', '').startswith(ql) or p.get('_py_full', '').startswith(ql):
+            s += 15
     return None, s
 
 # ── 路径常量（相对项目根，不硬编码绝对路径） ──
