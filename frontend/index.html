@@ -27,6 +27,7 @@
   <link rel="stylesheet" href="css/map-controls.css" />
   <link rel="stylesheet" href="css/toast.css" />
   <link rel="stylesheet" href="css/settings.css" />
+  <link rel="stylesheet" href="css/param-panel.css" />
   <link rel="stylesheet" href="css/search-bar.css" />
 </head>
 <body>
@@ -241,6 +242,224 @@
     <!-- 折叠/展开按钮（面板边缘竖向中点，显眼版） -->
     <button class="collapse-btn collapse-left" data-side="left" title="折叠/展开左侧栏">&#8249;</button>
     <button class="collapse-btn collapse-right" data-side="right" title="折叠/展开右侧栏">&#8249;</button>
+
+    <!-- ═══ Parameter panel (B4) — 紧贴 #left-panel 右缘；左=点/线/面样式 + 右=分析(核密度|Buffer) ═══ -->
+    <aside id="param-panel" aria-hidden="true">
+      <div class="pp-head">
+        <span class="pp-title">参数 / Parameters</span>
+        <button class="pp-close" id="pp-close" title="关闭" aria-label="关闭">&times;</button>
+      </div>
+      <div class="pp-body">
+
+        <!-- 左栏：点/线/面 样式参数（settings.js build() 填充 #settings-popover；空态 CSS 占位） -->
+        <div class="pp-col pp-col-left">
+          <div id="settings-popover"></div>
+        </div>
+
+        <div class="pp-divider" aria-hidden="true"></div>
+
+        <!-- 右栏：分析参数（核密度 / Buffer 子页签；id 保持 #heatmap-dialog/#buffer-dialog，apply 链零改） -->
+        <div class="pp-col pp-col-right">
+          <div class="pp-tabs" role="tablist">
+            <button class="pp-tab is-active" data-pp-tab="heatmap" role="tab">核密度</button>
+            <button class="pp-tab" data-pp-tab="buffer" role="tab">Buffer</button>
+          </div>
+
+          <div class="pp-pane" data-pp-pane="heatmap" role="tabpanel">
+            <div id="heatmap-dialog" class="app-dialog hm-dialog">
+              <div class="dialog-body">
+
+                <!-- ① 选择分析类型（强引导入口：选类型即套推荐默认；卡片悬停弹出图+文 infopanel） -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">分析类型</span></div>
+                  <div class="hm-analysis" id="hm-analysis"><!-- 类型卡 by JS --></div>
+                </div>
+
+                <!-- ② 选择数据源（数据 / 极性下拉；类型 / 表现 胶囊可折叠） -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">2</span><span class="hm-step-label">数据源</span></div>
+                  <div class="hm-section">
+                    <div class="hm-label">数据</div>
+                    <select class="sec-select" id="hm-level"></select>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">特性</div>
+                    <select class="sec-select" id="hm-subset">
+                      <option value="ALL" selected>综合</option>
+                      <option value="P">积极</option>
+                      <option value="N">消极</option>
+                      <option value="O">中性</option>
+                    </select>
+                  </div>
+
+                  <!-- 类型（7 大类胶囊；默认展开；颜色填充无线框；选项 hover 弹 popup 提示） -->
+                  <details class="hm-fold" id="hm-macro-fold" open>
+                    <summary class="hm-fold-summary">
+                      <span class="hm-fold-arrow">▶</span>
+                      <span class="hm-fold-label">类型</span>
+                      <span class="hm-fold-spacer"></span>
+                      <span class="hm-fold-summary-cnt" id="hm-macro-cnt"></span>
+                    </summary>
+                    <div class="hm-macro-filter" id="hm-macros"><!-- 大类胶囊 by JS --></div>
+                  </details>
+
+                  <!-- 表现（小类胶囊；默认展开；按数据动态归纳；选中粗蓝框+浅灰） -->
+                  <details class="hm-fold" id="hm-type-fold" open>
+                    <summary class="hm-fold-summary">
+                      <span class="hm-fold-arrow">▶</span>
+                      <span class="hm-fold-label">表现</span>
+                      <span class="hm-info" data-tip="情绪小类（按当前数据动态归纳，无固定数量）。是大类的具体表现；选大类会自动选中其下所有小类。">i</span>
+                      <span class="hm-fold-spacer"></span>
+                      <span class="hm-fold-summary-cnt" id="hm-type-cnt"></span>
+                    </summary>
+                    <div class="hm-type-filter" id="hm-types"><!-- 小类胶囊 by JS --></div>
+                  </details>
+                </div>
+
+                <!-- ③ 色板预览（随①+②自动；只读，不再手选） -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">3</span><span class="hm-step-label">显示样式</span></div>
+                  <div class="hm-section">
+                    <div class="hm-style-list" id="hm-styles"><!-- 色板选择（栏语义，默认选中当前色板） by JS --></div>
+                  </div>
+                </div>
+
+                <!-- 高级（默认折叠；含半径/透明度/权重/曲线/强度/阈值/缩放范围） -->
+                <details class="hm-advanced" id="hm-advanced">
+                  <summary>高级 / Advanced</summary>
+                  <div class="hm-section">
+                    <div class="hm-label" id="hm-radius-label">半径 / Radius <span class="hm-val" id="hm-radius-val">300 m</span></div>
+                    <input type="range" class="set-range" id="hm-radius" min="50" max="2000" value="300" step="10">
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">透明度 / Opacity <span class="hm-val" id="hm-opacity-val">70%</span></div>
+                    <input type="range" class="set-range" id="hm-opacity" min="0" max="100" value="70" step="1">
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">权重字段 / Weight</div>
+                    <select class="sec-select" id="hm-weight-field">
+                      <option value="emotion_intensity" selected>emotion_intensity（情绪强度，推荐）</option>
+                      <option value="score">score（情绪分数）</option>
+                      <option value="l2_confidence">l2_confidence（置信度）</option>
+                      <option value="uniform">uniform（等权重）</option>
+                    </select>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">权重曲线 / Curve</div>
+                    <select class="sec-select" id="hm-curve">
+                      <option value="linear" selected>线性正向（高值越热）</option>
+                      <option value="linear-inverse">线性反转（低值越热，配 score）</option>
+                      <option value="exponential">指数正向（高值急剧加热）</option>
+                      <option value="exponential-inverse">指数反转（低值急剧加热）</option>
+                    </select>
+                    <div class="hm-hint" id="hm-curve-hint">当前：值越高 → 权重越高 → 颜色越热（推荐配 emotion_intensity）</div>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">强度系数 / Intensity <span class="hm-val" id="hm-intensity-val">1.0</span></div>
+                    <input type="range" class="set-range" id="hm-intensity" min="0" max="3" value="1" step="0.1">
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">强度阈值 / Min Intensity <span class="hm-val" id="hm-int-min-val">0.00</span></div>
+                    <input type="range" class="set-range" id="hm-int-min" min="0" max="1" value="0" step="0.05">
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">可见缩放范围</div>
+                    <div class="hm-zoom-range">
+                      <span>Min Zoom</span>
+                      <input type="range" class="set-range" id="hm-minzoom" min="0" max="22" value="0" step="1">
+                      <span class="hm-val" id="hm-minzoom-val">0</span>
+                      <span>Max Zoom</span>
+                      <input type="range" class="set-range" id="hm-maxzoom" min="0" max="22" value="22" step="1">
+                      <span class="hm-val" id="hm-maxzoom-val">22</span>
+                    </div>
+                  </div>
+                </details>
+
+              </div>
+              <div class="dialog-foot">
+                <button class="sec-btn sec-cancel" data-close>取消</button>
+                <div class="hm-generate-row" id="hm-generate-row"><!-- 生成按钮 by JS（2D/3D 拆分） --></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pp-pane" data-pp-pane="buffer" role="tabpanel" hidden>
+            <div id="buffer-dialog" class="app-dialog hm-dialog">
+              <div class="dialog-body">
+
+                <!-- ① 输入图层（缓冲对象：已加载的点/线/面图层，整层缓冲） -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">输入图层</span></div>
+                  <div class="hm-section">
+                    <div class="hm-label">设施图层（整层缓冲） <span class="hm-info" data-tip="选一个已加载的点/线/面图层作为缓冲对象。地图数据均统一为 WGS84，源 CRS（投影 shp / 地理坐标）在导入时已消解。">i</span></div>
+                    <select class="sec-select" id="buf-layer"></select>
+                  </div>
+                </div>
+
+                <!-- ② 缓冲参数（距离手动输入 + 滑块 + 预设 + Dissolve） -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">2</span><span class="hm-step-label">缓冲参数</span></div>
+                  <div class="hm-section">
+                    <div class="hm-label buf-dist-label">
+                      <span>缓冲距离</span>
+                      <span class="buf-dist-controls">
+                        <input type="number" class="buf-num" id="buf-distance-num" value="1000" min="0" step="50">
+                        <span class="buf-unit">m</span>
+                      </span>
+                    </div>
+                    <input type="range" class="set-range" id="buf-distance" min="50" max="5000" value="1000" step="50">
+                    <div class="buf-presets" id="buf-presets">
+                      <button type="button" class="buf-preset" data-dist="100">100</button>
+                      <button type="button" class="buf-preset" data-dist="300">300</button>
+                      <button type="button" class="buf-preset" data-dist="500">500</button>
+                      <button type="button" class="buf-preset" data-dist="800">800</button>
+                      <button type="button" class="buf-preset" data-dist="1000">1000</button>
+                    </div>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">Dissolve（合并） <span class="hm-info" data-tip="各自独立=每个设施单独缓冲，便于对比；合并覆盖区=unary_union 成一片，看总覆盖与服务盲区。">i</span></div>
+                    <div class="buf-radio-row">
+                      <label class="buf-radio"><input type="radio" name="buf-dissolve" value="false" checked> 各自独立</label>
+                      <label class="buf-radio"><input type="radio" name="buf-dissolve" value="true"> 合并覆盖区</label>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ③ 显示样式（线型 / 线宽 / 颜色 / 填充透明度；轮廓与填充同色） -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">3</span><span class="hm-step-label">显示样式</span></div>
+                  <div class="hm-section">
+                    <div class="hm-label">线型</div>
+                    <div class="buf-capsules" id="buf-linestyle">
+                      <button type="button" class="buf-cap is-sel" data-linestyle="solid">实线</button>
+                      <button type="button" class="buf-cap" data-linestyle="dashed">虚线</button>
+                    </div>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">线宽 <span class="hm-val" id="buf-linewidth-val">1 px</span></div>
+                    <input type="range" class="set-range" id="buf-linewidth" min="1" max="8" value="1" step="1">
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">颜色 <span class="hm-info" data-tip="轮廓与填充同色。预设可选，不自由调色（与 L0 点一致）。">i</span></div>
+                    <div class="swatch-list" id="buf-color-list"><!-- swatches by JS --></div>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">填充透明度 <span class="hm-val" id="buf-opacity-val">15%</span></div>
+                    <input type="range" class="set-range" id="buf-opacity" min="0" max="100" value="15" step="5">
+                  </div>
+                </div>
+
+              </div>
+              <div class="dialog-foot">
+                <button class="btn btn-secondary" data-close>取消</button>
+                <button class="btn btn-primary" id="buf-generate">生成缓冲区</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </aside>
   </main>
 
   <!-- Legend + popup 已移入 #map（右下/右上，随 #map 跟随左右栏） -->
@@ -257,206 +476,7 @@
     </div>
   </div>
 
-  <!-- ═══ Settings popover (layer 要素按钮) — built by settings.js ═══ -->
-  <div id="settings-popover" hidden></div>
-
-  <!-- ═══ HeatMap parameter dialog ═══ -->
-  <dialog id="heatmap-dialog" class="app-dialog hm-dialog">
-    <div class="dialog-head">
-      <span class="dialog-title">HeatMap · 核密度分析</span>
-      <button class="dialog-close" data-close>&times;</button>
-    </div>
-    <div class="dialog-body">
-
-      <!-- ① 选择分析类型（强引导入口：选类型即套推荐默认；卡片悬停弹出图+文 infopanel） -->
-      <div class="hm-group">
-        <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">分析类型</span></div>
-        <div class="hm-analysis" id="hm-analysis"><!-- 类型卡 by JS --></div>
-      </div>
-
-      <!-- ② 选择数据源（数据 / 极性下拉；类型 / 表现 胶囊可折叠） -->
-      <div class="hm-group">
-        <div class="hm-group-title"><span class="hm-step-no">2</span><span class="hm-step-label">数据源</span></div>
-        <div class="hm-section">
-          <div class="hm-label">数据</div>
-          <select class="sec-select" id="hm-level"></select>
-        </div>
-        <div class="hm-section">
-          <div class="hm-label">特性</div>
-          <select class="sec-select" id="hm-subset">
-            <option value="ALL" selected>综合</option>
-            <option value="P">积极</option>
-            <option value="N">消极</option>
-            <option value="O">中性</option>
-          </select>
-        </div>
-
-        <!-- 类型（7 大类胶囊；默认展开；颜色填充无线框；选项 hover 弹 popup 提示） -->
-        <details class="hm-fold" id="hm-macro-fold" open>
-          <summary class="hm-fold-summary">
-            <span class="hm-fold-arrow">▶</span>
-            <span class="hm-fold-label">类型</span>
-            <span class="hm-fold-spacer"></span>
-            <span class="hm-fold-summary-cnt" id="hm-macro-cnt"></span>
-          </summary>
-          <div class="hm-macro-filter" id="hm-macros"><!-- 大类胶囊 by JS --></div>
-        </details>
-
-        <!-- 表现（小类胶囊；默认展开；按数据动态归纳；选中粗蓝框+浅灰） -->
-        <details class="hm-fold" id="hm-type-fold" open>
-          <summary class="hm-fold-summary">
-            <span class="hm-fold-arrow">▶</span>
-            <span class="hm-fold-label">表现</span>
-            <span class="hm-info" data-tip="情绪小类（按当前数据动态归纳，无固定数量）。是大类的具体表现；选大类会自动选中其下所有小类。">i</span>
-            <span class="hm-fold-spacer"></span>
-            <span class="hm-fold-summary-cnt" id="hm-type-cnt"></span>
-          </summary>
-          <div class="hm-type-filter" id="hm-types"><!-- 小类胶囊 by JS --></div>
-        </details>
-      </div>
-
-      <!-- ③ 色板预览（随①+②自动；只读，不再手选） -->
-      <div class="hm-group">
-        <div class="hm-group-title"><span class="hm-step-no">3</span><span class="hm-step-label">显示样式</span></div>
-        <div class="hm-section">
-          <div class="hm-style-list" id="hm-styles"><!-- 色板选择（栏语义，默认选中当前色板） by JS --></div>
-        </div>
-      </div>
-
-      <!-- 高级（默认折叠；含半径/透明度/权重/曲线/强度/阈值/缩放范围） -->
-      <details class="hm-advanced" id="hm-advanced">
-        <summary>高级 / Advanced</summary>
-        <div class="hm-section">
-          <div class="hm-label" id="hm-radius-label">半径 / Radius <span class="hm-val" id="hm-radius-val">300 m</span></div>
-          <input type="range" class="set-range" id="hm-radius" min="50" max="2000" value="300" step="10">
-        </div>
-        <div class="hm-section">
-          <div class="hm-label">透明度 / Opacity <span class="hm-val" id="hm-opacity-val">70%</span></div>
-          <input type="range" class="set-range" id="hm-opacity" min="0" max="100" value="70" step="1">
-        </div>
-        <div class="hm-section">
-          <div class="hm-label">权重字段 / Weight</div>
-          <select class="sec-select" id="hm-weight-field">
-            <option value="emotion_intensity" selected>emotion_intensity（情绪强度，推荐）</option>
-            <option value="score">score（情绪分数）</option>
-            <option value="l2_confidence">l2_confidence（置信度）</option>
-            <option value="uniform">uniform（等权重）</option>
-          </select>
-        </div>
-        <div class="hm-section">
-          <div class="hm-label">权重曲线 / Curve</div>
-          <select class="sec-select" id="hm-curve">
-            <option value="linear" selected>线性正向（高值越热）</option>
-            <option value="linear-inverse">线性反转（低值越热，配 score）</option>
-            <option value="exponential">指数正向（高值急剧加热）</option>
-            <option value="exponential-inverse">指数反转（低值急剧加热）</option>
-          </select>
-          <div class="hm-hint" id="hm-curve-hint">当前：值越高 → 权重越高 → 颜色越热（推荐配 emotion_intensity）</div>
-        </div>
-        <div class="hm-section">
-          <div class="hm-label">强度系数 / Intensity <span class="hm-val" id="hm-intensity-val">1.0</span></div>
-          <input type="range" class="set-range" id="hm-intensity" min="0" max="3" value="1" step="0.1">
-        </div>
-        <div class="hm-section">
-          <div class="hm-label">强度阈值 / Min Intensity <span class="hm-val" id="hm-int-min-val">0.00</span></div>
-          <input type="range" class="set-range" id="hm-int-min" min="0" max="1" value="0" step="0.05">
-        </div>
-        <div class="hm-section">
-          <div class="hm-label">可见缩放范围</div>
-          <div class="hm-zoom-range">
-            <span>Min Zoom</span>
-            <input type="range" class="set-range" id="hm-minzoom" min="0" max="22" value="0" step="1">
-            <span class="hm-val" id="hm-minzoom-val">0</span>
-            <span>Max Zoom</span>
-            <input type="range" class="set-range" id="hm-maxzoom" min="0" max="22" value="22" step="1">
-            <span class="hm-val" id="hm-maxzoom-val">22</span>
-          </div>
-        </div>
-      </details>
-
-    </div>
-    <div class="dialog-foot">
-      <button class="sec-btn sec-cancel" data-close>取消</button>
-      <div class="hm-generate-row" id="hm-generate-row"><!-- 生成按钮 by JS（2D/3D 拆分） --></div>
-    </div>
-  </dialog>
-
-  <!-- ═══ Buffer parameter dialog（覆盖范围分析，镜像 HeatMap 3 段） ═══ -->
-  <dialog id="buffer-dialog" class="app-dialog hm-dialog">
-    <div class="dialog-head">
-      <span class="dialog-title">Buffer · 覆盖范围分析</span>
-      <button class="dialog-close" data-close>&times;</button>
-    </div>
-    <div class="dialog-body">
-
-      <!-- ① 输入图层（缓冲对象：已加载的点/线/面图层，整层缓冲） -->
-      <div class="hm-group">
-        <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">输入图层</span></div>
-        <div class="hm-section">
-          <div class="hm-label">设施图层（整层缓冲） <span class="hm-info" data-tip="选一个已加载的点/线/面图层作为缓冲对象。地图数据均统一为 WGS84，源 CRS（投影 shp / 地理坐标）在导入时已消解。">i</span></div>
-          <select class="sec-select" id="buf-layer"></select>
-        </div>
-      </div>
-
-      <!-- ② 缓冲参数（距离手动输入 + 滑块 + 预设 + Dissolve） -->
-      <div class="hm-group">
-        <div class="hm-group-title"><span class="hm-step-no">2</span><span class="hm-step-label">缓冲参数</span></div>
-        <div class="hm-section">
-          <div class="hm-label buf-dist-label">
-            <span>缓冲距离</span>
-            <span class="buf-dist-controls">
-              <input type="number" class="buf-num" id="buf-distance-num" value="1000" min="0" step="50">
-              <span class="buf-unit">m</span>
-            </span>
-          </div>
-          <input type="range" class="set-range" id="buf-distance" min="50" max="5000" value="1000" step="50">
-          <div class="buf-presets" id="buf-presets">
-            <button type="button" class="buf-preset" data-dist="100">100</button>
-            <button type="button" class="buf-preset" data-dist="300">300</button>
-            <button type="button" class="buf-preset" data-dist="500">500</button>
-            <button type="button" class="buf-preset" data-dist="800">800</button>
-            <button type="button" class="buf-preset" data-dist="1000">1000</button>
-          </div>
-        </div>
-        <div class="hm-section">
-          <div class="hm-label">Dissolve（合并） <span class="hm-info" data-tip="各自独立=每个设施单独缓冲，便于对比；合并覆盖区=unary_union 成一片，看总覆盖与服务盲区。">i</span></div>
-          <div class="buf-radio-row">
-            <label class="buf-radio"><input type="radio" name="buf-dissolve" value="false" checked> 各自独立</label>
-            <label class="buf-radio"><input type="radio" name="buf-dissolve" value="true"> 合并覆盖区</label>
-          </div>
-        </div>
-      </div>
-
-      <!-- ③ 显示样式（线型 / 线宽 / 颜色 / 填充透明度；轮廓与填充同色） -->
-      <div class="hm-group">
-        <div class="hm-group-title"><span class="hm-step-no">3</span><span class="hm-step-label">显示样式</span></div>
-        <div class="hm-section">
-          <div class="hm-label">线型</div>
-          <div class="buf-capsules" id="buf-linestyle">
-            <button type="button" class="buf-cap is-sel" data-linestyle="solid">实线</button>
-            <button type="button" class="buf-cap" data-linestyle="dashed">虚线</button>
-          </div>
-        </div>
-        <div class="hm-section">
-          <div class="hm-label">线宽 <span class="hm-val" id="buf-linewidth-val">1 px</span></div>
-          <input type="range" class="set-range" id="buf-linewidth" min="1" max="8" value="1" step="1">
-        </div>
-        <div class="hm-section">
-          <div class="hm-label">颜色 <span class="hm-info" data-tip="轮廓与填充同色。预设可选，不自由调色（与 L0 点一致）。">i</span></div>
-          <div class="swatch-list" id="buf-color-list"><!-- swatches by JS --></div>
-        </div>
-        <div class="hm-section">
-          <div class="hm-label">填充透明度 <span class="hm-val" id="buf-opacity-val">15%</span></div>
-          <input type="range" class="set-range" id="buf-opacity" min="0" max="100" value="15" step="5">
-        </div>
-      </div>
-
-    </div>
-    <div class="dialog-foot">
-      <button class="btn btn-secondary" data-close>取消</button>
-      <button class="btn btn-primary" id="buf-generate">生成缓冲区</button>
-    </div>
-  </dialog>
+  <!-- B4: settings/heatmap/buffer 参数控件已迁入 #param-panel（见 #app-main 内） -->
 
   <!-- ═══ Modal dialog (Export) ═══ -->
   <dialog id="modal-export" class="app-dialog">

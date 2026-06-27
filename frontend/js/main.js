@@ -12,6 +12,7 @@ import {
 import { openImportDialog } from './dialog.js';
 import { initHeatmapTool } from './heatmap-tool.js';
 import { initBufferTool } from './buffer-tool.js';
+import { initParamPanel } from './param-panel.js';
 import { initDrawTool, startDraw, stopDraw } from './draw-tool.js';
 import { initHeatmapLegend } from './heatmap-legend.js';
 import { initSearchBar } from './search-bar.js';
@@ -213,6 +214,7 @@ function main() {
   initSidebar({ onFiles: runImport, onRangeFiles: runRangeImport });
   initHeatmapTool();
   initBufferTool();
+  initParamPanel();
   initSearchBar();
   initDrawTool(map);
   initHeatmapLegend();

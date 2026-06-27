@@ -17,8 +17,9 @@
 | 4 | ✅ | B2 左下 3 按钮集 | `js/map-controls.js` `css/map-controls.css` | 指针/测量/图层纵列于 5 按钮簇上方；initToolbar 选择器自动绑；measure 占位 |
 | 5 | ✅ | B3 左端栏三区 + B6 随动复核 | `index.html` `js/sidebar.js` `css/sidebar.css` `css/layout.css` `css/tokens.css` | 手风琴→tab 互斥（Range/Layers/Toolbox）；删 Analysis/+Upload Range；区2 工具栏（初版深灰，row 6 修订为白底）；默认宽 240px；B6 Playwright 验左簇跟随零改动 |
 | 6 | ✅ | B3·区2 工具栏修订（按参考截图） | `index.html` `js/sidebar.js` `css/sidebar.css` | 配色翻转：深灰底→白底+#384555图标+hover；顺序 [+][文件夹][方片叠加][眼睛][垃圾桶]…[漏斗 计数]；新增 #lp-add/#lp-group 占位；补漏斗 SVG；计数 textContent→querySelector 避免冲掉 svg |
+| 7 | ✅ | B4 左端参数弹出栏 | `index.html` `js/param-panel.js` `js/settings.js` `js/heatmap-tool.js` `js/buffer-tool.js` `js/main.js` `css/param-panel.css` | 三参数入口（样式/核密度/Buffer）独立浮窗→统一 `#param-panel`（紧贴左栏右缘 + 随动 + 不可拖宽 + 默认隐藏）；1:2 分栏（左=样式 / 右=分析 子页签）+ 中灰 2px 竖线 + 右上 X；`<dialog>`→`<div>`、id 全保留，仅 showModal→面板显隐，**apply 链零改**；决策①核密度拍平单滚动 ②底图保留 top-right；Playwright 全链路验证（含核密度真生成） |
 
-> 💡 B3（含区2 修订）+B6 完成 → 下一步 B4 左端弹出栏（heatmap 向导重排，重，建议另起会话）→ B5 色板圆角 → A2 UI 层文档。
+> 💡 B3+B4+B6 完成 → 下一步 B5 色板圆角矩形（`.swatch` + 全局 `#4285F4`/`#384555` 消费方查漏）→ A2 UI 层文档（ADR-016 + spec §3.4）。
 
 ### 📝 开发日志
 
@@ -41,7 +42,7 @@
 - **showLayerManager 适配**：原依赖 `.lp-section[data-section="layers"]` 加 `.open`，三区重构后改调 `setActiveTab('layers')`——重构结构性改动必须 grep 旧选择器的所有消费方。
 
 #### 🔜 下一步（新会话）
-- **B4 左端弹出栏**（优先，但重——heatmap-tool.js 975 行 3 步向导需重排进 1:2 分栏，建议单独会话）：紧贴 `#left-panel` 右缘、不可拖宽，点要素按钮/核密度才弹；复用 `applyPaint`/`generateHeatmap`/`generateBuffer` 逻辑，仅迁挂载点；**待决策**=heatmap 3 步拍平 vs 保留步骤导航、`#basemap-popover` 去留。
+- **B4 左端弹出栏**（✅ 已完成）：紧贴 `#left-panel` 右缘的 `#param-panel`（absolute `left:var(--left-w)` 随动 B6 机制、不可拖宽、默认隐藏），1:2 分栏（左=点/线/面样式 `#settings-popover` / 右=核密度·Buffer 子页签）+ 中灰 2px 竖线 + 右上 X。三模块 `<dialog>`→`<div>`、id 全保留，open/close 由 `showModal()`→`openParamPanel()/closeParamPanel()`（新 `param-panel.js` 编排显隐+页签+outside-click/Escape），**apply 链零改**（`applyPaint`/`generateHeatmap`/`generateBuffer` + 读值选择器一字未动）。**决策已锁**：①核密度 3 段拍平单滚动（不引入步骤导航）②`#basemap-popover` 保留 top-right。Playwright 全链路验证通过：paint 实时生效、核密度真生成（图层 4→5 + 热力图例）、buffer 填充、tab 切换、X/Escape 关闭；零 JS 错误。
 - B5 色板圆角（`settings.css:115` `.swatch` 50%→圆角矩形 + `panel.css` `.ov-swatch`/`.stat-cell` 同步）+ 全局色彩消费方查漏（如 `sidebar.css:530` `.layer-row.is-selected` 仍 `rgba(0,122,252)` 待改 `#4285F4`）。
 - A2 UI 层文档：ADR-016 + spec §3.4 + ui-redesign-plan Phase4 + revision-log §4/§5/§7 + memory `martin-ui-redesign`。
 - **衔接**：plan 文件 `C:\Users\Hi\.claude\plans\feature-kde-l2-3d-martin-delegated-milner.md`（B3-B6+A2 执行计划，**Phase 1 = B3+B6 已完成**）。

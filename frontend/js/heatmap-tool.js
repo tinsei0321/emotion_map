@@ -9,6 +9,7 @@ import {
 } from './state.js';
 import { renderLayer, removeLayerFromMap } from './map.js';
 import { toast } from './toast.js';
+import { openParamPanel, closeParamPanel } from './param-panel.js';
 
 const DIALOG_ID = 'heatmap-dialog';
 
@@ -502,7 +503,6 @@ function constrainLevelOptions(dlg, sources, analysis) {
 export function openHeatmapDialog(layerId) {
   const dlg = dialogEl();
   if (!dlg) return;
-  if (dlg.open) dlg.close();
 
   const sources = collectSources();
   if (!sources.length) { toast.error('请先导入 L2 情绪数据'); return; }
@@ -599,7 +599,8 @@ export function openHeatmapDialog(layerId) {
   // 记住正在编辑的图层 id（覆盖模式会删旧+添新，届时替换）
   dlg.dataset.editLayerId = layerId || '';
 
-  dlg.showModal();
+  // B4：挂载点迁入 #param-panel 右栏热力页签；原 dlg.showModal() → 面板显隐 + 激活页签。
+  openParamPanel('heatmap');
 }
 
 function updateCurveHint(dlg) {
@@ -616,8 +617,7 @@ function updateCurveHint(dlg) {
 
 function closeDialog() {
   hideInfoPanel();
-  const dlg = dialogEl();
-  if (dlg) dlg.close();
+  closeParamPanel();
 }
 
 /** 按选中小类 + 强度阈值过滤 features。
@@ -808,9 +808,8 @@ export function initHeatmapTool() {
   const dlg = dialogEl();
   if (!dlg) return;
 
-  // 关闭
-  dlg.querySelectorAll('[data-close]').forEach((btn) => btn.addEventListener('click', closeDialog));
-  dlg.addEventListener('click', (e) => { if (e.target === dlg) closeDialog(); });
+  // B4：[data-close] 取消按钮 + outside-click / Escape 统一由 param-panel 接管
+  // （closeDialog = closeParamPanel；原 dialog backdrop 点击在 pane 内已无意义）。
 
   // ① 分析类型卡：选卡 + 套约束 + 重算 ②③
   dlg.querySelector('#hm-analysis')?.addEventListener('click', (e) => {

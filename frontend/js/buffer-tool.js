@@ -9,6 +9,7 @@ import { fcBBox } from './import.js';
 import { runBuffer } from './api.js';
 import { toast } from './toast.js';
 import { PRESET_COLORS } from './settings.js';
+import { openParamPanel, closeParamPanel } from './param-panel.js';
 
 const dialogEl = () => document.getElementById('buffer-dialog');
 const DEFAULT_COLOR = '#4FC3F7';   // 天蓝（缓冲默认色；轮廓与填充同色）
@@ -64,7 +65,6 @@ function applyParams(dlg, p) {
 export function openBufferDialog(layerId) {
   const dlg = dialogEl();
   if (!dlg) return;
-  if (dlg.open) dlg.close();
 
   // 编辑态：从既有缓冲层的 paint._ui 回填参数 + 源图层锁定
   let seed = null;
@@ -86,7 +86,8 @@ export function openBufferDialog(layerId) {
   if (!getLayers().some(BUFFERABLE)) {
     toast.info('请先导入或上载一个点/线/面图层作为缓冲对象');
   }
-  dlg.showModal();
+  // B4：挂载点迁入 #param-panel 右栏缓冲页签；原 dlg.showModal() → 面板显隐 + 激活页签。
+  openParamPanel('buffer');
 }
 
 function readParams(dlg) {
@@ -139,7 +140,7 @@ async function generateBuffer() {
       document.dispatchEvent(new CustomEvent('layers:changed'));
       document.dispatchEvent(new CustomEvent('layer:selected', { detail: editLayerId }));
       const bb = fcBBox(fc); if (bb) fitBoundsTo(bb);
-      dlg.close();
+      closeParamPanel();
       toast.success(`已更新缓冲区：${p.distance}m · ${fc.features.length} 个`);
       return;
     }
@@ -155,7 +156,7 @@ async function generateBuffer() {
     showLayerManager();
     document.dispatchEvent(new CustomEvent('layers:changed'));
     document.dispatchEvent(new CustomEvent('layer:selected', { detail: L.id }));
-    dlg.close();
+    closeParamPanel();
     toast.success(`已生成 ${res.feature_count} 个缓冲区，总覆盖 ${res.covered_area_km2} km²`);
   } catch (e) {
     console.error('[buffer]', e);

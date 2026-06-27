@@ -9,6 +9,7 @@
 import { getLayer, setLayerPaint, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS, HOTNESS_RAMP } from './state.js';
 import { renderLayer, effectivePointRadius } from './map.js';
 import { refreshPopupForLayer } from './popup.js';
+import { openParamPanel, closeParamPanel } from './param-panel.js';
 
 // ── Presets ────────────────────────────────────────────────────────────────
 const PRESET_RAMPS = [
@@ -27,13 +28,21 @@ export const PRESET_COLORS = [
 const KIND_ZH = { point: '点', line: '线', polygon: '面', heatmap: '热' };
 
 let _layerId = null;
-let _outsideBound = false;
 
 const el = () => document.getElementById('settings-popover');
 
 /** @returns {string|null} the layer id whose popover is open (for sidebar .is-active). */
 export function openSettingsLayerId() { return _layerId; }
 export function isOpen() { return _layerId != null; }
+
+// B4：参数栏关闭（X / Escape / outside-click，统一由 param-panel 触发 param-panel:closed）
+// → 清 _layerId + 转发 layer-settings:closed，sidebar 据此 renderLayerList 刷图层行 .is-active。
+document.addEventListener('param-panel:closed', () => {
+  if (_layerId != null) {
+    _layerId = null;
+    document.dispatchEvent(new CustomEvent('layer-settings:closed'));
+  }
+});
 
 /** Apply a paint patch: live-update map + popup (on every input tick).
  *  Pass commit=true on discrete actions / slider release to also fan out the
@@ -50,34 +59,18 @@ function commitPaint() {
   document.dispatchEvent(new CustomEvent('layer:paint', { detail: _layerId }));
 }
 
-/** Open (or switch to) the popover for a layer, anchored beside the clicked button. */
+/** Open (or switch to) the settings column for a layer. B4：挂载点迁入 #param-panel 左栏，
+ *  不再 JS 锚点定位（面板 CSS 紧贴左栏右缘）；anchorBtn 形参保留以兼容 sidebar 调用签名。 */
 export function openSettingsPopover(layer, anchorBtn) {
   if (!layer) return;
   _layerId = layer.id;
   build(layer);
-  position(anchorBtn);
-  const pop = el();
-  if (pop) pop.hidden = false;
-  bindOutside();
+  openParamPanel();
 }
 
 export function closeSettingsPopover() {
-  _layerId = null;
-  const pop = el();
-  if (pop) pop.hidden = true;
-}
-
-function position(anchorBtn) {
-  const pop = el();
-  if (!pop || !anchorBtn) return;
-  // align with the bottom-left map cluster (same left offset — "浮窗对齐边栏"基本逻辑)
-  const cluster = document.querySelector('.emotion-controls-root');
-  const leftX = cluster ? cluster.getBoundingClientRect().left
-    : document.getElementById('left-panel').getBoundingClientRect().right + 10;
-  const btn = anchorBtn.getBoundingClientRect();
-  const top = Math.max(80, Math.min(btn.top, window.innerHeight - 320));
-  pop.style.top = `${top}px`;
-  pop.style.left = `${leftX}px`;
+  // _layerId 的清理统一在 param-panel:closed 监听里完成（避免与 closeParamPanel 双重清理）。
+  closeParamPanel();
 }
 
 // ── Build popover DOM for a layer ──────────────────────────────────────────
@@ -89,7 +82,6 @@ function build(layer) {
     <div class="set-head">
       <span class="set-kind">${KIND_ZH[layer.kind] || '层'}</span>
       <span class="set-name" title="${layer.name}">${layer.name}</span>
-      <button class="set-close" id="set-close" title="关闭">&times;</button>
     </div>`;
 
   let body = '';
@@ -203,8 +195,6 @@ function wire(layer) {
   const pop = el();
   if (!pop) return;
 
-  pop.querySelector('#set-close')?.addEventListener('click', closeSettingsPopover);
-
   // ramp (point confidence) — discrete click → commit
   pop.querySelectorAll('[data-ramp-id]').forEach((b) => {
     b.addEventListener('click', () => {
@@ -261,17 +251,4 @@ function bindRange(pop, sel, fn, unit) {
   r.addEventListener('change', commitPaint);
 }
 
-// ── Outside-click / Escape to close ────────────────────────────────────────
-function bindOutside() {
-  if (_outsideBound) return;
-  _outsideBound = true;
-  document.addEventListener('click', (e) => {
-    if (_layerId == null) return;
-    const pop = el();
-    if (pop && pop.contains(e.target)) return;
-    if (e.target.closest && e.target.closest('.layer-kind')) return;   // sidebar handles
-    closeSettingsPopover();
-    document.dispatchEvent(new CustomEvent('layer-settings:closed'));
-  });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && _layerId != null) { closeSettingsPopover(); document.dispatchEvent(new CustomEvent('layer-settings:closed')); } });
-}
+// B4：outside-click / Escape 关闭逻辑已统一收口到 param-panel.js（initParamPanel）。

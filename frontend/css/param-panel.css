@@ -1,0 +1,176 @@
+/* ═══ param-panel.css — B4 左端参数弹出栏 ═══
+   紧贴 #left-panel 右缘（left:var(--left-w)，随 B6 联动）；不可拖宽；默认隐藏。
+   1:2 分栏：左=点/线/面样式（#settings-popover，settings.js build 填充）
+            右=分析（核密度|Buffer 子页签，#heatmap-dialog/#buffer-dialog）。
+   迁移自原浮窗/dialog：apply 链零改，仅在此重置容器外观以贴合分栏。 */
+
+/* ── 容器：absolute 锚 #app-main，flush 左栏右缘 ── */
+#param-panel {
+  position: absolute;
+  left: var(--left-w);                 /* 紧贴 #left-panel 右缘；随 --left-w 联动 */
+  top: 0;
+  bottom: 0;
+  width: 480px;                        /* 固定，不可拖宽 */
+  max-width: calc(100vw - var(--left-w));
+  z-index: 74;                         /* 高于 gutter(60)/map，低于 collapse-btn(76) */
+  display: none;                       /* 默认隐藏 */
+  flex-direction: column;
+  background: var(--geojson-color-surface-panel, #ffffff);
+  border-left: 1px solid var(--geojson-color-border-default, #e5e5e5);
+  box-shadow: 4px 0 14px rgba(0, 0, 0, 0.10);
+  color: var(--geojson-color-text-primary);
+  overflow: hidden;
+}
+#param-panel.is-open { display: flex; }
+
+/* ── Head：标题 + 右上 X（复用 panel-header 视觉语言）── */
+.pp-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--geojson-spacing-3);
+  height: 36px;
+  border-bottom: 1px solid var(--geojson-color-border-default, #e5e5e5);
+  background: var(--geojson-color-surface-panel, #ffffff);
+}
+.pp-title {
+  font-size: var(--geojson-typography-size-xs);
+  font-weight: var(--geojson-typography-weight-semibold);
+  color: var(--geojson-color-text-secondary);
+  letter-spacing: 0.02em;
+}
+.pp-close {
+  border: none;
+  background: transparent;
+  font-size: var(--geojson-typography-size-xl);
+  line-height: 1;
+  color: var(--geojson-color-text-tertiary);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--geojson-radius-xs, 2px);
+  transition: color var(--geojson-transition), background var(--geojson-transition);
+}
+.pp-close:hover { color: var(--geojson-color-text-primary); background: var(--geojson-color-gray-100, #f5f5f5); }
+
+/* ── Body：1:2 分栏 ── */
+.pp-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: row;
+  min-height: 0;
+}
+.pp-col { display: flex; flex-direction: column; min-height: 0; }
+.pp-col-left  { flex: 1 1 0; overflow: hidden; }
+.pp-col-right { flex: 2 1 0; overflow: hidden; border-left: none; }   /* divider 独立元素 */
+
+/* 中灰 2px 竖线 */
+.pp-divider {
+  flex: 0 0 2px;
+  background: var(--geojson-color-gray-200, #e5e5e5);
+}
+
+/* ── 左栏：#settings-popover 容器（重置原 fixed 浮窗样式）── */
+#param-panel #settings-popover {
+  position: static;
+  width: auto;
+  max-width: none;
+  z-index: auto;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  animation: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+}
+/* 面板控制显隐，settings 的 hidden 属性不再压住它 */
+#param-panel #settings-popover[hidden] { display: flex; }
+/* 空态占位：首次以分析入口开面板、尚未 build paint 时 */
+#param-panel #settings-popover:empty::before {
+  content: '点击图层要素按钮以编辑样式';
+  display: block;
+  margin: auto;
+  padding: 24px 12px;
+  font-size: var(--geojson-typography-size-2xs);
+  color: var(--geojson-color-text-tertiary);
+  text-align: center;
+  line-height: 1.7;
+}
+#param-panel #settings-popover > .set-head { flex-shrink: 0; }   /* 类型/名称 小标题固定 */
+#param-panel .set-body {
+  flex: 1 1 auto;
+  overflow-y: auto;                    /* 左栏样式参数滚动（.set-head 固定） */
+  max-height: none;                    /* 不卡 60vh，随面板高度滚动 */
+  padding: var(--geojson-spacing-3);
+}
+
+/* ── 右栏：分析子页签 ── */
+.pp-tabs {
+  flex-shrink: 0;
+  display: flex;
+  gap: 4px;
+  padding: 6px var(--geojson-spacing-3);
+  border-bottom: 1px solid var(--geojson-color-border-default, #e5e5e5);
+  background: var(--geojson-color-surface-panel, #ffffff);
+}
+.pp-tab {
+  border: none;
+  background: transparent;
+  color: var(--geojson-color-text-secondary);
+  font-size: var(--geojson-typography-size-xs);
+  font-weight: var(--geojson-typography-weight-medium);
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--geojson-transition), color var(--geojson-transition);
+}
+.pp-tab:hover { background: var(--geojson-color-gray-100, #f5f5f5); color: var(--geojson-color-text-primary); }
+.pp-tab.is-active {
+  background: var(--geojson-color-brand-primary, #007afc);
+  color: var(--geojson-color-text-inverse, #ffffff);
+}
+
+.pp-pane {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.pp-pane[hidden] { display: none; }
+
+/* ── 迁入面板后重置 .hm-dialog / .app-dialog 的原 dialog 样式 ──
+   原 .hm-dialog width:460-480px / max-height:92vh / 圆角阴影 → 填满 pane、去壳。 */
+#param-panel .app-dialog,
+#param-panel .hm-dialog {
+  width: auto;
+  max-width: none;
+  max-height: none;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+#param-panel .hm-dialog .dialog-body {
+  flex: 1 1 auto;
+  overflow-y: auto;                    /* pane 内单滚动（拍平·决策①） */
+  max-height: none;
+  padding: var(--geojson-spacing-3);
+}
+#param-panel .hm-dialog .dialog-foot {
+  flex-shrink: 0;
+  justify-content: flex-end;
+  gap: var(--geojson-spacing-2);
+  padding: var(--geojson-spacing-2) var(--geojson-spacing-3);
+  border-top: 1px solid var(--geojson-color-border-default, #e5e5e5);
+  background: var(--geojson-color-surface-panel, #ffffff);
+}
