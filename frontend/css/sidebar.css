@@ -626,9 +626,10 @@ button.layer-kind:hover { background: var(--geojson-color-gray-200); color: var(
 
 /* ── Layer selection + drag-reorder (geojson-style) ── */
 .layer-row { position: relative; }
-.layer-row.is-selected { background: rgba(0, 122, 252, 0.12); }     /* light blue */
-.layer-row.is-selected:hover { background: rgba(0, 122, 252, 0.18); }
-.layer-row.is-drop-over { box-shadow: inset 0 2px 0 var(--geojson-color-brand-primary, #007afc); }
+/* 选中态填充：品牌蓝 token 派生半透明（B5：旧 rgba(0,122,252) → color-mix，统一走 --geojson-color-brand-primary）*/
+.layer-row.is-selected { background: color-mix(in srgb, var(--geojson-color-brand-primary) 12%, transparent); }
+.layer-row.is-selected:hover { background: color-mix(in srgb, var(--geojson-color-brand-primary) 18%, transparent); }
+.layer-row.is-drop-over { box-shadow: inset 0 2px 0 var(--geojson-color-brand-primary, #4285F4); }
 .layer-row.is-dragging { opacity: 0.5; }
 
 .layer-grip {
@@ -650,7 +651,7 @@ button.layer-kind:hover { background: var(--geojson-color-gray-200); color: var(
 /* action tag (blue) — L0 需治理 */
 .layer-tag.is-action {
   color: var(--geojson-color-text-inverse, #ffffff);
-  background: var(--geojson-color-brand-primary, #007afc);
+  background: var(--geojson-color-brand-primary, #4285F4);
 }
 
 /* ── Hint char (R / L0·L1·L2, colored by display color) ── */
@@ -677,7 +678,7 @@ button.layer-kind:hover { background: var(--geojson-color-gray-200); color: var(
 .layer-group:first-child { margin-top: 0; }
 .layer-group:active { cursor: grabbing; }
 .layer-group.is-dragging { opacity: 0.5; }
-.layer-group.is-drop-over { box-shadow: inset 0 2px 0 var(--geojson-color-brand-primary, #007afc); }
+.layer-group.is-drop-over { box-shadow: inset 0 2px 0 var(--geojson-color-brand-primary, #4285F4); }
 .layer-group .layer-grip { opacity: 0; }
 .layer-group:hover .layer-grip { opacity: 0.6; }
 .layer-group-chev { color: var(--geojson-color-text-tertiary); font-size: 13px; padding: 2px 4px; cursor: pointer; transition: transform .15s ease; }

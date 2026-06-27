@@ -97,7 +97,7 @@
 .info-hero {
   text-align: center;
   padding: 8px 0 4px;
-  border-bottom: 2px solid var(--geojson-color-brand-primary, #007afc);
+  border-bottom: 2px solid var(--geojson-color-brand-primary, #4285F4);
   margin-bottom: 4px;
 }
 .info-hero-title {
@@ -107,7 +107,7 @@
 }
 .info-hero-version {
   font-size: 12px;
-  color: var(--geojson-color-brand-primary, #007afc);
+  color: var(--geojson-color-brand-primary, #4285F4);
   font-weight: 600;
   margin-top: 2px;
 }
@@ -128,7 +128,7 @@
   color: var(--geojson-color-text-primary, #262626);
   margin-bottom: 10px;
   padding-left: 12px;
-  border-left: 4px solid var(--geojson-color-brand-primary, #007afc);
+  border-left: 4px solid var(--geojson-color-brand-primary, #4285F4);
 }
 
 /* Scenario matrix table */
@@ -159,21 +159,21 @@
   min-width: 90px;
 }
 .scenario-matrix .sc-hit {
-  background: rgba(0, 122, 252, 0.06);
+  background: color-mix(in srgb, var(--geojson-color-brand-primary) 6%, transparent);
   color: var(--geojson-color-text-primary, #262626);
   font-weight: 500;
 }
 .scenario-matrix .sc-miss {
   color: var(--geojson-color-text-tertiary, #d4d4d4);
 }
-.scenario-matrix code { font-size: 11px; color: var(--geojson-color-brand-primary, #007afc); }
+.scenario-matrix code { font-size: 11px; color: var(--geojson-color-brand-primary, #4285F4); }
 
 /* Arch desc inline code */
 .arch-desc code {
   font-size: 12px;
   font-weight: 600;
-  color: var(--geojson-color-brand-primary, #007afc);
-  background: rgba(0,122,252,0.06);
+  color: var(--geojson-color-brand-primary, #4285F4);
+  background: color-mix(in srgb, var(--geojson-color-brand-primary) 6%, transparent);
   padding: 0 4px;
   border-radius: 2px;
 }
@@ -199,7 +199,7 @@
 .pl-id {
   font-size: 16px;
   font-weight: 800;
-  color: var(--geojson-color-brand-primary, #007afc);
+  color: var(--geojson-color-brand-primary, #4285F4);
 }
 .pl-name {
   font-size: 12px;
@@ -272,7 +272,7 @@
   display: block;
   font-size: 14px;
   font-weight: 700;
-  color: var(--geojson-color-brand-primary, #007afc);
+  color: var(--geojson-color-brand-primary, #4285F4);
   margin-bottom: 3px;
 }
 .info-card-desc {
@@ -296,7 +296,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--geojson-color-brand-primary, #007afc);
+  background: var(--geojson-color-brand-primary, #4285F4);
   margin-top: 6px;
 }
 .rm-item b { color: var(--geojson-color-text-primary, #262626); }

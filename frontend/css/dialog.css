@@ -740,7 +740,7 @@
  *  胶囊 — 颜色填充（类型/表现，.hm-macro-chip/.hm-type-chip）
  *  未选中：白/透明；悬停：浅灰（栏与选项一致） */
 .is-bar-sel {
-  background: rgba(0, 122, 252, 0.12) !important;
+  background: color-mix(in srgb, var(--geojson-color-brand-primary) 12%, transparent) !important;
   border-color: transparent !important;
   box-shadow: none !important;
 }
@@ -751,8 +751,8 @@
   color: var(--geojson-color-text-inverse, #fff) !important;  /* 选中白字 */
 }
 /* style-btn 选中时让色带预览更突出 */
-.hm-style-btn.is-bar-sel { background: rgba(0, 122, 252, 0.12) !important; border-color: transparent !important; }
-.hm-style-btn.is-bar-sel:hover { background: rgba(0, 122, 252, 0.18) !important; }
+.hm-style-btn.is-bar-sel { background: color-mix(in srgb, var(--geojson-color-brand-primary) 12%, transparent) !important; border-color: transparent !important; }
+.hm-style-btn.is-bar-sel:hover { background: color-mix(in srgb, var(--geojson-color-brand-primary) 18%, transparent) !important; }
 
 /* 显示样式"开发中"角标（dev 项明示） */
 .hm-style-dev-tag {

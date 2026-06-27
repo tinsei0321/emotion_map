@@ -113,7 +113,7 @@
 }
 .sb-item:hover,
 .sb-item.is-active {                                   /* ↑↓ 高亮 = 选中蓝 + 白字（镜像 .is-sel） */
-  background: var(--geojson-color-chrome-active-fill, #007afc);
+  background: var(--geojson-color-chrome-active-fill, #4285F4);
 }
 .sb-item:hover .sb-item-name,
 .sb-item.is-active .sb-item-name { color: var(--geojson-color-text-inverse, #ffffff); }
@@ -209,7 +209,7 @@
   width: 14px;
   height: 14px;
   border: 2px solid var(--geojson-color-gray-200, #e5e5e5);
-  border-top-color: var(--geojson-color-chrome-active-fill, #007afc);
+  border-top-color: var(--geojson-color-chrome-active-fill, #4285F4);
   border-radius: 50%;
   animation: sb-spin 0.7s linear infinite;
 }

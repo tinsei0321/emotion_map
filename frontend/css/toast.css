@@ -55,7 +55,7 @@
 
 .toast-success .toast-icon { background: #22b14c; }   /* green circle check */
 .toast-error   .toast-icon { background: #e04848; }   /* red circle X */
-.toast-info    .toast-icon { background: var(--geojson-brand, #007afc); }
+.toast-info    .toast-icon { background: var(--geojson-color-brand-primary, #4285F4); }   /* B5：--geojson-brand 为未定义幽灵 token，改用真 token */
 
 .toast-msg {
   overflow: hidden;

@@ -461,7 +461,7 @@ function showHoverRing(feature) {
   const SRC = 'emotion-hover', LAYER = 'emotion-hover-ring';
   if (map.getLayer(LAYER)) map.removeLayer(LAYER);
   if (map.getSource(SRC)) map.removeSource(SRC);
-  const ringColor = token('--geojson-feature-selection-halo-color') || '#007afc';
+  const ringColor = token('--geojson-feature-selection-halo-color') || '#4285F4';
   const r = pointRadiusFor(feature);
   map.addSource(SRC, { type: 'geojson', data: { type: 'Feature', geometry: feature.geometry, properties: {} } });
   map.addLayer({ id: LAYER, type: 'circle', source: SRC,

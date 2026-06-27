@@ -106,7 +106,7 @@
   font-size: var(--geojson-typography-size-2xs);
   font-weight: var(--geojson-typography-weight-bold);
   color: var(--geojson-color-text-inverse, #fff);
-  background: var(--geojson-color-brand-primary, #007afc);
+  background: var(--geojson-color-brand-primary, #4285F4);
   border-radius: var(--geojson-radius-xs);
   padding: 1px 6px;
 }
@@ -158,7 +158,7 @@
 }
 .ov-empty-title { font-size: var(--geojson-typography-size-base); font-weight: var(--geojson-typography-weight-semibold); color: var(--geojson-color-text-secondary); }
 .ov-empty-hint { font-size: var(--geojson-typography-size-xs); margin-top: 8px; }
-.ov-empty-hint b { color: var(--geojson-color-brand-primary, #007afc); }
+.ov-empty-hint b { color: var(--geojson-color-brand-primary, #4285F4); }
 
 /* ── Overview: loaded-data info card ── */
 .info-card {
