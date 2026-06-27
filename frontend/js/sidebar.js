@@ -79,12 +79,11 @@ export function openImport() {
   if (input) { input.value = ''; input.click(); }
 }
 
-/** After a successful load: switch left panel to sections + expand the Layers
- *  section so the layer manager is visible. Called by main.js runImport. */
+/** After a successful load: switch left panel to sections + activate the Layers
+ *  tab so the layer manager is visible. Called by main.js runImport. */
 export function showLayerManager() {
   setLeftMode('sections');
-  const sec = document.querySelector('.lp-section[data-section="layers"]');
-  if (sec) sec.classList.add('open');
+  setActiveTab('layers');
 }
 
 /** Expand the right panel if folded (used when a layer is selected → show Overview). */
@@ -360,6 +359,12 @@ export function renderLayerList() {
     const _anyVis = _renderable.length > 0 && _renderable.some((l) => l.visible);
     _hdr.innerHTML = _anyVis ? eyeOpen : eyeOff;
     _hdr.title = _anyVis ? '隐藏全部图层' : '显示全部图层';
+    // 区2 工具栏漏斗：可见图层 / 全部图层
+    const _funnel = document.getElementById('lp-funnel');
+    if (_funnel) {
+      const _vis = _renderable.filter((l) => l.visible).length;
+      _funnel.textContent = `${_vis}/${_renderable.length}`;
+    }
   }
 }
 
@@ -500,6 +505,26 @@ function initToolInfoTooltip() {
   }, true);
 }
 
+// ── 左端栏三区：tab 互斥切换 ───────────────────────────────────────────────
+// 替代原 .lp-section 加法式手风琴：同一时刻仅一个 tab 高亮、仅一个 .lp-pane 显示。
+let _activeTab = 'layers';
+function setActiveTab(name) {
+  _activeTab = name;
+  document.querySelectorAll('.lp-tab').forEach((t) => {
+    const on = t.dataset.tab === name;
+    t.classList.toggle('is-active', on);
+    t.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  document.querySelectorAll('.lp-pane').forEach((p) => { p.hidden = p.dataset.pane !== name; });
+  // 区2 文件夹 title 随当前页更新（上载语义提示）
+  const up = document.getElementById('lp-upload');
+  if (up) {
+    up.title = (name === 'range') ? '上载范围文件（面/线；不含 CSV/点）'
+      : (name === 'layers') ? '上载数据文件（点/线/面）'
+      : '工具箱暂无上载入口';
+  }
+}
+
 export function initSidebar({ onFiles, onRangeFiles } = {}) {
   _onFiles = onFiles;
   _onRangeFiles = onRangeFiles;
@@ -507,10 +532,18 @@ export function initSidebar({ onFiles, onRangeFiles } = {}) {
   document.querySelectorAll('.collapse-btn').forEach((btn) =>
     btn.addEventListener('click', () => togglePanel(btn.dataset.side)));
   document.querySelectorAll('.gutter').forEach((g) => initDrag(g, g.dataset.side));
-  document.querySelectorAll('.lp-section .section-head').forEach((head) =>
-    head.addEventListener('click', () => head.parentElement.classList.toggle('open')));
+  // 区1 选择栏：tab 互斥切换（替代原加法式手风琴 .lp-section .open）
+  document.querySelectorAll('.lp-tab').forEach((t) =>
+    t.addEventListener('click', () => setActiveTab(t.dataset.tab)));
+  setActiveTab(_activeTab);   // 初始同步（默认 layers，高亮 + 显示对应 pane）
+  // 区2 工具栏：文件夹按当前 tab 触发上载（Range→范围 / Layers→数据 / Toolbox→提示）
+  document.getElementById('lp-upload')?.addEventListener('click', () => {
+    if (_activeTab === 'range') document.getElementById('range-input')?.click();
+    else if (_activeTab === 'layers') document.getElementById('import-input')?.click();
+    else toast.info('工具箱暂无上载入口');
+  });
 
-  // clear-all trash at the Layers section header
+  // clear-all trash at the 区2 toolbar (id 不变，从原 Layers 段头迁入)
   document.getElementById('layers-clear')?.addEventListener('click', () => {
     const layers = getLayers();
     if (!layers.length) { toast.info('没有可删除的图层'); return; }
@@ -527,11 +560,7 @@ export function initSidebar({ onFiles, onRangeFiles } = {}) {
   // popover closed via outside-click/Escape → clear the kind marker's active state
   document.addEventListener('layer-settings:closed', renderLayerList);
 
-  // placeholder Analysis handlers
-  const log = (id) => console.log('[sidebar]', id, '(Phase 2 wiring)');
-  document.getElementById('data-source')?.addEventListener('change', (e) => log('data-source=' + e.target.value));
-  document.getElementById('run-governance')?.addEventListener('click', () => log('run-governance'));
-  document.getElementById('run-analysis')?.addEventListener('click', () => log('run-analysis'));
+  // Analysis 段已移除（整合入数据库）；以下为 Toolbox 工具入口
   document.getElementById('tool-heatmap')?.addEventListener('click', () => openHeatmapDialog());
   document.getElementById('tool-buffer')?.addEventListener('click', () => openBufferDialog());
   document.getElementById('tool-attribution')?.addEventListener('click', () => {

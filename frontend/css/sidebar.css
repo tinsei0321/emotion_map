@@ -81,6 +81,105 @@
   color: var(--geojson-color-import-panel-tertiary-text);
 }
 
+/* ── 三区导航（Martin 风格 / ref3 布局）：选择栏 tab / 工具栏 / 操作栏 ──
+ *   仅 .lp-sections（导入后态）走三区；.lp-import（首用空态）仍用 .lp-mode 默认（flex:1+滚动）。 */
+.lp-mode.lp-sections {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0;            /* 三区自管内边距 */
+  overflow: hidden;      /* 仅 zone-operate 滚动 */
+  min-height: 0;         /* 允许子区 flex 收缩 */
+}
+
+/* 区1 选择栏 — tab 互斥（Range / Layers / Toolbox） */
+.lp-zone-select {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: var(--geojson-spacing-2) var(--geojson-spacing-2) 0;
+}
+.lp-tab {
+  flex: 1 1 0;
+  padding: 8px 0;
+  font-size: var(--geojson-typography-size-xs);
+  font-weight: var(--geojson-typography-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--geojson-typography-letter-spacing-wider);
+  color: var(--geojson-color-text-tertiary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;     /* 占位，active 时填 #384555 */
+  border-radius: var(--geojson-radius-sm) var(--geojson-radius-sm) 0 0;
+  cursor: pointer;
+  transition: color var(--geojson-transition), background var(--geojson-transition), border-color var(--geojson-transition);
+}
+.lp-tab:hover { color: var(--geojson-color-text-primary); background: var(--geojson-color-gray-100); }
+.lp-tab.is-active {
+  color: var(--geojson-color-card-fill);    /* #384555 深灰 */
+  border-bottom-color: var(--geojson-color-card-fill);
+}
+
+/* 区2 工具栏 — 深灰 #384555；文件夹 / 漏斗 / 眼睛 / 垃圾桶（Lucide 风格 inline SVG） */
+.lp-zone-tools {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px var(--geojson-spacing-2);
+  background: var(--geojson-color-card-fill);   /* #384555 */
+  color: var(--geojson-color-text-inverse, #fff);
+  border-top: 2px solid var(--geojson-color-border-default);
+}
+.lp-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: var(--geojson-radius-sm);
+  cursor: pointer;
+  transition: background var(--geojson-transition), color var(--geojson-transition);
+}
+.lp-tool-btn:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
+.lp-tool-btn:active { background: rgba(255, 255, 255, 0.22); }
+.lp-tool-btn svg { width: 16px; height: 16px; }
+.lp-tools-spacer { flex: 1 1 auto; }
+.lp-funnel {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  margin-left: 4px;
+  padding: 0 6px;
+  font-size: var(--geojson-typography-size-2xs);
+  font-family: var(--geojson-typography-mono);
+  font-weight: var(--geojson-typography-weight-bold);
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.10);
+  border-radius: var(--geojson-radius-xs);
+}
+
+/* 区3 操作栏 — 仅此区滚动；2px 顶分割线 */
+.lp-zone-operate {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--geojson-spacing-2);
+  background: var(--geojson-color-section-body-bg);
+  border-top: 2px solid var(--geojson-color-border-default);
+}
+.lp-pane[hidden] { display: none; }
+.lp-pane-title {
+  font-size: var(--geojson-typography-size-xs);
+  font-weight: var(--geojson-typography-weight-semibold);
+  color: var(--geojson-color-text-secondary);
+  margin: 0 0 var(--geojson-spacing-2);
+}
+
 /* ── Collapsible sections (1:1 图3) ── */
 .lp-section {
   margin-bottom: var(--geojson-spacing-1);

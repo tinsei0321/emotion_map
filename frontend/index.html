@@ -71,71 +71,52 @@
         </ul>
       </div>
 
-      <!-- 模式 2：Range / Layers / Analysis 可折叠区段（1:1 图3） -->
+      <!-- 模式 2：三区导航（选择栏 tab / 工具栏 / 操作栏）— Martin 风格，ref3 布局 -->
       <div class="lp-mode lp-sections" data-mode="sections" hidden>
-        <section class="lp-section" data-section="range">
-          <div class="section-head"><span class="chev">&#9654;</span> Range</div>
-          <div class="section-body">
-            <div class="range-cards">
-              <!-- 上载范围文件（面/线；同 Import 格式，不含 CSV、不上传点数据） -->
-              <div class="range-card">
-                <div class="range-card-head">
-                  <span class="range-card-title">上载范围</span>
-                  <span class="tool-info" data-tip="从文件上载范围（面/线）。格式同 Import：GeoJSON / KML / Shapefile；不接受 CSV，不导入点数据。上载后自动弹出该范围 popup。">i</span>
-                </div>
-                <label class="sec-btn range-upload"><span>+ Upload Range</span><input type="file" id="range-input" accept=".geojson,.json,.kml,.shp,.dbf,.shx,.prj,.cpg,.zip" hidden /></label>
-              </div>
-              <!-- 绘制范围（多边形/矩形已开放；点/线/圆待开放） -->
-              <div class="range-card">
-                <div class="range-card-head">
-                  <span class="range-card-title">绘制范围</span>
-                  <span class="tool-info" data-tip="用绘制工具指定范围要素。多边形：点击顶点→双击/回车/点起点完成；矩形：按下拖拽（Shift 锁正方形）。点/线/圆待开放。">i</span>
-                </div>
-                <div class="range-draw-grid">
-                  <button class="draw-tool" data-tool="point" title="点" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor"/></svg></button>
-                  <button class="draw-tool" data-tool="line" title="线" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="18" x2="18" y2="6"/></svg></button>
-                  <button class="draw-tool" data-tool="polygon" title="多边形" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 3L20 8L18 18L6 18L4 8Z"/></svg></button>
-                  <button class="draw-tool" data-tool="rectangle" title="矩形" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="6" width="16" height="12" rx="1"/></svg></button>
-                  <button class="draw-tool" data-tool="circle" title="圆" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/></svg></button>
-                  <button class="draw-tool draw-more" data-tool="more" title="更多工具" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9L12 15L18 9"/></svg></button>
-                </div>
-              </div>
+        <!-- 区1 选择栏：tab 互斥切换（Range / Layers / Toolbox） -->
+        <div class="lp-zone lp-zone-select" role="tablist" aria-label="左端栏功能页">
+          <button class="lp-tab" data-tab="range" role="tab" aria-selected="false">Range</button>
+          <button class="lp-tab is-active" data-tab="layers" role="tab" aria-selected="true">Layers</button>
+          <button class="lp-tab" data-tab="toolbox" role="tab" aria-selected="false">Toolbox</button>
+        </div>
+
+        <!-- 区2 工具栏：深灰 #384555。文件夹(按当前页上载) / 漏斗(打开数/总数) / 眼睛 / 垃圾桶 -->
+        <div class="lp-zone lp-zone-tools">
+          <button class="lp-tool-btn" id="lp-upload" title="上载数据文件（点/线/面）" aria-label="上载文件">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5"/><path d="M9.5 13.5 12 11l2.5 2.5"/></svg>
+          </button>
+          <span class="lp-funnel" id="lp-funnel" title="可见图层 / 全部图层">0/0</span>
+          <span class="lp-tools-spacer"></span>
+          <!-- 眼睛(全显/全隐) + 垃圾桶(清空) 从原 Layers 段头迁入；id 不变，sidebar.js 仍命中 -->
+          <button class="lp-tool-btn" id="layers-toggle-all" title="显示/隐藏全部图层" aria-label="显示/隐藏全部图层"></button>
+          <button class="lp-tool-btn" id="layers-clear" title="清空全部图层" aria-label="清空全部图层">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
+        </div>
+
+        <!-- 区3 操作栏：仅此区滚动，渲染当前 tab 内容 -->
+        <div class="lp-zone lp-zone-operate">
+          <!-- Range 页：绘制范围（上载入口统一到区2 文件夹图标） -->
+          <div class="lp-pane" data-pane="range" hidden>
+            <div class="lp-pane-title">绘制范围</div>
+            <div class="range-draw-grid">
+              <button class="draw-tool" data-tool="point" title="点" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor"/></svg></button>
+              <button class="draw-tool" data-tool="line" title="线" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="18" x2="18" y2="6"/></svg></button>
+              <button class="draw-tool" data-tool="polygon" title="多边形" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 3L20 8L18 18L6 18L4 8Z"/></svg></button>
+              <button class="draw-tool" data-tool="rectangle" title="矩形" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="6" width="16" height="12" rx="1"/></svg></button>
+              <button class="draw-tool" data-tool="circle" title="圆" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/></svg></button>
+              <button class="draw-tool draw-more" data-tool="more" title="更多工具" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9L12 15L18 9"/></svg></button>
             </div>
           </div>
-        </section>
 
-        <section class="lp-section open" data-section="layers">
-          <div class="section-head">
-            <span class="chev">&#9654;</span> Layers
-            <button class="layers-toggle-all" id="layers-toggle-all" title="显示/隐藏全部图层" aria-label="显示/隐藏全部图层"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
-            <button class="layers-clear" id="layers-clear" title="清空全部图层" aria-label="清空全部图层"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
-          </div>
-          <div class="section-body">
+          <!-- Layers 页：图层列表（复用 layerRowHtml，挂载点 #layer-list 不变） -->
+          <div class="lp-pane" data-pane="layers">
             <div id="layer-list" class="layer-list"><!-- 由 sidebar.js 渲染 --></div>
           </div>
-        </section>
 
-        <section class="lp-section" data-section="analysis">
-          <div class="section-head"><span class="chev">&#9654;</span> Analysis</div>
-          <div class="section-body">
-            <div class="sec-label">数据源</div>
-            <select class="sec-select" id="data-source">
-              <option value="l1">L1 治理后</option>
-              <option value="l2" selected>L2 情绪分析</option>
-            </select>
-            <div class="sec-label">治理与分析</div>
-            <label class="sec-radio"><input type="radio" name="engine" value="snownlp" checked /> L2 · SnowNLP 粗粒度</label>
-            <label class="sec-radio"><input type="radio" name="engine" value="deepseek" /> L3 · LLM 细粒度（DeepSeek）</label>
-            <label class="sec-radio"><input type="radio" name="engine" value="corpus" disabled /> L4 · 语料库归因</label>
-            <button class="sec-btn sec-run" id="run-governance">数据治理</button>
-            <button class="sec-btn sec-run" id="run-analysis">开始分析</button>
-          </div>
-        </section>
-
-        <section class="lp-section" data-section="toolbox">
-          <div class="section-head"><span class="chev">&#9654;</span> Toolbox</div>
-          <div class="section-body">
-            <div class="sec-note">空间分析工具集</div>
+          <!-- Toolbox 页：空间分析工具 -->
+          <div class="lp-pane" data-pane="toolbox" hidden>
+            <div class="lp-pane-title">空间分析工具</div>
             <div class="tool-list">
               <button class="tool-row" id="tool-heatmap" data-tool="heatmap">
                 <span class="tool-icon"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="5" width="3" height="8" rx="0.5"/><rect x="6.5" y="2" width="3" height="11" rx="0.5"/><rect x="12" y="7" width="3" height="6" rx="0.5"/></svg></span>
@@ -154,7 +135,10 @@
               </button>
             </div>
           </div>
-        </section>
+        </div>
+
+        <!-- 隐藏上载节点：区2 文件夹按当前 tab 触发（Range→range-input / Layers→import-input） -->
+        <input type="file" id="range-input" accept=".geojson,.json,.kml,.shp,.dbf,.shx,.prj,.cpg,.zip" hidden />
       </div>
     </aside>
 
