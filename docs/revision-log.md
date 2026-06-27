@@ -359,6 +359,7 @@ flowchart TD
 | 06-27 | 本次 | 顶栏双层→单层深蓝（48px）：面包屑「宜昌市情绪地图 › 控制台（Console） prototype alpha v0.1」+ Import/Export/i 靠右白字；select/basemap 移出（迁 3 按钮集） | `index.html` `css/layout.css` `css/toolbar.css` |
 | 06-27 | 本次 | 左下 3 按钮集（指针/测量/图层）置于 5 按钮簇上方：select/basemap 带 data-tool/data-action 由 initToolbar 自动绑（不改调用链）；measure 占位 toast；`#map .emotion-tools-ctrl` 覆盖 .draw-tool 深蓝底白字 | `js/map-controls.js` `css/map-controls.css` |
 | 06-27 | 19e6c4e | 左端栏三区重构（B3）：加法手风琴→**tab 互斥**（Range/Layers/Toolbox，setActiveTab 同步 pane 显隐 + 文件夹 title）；删 Analysis 段（整合数据库，移除 placeholder 绑定）+ 删 `+Upload Range` 卡（上载统一到区2 文件夹，按当前页触发 range/import-input）；区2 **深灰 `#384555` 工具栏**（文件夹/漏斗=可见/总数/眼睛/垃圾桶——后两者从 Layers 段头迁入，id 不变）；区3 操作栏仅此滚动；默认宽 ×0.8 = 240px（`--left-w` + `--geojson-layout-left-panel-width` 同步）。**B6 复核**：左簇锚 `#map`（absolute left:10px）+ `#map` flex 天然跟随左端栏，Playwright 实测 Δcluster=Δlp（gap 恒 18=gutter8+offset10），结构未动 flex → **零改动** | `index.html` `js/sidebar.js` `css/sidebar.css` `css/layout.css` `css/tokens.css` |
+| 06-27 | 本次 | 区2 工具栏修订（按用户参考截图）：**配色翻转**——深灰底→**白底 + `#384555` 深灰图标 + hover 浅灰**（`#384555` 统一为深灰文字/图标色，非底色）；**顺序按截图** `[+][文件夹][方片叠加][眼睛][垃圾桶]…[漏斗 计数]`（+ 居首）；**新增 2 占位** `#lp-add`（新建图层）/`#lp-group`（图层分组/视图），click→toast 待开发；**补漏斗 SVG**（原只有计数文字），漏斗+计数最右；**关键控制流修订**：漏斗计数 `textContent`→`querySelector('.lp-funnel-count')`，避免更新计数时冲掉漏斗 svg。Playwright 实测全通过：顺序精确、白底 `rgb(255,255,255)`、图标 `rgb(56,69,85)`、漏斗 svg+计数共存、占位 toast 触发 | `index.html` `js/sidebar.js` `css/sidebar.css` |
 
 ## 6. 持续追加规则（给 AI）
 

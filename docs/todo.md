@@ -15,9 +15,10 @@
 | 2 | ✅ | B0 全局色彩 | `design/tokens.json` `css/tokens.css` `css/panel.css` | 8 处 #007afc→#4285F4；新增 card-fill #384555；Overview/Table 卡片深灰+浅字 |
 | 3 | ✅ | B1 上端栏单层化 | `index.html` `css/layout.css` `css/toolbar.css` | 双层→单条深蓝 48px；面包屑递进；Import/Export/i 靠右白字 |
 | 4 | ✅ | B2 左下 3 按钮集 | `js/map-controls.js` `css/map-controls.css` | 指针/测量/图层纵列于 5 按钮簇上方；initToolbar 选择器自动绑；measure 占位 |
-| 5 | ✅ | B3 左端栏三区 + B6 随动复核 | `index.html` `js/sidebar.js` `css/sidebar.css` `css/layout.css` `css/tokens.css` | 手风琴→tab 互斥（Range/Layers/Toolbox）；删 Analysis/+Upload Range；区2 深灰工具栏（文件夹/漏斗/眼睛/垃圾桶）；默认宽 240px；B6 Playwright 验左簇跟随零改动 |
+| 5 | ✅ | B3 左端栏三区 + B6 随动复核 | `index.html` `js/sidebar.js` `css/sidebar.css` `css/layout.css` `css/tokens.css` | 手风琴→tab 互斥（Range/Layers/Toolbox）；删 Analysis/+Upload Range；区2 工具栏（初版深灰，row 6 修订为白底）；默认宽 240px；B6 Playwright 验左簇跟随零改动 |
+| 6 | ✅ | B3·区2 工具栏修订（按参考截图） | `index.html` `js/sidebar.js` `css/sidebar.css` | 配色翻转：深灰底→白底+#384555图标+hover；顺序 [+][文件夹][方片叠加][眼睛][垃圾桶]…[漏斗 计数]；新增 #lp-add/#lp-group 占位；补漏斗 SVG；计数 textContent→querySelector 避免冲掉 svg |
 
-> 💡 B3+B6 完成 → 下一步 B4 左端弹出栏（heatmap 向导重排，重，建议另起会话）→ B5 色板圆角 → A2 UI 层文档。
+> 💡 B3（含区2 修订）+B6 完成 → 下一步 B4 左端弹出栏（heatmap 向导重排，重，建议另起会话）→ B5 色板圆角 → A2 UI 层文档。
 
 ### 📝 开发日志
 

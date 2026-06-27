@@ -121,15 +121,14 @@
   border-bottom-color: var(--geojson-color-card-fill);
 }
 
-/* 区2 工具栏 — 深灰 #384555；文件夹 / 漏斗 / 眼睛 / 垃圾桶（Lucide 风格 inline SVG） */
+/* 区2 工具栏 — 白底 + 深灰 #384555 图标 + hover 浅灰（ref 截图）；顺序：+ / 文件夹 / 方片叠加 / 眼睛 / 垃圾桶 … 漏斗+计数 */
 .lp-zone-tools {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 2px;
   padding: 6px var(--geojson-spacing-2);
-  background: var(--geojson-color-card-fill);   /* #384555 */
-  color: var(--geojson-color-text-inverse, #fff);
+  background: var(--geojson-color-surface-page);   /* 白底 */
   border-top: 2px solid var(--geojson-color-border-default);
 }
 .lp-tool-btn {
@@ -140,28 +139,29 @@
   height: 26px;
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--geojson-color-card-fill);            /* #384555 = 统一深灰图标/文字色 */
   border-radius: var(--geojson-radius-sm);
   cursor: pointer;
   transition: background var(--geojson-transition), color var(--geojson-transition);
 }
-.lp-tool-btn:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
-.lp-tool-btn:active { background: rgba(255, 255, 255, 0.22); }
+.lp-tool-btn:hover { background: var(--geojson-color-gray-100); }
+.lp-tool-btn:active { background: var(--geojson-color-gray-200); }
 .lp-tool-btn svg { width: 16px; height: 16px; }
 .lp-tools-spacer { flex: 1 1 auto; }
 .lp-funnel {
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   height: 22px;
-  margin-left: 4px;
   padding: 0 6px;
   font-size: var(--geojson-typography-size-2xs);
   font-family: var(--geojson-typography-mono);
   font-weight: var(--geojson-typography-weight-bold);
-  color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.10);
+  color: var(--geojson-color-card-fill);            /* #384555 */
+  background: var(--geojson-color-gray-100);
   border-radius: var(--geojson-radius-xs);
 }
+.lp-funnel svg { width: 13px; height: 13px; }
 
 /* 区3 操作栏 — 仅此区滚动；2px 顶分割线 */
 .lp-zone-operate {

@@ -359,11 +359,12 @@ export function renderLayerList() {
     const _anyVis = _renderable.length > 0 && _renderable.some((l) => l.visible);
     _hdr.innerHTML = _anyVis ? eyeOpen : eyeOff;
     _hdr.title = _anyVis ? '隐藏全部图层' : '显示全部图层';
-    // 区2 工具栏漏斗：可见图层 / 全部图层
+    // 区2 工具栏漏斗：可见图层 / 全部图层（只更新计数 span，保留漏斗 svg 不被 textContent 冲掉）
     const _funnel = document.getElementById('lp-funnel');
     if (_funnel) {
       const _vis = _renderable.filter((l) => l.visible).length;
-      _funnel.textContent = `${_vis}/${_renderable.length}`;
+      const _fc = _funnel.querySelector('.lp-funnel-count');
+      if (_fc) _fc.textContent = `${_vis}/${_renderable.length}`;
     }
   }
 }
@@ -542,6 +543,9 @@ export function initSidebar({ onFiles, onRangeFiles } = {}) {
     else if (_activeTab === 'layers') document.getElementById('import-input')?.click();
     else toast.info('工具箱暂无上载入口');
   });
+  // 区2 占位按钮（待开发）：+ 新建图层 / 方片叠加=图层分组视图
+  document.getElementById('lp-add')?.addEventListener('click', () => toast.info('新建图层（待开发）'));
+  document.getElementById('lp-group')?.addEventListener('click', () => toast.info('图层分组/视图（待开发）'));
 
   // clear-all trash at the 区2 toolbar (id 不变，从原 Layers 段头迁入)
   document.getElementById('layers-clear')?.addEventListener('click', () => {
