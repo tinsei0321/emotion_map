@@ -5,6 +5,40 @@
 
 ---
 
+## 📅 2026-06-27（周五）
+
+### ☑ TODO List
+
+| # | 状态 | 任务 | 涉及文件 | 备注 |
+|---|------|------|----------|------|
+| 1 | ✅ | A1 三页架构文档整合 | `architecture.md` `decisions.md`(ADR-015) `prd.md` `dev-notes.md` `memory/three-page-architecture.md` | 三页=数据库→控制台→实时地图；当前聚焦控制台 α v0.1；L0-L4 双视角 |
+| 2 | ✅ | B0 全局色彩 | `design/tokens.json` `css/tokens.css` `css/panel.css` | 8 处 #007afc→#4285F4；新增 card-fill #384555；Overview/Table 卡片深灰+浅字 |
+| 3 | ✅ | B1 上端栏单层化 | `index.html` `css/layout.css` `css/toolbar.css` | 双层→单条深蓝 48px；面包屑递进；Import/Export/i 靠右白字 |
+| 4 | ✅ | B2 左下 3 按钮集 | `js/map-controls.js` `css/map-controls.css` | 指针/测量/图层纵列于 5 按钮簇上方；initToolbar 选择器自动绑；measure 占位 |
+
+> 💡 A1+B0+B1+B2 完成 → 切新会话做 B3-B6+A2（衔接 = plan 文件 `kde-vibe-frolicking-book.md`）。
+
+### 📝 开发日志
+
+**关键字**：三页架构 ADR-015, L0-L4 双视角, #4285F4/#384555, 单层顶栏, 面包屑, 3 按钮集, Martin 导航重塑
+
+#### 做了什么
+- **A1 三页架构文档**：产品升级三页架构（数据库→控制台→实时地图），当前=控制台 α v0.1。ADR-015 + architecture(§2 三页图 / §4 L0-L4 双视角 / §8 演进) + prd(§1.5 / §3.1 三页树) + dev-notes(06-27) + memory(three-page-architecture)。
+- **B0 色彩**：token 单源（tokens.json→generate_css.py→tokens.css），品牌蓝 #007afc→#4285F4（8 处 + pill.bg RGB）；新增 --geojson-color-card-fill #384555；Overview/Table 卡片(ov-t1/ov-stat/stat-cell/ov-placeholder)深灰填充 + inverse 文字。数据表格保持白底。
+- **B1 单层顶栏**：双层 88px→单条深蓝 48px；面包屑「宜昌市情绪地图 › 控制台（Console） prototype alpha v0.1」（title-zh ×2/3）；Import/Export/i 靠右白字（.draw-tool/.tb-text 改深蓝底白字）；select/basemap 移出（迁 B2）。
+- **B2 3 按钮集**：map-controls 在 5 按钮簇上方加 toolsGroup（指针/测量/图层），8px 间距、悬停灰选中蓝。select/basemap 带 data-tool/data-action → initToolbar 自动绑（不改调用链）；measure toast 占位；#map .emotion-tools-ctrl 覆盖 .draw-tool 深蓝底白字污染。
+
+#### 踩坑 & 收获
+- **token 单源**：tokens.css "DO NOT EDIT" → 改 tokens.json + 跑 generate_css.py；pill.bg 是 rgba 非 #007afc 字面量，replace_all 漏，单独更 RGB→(66,133,244)。
+- **.draw-tool 双语境**：header（深蓝底）与 #map（白底）共用 .draw-tool → 用 `#map .emotion-tools-ctrl .draw-tool` 覆盖回白底深字。
+- **initToolbar 选择器复用**：按钮迁址带 data-tool/data-action 即自动绑，不必改 map.js/main.js（initMap 先于 initToolbar，按钮已 in DOM）。
+
+#### 🔜 下一步（新会话）
+- B3 左端栏三区（选择栏 tab 切换 / 工具栏 / 操作栏，去 Analysis 去 +Upload）+ B6 左簇/3 按钮随动；B4 左端弹出栏（挂载点迁移 settings/heatmap）；B5 色板圆角；A2 UI 层文档（ADR-016 + spec §3.4 + ui-redesign-plan Phase4 + memory martin-ui-redesign）。
+- **衔接**：读 plan 文件 `C:\Users\Hi\.claude\plans\kde-vibe-frolicking-book.md`（B3-B6+A2 完整方案 + 执行顺序）。
+
+---
+
 ## 📅 2026-06-25（周三）
 
 ### ☑ TODO List

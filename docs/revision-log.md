@@ -26,6 +26,7 @@ emotion_map（根）
 │  └─ Harness · MCP/Agent ✅  v2.1：8 Agent 编排 + 7 MCP（智谱优先）
 │
 ├─ 分支 · 功能模块
+│  ├─ 导航架构重塑（Martin）🔄  B0 色彩(#4285F4/#384555) ✅｜B1 单层顶栏 ✅｜B2 3 按钮集 ✅｜B3 左端栏三区 ⬜｜B4 左端弹出栏 ⬜｜B5 色板圆角 ⬜ ◆
 │  ├─ 核密度分析（KDE）弹窗 🔄
 │  │  ├─ 批1 快赢 🔄  1a 预览图 ⏸｜1b 色带系统（随胶囊+HSL+色相细分）✅
 │  │  ├─ 批2 全局时间轴 ⬜  ◆ 架构转折点（解锁批3/4）
@@ -202,6 +203,12 @@ flowchart TD
 
 ---
 
+### 4.12 三页架构 + Martin 导航重塑（2026-06-27）
+
+**三页架构**（ADR-015）：产品从单页升级为三页——数据库（emotion-database，运维）→ 控制台（emotion-console，研究，**当前 α v0.1**）→ 实时地图（emotion-map，商用），自下而上。职责按角色分层，研究工具不被商用/运维功能污染。L0-L4 双视角：过程=分析管道，产物=数据库数据类型分层。
+
+**Martin 导航重塑**：控制台 UI 提升"高级感"，参考 ref3 截图布局（左图层栏 + 紧贴右侧参数面板 + 单层顶栏）+ Martin 源码设计语言（细边框 / 8px 圆角 / Lucide 图标 / hover 过渡 / 留白）。先统一全局色彩（品牌蓝 `#4285F4` + 卡片深灰 `#384555`），再单层顶栏 + 左端栏三区（选择 / 工具 / 操作）+ 左端弹出栏（替代弹窗，挂载点迁移）。
+
 ## 5. 修订记录（按板块分组，组内倒序）
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
@@ -342,6 +349,15 @@ flowchart TD
 | 06-25 | **P3 下拉结果丰富化**（e7c0cb7）：`forward()` 新增 `zone_color` 字段；`PlaceHit` schema 加 `zone_color`；`_row()` 重构为 zone 色点 + zone_name · address/category 双行 + 匹配类型标签（精确/前缀/拼音/子串）。清理旧 `.sb-item-sub`。pytest 35/37 全过。| `core/place_layer.py`, `api/schemas.py`, `frontend/js/search-bar.js`, `frontend/css/search-bar.css`, `tests/test_geocode.py` |
 | 06-25 | **P2 geocode 离线退化**（1558ab6）：`PlaceLayer.forward()` 新增 `min_fuzzy_score` 参数（默认 None=55）；`search_place()` 离线时（AMAP 不可用）自动降至 35，返回更多近似模糊命中——"聊胜于无"优于空白。在线行为不变。pytest 35/37 全过（geocode）。| `core/place_layer.py`, `core/geocode.py`, `tests/test_geocode.py` |
 | 06-25 | **Search v2.2 Stage 2 — 情绪叙事级联到 12 zone（已验证）**：① [place_keywords.json](../DATA/place/place_keywords.json) 拆 wanda_cbd → 7 商圈 + 保留 4 非商业 + general（本地性命中词源，删伪造「太古里」）。② [emotion_corpus.json](../SCRIPT/poi_data/emotion_corpus.json) 拆 wanda_cbd 文本 → 7 商圈（夷陵CBD/水悦城/中南路/五一/万达国际/吾悦/夷陵万达）× 3 极性。③ rebuild [emotion_text_pool.json](../SCRIPT/poi_data/emotion_text_pool.json)（SnowNLP 落带 187/259=72%；7 商圈 positive 池满，neutral/negative 薄则退通用池）。④ [generate_l1_mock.py](../SCRIPT/generate_l1_mock.py) zone 打标改 `resolve_zone`（emotion 点按 POI 名归区，免全市型 zone 丢成 general）。⑤ 重生 L1+L2 mock（T1/T2/T3 各 2500 点）。实测 [check_spatial.py](../SCRIPT/poi_data/check_spatial.py) `--rebalance` 全过：二马路 9%/5%/9%、密度 22x/13x/22x、落水 0.0%、本地性 63%/63%/70%（重点 72%/72%/79%）、score arc 0.453/0.558/0.633。pytest 97/98（1 既有 L2 失败无关）。 |
+
+### 5.12 前端 · 导航架构重塑（Martin）+ 三页架构（06-27）
+
+| 日期 | commit | 用户意图 → 落地 | 文件 |
+|------|--------|----------------|------|
+| 06-27 | 本次 | 产品升级三页架构（数据库→控制台→实时地图，当前=控制台 α v0.1）→ ADR-015 + architecture(§2 三页图 / §4 L0-L4 双视角 / §8 演进) + prd(§1.5 / §3.1 三页树) + dev-notes(06-27) + memory | `architecture.md` `decisions.md` `prd.md` `dev-notes.md` |
+| 06-27 | 本次 | 全局色彩：天蓝/蓝一律 `#4285F4`（8 处品牌 token + pill.bg RGB）+ Overview/Table 填充 `#384555`（新增 `--geojson-color-card-fill`，卡片深灰 + 浅色字；数据表格保持白底） | `design/tokens.json` `css/tokens.css` `css/panel.css` |
+| 06-27 | 本次 | 顶栏双层→单层深蓝（48px）：面包屑「宜昌市情绪地图 › 控制台（Console） prototype alpha v0.1」+ Import/Export/i 靠右白字；select/basemap 移出（迁 3 按钮集） | `index.html` `css/layout.css` `css/toolbar.css` |
+| 06-27 | 本次 | 左下 3 按钮集（指针/测量/图层）置于 5 按钮簇上方：select/basemap 带 data-tool/data-action 由 initToolbar 自动绑（不改调用链）；measure 占位 toast；`#map .emotion-tools-ctrl` 覆盖 .draw-tool 深蓝底白字 | `js/map-controls.js` `css/map-controls.css` |
 
 ## 6. 持续追加规则（给 AI）
 

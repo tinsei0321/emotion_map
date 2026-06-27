@@ -10,6 +10,8 @@
 //
 // No emoji (CLAUDE.md rule 1): SVG glyphs + ASCII/letters only.
 
+import { toast } from './toast.js';
+
 // Fixed pitch per view mode (industry-standard: Mapbox nav / Google Earth city = 60).
 // Center + zoom are PRESERVED on toggle (non-jarring; matches Google/Mapbox 2D-3D UX).
 const PITCH_2D = 0;
@@ -30,6 +32,18 @@ const ICON_RESET =
 const ICON_NORTH =
   '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">' +
   '<path d="M8 1.5 L11.8 13 L8 10 L4.2 13 Z" fill="currentColor"/></svg>';
+
+// ── B2: 3-button tool set (cursor / measure / layers) — sits ABOVE the nav cluster ──
+const ICON_CURSOR =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">' +
+  '<path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>';
+const ICON_MEASURE =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M21.3 8.7l-8.5-8.5a1 1 0 0 0-1.4 0L1.3 10.4a1 1 0 0 0 0 1.4l8.5 8.5a1 1 0 0 0 1.4 0l10.1-10.1a1 1 0 0 0 0-1.4z"/>' +
+  '<path d="M7.5 10.5l1.5 1.5M10.5 7.5l1.5 1.5M13.5 4.5l1.5 1.5M4.5 13.5l1.5 1.5"/></svg>';
+const ICON_LAYERS =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M12 3L22 8L12 13L2 8L12 3Z"/><path d="M2 12L12 17L22 12"/><path d="M2 16L12 21L22 16"/></svg>';
 
 // ── geometry helpers ──
 function metersPerPixel(map) {
@@ -98,6 +112,22 @@ export function initControls(map, { getFC } = {}) {
   const root = document.createElement('div');
   root.className = 'maplibregl-ctrl emotion-controls-root';
 
+  // ── B2: 3-button tool set (cursor / measure / layers) — ABOVE the nav cluster ──
+  // cursor + layers carry data-tool / data-action so initToolbar (toolbar.js) auto-binds
+  // them via the SAME selectors the old header buttons used (.draw-tool[data-tool],
+  // [data-action="basemap"]). measure is a placeholder (toast).
+  const toolsGroup = document.createElement('div');
+  toolsGroup.className = 'maplibregl-ctrl-group emotion-tools-ctrl';
+  const btnCursor = makeButton('draw-tool is-active', ICON_CURSOR, '选择 / Select');
+  btnCursor.setAttribute('data-tool', 'select');
+  btnCursor.setAttribute('aria-pressed', 'true');
+  const btnMeasure = makeButton('draw-tool', ICON_MEASURE, '测量 / Measure（待开发）');
+  const btnLayers = makeButton('draw-tool', ICON_LAYERS, '底图 / Basemap');
+  btnLayers.setAttribute('data-action', 'basemap');
+  btnLayers.setAttribute('aria-pressed', 'false');
+  toolsGroup.append(btnCursor, btnMeasure, btnLayers);
+  btnMeasure.addEventListener('click', () => toast.info('测量功能待开发'));
+
   // ── cluster group (5 buttons, shares geojson.io ctrl-group styling) ──
   const group = document.createElement('div');
   group.className = 'maplibregl-ctrl-group emotion-nav-ctrl';
@@ -118,7 +148,7 @@ export function initControls(map, { getFC } = {}) {
   scale.className = 'emotion-scale-ctrl';
   scale.innerHTML = '<span class="emotion-scale-label">—</span><div class="emotion-scale"></div>';
 
-  root.append(group, scale);
+  root.append(toolsGroup, group, scale);
 
   // ── behaviors ──
   // zoom +/- and reset-north: functionally equivalent to the removed native NavigationControl.

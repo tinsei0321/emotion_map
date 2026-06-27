@@ -28,7 +28,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--geojson-color-chrome-text);          /* #404040 */
+  color: var(--geojson-color-text-inverse);         /* 白（深蓝底） */
   background: transparent;
   border: none;
   border-radius: var(--geojson-radius-sm);          /* 4px */
@@ -36,7 +36,7 @@
   transition: background var(--geojson-transition), color var(--geojson-transition);
 }
 .draw-tool:hover {
-  background: #dcdcdc;                              /* deeper hover grey */
+  background: rgba(255,255,255,0.12);               /* 深蓝底悬停 */
 }
 .draw-tool:focus-visible {
   outline: 2px solid var(--geojson-color-brand-focus);
@@ -56,14 +56,14 @@
   align-items: center;
   font-size: var(--geojson-typography-size-sm);
   font-weight: var(--geojson-typography-weight-bold);
-  color: var(--geojson-color-chrome-text);
+  color: var(--geojson-color-text-inverse);         /* 白（深蓝底） */
   background: transparent;
   border: none;
   border-radius: var(--geojson-radius-md);
   cursor: pointer;
   transition: background var(--geojson-transition), opacity var(--geojson-transition);
 }
-.tb-text:hover { background: #dcdcdc; }            /* deeper hover grey */
+.tb-text:hover { background: rgba(255,255,255,0.12); }  /* 深蓝底悬停 */
 .tb-text:disabled, .tb-text.is-disabled {
   opacity: 0.35;
   cursor: default;
@@ -72,7 +72,7 @@
 
 /* M (Basemap) + i (Info) inherit .draw-tool square look */
 .tb-m { /* inherits .draw-tool */ }
-.tb-info { color: var(--geojson-color-text-tertiary, #a3a3a3); }   /* lighter, less prominent */
+.tb-info { color: var(--geojson-color-text-inverse-soft, rgba(255,255,255,0.7)); }   /* i 稍弱（深蓝底） */
 
 /* ── Info dialog — rich product presentation (client-facing) ── */
 .app-dialog-info {

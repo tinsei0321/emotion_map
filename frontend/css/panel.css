@@ -71,24 +71,24 @@
 }
 
 /* T1 摘要 */
-.ov-t1 { background: var(--geojson-color-gray-100, #f5f5f5); }
+.ov-t1 { background: var(--geojson-color-card-fill, #384555); }
 .ov-t1-name {
   font-size: var(--geojson-typography-size-base);
   font-weight: var(--geojson-typography-weight-bold);
-  color: var(--geojson-color-text-primary);
+  color: var(--geojson-color-text-inverse, #ffffff);
   word-break: break-all;
 }
-.ov-t1-src { margin-top: 2px; font-size: var(--geojson-typography-size-xs); font-weight: normal; color: var(--geojson-color-text-tertiary); }
+.ov-t1-src { margin-top: 2px; font-size: var(--geojson-typography-size-xs); font-weight: normal; color: var(--geojson-color-text-inverse-soft, rgba(255,255,255,0.7)); }
 .ov-t1-meta {
   margin-top: 4px;
   font-size: var(--geojson-typography-size-xs);
-  color: var(--geojson-color-text-secondary);
+  color: var(--geojson-color-text-inverse-soft, rgba(255,255,255,0.7));
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
 }
-.ov-t1-meta i { color: var(--geojson-color-text-tertiary); font-style: normal; }
+.ov-t1-meta i { color: var(--geojson-color-text-inverse-soft, rgba(255,255,255,0.7)); font-style: normal; }
 
 /* T2 属性 */
 .ov-props { display: flex; flex-direction: column; gap: 5px; }
@@ -118,11 +118,11 @@
 .ov-stat {
   text-align: center;
   padding: 8px 4px;
-  background: var(--geojson-color-gray-100, #f5f5f5);
+  background: var(--geojson-color-card-fill, #384555);
   border-radius: var(--geojson-radius-sm);
 }
-.ov-stat-n { display: block; font-size: var(--geojson-typography-size-lg); font-weight: var(--geojson-typography-weight-bold); color: var(--geojson-color-text-primary); font-variant-numeric: tabular-nums; }
-.ov-stat-l { display: block; font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-secondary); }
+.ov-stat-n { display: block; font-size: var(--geojson-typography-size-lg); font-weight: var(--geojson-typography-weight-bold); color: var(--geojson-color-text-inverse, #ffffff); font-variant-numeric: tabular-nums; }
+.ov-stat-l { display: block; font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-inverse-soft, rgba(255,255,255,0.7)); }
 
 .hchart { display: flex; flex-direction: column; gap: 4px; }
 .hbar-row {
@@ -140,10 +140,10 @@
 .ov-mean { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); margin-top: 4px; font-variant-numeric: tabular-nums; }
 .ov-placeholder {
   font-size: var(--geojson-typography-size-xs);
-  color: var(--geojson-color-text-tertiary);
+  color: var(--geojson-color-text-inverse-soft, rgba(255,255,255,0.7));
   padding: 18px 12px;
   text-align: center;
-  background: var(--geojson-color-gray-100, #f5f5f5);
+  background: var(--geojson-color-card-fill, #384555);
   border-radius: var(--geojson-radius-sm);
 }
 
@@ -206,20 +206,20 @@
 }
 .stat-cell {
   padding: var(--geojson-spacing-2) var(--geojson-spacing-3);
-  background: var(--geojson-color-surface-panel-alt);
+  background: var(--geojson-color-card-fill, #384555);
   border: 1px solid var(--geojson-color-border-default);
   border-radius: var(--geojson-radius-sm);
 }
 .stat-cell .n {
   font-size: var(--geojson-typography-size-xl);
   font-weight: var(--geojson-typography-weight-bold);
-  color: var(--geojson-color-text-primary);
+  color: var(--geojson-color-text-inverse, #ffffff);
   font-variant-numeric: tabular-nums;
   line-height: var(--geojson-typography-line-height-none);
 }
 .stat-cell .l {
   font-size: var(--geojson-typography-size-xs);
-  color: var(--geojson-color-text-secondary);
+  color: var(--geojson-color-text-inverse-soft, rgba(255,255,255,0.7));
 }
 .stat-cell .swatch {
   display: inline-block;

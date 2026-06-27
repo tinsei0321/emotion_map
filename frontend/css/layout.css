@@ -26,40 +26,50 @@ html, body {
 
 button { font-family: inherit; }
 
-/* ── Header: dark chrome, 2 tiers ── */
+/* ── Header: single-tier dark chrome (Console alpha v0.1) ── */
 #app-header {
   position: fixed;
   top: 0; left: 0; right: 0;
   display: flex;
-  flex-direction: column;
-  height: var(--geojson-layout-header-height);     /* 88px */
+  flex-direction: row;
+  height: var(--geojson-layout-header-height);     /* 48px single tier */
   z-index: 100;
   box-shadow: var(--geojson-shadow-toolbar);
 }
 
 #title-bar {
-  height: var(--geojson-layout-title-bar-height);  /* 40px */
-  flex: 0 0 var(--geojson-layout-title-bar-height);
+  flex: 1 1 auto;
   display: flex;
   align-items: center;
-  padding: 0 var(--geojson-spacing-4);
-  background: var(--geojson-color-chrome-title-bar-bg);  /* #0c1c2e navy (dark surface) */
+  justify-content: space-between;                  /* 左面包屑 + 右按钮组 */
+  padding: 0 var(--geojson-spacing-3);
+  background: var(--geojson-color-chrome-title-bar-bg);  /* #0c1c2e navy */
   color: var(--geojson-color-text-inverse);
   border-bottom: 1px solid var(--geojson-color-border-default);
 }
 .title-text {
   display: inline-flex;
   align-items: baseline;
+  gap: var(--geojson-spacing-2);
   color: var(--geojson-color-text-inverse);
 }
 .title-zh {
-  font-size: var(--geojson-typography-size-xl);       /* 中文加大 20px */
+  font-size: 13px;                                 /* 原 20px × 2/3 */
+  font-weight: var(--geojson-typography-weight-bold);
+}
+.title-sep {
+  color: var(--geojson-color-text-inverse-soft);
+  font-size: var(--geojson-typography-size-sm);
+}
+.title-console {
+  font-size: 13px;                                 /* 与 title-zh 一致 */
   font-weight: var(--geojson-typography-weight-bold);
 }
 .title-version {
-  font-size: var(--geojson-typography-size-xs);       /* 英文缩小 12px */
-  font-weight: 300;                                   /* 细体 */
-  margin-left: 24px;                                   /* 与中文 24px 间距 */
+  font-size: var(--geojson-typography-size-xs);    /* 12px 不变 */
+  font-weight: 300;                                /* 细体不变 */
+  color: var(--geojson-color-text-inverse-soft);
+  margin-left: var(--geojson-spacing-3);
 }
 
 /* ── Main: 3-panel flex ── */

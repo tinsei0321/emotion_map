@@ -41,6 +41,30 @@
    bar with the existing zoom buttons. Hover is the SAME token everywhere → changing
    the hover-gray depth later is a one-line global change (per user's unity rule). */
 
+/* ═══ B2: 3-button tool set (cursor / measure / layers) — above nav cluster ═══
+   Overrides toolbar.css .draw-tool (which is styled for the dark header) so these
+   buttons read as white-bg geojson.io controls inside #map. 8px gap to nav cluster. */
+.emotion-tools-ctrl { margin-bottom: 8px; }
+#map .emotion-tools-ctrl button {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--geojson-color-chrome-text);     /* #404040 (white-bg override) */
+  background: var(--geojson-color-surface-page);
+  cursor: pointer;
+}
+#map .emotion-tools-ctrl button:hover {
+  background: var(--geojson-color-gray-100);
+}
+#map .emotion-tools-ctrl button svg { display: block; pointer-events: none; }
+#map .emotion-tools-ctrl .draw-tool[aria-pressed="true"] {
+  background: var(--geojson-color-chrome-active-fill);   /* selected = #4285F4 */
+  color: var(--geojson-color-text-inverse);
+}
+
 /* cluster buttons: center glyphs/letters, unified color + weight */
 .emotion-nav-ctrl button {
   width: 32px;
