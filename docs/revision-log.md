@@ -85,6 +85,7 @@ emotion_map（根）
 | 数据管道 · L0→L4 | 🔄 待验证 | `SCRIPT/data_governance.py` `emotion_analysis_v1.py` | 2026-06-19 |
 | 数据采集 · Scrapy | ✅ 框架就绪 | `SCRAPER/` | 2026-06-12 |
 | Harness · MCP/Agent/闭环 | ✅ v2.1 | `.claude/` `docs/mcp-strategy.md` | 2026-06-17 |
+| 空间分析引擎 · 后端（Spatial Analysis） | 🔄 活跃 | `core/spatial_analysis.py` `api/routes.py` | 2026-06-28 |
 
 ```mermaid
 flowchart LR
@@ -366,6 +367,16 @@ flowchart TD
 | 06-27 | 本次 | **B5 色板圆角 + 品牌蓝消费方查漏**：①`.swatch` 圆形(`border-radius:50%`)→**圆角矩形**(`--geojson-radius-md` 6px，与同弹窗 `.linestyle-cap` 一致；`.is-sel` 环形 `box-shadow` 自动跟随圆角，无副作用) ②**全局 `#4285F4` 品牌蓝查漏**——残留旧蓝 `#007afc`/`rgba(0,122,252)`(≠token 值 `#4285F4`)清零：**(a)半透明填充**改 `color-mix(in srgb, var(--geojson-color-brand-primary) N%, transparent)` 派生(单源真值，brand 变更自动跟随)——`.layer-row.is-selected` 12%/18%、`.is-bar-sel`/`.hm-style-btn.is-bar-sel` 12%/18%、`.sc-hit`/`.arch-desc code` 6%、linestyle-cap 选中阴影 30%；**(b)`var(--token,#007afc)` 回退值**统一改 `#4285F4`(panel/sidebar/toolbar/settings/param-panel/search-bar)；**(c)toast 幽灵 token 修复**——`.toast-info .toast-icon` 引用的 `--geojson-brand` 全仓无定义(回退永驻旧蓝)→改真 token `--geojson-color-brand-primary`；**(d)**`map.js` hover-ring 回退 `#007afc`→`#4285F4`。**保留不动**(内容色，非 chrome token 消费方)：`PRESET_COLORS` 调色板蓝、arch-diagram 七色彩虹 `--lc`(应用层 `#007afc` 为装饰分层色，单改破坏彩虹平衡) | `css/settings.css` `css/sidebar.css` `css/panel.css` `css/toolbar.css` `css/dialog.css` `css/toast.css` `css/param-panel.css` `css/search-bar.css` `js/map.js` |
 
 | 06-27 | 本次 | **A2 UI 层文档**（Martin 导航重塑收尾，ADR-016）：①`decisions.md` 新增 **ADR-016**「前端导航架构定型：Martin 编辑器范式（三区左栏+悬浮参数栏）」——背景/三选项表/决策(B0-B5)/后果 + 索引行 ②`spec.md` 新增 **§3.4 前端主界面导航架构规格**（布局区域表 + 左栏三区表 + 色彩控件单源），§3 定位注改指 §3.4（原指 apps/CLAUDE.md）③`ui-redesign-plan.md` 新增 **Phase 4**（B0-B5 落地表，标注 Phase 1-3 已被 ADR-012 超越）④memory **`martin-ui-redesign`**（承重约定：三区 tab 互斥/参数栏随动 B6/apply 链零改/品牌蓝单源 `#4285F4`/胶囊设计语言）+ MEMORY.md 索引 | `docs/decisions.md` `docs/spec.md` `docs/ui-redesign-plan.md` `~/.claude/.../memory/martin-ui-redesign.md` |
+
+### 5.13 空间分析引擎 · 后端（Spatial Analysis，2026-06-28）
+
+> 核密度（连续密度场）与空间聚合（离散面域统计）拆为两个 Toolbox 功能的后端地基。
+> 5 期规划：**P0 后端地基**（本表）→ P1 核密度重组(H3) → P2 空间聚合骨架+标准网格 → P3 指定单元 → P4 Gi\*+Moran's I。
+> plan：`~/.claude/plans/majestic-marinating-cerf.md`。
+
+| 日期 | commit | 用户意图 → 落地 | 文件 |
+|------|--------|----------------|------|
+| 06-28 | 本次 | **P0 后端地基**：新建 `create_square_grid`(F_006, snap-to-grid 只建有点的格, EPSG:4546 量米制→4326, 聚合 point_count/score_mean/五级极性/polarity_index)；接 2 端点 `/spatial/aggregate`(指定单元=aggregate_by_polygons) + `/spatial/grid`(hex\|square 统一入口)；schemas `SpatialAggregateRequest`/`SpatialGridRequest`；补装 `h3`(P1 用) + `httpx`(端点测试)；补登 track F_005(buffer, 原 @track 未注册)；新建 `tests/test_spatial_analysis.py`(10 测试: 方格/六边形/聚合单测 + 4 TestClient 端点)全过。**延后 P4**：hotspot/moran 端点 + libpysal/esda(PySAL 重栈)。**复用**：聚合统计复制 aggregate_by_polygons(零回归)、CRS 范式照搬 create_buffer、端点结构照搬 /spatial/buffer | `core/spatial_analysis.py` `core/buffer_analysis.py` `api/routes.py` `api/schemas.py` `tests/test_spatial_analysis.py` `requirements.txt` |
 
 ## 6. 持续追加规则（给 AI）
 

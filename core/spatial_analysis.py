@@ -17,7 +17,7 @@
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-from shapely.geometry import Point, Polygon
+from shapely.geometry import Point, Polygon, box
 from typing import Optional, Tuple
 
 from core.tracker import track, TrackContext, register_track_id
@@ -344,10 +344,91 @@ def create_hex_grid(
     return hex_gdf
 
 
+# ═══════════════════════════════════════════════════════════
+# 固定方格网格（标准网格）
+# ═══════════════════════════════════════════════════════════
+
+@track("MOD_SPATIAL.F_006", track_args=False)
+def create_square_grid(
+    gdf: gpd.GeoDataFrame,
+    cell_size: float = 200.0,
+    unit: str = 'm',
+    target_crs: str = 'EPSG:4546',
+) -> gpd.GeoDataFrame:
+    """
+    固定方格网格聚合（标准网格）—— 按指定边长方格统计情绪指标。
+
+    参数:
+        gdf: 情绪点 GeoDataFrame（WGS84 或任意 CRS；内部投影到 target_crs 量米制）
+        cell_size: 方格边长（按 unit）；常用 50/200/400/1000
+        unit: 'm' | 'km'（'km' 时 cell_size ×1000）
+        target_crs: 量度投影 CRS（宜昌标准 EPSG:4546，CM 111E，米制，保证 cell_size 精确）
+
+    返回:
+        含聚合统计的方格 GeoDataFrame（EPSG:4326，仅含有点落入的格），列：
+          - point_count: 格内点数
+          - score_mean: 平均情绪得分
+          - n_very_negative ~ n_very_positive: 五级极性计数
+          - polarity_index: 综合情绪指数（-1~1，正值=偏正面）
+
+    说明:
+        snap-to-grid —— 仅对有点落入的格建 Polygon，避免稀疏点生成巨量空格
+        （与 create_hex_grid "仅有点的格" 行为一致）。方格在 EPSG:4546 量度，
+        保证 50/200/400/1000m 边长精确，结果回投影 EPSG:4326 供前端渲染。
+    """
+    pts = gdf.copy()
+    if pts.crs is None:
+        pts = pts.set_crs('EPSG:4326')
+    pts = pts.to_crs(target_crs)
+
+    cs = cell_size * (1000.0 if unit == 'km' else 1.0)
+    if cs <= 0:
+        raise ValueError('cell_size 必须为正')
+
+    xs = pts.geometry.x.values
+    ys = pts.geometry.y.values
+    # snap 每点到其格原点（左下角），去重 → 仅建有点的格
+    origins = {(float(np.floor(x / cs) * cs), float(np.floor(y / cs) * cs))
+               for x, y in zip(xs, ys)}
+
+    cells = [box(ox, oy, ox + cs, oy + cs) for ox, oy in origins]
+    cells_gdf = gpd.GeoDataFrame(geometry=cells, crs=target_crs).reset_index(drop=True)
+
+    # 空间连接：点 → 格（within）
+    joined = gpd.sjoin(pts, cells_gdf, how='inner', predicate='within')
+    if len(joined) == 0:
+        raise ValueError('方格空间连接为空——点未落入任何格，检查坐标系/几何')
+
+    grouped = joined.groupby('index_right')
+    stats = pd.DataFrame({'point_count': grouped.size()})
+
+    if 'score' in joined.columns:
+        stats['score_mean'] = grouped['score'].mean().round(3)
+
+    # 五级极性统计 + 综合情绪指数（公式同 aggregate_by_polygons）
+    if 'polarity' in joined.columns:
+        for pol in ['Very Negative', 'Negative', 'Neutral', 'Positive', 'Very Positive']:
+            col_name = f'n_{pol.lower().replace(" ", "_")}'
+            stats[col_name] = grouped['polarity'].apply(lambda x: (x == pol).sum())
+        stats['polarity_index'] = (
+            (stats['n_very_positive'] * 2 +
+             stats['n_positive'] * 1 +
+             stats['n_negative'] * -1 +
+             stats['n_very_negative'] * -2) /
+            stats['point_count'].clip(lower=1)
+        ).round(3)
+
+    # 合并统计回方格（inner：仅保留有点的格）→ 回 WGS84
+    result = cells_gdf.merge(stats, left_index=True, right_index=True, how='inner')
+    result = gpd.GeoDataFrame(result, geometry='geometry', crs=target_crs)
+    return result.to_crs('EPSG:4326')
+
+
 # ── 追踪 ID 注册表 ──
 register_track_id("MOD_SPATIAL.F_001", "Getis-Ord Gi* 热点分析")
 register_track_id("MOD_SPATIAL.F_002", "Moran's I 空间自相关检验")
 register_track_id("MOD_SPATIAL.F_003", "行政单元聚合统计")
 register_track_id("MOD_SPATIAL.F_004", "H3 六边形网格聚合")
+register_track_id("MOD_SPATIAL.F_006", "固定方格网格聚合(标准网格)")
 register_track_id("MOD_SPATIAL.D_001", "热点分析：自适应空间权重矩阵构建")
 register_track_id("MOD_SPATIAL.D_002", "热点分析：分类结果统计（hot/cold/ns）")

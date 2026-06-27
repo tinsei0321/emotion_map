@@ -11,6 +11,7 @@ from api.schemas import (
     AnalysisRequest, AnalysisResponse, PolarityStats,
     HealthResponse, DataListResponse, GovernanceRequest,
     BufferRequest, ExportRequest,
+    SpatialAggregateRequest, SpatialGridRequest,
     PlaceHit, PlaceSearchResponse, GeocodeResult, ReverseGeocodeResult,
 )
 from core.config import RAW_DIR, PROCESSED_DIR, BOUNDARY_SHP
@@ -172,6 +173,88 @@ async def create_buffer_route(req: BufferRequest):
         'covered_area_km2': total_area,
         'feature_count': len(out_fc['features']),
         'message': f'已生成 {len(out_fc["features"])} 个缓冲区，总覆盖 {total_area} km²',
+    }
+
+
+@router.post("/spatial/aggregate")
+async def aggregate_route(req: SpatialAggregateRequest):
+    """空间聚合 - 指定单元：情绪点按面域聚合（行政区/城市更新单元/控规单元/用地分类）。
+
+    输入均 WGS84 GeoJSON；aggregate_by_polygons 直接 sjoin（面域尺度 within 可接受，
+    亚米级精度需求留待后续内投影）。返回每面域带 point_count/score_mean/五级极性计数/
+    polarity_index 的 GeoJSON。
+    """
+    import json
+    import geopandas as gpd
+    from core.spatial_analysis import aggregate_by_polygons
+
+    pf = (req.points_geojson or {}).get('features') if isinstance(req.points_geojson, dict) else None
+    gf = (req.polygons_geojson or {}).get('features') if isinstance(req.polygons_geojson, dict) else None
+    if not pf or not gf:
+        raise HTTPException(status_code=400, detail="points_geojson / polygons_geojson 需为非空 GeoJSON")
+
+    try:
+        pts = gpd.GeoDataFrame.from_features(pf, crs='EPSG:4326')
+        polys = gpd.GeoDataFrame.from_features(gf, crs='EPSG:4326')
+        merged = aggregate_by_polygons(
+            pts, polys, agg_cols=req.agg_cols, polygon_name_col=req.name_col,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"空间聚合失败: {e}")
+
+    fc = json.loads(merged.to_json())
+    n = len(fc.get('features', []))
+    return {
+        'success': True,
+        'geojson': fc,
+        'feature_count': n,
+        'message': f'已聚合 {n} 个面域',
+    }
+
+
+@router.post("/spatial/grid")
+async def grid_route(req: SpatialGridRequest):
+    """空间聚合 - 标准网格(方格) / 核密度 H3：点→网格聚合统一入口。
+
+    grid_type='square'→create_square_grid(cell_size, unit)（EPSG:4546 量米制方格）；
+    grid_type='hex'   →create_hex_grid(resolution)（H3，需 pip install h3）。
+    返回带 point_count/score_mean/五级极性/polarity_index 的网格 GeoJSON。
+    """
+    import json
+    import geopandas as gpd
+    from core.spatial_analysis import create_square_grid
+
+    feats = (req.geojson or {}).get('features') if isinstance(req.geojson, dict) else None
+    if not feats:
+        raise HTTPException(status_code=400, detail="geojson 需为非空点 GeoJSON")
+    if req.grid_type not in ('hex', 'square'):
+        raise HTTPException(status_code=400, detail="grid_type 必须 hex | square")
+
+    try:
+        pts = gpd.GeoDataFrame.from_features(feats, crs='EPSG:4326')
+        if req.grid_type == 'hex':
+            from core.spatial_analysis import create_hex_grid
+            grid = create_hex_grid(pts, resolution=req.resolution)
+            label = f'H3 res={req.resolution}'
+        else:
+            grid = create_square_grid(pts, cell_size=req.cell_size, unit=req.unit)
+            label = f'方格 {req.cell_size}{req.unit}'
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail=f"依赖缺失: {e}（hex 需 pip install h3）")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"网格聚合失败: {e}")
+
+    fc = json.loads(grid.to_json())
+    n = len(fc.get('features', []))
+    return {
+        'success': True,
+        'geojson': fc,
+        'feature_count': n,
+        'message': f'已生成 {n} 个{label}格',
     }
 
 

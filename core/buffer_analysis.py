@@ -11,7 +11,7 @@ import json
 import geopandas as gpd
 from shapely.ops import unary_union
 
-from core.tracker import track
+from core.tracker import track, register_track_id
 
 
 @track("MOD_SPATIAL.F_005", track_args=False)
@@ -62,3 +62,7 @@ def create_buffer(
     total = round(float(buf['buffer_area_km2'].sum()), 4)
     fc = json.loads(buf.to_crs('EPSG:4326').to_json())   # 回 WGS84 供前端渲染
     return fc, total
+
+
+# ── 追踪 ID 注册表（rule 10：@track 用到的 ID 必注册）──
+register_track_id("MOD_SPATIAL.F_005", "缓冲区分析(覆盖范围)")

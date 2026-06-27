@@ -72,6 +72,23 @@ class BufferRequest(BaseModel):
     dissolve: bool = Field(default=False, description="True=合并所有缓冲为单一覆盖区")
 
 
+class SpatialAggregateRequest(BaseModel):
+    """空间聚合 - 指定单元：情绪点按面域聚合（行政区/更新单元/控规/用地等）。"""
+    points_geojson: dict = Field(..., description="情绪点 GeoJSON FeatureCollection (WGS84)")
+    polygons_geojson: dict = Field(..., description="聚合面域 GeoJSON FeatureCollection (WGS84)")
+    agg_cols: Optional[List[str]] = Field(default=None, description="数值统计列，默认 ['score']")
+    name_col: Optional[str] = Field(default=None, description="面域名称列（输出保留）")
+
+
+class SpatialGridRequest(BaseModel):
+    """空间聚合 - 标准网格(方格) / 核密度 H3：点→网格聚合统一入口。"""
+    geojson: dict = Field(..., description="情绪点 GeoJSON FeatureCollection (WGS84)")
+    grid_type: str = Field(default="square", description="hex | square")
+    resolution: int = Field(default=8, ge=0, le=15, description="H3 分辨率（grid_type=hex 时）")
+    cell_size: float = Field(default=200, gt=0, description="方格边长（grid_type=square 时）")
+    unit: str = Field(default="m", description="cell_size 单位: m | km")
+
+
 class ExportRequest(BaseModel):
     """图层导出请求。"""
     geojson: dict = Field(..., description="待导出图层 GeoJSON FeatureCollection（WGS84）")

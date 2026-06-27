@@ -5,6 +5,38 @@
 
 ---
 
+## 📅 2026-06-28（周六）
+
+### ☑ TODO List
+
+| # | 状态 | 任务 | 涉及文件 | 备注 |
+|---|------|------|----------|------|
+| 1 | ✅ | 空间分析 P0 后端地基 | `core/spatial_analysis.py` `core/buffer_analysis.py` `api/routes.py` `api/schemas.py` `tests/test_spatial_analysis.py` `requirements.txt` | create_square_grid(F_006, snap-to-grid 4546→4326)；/spatial/aggregate + /spatial/grid(hex\|square)；h3+httpx 补装；F_005 补登；10 测试全过；hotspot/moran+PySAL 延后 P4 |
+
+### 📝 开发日志
+
+**关键字**：空间聚合分析, Spatial Analysis, 标准网格(方格 fishnet), 指定单元(zonal), H3, polarity_index, EPSG:4546, create_square_grid, snap-to-grid
+
+#### 做了什么
+- **P0 后端地基**：用户把核密度（连续密度场：KDE 地形+H3 密度分箱）与空间聚合（离散面域统计：方格/指定单元+Gi\*/Moran's I）拆为两个 Toolbox 功能。本期只做后端，为 P1-P3 铺地基。
+  - `create_square_grid`(F_006)：snap-to-grid 只建有点的格（避免稀疏点生成巨量空格），EPSG:4546 量米制保证 50/200/400/1000m 精确，聚合 point_count/score_mean/五级极性/polarity_index，回 4326。
+  - `/spatial/aggregate`(指定单元) + `/spatial/grid`(hex|square 统一入口) 端点，schemas 照搬 BufferRequest。
+  - 补装 h3(P1 用) + httpx(端点测试)；补登 F_005(buffer，原 @track 未注册，rule 10)。
+- **复用**：聚合统计复制 aggregate_by_polygons（不动既有函数，零回归）；CRS 范式照搬 create_buffer；端点结构照搬 /spatial/buffer。
+
+#### 踩坑 & 收获
+- **PySAL 重栈延后**：libpysal+esda 在 requirements.txt 声明但本 env 未装，且仅 P4 的 Gi\*/Moran's I 需要 → P0 不装、不接 hotspot/moran 端点（免留调用即 500 的死端点）。h3 轻量，为 P1 装上。
+- **TestClient 需 httpx**：fastapi.testclient 在本 env 缺 httpx → 端点测试初失败；装 httpx 后全过（starlette 弃用警告指向 httpx2，httpx 仍可用）。
+- **snap-to-grid vs 全 fishnet**：稀疏点下全 fishnet 会生成巨量空格；改为按点 snap 到格原点、去重后只建有点的格（与 create_hex_grid 行为一致）。
+- **track 注册是运行时的**：MOD_SPATIAL 的 ID 不在 tracker.py 静态 `_REGISTRY`，而是各模块 import 时 `register_track_id()` 动态填。F_005(buffer) 之前只 @track 未 register → rule 10 漏洞，本次补登。
+
+#### 🔜 下一步（新会话）
+- **P1 核密度重组**：拆 综合/极性地形(去 L1/L2 命名)、移走情绪网格、加 H3 六边形(2D/3D, 橙黄-暗红)。/spatial/grid(hex) 已就绪。
+- **P2 空间聚合骨架 + 标准网格**：新 Toolbox 项 + 步骤导航 + 标准网格(2D/3D, 3 极性)。/spatial/grid(square) 已就绪。
+- **衔接**：plan `~/.claude/plans/majestic-marinating-cerf.md`（P0 已完成）。
+
+---
+
 ## 📅 2026-06-27（周五）
 
 ### ☑ TODO List
