@@ -365,6 +365,8 @@ flowchart TD
 
 | 06-27 | 本次 | **B5 色板圆角 + 品牌蓝消费方查漏**：①`.swatch` 圆形(`border-radius:50%`)→**圆角矩形**(`--geojson-radius-md` 6px，与同弹窗 `.linestyle-cap` 一致；`.is-sel` 环形 `box-shadow` 自动跟随圆角，无副作用) ②**全局 `#4285F4` 品牌蓝查漏**——残留旧蓝 `#007afc`/`rgba(0,122,252)`(≠token 值 `#4285F4`)清零：**(a)半透明填充**改 `color-mix(in srgb, var(--geojson-color-brand-primary) N%, transparent)` 派生(单源真值，brand 变更自动跟随)——`.layer-row.is-selected` 12%/18%、`.is-bar-sel`/`.hm-style-btn.is-bar-sel` 12%/18%、`.sc-hit`/`.arch-desc code` 6%、linestyle-cap 选中阴影 30%；**(b)`var(--token,#007afc)` 回退值**统一改 `#4285F4`(panel/sidebar/toolbar/settings/param-panel/search-bar)；**(c)toast 幽灵 token 修复**——`.toast-info .toast-icon` 引用的 `--geojson-brand` 全仓无定义(回退永驻旧蓝)→改真 token `--geojson-color-brand-primary`；**(d)**`map.js` hover-ring 回退 `#007afc`→`#4285F4`。**保留不动**(内容色，非 chrome token 消费方)：`PRESET_COLORS` 调色板蓝、arch-diagram 七色彩虹 `--lc`(应用层 `#007afc` 为装饰分层色，单改破坏彩虹平衡) | `css/settings.css` `css/sidebar.css` `css/panel.css` `css/toolbar.css` `css/dialog.css` `css/toast.css` `css/param-panel.css` `css/search-bar.css` `js/map.js` |
 
+| 06-27 | 本次 | **A2 UI 层文档**（Martin 导航重塑收尾，ADR-016）：①`decisions.md` 新增 **ADR-016**「前端导航架构定型：Martin 编辑器范式（三区左栏+悬浮参数栏）」——背景/三选项表/决策(B0-B5)/后果 + 索引行 ②`spec.md` 新增 **§3.4 前端主界面导航架构规格**（布局区域表 + 左栏三区表 + 色彩控件单源），§3 定位注改指 §3.4（原指 apps/CLAUDE.md）③`ui-redesign-plan.md` 新增 **Phase 4**（B0-B5 落地表，标注 Phase 1-3 已被 ADR-012 超越）④memory **`martin-ui-redesign`**（承重约定：三区 tab 互斥/参数栏随动 B6/apply 链零改/品牌蓝单源 `#4285F4`/胶囊设计语言）+ MEMORY.md 索引 | `docs/decisions.md` `docs/spec.md` `docs/ui-redesign-plan.md` `~/.claude/.../memory/martin-ui-redesign.md` |
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

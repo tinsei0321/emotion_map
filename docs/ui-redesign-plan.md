@@ -269,6 +269,21 @@ Danger:    红底红字
 2. 数据治理 → 左面板"分析"段
 3. 情绪分析 → 左面板"分析"段配置表单
 
+### Phase 4：Martin 导航重塑（B0-B5，2026-06，frontend/ 已实施）
+
+> Phase 1-3 为 Streamlit 时期的 geojson.io 迁移（已被 ADR-012 全量 MapLibre 迁移超越）。Phase 4 在 `frontend/` 内部把导航范式收敛为 Martin 编辑器架构（ADR-016），与 Phase 1-3 的 Streamlit 路径不同，但设计语言（geojson.io 简洁专业）延续。
+
+| 子项 | 落地内容 |
+|------|----------|
+| B0 色彩 | 品牌蓝统一 `#4285F4`（清退旧蓝 `#007afc`，8 处 token + pill.bg RGB）；新增 `--geojson-color-card-fill #384555`（卡片深灰 + 浅字） |
+| B1 顶栏 | 双层 → 单层 48px 深蓝 + 面包屑「宜昌市情绪地图 › 控制台 α v0.1」+ Import/Export/i 靠右 |
+| B2 3 按钮集 | 指针/测量/图层纵列于地图控件簇上方，`data-tool`/`data-action` 复用 `initToolbar` 自动绑 |
+| B3 左栏三区 | 加法手风琴 → tab 互斥（Range/Layers/Toolbox）；区2 白底 + `#384555` 图标工具栏；默认宽 240px |
+| B4 参数栏 | 点/线/面 + 核密度 + Buffer 三组参数独立 `<dialog>` → 紧贴左栏的 `#param-panel` 悬浮 1:2 分栏（`<dialog>`→`<div>`，apply 链零改） |
+| B5 色板+查漏 | `.swatch` 圆形 → 圆角矩形（`--geojson-radius-md`）；残留旧蓝 token 化（半透明走 `color-mix`、回退值同步 `#4285F4`、`--geojson-brand` 幽灵 token 修复） |
+
+详见 [`docs/decisions.md`](decisions.md) ADR-016 + [`docs/spec.md`](spec.md) §3.4 + memory `martin-ui-redesign`。
+
 ---
 
 ## 六、与当前实现的 diff
