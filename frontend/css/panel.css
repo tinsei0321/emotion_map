@@ -19,17 +19,15 @@
   font-weight: var(--geojson-typography-weight-medium);
   color: var(--geojson-color-text-secondary);
   background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
+  border: none;                                          /* 无线框 */
   cursor: pointer;
   transition: color var(--geojson-transition), background var(--geojson-transition);
 }
 .ptab:hover { color: var(--geojson-color-text-primary); background: var(--geojson-color-gray-100); }
 .ptab.is-active {
   color: var(--geojson-color-text-inverse);              /* 白色粗体 */
-  background: var(--geojson-color-brand-active);         /* 深蓝实心填充 (#004691, 点击后状态) */
+  background: var(--geojson-color-card-fill);            /* #384555 深灰实心填充 */
   font-weight: var(--geojson-typography-weight-bold);
-  border-bottom-color: transparent;                      /* 去下划线，填充即激活指示 */
 }
 
 .panel-body {
@@ -71,24 +69,24 @@
 }
 
 /* T1 摘要 */
-.ov-t1 { background: var(--geojson-color-card-fill, #384555); }
+.ov-t1 { background: var(--geojson-color-gray-100, #f5f5f5); }
 .ov-t1-name {
   font-size: var(--geojson-typography-size-base);
   font-weight: var(--geojson-typography-weight-bold);
-  color: var(--geojson-color-text-inverse, #ffffff);
+  color: var(--geojson-color-text-primary);
   word-break: break-all;
 }
-.ov-t1-src { margin-top: 2px; font-size: var(--geojson-typography-size-xs); font-weight: normal; color: var(--geojson-color-text-inverse-soft, rgba(255,255,255,0.7)); }
+.ov-t1-src { margin-top: 2px; font-size: var(--geojson-typography-size-xs); font-weight: normal; color: var(--geojson-color-text-tertiary); }
 .ov-t1-meta {
   margin-top: 4px;
   font-size: var(--geojson-typography-size-xs);
-  color: var(--geojson-color-text-inverse-soft, rgba(255,255,255,0.7));
+  color: var(--geojson-color-text-secondary);
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
 }
-.ov-t1-meta i { color: var(--geojson-color-text-inverse-soft, rgba(255,255,255,0.7)); font-style: normal; }
+.ov-t1-meta i { color: var(--geojson-color-text-tertiary); font-style: normal; }
 
 /* T2 属性 */
 .ov-props { display: flex; flex-direction: column; gap: 5px; }
@@ -118,11 +116,11 @@
 .ov-stat {
   text-align: center;
   padding: 8px 4px;
-  background: var(--geojson-color-card-fill, #384555);
+  background: var(--geojson-color-gray-100, #f5f5f5);
   border-radius: var(--geojson-radius-sm);
 }
-.ov-stat-n { display: block; font-size: var(--geojson-typography-size-lg); font-weight: var(--geojson-typography-weight-bold); color: var(--geojson-color-text-inverse, #ffffff); font-variant-numeric: tabular-nums; }
-.ov-stat-l { display: block; font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-inverse-soft, rgba(255,255,255,0.7)); }
+.ov-stat-n { display: block; font-size: var(--geojson-typography-size-lg); font-weight: var(--geojson-typography-weight-bold); color: var(--geojson-color-text-primary); font-variant-numeric: tabular-nums; }
+.ov-stat-l { display: block; font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-secondary); }
 
 .hchart { display: flex; flex-direction: column; gap: 4px; }
 .hbar-row {
@@ -140,10 +138,10 @@
 .ov-mean { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); margin-top: 4px; font-variant-numeric: tabular-nums; }
 .ov-placeholder {
   font-size: var(--geojson-typography-size-xs);
-  color: var(--geojson-color-text-inverse-soft, rgba(255,255,255,0.7));
+  color: var(--geojson-color-text-tertiary);
   padding: 18px 12px;
   text-align: center;
-  background: var(--geojson-color-card-fill, #384555);
+  background: var(--geojson-color-gray-100, #f5f5f5);
   border-radius: var(--geojson-radius-sm);
 }
 
@@ -206,20 +204,20 @@
 }
 .stat-cell {
   padding: var(--geojson-spacing-2) var(--geojson-spacing-3);
-  background: var(--geojson-color-card-fill, #384555);
+  background: var(--geojson-color-surface-panel-alt);
   border: 1px solid var(--geojson-color-border-default);
   border-radius: var(--geojson-radius-sm);
 }
 .stat-cell .n {
   font-size: var(--geojson-typography-size-xl);
   font-weight: var(--geojson-typography-weight-bold);
-  color: var(--geojson-color-text-inverse, #ffffff);
+  color: var(--geojson-color-text-primary);
   font-variant-numeric: tabular-nums;
   line-height: var(--geojson-typography-line-height-none);
 }
 .stat-cell .l {
   font-size: var(--geojson-typography-size-xs);
-  color: var(--geojson-color-text-inverse-soft, rgba(255,255,255,0.7));
+  color: var(--geojson-color-text-secondary);
 }
 .stat-cell .swatch {
   display: inline-block;
