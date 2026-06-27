@@ -26,7 +26,7 @@ emotion_map（根）
 │  └─ Harness · MCP/Agent ✅  v2.1：8 Agent 编排 + 7 MCP（智谱优先）
 │
 ├─ 分支 · 功能模块
-│  ├─ 导航架构重塑（Martin）🔄  B0 色彩(#4285F4/#384555) ✅｜B1 单层顶栏 ✅｜B2 3 按钮集 ✅｜B3 左端栏三区 ⬜｜B4 左端弹出栏 ⬜｜B5 色板圆角 ⬜ ◆
+│  ├─ 导航架构重塑（Martin）🔄  B0 色彩(#4285F4/#384555) ✅｜B1 单层顶栏 ✅｜B2 3 按钮集 ✅｜B3 左端栏三区 ✅（B6 随动复核通过）｜B4 左端弹出栏 ⬜｜B5 色板圆角 ⬜ ◆
 │  ├─ 核密度分析（KDE）弹窗 🔄
 │  │  ├─ 批1 快赢 🔄  1a 预览图 ⏸｜1b 色带系统（随胶囊+HSL+色相细分）✅
 │  │  ├─ 批2 全局时间轴 ⬜  ◆ 架构转折点（解锁批3/4）
@@ -358,6 +358,7 @@ flowchart TD
 | 06-27 | 本次 | 全局色彩：天蓝/蓝一律 `#4285F4`（8 处品牌 token + pill.bg RGB）+ Overview/Table 填充 `#384555`（新增 `--geojson-color-card-fill`，卡片深灰 + 浅色字；数据表格保持白底） | `design/tokens.json` `css/tokens.css` `css/panel.css` |
 | 06-27 | 本次 | 顶栏双层→单层深蓝（48px）：面包屑「宜昌市情绪地图 › 控制台（Console） prototype alpha v0.1」+ Import/Export/i 靠右白字；select/basemap 移出（迁 3 按钮集） | `index.html` `css/layout.css` `css/toolbar.css` |
 | 06-27 | 本次 | 左下 3 按钮集（指针/测量/图层）置于 5 按钮簇上方：select/basemap 带 data-tool/data-action 由 initToolbar 自动绑（不改调用链）；measure 占位 toast；`#map .emotion-tools-ctrl` 覆盖 .draw-tool 深蓝底白字 | `js/map-controls.js` `css/map-controls.css` |
+| 06-27 | 19e6c4e | 左端栏三区重构（B3）：加法手风琴→**tab 互斥**（Range/Layers/Toolbox，setActiveTab 同步 pane 显隐 + 文件夹 title）；删 Analysis 段（整合数据库，移除 placeholder 绑定）+ 删 `+Upload Range` 卡（上载统一到区2 文件夹，按当前页触发 range/import-input）；区2 **深灰 `#384555` 工具栏**（文件夹/漏斗=可见/总数/眼睛/垃圾桶——后两者从 Layers 段头迁入，id 不变）；区3 操作栏仅此滚动；默认宽 ×0.8 = 240px（`--left-w` + `--geojson-layout-left-panel-width` 同步）。**B6 复核**：左簇锚 `#map`（absolute left:10px）+ `#map` flex 天然跟随左端栏，Playwright 实测 Δcluster=Δlp（gap 恒 18=gutter8+offset10），结构未动 flex → **零改动** | `index.html` `js/sidebar.js` `css/sidebar.css` `css/layout.css` `css/tokens.css` |
 
 ## 6. 持续追加规则（给 AI）
 

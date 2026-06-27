@@ -15,8 +15,9 @@
 | 2 | ✅ | B0 全局色彩 | `design/tokens.json` `css/tokens.css` `css/panel.css` | 8 处 #007afc→#4285F4；新增 card-fill #384555；Overview/Table 卡片深灰+浅字 |
 | 3 | ✅ | B1 上端栏单层化 | `index.html` `css/layout.css` `css/toolbar.css` | 双层→单条深蓝 48px；面包屑递进；Import/Export/i 靠右白字 |
 | 4 | ✅ | B2 左下 3 按钮集 | `js/map-controls.js` `css/map-controls.css` | 指针/测量/图层纵列于 5 按钮簇上方；initToolbar 选择器自动绑；measure 占位 |
+| 5 | ✅ | B3 左端栏三区 + B6 随动复核 | `index.html` `js/sidebar.js` `css/sidebar.css` `css/layout.css` `css/tokens.css` | 手风琴→tab 互斥（Range/Layers/Toolbox）；删 Analysis/+Upload Range；区2 深灰工具栏（文件夹/漏斗/眼睛/垃圾桶）；默认宽 240px；B6 Playwright 验左簇跟随零改动 |
 
-> 💡 A1+B0+B1+B2 完成 → 切新会话做 B3-B6+A2（衔接 = plan 文件 `kde-vibe-frolicking-book.md`）。
+> 💡 B3+B6 完成 → 下一步 B4 左端弹出栏（heatmap 向导重排，重，建议另起会话）→ B5 色板圆角 → A2 UI 层文档。
 
 ### 📝 开发日志
 
@@ -27,15 +28,22 @@
 - **B0 色彩**：token 单源（tokens.json→generate_css.py→tokens.css），品牌蓝 #007afc→#4285F4（8 处 + pill.bg RGB）；新增 --geojson-color-card-fill #384555；Overview/Table 卡片(ov-t1/ov-stat/stat-cell/ov-placeholder)深灰填充 + inverse 文字。数据表格保持白底。
 - **B1 单层顶栏**：双层 88px→单条深蓝 48px；面包屑「宜昌市情绪地图 › 控制台（Console） prototype alpha v0.1」（title-zh ×2/3）；Import/Export/i 靠右白字（.draw-tool/.tb-text 改深蓝底白字）；select/basemap 移出（迁 B2）。
 - **B2 3 按钮集**：map-controls 在 5 按钮簇上方加 toolsGroup（指针/测量/图层），8px 间距、悬停灰选中蓝。select/basemap 带 data-tool/data-action → initToolbar 自动绑（不改调用链）；measure toast 占位；#map .emotion-tools-ctrl 覆盖 .draw-tool 深蓝底白字污染。
+- **B3 左端栏三区**：`.lp-sections` 从 4 段加法手风琴改为三区——区1 选择栏 tab 互斥（Range/Layers/Toolbox，`setActiveTab` 同步 pane 显隐 + 文件夹 title）、区2 深灰 `#384555` 工具栏（文件夹按当前页触发 range/import-input + 漏斗「可见/总数」+ 眼睛/垃圾桶从 Layers 段头迁入 id 不变）、区3 操作栏仅此滚动。删 Analysis 段（整合数据库）+ 删 `+Upload Range` 卡（上载统一文件夹）。默认宽 ×0.8 = 240px（`--left-w` + `--geojson-layout-left-panel-width` 同步）。
+- **B6 随动复核**：左簇 `.emotion-controls-root` 锚 `#map`（absolute left:10px），`#map` flex-shrinks 天然跟随左端栏。Playwright 实测：遍历 --left-w ∈ [240,320,400,500]，Δcluster === Δlp（gap 恒 18 = gutter8 + offset10），B3 未动 flex → **零代码改动**，仅验证。
 
 #### 踩坑 & 收获
 - **token 单源**：tokens.css "DO NOT EDIT" → 改 tokens.json + 跑 generate_css.py；pill.bg 是 rgba 非 #007afc 字面量，replace_all 漏，单独更 RGB→(66,133,244)。
 - **.draw-tool 双语境**：header（深蓝底）与 #map（白底）共用 .draw-tool → 用 `#map .emotion-tools-ctrl .draw-tool` 覆盖回白底深字。
 - **initToolbar 选择器复用**：按钮迁址带 data-tool/data-action 即自动绑，不必改 map.js/main.js（initMap 先于 initToolbar，按钮已 in DOM）。
+- **B3 迁移不破坏绑定**：`#layers-toggle-all`/`#layers-clear` 从 `.section-head` 迁到 `.lp-zone-tools`，id 不变 → sidebar.js 的 getElementById 绑定与 renderLayerList 的 innerHTML 刷新全保留；旧 `.section-head .layers-*` CSS 选择器变 dead 但无害。
+- **B6 同步读取陷阱**：`#left-panel` 有 `transition: width`，遍历 `--left-w` 后同步 `getBoundingClientRect()` 读到动画初值（lpRight 卡 240）。解法：测试时 `lp.style.transition='none'` + `void lp.offsetWidth` 强制回流，再验 Δcluster===Δlp。另：cluster 与左端栏间隔是 gutter(8)+offset(10)=18，非 10。
+- **showLayerManager 适配**：原依赖 `.lp-section[data-section="layers"]` 加 `.open`，三区重构后改调 `setActiveTab('layers')`——重构结构性改动必须 grep 旧选择器的所有消费方。
 
 #### 🔜 下一步（新会话）
-- B3 左端栏三区（选择栏 tab 切换 / 工具栏 / 操作栏，去 Analysis 去 +Upload）+ B6 左簇/3 按钮随动；B4 左端弹出栏（挂载点迁移 settings/heatmap）；B5 色板圆角；A2 UI 层文档（ADR-016 + spec §3.4 + ui-redesign-plan Phase4 + memory martin-ui-redesign）。
-- **衔接**：读 plan 文件 `C:\Users\Hi\.claude\plans\kde-vibe-frolicking-book.md`（B3-B6+A2 完整方案 + 执行顺序）。
+- **B4 左端弹出栏**（优先，但重——heatmap-tool.js 975 行 3 步向导需重排进 1:2 分栏，建议单独会话）：紧贴 `#left-panel` 右缘、不可拖宽，点要素按钮/核密度才弹；复用 `applyPaint`/`generateHeatmap`/`generateBuffer` 逻辑，仅迁挂载点；**待决策**=heatmap 3 步拍平 vs 保留步骤导航、`#basemap-popover` 去留。
+- B5 色板圆角（`settings.css:115` `.swatch` 50%→圆角矩形 + `panel.css` `.ov-swatch`/`.stat-cell` 同步）+ 全局色彩消费方查漏（如 `sidebar.css:530` `.layer-row.is-selected` 仍 `rgba(0,122,252)` 待改 `#4285F4`）。
+- A2 UI 层文档：ADR-016 + spec §3.4 + ui-redesign-plan Phase4 + revision-log §4/§5/§7 + memory `martin-ui-redesign`。
+- **衔接**：plan 文件 `C:\Users\Hi\.claude\plans\feature-kde-l2-3d-martin-delegated-milner.md`（B3-B6+A2 执行计划，**Phase 1 = B3+B6 已完成**）。
 
 ---
 
