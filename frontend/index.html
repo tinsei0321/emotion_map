@@ -132,6 +132,11 @@
                 <span class="tool-name">HeatMap · 核密度分析</span>
                 <span class="tool-info" data-tip="基于点状数据进行核密度分析，识别不同空间尺度下，城市情绪的舆情热度、情绪地形图以及积极/消极/中性情绪分布情况等。">i</span>
               </button>
+              <button class="tool-row" id="tool-grid" data-tool="grid">
+                <span class="tool-icon"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="5" height="5" rx="0.5"/><rect x="9.5" y="1.5" width="5" height="5" rx="0.5"/><rect x="1.5" y="9.5" width="5" height="5" rx="0.5"/><rect x="9.5" y="9.5" width="5" height="5" rx="0.5"/></svg></span>
+                <span class="tool-name">Grid · 空间聚合网格</span>
+                <span class="tool-info" data-tip="按指定边长方格聚合情绪点，看不同空间尺度下的情绪浓度分布。2D 色块 / 3D 地形双模式，支持综合/积极/消极三极性。后端 EPSG:4546 米制方格精确。">i</span>
+              </button>
               <button class="tool-row" id="tool-buffer" data-tool="buffer">
                 <span class="tool-icon"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="7"/></svg></span>
                 <span class="tool-name">Buffer · 覆盖范围分析</span>
@@ -176,6 +181,11 @@
           <div class="legend-title">核密度</div>
           <div class="legend-heat-ramp"></div>
           <div class="legend-ramp-labels"><span id="legend-heat-lo">稀疏</span><span id="legend-heat-hi">密集</span></div>
+        </div>
+        <div id="legend-grid" class="legend" hidden>
+          <div class="legend-title" id="legend-grid-title">网格</div>
+          <div class="legend-heat-ramp" id="legend-grid-ramp"></div>
+          <div class="legend-ramp-labels"><span>低</span><span>高</span></div>
         </div>
       </div>
 
@@ -262,6 +272,7 @@
         <div class="pp-col pp-col-right">
           <div class="pp-tabs" role="tablist">
             <button class="pp-tab is-active" data-pp-tab="heatmap" role="tab">核密度</button>
+            <button class="pp-tab" data-pp-tab="grid" role="tab">网格</button>
             <button class="pp-tab" data-pp-tab="buffer" role="tab">Buffer</button>
           </div>
 
@@ -453,6 +464,101 @@
               <div class="dialog-foot">
                 <button class="btn btn-secondary" data-close>取消</button>
                 <button class="btn btn-primary" id="buf-generate">生成缓冲区</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 网格聚合（P2）：方格 2D/3D · 3 极性 -->
+          <div class="pp-pane" data-pp-pane="grid" role="tabpanel" hidden>
+            <div id="grid-dialog" class="app-dialog hm-dialog">
+              <div class="dialog-body">
+
+                <!-- ① 分析类型（组卡片：聚合域=标准网格+指定单元；热点 Gi*；Moran's I） -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">分析类型</span></div>
+                  <div class="hm-analysis" id="grid-analysis"><!-- 类型卡 by JS（组卡片纵向，组内横向） --></div>
+                </div>
+
+                <!-- ② 数据选择 + 网格参数 -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">2</span><span class="hm-step-label">数据选择 / 网格参数</span></div>
+                  <div class="hm-section">
+                    <div class="hm-label">数据层级 <span class="hm-info" data-tip="选情绪数据的处理层级。L1=舆情热度（无极性）；L2=极性情绪（综合/积极/消极/中性）。L3/L4 待后续管线。">i</span></div>
+                    <select class="sec-select" id="grid-level"></select>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">情绪点图层 <span class="hm-info" data-tip="选一个已加载的情绪点图层。多时段数据请分别导入后选择（当前按文件名区分时段）。">i</span></div>
+                    <select class="sec-select" id="grid-source"></select>
+                  </div>
+
+                  <!-- 标准网格：方格边长（square 时显示） -->
+                  <div class="hm-section" id="grid-cell-section">
+                    <div class="hm-label buf-dist-label">
+                      <span>方格边长</span>
+                      <span class="buf-dist-controls">
+                        <input type="number" class="buf-num" id="grid-cell-num" value="200" min="50" step="50">
+                        <span class="buf-unit">m</span>
+                      </span>
+                    </div>
+                    <input type="range" class="set-range" id="grid-cell" min="50" max="2000" value="200" step="50">
+                    <div class="buf-presets" id="grid-presets">
+                      <button type="button" class="buf-preset" data-cell="50">50</button>
+                      <button type="button" class="buf-preset" data-cell="200">200</button>
+                      <button type="button" class="buf-preset" data-cell="400">400</button>
+                      <button type="button" class="buf-preset" data-cell="1000">1000</button>
+                    </div>
+                  </div>
+
+                  <!-- 指定单元：聚合面域 + 名称字段（zonal 时显示） -->
+                  <div class="hm-section" id="grid-zonal-section" hidden>
+                    <div class="hm-label">聚合面域 <span class="hm-info" data-tip="选一个已加载的面图层作为聚合域（行政区划/街道/更新单元/控规单元/用地分类等）。需先导入面域数据。">i</span></div>
+                    <select class="sec-select" id="grid-polygon-layer"></select>
+                  </div>
+                  <div class="hm-section" id="grid-namecol-section" hidden>
+                    <div class="hm-label">面域名称字段 <span class="hm-info" data-tip="面域名称列（图例/popup 显示用）。自动探测面域 properties 字段；无合适字段留空。">i</span></div>
+                    <select class="sec-select" id="grid-name-col"></select>
+                  </div>
+
+                  <!-- 极性（仅 L2 时显示，在②网格参数；综合/积极/消极/中性） -->
+                  <div class="hm-section" id="grid-polarity-section" hidden>
+                    <div class="hm-label">极性 <span class="hm-info" data-tip="综合=红蓝绿发散（区分偏正/偏负方向）；积极/消极/中性=单色深浅（深色=高比例）。选择同步更新③色板。">i</span></div>
+                    <div class="buf-capsules" id="grid-polarity">
+                      <button type="button" class="buf-cap is-sel" data-polarity="overall">综合</button>
+                      <button type="button" class="buf-cap" data-polarity="positive">积极</button>
+                      <button type="button" class="buf-cap" data-polarity="negative">消极</button>
+                      <button type="button" class="buf-cap" data-polarity="neutral">中性</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ③ 显示样式（只读色板预览 + 模式 + 拉伸高度） -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">3</span><span class="hm-step-label">显示样式</span></div>
+                  <div class="hm-section">
+                    <div class="hm-label">色板 <span class="hm-info" data-tip="色板随数据层级/极性自动选定：L1 舆论热度=橙黄→暗红（高值金黄）；L2 综合=红蓝绿发散；L2 积极/消极/中性=单色深浅（高值深色）。2D/3D 色板一致。">i</span></div>
+                    <div class="hm-style-list" id="grid-ramp-preview"><!-- 只读色带预览 by JS --></div>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">模式</div>
+                    <div class="buf-capsules" id="grid-mode">
+                      <button type="button" class="buf-cap is-sel" data-mode="2d">2D 色块</button>
+                      <button type="button" class="buf-cap" data-mode="3d">3D 地形</button>
+                    </div>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">拉伸高度 <span class="hm-val" id="grid-extrusion-val">1.0×</span> <span class="hm-info" data-tip="仅 3D 模式生效。柱体高度=格内点数×系数，表达情绪浓度地形。">i</span></div>
+                    <input type="range" class="set-range" id="grid-extrusion-scale" min="0.5" max="2" value="1" step="0.1">
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">3D 透明度 <span class="hm-val" id="grid-extrusion-opacity-val">100%</span> <span class="hm-info" data-tip="仅 3D 模式生效。柱体不透明度，默认 100% 实心；调低可看穿柱体。">i</span></div>
+                    <input type="range" class="set-range" id="grid-extrusion-opacity" min="0.3" max="1" value="1" step="0.1">
+                  </div>
+                </div>
+
+              </div>
+              <div class="dialog-foot">
+                <button class="btn btn-secondary" data-close>取消</button>
+                <button class="btn btn-primary" id="grid-generate">生成</button>
               </div>
             </div>
           </div>

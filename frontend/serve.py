@@ -202,30 +202,32 @@ def _port_free(port):
 
 
 def _spawn_backend(repo_root, backend_port=8000):
-    """若后端端口空闲，启动 uvicorn 子进程并等 /health 就绪；返回 proc（已运行/失败返回 None）。"""
-    if not _port_free(backend_port):
-        print(f'[OK] backend 已在 :{backend_port} 运行（复用，不另起）')
-        return None
+    """启动 uvicorn 子进程并等 /health 就绪。每次启动**强制清 :port 重起**（不复用旧进程），
+    保证后端是最新代码——避免复用旧后端（health 通但缺新路由如 /spatial/grid）导致 404。
+    若需保留手动起的后端，用 `py frontend/serve.py 8080 --no-backend`。"""
+    import urllib.request, time
+    _free_port(backend_port)   # 清 :port 所有残留（旧后端/死进程），保证起最新代码
+
     try:
         proc = subprocess.Popen(
             ['py', '-m', 'uvicorn', 'api.main:app', '--port', str(backend_port)],
-            cwd=repo_root, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            cwd=repo_root,   # stdout/stderr 继承——uvicorn 启动日志/错误直接进 serve 控制台
         )
     except Exception as e:
-        print(f'[WARN] 后端启动失败（{e}）；前端照常，缓冲/分析需手动起 uvicorn')
+        print(f'[WARN] 后端启动失败（{e}）；前端照常，网格/缓冲/分析不可用')
         return None
     print(f'[OK] backend uvicorn 启动中（:{backend_port}, PID {proc.pid}），等待就绪…')
-    import urllib.request, time
-    for _ in range(40):   # ≤8s
+    for _ in range(60):   # ≤30s（冷启动 + geopandas 首次 import 可能慢）
         if proc.poll() is not None:
-            print('[WARN] backend 进程已退出（查 api/ 依赖或语法）'); return None
+            print('[WARN] backend 进程已退出（查上方 uvicorn 输出：依赖/语法/import 错）')
+            return None
         try:
             urllib.request.urlopen(f'http://127.0.0.1:{backend_port}/api/v1/health', timeout=1).read()
             print(f'[OK] backend 就绪 (:{backend_port})')
             return proc
         except Exception:
-            time.sleep(0.2)
-    print('[WARN] backend 8s 未就绪（可能仍在初始化）；前端照常')
+            time.sleep(0.5)
+    print(f'[WARN] backend 30s 未就绪（可能仍在初始化）；前端照常，/api 暂不可用')
     return proc
 
 

@@ -5,6 +5,7 @@ import { toast } from './toast.js';
 import { openSettingsPopover, closeSettingsPopover, openSettingsLayerId, isOpen } from './settings.js';
 import { openHeatmapDialog } from './heatmap-tool.js';
 import { openBufferDialog } from './buffer-tool.js';
+import { openGridDialog } from './grid-tool.js';
 
 const expandedWidth = { left: 0, right: 0 };
 
@@ -125,13 +126,29 @@ export function refreshLegend() {
     if (rampEl) rampEl.innerHTML = HOTNESS_RAMP.map((c) => `<span class="legend-heat-seg" style="background:${c}"></span>`).join('');
   }
 
-  // range — outline color from the focus range layer's paint.color
-  const range = (sel && (sel.kind === 'polygon' || sel.kind === 'line') && sel.visible) ? sel : vis.find((l) => l.kind === 'polygon' || l.kind === 'line');
+  // range — outline color from the focus range layer's paint.color（排除 grid 工具层，避免误弹）
+  const isRange = (l) => (l.kind === 'polygon' || l.kind === 'line') && !(l.paint && l.paint._ui && l.paint._ui.tool === 'grid');
+  const range = (sel && isRange(sel) && sel.visible) ? sel : vis.find(isRange);
   sethidden('legend-range', !range);
   if (range) {
     const color = (range.paint && range.paint.color) || '#0c1c2e';
     const dot = document.querySelector('#legend-range .range-dot');
     if (dot) dot.style.borderTopColor = color;
+  }
+
+  // grid — 横向色带 + 极性标题（参考 Kepler/Martin 连续色带图例）
+  const grid = vis.find((l) => l.kind === 'polygon' && l.paint && l.paint._ui && l.paint._ui.tool === 'grid');
+  sethidden('legend-grid', !grid);
+  if (grid) {
+    const polLabel = { overall: '综合', positive: '积极', negative: '消极' }[grid.paint._ui.polarity] || '网格';
+    const tEl = document.getElementById('legend-grid-title');
+    if (tEl) tEl.textContent = `网格 · ${polLabel}`;
+    const rampEl = document.getElementById('legend-grid-ramp');
+    const stops = grid.paint.gridStops || [];
+    if (rampEl && stops.length) {
+      const grad = stops.map(([d, c]) => `${c} ${Math.round(d * 100)}%`).join(', ');
+      rampEl.style.background = `linear-gradient(to right, ${grad})`;
+    }
   }
 }
 function sethidden(id, hidden) { const el = document.getElementById(id); if (el) el.hidden = hidden; }
@@ -157,8 +174,9 @@ function levelTag(l) {
 /** Hint letter between 要素按钮 and name: R (range) / L0·L1·L2 (point), colored by the layer's display color. */
 function hintChip(l) {
   const isBuffer = !!(l && l.paint && l.paint._ui && l.paint._ui.tool === 'buffer');
+  const isGrid = !!(l && l.paint && l.paint._ui && l.paint._ui.tool === 'grid');
   const lv = layerLevel(l);
-  const text = isBuffer ? 'B' : (lv === 'range' ? 'R' : (lv || 'L0'));
+  const text = isBuffer ? 'B' : (isGrid ? 'G' : (lv === 'range' ? 'R' : (lv || 'L0')));
   return `<span class="layer-hint" style="color:${layerDisplayColor(l)}">${text}</span>`;
 }
 
@@ -264,6 +282,7 @@ export function renderLayerList() {
       // Bug 2 fix: heatmap 图层的 H 按钮统一转调 HeatMap 弹窗（与 Toolbox 同入口、同参数集）
       if (l.kind === 'heatmap') { openHeatmapDialog(id); return; }
       if (l.paint && l.paint._ui && l.paint._ui.tool === 'buffer') { openBufferDialog(id); return; }
+      if (l.paint && l.paint._ui && l.paint._ui.tool === 'grid') { openGridDialog(id); return; }
       if (isOpen() && openSettingsLayerId() === id) closeSettingsPopover();
       else {
         openSettingsPopover(l, b);
@@ -567,6 +586,7 @@ export function initSidebar({ onFiles, onRangeFiles } = {}) {
   // Analysis 段已移除（整合入数据库）；以下为 Toolbox 工具入口
   document.getElementById('tool-heatmap')?.addEventListener('click', () => openHeatmapDialog());
   document.getElementById('tool-buffer')?.addEventListener('click', () => openBufferDialog());
+  document.getElementById('tool-grid')?.addEventListener('click', () => openGridDialog());
   document.getElementById('tool-attribution')?.addEventListener('click', () => {
     toast.info('多维归因分析（Toolbox 独立工具，开发中）');
   });

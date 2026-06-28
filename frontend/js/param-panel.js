@@ -59,8 +59,8 @@ export function initParamPanel() {
     if (panel.contains(e.target)) return;
     if (e.target.closest && e.target.closest('#map')) return;              // 地图交互不关
     if (e.target.closest && e.target.closest('.layer-kind')) return;       // 要素按钮：sidebar 自行开/切
-    if (e.target.id === 'tool-heatmap' || e.target.id === 'tool-buffer') return;
-    if (e.target.closest && (e.target.closest('#tool-heatmap') || e.target.closest('#tool-buffer'))) return;
+    if (e.target.id === 'tool-heatmap' || e.target.id === 'tool-buffer' || e.target.id === 'tool-grid') return;
+    if (e.target.closest && (e.target.closest('#tool-heatmap') || e.target.closest('#tool-buffer') || e.target.closest('#tool-grid'))) return;
     closeParamPanel();
   });
 

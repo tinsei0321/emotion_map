@@ -12,6 +12,7 @@ import {
 import { openImportDialog } from './dialog.js';
 import { initHeatmapTool } from './heatmap-tool.js';
 import { initBufferTool } from './buffer-tool.js';
+import { initGridTool } from './grid-tool.js';
 import { initParamPanel } from './param-panel.js';
 import { initDrawTool, startDraw, stopDraw } from './draw-tool.js';
 import { initHeatmapLegend } from './heatmap-legend.js';
@@ -214,6 +215,7 @@ function main() {
   initSidebar({ onFiles: runImport, onRangeFiles: runRangeImport });
   initHeatmapTool();
   initBufferTool();
+  initGridTool();
   initParamPanel();
   initSearchBar();
   initDrawTool(map);
@@ -255,6 +257,16 @@ function main() {
   });
 
   updateExportState();   // Export disabled initially (no data)
+
+  // 启动自检：后端 :8000 是否就绪（serve.py 自起后端 + /api 反代）。
+  // 失败 → 明确提示用 start.bat（勿用 py -m http.server 或 file://，二者无后端/反代，所有 /api 调用必失败）。
+  fetch('/api/v1/health', { cache: 'no-store' })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((j) => {
+      if (j && j.status === 'ok') console.log('[OK] backend ready (:8000 via proxy)');
+      else toast.info('后端未响应——请双击 start.bat 启动（serve.py 自起后端；勿用 py -m http.server 或 file://）', 6000);
+    })
+    .catch(() => toast.info('后端未响应——请双击 start.bat 启动（serve.py 自起后端；勿用 py -m http.server 或 file://）', 6000));
 
   console.log('[OK] emotion-map frontend (OpenFreeMap + toolbar icons + L2 group eye) loaded');
 }

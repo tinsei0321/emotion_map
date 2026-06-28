@@ -49,7 +49,7 @@ emotion_map/
 1. **禁用 emoji** — 代码中只允许 ASCII 标记：`[OK]` `[WARN]` `[LOAD]` `[ERR]`
 2. **安全打印** — 所有 `print()` 必须通过 `_safe_print()` 调用（Windows GBK 兼容）
 3. **禁止劫持 `builtins.print`** — 不得重新绑定
-4. **入口统一** — 前端主入口 = `frontend/index.html`（`py frontend/serve.py 8080`，no-cache 开发服务器，返回 index.html 时**自动给本地 css/js 引用注入 `?v=<mtime>`**，文件一改浏览器即拉新、开发者零手动 bump 版本号）；**务必走 serve、禁 `file://`**（自动注入只在 serve 时生效）；Streamlit（:8501）为迁移期遗留，仅维护不扩展
+4. **入口统一** — 前端主入口 = `frontend/index.html`（**双击根目录 `start.bat`** 或 `py frontend/serve.py 8080`；serve.py **自起后端** uvicorn :8000 + `/api` 反代、Ctrl+C 同停，**无需手动跑 uvicorn**）；no-cache 开发服务器，返回 index.html 时**自动给本地 css/js 引用注入 `?v=<mtime>`**，文件一改浏览器即拉新、开发者零手动 bump 版本号）；**务必走 serve、禁 `file://`**（自动注入只在 serve 时生效）；Streamlit（:8501）为迁移期遗留，仅维护不扩展
 5. **分析逻辑共用** — 所有入口调用同一个 `run_analysis_task()`
 6. **导出命名规范** — `{name}_{L1|L2|L3|L4}_result_csv.csv`
 7. **数据脱敏** — 分析结果中禁止包含用户名、用户ID 等个人身份信息

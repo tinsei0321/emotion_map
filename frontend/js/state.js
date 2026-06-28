@@ -210,8 +210,8 @@ const _layers = new Map();   // id -> layer object
 let _seq = 0;
 
 // ── Layer category grouping (render-layer aggregation; UI state only — never stored in _layers) ──
-export const CATEGORY_LABEL = { heatmap: '热力图', l2: 'L2 · 情绪地图 DATA', l1: 'L1 · 城市情绪 DATA', l0: 'L0 · 原始', range: '范围边界', buffer: '缓冲分析', other: '其他' };
-let _groupOrder = ['heatmap', 'l2', 'l1', 'l0', 'range', 'buffer', 'other'];   // 成果在上、原始在下（list-top = map-top）
+export const CATEGORY_LABEL = { heatmap: '热力图', l2: 'L2 · 情绪地图 DATA', l1: 'L1 · 城市情绪 DATA', l0: 'L0 · 原始', range: '范围边界', buffer: '缓冲分析', grid: '网格聚合', other: '其他' };
+let _groupOrder = ['heatmap', 'l2', 'l1', 'l0', 'range', 'buffer', 'grid', 'other'];   // 成果在上、原始在下（list-top = map-top）
 const _groupCollapse = new Set();                                    // collapsed category set
 const _groupFold = new Set();                                        // folded real-group set（真 L2 组单独折叠，按 group id；区别于 category 级 _groupCollapse）
 
@@ -377,17 +377,17 @@ export const HEATMAP_RAMPS = {
       [1.00, '#083D08'],   // 高地顶（深积极，绿）
     ],
   },
-  // 网格暖色谱（采样自用户提供的图1，近似 kepler "Global Warming" 6 色插值）
+  // 网格暖色谱（暗红→金黄 sequential；纯红橙黄系，无紫红/玫红；暗红 #8B0000 浅底图可见）
   'grid-warm': {
-    name: '热力网格暖色',
+    name: '网格暖色（暗红→金黄）',
     stops: [
-      [0.00, 'rgba(79,15,42,0)'],
-      [0.15, '#4F0F2A'],
-      [0.30, '#8E1D3C'],
-      [0.45, '#DC2440'],
-      [0.62, '#ED5C28'],
-      [0.80, '#F08828'],
-      [1.00, '#F4C518'],
+      [0.00, 'rgba(139,0,0,0)'],
+      [0.15, '#8B0000'],   // 暗红（深红，浅底图可见，非紫红）
+      [0.30, '#C0392B'],   // 红
+      [0.45, '#E74C3C'],   // 浅红
+      [0.62, '#ED5C28'],   // 橙红
+      [0.80, '#F08828'],   // 橙
+      [1.00, '#F4C518'],   // 金黄
     ],
   },
   // 7 色情绪分类色板 = 7 大类胶囊色同源同序（喜怒哀乐愁急盼）。作 chip/legend 调色源。
@@ -717,6 +717,7 @@ export function categoryOf(l) {
   if (l.needsAnalysis || l.colorMode === 'needsAnalysis') return 'l0';
   if (l.kind === 'polygon' || l.kind === 'line') {
     if (l.paint && l.paint._ui && l.paint._ui.tool === 'buffer') return 'buffer';
+    if (l.paint && l.paint._ui && l.paint._ui.tool === 'grid') return 'grid';
     return 'range';
   }
   return 'other';

@@ -6,6 +6,7 @@
 //   POST /api/v1/analyze         → run analysis (run_analysis_task)
 //   POST /api/v1/governance      → L0→L1 pipeline (run_governance_pipeline)
 //   POST /api/v1/spatial/buffer  → buffer (覆盖范围, EPSG:4546)
+//   POST /api/v1/spatial/grid    → square/hex grid aggregation (EPSG:4546, snap-to-grid)
 
 const BASE = '/api/v1';
 
@@ -47,6 +48,38 @@ export async function runBuffer(payload) {
   });
   if (!r.ok) {
     let detail = `缓冲失败: ${r.status}`;
+    try { const j = await r.json(); detail = j.detail || detail; } catch (_) {}
+    throw new Error(detail);
+  }
+  return r.json();
+}
+
+export async function runGrid(payload) {
+  // payload: { geojson: FeatureCollection, grid_type:'hex'|'square', cell_size:number, unit:'m'|'km', resolution?:0-15 }
+  // → { success, geojson, feature_count, message }（注意字段是 geojson，非 buffer_geojson）
+  const r = await fetch(`${BASE}/spatial/grid`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) {
+    let detail = `网格聚合失败: ${r.status}`;
+    try { const j = await r.json(); detail = j.detail || detail; } catch (_) {}
+    throw new Error(detail);
+  }
+  return r.json();
+}
+
+export async function runAggregate(payload) {
+  // payload: { points_geojson, polygons_geojson, agg_cols?, name_col? }
+  // → { success, geojson, feature_count, message }（指定单元聚合：点 → 面域统计）
+  const r = await fetch(`${BASE}/spatial/aggregate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) {
+    let detail = `空间聚合失败: ${r.status}`;
     try { const j = await r.json(); detail = j.detail || detail; } catch (_) {}
     throw new Error(detail);
   }

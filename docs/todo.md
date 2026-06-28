@@ -12,6 +12,16 @@
 | # | 状态 | 任务 | 涉及文件 | 备注 |
 |---|------|------|----------|------|
 | 1 | ✅ | 空间分析 P0 后端地基 | `core/spatial_analysis.py` `core/buffer_analysis.py` `api/routes.py` `api/schemas.py` `tests/test_spatial_analysis.py` `requirements.txt` | create_square_grid(F_006, snap-to-grid 4546→4326)；/spatial/aggregate + /spatial/grid(hex\|square)；h3+httpx 补装；F_005 补登；10 测试全过；hotspot/moran+PySAL 延后 P4 |
+| 2 | ✅ | 空间聚合 P2 前端(方格网格工具) | `frontend/js/grid-tool.js`(新) `frontend/js/{api,state,map,sidebar,param-panel,main}.js` `frontend/index.html` | Grid 工具(镜像 buffer)；方格 2D/3D + 3 极性(综合发散/积极绿/消极红)；fill-extrusion(point_count×系数)；横向色带图例；编辑态原地更新；Playwright 验证入口链通 |
+| 3 | ✅ | P2 完整版重设计(Grid 分析类型导航) | `grid-tool.js`(重写) `index.html` `heatmap-tool.js` `heatmap-legend.js` `api.js`(runAggregate) `start.bat`(新) `CLAUDE.md` `frontend/README.md` | 分析类型组卡片(聚合域=标准网格+指定单元; 热点/Moran占位); L1/L2 数据联动; 极性移②网格参数; 4极性(加中性); KDE 去「情绪网格」; pp-tab 网格移 buffer 左; start.bat 一键启动; Playwright 控制流全过 |
+| 4 | ✅ | P2 完整版修正(联动+离散分段+后端自检) | `grid-tool.js` `main.js` | ①数据联动递进(populateSources 按 level 过滤+level change 重填); ②色板离散分段(rampDisplaySegs+.hm-style-seg, 去 linear-gradient); ③main.js 启动自检(health 失败提示用 start.bat); 实测 serve.py+后端+反代全通(根因=用户没用 serve.py) |
+| 5 | ✅ | P2 修正2(色板空+极性可点+后端死进程) | `grid-tool.js` `dialog.css` `serve.py` | 色板用 .hm-style-preview 容器(原缺外层致 .hm-style-seg 高度坍缩=空横线); .hm-section[hidden] CSS([hidden] 被 display:flex 覆盖, 极性 section 隐藏不生效); serve.py _spawn_backend :8000 占用验证 health+kill 死进程+超时 8s→30s+stderr 可见 |
+| 6 | ✅ | P2 修正3(后端复用旧进程+色板去文字) | `serve.py` `grid-tool.js` | 真根因:旧后端进程占 :8000(P0 前残留),serve.py 误判复用→缺 /spatial/grid 路由→404→Failed to fetch;改 _spawn_backend 每次强制 _free_port(8000)重起(不复用);色板去 .hm-style-name(纯色带无文字,对齐 heatmap);验证:openapi 三路由齐+POST /spatial/grid 200+色板 hasName=false/text空 |
+| 7 | ✅ | P2 修正4(deck.gl kepler 3D) | `map.js`(addDeckGridLayer) `grid-tool.js`(generateGrid square 3D) | 3D 改 deck.gl ColumnLayer(GridLayer extruded 方柱在 MapLibre 不渲染→ColumnLayer 圆柱 kepler 级光影)+后端预聚合(_center 格中心/_grid_h 高度分位/极色);2D GridLayer extruded:false(色块);图层独占(关其他)+删编辑态+新建;preprocessGrid 深拷贝防污染;验证:3D 柱高度差3-5×+多色terrain-9+光影+实心+无线框(kepler 演示级) |
+| 8 | ✅ | P2 弃 deck.gl 还原 fill-extrusion | `map.js`(移除 addDeckGridLayer+辅助, addPolygonPaint opacity1+3D去线框) `grid-tool.js`(square 总调后端) | 用户:deck.gl 效果和 kepler 理想差远,放弃;还原自创 MapLibre fill-extrusion(P2 初版路径)+去透明度(opacity1)+3D去线框(line仅2D);square 调后端 runGrid 聚合+preprocessGrid(_grid_h 高度)+gridField/gridStops 极色;移除 deck.gl grid(addDeckGridLayer+4辅助) |
+| 9 | ✅ | P2 修正6(L1颜色用热度分位+3D透明度调节) | `grid-tool.js` `index.html` `map.js` | L1颜色 _grid_norm(score_mean集中看不出色差)→_grid_h(point_count分位,暗红→金黄均匀渐变);③显示样式加3D透明度滑块(默认100%实心,可调30-100%);map.js fill-extrusion-opacity读_ui.extrusionOpacity |
+| 10 | ✅ | P2 修正6b(grid-warm纯红橙黄+2D不透明) | `state.js`(grid-warm色带) `map.js`(fill-opacity) | L1颜色失真(紫红#4F0F2A看不见+玫红#8E1D3C偏多)→纯红橙黄sequential(暗红#8B0000→红→橙→金黄);2D默认不透明(fill-opacity isGrid 0.55→1) |
+| 11 | ✅ | P2 修正7(L1热度=密度×置信度+颜色高度正相关) | `core/spatial_analysis.py`(加l1_confidence_mean) `grid-tool.js`(_grid_h=密度×置信度) | L1热度=点密集×置信度(point_count×l1_confidence_mean,非只密度);后端加l1_confidence_mean/emotion_intensity_mean聚合;前端_grid_h=热度分位(颜色金黄+高度高=高热正相关,暗红低热低柱); |
 
 ### 📝 开发日志
 
@@ -30,10 +40,27 @@
 - **snap-to-grid vs 全 fishnet**：稀疏点下全 fishnet 会生成巨量空格；改为按点 snap 到格原点、去重后只建有点的格（与 create_hex_grid 行为一致）。
 - **track 注册是运行时的**：MOD_SPATIAL 的 ID 不在 tracker.py 静态 `_REGISTRY`，而是各模块 import 时 `register_track_id()` 动态填。F_005(buffer) 之前只 @track 未 register → rule 10 漏洞，本次补登。
 
+#### P2 空间聚合前端（方格网格工具）✅
+- **新建 Grid 工具**（镜像 buffer-tool 全套）：Toolbox 第 4 项 + #param-panel 第 3 个 pp-tab「网格」+ #grid-dialog 三段（输入图层 / 网格参数 / 显示样式）。接通 P0 的 /spatial/grid(square)。
+- **3 极性着色**（极性语义色，与 KDE 统一；参考用户提供的 Kepler+Martin 截图定调）：综合=terrain-9 发散(polarity_index 归一化 -2~2→0~1，区分偏正/偏负) / 积极=green-3 / 消极=red-3（深色=高值）。
+- **2D/3D 双模式**：2D=fill 色块；3D=fill-extrusion 柱体（高度=格内点数×拉伸系数，颜色同 2D）。新增 lyrExtruLid 子层 + restackZ/removeLayerFromMap 扩 extrusion id 数组。
+- **横向色带图例** #legend-grid（参考 Kepler/Martin）+ range 图例排除 grid 防误弹。
+- **编辑态原地更新**（layer id 稳定，镜像 buffer 的 _ui 回填）；**L1/L0 兜底**（缺 polarity 退 score_mean + toast）。
+- **承重发现**：polarity_index 真实值域 -2~2（后端 docstring 写 -1~1 有误）→ 归一化用 (x+2)/4。
+- **验证**：Playwright 加载 0 error；入口链全通（toolbox→tool-grid→网格 tab 激活→grid-dialog 3 段+4 预设+3 极性+2 模式胶囊）；空态提示正确。功能验证（生成网格）留给用户接后端+数据。
+
+#### P2 完整版重设计（Grid 分析类型导航）✅
+- **分析类型导航**：①组卡片（聚合域=标准网格+指定单元；热点 Gi\*/Moran's I 占位 dev）。②数据选择(L1/L2/L3/L4 层级+点层) + 网格参数(square=方格边长 / zonal=面域层+name_col; L2+极性 4 胶囊)。③显示样式(只读色板预览+模式+拉伸)。
+- **数据联动**：L1(无极性,舆论热度 grid-warm 高金黄低暗红) / L2(有极性,综合 terrain-9 / 积极 green-3 / 消极 red-3 / 中性 blue-3 高值深色)；极性在②网格参数(不在③)；L3/L4 灰显(数据模型无)。
+- **KDE 去「情绪网格」**：总体情况组只剩 terrain（3H 占位）；HEATMAP_RAMPS.grid-warm 保留给 grid 工具 L1。
+- **pp-tab 顺序**：核密度/网格/Buffer（网格移 buffer 左，对齐 Toolbox 上下序）。
+- **一键启动**：`start.bat`（双击 = `py frontend/serve.py 8080`，serve.py 自起后端 :8000 + 反代 + Ctrl+C 同停）；CLAUDE.md + frontend README 强调。用户手动 uvicorn 会 PATH 失败。
+- **承重发现**：serve.py `_spawn_backend` 已用 `py -m uvicorn`（本就一键）；uvicorn 装了(0.48.0)但 Scripts 不在 PATH。
+- **验证**：Playwright 控制流全过（tab 顺序 / 4 分析类型卡 / square↔zonal 切换 / L1 默认极性 hidden）；pytest 8 passed（square+aggregate），2 hex failed（h3 缺失，H3 留 P1 非本轮）。功能验证留给用户接后端+数据。
+
 #### 🔜 下一步（新会话）
-- **P1 核密度重组**：拆 综合/极性地形(去 L1/L2 命名)、移走情绪网格、加 H3 六边形(2D/3D, 橙黄-暗红)。/spatial/grid(hex) 已就绪。
-- **P2 空间聚合骨架 + 标准网格**：新 Toolbox 项 + 步骤导航 + 标准网格(2D/3D, 3 极性)。/spatial/grid(square) 已就绪。
-- **衔接**：plan `~/.claude/plans/majestic-marinating-cerf.md`（P0 已完成）。
+- **P1 核密度重组**：拆 综合/极性地形(去 L1/L2 命名)、移走情绪网格、加 H3 六边形(2D/3D, 橙黄-暗红)。/spatial/grid(hex) 已就绪；H3 归 KDE 工具。**需 `pip install h3`**（当前 env 缺，pytest 2 hex 测试失败）。
+- **衔接**：plan `~/.claude/plans/feature-kde-l2-3d-p0-create-square-grid-fuzzy-rossum.md`（P2 完整版已完成）。
 
 ---
 

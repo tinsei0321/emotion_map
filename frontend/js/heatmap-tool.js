@@ -47,9 +47,6 @@ const ANALYSIS_PRESETS = {
   terrain: { label: '情绪地形（2D/3D）', tier: 'overall',
     desc: '综合情绪密度/强度表达。L1=综合舆情热度（2D 彩虹）；L2=正负面情绪高低洼地（3D 地形，红洼/蓝中/绿高）。',
     preview: 'assets/analysis-previews/terrain.svg' },
-  grid:    { label: '情绪网格（2D/3D）', tier: 'overall',
-    desc: '小尺度网格聚合。L1=2D 网格/3D 柱体（暖色）；L2=3D 柱体，按特性显积极/消极/中性高点分布。',
-    preview: 'assets/analysis-previews/grid.svg' },
   positive:{ label: '积极', tier: 'segment',
     desc: '类型细分：只看积极情绪密度（仅 L2）。胶囊色（喜→乐）渐变 7 段。',
     preview: 'assets/analysis-previews/positive.svg' },
@@ -61,7 +58,7 @@ const ANALYSIS_PRESETS = {
     preview: 'assets/analysis-previews/classify.svg' },
 };
 const ANALYSIS_TIERS = [
-  { key: 'overall',     label: '总体情况', order: ['terrain', 'grid'] },
+  { key: 'overall',     label: '总体情况', order: ['terrain'] },   // 情绪地形；3H 待定（后续讨论）
   { key: 'segment',     label: '类型细分', order: ['positive', 'negative', 'neutral'] },
 ];
 
@@ -89,17 +86,7 @@ function computeStyle(analysis, level, polarity, macroFilter) {
       tip: 'L2 3D 情绪地形：山顶积极绿 / 山腰中性蓝 / 山底消极红。',
       buttons: [{ dim: '3d', label: '生成 3D 地形图', dev: true }] };
   }
-  if (analysis === 'grid') {
-    // 网格聚合渲染（binning）本次未实现，2D/3D 均占位待后续批次
-    if (level === 'L1') return { ramp: 'grid-warm', name: '网格暖色', dev: true,
-      tip: 'L1 小尺度舆情热度：2D 色块网格 / 3D 网格柱体（聚合渲染待开发）。',
-      buttons: [{ dim: '2d', label: '生成 2D 网格图', dev: true }, { dim: '3d', label: '生成 3D 柱体图', dev: true }] };
-    const ramp = { ALL: 'terrain-9', P: 'green-3', N: 'red-3', O: 'blue-3' }[polarity] || 'terrain-9';
-    const nm = { ALL: '综合', P: '积极', N: '消极', O: '中性' }[polarity] || '综合';
-    return { ramp, name: nm, dev: true,
-      tip: 'L2 3D 网格柱体：积极/消极/中性各自高点的空间分布。',
-      buttons: [{ dim: '3d', label: '生成 3D 柱体图', dev: true }] };
-  }
+  // grid 分析类型已剥离至 Grid 工具（空间聚合网格），KDE 不再处理
   if (analysis === 'positive') return _segmentStyle('positive', '积极', macroFilter, '喜→乐',
     { tip: '类型细分：积极情绪密度（仅 L2）。', buttons: [{ dim: '2d', label: '生成 2D 积极图' }] });
   if (analysis === 'negative') return _segmentStyle('negative', '消极', macroFilter, '怒→哀→愁',
@@ -453,8 +440,7 @@ function constrainPolarityOptions(dlg, level, analysis) {
   else if (analysis === 'negative') locked = 'N';
   else if (analysis === 'neutral') locked = 'O';
   else if (tier === 'overall') {
-    // 总体：grid+L2 可 4 选，其余综合不可选
-    if (analysis === 'grid' && level === 'L2') { allOn(); sel.disabled = false; if (!['ALL', 'P', 'N', 'O'].includes(sel.value)) sel.value = 'ALL'; return; }
+    // 总体（terrain）：始终综合，不可选
     locked = 'ALL';
   }
 

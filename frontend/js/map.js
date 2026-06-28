@@ -86,6 +86,7 @@ const lyrSrc = (id) => `lyr-${id}`;
 const lyrLid = (id) => `lyr-${id}`;
 const lyrLineLid = (id) => `lyr-${id}-line`;
 const lyrHitLid = (id) => `lyr-${id}-hit`;
+const lyrExtruLid = (id) => `lyr-${id}-extru`;   // grid 3D fill-extrusion sub-layer
 
 /** (Re)render one registry layer. Hidden layers are fully removed (fill + outline + hit). */
 export function renderLayer(layer) {
@@ -95,7 +96,8 @@ export function renderLayer(layer) {
   const lid = lyrLid(layer.id);
   const lineLid = lyrLineLid(layer.id);
   const hitLid = lyrHitLid(layer.id);
-  for (const l of [hitLid, lineLid, lid]) if (map.getLayer(l)) map.removeLayer(l);
+  const extruLid = lyrExtruLid(layer.id);
+  for (const l of [hitLid, extruLid, lineLid, lid]) if (map.getLayer(l)) map.removeLayer(l);
   if (map.getSource(sid)) map.removeSource(sid);
   if (!layer.visible || !layer.fc.features.length) {
     if (layer._deckOverlay) layer._deckOverlay.setProps({ layers: [] });   // 隐藏 hotpoint（deck.gl）
@@ -141,7 +143,9 @@ export function restackZ() {
   for (let i = layers.length - 1; i >= 0; i--) {
     const l = layers[i];
     if (l.kind === 'group') continue;
-    const ids = [lyrLid(l.id), lyrLineLid(l.id), lyrHitLid(l.id)];
+    const ids = [lyrLid(l.id), lyrLineLid(l.id)];
+    if (map.getLayer(lyrExtruLid(l.id))) ids.push(lyrExtruLid(l.id));   // grid 3D 在 line 上、hit 下
+    ids.push(lyrHitLid(l.id));
     for (const id of ids) {
       if (map.getLayer(id)) map.moveLayer(id);   // move to top (no beforeId)
     }
@@ -152,8 +156,8 @@ export function removeLayerFromMap(id) {
   if (!map) return;
   const _layer = getLayers().find((l) => l.id === id);
   if (_layer && _layer._deckOverlay) { map.removeControl(_layer._deckOverlay); _layer._deckOverlay = null; }
-  const sid = lyrSrc(id), lid = lyrLid(id), lineLid = lyrLineLid(id), hitLid = lyrHitLid(id);
-  for (const l of [hitLid, lineLid, lid]) if (map.getLayer(l)) map.removeLayer(l);
+  const sid = lyrSrc(id), lid = lyrLid(id), lineLid = lyrLineLid(id), extruLid = lyrExtruLid(id), hitLid = lyrHitLid(id);
+  for (const l of [hitLid, extruLid, lineLid, lid]) if (map.getLayer(l)) map.removeLayer(l);
   if (map.getSource(sid)) map.removeSource(sid);
   _boundPoint.delete(id); _boundRange.delete(id);
   clearSelectionHalo();   // a layer going away → selection halo can't stay (resets _selectedLayerId)
@@ -230,23 +234,55 @@ function addPointPaint(layer, sid, lid) {
   });
 }
 
+/** Grid 极性色带 → MapLibre fill-color 表达式。
+ *  p.gridField='_grid_norm'|'_grid_pos'|'_grid_neg'；p.gridStops=[[0,c0],...,[1,cN]]（归一化 0~1，无透明）。
+ *  返回 interpolate(linear, get(field), ...)；无有效 stops → null（落回单色）。 */
+function _gridColorExpr(p) {
+  if (!p.gridField || !Array.isArray(p.gridStops) || !p.gridStops.length) return null;
+  const stops = [];
+  for (const [d, c] of p.gridStops) stops.push(d, c);
+  return ['interpolate', ['linear'], ['get', p.gridField], ...stops];
+}
+
 function addPolygonPaint(layer, sid, lid, lineLid, hitLid) {
   const p = layer.paint || {};
+  const isGrid = !!(p._ui && p._ui.tool === 'grid');
+  const isGrid3d = isGrid && p._ui.mode === '3d';
   const color = p.color || NAVY;
+  const fillExpr = isGrid ? _gridColorExpr(p) : null;
+
   if (p.fillOn) {
     map.addLayer({ id: lid, type: 'fill', source: sid,
-      paint: { 'fill-color': color, 'fill-opacity': p.fillOpacity ?? 0.3 } });
+      paint: { 'fill-color': fillExpr || color, 'fill-opacity': p.fillOpacity ?? (isGrid ? 1 : 0.3) } });   // grid 2D 默认不透明
   }
-  // visible outline (color shared with fill)；lineStyle: dashed=缓冲短虚线 / dashdot=Range 点划线
-  const linePaint = { 'line-color': color, 'line-width': p.lineWidth ?? 2, 'line-opacity': 0.9 };
-  const lineLayout = {};
-  if (p.lineStyle === 'dashed') {
-    linePaint['line-dasharray'] = [2, 1.5];                    // 缓冲面域：短虚线
-  } else if (p.lineStyle === 'dashdot') {
-    linePaint['line-dasharray'] = [6, 3, 1, 3];                // Range：点划线（线段+点+线段）
-    lineLayout['line-cap'] = 'round';                          // round cap 让 1-unit 短段呈圆点（line-cap 属 layout）
+
+  // grid 3D：fill-extrusion（实心 opacity 1 + 高度分位 _grid_h × scale 张力 + 颜色同 2D 极性色带）
+  if (isGrid3d) {
+    const s = p.extrusionScale ?? 1;
+    map.addLayer({
+      id: lyrExtruLid(layer.id), type: 'fill-extrusion', source: sid,
+      paint: {
+        'fill-extrusion-color': fillExpr || color,
+        'fill-extrusion-height': ['interpolate', ['linear'], ['get', '_grid_h'], 0, 0, 1, 1500 * s],
+        'fill-extrusion-base': 0,
+        'fill-extrusion-opacity': p._ui.extrusionOpacity ?? 1,   // 3D 透明度可调（默认 1 实心；_ui.extrusionOpacity）
+      },
+    });
   }
-  map.addLayer({ id: lineLid, type: 'line', source: sid, layout: lineLayout, paint: linePaint });
+
+  // visible outline；grid 3D 去底部线框（只 2D 加浅灰细线，区分 buffer 实线 / Range 点划线）
+  if (!isGrid3d) {
+    const lineColor = isGrid ? '#666' : color;
+    const linePaint = { 'line-color': lineColor, 'line-width': p.lineWidth ?? (isGrid ? 0.5 : 2), 'line-opacity': isGrid ? 0.45 : 0.9 };
+    const lineLayout = {};
+    if (p.lineStyle === 'dashed') {
+      linePaint['line-dasharray'] = [2, 1.5];                    // 缓冲面域：短虚线
+    } else if (p.lineStyle === 'dashdot') {
+      linePaint['line-dasharray'] = [6, 3, 1, 3];                // Range：点划线（线段+点+线段）
+      lineLayout['line-cap'] = 'round';                          // round cap 让 1-unit 短段呈圆点（line-cap 属 layout）
+    }
+    map.addLayer({ id: lineLid, type: 'line', source: sid, layout: lineLayout, paint: linePaint });
+  }
   // transparent wide hit layer → easy hover/click without thickening the visible outline
   addHitLayer(hitLid, sid);
 }
@@ -370,6 +406,16 @@ function addHotpointLayer(layer, sid, lid) {
     map.addControl(layer._deckOverlay);
   }
 }
+
+/* global deck */
+/** 标准网格（square）：deck.gl 渲染（业界成熟，kepler 同款光影/聚合/分位色）。
+ *  2D：GridLayer extruded:false（吃原始点自动聚合色块）。
+ *  3D：后端预聚合方格 + ColumnLayer（格中心+高度分位+极色+material 光影）。
+ *  GridLayer extruded（方柱 GridCellLayer）在此环境 deck.gl@9.1.0 不渲染，故 3D 改用 ColumnLayer（圆柱，已验证渲染）。 */
+// ── deck.gl grid 渲染已弃用（回 MapLibre fill-extrusion：addPolygonPaint grid 分支）──
+// grid 工具 square/zonal 都走 addPolygonPaint（fill + fill-extrusion + _gridColorExpr 极性色带）。
+// 放弃原因：deck.gl GridLayer extruded（方柱）在 MapLibre+MapboxOverlay 不渲染；ColumnLayer 效果不及 kepler 理想 → 用户决定回自创 fill-extrusion（去透明度+去线框）。
+// addHotpointLayer（热点图）仍用 deck.gl ScreenGridLayer（搁置，独立功能）。
 
 /** Build a heatmap-weight expression from field + curve mode.
  *  Modes: linear|exponential × normal|inverse. "inverse" = lower value → higher weight. */

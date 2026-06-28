@@ -405,6 +405,12 @@ def create_square_grid(
     if 'score' in joined.columns:
         stats['score_mean'] = grouped['score'].mean().round(3)
 
+    # L1 舆论热度辅助字段（置信度/强度均值，供前端算"密度×置信度"热度）
+    if 'l1_confidence' in joined.columns:
+        stats['l1_confidence_mean'] = grouped['l1_confidence'].mean().round(3)
+    if 'emotion_intensity' in joined.columns:
+        stats['emotion_intensity_mean'] = grouped['emotion_intensity'].mean().round(3)
+
     # 五级极性统计 + 综合情绪指数（公式同 aggregate_by_polygons）
     if 'polarity' in joined.columns:
         for pol in ['Very Negative', 'Negative', 'Neutral', 'Positive', 'Very Positive']:

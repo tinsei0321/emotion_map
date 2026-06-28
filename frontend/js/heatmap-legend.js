@@ -3,7 +3,7 @@
 // 监听 layer:selected / layers:changed，自包含；main.js 只需 initHeatmapLegend()。
 import { getLayer, HEATMAP_RAMPS, rampDisplaySegs } from './state.js';
 
-const OVERALL_RAMPS = ['rainbow', 'terrain-9', 'grid-warm', 'green-3', 'red-3', 'blue-3', 'diverging-rg'];
+const OVERALL_RAMPS = ['rainbow', 'terrain-9', 'green-3', 'red-3', 'blue-3', 'diverging-rg'];
 
 const boxEl = () => document.getElementById('legend-heatmap');
 const rampEl = () => document.querySelector('#legend-heatmap .legend-heat-ramp');
