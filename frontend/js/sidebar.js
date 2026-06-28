@@ -146,8 +146,16 @@ export function refreshLegend() {
     const rampEl = document.getElementById('legend-grid-ramp');
     const stops = grid.paint.gridStops || [];
     if (rampEl && stops.length) {
-      const grad = stops.map(([d, c]) => `${c} ${Math.round(d * 100)}%`).join(', ');
-      rampEl.style.background = `linear-gradient(to right, ${grad})`;
+      rampEl.style.background = '';   // 清旧 linear-gradient（#legend-grid-ramp 已是 .legend-heat-ramp flex 容器）
+      rampEl.innerHTML = stops.map(([, c]) => `<span class="legend-heat-seg" style="background:${c}"></span>`).join('');
+    }
+    // 标签：L2 综合发散（terrain-9 红→蓝→绿）= 消极/中性/积极；单色占比 / L1 热度 = 低/高
+    const labEl = document.querySelector('#legend-grid .legend-ramp-labels');
+    if (labEl) {
+      const isOverall = grid.paint._ui.polarity === 'overall' && grid.paint._ui.level === 'L2';
+      labEl.innerHTML = isOverall
+        ? '<span>消极</span><span>中性</span><span>积极</span>'
+        : '<span>低</span><span>高</span>';
     }
   }
 }

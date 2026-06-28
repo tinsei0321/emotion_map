@@ -227,6 +227,11 @@ def aggregate_by_polygons(
     if len(joined) == 0:
         raise ValueError('空间连接结果为空——点不在任何面域内，请检查坐标系是否一致')
 
+    # 数值列强制 numeric（容错 str 化，同 F_006；agg_cols 默认 ['score']）
+    for _c in agg_cols:
+        if _c in joined.columns:
+            joined[_c] = pd.to_numeric(joined[_c], errors='coerce')
+
     # 按面域索引分组聚合
     grouped = joined.groupby('index_right')
 
@@ -315,6 +320,10 @@ def create_hex_grid(
     gdf = gdf.copy()
     gdf['h3_idx'] = h3_indices
 
+    # 数值列强制 numeric（容错 str 化，同 F_006；score 列 str 化时 mean 崩）
+    if 'score' in gdf.columns:
+        gdf['score'] = pd.to_numeric(gdf['score'], errors='coerce')
+
     # 按 H3 格网聚合
     grouped = gdf.groupby('h3_idx')
 
@@ -398,6 +407,12 @@ def create_square_grid(
     joined = gpd.sjoin(pts, cells_gdf, how='inner', predicate='within')
     if len(joined) == 0:
         raise ValueError('方格空间连接为空——点未落入任何格，检查坐标系/几何')
+
+    # 数值列强制 numeric（容错：GeoJSON 经文本中转会把 score/置信度/强度序列化成 str，
+    # 直接 mean() 抛 "dtype 'str' does not support operation 'mean'"）
+    for _c in ('score', 'l1_confidence', 'emotion_intensity'):
+        if _c in joined.columns:
+            joined[_c] = pd.to_numeric(joined[_c], errors='coerce')
 
     grouped = joined.groupby('index_right')
     stats = pd.DataFrame({'point_count': grouped.size()})

@@ -7,7 +7,7 @@
 // 后端：square→/spatial/grid(square, EPSG:4546 snap-to-grid)；zonal→/spatial/aggregate(点→面域)。
 // 注：polarity_index 实际值域 -2~+2（后端 docstring 写 -1~1 有误），归一化用 (x+2)/4。
 import { getLayers, addLayer, getLayer, selectLayer, setLayerVisible, HEATMAP_RAMPS, rampDisplaySegs } from './state.js';
-import { renderLayer, fitBoundsTo, reorderAllZ, removeLayerFromMap } from './map.js';
+import { renderLayer, fitBoundsTo, reorderAllZ, removeLayerFromMap, setView3D } from './map.js';
 import { renderLayerList, refreshLegend, showLayerManager } from './sidebar.js';
 import { fcBBox } from './import.js';
 import { runGrid, runAggregate } from './api.js';
@@ -298,6 +298,8 @@ export function openGridDialog(layerId) {
   dlg.dataset.editLayerId = layerId || '';
 
   if (!srcs.length) toast.info('请先导入 L1/L2 情绪点数据');
+  const genBtn = dlg.querySelector('#grid-generate');
+  if (genBtn) genBtn.textContent = layerId ? '调整' : '生成';   // 编辑态=「调整」，新建态=「生成」
   openParamPanel('grid');
 }
 
@@ -313,7 +315,6 @@ async function generateGrid() {
   }
 
   const btn = dlg.querySelector('#grid-generate');
-  const orig = btn.textContent;
   btn.disabled = true; btn.textContent = '生成中…';
 
   try {
@@ -335,7 +336,7 @@ async function generateGrid() {
       const style = gridStyle(p.level, p.polarity);
       paint = { fillOn: true, _ui: { tool: 'grid', analysis: 'square', level: p.level, source: p.source,
                                      cellSize: p.cellSize, polarity: p.polarity, mode: p.mode, extrusionScale: p.extrusionScale, extrusionOpacity: p.extrusionOpacity },
-                gridField: style.field, gridStops: style.stops };
+                gridField: style.field, gridStops: style.stops, fillOpacity: p.extrusionOpacity };   // 显式 fillOpacity 绕开 addLayer 默认 0.3（修 2D 首次透明）
     } else {
       // zonal：后端精确面域聚合 + MapLibre 渲染（deck.gl GridLayer 是方格聚合，不适合固定面域 zonal）
       const poly = getLayer(p.polygonLayer);
@@ -353,29 +354,40 @@ async function generateGrid() {
       paint = { fillOn: true, _ui: { tool: 'grid', analysis: 'zonal', level: p.level, source: p.source,
                                      polygonLayer: p.polygonLayer, nameCol: p.nameCol,
                                      polarity: p.polarity, mode: p.mode, extrusionScale: p.extrusionScale, extrusionOpacity: p.extrusionOpacity },
-                gridField: style.field, gridStops: style.stops };
+                gridField: style.field, gridStops: style.stops, fillOpacity: p.extrusionOpacity };   // 显式 fillOpacity 绕开 addLayer 默认 0.3（修 2D 首次透明）
     }
 
     const labelName = `${analysisLabel} · ${sizeTag} · ${polLabel} · ${modeLabel} · ${src.srcName}`;
-    // 每次新建（不再原地更新）+ 独占显示：关闭其他所有可见图层（仿 heatmap generateHeatmap:775）
-    const L = addLayer({ name: labelName, kind: 'polygon', fc, paint });
-    L.srcName = src.srcName;
-    renderLayer(L);
-    for (const other of [...getLayers()]) {
-      if (other.id === L.id || other.kind === 'group') continue;
-      if (other.visible) { setLayerVisible(other.id, false); renderLayer(other); }
+    const editId = dlg.dataset.editLayerId;
+    const editLyr = editId ? getLayer(editId) : null;
+    let L;
+    if (editLyr) {
+      // 编辑态（要素按钮）：原地更新当前层——不新建、不关其他层（layer id 稳定）
+      editLyr.fc = fc; editLyr.paint = paint; editLyr.name = labelName; editLyr.srcName = src.srcName;
+      renderLayer(editLyr);
+      L = editLyr;
+    } else {
+      // 新建态：addLayer + 独占显示（关其他可见层，仿 heatmap generateHeatmap:775）
+      L = addLayer({ name: labelName, kind: 'polygon', fc, paint });
+      L.srcName = src.srcName;
+      renderLayer(L);
+      for (const other of [...getLayers()]) {
+        if (other.id === L.id || other.kind === 'group') continue;
+        if (other.visible) { setLayerVisible(other.id, false); renderLayer(other); }   // 独占显示：关其他所有可见层（generateGrid 与 setViewMode 场景独立，勿耦合）
+      }
     }
     const bb = fcBBox(fc); if (bb) fitBoundsTo(bb);
+    setView3D(p.mode === '3d');   // fitBounds 后设 pitch（3D→倾斜+暗底图 / 2D→复原），防被打断
     renderLayerList(); refreshLegend(); reorderAllZ(); showLayerManager();
     document.dispatchEvent(new CustomEvent('layers:changed'));
     document.dispatchEvent(new CustomEvent('layer:selected', { detail: L.id }));
     closeParamPanel();
-    toast.success(`已生成 ${analysisLabel} · ${polLabel} · ${modeLabel}`);
+    toast.success(`已${editLyr ? '调整' : '生成'} ${analysisLabel} · ${polLabel} · ${modeLabel}`);
   } catch (e) {
     console.error('[grid]', e);
     toast.error(`网格分析失败：${e.message || e}（确认后端已启动：双击 start.bat）`);
   } finally {
-    btn.disabled = false; btn.textContent = orig;
+    btn.disabled = false; btn.textContent = dlg.dataset.editLayerId ? '调整' : '生成';
   }
 }
 

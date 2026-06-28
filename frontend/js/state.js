@@ -422,9 +422,9 @@ export const HEATMAP_RAMPS = {
     ],
   },
   // 网格+L2 积极/消极/中性 各 3 段（取 terrain-9 的绿/红/蓝段）
-  'green-3':  { name: '积极 3 段（绿）', stops: gradientStops(['#A8E6A0', '#3DBA3D', '#083D08'], 3) },
-  'red-3':    { name: '消极 3 段（红）', stops: gradientStops(['#E07142', '#C44A2E', '#7A1E16'], 3) },
-  'blue-3':   { name: '中性 3 段（蓝）', stops: gradientStops(['#6A9BB5', '#5288A0', '#3A7CA5'], 3) },
+  'green-3':  { name: '积极 3 段（绿）', stops: gradientStops(['#D4F4D0', '#3DBA3D', '#063006'], 3) },   // 浅绿淡→深绿深（拉大对比）
+  'red-3':    { name: '消极 3 段（红）', stops: gradientStops(['#F6C9B0', '#C44A2E', '#5C1208'], 3) },   // 浅橙淡→深红深
+  'blue-3':   { name: '中性 3 段（蓝）', stops: gradientStops(['#CFE0EE', '#3A7CA5', '#0D3B5C'], 3) },   // 浅蓝淡→深蓝深（原三段亮度过近，重点拉大）
 };
 
 // sorted keys for UI iteration（类型细分渐变 + 总体情况红蓝绿地形 + 网格 3 段）

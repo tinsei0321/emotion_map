@@ -1,5 +1,5 @@
 // ═══ map.js — MapLibre GL JS instance, multi-layer registry, basemap switch ═══
-import { emotionColors, token, POLARITY_ORDER, getLayers, CONFIDENCE_RAMP, confidenceColor, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets } from './state.js';
+import { emotionColors, token, POLARITY_ORDER, getLayers, addLayer, setLayerVisible, CONFIDENCE_RAMP, confidenceColor, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets } from './state.js';
 import { initControls } from './map-controls.js';
 
 export const BASEMAPS = {
@@ -50,6 +50,8 @@ let _selectedLayerId = null;   // which layer the selection halo belongs to (cle
 const _boundPoint = new Set();
 const _boundRange = new Set();
 let _tooltip = null;
+let _currentBasemap = DEFAULT_BASEMAP;   // 当前底图 key（setBasemap 同步；进 3D 前记忆以便退 2D 恢复）
+let _pre3dBasemap = null;                 // 进 3D 暗色底图前的底图 key
 
 export function initMap(container = 'map') {
   map = new maplibregl.Map({
@@ -67,6 +69,7 @@ export function getMap() { return map; }
 
 export function setBasemap(key) {
   if (!map || !BASEMAPS[key]) return;
+  _currentBasemap = key;
   map.setStyle(BASEMAPS[key], {
     transformStyle: (prev, next) => {
       const carrySources = {};
@@ -77,6 +80,61 @@ export function setBasemap(key) {
       return { ...next, sources: { ...(next.sources || {}), ...carrySources }, layers: [...(next.layers || []), ...carryLayers] };
     },
   });
+}
+
+const PITCH_3D = 60;   // 3D 俯角（与 map-controls.js PITCH_3D 统一）
+const VIEW_EASE_MS = 650;   // 视角切换动画时长（顺滑）
+
+/** 3D 网格视角：on → pitch 倾斜 + 暗色底图（记忆原底图）；off → pitch 复原 + 恢复原底图。setViewMode / generateGrid 共用。
+ *  setStyle 不重置 camera（maplibre 保证），故直接 easeTo pitch——一次到位 + 顺滑动画；
+ *  不等 style.load（曾用 once('style.load') 防"吞 pitch"是误诊，反而引入 race 致"第二下才转"）。 */
+export function setView3D(on) {
+  if (!map) return;
+  if (on) {
+    if (_currentBasemap !== 'dark-matter') { _pre3dBasemap = _currentBasemap; setBasemap('dark-matter'); }
+  } else {
+    const restore = _pre3dBasemap || (_currentBasemap === 'dark-matter' ? DEFAULT_BASEMAP : _currentBasemap);
+    if (_currentBasemap !== restore) setBasemap(restore);
+    _pre3dBasemap = null;
+  }
+  map.easeTo({ pitch: on ? PITCH_3D : 0, bearing: 0, duration: VIEW_EASE_MS });
+}
+
+/** grid 层数据签名：同源 2D/3D（同 analysis/level/source/cellSize/polarity/polygonLayer）共享 → 配对，免重复生成、免切换累积。 */
+function gridSig(p) {
+  const u = p && p._ui;
+  if (!u) return '';
+  return [u.analysis, u.level, u.source, u.cellSize, u.polarity, u.polygonLayer].join('|');
+}
+
+/** 2D/3D 视图切换：遍历可见 grid 层——mode===target 保持；否则隐藏并按签名找配对 target 层
+ *  （无则用同 fc 生成独立层，渲染管线独立：3D→fill-extrusion 柱 / 2D→fill 色块）。末尾 setView3D 同步 pitch + 底图（Light/Dark）。 */
+export function setViewMode(target) {
+  if (!map) return;
+  const grids = getLayers().filter((l) => l.kind === 'polygon' && l.paint && l.paint._ui && l.paint._ui.tool === 'grid');
+  for (const l of grids.filter((g) => g.visible)) {
+    if (l.paint._ui.mode === target) continue;              // 已是目标模式，保持
+    setLayerVisible(l.id, false); renderLayer(l);           // 隐藏当前层
+    const sig = gridSig(l.paint);
+    let pair = grids.find((g) => g !== l && g.paint._ui.mode === target && gridSig(g.paint) === sig);
+    if (!pair) {                                            // 无配对 → 用同 fc 生成独立 target 层
+      const tag = target === '3d' ? '3D' : '2D';
+      pair = addLayer({ name: (l.name || '网格').replace(/·\s*[23]D\b/, `· ${tag}`),
+                        kind: 'polygon', fc: l.fc,
+                        paint: { ...l.paint, _ui: { ...l.paint._ui, mode: target } } });
+      pair.srcName = l.srcName;
+      renderLayer(pair);
+    } else if (!pair.visible) {                             // 有配对 → 显示
+      setLayerVisible(pair.id, true); renderLayer(pair);
+    }
+  }
+  setView3D(target === '3d');
+  document.dispatchEvent(new CustomEvent('layers:changed'));
+}
+
+// 视图按钮（map-controls.js btnView）经事件解耦触发 setViewMode，避免 map ↔ map-controls 循环依赖
+if (typeof document !== 'undefined') {
+  document.addEventListener('grid:viewmode', (e) => setViewMode(e.detail));
 }
 
 export function setClickHandler(fn) { _onPointClick = fn; }
@@ -253,7 +311,7 @@ function addPolygonPaint(layer, sid, lid, lineLid, hitLid) {
 
   if (p.fillOn) {
     map.addLayer({ id: lid, type: 'fill', source: sid,
-      paint: { 'fill-color': fillExpr || color, 'fill-opacity': p.fillOpacity ?? (isGrid ? 1 : 0.3) } });   // grid 2D 默认不透明
+      paint: { 'fill-color': fillExpr || color, 'fill-opacity': p.fillOpacity ?? (isGrid ? (p._ui?.extrusionOpacity ?? 1) : 0.3) } });   // grid 不透明度统一读 _ui.extrusionOpacity（2D/3D 同控件，默认 1）
   }
 
   // grid 3D：fill-extrusion（实心 opacity 1 + 高度分位 _grid_h × scale 张力 + 颜色同 2D 极性色带）

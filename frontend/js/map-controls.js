@@ -165,11 +165,8 @@ export function initControls(map, { getFC } = {}) {
   };
   btnView.addEventListener('click', () => {
     const to3D = map.getPitch() <= 0.5;
-    map.easeTo({
-      pitch: to3D ? PITCH_3D : PITCH_2D,
-      bearing: 0,
-      duration: TOGGLE_DURATION,
-    });
+    // 事件解耦触发 map.js setViewMode（切图层 mode + 配对生成/显隐 + pitch + 底图），免 map↔map-controls 循环依赖
+    document.dispatchEvent(new CustomEvent('grid:viewmode', { detail: to3D ? '3d' : '2d' }));
   });
   // keep label synced if pitch changes by other means (drag, reset, programmatic).
   map.on('pitchend', syncViewLabel);
