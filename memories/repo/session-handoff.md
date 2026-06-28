@@ -1,63 +1,46 @@
 # 会话交接卡
 
 > 换机/新会话后读取此文件恢复上下文。**单份当前快照**——每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
+> 最后更新：2026-06-28 | 分支 `feature/kde-l2-3d` @ `3006c4f`
 
-## 🔄 换机协议（常驻）
+## 本会话完成
+**P2 空间聚合 Grid 工具**（square/zonal 2D/3D）+ L1 舆论热度（密度×置信度）+ 配套。已 commit `3006c4f`（18 文件 +782/-66）。
 
-**离开前**：① `git status` 清空（全 commit）② `git push`（`git log origin/main..HEAD` 应空）③ 更 `docs/revision-log.md` + 本卡 ④ `.claude/` 改动也 commit。
-**到机后**：① `git pull` + 确认同步 ② 读本卡「当前节点」③ 天地图 4 底图 JSON 被 gitignore（新机从已有机器拷，key 亦在 `core/config.py`）④ `git status` 确认。
+要点：
+- Grid 工具（`frontend/js/grid-tool.js`）：分析类型导航（聚合域=标准网格 square + 指定单元 zonal；热点 Gi*/Moran's I 占位 dev）、L1/L2 数据联动递进、极性在②网格参数、图层独占（生成时关其他）、深拷贝防数据污染
+- **L1 舆论热度 = `point_count × l1_confidence_mean`**（密度×置信度），颜色（grid-warm 暗红→金黄）+ 高度（fill-extrusion）都用 `_grid_h` → **正相关**（金黄高热高柱 / 暗红低热低柱）
+- 3D fill-extrusion：透明度可调（默认不透明）、3D 去线框；grid-warm 纯红→金黄 sequential（去紫红/玫红）；2D 不透明
+- square 调后端 `/spatial/grid`；zonal 调 `/spatial/aggregate`
+- KDE「总体情况」去掉「情绪网格」preset；pp-tab 顺序对齐 Toolbox（网格移 buffer 左）
+- **start.bat 一键启动**（serve.py 自起后端 uvicorn + /api 反代 + Ctrl+C 同停；强制重起死 :8000，解决"Failed to fetch"真根因）；前端启动 health 自检
 
-## 当前节点 — 2026-06-28（家用机 · Martin UI 全主线 + 空间分析 P0 完成）
+## 当前状态
+- 分支 `feature/kde-l2-3d`，HEAD `3006c4f`，**未 push**
+- Grid 工具完整可用（square + zonal，2D/3D，L1 热度 / L2 极性 4 极）
+- **deck.gl grid 方案已弃**（回 MapLibre fill-extrusion）：GridLayer/HexagonLayer extruded 在 MapLibre+MapboxOverlay 不渲染；ColumnLayer 效果不及 kepler 理想 → 用户决定回自创 fill-extrusion。addDeckGridLayer + 4 辅助已移除（弃用注释）。addHotpointLayer（热点图 deck.gl）保留搁置
+- 后端 `create_square_grid` 加了 `l1_confidence_mean` + `emotion_intensity_mean` 聚合（L1 热度用）
+- start.bat / serve.py 一键启动正常（curl health 通）
 
-### 机器 & 同步
-- **机器 = 家用机**（`C:\Users\Hi\`）。注：与 06-25 办公机（`C:\Users\admin\`）不同机。
-- **分支 = `feature/kde-l2-3d`**（已切 feature branch；非 main-only）。已 push，origin 同步。
-- `py frontend/serve.py 8080` → `http://localhost:8080/frontend/index.html`（自动起 uvicorn :8000）
+## 下一步：P1 核密度重组
+- 拆 KDE 综合/极性地形（去 L1/L2 命名撞车）、移走情绪网格（已去 preset）、加 H3 六边形（2D/3D，橙黄-暗红）
+- `/spatial/grid(hex)` 后端已就绪；**H3 归 KDE 工具**（与 P2 方格分家）
+- **需 `pip install h3`**（当前 env 缺，pytest 2 hex 测试 fail）
 
-### 📋 续作 prompt（粘贴到新会话）
-> 续 `feature/kde-l2-3d` 空间分析大改造。**P0 后端地基已完成**（`create_square_grid` F_006 + `/spatial/aggregate` + `/spatial/grid`(hex|square) + schemas + h3/httpx + 10 测试全过）。先读 plan `C:\Users\Hi\.claude\plans\majestic-marinating-cerf.md`（P0 已完成段）+ memory `martin-ui-redesign` + ADR-016。下一步 **P1（核密度重组：拆 综合/极性地形去 L1/L2 命名、移走情绪网格、加 H3 六边形 2D/3D 橙黄-暗红）** 或 **P2（空间聚合骨架 + 标准网格：新 Toolbox 项 + 步骤导航 + 方格 2D/3D 3 极性）**——我定 P1/P2 后再出独立 plan。
-
-### 已完成（本次连续会话，feature/kde-l2-3d）
-
-| Commit | 内容 |
-|--------|------|
-| `1333914` | **空间分析 P0 后端地基** — `create_square_grid`(F_006, snap-to-grid 4546→4326) + `/spatial/aggregate` + `/spatial/grid`(hex\|square) + schemas + h3/httpx + F_005 补登 + 10 测试 |
-| `9f13971` | **A2 UI 层文档** — ADR-016（Martin 导航范式）+ spec §3.4 + ui-redesign-plan Phase 4 + memory `martin-ui-redesign` |
-| `3203ad5` | chore: gitignore vendored `kepler.gl-master`（防再误提交） |
-| `53b588d` | **B5** 色板圆角 + 品牌蓝查漏（`.swatch` 圆角矩形 + `#007afc`→`#4285F4` token 化 + toast 幽灵 token 修复） |
-| `71fa3f0` | **B4** 左端参数弹出栏（`#param-panel`，1:2 分栏，apply 链零改） |
-| `651532e` | **B3-rev** 区2 工具栏（白底 + `#384555` 图标 + 漏斗 + 计数） |
-| `054e3a1` | **B3** 左端栏三区（tab 互斥 Range/Layers/Toolbox）+ B6 随动复核 |
-| `e0b7172` | **B0-B2** 三页架构 + Martin 导航重塑（色彩/单层顶栏/3 按钮集） |
-| (rebase) | 剔除 `599883d` kepler 误提交（18MB + Mapbox token，GitHub 密钥扫描拦截） |
-
-**主线收口**：Martin UI 重塑 B0-B5 + B6 + A2 文档（ADR-016）全部完成；空间分析 P0 后端完成。
-
-### 下一步（空间分析 P1-P4，每期独立 plan）
-
-| 期 | 内容 | 后端就绪 |
-|----|------|----------|
-| **P1** 核密度重组 | 拆 综合/极性地形（去 L1/L2 与管线级撞名）、移走情绪网格、加 H3 六边形(2D/3D, 橙黄-暗红, 无极性) | ✅ `/spatial/grid`(hex) |
-| **P2** 空间聚合骨架 + 标准网格 | 新 Toolbox 项（核密度下方）+ 步骤导航组件(新) + 类型组卡片 + 标准网格(方格, 2D/3D, 3 极性, 深色=高值) | ✅ `/spatial/grid`(square) |
-| **P3** 指定单元 | zone 聚合 + 面图层选择器（行政区/更新单元/控规/用地） | ✅ `/spatial/aggregate` |
-| **P4** Gi\*+Moran's I | 热点 + 空间自相关（**需装 libpysal+esda PySAL 重栈** + 接 `/spatial/hotspot`/`/spatial/moran` 端点） | ⚠️ 函数有，esda 未装 |
-
-**设计共识**：核密度 = 连续密度场（KDE 地形 + H3 密度分箱，无极性）；空间聚合 = 离散面域统计（方格/指定单元 + Gi\*/Moran's I，带极性）。详见 ADR-016 + plan。
-
-### 怎么跑
+## 新会话 prompt（复制即用）
 ```
-py frontend/serve.py 8080                              # 前端 + 反代 + 自动起 uvicorn :8000
-py -m pytest tests/test_spatial_analysis.py -q         # 空间分析 10 测
-py -m pytest tests/ -q --ignore=tests/test_relevance_filter.py   # 全量（1 预存失败无关）
+续 feature/kde-l2-3d。P2 空间聚合 Grid 工具已完成（commit 3006c4f：square/zonal 2D/3D + L1 热度=密度×置信度 + 颜色高度正相关 + grid-warm 纯红 + 3D 透明度可调 + start.bat 一键）。
+
+下一步 P1 核密度重组：拆 KDE 综合/极性地形（去 L1/L2 命名撞车）、移走情绪网格、加 H3 六边形（2D/3D 橙黄-暗红，归 KDE 工具）。先读 memories/repo/session-handoff.md + docs/revision-log.md 5.14 + memory（deck-gl-gridlayer-extruded-broken / stand-on-giants-shoulders / select-cascade-progressive / ramp-discrete-segments / verify-real-endpoint）+ plan ~/.claude/plans/feature-kde-l2-3d-p0-create-square-grid-fuzzy-rossum.md。需 pip install h3。
 ```
 
-### ⚠ 注意
-- **分支 `feature/kde-l2-3d`**（非 main）；commit 前 `git status`，**勿盲目 `git add -A`**。
-- **`docs/minimax-workspace/` 38 条删除是用户在途工作**（未提交；commit 会断 `SCRIPT/generate_l1_mock.py`/`poi_4x5_map.py` 引用）—— 勿动，等用户处置。
-- **`docs/kepler.gl-master/` 已 gitignore**；磁盘 3 个游离文件可 `rm -rf docs/kepler.gl-master` 清（需用户点头）。
-- **PySAL（libpysal+esda）未装**，仅 P4 需要；P1-P3 不碰。h3 4.5.0 + httpx 0.28.1 已装（P0）。
-- 预存 pytest 问题（与本次无关）：① `test_relevance_filter` 需 `requests`；② `test_emotion_analysis::test_capabilities` SnowNLP 断言失败。
-- **Martin UI 承重约定**见 memory `martin-ui-redesign`（三区 tab 互斥 / 参数栏随动 B6 / apply 链零改 / 品牌蓝单源 `#4285F4` / 胶囊设计语言）。
-- 空间分析 plan：`C:\Users\Hi\.claude\plans\majestic-marinating-cerf.md`（P0 已完成，P1-P4 待做）。
-- 每完成一件事必更 `todo.md` + `docs/revision-log.md`；**只说"交接"时才更本卡**。
-- `serve.py` 的 `?v=<mtime>` 只覆盖 HTML 中 `<script>` 标签；ES module import 链不受保护，改 JS 后需 Ctrl+Shift+R。
+## 承重注意事项（踩坑，勿重复）
+1. **deck.gl GridLayer/HexagonLayer extruded 在 MapLibre+deck.gl@9.1.0+MapboxOverlay 不渲染**（canvas 在/层构造/数据进层但完全空）；ColumnLayer 渲染但不及 kepler → 3D 网格用 **MapLibre fill-extrusion**（addPolygonPaint grid 分支）。详见 memory deck-gl-gridlayer-extruded-broken
+2. **serve.py 必须 start.bat / `py frontend/serve.py 8080` 一键**（自起后端）；手动 `uvicorn` PATH 失败；旧后端进程占 :8000 被 `_spawn_backend` 误判复用（缺新路由→404→Failed to fetch）→ 已改强制 `_free_port(8000)` 重起
+3. **验证测实际端点**（POST /spatial/grid + 数据），不只 health（旧后端 health 也通但路由缺）；详见 memory verify-real-endpoint
+4. **数据选择联动递进**（选 level 后点层只显该层）；**色带离散分段**（.hm-style-seg，禁 linear-gradient）；**.hm-section[hidden] 需 CSS**（display:flex 覆盖 [hidden]，已加 .hm-section[hidden]{display:none}）
+5. **L1 CSV 无 score**（score 在 L2）；L1 热度用 `l1_confidence`（后端已加 l1_confidence_mean 聚合）；L1 颜色/高度用 `_grid_h`（point_count×l1_confidence_mean 分位），L2 颜色用 `_grid_norm`(polarity)/高度 `_grid_h`
+6. `polarity_index` 真实值域 -2~+2（后端 docstring 写 -1~1 有误），归一化 (x+2)/4
+7. 生成新分析图 = **独占显示**（关其他可见层）+ 新建图层（同数据调参也新建，便于对比）
+
+## 回顾（P2 演进）
+初版（cellSize+polarity 简化）→ 完整版（分析类型导航+L1/L2 联动+极性移②）→ 修正1（联动递进）→ 修正2（离散分段+后端死进程）→ 修正3（Failed to fetch 真根因=旧后端复用）→ 弃 deck.gl 回 fill-extrusion（kepler 效果不达）→ L1 热度密度×置信度（颜色高度正相关）+ grid-warm 纯红 + 透明度可调 + 2D 不透明。
