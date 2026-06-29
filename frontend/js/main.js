@@ -4,7 +4,7 @@ import { initPanel, activateTab, setOverview, setTable } from './panel.js';
 import { initToolbar, setActiveBasemap } from './toolbar.js';
 import { initSidebar, openImport, openRightPanel, renderLayerList, showLayerManager, refreshLegend } from './sidebar.js';
 import { initPopup, showPopup, showRangePopup } from './popup.js';
-import { addLayer, addGroup, getLayers, getSelectedLayer, isDrawActive } from './state.js';
+import { addLayer, addGroup, getLayers, getSelectedLayer, isDrawActive, deriveTimeTag } from './state.js';
 import {
   groupFiles, detectGroupType, parseGroup, reprojectFC, readPrj,
   splitByGeometry, detectColorMode, fcBBox,
@@ -26,6 +26,12 @@ function layerName(group) {
     return (shp ? shp.name : group.files[0].name).replace(/\.[^.]+$/, '');
   }
   return group.files[0].name;
+}
+
+/** 组卡标题带时间标签 T：有 T → `${base} · T1`；无 → base（去臃肿：T1/T2/T3 可区分）。 */
+function tTagFor(fc, base) {
+  const t = deriveTimeTag(fc);
+  return t ? `${base} · ${t}` : base;
 }
 
 /** Enable/disable Export button based on whether any data layers exist. */
@@ -79,16 +85,21 @@ async function runImport(files) {
                 else if (pol === 'Very Negative' || pol === 'Negative') neg.push(f);
                 else neu.push(f);
               }
-              const group = addGroup({ name: 'L2 · 情绪地图 DATA', fc: pfc });
+              const group = addGroup({ name: tTagFor(pfc, 'L2 · 情绪地图'), fc: pfc });
               group.srcName = base;
               const paint = { opacity: 0.80 };   // 80% opacity；radius 走 addPointPaint L2 自适应 3-6px
               const fcOf = (arr) => ({ type: 'FeatureCollection', features: arr });
-              if (pos.length) { const L = addLayer({ name: `积极 · ${base}`, kind: 'point', parentId: group.id, colorMode: 'l2-positive', fc: fcOf(pos), paint }); L.srcName = base; renderLayer(L); added++; }
-              if (neu.length) { const L = addLayer({ name: `中性 · ${base}`, kind: 'point', parentId: group.id, colorMode: 'l2-neutral',  fc: fcOf(neu), paint }); L.srcName = base; renderLayer(L); added++; }
-              if (neg.length) { const L = addLayer({ name: `消极 · ${base}`, kind: 'point', parentId: group.id, colorMode: 'l2-negative', fc: fcOf(neg), paint }); L.srcName = base; renderLayer(L); added++; }
+              const tPref = (fc) => { const t = deriveTimeTag(fc); return t ? `${t}·` : ''; };
+              if (pos.length) { const L = addLayer({ name: `${tPref(fcOf(pos))}积极·${base}`, kind: 'point', parentId: group.id, colorMode: 'l2-positive', fc: fcOf(pos), paint }); L.srcName = base; renderLayer(L); added++; }
+              if (neu.length) { const L = addLayer({ name: `${tPref(fcOf(neu))}中性·${base}`, kind: 'point', parentId: group.id, colorMode: 'l2-neutral',  fc: fcOf(neu), paint }); L.srcName = base; renderLayer(L); added++; }
+              if (neg.length) { const L = addLayer({ name: `${tPref(fcOf(neg))}消极·${base}`, kind: 'point', parentId: group.id, colorMode: 'l2-negative', fc: fcOf(neg), paint }); L.srcName = base; renderLayer(L); added++; }
             } else {
               const paint = needsAnalysis ? { color: '#4a4a4a', opacity: 0.80, radius: 4 } : undefined;  // L0 默认深灰 + 80% + 4px
-              const L = addLayer({ name: colorMode === 'confidence' ? `热度分布 · ${base}` : base, kind: 'point', fc: pfc, needsAnalysis, colorMode, paint });
+              const _t = deriveTimeTag(pfc);
+              const _tp = _t ? `${_t}·` : '';
+              // 命名新规：L1 = 时间·热度分布·文件名；L0 = 时间·文件名（无 time_label 则无 T 前缀）
+              const _name = colorMode === 'confidence' ? `${_tp}热度分布·${base}` : `${_tp}${base}`;
+              const L = addLayer({ name: _name, kind: 'point', fc: pfc, needsAnalysis, colorMode, paint });
               L.srcName = base;
               renderLayer(L); added++;
               if (needsAnalysis) needsAny = true;

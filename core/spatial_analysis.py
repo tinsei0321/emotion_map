@@ -445,11 +445,207 @@ def create_square_grid(
     return result.to_crs('EPSG:4326')
 
 
+# ═══════════════════════════════════════════════════════════
+# 情绪地形 — KDE 等值面 mesh（密度×强度 → 分层 fill-extrusion 曲面）
+# ═══════════════════════════════════════════════════════════
+
+def _gaussian_kernel1d(sigma):
+    """1D 高斯核（截断 ±3sigma），sigma<0.5 退化为单位核。纯 numpy（不引 scipy）。"""
+    if sigma < 0.5:
+        return np.array([1.0])
+    r = int(max(1, round(3 * sigma)))
+    k = np.arange(-r, r + 1, dtype=float)
+    g = np.exp(-0.5 * (k / sigma) ** 2)
+    return g / g.sum()
+
+
+def _convolve_separable(H, sigma):
+    """2D 栅格可分离高斯卷积（先轴0再轴1），'same' 模式。纯 numpy。"""
+    g = _gaussian_kernel1d(sigma)
+    H1 = np.apply_along_axis(lambda col: np.convolve(col, g, 'same'), 0, H)
+    return np.apply_along_axis(lambda row: np.convolve(row, g, 'same'), 1, H1)
+
+
+@track("MOD_SPATIAL.F_007", track_args=False)
+def create_terrain_mesh(
+    points_gdf: gpd.GeoDataFrame,
+    polarity: str = 'overall',
+    bandwidth_m: float = 250.0,
+    cell_m: float = 60.0,
+    n_levels: int = 7,
+    target_crs: str = 'EPSG:4546',
+) -> gpd.GeoDataFrame:
+    """情绪地形等值面 mesh —— KDE(密度×强度) 等值线 → 分层 fill-extrusion 曲面。
+
+    业界做法（kepler hexbin 同源）：高度=核密度（此处加权 emotion_intensity），
+    颜色=区域内极性均值（综合）/ 密度（极性）。
+
+    流程：
+      点(WGS84) → 投影 4546(米) → 加权 histogram2d(权重=强度)
+              → 可分离高斯卷积(KDE 曲面) → 分位 levels → contourpy 等值线环
+              → 每环 Polygon(4546) → 点-环 sjoin 算 polarity_index/score/点数
+              → 回 WGS84，按 level 升序（fill-extrusion 低先画、高压顶，免 z-fighting）
+
+    参数:
+      points_gdf: 情绪点 GeoDataFrame（WGS84，含 emotion_intensity/score/polarity）
+      polarity: 'overall'(综合,全部点) | 'positive'/'negative'/'neutral'(先按极性过滤)
+      bandwidth_m: KDE 高斯带宽（米），控制曲面平滑度（主城 200–300m）
+      cell_m: 栅格边长（米），越小越细但越慢（默认 60）
+      n_levels: 等值面层数（默认 7）
+
+    返回:
+      等值面 GeoDataFrame（EPSG:4326），每 feature（环多边形）属性：
+        - _level: 高度 0~1（密度分位归一化，前端 fill-extrusion-height 用）
+        - _norm: polarity_index 归一化 0~1（综合着色用，(-2..2)→(0..1)）
+        - point_count / score_mean / polarity_index / emotion_intensity_mean
+        - level_raw: 原始密度级（调试用）
+      features 按 _level 升序（低环先 → 渲染压顶正确）。
+
+    依赖: contourpy（matplotlib 自带）。依赖缺失抛 ImportError + 安装提示。
+    """
+    try:
+        import contourpy as cpy
+    except ImportError:
+        raise ImportError(
+            'contourpy 未安装（matplotlib 自带）。运行: pip install matplotlib\n'
+            'contourpy 用于从 KDE 栅格提取等值线，是 matplotlib 的成熟等值面后端。'
+        )
+
+    pts = points_gdf.copy()
+    if pts.crs is None:
+        pts = pts.set_crs('EPSG:4326')
+    # 极性过滤（单极性地形：只看某极性的密度峰）
+    if polarity in ('positive', 'negative', 'neutral') and 'polarity' in pts.columns:
+        polmap = {
+            'positive': ['Very Positive', 'Positive'],
+            'negative': ['Very Negative', 'Negative'],
+            'neutral': ['Neutral'],
+        }
+        pts = pts[pts['polarity'].isin(polmap[polarity])].copy()
+    if len(pts) < 3:
+        raise ValueError(
+            f'地形分析需要至少 3 个点（极性={polarity} 过滤后剩 {len(pts)}）'
+        )
+
+    # 数值列 coerce（容错 str 化，同 F_006）
+    for _c in ('emotion_intensity', 'score'):
+        if _c in pts.columns:
+            pts[_c] = pd.to_numeric(pts[_c], errors='coerce')
+    if 'emotion_intensity' in pts.columns:
+        # 1~5 等级 → 0~1（模拟数据）/ 已 0~1（SnowNLP）；权重下限 0.05 防零权重消失
+        ei = pts['emotion_intensity'].fillna(0.5)
+        ei = np.where(ei > 1, ei / 5.0, ei)
+        pts['_w'] = np.clip(ei, 0.05, 1.0)
+    else:
+        pts['_w'] = 1.0
+
+    pts = pts.to_crs(target_crs)
+    xs = pts.geometry.x.values
+    ys = pts.geometry.y.values
+    w = pts['_w'].values.astype(float)
+
+    xmin, ymin, xmax, ymax = (float(v) for v in pts.total_bounds)
+    pad = bandwidth_m  # 边界 pad：防卷积截断
+    xmin -= pad; ymin -= pad; xmax += pad; ymax += pad
+    nx = max(24, int(np.ceil((xmax - xmin) / cell_m)))
+    ny = max(24, int(np.ceil((ymax - ymin) / cell_m)))
+
+    with TrackContext("MOD_SPATIAL.D_003", n_points=len(pts), grid=f'{nx}x{ny}',
+                      bandwidth_m=bandwidth_m, polarity=polarity):
+        # 加权 KDE 栅格：H[i,j] = x-bin i, y-bin j 的强度权和
+        H, xe, ye = np.histogram2d(
+            xs, ys, bins=[nx, ny],
+            range=[[xmin, xmax], [ymin, ymax]], weights=w,
+        )
+        sigma_cell = bandwidth_m / cell_m
+        Hs = np.clip(_convolve_separable(H, sigma_cell), 0.0, None)
+
+        nz = Hs[Hs > 0]
+        if len(nz) < nx + ny:
+            raise ValueError('KDE 曲面有效格不足（点过于稀疏或带宽过小）')
+        # 分位 levels：从 25% 起，避开全域平底；末段加密突出峰
+        qs = np.quantile(nz, [0.25, 0.40, 0.55, 0.68, 0.80, 0.90, 0.97])[:max(3, n_levels)]
+        levels = sorted(set(round(float(q), 8) for q in qs if q > 0))
+        if len(levels) < 3:
+            levels = list(np.linspace(float(nz.min()), float(nz.max()), 6)[1:-1])
+        # _level 按 level 范围归一化到 0~1（非 L/zmax——quantile 远小于峰值，否则高度被压扁）：
+        # 最低环=贴地基底，最高环=1，层级差等距 → 视觉张力（山底平地 / 山顶高耸）。
+        Lmin, Lmax = float(levels[0]), float(levels[-1])
+        Lspan = (Lmax - Lmin) or 1.0
+
+        # contourpy 等值线：z[j,i] @ (xc[i], yc[j]) → H.T（ny,nx）
+        xc = (xe[:-1] + xe[1:]) / 2.0
+        yc = (ye[:-1] + ye[1:]) / 2.0
+        cg = cpy.contour_generator(x=xc, y=yc, z=Hs.T, line_type=cpy.LineType.Separate)
+
+        rings = []  # [(level_raw, level_norm, Polygon(4546))]
+        for L in levels:
+            for r in cg.lines(float(L)):
+                arr = np.asarray(r)
+                if arr.ndim != 2 or arr.shape[0] < 4 or np.isnan(arr[:, 0]).any():
+                    continue
+                poly = Polygon(arr)
+                if not poly.is_valid:
+                    poly = poly.buffer(0)
+                if poly.is_empty or poly.area < 1.0:   # <1m² 噪声环跳过
+                    continue
+                rings.append((float(L), (float(L) - Lmin) / Lspan, poly))
+
+    if not rings:
+        raise ValueError('等值面提取为空（KDE 曲面过平？增大 bandwidth_m 或点数）')
+
+    # 点-环 sjoin 算每环极性/分数/强度统计（4546 米制 within）
+    ring_gdf = gpd.GeoDataFrame(
+        {'level_raw': [r[0] for r in rings], '_level': [r[1] for r in rings]},
+        geometry=[r[2] for r in rings], crs=target_crs,
+    ).reset_index(drop=True)
+    join_cols = [c for c in ('score', 'polarity', 'emotion_intensity') if c in pts.columns]
+    joined = gpd.sjoin(pts[join_cols + ['geometry']], ring_gdf, how='inner', predicate='within') \
+        if join_cols else gpd.sjoin(pts[['geometry']], ring_gdf, how='inner', predicate='within')
+
+    grouped = joined.groupby('index_right')
+    feats = []
+    for idx, row in ring_gdf.iterrows():
+        props = {
+            '_level': round(float(row['_level']), 4),
+            'level_raw': round(float(row['level_raw']), 6),
+            'point_count': 0,
+        }
+        sub = grouped.get_group(idx) if idx in grouped.groups else joined.iloc[0:0]
+        if len(sub):
+            props['point_count'] = int(len(sub))
+            if 'score' in sub.columns:
+                props['score_mean'] = round(float(sub['score'].mean()), 3)
+            if 'emotion_intensity' in sub.columns:
+                props['emotion_intensity_mean'] = round(float(sub['emotion_intensity'].mean()), 3)
+            if 'polarity' in sub.columns:
+                for pol in ['Very Negative', 'Negative', 'Neutral', 'Positive', 'Very Positive']:
+                    props[f'n_{pol.lower().replace(" ", "_")}'] = int((sub['polarity'] == pol).sum())
+                pc = props['point_count']
+                pi = (
+                    props.get('n_very_positive', 0) * 2 + props.get('n_positive', 0) * 1
+                    + props.get('n_negative', 0) * -1 + props.get('n_very_negative', 0) * -2
+                ) / max(1, pc)
+                props['polarity_index'] = round(float(pi), 3)
+                props['_norm'] = round((float(pi) + 2) / 4, 4)   # (-2..2)→(0..1)
+            else:
+                props['_norm'] = props['_level']
+        else:
+            props['_norm'] = props['_level']   # 无点落入（理论不应）→ 退密度
+        feats.append({'geometry': row.geometry, **props})
+
+    out = gpd.GeoDataFrame(feats, geometry='geometry', crs=target_crs)
+    out = out.sort_values('_level', ascending=True, kind='stable').reset_index(drop=True)
+    return out.to_crs('EPSG:4326')
+
+
 # ── 追踪 ID 注册表 ──
 register_track_id("MOD_SPATIAL.F_001", "Getis-Ord Gi* 热点分析")
 register_track_id("MOD_SPATIAL.F_002", "Moran's I 空间自相关检验")
 register_track_id("MOD_SPATIAL.F_003", "行政单元聚合统计")
 register_track_id("MOD_SPATIAL.F_004", "H3 六边形网格聚合")
 register_track_id("MOD_SPATIAL.F_006", "固定方格网格聚合(标准网格)")
+register_track_id("MOD_SPATIAL.F_007", "情绪地形 KDE 等值面 mesh")
 register_track_id("MOD_SPATIAL.D_001", "热点分析：自适应空间权重矩阵构建")
 register_track_id("MOD_SPATIAL.D_002", "热点分析：分类结果统计（hot/cold/ns）")
+register_track_id("MOD_SPATIAL.D_003", "地形：KDE 曲面 + 等值面提取参数")

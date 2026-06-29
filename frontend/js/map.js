@@ -183,6 +183,9 @@ export function renderLayer(layer) {
   } else if (layer.kind === 'polygon') {
     addPolygonPaint(layer, sid, lid, lineLid, hitLid);
     bindRangeInteractions(layer, hitLid, lineLid);
+    if (layer.paint && layer.paint._ui && layer.paint._ui.tool === 'terrain' && layer.paint._ui.mode === '3d') {
+      bindTerrainInteractions(layer, extruLid);   // 情绪地形 3D 段落式 hover 提示
+    }
   } else if (layer.kind === 'line') {
     addLinePaint(layer, sid, lid, hitLid);
     bindRangeInteractions(layer, hitLid, lid);
@@ -217,7 +220,7 @@ export function removeLayerFromMap(id) {
   const sid = lyrSrc(id), lid = lyrLid(id), lineLid = lyrLineLid(id), extruLid = lyrExtruLid(id), hitLid = lyrHitLid(id);
   for (const l of [hitLid, extruLid, lineLid, lid]) if (map.getLayer(l)) map.removeLayer(l);
   if (map.getSource(sid)) map.removeSource(sid);
-  _boundPoint.delete(id); _boundRange.delete(id);
+  _boundPoint.delete(id); _boundRange.delete(id); _boundTerrain.delete(id);
   clearSelectionHalo();   // a layer going away → selection halo can't stay (resets _selectedLayerId)
   removeHoverRing();
 }
@@ -304,34 +307,38 @@ function _gridColorExpr(p) {
 
 function addPolygonPaint(layer, sid, lid, lineLid, hitLid) {
   const p = layer.paint || {};
-  const isGrid = !!(p._ui && p._ui.tool === 'grid');
-  const isGrid3d = isGrid && p._ui.mode === '3d';
+  const tool = p._ui && p._ui.tool;
+  const isTool = tool === 'grid' || tool === 'terrain';   // grid / terrain 共用极性色带 + fill-extrusion 管线
+  const isTool3d = isTool && p._ui.mode === '3d';
   const color = p.color || NAVY;
-  const fillExpr = isGrid ? _gridColorExpr(p) : null;
+  const fillExpr = isTool ? _gridColorExpr(p) : null;
+  // 高度字段：grid=_grid_h（preprocessGrid 分位），terrain=_level（后端 KDE 等值面级）。maxHeight 绝对米（默认 1000）。
+  const heightField = (p._ui && p._ui.heightField) || '_grid_h';
+  const maxHeight = (p._ui && p._ui.maxHeight) || 1000;
 
   if (p.fillOn) {
     map.addLayer({ id: lid, type: 'fill', source: sid,
-      paint: { 'fill-color': fillExpr || color, 'fill-opacity': p.fillOpacity ?? (isGrid ? (p._ui?.extrusionOpacity ?? 1) : 0.3) } });   // grid 不透明度统一读 _ui.extrusionOpacity（2D/3D 同控件，默认 1）
+      paint: { 'fill-color': fillExpr || color, 'fill-opacity': p.fillOpacity ?? (isTool ? (p._ui?.extrusionOpacity ?? 1) : 0.3) } });   // 工具层不透明度统一读 _ui.extrusionOpacity（2D/3D 同控件，默认 1）
   }
 
-  // grid 3D：fill-extrusion（实心 opacity 1 + 高度分位 _grid_h × scale 张力 + 颜色同 2D 极性色带）
-  if (isGrid3d) {
-    const s = p.extrusionScale ?? 1;
+  // 工具层 3D：fill-extrusion（实心 + 高度字段×maxHeight 张力 + 颜色同 2D 极性/密度色带）
+  // 注：曾读 p.extrusionScale（错位，实际在 _ui）→ 恒 1× 滑块失效；改 maxHeight 绝对值并读 _ui.maxHeight。
+  if (isTool3d) {
     map.addLayer({
       id: lyrExtruLid(layer.id), type: 'fill-extrusion', source: sid,
       paint: {
         'fill-extrusion-color': fillExpr || color,
-        'fill-extrusion-height': ['interpolate', ['linear'], ['get', '_grid_h'], 0, 0, 1, 1500 * s],
+        'fill-extrusion-height': ['interpolate', ['linear'], ['get', heightField], 0, 0, 1, maxHeight],
         'fill-extrusion-base': 0,
-        'fill-extrusion-opacity': p._ui.extrusionOpacity ?? 1,   // 3D 透明度可调（默认 1 实心；_ui.extrusionOpacity）
+        'fill-extrusion-opacity': p._ui.extrusionOpacity ?? 1,   // 3D 透明度可调（默认 1 实心）
       },
     });
   }
 
-  // visible outline；grid 3D 去底部线框（只 2D 加浅灰细线，区分 buffer 实线 / Range 点划线）
-  if (!isGrid3d) {
-    const lineColor = isGrid ? '#666' : color;
-    const linePaint = { 'line-color': lineColor, 'line-width': p.lineWidth ?? (isGrid ? 0.5 : 2), 'line-opacity': isGrid ? 0.45 : 0.9 };
+  // visible outline；3D 去线框（只 2D 加浅灰细线，区分 buffer 实线 / Range 点划线）
+  if (!isTool3d) {
+    const lineColor = isTool ? '#666' : color;
+    const linePaint = { 'line-color': lineColor, 'line-width': p.lineWidth ?? (isTool ? 0.5 : 2), 'line-opacity': isTool ? 0.45 : 0.9 };
     const lineLayout = {};
     if (p.lineStyle === 'dashed') {
       linePaint['line-dasharray'] = [2, 1.5];                    // 缓冲面域：短虚线
@@ -541,6 +548,48 @@ function showRangeTooltip(lngLat, name) {
   _tooltip.setHTML(`<div class="rt-name">${name || '范围'}</div>`).setLngLat(lngLat).addTo(map);
 }
 function hideRangeTooltip() { if (_tooltip) _tooltip.remove(); }
+
+const _boundTerrain = new Set();
+/** 情绪地形段落式 hover 提示：mouseenter 3D 柱体 → 多行 Popup（密度×强度/极性/分数/点数）。
+ *  综合 = 极性着色 → 显示极性归类；极性模式 = 密度着色 → 显示该极性聚集。 */
+function bindTerrainInteractions(layer, extruLid) {
+  if (_boundTerrain.has(layer.id)) return;
+  _boundTerrain.add(layer.id);
+  const polarity = (layer.paint && layer.paint._ui && layer.paint._ui.polarity) || 'overall';
+  const polCN = { overall: '综合', positive: '积极', negative: '消极', neutral: '中性' }[polarity] || '综合';
+  const valenceOf = (pi) => (pi == null) ? '—' :
+    (pi > 0.3 ? '偏积极' : pi < -0.3 ? '偏消极' : '中性');
+  const fmt = (v, d = 2) => (v == null || v === '') ? '—' : Number(v).toFixed(d);
+
+  map.on('mouseenter', extruLid, (e) => {
+    map.getCanvas().classList.add('is-pointer');
+    const f = e.features && e.features[0];
+    if (!f) return;
+    const pr = f.properties || {};
+    const lvl = fmt(pr._level, 2);
+    const rows = polarity === 'overall'
+      ? [
+          `<div class="tt-title">情绪${pr._level > 0.5 ? '高地' : (pr._level < 0.15 ? '洼地' : '缓坡')}</div>`,
+          `<div class="tt-row"><span>极性</span><b>${valenceOf(pr.polarity_index)}</b></div>`,
+          `<div class="tt-row"><span>密度×强度</span><b>${lvl}</b></div>`,
+          `<div class="tt-row"><span>平均分数</span><b>${fmt(pr.score_mean, 2)}</b></div>`,
+          `<div class="tt-row"><span>情绪点数</span><b>${pr.point_count ?? 0}</b></div>`,
+        ]
+      : [
+          `<div class="tt-title">${polCN}情绪${pr._level > 0.5 ? '聚集峰' : (pr._level < 0.15 ? '稀疏区' : '过渡带')}</div>`,
+          `<div class="tt-row"><span>${polCN}密度×强度</span><b>${lvl}</b></div>`,
+          `<div class="tt-row"><span>强度均值</span><b>${fmt(pr.emotion_intensity_mean, 2)}</b></div>`,
+          `<div class="tt-row"><span>情绪点数</span><b>${pr.point_count ?? 0}</b></div>`,
+        ];
+    if (!_tooltip) _tooltip = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: 'terrain-tooltip', offset: 20 });
+    _tooltip.setHTML(`<div class="terrain-tip">${rows.join('')}</div>`).setLngLat(e.lngLat).addTo(map);
+  });
+  map.on('mousemove', extruLid, (e) => { if (_tooltip && _tooltip.isOpen()) _tooltip.setLngLat(e.lngLat); });
+  map.on('mouseleave', extruLid, () => {
+    map.getCanvas().classList.remove('is-pointer');
+    hideRangeTooltip();
+  });
+}
 
 // ── Point halos ───────────────────────────────────────────────────────────
 function showSelectionHalo(feature) {

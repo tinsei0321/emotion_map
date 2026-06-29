@@ -1,49 +1,55 @@
 # 会话交接卡
 
 > 换机/新会话后读取此文件恢复上下文。**单份当前快照**——每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：2026-06-29 晚收工 | 分支 `feature/kde-l2-3d` @ `2a101cb`（已 push）
+> 最后更新：2026-06-29 晚 | 分支 `feature/kde-l2-3d`（本批 commit + push 后即 HEAD）
 
-## 本会话完成
-Grid 工具三连修复（bug + 视觉 + 交互）+ vibe 策略录入。commit `2a101cb`（10 文件 +126/-56），**已 push**。
-
-三批：
-1. **str 聚合 500 修复**（`core/spatial_analysis.py`）：`create_square_grid`/`create_hex_grid`/`aggregate_by_polygons` 三函数 groupby 前 `pd.to_numeric(errors='coerce')`——外部数据数值列经 GeoJSON 文本中转会 str 化，直接 `mean()` 崩 500（DATA 内置纯 float 测不出）。
-2. **Grid 5 项 + vibe 策略**：3D 自动 pitch+暗底图 / 图例色段 / 极色 3 段拉大对比 / 2D 透明度统一控件 / 要素按钮原地编辑（生成→调整）/ 录入 `~/.claude/CLAUDE.md`（调动次数优先，覆盖 plan-mode 派 agent 默认）。
-3. **Grid 4 项 + 2 项**：3D 视角根治（fitBounds 后设 pitch=60）/ L2 综合图例 labels（消极-中性-积极）/ 2D 透明根治（grid paint 显式 fillOpacity）/ **2D-3D 视图按钮一键切换**（`setViewMode` 签名配对独立层）/ 视图切换两下→一次顺滑（去 style.load race）/ `generateGrid` 恢复独占。
+## 上一节点（06-29 晚，本会话）—— 情绪地形 L2 3D + 交互修复批次
+**核心交付：情绪地形（L2 3D 等值面 mesh）上线 + 7 项交互/视觉修复**
+1. **情绪地形（本周优先，已实现）**：后端 `create_terrain_mesh`(F_007, `core/spatial_analysis.py`) + 路由 `POST /api/v1/spatial/terrain` + `matplotlib` 依赖。算法=KDE 密度×强度 → contourpy 等值面 → MapLibre fill-extrusion 分层。混合语义：高度恒 `_level`(密度×强度)、颜色综合 `_norm`+terrain-9 / 极性 `_level`+green-3/red-3/blue-3。前端 heatmap-tool `generateTerrain`（解锁 terrain 3D 按钮 + 综合/极性下拉）+ map.js `bindTerrainInteractions` 段落式 hover tooltip + 自动暗底图/pitch 60°。
+2. **5 项修复**：①拉伸 bug（map.js 读错位 `p.extrusionScale`→恒1×；改 `maxHeight` 绝对米 200–3000 默认1000）；②terrain-9 色板 3+2+4→3+3+3（TERRAIN_RED/BLUE/GREEN 单源）；③工具生成不弹 Overview（grid/heatmap/buffer/terrain 只 selectLayer+layers:changed）；④命名新规（点 `T·极性·文件名`、网格 `T·极性·分析类型·方格·文件名`、地形 `T·极性·情绪地形·文件名`）+ 2D/3D 深灰标签；⑤组卡子层去缩进（全类别统一 flush + 左色条）+ L2 group 名带 T。
+3. **白屏 hotfix**：state.js 注释吞 `'classify-7':` key 致全站白屏，已修。教训：`node --check` 自检须正确捕获退出码（`head` 会掩盖失败）。
+4. **terrain-9 发散顺序修正**：消极段反转（深红在低值/最消极端）+ 中性蓝浅-中-浅，两端深色。
 
 ## 当前状态
-- 分支 `feature/kde-l2-3d`，HEAD `2a101cb`，**已 push**（origin 同步）
-- **后端 `spatial_analysis.py` 改过**——若 serve 还跑旧后端，需重启 `serve.py`（或双击 `start.bat`）才加载 str coerce 修复
-- 前端 F5 即可（serve no-cache 自动拉新 css/js）
+- 分支 `feature/kde-l2-3d`，本批 commit + push 后 origin 同步
+- 后端 :8000 + 前端 :8080 在线；**地形路由 `/spatial/terrain` 需 start.bat 重启后端才生效**（运行中进程早于本路由）
+- matplotlib 已装（contourpy 随附）；requirements.txt 已加
+- 3 份新 memory：`terrain-mesh-rendering` / `extrusion-height-maxheight` / `tool-no-auto-overview`
 
-## 待验证（明早 F5，肉眼）
-1. 生成 3D 网格 → 自动 pitch 60° + 暗底图（fitBounds 后不被压平）
-2. 视图按钮（左下 `btnView`）**一次点击**完成：图层 2D↔3D + Light/Dark 底图 + pitch 顺滑（650ms）
-3. 生成新网格 → 独占关闭其他层
-4. 2D 首次生成即不透明（无需再"调整"）
-5. 图例色段 + L2 综合标签 = 消极/中性/积极
-6. 视图按钮配对：2D 层 → 点 3D 自动生成配对 3D 层（柱体）；多 grid 层/2D+3D 混合切换正确
+## 待验证（用户 F5 肉眼，未完成）
+1. **后端重启**：双击 start.bat → 加载 `/spatial/terrain`
+2. **情绪地形生成**：导入 L2 → HeatMap 工具 → 情绪地形 + 综合/极性 + 3D → 暗底图 + pitch60° + 红绿高地分层曲面 + hover 多行提示
+3. 拉伸滑块拖动柱体/地形变高矮；terrain-9 图例两端深色；图层名带 T + 2D/3D 标签 + 子层全 flush
+4. **T 前缀显示依赖数据 `time_label` 字段**——旧数据（如 `simulated_l1_2000_...`）无则不显示 T（已确认非 bug）。带 time_label 的 T1/T2/T3 三快照数据应显 T
+
+## 承重注意事项（踩坑，勿重复）
+1. **terrain 渲染走 fill-extrusion，勿回退 deck.gl**（GridLayer extruded 在 MapLibre 不渲染）。memory: `terrain-mesh-rendering`
+2. **高度控件 = maxHeight 绝对米**（读 `_ui.maxHeight`），非旧 extrusionScale。memory: `extrusion-height-maxheight`
+3. **工具生成不弹 Overview**（不 dispatch `layer:selected`）。memory: `tool-no-auto-overview`
+4. **generateGrid 独占 vs setViewMode 配对 = 两独立场景**，勿耦合。memory: `generate-grid-exclusive-vs-viewmode`
+5. **后端聚合数值列必须 `pd.to_numeric(coerce)`**；验证须打真 POST 不只 health。memory: `spatial-aggregation-numeric-coerce`
+6. **地形环按 `_level` 升序输出**（fill-extrusion 低先画、高压顶免 z-fighting），勿打乱
+7. **terrain-9 发散色板**：两端深色（消极深红@低值 / 积极深绿@高值），中性蓝浅-中-浅。改色改 `TERRAIN_RED/BLUE/GREEN` 端点（单源）
+8. **JS 自检脚本须正确捕获退出码**——`cmd | head && echo OK` 会因 head 恒退出0 误报；用 `if cmd; then..else..fi`
+9. maplibre `setStyle` 不重置 camera → `setView3D` 直接 `easeTo(pitch)`，勿用 `once('style.load')`（race）
+
+## 下一步（待用户在新会话定；候选，按优先级）
+- **【建议优先】Task 1 数据重模拟**（让网格/地形有张力）：`SCRIPT/generate_l1_mock.py` `inject_fields` 改 `l1_confidence`(空间自相关) + `polarity_hint/score`(空间聚类极性) + `emotion_intensity`；**算法关键**：grid-tool `_grid_norm` 加对称拉伸 `0.5+sign(pi)×min(1,|pi|/p95)×0.5`（原始值致 L2 综合只到 terrain-9 中段=无张力根因）。详见 plan 文件 Phase 2.A
+- **Task 2.7 网格 popup + Overview**（本周）：点网格/柱体 → Range+Point 属性 popup + Overview 面板（复用 popup.js/panel.js + 地形 hover 样式）
+- **Task 2.2 时间轴架构**：layer 增 `timeTag` + import.js 核 time_label 透传 + 同 L 合并单卡 + timeline 组件（先做数据重模拟验证图面，再做时间轴）
+- **Task 3 热点图**：map.js `addHotpointLayer`(deck.gl ScreenGrid) 半成品 → 接入 heatmap-tool「总体情况」组第二卡
 
 ## 新会话 prompt（复制即用）
 ```
-续 feature/kde-l2-3d @ 2a101cb（已 push）。昨晚完成 Grid 三连修复：str 聚合 500 + Grid 视角/图例/透明度/2D-3D 视图按钮 + generateGrid 独占。
+续 feature/kde-l2-3d（昨晚情绪地形 3D + 交互修复批次已 push）。读 memories/repo/session-handoff.md（最新快照：4 项待 F5 + 承重 9 条）。
 
-早上先 F5 验证（清单见 memories/repo/session-handoff.md「待验证」），重点是 2D/3D 视图按钮一次切换 + generateGrid 独占。后端若没重启，重启 serve.py 加载 str coerce。
+本会话任务：<在此填，建议「Task 1 数据重模拟，让网格/地形有张力」>
+要点：①改 generate_l1_mock inject_fields（confidence 空间自相关 + 极性空间聚类 + 强度）；②grid-tool _grid_norm 加对称拉伸（L2 综合无张力算法根因）。详见 plan：~/.claude/plans/feature-kde-l2-3d-2a101cb-robust-aurora.md Phase 2.A。
 
-读 memories/repo/session-handoff.md + docs/revision-log.md §5.14 末三条 + memory（generate-grid-exclusive-vs-viewmode / spatial-aggregation-numeric-coerce / kde-loadbearing-logic）。计费按调动次数，工作方式见 ~/.claude/CLAUDE.md（不派 subagent）。
+先确认后端已 start.bat 重启（/spatial/terrain 路由）。计费按调动次数，工作方式见 ~/.claude/CLAUDE.md（不派 subagent）。
 ```
 
-## 承重注意事项（踩坑，勿重复）
-1. **`generateGrid` 独占 vs `setViewMode` 配对是两个独立场景**——`generateGrid` 新建必关其他可见层；`setViewMode`（视图按钮）按 `gridSig` 配对切 2D/3D。勿为一边改另一边（曾犯错，用户"不要再犯"）。memory: `generate-grid-exclusive-vs-viewmode`
-2. **maplibre `setStyle` 不重置 camera**（pitch/bearing/center/zoom 全保留）——`setView3D` 直接 `easeTo(pitch)` 即可，勿用 `once('style.load')` 等（race 致"第二下才转"）
-3. **后端聚合数值列必须 `pd.to_numeric(coerce)`**（外部数据 str 化崩 500）；pytest 合成纯 float 测不出。memory: `spatial-aggregation-numeric-coerce`
-4. **2D/3D 独立层配对**：`gridSig = analysis|level|source|cellSize|polarity|polygonLayer`；`setViewMode` 无配对则同 fc 生成独立层（渲染管线独立：3D→fill-extrusion 柱 / 2D→fill 色块），fc 共享不重跑后端
-5. `btnView` 经 `grid:viewmode` 事件解耦触发 map.js `setViewMode`（免 map↔map-controls 循环依赖）
-6. **addLayer polygon 默认 `fillOpacity:0.3`** 会污染 grid paint → grid paint 必须显式 `fillOpacity = extrusionOpacity`
-7. `todo.md` 曾现 #2–#11 缺失（疑似外部回退，后恢复）——留意 todo/revision 完整性
-8.（旧承重）deck.gl GridLayer extruded 在 MapLibre 不渲染 → 3D 网格用 MapLibre fill-extrusion；serve.py 必须 start.bat 一键；验证测实际端点不只 health
-
-## 下一步（待用户定）
-- P1 核密度重组（H3 六边形，归 KDE 工具，需 `pip install h3`）
-- P3 指定单元深化 / P4 Gi\*+Moran's I（PySAL：libpysal+esda，requirements 已声明未装）
-- 或验收后转其他模块（L0→L1 管线 / L3 LLM / L4 归因）
+## 承重 memory 索引（本会话新增 3 条）
+- `terrain-mesh-rendering` — L2 3D KDE 等值面渲染链（勿回退 deck.gl）
+- `extrusion-height-maxheight` — 高度控件 maxHeight 绝对米（曾 extrusionScale 错位恒1×）
+- `tool-no-auto-overview` — 工具生成不弹 Overview

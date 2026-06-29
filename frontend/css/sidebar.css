@@ -653,6 +653,13 @@ button.layer-kind:hover { background: var(--geojson-color-gray-200); color: var(
   color: var(--geojson-color-text-inverse, #ffffff);
   background: var(--geojson-color-brand-primary, #4285F4);
 }
+/* dim tag (深灰) — 工具层 2D/3D 视图维度（文件名不再含 2D/3D） */
+.layer-tag.is-dim {
+  color: var(--geojson-color-text-tertiary, #6b7280);
+  background: transparent;
+  border: 1px solid var(--geojson-color-border, #e5e7eb);
+  font-weight: var(--geojson-typography-weight-medium, 500);
+}
 
 /* ── Hint char (R / L0·L1·L2, colored by display color) ── */
 .layer-hint {
@@ -699,6 +706,9 @@ button.layer-kind:hover { background: var(--geojson-color-gray-200); color: var(
   color: var(--geojson-color-text-tertiary);
 }
 
-/* ── Child rows (indented; draggable within their category) ── */
-.layer-row.is-child { padding-left: 28px; }
+/* ── Child rows：与组标题并列对齐（不缩进，省横向空间显更多信息）；左侧细色条标组归属 ── */
+.layer-row.is-child {
+  padding-left: 0;
+  border-left: 2px solid color-mix(in srgb, var(--geojson-color-brand-primary, #4285F4) 22%, transparent);
+}
 

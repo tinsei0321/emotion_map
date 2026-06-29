@@ -86,6 +86,22 @@ export async function runAggregate(payload) {
   return r.json();
 }
 
+export async function runTerrain(payload) {
+  // payload: { geojson, polarity:'overall'|'positive'|'negative'|'neutral', bandwidth_m, cell_m, levels }
+  // → { success, geojson, feature_count, message }（情绪地形 KDE 等值面 mesh：密度×强度）
+  const r = await fetch(`${BASE}/spatial/terrain`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) {
+    let detail = `情绪地形生成失败: ${r.status}`;
+    try { const j = await r.json(); detail = j.detail || detail; } catch (_) {}
+    throw new Error(detail);
+  }
+  return r.json();
+}
+
 export async function runExport(payload) {
   // payload: { geojson, format:'geojson'|'csv'|'shp', crs, geom_csv, desensitize, filename } → Blob
   const r = await fetch(`${BASE}/export`, {

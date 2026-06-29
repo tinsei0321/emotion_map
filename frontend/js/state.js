@@ -15,6 +15,14 @@ export function token(name) {
     .getPropertyValue(name).trim();
 }
 
+/** 从图层 features 派生时间标签 T（读首点 properties.time_label，缺则空）。
+ *  命名/组卡/数据导航统一用它前缀 T1/T2/T3，打通时间轴显示侧。 */
+export function deriveTimeTag(fc) {
+  if (!fc || !fc.features || !fc.features.length) return '';
+  const p = fc.features[0].properties || {};
+  return p.time_label ? String(p.time_label) : '';
+}
+
 /** Five emotion colors, keyed by polarity, straight from tokens. */
 export function emotionColors() {
   return {
@@ -210,8 +218,8 @@ const _layers = new Map();   // id -> layer object
 let _seq = 0;
 
 // ── Layer category grouping (render-layer aggregation; UI state only — never stored in _layers) ──
-export const CATEGORY_LABEL = { heatmap: '热力图', l2: 'L2 · 情绪地图 DATA', l1: 'L1 · 城市情绪 DATA', l0: 'L0 · 原始', range: '范围边界', buffer: '缓冲分析', grid: '网格聚合', other: '其他' };
-let _groupOrder = ['heatmap', 'l2', 'l1', 'l0', 'range', 'buffer', 'grid', 'other'];   // 成果在上、原始在下（list-top = map-top）
+export const CATEGORY_LABEL = { heatmap: '热力图', l2: 'L2 · 情绪地图 DATA', l1: 'L1 · 城市情绪 DATA', l0: 'L0 · 原始', range: '范围边界', buffer: '缓冲分析', grid: '网格聚合', terrain: '情绪地形', other: '其他' };
+let _groupOrder = ['heatmap', 'terrain', 'l2', 'l1', 'l0', 'range', 'buffer', 'grid', 'other'];   // 成果在上、原始在下（list-top = map-top）
 const _groupCollapse = new Set();                                    // collapsed category set
 const _groupFold = new Set();                                        // folded real-group set（真 L2 组单独折叠，按 group id；区别于 category 级 _groupCollapse）
 
@@ -313,6 +321,12 @@ export function gradientStops(colors, n) {
 // 胶囊(EMOTION_MACRO)、classify-7、积极/消极/中性格色板均派生自此，保证全局一致。
 export const MACRO_COLORS = ['#43C063', '#F5A623', '#E53935', '#C2185B', '#8E44AD', '#1A3A8C', '#4FC3F7'];
 
+// 地形/网格 综合（消极/中性/积极）三段色源——terrain-9 与 green-3/red-3/blue-3 共用，
+// 改色只需改这三组端点（密度低→高 = 浅→深）。density 0→1 = 洼地消极 → 中性 → 高地积极。
+export const TERRAIN_RED = ['#F6C9B0', '#C44A2E', '#5C1208'];   // 消极：浅橙淡 → 深红深
+export const TERRAIN_BLUE = ['#CFE0EE', '#3A7CA5', '#0D3B5C'];  // 中性：浅蓝淡 → 深蓝深
+export const TERRAIN_GREEN = ['#D4F4D0', '#3DBA3D', '#063006']; // 积极：浅绿淡 → 深绿深
+
 export const HEATMAP_RAMPS = {
   // 类型细分色板：density 弱→强（stops 低→高），高值=热核=该极性最强情绪（不可变约束）。
   //   积极：乐(橙)弱 → 喜(绿)强；消极：愁(紫)弱 → 哀(紫红)中 → 怒(红)强；中性：盼(天蓝)弱 → 急(深蓝)强。
@@ -359,24 +373,13 @@ export const HEATMAP_RAMPS = {
       [1.00, '#99000D'],
     ],
   },
-  // 红/蓝/绿渐变（3D 综合情绪地形高程着色）：高地 = 积极绿（凸），洼地 = 消极红（凹），
-  // 中间过渡用"消极红色板"里的蓝段（#3A7CA5 系列）作零值/中性基准。
-  // density 0→1 对应 z 值由低到高：洼地（消极红）→ 中性蓝 → 高地（积极绿）。
-  'diverging-rg': {
-    name: '红蓝绿地形',
-    stops: [
-      [0.00, 'rgba(122,30,22,0)'],
-      [0.10, '#7A1E16'],   // 洼地底（深消极，红）
-      [0.22, '#A3321A'],
-      [0.34, '#C44A2E'],
-      [0.45, '#E07142'],
-      [0.50, '#3A7CA5'],   // 中性零值（消极红色板里的蓝段）
-      [0.55, '#A8E6A0'],
-      [0.66, '#3DBA3D'],
-      [0.78, '#167A16'],
-      [1.00, '#083D08'],   // 高地顶（深积极，绿）
-    ],
-  },
+  // 红/蓝/绿渐变（3D 综合情绪地形高程着色，terrain-9 的平滑变体）：
+  // 发散·两端深色：消极深红(低值) → 浅红 → 中性蓝(浅-中-浅) → 浅绿 → 积极深绿(高值)。
+  // 端点序 = 红反转(深→浅) + 蓝(浅-中-浅) + 绿(浅→深)，HSL 平滑插值。
+  'diverging-rg': (() => {
+    const ends = [...[...TERRAIN_RED].reverse(), TERRAIN_BLUE[0], TERRAIN_BLUE[1], TERRAIN_BLUE[0], ...TERRAIN_GREEN];
+    return { name: '红蓝绿地形（平滑·两端深色）', stops: gradientStopsHsl(ends, 9) };
+  })(),
   // 网格暖色谱（暗红→金黄 sequential；纯红橙黄系，无紫红/玫红；暗红 #8B0000 浅底图可见）
   'grid-warm': {
     name: '网格暖色（暗红→金黄）',
@@ -404,27 +407,24 @@ export const HEATMAP_RAMPS = {
       [1.00, '#4FC3F7'],   // 盼 天蓝
     ],
   },
-  // 总体情况色板（地形/网格，红蓝绿高程语义；与类型细分的胶囊色渐变不同源）
-  // density 0→1 = 洼地(消极红) → 中性蓝 → 高地(积极绿)
-  'terrain-9': {
-    name: '红蓝绿地形（9段）',
-    stops: [
+  // 总体情况色板（地形/网格，红蓝绿发散；与类型细分的胶囊色渐变不同源）
+  // density 0→1 = 洼地(最消极,深红) → 浅红 → 中性蓝(浅-中-浅) → 浅绿 → 高地(最积极,深绿)。
+  // 发散规约：两端深色（消极端深红 / 积极端深绿），中性居中两端浅（避免内部深色斑）。
+  // 9 段 = 消极3(深→浅) + 中性3(浅-中-浅) + 积极3(浅→深)，色源与 green-3/red-3/blue-3 同源。
+  'terrain-9': (() => {
+    const seg = (cols, lo, hi) => cols.map((c, i) => [lo + (hi - lo) * i / (cols.length - 1), c]);
+    const stops = [
       [0.00, 'rgba(122,30,22,0)'],
-      [0.11, '#7A1E16'],   // 洼地 深红
-      [0.22, '#C44A2E'],
-      [0.33, '#E07142'],   // 浅红（近中性）
-      [0.44, '#6A9BB5'],   // 中性 浅蓝
-      [0.55, '#3A7CA5'],   // 中性 蓝
-      [0.66, '#A8E6A0'],   // 浅绿（近中性）
-      [0.77, '#3DBA3D'],
-      [0.88, '#167A16'],
-      [1.00, '#083D08'],   // 高地 深绿
-    ],
-  },
-  // 网格+L2 积极/消极/中性 各 3 段（取 terrain-9 的绿/红/蓝段）
-  'green-3':  { name: '积极 3 段（绿）', stops: gradientStops(['#D4F4D0', '#3DBA3D', '#063006'], 3) },   // 浅绿淡→深绿深（拉大对比）
-  'red-3':    { name: '消极 3 段（红）', stops: gradientStops(['#F6C9B0', '#C44A2E', '#5C1208'], 3) },   // 浅橙淡→深红深
-  'blue-3':   { name: '中性 3 段（蓝）', stops: gradientStops(['#CFE0EE', '#3A7CA5', '#0D3B5C'], 3) },   // 浅蓝淡→深蓝深（原三段亮度过近，重点拉大）
+      ...seg([...TERRAIN_RED].reverse(), 0.06, 0.30),                          // 深红(最消极/低值) → 浅红(近中性)
+      ...seg([TERRAIN_BLUE[0], TERRAIN_BLUE[1], TERRAIN_BLUE[0]], 0.36, 0.64), // 浅蓝 → 中蓝 → 浅蓝（中性两端浅）
+      ...seg(TERRAIN_GREEN, 0.70, 1.00),                                       // 浅绿(近中性) → 深绿(最积极/高值)
+    ];
+    return { name: '红蓝绿地形（消极/中性/积极 各3段·两端深色）', stops };
+  })(),
+  // 网格+L2 积极/消极/中性 各 3 段（端点色与 terrain-9 同源）
+  'green-3':  { name: '积极 3 段（绿）', stops: gradientStops(TERRAIN_GREEN, 3) },   // 浅绿淡→深绿深（拉大对比）
+  'red-3':    { name: '消极 3 段（红）', stops: gradientStops(TERRAIN_RED, 3) },     // 浅橙淡→深红深
+  'blue-3':   { name: '中性 3 段（蓝）', stops: gradientStops(TERRAIN_BLUE, 3) },    // 浅蓝淡→深蓝深（原三段亮度过近，重点拉大）
 };
 
 // sorted keys for UI iteration（类型细分渐变 + 总体情况红蓝绿地形 + 网格 3 段）
@@ -718,6 +718,7 @@ export function categoryOf(l) {
   if (l.kind === 'polygon' || l.kind === 'line') {
     if (l.paint && l.paint._ui && l.paint._ui.tool === 'buffer') return 'buffer';
     if (l.paint && l.paint._ui && l.paint._ui.tool === 'grid') return 'grid';
+    if (l.paint && l.paint._ui && l.paint._ui.tool === 'terrain') return 'terrain';
     return 'range';
   }
   return 'other';

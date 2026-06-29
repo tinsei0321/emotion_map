@@ -89,6 +89,15 @@ class SpatialGridRequest(BaseModel):
     unit: str = Field(default="m", description="cell_size 单位: m | km")
 
 
+class SpatialTerrainRequest(BaseModel):
+    """情绪地形 - KDE 等值面 mesh：密度×强度 → 分层 fill-extrusion 曲面。"""
+    geojson: dict = Field(..., description="情绪点 GeoJSON FeatureCollection (WGS84)")
+    polarity: str = Field(default="overall", description="overall | positive | negative | neutral")
+    bandwidth_m: float = Field(default=250, gt=0, description="KDE 高斯带宽（米），控制曲面平滑度")
+    cell_m: float = Field(default=60, gt=0, description="KDE 栅格边长（米），越小越细越慢")
+    levels: int = Field(default=7, ge=3, le=15, description="等值面层数")
+
+
 class ExportRequest(BaseModel):
     """图层导出请求。"""
     geojson: dict = Field(..., description="待导出图层 GeoJSON FeatureCollection（WGS84）")

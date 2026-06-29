@@ -126,8 +126,9 @@ export function refreshLegend() {
     if (rampEl) rampEl.innerHTML = HOTNESS_RAMP.map((c) => `<span class="legend-heat-seg" style="background:${c}"></span>`).join('');
   }
 
-  // range — outline color from the focus range layer's paint.color（排除 grid 工具层，避免误弹）
-  const isRange = (l) => (l.kind === 'polygon' || l.kind === 'line') && !(l.paint && l.paint._ui && l.paint._ui.tool === 'grid');
+  // range — outline color from the focus range layer's paint.color（排除 grid/terrain 工具层，避免误弹）
+  const isRange = (l) => (l.kind === 'polygon' || l.kind === 'line')
+    && !(l.paint && l.paint._ui && (l.paint._ui.tool === 'grid' || l.paint._ui.tool === 'terrain'));
   const range = (sel && isRange(sel) && sel.visible) ? sel : vis.find(isRange);
   sethidden('legend-range', !range);
   if (range) {
@@ -136,13 +137,17 @@ export function refreshLegend() {
     if (dot) dot.style.borderTopColor = color;
   }
 
-  // grid — 横向色带 + 极性标题（参考 Kepler/Martin 连续色带图例）
-  const grid = vis.find((l) => l.kind === 'polygon' && l.paint && l.paint._ui && l.paint._ui.tool === 'grid');
+  // grid/terrain — 横向色带 + 极性标题（参考 Kepler/Martin 连续色带图例）
+  const grid = vis.find((l) => l.kind === 'polygon' && l.paint && l.paint._ui
+    && (l.paint._ui.tool === 'grid' || l.paint._ui.tool === 'terrain'));
   sethidden('legend-grid', !grid);
   if (grid) {
-    const polLabel = { overall: '综合', positive: '积极', negative: '消极' }[grid.paint._ui.polarity] || '网格';
+    const ui = grid.paint._ui;
+    const pol = ui.terrainPol || ui.polarity;   // terrain 存 terrainPol；grid 存 polarity
+    const isTerrain = ui.tool === 'terrain';
+    const polLabel = { overall: '综合', positive: '积极', negative: '消极', neutral: '中性' }[pol] || (isTerrain ? '地形' : '网格');
     const tEl = document.getElementById('legend-grid-title');
-    if (tEl) tEl.textContent = `网格 · ${polLabel}`;
+    if (tEl) tEl.textContent = `${isTerrain ? '情绪地形' : '网格'} · ${polLabel}`;
     const rampEl = document.getElementById('legend-grid-ramp');
     const stops = grid.paint.gridStops || [];
     if (rampEl && stops.length) {
@@ -183,9 +188,19 @@ function levelTag(l) {
 function hintChip(l) {
   const isBuffer = !!(l && l.paint && l.paint._ui && l.paint._ui.tool === 'buffer');
   const isGrid = !!(l && l.paint && l.paint._ui && l.paint._ui.tool === 'grid');
+  const isTerrain = !!(l && l.paint && l.paint._ui && l.paint._ui.tool === 'terrain');
   const lv = layerLevel(l);
-  const text = isBuffer ? 'B' : (isGrid ? 'G' : (lv === 'range' ? 'R' : (lv || 'L0')));
+  const text = isBuffer ? 'B' : (isTerrain ? 'E' : (isGrid ? 'G' : (lv === 'range' ? 'R' : (lv || 'L0'))));
   return `<span class="layer-hint" style="color:${layerDisplayColor(l)}">${text}</span>`;
+}
+
+/** 2D/3D 图层标签（深灰，仅工具层 grid/terrain 有 mode）：视图层实际维度，文件名不再含 2D/3D。 */
+function modeChip(l) {
+  const ui = l && l.paint && l.paint._ui;
+  if (ui && (ui.tool === 'grid' || ui.tool === 'terrain') && (ui.mode === '2d' || ui.mode === '3d')) {
+    return `<span class="layer-tag is-dim">${ui.mode === '3d' ? '3D' : '2D'}</span>`;
+  }
+  return '';
 }
 
 /** Group header row. Real L2 group (virtual=false, eye→toggleGroupEye) or virtual category
@@ -217,6 +232,7 @@ function layerRowHtml(l, openId, selId, isChild, cat) {
     <button class="layer-eye" data-eye="${l.id}" title="${l.visible ? '隐藏' : '显示'}">${l.visible ? eyeOpen : eyeOff}</button>
     ${kindEl}
     ${hintChip(l)}
+    ${modeChip(l)}
     <span class="layer-name" title="${l.name}">${l.name}</span>
     ${levelTag(l)}
     <button class="layer-del" data-del="${l.id}" title="删除">&times;</button>
@@ -261,11 +277,11 @@ export function renderLayerList() {
       }
       if (stray.length) {
         html += groupRowHtml({ id: null, name: CATEGORY_LABEL[cat] }, stray, cat, collapsed, true);
-        if (!collapsed) for (const l of stray) html += layerRowHtml(l, openId, selId, false, cat);
+        if (!collapsed) for (const l of stray) html += layerRowHtml(l, openId, selId, true, cat);
       }
     } else {
       html += groupRowHtml({ id: null, name: CATEGORY_LABEL[cat] }, items, cat, collapsed, true);
-      if (!collapsed) for (const l of items) html += layerRowHtml(l, openId, selId, false, cat);
+      if (!collapsed) for (const l of items) html += layerRowHtml(l, openId, selId, true, cat);
     }
   }
   list.innerHTML = html;
@@ -291,6 +307,7 @@ export function renderLayerList() {
       if (l.kind === 'heatmap') { openHeatmapDialog(id); return; }
       if (l.paint && l.paint._ui && l.paint._ui.tool === 'buffer') { openBufferDialog(id); return; }
       if (l.paint && l.paint._ui && l.paint._ui.tool === 'grid') { openGridDialog(id); return; }
+      if (l.paint && l.paint._ui && l.paint._ui.tool === 'terrain') { openHeatmapDialog(id); return; }
       if (isOpen() && openSettingsLayerId() === id) closeSettingsPopover();
       else {
         openSettingsPopover(l, b);

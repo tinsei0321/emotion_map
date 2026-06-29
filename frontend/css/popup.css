@@ -203,3 +203,22 @@
   border-top-color: var(--geojson-color-chrome-title-bar-bg);
 }
 .range-tooltip .rt-name { white-space: nowrap; }
+
+/* ── 情绪地形段落式 hover 提示（3D 等值面 mouseenter）── */
+.terrain-tooltip .maplibregl-popup-content {
+  padding: 8px 10px;
+  font-size: var(--geojson-typography-size-xs);
+  background: var(--geojson-color-chrome-title-bar-bg, #0c1c2e);
+  color: #fff;
+  border-radius: var(--geojson-radius-sm);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  min-width: 168px;
+}
+.terrain-tooltip .maplibregl-popup-tip {
+  border-top-color: var(--geojson-color-chrome-title-bar-bg, #0c1c2e);
+}
+.terrain-tip { display: flex; flex-direction: column; gap: 3px; }
+.terrain-tip .tt-title { font-weight: var(--geojson-typography-weight-bold); font-size: var(--geojson-typography-size-sm); margin-bottom: 2px; }
+.terrain-tip .tt-row { display: flex; justify-content: space-between; gap: 14px; opacity: 0.92; }
+.terrain-tip .tt-row span { opacity: 0.7; }
+.terrain-tip .tt-row b { font-weight: var(--geojson-typography-weight-semibold); }

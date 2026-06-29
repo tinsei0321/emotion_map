@@ -6,7 +6,7 @@
 // G 按钮打开（editLayerId）→ 回填参数 + 原地更新（layer id 稳定，镜像 B「继续编辑」）。
 // 后端：square→/spatial/grid(square, EPSG:4546 snap-to-grid)；zonal→/spatial/aggregate(点→面域)。
 // 注：polarity_index 实际值域 -2~+2（后端 docstring 写 -1~1 有误），归一化用 (x+2)/4。
-import { getLayers, addLayer, getLayer, selectLayer, setLayerVisible, HEATMAP_RAMPS, rampDisplaySegs } from './state.js';
+import { getLayers, addLayer, getLayer, selectLayer, setLayerVisible, HEATMAP_RAMPS, rampDisplaySegs, deriveTimeTag } from './state.js';
 import { renderLayer, fitBoundsTo, reorderAllZ, removeLayerFromMap, setView3D } from './map.js';
 import { renderLayerList, refreshLegend, showLayerManager } from './sidebar.js';
 import { fcBBox } from './import.js';
@@ -15,7 +15,7 @@ import { toast } from './toast.js';
 import { openParamPanel, closeParamPanel } from './param-panel.js';
 
 const dialogEl = () => document.getElementById('grid-dialog');
-const DEFAULTS = { analysis: 'square', level: 'L1', cellSize: 200, polarity: 'overall', mode: '2d', extrusionScale: 1, extrusionOpacity: 1 };
+const DEFAULTS = { analysis: 'square', level: 'L1', cellSize: 200, polarity: 'overall', mode: '2d', maxHeight: 1000, extrusionOpacity: 1 };
 
 // ── ① 分析类型（组卡片：聚合域 = 标准/指定；热点 Gi*；Moran's I） ──
 const DEFAULT_ANALYSIS = 'square';
@@ -243,9 +243,9 @@ function applyParams(dlg, p) {
   dlg.querySelectorAll('#grid-polarity .buf-cap').forEach((c) => c.classList.toggle('is-sel', c.dataset.polarity === pol));
   const mode = p.mode || DEFAULTS.mode;
   dlg.querySelectorAll('#grid-mode .buf-cap').forEach((c) => c.classList.toggle('is-sel', c.dataset.mode === mode));
-  const es = p.extrusionScale ?? DEFAULTS.extrusionScale;
-  const esEl = dlg.querySelector('#grid-extrusion-scale'); if (esEl) esEl.value = es;
-  const esVal = dlg.querySelector('#grid-extrusion-val'); if (esVal) esVal.textContent = `${Number(es).toFixed(1)}×`;
+  const mh = p.maxHeight ?? DEFAULTS.maxHeight;
+  const mhEl = dlg.querySelector('#grid-extrusion-scale'); if (mhEl) mhEl.value = mh;
+  const mhVal = dlg.querySelector('#grid-extrusion-val'); if (mhVal) mhVal.textContent = `${Math.round(mh)} m`;
   const eo = p.extrusionOpacity ?? DEFAULTS.extrusionOpacity;
   const eoEl = dlg.querySelector('#grid-extrusion-opacity'); if (eoEl) eoEl.value = eo;
   const eoVal = dlg.querySelector('#grid-extrusion-opacity-val'); if (eoVal) eoVal.textContent = `${Math.round(Number(eo) * 100)}%`;
@@ -261,7 +261,7 @@ function readParams(dlg) {
     nameCol: dlg.querySelector('#grid-name-col').value,
     polarity: selectedPolarity(dlg),
     mode: dlg.querySelector('#grid-mode .buf-cap.is-sel')?.dataset.mode || DEFAULTS.mode,
-    extrusionScale: Number(dlg.querySelector('#grid-extrusion-scale').value),
+    maxHeight: Number(dlg.querySelector('#grid-extrusion-scale').value),
     extrusionOpacity: Number(dlg.querySelector('#grid-extrusion-opacity')?.value ?? 1),
   };
 }
@@ -335,7 +335,7 @@ async function generateGrid() {
       preprocessGrid(fc);   // _grid_*（极性归一化，MapLibre 着色）+ _grid_h（高度分位，3D 拉伸）
       const style = gridStyle(p.level, p.polarity);
       paint = { fillOn: true, _ui: { tool: 'grid', analysis: 'square', level: p.level, source: p.source,
-                                     cellSize: p.cellSize, polarity: p.polarity, mode: p.mode, extrusionScale: p.extrusionScale, extrusionOpacity: p.extrusionOpacity },
+                                     cellSize: p.cellSize, polarity: p.polarity, mode: p.mode, heightField: '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity },
                 gridField: style.field, gridStops: style.stops, fillOpacity: p.extrusionOpacity };   // 显式 fillOpacity 绕开 addLayer 默认 0.3（修 2D 首次透明）
     } else {
       // zonal：后端精确面域聚合 + MapLibre 渲染（deck.gl GridLayer 是方格聚合，不适合固定面域 zonal）
@@ -353,11 +353,13 @@ async function generateGrid() {
       const style = gridStyle(p.level, p.polarity);
       paint = { fillOn: true, _ui: { tool: 'grid', analysis: 'zonal', level: p.level, source: p.source,
                                      polygonLayer: p.polygonLayer, nameCol: p.nameCol,
-                                     polarity: p.polarity, mode: p.mode, extrusionScale: p.extrusionScale, extrusionOpacity: p.extrusionOpacity },
+                                     polarity: p.polarity, mode: p.mode, heightField: '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity },
                 gridField: style.field, gridStops: style.stops, fillOpacity: p.extrusionOpacity };   // 显式 fillOpacity 绕开 addLayer 默认 0.3（修 2D 首次透明）
     }
 
-    const labelName = `${analysisLabel} · ${sizeTag} · ${polLabel} · ${modeLabel} · ${src.srcName}`;
+    // 命名新规：时间·极性/类型·分析类型·方格参数·文件名（2D/3D 进图层标签，不进文件名）
+    const tPrefix = deriveTimeTag(src.fc) ? `${deriveTimeTag(src.fc)}·` : '';
+    const labelName = `${tPrefix}${polLabel}·${analysisLabel}·${sizeTag}·${src.srcName}`;
     const editId = dlg.dataset.editLayerId;
     const editLyr = editId ? getLayer(editId) : null;
     let L;
@@ -378,9 +380,9 @@ async function generateGrid() {
     }
     const bb = fcBBox(fc); if (bb) fitBoundsTo(bb);
     setView3D(p.mode === '3d');   // fitBounds 后设 pitch（3D→倾斜+暗底图 / 2D→复原），防被打断
+    selectLayer(L.id);            // 选中（Overview 内容跟随）但不强制弹右栏（工具生成不自动开 Overview/Table）
     renderLayerList(); refreshLegend(); reorderAllZ(); showLayerManager();
     document.dispatchEvent(new CustomEvent('layers:changed'));
-    document.dispatchEvent(new CustomEvent('layer:selected', { detail: L.id }));
     closeParamPanel();
     toast.success(`已${editLyr ? '调整' : '生成'} ${analysisLabel} · ${polLabel} · ${modeLabel}`);
   } catch (e) {
@@ -445,9 +447,9 @@ export function initGridTool() {
     b.classList.add('is-sel');
   });
 
-  // 拉伸高度 live label
+  // 最大柱高 live label（绝对米；3D 柱体高度 = _grid_h × maxHeight）
   dlg.querySelector('#grid-extrusion-scale').addEventListener('input', (e) => {
-    dlg.querySelector('#grid-extrusion-val').textContent = `${Number(e.target.value).toFixed(1)}×`;
+    dlg.querySelector('#grid-extrusion-val').textContent = `${Math.round(Number(e.target.value))} m`;
   });
 
   // 3D 透明度 live label

@@ -11,7 +11,7 @@ from api.schemas import (
     AnalysisRequest, AnalysisResponse, PolarityStats,
     HealthResponse, DataListResponse, GovernanceRequest,
     BufferRequest, ExportRequest,
-    SpatialAggregateRequest, SpatialGridRequest,
+    SpatialAggregateRequest, SpatialGridRequest, SpatialTerrainRequest,
     PlaceHit, PlaceSearchResponse, GeocodeResult, ReverseGeocodeResult,
 )
 from core.config import RAW_DIR, PROCESSED_DIR, BOUNDARY_SHP
@@ -255,6 +255,48 @@ async def grid_route(req: SpatialGridRequest):
         'geojson': fc,
         'feature_count': n,
         'message': f'已生成 {n} 个{label}格',
+    }
+
+
+@router.post("/spatial/terrain")
+async def terrain_route(req: SpatialTerrainRequest):
+    """情绪地形 - KDE 等值面 mesh：密度×强度 → 分层 fill-extrusion 曲面（无边界分析）。
+
+    综合：高度=密度×强度(_level)，颜色=区域内 polarity_index(_norm, terrain-9)。
+    极性（积极/消极/中性）：先过滤点，高度=密度×强度，颜色=该极性密度(green-3/red-3/blue-3)。
+    返回等值面 GeoJSON（features 按 _level 升序，低环先画、高压顶）。
+    """
+    import json
+    import geopandas as gpd
+    from core.spatial_analysis import create_terrain_mesh
+
+    feats = (req.geojson or {}).get('features') if isinstance(req.geojson, dict) else None
+    if not feats:
+        raise HTTPException(status_code=400, detail="geojson 需为非空点 GeoJSON")
+    if req.polarity not in ('overall', 'positive', 'negative', 'neutral'):
+        raise HTTPException(status_code=400, detail="polarity 必须 overall | positive | negative | neutral")
+
+    try:
+        pts = gpd.GeoDataFrame.from_features(feats, crs='EPSG:4326')
+        mesh = create_terrain_mesh(
+            pts, polarity=req.polarity, bandwidth_m=req.bandwidth_m,
+            cell_m=req.cell_m, n_levels=req.levels,
+        )
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail=f"依赖缺失: {e}（需 pip install matplotlib）")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"情绪地形生成失败: {e}")
+
+    fc = json.loads(mesh.to_json())
+    n = len(fc.get('features', []))
+    pol_label = {'overall': '综合', 'positive': '积极', 'negative': '消极', 'neutral': '中性'}[req.polarity]
+    return {
+        'success': True,
+        'geojson': fc,
+        'feature_count': n,
+        'message': f'已生成 {pol_label}情绪地形 · {n} 层等值面',
     }
 
 

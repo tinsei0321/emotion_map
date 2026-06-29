@@ -546,8 +546,8 @@
                     </div>
                   </div>
                   <div class="hm-section">
-                    <div class="hm-label">拉伸高度 <span class="hm-val" id="grid-extrusion-val">1.0×</span> <span class="hm-info" data-tip="仅 3D 模式生效。柱体高度=格内点数×系数，表达情绪浓度地形。">i</span></div>
-                    <input type="range" class="set-range" id="grid-extrusion-scale" min="0.5" max="2" value="1" step="0.1">
+                    <div class="hm-label">最大柱高 <span class="hm-val" id="grid-extrusion-val">1000 m</span> <span class="hm-info" data-tip="仅 3D 模式生效。柱体/地形高度 = 高度分位 × 最大柱高（米）。值越大峰越陡峭。">i</span></div>
+                    <input type="range" class="set-range" id="grid-extrusion-scale" min="200" max="3000" value="1000" step="100">
                   </div>
                   <div class="hm-section">
                     <div class="hm-label">透明度 <span class="hm-val" id="grid-extrusion-opacity-val">100%</span> <span class="hm-info" data-tip="2D 色块与 3D 柱体通用。默认 100% 不透明；调低可看穿。">i</span></div>
