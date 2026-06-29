@@ -186,6 +186,56 @@ def generate_snapshot_spatial(main_poly, ermalu_buf, ermalu_seeds, main_seeds, r
 
 
 # ═══════════════ STEP 2: 注入字段（叙事 + 文本池）═══════════════
+# ── POI 类别 → 情绪极性倾向（贴近现实的社会情绪统计走向；非"投诉区"等杜撰概念）──
+# 与 POI 预映射的 (domain, element) 语义自洽：体验愉悦型→积极，摩擦型→消极，其余 None。
+# 用途：seed-anchored 极性聚类的"局部纹理"方向（叠叙事弧之上、弧优先，见 _pick_polarity_clustered）。
+POI_POLARITY_LEAN = {
+    # 体验愉悦型（打卡/休闲/美食/购物/住宿 → 社媒正面为主）
+    '风景名胜': 'positive', '体育休闲服务': 'positive', '休闲娱乐': 'positive',
+    '餐饮服务': 'positive', '购物服务': 'positive', '住宿服务': 'positive',
+    # 摩擦型（拥堵/办事难/物业纠纷/排队理赔 → 高频负面源）
+    '交通设施服务': 'negative', '政府机构及社会团体': 'negative',
+    '商务住宅': 'negative', '金融保险服务': 'negative',
+    # 无显著倾向 → 跟随快照叙事弧
+    '生活服务': None, '科教文化服务': None, '公司企业': None,
+}
+_LEAN_FLIP_P = 0.18       # 基础极性与 seed lean 相反时，翻向 lean 的概率（局部纹理强度）
+_SEED_DE_INHERIT_P = 0.80  # POI-anchored domain/element 继承 seed 预映射字段的概率（否则走 arc 打散）
+
+
+def _pick_polarity_clustered(snapshot_id, area_tag, seed, rng):
+    """三层极性：arc 采样（保叙事弧）+ POI lean 翻转（叠空间纹理）。
+    区域均值≈arc（_check 硬约束必过）；同 POI 同 lean 方向聚集 → 格级"餐饮偏正/交通更负"纹理。
+    无 seed 的背景点退纯 arc 采样。"""
+    base = pick_polarity(snapshot_id, area_tag, rng)   # L1: 区域×快照叙事弧分布采样
+    lean = POI_POLARITY_LEAN.get(seed.get('baidu_level1', '')) if seed else None
+    if lean and lean != base and rng.random() < _LEAN_FLIP_P:
+        return lean                                     # L2: 翻向 POI 类别倾向（局部纹理）
+    return base
+
+
+def _seed_domain_element(snapshot_id, area_tag, seed, rng):
+    """POI-anchored (domain, element)：优先继承 seed 预映射字段（空间聚类，同 POI 同治理要素）；
+    _SEED_DE_INHERIT_P 概率或无 seed 时退 pick_domain_element(arc) 打散（保现实分散）。
+    → 聚合到格后该格有明确主导 4×5 要素，popup 可读"此格=治理×设施"。"""
+    if seed and rng.random() < _SEED_DE_INHERIT_P:
+        dom, elm = seed.get('domain'), seed.get('element')
+        if dom and elm:
+            return dom, elm
+    return pick_domain_element(snapshot_id, area_tag, rng)
+
+
+def _spatial_confidence(area_tag, dens_norm, rng):
+    """l1_confidence 空间自相关：局部点密度分位 dens_norm(0~1) 驱动——密集区高置信、稀疏外围低。
+    （amap POI weight 恒 1.0 无梯度，改用真实局部点密度作 Tobler 自相关信号。）
+    替 uniform(0.78,0.99)：放大格间方差 → _grid_h(密度×置信度) 高低拉开，低值格变多/贴地。"""
+    if area_tag == 'ermalu':
+        base = 0.80 + 0.18 * dens_norm          # 二马路整体高密 0.80–0.98
+    else:
+        base = 0.45 + 0.45 * dens_norm          # 主城：稀疏背景 0.45 → 密集核心 0.90
+    return round(min(0.99, max(0.40, base + rng.uniform(-0.03, 0.03))), 3)
+
+
 @track("MOD_GEN.F_003", track_args=False)
 def inject_fields(pts, snapshot_id, pool, rng):
     """每点赋 domain/element/polarity_hint/text/created_at/source/area_seed 等。
@@ -193,13 +243,20 @@ def inject_fields(pts, snapshot_id, pool, rng):
     snap = SNAPSHOTS[snapshot_id]
     d0, d1 = snap['date_range']
     pl = get_place_layer()
+    # 局部点密度分位（空间自相关信号：密集区→高置信、稀疏外围→低；ermalu/main 内部都拉开）
+    _lons = np.array([p['lon'] for p in pts]); _lats = np.array([p['lat'] for p in pts])
+    _gx = np.floor(_lons / 0.0025).astype(np.int64); _gy = np.floor(_lats / 0.0025).astype(np.int64)
+    _cc = Counter(zip(_gx.tolist(), _gy.tolist()))
+    _dens = np.array([_cc[(int(x), int(y))] for x, y in zip(_gx, _gy)], dtype=float)
+    _dmin, _dmax = float(_dens.min()), float(_dens.max())
+    _dens_norm = (_dens - _dmin) / ((_dmax - _dmin) + 1e-9)
     rows = []
     for i, p in enumerate(pts):
         area_tag = p['area_tag']
         _seed_p = p.get('seed') or {}
         zone = pl.resolve_zone(_seed_p.get('name', ''), _seed_p.get('area', ''), p['lon'], p['lat'])   # name 优先（全市型 zone 按名归）→ 边界 → general
-        polarity = pick_polarity(snapshot_id, area_tag, rng)
-        domain, element = pick_domain_element(snapshot_id, area_tag, rng)
+        polarity = _pick_polarity_clustered(snapshot_id, area_tag, _seed_p, rng)
+        domain, element = _seed_domain_element(snapshot_id, area_tag, _seed_p, rng)
         flavor = pick_flavor(snapshot_id, area_tag)
         text = sample_text(polarity, element, pool, rng, zone=zone, flavor=flavor)
         seed = p.get('seed') or {}
@@ -222,7 +279,7 @@ def inject_fields(pts, snapshot_id, pool, rng):
             'source': rng.choices(list(SOURCE_WEIGHTS), weights=list(SOURCE_WEIGHTS.values()), k=1)[0],
             'created_at': _random_dt(d0, d1, rng),
             'urban_value': rng.choice(URBAN_VALUES),
-            'l1_confidence': round(rng.uniform(0.78, 0.99), 2),
+            'l1_confidence': _spatial_confidence(area_tag, float(_dens_norm[i]), rng),
             'has_location': True,
             'location_mentioned': seed.get('area', '') or '宜昌',
             'relevance': 'relevant',

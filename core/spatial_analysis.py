@@ -354,6 +354,94 @@ def create_hex_grid(
 
 
 # ═══════════════════════════════════════════════════════════
+# 4×5 情绪归因规则（DEMO 临时：L3/L4 LLM 归因上线后删除/替换）
+# ═══════════════════════════════════════════════════════════
+# 演示链"识别具体城建/更新问题"环：在聚合层按格的 (domain_top, element_top, polarity)
+# 查表生成归因，让 popup 直接讲"此格=治理×设施=交通拥堵"。L3/L4 上线后改由 LLM 产出、本表移除。
+# key = (domain, element, sign)，sign ∈ {'pos','neg'}（|polarity_index|>0.15）；未命中或中性 → 兜底。
+_ATTRIBUTION_RULES = {
+    # governance × facility（交通/市政设施）
+    ('urban_governance', 'facility', 'neg'): (
+        '交通拥堵/设施陈旧',
+        '消极情绪集中在【城市治理×设施】，反映交通拥堵、停车难或市政设施老化',
+        '优先评估交通承载力与市政设施更新时序'),
+    ('urban_governance', 'facility', 'pos'): (
+        '交通便利/设施完善',
+        '正面评价集中在【城市治理×设施】，交通出行与市政设施体验改善',
+        '巩固设施维护，推广经验至相邻片区'),
+    # governance × service（政务/医疗）
+    ('urban_governance', 'service', 'neg'): (
+        '政务服务/就医体验',
+        '消极情绪集中在【城市治理×服务】，反映政务办事效率、服务态度或就医体验问题',
+        '优化政务服务流程与公共医疗资源配置'),
+    ('urban_governance', 'service', 'pos'): (
+        '公共服务获认可',
+        '正面评价集中在【城市治理×服务】，政务/医疗服务满意度较高',
+        '维持服务水准，持续监测满意度'),
+    # operation × service（商业/餐饮/购物）
+    ('urban_operation', 'service', 'neg'): (
+        '商业服务体验差',
+        '消极情绪集中在【城市运营×服务】，反映商家服务、价格或售后问题',
+        '加强商业服务监管与消费者权益保障'),
+    ('urban_operation', 'service', 'pos'): (
+        '商业服务繁荣',
+        '正面评价集中在【城市运营×服务】，餐饮/购物/生活服务满意度高',
+        '保持商业活力，引导业态升级'),
+    # operation × event（休闲/夜经济/节庆）
+    ('urban_operation', 'event', 'neg'): (
+        '活动组织/秩序问题',
+        '消极情绪集中在【城市运营×事件】，反映活动拥挤、秩序或噪音问题',
+        '提升大型活动组织与秩序管理'),
+    ('urban_operation', 'event', 'pos'): (
+        '夜经济/节庆活力',
+        '正面评价集中在【城市运营×事件】，夜经济、节庆与休闲活动吸引力强',
+        '培育夜经济品牌，扩大活动影响力'),
+    # operation × culture（文旅/文化）
+    ('urban_operation', 'culture', 'neg'): (
+        '文旅体验不足',
+        '消极情绪集中在【城市运营×文化】，文旅产品或文化设施体验不佳',
+        '丰富文旅产品供给，提升文化设施品质'),
+    ('urban_operation', 'culture', 'pos'): (
+        '文旅活力突出',
+        '正面评价集中在【城市运营×文化】，文旅打卡、文化设施吸引力强',
+        '强化文旅 IP，打造文化消费场景'),
+    # operation × environment（公园/绿地/滨水）
+    ('urban_operation', 'environment', 'neg'): (
+        '环境品质不佳',
+        '消极情绪集中在【城市运营×环境】，公园绿地或滨水空间品质不足',
+        '提升绿化与滨水空间环境品质'),
+    ('urban_operation', 'environment', 'pos'): (
+        '环境品质优良',
+        '正面评价集中在【城市运营×环境】，公园绿地与滨水环境获好评',
+        '维护环境品质，拓展公共休闲空间'),
+    # renewal × service（住宅/更新片区）
+    ('urban_renewal', 'service', 'neg'): (
+        '老旧小区/物业问题',
+        '消极情绪集中在【城市更新×服务】，反映老旧小区物业服务、配套或居住问题',
+        '推进老旧小区改造与物业服务提升'),
+    ('urban_renewal', 'service', 'pos'): (
+        '更新成效显现',
+        '正面评价集中在【城市更新×服务】，更新片区居住与配套改善获认可',
+        '持续推进更新，总结可复制经验'),
+}
+_ATTR_DEFAULT = (
+    '情绪聚集区',
+    '该单元情绪显著聚集，建议结合 domain×element 进一步研判具体问题',
+    '深入现场调研，结合 L3/L4 语义归因细化问题与对策',
+)
+
+
+def lookup_attribution(domain_top, element_top, polarity_index):
+    """DEMO 临时：4×5 规则归因（L3/L4 LLM 归因上线后替换）。
+    返回 {issue_label, attribution, suggestion}；polarity_index 中性或 key 未命中 → 兜底。"""
+    sign = 'pos' if (polarity_index is not None and polarity_index > 0.15) else \
+           ('neg' if (polarity_index is not None and polarity_index < -0.15) else None)
+    label, attr, sug = _ATTRIBUTION_RULES.get((domain_top, element_top, sign), _ATTR_DEFAULT) \
+        if sign else _ATTR_DEFAULT
+    return {'issue_label': label, 'attribution': attr, 'suggestion': sug}
+
+
+# ═══════════════════════════════════════════════════════════
 # 固定方格网格（标准网格）
 # ═══════════════════════════════════════════════════════════
 
@@ -438,6 +526,27 @@ def create_square_grid(
              stats['n_very_negative'] * -2) /
             stats['point_count'].clip(lower=1)
         ).round(3)
+
+    # domain/element 4×5 聚合（众数 + 占比计数；供 Task 2.7 popup 识别治理要素）
+    for _c in ('domain', 'element'):
+        if _c in joined.columns:
+            joined[_c] = joined[_c].fillna('').astype(str)
+    if 'domain' in joined.columns:
+        stats['domain_top'] = grouped['domain'].agg(lambda x: x.mode().iloc[0] if not x.mode().empty else '')
+        for _d in ('urban_operation', 'urban_governance', 'urban_renewal', 'urban_planning'):
+            stats[f'n_dom_{_d}'] = grouped['domain'].apply(lambda x: int((x == _d).sum())).astype(int)
+    if 'element' in joined.columns:
+        stats['element_top'] = grouped['element'].agg(lambda x: x.mode().iloc[0] if not x.mode().empty else '')
+        for _e in ('facility', 'environment', 'service', 'culture', 'event'):
+            stats[f'n_elem_{_e}'] = grouped['element'].apply(lambda x: int((x == _e).sum())).astype(int)
+
+    # 4×5 情绪归因（DEMO 规则，L3/L4 LLM 归因上线后移除）
+    if 'domain_top' in stats.columns and 'polarity_index' in stats.columns:
+        _attrs = stats.apply(lambda _r: lookup_attribution(
+            _r.get('domain_top', ''), _r.get('element_top', ''), _r.get('polarity_index')), axis=1)
+        stats['issue_label'] = _attrs.apply(lambda _d: _d['issue_label'])
+        stats['attribution'] = _attrs.apply(lambda _d: _d['attribution'])
+        stats['suggestion'] = _attrs.apply(lambda _d: _d['suggestion'])
 
     # 合并统计回方格（inner：仅保留有点的格）→ 回 WGS84
     result = cells_gdf.merge(stats, left_index=True, right_index=True, how='inner')
@@ -599,7 +708,7 @@ def create_terrain_mesh(
         {'level_raw': [r[0] for r in rings], '_level': [r[1] for r in rings]},
         geometry=[r[2] for r in rings], crs=target_crs,
     ).reset_index(drop=True)
-    join_cols = [c for c in ('score', 'polarity', 'emotion_intensity') if c in pts.columns]
+    join_cols = [c for c in ('score', 'polarity', 'emotion_intensity', 'domain', 'element') if c in pts.columns]
     joined = gpd.sjoin(pts[join_cols + ['geometry']], ring_gdf, how='inner', predicate='within') \
         if join_cols else gpd.sjoin(pts[['geometry']], ring_gdf, how='inner', predicate='within')
 
@@ -618,6 +727,11 @@ def create_terrain_mesh(
                 props['score_mean'] = round(float(sub['score'].mean()), 3)
             if 'emotion_intensity' in sub.columns:
                 props['emotion_intensity_mean'] = round(float(sub['emotion_intensity'].mean()), 3)
+            # domain/element 4×5 众数（供 popup 识别治理要素）
+            for _c in ('domain', 'element'):
+                if _c in sub.columns:
+                    _m = sub[_c].dropna().mode()
+                    props[f'{_c}_top'] = _m.iloc[0] if not _m.empty else ''
             if 'polarity' in sub.columns:
                 for pol in ['Very Negative', 'Negative', 'Neutral', 'Positive', 'Very Positive']:
                     props[f'n_{pol.lower().replace(" ", "_")}'] = int((sub['polarity'] == pol).sum())
@@ -627,12 +741,22 @@ def create_terrain_mesh(
                     + props.get('n_negative', 0) * -1 + props.get('n_very_negative', 0) * -2
                 ) / max(1, pc)
                 props['polarity_index'] = round(float(pi), 3)
-                props['_norm'] = round((float(pi) + 2) / 4, 4)   # (-2..2)→(0..1)
+                # 4×5 情绪归因（DEMO 规则，L3/L4 接管后移除）；_norm 对称拉伸移至循环后
+                props.update(lookup_attribution(props.get('domain_top', ''), props.get('element_top', ''), pi))
+                props['_norm'] = round((float(pi) + 2) / 4, 4)   # 占位，循环后覆盖为对称拉伸
             else:
                 props['_norm'] = props['_level']
         else:
             props['_norm'] = props['_level']   # 无点落入（理论不应）→ 退密度
         feats.append({'geometry': row.geometry, **props})
+
+    # _norm 对称拉伸（与 grid-tool 同步：pi 分位铺满 terrain-9，张力 + grid/terrain 配色一致）
+    _pi_vals = [f['polarity_index'] for f in feats if f.get('polarity_index') is not None]
+    _p95 = float(np.quantile(_pi_vals, 0.95)) if _pi_vals else 0.0
+    for f in feats:
+        _pi = f.get('polarity_index')
+        if _pi is not None:
+            f['_norm'] = round(0.5 + (1 if _pi >= 0 else -1) * min(1.0, abs(_pi) / _p95) * 0.5, 4) if _p95 > 0 else 0.5
 
     out = gpd.GeoDataFrame(feats, geometry='geometry', crs=target_crs)
     out = out.sort_values('_level', ascending=True, kind='stable').reset_index(drop=True)

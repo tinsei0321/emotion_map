@@ -5,7 +5,8 @@
 // 极性在②网格参数（仅 L2），③色板随极性自动（只读预览）。
 // G 按钮打开（editLayerId）→ 回填参数 + 原地更新（layer id 稳定，镜像 B「继续编辑」）。
 // 后端：square→/spatial/grid(square, EPSG:4546 snap-to-grid)；zonal→/spatial/aggregate(点→面域)。
-// 注：polarity_index 实际值域 -2~+2（后端 docstring 写 -1~1 有误），归一化用 (x+2)/4。
+// 注：polarity_index 值域 -2~+2。_grid_norm 用对称拉伸 0.5+sign(pi)×min(1,|pi|/p95)×0.5（p95=|pi|95分位），
+// 铺满 terrain-9 深红/深绿（线性 (pi+2)/4 只到中段=无张力根因）；与 terrain 后端 _norm 同公式保配色一致。
 import { getLayers, addLayer, getLayer, selectLayer, setLayerVisible, HEATMAP_RAMPS, rampDisplaySegs, deriveTimeTag } from './state.js';
 import { renderLayer, fitBoundsTo, reorderAllZ, removeLayerFromMap, setView3D } from './map.js';
 import { renderLayerList, refreshLegend, showLayerManager } from './sidebar.js';
@@ -112,13 +113,16 @@ function _centroid(geom) {
 function preprocessGrid(fc) {
   let hasPolarity = false;
   const counts = [];
+  const piVals = [];   // polarity_index 收集（对称拉伸 p95 用）
   for (const f of fc.features) {
     if (!f.properties) f.properties = {};
     const pc = f.properties.point_count || 0;
-    if (f.properties.polarity_index != null) hasPolarity = true;
-    f.properties._grid_norm = (f.properties.polarity_index != null)
-      ? (f.properties.polarity_index + 2) / 4
-      : (f.properties.score_mean != null ? f.properties.score_mean : 0.5);
+    if (f.properties.polarity_index != null) {
+      hasPolarity = true;
+      piVals.push(f.properties.polarity_index);   // 极性 feature：_grid_norm 留给 Pass 2 对称拉伸
+    } else {
+      f.properties._grid_norm = f.properties.score_mean != null ? f.properties.score_mean : 0.5;   // 非极性即时 fallback
+    }
     const np = (f.properties.n_positive || 0) + (f.properties.n_very_positive || 0);
     const nn = (f.properties.n_negative || 0) + (f.properties.n_very_negative || 0);
     const ne = f.properties.n_neutral || 0;
@@ -130,6 +134,9 @@ function preprocessGrid(fc) {
   }
   // _grid_h：舆论热度（L1=密度×置信度；L2/无置信度=密度）分位归一化 0~1（颜色+高度正相关：金黄高热/暗红低热）
   counts.sort((a, b) => a - b);
+  // _norm 对称拉伸的 p95（|polarity_index| 95 分位；piVals 全空 → 0，guard）
+  piVals.sort((a, b) => a - b);
+  const p95 = piVals.length ? piVals[Math.min(piVals.length - 1, Math.floor(0.95 * (piVals.length - 1)))] : 0;
   const qAt = (qq) => counts[Math.min(counts.length - 1, Math.floor(qq * (counts.length - 1)))] || 0;
   const q25 = qAt(0.25), q50 = qAt(0.5), q75 = qAt(0.75), qMax = counts[counts.length - 1] || 1;
   for (const f of fc.features) {
@@ -142,6 +149,9 @@ function preprocessGrid(fc) {
     else if (hv <= q75) h = 0.5 + ((hv - q50) / ((q75 - q50) || 1)) * 0.25;
     else h = 0.75 + ((hv - q75) / ((qMax - q75) || 1)) * 0.25;
     f.properties._grid_h = h;
+    // _grid_norm 对称拉伸（极性 feature；铺满 terrain-9 深红/深绿，与 terrain 后端 _norm 同公式）
+    const pi = f.properties.polarity_index;
+    if (pi != null) f.properties._grid_norm = p95 > 0 ? 0.5 + (pi >= 0 ? 1 : -1) * Math.min(1, Math.abs(pi) / p95) * 0.5 : 0.5;
   }
   return hasPolarity;
 }

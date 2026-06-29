@@ -5,6 +5,18 @@
 
 ---
 
+## 📅 2026-06-29（周一）
+
+### ✅ 已完成（续 feature/kde-l2-3d · 演示逻辑链纲领首落地）
+- **演示逻辑链提为项目全局纲领** → 写入 `CLAUDE.md`「## 演示逻辑链」（最高优先级：数据为表现力、演示为有用性）
+- **P3 数据语义化重模拟**：`_norm`/`_grid_norm` 对称拉伸（张力根因，grid+terrain 同步）+ l1_confidence 局部密度自相关 + POI-anchored 4×5/三层极性（保叙事弧）
+- **聚合层 4×5 归因（DEMO，L3/L4 删）**：`domain_top`/`element_top` + `issue_label`/`attribution`/`suggestion`，供 Task 2.7 popup
+- **验证**：T1 pi=-0.13 / T3=0.47（叙事弧✓）、\|pi\|>1.2 约半数格（张力✓）、归因连贯（renewal×service neg→"老旧小区/物业"✓）；旧数据→`old-data/`；pytest 8 passed（2 h3 缺包 pre-existing 无关）。详情见 `revision-log.md` 5.14
+
+### ⬜ 下一步
+- start.bat 重启后端（加载新聚合/归因代码）→ 用户 F5 肉眼验张力与 4×5 配色
+- **Task 2.7**：网格/柱体 popup + Overview 接 `domain_top×element_top` + 归因字段（演示链"交互→识别"桥）
+
 ## 📅 2026-06-28（周日）
 
 ### ☑ TODO List
