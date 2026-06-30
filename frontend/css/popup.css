@@ -113,10 +113,21 @@
 }
 .popup-kv .kv-k {
   color: var(--geojson-color-text-secondary);
-  font-weight: var(--geojson-typography-weight-semibold);
+  font-size: var(--geojson-typography-size-2xs);
+  font-weight: 400;
+}
+.popup-kv .kv-info {                                  /* ⓘ 解释图标：小灰斜体，hover 显 title */
+  font-size: var(--geojson-typography-size-2xs);
+  color: var(--geojson-color-text-tertiary);
+  font-weight: var(--geojson-typography-weight-normal);
+  font-style: italic;
+  margin-left: 3px;
+  cursor: help;
 }
 .popup-kv .kv-v {
   color: var(--geojson-color-text-primary);
+  font-size: var(--geojson-typography-size-2xs);
+  font-weight: 400;
   word-break: break-all;
 }
 /* 弱化行（坐标等）：与 ID 同级的小字灰，降低视觉权重 */
@@ -230,13 +241,14 @@
 .range-tooltip .rt-name { white-space: nowrap; }
 
 /* ── tip-popup：网格/柱体/地形环 悬停浮动卡（统一悬停设计语言，自适应方位）──
-   position:fixed 150×150 白底 4px 圆角高阴影；transition 产"灵动滑动"；pointer-events:none 不挡鼠标。 */
+   position:fixed 120×120 白底 4px 圆角高阴影；transition 产"灵动滑动"；pointer-events:none 不挡鼠标。 */
 #tip-popup {
   position: fixed;
   z-index: 95;
-  width: 150px;
-  height: 150px;
-  padding: 10px 12px;
+  width: 120px;
+  min-height: 120px;
+  height: auto;
+  padding: 8px 10px;
   background: var(--geojson-color-surface-page, #ffffff);
   border: 1px solid var(--geojson-color-border-default, #e5e7eb);
   border-radius: 4px;
@@ -244,20 +256,37 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 8px;
+  gap: 5px;
   pointer-events: none;
   transition: left 120ms ease-out, top 120ms ease-out;
 }
 #tip-popup[hidden] { display: none; }
 #tip-popup .tp-loc {                                  /* 行 1 地点：灰填充字号、高浓度灰 */
-  font-size: var(--geojson-typography-size-sm);
+  font-size: var(--geojson-typography-size-xs);
   font-weight: var(--geojson-typography-weight-semibold);
   color: var(--geojson-color-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding-bottom: 6px;
+  padding-bottom: 4px;
   border-bottom: 1px solid var(--geojson-color-border-default, #eee);
+}
+#tip-popup .tp-valence {                              /* 极性判断行（cell L2）：彩色判断词 */
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+#tip-popup .tp-vk {                                   /* "极性判断" label */
+  font-size: var(--geojson-typography-size-2xs);
+  color: var(--geojson-color-text-tertiary);
+  font-weight: var(--geojson-typography-weight-medium);
+  font-style: normal;
+}
+#tip-popup .tp-vv {                                   /* 判断词（偏积极/非常消极…），色由 inline style 注入 */
+  font-size: var(--geojson-typography-size-sm);
+  font-weight: var(--geojson-typography-weight-bold);
+  font-style: normal;
 }
 #tip-popup .tp-row {                                   /* 行 2/3：label+value 列 */
   display: flex;

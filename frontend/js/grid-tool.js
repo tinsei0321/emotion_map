@@ -110,16 +110,27 @@ function _centroid(geom) {
   if (!isFinite(minLng)) return null;
   return [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
 }
+/** pi(-2~2) → _grid_norm(0~1) 固定分段映射，对齐 valenceOf 5 级阈值：
+ *  pi=0→0.5(中性)、pi=±0.15→0.4/0.6(中性边)、pi=±1→0/1(深色饱和)。
+ *  替 p95 对称拉伸——后者数据相关（依赖 pi 95 分位）致色带边界无法对齐判断阈值=颜色不准根因。
+ *  与 terrain 后端 _pi_to_norm 同公式（grid/terrain 配色一致）。 */
+function piToNorm(pi) {
+  if (pi == null) return 0.5;
+  if (pi <= -1) return 0.0;
+  if (pi <= -0.15) return 0.4 * (pi + 1) / 0.85;
+  if (pi < 0.15) return 0.4 + 0.2 * (pi + 0.15) / 0.3;
+  if (pi < 1) return 0.6 + 0.4 * (pi - 0.15) / 0.85;
+  return 1.0;
+}
+
 function preprocessGrid(fc) {
   let hasPolarity = false;
   const counts = [];
-  const piVals = [];   // polarity_index 收集（对称拉伸 p95 用）
   for (const f of fc.features) {
     if (!f.properties) f.properties = {};
     const pc = f.properties.point_count || 0;
     if (f.properties.polarity_index != null) {
       hasPolarity = true;
-      piVals.push(f.properties.polarity_index);   // 极性 feature：_grid_norm 留给 Pass 2 对称拉伸
     } else {
       f.properties._grid_norm = f.properties.score_mean != null ? f.properties.score_mean : 0.5;   // 非极性即时 fallback
     }
@@ -134,9 +145,6 @@ function preprocessGrid(fc) {
   }
   // _grid_h：舆论热度（L1=密度×置信度；L2/无置信度=密度）分位归一化 0~1（颜色+高度正相关：金黄高热/暗红低热）
   counts.sort((a, b) => a - b);
-  // _norm 对称拉伸的 p95（|polarity_index| 95 分位；piVals 全空 → 0，guard）
-  piVals.sort((a, b) => a - b);
-  const p95 = piVals.length ? piVals[Math.min(piVals.length - 1, Math.floor(0.95 * (piVals.length - 1)))] : 0;
   const qAt = (qq) => counts[Math.min(counts.length - 1, Math.floor(qq * (counts.length - 1)))] || 0;
   const q25 = qAt(0.25), q50 = qAt(0.5), q75 = qAt(0.75), qMax = counts[counts.length - 1] || 1;
   for (const f of fc.features) {
@@ -149,9 +157,9 @@ function preprocessGrid(fc) {
     else if (hv <= q75) h = 0.5 + ((hv - q50) / ((q75 - q50) || 1)) * 0.25;
     else h = 0.75 + ((hv - q75) / ((qMax - q75) || 1)) * 0.25;
     f.properties._grid_h = h;
-    // _grid_norm 对称拉伸（极性 feature；铺满 terrain-9 深红/深绿，与 terrain 后端 _norm 同公式）
+    // _grid_norm 固定分段 piToNorm（对齐 valenceOf 阈值；替 p95 拉伸——后者数据相关致色带无法对齐判断）
     const pi = f.properties.polarity_index;
-    if (pi != null) f.properties._grid_norm = p95 > 0 ? 0.5 + (pi >= 0 ? 1 : -1) * Math.min(1, Math.abs(pi) / p95) * 0.5 : 0.5;
+    if (pi != null) f.properties._grid_norm = piToNorm(pi);
   }
   return hasPolarity;
 }

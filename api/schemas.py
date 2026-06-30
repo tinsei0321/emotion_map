@@ -155,4 +155,7 @@ class ReverseGeocodeResult(BaseModel):
     zone_name: str = ""
     nearest_poi: Optional[dict] = None
     formatted_address: str = Field(default="", description="街道地址（高德 regeo 命中时填）")
+    district: str = Field(default="", description="行政区划·区（高德 regeo）")
+    township: str = Field(default="", description="街道/乡镇（高德 regeo）")
+    street: str = Field(default="", description="道路名（高德 regeo）")
     source: str = ""

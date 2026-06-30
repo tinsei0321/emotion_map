@@ -392,9 +392,10 @@ async def reverse_geocode_route(
     lng: float = Query(..., description="经度（WGS84）"),
     lat: float = Query(..., description="纬度（WGS84）"),
 ):
-    """逆地理编码：坐标(WGS84) → 所在区 + 最近 POI + 街道地址。
+    """逆地理编码：坐标(WGS84) → 所在区 + 最近 POI + 街道地址 + 行政区划(区/街道/路)。
 
-    本地 place_layer.reverse 主（瞬时）；最近 POI > 500m 且高德可用 → regeo 补街道。
+    本地 place_layer.reverse 主（瞬时）；高德可用 → always regeo(extensions=all)
+    补街道地址 + 区/街道/路（lru_cache 摊销重复坐标延迟）。
     """
     try:
         res = reverse_geocode(lng, lat)
@@ -406,5 +407,8 @@ async def reverse_geocode_route(
         zone_name=res.get('zone_name', ''),
         nearest_poi=res.get('nearest_poi'),
         formatted_address=res.get('formatted_address', ''),
+        district=res.get('district', ''),
+        township=res.get('township', ''),
+        street=res.get('street', ''),
         source=res.get('source', 'local'),
     )

@@ -1,59 +1,56 @@
 # 会话交接卡
 
 > 换机/新会话后读取此文件恢复上下文。**单份当前快照**——每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：2026-06-30 | 分支 `feature/kde-l2-3d` @ `cad4b25`（本批 push 后 = HEAD/origin 同步）
+> 最后更新：2026-07-01 | 分支 `feature/kde-l2-3d`（本批 push 后 = HEAD/origin 同步）
 
-## 上一节点（06-30）—— Task 2.7 网格/地形 popup + tip-popup + Overview 接 4×5 归因（演示链"交互→识别"桥贯通）
+## 上一节点（07-01）—— Task 2.7 交互桥修复+增强（cell-popup / tip-popup / hover 高亮 / 颜色校准）
 
-**核心交付：聚合单元点击/悬停 → 两套 popup + Overview，4×5 归因（issue_label/domain×element/attribution/suggestion）端到端打通并 Playwright 真数据实测通过。**
+**核心交付：聚合单元点击/悬停的 popup+浮动卡+高亮 全链路打通并校准颜色与极性判断一致性。** 本会话三批迭代（均本次 push）：
 
-1. **#cell-popup（点击持久卡，复用范围卡模式）**：胶囊底色=该单元色板色（`rampColor(gridStops 拍平, prop[gridField])`）+ 类型词「网格/柱体/地形环」；右侧边长 `200×200m`（terrain→`等值环 L{x}`）；灰填充两行=地点（reverseGeocode 质心 `区域·poi`）+ 元数据（`L2·T1·综合·标准网格`，T 从源层 `_ui.source` 反查 `deriveTimeTag`）；kv 聚类口径（点数/聚类程度 `_grid_h` 高中低/[L2] 极性指数偏积极/..，**禁面积周长**）；折叠=类型词胶囊；归因不进本卡。
-2. **#tip-popup（悬停浮动卡，新统一悬停设计语言）**：150×150 白底 4px 圆角高阴影、`position:fixed pointer-events:none`；**自适应方位**（视口左/右/上/下 40% 阈值选象限不遮挡）+ **灵动跳动**（hysteresis 位移>14px 才换位 + CSS `transition:left/top 120ms`）；3 行精简（地点/口径·L2 积极·中性·消极计数着色/边长）；tool 层(grid/terrain)悬停改绑 tip-popup，**删 bindTerrainInteractions + dark terrain-tooltip CSS**。**未来 point/range hover 也迁移到此**（memory `tip-popup-unified-hover-design-language`）。
-3. **Overview 单元模式**：点击 dispatch `cell:selected`→main.js 开右栏+`setCellOverview`（T1 issue 标题+domain×element / T2 极性 badge+点数分数置信度 / T3 归因+建议=识别问题深读）；`cell:cleared`（close 按钮/层隐删）→回 layer Overview；**点空白只折叠不消失**（collapseCellPopup）。
-4. **click 路由**：`classifyMapClick` 在 range-visible 前加 `isCellFeature`（fill+fill-extrusion 同 source 解析）→'cell'；3D 柱/环 click 走 `queryRenderedFeatures` 免单独绑定。
+1. **交互桥修复+内容增强**：①**点击错格 bug**——`popup.js:pickCellFeature` 按 fill-extrusion>fill>line-hit 优先级选格（替 `feats.find(isCellFeature)`；根因 3D 下 queryRenderedFeatures 同时返回被遮挡邻格 base fill、2D 边缘命中 20px hit-line 串邻居），点击路由+tip 悬停共用。②**cell-popup**：地点改「区·街道·最近POI·距离」（后端 `reverse_geocode` always regeo `extensions=all` 返 district/township/street），drop 无效「通用市区」；移除「平均分数」（与极性指数重复+与置信度数值区间重叠）；kv 缩字号细体（对齐 Range）。③**tip-popup**：150→**120px**、地点同 cell-popup、计数上方加「极性判断」行、高度自适应（地点换行不被截）。④**state.js** 新增 `valenceOf`/`valenceColorOf`（5 级：非常积极/偏积极/中性/偏消极/非常消极）全站共用。⑤**悬停高亮**叠加层（复用 `showHoverRing` 模式）。
+2. **3D 整柱升高动画**：`showCellHover` overlay 整柱 cellH→1.5×cellH native **transition 350ms**（`fill-extrusion-height-transition`），同色不透明。
+3. **颜色彻底校准**（用户两轮反馈"颜色不准/未根治"后）：①**piToNorm 固定分段映射**（[grid-tool.js](frontend/js/grid-tool.js) + 后端 [spatial_analysis.py](core/spatial_analysis.py) `_pi_to_norm` 同公式）替旧 p95 对称拉伸——后者**数据相关致色带边界无法对齐 valenceOf 判断阈值=颜色不准根因**；pi=0→0.5、pi=±0.15→0.4/0.6、pi=±1→0/1。②terrain-9 中性段收窄对齐 pi±0.15。③**升起变色 bug**——overlay 改用**与格层同款 color 表达式**（`interpolate(linear,get(gridField),...stops)`+保留 properties；原 `rampColor` 均匀间距 ≠ MapLibre 实际 stop 位→变色）。④**点击保持升起**——`clearCellHover` 拆出 `hideTipPopup`，仅 mouseleave 触发。⑤`valenceColorOf` 改用 **TERRAIN_*[2]/[1]**（与 terrain-9 色带同源，修"字翠绿/卡深绿"不一致）。
 
-**首轮实测 5 连 bug 修复**（Playwright 真实导入 L2 T1+生成网格复现，**字段全对、纯前端 bug**）：①size 行 `textContent` 赋 HTML→字面化（改 innerHTML）；②tip 卡左上角=onMove 没 showEl+mouseenter 未触发（onMove 也 showEl+坐标 fallback）；③地点永「定位中」=mousemove 高频 `++_geoToken` 作废在途 + **MapLibre queryRenderedFeatures 把数组 property 序列化成字符串**（`_center` source 数组→query 字符串）→key 去重+`Array.isArray` 防御；④cell-popup 全空+Overview 不切=**`let口径;`（let 后无空格+中文）被词法器吞成单标识符 `let口径`**，运行时 ReferenceError（node --check 查不出）→改英文 `mood`；⑤点外部消失=误调 hideCellPopup→改 collapseCellPopup。**实测通过**：hover tip 跟鼠标（left468/top307 vs 鼠标452,291+16px）+loc「通用市区·凝聚新天地」+size「200×200m」+metric「2/1/1」；click cell loc/meta/kv 全显+Overview issue「情绪聚集区」+attribution；点空白 collapsed=true hidden=false。
+**前序已 push（本会话早段）**：poi_4x5_map 高德单源（4766ccb）、tip-popup point 悬停（f0038a9）。
 
 ## 当前状态
-- 分支 `feature/kde-l2-3d` @ `cad4b25`，origin 同步（已 push）
-- 后端 :8000 + 前端 :8080 在线。**后端已加载 ce13da2 新聚合代码**（实测格子含 domain_top/issue_label/attribution 全对——`urban_operation`/`event`/`情绪聚集区`）
-- 用户 F5 即可看 Task 2.7 效果（前端 no-cache 自动拉新；后端无需再重启）
+- 分支 `feature/kde-l2-3d`，本批 push 后 origin 同步
+- **未 F5 实测**（Playwright 环境阻断：:8080 当前=项目根 directory listing 非 serve.py + 缓存 chrome 1223 与 playwright 1.61.1 CDP 协议错配）。静态全过：node --check / py compile / piToNorm 数学验证 / pytest 10 passed（spatial）零新回归
+- **用户须**：`start.bat` 起 serve.py → F5 → **重新生成网格/地形**（`_grid_norm`/`_norm` 在生成时计算，F5+重生成才应用 piToNorm）→ 肉眼验
 
 ## 承重注意事项（踩坑，勿重复）
 1. **演示逻辑链是北极星**（CLAUDE.md 最高优先级）：张力=表现力、4×5 归因=有用性、popup+Overview=交互桥。memory `emotion-map-logic-chain`
-2. **JS 中文变量名陷阱**：`let口径`(let 后无空格+中文)被吞成单标识符，`node --check` 查不出、运行时 ReferenceError。**变量名一律英文**（中文只进字符串/对象 key）。memory `js-chinese-identifier-trap`
-3. **MapLibre queryRenderedFeatures 的 properties 只支持标量**：数组/对象字段（如 `_center`）会被序列化成字符串；读数组 property 必 `Array.isArray` 校验或从 geometry 现算。memory `maplibre-query-array-stringify`
-4. **`textContent` 赋 HTML 字符串=字面化标签**：HTML 内容必走 `innerHTML`，纯文本才 `textContent`
-5. **mousemove 高频回调里发异步请求须按 key 去重**（cache+inflight），token 不能在每次回调自增（会作废全部在途）
-6. **`node --check` 只查语法不查运行时**：前端改动（尤其交互/异步/控制流）**必上 Playwright 真数据实测**才能抓 bug；纯加载自检（0 console 错）不够
-7. **tip-popup 是统一悬停设计语言**：tool 层(grid/terrain)已接入；未来 point/range hover 迁移到此，别再造 maplibregl Popup/dark tooltip。memory `tip-popup-unified-hover-design-language`
-8. **`_norm`/`_grid_norm` 对称拉伸须 grid+terrain 同步**（同公式 `0.5+sign(pi)·min(1,|pi|/p95)·0.5`）。memory `symmetric-norm-stretch`
+2. **JS 中文变量名陷阱**：`let中文`(无空格)被吞成单标识符，node --check 查不出、运行时 ReferenceError。变量名一律英文。memory `js-chinese-identifier-trap`
+3. **MapLibre queryRenderedFeatures 的 properties 只支持标量**：数组/对象字段（`_center`）被序列化成字符串；读数组 property 必 `Array.isArray` 校验。memory `maplibre-query-array-stringify`
+4. **点击/悬停选格必走 `pickCellFeature`**（fill-extrusion>fill>line-hit 优先级）；勿用 `feats.find(isCellFeature)`——3D 遮挡邻格 base fill + 2D 边缘 hit-line 串邻居致错格
+5. **`_norm`/`_grid_norm` 现为 piToNorm 固定分段**（替旧 p95 对称拉伸）：`piToNorm(pi)`（grid-tool）+ `_pi_to_norm`（后端）同公式，对齐 valenceOf 5 级阈值；terrain-9 色带中性段对齐 pi±0.15。**改色须 grid+terrain 同步**。旧 p95 拉伸已废（数据相关=颜色不准根因）
+6. **悬停升起 overlay 必用格层同款 color 表达式**（`interpolate(linear,get(gridField),...stops)`+保留 feature.properties）；`rampColor` 均匀间距 ≠ MapLibre 实际 stop 位 → 升起柱变色
+7. **极性判断字色须用 TERRAIN_*[2]/[1]**（valenceColorOf，与 terrain-9 色带同源）；勿用 L2 荧光色（字/卡不一致）
+8. **node --check 只查语法不查运行时**：交互/异步/控制流改动必上 Playwright 真数据实测（本会话因环境阻断未跑，**待用户 F5 验**）
 9. **l1_confidence 用局部密度 dens_norm**（amap POI weight 恒 1.0）。memory `confidence-local-density`
-10. **POI 已预映射 domain/element 直接读 seed**；勿用 `poi_4x5_map._L1_FALLBACK`（高德类名不匹配全 fallback）。memory `grid-4x5-attribution`
-11. **4×5 归因在聚合层**（DEMO 规则表 `_ATTRIBUTION_RULES`），L3/L4 LLM 归因上线后删表；字段在格 properties 供 popup/Overview
-12. terrain 渲染走 fill-extrusion（高度 `_level`/maxHeight 绝对米）；memory `terrain-mesh-rendering`/`extrusion-height-maxheight`
-13. 工具生成不弹 Overview（不 dispatch `layer:selected`）；`generateGrid` 独占 vs `setViewMode` 配对=两独立场景。memory `tool-no-auto-overview`/`generate-grid-exclusive-vs-viewmode`
+10. **POI→4×5 唯一权威源 = poi_4x5_map.AMAP_L1_TO_4X5**（旧百度 _L1_FALLBACK 死码已删勿复活）。memory `grid-4x5-attribution`
+11. **4×5 归因在聚合层**（DEMO `_ATTRIBUTION_RULES`，L3/L4 接管后删表）；字段在格 properties 供 popup/Overview
+12. terrain 渲染走 fill-extrusion（高度 `_level`/maxHeight 绝对米）；memory `terrain-mesh-rendering`
+13. 工具生成不弹 Overview；`generateGrid` 独占 vs `setViewMode` 配对=两独立场景。memory `generate-grid-exclusive-vs-viewmode`
 14. 后端聚合数值列必须 `pd.to_numeric(coerce)`；后端无 `--reload`，改 `core/` 后须 start.bat 重启。memory `spatial-aggregation-numeric-coerce`
 
 ## 下一步（待用户在新会话定；候选，按优先级）
-- **⏸ #6 L2 地形渲染重做 — 已搁置（2026-06-30 用户决定）**：算法+渲染三出路（细密网格 fill-extrusion / 真 DEM 瓦片 / 六边柱）性价比均低——deck.gl ColumnLayer 在本环境不渲染（旧坑 map.js:487）、DEM 需瓦片服务工程量大、fill-extrusion 顶面恒平顶。暂放，待用户另议期望效果再启
-- **tip-popup 扩展到 point/range hover**（统一设计语言落地，模块已可复用 `bindTipPopup`+`fillContent` 按层类型分支）
-- ~~**修 `_L1_FALLBACK` 高德类名缺口**~~ ✅ 已完成（2026-06-30）：查证为百度类名零调用死码，真缺口=poi_4x5_map 缺高德表；重写为高德→4×5 单一权威源 `AMAP_L1_TO_4X5`/`map_amap_to_4x5`（详见 revision-log 5.14 末行 / memory `grid-4x5-attribution`）
-- **Task 2.2 时间轴架构** / **Task 3 热点图**（map.js addHotpointLayer 半成品）
+- **【待 F5 验】** Task 2.7 交互桥三批：start.bat→F5→重生成网格/地形，验颜色(偏消极=红)/升起不变色/点击保持升起/字色对齐
+- **Overview 深化（项 4）**——本周偏后：展开分析→更有指向性结论+落地建议
+- **⏸ #6 L2 地形渲染重做 — 已搁置**：三出路性价比均低，待用户另议期望效果
+- **range tooltip 迁移 tip-popup** / **Task 2.2 时间轴** / **Task 3 热点图**（map.js addHotpointLayer 半成品）
 
 ## 新会话 prompt（复制即用）
 ```
-续 feature/kde-l2-3d @ cad4b25（Task 2.7 网格/地形 popup + tip-popup + Overview 已 push 并 Playwright 实测通过；演示链"交互→识别"桥贯通）。读 memories/repo/session-handoff.md（最新快照 + 承重 14 条）。
+续 feature/kde-l2-3d（Task 2.7 交互桥修复+增强已 push：pickCellFeature 修错格 + cell/tip-popup 增强 + 3D 升起动画 + piToNorm 颜色校准；待 F5 重生成验）。读 memories/repo/session-handoff.md（最新快照 + 承重 14 条）。
 
-本会话任务：<在此填。建议「#6 L2 地形渲染重做」——用户已 flag "完全没法用，算法+渲染都要重做"，待用户展开期望效果>
+本会话任务：<在此填。候选：Overview 深化(项4)/range tooltip 迁移/Task 3 热点图>
 
-要点：①当前地形=create_terrain_mesh(KDE 等值面 fill-extrusion，高度_level/着色_norm)，用户不满效果；②先与用户对齐"哪里不可用/期望什么效果"再动（算法层 KDE？渲染层 fill-extrusion→别的方式？）；③terrain 走 _norm 对称拉伸(勿破)、归因字段已在环 properties(tip-popup/cell-popup/Overview 已接)。
-
+要点：①颜色已换 piToNorm 固定分段（grid-tool+后端同公式，对齐 valenceOf），terrain-9 中性段对齐 pi±0.15，**改色须 grid+terrain 同步**；②悬停升起 overlay 必用格层同款 color 表达式（保 properties，勿用 rampColor）；③valenceColorOf 用 TERRAIN_*；④点击选格走 pickCellFeature。
 计费按调动次数，工作方式见 ~/.claude/CLAUDE.md（不派 subagent）。
 ```
 
-## 承重 memory 索引（本会话新增 3 条）
-- `js-chinese-identifier-trap` — `let中文`(无空格)被吞成单标识符，node --check 查不出、运行时 ReferenceError；变量名一律英文
-- `maplibre-query-array-stringify` — queryRenderedFeatures 的 properties 数组/对象会被序列化成字符串；读数组 property 必 Array.isArray 校验
-- `tip-popup-unified-hover-design-language` — 聚合单元悬停=浮动卡(自适应方位+灵动跳动)；未来 point/range hover 迁移到此
-- （前批）`emotion-map-logic-chain`/`symmetric-norm-stretch`/`confidence-local-density`/`grid-4x5-attribution`
+## 承重 memory 索引（本会话相关）
+- `js-chinese-identifier-trap` / `maplibre-query-array-stringify` / `tip-popup-unified-hover-design-language`（前批）
+- `emotion-map-logic-chain` / `confidence-local-density` / `grid-4x5-attribution` / `spatial-aggregation-numeric-coerce` / `generate-grid-exclusive-vs-viewmode`
+- 注：`symmetric-norm-stretch`（旧 p95 公式）已废，piToNorm 替代——见承重 note 5

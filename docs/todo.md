@@ -9,12 +9,20 @@
 
 ### ✅ 已完成
 - **poi_4x5_map 重写为高德→4×5 单一权威源（修 `_L1_FALLBACK` 缺口）**：承重 note 10 候选——查证 `BAIDU_L2_TO_4X5`/`_L1_FALLBACK`/`map_baidu_to_4x5` 为百度类名**零调用死码**（真实高德→4×5 只内联在 pull_amap_poi `AMAP_TYPES`，4×5 专属模块反无高德表=真缺口）。改：`poi_4x5_map.py` 删死码 + 新增 `AMAP_L1_TO_4X5`(高德 13 大类，值搬自 AMAP_TYPES) + `map_amap_to_4x5`；`pull_amap_poi.AMAP_TYPES` 改经表派生 domain/element（单源，4-tuple 形状不变）。**不改 generate_l1_mock 数据流**（seed 值不变→Task 2.7 已测 L2 数据零变化）。验证：自检 sum=1.0/entries=13 + import 接线 n=13 + pytest 115 passed（1 预存在失败 `test_capabilities` 非本次引入，stash 证实）。
-- **tip-popup 扩展到 point 悬停**（统一悬停设计语言落地）：point 层原只有 cursor+click 高亮、**零 hover 文本**。改：`tip-popup.js` `bindTipPopup(layer,lid,uiOverride)` 接显式 ui（point 层无 paint._ui）+ `fillContent`/`metricText`/`sizeText` 加 `ui.kind==='point'` 守卫分支——**point 用同步属性**（zone_name/area，不逐点 geocode 避免高频反查）+ L2 极性标签+分数(pos/neg/neu 着色)/L1 热度/L0 原始 + domain×element(4×5 与聚合层一致，缺退 primary_emotion)；`map.js` `bindPointInteractions` 调 `bindTipPopup(layer,lid,{kind:'point',colorMode})`。range 暂留 dark tooltip（能用，不无故改工作代码）。验证：node --check✓ + 无循环导入（popup.js 仅 import state/api）✓；**Playwright 环境阻断**——`:8080` 当前是项目根 directory listing（serve.py 未跑）+ 缓存 chrome 1223 与 playwright 1.61.1 CDP 协议错配致 headless 导航超时（curl 0.2s 拿到 HTML，domcontentloaded 30s 超时=协议挂起非代码问题）→ **待用户 start.bat 起 serve.py 后 F5 肉眼验**：悬停 L2 点位应出 tip-popup「区域/极性+分数/domain×element」。
+- **tip-popup 扩展到 point 悬停**（统一悬停设计语言落地）：point 层原只有 cursor+click 高亮、**零 hover 文本**。改：`tip-popup.js` `bindTipPopup(layer,lid,uiOverride)` 接显式 ui + point 分支（同步 zone_name/area 不逐点 geocode + 极性分数 + domain×element）；`map.js` `bindPointInteractions` 接入。
+- **Task 2.7 交互桥修复+增强**（cell-popup / tip-popup / hover 高亮 / 颜色校准；Overview 深化本周偏后）——三批迭代：
+  - **修点击错格 bug**：`popup.js:pickCellFeature`（fill-extrusion > fill > line-hit 优先级）替 `feats.find(isCellFeature)`——根因 3D queryRenderedFeatures 返回被遮挡邻格 base fill、2D 边缘 20px hit-line 串邻居；点击路由+tip 悬停共用。
+  - **cell-popup**：地点「区·街道·最近POI·距离」（后端 reverse_geocode always regeo extensions=all 返 district/township/street），drop「通用市区」；移除「平均分数」；kv 缩字号细体（对齐 Range）；ⓘ 解释后按用户要求移除（留 title hover）。
+  - **tip-popup**：150→120px；地点同 cell-popup；「极性判断」行（5 级 valenceOf）；高度自适应（地点换行不截）。
+  - **state.js** `valenceOf`/`valenceColorOf`（5 级）全站共用。
+  - **颜色校准（重点）**：**piToNorm 固定分段映射**（grid-tool+后端 `_pi_to_norm` 同公式，对齐 valenceOf 阈值）**替旧 p95 对称拉伸**（后者数据相关致色带边界无法对齐判断=颜色不准根因）；terrain-9 中性段对齐 pi±0.15；`valenceColorOf` 改用 TERRAIN_*[2]/[1]（与色带同源，修字/卡不一致）。
+  - **3D 悬停高亮**：`showCellHover` 整柱 overlay cellH→1.5× native transition 350ms 升起动画；**用与格层同款 color 表达式**（保 properties，修 rampColor 均匀间距≠实际 stop 位致升起变色）；**点击保持升起**（clearCellHover 仅 mouseleave 触发）；2D 品牌蓝亮粗描边。
+  - 验证：node --check / py compile / piToNorm 数学 / pytest 10 passed（spatial）零新回归。**未 F5 实测**（Playwright 环境阻断）：start.bat→F5→**重生成网格/地形**（_grid_norm/_norm 在生成时算）→验颜色/升起/点击/字色。
 
 ### ⬜ 下一步
-- **【待验】** tip-popup point 悬停：start.bat 起 serve.py → F5 → 悬停 L2 点位验 tip-popup 内容（验后 commit）
-- terrain 3D 重做已**搁置**（用户决定：算法+渲染三出路性价比均低，暂放，待用户另议期望效果）
-- 待用户定：range tooltip 是否也迁移 tip-popup / Task 3 热点图收尾
+- **【待 F5 验】** Task 2.7 三批：重生成网格/地形验颜色(偏消极=红)/升起不变色/点击保持升起/字色对齐
+- Overview 深化（项 4）本周偏后
+- terrain 3D 重做已**搁置**；待用户定：range tooltip 迁移 / Task 3 热点图 / Task 2.2 时间轴
 
 ## 📅 2026-06-29（周一）
 

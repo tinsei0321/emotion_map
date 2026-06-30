@@ -228,6 +228,30 @@ export const L2_POSITIVE = { 'Very Positive': '#86E61C', 'Positive': '#3DBA9E' }
 export const L2_NEGATIVE = { 'Very Negative': '#A3321A', 'Negative': '#E07142' };    // 暗橘红→浅橘红
 export const L2_NEUTRAL_COLOR = '#3A7CA5';                                            // 忧郁蓝（会合色）
 
+/** 极性指数(pi, -2~2) → 5 级判断词。cell-popup「极性指数」+ tip-popup「极性判断」行共用，
+ *  保证全站同步（勿在他处另写阈值）。 */
+export function valenceOf(pi) {
+  if (pi == null || pi === '') return '—';
+  const v = Number(pi);
+  if (!isFinite(v)) return '—';
+  if (v >= 1.0) return '非常积极';
+  if (v >= 0.15) return '偏积极';
+  if (v <= -1.0) return '非常消极';
+  if (v <= -0.15) return '偏消极';
+  return '中性';
+}
+/** 极性判断配色（与 terrain-9 色带同源：非常级=TERRAIN_*[2] 深色端、偏级=[1] 中色、中性=中蓝）。
+ *  与 L2 点位荧光色解耦——色卡/网格用 TERRAIN 深色，判断字色跟随，避免「字翠绿/卡深绿」不一致。 */
+export function valenceColorOf(pi) {
+  const v = Number(pi);
+  if (!isFinite(v)) return '#999';
+  if (v >= 1.0) return TERRAIN_GREEN[2];      // 深绿（terrain-9 极积极段）
+  if (v >= 0.15) return TERRAIN_GREEN[1];     // 中绿（偏积极）
+  if (v <= -1.0) return TERRAIN_RED[2];       // 深红（极消极段）
+  if (v <= -0.15) return TERRAIN_RED[1];      // 中红（偏消极）
+  return TERRAIN_BLUE[1];                      // 中蓝（中性）
+}
+
 // ── Heatmap color stops (Kepler-aligned: density-mapped ramp, NOT polarity) ──
 // 消极热力图：稀疏消极区→冷蓝，密集消极区→深红。density 0 必须透明（低密度不显示）。
 // 格式 = [densityStop, color][]，喂给 MapLibre heatmap-color 的 interpolate 表达式。
@@ -413,13 +437,15 @@ export const HEATMAP_RAMPS = {
   // 9 段 = 消极3(深→浅) + 中性3(浅-中-浅) + 积极3(浅→深)，色源与 green-3/red-3/blue-3 同源。
   'terrain-9': (() => {
     const seg = (cols, lo, hi) => cols.map((c, i) => [lo + (hi - lo) * i / (cols.length - 1), c]);
+    // 配 piToNorm 固定分段映射：中性带对齐 pi±0.15（renorm 后 ≈0.42-0.57），偏级落红/绿段。
+    // 替 p95 拉伸（数据相关致色带边界无法对齐 valenceOf 判断阈值=颜色不准根因）。
     const stops = [
       [0.00, 'rgba(122,30,22,0)'],
-      ...seg([...TERRAIN_RED].reverse(), 0.06, 0.30),                          // 深红(最消极/低值) → 浅红(近中性)
-      ...seg([TERRAIN_BLUE[0], TERRAIN_BLUE[1], TERRAIN_BLUE[0]], 0.36, 0.64), // 浅蓝 → 中蓝 → 浅蓝（中性两端浅）
-      ...seg(TERRAIN_GREEN, 0.70, 1.00),                                       // 浅绿(近中性) → 深绿(最积极/高值)
+      ...seg([...TERRAIN_RED].reverse(), 0.06, 0.45),                          // 深红(pi≤-1) → 浅红(pi=-0.15 边界)
+      ...seg([TERRAIN_BLUE[0], TERRAIN_BLUE[1], TERRAIN_BLUE[0]], 0.46, 0.60), // 中性蓝（pi±0.15 窄带）
+      ...seg(TERRAIN_GREEN, 0.61, 1.00),                                       // 浅绿(pi=0.15) → 深绿(pi≥1)
     ];
-    return { name: '红蓝绿地形（消极/中性/积极 各3段·两端深色）', stops };
+    return { name: '红蓝绿地形（消极/中性/积极·对齐 piToNorm 固定分段）', stops };
   })(),
   // 网格+L2 积极/消极/中性 各 3 段（端点色与 terrain-9 同源）
   'green-3':  { name: '积极 3 段（绿）', stops: gradientStops(TERRAIN_GREEN, 3) },   // 浅绿淡→深绿深（拉大对比）

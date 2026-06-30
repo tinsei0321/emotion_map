@@ -750,13 +750,22 @@ def create_terrain_mesh(
             props['_norm'] = props['_level']   # 无点落入（理论不应）→ 退密度
         feats.append({'geometry': row.geometry, **props})
 
-    # _norm 对称拉伸（与 grid-tool 同步：pi 分位铺满 terrain-9，张力 + grid/terrain 配色一致）
-    _pi_vals = [f['polarity_index'] for f in feats if f.get('polarity_index') is not None]
-    _p95 = float(np.quantile(_pi_vals, 0.95)) if _pi_vals else 0.0
+    # _norm 固定分段映射 _pi_to_norm（与 grid-tool piToNorm 同步：对齐 valenceOf 5 级阈值）；
+    # 替 p95 拉伸——后者数据相关致色带边界无法对齐判断阈值（颜色不准根因）。
+    def _pi_to_norm(pi):
+        if pi <= -1.0:
+            return 0.0
+        if pi <= -0.15:
+            return 0.4 * (pi + 1.0) / 0.85
+        if pi < 0.15:
+            return 0.4 + 0.2 * (pi + 0.15) / 0.30
+        if pi < 1.0:
+            return 0.6 + 0.4 * (pi - 0.15) / 0.85
+        return 1.0
     for f in feats:
         _pi = f.get('polarity_index')
         if _pi is not None:
-            f['_norm'] = round(0.5 + (1 if _pi >= 0 else -1) * min(1.0, abs(_pi) / _p95) * 0.5, 4) if _p95 > 0 else 0.5
+            f['_norm'] = round(_pi_to_norm(float(_pi)), 4)
 
     out = gpd.GeoDataFrame(feats, geometry='geometry', crs=target_crs)
     out = out.sort_values('_level', ascending=True, kind='stable').reset_index(drop=True)
