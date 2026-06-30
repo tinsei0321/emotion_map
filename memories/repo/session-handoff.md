@@ -36,9 +36,9 @@
 14. 后端聚合数值列必须 `pd.to_numeric(coerce)`；后端无 `--reload`，改 `core/` 后须 start.bat 重启。memory `spatial-aggregation-numeric-coerce`
 
 ## 下一步（待用户在新会话定；候选，按优先级）
-- **【用户已 flag】#6 L2 地形渲染重做**：用户反馈"完全没法用，算法+渲染方式都要重做"，先放一放待用户展开期望效果（KDE 等值面表达？高度/着色/密度算法换思路？）。**本周待讨论重点**
+- **⏸ #6 L2 地形渲染重做 — 已搁置（2026-06-30 用户决定）**：算法+渲染三出路（细密网格 fill-extrusion / 真 DEM 瓦片 / 六边柱）性价比均低——deck.gl ColumnLayer 在本环境不渲染（旧坑 map.js:487）、DEM 需瓦片服务工程量大、fill-extrusion 顶面恒平顶。暂放，待用户另议期望效果再启
 - **tip-popup 扩展到 point/range hover**（统一设计语言落地，模块已可复用 `bindTipPopup`+`fillContent` 按层类型分支）
-- **修 `_L1_FALLBACK` 高德类名缺口**（补"餐饮服务/购物服务/风景名胜"等高德 13 类 key，小修）
+- ~~**修 `_L1_FALLBACK` 高德类名缺口**~~ ✅ 已完成（2026-06-30）：查证为百度类名零调用死码，真缺口=poi_4x5_map 缺高德表；重写为高德→4×5 单一权威源 `AMAP_L1_TO_4X5`/`map_amap_to_4x5`（详见 revision-log 5.14 末行 / memory `grid-4x5-attribution`）
 - **Task 2.2 时间轴架构** / **Task 3 热点图**（map.js addHotpointLayer 半成品）
 
 ## 新会话 prompt（复制即用）

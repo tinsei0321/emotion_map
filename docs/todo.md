@@ -5,6 +5,15 @@
 
 ---
 
+## 📅 2026-06-30（周二）
+
+### ✅ 已完成
+- **poi_4x5_map 重写为高德→4×5 单一权威源（修 `_L1_FALLBACK` 缺口）**：承重 note 10 候选——查证 `BAIDU_L2_TO_4X5`/`_L1_FALLBACK`/`map_baidu_to_4x5` 为百度类名**零调用死码**（真实高德→4×5 只内联在 pull_amap_poi `AMAP_TYPES`，4×5 专属模块反无高德表=真缺口）。改：`poi_4x5_map.py` 删死码 + 新增 `AMAP_L1_TO_4X5`(高德 13 大类，值搬自 AMAP_TYPES) + `map_amap_to_4x5`；`pull_amap_poi.AMAP_TYPES` 改经表派生 domain/element（单源，4-tuple 形状不变）。**不改 generate_l1_mock 数据流**（seed 值不变→Task 2.7 已测 L2 数据零变化）。验证：自检 sum=1.0/entries=13 + import 接线 n=13 + pytest 115 passed（1 预存在失败 `test_capabilities` 非本次引入，stash 证实）。
+
+### ⬜ 下一步
+- terrain 3D 重做已**搁置**（用户决定：算法+渲染三出路性价比均低，暂放，待用户另议期望效果）
+- 待用户定：tip-popup 扩展 point/range hover / Task 3 热点图收尾
+
 ## 📅 2026-06-29（周一）
 
 ### ✅ 已完成（续 feature/kde-l2-3d · 演示逻辑链纲领首落地）

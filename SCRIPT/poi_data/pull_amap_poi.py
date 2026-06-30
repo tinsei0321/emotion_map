@@ -35,24 +35,28 @@ from shapely.geometry import Point
 
 from core.coord_transform import gcj02_to_wgs84
 from core.utils import safe_print
+from poi_data.poi_4x5_map import AMAP_L1_TO_4X5   # 高德→4×5 单一权威源（domain/element 经此派生，勿硬编码）
 
 AMAP_URL = 'https://restapi.amap.com/v3/place/text'
 CITY = '宜昌'
-# (typecode, 中文名, domain, element) —— 高德 POI 大类 typecode
+# (typecode, 中文名) —— 高德 POI 大类 typecode；domain/element 经 AMAP_L1_TO_4X5 派生（单源，值不变）
 AMAP_TYPES = [
-    ('050000', '餐饮服务', 'urban_operation', 'service'),
-    ('060000', '购物服务', 'urban_operation', 'service'),
-    ('070000', '生活服务', 'urban_operation', 'service'),
-    ('080000', '休闲娱乐', 'urban_operation', 'event'),
-    ('090000', '体育休闲服务', 'urban_operation', 'event'),
-    ('100000', '住宿服务', 'urban_operation', 'service'),
-    ('110000', '风景名胜', 'urban_operation', 'environment'),
-    ('120000', '商务住宅', 'urban_renewal', 'service'),          # 住宅小区/写字楼
-    ('130000', '政府机构及社会团体', 'urban_governance', 'service'),
-    ('140000', '科教文化服务', 'urban_operation', 'culture'),   # 学校/图书馆
-    ('150000', '交通设施服务', 'urban_governance', 'facility'),
-    ('160000', '金融保险服务', 'urban_operation', 'service'),
-    ('170000', '公司企业', 'urban_operation', 'service'),
+    (tc, cn) + AMAP_L1_TO_4X5.get(cn, ('urban_operation', 'service'))
+    for tc, cn in [
+        ('050000', '餐饮服务'),
+        ('060000', '购物服务'),
+        ('070000', '生活服务'),
+        ('080000', '休闲娱乐'),
+        ('090000', '体育休闲服务'),
+        ('100000', '住宿服务'),
+        ('110000', '风景名胜'),
+        ('120000', '商务住宅'),          # 住宅小区/写字楼
+        ('130000', '政府机构及社会团体'),
+        ('140000', '科教文化服务'),     # 学校/图书馆
+        ('150000', '交通设施服务'),
+        ('160000', '金融保险服务'),
+        ('170000', '公司企业'),
+    ]
 ]
 PAGE_SIZE = 25
 MAX_PAGES = 50          # types 精准，count=该类真实总数，50 页(1250)多数够

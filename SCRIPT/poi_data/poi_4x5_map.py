@@ -2,12 +2,17 @@
 4x5 矩阵映射 + 领域/要素权重
 ============================
 吸收自 docs/minimax-workspace/docs/poi-mapping-4x5.md（参考包），供：
-  1. POI 种子已预映射（见 yichang_poi_wgs84.json 的 domain/element 字段）；
-  2. 未来真实 POI（百度/高德 API）按本表判 domain/element；
+  1. POI 种子已预映射（见 yichang_poi_wgs84.json / amap_poi_wgs84.json 的 domain/element 字段）；
+  2. 高德真实 POI 按本表判 domain/element —— 本表是高德→4×5 的【唯一权威源】，
+     pull_amap_poi.AMAP_TYPES 经本表派生 domain/element（单源，勿在他处重复硬编码）；
   3. pick_domain_element() 的基础权重（背景点无具体 POI 时按分布采样）。
 
 矩阵：domain（规划/更新/运营/治理）x element（设施/环境/服务/文化/事件）= 20 格。
 与 7 类情绪（喜怒哀乐愁急盼）正交——deep 4x5 交叉分析留 L3/L4。
+
+历史：旧 BAIDU_L2_TO_4X5 / _L1_FALLBACK / map_baidu_to_4x5 为百度类名死码（零调用 +
+高德数据不匹配全 fallback），已删；高德 13 大类映射统一收敛到下方 AMAP_L1_TO_4X5。
+memory `grid-4x5-attribution`。
 """
 
 # ── 枚举 ──
@@ -44,122 +49,36 @@ ELEMENT_WEIGHTS = {
     'event': 0.08,              # 大型活动/夜经济/应急
 }
 
-# ── 百度 POI 二级分类 → (domain, element) 精选映射 ──
-# 完整 17 大类表见 docs/minimax-workspace/docs/poi-mapping-4x5.md；此处收高频类 + 兜底。
-# POI 种子已自带映射，本表主要用于未来 API 拉取的真实 POI。
-BAIDU_L2_TO_4X5 = {
-    # 美食 / 酒店 / 购物 / 生活服务
-    '中餐厅': ('urban_operation', 'service'),
-    '外国餐厅': ('urban_operation', 'service'),
-    '小吃快餐店': ('urban_operation', 'service'),
-    '蛋糕甜品店': ('urban_operation', 'service'),
-    '咖啡厅': ('urban_operation', 'culture'),
-    '茶座': ('urban_renewal', 'culture'),
-    '酒吧': ('urban_operation', 'event'),
-    '购物中心': ('urban_operation', 'event'),
-    '百货商场': ('urban_operation', 'service'),
-    '超市': ('urban_operation', 'service'),
-    '便利店': ('urban_operation', 'service'),
-    '家居建材': ('urban_renewal', 'facility'),
-    '市场': ('urban_operation', 'service'),
-    '星级酒店': ('urban_operation', 'service'),
-    '快捷酒店': ('urban_operation', 'service'),
-    '民宿': ('urban_renewal', 'culture'),
-    '房产中介机构': ('urban_renewal', 'service'),
-    '公用事业': ('urban_governance', 'facility'),
-    '公共厕所': ('urban_governance', 'facility'),
-    # 旅游 / 休闲 / 运动
-    '公园': ('urban_operation', 'environment'),
-    '植物园': ('urban_operation', 'environment'),
-    '动物园': ('urban_operation', 'culture'),
-    '游乐园': ('urban_operation', 'event'),
-    '博物馆': ('urban_renewal', 'culture'),
-    '水族馆': ('urban_operation', 'culture'),
-    '文物古迹': ('urban_renewal', 'culture'),
-    '教堂': ('urban_renewal', 'culture'),
-    '风景区': ('urban_operation', 'environment'),
-    '景点': ('urban_operation', 'environment'),
-    '寺庙': ('urban_renewal', 'culture'),
-    '电影院': ('urban_operation', 'event'),
-    'KTV': ('urban_operation', 'event'),
-    '剧院': ('urban_renewal', 'culture'),
-    '歌舞厅': ('urban_operation', 'event'),
-    '网吧': ('urban_operation', 'event'),
-    '休闲广场': ('urban_operation', 'event'),
-    '体育场馆': ('urban_operation', 'event'),
-    '健身中心': ('urban_operation', 'service'),
-    # 教育 / 文化 / 医疗
-    '高等院校': ('urban_operation', 'service'),
-    '中学': ('urban_operation', 'service'),
-    '小学': ('urban_operation', 'service'),
-    '幼儿园': ('urban_operation', 'service'),
-    '特殊教育学校': ('urban_governance', 'service'),
-    '科研机构': ('urban_planning', 'service'),
-    '培训机构': ('urban_operation', 'service'),
-    '图书馆': ('urban_operation', 'culture'),
-    '科技馆': ('urban_operation', 'culture'),
-    '美术馆': ('urban_renewal', 'culture'),
-    '展览馆': ('urban_renewal', 'culture'),
-    '文化宫': ('urban_renewal', 'culture'),
-    '综合医院': ('urban_governance', 'service'),
-    '专科医院': ('urban_governance', 'service'),
-    '诊所': ('urban_operation', 'service'),
-    '药店': ('urban_operation', 'service'),
-    '急救中心': ('urban_governance', 'service'),
-    '疾控中心': ('urban_governance', 'service'),
-    # 交通
-    '飞机场': ('urban_governance', 'facility'),
-    '火车站': ('urban_governance', 'facility'),
-    '地铁站': ('urban_planning', 'facility'),
-    '长途汽车站': ('urban_governance', 'facility'),
-    '公交车站': ('urban_governance', 'facility'),
-    '停车场': ('urban_governance', 'facility'),
-    '桥': ('urban_planning', 'facility'),
-    '充电站': ('urban_planning', 'facility'),
-    '加油加气站': ('urban_operation', 'facility'),
-    # 金融 / 房地产 / 公司
-    '银行': ('urban_operation', 'service'),
-    '写字楼': ('urban_operation', 'service'),
-    '住宅区': ('urban_renewal', 'service'),
-    '园区': ('urban_planning', 'service'),
-    '厂矿': ('urban_renewal', 'facility'),
-    # 政府机构
-    '各级政府': ('urban_governance', 'service'),
-    '行政单位': ('urban_governance', 'service'),
-    '公检法机构': ('urban_governance', 'facility'),
-    '居民委员会': ('urban_governance', 'service'),
-    '福利机构': ('urban_governance', 'service'),
-}
-
-# 一级分类兜底（二级未命中时）
-_L1_FALLBACK = {
-    '美食': ('urban_operation', 'service'),
-    '酒店': ('urban_operation', 'service'),
-    '购物': ('urban_operation', 'service'),
+# ── 高德 POI 大类 → (domain, element) 单一权威映射 ──
+# 与 pull_amap_poi.AMAP_TYPES 一一对应（typecode 050000~170000，13 大类）；
+# pull_amap_poi 拉取时经本表派生 domain/element 写入 seed，generate_l1_mock 80% 概率继承。
+# 高德官方大类中未在本表/未拉取的类（公共设施/道路附属/社会保障等）→ map_amap_to_4x5 落默认。
+AMAP_L1_TO_4X5 = {
+    # 体验愉悦型（打卡/休闲/美食/购物/住宿）
+    '餐饮服务': ('urban_operation', 'service'),
+    '购物服务': ('urban_operation', 'service'),
     '生活服务': ('urban_operation', 'service'),
-    '丽人': ('urban_operation', 'service'),
-    '旅游景点': ('urban_operation', 'environment'),
     '休闲娱乐': ('urban_operation', 'event'),
-    '运动健身': ('urban_operation', 'service'),
-    '教育培训': ('urban_operation', 'service'),
-    '文化传媒': ('urban_operation', 'culture'),
-    '医疗': ('urban_governance', 'service'),
-    '汽车服务': ('urban_operation', 'service'),
-    '交通设施': ('urban_governance', 'facility'),
-    '道路设施': ('urban_governance', 'facility'),
-    '金融': ('urban_operation', 'service'),
-    '房地产': ('urban_operation', 'service'),
+    '体育休闲服务': ('urban_operation', 'event'),
+    '住宿服务': ('urban_operation', 'service'),
+    '风景名胜': ('urban_operation', 'environment'),
+    # 文化
+    '科教文化服务': ('urban_operation', 'culture'),
+    # 摩擦型（住宅/物业/办事/交通/金融）
+    '商务住宅': ('urban_renewal', 'service'),           # 住宅小区/写字楼
+    '政府机构及社会团体': ('urban_governance', 'service'),
+    '交通设施服务': ('urban_governance', 'facility'),
+    '金融保险服务': ('urban_operation', 'service'),
     '公司企业': ('urban_operation', 'service'),
-    '政府机构': ('urban_governance', 'service'),
 }
 
 
-def map_baidu_to_4x5(level1='', level2='', name=''):
-    """百度分类 -> (domain, element)。先二级精确，再一级兜底，最后全局 operation x service。"""
-    if level2 and level2 in BAIDU_L2_TO_4X5:
-        return BAIDU_L2_TO_4X5[level2]
-    if level1 and level1 in _L1_FALLBACK:
-        return _L1_FALLBACK[level1]
+def map_amap_to_4x5(level1='', name=''):
+    """高德大类 -> (domain, element)。先 AMAP_L1_TO_4X5 精确命中，miss 落全局 operation x service。
+    level1 取高德 POI 大类中文名（pull_amap_poi 存入 seed 的 baidu_level1 字段=高德中文名）。
+    name 预留（未来按 POI 名称关键词回退），当前未用。"""
+    if level1 and level1 in AMAP_L1_TO_4X5:
+        return AMAP_L1_TO_4X5[level1]
     return ('urban_operation', 'service')
 
 
@@ -169,7 +88,7 @@ if __name__ == '__main__':
     assert abs(sum(ELEMENT_WEIGHTS.values()) - 1.0) < 1e-9, 'ELEMENT_WEIGHTS != 1.0'
     print('[OK] DOMAIN_WEIGHTS sum =', sum(DOMAIN_WEIGHTS.values()))
     print('[OK] ELEMENT_WEIGHTS sum =', sum(ELEMENT_WEIGHTS.values()))
-    print('[OK] BAIDU_L2_TO_4X5 entries =', len(BAIDU_L2_TO_4X5))
-    # 抽样
-    for lvl2 in ['中餐厅', '博物馆', '火车站', '公园', '各级政府', '住宅区']:
-        print(f'  {lvl2} -> {map_baidu_to_4x5(level2=lvl2)}')
+    print('[OK] AMAP_L1_TO_4X5 entries =', len(AMAP_L1_TO_4X5))
+    # 抽样（高德大类 + 一条未收录类验证默认兜底）
+    for lvl1 in ['餐饮服务', '风景名胜', '交通设施服务', '政府机构及社会团体', '商务住宅', '未收录类']:
+        print('  {} -> {}'.format(lvl1, map_amap_to_4x5(level1=lvl1)))
