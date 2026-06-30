@@ -1,6 +1,7 @@
 // ═══ main.js — entry: wire map + sidebar + panel + toolbar + popup + import ═══
 import { initMap, setBasemap, setClickHandler, renderLayer, fitBoundsTo, reorderAllZ } from './map.js';
-import { initPanel, activateTab, setOverview, setTable } from './panel.js';
+import { initPanel, activateTab, setOverview, setCellOverview, setTable } from './panel.js';
+import { initTipPopup } from './tip-popup.js';
 import { initToolbar, setActiveBasemap } from './toolbar.js';
 import { initSidebar, openImport, openRightPanel, renderLayerList, showLayerManager, refreshLegend } from './sidebar.js';
 import { initPopup, showPopup, showRangePopup } from './popup.js';
@@ -221,6 +222,7 @@ function main() {
 
   initPanel();
   initPopup(map);
+  initTipPopup(map);    // 网格/柱体/地形环 悬停浮动卡（自适应方位）
   refreshOverview();    // empty-state overview
 
   initSidebar({ onFiles: runImport, onRangeFiles: runRangeImport });
@@ -258,6 +260,18 @@ function main() {
   document.addEventListener('layer:selected', () => {
     openRightPanel();
     activateTab('overview');
+    refreshOverview();
+  });
+
+  // 聚合单元（网格/柱体/地形环）点击 → Overview 切「单元归因」深读；cell:cleared 回 layer Overview。
+  document.addEventListener('cell:selected', (e) => {
+    const { feature, layer } = (e && e.detail) || {};
+    if (!feature || !layer) return;
+    openRightPanel();
+    activateTab('overview');
+    setCellOverview(feature, layer);
+  });
+  document.addEventListener('cell:cleared', () => {
     refreshOverview();
   });
 

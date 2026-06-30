@@ -1,6 +1,7 @@
 // ═══ map.js — MapLibre GL JS instance, multi-layer registry, basemap switch ═══
 import { emotionColors, token, POLARITY_ORDER, getLayers, addLayer, setLayerVisible, CONFIDENCE_RAMP, confidenceColor, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets } from './state.js';
 import { initControls } from './map-controls.js';
+import { bindTipPopup } from './tip-popup.js';
 
 export const BASEMAPS = {
   // CARTO GL 矢量素图（kepler/MVP 同款，无注记，CDN 矢量瓦片，细节丰富+缩放清晰+快）
@@ -182,9 +183,13 @@ export function renderLayer(layer) {
     bindPointInteractions(layer, lid);
   } else if (layer.kind === 'polygon') {
     addPolygonPaint(layer, sid, lid, lineLid, hitLid);
-    bindRangeInteractions(layer, hitLid, lineLid);
-    if (layer.paint && layer.paint._ui && layer.paint._ui.tool === 'terrain' && layer.paint._ui.mode === '3d') {
-      bindTerrainInteractions(layer, extruLid);   // 情绪地形 3D 段落式 hover 提示
+    const _ui = layer.paint && layer.paint._ui;
+    const _tool = _ui && _ui.tool;
+    if (_tool === 'grid' || _tool === 'terrain') {
+      // 工具层（聚合单元）：悬停 → tip-popup 统一浮动卡（自适应方位），不走 range/terrain dark tooltip
+      bindTipPopup(layer, _ui.mode === '3d' ? extruLid : lid);   // 3D=fill-extrusion 柱/环；2D=fill 格
+    } else {
+      bindRangeInteractions(layer, hitLid, lineLid);
     }
   } else if (layer.kind === 'line') {
     addLinePaint(layer, sid, lid, hitLid);
@@ -220,7 +225,7 @@ export function removeLayerFromMap(id) {
   const sid = lyrSrc(id), lid = lyrLid(id), lineLid = lyrLineLid(id), extruLid = lyrExtruLid(id), hitLid = lyrHitLid(id);
   for (const l of [hitLid, extruLid, lineLid, lid]) if (map.getLayer(l)) map.removeLayer(l);
   if (map.getSource(sid)) map.removeSource(sid);
-  _boundPoint.delete(id); _boundRange.delete(id); _boundTerrain.delete(id);
+  _boundPoint.delete(id); _boundRange.delete(id);
   clearSelectionHalo();   // a layer going away → selection halo can't stay (resets _selectedLayerId)
   removeHoverRing();
 }
@@ -548,48 +553,6 @@ function showRangeTooltip(lngLat, name) {
   _tooltip.setHTML(`<div class="rt-name">${name || '范围'}</div>`).setLngLat(lngLat).addTo(map);
 }
 function hideRangeTooltip() { if (_tooltip) _tooltip.remove(); }
-
-const _boundTerrain = new Set();
-/** 情绪地形段落式 hover 提示：mouseenter 3D 柱体 → 多行 Popup（密度×强度/极性/分数/点数）。
- *  综合 = 极性着色 → 显示极性归类；极性模式 = 密度着色 → 显示该极性聚集。 */
-function bindTerrainInteractions(layer, extruLid) {
-  if (_boundTerrain.has(layer.id)) return;
-  _boundTerrain.add(layer.id);
-  const polarity = (layer.paint && layer.paint._ui && layer.paint._ui.polarity) || 'overall';
-  const polCN = { overall: '综合', positive: '积极', negative: '消极', neutral: '中性' }[polarity] || '综合';
-  const valenceOf = (pi) => (pi == null) ? '—' :
-    (pi > 0.3 ? '偏积极' : pi < -0.3 ? '偏消极' : '中性');
-  const fmt = (v, d = 2) => (v == null || v === '') ? '—' : Number(v).toFixed(d);
-
-  map.on('mouseenter', extruLid, (e) => {
-    map.getCanvas().classList.add('is-pointer');
-    const f = e.features && e.features[0];
-    if (!f) return;
-    const pr = f.properties || {};
-    const lvl = fmt(pr._level, 2);
-    const rows = polarity === 'overall'
-      ? [
-          `<div class="tt-title">情绪${pr._level > 0.5 ? '高地' : (pr._level < 0.15 ? '洼地' : '缓坡')}</div>`,
-          `<div class="tt-row"><span>极性</span><b>${valenceOf(pr.polarity_index)}</b></div>`,
-          `<div class="tt-row"><span>密度×强度</span><b>${lvl}</b></div>`,
-          `<div class="tt-row"><span>平均分数</span><b>${fmt(pr.score_mean, 2)}</b></div>`,
-          `<div class="tt-row"><span>情绪点数</span><b>${pr.point_count ?? 0}</b></div>`,
-        ]
-      : [
-          `<div class="tt-title">${polCN}情绪${pr._level > 0.5 ? '聚集峰' : (pr._level < 0.15 ? '稀疏区' : '过渡带')}</div>`,
-          `<div class="tt-row"><span>${polCN}密度×强度</span><b>${lvl}</b></div>`,
-          `<div class="tt-row"><span>强度均值</span><b>${fmt(pr.emotion_intensity_mean, 2)}</b></div>`,
-          `<div class="tt-row"><span>情绪点数</span><b>${pr.point_count ?? 0}</b></div>`,
-        ];
-    if (!_tooltip) _tooltip = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: 'terrain-tooltip', offset: 20 });
-    _tooltip.setHTML(`<div class="terrain-tip">${rows.join('')}</div>`).setLngLat(e.lngLat).addTo(map);
-  });
-  map.on('mousemove', extruLid, (e) => { if (_tooltip && _tooltip.isOpen()) _tooltip.setLngLat(e.lngLat); });
-  map.on('mouseleave', extruLid, () => {
-    map.getCanvas().classList.remove('is-pointer');
-    hideRangeTooltip();
-  });
-}
 
 // ── Point halos ───────────────────────────────────────────────────────────
 function showSelectionHalo(feature) {

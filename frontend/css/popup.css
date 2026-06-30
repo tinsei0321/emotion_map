@@ -190,6 +190,31 @@
   letter-spacing: 0;
 }
 
+/* ── Cell popup（网格/柱体/地形环 点击 → 聚类口径，复用 .popup 基类）── */
+.popup-cell .cp-badge {
+  font-size: var(--geojson-typography-size-xs);       /* 展开：类型词作 tag（非标题） */
+  font-weight: var(--geojson-typography-weight-medium);
+  white-space: nowrap;
+}
+.popup-cell .cp-size {                                 /* 胶囊右侧：边长/等值环级 */
+  font-size: var(--geojson-typography-size-sm);
+  font-weight: var(--geojson-typography-weight-semibold);
+}
+.popup-cell .cp-loc {                                   /* 行 1 地点（主灰填充） */
+  font-size: var(--geojson-typography-size-sm);
+}
+.popup-cell .cp-meta {                                  /* 行 2 元数据（次级 tag） */
+  font-size: var(--geojson-typography-size-xs);
+  font-weight: var(--geojson-typography-weight-medium);
+  -webkit-line-clamp: 1;
+}
+.popup-cell.is-collapsed .cp-badge {                    /* 折叠胶囊：类型词，非大写（中文） */
+  font-size: var(--geojson-typography-size-xs);
+  font-weight: var(--geojson-typography-weight-bold);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 /* ── Range hover tooltip (MapLibre Popup, navy) ── */
 .range-tooltip .maplibregl-popup-content {
   padding: 3px 8px;
@@ -204,21 +229,57 @@
 }
 .range-tooltip .rt-name { white-space: nowrap; }
 
-/* ── 情绪地形段落式 hover 提示（3D 等值面 mouseenter）── */
-.terrain-tooltip .maplibregl-popup-content {
-  padding: 8px 10px;
+/* ── tip-popup：网格/柱体/地形环 悬停浮动卡（统一悬停设计语言，自适应方位）──
+   position:fixed 150×150 白底 4px 圆角高阴影；transition 产"灵动滑动"；pointer-events:none 不挡鼠标。 */
+#tip-popup {
+  position: fixed;
+  z-index: 95;
+  width: 150px;
+  height: 150px;
+  padding: 10px 12px;
+  background: var(--geojson-color-surface-page, #ffffff);
+  border: 1px solid var(--geojson-color-border-default, #e5e7eb);
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+  transition: left 120ms ease-out, top 120ms ease-out;
+}
+#tip-popup[hidden] { display: none; }
+#tip-popup .tp-loc {                                  /* 行 1 地点：灰填充字号、高浓度灰 */
+  font-size: var(--geojson-typography-size-sm);
+  font-weight: var(--geojson-typography-weight-semibold);
+  color: var(--geojson-color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--geojson-color-border-default, #eee);
+}
+#tip-popup .tp-row {                                   /* 行 2/3：label+value 列 */
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+#tip-popup .tp-k {                                     /* 属性层级字号、中浓度灰 */
+  font-size: var(--geojson-typography-size-2xs);
+  color: var(--geojson-color-text-tertiary);
+  font-weight: var(--geojson-typography-weight-medium);
+}
+#tip-popup .tp-v {
   font-size: var(--geojson-typography-size-xs);
-  background: var(--geojson-color-chrome-title-bar-bg, #0c1c2e);
-  color: #fff;
-  border-radius: var(--geojson-radius-sm);
-  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
-  min-width: 168px;
+  color: var(--geojson-color-text-primary);
+  font-weight: var(--geojson-typography-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.terrain-tooltip .maplibregl-popup-tip {
-  border-top-color: var(--geojson-color-chrome-title-bar-bg, #0c1c2e);
-}
-.terrain-tip { display: flex; flex-direction: column; gap: 3px; }
-.terrain-tip .tt-title { font-weight: var(--geojson-typography-weight-bold); font-size: var(--geojson-typography-size-sm); margin-bottom: 2px; }
-.terrain-tip .tt-row { display: flex; justify-content: space-between; gap: 14px; opacity: 0.92; }
-.terrain-tip .tt-row span { opacity: 0.7; }
-.terrain-tip .tt-row b { font-weight: var(--geojson-typography-weight-semibold); }
+#tip-popup .tp-i { font-style: normal; }               /* L2 极性计数着色 */
+#tip-popup .tp-i.pos { color: #2e7d32; }
+#tip-popup .tp-i.neu { color: #1565c0; }
+#tip-popup .tp-i.neg { color: #c62828; }

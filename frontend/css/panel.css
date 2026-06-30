@@ -145,6 +145,24 @@
   border-radius: var(--geojson-radius-sm);
 }
 
+/* Cell Overview（网格/柱体/地形环 点击 → 4×5 归因深读） */
+.ov-cell-attr {
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-primary);
+  line-height: var(--geojson-typography-line-height-normal);
+  padding: 8px 10px;
+  background: var(--geojson-color-gray-100, #f5f5f5);
+  border-left: 3px solid var(--geojson-color-brand-primary, #4285F4);
+  border-radius: var(--geojson-radius-xs);
+}
+.ov-cell-sug {
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-secondary);
+  line-height: var(--geojson-typography-line-height-normal);
+  padding: 0 10px;
+  margin-top: 2px;
+}
+
 /* Empty state */
 .ov-empty {
   flex: 1;

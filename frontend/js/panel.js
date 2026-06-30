@@ -7,7 +7,7 @@ import {
   EMOTION_MACRO_ORDER, EMOTION_MACRO_MAP,
   HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets, rampDisplaySegs,
 } from './state.js';
-import { geomStats } from './popup.js';
+import { geomStats, DOMAIN_LABEL, ELEMENT_LABEL } from './popup.js';
 
 export function initPanel() {
   document.querySelectorAll('.ptab').forEach((tab) => {
@@ -41,6 +41,45 @@ function emptyState() {
     <div class="ov-empty-title">未加载数据</div>
     <div class="ov-empty-hint">点工具栏 <b>Import</b> 导入文件，或拖放文件到地图</div>
   </div>`;
+}
+
+/** Overview 单元模式：点击网格/柱体/地形环 → 显示该单元的 4×5 归因深读（识别问题）。
+ *  覆盖 setOverview 的层聚合视图；cell:cleared 时由 refreshOverview() 回退。 */
+export function setCellOverview(feature, layer) {
+  const pane = document.getElementById('overview-pane');
+  if (!pane || !feature) return;
+  const p = feature.properties || {};
+  const ui = (layer && layer.paint && layer.paint._ui) || {};
+  const isTerrain = ui.tool === 'terrain';
+  const typeWord = isTerrain ? '地形环' : (ui.mode === '3d' ? '柱体' : '网格');
+  const pi = p.polarity_index;
+  const valence = pi == null ? '中性' : (pi > 0.15 ? '偏积极' : pi < -0.15 ? '偏消极' : '中性');
+  const valColor = pi == null ? L2_NEUTRAL_COLOR : (pi > 0.15 ? L2_POSITIVE['Positive'] : pi < -0.15 ? L2_NEGATIVE['Negative'] : L2_NEUTRAL_COLOR);
+  const dom = DOMAIN_LABEL[p.domain_top] || p.domain_top || '—';
+  const elm = ELEMENT_LABEL[p.element_top] || p.element_top || '—';
+  const sizeBit = isTerrain ? '' : `<i>·</i><span>${ui.cellSize ? ui.cellSize + 'm' : ''}</span>`;
+
+  pane.innerHTML =
+    // T1：issue 标题 + domain×element + 单元类型
+    `<div class="ov-tier ov-t1">
+       <div class="ov-t1-name" title="${p.issue_label || ''}">${p.issue_label || '情绪聚集区'}</div>
+       <div class="ov-t1-meta"><span>${dom} × ${elm}</span><i>·</i><span>${typeWord}</span>${sizeBit}</div>
+     </div>`
+    // T2：情绪聚类（极性 badge + 综合指数 + 点数/分数/置信度/强度）
+    + `<div class="ov-tier ov-t2"><div class="ov-tier-head">情绪聚类</div><div class="ov-props">
+        <div class="ov-prop"><span>极性</span><span><span class="ov-swatch" style="background:${valColor}"></span>${valence}</span></div>
+        ${pi != null ? `<div class="ov-prop"><span>综合指数</span><span>${Number(pi).toFixed(2)}</span></div>` : ''}
+        <div class="ov-prop"><span>情绪点数</span><span>${p.point_count ?? 0}</span></div>
+        ${p.score_mean != null ? `<div class="ov-prop"><span>平均分数</span><span>${Number(p.score_mean).toFixed(2)}</span></div>` : ''}
+        ${!isTerrain && p.l1_confidence_mean != null ? `<div class="ov-prop" title="L1 治理阶段 LLM 判断的数据相关性置信度（0~1）"><span>置信度</span><span>${Number(p.l1_confidence_mean).toFixed(2)}</span></div>` : ''}
+        ${isTerrain && p.emotion_intensity_mean != null ? `<div class="ov-prop"><span>强度均值</span><span>${Number(p.emotion_intensity_mean).toFixed(2)}</span></div>` : ''}
+      </div></div>`
+    // T3：问题识别（归因 + 建议）
+    + `<div class="ov-tier ov-t3"><div class="ov-tier-head">问题识别</div>
+        <div class="ov-cell-attr">${p.attribution || ''}</div>
+        <div class="ov-tier-sub">建议</div>
+        <div class="ov-cell-sug">${p.suggestion || ''}</div>
+      </div>`;
 }
 
 /** T1 摘要：目的(加粗标题) / 数据类型 / 数量；文件名另起一行弱化。

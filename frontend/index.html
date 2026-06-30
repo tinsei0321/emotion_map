@@ -212,6 +212,18 @@
           <div class="popup-kv" id="rp-kv"><!-- stats rows --></div>
         </div>
 
+        <!-- Cell popup（网格/柱体/地形环 点击 → 持久胶囊卡：聚类口径） -->
+        <div id="cell-popup" class="popup popup-cell" hidden>
+          <button class="popup-close" id="cell-close" title="关闭">&times;</button>
+          <div class="popup-top">
+            <span class="popup-badge cp-badge" id="cp-badge">网格</span>
+            <span class="popup-score cp-size" id="cp-size">—</span>
+          </div>
+          <div class="popup-text cp-loc" id="cp-loc">—</div>
+          <div class="popup-text cp-meta" id="cp-meta">—</div>
+          <div class="popup-kv" id="cp-kv"><!-- clustering rows --></div>
+        </div>
+
         <!-- Point popup（搜索结果标记 → 第三张胶囊卡，顺序在 Range 之下） -->
         <div id="point-popup" class="popup popup-point" hidden>
           <button class="popup-close" id="point-close" title="关闭">&times;</button>
@@ -749,6 +761,13 @@
       <button class="btn btn-primary" data-close>关闭</button>
     </div>
   </dialog>
+
+  <!-- tip-popup：网格/柱体/地形环 悬停浮动卡（position:fixed，自适应方位，统一悬停设计语言） -->
+  <div id="tip-popup" hidden>
+    <div class="tp-row tp-loc" id="tp-loc"></div>
+    <div class="tp-row tp-metric" id="tp-metric"></div>
+    <div class="tp-row tp-size" id="tp-size"></div>
+  </div>
 
   <!-- Parser libs (UMD globals; used on-demand by import.js). jsdelivr works in CN.
        If a CDN becomes unreachable, vendor these under frontend/vendor/ and point here. -->
