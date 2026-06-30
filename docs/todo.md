@@ -9,10 +9,12 @@
 
 ### ✅ 已完成
 - **poi_4x5_map 重写为高德→4×5 单一权威源（修 `_L1_FALLBACK` 缺口）**：承重 note 10 候选——查证 `BAIDU_L2_TO_4X5`/`_L1_FALLBACK`/`map_baidu_to_4x5` 为百度类名**零调用死码**（真实高德→4×5 只内联在 pull_amap_poi `AMAP_TYPES`，4×5 专属模块反无高德表=真缺口）。改：`poi_4x5_map.py` 删死码 + 新增 `AMAP_L1_TO_4X5`(高德 13 大类，值搬自 AMAP_TYPES) + `map_amap_to_4x5`；`pull_amap_poi.AMAP_TYPES` 改经表派生 domain/element（单源，4-tuple 形状不变）。**不改 generate_l1_mock 数据流**（seed 值不变→Task 2.7 已测 L2 数据零变化）。验证：自检 sum=1.0/entries=13 + import 接线 n=13 + pytest 115 passed（1 预存在失败 `test_capabilities` 非本次引入，stash 证实）。
+- **tip-popup 扩展到 point 悬停**（统一悬停设计语言落地）：point 层原只有 cursor+click 高亮、**零 hover 文本**。改：`tip-popup.js` `bindTipPopup(layer,lid,uiOverride)` 接显式 ui（point 层无 paint._ui）+ `fillContent`/`metricText`/`sizeText` 加 `ui.kind==='point'` 守卫分支——**point 用同步属性**（zone_name/area，不逐点 geocode 避免高频反查）+ L2 极性标签+分数(pos/neg/neu 着色)/L1 热度/L0 原始 + domain×element(4×5 与聚合层一致，缺退 primary_emotion)；`map.js` `bindPointInteractions` 调 `bindTipPopup(layer,lid,{kind:'point',colorMode})`。range 暂留 dark tooltip（能用，不无故改工作代码）。验证：node --check✓ + 无循环导入（popup.js 仅 import state/api）✓；**Playwright 环境阻断**——`:8080` 当前是项目根 directory listing（serve.py 未跑）+ 缓存 chrome 1223 与 playwright 1.61.1 CDP 协议错配致 headless 导航超时（curl 0.2s 拿到 HTML，domcontentloaded 30s 超时=协议挂起非代码问题）→ **待用户 start.bat 起 serve.py 后 F5 肉眼验**：悬停 L2 点位应出 tip-popup「区域/极性+分数/domain×element」。
 
 ### ⬜ 下一步
+- **【待验】** tip-popup point 悬停：start.bat 起 serve.py → F5 → 悬停 L2 点位验 tip-popup 内容（验后 commit）
 - terrain 3D 重做已**搁置**（用户决定：算法+渲染三出路性价比均低，暂放，待用户另议期望效果）
-- 待用户定：tip-popup 扩展 point/range hover / Task 3 热点图收尾
+- 待用户定：range tooltip 是否也迁移 tip-popup / Task 3 热点图收尾
 
 ## 📅 2026-06-29（周一）
 

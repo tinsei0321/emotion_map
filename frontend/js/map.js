@@ -515,6 +515,7 @@ function buildWeightExpression(field, curve) {
 function bindPointInteractions(layer, lid) {
   if (_boundPoint.has(layer.id)) return;
   _boundPoint.add(layer.id);
+  bindTipPopup(layer, lid, { kind: 'point', colorMode: layer.colorMode });   // 悬停→tip-popup（区域 / 极性+分数 / domain×element）
   const mode = layer.colorMode;
   map.on('mouseenter', lid, (e) => {
     map.getCanvas().classList.add('is-pointer');

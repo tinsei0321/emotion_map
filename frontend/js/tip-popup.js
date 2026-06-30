@@ -3,8 +3,10 @@
 // 自适应方位：依指针在视口的位置选左/右/上/下，目的=不遮挡主体。
 // 灵动算法：hysteresis（位移超阈值才换位）+ 象限翻转 + CSS transition 顺滑滑动。
 // 反查防抖：质心 key 缓存 + inflight 去重（同格只发一次 reverseGeocode），切格不重复发。
-// 替换 tool 层（grid/terrain）原生 dark tooltip；point/range 本轮不动，模块可后续扩展。
+// 替换 tool 层（grid/terrain）原生 dark tooltip；point 悬停已接入（区域+极性分数+domain×element）；range 暂留 dark tooltip。
 import { reverseGeocode } from './api.js';
+import { POLARITY_LABEL } from './state.js';
+import { DOMAIN_LABEL, ELEMENT_LABEL } from './popup.js';
 
 let _map = null;
 const _bound = new Set();          // 已绑定的 maplibre layer id（幂等）
@@ -38,10 +40,10 @@ function evtClientPt(e) {
 }
 
 /** 绑定某 maplibre layer id 的 mouseenter/mousemove/mouseleave → tip-popup。 */
-export function bindTipPopup(layer, lid) {
+export function bindTipPopup(layer, lid, uiOverride) {
   if (!_map || !layer || !lid || _bound.has(lid)) return;
   _bound.add(lid);
-  const ui = (layer.paint && layer.paint._ui) || {};
+  const ui = uiOverride || (layer.paint && layer.paint._ui) || {};   // uiOverride：point 层无 paint._ui，显式传 {kind,colorMode}
 
   const onEnter = (e) => {
     _map.getCanvas().classList.add('is-pointer');
@@ -88,6 +90,13 @@ function fillContent(feat, ui) {
   document.getElementById('tp-metric').innerHTML = metricText(p, ui);
   document.getElementById('tp-size').innerHTML = sizeText(p, ui);
 
+  // point：点位用同步属性（点多不宜逐点 geocode）；cell 走异步质心反查
+  if (ui.kind === 'point') {
+    _lastCellKey = null;
+    document.getElementById('tp-loc').textContent = p.zone_name || p.area || p.area_seed || '—';
+    return;
+  }
+
   // 地点：按质心 key 去重——同格只发一次 reverseGeocode（cache/inflight），切格才发新
   const c = centroidOf(feat);
   const key = c ? `${c[0].toFixed(5)},${c[1].toFixed(5)}` : null;
@@ -117,8 +126,24 @@ function fillContent(feat, ui) {
   });
 }
 
+/** point：L2→极性+分数 / L1→热度+强度 / L0→原始（着色同 cell pos/neu/neg） */
+function pointMetric(p, ui) {
+  const mode = ui.colorMode;
+  if (mode === 'needsAnalysis') return `<span class="tp-k">L0</span><b class="tp-v">原始</b>`;
+  if (mode === 'confidence') {
+    const ei = p.emotion_intensity != null ? Number(p.emotion_intensity).toFixed(1) : '—';
+    return `<span class="tp-k">热度</span><b class="tp-v">${ei}</b>`;
+  }
+  const pol = p.polarity || 'Neutral';
+  const label = POLARITY_LABEL[pol] || pol;
+  const cls = { 'Very Positive': 'pos', 'Positive': 'pos', 'Neutral': 'neu', 'Negative': 'neg', 'Very Negative': 'neg' }[pol] || 'neu';
+  const score = p.score != null ? Number(p.score).toFixed(2) : '—';
+  return `<span class="tp-k">${label}</span><b class="tp-v"><i class="tp-i ${cls}">${score}</i></b>`;
+}
+
 /** L1→`热度 · {点数}`；L2→`积极/中性/消极 · {pos}/{neu}/{neg}`（子值 HTML 着色） */
 function metricText(p, ui) {
+  if (ui.kind === 'point') return pointMetric(p, ui);
   const level = ui.level;
   const pc = p.point_count ?? 0;
   if (level === 'L1') {
@@ -131,8 +156,18 @@ function metricText(p, ui) {
     `<b class="tp-v"><i class="tp-i pos">${pos}</i>/<i class="tp-i neu">${neu}</i>/<i class="tp-i neg">${neg}</i></b>`;
 }
 
+/** point：domain×element（4×5 治理要素，与聚合层一致）；缺则退 primary_emotion */
+function pointSize(p) {
+  if (p.domain && p.element) {
+    return `<span class="tp-k">${DOMAIN_LABEL[p.domain] || p.domain}</span><b class="tp-v">${ELEMENT_LABEL[p.element] || p.element}</b>`;
+  }
+  if (p.primary_emotion) return `<span class="tp-k">情绪</span><b class="tp-v">${p.primary_emotion}</b>`;
+  return `<span class="tp-k">点位</span><b class="tp-v">·</b>`;
+}
+
 /** grid→`{cell}×{cell}m`；terrain→`等值环 L{_level}` */
 function sizeText(p, ui) {
+  if (ui.kind === 'point') return pointSize(p);
   if (ui.tool === 'terrain') {
     const lvl = p._level != null ? Number(p._level).toFixed(2) : '—';
     return `<span class="tp-k">等值环</span><b class="tp-v">L${lvl}</b>`;
