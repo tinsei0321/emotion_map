@@ -1,6 +1,6 @@
 // ═══ sidebar.js — left panel: collapse/expand, drag, import trigger, layer manager ═══
 import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, layerDisplayColor, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, addLayer, getChildren, categoryOf, CATEGORY_LABEL, applyGroupOrder, reorderGroupSegment, isCollapsed, toggleCollapsed, isGroupFold, toggleGroupFold, getGroupOrder, CONFIDENCE_RAMP, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HOTNESS_RAMP } from './state.js';
-import { renderLayer, removeLayerFromMap, reorderAllZ, restackZ } from './map.js';
+import { renderLayer, removeLayerFromMap, reorderAllZ, restackZ, toggleGridViewMode, getGridViewMode } from './map.js';
 import { toast } from './toast.js';
 import { openSettingsPopover, closeSettingsPopover, openSettingsLayerId, isOpen } from './settings.js';
 import { openHeatmapDialog } from './heatmap-tool.js';
@@ -194,11 +194,17 @@ function hintChip(l) {
   return `<span class="layer-hint" style="color:${layerDisplayColor(l)}">${text}</span>`;
 }
 
-/** 2D/3D 图层标签（深灰，仅工具层 grid/terrain 有 mode）：视图层实际维度，文件名不再含 2D/3D。 */
+/** grid 层数据签名（同 map.js gridSig）：同 analysis/level/source/cellSize/polarity/polygonLayer 的 2D/3D 互为配对。 */
+function gridSigOf(ui) {
+  return ui ? [ui.analysis, ui.level, ui.source, ui.cellSize, ui.polarity, ui.polygonLayer].join('|') : '';
+}
+
+/** 视角按钮（仅工具层 grid/terrain 有 mode）：可交互，点击切 2D/3D（替左下角工具条按钮）。
+ *  字面=当前视角状态（2D/3D），设计参考要素按钮（.layer-kind）。 */
 function modeChip(l) {
   const ui = l && l.paint && l.paint._ui;
   if (ui && (ui.tool === 'grid' || ui.tool === 'terrain') && (ui.mode === '2d' || ui.mode === '3d')) {
-    return `<span class="layer-tag is-dim">${ui.mode === '3d' ? '3D' : '2D'}</span>`;
+    return `<button class="layer-view" data-viewmode="${l.id}" title="切换 2D/3D 视角">${ui.mode === '3d' ? '3D' : '2D'}</button>`;
   }
   return '';
 }
@@ -228,13 +234,13 @@ function layerRowHtml(l, openId, selId, isChild, cat) {
   const sel = selId === l.id ? ' is-selected' : '';
   const childCls = isChild ? ' is-child' : '';
   return `<div class="layer-row${sel}${childCls}${l.visible ? '' : ' is-off'}" data-id="${l.id}" data-cat="${cat}" draggable="true">
-    ${GRIP}
     <button class="layer-eye" data-eye="${l.id}" title="${l.visible ? '隐藏' : '显示'}">${l.visible ? eyeOpen : eyeOff}</button>
     ${kindEl}
     ${hintChip(l)}
     ${modeChip(l)}
     <span class="layer-name" title="${l.name}">${l.name}</span>
     ${levelTag(l)}
+    ${GRIP}
     <button class="layer-del" data-del="${l.id}" title="删除">&times;</button>
   </div>`;
 }
@@ -251,6 +257,24 @@ export function renderLayerList() {
   const selId = getSelectedLayerId();
   const byId = new Map(all.map((l) => [l.id, l]));
   const top = all.filter((l) => !l.parentId);   // groups + standalone layers
+  // 配对去重：同 gridSig 的 2D/3D 合并显示一条（不论可见性——避免眼睛关闭后 2D/3D 都隐藏却分裂两条）。
+  // 每组选一个代表（可见优先；都隐藏取最后一个=最近切 mode），其余 skipIds 跳过。
+  const _grids = all.filter((l) => l.kind === 'polygon' && l.paint && l.paint._ui && l.paint._ui.tool === 'grid');
+  const skipIds = new Set();
+  const _sigGroups = new Map();
+  for (const l of _grids) {
+    const sig = gridSigOf(l.paint._ui);
+    if (!_sigGroups.has(sig)) _sigGroups.set(sig, []);
+    _sigGroups.get(sig).push(l);
+  }
+  for (const [sig, arr] of _sigGroups) {
+    if (arr.length < 2) continue;                          // 无配对（单层），不去重
+    const lastMode = getGridViewMode(sig);
+    const rep = arr.find((g) => g.visible)                 // 1. 可见优先（当前视角层）
+      || (lastMode ? arr.find((g) => g.paint._ui.mode === lastMode) : null)   // 2. 最近切的 mode（隐藏/切回时）
+      || arr[arr.length - 1];                              // 3. 兜底取最后
+    for (const g of arr) if (g !== rep) skipIds.add(g.id);
+  }
 
   // bucket top-level items by category (preserve _layers order within each bucket)
   const buckets = new Map();
@@ -270,18 +294,18 @@ export function renderLayerList() {
       const groups = items.filter((g) => g.kind === 'group');
       const stray = items.filter((g) => g.kind !== 'group');
       for (const g of groups) {
-        const kids = (g.children || []).map((cid) => byId.get(cid)).filter(Boolean);
+        const kids = (g.children || []).map((cid) => byId.get(cid)).filter((c) => c && !skipIds.has(c.id));
         const gfold = isGroupFold(g.id);   // 真 L2 组单独折叠（双击该组只折该组，不波及其他 L2 组）
         html += groupRowHtml(g, kids, cat, gfold, false);
         if (!gfold) for (const c of kids) html += layerRowHtml(c, openId, selId, true, cat);
       }
       if (stray.length) {
         html += groupRowHtml({ id: null, name: CATEGORY_LABEL[cat] }, stray, cat, collapsed, true);
-        if (!collapsed) for (const l of stray) html += layerRowHtml(l, openId, selId, true, cat);
+        if (!collapsed) for (const l of stray) { if (skipIds.has(l.id)) continue; html += layerRowHtml(l, openId, selId, true, cat); }
       }
     } else {
       html += groupRowHtml({ id: null, name: CATEGORY_LABEL[cat] }, items, cat, collapsed, true);
-      if (!collapsed) for (const l of items) html += layerRowHtml(l, openId, selId, true, cat);
+      if (!collapsed) for (const l of items) { if (skipIds.has(l.id)) continue; html += layerRowHtml(l, openId, selId, true, cat); }
     }
   }
   list.innerHTML = html;
@@ -297,6 +321,12 @@ export function renderLayerList() {
     b.addEventListener('click', (e) => { e.stopPropagation(); toggleCategoryEye(b.dataset.categoryEye); }));
   list.querySelectorAll('[data-collapse-cat]').forEach((b) =>
     b.addEventListener('click', (e) => { e.stopPropagation(); toggleCollapsed(b.dataset.collapseCat); renderLayerList(); }));
+  // 视角按钮（2D/3D 切换，替左下角工具条按钮）：点击 → toggleGridViewMode(该层) → 针对该 sig 切（不论可见）→ layers:changed → 重绘
+  list.querySelectorAll('[data-viewmode]').forEach((b) =>
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleGridViewMode(b.dataset.viewmode);
+    }));
   list.querySelectorAll('[data-feat]').forEach((b) =>
     b.addEventListener('click', (e) => {
       e.stopPropagation();

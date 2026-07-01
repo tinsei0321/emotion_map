@@ -15,11 +15,8 @@
 - 确认终端**当前路径在项目根** `d:/Github/emotion_map`（不是在 `frontend/` 里！）
   - 不确定就先敲：`cd d:/Github/emotion_map` 回车
 
-**第 2 步：启动本地服务器（一键，自起前后端）**
-
-**最省事 — 双击项目根目录 `start.bat`**（= 终端跑 `py frontend/serve.py 8080`）。serve.py 会**自动起后端** uvicorn :8000 + `/api` 反代，**前后端一条命令搞定**，Ctrl+C 同时停止。**不要手动跑 `uvicorn ...`**（PATH 找不到；serve.py 内部用 `py -m uvicorn` 已规避）。
-
-或在终端输入并回车：
+**第 2 步：启动本地服务器（no-cache，推荐）**
+在终端输入并回车：
 ```
 py frontend/serve.py 8080
 ```

@@ -244,7 +244,10 @@ export function showCellPopup(feature, layer) {
   document.getElementById('cp-meta').textContent = _cellMeta(layer, ui, isTerrain);
 
   // kv 聚类口径（tip-popup 同款风格 HTML，label 上 value 下）
-  document.getElementById('cp-kv').innerHTML = _cellKvRows(p, ui, isTerrain).join('');
+  // kv 渲染："属性：值"横排 kv-row（缩高；value 字号=属性 2xs 但粗体，见 .popup-cell .kv-v）
+  document.getElementById('cp-kv').innerHTML = _cellKvRows(p, ui, isTerrain)
+    .map(([k, v, col]) => '<div class="kv-row"><span class="kv-k">' + k + '</span>' +
+      '<span class="kv-v"' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</span></div>').join('');
 
   // 灰填充行 1 地点（异步反查质心，防串台）
   const c = _cellCentroid(feature);
@@ -309,51 +312,38 @@ const _polJudgment = (pol, p) => {
   return '中性';
 };
 
-/** kv 聚类口径（tip-popup 同款风格：label 上 value 下，彩色极性判断词）。
- *  L2 极性网格(积极/中性/消极)→聚焦该极性：程度判断 + 该极性点数 + 聚类程度 + 置信度。
- *  综合/L1/terrain→极性判断(综合 polarity_index) + 积极·中性·消极计数 + 聚类程度 + 置信度/[terrain]强度。
- *  返回 HTML 字符串数组（#cp-kv innerHTML join）。字号由 CSS（cell-popup 现有 sm/xs/2xs）。 */
+/** kv 聚类口径（"属性：值"横排，缩高；返 [label, valueHTML, color?] 元组数组，#cp-kv 渲染 kv-row）。
+ *  L2 极性网格→该极性点数 + 4×5 治理要素/问题识别 + 聚类程度 + 置信度（不显"极性判断"，图层已明示）。
+ *  综合/L1/terrain→极性判断(综合) + 极性分布(三分计数) + 聚类程度 + 置信度/[terrain]强度。 */
 function _cellKvRows(p, ui, isTerrain) {
-  const rows = [];
-  // L2 极性网格：聚焦该极性聚合程度（点数+程度判断），不显综合三分计数
+  const rows = [];   // [label, valueHTML, color?]
   if (!isTerrain && ui.level === 'L2' && POL_NFIELD[ui.polarity]) {
     const pol = ui.polarity;
     const n = p[POL_NFIELD[pol]] || 0;
-    rows.push('<div class="cp-row cp-valence"><i class="cp-vk">' + POL_JLABEL[pol] + '</i>' +
-      '<b class="cp-vv" style="color:' + POL_JCOLOR[pol] + '">' + _polJudgment(pol, p) + '</b></div>');
-    rows.push('<div class="cp-row"><span class="cp-k">' + (POLARITY_LABEL[pol] || '') + '点数</span>' +
-      '<b class="cp-v">' + n + '</b></div>');
-    rows.push('<div class="cp-row"><span class="cp-k">聚类程度</span>' +
-      '<b class="cp-v">' + _bucket(p[POL_HFIELD[pol]]) + '（' + n + '）</b></div>');
-    if (p.l1_confidence_mean != null) {
-      rows.push('<div class="cp-row"><span class="cp-k">置信度</span><b class="cp-v">' + _fmt(p.l1_confidence_mean) + '</b></div>');
-    }
+    rows.push([(POLARITY_LABEL[pol] || '') + '点数', String(n)]);
+    const dom = DOMAIN_LABEL[p.domain_top] || p.domain_top;
+    const elm = ELEMENT_LABEL[p.element_top] || p.element_top;
+    if (dom || elm) rows.push(['治理要素', (dom || '—') + '·' + (elm || '—')]);
+    if (p.issue_label) rows.push(['问题识别', p.issue_label]);
+    rows.push(['聚类程度', _bucket(p[POL_HFIELD[pol]]) + '（' + n + '）']);
+    if (p.l1_confidence_mean != null) rows.push(['置信度', _fmt(p.l1_confidence_mean)]);
     return rows;
   }
   if (p.polarity_index != null) {
-    rows.push('<div class="cp-row cp-valence"><i class="cp-vk">极性判断</i>' +
-      `<b class="cp-vv" style="color:${_valenceColor(p.polarity_index)}">${_valence(p.polarity_index)}</b></div>`);
+    rows.push(['极性判断', _valence(p.polarity_index), _valenceColor(p.polarity_index)]);
   }
   const hasPol = (p.n_positive ?? p.n_neutral ?? p.n_negative ?? p.n_very_positive ?? p.n_very_negative) != null;
   if (hasPol) {
     const pos = (p.n_positive || 0) + (p.n_very_positive || 0);
     const neu = p.n_neutral || 0;
     const neg = (p.n_negative || 0) + (p.n_very_negative || 0);
-    rows.push('<div class="cp-row"><span class="cp-k">积极/中性/消极</span>' +
-      `<b class="cp-v"><i class="cp-i pos">${pos}</i>/<i class="cp-i neu">${neu}</i>/<i class="cp-i neg">${neg}</i></b></div>`);
+    rows.push(['极性分布', `<i class="cp-i pos">${pos}</i>/<i class="cp-i neu">${neu}</i>/<i class="cp-i neg">${neg}</i>`]);
   }
   const heatV = isTerrain ? p._level : p._grid_h;
   const pc = p.point_count ?? 0;
-  rows.push('<div class="cp-row"><span class="cp-k">聚类程度</span>' +
-    `<b class="cp-v">${_bucket(heatV)}（${pc}）</b></div>`);
-  if (!isTerrain && p.l1_confidence_mean != null) {
-    rows.push('<div class="cp-row"><span class="cp-k">置信度</span>' +
-      `<b class="cp-v">${_fmt(p.l1_confidence_mean)}</b></div>`);
-  }
-  if (isTerrain && p.emotion_intensity_mean != null) {
-    rows.push('<div class="cp-row"><span class="cp-k">强度均值</span>' +
-      `<b class="cp-v">${_fmt(p.emotion_intensity_mean)}</b></div>`);
-  }
+  rows.push(['聚类程度', _bucket(heatV) + '（' + pc + '）']);
+  if (!isTerrain && p.l1_confidence_mean != null) rows.push(['置信度', _fmt(p.l1_confidence_mean)]);
+  if (isTerrain && p.emotion_intensity_mean != null) rows.push(['强度均值', _fmt(p.emotion_intensity_mean)]);
   return rows;
 }
 

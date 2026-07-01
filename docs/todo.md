@@ -45,6 +45,16 @@
   - 验证：4 JS node --check + offset 数学；激 F5 重生成 L1/L2 网格肉眼验。
 - **Task 2.14 极性网格去数量为 0 的格（hotfix）**：Task 2.13 后极性网格仍渲染该极性点数=0 的空格。新增 `filterPolarityZero` 在 preprocessGrid 后过滤（L2 积极/消极/中性剔 `_grid_n_*=0` 格，综合/L1 不动），square+zonal 两处调。验证：node --check；F5 重生成 L2 极性网格验无空格。
 - **Task 2.15 区分 pc=1/2 高度（hotfix）**：Task 2.13 offset=2 让 pc=1,2 都=0 无区分；用户要 1→50m, 2→100m。改 `heightOf`：pc≤2 线性 val×0.025，pc≥3 保持 offset+sqrt。全局（含分极性）。node 验证 1→50/2→100/3→237/73→2000。
+- **Task 2.16 极性 popup 4×5 + 视角按钮 + 图层栏紧凑**：
+  - **①极性 popup 聚焦该极性+4×5**：去"极性程度判断"行（图层已明示极性），加"治理要素 domain×element"+"问题识别 issue_label"；tip tp-valence 极性网格显治理要素（替综合判断）。
+  - **②视角按钮**：modeChip span→button.layer-view（字面 2D/3D，参考要素按钮）；点击 setViewMode 切；renderLayerList 配对去重（skipIds，2D/3D 合并一条）；切换后 layers:changed 自动重绘。
+  - **③图层栏紧凑**：GRIP 移至 del 左侧；.layer-row gap spacing-2→1px。
+  - 左下角 2D/3D 按钮暂保留（要删再删）。验证：3 JS node --check；F5 验。
+- **Task 2.17 眼睛关闭后 2D/3D 分裂+视角按钮失效（bug hotfix）**：根因 ①去重只跳过"有可见配对的隐藏层"→ 都隐藏时都不跳过→分裂；②分裂后都隐藏→setViewMode filter(visible) 空→视角按钮失效。修：①去重改按 sig 配对组（不论可见，每组选代表：可见优先‖最近切 mode‖兜底最后）→ 始终一条；②新增 toggleGridViewMode(layerId) 针对该 sig 切（不依赖 visible）→ 修失效；③_lastGridMode 记 sig→最近切 mode，选代表避切回时选错。验证：2 JS node --check；F5 验眼睛关闭后仍一条 + 视角按钮有效。
+- **Task 2.18 视角切 3D 后 2D/3D 同显混乱（bug hotfix）**：用户报"点视角按钮后 2D 3D 同时显示"。根因 ≠ toggleGridViewMode（该函数正确，map 只一个 3D 层 visible）；真因 = `addPolygonPaint` 3D 层 `if(p.fillOn)` 仍加 fill 色块(地面) + fill-extrusion 柱体 → 同一 3D 层渲染"地面色块+柱体"视觉判为"2D 3D 同显"。修：3D 跳过 fill（`if(p.fillOn && !isTool3d)`，柱体自含面不需地面色块）；2D 仍 fill。验证：node --check；F5 验切 3D 后只柱体无色块重叠。
+- **Task 2.19 极性 cell-popup 地点换行下排被遮挡（bug hotfix）**：`.popup-text` 通用 `-webkit-line-clamp:2 + overflow:hidden`，cp-loc 继承 → 地点 `_locBlock`（区·街道\n近邻列表）换行超 2 行被切。修：`.popup-cell .cp-loc` 重置 `display:block + line-clamp:unset + overflow:visible`，地点任意行数不截断。 | `frontend/css/popup.css` |
+- **Task 2.20 popup 间距→2px + 展开态自适应无滚动条**：①全局 popup 属性信息间距压缩 2px（popup-text margin-bottom / popup-kv gap / kv-row gap / cp popup-kv gap）；popup-kv flex:0 0 auto。②.popup 去 min/max-height + overflow-y:auto → 纯自适应高度无滚动条；padding 收紧缩高。验证：CSS；F5 验紧凑无滚动。
+- **Task 2.21 cell-popup 改"属性：值"横排缩高 + 拖拽后切视角跳序修复**：①cell-popup kv 改横排（_cellKvRows 返元组、渲染 kv-row grid auto 1fr），kv-v 字号 2xs+bold（同属性字号、粗体），每行单行缩高；删 cp-row 系列 dead CSS。②拖拽后切视角跳序根因 addLayer push pair 末尾→修：toggleGridViewMode/setViewMode 每次切 reorderLayers(pair, l) 接替原层槽位。验证：2 JS node --check；F5 验。
 
 ### ⬜ 下一步
 - **【待 F5 验】** Task 2.8 七项：start.bat→F5→重生成网格/地形，验①胶囊=柱体色 ②tip「等N处」/cell 近邻列表 ③默认 400m ④tip 换行 ⑤进度环爬升→绿 ⑥调高度后悬停升起正确 ⑦3D 远近高差+明暗

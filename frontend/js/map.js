@@ -1,5 +1,5 @@
 // ═══ map.js — MapLibre GL JS instance, multi-layer registry, basemap switch ═══
-import { emotionColors, token, POLARITY_ORDER, getLayers, addLayer, setLayerVisible, CONFIDENCE_RAMP, confidenceColor, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets } from './state.js';
+import { emotionColors, token, POLARITY_ORDER, getLayers, addLayer, setLayerVisible, reorderLayers, CONFIDENCE_RAMP, confidenceColor, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets } from './state.js';
 import { initControls } from './map-controls.js';
 import { bindTipPopup } from './tip-popup.js';
 
@@ -124,6 +124,11 @@ function gridSig(p) {
   if (!u) return '';
   return [u.analysis, u.level, u.source, u.cellSize, u.polarity, u.polygonLayer].join('|');
 }
+// sig → 最近切换的视角 mode（toggleGridViewMode/setViewMode 记；sidebar 配对去重选代表用，
+// 避免都隐藏/切回原 mode 时"取最后"选错代表、视角按钮显错 mode）
+const _lastGridMode = new Map();
+/** 取该 grid sig 最近切换的视角 mode（无记录返回 undefined）。sidebar renderLayerList 选配对代表用。 */
+export function getGridViewMode(sig) { return _lastGridMode.get(sig); }
 
 /** 2D/3D 视图切换：遍历可见 grid 层——mode===target 保持；否则隐藏并按签名找配对 target 层
  *  （无则用同 fc 生成独立层，渲染管线独立：3D→fill-extrusion 柱 / 2D→fill 色块）。末尾 setView3D 同步 pitch + 底图（Light/Dark）。 */
@@ -145,8 +150,38 @@ export function setViewMode(target) {
     } else if (!pair.visible) {                             // 有配对 → 显示
       setLayerVisible(pair.id, true); renderLayer(pair);
     }
+    reorderLayers(pair.id, l.id);                           // target pair 接替原层 l 顺序位置（保槽位稳定，避免拖拽后切视角跳序）
   }
   setView3D(target === '3d');
+  for (const g of getLayers()) if (g.visible && g.paint && g.paint._ui && g.paint._ui.tool === 'grid') _lastGridMode.set(gridSig(g.paint), g.paint._ui.mode);
+  document.dispatchEvent(new CustomEvent('layers:changed'));
+}
+
+/** 切指定 grid 层的 2D/3D 视角（图层栏视角按钮用；针对该层 sig，不论该层是否可见）。
+ *  隐藏该 sig 当前 mode 层 + 显示/创建 target mode 配对；配对可见性=原层可见性（原隐藏则切 mode 后仍隐藏）。
+ *  与 setViewMode 区别：只切该 sig 不波及其他 grid；不依赖该层 visible（修眼睛关闭后视角按钮失效）。 */
+export function toggleGridViewMode(layerId) {
+  if (!map) return;
+  const l = getLayers().find((g) => g.id === layerId);
+  if (!l || !l.paint || !l.paint._ui || l.paint._ui.tool !== 'grid') return;
+  const target = l.paint._ui.mode === '3d' ? '2d' : '3d';
+  const sig = gridSig(l.paint);
+  const wasVisible = l.visible;
+  const grids = getLayers().filter((g) => g.kind === 'polygon' && g.paint && g.paint._ui && g.paint._ui.tool === 'grid');
+  for (const g of grids) if (gridSig(g.paint) === sig) { setLayerVisible(g.id, false); renderLayer(g); }   // 隐藏+移除该 sig 所有地图层（防 2D/3D 同显混乱）
+  let pair = grids.find((g) => g.paint._ui.mode === target && gridSig(g.paint) === sig);
+  if (!pair) {
+    const tag = target === '3d' ? '3D' : '2D';
+    pair = addLayer({ name: (l.name || '网格').replace(/·\s*[23]D\b/, `· ${tag}`),
+                      kind: 'polygon', fc: l.fc,
+                      paint: { ...l.paint, _ui: { ...l.paint._ui, mode: target } } });
+    pair.srcName = l.srcName;
+  }
+  if (wasVisible) setLayerVisible(pair.id, true);   // 原可见 → 配对可见；原隐藏 → 配对仍隐藏（只切 mode）
+  _lastGridMode.set(sig, target);                   // 记该 sig 当前 mode（sidebar 配对代表选择用）
+  reorderLayers(pair.id, l.id);                     // target pair 接替原层 l 顺序位置（每次切都 reorder 保槽位稳定，避免拖拽后切视角跳序）
+  renderLayer(pair);
+  setView3D(getLayers().some((g) => g.visible && g.paint && g.paint._ui && g.paint._ui.mode === '3d'));
   document.dispatchEvent(new CustomEvent('layers:changed'));
 }
 
@@ -338,7 +373,7 @@ function addPolygonPaint(layer, sid, lid, lineLid, hitLid) {
   const heightField = (p._ui && p._ui.heightField) || '_grid_h';
   const maxHeight = (p._ui && p._ui.maxHeight) || 1000;
 
-  if (p.fillOn) {
+  if (p.fillOn && !isTool3d) {   // 仅 2D 加 fill 色块；3D 跳过（柱体/环 fill-extrusion 自含顶/侧/底面，再加地面色块会"2D 色块+3D 柱体"同显混乱）
     map.addLayer({ id: lid, type: 'fill', source: sid,
       paint: { 'fill-color': fillExpr || color, 'fill-opacity': p.fillOpacity ?? (isTool ? (p._ui?.extrusionOpacity ?? 1) : 0.3) } });   // 工具层不透明度统一读 _ui.extrusionOpacity（2D/3D 同控件，默认 1）
   }

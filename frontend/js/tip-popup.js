@@ -153,14 +153,21 @@ function fillContent(feat, ui) {
   document.getElementById('tp-metric').innerHTML = metricText(p, ui);
   document.getElementById('tp-size').innerHTML = sizeText(p, ui);
 
-  // 极性判断行：cell 有 polarity_index 时显，与 cell-popup「极性指数」同源 valenceOf/valenceColorOf（全站同步）
+  // 极性判断 / 治理要素行：L2 极性网格(积极/消极/中性)→显 4×5 治理要素（图层已明示极性，不需"极性判断"）；
+  // 综合/L1→极性判断(valenceOf 词，valenceColorOf 色，与 cell-popup 同源)
   const valEl = document.getElementById('tp-valence');
   if (valEl) {
-    const show = p.polarity_index != null;
+    let label, body, color, show;
+    if (ui.tool === 'grid' && ui.level === 'L2' && ui.polarity && ui.polarity !== 'overall') {
+      const dom = DOMAIN_LABEL[p.domain_top] || p.domain_top;
+      const elm = ELEMENT_LABEL[p.element_top] || p.element_top;
+      label = '治理要素'; body = (dom || '—') + '·' + (elm || '—'); color = ''; show = !!(dom || elm);
+    } else {
+      show = p.polarity_index != null;
+      label = '极性判断'; body = valenceOf(p.polarity_index); color = valenceColorOf(p.polarity_index);
+    }
     valEl.style.display = show ? '' : 'none';
-    valEl.innerHTML = show
-      ? `<i class="tp-vk">极性判断</i><b class="tp-vv" style="color:${valenceColorOf(p.polarity_index)}">${valenceOf(p.polarity_index)}</b>`
-      : '';
+    valEl.innerHTML = show ? `<i class="tp-vk">${label}</i><b class="tp-vv" style="color:${color}">${body}</b>` : '';
   }
 
   // point：点位用同步属性（点多不宜逐点 geocode）；cell 走异步质心反查

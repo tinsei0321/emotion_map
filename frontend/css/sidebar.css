@@ -534,7 +534,7 @@
 .layer-row {
   display: flex;
   align-items: center;
-  gap: var(--geojson-spacing-2);
+  gap: 1px;
   padding: 2px var(--geojson-spacing-2);
   border-radius: var(--geojson-radius-sm);
   cursor: default;
@@ -660,6 +660,27 @@ button.layer-kind:hover { background: var(--geojson-color-gray-200); color: var(
   border: 1px solid var(--geojson-color-border, #e5e7eb);
   font-weight: var(--geojson-typography-weight-medium, 500);
 }
+/* ── 视角按钮 (.layer-view) — 2D/3D 切换（替左下角工具条按钮 + 旧 .layer-tag.is-dim 静态标签）；
+   设计参考要素按钮 .layer-kind：紧凑、灰底、圆角、hover 加深。字面=当前视角状态 ── */
+.layer-view {
+  flex: 0 0 auto;
+  min-width: 26px;
+  height: 18px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--geojson-typography-size-2xs);
+  font-weight: var(--geojson-typography-weight-bold);
+  font-family: var(--geojson-typography-mono);
+  color: var(--geojson-color-text-secondary);
+  background: var(--geojson-color-gray-100);
+  border: 1px solid var(--geojson-color-border-default);
+  border-radius: var(--geojson-radius-sm);
+  cursor: pointer;
+  transition: background var(--geojson-transition), color var(--geojson-transition);
+}
+.layer-view:hover { background: var(--geojson-color-gray-200); color: var(--geojson-color-text-primary); }
 
 /* ── Hint char (R / L0·L1·L2, colored by display color) ── */
 .layer-hint {
