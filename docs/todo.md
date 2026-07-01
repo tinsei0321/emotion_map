@@ -5,6 +5,32 @@
 
 ---
 
+## 📅 2026-07-01（周三）
+
+### ✅ 已完成
+- **Task 2.8 popup/3D 七项实测反馈修复**（续 feature/kde-l2-3d，Task 2.7 后用户实测 7 个问题）：
+  - **①胶囊颜色对齐柱体**：`popup.js` 胶囊原用 `rampColor(gridStops拍平)`（等距 5 段插值，丢 stop 位置）≠ 柱体 `_gridColorExpr`（按真实 stop 位 interpolate）→ 同值不同色（Task 2.7 漏网第三处旧公式）。`state.js` 新增 `rampColorAt(stops,val)`（按 `[pos,hex]` 真实位置 lerpHex，镜像 MapLibre）+ `export lerpHex`，胶囊改用→= 柱体同色。
+  - **②近邻 POI 列表·去距离**：「·41m」=最近POI→格中心距离（易混淆），后端只返 1 个。改 `place_layer.reverse` 返 `nearest_pois`(top-5)+`poi_count`(500m 计数)；前端 `_locLine`(tip)去距离加「等N处」+ 新 `_locBlock`(cell)详列近邻 top-3（纯文本+CSS pre-line 换行）。
+  - **③默认格 200→400m**：DEFAULTS + HTML 输入框/滑块 3 处同步。
+  - **④tip 地点自动换行**：`tp-loc` 去 nowrap 加 word-break，卡 height:auto 跟随撑高。
+  - **⑤地点加载进度环**：新 `geocode-loader.js`（inflight 计数+模拟进度 10→90→100/绿/停1s/淡出）；`search-bar` 收起态放大镜外圈 2px SVG 环（灰→绿）；popup/tip reverseGeocode 包 trackGeocode。仅地点反查。
+  - **⑥悬停升高基准过时**：`showCellHover` 读闭包 ui.maxHeight（要素按钮调拉伸后过时）→ 改读 live `layer.paint._ui`。
+  - **⑦3D 透视**：默认 FOV 36.87°（长焦压缩、疑似轴测）→ `setVerticalFieldOfView(55)` 加宽 + `setLight`（viewport/[1.5,210,45]/.6）方向光明暗立体；FOV 设一次（camera 抗 setStyle）、light style.load 重敷。
+  - 验证：7 JS node --check + 2 py compile 全过；视觉/异步交用户 start.bat（后端改 place_layer）+F5 肉眼验。
+- **Task 2.9 popup/3D 第二轮实测反馈（6 项）**：
+  - **①3D 上沿白条**：FOV55+pitch60 视口上沿露 #map 白底（暗底图下刺眼）→ `setBasemap` 按 basemap 设容器背景（dark-matter→深灰等），露空区融入。
+  - **②进度环 2→4px**：circle r=14→13（避 stroke4 裁剪）+ RING_C 同步。
+  - **③方向光改东北+降曝**：position 语义=[r,方位°(0=上/北,顺时针),极角°(0=正上,90=水平)]；原[1.5,210,45]光从左下→改[1.5,45,60]东北来光（亮面朝 NE）+ 极角 60 侧光强对比 + intensity .6→.5 降曝。
+  - **④cell-popup 排版对齐 tip-popup**（字号不改）：4 行=极性判断(词+色)/积极·中性·消极(计数)/聚类程度(高/中/低（点数）)/置信度；cp- CSS 镜像 tp-。
+  - **⑤悬停升高 1.5→2×**。
+  - **⑥悬停高亮**：4px 白外轮廓不可行（fill-extrusion 无 outline，sleeve 厚度随缩放失效）；白色顶冠方案评估后弃用 → 仅保留 2× 升起 + 同款 color（不变色）。
+  - 验证：4 JS node --check 全过；光照观感激用户 F5 肉眼验（均可一行调参）。
+
+### ⬜ 下一步
+- **【待 F5 验】** Task 2.8 七项：start.bat→F5→重生成网格/地形，验①胶囊=柱体色 ②tip「等N处」/cell 近邻列表 ③默认 400m ④tip 换行 ⑤进度环爬升→绿 ⑥调高度后悬停升起正确 ⑦3D 远近高差+明暗
+- Overview 深化（项 4）本周偏后
+- terrain 3D 重做已搁置；待用户定：range tooltip 迁移 / Task 3 热点图 / Task 2.2 时间轴
+
 ## 📅 2026-06-30（周二）
 
 ### ✅ 已完成

@@ -52,6 +52,26 @@ export function rampColor(ramp, score) {
   return ramp[ramp.length - 1];
 }
 
+/** Map a 0..1 value to a color by interpolating REAL [pos, hex] stops — mirrors MapLibre
+ *  `['interpolate',['linear'],['get',field],...stops]` exactly (sRGB, same as lerpHex).
+ *  Use this (NOT rampColor) when the stops carry non-even positions (e.g. piToNorm
+ *  breakpoints at 0/.4/.5/.6/1) — rampColor assumes even spacing and would mis-color.
+ *  stops: [[pos, hex], ...] sorted ascending by pos. */
+export function rampColorAt(stops, val) {
+  if (!Array.isArray(stops) || !stops.length) return '#0c1c2e';
+  const v = (typeof val === 'number' && !Number.isNaN(val)) ? Math.max(0, Math.min(1, val)) : 0.5;
+  if (v <= stops[0][0]) return stops[0][1];
+  for (let i = 1; i < stops.length; i++) {
+    if (v <= stops[i][0]) {
+      const p0 = stops[i - 1][0], c0 = stops[i - 1][1];
+      const p1 = stops[i][0], c1 = stops[i][1];
+      const t = (p1 === p0) ? 0 : (v - p0) / (p1 - p0);
+      return lerpHex(c0, c1, t);
+    }
+  }
+  return stops[stops.length - 1][1];
+}
+
 // ── L1 热度值（hotness）= 情绪强度 × 置信度，3 段动态分位色板 ──
 // 置信度 = L1 治理阶段 LLM 判断的数据相关性置信度（l1_confidence，0~1，可收集可复现）。
 // 热度值语义 = 该数据点作为"情绪热点"的可信强度（情绪浓且与城规相关）。
@@ -88,7 +108,7 @@ export function hotnessColor(buckets, hotness) {
 }
 /** Map a 0..1 confidence score to the default orange ramp color. */
 export function confidenceColor(score) { return rampColor(CONFIDENCE_RAMP, score); }
-function lerpHex(h1, h2, t) {
+export function lerpHex(h1, h2, t) {
   const a = hexToRgb(h1), b = hexToRgb(h2);
   const r = Math.round(a[0] + (b[0] - a[0]) * t);
   const g = Math.round(a[1] + (b[1] - a[1]) * t);

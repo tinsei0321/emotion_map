@@ -211,14 +211,57 @@
   font-size: var(--geojson-typography-size-sm);
   font-weight: var(--geojson-typography-weight-semibold);
 }
-.popup-cell .cp-loc {                                   /* 行 1 地点（主灰填充） */
+.popup-cell .cp-loc {                                   /* 行 1 地点（主灰填充，可多行近邻 POI 列表） */
   font-size: var(--geojson-typography-size-sm);
+  word-break: break-all;
+  line-height: 1.35;
+  white-space: pre-line;                                 /* 渲染 _locBlock 的 \n 换行（区·街道 / 近邻...） */
 }
 .popup-cell .cp-meta {                                  /* 行 2 元数据（次级 tag） */
   font-size: var(--geojson-typography-size-xs);
   font-weight: var(--geojson-typography-weight-medium);
   -webkit-line-clamp: 1;
 }
+
+/* cell-popup kv 行改 tip-popup 同款设计语言（label 上 value 下；彩色极性词/计数）。
+   字号保留 cell-popup（sm 值 / 2xs 标签），只对齐颜色、粗细、描述方式。 */
+.popup-cell .popup-kv {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.popup-cell .cp-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.popup-cell .cp-k {                                     /* 属性 label：小灰 medium */
+  font-size: var(--geojson-typography-size-2xs);
+  color: var(--geojson-color-text-tertiary);
+  font-weight: var(--geojson-typography-weight-medium);
+}
+.popup-cell .cp-v {                                     /* 主值：黑粗 tabular */
+  font-size: var(--geojson-typography-size-sm);
+  color: var(--geojson-color-text-primary);
+  font-weight: var(--geojson-typography-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.popup-cell .cp-vv {                                    /* 极性判断词：粗、色由 inline 注入 */
+  font-size: var(--geojson-typography-size-sm);
+  font-weight: var(--geojson-typography-weight-bold);
+  font-style: normal;
+}
+.popup-cell .cp-vk {                                    /* 「极性判断」label */
+  font-size: var(--geojson-typography-size-2xs);
+  color: var(--geojson-color-text-tertiary);
+  font-weight: var(--geojson-typography-weight-medium);
+  font-style: normal;
+}
+.popup-cell .cp-i { font-style: normal; }              /* 积极/中性/消极 计数着色 */
+.popup-cell .cp-i.pos { color: #2e7d32; }
+.popup-cell .cp-i.neu { color: #1565c0; }
+.popup-cell .cp-i.neg { color: #c62828; }
 .popup-cell.is-collapsed .cp-badge {                    /* 折叠胶囊：类型词，非大写（中文） */
   font-size: var(--geojson-typography-size-xs);
   font-weight: var(--geojson-typography-weight-bold);
@@ -265,9 +308,8 @@
   font-size: var(--geojson-typography-size-xs);
   font-weight: var(--geojson-typography-weight-semibold);
   color: var(--geojson-color-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-all;                               /* 长地点自动换行（卡 height:auto 跟随撑高） */
+  line-height: 1.3;
   padding-bottom: 4px;
   border-bottom: 1px solid var(--geojson-color-border-default, #eee);
 }

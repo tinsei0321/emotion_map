@@ -143,6 +143,10 @@ _AMAP_POI_PATH = os.path.join(_ROOT, 'SCRIPT', 'poi_data', 'amap_poi_wgs84.json'
 _MAIN_BOUNDARY = os.path.join(_ROOT, 'DATA', 'boundaries', '西陵伍家核心主城.geojson')
 _WATER_POLY_PATH = os.path.join(_ROOT, 'DATA', 'boundaries', '现状水系.geojson')
 
+# 近邻计数半径：reverse 返回 500m 半径内 POI 计数（popup「等N处」语境 = 步行近邻范围）。
+# 与格 cellSize 无关（reverse 不接收 cellSize）——作稳定可读的「近邻」语义。
+NEAR_RADIUS_M = 500.0
+
 
 def _to_4546(geom):
     """shapely 几何 WGS84 -> EPSG:4546（米制）。"""
@@ -432,19 +436,30 @@ class PlaceLayer:
 
     @track("MOD_PLACE.F_005")
     def reverse(self, lng, lat):
-        """坐标 -> {zone_id, zone_name, nearest_poi:{name,dist_m}}（最近 POI + 所在区）。"""
+        """坐标 -> {zone_id, zone_name, nearest_poi, nearest_pois, poi_count}。
+
+        - nearest_pois：最近 top-5 POI（按距离升序，{name,dist_m,category}）。dist_m 仅排序/兼容用，前端不展示。
+        - poi_count：NEAR_RADIUS_M(500m) 半径内 POI 总数（popup「等N处」近邻语境）。
+        - nearest_poi：nearest_pois[0]，兼容旧字段。
+        """
         zid = self.classify_point(lng, lat)
-        best = None
-        best_d = float('inf')
+        scored = []
+        near_cnt = 0
         for p in self.all_pois:
             d = _haversine_m(lng, lat, p['lng'], p['lat'])
-            if d < best_d:
-                best_d = d
-                best = p
+            if d <= NEAR_RADIUS_M:
+                near_cnt += 1
+            scored.append((d, p))
+        scored.sort(key=lambda t: t[0])
+        near = [{'name': p['name'], 'dist_m': round(d),
+                 'category': p.get('baidu_level1', '') or p.get('baidu_level2', '')}
+                for d, p in scored[:5] if p.get('name')]
         return {
             'zone_id': zid,
             'zone_name': self.zone_by_id.get(zid, {}).get('name_zh', '通用市区'),
-            'nearest_poi': {'name': best['name'], 'dist_m': round(best_d)} if best else None,
+            'nearest_poi': near[0] if near else None,
+            'nearest_pois': near,
+            'poi_count': near_cnt,
         }
 
 

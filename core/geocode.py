@@ -257,10 +257,10 @@ def geocode_address(address):
 
 @track("MOD_GEOCODE.F_003")
 def reverse_geocode(lng, lat):
-    """坐标(WGS84) → {zone_id, zone_name, nearest_poi, formatted_address,
-    district, township, street, source}。
+    """坐标(WGS84) → {zone_id, zone_name, nearest_poi, nearest_pois, poi_count,
+    formatted_address, district, township, street, source}。
 
-    本地 place_layer.reverse 主（瞬时，给 zone + 最近 POI）；amap 可用时 always
+    本地 place_layer.reverse 主（瞬时，给 zone + 最近 POI + 近邻 top-5/计数）；amap 可用时 always
     regeo(extensions=all) 补街道地址 + 行政区划（区/街道/路）。红线 #2：送高德的
     坐标先 WGS84→GCJ-02。_amap_fetch 的 lru_cache 摊销重复坐标延迟。
     """

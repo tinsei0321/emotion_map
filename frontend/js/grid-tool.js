@@ -16,7 +16,7 @@ import { toast } from './toast.js';
 import { openParamPanel, closeParamPanel } from './param-panel.js';
 
 const dialogEl = () => document.getElementById('grid-dialog');
-const DEFAULTS = { analysis: 'square', level: 'L1', cellSize: 200, polarity: 'overall', mode: '2d', maxHeight: 1000, extrusionOpacity: 1 };
+const DEFAULTS = { analysis: 'square', level: 'L1', cellSize: 400, polarity: 'overall', mode: '2d', maxHeight: 1000, extrusionOpacity: 1 };
 
 // ── ① 分析类型（组卡片：聚合域 = 标准/指定；热点 Gi*；Moran's I） ──
 const DEFAULT_ANALYSIS = 'square';

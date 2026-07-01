@@ -7,6 +7,7 @@
 import { reverseGeocode } from './api.js';
 import { POLARITY_LABEL, valenceOf, valenceColorOf } from './state.js';
 import { DOMAIN_LABEL, ELEMENT_LABEL, pickCellFeature, _locLine } from './popup.js';
+import { trackGeocode } from './geocode-loader.js';
 
 let _map = null;
 const _bound = new Set();          // 已绑定的 maplibre layer id（幂等）
@@ -95,11 +96,14 @@ function showCellHover(feature, ui, layer) {
   // 保留 properties → 3D overlay 用与格层同款 color 表达式（修变色 bug：rampColor 均匀间距 ≠ MapLibre interpolate 实际 stop 位）
   _map.addSource(SRC, { type: 'geojson', data: { type: 'Feature', geometry: feature.geometry, properties: feature.properties || {} } });
   if (ui && ui.mode === '3d') {
-    // 3D：整柱 overlay（同色不透明=柱本身），高度 cellH → 1.5×cellH native transition 升高动画
-    const hf = ui.heightField || '_level';
+    // 3D：整柱 overlay（同色不透明=柱本身），高度 cellH → 2×cellH native transition 升起动画。
+    // 高度基准读 LIVE layer.paint._ui（要素按钮调拉伸后 grid-tool 整体替换 editLyr.paint._ui，
+    // bindTipPopup 闭包 ui 已过时→曾用旧 maxHeight 致升高比例错。color 同理读 layer.paint live）。
+    const liveUi = (layer && layer.paint && layer.paint._ui) || ui || {};
+    const hf = liveUi.heightField || '_level';
     const base = Number((feature.properties || {})[hf]) || 0;
-    const cellH = base * (ui.maxHeight || 1000);
-    // 与格层 _gridColorExpr 同款 color 表达式（保证升起柱色 = 原柱色，不变色）
+    const cellH = base * (liveUi.maxHeight || 1000);
+    // 与格层 _gridColorExpr 同款 color 表达式（保证升起柱色 = 原柱色，不变色——承重 note 6）
     const stops = (layer && layer.paint && Array.isArray(layer.paint.gridStops)) ? layer.paint.gridStops : [];
     const field = (layer && layer.paint && layer.paint.gridField) || '_grid_norm';
     const stopArgs = [];
@@ -113,8 +117,8 @@ function showCellHover(feature, ui, layer) {
         'fill-extrusion-height-transition': { duration: 350, delay: 0 },
         'fill-extrusion-opacity': 1,
       } });
-    // 下一帧触发升高 → transition 动画到 1.5×（整柱拔高突出显示）
-    const target = Math.max(cellH * 1.5, cellH + 60);
+    // 下一帧触发升高 → transition 动画到 2×（整柱拔高突出显示）
+    const target = Math.max(cellH * 2, cellH + 60);
     requestAnimationFrame(() => { if (_map.getLayer(LAYER)) _map.setPaintProperty(LAYER, 'fill-extrusion-height', target); });
   } else {
     _map.addLayer({ id: LAYER, type: 'line', source: SRC,
@@ -179,7 +183,7 @@ function fillContent(feat, ui) {
   locEl.textContent = '定位中…';
   if (_inflight.has(key)) return;          // 同格已在请求
   _inflight.add(key);
-  reverseGeocode(c[0], c[1]).then((res) => {
+  trackGeocode(reverseGeocode(c[0], c[1])).then((res) => {
     _inflight.delete(key);
     const r = res || {};
     _geoCache.set(key, r);

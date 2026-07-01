@@ -3,8 +3,9 @@
 //   • #feature-popup — clicked emotion point (L2 polarity badge | L1 置信度 badge)
 //   • #range-popup   — clicked range polygon (navy accent = outline color)
 // Each independently expand/collapse (capsule) + close. Click empty map → collapse both.
-import { POLARITY_LABEL, rampColor, CONFIDENCE_RAMP, getLayer, computeHotness, hotnessColor, isDrawActive, deriveTimeTag, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, valenceOf, valenceColorOf } from './state.js';
+import { POLARITY_LABEL, rampColor, rampColorAt, CONFIDENCE_RAMP, getLayer, computeHotness, hotnessColor, isDrawActive, deriveTimeTag, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, valenceOf, valenceColorOf } from './state.js';
 import { reverseGeocode } from './api.js';
+import { trackGeocode } from './geocode-loader.js';
 
 const emoEl = () => document.getElementById('feature-popup');
 const rngEl = () => document.getElementById('range-popup');
@@ -224,11 +225,11 @@ export function showCellPopup(feature, layer) {
   const is3d = ui.mode === '3d';
   const typeWord = isTerrain ? '地形环' : (is3d ? '柱体' : '网格');
 
-  // 胶囊：单元色（gridStops 拍平 → rampColor 取该单元值）+ 类型词
+  // 胶囊：单元色 = 与柱体同款 interpolate（按真实 stop 位置插值，镜像 MapLibre _gridColorExpr）。
+  // 勿用 rampColor——它假设等距 stops，对 piToNorm 非等距断点(0/.4/.5/.6/1)会取错色（胶囊≠柱体）。
   const stops = (layer.paint && Array.isArray(layer.paint.gridStops)) ? layer.paint.gridStops : [];
-  const flat = stops.map((s) => (Array.isArray(s) ? s[1] : s));
   const fieldVal = layer.paint && layer.paint.gridField ? Number(p[layer.paint.gridField]) : NaN;
-  const color = flat.length ? rampColor(flat, fieldVal) : '#0c1c2e';
+  const color = stops.length ? rampColorAt(stops, fieldVal) : '#0c1c2e';
   const badge = document.getElementById('cp-badge');
   badge.textContent = typeWord;
   badge.style.background = color;
@@ -242,11 +243,8 @@ export function showCellPopup(feature, layer) {
   // 灰填充行 2 元数据（同步）：level·T·口径·分析类型
   document.getElementById('cp-meta').textContent = _cellMeta(layer, ui, isTerrain);
 
-  // kv 聚类口径（禁面积/周长）
-  const rows = _cellKvRows(p, ui, isTerrain);
-  document.getElementById('cp-kv').innerHTML = rows.map(([k, v, tip, col]) =>
-    `<div class="kv-row"><span class="kv-k"${tip ? ` title="${tip}"` : ''}>${k}</span>` +
-    `<span class="kv-v"${col ? ` style="color:${col}"` : ''}>${v}</span></div>`).join('');
+  // kv 聚类口径（tip-popup 同款风格 HTML，label 上 value 下）
+  document.getElementById('cp-kv').innerHTML = _cellKvRows(p, ui, isTerrain).join('');
 
   // 灰填充行 1 地点（异步反查质心，防串台）
   const c = _cellCentroid(feature);
@@ -254,9 +252,9 @@ export function showCellPopup(feature, layer) {
   locEl.textContent = '定位中…';
   if (c) {
     const myToken = ++_cellGeoToken;
-    reverseGeocode(c[0], c[1]).then((res) => {
+    trackGeocode(reverseGeocode(c[0], c[1])).then((res) => {
       if (myToken !== _cellGeoToken || popup.hidden) return;
-      locEl.textContent = _locLine(res);
+      locEl.textContent = _locBlock(res);          // cell-popup 详列近邻 top-3（_locLine 留给 tip 精简行）
     }).catch(() => { if (myToken === _cellGeoToken) locEl.textContent = '—'; });
   } else locEl.textContent = '—';
 
@@ -293,32 +291,41 @@ function _cellMeta(layer, ui, isTerrain) {
   return [level, tTag, mood, analysis].filter(Boolean).join('·');
 }
 
-/** kv 聚类口径：点数 / 聚类程度 / [L2] 极性指数 / [L1] 置信度 / [terrain] 强度。
- *  平均分数（score_mean）已移除：与极性指数信息重复 + 数值区间与置信度重叠易混淆。
- *  每行第 3 位 = ⓘ 的 title 解释（kv-k 渲染时附 ⓘ 图标）。 */
+/** kv 聚类口径（tip-popup 同款风格：label 上 value 下，彩色极性判断词 + 积极/中性/消极计数）。
+ *  行：[有 polarity] 极性判断(valenceOf 词，valenceColorOf 色) / 积极·中性·消极(计数子着色) /
+ *       聚类程度(高/中/低（点数）) / 置信度 / [terrain] 强度均值。
+ *  返回 HTML 字符串数组（#cp-kv innerHTML join）。字号由 CSS（cell-popup 现有 sm/xs/2xs）。 */
 function _cellKvRows(p, ui, isTerrain) {
   const rows = [];
-  rows.push(['情绪点数', p.point_count ?? 0]);
-  const heatV = isTerrain ? p._level : p._grid_h;
-  rows.push(['聚类程度', `${_fmt(heatV)}（${_bucket(heatV)}）`,
-    '该网格情绪点的密度×强度归一化（0~1）。高=情绪密集区，低=稀疏区。']);
-  if (ui.level === 'L2' && p.polarity_index != null) {
-    rows.push(['极性指数', `${_fmt(p.polarity_index)}（${_valence(p.polarity_index)}）`,
-      '单元内积极点数−消极点数（加权），范围 -2~2。>0 偏积极、<0 偏消极，绝对值越大情绪越一致。',
-      _valenceColor(p.polarity_index)]);
+  if (p.polarity_index != null) {
+    rows.push('<div class="cp-row cp-valence"><i class="cp-vk">极性判断</i>' +
+      `<b class="cp-vv" style="color:${_valenceColor(p.polarity_index)}">${_valence(p.polarity_index)}</b></div>`);
   }
+  const hasPol = (p.n_positive ?? p.n_neutral ?? p.n_negative ?? p.n_very_positive ?? p.n_very_negative) != null;
+  if (hasPol) {
+    const pos = (p.n_positive || 0) + (p.n_very_positive || 0);
+    const neu = p.n_neutral || 0;
+    const neg = (p.n_negative || 0) + (p.n_very_negative || 0);
+    rows.push('<div class="cp-row"><span class="cp-k">积极/中性/消极</span>' +
+      `<b class="cp-v"><i class="cp-i pos">${pos}</i>/<i class="cp-i neu">${neu}</i>/<i class="cp-i neg">${neg}</i></b></div>`);
+  }
+  const heatV = isTerrain ? p._level : p._grid_h;
+  const pc = p.point_count ?? 0;
+  rows.push('<div class="cp-row"><span class="cp-k">聚类程度</span>' +
+    `<b class="cp-v">${_bucket(heatV)}（${pc}）</b></div>`);
   if (!isTerrain && p.l1_confidence_mean != null) {
-    rows.push(['置信度', _fmt(p.l1_confidence_mean),
-      '数据相关性置信度均值（0~1）。越高=该区数据越可靠（密度×LLM 相关性）。']);
+    rows.push('<div class="cp-row"><span class="cp-k">置信度</span>' +
+      `<b class="cp-v">${_fmt(p.l1_confidence_mean)}</b></div>`);
   }
   if (isTerrain && p.emotion_intensity_mean != null) {
-    rows.push(['强度均值', _fmt(p.emotion_intensity_mean),
-      '单元内情绪强度均值（1~5）。']);
+    rows.push('<div class="cp-row"><span class="cp-k">强度均值</span>' +
+      `<b class="cp-v">${_fmt(p.emotion_intensity_mean)}</b></div>`);
   }
   return rows;
 }
 
-/** 地点行：区·街道·最近POI·距离（高德 regeo 行政区划 + 本地最近 POI）。
+/** 地点行（tip-popup 悬停·精简单行）：区·街道·最近POI + 「等N处」（多 POI 时）。
+ *  去距离展示（旧·{dist_m}m 易混淆「距什么」）；poi_count 来自后端 500m 近邻计数。
  *  「通用市区」=未落已知片区的 fallback，无信息量 → 不显。 */
 export function _locLine(r) {
   if (!r) return '—';
@@ -326,9 +333,11 @@ export function _locLine(r) {
   if (r.district) parts.push(r.district);
   if (r.township) parts.push(r.township);
   else if (r.street) parts.push(r.street);
-  const poi = r.nearest_poi;
-  if (poi && poi.name) {
-    parts.push(poi.dist_m != null ? `${poi.name}·${poi.dist_m}m` : poi.name);
+  const pois = Array.isArray(r.nearest_pois) ? r.nearest_pois : (r.nearest_poi ? [r.nearest_poi] : []);
+  if (pois.length && pois[0] && pois[0].name) {
+    parts.push(pois[0].name);
+    const rest = Math.max(0, (r.poi_count || pois.length) - 1);   // 等N处 = 除所示 1 个外
+    if (rest > 0) parts.push('等' + rest + '处');
   }
   if (!parts.length) {
     if (r.formatted_address) {
@@ -339,6 +348,32 @@ export function _locLine(r) {
     }
   }
   return parts.length ? parts.join('·') : '—';
+}
+
+/** 地点块（cell-popup 点击·详列，纯文本 + '\\n'，CSS white-space:pre-line 渲染换行）：
+ *  第 1 行 区·街道；第 2 行「近邻 店A / 店B / 店C」（top-3，去距离）+ 「 等{N}处」（poi_count>3 时）。
+ *  纯文本非 innerHTML → 无注入风险。 */
+export function _locBlock(r) {
+  if (!r) return '—';
+  const area = [r.district, r.township || r.street].filter(Boolean).join('·');
+  const pois = Array.isArray(r.nearest_pois) ? r.nearest_pois : (r.nearest_poi ? [r.nearest_poi] : []);
+  const named = pois.filter((p) => p && p.name).slice(0, 3);
+  if (!area && !named.length) {
+    if (r.formatted_address) {
+      const tail = String(r.formatted_address).replace(/^.*?(市|区)/, '');
+      return tail || r.formatted_address || '—';
+    }
+    return (r.zone_name && r.zone_name !== '通用市区') ? r.zone_name : '—';
+  }
+  const lines = [];
+  if (area) lines.push(area);
+  if (named.length) {
+    const total = r.poi_count || named.length;
+    const extra = total - named.length;                            // 等{N}处 = 除所示外
+    const tail = extra > 0 ? ' 等' + extra + '处' : '';
+    lines.push('近邻 ' + named.map((p) => p.name).join(' / ') + tail);
+  }
+  return lines.join('\n');
 }
 
 /** 质心：grid 用预计算 _center；terrain/无 _center 用 bbox 中心（近似够反查） */

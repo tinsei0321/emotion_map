@@ -39,6 +39,7 @@
   height: 100%;
   display: grid;
   place-items: center;
+  position: relative;                                /* 供 .sb-ring 绝对定位 */
   border: none;
   background: transparent;
   color: var(--geojson-color-text-secondary, #737373);
@@ -47,6 +48,26 @@
 }
 .sb-toggle:hover { color: var(--geojson-color-text, #1a1a1a); }
 .sb-toggle svg { display: block; }
+
+/* 地点反查进度环（geocode-loader 驱动；套在收起态放大镜外圈，2px）。
+   默认隐；仅 .search-bar.is-collapsed + is-geo-loading/done 显。完成变绿、fade 淡出。 */
+.sb-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transform: rotate(-90deg);                         /* 进度从 12 点起 */
+  display: none;
+}
+.sb-ring circle {
+  stroke: var(--geojson-color-text-tertiary, #999);  /* 加载：灰 */
+  transition: stroke-dashoffset 0.2s linear, stroke 0.2s ease, opacity 0.3s ease;
+}
+.search-bar.is-collapsed.is-geo-loading .sb-ring,
+.search-bar.is-collapsed.is-geo-done .sb-ring { display: block; }
+.search-bar.is-geo-done .sb-ring circle { stroke: #3DBA3D; }   /* 完成：绿（TERRAIN_GREEN[1]） */
+.search-bar.is-geo-fade .sb-ring { opacity: 0; }               /* 完成后淡出 */
 
 /* 输入框：展开时填满 toggle 与 kbd 之间；折叠时被 overflow 裁掉 */
 .sb-input {

@@ -60,6 +60,16 @@ export function initMap(container = 'map') {
     center: YICHANG.center, zoom: YICHANG.zoom, attributionControl: true,
   });
   initControls(map, { getBBox: mergedBBox });
+  // 3D 透视修正：默认垂直 FOV≈36.87°（长焦压缩→3D 柱体远近高差不明显、疑似轴测）。
+  // 加宽到 55° → 近高远矮的透视关系接近肉眼；方向光给柱体各面明暗差（立体感）。
+  // FOV 属 camera（setStyle 不重置，设一次即可）；light 属 style（setBasemap 切底图会重置）→ style.load 重敷。
+  // 光源 position=[r, 方位角°, 极角°]（anchor=viewport：0°=上/北、顺时针；极角 0°=正上、90°=水平）：
+  // 方位 45°=东北来光（亮面朝东北、暗面朝西南，默认北朝上视角下四梯度清晰）+ 极角 60°（偏低侧光，强化暗/次暗/亮面划分）。
+  if (map.setVerticalFieldOfView) map.setVerticalFieldOfView(55);
+  const _applyLight = () => map.setLight && map.setLight({
+    anchor: 'viewport', position: [1.5, 45, 60], color: '#ffffff', intensity: 0.5,
+  });
+  map.on('style.load', _applyLight);
   const canvas = map.getCanvas();
   map.on('dragstart', () => canvas.classList.add('is-grabbing'));
   map.on('dragend', () => canvas.classList.remove('is-grabbing'));
@@ -71,6 +81,13 @@ export function getMap() { return map; }
 export function setBasemap(key) {
   if (!map || !BASEMAPS[key]) return;
   _currentBasemap = key;
+  // #map 容器背景随底图：3D 高 pitch/宽 FOV 下视口上沿（地平线以上）会露出容器背景，
+  // 暗底图配白底=刺眼白条；此处令背景与底图同色，露空区自然融入（如天空/地平线）。
+  const BG = {
+    'dark-matter': '#0e0e0e', 'positron': '#ffffff', 'voyager': '#f4f1ea',
+    'tianditu-img': '#a6c8e0', 'tianditu-vec': '#e8eef4',
+  };
+  map.getContainer().style.background = BG[key] || '#ffffff';
   map.setStyle(BASEMAPS[key], {
     transformStyle: (prev, next) => {
       const carrySources = {};

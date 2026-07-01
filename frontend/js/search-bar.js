@@ -12,6 +12,7 @@
 import { getMap } from './map.js';
 import { searchPlaces } from './api.js';
 import { showPointPopup, expandPointPopup, collapsePointPopup } from './popup.js';
+import { subscribe as subscribeGeoLoader } from './geocode-loader.js';
 
 const HISTORY_KEY = 'emotion-map:search-history';
 const HISTORY_MAX = 8;
@@ -20,6 +21,7 @@ const DEBOUNCE_MS = 300;
 let _el = null;          // .search-bar 容器
 let _input = null;
 let _results = null;     // .sb-results <ul>
+let _ringCircle = null;  // .sb-ring circle（地点反查进度环）
 let _state = 'collapsed';
 let _hits = [];          // 当前联想结果
 let _hitsFor = '';       // 产生当前 _hits 的 query（Enter 陈旧守卫）
@@ -44,6 +46,23 @@ function _MagnifierSvg() {
   l.setAttribute('x1', '21'); l.setAttribute('y1', '21'); l.setAttribute('x2', '16.65');
   l.setAttribute('y2', '16.65');
   s.appendChild(c); s.appendChild(l);
+  return s;
+}
+
+function _ProgressRingSvg() {
+  // 32×32 进度环（外圈，r=14 stroke=2）：stroke-dashoffset 驱动填充百分比。
+  // transform:rotate(-90deg) 由 CSS 给，使进度从 12 点起。色由 CSS（灰→完成绿）。
+  const ns = 'http://www.w3.org/2000/svg';
+  const s = document.createElementNS(ns, 'svg');
+  s.setAttribute('class', 'sb-ring');
+  s.setAttribute('viewBox', '0 0 32 32');
+  s.setAttribute('fill', 'none');
+  s.setAttribute('aria-hidden', 'true');
+  const c = document.createElementNS(ns, 'circle');
+  c.setAttribute('cx', '16'); c.setAttribute('cy', '16'); c.setAttribute('r', '13');
+  c.setAttribute('stroke-width', '4');
+  c.setAttribute('stroke-linecap', 'round');
+  s.appendChild(c);
   return s;
 }
 
@@ -329,6 +348,8 @@ export function initSearchBar() {
   toggle.title = '搜索地点 (Ctrl+K)';
   toggle.setAttribute('aria-label', '搜索地点');
   toggle.appendChild(_MagnifierSvg());
+  toggle.appendChild(_ProgressRingSvg());
+  _ringCircle = toggle.querySelector('.sb-ring circle');
 
   _input = document.createElement('input');
   _input.type = 'text';
@@ -399,4 +420,18 @@ export function initSearchBar() {
   // Point 卡外部信号（popup.js 派发）：collapse→缩标记；hide→移除标记
   document.addEventListener('point:collapse', () => _setMarkerActive(false));
   document.addEventListener('point:hide', () => _clearMarker());
+
+  // 地点反查进度环（geocode-loader 驱动）：仅收起态显环；灰爬升→完成绿→停1s→淡出。
+  // dashoffset = C·(1 - p/100)；色与显隐由 CSS 类 is-geo-loading/is-geo-done/is-geo-fade 控制。
+  const RING_C = 2 * Math.PI * 13;
+  subscribeGeoLoader(({ progress, phase }) => {
+    if (!_el) return;
+    _el.classList.toggle('is-geo-loading', phase === 'loading');
+    _el.classList.toggle('is-geo-done', phase === 'done');
+    _el.classList.toggle('is-geo-fade', phase === 'fade');
+    if (_ringCircle) {
+      _ringCircle.style.strokeDasharray = String(RING_C);
+      _ringCircle.style.strokeDashoffset = String(RING_C * (1 - Math.max(0, Math.min(100, progress)) / 100));
+    }
+  });
 }
