@@ -25,6 +25,26 @@
   - **⑤悬停升高 1.5→2×**。
   - **⑥悬停高亮**：4px 白外轮廓不可行（fill-extrusion 无 outline，sleeve 厚度随缩放失效）；白色顶冠方案评估后弃用 → 仅保留 2× 升起 + 同款 color（不变色）。
   - 验证：4 JS node --check 全过；光照观感激用户 F5 肉眼验（均可一行调参）。
+- **Task 2.10 3D 柱体高度算法 + 默认透明度**：
+  - **①高度扁平根因 = `_grid_h` 分位归一化**（preprocessGrid 按 q25/q50/q75/qMax 排名均布 0~1，抹平点数差）→ 改**点数幂次保持量级** `_grid_h=clamp((pc/p95)^1.3,0,1)`（p95 抗离群、γ=1.3 放大高值；counts 由 pc×conf 改纯 pc）。L1 颜色同读 _grid_h（矮柱暗红高柱金黄）。用户选 γ=1.3。
+  - **②默认透明度 100%→90%**：DEFAULTS + HTML 滑块 + terrain(0.92→0.9) + hover overlay(写死1→读 liveUi.extrusionOpacity) 四处同步。
+  - 数据侧不动（KDE 采样本就长尾，算法是扁平唯一根因）。
+  - 验证：4 JS node --check 全过；激 F5 **重生成网格**肉眼验高度差/透明度。
+- **Task 2.11 L1 柱高 clamp 修复 + grid-warm 色板重调**：
+  - **①34/44 等高根因=clamp**：诊断 L1 数据(400m 格) point_count 分布 p95=17-19/max=42-80；Task 2.10 `_grid_h=min(1,(pc/p95)^1.3)` 中 p95 ref 太小→≥19 点全 clamp 到满高。改 ref `p95→max`（零 clamp），γ 保 1.3（用户选）。L1 T1(max=73)：34→372m/44→522m（差 150m，不再等高）。
+  - **②grid-warm 色板重调**（红黄各半+自然过渡）：改 6 段 `#8B0000/#C92A20/#EE5A28/#FF9900/#FFC63C/#FFDF00`（暗红低端不变、#FF9900 中、#FFDF00 顶）；normStops 后 FF9900@0.500 红黄正中分界（node 验证）。
+  - 验证：2 JS node --check + 色板归一化数学；激 F5 重生成 L1 网格肉眼验。
+- **Task 2.12 柱高 γ→sqrt + 默认柱高 2000m + L1 色板红段收窄**：
+  - **①趴地根因=γ>1 不适合长尾**（max=73/q50=3，γ=1.3→1→4m 趴地）。改 γ 1.3→**0.5（sqrt）**（ref=max 不变）：1→234/3→405/6→573/12→811/34→1365/44→1553/73→2000m。
+  - **②默认柱高 1000→2000m、上限 3000→4000m**（DEFAULTS+HTML 滑块；terrain 不动）。
+  - **③L1 大面积红根因=红段占 0-0.40 而数据主体 _grid_h 落此区**：改 grid-warm stops 红段收窄到 renorm 0-0.15、过渡段 0.15-0.50 对齐数据主体；renorm `[0/0.15/0.30/0.50/0.78/1.0]=[#8B0000/#C92A20/#F06428/#FF9900/#FFC63C/#FFDF00]`。q50-q90 落红橙→橙黄中间过渡段，不再大面积红（node 验证）。
+  - 验证：2 JS node --check + 色板数学 + γ 柱高；激 F5 重生成 L1 网格肉眼验。
+- **Task 2.13 高度 offset 阈值 + L2 极性网格语义重做**：
+  - **①高度 offset**：用户要"1-2 点趴地、3 点起跳~234m、3-5 点 200-500m"。幂次做不到（需阈值跳）。改 `_grid_h=((pc-2)/(max-2))^0.5`：pc≤2→0 趴地、3→237m、73→满高（node 验证）。
+  - **②L2 极性网格语义重做**（原用占比错，应=该极性聚合程度=数量+程度）：(a)新增 `_grid_n_pos/neg/neu` 点数 + `_grid_h_pos/neg/neu` 高度；(b)gridStyle field 占比→分极性高度（颜色+高度同源）；(c)heightField 按 polarity 选；(d)green/red/blue-3 ramp 3→6 段；(e)popup _cellKvRows L2 极性分支（程度判断+该极性点数+聚类+置信度）；(f)tip metricText L2 极性分支（显该极性点数）。例：11/4/6 格积极网格→高度/颜色∝11 + "积极点数 11/非常或偏积极"。
+  - 验证：4 JS node --check + offset 数学；激 F5 重生成 L1/L2 网格肉眼验。
+- **Task 2.14 极性网格去数量为 0 的格（hotfix）**：Task 2.13 后极性网格仍渲染该极性点数=0 的空格。新增 `filterPolarityZero` 在 preprocessGrid 后过滤（L2 积极/消极/中性剔 `_grid_n_*=0` 格，综合/L1 不动），square+zonal 两处调。验证：node --check；F5 重生成 L2 极性网格验无空格。
+- **Task 2.15 区分 pc=1/2 高度（hotfix）**：Task 2.13 offset=2 让 pc=1,2 都=0 无区分；用户要 1→50m, 2→100m。改 `heightOf`：pc≤2 线性 val×0.025，pc≥3 保持 offset+sqrt。全局（含分极性）。node 验证 1→50/2→100/3→237/73→2000。
 
 ### ⬜ 下一步
 - **【待 F5 验】** Task 2.8 七项：start.bat→F5→重生成网格/地形，验①胶囊=柱体色 ②tip「等N处」/cell 近邻列表 ③默认 400m ④tip 换行 ⑤进度环爬升→绿 ⑥调高度后悬停升起正确 ⑦3D 远近高差+明暗

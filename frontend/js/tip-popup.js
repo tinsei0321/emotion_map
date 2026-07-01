@@ -115,7 +115,7 @@ function showCellHover(feature, ui, layer) {
         'fill-extrusion-base': 0,
         'fill-extrusion-height': cellH,
         'fill-extrusion-height-transition': { duration: 350, delay: 0 },
-        'fill-extrusion-opacity': 1,
+        'fill-extrusion-opacity': liveUi.extrusionOpacity ?? 0.9,   // 与格层同透明度（默认 0.9），避免悬停柱突兀
       } });
     // 下一帧触发升高 → transition 动画到 2×（整柱拔高突出显示）
     const target = Math.max(cellH * 2, cellH + 60);
@@ -215,7 +215,7 @@ function pointMetric(p, ui) {
   return `<span class="tp-k">${label}</span><b class="tp-v"><i class="tp-i ${cls}">${score}</i></b>`;
 }
 
-/** L1→`热度 · {点数}`；L2→`积极/中性/消极 · {pos}/{neu}/{neg}`（子值 HTML 着色） */
+/** L1→`热度 · {点数}`；L2 综合→`积极/中性/消极 · {pos}/{neu}/{neg}`；L2 极性网格→`{极性}点数 · {n}`（该极性聚合程度） */
 function metricText(p, ui) {
   if (ui.kind === 'point') return pointMetric(p, ui);
   const level = ui.level;
@@ -223,6 +223,12 @@ function metricText(p, ui) {
   if (level === 'L1') {
     return `<span class="tp-k">热度</span><b class="tp-v">${pc}</b>`;
   }
+  // L2 极性网格（积极/中性/消极）：显该极性点数（=该极性聚合程度，与柱体高度/颜色同源）
+  if (ui.polarity && ui.polarity !== 'overall') {
+    const nField = { positive: '_grid_n_pos', negative: '_grid_n_neg', neutral: '_grid_n_neu' }[ui.polarity];
+    return `<span class="tp-k">${POLARITY_LABEL[ui.polarity] || ''}点数</span><b class="tp-v">${p[nField] || 0}</b>`;
+  }
+  // L2 综合：三分计数（子值着色）
   const pos = (p.n_positive || 0) + (p.n_very_positive || 0);
   const neu = p.n_neutral || 0;
   const neg = (p.n_negative || 0) + (p.n_very_negative || 0);

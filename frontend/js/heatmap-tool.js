@@ -702,8 +702,8 @@ async function generateTerrain(dlg, btn) {
     // 高度恒为 _level（密度×强度，地形高程）；颜色字段分综合/极性。
     const paint = { fillOn: true,
       _ui: { tool: 'terrain', analysisKey: 'terrain', dim: '3d', level: 'L2', polarity,
-             terrainPol, mode: '3d', heightField: '_level', maxHeight: 1000, extrusionOpacity: 0.92, rampKey },
-      gridField: colorField, gridStops: stops, fillOpacity: 0.92 };
+             terrainPol, mode: '3d', heightField: '_level', maxHeight: 1000, extrusionOpacity: 0.9, rampKey },
+      gridField: colorField, gridStops: stops, fillOpacity: 0.9 };
 
     // 编辑态（H 按钮重开 terrain 层）：原地更新；否则新建 + 独占显示
     const editLayerId = dlg.dataset.editLayerId;

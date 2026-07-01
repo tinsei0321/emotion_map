@@ -334,7 +334,7 @@ function addPolygonPaint(layer, sid, lid, lineLid, hitLid) {
   const isTool3d = isTool && p._ui.mode === '3d';
   const color = p.color || NAVY;
   const fillExpr = isTool ? _gridColorExpr(p) : null;
-  // 高度字段：grid=_grid_h（preprocessGrid 分位），terrain=_level（后端 KDE 等值面级）。maxHeight 绝对米（默认 1000）。
+  // 高度字段：grid=_grid_h（preprocessGrid 点数幂次 γ=1.3），terrain=_level（后端 KDE 等值面级）。maxHeight 绝对米（默认 1000）。
   const heightField = (p._ui && p._ui.heightField) || '_grid_h';
   const maxHeight = (p._ui && p._ui.maxHeight) || 1000;
 

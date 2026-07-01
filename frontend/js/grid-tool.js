@@ -16,7 +16,7 @@ import { toast } from './toast.js';
 import { openParamPanel, closeParamPanel } from './param-panel.js';
 
 const dialogEl = () => document.getElementById('grid-dialog');
-const DEFAULTS = { analysis: 'square', level: 'L1', cellSize: 400, polarity: 'overall', mode: '2d', maxHeight: 1000, extrusionOpacity: 1 };
+const DEFAULTS = { analysis: 'square', level: 'L1', cellSize: 400, polarity: 'overall', mode: '2d', maxHeight: 2000, extrusionOpacity: 0.9 };
 
 // ── ① 分析类型（组卡片：聚合域 = 标准/指定；热点 Gi*；Moran's I） ──
 const DEFAULT_ANALYSIS = 'square';
@@ -37,7 +37,9 @@ const ANALYSIS_GROUPS = [
 // L2 综合：polarity_index(-2~2)归一化 terrain-9 发散；积极/消极/中性：占比 green-3/red-3/blue-3（高值深色）。
 const L1_RAMP = 'grid-warm';
 const POLARITY_RAMP = { overall: 'terrain-9', positive: 'green-3', negative: 'red-3', neutral: 'blue-3' };
-const POLARITY_FIELD = { overall: '_grid_norm', positive: '_grid_pos', negative: '_grid_neg', neutral: '_grid_neu' };
+const POLARITY_FIELD = { overall: '_grid_norm', positive: '_grid_h_pos', negative: '_grid_h_neg', neutral: '_grid_h_neu' };
+// L2 极性网格高度字段（=颜色 field，同源=该极性点数；颜色+高度都表达"该极性聚合程度"）。L1/L2综合用 _grid_h 总热度。
+const POLARITY_HF = { positive: '_grid_h_pos', negative: '_grid_h_neg', neutral: '_grid_h_neu' };
 const POLARITY_LABEL = { overall: '综合', positive: '积极', negative: '消极', neutral: '中性' };
 const POLARITY_NAME = {
   overall: '综合（红蓝绿发散）', positive: '积极（绿）', negative: '消极（红）', neutral: '中性（蓝）',
@@ -54,7 +56,7 @@ function normStops(rampKey) {
 /** 层级 + 极性 → {field, stops, rampKey, name}。 */
 function gridStyle(level, polarity) {
   if (level !== 'L2') {
-    return { field: '_grid_h', stops: normStops(L1_RAMP), rampKey: L1_RAMP, name: '舆论热度·点数分位（暗红→金黄）' };
+    return { field: '_grid_h', stops: normStops(L1_RAMP), rampKey: L1_RAMP, name: '舆论热度·点数（暗红→金黄）' };
   }
   const rampKey = POLARITY_RAMP[polarity] || 'terrain-9';
   return { field: POLARITY_FIELD[polarity] || '_grid_norm', stops: normStops(rampKey), rampKey, name: POLARITY_NAME[polarity] };
@@ -125,43 +127,60 @@ function piToNorm(pi) {
 
 function preprocessGrid(fc) {
   let hasPolarity = false;
-  const counts = [];
+  const counts = [], countsPos = [], countsNeg = [], countsNeu = [];
   for (const f of fc.features) {
     if (!f.properties) f.properties = {};
-    const pc = f.properties.point_count || 0;
-    if (f.properties.polarity_index != null) {
+    const p = f.properties;
+    const pc = p.point_count || 0;
+    if (p.polarity_index != null) {
       hasPolarity = true;
     } else {
-      f.properties._grid_norm = f.properties.score_mean != null ? f.properties.score_mean : 0.5;   // 非极性即时 fallback
+      p._grid_norm = p.score_mean != null ? p.score_mean : 0.5;   // 非极性即时 fallback
     }
-    const np = (f.properties.n_positive || 0) + (f.properties.n_very_positive || 0);
-    const nn = (f.properties.n_negative || 0) + (f.properties.n_very_negative || 0);
-    const ne = f.properties.n_neutral || 0;
-    f.properties._grid_pos = pc > 0 ? np / pc : 0;
-    f.properties._grid_neg = pc > 0 ? nn / pc : 0;
-    f.properties._grid_neu = pc > 0 ? ne / pc : 0;
-    if (f.geometry && f.geometry.type === 'Polygon') f.properties._center = _centroid(f.geometry);   // 3D ColumnLayer 用
-    counts.push(pc * (f.properties.l1_confidence_mean != null ? f.properties.l1_confidence_mean : 1));   // 热度=密度×置信度（L1）；无置信度退密度
+    const np = (p.n_positive || 0) + (p.n_very_positive || 0);
+    const nn = (p.n_negative || 0) + (p.n_very_negative || 0);
+    const ne = p.n_neutral || 0;
+    p._grid_pos = pc > 0 ? np / pc : 0;   // 极性占比（综合判断/兼容）
+    p._grid_neg = pc > 0 ? nn / pc : 0;
+    p._grid_neu = pc > 0 ? ne / pc : 0;
+    p._grid_n_pos = np;                    // 分极性点数（L2 极性网格 颜色+高度源 = 该极性聚合程度）
+    p._grid_n_neg = nn;
+    p._grid_n_neu = ne;
+    if (f.geometry && f.geometry.type === 'Polygon') p._center = _centroid(f.geometry);
+    counts.push(pc); countsPos.push(np); countsNeg.push(nn); countsNeu.push(ne);
   }
-  // _grid_h：舆论热度（L1=密度×置信度；L2/无置信度=密度）分位归一化 0~1（颜色+高度正相关：金黄高热/暗红低热）
-  counts.sort((a, b) => a - b);
-  const qAt = (qq) => counts[Math.min(counts.length - 1, Math.floor(qq * (counts.length - 1)))] || 0;
-  const q25 = qAt(0.25), q50 = qAt(0.5), q75 = qAt(0.75), qMax = counts[counts.length - 1] || 1;
+  // 高度：低位线性 + offset+sqrt。pc=1→50m, pc=2→100m(接近趴地但区分，替旧"1-2 都=0")；pc≥3 offset+sqrt 起跳(~237m)→满高。
+  // 长尾数据(1→73)：低位小且区分(1≠2) + 3 起跳阈值 + sqrt 高位鹤立(用户要的梯度)。
+  // _grid_h=总热度(L1+L2综合)；_grid_h_pos/neg/neu=分极性点数高度(L2 极性网格，各自 max)。
+  // L1 T1(max=73, 2000m)：1→50/2→100/3→237/6→475/12→751/34→1343/44→1538/73→2000。
+  const HEIGHT_OFFSET = 2, HEIGHT_GAMMA = 0.5, LOW_UNIT = 0.025;
+  const heightOf = (val, maxVal) => {
+    if (val <= 0) return 0;
+    if (val <= HEIGHT_OFFSET) return val * LOW_UNIT;            // pc=1→0.025(50m), pc=2→0.05(100m)：低位区分
+    const denom = Math.max(maxVal - HEIGHT_OFFSET, 1);
+    return Math.min(1, Math.pow((val - HEIGHT_OFFSET) / denom, HEIGHT_GAMMA));  // pc≥3：offset+sqrt 起跳→满高
+  };
+  const maxOf = (arr) => { arr.sort((a, b) => a - b); return arr.length ? arr[arr.length - 1] : 0; };
+  const maxAll = maxOf(counts), maxPos = maxOf(countsPos), maxNeg = maxOf(countsNeg), maxNeu = maxOf(countsNeu);
   for (const f of fc.features) {
-    const pc = f.properties.point_count || 0;
-    const conf = f.properties.l1_confidence_mean;
-    const hv = pc * (conf != null ? conf : 1);   // 热度=密度×置信度（L1）
-    let h;
-    if (hv <= q25) h = q25 > 0 ? (hv / q25) * 0.25 : 0;
-    else if (hv <= q50) h = 0.25 + ((hv - q25) / ((q50 - q25) || 1)) * 0.25;
-    else if (hv <= q75) h = 0.5 + ((hv - q50) / ((q75 - q50) || 1)) * 0.25;
-    else h = 0.75 + ((hv - q75) / ((qMax - q75) || 1)) * 0.25;
-    f.properties._grid_h = h;
-    // _grid_norm 固定分段 piToNorm（对齐 valenceOf 阈值；替 p95 拉伸——后者数据相关致色带无法对齐判断）
-    const pi = f.properties.polarity_index;
-    if (pi != null) f.properties._grid_norm = piToNorm(pi);
+    const p = f.properties;
+    p._grid_h = heightOf(p.point_count || 0, maxAll);
+    p._grid_h_pos = heightOf(p._grid_n_pos || 0, maxPos);
+    p._grid_h_neg = heightOf(p._grid_n_neg || 0, maxNeg);
+    p._grid_h_neu = heightOf(p._grid_n_neu || 0, maxNeu);
+    const pi = p.polarity_index;
+    if (pi != null) p._grid_norm = piToNorm(pi);
   }
   return hasPolarity;
+}
+
+/** L2 极性网格：过滤掉该极性点数为 0 的格（不渲染无该极性的空格）。综合/L1 不动。
+ *  在 preprocessGrid 后调用——_grid_h_pos 等已基于全量 max 算好（0 点格不影响 max），过滤仅剔除渲染。 */
+function filterPolarityZero(fc, level, polarity) {
+  if (level !== 'L2' || !polarity || polarity === 'overall') return;
+  const nField = { positive: '_grid_n_pos', negative: '_grid_n_neg', neutral: '_grid_n_neu' }[polarity];
+  if (!nField || !fc.features) return;
+  fc.features = fc.features.filter((f) => (f.properties && (f.properties[nField] || 0)) > 0);
 }
 
 // ── 渲染 ──
@@ -350,10 +369,11 @@ async function generateGrid() {
       fc = JSON.parse(JSON.stringify(res.geojson));
       if (!fc.features || !fc.features.length) { toast.error('聚合结果为空'); return; }
       if (fc.features.length > 2000) toast.info(`已生成 ${fc.features.length} 个格，数量较多；3D 渲染可能偏慢`, 4500);
-      preprocessGrid(fc);   // _grid_*（极性归一化，MapLibre 着色）+ _grid_h（高度分位，3D 拉伸）
+      preprocessGrid(fc);   // _grid_*（极性归一化，MapLibre 着色）+ _grid_h/_grid_h_pos…（offset+sqrt 高度）
+      filterPolarityZero(fc, p.level, p.polarity);   // L2 极性网格去该极性点数=0 的格（不渲染空格）
       const style = gridStyle(p.level, p.polarity);
       paint = { fillOn: true, _ui: { tool: 'grid', analysis: 'square', level: p.level, source: p.source,
-                                     cellSize: p.cellSize, polarity: p.polarity, mode: p.mode, heightField: '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity },
+                                     cellSize: p.cellSize, polarity: p.polarity, mode: p.mode, heightField: (p.level === 'L2' && POLARITY_HF[p.polarity]) ? POLARITY_HF[p.polarity] : '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity },
                 gridField: style.field, gridStops: style.stops, fillOpacity: p.extrusionOpacity };   // 显式 fillOpacity 绕开 addLayer 默认 0.3（修 2D 首次透明）
     } else {
       // zonal：后端精确面域聚合 + MapLibre 渲染（deck.gl GridLayer 是方格聚合，不适合固定面域 zonal）
@@ -367,11 +387,12 @@ async function generateGrid() {
       if (!fc.features || !fc.features.length) { toast.error('聚合结果为空'); return; }
       if (fc.features.length > 2000) toast.info(`已生成 ${fc.features.length} 个面域，数量较多`, 4500);
       const hasPolarity = preprocessGrid(fc);
+      filterPolarityZero(fc, p.level, p.polarity);   // L2 极性网格去该极性点数=0 的格（不渲染空格）
       if (!hasPolarity && p.level === 'L2') toast.info('该点层缺少极性字段，按分数比例近似降级', 4500);
       const style = gridStyle(p.level, p.polarity);
       paint = { fillOn: true, _ui: { tool: 'grid', analysis: 'zonal', level: p.level, source: p.source,
                                      polygonLayer: p.polygonLayer, nameCol: p.nameCol,
-                                     polarity: p.polarity, mode: p.mode, heightField: '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity },
+                                     polarity: p.polarity, mode: p.mode, heightField: (p.level === 'L2' && POLARITY_HF[p.polarity]) ? POLARITY_HF[p.polarity] : '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity },
                 gridField: style.field, gridStops: style.stops, fillOpacity: p.extrusionOpacity };   // 显式 fillOpacity 绕开 addLayer 默认 0.3（修 2D 首次透明）
     }
 

@@ -424,17 +424,19 @@ export const HEATMAP_RAMPS = {
     const ends = [...[...TERRAIN_RED].reverse(), TERRAIN_BLUE[0], TERRAIN_BLUE[1], TERRAIN_BLUE[0], ...TERRAIN_GREEN];
     return { name: '红蓝绿地形（平滑·两端深色）', stops: gradientStopsHsl(ends, 9) };
   })(),
-  // 网格暖色谱（暗红→金黄 sequential；纯红橙黄系，无紫红/玫红；暗红 #8B0000 浅底图可见）
+  // 网格暖色谱（暗红→金黄 sequential）。红段收窄(renorm 0-0.15)→数据主体(q25-q90, γ=0.5 下 _grid_h 0.12-0.40)
+  // 落在红橙/橙黄过渡段(0.15-0.50)，避免"大面积纯红"，呈现自然红→黄中间层次。
+  // 低端暗红 #8B0000 不变、中间橙黄 #FF9900、高端亮金 #FFDF00。
   'grid-warm': {
     name: '网格暖色（暗红→金黄）',
     stops: [
       [0.00, 'rgba(139,0,0,0)'],
-      [0.15, '#8B0000'],   // 暗红（深红，浅底图可见，非紫红）
-      [0.30, '#C0392B'],   // 红
-      [0.45, '#E74C3C'],   // 浅红
-      [0.62, '#ED5C28'],   // 橙红
-      [0.80, '#F08828'],   // 橙
-      [1.00, '#F4C518'],   // 金黄
+      [0.10, '#8B0000'],   // 暗红（renorm 0.00；最低，pc<<1）
+      [0.235, '#C92A20'],  // 鲜红（renorm 0.15；pc≈1=q25，红段收窄到此）
+      [0.370, '#F06428'],  // 红橙（renorm 0.30；pc≈3-4=q50，更亮暖替原 EE5A28）
+      [0.550, '#FF9900'],  // 橙黄（renorm 0.50；pc≈12=q90，中间）
+      [0.802, '#FFC63C'],  // 橙金（renorm 0.78；pc≈30+）
+      [1.00, '#FFDF00'],   // 亮金黄（renorm 1.00；pc=max，高端）
     ],
   },
   // 7 色情绪分类色板 = 7 大类胶囊色同源同序（喜怒哀乐愁急盼）。作 chip/legend 调色源。
@@ -468,9 +470,9 @@ export const HEATMAP_RAMPS = {
     return { name: '红蓝绿地形（消极/中性/积极·对齐 piToNorm 固定分段）', stops };
   })(),
   // 网格+L2 积极/消极/中性 各 3 段（端点色与 terrain-9 同源）
-  'green-3':  { name: '积极 3 段（绿）', stops: gradientStops(TERRAIN_GREEN, 3) },   // 浅绿淡→深绿深（拉大对比）
-  'red-3':    { name: '消极 3 段（红）', stops: gradientStops(TERRAIN_RED, 3) },     // 浅橙淡→深红深
-  'blue-3':   { name: '中性 3 段（蓝）', stops: gradientStops(TERRAIN_BLUE, 3) },    // 浅蓝淡→深蓝深（原三段亮度过近，重点拉大）
+  'green-3':  { name: '积极（绿）', stops: gradientStops(TERRAIN_GREEN, 6) },   // 6 段（中间过渡多，张力）；极性网格颜色=_grid_h_pos 该极性点数
+  'red-3':    { name: '消极（红）', stops: gradientStops(TERRAIN_RED, 6) },     // 6 段；颜色=_grid_h_neg
+  'blue-3':   { name: '中性（蓝）', stops: gradientStops(TERRAIN_BLUE, 6) },    // 6 段；颜色=_grid_h_neu
 };
 
 // sorted keys for UI iteration（类型细分渐变 + 总体情况红蓝绿地形 + 网格 3 段）

@@ -3,7 +3,7 @@
 //   • #feature-popup — clicked emotion point (L2 polarity badge | L1 置信度 badge)
 //   • #range-popup   — clicked range polygon (navy accent = outline color)
 // Each independently expand/collapse (capsule) + close. Click empty map → collapse both.
-import { POLARITY_LABEL, rampColor, rampColorAt, CONFIDENCE_RAMP, getLayer, computeHotness, hotnessColor, isDrawActive, deriveTimeTag, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, valenceOf, valenceColorOf } from './state.js';
+import { POLARITY_LABEL, rampColor, rampColorAt, CONFIDENCE_RAMP, getLayer, computeHotness, hotnessColor, isDrawActive, deriveTimeTag, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, valenceOf, valenceColorOf, TERRAIN_GREEN, TERRAIN_RED, TERRAIN_BLUE } from './state.js';
 import { reverseGeocode } from './api.js';
 import { trackGeocode } from './geocode-loader.js';
 
@@ -291,12 +291,45 @@ function _cellMeta(layer, ui, isTerrain) {
   return [level, tTag, mood, analysis].filter(Boolean).join('·');
 }
 
-/** kv 聚类口径（tip-popup 同款风格：label 上 value 下，彩色极性判断词 + 积极/中性/消极计数）。
- *  行：[有 polarity] 极性判断(valenceOf 词，valenceColorOf 色) / 积极·中性·消极(计数子着色) /
- *       聚类程度(高/中/低（点数）) / 置信度 / [terrain] 强度均值。
+// L2 极性网格（积极/中性/消极）专用：颜色/字段/程度判断映射（聚焦"该极性聚合程度"=点数+程度）
+const POL_JCOLOR = { positive: TERRAIN_GREEN[1], negative: TERRAIN_RED[1], neutral: TERRAIN_BLUE[1] };
+const POL_JLABEL = { positive: '积极程度', negative: '消极程度', neutral: '中性程度' };
+const POL_NFIELD = { positive: '_grid_n_pos', negative: '_grid_n_neg', neutral: '_grid_n_neu' };
+const POL_HFIELD = { positive: '_grid_h_pos', negative: '_grid_h_neg', neutral: '_grid_h_neu' };
+/** 分极性程度判断：积极点中"非常积极"占比≥0.5→非常积极，否则偏积极；消极同理；中性→中性。 */
+const _polJudgment = (pol, p) => {
+  if (pol === 'positive') {
+    const n = (p.n_positive || 0) + (p.n_very_positive || 0);
+    return (n > 0 && (p.n_very_positive || 0) / n >= 0.5) ? '非常积极' : '偏积极';
+  }
+  if (pol === 'negative') {
+    const n = (p.n_negative || 0) + (p.n_very_negative || 0);
+    return (n > 0 && (p.n_very_negative || 0) / n >= 0.5) ? '非常消极' : '偏消极';
+  }
+  return '中性';
+};
+
+/** kv 聚类口径（tip-popup 同款风格：label 上 value 下，彩色极性判断词）。
+ *  L2 极性网格(积极/中性/消极)→聚焦该极性：程度判断 + 该极性点数 + 聚类程度 + 置信度。
+ *  综合/L1/terrain→极性判断(综合 polarity_index) + 积极·中性·消极计数 + 聚类程度 + 置信度/[terrain]强度。
  *  返回 HTML 字符串数组（#cp-kv innerHTML join）。字号由 CSS（cell-popup 现有 sm/xs/2xs）。 */
 function _cellKvRows(p, ui, isTerrain) {
   const rows = [];
+  // L2 极性网格：聚焦该极性聚合程度（点数+程度判断），不显综合三分计数
+  if (!isTerrain && ui.level === 'L2' && POL_NFIELD[ui.polarity]) {
+    const pol = ui.polarity;
+    const n = p[POL_NFIELD[pol]] || 0;
+    rows.push('<div class="cp-row cp-valence"><i class="cp-vk">' + POL_JLABEL[pol] + '</i>' +
+      '<b class="cp-vv" style="color:' + POL_JCOLOR[pol] + '">' + _polJudgment(pol, p) + '</b></div>');
+    rows.push('<div class="cp-row"><span class="cp-k">' + (POLARITY_LABEL[pol] || '') + '点数</span>' +
+      '<b class="cp-v">' + n + '</b></div>');
+    rows.push('<div class="cp-row"><span class="cp-k">聚类程度</span>' +
+      '<b class="cp-v">' + _bucket(p[POL_HFIELD[pol]]) + '（' + n + '）</b></div>');
+    if (p.l1_confidence_mean != null) {
+      rows.push('<div class="cp-row"><span class="cp-k">置信度</span><b class="cp-v">' + _fmt(p.l1_confidence_mean) + '</b></div>');
+    }
+    return rows;
+  }
   if (p.polarity_index != null) {
     rows.push('<div class="cp-row cp-valence"><i class="cp-vk">极性判断</i>' +
       `<b class="cp-vv" style="color:${_valenceColor(p.polarity_index)}">${_valence(p.polarity_index)}</b></div>`);
