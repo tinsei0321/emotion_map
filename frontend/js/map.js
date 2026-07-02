@@ -9,8 +9,9 @@ export const BASEMAPS = {
   'dark-matter': 'https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json',
   'voyager':     'https://basemaps.cartocdn.com/gl/voyager-nolabels-gl-style/style.json',
   // 天地图（可选，非默认；HTTP+影像/矢量大瓦片，较慢）
-  'tianditu-img': '../apps/static/tianditu_img.json',
-  'tianditu-vec': '../apps/static/tianditu_label.json',
+  'tianditu-img': '../apps/static/tianditu_img.json',            // 影像（带注记 cia）
+  'tianditu-vec': '../apps/static/tianditu_label.json',          // 矢量（带注记 cva）
+  'tianditu-img-nolabel': '../apps/static/tianditu_img_nolabel.json',  // 影像（无注记，干净卫星底图）
 };
 export const DEFAULT_BASEMAP = 'positron';
 const YICHANG = { center: [111.286, 30.708], zoom: 12 };
@@ -85,7 +86,7 @@ export function setBasemap(key) {
   // 暗底图配白底=刺眼白条；此处令背景与底图同色，露空区自然融入（如天空/地平线）。
   const BG = {
     'dark-matter': '#0e0e0e', 'positron': '#ffffff', 'voyager': '#f4f1ea',
-    'tianditu-img': '#a6c8e0', 'tianditu-vec': '#e8eef4',
+    'tianditu-img': '#a6c8e0', 'tianditu-vec': '#e8eef4', 'tianditu-img-nolabel': '#a6c8e0',
   };
   map.getContainer().style.background = BG[key] || '#ffffff';
   map.setStyle(BASEMAPS[key], {
@@ -395,7 +396,7 @@ function addPolygonPaint(layer, sid, lid, lineLid, hitLid) {
   // visible outline；3D 去线框（只 2D 加浅灰细线，区分 buffer 实线 / Range 点划线）
   if (!isTool3d) {
     const lineColor = isTool ? '#666' : color;
-    const linePaint = { 'line-color': lineColor, 'line-width': p.lineWidth ?? (isTool ? 0.5 : 2), 'line-opacity': isTool ? 0.45 : 0.9 };
+    const linePaint = { 'line-color': lineColor, 'line-width': p.lineWidth ?? (isTool ? 0.5 : 1), 'line-opacity': isTool ? 0.45 : 0.9 };
     const lineLayout = {};
     if (p.lineStyle === 'dashed') {
       linePaint['line-dasharray'] = [2, 1.5];                    // 缓冲面域：短虚线
@@ -412,7 +413,7 @@ function addPolygonPaint(layer, sid, lid, lineLid, hitLid) {
 function addLinePaint(layer, sid, lid, hitLid) {
   const p = layer.paint || {};
   map.addLayer({ id: lid, type: 'line', source: sid,
-    paint: { 'line-color': p.color || NAVY, 'line-width': p.lineWidth ?? 2, 'line-opacity': 0.9 } });
+    paint: { 'line-color': p.color || NAVY, 'line-width': p.lineWidth ?? 1, 'line-opacity': 0.9 } });
   addHitLayer(hitLid, sid);
 }
 
@@ -587,16 +588,18 @@ function bindPointInteractions(layer, lid) {
 function bindRangeInteractions(layer, hitLid, outlineLid) {
   if (_boundRange.has(layer.id)) return;
   _boundRange.add(layer.id);
-  const baseW = (layer.paint && layer.paint.lineWidth) ?? 2;
+  // 默认线宽 1px，hover 加粗 +1px（→2px）。live 读 layer.paint.lineWidth：settings 调线宽后 hover 同步（不依赖闭包旧值，承重⑩结构不变）。
+  const baseW = () => (layer.paint && layer.paint.lineWidth) ?? 1;
+  const hoverW = () => baseW() + 1;
   map.on('mouseenter', hitLid, (e) => {
     map.getCanvas().classList.add('is-pointer');
-    try { map.setPaintProperty(outlineLid, 'line-width', baseW + 3); } catch (_) {}
+    try { map.setPaintProperty(outlineLid, 'line-width', hoverW()); } catch (_) {}
     showRangeTooltip(e.lngLat, layer.name);
   });
   map.on('mousemove', hitLid, (e) => { if (_tooltip) _tooltip.setLngLat(e.lngLat); });
   map.on('mouseleave', hitLid, () => {
     map.getCanvas().classList.remove('is-pointer');
-    try { map.setPaintProperty(outlineLid, 'line-width', baseW); } catch (_) {}
+    try { map.setPaintProperty(outlineLid, 'line-width', baseW()); } catch (_) {}
     hideRangeTooltip();
   });
 }
@@ -680,4 +683,19 @@ function findFirstCoord(geom) {
 export function fitBoundsTo(bbox, padding = 100) {
   if (!map || !bbox) return;
   try { map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding }); } catch (e) {}
+}
+
+/** 缩放至本图层：算该层 fc 的 bbox → fitBounds（双击图层行触发）。group 容器无几何，调用方自行过滤。
+ *  递归遍历全部坐标（Point/Line/Polygon 通用，Polygon 取所有顶点而非仅首点）。 */
+export function fitToLayer(layer, padding = 80) {
+  if (!map || !layer || !layer.fc) return;
+  let b = null;
+  const add = (xy) => {
+    if (!xy || typeof xy[0] !== 'number' || typeof xy[1] !== 'number') return;
+    if (!b) b = [xy[0], xy[1], xy[0], xy[1]];
+    else { if (xy[0] < b[0]) b[0] = xy[0]; if (xy[1] < b[1]) b[1] = xy[1]; if (xy[0] > b[2]) b[2] = xy[0]; if (xy[1] > b[3]) b[3] = xy[1]; }
+  };
+  const walk = (a) => { if (Array.isArray(a)) { if (typeof a[0] === 'number') add(a); else for (const x of a) walk(x); } };
+  for (const f of layer.fc.features) walk(f.geometry && f.geometry.coordinates);
+  if (b) fitBoundsTo(b, padding);
 }

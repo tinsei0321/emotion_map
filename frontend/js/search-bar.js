@@ -421,17 +421,18 @@ export function initSearchBar() {
   document.addEventListener('point:collapse', () => _setMarkerActive(false));
   document.addEventListener('point:hide', () => _clearMarker());
 
-  // 地点反查进度环（geocode-loader 驱动）：仅收起态显环；灰爬升→完成绿→停1s→淡出。
-  // dashoffset = C·(1 - p/100)；色与显隐由 CSS 类 is-geo-loading/is-geo-done/is-geo-fade 控制。
+  // 加载进度环（geocode-loader 统一驱动，多 kind 分色）：dashoffset = C·(1 - p/100)；
+  // 环色 inline 由 loader 给（反查蓝/生成青/完成橙），显隐由 CSS 类 is-ring-loading/done/fade 控制。
   const RING_C = 2 * Math.PI * 13;
-  subscribeGeoLoader(({ progress, phase }) => {
+  subscribeGeoLoader(({ progress, phase, color }) => {
     if (!_el) return;
-    _el.classList.toggle('is-geo-loading', phase === 'loading');
-    _el.classList.toggle('is-geo-done', phase === 'done');
-    _el.classList.toggle('is-geo-fade', phase === 'fade');
+    _el.classList.toggle('is-ring-loading', phase === 'loading');
+    _el.classList.toggle('is-ring-done', phase === 'done');
+    _el.classList.toggle('is-ring-fade', phase === 'fade');
     if (_ringCircle) {
       _ringCircle.style.strokeDasharray = String(RING_C);
       _ringCircle.style.strokeDashoffset = String(RING_C * (1 - Math.max(0, Math.min(100, progress)) / 100));
+      if (color) _ringCircle.style.stroke = color;
     }
   });
 }

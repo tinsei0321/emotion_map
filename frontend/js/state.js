@@ -239,6 +239,26 @@ export const PRESET_COLORS = [
   '#4a4a4a', '#0c1c2e', '#007afc', '#4FC3F7', '#22b14c',
   '#e04848', '#9b59b6', '#1abc9c', '#e67e22', '#c0392b',
 ];
+
+/** Range 面/线层「色段条取色器」预设：每条 = 端点色数组，渲染为 linear-gradient bar，
+ *  点击 bar 上某位置 → rampColorAt 归一化插值取该处色（连续取色，比离散色块更丰富）。
+ *  语义色段（综合彩虹=饱和度优化降彩、综合极性=红→灰→绿发散、积极/消极/中性单色系）
+ *  + 感知均匀/艺术高级色板（Viridis/Magma/Cividis/Turbo/Spectral + 日落暖金）。
+ *  改色只改本表（与 PRESET_COLORS 同单源理念，settings.js import 复用）。 */
+export const RANGE_GRADIENTS = [
+  { id: 'rainbow',  name: '综合彩虹',     stops: ['#6488ea', '#00b3a4', '#3fb967', '#e8c547', '#e8923c', '#d8552f'] },
+  { id: 'polarity', name: '综合极性',     stops: ['#a3321a', '#e07142', '#d8d8d8', '#86d28a', '#3dba3d', '#0d6b2e'] },
+  { id: 'positive', name: '积极（绿）',   stops: ['#d4f4a0', '#a8e065', '#5cb85c', '#2e8b3d', '#16632b'] },
+  { id: 'negative', name: '消极（红）',   stops: ['#f6c9b0', '#f29a92', '#e15f54', '#b53a30', '#7a1e16'] },
+  { id: 'neutral',  name: '中性（蓝灰）', stops: ['#cfe0ee', '#9bb5c8', '#6889a0', '#3f6080', '#1f3f5c'] },
+  { id: 'viridis',  name: 'Viridis',      stops: ['#440154', '#414487', '#2a788e', '#22a884', '#7ad151', '#fde725'] },
+  { id: 'magma',    name: 'Magma',        stops: ['#000004', '#3b0f70', '#8c2981', '#de4968', '#fe9f6d', '#fcfdbf'] },
+  { id: 'cividis',  name: 'Cividis',      stops: ['#00204d', '#3b528b', '#9fb478', '#e3e35d', '#fde738'] },
+  { id: 'turbo',    name: 'Turbo',        stops: ['#30123b', '#2c83fc', '#35f2cd', '#f6f527', '#fd8b2a', '#a52a2a', '#7a0403'] },
+  { id: 'spectral', name: 'Spectral',     stops: ['#9e0142', '#d53e4f', '#f46d43', '#fdae61', '#fee08b', '#abdda4', '#3288bd'] },
+  { id: 'sunset',   name: '日落（暖金）', stops: ['#1a1a2e', '#5a2a4a', '#b5446a', '#e8893a', '#f5d77a', '#fff4c4'] },
+];
+
 const _layers = new Map();   // id -> layer object
 let _seq = 0;
 
@@ -606,9 +626,9 @@ export function addLayer({ name, kind, fc, needsAnalysis = false, colorMode, pai
         (l.kind === 'polygon' || l.kind === 'line') && !(l.paint && l.paint._ui && l.paint._ui.tool)).length % PRESET_COLORS.length]
     : NAVY;
   const defaultPaint = kind === 'polygon'
-    ? { color: rangeColor, fillOn: false, lineWidth: 2, fillOpacity: 0.15 }
+    ? { color: rangeColor, fillOn: false, lineWidth: 1, fillOpacity: 0.15 }
     : kind === 'line'
-      ? { color: rangeColor, lineWidth: 2 }
+      ? { color: rangeColor, lineWidth: 1 }
       : kind === 'heatmap'
         ? {
             unit: 'm',           // 'm' (geographic meters, default) | 'px' (screen pixels)

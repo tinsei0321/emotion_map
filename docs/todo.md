@@ -5,6 +5,26 @@
 
 ---
 
+## 📅 2026-07-02（周四）
+
+### ✅ 已完成
+- **本周重点四件套（底图 / 图层交互 / 色段条取色器 / Range 线宽）**——用户初始实现 + 补 buffer 一致性 + fitToLayer bbox 修正：
+  - **①天地图·影像无注记底图**：新增 `tianditu-img-nolabel`（影像无注记，`apps/static/tianditu_img_nolabel.json`，仅 img 无 cia）+ 底图 popover 与 `tianditu-img` 影像组并列 + `setBasemap` 容器背景色；与 CARTO 三素图同属"干净底图"（数据叠加首选）。（初版误加矢量无注记，按用户指正改影像无注记。）
+  - **②图层行单击 / 双击交互**：`selectLayerRow` 单击加 `openRightPanel()`（弹右栏 Overview/Table；仅约束 `layer:selected` 事件不自动弹栏——行点击是显式入口，承重④不变）；`.layer-row` dblclick → `fitToLayer`（递归 walk **全坐标**算 bbox，Point/Line/Polygon 通用，非仅首点）→ fitBounds 飞至。
+  - **③要素色板重做色段取色器**：`RANGE_GRADIENTS` 11 条色板（综合彩虹[饱和度优化降彩] / 综合极性[红→灰→绿发散] / 积极·消极·中性 + Viridis/Magma/Cividis/Turbo/Spectral + 日落暖金）；抽导出 `renderColorPicker` 共享 settings+buffer——**每条=一行离散色段**（复用参数面板 ③ 的 `hm-style-bar`/`hm-style-seg`，等宽实色块非渐变），**点色段取该段预设色**（离散不让自由调色），**去圆角方形色块 + 去色段前文字标签**，仅留色段；buffer 复用同源取色器（点/线/面/缓冲要素按钮色板统一）。（初版用渐变条+连续插值，用户多次强调要"色段"非"色带"、不让自由调色，改离散色段。）
+  - **④Range 线宽调优**：默认 2→**1px**（addLayer polygon/line + addPolygonPaint/addLinePaint 兜底 + settings 滑块默认）；hover 加粗 `baseW+3`→**`baseW+1`**（默认 1→2px）；`baseW` 改 live 读 `layer.paint.lineWidth`（settings 调线宽后 hover 同步）。
+  - 验证：5 JS node --check 全过；待 F5 验 6 底图格 / 行单击弹栏·双击飞至 / 色段条取色 / 范围线宽 1px+hover 2px。
+
+- **演示数据最终版（百度热力点锚定 L1/L2）+ 地点层扩中心城区 + 模拟 agent**（plan `3-curious-bachman.md`，Task2+1 做透；3/4/5 后续）：
+  - **Task2 地点层扩中心城区（AMAP_KEY 缺→fallback）**：核验 POI 仅覆西陵伍家 + AMAP_KEY 未配。`sim_centralcity_poi.py` 百度位置+真实类别分布+水域屏蔽 → 2499 sim POI；`place_layer` 双源合并 3769。
+  - **Task1 引擎** `sim_performance_data.py` + `performance_config.py`：百度去聚合（`Poisson(value×0.639)`+jitter，全域~34k/快照）；area_type 2 级（core/central_outer）驱 4×5 倾斜（POI 继承 80% + 区域 bias×时间，0 空格）；极性弧 core T1 neg55%→T3 pos62% + 7 锚点迁移；外环纯热度点；L2=cc 子集→SnowNLP。产出 `DATA/performance/yichang_L1/L2_T1-T3`（schema 兼容）。
+  - **Task1c/1d**：`api/routes` + `config.PERFORMANCE_DIR` 合并下拉；`sim-emotion-data.agent.md` 操作手册。
+  - 验证：3 轮迭代；L1 34k/L2 17k、4×5 0 空格、score 弧 0.44→0.54→0.62、pytest 115 passed/1 预先存在**零回归**；AMAP_KEY 到位一键切真实高德。待 F5 端到端验（导入 L1 全域点阵 + L2 中心城区核密度 + 切 T1→T3 看递进 + grid 指定单元 4×5 归因）。
+- **Range popup 收起交互反转**：原"点面域不收起、点轮廓 toggle"→ 改"非轮廓线即收起（含面域）"。`classifyMapClick` 重分 `range-outline`(line/hit) / `range-fill`(面域)；handler outline→开/保持、fill+blank→收起；删死码 `isRangePopupExpanded`。待 F5 验。
+- **放大镜外环统一加载指示器**：`geocode-loader.js` 泛化（`track(kind,p)`+`trackGeneration`，分色 geocode 蓝/generation 青，完成统一橙 #F5A623 替原绿，stroke-width 不变）；search-bar 按 snapshot.color inline 设环色 + 去 is-collapsed 限制；生成 4 处接入（grid runGrid/runAggregate、buffer runBuffer、heatmap runTerrain）。以后新读取加 `KIND_COLORS` 一行即可。待 F5 验生成青→完成橙、反查蓝→橙。
+
+---
+
 ## 📅 2026-07-01（周三）
 
 ### ✅ 已完成

@@ -5,6 +5,13 @@ __pycache__/
 *.pyo
 .DS_Store
 apps/static/tianditu_*.json
+# 生成/购买数据（不入库，本地复现）：
+#   DATA/baidu-heatpoints/   百度购买热力点（输入，含许可，勿公开）
+#   DATA/performance/        sim_performance_data.py 产出（~197MB，引擎可复现）
+#   amap_poi_centralcity_wgs84.json  sim_centralcity_poi.py 产出（fallback POI）
+DATA/baidu-heatpoints/
+DATA/performance/
+SCRIPT/poi_data/amap_poi_centralcity_wgs84.json
 .env
 .claude/settings.local.json
 design/tokens.py

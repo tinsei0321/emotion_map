@@ -1,0 +1,162 @@
+"""
+演示数据叙事配置（百度锚定版）— performance_config
+=================================================
+3 快照 × 3 级 area_type 的极性弧 + 4×5 区域×时间倾斜。供 sim_performance_data.py。
+
+area_type 三级（按边界嵌套，互斥优先级 unit > core > central_outer）：
+  unit          指定单元/社区（更新单元 ∪ 二马路）—— 更新/治理问题密集，强极性弧（T1消极→T3积极）
+  core          核心主城热流区（西陵伍家 ∖ unit）—— 运营/治理多，温和弧
+  central_outer 中心城区外围（中心城区 ∖ 西陵伍家）—— 规划/更新/治理较均匀，慢变
+
+4×5 双层倾斜（贴近真实，非均匀，不空格）：
+  层1 POI 锚定（80%）—— 点最近 POI 的 domain/element 经 AMAP_L1_TO_4X5 派生（区域 POI 组成天然分化）
+  层2 背景_bias（20%）—— 本配置的 AREA_TYPE_DOMAIN_BIAS × SNAPSHOT_TIME_MOD（乘性叠 DOMAIN_WEIGHTS 基础权）
+所有合成权重钳 ≥0.4 底权（20 格全有计数；倾斜是偏好非清零）。
+
+叙事弧硬约束：T1 unit 消极≥55% → T3 unit 积极≥55%。
+scale=0.639 点/value-unit（固化，全域~34k/快照）。
+"""
+import os
+import sys
+import random
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+from poi_data.poi_4x5_map import DOMAIN_WEIGHTS, ELEMENT_WEIGHTS, DOMAINS, ELEMENTS
+
+AREA_TYPES = ('unit', 'core', 'central_outer')
+
+# ── 区域 domain 倾斜（相对 DOMAIN_WEIGHTS 基础权的乘子）──
+AREA_TYPE_DOMAIN_BIAS = {
+    'unit':          {'urban_renewal': 1.8, 'urban_governance': 1.6, 'urban_planning': 0.9, 'urban_operation': 0.7},
+    'core':          {'urban_operation': 1.6, 'urban_governance': 1.3, 'urban_renewal': 0.9, 'urban_planning': 0.8},
+    'central_outer': {'urban_planning': 1.3, 'urban_renewal': 1.2, 'urban_governance': 1.2, 'urban_operation': 0.95},
+}
+# ── 区域 element 倾斜 ──
+AREA_TYPE_ELEMENT_BIAS = {
+    'unit':          {'facility': 1.3, 'service': 1.2, 'environment': 1.0, 'culture': 0.8, 'event': 0.7},
+    'core':          {'service': 1.2, 'event': 1.3, 'culture': 1.0, 'facility': 0.9, 'environment': 0.8},
+    'central_outer': {'facility': 1.2, 'environment': 1.2, 'service': 1.1, 'culture': 0.9, 'event': 0.8},
+}
+# ── 快照时间调制（叠在区域 bias 上，乘性）──
+SNAPSHOT_TIME_DOMAIN_MOD = {
+    'T1': {'urban_governance': 1.3, 'urban_operation': 1.0, 'urban_renewal': 1.0, 'urban_planning': 1.0},   # 春节：治理/事件↑
+    'T2': {'urban_operation': 1.2, 'urban_governance': 1.0, 'urban_renewal': 1.0, 'urban_planning': 1.0},   # 暑假：运营/事件↑
+    'T3': {'urban_operation': 1.2, 'urban_governance': 1.0, 'urban_renewal': 1.0, 'urban_planning': 1.0},   # 五一：运营/文旅↑
+}
+SNAPSHOT_TIME_ELEMENT_MOD = {
+    'T1': {'event': 1.4, 'service': 1.1, 'facility': 1.0, 'environment': 0.9, 'culture': 0.9},
+    'T2': {'event': 1.3, 'culture': 1.1, 'service': 1.1, 'facility': 0.9, 'environment': 0.9},
+    'T3': {'culture': 1.3, 'environment': 1.2, 'event': 1.2, 'service': 1.0, 'facility': 0.9},
+}
+
+_W_FLOOR = 0.05   # 合成权重底权（防 4×5 任一格清零；DOMAIN_WEIGHTS 本身 0.1–0.45，底权须远小于之，否则压平倾斜）
+
+# ── 3 快照（日期对齐用户叙事；polarity 按 area_type 三级）──
+SNAPSHOTS = {
+    'T1': {
+        'label': '2025-02 春节·二马路一期开街爆满',
+        'date_range': ('2025-02-01', '2025-02-10'),
+        'season_topics': ['春节', '年货', '开街', '人多', '拥挤'],
+        'snap_factor': 1.0,
+        'flavor': 'festival',
+        'polarity': {
+            'unit':          {'positive': 0.20, 'negative': 0.60, 'neutral': 0.20},   # 开街扰扰投诉为主（强弧起点）
+            'core':          {'positive': 0.30, 'negative': 0.55, 'neutral': 0.15},   # 春节治理投诉偏重（core 弧加强，全域可见）
+            'central_outer': {'positive': 0.40, 'negative': 0.40, 'neutral': 0.20},
+        },
+    },
+    'T2': {
+        'label': '2025-07 暑假周末·年轻人涌入',
+        'date_range': ('2025-07-12', '2025-07-20'),
+        'season_topics': ['暑假', '夜经济', '打卡', '年轻人', '冷饮'],
+        'snap_factor': 0.95,
+        'flavor': 'summer',
+        'polarity': {
+            'unit':          {'positive': 0.40, 'negative': 0.35, 'neutral': 0.25},
+            'core':          {'positive': 0.46, 'negative': 0.34, 'neutral': 0.20},
+            'central_outer': {'positive': 0.45, 'negative': 0.35, 'neutral': 0.20},
+        },
+    },
+    'T3': {
+        'label': '2026-05 五一·大南门建成文旅爆满',
+        'date_range': ('2026-05-01', '2026-05-07'),
+        'season_topics': ['五一', '文旅', '大南门', '游客', '打卡'],
+        'snap_factor': 1.05,
+        'flavor': 'tourism',
+        'polarity': {
+            'unit':          {'positive': 0.65, 'negative': 0.20, 'neutral': 0.15},   # 大南门建成+文旅复苏（强弧终点）
+            'core':          {'positive': 0.62, 'negative': 0.25, 'neutral': 0.13},   # 五一文旅积极为主（core 弧加强）
+            'central_outer': {'positive': 0.50, 'negative': 0.33, 'neutral': 0.17},
+        },
+    },
+}
+
+
+def pick_polarity(snapshot_id, area_type, rng=random):
+    """采目标极性（positive/negative/neutral）。area_type ∈ AREA_TYPES。"""
+    dist = SNAPSHOTS[snapshot_id]['polarity'][area_type]
+    keys = list(dist.keys())
+    return rng.choices(keys, weights=[dist[k] for k in keys], k=1)[0]
+
+
+def _compose_weights(base, area_bias, time_mod):
+    """base × area_bias × time_mod，钳 ≥ _W_FLOOR。返回 {key: weight}。"""
+    out = {}
+    for k, bw in base.items():
+        w = float(bw) * area_bias.get(k, 1.0) * time_mod.get(k, 1.0)
+        out[k] = max(w, _W_FLOOR)
+    return out
+
+
+def pick_domain_element(snapshot_id, area_type, rng=random):
+    """采 (domain, element)：区域 bias × 时间调制 × 基础权，独立采样，底权≥0.4。
+
+    domain 与 element 边际独立采样（deep 4×5 交叉留 L3/L4）；区域倾斜使
+    unit 偏 renewal/governance、core 偏 operation/governance、central_outer 偏 planning/renewal/governance。"""
+    dom_w = _compose_weights(DOMAIN_WEIGHTS, AREA_TYPE_DOMAIN_BIAS[area_type], SNAPSHOT_TIME_DOMAIN_MOD[snapshot_id])
+    elm_w = _compose_weights(ELEMENT_WEIGHTS, AREA_TYPE_ELEMENT_BIAS[area_type], SNAPSHOT_TIME_ELEMENT_MOD[snapshot_id])
+    dom = rng.choices(list(dom_w.keys()), weights=list(dom_w.values()), k=1)[0]
+    elm = rng.choices(list(elm_w.keys()), weights=list(elm_w.values()), k=1)[0]
+    return dom, elm
+
+
+def snapshot_flavor(snapshot_id):
+    return SNAPSHOTS[snapshot_id]['flavor']
+
+
+def _check():
+    """自检：极性和=1 + 叙事弧 + domain 合成权重展示 + 演示采样。"""
+    ok = True
+    for sid, snap in SNAPSHOTS.items():
+        for at, dist in snap['polarity'].items():
+            s = sum(dist.values())
+            if abs(s - 1.0) > 1e-9:
+                print('[ERR] {} {} 极性和={}'.format(sid, at, round(s, 4))); ok = False
+    t1u_neg = SNAPSHOTS['T1']['polarity']['unit']['negative']
+    t3u_pos = SNAPSHOTS['T3']['polarity']['unit']['positive']
+    if t1u_neg < 0.55: print('[ERR] T1 unit 消极 {} < 55%'.format(t1u_neg)); ok = False
+    if t3u_pos < 0.55: print('[ERR] T3 unit 积极 {} < 55%'.format(t3u_pos)); ok = False
+    if ok:
+        print('[OK] 极性和=1.0；叙事弧 T1 unit 消极 {}% → T3 积极 {}%'.format(int(t1u_neg * 100), int(t3u_pos * 100)))
+    # 合成 domain 权重展示（验证倾斜方向）
+    rng = random.Random(2606)
+    print('\n=== domain 合成权重（区域×时间） ===')
+    for sid in ('T1', 'T3'):
+        for at in AREA_TYPES:
+            w = _compose_weights(DOMAIN_WEIGHTS, AREA_TYPE_DOMAIN_BIAS[at], SNAPSHOT_TIME_DOMAIN_MOD[sid])
+            tot = sum(w.values())
+            print('  {} {}: {}'.format(sid, at, {k.replace('urban_', ''): round(w[k] / tot, 2) for k in DOMAINS}))
+    # 演示采样：T1/T3 unit domain 分布
+    print('\n=== 演示采样（各 2000 次） ===')
+    for sid in ('T1', 'T3'):
+        for at in ('unit', 'core', 'central_outer'):
+            from collections import Counter
+            c = Counter(pick_domain_element(sid, at, rng)[0] for _ in range(2000))
+            print('  {} {}: {}'.format(sid, at, {k.replace('urban_', ''): v for k, v in c.most_common()}))
+    return ok
+
+
+if __name__ == '__main__':
+    _check()

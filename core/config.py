@@ -11,6 +11,7 @@ import os as _os
 _PROJECT_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 RAW_DIR = _os.path.join(_PROJECT_ROOT, 'DATA', 'raw')
 PROCESSED_DIR = _os.path.join(_PROJECT_ROOT, 'DATA', 'processed')
+PERFORMANCE_DIR = _os.path.join(_PROJECT_ROOT, 'DATA', 'performance')   # 演示用最终版 L1/L2（百度锚定，sim_performance_data 产出）
 
 # ── 边界文件路径（规划范围 Shapefile）──
 BOUNDARY_SHP = _os.path.join(_PROJECT_ROOT, 'DATA', 'boundaries', '规划范围', '规划范围.shp')

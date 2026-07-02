@@ -467,8 +467,8 @@
                     <input type="range" class="set-range" id="buf-linewidth" min="1" max="8" value="1" step="1">
                   </div>
                   <div class="hm-section">
-                    <div class="hm-label">颜色 <span class="hm-info" data-tip="轮廓与填充同色。预设可选，不自由调色（与 L0 点一致）。">i</span></div>
-                    <div class="swatch-list" id="buf-color-list"><!-- swatches by JS --></div>
+                    <div class="hm-label">颜色 <span class="hm-info" data-tip="轮廓与填充同色。离散色块快选，或色段条上点击取连续插值色（与点/线/面要素按钮同源取色器）。">i</span></div>
+                    <div id="buf-color-list"><!-- 取色器 by JS（离散 swatch + 色段条） --></div>
                   </div>
                   <div class="hm-section">
                     <div class="hm-label">填充透明度 <span class="hm-val" id="buf-opacity-val">15%</span></div>
@@ -594,6 +594,7 @@
       <button class="bm-cell" data-basemap="dark-matter"><span class="bm-swatch bm-dark"></span>暗色（无注记）</button>
       <button class="bm-cell" data-basemap="voyager"><span class="bm-swatch bm-voyager"></span>Voyager（无注记）</button>
       <button class="bm-cell" data-basemap="tianditu-img"><span class="bm-swatch bm-sat"></span>影像（天地图）</button>
+      <button class="bm-cell" data-basemap="tianditu-img-nolabel"><span class="bm-swatch bm-sat"></span>影像（天地图·无注记）</button>
       <button class="bm-cell" data-basemap="tianditu-vec"><span class="bm-swatch bm-vec"></span>常规（天地图·带注记）</button>
     </div>
   </div>

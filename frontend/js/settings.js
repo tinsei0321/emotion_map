@@ -6,7 +6,7 @@
 //   • line                 → (no popover; marker non-interactive)
 // Live: control change → setLayerPaint + renderLayer (re-renders that layer).
 
-import { getLayer, setLayerPaint, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS, HOTNESS_RAMP, PRESET_COLORS } from './state.js';
+import { getLayer, setLayerPaint, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS, HOTNESS_RAMP, PRESET_COLORS, RANGE_GRADIENTS } from './state.js';
 import { renderLayer, effectivePointRadius } from './map.js';
 import { refreshPopupForLayer } from './popup.js';
 import { openParamPanel, closeParamPanel } from './param-panel.js';
@@ -98,7 +98,7 @@ function build(layer) {
       body = `<div class="set-note">颜色：由极性决定</div>` + sectionPointSize(layer) + sectionOpacity(p.opacity ?? 0.9);
     }
   } else if (layer.kind === 'polygon') {
-    body = sectionFill(p.fillOn) + sectionColor(p.color || '#0c1c2e') + sectionLineWidth(p.lineWidth ?? 2) + sectionLineStyle(p.lineStyle || 'solid') + sectionFillOpacity(p.fillOpacity ?? 0.15, p.fillOn);
+    body = sectionFill(p.fillOn) + sectionColor(p.color || '#0c1c2e') + sectionLineWidth(p.lineWidth ?? 1) + sectionLineStyle(p.lineStyle || 'solid') + sectionFillOpacity(p.fillOpacity ?? 0.15, p.fillOn);
   } else if (layer.kind === 'heatmap') {
     // Full parameter set: Color (ramp legend) + Radius + Opacity + Intensity
     const rampName = (HEATMAP_RAMPS[p.rampKey] && HEATMAP_RAMPS[p.rampKey].name) || '消极红';
@@ -124,9 +124,29 @@ function sectionRamp(currentRamp) {
   return `<div class="set-section"><div class="set-label">颜色 / Color</div><div class="ramp-list">${items}</div></div>`;
 }
 function sectionColor(currentColor) {
-  const items = PRESET_COLORS.map((c) =>
-    `<button class="swatch${c.toLowerCase() === (currentColor || '').toLowerCase() ? ' is-sel' : ''}" style="background:${c}" data-color="${c}" title="${c}"></button>`).join('');
-  return `<div class="set-section"><div class="set-label">颜色 / Color</div><div class="swatch-list">${items}</div></div>`;
+  return `<div class="set-section">
+    <div class="set-label">颜色 / Color</div>
+    <div class="color-host" data-color-host></div>
+  </div>`;
+}
+
+/** 渲染「颜色」色段取色器到 host：每条色板 = 一行离散色段（复用参数面板 ③ 显示样式的
+ *  hm-style-bar / hm-style-seg，设计语言一致）。点某个色段 → 取该段预设色（离散，不让用户自由调色）。
+ *  settings popover（点/线/面）与 buffer 弹窗共用。无圆角色块、无文字标签——仅色段，简洁。
+ *  current = 当前色（命中的色段加 is-sel 回显）；onPick(hex) 每次取色回调。 */
+export function renderColorPicker(host, { current, onPick } = {}) {
+  if (!host) return;
+  const cur = (current || '').toLowerCase();
+  const bars = RANGE_GRADIENTS.map((g) =>
+    `<div class="hm-style-bar grad-pick">` + g.stops.map((c) =>
+      `<span class="hm-style-seg${c.toLowerCase() === cur ? ' is-sel' : ''}" style="background:${c}" data-color="${c}" title="${c}"></span>`).join('') + `</div>`).join('');
+  host.innerHTML = `<div class="grad-list">${bars}</div>`;
+  host.querySelectorAll('[data-color]').forEach((seg) =>
+    seg.addEventListener('click', () => {
+      host.querySelectorAll('[data-color]').forEach((x) => x.classList.remove('is-sel'));
+      seg.classList.add('is-sel');
+      if (onPick) onPick(seg.dataset.color);
+    }));
 }
 function sectionOpacity(op) {
   return rangeSection('透明度', Math.round(op * 100), 'data-op');
@@ -203,13 +223,11 @@ function wire(layer) {
     });
   });
 
-  // color swatch (polygon) — discrete click → commit
-  pop.querySelectorAll('[data-color]').forEach((b) => {
-    b.addEventListener('click', () => {
-      applyPaint({ color: b.dataset.color }, true);
-      pop.querySelectorAll('[data-color]').forEach((x) => x.classList.remove('is-sel'));
-      b.classList.add('is-sel');
-    });
+  // 颜色色段取色器 → applyPaint（与 buffer 弹窗共用 renderColorPicker）
+  const colorHost = pop.querySelector('[data-color-host]');
+  if (colorHost) renderColorPicker(colorHost, {
+    current: layer.paint && layer.paint.color,
+    onPick: (hex) => applyPaint({ color: hex }, true),
   });
 
   // line style (range polygon) — 实线 / 点划线；点划线区别于缓冲面域的短虚线

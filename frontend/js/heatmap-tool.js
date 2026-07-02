@@ -11,6 +11,7 @@ import {
 import { renderLayer, removeLayerFromMap, setView3D, fitBoundsTo } from './map.js';
 import { fcBBox } from './import.js';
 import { runTerrain } from './api.js';
+import { trackGeneration } from './geocode-loader.js';   // 地形生成接入放大镜外环（青→橙）
 import { toast } from './toast.js';
 import { openParamPanel, closeParamPanel } from './param-panel.js';
 
@@ -683,7 +684,7 @@ async function generateTerrain(dlg, btn) {
   const origText = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = '生成中…'; }
   try {
-    const res = await runTerrain({ geojson: fc0, polarity: terrainPol, bandwidth_m: bandwidth, cell_m: 60, levels: 7 });
+    const res = await trackGeneration(runTerrain({ geojson: fc0, polarity: terrainPol, bandwidth_m: bandwidth, cell_m: 60, levels: 7 }));
     if (!res || !res.success || !res.geojson) throw new Error((res && res.message) || '后端返回异常');
     const fc = res.geojson;
     if (!fc.features || !fc.features.length) { toast.error('地形生成结果为空'); return; }

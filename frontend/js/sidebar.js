@@ -1,6 +1,6 @@
 // ═══ sidebar.js — left panel: collapse/expand, drag, import trigger, layer manager ═══
 import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, layerDisplayColor, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, addLayer, getChildren, categoryOf, CATEGORY_LABEL, applyGroupOrder, reorderGroupSegment, isCollapsed, toggleCollapsed, isGroupFold, toggleGroupFold, getGroupOrder, CONFIDENCE_RAMP, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HOTNESS_RAMP } from './state.js';
-import { renderLayer, removeLayerFromMap, reorderAllZ, restackZ, toggleGridViewMode, getGridViewMode } from './map.js';
+import { renderLayer, removeLayerFromMap, reorderAllZ, restackZ, toggleGridViewMode, getGridViewMode, fitToLayer } from './map.js';
 import { toast } from './toast.js';
 import { openSettingsPopover, closeSettingsPopover, openSettingsLayerId, isOpen } from './settings.js';
 import { closeParamPanel } from './param-panel.js';
@@ -361,9 +361,17 @@ export function renderLayerList() {
       renderLayerList();
     }));
 
-  // row click → select (only layer rows open Overview; group cards are collapse-only)
+  // row click → select（单击图层行：弹右栏 Overview/Table）
   list.querySelectorAll('.layer-row').forEach((row) =>
     row.addEventListener('click', () => selectLayerRow(row.dataset.id)));
+  // row dblclick → 缩放至本图层（双击：fitToLayer；与单击叠加=选中后飞过去，不互斥）
+  list.querySelectorAll('.layer-row').forEach((row) =>
+    row.addEventListener('dblclick', () => {
+      const l = getLayer(row.dataset.id);
+      if (!l || l.kind === 'group' || !l.fc || !l.fc.features.length) return;
+      fitToLayer(l);
+      toast.info(`缩放至：${l.name}`);
+    }));
   // 双击 group card 折叠：真 group（data-id）→ 只折叠该组；虚拟 group（无 data-id）→ 折叠整个 category
   list.querySelectorAll('.layer-group').forEach((grp) =>
     grp.addEventListener('dblclick', (e) => {
@@ -466,6 +474,7 @@ function selectLayerRow(id) {
   const l = getLayer(id);
   if (!l) return;
   selectLayer(id);
+  openRightPanel();   // 单击图层行 → 弹右栏 Overview/Table（侧栏列表入口；区别于地图要素点击的 layer:selected 不自动弹栏，承重④）
   renderLayerList();
   document.dispatchEvent(new CustomEvent('layer:selected', { detail: id }));
 }

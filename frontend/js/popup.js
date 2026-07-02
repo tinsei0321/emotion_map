@@ -458,10 +458,12 @@ function classifyMapClick(feats, ev) {
   // 否则点底图水面/土地利用也会被当成"点中范围/点"，误开 popup（原 hitRange 逻辑的同质漏网）。
   const ours = feats.filter((f) => f.layer && String(f.layer.id).startsWith('lyr-'));
   if (ours.some((f) => f.layer.type === 'circle')) return 'point';
-  // cell（grid/terrain 工具层，fill 或 fill-extrusion）须在 range-visible 之前判定，避免网格格误入范围分支
+  // cell（grid/terrain 工具层，fill 或 fill-extrusion）须在 range-outline 之前判定，避免网格格误入范围分支
   if (ours.some((f) => isCellFeature(f))) return 'cell';
-  if (ours.some((f) => (f.layer.type === 'fill' || f.layer.type === 'line') && !String(f.layer.id).endsWith('-hit'))) return 'range-visible';
-  if (ours.some((f) => String(f.layer.id).endsWith('-hit'))) return 'range-hitband';
+  // 轮廓线（visible line 非-hit）或 hit 带（点在多边形边界附近）→ range-outline（点击轮廓：开/保持，不收起）
+  // 仅面域 fill（无 line/hit，点在多边形内部）→ range-fill（点击面域：收起）—— 用户要求"非轮廓线即收起，含面域"
+  if (ours.some((f) => (f.layer.type === 'line' && !String(f.layer.id).endsWith('-hit')) || String(f.layer.id).endsWith('-hit'))) return 'range-outline';
+  if (ours.some((f) => f.layer.type === 'fill' && !String(f.layer.id).endsWith('-hit'))) return 'range-fill';
   return 'blank';
 }
 
@@ -480,10 +482,6 @@ export function pickCellFeature(feats) {
   return cells.find((f) => f.layer && f.layer.type === 'fill-extrusion')
       || cells.find((f) => f.layer && f.layer.type === 'fill')
       || cells[0];
-}
-function isRangePopupExpanded() {
-  const p = rngEl();
-  return !!p && !p.hidden && !p.classList.contains('is-collapsed') && !!_rng;
 }
 
 // ── Point popup（搜索结果标记 → 第三张胶囊卡，顺序在 Range 之下）──
@@ -579,21 +577,15 @@ export function initPopup(map) {
       collapseCellPopup();
       // 情绪点：非命中即收（开 popup 仍由 map.js 点层 click 负责）
       if (k !== 'point') collapsePopup();
-      // 范围：可见轮廓→保持/刷新；hit 带→未展开则开(易命中)/已展开则收；都没有→收
-      if (k === 'range-visible') {
-        const f = feats.find((ff) => ff.layer && String(ff.layer.id).startsWith('lyr-') && (ff.layer.type === 'fill' || ff.layer.type === 'line') && !String(ff.layer.id).endsWith('-hit'));
+      // 范围：点轮廓线（含 hit 带）→ 开/保持（轮廓是唯一不收起的命中）；点面域 fill / 空白 → 收起
+      // （用户要求：只要不是点轮廓线都收起，含点击 Range 面域区域）
+      if (k === 'range-outline') {
+        const f = feats.find((ff) => ff.layer && String(ff.layer.id).startsWith('lyr-') &&
+          ((ff.layer.type === 'line' && !String(ff.layer.id).endsWith('-hit')) || String(ff.layer.id).endsWith('-hit')));
         const layer = f && layerFromFeature(f);
         if (layer) showRangePopup(f, layer);
-      } else if (k === 'range-hitband') {
-        if (!isRangePopupExpanded()) {
-          const f = feats.find((ff) => ff.layer && String(ff.layer.id).startsWith('lyr-') && String(ff.layer.id).endsWith('-hit'));
-          const layer = f && layerFromFeature(f);
-          if (layer) showRangePopup(f, layer); else collapseRangePopup();
-        } else {
-          collapseRangePopup();
-        }
       } else {
-        collapseRangePopup();
+        collapseRangePopup();   // range-fill（面域）或 blank → 收起
       }
     });
   }

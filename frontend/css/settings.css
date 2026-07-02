@@ -122,6 +122,20 @@
   border-color: #ffffff;
 }
 
+/* ── 色段取色器（Range 颜色；离散色段，与参数面板 ③ 显示样式同款 hm-style-bar/segs）──
+ *   点某个色段 → 取该段预设色（离散，不让用户自由调色）；无圆角色块、无文字标签，仅色段。 */
+.grad-list { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.grad-list .hm-style-bar {
+  flex: 0 0 auto;                                        /* 覆盖 hm-style-bar 的 flex:1（在纵向 .grad-list 里 flex-basis:0 会把高度压成 0→只剩边框横线）；改回按 height 定高 */
+  height: 16px;                                          /* 略矮于 KDE ③ 的 18px，紧凑 */
+  border-radius: var(--geojson-radius-xs, 2px);
+}
+.grad-list .hm-style-seg { cursor: pointer; transition: opacity 0.12s; }
+.grad-list .hm-style-seg:hover { opacity: 0.82; }
+.grad-list .hm-style-seg.is-sel {
+  box-shadow: inset 0 0 0 2px #ffffff, inset 0 0 0 3px rgba(0,0,0,0.45);   /* 白内环 + 暗环，任意底色可见 */
+}
+
 /* ── 胶囊按钮设计语言（Range 面线型；复用于选项类选择器，见 memory: capsule-button-design-language）──
  *   无线框 + 阴影 + 选中蓝(蓝底白字) + 悬停灰 + 紧凑规整。区别于"细线框次要按钮"(§4.7) 与圆形色板 swatch。 */
 .linestyle-row { display: flex; gap: 6px; }

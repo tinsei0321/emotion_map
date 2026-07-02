@@ -19,7 +19,7 @@ from api.schemas import (
     ChatRequest,
     PlaceHit, PlaceSearchResponse, GeocodeResult, ReverseGeocodeResult,
 )
-from core.config import RAW_DIR, PROCESSED_DIR, BOUNDARY_SHP
+from core.config import RAW_DIR, PROCESSED_DIR, PERFORMANCE_DIR, BOUNDARY_SHP
 from core.geocode import search_place, geocode_address, reverse_geocode
 from core.range_selector import list_presets, load_preset, save_preset_geojson
 
@@ -48,6 +48,12 @@ async def list_data():
             f for f in os.listdir(PROCESSED_DIR)
             if f.endswith('.csv')
         ])
+    # 演示用最终版（百度锚定 L1/L2，sim_performance_data 产出）合并入数据下拉
+    if os.path.exists(PERFORMANCE_DIR):
+        processed_files = sorted(set(processed_files) | {
+            f for f in os.listdir(PERFORMANCE_DIR)
+            if f.endswith('.csv')
+        })
 
     return DataListResponse(
         raw_files=raw_files,

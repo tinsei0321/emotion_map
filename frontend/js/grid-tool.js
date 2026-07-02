@@ -12,6 +12,7 @@ import { renderLayer, fitBoundsTo, reorderAllZ, removeLayerFromMap, setView3D } 
 import { renderLayerList, refreshLegend, showLayerManager } from './sidebar.js';
 import { fcBBox } from './import.js';
 import { runGrid, runAggregate } from './api.js';
+import { trackGeneration } from './geocode-loader.js';   // 生成地图接入放大镜外环（青色加载→橙完成）
 import { toast } from './toast.js';
 import { openParamPanel, closeParamPanel } from './param-panel.js';
 
@@ -374,7 +375,7 @@ async function generateGrid() {
     if (p.analysis === 'square') {
       // square：后端 create_square_grid 聚合（EPSG:4546 米制精确）+ MapLibre fill/fill-extrusion 自创渲染
       if (p.cellSize <= 0) { toast.error('方格边长需 > 0'); return; }
-      const res = await runGrid({ geojson: src.fc, grid_type: 'square', cell_size: p.cellSize, unit: 'm' });
+      const res = await trackGeneration(runGrid({ geojson: src.fc, grid_type: 'square', cell_size: p.cellSize, unit: 'm' }));
       if (!res || !res.success || !res.geojson) throw new Error((res && res.message) || '后端返回异常');
       fc = JSON.parse(JSON.stringify(res.geojson));
       if (!fc.features || !fc.features.length) { toast.error('聚合结果为空'); return; }
@@ -391,7 +392,7 @@ async function generateGrid() {
       if (!poly || !poly.fc || !poly.fc.features || !poly.fc.features.length) {
         toast.error('请先选择一个有效的聚合面域图层'); return;
       }
-      const res = await runAggregate({ points_geojson: src.fc, polygons_geojson: poly.fc, agg_cols: ['score'], name_col: p.nameCol || null });
+      const res = await trackGeneration(runAggregate({ points_geojson: src.fc, polygons_geojson: poly.fc, agg_cols: ['score'], name_col: p.nameCol || null }));
       if (!res || !res.success || !res.geojson) throw new Error((res && res.message) || '后端返回异常');
       fc = JSON.parse(JSON.stringify(res.geojson));   // 深拷贝（preprocessGrid 原地写 _grid_*，防污染共享对象）
       if (!fc.features || !fc.features.length) { toast.error('聚合结果为空'); return; }

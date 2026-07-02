@@ -7,8 +7,9 @@ import { renderLayer, fitBoundsTo, reorderAllZ, removeLayerFromMap } from './map
 import { renderLayerList, refreshLegend, showLayerManager } from './sidebar.js';
 import { fcBBox } from './import.js';
 import { runBuffer } from './api.js';
+import { trackGeneration } from './geocode-loader.js';   // 生成接入放大镜外环（青→橙）
 import { toast } from './toast.js';
-import { PRESET_COLORS } from './settings.js';
+import { renderColorPicker } from './settings.js';
 import { openParamPanel, closeParamPanel } from './param-panel.js';
 
 const dialogEl = () => document.getElementById('buffer-dialog');
@@ -28,18 +29,14 @@ function populateLayers(excludeId) {
   return layers;
 }
 
-/** 渲染颜色预设 swatches（复用全局 PRESET_COLORS；默认/回填色选中）。 */
-function renderColorSwatches(current = DEFAULT_COLOR) {
+/** 当前缓冲色（picker 写、generate 读；闭包替代旧 DOM .swatch.is-sel 查询）。 */
+let _bufColor = DEFAULT_COLOR;
+/** 渲染颜色取色器（与 settings 要素色板同源 renderColorPicker：离散色段，点段取预设色）。 */
+function renderBufferColor(current = DEFAULT_COLOR) {
   const box = document.getElementById('buf-color-list');
   if (!box) return;
-  box.innerHTML = PRESET_COLORS.map((c) =>
-    `<button type="button" class="swatch${c.toLowerCase() === current.toLowerCase() ? ' is-sel' : ''}" style="background:${c}" data-color="${c}" title="${c}"></button>`).join('');
-  box.querySelectorAll('.swatch').forEach((b) => {
-    b.addEventListener('click', () => {
-      box.querySelectorAll('.swatch').forEach((x) => x.classList.remove('is-sel'));
-      b.classList.add('is-sel');
-    });
-  });
+  _bufColor = current;
+  renderColorPicker(box, { current, onPick: (hex) => { _bufColor = hex; } });
 }
 
 /** 应用一组参数到对话框控件（新建默认态 / 编辑态回填共用）。 */
@@ -51,7 +48,7 @@ function applyParams(dlg, p) {
   const diss = p.dissolve ? 'true' : 'false';
   const dr = dlg.querySelector(`input[name="buf-dissolve"][value="${diss}"]`);
   if (dr) dr.checked = true;
-  renderColorSwatches(p.color || DEFAULTS.color);
+  renderBufferColor(p.color || DEFAULTS.color);
   const lw = p.lineWidth ?? DEFAULTS.lineWidth;
   dlg.querySelector('#buf-linewidth').value = lw;
   dlg.querySelector('#buf-linewidth-val').textContent = `${lw} px`;
@@ -94,7 +91,7 @@ function readParams(dlg) {
   return {
     distance: Number(dlg.querySelector('#buf-distance-num').value) || 0,
     dissolve: dlg.querySelector('input[name="buf-dissolve"]:checked')?.value === 'true',
-    color: dlg.querySelector('#buf-color-list .swatch.is-sel')?.dataset.color || DEFAULT_COLOR,
+    color: _bufColor,
     lineWidth: Number(dlg.querySelector('#buf-linewidth').value),
     lineStyle: dlg.querySelector('#buf-linestyle .buf-cap.is-sel')?.dataset.linestyle || 'solid',
     fillOpacity: Number(dlg.querySelector('#buf-opacity').value) / 100,
@@ -116,7 +113,7 @@ async function generateBuffer() {
   btn.disabled = true; btn.textContent = '生成中…';
 
   try {
-    const res = await runBuffer({ geojson: sourceLayer.fc, distance: p.distance, unit: 'm', dissolve: p.dissolve });
+    const res = await trackGeneration(runBuffer({ geojson: sourceLayer.fc, distance: p.distance, unit: 'm', dissolve: p.dissolve }));
     if (!res || !res.success || !res.buffer_geojson) throw new Error((res && res.message) || '后端返回异常');
     const fc = res.buffer_geojson;
     if (!fc.features || !fc.features.length) { toast.error('缓冲结果为空'); return; }
