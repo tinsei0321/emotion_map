@@ -47,13 +47,16 @@ export function bindTipPopup(layer, lid, uiOverride) {
   if (!_map || !layer || !lid || _bound.has(lid)) return;
   _bound.add(lid);
   const ui = uiOverride || (layer.paint && layer.paint._ui) || {};   // uiOverride：point 层无 paint._ui，显式传 {kind,colorMode}
+  // LIVE ui：要素按钮调整（cellSize/maxHeight/mode/极性）后 grid-tool 整体替换 editLyr.paint._ui，
+  // 闭包 ui 已过时（曾致 cellSize/sizeText 不随调整更新）。每次事件重读 layer.paint._ui，point 层退 uiOverride。
+  const liveUi = () => (layer.paint && layer.paint._ui) || ui;
 
   const onEnter = (e) => {
     _map.getCanvas().classList.add('is-pointer');
     const f = (ui.kind === 'point') ? (e.features && e.features[0]) : pickCellFeature(e.features || []);
     if (!f) return;
     _lastPt = evtClientPt(e);
-    fillContent(f, ui);
+    fillContent(f, liveUi());
     showEl();
     if (_lastPt) positionCard();   // mouseenter 即定位，防首帧停在左上角
     maybeCellHover(f, ui, layer);
@@ -62,7 +65,7 @@ export function bindTipPopup(layer, lid, uiOverride) {
     const f = (ui.kind === 'point') ? (e.features && e.features[0]) : pickCellFeature(e.features || []);
     if (!f) return;
     _lastPt = evtClientPt(e);
-    fillContent(f, ui);
+    fillContent(f, liveUi());
     showEl();          // mousemove 也确保显示（mouseenter 可能因鼠标已在层内未触发）
     schedulePos();
     maybeCellHover(f, ui, layer);

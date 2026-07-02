@@ -3,7 +3,7 @@ import { initMap, setBasemap, setClickHandler, renderLayer, fitBoundsTo, reorder
 import { initPanel, activateTab, setOverview, setCellOverview, setTable } from './panel.js';
 import { initTipPopup } from './tip-popup.js';
 import { initToolbar, setActiveBasemap } from './toolbar.js';
-import { initSidebar, openImport, openRightPanel, renderLayerList, showLayerManager, refreshLegend } from './sidebar.js';
+import { initSidebar, openImport, renderLayerList, showLayerManager, refreshLegend } from './sidebar.js';
 import { initPopup, showPopup, showRangePopup } from './popup.js';
 import { addLayer, addGroup, getLayers, getSelectedLayer, isDrawActive, deriveTimeTag } from './state.js';
 import {
@@ -260,18 +260,17 @@ function main() {
     updateExportState();
   });
 
-  // Layer row selected → open right panel + show that layer's Overview.
+  // Layer selected → 刷新右端栏 Overview 内容（不再自动弹开；用户按需手动展开右栏）。
   document.addEventListener('layer:selected', () => {
-    openRightPanel();
     activateTab('overview');
     refreshOverview();
   });
 
   // 聚合单元（网格/柱体/地形环）点击 → Overview 切「单元归因」深读；cell:cleared 回 layer Overview。
+  // 不自动弹开右端栏（用户手动展开时内容已就绪）。
   document.addEventListener('cell:selected', (e) => {
     const { feature, layer } = (e && e.detail) || {};
     if (!feature || !layer) return;
-    openRightPanel();
     activateTab('overview');
     setCellOverview(feature, layer);
   });
