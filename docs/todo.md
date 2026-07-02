@@ -751,9 +751,9 @@
 
 | # | 想法 | 状态 |
 |---|------|------|
-| L1 | LLM 大模型接入（溯佰科平台 Agent 嵌入） | ⬜ |
+| L1 | LLM 大模型接入（溯佰科平台 Agent 嵌入） | 🟡 demo 已接 DeepSeek（chat-panel + llm_client provider-agnostic），待换溯佰科底座 |
 | L2 | 时序分析（多时间切片对比） | ⬜ |
-| L3 | 行政区划聚合视图 | ⬜ |
+| L3 | 行政区划聚合视图 | ✅ 已落地（Range tab 预设范围库 + grid-tool「指定单元」zonal + 4×5 归因 + Overview 矩阵/Top5） |
 | L4 | 自动报告生成（PDF） | ⬜ |
 | L5 | 空间自相关分析（Moran's I） | ⬜ |
 | L6 | 问题-对策映射引擎 | ⬜ |

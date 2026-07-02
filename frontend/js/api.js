@@ -143,3 +143,75 @@ export async function reverseGeocode(lng, lat) {
   if (!r.ok) throw new Error(`逆地理编码失败: ${r.status}`);
   return r.json();
 }
+
+// ── 预设范围库（行政区/街道/社区/更新单元/用地筛选）──
+//   GET /api/v1/range/presets       → [{group, items:[{id,label,file,nameField,available}]}]
+//   GET /api/v1/range/preset?id=    → {available, geojson?, nameField?}（WGS84 GeoJSON）
+//   用户按 manifest.file 名上传矢量到 DATA/boundaries/presets/ 即激活按钮。
+
+export async function fetchRangePresets() {
+  const r = await fetch(`${BASE}/range/presets`);
+  if (!r.ok) throw new Error(`预设范围列表失败: ${r.status}`);
+  return r.json();
+}
+
+export async function fetchRangePreset(id) {
+  const url = `${BASE}/range/preset?id=${encodeURIComponent(id)}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`预设范围加载失败: ${r.status}`);
+  return r.json();
+}
+
+// 上传预设范围（前端解析好的 WGS84 GeoJSON）→ 后端存为 manifest[id].file 激活按钮
+export async function uploadRangePreset(id, geojson) {
+  const r = await fetch(`${BASE}/range/preset/upload`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, geojson }),
+  });
+  if (!r.ok) {
+    let detail = `预设上传失败: ${r.status}`;
+    try { const j = await r.json(); detail = j.detail || detail; } catch (_) {}
+    throw new Error(detail);
+  }
+  return r.json();
+}
+
+// ── AI 问答（SSE 流式）──
+//   POST /api/v1/chat body {messages, context} → text/event-stream
+//   逐 data: {token} 增量回调 onToken；[DONE] 收尾；data:{error} 走 onError。
+//   provider-agnostic（后端默认 DeepSeek，未来换溯佰科改后端一处）。
+export async function streamChat(messages, context, onToken, onError) {
+  const r = await fetch(`${BASE}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages, context }),
+  });
+  if (!r.ok) {
+    let detail = `问答失败: ${r.status}`;
+    try { const j = await r.json(); detail = j.detail || detail; } catch (_) {}
+    throw new Error(detail);
+  }
+  const reader = r.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i;
+    while ((i = buf.indexOf('\n\n')) >= 0) {
+      const chunk = buf.slice(0, i);
+      buf = buf.slice(i + 2);
+      const line = chunk.split('\n').find((l) => l.startsWith('data:'));
+      if (!line) continue;
+      const data = line.slice(5).trim();
+      if (data === '[DONE]') return;
+      try {
+        const obj = JSON.parse(data);
+        if (obj.error) { if (onError) onError(obj.error); return; }
+        if (obj.token) onToken(obj.token);
+      } catch (_) { /* skip malformed */ }
+    }
+  }
+}

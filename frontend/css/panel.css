@@ -315,6 +315,47 @@
   vertical-align: middle;
 }
 
+/* ── 分析层 Overview 故事化：4×5 归因矩阵 + Top 问题清单 ── */
+.ov-tier-hint { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); font-weight: normal; margin-left: 6px; }
+.ov-matrix {
+  display: grid;
+  grid-template-columns: 64px repeat(5, 1fr);
+  gap: 2px;
+  margin: 2px 0 4px;
+}
+.ov-matrix .mx-cell,
+.ov-matrix .mx-rowlabel {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 26px; padding: 2px 4px;
+  font-size: var(--geojson-typography-size-xs);
+  font-variant-numeric: tabular-nums;
+  border-radius: var(--geojson-radius-sm, 3px);
+}
+.ov-matrix .mx-head { color: var(--geojson-color-text-secondary); font-weight: var(--geojson-typography-weight-semibold); }
+.ov-matrix .mx-rowlabel { justify-content: flex-end; color: var(--geojson-color-text-primary); font-weight: var(--geojson-typography-weight-semibold); }
+.ov-matrix .mx-empty { background: var(--geojson-color-gray-100); opacity: .45; }
+.ov-matrix .mx-cell:not(.mx-empty):not(.mx-head) { color: var(--geojson-color-text-primary); }
+
+.ov-issuelist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.ov-issue-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 6px; border-radius: var(--geojson-radius-sm, 3px);
+  background: var(--geojson-color-gray-100);
+  cursor: pointer; transition: background var(--geojson-transition);
+}
+.ov-issue-item:hover { background: var(--geojson-color-gray-200); }
+.ov-issue-item .oi-rank { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); width: 14px; text-align: center; font-variant-numeric: tabular-nums; }
+.ov-issue-item .oi-name { flex: 1; font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ov-issue-item .oi-tag { font-size: var(--geojson-typography-size-xs); padding: 1px 6px; border-radius: 999px; font-variant-numeric: tabular-nums; }
+.ov-issue-item .oi-dom { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); white-space: nowrap; }
+
+/* Table 极性 chip + 可排序表头 */
+.data-table .td-pi { display: inline-block; padding: 1px 6px; border-radius: 999px; font-variant-numeric: tabular-nums; font-size: var(--geojson-typography-size-xs); }
+.data-table thead th[data-sort] { cursor: pointer; user-select: none; }
+.data-table thead th[data-sort]:hover { color: var(--geojson-color-brand-primary); }
+.data-table thead th.is-sorted { color: var(--geojson-color-brand-primary); }
+.data-table tbody tr[data-cell-idx] { cursor: pointer; }
+
 /* ── Shared form controls (Export modal) ── */
 .form-label {
   font-size: var(--geojson-typography-size-sm);

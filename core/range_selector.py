@@ -19,6 +19,10 @@ from core.tracker import track, TrackContext, trace_log, trace_error, trace_warn
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _BOUNDARIES_DIR = os.path.join(_PROJECT_ROOT, 'data', 'boundaries')
 os.makedirs(_BOUNDARIES_DIR, exist_ok=True)
+# 预设范围库（行政区/街道/社区/更新单元/用地等）：manifest 声明 button→file 映射，用户上传文件到此目录即激活
+_PRESETS_DIR = os.path.join(_BOUNDARIES_DIR, 'presets')
+_PRESETS_MANIFEST = os.path.join(_PRESETS_DIR, 'manifest.json')
+os.makedirs(_PRESETS_DIR, exist_ok=True)
 
 DEFAULT_RANGE = {
     'name': '宜昌市中心城区（默认 1623 km2）',
@@ -275,6 +279,110 @@ def get_boundary_geojson() -> Optional[dict]:
     except Exception:
         return None
 
+
+# ── 预设范围库（行政区/街道/社区/更新单元/用地筛选）──
+# manifest.json 声明 button→file 映射；用户把矢量文件按 file 名上传到 _PRESETS_DIR 即激活对应按钮。
+@track("MOD_RANGE.F_013", track_args=False)
+def list_presets() -> List[Dict]:
+    """读取预设范围 manifest，每项标注 available（文件是否已上传）。
+
+    返回 manifest 原结构（[{"group","items":[{id,label,file,nameField,available}]}]）；
+    manifest 不存在 → 返回空列表（前端渲染为「暂无预设」）。"""
+    if not os.path.exists(_PRESETS_MANIFEST):
+        return []
+    try:
+        with open(_PRESETS_MANIFEST, 'r', encoding='utf-8') as fh:
+            groups = json.load(fh)
+    except Exception:
+        return []
+    for g in groups:
+        for item in g.get('items', []):
+            item['available'] = os.path.exists(os.path.join(_PRESETS_DIR, item.get('file', '')))
+    return groups
+
+
+@track("MOD_RANGE.F_014", track_args=True)
+def load_preset(preset_id: str) -> Optional[Dict]:
+    """按 id 加载预设范围 → {available, geojson, nameField}。
+
+    文件缺失 → {available:False}；存在 → 读为 WGS84 GeoJSON（同 get_boundary_geojson 语义）。
+    名称字段 nameField 从 manifest 取，供前端 grid-tool name_col 默认值。"""
+    if not os.path.exists(_PRESETS_MANIFEST):
+        return {'available': False}
+    try:
+        with open(_PRESETS_MANIFEST, 'r', encoding='utf-8') as fh:
+            groups = json.load(fh)
+    except Exception:
+        return {'available': False}
+
+    item = None
+    for g in groups:
+        for it in g.get('items', []):
+            if it.get('id') == preset_id:
+                item = it
+                break
+        if item:
+            break
+    if not item:
+        return {'available': False}
+
+    file_path = os.path.join(_PRESETS_DIR, item.get('file', ''))
+    if not os.path.exists(file_path):
+        return {'available': False, 'nameField': item.get('nameField')}
+
+    try:
+        gdf = gpd.read_file(file_path)
+        if gdf.crs and not (hasattr(gdf.crs, 'is_geographic') and gdf.crs.is_geographic):
+            gdf = gdf.to_crs('EPSG:4326')
+        return {
+            'available': True,
+            'geojson': json.loads(gdf.to_json()),
+            'nameField': item.get('nameField'),
+        }
+    except Exception:
+        return {'available': False, 'nameField': item.get('nameField')}
+
+
+@track("MOD_RANGE.F_015", track_args=True)
+def save_preset_geojson(preset_id: str, geojson: dict) -> Dict:
+    """把前端解析好的 WGS84 GeoJSON 存为 manifest[id].file（激活预设按钮）。
+
+    前端把 shp/kml/geojson 统一解析为 WGS84 GeoJSON 后 POST 到此；后端按 manifest
+    声明的 file 名落盘（强制 .geojson 规范化存储）。返回 {success, file, message}。
+    """
+    if not os.path.exists(_PRESETS_MANIFEST):
+        return {'success': False, 'message': 'manifest.json 不存在'}
+    try:
+        with open(_PRESETS_MANIFEST, 'r', encoding='utf-8') as fh:
+            groups = json.load(fh)
+    except Exception as e:
+        return {'success': False, 'message': f'manifest 读取失败: {e}'}
+
+    item = None
+    for g in groups:
+        for it in g.get('items', []):
+            if it.get('id') == preset_id:
+                item = it
+                break
+        if item:
+            break
+    if not item:
+        return {'success': False, 'message': f'预设 id 不存在: {preset_id}'}
+
+    file_name = item.get('file') or f'{preset_id}.geojson'
+    if not file_name.lower().endswith(('.geojson', '.json')):
+        file_name = file_name.rsplit('.', 1)[0] + '.geojson'   # 强制 geojson 规范化存储
+
+    out_path = os.path.join(_PRESETS_DIR, file_name)
+    try:
+        with open(out_path, 'w', encoding='utf-8') as fh:
+            json.dump(geojson, fh, ensure_ascii=False)
+    except Exception as e:
+        return {'success': False, 'message': f'写入失败: {e}'}
+    return {'success': True, 'file': file_name,
+            'message': f'已保存为 {file_name}，预设「{item.get("label", preset_id)}」已激活'}
+
+
 def _count_features(geojson: dict) -> int:
     """统计 GeoJSON 中的 feature 数量。"""
     geojson_type = geojson.get("type", "")
@@ -431,4 +539,7 @@ register_track_id("MOD_RANGE.F_009", "获取边界 GeoJSON（地图叠加用）"
 register_track_id("MOD_RANGE.F_010", "统计 GeoJSON 顶点总数")
 register_track_id("MOD_RANGE.F_011", "道格拉斯-普克几何简化")
 register_track_id("MOD_RANGE.F_012", "矢量文件安全阈值校验 + 自动简化")
+register_track_id("MOD_RANGE.F_013", "读取预设范围 manifest（标注 available）")
+register_track_id("MOD_RANGE.F_014", "按 id 加载预设范围 → GeoJSON")
+register_track_id("MOD_RANGE.F_015", "保存上传 GeoJSON 为预设文件（激活按钮）")
 register_track_id("MOD_RANGE.D_010", "顶点数超限 → 自动简化")

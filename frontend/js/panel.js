@@ -8,11 +8,26 @@ import {
   HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets, rampDisplaySegs,
 } from './state.js';
 import { geomStats, DOMAIN_LABEL, ELEMENT_LABEL } from './popup.js';
+import { fitBoundsTo } from './map.js';
 
 export function initPanel() {
   document.querySelectorAll('.ptab').forEach((tab) => {
     tab.addEventListener('click', () => activateTab(tab.dataset.tab));
   });
+  // Overview Top 问题 / Table 行点击 → 飞到单元 + dispatch cell:selected（深读）
+  const pane = document.getElementById('overview-pane');
+  if (pane) {
+    pane.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-cell-idx]');
+      if (!el) return;
+      const idx = Number(el.dataset.cellIdx);
+      const L = _overviewLayer;
+      const f = L && L.fc && L.fc.features && L.fc.features[idx];
+      if (!f) return;
+      const bb = _featBBox(f); if (bb) fitBoundsTo(bb);
+      document.dispatchEvent(new CustomEvent('cell:selected', { detail: { feature: f, layer: L } }));
+    });
+  }
 }
 
 export function activateTab(name) {
@@ -29,9 +44,10 @@ const LEVEL_NAME = { range: '范围', L0: 'L0 · 原始', L1: 'L1 · 治理', L2
 export function setOverview(layer) {
   const pane = document.getElementById('overview-pane');
   if (!pane) return;
-  if (!layer) { pane.innerHTML = emptyState(); return; }
+  if (!layer) { _overviewLayer = null; pane.innerHTML = emptyState(); return; }
   // Overview recognizes the BIG level: an L2 child → its parent group's aggregate.
   const focus = focusLayer(layer) || layer;
+  _overviewLayer = focus;
   const lv = layerLevel(focus);
   pane.innerHTML = tier1(focus, lv) + tier2(focus, lv) + tier3(focus, lv);
 }
@@ -86,27 +102,130 @@ export function setCellOverview(feature, layer) {
  *  全局规则：Overview 必带数据源文件名。目的 = name 去掉尾部 ' · {src}'；
  *  文件名行仅当标题不是裸文件名时显示（L0/边界 name===src 不重复）。 */
 function tier1(layer, lv) {
+  const ui = (layer.paint && layer.paint._ui) || {};
+  const isAnalysis = layer.kind === 'polygon' && (ui.tool === 'grid' || ui.tool === 'terrain');
+  const analysisWord = isAnalysis ? (ui.tool === 'terrain' ? '情绪地形' : (ui.mode === '3d' ? '3D 网格' : '网格聚合')) : null;
   const ext = guessExt(layer.name);
-  const qty = lv === 'range' ? rangeAreaLabel(layer) : `${layer.fc.features.length} 条`;
+  const ui2 = (layer.paint && layer.paint._ui) || {};
+  const isAnalysis2 = layer.kind === 'polygon' && (ui2.tool === 'grid' || ui2.tool === 'terrain');
+  const qty = isAnalysis2 ? `${layer.fc.features.length} 单元` : (lv === 'range' ? rangeAreaLabel(layer) : `${layer.fc.features.length} 条`);
   const name = layer.name || '';
   const src = layer.srcName || '';
   let purpose = name;
   if (src && name.endsWith(' · ' + src)) purpose = name.slice(0, name.length - (' · ' + src).length);
   const srcLine = (src && purpose !== src) ? `<div class="ov-t1-src">文件名：${src}</div>` : '';
+  const midBadge = isAnalysis2 ? (analysisWord || '分析') : (LEVEL_NAME[lv] || '—');
   return `<div class="ov-tier ov-t1">
     <div class="ov-t1-name" title="${name}">${purpose}</div>
     ${srcLine}
     <div class="ov-t1-meta">
-      <span>${ext || '数据'}</span><i>·</i><span>${LEVEL_NAME[lv] || '—'}</span><i>·</i><span>${qty}</span>
+      <span>${ext || '数据'}</span><i>·</i><span>${midBadge}</span><i>·</i><span>${qty}</span>
     </div>
   </div>`;
+}
+
+// ── 分析层（grid/zonal/terrain）故事化：极性分布 + 4×5 矩阵 + Top 问题 + 治理要素 ──
+const DOMAIN_ORDER = ['urban_planning', 'urban_governance', 'urban_renewal', 'urban_operation'];
+const ELEMENT_ORDER = ['facility', 'environment', 'service', 'culture', 'event'];
+let _overviewLayer = null;   // setOverview 写入；行点击时回查 feature
+
+function isAnalysisLayer(layer) {
+  const ui = layer && layer.paint && layer.paint._ui;
+  return !!(layer && layer.kind === 'polygon' && ui && (ui.tool === 'grid' || ui.tool === 'terrain'));
+}
+
+/** pi → 红/绿/灰（绿=积极、红=消极、灰=中性；透明度随 |pi|）。 */
+function _piColor(pi) {
+  if (pi == null || isNaN(pi)) return 'transparent';
+  const a = Math.min(1, Math.abs(pi));
+  if (pi > 0.15) return `rgba(78, 180, 50, ${0.18 + a * 0.55})`;
+  if (pi < -0.15) return `rgba(201, 42, 32, ${0.18 + a * 0.55})`;
+  return `rgba(160, 160, 170, ${0.12 + a * 0.3})`;
+}
+
+/** 4×5 归因矩阵：{(domain|element): {n, piSum, piCnt}}。 */
+function _matrix4x5(feats) {
+  const cell = {};
+  for (const f of feats) {
+    const p = f.properties || {};
+    if (!p.domain_top || !p.element_top) continue;
+    const k = p.domain_top + '|' + p.element_top;
+    if (!cell[k]) cell[k] = { n: 0, piSum: 0, piCnt: 0 };
+    cell[k].n++;
+    if (p.polarity_index != null && !isNaN(p.polarity_index)) { cell[k].piSum += p.polarity_index; cell[k].piCnt++; }
+  }
+  return cell;
+}
+
+/** Top N 问题聚集 feature（按 |polarity_index| 降序，过滤无极性者）。 */
+function _topIssueFeatures(feats, n) {
+  return feats.filter((f) => { const pi = (f.properties || {}).polarity_index; return pi != null && !isNaN(pi); })
+    .sort((a, b) => Math.abs((b.properties || {}).polarity_index) - Math.abs((a.properties || {}).polarity_index))
+    .slice(0, n);
+}
+
+function _matrixHtml(cell) {
+  const head = `<div class="mx-cell mx-head"></div>` +
+    ELEMENT_ORDER.map((e) => `<div class="mx-cell mx-head" title="${ELEMENT_LABEL[e] || e}">${(ELEMENT_LABEL[e] || e).slice(0, 2)}</div>`).join('');
+  const rows = DOMAIN_ORDER.map((d) => {
+    const cells = ELEMENT_ORDER.map((e) => {
+      const c = cell[d + '|' + e];
+      if (!c) return `<div class="mx-cell mx-empty" title="${DOMAIN_LABEL[d] || d} × ${ELEMENT_LABEL[e] || e}：无"></div>`;
+      const pi = c.piCnt ? c.piSum / c.piCnt : null;
+      return `<div class="mx-cell" style="background:${_piColor(pi)}" title="${DOMAIN_LABEL[d] || d} × ${ELEMENT_LABEL[e] || e}：${c.n} 单元 · 极性 ${pi != null ? pi.toFixed(2) : '—'}">${c.n}</div>`;
+    }).join('');
+    return `<div class="mx-rowlabel" title="${DOMAIN_LABEL[d] || d}">${DOMAIN_LABEL[d] || d}</div>${cells}`;
+  }).join('');
+  return `<div class="ov-matrix">${head}${rows}</div>`;
+}
+
+/** 单 feature bbox（Polygon/MultiPolygon）→ [minLng,minLat,maxLng,maxLat]。 */
+function _featBBox(f) {
+  const g = f && f.geometry; if (!g) return null;
+  let coords = [];
+  if (g.type === 'Polygon') coords = g.coordinates[0] || [];
+  else if (g.type === 'MultiPolygon') for (const poly of g.coordinates) coords.push(...(poly[0] || []));
+  else return null;
+  let mnX = Infinity, mxX = -Infinity, mnY = Infinity, mxY = -Infinity;
+  for (const [x, y] of coords) { if (x < mnX) mnX = x; if (x > mxX) mxX = x; if (y < mnY) mnY = y; if (y > mxY) mxY = y; }
+  if (!isFinite(mnX)) return null;
+  return [mnX, mnY, mxX, mxY];
+}
+
+/** 治理要素（domain）分布横向柱。 */
+function _domainBars(feats) {
+  const m = {};
+  for (const f of feats) { const d = (f.properties || {}).domain_top; if (d) m[d] = (m[d] || 0) + 1; }
+  const entries = DOMAIN_ORDER.filter((d) => m[d]).map((d) => [d, m[d]]);
+  if (!entries.length) return `<div class="ov-placeholder muted">无治理要素数据</div>`;
+  const max = Math.max(...entries.map((x) => x[1]));
+  const bars = entries.map(([d, n]) =>
+    `<div class="hbar-row"><span class="hbar-label">${DOMAIN_LABEL[d] || d}</span>
+      <span class="hbar-track"><span class="hbar-fill" style="width:${(n / max) * 100}%;background:#4285F4"></span></span>
+      <span class="hbar-n">${n}</span></div>`).join('');
+  return `<div class="hchart">${bars}</div>`;
 }
 
 /** T2 属性：图例/参数（随数据类型） */
 function tier2(layer, lv) {
   let body;
-  // 热力图层优先判断（lv 分支会拦截：L1 彩虹热力图 lv=L1，须先走 heatmap 分支）
-  if (layer.kind === 'heatmap') {
+  if (isAnalysisLayer(layer)) {
+    const ui = layer.paint._ui;
+    const feats = layer.fc.features;
+    const polLabel = { overall: '综合', positive: '积极', negative: '消极', neutral: '中性' }[ui.polarity] || ui.polarity || '—';
+    const sizeTxt = ui.tool === 'terrain' ? 'KDE 等值面' : (ui.analysis === 'zonal' ? '指定单元' : `${ui.cellSize || 400}m 方格`);
+    const pis = feats.map((f) => f.properties && f.properties.polarity_index).filter((x) => x != null && !isNaN(x));
+    const piMean = pis.length ? (pis.reduce((a, b) => a + b, 0) / pis.length).toFixed(2) : '—';
+    body = `<div class="ov-props">
+      <div class="ov-prop"><span>层级</span><span>${ui.level || '—'}</span></div>
+      <div class="ov-prop"><span>极性</span><span>${polLabel}</span></div>
+      <div class="ov-prop"><span>单元</span><span>${sizeTxt}</span></div>
+      <div class="ov-prop"><span>模式</span><span>${ui.mode === '3d' ? '3D' : '2D'}</span></div>
+      ${ui.maxHeight ? `<div class="ov-prop"><span>最大柱高</span><span>${Math.round(ui.maxHeight)} m</span></div>` : ''}
+      <div class="ov-prop"><span>单元数</span><span>${feats.length}</span></div>
+      <div class="ov-prop"><span>平均极性</span><span>${piMean}</span></div>
+    </div>`;
+  } else if (layer.kind === 'heatmap') {
     const p = layer.paint || {};
     const rampName = (HEATMAP_RAMPS[p.rampKey] && HEATMAP_RAMPS[p.rampKey].name) || '—';
     const _hmRamp = (p.rampStops) ? { stops: p.rampStops } : HEATMAP_RAMPS[p.rampKey];
@@ -158,8 +277,60 @@ function tier2(layer, lv) {
 /** T3 展示（flex:1 >50%）：治理/分析结论 */
 function tier3(layer, lv) {
   let body;
-  // 热力图层优先（同 tier2：避免 L1 热力图被 L1 情绪点分支拦截）
-  if (layer.kind === 'heatmap') {
+  if (isAnalysisLayer(layer)) {
+    const feats = layer.fc.features;
+    // 极性分布：聚合单元无逐条 polarity，按 n_* 计数汇总（与 popup 同源）
+    const agg = { 'Very Positive': 0, Positive: 0, Neutral: 0, Negative: 0, 'Very Negative': 0 };
+    let total = 0;
+    const sms = [];
+    for (const f of feats) {
+      const p = f.properties || {};
+      agg['Very Positive'] += p.n_very_positive || 0;
+      agg.Positive += p.n_positive || 0;
+      agg.Neutral += p.n_neutral || 0;
+      agg.Negative += p.n_negative || 0;
+      agg['Very Negative'] += p.n_very_negative || 0;
+      if (p.score_mean != null && !isNaN(p.score_mean)) sms.push(p.score_mean);
+    }
+    total = agg['Very Positive'] + agg.Positive + agg.Neutral + agg.Negative + agg['Very Negative'];
+    const scoreMean = sms.length ? sms.reduce((a, b) => a + b, 0) / sms.length : 0;
+    const max = Math.max(1, ...POLARITY_ORDER.map((p) => agg[p] || 0));
+    const colorOf = (p) => p === 'Very Positive' ? L2_POSITIVE['Very Positive']
+      : p === 'Positive' ? L2_POSITIVE['Positive']
+      : p === 'Neutral' ? L2_NEUTRAL_COLOR
+      : p === 'Negative' ? L2_NEGATIVE['Negative']
+      : L2_NEGATIVE['Very Negative'];
+    const bars = total ? POLARITY_ORDER.map((p) => {
+      const n = agg[p] || 0;
+      return `<div class="hbar-row"><span class="hbar-label">${POLARITY_LABEL[p]}</span>
+        <span class="hbar-track"><span class="hbar-fill" style="width:${(n / max) * 100}%;background:${colorOf(p)}"></span></span>
+        <span class="hbar-n">${n}</span></div>`;
+    }).join('') : '';
+    // 4×5 矩阵 + Top 问题 + 治理分布
+    const cell = _matrix4x5(feats);
+    const top = _topIssueFeatures(feats, 5);
+    const issueHtml = top.length
+      ? `<ol class="ov-issuelist">${top.map((f, i) => {
+          const p = f.properties || {};
+          const name = (p.name || p.issue_label || '聚集区').toString().replace(/[<>]/g, '');
+          const dom = DOMAIN_LABEL[p.domain_top] || p.domain_top || '—';
+          const elm = ELEMENT_LABEL[p.element_top] || p.element_top || '—';
+          const idx = feats.indexOf(f);
+          const strong = p.polarity_index != null && Math.abs(p.polarity_index) > 0.5;
+          return `<li class="ov-issue-item" data-cell-idx="${idx}" title="点击飞到并深读该单元">
+            <span class="oi-rank">${i + 1}</span>
+            <span class="oi-name">${name}</span>
+            <span class="oi-tag" style="background:${_piColor(p.polarity_index)};color:${strong ? '#fff' : '#404040'}">${Number(p.polarity_index).toFixed(2)}</span>
+            <span class="oi-dom">${dom}×${elm}</span>
+          </li>`;
+        }).join('')}</ol>`
+      : `<div class="ov-placeholder muted">无极性数据（L1 热度层无极性指数）</div>`;
+    body = `${bars ? `<div class="ov-tier-sub">极性分布</div><div class="hchart">${bars}</div>
+        <div class="ov-mean">均分 ${scoreMean.toFixed(2)} · 共 ${total} 条</div>` : ''}
+      <div class="ov-tier-sub">4×5 归因矩阵 <span class="ov-tier-hint">绿=积极 · 红=消极</span></div>${_matrixHtml(cell)}
+      <div class="ov-tier-sub">Top 5 问题聚集</div>${issueHtml}
+      <div class="ov-tier-sub">治理要素分布</div>${_domainBars(feats)}`;
+  } else if (layer.kind === 'heatmap') {
     const p = layer.paint || {};
     const n = layer.fc.features.length;
     body = `<div class="ov-stats">
@@ -266,12 +437,15 @@ function emotionTypeStats(fc) {
   return { stats, total };
 }
 
-// ── Table tab (kept; geojson.io-style) ──
-export function setTable(fc, maxRows = 200) {
-  const colors = emotionColors();
+// ── Table tab ── point 层 = geojson.io 风格；分析层（grid/zonal/terrain）= 可排序「问题清单」。
+let _issueSort = { key: 'polarity_index', dir: 'desc' };   // 默认按 |极性| 降序（最大张力优先）
+
+export function setTable(fc, layer, maxRows = 200) {
   const tbl = document.getElementById('data-table');
   if (!tbl) return;
-  const feats = fc.features.slice(0, maxRows);
+  if (layer && isAnalysisLayer(layer)) { _renderIssueTable(tbl, layer, maxRows); return; }
+  const colors = emotionColors();
+  const feats = (fc && fc.features || []).slice(0, maxRows);
   const head = `<thead><tr><th>极性</th><th>分数</th><th>文本</th><th>位置</th><th>ID</th></tr></thead>`;
   const body = `<tbody>${feats.map((f) => {
     const p = f.properties || {};
@@ -283,4 +457,67 @@ export function setTable(fc, maxRows = 200) {
       <td>${(p.score ?? 0).toFixed(2)}</td><td>${txt}</td><td>${loc}</td><td>${p.id_e || ''}</td></tr>`;
   }).join('')}</tbody>`;
   tbl.innerHTML = head + body;
+}
+
+/** 分析层「问题清单」可排序表：点表头排序，点行飞到单元 + cell:selected 深读。 */
+function _renderIssueTable(tbl, layer, maxRows) {
+  const feats = (layer.fc && layer.fc.features) || [];
+  const rows = feats.map((f, idx) => ({ f, idx, p: f.properties || {} }));
+  const k = _issueSort.key;
+  const dir = _issueSort.dir === 'asc' ? 1 : -1;
+  rows.sort((a, b) => {
+    const va = a.p[k], vb = b.p[k];
+    if (k === 'polarity_index' && typeof va === 'number' && typeof vb === 'number')
+      return (Math.abs(va) - Math.abs(vb)) * dir;   // 极性按 |值| 排（最大张力优先）
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+    return String(va ?? '').localeCompare(String(vb ?? '')) * dir;
+  });
+  const shown = rows.slice(0, maxRows);
+  const cols = [
+    { key: '_rank', label: '#' },
+    { key: 'name', label: '名称' },
+    { key: 'point_count', label: '点数' },
+    { key: 'polarity_index', label: '极性指数' },
+    { key: '_domElm', label: '治理要素' },
+    { key: 'issue_label', label: '问题识别' },
+  ];
+  const arrow = (c) => c.key === k ? (dir > 0 ? ' ▲' : ' ▼') : '';
+  const head = `<thead><tr>${cols.map((c) =>
+    `<th class="${c.key === k ? 'is-sorted' : ''}" data-sort="${c.key}">${c.label}${arrow(c)}</th>`).join('')}</tr></thead>`;
+  const bodyHtml = shown.map((r, i) => {
+    const dom = DOMAIN_LABEL[r.p.domain_top] || r.p.domain_top || '—';
+    const elm = ELEMENT_LABEL[r.p.element_top] || r.p.element_top || '—';
+    const pi = r.p.polarity_index;
+    const name = (r.p.name || '').toString().replace(/[<>]/g, '') || '—';
+    const issue = (r.p.issue_label || '').toString().replace(/[<>]/g, '') || '—';
+    const strong = pi != null && !isNaN(pi) && Math.abs(pi) > 0.5;
+    return `<tr data-cell-idx="${r.idx}">
+      <td>${i + 1}</td>
+      <td>${name}</td>
+      <td>${r.p.point_count ?? 0}</td>
+      <td>${pi != null && !isNaN(pi) ? `<span class="td-pi" style="background:${_piColor(pi)};color:${strong ? '#fff' : '#404040'}">${pi.toFixed(2)}</span>` : '—'}</td>
+      <td>${dom}×${elm}</td>
+      <td>${issue}</td>
+    </tr>`;
+  }).join('');
+  tbl.innerHTML = head + `<tbody>${bodyHtml}</tbody>`;
+
+  tbl.querySelectorAll('th[data-sort]').forEach((th) => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.sort;
+      if (key === '_rank' || key === '_domElm') return;
+      if (_issueSort.key === key) _issueSort.dir = _issueSort.dir === 'asc' ? 'desc' : 'asc';
+      else { _issueSort.key = key; _issueSort.dir = 'desc'; }
+      _renderIssueTable(tbl, layer, maxRows);
+    });
+  });
+  tbl.querySelectorAll('tbody tr[data-cell-idx]').forEach((tr) => {
+    tr.addEventListener('click', () => {
+      const idx = Number(tr.dataset.cellIdx);
+      const f = layer.fc.features[idx];
+      if (!f) return;
+      const bb = _featBBox(f); if (bb) fitBoundsTo(bb);
+      document.dispatchEvent(new CustomEvent('cell:selected', { detail: { feature: f, layer } }));
+    });
+  });
 }

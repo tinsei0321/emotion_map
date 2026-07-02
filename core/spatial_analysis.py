@@ -259,6 +259,9 @@ def aggregate_by_polygons(
             agg_stats['point_count'].clip(lower=1)
         ).round(3)
 
+    # domain/element 4×5 聚合 + DEMO 规则归因（与 create_square_grid 同源 helper）
+    _attach_4x5_attrs(joined, grouped, agg_stats)
+
     # 合并回面域 GeoDataFrame
     result = polygons_gdf.copy()
     result.index.name = 'polygon_id'
@@ -267,13 +270,23 @@ def aggregate_by_polygons(
     merged = result.merge(agg_stats, left_index=True, right_index=True, how='left')
     merged = gpd.GeoDataFrame(merged, geometry='geometry', crs=polygons_gdf.crs)
 
-    # 填充无数据的区域
+    # 填充无数据的区域（数值列填 0；字符串归因列 domain_top/issue_label 等填空串）
     for col in agg_stats.columns:
-        if col in merged.columns:
+        if col not in merged.columns:
+            continue
+        if pd.api.types.is_numeric_dtype(agg_stats[col]):
             if 'count' in col:
                 merged[col] = merged[col].fillna(0).astype(int)
             else:
                 merged[col] = merged[col].fillna(0)
+        else:
+            merged[col] = merged[col].fillna('')
+
+    # polygon_name_col 落地为规范 name 字段（popup/Table/AI digest 读稳定字段；原为 dead param）
+    if polygon_name_col and polygon_name_col in merged.columns:
+        merged['name'] = merged[polygon_name_col]
+    elif 'name' not in merged.columns:
+        merged['name'] = [f'区域_{i + 1}' for i in range(len(merged))]
 
     return merged
 
@@ -441,6 +454,34 @@ def lookup_attribution(domain_top, element_top, polarity_index):
     return {'issue_label': label, 'attribution': attr, 'suggestion': sug}
 
 
+def _attach_4x5_attrs(joined, grouped, stats):
+    """4×5 domain/element 聚合 + DEMO 规则归因（in-place 写入 stats）。
+
+    create_square_grid / aggregate_by_polygons 共用（DRY：原两处内联重复）。
+    joined = sjoin 结果（含点侧 domain/element 列）；grouped = joined.groupby('index_right')；
+    stats = 按 index_right 索引的聚合 DataFrame（已含 polarity_index）。
+    L3/L4 LLM 归因上线后本函数整体替换为 LLM 产出。"""
+    for _c in ('domain', 'element'):
+        if _c in joined.columns:
+            joined[_c] = joined[_c].fillna('').astype(str)
+    if 'domain' in joined.columns:
+        stats['domain_top'] = grouped['domain'].agg(
+            lambda x: x.mode().iloc[0] if not x.mode().empty else '')
+        for _d in ('urban_operation', 'urban_governance', 'urban_renewal', 'urban_planning'):
+            stats[f'n_dom_{_d}'] = grouped['domain'].apply(lambda x: int((x == _d).sum())).astype(int)
+    if 'element' in joined.columns:
+        stats['element_top'] = grouped['element'].agg(
+            lambda x: x.mode().iloc[0] if not x.mode().empty else '')
+        for _e in ('facility', 'environment', 'service', 'culture', 'event'):
+            stats[f'n_elem_{_e}'] = grouped['element'].apply(lambda x: int((x == _e).sum())).astype(int)
+    if 'domain_top' in stats.columns and 'polarity_index' in stats.columns:
+        _attrs = stats.apply(lambda _r: lookup_attribution(
+            _r.get('domain_top', ''), _r.get('element_top', ''), _r.get('polarity_index')), axis=1)
+        stats['issue_label'] = _attrs.apply(lambda _d: _d['issue_label'])
+        stats['attribution'] = _attrs.apply(lambda _d: _d['attribution'])
+        stats['suggestion'] = _attrs.apply(lambda _d: _d['suggestion'])
+
+
 # ═══════════════════════════════════════════════════════════
 # 固定方格网格（标准网格）
 # ═══════════════════════════════════════════════════════════
@@ -527,26 +568,8 @@ def create_square_grid(
             stats['point_count'].clip(lower=1)
         ).round(3)
 
-    # domain/element 4×5 聚合（众数 + 占比计数；供 Task 2.7 popup 识别治理要素）
-    for _c in ('domain', 'element'):
-        if _c in joined.columns:
-            joined[_c] = joined[_c].fillna('').astype(str)
-    if 'domain' in joined.columns:
-        stats['domain_top'] = grouped['domain'].agg(lambda x: x.mode().iloc[0] if not x.mode().empty else '')
-        for _d in ('urban_operation', 'urban_governance', 'urban_renewal', 'urban_planning'):
-            stats[f'n_dom_{_d}'] = grouped['domain'].apply(lambda x: int((x == _d).sum())).astype(int)
-    if 'element' in joined.columns:
-        stats['element_top'] = grouped['element'].agg(lambda x: x.mode().iloc[0] if not x.mode().empty else '')
-        for _e in ('facility', 'environment', 'service', 'culture', 'event'):
-            stats[f'n_elem_{_e}'] = grouped['element'].apply(lambda x: int((x == _e).sum())).astype(int)
-
-    # 4×5 情绪归因（DEMO 规则，L3/L4 LLM 归因上线后移除）
-    if 'domain_top' in stats.columns and 'polarity_index' in stats.columns:
-        _attrs = stats.apply(lambda _r: lookup_attribution(
-            _r.get('domain_top', ''), _r.get('element_top', ''), _r.get('polarity_index')), axis=1)
-        stats['issue_label'] = _attrs.apply(lambda _d: _d['issue_label'])
-        stats['attribution'] = _attrs.apply(lambda _d: _d['attribution'])
-        stats['suggestion'] = _attrs.apply(lambda _d: _d['suggestion'])
+    # domain/element 4×5 聚合 + DEMO 规则归因（共享 helper，与 aggregate_by_polygons 同源）
+    _attach_4x5_attrs(joined, grouped, stats)
 
     # 合并统计回方格（inner：仅保留有点的格）→ 回 WGS84
     result = cells_gdf.merge(stats, left_index=True, right_index=True, how='inner')

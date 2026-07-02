@@ -1,0 +1,24 @@
+[
+  {
+    "group": "行政区划",
+    "items": [
+      { "id": "admin_district",  "label": "行政区",   "file": "行政区.geojson",   "nameField": "name" },
+      { "id": "admin_street",    "label": "街道",     "file": "街道.geojson",     "nameField": "街道" },
+      { "id": "admin_community", "label": "社区",     "file": "社区.geojson",     "nameField": "社区" }
+    ]
+  },
+  {
+    "group": "城市更新单元",
+    "items": [
+      { "id": "renewal_unit", "label": "更新单元", "file": "更新单元.geojson", "nameField": "name" }
+    ]
+  },
+  {
+    "group": "用地筛选（三调）",
+    "items": [
+      { "id": "land_commercial",  "label": "商业区",   "file": "用地_商业.geojson",   "nameField": "用地类型" },
+      { "id": "land_residential", "label": "居住区",   "file": "用地_居住.geojson",   "nameField": "用地类型" },
+      { "id": "land_open",        "label": "开敞空间", "file": "用地_开敞.geojson",   "nameField": "用地类型" }
+    ]
+  }
+]

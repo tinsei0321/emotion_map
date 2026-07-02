@@ -98,6 +98,33 @@ class SpatialTerrainRequest(BaseModel):
     levels: int = Field(default=7, ge=3, le=15, description="等值面层数")
 
 
+class RangePresetItem(BaseModel):
+    """预设范围条目（一个按钮 = 一个矢量文件）。"""
+    id: str = Field(..., description="预设 id（前端 loadPresetRange 用）")
+    label: str = Field(..., description="按钮显示名（行政区/街道/社区/更新单元/商业区…）")
+    file: str = Field(..., description="DATA/boundaries/presets/ 下的文件名")
+    nameField: Optional[str] = Field(default=None, description="名称字段（grid-tool name_col 默认）")
+    available: bool = Field(default=False, description="文件是否已上传")
+
+
+class RangePresetGroup(BaseModel):
+    """预设范围分组（行政区划/城市更新单元/用地筛选）。"""
+    group: str = Field(..., description="分组名")
+    items: List[RangePresetItem] = Field(default_factory=list)
+
+
+class RangePresetUploadRequest(BaseModel):
+    """预设范围上传（前端解析好的 WGS84 GeoJSON）。"""
+    id: str = Field(..., description="预设 id（manifest 中的 item.id）")
+    geojson: dict = Field(..., description="WGS84 GeoJSON FeatureCollection")
+
+
+class ChatRequest(BaseModel):
+    """AI 问答请求（provider-agnostic，默认 DeepSeek）。"""
+    messages: List[dict] = Field(..., description="OpenAI 兼容消息数组 [{role,content}]")
+    context: Optional[str] = Field(default=None, description="前端计算的数据摘要（grounding）")
+
+
 class ExportRequest(BaseModel):
     """图层导出请求。"""
     geojson: dict = Field(..., description="待导出图层 GeoJSON FeatureCollection（WGS84）")

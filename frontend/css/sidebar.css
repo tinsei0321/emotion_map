@@ -390,6 +390,41 @@
   width: 100%;
 }
 
+/* ── 预设范围按钮（Range tab：行政区/街道/社区/更新单元/用地）──
+   胶囊设计语言：无线框+阴影+悬停灰；可用=实色填充，待上传=虚线幽灵态 */
+.range-presets { display: flex; flex-direction: column; gap: 8px; margin-bottom: var(--geojson-spacing-3); }
+.rp-group { display: flex; flex-direction: column; gap: 4px; }
+.rp-group-label {
+  font-size: var(--geojson-typography-size-xs);
+  font-weight: var(--geojson-typography-weight-semibold);
+  color: var(--geojson-color-text-secondary);
+}
+.rp-items { display: flex; flex-wrap: wrap; gap: 4px; }
+.rp-item {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px;
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-primary);
+  background: var(--geojson-color-gray-100);
+  border: 1px solid transparent;
+  border-radius: var(--geojson-radius-pill, 999px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: background var(--geojson-transition), box-shadow var(--geojson-transition), color var(--geojson-transition);
+}
+.rp-item:hover { background: var(--geojson-color-gray-200); }
+.rp-item:active { box-shadow: 0 1px 1px rgba(0, 0, 0, 0.06); }
+.rp-item.is-missing {
+  background: transparent;
+  border: 1px dashed var(--geojson-color-gray-300, #d4d4d4);
+  color: var(--geojson-color-text-secondary);
+  box-shadow: none;
+}
+.rp-item.is-missing:hover { background: var(--geojson-color-gray-100); color: var(--geojson-color-text-primary); }
+.rp-item-tag { font-size: 9px; opacity: .65; }
+.rp-empty { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); padding: 6px 0; }
+.lp-pane-title-sub { margin-top: var(--geojson-spacing-3); }
+
 /* ── Buffer 对话框补丁：预设档 / 单选项 / 取色（其余复用 hm-/sec- 类）── */
 .buf-presets {
   display: flex;

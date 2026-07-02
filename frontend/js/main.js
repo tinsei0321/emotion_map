@@ -14,6 +14,8 @@ import { openImportDialog } from './dialog.js';
 import { initHeatmapTool } from './heatmap-tool.js';
 import { initBufferTool } from './buffer-tool.js';
 import { initGridTool } from './grid-tool.js';
+import { initRangePresets } from './range-presets.js';
+import { initChatPanel } from './chat-panel.js';
 import { initParamPanel } from './param-panel.js';
 import { initDrawTool, startDraw, stopDraw } from './draw-tool.js';
 import { initHeatmapLegend } from './heatmap-legend.js';
@@ -47,7 +49,7 @@ function refreshOverview() {
   const layer = getSelectedLayer();
   setOverview(layer);
   const fc = (layer && layer.kind === 'point') ? layer.fc : { type: 'FeatureCollection', features: [] };
-  setTable(fc);
+  setTable(fc, layer);
 }
 
 /** Import pipeline: group → detect → confirm dialog → parse → CRS → split → register. */
@@ -229,6 +231,8 @@ function main() {
   initHeatmapTool();
   initBufferTool();
   initGridTool();
+  initRangePresets();
+  initChatPanel();
   initParamPanel();
   initSearchBar();
   initDrawTool(map);

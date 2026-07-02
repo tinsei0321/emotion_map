@@ -303,7 +303,7 @@ function readParams(dlg) {
   };
 }
 
-export function openGridDialog(layerId) {
+export function openGridDialog(layerId, preset = null) {
   const dlg = dialogEl();
   if (!dlg) return;
 
@@ -317,7 +317,9 @@ export function openGridDialog(layerId) {
   constrainLevelOptions(srcs);          // 设 L1-L4 选项 + firstAvailable 默认选中
   populatePolygonLayers();
   if (seed && seed.level) dlg.querySelector('#grid-level').value = seed.level;   // 编辑态 level
-  applyParams(dlg, seed || DEFAULTS);   // 回填 analysis/cell/polarity/mode/extrusion（level 已设）
+  // 预设范围（Range tab 按钮）：analysis 走 preset（默认 zonal）；否则 seed 或 DEFAULTS
+  const params = seed || (preset ? { ...DEFAULTS, analysis: preset.analysis || 'zonal' } : DEFAULTS);
+  applyParams(dlg, params);   // 回填 analysis/cell/polarity/mode/extrusion（含卡片选中态）
   populateSources(srcs, dlg.querySelector('#grid-level').value);   // 点层按当前 level 过滤（联动递进）
 
   // 编辑态：回填点层 / 面域层（触发 name_col 填充）
@@ -330,6 +332,14 @@ export function openGridDialog(layerId) {
       if (poly && poly.fc) populateNameCols(poly.fc);
       if (seed.nameCol) dlg.querySelector('#grid-name-col').value = seed.nameCol;
     }
+  } else if (preset && preset.polygonLayer) {
+    // 预设范围：预选面域层 + name_col（populatePolygonLayers 后 option 已就绪）
+    if (dlg.querySelector(`#grid-polygon-layer option[value="${preset.polygonLayer}"]`))
+      dlg.querySelector('#grid-polygon-layer').value = preset.polygonLayer;
+    const poly = getLayer(preset.polygonLayer);
+    if (poly && poly.fc) populateNameCols(poly.fc);
+    if (preset.nameCol && dlg.querySelector(`#grid-name-col option[value="${preset.nameCol}"]`))
+      dlg.querySelector('#grid-name-col').value = preset.nameCol;
   }
   constrainParams(dlg);
   dlg.dataset.editLayerId = layerId || '';

@@ -3,7 +3,10 @@ API 路由 — 分析 / 治理 / 数据查询
 """
 import os
 import sys
+import json
+from typing import List
 from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi.responses import StreamingResponse
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -12,10 +15,13 @@ from api.schemas import (
     HealthResponse, DataListResponse, GovernanceRequest,
     BufferRequest, ExportRequest,
     SpatialAggregateRequest, SpatialGridRequest, SpatialTerrainRequest,
+    RangePresetGroup, RangePresetUploadRequest,
+    ChatRequest,
     PlaceHit, PlaceSearchResponse, GeocodeResult, ReverseGeocodeResult,
 )
 from core.config import RAW_DIR, PROCESSED_DIR, BOUNDARY_SHP
 from core.geocode import search_place, geocode_address, reverse_geocode
+from core.range_selector import list_presets, load_preset, save_preset_geojson
 
 router = APIRouter()
 
@@ -47,6 +53,69 @@ async def list_data():
         raw_files=raw_files,
         processed_files=processed_files,
     )
+
+
+# ── 预设范围库（行政区/街道/社区/更新单元/用地筛选）──────────────────────
+# manifest.json 声明 button→file 映射；用户按 file 名上传矢量到 DATA/boundaries/presets/ 即激活。
+# 前端 Range tab 据此渲染按钮，点击载入面域 + 预填 grid-tool「指定单元」做极性+归因聚合。
+
+@router.get("/range/presets", response_model=List[RangePresetGroup])
+async def list_range_presets():
+    """列出预设范围分组（每项标注 available=文件是否已上传）。"""
+    return list_presets()
+
+
+@router.get("/range/preset")
+async def get_range_preset(id: str = Query(..., description="预设 id（manifest 中的 item.id）")):
+    """加载单个预设范围 → {available, geojson?, nameField?}（WGS84 GeoJSON）。
+
+    文件未上传 → {available:False}；前端据此提示上传或上载后重试。
+    """
+    return load_preset(id)
+
+
+@router.post("/range/preset/upload")
+async def upload_range_preset(req: RangePresetUploadRequest):
+    """上传预设范围 GeoJSON（前端已解析为 WGS84）→ 存为 manifest[id].file 激活按钮。
+
+    前端用既有 import.js 解析器把 shp/kml/geojson 统一转 WGS84 GeoJSON 后 POST；
+    后端按 manifest 声明的 file 名落盘（规范化 .geojson 存储）。
+    """
+    result = save_preset_geojson(req.id, req.geojson)
+    if not result.get('success'):
+        raise HTTPException(status_code=400, detail=result.get('message', '保存失败'))
+    return result
+
+
+# ── AI 自然语言问答（provider-agnostic，默认 DeepSeek；未来换溯佰科改 llm_client 一处）──
+# 前端发 {messages, context}；context 是前端从选中层算的紧凑摘要（Top 区域/极性/治理要素），
+# 后端用 chat_context.build_system_prompt 包成系统消息做 grounding，再 LLMClient.chat 流式回。
+# SSE：每 token 一 data: {token}；[DONE] 收尾；出错 data: {error}。
+@router.post("/chat")
+async def chat_route(req: ChatRequest):
+    """AI 问答（SSE 流式）。返回 text/event-stream，逐 token 增量。"""
+    from core.llm_client import LLMClient, LLMError
+    from core.chat_context import build_system_prompt
+
+    sys_msg = {'role': 'system', 'content': build_system_prompt(req.context or '')}
+    messages = [sys_msg] + list(req.messages or [])
+
+    try:
+        cli = LLMClient()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f'LLM 客户端初始化失败: {e}')
+
+    def gen():
+        try:
+            for tok in cli.chat(messages, stream=True):
+                yield f'data: {json.dumps({"token": tok}, ensure_ascii=False)}\n\n'
+            yield 'data: [DONE]\n\n'
+        except LLMError as e:
+            yield f'data: {json.dumps({"error": str(e)}, ensure_ascii=False)}\n\n'
+        except Exception as e:
+            yield f'data: {json.dumps({"error": f"问答失败: {e}"}, ensure_ascii=False)}\n\n'
+
+    return StreamingResponse(gen(), media_type='text/event-stream')
 
 
 @router.post("/analyze", response_model=AnalysisResponse)

@@ -29,6 +29,7 @@
   <link rel="stylesheet" href="css/settings.css" />
   <link rel="stylesheet" href="css/param-panel.css" />
   <link rel="stylesheet" href="css/search-bar.css" />
+  <link rel="stylesheet" href="css/chat-panel.css" />
 </head>
 <body>
 
@@ -105,9 +106,12 @@
 
         <!-- 区3 操作栏：仅此区滚动，渲染当前 tab 内容 -->
         <div class="lp-zone lp-zone-operate">
-          <!-- Range 页：绘制范围（上载入口统一到区2 文件夹图标） -->
+          <!-- Range 页：指定范围（预设库 + 手绘）—— 上载入口统一到区2 文件夹图标 -->
           <div class="lp-pane" data-pane="range" hidden>
-            <div class="lp-pane-title">绘制范围</div>
+            <div class="lp-pane-title">指定范围</div>
+            <!-- 预设范围按钮（行政区/街道/社区/更新单元/用地）by range-presets.js -->
+            <div id="range-presets" class="range-presets"></div>
+            <div class="lp-pane-title lp-pane-title-sub">手绘范围</div>
             <div class="range-draw-grid">
               <button class="draw-tool" data-tool="point" title="点" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor"/></svg></button>
               <button class="draw-tool" data-tool="line" title="线" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="18" x2="18" y2="6"/></svg></button>
@@ -769,6 +773,30 @@
     <div class="tp-row tp-metric" id="tp-metric"></div>
     <div class="tp-row tp-size" id="tp-size"></div>
   </div>
+
+  <!-- AI 问答面板（底部滑出，多轮 + 数据引用 chip；provider-agnostic，默认 DeepSeek） -->
+  <button id="chat-trigger" class="chat-trigger" title="AI 规划问答">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    <span>问答</span>
+  </button>
+  <div id="chat-panel" class="chat-panel is-collapsed">
+    <div class="chat-head">
+      <span class="chat-title">AI 规划问答</span>
+      <span class="chat-subtitle">基于当前地图数据 · 引用可点定位</span>
+      <span class="chat-head-spacer"></span>
+      <button class="chat-icon-btn" id="chat-clear" title="清空对话">清空</button>
+      <button class="chat-icon-btn" id="chat-close" title="收起">&times;</button>
+    </div>
+    <div class="chat-messages" id="chat-messages"></div>
+    <div class="chat-suggest" id="chat-suggest"></div>
+    <div class="chat-input-row">
+      <textarea id="chat-input" class="chat-input" placeholder="问：哪些区域情绪最差？为什么？  （Enter 发送 / Shift+Enter 换行）" rows="1"></textarea>
+      <button id="chat-send" class="chat-send" type="button">发送</button>
+    </div>
+  </div>
+
+  <!-- marked：AI 回答 markdown 渲染（CDN 单脚本；不可用时前端退纯文本） -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 
   <!-- Parser libs (UMD globals; used on-demand by import.js). jsdelivr works in CN.
        If a CDN becomes unreachable, vendor these under frontend/vendor/ and point here. -->
