@@ -3,7 +3,7 @@
 > 换机/新会话后读取此文件恢复上下文。**单份当前快照**——每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
 > 最后更新：2026-07-02 | 分支 `main`（feature/kde-l2-3d 已合并删除，现单分支工作流）
 
-## 上一节点（07-02）—— 演示链三件套 + 收尾修复（已 commit c16b071，**push 待网络**）
+## 上一节点（07-02）—— 演示链三件套 + 收尾修复（已 commit c16b071 + 746c331，**已 push origin/main**）
 
 本会话三块大功能 + 三轮修复，串行做透：
 
@@ -21,11 +21,11 @@
 - **工具层要素按钮 toggle-close**（设计语言统一）：heatmap/grid/buffer/terrain `[data-feat]` 再点同层关 param-panel（`isToolPanelEditing` = panel 开+激活 tab+`{tab}-dialog.editLayerId===id`），镜像 point/line/range 的 settings popover toggle
 
 ## 当前状态
-- 分支 `main`，HEAD = `c16b071`；`7caa038`（tip-popup fix）也在其下
-- **c16b071 未 push**（github.com 网络不可达，curl 直测超时；commit 已就绪，网络恢复 `git push origin main` 一条命令）
+- 分支 `main`（单分支工作流，feature/kde-l2-3d 已合并删除），HEAD = `746c331` = origin/main（**已 push**；c16b071 / 7caa038 均在远程）
+- 家里会话（07-02 晚）：`git pull` 同步办公环境合并 + 清理本地废弃 feature 分支，工作区 clean，单分支干净
 - 用户上传了真实预设 `DATA/boundaries/presets/更新单元.geojson`（已入 c16b071，可激活"更新单元"按钮）
 - 静态全过：11 JS node --check；pytest 113 过 / 5 预先存在（h3/SnowNLP/geocode）零回归
-- **未 F5 实测**：Task 三件套 + 收尾修复全待用户 start.bat + F5 肉眼验
+- **未 F5 实测**：Task 三件套 + 收尾修复全待用户 start.bat + F5 肉眼验 ← **晚上优先项**
 
 ## 承重（本会话新增，勿破）
 1. **PRESET_COLORS 单源在 [state.js](frontend/js/state.js)**（settings.js import + re-export；buffer-tool 经 re-export 复用）。`addLayer` 自动配色仅对 **polygon/line 非分析层**（无 `paint._ui.tool`）按已有同类层数循环；grid/terrain（有 `_ui.tool`）保 NAVY 不占槽、不走 palette
@@ -48,14 +48,14 @@
 - **cell-popup kv = `.kv-row` 横排**（`_cellKvRows` 返 `[label,value,color?]`）；**`.popup` 自适应高度**（无 max-height/overflow-y）；**cp-loc 重置 line-clamp**
 
 ## 下一步（待用户在新会话定；候选）
-- **【待 push】** c16b071 网络恢复后 `git push origin main`
+- **【✅ push 已完成】** c16b071 + 746c331 均已在 origin/main（家里 07-02 晚 fetch 确认）
 - **【待 F5 验】** 全批：start.bat（cd frontend）→ F5 → ①导入情绪点+上传边界（更新单元已就绪）→ zonal 聚合→popup/Overview 显归因 ②多范围层色不同+填充 15% ③要素按钮调边长 tip 同步 ④点要素按钮不弹右栏 ⑤heatmap/grid/buffer 要素按钮再点关闭 ⑥配 DEEPSEEK_API_KEY 后右下"问答"试问
 - Overview 矩阵/Top5 视觉打磨；AI 问答 prompt 调优（引用 chip 命中率）
 - 接入溯佰科规划大模型（换 llm_client base_url/model/key）；L3/L4 LLM 归因上线后删 `_ATTRIBUTION_RULES` 规则表
 
 ## 新会话 prompt（复制即用）
 ```
-续 main 分支（演示链三件套+收尾修复 已 commit c16b071，push 待网络）。读 memories/repo/session-handoff.md（最新快照 + 承重）。
+续 main 分支（HEAD=746c331=origin/main，演示链三件套+收尾修复已 commit+push，单分支干净）。读 memories/repo/session-handoff.md（最新快照 + 承重）。
 
 本会话任务：<在此填。候选：F5 验后微调/Overview 视觉打磨/AI prompt 调优/接入溯佰科/range tooltip 迁移 tip-popup>
 
