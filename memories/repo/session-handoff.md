@@ -1,58 +1,71 @@
 # 会话交接卡
 
 > 换机/新会话后读取此文件恢复上下文。**单份当前快照**——每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：2026-07-01 | 分支 `feature/kde-l2-3d`（本批 push 后 = HEAD/origin 同步）
+> 最后更新：2026-07-02 | 分支 `main`（feature/kde-l2-3d 已合并删除，现单分支工作流）
 
-## 上一节点（07-01）—— Task 2.16-2.21 视角按钮 + popup 缩高 + 多 bug hotfix
+## 上一节点（07-02）—— 演示链三件套 + 收尾修复（已 commit c16b071，**push 待网络**）
 
-**核心交付：图层栏视角按钮（替左下角 2D/3D）+ 配对去重合并显示 + cell-popup 横排缩高 + 一串 bug 修复。** 本会话八项：
+本会话三块大功能 + 三轮修复，串行做透：
 
-1. **极性 popup 聚焦该极性+4×5**（2.16）：cell-popup `_cellKvRows` 极性分支去"极性程度判断"行（图层已明示极性），加"治理要素 domain×element"+"问题识别 issue_label"；tip `tp-valence` 极性网格显"治理要素"（替综合判断）。
-2. **视角按钮 + 配对合并**（2.16/2.17）：`modeChip` span→`button.layer-view`（字面=当前 2D/3D，参考要素按钮设计）；`renderLayerList` 按 gridSig 配对去重（`_sigGroups`，代表：可见优先→`getGridViewMode`最近切 mode→兜底最后）；2D/3D 合并显示一条。
-3. **图层栏紧凑**（2.16）：`layerRowHtml` GRIP 移至 del 左侧；`.layer-row gap` → 1px。
-4. **眼睛关闭后分裂+失效 bug**（2.17）：去重旧逻辑只跳"有可见配对的隐藏层"→都隐藏时分裂；`setViewMode` filter(visible) 空→视角按钮失效。修：去重按 sig 组（不论可见）+ 新增 `toggleGridViewMode(layerId)`（针对该 sig、不依赖 visible）+ `_lastGridMode`（sig→最近切 mode，选代表避切回选错）。
-5. **3D fill 重叠"2D3D 同显"bug**（2.18）：`addPolygonPaint` 3D 时 `fillOn` 仍加 fill 色块（地面）+ extru 柱 → 视觉判"2D 3D 同显"。修：3D 跳过 fill（`if (fillOn && !isTool3d)`，柱体自含面不需地面色块）。
-6. **cp-loc 换行被遮挡 bug**（2.19）：`.popup-text` 通用 `-webkit-line-clamp:2 + overflow:hidden`，cp-loc 继承致地点换行被切。修：`.popup-cell .cp-loc` 重置 `display:block + line-clamp:unset + overflow:visible`。
-7. **popup 间距 2px + 自适应高度**（2.20）：popup-text margin-bottom / popup-kv gap / kv-row gap → 2px；`.popup` 去 `min/max-height + overflow-y:auto` → 展开自适应无滚动条。
-8. **cell-popup 横排缩高 + 拖拽跳序修复**（2.21）：`_cellKvRows` 改返 `[label,valueHTML,color?]` 元组，渲染 `.kv-row`（grid auto 1fr，"属性：值"横排单行）；`.popup-cell .kv-v` 字号 2xs+bold（=属性字号、粗体）；删 cp-row dead CSS。拖拽后切视角跳序根因 `addLayer` push pair 末尾→修 `toggleGridViewMode`/`setViewMode` **每次切** `reorderLayers(pair.id, l.id)` 接替原层槽位（保拖拽顺序）。
+**Task 演示链三件套**（commit 51faa0c）：
+1. **指定范围·极性+归因分析**：后端 `aggregate_by_polygons` 抽 `_attach_4x5_attrs` helper 补 **4×5 归因**（原仅 square_grid/terrain 有）+ `polygon_name_col` dead param 落地为 `name`；预设范围库 `DATA/boundaries/presets/manifest.json`（行政区/街道/社区/更新单元/用地占位）+ 端点 `GET /range/presets`、`/range/preset`、`POST /range/preset/upload`；前端 `range-presets.js` 渲 Range tab 胶囊 + `grid-tool.openGridDialog(layerId,preset)` zonal 预填。
+2. **Overview/Table 升级**（保留右栏双 tab）：分析层（grid/zonal/terrain）tier3 故事化（极性聚合计数柱 + **4×5 归因矩阵热力** + **Top5 问题聚集** + 治理要素分布）；Table 按层自适应（点层=geojson.io 表 / 分析层=**可排序问题清单表**，点行飞到+cell:selected）。
+3. **AI 问答**：`core/llm_client.py`（provider-agnostic，httpx SSE，**未来换溯佰科改 base_url/model/key 一处**）+ `core/chat_context.py` grounding + `POST /chat` SSE；`chat-panel.js` 底部滑出（marked markdown + `[ref:区域名]`→可点 chip 定位 + 多轮 + 引导提问胶囊）。
+
+**收尾修复**（commit 7caa038 / c16b071）：
+- tip-popup `fillContent` 改 `liveUi()` 实时读 `layer.paint._ui`（修要素按钮调边长后 tip 边长不更新；`showCellHover` 早已 live，fillContent 漏修）
+- 右端栏（Overview/Table）**不再自动弹开**：移除 `layer:selected`/`cell:selected` 的 `openRightPanel()`；仅 `.collapse-right` 手动开合
+- 预设按钮改 **split-pill**：主按钮（可用→载入分析 / 待上传→上传）+ 常驻 "+"（始终上传/替换，已上传范围的永久重传入口）；替换语义=移除同名旧层
+- **范围层自动配色**：`PRESET_COLORS` 迁 state.js 单源；`addLayer` 对 polygon/line 非分析层按已有数循环配色（分析层 grid/terrain 保 NAVY 不占槽）
+- 默认面域透明度 **30%→15%**（`addLayer` + settings popover；buffer 本就 0.15）
+- **工具层要素按钮 toggle-close**（设计语言统一）：heatmap/grid/buffer/terrain `[data-feat]` 再点同层关 param-panel（`isToolPanelEditing` = panel 开+激活 tab+`{tab}-dialog.editLayerId===id`），镜像 point/line/range 的 settings popover toggle
 
 ## 当前状态
-- 分支 `feature/kde-l2-3d`，本批 push 后 origin 同步
-- 全前端（popup/sidebar/map.js + popup/sidebar.css + README）；前批 2.10-2.15 改 grid-tool/state/heatmap-tool/tip-popup
-- 静态全过：node --check；**未 F5 实测**（Playwright :8080 = directory listing，serve.py 从项目根跑需访问 `/frontend/index.html`，环境问题未深究）→ 待用户 start.bat（cd frontend）+ F5 验
+- 分支 `main`，HEAD = `c16b071`；`7caa038`（tip-popup fix）也在其下
+- **c16b071 未 push**（github.com 网络不可达，curl 直测超时；commit 已就绪，网络恢复 `git push origin main` 一条命令）
+- 用户上传了真实预设 `DATA/boundaries/presets/更新单元.geojson`（已入 c16b071，可激活"更新单元"按钮）
+- 静态全过：11 JS node --check；pytest 113 过 / 5 预先存在（h3/SnowNLP/geocode）零回归
+- **未 F5 实测**：Task 三件套 + 收尾修复全待用户 start.bat + F5 肉眼验
 
 ## 承重（本会话新增，勿破）
-1. **视角按钮 = `toggleGridViewMode(layerId)`**（map.js，针对该 sig、不依赖该层 visible，配对可见性=原层可见性）；**配对去重** `_sigGroups`（不论可见，代表：可见优先→`getGridViewMode`→最后）；`setViewMode`（左下角 btnView，全局切可见 grid）两函数并存，勿混
-2. **`_lastGridMode`**（map.js 模块级 Map）+ **`getGridViewMode(sig)`** export——切后记 sig→mode，sidebar 选代表用
-3. **3D grid 层跳过 fill**（`fillOn && !isTool3d`），柱体自含面；2D 仍 fill
-4. **cell-popup kv = `.kv-row` 横排**（`_cellKvRows` 返 `[label,value,color?]` 元组，渲染 grid auto 1fr）；`.popup-cell .kv-v` 字号 2xs+bold
-5. **`.popup` 自适应高度**（无 max-height/overflow-y）；属性信息间距 2px
-6. **cp-loc 重置 line-clamp**（display:block + unset），地点多行不截
-7. **切视角必 `reorderLayers(pair.id, l.id)`** 接替原层槽位（保拖拽顺序，避免 addLayer push 末尾致跳序）
+1. **PRESET_COLORS 单源在 [state.js](frontend/js/state.js)**（settings.js import + re-export；buffer-tool 经 re-export 复用）。`addLayer` 自动配色仅对 **polygon/line 非分析层**（无 `paint._ui.tool`）按已有同类层数循环；grid/terrain（有 `_ui.tool`）保 NAVY 不占槽、不走 palette
+2. **默认面域透明度 0.15**：`addLayer` polygon default + settings popover 兜底 `?? 0.15`；buffer DEFAULTS 本就 0.15。fillOn toggle 只设 fillOn 不动 fillOpacity → 由默认兜底
+3. **工具要素按钮 toggle-close = `isToolPanelEditing(tool,id)`**（[sidebar.js](frontend/js/sidebar.js)）：param-panel.is-open + `.pp-tab.is-active` 对应 tool + `{tab}-dialog.dataset.editLayerId===id`。tool→tab = {heatmap,grid,buffer} / terrain→heatmap。与 settings popover toggle **同设计语言**（用户铁律：同按钮跨场景交互必须一致）
+4. **右端栏不自动弹开**：`layer:selected`/`cell:selected` 仅 `activateTab+refresh`，不调 `openRightPanel()`（已删 import）。手动开合仅 `.collapse-right`
+5. **tip-popup 全 live 读**：`bindTipPopup` 的 `liveUi()` 每事件重读 `layer.paint._ui`；fillContent（cellSize/mode）+ showCellHover（maxHeight）都用 live，闭包 ui 仅 fallback
+6. **预设 split-pill**：主按钮 data-action=load|upload，"+" data-action=upload；triggerUpload 解析→上传→renderRangePresets→loadPresetRange（替换=移除同名"范围·{label}"层）
+7. **zonal 4×5 归因**：`aggregate_by_polygons` 调 `_attach_4x5_attrs(joined,grouped,agg_stats)`（与 create_square_grid 同源 helper）；`polygon_name_col`→输出 `name` 字段。fillna 按 dtype（数值填 0，字符串归因列填 ''）
+8. **AI chat provider-agnostic**：`core/llm_client.py` `LLMClient`，DeepSeek 默认（base/model/key env），换溯佰科改三参；`POST /chat` SSE（data:{token}/[DONE]/data:{error}）。**DEEPSEEK_API_KEY 走 shell env（无 dotenv 自动加载）**，缺 key 优雅报 SSE error。前端 `streamChat` fetch+ReadableStream 解析；grounding=前端从选中分析层算摘要回传
+9. **Overview isAnalysisLayer = `paint._ui.tool in [grid,terrain]`**（NOT layerLevel——layerLevel 对所有 polygon 返回 'range'）；分析层 tier3 用 n_* 聚合计数（非逐条 polarity），score 用 score_mean
+10. **grid-tool `openGridDialog(layerId, preset)`**：preset={analysis:zonal, polygonLayer, nameCol} 强制 zonal 卡 + 预选面域 + name_col（preset 走 `params = preset?{...DEFAULTS,analysis}:...`）
 
 ## 承重（前会话，仍有效）
-- **高度算法 `heightOf`**（grid-tool.js preprocessGrid，全局含分极性）：pc≤2 线性 `val×0.025`（1→50m/2→100m），pc≥3 `((pc-2)/(max-2))^0.5`（3→237m 起、max→满高）；ref=max 零 clamp；`maxHeight` 默认 2000/上限 4000；分极性 `_grid_h_pos/neg/neu`（各自 max）；`filterPolarityZero` 去 0 点格
-- **L2 极性网格语义**：颜色 field + heightField 同源 = 该极性点数（`_grid_h_pos`，非占比 `_grid_pos`）；popup 极性分支显该极性点数+治理要素
-- **色板**：L1 grid-warm renorm `[0/0.15/0.30/0.50/0.78/1.0]=[#8B0000/#C92A20/#F06428/#FF9900/#FFC63C/#FFDF00]`（红段收窄）；green/red/blue-3 = `gradientStops(TERRAIN_*, 6)`；3D `setVerticalFieldOfView(55)` + `setLight([1.5,45,60],0.5)`（东北光）；`#map` 背景随底图（setBasemap 设）防 3D 上沿白条
-- piToNorm 固定分段（替 p95）；改色 grid+terrain 同步；overlay 用同款 color 表达式（保 properties）；valenceColorOf 用 TERRAIN_*；点击选格走 pickCellFeature
+- **高度算法 `heightOf`**（grid-tool preprocessGrid）：pc≤2 线性 `val×0.025`（1→50m/2→100m），pc≥3 `((pc-2)/(max-2))^0.5`；`maxHeight` 默认 2000/上限 4000；分极性 `_grid_h_pos/neg/neu`；`filterPolarityZero` 去 0 点格
+- **L2 极性网格语义**：颜色 field + heightField 同源 = 该极性点数（`_grid_h_pos`，非占比）
+- **色板**：L1 grid-warm renorm `[0/0.15/0.30/0.50/0.78/1.0]`；green/red/blue-3 = `gradientStops(TERRAIN_*,6)`；3D `FOV55 + setLight([1.5,45,60],0.5)`；`#map` 背景随底图。piToNorm 固定分段（grid+terrain 同步）
+- **视角按钮 = `toggleGridViewMode`**（针对 sig、不依赖 visible）；配对去重 `_sigGroups`（不论可见，代表：可见优先→`getGridViewMode`→最后）；`setViewMode`（左下角）两函数并存
+- **3D grid 层跳 fill**（`fillOn && !isTool3d`）；**切视角必 `reorderLayers(pair.id, l.id)`** 接替槽位
+- **cell-popup kv = `.kv-row` 横排**（`_cellKvRows` 返 `[label,value,color?]`）；**`.popup` 自适应高度**（无 max-height/overflow-y）；**cp-loc 重置 line-clamp**
 
 ## 下一步（待用户在新会话定；候选）
-- **【待 F5 验】** Task 2.16-2.21 全批：start.bat（cd frontend）→F5→重生成网格，验视角按钮/合并/紧凑/popup 横排缩高/拖拽不跳序/眼睛关后不分裂
-- **Overview 深化（项 4）**：展开分析→更有指向性结论+落地建议
-- range tooltip 迁移 tip-popup / Task 3 热点图 / Task 2.2 时间轴
+- **【待 push】** c16b071 网络恢复后 `git push origin main`
+- **【待 F5 验】** 全批：start.bat（cd frontend）→ F5 → ①导入情绪点+上传边界（更新单元已就绪）→ zonal 聚合→popup/Overview 显归因 ②多范围层色不同+填充 15% ③要素按钮调边长 tip 同步 ④点要素按钮不弹右栏 ⑤heatmap/grid/buffer 要素按钮再点关闭 ⑥配 DEEPSEEK_API_KEY 后右下"问答"试问
+- Overview 矩阵/Top5 视觉打磨；AI 问答 prompt 调优（引用 chip 命中率）
+- 接入溯佰科规划大模型（换 llm_client base_url/model/key）；L3/L4 LLM 归因上线后删 `_ATTRIBUTION_RULES` 规则表
 
 ## 新会话 prompt（复制即用）
 ```
-续 feature/kde-l2-3d（Task 2.16-2.21 视角按钮+popup缩高+多bug 已 push）。读 memories/repo/session-handoff.md（最新快照 + 承重）。
+续 main 分支（演示链三件套+收尾修复 已 commit c16b071，push 待网络）。读 memories/repo/session-handoff.md（最新快照 + 承重）。
 
-本会话任务：<在此填。候选：Overview 深化/range tooltip 迁移/Task 3 热点图/F5 验后微调>
+本会话任务：<在此填。候选：F5 验后微调/Overview 视觉打磨/AI prompt 调优/接入溯佰科/range tooltip 迁移 tip-popup>
 
-要点：①视角按钮=toggleGridViewMode（针对sig不依赖visible）；配对去重 _sigGroups（代表：可见优先→getGridViewMode→最后）；setViewMode（左下角）两函数并存；②3D 层跳 fill（fillOn && !isTool3d）；③cell-popup kv-row 横排（_cellKvRows 返 [label,value,color?] 元组），kv-v 2xs bold；④.popup 自适应高度无滚动条，间距 2px；cp-loc 重置 line-clamp；⑤切视角必 reorderLayers(pair,l.id) 接替槽位；⑥高度 heightOf（offset=2+sqrt，1→50/2→100/3→237），maxHeight 2000/4000，分极性 _grid_h_pos；⑦L1 grid-warm renorm 红段收窄；green/red/blue-3 6 段；FOV55+东北光。
+要点：①PRESET_COLORS 单源 state.js，addLayer 仅 polygon/line 非分析层循环配色；②默认面域透明度 0.15；③工具要素按钮 toggle-close=isToolPanelEditing（镜像 settings popover toggle，设计语言一致是用户铁律）；④右端栏不自动弹开（仅 .collapse-right 手动）；⑤tip-popup liveUi() 实时读 paint._ui；⑥预设 split-pill 主按钮+"+";⑦zonal 调 _attach_4x5_attrs 补 4×5 归因；⑧AI chat provider-agnostic（llm_client，DeepSeek 走 shell env 无 dotenv）；⑨Overview isAnalysisLayer=_ui.tool 非 layerLevel；⑩承重：heightOf/maxHeight/_grid_h_pos/视角按钮 toggleGridViewMode/3D跳fill/reorderLayers/cell-popup kv-row。
 计费按调动次数，工作方式见 ~/.claude.md（不派 subagent）。
 ```
 
 ## 承重 memory 索引（本会话相关）
-- `extrusion-height-maxheight`（高度算法 heightOf + L2 极性网格语义 + maxHeight 2000/4000 + 迭代教训）
-- `grid-palette-tuning`（grid-warm renorm + green/red/blue-3 6段 + FOV55/东北光/#map背景）
-- `generate-grid-exclusive-vs-viewmode`（generateGrid 独占 vs setViewMode 配对——本会话加 toggleGridViewMode 第三场景）
-- `tip-popup-unified-hover-design-language` / `maplibre-query-array-stringify` / `terrain-mesh-rendering`（前会话）
+- `extrusion-height-maxheight` / `grid-palette-tuning` / `generate-grid-exclusive-vs-viewmode`（前会话承重）
+- `tip-popup-unified-hover-design-language`（本会话加 liveUi 全 live 读）
+- `maplibre-query-array-stringify` / `terrain-mesh-rendering` / `grid-4x5-attribution`（zonal 现也产归因）
+- `verify-real-endpoint`（zonal 归因打真 POST 实测）
+- 新建议存：**设计语言一致性铁律**（同按钮跨场景交互必须一致）→ 待写 Auto Memory
