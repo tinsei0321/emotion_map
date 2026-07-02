@@ -3,9 +3,23 @@ import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, l
 import { renderLayer, removeLayerFromMap, reorderAllZ, restackZ, toggleGridViewMode, getGridViewMode } from './map.js';
 import { toast } from './toast.js';
 import { openSettingsPopover, closeSettingsPopover, openSettingsLayerId, isOpen } from './settings.js';
+import { closeParamPanel } from './param-panel.js';
 import { openHeatmapDialog } from './heatmap-tool.js';
 import { openBufferDialog } from './buffer-tool.js';
 import { openGridDialog } from './grid-tool.js';
+
+/** 工具层（heatmap/grid/buffer/terrain）要素按钮 toggle-close 判定：
+ *  param-panel 开着 + 当前激活 tab 对应该工具 + 该对话框正编辑此层 → true（再点应关闭）。
+ *  与 point/line/range 的 settings popover toggle（isOpen && openSettingsLayerId===id）同设计语言。 */
+function isToolPanelEditing(tool, id) {
+  const panel = document.getElementById('param-panel');
+  if (!panel || !panel.classList.contains('is-open')) return false;
+  const tab = { heatmap: 'heatmap', grid: 'grid', buffer: 'buffer', terrain: 'heatmap' }[tool];
+  const activeTab = panel.querySelector('.pp-tab.is-active')?.dataset.ppTab;
+  if (activeTab !== tab) return false;
+  const dlg = document.getElementById(`${tab}-dialog`);
+  return !!dlg && dlg.dataset.editLayerId === id;
+}
 
 const expandedWidth = { left: 0, right: 0 };
 
@@ -333,11 +347,11 @@ export function renderLayerList() {
       const id = b.dataset.feat;
       const l = getLayer(id);
       if (!l) return;
-      // Bug 2 fix: heatmap 图层的 H 按钮统一转调 HeatMap 弹窗（与 Toolbox 同入口、同参数集）
-      if (l.kind === 'heatmap') { openHeatmapDialog(id); return; }
-      if (l.paint && l.paint._ui && l.paint._ui.tool === 'buffer') { openBufferDialog(id); return; }
-      if (l.paint && l.paint._ui && l.paint._ui.tool === 'grid') { openGridDialog(id); return; }
-      if (l.paint && l.paint._ui && l.paint._ui.tool === 'terrain') { openHeatmapDialog(id); return; }
+      // 工具层要素按钮 toggle-close：再点同一层按钮 → 关 param-panel（与 point/line/range 的 settings popover toggle 同设计语言）
+      if (l.kind === 'heatmap') { if (isToolPanelEditing('heatmap', id)) closeParamPanel(); else openHeatmapDialog(id); return; }
+      if (l.paint && l.paint._ui && l.paint._ui.tool === 'buffer') { if (isToolPanelEditing('buffer', id)) closeParamPanel(); else openBufferDialog(id); return; }
+      if (l.paint && l.paint._ui && l.paint._ui.tool === 'grid') { if (isToolPanelEditing('grid', id)) closeParamPanel(); else openGridDialog(id); return; }
+      if (l.paint && l.paint._ui && l.paint._ui.tool === 'terrain') { if (isToolPanelEditing('terrain', id)) closeParamPanel(); else openHeatmapDialog(id); return; }
       if (isOpen() && openSettingsLayerId() === id) closeSettingsPopover();
       else {
         openSettingsPopover(l, b);

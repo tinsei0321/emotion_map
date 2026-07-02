@@ -4,8 +4,8 @@
 //  available=false → 点击触发文件选择 → 解析(shp/kml/geojson)→WGS84→上传→激活→自动载入
 // 用户上传的矢量按 manifest.file 名落到 DATA/boundaries/presets/（规范化 .geojson 存储）。
 import { fetchRangePresets, fetchRangePreset, uploadRangePreset } from './api.js';
-import { addLayer, getLayers } from './state.js';
-import { renderLayer, fitBoundsTo, reorderAllZ } from './map.js';
+import { addLayer, getLayers, removeLayer } from './state.js';
+import { renderLayer, fitBoundsTo, reorderAllZ, removeLayerFromMap } from './map.js';
 import { renderLayerList, refreshLegend } from './sidebar.js';
 import { openGridDialog } from './grid-tool.js';
 import { toast } from './toast.js';
@@ -41,23 +41,30 @@ export async function renderRangePresets() {
       <div class="rp-group-label">${g.group}</div>
       <div class="rp-items">
         ${g.items.map((it) => `
-          <button class="rp-item${it.available ? '' : ' is-missing'}" type="button"
-                  title="${it.available ? '载入并分析' : '点击上传矢量文件激活：' + it.file}">
-            <span class="rp-item-label">${it.label}</span>
-            <span class="rp-item-tag">${it.available ? '可用' : '待上传'}</span>
-          </button>`).join('')}
+          <div class="rp-item-split${it.available ? '' : ' is-missing'}">
+            <button class="rp-item-main" type="button" data-id="${it.id}" data-action="${it.available ? 'load' : 'upload'}"
+                    title="${it.available ? '载入并分析' : '上传矢量文件激活：' + it.file}">
+              <span class="rp-item-label">${it.label}</span>
+              <span class="rp-item-tag">${it.available ? '可用' : '待上传'}</span>
+            </button>
+            <button class="rp-item-plus" type="button" data-id="${it.id}" data-action="upload"
+                    title="${it.available ? '重新上传范围（替换）' : '上传范围：' + it.file}" aria-label="上传或替换范围">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>`).join('')}
       </div>
     </div>`).join('');
 
-  // 用扁平索引回查原 item（避免 dataset 中文转义）
+  // 主按钮：可用→载入分析；待上传→上传。"+" 按钮：始终上传/替换（已上传范围的永久重传入口）。
   const flat = [];
   for (const g of groups) for (const it of g.items) flat.push(it);
-  mount.querySelectorAll('.rp-item').forEach((btn, i) => {
-    btn.addEventListener('click', () => {
-      const item = flat[i];
+  mount.querySelectorAll('[data-action]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const item = flat.find((x) => x.id === btn.dataset.id);
       if (!item) return;
-      if (item.available) loadPresetRange(item);
-      else triggerUpload(item);
+      if (btn.dataset.action === 'upload') triggerUpload(item);
+      else loadPresetRange(item);   // action === 'load'（仅 available 时）
     });
   });
 }
@@ -69,9 +76,13 @@ async function loadPresetRange(item) {
     if (!res || !res.available || !res.geojson) { toast.info('该预设范围文件未就绪'); return; }
     const fc = res.geojson;
     const name = `范围·${item.label}`;
+    // 替换语义：点"+"重传后不堆叠——移除同名旧预设层再新建（分析层独立不受影响）
+    for (const l of getLayers()) {
+      if (l.name === name) { removeLayer(l.id); removeLayerFromMap(l.id); }
+    }
     const L = addLayer({
       name, kind: 'polygon', fc,
-      paint: { color: '#0c1c2e', lineWidth: 2, fillOn: true },
+      paint: { lineWidth: 2, fillOn: true },   // color 不指定 → addLayer 按 PRESET_COLORS 自动配（区分不同范围层）
     });
     L.srcName = name;
     renderLayer(L);

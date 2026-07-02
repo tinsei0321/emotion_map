@@ -234,6 +234,11 @@ export function confidenceStats(fc) {
 //          }
 
 const NAVY = '#0c1c2e';   // title-bar navy (range outline default)
+/** 范围/边界层自动配色色板（按加载顺序循环；与 settings/buffer 取色器同源）。 */
+export const PRESET_COLORS = [
+  '#4a4a4a', '#0c1c2e', '#007afc', '#4FC3F7', '#22b14c',
+  '#e04848', '#9b59b6', '#1abc9c', '#e67e22', '#c0392b',
+];
 const _layers = new Map();   // id -> layer object
 let _seq = 0;
 
@@ -593,10 +598,17 @@ export function isDrawActive() { return _drawMode !== 'NONE'; }
 
 export function addLayer({ name, kind, fc, needsAnalysis = false, colorMode, paint, parentId }) {
   const id = 'L' + (++_seq).toString().padStart(3, '0');
+  // 范围/边界层（polygon/line 非分析）自动配色：按现有同类层数循环 PRESET_COLORS，保持图层间可区分。
+  // 分析层（grid/terrain，paint._ui.tool 存在）不配色板槽、保持 NAVY（其渲染走 gridField 不用 color）。
+  const isRange = (kind === 'polygon' || kind === 'line') && !(paint && paint._ui && paint._ui.tool);
+  const rangeColor = isRange
+    ? PRESET_COLORS[[..._layers.values()].filter((l) =>
+        (l.kind === 'polygon' || l.kind === 'line') && !(l.paint && l.paint._ui && l.paint._ui.tool)).length % PRESET_COLORS.length]
+    : NAVY;
   const defaultPaint = kind === 'polygon'
-    ? { color: NAVY, fillOn: false, lineWidth: 2, fillOpacity: 0.3 }
+    ? { color: rangeColor, fillOn: false, lineWidth: 2, fillOpacity: 0.15 }
     : kind === 'line'
-      ? { color: NAVY, lineWidth: 2 }
+      ? { color: rangeColor, lineWidth: 2 }
       : kind === 'heatmap'
         ? {
             unit: 'm',           // 'm' (geographic meters, default) | 'px' (screen pixels)

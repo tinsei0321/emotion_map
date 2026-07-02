@@ -6,7 +6,7 @@
 //   • line                 → (no popover; marker non-interactive)
 // Live: control change → setLayerPaint + renderLayer (re-renders that layer).
 
-import { getLayer, setLayerPaint, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS, HOTNESS_RAMP } from './state.js';
+import { getLayer, setLayerPaint, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS, HOTNESS_RAMP, PRESET_COLORS } from './state.js';
 import { renderLayer, effectivePointRadius } from './map.js';
 import { refreshPopupForLayer } from './popup.js';
 import { openParamPanel, closeParamPanel } from './param-panel.js';
@@ -20,11 +20,8 @@ const PRESET_RAMPS = [
   { id: 'red',    name: '红', stops: ['#FAD4D0', '#F29A92', '#E15F54', '#B53A30', '#7A1E16'] },
   { id: 'gray',   name: '灰', stops: ['#E8E8E8', '#BDBDBD', '#8C8C8C', '#5A5A5A', '#2A2A2A'] },
 ];
-// 全局预设色（点·面单色通用；深灰=L0 默认，天蓝=缓冲默认）。不让用户自由调色，仅预设可选。
-export const PRESET_COLORS = [
-  '#4a4a4a', '#0c1c2e', '#007afc', '#4FC3F7', '#22b14c',
-  '#e04848', '#9b59b6', '#1abc9c', '#e67e22', '#c0392b',
-];
+// 全局预设色：定义在 state.js（addLayer 自动配色 + buffer 取色器复用），此处 re-export 本地 import。
+export { PRESET_COLORS };
 const KIND_ZH = { point: '点', line: '线', polygon: '面', heatmap: '热' };
 
 let _layerId = null;
@@ -101,7 +98,7 @@ function build(layer) {
       body = `<div class="set-note">颜色：由极性决定</div>` + sectionPointSize(layer) + sectionOpacity(p.opacity ?? 0.9);
     }
   } else if (layer.kind === 'polygon') {
-    body = sectionFill(p.fillOn) + sectionColor(p.color || '#0c1c2e') + sectionLineWidth(p.lineWidth ?? 2) + sectionLineStyle(p.lineStyle || 'solid') + sectionFillOpacity(p.fillOpacity ?? 0.3, p.fillOn);
+    body = sectionFill(p.fillOn) + sectionColor(p.color || '#0c1c2e') + sectionLineWidth(p.lineWidth ?? 2) + sectionLineStyle(p.lineStyle || 'solid') + sectionFillOpacity(p.fillOpacity ?? 0.15, p.fillOn);
   } else if (layer.kind === 'heatmap') {
     // Full parameter set: Color (ramp legend) + Radius + Opacity + Intensity
     const rampName = (HEATMAP_RAMPS[p.rampKey] && HEATMAP_RAMPS[p.rampKey].name) || '消极红';
