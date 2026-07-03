@@ -1,7 +1,7 @@
 // ═══ heatmap-tool.js — HeatMap 三阶引导：①分析类型 / ②数据源 / ③显示样式 ═══
 // v3 (2026-06-19): kepler 配色语言；7 大类喜怒哀乐愁急盼；样式按 ①+② 联动；analysis-card hover infopanel
 import {
-  getLayers, getChildren, addLayer, removeLayer, getLayer, setLayerVisible, selectLayer, isRangeLayer,
+  getLayers, getChildren, addLayer, removeLayer, getLayer, setLayerVisible, selectLayer, isRangeLayer, enforceMutualExclusion,
   HEATMAP_RAMPS, HEATMAP_RAMP_KEYS, rampDisplaySegs, buildMacroRamp,
   EMOTION_TYPE_COLORS, EMOTION_TYPE_ORDER,
   EMOTION_MACRO, EMOTION_MACRO_ORDER, EMOTION_MACRO_MAP, macroOfPolarity,
@@ -717,10 +717,7 @@ async function generateTerrain(dlg, btn) {
       L = addLayer({ name: labelName, kind: 'polygon', fc, paint });
       L.srcName = srcName;
       renderLayer(L);
-      for (const other of [...getLayers()]) {
-        if (other.id === L.id || other.kind === 'group' || isRangeLayer(other)) continue;   // 保 Range 层
-        if (other.visible) { setLayerVisible(other.id, false); renderLayer(other); }
-      }
+      for (const hid of enforceMutualExclusion(L.id)) { const hl = getLayer(hid); if (hl) renderLayer(hl); }
     }
     const bb = fcBBox(fc); if (bb) fitBoundsTo(bb);
     setView3D(true);   // 3D 地形：自动暗底图 + pitch 60°
@@ -884,10 +881,7 @@ function generateHeatmap(btn) {
   // 安全性：setLayerVisible(false)+renderLayer 移除图层；用户经侧栏眼睛可随时
   // setLayerVisible(true)+renderLayer 恢复；下方 dispatch layers:changed 保证侧栏
   // 眼睛状态同步（bug⑤ 真因是当时缺此事件 → 眼睛状态与实际不一致，表象"无效"）。
-  for (const l of [...getLayers()]) {
-    if (l.id === layer.id || isRangeLayer(l)) continue;   // 保 Range 层（用户范围不随热力图独占关闭）
-    if (l.visible) { setLayerVisible(l.id, false); renderLayer(l); }
-  }
+  for (const hid of enforceMutualExclusion(layer.id)) { const hl = getLayer(hid); if (hl) renderLayer(hl); }
   selectLayer(layer.id);
   document.dispatchEvent(new CustomEvent('layers:changed'));   // 工具生成不自动弹 Overview/Table
   toast.success(`已生成热力图：${rampName} · ${radiusLabel} · ${fc.features.length} 点`);

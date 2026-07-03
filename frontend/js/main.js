@@ -5,7 +5,7 @@ import { initTipPopup } from './tip-popup.js';
 import { initToolbar, setActiveBasemap } from './toolbar.js';
 import { initSidebar, openImport, renderLayerList, showLayerManager, refreshLegend } from './sidebar.js';
 import { initPopup, showPopup, showRangePopup } from './popup.js';
-import { addLayer, addGroup, getLayers, getSelectedLayer, isDrawActive, deriveTimeTag } from './state.js';
+import { addLayer, addGroup, getLayers, getSelectedLayer, selectLayer, focusLayer, getChildren, isRangeLayer, isToolAnalysisLayer, isEmotionPointLayer, isDrawActive, deriveTimeTag } from './state.js';
 import {
   groupFiles, detectGroupType, parseGroup, reprojectFC, readPrj,
   splitByGeometry, detectColorMode, fcBBox,
@@ -44,9 +44,17 @@ function updateExportState() {
   if (btn) btn.disabled = !has;
 }
 
-/** Overview reflects the SELECTED layer (per-layer 3-tier); empty state if none. */
+/** Overview reflects the current VISIBLE focus layer（视野-数据-结论同步）。
+ *  选中层可见 → 显它；否则回退到最顶可见分析层/点层并选它（眼睛切换图层后 Overview 即时追随）。
+ *  Range 层不作为 Overview 焦点（它无归因数据）。 */
 function refreshOverview() {
-  const layer = getSelectedLayer();
+  let layer = getSelectedLayer();
+  const visFocus = (l) => l && (l.kind === 'group' ? getChildren(l.id).some((c) => c.visible) : l.visible);
+  if (!visFocus(layer)) {
+    const vis = getLayers().filter((l) => l.visible && l.kind !== 'group' && !isRangeLayer(l));
+    layer = vis.find(isToolAnalysisLayer) || vis.find(isEmotionPointLayer) || null;
+    if (layer) selectLayer((focusLayer(layer) || layer).id);
+  }
   setOverview(layer);
   const fc = (layer && layer.kind === 'point') ? layer.fc : { type: 'FeatureCollection', features: [] };
   setTable(fc, layer);

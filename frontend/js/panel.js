@@ -9,9 +9,38 @@ import {
 } from './state.js';
 import { geomStats, DOMAIN_LABEL, ELEMENT_LABEL } from './popup.js';
 import { easeBackFromCell, fitBoundsTo } from './map.js';
-import { highlightCellSet, clearHighlightCellSet, toggleStickyHighlight } from './tip-popup.js';
+import { highlightCellSet, clearHighlightCellSet, toggleStickyHighlight, resetHighlightCellSet } from './tip-popup.js';
+
+let _infoTipInit = false;
+/** "i" 浮动 tooltip 单例（position:fixed，append body）—— 浮于全屏最上层，不被右栏 overflow 裁切（修任务1 bug）。
+ *  事件委托 document：任意 .info-i（含未来动态渲染的）hover → 读 data-tip → 按 getBoundingClientRect 定位其上方（放不下翻下方）。 */
+function _initInfoTip() {
+  if (_infoTipInit) return;
+  _infoTipInit = true;
+  const tip = document.createElement('div');
+  tip.id = 'info-i-tip';
+  document.body.appendChild(tip);
+  const show = (el) => {
+    tip.textContent = el.dataset.tip || '';
+    if (!tip.textContent) return;
+    const r = el.getBoundingClientRect();
+    tip.classList.add('is-show');
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    const vw = window.innerWidth;
+    let left = r.left + r.width / 2 - tw / 2;
+    let top = r.top - th - 6;                    // 默认上方
+    if (top < 8) top = r.bottom + 6;             // 上方放不下 → 下方
+    left = Math.max(8, Math.min(left, vw - tw - 8));
+    tip.style.left = Math.round(left) + 'px';
+    tip.style.top = Math.round(top) + 'px';
+  };
+  const hide = () => tip.classList.remove('is-show');
+  document.addEventListener('mouseover', (e) => { const el = e.target.closest && e.target.closest('.info-i'); if (el) show(el); });
+  document.addEventListener('mouseout', (e) => { if (e.target.closest && e.target.closest('.info-i')) hide(); });
+}
 
 export function initPanel() {
+  _initInfoTip();
   document.querySelectorAll('.ptab').forEach((tab) => {
     tab.addEventListener('click', () => activateTab(tab.dataset.tab));
   });
@@ -30,7 +59,7 @@ export function initPanel() {
       const mx = e.target.closest('.mx-cell[data-dom]');
       if (mx) { highlightCellSet(_cellsByBucket(_overviewLayer.fc.features, mx.dataset.dom, mx.dataset.elm), _overviewLayer); return; }
       const kw = e.target.closest('.ov-kw-item');
-      if (kw) { const r = _topKeywordCells(_overviewLayer.fc.features, kw.dataset.dom, kw.dataset.elm, kw.dataset.sign, 5); if (r.cells.length) highlightCellSet(r.cells, _overviewLayer); return; }
+      if (kw) { const r = _topKeywordCells(_overviewLayer.fc.features, kw.dataset.dom, kw.dataset.elm, kw.dataset.sign, 10); if (r.cells.length) highlightCellSet(r.cells, _overviewLayer); return; }
     });
     pane.addEventListener('mouseout', (e) => {
       if (e.target.closest('.ov-pie-slice') || e.target.closest('.mx-cell[data-dom]') || e.target.closest('.ov-kw-item')) clearHighlightCellSet();
@@ -60,7 +89,7 @@ export function initPanel() {
       // 关键词 → top-N 最强聚集格 sticky + fitBounds（再点释放）
       const kw = e.target.closest('.ov-kw-item');
       if (kw) {
-        const r = _topKeywordCells(_overviewLayer.fc.features, kw.dataset.dom, kw.dataset.elm, kw.dataset.sign, 5);
+        const r = _topKeywordCells(_overviewLayer.fc.features, kw.dataset.dom, kw.dataset.elm, kw.dataset.sign, 10);
         if (r.cells.length) {
           const key = 'kw:' + kw.dataset.dom + '|' + kw.dataset.elm + '|' + kw.dataset.sign;
           const locked = toggleStickyHighlight(r.cells, _overviewLayer, key);
@@ -78,6 +107,10 @@ export function initPanel() {
       const f = L && L.fc && L.fc.features && L.fc.features[idx];
       if (!f) return;
       document.dispatchEvent(new CustomEvent('cell:selected', { detail: { feature: f, layer: L } }));
+    });
+    // 进入单元深读 → 同步取消饼图/矩阵/关键词的 sticky 选中态（任务9：上一层 sticky 同步取消）
+    document.addEventListener('cell:selected', () => {
+      pane.querySelectorAll('.is-sticky').forEach((el) => el.classList.remove('is-sticky'));
     });
   }
 }
@@ -126,6 +159,7 @@ export function activateOvTab(name, opts) {
     const cp = document.getElementById('ov-cell-pane');
     if (cp && !cp.innerHTML.trim()) cp.innerHTML = cellEmptyHint();
   } else if (!silent) {
+    resetHighlightCellSet();   // 回「图层总览」→ 清单元聚焦橙柱（任务9）
     easeBackFromCell();
   }
 }
@@ -234,7 +268,7 @@ function tier1(layer, lv) {
 }
 
 // ── 分析层（grid/zonal/terrain）故事化：极性分布 + 4×5 矩阵 + Top 问题 + 治理要素 ──
-const DOMAIN_ORDER = ['urban_planning', 'urban_governance', 'urban_renewal', 'urban_operation'];
+const DOMAIN_ORDER = ['urban_planning', 'urban_renewal', 'urban_operation', 'urban_governance'];
 const ELEMENT_ORDER = ['facility', 'environment', 'service', 'culture', 'event'];
 let _overviewLayer = null;   // setOverview 写入；行点击时回查 feature
 
@@ -290,7 +324,7 @@ function _matrixHtml(cell) {
       const pi = c.piCnt ? c.piSum / c.piCnt : null;
       return `<div class="mx-cell" data-dom="${d}" data-elm="${e}" style="background:${_piColor(pi)}" title="${lbl}：${c.n} 单元 · 极性 ${pi != null ? pi.toFixed(2) : '—'}（悬停/点击 → 地图同步）">${c.n}</div>`;
     }).join('');
-    return `<div class="mx-rowlabel" title="${DOMAIN_LABEL[d] || d}">${(DOMAIN_LABEL[d] || d).replace('城市', '')}</div>${cells}`;
+    return `<div class="mx-rowlabel" title="${DOMAIN_LABEL[d] || d}">${DOMAIN_LABEL[d] || d}</div>${cells}`;
   }).join('');
   return `<div class="ov-matrix">${head}${rows}</div>`;
 }
@@ -354,8 +388,8 @@ function _polarPieHtml(agg, total) {
   }
   const lg = SEGS.filter(([k]) => (agg[k] || 0) > 0).map(([k, c]) =>
     `<span class="ov-pie-lg"><span class="ov-pie-dot" style="background:${c}"></span>${POLARITY_LABEL[k]}<i>${agg[k]}</i></span>`).join('');
-  return `<div class="ov-pie"><svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">${paths.join('')}</svg></div>
-    <div class="ov-pie-legend">${lg}</div>`;
+  return `<div class="ov-pie-block"><div class="ov-pie"><svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">${paths.join('')}</svg></div>
+    <div class="ov-pie-legend">${lg}</div></div>`;
 }
 
 /** 4 领域相关性柱状（缩短+增高、数字入条内、品牌蓝→白字）。 */
@@ -386,7 +420,7 @@ function _keywordRank(feats) {
     b[k].neg += (p.n_negative || 0) + (p.n_very_negative || 0);
   }
   const vals = Object.values(b);
-  const top = (key) => vals.filter((x) => x[key] > 0).sort((a, c) => c[key] - a[key]).slice(0, 5);
+  const top = (key) => vals.filter((x) => x[key] > 0).sort((a, c) => c[key] - a[key]).slice(0, 10);
   return { pos: top('pos'), neu: top('neu'), neg: top('neg') };
 }
 
@@ -528,14 +562,14 @@ function tier3(layer, lv) {
     const negN = agg['Negative'] + agg['Very Negative'];
     const neuN = agg['Neutral'];
     const countLine = total
-      ? `<div class="ov-count-line">共 <b>${total}</b> 条城市情绪 · 积极 <b>${posN}</b> · 消极 <b>${negN}</b> · 中性 <b>${neuN}</b></div>` : '';
+      ? `<div class="ov-count-line">共 <b>${total}</b> 条 · 积极 <b>${posN}</b> · 消极 <b>${negN}</b> · 中性 <b>${neuN}</b></div>` : '';
     const overviewRow = (pieHtml || domHtml)
       ? `<div class="ov-tier-sub">数据总览<span class="info-i" data-tip="饼图悬停/点击某极性 → 地图同步高亮该极性主导的网格；矩阵、关键词同理。点击锁定，再次点击释放。">i</span></div>
          ${countLine}
          <div class="ov-overview-row">${pieHtml}<div class="ov-domain-chart">${domHtml}</div></div>` : '';
     body = `${overviewRow}
       <div class="ov-tier-sub">归因矩阵<span class="info-i" data-tip="4 大治理领域 × 5 要素 的情绪归因矩阵。悬停/点击某格 → 地图同步高亮该领域×要素交集的网格。">i</span></div>${_matrixHtml(cell)}
-      <div class="ov-tier-sub">关键词Top5<span class="info-i" data-tip="按各要素正/中/负情绪点数排名的高频城市关键词。点击某词 → 地图定位并高亮其最强聚集的若干柱体。">i</span></div>${_keywordsHtml(feats)}`;
+      <div class="ov-tier-sub">关键词Top10<span class="info-i" data-tip="按各要素正/中/负情绪点数排名的高频城市关键词。点击某词 → 地图定位并高亮其最强聚集的若干柱体。">i</span></div>${_keywordsHtml(feats)}`;
   } else if (layer.kind === 'heatmap') {
     const p = layer.paint || {};
     const n = layer.fc.features.length;
@@ -606,7 +640,7 @@ function tier3(layer, lv) {
       ${etBars ? `<div class="ov-tier-sub" style="margin-top:12px">情绪类型分布</div><div class="hchart">${etBars}</div>` : ''}
       ${spatialPlaceholder()}`;
   }
-  return `<div class="ov-tier ov-t3"><div class="ov-tier-head">数据分析</div>${body}</div>`;
+  return `<div class="ov-tier ov-t3">${body}</div>`;
 }
 
 /** Placeholder for spatial-analysis conclusions (hotspot / Moran / grid) — filled when Analysis wiring lands. */

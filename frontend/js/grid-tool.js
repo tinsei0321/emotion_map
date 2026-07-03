@@ -7,7 +7,7 @@
 // 后端：square→/spatial/grid(square, EPSG:4546 snap-to-grid)；zonal→/spatial/aggregate(点→面域)。
 // 注：polarity_index 值域 -2~+2。_grid_norm 用对称拉伸 0.5+sign(pi)×min(1,|pi|/p95)×0.5（p95=|pi|95分位），
 // 铺满 terrain-9 深红/深绿（线性 (pi+2)/4 只到中段=无张力根因）；与 terrain 后端 _norm 同公式保配色一致。
-import { getLayers, addLayer, getLayer, selectLayer, setLayerVisible, isRangeLayer, HEATMAP_RAMPS, rampDisplaySegs, deriveTimeTag } from './state.js';
+import { getLayers, addLayer, getLayer, selectLayer, setLayerVisible, isRangeLayer, enforceMutualExclusion, HEATMAP_RAMPS, rampDisplaySegs, deriveTimeTag } from './state.js';
 import { renderLayer, fitBoundsTo, reorderAllZ, removeLayerFromMap, setView3D } from './map.js';
 import { renderLayerList, refreshLegend, showLayerManager } from './sidebar.js';
 import { fcBBox } from './import.js';
@@ -419,14 +419,11 @@ async function generateGrid() {
       renderLayer(editLyr);
       L = editLyr;
     } else {
-      // 新建态：addLayer + 独占显示（关其他可见层，仿 heatmap generateHeatmap:775）
+      // 新建态：addLayer + 互斥显示（关其他分析层 + 所有点层，保 Range；generateGrid 与 setViewMode 场景独立，勿耦合）
       L = addLayer({ name: labelName, kind: 'polygon', fc, paint });
       L.srcName = src.srcName;
       renderLayer(L);
-      for (const other of [...getLayers()]) {
-        if (other.id === L.id || other.kind === 'group' || isRangeLayer(other)) continue;   // 保 Range 层（用户绘/导入的范围不关）
-        if (other.visible) { setLayerVisible(other.id, false); renderLayer(other); }   // 独占显示：关其他所有可见层（generateGrid 与 setViewMode 场景独立，勿耦合）
-      }
+      for (const hid of enforceMutualExclusion(L.id)) { const hl = getLayer(hid); if (hl) renderLayer(hl); }
     }
     const bb = fcBBox(fc); if (bb) fitBoundsTo(bb);
     setView3D(p.mode === '3d');   // fitBounds 后设 pitch（3D→倾斜+暗底图 / 2D→复原），防被打断

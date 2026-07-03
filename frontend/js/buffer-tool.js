@@ -2,7 +2,7 @@
 // 镜像 heatmap-tool：① 输入图层 ② 缓冲参数 ③ 显示样式。
 // B 按钮打开（editLayerId）→ 回填当前层参数 + 原地更新（layer id 稳定，镜像 H「继续编辑」）。
 // 后端 POST /api/v1/spatial/buffer 在 EPSG:4546 下 buffer，回 WGS84 GeoJSON 落图。
-import { getLayers, addLayer, getLayer, selectLayer } from './state.js';
+import { getLayers, addLayer, getLayer, selectLayer, enforceMutualExclusion } from './state.js';
 import { renderLayer, fitBoundsTo, reorderAllZ, removeLayerFromMap } from './map.js';
 import { renderLayerList, refreshLegend, showLayerManager } from './sidebar.js';
 import { fcBBox } from './import.js';
@@ -146,6 +146,7 @@ async function generateBuffer() {
     const L = addLayer({ name: labelName, kind: 'polygon', fc, paint });
     L.srcName = sourceLayer.srcName || sourceLayer.name;
     renderLayer(L);
+    for (const hid of enforceMutualExclusion(L.id)) { const hl = getLayer(hid); if (hl) renderLayer(hl); }   // 互斥：关其他分析层+点层，保 Range
     const bb = fcBBox(fc); if (bb) fitBoundsTo(bb);
     renderLayerList();
     refreshLegend();

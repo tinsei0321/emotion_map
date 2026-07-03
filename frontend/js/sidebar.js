@@ -1,5 +1,5 @@
 // ═══ sidebar.js — left panel: collapse/expand, drag, import trigger, layer manager ═══
-import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, layerDisplayColor, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, addLayer, getChildren, categoryOf, CATEGORY_LABEL, applyGroupOrder, reorderGroupSegment, isCollapsed, toggleCollapsed, isGroupFold, toggleGroupFold, getGroupOrder, CONFIDENCE_RAMP, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HOTNESS_RAMP } from './state.js';
+import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, layerDisplayColor, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, addLayer, getChildren, categoryOf, CATEGORY_LABEL, applyGroupOrder, reorderGroupSegment, isCollapsed, toggleCollapsed, isGroupFold, toggleGroupFold, getGroupOrder, enforceMutualExclusion, CONFIDENCE_RAMP, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HOTNESS_RAMP } from './state.js';
 import { renderLayer, removeLayerFromMap, reorderAllZ, restackZ, toggleGridViewMode, getGridViewMode, fitToLayer } from './map.js';
 import { toast } from './toast.js';
 import { openSettingsPopover, closeSettingsPopover, openSettingsLayerId, isOpen } from './settings.js';
@@ -487,11 +487,19 @@ function selectLayerRow(id) {
   document.dispatchEvent(new CustomEvent('layer:selected', { detail: id }));
 }
 
+/** 开某层为可见后，应用互斥规则 + 选中追随（视野-数据-结论同步：Overview 跟随当前可见层）。 */
+function _applyExclusiveOn(id) {
+  const hidden = enforceMutualExclusion(id);
+  for (const hid of hidden) { const hl = getLayer(hid); if (hl) renderLayer(hl); }
+  selectLayer(id);
+}
+
 function toggleEye(id) {
   const l = getLayer(id);
   if (!l) return;
   setLayerVisible(id, !l.visible);
   renderLayer(l);
+  if (l.visible) _applyExclusiveOn(id);   // 开层 → 互斥 + Overview 追随
   renderLayerList();
   refreshLegend();   // legend syncs with visibility (hidden layer → legend hides)
   document.dispatchEvent(new CustomEvent('layers:changed'));   // 显隐 → popup/Overview 同步
@@ -507,6 +515,7 @@ function toggleGroupEye(groupId) {
     setLayerVisible(c.id, showAll);
     renderLayer(c);
   }
+  if (showAll && children[0]) _applyExclusiveOn(children[0].id);   // 同源极性组开 → 互斥(保兄弟)+追随
   renderLayerList();
   refreshLegend();
   document.dispatchEvent(new CustomEvent('layers:changed'));   // 组显隐 → popup/Overview 同步
@@ -523,6 +532,7 @@ function toggleCategoryEye(cat) {
     setLayerVisible(l.id, showAll);
     renderLayer(l);
   }
+  if (showAll && members[0]) _applyExclusiveOn(members[0].id);   // 按互斥规则保留首个，余被关
   renderLayerList();
   refreshLegend();
   document.dispatchEvent(new CustomEvent('layers:changed'));   // 组显隐 → popup/Overview 同步
@@ -538,6 +548,7 @@ function toggleAllLayers() {
     setLayerVisible(l.id, showAll);
     renderLayer(l);
   }
+  if (showAll && layers[0]) _applyExclusiveOn(layers[0].id);
   renderLayerList();
   refreshLegend();
   document.dispatchEvent(new CustomEvent('layers:changed'));   // 显隐 → popup/Overview 同步

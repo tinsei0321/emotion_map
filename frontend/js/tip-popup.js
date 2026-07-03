@@ -26,8 +26,15 @@ const el = () => document.getElementById('tip-popup');
 
 export function initTipPopup(map) {
   _map = map;
-  // cell:selected：隐浮动卡但保留柱体升起（点击不缩回，仅 mouseleave 缩回）+ 清 Overview 集高亮（聚焦转单格）
-  document.addEventListener('cell:selected', () => { hideTipPopup(); resetHighlightCellSet(); });
+  // cell:selected：隐浮动卡 + 聚焦该单格（橙色原高；其余 sticky 橙柱消失）。detail 需带 feature+layer。
+  document.addEventListener('cell:selected', (e) => {
+    const { feature, layer } = (e && e.detail) || {};
+    hideTipPopup();
+    if (feature && layer) focusCell(feature, layer);
+    else resetHighlightCellSet();
+  });
+  // cell:cleared（关闭/层隐藏/回图层总览）：清单元聚焦
+  document.addEventListener('cell:cleared', () => { hideTipPopup(); resetHighlightCellSet(); });
   document.addEventListener('layers:changed', () => { hideTipPopup(); clearCellHover(); resetHighlightCellSet(); _lastHoverKey = null; });
 }
 
@@ -53,7 +60,8 @@ export function bindTipPopup(layer, lid, uiOverride) {
 
   const onEnter = (e) => {
     _map.getCanvas().classList.add('is-pointer');
-    const f = (ui.kind === 'point') ? (e.features && e.features[0]) : pickCellFeature(e.features || []);
+    const hl = (ui.kind !== 'point') ? pickHLCell(e.point) : null;   // 橙柱优先：命中橙色聚焦柱用其精确格
+    const f = hl ? hl.feature : ((ui.kind === 'point') ? (e.features && e.features[0]) : pickCellFeature(e.features || []));
     if (!f) return;
     _lastPt = evtClientPt(e);
     fillContent(f, liveUi());
@@ -62,7 +70,8 @@ export function bindTipPopup(layer, lid, uiOverride) {
     maybeCellHover(f, ui, layer);
   };
   const onMove = (e) => {
-    const f = (ui.kind === 'point') ? (e.features && e.features[0]) : pickCellFeature(e.features || []);
+    const hl = (ui.kind !== 'point') ? pickHLCell(e.point) : null;
+    const f = hl ? hl.feature : ((ui.kind === 'point') ? (e.features && e.features[0]) : pickCellFeature(e.features || []));
     if (!f) return;
     _lastPt = evtClientPt(e);
     fillContent(f, liveUi());
@@ -118,7 +127,7 @@ function showCellHover(feature, ui, layer) {
         'fill-extrusion-base': 0,
         'fill-extrusion-height': cellH,
         'fill-extrusion-height-transition': { duration: 350, delay: 0 },
-        'fill-extrusion-opacity': liveUi.extrusionOpacity ?? 0.9,   // 与格层同透明度（默认 0.9），避免悬停柱突兀
+        'fill-extrusion-opacity': 1.0,   // 不透明：完全遮住原柱下半段，修"两色重叠/穿模"（同色共面也无可见闪烁，任务4）
       } });
     // 下一帧触发升高 → transition 动画到 2×（整柱拔高突出显示）
     const target = Math.max(cellH * 2, cellH + 60);
@@ -141,15 +150,18 @@ function clearCellHover() {
 const HL_SRC = 'cell-hl-set', HL_LAYER = 'cell-hl-set-layer';
 const HL_COLOR = '#ff9000';
 let _stickySet = null;   // {key, features, layer}；click 锁定态
+let _hlLayer = null;     // 当前 HL 叠加对应的注册层（hover/sticky/focus 共用；pickHLCell 配对用）
 
 function _removeHL() {
   if (!_map) return;
   if (_map.getLayer(HL_LAYER)) _map.removeLayer(HL_LAYER);
   if (_map.getSource(HL_SRC)) _map.removeSource(HL_SRC);
+  _hlLayer = null;
 }
 function _applyHL(features, layer) {
   if (!_map || !features || !features.length || !layer) { _removeHL(); return; }
   _removeHL();
+  _hlLayer = layer;
   _map.addSource(HL_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features } });
   const ui = (layer.paint && layer.paint._ui) || {};
   if (ui.mode === '3d') {
@@ -181,8 +193,44 @@ export function toggleStickyHighlight(features, layer, key) {
   _applyHL(features, layer);
   return true;
 }
-/** 重置（layers:changed / cell:selected 进入深读 / 换层）：清 sticky + 高亮。 */
+/** 重置（layers:changed / cell:cleared 离开深读 / 换层）：清 sticky + 高亮。 */
 export function resetHighlightCellSet() { _stickySet = null; _removeHL(); }
+
+/** 橙柱命中优先：查询 HL_LAYER 在 point 处的 feature，配对注册层（_hlLayer）。
+ *  修任务9：pickCellFeature 只认注册层，HL 层无注册身份被忽略 → 点橙柱命中背后格。
+ *  HL 层最后添加（浮顶），命中优先即"扩大识别+置顶"等价。无 HL / 未命中 → null。 */
+export function pickHLCell(point) {
+  if (!_map || !_map.getLayer(HL_LAYER) || !_hlLayer || !point) return null;
+  const hits = _map.queryRenderedFeatures(point, { layers: [HL_LAYER] });
+  if (!hits || !hits.length) return null;
+  return { feature: hits[0], layer: _hlLayer };
+}
+
+/** 单元深读聚焦（任务9）：单格橙色、保持原柱高（非 2×）；清多格 sticky。
+ *  cell:selected 时调用——被点击的橙柱保持橙色但降回原高，其余橙柱消失。 */
+export function focusCell(feature, layer) {
+  if (!_map || !feature) return;
+  _stickySet = null;
+  _removeHL();
+  if (!layer) return;
+  _hlLayer = layer;
+  _map.addSource(HL_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [feature] } });
+  const ui = (layer.paint && layer.paint._ui) || {};
+  if (ui.mode === '3d') {
+    const hf = ui.heightField || '_grid_h';
+    const mh = ui.maxHeight || 1000;
+    _map.addLayer({ id: HL_LAYER, type: 'fill-extrusion', source: HL_SRC, paint: {
+      'fill-extrusion-color': HL_COLOR,
+      'fill-extrusion-base': 0,
+      'fill-extrusion-height': ['interpolate', ['linear'], ['get', hf], 0, 0, 1, mh],   // 原柱高（非 2×）：选中态仅颜色锁定，高度复原
+      'fill-extrusion-opacity': 1.0,
+    } });
+  } else {
+    _map.addLayer({ id: HL_LAYER, type: 'line', source: HL_SRC, paint: {
+      'line-color': HL_COLOR, 'line-width': 3, 'line-opacity': 1.0,
+    } });
+  }
+}
 /** cell 悬停高亮防抖：同格不重敷（_lastHoverKey）；point 层不高亮（走 point hover-ring）。 */
 function maybeCellHover(feat, ui, layer) {
   if (ui.tool !== 'grid' && ui.tool !== 'terrain') return;

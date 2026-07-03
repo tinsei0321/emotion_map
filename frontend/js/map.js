@@ -1,5 +1,5 @@
 // ═══ map.js — MapLibre GL JS instance, multi-layer registry, basemap switch ═══
-import { emotionColors, token, POLARITY_ORDER, getLayers, addLayer, setLayerVisible, reorderLayers, CONFIDENCE_RAMP, confidenceColor, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets } from './state.js';
+import { emotionColors, token, POLARITY_ORDER, getLayers, addLayer, setLayerVisible, reorderLayers, enforceMutualExclusion, CONFIDENCE_RAMP, confidenceColor, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets } from './state.js';
 import { initControls } from './map-controls.js';
 import { bindTipPopup } from './tip-popup.js';
 
@@ -178,7 +178,10 @@ export function toggleGridViewMode(layerId) {
                       paint: { ...l.paint, _ui: { ...l.paint._ui, mode: target } } });
     pair.srcName = l.srcName;
   }
-  if (wasVisible) setLayerVisible(pair.id, true);   // 原可见 → 配对可见；原隐藏 → 配对仍隐藏（只切 mode）
+  if (wasVisible) {
+    setLayerVisible(pair.id, true);   // 原可见 → 配对可见；原隐藏 → 配对仍隐藏（只切 mode）
+    for (const hid of enforceMutualExclusion(pair.id)) { const hl = getLayers().find((x) => x.id === hid); if (hl) renderLayer(hl); }   // 边界防护：切视角后维持互斥
+  }
   _lastGridMode.set(sig, target);                   // 记该 sig 当前 mode（sidebar 配对代表选择用）
   reorderLayers(pair.id, l.id);                     // target pair 接替原层 l 顺序位置（每次切都 reorder 保槽位稳定，避免拖拽后切视角跳序）
   renderLayer(pair);

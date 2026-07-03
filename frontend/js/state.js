@@ -10,33 +10,33 @@ export const POLARITY_LABEL = {
 };
 
 /** 城市情绪关键词表（独立于 issue_label；网感 + 城市生活具象词）。key = `${domain}|${element}|${sign}`，sign ∈ pos/neu/neg。
- *  词非"评价性"（好/不好），而是市民具象用语（停车难/红灯长/网红打卡点/夜经济/BRT…）；neu=期盼/讨论中（盼BRT/规划路）。
- *  演示链"识别问题"环：Top5 正/中/负关键词 = 4×5 桶按正/中/负点数排名 → 本表映射。用户可调措辞。 */
+ *  词非"评价性"（好/不好），而是市民具象用语（停车难/断头路/网红打卡点/夜经济/盼BRT…）；neu=期盼/讨论中。
+ *  演示链"识别问题"环：关键词Top10 正/中/负 = 4×5 桶按正/中/负点数排名 → 本表映射（用户勾选词 + 桶语义匹配）。 */
 export const KEYWORD_TABLE = {
-  // governance 城市治理
-  'urban_governance|facility|pos': '地铁通了',   'urban_governance|facility|neu': '盼BRT',     'urban_governance|facility|neg': '红灯长',
-  'urban_governance|environment|pos': '街道干净', 'urban_governance|environment|neu': '垃圾分类', 'urban_governance|environment|neg': '垃圾乱扔',
-  'urban_governance|service|pos': '秒批',         'urban_governance|service|neu': '办事',         'urban_governance|service|neg': '办事难',
-  'urban_governance|culture|pos': '图书馆',       'urban_governance|culture|neu': '文化活动',     'urban_governance|culture|neg': '没去处',
-  'urban_governance|event|pos': '不拥堵',         'urban_governance|event|neu': '早晚高峰',       'urban_governance|event|neg': '大堵车',
-  // operation 城市运营
-  'urban_operation|service|pos': '网红店',        'urban_operation|service|neu': '排队打卡',     'urban_operation|service|neg': '踩雷',
-  'urban_operation|environment|pos': '网红公园',  'urban_operation|environment|neu': '遛娃',     'urban_operation|environment|neg': '公园脏乱',
-  'urban_operation|facility|pos': '配套齐全',     'urban_operation|facility|neu': '便利店',       'urban_operation|facility|neg': '没配套',
-  'urban_operation|culture|pos': '网红打卡点',   'urban_operation|culture|neu': '出片',         'urban_operation|culture|neg': '没意思',
-  'urban_operation|event|pos': '夜经济',         'urban_operation|event|neu': '夜市',           'urban_operation|event|neg': '噪音大',
-  // renewal 城市更新
-  'urban_renewal|service|pos': '物业靠谱',        'urban_renewal|service|neu': '物业',           'urban_renewal|service|neg': '物业差',
-  'urban_renewal|environment|pos': '焕新',        'urban_renewal|environment|neu': '改造中',     'urban_renewal|environment|neg': '老旧小区',
-  'urban_renewal|facility|pos': '加装电梯',       'urban_renewal|facility|neu': '盼电梯',         'urban_renewal|facility|neg': '没电梯',
-  'urban_renewal|culture|pos': '老街新生',        'urban_renewal|culture|neu': '老街',           'urban_renewal|culture|neg': '拆没了',
-  'urban_renewal|event|pos': '更新活力',          'urban_renewal|event|neu': '施工',             'urban_renewal|event|neg': '施工扰民',
-  // planning 城市规划
-  'urban_planning|facility|pos': '新路通',        'urban_planning|facility|neu': '规划路',       'urban_planning|facility|neg': '断头路',
-  'urban_planning|service|pos': '新学校',         'urban_planning|service|neu': '学区',           'urban_planning|service|neg': '没学校',
-  'urban_planning|environment|pos': '新绿地',     'urban_planning|environment|neu': '规划绿地',   'urban_planning|environment|neg': '没公园',
-  'urban_planning|culture|pos': '新地标',         'urban_planning|culture|neu': '规划',           'urban_planning|culture|neg': '没特色',
-  'urban_planning|event|pos': '新中心',           'urban_planning|event|neu': '规划落地',         'urban_planning|event|neg': '烂尾',
+  // planning 城市规划（路网/绿地/公服/地标/新区）
+  'urban_planning|facility|pos': '断头路打通',  'urban_planning|facility|neu': '盼BRT',       'urban_planning|facility|neg': '断头路',
+  'urban_planning|environment|pos': '绿道修得好', 'urban_planning|environment|neu': '规划绿地', 'urban_planning|environment|neg': '内涝',
+  'urban_planning|service|pos': '新学校',        'urban_planning|service|neu': '学区划分',     'urban_planning|service|neg': '没配套',
+  'urban_planning|culture|pos': '新地标',        'urban_planning|culture|neu': '规划落地',     'urban_planning|culture|neg': '没特色',
+  'urban_planning|event|pos': '新中心',          'urban_planning|event|neu': '新区规划',       'urban_planning|event|neg': '烂尾',
+  // renewal 城市更新（老旧小区/电梯/物业/老街/施工）
+  'urban_renewal|facility|pos': '老小区加装电梯', 'urban_renewal|facility|neu': '盼电梯',       'urban_renewal|facility|neg': '没电梯',
+  'urban_renewal|environment|pos': '焕新',        'urban_renewal|environment|neu': '老街改造', 'urban_renewal|environment|neg': '小区破',
+  'urban_renewal|service|pos': '物业靠谱',        'urban_renewal|service|neu': '物业',         'urban_renewal|service|neg': '物业差',
+  'urban_renewal|culture|pos': '老街新生',        'urban_renewal|culture|neu': '文化传承',     'urban_renewal|culture|neg': '拆没了',
+  'urban_renewal|event|pos': '更新活力满满',      'urban_renewal|event|neu': '改造中',         'urban_renewal|event|neg': '施工扰民',
+  // operation 城市运营（商圈/配套/网红/夜经济）
+  'urban_operation|facility|pos': '公交到门口',   'urban_operation|facility|neu': '公交线优化', 'urban_operation|facility|neg': '停车难',
+  'urban_operation|environment|pos': '滨江步道舒服', 'urban_operation|environment|neu': '口袋公园', 'urban_operation|environment|neg': '绿化没人养',
+  'urban_operation|service|pos': '网红打卡地',   'urban_operation|service|neu': '业态调整',   'urban_operation|service|neg': '商圈没落',
+  'urban_operation|culture|pos': '15分钟生活圈', 'urban_operation|culture|neu': '社区营造',   'urban_operation|culture|neg': '没意思',
+  'urban_operation|event|pos': '夜经济火热',     'urban_operation|event|neu': '夜市摆摊',     'urban_operation|event|neg': '噪音扰民',
+  // governance 城市治理（信号/环卫/政务/文化/拥堵）
+  'urban_governance|facility|pos': '红绿灯优化了', 'urban_governance|facility|neu': '停车收费讨论', 'urban_governance|facility|neg': '红绿灯不合理',
+  'urban_governance|environment|pos': '街道干净整洁', 'urban_governance|environment|neu': '垃圾分类讨论', 'urban_governance|environment|neg': '垃圾乱扔',
+  'urban_governance|service|pos': '政务秒批',     'urban_governance|service|neu': '办事',       'urban_governance|service|neg': '办事难',
+  'urban_governance|culture|pos': '文化活动丰富', 'urban_governance|culture|neu': '文化活动预告', 'urban_governance|culture|neg': '没去处',
+  'urban_governance|event|pos': '不拥堵',         'urban_governance|event|neu': '早晚高峰',     'urban_governance|event|neg': '堵车',
 };
 
 /** Read a --geojson-* token value from the live :root (single source). */
@@ -914,3 +914,44 @@ export const FIELD_SYNONYMS = {
   emotion_type: ['emotion_type', 'emotionType', '情绪类型', '情感类型', 'emotion'],
   emotion_intensity: ['emotion_intensity', 'emotionIntensity', '情绪强度', '情感强度', 'intensity'],
 };
+
+// ── 「视野-数据-结论同步」图层互斥规则（任务6/7）─────────────────────────────
+// 两组：A=情绪点(l0/l1/l2)，B=Toolbox空间分析(heatmap/grid/terrain/buffer)，R=Range(范围)。
+// 规则：① B 组内部同时只显示一个（开一个关其他 B）。② A 与 B 不能同屏（开 A 关 B，开 B 关 A）。
+//       ③ A 组同时只显示一个数据源（同一 L2 group 的极性子层视为同源，保留）。④ R 与谁都共存，永不被动关。
+/** Toolbox 空间分析层（B 组）。 */
+export function isToolAnalysisLayer(l) {
+  const c = categoryOf(l);
+  return c === 'heatmap' || c === 'grid' || c === 'terrain' || c === 'buffer';
+}
+/** 情绪点层（A 组）。 */
+export function isEmotionPointLayer(l) {
+  const c = categoryOf(l);
+  return c === 'l0' || c === 'l1' || c === 'l2';
+}
+/** 当 onId 设为可见时，按互斥规则隐藏冲突层。返回被隐藏的层 id 数组（调用方 renderLayer + 选中超链）。
+ *  承重：不动 Range（isRangeLayer 跳过）、不动同 L2 group 兄弟（同源极性保留）。 */
+export function enforceMutualExclusion(onId) {
+  const on = getLayer(onId);
+  if (!on || !on.visible) return [];
+  const onIsB = isToolAnalysisLayer(on);
+  if (!onIsB && !isEmotionPointLayer(on)) return [];   // Range/other → 不动
+  const hidden = [];
+  for (const l of getLayers()) {
+    if (l.id === onId || l.kind === 'group' || !l.visible) continue;
+    if (isRangeLayer(l)) continue;                      // Range 永不被动关（承重）
+    let hide = false;
+    if (onIsB) {
+      // 开分析层 → 关其他分析层(B) + 所有点层(A)
+      hide = isToolAnalysisLayer(l) || isEmotionPointLayer(l);
+    } else {
+      // 开点层(A) → 关所有分析层(B)；点层内部：同 L2 group 兄弟保留，不同源关
+      hide = isToolAnalysisLayer(l);
+      if (!hide && isEmotionPointLayer(l)) {
+        hide = !(on.parentId && l.parentId && on.parentId === l.parentId);
+      }
+    }
+    if (hide) { setLayerVisible(l.id, false); hidden.push(l.id); }
+  }
+  return hidden;
+}

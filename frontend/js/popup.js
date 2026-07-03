@@ -6,6 +6,7 @@
 import { POLARITY_LABEL, rampColor, rampColorAt, CONFIDENCE_RAMP, getLayer, computeHotness, hotnessColor, isDrawActive, deriveTimeTag, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, valenceOf, valenceColorOf, TERRAIN_GREEN, TERRAIN_RED, TERRAIN_BLUE } from './state.js';
 import { reverseGeocode } from './api.js';
 import { trackGeocode } from './geocode-loader.js';
+import { pickHLCell } from './tip-popup.js';   // 橙柱命中优先（任务9）；运行时调用，循环引用安全
 
 const emoEl = () => document.getElementById('feature-popup');
 const rngEl = () => document.getElementById('range-popup');
@@ -563,8 +564,9 @@ export function initPopup(map) {
       document.dispatchEvent(new CustomEvent('point:collapse'));
       // 聚合单元（网格/柱体/地形环）：cell popup + Overview 联动，收 point/range 后 return
       if (k === 'cell') {
-        const f = pickCellFeature(feats);
-        const layer = f && layerFromFeature(f);
+        const hl = pickHLCell(ev.point);   // 橙柱优先：命中橙色聚焦柱用其精确格（修任务9 点橙柱命中背后格）
+        const f = hl ? hl.feature : pickCellFeature(feats);
+        const layer = hl ? hl.layer : (f && layerFromFeature(f));
         if (layer) {
           showCellPopup(f, layer);
           document.dispatchEvent(new CustomEvent('cell:selected', { detail: { feature: f, layer } }));
