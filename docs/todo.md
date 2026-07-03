@@ -41,7 +41,20 @@
   - **3D 高亮**：选中柱体升高 2× + 橙 #ff9000 + 100%（修与 2D 同效）。
   - 验证：4 JS node --check 全过；pytest 116 passed/5 预存在零回归；待 F5 验。
 
+- **Overview batch-2 精修（11 项反馈 + skill 扩充，plan `main-head-9bff353-overview-elegant-fountain.md`）**：
+  - **图层互斥/Overview 追随**（任务6/7）：[`state.js`](frontend/js/state.js) `enforceMutualExclusion`/`isToolAnalysisLayer`/`isEmotionPointLayer`（B 组分析层互斥、A↔B 不共存、同源极性保留、保 Range）接入眼睛/工具生成/视角切换；[`main.js`](frontend/js/main.js) `refreshOverview` 追随可见层——**修换层 Overview 不匹配 / 2D·3D 提示串台**。
+  - **橙柱易选+深读**（任务9）：[`tip-popup.js`](frontend/js/tip-popup.js) `pickHLCell`（橙柱命中优先，修点橙柱选中背后格）+ `focusCell`（单格橙原高、其余取消）；click/hover 优先橙柱；cell:selected 同步清 sticky。
+  - **选中橙框**（任务8）：饼图/矩阵/关键词 sticky → 橙黄 #ff9000 4px；修**关键词框被 track overflow 裁切** → 改挂 track。
+  - **"i" 浮窗**（任务1）：`position:absolute` 被右栏裁切 → `position:fixed` 单例 `#info-i-tip`（浅灰底深灰字 10px）。
+  - **3D 重叠/穿模**（任务4）：悬停升起柱 overlay 0.9→**1.0 不透明**（修两色重叠/共面穿模闪烁）。
+  - **视觉小改**：去"数据分析"标题；count 行单行无省略；横条数字深灰；矩阵全称"城市规划"+新序(规划/更新/运营/治理)+左齐；饼图+图例整体居中。
+  - **关键词 Top10**（任务11）：标题+slice 5→10+点击高亮 5→10；`KEYWORD_TABLE` 用用户勾选 30 词按 4×5 桶重填；表头细体。
+  - **skill 扩充**：装 web-design-guidelines + code-review-and-quality（npx）；写 `~/.claude/CLAUDE.md` 全局规则；**4 个 claude-plugin 待回家开 VPN 装**。
+  - 验证：24 JS node --check 全过；待 F5 验。
+
 ### ⬜ 下一步
+- **【回家装 skill · 最高优先】** 开 VPN 在终端跑 4 个 claude-plugin（superpowers/ui-ux-pro-max/planning-with-files/claude-mem）——命令见 `memories/repo/session-handoff.md`「回家装 skill」节。
+- **【待 F5 验 batch-2】** 图层互斥切换（开网格→点隐、开分析→其他分析隐、Range 始终留）/ 橙柱选中正确格 / 三处橙框 / i 浮窗跨右栏 / 3D 不重叠 / 关键词 Top10。
 - **【待 F5 验】** Task4 双层 Tab + zoom：导入 L1/L2→生成网格→点单元（切单元深读 + 略微 zoom）→点图层总览（zoom out）→ donut/分位/4×5 递进。
 - **【待用户数据】** 更新单元干净矢量替换 `presets/更新单元.geojson`；400MB 用地放 `DATA/raw/` → 跑 `ingest_landuse_preset.py --inspect` → 确认映射 → `--split`。
 - Task5 AI 问答重做；POI/地名纠错（后期）；F5 验后微调。

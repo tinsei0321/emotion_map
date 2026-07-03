@@ -27,3 +27,9 @@ docs/kepler.gl-master/
 docs/martin-main/
 docs/maplibre-gl-js-main/
 docs/refs/
+
+# skill 本地安装产物（npx/agent-skills 符号链接至 .agents/，per-machine；换机用命令重装，见 memories/repo/session-handoff.md）
+.agents/
+.claude/skills/code-review-and-quality/
+.claude/skills/web-design-guidelines/
+skills-lock.json
