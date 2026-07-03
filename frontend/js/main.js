@@ -1,6 +1,6 @@
 // ═══ main.js — entry: wire map + sidebar + panel + toolbar + popup + import ═══
-import { initMap, setBasemap, setClickHandler, renderLayer, fitBoundsTo, reorderAllZ } from './map.js';
-import { initPanel, activateTab, setOverview, setCellOverview, setTable } from './panel.js';
+import { initMap, setBasemap, setClickHandler, renderLayer, fitBoundsTo, reorderAllZ, easeToCell } from './map.js';
+import { initPanel, activateTab, setOverview, setCellOverview, setTable, activateOvTab } from './panel.js';
 import { initTipPopup } from './tip-popup.js';
 import { initToolbar, setActiveBasemap } from './toolbar.js';
 import { initSidebar, openImport, renderLayerList, showLayerManager, refreshLegend } from './sidebar.js';
@@ -266,16 +266,19 @@ function main() {
     refreshOverview();
   });
 
-  // 聚合单元（网格/柱体/地形环）点击 → Overview 切「单元归因」深读；cell:cleared 回 layer Overview。
-  // 不自动弹开右端栏（用户手动展开时内容已就绪）。
+  // 聚合单元（网格/柱体/地形环）点击 → Overview 切「单元深读」sub-Tab + 略微 zoom 到该格；
+  // cell:cleared（关闭/层隐藏）→ 回「图层总览」+ zoom out 抬高。不自动弹开右端栏（手动展开时内容已就绪）。
   document.addEventListener('cell:selected', (e) => {
     const { feature, layer } = (e && e.detail) || {};
     if (!feature || !layer) return;
     activateTab('overview');
     setCellOverview(feature, layer);
+    activateOvTab('cell');      // 切「单元深读」sub-Tab
+    easeToCell(feature);        // 定位质心 + 略微 zoom（保留周边 context，不占满视野）
   });
   document.addEventListener('cell:cleared', () => {
     refreshOverview();
+    activateOvTab('layer');     // 回「图层总览」+ easeBackFromCell 抬高视野
   });
 
   // Layer color edited (settings popover) → legend + Overview track the change.

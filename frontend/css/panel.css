@@ -46,6 +46,70 @@
   gap: 12px;
   min-height: 100%;
 }
+
+/* ── Overview 双层 sub-Tab（图层总览 | 单元深读）—— 设计语言同 .ptab 但层级更低、尺寸更小 ── */
+.ov-subtabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--geojson-color-border-default);
+  margin-bottom: 2px;
+}
+.ov-subtab {
+  position: relative;
+  height: 28px;
+  padding: 0 var(--geojson-spacing-2, 8px);
+  font-size: var(--geojson-typography-size-xs, 13px);
+  font-weight: var(--geojson-typography-weight-medium);
+  color: var(--geojson-color-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color var(--geojson-transition, .15s);
+}
+.ov-subtab:hover { color: var(--geojson-color-text-primary); }
+.ov-subtab.is-active {
+  color: var(--geojson-color-brand-primary, #4285F4);
+  font-weight: var(--geojson-typography-weight-bold);
+}
+.ov-subtab.is-active::after {            /* 2px 下划线（轻于 .ptab 的深灰实心填充）*/
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  background: var(--geojson-color-brand-primary, #4285F4);
+}
+.ov-subpane { display: none; flex-direction: column; gap: 12px; min-height: 100%; }
+.ov-subpane.is-active { display: flex; }
+
+/* 极性占比 donut（CSS conic-gradient，无图表库；图层总览总结向）*/
+.ov-donut-row { display: flex; align-items: center; gap: 12px; }
+.ov-donut {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: conic-gradient(var(--geojson-color-gray-200, #e5e5e5) 0 100%);  /* JS 按极性占比设分段 */
+  position: relative; flex-shrink: 0;
+}
+.ov-donut::after {                       /* 中空 = 环形，露底层 panel 色 */
+  content: ''; position: absolute; inset: 9px; border-radius: 50%;
+  background: var(--geojson-color-surface-panel, #fff);
+}
+.ov-donut-legend { display: flex; flex-direction: column; gap: 2px; font-size: var(--geojson-typography-size-xs, 13px); }
+.ov-donut-legend .ov-lg { display: flex; align-items: center; gap: 5px; color: var(--geojson-color-text-secondary); }
+.ov-donut-legend .ov-lg .ov-lg-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+/* 单元深读：4×5 定位高亮 + 分位条 */
+.ov-cell-where { font-size: var(--geojson-typography-size-xs, 13px); color: var(--geojson-color-text-secondary); line-height: 1.5; }
+.ov-cell-where b { color: var(--geojson-color-text-primary); }
+.ov-pct-track {                          /* 该单元极性在图层中的分位条 */
+  height: 8px; border-radius: 4px; margin-top: 4px;
+  background: linear-gradient(90deg, #C92A20 0%, #A0A0AA 50%, #4EB432 100%);
+  position: relative;
+}
+.ov-pct-marker {                         /* 该单元分位的三角标 */
+  position: absolute; top: -3px;
+  width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent;
+  border-top: 7px solid var(--geojson-color-text-primary, #1a1a1a);
+  transform: translateX(-50%);
+}
 .ov-tier {
   border: 1px solid var(--geojson-color-border-default);
   border-radius: var(--geojson-radius-md);

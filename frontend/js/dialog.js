@@ -7,8 +7,8 @@
 
 import { FILE_TYPES } from './import.js';
 
-const SIZE_WARN = 10 * 1024 * 1024;   // 10 MB → warn inline
-const SIZE_BLOCK = 80 * 1024 * 1024;  // 80 MB → block Import
+export const SIZE_WARN = 10 * 1024 * 1024;    // 10 MB → warn inline
+export const SIZE_BLOCK = 200 * 1024 * 1024;  // 200 MB → block Import / preset upload（原 80MB；调高以容正常大文件。>此值走服务端 ingest）
 
 let _root = null;
 

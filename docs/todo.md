@@ -5,6 +5,29 @@
 
 ---
 
+## 📅 2026-07-03（周五）
+
+### ✅ 已完成
+- **Task4 Overview 双层 sub-Tab + 单元深读增强 + 联动 zoom**（plan `main-head-commit-inherited-tide.md`）：
+  - **双层 sub-Tab**：[`panel.js`](frontend/js/panel.js) setOverview/setCellOverview 改写进独立 `#ov-layer-pane`/`#ov-cell-pane`（不再互相覆盖，切换内容互不丢）；新增 `activateOvTab`（silent 避抖）；[`index.html`](frontend/index.html) `#overview-pane` 内嵌 `.ov-subtabs`（图层总览|单元深读，仅分析层显，28px/xs/品牌蓝下划线，轻于顶层 `.ptab`）。
+  - **联动 zoom**：[`map.js`](frontend/js/map.js) `easeToCell`（质心 + zoom clamp[13,15.5]，替 `fitBounds` 避占满）+ `easeBackFromCell`（恢复进入单元前视野）；[`main.js`](frontend/js/main.js) cell:selected→切单元深读 + zoom in；cell:cleared/换层→回图层总览 + zoom out。issue/Table 行点击改纯 dispatch cell:selected（统一 zoom）。
+  - **内容分层级不重复**：图层总览（总结向）= 极性 donut（conic-gradient）+ 4×5 宏矩阵 + Top5 排行（点击深读）+ 治理柱；单元深读（微观，指向 4×5）= 该单元 domain×element 桶定位 + 桶均值 + 极性分位条 + 归因链 + 建议。
+  - 验证：6 JS node --check 全过；待 F5 验双 Tab 切换 + 单元 zoom（不占满）+ donut/分位。
+- **Task3 指定区域演示（更新单元 + 用地筛选）+ 上传限制 + 搜索历史**：
+  - **更新单元**：核验 preset 150 面/119 碎面（与用户"20~40"矛盾，bbox 跨整城）→ 用户重导干净矢量；[`range_selector.load_preset`](core/range_selector.py) nameField='编号' 时加载期注入「更新单元-NN」（不改原文件）；manifest nameField 修（更新单元→编号、行政区→MC）。
+  - **用地筛选 400MB 服务端 ingest**：浏览器上传必 OOM/超时，新增 [`ingest_landuse_preset.py`](SCRIPT/ingest_landuse_preset.py)（`--inspect` 列 DLMC + 建议映射；`--split --map` 按 DLMC 拆类 → dissolve → 简化 → WGS84 落盘 + 更新 manifest）。用户数据=单 GeoJSON 全用地，按 DLMC 拆商业/公园广场/居住。**待用户放数据到 `DATA/raw/` + 跑 inspect 确认映射**。
+  - **上传限制**：[`dialog.js`](frontend/js/dialog.js) `SIZE_BLOCK` 80→200MB；[`range-presets.js`](frontend/js/range-presets.js) '+' 加 >200MB 守卫。
+  - **搜索历史**：[`search-bar.js`](frontend/js/search-bar.js) 单条「×」+「清除全部」+ css。
+  - 验证：3 新单测过（编号注入 + ingest inspect/split）；pytest 116 passed，5 fail 均预存在/环境（h3 未装→hex、geocode 离线、test_capabilities），零回归。
+- **performance 文件夹同步**：`.gitignore` 删 `DATA/performance/`（197MB/12 文件入库）；AMAP_KEY 核验一致不动。
+
+### ⬜ 下一步
+- **【待 F5 验】** Task4 双层 Tab + zoom：导入 L1/L2→生成网格→点单元（切单元深读 + 略微 zoom）→点图层总览（zoom out）→ donut/分位/4×5 递进。
+- **【待用户数据】** 更新单元干净矢量替换 `presets/更新单元.geojson`；400MB 用地放 `DATA/raw/` → 跑 `ingest_landuse_preset.py --inspect` → 确认映射 → `--split`。
+- Task5 AI 问答重做；POI/地名纠错（后期）；F5 验后微调。
+
+---
+
 ## 📅 2026-07-02（周四）
 
 ### ✅ 已完成

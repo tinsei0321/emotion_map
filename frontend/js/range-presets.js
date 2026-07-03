@@ -9,6 +9,7 @@ import { renderLayer, fitBoundsTo, reorderAllZ, removeLayerFromMap } from './map
 import { renderLayerList, refreshLegend } from './sidebar.js';
 import { openGridDialog } from './grid-tool.js';
 import { toast } from './toast.js';
+import { SIZE_BLOCK } from './dialog.js';
 import {
   groupFiles, detectGroupType, parseGroup, reprojectFC, readPrj,
   splitByGeometry, fcBBox,
@@ -117,6 +118,11 @@ function triggerUpload(item) {
 
 async function uploadPresetFile(item, fileList) {
   const arr = Array.from(fileList);
+  const total = arr.reduce((s, f) => s + (f.size || 0), 0);
+  if (total > SIZE_BLOCK) {   // 浏览器解析 + 代理 POST 大文件会 OOM/超时；超大矢量走服务端 ingest
+    toast.error(`文件过大（${(total / 1024 / 1024).toFixed(0)} MB > ${SIZE_BLOCK / 1024 / 1024} MB）。请走服务端：放进 DATA/boundaries/presets/ 或用 SCRIPT/ingest_landuse_preset.py`, 6000);
+    return;
+  }
   const base = arr[0].name.replace(/\.[^.]+$/, '');
   try {
     const groups = groupFiles(arr);

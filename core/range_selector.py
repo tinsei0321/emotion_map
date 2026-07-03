@@ -334,6 +334,13 @@ def load_preset(preset_id: str) -> Optional[Dict]:
         gdf = gpd.read_file(file_path)
         if gdf.crs and not (hasattr(gdf.crs, 'is_geographic') and gdf.crs.is_geographic):
             gdf = gdf.to_crs('EPSG:4326')
+        # 编号注入：manifest nameField='编号' 时（如更新单元无原生名称字段），
+        # 按文件 feature 序自动编号「{label}-01…NN」注入 properties（不改原文件，加载期生成）。
+        nf = item.get('nameField')
+        if nf == '编号' and nf not in gdf.columns:
+            label = item.get('label', '单元')
+            width = max(2, len(str(len(gdf))))
+            gdf[nf] = [u'{}-{:0{w}d}'.format(label, i + 1, w=width) for i in range(len(gdf))]
         return {
             'available': True,
             'geojson': json.loads(gdf.to_json()),

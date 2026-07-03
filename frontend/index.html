@@ -253,8 +253,15 @@
       </div>
 
       <div class="panel-body">
-        <!-- Overview：按选中层 3 层级（摘要/属性/展示）— 由 panel.js setOverview 填充 -->
-        <section class="tab-pane is-active" data-pane="overview" id="overview-pane"></section>
+        <!-- Overview：分析层 = 双层 sub-Tab（图层总览 | 单元深读）；非分析层 sub-Tab 隐藏 -->
+        <section class="tab-pane is-active" data-pane="overview" id="overview-pane">
+          <div class="ov-subtabs" id="ov-subtabs" role="tablist" hidden>
+            <button class="ov-subtab is-active" data-ovtab="layer" type="button" role="tab">图层总览</button>
+            <button class="ov-subtab" data-ovtab="cell" type="button" role="tab">单元深读</button>
+          </div>
+          <div class="ov-subpane is-active" data-ovpane="layer" id="ov-layer-pane"></div>
+          <div class="ov-subpane" data-ovpane="cell" id="ov-cell-pane"></div>
+        </section>
 
         <!-- Table：geojson.io 风格表格 -->
         <section class="tab-pane" data-pane="table">

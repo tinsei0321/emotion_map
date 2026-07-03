@@ -84,6 +84,21 @@ function _pushHistory(hit) {
   try { localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, HISTORY_MAX))); } catch (_) {}
 }
 
+/** 删单条历史（按 name+lng 身份），存盘后重渲染。 */
+function _removeHistory(idx) {
+  const hit = _hits[idx];
+  if (!hit) return;
+  const h = _loadHistory().filter((x) => !(x.name === hit.name && Math.abs(x.lng - hit.lng) < 1e-4));
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); } catch (_) {}
+  _showHistory();
+}
+
+/** 清空全部历史，存盘后重渲染空态。 */
+function _clearHistory() {
+  try { localStorage.removeItem(HISTORY_KEY); } catch (_) {}
+  _showHistory();
+}
+
 // ── 渲染下拉 ──
 
 function _hideResults() {
@@ -103,11 +118,12 @@ function _hl(name, q) {
   return _esc(name.slice(0, i)) + '<mark>' + _esc(name.slice(i, i + q.length)) + '</mark>' + _esc(name.slice(i + q.length));
 }
 
-function _row(hit, idx, q) {
+function _row(hit, idx, q, isHistory) {
   const li = document.createElement('li');
+  if (isHistory) li.className = 'sb-hist-row';
   const btn = document.createElement('button');
   btn.type = 'button';
-  btn.className = 'sb-item';
+  btn.className = 'sb-item' + (isHistory ? ' sb-hist-item' : '');
   btn.dataset.idx = String(idx);
 
   // 行 1：名称 + 匹配类型标签
@@ -145,6 +161,17 @@ function _row(hit, idx, q) {
   btn.addEventListener('mouseenter', () => { _active = idx; _renderActive(); });
   btn.addEventListener('click', (e) => { e.preventDefault(); _navigate(idx); });
   li.appendChild(btn);
+  if (isHistory) {
+    // 单条删除「×」：与 .sb-item 同级（非嵌套，合规）；点击只删不导航、不收起。
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'sb-hist-x';
+    x.title = '删除该条';
+    x.setAttribute('aria-label', '删除该条历史');
+    x.textContent = '×';
+    x.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); _removeHistory(idx); });
+    li.appendChild(x);
+  }
   return li;
 }
 
@@ -182,10 +209,16 @@ function _showHistory() {
     e.innerHTML = '<div class="sb-empty-title">暂无历史搜索</div><div class="sb-empty-hint">输入地点名称开始搜索</div>';
     _results.appendChild(e);
   } else {
-    const t = document.createElement('li'); t.className = 'sb-section'; t.textContent = '历史';
+    const t = document.createElement('li'); t.className = 'sb-section sb-section-hist';
+    const lbl = document.createElement('span'); lbl.textContent = '历史'; t.appendChild(lbl);
+    const clr = document.createElement('button');
+    clr.type = 'button'; clr.className = 'sb-hist-clear'; clr.textContent = '清除';
+    clr.title = '清除全部历史';
+    clr.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); _clearHistory(); });
+    t.appendChild(clr);
     _results.appendChild(t);
     _hits = hist;
-    hist.forEach((h, i) => _results.appendChild(_row(h, i, '')));
+    hist.forEach((h, i) => _results.appendChild(_row(h, i, '', true)));
   }
   _results.hidden = false;
   _active = -1;
