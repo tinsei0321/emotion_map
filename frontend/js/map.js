@@ -700,10 +700,12 @@ export function fitToLayer(layer, padding = 80) {
   if (b) fitBoundsTo(b, padding);
 }
 
-// ── 单元深读联动 zoom（Task4 D3）──
-// 进入单元 = 定位质心 + 略微 zoom（+1，clamp [13,15.5]），**不 fitBounds**（避免占满视野、丢周边 context）；
-// 切回图层总览 = 恢复进入前的视野（zoom out 抬高）。_preCellView 跨多次点格保留首快照，仅"切回"时清。
+// ── 单元深读联动 zoom（Task4 D3 + P0 修 stacking）──
+// 进入单元层 = 定位质心 + 略微 zoom（固定 _cellModeZoom 一次，clamp [13,15.5]），**不 fitBounds**；
+// **同层切格只 pan、不抬 zoom**（_cellModeZoom 复用，避免越点越低 stacking）；
+// 切回图层总览 = 恢复进入前视野（zoom out 抬高）。_preCellView/_cellModeZoom 跨多次点格保留，仅"切回"时清。
 let _preCellView = null;
+let _cellModeZoom = null;
 
 /** 取 feature 质心（Polygon/MultiPolygon 取外环顶点均值；Point 取坐标）。 */
 function _featureCentroid(f) {
@@ -718,18 +720,20 @@ function _featureCentroid(f) {
   return [mx / coords.length, my / coords.length];
 }
 
-/** 进入单元：略微 zoom 到该格质心（保留周边 context）。 */
+/** 进入/切换单元：首次进入记快照 + 固定 _cellModeZoom；切格只 pan（zoom 不变）。 */
 export function easeToCell(feature) {
   if (!map || !feature) return;
   const c = _featureCentroid(feature); if (!c) return;
-  if (!_preCellView) _preCellView = { center: map.getCenter(), zoom: map.getZoom(), pitch: map.getPitch() };
-  const z = Math.max(13, Math.min(15.5, map.getZoom() + 1));   // +1 级、上下限避免过近/过远
-  try { map.easeTo({ center: c, zoom: z, duration: 600 }); } catch (e) {}
+  if (!_preCellView) {
+    _preCellView = { center: map.getCenter(), zoom: map.getZoom(), pitch: map.getPitch() };
+    _cellModeZoom = Math.max(13, Math.min(15.5, map.getZoom() + 1));   // 进入单元层固定一次
+  }
+  try { map.easeTo({ center: c, zoom: _cellModeZoom, duration: 600 }); } catch (e) {}   // 切格 pan 不抬高
 }
 
 /** 切回图层总览：恢复进入单元前的视野（zoom out 抬高）。 */
 export function easeBackFromCell() {
   if (!map || !_preCellView) return;
   try { map.easeTo({ center: _preCellView.center, zoom: _preCellView.zoom, pitch: _preCellView.pitch, duration: 600 }); } catch (e) {}
-  _preCellView = null;
+  _preCellView = null; _cellModeZoom = null;
 }

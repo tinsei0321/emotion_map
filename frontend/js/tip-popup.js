@@ -26,9 +26,9 @@ const el = () => document.getElementById('tip-popup');
 
 export function initTipPopup(map) {
   _map = map;
-  // cell:selected：隐浮动卡但保留柱体升起（点击不缩回，仅 mouseleave 缩回）
-  document.addEventListener('cell:selected', hideTipPopup);
-  document.addEventListener('layers:changed', () => { hideTipPopup(); clearCellHover(); _lastHoverKey = null; });
+  // cell:selected：隐浮动卡但保留柱体升起（点击不缩回，仅 mouseleave 缩回）+ 清 Overview 集高亮（聚焦转单格）
+  document.addEventListener('cell:selected', () => { hideTipPopup(); resetHighlightCellSet(); });
+  document.addEventListener('layers:changed', () => { hideTipPopup(); clearCellHover(); resetHighlightCellSet(); _lastHoverKey = null; });
 }
 
 /** 取指针 viewport 坐标：优先 originalEvent.clientX/Y，fallback e.point + map 容器 rect。 */
@@ -134,6 +134,55 @@ function clearCellHover() {
   if (_map.getLayer(LAYER)) _map.removeLayer(LAYER);
   if (_map.getSource(SRC)) _map.removeSource(SRC);
 }
+
+// ── Overview→地图 同步高亮（多 feature 橙色 #ff9000 叠加；hover 试探 / click 锁定 sticky）──
+// 独立于 showCellHover（地图直接悬停单格）；供 Overview 饼图 slice / 4×5 矩阵格 / 关键词调用。
+// 设计语言：悬停=试探聚焦（瞬时，leave 回 sticky 或清），点击=锁定（sticky，再点/点异项切换释放）。
+const HL_SRC = 'cell-hl-set', HL_LAYER = 'cell-hl-set-layer';
+const HL_COLOR = '#ff9000';
+let _stickySet = null;   // {key, features, layer}；click 锁定态
+
+function _removeHL() {
+  if (!_map) return;
+  if (_map.getLayer(HL_LAYER)) _map.removeLayer(HL_LAYER);
+  if (_map.getSource(HL_SRC)) _map.removeSource(HL_SRC);
+}
+function _applyHL(features, layer) {
+  if (!_map || !features || !features.length || !layer) { _removeHL(); return; }
+  _removeHL();
+  _map.addSource(HL_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features } });
+  const ui = (layer.paint && layer.paint._ui) || {};
+  if (ui.mode === '3d') {
+    const hf = ui.heightField || '_grid_h';
+    const mh = ui.maxHeight || 1000;
+    _map.addLayer({ id: HL_LAYER, type: 'fill-extrusion', source: HL_SRC, paint: {
+      'fill-extrusion-color': HL_COLOR,
+      'fill-extrusion-base': 0,
+      'fill-extrusion-height': ['interpolate', ['linear'], ['get', hf], 0, 0, 1, mh],   // 同原柱高，橙色 100% 覆盖
+      'fill-extrusion-opacity': 1.0,
+    } });
+  } else {
+    _map.addLayer({ id: HL_LAYER, type: 'line', source: HL_SRC, paint: {
+      'line-color': HL_COLOR, 'line-width': 3, 'line-opacity': 1.0,    // 2D 网格 = 橙色外轮廓
+    } });
+  }
+}
+/** hover 试探：叠加目标集（橙色）。 */
+export function highlightCellSet(features, layer) { _applyHL(features, layer); }
+/** mouseleave：有 sticky 回 sticky，否则清。 */
+export function clearHighlightCellSet() {
+  if (_stickySet) { _applyHL(_stickySet.features, _stickySet.layer); return; }
+  _removeHL();
+}
+/** click 锁定/释放：同 key 再点释放（return false），异 key 切换锁定（return true）。 */
+export function toggleStickyHighlight(features, layer, key) {
+  if (_stickySet && _stickySet.key === key) { _stickySet = null; _removeHL(); return false; }
+  _stickySet = { key, features, layer };
+  _applyHL(features, layer);
+  return true;
+}
+/** 重置（layers:changed / cell:selected 进入深读 / 换层）：清 sticky + 高亮。 */
+export function resetHighlightCellSet() { _stickySet = null; _removeHL(); }
 /** cell 悬停高亮防抖：同格不重敷（_lastHoverKey）；point 层不高亮（走 point hover-ring）。 */
 function maybeCellHover(feat, ui, layer) {
   if (ui.tool !== 'grid' && ui.tool !== 'terrain') return;

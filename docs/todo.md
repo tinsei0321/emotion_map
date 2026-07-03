@@ -21,6 +21,16 @@
   - 验证：3 新单测过（编号注入 + ingest inspect/split）；pytest 116 passed，5 fail 均预存在/环境（h3 未装→hex、geocode 离线、test_capabilities），零回归。
 - **performance 文件夹同步**：`.gitignore` 删 `DATA/performance/`（197MB/12 文件入库）；AMAP_KEY 核验一致不动。
 
+- **Overview 大改（视野-数据-结论同步）+ zoom 修 + toolbox 保 Range + 用地 ingest**（plan 同文件，P0-P6）：
+  - **P0 zoom stacking 修**：`easeToCell` 进入单元层固定 `_cellModeZoom` 一次，同层切格只 pan 不抬（修"越点越低"）；`isRangeLayer` 抽 state.js，grid/heatmap 独占关他保 Range 层。
+  - **P1 Overview 4 板块**：层级切换（sub-tab→深灰 #384555）/ 标题（单行 `L2·综合·T3·标准网格·400m`）/ 数据属性（3 行：文件名·样式计数尺寸·坐标系格式，`layer.crsInfo`）/ 数据分析；间隔 4px。
+  - **P2 数据总览**：SVG 5 极性饼图（slice pop-out + click sticky）+ 4 领域柱（数字入条）；`highlightCellSet` 基础设施（tip-popup，橙 #ff9000/opacity 1.0 多 feature 叠加）。
+  - **P3 归因矩阵美化** + hover/click→地图同步（domain×element 桶格）。
+  - **P4 关键词**：`KEYWORD_TABLE`（4×5×2 网感词）→ Top5 正/负两列 + 次数条，点击→top-N 最强聚集 fitBounds。
+  - **P5 用地 ingest**：修 `_detect_geographic` Polygon 嵌套 bug；跑 390MB 三调→拆 商业/公园广场/居住 3 preset（0.1-0.6MB）。
+  - **P6 视野-数据-结论同步性** 写入 CLAUDE.md 演示逻辑链（铁律）+ memory。
+  - 验证：7 JS node --check 全过；pytest 116 passed/5 预存在零回归；待 F5 验饼图/矩阵/关键词交互 + zoom + 4 板块。
+
 ### ⬜ 下一步
 - **【待 F5 验】** Task4 双层 Tab + zoom：导入 L1/L2→生成网格→点单元（切单元深读 + 略微 zoom）→点图层总览（zoom out）→ donut/分位/4×5 递进。
 - **【待用户数据】** 更新单元干净矢量替换 `presets/更新单元.geojson`；400MB 用地放 `DATA/raw/` → 跑 `ingest_landuse_preset.py --inspect` → 确认映射 → `--split`。

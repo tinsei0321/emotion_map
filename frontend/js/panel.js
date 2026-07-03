@@ -5,10 +5,11 @@ import {
   L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR,
   EMOTION_TYPE_COLORS, EMOTION_TYPE_ORDER,
   EMOTION_MACRO_ORDER, EMOTION_MACRO_MAP,
-  HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets, rampDisplaySegs,
+  HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets, rampDisplaySegs, deriveTimeTag, KEYWORD_TABLE,
 } from './state.js';
 import { geomStats, DOMAIN_LABEL, ELEMENT_LABEL } from './popup.js';
-import { easeBackFromCell } from './map.js';
+import { easeBackFromCell, fitBoundsTo } from './map.js';
+import { highlightCellSet, clearHighlightCellSet, toggleStickyHighlight } from './tip-popup.js';
 
 export function initPanel() {
   document.querySelectorAll('.ptab').forEach((tab) => {
@@ -18,10 +19,58 @@ export function initPanel() {
   document.querySelectorAll('.ov-subtab').forEach((tab) => {
     tab.addEventListener('click', () => activateOvTab(tab.dataset.ovtab));
   });
-  // 图层总览 issue 项点击 → 深读该单元（cell:selected 统一驱动 zoom + 内容 + 切 sub-Tab）
+  // 数据分析 hover/click → 地图同步高亮（饼图 slice / 矩阵格 / 关键词 统一设计语言）。
+  // 悬停=试探（瞬时，leave 回 sticky/清）；点击=锁定 sticky（再点/点异项切换释放）。
   const pane = document.getElementById('overview-pane');
   if (pane) {
+    pane.addEventListener('mouseover', (e) => {
+      if (!_overviewLayer) return;
+      const sl = e.target.closest('.ov-pie-slice');
+      if (sl) { highlightCellSet(_cellsByPolarity(_overviewLayer.fc.features, sl.dataset.pol), _overviewLayer); return; }
+      const mx = e.target.closest('.mx-cell[data-dom]');
+      if (mx) { highlightCellSet(_cellsByBucket(_overviewLayer.fc.features, mx.dataset.dom, mx.dataset.elm), _overviewLayer); return; }
+      const kw = e.target.closest('.ov-kw-item');
+      if (kw) { const r = _topKeywordCells(_overviewLayer.fc.features, kw.dataset.dom, kw.dataset.elm, kw.dataset.sign, 5); if (r.cells.length) highlightCellSet(r.cells, _overviewLayer); return; }
+    });
+    pane.addEventListener('mouseout', (e) => {
+      if (e.target.closest('.ov-pie-slice') || e.target.closest('.mx-cell[data-dom]') || e.target.closest('.ov-kw-item')) clearHighlightCellSet();
+    });
     pane.addEventListener('click', (e) => {
+      if (!_overviewLayer) return;
+      // 饼图 slice → 锁定/释放该极性主导格
+      const sl = e.target.closest('.ov-pie-slice');
+      if (sl) {
+        const cells = _cellsByPolarity(_overviewLayer.fc.features, sl.dataset.pol);
+        const locked = toggleStickyHighlight(cells, _overviewLayer, 'pol:' + sl.dataset.pol);
+        const svg = sl.closest('svg');
+        if (svg) svg.querySelectorAll('.ov-pie-slice').forEach((s) => s.classList.remove('is-sticky'));
+        if (locked) sl.classList.add('is-sticky');
+        return;
+      }
+      // 矩阵格 → 锁定/释放该 domain×element 桶
+      const mx = e.target.closest('.mx-cell[data-dom]');
+      if (mx) {
+        const cells = _cellsByBucket(_overviewLayer.fc.features, mx.dataset.dom, mx.dataset.elm);
+        const locked = toggleStickyHighlight(cells, _overviewLayer, 'mx:' + mx.dataset.dom + '|' + mx.dataset.elm);
+        const mtx = mx.closest('.ov-matrix');
+        if (mtx) mtx.querySelectorAll('.mx-cell.is-sticky').forEach((c) => c.classList.remove('is-sticky'));
+        if (locked) mx.classList.add('is-sticky');
+        return;
+      }
+      // 关键词 → top-N 最强聚集格 sticky + fitBounds（再点释放）
+      const kw = e.target.closest('.ov-kw-item');
+      if (kw) {
+        const r = _topKeywordCells(_overviewLayer.fc.features, kw.dataset.dom, kw.dataset.elm, kw.dataset.sign, 5);
+        if (r.cells.length) {
+          const key = 'kw:' + kw.dataset.dom + '|' + kw.dataset.elm + '|' + kw.dataset.sign;
+          const locked = toggleStickyHighlight(r.cells, _overviewLayer, key);
+          const wrap = kw.closest('.ov-keywords');
+          if (wrap) wrap.querySelectorAll('.ov-kw-item.is-sticky').forEach((x) => x.classList.remove('is-sticky'));
+          if (locked) { kw.classList.add('is-sticky'); if (r.bb) fitBoundsTo(r.bb, 120); }
+        }
+        return;
+      }
+      // issue 行点击 → cell:selected 深读（地图随之定位）
       const el = e.target.closest('[data-cell-idx]');
       if (!el) return;
       const idx = Number(el.dataset.cellIdx);
@@ -155,27 +204,33 @@ export function setCellOverview(feature, layer) {
 /** T1 摘要：目的(加粗标题) / 数据类型 / 数量；文件名另起一行弱化。
  *  全局规则：Overview 必带数据源文件名。目的 = name 去掉尾部 ' · {src}'；
  *  文件名行仅当标题不是裸文件名时显示（L0/边界 name===src 不重复）。 */
+/** 标题板块：单行关键信息「数据类型·极性·时间点·分析类型·主要参数」（不显文件名）。
+ *  L2 综合标准网格 → "L2·综合·T3·标准网格·400m"；非分析层同范式按类型给。 */
+const LEVEL_SHORT = { L0: 'L0', L1: 'L1', L2: 'L2', range: 'Range' };
 function tier1(layer, lv) {
   const ui = (layer.paint && layer.paint._ui) || {};
-  const isAnalysis = layer.kind === 'polygon' && (ui.tool === 'grid' || ui.tool === 'terrain');
-  const analysisWord = isAnalysis ? (ui.tool === 'terrain' ? '情绪地形' : (ui.mode === '3d' ? '3D 网格' : '网格聚合')) : null;
-  const ext = guessExt(layer.name);
-  const ui2 = (layer.paint && layer.paint._ui) || {};
-  const isAnalysis2 = layer.kind === 'polygon' && (ui2.tool === 'grid' || ui2.tool === 'terrain');
-  const qty = isAnalysis2 ? `${layer.fc.features.length} 单元` : (lv === 'range' ? rangeAreaLabel(layer) : `${layer.fc.features.length} 条`);
-  const name = layer.name || '';
-  const src = layer.srcName || '';
-  let purpose = name;
-  if (src && name.endsWith(' · ' + src)) purpose = name.slice(0, name.length - (' · ' + src).length);
-  const srcLine = (src && purpose !== src) ? `<div class="ov-t1-src">文件名：${src}</div>` : '';
-  const midBadge = isAnalysis2 ? (analysisWord || '分析') : (LEVEL_NAME[lv] || '—');
-  return `<div class="ov-tier ov-t1">
-    <div class="ov-t1-name" title="${name}">${purpose}</div>
-    ${srcLine}
-    <div class="ov-t1-meta">
-      <span>${ext || '数据'}</span><i>·</i><span>${midBadge}</span><i>·</i><span>${qty}</span>
-    </div>
-  </div>`;
+  const analysis = isAnalysisLayer(layer);
+  const parts = [];
+  parts.push(LEVEL_SHORT[lv] || lv || '—');
+  // 极性/语义
+  if (analysis) parts.push(POLARITY_LABEL[ui.polarity] || '综合');
+  else if (lv === 'L1') parts.push('热度');
+  else if (lv === 'L2') parts.push('情绪');
+  else if (lv === 'range') parts.push('范围');
+  // 时间点
+  const t = deriveTimeTag(layer.fc);
+  if (t) parts.push(t);
+  // 分析类型 + 主要参数
+  if (analysis) {
+    parts.push(ui.tool === 'terrain' ? '情绪地形' : (ui.analysis === 'zonal' ? '指定单元' : '标准网格'));
+    if (ui.tool !== 'terrain' && ui.analysis === 'square' && ui.cellSize) parts.push(ui.cellSize + 'm');
+    if (ui.tool === 'terrain' && ui.radius) parts.push(ui.radius + 'm');
+  } else if (lv === 'range') {
+    parts.push(rangeAreaLabel(layer));
+  } else {
+    parts.push(`${layer.fc.features.length} 条`);
+  }
+  return `<div class="ov-tier ov-t1"><div class="ov-t1-name">${parts.join('·')}</div></div>`;
 }
 
 // ── 分析层（grid/zonal/terrain）故事化：极性分布 + 4×5 矩阵 + Top 问题 + 治理要素 ──
@@ -218,44 +273,147 @@ function _topIssueFeatures(feats, n) {
     .slice(0, n);
 }
 
+/** 桶内格（domain_top==D && element_top==E）——矩阵格 hover/click → 地图同步用。 */
+function _cellsByBucket(feats, d, e) {
+  return feats.filter((f) => { const p = f.properties || {}; return p.domain_top === d && p.element_top === e; });
+}
+
 function _matrixHtml(cell) {
   const head = `<div class="mx-cell mx-head"></div>` +
     ELEMENT_ORDER.map((e) => `<div class="mx-cell mx-head" title="${ELEMENT_LABEL[e] || e}">${(ELEMENT_LABEL[e] || e).slice(0, 2)}</div>`).join('');
   const rows = DOMAIN_ORDER.map((d) => {
     const cells = ELEMENT_ORDER.map((e) => {
       const c = cell[d + '|' + e];
-      if (!c) return `<div class="mx-cell mx-empty" title="${DOMAIN_LABEL[d] || d} × ${ELEMENT_LABEL[e] || e}：无"></div>`;
+      const lbl = `${DOMAIN_LABEL[d] || d} × ${ELEMENT_LABEL[e] || e}`;
+      if (!c) return `<div class="mx-cell mx-empty" title="${lbl}：无"></div>`;
       const pi = c.piCnt ? c.piSum / c.piCnt : null;
-      return `<div class="mx-cell" style="background:${_piColor(pi)}" title="${DOMAIN_LABEL[d] || d} × ${ELEMENT_LABEL[e] || e}：${c.n} 单元 · 极性 ${pi != null ? pi.toFixed(2) : '—'}">${c.n}</div>`;
+      return `<div class="mx-cell" data-dom="${d}" data-elm="${e}" style="background:${_piColor(pi)}" title="${lbl}：${c.n} 单元 · 极性 ${pi != null ? pi.toFixed(2) : '—'}（悬停/点击 → 地图同步）">${c.n}</div>`;
     }).join('');
     return `<div class="mx-rowlabel" title="${DOMAIN_LABEL[d] || d}">${DOMAIN_LABEL[d] || d}</div>${cells}`;
   }).join('');
   return `<div class="ov-matrix">${head}${rows}</div>`;
 }
 
-/** 极性占比 donut（CSS conic-gradient）+ 图例。图层总览总结向（替极性柱状）。 */
-function _polarDonut(agg, total) {
-  if (!total) return '';
-  const segs = [
-    [agg['Very Negative'], L2_NEGATIVE['Very Negative']],
-    [agg['Negative'], L2_NEGATIVE['Negative']],
-    [agg['Neutral'], L2_NEUTRAL_COLOR],
-    [agg['Positive'], L2_POSITIVE['Positive']],
-    [agg['Very Positive'], L2_POSITIVE['Very Positive']],
-  ];
-  let acc = 0;
-  const stops = [];
-  for (const [n, c] of segs) {
-    if (n > 0) {
-      const a = acc / total * 100, b = (acc + n) / total * 100;
-      stops.push(`${c} ${a.toFixed(2)}% ${b.toFixed(2)}%`);
-      acc += n;
-    }
+/** 极性 → 该极性点数 property 字段。 */
+const _POL_FIELDS = { 'Very Negative': 'n_very_negative', 'Negative': 'n_negative', 'Neutral': 'n_neutral', 'Positive': 'n_positive', 'Very Positive': 'n_very_positive' };
+
+/** feature 的主导极性（n_* 最大桶）——饼图 slice → 地图高亮用。 */
+function _dominantPolarityOf(f) {
+  const p = f.properties || {};
+  let best = null, bestN = -1;
+  for (const [key, fld] of Object.entries(_POL_FIELDS)) {
+    const n = p[fld] || 0;
+    if (n > bestN) { bestN = n; best = key; }
   }
-  const lg = segs.filter(([n]) => n > 0).map(([n, c]) =>
-    `<span class="ov-lg"><span class="ov-lg-dot" style="background:${c}"></span>${n}</span>`).join('');
-  return `<div class="ov-donut" style="background:conic-gradient(${stops.join(',')})"></div>
-    <div class="ov-donut-legend">${lg}</div>`;
+  return best;
+}
+function _cellsByPolarity(feats, polKey) { return feats.filter((f) => _dominantPolarityOf(f) === polKey); }
+
+/** 5 极性饼图（SVG path arc；悬停 pop-out + 地图同步高亮主导格）。
+ *  slice 载 data-pol + --dx/--dy（pop-out 径向位移，CSS :hover/.is-sticky 触发）。 */
+function _polarPieHtml(agg, total) {
+  if (!total) return '';
+  const SEGS = [
+    ['Very Negative', L2_NEGATIVE['Very Negative']],
+    ['Negative', L2_NEGATIVE['Negative']],
+    ['Neutral', L2_NEUTRAL_COLOR],
+    ['Positive', L2_POSITIVE['Positive']],
+    ['Very Positive', L2_POSITIVE['Very Positive']],
+  ];
+  const cx = 50, cy = 50, r = 38;
+  let a = -Math.PI / 2;
+  const paths = [];
+  for (const [key, color] of SEGS) {
+    const n = agg[key] || 0;
+    if (n <= 0) continue;
+    const sweep = (n / total) * Math.PI * 2;
+    const a0 = a, a1 = a + sweep, am = (a0 + a1) / 2;
+    const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
+    const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+    const large = sweep > Math.PI ? 1 : 0;
+    const dx = Math.cos(am) * 5, dy = Math.sin(am) * 5;
+    paths.push(`<path class="ov-pie-slice" data-pol="${key}" fill="${color}" style="--dx:${dx.toFixed(1)}px;--dy:${dy.toFixed(1)}px" d="M${cx} ${cy} L${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z"><title>${POLARITY_LABEL[key]} · ${n}（${(n / total * 100).toFixed(0)}%）</title></path>`);
+    a = a1;
+  }
+  const lg = SEGS.filter(([k]) => (agg[k] || 0) > 0).map(([k, c]) =>
+    `<span class="ov-pie-lg"><span class="ov-pie-dot" style="background:${c}"></span>${POLARITY_LABEL[k]}<i>${agg[k]}</i></span>`).join('');
+  return `<div class="ov-pie"><svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">${paths.join('')}</svg></div>
+    <div class="ov-pie-legend">${lg}</div>`;
+}
+
+/** 4 领域相关性柱状（缩短+增高、数字入条内、品牌蓝→白字）。 */
+function _domainBarsCompact(feats) {
+  const m = {};
+  for (const f of feats) { const d = (f.properties || {}).domain_top; if (d) m[d] = (m[d] || 0) + 1; }
+  const entries = DOMAIN_ORDER.filter((d) => m[d]).map((d) => [d, m[d]]);
+  if (!entries.length) return `<div class="ov-placeholder muted">无治理要素</div>`;
+  const max = Math.max(...entries.map((x) => x[1]));
+  return entries.map(([d, n]) => {
+    const lbl = (DOMAIN_LABEL[d] || d).replace('城市', '');
+    return `<div class="ov-dbar"><span class="ov-dbar-label">${lbl}</span>
+      <span class="ov-dbar-track"><span class="ov-dbar-fill" style="width:${(n / max) * 100}%">${n}</span></span></div>`;
+  }).join('');
+}
+
+/** 4×5 桶按正/负点数排名 → 各 Top5（关键词源）。 */
+function _keywordRank(feats) {
+  const b = {};
+  for (const f of feats) {
+    const p = f.properties || {};
+    const d = p.domain_top, e = p.element_top;
+    if (!d || !e) continue;
+    const k = d + '|' + e;
+    if (!b[k]) b[k] = { d, e, pos: 0, neg: 0 };
+    b[k].pos += (p.n_very_positive || 0) + (p.n_positive || 0);
+    b[k].neg += (p.n_negative || 0) + (p.n_very_negative || 0);
+  }
+  const vals = Object.values(b);
+  return {
+    pos: vals.filter((x) => x.pos > 0).sort((a, c) => c.pos - a.pos).slice(0, 5),
+    neg: vals.filter((x) => x.neg > 0).sort((a, c) => c.neg - a.neg).slice(0, 5),
+  };
+}
+
+/** 关键词 HTML：正/负两列，每条 = 词 + 次数横条（文字在条内）；点击 → 定位该词最强聚集。 */
+function _keywordsHtml(feats) {
+  const { pos, neg } = _keywordRank(feats);
+  if (!pos.length && !neg.length) return `<div class="ov-placeholder muted">无 4×5 归因数据</div>`;
+  const col = (items, sign) => {
+    if (!items.length) return `<div class="ov-kw-col"><div class="ov-kw-col-head">${sign === 'pos' ? '正面' : '负面'}</div><div class="ov-placeholder muted">无</div></div>`;
+    const max = Math.max(1, ...items.map((x) => x[sign]));
+    const rows = items.map((it) => {
+      const kw = KEYWORD_TABLE[it.d + '|' + it.e + '|' + sign] || `${(DOMAIN_LABEL[it.d] || '').replace('城市', '')}·${ELEMENT_LABEL[it.e] || ''}`;
+      const n = it[sign];
+      return `<div class="ov-kw-item" data-dom="${it.d}" data-elm="${it.e}" data-sign="${sign}" title="${kw}（${n} 点）· 点击定位最强聚集">
+        <span class="ov-kw-word">${kw}</span>
+        <span class="ov-kw-track"><span class="ov-kw-fill ${sign === 'pos' ? 'is-pos' : 'is-neg'}" style="width:${(n / max) * 100}%">${n}</span></span>
+      </div>`;
+    }).join('');
+    return `<div class="ov-kw-col"><div class="ov-kw-col-head">${sign === 'pos' ? '正面 · 被夸' : '负面 · 被诟病'}</div>${rows}</div>`;
+  };
+  return `<div class="ov-keywords">${col(pos, 'pos')}${col(neg, 'neg')}</div>`;
+}
+
+/** 该关键词(d,e,sign)下、该极性点数 top-N 的格 + 其 bbox（zoom 用）。 */
+function _topKeywordCells(feats, d, e, sign, n = 5) {
+  const scored = feats
+    .filter((f) => { const p = f.properties || {}; return p.domain_top === d && p.element_top === e; })
+    .map((f) => {
+      const p = f.properties || {};
+      const sc = sign === 'pos' ? (p.n_very_positive || 0) + (p.n_positive || 0) : (p.n_negative || 0) + (p.n_very_negative || 0);
+      return { f, sc };
+    })
+    .filter((x) => x.sc > 0)
+    .sort((a, b) => b.sc - a.sc)
+    .slice(0, n);
+  const cells = scored.map((x) => x.f);
+  let bb = null;
+  for (const f of cells) {
+    const fb = _featBBox(f);
+    if (!fb) continue;
+    bb = bb ? [Math.min(bb[0], fb[0]), Math.min(bb[1], fb[1]), Math.max(bb[2], fb[2]), Math.max(bb[3], fb[3])] : fb;
+  }
+  return { cells, bb };
 }
 
 /** 单 feature bbox（Polygon/MultiPolygon）→ [minLng,minLat,maxLng,maxLat]。 */
@@ -285,72 +443,42 @@ function _domainBars(feats) {
   return `<div class="hchart">${bars}</div>`;
 }
 
-/** T2 属性：图例/参数（随数据类型） */
+/** T2 数据属性：3 行紧凑（文件名 / 样式·计数·尺寸 / 坐标系·格式），无板块标题字。
+ *  坐标系按层来源给：分析层产物=WGS84（后端 4326）；导入层取 layer.crsInfo（投影时 import 标注）。 */
+function _crsOf(layer) {
+  if (isAnalysisLayer(layer)) return 'WGS84 (EPSG:4326)';
+  return layer.crsInfo || 'WGS84 (EPSG:4326)';
+}
+function _fmtOf(layer) {
+  const ext = guessExt(layer.srcName || layer.name || '');
+  if (ext) return ext;
+  return isAnalysisLayer(layer) ? 'GeoJSON' : '—';
+}
 function tier2(layer, lv) {
-  let body;
+  const ui = (layer.paint && layer.paint._ui) || {};
+  const feats = layer.fc.features;
+  const fname = layer.srcName || layer.name || '—';
+  let style, count, size;
   if (isAnalysisLayer(layer)) {
-    const ui = layer.paint._ui;
-    const feats = layer.fc.features;
-    const polLabel = { overall: '综合', positive: '积极', negative: '消极', neutral: '中性' }[ui.polarity] || ui.polarity || '—';
-    const sizeTxt = ui.tool === 'terrain' ? 'KDE 等值面' : (ui.analysis === 'zonal' ? '指定单元' : `${ui.cellSize || 400}m 方格`);
-    const pis = feats.map((f) => f.properties && f.properties.polarity_index).filter((x) => x != null && !isNaN(x));
-    const piMean = pis.length ? (pis.reduce((a, b) => a + b, 0) / pis.length).toFixed(2) : '—';
-    body = `<div class="ov-props">
-      <div class="ov-prop"><span>层级</span><span>${ui.level || '—'}</span></div>
-      <div class="ov-prop"><span>极性</span><span>${polLabel}</span></div>
-      <div class="ov-prop"><span>单元</span><span>${sizeTxt}</span></div>
-      <div class="ov-prop"><span>模式</span><span>${ui.mode === '3d' ? '3D' : '2D'}</span></div>
-      ${ui.maxHeight ? `<div class="ov-prop"><span>最大柱高</span><span>${Math.round(ui.maxHeight)} m</span></div>` : ''}
-      <div class="ov-prop"><span>单元数</span><span>${feats.length}</span></div>
-      <div class="ov-prop"><span>平均极性</span><span>${piMean}</span></div>
-    </div>`;
+    style = ui.tool === 'terrain' ? '情绪地形' : (ui.mode === '3d' ? '3D 网格' : '2D 网格');
+    count = `${feats.length} 单元`;
+    size = ui.tool === 'terrain' ? `${ui.radius ?? 300}m 半径` : (ui.analysis === 'zonal' ? '面域' : `${ui.cellSize ?? 400}m`);
   } else if (layer.kind === 'heatmap') {
-    const p = layer.paint || {};
-    const rampName = (HEATMAP_RAMPS[p.rampKey] && HEATMAP_RAMPS[p.rampKey].name) || '—';
-    const _hmRamp = (p.rampStops) ? { stops: p.rampStops } : HEATMAP_RAMPS[p.rampKey];
-    const rampSegs = rampDisplaySegs(p.rampKey, _hmRamp).map((c) => `<span class="ov-ramp-seg" style="background:${c}"></span>`).join('');
-    const macroLabel = (p._ui && Array.isArray(p._ui.macroFilter) ? p._ui.macroFilter : (Array.isArray(p.typesFilter) ? [...new Set(p.typesFilter.map((t) => EMOTION_MACRO_MAP[t]).filter(Boolean))] : []));
-    const macros = EMOTION_MACRO_ORDER.filter((m) => macroLabel.includes(m));
-    const macroTxt = macros.length === EMOTION_MACRO_ORDER.length ? '全（喜怒哀乐愁急盼）' : (macros.length ? macros.join('、') : '—');
-    const microTxt = p.typesFilter === null ? '全（无分类字段）' : (Array.isArray(p.typesFilter) && p.typesFilter.length ? p.typesFilter.join('、') : '全部');
-    body = `<div class="ov-props">
-      <div class="ov-prop"><span>色带</span><span class="ov-ramp-legend ov-ramp-segmented">${rampSegs}</span> ${rampName}</div>
-      <div class="ov-prop"><span>半径</span><span>${p.radius ?? 300} m</span></div>
-      <div class="ov-prop"><span>权重字段</span><span>${p.weightField || 'emotion_intensity'}</span></div>
-      <div class="ov-prop"><span>情绪类型（大类）</span><span>${macroTxt}</span></div>
-      <div class="ov-prop"><span>情绪表现（小类）</span><span>${microTxt}</span></div>
-      <div class="ov-prop"><span>数据点</span><span>${layer.fc.features.length}</span></div>
-    </div>`;
+    style = '热力图'; count = `${feats.length} 点`; size = `${(layer.paint && layer.paint.radius) ?? 300}m 半径`;
   } else if (lv === 'range') {
-    const p = layer.paint || {};
-    body = `<div class="ov-props">
-      <div class="ov-prop"><span>轮廓色</span><span class="ov-swatch" style="background:${p.color || '#0c1c2e'}"></span></div>
-      <div class="ov-prop"><span>线宽</span><span>${p.lineWidth ?? 2} px</span></div>
-      <div class="ov-prop"><span>面域填充</span><span>${p.fillOn ? '开' : '关'}</span></div>
-    </div>`;
-  } else if (lv === 'L0') {
-    body = `<div class="ov-props"><div class="ov-prop"><span>图例</span><span class="ov-swatch" style="background:#a3a3a3"></span> 灰色（原始）</div>
-      <div class="ov-prop"><span>下一步</span><span class="ov-tag-blue">需治理</span></div></div>`;
+    style = '范围面域'; count = `${feats.length} 面`; size = rangeAreaLabel(layer);
   } else if (lv === 'L1') {
-    const p = layer.paint || {};
-    const hotSegs = HOTNESS_RAMP.map(c => `<span class="ov-ramp-seg" style="background:${c}"></span>`).join('');
-    const buckets = p.hotnessBuckets || [0.33, 0.66];
-    body = `<div class="ov-props">
-      <div class="ov-prop"><span>热度值色带（3 段）</span><span class="ov-ramp-legend ov-ramp-segmented">${hotSegs}</span></div>
-      <div class="ov-prop" title="热度值 = 情绪强度 × 置信度（0~1），按图层分布动态分 3 段"><span>算法</span><span>强度 × 置信度</span></div>
-      <div class="ov-prop"><span>分段阈值</span><span>${buckets[0].toFixed(2)} / ${buckets[1].toFixed(2)}</span></div>
-      <div class="ov-prop" title="L1 治理阶段 LLM 判断的数据相关性置信度（0~1）"><span>置信度</span><span>相关性（LLM）</span></div>
-      <div class="ov-prop"><span>透明度</span><span>${Math.round((p.opacity ?? 0.75) * 100)}%</span></div>
-      <div class="ov-prop"><span>数据点</span><span>${layer.fc.features.length}</span></div>
-    </div>`;
-  } else { // L2 — dual palette (Positive green / Negative orange-red / Neutral blue)
-    body = `<div class="ov-props">
-      <div class="ov-prop"><span>积极色板</span><span><span class="ov-swatch" style="background:${L2_POSITIVE['Very Positive']}"></span><span class="ov-swatch" style="background:${L2_POSITIVE['Positive']}"></span></span></div>
-      <div class="ov-prop"><span>消极色板</span><span><span class="ov-swatch" style="background:${L2_NEGATIVE['Negative']}"></span><span class="ov-swatch" style="background:${L2_NEGATIVE['Very Negative']}"></span></span></div>
-      <div class="ov-prop"><span>中性</span><span class="ov-swatch" style="background:${L2_NEUTRAL_COLOR}"></span></div>
-    </div>`;
+    style = '情绪点（热度）'; count = `${feats.length} 条`; size = '强度×置信度';
+  } else if (lv === 'L2') {
+    style = '情绪点（极性）'; count = `${feats.length} 条`; size = '5 级极性';
+  } else {
+    style = '数据点'; count = `${feats.length} 条`; size = '—';
   }
-  return `<div class="ov-tier ov-t2"><div class="ov-tier-head">数据属性</div>${body}</div>`;
+  return `<div class="ov-tier ov-t2"><div class="ov-attr">
+    <div class="ov-attr-line ov-ellipsis" title="${fname}">文件名：${fname}</div>
+    <div class="ov-attr-line">${style} · ${count} · ${size}</div>
+    <div class="ov-attr-line">${_crsOf(layer)} · ${_fmtOf(layer)}</div>
+  </div></div>`;
 }
 
 /** T3 展示（flex:1 >50%）：治理/分析结论 */
@@ -373,31 +501,17 @@ function tier3(layer, lv) {
     }
     total = agg['Very Positive'] + agg.Positive + agg.Neutral + agg.Negative + agg['Very Negative'];
     const scoreMean = sms.length ? sms.reduce((a, b) => a + b, 0) / sms.length : 0;
-    // 4×5 矩阵 + Top 问题 + 治理分布
+    // 4×5 矩阵 + 关键词（Top5 正/负）
     const cell = _matrix4x5(feats);
-    const top = _topIssueFeatures(feats, 5);
-    const issueHtml = top.length
-      ? `<ol class="ov-issuelist">${top.map((f, i) => {
-          const p = f.properties || {};
-          const name = (p.name || p.issue_label || '聚集区').toString().replace(/[<>]/g, '');
-          const dom = DOMAIN_LABEL[p.domain_top] || p.domain_top || '—';
-          const elm = ELEMENT_LABEL[p.element_top] || p.element_top || '—';
-          const idx = feats.indexOf(f);
-          const strong = p.polarity_index != null && Math.abs(p.polarity_index) > 0.5;
-          return `<li class="ov-issue-item" data-cell-idx="${idx}" title="点击深读该单元（地图随之定位）">
-            <span class="oi-rank">${i + 1}</span>
-            <span class="oi-name">${name}</span>
-            <span class="oi-tag" style="background:${_piColor(p.polarity_index)};color:${strong ? '#fff' : '#404040'}">${Number(p.polarity_index).toFixed(2)}</span>
-            <span class="oi-dom">${dom}×${elm}</span>
-          </li>`;
-        }).join('')}</ol>`
-      : `<div class="ov-placeholder muted">无极性数据（L1 热度层无极性指数）</div>`;
-    const donutHtml = total ? _polarDonut(agg, total) : '';
-    body = `${donutHtml ? `<div class="ov-donut-row">${donutHtml}</div>
-        <div class="ov-mean">均分 ${scoreMean.toFixed(2)} · 共 ${total} 条</div>` : ''}
-      <div class="ov-tier-sub">4×5 归因矩阵 <span class="ov-tier-hint">绿=积极 · 红=消极</span></div>${_matrixHtml(cell)}
-      <div class="ov-tier-sub">Top 5 问题聚集 <span class="ov-tier-hint">点击深读</span></div>${issueHtml}
-      <div class="ov-tier-sub">治理要素分布</div>${_domainBars(feats)}`;
+    const pieHtml = total ? _polarPieHtml(agg, total) : '';
+    const domHtml = _domainBarsCompact(feats);
+    const overviewRow = (pieHtml || domHtml)
+      ? `<div class="ov-tier-sub">数据总览 <span class="ov-tier-hint">悬停/点击 → 地图同步</span></div>
+         <div class="ov-overview-row">${pieHtml}<div class="ov-domain-chart">${domHtml}</div></div>
+         <div class="ov-mean">均分 ${scoreMean.toFixed(2)} · 共 ${total} 条</div>` : '';
+    body = `${overviewRow}
+      <div class="ov-tier-sub">归因矩阵 <span class="ov-tier-hint">悬停/点击 → 地图同步</span></div>${_matrixHtml(cell)}
+      <div class="ov-tier-sub">关键词 <span class="ov-tier-hint">点击定位最强聚集</span></div>${_keywordsHtml(feats)}`;
   } else if (layer.kind === 'heatmap') {
     const p = layer.paint || {};
     const n = layer.fc.features.length;
@@ -468,7 +582,7 @@ function tier3(layer, lv) {
       ${etBars ? `<div class="ov-tier-sub" style="margin-top:12px">情绪类型分布</div><div class="hchart">${etBars}</div>` : ''}
       ${spatialPlaceholder()}`;
   }
-  return `<div class="ov-tier ov-t3"><div class="ov-tier-head">数据展示</div>${body}</div>`;
+  return `<div class="ov-tier ov-t3"><div class="ov-tier-head">数据分析</div>${body}</div>`;
 }
 
 /** Placeholder for spatial-analysis conclusions (hotspot / Moran / grid) — filled when Analysis wiring lands. */

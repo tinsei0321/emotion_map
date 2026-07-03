@@ -56,15 +56,25 @@ def _iter_features(path):
 
 
 def _detect_geographic(path):
-    """看首个坐标量级判断是否经纬度（GeoJSON 标准=WGS84，但三调可能存投影坐标）。"""
-    for _i, (_p, g) in enumerate(_iter_features(path)):
+    """看首个坐标量级判断是否经纬度（GeoJSON 标准=WGS84，但三调常存投影坐标）。
+    修：Polygon coordinates 嵌套 [ring][point][x,y]，需取到数值层；旧版取到 point 数组致 abs() 异常→误判地理。"""
+    for _p, g in _iter_features(path):
         try:
             c = g['coordinates']
-            x = c[0] if g['type'] == 'Point' else c[0][0]
-            return abs(x) < 360   # 经度 < 360 → 地理坐标；否则投影（按 EPSG:4546 处理）
+            t = g.get('type')
+            if t == 'Point':
+                x = c[0]
+            elif t in ('MultiPoint', 'LineString'):
+                x = c[0][0]
+            elif t == 'Polygon':
+                x = c[0][0][0]
+            elif t == 'MultiPolygon' or t == 'MultiLineString':
+                x = c[0][0][0][0] if t == 'MultiPolygon' else c[0][0][0]
+            else:
+                return True
+            return abs(float(x)) < 360   # 经度 < 360 → 地理坐标；否则投影（按 EPSG:4546 处理）
         except Exception:
             return True
-        # 只看首个
     return True
 
 

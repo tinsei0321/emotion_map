@@ -9,6 +9,31 @@ export const POLARITY_LABEL = {
   'Negative': '消极', 'Very Negative': '非常消极',
 };
 
+/** 城市情绪关键词表（独立于 issue_label；网感短词）。key = `${domain}|${element}|${sign}`。
+ *  演示链"识别问题"环：Top5 正/负关键词 = 4×5 桶按正/负点数排名 → 本表映射。用户可调措辞。 */
+export const KEYWORD_TABLE = {
+  'urban_governance|facility|neg': '交通拥堵', 'urban_governance|facility|pos': '出行便利',
+  'urban_governance|service|neg': '办事难',   'urban_governance|service|pos': '服务高效',
+  'urban_governance|environment|neg': '环境脏乱', 'urban_governance|environment|pos': '市容整洁',
+  'urban_governance|culture|neg': '文化设施缺', 'urban_governance|culture|pos': '文化丰富',
+  'urban_governance|event|neg': '秩序混乱',   'urban_governance|event|pos': '活动有序',
+  'urban_operation|service|neg': '商家坑人',   'urban_operation|service|pos': '商业繁荣',
+  'urban_operation|environment|neg': '公园差', 'urban_operation|environment|pos': '绿化宜人',
+  'urban_operation|facility|neg': '配套不足', 'urban_operation|facility|pos': '配套齐全',
+  'urban_operation|culture|neg': '文旅无聊',   'urban_operation|culture|pos': '打卡胜地',
+  'urban_operation|event|neg': '噪音扰民',   'urban_operation|event|pos': '夜经济旺',
+  'urban_renewal|service|neg': '物业差',       'urban_renewal|service|pos': '改造见效',
+  'urban_renewal|environment|neg': '老旧破败', 'urban_renewal|environment|pos': '焕然一新',
+  'urban_renewal|facility|neg': '设施老化',   'urban_renewal|facility|pos': '设施更新',
+  'urban_renewal|culture|neg': '文化流失',   'urban_renewal|culture|pos': '文脉活化',
+  'urban_renewal|event|neg': '施工扰民',     'urban_renewal|event|pos': '更新活力',
+  'urban_planning|facility|neg': '规划滞后', 'urban_planning|facility|pos': '规划前瞻',
+  'urban_planning|service|neg': '公服不足', 'urban_planning|service|pos': '公服完善',
+  'urban_planning|environment|neg': '生态受损', 'urban_planning|environment|pos': '生态宜居',
+  'urban_planning|culture|neg': '特色缺失', 'urban_planning|culture|pos': '特色彰显',
+  'urban_planning|event|neg': '活力不足',   'urban_planning|event|pos': '活力充沛',
+};
+
 /** Read a --geojson-* token value from the live :root (single source). */
 export function token(name) {
   return getComputedStyle(document.documentElement)
@@ -616,6 +641,13 @@ export function getMode() { return _drawMode; }
 export function setMode(m) { _drawMode = m; }
 export function isDrawActive() { return _drawMode !== 'NONE'; }
 
+/** 范围/边界层判定（polygon/line 且非工具产物 = 用户绘/导入的范围；独占关他时保留）。
+ *  与 addLayer 内 isRange 同源（state.js:623），抽此供 grid/heatmap/buffer-tool 复用。 */
+export function isRangeLayer(l) {
+  return !!(l && (l.kind === 'polygon' || l.kind === 'line') &&
+    !(l.paint && l.paint._ui && l.paint._ui.tool));
+}
+
 export function addLayer({ name, kind, fc, needsAnalysis = false, colorMode, paint, parentId }) {
   const id = 'L' + (++_seq).toString().padStart(3, '0');
   // 范围/边界层（polygon/line 非分析）自动配色：按现有同类层数循环 PRESET_COLORS，保持图层间可区分。
@@ -647,6 +679,7 @@ export function addLayer({ name, kind, fc, needsAnalysis = false, colorMode, pai
     id, name, kind, fc, visible: true, needsAnalysis, parentId: parentId || null,
     colorMode: colorMode || (kind === 'point' ? (needsAnalysis ? 'needsAnalysis' : 'polarity') : 'range'),  // 情绪色系(polarity)是 point 专属；polygon/line 默认 'range'，避免误触发极性图例
     paint: { ...defaultPaint, ...(paint || {}) },
+    crsInfo: (fc && fc.__crs) || undefined,   // import 标注（投影→WGS84 或 WGS84）；分析层无 → panel 默认 WGS84
   };
   _layers.set(id, layer);
   if (parentId) {

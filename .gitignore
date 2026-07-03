@@ -11,7 +11,8 @@ apps/static/tianditu_*.json
 # 注：DATA/performance/ 已入库（家/办同步，演示数据最终版）；换机 git pull 即得，无需重跑引擎。
 DATA/baidu-heatpoints/
 SCRIPT/poi_data/amap_poi_centralcity_wgs84.json
-DATA/raw/landuse/        # 三调用地源矢量（用户私有，ingest_landuse_preset.py 输入，不入库）
+# 三调用地源矢量（用户私有，ingest_landuse_preset.py 输入，不入库）：
+DATA/raw/landuse/
 .env
 .claude/settings.local.json
 design/tokens.py
