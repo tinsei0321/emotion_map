@@ -158,7 +158,7 @@ function _applyHL(features, layer) {
     _map.addLayer({ id: HL_LAYER, type: 'fill-extrusion', source: HL_SRC, paint: {
       'fill-extrusion-color': HL_COLOR,
       'fill-extrusion-base': 0,
-      'fill-extrusion-height': ['interpolate', ['linear'], ['get', hf], 0, 0, 1, mh],   // 同原柱高，橙色 100% 覆盖
+      'fill-extrusion-height': ['interpolate', ['linear'], ['get', hf], 0, 0, 1, mh * 2],   // **2× 原柱高**：橙柱拔高出一倍，选中态明确（修"与 2D 同效"）
       'fill-extrusion-opacity': 1.0,
     } });
   } else {

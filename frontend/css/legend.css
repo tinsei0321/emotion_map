@@ -42,10 +42,11 @@
   border: 1px solid var(--geojson-color-gray-300);
 }
 .legend-row .range-dot {
-  width: 14px; height: 0;
-  border: none;
-  border-top: 2px solid #0c1c2e;     /* navy outline swatch */
-  border-radius: 0;
+  width: 14px; height: 10px;
+  border: 1.5px solid #0c1c2e;     /* 矩形线框（线色由 JS 同步 paint.color） */
+  border-radius: 2px;
+  background: transparent;          /* 填充由 JS 同步（fillOn 时 color@fillOpacity） */
+  flex-shrink: 0;
 }
 
 /* confidence ramp (L1 orange, low→dark) */

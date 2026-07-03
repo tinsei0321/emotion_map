@@ -9,29 +9,34 @@ export const POLARITY_LABEL = {
   'Negative': '消极', 'Very Negative': '非常消极',
 };
 
-/** 城市情绪关键词表（独立于 issue_label；网感短词）。key = `${domain}|${element}|${sign}`。
- *  演示链"识别问题"环：Top5 正/负关键词 = 4×5 桶按正/负点数排名 → 本表映射。用户可调措辞。 */
+/** 城市情绪关键词表（独立于 issue_label；网感 + 城市生活具象词）。key = `${domain}|${element}|${sign}`，sign ∈ pos/neu/neg。
+ *  词非"评价性"（好/不好），而是市民具象用语（停车难/红灯长/网红打卡点/夜经济/BRT…）；neu=期盼/讨论中（盼BRT/规划路）。
+ *  演示链"识别问题"环：Top5 正/中/负关键词 = 4×5 桶按正/中/负点数排名 → 本表映射。用户可调措辞。 */
 export const KEYWORD_TABLE = {
-  'urban_governance|facility|neg': '交通拥堵', 'urban_governance|facility|pos': '出行便利',
-  'urban_governance|service|neg': '办事难',   'urban_governance|service|pos': '服务高效',
-  'urban_governance|environment|neg': '环境脏乱', 'urban_governance|environment|pos': '市容整洁',
-  'urban_governance|culture|neg': '文化设施缺', 'urban_governance|culture|pos': '文化丰富',
-  'urban_governance|event|neg': '秩序混乱',   'urban_governance|event|pos': '活动有序',
-  'urban_operation|service|neg': '商家坑人',   'urban_operation|service|pos': '商业繁荣',
-  'urban_operation|environment|neg': '公园差', 'urban_operation|environment|pos': '绿化宜人',
-  'urban_operation|facility|neg': '配套不足', 'urban_operation|facility|pos': '配套齐全',
-  'urban_operation|culture|neg': '文旅无聊',   'urban_operation|culture|pos': '打卡胜地',
-  'urban_operation|event|neg': '噪音扰民',   'urban_operation|event|pos': '夜经济旺',
-  'urban_renewal|service|neg': '物业差',       'urban_renewal|service|pos': '改造见效',
-  'urban_renewal|environment|neg': '老旧破败', 'urban_renewal|environment|pos': '焕然一新',
-  'urban_renewal|facility|neg': '设施老化',   'urban_renewal|facility|pos': '设施更新',
-  'urban_renewal|culture|neg': '文化流失',   'urban_renewal|culture|pos': '文脉活化',
-  'urban_renewal|event|neg': '施工扰民',     'urban_renewal|event|pos': '更新活力',
-  'urban_planning|facility|neg': '规划滞后', 'urban_planning|facility|pos': '规划前瞻',
-  'urban_planning|service|neg': '公服不足', 'urban_planning|service|pos': '公服完善',
-  'urban_planning|environment|neg': '生态受损', 'urban_planning|environment|pos': '生态宜居',
-  'urban_planning|culture|neg': '特色缺失', 'urban_planning|culture|pos': '特色彰显',
-  'urban_planning|event|neg': '活力不足',   'urban_planning|event|pos': '活力充沛',
+  // governance 城市治理
+  'urban_governance|facility|pos': '地铁通了',   'urban_governance|facility|neu': '盼BRT',     'urban_governance|facility|neg': '红灯长',
+  'urban_governance|environment|pos': '街道干净', 'urban_governance|environment|neu': '垃圾分类', 'urban_governance|environment|neg': '垃圾乱扔',
+  'urban_governance|service|pos': '秒批',         'urban_governance|service|neu': '办事',         'urban_governance|service|neg': '办事难',
+  'urban_governance|culture|pos': '图书馆',       'urban_governance|culture|neu': '文化活动',     'urban_governance|culture|neg': '没去处',
+  'urban_governance|event|pos': '不拥堵',         'urban_governance|event|neu': '早晚高峰',       'urban_governance|event|neg': '大堵车',
+  // operation 城市运营
+  'urban_operation|service|pos': '网红店',        'urban_operation|service|neu': '排队打卡',     'urban_operation|service|neg': '踩雷',
+  'urban_operation|environment|pos': '网红公园',  'urban_operation|environment|neu': '遛娃',     'urban_operation|environment|neg': '公园脏乱',
+  'urban_operation|facility|pos': '配套齐全',     'urban_operation|facility|neu': '便利店',       'urban_operation|facility|neg': '没配套',
+  'urban_operation|culture|pos': '网红打卡点',   'urban_operation|culture|neu': '出片',         'urban_operation|culture|neg': '没意思',
+  'urban_operation|event|pos': '夜经济',         'urban_operation|event|neu': '夜市',           'urban_operation|event|neg': '噪音大',
+  // renewal 城市更新
+  'urban_renewal|service|pos': '物业靠谱',        'urban_renewal|service|neu': '物业',           'urban_renewal|service|neg': '物业差',
+  'urban_renewal|environment|pos': '焕新',        'urban_renewal|environment|neu': '改造中',     'urban_renewal|environment|neg': '老旧小区',
+  'urban_renewal|facility|pos': '加装电梯',       'urban_renewal|facility|neu': '盼电梯',         'urban_renewal|facility|neg': '没电梯',
+  'urban_renewal|culture|pos': '老街新生',        'urban_renewal|culture|neu': '老街',           'urban_renewal|culture|neg': '拆没了',
+  'urban_renewal|event|pos': '更新活力',          'urban_renewal|event|neu': '施工',             'urban_renewal|event|neg': '施工扰民',
+  // planning 城市规划
+  'urban_planning|facility|pos': '新路通',        'urban_planning|facility|neu': '规划路',       'urban_planning|facility|neg': '断头路',
+  'urban_planning|service|pos': '新学校',         'urban_planning|service|neu': '学区',           'urban_planning|service|neg': '没学校',
+  'urban_planning|environment|pos': '新绿地',     'urban_planning|environment|neu': '规划绿地',   'urban_planning|environment|neg': '没公园',
+  'urban_planning|culture|pos': '新地标',         'urban_planning|culture|neu': '规划',           'urban_planning|culture|neg': '没特色',
+  'urban_planning|event|pos': '新中心',           'urban_planning|event|neu': '规划落地',         'urban_planning|event|neg': '烂尾',
 };
 
 /** Read a --geojson-* token value from the live :root (single source). */

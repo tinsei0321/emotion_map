@@ -140,15 +140,23 @@ export function refreshLegend() {
     if (rampEl) rampEl.innerHTML = HOTNESS_RAMP.map((c) => `<span class="legend-heat-seg" style="background:${c}"></span>`).join('');
   }
 
-  // range — outline color from the focus range layer's paint.color（排除 grid/terrain 工具层，避免误弹）
+  // range — 矩形线框+面域填充，实时同步 focus range 层的线色/填充态；名称=层实际名
   const isRange = (l) => (l.kind === 'polygon' || l.kind === 'line')
     && !(l.paint && l.paint._ui && (l.paint._ui.tool === 'grid' || l.paint._ui.tool === 'terrain'));
   const range = (sel && isRange(sel) && sel.visible) ? sel : vis.find(isRange);
   sethidden('legend-range', !range);
   if (range) {
-    const color = (range.paint && range.paint.color) || '#0c1c2e';
+    const p = range.paint || {};
+    const color = p.color || '#0c1c2e';
     const dot = document.querySelector('#legend-range .range-dot');
-    if (dot) dot.style.borderTopColor = color;
+    if (dot) {
+      dot.style.borderColor = color;                                  // 线框 = 线色
+      const fillPct = Math.round((p.fillOpacity ?? 0.15) * 100);
+      dot.style.background = p.fillOn                                 // 填充态：fillOn→线色@fillOpacity；否则仅线框
+        ? `color-mix(in srgb, ${color} ${fillPct}%, transparent)` : 'transparent';
+    }
+    const nameEl = document.querySelector('#legend-range .range-name');
+    if (nameEl) nameEl.textContent = range.name || range.srcName || '范围';
   }
 
   // grid/terrain — 横向色带 + 极性标题（参考 Kepler/Martin 连续色带图例）

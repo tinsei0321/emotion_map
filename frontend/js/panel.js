@@ -243,13 +243,14 @@ function isAnalysisLayer(layer) {
   return !!(layer && layer.kind === 'polygon' && ui && (ui.tool === 'grid' || ui.tool === 'terrain'));
 }
 
-/** pi → 红/绿/灰（绿=积极、红=消极、灰=中性；透明度随 |pi|）。 */
+/** pi → 发散色（积极=绿 / 消极=红 / 中性=蓝，活泼高级；透明度随 |pi|）。
+ *  参考 Material 600：绿 #43A047、红 #E53935、蓝 #1E88E5。中性用蓝（非灰）。 */
 function _piColor(pi) {
   if (pi == null || isNaN(pi)) return 'transparent';
-  const a = Math.min(1, Math.abs(pi));
-  if (pi > 0.15) return `rgba(78, 180, 50, ${0.18 + a * 0.55})`;
-  if (pi < -0.15) return `rgba(201, 42, 32, ${0.18 + a * 0.55})`;
-  return `rgba(160, 160, 170, ${0.12 + a * 0.3})`;
+  const a = Math.min(1, Math.abs(pi) / 1.2);   // /1.2 让中等值也较饱和
+  if (pi > 0.15) return `rgba(67, 160, 71, ${0.32 + a * 0.58})`;    // 积极 绿
+  if (pi < -0.15) return `rgba(229, 57, 53, ${0.32 + a * 0.58})`;   // 消极 红
+  return `rgba(30, 136, 229, ${0.22 + a * 0.46})`;                  // 中性 蓝
 }
 
 /** 4×5 归因矩阵：{(domain|element): {n, piSum, piCnt}}。 */
@@ -289,7 +290,7 @@ function _matrixHtml(cell) {
       const pi = c.piCnt ? c.piSum / c.piCnt : null;
       return `<div class="mx-cell" data-dom="${d}" data-elm="${e}" style="background:${_piColor(pi)}" title="${lbl}：${c.n} 单元 · 极性 ${pi != null ? pi.toFixed(2) : '—'}（悬停/点击 → 地图同步）">${c.n}</div>`;
     }).join('');
-    return `<div class="mx-rowlabel" title="${DOMAIN_LABEL[d] || d}">${DOMAIN_LABEL[d] || d}</div>${cells}`;
+    return `<div class="mx-rowlabel" title="${DOMAIN_LABEL[d] || d}">${(DOMAIN_LABEL[d] || d).replace('城市', '')}</div>${cells}`;
   }).join('');
   return `<div class="ov-matrix">${head}${rows}</div>`;
 }
@@ -307,7 +308,23 @@ function _dominantPolarityOf(f) {
   }
   return best;
 }
-function _cellsByPolarity(feats, polKey) { return feats.filter((f) => _dominantPolarityOf(f) === polKey); }
+/** 饼图 slice → 地图高亮格：格被选中当且仅当「该极性点数 > 阈值（积极/消极>10、中性>1）**且** 该极性占比 > 40%」。
+ *  避免选中所有相关格（过多失意义）；阈值/比例常量化便于调。 */
+const POL_SELECT_MIN = { pos: 10, neg: 10, neu: 1 };
+const POL_SELECT_RATIO = 0.4;
+const _POLKEY_SIGN = { 'Very Positive': 'pos', 'Positive': 'pos', 'Neutral': 'neu', 'Negative': 'neg', 'Very Negative': 'neg' };
+function _cellsByPolarity(feats, polKey) {
+  const fld = _POL_FIELDS[polKey];
+  const min = POL_SELECT_MIN[_POLKEY_SIGN[polKey] || 'neu'];
+  const out = [];
+  for (const f of feats) {
+    const p = f.properties || {};
+    const n = p[fld] || 0;
+    const pc = p.point_count || 0;
+    if (n > min && (pc > 0 ? n / pc : 0) > POL_SELECT_RATIO) out.push(f);
+  }
+  return out;
+}
 
 /** 5 极性饼图（SVG path arc；悬停 pop-out + 地图同步高亮主导格）。
  *  slice 载 data-pol + --dx/--dy（pop-out 径向位移，CSS :hover/.is-sticky 触发）。 */
@@ -363,46 +380,48 @@ function _keywordRank(feats) {
     const d = p.domain_top, e = p.element_top;
     if (!d || !e) continue;
     const k = d + '|' + e;
-    if (!b[k]) b[k] = { d, e, pos: 0, neg: 0 };
+    if (!b[k]) b[k] = { d, e, pos: 0, neu: 0, neg: 0 };
     b[k].pos += (p.n_very_positive || 0) + (p.n_positive || 0);
+    b[k].neu += p.n_neutral || 0;
     b[k].neg += (p.n_negative || 0) + (p.n_very_negative || 0);
   }
   const vals = Object.values(b);
-  return {
-    pos: vals.filter((x) => x.pos > 0).sort((a, c) => c.pos - a.pos).slice(0, 5),
-    neg: vals.filter((x) => x.neg > 0).sort((a, c) => c.neg - a.neg).slice(0, 5),
-  };
+  const top = (key) => vals.filter((x) => x[key] > 0).sort((a, c) => c[key] - a[key]).slice(0, 5);
+  return { pos: top('pos'), neu: top('neu'), neg: top('neg') };
 }
 
-/** 关键词 HTML：正/负两列，每条 = 词 + 次数横条（文字在条内）；点击 → 定位该词最强聚集。 */
+/** sign → 极性点数字段聚合。 */
+const KW_SIGN_HEAD = { pos: '正面/积极', neu: '中性/期盼', neg: '负面/消极' };
+const KW_SIGN_FILL = { pos: 'is-pos', neu: 'is-neu', neg: 'is-neg' };
+
+/** 关键词 HTML：正/中/负三列，每条 = 词 + 次数横条（文字在条内）；点击 → 定位该词最强聚集。 */
 function _keywordsHtml(feats) {
-  const { pos, neg } = _keywordRank(feats);
-  if (!pos.length && !neg.length) return `<div class="ov-placeholder muted">无 4×5 归因数据</div>`;
+  const { pos, neu, neg } = _keywordRank(feats);
+  if (!pos.length && !neu.length && !neg.length) return `<div class="ov-placeholder muted">无 4×5 归因数据</div>`;
   const col = (items, sign) => {
-    if (!items.length) return `<div class="ov-kw-col"><div class="ov-kw-col-head">${sign === 'pos' ? '正面' : '负面'}</div><div class="ov-placeholder muted">无</div></div>`;
+    if (!items.length) return `<div class="ov-kw-col"><div class="ov-kw-col-head">${KW_SIGN_HEAD[sign]}</div><div class="ov-placeholder muted">—</div></div>`;
     const max = Math.max(1, ...items.map((x) => x[sign]));
     const rows = items.map((it) => {
       const kw = KEYWORD_TABLE[it.d + '|' + it.e + '|' + sign] || `${(DOMAIN_LABEL[it.d] || '').replace('城市', '')}·${ELEMENT_LABEL[it.e] || ''}`;
       const n = it[sign];
       return `<div class="ov-kw-item" data-dom="${it.d}" data-elm="${it.e}" data-sign="${sign}" title="${kw}（${n} 点）· 点击定位最强聚集">
         <span class="ov-kw-word">${kw}</span>
-        <span class="ov-kw-track"><span class="ov-kw-fill ${sign === 'pos' ? 'is-pos' : 'is-neg'}" style="width:${(n / max) * 100}%">${n}</span></span>
+        <span class="ov-kw-track"><span class="ov-kw-fill ${KW_SIGN_FILL[sign]}" style="width:${(n / max) * 100}%">${n}</span></span>
       </div>`;
     }).join('');
-    return `<div class="ov-kw-col"><div class="ov-kw-col-head">${sign === 'pos' ? '正面 · 被夸' : '负面 · 被诟病'}</div>${rows}</div>`;
+    return `<div class="ov-kw-col"><div class="ov-kw-col-head">${KW_SIGN_HEAD[sign]}</div>${rows}</div>`;
   };
-  return `<div class="ov-keywords">${col(pos, 'pos')}${col(neg, 'neg')}</div>`;
+  return `<div class="ov-keywords">${col(pos, 'pos')}${col(neu, 'neu')}${col(neg, 'neg')}</div>`;
 }
 
-/** 该关键词(d,e,sign)下、该极性点数 top-N 的格 + 其 bbox（zoom 用）。 */
-function _topKeywordCells(feats, d, e, sign, n = 5) {
+/** 该关键词(d,e,sign)下、该极性点数 top-N（默认 10）的格 + 其 bbox（zoom 用）。 */
+function _topKeywordCells(feats, d, e, sign, n = 10) {
+  const scoreOf = (p) => sign === 'pos' ? (p.n_very_positive || 0) + (p.n_positive || 0)
+    : sign === 'neg' ? (p.n_negative || 0) + (p.n_very_negative || 0)
+    : (p.n_neutral || 0);
   const scored = feats
     .filter((f) => { const p = f.properties || {}; return p.domain_top === d && p.element_top === e; })
-    .map((f) => {
-      const p = f.properties || {};
-      const sc = sign === 'pos' ? (p.n_very_positive || 0) + (p.n_positive || 0) : (p.n_negative || 0) + (p.n_very_negative || 0);
-      return { f, sc };
-    })
+    .map((f) => ({ f, sc: scoreOf(f.properties || {}) }))
     .filter((x) => x.sc > 0)
     .sort((a, b) => b.sc - a.sc)
     .slice(0, n);
@@ -505,13 +524,18 @@ function tier3(layer, lv) {
     const cell = _matrix4x5(feats);
     const pieHtml = total ? _polarPieHtml(agg, total) : '';
     const domHtml = _domainBarsCompact(feats);
+    const posN = agg['Very Positive'] + agg['Positive'];
+    const negN = agg['Negative'] + agg['Very Negative'];
+    const neuN = agg['Neutral'];
+    const countLine = total
+      ? `<div class="ov-count-line">共 <b>${total}</b> 条城市情绪 · 积极 <b>${posN}</b> · 消极 <b>${negN}</b> · 中性 <b>${neuN}</b></div>` : '';
     const overviewRow = (pieHtml || domHtml)
-      ? `<div class="ov-tier-sub">数据总览 <span class="ov-tier-hint">悬停/点击 → 地图同步</span></div>
-         <div class="ov-overview-row">${pieHtml}<div class="ov-domain-chart">${domHtml}</div></div>
-         <div class="ov-mean">均分 ${scoreMean.toFixed(2)} · 共 ${total} 条</div>` : '';
+      ? `<div class="ov-tier-sub">数据总览<span class="info-i" data-tip="饼图悬停/点击某极性 → 地图同步高亮该极性主导的网格；矩阵、关键词同理。点击锁定，再次点击释放。">i</span></div>
+         ${countLine}
+         <div class="ov-overview-row">${pieHtml}<div class="ov-domain-chart">${domHtml}</div></div>` : '';
     body = `${overviewRow}
-      <div class="ov-tier-sub">归因矩阵 <span class="ov-tier-hint">悬停/点击 → 地图同步</span></div>${_matrixHtml(cell)}
-      <div class="ov-tier-sub">关键词 <span class="ov-tier-hint">点击定位最强聚集</span></div>${_keywordsHtml(feats)}`;
+      <div class="ov-tier-sub">归因矩阵<span class="info-i" data-tip="4 大治理领域 × 5 要素 的情绪归因矩阵。悬停/点击某格 → 地图同步高亮该领域×要素交集的网格。">i</span></div>${_matrixHtml(cell)}
+      <div class="ov-tier-sub">关键词Top5<span class="info-i" data-tip="按各要素正/中/负情绪点数排名的高频城市关键词。点击某词 → 地图定位并高亮其最强聚集的若干柱体。">i</span></div>${_keywordsHtml(feats)}`;
   } else if (layer.kind === 'heatmap') {
     const p = layer.paint || {};
     const n = layer.fc.features.length;
