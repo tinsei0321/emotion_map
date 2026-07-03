@@ -272,7 +272,8 @@ function layerRowHtml(l, openId, selId, isChild, cat) {
 export function renderLayerList() {
   const list = document.getElementById('layer-list');
   if (!list) return;
-  if (applyGroupOrder()) restackZ();   // keep _layers order == visual == z-order (covers heatmap-gen path)
+  applyGroupOrder();
+  restackZ();   // 无条件同步 map z-order == _layers 序（安全网：applyGroupOrder 返 false 时也同步，修新极性网格 z 漂移）
   const all = getLayers();
   if (!all.length) { list.innerHTML = '<div class="layer-empty">尚未导入数据</div>'; return; }
   const openId = openSettingsLayerId();

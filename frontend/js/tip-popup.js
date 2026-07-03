@@ -151,18 +151,26 @@ const HL_SRC = 'cell-hl-set', HL_LAYER = 'cell-hl-set-layer';
 const HL_COLOR = '#ff9000';
 let _stickySet = null;   // {key, features, layer}；click 锁定态
 let _hlLayer = null;     // 当前 HL 叠加对应的注册层（hover/sticky/focus 共用；pickHLCell 配对用）
+let _hlKeys = new Set(); // 当前 HL 叠加格的质心 key 集合（sticky/focus；maybeCellHover 据此跳过同格 hover 防穿模）
+let _hlFeatures = [];    // 当前 HL 叠加的原始 features（未 buffer；pickHLByLngLat 地理 contains 兜底用）
 
 function _removeHL() {
   if (!_map) return;
   if (_map.getLayer(HL_LAYER)) _map.removeLayer(HL_LAYER);
   if (_map.getSource(HL_SRC)) _map.removeSource(HL_SRC);
   _hlLayer = null;
+  _hlKeys.clear();
+  _hlFeatures = [];
 }
-function _applyHL(features, layer) {
+function _applyHL(features, layer, factor = 1.5) {
   if (!_map || !features || !features.length || !layer) { _removeHL(); return; }
   _removeHL();
   _hlLayer = layer;
-  _map.addSource(HL_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features } });
+  _hlFeatures = features.slice();   // 原始几何（contains 兜底用；不含 buffer）
+  _hlKeys = new Set();
+  for (const f of features) { const c = centroidOf(f); if (c) _hlKeys.add(c[0].toFixed(5) + ',' + c[1].toFixed(5)); }
+  const buffered = features.map((f) => _bufferFeature(f, 1.02));   // 外扩 ~1-2px 嵌套原柱 → 消侧面共面闪烁
+  _map.addSource(HL_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: buffered } });
   const ui = (layer.paint && layer.paint._ui) || {};
   if (ui.mode === '3d') {
     const hf = ui.heightField || '_grid_h';
@@ -170,7 +178,9 @@ function _applyHL(features, layer) {
     _map.addLayer({ id: HL_LAYER, type: 'fill-extrusion', source: HL_SRC, paint: {
       'fill-extrusion-color': HL_COLOR,
       'fill-extrusion-base': 0,
-      'fill-extrusion-height': ['interpolate', ['linear'], ['get', hf], 0, 0, 1, mh * 2],   // **2× 原柱高**：橙柱拔高出一倍，选中态明确（修"与 2D 同效"）
+      // 原柱高 × factor（hover 1.2 轻提示 / click 1.5 明确选中）：随状态跳变给视觉反馈；
+      // factor>1 严格高于原柱 + footprint 外扩嵌套 → 无共面 z-fight/闪烁；矮柱靠 contains 兜底保证可点中
+      'fill-extrusion-height': ['interpolate', ['linear'], ['get', hf], 0, 0, 1, mh * factor],
       'fill-extrusion-opacity': 1.0,
     } });
   } else {
@@ -180,7 +190,7 @@ function _applyHL(features, layer) {
   }
 }
 /** hover 试探：叠加目标集（橙色）。 */
-export function highlightCellSet(features, layer) { _applyHL(features, layer); }
+export function highlightCellSet(features, layer) { _applyHL(features, layer, 1.2); }
 /** mouseleave：有 sticky 回 sticky，否则清。 */
 export function clearHighlightCellSet() {
   if (_stickySet) { _applyHL(_stickySet.features, _stickySet.layer); return; }
@@ -190,7 +200,7 @@ export function clearHighlightCellSet() {
 export function toggleStickyHighlight(features, layer, key) {
   if (_stickySet && _stickySet.key === key) { _stickySet = null; _removeHL(); return false; }
   _stickySet = { key, features, layer };
-  _applyHL(features, layer);
+  _applyHL(features, layer, 1.5);
   return true;
 }
 /** 重置（layers:changed / cell:cleared 离开深读 / 换层）：清 sticky + 高亮。 */
@@ -206,15 +216,65 @@ export function pickHLCell(point) {
   return { feature: hits[0], layer: _hlLayer };
 }
 
-/** 单元深读聚焦（任务9）：单格橙色、保持原柱高（非 2×）；清多格 sticky。
- *  cell:selected 时调用——被点击的橙柱保持橙色但降回原高，其余橙柱消失。 */
+/** 射线法 point-in-polygon：lngLat 是否在外环内（格子多边形近似，够 contains 兜底用）。 */
+function _ringContains(ring, lng, lat) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+    if (((yi > lat) !== (yj > lat)) && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+function _featContains(feat, lngLat) {
+  if (!feat || !feat.geometry || !lngLat) return false;
+  const lng = Array.isArray(lngLat) ? lngLat[0] : lngLat.lng;
+  const lat = Array.isArray(lngLat) ? lngLat[1] : lngLat.lat;
+  const g = feat.geometry;
+  if (g.type === 'Polygon') return g.coordinates[0] && _ringContains(g.coordinates[0], lng, lat);
+  if (g.type === 'MultiPolygon') return g.coordinates.some((p) => p[0] && _ringContains(p[0], lng, lat));
+  return false;
+}
+/** 地理 contains 兜底：lngLat 在任一当前 HL 橙柱格子内 → 强制返该橙柱。
+ *  鼠标在橙柱格子上方即选中（不穿透背后柱），补 pickHLCell 的 3D 遮挡盲区。 */
+export function pickHLByLngLat(lngLat) {
+  if (!_map || !lngLat || !_hlLayer || !_hlFeatures.length) return null;
+  for (const f of _hlFeatures) {
+    if (_featContains(f, lngLat)) return { feature: f, layer: _hlLayer };
+  }
+  return null;
+}
+
+/** feature footprint 绕质心缩放 ratio（>1 外扩），仅扩外环（内洞不动）。
+ *  用于 HL 橙柱外扩 ~1-2px 嵌套原柱 → 侧面不共面 → 消 z-fight/闪烁。零依赖。 */
+function _bufferFeature(feat, ratio) {
+  if (!feat || !feat.geometry || ratio === 1) return feat;
+  const g = feat.geometry;
+  const bufRings = (poly) => poly.map((ring, ri) => {
+    if (ri > 0 || !ring || !ring.length) return ring;
+    let cx = 0, cy = 0;
+    for (const [x, y] of ring) { cx += x; cy += y; }
+    cx /= ring.length; cy /= ring.length;
+    return ring.map(([x, y]) => [cx + (x - cx) * ratio, cy + (y - cy) * ratio]);
+  });
+  let ng;
+  if (g.type === 'Polygon') ng = { type: 'Polygon', coordinates: bufRings(g.coordinates) };
+  else if (g.type === 'MultiPolygon') ng = { type: 'MultiPolygon', coordinates: g.coordinates.map((p) => bufRings(p)) };
+  else return feat;
+  return { ...feat, geometry: ng };
+}
+
+/** 单元深读聚焦（任务9）：单格橙色、定高 mh+EPS（恒最高、易点中、无穿模）；清多格 sticky。
+ *  cell:selected 时调用——被点击橙柱显橙色并拔至全图最高，其余橙柱消失。 */
 export function focusCell(feature, layer) {
   if (!_map || !feature) return;
   _stickySet = null;
   _removeHL();
   if (!layer) return;
   _hlLayer = layer;
-  _map.addSource(HL_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [feature] } });
+  const _fc = centroidOf(feature);
+  _hlFeatures = [feature];
+  _hlKeys = new Set(_fc ? [_fc[0].toFixed(5) + ',' + _fc[1].toFixed(5)] : []);
+  _map.addSource(HL_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [_bufferFeature(feature, 1.02)] } });
   const ui = (layer.paint && layer.paint._ui) || {};
   if (ui.mode === '3d') {
     const hf = ui.heightField || '_grid_h';
@@ -222,7 +282,8 @@ export function focusCell(feature, layer) {
     _map.addLayer({ id: HL_LAYER, type: 'fill-extrusion', source: HL_SRC, paint: {
       'fill-extrusion-color': HL_COLOR,
       'fill-extrusion-base': 0,
-      'fill-extrusion-height': ['interpolate', ['linear'], ['get', hf], 0, 0, 1, mh],   // 原柱高（非 2×）：选中态仅颜色锁定，高度复原
+      // 原柱高 × 1.5（click 选中明确拔高）+ footprint 外扩嵌套 → 无共面闪烁
+      'fill-extrusion-height': ['interpolate', ['linear'], ['get', hf], 0, 0, 1, mh * 1.5],
       'fill-extrusion-opacity': 1.0,
     } });
   } else {
@@ -236,6 +297,7 @@ function maybeCellHover(feat, ui, layer) {
   if (ui.tool !== 'grid' && ui.tool !== 'terrain') return;
   const c = centroidOf(feat);
   const key = c ? c[0].toFixed(5) + ',' + c[1].toFixed(5) : null;
+  if (key && _hlKeys.has(key)) { _lastHoverKey = null; return; }   // sticky/focus 格不叠 hover overlay（防两不透明 overlay 同格竞争穿模）
   if (key === _lastHoverKey) return;
   _lastHoverKey = key;
   showCellHover(feat, ui, layer);

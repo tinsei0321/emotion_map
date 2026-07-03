@@ -2,7 +2,9 @@
 import {
   POLARITY_ORDER, POLARITY_LABEL, emotionColors,
   layerLevel, focusLayer, polarityStats, confidenceStats, CONFIDENCE_RAMP,
+  getLayer, getChildren,
   L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR,
+  DOMAIN_BAR_COLOR, ELEMENT_BAR_COLOR, POL_MATRIX_TIERS,
   EMOTION_TYPE_COLORS, EMOTION_TYPE_ORDER,
   EMOTION_MACRO_ORDER, EMOTION_MACRO_MAP,
   HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets, rampDisplaySegs, deriveTimeTag, KEYWORD_TABLE,
@@ -392,18 +394,116 @@ function _polarPieHtml(agg, total) {
     <div class="ov-pie-legend">${lg}</div></div>`;
 }
 
-/** 4 领域相关性柱状（缩短+增高、数字入条内、品牌蓝→白字）。 */
-function _domainBarsCompact(feats) {
+/** 通用横条图（4 领域 / 5 要素）：全称 label + 加粗 + 指定色 + 数字入条，track 填满到右沿。
+ *  item 2 综合 4 领域用 DOMAIN_BAR_COLOR；item 5 单极性 4 领域 + 4 要素各用其色。 */
+function _barsHtml(feats, kind, color) {
+  const order = kind === 'element' ? ELEMENT_ORDER : DOMAIN_ORDER;
+  const labelOf = kind === 'element' ? ((k) => ELEMENT_LABEL[k] || k) : ((k) => DOMAIN_LABEL[k] || k);
+  const field = kind === 'element' ? 'element_top' : 'domain_top';
   const m = {};
-  for (const f of feats) { const d = (f.properties || {}).domain_top; if (d) m[d] = (m[d] || 0) + 1; }
-  const entries = DOMAIN_ORDER.filter((d) => m[d]).map((d) => [d, m[d]]);
-  if (!entries.length) return `<div class="ov-placeholder muted">无治理要素</div>`;
+  for (const f of feats) { const v = (f.properties || {})[field]; if (v) m[v] = (m[v] || 0) + 1; }
+  const entries = order.filter((k) => m[k]).map((k) => [k, m[k]]);
+  if (!entries.length) return `<div class="ov-placeholder muted">无${kind === 'element' ? '要素' : '治理领域'}数据</div>`;
   const max = Math.max(...entries.map((x) => x[1]));
-  return entries.map(([d, n]) => {
-    const lbl = (DOMAIN_LABEL[d] || d).replace('城市', '');
-    return `<div class="ov-dbar"><span class="ov-dbar-label">${lbl}</span>
-      <span class="ov-dbar-track"><span class="ov-dbar-fill" style="width:${(n / max) * 100}%">${n}</span></span></div>`;
+  return entries.map(([k, n]) =>
+    `<div class="ov-dbar"><span class="ov-dbar-label">${labelOf(k)}</span>
+      <span class="ov-dbar-track"><span class="ov-dbar-fill" style="width:${(n / max) * 100}%;background:${color}">${n}</span></span></div>`
+  ).join('');
+}
+/** 综合 4 领域柱（#4876FF，全称加粗）。 */
+function _domainBarsCompact(feats) { return _barsHtml(feats, 'domain', DOMAIN_BAR_COLOR); }
+/** 单极性 4 要素柱（#836FFF）。 */
+function _elementBars(feats) { return _barsHtml(feats, 'element', ELEMENT_BAR_COLOR); }
+
+/** 单极性网格层（L2 grid 且 polarity !== 'overall'）。 */
+function _isSinglePol(ui) {
+  return !!(ui && ui.tool === 'grid' && ui.level === 'L2' && ui.polarity && ui.polarity !== 'overall');
+}
+
+/** 单极性归因矩阵：只显该极性分布，格色按本矩阵 count 三级（high#6A5ACD/mid#7B68EE/low#8470FF）。
+ *  不再用 _piColor（极性色）—— 单极性层极性已定，矩阵强调"哪些 domain×element 桶最多"。 */
+function _singlePolMatrixHtml(cell) {
+  const counts = Object.values(cell).map((c) => c.n || 0).filter((n) => n > 0);
+  const max = counts.length ? Math.max(...counts) : 1;
+  const tierColor = (n) => n / max > 0.66 ? POL_MATRIX_TIERS.high : n / max > 0.33 ? POL_MATRIX_TIERS.mid : POL_MATRIX_TIERS.low;
+  const head = `<div class="mx-cell mx-head"></div>` +
+    ELEMENT_ORDER.map((e) => `<div class="mx-cell mx-head" title="${ELEMENT_LABEL[e] || e}">${(ELEMENT_LABEL[e] || e).slice(0, 2)}</div>`).join('');
+  const rows = DOMAIN_ORDER.map((d) => {
+    const cells = ELEMENT_ORDER.map((e) => {
+      const c = cell[d + '|' + e];
+      const lbl = `${DOMAIN_LABEL[d] || d} × ${ELEMENT_LABEL[e] || e}`;
+      if (!c) return `<div class="mx-cell mx-empty" title="${lbl}：无"></div>`;
+      return `<div class="mx-cell" data-dom="${d}" data-elm="${e}" style="background:${tierColor(c.n)}" title="${lbl}：${c.n} 单元（悬停/点击 → 地图同步）">${c.n}</div>`;
+    }).join('');
+    return `<div class="mx-rowlabel" title="${DOMAIN_LABEL[d] || d}">${DOMAIN_LABEL[d] || d}</div>${cells}`;
   }).join('');
+  return `<div class="ov-matrix">${head}${rows}</div>`;
+}
+
+/** 单极性关键词：只显该极性 Top10 + 右侧地点 Top5（地点栏占 2/3，词+次数条占 1/3）。
+ *  地点取 _topKeywordCells top-5 cells 的 place_name / area_seed / spatial_hotspot。 */
+const _POL_SIGN = { positive: 'pos', negative: 'neg', neutral: 'neu' };
+function _singlePolKeywordsHtml(feats, polarity) {
+  const sign = _POL_SIGN[polarity] || 'pos';
+  const rank = _keywordRank(feats)[sign] || [];
+  if (!rank.length) return `<div class="ov-placeholder muted">无该极性关键词数据</div>`;
+  const max = Math.max(1, ...rank.map((x) => x[sign]));
+  const rows = rank.map((it) => {
+    const kw = KEYWORD_TABLE[it.d + '|' + it.e + '|' + sign] || `${(DOMAIN_LABEL[it.d] || '').replace('城市', '')}·${ELEMENT_LABEL[it.e] || ''}`;
+    const n = it[sign];
+    const r = _topKeywordCells(feats, it.d, it.e, sign, 5);
+    const locs = r.cells.map((f) => {
+      const p = f.properties || {};
+      return p.place_name || p.area_seed || p.spatial_hotspot || p.zone || '';
+    }).filter((x) => x && x !== 'general').slice(0, 5);
+    const locHtml = locs.length
+      ? `<div class="ov-kw-locs">${locs.map((x) => `<span class="ov-kw-loc">${x}</span>`).join('')}</div>`
+      : `<div class="ov-kw-locs muted">—</div>`;
+    return `<div class="ov-kw-item ov-kw-sp" data-dom="${it.d}" data-elm="${it.e}" data-sign="${sign}" title="${kw}（${n} 点）· 点击定位最强聚集">
+      <div class="ov-kw-left"><span class="ov-kw-word">${kw}</span>
+        <span class="ov-kw-track"><span class="ov-kw-fill ${KW_SIGN_FILL[sign]}" style="width:${(n / max) * 100}%">${n}</span></span></div>
+      ${locHtml}
+    </div>`;
+  }).join('');
+  return `<div class="ov-keywords ov-keywords-sp">${rows}</div>`;
+}
+
+/** 单极性 Overview body：极性点数总览 + (4 领域 + 4 要素 横条) + 归因矩阵 + 关键词。 */
+/** 反查 _ui.source（group:{gid}）的城市情绪总量 = group 全部极性子层点数之和。layer: 源/反查失败 → null。 */
+function _cityTotalOf(ui) {
+  const src = ui && ui.source;
+  if (!src) return null;
+  const m = String(src).match(/^group:(.+)$/);
+  if (!m) return null;
+  const g = getLayer(m[1]);
+  if (!g) return null;
+  let n = 0;
+  for (const c of getChildren(g.id)) n += (c.fc && c.fc.features && c.fc.features.length) || 0;
+  return n || null;
+}
+
+/** 单极性 Overview body：极性点数总览 + (4 领域 + 4 要素 横条) + 归因矩阵 + 关键词。 */
+function _singlePolBody(feats, ui) {
+  const pol = ui.polarity;
+  const polLabel = POLARITY_LABEL[{ positive: 'Positive', negative: 'Negative', neutral: 'Neutral' }[pol]] || '极性';
+  // 该极性点数 = Σ（主级 + 非常级）；neutral 无非常级。修旧 bug：只算主级桶漏 Very Negative 致 vn>total。
+  let total = 0;
+  for (const f of feats) {
+    const p = f.properties || {};
+    if (pol === 'positive') total += (p.n_positive || 0) + (p.n_very_positive || 0);
+    else if (pol === 'negative') total += (p.n_negative || 0) + (p.n_very_negative || 0);
+    else total += p.n_neutral || 0;
+  }
+  const cell = _matrix4x5(feats);
+  const cityTotal = _cityTotalOf(ui);
+  const yPct = (cityTotal && total) ? Math.round(total / cityTotal * 100) : null;
+  const countLine = total
+    ? `<div class="ov-count-line">偏<b>${polLabel}</b>的情绪点数为 <b>${total}</b> 个${yPct != null ? `，占城市情绪总量的 <b>${yPct}%</b>` : ''}</div>` : '';
+  return `${countLine}
+    <div class="ov-tier-sub">极性总览<span class="info-i" data-tip="本层为单极性聚合。4 领域（蓝 #4876FF）+ 4 要素（紫 #836FFF）分布；横条长度 = 该层该类计数。">i</span></div>
+    <div class="ov-overview-row ov-ov-bars-row"><div class="ov-domain-chart">${_domainBarsCompact(feats)}</div><div class="ov-domain-chart">${_elementBars(feats)}</div></div>
+    <div class="ov-tier-sub">归因矩阵<span class="info-i" data-tip="单极性矩阵：颜色按本矩阵数量三级（深紫最多 → 浅紫最少），强调该极性问题集中在哪些领域×要素。悬停/点击 → 地图同步。">i</span></div>${_singlePolMatrixHtml(cell)}
+    <div class="ov-tier-sub">关键词 Top10<span class="info-i" data-tip="该极性高频城市关键词（左 1/3：词+次数）及其代表性地点 Top5（右 2/3）。点击词 → 定位最强聚集。">i</span></div>${_singlePolKeywordsHtml(feats, pol)}`;
 }
 
 /** 4×5 桶按正/负点数排名 → 各 Top5（关键词源）。 */
@@ -539,37 +639,41 @@ function tier3(layer, lv) {
   let body;
   if (isAnalysisLayer(layer)) {
     const feats = layer.fc.features;
-    // 极性分布：聚合单元无逐条 polarity，按 n_* 计数汇总（与 popup 同源）
-    const agg = { 'Very Positive': 0, Positive: 0, Neutral: 0, Negative: 0, 'Very Negative': 0 };
-    let total = 0;
-    const sms = [];
-    for (const f of feats) {
-      const p = f.properties || {};
-      agg['Very Positive'] += p.n_very_positive || 0;
-      agg.Positive += p.n_positive || 0;
-      agg.Neutral += p.n_neutral || 0;
-      agg.Negative += p.n_negative || 0;
-      agg['Very Negative'] += p.n_very_negative || 0;
-      if (p.score_mean != null && !isNaN(p.score_mean)) sms.push(p.score_mean);
+    const ui = (layer.paint && layer.paint._ui) || {};
+    // 单极性网格层（L2 grid · polarity !== overall）→ 独立 Overview（item 5）
+    if (_isSinglePol(ui)) {
+      body = _singlePolBody(feats, ui);
+    } else {
+      // 综合：极性分布（饼图 + 图例横排一行）+ 4 领域柱（全称加粗 #4876FF，次行）+ 矩阵 + 关键词（item 2 排版）
+      const agg = { 'Very Positive': 0, Positive: 0, Neutral: 0, Negative: 0, 'Very Negative': 0 };
+      const sms = [];
+      for (const f of feats) {
+        const p = f.properties || {};
+        agg['Very Positive'] += p.n_very_positive || 0;
+        agg.Positive += p.n_positive || 0;
+        agg.Neutral += p.n_neutral || 0;
+        agg.Negative += p.n_negative || 0;
+        agg['Very Negative'] += p.n_very_negative || 0;
+        if (p.score_mean != null && !isNaN(p.score_mean)) sms.push(p.score_mean);
+      }
+      const total = agg['Very Positive'] + agg.Positive + agg.Neutral + agg.Negative + agg['Very Negative'];
+      const cell = _matrix4x5(feats);
+      const pieHtml = total ? _polarPieHtml(agg, total) : '';
+      const domHtml = _domainBarsCompact(feats);
+      const posN = agg['Very Positive'] + agg['Positive'];
+      const negN = agg['Negative'] + agg['Very Negative'];
+      const neuN = agg['Neutral'];
+      const countLine = total
+        ? `<div class="ov-count-line">共 <b>${total}</b> 条 · 积极 <b>${posN}</b> · 消极 <b>${negN}</b> · 中性 <b>${neuN}</b></div>` : '';
+      const overviewRow = (pieHtml || domHtml)
+        ? `<div class="ov-tier-sub">数据总览<span class="info-i" data-tip="饼图悬停/点击某极性 → 地图同步高亮该极性主导的网格；矩阵、关键词同理。点击锁定，再次点击释放。">i</span></div>
+           ${countLine}
+           ${pieHtml ? `<div class="ov-overview-row ov-ov-pie-row">${pieHtml}</div>` : ''}
+           ${domHtml ? `<div class="ov-overview-row ov-ov-dom-row"><div class="ov-domain-chart">${domHtml}</div></div>` : ''}` : '';
+      body = `${overviewRow}
+        <div class="ov-tier-sub">归因矩阵<span class="info-i" data-tip="4 大治理领域 × 5 要素 的情绪归因矩阵。悬停/点击某格 → 地图同步高亮该领域×要素交集的网格。">i</span></div>${_matrixHtml(cell)}
+        <div class="ov-tier-sub">关键词Top10<span class="info-i" data-tip="按各要素正/中/负情绪点数排名的高频城市关键词。点击某词 → 地图定位并高亮其最强聚集的若干柱体。">i</span></div>${_keywordsHtml(feats)}`;
     }
-    total = agg['Very Positive'] + agg.Positive + agg.Neutral + agg.Negative + agg['Very Negative'];
-    const scoreMean = sms.length ? sms.reduce((a, b) => a + b, 0) / sms.length : 0;
-    // 4×5 矩阵 + 关键词（Top5 正/负）
-    const cell = _matrix4x5(feats);
-    const pieHtml = total ? _polarPieHtml(agg, total) : '';
-    const domHtml = _domainBarsCompact(feats);
-    const posN = agg['Very Positive'] + agg['Positive'];
-    const negN = agg['Negative'] + agg['Very Negative'];
-    const neuN = agg['Neutral'];
-    const countLine = total
-      ? `<div class="ov-count-line">共 <b>${total}</b> 条 · 积极 <b>${posN}</b> · 消极 <b>${negN}</b> · 中性 <b>${neuN}</b></div>` : '';
-    const overviewRow = (pieHtml || domHtml)
-      ? `<div class="ov-tier-sub">数据总览<span class="info-i" data-tip="饼图悬停/点击某极性 → 地图同步高亮该极性主导的网格；矩阵、关键词同理。点击锁定，再次点击释放。">i</span></div>
-         ${countLine}
-         <div class="ov-overview-row">${pieHtml}<div class="ov-domain-chart">${domHtml}</div></div>` : '';
-    body = `${overviewRow}
-      <div class="ov-tier-sub">归因矩阵<span class="info-i" data-tip="4 大治理领域 × 5 要素 的情绪归因矩阵。悬停/点击某格 → 地图同步高亮该领域×要素交集的网格。">i</span></div>${_matrixHtml(cell)}
-      <div class="ov-tier-sub">关键词Top10<span class="info-i" data-tip="按各要素正/中/负情绪点数排名的高频城市关键词。点击某词 → 地图定位并高亮其最强聚集的若干柱体。">i</span></div>${_keywordsHtml(feats)}`;
   } else if (layer.kind === 'heatmap') {
     const p = layer.paint || {};
     const n = layer.fc.features.length;

@@ -153,6 +153,7 @@ export function setViewMode(target) {
     }
     reorderLayers(pair.id, l.id);                           // target pair 接替原层 l 顺序位置（保槽位稳定，避免拖拽后切视角跳序）
   }
+  restackZ();   // 循环内 reorderLayers(pair,l) 发生在各 pair renderLayer 之后 → reorder 后 map z-order stale，末尾强制重对齐（修切视角后 z 漂移）
   setView3D(target === '3d');
   for (const g of getLayers()) if (g.visible && g.paint && g.paint._ui && g.paint._ui.tool === 'grid') _lastGridMode.set(gridSig(g.paint), g.paint._ui.mode);
   document.dispatchEvent(new CustomEvent('layers:changed'));

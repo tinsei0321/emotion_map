@@ -27,6 +27,44 @@ from poi_data.poi_4x5_map import DOMAIN_WEIGHTS, ELEMENT_WEIGHTS, DOMAINS, ELEME
 
 AREA_TYPES = ('unit', 'core', 'central_outer')
 
+# ═══ 叙事片区 narrative_zone（在 area_type 之上的地层语义层，驱极性弧 + 4×5 + 文本）═══
+# 依宜昌新闻调研（2024-2026）锚定三类典型地段 + 二马路历史街区 + 通用回退：
+#   riverside   滨江带（长江水体 ∩ 中心城区 buffer ~400m）—— 25km 滨江绿廊全线贯通、夜经济/灯会/步道三线；
+#               全程积极主导（江景/公园/晨跑/骑行/节日庆典），留少量 neutral(盼绿道延伸) + negative(噪音/停车) 保真实。
+#   residential 老旧小区（POI 商务住宅密集）—— 西陵/伍家岗老小区改造、加装电梯"一拖二"、物业缺失；
+#               T1 消极（电梯难/破旧/物业差）→ T3 中性期盼（焕新）。
+#   traffic     主干道/路口（POI 交通设施服务）—— 东山大道/胜利三路/云集路带状地形拥堵、施工绕行、红绿灯长；全程消极。
+#   commercial  商圈（POI 餐饮/购物/住宿）—— 夷陵广场/国贸/九州商贸中心；停车难/业态调整，混合偏消极→期盼升级。
+#   ermawu      二马路历史街区（大南门二马路滨江片区 polygon）—— 1877 百年老街"修旧如旧"2025 焕新；中性(盼开街)→积极(网红打卡/夜经济)。
+#   general     其余 —— 回退 area_type 级极性/倾斜（core/central_outer）。
+# 极性弧硬约束：riverside 全程积极≥60%；residential T1 消极≥55%→T3 中性+积极≥65%；traffic 全程消极≥55%；ermawu T3 积极≥55%。
+NARRATIVE_ZONES = ('riverside', 'residential', 'traffic', 'commercial', 'ermawu', 'general')
+
+# 叙事片区 domain 倾斜乘子（叠在 area_type bias 之上；general=1.0 纯回退）
+NARRATIVE_DOMAIN_BIAS = {
+    'riverside':   {'urban_operation': 1.6, 'urban_planning': 1.3, 'urban_governance': 0.8, 'urban_renewal': 0.7},
+    'residential': {'urban_renewal': 2.0, 'urban_governance': 1.3, 'urban_planning': 0.9, 'urban_operation': 0.7},
+    'traffic':     {'urban_governance': 2.0, 'urban_operation': 1.1, 'urban_planning': 1.0, 'urban_renewal': 0.8},
+    'commercial':  {'urban_operation': 1.8, 'urban_governance': 1.2, 'urban_planning': 0.9, 'urban_renewal': 0.8},
+    'ermawu':      {'urban_renewal': 1.6, 'urban_operation': 1.5, 'urban_planning': 1.0, 'urban_governance': 0.9},
+    'general':     {'urban_operation': 1.0, 'urban_planning': 1.0, 'urban_governance': 1.0, 'urban_renewal': 1.0},
+}
+# 叙事片区 element 倾斜乘子
+NARRATIVE_ELEMENT_BIAS = {
+    'riverside':   {'environment': 1.6, 'culture': 1.4, 'event': 1.3, 'facility': 0.8, 'service': 0.7},
+    'residential': {'facility': 1.7, 'service': 1.4, 'environment': 1.2, 'culture': 0.7, 'event': 0.6},
+    'traffic':     {'event': 1.6, 'facility': 1.4, 'service': 0.9, 'environment': 0.8, 'culture': 0.6},
+    'commercial':  {'service': 1.6, 'culture': 1.2, 'event': 1.1, 'facility': 1.0, 'environment': 0.8},
+    'ermawu':      {'culture': 1.7, 'event': 1.5, 'facility': 1.0, 'service': 0.9, 'environment': 0.8},
+    'general':     {'facility': 1.0, 'environment': 1.0, 'service': 1.0, 'culture': 1.0, 'event': 1.0},
+}
+# POI baidu_level1 类别 → 叙事片区（几何优先 riverside/ermawu 之后用此判定 residential/traffic/commercial）
+POI_NARRATIVE_ZONE = {
+    '商务住宅': 'residential',
+    '交通设施服务': 'traffic',
+    '餐饮服务': 'commercial', '购物服务': 'commercial', '住宿服务': 'commercial',
+}
+
 # ── 区域 domain 倾斜（相对 DOMAIN_WEIGHTS 基础权的乘子）──
 AREA_TYPE_DOMAIN_BIAS = {
     'unit':          {'urban_renewal': 1.8, 'urban_governance': 1.6, 'urban_planning': 0.9, 'urban_operation': 0.7},
@@ -94,8 +132,43 @@ SNAPSHOTS = {
 }
 
 
-def pick_polarity(snapshot_id, area_type, rng=random):
-    """采目标极性（positive/negative/neutral）。area_type ∈ AREA_TYPES。"""
+# ── 叙事片区极性弧（3 快照 × 5 片区；新闻锚定，非均匀，留 neutral/negative 保真实）──
+# riverside 全程积极主导（~65-78%，留 ~15% neutral 期盼 + ~10% negative 噪音/停车）；
+# residential T1 消极(电梯难/物业差/破旧)→T3 中性+积极(焕新)；traffic 全程消极(带状地形拥堵)；
+# commercial 混合偏消极→期盼；ermawu T1 中性(施工/盼开街)→T3 积极(网红打卡/夜经济)。
+NARRATIVE_POLARITY = {
+    'T1': {   # 2025-02 春节·二马路一期开街爆满
+        'riverside':   {'positive': 0.65, 'negative': 0.15, 'neutral': 0.20},
+        'residential': {'positive': 0.18, 'negative': 0.55, 'neutral': 0.27},
+        'traffic':     {'positive': 0.10, 'negative': 0.65, 'neutral': 0.25},
+        'commercial':  {'positive': 0.25, 'negative': 0.45, 'neutral': 0.30},
+        'ermawu':      {'positive': 0.30, 'negative': 0.30, 'neutral': 0.40},
+    },
+    'T2': {   # 2025-07 暑假周末·年轻人涌入
+        'riverside':   {'positive': 0.72, 'negative': 0.10, 'neutral': 0.18},
+        'residential': {'positive': 0.30, 'negative': 0.40, 'neutral': 0.30},
+        'traffic':     {'positive': 0.12, 'negative': 0.60, 'neutral': 0.28},
+        'commercial':  {'positive': 0.32, 'negative': 0.38, 'neutral': 0.30},
+        'ermawu':      {'positive': 0.45, 'negative': 0.25, 'neutral': 0.30},
+    },
+    'T3': {   # 2026-05 五一·大南门建成文旅爆满
+        'riverside':   {'positive': 0.78, 'negative': 0.07, 'neutral': 0.15},
+        'residential': {'positive': 0.42, 'negative': 0.28, 'neutral': 0.30},
+        'traffic':     {'positive': 0.15, 'negative': 0.58, 'neutral': 0.27},
+        'commercial':  {'positive': 0.38, 'negative': 0.35, 'neutral': 0.27},
+        'ermawu':      {'positive': 0.60, 'negative': 0.18, 'neutral': 0.22},
+    },
+}
+
+
+def pick_polarity(snapshot_id, area_type, narrative_zone='general', rng=random):
+    """采目标极性（positive/negative/neutral）。
+    narrative_zone != 'general' → 用 NARRATIVE_POLARITY 叙事弧；否则回退 area_type 级分布。"""
+    if narrative_zone and narrative_zone != 'general':
+        dist = NARRATIVE_POLARITY[snapshot_id].get(narrative_zone)
+        if dist:
+            keys = list(dist.keys())
+            return rng.choices(keys, weights=[dist[k] for k in keys], k=1)[0]
     dist = SNAPSHOTS[snapshot_id]['polarity'][area_type]
     keys = list(dist.keys())
     return rng.choices(keys, weights=[dist[k] for k in keys], k=1)[0]
@@ -110,13 +183,18 @@ def _compose_weights(base, area_bias, time_mod):
     return out
 
 
-def pick_domain_element(snapshot_id, area_type, rng=random):
-    """采 (domain, element)：区域 bias × 时间调制 × 基础权，独立采样，底权≥0.4。
+def pick_domain_element(snapshot_id, area_type, narrative_zone='general', rng=random):
+    """采 (domain, element)：基础权 × area_type bias × 叙事片区 bias × 时间调制，独立采样，底权≥_W_FLOOR。
 
-    domain 与 element 边际独立采样（deep 4×5 交叉留 L3/L4）；区域倾斜使
-    unit 偏 renewal/governance、core 偏 operation/governance、central_outer 偏 planning/renewal/governance。"""
+    narrative_zone 叠加倾斜（riverside→operation/environment/culture、residential→renewal/facility、
+    traffic→governance/event、commercial→operation/service、ermawu→renewal/culture）；general=1.0 纯回退。
+    domain 与 element 边际独立采样（deep 4×5 交叉留 L3/L4）。"""
+    nz_dom = NARRATIVE_DOMAIN_BIAS.get(narrative_zone or 'general', NARRATIVE_DOMAIN_BIAS['general'])
+    nz_elm = NARRATIVE_ELEMENT_BIAS.get(narrative_zone or 'general', NARRATIVE_ELEMENT_BIAS['general'])
     dom_w = _compose_weights(DOMAIN_WEIGHTS, AREA_TYPE_DOMAIN_BIAS[area_type], SNAPSHOT_TIME_DOMAIN_MOD[snapshot_id])
+    dom_w = {k: max(v * nz_dom.get(k, 1.0), _W_FLOOR) for k, v in dom_w.items()}
     elm_w = _compose_weights(ELEMENT_WEIGHTS, AREA_TYPE_ELEMENT_BIAS[area_type], SNAPSHOT_TIME_ELEMENT_MOD[snapshot_id])
+    elm_w = {k: max(v * nz_elm.get(k, 1.0), _W_FLOOR) for k, v in elm_w.items()}
     dom = rng.choices(list(dom_w.keys()), weights=list(dom_w.values()), k=1)[0]
     elm = rng.choices(list(elm_w.keys()), weights=list(elm_w.values()), k=1)[0]
     return dom, elm

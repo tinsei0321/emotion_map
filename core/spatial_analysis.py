@@ -461,7 +461,7 @@ def _attach_4x5_attrs(joined, grouped, stats):
     joined = sjoin 结果（含点侧 domain/element 列）；grouped = joined.groupby('index_right')；
     stats = 按 index_right 索引的聚合 DataFrame（已含 polarity_index）。
     L3/L4 LLM 归因上线后本函数整体替换为 LLM 产出。"""
-    for _c in ('domain', 'element'):
+    for _c in ('domain', 'element', 'spatial_hotspot', 'area_seed'):
         if _c in joined.columns:
             joined[_c] = joined[_c].fillna('').astype(str)
     if 'domain' in joined.columns:
@@ -474,6 +474,19 @@ def _attach_4x5_attrs(joined, grouped, stats):
             lambda x: x.mode().iloc[0] if not x.mode().empty else '')
         for _e in ('facility', 'environment', 'service', 'culture', 'event'):
             stats[f'n_elem_{_e}'] = grouped['element'].apply(lambda x: int((x == _e).sum())).astype(int)
+    # place_name：格内代表地名（点侧 spatial_hotspot 多数；空则 area_seed 多数兜底）。
+    # 供单极性 Overview 关键词「地点 Top5」（item 5）—— 让"地点-4×5-判断"三点一致有具体地名。
+    if 'spatial_hotspot' in joined.columns or 'area_seed' in joined.columns:
+        def _place_mode(g):
+            for fld in ('spatial_hotspot', 'area_seed'):
+                if fld in g.columns:
+                    vals = g[fld][g[fld].astype(str) != '']
+                    if not vals.empty:
+                        m = vals.mode()
+                        if not m.empty:
+                            return str(m.iloc[0])
+            return ''
+        stats['place_name'] = grouped.apply(_place_mode)
     if 'domain_top' in stats.columns and 'polarity_index' in stats.columns:
         _attrs = stats.apply(lambda _r: lookup_attribution(
             _r.get('domain_top', ''), _r.get('element_top', ''), _r.get('polarity_index')), axis=1)

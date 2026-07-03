@@ -6,7 +6,7 @@
 import { POLARITY_LABEL, rampColor, rampColorAt, CONFIDENCE_RAMP, getLayer, computeHotness, hotnessColor, isDrawActive, deriveTimeTag, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, valenceOf, valenceColorOf, TERRAIN_GREEN, TERRAIN_RED, TERRAIN_BLUE } from './state.js';
 import { reverseGeocode } from './api.js';
 import { trackGeocode } from './geocode-loader.js';
-import { pickHLCell } from './tip-popup.js';   // 橙柱命中优先（任务9）；运行时调用，循环引用安全
+import { pickHLCell, pickHLByLngLat } from './tip-popup.js';   // 橙柱命中（屏幕）+ 地理 contains 兜底（强制不穿透）
 
 const emoEl = () => document.getElementById('feature-popup');
 const rngEl = () => document.getElementById('range-popup');
@@ -17,6 +17,10 @@ let _popupLayerId = null; // layer id of the feature shown in the emotion popup 
 let _rngLayerId = null;   // layer id of the feature shown in the range popup
 
 const GREY = '#a3a3a3';
+
+/** cell-popup（网格/柱体/地形环 点击持久卡）开关。
+ *  暂时隐藏——与 Overview「单元深读」内容重复；未来需重开改 true（函数/DOM/CSS 全保留）。 */
+const CELL_POPUP_ENABLED = false;
 
 // ── 4×5 domain/element 友好标签（cell popup + Overview 共用）──
 export const DOMAIN_LABEL = { urban_operation: '城市运营', urban_governance: '城市治理', urban_renewal: '城市更新', urban_planning: '城市规划' };
@@ -564,11 +568,11 @@ export function initPopup(map) {
       document.dispatchEvent(new CustomEvent('point:collapse'));
       // 聚合单元（网格/柱体/地形环）：cell popup + Overview 联动，收 point/range 后 return
       if (k === 'cell') {
-        const hl = pickHLCell(ev.point);   // 橙柱优先：命中橙色聚焦柱用其精确格（修任务9 点橙柱命中背后格）
+        const hl = pickHLCell(ev.point) || pickHLByLngLat(ev.lngLat);   // 屏幕命中优先；未中则地理 contains 兜底（鼠标在橙柱格子内强制选橙柱，不穿透背后）
         const f = hl ? hl.feature : pickCellFeature(feats);
         const layer = hl ? hl.layer : (f && layerFromFeature(f));
         if (layer) {
-          showCellPopup(f, layer);
+          if (CELL_POPUP_ENABLED) showCellPopup(f, layer);
           document.dispatchEvent(new CustomEvent('cell:selected', { detail: { feature: f, layer } }));
         }
         collapsePopup();

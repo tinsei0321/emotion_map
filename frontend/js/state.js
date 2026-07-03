@@ -294,7 +294,9 @@ let _seq = 0;
 
 // ── Layer category grouping (render-layer aggregation; UI state only — never stored in _layers) ──
 export const CATEGORY_LABEL = { heatmap: '热力图', l2: 'L2 · 情绪地图 DATA', l1: 'L1 · 城市情绪 DATA', l0: 'L0 · 原始', range: '范围边界', buffer: '缓冲分析', grid: '网格聚合', terrain: '情绪地形', other: '其他' };
-let _groupOrder = ['heatmap', 'terrain', 'l2', 'l1', 'l0', 'range', 'buffer', 'grid', 'other'];   // 成果在上、原始在下（list-top = map-top）
+// 默认图层组序（上→下 = 地图顶层→底层）：L 数据 → 核密度 → 空间聚合(grid/terrain) → Buffer → Range → 其他。
+// 用户可拖拽 group 卡覆写（reorderGroupSegment 改本数组）；组内按 timeRank(T1<T2<T3) + typeRank(热度<综合<极性) 稳定排序。
+let _groupOrder = ['l0', 'l1', 'l2', 'heatmap', 'grid', 'terrain', 'buffer', 'range', 'other'];
 const _groupCollapse = new Set();                                    // collapsed category set
 const _groupFold = new Set();                                        // folded real-group set（真 L2 组单独折叠，按 group id；区别于 category 级 _groupCollapse）
 
@@ -302,6 +304,13 @@ const _groupFold = new Set();                                        // folded r
 export const L2_POSITIVE = { 'Very Positive': '#86E61C', 'Positive': '#3DBA9E' };   // 鲜艳荧光绿→蓝绿(teal)
 export const L2_NEGATIVE = { 'Very Negative': '#A3321A', 'Negative': '#E07142' };    // 暗橘红→浅橘红
 export const L2_NEUTRAL_COLOR = '#3A7CA5';                                            // 忧郁蓝（会合色）
+
+// ── 4×5 治理要素专用色源（综合/单极性 Overview 共用，单源勿散用）──
+export const DOMAIN_BAR_COLOR = '#4876FF';      // 4 领域横条（综合数据总览 + 单极性总览统一）
+export const ELEMENT_BAR_COLOR = '#836FFF';     // 4 要素横条（单极性总览）
+// 单极性归因矩阵 count 三级色段（数量 max→mid→min = 深→中→浅；强调矩阵内分布，非极性色）
+// 深紫罗兰 #A020F0 / 中紫罗兰 #9370DB / 蓟紫淡 #D8BFD8 —— 拉开差距便于分辨（替旧 #6A5ACD/#7B68EE/#8470FF 太接近）
+export const POL_MATRIX_TIERS = { high: '#A020F0', mid: '#9370DB', low: '#D8BFD8' };
 
 /** 极性指数(pi, -2~2) → 5 级判断词。cell-popup「极性指数」+ tip-popup「极性判断」行共用，
  *  保证全站同步（勿在他处另写阈值）。 */
@@ -858,15 +867,50 @@ export function toggleGroupFold(id) {
 /** Normalize _layers order to match _groupOrder (stable within each category; children stay
  *  attached to their group). Idempotent — returns false when already in order so callers can
  *  skip the z-sync. Keeps the list-top = map-top invariant once the list is grouped by category. */
+/** 层时间序：deriveTimeTag → T1=0/T2=1/T3=2，未识别=3（末）。L2 group 取 group.fc 首点 time_label。 */
+function _layerTimeRank(l) {
+  if (!l || !l.fc) return 3;
+  const t = deriveTimeTag(l.fc);
+  return t === 'T1' ? 0 : t === 'T2' ? 1 : t === 'T3' ? 2 : 3;
+}
+/** 层类型序：heatmap L1 综合(0)<L2 极性(1)；grid/terrain L1 热度(0)<L2 综合(1)<L2 极性(2)；其余=0。 */
+function _layerTypeRank(l) {
+  const ui = l && l.paint && l.paint._ui;
+  if (!ui) return 0;
+  if (l.kind === 'heatmap') return ui.level === 'L2' ? 1 : 0;
+  if (ui.tool === 'grid' || ui.tool === 'terrain') {
+    if (ui.level === 'L1') return 0;
+    if (ui.level === 'L2' && ui.polarity === 'overall') return 1;
+    if (ui.level === 'L2') return 2;
+    return 0;
+  }
+  return 0;
+}
+
+/** Normalize _layers order to match _groupOrder（组内 timeRank × typeRank 稳定排序；children 留 parent 后）。
+ *  Idempotent — 返回 false 表示已就序（调用方可跳过 z-sync，但 renderLayerList 现无条件 restackZ）。 */
 export function applyGroupOrder() {
   const keys = Array.from(_layers.keys());
+  // 按类别分桶 + 桶内稳定排序 (timeRank, typeRank)；L2 group 与其 children 同 timeRank → 稳定排序保连续。
+  const byCat = {};
+  for (const k of keys) {
+    const l = _layers.get(k);
+    const c = categoryOf(l);
+    (byCat[c] = byCat[c] || []).push(k);
+  }
+  for (const c of Object.keys(byCat)) {
+    byCat[c].sort((a, b) => {
+      const la = _layers.get(a), lb = _layers.get(b);
+      const ta = _layerTimeRank(la), tb = _layerTimeRank(lb);
+      if (ta !== tb) return ta - tb;
+      const ya = _layerTypeRank(la), yb = _layerTypeRank(lb);
+      return ya - yb;
+    });
+  }
   const desired = [];
   const used = new Set();
   for (const cat of _groupOrder) {
-    for (const k of keys) {
-      const l = _layers.get(k);
-      if (l && categoryOf(l) === cat) { desired.push(k); used.add(k); }
-    }
+    for (const k of (byCat[cat] || [])) { desired.push(k); used.add(k); }
   }
   for (const k of keys) if (!used.has(k)) desired.push(k);   // categories missing from _groupOrder
   const same = desired.length === keys.length && desired.every((k, i) => k === keys[i]);

@@ -52,10 +52,33 @@
   - **skill 扩充**：装 web-design-guidelines + code-review-and-quality（npx）；写 `~/.claude/CLAUDE.md` 全局规则；**4 个 claude-plugin 待回家开 VPN 装**。
   - 验证：24 JS node --check 全过；待 F5 验。
 
+- **演示数据 narrative_zone + 单极性 Overview + 排版/3D/排序/z-order 七项**（plan `main-head-docs-elegant-sparkle.md`）：
+  - **item1 数据叙事片区**：[`performance_config`](SCRIPT/performance_config.py) `NARRATIVE_ZONES/POLARITY/BIAS/POI_NARRATIVE_ZONE` + `pick_*` 加 `narrative_zone` 参；[`sim_performance_data`](SCRIPT/sim_performance_data.py) `classify_narrative_zone`（ermawu>riverside 几何优先→residential/traffic/commercial POI 类别→general）+ 滨江带几何(长江水体∩cc buffer 400m) + `validate_45` 打印片区 breakdown；**停用 `apply_anchors`**（与 narrative 弧冲突）。宜昌新闻调研锚定（滨江25km绿廊/加装电梯一拖二/东山大道拥堵/二马路修旧如旧）。
+  - **item2 综合排版**：`_barsHtml` 通用横条（全称+加粗，领域 #4876FF / 要素 #836FFF），数据总览拆**双行**（饼图+图例横排一行 / 4领域一行）；`.ov-dbar-*` 加高(15→18)白字加粗。
+  - **item5 单极性 Overview**：`_isSinglePol(polarity!=='overall')` 分流→`_singlePolBody` = 极性点数 + 4领域+4要素横条 + 归因矩阵(count 三级紫 #6A5ACD/#7B68EE/#8470FF) + 关键词 Top10(词 1/3 + 地点 Top5 2/3)；新色源 `DOMAIN_BAR_COLOR/ELEMENT_BAR_COLOR/POL_MATRIX_TIERS`。
+  - **item3 选中 3D 穿模彻底修**：[`tip-popup`](frontend/js/tip-popup.js) `focusCell`/`_applyHL` 高度 → **定高 `mh+EPS_HL`**（不随 hf 缩放，恒全图最高 → 不被邻柱遮挡、易点中、不穿透背后；严格高于原柱 → 无共面 z-fight/闪烁）；`_hlKeys` 跟踪 + `maybeCellHover` 跳过 sticky/focus 格防两 overlay 竞争。
+  - **item4 隐藏 cell-popup**：[`popup.js`](frontend/js/popup.js) `CELL_POPUP_ENABLED=false` 开关（保留 cell:selected dispatch + 函数/DOM）。
+  - **item6 图层排序规则**：[`state.js`](frontend/js/state.js) `_groupOrder` 改 L数据→KDE→空间聚合→Buffer→Range；`applyGroupOrder` 多键稳定排序（groupRank + timeRank T1<T2<T3 + typeRank 热度<综合<极性）。
+  - **item7 z-order 漂移修**：[`sidebar`](frontend/js/sidebar.js) `renderLayerList` 无条件 `restackZ`（安全网）+ [`map`](frontend/js/map.js) `setViewMode` 末尾补 `restackZ`（修 pair render 先于 reorder 致 stale）。
+  - **item1.4 地名烘焙**：[`spatial_analysis`](core/spatial_analysis.py) `_attach_4x5_attrs` 加 `place_name`（spatial_hotspot 多数）供单极性地点 Top5。
+  - **item1.3 文本池**：[`emotion_corpus.json`](SCRIPT/poi_data/emotion_corpus.json) 加 narrative_zone 键 ~50 条 + 重建池（202/286，71%）。
+  - **item1.5 sim agent 文档** 更新 narrative_zone 方法论 + 本机约束。
+  - 验证：9 文件 node --check + py_compile 全过；**全量数据重生顺延办公机**（家机缺 baidu-heatpoints）；待 F5 验。
+
+- **单极性 Overview + 3D 橙柱选中 F5 反馈精修（6 项，07-04）**：
+  - **item1 橙柱强制不可穿透 + 选中拉长**：[`tip-popup`](frontend/js/tip-popup.js) `_hlFeatures`+`pickHLByLngLat`（地理 contains 兜底）+ `_applyHL` 高度改**原柱高×factor**（hover 1.2/click 1.5）；[`popup`](frontend/js/popup.js) cell 点击 `pickHLCell||pickHLByLngLat`（鼠标在橙柱格子内强制选中、不穿透背后）。
+  - **item2 外扩嵌套消闪烁**：`_bufferFeature(1.02)` 橙柱 footprint 绕质心扩 2% → 嵌套原柱 → 消侧面共面 z-fight。
+  - **item3 数据条加宽白字**：[`.ov-dbar-fill`](frontend/css/panel.css) min-width 34 + 右齐白字（短条色块托底）+ 4领域/5要素两栏顶齐；全局规则：fill=白字/track 浅底=深灰字。
+  - **item4 矩阵三色拉开**：`POL_MATRIX_TIERS` → #A020F0/#9370DB/#D8BFD8（深/中/浅，替旧三紫太近）。
+  - **item5 countLine 修正**：total 含主级+非常级（修"消极 899/非常级 7551" vn>total bug）+ `_cityTotalOf` 反查 group 占比 → "偏X情绪点 X 个，占城市 Y%"。
+  - **item6 关键词地点横杠**：记下待办公机重生数据（旧 L2 无 spatial_hotspot；后端 place_name 逻辑已就绪）。
+  - 验证：4 JS node --check 全过；待 F5 验橙柱选中/不穿透/不闪烁 + 单极性总览字色/矩阵色/计数。
+
 ### ⬜ 下一步
-- **【回家装 skill · 最高优先】** 开 VPN 在终端跑 4 个 claude-plugin（superpowers/ui-ux-pro-max/planning-with-files/claude-mem）——命令见 `memories/repo/session-handoff.md`「回家装 skill」节。
-- **【待 F5 验 batch-2】** 图层互斥切换（开网格→点隐、开分析→其他分析隐、Range 始终留）/ 橙柱选中正确格 / 三处橙框 / i 浮窗跨右栏 / 3D 不重叠 / 关键词 Top10。
-- **【待 F5 验】** Task4 双层 Tab + zoom：导入 L1/L2→生成网格→点单元（切单元深读 + 略微 zoom）→点图层总览（zoom out）→ donut/分位/4×5 递进。
+- **【回家装 skill · 已完成 ✅】** 家机已装：4 个 claude-plugin（superpowers v6.0.3 / ui-ux-pro-max v2.6.2 / planning-with-files v3.1.3 / claude-mem v13.9.3，全 enabled）+ 2 个 npx skill（code-review-and-quality 正常装 / web-design-guidelines 手动装 CLI 发现不到）+ 家机全局 `~/.claude/CLAUDE.md` 补 2 条 skill 规则。
+- **【待 F5 验 batch-2 + 本批】** 图层互斥切换 / 橙柱选中 / 三处橙框 / i 浮窗 / **3D 选中不穿模（item3）** / 关键词 Top10 / **cell-popup 隐藏（item4）** / **综合双行排版（item2）** / **单极性 Overview（item5：4领域+4要素+三级紫矩阵+地点Top5）** / **图层新排序序（item6）** / **新生成极性网格 z-order 不漂移（item7）**。
+- **【待办公机跑全量 sim】** `DATA/baidu-heatpoints/` 家机缺（gitignore）→ 办公机 `git pull` + `py SCRIPT/sim_performance_data.py` 重生 6 数据集（narrative_zone 弧落地）+ 看 `[CHECK]` 各片区极性占比核验。文本池已本机重建（随 commit 同步）。
+- **【待 F5 验】** Task4 双层 Tab + zoom：导入 L1/L2→生成网格→点单元→ donut/分位/4×5 递进。
 - **【待用户数据】** 更新单元干净矢量替换 `presets/更新单元.geojson`；400MB 用地放 `DATA/raw/` → 跑 `ingest_landuse_preset.py --inspect` → 确认映射 → `--split`。
 - Task5 AI 问答重做；POI/地名纠错（后期）；F5 验后微调。
 
