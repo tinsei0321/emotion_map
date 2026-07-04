@@ -97,7 +97,7 @@ export function initPanel() {
           const locked = toggleStickyHighlight(r.cells, _overviewLayer, key);
           const wrap = kw.closest('.ov-keywords');
           if (wrap) wrap.querySelectorAll('.ov-kw-item.is-sticky').forEach((x) => x.classList.remove('is-sticky'));
-          if (locked) { kw.classList.add('is-sticky'); if (r.bb) fitBoundsTo(r.bb, 120); }
+          if (locked) { kw.classList.add('is-sticky'); if (r.bb) fitBoundsTo(r.bb, 120, 15); }
         }
         return;
       }

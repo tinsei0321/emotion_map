@@ -684,9 +684,11 @@ function findFirstCoord(geom) {
   try { return dive(geom.coordinates); } catch (e) { return null; }
 }
 
-export function fitBoundsTo(bbox, padding = 100) {
+export function fitBoundsTo(bbox, padding = 100, maxZoom = null) {
   if (!map || !bbox) return;
-  try { map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding }); } catch (e) {}
+  const opts = { padding };
+  if (maxZoom != null) opts.maxZoom = maxZoom;   // 关键词点击等封顶防过近（停车难 CBD 密集格 bbox 太紧致视野过低）
+  try { map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], opts); } catch (e) {}
 }
 
 /** 缩放至本图层：算该层 fc 的 bbox → fitBounds（双击图层行触发）。group 容器无几何，调用方自行过滤。

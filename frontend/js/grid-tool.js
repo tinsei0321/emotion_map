@@ -440,6 +440,7 @@ async function generateGrid() {
       renderLayer(L);
       for (const hid of enforceMutualExclusion(L.id)) { const hl = getLayer(hid); if (hl) renderLayer(hl); }
     }
+    L.timeTag = deriveTimeTag(src.fc);   // 显式时间标签（grid cell feature 无 time_label；_layerTimeRank 优先读它）
     const bb = fcBBox(fc); if (bb) fitBoundsTo(bb);
     setView3D(p.mode === '3d');   // fitBounds 后设 pitch（3D→倾斜+暗底图 / 2D→复原），防被打断
     selectLayer(L.id);            // 选中（Overview 内容跟随）但不强制弹右栏（工具生成不自动开 Overview/Table）

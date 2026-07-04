@@ -165,6 +165,44 @@ def _in_core_commercial(lng, lat):
     return abs(lng - _CORE_LNG) < _CORE_RADIUS_DEG and abs(lat - _CORE_LAT) < _CORE_RADIUS_DEG
 
 
+# 占道停车专属评论（60%治理 / 20%设施 / 20%环境 三主题；替通用 sample_text，让占道停车有具象叙事）
+# 落位解读：占道停车本质是「治理」问题（执法/管理/市容秩序 60%），兼有「设施」配套不足（规划视角 20%）
+# 与「环境」人行/市容影响（20%）。_zhandao_assign 据此重映射 (domain, element) + 主题评论，让 4×5 矩阵把占道停车主要归到治理行。
+_ZHANDAO_TEXT = {
+    'governance': [   # 60% 治理：执法/管理/市容秩序
+        '城管贴条治标不治本，这条路天天占道双排停',
+        '占道经营叠占道停车，管理部门到下班点就没人',
+        '人行道被电动车占满，城管的执法呢',
+        '违规占道停车屡禁不止，执法力度远远不够',
+        '消防通道都敢占道停，出了事谁负责',
+        '这条街占道停车泛滥，根本见不到贴条',
+    ],
+    'facility': [     # 20% 设施（规划配套）：停车供给不足
+        '车位太少只能占道停，停车场规划跟不上',
+        '没地方停车才占道，配套车位严重不足',
+        '附近停车场全满了，被迫占道停路面',
+        '商业街车位配建不够，车全挤到路面上',
+    ],
+    'environment': [  # 20% 环境：人行/市容/无障碍
+        '人行道被占道停车占满，行人只能走机动车道',
+        '绿化带都被占道车压秃了，市容全无',
+        '推婴儿车根本过不去，占道停车太自私',
+        '盲道全被占道停车占了，无障碍形同虚设',
+    ],
+}
+
+
+def _zhandao_assign(rng):
+    """占道停车 60%治理 / 20%设施 / 20%环境 → (domain, element, text)。
+    60% 归 urban_governance（element 在 facility/environment 间均分）；20% 规划×设施；20% 更新×环境。"""
+    r = rng.random()
+    if r < 0.60:   # 治理：执法/管理/市容秩序
+        return 'urban_governance', rng.choice(['facility', 'environment']), rng.choice(_ZHANDAO_TEXT['governance'])
+    if r < 0.80:   # 设施：停车配套不足（规划视角）
+        return 'urban_planning', 'facility', rng.choice(_ZHANDAO_TEXT['facility'])
+    return 'urban_renewal', 'environment', rng.choice(_ZHANDAO_TEXT['environment'])   # 环境：人行/市容
+
+
 def _nearest_landmark(lng, lat):
     """点军地标 500m 内 → 返回地标 dict（强制 zone/domain/element/name）；无则 None。
     让矩阵块指向奥体/卷桥河/江南URD（zone + place_name 都对齐）。"""
@@ -338,7 +376,11 @@ def inject_fields(pts, snapshot_id, pool, pl, poigrid, rng, riverside_poly=None,
             if polarity == 'negative' and _in_core_commercial(p['lng'], p['lat']):
                 topic = '停车难'
             zone = pl.resolve_zone((poi or {}).get('name', ''), (poi or {}).get('area', ''), p['lng'], p['lat'])
-            text = sample_text(polarity, element, pool, rng, zone=nz, flavor=flavor)
+            if topic == '占道停车':
+                # 占道停车 60%治理/20%设施/20%环境 → 重映射 domain/element + 专属评论（替通用 sample_text）
+                domain, element, text = _zhandao_assign(rng)
+            else:
+                text = sample_text(polarity, element, pool, rng, zone=nz, flavor=flavor)
             emo_inten = (p['value'] / VALUE_P95)
             emo_inten = max(0.1, min(1.0, emo_inten * (1.4 if polarity in ('positive', 'negative') else 0.7)))
             rows.append({

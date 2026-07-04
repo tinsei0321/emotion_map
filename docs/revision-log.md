@@ -483,6 +483,30 @@ flowchart TD
 
 | 07-04 | 本次 | **Top10 关键词 5 条替换 + 逆推重生 L2**（承计划 Part C；用户勾 6 推荐·回退 1 保留「业态调整」）：[`performance_config.py`](SCRIPT/performance_config.py) TOPIC_TABLE 替 5 词（权重不变，三极性各和=1）——positive：15分钟生活区→**大南门**(ermawu/commercial×culture+service，0.11)、一路绿波→**长江夜游**(riverside/commercial×event，0.05)、微更新活化→**西坝不夜岛**(riverside/commercial×event，0.05)；negative：内涝积水→**占道停车**(commercial/venue/residential×facility，0.05)、垃圾乱扔→**收费不合理**(commercial/general×service，0.05)。**逆推校验**（词表→归因矩阵→L2 三层联动）：新词极性均由既有 NARRATIVE_POLARITY+BUCKET_POLARITY_MOD 承载、无需改矩阵——大南门走 ermawu pos 0.60；长江夜游/西坝不夜岛走 riverside pos 0.78（经 operation×event 调制仍 pos 主导）；占道停车走 commercial neg-leaning；收费不合理走 T3 governance×service neg1.9。**迭代修**：大南门初版 element 仅 culture 被网红挤压(T3=0) → 加 service（语义成立：大南门=文化街区+40%生活方式+40%餐饮）后 91/118/86 可见。**校验闭环**：全盘 T1 0.454(neg>pos)→T2 0.575→T3 0.541(pos>neg)；**二马路/大南门(ermawu)深读弧 T1 neutral42%→T3 pos52%**（演示灵魂主线确认）；夜经济家族(夜经济+长江夜游+西坝不夜岛)T1→T3 递增 217/291/319。DATA/performance 12 文件重生 | `SCRIPT/performance_config.py` `DATA/performance/*`(12 重生) |
 
+### 5.16 占道停车替办事难 + 60/20/20 落位 + 关键词 zoom + 图层时间序全局修复（2026-07-04）
+
+| 日期 | commit | 用户意图 → 落地 | 文件 |
+|------|--------|----------------|------|
+| 07-04 | 本次 | **①占道停车替办事难 + 60/20/20 落位**：[`performance_config.py`](SCRIPT/performance_config.py) TOPIC_TABLE 删「办事难」(general×service 0.06)，占道停车吸收权重→0.11、element 加 environment、zone 加 general（commercial/venue/residential/general × facility/environment）。[`sim_performance_data.py`](SCRIPT/sim_performance_data.py) 新增 `_ZHANDAO_TEXT`（治理/设施/环境 三主题专属评论各 4-6 条）+ `_zhandao_assign(rng)`：60%→urban_governance(facility/environment 均分) / 20%→urban_planning×facility / 20%→urban_renewal×environment；行循环 `topic=='占道停车'` 时重映射 (domain,element) + 专属评论替 sample_text。**落位解读**：占道停车本质治理问题（执法/管理 60%），兼设施配套不足（规划 20%）+ 人行/市容（更新×环境 20%）——4×5 矩阵主要归治理行。**校验**：占道停车 domain=governance 60-64%/planning ~18%/renewal ~20% ✓；办事难=0；极性弧 T1 0.460(neg>pos)→T2 0.576→T3 0.549(pos>neg) 稳定。**②停车难点击 zoom 过低修复**：[`map.js`](frontend/js/map.js) `fitBoundsTo` 加 `maxZoom` 参数；[`panel.js`](frontend/js/panel.js) 关键词点击 `fitBoundsTo(r.bb,120,15)`——CBD 密集格 bbox 太紧致 over-zoom，封顶 15 与其他词视野齐平。**③图层时间序全局修复（根因）**：grid/heatmap 层 cell feature 无 `time_label` → `deriveTimeTag(layer.fc)` 返空 → `_layerTimeRank` 全=3 → 时间序失效（typeRank/极性序仍工作）。[`state.js`](frontend/js/state.js) `_layerTimeRank` 增 `l.timeTag` + `_layerTimeFromName`（层名 T 前缀兜底）双 fallback；[`grid-tool.js`](frontend/js/grid-tool.js) `generateGrid` 后设 `L.timeTag=deriveTimeTag(src.fc)`。全局规则：时间(T1<T2<T3) > L类型(L1<L2) > 极性(pos<neu<neg)，applyGroupOrder 在 renderLayerList 无条件调用 | `SCRIPT/{performance_config,sim_performance_data}.py` `frontend/js/{map,panel,state,grid-tool}.js` `DATA/performance/*`(12 重生) |
+
+#### 单元深读靶心表（关键词 × 3-5 目标聚合域；2026-07-04，下会话 plan 推进）
+
+> 9 代表词（每极性 3，占道停车替原噪音位），每词给 3-5 个目标聚合域（锚点·narrative_zone·domain×element）——下一层级「单元深读」的靶心清单。
+
+| 关键词 | 极性 | 主 domain×element | 目标聚合域（3-5） |
+|---|---|---|---|
+| 网红 | pos | 运营×服务/文化 | 大南门(ermawu) · 二马路历史街区(ermawu) · 夷陵广场CBD(commercial) · CBD万达(commercial) |
+| 夜经济 | pos | 运营×事件 | 滨江公园/沿江大道(riverside) · 西坝不夜岛(riverside) · 奥体(venue) · 二马路(ermawu) |
+| 大南门 | pos | 更新×文化/服务 | 大南门(ermawu) · 二马路历史街区(ermawu) · 解放路步行街(ermawu) |
+| 停车难 | neg | 治理×设施 | 夷陵广场CBD(commercial) · CBD万达(commercial) · 国贸/铁路坝(commercial) · 奥体(venue) · 吾悦广场(commercial) |
+| 占道停车 | neg | 治理×设施/环境 | 夷陵广场CBD(governance×facility) · 万达/国贸(governance×facility) · 二马路/大南门(renewal×environment) · 桃花岭老旧小区(planning×facility) · 滨江人行道(governance×environment) |
+| 堵车 | neg | 治理×事件 | 东山大道(traffic) · 胜利三路(traffic) · 云集路(traffic) · 中南路(transit_hub) |
+| 口袋公园 | neu | 规划×环境 | 街角口袋公园(park_plaza) · 儿童公园(park_plaza) · 滨江公园(riverside) · 夷陵广场(park_plaza) |
+| 业态 | neu | 运营×服务/文化 | 夷陵广场CBD(commercial) · 铁路坝商圈(commercial) · 二马路(ermawu) · 大南门(ermawu) |
+| 社区服务配套 | neu | 更新×设施/服务 | 桃花岭社区(residential) · 翁家堰社区(residential) · 行署小区(residential) · 江南URD(residential) |
+
+> 二马路/大南门(ermawu) 在 pos 三词 + 占道停车均出现 = 最高优先级单格（表现力环最强弧 T1 neutral→T3 积极）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

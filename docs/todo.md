@@ -861,3 +861,24 @@
 | L9 | 移动端适配 | ⬜ |
 | L10 | 语料库本地化词典 | ⬜ |
 | L11 | 空间分析引擎 MVP（缓冲区分析 + 行政单元聚合） | ⬜ |
+
+---
+
+## ★ 单元深读靶心（关键词 × 3-5 目标聚合域；2026-07-04）
+
+> 9 代表词（每极性 3，占道停车替原噪音位），每词给 3-5 个目标聚合域（锚点·narrative_zone·domain×element）。
+> 下一层级「单元深读」的靶心清单——**新开会话进 plan 推进**（承 revision-log 5.16）。
+
+| 关键词 | 极性 | 主 domain×element | 目标聚合域（3-5） |
+|---|---|---|---|
+| 网红 | pos | 运营×服务/文化 | 大南门(ermawu) · 二马路历史街区(ermawu) · 夷陵广场CBD(commercial) · CBD万达(commercial) |
+| 夜经济 | pos | 运营×事件 | 滨江公园/沿江大道(riverside) · 西坝不夜岛(riverside) · 奥体(venue) · 二马路(ermawu) |
+| 大南门 | pos | 更新×文化/服务 | 大南门(ermawu) · 二马路历史街区(ermawu) · 解放路步行街(ermawu) |
+| 停车难 | neg | 治理×设施 | 夷陵广场CBD(commercial) · CBD万达(commercial) · 国贸/铁路坝(commercial) · 奥体(venue) · 吾悦广场(commercial) |
+| 占道停车 | neg | 治理×设施/环境 | 夷陵广场CBD(governance×facility) · 万达/国贸(governance×facility) · 二马路/大南门(renewal×environment) · 桃花岭老旧小区(planning×facility) · 滨江人行道(governance×environment) |
+| 堵车 | neg | 治理×事件 | 东山大道(traffic) · 胜利三路(traffic) · 云集路(traffic) · 中南路(transit_hub) |
+| 口袋公园 | neu | 规划×环境 | 街角口袋公园(park_plaza) · 儿童公园(park_plaza) · 滨江公园(riverside) · 夷陵广场(park_plaza) |
+| 业态 | neu | 运营×服务/文化 | 夷陵广场CBD(commercial) · 铁路坝商圈(commercial) · 二马路(ermawu) · 大南门(ermawu) |
+| 社区服务配套 | neu | 更新×设施/服务 | 桃花岭社区(residential) · 翁家堰社区(residential) · 行署小区(residential) · 江南URD(residential) |
+
+**最高优先级单格**：二马路/大南门(ermawu) — pos 三词 + 占道停车均命中，表现力环最强弧（T1 neutral→T3 积极）。

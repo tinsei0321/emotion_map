@@ -215,8 +215,7 @@ TOPIC_TABLE = {
         ('红绿灯',       ('traffic',),                            ('facility',),                0.10),
         ('施工扰民',     ('residential', 'general'),             ('event',),                   0.09),
         ('没电梯',       ('residential',),                        ('facility',),                0.08),
-        ('办事难',       ('general',),                            ('service',),                 0.06),
-        ('占道停车',       ('commercial', 'venue', 'residential'), ('facility',),                0.05),
+        ('占道停车',       ('commercial', 'venue', 'residential', 'general'), ('facility', 'environment'), 0.11),
         ('收费不合理',     ('commercial', 'general'),               ('service',),                 0.05),
     ],
     'neutral': [

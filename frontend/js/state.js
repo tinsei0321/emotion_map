@@ -874,9 +874,15 @@ export function toggleGroupFold(id) {
  *  attached to their group). Idempotent — returns false when already in order so callers can
  *  skip the z-sync. Keeps the list-top = map-top invariant once the list is grouped by category. */
 /** 层时间序：deriveTimeTag → T1=0/T2=1/T3=2，未识别=3（末）。L2 group 取 group.fc 首点 time_label。 */
+function _layerTimeFromName(name) {
+  // 工具生成层（grid/heatmap）cell feature 无 time_label；层名 T 前缀兜底（"T1·综合·标准网格·..."）。
+  const m = /^T([1-3])·/.exec(name || '');
+  return m ? 'T' + m[1] : '';
+}
 function _layerTimeRank(l) {
-  if (!l || !l.fc) return 3;
-  const t = deriveTimeTag(l.fc);
+  if (!l) return 3;
+  // 优先显式 timeTag（工具生成层注入）；次选 feature time_label；末选层名 T 前缀（全局排序兜底）
+  const t = l.timeTag || deriveTimeTag(l.fc) || _layerTimeFromName(l.name);
   return t === 'T1' ? 0 : t === 'T2' ? 1 : t === 'T3' ? 2 : 3;
 }
 /** 层类型序：heatmap L1 综合(0)<L2 极性(1)；grid/terrain L1 热度(0)<L2 综合(1)<L2 极性(2)；其余=0。 */
