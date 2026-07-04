@@ -42,7 +42,7 @@ from shapely.ops import unary_union
 
 from core.tracker import track, TrackContext, trace_error, register_track_id
 from core.utils import safe_print
-from performance_config import SNAPSHOTS, pick_polarity, pick_domain_element, pick_topic, snapshot_flavor, AREA_TYPES, POI_NARRATIVE_ZONE, NARRATIVE_ZONES
+from performance_config import SNAPSHOTS, pick_polarity, pick_domain_element, pick_topic, snapshot_flavor, AREA_TYPES, POI_NARRATIVE_ZONE, NARRATIVE_ZONES, is_override_bucket
 from emotion_text_pool import load_pool, sample_text
 from poi_data.poi_4x5_map import DOMAIN_CN, ELEMENT_CN, DOMAINS, ELEMENTS
 from core.place_layer import get_place_layer
@@ -239,30 +239,30 @@ _DIANJUN_TEXT = {
 }
 
 
-# T2 暑假·城建施工中期连锁反应评论（道路开挖/施工噪音/交通不便/老旧改造）——浅红消极基调
+# T2 暑假·城建施工中期连锁反应评论（道路施工/噪音/交通不便/老旧改造）——浅红消极基调
+# 注：文案须 SnowNLP 负向（"修路修桥/开挖...过去"等会被 SnowNLP 读成正向，已避开；用 烦/堵/苦/乱/累死/折磨 等负向词）
 _T2_CONSTRUCTION_TEXT = {
-    ('urban_planning', 'facility'): [    # 道路开挖 / 修路修桥
-        '这条路挖了半年了，修路修桥天天绕行',
-        '道路开挖围挡到处都是，骑车都过不去',
-        '修路围挡换了一茬又一茬，到底什么时候完工',
-        '主干道半幅施工，早晚高峰堵得怀疑人生',
+    ('urban_planning', 'facility'): [    # 封路 / 道路施工
+        '封路挖路三个月，沿街商铺都没生意了，苦',
+        '挖路挖得尘土飞扬，路没法走',
+        '主干道半幅封死，早晚堵得怀疑人生',
     ],
-    ('urban_renewal', 'environment'): [   # 施工噪音 / 扬尘（老旧小区改造）
+    ('urban_renewal', 'environment'): [   # 施工噪音 / 扬尘
         '小区改造施工噪音早上六点就开始',
-        '拆房子扬尘满天飞，窗户都不敢开',
         '施工到半夜，老人孩子根本睡不着',
-        '装修噪音加工地噪音，双倍折磨',
+        '工地噪音加工地灰，双倍折磨',
+        '施工扬尘太大，不敢开窗',
     ],
-    ('urban_governance', 'event'): [      # 施工致交通不便 / 绕行拥堵
+    ('urban_governance', 'event'): [      # 施工致交通不便 / 绕行
         '施工封路公交改道，出行太不方便了',
-        '绕行三公里才到地铁口，都是修路害的',
-        '工程车辆进进出出，路口堵成一锅粥',
-        '单行道因施工改道，外卖小哥天天迷路',
+        '封路绕行三公里才到地铁口，累死',
+        '工程车进出路口堵成一锅粥，烦',
+        '路口施工封道，堵得一动动不了',
     ],
-    ('urban_renewal', 'facility'): [      # 老旧小区改造施工
-        '老旧小区改造脚手架搭了大半年',
-        '管网改造挖了填、填了挖，反复折腾',
-        '改造施工占道，停车更是难上加难',
+    ('urban_renewal', 'facility'): [      # 老旧改造施工
+        '老旧小区改造脚手架搭大半年，乱糟糟',
+        '管网改造挖了填填了挖，反复折腾烦',
+        '改造施工占道，走路都难更别说停车',
     ],
 }
 
@@ -403,7 +403,7 @@ def _pick_polarity_clustered(snapshot_id, area_type, narrative_zone, poi, rng, d
     """叙事片区 arc + 桶覆盖（BUCKET_POLARITY_MOD，驱归因矩阵趋势）+ 仅 general 区叠 POI lean 翻转。
     domain/element 用于桶覆盖；叙事片区极性比已含 neutral/negative 噪声，叠 lean 仅在 general 区。"""
     base = pick_polarity(snapshot_id, area_type, narrative_zone, domain=domain, element=element, rng=rng)
-    if narrative_zone == 'general':
+    if narrative_zone == 'general' and not is_override_bucket(snapshot_id, domain, element):
         lean = POI_POLARITY_LEAN.get(poi.get('baidu_level1', '')) if poi else None
         if lean and lean != base and rng.random() < LEAN_FLIP_P:
             return lean

@@ -269,30 +269,53 @@ BUCKET_POLARITY_MOD = {
         ('urban_renewal',   'environment'):{'negative': 1.5, 'positive': 0.6,  'neutral': 0.9},
         ('urban_renewal',   'service'):    {'negative': 1.4, 'positive': 0.7,  'neutral': 0.95},
     },
-    'T3': {   # 保红但总盘须 > T2（调降 neg 乘子 + 抬 pos；矩阵仍有红、整体极性为三时点峰值）
-        ('urban_operation', 'service'):    {'negative': 1.5, 'positive': 0.7,  'neutral': 0.88},
-        ('urban_operation', 'culture'):    {'negative': 1.4, 'positive': 0.78, 'neutral': 0.92},
-        ('urban_operation', 'event'):      {'negative': 1.4, 'positive': 0.82, 'neutral': 0.92},
-        ('urban_governance','service'):    {'negative': 1.5, 'positive': 0.7,  'neutral': 0.88},
-        ('urban_governance','culture'):    {'negative': 1.4, 'positive': 0.78, 'neutral': 0.92},
-        ('urban_governance','event'):      {'negative': 1.5, 'positive': 0.7,  'neutral': 0.88},   # traffic 拥堵持续（保红）
-        ('urban_renewal',   'facility'):   {'negative': 1.3, 'positive': 0.78, 'neutral': 0.92},   # 老旧改造遗留（保红）
-        ('urban_planning',  'environment'):{'negative': 1.3, 'positive': 0.8,  'neutral': 0.92},   # 内涝/绿地补短板（保红）
-    },
-    'T2': {   # 暑假·城建施工中期连锁反应：道路开挖/修路修桥/施工噪音/交通不便 → 浅红消极（温和 1.3-1.4，非深红；保 T2 总盘消极≈30%）
-        ('urban_planning',  'facility'):   {'negative': 1.4, 'positive': 0.7,  'neutral': 0.95},   # 道路开挖/修路修桥
-        ('urban_renewal',   'environment'):{'negative': 1.4, 'positive': 0.7,  'neutral': 0.95},   # 施工噪音/扬尘（老旧小区改造）
-        ('urban_governance','event'):      {'negative': 1.35, 'positive': 0.72, 'neutral': 0.95},  # 施工致交通不便/绕行拥堵
-        ('urban_renewal',   'facility'):   {'negative': 1.3, 'positive': 0.78, 'neutral': 0.95},   # 老旧小区改造施工
-    },
+    'T3': {},   # 不覆盖（T3 持续问题桶改用 _T3_PERSISTENT_POLARITY 固定 override，见下；收窄保红让 T3 neg < T2）
+    'T2': {},   # 居中、不覆盖（T2 施工浅红改用 _T2_CONSTRUCTION_POLARITY 固定 override，见下）
 }
+
+
+# T2 暑假·城建施工中期 4 桶固定浅红极性（bypass zone base + BUCKET 乘子）。
+# 原因：BUCKET_POLARITY_MOD 是乘子，乘在 zone base 上；但这些桶的点很多落 riverside/park_plaza 等强正 base（pos 0.56-0.66），
+# neg×1.7/pos×0.55 仍压不过（0.66×0.55 > 0.12×1.7）。改固定分布保证矩阵 4 桶 neg 主导（pi<-0.15 显浅红）。
+_T2_CONSTRUCTION_POLARITY = {
+    ('urban_planning',  'facility'):    {'positive': 0.28, 'negative': 0.47, 'neutral': 0.25},   # 道路开挖/修路修桥
+    ('urban_renewal',   'environment'): {'positive': 0.22, 'negative': 0.55, 'neutral': 0.23},   # 施工噪音/扬尘
+    ('urban_governance','event'):       {'positive': 0.28, 'negative': 0.47, 'neutral': 0.25},   # 施工致交通不便
+    ('urban_renewal',   'facility'):    {'positive': 0.30, 'negative': 0.45, 'neutral': 0.25},   # 老旧改造施工
+}
+
+
+# T3 五一·文旅爆满 3「持续问题」桶固定浅红（保红收窄：仅治理服务投诉/交通拥堵/内涝绿地；
+# operation 文旅/赛事 + renewal 改造 T3 转积极）。让 T3 neg < T2（故事"越来越好"），矩阵仍见 3 红块。
+_T3_PERSISTENT_POLARITY = {
+    ('urban_governance','service'):     {'positive': 0.30, 'negative': 0.45, 'neutral': 0.25},   # 服务投诉持续
+    ('urban_governance','event'):       {'positive': 0.28, 'negative': 0.47, 'neutral': 0.25},   # 交通拥堵持续
+    ('urban_planning',  'environment'): {'positive': 0.30, 'negative': 0.45, 'neutral': 0.25},   # 内涝/绿地补短板
+}
+
+
+def is_override_bucket(snapshot_id, domain, element):
+    """T2 施工桶 / T3 持续问题桶 → True。
+    _pick_polarity_clustered 据此跳过 general 区 POI lean 翻转，保 override 权威（否则 lean 把红翻成绿）。"""
+    if snapshot_id == 'T2': return (domain, element) in _T2_CONSTRUCTION_POLARITY
+    if snapshot_id == 'T3': return (domain, element) in _T3_PERSISTENT_POLARITY
+    return False
 
 
 def pick_polarity(snapshot_id, area_type, narrative_zone='general', domain=None, element=None, rng=random):
     """采目标极性（positive/negative/neutral）。
     基础分布：narrative_zone != 'general' → NARRATIVE_POLARITY 叙事弧；否则 area_type 级。
     桶覆盖：若有 domain/element，叠 BUCKET_POLARITY_MOD[sid][(d,e)] 乘子（驱归因矩阵 T1/T3 红趋势）。
+    T2 施工桶例外：_T2_CONSTRUCTION_POLARITY 固定浅红 override（bypass zone base，乘子克服不了强正 base）。
     归一化后采样（乘子可能致某极性权重→0，钳 0.01 底防 ValueError）。"""
+    # T2 施工桶 / T3 持续问题桶 固定浅红 override（最优先；乘子克服不了强正 zone base）
+    if domain and element:
+        ovr = None
+        if snapshot_id == 'T2': ovr = _T2_CONSTRUCTION_POLARITY.get((domain, element))
+        elif snapshot_id == 'T3': ovr = _T3_PERSISTENT_POLARITY.get((domain, element))
+        if ovr:
+            keys = list(ovr.keys()); weights = [ovr[k] for k in keys]
+            return rng.choices(keys, weights=weights, k=1)[0]
     dist = {}
     if narrative_zone and narrative_zone != 'general':
         base = NARRATIVE_POLARITY[snapshot_id].get(narrative_zone)
