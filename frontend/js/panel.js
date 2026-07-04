@@ -423,9 +423,16 @@ function _isSinglePol(ui) {
 /** 单极性归因矩阵：只显该极性分布，格色按本矩阵 count 三级（high#6A5ACD/mid#7B68EE/low#8470FF）。
  *  不再用 _piColor（极性色）—— 单极性层极性已定，矩阵强调"哪些 domain×element 桶最多"。 */
 function _singlePolMatrixHtml(cell) {
-  const counts = Object.values(cell).map((c) => c.n || 0).filter((n) => n > 0);
-  const max = counts.length ? Math.max(...counts) : 1;
-  const tierColor = (n) => n / max > 0.66 ? POL_MATRIX_TIERS.high : n / max > 0.33 ? POL_MATRIX_TIERS.mid : POL_MATRIX_TIERS.low;
+  // 三分位梯度：按本矩阵实际 count 分布取 1/3、2/3 分位赋 high/mid/low，保证三色各占约 1/3 格。
+  // 修旧 bug：n/max>0.66 阈值在长尾数据（如 max=591、余皆<33%·max）下 mid 永空，全矩阵仅深浅两色。
+  const ns = Object.values(cell).map((c) => c.n || 0).filter((n) => n > 0).sort((a, b) => a - b);
+  const tierColor = (n) => {
+    if (!n || n <= 0 || !ns.length) return POL_MATRIX_TIERS.low;
+    if (ns.length < 3) return n >= ns[ns.length - 1] ? POL_MATRIX_TIERS.high : POL_MATRIX_TIERS.low;
+    let i = 0; while (i < ns.length && ns[i] < n) i++;   // n 在排序数组中的分位
+    const q = i / (ns.length - 1);
+    return q > 2 / 3 ? POL_MATRIX_TIERS.high : q > 1 / 3 ? POL_MATRIX_TIERS.mid : POL_MATRIX_TIERS.low;
+  };
   const head = `<div class="mx-cell mx-head"></div>` +
     ELEMENT_ORDER.map((e) => `<div class="mx-cell mx-head" title="${ELEMENT_LABEL[e] || e}">${(ELEMENT_LABEL[e] || e).slice(0, 2)}</div>`).join('');
   const rows = DOMAIN_ORDER.map((d) => {
@@ -455,7 +462,9 @@ function _singlePolKeywordsHtml(feats, polarity) {
     const locs = r.cells.map((f) => {
       const p = f.properties || {};
       return p.place_name || p.area_seed || p.spatial_hotspot || p.zone || '';
-    }).filter((x) => x && x !== 'general').slice(0, 5);
+    }).filter((x) => x && x !== 'general')
+      .filter((x, i, arr) => arr.indexOf(x) === i)   // 地点去重（不重复同一地点）
+      .slice(0, 5);
     const locHtml = locs.length
       ? `<div class="ov-kw-locs">${locs.map((x) => `<span class="ov-kw-loc">${x}</span>`).join('')}</div>`
       : `<div class="ov-kw-locs muted">—</div>`;

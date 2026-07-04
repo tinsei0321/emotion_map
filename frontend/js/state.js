@@ -13,30 +13,30 @@ export const POLARITY_LABEL = {
  *  词非"评价性"（好/不好），而是市民具象用语（停车难/断头路/网红打卡点/夜经济/盼BRT…）；neu=期盼/讨论中。
  *  演示链"识别问题"环：关键词Top10 正/中/负 = 4×5 桶按正/中/负点数排名 → 本表映射（用户勾选词 + 桶语义匹配）。 */
 export const KEYWORD_TABLE = {
-  // planning 城市规划（路网/绿地/公服/地标/新区）
-  'urban_planning|facility|pos': '断头路打通',  'urban_planning|facility|neu': '盼BRT',       'urban_planning|facility|neg': '断头路',
-  'urban_planning|environment|pos': '绿道修得好', 'urban_planning|environment|neu': '规划绿地', 'urban_planning|environment|neg': '内涝',
-  'urban_planning|service|pos': '新学校',        'urban_planning|service|neu': '学区划分',     'urban_planning|service|neg': '没配套',
-  'urban_planning|culture|pos': '新地标',        'urban_planning|culture|neu': '规划落地',     'urban_planning|culture|neg': '没特色',
-  'urban_planning|event|pos': '新中心',          'urban_planning|event|neu': '新区规划',       'urban_planning|event|neg': '烂尾',
-  // renewal 城市更新（老旧小区/电梯/物业/老街/施工）
-  'urban_renewal|facility|pos': '老小区加装电梯', 'urban_renewal|facility|neu': '盼电梯',       'urban_renewal|facility|neg': '没电梯',
-  'urban_renewal|environment|pos': '焕新',        'urban_renewal|environment|neu': '老街改造', 'urban_renewal|environment|neg': '小区破',
-  'urban_renewal|service|pos': '物业靠谱',        'urban_renewal|service|neu': '物业',         'urban_renewal|service|neg': '物业差',
-  'urban_renewal|culture|pos': '老街新生',        'urban_renewal|culture|neu': '文化传承',     'urban_renewal|culture|neg': '拆没了',
-  'urban_renewal|event|pos': '更新活力满满',      'urban_renewal|event|neu': '改造中',         'urban_renewal|event|neg': '施工扰民',
-  // operation 城市运营（商圈/配套/网红/夜经济）
-  'urban_operation|facility|pos': '公交到门口',   'urban_operation|facility|neu': '公交线优化', 'urban_operation|facility|neg': '停车难',
-  'urban_operation|environment|pos': '滨江步道舒服', 'urban_operation|environment|neu': '口袋公园', 'urban_operation|environment|neg': '绿化没人养',
-  'urban_operation|service|pos': '网红打卡地',   'urban_operation|service|neu': '业态调整',   'urban_operation|service|neg': '商圈没落',
-  'urban_operation|culture|pos': '15分钟生活圈', 'urban_operation|culture|neu': '社区营造',   'urban_operation|culture|neg': '没意思',
-  'urban_operation|event|pos': '夜经济火热',     'urban_operation|event|neu': '夜市摆摊',     'urban_operation|event|neg': '噪音扰民',
+  // planning 城市规划（路网/绿地/公服/地标/新区）—— 业内同行演示，专业词突出
+  'urban_planning|facility|pos': '断头路打通',  'urban_planning|facility|neu': '盼BRT',        'urban_planning|facility|neg': '断头路',
+  'urban_planning|environment|pos': '绿道成网', 'urban_planning|environment|neu': '规划绿地',  'urban_planning|environment|neg': '内涝积水',
+  'urban_planning|service|pos': '新学校启用',   'urban_planning|service|neu': '学区划分',      'urban_planning|service|neg': '没配套',
+  'urban_planning|culture|pos': '新地标',       'urban_planning|culture|neu': '规划落地',      'urban_planning|culture|neg': '没特色',
+  'urban_planning|event|pos': '新中心开业',     'urban_planning|event|neu': '新区规划',        'urban_planning|event|neg': '烂尾',
+  // renewal 城市更新（老旧小区/电梯/物业/老街/施工）—— 业内同行演示重点板块
+  'urban_renewal|facility|pos': '加装电梯',     'urban_renewal|facility|neu': '盼电梯',        'urban_renewal|facility|neg': '没电梯',
+  'urban_renewal|environment|pos': '老旧焕新',  'urban_renewal|environment|neu': '老街改造',  'urban_renewal|environment|neg': '墙皮脱落',
+  'urban_renewal|service|pos': '物业靠谱',      'urban_renewal|service|neu': '物业',          'urban_renewal|service|neg': '物业差',
+  'urban_renewal|culture|pos': '老街新生',      'urban_renewal|culture|neu': '历史街区',      'urban_renewal|culture|neg': '拆没了',
+  'urban_renewal|event|pos': '微更新活化',      'urban_renewal|event|neu': '改造中',          'urban_renewal|event|neg': '施工扰民',
+  // operation 城市运营（商圈/网红/夜经济/滨江）—— 用户指定高频市民网感词
+  'urban_operation|facility|pos': '公交到门口', 'urban_operation|facility|neu': '公交线优化', 'urban_operation|facility|neg': '停车难',
+  'urban_operation|environment|pos': '滨江步道', 'urban_operation|environment|neu': '口袋公园', 'urban_operation|environment|neg': '绿化失养',
+  'urban_operation|service|pos': '网红',        'urban_operation|service|neu': '业态',        'urban_operation|service|neg': '底商空置冷清',
+  'urban_operation|culture|pos': '15分钟生活区', 'urban_operation|culture|neu': '社区服务配套', 'urban_operation|culture|neg': '没意思',
+  'urban_operation|event|pos': '夜经济',        'urban_operation|event|neu': '夜市筹备',      'urban_operation|event|neg': '噪音',
   // governance 城市治理（信号/环卫/政务/文化/拥堵）
-  'urban_governance|facility|pos': '红绿灯优化了', 'urban_governance|facility|neu': '停车收费讨论', 'urban_governance|facility|neg': '红绿灯不合理',
+  'urban_governance|facility|pos': '红绿灯优化了', 'urban_governance|facility|neu': '停车收费讨论', 'urban_governance|facility|neg': '红绿灯',
   'urban_governance|environment|pos': '街道干净整洁', 'urban_governance|environment|neu': '垃圾分类讨论', 'urban_governance|environment|neg': '垃圾乱扔',
-  'urban_governance|service|pos': '政务秒批',     'urban_governance|service|neu': '办事',       'urban_governance|service|neg': '办事难',
-  'urban_governance|culture|pos': '文化活动丰富', 'urban_governance|culture|neu': '文化活动预告', 'urban_governance|culture|neg': '没去处',
-  'urban_governance|event|pos': '不拥堵',         'urban_governance|event|neu': '早晚高峰',     'urban_governance|event|neg': '堵车',
+  'urban_governance|service|pos': '政务秒批',   'urban_governance|service|neu': '办事指南',    'urban_governance|service|neg': '办事难',
+  'urban_governance|culture|pos': '文化活动',   'urban_governance|culture|neu': '活动预告',    'urban_governance|culture|neg': '没去处',
+  'urban_governance|event|pos': '拥堵缓解',     'urban_governance|event|neu': '早晚高峰',      'urban_governance|event|neg': '堵车',
 };
 
 /** Read a --geojson-* token value from the live :root (single source). */
@@ -777,7 +777,13 @@ export function layerLevel(layer) {
     if (uiLevel) return uiLevel;
     return 'L2';   // 兜底（多数热力图源出 L2）
   }
-  if (layer.kind === 'polygon' || layer.kind === 'line') return 'range';
+  if (layer.kind === 'polygon' || layer.kind === 'line') {
+    // bug fix：网格聚合/地形等 polygon 分析层持久化了 _ui.level（L1/L2）—— 须优先用它，
+    // 否则被一刀切判成 'range'，Overview 标题误显 'Range·极性·…'。无 _ui（纯范围面/线）才回退 'range'。
+    const uiLevel = layer.paint && layer.paint._ui && layer.paint._ui.level;
+    if (uiLevel) return uiLevel;
+    return 'range';
+  }
   if (layer.colorMode === 'confidence') return 'L1';
   if (layer.colorMode === 'l2-positive' || layer.colorMode === 'l2-negative' || layer.colorMode === 'l2-neutral' || layer.colorMode === 'polarity') return 'L2';
   return 'L0';

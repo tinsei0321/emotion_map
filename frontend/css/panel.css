@@ -136,31 +136,30 @@
 .ov-pie-lg .ov-pie-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }   /* 方块色与地图极性图例同源 */
 .ov-pie-lg i { font-style: normal; color: var(--geojson-color-text-primary); font-weight: 400; margin-left: auto; }
 
-.ov-domain-chart { display: flex; flex-direction: column; gap: 4px; justify-content: center; }
-.ov-ov-bars-row { align-items: flex-start; }   /* 4领域+4要素两栏顶对齐（item3 等高对齐）*/
-.ov-ov-bars-row .ov-domain-chart { justify-content: flex-start; }
-.ov-dbar { display: flex; align-items: center; gap: 5px; }
-.ov-dbar-label { font-size: 11px; color: var(--geojson-color-text-primary); min-width: 52px; width: auto; flex-shrink: 0; text-align: right; font-weight: var(--geojson-typography-weight-bold); white-space: nowrap; }   /* 全称+加粗，item 2 */
-.ov-dbar-track { flex: 1; height: 18px; background: var(--geojson-color-gray-100, #f0f0f0); border-radius: 3px; overflow: hidden; }   /* 加高（原 15）数字条更醒目 */
-.ov-dbar-fill { display: block; height: 100%; background: var(--geojson-color-brand-primary, #4285F4); color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: right; padding: 0 6px; border-radius: 3px; min-width: 34px; }   /* fill 上数字=白字右齐；min-width 保短条也有色块托底白字（不溢出到浅 track），item3 */
+.ov-domain-chart { display: flex; flex-direction: column; gap: 6px; justify-content: center; }
+.ov-ov-bars-row { align-items: stretch; }   /* 4领域+5要素两栏等高：规划↔设施顶对齐 / 治理↔事件底对齐 */
+.ov-ov-bars-row .ov-domain-chart { justify-content: space-between; min-height: 142px; }   /* 首尾贴齐、中间均匀；4条与5条在等高栏内分布 */
+.ov-dbar { display: flex; align-items: center; gap: 6px; }
+.ov-dbar-label { font-size: 13px; color: var(--geojson-color-text-primary); min-width: 56px; width: auto; flex-shrink: 0; text-align: right; font-weight: var(--geojson-typography-weight-bold); white-space: nowrap; }   /* 字号放大（11→13）+ 加粗，与5要素上下对齐 */
+.ov-dbar-track { flex: 1; height: 22px; background: var(--geojson-color-gray-100, #f0f0f0); border-radius: 4px; overflow: hidden; }   /* 数据条变胖（18→22） */
+.ov-dbar-fill { display: block; height: 100%; background: var(--geojson-color-brand-primary, #4285F4); color: #fff; font-size: 12px; font-weight: 700; line-height: 22px; text-align: right; padding: 0 7px; border-radius: 4px; min-width: 36px; }   /* line-height 同步 22 */
 
-/* ── 关键词 Top5 正/中/负（三列等宽；词在条外常显 + 次数在条内；色与 4×5 矩阵同源）── */
-.ov-keywords { display: flex; gap: 8px; }
-.ov-kw-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.ov-kw-col-head { font-size: 10px; color: var(--geojson-color-card-fill, #384555); font-weight: 400; margin-bottom: 1px; }   /* 表头细体（与下方内容区分，任务11） */
-.ov-kw-item { display: flex; align-items: center; gap: 4px; cursor: pointer; }
-.ov-kw-word { font-size: 11px; font-weight: var(--geojson-typography-weight-semibold); color: var(--geojson-color-text-primary); width: 48px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ov-kw-track { flex: 1; height: 16px; background: var(--geojson-color-gray-100, #eef0f2); border-radius: 3px; overflow: hidden; }
-.ov-kw-fill { display: block; height: 100%; color: #3a3a3a; font-size: 10px; font-weight: 700; line-height: 16px; padding-left: 5px; border-radius: 3px; min-width: 18px; transition: filter .15s, transform .15s; }
-.ov-kw-fill.is-pos { background: #43A047; }   /* 积极 绿（同矩阵） */
-.ov-kw-fill.is-neu { background: #1E88E5; }   /* 中性 蓝（同矩阵） */
-.ov-kw-fill.is-neg { background: #E53935; }   /* 消极 红（同矩阵） */
-.ov-kw-item:hover .ov-kw-fill, .ov-kw-item.is-sticky .ov-kw-fill { filter: brightness(1.1); transform: scaleX(1.02); transform-origin: left; }
-.ov-kw-item.is-sticky .ov-kw-track { box-shadow: 0 0 0 4px #ff9000; }   /* sticky 橙黄 4px 外轮廓挂 track（fill 在 overflow:hidden 内会被裁，任务8） */
+/* ── 关键词 Top10（卡片化：圆角白底强阴影，间隔 2px；数据条统一紫 #8B658B + 数字贴右端白字，与极性总览同设计语言）── */
+.ov-keywords { display: flex; gap: 2px; }
+.ov-kw-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ov-kw-col-head { font-size: 10px; color: var(--geojson-color-card-fill, #384555); font-weight: 400; margin-bottom: 1px; }
+.ov-kw-item { display: flex; align-items: center; gap: 6px; cursor: pointer; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.12); padding: 5px 7px; transition: box-shadow .15s, transform .15s; }
+.ov-kw-item:hover { box-shadow: 0 3px 10px rgba(0,0,0,.18); transform: translateY(-1px); }
+.ov-kw-word { font-size: 11px; font-weight: var(--geojson-typography-weight-semibold); color: var(--geojson-color-text-primary); width: 54px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ov-kw-track { flex: 1; height: 24px; background: var(--geojson-color-gray-100, #eef0f2); border-radius: 4px; overflow: hidden; }   /* 数据条变胖（16→24，约1.5×；3×过高会挤占矩阵/归因布局，取醒目折中，可按肉眼反馈再调） */
+.ov-kw-fill { display: block; height: 100%; background: #8B658B; color: #fff; font-size: 11px; font-weight: 700; line-height: 24px; text-align: right; padding: 0 6px; border-radius: 4px; min-width: 26px; transition: filter .15s, transform .15s; }   /* 统一紫 #8B658B；数字白字贴右端（同极性总览 ov-dbar-fill） */
+.ov-kw-fill.is-pos, .ov-kw-fill.is-neu, .ov-kw-fill.is-neg { background: #8B658B; }   /* 三极性统一紫（旧绿/蓝/红废，靠列头/卡片区分极性） */
+.ov-kw-item:hover .ov-kw-fill, .ov-kw-item.is-sticky .ov-kw-fill { filter: brightness(1.12); transform: scaleX(1.02); transform-origin: left; }
+.ov-kw-item.is-sticky { box-shadow: 0 0 0 3px #ff9000, 0 2px 8px rgba(0,0,0,.12); }   /* sticky 橙黄外轮廓挂卡片（卡片化后从 track 移到 item） */
 /* 单极性关键词（item 5）：词+次数条占 1/3，地点 Top5 占 2/3 */
-.ov-keywords-sp { flex-direction: column; gap: 4px; }
+.ov-keywords-sp { flex-direction: column; gap: 2px; }
 .ov-kw-sp { flex-wrap: nowrap; align-items: center; gap: 8px; }
-.ov-kw-sp .ov-kw-left { flex: 0 0 33%; min-width: 0; display: flex; align-items: center; gap: 4px; }
+.ov-kw-sp .ov-kw-left { flex: 0 0 33%; min-width: 0; display: flex; align-items: center; gap: 6px; }
 .ov-kw-sp .ov-kw-word { width: auto; flex: 0 0 auto; max-width: 70px; }
 .ov-kw-sp .ov-kw-track { flex: 1; }
 .ov-kw-locs { flex: 0 0 calc(66% - 8px); min-width: 0; display: flex; flex-wrap: wrap; gap: 3px 6px; font-size: 10px; color: var(--geojson-color-text-secondary); }
