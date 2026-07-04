@@ -463,6 +463,8 @@ flowchart TD
 
 | 07-04 | 本次 | **Rule: 开发阶段 Git 工作流改为直接提交 main、不开分支**（用户指令；待用户明确要求时再启用分支工作流）——[`CLAUDE.md`](CLAUDE.md) Git 规范从「不要直接 commit 到 main（紧急修复除外）」改为「当前开发阶段直接提交 main、不开分支」；同次 fast-forward 合并上一条目分支 `fix/sim-narrative-zone-cross-machine-sync`(b750577) 入 main 并删除分支保持干净。 | `CLAUDE.md` |
 
+| 07-04 | 本次 | **Data: 社区级行政界限入库去重（跨机同步）**——[`DATA/boundaries/presets/社区.geojson`](DATA/boundaries/presets/社区.geojson)（83MB，1682 社区多边形 / 801 唯一社区名，OBJECTID/NAME/SSXZQH/SSXS 标准字段）原样入库，备未来社区级聚合/叙事片区细分；同验两份 87MB 副本内容 100% 重复（NAME 集合完全重合），删除根目录 `boundaries/村社区行政界限.geojson` 副本，仅留 presets/ 一份。GitHub >50MB 警告（83MB），用户选原样入库、不引入 Git LFS。当前代码未引用（原始数据备查）。 | `DATA/boundaries/presets/社区.geojson` |
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。
