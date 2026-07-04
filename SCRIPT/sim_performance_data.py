@@ -212,6 +212,61 @@ def _zhandao_assign(rng):
     return 'urban_renewal', 'environment', rng.choice(_ZHANDAO_TEXT['environment'])   # 环境：人行/市容
 
 
+# 点军江南地标正向专属关键词（奥体楚超/卷桥河露营/江南绿肺）——点军生态+赛事先天优势
+_DIANJUN_TOPIC = {'宜昌奥体中心': '楚超', '卷桥河湿地公园': '卷桥河露营', '江南URD': '江南绿肺'}
+_DIANJUN_TEXT = {
+    '楚超': [           # 奥体楚超足球赛 / 演唱会（T3 五一文旅爆满峰值）
+        '奥体楚超赛事现场氛围超燃，球迷全程高歌',
+        '看了场楚超德比，进球那一刻全场沸腾',
+        '奥体演唱会音效赞，几万人大合唱太震撼',
+        '楚超终于让奥体有了大赛氛围，点军也热闹了',
+        '带孩子看楚超，现场气氛比电视强太多',
+    ],
+    '卷桥河露营': [     # 卷桥河湿地公园周末露营（点军生态先天优势）
+        '卷桥河周末露营爆满，帐篷沿着草地连成片',
+        '湿地空气清新，带娃亲近自然的好地方',
+        '江风配夕阳，卷桥河堪称露营天花板',
+        '卷桥河生态环境真好，白鹭都回来了',
+        '周末去卷桥河搭帐篷，空气比江北好太多',
+    ],
+    '江南绿肺': [       # 点军江南生态新城 / 丘陵绿地
+        '江南这块绿肺是点军的先天优势',
+        '江南URD依山傍水，生态新城名副其实',
+        '点军空气比江北好太多，天然氧吧',
+        '江南丘陵绿地连片，是城市稀缺的生态资源',
+        '住江南最大的幸福就是推窗见绿',
+    ],
+}
+
+
+# T2 暑假·城建施工中期连锁反应评论（道路开挖/施工噪音/交通不便/老旧改造）——浅红消极基调
+_T2_CONSTRUCTION_TEXT = {
+    ('urban_planning', 'facility'): [    # 道路开挖 / 修路修桥
+        '这条路挖了半年了，修路修桥天天绕行',
+        '道路开挖围挡到处都是，骑车都过不去',
+        '修路围挡换了一茬又一茬，到底什么时候完工',
+        '主干道半幅施工，早晚高峰堵得怀疑人生',
+    ],
+    ('urban_renewal', 'environment'): [   # 施工噪音 / 扬尘（老旧小区改造）
+        '小区改造施工噪音早上六点就开始',
+        '拆房子扬尘满天飞，窗户都不敢开',
+        '施工到半夜，老人孩子根本睡不着',
+        '装修噪音加工地噪音，双倍折磨',
+    ],
+    ('urban_governance', 'event'): [      # 施工致交通不便 / 绕行拥堵
+        '施工封路公交改道，出行太不方便了',
+        '绕行三公里才到地铁口，都是修路害的',
+        '工程车辆进进出出，路口堵成一锅粥',
+        '单行道因施工改道，外卖小哥天天迷路',
+    ],
+    ('urban_renewal', 'facility'): [      # 老旧小区改造施工
+        '老旧小区改造脚手架搭了大半年',
+        '管网改造挖了填、填了挖，反复折腾',
+        '改造施工占道，停车更是难上加难',
+    ],
+}
+
+
 def _nearest_landmark(lng, lat):
     """点军地标 500m 内 → 返回地标 dict（强制 zone/domain/element/name）；无则 None。
     让矩阵块指向奥体/卷桥河/江南URD（zone + place_name 都对齐）。"""
@@ -390,6 +445,15 @@ def inject_fields(pts, snapshot_id, pool, pl, poigrid, rng, riverside_poly=None,
                 domain, element, text = _zhandao_assign(rng)
             else:
                 text = sample_text(polarity, element, pool, rng, zone=nz, flavor=flavor)
+            # 点军地标正向 → 专属关键词（楚超/卷桥河露营/江南绿肺）+ 专属评论
+            if polarity == 'positive':
+                lm = _nearest_landmark(p['lng'], p['lat'])
+                if lm and lm['name'] in _DIANJUN_TOPIC:
+                    topic = _DIANJUN_TOPIC[lm['name']]
+                    text = rng.choice(_DIANJUN_TEXT[topic])
+            # T2 施工中期连锁反应 → 建设类消极评论（道路开挖/施工噪音/交通不便，浅红基调）
+            if snapshot_id == 'T2' and polarity == 'negative' and (domain, element) in _T2_CONSTRUCTION_TEXT:
+                text = rng.choice(_T2_CONSTRUCTION_TEXT[(domain, element)])
             emo_inten = (p['value'] / VALUE_P95)
             emo_inten = max(0.1, min(1.0, emo_inten * (1.4 if polarity in ('positive', 'negative') else 0.7)))
             rows.append({

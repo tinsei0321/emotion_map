@@ -498,6 +498,9 @@ flowchart TD
 | 网红 | pos | 运营×服务/文化 | 大南门(ermawu) · 二马路历史街区(ermawu) · 夷陵广场CBD(commercial) · CBD万达(commercial) |
 | 夜经济 | pos | 运营×事件 | 滨江公园/沿江大道(riverside) · 西坝不夜岛(riverside) · 奥体(venue) · 二马路(ermawu) |
 | 大南门 | pos | 更新×文化/服务 | 大南门(ermawu) · 二马路历史街区(ermawu) · 解放路步行街(ermawu) |
+| 楚超 | pos | 运营×事件 | 奥体中心(venue) · 奥体周边餐饮(commercial) · 五一广场(commercial) · 滨江公园(riverside) |
+| 卷桥河露营 | pos | 更新×环境 | 卷桥河湿地公园(park_plaza) · 江南URD绿地(residential) · 点军滨江(riverside) · 鄢家河郊野(park_plaza) |
+| 江南绿肺 | pos | 规划×环境 | 江南URD(residential) · 卷桥河湿地(park_plaza) · 江南丘陵(park_plaza) · 点军滨江(riverside) |
 | 停车难 | neg | 治理×设施 | 夷陵广场CBD(commercial) · CBD万达(commercial) · 国贸/铁路坝(commercial) · 奥体(venue) · 吾悦广场(commercial) |
 | 占道停车 | neg | 治理×设施/环境 | 夷陵广场CBD(governance×facility) · 万达/国贸(governance×facility) · 二马路/大南门(renewal×environment) · 桃花岭老旧小区(planning×facility) · 滨江人行道(governance×environment) |
 | 堵车 | neg | 治理×事件 | 东山大道(traffic) · 胜利三路(traffic) · 云集路(traffic) · 中南路(transit_hub) |
@@ -512,6 +515,12 @@ flowchart TD
 | 日期 | commit | 用户意图 → 落地 | 文件 |
 |------|--------|----------------|------|
 | 07-04 | 本次 | **①占道停车/新词在关键词面板不显示（根因 = 前端白名单 stale）**：[`panel.js`](frontend/js/panel.js) `TOPIC_POLARITY`/`TOPIC_ORDER` 是硬编码白名单，`_keywordRank` 对未登记 topic 直接丢弃——前两轮改后端 TOPIC_TABLE 未同步前端，致占道停车/大南门/长江夜游/西坝不夜岛/收费不合理 3 时点全不显示。同步白名单至现 TOPIC_TABLE（pos 10 / neg 9 / neu 10），加注释「改 TOPIC_TABLE 必须同步此处」。**②T3 极性应峰值却 < T2**：T3 BUCKET_POLARITY_MOD 保红乘子（neg 1.7-1.9）把总盘拖至 0.549 < T2 0.576。**不换文件名**（破坏时序语义），改调：[`performance_config.py`](SCRIPT/performance_config.py) T3 `BUCKET_POLARITY_MOD` neg 1.7-1.9→1.3-1.5 + pos↑（保红矩阵不动，neg 仍>1）；T3 `NARRATIVE_POLARITY` hero 片区（riverside/commercial/ermawu/venue/park_plaza）积极↑。结果 **T1 0.460 < T2 0.576 < T3 0.591**（T3 峰值 ✓），T3 治理/运营消极点仍 4044（保红 ✓）。**③停车难 zoom 过低（空间修）**：[`sim_performance_data.py`](SCRIPT/sim_performance_data.py) 加中南路（伍家岗，WGS84 111.325/30.682）停车难第二锚点 `_in_zhongnan`，与核心商圈双锚点强制 negative→停车难 → bbox 拉大（CBD+中南路 ~13km 跨度）自然降 zoom；配 [`map.js`](frontend/js/map.js) `fitBoundsTo` maxZoom 封顶（5.16 已改）。**④方法论成文**：[`CLAUDE.md`](CLAUDE.md)「数据模拟方法论」+ [`.claude/agents/sim-emotion-data.agent.md`](.claude/agents/sim-emotion-data.agent.md) 增「关键词↔矩阵块↔目标聚合域 逻辑闭合」段——递进关系、模拟逆推三步、改 TOPIC_TABLE 必须同步前端白名单的铁律、T3 须为极性峰值的自检。**⑤深读表改 1-3 候选池**：todo/revision-log 5.16 表去「二马路最高优先级」误称，改为「下会话每词从候选池筛 1-3 典型格」。**收费不合理**已按规则纳入白名单。验证：pytest 118 passed（1 既有失败无关） | `frontend/js/panel.js` `SCRIPT/{performance_config,sim_performance_data}.py` `CLAUDE.md` `.claude/agents/sim-emotion-data.agent.md` `docs/{revision-log,todo}.md` `DATA/performance/*`(12 重生) |
+
+### 5.18 收费降权缩zone + T2 施工连锁 + 点军 3 关键词（2026-07-05）
+
+| 日期 | commit | 用户意图 → 落地 | 文件 |
+|------|--------|----------------|------|
+| 07-05 | 本次 | **①收费不合理 过 prominence**：[`performance_config.py`](SCRIPT/performance_config.py) zone 去 general（仅 commercial）+ 权重 0.05→0.04，占道停车 0.11→0.12。频次 939/609/877 → **95/70/95**（从 neg #1 降为边缘词）。**②T2 施工中期连锁反应**：T2 `BUCKET_POLARITY_MOD`（原 `{}`）加 4 施工桶——规划×设施(道路开挖/修路修桥)·更新×环境(施工噪音/扬尘)·治理×事件(交通不便)·更新×设施(老旧改造)，浅红 1.3-1.4（非深红）；[`sim_performance_data.py`](SCRIPT/sim_performance_data.py) `_T2_CONSTRUCTION_TEXT` 4 桶专属评论 + 行循环 override（T2 negative + 施工桶 → 施工评论）。T2 neg=30.6%（施工味），T3 0.591 仍 > T2 0.573。**③点军 3 关键词**：positive 扩 13 词（重归一）+楚超(venue×event,0.08,奥体赛事/T3峰值)·卷桥河露营(park_plaza×env,0.05,湿地露营)·江南绿肺(park_plaza/residential×env,0.04,点军生态)；sim `_DIANJUN_TOPIC`/`_DIANJUN_TEXT` 点军地标正向强制（奥体→楚超·卷桥河→卷桥河露营·江南URD→江南绿肺）+ 专属评论 5 条/词；频次 楚超 41/53/74·卷桥河露营 12/24/28·江南绿肺 16/17/20。**前端同步**：[`panel.js`](frontend/js/panel.js) `TOPIC_POLARITY`/`TOPIC_ORDER` 加 3 点军词（13 pos / 9 neg）。**深读候选池**：5.16 表 + todo 加 3 点军词 × 4 聚合域（楚超=奥体/奥体周边/五一广场/滨江公园；卷桥河露营=卷桥河湿地/江南URD绿地/点军滨江/鄢家河；江南绿肺=江南URD/卷桥河湿地/江南丘陵/点军滨江）。验证：pytest 118 passed（1 既有失败无关） | `SCRIPT/{performance_config,sim_performance_data}.py` `frontend/js/panel.js` `docs/{revision-log,todo}.md` `DATA/performance/*`(12 重生) |
 
 ## 6. 持续追加规则（给 AI）
 

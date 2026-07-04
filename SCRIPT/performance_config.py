@@ -196,27 +196,30 @@ NARRATIVE_POLARITY = {
 # 权重和=1（_check 校验）；覆盖典型片区组合，general/event 等长尾留空 → 覆盖率自然 ~30%。
 TOPIC_TABLE = {
     'positive': [
-        ('网红',         ('commercial', 'ermawu'),               ('service', 'culture'),       0.18),
-        ('夜经济',       ('riverside', 'commercial', 'venue'),   ('event',),                   0.15),
-        ('滨江步道',     ('riverside',),                          ('environment',),             0.13),
-        ('大南门',         ('ermawu', 'commercial'),               ('culture', 'service'),       0.11),
-        ('文化活动',     ('ermawu', 'venue', 'park_plaza'),      ('culture',),                 0.10),
-        ('老街新生',     ('ermawu',),                              ('culture',),                 0.09),
-        ('加装电梯',     ('residential',),                        ('facility',),                0.08),
-        ('绿道成网',     ('riverside', 'park_plaza'),            ('environment',),             0.06),
-        ('长江夜游',       ('riverside', 'commercial'),            ('event',),                   0.05),
-        ('西坝不夜岛',     ('riverside', 'commercial'),            ('event',),                   0.05),
+        ('网红',         ('commercial', 'ermawu'),               ('service', 'culture'),       0.15),
+        ('夜经济',       ('riverside', 'commercial', 'venue'),   ('event',),                   0.13),
+        ('滨江步道',     ('riverside',),                          ('environment',),             0.11),
+        ('大南门',       ('ermawu', 'commercial'),               ('culture', 'service'),       0.10),
+        ('楚超',         ('venue',),                              ('event',),                   0.08),   # 奥体楚超足球赛/演唱会（点军·T3 峰值）
+        ('老街新生',     ('ermawu',),                              ('culture',),                 0.08),
+        ('文化活动',     ('ermawu', 'venue', 'park_plaza'),      ('culture',),                 0.07),
+        ('加装电梯',     ('residential',),                        ('facility',),                0.06),
+        ('卷桥河露营',   ('park_plaza',),                         ('environment',),             0.05),   # 卷桥河湿地公园周末露营（点军生态）
+        ('绿道成网',     ('riverside', 'park_plaza'),            ('environment',),             0.05),
+        ('江南绿肺',     ('park_plaza', 'residential'),          ('environment',),             0.04),   # 点军江南生态新城/丘陵绿地先天优势
+        ('长江夜游',     ('riverside', 'commercial'),            ('event',),                   0.04),
+        ('西坝不夜岛',   ('riverside', 'commercial'),            ('event',),                   0.04),
     ],
     'negative': [
         ('停车难',       ('commercial', 'venue'),                ('facility',),                0.18),
         ('噪音',         ('riverside', 'commercial', 'residential'), ('event', 'environment'), 0.15),
         ('堵车',         ('traffic',),                            ('event',),                   0.13),
+        ('占道停车',     ('commercial', 'venue', 'residential', 'general'), ('facility', 'environment'), 0.12),
         ('底商空置冷清', ('commercial',),                         ('service',),                 0.11),
         ('红绿灯',       ('traffic',),                            ('facility',),                0.10),
         ('施工扰民',     ('residential', 'general'),             ('event',),                   0.09),
         ('没电梯',       ('residential',),                        ('facility',),                0.08),
-        ('占道停车',       ('commercial', 'venue', 'residential', 'general'), ('facility', 'environment'), 0.11),
-        ('收费不合理',     ('commercial', 'general'),               ('service',),                 0.05),
+        ('收费不合理',   ('commercial',),                         ('service',),                 0.04),   # 缩 zone（去 general）+ 降权 0.05→0.04（原 service 池过大致 #1 频次过高）
     ],
     'neutral': [
         ('口袋公园',     ('park_plaza', 'general'),              ('environment',),             0.18),
@@ -276,7 +279,12 @@ BUCKET_POLARITY_MOD = {
         ('urban_renewal',   'facility'):   {'negative': 1.3, 'positive': 0.78, 'neutral': 0.92},   # 老旧改造遗留（保红）
         ('urban_planning',  'environment'):{'negative': 1.3, 'positive': 0.8,  'neutral': 0.92},   # 内涝/绿地补短板（保红）
     },
-    'T2': {},   # 居中、不覆盖
+    'T2': {   # 暑假·城建施工中期连锁反应：道路开挖/修路修桥/施工噪音/交通不便 → 浅红消极（温和 1.3-1.4，非深红；保 T2 总盘消极≈30%）
+        ('urban_planning',  'facility'):   {'negative': 1.4, 'positive': 0.7,  'neutral': 0.95},   # 道路开挖/修路修桥
+        ('urban_renewal',   'environment'):{'negative': 1.4, 'positive': 0.7,  'neutral': 0.95},   # 施工噪音/扬尘（老旧小区改造）
+        ('urban_governance','event'):      {'negative': 1.35, 'positive': 0.72, 'neutral': 0.95},  # 施工致交通不便/绕行拥堵
+        ('urban_renewal',   'facility'):   {'negative': 1.3, 'positive': 0.78, 'neutral': 0.95},   # 老旧小区改造施工
+    },
 }
 
 
