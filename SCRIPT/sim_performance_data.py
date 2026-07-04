@@ -164,6 +164,16 @@ for _lngc, _latc, _zone, _dom, _elm, _l1, _name in [
     _LANDMARKS.append({'lng': _lng, 'lat': _lat, 'zone': _zone, 'domain': _dom, 'element': _elm, 'l1': _l1, 'name': _name})
 _LANDMARK_RADIUS_DEG = 0.005   # ~500m 矩形
 
+# 核心商圈（需求4：停车难强制落夷陵广场/CBD/万达/国贸/儿童公园核心商圈）
+_CORE_CENTER_GCJ = (111.2905, 30.7050)   # 夷陵广场CBD（与 ANCHORS 同源；600m 覆盖 CBD/万达/国贸/儿童公园）
+_CORE_RADIUS_DEG = 0.006   # ~600m
+_CORE_LNG, _CORE_LAT = _gcj2wgs(_CORE_CENTER_GCJ[0], _CORE_CENTER_GCJ[1])
+
+
+def _in_core_commercial(lng, lat):
+    """核心商圈 600m 内（夷陵广场周边）—— 停车难强制落位。"""
+    return abs(lng - _CORE_LNG) < _CORE_RADIUS_DEG and abs(lat - _CORE_LAT) < _CORE_RADIUS_DEG
+
 
 def _nearest_landmark(lng, lat):
     """点军地标 500m 内 → 返回地标 dict（强制 zone/domain/element/name）；无则 None。
@@ -334,6 +344,9 @@ def inject_fields(pts, snapshot_id, pool, pl, poigrid, rng, riverside_poly=None,
             domain, element = _seed_domain_element(snapshot_id, at, nz, poi, rng)
             polarity = _pick_polarity_clustered(snapshot_id, at, nz, poi, rng, domain=domain, element=element)
             topic = pick_topic(polarity, nz, element, rng)
+            # 需求4：核心商圈（夷陵广场周边 600m）negative 点强制停车难（对准核心商圈落位）
+            if polarity == 'negative' and _in_core_commercial(p['lng'], p['lat']):
+                topic = '停车难'
             zone = pl.resolve_zone((poi or {}).get('name', ''), (poi or {}).get('area', ''), p['lng'], p['lat'])
             text = sample_text(polarity, element, pool, rng, zone=nz, flavor=flavor)
             emo_inten = (p['value'] / VALUE_P95)

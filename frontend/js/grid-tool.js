@@ -201,23 +201,25 @@ function renderAnalysisCards(dlg) {
 function populateSources(srcs, level) {
   const sel = document.getElementById('grid-source');
   if (!sel) return;
-  // 时间下拉（需求7）：去庞杂 layer 名 → 干净的 T1/T2/T3。优先 group（综合）source，按 time_label 去重。
-  // 极性不在此选（数据源是综合 group，内含各极性）；极性由 #grid-polarity 选 → 渲染 _grid_n_* 字段。
+  // 时间下拉（需求1/7）：去庞杂 layer 名 → 干净的 T1/T2/T3。
+  // L2 优先 group（综合）；L1 无 group → 用该 level 全部单点层（修 L1 下拉空 bug）。
+  // 极性不在此选（数据源含各极性）；极性由 #grid-polarity 选 → 渲染 _grid_n_* 字段。
   const TIME_LABEL = {
     T1: 'T1 · 春节·二马路开街', T2: 'T2 · 暑假·年轻人涌入', T3: 'T3 · 五一·大南门文旅',
   };
-  const filtered = (level ? srcs.filter((s) => s.level === level) : srcs)
-    .filter((s) => String(s.value).startsWith('group:'));   // 综合优先（单点极性层由 polarity 下拉覆盖）
+  const pool0 = level ? srcs.filter((s) => s.level === level) : srcs;
+  const groups = pool0.filter((s) => String(s.value).startsWith('group:'));
+  const pool = groups.length ? groups : pool0;   // 有 group 用 group（L2 综合），否则用全部（L1 单点层）
   const seen = new Set();
   const opts = [];
-  for (const s of filtered) {
+  for (const s of pool) {
     const t = deriveTimeTag(s.fc);
     if (!t || seen.has(t)) continue;
     seen.add(t);
     opts.push(`<option value="${s.value}">${TIME_LABEL[t] || t}</option>`);
   }
   sel.innerHTML = opts.length ? opts.join('')
-    : `<option value="" disabled>（${level || '该层级'}无情绪点图层，先导入 ${level || 'L1/L2'} 数据）</option>`;
+    : `<option value="" disabled>（${level || '该层级'}无情绪点数据，先导入 ${level || 'L1/L2'} 数据）</option>`;
 }
 
 function constrainLevelOptions(srcs) {

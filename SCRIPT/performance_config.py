@@ -204,7 +204,7 @@ TOPIC_TABLE = {
         ('老街新生',     ('ermawu',),                              ('culture',),                 0.09),
         ('加装电梯',     ('residential',),                        ('facility',),                0.08),
         ('绿道成网',     ('riverside', 'park_plaza'),            ('environment',),             0.06),
-        ('断头路打通',   ('general', 'central_outer'),           ('facility',),                0.05),
+        ('一路绿波',     ('riverside', 'traffic'),               ('facility', 'environment'),  0.05),
         ('微更新活化',   ('residential', 'ermawu'),              ('environment',),             0.05),
     ],
     'negative': [
@@ -268,12 +268,14 @@ BUCKET_POLARITY_MOD = {
         ('urban_renewal',   'service'):    {'negative': 1.4, 'positive': 0.7,  'neutral': 0.95},
     },
     'T3': {
-        ('urban_operation', 'service'):    {'negative': 1.6, 'positive': 0.7,  'neutral': 0.9},
-        ('urban_operation', 'culture'):    {'negative': 1.5, 'positive': 0.75, 'neutral': 0.9},
-        ('urban_operation', 'event'):      {'negative': 1.5, 'positive': 0.8,  'neutral': 0.9},
-        ('urban_governance','service'):    {'negative': 1.6, 'positive': 0.7,  'neutral': 0.9},
-        ('urban_governance','culture'):    {'negative': 1.5, 'positive': 0.75, 'neutral': 0.9},
-        ('urban_governance','event'):      {'negative': 1.5, 'positive': 0.8,  'neutral': 0.9},
+        ('urban_operation', 'service'):    {'negative': 1.9, 'positive': 0.6,  'neutral': 0.85},
+        ('urban_operation', 'culture'):    {'negative': 1.7, 'positive': 0.7,  'neutral': 0.9},
+        ('urban_operation', 'event'):      {'negative': 1.7, 'positive': 0.75, 'neutral': 0.9},
+        ('urban_governance','service'):    {'negative': 1.9, 'positive': 0.6,  'neutral': 0.85},
+        ('urban_governance','culture'):    {'negative': 1.7, 'positive': 0.7,  'neutral': 0.9},
+        ('urban_governance','event'):      {'negative': 1.9, 'positive': 0.6,  'neutral': 0.85},   # traffic 拥堵持续
+        ('urban_renewal',   'facility'):   {'negative': 1.6, 'positive': 0.7,  'neutral': 0.9},   # 老旧改造遗留（保红）
+        ('urban_planning',  'environment'):{'negative': 1.5, 'positive': 0.75, 'neutral': 0.9},   # 内涝/绿地补短板（保红）
     },
     'T2': {},   # 居中、不覆盖
 }

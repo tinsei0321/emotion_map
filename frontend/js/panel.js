@@ -459,14 +459,14 @@ const _POL_SIGN = { positive: 'pos', negative: 'neg', neutral: 'neu' };
 /** 主题词→极性 + 用户词序（与 performance_config.TOPIC_TABLE 同源；前端按 topic 聚合后分极性 + 定序）。 */
 const TOPIC_POLARITY = {
   '网红': 'pos', '夜经济': 'pos', '滨江步道': 'pos', '15分钟生活区': 'pos', '文化活动': 'pos',
-  '老街新生': 'pos', '加装电梯': 'pos', '绿道成网': 'pos', '断头路打通': 'pos', '微更新活化': 'pos',
+  '老街新生': 'pos', '加装电梯': 'pos', '绿道成网': 'pos', '一路绿波': 'pos', '微更新活化': 'pos',
   '停车难': 'neg', '噪音': 'neg', '堵车': 'neg', '底商空置冷清': 'neg', '红绿灯': 'neg',
   '施工扰民': 'neg', '没电梯': 'neg', '办事难': 'neg', '内涝积水': 'neg', '垃圾乱扔': 'neg',
   '口袋公园': 'neu', '业态': 'neu', '社区服务配套': 'neu', '物业': 'neu', '老街改造': 'neu',
   '盼电梯': 'neu', '规划绿地': 'neu', '业态调整': 'neu', '盼BRT': 'neu', '社区营造': 'neu',
 };
 const TOPIC_ORDER = {
-  pos: ['网红', '夜经济', '滨江步道', '15分钟生活区', '文化活动', '老街新生', '加装电梯', '绿道成网', '断头路打通', '微更新活化'],
+  pos: ['网红', '夜经济', '滨江步道', '15分钟生活区', '文化活动', '老街新生', '加装电梯', '绿道成网', '一路绿波', '微更新活化'],
   neg: ['停车难', '噪音', '堵车', '底商空置冷清', '红绿灯', '施工扰民', '没电梯', '办事难', '内涝积水', '垃圾乱扔'],
   neu: ['口袋公园', '业态', '社区服务配套', '物业', '老街改造', '盼电梯', '规划绿地', '业态调整', '盼BRT', '社区营造'],
 };
@@ -487,7 +487,8 @@ function _singlePolKeywordsHtml(feats, polarity) {
       ? `<div class="ov-kw-locs">${locs.join('、')}</div>`
       : `<div class="ov-kw-locs muted">—</div>`;
     return `<div class="ov-kw-item ov-kw-sp" data-topic="${it.topic}" data-sign="${sign}" title="${it.topic}（${it.n} 点）· 点击定位最强聚集">
-      <div class="ov-kw-left"><span class="ov-kw-fill" style="width:${Math.max(25, (it.n / max) * 100)}%">${it.topic}</span>
+      <span class="ov-kw-fill" style="width:${Math.max(20, (it.n / max) * 100)}%"></span>
+      <div class="ov-kw-left"><span class="ov-kw-word">${it.topic}</span>
         <span class="ov-kw-num">${it.n}</span></div>
       ${locHtml}
     </div>`;
@@ -566,7 +567,8 @@ function _keywordsHtml(feats) {
     const max = Math.max(1, ...items.map((x) => x.n));
     const rows = items.map((it) =>
       `<div class="ov-kw-item" data-topic="${it.topic}" data-sign="${sign}" title="${it.topic}（${it.n} 点）· 点击定位最强聚集">
-        <span class="ov-kw-fill" style="width:${Math.max(18, (it.n / max) * 100)}%">${it.topic}</span>
+        <span class="ov-kw-fill" style="width:${Math.max(15, (it.n / max) * 100)}%"></span>
+        <span class="ov-kw-word">${it.topic}</span>
         <span class="ov-kw-num">${it.n}</span>
       </div>`).join('');
     return `<div class="ov-kw-col"><div class="ov-kw-col-head">${KW_SIGN_HEAD[sign]}</div>${rows}</div>`;

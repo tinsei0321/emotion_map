@@ -148,18 +148,19 @@
 .ov-keywords { display: flex; gap: 2px; }
 .ov-keywords-sp { flex-direction: column; gap: 2px; }
 .ov-kw-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.ov-kw-col-head { font-size: 10px; color: var(--geojson-color-card-fill, #384555); font-weight: 600; margin-bottom: 2px; text-align: center; }   /* 列标题居中（需求2） */
-.ov-kw-item { display: flex; align-items: center; cursor: pointer; background: #fff; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,.10); height: 26px; overflow: hidden; transition: box-shadow .15s, transform .15s; }   /* 整卡数据条；综合卡片高度 26px */
+.ov-kw-col-head { font-size: 10px; color: var(--geojson-color-card-fill, #384555); font-weight: 600; margin-bottom: 2px; text-align: center; }
+.ov-kw-item { position: relative; display: flex; align-items: center; cursor: pointer; background: #fff; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,.10); height: 26px; overflow: hidden; transition: box-shadow .15s, transform .15s; }
 .ov-kw-item:hover { box-shadow: 0 3px 8px rgba(0,0,0,.16); transform: translateY(-1px); }
-.ov-kw-fill { background: #D8BFD8; color: #3a3a3a; font-size: 12px; font-weight: 600; height: 100%; padding: 0 8px; display: inline-flex; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }   /* 浅紫底 #D8BFD8 + 深灰字 #3a3a3a（需求1：词与数字同深灰，底改浅保可读），inline width:% 从左填 */
-.ov-kw-num { color: #3a3a3a; font-size: 11px; font-weight: 700; margin-left: auto; padding-right: 8px; white-space: nowrap; }   /* 数字深灰，卡片右端（修溢出，需求2） */
+.ov-kw-fill { position: absolute; left: 0; top: 0; bottom: 0; background: #D8BFD8; z-index: 0; }   /* 背景占比条（无文字，inline width:%）—— 修文字溢出：词/数字改前景层始终可见，不被 fill 裁 */
+.ov-kw-word { position: relative; z-index: 1; padding: 0 8px; color: #3a3a3a; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; min-width: 0; }
+.ov-kw-num { position: relative; z-index: 1; margin-left: auto; padding-right: 8px; color: #3a3a3a; font-size: 11px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
 .ov-kw-item.is-sticky { box-shadow: 0 0 0 3px #ff9000, 0 2px 6px rgba(0,0,0,.10); }
-/* 单极性关键词（卡片高度减半 + left 33% 数据条 + 地点 67% 顿号横排，需求3） */
-.ov-kw-sp { height: 18px; }   /* 卡片高度减半（综合 26→18，约为原 34px 之半） */
-.ov-kw-sp .ov-kw-left { flex: 0 0 33%; min-width: 0; display: flex; align-items: center; height: 100%; overflow: hidden; }
-.ov-kw-sp .ov-kw-fill { padding: 0 6px; font-size: 11px; }
+/* 单极性关键词（卡片高度减半 + left 33% 词+数字 + 地点 67% 顿号横排） */
+.ov-kw-sp { height: 18px; }
+.ov-kw-sp .ov-kw-left { position: relative; z-index: 1; flex: 0 0 33%; min-width: 0; display: flex; align-items: center; height: 100%; overflow: hidden; }
+.ov-kw-sp .ov-kw-word { padding: 0 6px; font-size: 11px; }
 .ov-kw-sp .ov-kw-num { padding-right: 4px; font-size: 10px; }
-.ov-kw-locs { flex: 1 1 0; min-width: 0; font-size: 9px; color: var(--geojson-color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 5px; }   /* 顿号横排一行（JS join '、'），字体缩小省空间 */
+.ov-kw-locs { position: relative; z-index: 1; flex: 1 1 0; min-width: 0; font-size: 9px; color: var(--geojson-color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 5px; }
 .ov-kw-locs.muted { color: var(--geojson-color-text-tertiary); font-style: normal; }
 
 /* 单元深读：4×5 定位高亮 + 分位条 */
