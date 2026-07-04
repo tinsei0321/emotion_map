@@ -177,14 +177,14 @@ NARRATIVE_POLARITY = {
         'venue':       {'positive': 0.45, 'negative': 0.23, 'neutral': 0.32},   # 暑期赛事积极
         'park_plaza':  {'positive': 0.56, 'negative': 0.14, 'neutral': 0.30},
     },
-    'T3': {   # 2026-05 五一·大南门建成文旅爆满（riverside 不动，T3 要积极多）
-        'riverside':   {'positive': 0.78, 'negative': 0.07, 'neutral': 0.15},
-        'residential': {'positive': 0.42, 'negative': 0.28, 'neutral': 0.30},
+    'T3': {   # 2026-05 五一·大南门建成文旅爆满（T3 须为极性峰值；hero 片区积极↑，保红靠 BUCKET_POLARITY_MOD）
+        'riverside':   {'positive': 0.80, 'negative': 0.06, 'neutral': 0.14},
+        'residential': {'positive': 0.45, 'negative': 0.26, 'neutral': 0.29},
         'traffic':     {'positive': 0.15, 'negative': 0.58, 'neutral': 0.27},
-        'commercial':  {'positive': 0.38, 'negative': 0.35, 'neutral': 0.27},
-        'ermawu':      {'positive': 0.60, 'negative': 0.18, 'neutral': 0.22},
-        'venue':       {'positive': 0.55, 'negative': 0.23, 'neutral': 0.22},   # 五一演唱会/赛事积极
-        'park_plaza':  {'positive': 0.62, 'negative': 0.13, 'neutral': 0.25},   # 文旅积极
+        'commercial':  {'positive': 0.43, 'negative': 0.32, 'neutral': 0.25},
+        'ermawu':      {'positive': 0.65, 'negative': 0.15, 'neutral': 0.20},
+        'venue':       {'positive': 0.61, 'negative': 0.19, 'neutral': 0.20},   # 五一演唱会/赛事积极
+        'park_plaza':  {'positive': 0.66, 'negative': 0.11, 'neutral': 0.23},   # 文旅积极
     },
 }
 
@@ -266,15 +266,15 @@ BUCKET_POLARITY_MOD = {
         ('urban_renewal',   'environment'):{'negative': 1.5, 'positive': 0.6,  'neutral': 0.9},
         ('urban_renewal',   'service'):    {'negative': 1.4, 'positive': 0.7,  'neutral': 0.95},
     },
-    'T3': {
-        ('urban_operation', 'service'):    {'negative': 1.9, 'positive': 0.6,  'neutral': 0.85},
-        ('urban_operation', 'culture'):    {'negative': 1.7, 'positive': 0.7,  'neutral': 0.9},
-        ('urban_operation', 'event'):      {'negative': 1.7, 'positive': 0.75, 'neutral': 0.9},
-        ('urban_governance','service'):    {'negative': 1.9, 'positive': 0.6,  'neutral': 0.85},
-        ('urban_governance','culture'):    {'negative': 1.7, 'positive': 0.7,  'neutral': 0.9},
-        ('urban_governance','event'):      {'negative': 1.9, 'positive': 0.6,  'neutral': 0.85},   # traffic 拥堵持续
-        ('urban_renewal',   'facility'):   {'negative': 1.6, 'positive': 0.7,  'neutral': 0.9},   # 老旧改造遗留（保红）
-        ('urban_planning',  'environment'):{'negative': 1.5, 'positive': 0.75, 'neutral': 0.9},   # 内涝/绿地补短板（保红）
+    'T3': {   # 保红但总盘须 > T2（调降 neg 乘子 + 抬 pos；矩阵仍有红、整体极性为三时点峰值）
+        ('urban_operation', 'service'):    {'negative': 1.5, 'positive': 0.7,  'neutral': 0.88},
+        ('urban_operation', 'culture'):    {'negative': 1.4, 'positive': 0.78, 'neutral': 0.92},
+        ('urban_operation', 'event'):      {'negative': 1.4, 'positive': 0.82, 'neutral': 0.92},
+        ('urban_governance','service'):    {'negative': 1.5, 'positive': 0.7,  'neutral': 0.88},
+        ('urban_governance','culture'):    {'negative': 1.4, 'positive': 0.78, 'neutral': 0.92},
+        ('urban_governance','event'):      {'negative': 1.5, 'positive': 0.7,  'neutral': 0.88},   # traffic 拥堵持续（保红）
+        ('urban_renewal',   'facility'):   {'negative': 1.3, 'positive': 0.78, 'neutral': 0.92},   # 老旧改造遗留（保红）
+        ('urban_planning',  'environment'):{'negative': 1.3, 'positive': 0.8,  'neutral': 0.92},   # 内涝/绿地补短板（保红）
     },
     'T2': {},   # 居中、不覆盖
 }

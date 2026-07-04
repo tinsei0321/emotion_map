@@ -491,7 +491,7 @@ flowchart TD
 
 #### 单元深读靶心表（关键词 × 3-5 目标聚合域；2026-07-04，下会话 plan 推进）
 
-> 9 代表词（每极性 3，占道停车替原噪音位），每词给 3-5 个目标聚合域（锚点·narrative_zone·domain×element）——下一层级「单元深读」的靶心清单。
+> 9 代表词（每极性 3），每词列 3-5 个**候选**聚合域（锚点·narrative_zone·domain×element）。**下会话从中筛 1-3 个典型单元网格做最高优先级深读**（用户主导讨论筛选，本表为候选池非定案）。
 
 | 关键词 | 极性 | 主 domain×element | 目标聚合域（3-5） |
 |---|---|---|---|
@@ -505,7 +505,13 @@ flowchart TD
 | 业态 | neu | 运营×服务/文化 | 夷陵广场CBD(commercial) · 铁路坝商圈(commercial) · 二马路(ermawu) · 大南门(ermawu) |
 | 社区服务配套 | neu | 更新×设施/服务 | 桃花岭社区(residential) · 翁家堰社区(residential) · 行署小区(residential) · 江南URD(residential) |
 
-> 二马路/大南门(ermawu) 在 pos 三词 + 占道停车均出现 = 最高优先级单格（表现力环最强弧 T1 neutral→T3 积极）。
+> 二马路/大南门(ermawu) 跨多词共现（pos 三词 + 占道停车），是天然高频深读区，但具体「1-3 典型格」由下会话讨论确定——本表为候选池。
+
+### 5.17 关键词白名单同步 + T3 极性峰值修复 + 中南路锚点 + 方法论成文（2026-07-04）
+
+| 日期 | commit | 用户意图 → 落地 | 文件 |
+|------|--------|----------------|------|
+| 07-04 | 本次 | **①占道停车/新词在关键词面板不显示（根因 = 前端白名单 stale）**：[`panel.js`](frontend/js/panel.js) `TOPIC_POLARITY`/`TOPIC_ORDER` 是硬编码白名单，`_keywordRank` 对未登记 topic 直接丢弃——前两轮改后端 TOPIC_TABLE 未同步前端，致占道停车/大南门/长江夜游/西坝不夜岛/收费不合理 3 时点全不显示。同步白名单至现 TOPIC_TABLE（pos 10 / neg 9 / neu 10），加注释「改 TOPIC_TABLE 必须同步此处」。**②T3 极性应峰值却 < T2**：T3 BUCKET_POLARITY_MOD 保红乘子（neg 1.7-1.9）把总盘拖至 0.549 < T2 0.576。**不换文件名**（破坏时序语义），改调：[`performance_config.py`](SCRIPT/performance_config.py) T3 `BUCKET_POLARITY_MOD` neg 1.7-1.9→1.3-1.5 + pos↑（保红矩阵不动，neg 仍>1）；T3 `NARRATIVE_POLARITY` hero 片区（riverside/commercial/ermawu/venue/park_plaza）积极↑。结果 **T1 0.460 < T2 0.576 < T3 0.591**（T3 峰值 ✓），T3 治理/运营消极点仍 4044（保红 ✓）。**③停车难 zoom 过低（空间修）**：[`sim_performance_data.py`](SCRIPT/sim_performance_data.py) 加中南路（伍家岗，WGS84 111.325/30.682）停车难第二锚点 `_in_zhongnan`，与核心商圈双锚点强制 negative→停车难 → bbox 拉大（CBD+中南路 ~13km 跨度）自然降 zoom；配 [`map.js`](frontend/js/map.js) `fitBoundsTo` maxZoom 封顶（5.16 已改）。**④方法论成文**：[`CLAUDE.md`](CLAUDE.md)「数据模拟方法论」+ [`.claude/agents/sim-emotion-data.agent.md`](.claude/agents/sim-emotion-data.agent.md) 增「关键词↔矩阵块↔目标聚合域 逻辑闭合」段——递进关系、模拟逆推三步、改 TOPIC_TABLE 必须同步前端白名单的铁律、T3 须为极性峰值的自检。**⑤深读表改 1-3 候选池**：todo/revision-log 5.16 表去「二马路最高优先级」误称，改为「下会话每词从候选池筛 1-3 典型格」。**收费不合理**已按规则纳入白名单。验证：pytest 118 passed（1 既有失败无关） | `frontend/js/panel.js` `SCRIPT/{performance_config,sim_performance_data}.py` `CLAUDE.md` `.claude/agents/sim-emotion-data.agent.md` `docs/{revision-log,todo}.md` `DATA/performance/*`(12 重生) |
 
 ## 6. 持续追加规则（给 AI）
 

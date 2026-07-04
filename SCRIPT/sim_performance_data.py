@@ -165,6 +165,15 @@ def _in_core_commercial(lng, lat):
     return abs(lng - _CORE_LNG) < _CORE_RADIUS_DEG and abs(lat - _CORE_LAT) < _CORE_RADIUS_DEG
 
 
+# 中南路（伍家岗商圈）停车难第二锚点：扩散停车难聚集（CBD 单点 bbox 过紧致关键词点击 zoom 过低）
+_ZHONGNAN_LNG, _ZHONGNAN_LAT = 111.325, 30.682   # WGS84（zone_typology 同源）
+
+
+def _in_zhongnan(lng, lat):
+    """中南路 600m 内（伍家岗商圈）—— 停车难第二锚点：拉大 top-N bbox，防 zoom 过低。"""
+    return abs(lng - _ZHONGNAN_LNG) < _CORE_RADIUS_DEG and abs(lat - _ZHONGNAN_LAT) < _CORE_RADIUS_DEG
+
+
 # 占道停车专属评论（60%治理 / 20%设施 / 20%环境 三主题；替通用 sample_text，让占道停车有具象叙事）
 # 落位解读：占道停车本质是「治理」问题（执法/管理/市容秩序 60%），兼有「设施」配套不足（规划视角 20%）
 # 与「环境」人行/市容影响（20%）。_zhandao_assign 据此重映射 (domain, element) + 主题评论，让 4×5 矩阵把占道停车主要归到治理行。
@@ -372,8 +381,8 @@ def inject_fields(pts, snapshot_id, pool, pl, poigrid, rng, riverside_poly=None,
             domain, element = _seed_domain_element(snapshot_id, at, nz, poi, rng)
             polarity = _pick_polarity_clustered(snapshot_id, at, nz, poi, rng, domain=domain, element=element)
             topic = pick_topic(polarity, nz, element, rng)
-            # 需求4：核心商圈（夷陵广场周边 600m）negative 点强制停车难（对准核心商圈落位）
-            if polarity == 'negative' and _in_core_commercial(p['lng'], p['lat']):
+            # 需求4：核心商圈（夷陵广场周边 600m）+ 中南路（伍家岗）negative 点强制停车难（双锚点扩散聚集）
+            if polarity == 'negative' and (_in_core_commercial(p['lng'], p['lat']) or _in_zhongnan(p['lng'], p['lat'])):
                 topic = '停车难'
             zone = pl.resolve_zone((poi or {}).get('name', ''), (poi or {}).get('area', ''), p['lng'], p['lat'])
             if topic == '占道停车':

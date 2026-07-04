@@ -456,18 +456,21 @@ function _singlePolMatrixHtml(cell) {
  *  词来自点的 topic_top（数据层提炼，performance_config.TOPIC_TABLE）；count=point_count 加权；
  *  地点=_topKeywordCells 按 topic 筛出的格 place_name Top8（去重）。 */
 const _POL_SIGN = { positive: 'pos', negative: 'neg', neutral: 'neu' };
-/** 主题词→极性 + 用户词序（与 performance_config.TOPIC_TABLE 同源；前端按 topic 聚合后分极性 + 定序）。 */
+/** 主题词→极性 + 用户词序（与 performance_config.TOPIC_TABLE 同源；改 TOPIC_TABLE 必须同步此处，否则新词会被 _keywordRank 丢弃）。 */
 const TOPIC_POLARITY = {
-  '网红': 'pos', '夜经济': 'pos', '滨江步道': 'pos', '15分钟生活区': 'pos', '文化活动': 'pos',
-  '老街新生': 'pos', '加装电梯': 'pos', '绿道成网': 'pos', '一路绿波': 'pos', '微更新活化': 'pos',
+  // positive（10）：大南门/长江夜游/西坝不夜岛 替 15分钟生活区/一路绿波/微更新活化
+  '网红': 'pos', '夜经济': 'pos', '滨江步道': 'pos', '大南门': 'pos', '文化活动': 'pos',
+  '老街新生': 'pos', '加装电梯': 'pos', '绿道成网': 'pos', '长江夜游': 'pos', '西坝不夜岛': 'pos',
+  // negative（9）：占道停车/收费不合理 替 办事难/内涝积水/垃圾乱扔
   '停车难': 'neg', '噪音': 'neg', '堵车': 'neg', '底商空置冷清': 'neg', '红绿灯': 'neg',
-  '施工扰民': 'neg', '没电梯': 'neg', '办事难': 'neg', '内涝积水': 'neg', '垃圾乱扔': 'neg',
+  '施工扰民': 'neg', '没电梯': 'neg', '占道停车': 'neg', '收费不合理': 'neg',
+  // neutral（10）
   '口袋公园': 'neu', '业态': 'neu', '社区服务配套': 'neu', '物业': 'neu', '老街改造': 'neu',
   '盼电梯': 'neu', '规划绿地': 'neu', '业态调整': 'neu', '盼BRT': 'neu', '社区营造': 'neu',
 };
 const TOPIC_ORDER = {
-  pos: ['网红', '夜经济', '滨江步道', '15分钟生活区', '文化活动', '老街新生', '加装电梯', '绿道成网', '一路绿波', '微更新活化'],
-  neg: ['停车难', '噪音', '堵车', '底商空置冷清', '红绿灯', '施工扰民', '没电梯', '办事难', '内涝积水', '垃圾乱扔'],
+  pos: ['网红', '夜经济', '滨江步道', '大南门', '文化活动', '老街新生', '加装电梯', '绿道成网', '长江夜游', '西坝不夜岛'],
+  neg: ['停车难', '噪音', '堵车', '底商空置冷清', '红绿灯', '施工扰民', '没电梯', '占道停车', '收费不合理'],
   neu: ['口袋公园', '业态', '社区服务配套', '物业', '老街改造', '盼电梯', '规划绿地', '业态调整', '盼BRT', '社区营造'],
 };
 function _singlePolKeywordsHtml(feats, polarity) {

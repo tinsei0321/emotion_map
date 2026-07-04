@@ -48,6 +48,17 @@ version: "1.1.0"
 ### 核心区落点约束
 矩阵各 domain×element 桶**在西陵伍家核心区须有足量落点**——核心区是下一层级（点击网格/柱体深读）的演示场，落点稀疏则"4×5 讲不清"。靠 `core` area_type + 核心区密集 narrative_zone（ermawu/riverside/commercial/venue/park_plaza）保证。
 
+### 关键词↔矩阵块↔目标聚合域 逻辑闭合（强约束，2026-07-04 确立）
+
+**递进关系**：关键词（市民急难愁盼 / 夸赞期盼）→ 矩阵块（4×5 精选评论集合，全面统筹城建/运营/治理的"好/不好"）→ 目标聚合域（落图锚点）→ 大众认知/专业知识/地域特色/新闻报道。四环必须闭合。矩阵块趋向"全面统筹"，关键词趋向"急难愁盼痛点"。
+
+**模拟逆推顺序**（逆推方法论的细化）：
+① 先凭大众认知/专业知识/地域特色/报道，生成「宜昌特色关键词 + 目标聚合域」清单——每词须答得出：**属哪个矩阵块(domain×element)？落哪 1~3 个聚合域(zone+place)？**
+② 按**本次 demo 矩阵块极性倾向**（T1 硬件消极 / T3 软件积极）安排与关键词相关评论的**量分布**；
+③ 按**矩阵块地点相关性**把评论安插到对应聚合域**落图**。
+
+**改 TOPIC_TABLE 铁律（防代码-数据脱节）**：改 `performance_config.TOPIC_TABLE`（加/换/调权关键词）后，**必须同步 `frontend/js/panel.js` 的 `TOPIC_POLARITY` + `TOPIC_ORDER`**——否则 `_keywordRank` 把未登记 topic 直接丢弃，新词在关键词面板**不显示**（2026-07-04 占道停车就因未进白名单致 3 时点全不显示）。双源是债，后续应演进为后端单源（API/数据字段）驱前端。
+
 ## 文件地图
 
 | 文件 | 职责 | 改它会怎样 |
@@ -97,7 +108,7 @@ py SCRIPT/emotion_text_pool.py           # 重建校验文本池（改 emotion_c
 
 ## 自检（引擎内置，每次跑都打）
 
-`validate_45`：① 4×5 空格 0/20；② 每 area_type domain 占比；③ 极性弧（T1 cc negative 多 → T3 positive 多）；④ 8 片区计数；L2 score_mean T1<T2<T3 单调。
+`validate_45`：① 4×5 空格 0/20；② 每 area_type domain 占比；③ 极性弧（T1 cc negative 多 → T3 positive 多）；④ 8 片区计数；**L2 score_mean 须 T1<T2<T3 单调（T3 为峰值）——若 T3<T2，调 `BUCKET_POLARITY_MOD['T3']` neg 乘子↓ + pos↑（保红矩阵不破，neg 仍 >1），重跑至 T3>T2**。
 
 ## AMAP_KEY 到位后切真实高德
 
