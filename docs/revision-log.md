@@ -473,6 +473,14 @@ flowchart TD
 
 | 07-04 | 本次 | **Fix+Feature: 时间下拉 L1 修复 + 关键词卡片重设计(修文字溢出) + 一路绿波 + 核心商圈停车难 + T3 保红**——①**时间下拉 L1**（[`grid-tool.js`](frontend/js/grid-tool.js) `populateSources`）：L2 优先 group、L1/无 group 回退全部（修 L1 下拉空 bug；全局检查其他下拉 grid-level/polarity 无同类问题）；[`index.html`](frontend/index.html) 标签"情绪点图层"→"时间点 / 周期"。②**关键词卡片重设计**（[`panel.css`](frontend/css/panel.css)+[`panel.js`](frontend/js/panel.js)）：fill 改背景占比条（`position:absolute; z-index:0`，无文字），词/数字改前景层（`z-index:1` 始终可见）——修"fill 窄时词被 overflow:hidden 裁切"文字溢出 bug（需求2）。③**一路绿波**（[`performance_config.py`](SCRIPT/performance_config.py) TOPIC_TABLE）：替"断头路打通"，zone=riverside/traffic（沿江大道+绿波路段，需求6）。④**核心商圈停车难**（[`sim_performance_data.py`](SCRIPT/sim_performance_data.py)）：夷陵广场 CBD 600m 几何（`_CORE_CENTER`/`_in_core_commercial`），negative 点强制 topic=停车难——对准夷陵广场/CBD/万达/国贸/儿童公园核心商圈（需求4）。⑤**T3 矩阵保红**（performance_config `BUCKET_POLARITY_MOD`）：T3 operation/governance×service/culture/event neg 1.5→1.9 + 加 renewal×facility/planning×environment 桶，保 T3 浅红 1-3 格（需求5）。验证：一路绿波 248 点、核心商圈 negative 100% 停车难（336 点落 CBD/儿童公园/国贸/万象城）、T3 消极 38.2%（矩阵保红）、极性弧 T1 0.450<T2 0.580>T3 0.540（T3 略降换保红）。承重不破（populateSources L1/L2 分支 / fill 绝对定位不破坏 flex / _in_core 仅核心商圈 / topic 强制仅 negative）。 | `frontend/{index.html,js/{grid-tool,panel}.js,css/panel.css}` `SCRIPT/{performance_config,sim_performance_data}.py` `DATA/performance/*`(12 重生) |
 
+### 5.15 搜索地标单一真源 + push 政策（2026-07-04）
+
+> 承 5.14 末「点军 3 地标」注入——上会话注入的奥体/卷桥河/江南URD 搜索栏搜不到。根因：它们只是 `sim_performance_data` 的硬编码运行时地标（`_inject_extra_pois` 仅在 sim 进程 append 到 `pl.all_pois`），web 后端 `place_layer` 单例与 sim 进程隔离、`all_pois`=amap-only（两 amap json 对三地标命中=0）→ 搜索永远看不到。修法 = search+sim 单一真源。
+
+| 日期 | commit | 用户意图 → 落地 | 文件 |
+|------|--------|----------------|------|
+| 07-04 | 本次 | **地标搜索 Bug 修复（search+sim 单一真源）**：①新建 [`landmarks_wgs84.json`](SCRIPT/poi_data/landmarks_wgs84.json)（WGS84，3 地标 + `narrative_zone`/`domain`/`element`/`baidu`/`area`；坐标由原 GCJ-02 经 `gcj02_to_wgs84` 转，数值与改前 sim 一致）。②[`place_layer.py`](core/place_layer.py) `_load()` 装载 `landmark_pois` 并入 `all_pois`（搜索宇宙 = amap + 手标地标），`_read_pois` source 默认增 'landmark' 分支，`[LOAD]` 日志补 `landmark_pois=N`。③[`sim_performance_data.py`](SCRIPT/sim_performance_data.py) 删 `_EXTRA_POIS_GCJ`/`_inject_extra_pois`/硬编码 `_LANDMARKS` 元组（去重），改读同一 json 构 `_LANDMARKS`（WGS84，无需 GCJ→WGS），`load_assets` 去 `_inject_extra_pois` 调用（place_layer 自带）；保留 `_gcj2wgs` 导入给 `_CORE_CENTER` 用。**验证**：forward("奥体"/"卷桥"/"江南URD") 全命中；landmark_pois=3 source='landmark'；sim `_LANDMARKS` 3 条 zone 正确（venue/park_plaza/residential）；pytest 118 passed（1 既有失败 test_capabilities 与本次无关）。**push 政策**：CLAUDE.md 红线删 `git push`、Git 段补"commit+push 组合操作"；存 memory `push-not-redline` | `SCRIPT/poi_data/landmarks_wgs84.json`(新) `core/place_layer.py` `SCRIPT/sim_performance_data.py` `CLAUDE.md` |
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

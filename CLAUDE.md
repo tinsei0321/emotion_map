@@ -215,6 +215,7 @@ Agent 在工作过程中自动记录的隐形知识：
 
 - 提交前先展示将要提交的变更摘要
 - commit message 使用简洁英文
+- **commit + push 为组合操作**（push 已非红线，commit 通过即推，不再单独确认）
 
 ## 红线操作
 
@@ -222,7 +223,7 @@ Agent 在工作过程中自动记录的隐形知识：
 
 - 删除文件、目录或 git 历史
 - 修改 `.env`、密钥、token、证书、CI/CD 配置
-- `git push`、`git rebase`、`git reset --hard`、强制推送
+- `git rebase`、`git reset --hard`、强制推送
 - 公开发布（`npm publish`、生产部署等）
 
 ## 开发工作流

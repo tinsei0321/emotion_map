@@ -141,6 +141,7 @@ _PLACE_KW_PATH = os.path.join(_PLACE_DIR, 'place_keywords.json')
 _SEED_POI_PATH = os.path.join(_ROOT, 'SCRIPT', 'poi_data', 'yichang_poi_wgs84.json')
 _AMAP_POI_PATH = os.path.join(_ROOT, 'SCRIPT', 'poi_data', 'amap_poi_wgs84.json')                       # 核心：1270 真实高德（西陵伍家）
 _AMAP_POI_CC_PATH = os.path.join(_ROOT, 'SCRIPT', 'poi_data', 'amap_poi_centralcity_wgs84.json')        # 中心城区外围：sim（AMAP_KEY 缺失 fallback；到位后换真实高德）
+_LANDMARK_POI_PATH = os.path.join(_ROOT, 'SCRIPT', 'poi_data', 'landmarks_wgs84.json')                  # 手标关键地标（高德未覆盖江南；search+sim 单一真源）
 _MAIN_BOUNDARY = os.path.join(_ROOT, 'DATA', 'boundaries', '西陵伍家核心主城.geojson')
 _WATER_POLY_PATH = os.path.join(_ROOT, 'DATA', 'boundaries', '现状水系.geojson')
 
@@ -223,10 +224,11 @@ class PlaceLayer:
             pk = json.load(f)
         self.place_kw = pk.get('zones', {})
 
-        # POI（核心真实高德 + 中心城区外围 sim，合并为搜索/锚点宇宙）
+        # POI（核心真实高德 + 中心城区外围 sim + 手标关键地标，合并为搜索/锚点宇宙）
         self.seed_pois = self._read_pois(_SEED_POI_PATH)
         self.amap_pois = self._read_pois(_AMAP_POI_PATH) + self._read_pois(_AMAP_POI_CC_PATH)
-        self.all_pois = self.amap_pois   # 搜索/导出宇宙 = amap only（坐标准确）；seed 退命名不参与（坐标粗糙）
+        self.landmark_pois = self._read_pois(_LANDMARK_POI_PATH)
+        self.all_pois = self.amap_pois + self.landmark_pois   # 搜索/导出宇宙 = amap + 手标地标（seed 退命名不参与，坐标粗糙）
 
         # 预计算每条 POI 的拼音（连写 + 首字母），供 forward 拼音模糊匹配
         for _p in self.all_pois:
@@ -248,8 +250,8 @@ class PlaceLayer:
         # 区边界
         self._build_zone_boundaries()
 
-        safe_print('[LOAD] place_layer: zones={}, seed_pois={}, amap_pois={}'.format(
-            len(self.zones_cfg), len(self.seed_pois), len(self.amap_pois)))
+        safe_print('[LOAD] place_layer: zones={}, seed_pois={}, amap_pois={}, landmark_pois={}'.format(
+            len(self.zones_cfg), len(self.seed_pois), len(self.amap_pois), len(self.landmark_pois)))
 
     @staticmethod
     def _read_pois(path):
@@ -275,7 +277,7 @@ class PlaceLayer:
                 'domain': p.get('domain', ''),
                 'element': p.get('element', ''),
                 'radius_m': p.get('radius_m', 200),
-                'source': p.get('source', 'seed' if 'yichang' in path else 'amap'),
+                'source': p.get('source', 'seed' if 'yichang' in path else ('landmark' if 'landmark' in path else 'amap')),
             })
         return out
 

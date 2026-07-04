@@ -1,0 +1,46 @@
+{
+  "metadata": {
+    "description": "手标关键地标（高德未覆盖江南片区；WGS84 EPSG:4326）",
+    "coordinate_system": "EPSG:4326 (lng/lat 度)",
+    "source_note": "search + sim 共享单一真源；坐标由 GCJ-02 web 查值经 core/coord_transform.gcj02_to_wgs84 转换",
+    "poi_count": 3
+  },
+  "pois": [
+    {
+      "name": "宜昌奥体中心",
+      "lng": 111.233768,
+      "lat": 30.702850,
+      "area": "点军区",
+      "baidu_level1": "体育休闲服务",
+      "baidu_level2": "体育场馆",
+      "domain": "urban_operation",
+      "element": "event",
+      "narrative_zone": "venue",
+      "radius_m": 500
+    },
+    {
+      "name": "卷桥河湿地公园",
+      "lng": 111.256065,
+      "lat": 30.692404,
+      "area": "点军区",
+      "baidu_level1": "风景名胜",
+      "baidu_level2": "公园广场",
+      "domain": "urban_renewal",
+      "element": "environment",
+      "narrative_zone": "park_plaza",
+      "radius_m": 500
+    },
+    {
+      "name": "江南URD",
+      "lng": 111.247398,
+      "lat": 30.687466,
+      "area": "点军区",
+      "baidu_level1": "商务住宅",
+      "baidu_level2": "住宅区",
+      "domain": "urban_renewal",
+      "element": "facility",
+      "narrative_zone": "residential",
+      "radius_m": 500
+    }
+  ]
+}
