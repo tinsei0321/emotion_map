@@ -49,7 +49,17 @@ py SCRIPT/poi_data/sim_centralcity_poi.py # 重生成中心城区 POI（fallback
 py SCRIPT/emotion_text_pool.py           # 重建校验文本池（改 emotion_corpus.json 后跑，需 SnowNLP）
 ```
 
-> **本机约束**：`DATA/baidu-heatpoints/` 已 gitignore（输入/许可文件，不入库）。家机缺该文件 → 全量 sim 须在**办公机**跑（`git pull` 拿到引擎改动 + 重跑）。文本池重建本机可跑（仅需 SnowNLP）。`validate_45` 会打印各 narrative_zone 点数 + 极性占比 + domain top2——核验 riverside 积极/residential 弧/traffic 消极/ermawu 弧方向是否落地。
+> **跨机约束（baidu-heatpoints 输入）**：`DATA/baidu-heatpoints/宜昌市_2026041215.geojson`（6.5MB，17029 热力点）是百度购买数据含许可，`.gitignore` 不入库。
+>
+> **持有清单**：家机 ✓ / 办公机 ✓（均本地持有）。**任意持有该文件的机器均可跑全量 sim——不限定办公机。** 新机需从已有机器手动拷贝（U 盘/内网），勿提交入库。文本池重建仅需 SnowNLP、无需该文件。
+
+## 改动 SOP（铁律：防代码-数据脱节）
+
+> 改 `sim_performance_data.py` / `performance_config.py` / 文本池后，**必须本机重跑全量 sim**（`py SCRIPT/sim_performance_data.py`，~2.5 min，产 12 文件）**并把 `DATA/performance/` 12 个产出随本次 commit 一起入库**。
+>
+> 否则 git 上呈"新脚本 + 旧产出"脱节——违反 `.gitignore:11` 写明的"performance 已入库、换机 git pull 即得、无需重跑"承诺；下一台机器 pull 后拿到新逻辑脚本却拿到旧逻辑数据，被迫重跑（曾经发生：commit `8eb5185` 改引擎加 narrative_zone 弧但未随附重生产出，导致全量 sim 被误判为"必须办公机"）。
+
+**跑后核验**：`validate_45` 输出（详见下「自检」节）。重点确认：产出 geojson properties **含 `narrative_zone` 字段**；各片区极性占比方向落地（riverside 积极主导 / residential 弧 / traffic 消极 / ermawu 弧）。
 
 ## 调参食谱（自然语言 → 改哪）
 

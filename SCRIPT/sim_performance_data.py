@@ -406,8 +406,14 @@ def export_l1(df, snapshot_id):
 
 @track("MOD_PERF.F_009", track_args=False)
 def validate_45(df, snapshot_id):
-    """4×5 自检：20 格非空 + 区域倾斜方向 + 极性弧。"""
+    """4×5 自检：20 格非空 + 区域倾斜方向 + 极性弧 + narrative_zone 落地。"""
     cc = df[df['area_tag'] != 'outside_cc']
+    # 防回归：narrative_zone 由 inject_fields 注入（L1_COLUMNS 锁定），缺失即叙事弧未落地。
+    # 历史：commit 8eb5185 改引擎加 narrative_zone 但未重生产出入库，旧产出无此字段、validate 静默跳过 → 脱节无人察觉。
+    if 'narrative_zone' not in df.columns:
+        safe_print('[ERR] {} narrative_zone 字段缺失 — inject_fields 未注入，narrative 弧未落地；'
+                   '请勿提交，先排查 inject_fields / L1_COLUMNS'.format(snapshot_id))
+        return False
     # 20 格非空
     cells = cc.groupby(['domain', 'element']).size()
     empty = [(d, e) for d in DOMAINS for e in ELEMENTS if (d, e) not in cells.index or cells.get((d, e), 0) == 0]
