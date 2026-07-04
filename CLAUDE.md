@@ -113,7 +113,7 @@ emotion_map/
 - **核心管道保护**：修改 `data_governance.py` / `emotion_analysis_v1.py` 必须走完整 SOP
 - **基础设施保护**：不要修改 `core/tracker.py` 的 `@track()` 签名和 `_REGISTRY` 格式
 - **依赖管理**：新增 Python 包必须同步更新 `requirements.txt`
-- **Git 规范**：不要直接 commit 到 main（紧急修复除外），每天下班前提交并推送
+- **Git 规范**：**当前开发阶段直接提交 main、不开分支**（待用户明确要求时再启用分支工作流）；每天下班前提交并推送
 - **SOP 门槛**：涉及 2+ 文件 / 控制流修改 / I/O 操作 → 走 Developer→Reviewer→Tester 完整流程
 - **编码禁忌**：代码中禁止使用 emoji；API Key 禁止硬编码在 `.py` 文件中
 

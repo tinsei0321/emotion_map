@@ -461,6 +461,10 @@ flowchart TD
 
 | 07-04 | 本次 | **Fix: baidu-heatpoints 跨机不同步根因诊断与防范（plan `sim-data-baidu-heatpoints-gitignore-wise-wolf.md`）**——诊断 07-03 narrative_zone commit `8eb5185` 改引擎却未重生产出入库 → git 上"新脚本+旧数据"脱节（违反 `.gitignore:11` "换机 git pull 即得、无需重跑"承诺）+ sim agent 文档第 52 行过时误判"家机缺→须办公机"（实为家机/办公机均持有 6.5MB 购买数据）→ 两缺口叠加致全量 sim 被误判"必须办公机"。①**文档更正**：[`.claude/agents/sim-emotion-data.agent.md`](.claude/agents/sim-emotion-data.agent.md) "本机约束"重写为"跨机约束 + baidu 持有清单（家机✓/办公机✓，任意持有可跑，新机手动拷贝勿入库）" + 新增「改动 SOP 铁律」节：改 sim/config/文本池后必须本机重跑全量并把 12 文件随 commit 入库（防代码-数据脱节，附 8eb5185 前车之鉴）。②**防回归断言**：[`sim_performance_data.py`](SCRIPT/sim_performance_data.py) `validate_45` 开头加硬校验——df 缺 `narrative_zone` 列即 `[ERR]` 返 False（旧版软检查 `if in columns` 静默跳过，正是脱节能潜伏无人察觉的根源）。③**家机重跑落地**（不必办公机，本地即有 baidu 输入）：全量 sim 133s → 12 文件重生入库，narrative_zone 字段落地，叙事弧方向核验通过——riverside positive 0.65→0.72→0.78（积极主导渐强）/ residential T1 neg0.58→T3 pos0.41（消极→期盼弧）/ traffic 全程 neg 主导(0.65/0.55/0.58) / ermawu T1 neu0.39→T3 pos0.61（盼开街→网红打卡）/ L2 score T1<T2<T3 单调。 | `SCRIPT/sim_performance_data.py` `.claude/agents/sim-emotion-data.agent.md` `DATA/performance/*`(12 重生) |
 
+| 07-04 | 本次 | **Rule: 开发阶段 Git 工作流改为直接提交 main、不开分支**（用户指令；待用户明确要求时再启用分支工作流）——[`CLAUDE.md`](CLAUDE.md) Git 规范从「不要直接 commit 到 main（紧急修复除外）」改为「当前开发阶段直接提交 main、不开分支」；同次 fast-forward 合并上一条目分支 `fix/sim-narrative-zone-cross-machine-sync`(b750577) 入 main 并删除分支保持干净。 | `CLAUDE.md` |
+
+## 6. 持续追加规则（给 AI）
+
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。
 2. **用户意图须专业化**：把非专业表述转译（例："那个颜色不对" → "L2 中性色板应与急/盼胶囊蓝色系呼应"）。不照抄原文。
 3. **跨板块的设计主线变更**（如新的全局交互范式、术语调整），同步更新第 4 节"设计意图脉络"和第 2 节术语表。
