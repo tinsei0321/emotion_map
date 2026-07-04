@@ -130,6 +130,50 @@ class _POIGrid:
 
 
 # ═══════════════ STEP 0: 加载 ═══════════════
+# 点军江南关键地标 POI（高德 POI 未覆盖江南；坐标 GCJ-02 web 查 → 转 WGS-84；需求5：矩阵块指向点军）
+# 奥体（venue 演唱会/楚超赛事）/ 卷桥河湿地公园（park_plaza 周末露营爆满）/ 江南URD（residential 生态新城核心住宅）
+# (name, lng_gcj, lat_gcj, baidu_level1, baidu_level2, domain, element)
+_EXTRA_POIS_GCJ = [
+    ('宜昌奥体中心',   111.239366, 30.700396, '体育休闲服务', '体育场馆', 'urban_operation', 'event'),
+    ('卷桥河湿地公园', 111.261675, 30.689941, '风景名胜',     '公园广场', 'urban_renewal',  'environment'),
+    ('江南URD',        111.2530,   30.6850,   '商务住宅',     '住宅区',   'urban_renewal',  'facility'),
+]
+
+
+def _inject_extra_pois(pl):
+    """点军江南关键地标 POI 注入（高德未覆盖；坐标 GCJ-02→WGS-84）。
+    让奥体/卷桥河/江南URD 有 venue/park_plaza/residential 叙事片区 + 对应 domain/element，矩阵块可指向。"""
+    from core.coord_transform import gcj02_to_wgs84
+    for name, lngc, latc, l1, l2, dom, elm in _EXTRA_POIS_GCJ:
+        lng, lat = gcj02_to_wgs84(lngc, latc)
+        pl.all_pois.append({'name': name, 'lng': lng, 'lat': lat, 'area': '点军区',
+                            'baidu_level1': l1, 'baidu_level2': l2, 'domain': dom, 'element': elm})
+    safe_print('[LOAD] 注入点军地标 POI {} 个（奥体/卷桥河/江南URD）'.format(len(_EXTRA_POIS_GCJ)))
+
+
+# 点军江南地标几何判定（需求5：百度热力点在点军稀疏，POI 150m 吸附不足 → 500m 几何强制 zone+poi）
+# (lng_gcj, lat_gcj, zone, domain, element, baidu_level1, name) — GCJ→WGS 在模块加载时转
+from core.coord_transform import gcj02_to_wgs84 as _gcj2wgs
+_LANDMARKS = []
+for _lngc, _latc, _zone, _dom, _elm, _l1, _name in [
+    (111.239366, 30.700396, 'venue',       'urban_operation', 'event',       '体育休闲服务', '宜昌奥体中心'),     # 大型活动：演唱会/楚超
+    (111.261675, 30.689941, 'park_plaza',  'urban_renewal',   'environment', '风景名胜',     '卷桥河湿地公园'),   # 周末露营爆满
+    (111.2530,   30.6850,   'residential', 'urban_renewal',   'facility',    '商务住宅',     '江南URD'),           # 生态新城核心住宅
+]:
+    _lng, _lat = _gcj2wgs(_lngc, _latc)
+    _LANDMARKS.append({'lng': _lng, 'lat': _lat, 'zone': _zone, 'domain': _dom, 'element': _elm, 'l1': _l1, 'name': _name})
+_LANDMARK_RADIUS_DEG = 0.005   # ~500m 矩形
+
+
+def _nearest_landmark(lng, lat):
+    """点军地标 500m 内 → 返回地标 dict（强制 zone/domain/element/name）；无则 None。
+    让矩阵块指向奥体/卷桥河/江南URD（zone + place_name 都对齐）。"""
+    for lm in _LANDMARKS:
+        if abs(lng - lm['lng']) < _LANDMARK_RADIUS_DEG and abs(lat - lm['lat']) < _LANDMARK_RADIUS_DEG:
+            return lm
+    return None
+
+
 @track("MOD_PERF.F_001", track_args=False)
 def load_assets():
     bj = json.load(open(BAIDU_FILE, encoding='utf-8'))
@@ -143,6 +187,7 @@ def load_assets():
     VALUE_P95 = max(1, int(np.percentile([h[2] for h in heats], 95)))
     pool = load_pool()
     pl = get_place_layer()
+    _inject_extra_pois(pl)   # 点军江南关键地标（需求5）
     poigrid = _POIGrid(pl.all_pois)
     safe_print('[LOAD] 百度热力点 {} (value p95={}) | 文本池 {} | POI {}'.format(
         len(heats), VALUE_P95, len(pool), len(pl.all_pois)))
@@ -282,6 +327,10 @@ def inject_fields(pts, snapshot_id, pool, pl, poigrid, rng, riverside_poly=None,
         if in_cc:
             poi = poigrid.nearest(p['lng'], p['lat'], POI_SNAP_M / 111000.0)
             nz = classify_narrative_zone(p['lng'], p['lat'], poi, riverside_poly, ermawu_poly)
+            lm = _nearest_landmark(p['lng'], p['lat'])   # 点军地标优先（需求5：500m 内强制 zone+poi+地名）
+            if lm:
+                poi = {'name': lm['name'], 'domain': lm['domain'], 'element': lm['element'], 'baidu_level1': lm['l1'], 'area': '点军区'}
+                nz = lm['zone']
             domain, element = _seed_domain_element(snapshot_id, at, nz, poi, rng)
             polarity = _pick_polarity_clustered(snapshot_id, at, nz, poi, rng, domain=domain, element=element)
             topic = pick_topic(polarity, nz, element, rng)

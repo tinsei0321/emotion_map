@@ -310,9 +310,14 @@ function _topIssueFeatures(feats, n) {
     .slice(0, n);
 }
 
-/** 桶内格（domain_top==D && element_top==E）——矩阵格 hover/click → 地图同步用。 */
-function _cellsByBucket(feats, d, e) {
-  return feats.filter((f) => { const p = f.properties || {}; return p.domain_top === d && p.element_top === e; });
+/** 桶内格（含 domain D 点 && 含 element E 点，按 n_dom_D+n_elem_E 降序 Top30）——矩阵格 hover/click → 地图同步。
+ *  用"含"替旧"domain_top 众数主导"，让矩阵桶覆盖关键 POI：关键 POI cell domain_top 多为 operation，
+ *  但含 planning/renewal 点（各 247/374 cell），改"含"后这些 cell 进规划/更新桶，演示讲解可指向关键 POI。 */
+function _cellsByBucket(feats, d, e, limit = 30) {
+  return feats.map((f) => {
+    const p = f.properties || {};
+    return { f, sc: (p['n_dom_' + d] || 0) + (p['n_elem_' + e] || 0) };
+  }).filter((x) => x.sc > 0).sort((a, b) => b.sc - a.sc).slice(0, limit).map((x) => x.f);
 }
 
 function _matrixHtml(cell) {
@@ -544,16 +549,8 @@ function _keywordRank(feats) {
     if (!sign) continue;   // 未登记 topic 忽略（长尾）
     bySign[sign].push({ topic: t, n });
   }
-  const sorted = (sign) => {
-    const order = TOPIC_ORDER[sign] || [];
-    return bySign[sign].sort((a, b) => {
-      const oa = order.indexOf(a.topic), ob = order.indexOf(b.topic);
-      if (oa >= 0 && ob >= 0) return oa - ob;
-      if (oa >= 0) return -1;
-      if (ob >= 0) return 1;
-      return b.n - a.n;
-    }).slice(0, 10);
-  };
+  // 按数据频次降序（需求4：数据与指定排序冲突时按数据，从高到低、从上到下）
+  const sorted = (sign) => bySign[sign].sort((a, b) => b.n - a.n).slice(0, 10);
   return { pos: sorted('pos'), neu: sorted('neu'), neg: sorted('neg') };
 }
 

@@ -151,7 +151,7 @@
 .ov-kw-col-head { font-size: 10px; color: var(--geojson-color-card-fill, #384555); font-weight: 600; margin-bottom: 2px; text-align: center; }   /* 列标题居中（需求2） */
 .ov-kw-item { display: flex; align-items: center; cursor: pointer; background: #fff; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,.10); height: 26px; overflow: hidden; transition: box-shadow .15s, transform .15s; }   /* 整卡数据条；综合卡片高度 26px */
 .ov-kw-item:hover { box-shadow: 0 3px 8px rgba(0,0,0,.16); transform: translateY(-1px); }
-.ov-kw-fill { background: #8B658B; color: #fff; font-size: 12px; font-weight: 600; height: 100%; padding: 0 8px; display: inline-flex; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }   /* 紫底白字词，inline width:% 从左填 */
+.ov-kw-fill { background: #D8BFD8; color: #3a3a3a; font-size: 12px; font-weight: 600; height: 100%; padding: 0 8px; display: inline-flex; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }   /* 浅紫底 #D8BFD8 + 深灰字 #3a3a3a（需求1：词与数字同深灰，底改浅保可读），inline width:% 从左填 */
 .ov-kw-num { color: #3a3a3a; font-size: 11px; font-weight: 700; margin-left: auto; padding-right: 8px; white-space: nowrap; }   /* 数字深灰，卡片右端（修溢出，需求2） */
 .ov-kw-item.is-sticky { box-shadow: 0 0 0 3px #ff9000, 0 2px 6px rgba(0,0,0,.10); }
 /* 单极性关键词（卡片高度减半 + left 33% 数据条 + 地点 67% 顿号横排，需求3） */

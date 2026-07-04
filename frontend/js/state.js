@@ -887,7 +887,9 @@ function _layerTypeRank(l) {
   if (ui.tool === 'grid' || ui.tool === 'terrain') {
     if (ui.level === 'L1') return 0;
     if (ui.level === 'L2' && ui.polarity === 'overall') return 1;
-    if (ui.level === 'L2') return 2;
+    if (ui.level === 'L2' && ui.polarity === 'positive') return 2;   // 需求3：网格聚合内 T1→T2→T3 前提下 积极→中性→消极
+    if (ui.level === 'L2' && ui.polarity === 'neutral') return 3;
+    if (ui.level === 'L2') return 4;   // negative
     return 0;
   }
   return 0;
