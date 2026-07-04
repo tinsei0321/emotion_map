@@ -189,17 +189,115 @@ NARRATIVE_POLARITY = {
 }
 
 
-def pick_polarity(snapshot_id, area_type, narrative_zone='general', rng=random):
+# ═══ 关键词主题词表 TOPIC_TABLE（数据层 topic 字段；替前端 KEYWORD_TABLE 4×5 桶映射）═══
+# 每极性 10 词，按用户词序（=权重降序）。每词附 (narrative_zone 候选, element 候选, 权重)。
+# 点命中 (polarity, zone∈候选, element∈候选) → 按权重采样赋 topic；未命中留空（长尾评论无 topic）。
+# Top10 合计占总点 ~20%（高频趋同评论是少数）；"地点-关键词-4×5-报道/常识"一致性由 zone 候选保证。
+# 权重和=1（_check 校验）；覆盖典型片区组合，general/event 等长尾留空 → 覆盖率自然 ~30%。
+TOPIC_TABLE = {
+    'positive': [
+        ('网红',         ('commercial', 'ermawu'),               ('service', 'culture'),       0.18),
+        ('夜经济',       ('riverside', 'commercial', 'venue'),   ('event',),                   0.15),
+        ('滨江步道',     ('riverside',),                          ('environment',),             0.13),
+        ('15分钟生活区', ('residential', 'general'),             ('facility', 'culture'),      0.11),
+        ('文化活动',     ('ermawu', 'venue', 'park_plaza'),      ('culture',),                 0.10),
+        ('老街新生',     ('ermawu',),                              ('culture',),                 0.09),
+        ('加装电梯',     ('residential',),                        ('facility',),                0.08),
+        ('绿道成网',     ('riverside', 'park_plaza'),            ('environment',),             0.06),
+        ('断头路打通',   ('general', 'central_outer'),           ('facility',),                0.05),
+        ('微更新活化',   ('residential', 'ermawu'),              ('environment',),             0.05),
+    ],
+    'negative': [
+        ('停车难',       ('commercial', 'venue'),                ('facility',),                0.18),
+        ('噪音',         ('riverside', 'commercial', 'residential'), ('event', 'environment'), 0.15),
+        ('堵车',         ('traffic',),                            ('event',),                   0.13),
+        ('底商空置冷清', ('commercial',),                         ('service',),                 0.11),
+        ('红绿灯',       ('traffic',),                            ('facility',),                0.10),
+        ('施工扰民',     ('residential', 'general'),             ('event',),                   0.09),
+        ('没电梯',       ('residential',),                        ('facility',),                0.08),
+        ('办事难',       ('general',),                            ('service',),                 0.06),
+        ('内涝积水',     ('general', 'central_outer'),           ('environment',),             0.05),
+        ('垃圾乱扔',     ('general',),                            ('environment',),             0.05),
+    ],
+    'neutral': [
+        ('口袋公园',     ('park_plaza', 'general'),              ('environment',),             0.18),
+        ('业态',         ('commercial',),                         ('service', 'culture'),       0.15),
+        ('社区服务配套', ('residential', 'general'),             ('facility', 'service'),      0.13),
+        ('物业',         ('residential',),                        ('service',),                 0.11),
+        ('老街改造',     ('ermawu',),                              ('environment',),             0.10),
+        ('盼电梯',       ('residential',),                        ('facility',),                0.09),
+        ('规划绿地',     ('general', 'central_outer'),           ('environment',),             0.08),
+        ('业态调整',     ('commercial',),                         ('service',),                 0.06),
+        ('盼BRT',        ('general', 'central_outer'),           ('facility',),                0.05),
+        ('社区营造',     ('residential', 'ermawu'),              ('culture',),                 0.05),
+    ],
+}
+
+
+TOPIC_COVERAGE_P = 0.45   # 命中候选后赋值概率（控 Top10 合计 ~20%：命中率 ~48% × 0.45 ≈ 22%，长尾 ~78% 留空）
+
+
+def pick_topic(polarity, narrative_zone, element, rng=random):
+    """按 (polarity, zone, element) 查 TOPIC_TABLE 候选 → 加权采样返回主题词；未命中或门控未过返 ''（长尾留空）。
+    门控 TOPIC_COVERAGE_P 控 Top10 合计 ~20%（高频趋同评论是少数）；命中后按词权重选，保证用户词序=频次降序。"""
+    if polarity not in TOPIC_TABLE or not narrative_zone or not element:
+        return ''
+    if rng.random() > TOPIC_COVERAGE_P:
+        return ''   # 长尾留空（保 Top10 ~20%）
+    cands = [(w, wt) for (w, zones, elems, wt) in TOPIC_TABLE[polarity]
+             if narrative_zone in zones and element in elems]
+    if not cands:
+        return ''
+    words = [c[0] for c in cands]
+    weights = [c[1] for c in cands]
+    return rng.choices(words, weights=weights, k=1)[0]
+
+
+# ═══ 桶极性覆盖层 BUCKET_POLARITY_MOD（驱归因矩阵趋势；叠在 narrative_arc 之上）═══
+# {(snapshot, domain, element): {polarity: 乘子}}。
+# T1：红（消极）集中 规划/更新 × 设施/环境/服务（硬件不足）→ neg↑ pos↓。
+# T3：红集中 运营/治理 × 服务/文化/事件（软件缺失），但其余桶保积极主导 → 总盘仍积极>消极。
+# 乘子作用于基础分布（narrative 或 area_type）；pick_polarity 归一化后采样。
+BUCKET_POLARITY_MOD = {
+    'T1': {
+        ('urban_planning',  'facility'):   {'negative': 1.6, 'positive': 0.55, 'neutral': 0.9},
+        ('urban_planning',  'environment'):{'negative': 1.5, 'positive': 0.6,  'neutral': 0.9},
+        ('urban_planning',  'service'):    {'negative': 1.4, 'positive': 0.7,  'neutral': 0.95},
+        ('urban_renewal',   'facility'):   {'negative': 1.6, 'positive': 0.55, 'neutral': 0.9},
+        ('urban_renewal',   'environment'):{'negative': 1.5, 'positive': 0.6,  'neutral': 0.9},
+        ('urban_renewal',   'service'):    {'negative': 1.4, 'positive': 0.7,  'neutral': 0.95},
+    },
+    'T3': {
+        ('urban_operation', 'service'):    {'negative': 1.6, 'positive': 0.7,  'neutral': 0.9},
+        ('urban_operation', 'culture'):    {'negative': 1.5, 'positive': 0.75, 'neutral': 0.9},
+        ('urban_operation', 'event'):      {'negative': 1.5, 'positive': 0.8,  'neutral': 0.9},
+        ('urban_governance','service'):    {'negative': 1.6, 'positive': 0.7,  'neutral': 0.9},
+        ('urban_governance','culture'):    {'negative': 1.5, 'positive': 0.75, 'neutral': 0.9},
+        ('urban_governance','event'):      {'negative': 1.5, 'positive': 0.8,  'neutral': 0.9},
+    },
+    'T2': {},   # 居中、不覆盖
+}
+
+
+def pick_polarity(snapshot_id, area_type, narrative_zone='general', domain=None, element=None, rng=random):
     """采目标极性（positive/negative/neutral）。
-    narrative_zone != 'general' → 用 NARRATIVE_POLARITY 叙事弧；否则回退 area_type 级分布。"""
+    基础分布：narrative_zone != 'general' → NARRATIVE_POLARITY 叙事弧；否则 area_type 级。
+    桶覆盖：若有 domain/element，叠 BUCKET_POLARITY_MOD[sid][(d,e)] 乘子（驱归因矩阵 T1/T3 红趋势）。
+    归一化后采样（乘子可能致某极性权重→0，钳 0.01 底防 ValueError）。"""
+    dist = {}
     if narrative_zone and narrative_zone != 'general':
-        dist = NARRATIVE_POLARITY[snapshot_id].get(narrative_zone)
-        if dist:
-            keys = list(dist.keys())
-            return rng.choices(keys, weights=[dist[k] for k in keys], k=1)[0]
-    dist = SNAPSHOTS[snapshot_id]['polarity'][area_type]
+        base = NARRATIVE_POLARITY[snapshot_id].get(narrative_zone)
+        if base:
+            dist = dict(base)
+    if not dist:
+        dist = dict(SNAPSHOTS[snapshot_id]['polarity'][area_type])
+    if domain and element:
+        mod = BUCKET_POLARITY_MOD.get(snapshot_id, {}).get((domain, element))
+        if mod:
+            dist = {k: max(dist.get(k, 0.0) * mod.get(k, 1.0), 0.01) for k in ('positive', 'negative', 'neutral')}
     keys = list(dist.keys())
-    return rng.choices(keys, weights=[dist[k] for k in keys], k=1)[0]
+    weights = [dist[k] for k in keys]
+    return rng.choices(keys, weights=weights, k=1)[0]
 
 
 def _compose_weights(base, area_bias, time_mod):

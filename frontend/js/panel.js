@@ -61,7 +61,7 @@ export function initPanel() {
       const mx = e.target.closest('.mx-cell[data-dom]');
       if (mx) { highlightCellSet(_cellsByBucket(_overviewLayer.fc.features, mx.dataset.dom, mx.dataset.elm), _overviewLayer); return; }
       const kw = e.target.closest('.ov-kw-item');
-      if (kw) { const r = _topKeywordCells(_overviewLayer.fc.features, kw.dataset.dom, kw.dataset.elm, kw.dataset.sign, 10); if (r.cells.length) highlightCellSet(r.cells, _overviewLayer); return; }
+      if (kw) { const r = _topKeywordCells(_overviewLayer.fc.features, kw.dataset.topic, 10); if (r.cells.length) highlightCellSet(r.cells, _overviewLayer); return; }
     });
     pane.addEventListener('mouseout', (e) => {
       if (e.target.closest('.ov-pie-slice') || e.target.closest('.mx-cell[data-dom]') || e.target.closest('.ov-kw-item')) clearHighlightCellSet();
@@ -91,9 +91,9 @@ export function initPanel() {
       // 关键词 → top-N 最强聚集格 sticky + fitBounds（再点释放）
       const kw = e.target.closest('.ov-kw-item');
       if (kw) {
-        const r = _topKeywordCells(_overviewLayer.fc.features, kw.dataset.dom, kw.dataset.elm, kw.dataset.sign, 10);
+        const r = _topKeywordCells(_overviewLayer.fc.features, kw.dataset.topic, 10);
         if (r.cells.length) {
-          const key = 'kw:' + kw.dataset.dom + '|' + kw.dataset.elm + '|' + kw.dataset.sign;
+          const key = 'kw:' + kw.dataset.topic;
           const locked = toggleStickyHighlight(r.cells, _overviewLayer, key);
           const wrap = kw.closest('.ov-keywords');
           if (wrap) wrap.querySelectorAll('.ov-kw-item.is-sticky').forEach((x) => x.classList.remove('is-sticky'));
@@ -447,30 +447,43 @@ function _singlePolMatrixHtml(cell) {
   return `<div class="ov-matrix">${head}${rows}</div>`;
 }
 
-/** 单极性关键词：只显该极性 Top10 + 右侧地点 Top5（地点栏占 2/3，词+次数条占 1/3）。
- *  地点取 _topKeywordCells top-5 cells 的 place_name / area_seed / spatial_hotspot。 */
+/** 单极性关键词：该极性 Top10 主题词 + 右侧聚集地点（顿号横排，省空间）。
+ *  词来自点的 topic_top（数据层提炼，performance_config.TOPIC_TABLE）；count=point_count 加权；
+ *  地点=_topKeywordCells 按 topic 筛出的格 place_name Top8（去重）。 */
 const _POL_SIGN = { positive: 'pos', negative: 'neg', neutral: 'neu' };
+/** 主题词→极性 + 用户词序（与 performance_config.TOPIC_TABLE 同源；前端按 topic 聚合后分极性 + 定序）。 */
+const TOPIC_POLARITY = {
+  '网红': 'pos', '夜经济': 'pos', '滨江步道': 'pos', '15分钟生活区': 'pos', '文化活动': 'pos',
+  '老街新生': 'pos', '加装电梯': 'pos', '绿道成网': 'pos', '断头路打通': 'pos', '微更新活化': 'pos',
+  '停车难': 'neg', '噪音': 'neg', '堵车': 'neg', '底商空置冷清': 'neg', '红绿灯': 'neg',
+  '施工扰民': 'neg', '没电梯': 'neg', '办事难': 'neg', '内涝积水': 'neg', '垃圾乱扔': 'neg',
+  '口袋公园': 'neu', '业态': 'neu', '社区服务配套': 'neu', '物业': 'neu', '老街改造': 'neu',
+  '盼电梯': 'neu', '规划绿地': 'neu', '业态调整': 'neu', '盼BRT': 'neu', '社区营造': 'neu',
+};
+const TOPIC_ORDER = {
+  pos: ['网红', '夜经济', '滨江步道', '15分钟生活区', '文化活动', '老街新生', '加装电梯', '绿道成网', '断头路打通', '微更新活化'],
+  neg: ['停车难', '噪音', '堵车', '底商空置冷清', '红绿灯', '施工扰民', '没电梯', '办事难', '内涝积水', '垃圾乱扔'],
+  neu: ['口袋公园', '业态', '社区服务配套', '物业', '老街改造', '盼电梯', '规划绿地', '业态调整', '盼BRT', '社区营造'],
+};
 function _singlePolKeywordsHtml(feats, polarity) {
   const sign = _POL_SIGN[polarity] || 'pos';
   const rank = _keywordRank(feats)[sign] || [];
   if (!rank.length) return `<div class="ov-placeholder muted">无该极性关键词数据</div>`;
-  const max = Math.max(1, ...rank.map((x) => x[sign]));
+  const max = Math.max(1, ...rank.map((x) => x.n));
   const rows = rank.map((it) => {
-    const kw = KEYWORD_TABLE[it.d + '|' + it.e + '|' + sign] || `${(DOMAIN_LABEL[it.d] || '').replace('城市', '')}·${ELEMENT_LABEL[it.e] || ''}`;
-    const n = it[sign];
-    const r = _topKeywordCells(feats, it.d, it.e, sign, 5);
+    const r = _topKeywordCells(feats, it.topic, 10);
     const locs = r.cells.map((f) => {
       const p = f.properties || {};
       return p.place_name || p.area_seed || p.spatial_hotspot || p.zone || '';
     }).filter((x) => x && x !== 'general')
-      .filter((x, i, arr) => arr.indexOf(x) === i)   // 地点去重（不重复同一地点）
-      .slice(0, 5);
+      .filter((x, i, arr) => arr.indexOf(x) === i)
+      .slice(0, 8);
     const locHtml = locs.length
-      ? `<div class="ov-kw-locs">${locs.map((x) => `<span class="ov-kw-loc">${x}</span>`).join('')}</div>`
+      ? `<div class="ov-kw-locs">${locs.join('、')}</div>`
       : `<div class="ov-kw-locs muted">—</div>`;
-    return `<div class="ov-kw-item ov-kw-sp" data-dom="${it.d}" data-elm="${it.e}" data-sign="${sign}" title="${kw}（${n} 点）· 点击定位最强聚集">
-      <div class="ov-kw-left"><span class="ov-kw-word">${kw}</span>
-        <span class="ov-kw-track"><span class="ov-kw-fill ${KW_SIGN_FILL[sign]}" style="width:${(n / max) * 100}%">${n}</span></span></div>
+    return `<div class="ov-kw-item ov-kw-sp" data-topic="${it.topic}" data-sign="${sign}" title="${it.topic}（${it.n} 点）· 点击定位最强聚集">
+      <div class="ov-kw-left"><span class="ov-kw-fill" style="width:${Math.max(25, (it.n / max) * 100)}%">${it.topic}</span>
+        <span class="ov-kw-num">${it.n}</span></div>
       ${locHtml}
     </div>`;
   }).join('');
@@ -515,56 +528,60 @@ function _singlePolBody(feats, ui) {
     <div class="ov-tier-sub">关键词 Top10<span class="info-i" data-tip="该极性高频城市关键词（左 1/3：词+次数）及其代表性地点 Top5（右 2/3）。点击词 → 定位最强聚集。">i</span></div>${_singlePolKeywordsHtml(feats, pol)}`;
 }
 
-/** 4×5 桶按正/负点数排名 → 各 Top5（关键词源）。 */
+/** 关键词频次排名：按点的 topic_top（数据层提炼）聚合 point_count → {sign: [{topic, n}]}。
+ *  按 TOPIC_ORDER 用户词序优先 + 频次排序，每极性 Top10。替旧"4×5 桶映射"。 */
 function _keywordRank(feats) {
-  const b = {};
+  const m = {};   // topic -> n (point_count 加权)
   for (const f of feats) {
     const p = f.properties || {};
-    const d = p.domain_top, e = p.element_top;
-    if (!d || !e) continue;
-    const k = d + '|' + e;
-    if (!b[k]) b[k] = { d, e, pos: 0, neu: 0, neg: 0 };
-    b[k].pos += (p.n_very_positive || 0) + (p.n_positive || 0);
-    b[k].neu += p.n_neutral || 0;
-    b[k].neg += (p.n_negative || 0) + (p.n_very_negative || 0);
+    const t = p.topic_top;
+    if (!t) continue;
+    m[t] = (m[t] || 0) + (p.point_count || 0);
   }
-  const vals = Object.values(b);
-  const top = (key) => vals.filter((x) => x[key] > 0).sort((a, c) => c[key] - a[key]).slice(0, 10);
-  return { pos: top('pos'), neu: top('neu'), neg: top('neg') };
+  const bySign = { pos: [], neu: [], neg: [] };
+  for (const [t, n] of Object.entries(m)) {
+    const sign = TOPIC_POLARITY[t];
+    if (!sign) continue;   // 未登记 topic 忽略（长尾）
+    bySign[sign].push({ topic: t, n });
+  }
+  const sorted = (sign) => {
+    const order = TOPIC_ORDER[sign] || [];
+    return bySign[sign].sort((a, b) => {
+      const oa = order.indexOf(a.topic), ob = order.indexOf(b.topic);
+      if (oa >= 0 && ob >= 0) return oa - ob;
+      if (oa >= 0) return -1;
+      if (ob >= 0) return 1;
+      return b.n - a.n;
+    }).slice(0, 10);
+  };
+  return { pos: sorted('pos'), neu: sorted('neu'), neg: sorted('neg') };
 }
 
-/** sign → 极性点数字段聚合。 */
+/** sign → 极性标题。 */
 const KW_SIGN_HEAD = { pos: '正面/积极', neu: '中性/期盼', neg: '负面/消极' };
-const KW_SIGN_FILL = { pos: 'is-pos', neu: 'is-neu', neg: 'is-neg' };
 
-/** 关键词 HTML：正/中/负三列，每条 = 词 + 次数横条（文字在条内）；点击 → 定位该词最强聚集。 */
+/** 综合·网格关键词 HTML：正/中/负三列，每条 = 主题词 + 次数（整卡填充，词白字/数字深灰）；点击 → 定位该词最强聚集。 */
 function _keywordsHtml(feats) {
   const { pos, neu, neg } = _keywordRank(feats);
-  if (!pos.length && !neu.length && !neg.length) return `<div class="ov-placeholder muted">无 4×5 归因数据</div>`;
+  if (!pos.length && !neu.length && !neg.length) return `<div class="ov-placeholder muted">无关键词数据</div>`;
   const col = (items, sign) => {
     if (!items.length) return `<div class="ov-kw-col"><div class="ov-kw-col-head">${KW_SIGN_HEAD[sign]}</div><div class="ov-placeholder muted">—</div></div>`;
-    const max = Math.max(1, ...items.map((x) => x[sign]));
-    const rows = items.map((it) => {
-      const kw = KEYWORD_TABLE[it.d + '|' + it.e + '|' + sign] || `${(DOMAIN_LABEL[it.d] || '').replace('城市', '')}·${ELEMENT_LABEL[it.e] || ''}`;
-      const n = it[sign];
-      return `<div class="ov-kw-item" data-dom="${it.d}" data-elm="${it.e}" data-sign="${sign}" title="${kw}（${n} 点）· 点击定位最强聚集">
-        <span class="ov-kw-word">${kw}</span>
-        <span class="ov-kw-track"><span class="ov-kw-fill ${KW_SIGN_FILL[sign]}" style="width:${(n / max) * 100}%">${n}</span></span>
-      </div>`;
-    }).join('');
+    const max = Math.max(1, ...items.map((x) => x.n));
+    const rows = items.map((it) =>
+      `<div class="ov-kw-item" data-topic="${it.topic}" data-sign="${sign}" title="${it.topic}（${it.n} 点）· 点击定位最强聚集">
+        <span class="ov-kw-fill" style="width:${Math.max(18, (it.n / max) * 100)}%">${it.topic}</span>
+        <span class="ov-kw-num">${it.n}</span>
+      </div>`).join('');
     return `<div class="ov-kw-col"><div class="ov-kw-col-head">${KW_SIGN_HEAD[sign]}</div>${rows}</div>`;
   };
   return `<div class="ov-keywords">${col(pos, 'pos')}${col(neu, 'neu')}${col(neg, 'neg')}</div>`;
 }
 
-/** 该关键词(d,e,sign)下、该极性点数 top-N（默认 10）的格 + 其 bbox（zoom 用）。 */
-function _topKeywordCells(feats, d, e, sign, n = 10) {
-  const scoreOf = (p) => sign === 'pos' ? (p.n_very_positive || 0) + (p.n_positive || 0)
-    : sign === 'neg' ? (p.n_negative || 0) + (p.n_very_negative || 0)
-    : (p.n_neutral || 0);
+/** 该主题词(topic)下 point_count top-N（默认 10）的格 + 其 bbox（zoom 用）。 */
+function _topKeywordCells(feats, topic, n = 10) {
   const scored = feats
-    .filter((f) => { const p = f.properties || {}; return p.domain_top === d && p.element_top === e; })
-    .map((f) => ({ f, sc: scoreOf(f.properties || {}) }))
+    .filter((f) => (f.properties || {}).topic_top === topic)
+    .map((f) => ({ f, sc: (f.properties || {}).point_count || 0 }))
     .filter((x) => x.sc > 0)
     .sort((a, b) => b.sc - a.sc)
     .slice(0, n);

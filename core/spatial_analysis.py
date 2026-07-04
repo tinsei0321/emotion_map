@@ -461,7 +461,7 @@ def _attach_4x5_attrs(joined, grouped, stats):
     joined = sjoin 结果（含点侧 domain/element 列）；grouped = joined.groupby('index_right')；
     stats = 按 index_right 索引的聚合 DataFrame（已含 polarity_index）。
     L3/L4 LLM 归因上线后本函数整体替换为 LLM 产出。"""
-    for _c in ('domain', 'element', 'spatial_hotspot', 'area_seed'):
+    for _c in ('domain', 'element', 'spatial_hotspot', 'area_seed', 'topic'):
         if _c in joined.columns:
             joined[_c] = joined[_c].fillna('').astype(str)
     if 'domain' in joined.columns:
@@ -487,6 +487,10 @@ def _attach_4x5_attrs(joined, grouped, stats):
                             return str(m.iloc[0])
             return ''
         stats['place_name'] = grouped.apply(_place_mode)
+    # topic_top：格内主题词众数（供前端关键词按 topic 聚合 + 地点聚集；空值不计）。
+    if 'topic' in joined.columns:
+        stats['topic_top'] = grouped['topic'].agg(
+            lambda x: (x[x != ''].mode().iloc[0] if not x[x != ''].mode().empty else ''))
     if 'domain_top' in stats.columns and 'polarity_index' in stats.columns:
         _attrs = stats.apply(lambda _r: lookup_attribution(
             _r.get('domain_top', ''), _r.get('element_top', ''), _r.get('polarity_index')), axis=1)

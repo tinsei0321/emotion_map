@@ -42,7 +42,7 @@ from shapely.ops import unary_union
 
 from core.tracker import track, TrackContext, trace_error, register_track_id
 from core.utils import safe_print
-from performance_config import SNAPSHOTS, pick_polarity, pick_domain_element, snapshot_flavor, AREA_TYPES, POI_NARRATIVE_ZONE, NARRATIVE_ZONES
+from performance_config import SNAPSHOTS, pick_polarity, pick_domain_element, pick_topic, snapshot_flavor, AREA_TYPES, POI_NARRATIVE_ZONE, NARRATIVE_ZONES
 from emotion_text_pool import load_pool, sample_text
 from poi_data.poi_4x5_map import DOMAIN_CN, ELEMENT_CN, DOMAINS, ELEMENTS
 from core.place_layer import get_place_layer
@@ -102,7 +102,7 @@ L1_COLUMNS = [
     'domain', 'element', 'primary_emotion', 'emotion_intensity', 'polarity_hint', 'intensity',
     'urban_value', 'l1_confidence', 'has_location', 'location_mentioned',
     'relevance', 'relevance_category', 'like_count', 'comment_count', 'tags', 'url',
-    'time_label', 'area_seed', 'area_tag', 'zone', 'narrative_zone',
+    'time_label', 'area_seed', 'area_tag', 'zone', 'narrative_zone', 'topic',
     'lon', 'lat', 'x_cgcs2000', 'y_cgcs2000', 'spatial_hotspot', 'spatial_type',
 ]
 
@@ -252,10 +252,10 @@ def _seed_domain_element(snapshot_id, area_type, narrative_zone, poi, rng):
     return pick_domain_element(snapshot_id, area_type, narrative_zone, rng)
 
 
-def _pick_polarity_clustered(snapshot_id, area_type, narrative_zone, poi, rng):
-    """叙事片区 arc（NARRATIVE_POLARITY 全控）+ 仅 general 区叠 POI lean 翻转（局部纹理）。
-    叙事片区不再叠 lean——其极性比已含 neutral/negative 噪声（保真实），叠 lean 会重复稀释。"""
-    base = pick_polarity(snapshot_id, area_type, narrative_zone, rng)
+def _pick_polarity_clustered(snapshot_id, area_type, narrative_zone, poi, rng, domain=None, element=None):
+    """叙事片区 arc + 桶覆盖（BUCKET_POLARITY_MOD，驱归因矩阵趋势）+ 仅 general 区叠 POI lean 翻转。
+    domain/element 用于桶覆盖；叙事片区极性比已含 neutral/negative 噪声，叠 lean 仅在 general 区。"""
+    base = pick_polarity(snapshot_id, area_type, narrative_zone, domain=domain, element=element, rng=rng)
     if narrative_zone == 'general':
         lean = POI_POLARITY_LEAN.get(poi.get('baidu_level1', '')) if poi else None
         if lean and lean != base and rng.random() < LEAN_FLIP_P:
@@ -282,14 +282,15 @@ def inject_fields(pts, snapshot_id, pool, pl, poigrid, rng, riverside_poly=None,
         if in_cc:
             poi = poigrid.nearest(p['lng'], p['lat'], POI_SNAP_M / 111000.0)
             nz = classify_narrative_zone(p['lng'], p['lat'], poi, riverside_poly, ermawu_poly)
-            polarity = _pick_polarity_clustered(snapshot_id, at, nz, poi, rng)
             domain, element = _seed_domain_element(snapshot_id, at, nz, poi, rng)
+            polarity = _pick_polarity_clustered(snapshot_id, at, nz, poi, rng, domain=domain, element=element)
+            topic = pick_topic(polarity, nz, element, rng)
             zone = pl.resolve_zone((poi or {}).get('name', ''), (poi or {}).get('area', ''), p['lng'], p['lat'])
             text = sample_text(polarity, element, pool, rng, zone=nz, flavor=flavor)
             emo_inten = (p['value'] / VALUE_P95)
             emo_inten = max(0.1, min(1.0, emo_inten * (1.4 if polarity in ('positive', 'negative') else 0.7)))
             rows.append({
-                'lon': p['lng'], 'lat': p['lat'], 'area_tag': at, 'zone': zone, 'narrative_zone': nz,
+                'lon': p['lng'], 'lat': p['lat'], 'area_tag': at, 'zone': zone, 'narrative_zone': nz, 'topic': topic,
                 'area_seed': (poi or {}).get('name', '') or snap['label'],
                 'spatial_hotspot': (poi or {}).get('name', ''),
                 'spatial_type': (poi or {}).get('baidu_level1', '') or at,
