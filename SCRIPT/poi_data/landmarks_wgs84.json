@@ -1,9 +1,9 @@
 {
   "metadata": {
-    "description": "手标关键地标（高德未覆盖江南片区；WGS84 EPSG:4326）",
+    "description": "手标关键地标（高德未覆盖江南/口袋公园；WGS84 EPSG:4326）",
     "coordinate_system": "EPSG:4326 (lng/lat 度)",
-    "source_note": "search + sim 共享单一真源；坐标由 GCJ-02 web 查值经 core/coord_transform.gcj02_to_wgs84 转换",
-    "poi_count": 3
+    "source_note": "search + sim 共享单一真源；点军 3 地标坐标由 GCJ-02 web 查值经 core/coord_transform.gcj02_to_wgs84 转换；口袋公园 4 个为合理估计坐标（待精确校准）。radius_m = _nearest_landmark 几何强制半径（点军 1500 提词频/口袋 750 精准落点）",
+    "poi_count": 7
   },
   "pois": [
     {
@@ -16,7 +16,7 @@
       "domain": "urban_operation",
       "element": "event",
       "narrative_zone": "venue",
-      "radius_m": 500
+      "radius_m": 1500
     },
     {
       "name": "卷桥河湿地公园",
@@ -28,7 +28,7 @@
       "domain": "urban_renewal",
       "element": "environment",
       "narrative_zone": "park_plaza",
-      "radius_m": 500
+      "radius_m": 1500
     },
     {
       "name": "江南URD",
@@ -40,6 +40,54 @@
       "domain": "urban_renewal",
       "element": "facility",
       "narrative_zone": "residential",
+      "radius_m": 1500
+    },
+    {
+      "name": "儿童公园",
+      "lng": 111.2886,
+      "lat": 30.7058,
+      "area": "西陵区",
+      "baidu_level1": "风景名胜",
+      "baidu_level2": "公园广场",
+      "domain": "urban_planning",
+      "element": "environment",
+      "narrative_zone": "park_plaza",
+      "radius_m": 500
+    },
+    {
+      "name": "欧阳修公园",
+      "lng": 111.2820,
+      "lat": 30.7012,
+      "area": "西陵区",
+      "baidu_level1": "风景名胜",
+      "baidu_level2": "公园广场",
+      "domain": "urban_planning",
+      "element": "environment",
+      "narrative_zone": "park_plaza",
+      "radius_m": 500
+    },
+    {
+      "name": "中南路街心花园",
+      "lng": 111.3245,
+      "lat": 30.6818,
+      "area": "伍家岗区",
+      "baidu_level1": "风景名胜",
+      "baidu_level2": "公园广场",
+      "domain": "urban_planning",
+      "element": "environment",
+      "narrative_zone": "park_plaza",
+      "radius_m": 500
+    },
+    {
+      "name": "东辰口袋公园",
+      "lng": 111.3495,
+      "lat": 30.6950,
+      "area": "伍家岗区",
+      "baidu_level1": "风景名胜",
+      "baidu_level2": "公园广场",
+      "domain": "urban_planning",
+      "element": "environment",
+      "narrative_zone": "park_plaza",
       "radius_m": 500
     }
   ]

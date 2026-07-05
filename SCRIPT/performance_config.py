@@ -199,14 +199,11 @@ TOPIC_TABLE = {
         ('网红',         ('commercial', 'ermawu'),               ('service', 'culture'),       0.15),
         ('夜经济',       ('riverside', 'commercial', 'venue'),   ('event',),                   0.13),
         ('滨江步道',     ('riverside',),                          ('environment',),             0.11),
-        ('大南门',       ('ermawu', 'commercial'),               ('culture', 'service'),       0.10),
-        ('楚超',         ('venue',),                              ('event',),                   0.08),   # 奥体楚超足球赛/演唱会（点军·T3 峰值）
+        ('大南门',       ('ermawu',),                             ('culture', 'service'),       0.10),
         ('老街新生',     ('ermawu',),                              ('culture',),                 0.08),
         ('文化活动',     ('ermawu', 'venue', 'park_plaza'),      ('culture',),                 0.07),
         ('加装电梯',     ('residential',),                        ('facility',),                0.06),
-        ('卷桥河露营',   ('park_plaza',),                         ('environment',),             0.05),   # 卷桥河湿地公园周末露营（点军生态）
         ('绿道成网',     ('riverside', 'park_plaza'),            ('environment',),             0.05),
-        ('江南绿肺',     ('park_plaza', 'residential'),          ('environment',),             0.04),   # 点军江南生态新城/丘陵绿地先天优势
         ('长江夜游',     ('riverside', 'commercial'),            ('event',),                   0.04),
         ('西坝不夜岛',   ('riverside', 'commercial'),            ('event',),                   0.04),
     ],
@@ -214,7 +211,7 @@ TOPIC_TABLE = {
         ('停车难',       ('commercial', 'venue'),                ('facility',),                0.18),
         ('噪音',         ('riverside', 'commercial', 'residential'), ('event', 'environment'), 0.15),
         ('堵车',         ('traffic',),                            ('event',),                   0.13),
-        ('占道停车',     ('commercial', 'venue', 'residential', 'general'), ('facility', 'environment'), 0.12),
+        ('占道停车',     ('commercial', 'venue', 'residential'), ('facility', 'environment'), 0.12),
         ('底商空置冷清', ('commercial',),                         ('service',),                 0.11),
         ('红绿灯',       ('traffic',),                            ('facility',),                0.10),
         ('施工扰民',     ('residential', 'general'),             ('event',),                   0.09),
@@ -222,9 +219,9 @@ TOPIC_TABLE = {
         ('收费不合理',   ('commercial',),                         ('service',),                 0.04),   # 缩 zone（去 general）+ 降权 0.05→0.04（原 service 池过大致 #1 频次过高）
     ],
     'neutral': [
-        ('口袋公园',     ('park_plaza', 'general'),              ('environment',),             0.18),
+        ('口袋公园',     ('park_plaza',),                         ('environment',),             0.18),
         ('业态',         ('commercial',),                         ('service', 'culture'),       0.15),
-        ('社区服务配套', ('residential', 'general'),             ('facility', 'service'),      0.13),
+        ('社区服务配套', ('residential',),                        ('facility', 'service'),      0.13),
         ('物业',         ('residential',),                        ('service',),                 0.11),
         ('老街改造',     ('ermawu',),                              ('environment',),             0.10),
         ('盼电梯',       ('residential',),                        ('facility',),                0.09),

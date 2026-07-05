@@ -533,8 +533,8 @@ function _singlePolMatrixHtml(cell) {
 const _POL_SIGN = { positive: 'pos', negative: 'neg', neutral: 'neu' };
 /** 主题词→极性 + 用户词序（与 performance_config.TOPIC_TABLE 同源；改 TOPIC_TABLE 必须同步此处，否则新词会被 _keywordRank 丢弃）。 */
 const TOPIC_POLARITY = {
-  // positive（13）：含点军 3 词 楚超/卷桥河露营/江南绿肺
-  '网红': 'pos', '夜经济': 'pos', '滨江步道': 'pos', '大南门': 'pos', '楚超': 'pos',
+  // positive（13）：含点军 3 词 楚超火爆/卷桥河露营/江南绿肺
+  '网红': 'pos', '夜经济': 'pos', '滨江步道': 'pos', '大南门': 'pos', '楚超火爆': 'pos',
   '老街新生': 'pos', '文化活动': 'pos', '加装电梯': 'pos', '卷桥河露营': 'pos', '绿道成网': 'pos',
   '江南绿肺': 'pos', '长江夜游': 'pos', '西坝不夜岛': 'pos',
   // negative（9）：占道停车/收费不合理（收费缩zone降权，仍在表）
@@ -545,9 +545,50 @@ const TOPIC_POLARITY = {
   '盼电梯': 'neu', '规划绿地': 'neu', '业态调整': 'neu', '盼BRT': 'neu', '社区营造': 'neu',
 };
 const TOPIC_ORDER = {
-  pos: ['网红', '夜经济', '滨江步道', '大南门', '楚超', '老街新生', '文化活动', '加装电梯', '卷桥河露营', '绿道成网', '江南绿肺', '长江夜游', '西坝不夜岛'],
+  pos: ['网红', '夜经济', '滨江步道', '大南门', '楚超火爆', '老街新生', '文化活动', '加装电梯', '卷桥河露营', '绿道成网', '江南绿肺', '长江夜游', '西坝不夜岛'],
   neg: ['停车难', '噪音', '堵车', '占道停车', '底商空置冷清', '红绿灯', '施工扰民', '没电梯', '收费不合理'],
   neu: ['口袋公园', '业态', '社区服务配套', '物业', '老街改造', '盼电梯', '规划绿地', '业态调整', '盼BRT', '社区营造'],
+};
+
+/** Feature 4 语义映射：topic → 1-3 个 domain×element 语义块（覆盖数据扫描的反直觉关联）。
+ *  仅"哪个词↔哪格"的联动对应关系查此表；矩阵色/数仍走数据（_matrix4x5/_matrixHtml）。
+ *  key 同 DOMAIN_ORDER/ELEMENT_ORDER。改 TOPIC_TABLE 须同步 TOPIC_POLARITY/ORDER + 此表。 */
+const TOPIC_MATRIX_MAP = {
+  // positive（13）
+  '网红': [['urban_operation', 'service'], ['urban_operation', 'culture'], ['urban_renewal', 'culture']],
+  '夜经济': [['urban_operation', 'event'], ['urban_planning', 'event']],
+  '滨江步道': [['urban_planning', 'environment']],
+  '大南门': [['urban_renewal', 'culture'], ['urban_renewal', 'service'], ['urban_operation', 'culture']],
+  '楚超火爆': [['urban_operation', 'event']],
+  '老街新生': [['urban_renewal', 'culture']],
+  '文化活动': [['urban_renewal', 'culture'], ['urban_operation', 'culture'], ['urban_planning', 'culture']],
+  '加装电梯': [['urban_renewal', 'facility']],
+  '卷桥河露营': [['urban_planning', 'environment']],
+  '绿道成网': [['urban_planning', 'environment']],
+  '江南绿肺': [['urban_planning', 'environment'], ['urban_renewal', 'environment']],
+  '长江夜游': [['urban_planning', 'event'], ['urban_operation', 'event']],
+  '西坝不夜岛': [['urban_planning', 'event'], ['urban_operation', 'event']],
+  // negative（9）
+  '停车难': [['urban_governance', 'facility'], ['urban_planning', 'facility']],
+  '噪音': [['urban_planning', 'environment'], ['urban_operation', 'event'], ['urban_renewal', 'environment']],
+  '堵车': [['urban_governance', 'event']],
+  '占道停车': [['urban_governance', 'facility'], ['urban_governance', 'environment'], ['urban_renewal', 'environment']],
+  '底商空置冷清': [['urban_operation', 'service']],
+  '红绿灯': [['urban_governance', 'facility']],
+  '施工扰民': [['urban_renewal', 'environment']],
+  '没电梯': [['urban_renewal', 'facility']],
+  '收费不合理': [['urban_operation', 'service']],
+  // neutral（10）
+  '口袋公园': [['urban_planning', 'environment']],
+  '业态': [['urban_operation', 'service'], ['urban_operation', 'culture']],
+  '社区服务配套': [['urban_renewal', 'facility'], ['urban_renewal', 'service']],
+  '物业': [['urban_renewal', 'service']],
+  '老街改造': [['urban_renewal', 'environment']],
+  '盼电梯': [['urban_renewal', 'facility']],
+  '规划绿地': [['urban_planning', 'environment']],
+  '业态调整': [['urban_operation', 'service']],
+  '盼BRT': [['urban_planning', 'facility'], ['urban_governance', 'facility']],
+  '社区营造': [['urban_renewal', 'culture']],
 };
 function _singlePolKeywordsHtml(feats, polarity) {
   const sign = _POL_SIGN[polarity] || 'pos';
@@ -801,30 +842,22 @@ function _featBBox(f) {
   return [mnX, mnY, mxX, mxY];
 }
 
-// ── Feature 4：归因矩阵 ↔ 关键词 双向联动（数据驱动）──
-// 扫 layer.features 建 topic×(domain,element) 反向索引：hover 矩阵块 → 高亮该块下所有关键词卡片；hover 关键词 → 高亮其所有矩阵块。
-// ≤5 全高亮（.is-synced 橙底白字）；>5 加权（.is-synced-w 橙 tint，频次高主峰亮、长尾淡）—— "太多意义不大"用加权让主峰突出。
+// ── Feature 4：归因矩阵 ↔ 关键词 双向联动（语义查表）──
+// 对应关系走 TOPIC_MATRIX_MAP（语义），不扫 layer.features 的 topic×(domain,element)——避免 sim POI 域错配（如 口袋公园→运营×环境 反直觉）。
+// 矩阵色/数仍走数据（_matrix4x5/_matrixHtml）。≤5 全高亮（.is-synced 橙底白字）；>5 加权（.is-synced-w 橙 tint）—— "太多意义不大"用加权让主峰突出。
 const SYNC_FULL_MAX = 5;
-/** 建 topic→blocks + block→topics 反向索引（按 layer.id 缓存到 layer._topicIdx）。 */
-function _buildTopicMatrixIndex(feats) {
-  const topicToBlocks = {};   // topic -> {("d|e"): n}
-  const blockToTopics = {};   // {("d|e")} -> {topic: n}
-  for (const f of feats) {
-    const p = f.properties || {};
-    const t = p.topic_top;
-    if (!t || !p.domain_top || !p.element_top) continue;
-    const k = p.domain_top + '|' + p.element_top;
-    if (!topicToBlocks[t]) topicToBlocks[t] = {};
-    topicToBlocks[t][k] = (topicToBlocks[t][k] || 0) + 1;
-    if (!blockToTopics[k]) blockToTopics[k] = {};
-    blockToTopics[k][t] = (blockToTopics[k][t] || 0) + 1;
-  }
-  return { topicToBlocks, blockToTopics };
+/** topic → [[blockKey,1],...]（均权，复用 _applySync）。blockKey = "dom|elm"。 */
+function _topicBlocks(topic) {
+  return (TOPIC_MATRIX_MAP[topic] || []).map(([d, e]) => [d + '|' + e, 1]);
 }
-function _topicIdx(layer) {
-  if (!layer) return { topicToBlocks: {}, blockToTopics: {} };
-  if (!layer._topicIdx) layer._topicIdx = _buildTopicMatrixIndex((layer.fc && layer.fc.features) || []);
-  return layer._topicIdx;
+/** (dom,elm) → [[topic,1],...]（均权，反扫 TOPIC_MATRIX_MAP）。 */
+function _blockTopics(dom, elm) {
+  const key = dom + '|' + elm;
+  const out = [];
+  for (const [t, blocks] of Object.entries(TOPIC_MATRIX_MAP)) {
+    if (blocks.some(([d, e]) => d + '|' + e === key)) out.push([t, 1]);
+  }
+  return out;
 }
 /** 应用同步高亮：entries=[[key,count],...]（已降序）；selectorOf(key)→DOM selector。
  *  sticky=true 用持久类（.is-synced-sticky[-w]，mouseout 不清，仅 sticky 取消时清）。
@@ -879,13 +912,12 @@ let _sticky = null;   // {type:'mx'|'kw'|'pol', dom, elm, topic, pol} 或 null
 
 /** 选中矩阵块/关键词 → 给关联方加持久同步高亮（新 feature：选中矩阵块后关键词卡片持久高亮，直到取消选中）。 */
 function _applyStickySync(type, a, b) {
-  const idx = _topicIdx(_overviewLayer);
   if (type === 'mx') {
-    const topics = idx.blockToTopics[a + '|' + b];
-    if (topics) _applySync(Object.entries(topics).sort((x, y) => y[1] - x[1]), (t) => `.ov-kw-item[data-topic="${t}"]`, true);
+    const topics = _blockTopics(a, b);
+    if (topics.length) _applySync(topics, (t) => `.ov-kw-item[data-topic="${t}"]`, true);
   } else if (type === 'kw') {
-    const blocks = idx.topicToBlocks[a];
-    if (blocks) _applySync(Object.entries(blocks).sort((x, y) => y[1] - x[1]), (k) => {
+    const blocks = _topicBlocks(a);
+    if (blocks.length) _applySync(blocks, (k) => {
       const [d, e] = k.split('|'); return `.mx-cell[data-dom="${d}"][data-elm="${e}"]`;
     }, true);
   }
@@ -918,17 +950,15 @@ function _reapplyStickyDOM(layer) {
 }
 /** hover 矩阵块 → 高亮该块下所有关键词卡片（按 blockToTopics）。 */
 function _syncFromMatrix(dom, elm) {
-  const idx = _topicIdx(_overviewLayer);
-  const topics = idx.blockToTopics[dom + '|' + elm];
-  if (!topics) return;
-  _applySync(Object.entries(topics).sort((a, b) => b[1] - a[1]), (t) => `.ov-kw-item[data-topic="${t}"]`);
+  const topics = _blockTopics(dom, elm);
+  if (!topics.length) return;
+  _applySync(topics, (t) => `.ov-kw-item[data-topic="${t}"]`);
 }
-/** hover 关键词 → 高亮其所有矩阵块（按 topicToBlocks）。 */
+/** hover 关键词 → 高亮其所有矩阵块（查 TOPIC_MATRIX_MAP）。 */
 function _syncFromKeyword(topic) {
-  const idx = _topicIdx(_overviewLayer);
-  const blocks = idx.topicToBlocks[topic];
-  if (!blocks) return;
-  _applySync(Object.entries(blocks).sort((a, b) => b[1] - a[1]), (k) => {
+  const blocks = _topicBlocks(topic);
+  if (!blocks.length) return;
+  _applySync(blocks, (k) => {
     const [d, e] = k.split('|');
     return `.mx-cell[data-dom="${d}"][data-elm="${e}"]`;
   });

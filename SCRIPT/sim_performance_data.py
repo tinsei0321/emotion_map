@@ -147,7 +147,8 @@ def _load_landmarks():
 # 从 landmarks_wgs84.json 构建（WGS84，无需 GCJ→WGS）；_nearest_landmark 强制 zone/domain/element/name 落位。
 _LANDMARKS = [
     {'lng': lm['lng'], 'lat': lm['lat'], 'zone': lm['narrative_zone'],
-     'domain': lm['domain'], 'element': lm['element'], 'l1': lm['baidu_level1'], 'name': lm['name']}
+     'domain': lm['domain'], 'element': lm['element'], 'l1': lm['baidu_level1'], 'name': lm['name'],
+     'radius_m': lm.get('radius_m', 500)}
     for lm in _load_landmarks()
 ]
 _LANDMARK_RADIUS_DEG = 0.005   # ~500m 矩形
@@ -212,10 +213,15 @@ def _zhandao_assign(rng):
     return 'urban_renewal', 'environment', rng.choice(_ZHANDAO_TEXT['environment'])   # 环境：人行/市容
 
 
-# 点军江南地标正向专属关键词（奥体楚超/卷桥河露营/江南绿肺）——点军生态+赛事先天优势
-_DIANJUN_TOPIC = {'宜昌奥体中心': '楚超', '卷桥河湿地公园': '卷桥河露营', '江南URD': '江南绿肺'}
+# 地标 → (专属关键词, 极性)。点军 3 地标 positive（楚超火爆/卷桥河露营/江南绿肺）；口袋公园 4 POI neutral。
+# 删 TOPIC_TABLE 后这 7 词靠地标 proximity 独占（防 pick_topic 散布到所有 venue/park_plaza POI）。
+_DIANJUN_TOPIC = {
+    '宜昌奥体中心': ('楚超火爆', 'positive'), '卷桥河湿地公园': ('卷桥河露营', 'positive'), '江南URD': ('江南绿肺', 'positive'),
+    '儿童公园': ('口袋公园', 'neutral'), '欧阳修公园': ('口袋公园', 'neutral'),
+    '中南路街心花园': ('口袋公园', 'neutral'), '东辰口袋公园': ('口袋公园', 'neutral'),
+}
 _DIANJUN_TEXT = {
-    '楚超': [           # 奥体楚超足球赛 / 演唱会（T3 五一文旅爆满峰值）
+    '楚超火爆': [       # 奥体楚超足球赛 / 演唱会（T3 五一文旅爆满峰值）
         '奥体楚超赛事现场氛围超燃，球迷全程高歌',
         '看了场楚超德比，进球那一刻全场沸腾',
         '奥体演唱会音效赞，几万人大合唱太震撼',
@@ -235,6 +241,13 @@ _DIANJUN_TEXT = {
         '点军空气比江北好太多，天然氧吧',
         '江南丘陵绿地连片，是城市稀缺的生态资源',
         '住江南最大的幸福就是推窗见绿',
+    ],
+    '口袋公园': [      # 街角口袋公园 / 街心花园（城市小微绿地，期盼与赞美交织）
+        '转角遇到的口袋公园，遛娃歇脚刚好',
+        '街心花园改造后精致多了，附近居民有福',
+        '小微绿地虽小，却是城市温度的体现',
+        '口袋公园让老城区有了呼吸感，赞',
+        '希望多建几个这样的口袋公园，推窗见绿',
     ],
 }
 
@@ -268,10 +281,11 @@ _T2_CONSTRUCTION_TEXT = {
 
 
 def _nearest_landmark(lng, lat):
-    """点军地标 500m 内 → 返回地标 dict（强制 zone/domain/element/name）；无则 None。
-    让矩阵块指向奥体/卷桥河/江南URD（zone + place_name 都对齐）。"""
+    """地标 radius_m 内 → 返回地标 dict（强制 zone/domain/element/name）；无则 None。
+    半径按地标 radius_m（点军 1500 提词频/口袋公园 750 精准落点）。"""
     for lm in _LANDMARKS:
-        if abs(lng - lm['lng']) < _LANDMARK_RADIUS_DEG and abs(lat - lm['lat']) < _LANDMARK_RADIUS_DEG:
+        r = lm.get('radius_m', 500) / 111000.0
+        if abs(lng - lm['lng']) < r and abs(lat - lm['lat']) < r:
             return lm
     return None
 
@@ -432,7 +446,9 @@ def inject_fields(pts, snapshot_id, pool, pl, poigrid, rng, riverside_poly=None,
             lm = _nearest_landmark(p['lng'], p['lat'])   # 点军地标优先（需求5：500m 内强制 zone+poi+地名）
             if lm:
                 poi = {'name': lm['name'], 'domain': lm['domain'], 'element': lm['element'], 'baidu_level1': lm['l1'], 'area': '点军区'}
-                nz = lm['zone']
+                # 仅点军 3 地标强制 nz（矩阵片区对齐）；口袋公园 nz 走几何（防 ermawu 内的口袋公园 POI 把占道强制点 nz 改 park_plaza）
+                if lm['name'] in ('宜昌奥体中心', '卷桥河湿地公园', '江南URD'):
+                    nz = lm['zone']
             domain, element = _seed_domain_element(snapshot_id, at, nz, poi, rng)
             polarity = _pick_polarity_clustered(snapshot_id, at, nz, poi, rng, domain=domain, element=element)
             topic = pick_topic(polarity, nz, element, rng)
@@ -440,17 +456,26 @@ def inject_fields(pts, snapshot_id, pool, pl, poigrid, rng, riverside_poly=None,
             if polarity == 'negative' and (_in_core_commercial(p['lng'], p['lat']) or _in_zhongnan(p['lng'], p['lat'])):
                 topic = '停车难'
             zone = pl.resolve_zone((poi or {}).get('name', ''), (poi or {}).get('area', ''), p['lng'], p['lat'])
+            # 占道停车强制落 ermawu（二马路/大南门占道典型；ermawu 不在占道停车 zones，靠强制）
+            if polarity == 'negative' and ermawu_poly is not None and ermawu_poly.contains(Point(p['lng'], p['lat'])) and rng.random() < 0.5:
+                topic = '占道停车'
+            # 大南门强制落 ermawu positive（提频；大南门/二马路历史街区 positive 文化词，ermawu 在大南门 zones 靠此补命中）
+            elif polarity == 'positive' and ermawu_poly is not None and ermawu_poly.contains(Point(p['lng'], p['lat'])) and rng.random() < 0.3:
+                topic = '大南门'
             if topic == '占道停车':
                 # 占道停车 60%治理/20%设施/20%环境 → 重映射 domain/element + 专属评论（替通用 sample_text）
                 domain, element, text = _zhandao_assign(rng)
             else:
                 text = sample_text(polarity, element, pool, rng, zone=nz, flavor=flavor)
-            # 点军地标正向 → 专属关键词（楚超/卷桥河露营/江南绿肺）+ 专属评论
-            if polarity == 'positive':
-                lm = _nearest_landmark(p['lng'], p['lat'])
-                if lm and lm['name'] in _DIANJUN_TOPIC:
-                    topic = _DIANJUN_TOPIC[lm['name']]
-                    text = rng.choice(_DIANJUN_TEXT[topic])
+            # 地标 proximity → 专属关键词（点军 3 词 positive / 口袋公园 neutral）+ 专属评论
+            # 删 TOPIC_TABLE 后这 7 词靠地标独占，防 pick_topic 散布到所有 venue/park_plaza POI
+            if lm and lm['name'] in _DIANJUN_TOPIC:
+                ltopic, lexp_pol = _DIANJUN_TOPIC[lm['name']]
+                # 口袋公园 neutral 概率门控 0.4（防 4 POI 圈吞尽 park_plaza neutral 致频次爆增）
+                gate = 0.4 if ltopic == '口袋公园' else 1.0
+                if polarity == lexp_pol and rng.random() < gate:
+                    topic = ltopic
+                    text = rng.choice(_DIANJUN_TEXT[ltopic])
             # T2 施工中期连锁反应 → 建设类消极评论（道路开挖/施工噪音/交通不便，浅红基调）
             if snapshot_id == 'T2' and polarity == 'negative' and (domain, element) in _T2_CONSTRUCTION_TEXT:
                 text = rng.choice(_T2_CONSTRUCTION_TEXT[(domain, element)])

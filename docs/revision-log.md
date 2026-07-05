@@ -498,8 +498,8 @@ flowchart TD
 | 网红 | pos | 运营×服务/文化 | 大南门(ermawu) · 二马路历史街区(ermawu) · 夷陵广场CBD(commercial) · CBD万达(commercial) |
 | 夜经济 | pos | 运营×事件 | 滨江公园/沿江大道(riverside) · 西坝不夜岛(riverside) · 奥体(venue) · 二马路(ermawu) |
 | 大南门 | pos | 更新×文化/服务 | 大南门(ermawu) · 二马路历史街区(ermawu) · 解放路步行街(ermawu) |
-| 楚超 | pos | 运营×事件 | 奥体中心(venue) · 奥体周边餐饮(commercial) · 五一广场(commercial) · 滨江公园(riverside) |
-| 卷桥河露营 | pos | 更新×环境 | 卷桥河湿地公园(park_plaza) · 江南URD绿地(residential) · 点军滨江(riverside) · 鄢家河郊野(park_plaza) |
+| 楚超火爆 | pos | 运营×事件 | 奥体中心(venue) · 奥体周边餐饮(commercial) · 五一广场(commercial) · 滨江公园(riverside) |
+| 卷桥河露营 | pos | 规划×环境 | 卷桥河湿地公园(park_plaza) · 江南URD绿地(residential) · 点军滨江(riverside) · 鄢家河郊野(park_plaza) |
 | 江南绿肺 | pos | 规划×环境 | 江南URD(residential) · 卷桥河湿地(park_plaza) · 江南丘陵(park_plaza) · 点军滨江(riverside) |
 | 停车难 | neg | 治理×设施 | 夷陵广场CBD(commercial) · CBD万达(commercial) · 国贸/铁路坝(commercial) · 奥体(venue) · 吾悦广场(commercial) |
 | 占道停车 | neg | 治理×设施/环境 | 夷陵广场CBD(governance×facility) · 万达/国贸(governance×facility) · 二马路/大南门(renewal×environment) · 桃花岭老旧小区(planning×facility) · 滨江人行道(governance×environment) |
@@ -545,6 +545,12 @@ flowchart TD
 |------|--------|----------------|------|
 | 07-05 | 本次 | **① 矩阵引言加粗**（[`panel.js`](frontend/js/panel.js)）：三处矩阵一句话引言的 `"4维度×5要素"`（含引号）包 `<b>`（跟随引言数字同款 brand 蓝粗体）。**② sticky 选中态跨重渲保持 DOM + 选中矩阵→关键词持久高亮**：新模块变量 `_sticky={type,dom/elm/topic/pol}` 记语义选中态；`setOverview` 重渲后 `_reapplyStickyDOM` 重套 `.is-sticky` + `.is-synced-sticky`（关键词卡片持久高亮，mouseout 不清，直到取消选中）。新 `_applySync(entries,selectorOf,sticky)` + `_clearStickySync`；CSS `.is-synced-sticky[-w]` 镜像瞬时类（`[class*="is-synced"]` 统一覆盖 4 变体）。**③ L1 网格无单元深读**（[`main.js`](frontend/js/main.js)）：`isL1Grid` 导出 + cell:selected 早返守卫 + `toggleOvSubtabs` 隐藏 sub-Tab。 | `frontend/js/{panel,main}.js` `frontend/css/panel.css` |
 | 07-05 | 本次 | **④ 2D/3D 切换地图聚合域高亮保持（未决 ⏸）**：根因 [`map.js`](frontend/js/map.js) `setView3D`→`setBasemap`→`map.setStyle()`，其 `transformStyle` 只 carry `lyr-`/`emotion-` 前缀层，**`cell-hl-set-*`（HL 叠加层）被吞**；且 `layers:changed` 重套时 style 在 transition 中 `addLayer` 失败。架构：[`tip-popup.js`](frontend/js/tip-popup.js) 注册 sticky provider（`setStickyProvider`，panel.js 按当前可见分析层重派生 features+key+layer）；`layers:changed` + `style.load` 双兜底重套。**实测仍未生效**——留下会话排查（疑似：① style.load 后 base 层被某处再次 renderLayer 压在 HL 上方；② provider `_currentVisibleAnalysisLayer()` 在 style.load 时返回错层/空；③ `_applyHL` 在 style.load 时机仍异常）。`getLayers` 已 import panel.js。 | `frontend/js/{tip-popup,panel}.js` |
+
+### 5.22 Feature 4 语义表 TOPIC_MATRIX_MAP + sim 锚点修正 + 楚超→楚超火爆（2026-07-05，plan `5a1ba7f-docs-todo-md-a-feature-snug-spindle.md`）
+
+| 日期 | commit | 用户意图 → 落地 | 文件 |
+|------|--------|----------------|------|
+| 07-05 | 本次 | **① Feature 4 矩阵↔关键词改语义表**（任务 A）：[`panel.js`](frontend/js/panel.js) 新 `TOPIC_MATRIX_MAP`（32 词→1-3 domain×element 语义块）覆盖 `_buildTopicMatrixIndex` 数据扫描——根因 sim 给 park_plaza/riverside POI 分 urban_operation 域致「口袋公园→运营×环境」反直觉；矩阵色/数仍走数据（`_matrix4x5`/`_matrixHtml` 不动），仅"哪个词↔哪格"对应关系改查表。新 `_topicBlocks`/`_blockTopics` helper（均权复用 `_applySync`）；`_syncFromMatrix`/`_syncFromKeyword`/`_applyStickySync` 改查表，删 `_buildTopicMatrixIndex`/`_topicIdx` 死路径。3 处争议定稿：停车难=治理×设施+规划×设施、施工扰民=更新×环境、卷桥河露营=规划×环境（候选池 todo L919 同步）。**② sim 锚点修正**（扫描发现 6 词 sim 空间落点与候选池语义错位）：[`performance_config.py`](SCRIPT/performance_config.py) TOPIC_TABLE 删 3 词（楚超/卷桥河露营/江南绿肺→地标 proximity 独占）+ 大南门 zones 去 commercial / 占道·社区·口袋 zones 去 general；[`sim_performance_data.py`](SCRIPT/sim_performance_data.py) `_DIANJUN_TOPIC` 改结构 {name:(topic,polarity)} + 楚超→楚超火爆 + 加 4 口袋公园 POI 映射；`_DIANJUN_TEXT` 加口袋公园评论；[`landmarks_wgs84.json`](SCRIPT/poi_data/landmarks_wgs84.json) 补 4 口袋公园 POI（儿童公园/欧阳修公园/中南路街心花园/东辰口袋公园，坐标估计待校准）+ radius_m（点军 1500/口袋 500）；`_nearest_landmark` 用每 POI radius_m；地标 nz 强制仅点军 3（修 ermawu 内口袋 POI 把占道强制点 nz 改 park_plaza 的 bug）；inject_fields 加占道 ermawu 强制(50%)+大南门 ermawu 强制(30%)+口袋 neutral 概率门控(0.4)。**③ 楚超→楚超火爆 改名**（config/sim/panel.js TOPIC_POLARITY·ORDER·MATRIX_MAP/todo/revision-log 候选池表同步）。**验证**：12 词落点全部修正——楚超火爆 181 全奥体、卷桥河露营 82 全卷桥河湿地、江南绿肺 22 全江南URD、占道 general 消失(180 落二马路+居住)、大南门 3→116、口袋 1731→370；残余：停车难 1547 偏多+seed 落口袋 POI(语义通噪音)、江南绿肺 22(点军低密度)。重跑 12 文件。 | `frontend/js/panel.js` `SCRIPT/{performance_config,sim_performance_data}.py` `SCRIPT/poi_data/landmarks_wgs84.json` `docs/{todo,revision-log}.md` `DATA/performance/*`(12 重生) |
 
 ## 6. 持续追加规则（给 AI）
 
