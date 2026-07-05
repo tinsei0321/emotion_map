@@ -573,6 +573,18 @@ flowchart TD
 
 > 12 词典型格落点全部匹配语义锚点（5.22 锚点修正的验证）。cell ID 供前端单元深读典型格预设——后续实现机制（如配置 cell 中心坐标列表，聚合后按坐标匹配格 feature）待前端任务。堵车 24 点少（traffic 本稀疏）。
 
+### 5.24 典型格大头针方案试做→回退 + 单元深读重新设计定向（07月06日 00:46）
+
+试做「典型格大头针 + 关键词▲徽章 + `_typicalCell` 预设机制 + 关键词数量自适应（累计覆盖 80%）+ 深读诊断句」（新 `frontend/js/typical-cells.js` + panel/main/index/css 7 文件）→ **用户否**（"大头针表达差 / 关键词越改越少"）→ `git checkout HEAD --` 全回退（HEAD 已含全部前会话已提交成果，7 文件还原 + 删 typical-cells.js，工作树净）。**净代码改动 = 0**。
+
+单元深读**重新设计定向**（brainstorming，待实现）：
+- **Q1 内容**：4 板块·结论先行（①结论 `issue_label`+诊断句 / ②证据 本格 4×5 微分布（`n_dom_*`/`n_elem_*`）+五级条+`topic_top` / ③严重度 分位条+桶均值 / ④行动 `suggestion`+4×5 落点标签）。
+- **Q2 引导**（**替大头针**）：图层总览加「推荐深读」清单（12 典型格 `issue_label`+`domain×element`+`pi`+`place`，点行→flyTo+`cell:selected`）+ cluster 内典型格①分级（粗描边+标号，其余浅橙）。
+- **Q3 闭合**：诊断→开方→下一步入口（先做「看同类」同 `domain×element` 跳转）。
+- **数量修复**：`_keywordRank` 截断改 floor 10 + 平坦扩 15（旧"累计覆盖 80%"陡分布时 <10 回归），并入 Q2。
+
+> 承重全保（回退未触碰）：`TOPIC_MATRIX_MAP`/双 sub-Tab/`easeToCell`/`highlightCellSet`/`_attach_4x5_attrs`/`enforceMutualExclusion` 全有效。**勿再做地图大头针/marker 叠加引导（已否）。**
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。
