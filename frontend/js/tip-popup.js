@@ -35,8 +35,40 @@ export function initTipPopup(map) {
   });
   // cell:cleared（关闭/层隐藏/回图层总览）：清单元聚焦
   document.addEventListener('cell:cleared', () => { hideTipPopup(); resetHighlightCellSet(); });
-  document.addEventListener('layers:changed', () => { hideTipPopup(); clearCellHover(); resetHighlightCellSet(); _lastHoverKey = null; });
+  // layers:changed（含 2D/3D 切换）：若 panel.js 有持久 sticky → 让其按当前可见层重新派生 features，
+  // 本层重套 HL（3D 柱体高亮 ⇄ 2D 网格高亮 自动随视角转换）；无 sticky 才清。
+  // 注意：若切换伴随底图变更（setBasemap→setStyle），HL 叠加层（cell-hl-set-*，非 lyr-/emotion- 前缀）
+  // 会被 setStyle 吞掉，且此处 addLayer 处于 style transition 中可能失败 → 由下方 style.load 兜底重套。
+  document.addEventListener('layers:changed', () => {
+    hideTipPopup(); clearCellHover(); _lastHoverKey = null;
+    if (_stickyProvider) {
+      try {
+        const s = _stickyProvider();
+        if (s && s.features && s.features.length && s.layer) {
+          _stickySet = { key: s.key, features: s.features, layer: s.layer };
+          _applyHL(s.features, s.layer, 1.5);
+          return;
+        }
+      } catch (e) { /* style transition 中 addLayer 可能抛，交给 style.load 兜底 */ }
+    }
+    resetHighlightCellSet();
+  });
+  // style.load（setStyle 完成、style 稳定后触发，含 2D↔3D 切底图）：重套 sticky HL。
+  // 这是 2D↔3D 切换保持高亮的关键时机——HL 叠加层被 setStyle 吞后，此处按当前可见层 + 正确 mode 重加。
+  _map.on('style.load', () => {
+    if (!_stickyProvider) return;
+    try {
+      const s = _stickyProvider();
+      if (s && s.features && s.features.length && s.layer) {
+        _stickySet = { key: s.key, features: s.features, layer: s.layer };
+        _applyHL(s.features, s.layer, 1.5);
+      }
+    } catch (e) { /* ignore */ }
+  });
 }
+/** 注册 sticky provider（panel.js 提供：按当前可见分析层重新派生 sticky features + key）。
+ *  layers:changed 时调用 → 实现 sticky 高亮跨 2D/3D 切换保持（柱体高亮 ⇄ 网格高亮）。 */
+export function setStickyProvider(fn) { _stickyProvider = fn; }
 
 /** 取指针 viewport 坐标：优先 originalEvent.clientX/Y，fallback e.point + map 容器 rect。 */
 function evtClientPt(e) {
@@ -150,6 +182,7 @@ function clearCellHover() {
 const HL_SRC = 'cell-hl-set', HL_LAYER = 'cell-hl-set-layer';
 const HL_COLOR = '#ff9000';
 let _stickySet = null;   // {key, features, layer}；click 锁定态
+let _stickyProvider = null;   // panel.js 注册：() => {features, layer, key} | null；layers:changed 时重派生 sticky（跨 2D/3D 保持）
 let _hlLayer = null;     // 当前 HL 叠加对应的注册层（hover/sticky/focus 共用；pickHLCell 配对用）
 let _hlKeys = new Set(); // 当前 HL 叠加格的质心 key 集合（sticky/focus；maybeCellHover 据此跳过同格 hover 防穿模）
 let _hlFeatures = [];    // 当前 HL 叠加的原始 features（未 buffer；pickHLByLngLat 地理 contains 兜底用）

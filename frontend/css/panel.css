@@ -185,14 +185,13 @@
 .ov-kw-num { position: relative; z-index: 1; margin-left: auto; padding-right: 8px; color: #3a3a3a; font-size: 11px; font-weight: 700; white-space: nowrap; flex-shrink: 0; transition: color .12s; }
 .ov-kw-item.is-sticky { box-shadow: 0 0 0 3px #ff9000, 0 2px 6px rgba(0,0,0,.10); }
 /* hover / 同步高亮（Feature 4 矩阵↔关键词联动）：橙黄整卡 + 统一深字（#333）——
-   保梯度（alpha）+ 保统一 + 保可读三者兼得（白字在浅橙上对比不足，故统一深字）。fill 暂隐让整卡统一橙。sticky 橙轮廓独立保留不夺。 */
-.ov-kw-item:hover, .ov-kw-item.is-synced { background: #ff9000; }
-.ov-kw-item:hover .ov-kw-fill, .ov-kw-item.is-synced .ov-kw-fill, .ov-kw-item.is-synced-w .ov-kw-fill { opacity: 0; }
+   保梯度（alpha）+ 保统一 + 保可读三者兼得。fill 暂隐让整卡统一橙。sticky 橙轮廓独立保留不夺。
+   is-synced/is-synced-w=瞬时（hover，mouseout 清）；is-synced-sticky/is-synced-sticky-w=持久（选中矩阵块/关键词后，直到取消选中才清）。 */
+.ov-kw-item:hover, .ov-kw-item.is-synced, .ov-kw-item.is-synced-sticky { background: #ff9000; }
+.ov-kw-item.is-synced-w, .ov-kw-item.is-synced-sticky-w { background: var(--sync-bg, rgba(255,144,0,.5)); }
+.ov-kw-item:hover .ov-kw-fill, .ov-kw-item[class*="is-synced"] .ov-kw-fill { opacity: 0; }
 .ov-kw-item:hover .ov-kw-word, .ov-kw-item:hover .ov-kw-num, .ov-kw-item:hover .ov-kw-locs,
-.ov-kw-item.is-synced .ov-kw-word, .ov-kw-item.is-synced .ov-kw-num, .ov-kw-item.is-synced .ov-kw-locs,
-.ov-kw-item.is-synced-w .ov-kw-word, .ov-kw-item.is-synced-w .ov-kw-num, .ov-kw-item.is-synced-w .ov-kw-locs { color: #333; }
-/* 加权同步 >5（删最浅档后仅中+高）：橙 tint（inline --sync-bg alpha 0.5~1.0 按频次） */
-.ov-kw-item.is-synced-w { background: var(--sync-bg, rgba(255,144,0,.5)); }
+.ov-kw-item[class*="is-synced"] .ov-kw-word, .ov-kw-item[class*="is-synced"] .ov-kw-num, .ov-kw-item[class*="is-synced"] .ov-kw-locs { color: #333; }
 /* 单极性关键词（卡片高度减半 + left 33% 词+数字 + 地点 67% 顿号横排） */
 .ov-kw-sp { height: 18px; }
 .ov-kw-sp .ov-kw-left { position: relative; z-index: 1; flex: 0 0 33%; min-width: 0; display: flex; align-items: center; height: 100%; overflow: hidden; }
@@ -531,8 +530,10 @@
 }
 .ov-matrix .mx-cell:not(.mx-empty):not(.mx-head).is-sticky { box-shadow: inset 0 0 0 4px #ff9000, 0 2px 6px rgba(0,0,0,.22); }   /* sticky 橙黄 4px；提特异性(0,5,0)压过 base :not 高光，否则被覆盖显示不出 */
 /* Feature 4 矩阵↔关键词联动 同步高亮：≤5 全高亮（橙底白字，匹配 hover）；>5 加权（橙 tint，inline --sync-bg alpha，深字保可读）。不夺 sticky。 */
-.ov-matrix .mx-cell:not(.mx-empty):not(.mx-head).is-synced { background: #ff9000 !important; transform: scale(1.08); z-index: 1; box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 2px 6px rgba(0,0,0,.18); }
-.ov-matrix .mx-cell:not(.mx-empty):not(.mx-head).is-synced-w { background: var(--sync-bg, rgba(255,144,0,.5)) !important; }
+.ov-matrix .mx-cell:not(.mx-empty):not(.mx-head).is-synced,
+.ov-matrix .mx-cell:not(.mx-empty):not(.mx-head).is-synced-sticky { background: #ff9000 !important; transform: scale(1.08); z-index: 1; box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 2px 6px rgba(0,0,0,.18); }
+.ov-matrix .mx-cell:not(.mx-empty):not(.mx-head).is-synced-w,
+.ov-matrix .mx-cell:not(.mx-empty):not(.mx-head).is-synced-sticky-w { background: var(--sync-bg, rgba(255,144,0,.5)) !important; }
 
 .ov-issuelist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .ov-issue-item {

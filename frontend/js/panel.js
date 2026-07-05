@@ -2,7 +2,7 @@
 import {
   POLARITY_ORDER, POLARITY_LABEL, emotionColors,
   layerLevel, focusLayer, polarityStats, confidenceStats, CONFIDENCE_RAMP,
-  getLayer, getChildren,
+  getLayer, getChildren, getLayers,
   L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR,
   DOMAIN_BAR_COLOR, ELEMENT_BAR_COLOR, POL_MATRIX_TIERS,
   EMOTION_TYPE_COLORS, EMOTION_TYPE_ORDER,
@@ -11,7 +11,7 @@ import {
 } from './state.js';
 import { geomStats, DOMAIN_LABEL, ELEMENT_LABEL } from './popup.js';
 import { easeBackFromCell, fitBoundsTo } from './map.js';
-import { highlightCellSet, clearHighlightCellSet, toggleStickyHighlight, resetHighlightCellSet } from './tip-popup.js';
+import { highlightCellSet, clearHighlightCellSet, toggleStickyHighlight, resetHighlightCellSet, setStickyProvider } from './tip-popup.js';
 import { loadDistricts, classifyPointsByDistrict, polyCentroid } from './district-stats.js';
 
 let _infoTipInit = false;
@@ -44,6 +44,18 @@ function _initInfoTip() {
 
 export function initPanel() {
   _initInfoTip();
+  // 注册 sticky provider：tip-popup 在 layers:changed（含 2D/3D 切换）时回调 → 按当前可见分析层重派生
+  // sticky features + key，实现柱体高亮 ⇄ 网格高亮 随视角自动转换（跨切换保持）。
+  setStickyProvider(() => {
+    if (!_sticky) return null;
+    const layer = _currentVisibleAnalysisLayer() || _overviewLayer;
+    if (!layer || !layer.fc || !layer.fc.features) return null;
+    const feats = layer.fc.features;
+    if (_sticky.type === 'mx') return { features: _cellsByBucket(feats, _sticky.dom, _sticky.elm), layer, key: 'mx:' + _sticky.dom + '|' + _sticky.elm };
+    if (_sticky.type === 'kw') { const r = _topKeywordCells(feats, _sticky.topic, 10); return { features: r.cells, layer, key: 'kw:' + _sticky.topic }; }
+    if (_sticky.type === 'pol') return { features: _cellsByPolarity(feats, _sticky.pol), layer, key: 'pol:' + _sticky.pol };
+    return null;
+  });
   document.querySelectorAll('.ptab').forEach((tab) => {
     tab.addEventListener('click', () => activateTab(tab.dataset.tab));
   });
@@ -72,33 +84,41 @@ export function initPanel() {
       // 饼图 slice → 锁定/释放该极性主导格
       const sl = e.target.closest('.ov-pie-slice');
       if (sl) {
-        const cells = _cellsByPolarity(_overviewLayer.fc.features, sl.dataset.pol);
-        const locked = toggleStickyHighlight(cells, _overviewLayer, 'pol:' + sl.dataset.pol);
+        const pol = sl.dataset.pol;
+        const cells = _cellsByPolarity(_overviewLayer.fc.features, pol);
+        const locked = toggleStickyHighlight(cells, _overviewLayer, 'pol:' + pol);
+        _clearStickySync();
         const svg = sl.closest('svg');
         if (svg) svg.querySelectorAll('.ov-pie-slice').forEach((s) => s.classList.remove('is-sticky'));
-        if (locked) sl.classList.add('is-sticky');
+        if (locked) { sl.classList.add('is-sticky'); _sticky = { type: 'pol', pol }; }
+        else _sticky = null;
         return;
       }
-      // 矩阵格 → 锁定/释放该 domain×element 桶
+      // 矩阵格 → 锁定/释放该 domain×element 桶（选中后关联关键词卡片持久高亮，直到取消）
       const mx = e.target.closest('.mx-cell[data-dom]');
       if (mx) {
-        const cells = _cellsByBucket(_overviewLayer.fc.features, mx.dataset.dom, mx.dataset.elm);
-        const locked = toggleStickyHighlight(cells, _overviewLayer, 'mx:' + mx.dataset.dom + '|' + mx.dataset.elm);
+        const dom = mx.dataset.dom, elm = mx.dataset.elm;
+        const cells = _cellsByBucket(_overviewLayer.fc.features, dom, elm);
+        const locked = toggleStickyHighlight(cells, _overviewLayer, 'mx:' + dom + '|' + elm);
+        _clearStickySync();
         const mtx = mx.closest('.ov-matrix');
         if (mtx) mtx.querySelectorAll('.mx-cell.is-sticky').forEach((c) => c.classList.remove('is-sticky'));
-        if (locked) mx.classList.add('is-sticky');
+        if (locked) { mx.classList.add('is-sticky'); _sticky = { type: 'mx', dom, elm }; _applyStickySync('mx', dom, elm); }
+        else _sticky = null;
         return;
       }
       // 关键词 → top-N 最强聚集格 sticky + fitBounds（再点释放）
       const kw = e.target.closest('.ov-kw-item');
       if (kw) {
-        const r = _topKeywordCells(_overviewLayer.fc.features, kw.dataset.topic, 10);
+        const topic = kw.dataset.topic;
+        const r = _topKeywordCells(_overviewLayer.fc.features, topic, 10);
         if (r.cells.length) {
-          const key = 'kw:' + kw.dataset.topic;
-          const locked = toggleStickyHighlight(r.cells, _overviewLayer, key);
+          const locked = toggleStickyHighlight(r.cells, _overviewLayer, 'kw:' + topic);
+          _clearStickySync();
           const wrap = kw.closest('.ov-keywords');
           if (wrap) wrap.querySelectorAll('.ov-kw-item.is-sticky').forEach((x) => x.classList.remove('is-sticky'));
-          if (locked) { kw.classList.add('is-sticky'); if (r.bb) fitBoundsTo(r.bb, 120, 15); }
+          if (locked) { kw.classList.add('is-sticky'); _sticky = { type: 'kw', topic }; _applyStickySync('kw', topic); if (r.bb) fitBoundsTo(r.bb, 120, 15); }
+          else _sticky = null;
         }
         return;
       }
@@ -115,6 +135,8 @@ export function initPanel() {
     document.addEventListener('cell:selected', () => {
       pane.querySelectorAll('.is-sticky').forEach((el) => el.classList.remove('is-sticky'));
       _clearSync();
+      _clearStickySync();
+      _sticky = null;
     });
   }
 }
@@ -152,6 +174,8 @@ export function setOverview(layer) {
   _lastOverviewLayerId = focus.id;
   // L1 点层（热度分布）→ 异步填数据总览（area_tag 计数 + per-组团 PIP 缓存）；L1 网格层不跑 PIP
   if (!isAnalysisLayer(focus) && lv === 'L1') _fillL1DataOverview(focus);
+  // 选中态跨重渲保持 DOM .is-sticky + 持久联动（地图 HL 由 tip-popup sticky provider 在 layers:changed 时重套）
+  if (_sticky) _reapplyStickyDOM(focus);
 }
 
 /** 双层 sub-Tab 切换：name='layer'|'cell'。
@@ -584,7 +608,7 @@ function _singlePolBody(feats, ui) {
     ? `<div class="ov-count-line">偏<b>${polLabel}</b>的情绪点数为 <b>${total}</b> 个${yPct != null ? `，占城市情绪总量的 <b>${yPct}%</b>` : ''}</div>` : '';
   // 极性总览只留总结一句（4 领域 + 5 要素统计已并入归因矩阵行/列标签）。
   return `${countLine ? `<div class="ov-tier-sub">极性总览</div>${countLine}` : ''}
-    <div class="ov-tier-sub">归因矩阵${_unit('个单元')}<span class="info-i" data-tip="单极性矩阵：颜色按本矩阵数量三级（深紫最多 → 浅紫最少），强调该极性问题集中在哪些领域×要素。悬停/点击 → 地图同步。行/列标签下数字 = 该领域/要素单元总数。">i</span></div>${_matrixIntro(`通过空间聚合分析，共生成 <b>${feats.length}</b> 个${polLabel}标准单元（${ui.cellSize || 400}m），在"4维度×5要素"归因统计中，结果如下（数字代表该维度的单元数量）：`)}${_singlePolMatrixHtml(cell)}
+    <div class="ov-tier-sub">归因矩阵${_unit('个单元')}<span class="info-i" data-tip="单极性矩阵：颜色按本矩阵数量三级（深紫最多 → 浅紫最少），强调该极性问题集中在哪些领域×要素。悬停/点击 → 地图同步。行/列标签下数字 = 该领域/要素单元总数。">i</span></div>${_matrixIntro(`通过空间聚合分析，共生成 <b>${feats.length}</b> 个${polLabel}标准单元（${ui.cellSize || 400}m），在<b>"4维度×5要素"</b>归因统计中，结果如下（数字代表该维度的单元数量）：`)}${_singlePolMatrixHtml(cell)}
     <div class="ov-tier-sub">关键词 Top10<span class="info-i" data-tip="该极性高频城市关键词（左 1/3：词+次数）及其代表性地点 Top5（右 2/3）。点击词 → 定位最强聚集。">i</span></div>${_singlePolKeywordsHtml(feats, pol)}`;
 }
 
@@ -611,7 +635,7 @@ function _l1AreaTagCount(feats) {
 function _l1GridBody(feats, ui, layer) {
   const cell = _matrix4x5(feats);
   const cs = (ui && ui.cellSize) || 400;
-  const intro = _matrixIntro(`通过空间聚合分析，共生成 <b>${feats.length}</b> 个标准单元（${cs}m），"4维度×5要素"归因统计如下（数字代表该维度的单元数量）：`);
+  const intro = _matrixIntro(`通过空间聚合分析，共生成 <b>${feats.length}</b> 个标准单元（${cs}m），<b>"4维度×5要素"</b>归因统计如下（数字代表该维度的单元数量）：`);
   return `<div class="ov-tier-sub">归因矩阵${_unit('个单元')}<span class="info-i" data-tip="L1 网格 4 大治理领域 × 5 要素归因矩阵。上方 4 领域条 = 各领域单元数及占比（L1 不并入矩阵，独立显示）。悬停/点击矩阵格 → 地图同步。数据总览见 L1·热度分布图层。">i</span></div>
     ${intro}
     <div class="ov-overview-row ov-ov-dom-row"><div class="ov-domain-chart">${_l1DomainBarsHtml(feats)}</div></div>
@@ -803,16 +827,19 @@ function _topicIdx(layer) {
   return layer._topicIdx;
 }
 /** 应用同步高亮：entries=[[key,count],...]（已降序）；selectorOf(key)→DOM selector。
- *  ≤5 全高亮（.is-synced）；>5 删最浅档（drop 底部 1/3 长尾，只显中+高档有意义部分）+ alpha 梯度（.is-synced-w）。
+ *  sticky=true 用持久类（.is-synced-sticky[-w]，mouseout 不清，仅 sticky 取消时清）。
+ *  ≤5 全高亮；>5 删最浅档（drop 底部 1/3 长尾，只显中+高档）+ alpha 梯度。
  *  地图聚合域高亮（highlightCellSet）不受此影响——仍全部网格/柱体。 */
-function _applySync(entries, selectorOf) {
+function _applySync(entries, selectorOf, sticky) {
   const pane = document.getElementById('overview-pane');
   if (!pane || !entries.length) return;
+  const cls = sticky ? 'is-synced-sticky' : 'is-synced';
+  const clsW = sticky ? 'is-synced-sticky-w' : 'is-synced-w';
   const n = entries.length;
   if (n <= SYNC_FULL_MAX) {
     for (const [key] of entries) {
       const el = pane.querySelector(selectorOf(key));
-      if (el) el.classList.add('is-synced');
+      if (el) el.classList.add(cls);
     }
     return;
   }
@@ -825,10 +852,10 @@ function _applySync(entries, selectorOf) {
     if (!el) continue;
     const alpha = 0.5 + 0.5 * (count / maxC);   // 频次越高 alpha 越大（主峰亮、长尾淡）
     el.style.setProperty('--sync-bg', `rgba(255,144,0,${alpha.toFixed(2)})`);
-    el.classList.add('is-synced-w');
+    el.classList.add(clsW);
   }
 }
-/** 清所有同步高亮（mouseover leave / 切层 / cell:selected 时）。 */
+/** 清瞬时同步高亮（mouseover leave 时；不动 sticky 持久类）。 */
 function _clearSync() {
   const pane = document.getElementById('overview-pane');
   if (!pane) return;
@@ -836,6 +863,58 @@ function _clearSync() {
     el.classList.remove('is-synced', 'is-synced-w');
     el.style.removeProperty('--sync-bg');
   });
+}
+/** 清持久同步高亮（sticky 取消 / 换选中时）。 */
+function _clearStickySync() {
+  const pane = document.getElementById('overview-pane');
+  if (!pane) return;
+  pane.querySelectorAll('.is-synced-sticky, .is-synced-sticky-w').forEach((el) => {
+    el.classList.remove('is-synced-sticky', 'is-synced-sticky-w');
+    el.style.removeProperty('--sync-bg');
+  });
+}
+
+// 选中态（sticky）语义记录：跨 2D/3D 切换 setOverview 重渲后，由 _reapplySticky 重新套上 DOM/地图/持久联动。
+let _sticky = null;   // {type:'mx'|'kw'|'pol', dom, elm, topic, pol} 或 null
+
+/** 选中矩阵块/关键词 → 给关联方加持久同步高亮（新 feature：选中矩阵块后关键词卡片持久高亮，直到取消选中）。 */
+function _applyStickySync(type, a, b) {
+  const idx = _topicIdx(_overviewLayer);
+  if (type === 'mx') {
+    const topics = idx.blockToTopics[a + '|' + b];
+    if (topics) _applySync(Object.entries(topics).sort((x, y) => y[1] - x[1]), (t) => `.ov-kw-item[data-topic="${t}"]`, true);
+  } else if (type === 'kw') {
+    const blocks = idx.topicToBlocks[a];
+    if (blocks) _applySync(Object.entries(blocks).sort((x, y) => y[1] - x[1]), (k) => {
+      const [d, e] = k.split('|'); return `.mx-cell[data-dom="${d}"][data-elm="${e}"]`;
+    }, true);
+  }
+}
+
+/** 当前可见的分析层（2D/3D 切换后找新 mode 层；不依赖 _overviewLayer，避监听器顺序）。 */
+function _currentVisibleAnalysisLayer() {
+  for (const l of getLayers()) {
+    if (l && l.visible && l.kind === 'polygon' && isAnalysisLayer(l)) return l;
+  }
+  return null;
+}
+
+/** setOverview 重渲后：按 _sticky 重新套 DOM .is-sticky + 持久联动（关键词卡片）。
+ *  地图聚合域 HL 不在此处——交由 tip-popup 的 sticky provider（layers:changed 时按可见层重派生）。 */
+function _reapplyStickyDOM(layer) {
+  if (!_sticky || !isAnalysisLayer(layer)) return;
+  if (_sticky.type === 'mx') {
+    const el = document.querySelector(`.mx-cell[data-dom="${_sticky.dom}"][data-elm="${_sticky.elm}"]`);
+    if (el) el.classList.add('is-sticky');
+    _applyStickySync('mx', _sticky.dom, _sticky.elm);
+  } else if (_sticky.type === 'kw') {
+    const el = document.querySelector(`.ov-kw-item[data-topic="${_sticky.topic}"]`);
+    if (el) el.classList.add('is-sticky');
+    _applyStickySync('kw', _sticky.topic);
+  } else if (_sticky.type === 'pol') {
+    const el = document.querySelector(`.ov-pie-slice[data-pol="${_sticky.pol}"]`);
+    if (el) el.classList.add('is-sticky');
+  }
 }
 /** hover 矩阵块 → 高亮该块下所有关键词卡片（按 blockToTopics）。 */
 function _syncFromMatrix(dom, elm) {
@@ -946,7 +1025,7 @@ function tier3(layer, lv) {
            ${countLine}
            <div class="ov-overview-row ov-ov-pie-row">${pieHtml}</div>` : '';
       body = `${overviewRow}
-        <div class="ov-tier-sub">归因矩阵${_unit('个单元')}<span class="info-i" data-tip="4 大治理领域 × 5 要素 的情绪归因矩阵。悬停/点击某格 → 地图同步高亮该领域×要素交集的网格。行/列标签下数字 = 该领域/要素单元总数。">i</span></div>${_matrixIntro(`通过空间聚合分析，共生成 <b>${feats.length}</b> 个标准单元（${ui.cellSize || 400}m），"4维度×5要素"归因统计如下（数字代表该维度的单元数量，颜色代表该维度的极性倾向）：`)}${_matrixHtml(cell)}
+        <div class="ov-tier-sub">归因矩阵${_unit('个单元')}<span class="info-i" data-tip="4 大治理领域 × 5 要素 的情绪归因矩阵。悬停/点击某格 → 地图同步高亮该领域×要素交集的网格。行/列标签下数字 = 该领域/要素单元总数。">i</span></div>${_matrixIntro(`通过空间聚合分析，共生成 <b>${feats.length}</b> 个标准单元（${ui.cellSize || 400}m），<b>"4维度×5要素"</b>归因统计如下（数字代表该维度的单元数量，颜色代表该维度的极性倾向）：`)}${_matrixHtml(cell)}
         <div class="ov-tier-sub">关键词Top10<span class="info-i" data-tip="按各要素正/中/负情绪点数排名的高频城市关键词。点击某词 → 地图定位并高亮其最强聚集的若干柱体。">i</span></div>${_keywordsHtml(feats)}`;
     }
   } else if (layer.kind === 'heatmap') {
