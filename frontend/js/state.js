@@ -299,6 +299,7 @@ export const CATEGORY_LABEL = { heatmap: '热力图', l2: 'L2 · 情绪地图 DA
 let _groupOrder = ['l0', 'l1', 'l2', 'heatmap', 'grid', 'terrain', 'buffer', 'range', 'other'];
 const _groupCollapse = new Set();                                    // collapsed category set
 const _groupFold = new Set();                                        // folded real-group set（真 L2 组单独折叠，按 group id；区别于 category 级 _groupCollapse）
+const _frozenCats = new Set();                                       // 用户手动 within-category 拖拽过的 category → applyGroupOrder 跳过其组内排序（保手动序）；新层加入时解冻让其归位
 
 // ── L2 palettes (polarity split: Positive green / Negative orange-red / Neutral moody blue) ──
 export const L2_POSITIVE = { 'Very Positive': '#86E61C', 'Positive': '#3DBA9E' };   // 鲜艳荧光绿→蓝绿(teal)
@@ -696,6 +697,7 @@ export function addLayer({ name, kind, fc, needsAnalysis = false, colorMode, pai
     crsInfo: (fc && fc.__crs) || undefined,   // import 标注（投影→WGS84 或 WGS84）；分析层无 → panel 默认 WGS84
   };
   _layers.set(id, layer);
+  _frozenCats.delete(categoryOf(layer));   // 新层加入 → 解冻其 category，让 applyGroupOrder 按规则给新层归位
   if (parentId) {
     const parent = _layers.get(parentId);
     if (parent && parent.kind === 'group') parent.children.push(id);
@@ -813,6 +815,14 @@ export function layerDisplayColor(layer) {
   return '#a3a3a3';   // L0 grey
 }
 
+/** L 徽章配色：网格/地形层行标签 "L1·G"/"L2·E" 中 L 前缀色 = 该 level 情绪点层标签色。
+ *  L1=CONFIDENCE 中段橙（L1 治理置信度色板）；L2=L2 Positive teal（情绪点代表色）。 */
+export function levelPointColor(lv) {
+  if (lv === 'L1') return '#FF9800';
+  if (lv === 'L2') return '#3DBA9D';
+  return '#9aa0a6';
+}
+
 // ── Selection ──────────────────────────────────────────────────────────────
 let _selectedLayerId = null;
 export function selectLayer(id) { _selectedLayerId = id; }
@@ -858,6 +868,8 @@ export function categoryOf(l) {
 }
 
 export function getGroupOrder() { return _groupOrder.slice(); }
+/** 标记某 category 为「手动 within-category 重排过」——applyGroupOrder 不再重排其组内顺序（保留用户拖拽）。 */
+export function freezeCategoryOrder(cat) { if (cat) _frozenCats.add(cat); }
 export function isCollapsed(cat) { return _groupCollapse.has(cat); }
 export function toggleCollapsed(cat) {
   if (_groupCollapse.has(cat)) _groupCollapse.delete(cat);
@@ -885,27 +897,31 @@ function _layerTimeRank(l) {
   const t = l.timeTag || deriveTimeTag(l.fc) || _layerTimeFromName(l.name);
   return t === 'T1' ? 0 : t === 'T2' ? 1 : t === 'T3' ? 2 : 3;
 }
-/** 层类型序：heatmap L1 综合(0)<L2 极性(1)；grid/terrain L1 热度(0)<L2 综合(1)<L2 极性(2)；其余=0。 */
-function _layerTypeRank(l) {
+/** 层级序（主键）：L1=0 < L2=1。L 数据优先于 T 的核心排序键（需求：L 最优先，其次 T）。
+ *  _ui.level 优先；无 _ui（点/面导入层）按 colorMode 兜底（confidence=L1, l2-*=L2）。 */
+function _layerLevelRank(l) {
   const ui = l && l.paint && l.paint._ui;
-  if (!ui) return 0;
-  if (l.kind === 'heatmap') return ui.level === 'L2' ? 1 : 0;
-  if (ui.tool === 'grid' || ui.tool === 'terrain') {
-    if (ui.level === 'L1') return 0;
-    if (ui.level === 'L2' && ui.polarity === 'overall') return 1;
-    if (ui.level === 'L2' && ui.polarity === 'positive') return 2;   // 需求3：网格聚合内 T1→T2→T3 前提下 积极→中性→消极
-    if (ui.level === 'L2' && ui.polarity === 'neutral') return 3;
-    if (ui.level === 'L2') return 4;   // negative
-    return 0;
-  }
+  if (ui && ui.level) return ui.level === 'L1' ? 0 : 1;
+  if (l && l.colorMode === 'confidence') return 0;
+  if (l && typeof l.colorMode === 'string' && l.colorMode.indexOf('l2-') === 0) return 1;
   return 0;
 }
+/** 极性序（末键，仅 L2 grid/heatmap 有意义）：overall=0 < positive=1 < neutral=2 < negative=3。 */
+function _layerPolarityRank(l) {
+  const pol = l && l.paint && l.paint._ui && l.paint._ui.polarity;
+  if (pol === 'positive') return 1;
+  if (pol === 'neutral') return 2;
+  if (pol === 'negative') return 3;
+  return 0;   // overall / 无极性
+}
 
-/** Normalize _layers order to match _groupOrder（组内 timeRank × typeRank 稳定排序；children 留 parent 后）。
- *  Idempotent — 返回 false 表示已就序（调用方可跳过 z-sync，但 renderLayerList 现无条件 restackZ）。 */
+/** Normalize _layers order to match _groupOrder（组内 levelRank × timeRank × polarityRank 稳定排序；children 留 parent 后）。
+ *  Idempotent — 返回 false 表示已就序（调用方可跳过 z-sync，但 renderLayerList 现无条件 restackZ）。
+ *  _frozenCats 中的 category 跳过组内排序（保留用户手动拖拽序），仅遵守 category 间 _groupOrder。 */
 export function applyGroupOrder() {
   const keys = Array.from(_layers.keys());
-  // 按类别分桶 + 桶内稳定排序 (timeRank, typeRank)；L2 group 与其 children 同 timeRank → 稳定排序保连续。
+  // 按类别分桶；桶内稳定排序 (levelRank, timeRank, polarityRank)——L 主、T 次、极性末。
+  // L2 group 与其 children 同 level/timeRank → 稳定排序保连续。
   const byCat = {};
   for (const k of keys) {
     const l = _layers.get(k);
@@ -913,12 +929,14 @@ export function applyGroupOrder() {
     (byCat[c] = byCat[c] || []).push(k);
   }
   for (const c of Object.keys(byCat)) {
+    if (_frozenCats.has(c)) continue;   // 用户手动重排过 → 保留现状不覆盖
     byCat[c].sort((a, b) => {
       const la = _layers.get(a), lb = _layers.get(b);
+      const lvA = _layerLevelRank(la), lvB = _layerLevelRank(lb);
+      if (lvA !== lvB) return lvA - lvB;                          // L1 < L2 主键
       const ta = _layerTimeRank(la), tb = _layerTimeRank(lb);
-      if (ta !== tb) return ta - tb;
-      const ya = _layerTypeRank(la), yb = _layerTypeRank(lb);
-      return ya - yb;
+      if (ta !== tb) return ta - tb;                              // T1<T2<T3 次键
+      return _layerPolarityRank(la) - _layerPolarityRank(lb);     // 综合<积极<中性<消极 末键
     });
   }
   const desired = [];

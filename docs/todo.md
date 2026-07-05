@@ -5,6 +5,32 @@
 
 ---
 
+## 📅 2026-07-05（周六）
+
+### ✅ 已完成（plan `revision-log-5-19-misty-map.md`，Phase 1-3；待 F5 验）
+- **P1 图层 L 优先排序 + L 徽章 + 手动拖拽保留**：
+  - **排序键**（[`state.js`](frontend/js/state.js)）：`_layerTypeRank` 拆 `_layerLevelRank`（L1=0<L2=1，主键）+ `_layerPolarityRank`（overall<积极<中性<消极，末键）；`applyGroupOrder` 组内排序改 `(levelRank, timeRank, polarityRank)`——**L 数据优先于 T**（原 timeRank 压过 L 的 bug 修）。terrain 同理。
+  - **手动拖拽保留**：新增 `_frozenCats` Set + `freezeCategoryOrder(cat)`；within-category 拖拽落定（[`sidebar.js`](frontend/js/sidebar.js) layer-row + 同 cat 多 group 两路径）→ 标 frozen；`applyGroupOrder` 跳过 frozen category 的组内排序（保用户手动序）；`addLayer` 解冻新层 category（让其按规则归位）。`renderLayerList` 仍无条件 `restackZ`（z-sync 与顺序解耦）。
+  - **L 徽章**（sidebar.js `hintChip`）：grid/terrain 升 `"L1·G"`/`"L2·G"`/`"L1·E"`/`"L2·E"`（L=level，字母=工具类型）；L 前缀色 = 新增 [`levelPointColor`](frontend/js/state.js)（L1=`#FF9800` CONFIDENCE 橙、L2=`#3DBA9D` Positive teal = 情绪点层标签色）。
+- **P2A L2 综合 Overview**（[`panel.js`](frontend/js/panel.js) tier3 综合分支 + [`panel.css`](frontend/css/panel.css)）：题头加 `（单位：个点）`（新 `.ov-unit` 细体同题头色）；countLine「共 N **条**」→「共 N **个**」（量词统一=情绪点）；**删 4 领域柱**（并入矩阵行标签）；饼图 1.8×（`.ov-pie svg` 104→187px）+ 图例字号 11→13px/dot 9→10px；归因矩阵题头加 `（单位：个单元）`；矩阵块圆角正方形（`border-radius` 3→8px 宽度不变）；行标签下加 domain 单元计数 `(N)`（新 `.mx-rowcount` 11px 粗体、`.mx-rowlabel` 改 column 居中）。新增 `_domainTotals`/`_unit` 辅助。
+- **P2B L2 极性 Overview**（panel.js `_singlePolBody` + `_singlePolMatrixHtml`）：**极性总览只留 countLine 一句**（删 `ov-ov-bars-row` 4 领域+5 要素横条，已并入矩阵）；归因矩阵题头加 `（单位：个单元）`；块圆角；行标签加 domain `(N)` + **列头加 element `(N)`**（`.mx-head` 改 column 居中）。新增 `_elementTotals`。
+- **P3 悬停橙黄**（panel.css）：`.mx-cell:hover` 加 `background:#ff9000 !important; color:#fff`（覆写内联 `_piColor`，浮起 scale 保留，sticky 选中态橙轮廓不变）；`.ov-dbar:hover` 加 `translateY(-1px)` 浮起 + `.ov-dbar-fill` `background:#ff9000 !important`。
+- 验证：3 JS `node --check` 全过；**待 F5 验**（图层默认序 L1 在前/L2 在后、行标签 L1·G/L2·E 配色、手动拖后不被覆盖；L2 综合/极性 题头单位/量词/饼图 1.8×/矩阵圆角+行标(N)；hover 橙黄）。
+
+### ✅ Round 2 + 小修（F5 反馈 5 项 + commit 前小修；待 F5 验）
+- **P2C L1 网格/点层 Overview 分家 + 卡顿修复**：根因 `_fillL1Pies` PIP 每次 setOverview 重跑（数万点×9多边形阻塞主线程，2D/3D 卡）→ L1 网格删数据总览（仅矩阵 + 引言 + 4 维柱带占比 + 灰线 + 阴影，**零 PIP**）；L1 点层（热度分布）接管数据总览（双段总结 + 紫饼图 187px + 8 组团横条）；per-组团 PIP 缓存 `layer._tuanCls` + bbox 预筛。
+- **中心城区计数改 area_tag**（[`panel.js`](frontend/js/panel.js) `_l1AreaTagCount`）：core+central_outer=15997 ✓（验 T2 全域 32524 / 中心城区 15997 / 占比 49%）、零 PIP、随数据公式化；产出率按 T ∈ 10/11/12%、L0=round(L1/rate) 倒推。
+- **8 组团**（[`district-stats.js`](frontend/js/district-stats.js) `_TUAN_MAP`）：西陵/伍家岗/点军/小溪塔/高新区·生物产业园(生物产业园+龙泉绿心 合并)/龙泉/猇亭/白洋·顾家店。
+- **P4 联动打磨**：`_applySync` >5 删最浅档（drop 底 1/3，仅中+高 alpha 0.5~1.0）；字色统一深字 #333（删白字混色）；地图聚合域高亮不变。
+- **小修**：L1 网格无单元深读 → 隐藏 sub-Tab + cell:selected 守卫（[`main.js`](frontend/js/main.js) `isL1Grid`）；归因矩阵三处标题下加一句话引言（`_matrixIntro`）；L2 综合矩阵补 5 要素列头 `(N)`；矩阵块加阴影。
+- 验证：JS `node --check` 全过；**待 F5 验**（L1 点层数据总览 + 网格不卡 + 联动深字 + 矩阵引言）。
+
+### ⬜ 下一步
+- **P5 单元深读**：12 词典型聚合域推荐（见 plan）待用户勾选 → 数据扫描给 cell ID 定稿。
+- **Feature 4 映射逻辑**：城市运营×环境→口袋公园/噪音/滨江步道 等怪关联，开新会话讨论 topic↔domain×element 映射（数据驱动 + TOPIC_TABLE zone→domain 推导）。
+
+---
+
 ## 📅 2026-07-03（周五）
 
 ### ✅ 已完成

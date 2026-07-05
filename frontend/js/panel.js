@@ -12,6 +12,7 @@ import {
 import { geomStats, DOMAIN_LABEL, ELEMENT_LABEL } from './popup.js';
 import { easeBackFromCell, fitBoundsTo } from './map.js';
 import { highlightCellSet, clearHighlightCellSet, toggleStickyHighlight, resetHighlightCellSet } from './tip-popup.js';
+import { loadDistricts, classifyPointsByDistrict, polyCentroid } from './district-stats.js';
 
 let _infoTipInit = false;
 /** "i" 浮动 tooltip 单例（position:fixed，append body）—— 浮于全屏最上层，不被右栏 overflow 裁切（修任务1 bug）。
@@ -57,14 +58,14 @@ export function initPanel() {
     pane.addEventListener('mouseover', (e) => {
       if (!_overviewLayer) return;
       const sl = e.target.closest('.ov-pie-slice');
-      if (sl) { highlightCellSet(_cellsByPolarity(_overviewLayer.fc.features, sl.dataset.pol), _overviewLayer); return; }
+      if (sl) { _clearSync(); highlightCellSet(_cellsByPolarity(_overviewLayer.fc.features, sl.dataset.pol), _overviewLayer); return; }
       const mx = e.target.closest('.mx-cell[data-dom]');
-      if (mx) { highlightCellSet(_cellsByBucket(_overviewLayer.fc.features, mx.dataset.dom, mx.dataset.elm), _overviewLayer); return; }
+      if (mx) { _clearSync(); highlightCellSet(_cellsByBucket(_overviewLayer.fc.features, mx.dataset.dom, mx.dataset.elm), _overviewLayer); _syncFromMatrix(mx.dataset.dom, mx.dataset.elm); return; }
       const kw = e.target.closest('.ov-kw-item');
-      if (kw) { const r = _topKeywordCells(_overviewLayer.fc.features, kw.dataset.topic, 10); if (r.cells.length) highlightCellSet(r.cells, _overviewLayer); return; }
+      if (kw) { _clearSync(); const r = _topKeywordCells(_overviewLayer.fc.features, kw.dataset.topic, 10); if (r.cells.length) highlightCellSet(r.cells, _overviewLayer); _syncFromKeyword(kw.dataset.topic); return; }
     });
     pane.addEventListener('mouseout', (e) => {
-      if (e.target.closest('.ov-pie-slice') || e.target.closest('.mx-cell[data-dom]') || e.target.closest('.ov-kw-item')) clearHighlightCellSet();
+      if (e.target.closest('.ov-pie-slice') || e.target.closest('.mx-cell[data-dom]') || e.target.closest('.ov-kw-item')) { clearHighlightCellSet(); _clearSync(); }
     });
     pane.addEventListener('click', (e) => {
       if (!_overviewLayer) return;
@@ -113,6 +114,7 @@ export function initPanel() {
     // 进入单元深读 → 同步取消饼图/矩阵/关键词的 sticky 选中态（任务9：上一层 sticky 同步取消）
     document.addEventListener('cell:selected', () => {
       pane.querySelectorAll('.is-sticky').forEach((el) => el.classList.remove('is-sticky'));
+      _clearSync();
     });
   }
 }
@@ -145,9 +147,11 @@ export function setOverview(layer) {
   _overviewLayer = focus;
   const lv = layerLevel(focus);
   pane.innerHTML = tier1(focus, lv) + tier2(focus, lv) + tier3(focus, lv);
-  toggleOvSubtabs(isAnalysisLayer(focus));
+  toggleOvSubtabs(isAnalysisLayer(focus) && !isL1Grid((focus.paint && focus.paint._ui) || {}));   // L1 网格无单元深读 → 隐藏 sub-Tab
   if (focus.id !== _lastOverviewLayerId) activateOvTab('layer');   // 换层 → 回图层总览 + zoom out（若此前在单元深读）
   _lastOverviewLayerId = focus.id;
+  // L1 点层（热度分布）→ 异步填数据总览（area_tag 计数 + per-组团 PIP 缓存）；L1 网格层不跑 PIP
+  if (!isAnalysisLayer(focus) && lv === 'L1') _fillL1DataOverview(focus);
 }
 
 /** 双层 sub-Tab 切换：name='layer'|'cell'。
@@ -302,6 +306,39 @@ function _matrix4x5(feats) {
   }
   return cell;
 }
+/** 矩阵行（domain）单元总计：{domain: n}（行标签下 "(N)" 用）。 */
+function _domainTotals(cell) {
+  const m = {};
+  for (const d of DOMAIN_ORDER) m[d] = 0;
+  for (const k in cell) { const d = k.split('|')[0]; m[d] = (m[d] || 0) + (cell[k].n || 0); }
+  return m;
+}
+/** 矩阵列（element）单元总计：{element: n}（列头下 "(N)" 用，单极性矩阵）。 */
+function _elementTotals(cell) {
+  const m = {};
+  for (const e of ELEMENT_ORDER) m[e] = 0;
+  for (const k in cell) { const e = k.split('|')[1]; m[e] = (m[e] || 0) + (cell[k].n || 0); }
+  return m;
+}
+/** 板块题头右侧单位标注（细体、同题头色）。 */
+const _unit = (t) => `<span class="ov-unit">（单位：${t}）</span>`;
+/** 归因矩阵标题下的一句话总结（解释这部分数据在干嘛，避免观众一头雾水）。 */
+const _matrixIntro = (html) => `<div class="ov-matrix-intro">${html}</div>`;
+/** L1 网格 4 维度数据条（带占比%）：复用 _barsHtml 结构 + 行尾占比，用于 L1 网格矩阵上方。 */
+function _l1DomainBarsHtml(feats) {
+  const m = {};
+  for (const f of feats) { const d = (f.properties || {}).domain_top; if (d) m[d] = (m[d] || 0) + 1; }
+  const entries = DOMAIN_ORDER.filter((d) => m[d]).map((d) => [d, m[d]]);
+  if (!entries.length) return `<div class="ov-placeholder muted">无治理领域数据</div>`;
+  const total = feats.length || 1;
+  const max = Math.max(...entries.map((x) => x[1]));
+  return entries.map(([d, n]) => {
+    const pct = Math.round(n / total * 100);
+    return `<div class="ov-dbar"><span class="ov-dbar-label">${DOMAIN_LABEL[d] || d}</span>
+      <span class="ov-dbar-track"><span class="ov-dbar-fill" style="width:${(n / max) * 100}%;background:${DOMAIN_BAR_COLOR}">${n}</span></span>
+      <span class="ov-dbar-pct">${pct}%</span></div>`;
+  }).join('');
+}
 
 /** Top N 问题聚集 feature（按 |polarity_index| 降序，过滤无极性者）。 */
 function _topIssueFeatures(feats, n) {
@@ -320,9 +357,14 @@ function _cellsByBucket(feats, d, e, limit = 30) {
   }).filter((x) => x.sc > 0).sort((a, b) => b.sc - a.sc).slice(0, limit).map((x) => x.f);
 }
 
-function _matrixHtml(cell) {
+function _matrixHtml(cell, withTotals = true) {
+  const domTotals = _domainTotals(cell);
+  const elmTotals = _elementTotals(cell);
   const head = `<div class="mx-cell mx-head"></div>` +
-    ELEMENT_ORDER.map((e) => `<div class="mx-cell mx-head" title="${ELEMENT_LABEL[e] || e}">${(ELEMENT_LABEL[e] || e).slice(0, 2)}</div>`).join('');
+    ELEMENT_ORDER.map((e) => {
+      const lbl = (ELEMENT_LABEL[e] || e).slice(0, 2);
+      return `<div class="mx-cell mx-head" title="${ELEMENT_LABEL[e] || e}">${lbl}${withTotals ? `<span class="mx-rowcount">(${elmTotals[e]})</span>` : ''}</div>`;
+    }).join('');
   const rows = DOMAIN_ORDER.map((d) => {
     const cells = ELEMENT_ORDER.map((e) => {
       const c = cell[d + '|' + e];
@@ -331,7 +373,8 @@ function _matrixHtml(cell) {
       const pi = c.piCnt ? c.piSum / c.piCnt : null;
       return `<div class="mx-cell" data-dom="${d}" data-elm="${e}" style="background:${_piColor(pi)}" title="${lbl}：${c.n} 单元 · 极性 ${pi != null ? pi.toFixed(2) : '—'}（悬停/点击 → 地图同步）">${c.n}</div>`;
     }).join('');
-    return `<div class="mx-rowlabel" title="${DOMAIN_LABEL[d] || d}">${DOMAIN_LABEL[d] || d}</div>${cells}`;
+    const lbl = DOMAIN_LABEL[d] || d;
+    return `<div class="mx-rowlabel" title="${lbl}">${lbl}${withTotals ? `<span class="mx-rowcount">(${domTotals[d]})</span>` : ''}</div>${cells}`;
   }).join('');
   return `<div class="ov-matrix">${head}${rows}</div>`;
 }
@@ -425,12 +468,20 @@ function _isSinglePol(ui) {
   return !!(ui && ui.tool === 'grid' && ui.level === 'L2' && ui.polarity && ui.polarity !== 'overall');
 }
 
+/** L1 网格聚合层（grid tool × L1 level）→ 独立 Overview（仅矩阵 + 4 维柱，无单元深读/关键词/数据总览）。
+ *  导出给 main.js：L1 网格无单元深读，cell:selected 不切深读 tab。 */
+export function isL1Grid(ui) {
+  return !!(ui && ui.tool === 'grid' && ui.level === 'L1');
+}
+
 /** 单极性归因矩阵：只显该极性分布，格色按本矩阵 count 三级（high#6A5ACD/mid#7B68EE/low#8470FF）。
  *  不再用 _piColor（极性色）—— 单极性层极性已定，矩阵强调"哪些 domain×element 桶最多"。 */
 function _singlePolMatrixHtml(cell) {
   // 三分位梯度：按本矩阵实际 count 分布取 1/3、2/3 分位赋 high/mid/low，保证三色各占约 1/3 格。
   // 修旧 bug：n/max>0.66 阈值在长尾数据（如 max=591、余皆<33%·max）下 mid 永空，全矩阵仅深浅两色。
   const ns = Object.values(cell).map((c) => c.n || 0).filter((n) => n > 0).sort((a, b) => a - b);
+  const domTotals = _domainTotals(cell);
+  const elmTotals = _elementTotals(cell);
   const tierColor = (n) => {
     if (!n || n <= 0 || !ns.length) return POL_MATRIX_TIERS.low;
     if (ns.length < 3) return n >= ns[ns.length - 1] ? POL_MATRIX_TIERS.high : POL_MATRIX_TIERS.low;
@@ -439,7 +490,7 @@ function _singlePolMatrixHtml(cell) {
     return q > 2 / 3 ? POL_MATRIX_TIERS.high : q > 1 / 3 ? POL_MATRIX_TIERS.mid : POL_MATRIX_TIERS.low;
   };
   const head = `<div class="mx-cell mx-head"></div>` +
-    ELEMENT_ORDER.map((e) => `<div class="mx-cell mx-head" title="${ELEMENT_LABEL[e] || e}">${(ELEMENT_LABEL[e] || e).slice(0, 2)}</div>`).join('');
+    ELEMENT_ORDER.map((e) => `<div class="mx-cell mx-head" title="${ELEMENT_LABEL[e] || e}">${(ELEMENT_LABEL[e] || e).slice(0, 2)}<span class="mx-rowcount">(${elmTotals[e]})</span></div>`).join('');
   const rows = DOMAIN_ORDER.map((d) => {
     const cells = ELEMENT_ORDER.map((e) => {
       const c = cell[d + '|' + e];
@@ -447,7 +498,7 @@ function _singlePolMatrixHtml(cell) {
       if (!c) return `<div class="mx-cell mx-empty" title="${lbl}：无"></div>`;
       return `<div class="mx-cell" data-dom="${d}" data-elm="${e}" style="background:${tierColor(c.n)}" title="${lbl}：${c.n} 单元（悬停/点击 → 地图同步）">${c.n}</div>`;
     }).join('');
-    return `<div class="mx-rowlabel" title="${DOMAIN_LABEL[d] || d}">${DOMAIN_LABEL[d] || d}</div>${cells}`;
+    return `<div class="mx-rowlabel" title="${DOMAIN_LABEL[d] || d}">${DOMAIN_LABEL[d] || d}<span class="mx-rowcount">(${domTotals[d]})</span></div>${cells}`;
   }).join('');
   return `<div class="ov-matrix">${head}${rows}</div>`;
 }
@@ -531,11 +582,126 @@ function _singlePolBody(feats, ui) {
   const yPct = (cityTotal && total) ? Math.round(total / cityTotal * 100) : null;
   const countLine = total
     ? `<div class="ov-count-line">偏<b>${polLabel}</b>的情绪点数为 <b>${total}</b> 个${yPct != null ? `，占城市情绪总量的 <b>${yPct}%</b>` : ''}</div>` : '';
-  return `${countLine}
-    <div class="ov-tier-sub">极性总览<span class="info-i" data-tip="本层为单极性聚合。4 领域（蓝 #4876FF）+ 4 要素（紫 #836FFF）分布；横条长度 = 该层该类计数。">i</span></div>
-    <div class="ov-overview-row ov-ov-bars-row"><div class="ov-domain-chart">${_domainBarsCompact(feats)}</div><div class="ov-domain-chart">${_elementBars(feats)}</div></div>
-    <div class="ov-tier-sub">归因矩阵<span class="info-i" data-tip="单极性矩阵：颜色按本矩阵数量三级（深紫最多 → 浅紫最少），强调该极性问题集中在哪些领域×要素。悬停/点击 → 地图同步。">i</span></div>${_singlePolMatrixHtml(cell)}
+  // 极性总览只留总结一句（4 领域 + 5 要素统计已并入归因矩阵行/列标签）。
+  return `${countLine ? `<div class="ov-tier-sub">极性总览</div>${countLine}` : ''}
+    <div class="ov-tier-sub">归因矩阵${_unit('个单元')}<span class="info-i" data-tip="单极性矩阵：颜色按本矩阵数量三级（深紫最多 → 浅紫最少），强调该极性问题集中在哪些领域×要素。悬停/点击 → 地图同步。行/列标签下数字 = 该领域/要素单元总数。">i</span></div>${_matrixIntro(`通过空间聚合分析，共生成 <b>${feats.length}</b> 个${polLabel}标准单元（${ui.cellSize || 400}m），在"4维度×5要素"归因统计中，结果如下（数字代表该维度的单元数量）：`)}${_singlePolMatrixHtml(cell)}
     <div class="ov-tier-sub">关键词 Top10<span class="info-i" data-tip="该极性高频城市关键词（左 1/3：词+次数）及其代表性地点 Top5（右 2/3）。点击词 → 定位最强聚集。">i</span></div>${_singlePolKeywordsHtml(feats, pol)}`;
+}
+
+// ── L1 数据总览（治理产出率 + 中心城区/8 组团 分布）──
+// L0 评论 → L1 情绪点（一条评论+地理等属性 = 一个情绪点）。产出率按 T ∈ {0.10,0.11,0.12}（治理产出渐升）。
+// 中心城区计数：用 L1 数据自带 area_tag 字段（core/central_outer=中心城区，outside_cc=外）→ 零 PIP、瞬时、随数据公式化重算。
+// 8 组团分布：射线法 PIP（heavy → 缓存到 layer._tuanCls 仅算一次 + bbox 预筛）。
+const _L1_RATE = { T1: 0.10, T2: 0.11, T3: 0.12 };
+const _L1_RATE_DEFAULT = 0.11;
+function _l1RateOf(layer) {
+  const t = deriveTimeTag(layer.fc);
+  return _L1_RATE[t] || _L1_RATE_DEFAULT;
+}
+const _CC_AREA_TAGS = new Set(['core', 'central_outer']);
+/** L1 点层 area_tag 计数：{total, cc}（cc = 中心城区 = core+central_outer，等价 text 非空）。零 PIP。 */
+function _l1AreaTagCount(feats) {
+  let total = 0, cc = 0;
+  for (const f of feats) { total++; if (_CC_AREA_TAGS.has((f.properties || {}).area_tag)) cc++; }
+  return { total, cc };
+}
+
+/** L1 网格层 Overview body：仅归因矩阵（引言 + 4 维柱带占比 + 灰线分隔 + 矩阵 withTotals=false + 无关键词）。
+ *  数据总览已迁至 L1 点层（热度分布）→ 网格层不再跑 PIP，2D/3D/选中零开销（修卡顿）。 */
+function _l1GridBody(feats, ui, layer) {
+  const cell = _matrix4x5(feats);
+  const cs = (ui && ui.cellSize) || 400;
+  const intro = _matrixIntro(`通过空间聚合分析，共生成 <b>${feats.length}</b> 个标准单元（${cs}m），"4维度×5要素"归因统计如下（数字代表该维度的单元数量）：`);
+  return `<div class="ov-tier-sub">归因矩阵${_unit('个单元')}<span class="info-i" data-tip="L1 网格 4 大治理领域 × 5 要素归因矩阵。上方 4 领域条 = 各领域单元数及占比（L1 不并入矩阵，独立显示）。悬停/点击矩阵格 → 地图同步。数据总览见 L1·热度分布图层。">i</span></div>
+    ${intro}
+    <div class="ov-overview-row ov-ov-dom-row"><div class="ov-domain-chart">${_l1DomainBarsHtml(feats)}</div></div>
+    <div class="ov-matrix-sep"></div>${_matrixHtml(cell, false)}`;
+}
+
+/** L1 点层（热度分布）数据总览占位 HTML（双段总结 + 紫饼图 + 8 组团横条；异步填充）。 */
+function _l1PointDataOverviewHtml(layer) {
+  return `<div class="ov-tier-sub">数据总览${_unit('个点')}<span class="info-i" data-tip="L0 评论经治理产出 L1 情绪点（一条评论+地理等属性=一个情绪点）；产出率按时间点 T 在 10~12% 间（治理产出渐升）。中心城区计数用 L1 数据 area_tag 字段（core/central_outer）。数字随载入的 L1 数据公式化重算。">i</span></div>
+    <div id="ov-l1-data" class="ov-l1-data"><div class="ov-placeholder muted">分布计算中…</div></div>`;
+}
+
+/** 通用饼图（SVG arc；segs=[{label,color,n}]），图例在右。 */
+function _simplePieHtml(segs, total) {
+  if (!total) return '';
+  const cx = 50, cy = 50, r = 38;
+  let a = -Math.PI / 2;
+  const paths = [];
+  for (const s of segs) {
+    if (s.n <= 0) continue;
+    const sweep = (s.n / total) * Math.PI * 2;
+    const a0 = a, a1 = a + sweep;
+    const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
+    const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+    const large = sweep > Math.PI ? 1 : 0;
+    paths.push(`<path fill="${s.color}" d="M${cx} ${cy} L${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z"><title>${s.label} · ${s.n}（${(s.n / total * 100).toFixed(0)}%）</title></path>`);
+    a = a1;
+  }
+  const lg = segs.filter((s) => s.n > 0).map((s) =>
+    `<span class="ov-pie-lg"><span class="ov-pie-dot" style="background:${s.color}"></span>${s.label}<i>${s.n}</i></span>`).join('');
+  return `<div class="ov-pie-block"><div class="ov-pie"><svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">${paths.join('')}</svg></div>
+    <div class="ov-pie-legend">${lg}</div></div>`;
+}
+
+// L1 紫色系（饼图 1 + 组团横条 3 档，统一设计语言；与单极性矩阵 POL_MATRIX_TIERS 同源）
+const _L1_PURPLE = { cc: '#A020F0', out: '#D8BFD8' };           // 中心城区范围 / 中心城区以外
+const _L1_TUAN_TIERS = ['#A020F0', '#9370DB', '#D8BFD8'];        // 组团横条 3 档（多→少）
+
+/** 组团计数 → 3 档色（按 max/min 均分 3 组：上 1/3 深、中 1/3 中、下 1/3 浅）。 */
+function _tuanTierColor(n, min, max) {
+  if (!n || max === min) return _L1_TUAN_TIERS[0];
+  const step = (max - min) / 3;
+  return n >= min + step * 2 ? _L1_TUAN_TIERS[0] : n >= min + step ? _L1_TUAN_TIERS[1] : _L1_TUAN_TIERS[2];
+}
+
+/** 8 组团横条 HTML（与 4 维度数据条同款、压缩高度/字号）。counts={组团:n}, order=[组团...]. */
+function _tuanBarsHtml(counts, order) {
+  const entries = order.map((t) => [t, counts[t] || 0]).filter((x) => x[1] > 0);
+  if (!entries.length) return `<div class="ov-placeholder muted">组团分布无落点</div>`;
+  const vals = entries.map((x) => x[1]);
+  const max = Math.max(...vals), min = Math.min(...vals);
+  return entries.map(([t, n]) =>
+    `<div class="ov-dbar ov-dbar-tuan"><span class="ov-dbar-label">${t}</span>
+      <span class="ov-dbar-track"><span class="ov-dbar-fill" style="width:${(n / max) * 100}%;background:${_tuanTierColor(n, min, max)}">${n}</span></span></div>`).join('');
+}
+
+/** 异步填充 L1 点层数据总览（area_tag 计数 + per-组团 PIP 缓存 + 紫饼图 + 8 组团横条）。setOverview 渲染后调。 */
+async function _fillL1DataOverview(layer) {
+  const el = document.getElementById('ov-l1-data');
+  if (!el) return;
+  const feats = (layer.fc && layer.fc.features) || [];
+  const { total: l1, cc: ccCount } = _l1AreaTagCount(feats);
+  const rate = _l1RateOf(layer);
+  const l0 = l1 ? Math.round(l1 / rate) : 0;
+  const ratePct = Math.round(rate * 100);
+  const ccPct = l1 ? Math.round(ccCount / l1 * 100) : 0;
+  const summary =
+    `<div class="ov-l1-summary">共采集评论数量 <b>${l0}</b> 条（L0 原始数据），通过数据治理与地理信息匹配，得到城市情绪点数共 <b>${l1}</b> 个（L1 数据），占比约为 <b>${ratePct}%</b>。</div>
+     <div class="ov-l1-summary">其中，中心城区共 <b>${ccCount}</b> 个，占比为 <b>${ccPct}%</b>。</div>`;
+  // 饼图 1（全域）：中心城区范围 vs 中心城区以外（紫色系，与 L2 综合饼图同尺寸 187px）
+  const pie1 = _simplePieHtml(
+    [{ label: '中心城区范围', color: _L1_PURPLE.cc, n: ccCount },
+     { label: '中心城区以外', color: _L1_PURPLE.out, n: l1 - ccCount }],
+    l1);
+  // 8 组团横条：per-组团 PIP（缓存到 layer._tuanCls 仅算一次，防卡顿；仅对中心城区点分类）
+  let tuanHtml;
+  const ccPoints = feats.filter((f) => _CC_AREA_TAGS.has((f.properties || {}).area_tag));
+  if (!ccPoints.length) {
+    tuanHtml = `<div class="ov-placeholder muted">中心城区无落点</div>`;
+  } else {
+    const ds = await loadDistricts();
+    if (!ds) tuanHtml = `<div class="ov-placeholder muted">行政区 preset 未上传（控制台 → 选择栏 → 行政区 先载入一次）</div>`;
+    else { if (!layer._tuanCls) layer._tuanCls = classifyPointsByDistrict(ccPoints, ds); tuanHtml = _tuanBarsHtml(layer._tuanCls.perTuan, ds.tuanOrder); }
+  }
+  el.innerHTML =
+    `${summary}
+     <div class="ov-l1-pies">
+       <div class="ov-l1-pie"><div class="ov-l1-pie-cap">宜昌全域 · 情绪点分布</div>${pie1 || '<div class="ov-placeholder muted">无数据</div>'}</div>
+       <div class="ov-l1-pie"><div class="ov-l1-pie-cap">中心城区内 · 8 组团</div>${tuanHtml}</div>
+     </div>`;
 }
 
 /** 关键词频次排名：按点的 topic_top（数据层提炼）聚合 point_count → {sign: [{topic, n}]}。
@@ -611,6 +777,84 @@ function _featBBox(f) {
   return [mnX, mnY, mxX, mxY];
 }
 
+// ── Feature 4：归因矩阵 ↔ 关键词 双向联动（数据驱动）──
+// 扫 layer.features 建 topic×(domain,element) 反向索引：hover 矩阵块 → 高亮该块下所有关键词卡片；hover 关键词 → 高亮其所有矩阵块。
+// ≤5 全高亮（.is-synced 橙底白字）；>5 加权（.is-synced-w 橙 tint，频次高主峰亮、长尾淡）—— "太多意义不大"用加权让主峰突出。
+const SYNC_FULL_MAX = 5;
+/** 建 topic→blocks + block→topics 反向索引（按 layer.id 缓存到 layer._topicIdx）。 */
+function _buildTopicMatrixIndex(feats) {
+  const topicToBlocks = {};   // topic -> {("d|e"): n}
+  const blockToTopics = {};   // {("d|e")} -> {topic: n}
+  for (const f of feats) {
+    const p = f.properties || {};
+    const t = p.topic_top;
+    if (!t || !p.domain_top || !p.element_top) continue;
+    const k = p.domain_top + '|' + p.element_top;
+    if (!topicToBlocks[t]) topicToBlocks[t] = {};
+    topicToBlocks[t][k] = (topicToBlocks[t][k] || 0) + 1;
+    if (!blockToTopics[k]) blockToTopics[k] = {};
+    blockToTopics[k][t] = (blockToTopics[k][t] || 0) + 1;
+  }
+  return { topicToBlocks, blockToTopics };
+}
+function _topicIdx(layer) {
+  if (!layer) return { topicToBlocks: {}, blockToTopics: {} };
+  if (!layer._topicIdx) layer._topicIdx = _buildTopicMatrixIndex((layer.fc && layer.fc.features) || []);
+  return layer._topicIdx;
+}
+/** 应用同步高亮：entries=[[key,count],...]（已降序）；selectorOf(key)→DOM selector。
+ *  ≤5 全高亮（.is-synced）；>5 删最浅档（drop 底部 1/3 长尾，只显中+高档有意义部分）+ alpha 梯度（.is-synced-w）。
+ *  地图聚合域高亮（highlightCellSet）不受此影响——仍全部网格/柱体。 */
+function _applySync(entries, selectorOf) {
+  const pane = document.getElementById('overview-pane');
+  if (!pane || !entries.length) return;
+  const n = entries.length;
+  if (n <= SYNC_FULL_MAX) {
+    for (const [key] of entries) {
+      const el = pane.querySelector(selectorOf(key));
+      if (el) el.classList.add('is-synced');
+    }
+    return;
+  }
+  // >5：drop 底部 1/3（最浅档），仅高亮前 2/3（中+高），按频次赋 alpha 梯度（0.5~1.0）
+  const keep = Math.max(SYNC_FULL_MAX, Math.ceil(n * 2 / 3));
+  const kept = entries.slice(0, keep);
+  const maxC = Math.max(1, ...kept.map((x) => x[1]));
+  for (const [key, count] of kept) {
+    const el = pane.querySelector(selectorOf(key));
+    if (!el) continue;
+    const alpha = 0.5 + 0.5 * (count / maxC);   // 频次越高 alpha 越大（主峰亮、长尾淡）
+    el.style.setProperty('--sync-bg', `rgba(255,144,0,${alpha.toFixed(2)})`);
+    el.classList.add('is-synced-w');
+  }
+}
+/** 清所有同步高亮（mouseover leave / 切层 / cell:selected 时）。 */
+function _clearSync() {
+  const pane = document.getElementById('overview-pane');
+  if (!pane) return;
+  pane.querySelectorAll('.is-synced, .is-synced-w').forEach((el) => {
+    el.classList.remove('is-synced', 'is-synced-w');
+    el.style.removeProperty('--sync-bg');
+  });
+}
+/** hover 矩阵块 → 高亮该块下所有关键词卡片（按 blockToTopics）。 */
+function _syncFromMatrix(dom, elm) {
+  const idx = _topicIdx(_overviewLayer);
+  const topics = idx.blockToTopics[dom + '|' + elm];
+  if (!topics) return;
+  _applySync(Object.entries(topics).sort((a, b) => b[1] - a[1]), (t) => `.ov-kw-item[data-topic="${t}"]`);
+}
+/** hover 关键词 → 高亮其所有矩阵块（按 topicToBlocks）。 */
+function _syncFromKeyword(topic) {
+  const idx = _topicIdx(_overviewLayer);
+  const blocks = idx.topicToBlocks[topic];
+  if (!blocks) return;
+  _applySync(Object.entries(blocks).sort((a, b) => b[1] - a[1]), (k) => {
+    const [d, e] = k.split('|');
+    return `.mx-cell[data-dom="${d}"][data-elm="${e}"]`;
+  });
+}
+
 /** 治理要素（domain）分布横向柱。 */
 function _domainBars(feats) {
   const m = {};
@@ -669,8 +913,11 @@ function tier3(layer, lv) {
   if (isAnalysisLayer(layer)) {
     const feats = layer.fc.features;
     const ui = (layer.paint && layer.paint._ui) || {};
-    // 单极性网格层（L2 grid · polarity !== overall）→ 独立 Overview（item 5）
-    if (_isSinglePol(ui)) {
+    // L1 网格聚合层 → 独立 Overview（双饼图 + 4 维柱在矩阵上方 + 矩阵 + 无关键词）
+    if (isL1Grid(ui)) {
+      body = _l1GridBody(feats, ui, layer);
+    } else if (_isSinglePol(ui)) {
+      // 单极性网格层（L2 grid · polarity !== overall）→ 独立 Overview（item 5）
       body = _singlePolBody(feats, ui);
     } else {
       // 综合：极性分布（饼图 + 图例横排一行）+ 4 领域柱（全称加粗 #4876FF，次行）+ 矩阵 + 关键词（item 2 排版）
@@ -688,19 +935,18 @@ function tier3(layer, lv) {
       const total = agg['Very Positive'] + agg.Positive + agg.Neutral + agg.Negative + agg['Very Negative'];
       const cell = _matrix4x5(feats);
       const pieHtml = total ? _polarPieHtml(agg, total) : '';
-      const domHtml = _domainBarsCompact(feats);
       const posN = agg['Very Positive'] + agg['Positive'];
       const negN = agg['Negative'] + agg['Very Negative'];
       const neuN = agg['Neutral'];
+      // 量词统一为「个」（=情绪点）；4 维柱已并入归因矩阵行标签，数据总览只留饼图。
       const countLine = total
-        ? `<div class="ov-count-line">共 <b>${total}</b> 条 · 积极 <b>${posN}</b> · 消极 <b>${negN}</b> · 中性 <b>${neuN}</b></div>` : '';
-      const overviewRow = (pieHtml || domHtml)
-        ? `<div class="ov-tier-sub">数据总览<span class="info-i" data-tip="饼图悬停/点击某极性 → 地图同步高亮该极性主导的网格；矩阵、关键词同理。点击锁定，再次点击释放。">i</span></div>
+        ? `<div class="ov-count-line">共 <b>${total}</b> 个 · 积极 <b>${posN}</b> · 消极 <b>${negN}</b> · 中性 <b>${neuN}</b></div>` : '';
+      const overviewRow = pieHtml
+        ? `<div class="ov-tier-sub">数据总览${_unit('个点')}<span class="info-i" data-tip="饼图悬停/点击某极性 → 地图同步高亮该极性主导的网格；矩阵、关键词同理。点击锁定，再次点击释放。">i</span></div>
            ${countLine}
-           ${pieHtml ? `<div class="ov-overview-row ov-ov-pie-row">${pieHtml}</div>` : ''}
-           ${domHtml ? `<div class="ov-overview-row ov-ov-dom-row"><div class="ov-domain-chart">${domHtml}</div></div>` : ''}` : '';
+           <div class="ov-overview-row ov-ov-pie-row">${pieHtml}</div>` : '';
       body = `${overviewRow}
-        <div class="ov-tier-sub">归因矩阵<span class="info-i" data-tip="4 大治理领域 × 5 要素 的情绪归因矩阵。悬停/点击某格 → 地图同步高亮该领域×要素交集的网格。">i</span></div>${_matrixHtml(cell)}
+        <div class="ov-tier-sub">归因矩阵${_unit('个单元')}<span class="info-i" data-tip="4 大治理领域 × 5 要素 的情绪归因矩阵。悬停/点击某格 → 地图同步高亮该领域×要素交集的网格。行/列标签下数字 = 该领域/要素单元总数。">i</span></div>${_matrixIntro(`通过空间聚合分析，共生成 <b>${feats.length}</b> 个标准单元（${ui.cellSize || 400}m），"4维度×5要素"归因统计如下（数字代表该维度的单元数量，颜色代表该维度的极性倾向）：`)}${_matrixHtml(cell)}
         <div class="ov-tier-sub">关键词Top10<span class="info-i" data-tip="按各要素正/中/负情绪点数排名的高频城市关键词。点击某词 → 地图定位并高亮其最强聚集的若干柱体。">i</span></div>${_keywordsHtml(feats)}`;
     }
   } else if (layer.kind === 'heatmap') {
@@ -721,6 +967,8 @@ function tier3(layer, lv) {
   } else if (lv === 'L0') {
     body = `<div class="ov-placeholder">需先治理（L0→L1）后展示分析结论</div>${spatialPlaceholder()}`;
   } else if (lv === 'L1') {
+    // 数据总览（迁移自 L1 网格：双段总结 + 紫饼图 + 8 组团横条，异步填充）+ 热度值分布
+    const dataOverview = _l1PointDataOverviewHtml(layer);
     // 热度值分布（3 段，按 hotness buckets）—— 与 popup/图例/弹窗色板同步
     const buckets = (layer.paint && layer.paint.hotnessBuckets) || hotnessBuckets(layer.fc.features);
     const hs = layer.fc.features.map(computeHotness);
@@ -737,7 +985,7 @@ function tier3(layer, lv) {
       `<div class="hbar-row"><span class="hbar-label">${labels[i]}</span>
         <span class="hbar-track"><span class="hbar-fill" style="width:${(n / max) * 100}%;background:${HOTNESS_RAMP[i]}"></span></span>
         <span class="hbar-n">${n}</span></div>`).join('');
-    body = `<div class="ov-tier-sub">热度值分布</div><div class="hchart">${bars}</div>
+    body = `${dataOverview}<div class="ov-tier-sub">热度值分布</div><div class="hchart">${bars}</div>
       <div class="ov-mean">均值 ${mean.toFixed(2)} · 共 ${total} 条</div>${spatialPlaceholder()}`;
   } else { // L2 — polarity distribution + emotion type distribution
     const { stats, total, scoreMean } = polarityStats(layer.fc);

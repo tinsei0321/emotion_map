@@ -1,6 +1,6 @@
 // ═══ main.js — entry: wire map + sidebar + panel + toolbar + popup + import ═══
 import { initMap, setBasemap, setClickHandler, renderLayer, fitBoundsTo, reorderAllZ, easeToCell } from './map.js';
-import { initPanel, activateTab, setOverview, setCellOverview, setTable, activateOvTab } from './panel.js';
+import { initPanel, activateTab, setOverview, setCellOverview, setTable, activateOvTab, isL1Grid } from './panel.js';
 import { initTipPopup } from './tip-popup.js';
 import { initToolbar, setActiveBasemap } from './toolbar.js';
 import { initSidebar, openImport, renderLayerList, showLayerManager, refreshLegend } from './sidebar.js';
@@ -283,6 +283,8 @@ function main() {
   document.addEventListener('cell:selected', (e) => {
     const { feature, layer } = (e && e.detail) || {};
     if (!feature || !layer) return;
+    // L1 网格聚合无单元深读层级 → 不切深读 tab、不 zoom（避免误触发）
+    if (isL1Grid((layer.paint && layer.paint._ui) || {})) return;
     activateTab('overview');
     setCellOverview(feature, layer);
     activateOvTab('cell');      // 切「单元深读」sub-Tab

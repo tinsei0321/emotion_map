@@ -1,5 +1,5 @@
 // ═══ sidebar.js — left panel: collapse/expand, drag, import trigger, layer manager ═══
-import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, layerDisplayColor, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, addLayer, getChildren, categoryOf, CATEGORY_LABEL, applyGroupOrder, reorderGroupSegment, isCollapsed, toggleCollapsed, isGroupFold, toggleGroupFold, getGroupOrder, enforceMutualExclusion, CONFIDENCE_RAMP, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HOTNESS_RAMP } from './state.js';
+import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, layerDisplayColor, levelPointColor, freezeCategoryOrder, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, addLayer, getChildren, categoryOf, CATEGORY_LABEL, applyGroupOrder, reorderGroupSegment, isCollapsed, toggleCollapsed, isGroupFold, toggleGroupFold, getGroupOrder, enforceMutualExclusion, CONFIDENCE_RAMP, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HOTNESS_RAMP } from './state.js';
 import { renderLayer, removeLayerFromMap, reorderAllZ, restackZ, toggleGridViewMode, getGridViewMode, fitToLayer } from './map.js';
 import { toast } from './toast.js';
 import { openSettingsPopover, closeSettingsPopover, openSettingsLayerId, isOpen } from './settings.js';
@@ -206,13 +206,19 @@ function levelTag(l) {
   return '';
 }
 
-/** Hint letter between 要素按钮 and name: R (range) / L0·L1·L2 (point), colored by the layer's display color. */
+/** Hint letter between 要素按钮 and name: R (range) / L0·L1·L2 (point), colored by the layer's display color.
+ *  网格聚合(grid)/情绪地形(terrain)：升为 "L1·G"/"L2·E"——L 前缀着该 level 情绪点层色（L1 橙/L2 teal），字母保持工具色。 */
 function hintChip(l) {
   const isBuffer = !!(l && l.paint && l.paint._ui && l.paint._ui.tool === 'buffer');
   const isGrid = !!(l && l.paint && l.paint._ui && l.paint._ui.tool === 'grid');
   const isTerrain = !!(l && l.paint && l.paint._ui && l.paint._ui.tool === 'terrain');
   const lv = layerLevel(l);
-  const text = isBuffer ? 'B' : (isTerrain ? 'E' : (isGrid ? 'G' : (lv === 'range' ? 'R' : (lv || 'L0'))));
+  if (isGrid || isTerrain) {
+    const letter = isGrid ? 'G' : 'E';
+    const lvText = lv === 'L1' ? 'L1' : lv === 'L2' ? 'L2' : 'L·';
+    return `<span class="layer-hint"><b class="layer-hint-lv" style="color:${levelPointColor(lv)}">${lvText}</b>·${letter}</span>`;
+  }
+  const text = isBuffer ? 'B' : (lv === 'range' ? 'R' : (lv || 'L0'));
   return `<span class="layer-hint" style="color:${layerDisplayColor(l)}">${text}</span>`;
 }
 
@@ -421,6 +427,7 @@ export function renderLayerList() {
           const idx = ls.findIndex((x) => x.id === el.dataset.id);
           const toId = before ? el.dataset.id : (ls[idx + 1] ? ls[idx + 1].id : null);
           reorderLayers(_dragGroupId, toId);
+          freezeCategoryOrder(tCat);   // 手动 within-cat 重排 → 冻结，防 applyGroupOrder 覆盖
         }
         reorderAllZ();
         moved = true;
@@ -446,6 +453,7 @@ export function renderLayerList() {
           const idx = ls.findIndex((x) => x.id === tId);
           const toId = after ? (ls[idx + 1] ? ls[idx + 1].id : null) : tId;
           reorderLayers(_dragId, toId);
+          freezeCategoryOrder(tCat);   // 手动 within-cat 重排 → 冻结，防 applyGroupOrder 覆盖
           reorderAllZ();
           moved = true;
         }
