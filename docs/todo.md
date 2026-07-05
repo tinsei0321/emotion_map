@@ -31,7 +31,7 @@
 
 **任务 B-2：单元深读 12 词 cell ID 定稿**（任务 A + sim 锚点修正已完成，见 revision-log 5.22）
 - 12 词锚点已验落点修正：楚超火爆→奥体(181) / 卷桥河露营→卷桥河湿地(82) / 江南绿肺→江南URD(22) / 大南门→ermawu(116) / 占道→二马路+居住(180) / 口袋公园→park_plaza(370) / 业态→商圈(463) / 社区服务配套→居住(276) / 网红→商圈+二马路(828) / 夜经济→场馆+滨江(644) / 停车难→核心商圈+中南路(1547) / 堵车→交通走廊(14)。
-- 待做：跑格聚合（[`spatial_analysis.py`](core/spatial_analysis.py) `create_square_grid` cellSize=400m）筛每词 `topic_top==词` 且 `point_count` top 格，产出 cell ID 清单供前端单元深读典型格预设。
+- ✅ 已完成（见 revision-log 5.23）：12 词典型格 cell ID 定稿（cellSize=400m 三时点合并，cell ID=格中心坐标）。后续前端实现机制（配置坐标列表 + 聚合后按坐标匹配格 feature）待新任务。
 - 残余可调：停车难 1547 偏多+seed 落口袋 POI（缩 `_CORE_RADIUS` 或加概率门控）；江南绿肺 22 点军低密度（可扩 radius）。
 
 **⏸ 搁置（不做）**：2D/3D 切换地图聚合域高亮保持（未决，根因+尝试见 revision-log 5.21）。

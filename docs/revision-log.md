@@ -552,6 +552,27 @@ flowchart TD
 |------|--------|----------------|------|
 | 07-05 | 本次 | **① Feature 4 矩阵↔关键词改语义表**（任务 A）：[`panel.js`](frontend/js/panel.js) 新 `TOPIC_MATRIX_MAP`（32 词→1-3 domain×element 语义块）覆盖 `_buildTopicMatrixIndex` 数据扫描——根因 sim 给 park_plaza/riverside POI 分 urban_operation 域致「口袋公园→运营×环境」反直觉；矩阵色/数仍走数据（`_matrix4x5`/`_matrixHtml` 不动），仅"哪个词↔哪格"对应关系改查表。新 `_topicBlocks`/`_blockTopics` helper（均权复用 `_applySync`）；`_syncFromMatrix`/`_syncFromKeyword`/`_applyStickySync` 改查表，删 `_buildTopicMatrixIndex`/`_topicIdx` 死路径。3 处争议定稿：停车难=治理×设施+规划×设施、施工扰民=更新×环境、卷桥河露营=规划×环境（候选池 todo L919 同步）。**② sim 锚点修正**（扫描发现 6 词 sim 空间落点与候选池语义错位）：[`performance_config.py`](SCRIPT/performance_config.py) TOPIC_TABLE 删 3 词（楚超/卷桥河露营/江南绿肺→地标 proximity 独占）+ 大南门 zones 去 commercial / 占道·社区·口袋 zones 去 general；[`sim_performance_data.py`](SCRIPT/sim_performance_data.py) `_DIANJUN_TOPIC` 改结构 {name:(topic,polarity)} + 楚超→楚超火爆 + 加 4 口袋公园 POI 映射；`_DIANJUN_TEXT` 加口袋公园评论；[`landmarks_wgs84.json`](SCRIPT/poi_data/landmarks_wgs84.json) 补 4 口袋公园 POI（儿童公园/欧阳修公园/中南路街心花园/东辰口袋公园，坐标估计待校准）+ radius_m（点军 1500/口袋 500）；`_nearest_landmark` 用每 POI radius_m；地标 nz 强制仅点军 3（修 ermawu 内口袋 POI 把占道强制点 nz 改 park_plaza 的 bug）；inject_fields 加占道 ermawu 强制(50%)+大南门 ermawu 强制(30%)+口袋 neutral 概率门控(0.4)。**③ 楚超→楚超火爆 改名**（config/sim/panel.js TOPIC_POLARITY·ORDER·MATRIX_MAP/todo/revision-log 候选池表同步）。**验证**：12 词落点全部修正——楚超火爆 181 全奥体、卷桥河露营 82 全卷桥河湿地、江南绿肺 22 全江南URD、占道 general 消失(180 落二马路+居住)、大南门 3→116、口袋 1731→370；残余：停车难 1547 偏多+seed 落口袋 POI(语义通噪音)、江南绿肺 22(点军低密度)。重跑 12 文件。 | `frontend/js/panel.js` `SCRIPT/{performance_config,sim_performance_data}.py` `SCRIPT/poi_data/landmarks_wgs84.json` `docs/{todo,revision-log}.md` `DATA/performance/*`(12 重生) |
 
+### 5.23 单元深读 12 词 cell ID 定稿（2026-07-05）
+
+三时点合并 50858 点 → [`create_square_grid`](core/spatial_analysis.py) cellSize=400m → 2895 格 → 每词 `topic_top==词` 且 `point_count` top 格（cell ID = 格中心坐标，前端 cellSize 固定可重定位）：
+
+| 关键词 | 极性 | cell ID（中心坐标） | pc | place_name | pi |
+|---|---|---|---|---|---|
+| 楚超火爆 | pos | (111.2234, 30.7042) | 57 | 宜昌奥体中心 | +0.16 |
+| 卷桥河露营 | pos | (111.2651, 30.6789) | 24 | 卷桥河湿地公园 | +0.12 |
+| 江南绿肺 | pos | (111.2484, 30.6753) | 18 | 江南URD | -0.11 |
+| 大南门 | pos | (111.2818, 30.6969) | 347 | 欧阳修公园(ermawu) | +0.22 |
+| 占道停车 | neg | (111.2860, 30.6932) | 152 | 宜昌海事局(二马路) | +0.53 |
+| 口袋公园 | neu | (111.2944, 30.7077) | 118 | 儿童公园 | +0.25 |
+| 社区服务配套 | neu | (111.3195, 30.7256) | 229 | 三峡大学东苑 | +0.05 |
+| 停车难 | neg | (111.2902, 30.7041) | 431 | 儿童公园(CBD) | -0.04 |
+| 业态 | neu | (111.3526, 30.6498) | 238 | 火车东站商圈 | +0.20 |
+| 网红 | pos | (111.3279, 30.7400) | 298 | 吾悦广场 | -0.02 |
+| 夜经济 | pos | (111.3027, 30.6824) | 348 | 三峡游客中心(滨江) | +0.86 |
+| 堵车 | neg | (111.3280, 30.7761) | 24 | 小溪塔公交站 | -0.25 |
+
+> 12 词典型格落点全部匹配语义锚点（5.22 锚点修正的验证）。cell ID 供前端单元深读典型格预设——后续实现机制（如配置 cell 中心坐标列表，聚合后按坐标匹配格 feature）待前端任务。堵车 24 点少（traffic 本稀疏）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。
