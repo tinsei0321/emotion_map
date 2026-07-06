@@ -629,6 +629,12 @@ flowchart TD
 
 **文件**：`frontend/js/panel.js`（`_resolveLocAnchors` + matrix/word hover/click handlers sticky 优先 + 词点击柱体橙 + `_resetPolKwState` 加 resetHighlightCellSet）·`frontend/js/map.js`（`showLocTips(anchors)` 接收已解析坐标 + line stagger）·`frontend/css/panel.css`（`.loc-tip-line` 去固定 height）·`DATA/performance/polarity_deepread_keywords.json`（v3 locs 地名数组 + 消极 3x + 内容修正）·新 memory `loc-anchor-by-data-not-coords`/`sticky-hover-priority`/`verify-with-webapp-testing-skill`。
 
+### 5.28 地点 tip 仍有错位（已知，明日核对）+ 转任务2 时间轴（07月06日 16:00）
+
+**用户 review 5.27 后报"地点 tip 仍有大量错误"**，要求严格对照真实情况 check，**先放一放记录到明日任务**（见 `docs/todo.md` 07-06「明日任务」：审计脚本 + 逐项核对 cell 坐标 vs 真实地理 + 副本 name 具体化 + webapp-testing 验证）。疑似根因：副本地名太泛（东山/点军/政务中心=大片区）、多义匹配、与 area_seed 用词不一致、数据缺 POI（长江之心/夷陵广场）。
+
+**转任务2 时间轴**：用户定新会话推进时间轴（T1→T3 成效动画）。HEAD=`3273aa7` 已 push。交接卡 `memories/repo/session-handoff.md` 重写为时间轴节点（含动画路线决策点 A/B/C + 前置 Overview 原地更新重构 + 设计要点）。地点 tip 核对作为并行待办（不阻塞时间轴）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

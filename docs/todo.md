@@ -7,6 +7,18 @@
 
 ## 📅 2026-07-06（周一）
 
+### ⬜ 明日任务：地点 tip 全面核对修正（用户报"仍有大量错误"，先放一放，严格对照真实情况检查）
+
+> 用户反馈 5.27 的地名→cell 匹配仍有多处错位。根因可能：① 副本地名太泛（如"东山""点军""政务中心"是大片区，匹配到的 area_seed 不代表具体地标）；② 多义匹配（一个地名命中多个 area_seed，取最近 cell 不一定对）；③ 副本地名与 area_seed 实际用词不一致；④ 数据无该 POI 但内容仍写（长江之心/夷陵广场 T1 缺）。
+
+**执行方法（审计 + 逐项修正）**：
+1. **审计脚本**：遍历副本 v3 所有 loc name → 跑 area_seed/spatial_hotspot 匹配 → 输出每个 name 命中的 area_seed 列表 + 解析到的 cell._center 坐标（`py` 一次性 grep `DATA/performance/yichang_L2_T1_*.geojson`）。
+2. **逐项核对**：每个解析到的 cell 坐标 vs 真实宜昌地理（奥体/南湖/体育场/中南路/二马路/桃花岭/长江之心 等）——cell 是否真在该地标附近。
+3. **修正原则**：副本 name 必须具体到能唯一命中一个 area_seed（如"东山"→"东山大道港城路口"或换更具体 POI）；数据无该 POI 的（长江之心）要么换数据里存在的沿江楼盘、要么标"无定位"不显 tip；多义时取最近 + 人工确认。
+4. **验证**：webapp-testing skill 逐词 hover → 截图核对 tip 落点（用户明确要求过 tip 准确性，此处值得验证）。
+
+**关联 memory**：[loc-anchor-by-data-not-coords](C:\Users\Hi\.claude\projects\d--Github-emotion-map\memory\loc-anchor-by-data-not-coords.md)（数据为准禁猜坐标）、[verify-with-webapp-testing-skill](C:\Users\Hi\.claude\projects\d--Github-emotion-map\memory\verify-with-webapp-testing-skill.md)。
+
 ### ✅ 地点锚定系统修 + sticky 最高级 + 词点击柱体橙 + 消极 3x（revision-log 5.27，承 efb0908，未自动验证交付肉眼验）
 
 - **致命错修复（地点锚定）**：v2 副本硬编码 lngLat 是猜的（奥体误标→错 cell）。系统修：副本只留地名（locs=[name]），`_resolveLocAnchors` 去 grid 源点层按 area_seed/spatial_hotspot 含地名找真实 POI → 最近 cell。数据无该 POI→跳过 tip（不错指）。新 memory `loc-anchor-by-data-not-coords`。
