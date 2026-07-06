@@ -7,6 +7,15 @@
 
 ## 📅 2026-07-06（周一）
 
+### ✅ 地点锚定系统修 + sticky 最高级 + 词点击柱体橙 + 消极 3x（revision-log 5.27，承 efb0908，未自动验证交付肉眼验）
+
+- **致命错修复（地点锚定）**：v2 副本硬编码 lngLat 是猜的（奥体误标→错 cell）。系统修：副本只留地名（locs=[name]），`_resolveLocAnchors` 去 grid 源点层按 area_seed/spatial_hotspot 含地名找真实 POI → 最近 cell。数据无该 POI→跳过 tip（不错指）。新 memory `loc-anchor-by-data-not-coords`。
+- **sticky 最高级 bug（全局）**：hover 不覆盖 sticky 长显（词/块/tip）；`if(_polWordTipSticky) return` + `if(!_polBlockSticky) render`。新 memory `sticky-hover-priority`。
+- **牵引线**：line 200+i×25（cap 300）stagger 避叠（v2 固定 300 太高且重叠）。
+- **词点击→柱体橙**：词 click→`toggleStickyHighlight(locCells,'polkw:word')`（⊆ 块聚合域）；矩阵 click→块橙 `polmx`；释放 resetHighlightCellSet。
+- **副本 v3 内容修正**（用户逐项）：二马路消极→历史感不强/没特点/业态不行（非拆没了）；噪音→体育场（修路）；内涝→南湖（逢雨必淹）；加装电梯→桃花岭扩量；烂尾→长江之心；堵车→中南路十字口；停车难+中南；没意思→打卡同质化。消极 3x（4-7 词含短句吐槽：商圈停车靠抢/中南路堵死/围挡挡路/老人爬楼难）。
+- **process**：新 memory `verify-with-webapp-testing-skill`——前端验证用 webapp-testing skill 非 Playwright，默认不验交付肉眼验。本轮按此未自动验证。
+
 ### ✅ 极性深读 review 修正 + 地点 tip feature（revision-log 5.26，承 ea8e66f，Playwright 验证全通过）
 
 - **review 修正**（用户两问）：① 矩阵 `_matrix4x5ByPolarity` 误用 Σ 点数 → 改"该极性点数>0 的单元数"（每格计1，与地图 filter 同口径）；② `_polarityBodyHtml` 漏抄占比 → 加回 `_cityTotalOf` 占比 + cellSize 话语。

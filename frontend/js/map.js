@@ -751,33 +751,25 @@ export function easeBackFromCell() {
 }
 
 // ── 地点 tip：极性深读关键词 hover/click → 对应聚合域·3D 柱体上方投射白色细线 + 胶囊（地点名）──
-// Marker（DOM overlay）anchor bottom 锚 cell._center（坐柱体上），CSS 抬升胶囊到线顶端。
-// 视野不遮柱体（1px 细线 + 胶囊悬浮其上）。多 loc → 多 Marker。panel.js 触发。
+// panel.js 已把 loc.name 解析成真实坐标（点层 POI → 所在 cell._center，数据为准勿猜坐标）。
+// Marker anchor bottom 锚 cell 中心；线高 200+i*25（cap 300）自适应 stagger 避胶囊重叠。cap ≤ 8。
 const _locTipMarkers = [];
 
-/** 显示地点 tip：locs = [{name, lng, lat}]。锚定最近可见综合 grid cell._center（无近邻退 lngLat）。cap ≤ 8。 */
-export function showLocTips(layer, locs) {
+/** 显示地点 tip：anchors = [{name, lng, lat}]（已解析的真实坐标）。cap ≤ 8；线高 stagger 避重叠。 */
+export function showLocTips(anchors) {
   clearLocTips();
-  if (!map || !locs || !locs.length) return;
-  const cells = (layer && layer.fc && layer.fc.features) || [];
-  for (const loc of locs.slice(0, 8)) {
-    if (!loc || loc.lng == null || loc.lat == null) continue;
-    let best = null, bestD = Infinity;
-    for (const f of cells) {
-      const c = (f.properties || {})._center;
-      if (!c) continue;
-      const d = (c[0] - loc.lng) ** 2 + (c[1] - loc.lat) ** 2;
-      if (d < bestD) { bestD = d; best = c; }
-    }
-    const anchor = best || [loc.lng, loc.lat];
+  if (!map || !anchors || !anchors.length) return;
+  anchors.slice(0, 8).forEach((a, i) => {
+    if (!a || a.lng == null || a.lat == null) return;
+    const len = Math.min(300, 200 + i * 25);   // 自适应高度：第 i 条线高 200/225/250...，胶囊错层避叠
     const el = document.createElement('div');
     el.className = 'loc-tip';
-    el.innerHTML = `<div class="loc-tip-cap">${(loc.name || '').replace(/[<>]/g, '')}</div><div class="loc-tip-line"></div>`;
+    el.innerHTML = `<div class="loc-tip-cap">${(a.name || '').replace(/[<>]/g, '')}</div><div class="loc-tip-line" style="height:${len}px"></div>`;
     const m = new maplibregl.Marker({ element: el, anchor: 'bottom' })
-      .setLngLat(anchor)
+      .setLngLat([a.lng, a.lat])
       .addTo(map);
     _locTipMarkers.push(m);
-  }
+  });
 }
 
 /** 清全部地点 tip（关键词 leave / 切极性 / 换层 时）。 */

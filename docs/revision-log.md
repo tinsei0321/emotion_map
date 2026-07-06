@@ -616,6 +616,19 @@ flowchart TD
 
 **文件**：`frontend/js/panel.js`（`_matrix4x5ByPolarity` 数单元 + `_polarityBodyHtml` 占比话语单位 + `_renderBlockKw`/`_resetPolKwState`/`_findPolWord`/`_highlightPolBlockCell` + matrix/word handlers + 综合 `_keywordsHtml` 单位）·`frontend/js/map.js`（`showLocTips`/`clearLocTips` Marker+白线胶囊）·`frontend/css/panel.css`（Tab 紧凑 + 题头下移 + `.loc-tip` + `.is-sticky` 橙填充）·`DATA/performance/polarity_deepread_keywords.json`（v2 restructure）·`docs/todo.md`（去星期几）·新 memory `timestamp-no-weekday`。
 
+### 5.27 地点锚定系统修（数据为准）+ sticky 最高级 + 词点击柱体橙 + 消极 3x（07月06日 15:30）
+
+**用户 review 5.26 后提致命错 + bug + 内容问题**：
+
+- **地点锚定致命错（系统性修）**：v2 副本硬编码 lngLat 是我猜的（奥体误标 111.20,30.60，实际 111.226,30.705）→ 错 cell。**根因**：未用用户数据。**系统修法**：副本只留地名（locs 改 `[name]` 数组），`panel.js _resolveLocAnchors` 去 grid 源点层（`ui.source=group:gid`→children）按 `area_seed/spatial_hotspot` 含地名找真实 POI → 最近 cell._center。数据无该 POI → **跳过 tip**（不错误指向）。地名实测对照 area_seed：奥体=宜昌奥体中心/南湖=湖北银行南湖支行/体育场=宜昌市体育场/中南=中南路店/二马路=二马路历史文化街区/桃花岭=桃花岭小学；长江之心 T1 数据无→tip 跳过（内容仍保留）。`showLocTips(anchors)` 改为接收已解析坐标（不再自己找 cell）。**memory `loc-anchor-by-data-not-coords`**：地点类 tip 必须按数据（点层 POI/地名）锚定，禁止猜坐标。
+- **sticky 最高级 bug（全局逻辑）**：v2 hover 词会覆盖已 click 的 sticky tip。修：`if (_polWordTipSticky) return`（hover 不覆盖 sticky tip）；矩阵 hover `if (!_polBlockSticky)` 才瞬时显词组。**memory `sticky-hover-priority`**：sticky（点击锁定）最高级，hover 不覆盖其长显内容（全局）。
+- **牵引线自适应**：line 高 200+i×25（cap 300）stagger，胶囊错层避叠（v2 固定 300 太高且重叠）。CSS `.loc-tip-line` 去固定 height，JS inline。
+- **词点击→柱体橙 + 子集**：词 click → `_resolveLocAnchors` 得 cells + anchors → `showLocTips(anchors)` + `toggleStickyHighlight(cells, layer, 'polkw:word')`（词聚合域橙柱体，⊆ 块聚合域，数据连贯自然成立）；矩阵 click → `toggleStickyHighlight(blockCells, layer, 'polmx:dom|elm')`（块橙）。释放 → `resetHighlightCellSet`。`_resetPolKwState` 加 resetHighlightCellSet。
+- **副本 v3 内容修正**（用户逐项指出）：二马路消极改"历史感不强/老街没特点/业态不行/改得没原味了"（非"拆没了"，看新闻）；噪音→体育场（修路）；内涝积水→南湖（低洼居住）+ "逢雨必淹"；加装电梯→桃花岭（西陵老小区）扩量 + "老人爬楼难/西陵老小区设施旧"；烂尾→长江之心（沿江楼盘）；堵车/拥堵→中南路十字口 + "挪不动"；停车难→+中南；"没意思"→换"打卡点同质化"（夷陵广场=CBD）。消极块词量 3x（4-7 词，含短句吐槽：商圈停车靠抢/中南路十字口堵死/二马路修围挡挡路/南湖逢雨必淹/老人爬楼难，网感强）。
+- **process**：新 memory `verify-with-webapp-testing-skill`——前端验证用 webapp-testing skill 非 Playwright MCP，默认不验证交付肉眼验。本轮按此**未自动验证**，交付肉眼验。
+
+**文件**：`frontend/js/panel.js`（`_resolveLocAnchors` + matrix/word hover/click handlers sticky 优先 + 词点击柱体橙 + `_resetPolKwState` 加 resetHighlightCellSet）·`frontend/js/map.js`（`showLocTips(anchors)` 接收已解析坐标 + line stagger）·`frontend/css/panel.css`（`.loc-tip-line` 去固定 height）·`DATA/performance/polarity_deepread_keywords.json`（v3 locs 地名数组 + 消极 3x + 内容修正）·新 memory `loc-anchor-by-data-not-coords`/`sticky-hover-priority`/`verify-with-webapp-testing-skill`。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

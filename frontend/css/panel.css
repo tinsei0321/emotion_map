@@ -251,7 +251,7 @@
   padding: 2px 8px; border-radius: 10px; white-space: nowrap;
   border: 1px solid rgba(0,0,0,.06); box-shadow: 0 2px 8px rgba(0,0,0,.18);
 }
-.loc-tip-line { width: 1px; height: 300px; background: #fff; box-shadow: 0 0 2px rgba(0,0,0,.30); }
+.loc-tip-line { width: 1px; background: #fff; box-shadow: 0 0 2px rgba(0,0,0,.30); }   /* height 由 JS inline（200~300 stagger 避叠） */
 
 /* 单元深读：4×5 定位高亮 + 分位条 */
 .ov-cell-where { font-size: var(--geojson-typography-size-xs, 13px); color: var(--geojson-color-text-secondary); line-height: 1.5; }

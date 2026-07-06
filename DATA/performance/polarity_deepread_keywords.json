@@ -1,431 +1,471 @@
 {
   "_meta": {
     "is_demo": true,
-    "version": "2026-07-06-b",
-    "note": "极性深读·深度解读·极性·关键词/热门话题 演示副本 v2。每词 = {word, n(相关情绪点数,编造), locs:[{name,lng,lat}]}。locs 双用：①关键词卡片右侧淡灰地点（joined）②地图地点 tip（白线+胶囊，锚最近 grid cell）。含短句热门话题（二马路开街/奥体演唱会 等）。T1=春节·硬件消极；T3=五一·文旅积极。规划/更新×设施/环境/文化 块词量偏多、强项目味。坐标复用 todo.md 12 词典型格 + candidate 池地标。",
-    "tendency": "planning/renewal × facility/environment/culture 块 4-6 词；其余 2-3。停车难/占道停车→商圈多地点；二马路/奥体/卷桥河→唯一或集中少数。"
+    "version": "2026-07-06-c",
+    "note": "极性深读·关键词/热门话题 演示副本 v3。locs 改为【地名数组】（string），tip 锚定时由 panel.js _resolveLocAnchors 去 grid 源点层按 area_seed/spatial_hotspot 含地名找真实 POI → 所在 cell（数据为准，绝不再猜坐标——修 v2 奥体错位类致命错）。消极块词量 3x（短语/短句/吐槽，网感强）。地名对照 area_seed 实测：奥体=宜昌奥体中心/南湖=湖北银行南湖支行/体育场=宜昌市体育场/中南=中南路店/二马路=二马路历史文化街区/桃花岭=桃花岭小学/万达·国贸·吾悦·CBD=商圈/长江之心 T1 数据无→tip 跳过。T1=春节硬件消极；T3=五一文旅积极。",
+    "tendency": "消极块 4-7 词（重点演示，含短句吐槽）；积极/中性 2-4。停车难→多商圈+中南路；二马路/奥体/卷桥河→集中少数；烂尾→长江之心（沿江楼盘）。"
   },
   "T1": {
     "positive": {
       "urban_planning|facility": [
-        {"word": "断头路打通", "n": 312, "locs": [{"name": "东山大道·港城路口", "lng": 111.305, "lat": 30.715}]},
-        {"word": "BRT 接驳顺畅", "n": 268, "locs": [{"name": "火车东站", "lng": 111.352, "lat": 30.652}, {"name": "夷陵广场", "lng": 111.268, "lat": 30.710}]},
-        {"word": "新中心开业", "n": 184, "locs": [{"name": "吾悦广场", "lng": 111.335, "lat": 30.740}]}
+        {"word": "断头路打通", "n": 312, "locs": ["东山"]},
+        {"word": "BRT 接驳顺", "n": 268, "locs": ["东站", "CBD"]},
+        {"word": "新中心开业", "n": 184, "locs": ["吾悦"]}
       ],
       "urban_planning|environment": [
-        {"word": "绿道成网", "n": 402, "locs": [{"name": "滨江公园", "lng": 111.270, "lat": 30.685}, {"name": "卷桥河湿地", "lng": 111.240, "lat": 30.660}]},
-        {"word": "口袋公园", "n": 296, "locs": [{"name": "街角口袋公园", "lng": 111.290, "lat": 30.715}, {"name": "儿童公园", "lng": 111.283, "lat": 30.712}]},
-        {"word": "规划绿地落地", "n": 158, "locs": [{"name": "江南 URD", "lng": 111.250, "lat": 30.650}]}
+        {"word": "绿道成网", "n": 402, "locs": ["滨江公园", "卷桥河"]},
+        {"word": "口袋公园", "n": 296, "locs": ["儿童公园"]},
+        {"word": "规划绿地落地", "n": 158, "locs": ["点军"]}
       ],
       "urban_planning|service": [
-        {"word": "新学校启用", "n": 96, "locs": [{"name": "伍家岗新校区", "lng": 111.330, "lat": 30.690}]}
+        {"word": "新学校启用", "n": 96, "locs": ["东山"]}
       ],
       "urban_planning|culture": [
-        {"word": "新地标", "n": 142, "locs": [{"name": "夷陵广场", "lng": 111.268, "lat": 30.710}]}
+        {"word": "新地标", "n": 142, "locs": ["CBD"]}
       ],
       "urban_planning|event": [
-        {"word": "春节灯会", "n": 210, "locs": [{"name": "滨江公园", "lng": 111.270, "lat": 30.685}]}
+        {"word": "春节灯会", "n": 210, "locs": ["滨江公园"]}
       ],
       "urban_renewal|facility": [
-        {"word": "加装电梯", "n": 386, "locs": [{"name": "桃花岭小区", "lng": 111.285, "lat": 30.715}, {"name": "翁家堰社区", "lng": 111.290, "lat": 30.718}]},
-        {"word": "管线更新", "n": 224, "locs": [{"name": "行署小区", "lng": 111.288, "lat": 30.712}]},
-        {"word": "适老化改造", "n": 178, "locs": [{"name": "桃花岭小区", "lng": 111.285, "lat": 30.715}]}
+        {"word": "加装电梯", "n": 386, "locs": ["桃花岭"]},
+        {"word": "管线更新", "n": 224, "locs": ["桃花岭"]},
+        {"word": "适老化改造", "n": 178, "locs": ["桃花岭"]}
       ],
       "urban_renewal|environment": [
-        {"word": "老旧焕新", "n": 342, "locs": [{"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}, {"name": "桃花岭小区", "lng": 111.285, "lat": 30.715}]},
-        {"word": "街区整治", "n": 208, "locs": [{"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}]},
-        {"word": "微更新", "n": 166, "locs": [{"name": "翁家堰社区", "lng": 111.290, "lat": 30.718}]}
+        {"word": "老旧焕新", "n": 342, "locs": ["二马路", "桃花岭"]},
+        {"word": "街区整治", "n": 208, "locs": ["二马路"]},
+        {"word": "微更新", "n": 166, "locs": ["桃花岭"]}
       ],
       "urban_renewal|service": [
-        {"word": "物业进场", "n": 112, "locs": [{"name": "行署小区", "lng": 111.288, "lat": 30.712}]}
+        {"word": "物业进场", "n": 112, "locs": ["桃花岭"]}
       ],
       "urban_renewal|culture": [
-        {"word": "老街新生", "n": 258, "locs": [{"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}]}
+        {"word": "老街新生", "n": 258, "locs": ["二马路"]}
       ],
       "urban_renewal|event": [
-        {"word": "微更新活化", "n": 98, "locs": [{"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}]}
+        {"word": "微更新活化", "n": 98, "locs": ["二马路"]}
       ],
       "urban_operation|facility": [
-        {"word": "公交到门口", "n": 156, "locs": [{"name": "西陵一路", "lng": 111.275, "lat": 30.712}]}
+        {"word": "公交到门口", "n": 156, "locs": ["云集"]}
       ],
       "urban_operation|environment": [
-        {"word": "滨江步道", "n": 224, "locs": [{"name": "滨江公园", "lng": 111.270, "lat": 30.685}]}
+        {"word": "滨江步道", "n": 224, "locs": ["滨江公园"]}
       ],
       "urban_operation|service": [
-        {"word": "网红", "n": 312, "locs": [{"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}, {"name": "吾悦广场", "lng": 111.335, "lat": 30.740}]},
-        {"word": "开街烟火气足", "n": 540, "locs": [{"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}]}
+        {"word": "网红打卡", "n": 312, "locs": ["二马路", "吾悦"]},
+        {"word": "开街烟火气足", "n": 540, "locs": ["二马路"]}
       ],
       "urban_operation|culture": [
-        {"word": "15 分钟生活区", "n": 134, "locs": [{"name": "西陵一路", "lng": 111.275, "lat": 30.712}]}
+        {"word": "15 分钟生活区", "n": 134, "locs": ["云集"]}
       ],
       "urban_operation|event": [
-        {"word": "春节人流", "n": 268, "locs": [{"name": "夷陵广场", "lng": 111.268, "lat": 30.710}, {"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}]}
+        {"word": "春节人流旺", "n": 268, "locs": ["CBD", "二马路"]}
       ],
       "urban_governance|facility": [
-        {"word": "红绿灯优化", "n": 142, "locs": [{"name": "东山大道", "lng": 111.305, "lat": 30.715}]}
+        {"word": "红绿灯优化了", "n": 142, "locs": ["东山"]}
       ],
       "urban_governance|environment": [
-        {"word": "街道整洁", "n": 128, "locs": [{"name": "西陵一路", "lng": 111.275, "lat": 30.712}]}
+        {"word": "街道干净整洁", "n": 128, "locs": ["云集"]}
       ],
       "urban_governance|service": [
-        {"word": "政务秒批", "n": 86, "locs": [{"name": "政务中心", "lng": 111.280, "lat": 30.715}]}
+        {"word": "政务秒批", "n": 86, "locs": ["政务中心"]}
       ],
       "urban_governance|culture": [
-        {"word": "文化活动", "n": 112, "locs": [{"name": "夷陵广场", "lng": 111.268, "lat": 30.710}]}
+        {"word": "文化活动", "n": 112, "locs": ["CBD"]}
       ],
       "urban_governance|event": [
-        {"word": "春节保障", "n": 156, "locs": [{"name": "夷陵广场", "lng": 111.268, "lat": 30.710}]}
+        {"word": "春节保障到位", "n": 156, "locs": ["CBD"]}
       ]
     },
     "neutral": {
       "urban_planning|facility": [
-        {"word": "盼 BRT", "n": 218, "locs": [{"name": "东山大道", "lng": 111.305, "lat": 30.715}, {"name": "火车东站", "lng": 111.352, "lat": 30.652}]},
-        {"word": "盼断头路打通", "n": 176, "locs": [{"name": "东山大道·港城路口", "lng": 111.305, "lat": 30.715}]}
+        {"word": "盼 BRT", "n": 218, "locs": ["东山", "东站"]},
+        {"word": "盼断头路打通", "n": 176, "locs": ["东山"]}
       ],
       "urban_planning|environment": [
-        {"word": "绿道延伸", "n": 168, "locs": [{"name": "卷桥河湿地", "lng": 111.240, "lat": 30.660}]},
-        {"word": "规划绿地", "n": 142, "locs": [{"name": "江南 URD", "lng": 111.250, "lat": 30.650}]}
+        {"word": "绿道延伸", "n": 168, "locs": ["卷桥河"]},
+        {"word": "规划绿地", "n": 142, "locs": ["点军"]}
       ],
       "urban_planning|service": [
-        {"word": "学区划分", "n": 96, "locs": [{"name": "伍家岗新校区", "lng": 111.330, "lat": 30.690}]}
+        {"word": "学区划分讨论", "n": 96, "locs": ["东山"]}
       ],
       "urban_planning|culture": [
-        {"word": "规划落地中", "n": 84, "locs": [{"name": "江南 URD", "lng": 111.250, "lat": 30.650}]}
+        {"word": "规划落地中", "n": 84, "locs": ["点军"]}
       ],
       "urban_planning|event": [
-        {"word": "新区规划", "n": 78, "locs": [{"name": "江南 URD", "lng": 111.250, "lat": 30.650}]}
+        {"word": "新区规划", "n": 78, "locs": ["点军"]}
       ],
       "urban_renewal|facility": [
-        {"word": "盼电梯", "n": 286, "locs": [{"name": "桃花岭小区", "lng": 111.285, "lat": 30.715}, {"name": "翁家堰社区", "lng": 111.290, "lat": 30.718}]},
-        {"word": "加装电梯排队", "n": 198, "locs": [{"name": "桃花岭小区", "lng": 111.285, "lat": 30.715}]}
+        {"word": "盼电梯", "n": 286, "locs": ["桃花岭"]},
+        {"word": "加装电梯排队", "n": 198, "locs": ["桃花岭"]}
       ],
       "urban_renewal|environment": [
-        {"word": "老街改造", "n": 208, "locs": [{"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}]},
-        {"word": "老旧小区谋划", "n": 156, "locs": [{"name": "桃花岭小区", "lng": 111.285, "lat": 30.715}]}
+        {"word": "老街改造", "n": 208, "locs": ["二马路"]},
+        {"word": "老旧小区谋划", "n": 156, "locs": ["桃花岭"]}
       ],
       "urban_renewal|service": [
-        {"word": "社区配套谋划", "n": 112, "locs": [{"name": "翁家堰社区", "lng": 111.290, "lat": 30.718}]}
+        {"word": "社区配套谋划", "n": 112, "locs": ["桃花岭"]}
       ],
       "urban_renewal|culture": [
-        {"word": "历史街区保护", "n": 134, "locs": [{"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}]}
+        {"word": "历史街区保护", "n": 134, "locs": ["二马路"]}
       ],
       "urban_renewal|event": [
-        {"word": "改造中", "n": 96, "locs": [{"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}]}
+        {"word": "改造中", "n": 96, "locs": ["二马路"]}
       ],
       "urban_operation|facility": [
-        {"word": "公交线优化", "n": 102, "locs": [{"name": "西陵一路", "lng": 111.275, "lat": 30.712}]}
+        {"word": "公交线优化", "n": 102, "locs": ["云集"]}
       ],
       "urban_operation|environment": [
-        {"word": "口袋公园规划", "n": 118, "locs": [{"name": "儿童公园", "lng": 111.283, "lat": 30.712}]}
+        {"word": "口袋公园规划", "n": 118, "locs": ["儿童公园"]}
       ],
       "urban_operation|service": [
-        {"word": "业态调整讨论", "n": 142, "locs": [{"name": "万达广场", "lng": 111.310, "lat": 30.700}]}
+        {"word": "业态调整讨论", "n": 142, "locs": ["万达"]}
       ],
       "urban_operation|culture": [
-        {"word": "社区服务配套", "n": 108, "locs": [{"name": "翁家堰社区", "lng": 111.290, "lat": 30.718}]}
+        {"word": "社区服务配套", "n": 108, "locs": ["桃花岭"]}
       ],
       "urban_operation|event": [
-        {"word": "夜市筹备", "n": 128, "locs": [{"name": "滨江公园", "lng": 111.270, "lat": 30.685}]}
+        {"word": "夜市筹备", "n": 128, "locs": ["滨江公园"]}
       ],
       "urban_governance|facility": [
-        {"word": "停车收费讨论", "n": 156, "locs": [{"name": "夷陵广场", "lng": 111.268, "lat": 30.710}]}
+        {"word": "停车收费讨论", "n": 156, "locs": ["CBD"]}
       ],
       "urban_governance|environment": [
-        {"word": "垃圾分类讨论", "n": 88, "locs": [{"name": "西陵一路", "lng": 111.275, "lat": 30.712}]}
+        {"word": "垃圾分类讨论", "n": 88, "locs": ["云集"]}
       ],
       "urban_governance|service": [
-        {"word": "办事指南", "n": 72, "locs": [{"name": "政务中心", "lng": 111.280, "lat": 30.715}]}
+        {"word": "办事指南", "n": 72, "locs": ["政务中心"]}
       ],
       "urban_governance|culture": [
-        {"word": "活动预告", "n": 84, "locs": [{"name": "夷陵广场", "lng": 111.268, "lat": 30.710}]}
+        {"word": "活动预告", "n": 84, "locs": ["CBD"]}
       ],
       "urban_governance|event": [
-        {"word": "早晚高峰", "n": 168, "locs": [{"name": "东山大道", "lng": 111.305, "lat": 30.715}]}
+        {"word": "早晚高峰", "n": 168, "locs": ["中南", "东山"]}
       ]
     },
     "negative": {
       "urban_planning|facility": [
-        {"word": "断头路", "n": 342, "locs": [{"name": "东山大道·港城路口", "lng": 111.305, "lat": 30.715}]},
-        {"word": "接驳缺失", "n": 218, "locs": [{"name": "火车东站", "lng": 111.352, "lat": 30.652}]},
-        {"word": "路网断点", "n": 176, "locs": [{"name": "港城路", "lng": 111.318, "lat": 30.728}]}
+        {"word": "断头路", "n": 342, "locs": ["东山"]},
+        {"word": "接驳缺位", "n": 218, "locs": ["东站"]},
+        {"word": "路网断点", "n": 176, "locs": ["东山"]},
+        {"word": "BRT 迟迟不通", "n": 168, "locs": ["东山", "东站"]},
+        {"word": "配套欠账", "n": 142, "locs": ["点军"]},
+        {"word": "新片区出行难", "n": 128, "locs": ["点军"]}
       ],
       "urban_planning|environment": [
-        {"word": "内涝积水", "n": 196, "locs": [{"name": "东山大道", "lng": 111.305, "lat": 30.715}]},
-        {"word": "绿地不足", "n": 142, "locs": [{"name": "伍家岗", "lng": 111.330, "lat": 30.690}]}
+        {"word": "内涝积水", "n": 268, "locs": ["南湖"]},
+        {"word": "南湖片区逢雨必淹", "n": 198, "locs": ["南湖"]},
+        {"word": "绿地不足", "n": 142, "locs": ["点军"]},
+        {"word": "蓝绿断带", "n": 118, "locs": ["卷桥河"]},
+        {"word": "排水管网老化", "n": 156, "locs": ["南湖"]}
       ],
       "urban_planning|service": [
-        {"word": "没配套", "n": 128, "locs": [{"name": "江南 URD", "lng": 111.250, "lat": 30.650}]}
+        {"word": "没配套", "n": 128, "locs": ["点军"]},
+        {"word": "学区紧张", "n": 96, "locs": ["点军"]}
       ],
       "urban_planning|culture": [
-        {"word": "没特色", "n": 96, "locs": [{"name": "夷陵广场", "lng": 111.268, "lat": 30.710}]}
+        {"word": "没特色", "n": 96, "locs": ["CBD"]}
       ],
       "urban_planning|event": [
-        {"word": "烂尾", "n": 72, "locs": [{"name": "伍家岗", "lng": 111.330, "lat": 30.690}]}
+        {"word": "烂尾", "n": 142, "locs": ["长江之心"]},
+        {"word": "沿江楼盘烂尾", "n": 108, "locs": ["长江之心"]}
       ],
       "urban_renewal|facility": [
-        {"word": "没电梯", "n": 386, "locs": [{"name": "桃花岭小区", "lng": 111.285, "lat": 30.715}, {"name": "翁家堰社区", "lng": 111.290, "lat": 30.718}]},
-        {"word": "加装电梯难", "n": 248, "locs": [{"name": "桃花岭小区", "lng": 111.285, "lat": 30.715}]},
-        {"word": "管线老化", "n": 186, "locs": [{"name": "行署小区", "lng": 111.288, "lat": 30.712}]}
+        {"word": "没电梯", "n": 386, "locs": ["桃花岭"]},
+        {"word": "加装电梯难", "n": 268, "locs": ["桃花岭"]},
+        {"word": "老人爬楼难", "n": 218, "locs": ["桃花岭"]},
+        {"word": "管线老化", "n": 186, "locs": ["桃花岭"]},
+        {"word": "适老化欠账", "n": 168, "locs": ["桃花岭"]},
+        {"word": "西陵老小区设施旧", "n": 198, "locs": ["桃花岭"]}
       ],
       "urban_renewal|environment": [
-        {"word": "墙皮脱落", "n": 268, "locs": [{"name": "桃花岭小区", "lng": 111.285, "lat": 30.715}]},
-        {"word": "管网失修", "n": 198, "locs": [{"name": "行署小区", "lng": 111.288, "lat": 30.712}]},
-        {"word": "施工扰民", "n": 312, "locs": [{"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}]}
+        {"word": "墙皮脱落", "n": 268, "locs": ["桃花岭"]},
+        {"word": "管网失修", "n": 198, "locs": ["桃花岭"]},
+        {"word": "施工扰民", "n": 312, "locs": ["二马路"]},
+        {"word": "老旧破败", "n": 186, "locs": ["桃花岭"]},
+        {"word": "街区衰败", "n": 156, "locs": ["二马路"]},
+        {"word": "二马路修围挡挡路", "n": 248, "locs": ["二马路"]}
       ],
       "urban_renewal|service": [
-        {"word": "物业差", "n": 168, "locs": [{"name": "行署小区", "lng": 111.288, "lat": 30.712}]}
+        {"word": "物业差", "n": 168, "locs": ["桃花岭"]},
+        {"word": "社区服务缺", "n": 128, "locs": ["桃花岭"]}
       ],
       "urban_renewal|culture": [
-        {"word": "拆没了", "n": 84, "locs": [{"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}]}
+        {"word": "历史感不强", "n": 186, "locs": ["二马路"]},
+        {"word": "老街没特点", "n": 168, "locs": ["二马路"]},
+        {"word": "业态不行", "n": 218, "locs": ["二马路"]},
+        {"word": "改得没原味了", "n": 142, "locs": ["二马路"]}
       ],
       "urban_renewal|event": [
-        {"word": "改造阵痛", "n": 142, "locs": [{"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}]}
+        {"word": "施工扰民", "n": 218, "locs": ["二马路"]},
+        {"word": "改造阵痛", "n": 142, "locs": ["二马路"]}
       ],
       "urban_operation|facility": [
-        {"word": "停车难", "n": 468, "locs": [{"name": "夷陵广场", "lng": 111.268, "lat": 30.710}, {"name": "万达广场", "lng": 111.310, "lat": 30.700}, {"name": "国贸", "lng": 111.282, "lat": 30.722}, {"name": "吾悦广场", "lng": 111.335, "lat": 30.740}, {"name": "火车东站", "lng": 111.352, "lat": 30.652}]},
-        {"word": "接驳差", "n": 186, "locs": [{"name": "火车东站", "lng": 111.352, "lat": 30.652}]}
+        {"word": "停车难", "n": 468, "locs": ["CBD", "万达", "国贸", "吾悦", "中南", "东站"]},
+        {"word": "商圈停车靠抢", "n": 286, "locs": ["万达", "国贸"]},
+        {"word": "接驳差", "n": 186, "locs": ["东站"]},
+        {"word": "中南路也堵", "n": 168, "locs": ["中南"]}
       ],
       "urban_operation|environment": [
-        {"word": "绿化失养", "n": 128, "locs": [{"name": "东山大道", "lng": 111.305, "lat": 30.715}]}
+        {"word": "绿化失养", "n": 128, "locs": ["东山"]}
       ],
       "urban_operation|service": [
-        {"word": "底商空置冷清", "n": 218, "locs": [{"name": "万达广场", "lng": 111.310, "lat": 30.700}]},
-        {"word": "业态单一", "n": 156, "locs": [{"name": "国贸", "lng": 111.282, "lat": 30.722}]}
+        {"word": "底商空置冷清", "n": 218, "locs": ["万达"]},
+        {"word": "业态单一", "n": 156, "locs": ["国贸"]}
       ],
       "urban_operation|culture": [
-        {"word": "没意思", "n": 96, "locs": [{"name": "夷陵广场", "lng": 111.268, "lat": 30.710}]}
+        {"word": "打卡点同质化", "n": 118, "locs": ["CBD"]}
       ],
       "urban_operation|event": [
-        {"word": "噪音", "n": 286, "locs": [{"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}, {"name": "滨江公园", "lng": 111.270, "lat": 30.685}]}
+        {"word": "噪音", "n": 286, "locs": ["体育场"]},
+        {"word": "体育场路修路吵", "n": 198, "locs": ["体育场"]}
       ],
       "urban_governance|facility": [
-        {"word": "红绿灯", "n": 312, "locs": [{"name": "东山大道", "lng": 111.305, "lat": 30.715}, {"name": "云集路", "lng": 111.283, "lat": 30.715}]},
-        {"word": "占道停车", "n": 268, "locs": [{"name": "夷陵广场", "lng": 111.268, "lat": 30.710}, {"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}]}
+        {"word": "红绿灯", "n": 312, "locs": ["东山", "云集"]},
+        {"word": "占道停车", "n": 268, "locs": ["CBD", "二马路"]},
+        {"word": "停车难", "n": 386, "locs": ["CBD", "万达", "中南"]},
+        {"word": "路口乱", "n": 168, "locs": ["中南"]}
       ],
       "urban_governance|environment": [
-        {"word": "垃圾乱扔", "n": 168, "locs": [{"name": "西陵一路", "lng": 111.275, "lat": 30.712}]}
+        {"word": "垃圾乱扔", "n": 168, "locs": ["云集"]},
+        {"word": "脏乱差", "n": 142, "locs": ["CBD"]}
       ],
       "urban_governance|service": [
-        {"word": "办事难", "n": 128, "locs": [{"name": "政务中心", "lng": 111.280, "lat": 30.715}]}
+        {"word": "办事难", "n": 128, "locs": ["政务中心"]},
+        {"word": "推诿扯皮", "n": 96, "locs": ["政务中心"]}
       ],
       "urban_governance|culture": [
-        {"word": "没去处", "n": 96, "locs": [{"name": "伍家岗", "lng": 111.330, "lat": 30.690}]}
+        {"word": "文化活动太少", "n": 118, "locs": ["CBD"]}
       ],
       "urban_governance|event": [
-        {"word": "堵车", "n": 386, "locs": [{"name": "东山大道", "lng": 111.305, "lat": 30.715}, {"name": "胜利三路", "lng": 111.295, "lat": 30.720}, {"name": "云集路", "lng": 111.283, "lat": 30.715}]},
-        {"word": "拥堵投诉", "n": 248, "locs": [{"name": "东山大道", "lng": 111.305, "lat": 30.715}]}
+        {"word": "堵车", "n": 386, "locs": ["中南", "东山", "云集"]},
+        {"word": "中南路十字口堵死", "n": 248, "locs": ["中南"]},
+        {"word": "持续拥堵", "n": 218, "locs": ["中南"]},
+        {"word": "早晚高峰挪不动", "n": 198, "locs": ["中南", "东山"]}
       ]
     }
   },
   "T3": {
     "positive": {
       "urban_planning|facility": [
-        {"word": "断头路打通", "n": 386, "locs": [{"name": "东山大道·港城路口", "lng": 111.305, "lat": 30.715}]},
-        {"word": "BRT 成网", "n": 312, "locs": [{"name": "火车东站", "lng": 111.352, "lat": 30.652}, {"name": "夷陵广场", "lng": 111.268, "lat": 30.710}]},
-        {"word": "路网升级", "n": 218, "locs": [{"name": "东山大道", "lng": 111.305, "lat": 30.715}]}
+        {"word": "断头路打通", "n": 386, "locs": ["东山"]},
+        {"word": "BRT 成网", "n": 312, "locs": ["东站", "CBD"]},
+        {"word": "路网升级", "n": 218, "locs": ["东山"]}
       ],
       "urban_planning|environment": [
-        {"word": "绿道成网", "n": 468, "locs": [{"name": "滨江公园", "lng": 111.270, "lat": 30.685}, {"name": "卷桥河湿地", "lng": 111.240, "lat": 30.660}]},
-        {"word": "江南绿肺", "n": 312, "locs": [{"name": "江南 URD", "lng": 111.250, "lat": 30.650}, {"name": "卷桥河湿地", "lng": 111.240, "lat": 30.660}]},
-        {"word": "郊野公园", "n": 218, "locs": [{"name": "卷桥河湿地", "lng": 111.240, "lat": 30.660}]}
+        {"word": "绿道成网", "n": 468, "locs": ["滨江公园", "卷桥河"]},
+        {"word": "江南绿肺", "n": 312, "locs": ["点军", "卷桥河"]},
+        {"word": "郊野公园", "n": 218, "locs": ["卷桥河"]}
       ],
       "urban_planning|service": [
-        {"word": "新学校启用", "n": 142, "locs": [{"name": "伍家岗新校区", "lng": 111.330, "lat": 30.690}]}
+        {"word": "新学校启用", "n": 142, "locs": ["东山"]}
       ],
       "urban_planning|culture": [
-        {"word": "新地标", "n": 196, "locs": [{"name": "夷陵广场", "lng": 111.268, "lat": 30.710}]}
+        {"word": "新地标", "n": 196, "locs": ["CBD"]}
       ],
       "urban_planning|event": [
-        {"word": "长江夜游", "n": 386, "locs": [{"name": "三峡游客中心", "lng": 111.303, "lat": 30.682}, {"name": "滨江公园", "lng": 111.270, "lat": 30.685}]},
-        {"word": "西坝不夜岛", "n": 268, "locs": [{"name": "西坝", "lng": 111.260, "lat": 30.675}]}
+        {"word": "长江夜游", "n": 386, "locs": ["滨江公园", "西坝"]},
+        {"word": "西坝不夜岛", "n": 268, "locs": ["西坝"]}
       ],
       "urban_renewal|facility": [
-        {"word": "加装电梯", "n": 412, "locs": [{"name": "桃花岭小区", "lng": 111.285, "lat": 30.715}, {"name": "翁家堰社区", "lng": 111.290, "lat": 30.718}]},
-        {"word": "适老化完成", "n": 268, "locs": [{"name": "桃花岭小区", "lng": 111.285, "lat": 30.715}]}
+        {"word": "加装电梯", "n": 412, "locs": ["桃花岭"]},
+        {"word": "适老化完成", "n": 268, "locs": ["桃花岭"]}
       ],
       "urban_renewal|environment": [
-        {"word": "大南门建成", "n": 568, "locs": [{"name": "大南门", "lng": 111.270, "lat": 30.700}]},
-        {"word": "老旧焕新", "n": 312, "locs": [{"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}, {"name": "桃花岭小区", "lng": 111.285, "lat": 30.715}]},
-        {"word": "历史街区活化", "n": 248, "locs": [{"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}, {"name": "大南门", "lng": 111.270, "lat": 30.700}]}
+        {"word": "大南门建成", "n": 568, "locs": ["大南门"]},
+        {"word": "老旧焕新", "n": 312, "locs": ["二马路", "桃花岭"]},
+        {"word": "历史街区活化", "n": 248, "locs": ["二马路", "大南门"]}
       ],
       "urban_renewal|service": [
-        {"word": "物业靠谱", "n": 168, "locs": [{"name": "桃花岭小区", "lng": 111.285, "lat": 30.715}]}
+        {"word": "物业靠谱", "n": 168, "locs": ["桃花岭"]}
       ],
       "urban_renewal|culture": [
-        {"word": "老街新生", "n": 412, "locs": [{"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}]},
-        {"word": "大南门文化", "n": 312, "locs": [{"name": "大南门", "lng": 111.270, "lat": 30.700}]}
+        {"word": "老街新生", "n": 412, "locs": ["二马路"]},
+        {"word": "大南门文化", "n": 312, "locs": ["大南门"]}
       ],
       "urban_renewal|event": [
-        {"word": "文旅复苏", "n": 286, "locs": [{"name": "大南门", "lng": 111.270, "lat": 30.700}]}
+        {"word": "文旅复苏", "n": 286, "locs": ["大南门"]}
       ],
       "urban_operation|facility": [
-        {"word": "公交到门口", "n": 196, "locs": [{"name": "西陵一路", "lng": 111.275, "lat": 30.712}]}
+        {"word": "公交到门口", "n": 196, "locs": ["云集"]}
       ],
       "urban_operation|environment": [
-        {"word": "滨江步道", "n": 312, "locs": [{"name": "滨江公园", "lng": 111.270, "lat": 30.685}]}
+        {"word": "滨江步道", "n": 312, "locs": ["滨江公园"]}
       ],
       "urban_operation|service": [
-        {"word": "网红", "n": 412, "locs": [{"name": "大南门", "lng": 111.270, "lat": 30.700}, {"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}, {"name": "吾悦广场", "lng": 111.335, "lat": 30.740}]},
-        {"word": "夜经济", "n": 468, "locs": [{"name": "滨江公园", "lng": 111.270, "lat": 30.685}, {"name": "三峡游客中心", "lng": 111.303, "lat": 30.682}]}
+        {"word": "网红", "n": 412, "locs": ["大南门", "二马路", "吾悦"]},
+        {"word": "夜经济", "n": 468, "locs": ["滨江公园", "西坝"]}
       ],
       "urban_operation|culture": [
-        {"word": "15 分钟生活区", "n": 186, "locs": [{"name": "西陵一路", "lng": 111.275, "lat": 30.712}]}
+        {"word": "15 分钟生活区", "n": 186, "locs": ["云集"]}
       ],
       "urban_operation|event": [
-        {"word": "楚超火爆", "n": 540, "locs": [{"name": "奥体中心", "lng": 111.200, "lat": 30.600}]},
-        {"word": "演唱会", "n": 386, "locs": [{"name": "奥体中心", "lng": 111.200, "lat": 30.600}]}
+        {"word": "楚超火爆", "n": 540, "locs": ["奥体"]},
+        {"word": "演唱会一票难求", "n": 386, "locs": ["奥体"]}
       ],
       "urban_governance|facility": [
-        {"word": "红绿灯优化", "n": 168, "locs": [{"name": "东山大道", "lng": 111.305, "lat": 30.715}]}
+        {"word": "红绿灯优化了", "n": 168, "locs": ["东山"]}
       ],
       "urban_governance|environment": [
-        {"word": "街道整洁", "n": 156, "locs": [{"name": "西陵一路", "lng": 111.275, "lat": 30.712}]}
+        {"word": "街道干净整洁", "n": 156, "locs": ["云集"]}
       ],
       "urban_governance|service": [
-        {"word": "政务秒批", "n": 112, "locs": [{"name": "政务中心", "lng": 111.280, "lat": 30.715}]}
+        {"word": "政务秒批", "n": 112, "locs": ["政务中心"]}
       ],
       "urban_governance|culture": [
-        {"word": "文化活动", "n": 142, "locs": [{"name": "大南门", "lng": 111.270, "lat": 30.700}]}
+        {"word": "文化活动", "n": 142, "locs": ["大南门"]}
       ],
       "urban_governance|event": [
-        {"word": "赛事保障", "n": 196, "locs": [{"name": "奥体中心", "lng": 111.200, "lat": 30.600}]}
+        {"word": "赛事保障到位", "n": 196, "locs": ["奥体"]}
       ]
     },
     "neutral": {
       "urban_planning|facility": [
-        {"word": "盼 BRT 延伸", "n": 186, "locs": [{"name": "火车东站", "lng": 111.352, "lat": 30.652}]},
-        {"word": "路网升级讨论", "n": 142, "locs": [{"name": "东山大道", "lng": 111.305, "lat": 30.715}]}
+        {"word": "盼 BRT 延伸", "n": 186, "locs": ["东站"]},
+        {"word": "路网升级讨论", "n": 142, "locs": ["东山"]}
       ],
       "urban_planning|environment": [
-        {"word": "郊野公园谋划", "n": 168, "locs": [{"name": "卷桥河湿地", "lng": 111.240, "lat": 30.660}]},
-        {"word": "绿道延伸", "n": 142, "locs": [{"name": "江南 URD", "lng": 111.250, "lat": 30.650}]}
+        {"word": "郊野公园谋划", "n": 168, "locs": ["卷桥河"]},
+        {"word": "绿道延伸", "n": 142, "locs": ["点军"]}
       ],
       "urban_planning|service": [
-        {"word": "学区优化", "n": 96, "locs": [{"name": "伍家岗新校区", "lng": 111.330, "lat": 30.690}]}
+        {"word": "学区优化", "n": 96, "locs": ["东山"]}
       ],
       "urban_planning|culture": [
-        {"word": "文化节点谋划", "n": 112, "locs": [{"name": "大南门", "lng": 111.270, "lat": 30.700}]}
+        {"word": "文化节点谋划", "n": 112, "locs": ["大南门"]}
       ],
       "urban_planning|event": [
-        {"word": "文旅规划", "n": 128, "locs": [{"name": "西坝", "lng": 111.260, "lat": 30.675}]}
+        {"word": "文旅规划", "n": 128, "locs": ["西坝"]}
       ],
       "urban_renewal|facility": [
-        {"word": "盼电梯", "n": 218, "locs": [{"name": "桃花岭小区", "lng": 111.285, "lat": 30.715}]},
-        {"word": "加装电梯扩展", "n": 168, "locs": [{"name": "翁家堰社区", "lng": 111.290, "lat": 30.718}]}
+        {"word": "盼电梯", "n": 218, "locs": ["桃花岭"]},
+        {"word": "加装电梯扩展", "n": 168, "locs": ["桃花岭"]}
       ],
       "urban_renewal|environment": [
-        {"word": "街区品质提升", "n": 186, "locs": [{"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}]},
-        {"word": "历史街区保护", "n": 142, "locs": [{"name": "大南门", "lng": 111.270, "lat": 30.700}]}
+        {"word": "街区品质提升", "n": 186, "locs": ["二马路"]},
+        {"word": "历史街区保护", "n": 142, "locs": ["大南门"]}
       ],
       "urban_renewal|service": [
-        {"word": "物业提升", "n": 128, "locs": [{"name": "桃花岭小区", "lng": 111.285, "lat": 30.715}]}
+        {"word": "物业提升", "n": 128, "locs": ["桃花岭"]}
       ],
       "urban_renewal|culture": [
-        {"word": "文化活化", "n": 156, "locs": [{"name": "大南门", "lng": 111.270, "lat": 30.700}]}
+        {"word": "文化活化", "n": 156, "locs": ["大南门"]}
       ],
       "urban_renewal|event": [
-        {"word": "文旅筹备", "n": 112, "locs": [{"name": "大南门", "lng": 111.270, "lat": 30.700}]}
+        {"word": "文旅筹备", "n": 112, "locs": ["大南门"]}
       ],
       "urban_operation|facility": [
-        {"word": "公交线优化", "n": 118, "locs": [{"name": "西陵一路", "lng": 111.275, "lat": 30.712}]}
+        {"word": "公交线优化", "n": 118, "locs": ["云集"]}
       ],
       "urban_operation|environment": [
-        {"word": "口袋公园规划", "n": 142, "locs": [{"name": "儿童公园", "lng": 111.283, "lat": 30.712}]}
+        {"word": "口袋公园规划", "n": 142, "locs": ["儿童公园"]}
       ],
       "urban_operation|service": [
-        {"word": "业态调整讨论", "n": 168, "locs": [{"name": "万达广场", "lng": 111.310, "lat": 30.700}]}
+        {"word": "业态调整讨论", "n": 168, "locs": ["万达"]}
       ],
       "urban_operation|culture": [
-        {"word": "社区营造", "n": 128, "locs": [{"name": "翁家堰社区", "lng": 111.290, "lat": 30.718}]}
+        {"word": "社区营造", "n": 128, "locs": ["桃花岭"]}
       ],
       "urban_operation|event": [
-        {"word": "夜市筹备", "n": 156, "locs": [{"name": "滨江公园", "lng": 111.270, "lat": 30.685}]}
+        {"word": "夜市筹备", "n": 156, "locs": ["滨江公园"]}
       ],
       "urban_governance|facility": [
-        {"word": "停车收费讨论", "n": 168, "locs": [{"name": "夷陵广场", "lng": 111.268, "lat": 30.710}]}
+        {"word": "停车收费讨论", "n": 168, "locs": ["CBD"]}
       ],
       "urban_governance|environment": [
-        {"word": "垃圾分类讨论", "n": 96, "locs": [{"name": "西陵一路", "lng": 111.275, "lat": 30.712}]}
+        {"word": "垃圾分类讨论", "n": 96, "locs": ["云集"]}
       ],
       "urban_governance|service": [
-        {"word": "办事指南", "n": 84, "locs": [{"name": "政务中心", "lng": 111.280, "lat": 30.715}]}
+        {"word": "办事指南", "n": 84, "locs": ["政务中心"]}
       ],
       "urban_governance|culture": [
-        {"word": "活动预告", "n": 96, "locs": [{"name": "大南门", "lng": 111.270, "lat": 30.700}]}
+        {"word": "活动预告", "n": 96, "locs": ["大南门"]}
       ],
       "urban_governance|event": [
-        {"word": "赛事筹备", "n": 142, "locs": [{"name": "奥体中心", "lng": 111.200, "lat": 30.600}]}
+        {"word": "赛事筹备", "n": 142, "locs": ["奥体"]}
       ]
     },
     "negative": {
       "urban_planning|facility": [
-        {"word": "断头路", "n": 218, "locs": [{"name": "东山大道·港城路口", "lng": 111.305, "lat": 30.715}]},
-        {"word": "路网瓶颈", "n": 156, "locs": [{"name": "港城路", "lng": 111.318, "lat": 30.728}]}
+        {"word": "断头路", "n": 218, "locs": ["东山"]},
+        {"word": "路网瓶颈", "n": 156, "locs": ["东山"]},
+        {"word": "接驳仍缺", "n": 128, "locs": ["东站"]}
       ],
       "urban_planning|environment": [
-        {"word": "内涝积水", "n": 168, "locs": [{"name": "东山大道", "lng": 111.305, "lat": 30.715}]},
-        {"word": "绿地补短板", "n": 128, "locs": [{"name": "伍家岗", "lng": 111.330, "lat": 30.690}]}
+        {"word": "内涝积水", "n": 186, "locs": ["南湖"]},
+        {"word": "南湖逢雨必淹", "n": 142, "locs": ["南湖"]},
+        {"word": "绿地补短板", "n": 128, "locs": ["点军"]}
       ],
       "urban_planning|service": [
-        {"word": "没配套", "n": 96, "locs": [{"name": "江南 URD", "lng": 111.250, "lat": 30.650}]}
+        {"word": "没配套", "n": 96, "locs": ["点军"]}
       ],
       "urban_planning|culture": [
-        {"word": "没特色", "n": 78, "locs": [{"name": "夷陵广场", "lng": 111.268, "lat": 30.710}]}
+        {"word": "没特色", "n": 78, "locs": ["CBD"]}
       ],
       "urban_planning|event": [
-        {"word": "烂尾", "n": 62, "locs": [{"name": "伍家岗", "lng": 111.330, "lat": 30.690}]}
+        {"word": "烂尾", "n": 96, "locs": ["长江之心"]},
+        {"word": "沿江楼盘烂尾", "n": 72, "locs": ["长江之心"]}
       ],
       "urban_renewal|facility": [
-        {"word": "没电梯", "n": 218, "locs": [{"name": "桃花岭小区", "lng": 111.285, "lat": 30.715}]},
-        {"word": "加装电梯排队", "n": 168, "locs": [{"name": "翁家堰社区", "lng": 111.290, "lat": 30.718}]}
+        {"word": "没电梯", "n": 218, "locs": ["桃花岭"]},
+        {"word": "加装电梯排队", "n": 168, "locs": ["桃花岭"]},
+        {"word": "管线欠账", "n": 128, "locs": ["桃花岭"]}
       ],
       "urban_renewal|environment": [
-        {"word": "墙皮脱落", "n": 168, "locs": [{"name": "桃花岭小区", "lng": 111.285, "lat": 30.715}]},
-        {"word": "施工扰民", "n": 186, "locs": [{"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}]}
+        {"word": "墙皮脱落", "n": 168, "locs": ["桃花岭"]},
+        {"word": "施工扰民", "n": 186, "locs": ["大南门"]},
+        {"word": "大南门收尾吵", "n": 142, "locs": ["大南门"]}
       ],
       "urban_renewal|service": [
-        {"word": "物业差", "n": 128, "locs": [{"name": "行署小区", "lng": 111.288, "lat": 30.712}]}
+        {"word": "物业差", "n": 128, "locs": ["桃花岭"]}
       ],
       "urban_renewal|culture": [
-        {"word": "拆没了", "n": 72, "locs": [{"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}]}
+        {"word": "历史感不强", "n": 142, "locs": ["二马路"]},
+        {"word": "老街没特点", "n": 128, "locs": ["二马路"]},
+        {"word": "业态不行", "n": 168, "locs": ["二马路"]}
       ],
       "urban_renewal|event": [
-        {"word": "施工扰民", "n": 142, "locs": [{"name": "大南门", "lng": 111.270, "lat": 30.700}]}
+        {"word": "施工扰民", "n": 142, "locs": ["大南门"]}
       ],
       "urban_operation|facility": [
-        {"word": "停车难", "n": 386, "locs": [{"name": "夷陵广场", "lng": 111.268, "lat": 30.710}, {"name": "万达广场", "lng": 111.310, "lat": 30.700}, {"name": "国贸", "lng": 111.282, "lat": 30.722}, {"name": "吾悦广场", "lng": 111.335, "lat": 30.740}, {"name": "奥体中心", "lng": 111.200, "lat": 30.600}]},
-        {"word": "接驳挤", "n": 156, "locs": [{"name": "火车东站", "lng": 111.352, "lat": 30.652}]}
+        {"word": "停车难", "n": 386, "locs": ["CBD", "万达", "国贸", "吾悦", "中南", "奥体"]},
+        {"word": "商圈停车靠抢", "n": 218, "locs": ["万达", "国贸"]},
+        {"word": "接驳挤", "n": 156, "locs": ["东站"]}
       ],
       "urban_operation|environment": [
-        {"word": "绿化失养", "n": 96, "locs": [{"name": "东山大道", "lng": 111.305, "lat": 30.715}]}
+        {"word": "绿化失养", "n": 96, "locs": ["东山"]}
       ],
       "urban_operation|service": [
-        {"word": "底商空置冷清", "n": 168, "locs": [{"name": "万达广场", "lng": 111.310, "lat": 30.700}]},
-        {"word": "收费不合理", "n": 128, "locs": [{"name": "国贸", "lng": 111.282, "lat": 30.722}]}
+        {"word": "底商空置冷清", "n": 168, "locs": ["万达"]},
+        {"word": "收费不合理", "n": 128, "locs": ["国贸"]}
       ],
       "urban_operation|culture": [
-        {"word": "没意思", "n": 78, "locs": [{"name": "夷陵广场", "lng": 111.268, "lat": 30.710}]}
+        {"word": "打卡点同质化", "n": 96, "locs": ["CBD"]}
       ],
       "urban_operation|event": [
-        {"word": "噪音", "n": 218, "locs": [{"name": "奥体中心", "lng": 111.200, "lat": 30.600}, {"name": "滨江公园", "lng": 111.270, "lat": 30.685}]},
-        {"word": "人流拥挤", "n": 268, "locs": [{"name": "大南门", "lng": 111.270, "lat": 30.700}, {"name": "二马路历史街区", "lng": 111.282, "lat": 30.710}]}
+        {"word": "噪音", "n": 218, "locs": ["体育场", "奥体"]},
+        {"word": "演唱会散场堵", "n": 186, "locs": ["奥体"]},
+        {"word": "人流拥挤", "n": 268, "locs": ["大南门", "二马路"]}
       ],
       "urban_governance|facility": [
-        {"word": "红绿灯", "n": 218, "locs": [{"name": "东山大道", "lng": 111.305, "lat": 30.715}]},
-        {"word": "占道停车", "n": 186, "locs": [{"name": "大南门", "lng": 111.270, "lat": 30.700}]}
+        {"word": "红绿灯", "n": 218, "locs": ["东山"]},
+        {"word": "占道停车", "n": 186, "locs": ["大南门"]},
+        {"word": "停车难", "n": 268, "locs": ["CBD", "中南"]}
       ],
       "urban_governance|environment": [
-        {"word": "环境死角", "n": 118, "locs": [{"name": "伍家岗", "lng": 111.330, "lat": 30.690}]}
+        {"word": "环境死角", "n": 118, "locs": ["点军"]}
       ],
       "urban_governance|service": [
-        {"word": "服务投诉", "n": 142, "locs": [{"name": "政务中心", "lng": 111.280, "lat": 30.715}]}
+        {"word": "服务投诉", "n": 142, "locs": ["政务中心"]},
+        {"word": "推诿扯皮", "n": 96, "locs": ["政务中心"]}
       ],
       "urban_governance|culture": [
-        {"word": "没去处", "n": 78, "locs": [{"name": "伍家岗", "lng": 111.330, "lat": 30.690}]}
+        {"word": "文化活动太少", "n": 96, "locs": ["CBD"]}
       ],
       "urban_governance|event": [
-        {"word": "堵车", "n": 268, "locs": [{"name": "东山大道", "lng": 111.305, "lat": 30.715}, {"name": "奥体中心", "lng": 111.200, "lat": 30.600}]},
-        {"word": "拥堵持续", "n": 186, "locs": [{"name": "东山大道", "lng": 111.305, "lat": 30.715}]}
+        {"word": "堵车", "n": 268, "locs": ["中南", "东山", "奥体"]},
+        {"word": "中南路十字口堵", "n": 186, "locs": ["中南"]},
+        {"word": "拥堵持续", "n": 168, "locs": ["中南"]}
       ]
     }
   }

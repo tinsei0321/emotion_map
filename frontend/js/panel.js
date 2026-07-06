@@ -74,18 +74,19 @@ export function initPanel() {
       if (sl) { _clearSync(); highlightCellSet(_cellsByPolarity(_overviewLayer.fc.features, sl.dataset.pol), _overviewLayer); return; }
       const mx = e.target.closest('.mx-cell[data-dom]');
       if (mx) {
-        if (_polarityState) {   // 极性深读：矩阵 hover → 地图高亮该桶 + 填 #ov-block-kw 该块关键词（瞬时）
+        if (_polarityState) {   // 极性深读：矩阵 hover → 地图试探高亮该桶；无 sticky 时才瞬时显词组（sticky 最高级不被覆盖）
           highlightCellSet(_cellsByBucket(_overviewLayer.fc.features, mx.dataset.dom, mx.dataset.elm), _overviewLayer);
-          _renderBlockKw(_polarityState.layer, _polarityState.pol, mx.dataset.dom, mx.dataset.elm);
+          if (!_polBlockSticky) _renderBlockKw(_polarityState.layer, _polarityState.pol, mx.dataset.dom, mx.dataset.elm);
           return;
         }
         _clearSync(); highlightCellSet(_cellsByBucket(_overviewLayer.fc.features, mx.dataset.dom, mx.dataset.elm), _overviewLayer); _syncFromMatrix(mx.dataset.dom, mx.dataset.elm); return;
       }
       const kw = e.target.closest('.ov-kw-item');
       if (kw) {
-        if (_polarityState && _polBlockCurrent) {   // 极性深读关键词 → 地点 tip（对应聚合域）+ 高亮所属矩阵块
+        if (_polarityState && _polBlockCurrent) {   // 极性深读关键词
+          if (_polWordTipSticky) return;   // sticky 词最高级：hover 不覆盖 tip（全局逻辑）
           const it = _findPolWord(kw.dataset.topic);
-          if (it && it.locs && it.locs.length) showLocTips(_polarityState.layer, it.locs.slice(0, 8));
+          if (it) { const { anchors } = _resolveLocAnchors(_polarityState.layer, it.locs || []); showLocTips(anchors); }
           _highlightPolBlockCell(_polBlockCurrent.dom, _polBlockCurrent.elm, true);
           return;
         }
@@ -129,9 +130,15 @@ export function initPanel() {
       const mx = e.target.closest('.mx-cell[data-dom]');
       if (mx) {
         const dom = mx.dataset.dom, elm = mx.dataset.elm;
-        if (_polarityState) {   // 极性深读：toggle sticky 块（词组长显，再点释放）
-          if (_polBlockSticky && _polBlockSticky.dom === dom && _polBlockSticky.elm === elm) { _polBlockSticky = null; _clearBlockKw(); }
-          else { _polBlockSticky = { dom, elm }; _renderBlockKw(_polarityState.layer, _polarityState.pol, dom, elm); }
+        if (_polarityState) {   // 极性深读：toggle sticky 块（词组长显 + 块聚合域橙柱体，再点释放）
+          if (_polBlockSticky && _polBlockSticky.dom === dom && _polBlockSticky.elm === elm) {
+            _polBlockSticky = null; _polWordTipSticky = null; _clearBlockKw(); resetHighlightCellSet();
+          } else {
+            _polWordTipSticky = null;   // 切块 → 清词 sticky
+            _polBlockSticky = { dom, elm }; _renderBlockKw(_polarityState.layer, _polarityState.pol, dom, elm);
+            const cells = _cellsByBucket(_overviewLayer.fc.features, dom, elm);
+            toggleStickyHighlight(cells, _overviewLayer, 'polmx:' + dom + '|' + elm);
+          }
           return;
         }
         const cells = _cellsByBucket(_overviewLayer.fc.features, dom, elm);
@@ -146,16 +153,21 @@ export function initPanel() {
       // 关键词 → sticky + 联动
       const kw = e.target.closest('.ov-kw-item');
       if (kw) {
-        if (_polarityState && _polBlockCurrent) {   // 极性关键词：toggle sticky 词 + 地点 tip（.is-sticky 橙）
+        if (_polarityState && _polBlockCurrent) {   // 极性关键词：toggle sticky 词 + 地点 tip + 词聚合域橙柱体（⊆ 块聚合域）
           const word = kw.dataset.topic;
           const wrap = kw.closest('.ov-keywords');
           if (wrap) wrap.querySelectorAll('.ov-kw-item.is-sticky').forEach((x) => x.classList.remove('is-sticky'));
-          if (_polWordTipSticky === word) { _polWordTipSticky = null; clearLocTips(); }
-          else {
+          if (_polWordTipSticky === word) {
+            _polWordTipSticky = null; clearLocTips(); resetHighlightCellSet();   // 释放：清 tip + 词 sticky + 柱体
+          } else {
             _polWordTipSticky = word;
             kw.classList.add('is-sticky');
             const it = _findPolWord(word);
-            if (it && it.locs && it.locs.length) showLocTips(_polarityState.layer, it.locs.slice(0, 8));
+            if (it) {
+              const { cells, anchors } = _resolveLocAnchors(_polarityState.layer, it.locs || []);
+              showLocTips(anchors);
+              if (cells.length) toggleStickyHighlight(cells, _overviewLayer, 'polkw:' + word);   // 词聚合域橙（⊆ 块聚合域）
+            }
           }
           return;
         }
@@ -447,6 +459,58 @@ function _findPolWord(word) {
   return _polBlockCurrent.items.find((it) => it.word === word) || null;
 }
 
+/** loc.name → 真实坐标：grid 源点层按 area_seed/spatial_hotspot 含地名找 POI → 最近 cell._center。
+ *  **数据为准**（用户 POI 准），绝不用猜测坐标（修"奥体错位"类致命错——硬编码 lngLat 偏移致错 cell）。
+ *  locs 元素支持 string 或 {name}。返回 {cells:[features], anchors:[{name,lng,lat}]}；数据无该 POI → 跳过。 */
+function _resolveLocAnchors(layer, locs) {
+  const out = { cells: [], anchors: [] };
+  if (!layer || !locs || !locs.length) return out;
+  const ui = (layer.paint && layer.paint._ui) || {};
+  const srcId = ui.source || '';
+  let pts = [];
+  if (srcId.startsWith('group:')) {
+    const g = getLayer(srcId.slice(6));
+    if (g) for (const cid of (g.children || [])) { const c = getLayer(cid); if (c && c.fc) pts = pts.concat(c.fc.features || []); }
+  } else if (srcId.startsWith('layer:')) {
+    const c = getLayer(srcId.slice(7)); if (c && c.fc) pts = c.fc.features || [];
+  }
+  const cells = (layer.fc && layer.fc.features) || [];
+  const seenCell = new Set();
+  for (const loc of locs.slice(0, 8)) {
+    const name = typeof loc === 'string' ? loc : (loc && loc.name);
+    if (!name) continue;
+    const matches = [];
+    for (const p of pts) {
+      if (!p || !p.properties || !p.geometry || p.geometry.type !== 'Point') continue;
+      const a = p.properties.area_seed || '';
+      const h = p.properties.spatial_hotspot || '';
+      if ((a && a.includes(name)) || (h && h.includes(name))) matches.push(p);
+    }
+    if (!matches.length) continue;   // 数据无该 POI → 跳过（不错误指向）
+    for (const m of matches.slice(0, 3)) {
+      const [lng, lat] = m.geometry.coordinates;
+      if (lng == null || lat == null) continue;
+      let best = null, bestD = Infinity;
+      for (const f of cells) {
+        const c = (f.properties || {})._center;
+        if (!c) continue;
+        const d = (c[0] - lng) ** 2 + (c[1] - lat) ** 2;
+        if (d < bestD) { bestD = d; best = f; }
+      }
+      if (best) {
+        const c = best.properties._center;
+        const k = c[0].toFixed(5) + ',' + c[1].toFixed(5);
+        if (seenCell.has(k)) continue;
+        seenCell.add(k);
+        out.cells.push(best);
+        out.anchors.push({ name, lng: c[0], lat: c[1] });
+        if (out.anchors.length >= 8) return out;
+      }
+    }
+  }
+  return out;
+}
+
 /** 高亮/取消极性深读当前块对应的矩阵格（word hover → block 反向联动）。 */
 function _highlightPolBlockCell(dom, elm, on) {
   if (!dom || !elm) return;
@@ -454,12 +518,13 @@ function _highlightPolBlockCell(dom, elm, on) {
   if (c) c.classList.toggle('is-synced', on);
 }
 
-/** 重极致性深读瞬时态（切极性/换层/离开时）：清 sticky + 地点 tip + 词区。 */
+/** 重极致性深读瞬时态（切极性/换层/离开时）：清 sticky + 地点 tip + 柱体橙 + 词区。 */
 function _resetPolKwState() {
   _polBlockSticky = null;
   _polWordTipSticky = null;
   _polBlockCurrent = null;
   clearLocTips();
+  resetHighlightCellSet();
 }
 
 /** Overview 单元模式（已废弃——单元深读改极性深读；保留空函数防 main.js 旧调用报错，下版本清）。 */
