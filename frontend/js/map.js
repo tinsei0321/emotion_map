@@ -377,9 +377,13 @@ function addPolygonPaint(layer, sid, lid, lineLid, hitLid) {
   // 高度字段：grid=_grid_h（preprocessGrid 点数幂次 γ=1.3），terrain=_level（后端 KDE 等值面级）。maxHeight 绝对米（默认 1000）。
   const heightField = (p._ui && p._ui.heightField) || '_grid_h';
   const maxHeight = (p._ui && p._ui.maxHeight) || 1000;
+  // 极性深读 paint 就地切换：藏零计数格（仅 L2 综合 grid 切极性视图时设；综合/范围层无此字段 → 不过滤）。
+  // MapLibre addLayer 的 filter 须为合法数组，不接受 undefined → 仅在 polFilter 非空时条件展开。
+  const polFilter = p._polarityFilter || null;
+  const filterSpec = polFilter ? { filter: polFilter } : {};
 
   if (p.fillOn && !isTool3d) {   // 仅 2D 加 fill 色块；3D 跳过（柱体/环 fill-extrusion 自含顶/侧/底面，再加地面色块会"2D 色块+3D 柱体"同显混乱）
-    map.addLayer({ id: lid, type: 'fill', source: sid,
+    map.addLayer({ id: lid, type: 'fill', source: sid, ...filterSpec,
       paint: { 'fill-color': fillExpr || color, 'fill-opacity': p.fillOpacity ?? (isTool ? (p._ui?.extrusionOpacity ?? 1) : 0.3) } });   // 工具层不透明度统一读 _ui.extrusionOpacity（2D/3D 同控件，默认 1）
   }
 
@@ -387,7 +391,7 @@ function addPolygonPaint(layer, sid, lid, lineLid, hitLid) {
   // 注：曾读 p.extrusionScale（错位，实际在 _ui）→ 恒 1× 滑块失效；改 maxHeight 绝对值并读 _ui.maxHeight。
   if (isTool3d) {
     map.addLayer({
-      id: lyrExtruLid(layer.id), type: 'fill-extrusion', source: sid,
+      id: lyrExtruLid(layer.id), type: 'fill-extrusion', source: sid, ...filterSpec,
       paint: {
         'fill-extrusion-color': fillExpr || color,
         'fill-extrusion-height': ['interpolate', ['linear'], ['get', heightField], 0, 0, 1, maxHeight],
@@ -408,10 +412,10 @@ function addPolygonPaint(layer, sid, lid, lineLid, hitLid) {
       linePaint['line-dasharray'] = [6, 3, 1, 3];                // Range：点划线（线段+点+线段）
       lineLayout['line-cap'] = 'round';                          // round cap 让 1-unit 短段呈圆点（line-cap 属 layout）
     }
-    map.addLayer({ id: lineLid, type: 'line', source: sid, layout: lineLayout, paint: linePaint });
+    map.addLayer({ id: lineLid, type: 'line', source: sid, ...filterSpec, layout: lineLayout, paint: linePaint });
   }
   // transparent wide hit layer → easy hover/click without thickening the visible outline
-  addHitLayer(hitLid, sid);
+  addHitLayer(hitLid, sid, polFilter);
 }
 
 function addLinePaint(layer, sid, lid, hitLid) {
@@ -421,9 +425,11 @@ function addLinePaint(layer, sid, lid, hitLid) {
   addHitLayer(hitLid, sid);
 }
 
-function addHitLayer(hitLid, sid) {
-  map.addLayer({ id: hitLid, type: 'line', source: sid, layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#000', 'line-width': HIT_WIDTH, 'line-opacity': 0 } });
+function addHitLayer(hitLid, sid, filter) {
+  const spec = { id: hitLid, type: 'line', source: sid, layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': '#000', 'line-width': HIT_WIDTH, 'line-opacity': 0 } };
+  if (filter) spec.filter = filter;   // 仅极性视图带 filter（MapLibre 拒绝 undefined）
+  map.addLayer(spec);
 }
 
 /** Heatmap (Kepler-aligned): native MapLibre `type:'heatmap'` = Gaussian KDE (same algo as

@@ -46,6 +46,19 @@ const POLARITY_NAME = {
   overall: '综合（红蓝绿发散）', positive: '积极（绿）', negative: '消极（红）', neutral: '中性（蓝）',
 };
 
+// 极性深读 paint 就地切换用：各极性 grid 字段/计数字段/色带键（单源，与生成管线 gridStyle 同源）。
+// panel.js applyPolarityView 据此切 layer.paint.gridField/gridStops + _polarityFilter。
+export const POLARITY_GRID = {
+  positive: { field: '_grid_h_pos', nField: '_grid_n_pos', ramp: 'green-3' },
+  negative: { field: '_grid_h_neg', nField: '_grid_n_neg', ramp: 'red-3' },
+  neutral:  { field: '_grid_h_neu', nField: '_grid_n_neu', ramp: 'blue-3' },
+};
+/** 极性 → normStops（去 density 0 首段 + 归一化 0~1；与生成管线 gridStyle 同源）。供极性深读 paint 切换。 */
+export function polarityStops(pol) {
+  const rampKey = POLARITY_RAMP[pol];
+  return rampKey ? normStops(rampKey) : null;
+}
+
 /** HEATMAP_RAMPS[key].stops 去 density 0 透明首段，归一化到 0~1（方格 fill 不能透明）。 */
 function normStops(rampKey) {
   const all = HEATMAP_RAMPS[rampKey].stops.filter(([d]) => d > 0);
@@ -89,9 +102,9 @@ function collectSources() {
   return sources;
 }
 
-// ── 面域层（指定单元用） ──
+// ── 面域层（指定单元用；只列 Range 面域，排除 grid/terrain/buffer 等工具产物）──
 function collectPolygonLayers() {
-  return getLayers().filter((l) => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
+  return getLayers().filter((l) => l.kind === 'polygon' && isRangeLayer(l) && l.fc && l.fc.features && l.fc.features.length);
 }
 function detectNameCols(fc) {
   if (!fc || !fc.features || !fc.features.length) return [];
@@ -240,9 +253,16 @@ function populatePolygonLayers() {
   const sel = document.getElementById('grid-polygon-layer');
   if (!sel) return;
   const polys = collectPolygonLayers();
-  sel.innerHTML = polys.length
-    ? polys.map((l) => `<option value="${l.id}">${l.name}</option>`).join('')
-    : '<option value="" disabled>（暂无面域图层，先导入行政区划/单元面域）</option>';
+  if (!polys.length) {
+    sel.innerHTML = '<option value="" disabled>（暂无面域图层，先在 Range 页上载/绘制范围面）</option>';
+    return;
+  }
+  // label 带面数 + 转义，提升可读性（修旧 bug：原混入 grid/buffer 产物 + 无面数提示）
+  sel.innerHTML = polys.map((l) => {
+    const n = (l.fc.features || []).length;
+    const name = String(l.name || l.srcName || '').replace(/[<>]/g, '');
+    return `<option value="${l.id}">${name}（${n} 面）</option>`;
+  }).join('');
 }
 
 function populateNameCols(fc) {
@@ -271,7 +291,6 @@ function constrainParams(dlg) {
   setHidden(dlg, '#grid-cell-section', analysis !== 'square');
   setHidden(dlg, '#grid-zonal-section', analysis !== 'zonal');
   setHidden(dlg, '#grid-namecol-section', analysis !== 'zonal');
-  setHidden(dlg, '#grid-polarity-section', level !== 'L2');
   renderRampPreview(dlg, level, selectedPolarity(dlg));
 }
 
@@ -279,7 +298,7 @@ function selectedAnalysis(dlg) {
   return dlg.querySelector('.hm-analysis-card.is-opt-sel')?.dataset.analysis || DEFAULT_ANALYSIS;
 }
 function selectedPolarity(dlg) {
-  return dlg.querySelector('#grid-polarity .buf-cap.is-sel')?.dataset.polarity || 'overall';
+  return 'overall';   // 极性入口已移除（Toolbox 不直生成极性网格；极性视图由 Overview·极性深读 paint 切换）
 }
 function setHidden(dlg, sel, hidden) { const el = dlg.querySelector(sel); if (el) el.hidden = hidden; }
 
@@ -292,8 +311,6 @@ function applyParams(dlg, p) {
   const numEl = dlg.querySelector('#grid-cell-num'); if (numEl) numEl.value = cell;
   const slider = dlg.querySelector('#grid-cell');
   if (slider) slider.value = Math.min(Number(slider.max), Math.max(Number(slider.min), cell));
-  const pol = p.polarity || DEFAULTS.polarity;
-  dlg.querySelectorAll('#grid-polarity .buf-cap').forEach((c) => c.classList.toggle('is-sel', c.dataset.polarity === pol));
   const mode = p.mode || DEFAULTS.mode;
   dlg.querySelectorAll('#grid-mode .buf-cap').forEach((c) => c.classList.toggle('is-sel', c.dataset.mode === mode));
   const mh = p.maxHeight ?? DEFAULTS.maxHeight;
@@ -422,9 +439,12 @@ async function generateGrid() {
                 gridField: style.field, gridStops: style.stops, fillOpacity: p.extrusionOpacity };   // 显式 fillOpacity 绕开 addLayer 默认 0.3（修 2D 首次透明）
     }
 
-    // 命名新规：时间·极性/类型·分析类型·方格参数·文件名（2D/3D 进图层标签，不进文件名）
+    // 备份综合态 paint（极性深读 paint 就地切换的还原锚点；含 heightField 颜色+高度同源切）
+    if (paint && paint._ui) paint._ui._overallPaint = { gridField: paint.gridField, gridStops: paint.gridStops, heightField: paint._ui.heightField || '_grid_h' };
+
+    // 命名：时间·极性/类型·文件名（"标准网格/指定单元"+方格参数由 Layers 子卡标题 + Overview tier1 显，层名瘦身去重）
     const tPrefix = deriveTimeTag(src.fc) ? `${deriveTimeTag(src.fc)}·` : '';
-    const labelName = `${tPrefix}${polLabel}·${analysisLabel}·${sizeTag}·${src.srcName}`;
+    const labelName = `${tPrefix}${polLabel}·${src.srcName}`;
     const editId = dlg.dataset.editLayerId;
     const editLyr = editId ? getLayer(editId) : null;
     let L;
@@ -493,14 +513,6 @@ export function initGridTool() {
   dlg.querySelector('#grid-polygon-layer').addEventListener('change', () => {
     const poly = getLayer(dlg.querySelector('#grid-polygon-layer').value);
     if (poly && poly.fc) populateNameCols(poly.fc);
-  });
-
-  // 极性胶囊（仅 L2）→ 色板预览
-  dlg.querySelector('#grid-polarity').addEventListener('click', (e) => {
-    const b = e.target.closest('.buf-cap'); if (!b) return;
-    dlg.querySelectorAll('#grid-polarity .buf-cap').forEach((x) => x.classList.remove('is-sel'));
-    b.classList.add('is-sel');
-    renderRampPreview(dlg, dlg.querySelector('#grid-level').value, b.dataset.polarity);
   });
 
   // 模式胶囊

@@ -257,10 +257,10 @@
         <section class="tab-pane is-active" data-pane="overview" id="overview-pane">
           <div class="ov-subtabs" id="ov-subtabs" role="tablist" hidden>
             <button class="ov-subtab is-active" data-ovtab="layer" type="button" role="tab">图层总览</button>
-            <button class="ov-subtab" data-ovtab="cell" type="button" role="tab">单元深读</button>
+            <button class="ov-subtab" data-ovtab="polarity" type="button" role="tab">极性深读</button>
           </div>
           <div class="ov-subpane is-active" data-ovpane="layer" id="ov-layer-pane"></div>
-          <div class="ov-subpane" data-ovpane="cell" id="ov-cell-pane"></div>
+          <div class="ov-subpane" data-ovpane="polarity" id="ov-polarity-pane"></div>
         </section>
 
         <!-- Table：geojson.io 风格表格 -->
@@ -542,16 +542,7 @@
                     <select class="sec-select" id="grid-name-col"></select>
                   </div>
 
-                  <!-- 极性（仅 L2 时显示，在②网格参数；综合/积极/消极/中性） -->
-                  <div class="hm-section" id="grid-polarity-section" hidden>
-                    <div class="hm-label">极性 <span class="hm-info" data-tip="综合=红蓝绿发散（区分偏正/偏负方向）；积极/消极/中性=单色深浅（深色=高比例）。选择同步更新③色板。">i</span></div>
-                    <div class="buf-capsules" id="grid-polarity">
-                      <button type="button" class="buf-cap is-sel" data-polarity="overall">综合</button>
-                      <button type="button" class="buf-cap" data-polarity="positive">积极</button>
-                      <button type="button" class="buf-cap" data-polarity="negative">消极</button>
-                      <button type="button" class="buf-cap" data-polarity="neutral">中性</button>
-                    </div>
-                  </div>
+                  <!-- 极性入口已移除（Toolbox 不再直生成极性·标准网格；极性视图改由 Overview·极性深读 Tab 就地切换） -->
                 </div>
 
                 <!-- ③ 显示样式（只读色板预览 + 模式 + 拉伸高度） -->

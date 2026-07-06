@@ -781,6 +781,23 @@ button.layer-kind:hover { background: var(--geojson-color-gray-200); color: var(
   color: var(--geojson-color-text-tertiary);
 }
 
+/* ── 网格聚合大组内的子卡（标准网格/指定单元）：缩进显从属 + 2px 间隔 + 折叠 chev ── */
+.layer-subgroup {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin: 2px 0 0 10px;
+  padding: 2px 8px;
+  border-radius: var(--geojson-radius-xs, 4px);
+  background: var(--geojson-color-gray-100, #f6f7f9);
+  cursor: pointer;
+}
+.layer-subgroup:hover { background: var(--geojson-color-gray-200, #eef0f3); }
+.layer-subgroup-chev { color: var(--geojson-color-text-tertiary); font-size: 11px; padding: 1px 3px; transition: transform .15s ease; }
+.layer-subgroup.is-collapsed .layer-subgroup-chev { transform: rotate(-90deg); }
+.layer-subgroup-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--geojson-typography-size-2xs); font-weight: var(--geojson-typography-weight-semibold); color: var(--geojson-color-text-secondary); }
+.layer-subgroup-count { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); }
+
 /* ── Child rows：与组标题并列对齐（不缩进，省横向空间显更多信息）；左侧细色条标组归属 ── */
 .layer-row.is-child {
   padding-left: 0;

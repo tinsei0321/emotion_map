@@ -254,6 +254,17 @@ function groupRowHtml(g, members, cat, collapsed, virtual) {
   </div>`;
 }
 
+/** 网格聚合大组内的子卡（标准网格/指定单元）：缩进 + 折叠 chev + 名称 + 计数。
+ *  无 eye（外层组卡 eye 已统管整类显隐）；双击 / 点 chev 折叠该子卡（_groupFold 合成 id grid-square/grid-zonal）。 */
+function subGroupRowHtml(subId, label, members, folded) {
+  const collCls = folded ? ' is-collapsed' : '';
+  return `<div class="layer-subgroup${collCls}" data-subid="${subId}" title="双击折叠/展开 · ${label}">
+    <span class="layer-subgroup-chev" data-collapse-sub="${subId}">&#9662;</span>
+    <span class="layer-subgroup-name">${label}</span>
+    <span class="layer-subgroup-count">${members.length}</span>
+  </div>`;
+}
+
 /** A single layer row (standalone or indented child; both draggable within their category). */
 function layerRowHtml(l, openId, selId, isChild, cat) {
   const kindEl = (l.kind === 'point' || l.kind === 'polygon' || l.kind === 'heatmap')
@@ -334,7 +345,19 @@ export function renderLayerList() {
       }
     } else {
       html += groupRowHtml({ id: null, name: CATEGORY_LABEL[cat] }, items, cat, collapsed, true);
-      if (!collapsed) for (const l of items) { if (skipIds.has(l.id)) continue; html += layerRowHtml(l, openId, selId, true, cat); }
+      if (!collapsed) {
+        if (cat === 'grid') {
+          // 网格聚合大组内拆「标准网格/指定单元」两张子卡（按 _ui.analysis 分桶；2px 间隔，各可双击折叠）
+          const sq = items.filter((l) => l.paint && l.paint._ui && l.paint._ui.analysis === 'square');
+          const zo = items.filter((l) => l.paint && l.paint._ui && l.paint._ui.analysis === 'zonal');
+          const rest = items.filter((l) => !(l.paint && l.paint._ui && (l.paint._ui.analysis === 'square' || l.paint._ui.analysis === 'zonal')));
+          if (sq.length) { const f = isGroupFold('grid-square'); html += subGroupRowHtml('grid-square', '标准网格', sq, f); if (!f) for (const l of sq) { if (skipIds.has(l.id)) continue; html += layerRowHtml(l, openId, selId, true, cat); } }
+          if (zo.length) { const f = isGroupFold('grid-zonal'); html += subGroupRowHtml('grid-zonal', '指定单元', zo, f); if (!f) for (const l of zo) { if (skipIds.has(l.id)) continue; html += layerRowHtml(l, openId, selId, true, cat); } }
+          for (const l of rest) { if (skipIds.has(l.id)) continue; html += layerRowHtml(l, openId, selId, true, cat); }
+        } else {
+          for (const l of items) { if (skipIds.has(l.id)) continue; html += layerRowHtml(l, openId, selId, true, cat); }
+        }
+      }
     }
   }
   list.innerHTML = html;
@@ -397,6 +420,11 @@ export function renderLayerList() {
       if (gid) toggleGroupFold(gid); else toggleCollapsed(cat);
       renderLayerList();
     }));
+  // 子卡（标准网格/指定单元）chev + 双击折叠（_groupFold 合成 id grid-square/grid-zonal）
+  list.querySelectorAll('[data-collapse-sub]').forEach((b) =>
+    b.addEventListener('click', (e) => { e.stopPropagation(); toggleGroupFold(b.dataset.collapseSub); renderLayerList(); }));
+  list.querySelectorAll('.layer-subgroup').forEach((sg) =>
+    sg.addEventListener('dblclick', (e) => { e.stopPropagation(); const sid = sg.dataset.subid; if (sid) { toggleGroupFold(sid); renderLayerList(); } }));
 
   // drag → reorder (dual flavor: group-card = inter-category; layer-row = within-category)
   list.querySelectorAll('[draggable]').forEach((el) => {

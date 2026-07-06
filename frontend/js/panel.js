@@ -10,7 +10,8 @@ import {
   HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets, rampDisplaySegs, deriveTimeTag, KEYWORD_TABLE,
 } from './state.js';
 import { geomStats, DOMAIN_LABEL, ELEMENT_LABEL } from './popup.js';
-import { easeBackFromCell, fitBoundsTo } from './map.js';
+import { easeBackFromCell, fitBoundsTo, renderLayer } from './map.js';
+import { POLARITY_GRID, polarityStops } from './grid-tool.js';
 import { highlightCellSet, clearHighlightCellSet, toggleStickyHighlight, resetHighlightCellSet, setStickyProvider } from './tip-popup.js';
 import { loadDistricts, classifyPointsByDistrict, polyCentroid } from './district-stats.js';
 
@@ -72,9 +73,18 @@ export function initPanel() {
       const sl = e.target.closest('.ov-pie-slice');
       if (sl) { _clearSync(); highlightCellSet(_cellsByPolarity(_overviewLayer.fc.features, sl.dataset.pol), _overviewLayer); return; }
       const mx = e.target.closest('.mx-cell[data-dom]');
-      if (mx) { _clearSync(); highlightCellSet(_cellsByBucket(_overviewLayer.fc.features, mx.dataset.dom, mx.dataset.elm), _overviewLayer); _syncFromMatrix(mx.dataset.dom, mx.dataset.elm); return; }
+      if (mx) {
+        if (_polarityState) {   // 极性深读：矩阵 hover → 地图高亮该桶 + 填 #ov-block-kw 副本关键词（替图层总览关键词联动）
+          highlightCellSet(_cellsByBucket(_overviewLayer.fc.features, mx.dataset.dom, mx.dataset.elm), _overviewLayer);
+          _renderBlockKeywordsFor(_polarityState.layer, _polarityState.pol, mx.dataset.dom, mx.dataset.elm);
+          return;
+        }
+        _clearSync(); highlightCellSet(_cellsByBucket(_overviewLayer.fc.features, mx.dataset.dom, mx.dataset.elm), _overviewLayer); _syncFromMatrix(mx.dataset.dom, mx.dataset.elm); return;
+      }
       const kw = e.target.closest('.ov-kw-item');
-      if (kw) { _clearSync(); const r = _topKeywordCells(_overviewLayer.fc.features, kw.dataset.topic, 10); if (r.cells.length) highlightCellSet(r.cells, _overviewLayer); _syncFromKeyword(kw.dataset.topic); return; }
+      if (kw && !kw.classList.contains('ov-kw-block')) {   // 极性深读的 block 关键词卡无 topic，跳过联动
+        _clearSync(); const r = _topKeywordCells(_overviewLayer.fc.features, kw.dataset.topic, 10); if (r.cells.length) highlightCellSet(r.cells, _overviewLayer); _syncFromKeyword(kw.dataset.topic); return;
+      }
     });
     pane.addEventListener('mouseout', (e) => {
       if (e.target.closest('.ov-pie-slice') || e.target.closest('.mx-cell[data-dom]') || e.target.closest('.ov-kw-item')) { clearHighlightCellSet(); _clearSync(); }
@@ -161,6 +171,7 @@ export function setOverview(layer) {
   if (!pane) return;
   if (!layer) {
     _overviewLayer = null; _lastOverviewLayerId = null;
+    _clearPolarityView();   // 清空焦点 → 还原可能残留的极性 paint
     toggleOvSubtabs(false); activateOvTab('layer', { silent: true });
     pane.innerHTML = emptyState();
     return;
@@ -169,8 +180,8 @@ export function setOverview(layer) {
   _overviewLayer = focus;
   const lv = layerLevel(focus);
   pane.innerHTML = tier1(focus, lv) + tier2(focus, lv) + tier3(focus, lv);
-  toggleOvSubtabs(isAnalysisLayer(focus) && !isL1Grid((focus.paint && focus.paint._ui) || {}));   // L1 网格无单元深读 → 隐藏 sub-Tab
-  if (focus.id !== _lastOverviewLayerId) activateOvTab('layer');   // 换层 → 回图层总览 + zoom out（若此前在单元深读）
+  toggleOvSubtabs(isOverallGrid((focus.paint && focus.paint._ui) || {}));   // 仅 L2·综合·标准网格 有极性深读 → 显 sub-Tab
+  if (focus.id !== _lastOverviewLayerId) activateOvTab('layer');   // 换层 → 回图层总览 + 还原旧层极性 paint + zoom out
   _lastOverviewLayerId = focus.id;
   // L1 点层（热度分布）→ 异步填数据总览（area_tag 计数 + per-组团 PIP 缓存）；L1 网格层不跑 PIP
   if (!isAnalysisLayer(focus) && lv === 'L1') _fillL1DataOverview(focus);
@@ -178,18 +189,18 @@ export function setOverview(layer) {
   if (_sticky) _reapplyStickyDOM(focus);
 }
 
-/** 双层 sub-Tab 切换：name='layer'|'cell'。
- *  silent（初始化/换层）不 zoom；否则切到「图层总览」→ easeBackFromCell 抬高视野（"切回上层 zoom out"）。
- *  切到「单元深读」若无内容 → 占位提示（点击网格/柱体后才有深读）。 */
+/** 双层 sub-Tab 切换：name='layer'|'polarity'。
+ *  silent（初始化/换层）不 zoom；切到「极性深读」→ 渲染极性 Tab 条 + 默认积极 + paint 切到积极视图。
+ *  切回「图层总览」→ 还原综合 paint + 清 polarity filter + easeBackFromCell 抬高视野。 */
 export function activateOvTab(name, opts) {
   const silent = opts && opts.silent;
   document.querySelectorAll('.ov-subtab').forEach((b) => b.classList.toggle('is-active', b.dataset.ovtab === name));
   document.querySelectorAll('.ov-subpane').forEach((p) => p.classList.toggle('is-active', p.dataset.ovpane === name));
-  if (name === 'cell') {
-    const cp = document.getElementById('ov-cell-pane');
-    if (cp && !cp.innerHTML.trim()) cp.innerHTML = cellEmptyHint();
+  if (name === 'polarity') {
+    _renderPolarityDeepRead();
   } else if (!silent) {
-    resetHighlightCellSet();   // 回「图层总览」→ 清单元聚焦橙柱（任务9）
+    _clearPolarityView();          // 回图层总览 → 还原综合 paint
+    resetHighlightCellSet();
     easeBackFromCell();
   }
 }
@@ -206,64 +217,155 @@ function emptyState() {
   </div>`;
 }
 
-/** 单元深读 sub-Tab 在未选单元时的占位提示。 */
-function cellEmptyHint() {
-  return `<div class="ov-empty">
-    <div class="ov-empty-title">未选中单元</div>
-    <div class="ov-empty-hint">点击地图上的 <b>网格 / 柱体</b> 查看该单元的归因深读</div>
+/** 单元深读占位提示（已移除；保留极性深读占位用）。 */
+function polEmptyHint(msg, hint) {
+  return `<div class="ov-empty"><div class="ov-empty-title">${msg || '该层无极性深读'}</div><div class="ov-empty-hint">${hint || '选 <b>L2·综合·标准网格</b> 层查看极性深读'}</div></div>`;
+}
+
+// ── 极性深读（替原单元深读）：L2 综合·标准网格 的子层级；3 极性 Tab + paint 就地切换 + 动态矩阵块关键词 ──
+// 综合 grid 生成时已备份 paint._ui._overallPaint（grid-tool generateGrid）；切极性 = 改 gridField/gridStops +
+// 加 filter(藏零计数格) + renderLayer。零新图层、不触发 refreshOverview 抢焦点、Range 自动保留。
+let _polarityState = null;   // { layer, pol } 当前极性深读目标层 + 激活极性；null = 未在极性深读
+const _POL_TAB = [
+  { key: 'positive', label: '积极', color: '#0d6b2e' },
+  { key: 'neutral',  label: '中性', color: '#1A3A8C' },
+  { key: 'negative', label: '消极', color: '#d8552f' },
+];
+
+/** L2 综合 grid 判定（tool=grid/level=L2/polarity=overall）—— 仅此类层有极性深读。 */
+export function isOverallGrid(ui) {
+  return !!(ui && ui.tool === 'grid' && ui.level === 'L2' && (!ui.polarity || ui.polarity === 'overall'));
+}
+
+/** paint 就地切到指定极性视图（改 gridField/gridStops/heightField + filter 藏零计数格 + renderLayer）。 */
+function _applyPolarityView(layer, pol) {
+  const g = POLARITY_GRID[pol];
+  if (!g || !layer || !layer.paint || !layer.paint._ui) return;
+  layer.paint.gridField = g.field;
+  layer.paint._ui.heightField = g.field;   // 柱体高度同源切到该极性（颜色+高度一致，深色=高柱）
+  const st = polarityStops(pol);
+  if (st && st.length) layer.paint.gridStops = st;
+  layer.paint._polarityFilter = ['>', ['get', g.nField], 0];
+  renderLayer(layer);
+}
+
+/** 还原综合态 paint（回图层总览 / 换层 / 删层 时调）。层已删则只清状态。 */
+function _clearPolarityView() {
+  const st = _polarityState;
+  if (!st) return;
+  const layer = st.layer;
+  if (layer && layer.paint && layer.paint._ui && layer.paint._ui._overallPaint) {
+    const ov = layer.paint._ui._overallPaint;
+    layer.paint.gridField = ov.gridField;
+    layer.paint.gridStops = ov.gridStops;
+    layer.paint._ui.heightField = ov.heightField || '_grid_h';
+    delete layer.paint._polarityFilter;
+    renderLayer(layer);
+  }
+  _polarityState = null;
+}
+
+/** 渲染极性深读 pane：极性 Tab 条 + 默认积极的（极性总览 + 归因矩阵 + 关键词/热门话题）。 */
+function _renderPolarityDeepRead() {
+  const pane = document.getElementById('ov-polarity-pane');
+  if (!pane) return;
+  const layer = _overviewLayer;
+  if (!layer || !isAnalysisLayer(layer) || !isOverallGrid(layer.paint && layer.paint._ui)) {
+    _polarityState = null;
+    pane.innerHTML = polEmptyHint();
+    return;
+  }
+  const keep = _polarityState && _polarityState.layer && _polarityState.layer.id === layer.id;
+  const pol = keep ? (_polarityState.pol || 'positive') : 'positive';
+  _polarityState = { layer, pol };
+  _applyPolarityView(layer, pol);
+  pane.innerHTML = _polarityTabBarHtml(pol) + _polarityBodyHtml(layer, pol);
+  _wirePolarityTabs(layer);
+}
+
+function _polarityTabBarHtml(pol) {
+  const tabs = _POL_TAB.map((t) =>
+    `<button class="ov-pol-tab${t.key === pol ? ' is-active' : ''}" data-pol="${t.key}" type="button" style="--pol-c:${t.color}" role="tab">${t.label}</button>`).join('');
+  return `<div class="ov-pol-tabs" role="tablist">${tabs}</div>`;
+}
+
+/** 极性 Tab click：切极性（paint + body 就地换；Tab 条不动避抖）。 */
+function _wirePolarityTabs(layer) {
+  const pane = document.getElementById('ov-polarity-pane');
+  if (!pane) return;
+  pane.querySelectorAll('.ov-pol-tab').forEach((b) =>
+    b.addEventListener('click', () => {
+      const pol = b.dataset.pol;
+      if (!pol || (_polarityState && _polarityState.pol === pol)) return;
+      _polarityState = { layer, pol };
+      _applyPolarityView(layer, pol);
+      pane.querySelectorAll('.ov-pol-tab').forEach((t) => t.classList.toggle('is-active', t.dataset.pol === pol));
+      const body = pane.querySelector('.ov-pol-body');
+      if (body) body.outerHTML = _polarityBodyHtml(layer, pol);
+    }));
+}
+
+/** 极性深读 body：极性总览 count + 按极性重计的归因矩阵 + 关键词/热门话题（默认 hint，hover 块动态填）。 */
+function _polarityBodyHtml(layer, pol) {
+  const feats = (layer.fc && layer.fc.features) || [];
+  const nField = (POLARITY_GRID[pol] || {}).nField;
+  let total = 0;
+  for (const f of feats) total += ((f.properties || {})[nField] || 0);
+  const polLabel = { positive: '积极', negative: '消极', neutral: '中性' }[pol] || '极性';
+  const countLine = total
+    ? `<div class="ov-count-line">偏<b>${polLabel}</b>情绪点 <b>${total}</b> 个</div>`
+    : `<div class="ov-count-line muted">该极性无情绪点数据</div>`;
+  const cell = _matrix4x5ByPolarity(feats, pol);
+  const kwHint = `<div class="ov-block-kw-hint">悬停 / 点击矩阵块查看该维度关键词<span class="info-i" data-tip="极性深读关键词对应每个矩阵块的情绪点评论，随悬停/选中动态变化。本数据为<b>演示模拟副本</b>（深度解读·极性·关键词群），正式管线接入后替换。">i</span></div>`;
+  return `<div class="ov-pol-body">
+    <div class="ov-tier-sub">极性总览</div>${countLine}
+    <div class="ov-tier-sub">归因矩阵${_unit('个单元')}<span class="info-i" data-tip="按当前极性重计：每块 = 该 domain×element 下该极性情绪点数之和。颜色按本矩阵数量三级（深紫最多→浅紫最少）。悬停/点击 → 下方关键词动态切换 + 地图同步高亮该桶单元。">i</span></div>${_matrixIntro(`通过空间聚合，按<b>${polLabel}</b>极性重计 4×5 归因（数字 = 该维度 ${polLabel} 情绪点数）：`)}${_singlePolMatrixHtml(cell)}
+    <div class="ov-tier-sub">关键词/热门话题</div>${kwHint}
+    <div class="ov-block-kw" id="ov-block-kw"><div class="ov-placeholder muted">悬停矩阵块查看该维度 ${polLabel} 关键词</div></div>
   </div>`;
 }
 
-/** Overview 单元模式：点击网格/柱体/地形环 → 显示该单元的 4×5 归因深读（识别问题）。
- *  覆盖 setOverview 的层聚合视图；cell:cleared 时由 refreshOverview() 回退。 */
-export function setCellOverview(feature, layer) {
-  const pane = document.getElementById('ov-cell-pane');
-  if (!pane || !feature) return;
-  const p = feature.properties || {};
-  const ui = (layer && layer.paint && layer.paint._ui) || {};
-  const isTerrain = ui.tool === 'terrain';
-  const typeWord = isTerrain ? '地形环' : (ui.mode === '3d' ? '柱体' : '网格');
-  const pi = p.polarity_index;
-  const valence = pi == null ? '中性' : (pi > 0.15 ? '偏积极' : pi < -0.15 ? '偏消极' : '中性');
-  const valColor = pi == null ? L2_NEUTRAL_COLOR : (pi > 0.15 ? L2_POSITIVE['Positive'] : pi < -0.15 ? L2_NEGATIVE['Negative'] : L2_NEUTRAL_COLOR);
-  const dom = DOMAIN_LABEL[p.domain_top] || p.domain_top || '—';
-  const elm = ELEMENT_LABEL[p.element_top] || p.element_top || '—';
-  const sizeBit = isTerrain ? '' : `<i>·</i><span>${ui.cellSize ? ui.cellSize + 'm' : ''}</span>`;
-
-  // 同类对比 + 分位：该单元在其 domain×element 桶的均值，及其极性在图层的分位（指向 4×5，递进到微观）。
-  const feats = (layer && layer.fc && layer.fc.features) || [];
-  const bucket = _matrix4x5(feats)[(p.domain_top || '') + '|' + (p.element_top || '')];
-  const meanPi = bucket && bucket.piCnt ? bucket.piSum / bucket.piCnt : null;
-  let pct = null;
-  if (pi != null && !isNaN(pi)) {
-    const all = feats.map((f) => (f.properties || {}).polarity_index).filter((x) => x != null && !isNaN(x));
-    if (all.length) pct = Math.round(100 * all.filter((x) => x < pi).length / all.length);
+/** 按极性重计 4×5：块 count = Σ 单元格 n_<pol>（综合 fc 已带 n_positive/n_negative/n_neutral）。 */
+function _matrix4x5ByPolarity(feats, pol) {
+  const nField = (POLARITY_GRID[pol] || {}).nField;
+  const cell = {};
+  if (!nField) return cell;
+  for (const f of feats) {
+    const p = f.properties || {};
+    if (!p.domain_top || !p.element_top) continue;
+    const k = p.domain_top + '|' + p.element_top;
+    if (!cell[k]) cell[k] = { n: 0, piSum: 0, piCnt: 0 };
+    cell[k].n += (p[nField] || 0);
   }
-
-  pane.innerHTML =
-    // T1：issue 标题 + domain×element（该单元在 4×5 中的定位）+ 单元类型
-    `<div class="ov-tier ov-t1">
-       <div class="ov-t1-name" title="${p.issue_label || ''}">${p.issue_label || '情绪聚集区'}</div>
-       <div class="ov-t1-meta"><span>${dom} × ${elm}</span><i>·</i><span>${typeWord}</span>${sizeBit}</div>
-     </div>`
-    // T2：情绪聚类（极性 badge + 综合指数 + 点数/分数/置信度/强度）
-    + `<div class="ov-tier ov-t2"><div class="ov-tier-head">情绪聚类</div><div class="ov-props">
-        <div class="ov-prop"><span>极性</span><span><span class="ov-swatch" style="background:${valColor}"></span>${valence}</span></div>
-        ${pi != null ? `<div class="ov-prop"><span>综合指数</span><span>${Number(pi).toFixed(2)}</span></div>` : ''}
-        <div class="ov-prop"><span>情绪点数</span><span>${p.point_count ?? 0}</span></div>
-        ${p.score_mean != null ? `<div class="ov-prop"><span>平均分数</span><span>${Number(p.score_mean).toFixed(2)}</span></div>` : ''}
-        ${!isTerrain && p.l1_confidence_mean != null ? `<div class="ov-prop" title="L1 治理阶段 LLM 判断的数据相关性置信度（0~1）"><span>置信度</span><span>${Number(p.l1_confidence_mean).toFixed(2)}</span></div>` : ''}
-        ${isTerrain && p.emotion_intensity_mean != null ? `<div class="ov-prop"><span>强度均值</span><span>${Number(p.emotion_intensity_mean).toFixed(2)}</span></div>` : ''}
-      </div></div>`
-    // T3：问题识别 = 归因链 + 同类对比(分位条) + 建议
-    + `<div class="ov-tier ov-t3"><div class="ov-tier-head">问题识别</div>
-        <div class="ov-cell-attr">${p.attribution || ''}</div>
-        ${pi != null && pct != null ? `<div class="ov-cell-where">图层 <b>${dom}×${elm}</b> 桶共 ${bucket ? bucket.n : 0} 单元（均值 <b>${meanPi != null ? meanPi.toFixed(2) : '—'}</b>）；本单元极性超过图层 <b>${pct}%</b> 的单元。
-           <div class="ov-pct-track" title="红=偏消极 · 绿=偏积极；三角标 = 本单元位置"><div class="ov-pct-marker" style="left:${pct}%"></div></div></div>` : ''}
-        <div class="ov-tier-sub">建议</div>
-        <div class="ov-cell-sug">${p.suggestion || ''}</div>
-      </div>`;
+  return cell;
 }
+
+/** 副本加载（fetch DATA/performance/polarity_deepread_keywords.json；缓存 + 失败不重试）。 */
+let _demoKwCache = null;
+function _loadDemoKw() {
+  if (_demoKwCache !== null) return Promise.resolve(_demoKwCache);
+  return fetch('/DATA/performance/polarity_deepread_keywords.json', { cache: 'no-store' })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((j) => { _demoKwCache = j || false; return _demoKwCache; })
+    .catch(() => { _demoKwCache = false; return false; });
+}
+
+/** 把指定 (极性, domain×element) 的副本关键词渲染进 #ov-block-kw。T = 综合 layer timeTag（缺退 T3）。 */
+function _renderBlockKeywordsFor(layer, pol, dom, elm) {
+  const el = document.getElementById('ov-block-kw');
+  if (!el) return;
+  const T = (layer && (layer.timeTag || deriveTimeTag(layer.fc))) || 'T3';
+  _loadDemoKw().then((kw) => {
+    if (!kw || !kw[T] || !kw[T][pol]) { el.innerHTML = `<div class="ov-placeholder muted">副本缺失 ${T}/${pol}（演示数据未就绪）</div>`; return; }
+    const words = kw[T][pol][dom + '|' + elm] || [];
+    el.innerHTML = words.length
+      ? `<div class="ov-block-kw-list">${words.map((w) => `<div class="ov-kw-item ov-kw-block"><span class="ov-kw-word">${w}</span></div>`).join('')}</div>`
+      : `<div class="ov-placeholder muted">该维度无高频关键词</div>`;
+  });
+}
+
+/** Overview 单元模式（已废弃——单元深读改极性深读；保留空函数防 main.js 旧调用报错，下版本清）。 */
+export function setCellOverview(_feature, _layer) { /* removed: 单元深读 → 极性深读 */ }
 
 /** T1 摘要：目的(加粗标题) / 数据类型 / 数量；文件名另起一行弱化。
  *  全局规则：Overview 必带数据源文件名。目的 = name 去掉尾部 ' · {src}'；
@@ -1243,10 +1345,9 @@ function _renderIssueTable(tbl, layer, maxRows) {
   });
   tbl.querySelectorAll('tbody tr[data-cell-idx]').forEach((tr) => {
     tr.addEventListener('click', () => {
-      const idx = Number(tr.dataset.cellIdx);
-      const f = layer.fc.features[idx];
-      if (!f) return;
-      document.dispatchEvent(new CustomEvent('cell:selected', { detail: { feature: f, layer } }));
+      // 单元深读→极性深读：行点击切 Overview·极性深读（默认极性；不定位单格，深读非单格级）
+      activateTab('overview');
+      activateOvTab('polarity');
     });
   });
 }

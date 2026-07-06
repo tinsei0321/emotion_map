@@ -1,6 +1,6 @@
 // ═══ main.js — entry: wire map + sidebar + panel + toolbar + popup + import ═══
-import { initMap, setBasemap, setClickHandler, renderLayer, fitBoundsTo, reorderAllZ, easeToCell } from './map.js';
-import { initPanel, activateTab, setOverview, setCellOverview, setTable, activateOvTab, isL1Grid } from './panel.js';
+import { initMap, setBasemap, setClickHandler, renderLayer, fitBoundsTo, reorderAllZ } from './map.js';
+import { initPanel, activateTab, setOverview, setTable, activateOvTab } from './panel.js';
 import { initTipPopup } from './tip-popup.js';
 import { initToolbar, setActiveBasemap } from './toolbar.js';
 import { initSidebar, openImport, renderLayerList, showLayerManager, refreshLegend } from './sidebar.js';
@@ -278,18 +278,9 @@ function main() {
     refreshOverview();
   });
 
-  // 聚合单元（网格/柱体/地形环）点击 → Overview 切「单元深读」sub-Tab + 略微 zoom 到该格；
-  // cell:cleared（关闭/层隐藏）→ 回「图层总览」+ zoom out 抬高。不自动弹开右端栏（手动展开时内容已就绪）。
-  document.addEventListener('cell:selected', (e) => {
-    const { feature, layer } = (e && e.detail) || {};
-    if (!feature || !layer) return;
-    // L1 网格聚合无单元深读层级 → 不切深读 tab、不 zoom（避免误触发）
-    if (isL1Grid((layer.paint && layer.paint._ui) || {})) return;
-    activateTab('overview');
-    setCellOverview(feature, layer);
-    activateOvTab('cell');      // 切「单元深读」sub-Tab
-    easeToCell(feature);        // 定位质心 + 略微 zoom（保留周边 context，不占满视野）
-  });
+  // 单元深读已改极性深读（非单格级）→ cell:selected 不再切 Overview 深读 tab / 不 zoom 单格。
+  // cell-popup 地图胶囊卡由 tip-popup/popup 模块独立保留（hover/click 信息）；本事件口子留供 _renderIssueTable 行点击等复用。
+  document.addEventListener('cell:selected', () => { /* 极性深读非单格级，无动作 */ });
   document.addEventListener('cell:cleared', () => {
     refreshOverview();
     activateOvTab('layer');     // 回「图层总览」+ easeBackFromCell 抬高视野

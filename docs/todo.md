@@ -5,7 +5,26 @@
 
 ---
 
-## 📅 2026-07-05（周六）
+## 📅 2026-07-06（周日）
+
+### ✅ 任务1 完成：单元深读→极性深读重构 + Layers 子卡 + Toolbox 去极性 + Tab 条 sticky（plan `main-head-46250a6-...sequential-swing.md`，Playwright 验证全通过）
+
+- **pivot**：用户否决上会话「Q2 推荐深读清单 + cluster①分级（单格大头针思路延续）」方向，改为**整体重构**——单元深读（单格级）→ 极性深读（极性·聚合域级），深读价值聚焦「支撑 4×5 什么行动」。
+- **1-A Layers 子卡**：`sidebar.js` grid 类目按 `_ui.analysis` 拆「标准网格/指定单元」虚拟子卡（`subGroupRowHtml`，2px gap，双击折叠 `_groupFold` 合成 id）；`grid-tool.js` 层名瘦身去 `analysisLabel·sizeTag` → `T1·综合·file`。
+- **1-B Toolbox 去极性**：`index.html` 删 `#grid-polarity-section`；`grid-tool.js` `selectedPolarity` 恒 overall；`collectPolygonLayers` 改 `isRangeLayer` 过滤（排除 grid/buffer 产物）+ label `（N 面）`。
+- **1-C 极性深读 paint 就地切换**（替原设想 3 隐藏图层）：综合 grid fc 已带 `_grid_h_pos/neg/neu`+`_grid_n_pos/neg/neu`，切极性 = 改 `paint.gridField/gridStops/heightField`+`_polarityFilter`+`renderLayer`。生成时备份 `_overallPaint`。`map.js` addPolygonPaint/addHitLayer 透传 filter（条件展开，修 MapLibre `filter:undefined` 坑）。`panel.js` 删 `setCellOverview`/`cellEmptyHint`；`activateOvTab` cell→polarity；`main.js` `cell:selected` 不再切深读。
+- **1-D 动态关键词 + 副本**：`_matrix4x5ByPolarity`（按极性重计 4×5）；hover/选中矩阵块 → `_renderBlockKeywordsFor` 查 `DATA/performance/polarity_deepread_keywords.json`（T1+T3 × 3 极性 × 20 块，规划/更新×设施/环境/文化块 4-6 词强项目味，`info-i` 标演示副本）填 `#ov-block-kw`。
+- **1-E Tab 条 sticky**：`panel.css` `.ov-subtabs`（top:0）+ `.ov-pol-tabs`（top:30px）position:sticky + bg 遮罩。
+- **验证**：Playwright 0 错误；子卡/层名/paint 切换（filter `_grid_n_pos>0`⇄`_grid_n_neg>0` 实测）/hover 关键词/回切还原全通过。承重全保（TOPIC_MATRIX_MAP/双 sub-Tab/enforceMutualExclusion/gridSig 等）。
+
+### ⬜ 任务2 待启动（新会话）：极性深读·时间轴（T1→T3 成效动画）
+
+- **关键决策点（新会话首问）**：地图柱体动画路线 A（JS rAF + setData，推荐）/ B（deck.gl 重引入）/ C（阶梯淡入）。
+- **前置**：Overview 原地更新重构（panel.js 从 innerHTML 重建改 DOM 原地 tween——任务2 动画 + 本任务 hover 动态关键词都受益）。
+- **副本已预置**：T1/T3 双副本本会话已建（`polarity_deepread_keywords.json`），任务2 直接复用。
+- 详见 revision-log 5.25 + 交接卡 `memories/repo/session-handoff.md`。
+
+
 
 ### ✅ 已完成（plan `revision-log-5-19-misty-map.md`，Phase 1-3；待 F5 验）
 - **P1 图层 L 优先排序 + L 徽章 + 手动拖拽保留**：

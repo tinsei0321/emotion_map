@@ -35,7 +35,7 @@ emotion_map（根）
 │  │  ├─ 批4 时间对比 ⬜  A/B 双窗（依赖批2）
 │  │  └─ 批5 图层分组 🔄  5A 自动归类 ✅｜5B 自由编组 ⬜
 │  ├─ 图层/设置/Overview 🔄  联动 ✅｜Layers 分组重做 ✅
-│  ├─ Toolbox 工具箱 🔄  多维归因分析 ⬜（自 KDE ① 剥离）｜缓冲分析 ✅（后端 geopandas EPSG:4546 + 3 段弹窗 + 独立组卡 + B 编辑 + 复用 Range popup）｜网格聚合 ✅（P2：方格 2D/3D + 3 极性 + fill-extrusion + 横向色带图例 + G 编辑，接 /spatial/grid(square)）｜数据语义化 P3 ✅（POI-anchored 4×5/极性三层/置信度密度自相关 + _norm 对称拉伸张力 + 聚合层 4×5 归因 issue_label/attribution，L3/L4 接管后删表；grid/terrain 同步）
+│  ├─ Toolbox 工具箱 🔄  多维归因分析 ⬜（自 KDE ① 剥离）｜缓冲分析 ✅（后端 geopandas EPSG:4546 + 3 段弹窗 + 独立组卡 + B 编辑 + 复用 Range popup）｜网格聚合 ✅（P2：方格 2D/3D + fill-extrusion + 横向色带图例 + G 编辑，接 /spatial/grid(square)；5.25 去 Toolbox 极性直生成 + Layers 拆标准网格/指定单元子卡 + 单元深读→极性深读 paint 就地切换 + 动态矩阵块关键词副本）｜数据语义化 P3 ✅（POI-anchored 4×5/极性三层/置信度密度自相关 + _norm 对称拉伸张力 + 聚合层 4×5 归因 issue_label/attribution，L3/L4 接管后删表；grid/terrain 同步）
 │  ├─ Range 范围 🔄  上载模块 ✅（绘制工具迁入 + 两组卡 + 自动 popup）｜绘制模块 ✅（多边形/矩形 移植 geojson.io，绘制卡常驻；点/线/圆 ⬜）｜范围分析 ⬜（缓冲/叠加/聚合）
 │  ├─ Analysis 情绪分析接入 ⬜  L2 管道接前端 / 空间分析 MVP
 │  └─ Table 数据表格 ⬜  列表 / 筛选 / 导出（联动管线已预留）
@@ -43,7 +43,7 @@ emotion_map（根）
 └─ 临时分支（搁置 / 待决策）
    ├─ KDE 批1 1a 预览图 ⏸  等 terrain/factor kepler 截图补齐
    ├─ 高级参数 bug（C5）⏸  暂不修
-   └─ 待决策  KDE 批2 粒度｜批3 地形 vs 柱体
+   └─ 待决策  KDE 批2 粒度｜批3 地形 vs 柱体｜极性深读·时间轴（任务2 ⬜：T1→T3 成效动画；路线 A JS rAF+setData 推荐 / B deck.gl 重引入 / C 阶梯淡入；前置 Overview 原地更新重构）
 ```
 
 ---
@@ -584,6 +584,20 @@ flowchart TD
 - **数量修复**：`_keywordRank` 截断改 floor 10 + 平坦扩 15（旧"累计覆盖 80%"陡分布时 <10 回归），并入 Q2。
 
 > 承重全保（回退未触碰）：`TOPIC_MATRIX_MAP`/双 sub-Tab/`easeToCell`/`highlightCellSet`/`_attach_4x5_attrs`/`enforceMutualExclusion` 全有效。**勿再做地图大头针/marker 叠加引导（已否）。**
+
+### 5.25 单元深读→极性深读重构 + Layers 子卡 + Toolbox 去极性 + Tab 条 sticky（07月06日 13:25）
+
+**用户意图**：单元深读细到单格难出建设性结论（大头针/关键词▲方案已否）→ 深读价值应聚焦「极性·聚合域能支撑 4×5 什么行动」。把「L2·极性」深读替换单元深读，改名**极性深读**（综合·标准网格 Overview 的子层级）。配套：① Layers 网格聚合组拆「标准网格/指定单元」子卡（层名瘦身去重）；② Toolbox 去极性直生成（仅综合·标准网格，极性视图改由极性深读 Tab 切换）+ 修聚合面域下拉 bug（isRangeLayer 过滤排除 grid/buffer 产物 + label 带面数）；③ Tab 条全局 sticky（滚动时常驻）。时间轴（T1→T3 成效动画）拆为**任务2**，新会话推进。
+
+**关键技术决策（paint 就地切换，替原设想「3 隐藏图层」）**：综合 grid 的 fc 经 `preprocessGrid` 已算好 `_grid_h_pos/neg/neu` + `_grid_n_pos/neg/neu` 字段。切极性 = 改该层 `paint.gridField/gridStops/heightField` + 加 `_polarityFilter=['>',['get','_grid_n_pos'],0]`（藏零计数格）+ `renderLayer` 重敷。零新图层、不触发 refreshOverview 抢焦点、Range 自动保留。生成时 `paint._ui._overallPaint = {gridField, gridStops, heightField}` 备份（还原锚点）。map.js `addPolygonPaint`/`addHitLayer` 透传 filter（条件展开——MapLibre 拒绝 `filter:undefined`，踩坑修）。
+
+**极性深读内容**：3 极性 Tab（积极/中性/消极，flex:1 填宽，深绿/深蓝/橙红字色，默认积极）+ 极性总览 count + 按极性重计的 4×5 矩阵（`_matrix4x5ByPolarity`：块 count = Σ 单元格 `n_<pol>`）+ 动态关键词/热门话题（hover/选中矩阵块 → 查副本填 `#ov-block-kw`，去 Top10）。副本 `DATA/performance/polarity_deepread_keywords.json`（T1+T3 × 3 极性 × 20 块，规划/更新×设施/环境/文化块 4-6 词强项目味，其余 2-3；半自动派生自 `TOPIC_MATRIX_MAP` + 手工倾向；板块头 `info-i` 标「演示模拟副本」）。
+
+**Playwright 验证全通过**：0 控制台错误；Layers 子卡「标准网格:1」+ 层名 `T1·综合·file`（瘦身确认）；极性深读 Tab→MapLibre fill 层 filter 实际切换（`_grid_n_pos>0` ⇄ `_grid_n_neg>0`，paint 切换确认）；hover planning×facility→5 项目味词（断头路打通/BRT 接驳/...）；切消极→count 7813 + filter 切；回切图层总览→filter 清空 + 综合 matrix+饼图还原。
+
+**承重全保**：`TOPIC_MATRIX_MAP`/`TOPIC_POLARITY`/`TOPIC_ORDER` 三源、双层 sub-Tab（layer|polarity）、`easeToCell`、`highlightCellSet`/`toggleStickyHighlight`、`_attach_4x5_attrs`、`enforceMutualExclusion`、KDE cascade-exclude、gridSig 配对去重、4×5 单源 `AMAP_L1_TO_4X5`、paint 切换与 setViewMode 2D/3D 独立（[generate-grid-exclusive-vs-viewmode](memory)）。删 `setCellOverview`/`cellEmptyHint`；`cell:selected` 不再切深读（cell-popup 地图胶囊保留）；issue 表行点击改切极性深读。
+
+**文件**：`frontend/index.html`（sub-tab 改名 + 删极性 section）·`frontend/js/panel.js`（极性深读核心 + 删单元深读）·`frontend/js/main.js`（cell:selected 简化）·`frontend/js/sidebar.js`（grid 子卡 + subGroupRowHtml）·`frontend/js/grid-tool.js`（层名瘦身 + 删极性 + isRangeLayer 面域 + _overallPaint 备份 + 导出 POLARITY_GRID/polarityStops）·`frontend/js/map.js`（filter 透传 fill/extru/line/hit）·`frontend/css/panel.css`（sticky Tab + .ov-pol-tab + .ov-kw-block）·`frontend/css/sidebar.css`（.layer-subgroup）·`DATA/performance/polarity_deepread_keywords.json`（新建 T1/T3 双副本）。
 
 ## 6. 持续追加规则（给 AI）
 
