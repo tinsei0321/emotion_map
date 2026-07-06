@@ -5,6 +5,58 @@
 
 ---
 
+## 📅 2026-07-07
+
+### ✅ 任务2 时间轴 MVP 落地（revision-log 5.29）
+
+- **两决策点确认**：① 柱体动画走 **A JS rAF+setData**；② Overview 重构 **限定到可动画 KPI**（count line + 饼图 + 极性矩阵；tier1/2 不动）。
+- **数据架构**：L2 点自带 polarity/domain/element → 前端 **snap-to-grid O(1) 聚合**进活跃 grid scaffold（免后端改、免 sim 重生）；共享 max 跨 T 归一化 `_grid_h`。
+- **落地**：`timeline.js`（新，scrub+T1/T2/T3 停点+play/pause/prev/next+错峰+#3A5368/#8B658B）+ `map.js updateGridSourceData`（每帧 setData，承重 paint 就地切换）+ `panel.js` KPI compute/paint 导出 + `grid-tool.js` 导出 `piToNorm` + `index.html/main.js` 挂载显隐。
+- **验证**（MCP Playwright + 真实数据）：零 JS 错；timeline 初始化 OK；T1 16933 点 100% 聚合、消极>积极符合叙事弧。
+- **承重全保**：paint 就地 / 双 sub-Tab / `_resolveLocAnchors` / enforceMutualExclusion / gridSig / sticky 最高级 不动。
+
+### ✅ 本轮第二段：bug 修复 + 5 处小修改 + 时间轴矩阵/关键词/极性（revision-log 5.30）
+
+- **聚合崩溃 bug**：scaffold 重投影致 2 格 min-corner 取整碰撞 → `arr` 洞 → `null.point_count` 崩 → `_snaps=null` → 播放静默。修：桶存数组 + 点取最近质心格 + arr 全填 blank。
+- **综合矩阵/关键词不随 T**：`paintOverallKpi` 只动 count+饼图。修：加 `paintOverallMatrix`（pi lerp→色变）+ `paintOverallKeywords`（按最近 T 停点离散换词）。
+- **极性深读地图错乱**：lerp `_grid_n_*` 致 filter `_grid_n_*>0` 穿越 0 闪烁。修：lerp 字段去 `_grid_n_*`（filter 稳定，高度/色用 `_grid_h_*`）。
+- **极性矩阵显示浮点**：`_lerpPolKpi` n 取整。
+- **5 小修改**：极性深读切 2D/3D 保持极性层（setOverview 同 fc 迁移 _polarityState）/ 初始底图天地图影像无注记 / 行政区 #d8d8d8 / 可见层眼睛加深。
+- **未验**：动画行为 + 极性保持 + 小改视觉 待用户 F5；debug 钩子（window.__tl + [timeline] 日志）暂留待验后清。
+
+---
+
+### ⬜ 明日（07-08）任务详细
+
+**P0 · F5 验证本轮修复（确认后再推进）**
+1. 综合 Overview 时间轴 Play：矩阵**色** + 关键词随 T1→T2→T3 变。
+2. 极性深读时间轴 Play：地图柱体平滑、cell 不闪烁；面板矩阵数字正常（无小数）。
+3. 极性深读点 2D/3D 视角按钮：**保持极性层**（不跳回综合 Tab）。
+4. 初始底图 = 天地图影像（无注记）；行政区层 #d8d8d8；可见层眼睛加深。
+5. 异常 → F12 贴 `[timeline]` 日志 + `window.__tl()` 输出。
+
+**P1 · debug 钩子清理 + commit（P0 通过后）**
+- 删 `timeline.js` 的 `window.__tl` + 诊断 console.log/warn。
+- commit「feat: timeline MVP + 5 小修改 + bug 修复」。
+
+**P2 · 时间轴剩余设计要点**
+- **播放起步切 3D**（MVP 未接）：`play()` 起步若 2D → 切 3D。**决策点**：3D 下底图用 dark-matter（setView3D 现自动切，柱体对比强）还是保留天地图影像（演示语境）？需与用户对齐。
+- **T2 关键词副本**：`polarity_deepread_keywords.json` 仅 T1/T3（无 T2）；T2 停点 block 词处理（crossfade T1↔T3 或补 T2 副本）。
+- **极性深读 block 关键词随 T 切**：当前 hover-driven（`#ov-block-kw`），时间轴下是否按 T 换副本待定。
+
+**P3 · 地点 tip 全面核对修正（延后两次，必做）**
+- 审计脚本：遍历副本 v3 所有 loc name → area_seed/spatial_hotspot 匹配 → 输出 cell 坐标。
+- 逐项核对 vs 真实宜昌地理（奥体/南湖/体育场/中南路/二马路/桃花岭/长江之心）。
+- 副本 name 具体化（"东山"→"东山大道港城路口"）；数据缺 POI 的换或标无定位。
+- webapp-testing 逐词 hover 截图核对。memory `loc-anchor-by-data-not-coords`。
+
+**P4 · 承重回归 + 打磨**
+- 回归：paint 就地切换还原 / 双 sub-Tab / enforceMutualExclusion / sticky 最高级 / 换层 timeline 显隐 + source 还原。
+- scrub 连续拖动（当前 click 跳 + 停点；drag 暂未实现，可选）。
+
+
+---
+
 ## 📅 2026-07-06（周一）
 
 ### ⬜ 明日任务：地点 tip 全面核对修正（用户报"仍有大量错误"，先放一放，严格对照真实情况检查）

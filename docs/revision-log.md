@@ -635,6 +635,45 @@ flowchart TD
 
 **转任务2 时间轴**：用户定新会话推进时间轴（T1→T3 成效动画）。HEAD=`3273aa7` 已 push。交接卡 `memories/repo/session-handoff.md` 重写为时间轴节点（含动画路线决策点 A/B/C + 前置 Overview 原地更新重构 + 设计要点）。地点 tip 核对作为并行待办（不阻塞时间轴）。
 
+### 5.29 任务2 时间轴 MVP：T1→T3 成效动画（路线 A + Overview 限定到可动画 KPI）（07月07日 00:20）
+
+**两决策点确认**（新会话首问）：① 地图柱体动画走 **A JS rAF+setData**（贴现有 fill-extrusion、与「弃 deck.gl」决策一致、paint 就地切换承重契合）；② Overview 原地更新重构 **限定到可动画 KPI**（只重构时间轴要 tween 的元素：count line 数字 + 饼图 slice + 极性矩阵 cell；tier1/2 及其余 innerHTML 不动）。
+
+**数据架构关键发现**：`yichang_L2_T*_result_geojson.geojson` 是 **L2 情绪点**（Point，~16-18k/T），非网格。网格由 grid 工具按需生成。**点要素自带 `polarity`/`domain`/`element`/`time_label`** → 前端 **snap-to-grid O(1) 聚合**进活跃 grid 的 scaffold cell（免后端改、免 sim 重生）：cell min-corner 建格索引 + 点 floor-div 落格。宜昌近 EPSG:4546 中央经线（111°E），4326 下格畸变 <2m，snap 精确。**共享 max**（跨 T1/T2/T3 的 point_count 全局 max）归一化 `_grid_h`，柱体跨 T 可比起落。
+
+**落地**：
+- **map.js** `updateGridSourceData(layer, fc)` 导出——每帧 `getSource(sid).setData(lerpedFc)`，不 removeSource/re-renderLayer（保 tip/选中/bindings，承重 paint-inplace-swap-view）。
+- **panel.js** KPI tween 导出：`overviewKpiFromFeats`/`polarityKpiFromFeats`（compute）+ `paintOverallKpi`/`paintPolarityKpi`（DOM 原地 patch：count line `<b data-kpi>` 定位、饼图 svg innerHTML 重绘 path、极性矩阵 `.ov-matrix` replaceWith 重渲染——事件委托在 pane 级，replace 不丢联动）；`flashOverviewKeywords`（错峰关键词淡入）。tier1/2/3 生成器仅加 data-kpi 标记，承重零改。
+- **timeline.js**（新）：一条通用时间轴（`#overview-pane` 内、`.ov-subtabs` 上）= scrub 进度条 + T1/T2/T3 离散停点 + play/pause/prev/next；播放尊重当前 sub-Tab（图层总览→综合 count+饼；极性深读→极性 count+矩阵）；**错峰**（柱体 SEG_DUR=1100ms 全程 / KPI delay 200ms 窗 600ms / 关键词段尾 flash）；色彩 `#3A5368` 主 / `#8B658B` 副；自包含 DOM 注入 `#timeline-wrap`。
+- **grid-tool.js** 导出 `piToNorm`（timeline 复用，免复刻分段映射）；`heightOf` 在 timeline.js 复刻（带 shared max，不碰 `preprocessGrid` 承重路径）。
+- **main.js** `refreshOverview` 末按焦点层 `isOverallGrid` 显隐 timeline。
+
+**承重全保**：paint 就地切换（单 source setData、不注册隐藏层）/ 双 sub-Tab / `_resolveLocAnchors` / `enforceMutualExclusion` / gridSig / sticky 最高级（tween 不触 sticky，切 T 矩阵 replace 清 sticky 合理）全不动。
+
+**验证**（webapp-testing skill / MCP Playwright，serve.py + 真实数据）：① 页面加载零 JS 错（CSS 偶发 ERR_CONNECTION_REFUSED 为 serve.py SimpleHTTPServer 单线程并发拥塞，**预存在非本批**）；② `#timeline-wrap` 注入 `.tl-wrap` + timeline.css `#3A5368` 解析正常 + `initTimeline` 跑通；③ **真实后端 scaffold 聚合测试**（POST `/api/v1/spatial/grid` 生成 2147 格 scaffold + 跑 timeline 聚合逻辑）：T1 16441/16933 点正确落格（**countedRatio=0.971**，1844 格有点，maxCell=164），3% 损耗为 scaffold 边界外点。
+
+**关键 bug 修复（用户报"点击播放无反应"，本批内修）**：`_buildCellIndex` 初版 `step` 误用 `cellSize`（**米**）除经纬度（**度**）→ `Math.round(0.004/400)≈0` 致所有格塌进同一格 → snaps 退化 → play setData 原数据无变化。修：step 改从单格 bbox 实算 `stepLng/stepLat`（度，~0.00419°/0.00361°），fallback cellSize 米按宜昌纬度转度。修复后 97% 落格（见上）。
+
+**待办**：① 用户肉眼验播放动画（import L2→生成综合网格→Timeline Play：柱体起落 + 数字/饼/矩阵 tween + 关键词淡入；切极性深读再 Play 看 count+矩阵演进）；② **播放起步切 3D**（设计要点，MVP 未接，避 setViewMode 承重风险，待跟进）；③ 关键词内容暂未按 T 切（TOPIC_TABLE 词表与 scaffold 绑；仅做进场 flash，跨 T 内容切可后续）；④ 地点 tip 核对（并行待办，见 todo 07-06）。
+
+### 5.30 时间轴 bug 修复（聚合崩溃/矩阵/关键词/极性错乱）+ 5 处小修改（07月07日 17:10）
+
+**用户实测反馈**：① 点击播放无反应（两次）；② 综合矩阵 + 关键词不随 T2/T3 变；③ 极性深读时间轴地图 + 面板错乱；④ 小修改 4 处（极性切 2D/3D 跳综合 / 初始底图 / 行政区色 / 眼睛加深）。
+
+**bug 根因 + 修**（均 [timeline.js](frontend/js/timeline.js) / [panel.js](frontend/js/panel.js)）：
+- **聚合崩溃**（播放无反应真因）：scaffold 经 4546→4326 重投影，2 格 min-corner 取整碰撞 → `cells.size<scaffold.length` → `arr` 按较小 size 分配却按下标到 length-1 → null 洞 → maxes 循环 `null.point_count` 崩 → `_snaps=null` → `_play` 静默 return。修：`_buildCellIndex` 桶存数组（同 key 多格）+ `_aggregate` 的 `arr` 按 `scaffold.length` 全填 blank（零洞）+ 点取最近质心格（碰撞不丢格）。验证：真实 2147 格 scaffold，countedRatio=0.971，2 碰撞格各得点。
+- **综合矩阵/关键词不随 T**：`paintOverallKpi` 只 patch count line + 饼图，矩阵/关键词初始 innerHTML 后从不刷新。修：panel.js 加 `overallMatrixFromFeats`/`paintOverallMatrix`（pi lerp→矩阵色变）/`paintOverallKeywords`（按最近 T 停点离散换词，topic_top 已随 scaffold 拷贝）；timeline 加 `snap.overallMatrix` + `_lerpOverallMatrix`（n 固定、pi lerp）+ 关键词跨段才换（`_lastKwSnap`，避免每帧重渲染保 flash 动画）。
+- **极性深读地图错乱**：`_renderFrame` lerp `_grid_n_*` 致极性 filter `_grid_n_*>0` 在 lerp 穿越 0 时 cell 闪烁。修：lerp 字段去 `_grid_n_*`（保持 snapA → filter 稳定），高度/色用 `_grid_h_*` 平滑。
+- **极性矩阵浮点**：`_lerpPolKpi` 的 `n` lerp 显示 "2.7"。修：`Math.round`。
+
+**5 处小修改**：
+- **极性深读切 2D/3D 保持极性层**（[panel.js:230](frontend/js/panel.js#L230) setOverview）：视角切换产生同 fc 新 pair 层（fc 引用同）→ `_polarityState.layer` 迁移到新层 + `_applyPolarityView` 重敷 + `_lastOverviewLayerId=focus.id`（防 activateOvTab 切回综合）。
+- **初始底图 → 天地图影像（无注记）**（[map.js:16](frontend/js/map.js#L16) `DEFAULT_BASEMAP='tianditu-img-nolabel'`）。
+- **行政区 preset 默认色 #d8d8d8**（[range-presets.js:86](frontend/js/range-presets.js#L86)，中性参考边界；其余 preset 不动）。
+- **可见层眼睛加深**（[sidebar.css:610](frontend/css/sidebar.css#L610) opacity 0.45→0.9 + `.layer-row:not(.is-off) .layer-eye` 字色加深）。
+
+**验证**：MCP Playwright 加载零 JS 错；初始底图源=天地图影像无注记 ✓；眼睛 opacity=0.9 ✓；timeline 模块初始化 ✓；聚合修复 97% 落格。**动画行为 + 极性保持 + 小改视觉 待用户 F5 肉眼验**（debug 钩子 `window.__tl` + `[timeline]` 日志暂留，验后清）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

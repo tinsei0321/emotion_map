@@ -13,7 +13,7 @@ export const BASEMAPS = {
   'tianditu-vec': '../apps/static/tianditu_label.json',          // 矢量（带注记 cva）
   'tianditu-img-nolabel': '../apps/static/tianditu_img_nolabel.json',  // 影像（无注记，干净卫星底图）
 };
-export const DEFAULT_BASEMAP = 'positron';
+export const DEFAULT_BASEMAP = 'tianditu-img-nolabel';   // 初始底图：天地图影像（无注记，干净卫星）
 const YICHANG = { center: [111.286, 30.708], zoom: 12 };
 const NAVY = '#0c1c2e';
 const HIT_WIDTH = 20;           // transparent hit-line width (easy hover/open on thin outlines; visible line stays 2px)
@@ -365,6 +365,18 @@ function _gridColorExpr(p) {
   const stops = [];
   for (const [d, c] of p.gridStops) stops.push(d, c);
   return ['interpolate', ['linear'], ['get', p.gridField], ...stops];
+}
+
+/** 就地替换 grid 层 source data（不动 layer/paint/bindings）。
+ *  时间轴动画专用：每帧 setData 改 _grid_h/_grid_norm 等属性 → fill-extrusion 高度/颜色重算。
+ *  承重：不 removeSource/re-renderLayer（避免重绑 tip/选中、保 paint-in-place）；layer.id 源层名不变。 */
+export function updateGridSourceData(layer, fc) {
+  if (!map || !layer) return false;
+  const sid = lyrSrc(layer.id);
+  const src = map.getSource(sid);
+  if (!src) return false;
+  src.setData(fc);
+  return true;
 }
 
 function addPolygonPaint(layer, sid, lid, lineLid, hitLid) {

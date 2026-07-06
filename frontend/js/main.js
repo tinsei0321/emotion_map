@@ -1,6 +1,6 @@
 // ═══ main.js — entry: wire map + sidebar + panel + toolbar + popup + import ═══
 import { initMap, setBasemap, setClickHandler, renderLayer, fitBoundsTo, reorderAllZ } from './map.js';
-import { initPanel, activateTab, setOverview, setTable, activateOvTab } from './panel.js';
+import { initPanel, activateTab, setOverview, setTable, activateOvTab, isOverallGrid } from './panel.js';
 import { initTipPopup } from './tip-popup.js';
 import { initToolbar, setActiveBasemap } from './toolbar.js';
 import { initSidebar, openImport, renderLayerList, showLayerManager, refreshLegend } from './sidebar.js';
@@ -20,6 +20,7 @@ import { initParamPanel } from './param-panel.js';
 import { initDrawTool, startDraw, stopDraw } from './draw-tool.js';
 import { initHeatmapLegend } from './heatmap-legend.js';
 import { initSearchBar } from './search-bar.js';
+import { initTimeline, showTimeline, hideTimeline } from './timeline.js';
 import { toast } from './toast.js';
 import { runExport } from './api.js';
 
@@ -56,6 +57,10 @@ function refreshOverview() {
     if (layer) selectLayer((focusLayer(layer) || layer).id);
   }
   setOverview(layer);
+  // 时间轴（任务2）：仅 L2·综合·标准网格 焦点层时显（其 scaffold cell 承载 T1→T3 演进）
+  const fl = layer && (focusLayer(layer) || layer);
+  if (fl && isOverallGrid((fl.paint && fl.paint._ui) || {})) showTimeline(fl);
+  else hideTimeline();
   const fc = (layer && layer.kind === 'point') ? layer.fc : { type: 'FeatureCollection', features: [] };
   setTable(fc, layer);
 }
@@ -247,6 +252,7 @@ function main() {
   initChatPanel();
   initParamPanel();
   initSearchBar();
+  initTimeline();
   initDrawTool(map);
   initHeatmapLegend();
 

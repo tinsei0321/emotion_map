@@ -607,9 +607,10 @@
   background: transparent;
   color: var(--geojson-color-text-secondary);
   cursor: pointer;
-  opacity: 0.45;                    /* faintly visible as a hint, full on hover/off-state */
+  opacity: 0.9;                     /* 可见层眼睛清晰（曾 0.45 太淡）；hover/off 仍满不透明 */
   transition: opacity var(--geojson-transition), color var(--geojson-transition);
 }
+.layer-row:not(.is-off) .layer-eye { color: var(--geojson-color-text-primary, #384555); }   /* 可见（睁眼）字色加深突出 */
 .layer-row:hover .layer-eye,
 .layer-row.is-off .layer-eye { opacity: 1; }
 .layer-eye:hover { color: var(--geojson-color-brand-primary); }

@@ -228,6 +228,14 @@ export function setOverview(layer) {
     return;
   }
   const focus = focusLayer(layer) || layer;
+  // 视角切换（2D↔3D）产生同 fc 新 pair 层（fc 引用相同）→ 极性深读状态迁移到新层：
+  // 防 setOverview 误判"换层"切回综合 Tab + 保极性 paint（_applyPolarityView 重敷）。
+  if (_polarityState && _polarityState.layer && focus && focus.fc
+      && focus.fc === _polarityState.layer.fc && focus.id !== _polarityState.layer.id) {
+    _polarityState.layer = focus;
+    _applyPolarityView(focus, _polarityState.pol);
+    _lastOverviewLayerId = focus.id;   // 视为同层 → 不触发下方 activateOvTab('layer')
+  }
   _overviewLayer = focus;
   const lv = layerLevel(focus);
   pane.innerHTML = tier1(focus, lv) + tier2(focus, lv) + tier3(focus, lv);
@@ -371,7 +379,7 @@ function _polarityBodyHtml(layer, pol) {
   const cityTotal = _cityTotalOf(ui);
   const yPct = (cityTotal && ptTotal) ? Math.round(ptTotal / cityTotal * 100) : null;
   const countLine = ptTotal
-    ? `<div class="ov-count-line">偏<b>${polLabel}</b>的情绪点数为 <b>${ptTotal}</b> 个${yPct != null ? `，占城市情绪总量的 <b>${yPct}%</b>` : ''}</div>`
+    ? `<div class="ov-count-line">偏<b>${polLabel}</b>的情绪点数为 <b data-kpi="total">${ptTotal}</b> 个${yPct != null ? `，占城市情绪总量的 <b data-kpi="pct">${yPct}%</b>` : ''}</div>`
     : `<div class="ov-count-line muted">该极性无情绪点数据</div>`;
   const { cell, total: polCellCount } = _matrix4x5ByPolarity(feats, pol);
   const cs = ui.cellSize || 400;
@@ -1314,7 +1322,7 @@ function tier3(layer, lv) {
       const neuN = agg['Neutral'];
       // 量词统一为「个」（=情绪点）；4 维柱已并入归因矩阵行标签，数据总览只留饼图。
       const countLine = total
-        ? `<div class="ov-count-line">共 <b>${total}</b> 个 · 积极 <b>${posN}</b> · 消极 <b>${negN}</b> · 中性 <b>${neuN}</b></div>` : '';
+        ? `<div class="ov-count-line">共 <b data-kpi="total">${total}</b> 个 · 积极 <b data-kpi="pos">${posN}</b> · 消极 <b data-kpi="neg">${negN}</b> · 中性 <b data-kpi="neu">${neuN}</b></div>` : '';
       const overviewRow = pieHtml
         ? `<div class="ov-tier-sub">数据总览${_unit('个点')}<span class="info-i" data-tip="饼图悬停/点击某极性 → 地图同步高亮该极性主导的网格；矩阵、关键词同理。点击锁定，再次点击释放。">i</span></div>
            ${countLine}
@@ -1513,4 +1521,141 @@ function _renderIssueTable(tbl, layer, maxRows) {
       activateOvTab('polarity');
     });
   });
+}
+
+// ═══ 时间轴 KPI tween（任务2 · 前置：Overview 原地更新）═══════════════════════════
+// 设计：tier1/2/3 仍走 innerHTML 初始渲染（承重不动）；时间轴仅 patch 「可动画 KPI」
+// DOM 节点（综合 = count line 4 数 + 饼图 svg/legend；极性 = count line total + 矩阵重渲染）。
+// 矩阵/饼图事件均 pane 级委托 → replace innerHTML 不丢联动。计数 <b> 带 data-kpi 便于定位。
+// 详见 memory: paint-inplace-swap-view（map 侧 setData 同理）、sticky-hover-priority（tween 不触 sticky）。
+
+/** 综合 layer-overview KPI 快照：从 virtualFeats（per-T 聚合）算 {total,pos,neg,neu,agg(5 级)}。 */
+export function overviewKpiFromFeats(feats) {
+  const agg = { 'Very Positive': 0, Positive: 0, Neutral: 0, Negative: 0, 'Very Negative': 0 };
+  for (const f of feats) {
+    const p = f.properties || {};
+    agg['Very Positive'] += p.n_very_positive || 0;
+    agg.Positive += p.n_positive || 0;
+    agg.Neutral += p.n_neutral || 0;
+    agg.Negative += p.n_negative || 0;
+    agg['Very Negative'] += p.n_very_negative || 0;
+  }
+  const total = agg['Very Positive'] + agg.Positive + agg.Neutral + agg.Negative + agg['Very Negative'];
+  return { total, pos: agg['Very Positive'] + agg.Positive, neg: agg['Negative'] + agg['Very Negative'], neu: agg['Neutral'], agg };
+}
+
+/** 极性深读 KPI 快照：复用 _matrix4x5ByPolarity（{cell,total}）。tween 用 cell 重渲染矩阵。 */
+export function polarityKpiFromFeats(feats, pol) {
+  return _matrix4x5ByPolarity(feats, pol);
+}
+
+/** 数字 tween：写四舍五入整数（带千分位）。null/undefined 节点跳过。 */
+function _setNum(el, v) { if (el) el.textContent = Math.max(0, Math.round(v)).toLocaleString(); }
+
+const _PIE_SEGS = [
+  ['Very Negative', L2_NEGATIVE['Very Negative']],
+  ['Negative', L2_NEGATIVE['Negative']],
+  ['Neutral', L2_NEUTRAL_COLOR],
+  ['Positive', L2_POSITIVE['Positive']],
+  ['Very Positive', L2_POSITIVE['Very Positive']],
+];
+/** 饼图 svg inner（path 列表）—— 抽自 _polarPieHtml 同款几何，供 tween 重绘。 */
+function _pieSvgInner(agg, total) {
+  if (!total) return '';
+  const cx = 50, cy = 50, r = 38;
+  let a = -Math.PI / 2;
+  const paths = [];
+  for (const [key, color] of _PIE_SEGS) {
+    const n = agg[key] || 0;
+    if (n <= 0) continue;
+    const sweep = (n / total) * Math.PI * 2;
+    const a0 = a, a1 = a + sweep, am = (a0 + a1) / 2;
+    const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
+    const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+    const large = sweep > Math.PI ? 1 : 0;
+    const dx = Math.cos(am) * 5, dy = Math.sin(am) * 5;
+    paths.push(`<path class="ov-pie-slice" data-pol="${key}" fill="${color}" style="--dx:${dx.toFixed(1)}px;--dy:${dy.toFixed(1)}px" d="M${cx} ${cy} L${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z"><title>${POLARITY_LABEL[key]} · ${Math.round(n)}（${(n / total * 100).toFixed(0)}%）</title></path>`);
+    a = a1;
+  }
+  return paths.join('');
+}
+function _pieLegendInner(agg, total) {
+  if (!total) return '';
+  return _PIE_SEGS.filter(([k]) => (agg[k] || 0) > 0).map(([k, c]) =>
+    `<span class="ov-pie-lg"><span class="ov-pie-dot" style="background:${c}"></span>${POLARITY_LABEL[k]}<i>${Math.round(agg[k])}</i></span>`).join('');
+}
+
+/** 综合 KPI patch：count line 4 数 + 饼图 svg/legend。不重建 tier 结构（承重）。 */
+export function paintOverallKpi(kpi) {
+  const pane = document.getElementById('ov-layer-pane');
+  if (!pane || !kpi) return;
+  const line = pane.querySelector('.ov-count-line');
+  if (line) {
+    _setNum(line.querySelector('[data-kpi="total"]'), kpi.total);
+    _setNum(line.querySelector('[data-kpi="pos"]'), kpi.pos);
+    _setNum(line.querySelector('[data-kpi="neg"]'), kpi.neg);
+    _setNum(line.querySelector('[data-kpi="neu"]'), kpi.neu);
+  }
+  const svg = pane.querySelector('.ov-pie svg');
+  if (svg) svg.innerHTML = _pieSvgInner(kpi.agg, kpi.total);
+  const lg = pane.querySelector('.ov-pie-legend');
+  if (lg) lg.innerHTML = _pieLegendInner(kpi.agg, kpi.total);
+}
+
+/** 极性深读 KPI patch：count line total + 矩阵按 cell 重渲染（tier 分位随当前 cell 分布重算）。
+ *  事件委托在 pane → replace .ov-matrix 不丢 hover/click 联动。sticky 同步态 tween 期清（切 T = 新数据）。 */
+export function paintPolarityKpi(pol, kpi) {
+  const pane = document.getElementById('ov-polarity-pane');
+  if (!pane || !kpi) return;
+  const line = pane.querySelector('.ov-count-line');
+  if (line) _setNum(line.querySelector('[data-kpi="total"]'), kpi.total);
+  const mx = pane.querySelector('.ov-matrix');
+  if (mx && kpi.cell) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = _singlePolMatrixHtml(kpi.cell);
+    const fresh = tmp.firstElementChild;
+    if (fresh) mx.replaceWith(fresh);
+  }
+}
+
+/** 关键词淡入（错峰末段）：给关键词容器加 .tl-kw-flash 触发 CSS opacity 动画（0→1）。 */
+export function flashOverviewKeywords() {
+  const panes = [document.getElementById('ov-layer-pane'), document.getElementById('ov-polarity-pane')];
+  for (const p of panes) {
+    if (!p) continue;
+    const kw = p.querySelector('.ov-keywords, #ov-block-kw');
+    if (!kw) continue;
+    kw.classList.remove('tl-kw-flash');
+    void kw.offsetWidth;   // 强制回流重启动画
+    kw.classList.add('tl-kw-flash');
+  }
+}
+
+/** 综合 4×5 矩阵 cell map（按 domain_top×element_top 数格 + pi 均值）。跨 T：n 不变（scaffold 固定）、pi 变（颜色）。 */
+export function overallMatrixFromFeats(feats) { return _matrix4x5(feats); }
+
+/** 把综合矩阵 patch 进 #ov-layer-pane（重渲染 .ov-matrix，事件委托在 pane 不丢联动）。
+ *  cell = {key:{n,piSum,piCnt}}；timeline 传 lerped pi（piSum=piAvg, piCnt=1 → pi=piAvg）。 */
+export function paintOverallMatrix(cell) {
+  const pane = document.getElementById('ov-layer-pane');
+  if (!pane || !cell) return;
+  const mx = pane.querySelector('.ov-matrix');
+  if (!mx) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = _matrixHtml(cell);
+  const fresh = tmp.firstElementChild;
+  if (fresh) mx.replaceWith(fresh);
+}
+
+/** 把综合关键词按 feats 重渲染进 #ov-layer-pane（.ov-keywords；topic_top 在 virtual fc 已随 scaffold 拷贝）。
+ *  离散切换（不 lerp）——point_count 跨 T 变 → 词次/排名变。 */
+export function paintOverallKeywords(feats) {
+  const pane = document.getElementById('ov-layer-pane');
+  if (!pane || !feats) return;
+  const kw = pane.querySelector('.ov-keywords');
+  if (!kw) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = _keywordsHtml(feats);
+  const fresh = tmp.firstElementChild;
+  if (fresh) kw.replaceWith(fresh);
 }

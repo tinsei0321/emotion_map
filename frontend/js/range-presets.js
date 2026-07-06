@@ -83,7 +83,8 @@ async function loadPresetRange(item) {
     }
     const L = addLayer({
       name, kind: 'polygon', fc,
-      paint: { lineWidth: 2, fillOn: true },   // color 不指定 → addLayer 按 PRESET_COLORS 自动配（区分不同范围层）
+      // 行政区 = 中性参考边界（非数据），用浅灰 #d8d8d8；其余 preset 不指定 → addLayer 按 PRESET_COLORS 自动配。
+      paint: { lineWidth: 2, fillOn: true, color: item.id === 'admin_district' ? '#d8d8d8' : undefined },
     });
     L.srcName = name;
     renderLayer(L);

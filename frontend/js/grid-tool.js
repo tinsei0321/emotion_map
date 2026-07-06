@@ -130,7 +130,7 @@ function _centroid(geom) {
  *  pi=0→0.5(中性)、pi=±0.15→0.4/0.6(中性边)、pi=±1→0/1(深色饱和)。
  *  替 p95 对称拉伸——后者数据相关（依赖 pi 95 分位）致色带边界无法对齐判断阈值=颜色不准根因。
  *  与 terrain 后端 _pi_to_norm 同公式（grid/terrain 配色一致）。 */
-function piToNorm(pi) {
+export function piToNorm(pi) {
   if (pi == null) return 0.5;
   if (pi <= -1) return 0.0;
   if (pi <= -0.15) return 0.4 * (pi + 1) / 0.85;
