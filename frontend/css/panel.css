@@ -187,7 +187,9 @@
 .ov-kw-fill { position: absolute; left: 0; top: 0; bottom: 0; background: #D8BFD8; z-index: 0; transition: opacity .12s; }   /* 背景占比条（无文字，inline width:%）—— 修文字溢出：词/数字改前景层始终可见，不被 fill 裁 */
 .ov-kw-word { position: relative; z-index: 1; padding: 0 8px; color: #3a3a3a; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; min-width: 0; transition: color .12s; }
 .ov-kw-num { position: relative; z-index: 1; margin-left: auto; padding-right: 8px; color: #3a3a3a; font-size: 11px; font-weight: 700; white-space: nowrap; flex-shrink: 0; transition: color .12s; }
-.ov-kw-item.is-sticky { box-shadow: 0 0 0 3px #ff9000, 0 2px 6px rgba(0,0,0,.10); }
+.ov-kw-item.is-sticky { background: #ff9000; box-shadow: 0 4px 10px rgba(255,144,0,.30), 0 2px 6px rgba(0,0,0,.12); transform: translateY(-2px); }
+.ov-kw-item.is-sticky .ov-kw-fill { opacity: 0; }
+.ov-kw-item.is-sticky .ov-kw-word, .ov-kw-item.is-sticky .ov-kw-num, .ov-kw-item.is-sticky .ov-kw-locs { color: #333; }
 /* hover / 同步高亮（Feature 4 矩阵↔关键词联动）：橙黄整卡 + 统一深字（#333）——
    保梯度（alpha）+ 保统一 + 保可读三者兼得。fill 暂隐让整卡统一橙。sticky 橙轮廓独立保留不夺。
    is-synced/is-synced-w=瞬时（hover，mouseout 清）；is-synced-sticky/is-synced-sticky-w=持久（选中矩阵块/关键词后，直到取消选中才清）。 */
@@ -208,9 +210,9 @@
 .ov-pol-tabs {
   display: flex;
   gap: 2px;
-  padding: 4px 0 2px;
+  padding: 2px 0;              /* 紧凑：Tab 条上下 2px */
   border-bottom: 1px solid var(--geojson-color-border-default, #e6e6e6);
-  margin-bottom: 4px;
+  margin-bottom: 2px;          /* 与 ov-subtabs 簇间 2px（subtab margin-bottom 2px + 此 padding-top 0） */
   position: sticky;             /* Tab 条 sticky：常驻 ov-subtabs 之下（留 ~30px 给 ov-subtabs） */
   top: 30px;
   z-index: 5;
@@ -235,11 +237,21 @@
 }
 .ov-pol-tab:hover { background: var(--geojson-color-gray-100, #f5f5f5); }
 .ov-pol-tab.is-active { font-weight: 700; border-bottom-color: var(--pol-c, #555); }
-.ov-pol-body { display: flex; flex-direction: column; gap: 4px; }
+.ov-pol-body { display: flex; flex-direction: column; gap: 4px; padding-top: 10px; }   /* 题头下移：Tab 条与内容视觉隔离 */
 .ov-block-kw-hint { font-size: 11px; color: var(--geojson-color-text-secondary); margin: 2px 0 4px; line-height: 1.45; }
 .ov-block-kw-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
 .ov-kw-item.ov-kw-block { height: 22px; padding: 0 9px; border-radius: 10px; background: #eef0f3; box-shadow: none; }
 .ov-kw-item.ov-kw-block .ov-kw-word { padding: 0; font-size: 11px; }
+
+/* ── 地点 tip：极性深读关键词 hover/click → 对应聚合域·3D 柱体上方白线 + 胶囊 ── */
+.loc-tip { display: flex; flex-direction: column; align-items: center; pointer-events: none; will-change: transform; }
+.loc-tip-cap {
+  background: #fff; color: var(--geojson-color-text-secondary, #6b7280);
+  font-size: var(--geojson-typography-size-2xs, 11px); font-weight: 500;
+  padding: 2px 8px; border-radius: 10px; white-space: nowrap;
+  border: 1px solid rgba(0,0,0,.06); box-shadow: 0 2px 8px rgba(0,0,0,.18);
+}
+.loc-tip-line { width: 1px; height: 300px; background: #fff; box-shadow: 0 0 2px rgba(0,0,0,.30); }
 
 /* 单元深读：4×5 定位高亮 + 分位条 */
 .ov-cell-where { font-size: var(--geojson-typography-size-xs, 13px); color: var(--geojson-color-text-secondary); line-height: 1.5; }

@@ -10,7 +10,7 @@ import {
   HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets, rampDisplaySegs, deriveTimeTag, KEYWORD_TABLE,
 } from './state.js';
 import { geomStats, DOMAIN_LABEL, ELEMENT_LABEL } from './popup.js';
-import { easeBackFromCell, fitBoundsTo, renderLayer } from './map.js';
+import { easeBackFromCell, fitBoundsTo, renderLayer, showLocTips, clearLocTips } from './map.js';
 import { POLARITY_GRID, polarityStops } from './grid-tool.js';
 import { highlightCellSet, clearHighlightCellSet, toggleStickyHighlight, resetHighlightCellSet, setStickyProvider } from './tip-popup.js';
 import { loadDistricts, classifyPointsByDistrict, polyCentroid } from './district-stats.js';
@@ -74,20 +74,41 @@ export function initPanel() {
       if (sl) { _clearSync(); highlightCellSet(_cellsByPolarity(_overviewLayer.fc.features, sl.dataset.pol), _overviewLayer); return; }
       const mx = e.target.closest('.mx-cell[data-dom]');
       if (mx) {
-        if (_polarityState) {   // 极性深读：矩阵 hover → 地图高亮该桶 + 填 #ov-block-kw 副本关键词（替图层总览关键词联动）
+        if (_polarityState) {   // 极性深读：矩阵 hover → 地图高亮该桶 + 填 #ov-block-kw 该块关键词（瞬时）
           highlightCellSet(_cellsByBucket(_overviewLayer.fc.features, mx.dataset.dom, mx.dataset.elm), _overviewLayer);
-          _renderBlockKeywordsFor(_polarityState.layer, _polarityState.pol, mx.dataset.dom, mx.dataset.elm);
+          _renderBlockKw(_polarityState.layer, _polarityState.pol, mx.dataset.dom, mx.dataset.elm);
           return;
         }
         _clearSync(); highlightCellSet(_cellsByBucket(_overviewLayer.fc.features, mx.dataset.dom, mx.dataset.elm), _overviewLayer); _syncFromMatrix(mx.dataset.dom, mx.dataset.elm); return;
       }
       const kw = e.target.closest('.ov-kw-item');
-      if (kw && !kw.classList.contains('ov-kw-block')) {   // 极性深读的 block 关键词卡无 topic，跳过联动
-        _clearSync(); const r = _topKeywordCells(_overviewLayer.fc.features, kw.dataset.topic, 10); if (r.cells.length) highlightCellSet(r.cells, _overviewLayer); _syncFromKeyword(kw.dataset.topic); return;
+      if (kw) {
+        if (_polarityState && _polBlockCurrent) {   // 极性深读关键词 → 地点 tip（对应聚合域）+ 高亮所属矩阵块
+          const it = _findPolWord(kw.dataset.topic);
+          if (it && it.locs && it.locs.length) showLocTips(_polarityState.layer, it.locs.slice(0, 8));
+          _highlightPolBlockCell(_polBlockCurrent.dom, _polBlockCurrent.elm, true);
+          return;
+        }
+        if (!kw.classList.contains('ov-kw-block')) {   // 综合：原 top10 联动（极性 block 卡无 topic，跳过）
+          _clearSync(); const r = _topKeywordCells(_overviewLayer.fc.features, kw.dataset.topic, 10); if (r.cells.length) highlightCellSet(r.cells, _overviewLayer); _syncFromKeyword(kw.dataset.topic); return;
+        }
       }
     });
     pane.addEventListener('mouseout', (e) => {
-      if (e.target.closest('.ov-pie-slice') || e.target.closest('.mx-cell[data-dom]') || e.target.closest('.ov-kw-item')) { clearHighlightCellSet(); _clearSync(); }
+      // 极性关键词 leave → 清地点 tip（除非 sticky 词）+ 清矩阵块高亮
+      if (e.target.closest('.ov-kw-item') && _polarityState) {
+        if (!_polWordTipSticky) clearLocTips();
+        _highlightPolBlockCell(_polBlockCurrent && _polBlockCurrent.dom, _polBlockCurrent && _polBlockCurrent.elm, false);
+        return;
+      }
+      const onItem = e.target.closest('.ov-pie-slice') || e.target.closest('.mx-cell[data-dom]') || e.target.closest('.ov-kw-item');
+      if (!onItem) return;
+      clearHighlightCellSet(); _clearSync();
+      // 极性矩阵 leave → 还原 sticky 块词组 或 清空（空态：无 sticky 时不残留）
+      if (_polarityState && e.target.closest('.mx-cell[data-dom]')) {
+        if (_polBlockSticky) _renderBlockKw(_polarityState.layer, _polarityState.pol, _polBlockSticky.dom, _polBlockSticky.elm);
+        else _clearBlockKw();
+      }
     });
     pane.addEventListener('click', (e) => {
       if (!_overviewLayer) return;
@@ -104,10 +125,15 @@ export function initPanel() {
         else _sticky = null;
         return;
       }
-      // 矩阵格 → 锁定/释放该 domain×element 桶（选中后关联关键词卡片持久高亮，直到取消）
+      // 矩阵格 → 锁定/释放该 domain×element 桶
       const mx = e.target.closest('.mx-cell[data-dom]');
       if (mx) {
         const dom = mx.dataset.dom, elm = mx.dataset.elm;
+        if (_polarityState) {   // 极性深读：toggle sticky 块（词组长显，再点释放）
+          if (_polBlockSticky && _polBlockSticky.dom === dom && _polBlockSticky.elm === elm) { _polBlockSticky = null; _clearBlockKw(); }
+          else { _polBlockSticky = { dom, elm }; _renderBlockKw(_polarityState.layer, _polarityState.pol, dom, elm); }
+          return;
+        }
         const cells = _cellsByBucket(_overviewLayer.fc.features, dom, elm);
         const locked = toggleStickyHighlight(cells, _overviewLayer, 'mx:' + dom + '|' + elm);
         _clearStickySync();
@@ -117,9 +143,22 @@ export function initPanel() {
         else _sticky = null;
         return;
       }
-      // 关键词 → top-N 最强聚集格 sticky + fitBounds（再点释放）
+      // 关键词 → sticky + 联动
       const kw = e.target.closest('.ov-kw-item');
       if (kw) {
+        if (_polarityState && _polBlockCurrent) {   // 极性关键词：toggle sticky 词 + 地点 tip（.is-sticky 橙）
+          const word = kw.dataset.topic;
+          const wrap = kw.closest('.ov-keywords');
+          if (wrap) wrap.querySelectorAll('.ov-kw-item.is-sticky').forEach((x) => x.classList.remove('is-sticky'));
+          if (_polWordTipSticky === word) { _polWordTipSticky = null; clearLocTips(); }
+          else {
+            _polWordTipSticky = word;
+            kw.classList.add('is-sticky');
+            const it = _findPolWord(word);
+            if (it && it.locs && it.locs.length) showLocTips(_polarityState.layer, it.locs.slice(0, 8));
+          }
+          return;
+        }
         const topic = kw.dataset.topic;
         const r = _topKeywordCells(_overviewLayer.fc.features, topic, 10);
         if (r.cells.length) {
@@ -252,7 +291,7 @@ function _applyPolarityView(layer, pol) {
 /** 还原综合态 paint（回图层总览 / 换层 / 删层 时调）。层已删则只清状态。 */
 function _clearPolarityView() {
   const st = _polarityState;
-  if (!st) return;
+  if (!st) { return; }
   const layer = st.layer;
   if (layer && layer.paint && layer.paint._ui && layer.paint._ui._overallPaint) {
     const ov = layer.paint._ui._overallPaint;
@@ -263,6 +302,7 @@ function _clearPolarityView() {
     renderLayer(layer);
   }
   _polarityState = null;
+  _resetPolKwState();   // 清词区 sticky + 地点 tip
 }
 
 /** 渲染极性深读 pane：极性 Tab 条 + 默认积极的（极性总览 + 归因矩阵 + 关键词/热门话题）。 */
@@ -277,6 +317,7 @@ function _renderPolarityDeepRead() {
   }
   const keep = _polarityState && _polarityState.layer && _polarityState.layer.id === layer.id;
   const pol = keep ? (_polarityState.pol || 'positive') : 'positive';
+  _resetPolKwState();   // 入极性深读：清旧 sticky 词/块 + 地点 tip（保 pol 若同层）
   _polarityState = { layer, pol };
   _applyPolarityView(layer, pol);
   pane.innerHTML = _polarityTabBarHtml(pol) + _polarityBodyHtml(layer, pol);
@@ -297,6 +338,7 @@ function _wirePolarityTabs(layer) {
     b.addEventListener('click', () => {
       const pol = b.dataset.pol;
       if (!pol || (_polarityState && _polarityState.pol === pol)) return;
+      _resetPolKwState();   // 切极性：清旧 sticky 词/块 + 地点 tip
       _polarityState = { layer, pol };
       _applyPolarityView(layer, pol);
       pane.querySelectorAll('.ov-pol-tab').forEach((t) => t.classList.toggle('is-active', t.dataset.pol === pol));
@@ -305,39 +347,47 @@ function _wirePolarityTabs(layer) {
     }));
 }
 
-/** 极性深读 body：极性总览 count + 按极性重计的归因矩阵 + 关键词/热门话题（默认 hint，hover 块动态填）。 */
+/** 极性深读 body：极性总览 count（带占比）+ 按极性数单元的归因矩阵 + 关键词/热门话题（默认 hint，hover 块动态填）。
+ *  照搬原 _singlePolBody 呈现（占比 / cellSize 话语 / 单位），仅矩阵口径改"该极性点数>0 的单元数"。 */
 function _polarityBodyHtml(layer, pol) {
   const feats = (layer.fc && layer.fc.features) || [];
+  const ui = (layer.paint && layer.paint._ui) || {};
   const nField = (POLARITY_GRID[pol] || {}).nField;
-  let total = 0;
-  for (const f of feats) total += ((f.properties || {})[nField] || 0);
+  let ptTotal = 0;
+  for (const f of feats) ptTotal += ((f.properties || {})[nField] || 0);
   const polLabel = { positive: '积极', negative: '消极', neutral: '中性' }[pol] || '极性';
-  const countLine = total
-    ? `<div class="ov-count-line">偏<b>${polLabel}</b>情绪点 <b>${total}</b> 个</div>`
+  const cityTotal = _cityTotalOf(ui);
+  const yPct = (cityTotal && ptTotal) ? Math.round(ptTotal / cityTotal * 100) : null;
+  const countLine = ptTotal
+    ? `<div class="ov-count-line">偏<b>${polLabel}</b>的情绪点数为 <b>${ptTotal}</b> 个${yPct != null ? `，占城市情绪总量的 <b>${yPct}%</b>` : ''}</div>`
     : `<div class="ov-count-line muted">该极性无情绪点数据</div>`;
-  const cell = _matrix4x5ByPolarity(feats, pol);
-  const kwHint = `<div class="ov-block-kw-hint">悬停 / 点击矩阵块查看该维度关键词<span class="info-i" data-tip="极性深读关键词对应每个矩阵块的情绪点评论，随悬停/选中动态变化。本数据为<b>演示模拟副本</b>（深度解读·极性·关键词群），正式管线接入后替换。">i</span></div>`;
+  const { cell, total: polCellCount } = _matrix4x5ByPolarity(feats, pol);
+  const cs = ui.cellSize || 400;
   return `<div class="ov-pol-body">
     <div class="ov-tier-sub">极性总览</div>${countLine}
-    <div class="ov-tier-sub">归因矩阵${_unit('个单元')}<span class="info-i" data-tip="按当前极性重计：每块 = 该 domain×element 下该极性情绪点数之和。颜色按本矩阵数量三级（深紫最多→浅紫最少）。悬停/点击 → 下方关键词动态切换 + 地图同步高亮该桶单元。">i</span></div>${_matrixIntro(`通过空间聚合，按<b>${polLabel}</b>极性重计 4×5 归因（数字 = 该维度 ${polLabel} 情绪点数）：`)}${_singlePolMatrixHtml(cell)}
-    <div class="ov-tier-sub">关键词/热门话题</div>${kwHint}
-    <div class="ov-block-kw" id="ov-block-kw"><div class="ov-placeholder muted">悬停矩阵块查看该维度 ${polLabel} 关键词</div></div>
+    <div class="ov-tier-sub">归因矩阵${_unit('个单元')}<span class="info-i" data-tip="按当前极性重计：每块 = 该 domain×element 下该极性点数>0 的单元数（每格计 1，与地图 filter 同口径）。颜色按本矩阵数量三级（深紫最多→浅紫最少）。悬停/点击 → 下方关键词动态切换 + 地图同步高亮该桶单元。">i</span></div>${_matrixIntro(`通过空间聚合，共生成 <b>${polCellCount}</b> 个<b>${polLabel}</b>标准单元（${cs}m），4×5 归因如下（数字 = 该维度 ${polLabel} 单元数）：`)}${_singlePolMatrixHtml(cell)}
+    <div class="ov-tier-sub">关键词/热门话题${_unit('个情绪点')}<span class="info-i" data-tip="该极性下各矩阵块对应的高频关键词/热门话题（含短句）。填充条 = 相对点数占比，右数字 = 相关情绪点数。悬停/点击矩阵块 → 动态切换该块关键词（click 锁定长显）；悬停/点击关键词 → 地图投射地点 tip（对应聚合域 3D 柱体）。本数据为<b>演示模拟副本</b>，正式管线接入后替换。">i</span></div>
+    <div class="ov-block-kw" id="ov-block-kw"><div class="ov-placeholder muted">悬停 / 点击上方矩阵块查看该维度关键词</div></div>
   </div>`;
 }
 
-/** 按极性重计 4×5：块 count = Σ 单元格 n_<pol>（综合 fc 已带 n_positive/n_negative/n_neutral）。 */
+/** 按极性重计 4×5：块 count = "该极性点数>0 的单元数"（每格计 1，与地图 _grid_n_<pol>>0 filter 同口径 = 所见即所计）。
+ *  单位"个单元"（非情绪点数）。返回 {cell, total}：total = 该极性单元总数。 */
 function _matrix4x5ByPolarity(feats, pol) {
   const nField = (POLARITY_GRID[pol] || {}).nField;
   const cell = {};
-  if (!nField) return cell;
+  let total = 0;
+  if (!nField) return { cell, total };
   for (const f of feats) {
     const p = f.properties || {};
     if (!p.domain_top || !p.element_top) continue;
+    if ((p[nField] || 0) <= 0) continue;   // 仅数该极性点数>0 的单元（与地图 filter 同口径）
     const k = p.domain_top + '|' + p.element_top;
     if (!cell[k]) cell[k] = { n: 0, piSum: 0, piCnt: 0 };
-    cell[k].n += (p[nField] || 0);
+    cell[k].n += 1;
+    total++;
   }
-  return cell;
+  return { cell, total };
 }
 
 /** 副本加载（fetch DATA/performance/polarity_deepread_keywords.json；缓存 + 失败不重试）。 */
@@ -350,18 +400,66 @@ function _loadDemoKw() {
     .catch(() => { _demoKwCache = false; return false; });
 }
 
-/** 把指定 (极性, domain×element) 的副本关键词渲染进 #ov-block-kw。T = 综合 layer timeTag（缺退 T3）。 */
-function _renderBlockKeywordsFor(layer, pol, dom, elm) {
+/** 极性深读关键词区状态。
+ *  _polBlockCurrent = 当前 #ov-block-kw 显示的块 {dom, elm, items}（供 word hover/click 查 locs）。
+ *  _polBlockSticky = sticky 矩阵块 {dom,elm}（长显词组，矩阵 leave 不清）；null=空态。
+ *  _polWordTipSticky = sticky 关键词（地点 tip 长显）的 word；null=瞬时。 */
+let _polBlockCurrent = null;
+let _polBlockSticky = null;
+let _polWordTipSticky = null;
+
+/** 把指定 (极性, domain×element) 块的副本关键词渲染进 #ov-block-kw，照搬原 .ov-kw-sp 卡片（fill bar + 词 + 地点 + 数字）。 */
+function _renderBlockKw(layer, pol, dom, elm) {
   const el = document.getElementById('ov-block-kw');
   if (!el) return;
   const T = (layer && (layer.timeTag || deriveTimeTag(layer.fc))) || 'T3';
   _loadDemoKw().then((kw) => {
-    if (!kw || !kw[T] || !kw[T][pol]) { el.innerHTML = `<div class="ov-placeholder muted">副本缺失 ${T}/${pol}（演示数据未就绪）</div>`; return; }
-    const words = kw[T][pol][dom + '|' + elm] || [];
-    el.innerHTML = words.length
-      ? `<div class="ov-block-kw-list">${words.map((w) => `<div class="ov-kw-item ov-kw-block"><span class="ov-kw-word">${w}</span></div>`).join('')}</div>`
-      : `<div class="ov-placeholder muted">该维度无高频关键词</div>`;
+    if (!kw || !kw[T] || !kw[T][pol]) { _polBlockCurrent = null; el.innerHTML = `<div class="ov-placeholder muted">副本缺失 ${T}/${pol}（演示数据未就绪）</div>`; return; }
+    const items = kw[T][pol][dom + '|' + elm] || [];
+    if (!items.length) { _polBlockCurrent = null; el.innerHTML = `<div class="ov-placeholder muted">该维度无高频关键词</div>`; return; }
+    const sorted = items.slice().sort((a, b) => (b.n || 0) - (a.n || 0));
+    const max = Math.max(1, ...sorted.map((it) => it.n || 0));
+    const sign = { positive: 'pos', neutral: 'neu', negative: 'neg' }[pol] || 'pos';
+    _polBlockCurrent = { dom, elm, items: sorted };
+    el.innerHTML = `<div class="ov-keywords ov-keywords-sp">${sorted.map((it) => {
+      const locs = (it.locs || []).map((l) => l.name).filter(Boolean).slice(0, 4).join('、');
+      const locHtml = locs ? `<div class="ov-kw-locs">${locs}</div>` : `<div class="ov-kw-locs muted">—</div>`;
+      const sticky = _polWordTipSticky === it.word ? ' is-sticky' : '';
+      return `<div class="ov-kw-item ov-kw-sp${sticky}" data-topic="${it.word}" data-sign="${sign}" title="${it.word}（${it.n} 点）· 悬停/点击看地点 tip">
+        <span class="ov-kw-fill" style="width:${Math.max(20, (it.n / max) * 100)}%"></span>
+        <div class="ov-kw-left"><span class="ov-kw-word">${it.word}</span><span class="ov-kw-num">${it.n}</span></div>
+        ${locHtml}
+      </div>`;
+    }).join('')}</div>`;
   });
+}
+
+/** 清空 #ov-block-kw 回 hint（空态：无操作时不残留词组）。 */
+function _clearBlockKw() {
+  _polBlockCurrent = null;
+  const el = document.getElementById('ov-block-kw');
+  if (el) el.innerHTML = `<div class="ov-placeholder muted">悬停 / 点击上方矩阵块查看该维度关键词</div>`;
+}
+
+/** 在 _polBlockCurrent.items 中按 word 找词条（含 locs）。 */
+function _findPolWord(word) {
+  if (!_polBlockCurrent || !_polBlockCurrent.items) return null;
+  return _polBlockCurrent.items.find((it) => it.word === word) || null;
+}
+
+/** 高亮/取消极性深读当前块对应的矩阵格（word hover → block 反向联动）。 */
+function _highlightPolBlockCell(dom, elm, on) {
+  if (!dom || !elm) return;
+  const c = document.querySelector(`#ov-polarity-pane .mx-cell[data-dom="${dom}"][data-elm="${elm}"]`);
+  if (c) c.classList.toggle('is-synced', on);
+}
+
+/** 重极致性深读瞬时态（切极性/换层/离开时）：清 sticky + 地点 tip + 词区。 */
+function _resetPolKwState() {
+  _polBlockSticky = null;
+  _polWordTipSticky = null;
+  _polBlockCurrent = null;
+  clearLocTips();
 }
 
 /** Overview 单元模式（已废弃——单元深读改极性深读；保留空函数防 main.js 旧调用报错，下版本清）。 */
@@ -1158,7 +1256,7 @@ function tier3(layer, lv) {
            <div class="ov-overview-row ov-ov-pie-row">${pieHtml}</div>` : '';
       body = `${overviewRow}
         <div class="ov-tier-sub">归因矩阵${_unit('个单元')}<span class="info-i" data-tip="4 大治理领域 × 5 要素 的情绪归因矩阵。悬停/点击某格 → 地图同步高亮该领域×要素交集的网格。行/列标签下数字 = 该领域/要素单元总数。">i</span></div>${_matrixIntro(`通过空间聚合分析，共生成 <b>${feats.length}</b> 个标准单元（${ui.cellSize || 400}m），<b>"4维度×5要素"</b>归因统计如下（数字代表该维度的单元数量，颜色代表该维度的极性倾向）：`)}${_matrixHtml(cell)}
-        <div class="ov-tier-sub">关键词Top10<span class="info-i" data-tip="按各要素正/中/负情绪点数排名的高频城市关键词。点击某词 → 地图定位并高亮其最强聚集的若干柱体。">i</span></div>${_keywordsHtml(feats)}`;
+        <div class="ov-tier-sub">关键词Top10${_unit('个情绪点')}<span class="info-i" data-tip="按各要素正/中/负情绪点数排名的高频城市关键词。点击某词 → 地图定位并高亮其最强聚集的若干柱体。">i</span></div>${_keywordsHtml(feats)}`;
     }
   } else if (layer.kind === 'heatmap') {
     const p = layer.paint || {};

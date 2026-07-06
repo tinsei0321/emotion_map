@@ -749,3 +749,39 @@ export function easeBackFromCell() {
   try { map.easeTo({ center: _preCellView.center, zoom: _preCellView.zoom, pitch: _preCellView.pitch, duration: 600 }); } catch (e) {}
   _preCellView = null; _cellModeZoom = null;
 }
+
+// ── 地点 tip：极性深读关键词 hover/click → 对应聚合域·3D 柱体上方投射白色细线 + 胶囊（地点名）──
+// Marker（DOM overlay）anchor bottom 锚 cell._center（坐柱体上），CSS 抬升胶囊到线顶端。
+// 视野不遮柱体（1px 细线 + 胶囊悬浮其上）。多 loc → 多 Marker。panel.js 触发。
+const _locTipMarkers = [];
+
+/** 显示地点 tip：locs = [{name, lng, lat}]。锚定最近可见综合 grid cell._center（无近邻退 lngLat）。cap ≤ 8。 */
+export function showLocTips(layer, locs) {
+  clearLocTips();
+  if (!map || !locs || !locs.length) return;
+  const cells = (layer && layer.fc && layer.fc.features) || [];
+  for (const loc of locs.slice(0, 8)) {
+    if (!loc || loc.lng == null || loc.lat == null) continue;
+    let best = null, bestD = Infinity;
+    for (const f of cells) {
+      const c = (f.properties || {})._center;
+      if (!c) continue;
+      const d = (c[0] - loc.lng) ** 2 + (c[1] - loc.lat) ** 2;
+      if (d < bestD) { bestD = d; best = c; }
+    }
+    const anchor = best || [loc.lng, loc.lat];
+    const el = document.createElement('div');
+    el.className = 'loc-tip';
+    el.innerHTML = `<div class="loc-tip-cap">${(loc.name || '').replace(/[<>]/g, '')}</div><div class="loc-tip-line"></div>`;
+    const m = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+      .setLngLat(anchor)
+      .addTo(map);
+    _locTipMarkers.push(m);
+  }
+}
+
+/** 清全部地点 tip（关键词 leave / 切极性 / 换层 时）。 */
+export function clearLocTips() {
+  for (const m of _locTipMarkers) m.remove();
+  _locTipMarkers.length = 0;
+}

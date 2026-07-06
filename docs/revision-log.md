@@ -599,6 +599,23 @@ flowchart TD
 
 **文件**：`frontend/index.html`（sub-tab 改名 + 删极性 section）·`frontend/js/panel.js`（极性深读核心 + 删单元深读）·`frontend/js/main.js`（cell:selected 简化）·`frontend/js/sidebar.js`（grid 子卡 + subGroupRowHtml）·`frontend/js/grid-tool.js`（层名瘦身 + 删极性 + isRangeLayer 面域 + _overallPaint 备份 + 导出 POLARITY_GRID/polarityStops）·`frontend/js/map.js`（filter 透传 fill/extru/line/hit）·`frontend/css/panel.css`（sticky Tab + .ov-pol-tab + .ov-kw-block）·`frontend/css/sidebar.css`（.layer-subgroup）·`DATA/performance/polarity_deepread_keywords.json`（新建 T1/T3 双副本）。
 
+### 5.26 极性深读 review 修正 + 地点 tip feature（07月06日 14:50）
+
+**用户 review 5.25 后提 4 类问题 + 1 新 feature + 1 文档规范**。先答两问：① 矩阵变"情绪点"——我在 `_matrix4x5ByPolarity` 把块值 = Σ `n_<pol>`（点数和），错；原 `_singlePolBody` 是数单元。修：改数"该极性点数>0 的单元"（每格计 1，与地图 filter 同口径），单位仍"个单元"。② 占比没了——重写 `_polarityBodyHtml`（非复用 `_singlePolBody`，因极性深读是综合层虚拟极性视图）时漏抄 `_cityTotalOf` 占比 + cellSize 话语；**非设计意图，照搬不彻底**。修：countLine 加回占城市总量占比 + 话语带"极性标准单元（xxm）"。
+
+**落地**：
+- **矩阵数单元 + 占比 + 话语**：`_matrix4x5ByPolarity` 返回 `{cell, total}`（total=该极性单元数）；`_polarityBodyHtml` countLine `偏X情绪点 N 个，占城市总量 Y%` + intro `共生成 N 个X标准单元（cellSize m）...单元数`。
+- **关键词卡片照搬**：`_renderBlockKw` 复用原 `.ov-kw-sp` 卡片（fill bar + 词 + 地点淡灰 `.ov-kw-locs` + 数字，降序）；板块头加 `（单位：个情绪点）`（复用 `_unit`）；综合·Overview `_keywordsHtml` 头也加单位。
+- **副本 v2**（`polarity_deepread_keywords.json`）：restructure `{word, n, locs:[{name,lng,lat}]}`；含**短句热门话题**（开街烟火气足/楚超火爆）；坐标复用 todo 12 词典型格 + candidate 池；T1/T3 × 3 极性 × 20 块，规划/更新×设施/环境/文化块 3 词、其余 2；停车难→5 商圈多 locs、二马路/奥体→唯一/集中。
+- **联动 + 空态**：矩阵块↔关键词互高亮（`.is-synced`）；hover 块→瞬时显词组（**mouse leave → 清空回 hint，不残留**）；click 块→sticky 长显（再点释放）。
+- **地点 tip feature**（[map.js](frontend/js/map.js) `showLocTips`/`clearLocTips`）：hover/click 关键词 → 对应聚合域·3D 柱体上方投射白色细线（300px）+ 白色胶囊（地点名，11px 浅灰 = `.ov-unit` 字号）。`maplibregl.Marker` anchor bottom 锚最近 cell._center（坐柱体上）；cap ≤ 8。click 词 → `.is-sticky` 橙填充 + 浮起 + 深字（改 `.ov-kw-item.is-sticky` 从橙框→橙填充，综合/极性一致）。
+- **UI 紧凑 + 题头下移**（[panel.css](frontend/css/panel.css)）：`.ov-pol-tabs` padding 2px、margin 2px（Tab 簇紧凑）；`.ov-pol-body` padding-top 10px（Tab 条↔内容视觉隔离）。
+- **时间格式规范**（反复出错）：新 memory `timestamp-no-weekday`——todo/revision-log/handoff 时间戳只写"MM月DD日 HH:MM"（24h），**不写星期几**（多次算错，2026-07-06=周一非周日）。
+
+**Playwright 验证全通过**：0 错误；矩阵数字=单元数（9/30/17...非点数和）；countLine `积极 5310 个，占 31%` + intro `1375 个积极标准单元（400m）`；停车难→5 tip（夷陵广场/万达/国贸/吾悦/火车东站）；断头路→1 tip；sticky 块词组 leave 后持续、释放回空态；sticky 词橙填充 rgb(255,144,0)；综合关键词单位。**已知交互**：toggleGridViewMode 切 2D/3D pair 会重选层致极性 tab 重置（既有 toggle 行为，非本 feature bug；3D 下生成 + 极性深读 + tip 模式无关可用）。
+
+**文件**：`frontend/js/panel.js`（`_matrix4x5ByPolarity` 数单元 + `_polarityBodyHtml` 占比话语单位 + `_renderBlockKw`/`_resetPolKwState`/`_findPolWord`/`_highlightPolBlockCell` + matrix/word handlers + 综合 `_keywordsHtml` 单位）·`frontend/js/map.js`（`showLocTips`/`clearLocTips` Marker+白线胶囊）·`frontend/css/panel.css`（Tab 紧凑 + 题头下移 + `.loc-tip` + `.is-sticky` 橙填充）·`DATA/performance/polarity_deepread_keywords.json`（v2 restructure）·`docs/todo.md`（去星期几）·新 memory `timestamp-no-weekday`。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

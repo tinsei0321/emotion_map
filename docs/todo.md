@@ -5,7 +5,18 @@
 
 ---
 
-## 📅 2026-07-06（周日）
+## 📅 2026-07-06（周一）
+
+### ✅ 极性深读 review 修正 + 地点 tip feature（revision-log 5.26，承 ea8e66f，Playwright 验证全通过）
+
+- **review 修正**（用户两问）：① 矩阵 `_matrix4x5ByPolarity` 误用 Σ 点数 → 改"该极性点数>0 的单元数"（每格计1，与地图 filter 同口径）；② `_polarityBodyHtml` 漏抄占比 → 加回 `_cityTotalOf` 占比 + cellSize 话语。
+- **关键词卡片照搬**：`_renderBlockKw` 复用 `.ov-kw-sp`（fill+词+地点淡灰+数字降序）+ 板块头单位 `（单位：个情绪点）`；综合 `_keywordsHtml` 也加单位。
+- **副本 v2**：`{word,n,locs:[{name,lng,lat}]}`，含短句话题（开街烟火气足/楚超火爆），T1/T3×3×20，停车难→5 商圈、二马路/奥体→唯一。
+- **联动+空态**：矩阵↔词互高亮；hover 块→瞬时词组（leave→清空回 hint 不残留）；click 块→sticky 长显。
+- **地点 tip**（新 feature）：hover/click 词 → 对应聚合域·3D 柱体上方白线 300px + 胶囊（地点名，`.ov-unit` 字号浅灰）。`maplibregl.Marker` anchor bottom 锚最近 cell._center；cap ≤8。click 词→`.is-sticky` 橙填充+浮起+深字（综合/极性一致，改 `.is-sticky` 橙框→填充）。
+- **UI 紧凑**：`.ov-pol-tabs` gap 2px + `.ov-pol-body` padding-top 10px（Tab↔内容隔离）。
+- **时间规范**：新 memory `timestamp-no-weekday`——时间戳不写星期几（07-06=周一，反复误写周日）。
+- **已知交互**：toggleGridViewMode 切 2D/3D pair 重选层致极性 tab 重置（既有行为，非 bug；3D 下生成+深读+tip 可用）。
 
 ### ✅ 任务1 完成：单元深读→极性深读重构 + Layers 子卡 + Toolbox 去极性 + Tab 条 sticky（plan `main-head-46250a6-...sequential-swing.md`，Playwright 验证全通过）
 
