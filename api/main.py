@@ -14,6 +14,32 @@ import sys
 # 确保项目根在 sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+
+def _load_env_file():
+    """轻量 .env 加载（不依赖 python-dotenv）：解析项目根 .env → 注入 os.environ（不覆盖已有）。
+    让 DEEPSEEK_API_KEY 等 key 持久化（serve 重启不丢、终端无关）。
+    前端后端入口（uvicorn api.main:app）默认不读 .env——本函数补齐与遗留 Streamlit
+    入口（app_main._load_dotenv）一致的体验，避免 key 只在某终端会话有效、serve 起的后端读不到。"""
+    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
+    if not os.path.isfile(env_path):
+        return
+    try:
+        with open(env_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                k, _, v = line.partition('=')
+                k = k.strip()
+                v = v.strip().strip('"').strip("'")
+                if k and k not in os.environ:
+                    os.environ[k] = v
+    except Exception:
+        pass   # .env 解析失败不阻塞启动（key 缺失由 LLMClient._ensure_key 明确报错）
+
+
+_load_env_file()   # FastAPI app 构建前注入 .env
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
