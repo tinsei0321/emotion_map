@@ -5,6 +5,21 @@
 
 ---
 
+## 📅 2026-07-08
+
+### ✅ AI 问答 Agent Loop 重构（Claude Code 式 ReAct）+ 还原底部面板 + 历史持久化（revision-log 5.34）
+
+- **5.33 四层 Harness 实测三问题**：①看不到历史（开关丢失）②思考是"结果"非"动态"③回答不可用。根因=线性管线。
+- **Agent Loop（ReAct）**：每轮 reasoner 输出 {thought, action}（reasoning 实时流 + thought 可见 + action tool/answer）。模型自主调工具循环（query→操作→answer），多轮上限8。真"边想边做边说"。
+- **工具集**：query_layers/query_zone_stats/query_attribution/query_keywords/ensure_zone/focus_zones/open_attribution/inspect_zone/answer。
+- **MANIFESTO 强化**（重读 architecture.md）：+三页焦点 +7场景 +演示链 +回答SOP +工具指导。
+- **还原底部滑出**（独立窗不便，UI 后续重做）+ **localStorage 历史**。Review 暂移。
+- **验证**：后端 import + agent_prompt 轮次 ✓；主页零 console error + panel 打开 ✓；agent_step E2E（reasoning 155字 + {thought,action}，定义问题第1轮 answer）✓。
+- **待删确认**：protocol.js/ai_qa_host.js/chat.html（跨窗口协议弃用）。
+- **待用户验**：完整 agent loop（带数据多轮工具循环 + 动态思考流 + 历史 + [ref:] 定位）。
+
+---
+
 ## 📅 2026-07-07
 
 ### ✅ 任务2 时间轴 MVP 落地（revision-log 5.29）

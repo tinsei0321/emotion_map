@@ -1,78 +1,39 @@
-/* ═══ ai_qa.css — AI 问答样式（独立窗 chat.html + 主页面浮窗降级 共用）═══ */
-/* 迁自 chat-panel.css + 扩展：结构化解题面板(aiq-solve) / 审查状态区(aiq-review) / 浮窗降级。 */
-/* 设计 token 与主页面同源（tokens.css --geojson-*），保证视觉一致。 */
+/* ═══ ai_qa.css — AI 问答样式（主窗口底部滑出 · agent loop）═══ */
+/* 还原 B1 底部滑出形态（删独立窗/浮窗降级），保留思考流样式（reasoning + 解题步骤 + 结论）。 */
+/* 设计 token 与主页面同源（tokens.css --geojson-*）。 */
 
-/* ── 独立窗主体（chat.html 的 body）── */
-body.aiq-window {
-  margin: 0;
-  height: 100vh;
-  display: flex;
-  background: var(--geojson-color-surface-panel, #fff);
-  font-family: inherit;
-}
-body.aiq-window .chat-panel {
-  position: static;
-  transform: none;
-  opacity: 1;
-  width: 100%;
-  max-width: none;
-  max-height: none;
-  height: 100vh;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-/* ── 浮窗降级（主页面 #chat-panel.is-float-fallback：右下浮窗，不挡地图）── */
-.chat-panel.is-float-fallback {
-  left: auto;
-  right: 20px;
-  bottom: 20px;
-  transform: none;
-  width: min(440px, calc(100vw - 40px));
-  max-height: 70vh;
-}
-.chat-panel.is-float-fallback.is-collapsed {
-  transform: translateY(calc(100% + 40px));
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* ── 问答触发按钮（主页面右下悬浮）── */
+/* ── 问答触发按钮（右下悬浮）── */
 .chat-trigger {
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  z-index: 900;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  position: fixed; right: 20px; bottom: 20px; z-index: 900;
+  display: inline-flex; align-items: center; gap: 6px;
   padding: 8px 14px;
-  font-size: var(--geojson-typography-size-sm);
-  font-weight: var(--geojson-typography-weight-semibold);
-  color: #fff;
-  background: var(--geojson-color-brand-primary, #4285F4);
-  border: none;
-  border-radius: 999px;
+  font-size: var(--geojson-typography-size-sm); font-weight: var(--geojson-typography-weight-semibold);
+  color: #fff; background: var(--geojson-color-brand-primary, #4285F4);
+  border: none; border-radius: 999px;
   box-shadow: 0 4px 14px rgba(66, 133, 244, 0.35);
   cursor: pointer;
   transition: transform var(--geojson-transition), box-shadow var(--geojson-transition);
 }
 .chat-trigger:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(66, 133, 244, 0.45); }
 
-/* ── 面板容器（基础：浮窗/独立窗共用结构）── */
+/* ── 底部滑出面板（B1 形态还原）── */
 .chat-panel {
-  display: flex;
-  flex-direction: column;
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: 16px;
+  width: min(720px, calc(100vw - 32px)); max-height: 60vh; z-index: 901;
+  display: flex; flex-direction: column;
   background: var(--geojson-color-surface-panel, #fff);
   border: 1px solid var(--geojson-color-border-default, #e3e5e8);
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
+  border-radius: 12px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
   overflow: hidden;
+  transition: transform 0.18s ease, opacity 0.18s ease;
 }
+.chat-panel.is-collapsed {
+  transform: translateX(-50%) translateY(calc(100% + 24px));
+  opacity: 0; pointer-events: none;
+}
+
 .chat-head {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 14px;
+  display: flex; align-items: center; gap: 8px; padding: 10px 14px;
   border-bottom: 1px solid var(--geojson-color-border-default, #e3e5e8);
   background: var(--geojson-color-surface-panel-alt, #f5f5f5);
 }
@@ -94,7 +55,7 @@ body.aiq-window .chat-panel {
 .chat-msg-user { justify-content: flex-end; }
 .chat-msg-assistant { justify-content: flex-start; }
 .chat-bubble {
-  max-width: 92%; padding: 8px 12px;
+  max-width: 90%; padding: 8px 12px;
   font-size: var(--geojson-typography-size-sm); line-height: 1.55;
   border-radius: 12px; word-break: break-word;
 }
@@ -110,7 +71,6 @@ body.aiq-window .chat-panel {
 @keyframes chat-blink { 50% { opacity: 0; } }
 .chat-error { color: var(--geojson-color-danger, #d8552f); font-size: var(--geojson-typography-size-xs); }
 
-/* 引用 chip：[ref:区域名] → 可点徽章（点击 → 主窗口定位） */
 .cite-chip {
   display: inline-flex; align-items: center; margin: 0 2px; padding: 1px 7px;
   font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-brand-primary, #4285F4);
@@ -119,7 +79,6 @@ body.aiq-window .chat-panel {
 }
 .cite-chip:hover { background: rgba(66, 133, 244, 0.2); }
 
-/* 输入行 */
 .chat-input-row { display: flex; gap: 8px; padding: 10px 14px 12px; border-top: 1px solid var(--geojson-color-border-default, #e3e5e8); }
 .chat-input {
   flex: 1; resize: none; max-height: 96px; padding: 8px 10px;
@@ -137,7 +96,7 @@ body.aiq-window .chat-panel {
 .chat-send:hover { opacity: 0.9; }
 .chat-send.is-stop { background: var(--geojson-color-danger, #d8552f); }
 
-/* ── ① 思考链（Pro 原生 reasoning，灰显可折叠）── */
+/* ── 思考链（Pro reasoning，跨轮累积，灰显可折叠）── 实时动态 ── */
 .aiq-reason { margin: 0 0 6px; padding: 6px 8px; border-left: 2px solid var(--geojson-color-gray-200, #e3e5e8); background: var(--geojson-color-gray-100, #f7f7f7); border-radius: 0 6px 6px 0; }
 .aiq-reason.is-done { cursor: pointer; }
 .aiq-reason-head { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 2px; }
@@ -146,41 +105,18 @@ body.aiq-window .chat-panel {
 .aiq-reason.is-done.is-open .aiq-reason-head::before { content: '▾ '; }
 .aiq-reason-body { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
 
-/* ── ② 解题面板（STEP①-④，对齐情绪地图框架）── */
-.aiq-solve { margin: 0 0 6px; padding: 8px 10px; border-left: 2px solid var(--geojson-color-brand-primary, #4285F4); background: var(--geojson-color-gray-100, #f7f7f7); border-radius: 0 6px 6px 0; }
-.aiq-solve-head { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-brand-primary, #4285F4); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 4px; }
-.aiq-step { margin-bottom: 4px; }
-.aiq-step:last-child { margin-bottom: 0; }
-.aiq-step-tag { display: inline-block; font-size: var(--geojson-typography-size-2xs); font-weight: var(--geojson-typography-weight-semibold); color: var(--geojson-color-text-tertiary); margin-right: 4px; }
-.aiq-step-body { display: inline; font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
-/* 执行轨道（STEP③ 的 steps 清单） */
-.aiq-track { display: flex; flex-direction: column; gap: 3px; margin-top: 3px; }
-.aiq-step-row { display: flex; align-items: baseline; gap: 6px; font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); line-height: 1.4; padding: 1px 0; }
-.aiq-step-ico { display: inline-block; width: 1.2em; text-align: center; font-weight: var(--geojson-typography-weight-bold); color: var(--geojson-color-text-tertiary); flex-shrink: 0; }
-.aiq-step-label { color: var(--geojson-color-text-primary); }
-.aiq-step-note { color: var(--geojson-color-text-tertiary); font-size: var(--geojson-typography-size-2xs); }
-.aiq-step-row.is-running .aiq-step-ico { color: var(--geojson-color-brand-primary, #4285F4); animation: aiq-spin 0.9s linear infinite; display: inline-block; }
-.aiq-step-row.is-running .aiq-step-label { color: var(--geojson-color-brand-primary, #4285F4); }
-.aiq-step-row.is-done .aiq-step-ico { color: var(--geojson-color-success, #2e8b57); }
-.aiq-step-row.is-error .aiq-step-ico { color: var(--geojson-color-danger, #d8552f); }
-.aiq-step-row.is-error .aiq-step-label { color: var(--geojson-color-danger, #d8552f); }
-@keyframes aiq-spin { to { transform: rotate(360deg); } }
+/* ── 解题步骤（Agent Loop 每轮 thought/action/observation 逐行追加）── */
+.aiq-steps { margin: 0 0 6px; padding: 8px 10px; border-left: 2px solid var(--geojson-color-brand-primary, #4285F4); background: var(--geojson-color-gray-100, #f7f7f7); border-radius: 0 6px 6px 0; }
+.aiq-steps-head { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-brand-primary, #4285F4); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 4px; }
+.aiq-step-row { display: flex; gap: 6px; padding: 3px 0; border-bottom: 1px dashed rgba(0,0,0,0.05); }
+.aiq-step-row:last-child { border-bottom: none; }
+.aiq-step-num { flex-shrink: 0; width: 1.6em; height: 1.6em; line-height: 1.6em; text-align: center; border-radius: 50%; background: var(--geojson-color-brand-primary, #4285F4); color: #fff; font-size: var(--geojson-typography-size-2xs); font-weight: bold; }
+.aiq-step-content { flex: 1; font-size: var(--geojson-typography-size-xs); line-height: 1.45; }
+.aiq-step-thought { color: var(--geojson-color-text-primary); }
+.aiq-step-action { color: var(--geojson-color-brand-primary, #4285F4); font-family: ui-monospace, monospace; font-size: var(--geojson-typography-size-2xs); margin-top: 1px; }
+.aiq-step-obs { color: var(--geojson-color-text-secondary); font-size: var(--geojson-typography-size-2xs); margin-top: 1px; white-space: pre-wrap; }
 
-/* ── ⑤ 结论区 ── */
+/* ── 结论区 ── */
+.aiq-step-final { margin-top: 4px; }
+.aiq-step-tag { display: inline-block; font-size: var(--geojson-typography-size-2xs); font-weight: var(--geojson-typography-weight-semibold); color: var(--geojson-color-text-tertiary); margin-bottom: 2px; }
 .aiq-answer { min-height: 1em; }
-.aiq-final-tag { margin-top: 6px; font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-success, #2e8b57); font-weight: var(--geojson-typography-weight-semibold); }
-
-/* ── 审查状态区（六条 checklist）── */
-.aiq-review { margin-top: 6px; padding: 6px 8px; border-left: 2px solid #9370DB; background: rgba(147, 112, 219, 0.06); border-radius: 0 6px 6px 0; }
-.aiq-review-head { font-size: var(--geojson-typography-size-2xs); color: #6a4e9e; font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 4px; }
-.aiq-verdict { font-size: var(--geojson-typography-size-xs); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 4px; }
-.aiq-verdict.is-pass { color: var(--geojson-color-success, #2e8b57); }
-.aiq-verdict.is-fail { color: var(--geojson-color-danger, #d8552f); }
-.aiq-check { display: flex; align-items: baseline; gap: 5px; font-size: var(--geojson-typography-size-2xs); line-height: 1.4; padding: 1px 0; color: var(--geojson-color-text-secondary); }
-.aiq-check-mark { font-weight: var(--geojson-typography-weight-bold); flex-shrink: 0; }
-.aiq-check.is-ok .aiq-check-mark { color: var(--geojson-color-success, #2e8b57); }
-.aiq-check.is-bad .aiq-check-mark { color: var(--geojson-color-danger, #d8552f); }
-.aiq-check-name { color: var(--geojson-color-text-primary); font-weight: var(--geojson-typography-weight-semibold); }
-.aiq-check-note { color: var(--geojson-color-text-tertiary); }
-.aiq-revise { margin-top: 4px; padding-top: 4px; border-top: 1px dashed rgba(147,112,219,0.3); font-size: var(--geojson-typography-size-2xs); color: #6a4e9e; }
-.aiq-review-err { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); }

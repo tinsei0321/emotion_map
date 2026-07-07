@@ -1,17 +1,10 @@
-// ═══ api.js — chat → 后端 /api/v1/chat（SSE 流式 think/answer + 非流式 review）═══
-// 从 frontend/js/api.js 拆出（AI 问答独立子系统；非 AI 问答的 runGrid 等留原 api.js）。
-// provider-agnostic：后端默认 DeepSeek Pro；换 provider 改后端 ai_qa/llm.py 一处。
-
+// ═══ api.js — chat → 后端 /api/v1/chat（SSE 流式，agent loop）═══
+// 两阶段：agent_step（每轮 reasoning + {thought,action} JSON）/ answer（最终结论 markdown）。
 const BASE = '/api/v1';
 
 /**
- * SSE 流式问答（think / answer 阶段）。
- * @param messages  OpenAI 兼容消息数组
- * @param context   主窗口推送的 grounding 摘要
- * @param onToken   (tok) => void  正文增量（think 阶段=JSON content；answer 阶段=markdown 结论）
- * @param onError   (err) => void
- * @param opts      {onReason, model, contextTokens, signal, phase, observation, reviewFeedback}
- *                  onReason → Pro 思考链增量；phase='think'|'answer'。
+ * SSE 流式问答（agent_step / answer）。
+ * @param opts {onReason, model, contextTokens, signal, phase, toolHistory, roundN}
  */
 export async function streamChat(messages, context, onToken, onError, opts = {}) {
   const { onReason, model, contextTokens, signal } = opts;
@@ -19,8 +12,8 @@ export async function streamChat(messages, context, onToken, onError, opts = {})
   if (model) body.model = model;
   if (contextTokens && contextTokens.length) body.context_tokens = contextTokens;
   if (opts.phase) body.phase = opts.phase;
-  if (opts.observation) body.observation = opts.observation;
-  if (opts.reviewFeedback) body.review_feedback = opts.reviewFeedback;
+  if (opts.toolHistory) body.tool_history = opts.toolHistory;
+  if (opts.roundN) body.round_n = opts.roundN;
   const r = await fetch(`${BASE}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -50,32 +43,9 @@ export async function streamChat(messages, context, onToken, onError, opts = {})
       try {
         const obj = JSON.parse(data);
         if (obj.error) { if (onError) onError(obj.error); return; }
-        if (obj.reason && onReason) onReason(obj.reason);   // Pro 思考链
-        if (obj.token) onToken(obj.token);                  // 正文
+        if (obj.reason && onReason) onReason(obj.reason);
+        if (obj.token) onToken(obj.token);
       } catch (_) { /* skip malformed */ }
     }
   }
-}
-
-/**
- * 非流式审查（review 阶段，Flash json_mode）。
- * @returns {pass, checks[], revise_hints}
- */
-export async function reviewChat(messages, context, draftAnswer, observation) {
-  const r = await fetch(`${BASE}/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messages, context,
-      phase: 'review',
-      draft_answer: draftAnswer || '',
-      observation: observation || '',
-    }),
-  });
-  if (!r.ok) {
-    let detail = `审查失败: ${r.status}`;
-    try { const j = await r.json(); detail = j.detail || detail; } catch (_) {}
-    throw new Error(detail);
-  }
-  return r.json();
 }

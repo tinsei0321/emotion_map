@@ -1,56 +1,65 @@
-// ═══ harness.js — Harness 编排器（STAGES 阶段注册表 + Review 闭环）═══
-// 一次问答 = think → execute → answer(draft) → review → (fail 则 answer 重写一次) → 最终呈现。
-// 形态无关、阶段可插拔：未来加 reflect（深闭环）/ RAG / 规则库，只需在 STAGES 插一项或在本流程加钩子。
+// ═══ harness.js — Agent Loop 编排器（ReAct：Thought→Action→Observation 循环）═══
+// 替代上一轮的线性 think→execute→answer→review。模型每轮自主思考 + 决定动作 + 看结果再想，
+// 多轮（上限 MAX_ROUNDS）直到 action='answer'，再出最终结论。Claude Code 式渐进解题。
 import * as stages from './stages.js';
+import { TOOLS } from './tools.js';
+
+const MAX_ROUNDS = 8;
 
 /**
- * 端到端编排一次问答。
- * @param ctx    {question, context(grounding), contextTokens, signal, enableReview}
+ * Agent Loop 一次问答。
+ * @param ctx    {question, context(grounding), contextTokens, signal}
  * @param hooks  渲染回调（panel.js 实现）：
- *   onReason(tok)            — Pro 思考链增量（think/answer 阶段）
- *   onFraming(text)          — 解题面板 STEP① 问题定性
- *   onMapping(text)          — 解题面板 STEP② 框架映射
- *   onPlan(steps[])          — STEP③ 路径规划 + 执行轨道
- *   onStepState(id,status,note) — 执行轨道逐步状态（running/done/error）
- *   onObservation(text)      — STEP④ 执行观察
- *   onDraft(tok)             — 结论初稿增量（markdown）
- *   onDraftReset()           — revise 前清空初稿区
- *   onReview(result)         — 审查结果 {pass,checks[],revise_hints}
- *   onRevise(round, hints)   — 修订标记
- *   onReviewError(msg)       — 审查失败（不阻塞）
- *   onDegraded(text)         — think 解析失败降级（当文字回答）
- *   onFinal(text, meta)      — 最终结论 + {revised, review}
- * @returns {Promise<{ok, degraded?, plan?, observation?, draft?, review?, revised?}>}
+ *   onReason(tok)             — reasoning 思考链增量（跨轮累积，动态实时）
+ *   onThought(text, round)    — 第 round 轮 thought（解题步骤行）
+ *   onAction(action, round)   — 第 round 轮 action（同步骤行）
+ *   onObservation(text, round)— 第 round 轮工具观察（同步骤行）
+ *   onFinal(tok)              — 最终结论增量（markdown）
+ *   onFinalDone(text)         — 最终结论完成
+ *   onDegraded(text)          — agent_step 解析失败降级
+ *   onRound(round)            — 每轮开始（可选，进度提示）
+ * @returns {Promise<{ok, degraded?, rounds?, final?}>}
  */
 export async function orchestrate(ctx, hooks = {}) {
-  // ── Stage 1 · THINK ──
-  const t = await stages.think(ctx, hooks);
-  if (!t.ok) return { ok: false, degraded: true, text: t.raw };
-  const { plan } = t;
+  const toolHistory = [];   // 每轮摘要字符串（注入下轮 prompt）
+  let round = 1;
 
-  // ── Stage 2 · EXECUTE ──
-  const observation = await stages.execute(ctx, hooks, plan);
+  while (round <= MAX_ROUNDS) {
+    if (hooks.onRound) hooks.onRound(round);
+    const toolHistoryText = toolHistory.length ? toolHistory.join('\n') : '';
 
-  // ── Stage 3 · ANSWER（初稿）──
-  let draft = await stages.answer(ctx, hooks, observation, '');
+    const step = await stages.agentStep(ctx, hooks, round, toolHistoryText);
+    if (!step) return { ok: false, degraded: true };
 
-  // ── Stage 4 · REVIEW（+ Revise 最多 1 轮）──
-  let reviewResult = null;
-  let revised = false;
-  if (ctx.enableReview !== false) {
-    try {
-      reviewResult = await stages.review(ctx, hooks, draft, observation);
-      if (!reviewResult.pass && reviewResult.revise_hints) {
-        revised = true;
-        if (hooks.onRevise) hooks.onRevise(1, reviewResult.revise_hints);
-        if (hooks.onDraftReset) hooks.onDraftReset();
-        draft = await stages.answer(ctx, hooks, observation, reviewResult.revise_hints);
+    if (hooks.onThought) hooks.onThought(step.thought, round);
+    if (hooks.onAction) hooks.onAction(step.action, round);
+
+    if (step.action.type === 'answer') break;
+
+    // 执行工具（直调主窗口）
+    const fn = TOOLS[step.action.name];
+    let obs = '';
+    if (fn) {
+      try {
+        const r = await fn(step.action.params || {});
+        obs = (r && r.observation) || '（无观察）';
+      } catch (e) {
+        obs = '工具执行失败：' + (e && e.message ? e.message : e);
       }
-    } catch (e) {
-      if (hooks.onReviewError) hooks.onReviewError(e && e.message ? e.message : String(e));
+    } else {
+      obs = `未知工具：${step.action.name}`;
     }
+    if (hooks.onObservation) hooks.onObservation(obs, round);
+
+    // 入 tool_history（下轮 prompt 让模型看到历轮探索）
+    const paramsStr = step.action.params ? JSON.stringify(step.action.params) : '';
+    toolHistory.push(`第${round}轮 | thought: ${step.thought} | 动作: ${step.action.name}(${paramsStr}) | 观察: ${obs}`);
+    round++;
   }
 
-  if (hooks.onFinal) hooks.onFinal(draft, { revised, review: reviewResult });
-  return { ok: true, plan, observation, draft, review: reviewResult, revised };
+  // 最终结论（agent 决定 answer 或达到轮数上限）
+  const toolHistoryText = toolHistory.length ? toolHistory.join('\n') : '';
+  const final = await stages.finalStep(ctx, hooks, toolHistoryText);
+  if (hooks.onFinalDone) hooks.onFinalDone(final);
+  return { ok: true, rounds: round, final };
 }

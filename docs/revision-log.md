@@ -719,6 +719,23 @@ flowchart TD
 
 **承重**：联动协议化（panel.js 不调 map/state）+ 阶段注册表（STAGES）+ think 不用 json_mode（抑制 reasoning）+ buildContext 在主窗口侧。memory `ai-qa-harness-subsystem` 已立。
 
+### 5.34 AI 问答 · Agent Loop 重构（Claude Code 式 ReAct）+ 还原底部面板 + 历史持久化（07月08日）
+
+**用户意图（专业化）**：5.33 四层 Harness 实测三问题——①看不到问答历史（开关丢失）②思考是"结果"非"动态过程"③回答依旧不可用（没理解问题/没理解该得出什么）。根因=**线性管线**（think 一次出 plan→execute 机械跑），非 Claude Code 式 agent loop。需重新设计答题策略：完全 agent loop（ReAct）+ DeepSeek 深度思考 + 多调动模型 + 重新读架构 md 强化领域知识。
+
+**Agent Loop（ReAct）重构**：
+- 每轮 DeepSeek reasoner 输出 `{thought, action}`：reasoning_content **实时流式**（动态思考过程，跨轮累积）+ thought（这一步在想什么，可见）+ action（`{type:'tool',name,params}` 或 `{type:'answer'}`）。模型**自主决定**调什么工具/顺序，工具结果回喂 tool_history，多轮（上限 8）直到 answer。真"边想边做边说"。
+- 工具集（查询型+操作型，agent 自主选）：`query_layers`/`query_zone_stats`/`query_attribution`/`query_keywords`/`ensure_zone`/`focus_zones`/`open_attribution`/`inspect_zone`/`answer`。
+- MANIFESTO 强化（重读 architecture.md/decisions.md）：+三页架构当前焦点（控制台 α v0.1）+ **7 大应用场景**（更新排序/微更新/城市体检/营商/活动评估/12345预警/生活圈）+ 演示逻辑链 + **回答策略 SOP**（判断问题类型→先 query 摸数据→数据驱动→指向城建问题）+ 工具使用指导。
+- **还原底部滑出面板**（独立窗不便，删 chat.html + 跨窗口协议 protocol.js/ai_qa_host.js，panel 直调主窗口；UI 后续重做）；**问答历史 localStorage 持久化**（开关不丢失）。
+- Review 审查层**暂移**（先做 agent loop，审查后续）。
+
+**文件**：`ai_qa/`（manifesto 强化 2410 字/prompts 重写 build_agent+build_final/schemas +tool_history/router agent_step+answer）+ `frontend/js/ai_qa/`（api tool_history 透传/tools 8 工具直调/stages agentStep+finalStep/harness agent loop while/panel 还原底部滑出+localStorage 历史+思考流区每轮 thought/action/observation）；main.js 还原 initChatPanel；ai_qa.css 底部滑出样式。待删（红线确认）：protocol.js/ai_qa_host.js/chat.html（跨窗口协议，本轮弃用）。
+
+**验证**：后端 import + agent_prompt 轮次注入 ✓；主页加载零 console error + panel 点击打开 ✓；**agent_step E2E**（reasoning 155 字 + {thought,action}，"什么是情绪地图"**第 1 轮就 answer** 不盲目 query——证明模型懂问题类型）✓。完整 agent loop（带数据多轮工具循环）待用户肉眼验。
+
+**承重**：agent loop ReAct（模型自主调工具循环）+ 每轮 reasoning 实时流（动态思考）+ MANIFESTO 7场景/回答SOP/工具指导 + tool_history 回喂 + localStorage 历史。memory `ai-qa-harness-subsystem` 更新为 agent loop。
+
 ### 5.32 Table 大重构：geojson.io 风格通用属性表 + 解耦 Overview + 下拉数据选择器（07月07日 18:38）
 
 **用户意图**：Table 从"写死 5 列 + 问题清单"重做为 geojson.io 风格**通用属性表查看器**——任意 L 层（点/网格/范围）都出表；只显示表格（彻底解耦 Overview，不混 timeline/饼图/矩阵/关键词）；自带数据下拉选择器（不复用 Overview 的 tab 工具条）；选层联动地图（2D/3D）。

@@ -1,86 +1,57 @@
-// ═══ stages.js — Harness 四阶段（think/execute/answer/review）═══
-// 每阶段是独立函数（未来加 reflect/RAG 等 Stage 在此注册即可）。harness.js orchestrate 按序编排。
-// 形态无关：不依赖 DOM（panel.js 通过 hooks 回调渲染）。
-import { streamChat, reviewChat } from './api.js';
-import { TOOLS, observationFromResults } from './tools.js';
+// ═══ stages.js — Agent Loop 阶段（agentStep / finalStep）═══
+// 替代上一轮的 think/execute/answer/review 线性四阶段。现两阶段：
+// - agentStep ：ReAct 每轮，流式 reasoning + content(JSON {thought,action})。
+// - finalStep ：agent 决定 answer 后，基于 tool_history 出最终结论（流式 markdown）。
+// 形态无关（不依赖 DOM，panel.js 通过 hooks 渲染）。
+import { streamChat } from './api.js';
 
-/** 容错解析 think 阶段 JSON（{framing, mapping, steps[]}）；失败返回 null 走降级。 */
-export function parseThink(raw) {
+/** 容错解析 agent_step 的 {thought, action} JSON；失败返回 null（走降级）。 */
+export function parseAgentStep(raw) {
   if (!raw) return null;
   const s = raw.indexOf('{');
   const e = raw.lastIndexOf('}');
   if (s < 0 || e < 0 || e <= s) return null;
   try {
     const obj = JSON.parse(raw.slice(s, e + 1));
-    if (!obj || !Array.isArray(obj.steps)) return null;
-    return { framing: obj.framing || '', mapping: obj.mapping || '', steps: obj.steps };
+    if (!obj || !obj.action) return null;
+    return { thought: obj.thought || '', action: obj.action };
   } catch (_) {
     return null;
   }
 }
 
-// ── Stage 1 · THINK：Pro 流式出 reasoning + {framing,mapping,steps[]} JSON ──
-export async function think(ctx, hooks) {
+/**
+ * Agent Loop 一轮：流式 reasoning（思考链）+ content({thought,action} JSON)。
+ * @returns {Promise<{thought, action}|null>} null=解析失败（降级）。
+ */
+export async function agentStep(ctx, hooks, round, toolHistory) {
   const messages = [{ role: 'user', content: ctx.question }];
   const acc = { token: '' };
   await streamChat(messages, ctx.context,
     (tok) => { acc.token += tok; },
     (err) => { throw new Error(err); },
     {
-      phase: 'think', signal: ctx.signal,
+      phase: 'agent_step', roundN: round, toolHistory, signal: ctx.signal,
       onReason: (t) => { hooks.onReason && hooks.onReason(t); },
     });
-  const plan = parseThink(acc.token);
-  if (!plan) {
-    if (hooks.onDegraded) hooks.onDegraded(acc.token);   // 降级：当文字回答
-    return { ok: false, degraded: true, raw: acc.token };
+  const step = parseAgentStep(acc.token);
+  if (!step) {
+    if (hooks.onDegraded) hooks.onDegraded(acc.token);
+    return null;
   }
-  if (hooks.onFraming) hooks.onFraming(plan.framing);
-  if (hooks.onMapping) hooks.onMapping(plan.mapping);
-  if (hooks.onPlan) hooks.onPlan(plan.steps);
-  return { ok: true, plan };
+  return step;
 }
 
-// ── Stage 2 · EXECUTE+OBSERVE：按 steps 逐个跑 TOOLS（协议驱动主窗口）──
-export async function execute(ctx, hooks, plan) {
-  const results = [];
-  for (const step of plan.steps || []) {
-    if (!step || step.tool === 'conclude') continue;
-    if (hooks.onStepState) hooks.onStepState(step.id, 'running', '');
-    const fn = TOOLS[step.tool];
-    let r;
-    try {
-      r = fn ? await fn(step.params || {}) : { ok: false, note: `未知操作：${step.tool}` };
-    } catch (e) {
-      r = { ok: false, note: '失败（' + (e && e.message ? e.message : String(e)) + ')' };
-    }
-    const note = r.note || (r.ok ? '完成' : '跳过');
-    if (hooks.onStepState) hooks.onStepState(step.id, r.ok ? 'done' : 'error', note);
-    results.push({ tool: step.tool, label: step.label || step.tool, ok: r.ok, note, data: r.data || {} });
-  }
-  const observation = observationFromResults(results);
-  if (hooks.onObservation) hooks.onObservation(observation);
-  return observation;
-}
-
-// ── Stage 3 · ANSWER：基于 observation 出结论初稿（可带 reviewFeedback 修订）──
-export async function answer(ctx, hooks, observation, reviewFeedback = '') {
+/** 最终结论：基于 tool_history 流式出 markdown + [ref:]。 */
+export async function finalStep(ctx, hooks, toolHistory) {
   const messages = [{ role: 'user', content: ctx.question }];
-  let draft = '';
+  let final = '';
   await streamChat(messages, ctx.context,
-    (tok) => { draft += tok; if (hooks.onDraft) hooks.onDraft(tok); },
+    (tok) => { final += tok; if (hooks.onFinal) hooks.onFinal(tok); },
     (err) => { throw new Error(err); },
     {
-      phase: 'answer', observation, reviewFeedback, signal: ctx.signal,
+      phase: 'answer', toolHistory, signal: ctx.signal,
       onReason: (t) => { hooks.onReason && hooks.onReason(t); },
     });
-  return draft;
-}
-
-// ── Stage 4 · REVIEW：Flash 审查 draft → {pass, checks[], revise_hints} ──
-export async function review(ctx, hooks, draft, observation) {
-  const messages = [{ role: 'user', content: ctx.question }];
-  const result = await reviewChat(messages, ctx.context, draft, observation);
-  if (hooks.onReview) hooks.onReview(result);
-  return result || { pass: true, checks: [], revise_hints: '' };
+  return final;
 }
