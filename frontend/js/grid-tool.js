@@ -383,6 +383,93 @@ export function openGridDialog(layerId, preset = null) {
   openParamPanel('grid');
 }
 
+/**
+ * 编程式生成网格/面域聚合层（AI 编排器 / 自动化调用，无 dialog）。
+ * 保留承重约定：_overallPaint 备份、enforceMutualExclusion 新建独占、时间标签、与 setViewMode 不耦合
+ * （memory: generate-grid-exclusive-vs-viewmode / paint-inplace-swap-view）。
+ * @param {object} opts
+ *   analysis:'square'|'zonal'(默认 square) / cellSize:米(square 默认 DEFAULTS.cellSize) /
+ *   polarity:'overall'(默认) / mode:'2d'|'3d'(默认 2d) / source:'group:xx'|'layer:xx'(省略=自动选 L2 优先) /
+ *   polygonLayer:id(zonal；省略=自动选首个 Range 面域) / nameCol / maxHeight / extrusionOpacity /
+ *   editLayerId(原地更新) / silent(true=不发 toast，编排器自显步骤状态)
+ * @returns {Promise<{layerId,layerName,featureCount,level,analysis,polarity,fc}>}
+ */
+export async function generateGridForAI(opts = {}) {
+  const p = { ...DEFAULTS, ...opts };
+  if (!['square', 'zonal'].includes(p.analysis)) p.analysis = 'square';
+
+  const srcs = collectSources();
+  if (!srcs.length) throw new Error('无可用情绪点图层（先导入 L1/L2 数据）');
+  let src = p.source ? srcs.find((s) => s.value === p.source) : null;
+  if (!src) src = srcs.find((s) => s.level === 'L2') || srcs[0];   // 自动选：L2 group 优先，退首个
+  if (!src || !src.fc || !src.fc.features || !src.fc.features.length) throw new Error('所选源无点数据');
+  const level = src.level;
+
+  let fc, paint;
+  const analysisLabel = { square: '标准网格', zonal: '指定单元' }[p.analysis];
+  const polLabel = level === 'L2' ? (POLARITY_LABEL[p.polarity] || '综合') : '热度';
+  const modeLabel = p.mode === '3d' ? '3D' : '2D';
+
+  if (p.analysis === 'square') {
+    if (p.cellSize <= 0) throw new Error('方格边长需 > 0');
+    const res = await trackGeneration(runGrid({ geojson: src.fc, grid_type: 'square', cell_size: p.cellSize, unit: 'm' }));
+    if (!res || !res.success || !res.geojson) throw new Error((res && res.message) || '后端返回异常');
+    fc = JSON.parse(JSON.stringify(res.geojson));
+    if (!fc.features || !fc.features.length) throw new Error('聚合结果为空');
+    if (fc.features.length > 2000 && !p.silent) toast.info(`已生成 ${fc.features.length} 个格，数量较多；3D 渲染可能偏慢`, 4500);
+    preprocessGrid(fc);
+    filterPolarityZero(fc, level, p.polarity);
+    const style = gridStyle(level, p.polarity);
+    paint = { fillOn: true, _ui: { tool: 'grid', analysis: 'square', level, source: p.source || src.value,
+                                   cellSize: p.cellSize, polarity: p.polarity, mode: p.mode, heightField: (level === 'L2' && POLARITY_HF[p.polarity]) ? POLARITY_HF[p.polarity] : '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity },
+              gridField: style.field, gridStops: style.stops, fillOpacity: p.extrusionOpacity };
+  } else {
+    const poly = getLayer(p.polygonLayer) || collectPolygonLayers()[0];   // AI 传或自动选首个 Range 面域
+    if (!poly || !poly.fc || !poly.fc.features || !poly.fc.features.length) throw new Error('无可用聚合面域图层（先在 Range 上载/绘制范围面）');
+    const res = await trackGeneration(runAggregate({ points_geojson: src.fc, polygons_geojson: poly.fc, agg_cols: ['score'], name_col: p.nameCol || null }));
+    if (!res || !res.success || !res.geojson) throw new Error((res && res.message) || '后端返回异常');
+    fc = JSON.parse(JSON.stringify(res.geojson));
+    if (!fc.features || !fc.features.length) throw new Error('聚合结果为空');
+    if (fc.features.length > 2000 && !p.silent) toast.info(`已生成 ${fc.features.length} 个面域，数量较多`, 4500);
+    const hasPolarity = preprocessGrid(fc);
+    filterPolarityZero(fc, level, p.polarity);
+    if (!hasPolarity && level === 'L2' && !p.silent) toast.info('该点层缺少极性字段，按分数比例近似降级', 4500);
+    const style = gridStyle(level, p.polarity);
+    paint = { fillOn: true, _ui: { tool: 'grid', analysis: 'zonal', level, source: p.source || src.value,
+                                   polygonLayer: poly.id, nameCol: p.nameCol,
+                                   polarity: p.polarity, mode: p.mode, heightField: (level === 'L2' && POLARITY_HF[p.polarity]) ? POLARITY_HF[p.polarity] : '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity },
+              gridField: style.field, gridStops: style.stops, fillOpacity: p.extrusionOpacity };
+  }
+
+  // 备份综合态 paint（极性深读 paint 就地切换的还原锚点；承重，勿删）
+  if (paint && paint._ui) paint._ui._overallPaint = { gridField: paint.gridField, gridStops: paint.gridStops, heightField: paint._ui.heightField || '_grid_h' };
+
+  // 命名：时间·极性·文件名（与 generateGrid 同款）
+  const tPrefix = deriveTimeTag(src.fc) ? `${deriveTimeTag(src.fc)}·` : '';
+  const labelName = `${tPrefix}${polLabel}·${src.srcName}`;
+  const editLyr = p.editLayerId ? getLayer(p.editLayerId) : null;
+  let L;
+  if (editLyr) {
+    editLyr.fc = fc; editLyr.paint = paint; editLyr.name = labelName; editLyr.srcName = src.srcName;
+    renderLayer(editLyr);
+    L = editLyr;
+  } else {
+    // 新建态：addLayer + 互斥显示（关其他分析层 + 所有点层，保 Range；与 setViewMode 场景独立，勿耦合）
+    L = addLayer({ name: labelName, kind: 'polygon', fc, paint });
+    L.srcName = src.srcName;
+    renderLayer(L);
+    for (const hid of enforceMutualExclusion(L.id)) { const hl = getLayer(hid); if (hl) renderLayer(hl); }
+  }
+  L.timeTag = deriveTimeTag(src.fc);
+  const bb = fcBBox(fc); if (bb) fitBoundsTo(bb);
+  setView3D(p.mode === '3d');   // fitBounds 后设 pitch（防被打断）
+  selectLayer(L.id);            // 选中（Overview 内容跟随）；AI 编排器另用 open_overview 步骤决定是否弹右栏
+  renderLayerList(); refreshLegend(); reorderAllZ(); showLayerManager();
+  document.dispatchEvent(new CustomEvent('layers:changed'));
+  if (!p.silent) toast.success(`已生成 ${analysisLabel} · ${polLabel} · ${modeLabel}`);
+  return { layerId: L.id, layerName: labelName, featureCount: fc.features.length, level, analysis: p.analysis, polarity: p.polarity, fc };
+}
+
 async function generateGrid() {
   const dlg = dialogEl();
   const p = readParams(dlg);

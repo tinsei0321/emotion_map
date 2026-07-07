@@ -59,7 +59,7 @@ class LLMClient:
 
     def chat(self, messages: List[dict], stream: bool = True,
              temperature: float = 0.6, max_tokens: int = 1500,
-             with_reason: bool = False) -> Iterator:
+             with_reason: bool = False, json_mode: bool = False) -> Iterator:
         """OpenAI 兼容 chat/completions。
 
         stream=True → 生成器增量 yield：
@@ -67,6 +67,8 @@ class LLMClient:
             with_reason=True → yield (kind, tok) 元组，kind='reason'(思考链)|'content'(正文)。
             DeepSeek reasoner(Pro) 的 delta.reasoning_content → kind='reason'。
         stream=False → 生成器只 yield 一次完整结果（同上两态，便于复用同一调用点）。
+        json_mode=True → body 增 response_format:{type:'json_object'}（DeepSeek 原生 JSON mode，
+            plan 阶段输出稳定 JSON；勿与 reasoning 同用，JSON 模式下 reasoning 通常为空）。
         出错抛 LLMError（route 层捕获转 4xx/5xx）。
         """
         self._ensure_key()
@@ -74,7 +76,9 @@ class LLMClient:
         headers = {'Authorization': f'Bearer {self.api_key}', 'Content-Type': 'application/json'}
         body = {'model': self.model, 'messages': messages, 'temperature': temperature,
                 'max_tokens': max_tokens, 'stream': stream}
-        trace_log('MOD_LLM.F_001', f'chat stream={stream} model={self.model} msgs={len(messages)} reason={with_reason}')
+        if json_mode:
+            body['response_format'] = {'type': 'json_object'}
+        trace_log('MOD_LLM.F_001', f'chat stream={stream} model={self.model} msgs={len(messages)} reason={with_reason} json={json_mode}')
         try:
             if stream:
                 with httpx.Client(timeout=self.timeout) as client:

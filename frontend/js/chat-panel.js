@@ -4,7 +4,7 @@
 // 思考链：Pro(deepseek-reasoner) 的 reasoning_content → 灰显可折叠"思考过程"区（流式）。
 // Grounding：每次发送前从选中分析层算紧凑摘要作 context + @关联对象注入。
 // provider-agnostic：后端 /chat 默认 DeepSeek，未来换溯佰科改后端一处。
-import { streamChat } from './api.js';
+import { orchestrate, resetOrchestrator } from './chat-orchestrator.js';
 import { getSelectedLayer, getLayers } from './state.js';
 import { fitBoundsTo } from './map.js';
 import { activateTab, setOverview, setTable } from './panel.js';
@@ -171,7 +171,7 @@ function appendMessage(role, contentHtml) {
   scrollBottom();
 }
 
-/** assistant 气泡骨架：思考链区(隐藏) + 正文区(光标)。返回两元素的 ref 以便流式填充。 */
+/** assistant 气泡骨架：思考链区 + 实现路径/执行轨道区 + 结论区(光标)。编排器回调分别填充。 */
 function appendAssistantShell() {
   const list = document.getElementById('chat-messages');
   if (!list) return {};
@@ -179,11 +179,47 @@ function appendAssistantShell() {
   el.className = 'chat-msg chat-msg-assistant';
   el.innerHTML = `<div class="chat-bubble">
     <div class="chat-reason" hidden><div class="chat-reason-head">▸ 思考过程</div><div class="chat-reason-body"></div></div>
+    <div class="chat-plan" hidden><div class="chat-plan-head">实现路径</div><div class="chat-plan-thinking-body"></div><div class="chat-track"></div></div>
     <div class="chat-answer"><span class="chat-cursor">▍</span></div>
   </div>`;
   list.appendChild(el);
   scrollBottom();
-  return { reasonEl: el.querySelector('.chat-reason'), answerEl: el.querySelector('.chat-answer') };
+  return {
+    reasonEl: el.querySelector('.chat-reason'),
+    planEl: el.querySelector('.chat-plan'),
+    trackEl: el.querySelector('.chat-track'),
+    answerEl: el.querySelector('.chat-answer'),
+  };
+}
+
+// ── 执行轨道 UI（端到端编排：plan 的 steps[] → 步骤清单，逐步实时状态）──
+const STEP_ICON = { pending: '○', running: '⟳', done: '✓', error: '✕' };
+
+function renderTrack(trackEl, steps) {
+  const els = {};
+  if (!trackEl || !steps || !steps.length) return els;
+  trackEl.innerHTML = steps.map((s) => {
+    const id = s.id || '';
+    return `<div class="chat-step" data-id="${escapeHtml(id)}">`
+      + `<span class="chat-step-ico">${STEP_ICON.pending}</span>`
+      + `<span class="chat-step-label">${escapeHtml(s.label || s.tool || '')}</span>`
+      + `<span class="chat-step-note"></span>`
+      + `</div>`;
+  }).join('');
+  trackEl.querySelectorAll('.chat-step').forEach((row) => { els[row.dataset.id] = row; });
+  return els;
+}
+
+function updateStep(row, status, note) {
+  if (!row) return;
+  row.classList.remove('is-running', 'is-done', 'is-error');
+  if (status === 'running') row.classList.add('is-running');
+  else if (status === 'done') row.classList.add('is-done');
+  else if (status === 'error') row.classList.add('is-error');
+  const ico = row.querySelector('.chat-step-ico');
+  if (ico) ico.textContent = STEP_ICON[status] || STEP_ICON.pending;
+  const n = row.querySelector('.chat-step-note');
+  if (n && note) n.textContent = '→ ' + note;
 }
 
 async function send(text) {
@@ -194,32 +230,54 @@ async function send(text) {
   appendMessage('user', escapeHtml(text));
   _messages.push({ role: 'user', content: text });
 
-  const { reasonEl, answerEl } = appendAssistantShell();
+  const shell = appendAssistantShell();
+  const reasonEl = shell.reasonEl;
+  const answerEl = shell.answerEl;
+  const planEl = shell.planEl;
+  const trackEl = shell.trackEl;
   let reasonAcc = '';
-  let acc = '';
+  let answerAcc = '';
+  let stepEls = {};
   _streaming = true;
   updateSendBtn();
 
   const ctx = buildContext();
   _abortCtl = new AbortController();
   try {
-    await streamChat(_messages, ctx,
-      (tok) => { acc += tok; if (answerEl) answerEl.innerHTML = renderAnswer(acc); scrollBottom(); },
-      (err) => { if (answerEl) answerEl.innerHTML = `<span class="chat-error">[问答失败] ${escapeHtml(err)}</span>`; },
-      { onReason: (tok) => {
-          reasonAcc += tok;
-          if (reasonEl) {
-            reasonEl.hidden = false;
-            const body = reasonEl.querySelector('.chat-reason-body');
-            if (body) body.textContent = reasonAcc;
-          }
-          scrollBottom();
-        },
-        model: _deepThink ? 'deepseek-reasoner' : undefined,
-        contextTokens: _contextTokens.length ? _contextTokens : undefined,
-        signal: _abortCtl.signal });
-    if (acc) { _messages.push({ role: 'assistant', content: acc }); if (answerEl) answerEl.innerHTML = renderAnswer(acc); }
-    else if (answerEl) answerEl.innerHTML = '<span class="chat-error">（无内容返回——确认 DEEPSEEK_API_KEY 已配置）</span>';
+    await orchestrate(text, {
+      context: ctx,
+      signal: _abortCtl.signal,
+      deepThink: _deepThink,
+      contextTokens: _contextTokens.length ? _contextTokens : undefined,
+      onReason: (tok) => {
+        reasonAcc += tok;
+        if (reasonEl) {
+          reasonEl.hidden = false;
+          const body = reasonEl.querySelector('.chat-reason-body');
+          if (body) body.textContent = reasonAcc;
+        }
+        scrollBottom();
+      },
+      onPlan: (thinking, steps) => {
+        if (planEl) {
+          planEl.hidden = false;
+          const tb = planEl.querySelector('.chat-plan-thinking-body');
+          if (tb) tb.textContent = thinking;
+        }
+        stepEls = renderTrack(trackEl, steps);
+        scrollBottom();
+      },
+      onStepState: (id, status, note) => {
+        updateStep(stepEls[id], status, note);
+        scrollBottom();
+      },
+      onAnswer: (tok) => {
+        answerAcc += tok;
+        if (answerEl) { answerEl.innerHTML = renderAnswer(answerAcc); scrollBottom(); }
+      },
+    });
+    if (!answerAcc && answerEl) answerEl.innerHTML = '<span class="chat-error">（未生成结论——确认 DEEPSEEK_API_KEY 已配置）</span>';
+    if (answerAcc) _messages.push({ role: 'assistant', content: answerAcc });
     if (reasonEl) { reasonEl.hidden = !reasonAcc; if (reasonAcc) reasonEl.classList.add('is-done'); }
   } catch (e) {
     const aborted = e && e.name === 'AbortError';
@@ -309,6 +367,7 @@ export function initChatPanel() {
   document.getElementById('chat-close')?.addEventListener('click', () => setPanel(false));
   document.getElementById('chat-clear')?.addEventListener('click', () => {
     _messages = [];
+    resetOrchestrator();
     const list = document.getElementById('chat-messages');
     if (list) list.innerHTML = '';
     renderSuggest();

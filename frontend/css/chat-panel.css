@@ -186,3 +186,19 @@
 .chat-action-card { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-primary); background: var(--geojson-color-surface-panel, #fff); border: 1px solid var(--geojson-color-border-default, #e3e5e8); border-radius: 999px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: background var(--geojson-transition), border-color var(--geojson-transition); }
 .chat-action-card:hover { background: var(--geojson-color-gray-100, #f5f5f5); border-color: var(--geojson-color-brand-primary, #4285F4); }
 .chat-send.is-stop { background: var(--geojson-color-danger, #d8552f); }
+
+/* ── 端到端编排：实现路径 + 执行轨道（Batch B1）── */
+.chat-plan { margin: 6px 0 8px; padding: 8px 10px; border-left: 2px solid var(--geojson-color-brand-primary, #4285F4); background: var(--geojson-color-gray-100, #f5f5f5); border-radius: 0 6px 6px 0; }
+.chat-plan-head { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-brand-primary, #4285F4); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 4px; }
+.chat-plan-thinking-body { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); line-height: 1.5; margin-bottom: 6px; white-space: pre-wrap; word-break: break-word; }
+.chat-track { display: flex; flex-direction: column; gap: 3px; }
+.chat-step { display: flex; align-items: baseline; gap: 6px; font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); line-height: 1.4; padding: 2px 0; }
+.chat-step-ico { display: inline-block; width: 1.2em; text-align: center; font-weight: var(--geojson-typography-weight-bold); color: var(--geojson-color-text-tertiary); flex-shrink: 0; }
+.chat-step-label { color: var(--geojson-color-text-primary); }
+.chat-step-note { color: var(--geojson-color-text-tertiary); font-size: var(--geojson-typography-size-2xs); }
+.chat-step.is-running .chat-step-ico { color: var(--geojson-color-brand-primary, #4285F4); animation: chat-spin 0.9s linear infinite; display: inline-block; }
+.chat-step.is-running .chat-step-label { color: var(--geojson-color-brand-primary, #4285F4); }
+.chat-step.is-done .chat-step-ico { color: var(--geojson-color-success, #2e8b57); }
+.chat-step.is-error .chat-step-ico { color: var(--geojson-color-danger, #d8552f); }
+.chat-step.is-error .chat-step-label { color: var(--geojson-color-danger, #d8552f); }
+@keyframes chat-spin { to { transform: rotate(360deg); } }

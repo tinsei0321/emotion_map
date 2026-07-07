@@ -101,11 +101,24 @@ async def upload_range_preset(req: RangePresetUploadRequest):
 async def chat_route(req: ChatRequest):
     """AI 问答（SSE 流式）。返回 text/event-stream。
     帧：{"token": tok}=正文增量 / {"reason": tok}=思考链(Pro) / {"error": ...} / [DONE]。
-    req.model 留空=默认 Flash；'deepseek-reasoner'=深度思考(Pro，带思考链)。"""
-    from core.llm_client import LLMClient, LLMError
-    from core.chat_context import build_system_prompt
+    req.model 留空=默认 Flash；'deepseek-reasoner'=深度思考(Pro，带思考链)。
 
-    sys_msg = {'role': 'system', 'content': build_system_prompt(req.context or '', req.context_tokens)}
+    三阶段（req.phase）：
+    - 'plan'   → build_plan_prompt + JSON mode，输出 {thinking, steps[]}（前端编排器自动执行）。
+    - 'answer' → build_answer_prompt + execution_result，基于真实执行结果出结论。
+    - 'legacy' → build_system_prompt（Batch A 单轮组合式，向后兼容）。"""
+    from core.llm_client import LLMClient, LLMError
+    from core.chat_context import build_system_prompt, build_plan_prompt, build_answer_prompt
+
+    if req.phase == 'plan':
+        sys_msg = {'role': 'system', 'content': build_plan_prompt(req.context or '', req.context_tokens)}
+        json_mode = True
+    elif req.phase == 'answer':
+        sys_msg = {'role': 'system', 'content': build_answer_prompt(req.context or '', req.execution_result, req.context_tokens)}
+        json_mode = False
+    else:   # legacy
+        sys_msg = {'role': 'system', 'content': build_system_prompt(req.context or '', req.context_tokens)}
+        json_mode = False
     messages = [sys_msg] + list(req.messages or [])
 
     try:
@@ -115,7 +128,7 @@ async def chat_route(req: ChatRequest):
 
     def gen():
         try:
-            for kind, tok in cli.chat(messages, stream=True, with_reason=True):
+            for kind, tok in cli.chat(messages, stream=True, with_reason=True, json_mode=json_mode):
                 key = 'reason' if kind == 'reason' else 'token'
                 yield f'data: {json.dumps({key: tok}, ensure_ascii=False)}\n\n'
             yield 'data: [DONE]\n\n'

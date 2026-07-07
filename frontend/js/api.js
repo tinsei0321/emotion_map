@@ -182,14 +182,21 @@ export async function uploadRangePreset(id, geojson) {
 //   逐 data: {token} 增量回调 onToken；[DONE] 收尾；data:{error} 走 onError。
 //   provider-agnostic（后端默认 DeepSeek，未来换溯佰科改后端一处）。
 export async function streamChat(messages, context, onToken, onError, opts = {}) {
-  // opts: { onReason, model, contextTokens, signal }
+  // opts: { onReason, model, contextTokens, signal, phase, executionResult }
   //   onReason(tok) → Pro 思考链增量；model='deepseek-reasoner' 切深度思考；
-  //   contextTokens=@关联对象[]；signal=AbortSignal（停止生成）。
+  //   contextTokens=@关联对象[]；signal=AbortSignal（停止生成）；
+  //   phase='plan'|'answer'|'legacy'（端到端编排：plan→输出步骤JSON / answer→执行结果回喂出结论）；
+  //   executionResult=answer 阶段：前端编排器收集的逐步执行结果。
   const { onReason, model, contextTokens, signal } = opts;
+  const body = { messages, context };
+  if (model) body.model = model;
+  if (contextTokens && contextTokens.length) body.context_tokens = contextTokens;
+  if (opts.phase) body.phase = opts.phase;
+  if (opts.executionResult) body.execution_result = opts.executionResult;
   const r = await fetch(`${BASE}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages, context, model, context_tokens: contextTokens }),
+    body: JSON.stringify(body),
     signal,
   });
   if (!r.ok) {

@@ -120,11 +120,19 @@ class RangePresetUploadRequest(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    """AI 问答请求（provider-agnostic，默认 DeepSeek）。"""
+    """AI 问答请求（provider-agnostic，默认 DeepSeek）。
+
+    三阶段（phase）：
+    - 'plan'   → 输出执行计划 JSON（{thinking, steps[]}），前端编排器据此自动操作；走 JSON mode。
+    - 'answer' → 基于前端编排器收集的 execution_result 出最终结论（流式 markdown）。
+    - 'legacy' → 旧单轮文字问答（向后兼容，build_system_prompt）。
+    """
     messages: List[dict] = Field(..., description="OpenAI 兼容消息数组 [{role,content}]")
     context: Optional[str] = Field(default=None, description="前端计算的数据摘要（grounding）")
     model: Optional[str] = Field(default=None, description="模型：留空=默认Flash；deepseek-reasoner=深度思考(Pro，带思考链)")
     context_tokens: Optional[List[dict]] = Field(default=None, description="用户@关联对象(feature/range/layer/pin)，注入 grounding")
+    phase: str = Field(default='legacy', description="问答阶段：plan | answer | legacy")
+    execution_result: Optional[str] = Field(default=None, description="answer 阶段：前端编排器收集的逐步执行结果")
 
 
 class ExportRequest(BaseModel):
