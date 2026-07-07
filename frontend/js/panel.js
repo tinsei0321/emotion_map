@@ -3,6 +3,7 @@ import {
   POLARITY_ORDER, POLARITY_LABEL, emotionColors,
   layerLevel, focusLayer, polarityStats, confidenceStats, CONFIDENCE_RAMP,
   getLayer, getChildren, getLayers, isEmotionPointLayer,
+  selectLayer, setLayerVisible, enforceMutualExclusion, layerDisplayColor, levelPointColor,
   L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR,
   DOMAIN_BAR_COLOR, ELEMENT_BAR_COLOR, POL_MATRIX_TIERS,
   EMOTION_TYPE_COLORS, EMOTION_TYPE_ORDER,
@@ -10,7 +11,7 @@ import {
   HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets, rampDisplaySegs, deriveTimeTag, KEYWORD_TABLE,
 } from './state.js';
 import { geomStats, DOMAIN_LABEL, ELEMENT_LABEL } from './popup.js';
-import { easeBackFromCell, fitBoundsTo, renderLayer, showLocTips, clearLocTips } from './map.js';
+import { easeBackFromCell, fitBoundsTo, renderLayer, showLocTips, clearLocTips, setView3D, setViewMode } from './map.js';
 import { POLARITY_GRID, polarityStops } from './grid-tool.js';
 import { highlightCellSet, clearHighlightCellSet, toggleStickyHighlight, resetHighlightCellSet, setStickyProvider } from './tip-popup.js';
 import { loadDistricts, classifyPointsByDistrict, polyCentroid } from './district-stats.js';
@@ -1483,7 +1484,7 @@ function emotionTypeStats(fc) {
 }
 
 // ── Table tab ── geojson.io 风格通用属性表：工具条（搜索）+ 表格 + 三点菜单占位。
-//    列顺序：id → 地点 → 评论 → 极性 → 分数 …（核心诉求："什么地方发生了什么样的评论"）。
+//    L2 点层列顺序：id → 极性 → 地点 → 评论 → 分数 …（极性第 2 列，便于按极性扫读）。
 //    性能铁律：精选列（不铺全部 ~30 key）+ 渲染封顶 200 行 + Table 未激活时懒渲染
 //    （2500 点 × 30 列全量 innerHTML 会冻屏；导入时用户在 Overview，更不能后台建表）。
 let _baseFeats = [];       // 当前图层全部 features（fc 优先，回退 layer.fc，覆盖分析层）
@@ -1548,7 +1549,7 @@ function _sugOf(p) { return _SUGGEST_BY_DOMAIN[p.domain_top] || ''; }
 
 // ── 各层优先列清单（第一观感）；其后按出现顺序追加其余非噪声字段 ──
 const _COLS_L1_POINT = ['id_e', '_loc', 'text', 'score', 'keywords', 'primary_emotion', 'source', 'publish_time'];
-const _COLS_L2_POINT = ['id_e', '_loc', 'text', 'polarity', 'score', 'emotion_type', 'source', 'publish_time'];
+const _COLS_L2_POINT = ['id_e', 'polarity', '_loc', 'text', 'score', 'emotion_type', 'source', 'publish_time'];
 const _COLS_L2_GRID_OVERALL  = ['point_count', 'polarity_index', '_loc', 'topic_top', 'issue_label', '_attribution', '_suggestion'];
 const _COLS_L2_GRID_POLARITY = ['point_count', '_loc', 'topic_top', 'issue_label', '_attribution', '_suggestion'];
 const _COLS_GENERIC = ['id_e', '_loc', 'text', 'polarity', 'score', 'emotion_type', 'source', 'publish_time'];
@@ -1606,17 +1607,24 @@ function _colsFor(layer, feats) {
   return { cols };
 }
 
-// ── 列宽（colgroup 驱动；_colWidth 存用户拖拽，会话内持久）──
-const _colWidth = new Map();   // key → px（用户拖拽覆盖）
-function _defWidth(key) {
-  if (key === '_loc') return 110;
-  if (key === 'text') return 300;
-  if (['polarity', 'score', 'point_count', 'n_positive', 'n_negative', 'n_neutral', 'n_very_positive', 'n_very_negative'].includes(key)) return 70;
-  if (key === 'polarity_index') return 80;
-  if (key === 'publish_time' || key === 'created_at') return 140;
-  return 130;
+// ── 列宽（colgroup 驱动；_colWidth 存用户拖拽会话内持久；其余按内容自适应测宽，减少空白）──
+const _colWidth = new Map();   // key → px（用户拖拽覆盖；优先级最高）
+const _colWcache = new Map();  // key → px（_renderTable 时按内容测宽缓存）
+/** 按列内容测宽（采样前 120 行，取最长值×8px+padding，clamp 56~200）；评论固定 300、地点 120。*/
+function _measureColWidth(col, feats) {
+  const key = col.key;
+  if (key === 'text') return 300;          // 评论列固定宽（主信息载体）
+  if (key === '_loc') return 120;          // 地点列略宽（地名）
+  let maxLen = String(col.label || key).length + 1;
+  const sample = feats.length > 120 ? feats.slice(0, 120) : feats;
+  for (const f of sample) {
+    const len = String(_cellValue(col, f) ?? '').length;
+    if (len > maxLen) maxLen = len;
+    if (maxLen > 28) break;                // 超长值按上限（列内省略号截断）
+  }
+  return Math.max(56, Math.min(200, maxLen * 8 + 18));
 }
-function _colW(key) { return _colWidth.get(key) || _defWidth(key); }
+function _colW(key) { return _colWcache.get(key) ?? 110; }
 
 function _cellValue(col, f) {
   if (col.get) return col.get(f);
@@ -1654,7 +1662,8 @@ function _renderTable() {
   const rows = _visibleFeats();
   _tableRows = rows;
   _updateCount(rows.length, _baseFeats.length);
-  // colgroup：列宽由 _colW 驱动（用户拖拽 > 默认；地点窄、评论宽）。table-layout:fixed 严格生效。
+  // colgroup：列宽按内容自适应测宽（用户拖拽优先；评论宽、其余收紧减空白）。table-layout:fixed 严格生效。
+  cols.forEach((c) => _colWcache.set(c.key, _colWidth.has(c.key) ? _colWidth.get(c.key) : _measureColWidth(c, _baseFeats)));
   const totalW = cols.reduce((s, c) => s + _colW(c.key), 0);
   const colgroup = `<colgroup>${cols.map((c) => `<col data-col="${c.key}" style="width:${_colW(c.key)}px">`).join('')}</colgroup>`;
   const head = `<thead><tr>${cols.map((c) =>
@@ -1739,7 +1748,7 @@ function _bindToolbar() {
   if (panel) panel.addEventListener('click', (e) => {
     const opt = e.target.closest('.tbl-ds-opt'); if (!opt) return;
     const l = getLayer(opt.dataset.id);
-    if (l) { _loadTableLayer(l); _setDsCurrent(l); }
+    if (l) { _loadTableLayer(l); _setDsCurrent(l); _syncMapToLayer(l); }   // 选层 → 表格 + 地图联动
     _toggleDsPanel(false);
   });
   document.addEventListener('click', (e) => { if (!e.target.closest('.tbl-dataset')) _toggleDsPanel(false); });
@@ -1754,11 +1763,11 @@ function _bindToolbar() {
       const col = tbl.querySelector(`colgroup col[data-col="${key}"]`);
       if (!col) return;
       const startX = e.clientX;
-      const startW = col.offsetWidth || _defWidth(key);
+      const startW = col.offsetWidth || _colW(key);
       const onMove = (ev) => {
         const w = Math.max(40, Math.round(startW + (ev.clientX - startX)));
         col.style.width = w + 'px';
-        _colWidth.set(key, w);
+        _colWidth.set(key, w); _colWcache.set(key, w);
         const totalW = _tableCols.reduce((s, c) => s + (_colW(c.key)), 0);
         tbl.style.minWidth = totalW + 'px';
       };
@@ -1792,34 +1801,64 @@ export function onTableTabActivated() {
   if (_tableDirty) { _renderTable(); _tableDirty = false; }
 }
 
-/** 可制表的已载图层（有 features 的非 group 层）。*/
+/** grid 层数据签名（同 sidebar.gridSigOf / map.gridSig）：同 analysis/level/source/cellSize/polarity/polygonLayer 的 2D/3D 互为配对。*/
+function _gridSigOf(ui) { return ui ? [ui.analysis, ui.level, ui.source, ui.cellSize, ui.polarity, ui.polygonLayer].join('|') : ''; }
+
+/** 可制表的已载图层（有 features 的非 group 层）。grid 2D/3D 配对按 gridSig 去重为一个代表
+ *  （照搬 sidebar.renderLayerList 逻辑——否则下拉出现两条同一标准网格）。*/
 function _tableableLayers() {
-  return getLayers().filter((l) => l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length);
+  const all = getLayers().filter((l) => l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length);
+  const grids = all.filter(_isGridLayer);
+  if (grids.length < 2) return all;
+  const groups = new Map();
+  for (const l of grids) {
+    const sig = _gridSigOf(l.paint && l.paint._ui);
+    if (!groups.has(sig)) groups.set(sig, []);
+    groups.get(sig).push(l);
+  }
+  const skip = new Set();
+  for (const [, arr] of groups) {
+    if (arr.length < 2) continue;                         // 无配对（单层），不去重
+    const rep = arr.find((g) => g.visible) || arr[arr.length - 1];   // 可见优先；兜底取最后
+    for (const g of arr) if (g !== rep) skip.add(g.id);
+  }
+  return skip.size ? all.filter((l) => !skip.has(l.id)) : all;
 }
 
 // L 级徽章 class（彩色：L0 灰 / L1 橙 / L2 蓝 / L3 紫 / L4 绿）
 const _LV_BADGE = { L0: 'lv-l0', L1: 'lv-l1', L2: 'lv-l2', L3: 'lv-l3', L4: 'lv-l4' };
 
-/** 拆解层 → {lv, lvCls, type, name}，供下拉富文本标题用。*/
+/** 极性 chip（复用 Layers 数据标签设计语言：综合/积极/消极/中性，配色呼应情绪点色板）。*/
+const _POL_CHIP = {
+  overall:  { t: '综合', c: 'chip-overall' },
+  positive: { t: '积极', c: 'chip-pos' },
+  negative: { t: '消极', c: 'chip-neg' },
+  neutral:  { t: '中性', c: 'chip-neu' },
+};
+/** 拆解层 → {lv, lvCls, lvColor, type, time, pol, file}，供下拉标题 chips 渲染。
+ *  选择维度 = L 等级 / 类型 / 时间点 / 极性 → chips 凸显；文件名灰淡化（重名靠 chips 区分）。
+ *  极性：grid 用 _ui.polarity；L2 点层=综合（含全极性）；与 Layers 数据标签同口径。*/
 function _dsParts(layer) {
   const lv = layerLevel(layer) || 'L2';
-  const lvCls = _LV_BADGE[lv] || 'lv-l2';
-  const name = String(layer.name || layer.srcName || '').replace(/[<>]/g, '') || '(未命名)';
-  let type;
-  if (_isGridLayer(layer)) {
-    const ui = layer.paint._ui || {};
-    const pol = ui.polarity || 'overall';
-    const polTag = pol === 'overall' ? '综合' : ({ positive: '积极', negative: '消极', neutral: '中性' }[pol] || pol);
-    const ana = ui.analysis === 'zonal' ? '指定单元' : '标准网格';
-    type = `${polTag}·${ana}聚合`;
-  } else if (isEmotionPointLayer(layer)) {
-    type = '情绪点';
-  } else {
-    type = layer.kind === 'polygon' ? '范围面' : (layer.kind || '图层');
-  }
-  return { lv, lvCls, type, name };
+  const ui = (layer.paint && layer.paint._ui) || {};
+  const file = String(layer.srcName || layer.name || '').replace(/[<>]/g, '') || '';
+  const t = layer.timeTag || deriveTimeTag(layer.fc) || '';
+  let type = '', time = '', pol = null;
+  if (ui.tool === 'grid') {
+    type = ui.analysis === 'zonal' ? '指定单元网格' : '标准网格';
+    time = t; pol = _POL_CHIP[ui.polarity] || _POL_CHIP.overall;   // overall → 综合 chip
+  } else if (ui.tool === 'terrain') { type = '情绪地形'; time = t; }
+  else if (layer.kind === 'heatmap') { type = '核密度'; }
+  else if (isEmotionPointLayer(layer)) { type = '情绪点'; time = t; pol = _POL_CHIP.overall; }   // L2 点层 = 综合
+  else { type = layer.kind === 'polygon' ? '范围' : (layer.kind || '图层'); }
+  return { lv, lvColor: levelPointColor(lv), type, time, pol, file };
 }
-const _dsItemHtml = (p) => `<span class="lv-badge ${p.lvCls}">${p.lv}</span><span class="ds-type">${p.type}</span><span class="ds-name">${p.name}</span>`;
+const _dsItemHtml = (p) =>
+  `<span class="lv-badge" style="background:${p.lvColor}">${p.lv}</span>` +
+  `<span class="ds-type">${p.type}</span>` +
+  (p.time ? `<span class="ds-chip ds-time">${p.time}</span>` : '') +
+  (p.pol ? `<span class="ds-chip ${p.pol.c}">${p.pol.t}</span>` : '') +
+  `<span class="ds-file">${p.file}</span>`;
 
 /** 重建数据下拉（自定义）+ 设当前层。*/
 function _refreshDataset(selectLayer) {
@@ -1889,6 +1928,28 @@ function _toggleRowSel(idx) {
   if (_tableSelFeat === feat) { _tableSelFeat = null; clearHighlightCellSet(); }
   else { _tableSelFeat = feat; clearHighlightCellSet(); highlightCellSet([feat], _tableLayer); }
   _renderVisibleRows();
+}
+
+/** 下拉选层 → 地图联动：显该层 + enforceMutualExclusion 关其他（除 Range/同组兄弟）+ 按 type 切 2D/3D + 触 layers:changed。
+ *  底层逻辑：Overview/Table 操作联动地图同步显示。照搬 sidebar._applyExclusiveOn 范式。 */
+function _syncMapToLayer(l) {
+  if (!l) return;
+  setLayerVisible(l.id, true);
+  const hidden = enforceMutualExclusion(l.id);
+  for (const hid of hidden) { const hl = getLayer(hid); if (hl) renderLayer(hl); }
+  renderLayer(l);
+  selectLayer(l.id);
+  _applyViewForLayer(l);
+  document.dispatchEvent(new CustomEvent('layers:changed'));   // → refreshOverview 跟切下拉/表格
+}
+
+/** 按层类型自动切 2D/3D 视角：点/范围=保持；标准网格=3D 柱体；地形=3D；核密度=2D。 */
+function _applyViewForLayer(l) {
+  const ui = l && l.paint && l.paint._ui;
+  if (!ui) return;                       // point / 范围：不动视角
+  if (ui.tool === 'grid') setViewMode('3d');        // 标准网格 → 3D 柱体（按签名找/生 3D 配对 + pitch）
+  else if (ui.tool === 'terrain') setView3D(true);   // 情绪地形 → 3D
+  else setView3D(false);                             // 核密度(heatmap) → 2D
 }
 
 export function setTable(_fc, layer, _maxRows = 500) {

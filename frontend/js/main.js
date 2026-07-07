@@ -278,10 +278,15 @@ function main() {
     updateExportState();
   });
 
-  // Layer selected → 刷新右端栏 Overview 内容（不再自动弹开；用户按需手动展开右栏）。
-  document.addEventListener('layer:selected', () => {
-    activateTab('overview');
-    refreshOverview();
+  // Layer selected → 按"当前面板状态"路由（全局选择逻辑）：
+  //   折叠展开 / 无激活态 / Overview 激活 → 显 Overview；
+  //   Table 激活且未折叠 → 保持 Table（setTable(focused) 把下拉+表格切到该层）。
+  document.addEventListener('layer:selected', (e) => {
+    const wasFolded = !!(e.detail && e.detail.wasFolded);
+    const ap = document.querySelector('.tab-pane.is-active');
+    const isTable = !!(ap && ap.dataset.pane === 'table');
+    if (wasFolded || !ap || !isTable) activateTab('overview');   // 折叠/无态/非Table → Overview
+    refreshOverview();   // setOverview + setTable 都跑；激活的 pane 显对应内容
   });
 
   // 单元深读已改极性深读（非单格级）→ cell:selected 不再切 Overview 深读 tab / 不 zoom 单格。

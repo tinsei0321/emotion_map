@@ -695,6 +695,30 @@ flowchart TD
 
 **验证**：py_compile 4 后端文件 ✓。端到端（含 AI 回答）待用户配 DEEPSEEK_API_KEY 后 F5 实测（数据流改动，建议 webapp-testing 或肉眼验流式+附件卡联动）。
 
+### 5.32 Table 大重构：geojson.io 风格通用属性表 + 解耦 Overview + 下拉数据选择器（07月07日 18:38）
+
+**用户意图**：Table 从"写死 5 列 + 问题清单"重做为 geojson.io 风格**通用属性表查看器**——任意 L 层（点/网格/范围）都出表；只显示表格（彻底解耦 Overview，不混 timeline/饼图/矩阵/关键词）；自带数据下拉选择器（不复用 Overview 的 tab 工具条）；选层联动地图（2D/3D）。
+
+**关键 bug 修复**：
+- **切 Table 仍混显 Overview 内容**（用户连续多轮指出）：[panel.css:43](frontend/css/panel.css#L43) `#overview-pane{display:flex}` ID 特异性(1,0,0) 压过 `.tab-pane{display:none}`(0,1,0) → overview 永不隐藏。改 `#overview-pane.is-active`（仅激活时 flex）。Playwright 实测：切 Table 后 `overview.display=none`、panel-body 仅 `['table-pane']` 可见。
+- **导入后整页卡顿**（曾反复）：旧表渲染 `2500 行 × ~30 列 ≈ 7.5 万单元格` 且导入时（Table 未激活）后台全量建表 → 冻屏。三层修复：① **行虚拟化**（视口窗口渲染 + 上下 spacer 撑总高 + 实测行高校准 + scroll rAF 节流，参考 geojson.io feature_table）；② **懒渲染**（Table 未激活只存数据不建表，`activateTab('table')` 才补渲）；③ 精选列。实测 2500 行 DOM=27、导入 3s 0 卡顿。
+- **网格下拉重复两条**：`_tableableLayers` 没做 sidebar 的 `gridSig` 配对去重 → 同一标准网格 2D/3D 都进下拉。加 `_gridSigOf` 去重（同 analysis/level/source/cellSize/polarity/polygonLayer 合并一个代表）。
+- **L2 点层评论列缺失**：列太多被埋 + 卡顿致渲染未完。精选列 + 虚拟化后评论列清晰。
+
+**架构落地**：
+- **解耦 + 下拉**：Table 工具条上方独立标题行 = 自定义下拉（trigger + 浮层）。富文本标题 = `[L 徽章(levelPointColor)] [类型加粗] [时间 chip] [极性 chip] + 文件名灰`；L2 点层=综合、grid overall=综合、积极/消极/中性 chip。选层 → `_loadTableLayer` + `_syncMapToLayer`（显层 + `enforceMutualExclusion` 关其他除 Range + `selectLayer` + `_applyViewForLayer`：grid→3D 柱体/地形→3D/核密度→2D/点→保持 + 触 `layers:changed`）。
+- **Layers↔Table 选择路由**：[sidebar.selectLayerRow](frontend/js/sidebar.js#L518) 展开前捕 `wasFolded` 随事件传；[main.js layer:selected](frontend/js/main.js#L282) 按当前面板路由——折叠/无态/非Table→Overview，Table 激活→保持 Table。`refreshOverview` 同刷 Overview+Table，激活 pane 显对应内容。全局适用。
+- **列策略分化**（`_colsFor` 按层）：L2 点=id/极性/地点/评论/分数/…（极性第2列）；L1 点=id/地点/评论/分数/关键词/主情绪/…；L2 综合·网格=点数/极性指数/地点/话题/问题识别/归因/建议（按点数降序）；L2 极性·网格=去极性指数；L1 网格=空态待开发。归因=`主领域×主要素`、建议=领域模板（L4 接入替换，用户选"映射占位"）。
+- **列宽**：`<colgroup>` + `table-layout:fixed` + th 右缘拖拽把手（`_colWidth` 会话持久）+ 自适应测宽（`_measureColWidth` 采样内容，评论 300/地点 120 固定，其余 clamp 56~200 收紧减空白）+ 水平滚动条常显底端 + 表头三点菜单占位。
+- **网格行选中**：行可点选（复刻 `.layer-row.is-selected` 品牌色淡底）→ `highlightCellSet([feat],layer)` 地图橙色高亮聚合域（`#ff9000`，延用既有）。
+- **极性深读关键词**：`#ov-block-kw` 默认显该极性**全部**词（`_renderDefaultKw` 合并 demo JSON 所有块去重降序；miss 回退 `_singlePolKeywordsHtml`），矩阵块 hover/click 切该块词（既有 `_renderBlockKw`），离开/取消 sticky 恢复全部（替旧 `_clearBlockKw` 回空）。
+
+**延后/记忆**：**时间轴数据驱动**（只上传 1 时间点仍跑 T1/T2/T3——后台模拟快照硬编码）→ 记记忆 [timeline-must-be-data-driven]，本轮不做。
+
+**文件**：`frontend/index.html` `frontend/css/panel.css` `frontend/js/panel.js` `frontend/js/main.js` `frontend/js/sidebar.js`。
+
+**验证**：node --check 全过；Playwright 实测——切 Table overview 隐藏(bleed=0)、2500 行虚拟化 DOM=27 导入 0 卡顿、列序 ID/极性/地点/评论、下拉 chips(综合)、列宽自适应 [58,122,120,300,58,58,106,200]、#3 路由(Table 态点层保 Table)、0 报错。**网格去重 + 地图联动视角 + 极性关键词默认全部** 因导入只能造点层（无网格 `_ui.tool='grid'`），自动化难造网格层，未运行时测——逻辑照搬 sidebar 已验证范式，待用户用 Grid 工具生成网格后 F5 肉眼验。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

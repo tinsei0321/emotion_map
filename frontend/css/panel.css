@@ -647,22 +647,72 @@
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-.tbl-dataset {                   /* 数据图层选择器（解耦 Overview 后 Table 自带）*/
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 190px;
-  height: 26px;
-  padding: 0 6px;
-  font-size: var(--geojson-typography-size-xs, 13px);
-  color: var(--geojson-color-text-primary);
+/* ── Table 数据标题行 + 自定义下拉（富文本标题 = 彩色 L 徽章 + 类型加粗 + 名称，全宽醒目）── */
+.tbl-title { flex: 0 0 auto; padding: 8px 10px; border-bottom: 1px solid var(--geojson-color-border-default, #e6e6e6); background: var(--geojson-color-bg-primary, #fff); }
+.tbl-dataset { position: relative; width: 100%; }
+.tbl-ds-trigger {
+  display: flex; align-items: center; gap: 7px;
+  width: 100%; height: 32px; padding: 0 10px 0 8px;
   background: var(--geojson-color-gray-100, #f5f5f5);
   border: 1px solid transparent;
   border-radius: var(--geojson-radius-md, 6px);
   cursor: pointer;
-  transition: background .15s, border-color .15s;
+  font-size: var(--geojson-typography-size-sm, 14px);
+  color: var(--geojson-color-text-primary);
+  transition: background .15s, border-color .15s, box-shadow .15s;
 }
-.tbl-dataset:hover { background: #fff; border-color: var(--geojson-color-border-default, #e6e6e6); }
-.tbl-dataset:focus { outline: none; background: #fff; border-color: var(--geojson-color-brand-primary, #007afc); }
+.tbl-ds-trigger:hover { background: #fff; border-color: var(--geojson-color-border-default, #e6e6e6); }
+.tbl-dataset.open .tbl-ds-trigger { background: #fff; border-color: var(--geojson-color-brand-primary, #007afc); box-shadow: 0 0 0 2px color-mix(in srgb, var(--geojson-color-brand-primary, #007afc) 18%, transparent); }
+.tbl-ds-cur { display: flex; align-items: center; gap: 7px; flex: 1 1 auto; min-width: 0; overflow: hidden; }
+.tbl-ds-arrow { flex: 0 0 12px; color: var(--geojson-color-text-tertiary, #888); transition: transform .15s; }
+.tbl-dataset.open .tbl-ds-arrow { transform: rotate(180deg); }
+.tbl-ds-panel {
+  position: absolute; top: calc(100% + 3px); left: 0; right: 0;   /* 撑满 .tbl-title = 表格宽 */
+  background: #fff;
+  border: 1px solid var(--geojson-color-border-default, #e6e6e6);
+  border-radius: var(--geojson-radius-md, 6px);
+  box-shadow: 0 6px 20px rgba(0,0,0,.14);
+  z-index: 40; padding: 4px;
+  max-height: 320px; overflow-y: auto;
+}
+.tbl-ds-opt {
+  display: flex; align-items: center; gap: 6px;
+  width: 100%; padding: 6px 8px;
+  border: none; background: transparent; cursor: pointer;
+  border-radius: var(--geojson-radius-sm, 4px); text-align: left; min-width: 0;
+  font-size: var(--geojson-typography-size-xs, 13px);
+}
+.tbl-ds-opt:hover { background: var(--geojson-color-gray-100, #f5f5f5); }
+.tbl-ds-opt.is-cur { background: color-mix(in srgb, var(--geojson-color-brand-primary, #007afc) 10%, transparent); }
+.ds-type { flex: 0 0 auto; font-weight: var(--geojson-typography-weight-semibold, 600); color: var(--geojson-color-text-primary); white-space: nowrap; }
+/* 维度 chip（时间点/极性）：胶囊凸显；file 灰淡化 */
+.ds-chip { flex: 0 0 auto; display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 999px; font-size: 10px; font-weight: 600; line-height: 1.5; white-space: nowrap; }
+.ds-time { background: var(--geojson-color-gray-200, #e5e5e5); color: var(--geojson-color-text-secondary, #525252); }
+.chip-overall { background: rgba(64,69,85,.14); color: #384555; }   /* 综合：中性深灰（含全极性）*/
+.chip-pos { background: rgba(13,107,46,.14); color: #0d6b2e; }
+.chip-neg { background: rgba(216,85,47,.16); color: #c4421d; }
+.chip-neu { background: rgba(26,58,140,.12); color: #1A3A8C; }
+.ds-file { flex: 1 1 auto; min-width: 0; color: var(--geojson-color-text-tertiary, #9a9a9a); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tbl-ds-empty { padding: 10px 12px; color: var(--geojson-color-text-tertiary, #999); font-size: 12px; }
+
+/* L 级彩色徽章（辨识度 + 专业感：L0 灰/L1 橙/L2 蓝/L3 紫/L4 绿）*/
+.lv-badge {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 24px; height: 17px; padding: 0 5px;
+  border-radius: 999px;
+  font-size: 10px; font-weight: 700; line-height: 1;
+  color: #fff; letter-spacing: .02em;
+}
+.lv-l0 { background: #8a8a8a; }
+.lv-l1 { background: #e07142; }
+.lv-l2 { background: #007afc; }
+.lv-l3 { background: #7c5cff; }
+.lv-l4 { background: #1aa260; }
+
+/* 网格行选中（同 Layers .layer-row.is-selected：品牌色淡底）+ 可点指针 */
+.data-table.is-grid-table .tbl-row { cursor: pointer; }
+.data-table tbody tr.tbl-row.is-selected td { background: color-mix(in srgb, var(--geojson-color-brand-primary, #007afc) 14%, var(--geojson-color-table-cell-bg, #fff)); }
 .tbl-search {
   display: flex; align-items: center;
   flex: 1 1 auto; min-width: 80px;

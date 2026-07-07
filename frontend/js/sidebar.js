@@ -514,14 +514,16 @@ function clearDropHints() {
   document.querySelectorAll('.layer-row.is-drop-over, .layer-group.is-drop-over').forEach((r) => r.classList.remove('is-drop-over'));
 }
 
-/** Select a layer row → highlight + tell main.js to open the right panel + Overview. */
+/** Select a layer row → 选中 + 弹右栏 + 按"当前面板状态"路由（Overview/Table/折叠默认 Overview）。
+ *  承重④：侧栏列表入口（区别于地图要素点击的 layer:selected 不自动弹栏）。 */
 function selectLayerRow(id) {
   const l = getLayer(id);
   if (!l) return;
+  const wasFolded = readVarPx('--right-w') < 1;   // 展开前判折叠态（供 main.js 路由）
   selectLayer(id);
-  openRightPanel();   // 单击图层行 → 弹右栏 Overview/Table（侧栏列表入口；区别于地图要素点击的 layer:selected 不自动弹栏，承重④）
+  openRightPanel();   // 折叠则展开
   renderLayerList();
-  document.dispatchEvent(new CustomEvent('layer:selected', { detail: id }));
+  document.dispatchEvent(new CustomEvent('layer:selected', { detail: { id, wasFolded } }));
 }
 
 /** 开某层为可见后，应用互斥规则 + 选中追随（视野-数据-结论同步：Overview 跟随当前可见层）。 */
