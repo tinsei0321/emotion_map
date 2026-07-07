@@ -1,31 +1,42 @@
-// ═══ chat-panel.js — AI 自然语言问答（底部滑出面板，多轮 + 数据引用）═══
+// ═══ chat-panel.js — AI 自然语言问答（底部滑出面板，多轮 + 组合式交互）═══
 // 触发：右下「问答」按钮 → 底部滑出。流式渲染（marked markdown）+ 引用 chip（点击定位）。
-// Grounding：每次发送前从选中分析层算紧凑摘要（Top 区域/极性/治理要素）作 context。
+// 组合式回答：模型在回答末尾追加 [!action] 标记 → 前端解析为附件卡 → 点击驱动地图/Overview/Table。
+// 思考链：Pro(deepseek-reasoner) 的 reasoning_content → 灰显可折叠"思考过程"区（流式）。
+// Grounding：每次发送前从选中分析层算紧凑摘要作 context + @关联对象注入。
 // provider-agnostic：后端 /chat 默认 DeepSeek，未来换溯佰科改后端一处。
 import { streamChat } from './api.js';
 import { getSelectedLayer, getLayers } from './state.js';
 import { fitBoundsTo } from './map.js';
+import { activateTab, setOverview, setTable } from './panel.js';
 import { DOMAIN_LABEL, ELEMENT_LABEL } from './popup.js';
 import { toast } from './toast.js';
 
-const DOMAIN_ORDER = ['urban_planning', 'urban_governance', 'urban_renewal', 'urban_operation'];
-let _messages = [];     // [{role, content}]
+let _messages = [];          // [{role, content}]
 let _streaming = false;
+let _abortCtl = null;        // AbortController（停止生成）
+let _contextTokens = [];     // @关联对象（Batch B 拖拽/小工具注入；预留回传 grounding）
+let _deepThink = false;      // 深度思考开关（Batch B 加 UI；true→deepseek-reasoner）
 
 function isAnalysis(l) {
   const ui = l && l.paint && l.paint._ui;
   return !!(l && l.kind === 'polygon' && ui && (ui.tool === 'grid' || ui.tool === 'terrain'));
 }
 
+/** 取当前分析层（选中层优先，否则首个分析层）。 */
+function currentAnalysis() {
+  const sel = getSelectedLayer();
+  return (sel && isAnalysis(sel)) ? sel : getLayers().find(isAnalysis);
+}
+
 /** 从选中层（或首个分析层）算紧凑摘要供 grounding。 */
 function buildContext() {
   const layers = getLayers();
-  const sel = getSelectedLayer();
-  const an = (sel && isAnalysis(sel)) ? sel : layers.find(isAnalysis);
+  const an = currentAnalysis();
   const parts = [];
-  parts.push('已加载图层：' + layers
+  const loaded = layers
     .filter((l) => l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length)
-    .map((l) => `${l.name}(${l.fc.features.length}条)`).join('、') || '（无）');
+    .map((l) => `${l.name}(${l.fc.features.length}条)`).join('、');
+  parts.push('已加载图层：' + (loaded || '（无）'));
   if (!an) {
     parts.push('（暂无网格/指定单元聚合层——建议先用「网格·指定单元」生成聚合后再问区域级问题）');
     return parts.join('\n');
@@ -82,12 +93,53 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-/** markdown 渲染（marked 不可用退纯文本转义）+ [ref:NAME] → 可点引用 chip。 */
-function renderContent(text) {
-  let html = window.marked ? window.marked.parse(text) : `<p>${escapeHtml(text).replace(/\n/g, '<br>')}</p>`;
+// ── 组合式回答：动作标记解析 + 附件卡 ──────────────────────────────────────
+// 模型在回答末尾追加 [!type:args] 单行标记；前端剥离正文 + 渲染附件卡。
+//   [!focus:a,b,c] / [!overview] / [!table] / [!layer:名|筛选]
+const _ACTION_RE = /^[ \t]*\[!(\w+)(?::([^\]]+))?\][ \t]*$/gm;
+
+function parseActions(text) {
+  const actions = [];
+  const cleaned = text.replace(_ACTION_RE, (_m, type, args) => {
+    actions.push({ type, args: args ? args.trim() : '' });
+    return '';
+  }).replace(/\n{3,}/g, '\n\n').trim();
+  return { cleaned, actions };
+}
+
+function actionCardHtml(a) {
+  if (a.type === 'focus') {
+    const names = a.args.split(',').map((s) => s.trim()).filter(Boolean);
+    if (!names.length) return '';
+    return `<button class="chat-action-card" data-action="focus" data-names="${escapeHtml(names.join('|'))}" type="button">🗺 聚焦 ${names.length} 个区域</button>`;
+  }
+  if (a.type === 'overview') {
+    return `<button class="chat-action-card" data-action="overview" type="button">📊 在 Overview 查看归因</button>`;
+  }
+  if (a.type === 'table') {
+    return `<button class="chat-action-card" data-action="table" type="button">📋 在 Table 查看明细</button>`;
+  }
+  if (a.type === 'layer') {
+    const parts = a.args.split('|');
+    const name = (parts.shift() || '').trim();
+    const filter = parts.join('|').trim();
+    return `<button class="chat-action-card" data-action="layer" data-name="${escapeHtml(name || '未命名')}" data-filter="${escapeHtml(filter)}" type="button">📍 加入图层：${escapeHtml(name || '未命名')}</button>`;
+  }
+  return '';
+}
+
+function actionsToHtml(actions) {
+  if (!actions.length) return '';
+  return `<div class="chat-actions">${actions.map(actionCardHtml).filter(Boolean).join('')}</div>`;
+}
+
+/** markdown 渲染（marked 不可用退纯文本转义）+ [ref:NAME] → 引用 chip + 末尾附件卡。 */
+function renderAnswer(text) {
+  const { cleaned, actions } = parseActions(text);
+  let html = window.marked ? window.marked.parse(cleaned) : `<p>${escapeHtml(cleaned).replace(/\n/g, '<br>')}</p>`;
   html = html.replace(/\[ref:([^\]]+)\]/g, (_, name) =>
     `<button class="cite-chip" data-ref="${escapeHtml(name)}" type="button">${escapeHtml(name)}</button>`);
-  return html;
+  return html + actionsToHtml(actions);
 }
 
 function renderSuggest() {
@@ -104,15 +156,34 @@ function renderSuggest() {
   });
 }
 
-function appendMessage(role, contentHtml, { stream = false } = {}) {
+function scrollBottom() {
   const list = document.getElementById('chat-messages');
-  if (!list) return null;
+  if (list) list.scrollTop = list.scrollHeight;
+}
+
+function appendMessage(role, contentHtml) {
+  const list = document.getElementById('chat-messages');
+  if (!list) return;
   const el = document.createElement('div');
   el.className = `chat-msg chat-msg-${role}`;
   el.innerHTML = `<div class="chat-bubble">${contentHtml}</div>`;
   list.appendChild(el);
-  list.scrollTop = list.scrollHeight;
-  return stream ? el.querySelector('.chat-bubble') : null;
+  scrollBottom();
+}
+
+/** assistant 气泡骨架：思考链区(隐藏) + 正文区(光标)。返回两元素的 ref 以便流式填充。 */
+function appendAssistantShell() {
+  const list = document.getElementById('chat-messages');
+  if (!list) return {};
+  const el = document.createElement('div');
+  el.className = 'chat-msg chat-msg-assistant';
+  el.innerHTML = `<div class="chat-bubble">
+    <div class="chat-reason" hidden><div class="chat-reason-head">▸ 思考过程</div><div class="chat-reason-body"></div></div>
+    <div class="chat-answer"><span class="chat-cursor">▍</span></div>
+  </div>`;
+  list.appendChild(el);
+  scrollBottom();
+  return { reasonEl: el.querySelector('.chat-reason'), answerEl: el.querySelector('.chat-answer') };
 }
 
 async function send(text) {
@@ -122,37 +193,51 @@ async function send(text) {
   input.value = '';
   appendMessage('user', escapeHtml(text));
   _messages.push({ role: 'user', content: text });
-  const bubble = appendMessage('assistant', '<span class="chat-cursor">▍</span>', { stream: true });
+
+  const { reasonEl, answerEl } = appendAssistantShell();
+  let reasonAcc = '';
+  let acc = '';
   _streaming = true;
   updateSendBtn();
-  let acc = '';
+
   const ctx = buildContext();
+  _abortCtl = new AbortController();
   try {
     await streamChat(_messages, ctx,
-      (tok) => {
-        acc += tok;
-        if (bubble) bubble.innerHTML = renderContent(acc);
-        const list = document.getElementById('chat-messages');
-        list.scrollTop = list.scrollHeight;
-      },
-      (err) => {
-        if (bubble) bubble.innerHTML = `<span class="chat-error">[问答失败] ${escapeHtml(err)}</span>`;
-      });
-    if (acc) _messages.push({ role: 'assistant', content: acc });
-    if (bubble && !acc) bubble.innerHTML = '<span class="chat-error">（无内容返回——确认 DEEPSEEK_API_KEY 已配置）</span>';
-    else if (bubble) bubble.innerHTML = renderContent(acc);   // 终态再渲染一次（去光标）
+      (tok) => { acc += tok; if (answerEl) answerEl.innerHTML = renderAnswer(acc); scrollBottom(); },
+      (err) => { if (answerEl) answerEl.innerHTML = `<span class="chat-error">[问答失败] ${escapeHtml(err)}</span>`; },
+      { onReason: (tok) => {
+          reasonAcc += tok;
+          if (reasonEl) {
+            reasonEl.hidden = false;
+            const body = reasonEl.querySelector('.chat-reason-body');
+            if (body) body.textContent = reasonAcc;
+          }
+          scrollBottom();
+        },
+        model: _deepThink ? 'deepseek-reasoner' : undefined,
+        contextTokens: _contextTokens.length ? _contextTokens : undefined,
+        signal: _abortCtl.signal });
+    if (acc) { _messages.push({ role: 'assistant', content: acc }); if (answerEl) answerEl.innerHTML = renderAnswer(acc); }
+    else if (answerEl) answerEl.innerHTML = '<span class="chat-error">（无内容返回——确认 DEEPSEEK_API_KEY 已配置）</span>';
+    if (reasonEl) { reasonEl.hidden = !reasonAcc; if (reasonAcc) reasonEl.classList.add('is-done'); }
   } catch (e) {
-    if (bubble) bubble.innerHTML = `<span class="chat-error">[请求失败] ${escapeHtml(e.message || e)}</span>`;
-    toast.error('问答请求失败：' + (e.message || e));
+    const aborted = e && e.name === 'AbortError';
+    if (answerEl) answerEl.innerHTML += aborted ? ' <span class="chat-error">（已停止）</span>'
+      : `<span class="chat-error">[请求失败] ${escapeHtml(e.message || e)}</span>`;
+    if (!aborted) toast.error('问答请求失败：' + (e.message || e));
   } finally {
     _streaming = false;
+    _abortCtl = null;
     updateSendBtn();
   }
 }
 
 function updateSendBtn() {
   const btn = document.getElementById('chat-send');
-  if (btn) { btn.disabled = _streaming; btn.textContent = _streaming ? '回答中…' : '发送'; }
+  if (!btn) return;
+  if (_streaming) { btn.textContent = '停止'; btn.classList.add('is-stop'); }
+  else { btn.textContent = '发送'; btn.classList.remove('is-stop'); }
 }
 
 function setPanel(open) {
@@ -177,7 +262,6 @@ function onCitationClick(name) {
     });
     if (f) {
       selectCell(f, l);
-      toast.info(`定位到「${target}」`);
       return;
     }
   }
@@ -197,6 +281,28 @@ function selectCell(f, l) {
   document.dispatchEvent(new CustomEvent('cell:selected', { detail: { feature: f, layer: l } }));
 }
 
+/** 附件卡点击 → 驱动地图/Overview/Table（复用事件总线）。 */
+function onActionClick(card) {
+  const action = card.dataset.action;
+  if (action === 'focus') {
+    const names = (card.dataset.names || '').split('|').filter(Boolean);
+    if (!names.length) return;
+    names.forEach((n) => onCitationClick(n));   // 逐个定位（末个 fitBounds）
+    toast.info(`聚焦 ${names.length} 个区域`);
+  } else if (action === 'overview') {
+    const an = currentAnalysis();
+    if (an) { activateTab('overview'); setOverview(an); toast.info('已切到 Overview 归因视图'); }
+    else toast.info('暂无分析层可展示');
+  } else if (action === 'table') {
+    const an = currentAnalysis();
+    if (an && an.fc) { activateTab('table'); setTable(an.fc, an); toast.info('已切到 Table 明细'); }
+    else toast.info('暂无分析层数据');
+  } else if (action === 'layer') {
+    // Batch B：Layers「AI问答」组卡挂载（mirror 工具层 layers:changed）。
+    toast.info(`「加入图层」将在 UI 重做阶段接入：${card.dataset.name}`);
+  }
+}
+
 export function initChatPanel() {
   const trigger = document.getElementById('chat-trigger');
   trigger?.addEventListener('click', () => setPanel(true));
@@ -209,14 +315,21 @@ export function initChatPanel() {
   });
   const sendBtn = document.getElementById('chat-send');
   const input = document.getElementById('chat-input');
-  sendBtn?.addEventListener('click', () => send(input?.value));
+  sendBtn?.addEventListener('click', () => {
+    if (_streaming && _abortCtl) { _abortCtl.abort(); return; }   // 流式中 → 停止
+    send(input?.value);
+  });
   input?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input.value); }
   });
-  // 引用 chip 委托（消息流中动态生成）
+  // 引用 chip + 附件卡 委托（消息流中动态生成）
   document.getElementById('chat-messages')?.addEventListener('click', (e) => {
+    const reason = e.target.closest('.chat-reason.is-done');
+    if (reason) { reason.classList.toggle('is-open'); return; }   // 思考链流后点击折叠/展开
     const chip = e.target.closest('.cite-chip');
-    if (chip) onCitationClick(chip.dataset.ref);
+    if (chip) { onCitationClick(chip.dataset.ref); return; }
+    const card = e.target.closest('.chat-action-card');
+    if (card) onActionClick(card);
   });
   renderSuggest();
 }

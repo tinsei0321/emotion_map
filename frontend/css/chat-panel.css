@@ -172,3 +172,17 @@
 }
 .chat-send:hover { opacity: 0.9; }
 .chat-send:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── 组合式回答：思考链 + 附件卡（Batch A 最小样式；完整 UI 重做见 Batch B）── */
+.chat-reason { margin: 0 0 6px; padding: 6px 8px; border-left: 2px solid var(--geojson-color-gray-200, #e3e5e8); background: var(--geojson-color-gray-100, #f5f5f5); border-radius: 0 6px 6px 0; }
+.chat-reason.is-done { cursor: pointer; }
+.chat-reason-head { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 2px; }
+.chat-reason.is-done .chat-reason-body { display: none; }
+.chat-reason.is-done.is-open .chat-reason-body { display: block; }
+.chat-reason.is-done.is-open .chat-reason-head::before { content: '▾ '; }
+.chat-reason-body { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.chat-answer { min-height: 1em; }
+.chat-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--geojson-color-border-default, #e3e5e8); }
+.chat-action-card { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-primary); background: var(--geojson-color-surface-panel, #fff); border: 1px solid var(--geojson-color-border-default, #e3e5e8); border-radius: 999px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: background var(--geojson-transition), border-color var(--geojson-transition); }
+.chat-action-card:hover { background: var(--geojson-color-gray-100, #f5f5f5); border-color: var(--geojson-color-brand-primary, #4285F4); }
+.chat-send.is-stop { background: var(--geojson-color-danger, #d8552f); }

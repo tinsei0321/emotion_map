@@ -123,6 +123,8 @@ class ChatRequest(BaseModel):
     """AI 问答请求（provider-agnostic，默认 DeepSeek）。"""
     messages: List[dict] = Field(..., description="OpenAI 兼容消息数组 [{role,content}]")
     context: Optional[str] = Field(default=None, description="前端计算的数据摘要（grounding）")
+    model: Optional[str] = Field(default=None, description="模型：留空=默认Flash；deepseek-reasoner=深度思考(Pro，带思考链)")
+    context_tokens: Optional[List[dict]] = Field(default=None, description="用户@关联对象(feature/range/layer/pin)，注入 grounding")
 
 
 class ExportRequest(BaseModel):

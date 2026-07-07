@@ -38,7 +38,8 @@ emotion_map（根）
 │  ├─ Toolbox 工具箱 🔄  多维归因分析 ⬜（自 KDE ① 剥离）｜缓冲分析 ✅（后端 geopandas EPSG:4546 + 3 段弹窗 + 独立组卡 + B 编辑 + 复用 Range popup）｜网格聚合 ✅（P2：方格 2D/3D + fill-extrusion + 横向色带图例 + G 编辑，接 /spatial/grid(square)；5.25 去 Toolbox 极性直生成 + Layers 拆标准网格/指定单元子卡 + 单元深读→极性深读 paint 就地切换 + 动态矩阵块关键词副本）｜数据语义化 P3 ✅（POI-anchored 4×5/极性三层/置信度密度自相关 + _norm 对称拉伸张力 + 聚合层 4×5 归因 issue_label/attribution，L3/L4 接管后删表；grid/terrain 同步）
 │  ├─ Range 范围 🔄  上载模块 ✅（绘制工具迁入 + 两组卡 + 自动 popup）｜绘制模块 ✅（多边形/矩形 移植 geojson.io，绘制卡常驻；点/线/圆 ⬜）｜范围分析 ⬜（缓冲/叠加/聚合）
 │  ├─ Analysis 情绪分析接入 ⬜  L2 管道接前端 / 空间分析 MVP
-│  └─ Table 数据表格 ⬜  列表 / 筛选 / 导出（联动管线已预留）
+│  ├─ Table 数据表格 ⬜  列表 / 筛选 / 导出（联动管线已预留）
+│  └─ AI 问答 🔄  组合式回答 Batch A ✅（[!focus/overview/layer/table] 标记→附件卡驱动地图/Overview/Table + 思考链 Pro + 停止）｜小型 Desktop UI Batch B ⬜（圆紫按钮 #9B30FF / 560px 垂直分区三区 / 拖拽@关联 / 历史抽屉 / Layers AI问答组卡）；provider-agnostic（DeepSeek→溯佰科改后端一处）
 │
 └─ 临时分支（搁置 / 待决策）
    ├─ KDE 批1 1a 预览图 ⏸  等 terrain/factor kepler 截图补齐
@@ -673,6 +674,26 @@ flowchart TD
 - **可见层眼睛加深**（[sidebar.css:610](frontend/css/sidebar.css#L610) opacity 0.45→0.9 + `.layer-row:not(.is-off) .layer-eye` 字色加深）。
 
 **验证**：MCP Playwright 加载零 JS 错；初始底图源=天地图影像无注记 ✓；眼睛 opacity=0.9 ✓；timeline 模块初始化 ✓；聚合修复 97% 落格。**动画行为 + 极性保持 + 小改视觉 待用户 F5 肉眼验**（debug 钩子 `window.__tl` + `[timeline]` 日志暂留，验后清）。
+
+### 5.31 AI 问答 · 组合式回答 + 思考链协议层（Batch A，07月07日 20:50）
+
+**用户意图（专业化）**：AI 问答从"初期空壳"推进为端到端组合式回答——自然语言一问，平台返"文字总结+地图聚焦+Overview归因+Table明细"组合件，而非纯文字。先客观判断 DeepSeek 能否当场驱动 demo。
+
+**可行性结论**：链路已 90% 打通（[streamChat](frontend/js/api.js#L184) / [/chat](api/routes.py#L100) / [LLMClient](core/llm_client.py) / [build_system_prompt](core/chat_context.py) / [chat-panel.js](frontend/js/chat-panel.js) 均已实现，只差 API Key + 模型名 + 组合式升级）。**GO，用 DeepSeek 先跑 demo，provider-agnostic 预留溯佰科切换**（换模型只改 base_url/model/key 三参）。不必等溯佰科——demo 卖交互形式+数据贯通，非模型专业度。
+
+**落地（轻量结构化组合式，不引入完整 function calling）**：
+- **协议**：模型回答末尾追加单行 `[!action:args]` 标记（`[!focus:a,b]`/`[!overview]`/`[!table]`/`[!layer:名|筛选]`），前端正则解析→剥离正文→渲染附件卡。LLM 不产 geojson，只产区域名/动作类型，前端按名从分析层查 feature 组装（[chat-panel.js](frontend/js/chat-panel.js) `parseActions`/`renderAnswer`/`onActionClick`）。
+- **附件卡执行器复用事件总线**：focus→`onCitationClick`（fitBounds+cell:selected）；overview→`activateTab('overview')`+`setOverview`；table→`activateTab('table')`+`setTable`（[panel.js:205/221/1646](frontend/js/panel.js#L205)）。零新驱动入口。
+- **思考链**：DeepSeek Pro 的 `reasoning_content` → llm_client `chat(with_reason=True)` 区分 yield `(reason|content, tok)` → SSE `{"reason":tok}` 帧 → 前端灰显可折叠"思考过程"区流式渲染（Flash 无则隐藏）。
+- **system prompt**（[chat_context.py](core/chat_context.py)）：加「组合式输出契约」+ few-shot + @上下文对象注入。
+- **模型策略**：Flash(`deepseek-chat`) 日常 / Pro(`deepseek-reasoner`) 深度思考；env `DEEPSEEK_MODEL` 覆盖（对齐 2026/07/24 别名弃用）。
+- **停止**：`AbortController` + 发送钮变"停止"中断 SSE。
+
+**文件**：`core/llm_client.py` `api/routes.py` `api/schemas.py` `core/chat_context.py` `frontend/js/api.js` `frontend/js/chat-panel.js` `frontend/css/chat-panel.css`
+
+**待续（Batch B）**：UI 重做（圆紫按钮 #9B30FF / 560px 垂直分区三区 / 拖拽@关联 / 历史抽屉 / Layers「AI问答」组卡 / 紫色 token 登记）。plan：`ai-ai-demo-4-layers-overview-table-deep-modular-quilt.md`。
+
+**验证**：py_compile 4 后端文件 ✓。端到端（含 AI 回答）待用户配 DEEPSEEK_API_KEY 后 F5 实测（数据流改动，建议 webapp-testing 或肉眼验流式+附件卡联动）。
 
 ## 6. 持续追加规则（给 AI）
 

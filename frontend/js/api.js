@@ -181,11 +181,16 @@ export async function uploadRangePreset(id, geojson) {
 //   POST /api/v1/chat body {messages, context} → text/event-stream
 //   逐 data: {token} 增量回调 onToken；[DONE] 收尾；data:{error} 走 onError。
 //   provider-agnostic（后端默认 DeepSeek，未来换溯佰科改后端一处）。
-export async function streamChat(messages, context, onToken, onError) {
+export async function streamChat(messages, context, onToken, onError, opts = {}) {
+  // opts: { onReason, model, contextTokens, signal }
+  //   onReason(tok) → Pro 思考链增量；model='deepseek-reasoner' 切深度思考；
+  //   contextTokens=@关联对象[]；signal=AbortSignal（停止生成）。
+  const { onReason, model, contextTokens, signal } = opts;
   const r = await fetch(`${BASE}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages, context }),
+    body: JSON.stringify({ messages, context, model, context_tokens: contextTokens }),
+    signal,
   });
   if (!r.ok) {
     let detail = `问答失败: ${r.status}`;
@@ -210,7 +215,8 @@ export async function streamChat(messages, context, onToken, onError) {
       try {
         const obj = JSON.parse(data);
         if (obj.error) { if (onError) onError(obj.error); return; }
-        if (obj.token) onToken(obj.token);
+        if (obj.reason && onReason) onReason(obj.reason);   // Pro 思考链
+        if (obj.token) onToken(obj.token);                  // 正文
       } catch (_) { /* skip malformed */ }
     }
   }

@@ -99,22 +99,25 @@ async def upload_range_preset(req: RangePresetUploadRequest):
 # SSE：每 token 一 data: {token}；[DONE] 收尾；出错 data: {error}。
 @router.post("/chat")
 async def chat_route(req: ChatRequest):
-    """AI 问答（SSE 流式）。返回 text/event-stream，逐 token 增量。"""
+    """AI 问答（SSE 流式）。返回 text/event-stream。
+    帧：{"token": tok}=正文增量 / {"reason": tok}=思考链(Pro) / {"error": ...} / [DONE]。
+    req.model 留空=默认 Flash；'deepseek-reasoner'=深度思考(Pro，带思考链)。"""
     from core.llm_client import LLMClient, LLMError
     from core.chat_context import build_system_prompt
 
-    sys_msg = {'role': 'system', 'content': build_system_prompt(req.context or '')}
+    sys_msg = {'role': 'system', 'content': build_system_prompt(req.context or '', req.context_tokens)}
     messages = [sys_msg] + list(req.messages or [])
 
     try:
-        cli = LLMClient()
+        cli = LLMClient(model=req.model) if req.model else LLMClient()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f'LLM 客户端初始化失败: {e}')
 
     def gen():
         try:
-            for tok in cli.chat(messages, stream=True):
-                yield f'data: {json.dumps({"token": tok}, ensure_ascii=False)}\n\n'
+            for kind, tok in cli.chat(messages, stream=True, with_reason=True):
+                key = 'reason' if kind == 'reason' else 'token'
+                yield f'data: {json.dumps({key: tok}, ensure_ascii=False)}\n\n'
             yield 'data: [DONE]\n\n'
         except LLMError as e:
             yield f'data: {json.dumps({"error": str(e)}, ensure_ascii=False)}\n\n'
