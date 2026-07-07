@@ -1,6 +1,7 @@
 // ═══ panel.js — AI 问答 UI（底部滑出 · agent loop · 历史持久化 · 思考深度开关 · 动态状态）═══
 import { orchestrate } from './harness.js';
 import { buildContext, TOOLS } from './tools.js';
+import { getLayers } from '../state.js';
 
 const HISTORY_KEY = 'ai_qa_history_v1';
 const MODE_KEY = 'ai_qa_think_mode';
@@ -39,11 +40,47 @@ function appendMessage(role, contentHtml) {
   list.appendChild(el);
   scrollBottom();
 }
-function renderAnswer(text) {
+function renderAnswer(text, validNames) {
   let html = window.marked ? window.marked.parse(text) : `<p>${escapeHtml(text).replace(/\n/g, '<br>')}</p>`;
-  html = html.replace(/\[ref:([^\]]+)\]/g, (_, name) =>
-    `<button class="cite-chip" data-ref="${escapeHtml(name)}" type="button">${escapeHtml(name)}</button>`);
+  html = html.replace(/\[ref:([^\]]+)\]/g, (_, name) => {
+    const valid = !validNames || validNames.has(name);
+    const cls = valid ? 'cite-chip' : 'cite-chip cite-chip-invalid';
+    return `<button class="${cls}" data-ref="${escapeHtml(name)}" type="button"${valid ? '' : ' disabled'}>${escapeHtml(name)}</button>`;
+  });
   return html;
+}
+
+/** 聚合层存在的区域名集合（ref 校验白名单，臆造名标灰）。与 tools.js isAnalysis 同口径。 */
+function getValidRefNames() {
+  const names = new Set();
+  for (const l of getLayers()) {
+    if (!l || l.kind !== 'polygon' || !l.fc || !l.fc.features) continue;
+    const ui = l.paint && l.paint._ui;
+    if (!ui || (ui.tool !== 'grid' && ui.tool !== 'terrain')) continue;
+    for (const f of l.fc.features) {
+      const p = f.properties || {};
+      const nm = p.name || p.issue_label;
+      if (nm) names.add(String(nm));
+    }
+  }
+  return names;
+}
+
+/** 渲染审查状态区（六条 ✓/△/✕ + 整体结论）。 */
+function renderReview(reviewEl, body, review) {
+  if (!review) { reviewEl.hidden = true; return; }
+  reviewEl.hidden = false;
+  if (review.degraded) {
+    body.innerHTML = `<div class="aiq-review-verdict warn">审查跳过（${escapeHtml(review.degraded_reason || '审查员不可用')}）</div>`;
+    return;
+  }
+  const icon = { pass: '✓', warn: '△', fail: '✕' };
+  const items = (review.scores || []).map((s) =>
+    `<span class="aiq-review-item ${s.verdict}" title="${escapeHtml(s.comment || s.name || '')}">${icon[s.verdict] || '?'} ${escapeHtml(s.name || s.key)}</span>`
+  ).join('');
+  const cls = review.pass ? 'pass' : 'fail';
+  const txt = review.pass ? '审查通过' : '审查未过·重写中';
+  body.innerHTML = `<div class="aiq-review-verdict ${cls}">${txt}</div><div class="aiq-review-items">${items}</div>`;
 }
 
 /** 动态思考指示器：轮换文案 + 跳动点。 */
@@ -72,10 +109,14 @@ function appendAssistantShell(trace) {
   if (!list) return null;
   const el = document.createElement('div');
   el.className = 'chat-msg chat-msg-assistant';
+  const isFlash = _thinkMode === 'flash';
+  const reasonHead = isFlash ? 'Flash · 直接作答（无思考链）' : '▸ 思考过程（Pro · 实时）';
+  const hasReason = !!(trace && (trace.reasonSegments?.length || trace.reason));
   el.innerHTML = `<div class="chat-bubble">
-    <div class="aiq-reason" ${trace && trace.reason ? '' : 'hidden'}><div class="aiq-reason-head">▸ 思考过程（Pro · 实时）</div><div class="aiq-reason-body"></div></div>
+    <div class="aiq-reason ${isFlash ? 'is-flash' : ''}" ${hasReason ? '' : 'hidden'}><div class="aiq-reason-head">${reasonHead}</div><div class="aiq-reason-body"></div></div>
     <div class="aiq-thinking" hidden><span class="aiq-thinking-text">正在思考…</span><span class="aiq-dots"><i></i><i></i><i></i></span></div>
     <div class="aiq-steps" ${trace && trace.steps && trace.steps.length ? '' : 'hidden'}><div class="aiq-steps-head">解题过程（Agent Loop）</div></div>
+    <div class="aiq-review" ${trace && trace.review ? '' : 'hidden'}><div class="aiq-review-head">审查</div><div class="aiq-review-body"></div></div>
     <div class="aiq-step aiq-step-final"><span class="aiq-step-tag">结论</span><div class="aiq-answer"><span class="chat-cursor">▍</span></div></div>
   </div>`;
   list.appendChild(el);
@@ -84,13 +125,32 @@ function appendAssistantShell(trace) {
     reasonBody: el.querySelector('.aiq-reason-body'),
     thinkingEl: el.querySelector('.aiq-thinking'),
     stepsEl: el.querySelector('.aiq-steps'),
+    reviewEl: el.querySelector('.aiq-review'),
+    reviewBody: el.querySelector('.aiq-review-body'),
     answerEl: el.querySelector('.aiq-answer'),
   };
   if (trace) {
-    if (trace.reason) shell.reasonBody.textContent = trace.reason;
-    if (trace.reason) shell.reasonEl.classList.add('is-done');
+    if (trace.reasonSegments && trace.reasonSegments.length) {
+      for (const seg of trace.reasonSegments) {
+        const segEl = document.createElement('div');
+        segEl.className = 'aiq-reason-segment';
+        segEl.dataset.round = seg.round;
+        segEl.innerHTML = `<div class="aiq-reason-seg-head">${seg.round === 0 ? '最终结论思考' : '第 ' + seg.round + ' 轮思考'}</div><div class="aiq-reason-seg-body">${escapeHtml(seg.text || '')}</div>`;
+        shell.reasonBody.appendChild(segEl);
+      }
+      shell.reasonEl.hidden = false;
+      shell.reasonEl.classList.add('is-done');
+    } else if (trace.reason) {
+      const segEl = document.createElement('div');
+      segEl.className = 'aiq-reason-segment';
+      segEl.innerHTML = `<div class="aiq-reason-seg-body">${escapeHtml(trace.reason)}</div>`;
+      shell.reasonBody.appendChild(segEl);
+      shell.reasonEl.hidden = false;
+      shell.reasonEl.classList.add('is-done');
+    }
     (trace.steps || []).forEach((s) => renderStepRow(shell.stepsEl, s.round, s.thought, s.action, s.observation));
-    shell.answerEl.innerHTML = trace.final ? renderAnswer(trace.final) : '<span class="chat-error">（未生成结论）</span>';
+    if (trace.review) renderReview(shell.reviewEl, shell.reviewBody, trace.review);
+    shell.answerEl.innerHTML = trace.final ? renderAnswer(trace.final, getValidRefNames()) : '<span class="chat-error">（未生成结论）</span>';
   }
   scrollBottom();
   return shell;
@@ -115,14 +175,39 @@ function renderStepRow(stepsEl, round, thought, action, observation) {
 }
 
 function buildHooks(shell) {
-  let reasonAcc = '';
   let answerAcc = '';
+  let reviseAcc = '';
+  const reasonSegs = {};   // round -> text
+  const isFlash = _thinkMode === 'flash';
+
+  function ensureSeg(round) {
+    if (reasonSegs[round]) return;
+    const seg = document.createElement('div');
+    seg.className = 'aiq-reason-segment';
+    seg.dataset.round = round;
+    seg.innerHTML = `<div class="aiq-reason-seg-head">${round === 0 ? '最终结论思考' : '第 ' + round + ' 轮思考'}</div><div class="aiq-reason-seg-body"></div>`;
+    shell.reasonBody.appendChild(seg);
+    reasonSegs[round] = '';
+  }
+  function flushReasonSegs() {
+    if (_curTrace) _curTrace.reasonSegments = Object.keys(reasonSegs).map((k) => ({ round: Number(k), text: reasonSegs[k] }));
+  }
+
   return {
-    onReason: (tok) => {
-      reasonAcc += tok;
+    onRoundStart: (round) => {
+      if (isFlash) return;
       shell.reasonEl.hidden = false;
-      shell.reasonBody.textContent = reasonAcc;
-      if (_curTrace) _curTrace.reason = reasonAcc;
+      ensureSeg(round);
+    },
+    onReason: (tok, round) => {
+      if (isFlash) return;
+      shell.reasonEl.hidden = false;
+      const r = round || 0;
+      ensureSeg(r);
+      reasonSegs[r] += tok;
+      const body = shell.reasonBody.querySelector(`.aiq-reason-segment[data-round="${r}"] .aiq-reason-seg-body`);
+      if (body) body.textContent = reasonSegs[r];
+      flushReasonSegs();
       scrollBottom();
     },
     onRound: () => {},
@@ -147,23 +232,45 @@ function buildHooks(shell) {
     },
     onFinal: (tok) => {
       answerAcc += tok;
-      shell.answerEl.innerHTML = renderAnswer(answerAcc) + '<span class="chat-cursor">▍</span>';
+      shell.answerEl.innerHTML = renderAnswer(answerAcc, getValidRefNames()) + '<span class="chat-cursor">▍</span>';
       if (_curTrace) _curTrace.final = answerAcc;
       scrollBottom();
     },
     onFinalDone: (text) => {
       stopThinking(shell);
-      shell.answerEl.innerHTML = renderAnswer(text);
-      if (shell.reasonEl && reasonAcc) shell.reasonEl.classList.add('is-done');
-      if (_curTrace) {
-        _curTrace.final = text;
-        _history.push({ role: 'assistant', trace: JSON.parse(JSON.stringify(_curTrace)) });
-        saveHistory();
-      }
+      shell.answerEl.innerHTML = renderAnswer(text, getValidRefNames());
+      if (shell.reasonEl && !isFlash) shell.reasonEl.classList.add('is-done');
+      if (_curTrace) _curTrace.final = text;
+      // 显示审查中占位（review 回来覆盖）；history 在 send 末尾统一持久化
+      shell.reviewEl.hidden = false;
+      shell.reviewBody.innerHTML = '<div class="aiq-review-verdict warn">审查中…</div>';
+    },
+    onReview: (review) => {
+      if (_curTrace) _curTrace.review = review;
+      renderReview(shell.reviewEl, shell.reviewBody, review);
+      scrollBottom();
+    },
+    onReviseStart: () => {
+      reviseAcc = '';
+      shell.answerEl.innerHTML = '<span class="aiq-revising-hint">审查未过，重写中…</span><span class="chat-cursor">▍</span>';
+      scrollBottom();
+    },
+    onRevise: (tok) => {
+      reviseAcc += tok;
+      shell.answerEl.innerHTML = renderAnswer(reviseAcc, getValidRefNames()) + '<span class="chat-cursor">▍</span>';
+      if (_curTrace) { _curTrace.revised = reviseAcc; _curTrace.final = reviseAcc; }
+      scrollBottom();
+    },
+    onReviseDone: (text) => {
+      shell.answerEl.innerHTML = renderAnswer(text, getValidRefNames());
+      if (_curTrace) { _curTrace.revised = text; _curTrace.final = text; }
+      const v = shell.reviewBody.querySelector('.aiq-review-verdict.fail');
+      if (v) v.textContent = '审查未过·已重写';
+      scrollBottom();
     },
     onDegraded: (text) => {
       stopThinking(shell);
-      shell.answerEl.innerHTML = renderAnswer(text || '（未生成有效回答——模型输出无法解析为动作）');
+      shell.answerEl.innerHTML = renderAnswer(text || '（未生成有效回答——模型输出无法解析为动作，且最终结论生成失败）', getValidRefNames());
     },
   };
 }
@@ -179,14 +286,16 @@ async function send(text) {
 
   const shell = appendAssistantShell(null);
   if (!shell) return;
-  _curTrace = { reason: '', steps: [], final: '' };
+  _curTrace = { reason: '', reasonSegments: [], steps: [], final: '', review: null, revised: '' };
   _streaming = true;
   updateSendBtn();
   startThinking(shell);
   _abortCtl = new AbortController();
   const ctx = { question: text, context: buildContext(), signal: _abortCtl.signal, model: _thinkMode };
+  let settled = false;
   try {
     await orchestrate(ctx, buildHooks(shell));
+    settled = true;
   } catch (e) {
     stopThinking(shell);
     const aborted = e && e.name === 'AbortError';
@@ -194,6 +303,11 @@ async function send(text) {
       ? ' <span class="chat-error">（已停止）</span>'
       : `<span class="chat-error">[请求失败] ${escapeHtml(e.message || e)}</span>`;
   } finally {
+    // 统一在 review/revise 结束后持久化（onFinalDone 不再 push）
+    if (_curTrace && (settled || _curTrace.final)) {
+      _history.push({ role: 'assistant', trace: JSON.parse(JSON.stringify(_curTrace)) });
+      saveHistory();
+    }
     _streaming = false;
     _abortCtl = null;
     updateSendBtn();

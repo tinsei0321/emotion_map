@@ -135,3 +135,30 @@
 .aiq-mode button { font-size: var(--geojson-typography-size-2xs); padding: 3px 10px; border: none; background: transparent; color: var(--geojson-color-text-secondary); cursor: pointer; transition: background var(--geojson-transition), color var(--geojson-transition); }
 .aiq-mode button:hover { background: var(--geojson-color-gray-100, #f0f0f0); }
 .aiq-mode button.is-active { background: var(--geojson-color-brand-primary, #4285F4); color: #fff; }
+
+/* ── 审查状态区（六条 checklist ✓/△/✕ + 整体结论）── */
+.aiq-review { margin: 0 0 6px; padding: 6px 10px; border-left: 2px solid var(--geojson-color-gray-200, #e3e5e8); background: var(--geojson-color-gray-100, #f7f7f7); border-radius: 0 6px 6px 0; }
+.aiq-review-head { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 4px; }
+.aiq-review-verdict { font-size: var(--geojson-typography-size-xs); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 4px; }
+.aiq-review-verdict.pass { color: #2e8b57; }
+.aiq-review-verdict.fail { color: var(--geojson-color-danger, #d8552f); }
+.aiq-review-verdict.warn { color: #d9a400; }
+.aiq-review-items { display: flex; flex-wrap: wrap; gap: 4px; }
+.aiq-review-item { display: inline-flex; align-items: center; gap: 2px; padding: 1px 7px; font-size: var(--geojson-typography-size-2xs); border-radius: 999px; border: 1px solid; cursor: default; }
+.aiq-review-item.pass { color: #2e8b57; border-color: #2e8b57; background: rgba(46, 139, 87, 0.08); }
+.aiq-review-item.warn { color: #d9a400; border-color: #d9a400; background: rgba(217, 164, 0, 0.08); }
+.aiq-review-item.fail { color: var(--geojson-color-danger, #d8552f); border-color: var(--geojson-color-danger, #d8552f); background: rgba(216, 85, 47, 0.08); }
+
+/* ── Pro reasoning 按轮分段（每轮一个折叠块，替代跨轮全堆 body）── */
+.aiq-reason-segment { margin-top: 5px; padding-top: 5px; border-top: 1px dashed rgba(0, 0, 0, 0.08); }
+.aiq-reason-segment:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+.aiq-reason-seg-head { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 2px; }
+.aiq-reason-seg-body { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.aiq-reason.is-flash .aiq-reason-body { display: none; }
+
+/* ── 无效引用 chip（臆造区域名，灰显不可点）── */
+.cite-chip-invalid { color: var(--geojson-color-text-tertiary); background: rgba(0, 0, 0, 0.04); border-color: var(--geojson-color-border-default, #e3e5e8); cursor: not-allowed; text-decoration: line-through; }
+.cite-chip-invalid:hover { background: rgba(0, 0, 0, 0.04); }
+
+/* ── 重写中提示 ── */
+.aiq-revising-hint { color: var(--geojson-color-text-tertiary); font-size: var(--geojson-typography-size-xs); font-style: italic; }

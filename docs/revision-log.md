@@ -736,6 +736,29 @@ flowchart TD
 
 **承重**：agent loop ReAct（模型自主调工具循环）+ 每轮 reasoning 实时流（动态思考）+ MANIFESTO 7场景/回答SOP/工具指导 + tool_history 回喂 + localStorage 历史。memory `ai-qa-harness-subsystem` 更新为 agent loop。
 
+### 5.35 AI 问答 · 审查层接通 + agent loop 稳健性 + 思考体验对齐（07月07日 23:25）
+
+**用户意图（专业化）**：5.34 Agent Loop 重构时审查层"暂移"，本轮把 review.py 六条 checklist 接回 ReAct 管线——草稿出稿后 Flash 审查员按六条打分（✓/△/✕），不达标带 hints 自动 revise 重写 1 轮，前端显示审查状态区。同时修伴生质量问题：parseAgentStep 解析脆弱（fence/尾逗号/前后解释即降级裸显 raw）、Flash 无 reasoning 却显"Pro·实时"、Pro reasoning 跨轮全堆、tool_history 全文膨胀、[ref:区域名] 无存在性校验可臆造。
+
+**审查层接通（后端）**：
+- `ai_qa/review.py` 新增 `review_answer()`（Flash + json_mode 拿结构化 {pass,scores,revise_hints}，失败降级 {pass:True,degraded:True} 不阻塞交付）+ `_parse_review_json` 容错（fence/尾逗号/缺 key 补全 6 条/verdict 归一/fail 强制 pass=False）+ `REVIEWER_MODEL` 旧 ID 'deepseek-chat' 修正为 'flash' 别名。
+- `ai_qa/prompts.py` 新增 `REVISE_TEMPLATE` + `build_revise_prompt`（基于 draft+hints 重写，保正确部分不推翻）。
+- `ai_qa/schemas.py` phase 加 'review'|'revise' + draft/review_hints 字段。
+- `ai_qa/router.py` chat_route 加 review 分支（非流式单帧 SSE {review:{...}}，Starlette threadpool 跑同步 gen）+ revise 分支（流式 markdown）。
+
+**审查接通 + 稳健性 + 体验（前端）**：
+- `api.js` streamChat 加 onReview/draft/reviewHints 透传。
+- `stages.js` 新增 `reviewStep`/`reviseStep`；`parseAgentStep` 强化（strip fence/去尾逗号/正则二次提取 action）；`agentStep`/`finalStep` onReason 透传 round。
+- `harness.js` orchestrate 接 finalStep→reviewStep→!pass→reviseStep；降级回退（解析失败不再裸显 raw，break loop 仍走 finalStep）；tool_history 压缩（params≤80 + obs≤200）；onRoundStart。
+- `panel.js` 审查状态区（六条 ✓/△/✕ + "审查通过/未过·重写中/已重写"）；Flash 模式 reason 区改"Flash·直接作答（无思考链）"；Pro reasoning 按轮分段折叠（.aiq-reason-segment）；`renderAnswer` 加 validNames 校验 [ref:]，臆造名标 .cite-chip-invalid 灰显不可点；trace 加 reasonSegments/review/revised 持久化，history 在 send 末尾统一 push。
+- `ai_qa.css` 新增 .aiq-review 系列（pass/warn/fail 三态色）+ .aiq-reason-segment + .cite-chip-invalid + .aiq-revising-hint。
+
+**承重**：审查失败降级不阻塞交付 + revise 最多 1 轮不递归 + panel.js 不耦合 map/state（ref 校验只读 getLayers）+ REVIEW_CHECKLIST key 稳定。memory `ai-qa-harness-subsystem` 更新为"审查层接回"。
+
+**文件**：改 `ai_qa/{review,prompts,schemas,router}.py` + `frontend/js/ai_qa/{api,stages,harness,panel}.js` + `frontend/css/ai_qa.css`（9 文件）。
+
+**验证**：后端 import ✓（reviewer=flash, checklist=6, schema phase/draft 正确）；`_parse_review_json` 六态 ✓；node ESM 4 文件语法 ✓；pytest 118 passed（1 既有失败 test_emotion_analysis.supports_category 与本次无关）。**完整 agent loop + 审查 + revise E2E** 待用户肉眼验（需 API Key + 聚合层数据）。
+
 ### 5.32 Table 大重构：geojson.io 风格通用属性表 + 解耦 Overview + 下拉数据选择器（07月07日 18:38）
 
 **用户意图**：Table 从"写死 5 列 + 问题清单"重做为 geojson.io 风格**通用属性表查看器**——任意 L 层（点/网格/范围）都出表；只显示表格（彻底解耦 Overview，不混 timeline/饼图/矩阵/关键词）；自带数据下拉选择器（不复用 Overview 的 tab 工具条）；选层联动地图（2D/3D）。

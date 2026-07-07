@@ -19,10 +19,30 @@ router = APIRouter()
 
 @router.post("/chat")
 async def chat_route(req: ChatRequest):
-    """AI 问答 agent loop（agent_step/answer 都走 SSE 流式）。"""
+    """AI 问答 agent loop（agent_step/answer/revise 走 SSE 流式；review 非流式单帧）。"""
     from ai_qa.llm import LLMClient, LLMError
 
-    if req.phase == 'answer':
+    # review 阶段：非流式调 Flash 审查员，结果作单帧 SSE 返回（Starlette threadpool 跑同步 gen）
+    if req.phase == 'review':
+        from ai_qa.review import review_answer
+
+        def gen_review():
+            try:
+                result = review_answer(
+                    req.draft or '', req.context or '',
+                    req.tool_history or '', req.context_tokens)
+            except Exception as e:
+                result = {'pass': True, 'degraded': True, 'degraded_reason': f'审查异常: {e}'}
+            yield f'data: {json.dumps({"review": result}, ensure_ascii=False)}\n\n'
+            yield 'data: [DONE]\n\n'
+
+        return StreamingResponse(gen_review(), media_type='text/event-stream')
+
+    if req.phase == 'revise':
+        sys_content = build_revise_prompt(
+            req.draft or '', req.review_hints or '',
+            req.context or '', req.tool_history or '', req.context_tokens)
+    elif req.phase == 'answer':
         sys_content = build_final_prompt(req.context or '', req.tool_history or '', req.context_tokens)
     else:   # agent_step
         sys_content = build_agent_prompt(

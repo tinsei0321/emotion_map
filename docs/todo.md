@@ -7,6 +7,13 @@
 
 ## 📅 2026-07-08
 
+### ✅ AI 问答 · 审查层接通 + agent loop 稳健性 + 思考体验对齐（revision-log 5.35，07月07日 23:25）
+
+- **审查层接通（后端）**：`review.py` 新增 `review_answer()`（Flash + json_mode，六条 checklist 打分 ✓/△/✕，失败降级 {pass:True,degraded:True} 不阻塞交付）+ `_parse_review_json` 容错（fence/尾逗号/缺 key 补全 6 条/verdict 归一/fail 强制 pass=False）+ `REVIEWER_MODEL` 旧 ID 修正为 'flash'；`prompts.py` REVISE_TEMPLATE + build_revise_prompt；`schemas.py` phase 加 review/revise + draft/review_hints；`router.py` review（非流式单帧 SSE）/revise（流式）分支。
+- **前端**：`api.js` onReview/draft/reviewHints 透传；`stages.js` reviewStep/reviseStep + parseAgentStep 强化（strip fence/去尾逗号/正则二次提取 action）+ onReason 透传 round；`harness.js` 接 finalStep→reviewStep→!pass→reviseStep + 降级回退（解析失败不再裸显 raw，break loop 走 finalStep）+ tool_history 压缩（params≤80/obs≤200）+ onRoundStart；`panel.js` 审查状态区 + Flash reason 对齐（"Flash·直接作答"）+ Pro 按轮分段折叠 + [ref:] 存在性校验（臆造名标 .cite-chip-invalid 灰显）+ trace 持久化（reasonSegments/review/revised）；`ai_qa.css` .aiq-review 系列 + .aiq-reason-segment + .cite-chip-invalid。
+- **承重**：审查失败降级不阻塞 + revise 最多 1 轮不递归 + panel.js 不耦合 map/state（ref 校验只读 getLayers）+ REVIEW_CHECKLIST key 稳定。
+- **待用户验**：完整 agent loop + 审查六条 + revise 重写 E2E（需 API Key + 聚合层数据）；Flash 模式 reason 区；降级回退；引用校验；历史持久化。
+
 ### ✅ AI 问答 Agent Loop 重构（Claude Code 式 ReAct）+ 还原底部面板 + 历史持久化（revision-log 5.34）
 
 - **5.33 四层 Harness 实测三问题**：①看不到历史（开关丢失）②思考是"结果"非"动态"③回答不可用。根因=线性管线。

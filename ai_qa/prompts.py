@@ -94,3 +94,41 @@ def build_final_prompt(context: str = '', tool_history: str = '', context_tokens
     hist = tool_history or '（无探索历史）'
     prompt = MANIFESTO + FINAL_TEMPLATE.format(tool_history=hist, context=ctx)
     return _inject_tokens(prompt, context_tokens)
+
+
+# ── revise 阶段：审查未过，基于 draft + hints 重写 ───────────────────────────
+REVISE_TEMPLATE = """
+
+═══════════ 本次任务 · 修订重写 ═══════════
+你之前的草稿未通过审查员审查（审查意见见下）。请基于审查意见修订重写，逐条修正不达标项，输出修订后的完整结论。
+
+严格遵守 MANIFESTO 第十节回答公约：数据驱动（引用数值/区域 + [ref:区域名]）、结构清晰（问题定性 → 数据证据 → 结论建议）、4×5 表达、专业用语、结论有指向（城建问题 + 可落地建议）、精炼。
+
+【审查意见】（六条中不达标/警告项 + 修正方向，须逐条对照修正）：
+{review_hints}
+
+【原草稿】（在此基础上改，不要推翻重写、保留正确部分）：
+{draft}
+
+【探索历史】（你历轮的 thought/action/工具观察）：
+{tool_history}
+
+当前数据：
+{context}
+
+输出修订后的完整结论（markdown + [ref:区域名]），不要解释"我改了什么"、不要前后缀解释。
+"""
+
+
+def build_revise_prompt(draft: str = '', review_hints: str = '', context: str = '',
+                        tool_history: str = '', context_tokens: list = None) -> str:
+    """revise 阶段：基于 draft + review_hints 重写（流式 markdown）。"""
+    ctx = context or '（未提供数据上下文）'
+    hist = tool_history or '（无探索历史）'
+    prompt = MANIFESTO + REVISE_TEMPLATE.format(
+        review_hints=review_hints or '（无具体意见，请按六条公约全面检查并改写）',
+        draft=draft or '（空）',
+        tool_history=hist,
+        context=ctx,
+    )
+    return _inject_tokens(prompt, context_tokens)

@@ -1,4 +1,4 @@
-"""审查层 · REVIEW_CHECKLIST 六条 + 审查员模型配置。
+"""审查层 · REVIEW_CHECKLIST 六条 + review_answer() 审查执行。
 
 Draft Answer 出稿后，审查员（默认 Flash，省 token、快）按六条 checklist 审查；
 不达标（pass=False）带 revise_hints 让出稿模型重写（最多 1 轮，router 控制）。
@@ -6,6 +6,11 @@ Draft Answer 出稿后，审查员（默认 Flash，省 token、快）按六条 
 六条来自用户对"最终回答质量"的硬要求：
 排版易读 / 结构清晰 / 内容精炼 / 语句专业（规划行业用语）/ 数据驱动 / 结论有指向性。
 """
+import os
+import json
+from typing import Optional, List
+
+from ai_qa.llm import LLMClient, LLMError
 
 # 六条审查标准（顺序即审查顺序；key 稳定勿改，前端审查状态区按 key 渲染 ✓/△/✕）。
 REVIEW_CHECKLIST = [
@@ -42,5 +47,151 @@ REVIEW_CHECKLIST = [
 ]
 
 # 审查员模型：默认 Flash（checklist 式审查够用、省 token、快）；env REVIEWER_MODEL 覆盖（如切 Pro 审）。
-import os
-REVIEWER_MODEL = os.environ.get('REVIEWER_MODEL', 'deepseek-chat')
+# 别名经 llm._resolve_model 映射到 V4 真实 ID（'flash' → deepseek-v4-flash）。
+REVIEWER_MODEL = os.environ.get('REVIEWER_MODEL', 'flash')
+
+
+REVIEW_TEMPLATE = """
+═══════════ 审查员任务 ═══════════
+你是「宜昌市情绪地图」控制台回答审查员。按下列六条 checklist 审查助手草稿答案，输出严格 JSON。
+
+【六条审查标准】（逐条评 verdict：pass=达标 / warn=小瑕疵 / fail=不达标）
+{checklist}
+
+【当前数据上下文】（grounding）
+{context}
+
+【探索历史】（助手历轮 thought/action/工具观察）
+{tool_history}
+
+【待审查草稿】
+{draft}
+
+【输出要求】
+输出**严格 JSON 对象**（仅 JSON，禁 markdown 代码块 / 前后解释），结构如下：
+{{
+  "pass": true | false,
+  "scores": [
+    {{"key": "layout", "name": "排版易读", "verdict": "pass" | "warn" | "fail", "comment": "一句话说明问题或留空"}},
+    {{"key": "structure", "name": "结构清晰", "verdict": "...", "comment": "..."}},
+    {{"key": "concise", "name": "内容精炼", "verdict": "...", "comment": "..."}},
+    {{"key": "professional", "name": "语句专业", "verdict": "...", "comment": "..."}},
+    {{"key": "data_driven", "name": "数据驱动", "verdict": "...", "comment": "..."}},
+    {{"key": "actionable", "name": "结论有指向性", "verdict": "...", "comment": "..."}}
+  ],
+  "revise_hints": "pass=false 时必填：列出 fail/warn 项 + 具体可执行的修正方向（指出哪句哪段怎么改）；pass=true 可空字符串"
+}}
+
+【pass 判定】存在任一 fail 即 pass=false；仅有 warn 可 pass=true（小瑕疵不强制重写）。
+【revise_hints 要求】pass=false 时必须具体可执行（如"第2段缺数值支撑，补极性指数与区域名"），而非泛泛"需改进"。
+"""
+
+
+def _build_review_prompt(draft: str, context: str, tool_history: str,
+                         context_tokens: Optional[List[dict]] = None) -> str:
+    """构造审查员 system prompt。"""
+    checklist_str = '\n'.join(
+        f"- {c['key']}（{c['name']}）：{c['desc']}" for c in REVIEW_CHECKLIST
+    )
+    prompt = REVIEW_TEMPLATE.format(
+        checklist=checklist_str,
+        draft=draft or '（空）',
+        context=context or '（未提供数据上下文）',
+        tool_history=tool_history or '（无探索历史）',
+    )
+    if context_tokens:
+        refs = '、'.join(
+            f"{t.get('type', '对象')}:{t.get('label') or t.get('ref', {}).get('name') or '?'}"
+            for t in context_tokens
+        )
+        prompt += '\n用户本次@关联的对象（审查时关注是否围绕它们展开）：' + refs
+    return prompt
+
+
+def _parse_review_json(raw: str) -> dict:
+    """容错解析审查员 JSON 输出；失败降级 {pass:True, degraded:True}。"""
+    if not raw or not raw.strip():
+        return {'pass': True, 'degraded': True, 'degraded_reason': '审查员空输出'}
+    s = raw.find('{')
+    e = raw.rfind('}')
+    if s < 0 or e < 0 or e <= s:
+        return {'pass': True, 'degraded': True, 'degraded_reason': '审查员输出无 JSON'}
+    candidate = raw[s:e + 1]
+    obj = None
+    try:
+        obj = json.loads(candidate)
+    except json.JSONDecodeError:
+        try:
+            cleaned = candidate.replace(',}', '}').replace(',]', ']')
+            obj = json.loads(cleaned)
+        except Exception:
+            return {'pass': True, 'degraded': True, 'degraded_reason': '审查员 JSON 解析失败'}
+    if not isinstance(obj, dict):
+        return {'pass': True, 'degraded': True, 'degraded_reason': '审查员 JSON 非对象'}
+
+    # 规范化 scores：补全缺失 key、verdict 归一
+    raw_scores = obj.get('scores') or []
+    by_key = {}
+    if isinstance(raw_scores, list):
+        for item in raw_scores:
+            if not isinstance(item, dict):
+                continue
+            key = str(item.get('key') or '').strip()
+            if not key:
+                continue
+            verdict = str(item.get('verdict', '')).lower().strip()
+            if verdict not in ('pass', 'warn', 'fail'):
+                verdict = 'warn'
+            by_key[key] = {
+                'key': key,
+                'name': item.get('name', key),
+                'verdict': verdict,
+                'comment': str(item.get('comment', '') or ''),
+            }
+    for c in REVIEW_CHECKLIST:
+        if c['key'] not in by_key:
+            by_key[c['key']] = {'key': c['key'], 'name': c['name'], 'verdict': 'warn', 'comment': ''}
+    scores = [by_key[c['key']] for c in REVIEW_CHECKLIST]
+
+    pass_flag = bool(obj.get('pass', True))
+    # 后端兜底：有 fail 则强制 pass=false（防模型误判）
+    if any(sc['verdict'] == 'fail' for sc in scores):
+        pass_flag = False
+
+    return {
+        'pass': pass_flag,
+        'scores': scores,
+        'revise_hints': str(obj.get('revise_hints', '') or ''),
+    }
+
+
+def review_answer(draft: str, context: str = '', tool_history: str = '',
+                  context_tokens: Optional[List[dict]] = None) -> dict:
+    """审查 draft，返回 {pass, scores, revise_hints, degraded?}。
+
+    用 Flash + json_mode 拿结构化结果；初始化/调用/解析任一失败均降级
+    {pass:True, degraded:True}（跳过审查，不阻塞交付）。
+    """
+    try:
+        cli = LLMClient(model=REVIEWER_MODEL)
+    except Exception as e:
+        return {'pass': True, 'degraded': True, 'degraded_reason': f'审查员初始化失败: {e}'}
+
+    sys_prompt = _build_review_prompt(draft, context, tool_history, context_tokens)
+    messages = [
+        {'role': 'system', 'content': sys_prompt},
+        {'role': 'user', 'content': '请审查上文草稿并输出 JSON。'},
+    ]
+    try:
+        gen = cli.chat(messages, stream=False, json_mode=True, with_reason=False,
+                       temperature=0.2, max_tokens=1200)
+        raw = next(gen)
+    except LLMError as e:
+        return {'pass': True, 'degraded': True, 'degraded_reason': str(e)}
+    except Exception as e:
+        return {'pass': True, 'degraded': True, 'degraded_reason': f'审查员异常: {e}'}
+
+    result = _parse_review_json(raw)
+    if result.get('degraded'):
+        result['degraded_reason'] = result.get('degraded_reason') or '审查员输出解析失败'
+    return result

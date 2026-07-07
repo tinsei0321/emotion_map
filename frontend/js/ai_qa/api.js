@@ -3,17 +3,19 @@
 const BASE = '/api/v1';
 
 /**
- * SSE 流式问答（agent_step / answer）。
- * @param opts {onReason, model, contextTokens, signal, phase, toolHistory, roundN}
+ * SSE 流式问答（agent_step / answer / revise 流式；review 单帧 JSON）。
+ * @param opts {onReason, onReview, model, contextTokens, signal, phase, toolHistory, roundN, draft, reviewHints}
  */
 export async function streamChat(messages, context, onToken, onError, opts = {}) {
-  const { onReason, model, contextTokens, signal } = opts;
+  const { onReason, onReview, model, contextTokens, signal } = opts;
   const body = { messages, context };
   if (model) body.model = model;
   if (contextTokens && contextTokens.length) body.context_tokens = contextTokens;
   if (opts.phase) body.phase = opts.phase;
   if (opts.toolHistory) body.tool_history = opts.toolHistory;
   if (opts.roundN) body.round_n = opts.roundN;
+  if (opts.draft) body.draft = opts.draft;
+  if (opts.reviewHints) body.review_hints = opts.reviewHints;
   const r = await fetch(`${BASE}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -43,6 +45,7 @@ export async function streamChat(messages, context, onToken, onError, opts = {})
       try {
         const obj = JSON.parse(data);
         if (obj.error) { if (onError) onError(obj.error); return; }
+        if (obj.review !== undefined && onReview) { onReview(obj.review); return; }
         if (obj.reason && onReason) onReason(obj.reason);
         if (obj.token) onToken(obj.token);
       } catch (_) { /* skip malformed */ }
