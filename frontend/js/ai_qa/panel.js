@@ -1,17 +1,19 @@
-// ═══ panel.js — AI 问答 UI（主窗口底部滑出 · agent loop · 历史持久化）═══
-// 还原 B1 底部滑出形态（删独立窗 + 跨窗口协议），panel 直调主窗口（map/state/tools）。
-// agent loop 思考流：reasoning 跨轮累积（实时）+ 每轮 thought/action/observation 逐行追加。
-// 问答历史 localStorage 持久化，打开 panel 恢复。
+// ═══ panel.js — AI 问答 UI（底部滑出 · agent loop · 历史持久化 · 思考深度开关 · 动态状态）═══
 import { orchestrate } from './harness.js';
 import { buildContext, TOOLS } from './tools.js';
 
 const HISTORY_KEY = 'ai_qa_history_v1';
-const MAX_ROUNDS_HINT = 8;
+const MODE_KEY = 'ai_qa_think_mode';
+
+// 动态思考状态文案（轮换，随机感；参考 Claude/ChatGPT "正在思考"动态提示）。
+const THINK_PHRASES = ['正在思考', '正在分析', '正在计算', '正在构思', '正在比对数据', '正在归纳', '正在权衡证据', '正在检索线索', '正在梳理逻辑'];
 
 let _streaming = false;
 let _abortCtl = null;
 let _history = loadHistory();
 let _curTrace = null;
+let _thinkMode = localStorage.getItem(MODE_KEY) || 'pro';   // 'pro' | 'flash'
+let _thinkTimer = null;
 
 function loadHistory() {
   try { const v = localStorage.getItem(HISTORY_KEY); return v ? JSON.parse(v) : []; }
@@ -44,7 +46,27 @@ function renderAnswer(text) {
   return html;
 }
 
-/** assistant 消息骨架（思考链 + 解题步骤 + 结论）。trace 非空 = 历史恢复（直接填）。 */
+/** 动态思考指示器：轮换文案 + 跳动点。 */
+function startThinking(shell) {
+  if (!shell || !shell.thinkingEl) return;
+  shell.thinkingEl.hidden = false;
+  const txt = shell.thinkingEl.querySelector('.aiq-thinking-text');
+  let i = 0;
+  if (txt) txt.textContent = THINK_PHRASES[0] + '…';
+  _thinkTimer = setInterval(() => {
+    if (!txt) return;
+    // 随机感：70% 顺序轮换，30% 随机跳（活泼不死板）。
+    const idx = Math.random() < 0.3 ? Math.floor(Math.random() * THINK_PHRASES.length) : (i + 1) % THINK_PHRASES.length;
+    i = idx;
+    txt.textContent = THINK_PHRASES[idx] + '…';
+  }, 1300);
+}
+function stopThinking(shell) {
+  if (_thinkTimer) { clearInterval(_thinkTimer); _thinkTimer = null; }
+  if (shell && shell.thinkingEl) shell.thinkingEl.hidden = true;
+}
+
+/** assistant 消息骨架（思考链 + 动态状态 + 解题步骤 + 结论）。trace 非空 = 历史恢复。 */
 function appendAssistantShell(trace) {
   const list = document.getElementById('chat-messages');
   if (!list) return null;
@@ -52,6 +74,7 @@ function appendAssistantShell(trace) {
   el.className = 'chat-msg chat-msg-assistant';
   el.innerHTML = `<div class="chat-bubble">
     <div class="aiq-reason" ${trace && trace.reason ? '' : 'hidden'}><div class="aiq-reason-head">▸ 思考过程（Pro · 实时）</div><div class="aiq-reason-body"></div></div>
+    <div class="aiq-thinking" hidden><span class="aiq-thinking-text">正在思考…</span><span class="aiq-dots"><i></i><i></i><i></i></span></div>
     <div class="aiq-steps" ${trace && trace.steps && trace.steps.length ? '' : 'hidden'}><div class="aiq-steps-head">解题过程（Agent Loop）</div></div>
     <div class="aiq-step aiq-step-final"><span class="aiq-step-tag">结论</span><div class="aiq-answer"><span class="chat-cursor">▍</span></div></div>
   </div>`;
@@ -59,6 +82,7 @@ function appendAssistantShell(trace) {
   const shell = {
     reasonEl: el.querySelector('.aiq-reason'),
     reasonBody: el.querySelector('.aiq-reason-body'),
+    thinkingEl: el.querySelector('.aiq-thinking'),
     stepsEl: el.querySelector('.aiq-steps'),
     answerEl: el.querySelector('.aiq-answer'),
   };
@@ -66,8 +90,7 @@ function appendAssistantShell(trace) {
     if (trace.reason) shell.reasonBody.textContent = trace.reason;
     if (trace.reason) shell.reasonEl.classList.add('is-done');
     (trace.steps || []).forEach((s) => renderStepRow(shell.stepsEl, s.round, s.thought, s.action, s.observation));
-    if (trace.final) shell.answerEl.innerHTML = renderAnswer(trace.final);
-    else shell.answerEl.innerHTML = '<span class="chat-error">（未生成结论）</span>';
+    shell.answerEl.innerHTML = trace.final ? renderAnswer(trace.final) : '<span class="chat-error">（未生成结论）</span>';
   }
   scrollBottom();
   return shell;
@@ -129,6 +152,7 @@ function buildHooks(shell) {
       scrollBottom();
     },
     onFinalDone: (text) => {
+      stopThinking(shell);
       shell.answerEl.innerHTML = renderAnswer(text);
       if (shell.reasonEl && reasonAcc) shell.reasonEl.classList.add('is-done');
       if (_curTrace) {
@@ -138,6 +162,7 @@ function buildHooks(shell) {
       }
     },
     onDegraded: (text) => {
+      stopThinking(shell);
       shell.answerEl.innerHTML = renderAnswer(text || '（未生成有效回答——模型输出无法解析为动作）');
     },
   };
@@ -157,11 +182,13 @@ async function send(text) {
   _curTrace = { reason: '', steps: [], final: '' };
   _streaming = true;
   updateSendBtn();
+  startThinking(shell);
   _abortCtl = new AbortController();
-  const ctx = { question: text, context: buildContext(), signal: _abortCtl.signal };
+  const ctx = { question: text, context: buildContext(), signal: _abortCtl.signal, model: _thinkMode };
   try {
     await orchestrate(ctx, buildHooks(shell));
   } catch (e) {
+    stopThinking(shell);
     const aborted = e && e.name === 'AbortError';
     if (shell.answerEl) shell.answerEl.innerHTML += aborted
       ? ' <span class="chat-error">（已停止）</span>'
@@ -178,6 +205,24 @@ function updateSendBtn() {
   if (!btn) return;
   if (_streaming) { btn.textContent = '停止'; btn.classList.add('is-stop'); }
   else { btn.textContent = '发送'; btn.classList.remove('is-stop'); }
+}
+
+function injectModeSwitch() {
+  const head = document.querySelector('#chat-panel .chat-head');
+  if (!head || document.getElementById('aiq-mode')) return;
+  const seg = document.createElement('div');
+  seg.id = 'aiq-mode';
+  seg.className = 'aiq-mode';
+  seg.innerHTML = `<button type="button" data-mode="pro" class="${_thinkMode === 'pro' ? 'is-active' : ''}" title="V4 Pro · 旗舰推理（深度思考，慢）">Pro 深度</button>`
+    + `<button type="button" data-mode="flash" class="${_thinkMode === 'flash' ? 'is-active' : ''}" title="V4 Flash · 快速经济（无深度思考）">Flash 快</button>`;
+  seg.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-mode]');
+    if (!b) return;
+    _thinkMode = b.dataset.mode;
+    localStorage.setItem(MODE_KEY, _thinkMode);
+    seg.querySelectorAll('button').forEach((x) => x.classList.toggle('is-active', x.dataset.mode === _thinkMode));
+  });
+  head.insertBefore(seg, head.querySelector('.chat-head-spacer'));
 }
 
 function restoreHistory() {
@@ -203,7 +248,7 @@ function onMsgClick(e) {
   if (chip) { TOOLS.focus_zones({ names: [chip.dataset.ref] }); return; }
 }
 
-/** 主窗口入口：绑事件 + 恢复历史。问答按钮 #chat-trigger 切换 panel 显隐。 */
+/** 主窗口入口。 */
 export function initChatPanel() {
   const trigger = document.getElementById('chat-trigger');
   trigger?.addEventListener('click', () => {
@@ -211,7 +256,7 @@ export function initChatPanel() {
     if (!panel) return;
     const open = panel.classList.contains('is-collapsed');
     panel.classList.toggle('is-collapsed', !open);
-    if (open) { restoreHistory(); setTimeout(() => document.getElementById('chat-input')?.focus(), 50); }
+    if (open) { injectModeSwitch(); restoreHistory(); setTimeout(() => document.getElementById('chat-input')?.focus(), 50); }
   });
   document.getElementById('chat-close')?.addEventListener('click', () => {
     document.getElementById('chat-panel')?.classList.add('is-collapsed');
@@ -227,5 +272,6 @@ export function initChatPanel() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input.value); }
   });
   document.getElementById('chat-messages')?.addEventListener('click', onMsgClick);
+  injectModeSwitch();
   restoreHistory();
 }

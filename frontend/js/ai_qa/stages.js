@@ -1,8 +1,6 @@
 // ═══ stages.js — Agent Loop 阶段（agentStep / finalStep）═══
-// 替代上一轮的 think/execute/answer/review 线性四阶段。现两阶段：
-// - agentStep ：ReAct 每轮，流式 reasoning + content(JSON {thought,action})。
-// - finalStep ：agent 决定 answer 后，基于 tool_history 出最终结论（流式 markdown）。
-// 形态无关（不依赖 DOM，panel.js 通过 hooks 渲染）。
+// 两阶段：agentStep（ReAct 每轮 reasoning + {thought,action}）/ finalStep（最终结论 markdown）。
+// ctx.model = 'pro' | 'flash'（思考深度开关，后端别名解析到 V4 真实 ID）。
 import { streamChat } from './api.js';
 
 /** 容错解析 agent_step 的 {thought, action} JSON；失败返回 null（走降级）。 */
@@ -20,10 +18,7 @@ export function parseAgentStep(raw) {
   }
 }
 
-/**
- * Agent Loop 一轮：流式 reasoning（思考链）+ content({thought,action} JSON)。
- * @returns {Promise<{thought, action}|null>} null=解析失败（降级）。
- */
+/** Agent Loop 一轮：流式 reasoning + content({thought,action} JSON)。null=解析失败降级。 */
 export async function agentStep(ctx, hooks, round, toolHistory) {
   const messages = [{ role: 'user', content: ctx.question }];
   const acc = { token: '' };
@@ -32,6 +27,7 @@ export async function agentStep(ctx, hooks, round, toolHistory) {
     (err) => { throw new Error(err); },
     {
       phase: 'agent_step', roundN: round, toolHistory, signal: ctx.signal,
+      model: ctx.model,
       onReason: (t) => { hooks.onReason && hooks.onReason(t); },
     });
   const step = parseAgentStep(acc.token);
@@ -51,6 +47,7 @@ export async function finalStep(ctx, hooks, toolHistory) {
     (err) => { throw new Error(err); },
     {
       phase: 'answer', toolHistory, signal: ctx.signal,
+      model: ctx.model,
       onReason: (t) => { hooks.onReason && hooks.onReason(t); },
     });
   return final;

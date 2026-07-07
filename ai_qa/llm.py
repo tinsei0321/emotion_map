@@ -1,17 +1,12 @@
-"""LLM 客户端（provider-agnostic）— 默认 DeepSeek，未来换溯佰科规划大模型只改 base_url/model/key。
+"""LLM 客户端（provider-agnostic）— DeepSeek V4 时代（2026-07）。
 
-迁自 core/llm_client.py（AI 问答独立成子系统时归入 ai_qa/）。core.tracker 仍是基础设施依赖。
+V4 模型（旧 deepseek-chat/deepseek-reasoner 2026-07-24 退役，过渡期映射到 V4 后端——
+故旧 ID 不可靠，必须用 V4 新 ID）：
+- deepseek-v4-pro   旗舰推理（1M 上下文，继 reasoner）—— 默认，深度思考
+- deepseek-v4-flash 快速经济（继 chat）—— 审查员/快速调度
 
-设计：
-- 复用 SCRIPT/relevance_filter.py 的 OpenAI 兼容 chat/completions 端点（DeepSeek 原生兼容）。
-- 用 httpx（已在 deps）做 SSE 流式，逐 token yield（前端增量渲染）。
-- 不引 openai SDK（非必要依赖；与 repo 现有 requests/httpx 风格一致）。
-- provider-agnostic：LLMClient(base_url=, model=, api_key=) 一处切换。
-
-使用：
-    cli = LLMClient()                       # 默认 DeepSeek，读 DEEPSEEK_API_KEY
-    for tok in cli.chat(messages, stream=True):
-        ...  # 增量 token
+前端思考深度开关发逻辑名 'pro'/'flash'，本模块 _resolve_model 映射到真实 ID（集中管理，
+前端不耦合真实 ID）。provider 切换（未来溯佰科）：base_url/model/key 三参 + env。
 """
 import os
 import json
@@ -21,15 +16,27 @@ import httpx
 
 from core.tracker import trace_log, register_track_id
 
-# 默认 DeepSeek（与 relevance_filter.py 同源常量）。
-# 模型策略：Flash=审查员/日常(快/省；deepseek-chat)；Pro=思考+出稿(deepseek-reasoner，带 reasoning_content 思考链)。
-# 注：deepseek-chat / deepseek-reasoner 别名映射可能随时间变；用 env DEEPSEEK_MODEL 覆盖最稳。
 DEFAULT_BASE_URL = 'https://api.deepseek.com/v1'
-MODEL_FLASH = 'deepseek-chat'          # 审查员 / 日常：非思考、流式快、便宜
-MODEL_PRO = 'deepseek-reasoner'        # 思考 + 出稿：带 reasoning_content（思考链）
-DEFAULT_MODEL = MODEL_PRO              # Harness 默认 Pro（用户要求：默认 DeepSeek v4 pro，带思考链）
-MODEL_ENV = 'DEEPSEEK_MODEL'           # env 覆盖（优先级最高）
+MODEL_FLASH = 'deepseek-v4-flash'     # 快速经济（继 chat）
+MODEL_PRO = 'deepseek-v4-pro'         # 旗舰推理（继 reasoner，1M 上下文）
+DEFAULT_MODEL = MODEL_PRO             # 默认 Pro（用户要求 v4-pro，深度思考）
+MODEL_ENV = 'DEEPSEEK_MODEL'          # env 覆盖（优先级最高）
 DEFAULT_KEY_ENV = 'DEEPSEEK_API_KEY'
+
+# 别名 → 真实 V4 ID。前端思考深度开关发 'pro'/'flash'；旧 ID 兼容（防残留）。
+_MODEL_ALIASES = {
+    'pro': MODEL_PRO, 'flash': MODEL_FLASH,
+    'reasoner': MODEL_PRO, 'chat': MODEL_FLASH,               # 旧逻辑名
+    'deepseek-reasoner': MODEL_PRO, 'deepseek-chat': MODEL_FLASH,  # 旧 API ID（2026-07-24 退役）
+    'v4-pro': MODEL_PRO, 'v4-flash': MODEL_FLASH,
+}
+
+
+def _resolve_model(model: Optional[str]) -> str:
+    """别名 → 真实 V4 ID；None/空 → 默认 Pro。"""
+    if not model:
+        return DEFAULT_MODEL
+    return _MODEL_ALIASES.get(str(model).strip().lower(), str(model).strip())
 
 
 class LLMError(RuntimeError):
@@ -37,16 +44,12 @@ class LLMError(RuntimeError):
 
 
 class LLMClient:
-    """OpenAI 兼容 chat/completions 客户端（DeepSeek / 溯佰科 / 任意兼容服务）。
-
-    provider 切换：构造时传 base_url + model + api_key，或子类化覆写默认常量。
-    """
+    """OpenAI 兼容 chat/completions 客户端（DeepSeek V4 / 任意兼容服务）。"""
 
     def __init__(self, base_url: Optional[str] = None, model: Optional[str] = None,
                  api_key: Optional[str] = None, timeout: float = 60.0):
         self.base_url = (base_url or DEFAULT_BASE_URL).rstrip('/')
-        # 优先级：显式传参 > env DEEPSEEK_MODEL > 默认 Pro
-        self.model = model or os.environ.get(MODEL_ENV) or DEFAULT_MODEL
+        self.model = _resolve_model(model or os.environ.get(MODEL_ENV))
         self.api_key = api_key or os.environ.get(DEFAULT_KEY_ENV, '')
         self.timeout = timeout
 
@@ -54,23 +57,20 @@ class LLMClient:
         if not self.api_key:
             raise LLMError(
                 f'未配置 LLM API Key。设置环境变量 {DEFAULT_KEY_ENV}（DeepSeek），'
-                f'或在 LLMClient(api_key=...) 传入。未来接入溯佰科规划大模型时'
-                f'改 base_url/model/key 即可。'
+                f'或在 LLMClient(api_key=...) 传入。'
             )
 
     def chat(self, messages: List[dict], stream: bool = True,
-             temperature: float = 0.6, max_tokens: int = 2500,
+             temperature: float = 0.6, max_tokens: int = 4000,
              with_reason: bool = False, json_mode: bool = False) -> Iterator:
         """OpenAI 兼容 chat/completions。
 
         stream=True → 生成器增量 yield：
-            with_reason=False（默认，向后兼容）→ yield content 字符串；
-            with_reason=True → yield (kind, tok) 元组，kind='reason'(思考链)|'content'(正文)。
-            DeepSeek reasoner(Pro) 的 delta.reasoning_content → kind='reason'。
-        stream=False → 生成器只 yield 一次完整结果（同上两态，便于复用同一调用点）。
-        json_mode=True → body 增 response_format:{type:'json_object'}（DeepSeek 原生 JSON mode，
-            think/review 阶段输出稳定 JSON；勿与 reasoning 同用，JSON 模式下 reasoning 通常为空）。
-        出错抛 LLMError（route 层捕获转 4xx/5xx）。
+            with_reason=False → yield content 字符串；
+            with_reason=True  → yield (kind, tok)，kind='reason'(思考链)|'content'(正文)。
+                V4 Pro 的 delta.reasoning_content → kind='reason'。
+        stream=False → 生成器只 yield 一次完整结果（同上两态）。
+        json_mode=True → response_format json_object（agent loop 不用，抑制 reasoning）。
         """
         self._ensure_key()
         url = f'{self.base_url}/chat/completions'
@@ -87,7 +87,7 @@ class LLMClient:
                         if resp.status_code != 200:
                             body_txt = resp.read().decode('utf-8', 'ignore')[:400]
                             if resp.status_code == 401:
-                                raise LLMError(f'API Key 无效 (401)。检查 {DEFAULT_KEY_ENV} 是否正确。')
+                                raise LLMError(f'API Key 无效 (401)。检查 {DEFAULT_KEY_ENV}。')
                             raise LLMError(f'LLM HTTP {resp.status_code}: {body_txt}')
                         for line in resp.iter_lines():
                             if not line or not line.startswith('data:'):
@@ -100,8 +100,8 @@ class LLMClient:
                             except json.JSONDecodeError:
                                 continue
                             delta = (obj.get('choices') or [{}])[0].get('delta', {})
-                            reason = delta.get('reasoning_content')   # Pro 思考链
-                            content = delta.get('content')            # 正文
+                            reason = delta.get('reasoning_content')   # V4 Pro 思考链
+                            content = delta.get('content')
                             if with_reason:
                                 if reason:
                                     yield ('reason', reason)
@@ -133,4 +133,4 @@ class LLMClient:
             raise LLMError(f'LLM 调用异常: {e}') from e
 
 
-register_track_id("MOD_LLM.F_001", "LLM chat/completions（流式 SSE，provider-agnostic）")
+register_track_id("MOD_LLM.F_001", "LLM chat/completions（流式 SSE，provider-agnostic，V4）")
