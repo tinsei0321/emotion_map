@@ -1,10 +1,12 @@
 """LLM 客户端（provider-agnostic）— 默认 DeepSeek，未来换溯佰科规划大模型只改 base_url/model/key。
 
+迁自 core/llm_client.py（AI 问答独立成子系统时归入 ai_qa/）。core.tracker 仍是基础设施依赖。
+
 设计：
 - 复用 SCRIPT/relevance_filter.py 的 OpenAI 兼容 chat/completions 端点（DeepSeek 原生兼容）。
 - 用 httpx（已在 deps）做 SSE 流式，逐 token yield（前端增量渲染）。
 - 不引 openai SDK（非必要依赖；与 repo 现有 requests/httpx 风格一致）。
-- provider-agnostic：LLMClient(base_url=, model=, api_key=) 一处切换，未来溯佰科改这三参 + key env。
+- provider-agnostic：LLMClient(base_url=, model=, api_key=) 一处切换。
 
 使用：
     cli = LLMClient()                       # 默认 DeepSeek，读 DEEPSEEK_API_KEY
@@ -20,13 +22,12 @@ import httpx
 from core.tracker import trace_log, register_track_id
 
 # 默认 DeepSeek（与 relevance_filter.py 同源常量）。
-# 模型策略：Flash=日常问答(快/省；deepseek-chat 别名→V4 Flash non-thinking)；
-#           Pro =深度思考(deepseek-reasoner 别名→thinking；产 reasoning_content 思考链)。
-# 注：deepseek-chat / deepseek-reasoner 别名 2026/07/24 弃用映射变化；用 env DEEPSEEK_MODEL 覆盖最稳。
+# 模型策略：Flash=审查员/日常(快/省；deepseek-chat)；Pro=思考+出稿(deepseek-reasoner，带 reasoning_content 思考链)。
+# 注：deepseek-chat / deepseek-reasoner 别名映射可能随时间变；用 env DEEPSEEK_MODEL 覆盖最稳。
 DEFAULT_BASE_URL = 'https://api.deepseek.com/v1'
-MODEL_FLASH = 'deepseek-chat'          # 日常：非思考、流式快、便宜
-MODEL_PRO = 'deepseek-reasoner'        # 深度思考：带 reasoning_content（思考链）
-DEFAULT_MODEL = MODEL_FLASH
+MODEL_FLASH = 'deepseek-chat'          # 审查员 / 日常：非思考、流式快、便宜
+MODEL_PRO = 'deepseek-reasoner'        # 思考 + 出稿：带 reasoning_content（思考链）
+DEFAULT_MODEL = MODEL_PRO              # Harness 默认 Pro（用户要求：默认 DeepSeek v4 pro，带思考链）
 MODEL_ENV = 'DEEPSEEK_MODEL'           # env 覆盖（优先级最高）
 DEFAULT_KEY_ENV = 'DEEPSEEK_API_KEY'
 
@@ -44,7 +45,7 @@ class LLMClient:
     def __init__(self, base_url: Optional[str] = None, model: Optional[str] = None,
                  api_key: Optional[str] = None, timeout: float = 60.0):
         self.base_url = (base_url or DEFAULT_BASE_URL).rstrip('/')
-        # 优先级：显式传参 > env DEEPSEEK_MODEL > 默认 Flash
+        # 优先级：显式传参 > env DEEPSEEK_MODEL > 默认 Pro
         self.model = model or os.environ.get(MODEL_ENV) or DEFAULT_MODEL
         self.api_key = api_key or os.environ.get(DEFAULT_KEY_ENV, '')
         self.timeout = timeout
@@ -58,7 +59,7 @@ class LLMClient:
             )
 
     def chat(self, messages: List[dict], stream: bool = True,
-             temperature: float = 0.6, max_tokens: int = 1500,
+             temperature: float = 0.6, max_tokens: int = 2500,
              with_reason: bool = False, json_mode: bool = False) -> Iterator:
         """OpenAI 兼容 chat/completions。
 
@@ -68,7 +69,7 @@ class LLMClient:
             DeepSeek reasoner(Pro) 的 delta.reasoning_content → kind='reason'。
         stream=False → 生成器只 yield 一次完整结果（同上两态，便于复用同一调用点）。
         json_mode=True → body 增 response_format:{type:'json_object'}（DeepSeek 原生 JSON mode，
-            plan 阶段输出稳定 JSON；勿与 reasoning 同用，JSON 模式下 reasoning 通常为空）。
+            think/review 阶段输出稳定 JSON；勿与 reasoning 同用，JSON 模式下 reasoning 通常为空）。
         出错抛 LLMError（route 层捕获转 4xx/5xx）。
         """
         self._ensure_key()

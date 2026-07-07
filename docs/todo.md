@@ -24,6 +24,16 @@
 - **5 小修改**：极性深读切 2D/3D 保持极性层（setOverview 同 fc 迁移 _polarityState）/ 初始底图天地图影像无注记 / 行政区 #d8d8d8 / 可见层眼睛加深。
 - **未验**：动画行为 + 极性保持 + 小改视觉 待用户 F5；debug 钩子（window.__tl + [timeline] 日志）暂留待验后清。
 
+### ✅ AI 问答 Harness 四层重做 + 独立子架构 + 独立窗口化（revision-log 5.33，07月07日 23:30）
+
+- **B1 不可用根因**：萌芽 Harness 无灵魂（知识层/思考层缺失 + 执行开环）+ 面板折叠地图。
+- **Harness 四层**：知识（MANIFESTO 领域宪法）/ 思考（think framing,mapping,steps + Pro reasoning 流式）/ 执行（tool 语义化 + 协议 RPC）/ 审查（6 条 checklist + Flash 审 + Revise 1 轮）。
+- **独立子架构**：后端 `ai_qa/`（manifesto/prompts/review/schemas/router/llm）+ 前端 `js/ai_qa/`（protocol/harness/stages/tools/panel/api）+ `chat.html` + `ai_qa_host.js`。散落文件迁入，零外部依赖。
+- **独立窗口化**：BroadcastChannel 协议化（CHANNEL='emotion-map-ai'）+ 真独立窗（window.open chat.html，不挡地图）+ 浮窗降级。panel.js 不调 map/state（形态可插拔）。
+- **验证**：后端 import 链 + /api/v1/chat 挂载（OpenAPI 17 路由）✓；前端回归 webapp-testing（主页 #chat-trigger + chat.html #chat-send、零 console error）✓；think 端到端（Pro reasoning 117字 + JSON framing/mapping/steps，"什么是情绪地图"正确只 conclude 不建层）✓。
+- **待删确认**：core/chat_context.py、core/llm_client.py、frontend chat-panel.js/chat-orchestrator.js/chat-panel.css（已迁入 ai_qa/，红线待用户确认）。
+- **待用户验**：完整端到端（带数据问答：解题面板5格 + 审查6条 + [ref:] 定位 + 独立窗/浮窗切换）。
+
 ---
 
 ### ⬜ 明日（07-08）任务详细

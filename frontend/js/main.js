@@ -15,7 +15,7 @@ import { initHeatmapTool } from './heatmap-tool.js';
 import { initBufferTool } from './buffer-tool.js';
 import { initGridTool } from './grid-tool.js';
 import { initRangePresets } from './range-presets.js';
-import { initChatPanel } from './chat-panel.js';
+import { initAiQaHost } from './ai_qa_host.js';
 import { initParamPanel } from './param-panel.js';
 import { initDrawTool, startDraw, stopDraw } from './draw-tool.js';
 import { initHeatmapLegend } from './heatmap-legend.js';
@@ -249,7 +249,7 @@ function main() {
   initBufferTool();
   initGridTool();
   initRangePresets();
-  initChatPanel();
+  initAiQaHost();
   initParamPanel();
   initSearchBar();
   initTimeline();

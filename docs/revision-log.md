@@ -39,7 +39,7 @@ emotion_map（根）
 │  ├─ Range 范围 🔄  上载模块 ✅（绘制工具迁入 + 两组卡 + 自动 popup）｜绘制模块 ✅（多边形/矩形 移植 geojson.io，绘制卡常驻；点/线/圆 ⬜）｜范围分析 ⬜（缓冲/叠加/聚合）
 │  ├─ Analysis 情绪分析接入 ⬜  L2 管道接前端 / 空间分析 MVP
 │  ├─ Table 数据表格 ⬜  列表 / 筛选 / 导出（联动管线已预留）
-│  └─ AI 问答 🔄  组合式回答 Batch A ✅（[!focus/overview/layer/table] 标记→附件卡驱动地图/Overview/Table + 思考链 Pro + 停止）｜小型 Desktop UI Batch B ⬜（圆紫按钮 #9B30FF / 560px 垂直分区三区 / 拖拽@关联 / 历史抽屉 / Layers AI问答组卡）；provider-agnostic（DeepSeek→溯佰科改后端一处）
+│  └─ AI 问答 🔄  Harness 四层 ✅（知识层 MANIFESTO + 思考层 think{framing,mapping,steps[]} + 执行层 tool 协议化 + 审查层 Review 6条+Revise）｜独立子架构 ✅（后端 ai_qa/ + 前端 js/ai_qa/，从 core/chat_context+llm_client + chat-panel/chat-orchestrator 散落迁入）｜独立窗口化 ✅（chat.html 真独立窗 + 浮窗降级 + BroadcastChannel 协议；panel.js 不调 map/state）｜设计圣经 docs/ai-qa-design.md；provider-agnostic（DeepSeek→溯佰科改 ai_qa/llm.py 一处）
 │
 └─ 临时分支（搁置 / 待决策）
    ├─ KDE 批1 1a 预览图 ⏸  等 terrain/factor kepler 截图补齐
@@ -694,6 +694,30 @@ flowchart TD
 **待续（Batch B）**：UI 重做（圆紫按钮 #9B30FF / 560px 垂直分区三区 / 拖拽@关联 / 历史抽屉 / Layers「AI问答」组卡 / 紫色 token 登记）。plan：`ai-ai-demo-4-layers-overview-table-deep-modular-quilt.md`。
 
 **验证**：py_compile 4 后端文件 ✓。端到端（含 AI 回答）待用户配 DEEPSEEK_API_KEY 后 F5 实测（数据流改动，建议 webapp-testing 或肉眼验流式+附件卡联动）。
+
+### 5.33 AI 问答 · Harness 四层重做 + 独立子架构 + 独立窗口化（07月07日 23:30）
+
+**用户意图（专业化）**：5.31（Batch A）跑通 plan→execute→answer 骨架但问答"完全不可用"——模型没理解情绪地图原理、看不到思考过程、不懂范围/点/聚合域关系；且面板展开折叠地图。需重新设计 AI 问答机制：搭"情绪地图 Harness"（领域化 Claude-Code 式工作机制）+ SOP + Review 审查 + 独立子架构 + 独立窗口。设计圣经 [ai-qa-design.md](ai-qa-design.md)。
+
+**根因诊断**：B1 有萌芽 Harness 骨架但**无灵魂**——①知识层缺失（system prompt 没喂情绪地图数据流闭环/4×5/两种聚合域）；②思考层缺失（thinking 只一句生成步骤的话，非解题推理）；③执行层开环（plan 一次定死 5 tool，模型不懂数据流）。
+
+**Harness 四层架构**：
+- 知识层 `ai_qa/manifesto.py` MANIFESTO 领域宪法（数据流闭环+4×5+逻辑闭环+回答公约，所有阶段 system prompt 前置）。
+- 思考层 `ai_qa/prompts.py` think→`{framing,mapping,steps[]}` JSON（5 步解题面板：问题定性/框架映射/路径规划/执行观察/结论归因）+ Pro 原生 reasoning_content 流式（用户要的"看到思考过程"）。
+- 执行层 `frontend/js/ai_qa/tools.js` tool 语义化（ensure_zone/rank_zones/open_attribution/inspect_zone）+ 协议化 RPC。
+- 审查层 `ai_qa/review.py` 六条 checklist（排版/结构/精炼/专业/数据驱动/有指向）+ Flash 审 + Revise 1 轮。
+
+**独立子架构**：后端 `ai_qa/`（manifesto/prompts/review/schemas/router/llm，从 core/chat_context+llm_client 迁入）+ 前端 `frontend/js/ai_qa/`（protocol/harness/stages/tools/panel/api，从 chat-panel+chat-orchestrator 迁入）。零外部依赖（grep 确认旧文件只被 /chat 引用）。
+
+**独立窗口化**：解决"展开折叠地图"。联动协议化（BroadcastChannel `CHANNEL='emotion-map-ai'`，chat↔主窗口解耦）+ 真独立窗口（window.open chat.html，不挡地图/空间充裕）+ 浮窗降级（弹窗被拦→右下浮窗）。**panel.js 不直接调 map/state**（形态可插拔）。
+
+**关键决策（用户讨论拍板）**：①思考呈现=Pro 原生思考链+结构化外壳分层；②改造=推倒重设计四层；③窗口=真独立窗口+浮窗降级+协议化。
+
+**文件**：新建 `ai_qa/`（7 文件）+ `frontend/js/ai_qa/`（6 文件）+ `frontend/chat.html` + `frontend/js/ai_qa_host.js` + `frontend/css/ai_qa.css` + `docs/ai-qa-design.md`；改 `api/main.py`（挂载）+ `api/routes.py`/`api/schemas.py`（删旧 /chat+ChatRequest）+ `frontend/index.html`（css 路径）+ `frontend/js/main.js`（initAiQaHost）。旧 core/chat_context.py、core/llm_client.py、frontend chat-panel.js/chat-orchestrator.js/chat-panel.css 已迁入（待删确认）。
+
+**验证**：后端 import 链 + /api/v1/chat 挂载（OpenAPI 17 路由）✓；前端回归 webapp-testing（主页 #chat-trigger + chat.html #chat-send 加载、零 console error）✓；think 端到端（Pro reasoning 117字 + JSON framing/mapping/steps；"什么是情绪地图"正确只 conclude 不建层——证明 MANIFESTO 教会模型懂框架，不再 B1 套路化）✓。完整端到端（带数据 think→execute→answer→review）待用户肉眼验。
+
+**承重**：联动协议化（panel.js 不调 map/state）+ 阶段注册表（STAGES）+ think 不用 json_mode（抑制 reasoning）+ buildContext 在主窗口侧。memory `ai-qa-harness-subsystem` 已立。
 
 ### 5.32 Table 大重构：geojson.io 风格通用属性表 + 解耦 Overview + 下拉数据选择器（07月07日 18:38）
 

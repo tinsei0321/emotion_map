@@ -64,6 +64,11 @@ app.add_middleware(
 
 app.include_router(api_router, prefix="/api/v1")
 
+# AI 问答子系统（独立 router，挂同 prefix；/chat 总路径 /api/v1/chat）。
+# 子系统代码在 ai_qa/（manifesto/prompts/review/schemas/router/llm），未来做厚都在该目录内演进。
+from ai_qa.router import router as ai_qa_router
+app.include_router(ai_qa_router, prefix="/api/v1")
+
 
 @app.get("/")
 async def root():

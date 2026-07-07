@@ -16,7 +16,6 @@ from api.schemas import (
     BufferRequest, ExportRequest,
     SpatialAggregateRequest, SpatialGridRequest, SpatialTerrainRequest,
     RangePresetGroup, RangePresetUploadRequest,
-    ChatRequest,
     PlaceHit, PlaceSearchResponse, GeocodeResult, ReverseGeocodeResult,
 )
 from core.config import RAW_DIR, PROCESSED_DIR, PERFORMANCE_DIR, BOUNDARY_SHP
@@ -93,51 +92,9 @@ async def upload_range_preset(req: RangePresetUploadRequest):
     return result
 
 
-# ── AI 自然语言问答（provider-agnostic，默认 DeepSeek；未来换溯佰科改 llm_client 一处）──
-# 前端发 {messages, context}；context 是前端从选中层算的紧凑摘要（Top 区域/极性/治理要素），
-# 后端用 chat_context.build_system_prompt 包成系统消息做 grounding，再 LLMClient.chat 流式回。
-# SSE：每 token 一 data: {token}；[DONE] 收尾；出错 data: {error}。
-@router.post("/chat")
-async def chat_route(req: ChatRequest):
-    """AI 问答（SSE 流式）。返回 text/event-stream。
-    帧：{"token": tok}=正文增量 / {"reason": tok}=思考链(Pro) / {"error": ...} / [DONE]。
-    req.model 留空=默认 Flash；'deepseek-reasoner'=深度思考(Pro，带思考链)。
-
-    三阶段（req.phase）：
-    - 'plan'   → build_plan_prompt + JSON mode，输出 {thinking, steps[]}（前端编排器自动执行）。
-    - 'answer' → build_answer_prompt + execution_result，基于真实执行结果出结论。
-    - 'legacy' → build_system_prompt（Batch A 单轮组合式，向后兼容）。"""
-    from core.llm_client import LLMClient, LLMError
-    from core.chat_context import build_system_prompt, build_plan_prompt, build_answer_prompt
-
-    if req.phase == 'plan':
-        sys_msg = {'role': 'system', 'content': build_plan_prompt(req.context or '', req.context_tokens)}
-        json_mode = True
-    elif req.phase == 'answer':
-        sys_msg = {'role': 'system', 'content': build_answer_prompt(req.context or '', req.execution_result, req.context_tokens)}
-        json_mode = False
-    else:   # legacy
-        sys_msg = {'role': 'system', 'content': build_system_prompt(req.context or '', req.context_tokens)}
-        json_mode = False
-    messages = [sys_msg] + list(req.messages or [])
-
-    try:
-        cli = LLMClient(model=req.model) if req.model else LLMClient()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f'LLM 客户端初始化失败: {e}')
-
-    def gen():
-        try:
-            for kind, tok in cli.chat(messages, stream=True, with_reason=True, json_mode=json_mode):
-                key = 'reason' if kind == 'reason' else 'token'
-                yield f'data: {json.dumps({key: tok}, ensure_ascii=False)}\n\n'
-            yield 'data: [DONE]\n\n'
-        except LLMError as e:
-            yield f'data: {json.dumps({"error": str(e)}, ensure_ascii=False)}\n\n'
-        except Exception as e:
-            yield f'data: {json.dumps({"error": f"问答失败: {e}"}, ensure_ascii=False)}\n\n'
-
-    return StreamingResponse(gen(), media_type='text/event-stream')
+# AI 问答已迁移至独立子系统 ai_qa/（router.py 的 /chat，挂载于 api/main.py）。
+# 迁移原因：AI 问答未来会做厚，独立成小体系（manifesto/prompts/review/schemas/router/llm），
+# 边界干净、未来好扩。详见 docs/ai-qa-design.md。
 
 
 @router.post("/analyze", response_model=AnalysisResponse)
