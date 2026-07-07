@@ -265,11 +265,36 @@
           <div class="ov-subpane" data-ovpane="polarity" id="ov-polarity-pane"></div>
         </section>
 
-        <!-- Table：geojson.io 风格表格 -->
-        <section class="tab-pane" data-pane="table">
+        <!-- Table：geojson.io 风格通用属性表（操作工具条 + 表格） -->
+        <section class="tab-pane" data-pane="table" id="table-pane">
+          <!-- 操作工具条 -->
+          <div class="tbl-toolbar">
+            <!-- 数据选择器（自定义下拉：富文本标题 = 彩色 L 徽章 + 类型 + 名称） -->
+            <div class="tbl-dataset" id="tbl-dataset">
+              <button class="tbl-ds-trigger" id="tbl-ds-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+                <span class="tbl-ds-cur" id="tbl-ds-cur">—</span>
+                <svg class="tbl-ds-arrow" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="tbl-ds-panel" id="tbl-ds-panel" hidden role="listbox"></div>
+            </div>
+            <span class="tbl-count" id="tbl-count">— 条记录</span>
+            <div class="tbl-search">
+              <svg class="tbl-search-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input id="tbl-search-input" class="tbl-search-input" placeholder="搜索表格内容" />
+            </div>
+            <span class="tbl-spacer"></span>
+            <button class="tbl-tool-btn" id="tbl-btn-stats" title="统计（待开发）"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="18" y1="20" x2="18" y2="10"/></svg></button>
+            <button class="tbl-tool-btn" id="tbl-btn-settings" title="设置（待开发）"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+            <button class="tbl-tool-btn" id="tbl-btn-search" title="搜索（待开发）"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+          </div>
+
+          <!-- 表格区域 -->
           <div class="table-wrap">
             <table class="data-table" id="data-table"><!-- filled by JS --></table>
           </div>
+
+          <!-- 三点菜单浮层（单例，事件委托） -->
+          <div class="th-menu" id="th-menu" hidden></div>
         </section>
       </div>
     </aside>

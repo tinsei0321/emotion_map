@@ -40,7 +40,9 @@
 .tab-pane.is-active { display: block; }
 
 /* ── Overview: per-layer 3-tier (摘要 / 属性 / 展示) ── */
-#overview-pane {
+/* 仅 .is-active 时 flex；否则让 .tab-pane{display:none} 生效——
+   原写成 #overview-pane{display:flex}（特异性 1,0,0 > .tab-pane 0,1,0）致切 Table 时 overview 不隐藏，两 pane 同显。*/
+#overview-pane.is-active {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -507,6 +509,7 @@
 }
 .data-table {
   width: 100%;
+  table-layout: fixed;          /* colgroup 列宽严格生效（支持拖拽调整）*/
   border-collapse: collapse;
   font-size: var(--geojson-typography-size-xs);
 }
@@ -526,14 +529,18 @@
 .data-table tbody td {
   background: var(--geojson-color-table-cell-bg);
   color: var(--geojson-color-table-cell-text);
-  padding: 6px var(--geojson-spacing-2);
+  height: 33px;                  /* 固定行高（虚拟化一致性；JS _rowPitch 首渲后按 offsetHeight 校准）*/
+  padding: 0 var(--geojson-spacing-2);
   border-bottom: 1px solid var(--geojson-color-table-border);
-  vertical-align: top;
-  max-width: 260px;             /* 信息密度：长文本省略，短列不受影响 */
+  vertical-align: middle;
+  line-height: 33px;
+  max-width: 260px;              /* 信息密度：长文本省略，短列不受影响 */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* 虚拟化 spacer 行：td 归零，仅靠内层 div 撑高（精确匹配 _rowPitch × 行数）*/
+.data-table tbody tr.tbl-spacer td { height: auto; padding: 0; border: none; line-height: 0; overflow: hidden; }
 .data-table tbody tr:hover td { background: var(--geojson-color-table-row-hover); }
 .data-table .td-dot {
   display: inline-block;
@@ -607,6 +614,147 @@
 .data-table thead th[data-sort]:hover { color: var(--geojson-color-brand-primary); }
 .data-table thead th.is-sorted { color: var(--geojson-color-brand-primary); }
 .data-table tbody tr[data-cell-idx] { cursor: pointer; }
+
+/* ── Table pane = flex 列填满 panel-body：toolbar 固定，table-wrap 弹性自滚动（虚拟化滚动容器）── */
+.tab-pane[data-pane="table"].is-active {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.tab-pane[data-pane="table"] .table-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  overflow-x: scroll;        /* 水平滚动条常显底端（列多时随时可拖）*/
+  margin: 0;                 /* 覆盖原 -16px 出血：flex 布局下走 panel-body padding */
+}
+.tbl-toolbar { flex: 0 0 auto; }
+
+/* ── Table 操作工具条（geojson.io 风格）── */
+.tbl-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--geojson-spacing-2, 8px);
+  height: 36px;
+  padding: 0 var(--geojson-spacing-2, 8px);
+  border-bottom: 1px solid var(--geojson-color-border-default, #e6e6e6);
+  background: var(--geojson-color-bg-primary, #ffffff);
+}
+.tbl-count {
+  font-size: var(--geojson-typography-size-xs, 13px);
+  color: var(--geojson-color-text-secondary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.tbl-dataset {                   /* 数据图层选择器（解耦 Overview 后 Table 自带）*/
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 190px;
+  height: 26px;
+  padding: 0 6px;
+  font-size: var(--geojson-typography-size-xs, 13px);
+  color: var(--geojson-color-text-primary);
+  background: var(--geojson-color-gray-100, #f5f5f5);
+  border: 1px solid transparent;
+  border-radius: var(--geojson-radius-md, 6px);
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.tbl-dataset:hover { background: #fff; border-color: var(--geojson-color-border-default, #e6e6e6); }
+.tbl-dataset:focus { outline: none; background: #fff; border-color: var(--geojson-color-brand-primary, #007afc); }
+.tbl-search {
+  display: flex; align-items: center;
+  flex: 1 1 auto; min-width: 80px;
+  max-width: 260px;
+  height: 26px;
+  padding: 0 8px;
+  background: var(--geojson-color-gray-100, #f5f5f5);
+  border: 1px solid transparent;
+  border-radius: var(--geojson-radius-md, 6px);
+  transition: border-color .15s, background .15s;
+}
+.tbl-search:focus-within { background: #fff; border-color: var(--geojson-color-brand-primary, #007afc); }
+.tbl-search-icon { color: var(--geojson-color-text-tertiary, #888); flex: 0 0 14px; }
+.tbl-search-input {
+  flex: 1 1 auto; min-width: 0;
+  margin-left: 6px;
+  height: 100%;
+  border: none; background: transparent; outline: none;
+  font-size: var(--geojson-typography-size-xs, 13px);
+  color: var(--geojson-color-text-primary);
+}
+.tbl-spacer { flex: 1 1 auto; }
+.tbl-tool-btn {
+  flex: 0 0 auto;
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--geojson-color-text-secondary, #6b7280);
+  background: transparent;
+  border: none;
+  border-radius: var(--geojson-radius-md, 6px);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.tbl-tool-btn:hover { background: var(--geojson-color-gray-100, #f5f5f5); color: var(--geojson-color-text-primary); }
+
+/* ── Table 表头：列宽拖拽把手 + 三点菜单触发器（thead th 已 sticky top:0 于 .table-wrap 内）── */
+.data-table thead th { padding-right: 22px; }   /* 给 ⋮ + resize 把手留位 */
+.th-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.col-resize {                    /* th 右缘拖拽把手（列宽调整）*/
+  position: absolute;
+  top: 0; right: 0;
+  width: 5px; height: 100%;
+  cursor: col-resize;
+  z-index: 3;
+  background: transparent;
+}
+.col-resize:hover { background: var(--geojson-color-brand-primary, #007afc); }
+.th-menu-trigger {
+  position: absolute;
+  right: 10px; top: 50%;        /* 让出最右 5px 给 col-resize 把手 */
+  transform: translateY(-50%);
+  width: 18px; height: 18px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--geojson-color-text-tertiary, #a3a3a3);
+  border-radius: var(--geojson-radius-sm, 3px);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .12s, background .12s, color .12s;
+  font-size: 14px; line-height: 1;
+  user-select: none;
+}
+.data-table thead th:hover .th-menu-trigger { opacity: 1; }
+.th-menu-trigger:hover { background: var(--geojson-color-gray-200, #e5e5e5); color: var(--geojson-color-text-primary); }
+.th-menu {
+  position: fixed;
+  z-index: 50;
+  min-width: 140px;
+  padding: 4px 0;
+  background: #fff;
+  border: 1px solid var(--geojson-color-border-default, #e6e6e6);
+  border-radius: var(--geojson-radius-md, 6px);
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  font-size: var(--geojson-typography-size-xs, 13px);
+}
+.th-menu-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 12px;
+  color: var(--geojson-color-text-secondary, #888);
+  cursor: default;
+  white-space: nowrap;
+}
+.th-menu-item .th-menu-tag { font-size: 10px; color: var(--geojson-color-text-tertiary, #b0b0b0); }
+.th-menu-sep { height: 1px; margin: 4px 0; background: var(--geojson-color-border-default, #e6e6e6); }
+
+/* Table 评论列（text）放宽省略，承载主信息 */
+.data-table td.col-text { max-width: 360px; }
+.data-table td.col-loc { max-width: 140px; }
 
 /* ── Shared form controls (Export modal) ── */
 .form-label {

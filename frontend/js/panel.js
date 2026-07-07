@@ -2,7 +2,7 @@
 import {
   POLARITY_ORDER, POLARITY_LABEL, emotionColors,
   layerLevel, focusLayer, polarityStats, confidenceStats, CONFIDENCE_RAMP,
-  getLayer, getChildren, getLayers,
+  getLayer, getChildren, getLayers, isEmotionPointLayer,
   L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR,
   DOMAIN_BAR_COLOR, ELEMENT_BAR_COLOR, POL_MATRIX_TIERS,
   EMOTION_TYPE_COLORS, EMOTION_TYPE_ORDER,
@@ -105,10 +105,10 @@ export function initPanel() {
       const onItem = e.target.closest('.ov-pie-slice') || e.target.closest('.mx-cell[data-dom]') || e.target.closest('.ov-kw-item');
       if (!onItem) return;
       clearHighlightCellSet(); _clearSync();
-      // 极性矩阵 leave → 还原 sticky 块词组 或 清空（空态：无 sticky 时不残留）
+      // 极性矩阵 leave → 还原 sticky 块词组 或 恢复"该极性全部关键词"（无 sticky 时）
       if (_polarityState && e.target.closest('.mx-cell[data-dom]')) {
         if (_polBlockSticky) _renderBlockKw(_polarityState.layer, _polarityState.pol, _polBlockSticky.dom, _polBlockSticky.elm);
-        else _clearBlockKw();
+        else _renderDefaultKw(_polarityState.layer, _polarityState.pol);
       }
     });
     pane.addEventListener('click', (e) => {
@@ -132,7 +132,7 @@ export function initPanel() {
         const dom = mx.dataset.dom, elm = mx.dataset.elm;
         if (_polarityState) {   // 极性深读：toggle sticky 块（词组长显 + 块聚合域橙柱体，再点释放）
           if (_polBlockSticky && _polBlockSticky.dom === dom && _polBlockSticky.elm === elm) {
-            _polBlockSticky = null; _polWordTipSticky = null; _clearBlockKw(); resetHighlightCellSet();
+            _polBlockSticky = null; _polWordTipSticky = null; _renderDefaultKw(_polarityState.layer, _polarityState.pol); resetHighlightCellSet();
           } else {
             _polWordTipSticky = null;   // 切块 → 清词 sticky
             _polBlockSticky = { dom, elm }; _renderBlockKw(_polarityState.layer, _polarityState.pol, dom, elm);
@@ -207,6 +207,7 @@ export function activateTab(name) {
     t.classList.toggle('is-active', t.dataset.tab === name));
   document.querySelectorAll('.tab-pane').forEach((p) =>
     p.classList.toggle('is-active', p.dataset.pane === name));
+  if (name === 'table') onTableTabActivated();   // 懒渲染：切到 Table 才建表（避免导入冻屏）
 }
 
 // ── Overview: per-selected-layer 3-tier (摘要 / 属性 / 展示) ────────────────
@@ -342,6 +343,7 @@ function _renderPolarityDeepRead() {
   _applyPolarityView(layer, pol);
   pane.innerHTML = _polarityTabBarHtml(pol) + _polarityBodyHtml(layer, pol);
   _wirePolarityTabs(layer);
+  _renderDefaultKw(layer, pol);   // 默认显示该极性全部关键词（多→少）；hover/click 块再切换
 }
 
 function _polarityTabBarHtml(pol) {
@@ -364,6 +366,7 @@ function _wirePolarityTabs(layer) {
       pane.querySelectorAll('.ov-pol-tab').forEach((t) => t.classList.toggle('is-active', t.dataset.pol === pol));
       const body = pane.querySelector('.ov-pol-body');
       if (body) body.outerHTML = _polarityBodyHtml(layer, pol);
+      _renderDefaultKw(layer, pol);   // 切极性 → 恢复"该极性全部关键词"
     }));
 }
 
@@ -386,8 +389,8 @@ function _polarityBodyHtml(layer, pol) {
   return `<div class="ov-pol-body">
     <div class="ov-tier-sub">极性总览</div>${countLine}
     <div class="ov-tier-sub">归因矩阵${_unit('个单元')}<span class="info-i" data-tip="按当前极性重计：每块 = 该 domain×element 下该极性点数>0 的单元数（每格计 1，与地图 filter 同口径）。颜色按本矩阵数量三级（深紫最多→浅紫最少）。悬停/点击 → 下方关键词动态切换 + 地图同步高亮该桶单元。">i</span></div>${_matrixIntro(`通过空间聚合，共生成 <b>${polCellCount}</b> 个<b>${polLabel}</b>标准单元（${cs}m），4×5 归因如下（数字 = 该维度 ${polLabel} 单元数）：`)}${_singlePolMatrixHtml(cell)}
-    <div class="ov-tier-sub">关键词/热门话题${_unit('个情绪点')}<span class="info-i" data-tip="该极性下各矩阵块对应的高频关键词/热门话题（含短句）。填充条 = 相对点数占比，右数字 = 相关情绪点数。悬停/点击矩阵块 → 动态切换该块关键词（click 锁定长显）；悬停/点击关键词 → 地图投射地点 tip（对应聚合域 3D 柱体）。本数据为<b>演示模拟副本</b>，正式管线接入后替换。">i</span></div>
-    <div class="ov-block-kw" id="ov-block-kw"><div class="ov-placeholder muted">悬停 / 点击上方矩阵块查看该维度关键词</div></div>
+    <div class="ov-tier-sub">关键词/热门话题${_unit('个情绪点')}<span class="info-i" data-tip="默认显示该极性下<b>全部</b>关键词/热门话题（按相关点数从多到少）。悬停/点击上方矩阵块 → 切换为该维度关键词（click 锁定长显）；移走 / 取消选中 → 恢复全部。悬停/点击关键词 → 地图投射地点 tip（对应聚合域 3D 柱体）。填充条 = 相对点数占比，右数字 = 相关情绪点数。本数据为<b>演示模拟副本</b>，正式管线接入后替换。">i</span></div>
+    <div class="ov-block-kw" id="ov-block-kw"><div class="ov-placeholder muted">加载中…</div></div>
   </div>`;
 }
 
@@ -459,6 +462,45 @@ function _clearBlockKw() {
   _polBlockCurrent = null;
   const el = document.getElementById('ov-block-kw');
   if (el) el.innerHTML = `<div class="ov-placeholder muted">悬停 / 点击上方矩阵块查看该维度关键词</div>`;
+}
+
+/** 默认态：显示该极性【全部】关键词（合并 demo JSON 所有块，按 word 去重 n 求和，降序）。
+ *  与块视图(_renderBlockKw)同源 → 块视图即"默认全部"的某块切片，hover/click 块切换连贯。
+ *  demo 副本缺失 → 回退 _singlePolKeywordsHtml（cell topic_top 聚合，真实数据）。 */
+function _renderDefaultKw(layer, pol) {
+  const el = document.getElementById('ov-block-kw');
+  if (!el || !layer) return;
+  const T = (layer.timeTag || deriveTimeTag(layer.fc)) || 'T3';
+  const sign = { positive: 'pos', neutral: 'neu', negative: 'neg' }[pol] || 'pos';
+  const cardHtml = (it, max) => {
+    const locs = (it.locs || []).map((l) => l && l.name).filter(Boolean).slice(0, 4).join('、');
+    const locHtml = locs ? `<div class="ov-kw-locs">${locs}</div>` : `<div class="ov-kw-locs muted">—</div>`;
+    const sticky = _polWordTipSticky === it.word ? ' is-sticky' : '';
+    return `<div class="ov-kw-item ov-kw-sp${sticky}" data-topic="${it.word}" data-sign="${sign}" title="${it.word}（${it.n} 点）· 悬停/点击看地点 tip">
+      <span class="ov-kw-fill" style="width:${Math.max(20, (it.n / max) * 100)}%"></span>
+      <div class="ov-kw-left"><span class="ov-kw-word">${it.word}</span><span class="ov-kw-num">${it.n}</span></div>
+      ${locHtml}
+    </div>`;
+  };
+  _loadDemoKw().then((kw) => {
+    if (!kw || !kw[T] || !kw[T][pol]) {                // 副本缺失 → 回退 cell topic_top 聚合
+      _polBlockCurrent = null;
+      el.innerHTML = _singlePolKeywordsHtml((layer.fc && layer.fc.features) || [], pol);
+      return;
+    }
+    const merged = new Map();                          // word → {word,n,locs}
+    for (const key in kw[T][pol]) {
+      for (const it of kw[T][pol][key] || []) {
+        if (!merged.has(it.word)) merged.set(it.word, { word: it.word, n: 0, locs: it.locs || [] });
+        merged.get(it.word).n += (it.n || 0);
+      }
+    }
+    const sorted = [...merged.values()].sort((a, b) => (b.n || 0) - (a.n || 0));
+    if (!sorted.length) { _polBlockCurrent = null; el.innerHTML = `<div class="ov-placeholder muted">该极性无高频关键词</div>`; return; }
+    const max = Math.max(1, ...sorted.map((it) => it.n || 0));
+    _polBlockCurrent = { dom: null, elm: null, items: sorted };   // 供 word hover/click 查 locs（块联动时被 _renderBlockKw 覆盖）
+    el.innerHTML = `<div class="ov-keywords ov-keywords-sp">${sorted.map((it) => cardHtml(it, max)).join('')}</div>`;
+  });
 }
 
 /** 在 _polBlockCurrent.items 中按 word 找词条（含 locs）。 */
@@ -1440,87 +1482,420 @@ function emotionTypeStats(fc) {
   return { stats, total };
 }
 
-// ── Table tab ── point 层 = geojson.io 风格；分析层（grid/zonal/terrain）= 可排序「问题清单」。
-let _issueSort = { key: 'polarity_index', dir: 'desc' };   // 默认按 |极性| 降序（最大张力优先）
+// ── Table tab ── geojson.io 风格通用属性表：工具条（搜索）+ 表格 + 三点菜单占位。
+//    列顺序：id → 地点 → 评论 → 极性 → 分数 …（核心诉求："什么地方发生了什么样的评论"）。
+//    性能铁律：精选列（不铺全部 ~30 key）+ 渲染封顶 200 行 + Table 未激活时懒渲染
+//    （2500 点 × 30 列全量 innerHTML 会冻屏；导入时用户在 Overview，更不能后台建表）。
+let _baseFeats = [];       // 当前图层全部 features（fc 优先，回退 layer.fc，覆盖分析层）
+let _tableCols = [];       // 当前列定义 [{key,label,get?}]
+let _tableQuery = '';      // 搜索词（小写）
+let _tableDirty = false;   // 数据已更新但表格未渲染（切到 Table 标签时补渲）
+let _lastTableLayerId = null;
+let _tableEmptyHint = null;  // 层级空态文案（如 L1 网格"待开发"）
+let _tableLayer = null;       // 当前表格所显层（行选中地图高亮用）
+let _tableSelFeat = null;     // 当前选中行对应 feature（网格行选中态）
+let _tblBindInit = false;  // 工具条事件幂等绑定
+let _tableRows = [];       // 当前过滤后全部行（虚拟化数据源——全量可滚，只画可见）
+let _tblRAF = 0;           // 滚动重渲 rAF 句柄（节流）
+const _ROW_H = 33;         // 行高 px 初估（首渲后按 offsetHeight 实测校准；geojson.io HEIGHT=33）
+const _OVERSCAN = 4;       // 视口上下额外渲染行数（缓冲，减滚动边缘闪白）
 
-export function setTable(fc, layer, maxRows = 200) {
-  const tbl = document.getElementById('data-table');
-  if (!tbl) return;
-  if (layer && isAnalysisLayer(layer)) { _renderIssueTable(tbl, layer, maxRows); return; }
-  const colors = emotionColors();
-  const feats = (fc && fc.features || []).slice(0, maxRows);
-  const head = `<thead><tr><th>极性</th><th>分数</th><th>文本</th><th>位置</th><th>ID</th></tr></thead>`;
-  const body = `<tbody>${feats.map((f) => {
-    const p = f.properties || {};
-    const pol = p.polarity || 'Neutral';
-    const c = colors[pol] || colors['Neutral'];
-    const txt = (p.text || '').replace(/[<>]/g, '');
-    const loc = (p.location || '').replace(/[<>]/g, '');
-    return `<tr><td><span class="td-dot" style="background:${c}"></span>${POLARITY_LABEL[pol] || pol}</td>
-      <td>${(p.score ?? 0).toFixed(2)}</td><td>${txt}</td><td>${loc}</td><td>${p.id_e || ''}</td></tr>`;
-  }).join('')}</tbody>`;
-  tbl.innerHTML = head + body;
+const _COL_LABEL = {
+  // L2 点层
+  id_e: 'ID', _loc: '地点', text: '评论',
+  polarity: '极性', score: '分数', emotion_type: '情绪类型',
+  source: '来源', publish_time: '发布时间', created_at: '创建时间',
+  emotion_intensity: '情绪强度', l2_confidence: 'L2置信度', l1_confidence: 'L1置信度',
+  keywords: '关键词', primary_emotion: '主情绪', domain: '领域', element: '要素',
+  like_count: '点赞', comment_count: '评论数', tags: '标签',
+  area_seed: '锚点', area_tag: '区域标签', zone: '聚合域', narrative_zone: '叙事区',
+  spatial_hotspot: '空间热点', spatial_type: '空间类型', location_mentioned: '提及地点',
+  relevance: '相关性', relevance_category: '相关类目', scope: '范围', url: '链接',
+  category: '类别', target_type: '目标类型', target_detail: '目标详情',
+  // 网格 / 分析层（cell schema）
+  name: '名称', point_count: '点数', polarity_index: '极性指数',
+  domain_top: '主领域', element_top: '主要素', issue_label: '问题识别',
+  topic_top: '话题/关键词', cell_id: '格号',
+  n_positive: '积极数', n_negative: '消极数', n_neutral: '中性数',
+  n_very_positive: '强积极数', n_very_negative: '强消极数',
+  hotness: '热度', _attribution: '归因', _suggestion: '建议',
+  // 范围 / 几何层
+  area: '面积', perimeter: '周长', vertices: '顶点数',
+};
+const _DROP_KEYS = new Set([         // 坐标 / 内部噪声 / 重复字段，永不显示
+  'x_cgcs2000', 'y_cgcs2000', 'has_location', 'crs', 'intensity',
+  'polarity_hint', 'time_label', 'text_length', 'urban_value', 'location',
+]);
+
+/** 地点合成：place_name → area_seed → location_mentioned → area_tag → spatial_hotspot → zone（首个非空）。 */
+function _locOf(p) {
+  return p.place_name || p.area_seed || p.location_mentioned || p.area_tag || p.spatial_hotspot || p.zone || '';
 }
 
-/** 分析层「问题清单」可排序表：点表头排序，点行飞到单元 + cell:selected 深读。 */
-function _renderIssueTable(tbl, layer, maxRows) {
-  const feats = (layer.fc && layer.fc.features) || [];
-  const rows = feats.map((f, idx) => ({ f, idx, p: f.properties || {} }));
-  const k = _issueSort.key;
-  const dir = _issueSort.dir === 'asc' ? 1 : -1;
-  rows.sort((a, b) => {
-    const va = a.p[k], vb = b.p[k];
-    if (k === 'polarity_index' && typeof va === 'number' && typeof vb === 'number')
-      return (Math.abs(va) - Math.abs(vb)) * dir;   // 极性按 |值| 排（最大张力优先）
-    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
-    return String(va ?? '').localeCompare(String(vb ?? '')) * dir;
-  });
-  const shown = rows.slice(0, maxRows);
-  const cols = [
-    { key: '_rank', label: '#' },
-    { key: 'name', label: '名称' },
-    { key: 'point_count', label: '点数' },
-    { key: 'polarity_index', label: '极性指数' },
-    { key: '_domElm', label: '治理要素' },
-    { key: 'issue_label', label: '问题识别' },
-  ];
-  const arrow = (c) => c.key === k ? (dir > 0 ? ' ▲' : ' ▼') : '';
-  const head = `<thead><tr>${cols.map((c) =>
-    `<th class="${c.key === k ? 'is-sorted' : ''}" data-sort="${c.key}">${c.label}${arrow(c)}</th>`).join('')}</tr></thead>`;
-  const bodyHtml = shown.map((r, i) => {
-    const dom = DOMAIN_LABEL[r.p.domain_top] || r.p.domain_top || '—';
-    const elm = ELEMENT_LABEL[r.p.element_top] || r.p.element_top || '—';
-    const pi = r.p.polarity_index;
-    const name = (r.p.name || '').toString().replace(/[<>]/g, '') || '—';
-    const issue = (r.p.issue_label || '').toString().replace(/[<>]/g, '') || '—';
-    const strong = pi != null && !isNaN(pi) && Math.abs(pi) > 0.5;
-    return `<tr data-cell-idx="${r.idx}">
-      <td>${i + 1}</td>
-      <td>${name}</td>
-      <td>${r.p.point_count ?? 0}</td>
-      <td>${pi != null && !isNaN(pi) ? `<span class="td-pi" style="background:${_piColor(pi)};color:${strong ? '#fff' : '#404040'}">${pi.toFixed(2)}</span>` : '—'}</td>
-      <td>${dom}×${elm}</td>
-      <td>${issue}</td>
-    </tr>`;
-  }).join('');
-  tbl.innerHTML = head + `<tbody>${bodyHtml}</tbody>`;
+// ── 虚拟列（computed，按层 schema 合成；归因/建议为 L4 占位——用户选"现有字段映射占位"，L4 接入后替换）──
+const _SUGGEST_BY_DOMAIN = {
+  urban_planning: '优化布局 / 增补设施',
+  urban_renewal: '纳入更新改造 / 品质提升',
+  urban_operation: '加强运维 / 服务保障',
+  urban_governance: '专项治理 / 诉求回应',
+};
+function _attrOf(p) {
+  const d = DOMAIN_LABEL[p.domain_top] || p.domain_top;
+  const e = ELEMENT_LABEL[p.element_top] || p.element_top;
+  return (d && e) ? `${d}×${e}` : (d || e || '');
+}
+function _sugOf(p) { return _SUGGEST_BY_DOMAIN[p.domain_top] || ''; }
 
-  tbl.querySelectorAll('th[data-sort]').forEach((th) => {
-    th.addEventListener('click', () => {
-      const key = th.dataset.sort;
-      if (key === '_rank' || key === '_domElm') return;
-      if (_issueSort.key === key) _issueSort.dir = _issueSort.dir === 'asc' ? 'desc' : 'asc';
-      else { _issueSort.key = key; _issueSort.dir = 'desc'; }
-      _renderIssueTable(tbl, layer, maxRows);
-    });
+// ── 各层优先列清单（第一观感）；其后按出现顺序追加其余非噪声字段 ──
+const _COLS_L1_POINT = ['id_e', '_loc', 'text', 'score', 'keywords', 'primary_emotion', 'source', 'publish_time'];
+const _COLS_L2_POINT = ['id_e', '_loc', 'text', 'polarity', 'score', 'emotion_type', 'source', 'publish_time'];
+const _COLS_L2_GRID_OVERALL  = ['point_count', 'polarity_index', '_loc', 'topic_top', 'issue_label', '_attribution', '_suggestion'];
+const _COLS_L2_GRID_POLARITY = ['point_count', '_loc', 'topic_top', 'issue_label', '_attribution', '_suggestion'];
+const _COLS_GENERIC = ['id_e', '_loc', 'text', 'polarity', 'score', 'emotion_type', 'source', 'publish_time'];
+
+function _isGridLayer(layer) {
+  const ui = layer && layer.paint && layer.paint._ui;
+  return !!(layer && layer.kind === 'polygon' && ui && ui.tool === 'grid');
+}
+
+/** 按层类型选优先列 + 网格层默认排序键。返回 { priority, sortKey, emptyHint }。 */
+function _layerScheme(layer) {
+  if (layer && isEmotionPointLayer(layer)) {
+    return { priority: layerLevel(layer) === 'L1' ? _COLS_L1_POINT : _COLS_L2_POINT };
+  }
+  if (layer && _isGridLayer(layer)) {
+    const lv = layerLevel(layer);
+    if (lv === 'L1') return { priority: [], emptyHint: 'L1 网格聚合 Table 待开发' };
+    if (lv === 'L2') {
+      const pol = (layer.paint._ui.polarity) || 'overall';
+      return pol === 'overall'
+        ? { priority: _COLS_L2_GRID_OVERALL, sortKey: 'point_count' }
+        : { priority: _COLS_L2_GRID_POLARITY, sortKey: 'point_count' };
+    }
+  }
+  return { priority: _COLS_GENERIC };   // 范围 / 线 / 其他 → 通用
+}
+
+/** 按层构建列：优先列（数据存在 / 虚拟列可合成）→ 其余属性按序追加。返回 { cols, emptyHint }。 */
+function _colsFor(layer, feats) {
+  const { priority, emptyHint } = _layerScheme(layer);
+  if (emptyHint) return { cols: [], emptyHint };
+  const keySet = new Set();
+  const order = [];
+  for (const f of feats) {
+    const p = f.properties || {};
+    for (const k of Object.keys(p)) {
+      if (_DROP_KEYS.has(k) || keySet.has(k)) continue;
+      keySet.add(k); order.push(k);
+    }
+  }
+  const VCOLS = {
+    _loc: { get: (f) => _locOf(f.properties || {}), avail: feats.some((f) => _locOf(f.properties || {})) },
+    _attribution: { get: (f) => _attrOf(f.properties || {}), avail: keySet.has('domain_top') || keySet.has('element_top') },
+    _suggestion: { get: (f) => _sugOf(f.properties || {}), avail: keySet.has('domain_top') },
+  };
+  const cols = [];
+  const seen = new Set();
+  const pushCol = (k) => {
+    if (seen.has(k)) return;
+    if (VCOLS[k]) { if (VCOLS[k].avail) { cols.push({ key: k, label: _COL_LABEL[k] || k, get: VCOLS[k].get }); seen.add(k); } return; }
+    if (keySet.has(k)) { cols.push({ key: k, label: _COL_LABEL[k] || k }); seen.add(k); }
+  };
+  for (const k of priority) pushCol(k);
+  for (const k of order) pushCol(k);
+  return { cols };
+}
+
+// ── 列宽（colgroup 驱动；_colWidth 存用户拖拽，会话内持久）──
+const _colWidth = new Map();   // key → px（用户拖拽覆盖）
+function _defWidth(key) {
+  if (key === '_loc') return 110;
+  if (key === 'text') return 300;
+  if (['polarity', 'score', 'point_count', 'n_positive', 'n_negative', 'n_neutral', 'n_very_positive', 'n_very_negative'].includes(key)) return 70;
+  if (key === 'polarity_index') return 80;
+  if (key === 'publish_time' || key === 'created_at') return 140;
+  return 130;
+}
+function _colW(key) { return _colWidth.get(key) || _defWidth(key); }
+
+function _cellValue(col, f) {
+  if (col.get) return col.get(f);
+  return (f.properties && f.properties[col.key]) ?? '';
+}
+
+/** 渲染所用 features = 全部 → 搜索过滤。 */
+function _visibleFeats() {
+  const q = _tableQuery;
+  if (!q) return _baseFeats;
+  return _baseFeats.filter((f) => _tableCols.some((c) => String(_cellValue(c, f) ?? '').toLowerCase().includes(q)));
+}
+
+/** Table 标签当前是否激活（懒渲染判据）。 */
+function _tableActive() {
+  const p = document.querySelector('.tab-pane[data-pane="table"]');
+  return !!(p && p.classList.contains('is-active'));
+}
+
+function _updateCount(shownN, totalN) {
+  const el = document.getElementById('tbl-count');
+  if (!el) return;
+  el.textContent = _tableQuery ? `命中 ${shownN} / 共 ${totalN} 条` : `共 ${totalN} 条记录`;
+}
+
+function _renderTable() {
+  const tbl = document.getElementById('data-table');
+  if (!tbl) return;
+  const cols = _tableCols;
+  if (_tableEmptyHint) {
+    tbl.innerHTML = `<tbody><tr><td style="padding:32px 16px;text-align:center;color:#888">${_tableEmptyHint}</td></tr></tbody>`;
+    _updateCount(0, 0);
+    return;
+  }
+  const rows = _visibleFeats();
+  _tableRows = rows;
+  _updateCount(rows.length, _baseFeats.length);
+  // colgroup：列宽由 _colW 驱动（用户拖拽 > 默认；地点窄、评论宽）。table-layout:fixed 严格生效。
+  const totalW = cols.reduce((s, c) => s + _colW(c.key), 0);
+  const colgroup = `<colgroup>${cols.map((c) => `<col data-col="${c.key}" style="width:${_colW(c.key)}px">`).join('')}</colgroup>`;
+  const head = `<thead><tr>${cols.map((c) =>
+    `<th data-col="${c.key}"><span class="th-label">${c.label}</span><span class="th-menu-trigger" title="列操作">⋮</span><span class="col-resize" data-col="${c.key}" title="拖拽调整列宽"></span></th>`).join('')}</tr></thead>`;
+  if (!cols.length) { tbl.innerHTML = `<tbody><tr><td style="padding:24px;text-align:center;color:#888">暂无数据</td></tr></tbody>`; return; }
+  if (!rows.length) { tbl.innerHTML = colgroup + head + `<tbody><tr><td colspan="${cols.length}" style="padding:24px;text-align:center;color:#888">无匹配记录</td></tr></tbody>`; return; }
+  // 仅渲 colgroup + 表头 + 空 tbody；行采用虚拟化（_renderVisibleRows 按滚动视口填充）
+  tbl.innerHTML = colgroup + head + '<tbody></tbody>';
+  tbl.style.minWidth = totalW + 'px';   // 列宽和 > 面板宽 → 水平滚动
+  tbl.classList.toggle('is-grid-table', !!(_tableLayer && _isGridLayer(_tableLayer)));   // 网格行可选中
+  const wrap = document.querySelector('.tab-pane[data-pane="table"] .table-wrap');
+  if (wrap) wrap.scrollTop = 0;
+  _renderVisibleRows();
+}
+
+/** 虚拟化：只渲染当前滚动视口内的行（+ overscan），上下 spacer 撑出总高 → 万行也不冻屏。
+ *  行高首渲后按 offsetHeight 实测校准（_rowPitch），消除 border-collapse 下 1px 漂移。 */
+let _rowPitch = _ROW_H;
+function _renderVisibleRows() {
+  const tbl = document.getElementById('data-table');
+  if (!tbl || !_tableRows.length || !_tableCols.length) return;
+  const tb = tbl.tBodies[0];
+  if (!tb) return;
+  const wrap = document.querySelector('.tab-pane[data-pane="table"] .table-wrap');
+  const scrollTop = wrap ? wrap.scrollTop : 0;
+  const viewH = wrap ? wrap.clientHeight : 600;
+  const cols = _tableCols;
+  const total = _tableRows.length;
+  const start = Math.max(0, Math.floor(scrollTop / _rowPitch) - _OVERSCAN);
+  const end = Math.min(total, Math.ceil((scrollTop + viewH) / _rowPitch) + _OVERSCAN);
+  const slice = _tableRows.slice(start, end);
+  const colors = emotionColors();
+  const esc = (v) => String(v).replace(/[<>]/g, (s) => s === '<' ? '&lt;' : '&gt;');
+  const cell = (c, f) => {
+    const v = _cellValue(c, f);
+    if (c.key === 'polarity') {
+      const pol = v || 'Neutral';
+      const cc = colors[pol] || colors['Neutral'];
+      return `<td><span class="td-dot" style="background:${cc}"></span>${POLARITY_LABEL[pol] || pol}</td>`;
+    }
+    const cls = c.key === 'text' ? ' class="col-text"' : c.key === '_loc' ? ' class="col-loc"' : '';
+    return `<td${cls}>${esc(v)}</td>`;
+  };
+  const rowsHtml = slice.map((f, i) => `<tr class="tbl-row${f === _tableSelFeat ? ' is-selected' : ''}" data-idx="${start + i}">${cols.map((c) => cell(c, f)).join('')}</tr>`).join('');
+  const topPad = start * _rowPitch, botPad = Math.max(0, (total - end) * _rowPitch);
+  tb.innerHTML =
+    `<tr class="tbl-spacer" aria-hidden="true"><td colspan="${cols.length}"><div style="height:${topPad}px"></div></td></tr>` +
+    rowsHtml +
+    `<tr class="tbl-spacer" aria-hidden="true"><td colspan="${cols.length}"><div style="height:${botPad}px"></div></td></tr>`;
+  // 实测行高校准（border-collapse 下 offsetHeight 可能 33/34）
+  const firstRow = tb.querySelector('.tbl-row');
+  if (firstRow) _rowPitch = firstRow.offsetHeight || _rowPitch;
+}
+
+/** 三点菜单（占位）：定位到触发器下方，列动作均标"待开发"。 */
+function _openThMenu(trigger) {
+  const menu = document.getElementById('th-menu');
+  if (!menu) return;
+  menu.innerHTML = `
+    <div class="th-menu-item"><span>升序排列</span><span class="th-menu-tag">待开发</span></div>
+    <div class="th-menu-item"><span>降序排列</span><span class="th-menu-tag">待开发</span></div>
+    <div class="th-menu-sep"></div>
+    <div class="th-menu-item"><span>隐藏该列</span><span class="th-menu-tag">待开发</span></div>
+    <div class="th-menu-item"><span>编辑列</span><span class="th-menu-tag">待开发</span></div>`;
+  menu.hidden = false;
+  const r = trigger.getBoundingClientRect();
+  const mw = menu.offsetWidth || 150;
+  menu.style.left = Math.max(8, Math.min(r.right - mw, window.innerWidth - mw - 8)) + 'px';
+  menu.style.top = (r.bottom + 4) + 'px';
+}
+
+/** 工具条事件幂等绑定：搜索 + 三点菜单（事件委托）+ 滚动虚拟化重渲（rAF 节流）。 */
+function _bindToolbar() {
+  if (_tblBindInit) return;
+  _tblBindInit = true;
+  const input = document.getElementById('tbl-search-input');
+  if (input) input.addEventListener('input', () => { _tableQuery = (input.value || '').trim().toLowerCase(); _renderTable(); });
+  // 数据下拉（自定义）：trigger 开关 / option 选层 / 外部点关闭
+  const trig = document.getElementById('tbl-ds-trigger');
+  if (trig) trig.addEventListener('click', (e) => { e.stopPropagation(); _toggleDsPanel(); });
+  const panel = document.getElementById('tbl-ds-panel');
+  if (panel) panel.addEventListener('click', (e) => {
+    const opt = e.target.closest('.tbl-ds-opt'); if (!opt) return;
+    const l = getLayer(opt.dataset.id);
+    if (l) { _loadTableLayer(l); _setDsCurrent(l); }
+    _toggleDsPanel(false);
   });
-  tbl.querySelectorAll('tbody tr[data-cell-idx]').forEach((tr) => {
-    tr.addEventListener('click', () => {
-      // 单元深读→极性深读：行点击切 Overview·极性深读（默认极性；不定位单格，深读非单格级）
-      activateTab('overview');
-      activateOvTab('polarity');
+  document.addEventListener('click', (e) => { if (!e.target.closest('.tbl-dataset')) _toggleDsPanel(false); });
+  const tbl = document.getElementById('data-table');
+  if (tbl) {
+    // 列宽拖拽：th 右缘 .col-resize mousedown → document mousemove 改 <col> 宽 + 记 _colWidth（会话持久）
+    tbl.addEventListener('mousedown', (e) => {
+      const handle = e.target.closest('.col-resize');
+      if (!handle) return;
+      e.preventDefault();
+      const key = handle.dataset.col;
+      const col = tbl.querySelector(`colgroup col[data-col="${key}"]`);
+      if (!col) return;
+      const startX = e.clientX;
+      const startW = col.offsetWidth || _defWidth(key);
+      const onMove = (ev) => {
+        const w = Math.max(40, Math.round(startW + (ev.clientX - startX)));
+        col.style.width = w + 'px';
+        _colWidth.set(key, w);
+        const totalW = _tableCols.reduce((s, c) => s + (_colW(c.key)), 0);
+        tbl.style.minWidth = totalW + 'px';
+      };
+      const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
     });
+    tbl.addEventListener('click', (e) => {
+      const menuTrig = e.target.closest('.th-menu-trigger');
+      if (menuTrig) { _openThMenu(menuTrig); return; }
+      // 网格行选中（仅网格聚合层）→ 地图橙色高亮对应聚合域
+      const tr = e.target.closest('tr.tbl-row');
+      if (tr && _tableLayer && _isGridLayer(_tableLayer)) _toggleRowSel(Number(tr.dataset.idx));
+    });
+  }
+  // 滚动 → 按视口重渲可见行（虚拟化核心；rAF 节流防抖）
+  const wrap = document.querySelector('.tab-pane[data-pane="table"] .table-wrap');
+  if (wrap) wrap.addEventListener('scroll', () => {
+    if (_tblRAF) return;
+    _tblRAF = requestAnimationFrame(() => { _tblRAF = 0; _renderVisibleRows(); });
+  }, { passive: true });
+  document.addEventListener('click', (e) => {
+    const menu = document.getElementById('th-menu');
+    if (!menu || menu.hidden) return;
+    if (!e.target.closest('.th-menu') && !e.target.closest('.th-menu-trigger')) menu.hidden = true;
   });
+}
+
+/** Table 标签被激活时补渲（懒渲染入口；activateTab 在切到 table 时调）。 */
+export function onTableTabActivated() {
+  if (_tableDirty) { _renderTable(); _tableDirty = false; }
+}
+
+/** 可制表的已载图层（有 features 的非 group 层）。*/
+function _tableableLayers() {
+  return getLayers().filter((l) => l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length);
+}
+
+// L 级徽章 class（彩色：L0 灰 / L1 橙 / L2 蓝 / L3 紫 / L4 绿）
+const _LV_BADGE = { L0: 'lv-l0', L1: 'lv-l1', L2: 'lv-l2', L3: 'lv-l3', L4: 'lv-l4' };
+
+/** 拆解层 → {lv, lvCls, type, name}，供下拉富文本标题用。*/
+function _dsParts(layer) {
+  const lv = layerLevel(layer) || 'L2';
+  const lvCls = _LV_BADGE[lv] || 'lv-l2';
+  const name = String(layer.name || layer.srcName || '').replace(/[<>]/g, '') || '(未命名)';
+  let type;
+  if (_isGridLayer(layer)) {
+    const ui = layer.paint._ui || {};
+    const pol = ui.polarity || 'overall';
+    const polTag = pol === 'overall' ? '综合' : ({ positive: '积极', negative: '消极', neutral: '中性' }[pol] || pol);
+    const ana = ui.analysis === 'zonal' ? '指定单元' : '标准网格';
+    type = `${polTag}·${ana}聚合`;
+  } else if (isEmotionPointLayer(layer)) {
+    type = '情绪点';
+  } else {
+    type = layer.kind === 'polygon' ? '范围面' : (layer.kind || '图层');
+  }
+  return { lv, lvCls, type, name };
+}
+const _dsItemHtml = (p) => `<span class="lv-badge ${p.lvCls}">${p.lv}</span><span class="ds-type">${p.type}</span><span class="ds-name">${p.name}</span>`;
+
+/** 重建数据下拉（自定义）+ 设当前层。*/
+function _refreshDataset(selectLayer) {
+  const panel = document.getElementById('tbl-ds-panel');
+  const layers = _tableableLayers();
+  if (panel) {
+    const curId = selectLayer && selectLayer.id;
+    panel.innerHTML = layers.length
+      ? layers.map((l) => `<button class="tbl-ds-opt${l.id === curId ? ' is-cur' : ''}" data-id="${l.id}" role="option" type="button">${_dsItemHtml(_dsParts(l))}</button>`).join('')
+      : `<div class="tbl-ds-empty">（暂无数据图层）</div>`;
+  }
+  const inList = selectLayer && layers.some((l) => l.id === selectLayer.id);
+  _setDsCurrent(inList ? selectLayer : (layers[0] || null));
+}
+
+/** 设 trigger 当前显示（富文本标题）+ 同步 panel .is-cur。*/
+function _setDsCurrent(layer) {
+  const cur = document.getElementById('tbl-ds-cur');
+  if (cur) cur.innerHTML = layer ? _dsItemHtml(_dsParts(layer)) : '—';
+  const panel = document.getElementById('tbl-ds-panel');
+  if (panel) panel.querySelectorAll('.tbl-ds-opt').forEach((o) => o.classList.toggle('is-cur', !!(layer && o.dataset.id === layer.id)));
+}
+
+/** 开/关下拉浮层。*/
+function _toggleDsPanel(open) {
+  const root = document.getElementById('tbl-dataset');
+  const panel = document.getElementById('tbl-ds-panel');
+  const trig = document.getElementById('tbl-ds-trigger');
+  if (!root || !panel) return;
+  const willOpen = open == null ? panel.hidden : open;
+  panel.hidden = !willOpen;
+  root.classList.toggle('open', willOpen);
+  if (trig) trig.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+}
+
+/** 载入指定层到表格（列策略 + 排序 + 懒渲染）。不触碰下拉，避免 change→load 递归。*/
+function _loadTableLayer(layer) {
+  // 换层 → 清行选中 + 地图高亮
+  if (!_tableLayer || !layer || _tableLayer.id !== layer.id) {
+    if (_tableSelFeat) clearHighlightCellSet();
+    _tableSelFeat = null;
+  }
+  _tableLayer = layer;
+  let src = (layer && layer.fc && layer.fc.features) ? layer.fc.features : [];
+  const lid = layer && layer.id;
+  if (lid !== _lastTableLayerId) {
+    _tableQuery = '';
+    const inp = document.getElementById('tbl-search-input'); if (inp) inp.value = '';
+  }
+  _lastTableLayerId = lid;
+  const built = _colsFor(layer, src);
+  _tableCols = built.cols;
+  _tableEmptyHint = built.emptyHint || null;
+  const scheme = _layerScheme(layer);
+  if (scheme.sortKey && src.length && src[0] && src[0].properties && (scheme.sortKey in src[0].properties)) {
+    src = src.slice().sort((a, b) => ((b.properties || {})[scheme.sortKey] || 0) - ((a.properties || {})[scheme.sortKey] || 0));
+  }
+  _baseFeats = src;
+  _tableDirty = true;
+  if (_tableActive()) { _renderTable(); _tableDirty = false; }
+}
+
+/** 网格行选中 toggle：再点同行取消；选中 → 地图橙色高亮该聚合域（延用 highlightCellSet）。*/
+function _toggleRowSel(idx) {
+  const feat = _tableRows[idx];
+  if (!feat || !_tableLayer) return;
+  if (_tableSelFeat === feat) { _tableSelFeat = null; clearHighlightCellSet(); }
+  else { _tableSelFeat = feat; clearHighlightCellSet(); highlightCellSet([feat], _tableLayer); }
+  _renderVisibleRows();
+}
+
+export function setTable(_fc, layer, _maxRows = 500) {
+  if (!document.getElementById('data-table')) return;
+  _refreshDataset(layer);    // 重建下拉 + 选中焦点层（默认随焦点，用户可下拉手切任意层）
+  _loadTableLayer(layer);
+  _bindToolbar();
 }
 
 // ═══ 时间轴 KPI tween（任务2 · 前置：Overview 原地更新）═══════════════════════════
