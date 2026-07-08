@@ -7,6 +7,12 @@
 
 ## 📅 2026-07-08
 
+### ✅ AI 问答 · 修复流式中开关对话框回答停住（revision-log 5.43，07月08日 21:30）
+
+- **bug**：对话进行中收起/展开 chat-panel，回答停住。根因：chat-trigger 展开无脑 restoreHistory() 清空重建，进行中 shell（未入 _history）被清，hooks 写脱离 DOM 旧元素。
+- **修**：展开时 `!_streaming` 才 restoreHistory（流式中保留 shell；is-collapsed 是 transform/opacity 不破坏 DOM）。
+- **验证**：Playwright 流式中收起→展开，textLen 4987→10510、isStreaming=true、shell 保留 = 流继续。
+
 ### ✅ AI 问答 · 多轮上下文 + 容量圆圈 + 几何端点修复（revision-log 5.42，07月08日 21:00）
 
 - **诉求1 多轮上下文**：根因 stages messages 只传当前问题（无历史→失忆）。修 panel ctx.history（前 N 轮）+ stages 4 阶段拼历史。

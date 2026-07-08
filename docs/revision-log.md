@@ -886,6 +886,12 @@ flowchart TD
 - **承重**：history slice(-10) 防 token 爆；diagnose 用 flash（5.41）；几何全栈成熟库（GeoPandas/Shapely/esda/h3/contourpy）非造轮子，可靠性问题是版本兼容（geopandas 1.1 / esda 2.10）+ threshold=0 bug，非算法错。
 - **验证**：TestClient 全几何端点 200 ✓（extract 西陵区1面 / overlay 西陵区∩商业用地 3.23km² / nearest 面target 9 / hotspot domain筛 2813点 / clip/merge/filter_attr/buffer/area_stats/zonal_stats/rank）；Playwright 多轮——拦截 /chat body 见第3问 messages=5条（2轮历史+当前问）✓ + 容量圆圈 0.4%（3,562/1,000,000 token，绿）✓。组合操作 LLM 选工具质量待用户真环境（本环境 LLM 日期感都不准）。
 
+### 5.43 AI 问答 · 修复流式中开关对话框回答停住（07月08日 21:30）
+
+- **bug**：对话进行中收起/展开 chat-panel，回答停住、状态丢失。根因：[panel.js:562](frontend/js/ai_qa/panel.js#L562) chat-trigger 展开时无脑调 `restoreHistory()`——它清空 `#chat-messages` 重建；流式中进行中的 shell 被清，hooks 指向脱离 DOM 的旧元素 → 新 token 写入不可见的旧 shell → 页面停住；且 `_history` 此刻未 push（finally 才 push），重建不含进行中回答。
+- **修**：chat-trigger 展开时仅 `!_streaming` 才 `restoreHistory()`（流式中保留进行中 shell；is-collapsed 是 `transform+opacity` 隐藏不破坏 DOM，展开即继续可见）。
+- **验证**：Playwright 流式中（isStreaming=true, textLen=4987）收起→展开→等 5s，textLen 涨至 **10510** + isStreaming=true + shell 保留 = 流继续不停住。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

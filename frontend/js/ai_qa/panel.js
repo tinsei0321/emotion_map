@@ -559,7 +559,12 @@ export function initChatPanel() {
     if (!panel) return;
     const open = panel.classList.contains('is-collapsed');
     panel.classList.toggle('is-collapsed', !open);
-    if (open) { injectModeSwitch(); restoreHistory(); mountChatChrome(); setTimeout(() => document.getElementById('chat-input')?.focus(), 50); }
+    if (open) {
+      injectModeSwitch(); mountChatChrome();
+      // 流式中不 restoreHistory：它会清空 #chat-messages 重建，破坏进行中的 shell（hooks 指向脱离 DOM 的旧元素 → 回答停住）
+      if (!_streaming) restoreHistory();
+      setTimeout(() => document.getElementById('chat-input')?.focus(), 50);
+    }
   });
   document.getElementById('chat-close')?.addEventListener('click', () => {
     document.getElementById('chat-panel')?.classList.add('is-collapsed');
