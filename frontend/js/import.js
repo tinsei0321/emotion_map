@@ -1,22 +1,35 @@
 // ═══ import.js — geojson.io-style import pipeline (vanilla JS port) ═══
-// Flow: groupFiles → detectGroupType → [dialog picks/overrides type] →
-//       parseGroup → reprojectFC → splitByGeometry → detectPolarity → layers.
+// Flow: groupFiles → detectGroupType → [dialog picks type + per-format config +
+//       source CRS] → parseGroup → reprojectFC → splitByGeometry → detectPolarity → layers.
 //
 // Parser libs (CDN globals, loaded in index.html): csv2geojson, shpjs, proj4,
-// fflate (to zip shapefile sidecars for shpjs). KML via dynamic ESM import of
-// @tmcw/togeojson (best-effort; degrades gracefully if CDN blocked).
+// fflate (to zip shapefile sidecars for shpjs). KML/GPX via dynamic ESM import of
+// @tmcw/togeojson. TopoJSON via topojson-client. CSV WKT/polyline kinds via
+// wellknown / @mapbox/polyline (best-effort; degrade gracefully if CDN blocked).
 
 import { FIELD_SYNONYMS, POLARITY_ORDER } from './state.js';
 
 // ── Format table (drives the confirm-dialog dropdown) ──────────────────────
 export const FILE_TYPES = [
   { id: 'geojson', label: 'GeoJSON', exts: ['.geojson', '.json'] },
+  { id: 'topojson', label: 'TopoJSON', exts: ['.topojson'] },
   { id: 'csv', label: 'CSV', exts: ['.csv'] },
   { id: 'kml', label: 'KML', exts: ['.kml'] },
+  { id: 'gpx', label: 'GPX', exts: ['.gpx'] },
   { id: 'shapefile', label: 'Shapefile', exts: ['.shp', '.dbf', '.shx', '.prj', '.cpg', '.zip'] },
 ];
 
 const extOf = (name) => { const i = name.lastIndexOf('.'); return i >= 0 ? name.slice(i).toLowerCase() : ''; };
+
+/** 动态加载 ESM 依赖（CDN esm.sh；wellknown/polyline 等无 UMD 构建的库走此通道）。失败抛错。 */
+async function loadEsm(spec) {
+  try {
+    const mod = await import('https://esm.sh/' + spec);
+    return mod.default || mod;
+  } catch (e) {
+    throw new Error('依赖加载失败：' + spec + '（CDN 不可达）');
+  }
+}
 
 /** Group a FileList into import units: shapefile sidecar bundles (share base
  *  name) become one group; everything else is a single-file group. 1:1 geojson.io groupFiles. */
@@ -47,8 +60,10 @@ export function detectGroupType(group) {
   }
   const ext = extOf(group.files[0].name);
   if (ext === '.geojson' || ext === '.json') return 'geojson';
+  if (ext === '.topojson') return 'topojson';
   if (ext === '.csv') return 'csv';
   if (ext === '.kml') return 'kml';
+  if (ext === '.gpx') return 'gpx';
   if (ext === '.zip') return 'shapefile';
   return null;
 }
@@ -57,7 +72,7 @@ export function detectGroupType(group) {
 async function parseGeoJSON(text) {
   const obj = JSON.parse(text);
   if (obj && obj.type === 'Topology' && window.topojson) {
-    return window.topojson.feature(obj, Object.keys(obj.objects)[0]);
+    return normalizeFC(window.topojson.feature(obj, Object.keys(obj.objects)[0]));
   }
   if (obj && (obj.type === 'FeatureCollection' || obj.type === 'Feature' || /^Multi/.test(obj.type) || obj.type === 'GeometryCollection')) {
     return normalizeFC(obj);
@@ -65,14 +80,169 @@ async function parseGeoJSON(text) {
   throw new Error('不是合法的 GeoJSON / TopoJSON');
 }
 
-function parseCSV(text) {
+async function parseTopoJSON(text) {
+  if (!window.topojson) throw new Error('TopoJSON 解析库未加载（CDN 不可达）');
+  const obj = JSON.parse(text);
+  if (!obj || obj.type !== 'Topology') throw new Error('不是合法的 TopoJSON');
+  const layers = Object.keys(obj.objects || {});
+  if (!layers.length) throw new Error('TopoJSON 无几何对象');
+  // 合并所有 object 层为一个 FeatureCollection（多图层时一并导入）。
+  const merged = [];
+  for (const k of layers) {
+    try { merged.push(...(window.topojson.feature(obj, k)).features || []); } catch (e) { /* skip bad layer */ }
+  }
+  return normalizeFC({ type: 'FeatureCollection', features: merged });
+}
+
+/**
+ * CSV parser — 接弹窗配置 cfg（1:1 geojson.io CSV 导入弹窗）。
+ * cfg: { kind, delimiter, latfield, lonfield, wktField, geojsonField, polylineField, inferTypes }
+ *   kind: 'coords' | 'wkt' | 'geojson' | 'polyline'
+ */
+async function parseCSV(text, cfg = {}) {
+  const kind = cfg.kind || 'coords';
+  const delimiter = cfg.delimiter || 'auto';
+
+  if (kind === 'wkt') {
+    const col = cfg.wktField;
+    if (!col) throw new Error('WKT 列未指定');
+    const wk = await loadEsm('wellknown@0.5.0');   // default = (wkt) → geometry
+    const rows = dsvRows(text, delimiter);
+    const feats = rows.body.map((r) => {
+      const wkt = r[col];
+      if (!wkt || !String(wkt).trim()) return null;
+      const geom = wk(String(wkt).trim());
+      return geom ? { type: 'Feature', geometry: geom, properties: { ...r } } : null;
+    }).filter(Boolean);
+    return postCsv(normalizeFC({ type: 'FeatureCollection', features: feats }), cfg);
+  }
+  if (kind === 'geojson') {
+    const col = cfg.geojsonField;
+    if (!col) throw new Error('GeoJSON 列未指定');
+    const rows = dsvRows(text, delimiter);
+    const feats = rows.body.map((r) => {
+      const raw = r[col];
+      if (!raw || !String(raw).trim()) return null;
+      try {
+        const g = JSON.parse(String(raw));
+        return { type: 'Feature', geometry: g, properties: { ...r } };
+      } catch (e) { return null; }
+    }).filter(Boolean);
+    return postCsv(normalizeFC({ type: 'FeatureCollection', features: feats }), cfg);
+  }
+  if (kind === 'polyline') {
+    const col = cfg.polylineField;
+    if (!col) throw new Error('折线列未指定');
+    const pl = await loadEsm('@mapbox/polyline@1.2.0');   // default = { decode, encode }
+    const rows = dsvRows(text, delimiter);
+    const feats = rows.body.map((r) => {
+      const enc = r[col];
+      if (!enc || !String(enc).trim()) return null;
+      try {
+        const coords = pl.decode(String(enc).trim());
+        // polyline.decode → [[lat,lng],...]；GeoJSON 要 [lng,lat]
+        const g = { type: 'LineString', coordinates: coords.map(([la, lo]) => [lo, la]) };
+        return { type: 'Feature', geometry: g, properties: { ...r } };
+      } catch (e) { return null; }
+    }).filter(Boolean);
+    return postCsv(normalizeFC({ type: 'FeatureCollection', features: feats }), cfg);
+  }
+
+  // kind === 'coords' —— csv2geojson 原生支持 latfield/lonfield/delimiter
   if (!window.csv2geojson) throw new Error('CSV 解析库未加载');
+  const opts = {};
+  if (cfg.latfield) opts.latfield = cfg.latfield;
+  if (cfg.lonfield) opts.lonfield = cfg.lonfield;
+  if (delimiter && delimiter !== 'auto') opts.delimiter = resolveDelim(delimiter);   // '\\t' → '\t'
   return new Promise((resolve, reject) => {
-    window.csv2geojson.csv2geojson(text, (err, fc) => {
-      if (err) return reject(new Error('CSV 缺少经纬度列或格式有误'));
-      resolve(normalizeFC(fc));
+    window.csv2geojson.csv2geojson(text, opts, (err, fc) => {
+      if (err) return reject(new Error('CSV 缺少经纬度列或格式有误（可在「解析方式」改 WKT / GeoJSON 列）'));
+      resolve(postCsv(normalizeFC(fc), cfg));
     });
   });
+}
+
+/** Infer types + 清理：csv 本只含字符串；勾选后将 number/boolean/null 推断。 */
+function postCsv(fc, cfg) {
+  if (cfg.inferTypes) coercePropertyTypes(fc);
+  return fc;
+}
+function coercePropertyTypes(fc) {
+  const BOOL = { true: true, false: false };
+  for (const f of fc.features) {
+    const p = f.properties || (f.properties = {});
+    for (const k of Object.keys(p)) {
+      const v = p[k];
+      if (typeof v !== 'string') continue;
+      const s = v.trim();
+      if (s === '') { p[k] = null; continue; }
+      const low = s.toLowerCase();
+      if (low === 'true' || low === 'false') { p[k] = BOOL[low]; continue; }
+      if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(s)) { const n = Number(s); if (Number.isFinite(n)) { p[k] = n; continue; } }
+    }
+  }
+}
+
+/** 轻量 DSV 解析（仅用于 WKT/GeoJSON/polyline 列模式；coords 模式走 csv2geojson）。
+ *  返回 { header:string[], body: Row[] }，Row = { [col]: string }。*/
+function dsvRows(text, delimiter) {
+  const delim = resolveDelim(delimiter);
+  const lines = text.replace(/\r\n/g, '\n').split('\n').filter((l) => l.length);
+  if (!lines.length) return { header: [], body: [] };
+  const header = splitLine(lines[0], delim);
+  const body = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = splitLine(lines[i], delim);
+    const row = {};
+    header.forEach((h, j) => { row[h] = cells[j] != null ? cells[j] : ''; });
+    body.push(row);
+  }
+  return { header, body };
+}
+function resolveDelim(d) {
+  if (d === ';' || d === '\\t' || d === '\t') return d === '\\t' || d === '\t' ? '\t' : ';';
+  if (d === '|') return '|';
+  return ',';
+}
+function splitLine(line, delim) {
+  // 简单 CSV 切分（支持双引号包裹）
+  const out = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQ) {
+      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') inQ = false;
+      else cur += ch;
+    } else if (ch === '"') inQ = true;
+    else if (ch === delim) { out.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  out.push(cur);
+  return out;
+}
+
+/** 读 CSV 表头（供弹窗填充列下拉）。返回 { delimiter, columns }。 */
+export function csvHeader(text) {
+  const cand = [',', ';', '\t', '|'];
+  const first = text.replace(/\r\n/g, '\n').split('\n')[0] || '';
+  let best = ',', bestN = 0;
+  for (const d of cand) { const n = splitLine(first, d).length; if (n > bestN) { bestN = n; best = d; } }
+  return { delimiter: best, columns: splitLine(first, best) };
+}
+const LAT_RE = /^(lat|latitude|纬度|y)$/i;
+const LON_RE = /^(lon|lng|longitude|经度|x)$/i;
+/** 猜纬度/经度列名（供弹窗默认值）。 */
+export function guessLatLon(columns) {
+  let lat = '', lon = '';
+  for (const c of columns) { if (!lat && LAT_RE.test(c.trim())) lat = c; if (!lon && LON_RE.test(c.trim())) lon = c; }
+  if (!lat || !lon) {
+    for (const c of columns) {
+      if (!lat && /lat|纬度/i.test(c)) lat = c;
+      if (!lon && /lon|lng|经度/i.test(c)) lon = c;
+    }
+  }
+  return { lat, lon };
 }
 
 async function parseKML(text) {
@@ -84,6 +254,17 @@ async function parseKML(text) {
   }
   const dom = new DOMParser().parseFromString(text, 'text/xml');
   return normalizeFC(mod.kml(dom));
+}
+
+async function parseGPX(text) {
+  let mod;
+  try {
+    mod = await import('https://esm.sh/@tmcw/togeojson@5.8.1');
+  } catch (e) {
+    throw new Error('GPX 解析库加载失败（CDN 不可达）');
+  }
+  const dom = new DOMParser().parseFromString(text, 'text/xml');
+  return normalizeFC(mod.gpx(dom));   // 含 wpt(rte/points)/trk(trkpt)/rte
 }
 
 async function parseShapefile(files) {
@@ -132,11 +313,18 @@ function manualCombine(shpGeo, dbfRows) {
   return { type: 'FeatureCollection', features };
 }
 
-export async function parseGroup(group, type) {
+/**
+ * @param group   {kind, files}
+ * @param type    FILE_TYPES id
+ * @param config  { csv?:{...}, crs?:{...} }  （crs 由 main.js 在 reprojectFC 阶段用）
+ */
+export async function parseGroup(group, type, config = {}) {
   switch (type) {
     case 'geojson':    return parseGeoJSON(await group.files[0].text());
-    case 'csv':        return parseCSV(await group.files[0].text());
+    case 'topojson':   return parseTopoJSON(await group.files[0].text());
+    case 'csv':        return parseCSV(await group.files[0].text(), config.csv || {});
     case 'kml':        return parseKML(await group.files[0].text());
+    case 'gpx':        return parseGPX(await group.files[0].text());
     case 'shapefile':  return parseShapefile(group.files);
     default:           throw new Error('不支持的格式');
   }
@@ -157,38 +345,150 @@ function normalizeFC(obj) {
 // ── CRS reprojection → WGS84/EPSG:4326 ─────────────────────────────────────
 // proj4 reads the .prj WKT directly (recent versions parse WKT). If no .prj but
 // coords look projected (huge numbers), fall back to EPSG:4546 (宜昌 CGCS2000 /
-// 3-degree Gauss-Kruger CM 111E). Anything ambiguous → load as-is + warn caller.
-// Heuristic fallback (no .prj but coords look projected): CGCS2000 3-degree
-// Gauss-Kruger CM 111E with false-easting 500000 (EPSG:4538, 宜昌规划常用).
+// 3-degree Gauss-Kruger CM 111E). 弹窗显式选择（opts.crs）优先于 .prj / 启发式。
 const EPSG_CGCS2000_111E = '+proj=tmerc +lat_0=0 +lon_0=111 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs';
 const WGS84 = '+proj=longlat +datum=WGS84 +no_defs';
 const looksProjected = ([x, y]) => Math.abs(x) > 180 || Math.abs(y) > 90;
 
-export function reprojectFC(fc, prjWkt) {
+// 源 CRS 预设表（供弹窗下拉；src 字段 = reprojectFC 的 opts.crs 形态）。
+export const CRS_PRESETS = [
+  { id: 'auto',       label: '自动检测（.prj 优先，否则投影启发式）',                 src: { type: 'auto' } },
+  { id: 'wgs84',      label: 'WGS84 (EPSG:4326) · 地理坐标',                          src: { type: 'none' } },
+  { id: 'gcj02',      label: 'GCJ-02 火星坐标 · 社交媒体',                            src: { type: 'gcj02' } },
+  { id: 'cgcs2000-111', label: 'CGCS2000 / 3°带 CM111°E · 宜昌',                      src: { type: 'proj', def: EPSG_CGCS2000_111E } },
+  { id: 'cgcs2000-108', label: 'CGCS2000 / 3°带 CM108°E',                             src: { type: 'proj', def: '+proj=tmerc +lat_0=0 +lon_0=108 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs' } },
+  { id: 'cgcs2000-114', label: 'CGCS2000 / 3°带 CM114°E',                             src: { type: 'proj', def: '+proj=tmerc +lat_0=0 +lon_0=114 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs' } },
+  { id: 'cgcs2000-geo', label: 'CGCS2000 (EPSG:4490) · 地理坐标',                     src: { type: 'proj', def: '+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs' } },
+  { id: 'xian80-111', label: '西安80 / 3°带 CM111°E',                                 src: { type: 'proj', def: '+proj=tmerc +lat_0=0 +lon_0=111 +k=1 +x_0=500000 +y_0=0 +a=6378140 +b=6356755.288157528 +units=m +no_defs' } },
+  { id: 'beijing54-111', label: '北京54 / 3°带 CM111°E',                              src: { type: 'proj', def: '+proj=tmerc +lat_0=0 +lon_0=111 +k=1 +x_0=500000 +y_0=0 +a=6378245 +b=6356863.018773047 +units=m +no_defs' } },
+  { id: 'mercator',   label: 'Web Mercator (EPSG:3857)',                              src: { type: 'proj', def: '+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +no_defs' } },
+  { id: 'custom',     label: '自定义…（EPSG / proj4）',                               src: { type: 'custom' } },
+];
+
+// 常见 EPSG → proj4 速查（自定义 EPSG 输入用；未命中则要求填 proj4 字符串）。
+const EPSG_TO_PROJ = {
+  4326: '+proj=longlat +datum=WGS84 +no_defs',
+  4490: '+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs',
+  3857: '+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +no_defs',
+  // CGCS2000 / 3°带 Gauss-Kruger（无带号前缀，CM = zone×3°）：4513=CM75 ... 4546≈CM111(宜昌近似)
+  4513: '+proj=tmerc +lat_0=0 +lon_0=75 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs',
+  4514: '+proj=tmerc +lat_0=0 +lon_0=78 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs',
+  4515: '+proj=tmerc +lat_0=0 +lon_0=81 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs',
+  4516: '+proj=tmerc +lat_0=0 +lon_0=84 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs',
+  4517: '+proj=tmerc +lat_0=0 +lon_0=87 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs',
+  4518: '+proj=tmerc +lat_0=0 +lon_0=90 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs',
+  4519: '+proj=tmerc +lat_0=0 +lon_0=93 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs',
+  4520: '+proj=tmerc +lat_0=0 +lon_0=96 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs',
+  4521: '+proj=tmerc +lat_0=0 +lon_0=99 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs',
+  4522: '+proj=tmerc +lat_0=0 +lon_0=102 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs',
+  4523: '+proj=tmerc +lat_0=0 +lon_0=105 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs',
+  4524: '+proj=tmerc +lat_0=0 +lon_0=108 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs',
+  4525: '+proj=tmerc +lat_0=0 +lon_0=111 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs',
+  4526: '+proj=tmerc +lat_0=0 +lon_0=114 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs',
+  // 带号前缀变体（4534-4554 系列，y_0 含带号；CM111≈4534/4546 依变体）
+  4546: '+proj=tmerc +lat_0=0 +lon_0=111 +k=1 +x_0=37500000 +y_0=0 +ellps=GRS80 +units=m +no_defs',
+  4534: '+proj=tmerc +lat_0=0 +lon_0=111 +k=1 +x_0=37500000 +y_0=0 +ellps=GRS80 +units=m +no_defs',
+  4538: '+proj=tmerc +lat_0=0 +lon_0=111 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs',
+};
+
+/** 把弹窗的 CRS 选择（presetId + 自定义输入）解析为 reprojectFC 的 opts.crs。
+ *  custom: { epsg?, proj? }（presetId==='custom' 时生效）。
+ *  返回 { type:'auto'|'none'|'gcj02'|'proj', def? }。 */
+export function resolveCrsChoice(presetId, custom) {
+  const p = CRS_PRESETS.find((x) => x.id === presetId) || CRS_PRESETS[0];
+  if (p.src.type === 'custom') {
+    if (custom && custom.proj && custom.proj.trim()) return { type: 'proj', def: custom.proj.trim() };
+    if (custom && custom.epsg) {
+      const code = Number(String(custom.epsg).replace(/[^\d]/g, ''));
+      const def = EPSG_TO_PROJ[code];
+      if (def) return { type: 'proj', def };
+    }
+    return { type: 'auto' };   // 自定义但没填有效值 → 退自动
+  }
+  return p.src;
+}
+
+/** 廉价「检测到」提示文（弹窗展示用；不保证精确）。fc 可为 null。 */
+export function guessCrsLabel(fc, prjWkt) {
+  if (prjWkt) return '已读取 .prj（默认「自动」即用之；可手动覆盖）';
+  if (!fc || !fc.features || !fc.features.length) return '导入后按坐标范围判断';
+  const s = firstCoord(fc);
+  if (!s) return '导入后按坐标范围判断';
+  if (looksProjected(s)) return '坐标为大数 → 疑似投影（CGCS2000 3°带等），建议手动选择';
+  return '坐标为经纬度 → 疑似 WGS84 / GCJ-02';
+}
+
+/**
+ * reprojectFC(fc, opts) —— 把任意源 CRS 的 FC 变换到 WGS84/EPSG:4326。
+ * opts: { prjWkt?, crs? }；crs 来自弹窗（resolveCrsChoice），优先级高于 prjWkt / 启发式。
+ * 返回 fc，或 { _crsWarn:true, fc }（变换失败/库缺失，调用方按 WGS84 容错）。
+ */
+export function reprojectFC(fc, opts = {}) {
   if (!fc.features.length) return fc;
   const sample = firstCoord(fc);
   if (!sample) return fc;
+
+  const crs = opts.crs;
   const projected = looksProjected(sample);
-  if (!projected && !prjWkt) return fc;          // already lon/lat, nothing to do
-  if (!window.proj4) return { _crsWarn: true, fc };
 
-  let srcDef = null;
-  if (prjWkt) {
-    try { window.proj4.defs('__src', prjWkt); srcDef = '__src'; }
-    catch (e) { srcDef = null; }
+  // 1) 弹窗显式 CRS 优先
+  if (crs && crs.type === 'gcj02') {
+    try { walkCoords(fc, (c) => { const w = gcj02ToWgs84(c[0], c[1]); c[0] = w.lon; c[1] = w.lat; }); return fc; }
+    catch (e) { return { _crsWarn: true, fc }; }
   }
-  if (!srcDef && projected) srcDef = EPSG_CGCS2000_111E;  // heuristic fallback (宜昌)
-  if (!srcDef) return fc;
+  if (crs && crs.type === 'none') return fc;            // 用户声明已为 WGS84
+  let srcDef = null;
+  if (crs && crs.type === 'proj' && crs.def) srcDef = crs.def;
+  // 2) auto / 未指定 → .prj 优先，投影启发式兜底
+  if (!srcDef && opts.prjWkt) srcDef = opts.prjWkt;     // proj4 解析 WKT
+  if (!srcDef && projected) srcDef = EPSG_CGCS2000_111E;
+  if (!srcDef) return fc;                               // 地理坐标，无需变换
 
+  if (!window.proj4) return { _crsWarn: true, fc };
   try {
-    walkCoords(fc, (coord) => {
-      const [x, y] = window.proj4(srcDef, WGS84, coord);
-      coord[0] = x; coord[1] = y;
-    });
+    window.proj4.defs('__src', srcDef);
+    walkCoords(fc, (c) => { const [x, y] = window.proj4('__src', WGS84, c); c[0] = x; c[1] = y; });
     return fc;
   } catch (e) {
     return { _crsWarn: true, fc };
   }
+}
+
+/** GCJ-02 → WGS-84（单步逆变换近似，误差数米；社交媒体偏移修正用）。
+ *  入参 lon/lat 为度；海外点原样返回。 */
+function gcj02ToWgs84(lon, lat) {
+  if (outOfChina(lon, lat)) return { lon, lat };
+  const PI = Math.PI;
+  const A = 6378245.0;
+  const EE = 0.00669342162296594323;
+  let dLat = transformLat(lon - 105.0, lat - 35.0);
+  let dLon = transformLon(lon - 105.0, lat - 35.0);
+  const radLat = lat * PI / 180.0;
+  let magic = Math.sin(radLat);
+  magic = 1 - EE * magic * magic;
+  const sqrtMagic = Math.sqrt(magic);
+  dLat = (dLat * 180.0) / ((A * (1 - EE)) / (magic * sqrtMagic) * PI / 180.0);
+  dLon = (dLon * 180.0) / (A / sqrtMagic * Math.cos(radLat) * PI / 180.0);
+  return { lon: lon - dLon, lat: lat - dLat };
+}
+function outOfChina(lng, lat) {
+  return !(lng > 73.66 && lng < 135.05 && lat > 3.86 && lat < 53.55);
+}
+function transformLat(x, y) {
+  const PI = Math.PI;
+  let ret = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x));
+  ret += (20.0 * Math.sin(6.0 * x * PI) + 20.0 * Math.sin(2.0 * x * PI)) * 2.0 / 3.0;
+  ret += (20.0 * Math.sin(y * PI) + 40.0 * Math.sin(y / 3.0 * PI)) * 2.0 / 3.0;
+  ret += (160.0 * Math.sin(y / 12.0 * PI) + 320.0 * Math.sin(y * PI / 30.0)) * 2.0 / 3.0;
+  return ret;
+}
+function transformLon(x, y) {
+  const PI = Math.PI;
+  let ret = 300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.sqrt(Math.abs(x));
+  ret += (20.0 * Math.sin(6.0 * x * PI) + 20.0 * Math.sin(2.0 * x * PI)) * 2.0 / 3.0;
+  ret += (20.0 * Math.sin(x * PI) + 40.0 * Math.sin(x / 3.0 * PI)) * 2.0 / 3.0;
+  ret += (150.0 * Math.sin(x / 12.0 * PI) + 300.0 * Math.sin(x / 30.0 * PI)) * 2.0 / 3.0;
+  return ret;
 }
 
 function firstCoord(fc) {

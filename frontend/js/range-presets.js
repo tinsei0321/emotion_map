@@ -132,7 +132,7 @@ async function uploadPresetFile(item, fileList) {
     if (!type) { toast.error(`${base}：无法识别格式`); return; }
     const prj = type === 'shapefile' ? await readPrj(groups[0]) : null;
     let fc = await parseGroup(groups[0], type);
-    const r = reprojectFC(fc, prj);
+    const r = reprojectFC(fc, { prjWkt: prj });
     fc = (r && r._crsWarn) ? r.fc : r;
     const { polygons } = splitByGeometry(fc);
     if (!polygons.features.length) { toast.error(`${base}：未含面域几何`); return; }

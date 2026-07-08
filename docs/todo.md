@@ -7,6 +7,16 @@
 
 ## 📅 2026-07-08
 
+### ✅ Import · 解析配置弹窗 1:1 + 源 CRS 手选 + GPX/TopoJSON（revision-log 5.46，07月08日 23:50）
+
+1:1 复刻 geojson.io 导入弹窗（截图=CSV 解析配置）+ 用户追加的坐标系选择/转换。纯前端轮（GDB/CAD 延后服务端）。
+- **弹窗重构** [dialog.js](frontend/js/dialog.js)：按格式自适应——CSV 全套(Kind 坐标列/WKT列/GeoJSON列/编码折线·分隔符·经纬列·Infer types)，其余格式下拉；onConfirm 回 `{type,config}[]`；中文化。[dialog.css](frontend/css/dialog.css) 加配置区样式。
+- **源 CRS 手选** ★：弹窗 CRS 区（自动检测+预设下拉+目标WGS84）；[import.js](frontend/js/import.js) `reprojectFC(fc,{prjWkt,crs})` 改签名（显式>.prj>启发式，向后兼容）+ `gcj02ToWgs84` + EPSG 速查表。取代写死 EPSG:4546 静默启发式。
+- **新格式**：GPX(togeojson)、TopoJSON(topojson-client)；CSV WKT/polyline 走 esm.sh 动态 import。
+- **调用点同步**：[main.js](frontend/js/main.js) runImport 透传 config；runRangeImport / [range-presets.js](frontend/js/range-presets.js) 签名兼容。
+- **验证**：node --check 全过 + serve 200 + served 字节含新符号。CRS/Kind 正确性交用户真文件验。
+- **延后**：GDB / CAD(dxf/dwg) → 服务端轮。
+
 ### ✅ AI 问答 · 可靠性硬 gate + 显式链变量 + 多会话 + 答案操作按钮（revision-log 5.45，07月08日 23:00）
 
 业界对比后聚焦差异化（情绪+规划认知+问题闭环是壁垒）。本轮治两痛点+会话：

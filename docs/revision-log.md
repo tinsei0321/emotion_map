@@ -20,7 +20,7 @@ emotion_map（根）
 │
 ├─ 主干 · 系统架构（奠基层）
 │  ├─ 七层骨架 ✅  frontend · apps · core · SCRIPT · SCRAPER · DATA · design
-│  ├─ Import/Export 管道 ✅  Import（geojson.io 1:1 + 多格式 + CRS 自动投影）｜Export ✅（geojson/csv/shp.zip + CRS + 脱敏，后端 geopandas `/export`）
+│  ├─ Import/Export 管道 ✅  Import（geojson.io 1:1 解析配置弹窗 + 多格式[geojson/topojson/csv/kml/gpx/shp] + 源 CRS 手选[自动/WGS84/GCJ-02/CGCS2000·西安80·北京54/Mercator/自定义]）｜Export ✅（geojson/csv/shp.zip + CRS + 脱敏，后端 geopandas `/export`）｜⬜ GDB/CAD(dxf/dwg) 服务端轮
 │  ├─ 外壳/控件/视觉 ✅  MapLibre GL + 天地图 + Design Token 双主题
 │  ├─ 数据采集 Scrapy ✅  框架就绪
 │  ├─ 数据管道 L0→L4 🔄  L0→L1→L2 通（L1 待 API Key 验证）｜L3 语义 ⬜｜L4 归因 ⬜
@@ -913,6 +913,18 @@ flowchart TD
 - **D2 答案内嵌操作**：[renderAnswer](frontend/js/ai_qa/panel.js) 扩展 `{{focus|show|inspect:target}}` 模板 → 可点按钮（.chat-action-btn）；onMsgClick 派发 `TOOLS.focus_zones`/`inspect_zone`/`selectLayer`。prompt FINAL_TEMPLATE 教 LLM 用模板取代"请点击"空话。
 - **验证**：node --check 全过；Playwright 加载 + chat 面板 console 无 JS error（import 链通：selectLayer/resetStepResults/getLastUsage 均正常 export）。深度功能（多会话切换 / 按钮触发 / A1/A2/A3 在真 LLM 下）待用户实测。
 - **留 UI 重设计后**：多模态截图、主动建议、报告生成、方案模拟（依赖新 UI 范式）。
+
+### 5.46 Import · 解析配置弹窗 1:1 + 源坐标系手选 + GPX/TopoJSON（07月08日 23:50）
+
+用户要 1:1 复刻 geojson.io 的数据导入弹窗（截图 = CSV 解析配置：File format / Kind / Delimiter / 经纬列 / Infer types），并追加"坐标系选择/转换"。本轮纯前端；GDB / CAD（dwg/dxf）浏览器无解析器，确认延后到服务端一轮。
+
+- **弹窗 1:1 重构** [dialog.js](frontend/js/dialog.js)：按格式自适应配置区——CSV 全套（解析方式 Kind=坐标列/WKT 列/GeoJSON 列/编码折线 · 分隔符 · 纬度列/经度列（读表头自动猜）· 类型推断 + 说明文），其余格式给格式下拉；onConfirm 回传 `{type,config}[]`（原仅 type）。中文化（文件格式/专业词保留英文）。[dialog.css](frontend/css/dialog.css) 加 `.imp-section/.imp-kind/.imp-cols/.imp-crs`（沿用 geojson 设计令牌）。
+- **源坐标系选择/转换** ★用户追加：弹窗 CRS 区（所有格式通用）= 自动检测提示 + 预设下拉（自动/WGS84/GCJ-02/CGCS2000 各 3°带/西安80/北京54/Web Mercator/自定义 EPSG·proj4）+ 目标 WGS84。[import.js](frontend/js/import.js) `reprojectFC(fc,{prjWkt,crs})` 改签名：弹窗显式 CRS 优先 > .prj > 投影启发式（向后兼容 Range/Preset 路径）；新增 `gcj02ToWgs84`（单步逆变换，社交媒体偏移修正）+ EPSG→proj 速查表。取代原先写死 EPSG:4546 的静默启发式。
+- **CSV 多 Kind**：WKT 列走 wellknown、编码折线走 @mapbox/polyline、GeoJSON 列 JSON.parse（均 esm.sh 动态 ESM import）；坐标列仍走 csv2geojson（透传 latfield/lonfield/delimiter）。Infer types = 属性 number/boolean/null 推断。
+- **新格式**：GPX（@tmcw/togeojson `gpx`）、TopoJSON（topojson-client UMD，合并多 layer）；FILE_TYPES + detectGroupType/groupFiles 扩充；[index.html](frontend/index.html) accept + 左栏文案中文化 + 格式清单补 GPX/TopoJSON。
+- **调用点同步**（设计语言一致性）：[main.js](frontend/js/main.js) runImport 透传 config + crs；runRangeImport / [range-presets.js](frontend/js/range-presets.js) 改 `{prjWkt}` 兼容签名。
+- **验证**：node --check 4 模块全过；serve 起、index/各 JS/CSS 200、topojson CDN 可达、served 字节含新符号（非缓存）。CRS 变换正确性 / CSV 各 Kind / GCJ-02 偏移修正 → 交用户用真实文件（项目 CSV / 投影 shp / GCJ geojson）肉眼验。
+- **延后（服务端一轮）**：GDB（fiona OpenFileGDB，可复用 range_selector 链路）、CAD（DXF=ezdxf 零负担 / DWG=ODA File Converter 或 libopencad-GDAL）；弹窗 CRS 区届时直接复用。
 
 ## 6. 持续追加规则（给 AI）
 

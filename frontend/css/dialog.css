@@ -149,6 +149,107 @@
   border-radius: var(--geojson-radius-sm);
 }
 
+/* ── Import 解析配置弹窗（CSV 多 Kind + 源 CRS）── */
+.imp-dialog { width: 460px; }
+.imp-dialog .imp-body { gap: var(--geojson-spacing-3); }
+.imp-group { display: flex; flex-direction: column; gap: var(--geojson-spacing-2); }
+.imp-section { display: flex; flex-direction: column; gap: 4px; }
+.imp-section .form-label {
+  font-size: var(--geojson-typography-size-2xs);
+  font-weight: var(--geojson-typography-weight-medium);
+  color: var(--geojson-color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* CSV 解析方式（Kind）单选行 */
+.imp-cfg { display: flex; flex-direction: column; gap: var(--geojson-spacing-2); }
+.imp-kind { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.imp-kind-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-primary);
+  cursor: pointer;
+  user-select: none;
+}
+.imp-kind-opt input { margin: 0; cursor: pointer; }
+.imp-kind-opt .imp-en { color: var(--geojson-color-text-tertiary); font-size: 10px; }
+
+/* 列选择行：坐标列 = 三列网格；其余单列 */
+.imp-cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--geojson-spacing-2); }
+.imp-cols[class*="imp-cols-wkt"],
+.imp-cols[class*="imp-cols-geojson"],
+.imp-cols[class*="imp-cols-polyline"] {
+  grid-template-columns: 1fr;          /* 单列下拉独占 */
+}
+.imp-col { display: flex; flex-direction: column; gap: 4px; }
+
+/* 类型推断 */
+.imp-infer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-primary);
+  cursor: pointer;
+  user-select: none;
+}
+.imp-infer input { margin: 0; cursor: pointer; }
+.imp-infer-hint {
+  font-size: var(--geojson-typography-size-2xs);
+  color: var(--geojson-color-text-tertiary);
+  line-height: 1.5;
+  margin-top: -2px;
+}
+
+/* 源坐标系（CRS）区 */
+.imp-crs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--geojson-spacing-2) var(--geojson-spacing-3);
+  background: var(--geojson-color-gray-100);
+  border-radius: var(--geojson-radius-md);
+}
+.imp-crs-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.imp-crs-head .form-label {
+  font-size: var(--geojson-typography-size-2xs);
+  font-weight: var(--geojson-typography-weight-medium);
+  color: var(--geojson-color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+.imp-crs-det {
+  font-size: 10px;
+  color: var(--geojson-color-text-tertiary);
+  text-align: right;
+  line-height: 1.4;
+}
+.imp-crs-custom { display: flex; flex-direction: column; gap: 6px; }
+.imp-crs-custom[hidden] { display: none; }
+.imp-crs .input {
+  width: 100%;
+  padding: 5px 8px;
+  font-size: var(--geojson-typography-size-xs);
+  font-family: var(--geojson-typography-mono);
+  color: var(--geojson-color-text-primary);
+  background: var(--geojson-color-surface-page);
+  border: 1px solid var(--geojson-color-border-default);
+  border-radius: var(--geojson-radius-sm);
+  box-sizing: border-box;
+}
+.imp-crs .input:focus {
+  outline: none;
+  border-color: var(--geojson-color-brand-primary);
+}
+.imp-crs-tgt {
+  font-size: var(--geojson-typography-size-2xs);
+  color: var(--geojson-color-text-secondary);
+}
+
 /* ── HeatMap parameter dialog ── */
 .hm-dialog {
   width: 480px;

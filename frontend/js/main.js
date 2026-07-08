@@ -78,15 +78,19 @@ async function runImport(files) {
     onConfirm: async (chosen) => {
       let added = 0, needsAny = false, crsAny = false;
       for (let i = 0; i < groups.length; i++) {
-        const type = chosen[i];
+        const { type, config } = chosen[i] || {};
         const base = layerName(groups[i]);
         if (!type) { toast.error(`${base}：无法识别格式，已跳过`); continue; }
         try {
           const prj = type === 'shapefile' ? await readPrj(groups[i]) : null;
-          let fc = await parseGroup(groups[i], type);
-          const r = reprojectFC(fc, prj);
+          let fc = await parseGroup(groups[i], type, config);
+          const r = reprojectFC(fc, { prjWkt: prj, crs: config?.crs });
           if (r && r._crsWarn) { crsAny = true; fc = r.fc; } else fc = r;
-          fc.__crs = (r && r._crsWarn) ? '投影坐标系 → WGS84 (EPSG:4326)' : 'WGS84 (EPSG:4326)';
+          const ck = config?.crs;
+          fc.__crs = (r && r._crsWarn) ? '投影坐标系 → WGS84 (EPSG:4326)'
+            : ck?.type === 'gcj02' ? 'GCJ-02 → WGS84 (EPSG:4326)'
+            : ck?.type === 'proj' ? '源坐标系 → WGS84 (EPSG:4326)'
+            : 'WGS84 (EPSG:4326)';
 
           const { points, lines, polygons } = splitByGeometry(fc);
           if (fc.__crs) { points.__crs = lines.__crs = polygons.__crs = fc.__crs; }   // 传给 addLayer → layer.crsInfo
@@ -159,7 +163,7 @@ async function runRangeImport(files) {
     try {
       const prj = type === 'shapefile' ? await readPrj(g) : null;
       let fc = await parseGroup(g, type);
-      const r = reprojectFC(fc, prj);
+      const r = reprojectFC(fc, { prjWkt: prj });
       if (r && r._crsWarn) { crsAny = true; fc = r.fc; } else fc = r;
       fc.__crs = (r && r._crsWarn) ? '投影坐标系 → WGS84 (EPSG:4326)' : 'WGS84 (EPSG:4326)';
       const { lines, polygons } = splitByGeometry(fc);   // points intentionally dropped (Range = 面/线)

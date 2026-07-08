@@ -58,18 +58,20 @@
     <aside id="left-panel">
       <!-- 模式 1：Import 面板（1:1 图2） -->
       <div class="lp-mode lp-import" data-mode="import">
-        <div class="lp-title">Import a file</div>
+        <div class="lp-title">导入文件</div>
         <p class="lp-hint">使用上方绘制工具在地图上绘制要素，或从文件导入空间数据。</p>
         <label class="import-btn" id="left-import-btn">
-          <span>+ Import</span>
-          <input type="file" id="import-input" accept=".csv,.geojson,.json,.kml,.shp,.dbf,.shx,.prj,.cpg,.zip" multiple hidden />
+          <span>+ 导入</span>
+          <input type="file" id="import-input" accept=".csv,.geojson,.json,.kml,.gpx,.topojson,.shp,.dbf,.shx,.prj,.cpg,.zip" multiple hidden />
         </label>
-        <div class="dropzone" id="dropzone">Drop files here</div>
-        <div class="lp-section-title">Supported file types</div>
+        <div class="dropzone" id="dropzone">拖放文件到此处</div>
+        <div class="lp-section-title">支持的文件类型</div>
         <ul class="lp-types">
           <li>GeoJSON <span class="lp-ext">.geojson / .json</span></li>
+          <li>TopoJSON <span class="lp-ext">.topojson</span></li>
           <li>CSV <span class="lp-ext">.csv</span></li>
           <li>KML <span class="lp-ext">.kml</span></li>
+          <li>GPX <span class="lp-ext">.gpx</span></li>
           <li>Shapefile <span class="lp-ext">.shp + .dbf + .prj / .zip</span></li>
         </ul>
       </div>
@@ -157,7 +159,7 @@
         </div>
 
         <!-- 隐藏上载节点：区2 文件夹按当前 tab 触发（Range→range-input / Layers→import-input） -->
-        <input type="file" id="range-input" accept=".geojson,.json,.kml,.shp,.dbf,.shx,.prj,.cpg,.zip" hidden />
+        <input type="file" id="range-input" accept=".geojson,.json,.kml,.gpx,.topojson,.shp,.dbf,.shx,.prj,.cpg,.zip" hidden />
       </div>
     </aside>
 
@@ -838,6 +840,9 @@
   <script src="https://cdn.jsdelivr.net/npm/shpjs@4.0.4/dist/shp.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/proj4@2.11.0/dist/proj4.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+  <!-- KML/GPX（@tmcw/togeojson）、CSV WKT 列（wellknown）、编码折线（@mapbox/polyline）
+       均无可靠 UMD 构建，由 import.js 走 esm.sh 动态 ESM import（按需）。 -->
 
   <!-- App scripts (ES modules) -->
   <script type="module" src="js/main.js"></script>
