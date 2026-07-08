@@ -1,0 +1,207 @@
+"""专业认知层 · 尺度-方法-范式 参考表 + GIS 操作目录（DIAGNOSE 选型依据）。
+
+纯数据（dict/list），供 manifesto.py / prompts.build_diagnose_prompt 渲染进 prompt，教模型：
+1) 任何问题先沿「行业视角 × 尺度 × 决策类型 × 出口」拆解，而非语义解析后直接走固定管线；
+2) 结论颗粒度必须匹配问题尺度（宏观禁落单点 / 微观禁泛泛）—— 这是城市规划系统性思维的核心；
+3) 从 GIS 工具目录自动选型 + 组合（Data+Skill+Agent+Harness 的 "Skill" 层）。
+
+改范式 = 改本文件（数据，非逻辑）。运行时强制靠 prompts.build_diagnose_prompt +
+review.REVIEW_CHECKLIST 的 scale_paradigm_fit；方法论镜像沉淀于
+.claude/skills/emotion-scale-paradigm/（供开发维护演进）。
+"""
+
+# ════════════ 表1 · 尺度-方法-范式矩阵（结论颗粒度硬约束）════════════
+# 情绪地图的专业认知皇冠：分析的"尺度感"决定结论的"形态"。尺度错位 = 答非所问。
+SCALE_PARADIGM = [
+    {
+        'scale': 'macro',
+        'name': '宏观',
+        'geo_objects': '城区 / 片区 / 组团（10²–10³ km²，如中心城区 1623 km²、各行政区）',
+        'method': '大尺度聚合（1000m 网格 / 行政区 zonal）+ 排序 + 类型化/结构化归纳',
+        'paradigm': '体系化结论：哪类空间 / 哪些街道 / 哪类用地系统性落后或领先（结构判断）',
+        'forbidden': '禁止落到单一坐标 / 单一网格（用微观结论答宏观问）',
+        'typical_q': '"中心城区整体情绪如何？哪里好哪里坏？""哪个片区最需优先更新？"',
+    },
+    {
+        'scale': 'meso',
+        'name': '中观',
+        'geo_objects': '街道 / 社区 / 更新单元（1–50 km²）',
+        'method': '单元 zonal 聚合（边界 preset）+ 4×5 归因 + 单元间排序',
+        'paradigm': '单元级结论：哪个单元最差/最好 + 归因（domain×element）+ 单元针对性建议',
+        'forbidden': '不混到单点、也不泛到整城',
+        'typical_q': '"这几个街道里哪个最需更新？""某社区的 4×5 归因偏哪一格？"',
+    },
+    {
+        'scale': 'micro',
+        'name': '微观',
+        'geo_objects': '街 / 小区 / 公园 / POI / 网格（10⁻²–1 km²）',
+        'method': '50–100m 精细网格聚合 + 热点聚集（Gi*）+ 具体落点',
+        'paradigm': '落点结论：哪个具体网格 / 聚集区 / POI + 精确定位（可飞到地图）',
+        'forbidden': '禁止泛泛而谈（用宏观结论答微观问）',
+        'typical_q': '"这个公园里哪里情绪最差？""这条街上哪个点位被吐槽最多？"',
+    },
+]
+
+
+def scale_paradigm_text() -> str:
+    """渲染表1为模型可读文本（注入 MANIFESTO/diagnose prompt）。"""
+    lines = []
+    for s in SCALE_PARADIGM:
+        lines.append(
+            f"- [{s['name']}/{s['scale']}] 对象：{s['geo_objects']}\n"
+            f"    方法：{s['method']}\n"
+            f"    出口范式：{s['paradigm']}\n"
+            f"    禁止：{s['forbidden']}\n"
+            f"    典型问：{s['typical_q']}"
+        )
+    return '\n'.join(lines)
+
+
+# ════════════ 表2 · 4 领域 × 出口范式启发库（DIAGNOSE 选型参考，可扩）════════════
+DOMAIN_OUTLETS = {
+    'urban_planning': {
+        'name': '城市规划',
+        'outlets': [
+            '选址研判（设施缺口 × 情绪，中观）',
+            '15 分钟生活圈品质评价（中观单元）',
+            '用地类型情绪对比（宏观结构）',
+        ],
+    },
+    'urban_renewal': {
+        'name': '城市更新',
+        'outlets': [
+            '更新时序排序 / 优先级（中观，按更新单元）',
+            '微更新点位识别（微观，老旧小区 100m 网格）',
+            '片区更新系统性诊断（宏观结构）',
+        ],
+    },
+    'urban_operation': {
+        'name': '城市运营',
+        'outlets': [
+            '场馆 / 商圈活动复盘（事件前后情绪对比）',
+            '舆情监测预警（负面聚集热点）',
+            '商圈业态口碑对比（中观）',
+        ],
+    },
+    'urban_governance': {
+        'name': '城市治理',
+        'outlets': [
+            '12345 / 投诉热点预警（负面聚集 + 关键词）',
+            '交通 / 停车拥堵点排查（微观落点）',
+            '跨单元治理压力对比（中观排序）',
+        ],
+    },
+}
+
+
+def domain_outlets_text() -> str:
+    lines = []
+    for d, info in DOMAIN_OUTLETS.items():
+        lines.append(f"- {info['name']}（{d}）：" + ' / '.join(info['outlets']))
+    return '\n'.join(lines)
+
+
+# ════════════ 表3 · GIS 操作目录（AI 自动选用 = Skill+Agent 层）════════════
+# 每项：何时用 / 入参 / 产出 / 对结论范式的贡献。DIAGNOSE 的 method 字段据此组合。
+# 后端实现见 api/geo_routes.py（复用 core/spatial_analysis + range_selector，GeoPandas）。
+GEO_TOOL_CATALOG = [
+    {
+        'name': 'filter_attr',
+        'when': '按属性筛选：用地类型 / 极性 / domain / element / 时点',
+        'params': 'layer, field, op(eq|in|gt|lt), value',
+        'yields': '子集（点或聚合）',
+        'contributes': '聚焦切片（"商业用地"/"T1 负面"/"治理域"），支撑类型化结论',
+    },
+    {
+        'name': 'clip',
+        'when': '按几何裁剪：某行政区/某公园/某街道"范围内"的点或聚合',
+        'params': 'layer, range(preset_id | geojson)',
+        'yields': '范围内的子集',
+        'contributes': '限定空间范围（"西陵区""滨江公园内"），支撑中/微观落点',
+    },
+    {
+        'name': 'merge',
+        'when': '合并 / dissolve：把多个面域合成一个片区，或同类用地合并',
+        'params': 'layer, by(字段) | all',
+        'yields': '合并后的面域',
+        'contributes': '上卷到更大尺度（几街道→一片区），支撑宏观结构结论',
+    },
+    {
+        'name': 'area_stats',
+        'when': '面积统计：各类用地面积占比、单元面积、单位面积情绪密度',
+        'params': 'layer, group_by(字段)',
+        'yields': '面积 + 占比 + 密度',
+        'contributes': '量化"占比""密度"，让结论从计数升级为强度/结构判断',
+    },
+    {
+        'name': 'zonal_stats',
+        'when': '面域聚合统计：按更新单元/街道/社区把点聚合成单元指标（宏观/中观核心）',
+        'params': 'layer, boundary(preset_id | geojson), metrics, top_n',
+        'yields': '每单元 point_count/极性/4×5 归因 + 排序',
+        'contributes': '产出"哪个单元最差 + 归因"，宏观/中观结论的主干',
+    },
+    {
+        'name': 'rank',
+        'when': '排序：按极性/domain/element 找 Top N 最差/最好',
+        'params': 'layer, by(polarity|domain|element), top_n, range',
+        'yields': '排序后的 Top N 单元',
+        'contributes': '给出"最需优先…"的明确排序，结论有指向性',
+    },
+    {
+        'name': 'buffer',
+        'when': '缓冲区：某设施/POI 周边半径内的情绪（地铁站 500m、奥体 1km）',
+        'params': 'layer, center(POI | geojson), radius_m',
+        'yields': '缓冲面域 + 范围内聚合',
+        'contributes': '回答"某设施影响范围"，支撑设施评估/选址',
+    },
+    {
+        'name': 'overlay',
+        'when': '叠置分析：交集/并集/差集（商业用地 ∩ 更新单元、规划范围 − 已更新）',
+        'params': 'layer_a, layer_b, how(intersection|union|difference|symmetric)',
+        'yields': '叠置结果面域',
+        'contributes': '跨图层交叉（用地 × 更新），识别复合问题区',
+    },
+    {
+        'name': 'nearest',
+        'when': '最近邻：离某类 POI/设施最近的负面点，或 POI 锚定',
+        'params': 'layer, target(POI 类型 | geojson), k',
+        'yields': '邻近配对 + 距离',
+        'contributes': '锚定"问题点离什么设施近"，支撑归因落点',
+    },
+    {
+        'name': 'hotspot',
+        'when': 'Gi* 热点：负面/正面情绪在空间上显著聚集的冷热点',
+        'params': 'layer, value_col(score), invert(负面为热)',
+        'yields': '每点 Gi* Z-score + hot/cold 分类',
+        'contributes': '识别"聚集在哪"，支撑预警/排查类出口',
+    },
+]
+
+
+def geo_tool_catalog_text() -> str:
+    lines = []
+    for t in GEO_TOOL_CATALOG:
+        lines.append(
+            f"- {t['name']}：{t['when']}\n"
+            f"    入参：{t['params']} → 产出：{t['yields']}\n"
+            f"    贡献：{t['contributes']}"
+        )
+    return '\n'.join(lines)
+
+
+# ════════════ DIAGNOSE 问题理解卡（6 字段，DIAGNOSE 阶段强制输出）════════════
+DIAGNOSE_CARD_FIELDS = {
+    'domain_lens': '行业视角：urban_planning/urban_renewal/urban_operation/urban_governance（可多选）',
+    'scale': '空间尺度：macro | meso | micro（决定结论颗粒度，查表1）',
+    'decision_type': '决策类型：评价 | 选址 | 排查 | 对比 | 监测 | 定义',
+    'outlet': '出口形态：报告结论 | 指标排序 | 地图定位 | 建议清单 | 预警',
+    'data_plan': '数据盘点：{needed[], available[], gap[], strategy: ready|fallback_annotated|request_upload}',
+    'method': '方法选型：从 GIS 工具目录选 + 组合（如 macro 更新优先级 = zonal_stats(更新单元) → rank）',
+}
+
+# strategy 语义（数据自检 loop）：
+DATA_STRATEGY = {
+    'ready': '数据齐全，直接作答',
+    'fallback_annotated': '软缺口：有合理替代（如社区代街道），降级作答 + 显著标注口径与局限',
+    'request_upload': '硬缺口：关键数据无替代（如更新紧迫度），输出"请求上传"卡，该问不硬答',
+}

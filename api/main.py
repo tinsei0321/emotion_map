@@ -69,6 +69,11 @@ app.include_router(api_router, prefix="/api/v1")
 from ai_qa.router import router as ai_qa_router
 app.include_router(ai_qa_router, prefix="/api/v1")
 
+# GIS 工具箱子系统（/geo/* 总路径 /api/v1/geo/*）——AI 问答内由模型自动调用的 GIS 原子操作。
+# 复用 core/spatial_analysis + core/range_selector + core/geo_registry（GeoPandas，不造轮子）。
+from api.geo_routes import geo_router
+app.include_router(geo_router, prefix="/api/v1")
+
 
 @app.get("/")
 async def root():

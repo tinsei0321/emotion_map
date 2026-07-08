@@ -783,6 +783,22 @@ flowchart TD
 
 **验证**：node --check 全过；Playwright 实测——切 Table overview 隐藏(bleed=0)、2500 行虚拟化 DOM=27 导入 0 卡顿、列序 ID/极性/地点/评论、下拉 chips(综合)、列宽自适应 [58,122,120,300,58,58,106,200]、#3 路由(Table 态点层保 Table)、0 报错。**网格去重 + 地图联动视角 + 极性关键词默认全部** 因导入只能造点层（无网格 `_ui.tool='grid'`），自动化难造网格层，未运行时测——逻辑照搬 sidebar 已验证范式，待用户用 Grid 工具生成网格后 F5 肉眼验。
 
+### 5.36 AI 问答 · 专业认知层知识基座 + GIS 工具骨干（Phase A2/B1/B2/B3，07月08日 12:20）
+
+**用户意图**（重新定义问题根因）：5.35 审查层接通后"回答几乎不能用"——根因**不在审查/revise**，而在整个 ai_qa 缺一层「专业认知」：当前架构会走数据流 SOP，但不会"像规划师那样先沿专业轴拆解问题"。代码证据：agent loop 在前端 [harness.js](frontend/js/ai_qa/harness.js)，工具 [tools.js](frontend/js/ai_qa/tools.js) 只读单一 `activeAnalysis()` 聚合层——不能下钻/上卷/按几何过滤，故无论宏观/微观问都只能"在这一层按 |polarity_index| 排序报几个格"= 答成坐标（范式错位）。用户定调：① 质量优先、流式收尾顺手做；② 尺度-范式 运行时内置 + skill 双落；③ 数据缺口 = 硬缺口请求上传 / 软缺口降级标注；④ **GIS 常规操作（几何剪裁/合并、用地字段筛选、面积统计等）为必备，且 AI 问答内自动调用**。本轮交付地基（详见 plan `main-memories-repo-session-handoff-md-a-smooth-hamster.md`）。
+
+**关键改动**：
+- **知识基座**（Phase A2/B3）：新建 [ai_qa/paradigm.py](ai_qa/paradigm.py)——表1 尺度-方法-范式矩阵（宏观/中观/微观 × 对象/方法/出口范式/禁止）、表2 4 领域×出口范式启发库、表3 GIS 操作目录（10 工具 × 何时用/入参/产出/贡献）、DIAGNOSE 问题理解卡 6 字段 + 数据自检 strategy 语义。纯数据，供 prompt 渲染。[manifesto.py](ai_qa/manifesto.py) 加第十一节「尺度-方法-范式三元组」硬约束（结论颗粒度须匹配问题尺度；MANIFESTO 从不 `.format()`，故无需转义花括号，仍保持无括号散文体）。
+- **GIS 骨干**（Phase B1/B2）：新建 [core/geo_registry.py](core/geo_registry.py)——lazy-load+缓存 L1/L2×T1-T3（6 点层）+ 边界 preset（复用 range_selector）为 GeoDataFrame，按稳定 id 引用，避免大数据往返；`resolve_points/resolve_boundary` 统一解析 id|GeoJSON。新建 [api/geo_routes.py](api/geo_routes.py)——10 个 `/api/v1/geo/*` 原子操作：`filter_attr/clip/merge/area_stats/zonal_stats/rank/buffer/overlay/nearest/hotspot` + `catalog` 发现端点；**分析类端点接受复合入参 layer+range+pre_filter**（范围内·属性切片·聚合排序一次完成，免中间大数据中转）；复用 `aggregate_by_polygons`/`hot_spot_analysis`，GeoPandas 不造轮子；挂载 [api/main.py](api/main.py)。用户铁律的"几何剪裁/合并/用地字段筛选/面积统计"全部覆盖且 AI 可自动组合。
+
+**验收线（质量达标定义）**：问"中心城区哪里最需优先更新？"须给**结构化结论**（哪类更新单元/哪些街道/哪类用地系统性落后 + 4×5 归因），而非坐标。
+
+**文件**：新 `ai_qa/paradigm.py` `core/geo_registry.py` `api/geo_routes.py` `tests/test_geo_routes.py`；改 `ai_qa/manifesto.py` `api/main.py`。
+
+**验证**：import ✓；12 个 geo 路由全注册 ✓；**E2E TestClient**——`zonal_stats`(L2 T1 × 行政区) 返回「白洋 pi=-0.37 / 伍家岗区 -0.365 / 猇亭区 -0.31 + domain_top + issue_label」**宏观结构化排行（非坐标）= 验收核心路径打通**；`clip`(伍家岗+治理域=3024 点)、`area_stats`(点军区 533km²/32.85%)、`filter_attr`(运营域=8922 点) ✓；pytest `test_geo_routes.py` **8 passed**，全量 124 passed（5 既有失败：h3 未装/SnowNLP/geocode 离线阈值，与本轮无关）。
+
+**延后/下一会话**：Phase A1（DIAGNOSE 后端 schemas/prompts/router + 前端 stages/harness 接线）、A3（review 加第 7 条 scale_paradigm_fit + review prompt 拼回 MANIFESTO）、B4（tools.js 暴露 geo 工具为 agent tool + buildContext 增 preset/时点/工具清单）、C（请求上传卡）、D（逐字 RAF + sticky 思考 + 完毕戳）、A4（skill 沉淀）。承重：panel.js 不耦合 map/state / REVIEW_CHECKLIST key 稳定 / V4 模型 ID。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

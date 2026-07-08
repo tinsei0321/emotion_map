@@ -7,6 +7,24 @@
 
 ## 📅 2026-07-08
 
+### ✅ AI 问答 · 专业认知层知识基座 + GIS 工具骨干（revision-log 5.36，07月08日 12:20）
+
+- **问题重定义**：5.35 后"回答几乎不能用"根因**不在审查/revise**，在 ai_qa 缺「专业认知层」——agent loop 在前端 harness.js，工具 tools.js 只读单一聚合层，不能下钻/上卷/按几何过滤，故宏观/微观问都答成坐标（范式错位）。详见 plan `main-memories-repo-session-handoff-md-a-smooth-hamster.md`。
+- **Phase A2/B3 知识基座**：`ai_qa/paradigm.py`（尺度-方法-范式矩阵 + 4 域出口启发 + GIS 操作目录 10 工具 + DIAGNOSE 卡 6 字段）；`manifesto.py` 第十一节「尺度-方法-范式」硬约束。
+- **Phase B1/B2 GIS 骨干**：`core/geo_registry.py`（lazy 缓存 L1/L2×T1-T3 + 边界 preset）；`api/geo_routes.py`（10 个 `/geo/*` 原子操作：filter_attr/clip/merge/area_stats/zonal_stats/rank/buffer/overlay/nearest/hotspot + catalog；复合入参 layer+range+pre_filter 免中间中转；复用 aggregate_by_polygons/hot_spot_analysis）。
+- **验证**：12 路由注册 ✓；E2E `zonal_stats`(L2×行政区) →「白洋/伍家岗区/猇亭区 pi+归因」**宏观结构化结论（非坐标）= 验收核心路径打通**；clip/area_stats/filter_attr ✓；`test_geo_routes.py` 8 passed，全量 124 passed（5 既有失败与本轮无关）。
+
+### ⬜ 下一会话（同 plan，质量核心继续）
+
+- **Phase A1** DIAGNOSE：`schemas.py` +`phase='diagnose'` + 卡字段；`prompts.py` `build_diagnose_prompt`（拼 MANIFESTO + 范式表，不用 json_mode）；`router.py` diagnose 分支；前端 `stages.js` diagnoseStep + `harness.js` orchestrate 前插 diagnose（结果注入 agent/final prompt）；失败降级空卡不阻塞。
+- **Phase A3** 审查加第 7 条 `scale_paradigm_fit`（结论颗粒度匹配尺度）+ `review.py` `_build_review_prompt` 拼回 MANIFESTO（当前漏拼致 professional/actionable 偏松）。
+- **Phase B4** 前端 `tools.js`：暴露 10 个 geo 工具为 agent tool（调 `/geo/*`），`buildContext` 增 preset/用地/时点/工具清单。
+- **Phase C** 数据自检：DIAGNOSE `data_plan.gap` → 硬缺口请求上传卡 / 软缺口降级标注；`panel.js` 加请求上传卡样式。
+- **Phase D** 流式三件套（收尾顺手做）：`panel.js` 逐字 RAF（治 O(n²) 卡顿，流末才 marked.parse）+ sticky 底部思考（移出气泡 inline）+ 完毕戳「回答完毕·情绪地图测试版 v1.0·时间戳」。
+- **Phase A4** 沉淀 `.claude/skills/emotion-scale-paradigm/`（方法论镜像）；同步 `docs/ai-qa-design.md` 第 3/4/5 章 + memory `ai-qa-harness-subsystem`。
+- **承重**：panel.js 不耦合 map/state / REVIEW_CHECKLIST key 稳定（新增不删旧）/ revise 1 轮不递归 / 审查与 diagnose 失败均降级不阻塞 / V4 模型 ID（v4-pro/flash）/ MANIFESTO 花括号转义（参与 .format 的 TEMPLATE 才需 {{ }}）。
+- **验收线**：问"中心城区哪里最需优先更新？"→ 结构化结论（哪类更新单元/街道/用地系统性落后 + 4×5 归因）非坐标；两问（宏观+微观）范式不同 = 过线。
+
 ### ✅ AI 问答 · 审查层接通 + agent loop 稳健性 + 思考体验对齐（revision-log 5.35，07月07日 23:25）
 
 - **审查层接通（后端）**：`review.py` 新增 `review_answer()`（Flash + json_mode，六条 checklist 打分 ✓/△/✕，失败降级 {pass:True,degraded:True} 不阻塞交付）+ `_parse_review_json` 容错（fence/尾逗号/缺 key 补全 6 条/verdict 归一/fail 强制 pass=False）+ `REVIEWER_MODEL` 旧 ID 修正为 'flash'；`prompts.py` REVISE_TEMPLATE + build_revise_prompt；`schemas.py` phase 加 review/revise + draft/review_hints；`router.py` review（非流式单帧 SSE）/revise（流式）分支。
