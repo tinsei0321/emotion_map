@@ -62,8 +62,11 @@ async def chat_route(req: ChatRequest):
     def gen():
         try:
             for kind, tok in cli.chat(messages, stream=True, with_reason=True, json_mode=False):
-                key = 'reason' if kind == 'reason' else 'token'
-                yield f'data: {json.dumps({key: tok}, ensure_ascii=False)}\n\n'
+                if kind == 'usage':
+                    yield f'data: {json.dumps({"usage": tok}, ensure_ascii=False)}\n\n'
+                else:
+                    key = 'reason' if kind == 'reason' else 'token'
+                    yield f'data: {json.dumps({key: tok}, ensure_ascii=False)}\n\n'
             yield 'data: [DONE]\n\n'
         except LLMError as e:
             yield f'data: {json.dumps({"error": str(e)}, ensure_ascii=False)}\n\n'

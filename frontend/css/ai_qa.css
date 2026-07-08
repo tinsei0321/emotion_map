@@ -40,6 +40,10 @@
 .chat-head .chat-title { font-size: var(--geojson-typography-size-sm); font-weight: var(--geojson-typography-weight-bold); color: var(--geojson-color-text-primary); }
 .chat-head .chat-subtitle { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); }
 .chat-head-spacer { flex: 1; }
+.ctx-cap { font-size: var(--geojson-typography-size-xs, 11px); color: var(--geojson-color-text-secondary); padding: 2px 7px; border-radius: 9px; background: var(--geojson-color-gray-100, #f0f0f0); cursor: default; user-select: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ctx-cap.ok { color: #16a34a; background: #dcfce7; }
+.ctx-cap.warn { color: #d97706; background: #fef3c7; }
+.ctx-cap.crit { color: #dc2626; background: #fee2e2; }
 .chat-icon-btn {
   font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary);
   background: transparent; border: none; cursor: pointer; padding: 4px 8px;

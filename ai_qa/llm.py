@@ -78,6 +78,8 @@ class LLMClient:
         headers = {'Authorization': f'Bearer {self.api_key}', 'Content-Type': 'application/json'}
         body = {'model': self.model, 'messages': messages, 'temperature': temperature,
                 'max_tokens': max_tokens, 'stream': stream}
+        if stream:
+            body['stream_options'] = {'include_usage': True}   # 流式末 chunk 返 usage（容量圆圈用）
         if json_mode:
             body['response_format'] = {'type': 'json_object'}
         trace_log('MOD_LLM.F_001', f'chat stream={stream} model={self.model} msgs={len(messages)} reason={with_reason} json={json_mode}')
@@ -111,6 +113,9 @@ class LLMClient:
                             else:
                                 if content:
                                     yield content
+                            usage = obj.get('usage')   # 流式末尾 chunk 含 usage（prompt/completion/total_tokens）
+                            if usage and with_reason:
+                                yield ('usage', usage)
             else:
                 with httpx.Client(timeout=self.timeout) as client:
                     resp = client.post(url, headers=headers, json={**body, 'stream': False})

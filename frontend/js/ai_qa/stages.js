@@ -88,7 +88,7 @@ export function parseDiagnoseCard(raw) {
 
 /** Agent Loop 一轮：流式 reasoning + content({thought,action} JSON)。null=解析失败降级。 */
 export async function agentStep(ctx, hooks, round, toolHistory) {
-  const messages = [{ role: 'user', content: ctx.question }];
+  const messages = [...(ctx.history || []), { role: 'user', content: ctx.question }];
   const acc = { token: '' };
   await streamChat(messages, ctx.context,
     (tok) => { acc.token += tok; },
@@ -108,7 +108,7 @@ export async function agentStep(ctx, hooks, round, toolHistory) {
 
 /** 问题诊断（DIAGNOSE 认知前置步）：流式 reasoning + content(JSON 卡)。null=解析失败降级。 */
 export async function diagnoseStep(ctx, hooks) {
-  const messages = [{ role: 'user', content: ctx.question }];
+  const messages = [...(ctx.history || []), { role: 'user', content: ctx.question }];
   const acc = { token: '' };
   await streamChat(messages, ctx.context,
     (tok) => { acc.token += tok; },
@@ -122,7 +122,7 @@ export async function diagnoseStep(ctx, hooks) {
 
 /** 草稿结论：基于 tool_history 流式出 markdown + [ref:]。 */
 export async function finalStep(ctx, hooks, toolHistory) {
-  const messages = [{ role: 'user', content: ctx.question }];
+  const messages = [...(ctx.history || []), { role: 'user', content: ctx.question }];
   let final = '';
   await streamChat(messages, ctx.context,
     (tok) => { final += tok; if (hooks.onFinal) hooks.onFinal(tok); },
@@ -151,7 +151,7 @@ export async function reviewStep(ctx, draft, toolHistory) {
 
 /** 修订重写：基于 draft + hints 流式出修订 markdown。 */
 export async function reviseStep(ctx, draft, hints, toolHistory, hooks) {
-  const messages = [{ role: 'user', content: ctx.question }];
+  const messages = [...(ctx.history || []), { role: 'user', content: ctx.question }];
   let revised = '';
   await streamChat(messages, ctx.context,
     (tok) => { revised += tok; if (hooks.onRevise) hooks.onRevise(tok); },

@@ -70,14 +70,11 @@ def hot_spot_analysis(
     # 提取坐标
     coords = np.column_stack([gdf.geometry.x, gdf.geometry.y])
 
-    # 自适应带宽：基于 KNN（默认 8 个邻居）
+    # KNN 权重（k=8 邻居）——稳健无岛屿；DistanceBand threshold=0 会让几乎所有的点无邻居致 Gi* 退化
     k = min(8, len(gdf) - 1)
     with TrackContext("MOD_SPATIAL.D_001", n_points=len(gdf), k=k):
-        w = DistanceBand.from_array(coords, threshold=0, binary=True, silence_warnings=True)
-        # 确保每个点至少有 k 个邻居
-        if w.neighbors.get(0, []) is None:
-            from libpysal.weights import KNN
-            w = KNN.from_array(coords, k=k)
+        from libpysal.weights import KNN
+        w = KNN.from_array(coords, k=k)
 
     # 计算 Gi*
     values = gdf[value_col].values.astype(float)

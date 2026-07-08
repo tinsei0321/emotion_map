@@ -878,6 +878,14 @@ flowchart TD
 - **提速**：diagnose 改用 flash（分类任务不需 Pro 深思，省 reasoning_content 开销）。
 - **验证**：TestClient 组合 ✓（extract 西陵区=1 面 → overlay(西陵区 geojson, land_commercial, intersection)=1 面 3.23 km²）；node --check tools.js ✓。完整浏览器实测（LLM 真跑组合操作 + 速度体感）待用户。
 
+### 5.42 AI 问答 · 多轮上下文 + 容量圆圈 + 几何端点修复（07月08日 21:00）
+
+- **诉求1 多轮上下文**：根因 stages.js messages 只传当前问题（无对话历史，多轮完全失忆）。修：panel.js send 构建 ctx.history（_history 前 N 轮 user/assistant.final，slice(-10) 防爆 token）；stages.js 4 阶段 messages = [...(ctx.history||[]), 当前问]。
+- **诉求1 容量圆圈**（按 V4 Pro 1M 计）：DeepSeek 流式 usage 链路——llm.py 加 stream_options include_usage + yield ('usage', usage)；router.py {usage} SSE 帧；api.js _lastUsage + getLastUsage()；panel.js updateContextCapacity（prompt_tokens 占 1M 染色 绿<50%/黄<80%/红≥80%）+ chat-head 圆圈 UI（index.html `#ctx-cap` + ai_qa.css .ctx-cap）。
+- **诉求2 几何端点修复**（TestClient 穷测 9 端点定位——后端非造轮子，是版本兼容+个别 bug）：① **nearest** 只支持点↔点（传面 400）→ 去靶标 Point 强制（支持"每区找最近点"）+ 修 `sjoin_nearest(return_geometry=)` 旧参数（geopandas 1.1 已删）→ drop geometry；② **hotspot** 环境 缺 PySAL → `pip install libpysal esda` + 修 hot_spot_analysis 的 `DistanceBand(threshold=0)` 致几乎全岛屿 bug（fallback `is None` 永不触发，空列表≠None）→ 改 KNN(k=8) 稳健无岛屿；③ LLM 组合操作选错 → AGENT_TEMPLATE 加「工具选择决策」（A 内的 B = extract→overlay；面∩面用 overlay 勿 clip——clip 只切点）。
+- **承重**：history slice(-10) 防 token 爆；diagnose 用 flash（5.41）；几何全栈成熟库（GeoPandas/Shapely/esda/h3/contourpy）非造轮子，可靠性问题是版本兼容（geopandas 1.1 / esda 2.10）+ threshold=0 bug，非算法错。
+- **验证**：TestClient 全几何端点 200 ✓（extract 西陵区1面 / overlay 西陵区∩商业用地 3.23km² / nearest 面target 9 / hotspot domain筛 2813点 / clip/merge/filter_attr/buffer/area_stats/zonal_stats/rank）；Playwright 多轮——拦截 /chat body 见第3问 messages=5条（2轮历史+当前问）✓ + 容量圆圈 0.4%（3,562/1,000,000 token，绿）✓。组合操作 LLM 选工具质量待用户真环境（本环境 LLM 日期感都不准）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

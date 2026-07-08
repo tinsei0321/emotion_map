@@ -7,6 +7,14 @@
 
 ## 📅 2026-07-08
 
+### ✅ AI 问答 · 多轮上下文 + 容量圆圈 + 几何端点修复（revision-log 5.42，07月08日 21:00）
+
+- **诉求1 多轮上下文**：根因 stages messages 只传当前问题（无历史→失忆）。修 panel ctx.history（前 N 轮）+ stages 4 阶段拼历史。
+- **诉求1 容量圆圈**（V4 Pro 1M）：llm stream_options → router {usage} → api.getLastUsage → panel 圆圈（绿<50%/黄<80%/红）。chat-head UI。
+- **诉求2 几何修复**（后端非造轮子，版本兼容+bug）：① nearest 去靶标 Point 强制（支持面）+ 修 sjoin_nearest 旧参数；② hotspot 装 PySAL + 修 DistanceBand(threshold=0) 岛屿 bug→KNN；③ prompt 加工具选择决策（A内的B=extract→overlay，面∩面用 overlay 勿 clip）。
+- **验证**：TestClient 全几何端点 200 ✓；Playwright 第3问 messages=5条（含历史）✓ + 圆圈 0.4% 绿 ✓。
+- **未决**：组合操作 LLM 选工具质量待用户真环境（本环境 LLM 弱）。
+
 ### ✅ AI 问答 · GIS 工具链 chain + diagnose 提速（Phase 0 补丁，revision-log 5.41，07月08日 18:00）
 
 - **诉求**：组合操作"西陵区内的商业用地"无法完成 + 思考缓慢。根因：**工具链无法 chain**（extract 产物喂不回 overlay）+ diagnose 用 Pro 偏重。

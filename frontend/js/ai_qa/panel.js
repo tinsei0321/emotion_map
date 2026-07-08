@@ -2,6 +2,7 @@
 import { orchestrate } from './harness.js';
 import { buildContext, TOOLS } from './tools.js';
 import { getLayers } from '../state.js';
+import { getLastUsage } from './api.js';
 
 const HISTORY_KEY = 'ai_qa_history_v1';
 const MODE_KEY = 'ai_qa_think_mode';
@@ -16,6 +17,19 @@ let _curTrace = null;
 let _thinkMode = localStorage.getItem(MODE_KEY) || 'pro';   // 'pro' | 'flash'
 let _thinkTimer = null;
 let _userPinned = false;   // 用户上滑停跟；回到底部后恢复跟随
+
+const CTX_BUDGET = 1000000;   // DeepSeek V4 Pro 上下文 1M token
+/** 容量圆圈：按最近一次 usage 的 prompt_tokens 占 1M 预算的比例染色（绿<50% / 黄<80% / 红≥80%）。 */
+function updateContextCapacity(usage) {
+  const el = document.getElementById('ctx-cap');
+  if (!el) return;
+  if (!usage || !usage.prompt_tokens) { el.className = 'ctx-cap'; el.title = '上下文容量（V4 Pro 1M）'; el.textContent = '○'; return; }
+  const ratio = usage.prompt_tokens / CTX_BUDGET;
+  const pct = (ratio * 100).toFixed(ratio < 0.1 ? 1 : 0);
+  el.className = 'ctx-cap ' + (ratio < 0.5 ? 'ok' : ratio < 0.8 ? 'warn' : 'crit');
+  el.title = `上下文 ${usage.prompt_tokens.toLocaleString()} / 1,000,000 token（${pct}%）`;
+  el.textContent = pct + '%';
+}
 
 function loadHistory() {
   try { const v = localStorage.getItem(HISTORY_KEY); return v ? JSON.parse(v) : []; }
@@ -352,6 +366,7 @@ function buildHooks(shell) {
       cancelStream();
       streamAcc = text || '';
       stopThinking();
+      updateContextCapacity(getLastUsage());
       shell.answerEl.innerHTML = renderAnswer(text, getValidRefNames());
       if (shell.reasonEl && !isFlash) shell.reasonEl.classList.add('is-done');
       if (_curTrace) _curTrace.final = text;
@@ -411,7 +426,13 @@ async function send(text) {
   updateSendBtn();
   startThinking();
   _abortCtl = new AbortController();
-  const ctx = { question: text, context: await buildContext(), signal: _abortCtl.signal, model: _thinkMode };
+  // 多轮上下文：前几轮 user/assistant.final 作为历史带给 LLM（stages.js 拼进 messages）
+  const _hist = [];
+  for (const h of _history.slice(0, -1)) {   // 排除当前刚 push 的 user
+    if (h.role === 'user') _hist.push({ role: 'user', content: h.text });
+    else if (h.role === 'assistant' && h.trace && h.trace.final) _hist.push({ role: 'assistant', content: h.trace.final });
+  }
+  const ctx = { question: text, context: await buildContext(), signal: _abortCtl.signal, model: _thinkMode, history: _hist.slice(-10) };
   let settled = false;
   try {
     await orchestrate(ctx, buildHooks(shell));

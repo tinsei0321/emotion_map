@@ -457,15 +457,16 @@ async def nearest(req: NearestRequest):
     try:
         pts = resolve_points(req.layer)
         target = resolve_boundary(req.target)
-        # 仅保留 Point 几何
+        # layer 必须为点；target 可为点（点-点最近邻）或面（每个面找最近点，如"每个行政区离最近的负面点"）
         pts = pts[pts.geometry.geom_type == 'Point']
-        target = target[target.geometry.geom_type == 'Point']
-        if len(pts) == 0 or len(target) == 0:
-            raise ValueError('layer/target 需为点要素')
+        if len(pts) == 0:
+            raise ValueError('layer 需为点要素')
+        if len(target) == 0:
+            raise ValueError('target 无要素')
         pts_proj = pts.to_crs(_PROJECT_CRS)
         tgt_proj = target.to_crs(_PROJECT_CRS)
-        joined = gpd.sjoin_nearest(tgt_proj, pts_proj, max_distance=float('inf'),
-                                   return_geometry=False)
+        joined = gpd.sjoin_nearest(tgt_proj, pts_proj, max_distance=float('inf'))
+        joined = joined.drop(columns='geometry', errors='ignore')
         # 距离列
         dist_col = 'distance' if 'distance' not in joined.columns else 'distance'
         if 'distance' not in joined.columns:

@@ -6,6 +6,10 @@ const BASE = '/api/v1';
  * SSE 流式问答（agent_step / answer / revise 流式；review 单帧 JSON）。
  * @param opts {onReason, onReview, model, contextTokens, signal, phase, toolHistory, roundN, draft, reviewHints}
  */
+let _lastUsage = null;
+/** 最近一次流式的 usage（{prompt_tokens, completion_tokens, total_tokens}）；容量圆圈用。 */
+export function getLastUsage() { return _lastUsage; }
+
 export async function streamChat(messages, context, onToken, onError, opts = {}) {
   const { onReason, onReview, model, contextTokens, signal } = opts;
   const body = { messages, context };
@@ -45,6 +49,7 @@ export async function streamChat(messages, context, onToken, onError, opts = {})
       try {
         const obj = JSON.parse(data);
         if (obj.error) { if (onError) onError(obj.error); return; }
+        if (obj.usage) { _lastUsage = obj.usage; if (opts.onUsage) opts.onUsage(obj.usage); }
         if (obj.review !== undefined && onReview) { onReview(obj.review); return; }
         if (obj.reason && onReason) onReason(obj.reason);
         if (obj.token) onToken(obj.token);

@@ -50,7 +50,8 @@ AGENT_TEMPLATE = """
 - open_attribution：展开 Overview 归因面板。params: {{}}
 - inspect_zone：深读某聚合域明细。params: {{ "name": "区域名" }}
 【GIS 工具】（按 intent/问题尺度自动组合，见下方「GIS 操作目录」附录；**结果自动落地图为新图层**；B 纯操作类必走此类产出图层，允许坐标与裸结果）：
-**工具链（chain）**：layer/range/layer_a/layer_b/boundary 等参数可传 preset_id（如 admin_district/land_commercial），**也可传"已生成的图层名"**（地图状态里可见，如刚 extract 出的"西陵区"层）——多步操作直接串接，无需导出中间结果。例：先 extract_feature(admin_district, MC/eq/西陵区) 生成"西陵区"层，再 overlay(layer_a="西陵区", layer_b="land_commercial", how="intersection") 得西陵区内商业用地。
+**工具选择决策**：①"某范围内"=clip（点）/extract_feature（面）；②"A 内的 B"（如西陵区内的商业用地）=先 extract_feature(A) 再 overlay(A, B, intersection)；③面∩面/面∪面=overlay（**勿用 clip——clip 只切点，面层会报错**）；④合并多面=merge；⑤周边半径=buffer。
+**工具链（chain）**：layer/range/layer_a/layer_b/boundary 等参数可传 preset_id，**也可传"已生成的图层名"**（地图状态可见，如刚 extract 出的"西陵区"层）——多步串接无需导出中间结果。例：extract_feature(admin_district, MC/eq/西陵区) 生成"西陵区"层 → overlay(layer_a="西陵区", layer_b="land_commercial", how="intersection") 得西陵区内商业用地。
 - zonal_stats：**宏/中观结论主干**——按行政区/街道/更新单元等边界聚合点层，得每单元极性/点数/4×5 归因+排序。params: {{ "boundary": "admin_district|admin_street|renewal_unit|...(preset_id)", "layer": "(默认 yichang_l2_t1)", "range": "(可选 preset_id 先裁剪)", "pre_filter": "可选，形如 field/op/value 见附录", "top_n": 5 }}
 - rank：Top N 排序（最差/最好/按 domain·element 占比）。params: {{ "by": "worst|best|domain:更新|element:设施", "boundary": "preset_id", "top_n": 5, "layer": "(默认L2)", "range": "(可选)", "pre_filter": "(可选)" }}
 - filter_attr：按属性筛选用地/极性/domain/element/时点。params: {{ "pre_filter": "field/op/value，如 domain/eq/urban_renewal", "layer": "默认L2", "range": "可选" }}
