@@ -114,7 +114,7 @@ export async function diagnoseStep(ctx, hooks) {
     (tok) => { acc.token += tok; },
     (err) => { throw new Error(err); },
     {
-      phase: 'diagnose', signal: ctx.signal, model: ctx.model,
+      phase: 'diagnose', signal: ctx.signal, model: 'flash',
       onReason: (t) => { hooks.onReason && hooks.onReason(t, 0); },
     });
   return parseDiagnoseCard(acc.token);   // null = 解析失败（harness 降级，不抛）

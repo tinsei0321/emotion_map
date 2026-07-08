@@ -7,6 +7,13 @@
 
 ## 📅 2026-07-08
 
+### ✅ AI 问答 · GIS 工具链 chain + diagnose 提速（Phase 0 补丁，revision-log 5.41，07月08日 18:00）
+
+- **诉求**：组合操作"西陵区内的商业用地"无法完成 + 思考缓慢。根因：**工具链无法 chain**（extract 产物喂不回 overlay）+ diagnose 用 Pro 偏重。
+- **chain**：geoFetch 统一出口加 `ref()`——图层名引用参数（layer/range/layer_a/layer_b/boundary/center/target）匹配前端图层名→转 geojson send-in 后端。一处改动全工具通。prompt 加 chain 示例。
+- **提速**：diagnose 改 flash（分类不需 Pro）。
+- **验证**：TestClient extract 西陵区(1面) → overlay∩land_commercial(1面 3.23km²) ✓；node --check ✓。浏览器实测待用户。
+
 ### ✅ AI 问答 · 意图路由认知重构 + GIS 结果回写闭环（Phase 0 地基，revision-log 5.40，07月08日 17:35）
 
 - **诉求→判断**：两致命 bug（拒答"今天星期几" + "裁出西陵区"8 次失败答非所问）。根因 = **4 层缺陷叠加**（① 认知层 MANIFESTO 收窄 + DIAGNOSE 封闭分类无超域出口；② 工具语义 clip 只切点 + catalog 不暴露字段；③ 前端不回写 geojson 用完即弃；④ 无反馈回路→盲目重试）。后续 GIS 能力全经 agent 暴露 → **先修 agent 地基再做 Phase 1**。详见 plan `main-maplibre-deck-gl-gis-geopandas-temporal-marshmallow.md`。

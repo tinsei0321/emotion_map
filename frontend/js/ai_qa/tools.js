@@ -37,11 +37,28 @@ export function getWisdom() {
 let _wisdomPromise = null;
 
 /** POST /api/v1/geo/<path> 取 JSON；失败抛 Error(.detail)。 */
+const _LAYER_REF_KEYS = ['layer', 'range', 'layer_a', 'layer_b', 'boundary', 'center', 'target'];
+/** 图层引用解析：参数值若匹配前端已加载图层名 → 返回其 geojson（send-in 给后端 resolve_boundary/resolve_points）。
+ * 支持 chain——extract 出的"西陵区"图层可直接作为 overlay/clip 的输入。精确匹配优先，否则唯一包含匹配。 */
+function ref(v) {
+  if (typeof v === 'string' && v) {
+    const all = getLayers().filter((x) => x.fc && x.fc.features && x.fc.features.length);
+    let l = all.find((x) => x.name === v);
+    if (!l) {
+      const inc = all.filter((x) => x.name && x.name.includes(v));
+      if (inc.length === 1) l = inc[0];   // 唯一包含才匹配，避免歧义
+    }
+    if (l) return l.fc;
+  }
+  return v;
+}
 async function geoFetch(path, body) {
+  const b = {};
+  for (const k of Object.keys(body || {})) b[k] = _LAYER_REF_KEYS.includes(k) ? ref(body[k]) : body[k];
   const r = await fetch('/api/v1/geo/' + path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body || {}),
+    body: JSON.stringify(b),
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error((j && (j.detail || j.error)) || ('HTTP ' + r.status));

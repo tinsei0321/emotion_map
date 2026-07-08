@@ -871,6 +871,13 @@ flowchart TD
 - **验证**：后端 TestClient 真端点 ✓（catalog 返 43 字段 + name_field=MC；extract_feature `MC/eq/西陵区`→**裁出 1 面** props={id,name}；clip admin_district→17925 点语义正确）；前端 node --check 3 文件 ✓ + Playwright console 无 JS error + import 链通；**bug A 端到端：问"今天星期几"→ 问题理解卡 `general/通用问答/直接回答` → 直接答日期，不再拒答/不引导情绪场景 = 验收核心通过**。bug B 完整浏览器实测（上传+裁西陵区显示图层）+ 情绪场景不退化 + 真实 LLM 质量待用户（本环境 LLM 日期感不准）。全量 pytest 124 passed（5 既有失败 h3/SnowNLP/geocode 与本轮无关）。
 - **未做/待续**：可达性/等时圈/路网/缓冲新增（用户定暂不做）；Phase 1（手绘范围/时序 diff/叠置补完/DBSCAN/上传矢量闭环）待续。
 
+### 5.41 AI 问答 · GIS 工具链 chain + diagnose 提速（Phase 0 补丁，07月08日 18:00）
+
+- **诉求**：用户提组合操作"抽取西陵区内的商业用地并生成新图层"无法完成 + 思考缓慢。判断：Phase 0 单步通但**工具链无法 chain**（extract 产物喂不回 overlay——探索期已发现的"中间 geojson 不通"）+ diagnose 用 Pro 偏重。
+- **chain（geoFetch ref）**：tools.js geoFetch 统一出口加 `ref()`——layer/range/layer_a/layer_b/boundary/center/target 参数若匹配前端已加载图层名（精确优先，否则唯一包含匹配）→ 转 geojson dict send-in 后端（resolve_boundary/resolve_points 已支持 dict）。**一处改动，所有 geo 工具自动支持 chain**，不必逐工具改。LLM 经 compressHistory「地图:N层」知图层名；AGENT_TEMPLATE 加 chain 示例（extract_feature(西陵区) → overlay(layer_a="西陵区", layer_b=land_commercial)）。
+- **提速**：diagnose 改用 flash（分类任务不需 Pro 深思，省 reasoning_content 开销）。
+- **验证**：TestClient 组合 ✓（extract 西陵区=1 面 → overlay(西陵区 geojson, land_commercial, intersection)=1 面 3.23 km²）；node --check tools.js ✓。完整浏览器实测（LLM 真跑组合操作 + 速度体感）待用户。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。
