@@ -799,6 +799,16 @@ flowchart TD
 
 **延后/下一会话**：Phase A1（DIAGNOSE 后端 schemas/prompts/router + 前端 stages/harness 接线）、A3（review 加第 7 条 scale_paradigm_fit + review prompt 拼回 MANIFESTO）、B4（tools.js 暴露 geo 工具为 agent tool + buildContext 增 preset/时点/工具清单）、C（请求上传卡）、D（逐字 RAF + sticky 思考 + 完毕戳）、A4（skill 沉淀）。承重：panel.js 不耦合 map/state / REVIEW_CHECKLIST key 稳定 / V4 模型 ID。
 
+### 5.37 AI 问答 · DIAGNOSE 认知阶段 + 审查第 7 条（Phase A1/A3 后端，07月08日 12:50）
+
+**承 5.36**：补齐认知层与审查的服务端（前端接线留下会话）。
+- **Phase A1 DIAGNOSE 后端**：[prompts.py](ai_qa/prompts.py) 加 `DIAGNOSE_TEMPLATE`（JSON 卡示例 `{{ }}` 转义，仅 `{context}` 占位）+ `build_diagnose_prompt`（MANIFESTO + 模板 format 后**拼接**范式附录——矩阵/出口/工具目录/卡字段/strategy 语义，避开 paradigm 文本花括号被 str.format 误解析）；[schemas.py](ai_qa/schemas.py) phase 放行 `diagnose`；[router.py](ai_qa/router.py) `diagnose` 分支（流式 reason + content JSON，不用 json_mode，同 agent_step）。模型输出 6 字段问题理解卡：domain_lens/scale/decision_type/outlet/data_plan(needed·available·gap·strategy)/method。
+- **Phase A3 审查第 7 条**：[review.py](ai_qa/review.py) `REVIEW_CHECKLIST` 加 `scale_paradigm_fit`（结论颗粒度匹配尺度：宏观禁落单点/微观禁泛泛/中观落单元；key 稳定，旧 6 条不动）；REVIEW_TEMPLATE 「六条」→「七条」+ JSON 示例加第 7 项；`_build_review_prompt` **拼回 MANIFESTO 前缀**（此前漏拼致 professional/actionable 缺行业语境偏松）；`_parse_review_json` 自动适配 7 条（缺 key 补 warn）。
+
+**文件**：改 `ai_qa/{prompts,schemas,router,review}.py`（4 文件）。
+
+**验证**：import ✓；`build_diagnose_prompt` 构建 7363 字（含矩阵附录 + JSON 卡示例，format 无异常=花括号安全）；checklist 7 条 key 稳定；review prompt 含 MANIFESTO + scale_paradigm_fit；app 导入 ✓；`test_geo_routes.py` 8 passed（无回归）。**DIAGNOSE 真实 LLM 调用 + 前端接线** 留下会话（需 API Key + stages/harness 接 diagnoseStep）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

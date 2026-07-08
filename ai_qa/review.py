@@ -11,6 +11,7 @@ import json
 from typing import Optional, List
 
 from ai_qa.llm import LLMClient, LLMError
+from ai_qa.manifesto import MANIFESTO
 
 # 六条审查标准（顺序即审查顺序；key 稳定勿改，前端审查状态区按 key 渲染 ✓/△/✕）。
 REVIEW_CHECKLIST = [
@@ -44,6 +45,11 @@ REVIEW_CHECKLIST = [
         'name': '结论有指向性',
         'desc': '必须有明确结论，且分析内容指向具体的城建问题与可落地建议（更新时序/资源配置/优先片区），有"出口"而非开放讨论。',
     },
+    {
+        'key': 'scale_paradigm_fit',
+        'name': '尺度范式匹配',
+        'desc': '结论颗粒度是否匹配问题尺度（查 MANIFESTO 第十一节）——宏观问题（哪个片区/哪类空间系统性落后）禁落单点坐标；微观问题（哪个点位/聚集区）禁泛泛而谈；中观问题落单元级（哪个街道/社区/更新单元）。',
+    },
 ]
 
 # 审查员模型：默认 Flash（checklist 式审查够用、省 token、快）；env REVIEWER_MODEL 覆盖（如切 Pro 审）。
@@ -53,9 +59,9 @@ REVIEWER_MODEL = os.environ.get('REVIEWER_MODEL', 'flash')
 
 REVIEW_TEMPLATE = """
 ═══════════ 审查员任务 ═══════════
-你是「宜昌市情绪地图」控制台回答审查员。按下列六条 checklist 审查助手草稿答案，输出严格 JSON。
+你是「宜昌市情绪地图」控制台回答审查员。按下列七条 checklist 审查助手草稿答案，输出严格 JSON。
 
-【六条审查标准】（逐条评 verdict：pass=达标 / warn=小瑕疵 / fail=不达标）
+【七条审查标准】（逐条评 verdict：pass=达标 / warn=小瑕疵 / fail=不达标）
 {checklist}
 
 【当前数据上下文】（grounding）
@@ -77,7 +83,8 @@ REVIEW_TEMPLATE = """
     {{"key": "concise", "name": "内容精炼", "verdict": "...", "comment": "..."}},
     {{"key": "professional", "name": "语句专业", "verdict": "...", "comment": "..."}},
     {{"key": "data_driven", "name": "数据驱动", "verdict": "...", "comment": "..."}},
-    {{"key": "actionable", "name": "结论有指向性", "verdict": "...", "comment": "..."}}
+    {{"key": "actionable", "name": "结论有指向性", "verdict": "...", "comment": "..."}},
+    {{"key": "scale_paradigm_fit", "name": "尺度范式匹配", "verdict": "...", "comment": "..."}}
   ],
   "revise_hints": "pass=false 时必填：列出 fail/warn 项 + 具体可执行的修正方向（指出哪句哪段怎么改）；pass=true 可空字符串"
 }}
@@ -89,11 +96,15 @@ REVIEW_TEMPLATE = """
 
 def _build_review_prompt(draft: str, context: str, tool_history: str,
                          context_tokens: Optional[List[dict]] = None) -> str:
-    """构造审查员 system prompt。"""
+    """构造审查员 system prompt。
+
+    前置 MANIFESTO（含第十一节尺度-方法-范式）——审查员需行业语境才能判准
+    professional/actionable/scale_paradigm_fit；此前漏拼致判定偏松。
+    """
     checklist_str = '\n'.join(
         f"- {c['key']}（{c['name']}）：{c['desc']}" for c in REVIEW_CHECKLIST
     )
-    prompt = REVIEW_TEMPLATE.format(
+    prompt = MANIFESTO + REVIEW_TEMPLATE.format(
         checklist=checklist_str,
         draft=draft or '（空）',
         context=context or '（未提供数据上下文）',

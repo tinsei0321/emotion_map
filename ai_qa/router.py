@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
 from ai_qa.schemas import ChatRequest
-from ai_qa.prompts import build_agent_prompt, build_final_prompt
+from ai_qa.prompts import build_agent_prompt, build_final_prompt, build_diagnose_prompt
 
 router = APIRouter()
 
@@ -44,6 +44,9 @@ async def chat_route(req: ChatRequest):
             req.context or '', req.tool_history or '', req.context_tokens)
     elif req.phase == 'answer':
         sys_content = build_final_prompt(req.context or '', req.tool_history or '', req.context_tokens)
+    elif req.phase == 'diagnose':
+        # 问题诊断（专业认知前置步）：流式 reason + content JSON 卡（不用 json_mode，同 agent_step）
+        sys_content = build_diagnose_prompt(req.context or '', req.context_tokens)
     else:   # agent_step
         sys_content = build_agent_prompt(
             req.context or '', req.tool_history or '', req.round_n or 1, req.context_tokens)

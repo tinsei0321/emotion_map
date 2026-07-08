@@ -14,7 +14,7 @@ class ChatRequest(BaseModel):
     context: Optional[str] = Field(default=None, description="主窗口推送的数据摘要（grounding）")
     model: Optional[str] = Field(default=None, description="模型：留空=默认 Pro(reasoner)")
     context_tokens: Optional[List[dict]] = Field(default=None, description="用户@关联对象")
-    phase: str = Field(default='agent_step', description="阶段：agent_step | answer | review | revise")
+    phase: str = Field(default='agent_step', description="阶段：diagnose | agent_step | answer | review | revise")
     tool_history: Optional[str] = Field(default=None, description="已完成的探索历史（历轮 thought/action/观察，字符串）")
     round_n: Optional[int] = Field(default=1, description="agent_step 用：当前轮次（注入 prompt 让模型知道进度）")
     draft: Optional[str] = Field(default=None, description="review/revise 用：待审查/待修订的草稿答案")

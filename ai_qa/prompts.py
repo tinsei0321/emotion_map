@@ -7,6 +7,10 @@
 改 prompt 只改本文件。
 """
 from ai_qa.manifesto import MANIFESTO
+from ai_qa.paradigm import (
+    scale_paradigm_text, domain_outlets_text, geo_tool_catalog_text,
+    DIAGNOSE_CARD_FIELDS, DATA_STRATEGY,
+)
 
 
 def _inject_tokens(prompt, context_tokens):
@@ -93,6 +97,67 @@ def build_final_prompt(context: str = '', tool_history: str = '', context_tokens
     ctx = context or '（未提供数据上下文）'
     hist = tool_history or '（无探索历史）'
     prompt = MANIFESTO + FINAL_TEMPLATE.format(tool_history=hist, context=ctx)
+    return _inject_tokens(prompt, context_tokens)
+
+
+# ── diagnose 阶段：问题理解卡（agent_step 之前的专业认知前置步）─────────────────
+DIAGNOSE_TEMPLATE = """
+
+═══════════ 本次任务 · 问题诊断（DIAGNOSE · 专业认知前置步）═══════════
+阅读用户问题，**像城市规划师那样先沿专业轴拆解**——不是语义解析后直接走管线，而是判定：
+这是个什么行业视角、什么空间尺度、什么决策类型的问题，该出什么形态的结论，需要什么数据、
+当前是否齐全、该用什么 GIS 方法。诊断卡会指导后续 agent loop 的工具选型与最终结论的颗粒度。
+
+严格遵守 MANIFESTO 第十一节「尺度-方法-范式」：结论颗粒度必须匹配问题尺度（宏观禁落单点 /
+微观禁泛泛）。数据盘点要诚实——缺关键数据须在 strategy 标 request_upload 或 fallback_annotated，
+勿假装全知。
+
+输出**严格 JSON 对象**（仅 JSON，禁 markdown 代码块 / 前后解释），结构如下（6 字段必填）：
+{{
+  "domain_lens": ["urban_planning" | "urban_renewal" | "urban_operation" | "urban_governance", ...],
+  "scale": "macro" | "meso" | "micro",
+  "decision_type": "评价" | "选址" | "排查" | "对比" | "监测" | "定义",
+  "outlet": "报告结论" | "指标排序" | "地图定位" | "建议清单" | "预警",
+  "data_plan": {{
+    "needed": ["回答此问所需的数据，如『更新单元矢量』『L2 极性』"],
+    "available": ["当前已有的，如『L2 T1 极性』『行政区边界』"],
+    "gap": ["缺失的，如『更新紧迫度评估』"],
+    "strategy": "ready" | "fallback_annotated" | "request_upload"
+  }},
+  "method": ["从下方 GIS 工具目录选 + 组合，如 'zonal_stats(更新单元) → rank(worst)'"]
+}}
+
+【尺度判定要点】（查下方矩阵）：
+- 提到"中心城区/片区/整体/哪个区/哪类"→ 多为宏观；提到"街道/社区/更新单元/几个片区对比"→ 中观；
+  提到"这条街/这个小区/这个公园/哪个点位"→ 微观。
+- "定义"类问题（如"什么是情绪地图"）scale 可填 macro 但 decision_type=定义，method 可空。
+【strategy 判定要点】（查下方 strategy 语义）：硬缺口（无替代）→ request_upload；
+有合理替代（社区代街道、用极性近似紧迫度）→ fallback_annotated；齐全 → ready。
+
+当前数据（grounding，主窗口推送的图层摘要；据此判断 available/gap）：
+{context}
+"""
+
+
+def build_diagnose_prompt(context: str = '', context_tokens: list = None) -> str:
+    """diagnose 阶段：输出 6 字段问题理解卡（流式 reasoning + content JSON）。
+
+    范式知识（矩阵/出口/工具目录/卡字段）在 DIAGNOSE_TEMPLATE.format() 之后拼接——
+    避免这些含花括号的文本被 str.format 误解析（见 manifesto/py 花括号警示）。
+    """
+    ctx = context or '（未提供数据上下文）'
+    prompt = MANIFESTO + DIAGNOSE_TEMPLATE.format(context=ctx)
+    # 范式知识附录（format 后拼接，花括号安全）
+    prompt += '\n═══════════ 附录 · 尺度-方法-范式矩阵 ═══════════\n' + scale_paradigm_text()
+    prompt += '\n\n═══════════ 附录 · 4 领域出口范式启发库 ═══════════\n' + domain_outlets_text()
+    prompt += '\n\n═══════════ 附录 · GIS 操作目录（method 字段据此选型）═══════════\n' \
+              + geo_tool_catalog_text()
+    prompt += '\n\n═══════════ 附录 · 诊断卡字段说明 ═══════════'
+    for k, v in DIAGNOSE_CARD_FIELDS.items():
+        prompt += f'\n- {k}：{v}'
+    prompt += '\n\n═══════════ 附录 · data_plan.strategy 语义 ═══════════'
+    for k, v in DATA_STRATEGY.items():
+        prompt += f'\n- {k}：{v}'
     return _inject_tokens(prompt, context_tokens)
 
 

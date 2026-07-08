@@ -14,10 +14,10 @@
 - **Phase B1/B2 GIS 骨干**：`core/geo_registry.py`（lazy 缓存 L1/L2×T1-T3 + 边界 preset）；`api/geo_routes.py`（10 个 `/geo/*` 原子操作：filter_attr/clip/merge/area_stats/zonal_stats/rank/buffer/overlay/nearest/hotspot + catalog；复合入参 layer+range+pre_filter 免中间中转；复用 aggregate_by_polygons/hot_spot_analysis）。
 - **验证**：12 路由注册 ✓；E2E `zonal_stats`(L2×行政区) →「白洋/伍家岗区/猇亭区 pi+归因」**宏观结构化结论（非坐标）= 验收核心路径打通**；clip/area_stats/filter_attr ✓；`test_geo_routes.py` 8 passed，全量 124 passed（5 既有失败与本轮无关）。
 
-### ⬜ 下一会话（同 plan，质量核心继续）
+### ⬜ 下一会话（同 plan，前端接线 + 流式收尾）
 
-- **Phase A1** DIAGNOSE：`schemas.py` +`phase='diagnose'` + 卡字段；`prompts.py` `build_diagnose_prompt`（拼 MANIFESTO + 范式表，不用 json_mode）；`router.py` diagnose 分支；前端 `stages.js` diagnoseStep + `harness.js` orchestrate 前插 diagnose（结果注入 agent/final prompt）；失败降级空卡不阻塞。
-- **Phase A3** 审查加第 7 条 `scale_paradigm_fit`（结论颗粒度匹配尺度）+ `review.py` `_build_review_prompt` 拼回 MANIFESTO（当前漏拼致 professional/actionable 偏松）。
+- **✅ Phase A1 后端已做（5.37）**：`schemas/prompts/router` diagnose 分支全通；**剩前端**：`stages.js` diagnoseStep + `harness.js` orchestrate 前插 diagnose（卡注入 agent/final prompt）+ `panel.js` 渲染问题理解卡；失败降级空卡不阻塞。
+- **✅ Phase A3 后端已做（5.37）**：审查第 7 条 `scale_paradigm_fit` + review prompt 拼回 MANIFESTO；**剩前端**：`panel.js` 审查区渲染第 7 条（REVIEW_CHECKLIST 已 7 条，前端按 key 自动渲染，确认即可）。
 - **Phase B4** 前端 `tools.js`：暴露 10 个 geo 工具为 agent tool（调 `/geo/*`），`buildContext` 增 preset/用地/时点/工具清单。
 - **Phase C** 数据自检：DIAGNOSE `data_plan.gap` → 硬缺口请求上传卡 / 软缺口降级标注；`panel.js` 加请求上传卡样式。
 - **Phase D** 流式三件套（收尾顺手做）：`panel.js` 逐字 RAF（治 O(n²) 卡顿，流末才 marked.parse）+ sticky 底部思考（移出气泡 inline）+ 完毕戳「回答完毕·情绪地图测试版 v1.0·时间戳」。
