@@ -49,6 +49,34 @@ function buildRequestUploadText(d) {
     + '> 若暂无此数据，可在下方说明——我将基于现有情绪数据给出**标注了口径局限**的参考性结论。';
 }
 
+/** A1 产物验证 gate：抽取草稿里声称"已生成/加载"的图层名，对照地图实际图层；谎报→返 hints 注入 revise。 */
+function _verifyClaims(draft) {
+  if (!draft) return { ok: true };
+  const re = /(?:已生成|已加载|已裁出|裁出了|生成了|已创建|新建了|产出了)\s*[「]?([^\n「」，。：:]{2,15})[」]?\s*(?:的?图层|层|面)/g;
+  const claims = [];
+  let m;
+  while ((m = re.exec(draft)) !== null) claims.push(m[1].trim());
+  if (!claims.length) return { ok: true };
+  const actual = getLayers().map((l) => l.name).filter(Boolean);
+  const missing = claims.filter((c) => !actual.some((a) => a === c || a.includes(c) || c.includes(a)));
+  if (!missing.length) return { ok: true };
+  return { ok: false, hints: `诚实检查：回答声称已生成/加载「${missing.join('、')}」图层，但地图实际图层为[${actual.join('、') || '无'}]。请补做（调 geo 工具生成缺失图层）或纠正陈述（改为"尝试未成功/未生成"）。严禁谎报已做。` };
+}
+
+/** 跑一次 revise（产物验证或 review 不达标触发；最多 1 轮）。返修订后文本或 null。 */
+async function _reviseOnce(ctx, hooks, draft, hints, toolHistoryText) {
+  if (!hints) return null;
+  if (hooks.onReviseStart) hooks.onReviseStart();
+  try {
+    const revised = await stages.reviseStep(ctx, draft, hints, toolHistoryText, hooks);
+    if (revised && revised.trim()) {
+      if (hooks.onReviseDone) hooks.onReviseDone(revised);
+      return revised;
+    }
+  } catch (e) { /* revise 失败保留 draft */ }
+  return null;
+}
+
 /**
  * Agent Loop 一次问答。
  * @param ctx    {question, context(grounding), contextTokens, signal, model}
@@ -105,7 +133,11 @@ export async function orchestrate(ctx, hooks = {}) {
   while (round <= MAX_ROUNDS) {
     if (hooks.onRound) hooks.onRound(round);
     if (hooks.onRoundStart) hooks.onRoundStart(round);
-    const toolHistoryText = toolHistory.length ? toolHistory.join('\n') : '';
+    let toolHistoryText = toolHistory.length ? toolHistory.join('\n') : '';
+    // A3：上一步失败 → 头部加换法重试提示（避免重复同样失败调用）
+    if (toolHistory.length && /\[ERR\]|失败|错误/.test(toolHistory[toolHistory.length - 1])) {
+      toolHistoryText = '⚠️ 上一步工具失败（见观察末尾）。换参数（字段名/preset/range）或换工具重试，勿重复同样失败调用。\n\n' + toolHistoryText;
+    }
 
     const step = await stages.agentStep(ctx, hooks, round, toolHistoryText);
     if (!step) { degraded = true; break; }   // 解析失败：break + 仍走 finalStep 回退
@@ -148,6 +180,12 @@ export async function orchestrate(ctx, hooks = {}) {
   // intent=纯GIS操作：跳过情绪审查（review 的尺度/4×5 标准不适用于操作类回答）
   const _intent = diagnose && !diagnose.degraded ? (diagnose.intent || 'emotion_analysis') : 'emotion_analysis';
   if (_intent === 'gis_operation') {
+    // A1：操作类易谎报，产物验证 gate（跳 review 但不跳诚实检查）
+    const verify = _verifyClaims(draft);
+    if (!verify.ok) {
+      const revised = await _reviseOnce(ctx, hooks, draft, verify.hints, toolHistoryText);
+      if (revised) draft = revised;
+    }
     return { ok: true, rounds: round, final: draft, review: { pass: true, degraded: true, skipped: 'gis_operation' }, degraded };
   }
 
@@ -160,19 +198,13 @@ export async function orchestrate(ctx, hooks = {}) {
   }
   if (hooks.onReview) hooks.onReview(review);
 
-  // 不达标 → revise 重写（最多 1 轮，不递归）
+  // 不达标 或 谎报（A1 产物验证）→ revise 重写（最多 1 轮，不递归）
   let final = draft;
-  if (review && !review.pass && !review.degraded && review.revise_hints) {
-    if (hooks.onReviseStart) hooks.onReviseStart();
-    try {
-      const revised = await stages.reviseStep(ctx, draft, review.revise_hints, toolHistoryText, hooks);
-      if (revised && revised.trim()) {
-        final = revised;
-        if (hooks.onReviseDone) hooks.onReviseDone(revised);
-      }
-    } catch (e) {
-      // revise 失败：保留 draft，不阻塞
-    }
+  const verify = _verifyClaims(draft);
+  const reviseHints = [review && !review.pass && !review.degraded && review.revise_hints, !verify.ok ? verify.hints : null].filter(Boolean).join('\n');
+  if (reviseHints) {
+    const revised = await _reviseOnce(ctx, hooks, draft, reviseHints, toolHistoryText);
+    if (revised) final = revised;
   }
   return { ok: true, rounds: round, final, review, degraded };
 }

@@ -51,7 +51,7 @@ AGENT_TEMPLATE = """
 - inspect_zone：深读某聚合域明细。params: {{ "name": "区域名" }}
 【GIS 工具】（按 intent/问题尺度自动组合，见下方「GIS 操作目录」附录；**结果自动落地图为新图层**；B 纯操作类必走此类产出图层，允许坐标与裸结果）：
 **工具选择决策**：①"某范围内"=clip（点）/extract_feature（面）；②"A 内的 B"（如西陵区内的商业用地）=先 extract_feature(A) 再 overlay(A, B, intersection)；③面∩面/面∪面=overlay（**勿用 clip——clip 只切点，面层会报错**）；④合并多面=merge；⑤周边半径=buffer。
-**工具链（chain）**：layer/range/layer_a/layer_b/boundary 等参数可传 preset_id，**也可传"已生成的图层名"**（地图状态可见，如刚 extract 出的"西陵区"层）——多步串接无需导出中间结果。例：extract_feature(admin_district, MC/eq/西陵区) 生成"西陵区"层 → overlay(layer_a="西陵区", layer_b="land_commercial", how="intersection") 得西陵区内商业用地。
+**工具链（chain，推荐显式变量）**：多步操作用 `$1`/`$2` 引用前序工具产物（第 1/2 个产图层的工具结果，最稳，不依赖图层名匹配）。例：extract_feature(admin_district, MC/eq/西陵区) 得 `$1` → overlay(layer_a="$1", layer_b="land_commercial", how="intersection") 得西陵区内商业用地。也支持传"已生成的图层名"或 preset_id。
 - zonal_stats：**宏/中观结论主干**——按行政区/街道/更新单元等边界聚合点层，得每单元极性/点数/4×5 归因+排序。params: {{ "boundary": "admin_district|admin_street|renewal_unit|...(preset_id)", "layer": "(默认 yichang_l2_t1)", "range": "(可选 preset_id 先裁剪)", "pre_filter": "可选，形如 field/op/value 见附录", "top_n": 5 }}
 - rank：Top N 排序（最差/最好/按 domain·element 占比）。params: {{ "by": "worst|best|domain:更新|element:设施", "boundary": "preset_id", "top_n": 5, "layer": "(默认L2)", "range": "(可选)", "pre_filter": "(可选)" }}
 - filter_attr：按属性筛选用地/极性/domain/element/时点。params: {{ "pre_filter": "field/op/value，如 domain/eq/urban_renewal", "layer": "默认L2", "range": "可选" }}
@@ -100,6 +100,7 @@ FINAL_TEMPLATE = """
 **诚实铁律（最高优先级 · 禁止"只说不做"）**：结论中任何"已加载/已生成/已裁出图层X"的陈述，必须对应【已完成的探索】中**真实成功**的工具调用（每轮观察末尾的"地图:N层[...] "可验证）。若工具失败、未执行、或结果为空，必须如实说明（"尝试 X 未成功，原因是 Y"或"当前数据不足以完成 Z"），**严禁谎报成功**。用户能看到地图实际状态，谎报一次即丧失信任。
 
 **出口要素（无论问题多难，缺一不可）**：① 解决办法 / 分析 ② 若涉及空间操作——对应图层必须已由工具生成（不是"建议你去加载"，而是你已调 geo 工具产出）③ 结论 ④ 可落地建议。宁可降级口径标注局限，不可只给思路不执行、不可"点击 X 即可聚焦"却没真生成 X。
+**可操作结论**：结论里给用户的操作建议用模板渲染成按钮——`{{focus:区域名}}`（飞到）、`{{inspect:区域名}}`（深读归因）、`{{show:图层名}}`（显示已生成的图层）。用户一点即执行，取代"请点击/请查看"等空话。
 
 严格遵守 MANIFESTO 第十节回答公约：数据驱动（引用数值/区域 + [ref:区域名]）、结构清晰（问题定性 → 数据证据 → 结论建议）、4×5 表达、专业用语、结论有指向（城建问题 + 可落地建议）、精炼。
 结论要对齐演示逻辑链：指出有张力的区域 → 解释归因 → 指向具体城建问题与建议。

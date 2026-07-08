@@ -38,9 +38,14 @@ let _wisdomPromise = null;
 
 /** POST /api/v1/geo/<path> 取 JSON；失败抛 Error(.detail)。 */
 const _LAYER_REF_KEYS = ['layer', 'range', 'layer_a', 'layer_b', 'boundary', 'center', 'target'];
-/** 图层引用解析：参数值若匹配前端已加载图层名 → 返回其 geojson（send-in 给后端 resolve_boundary/resolve_points）。
- * 支持 chain——extract 出的"西陵区"图层可直接作为 overlay/clip 的输入。精确匹配优先，否则唯一包含匹配。 */
+const _stepResults = [];   // 本轮工具产物（按产出顺序），供 $n 显式引用（addResultLayer push、ref 解析）
+export function resetStepResults() { _stepResults.length = 0; }
+/** 图层引用解析：① `$n` → 第 n 个工具产物（显式变量，最稳）；② 图层名（精确/唯一包含）；③ 原样（preset_id）。 */
 function ref(v) {
+  if (typeof v === 'string' && /^\$\d+$/.test(v.trim())) {
+    const fc = _stepResults[Number(v.trim().slice(1)) - 1];
+    if (fc) return fc;
+  }
   if (typeof v === 'string' && v) {
     const all = getLayers().filter((x) => x.fc && x.fc.features && x.fc.features.length);
     let l = all.find((x) => x.name === v);
@@ -130,6 +135,7 @@ export function addResultLayer({ name, kind = 'polygon', fc, paint }) {
   L.srcName = name;
   renderLayer(L);
   renderLayerList(); refreshLegend(); reorderAllZ();
+  _stepResults.push(fc);   // 登记 $n 引用（ref 解析）
   const bb = fcBBox(fc); if (bb) fitBoundsTo(bb);
   document.dispatchEvent(new CustomEvent('layers:changed'));
   return L;

@@ -902,6 +902,18 @@ flowchart TD
 - **⑥回答诚实铁律**（治"只说不做"）：FINAL_TEMPLATE 加「诚实铁律」（任何"已生成图层 X"须对应真实成功工具调用，地图状态可验证；失败须如实说明，禁谎报）+「出口要素」（办法+图层+结论+建议，缺一不可；禁只给思路/谎报聚焦）。
 - **验证**：node --check ✓；Playwright DOM 确认（圆圈 SVG 在 input-row / 发送图标 / 历史新对话按钮 / 清空移除）；问"今天星期几"→ footer="用时 131s · 用量 22.5k token / 4 次"、圆圈显当前占用 0.35%（深灰）。AI 工作区组 + 诚实铁律效果待用户真环境（本环境 LLM 弱）。
 
+### 5.45 AI 问答 · 可靠性硬 gate + 显式链变量 + 多会话 + 答案操作按钮（07月08日 23:00）
+
+业界对比（web search 核实：ESRI ArcGIS Copilot/Solutions Assistant、CARTO AI Agents+MCP Server、Felt、GIS Copilot 学术）后定位差异化——**情绪数据资产 + 城市规划专业认知（尺度-范式/4×5）+ 城建问题识别闭环**是业界没有的壁垒；通用能力（多模态/方案生成）补够即可，不与 ESRI/CARTO 拼通用 GIS+AI。本轮聚焦用户两痛点（只说不做 / chain 脆弱）+ 会话体验。
+
+- **A1 产物验证 gate**（治"只说不做"，软约束→硬 gate）：[harness.js](frontend/js/ai_qa/harness.js) `_verifyClaims(draft)` 正则抽取"已生成/已加载/裁出/生成了 X 图层"声称 → 对照 `getLayers()` 实际图层（精确+包含）→ 不一致注入 revise hints 强制重写。B（gis_operation）跳 review 但**不跳此 gate**（操作类易谎报）；emotion 分支 review + verify 合并触发 revise。抽 `_reviseOnce` 复用。
+- **A2 显式链变量**：[tools.js](frontend/js/ai_qa/tools.js) `_stepResults[]`（addResultLayer push fc）+ `ref('$n')` 解析第 n 个产物 geojson；panel send `resetStepResults`。LLM 用 `$1`/`$2` 引用前序产物（不靠图层名匹配，最稳）。[prompts.py](ai_qa/prompts.py) AGENT_TEMPLATE 教。
+- **A3 失败重试**：harness 上轮 observation 含 `[ERR]/失败/错误` → 下轮 toolHistoryText 头部插"换参数/换工具重试，勿重复失败调用"。
+- **D1 多会话存档**：`_archive[]`（localStorage `ai_qa_archive_v1`）+ 当前 `_history`；chat-new 存档当前+开新；chat-history 下拉列存档会话（title=首问摘要）+ 当前，点击 `switchSession`（当前存档+加载目标）、垃圾桶 `deleteSession`。
+- **D2 答案内嵌操作**：[renderAnswer](frontend/js/ai_qa/panel.js) 扩展 `{{focus|show|inspect:target}}` 模板 → 可点按钮（.chat-action-btn）；onMsgClick 派发 `TOOLS.focus_zones`/`inspect_zone`/`selectLayer`。prompt FINAL_TEMPLATE 教 LLM 用模板取代"请点击"空话。
+- **验证**：node --check 全过；Playwright 加载 + chat 面板 console 无 JS error（import 链通：selectLayer/resetStepResults/getLastUsage 均正常 export）。深度功能（多会话切换 / 按钮触发 / A1/A2/A3 在真 LLM 下）待用户实测。
+- **留 UI 重设计后**：多模态截图、主动建议、报告生成、方案模拟（依赖新 UI 范式）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

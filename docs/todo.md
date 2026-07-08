@@ -7,6 +7,17 @@
 
 ## 📅 2026-07-08
 
+### ✅ AI 问答 · 可靠性硬 gate + 显式链变量 + 多会话 + 答案操作按钮（revision-log 5.45，07月08日 23:00）
+
+业界对比后聚焦差异化（情绪+规划认知+问题闭环是壁垒）。本轮治两痛点+会话：
+- **A1 产物验证 gate**：_verifyClaims 抽取声称图层 对照 getLayers 不一致→revise（B 操作也启用，治只说不做）。
+- **A2 显式链变量 $n**：_stepResults + ref('$n')，LLM 用 $1/$2 引用前序产物（比图层名稳）。
+- **A3 失败重试**：上轮 [ERR]→下轮换法提示。
+- **D1 多会话存档**：_archive + chat-new 存档开新 + chat-history 列会话切换/删除。
+- **D2 答案操作按钮**：{{focus/show/inspect}} → 可点按钮触发 TOOLS。
+- **验证**：node check + Playwright 冒烟（加载/console 无错）。深度功能待用户。
+- **留 UI 后**：多模态/主动建议/报告生成。
+
 ### ✅ AI 问答 · UI 改造 + AI 工作区组 + 回答诚实铁律（revision-log 5.44，07月08日 22:10）
 
 - **①容量圆圈 SVG**：移输入栏左端，4px 环，深灰/>60%橙，悬停百分比（反映当前 context 占用）。
