@@ -7,6 +7,16 @@
 
 ## 📅 2026-07-08
 
+### ✅ AI 问答 · UI 改造 + AI 工作区组 + 回答诚实铁律（revision-log 5.44，07月08日 22:10）
+
+- **①容量圆圈 SVG**：移输入栏左端，4px 环，深灰/>60%橙，悬停百分比（反映当前 context 占用）。
+- **④用时用量**：footer"用时 Xs · 用量 Yk token / Z 次"（api call stats）。
+- **⑤图标**：发送↑/停止▢ SVG。
+- **②历史/新对话**：去清空，加图标按钮；历史下拉（单轮垃圾桶删除），新对话清空。（多会话存档留后续）
+- **③AI 工作区组**：addResultLayer 归组（addGroup+parentId，sidebar 一致渲染）。
+- **⑥诚实铁律**：FINAL_TEMPLATE 禁"只说不做"（声称必有对应工具产物，失败如实报）+ 出口要素（办法+图层+结论+建议）。
+- **验证**：DOM 就位 + footer"131s/22.5k/4" + 圆圈 0.35%。组/铁律效果待用户真环境。
+
 ### ✅ AI 问答 · 修复流式中开关对话框回答停住（revision-log 5.43，07月08日 21:30）
 
 - **bug**：对话进行中收起/展开 chat-panel，回答停住。根因：chat-trigger 展开无脑 restoreHistory() 清空重建，进行中 shell（未入 _history）被清，hooks 写脱离 DOM 旧元素。

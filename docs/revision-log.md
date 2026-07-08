@@ -892,6 +892,16 @@ flowchart TD
 - **修**：chat-trigger 展开时仅 `!_streaming` 才 `restoreHistory()`（流式中保留进行中 shell；is-collapsed 是 `transform+opacity` 隐藏不破坏 DOM，展开即继续可见）。
 - **验证**：Playwright 流式中（isStreaming=true, textLen=4987）收起→展开→等 5s，textLen 涨至 **10510** + isStreaming=true + shell 保留 = 流继续不停住。
 
+### 5.44 AI 问答 · UI 改造（容量圆圈/图标/历史下拉/用时用量）+ AI 工作区组 + 回答诚实铁律（07月08日 22:10）
+
+- **①容量圆圈 SVG**：从 chat-head 文字百分比改为 SVG 环（移 chat-input-row 左端、26px 等高、stroke 4px、r=9），填充比例=当前 prompt_tokens 占 1M（stroke-dashoffset），深灰常显、≥60% 变橙，悬停 title 显百分比。反映**当前 context 占用**（单次 prompt/1M，非累计——累计在 footer）。
+- **④用时用量**：footer 加「用时 Xs · 用量 Yk token / Z 次」。api.js 加 call stats（`_callCount/_totalPrompt/_totalCompletion` + `resetCallStats/getCallStats`）；send 开始 reset、streamChat 每次 ++、stampDone 显示；token 自适应 k 单位。
+- **⑤发送/停止图标**：发送=向上箭头 SVG、停止=圆角方块 SVG（`updateSendBtn` 切 innerHTML，`line-height:0` 防 SVG 偏移）。
+- **②历史/新对话按钮**：右上角去清空，加历史（时钟 SVG）+ 新对话（新页 SVG）图标。历史=`toggleHistoryDropdown`（下拉当前会话各轮 user 问题 + 每轮垃圾桶单独删除 + 点外部关）；新对话=`clearChat`。（多会话存档留后续）
+- **③AI 工作区组**：`addResultLayer` 统一归入「AI 工作区」group（`_aiGroup` 复用 `addGroup` + `addLayer(parentId)`），组卡片由 sidebar 现有逻辑渲染（设计语言一致）。
+- **⑥回答诚实铁律**（治"只说不做"）：FINAL_TEMPLATE 加「诚实铁律」（任何"已生成图层 X"须对应真实成功工具调用，地图状态可验证；失败须如实说明，禁谎报）+「出口要素」（办法+图层+结论+建议，缺一不可；禁只给思路/谎报聚焦）。
+- **验证**：node --check ✓；Playwright DOM 确认（圆圈 SVG 在 input-row / 发送图标 / 历史新对话按钮 / 清空移除）；问"今天星期几"→ footer="用时 131s · 用量 22.5k token / 4 次"、圆圈显当前占用 0.35%（深灰）。AI 工作区组 + 诚实铁律效果待用户真环境（本环境 LLM 弱）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

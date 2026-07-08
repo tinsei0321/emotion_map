@@ -1,7 +1,7 @@
 // ═══ tools.js — Agent Loop 工具集（查询型 + 操作型，直调主窗口函数）═══
 // 还原单窗口后，tools 直调 map/state/panel（删跨窗口协议）。每个 tool 返回 {observation, data?}：
 //   observation = 给 LLM 看的摘要字符串（入 tool_history）；data = 结构化（前端可选用于渲染）。
-import { getLayers, getSelectedLayer, addLayer, removeLayer } from '../state.js';
+import { getLayers, getSelectedLayer, addLayer, addGroup, removeLayer } from '../state.js';
 import { fitBoundsTo, renderLayer, reorderAllZ, removeLayerFromMap } from '../map.js';
 import { activateTab, setOverview } from '../panel.js';
 import { DOMAIN_LABEL, ELEMENT_LABEL } from '../popup.js';
@@ -112,6 +112,12 @@ function fitToFeature(f) {
   if (isFinite(mnX)) fitBoundsTo([mnX, mnY, mxX, mxY]);
 }
 
+/** AI 工具产出的图层统一归入「AI 工作区」组（复用 state.addGroup；组卡片由 sidebar 现有逻辑渲染）。 */
+function _aiGroup() {
+  const existing = getLayers().find((l) => l.kind === 'group' && l.name === 'AI 工作区');
+  return existing || addGroup({ name: 'AI 工作区' });
+}
+
 /** 把 geo 工具产出的 GeoJSON 落地图为新图层（统一回写，复用 range-presets/grid-tool 范式）。
  * 替换语义：同名旧结果层先移除再新建（防重复堆叠）。name=图层名，kind=point|polygon。
  * 点层自动按 polarity 上色（addLayer 默认 colorMode）；面层需传 paint.fillOn 才可见。 */
@@ -120,7 +126,7 @@ export function addResultLayer({ name, kind = 'polygon', fc, paint }) {
   for (const l of getLayers()) {
     if (l.name === name) { removeLayerFromMap(l.id); removeLayer(l.id); }
   }
-  const L = addLayer({ name, kind, fc, paint });
+  const L = addLayer({ name, kind, fc, paint, parentId: _aiGroup().id });
   L.srcName = name;
   renderLayer(L);
   renderLayerList(); refreshLegend(); reorderAllZ();

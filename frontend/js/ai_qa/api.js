@@ -7,10 +7,18 @@ const BASE = '/api/v1';
  * @param opts {onReason, onReview, model, contextTokens, signal, phase, toolHistory, roundN, draft, reviewHints}
  */
 let _lastUsage = null;
+let _callCount = 0, _totalPrompt = 0, _totalCompletion = 0;
 /** 最近一次流式的 usage（{prompt_tokens, completion_tokens, total_tokens}）；容量圆圈用。 */
 export function getLastUsage() { return _lastUsage; }
+/** 本次问答的 LLM 调用统计（用时/用量戳用）。send 开始时 resetCallStats()。 */
+export function resetCallStats() { _callCount = 0; _totalPrompt = 0; _totalCompletion = 0; }
+export function getCallStats() {
+  const tot = _totalPrompt + _totalCompletion;
+  return { calls: _callCount, prompt: _totalPrompt, completion: _totalCompletion, total: tot };
+}
 
 export async function streamChat(messages, context, onToken, onError, opts = {}) {
+  _callCount++;
   const { onReason, onReview, model, contextTokens, signal } = opts;
   const body = { messages, context };
   if (model) body.model = model;
@@ -49,7 +57,7 @@ export async function streamChat(messages, context, onToken, onError, opts = {})
       try {
         const obj = JSON.parse(data);
         if (obj.error) { if (onError) onError(obj.error); return; }
-        if (obj.usage) { _lastUsage = obj.usage; if (opts.onUsage) opts.onUsage(obj.usage); }
+        if (obj.usage) { _lastUsage = obj.usage; _totalPrompt += obj.usage.prompt_tokens || 0; _totalCompletion += obj.usage.completion_tokens || 0; if (opts.onUsage) opts.onUsage(obj.usage); }
         if (obj.review !== undefined && onReview) { onReview(obj.review); return; }
         if (obj.reason && onReason) onReason(obj.reason);
         if (obj.token) onToken(obj.token);

@@ -2,7 +2,7 @@
 import { orchestrate } from './harness.js';
 import { buildContext, TOOLS } from './tools.js';
 import { getLayers } from '../state.js';
-import { getLastUsage } from './api.js';
+import { getLastUsage, resetCallStats, getCallStats } from './api.js';
 
 const HISTORY_KEY = 'ai_qa_history_v1';
 const MODE_KEY = 'ai_qa_think_mode';
@@ -19,16 +19,23 @@ let _thinkTimer = null;
 let _userPinned = false;   // 用户上滑停跟；回到底部后恢复跟随
 
 const CTX_BUDGET = 1000000;   // DeepSeek V4 Pro 上下文 1M token
-/** 容量圆圈：按最近一次 usage 的 prompt_tokens 占 1M 预算的比例染色（绿<50% / 黄<80% / 红≥80%）。 */
+const _CAP_C = 2 * Math.PI * 9;   // SVG 圆周长（r=9）
+/** 容量圆圈（SVG 环）：填充=当前 prompt_tokens 占 1M 比例；深灰常显、≥60% 变橙；悬停 title 显百分比。 */
 function updateContextCapacity(usage) {
   const el = document.getElementById('ctx-cap');
   if (!el) return;
-  if (!usage || !usage.prompt_tokens) { el.className = 'ctx-cap'; el.title = '上下文容量（V4 Pro 1M）'; el.textContent = '○'; return; }
-  const ratio = usage.prompt_tokens / CTX_BUDGET;
+  const fg = el.querySelector('.ctx-cap-fg');
+  if (!usage || !usage.prompt_tokens) {
+    el.classList.remove('warn');
+    if (fg) fg.setAttribute('stroke-dashoffset', _CAP_C.toFixed(2));
+    el.setAttribute('title', '上下文容量（V4 Pro 1M）');
+    return;
+  }
+  const ratio = Math.min(usage.prompt_tokens / CTX_BUDGET, 1);
+  el.classList.toggle('warn', ratio >= 0.6);
+  if (fg) fg.setAttribute('stroke-dashoffset', (_CAP_C * (1 - ratio)).toFixed(2));
   const pct = (ratio * 100).toFixed(ratio < 0.1 ? 1 : 0);
-  el.className = 'ctx-cap ' + (ratio < 0.5 ? 'ok' : ratio < 0.8 ? 'warn' : 'crit');
-  el.title = `上下文 ${usage.prompt_tokens.toLocaleString()} / 1,000,000 token（${pct}%）`;
-  el.textContent = pct + '%';
+  el.setAttribute('title', `上下文 ${usage.prompt_tokens.toLocaleString()} / 1,000,000 token · ${pct}%`);
 }
 
 function loadHistory() {
@@ -91,11 +98,14 @@ function formatTs(ts) {
 }
 
 /** 完毕戳（回答完毕 + 版本 + 时间戳）；存 trace.doneAt 供历史恢复。 */
+function _fmtTokens(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
 function stampDone(shell) {
   if (_curTrace) _curTrace.doneAt = Date.now();
   if (shell && shell.footerEl) {
+    const secs = _curTrace && _curTrace.startedAt ? Math.max(1, Math.round((_curTrace.doneAt - _curTrace.startedAt) / 1000)) : 0;
+    const cs = getCallStats();
     shell.footerEl.hidden = false;
-    shell.footerEl.textContent = '回答完毕 · 情绪地图测试版 v1.0 · ' + formatTs(_curTrace && _curTrace.doneAt);
+    shell.footerEl.textContent = `回答完毕 · 用时 ${secs}s · 用量 ${_fmtTokens(cs.total)} token / ${cs.calls} 次 · 情绪地图 v1.0 · ${formatTs(_curTrace && _curTrace.doneAt)}`;
   }
 }
 
@@ -421,7 +431,8 @@ async function send(text) {
 
   const shell = appendAssistantShell(null);
   if (!shell) return;
-  _curTrace = { reason: '', reasonSegments: [], steps: [], final: '', review: null, revised: '', diagnose: null, caliber: null, doneAt: null };
+  _curTrace = { reason: '', reasonSegments: [], steps: [], final: '', review: null, revised: '', diagnose: null, caliber: null, startedAt: Date.now(), doneAt: null };
+  resetCallStats();
   _streaming = true;
   updateSendBtn();
   startThinking();
@@ -469,11 +480,13 @@ async function send(text) {
   }
 }
 
+const _SVG_SEND = '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 4l8 8h-5v8h-6v-8H4z" fill="currentColor"/></svg>';
+const _SVG_STOP = '<svg viewBox="0 0 24 24" width="14" height="14"><rect x="5" y="5" width="14" height="14" rx="3" fill="currentColor"/></svg>';
 function updateSendBtn() {
   const btn = document.getElementById('chat-send');
   if (!btn) return;
-  if (_streaming) { btn.textContent = '停止'; btn.classList.add('is-stop'); }
-  else { btn.textContent = '发送'; btn.classList.remove('is-stop'); }
+  if (_streaming) { btn.innerHTML = _SVG_STOP; btn.classList.add('is-stop'); btn.title = '停止'; }
+  else { btn.innerHTML = _SVG_SEND; btn.classList.remove('is-stop'); btn.title = '发送'; }
 }
 
 function injectModeSwitch() {
@@ -508,6 +521,39 @@ function clearChat() {
   _history = [];
   saveHistory();
   restoreHistory();
+}
+
+/** 历史记录下拉：列当前会话各轮 user 问题，每轮可单独删除（垃圾桶图标）。 */
+function toggleHistoryDropdown() {
+  const existing = document.getElementById('chat-history-pop');
+  if (existing) { existing.remove(); return; }
+  const pop = document.createElement('div');
+  pop.id = 'chat-history-pop';
+  pop.className = 'chat-pop';
+  const turns = _history.map((h, i) => ({ h, i })).filter((x) => x.h.role === 'user');
+  if (!turns.length) {
+    pop.innerHTML = '<div class="chat-pop-empty">暂无历史对话</div>';
+  } else {
+    pop.innerHTML = turns.map(({ h, i }) => {
+      const t = (h.text || '').slice(0, 36);
+      return `<div class="chat-pop-item"><span class="chat-pop-txt">${escapeHtml(t)}${(h.text || '').length > 36 ? '…' : ''}</span><button class="chat-pop-del" data-idx="${i}" title="删除该轮"><svg viewBox="0 0 24 24" width="13" height="13"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M7 7l1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>`;
+    }).join('');
+    pop.querySelectorAll('.chat-pop-del').forEach((b) => {
+      b.addEventListener('click', () => {
+        const idx = Number(b.dataset.idx);
+        const n = (_history[idx + 1] && _history[idx + 1].role === 'assistant') ? 2 : 1;
+        _history.splice(idx, n);
+        saveHistory(); restoreHistory();
+        pop.remove(); toggleHistoryDropdown();   // 刷新
+      });
+    });
+  }
+  const head = document.querySelector('#chat-panel .chat-head');
+  if (head) head.appendChild(pop);
+  setTimeout(() => {
+    const onDoc = (e) => { if (!pop.contains(e.target) && !e.target.closest('#chat-history')) { pop.remove(); document.removeEventListener('click', onDoc); } };
+    document.addEventListener('click', onDoc);
+  }, 0);
 }
 
 function onMsgClick(e) {
@@ -569,7 +615,13 @@ export function initChatPanel() {
   document.getElementById('chat-close')?.addEventListener('click', () => {
     document.getElementById('chat-panel')?.classList.add('is-collapsed');
   });
-  document.getElementById('chat-clear')?.addEventListener('click', clearChat);
+  document.getElementById('chat-new')?.addEventListener('click', () => {
+    if (_streaming) return;   // 流式中忽略
+    clearChat();
+    updateContextCapacity(null);
+    document.getElementById('chat-input')?.focus();
+  });
+  document.getElementById('chat-history')?.addEventListener('click', (e) => { e.stopPropagation(); toggleHistoryDropdown(); });
   const sendBtn = document.getElementById('chat-send');
   const input = document.getElementById('chat-input');
   sendBtn?.addEventListener('click', () => {
