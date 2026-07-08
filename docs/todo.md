@@ -7,6 +7,16 @@
 
 ## 📅 2026-07-08
 
+### ✅ AI 问答 · 自成长知识闭环（三层"灵魂"· L2 wisdom + L3 episode + consolidate，revision-log 5.39，07月08日 16:00）
+
+- **诉求→判断**：用户要"单一自我增长的灵魂 md"。判断：内核对（**缺反馈闭环**——用过不会更好），形态错（冗余/腐烂/抢 token）。已有 MANIFESTO/paradigm/auto-memory/design 四层灵魂；真缺口 = 真实问答的答问智慧捕获反哺。改建**三层知识闭环**（按生命周期分列）。
+- **三层**：L1=MANIFESTO（不动）/ L2=`ai_qa/wisdom.py`（**人审策展**，6 条种子从 5.36-5.38 提炼）/ L3=`DATA/ai_qa/episodes.jsonl`（自动 append，gitignore，不进 prompt）。
+- **闭环 3 动作**：① 捕获——每次问答 panel.js send 末尾 fire-and-forget POST `/aiqa/episode`；② 沉淀——`py -m ai_qa.consolidate` 读 L3 聚簇打印 L2 编辑**提议**（人审，不自动写）；③ 注入——buildContext fetch `/aiqa/wisdom` 拼 ctx.context（v1 wholesale，>12 条切检索）。
+- **用户拍板**：全闭环+种子 / 人审策展 / 仅隐式反馈（不加 👍👎 UI）。
+- **承重**：人审是 L2 不腐烂前提 → L2 恒小可 wholesale；L1 不动；episode 含用户问题→gitignore。
+- **验证**：单测 ✓（修 consolidate `(x or {} and ..)` 优先级致 nfail 双计 + unicode 标记 GBK 崩溃→全 ASCII）；pytest 8 passed；Playwright 实测 `/aiqa/wisdom` 返 1463 字 + `/chat diagnose` 请求体 context 含完整 wisdom = 闭环通；send 触发 episode POST 落 jsonl。真实 LLM 质量对比待用户（带 key 同类问两次）。
+- **演进**：L2 > ~12 条 → harness 按 diagnose 卡 fetch `/aiqa/wisdom?scale=&domain=` 切检索；未来可加显式 👍👎（richer 信号）。
+
 ### ✅ AI 问答 · 专业认知层知识基座 + GIS 工具骨干（revision-log 5.36，07月08日 12:20）
 
 - **问题重定义**：5.35 后"回答几乎不能用"根因**不在审查/revise**，在 ai_qa 缺「专业认知层」——agent loop 在前端 harness.js，工具 tools.js 只读单一聚合层，不能下钻/上卷/按几何过滤，故宏观/微观问都答成坐标（范式错位）。详见 plan `main-memories-repo-session-handoff-md-a-smooth-hamster.md`。

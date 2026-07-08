@@ -33,3 +33,6 @@ docs/refs/
 .claude/skills/code-review-and-quality/
 .claude/skills/web-design-guidelines/
 skills-lock.json
+
+# AI 问答自成长知识闭环（含用户问题，本地不提交）
+DATA/ai_qa/

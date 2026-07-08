@@ -23,6 +23,17 @@ export function getGeoCatalog() {
   return _geoCatalogPromise;
 }
 
+/** GET /api/v1/aiqa/wisdom（模块级缓存，buildContext 增列 L2 答问智慧用）。 */
+export function getWisdom() {
+  if (_wisdomPromise) return _wisdomPromise;
+  _wisdomPromise = fetch('/api/v1/aiqa/wisdom')
+    .then((r) => (r.ok ? r.json() : null))
+    .catch(() => null)
+    .then((w) => (w && w.wisdom_text) || '');
+  return _wisdomPromise;
+}
+let _wisdomPromise = null;
+
 /** POST /api/v1/geo/<path> 取 JSON；失败抛 Error(.detail)。 */
 async function geoFetch(path, body) {
   const r = await fetch('/api/v1/geo/' + path, {
@@ -129,6 +140,8 @@ export async function buildContext() {
   parts.push('已加载图层：' + (loaded || '（无）'));
   const geo = formatGeoCatalog(await getGeoCatalog());
   if (geo) parts.push(geo);
+  const wisdom = await getWisdom();
+  if (wisdom) parts.push(wisdom);
   if (!an) {
     parts.push('（暂无聚合层——区域级问题建议先 ensure_zone 生成）');
     return parts.join('\n');

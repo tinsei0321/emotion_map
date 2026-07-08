@@ -836,6 +836,29 @@ flowchart TD
 
 **验证**：5 个 ai_qa JS 模块 `node --check` ✓；`build_agent_prompt` 含 zonal_stats + GIS 目录附录（format 无异常）；`build_revise_prompt` import ✓；`api.main` 挂载 ✓；`test_geo_routes.py` **8 passed**（无回归）。Playwright（MCP）实测：面板开、dock+back-btn+5 chip 挂载、ai_qa.css 加载、`/geo/catalog`（10 工具/7 边界）、**`/geo/zonal_stats(renewal_unit)` 返 3 行结构化归因（无坐标）= 验收核心路径打通**；修一处 bug（back-btn 被 restoreHistory 清空 → scroll 监听 dataset 守卫 + 重挂 + 调用序 restore→mount）。**真实 LLM 硬测待用户**：本 shell 无 DEEPSEEK_API_KEY，4 次 /chat 返 key 缺失错（api.js try/catch 吞错=既存降级，answer 空+footer 戳+无崩溃=降级链路 OK）。
 
+### 5.39 AI 问答 · 自成长知识闭环（三层"灵魂"· L2 wisdom + L3 episode + consolidate，07月08日 16:00）
+
+**用户诉求**：把 AI 策略/工作机制沉淀成 emotion-map AI 的"底层灵魂"，自我成长、动态更新、周期维护，像人一样越用越懂。
+
+**判断（专业化转译）**：诉求内核对（**缺反馈闭环**——用过 100 次第 101 次不会更好），但"单一自我增长 md 文件"形态错（冗余/腐烂/抢 token）。已有 MANIFESTO(L1 身份)/paradigm/auto-memory(Claude 习惯，非 emotion-map AI 智慧)/design-doc 四层"灵魂"；真缺口 = **把真实问答的答问智慧捕获并反哺**。改建成**三层知识闭环**（按生命周期分列，复用 L1 不动）：
+
+| 层 | 生命周期 | 载体 | 进 prompt? |
+|---|---|---|---|
+| L1 价值观 | 稳定（人工） | 现有 `MANIFESTO` | 整段（不变） |
+| L2 沉淀智慧 | 半稳定（**人审策展**） | 新 `ai_qa/wisdom.py` | 检索/wholesale 注 ctx.context |
+| L3 情境日志 | 易变（自动 append） | 新 `DATA/ai_qa/episodes.jsonl`（gitignore） | 不进（只被挖掘） |
+
+**落地**（用户拍板：全闭环+种子 / 人审策展 / 仅隐式反馈）：
+- `ai_qa/wisdom.py`：6 条种子（从 5.36-5.38 验收问提炼：renewal-macro/park-micro/governance-hotspot/meso-compare/define/data-gap）+ `retrieve_wisdom(scale,domains)` + `wisdom_text()`。
+- `ai_qa/episode.py`：`log_episode()` append jsonl（question/diagnose/review/final 摘要）；`read_episodes()`。
+- `ai_qa/consolidate.py`：`py -m ai_qa.consolidate` 读 L3 → 按 scale×domain 聚簇 → 打印 L2 编辑**提议**（失败模式/范例候选/未覆盖；ASCII 标记 GBK 安全；**不自动写**，人审）。
+- `api/aiqa_routes.py`：`GET /aiqa/wisdom`（v1 wholesale，带 scale/domain 参则检索）+ `POST /aiqa/episode`；挂 `api/main.py`。
+- `tools.js`：`getWisdom()`（模块缓存）+ `buildContext` 增列 wisdom；`panel.js`：send 末尾 fire-and-forget POST episode（`.catch` 吞错不阻塞交付）。
+
+**承重**：人审是 L2 不腐烂的前提（自动写只进 L3）→ L2 恒小高信噪比 → v1 可 wholesale；> ~12 条切 `retrieve_wisdom`（v2，harness 按 diagnose 卡 fetch 带 key）。L1 不动、不与 MANIFESTO 冲突；episode 含用户问题 → `DATA/ai_qa/` gitignore。
+
+**验证**：wisdom/episode/consolidate 单测 ✓（6 条 / 检索命中 / 读写轮回 / consolidate 正确聚簇计数——修了 `(x or {} and not ..)` 优先级致 nfail 双计 bug + unicode 标记 GBK 崩溃→全 ASCII）；`api.main` 挂载 ✓；`test_geo_routes.py` 8 passed（无回归）；node --check tools/panel ✓。Playwright 实测：`/aiqa/wisdom` 返 1463 字 / 检索 macro+renewal=3 条 / `/aiqa/episode` POST ok；**`/chat` diagnose 请求体 context 含完整 wisdom 文本 = buildContext→wisdom→prompt 闭环通**；send 触发 finally POST episode → jsonl 落 2 条。真实 LLM 质量验证待用户（带 key 问两次同类问，对比开/关 wisdom）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

@@ -435,6 +435,13 @@ async function send(text) {
       _history.push({ role: 'assistant', trace: JSON.parse(JSON.stringify(_curTrace)) });
       saveHistory();
     }
+    // L3 情境日志（自成长闭环原料；fire-and-forget，失败静默不阻塞交付）
+    if (_curTrace) {
+      fetch('/api/v1/aiqa/episode', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: text, diagnose: _curTrace.diagnose, final: _curTrace.final, review: _curTrace.review, ok: settled }),
+      }).catch(() => {});
+    }
     _streaming = false;
     _abortCtl = null;
     updateSendBtn();
