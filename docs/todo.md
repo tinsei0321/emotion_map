@@ -5,6 +5,16 @@
 
 ---
 
+## 📅 2026-07-09
+
+### ✅ AI 问答 · catalog 数据 overview + 错误 detail 可操作化（吸收 GIS Copilot，revision-log 5.47）
+
+一次性通读 docs/SpatialAnalysisAgent-master（Penn State GIS Copilot）。架构不同（code-exec vs tool-schema），吸收两点：
+- **数据 overview**：geo_registry `_point_layer_overview` 返 fields+samples+dtypes+crs；catalog 经 formatGeoCatalog 拼「polarity:Very Positive/score:1.0」入 grounding（LLM 知取值不只字段名）。
+- **错误 detail**：resolve_boundary preset 不可用加「可用 preset 列表」。
+- 不吸收：code-exec/DAG/QGIS TOML/Qt UI（架构不同/不可移植）。差异化：4×5/尺度范式/情绪数据/产物 gate 是壁垒。
+- 验证：catalog samples/dtypes ✓；preset 不可用 detail 含可用列表 ✓。
+
 ## 📅 2026-07-08
 
 ### ✅ Import · 解析配置弹窗 1:1 + 源 CRS 手选 + GPX/TopoJSON（revision-log 5.46，07月08日 23:50）

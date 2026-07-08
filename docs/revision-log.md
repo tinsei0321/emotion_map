@@ -926,6 +926,16 @@ flowchart TD
 - **验证**：node --check 4 模块全过；serve 起、index/各 JS/CSS 200、topojson CDN 可达、served 字节含新符号（非缓存）。CRS 变换正确性 / CSV 各 Kind / GCJ-02 偏移修正 → 交用户用真实文件（项目 CSV / 投影 shp / GCJ geojson）肉眼验。
 - **延后（服务端一轮）**：GDB（fiona OpenFileGDB，可复用 range_selector 链路）、CAD（DXF=ezdxf 零负担 / DWG=ODA File Converter 或 libopencad-GDAL）；弹窗 CRS 区届时直接复用。
 
+### 5.47 AI 问答 · catalog 数据 overview + 错误 detail 可操作化（吸收 GIS Copilot，07月09日）
+
+一次性通读 `docs/SpatialAnalysisAgent-master`（Penn State GIS Copilot，QGIS 桌面 agent）。**架构不同**（它 LLM 写代码→exec→debug；情绪地图是 tool-schema 调用），故 code-exec/DAG/QGIS 工具栈不适用。吸收两点：
+- **数据 overview 增强**：[geo_registry.py](core/geo_registry.py) `_point_layer_overview` 读 CSV 表头+首行，返 fields + samples（关键字段取值）+ dtypes；`list_point_layers` 带上 + crs。catalog 经 [formatGeoCatalog](frontend/js/ai_qa/tools.js) 拼「polarity:Very Positive / score:1.0 / domain:urban_operation」入 grounding——LLM 不再只知字段名，还知取值/类型，构造 pre_filter 更准（借鉴 GIS Copilot `see_vector` 格式）。
+- **错误 detail 可操作化**：`resolve_boundary` preset 不可用 → 加「可用 preset: [...]」列表（LLM 知道换哪个）；`_apply_attr_filter` 字段不存在已含可用字段；`extract_feature` where 已兜底 name。
+- **不吸收**：code-exec+debug（架构不同）、DAG 全栈（deck.gl + ReAct + `$n` 已够）、QGIS 611 TOML（不可移植）、Qt UI / GIBD proxy。
+- **差异化确认**：情绪地图壁垒（4×5 / 尺度范式 / 情绪数据 / answer-level 产物 gate `_verifyClaims` / 18 工具 function-calling）GIS Copilot 没有。
+- **验证**：TestClient catalog samples/dtypes/crs ✓（polarity=str / score=float64 / ...）；preset 不可用 detail 含可用列表 ✓。
+- 详细抽取清单存 plan 附录，项目不再重读。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

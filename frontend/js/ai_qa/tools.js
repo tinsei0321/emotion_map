@@ -170,8 +170,9 @@ function formatGeoCatalog(cat) {
   const out = [];
   const pls = (cat.point_layers || []).filter((p) => p.available !== false);
   if (pls.length) out.push('【可用地层】' + pls.map((p) => {
-    const fs = (p.fields || []).slice(0, 14).join('/');
-    return `${p.label || p.id}${fs ? `[字段:${fs}]` : ''}`;
+    const samp = p.samples || {};
+    const samples = Object.keys(samp).map((k) => `${k}:${samp[k]}`).join(' / ');
+    return `${p.label || p.id}${samples ? `（${samples}）` : ''}`;
   }).join('；'));
   const bds = (cat.boundaries || []).filter((b) => b.available !== false);
   if (bds.length) out.push('【可用边界】' + bds.map((b) => `${b.label || b.id}(按字段 ${b.name_field || 'name'} 抽取/筛选某区某单元)`).join('、'));

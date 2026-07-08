@@ -35,35 +35,50 @@ _POINT_LAYERS = {
 }
 
 
-_FIELD_CACHE: dict = {}   # fname → 表头字段列表（catalog 暴露给 AI 选字段，避免瞎猜列名）
+_FIELD_CACHE: dict = {}   # fname → {fields, samples, dtypes}（catalog 暴露给 AI，避免瞎猜列名/取值）
+
+# 情绪相关关键字段（优先给样例值，帮 LLM 构造 pre_filter）
+_KEY_FIELDS = ['polarity', 'polarity_index', 'score', 'domain', 'element', 'emotion_type', 'l1_confidence', 'text']
 
 
-def _point_layer_fields(fname: str) -> list:
-    """读 CSV 表头（仅首行 + 缓存）。供 catalog 暴露字段名，AI 据此构造 pre_filter。"""
+def _point_layer_overview(fname: str) -> dict:
+    """读 CSV 表头 + 首行（缓存），返 {fields, samples, dtypes}。供 catalog 暴露字段名 + 取值样例 + 类型。"""
     if fname in _FIELD_CACHE:
         return _FIELD_CACHE[fname]
     path = os.path.join(PERFORMANCE_DIR, fname)
-    fields: list = []
+    ov = {'fields': [], 'samples': {}, 'dtypes': {}}
     if os.path.isfile(path):
         try:
-            fields = list(pd.read_csv(path, nrows=0).columns)
+            df = pd.read_csv(path, nrows=2)
+            fields = list(df.columns)
+            key = [c for c in _KEY_FIELDS if c in fields] or fields[:8]
+            row0 = df.iloc[0] if len(df) else None
+            ov = {
+                'fields': fields,
+                'samples': {c: (str(row0[c])[:24] if row0 is not None and c in row0 else '') for c in key},
+                'dtypes': {c: str(df[c].dtype) for c in key},
+            }
         except Exception:
-            fields = []
-    _FIELD_CACHE[fname] = fields
-    return fields
+            pass
+    _FIELD_CACHE[fname] = ov
+    return ov
 
 
 def list_point_layers() -> list:
-    """列出可用的点层（标注 available + 字段表头）。L2 优先（含 score/polarity）。"""
+    """列出可用的点层（标注 available + 字段/样例/类型/CRS）。L2 优先（含 score/polarity）。"""
     out = []
     for lid, (fname, label, level) in _POINT_LAYERS.items():
         available = os.path.isfile(os.path.join(PERFORMANCE_DIR, fname))
+        ov = _point_layer_overview(fname) if available else {'fields': [], 'samples': {}, 'dtypes': {}}
         out.append({
             'id': lid,
             'label': label,
             'level': level,
             'available': available,
-            'fields': _point_layer_fields(fname) if available else [],
+            'fields': ov['fields'],
+            'samples': ov['samples'],
+            'dtypes': ov['dtypes'],
+            'crs': 'EPSG:4326',
         })
     return out
 
@@ -132,7 +147,8 @@ def resolve_boundary(boundary) -> gpd.GeoDataFrame:
     if isinstance(boundary, str):
         loaded = load_preset(boundary)
         if not loaded.get('available'):
-            raise FileNotFoundError(f'边界 preset 不可用: {boundary}（文件未上传）')
+            avail = [b['id'] for b in list_boundaries() if b.get('available')]
+            raise FileNotFoundError(f'边界 preset 不可用: {boundary}（文件未上传）。可用 preset: {avail}')
         gj = loaded.get('geojson') or {}
         feats = gj.get('features') if isinstance(gj, dict) else None
         if not feats:
