@@ -1,11 +1,13 @@
 // ═══ tools.js — Agent Loop 工具集（查询型 + 操作型，直调主窗口函数）═══
 // 还原单窗口后，tools 直调 map/state/panel（删跨窗口协议）。每个 tool 返回 {observation, data?}：
 //   observation = 给 LLM 看的摘要字符串（入 tool_history）；data = 结构化（前端可选用于渲染）。
-import { getLayers, getSelectedLayer } from '../state.js';
-import { fitBoundsTo } from '../map.js';
+import { getLayers, getSelectedLayer, addLayer, removeLayer } from '../state.js';
+import { fitBoundsTo, renderLayer, reorderAllZ, removeLayerFromMap } from '../map.js';
 import { activateTab, setOverview } from '../panel.js';
 import { DOMAIN_LABEL, ELEMENT_LABEL } from '../popup.js';
 import { generateGridForAI } from '../grid-tool.js';
+import { renderLayerList, refreshLegend } from '../sidebar.js';
+import { fcBBox } from '../import.js';
 
 let _lastGrid = null;   // 最近生成聚合层（ensure_zone/query 优先用）
 
@@ -92,6 +94,23 @@ function fitToFeature(f) {
   for (const [x, y] of rings) { if (x < mnX) mnX = x; if (x > mxX) mxX = x; if (y < mnY) mnY = y; if (y > mxY) mxY = y; }
   if (isFinite(mnX)) fitBoundsTo([mnX, mnY, mxX, mxY]);
 }
+
+/** 把 geo 工具产出的 GeoJSON 落地图为新图层（统一回写，复用 range-presets/grid-tool 范式）。
+ * 替换语义：同名旧结果层先移除再新建（防重复堆叠）。name=图层名，kind=point|polygon。
+ * 点层自动按 polarity 上色（addLayer 默认 colorMode）；面层需传 paint.fillOn 才可见。 */
+export function addResultLayer({ name, kind = 'polygon', fc, paint }) {
+  if (!fc || !fc.features || !fc.features.length) return null;
+  for (const l of getLayers()) {
+    if (l.name === name) { removeLayerFromMap(l.id); removeLayer(l.id); }
+  }
+  const L = addLayer({ name, kind, fc, paint });
+  L.srcName = name;
+  renderLayer(L);
+  renderLayerList(); refreshLegend(); reorderAllZ();
+  const bb = fcBBox(fc); if (bb) fitBoundsTo(bb);
+  document.dispatchEvent(new CustomEvent('layers:changed'));
+  return L;
+}
 function pi(f) { return Number((f.properties || {}).polarity_index); }
 
 function sortZones(feats, crit) {
@@ -121,11 +140,14 @@ function formatGeoCatalog(cat) {
   if (!cat) return '';
   const out = [];
   const pls = (cat.point_layers || []).filter((p) => p.available !== false);
-  if (pls.length) out.push('【可用地层（时点）】' + pls.map((p) => `${p.label || p.id}(${p.id})`).join('、'));
+  if (pls.length) out.push('【可用地层】' + pls.map((p) => {
+    const fs = (p.fields || []).slice(0, 14).join('/');
+    return `${p.label || p.id}${fs ? `[字段:${fs}]` : ''}`;
+  }).join('；'));
   const bds = (cat.boundaries || []).filter((b) => b.available !== false);
-  if (bds.length) out.push('【可用边界 preset】' + bds.map((b) => `${b.label || b.id}(${b.id})`).join('、'));
+  if (bds.length) out.push('【可用边界】' + bds.map((b) => `${b.label || b.id}(按字段 ${b.name_field || 'name'} 抽取/筛选某区某单元)`).join('、'));
   const tls = (cat.tools || []).map((t) => t.name).filter(Boolean);
-  if (tls.length) out.push('【可用 GIS 工具】' + tls.join('/') + '（按 layer+range+pre_filter 组合；结构化/归因/排序结论必走此类，勿报裸坐标）');
+  if (tls.length) out.push('【可用 GIS 工具】' + tls.join('/') + '（结果自动落地图为新图层）');
   return out.join('\n');
 }
 
@@ -343,24 +365,44 @@ export const TOOLS = {
     try {
       const r = await geoFetch('filter_attr', body);
       const feats = (r.geojson && r.geojson.features) || [];
+      const _fName = params.as || `筛选·${pf.field}=${pf.value}`;
+      const _fL = addResultLayer({ name: _fName, kind: 'point', fc: r.geojson });
       const sample = feats.slice(0, 3).map((f) => {
         const p = f.properties || {};
         return '{' + Object.keys(p).slice(0, 5).map((k) => `${k}=${p[k]}`).join(', ') + '}';
       });
-      return { observation: `属性筛选命中 ${r.count} 个要素${r.truncated ? '（已截断）' : ''}，示例：${sample.join(' | ') || '（无属性）'}`, data: { count: r.count } };
+      return { observation: `属性筛选命中 ${r.count} 个要素${r.truncated ? '（已截断）' : ''} → 已生成图层「${_fName}」${_fL ? '(' + feats.length + '点)' : ''}，示例：${sample.join(' | ') || '（无属性）'}`, data: { count: r.count, layerId: _fL && _fL.id } };
     } catch (e) { return _ERR('filter_attr', e); }
   },
 
-  /** 按几何裁剪（某区/某公园范围内的点）。 */
+  /** 按几何裁剪（某区/某公园范围内的点），结果落地图为新点图层。 */
   async clip(params = {}) {
-    if (!params.range) return { observation: '[ERR] clip 需 range（preset_id）' };
+    if (!params.range) return { observation: '[ERR] clip 需 range（preset_id|geojson）' };
     const body = { layer: params.layer || 'yichang_l2_t1', range: params.range };
+    const pf = normPreFilter(params.pre_filter); if (pf) body.pre_filter = pf;
     try {
       const r = await geoFetch('clip', body);
       const feats = (r.geojson && r.geojson.features) || [];
+      const name = params.as || `裁剪·${params.range}`;
+      const L = addResultLayer({ name, kind: 'point', fc: r.geojson });
       const sample = feats.slice(0, 3).map((f) => { const p = f.properties || {}; return p.name || p.issue_label || '未命名'; });
-      return { observation: `裁剪命中 ${r.count} 个要素${r.truncated ? '（已截断）' : ''}（range=${params.range}），示例：${sample.join('、') || '（无）'}`, data: { count: r.count } };
+      return { observation: `裁剪命中 ${r.count} 个要素${r.truncated ? '（已截断）' : ''}（range=${params.range}）→ 已生成图层「${name}」${L ? '(' + feats.length + '点)' : ''}，示例：${sample.join('、') || '（无）'}`, data: { count: r.count, layerId: L && L.id } };
     } catch (e) { return _ERR('clip', e); }
+  },
+  /** 从面边界按属性抽单要素为独立面图层（裁出某区/某单元），结果落地图。 */
+  async extract_feature(params = {}) {
+    if (!params.layer) return { observation: '[ERR] extract_feature 需 layer（preset_id|geojson）' };
+    const body = { layer: params.layer };
+    if (params.where) body.where = params.where;
+    try {
+      const r = await geoFetch('extract_feature', body);
+      const feats = (r.geojson && r.geojson.features) || [];
+      const _nm = (f) => { const p = f.properties || {}; return p.name || p[r.name_field] || Object.values(p).find((v) => typeof v === 'string') || '未命名'; };
+      const labels = feats.map(_nm);
+      const name = params.as || `抽取·${labels.slice(0, 2).join('/') || params.layer}`;
+      const L = addResultLayer({ name, kind: 'polygon', fc: r.geojson, paint: { fillOn: true, lineWidth: 2, fillOpacity: 0.2 } });
+      return { observation: `属性抽取命中 ${r.count} 个面要素（layer=${params.layer}${params.where ? ', where=' + params.where : ''}）→ 已生成图层「${name}」${L ? '(' + feats.length + '面)' : ''}：${labels.slice(0, 5).join('、') || '（无）'}`, data: { count: r.count, layerId: L && L.id } };
+    } catch (e) { return _ERR('extract_feature', e); }
   },
 
   /** 各类用地/各单元面积占比。 */
@@ -391,7 +433,9 @@ export const TOOLS = {
       const r = await geoFetch('merge', body);
       const feats = (r.geojson && r.geojson.features) || [];
       const total = feats.reduce((a, f) => a + (Number((f.properties || {}).area_km2) || 0), 0);
-      return { observation: `合并得 ${r.count} 个面，总面积 ${total.toFixed(1)} km²`, data: { count: r.count } };
+      const _mName = params.as || `合并·${params.boundary}`;
+      const _mL = addResultLayer({ name: _mName, kind: 'polygon', fc: r.geojson, paint: { fillOn: true, lineWidth: 2, fillOpacity: 0.2 } });
+      return { observation: `合并得 ${r.count} 个面，总面积 ${total.toFixed(1)} km² → 已生成图层「${_mName}」${_mL ? '(' + feats.length + '面)' : ''}`, data: { count: r.count, layerId: _mL && _mL.id } };
     } catch (e) { return _ERR('merge', e); }
   },
 
@@ -403,7 +447,9 @@ export const TOOLS = {
       const r = await geoFetch('buffer', body);
       const feats = (r.geojson && r.geojson.features) || [];
       const area = feats.length ? Number((feats[0].properties || {}).area_km2) || 0 : 0;
-      return { observation: `缓冲区 radius=${r.radius_m || body.radius_m}m，得 ${feats.length} 个面（约 ${area.toFixed(2)} km²）`, data: { radius_m: r.radius_m } };
+      const _bName = params.as || `缓冲·${body.radius_m}m`;
+      const _bL = addResultLayer({ name: _bName, kind: 'polygon', fc: r.geojson, paint: { fillOn: true, lineWidth: 2, fillOpacity: 0.2 } });
+      return { observation: `缓冲区 radius=${r.radius_m || body.radius_m}m，得 ${feats.length} 个面（约 ${area.toFixed(2)} km²）→ 已生成图层「${_bName}」`, data: { radius_m: r.radius_m, layerId: _bL && _bL.id } };
     } catch (e) { return _ERR('buffer', e); }
   },
 
@@ -415,7 +461,9 @@ export const TOOLS = {
       const r = await geoFetch('overlay', body);
       const feats = (r.geojson && r.geojson.features) || [];
       const total = feats.reduce((a, f) => a + (Number((f.properties || {}).area_km2) || 0), 0);
-      return { observation: `叠置(${r.how || body.how}) 得 ${r.count} 个面，总面积 ${total.toFixed(1)} km²${r.message ? '（' + r.message + '）' : ''}`, data: { count: r.count } };
+      const _oName = params.as || `叠置·${body.how}`;
+      const _oL = addResultLayer({ name: _oName, kind: 'polygon', fc: r.geojson, paint: { fillOn: true, lineWidth: 2, fillOpacity: 0.25 } });
+      return { observation: `叠置(${r.how || body.how}) 得 ${r.count} 个面，总面积 ${total.toFixed(1)} km² → 已生成图层「${_oName}」${_oL ? '(' + feats.length + '面)' : ''}${r.message ? '（' + r.message + '）' : ''}`, data: { count: r.count, layerId: _oL && _oL.id } };
     } catch (e) { return _ERR('overlay', e); }
   },
 

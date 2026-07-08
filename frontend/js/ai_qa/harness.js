@@ -5,16 +5,24 @@
 // 降级：agent_step 解析失败不再裸显 raw，break loop 仍走 finalStep 出一次性 answer。
 import * as stages from './stages.js';
 import { TOOLS } from './tools.js';
+import { getLayers } from '../state.js';
 
 const MAX_ROUNDS = 8;
 const OBS_TRUNC = 200;      // observation 注入 history 截断长度
 const PARAMS_TRUNC = 80;    // action params 摘要截断长度
 
+/** 当前地图图层状态摘要（附入每轮 history，让 LLM 感知操作是否已生效、避免盲目重试）。 */
+function _mapState() {
+  const ls = getLayers().filter((l) => l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length);
+  const recent = ls.slice(-3).reverse().map((l) => l.name).join('/');
+  return `地图:${ls.length}层${recent ? '[' + recent + ']' : ''}`;
+}
+
 /** 压缩单轮历史摘要（注入下轮 / final / review prompt，降 token 提注意力）。 */
 function compressHistory(round, thought, action, obs) {
   const paramsStr = action.params ? JSON.stringify(action.params).slice(0, PARAMS_TRUNC) : '';
   const obsShort = obs && obs.length > OBS_TRUNC ? obs.slice(0, OBS_TRUNC) + '…' : (obs || '');
-  return `第${round}轮 | thought: ${thought || ''} | 动作: ${action.name}(${paramsStr}) | 观察: ${obsShort}`;
+  return `第${round}轮 | thought: ${thought || ''} | 动作: ${action.name}(${paramsStr}) | 观察: ${obsShort} | ${_mapState()}`;
 }
 
 const _DOMAIN_LABEL = { urban_planning: '城市规划', urban_renewal: '城市更新', urban_operation: '城市运营', urban_governance: '城市治理' };
@@ -75,7 +83,18 @@ export async function orchestrate(ctx, hooks = {}) {
   if (!diagnose.degraded) {
     // 注入下游：卡摘要前插 ctx.context，所有后续 phase 都看到（导工具选型 + 结论颗粒度）
     ctx.context = formatDiagnoseSummary(diagnose) + '\n\n' + (ctx.context || '');
-    // C 短路：硬缺口不硬答，直接出"请求上传"为结论
+    // intent 分流（A 通用→短路直接答；B 纯操作→agent loop 走 geo 工具；C 情绪→原路径）
+    const intent = diagnose.intent || 'emotion_analysis';
+    if (intent === 'general') {
+      ctx.context = '【intent=通用问答】直接简洁作答即可，不要 4×5 归因、不要演示逻辑链、不要引导情绪场景。\n\n' + (ctx.context || '');
+      const draft = await stages.finalStep(ctx, hooks, '');
+      if (hooks.onFinalDone) hooks.onFinalDone(draft);
+      return { ok: true, rounds: 0, final: draft, review: { pass: true, degraded: true, skipped: 'general' }, degraded: false, diagnose };
+    }
+    if (intent === 'gis_operation') {
+      ctx.context = '【intent=纯GIS操作】用 geo 工具（extract_feature/clip/filter_attr/overlay/merge/buffer）完成操作，出口=新图层（自动落地图）。不要 4×5 归因报告、不受尺度范式约束；操作完成后简述产出了什么图层即 answer。\n\n' + (ctx.context || '');
+    }
+    // 硬缺口短路：不硬答，直接出"请求上传"为结论
     if (diagnose.data_plan && diagnose.data_plan.strategy === 'request_upload') {
       const tpl = buildRequestUploadText(diagnose);
       if (hooks.onFinalDone) hooks.onFinalDone(tpl);
@@ -125,6 +144,12 @@ export async function orchestrate(ctx, hooks = {}) {
     return { ok: false, degraded: true, rounds: round };
   }
   if (hooks.onFinalDone) hooks.onFinalDone(draft);
+
+  // intent=纯GIS操作：跳过情绪审查（review 的尺度/4×5 标准不适用于操作类回答）
+  const _intent = diagnose && !diagnose.degraded ? (diagnose.intent || 'emotion_analysis') : 'emotion_analysis';
+  if (_intent === 'gis_operation') {
+    return { ok: true, rounds: round, final: draft, review: { pass: true, degraded: true, skipped: 'gis_operation' }, degraded };
+  }
 
   // 审查
   let review = null;

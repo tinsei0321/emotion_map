@@ -859,6 +859,18 @@ flowchart TD
 
 **验证**：wisdom/episode/consolidate 单测 ✓（6 条 / 检索命中 / 读写轮回 / consolidate 正确聚簇计数——修了 `(x or {} and not ..)` 优先级致 nfail 双计 bug + unicode 标记 GBK 崩溃→全 ASCII）；`api.main` 挂载 ✓；`test_geo_routes.py` 8 passed（无回归）；node --check tools/panel ✓。Playwright 实测：`/aiqa/wisdom` 返 1463 字 / 检索 macro+renewal=3 条 / `/aiqa/episode` POST ok；**`/chat` diagnose 请求体 context 含完整 wisdom 文本 = buildContext→wisdom→prompt 闭环通**；send 触发 finally POST episode → jsonl 落 2 条。真实 LLM 质量验证待用户（带 key 问两次同类问，对比开/关 wisdom）。
 
+### 5.40 AI 问答 · 意图路由认知重构 + GIS 工具结果回写闭环（Phase 0 地基，07月08日 17:35）
+
+- **诉求→判断**：用户报两致命 bug——① 问"今天星期几"被拒答（"只做情绪分析"）；② 问"把上传行政区划里的西陵区裁出来"调 clip 8 次失败、地图不显示、且全程用情绪范式答非所问。判断：非单点 bug，是 **4 层缺陷叠加**（① 认知层 MANIFESTO 强收窄「不是通用聊天」+ DIAGNOSE 封闭分类法 4 域/6 决策/5 出口无超域出口；② 工具语义 clip 硬编码 resolve_points 只能切点 + catalog 不暴露字段 schema；③ 前端回写 geo 工具成功后不 addLayer、geojson 用完即弃；④ 反馈回路 AI 不知操作是否生效→盲目重试）。后续 GIS 能力全经 agent 暴露 → agent 地基坏则能力皆不可用。结论：**先修地基（让现有 10 geo 工具可被正确理解/调用/落图）再谈新增**。详见 plan `main-maplibre-deck-gl-gis-geopandas-temporal-marshmallow.md`。
+- **0a 意图路由（治①）**：MANIFESTO 加「意图分流 A 通用/B 纯GIS操作/C 情绪」最高优先级 + 第十一节标「仅约束 C 情绪分析」+ SOP 第 1 步先判 intent；DIAGNOSE 卡加 `intent` 字段（general/gis_operation/emotion_analysis）+ domain_lens 加 general + decision_type/outlet 加「操作/通用问答/执行操作/生成图层」出口；paradigm GEO_TOOL_CATALOG clip 去情绪化 + 新增 extract_feature 项；前端 harness 按 intent 分流（A 短路直接答、B 进 loop 跳情绪审查、C 原路径），stages normalizeCard 兜底推断 intent（防老模型退化）。
+- **0b catalog 暴露 schema（治②）**：geo_registry list_point_layers 带 `fields[]`（CSV 表头缓存 43 字段）、list_boundaries 带 `name_field`；前端 formatGeoCatalog 拼字段名 + name_field 入 grounding（LLM 知 admin_district 用 MC、L2 点层有 polarity/score，不再瞎猜列名）。
+- **0c 面层抽取（治②）**：新增 `POST /geo/extract_feature`（从面边界按属性抽单要素为独立面图层，复用 _apply_attr_filter + 新 _norm_where；resolve_boundary 已把 nameField 规范化为 name 列，故 where 兜底 field→name 映射）。与 clip 区分：**clip 切点、extract_feature 抽面**。
+- **0d 结果回写（治③）**：tools.js 新增 `addResultLayer({name,kind,fc,paint})` 封装（addLayer+renderLayer+fitBounds+layers:changed，同名替换防堆叠，复用 range-presets/grid-tool 范式）；clip/filter_attr/extract_feature/overlay/buffer/merge 成功路径统一回写；clip 补 pre_filter 透传；工具支持 `as` 命名。点层 addLayer 默认按 polarity 上色、面层传 fillOn。
+- **0e 反馈回路（治④）**：harness compressHistory 每轮附「地图:N层[最近3层名]」→ LLM 感知操作生效，断盲目重试死循环。
+- **承重**：不改 resolve_boundary 的 name 规范化（多依赖，承重）→ extract_feature 内兜底映射；intent 兜底推断防老模型；B 跳过 review（尺度/4×5 标准不适操作类）；addResultLayer 同名替换防堆叠；A 短路仍走 finalStep（依赖 MANIFESTO 逃生规则 + DIAGNOSE 卡 intent=general 引导，不另起 general 模板）。
+- **验证**：后端 TestClient 真端点 ✓（catalog 返 43 字段 + name_field=MC；extract_feature `MC/eq/西陵区`→**裁出 1 面** props={id,name}；clip admin_district→17925 点语义正确）；前端 node --check 3 文件 ✓ + Playwright console 无 JS error + import 链通；**bug A 端到端：问"今天星期几"→ 问题理解卡 `general/通用问答/直接回答` → 直接答日期，不再拒答/不引导情绪场景 = 验收核心通过**。bug B 完整浏览器实测（上传+裁西陵区显示图层）+ 情绪场景不退化 + 真实 LLM 质量待用户（本环境 LLM 日期感不准）。全量 pytest 124 passed（5 既有失败 h3/SnowNLP/geocode 与本轮无关）。
+- **未做/待续**：可达性/等时圈/路网/缓冲新增（用户定暂不做）；Phase 1（手绘范围/时序 diff/叠置补完/DBSCAN/上传矢量闭环）待续。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

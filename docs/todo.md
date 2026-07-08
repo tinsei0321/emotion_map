@@ -7,6 +7,18 @@
 
 ## 📅 2026-07-08
 
+### ✅ AI 问答 · 意图路由认知重构 + GIS 结果回写闭环（Phase 0 地基，revision-log 5.40，07月08日 17:35）
+
+- **诉求→判断**：两致命 bug（拒答"今天星期几" + "裁出西陵区"8 次失败答非所问）。根因 = **4 层缺陷叠加**（① 认知层 MANIFESTO 收窄 + DIAGNOSE 封闭分类无超域出口；② 工具语义 clip 只切点 + catalog 不暴露字段；③ 前端不回写 geojson 用完即弃；④ 无反馈回路→盲目重试）。后续 GIS 能力全经 agent 暴露 → **先修 agent 地基再做 Phase 1**。详见 plan `main-maplibre-deck-gl-gis-geopandas-temporal-marshmallow.md`。
+- **0a 意图路由**：MANIFESTO 三类意图（A 通用/B 纯 GIS 操作/C 情绪）+ DIAGNOSE `intent` 字段 + harness 分流（A 短路直接答 / B 进 loop 跳情绪审查 / C 原路径）。
+- **0b schema 暴露**：catalog 带 fields（43）/name_field（admin_district=MC）→ LLM 不瞎猜字段。
+- **0c extract_feature**：新端点抽面（裁出西陵区=1 面）；clip 仍切点，语义分明。
+- **0d 回写**：addResultLayer 封装 + clip/filter_attr/extract/overlay/buffer/merge 落图 + clip 补 pre_filter + 支持 `as` 命名。
+- **0e 反馈**：compressHistory 每轮附「地图:N层」断重试死循环。
+- **承重**：不改 resolve_boundary name 规范化（extract 内兜底）/ intent 兜底推断防老模型 / B 跳 review / addResultLayer 同名替换防堆叠。
+- **验证**：TestClient catalog(43字段/MC) + extract(西陵区 1 面) + clip(17925 点) ✓；Playwright **bug A 端到端通**（今天星期几→general→直接答日期，不拒答不引导情绪）；bug B 浏览器实测 + 情绪场景不退化待用户；pytest 124 passed（5 既有失败 h3/SnowNLP/geocode 无关）。
+- **下一步**：Phase 1（手绘范围/时序 diff/叠置补完/DBSCAN/上传矢量闭环）。可达性/等时圈/缓冲暂不做。
+
 ### ✅ AI 问答 · 自成长知识闭环（三层"灵魂"· L2 wisdom + L3 episode + consolidate，revision-log 5.39，07月08日 16:00）
 
 - **诉求→判断**：用户要"单一自我增长的灵魂 md"。判断：内核对（**缺反馈闭环**——用过不会更好），形态错（冗余/腐烂/抢 token）。已有 MANIFESTO/paradigm/auto-memory/design 四层灵魂；真缺口 = 真实问答的答问智慧捕获反哺。改建**三层知识闭环**（按生命周期分列）。

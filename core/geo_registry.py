@@ -35,21 +35,41 @@ _POINT_LAYERS = {
 }
 
 
+_FIELD_CACHE: dict = {}   # fname → 表头字段列表（catalog 暴露给 AI 选字段，避免瞎猜列名）
+
+
+def _point_layer_fields(fname: str) -> list:
+    """读 CSV 表头（仅首行 + 缓存）。供 catalog 暴露字段名，AI 据此构造 pre_filter。"""
+    if fname in _FIELD_CACHE:
+        return _FIELD_CACHE[fname]
+    path = os.path.join(PERFORMANCE_DIR, fname)
+    fields: list = []
+    if os.path.isfile(path):
+        try:
+            fields = list(pd.read_csv(path, nrows=0).columns)
+        except Exception:
+            fields = []
+    _FIELD_CACHE[fname] = fields
+    return fields
+
+
 def list_point_layers() -> list:
-    """列出可用的点层（标注 available）。L2 优先（含 score/polarity）。"""
+    """列出可用的点层（标注 available + 字段表头）。L2 优先（含 score/polarity）。"""
     out = []
     for lid, (fname, label, level) in _POINT_LAYERS.items():
+        available = os.path.isfile(os.path.join(PERFORMANCE_DIR, fname))
         out.append({
             'id': lid,
             'label': label,
             'level': level,
-            'available': os.path.isfile(os.path.join(PERFORMANCE_DIR, fname)),
+            'available': available,
+            'fields': _point_layer_fields(fname) if available else [],
         })
     return out
 
 
 def list_boundaries() -> list:
-    """列出可用的边界 preset（展平 list_presets 的 group→items，标注 available）。"""
+    """列出可用的边界 preset（展平 list_presets 的 group→items，标注 available + name_field）。"""
     flat = []
     for g in list_presets() or []:
         for it in g.get('items', []):
@@ -58,6 +78,8 @@ def list_boundaries() -> list:
                 'label': it.get('label'),
                 'group': g.get('group'),
                 'available': bool(it.get('available')),
+                # 暴露名称字段：AI 据此构造 where（如 admin_district 的 MC、renewal_unit 的编号）
+                'name_field': it.get('nameField'),
             })
     return flat
 

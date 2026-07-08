@@ -113,11 +113,18 @@ GEO_TOOL_CATALOG = [
         'contributes': '聚焦切片（"商业用地"/"T1 负面"/"治理域"），支撑类型化结论',
     },
     {
+        'name': 'extract_feature',
+        'when': '从面边界按属性抽单要素为独立面图层（把某区/某公园/某单元单独裁出来显示）',
+        'params': 'layer(preset_id|geojson), where(field/op/value，field 见 catalog name_field)',
+        'yields': '面子集 GeoJSON（自动落地图）',
+        'contributes': '纯 GIS 操作出口：用户要"裁出西陵区"等几何产物时用此，不走情绪归因',
+    },
+    {
         'name': 'clip',
-        'when': '按几何裁剪：某行政区/某公园/某街道"范围内"的点或聚合',
-        'params': 'layer, range(preset_id | geojson)',
-        'yields': '范围内的子集',
-        'contributes': '限定空间范围（"西陵区""滨江公园内"），支撑中/微观落点',
+        'when': '按几何裁剪：某行政区/某公园/某街道范围内的点',
+        'params': 'layer, range(preset_id | geojson), pre_filter?',
+        'yields': '范围内的点子集（自动落地图）',
+        'contributes': '限定空间范围取点（"西陵区内的情绪点"），支撑中/微观落点',
     },
     {
         'name': 'merge',
@@ -191,12 +198,13 @@ def geo_tool_catalog_text() -> str:
 
 # ════════════ DIAGNOSE 问题理解卡（6 字段，DIAGNOSE 阶段强制输出）════════════
 DIAGNOSE_CARD_FIELDS = {
-    'domain_lens': '行业视角：urban_planning/urban_renewal/urban_operation/urban_governance（可多选）',
-    'scale': '空间尺度：macro | meso | micro（决定结论颗粒度，查表1）',
-    'decision_type': '决策类型：评价 | 选址 | 排查 | 对比 | 监测 | 定义',
-    'outlet': '出口形态：报告结论 | 指标排序 | 地图定位 | 建议清单 | 预警',
+    'intent': '意图（最高优先级）：general(通用问答) | gis_operation(纯GIS/数据操作) | emotion_analysis(情绪分析)',
+    'domain_lens': '行业视角：urban_planning/urban_renewal/urban_operation/urban_governance/general（可多选；general 对应 intent=general/gis_operation）',
+    'scale': '空间尺度：macro | meso | micro（决定结论颗粒度，查表1；仅 emotion_analysis 受约束）',
+    'decision_type': '决策类型：评价 | 选址 | 排查 | 对比 | 监测 | 定义 | 操作 | 通用问答',
+    'outlet': '出口形态：报告结论 | 指标排序 | 地图定位 | 建议清单 | 预警 | 执行操作 | 生成图层',
     'data_plan': '数据盘点：{needed[], available[], gap[], strategy: ready|fallback_annotated|request_upload}',
-    'method': '方法选型：从 GIS 工具目录选 + 组合（如 macro 更新优先级 = zonal_stats(更新单元) → rank）',
+    'method': '方法选型：从 GIS 工具目录选 + 组合（emotion 如 zonal_stats→rank；gis_operation 如 extract_feature(admin_district,MC/eq/西陵区)）',
 }
 
 # strategy 语义（数据自检 loop）：

@@ -49,11 +49,12 @@ AGENT_TEMPLATE = """
 - focus_zones：定位区域到地图（飞到+高亮）。params: {{ "names": ["区域A", "区域B"] }}
 - open_attribution：展开 Overview 归因面板。params: {{}}
 - inspect_zone：深读某聚合域明细。params: {{ "name": "区域名" }}
-【GIS 工具】（按问题尺度自动组合，见下方「GIS 操作目录」附录；**结构化/归因/排序结论必走此类，勿报裸坐标**）：
+【GIS 工具】（按 intent/问题尺度自动组合，见下方「GIS 操作目录」附录；**结果自动落地图为新图层**；B 纯操作类必走此类产出图层，允许坐标与裸结果）：
 - zonal_stats：**宏/中观结论主干**——按行政区/街道/更新单元等边界聚合点层，得每单元极性/点数/4×5 归因+排序。params: {{ "boundary": "admin_district|admin_street|renewal_unit|...(preset_id)", "layer": "(默认 yichang_l2_t1)", "range": "(可选 preset_id 先裁剪)", "pre_filter": "可选，形如 field/op/value 见附录", "top_n": 5 }}
 - rank：Top N 排序（最差/最好/按 domain·element 占比）。params: {{ "by": "worst|best|domain:更新|element:设施", "boundary": "preset_id", "top_n": 5, "layer": "(默认L2)", "range": "(可选)", "pre_filter": "(可选)" }}
 - filter_attr：按属性筛选用地/极性/domain/element/时点。params: {{ "pre_filter": "field/op/value，如 domain/eq/urban_renewal", "layer": "默认L2", "range": "可选" }}
-- clip：按几何裁剪（某区/某公园范围内的点）。params: {{ "range": "preset_id(如 land_park/admin_district)", "layer": "(默认L2)" }}
+- extract_feature：从面边界按属性抽单要素为独立面图层（**裁出某区/某单元**，自动落地图）。params: {{ "layer": "preset_id(如 admin_district)", "where": "field/op/value(如 MC/eq/西陵区，field 见 catalog name_field)" }}
+- clip：按几何裁剪（某区/某公园范围内的点，自动落地图）。params: {{ "range": "preset_id(如 land_park/admin_district)", "layer": "(默认L2)", "pre_filter": "可选 field/op/value" }}
 - area_stats：各类用地/各单元面积占比。params: {{ "boundary": "preset_id", "group_by": "字段(如 name)" }}
 - merge：合并/dissolve（几街道合成片区/同类用地合并）。params: {{ "boundary": "preset_id", "by": "字段|空=全部合并" }}
 - buffer：设施缓冲区（地铁500m/奥体1km）。params: {{ "center": "preset_id|geojson", "radius_m": 500 }}
@@ -125,20 +126,25 @@ DIAGNOSE_TEMPLATE = """
 微观禁泛泛）。数据盘点要诚实——缺关键数据须在 strategy 标 request_upload 或 fallback_annotated，
 勿假装全知。
 
-输出**严格 JSON 对象**（仅 JSON，禁 markdown 代码块 / 前后解释），结构如下（6 字段必填）：
+输出**严格 JSON 对象**（仅 JSON，禁 markdown 代码块 / 前后解释），结构如下（7 字段必填，intent 置顶）：
 {{
-  "domain_lens": ["urban_planning" | "urban_renewal" | "urban_operation" | "urban_governance", ...],
+  "intent": "general" | "gis_operation" | "emotion_analysis",
+  "domain_lens": ["urban_planning" | "urban_renewal" | "urban_operation" | "urban_governance" | "general", ...],
   "scale": "macro" | "meso" | "micro",
-  "decision_type": "评价" | "选址" | "排查" | "对比" | "监测" | "定义",
-  "outlet": "报告结论" | "指标排序" | "地图定位" | "建议清单" | "预警",
+  "decision_type": "评价" | "选址" | "排查" | "对比" | "监测" | "定义" | "操作" | "通用问答",
+  "outlet": "报告结论" | "指标排序" | "地图定位" | "建议清单" | "预警" | "执行操作" | "生成图层",
   "data_plan": {{
     "needed": ["回答此问所需的数据，如『更新单元矢量』『L2 极性』"],
     "available": ["当前已有的，如『L2 T1 极性』『行政区边界』"],
     "gap": ["缺失的，如『更新紧迫度评估』"],
     "strategy": "ready" | "fallback_annotated" | "request_upload"
   }},
-  "method": ["从下方 GIS 工具目录选 + 组合，如 'zonal_stats(更新单元) → rank(worst)'"]
+  "method": ["从下方 GIS 工具目录选 + 组合；emotion 如 'zonal_stats(更新单元) → rank(worst)'，gis_operation 如 'extract_feature(admin_district, MC/eq/西陵区)'"]
 }}
+**intent 判定要点（最高优先级）**：
+- general=通用问答/常识/寒暄/纯概念（今天星期几、什么是等时圈）→ domain_lens=["general"]，method 可空，不进情绪分析。
+- gis_operation=纯 GIS/数据操作（裁剪/抽取某区/缓冲/叠置/合并/字段筛选/上传数据处理）→ outlet="生成图层"，method 选 extract_feature/clip/filter_attr/overlay/merge/buffer 等，出口是新图层而非归因报告。
+- emotion_analysis=情绪评价/排序/归因/预警（7 场景）→ 走原 domain_lens/scale/decision_type 体系。
 
 【尺度判定要点】（查下方矩阵）：
 - 提到"中心城区/片区/整体/哪个区/哪类"→ 多为宏观；提到"街道/社区/更新单元/几个片区对比"→ 中观；

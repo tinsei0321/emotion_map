@@ -99,6 +99,23 @@ def _apply_attr_filter(gdf: gpd.GeoDataFrame, f: dict) -> gpd.GeoDataFrame:
     return gdf[mask]
 
 
+def _norm_where(w):
+    """where 容错：dict 原样回；字符串 'field/op/value'（/ 或 | 分隔）→ {field,op,value}。
+
+    供 extract_feature 的按属性抽面（如 'MC/eq/西陵区'）。value 含分隔符时以首个为界、其余并入 value。
+    """
+    if w is None:
+        return None
+    if isinstance(w, dict):
+        return w
+    if isinstance(w, str):
+        parts = [s.strip() for s in w.replace('|', '/').split('/') if s.strip()]
+        if len(parts) < 3:
+            raise ValueError(f'where 需 field/op/value（如 MC/eq/西陵区），收到: {w}')
+        return {'field': parts[0], 'op': parts[1], 'value': '/'.join(parts[2:])}
+    raise ValueError(f'where 需 dict 或 "field/op/value" 字符串，收到 {type(w)}')
+
+
 def _to_geojson(gdf: gpd.GeoDataFrame, max_feats: int = _MAX_RETURN_FEATS) -> dict:
     """GeoDataFrame → GeoJSON dict（4326，截断超量 feature）。"""
     gdf = gdf.dropna(subset=['geometry'])
@@ -166,6 +183,39 @@ async def clip(req: ClipRequest):
         raise HTTPException(status_code=500, detail=f'clip 失败: {e}')
     return {'success': True, 'geojson': fc, 'count': fc['_total'],
             'truncated': fc['_truncated']}
+
+
+# ════════════ 2b. extract_feature · 面层按属性抽取（裁出某区/某单元为独立面图层）════════════
+class ExtractFeatureRequest(BaseModel):
+    layer: Optional[Any] = None     # preset_id(如 admin_district) | GeoJSON（面边界）
+    where: Optional[Any] = None     # {field,op,value} 或 "field/op/value"（如 MC/eq/西陵区）
+
+
+@geo_router.post('/geo/extract_feature')
+async def extract_feature(req: ExtractFeatureRequest):
+    """从面边界按属性抽单要素（或子集）为独立面图层——纯 GIS 操作，结果落地图。
+
+    典型：extract_feature(layer="admin_district", where="MC/eq/西陵区") → 西陵区单面。
+    与 clip 的区别：clip 用面去切点（输出点子集）；extract_feature 从面层抽面（输出面子集）。"""
+    if req.layer is None:
+        raise HTTPException(status_code=400, detail='extract_feature 需 layer(preset_id|geojson)')
+    try:
+        polys = resolve_boundary(req.layer)
+        if req.where:
+            pf = _norm_where(req.where)
+            # resolve_boundary 把 preset 的 nameField 规范化为 'name' 列；用户传原始 name_field（如 MC）时兜底映射
+            if pf.get('field') and pf['field'] not in polys.columns and 'name' in polys.columns:
+                pf = {**pf, 'field': 'name'}
+            polys = _apply_attr_filter(polys, pf)
+        if len(polys) == 0:
+            raise ValueError('属性抽取无命中——检查 where 的 field/op/value（field 见 catalog name_field）')
+        fc = _to_geojson(polys, max_feats=1000)
+    except (KeyError, FileNotFoundError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f'extract_feature 失败: {e}')
+    return {'success': True, 'geojson': fc, 'count': fc['_total'],
+            'truncated': fc['_truncated'], 'name_field': 'name'}
 
 
 # ════════════ 3. merge · 合并/dissolve ════════════

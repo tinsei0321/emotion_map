@@ -40,7 +40,16 @@ export function parseAgentStep(raw) {
 /** 归一化 diagnose 卡（补默认值，防字段缺失）。 */
 function normalizeCard(obj) {
   const dp = obj.data_plan || {};
+  // intent 兜底：老模型/字段缺失时按 domain_lens/decision_type/outlet 线索推断，避免退化成情绪分析
+  let intent = String(obj.intent || '').toLowerCase();
+  if (!intent) {
+    const dom = Array.isArray(obj.domain_lens) ? obj.domain_lens : [];
+    if (dom.includes('general') || obj.decision_type === '通用问答') intent = 'general';
+    else if (obj.decision_type === '操作' || obj.outlet === '生成图层' || obj.outlet === '执行操作') intent = 'gis_operation';
+    else intent = 'emotion_analysis';
+  }
   return {
+    intent,
     domain_lens: Array.isArray(obj.domain_lens) ? obj.domain_lens : (obj.domain_lens ? [obj.domain_lens] : []),
     scale: obj.scale || 'macro',
     decision_type: obj.decision_type || '',
