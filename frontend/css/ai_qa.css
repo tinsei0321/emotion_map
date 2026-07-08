@@ -136,7 +136,7 @@
 .aiq-mode button:hover { background: var(--geojson-color-gray-100, #f0f0f0); }
 .aiq-mode button.is-active { background: var(--geojson-color-brand-primary, #4285F4); color: #fff; }
 
-/* ── 审查状态区（六条 checklist ✓/△/✕ + 整体结论）── */
+/* ── 审查状态区（七条 checklist ✓/△/✕ + 整体结论）── */
 .aiq-review { margin: 0 0 6px; padding: 6px 10px; border-left: 2px solid var(--geojson-color-gray-200, #e3e5e8); background: var(--geojson-color-gray-100, #f7f7f7); border-radius: 0 6px 6px 0; }
 .aiq-review-head { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 4px; }
 .aiq-review-verdict { font-size: var(--geojson-typography-size-xs); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 4px; }
@@ -162,3 +162,49 @@
 
 /* ── 重写中提示 ── */
 .aiq-revising-hint { color: var(--geojson-color-text-tertiary); font-size: var(--geojson-typography-size-xs); font-style: italic; }
+
+/* ── 答案流式裸文本节点（RAF drain 期间用，流末 marked.parse 替换）── */
+.aiq-answer-stream { white-space: pre-wrap; word-break: break-word; }
+
+/* ── 通用卡片基类（问题理解卡 / 口径卡 共用）── */
+.aiq-card { margin: 0 0 6px; padding: 6px 10px; border-left: 2px solid var(--geojson-color-gray-200, #e3e5e8); background: var(--geojson-color-gray-100, #f7f7f7); border-radius: 0 6px 6px 0; }
+.aiq-card-head { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 4px; }
+
+/* ── 问题理解卡（DIAGNOSE 认知前置步）── */
+.aiq-card-diagnose { border-left-color: var(--geojson-color-brand-primary, #4285F4); }
+.aiq-card-diagnose.is-upload { border-left-color: #ff9000; background: rgba(255, 144, 0, 0.06); }
+.aiq-diag-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
+.aiq-diag-chip { display: inline-flex; padding: 1px 7px; font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-brand-primary, #4285F4); background: rgba(66, 133, 244, 0.1); border-radius: 999px; }
+.aiq-diag-strategy { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-secondary); margin-bottom: 2px; }
+.aiq-diag-strat-tag { display: inline-block; padding: 0 6px; margin-right: 4px; border-radius: 999px; font-weight: var(--geojson-typography-weight-semibold); }
+.aiq-diag-strategy.ready .aiq-diag-strat-tag { color: #2e8b57; background: rgba(46, 139, 87, 0.1); }
+.aiq-diag-strategy.fallback_annotated .aiq-diag-strat-tag { color: #d9a400; background: rgba(217, 164, 0, 0.12); }
+.aiq-diag-strategy.request_upload .aiq-diag-strat-tag { color: #ff9000; background: rgba(255, 144, 0, 0.14); }
+.aiq-diag-method { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); }
+
+/* ── 口径标注卡（fallback_annotated 软缺口）── */
+.aiq-card-caliber { border-left-color: #d9a400; background: rgba(217, 164, 0, 0.06); font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); }
+
+/* ── 回答完毕戳（版本 + 时间戳，每轮 assistant 气泡尾）── */
+.aiq-answer-footer { margin-top: 6px; padding-top: 4px; border-top: 1px dashed rgba(0, 0, 0, 0.08); font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); text-align: right; }
+
+/* ── 思考 dock（#chat-suggest 槽，单例贴底不被顶走）── */
+.aiq-thinking-dock { padding: 5px 14px 6px; border-top: 1px solid var(--geojson-color-border-default, #e3e5e8); background: var(--geojson-color-surface-panel-alt, #fafafa); }
+.aiq-thinking-row { display: flex; align-items: center; gap: 6px; }
+.aiq-thinking-dock .aiq-thinking-text { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-brand-primary, #4285F4); font-weight: var(--geojson-typography-weight-semibold); }
+.aiq-thinking-dock .aiq-dots { display: inline-flex; gap: 3px; }
+.aiq-thinking-dock .aiq-dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--geojson-color-brand-primary, #4285F4); animation: aiq-dot 1.2s infinite ease-in-out; }
+.aiq-thinking-dock .aiq-dots i:nth-child(2) { animation-delay: 0.2s; }
+.aiq-thinking-dock .aiq-dots i:nth-child(3) { animation-delay: 0.4s; }
+.aiq-phase-chips { display: flex; gap: 4px; margin-top: 4px; }
+.aiq-phase-chips span { font-size: var(--geojson-typography-size-2xs); padding: 1px 7px; border-radius: 999px; color: var(--geojson-color-text-tertiary); background: var(--geojson-color-gray-100, #eee); }
+.aiq-phase-chips span.active { color: #fff; background: var(--geojson-color-brand-primary, #4285F4); font-weight: var(--geojson-typography-weight-semibold); }
+
+/* ── 回到底部浮钮（用户上滑停跟时出现，sticky 贴消息区底右）── */
+.chat-back-btn {
+  position: sticky; bottom: 6px; align-self: flex-end; margin-top: 4px;
+  padding: 3px 10px; font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-brand-primary, #4285F4);
+  background: var(--geojson-color-surface-panel, #fff); border: 1px solid rgba(66, 133, 244, 0.4);
+  border-radius: 999px; cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.chat-back-btn:hover { background: rgba(66, 133, 244, 0.08); }

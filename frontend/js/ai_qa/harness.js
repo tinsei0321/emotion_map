@@ -1,6 +1,7 @@
 // ═══ harness.js — Agent Loop 编排器（ReAct：Thought→Action→Observation 循环 + 审查→修订）═══
 // 模型每轮自主思考 + 决定动作 + 看结果再想，多轮（上限 MAX_ROUNDS）直到 action='answer'，
-// 出草稿 → Flash 审查员按六条 checklist 审查 → 不达标带 hints 自动 revise 重写 1 轮。
+// 出草稿 → Flash 审查员按七条 checklist 审查 → 不达标带 hints 自动 revise 重写 1 轮。
+// 前置：DIAGNOSE 问题理解卡（认知层）→ 注入 ctx.context 导工具选型 + 结论颗粒度；硬缺口短路请求上传。
 // 降级：agent_step 解析失败不再裸显 raw，break loop 仍走 finalStep 出一次性 answer。
 import * as stages from './stages.js';
 import { TOOLS } from './tools.js';
@@ -16,11 +17,36 @@ function compressHistory(round, thought, action, obs) {
   return `第${round}轮 | thought: ${thought || ''} | 动作: ${action.name}(${paramsStr}) | 观察: ${obsShort}`;
 }
 
+const _DOMAIN_LABEL = { urban_planning: '城市规划', urban_renewal: '城市更新', urban_operation: '城市运营', urban_governance: '城市治理' };
+
+/** diagnose 卡 → 一行摘要（注入 ctx.context，让后续 agent/final/review 都看到）。 */
+function formatDiagnoseSummary(d) {
+  const dom = (d.domain_lens || []).map((k) => _DOMAIN_LABEL[k] || k).join('/') || '?';
+  const strat = (d.data_plan && d.data_plan.strategy) || 'ready';
+  const method = (d.method || []).join(' → ') || '—';
+  return `【已诊断】scale=${d.scale || '?'} | domain=${dom} | outlet=${d.outlet || '?'} | strategy=${strat} | method=${method}`;
+}
+
+/** 硬缺口（request_upload）→ 请求上传结论文本（说清需要什么/为何/格式）。 */
+function buildRequestUploadText(d) {
+  const dp = d.data_plan || {};
+  const needed = (dp.needed || []).join('、') || '所需专业数据';
+  const gap = (dp.gap || []).join('、') || '关键数据维度';
+  return '## 需要您补充数据才能严谨作答\n\n'
+    + `本问需要 **${needed}** 才能给出可靠结论，当前情绪地图数据中尚缺：**${gap}**。\n\n`
+    + '**为何必需**：情绪地图覆盖市民主观感受（极性/4×5 归因），但本问还涉及上述专业数据维度，'
+    + '缺它则结论会偏离，故不硬答。\n\n'
+    + '**建议上传**：Shapefile / GeoJSON（投影 EPSG:4326，或注明所用坐标系），'
+    + '在范围选择里加载后即可纳入分析；上传后重提此问即可。\n\n'
+    + '> 若暂无此数据，可在下方说明——我将基于现有情绪数据给出**标注了口径局限**的参考性结论。';
+}
+
 /**
  * Agent Loop 一次问答。
  * @param ctx    {question, context(grounding), contextTokens, signal, model}
  * @param hooks  渲染回调（panel.js 实现）：
  *   onReason(tok, round)       — reasoning 思考链增量（round 标识所属轮，0=最终/修订阶段）
+ *   onDiagnose(card)           — 问题理解卡（DIAGNOSE 前置步；{degraded:true}=降级）
  *   onRoundStart(round)        — 每轮开始（Pro 模式新建 reasoning 分段块）
  *   onThought(text, round)     — 第 round 轮 thought
  *   onAction(action, round)    — 第 round 轮 action
@@ -38,6 +64,24 @@ export async function orchestrate(ctx, hooks = {}) {
   const toolHistory = [];   // 每轮压缩摘要（注入下轮 prompt）
   let round = 1;
   let degraded = false;
+
+  // 认知前置步：DIAGNOSE 问题理解卡（失败/降级不阻塞，照走 agent loop）
+  let diagnose = null;
+  try {
+    diagnose = await stages.diagnoseStep(ctx, hooks);
+  } catch (e) { diagnose = null; }
+  diagnose = diagnose || { degraded: true };
+  if (hooks.onDiagnose) hooks.onDiagnose(diagnose);
+  if (!diagnose.degraded) {
+    // 注入下游：卡摘要前插 ctx.context，所有后续 phase 都看到（导工具选型 + 结论颗粒度）
+    ctx.context = formatDiagnoseSummary(diagnose) + '\n\n' + (ctx.context || '');
+    // C 短路：硬缺口不硬答，直接出"请求上传"为结论
+    if (diagnose.data_plan && diagnose.data_plan.strategy === 'request_upload') {
+      const tpl = buildRequestUploadText(diagnose);
+      if (hooks.onFinalDone) hooks.onFinalDone(tpl);
+      return { ok: true, rounds: 0, final: tpl, review: { pass: true, degraded: true }, degraded: false, diagnose };
+    }
+  }
 
   while (round <= MAX_ROUNDS) {
     if (hooks.onRound) hooks.onRound(round);

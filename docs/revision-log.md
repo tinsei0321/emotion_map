@@ -809,6 +809,33 @@ flowchart TD
 
 **验证**：import ✓；`build_diagnose_prompt` 构建 7363 字（含矩阵附录 + JSON 卡示例，format 无异常=花括号安全）；checklist 7 条 key 稳定；review prompt 含 MANIFESTO + scale_paradigm_fit；app 导入 ✓；`test_geo_routes.py` 8 passed（无回归）。**DIAGNOSE 真实 LLM 调用 + 前端接线** 留下会话（需 API Key + stages/harness 接 diagnoseStep）。
 
+### 5.38 AI 问答 · 前端接线 + 流式三件套（认知层/GIS 骨干收尾，07月08日 13:20）
+
+**承 5.37**：后端认知层 + GIS 骨干已就绪，本会话接通前端 + 流式，让 AI 真正调 geo 工具产出结构化结论。
+
+**探查发现两个阻塞后端缺口（5.37 遗留）**：
+- [router.py:15](ai_qa/router.py#L15) import **漏 `build_revise_prompt`** 而 [router.py:42](ai_qa/router.py#L42) 调用它 → revise 路径 NameError（latent）。补 import。
+- [prompts.py](ai_qa/prompts.py) `AGENT_TEMPLATE`【可用工具】**只列 8 个旧工具**，10 个 geo 工具未列入 → LLM 不会 emit `action.name="zonal_stats"`。补 10 geo 工具 + `build_agent_prompt` format 后拼接 `geo_tool_catalog_text()`（花括号安全）。
+
+**Phase B4 geo 工具端到端**：[tools.js](frontend/js/ai_qa/tools.js) 加 `geoFetch` + `getGeoCatalog`（模块缓存）+ 10 geo 工具（zonal_stats/rank/filter_attr/clip/area_stats/merge/buffer/overlay/nearest/hotspot），observation 紧凑文本化（rows→`name|pi|n|domain×element|issue`，不灌全量 GeoJSON）；`buildContext` 改 async + 增列「可用边界 preset / 时点 / GIS 工具清单」（panel.js:294 改 await）。
+
+**Phase A1 diagnose 前端**：[stages.js](frontend/js/ai_qa/stages.js) `parseDiagnoseCard`（克隆 parseAgentStep 5 级容错 + scale/strategy 正则兜底）+ `diagnoseStep`（phase=diagnose）；[harness.js](frontend/js/ai_qa/harness.js) orchestrate 前插 diagnose（reviewStep 式降级不阻塞）+ 卡摘要前插 `ctx.context` 导下游 + **request_upload 短路**（硬缺口不硬答）；[panel.js](frontend/js/ai_qa/panel.js) `onDiagnose` + 问题理解卡（domain/scale/decision/outlet 标签 + strategy 徽章 + method）。
+
+**Phase C 数据自检**：request_upload → harness 短路出「请求上传」结论卡（说清需要什么/为何/格式）；fallback_annotated → send 末尾 `renderCaliber` 口径标注卡（标局限 + 缺什么）。两卡持久化 + restore。
+
+**Phase D 流式三件套**（治 O(n²) + 思考贴底 + 完毕戳）：
+- **D1**：onFinal/onRevise 改 streamAcc + `requestAnimationFrame` drain（流式期 textContent + 静态光标兄弟，仅 onFinalDone/onReviseDone marked.parse 一次）；onReason RAF 合流；scrollBottom 改 userPinned 停跟 + `#chat-back-btn` 回底浮钮（sticky）。
+- **D2**：`.aiq-thinking` 从气泡 inline 移到 `#chat-suggest` 单例 dock（永贴底）+ 阶段 chip（诊断/思考/检索/生成/审查，setPhase 点亮）。
+- **D3**：`stampDone`（settled 后）—— `回答完毕 · 情绪地图测试版 v1.0 · MM月DD日 HH:MM`（无星期）+ `trace.doneAt` 持久化 + restore。
+
+**Phase A4**：沉淀 [.claude/skills/emotion-scale-paradigm/SKILL.md](.claude/skills/emotion-scale-paradigm/SKILL.md)（表1 尺度-范式矩阵 + 表2 4 域出口 + 表3 GIS 目录 + DIAGNOSE 卡 schema + 校验清单，镜像 paradigm.py）；同步 [docs/ai-qa-design.md](docs/ai-qa-design.md) 第 3/4/5 章（+ 认知层/GIS 骨干/七条审查/数据自检）。
+
+**文件**：改 `ai_qa/{prompts,router}.py` + `frontend/js/ai_qa/{tools,stages,harness,panel}.js` + `frontend/css/ai_qa.css` + `docs/ai-qa-design.md`；新 `.claude/skills/emotion-scale-paradigm/SKILL.md`。
+
+**承重**：panel.js 不新增 map/state 耦合 / REVIEW_CHECKLIST key 稳定（前端泛化遍历，第 7 条自动渲染）/ revise 1 轮不递归 / diagnose 与审查失败均降级不阻塞 / MANIFESTO 花括号（AGENT_TEMPLATE 内 `{` `}` 全 `{{ }}` 转义）。
+
+**验证**：5 个 ai_qa JS 模块 `node --check` ✓；`build_agent_prompt` 含 zonal_stats + GIS 目录附录（format 无异常）；`build_revise_prompt` import ✓；`api.main` 挂载 ✓；`test_geo_routes.py` **8 passed**（无回归）。Playwright（MCP）实测：面板开、dock+back-btn+5 chip 挂载、ai_qa.css 加载、`/geo/catalog`（10 工具/7 边界）、**`/geo/zonal_stats(renewal_unit)` 返 3 行结构化归因（无坐标）= 验收核心路径打通**；修一处 bug（back-btn 被 restoreHistory 清空 → scroll 监听 dataset 守卫 + 重挂 + 调用序 restore→mount）。**真实 LLM 硬测待用户**：本 shell 无 DEEPSEEK_API_KEY，4 次 /chat 返 key 缺失错（api.js try/catch 吞错=既存降级，answer 空+footer 戳+无崩溃=降级链路 OK）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

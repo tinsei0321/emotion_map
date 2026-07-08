@@ -9,6 +9,55 @@ import { generateGridForAI } from '../grid-tool.js';
 
 let _lastGrid = null;   // 最近生成聚合层（ensure_zone/query 优先用）
 
+// ── GIS 工具骨干（POST /api/v1/geo/*）═══════════════════════════════════════
+let _geoCatalogPromise = null;
+const _DOMAIN_CN2EN = { '规划': 'urban_planning', '更新': 'urban_renewal', '运营': 'urban_operation', '治理': 'urban_governance' };
+
+/** GET /api/v1/geo/catalog（模块级缓存，buildContext 增列「边界/时点/工具」用）。 */
+export function getGeoCatalog() {
+  if (_geoCatalogPromise) return _geoCatalogPromise;
+  _geoCatalogPromise = fetch('/api/v1/geo/catalog')
+    .then((r) => (r.ok ? r.json() : null))
+    .catch(() => null)
+    .then((c) => c || null);
+  return _geoCatalogPromise;
+}
+
+/** POST /api/v1/geo/<path> 取 JSON；失败抛 Error(.detail)。 */
+async function geoFetch(path, body) {
+  const r = await fetch('/api/v1/geo/' + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((j && (j.detail || j.error)) || ('HTTP ' + r.status));
+  return j;
+}
+
+/** pre_filter 容错：字符串 'field/op/value'（或 | 分隔）或对象 → 后端 {field,op,value}。 */
+function normPreFilter(pf) {
+  if (!pf) return undefined;
+  let o = pf;
+  if (typeof pf === 'string') {
+    const parts = pf.split(/[/|]/).map((s) => s.trim()).filter(Boolean);
+    if (parts.length < 3) return undefined;
+    o = { field: parts[0], op: parts[1], value: parts.slice(2).join('/') };
+  }
+  if (!o || !o.field || !o.op) return undefined;
+  if (o.op === 'in' && typeof o.value === 'string') o.value = o.value.split(',').map((s) => s.trim()).filter(Boolean);
+  return o;
+}
+
+const _ERR = (name, e) => ({ observation: '[ERR] ' + name + ' 失败：' + ((e && e.message) || e) });
+const _fmtPi = (v) => (v !== '' && v != null && !isNaN(v) ? Number(v).toFixed(2) : '?');
+const _fmtRow = (row) => {
+  const dom = DOMAIN_LABEL[row.domain_top] || row.domain_top || '?';
+  const elm = ELEMENT_LABEL[row.element_top] || row.element_top || '?';
+  return `  - ${row.name || '未命名'}：极性 ${_fmtPi(row.polarity_index)}，${row.point_count || 0}点，${dom}×${elm}，问题=${row.issue_label || '—'}`;
+};
+
+
 function isAnalysis(l) {
   const ui = l && l.paint && l.paint._ui;
   return !!(l && l.kind === 'polygon' && ui && (ui.tool === 'grid' || ui.tool === 'terrain'));
@@ -56,8 +105,21 @@ function sortZones(feats, crit) {
   return feats.slice().sort((a, b) => Math.abs(pi(b)) - Math.abs(pi(a)));
 }
 
+/** 格式化 geo catalog → grounding 段（边界 preset / 时点 / GIS 工具清单）。 */
+function formatGeoCatalog(cat) {
+  if (!cat) return '';
+  const out = [];
+  const pls = (cat.point_layers || []).filter((p) => p.available !== false);
+  if (pls.length) out.push('【可用地层（时点）】' + pls.map((p) => `${p.label || p.id}(${p.id})`).join('、'));
+  const bds = (cat.boundaries || []).filter((b) => b.available !== false);
+  if (bds.length) out.push('【可用边界 preset】' + bds.map((b) => `${b.label || b.id}(${b.id})`).join('、'));
+  const tls = (cat.tools || []).map((t) => t.name).filter(Boolean);
+  if (tls.length) out.push('【可用 GIS 工具】' + tls.join('/') + '（按 layer+range+pre_filter 组合；结构化/归因/排序结论必走此类，勿报裸坐标）');
+  return out.join('\n');
+}
+
 /** buildContext：grounding 摘要（panel send + query_layers 共用）。 */
-export function buildContext() {
+export async function buildContext() {
   const layers = getLayers();
   const an = activeAnalysis();
   const parts = [];
@@ -65,6 +127,8 @@ export function buildContext() {
     .filter((l) => l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length)
     .map((l) => `${l.name}(${l.fc.features.length}条)`).join('、');
   parts.push('已加载图层：' + (loaded || '（无）'));
+  const geo = formatGeoCatalog(await getGeoCatalog());
+  if (geo) parts.push(geo);
   if (!an) {
     parts.push('（暂无聚合层——区域级问题建议先 ensure_zone 生成）');
     return parts.join('\n');
@@ -223,5 +287,155 @@ export const TOOLS = {
     document.dispatchEvent(new CustomEvent('cell:selected', { detail: { feature: f, layer: an } }));
     const p = f.properties || {};
     return { observation: `「${name}」深读：极性${Number(p.polarity_index).toFixed(2)}，${DOMAIN_LABEL[p.domain_top] || p.domain_top}×${ELEMENT_LABEL[p.element_top] || p.element_top}，${p.point_count || 0}点，问题=${p.issue_label || '—'}` };
+  },
+
+  // ── GIS 工具骨干（POST /api/v1/geo/*，结构化/归因/排序结论主干）─────────────
+  /** 宏/中观结论主干：按边界聚合点层，得每单元极性/点数/4×5 归因+排序。 */
+  async zonal_stats(params = {}) {
+    if (!params.boundary) return { observation: '[ERR] zonal_stats 需 boundary（preset_id）' };
+    const body = { layer: params.layer || 'yichang_l2_t1', boundary: params.boundary };
+    if (params.range) body.range = params.range;
+    const pf = normPreFilter(params.pre_filter); if (pf) body.pre_filter = pf;
+    if (params.top_n != null) body.top_n = Number(params.top_n);
+    try {
+      const r = await geoFetch('zonal_stats', body);
+      const rows = r.rows || [];
+      if (!rows.length) return { observation: `面域聚合（boundary=${params.boundary}）无结果` };
+      return { observation: `面域聚合 ${rows.length} 单元（boundary=${params.boundary}，按 |${r.sort_by || 'polarity_index'}| 降序）：\n` + rows.map(_fmtRow).join('\n'), data: { rows, sort_by: r.sort_by } };
+    } catch (e) { return _ERR('zonal_stats', e); }
+  },
+
+  /** Top N 排序（最差/最好/按 domain·element 占比）。 */
+  async rank(params = {}) {
+    let by = params.by || 'worst';
+    if (by.startsWith('domain:')) { const cn = by.split(':')[1]; by = 'domain:' + (_DOMAIN_CN2EN[cn] || cn); }
+    const body = { layer: params.layer || 'yichang_l2_t1', by, top_n: Number(params.top_n) || 5 };
+    if (params.boundary) body.boundary = params.boundary;
+    if (params.range) body.range = params.range;
+    const pf = normPreFilter(params.pre_filter); if (pf) body.pre_filter = pf;
+    try {
+      const r = await geoFetch('rank', body);
+      const rows = r.rows || [];
+      if (!rows.length) return { observation: `排序（by=${by}）无结果` };
+      return { observation: `排序 Top${rows.length}（by=${by}）：\n` + rows.map(_fmtRow).join('\n'), data: { rows, by } };
+    } catch (e) { return _ERR('rank', e); }
+  },
+
+  /** 按属性筛选（用地/极性/domain/element/时点）。 */
+  async filter_attr(params = {}) {
+    const pf = normPreFilter(params.pre_filter);
+    if (!pf) return { observation: '[ERR] filter_attr 需 pre_filter（field/op/value）' };
+    const body = { layer: params.layer || 'yichang_l2_t1', pre_filter: pf };
+    if (params.range) body.range = params.range;
+    try {
+      const r = await geoFetch('filter_attr', body);
+      const feats = (r.geojson && r.geojson.features) || [];
+      const sample = feats.slice(0, 3).map((f) => {
+        const p = f.properties || {};
+        return '{' + Object.keys(p).slice(0, 5).map((k) => `${k}=${p[k]}`).join(', ') + '}';
+      });
+      return { observation: `属性筛选命中 ${r.count} 个要素${r.truncated ? '（已截断）' : ''}，示例：${sample.join(' | ') || '（无属性）'}`, data: { count: r.count } };
+    } catch (e) { return _ERR('filter_attr', e); }
+  },
+
+  /** 按几何裁剪（某区/某公园范围内的点）。 */
+  async clip(params = {}) {
+    if (!params.range) return { observation: '[ERR] clip 需 range（preset_id）' };
+    const body = { layer: params.layer || 'yichang_l2_t1', range: params.range };
+    try {
+      const r = await geoFetch('clip', body);
+      const feats = (r.geojson && r.geojson.features) || [];
+      const sample = feats.slice(0, 3).map((f) => { const p = f.properties || {}; return p.name || p.issue_label || '未命名'; });
+      return { observation: `裁剪命中 ${r.count} 个要素${r.truncated ? '（已截断）' : ''}（range=${params.range}），示例：${sample.join('、') || '（无）'}`, data: { count: r.count } };
+    } catch (e) { return _ERR('clip', e); }
+  },
+
+  /** 各类用地/各单元面积占比。 */
+  async area_stats(params = {}) {
+    if (!params.boundary) return { observation: '[ERR] area_stats 需 boundary' };
+    const body = { boundary: params.boundary };
+    if (params.group_by) body.group_by = params.group_by;
+    try {
+      const r = await geoFetch('area_stats', body);
+      const rows = r.rows || [];
+      const total = r.total_area_km2 != null ? `（总 ${Number(r.total_area_km2).toFixed(1)} km²）` : '';
+      const seg = rows.map((row) => {
+        const label = row[params.group_by] || row.name || '组';
+        const share = row.share != null ? (Number(row.share) * 100).toFixed(1) + '%' : '?';
+        const area = row.area_km2 != null ? Number(row.area_km2).toFixed(1) + 'km²' : '?';
+        return `${label} ${share}(${area})`;
+      });
+      return { observation: `面积统计${total}：${seg.join('、') || '（无）'}`, data: { rows } };
+    } catch (e) { return _ERR('area_stats', e); }
+  },
+
+  /** 合并/dissolve。 */
+  async merge(params = {}) {
+    if (!params.boundary) return { observation: '[ERR] merge 需 boundary' };
+    const body = { boundary: params.boundary };
+    if (params.by) body.by = params.by;
+    try {
+      const r = await geoFetch('merge', body);
+      const feats = (r.geojson && r.geojson.features) || [];
+      const total = feats.reduce((a, f) => a + (Number((f.properties || {}).area_km2) || 0), 0);
+      return { observation: `合并得 ${r.count} 个面，总面积 ${total.toFixed(1)} km²`, data: { count: r.count } };
+    } catch (e) { return _ERR('merge', e); }
+  },
+
+  /** 设施缓冲区。 */
+  async buffer(params = {}) {
+    if (!params.center) return { observation: '[ERR] buffer 需 center' };
+    const body = { center: params.center, radius_m: Number(params.radius_m) || 500 };
+    try {
+      const r = await geoFetch('buffer', body);
+      const feats = (r.geojson && r.geojson.features) || [];
+      const area = feats.length ? Number((feats[0].properties || {}).area_km2) || 0 : 0;
+      return { observation: `缓冲区 radius=${r.radius_m || body.radius_m}m，得 ${feats.length} 个面（约 ${area.toFixed(2)} km²）`, data: { radius_m: r.radius_m } };
+    } catch (e) { return _ERR('buffer', e); }
+  },
+
+  /** 叠置（交/并/差/对称差）。 */
+  async overlay(params = {}) {
+    if (!params.layer_a || !params.layer_b) return { observation: '[ERR] overlay 需 layer_a + layer_b' };
+    const body = { layer_a: params.layer_a, layer_b: params.layer_b, how: params.how || 'intersection' };
+    try {
+      const r = await geoFetch('overlay', body);
+      const feats = (r.geojson && r.geojson.features) || [];
+      const total = feats.reduce((a, f) => a + (Number((f.properties || {}).area_km2) || 0), 0);
+      return { observation: `叠置(${r.how || body.how}) 得 ${r.count} 个面，总面积 ${total.toFixed(1)} km²${r.message ? '（' + r.message + '）' : ''}`, data: { count: r.count } };
+    } catch (e) { return _ERR('overlay', e); }
+  },
+
+  /** 最近邻。 */
+  async nearest(params = {}) {
+    if (!params.target) return { observation: '[ERR] nearest 需 target' };
+    const body = { layer: params.layer || 'yichang_l2_t1', target: params.target, k: Number(params.k) || 1 };
+    try {
+      const r = await geoFetch('nearest', body);
+      const rows = r.rows || [];
+      if (!rows.length) return { observation: '最近邻无结果' };
+      const lines = rows.map((row) => `${row.name || row.issue_label || '点'}(${row.distance != null ? Number(row.distance).toFixed(0) + 'm' : '?'})`);
+      return { observation: `最近邻(k=${body.k})：${lines.join('、')}`, data: { rows } };
+    } catch (e) { return _ERR('nearest', e); }
+  },
+
+  /** Gi* 热点识别。 */
+  async hotspot(params = {}) {
+    const body = { layer: params.layer || 'yichang_l2_t1', value_col: params.value_col || 'score', invert: params.invert !== false };
+    if (params.range) body.range = params.range;
+    const pf = normPreFilter(params.pre_filter); if (pf) body.pre_filter = pf;
+    try {
+      const r = await geoFetch('hotspot', body);
+      const feats = (r.geojson && r.geojson.features) || [];
+      const tally = {};
+      feats.forEach((f) => {
+        const p = f.properties || {};
+        const cls = p.class || p.classification || p.gi_class || p.hot_cold || p.category || 'ns';
+        tally[cls] = (tally[cls] || 0) + 1;
+      });
+      const dist = Object.keys(tally).length ? Object.entries(tally).map(([k, v]) => `${k}:${v}`).join('、') : `${feats.length}要素`;
+      const leg = r.legend ? '（' + Object.entries(r.legend).map(([k, v]) => `${k}=${v}`).join('、') + '）' : '';
+      return { observation: `热点分析：${dist}${r.truncated ? '（已截断）' : ''}${leg}`, data: { count: r.count, tally } };
+    } catch (e) { return _ERR('hotspot', e); }
   },
 };

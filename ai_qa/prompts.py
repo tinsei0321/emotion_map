@@ -49,6 +49,17 @@ AGENT_TEMPLATE = """
 - focus_zones：定位区域到地图（飞到+高亮）。params: {{ "names": ["区域A", "区域B"] }}
 - open_attribution：展开 Overview 归因面板。params: {{}}
 - inspect_zone：深读某聚合域明细。params: {{ "name": "区域名" }}
+【GIS 工具】（按问题尺度自动组合，见下方「GIS 操作目录」附录；**结构化/归因/排序结论必走此类，勿报裸坐标**）：
+- zonal_stats：**宏/中观结论主干**——按行政区/街道/更新单元等边界聚合点层，得每单元极性/点数/4×5 归因+排序。params: {{ "boundary": "admin_district|admin_street|renewal_unit|...(preset_id)", "layer": "(默认 yichang_l2_t1)", "range": "(可选 preset_id 先裁剪)", "pre_filter": "可选，形如 field/op/value 见附录", "top_n": 5 }}
+- rank：Top N 排序（最差/最好/按 domain·element 占比）。params: {{ "by": "worst|best|domain:更新|element:设施", "boundary": "preset_id", "top_n": 5, "layer": "(默认L2)", "range": "(可选)", "pre_filter": "(可选)" }}
+- filter_attr：按属性筛选用地/极性/domain/element/时点。params: {{ "pre_filter": "field/op/value，如 domain/eq/urban_renewal", "layer": "默认L2", "range": "可选" }}
+- clip：按几何裁剪（某区/某公园范围内的点）。params: {{ "range": "preset_id(如 land_park/admin_district)", "layer": "(默认L2)" }}
+- area_stats：各类用地/各单元面积占比。params: {{ "boundary": "preset_id", "group_by": "字段(如 name)" }}
+- merge：合并/dissolve（几街道合成片区/同类用地合并）。params: {{ "boundary": "preset_id", "by": "字段|空=全部合并" }}
+- buffer：设施缓冲区（地铁500m/奥体1km）。params: {{ "center": "preset_id|geojson", "radius_m": 500 }}
+- overlay：叠置（商业用地∩更新单元 等）。params: {{ "layer_a": "preset_id", "layer_b": "preset_id", "how": "intersection|union|difference|symmetric_difference" }}
+- nearest：最近邻（离地铁最近的负面点）。params: {{ "layer": "点层", "target": "preset_id|geojson", "k": 1 }}
+- hotspot：Gi* 热点识别（负面聚集/情绪热点）。params: {{ "value_col": "score", "invert": true(负面为热), "layer": "(默认L2)", "range": "(可选)" }}
 - answer：已掌握足够信息，退出 loop 出结论。params: {{}}
 
 【Agent 规则】（严守）
@@ -72,6 +83,8 @@ def build_agent_prompt(context: str = '', tool_history: str = '', round_n: int =
     ctx = context or '（未提供数据上下文）'
     hist = tool_history or '（首轮，尚无探索）'
     prompt = MANIFESTO + AGENT_TEMPLATE.format(round=round_n, tool_history=hist, context=ctx)
+    # GIS 操作目录附录（format 后拼接，花括号安全）—— 教模型选对 geo 工具 + 入参/产出/出口贡献
+    prompt += '\n\n═══════════ 附录 · GIS 操作目录（何时用/入参/产出/出口贡献）═══════════\n' + geo_tool_catalog_text()
     return _inject_tokens(prompt, context_tokens)
 
 

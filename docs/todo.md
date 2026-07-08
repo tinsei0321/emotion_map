@@ -14,16 +14,17 @@
 - **Phase B1/B2 GIS 骨干**：`core/geo_registry.py`（lazy 缓存 L1/L2×T1-T3 + 边界 preset）；`api/geo_routes.py`（10 个 `/geo/*` 原子操作：filter_attr/clip/merge/area_stats/zonal_stats/rank/buffer/overlay/nearest/hotspot + catalog；复合入参 layer+range+pre_filter 免中间中转；复用 aggregate_by_polygons/hot_spot_analysis）。
 - **验证**：12 路由注册 ✓；E2E `zonal_stats`(L2×行政区) →「白洋/伍家岗区/猇亭区 pi+归因」**宏观结构化结论（非坐标）= 验收核心路径打通**；clip/area_stats/filter_attr ✓；`test_geo_routes.py` 8 passed，全量 124 passed（5 既有失败与本轮无关）。
 
-### ⬜ 下一会话（同 plan，前端接线 + 流式收尾）
+### ✅ AI 问答 · 前端接线 + 流式三件套（认知层/GIS 骨干收尾，revision-log 5.38，07月08日 13:20）
 
-- **✅ Phase A1 后端已做（5.37）**：`schemas/prompts/router` diagnose 分支全通；**剩前端**：`stages.js` diagnoseStep + `harness.js` orchestrate 前插 diagnose（卡注入 agent/final prompt）+ `panel.js` 渲染问题理解卡；失败降级空卡不阻塞。
-- **✅ Phase A3 后端已做（5.37）**：审查第 7 条 `scale_paradigm_fit` + review prompt 拼回 MANIFESTO；**剩前端**：`panel.js` 审查区渲染第 7 条（REVIEW_CHECKLIST 已 7 条，前端按 key 自动渲染，确认即可）。
-- **Phase B4** 前端 `tools.js`：暴露 10 个 geo 工具为 agent tool（调 `/geo/*`），`buildContext` 增 preset/用地/时点/工具清单。
-- **Phase C** 数据自检：DIAGNOSE `data_plan.gap` → 硬缺口请求上传卡 / 软缺口降级标注；`panel.js` 加请求上传卡样式。
-- **Phase D** 流式三件套（收尾顺手做）：`panel.js` 逐字 RAF（治 O(n²) 卡顿，流末才 marked.parse）+ sticky 底部思考（移出气泡 inline）+ 完毕戳「回答完毕·情绪地图测试版 v1.0·时间戳」。
-- **Phase A4** 沉淀 `.claude/skills/emotion-scale-paradigm/`（方法论镜像）；同步 `docs/ai-qa-design.md` 第 3/4/5 章 + memory `ai-qa-harness-subsystem`。
-- **承重**：panel.js 不耦合 map/state / REVIEW_CHECKLIST key 稳定（新增不删旧）/ revise 1 轮不递归 / 审查与 diagnose 失败均降级不阻塞 / V4 模型 ID（v4-pro/flash）/ MANIFESTO 花括号转义（参与 .format 的 TEMPLATE 才需 {{ }}）。
-- **验收线**：问"中心城区哪里最需优先更新？"→ 结构化结论（哪类更新单元/街道/用地系统性落后 + 4×5 归因）非坐标；两问（宏观+微观）范式不同 = 过线。
+- **两个阻塞后端缺口（5.37 遗留，先补）**：① [router.py:15](ai_qa/router.py#L15) 漏 import `build_revise_prompt`（revise 路径 NameError）→ 补；② `AGENT_TEMPLATE`【可用工具】只列 8 旧工具、10 geo 工具未列入 → 补 10 geo 工具 + `build_agent_prompt` 拼接 `geo_tool_catalog_text()`。
+- **Phase B4 geo 端到端** ✅：`tools.js` 10 geo 工具（geoFetch + 紧凑 observation）+ `buildContext` async 增列边界/时点/工具清单。
+- **Phase A1 diagnose 前端** ✅：`stages.js` parseDiagnoseCard + diagnoseStep；`harness.js` 前插 diagnose（降级不阻塞 + 卡摘要注入 ctx.context + request_upload 短路）；`panel.js` 问题理解卡。
+- **Phase A3 前端** ✅：审查区泛化遍历 `review.scores`，第 7 条 `scale_paradigm_fit` 自动渲染（无需改）。
+- **Phase C 数据自检** ✅：request_upload → 「请求上传」结论卡（不硬答）；fallback_annotated → 口径标注卡。
+- **Phase D 流式三件套** ✅：D1 逐字 RAF drain（治 O(n²)，流末 marked.parse）+ userPinned 停跟/回底浮钮；D2 思考移 `#chat-suggest` sticky dock + 阶段 chip；D3 `回答完毕·测试版 v1.0·时间戳`（无星期）+ trace.doneAt 持久化。
+- **Phase A4** ✅：`.claude/skills/emotion-scale-paradigm/SKILL.md`（方法论镜像）；`docs/ai-qa-design.md` 第 3/4/5 章同步。
+- **承重**：panel.js 不新增 map/state 耦合 / REVIEW_CHECKLIST key 稳定 / revise 1 轮不递归 / diagnose 与审查失败均降级不阻塞 / MANIFESTO 花括号 AGENT_TEMPLATE 全转义。
+- **验证**：5 ai_qa JS `node --check` ✓；`test_geo_routes.py` 8 passed；Playwright 实测面板/dock/back-btn/chip/css/catalog 全挂载，**`zonal_stats(renewal_unit)` 返 3 行结构化归因（无坐标）= 验收核心路径打通**；修 back-btn 被 restoreHistory 清空 bug。**真实 LLM 硬测待用户**（本 shell 无 DEEPSEEK_API_KEY；既存降级链路 OK）。
 
 ### ✅ AI 问答 · 审查层接通 + agent loop 稳健性 + 思考体验对齐（revision-log 5.35，07月07日 23:25）
 

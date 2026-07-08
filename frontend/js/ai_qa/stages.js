@@ -37,6 +37,46 @@ export function parseAgentStep(raw) {
   return null;
 }
 
+/** 归一化 diagnose 卡（补默认值，防字段缺失）。 */
+function normalizeCard(obj) {
+  const dp = obj.data_plan || {};
+  return {
+    domain_lens: Array.isArray(obj.domain_lens) ? obj.domain_lens : (obj.domain_lens ? [obj.domain_lens] : []),
+    scale: obj.scale || 'macro',
+    decision_type: obj.decision_type || '',
+    outlet: obj.outlet || '',
+    data_plan: {
+      needed: dp.needed || [], available: dp.available || [], gap: dp.gap || [],
+      strategy: dp.strategy || 'ready',
+    },
+    method: Array.isArray(obj.method) ? obj.method : (obj.method ? [obj.method] : []),
+  };
+}
+
+/** 容错解析 diagnose 的 6 字段问题理解卡；失败返回 null（harness 降级，不阻塞）。 */
+export function parseDiagnoseCard(raw) {
+  if (!raw) return null;
+  let s = raw;
+  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fence) s = fence[1];
+  const start = s.indexOf('{');
+  const end = s.lastIndexOf('}');
+  if (start < 0 || end < 0 || end <= start) return null;
+  let candidate = s.slice(start, end + 1);
+  candidate = candidate.replace(/,(\s*[}\]])/g, '$1');
+  try {
+    const obj = JSON.parse(candidate);
+    if (obj && (obj.scale || obj.domain_lens || obj.data_plan)) return normalizeCard(obj);
+  } catch (_) { /* fall through */ }
+  // 兜底：正则抠 scale/strategy（模型把卡裹在解释里时），尽量救回 strategy 驱动数据自检
+  const scale = candidate.match(/"scale"\s*:\s*"(\w+)"/);
+  const strat = candidate.match(/"strategy"\s*:\s*"(\w+)"/);
+  if (scale || strat) {
+    return normalizeCard({ scale: scale ? scale[1] : undefined, data_plan: { strategy: strat ? strat[1] : 'ready' } });
+  }
+  return null;
+}
+
 /** Agent Loop 一轮：流式 reasoning + content({thought,action} JSON)。null=解析失败降级。 */
 export async function agentStep(ctx, hooks, round, toolHistory) {
   const messages = [{ role: 'user', content: ctx.question }];
@@ -55,6 +95,20 @@ export async function agentStep(ctx, hooks, round, toolHistory) {
     return null;
   }
   return step;
+}
+
+/** 问题诊断（DIAGNOSE 认知前置步）：流式 reasoning + content(JSON 卡)。null=解析失败降级。 */
+export async function diagnoseStep(ctx, hooks) {
+  const messages = [{ role: 'user', content: ctx.question }];
+  const acc = { token: '' };
+  await streamChat(messages, ctx.context,
+    (tok) => { acc.token += tok; },
+    (err) => { throw new Error(err); },
+    {
+      phase: 'diagnose', signal: ctx.signal, model: ctx.model,
+      onReason: (t) => { hooks.onReason && hooks.onReason(t, 0); },
+    });
+  return parseDiagnoseCard(acc.token);   // null = 解析失败（harness 降级，不抛）
 }
 
 /** 草稿结论：基于 tool_history 流式出 markdown + [ref:]。 */

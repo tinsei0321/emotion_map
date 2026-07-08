@@ -1,59 +1,59 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：07月07日 23:30 | 分支 `main` | HEAD=本批 commit（待 push）
+> 最后更新：07月08日 13:00 | 分支 `main` | HEAD=739f198（已 push）
 
 ---
 
-## 当前节点：AI 问答质量优化·审查层已接通但质量仍不达标
+## 当前节点：AI 问答 · 专业认知层 + GIS 骨干·**后端半完成**（前端接线 + 流式未做）
 
-### 承前（5.35 审查层接回 ReAct）
-- 5.34 Agent Loop 重构时审查层"暂移"，5.35 把 review.py 六条 checklist 接回：草稿→Flash 审查员（✓/△/✕）→不达标带 hints 自动 revise 重写 1 轮。
-- **后端**：`review.py review_answer()`（Flash+json_mode，失败降级不阻塞）+ `_parse_review_json` 容错 + `REVIEWER_MODEL` 旧 ID→`flash`；`prompts.py REVISE_TEMPLATE`；`schemas.py` phase 加 review/revise + draft/review_hints；`router.py` review（非流式单帧 SSE）/revise（流式）分支。
-- **前端**：`api.js` onReview 透传；`stages.js` reviewStep/reviseStep + parseAgentStep 强化（fence/尾逗号/二次提取）；`harness.js` 接 review→revise + 降级回退 + tool_history 压缩；`panel.js` 审查状态区 + Flash reason 对齐 + Pro 分段 + [ref:] 校验 + trace 持久化。
-- **验证**：import/语法/纯逻辑/pytest 通过；**E2E 未跑**（需 API Key + 聚合层）。
-- **承重**：panel.js 不耦合 map/state / REVIEW_CHECKLIST key 稳定 / revise 1 轮不递归 / 审查失败降级不阻塞 / V4 模型 ID（v4-pro/flash，勿回旧 ID）。
+### 核心判断（问题重定义，2026-07-08 确立）
+5.35 审查层接通后"回答几乎不能用"——根因**不在审查/revise**，而在整个 ai_qa 缺一层「专业认知」：agent loop 在前端 [harness.js](frontend/js/ai_qa/harness.js)，工具 [tools.js](frontend/js/ai_qa/tools.js) 只读单一 `activeAnalysis()` 聚合层——不能下钻/上卷/按几何过滤，故无论宏观/微观问都只能"在这一层按 |polarity_index| 排序报几个格"= **答成坐标（范式错位）**。审查再严也只是打磨一个范式就错了的答案。
 
-### ⬜ 明日继续：AI 问答质量问题排查与修复（质量达标前不开 UI 重做）
+**用户定调**（4 决策）：① 质量优先、流式收尾顺手做；② 尺度-范式 运行时内置 + skill 双落；③ 数据缺口 = 硬缺口请求上传 / 软缺口降级标注；④ **GIS 常规操作（几何剪裁/合并、用地字段筛选、面积统计等）为必备，且 AI 问答内自动调用**（用户不手动点）。
 
-**用户反馈**：5.35 后"还是有很多问题存在"，但**未细说具体问题**。明天首要任务是**定位问题根因**，而非盲目改。
+**验收线（质量达标硬测）**：问"中心城区哪里最需优先更新？"→ 必须给**结构化结论**（哪类更新单元/哪些街道/哪类用地系统性落后 + 4×5 归因），**而非坐标**；再问微观（这个公园哪里最差）→ 落点结论。**两问范式不同 = 过线**。过线才开 AI 问答 UI 重做。
 
-**排查步骤**：
-1. **先跑 E2E 观察**：`serve.py` + 生成聚合层 + 问"哪个片区最需优先更新？"，完整走 agent loop → 草稿 → 审查六条 → revise，亲眼看哪环出问题。
-2. **问用户具体不满意点**：回答太长/太泛？数据数值错？归因 4×5 不准？审查没抓住真问题？revise 越改越差？工具 observation 数据不准？Pro vs Flash 差异？
-3. **可疑点**：
-   - 审查员 Flash 是否够严？六条 verdict 是否准？revise_hints 是否具体可执行？
-   - revise 重写是否真改善，还是换种方式重复问题？
-   - parseAgentStep 降级回退是否频繁触发（模型输出非 JSON）？
-   - tool_history 压缩后是否丢关键信息致 final/revise 依据不足？
-   - MANIFESTO/prompt 是否让模型真懂情绪地图（5.34 已强化，但可能仍不够）？
-   - 工具数据（query_zone_stats/query_attribution）是否准确反映聚合层？
-4. **逐项修到达标**，再开 AI 问答 UI 重做。
+### ✅ 本会话已做（后端半，commit 332230c + 739f198，已 push）
+- **Phase A2/B3 知识基座**：[ai_qa/paradigm.py](ai_qa/paradigm.py)（尺度-方法-范式矩阵 macro/meso/micro + 4 域出口启发 + GIS 操作目录 10 工具 + DIAGNOSE 卡 6 字段 + strategy 语义）；[manifesto.py](ai_qa/manifesto.py) 第十一节硬约束。
+- **Phase B1/B2 GIS 骨干**：[core/geo_registry.py](core/geo_registry.py)（lazy 缓存 L1/L2×T1-T3 + 边界 preset，按 id 引用免大数据中转）；[api/geo_routes.py](api/geo_routes.py) **10 个 `/api/v1/geo/*` 操作**（filter_attr/clip/merge/area_stats/zonal_stats/rank/buffer/overlay/nearest/hotspot + catalog）+ 复合入参 `layer+range+pre_filter`；挂载 [api/main.py](api/main.py)。
+- **Phase A1 后端 DIAGNOSE**：[prompts.py](ai_qa/prompts.py) `build_diagnose_prompt`（6 字段问题理解卡；范式表 format 后拼接避花括号）；[schemas.py](ai_qa/schemas.py) phase 放行 diagnose；[router.py](ai_qa/router.py) diagnose 流式分支。
+- **Phase A3 后端审查**：[review.py](ai_qa/review.py) 第 7 条 `scale_paradigm_fit`（key 稳定，旧 6 条不动）+ review prompt 拼回 MANIFESTO（治 professional/actionable 偏松）+ REVIEW_TEMPLATE 六→七。
+- **验证**：12 路由注册 ✓；E2E `zonal_stats`(L2×行政区) →「白洋/伍家岗区/猇亭区 pi+归因」**宏观结构化结论（非坐标）= 验收核心路径打通**；clip/area_stats/filter_attr ✓；`tests/test_geo_routes.py` 8 passed，全量 124 passed（5 既有失败与本轮无关）。
 
-**暂不做**（用户明确）：AI 问答 UI 重做、其他修改——等质量达标再开。
+### ⬜ 下会话：前端接线 + 流式（同 plan `main-memories-repo-session-handoff-md-a-smooth-hamster.md`）
+
+**最紧迫 = B4 + A1 前端**（用户可见的质量解锁：让 AI 真正调 geo 工具产出结构化答案）：
+1. **B4** [tools.js](frontend/js/ai_qa/tools.js)：把 10 个 geo 工具暴露成 agent tool（每个 = 调对应 `/api/v1/geo/*`，POST JSON 取 rows/geojson）；`buildContext()` 增列「可用边界 preset + 用地类型 + 时点 + geo 工具清单」（调 `/geo/catalog`）；视觉工具（focus/inspect/open_attribution）不动。
+2. **A1 前端** [stages.js](frontend/js/ai_qa/stages.js) +`diagnoseStep`（phase=diagnose，onReason + token 累积→parseDiagnoseCard 取 JSON 卡，容错同 parseAgentStep）；[harness.js](frontend/js/ai_qa/harness.js) orchestrate 开头先跑 diagnose（失败降级空卡不阻塞），卡注入后续 agent/final prompt（context 或 system 前置「已诊断：scale=X/method=[...]」）；[panel.js](frontend/js/ai_qa/panel.js) 渲染问题理解卡（domain/scale/decision/outlet + data_plan.strategy + method）。
+3. **C** [panel.js](frontend/js/ai_qa/panel.js)：strategy=request_upload → 渲染"请求上传"卡（说清要什么/为何/格式）；fallback_annotated → 结论显著标注口径。
+4. **D 流式三件套**（治当前 O(n²) 卡顿）[panel.js](frontend/js/ai_qa/panel.js)：onFinal/onRevise/onReason 改 token buffer + `requestAnimationFrame` 逐字 drain，流式期间 textContent（裸文本 + 既有 chat-cursor ▍），**仅 onFinalDone/onReviseDone 跑一次 marked.parse**；scrollBottom 改"用户上滑停跟 + 回到底部按钮"。思考提示从气泡 inline（panel.js:117）移到 `#chat-panel` sticky dock（贴底不被顶走）+ 阶段进度 chip。完毕戳 `onFinalDone/ReviseDone/Degraded` 末尾追加「回答完毕 · 情绪地图测试版 v1.0 · MM月DD日 HH:MM」+ 存 trace.doneAt + 历史恢复同步。
+5. **A4**：沉淀 `.claude/skills/emotion-scale-paradigm/`（方法论镜像，表1/表2/卡 schema/校验清单）；同步 [docs/ai-qa-design.md](docs/ai-qa-design.md) 第 3/4/5 章（加认知层 + GIS 骨干）。
+
+### 承重（必守）
+- panel.js **不 import** map/state/panel 主窗口函数（AI 子系统边界铁律）。
+- REVIEW_CHECKLIST key 稳定（新增不删旧，前端按 key 渲染）。
+- revise 1 轮不递归 / 审查与 diagnose 失败均降级不阻塞。
+- V4 模型 ID：`deepseek-v4-pro`/`deepseek-v4-flash`（别名 pro/flash，勿回旧 ID）。
+- MANIFESTO 花括号：MANIFESTO 本身从不 `.format()`（仅拼接）；参与 `.format()` 的 *_TEMPLATE 内 `{` `}` 必须转义 `{{ }}`（DIAGNOSE_TEMPLATE/AGENT_TEMPLATE/REVIEW_TEMPLATE 已处理，改时留意）。
+- geo_routes 复合入参范式：分析类（zonal_stats/rank/hotspot）接受 layer+range+pre_filter 一次完成，避免 AI 中转大数据；返回 rows（属性表，非整 GeoJSON）给 LLM。
+
+### 前端文件清单（下会话改这些）
+- `frontend/js/ai_qa/tools.js`（B4：geo RPC + buildContext）
+- `frontend/js/ai_qa/stages.js`（A1：diagnoseStep + parseDiagnoseCard）
+- `frontend/js/ai_qa/harness.js`（A1：orchestrate 前插 diagnose）
+- `frontend/js/ai_qa/panel.js`（A1 卡渲染 + C 请求上传卡 + D 流式三件套）
+- `frontend/css/ai_qa.css`（D sticky dock + 完毕戳 + 卡片样式）
+- `frontend/js/ai_qa/api.js`（可能：geo 工具的 fetch 封装，或直接在 tools.js fetch）
+
+### 验证（下会话）
+- **acceptance 硬测**：`py frontend/serve.py 8080` → 问"中心城区哪里最需优先更新？"→ 期望 diagnose 判 macro+更新 → AI 自动调 `/geo/zonal_stats`(更新单元) → 结构化结论（无坐标）；再问"这个公园里哪里最差？"→ micro → `/geo/clip`+`/geo/rank` → 落点。**两问范式不同 = 过线**。
+- 前端验证用 **webapp-testing skill**（非 Playwright）；默认交付肉眼验，控制流/数据流/bug 才上。
+- pytest `tests/test_geo_routes.py` 保持 8 passed（回归）。
 
 ### 承重 memory 索引
-- 本轮：`ai-qa-harness-subsystem`（已更新为审查层接回）/ `verify-with-webapp-testing-skill`（E2E 验证用）/ `no-routine-playwright-verify` / `maintain-revision-log` / `todo-revision-log-sync` / `chinese-all-deliverables` / `push-not-redline` / `timestamp-no-weekday` / `no-handoff-on-routine-commit`（本卡因用户说"交接"才覆写）
-- 前会话：`paint-inplace-swap-view` / `sticky-hover-priority` / `loc-anchor-by-data-not-coords` / `kde-loadbearing-logic` / `martin-ui-redesign` / `three-page-architecture` / `topic-table-frontend-sync` / `generate-grid-exclusive-vs-viewmode` / `view-data-conclusion-sync`
-
-## 当前状态
-- 分支 `main`。工作树：5.35 代码（9 文件）+ revision-log 5.35 + todo 5.35 + 本交接卡，**待 commit+push**。
-- serve 已停。未做：AI 问答 E2E 验证 + 质量问题排查（明日）。
+- 本轮相关：`emotion-map-logic-chain`（演示逻辑链=全局纲领）/ `view-data-conclusion-sync` / `stand-on-giants-shoulders`（GIS 复用 GeoPandas 不造轮子）/ `spatial-aggregation-numeric-coerce`（聚合前 to_numeric）/ `verify-real-endpoint`（geo 端点已打真 POST）/ `verify-with-webapp-testing-skill`（前端验证）/ `maintain-revision-log` + `todo-revision-log-sync` / `chinese-all-deliverables` / `push-not-redline` / `timestamp-no-weekday` / `no-routine-playwright-verify`
+- AI 问答既有：审查层接通（5.35）/ Agent Loop ReAct（5.34）/ Harness 四层（5.33）—— 见 revision-log
 
 ## 新会话 prompt（复制即用）
-```
-续 main。读 memories/repo/session-handoff.md（AI 问答质量优化·审查层已接通但质量未达标节点）。
-
-任务：5.35 把审查层接回 ReAct 管线（review.py review_answer + router review/revise + 前端审查状态区 + revise 重写），但用户反馈"还是有很多问题存在"，未细说。明天首要**定位问题根因**：
-
-1. 先跑 E2E 观察：serve.py + 聚合层 + 问"哪个片区最需优先更新？"，看 agent loop→草稿→审查六条→revise 哪环出问题。
-2. 问用户具体不满意点（回答太长/数据错/归因不准/审查没抓问题/revise 越改越差/工具数据不准/Pro vs Flash）。
-3. 可疑点：审查员 Flash 够不够严 / revise 是否真改善 / parseAgentStep 降级是否频繁 / tool_history 压缩丢信息 / MANIFESTO 是否让模型真懂 / 工具数据准确性。
-4. 逐项修到达标。
-
-质量达标前**不开** AI 问答 UI 重做（用户明确）。
-
-承重：panel.js 不耦合 map/state / REVIEW_CHECKLIST key 稳定 / revise 1 轮不递归 / 审查失败降级不阻塞 / V4 模型 ID（v4-pro/flash 勿回旧 ID）。详 revision-log 5.35 + memory ai-qa-harness-subsystem。
-
-计费按调动次数，工作方式见 ~/.claude/CLAUDE.md（不派 subagent、批量并行、给推荐不穷举）。前端验证用 webapp-testing skill（非 Playwright），默认交付肉眼验，控制流/数据流/bug 才上。时间戳写"MM月DD日 HH:MM"（不写星期几）。
-```
+见下方代码块。

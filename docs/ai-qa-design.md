@@ -112,6 +112,35 @@ AI 必须懂的核心 = 一条**数据流闭环**：
 | LLM | `llm.py` | — |
 | 管线 | `router.py` | `harness.js`(STAGES) |
 
+### 架构升级 · 认知层 + GIS 骨干（2026-07-08）
+
+> 旧 3 阶段（THINK/EXECUTE/ANSWER）已演进为 **DIAGNOSE → ReAct agent loop → Review → Revise**，并新增「专业认知层」与「GIS 工具骨干」。上方四层表为历史形态，以下为本期落地。
+
+```
+用户提问
+  │
+[认知层 · DIAGNOSE]  问题理解卡 6 字段（domain_lens/scale/decision_type/outlet/data_plan/method）
+  │   └ 数据自检：硬缺口→请求上传（短路）；软缺口→降级标注口径；齐全→ready
+  │   └ 卡摘要注入 ctx.context，导下游工具选型 + 结论颗粒度
+  ▼
+[程序层 · ReAct]  harness.js orchestrate（agent_step 多轮，上限 8）—— geo 工具改为调后端服务
+  │   └ [GIS 骨干] core/geo_registry.py（lazy 缓存 L1/L2×T1-T3 + 边界 preset）
+  │                + api/geo_routes.py 10 个 /api/v1/geo/* 工具箱（AI 自动组合，用户不手动点）
+  ▼
+[答案层 · answer]  按尺度出范式（宏观=结构化 / 中观=单元排序 / 微观=落点）
+  │
+[打磨层 · Review]  七条 checklist（+ scale_paradigm_fit）→ 不达标 revise 1 轮
+  ▼
+[呈现层]  逐字 RAF 流式 + 底部 sticky 思考 dock（阶段 chip）+ 完毕戳（版本+时间戳）
+```
+
+新增层 ↔ 文件：
+
+| 层 | 后端 | 前端 |
+|---|---|---|
+| 认知层 | `paradigm.py`（尺度-范式矩阵 + 4 域出口 + GIS 目录 + DIAGNOSE 卡字段）+ `prompts.build_diagnose_prompt` + `manifesto.py` 第十一节 | `stages.js:diagnoseStep`+`parseDiagnoseCard` / `harness.js` 前插 / `panel.js` 问题理解卡 |
+| GIS 骨干 | `core/geo_registry.py` + `api/geo_routes.py`（10 工具 + catalog） | `tools.js` 10 geo 工具（POST /geo/*）+ `buildContext` 增列边界/时点/工具清单 |
+
 ---
 
 ## 第 4 章 · SOP 解题协议（5 步 + Pro reasoning 分层）
@@ -131,21 +160,44 @@ AI 必须懂的核心 = 一条**数据流闭环**：
 think 阶段 JSON 从 B1 的 `{thinking, steps[]}` 升级为 `{framing, mapping, steps[]}`（强制 3 字段）。
 **关键**：think **不用 json_mode**（DeepSeek reasoner 在 json_mode 下抑制 reasoning_content）；靠 prompt 强约束 + 前端 `parseThink` 容错解析（取首{...}）。
 
+### DIAGNOSE 问题理解卡 + GIS 骨干（2026-07-08）
+
+**DIAGNOSE 卡**（agent_step 之前的专业认知前置步，6 字段，流式 reason + content JSON）：
+
+| 字段 | 取值 | 作用 |
+|---|---|---|
+| `domain_lens` | urban_planning / urban_renewal / urban_operation / urban_governance（可多选） | 行业视角 |
+| `scale` | macro / meso / micro | **决定结论颗粒度**（查尺度-范式矩阵） |
+| `decision_type` | 评价 / 选址 / 排查 / 对比 / 监测 / 定义 | 决策类型 |
+| `outlet` | 报告结论 / 指标排序 / 地图定位 / 建议清单 / 预警 | 出口形态 |
+| `data_plan` | {needed[], available[], gap[], strategy} | 数据自检（strategy: ready / fallback_annotated / request_upload） |
+| `method` | 从 GIS 工具目录选 + 组合 | 导 agent loop 工具选型 |
+
+DIAGNOSE 失败/降级**不阻塞**（降级空卡，照走 agent loop）。卡摘要前插 `ctx.context`，所有下游 phase 可见。
+
+**GIS 骨干**（10 工具，`api/geo_routes.py`，AI 自动组合·用户不手动点）：filter_attr / clip / merge / area_stats / zonal_stats / rank / buffer / overlay / nearest / hotspot。复合入参范式：分析类 `layer+range+pre_filter` 一次完成，返 rows 属性表给 LLM（不灌全量 GeoJSON）。目录与尺度-范式矩阵单源真理在 `ai_qa/paradigm.py`，方法论镜像见 skill `emotion-scale-paradigm`。
+
 ---
 
-## 第 5 章 · Review 审查标准（六条 checklist + Revise）
+## 第 5 章 · Review 审查标准（七条 checklist + Revise）
 
 **审查员**：默认 Flash（`deepseek-chat`，省 token、快），env `REVIEWER_MODEL` 可切 Pro。同步阻塞，最多 1 轮 Revise（防无限循环）。
 
-**六条 checklist**（`review.py REVIEW_CHECKLIST`）：
+**七条 checklist**（`review.py REVIEW_CHECKLIST`，key 稳定·新增不删旧）：
 1. **排版易读** `layout`：关键信息（数值/区域名/结论）凸显，分点清晰。
 2. **结构清晰** `structure`：有"问题定性→证据→结论"体系化结构（非流水账）。
 3. **内容精炼** `concise`：无废话/恭维/无意义话，信息密度高。
-4. **语句专业** `professional`：贴合城市规划行业用语（专业名词 + 常规说法）。
+4. **语句专业** `professional`：贴合城市规划行业用语（专业名词 + 常规说法）。审查 prompt 已拼回 MANIFESTO，补足行业语境。
 5. **数据驱动** `data_driven`：引用具体数值与区域 + `[ref:]` 标注，不臆造。
 6. **结论有指向性** `actionable`：有明确结论 + 可落地建议（有"出口"）。
+7. **尺度范式匹配** `scale_paradigm_fit`：结论颗粒度匹配问题尺度（宏观问禁落单点 / 微观问禁泛泛）—— 与 MANIFESTO 第十一节「尺度-方法-范式」联动，治"答成坐标/答非所问"。
 
-**流程**：Draft(Pro) → Review(Flash json_mode) → `{pass, checks[], revise_hints}`。pass=false → 带 revise_hints 触发 Pro 重写（answer 阶段 `review_feedback` 分支）→ 呈现修订版 + 标"已按审查修订"。pass=true → 标"审查通过"。
+**流程**：Draft(Pro) → Review(Flash) → `{pass, scores[], revise_hints}`。pass=false → 带 revise_hints 触发 Pro 重写（最多 1 轮，不递归）→ 呈现修订版 + 标"已按审查修订"。pass=true → 标"审查通过"。审查失败/降级不阻塞（`{pass:true,degraded:true}`，跳过 revise 保留 draft）。前端 `renderReview` 泛化遍历 `scores`，新 key 自动渲染。
+
+**数据自检（DIAGNOSE 联动）**：DIAGNOSE 卡的 `data_plan.strategy` 决定数据缺口处置——
+- `ready`：齐全，正常作答。
+- `fallback_annotated`（软缺口）：正常作答 + 答案尾追加「口径说明」卡（标局限 + 缺什么）。
+- `request_upload`（硬缺口）：harness 短路，跳过 agent loop，直接出「请求上传」卡（说清需要什么/为何/格式），**该问不硬答**。
 
 ---
 
