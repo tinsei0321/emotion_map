@@ -56,8 +56,9 @@ class LLMClient:
     def _ensure_key(self):
         if not self.api_key:
             raise LLMError(
-                f'未配置 LLM API Key。设置环境变量 {DEFAULT_KEY_ENV}（DeepSeek），'
-                f'或在 LLMClient(api_key=...) 传入。'
+                f'未配置 LLM API Key（{DEFAULT_KEY_ENV}）。'
+                f'在项目根 .env 加一行 "{DEFAULT_KEY_ENV}=sk-..."（每台机器各一次，.env 在 .gitignore 不进 git；'
+                f'api/main.py 启动自动加载），或设系统环境变量，或 LLMClient(api_key=...) 传入。'
             )
 
     def chat(self, messages: List[dict], stream: bool = True,
