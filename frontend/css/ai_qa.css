@@ -39,23 +39,23 @@
 .emc-history-empty { padding: 24px 12px; text-align: center; font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-tertiary); }
 
 .chat-head {
-  display: flex; align-items: center; gap: 8px; padding: 10px 14px;
-  border-bottom: 1px solid var(--geojson-color-border-default, #e3e5e8);
-  background: var(--geojson-color-surface-panel-alt, #f5f5f5);
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px;   /* 压缩高度省空间（原 10px 14px） */
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  background: #58427c;
 }
-.chat-head .chat-title { font-size: var(--geojson-typography-size-sm); font-weight: var(--geojson-typography-weight-bold); color: var(--geojson-color-text-primary); }
-.chat-head .chat-subtitle { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); }
+.chat-head .chat-title { font-size: var(--geojson-typography-size-sm); font-weight: var(--geojson-typography-weight-bold); color: #fff; }
+.chat-head .chat-subtitle { font-size: var(--geojson-typography-size-xs); color: rgba(255,255,255,0.7); }
 .chat-head-spacer { flex: 1; }
 .ctx-cap { color: var(--geojson-color-text-secondary, #666); cursor: help; flex-shrink: 0; align-self: stretch; display: flex; align-items: center; transition: color 0.3s; }
 .ctx-cap.warn { color: #d97706; }
 .ctx-cap-bg { opacity: 0.18; }
 .ctx-cap-fg { transition: stroke-dashoffset 0.4s ease; }
 .chat-icon-btn {
-  font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary);
+  font-size: var(--geojson-typography-size-xs); color: #fff;
   background: transparent; border: none; cursor: pointer; padding: 4px 8px;
   border-radius: var(--geojson-radius-sm, 3px);
 }
-.chat-icon-btn:hover { background: var(--geojson-color-gray-100, #f0f0f0); color: var(--geojson-color-text-primary); }
+.chat-icon-btn:hover { background: rgba(255,255,255,0.18); color: #fff; }
 
 .chat-messages {
   flex: 1 1 auto; overflow-y: auto; padding: 12px 14px;
@@ -117,7 +117,7 @@
 .chat-send {
   display: inline-flex; align-items: center; justify-content: center;
   width: 32px; height: 32px; line-height: 0;
-  color: #fff; background: var(--geojson-color-brand-primary, #4285F4);
+  color: #fff; background: #58427c;
   border: none; border-radius: 6px; cursor: pointer;
 }
 .chat-send:hover { opacity: 0.9; }
@@ -163,7 +163,7 @@
 .aiq-mode { display: inline-flex; gap: 0; border: 1px solid var(--geojson-color-border-default, #e3e5e8); border-radius: 999px; overflow: hidden; }
 .aiq-mode button { font-size: var(--geojson-typography-size-2xs); padding: 3px 10px; border: none; background: transparent; color: var(--geojson-color-text-secondary); cursor: pointer; transition: background var(--geojson-transition), color var(--geojson-transition); }
 .aiq-mode button:hover { background: var(--geojson-color-gray-100, #f0f0f0); }
-.aiq-mode button.is-active { background: var(--geojson-color-brand-primary, #4285F4); color: #fff; }
+.aiq-mode button.is-active { background: #58427c; color: #fff; }
 
 /* ── 审查状态区（七条 checklist ✓/△/✕ + 整体结论）── */
 .aiq-review { margin: 0 0 6px; padding: 6px 10px; border-left: 2px solid var(--geojson-color-gray-200, #e3e5e8); background: var(--geojson-color-gray-100, #f7f7f7); border-radius: 0 6px 6px 0; }

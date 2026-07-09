@@ -43,13 +43,16 @@ function updateContextCapacity(usage) {
 // ── EMC 智能高度调度（三档 compact/comfort/expand + 手动基线回退）──
 //   档位按窗口高算 px；setEmcMode 改 --emc-h；手动拖拽写 --emc-h-user（sidebar.js initVDrag），relax 时回落基线。
 //   拖拽中(body.dragging)不自动调，防打架；流式中(_streaming)不让位。
+//   EMC_MIN = 320：chat-head(40)+input-area(130)+chat-messages(≥150) 的下限。低于此 chat-messages 会被挤没
+//   （曾 compact=160 致 chat-messages 塌缩到 24px→对话空白 bug，5.49）。5 处下限须同步：本文件 2 处 + sidebar.js 2 处 + layout.css min-height。
+const EMC_MIN = 320;
 function _emcTierPx() {
   const win = window.innerHeight;
-  return { compact: 160, comfort: Math.round(win / 2), expand: Math.round(win * 2 / 3) };
+  return { compact: EMC_MIN, comfort: Math.round(win / 2), expand: Math.round(win * 2 / 3) };
 }
 function _emcClamp(px) {
   const win = window.innerHeight;
-  return Math.max(160, Math.min(win - win / 3, px));
+  return Math.max(EMC_MIN, Math.min(win - win / 3, px));
 }
 function _emcUserBaselinePx() {
   const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--emc-h-user'));

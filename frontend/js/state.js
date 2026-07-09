@@ -293,10 +293,11 @@ const _layers = new Map();   // id -> layer object
 let _seq = 0;
 
 // ── Layer category grouping (render-layer aggregation; UI state only — never stored in _layers) ──
-export const CATEGORY_LABEL = { heatmap: '热力图', l2: 'L2 · 情绪地图 DATA', l1: 'L1 · 城市情绪 DATA', l0: 'L0 · 原始', range: '范围边界', buffer: '缓冲分析', grid: '网格聚合', terrain: '情绪地形', other: '其他' };
+export const CATEGORY_LABEL = { heatmap: '热力图', l2: 'L2 · 情绪地图 DATA', l1: 'L1 · 城市情绪 DATA', l0: 'L0 · 原始', range: '范围边界', buffer: '缓冲分析', grid: '网格聚合', terrain: '情绪地形', ai: 'AI 工作区', other: '其他' };
 // 默认图层组序（上→下 = 地图顶层→底层）：L 数据 → 核密度 → 空间聚合(grid/terrain) → Buffer → Range → 其他。
 // 用户可拖拽 group 卡覆写（reorderGroupSegment 改本数组）；组内按 timeRank(T1<T2<T3) + typeRank(热度<综合<极性) 稳定排序。
-let _groupOrder = ['l0', 'l1', 'l2', 'heatmap', 'grid', 'terrain', 'buffer', 'range', 'other'];
+// range 与 ai（AI 工作区）恒钉最末（range 在 ai 上）—— applyGroupOrder / renderLayerList 双重保底。
+let _groupOrder = ['l0', 'l1', 'l2', 'heatmap', 'grid', 'terrain', 'buffer', 'other', 'range', 'ai'];
 const _groupCollapse = new Set();                                    // collapsed category set
 const _groupFold = new Set();                                        // folded real-group set（真 L2 组单独折叠，按 group id；区别于 category 级 _groupCollapse）
 const _frozenCats = new Set();                                       // 用户手动 within-category 拖拽过的 category → applyGroupOrder 跳过其组内排序（保手动序）；新层加入时解冻让其归位
@@ -854,7 +855,7 @@ export function reorderLayers(fromId, toId) {
 export function categoryOf(l) {
   if (!l) return 'other';
   if (l.kind === 'heatmap') return 'heatmap';
-  if (l.kind === 'group') return 'l2';
+  if (l.kind === 'group') return l.name === 'AI 工作区' ? 'ai' : 'l2';   // AI 工作区组独立成类（钉底），余 group 归 l2
   if (typeof l.colorMode === 'string' && l.colorMode.indexOf('l2-') === 0) return 'l2';
   if (l.colorMode === 'confidence') return 'l1';
   if (l.needsAnalysis || l.colorMode === 'needsAnalysis') return 'l0';
@@ -939,12 +940,22 @@ export function applyGroupOrder() {
       return _layerPolarityRank(la) - _layerPolarityRank(lb);     // 综合<积极<中性<消极 末键
     });
   }
+  // 钉底：range 恒在 ai（AI 工作区）之上，二者为最末两组（用户要求「恒定」；与 renderLayerList 显示钉底一致）。
+  const PINNED = ['range', 'ai'];
   const desired = [];
   const used = new Set();
   for (const cat of _groupOrder) {
+    if (PINNED.includes(cat)) continue;                  // 钉底组跳过，末尾统一输出
     for (const k of (byCat[cat] || [])) { desired.push(k); used.add(k); }
   }
-  for (const k of keys) if (!used.has(k)) desired.push(k);   // categories missing from _groupOrder
+  for (const k of keys) {                                 // categories missing from _groupOrder（且非钉底）
+    if (used.has(k)) continue;
+    if (PINNED.includes(categoryOf(_layers.get(k)))) continue;
+    desired.push(k); used.add(k);
+  }
+  for (const cat of PINNED) {                             // 钉底组最后输出：range 在 ai 前
+    for (const k of (byCat[cat] || [])) { desired.push(k); used.add(k); }
+  }
   const same = desired.length === keys.length && desired.every((k, i) => k === keys[i]);
   if (same) return false;
   const nxt = new Map();
@@ -958,6 +969,7 @@ export function applyGroupOrder() {
  *  then apply to _layers. */
 export function reorderGroupSegment(fromCat, toCat, before) {
   if (!fromCat || fromCat === toCat) return;
+  if (fromCat === 'range' || fromCat === 'ai') return;   // 钉底组不可拖动（恒在最末）
   const order = _groupOrder.filter((c) => c !== fromCat);
   let idx = order.indexOf(toCat);
   if (idx < 0) idx = order.length;

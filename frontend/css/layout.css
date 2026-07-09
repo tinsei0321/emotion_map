@@ -116,7 +116,7 @@ button { font-family: inherit; }
 #emc-panel {
   height: var(--emc-h);
   flex: 0 0 var(--emc-h);
-  min-height: 160px;
+  min-height: 320px;   /* = EMC_MIN（panel.js）：chat-head+input-area+chat-messages 下限，低于此对话区塌缩空白 */
   max-height: calc(100vh - var(--geojson-layout-header-height) - (100vh / 3));
   display: flex;
   flex-direction: column;

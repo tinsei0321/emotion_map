@@ -950,6 +950,15 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **主题**：浅色（与主界面一致，用户定；勿改深色）。
 - **验证**：Playwright 自检——console 无 JS 报错｜初始 EMC=comfort(425px=窗口½)｜gutter `row-resize`/满宽 379×8｜历史视图切换+搜索+列表 ✓｜语法 ✓。深度功能（工具卡/真实查询/拖拽手感）待用户肉眼验。
 
+### 5.49 EMC 肉眼验修复：对话空白严重 bug + 标题栏配色 + 图层钉底（07月09日）
+
+用户肉眼验 5.48 后报三类问题，本轮定位根因并修（承重逻辑未碰）：
+- **严重 bug·对话空白**（用户报"问答信息全不显示、显示'暂无匹配会话'"）：根因 = EMC 智能高度 `compact` 档=160px **低于固定 chrome 高度**（chat-head 48 + input-area 133 = 181px），致 `#chat-messages` 被挤到 24px → 对话区塌缩空白；用户载入图层时 `_checkCrowded` 强制 compact → 触发。"暂无匹配会话"是历史空态（用户探查空白对话时的副现象），非独立 bug。**修复**：引入 `EMC_MIN=320`（chat-head+input+chat-messages 下限），5 处下限同步抬升（panel.js 档位+clamp / sidebar.js 拖拽+resize / layout.css min-height）。验：compact(320) 下 `#chat-messages`=146px（原 24）→ 对话可见。
+- **标题栏配色 + 压缩**（用户要求"标题框压扁 + 灰底换 #58427c + 白字白 icon + Pro/Flash/发送同色"）：`.chat-head` padding 10→6px（高 48→40）+ bg `#58427c` + 标题/`chat-icon-btn` 白字；`.aiq-mode button.is-active` 与 `.chat-send` bg→`#58427c`（`.is-stop` 保留红色中止语义）。验：computed bg=`rgb(88,66,124)`。
+- **图层钉底**（用户要求"AI 工作区组恒定最下、Range 恒在其上"）：`categoryOf` 把 `name==='AI 工作区'` 的 group 独立成 `'ai'` 类（余 group 仍归 l2）；`_groupOrder` 末两位 `[...,range,ai]`；`applyGroupOrder` + `renderLayerList` 双重钉底（range 恒在 ai 上，拖拽不可移出：`reorderGroupSegment` 守卫）；`renderLayerList` 的 `cat==='l2'||'ai'` 分支让 AI 组渲染独立组卡。验：mock 六层渲染序 = L2→网格→缓冲→**范围边界→AI 工作区（末）**。
+- **清理**：`git rm` 上轮崩溃残留孤儿临时文件 `panel.js.tmp.7336.8a8a4e4363a8`（前端零引用）。
+- **验证**：node --check ✓｜reload 0 报错｜DOM 测三项数值达标｜vision 复核无白底白字/溢出。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

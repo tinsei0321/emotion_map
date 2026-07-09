@@ -7,6 +7,15 @@
 
 ## 📅 2026-07-09
 
+### ✅ EMC 肉眼验修复：对话空白严重 bug + 标题栏配色 + 图层钉底（revision-log 5.49）
+
+用户肉眼验 5.48 后报三类问题，定位根因并修（承重逻辑未碰）。
+- **严重 bug·对话空白**：根因 = `compact` 档 160px < 固定 chrome 高（chat-head 48 + input-area 133 = 181），`#chat-messages` 被挤到 24px→空白；载图层触发 `_checkCrowded`→compact→触发。"暂无匹配会话"是历史空态副现象。**修**：`EMC_MIN=320`，5 处下限同步（panel.js 档位+clamp / sidebar.js 拖拽+resize / layout.css min-height）。验 compact(320) 下 chat-messages=146px（原 24）。
+- **标题栏配色+压缩**：`.chat-head` padding 10→6（48→40px）+ bg `#58427c` + 白字白 icon；`.aiq-mode.is-active`/`.chat-send` bg→`#58427c`（`.is-stop` 保红）。验 bg=`rgb(88,66,124)`。
+- **图层钉底**：`categoryOf` 把 AI 工作区 group 独立成 `'ai'` 类；`_groupOrder=[...,range,ai]`；`applyGroupOrder`+`renderLayerList` 双钉底 + `reorderGroupSegment` 守卫。验渲染序 …→范围边界→AI 工作区（末）。
+- **清理**：`git rm` 孤儿临时文件 `panel.js.tmp.7336.8a8a4e4363a8`。
+- **验证**：node --check ✓｜reload 0 报错｜DOM 数值达标｜vision 复核无溢出。
+
 ### ✅ AI 问答 · EMC UI 重设计：左端栏融合 + 智能高度 + Claude Code 交互（revision-log 5.48）
 
 AI 问答基座稳后，从底部独立抽屉重设计为融入左端栏的 **EmotionMap Copilot（EMC）**（VS Code Claude Code 插件式），1:1 对齐 Claude Code 对话交互。**承重逻辑未碰**。

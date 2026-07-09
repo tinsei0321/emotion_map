@@ -98,7 +98,7 @@ function initVDrag(gutter) {
     const startH = panel.offsetHeight;
     const move = (ev) => {
       const win = window.innerHeight;
-      const min = 160;                       // EMC 最小 ≈ 一个对话框
+      const min = 320;                       // EMC 下限（= panel.js EMC_MIN；低于此 chat-messages 塌缩→空白）
       const max = win - win / 3;             // 上层最小 1/3 窗口高 → EMC 上限
       const h = Math.max(min, Math.min(max, startH - (ev.clientY - startY)));
       document.documentElement.style.setProperty('--emc-h', `${h}px`);
@@ -124,7 +124,7 @@ function initEmcResize() {
       const panel = document.getElementById('emc-panel');
       if (!panel) return;
       const win = window.innerHeight;
-      const min = 160;
+      const min = 320;                       // = panel.js EMC_MIN
       const max = win - win / 3;
       const h = Math.max(min, Math.min(max, panel.offsetHeight));
       document.documentElement.style.setProperty('--emc-h', `${h}px`);
@@ -372,12 +372,17 @@ export function renderLayerList() {
     buckets.get(cat).push(l);
   }
 
+  // 钉底：range 恒在 ai（AI 工作区）之上，二者显示在最末（与 state.applyGroupOrder 的 _layers 钉底一致）。
+  const _rawOrder = getGroupOrder();
+  const _catOrder = _rawOrder.filter((c) => c !== 'range' && c !== 'ai');
+  if (_rawOrder.includes('range')) _catOrder.push('range');
+  if (_rawOrder.includes('ai')) _catOrder.push('ai');
   let html = '';
-  for (const cat of getGroupOrder()) {
+  for (const cat of _catOrder) {
     const items = buckets.get(cat);
     if (!items || !items.length) continue;
     const collapsed = isCollapsed(cat);
-    if (cat === 'l2') {
+    if (cat === 'l2' || cat === 'ai') {
       // real L2 groups first (own cards + children); any stray standalone l2 → one virtual card
       const groups = items.filter((g) => g.kind === 'group');
       const stray = items.filter((g) => g.kind !== 'group');
