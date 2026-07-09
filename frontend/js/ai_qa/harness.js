@@ -35,6 +35,19 @@ function formatDiagnoseSummary(d) {
   return `【已诊断】scale=${d.scale || '?'} | domain=${dom} | outlet=${d.outlet || '?'} | strategy=${strat} | method=${method}`;
 }
 
+/** 上一轮 trace 蒸馏（ctx.priorTurn）→ 一行摘要，注入 ctx.context 顶部，所有 phase 可见，供续作承接。
+ *  多轮连续性：补 5.51 之前只回灌 trace.final 的失忆——上轮 intent/method/已做/缺口结构化带回。 */
+function formatPriorTurn(p) {
+  if (!p) return '';
+  const parts = ['【上一轮上下文】'];
+  if (p.intent) parts.push(`intent=${p.intent}`);
+  if (p.method) parts.push(`method=${p.method}`);
+  if (p.done && p.done !== '（无工具调用）') parts.push(`已做=${p.done}`);
+  if (p.gap) parts.push(`缺口=${p.gap}`);
+  if (p.strategy) parts.push(`strategy=${p.strategy}`);
+  return parts.join(' | ');
+}
+
 /** 硬缺口（request_upload）→ 请求上传结论文本（说清需要什么/为何/格式）。 */
 function buildRequestUploadText(d) {
   const dp = d.data_plan || {};
@@ -101,6 +114,10 @@ export async function orchestrate(ctx, hooks = {}) {
   let round = 1;
   let degraded = false;
 
+  // 多轮连续性：上一轮 trace 蒸馏注入 ctx.context 顶部（diagnose 及后续 phase 均可见，供续作承接）
+  const _prior = formatPriorTurn(ctx.priorTurn);
+  if (_prior) ctx.context = _prior + '\n\n' + (ctx.context || '');
+
   // 认知前置步：DIAGNOSE 问题理解卡（失败/降级不阻塞，照走 agent loop）
   let diagnose = null;
   try {
@@ -113,20 +130,28 @@ export async function orchestrate(ctx, hooks = {}) {
     ctx.context = formatDiagnoseSummary(diagnose) + '\n\n' + (ctx.context || '');
     // intent 分流（A 通用→短路直接答；B 纯操作→agent loop 走 geo 工具；C 情绪→原路径）
     const intent = diagnose.intent || 'emotion_analysis';
-    if (intent === 'general') {
-      ctx.context = '【intent=通用问答】直接简洁作答即可，不要 4×5 归因、不要演示逻辑链、不要引导情绪场景。\n\n' + (ctx.context || '');
-      const draft = await stages.finalStep(ctx, hooks, '');
-      if (hooks.onFinalDone) hooks.onFinalDone(draft);
-      return { ok: true, rounds: 0, final: draft, review: { pass: true, degraded: true, skipped: 'general' }, degraded: false, diagnose };
-    }
-    if (intent === 'gis_operation') {
-      ctx.context = '【intent=纯GIS操作】用 geo 工具（extract_feature/clip/filter_attr/overlay/merge/buffer）完成操作，出口=新图层（自动落地图）。不要 4×5 归因报告、不受尺度范式约束；操作完成后简述产出了什么图层即 answer。\n\n' + (ctx.context || '');
-    }
-    // 硬缺口短路：不硬答，直接出"请求上传"为结论
-    if (diagnose.data_plan && diagnose.data_plan.strategy === 'request_upload') {
-      const tpl = buildRequestUploadText(diagnose);
-      if (hooks.onFinalDone) hooks.onFinalDone(tpl);
-      return { ok: true, rounds: 0, final: tpl, review: { pass: true, degraded: true }, degraded: false, diagnose };
+    if (ctx.resume) {
+      // 续作：跳过 general/request_upload 短路，强制 agent loop 续跑上轮 method（上轮缺口数据现多已就位）
+      ctx.context = '【续作上一轮】用户在追问/续做上一轮任务。承接上一轮 intent+method，从断点续做（上轮【缺口】数据若已上传则继续执行原 method 剩余步骤）；勿当全新问题、勿在 method 未完成前 answer。\n\n' + (ctx.context || '');
+      if (ctx.priorTurn && ctx.priorTurn.intent === 'gis_operation') {
+        ctx.context = '【intent=纯GIS操作】用 geo 工具（extract_feature/clip/filter_attr/overlay/merge/buffer）完成操作，出口=新图层（自动落地图）。\n\n' + (ctx.context || '');
+      }
+    } else {
+      if (intent === 'general') {
+        ctx.context = '【intent=通用问答】直接简洁作答即可，不要 4×5 归因、不要演示逻辑链、不要引导情绪场景。\n\n' + (ctx.context || '');
+        const draft = await stages.finalStep(ctx, hooks, '');
+        if (hooks.onFinalDone) hooks.onFinalDone(draft);
+        return { ok: true, rounds: 0, final: draft, review: { pass: true, degraded: true, skipped: 'general' }, degraded: false, diagnose };
+      }
+      if (intent === 'gis_operation') {
+        ctx.context = '【intent=纯GIS操作】用 geo 工具（extract_feature/clip/filter_attr/overlay/merge/buffer）完成操作，出口=新图层（自动落地图）。不要 4×5 归因报告、不受尺度范式约束；操作完成后简述产出了什么图层即 answer。\n\n' + (ctx.context || '');
+      }
+      // 硬缺口短路：不硬答，直接出"请求上传"为结论
+      if (diagnose.data_plan && diagnose.data_plan.strategy === 'request_upload') {
+        const tpl = buildRequestUploadText(diagnose);
+        if (hooks.onFinalDone) hooks.onFinalDone(tpl);
+        return { ok: true, rounds: 0, final: tpl, review: { pass: true, degraded: true }, degraded: false, diagnose };
+      }
     }
   }
 

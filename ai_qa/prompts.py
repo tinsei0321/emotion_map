@@ -154,6 +154,13 @@ DIAGNOSE_TEMPLATE = """
 - gis_operation=纯 GIS/数据操作（裁剪/抽取某区/缓冲/叠置/合并/字段筛选/上传数据处理）→ outlet="生成图层"，method 选 extract_feature/clip/filter_attr/overlay/merge/buffer 等，出口是新图层而非归因报告。
 - emotion_analysis=情绪评价/排序/归因/预警（7 场景）→ 走原 domain_lens/scale/decision_type 体系。
 
+**多轮续作（最高优先级，覆盖上文 intent 判定）**：若上文含【上一轮上下文】块，且用户本轮在追问/续做（问句含"继续/接着/补充/我上传了X/那个/把刚才"等，或承接上一轮未完成任务），则：
+- intent **取上一轮 intent**（多为 gis_operation / emotion_analysis，**勿判 general**）；
+- method **承接上一轮 method 从断点续做**——上轮【缺口】数据若本轮已就位（如用户上传了），继续执行原 method 剩余步骤，产出最终结果；
+- data_plan 按当前数据**重判**（已补齐的缺口不再算缺失；strategy 多从 request_upload 升为 ready）；
+- 即便问句极短（如"继续"），只要上文有【上一轮上下文】，按续作处理，不要当通用问答短路。
+
+
 【尺度判定要点】（查下方矩阵）：
 - 提到"中心城区/片区/整体/哪个区/哪类"→ 多为宏观；提到"街道/社区/更新单元/几个片区对比"→ 中观；
   提到"这条街/这个小区/这个公园/哪个点位"→ 微观。

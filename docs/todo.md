@@ -7,6 +7,16 @@
 
 ## 📅 2026-07-09
 
+### ✅ EMC 多轮连续性·阶段 A：续作承接上轮 trace（revision-log 5.53）
+
+用户两问失败 → 三路深挖三簇根因（上下文丢失/无续作意图/工具缺口）。
+- **根因**：ctx.history 只回灌 trace.final，丢弃上轮 diagnose/steps/caliber；"继续"判 general 短路 rounds:0；prompts 零续作指令。
+- **A1** panel.js `_buildPriorTurn`（蒸馏上轮 intent/method/done/gap/strategy）+ `_isResumeCue` → ctx.priorTurn/resume。
+- **A2** harness.js `formatPriorTurn` 注入 ctx.context 顶部；ctx.resume 跳过 general/request_upload 短路，强跑 agent loop 续上轮 method。
+- **A3** prompts.py DIAGNOSE 最高优先级续作判定（取上轮 intent、承接 method、勿判 general）。
+- **验证**：mock 上轮 request_upload → "继续" → agent loop 跑+调 overlay（pre-A 零工具），LLM 明引"上一轮上下文…已执行第一步"。overlay 400 系 mock 无数据。
+- **后续**：阶段 B（extract 多值 in / 结果层消费式保留 / 上传层字段透传）+ C（完整性/目录失效/组合提示）。
+
 ### ✅ EMC 紧急修：对话空白(再) + 只留最终结果层（revision-log 5.52）
 
 - **bug1 对话空白（第二次）**：根因 = 5.51 focusOnlyResults 对 AI 结果 selectLayer+dispatch layer:selected → refreshOverview→focusLayer(结果)返父组→tier1 读 group.fc.features，而 _aiGroup 建组未传 fc→每次产图层工具崩→查询脱轨对话不完整→"点历史才显示"。修：_aiGroup 传空 fc / focusOnlyResults 去 selectLayer / tier1 加守卫。

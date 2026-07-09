@@ -985,6 +985,16 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证**：reload 0 报错（原 4 错/查询清零）｜真查询"筛选西陵区商业用地"跑通、对话全程渲染、组名=EmotionMap Copilot｜mock 链 extract→overlay 后仅留 overlay（r1 删除/r2 在）。
 - **承重**：未碰。tier1 守卫是纯加（null/无 fc 返占位）。
 
+### 5.53 EMC 多轮连续性·阶段 A：续作承接上轮 trace（07月09日）
+
+用户两问失败（"筛选西陵+伍家岗居住商业用地"只出伍家岗；上传商业后"继续"不续做）→ 三路深挖定位**三簇根因**，本条为**阶段 A（续作连续性，用户点名的系统核心）**。
+- **根因**：`ctx.history` 只回灌 `trace.final`（末轮回答文本），丢弃上轮 `diagnose`(intent/method)、`steps`(工具链)、`caliber`(缺口)（panel.js:610-614）；"继续"被 flash 判 `general`→短路 `rounds:0` 不跑工具（harness.js:116-121）；prompts 零续作指令 → 每轮除末轮文本外全无状态。
+- **A1 承接上轮**（panel.js）：新增 `_buildPriorTurn()`——蒸馏末个 assistant trace 为 `{intent, method, done, gap, strategy}` 入 `ctx.priorTurn`；`_isResumeCue()` 识别续作线索（继续/接着/补充/那个…）→ `ctx.resume`。
+- **A2 续作分支**（harness.js）：`formatPriorTurn()` 把 priorTurn 注入 ctx.context 顶部（所有 phase 含 diagnose 可见）；`ctx.resume` 时**跳过 general/request_upload 短路**，强制 agent loop 续跑上轮 method（上轮缺口数据现多已就位）。
+- **A3 提示规则**（prompts.py DIAGNOSE）：最高优先级续作判定——上文有【上一轮上下文】+用户续做 → intent 取上轮（勿判 general）、method 承接上轮从断点续做、data_plan 按现数据重判。
+- **验证**：mock 上轮 request_upload（缺商业用地）→ 输"继续" → **agent loop 跑起来并调 overlay**（pre-A 是 rounds:0 零工具），LLM 回答明引"根据上一轮上下文，我已经执行了第一步…"= 真续作。overlay 400 系 mock 无真实商业层，非代码 bug。
+- **承重**：未碰。阶段 B（extract 多值 in / 结果层消费式保留 / 上传层字段透传）+ C（完整性/目录失效/组合提示）待续。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

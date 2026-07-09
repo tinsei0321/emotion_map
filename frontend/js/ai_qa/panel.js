@@ -586,6 +586,30 @@ function buildHooks(shell) {
   };
 }
 
+/** 蒸馏上一个 assistant trace → priorTurn（多轮续作用：让下轮 LLM 承接上轮 intent/method/已做/缺口）。
+ *  trace 全量已存 _history/localStorage，但旧逻辑只回灌 trace.final → 续作失忆；此处补结构化上轮。 */
+function _buildPriorTurn() {
+  for (let i = _history.length - 2; i >= 0; i--) {   // -1 = 当前 user；往前找末个 assistant
+    const h = _history[i];
+    if (h.role === 'assistant' && h.trace) {
+      const t = h.trace, dg = t.diagnose || {}, dp = (dg.data_plan || {});
+      const method = Array.isArray(dg.method) ? dg.method.join(' → ') : (dg.method || '');
+      const done = (t.steps || []).map((s) => {
+        const a = s.action || {};
+        return `${a.name || '?'}${a.params ? '(' + JSON.stringify(a.params).slice(0, 50) + ')' : ''}`;
+      }).join('；');
+      const gap = ((t.caliber && t.caliber.length) ? t.caliber : (dp.gap || [])).join('、');
+      return { intent: dg.intent || '', method, done: done || '（无工具调用）', gap: gap || '', strategy: dp.strategy || '' };
+    }
+  }
+  return null;
+}
+/** 续作线索识别：继续/接着/补充/那个/上一个/把刚才 等（命中且存在 priorTurn → 视为续作）。 */
+function _isResumeCue(q) {
+  const s = (q || '').trim();
+  return !!s && /继续|接着|续做|补充|那个|上一个|把刚才/.test(s);
+}
+
 async function send(text) {
   text = (text || '').trim();
   if (!text || _streaming) return;
@@ -612,7 +636,10 @@ async function send(text) {
     if (h.role === 'user') _hist.push({ role: 'user', content: h.text });
     else if (h.role === 'assistant' && h.trace && h.trace.final) _hist.push({ role: 'assistant', content: h.trace.final });
   }
-  const ctx = { question: text, context: await buildContext(), signal: _abortCtl.signal, model: _thinkMode, history: _hist.slice(-10) };
+  const ctx = { question: text, context: await buildContext(), signal: _abortCtl.signal, model: _thinkMode, history: _hist.slice(-10),
+    priorTurn: _buildPriorTurn(),               // 多轮连续性：上轮 intent/method/已做/缺口（续作承接）
+    resume: false };
+  ctx.resume = !!(ctx.priorTurn && _isResumeCue(text));   // 续作线索 → harness 跳过 general/request_upload 短路、续跑上轮 method
   let settled = false;
   try {
     await orchestrate(ctx, buildHooks(shell));
