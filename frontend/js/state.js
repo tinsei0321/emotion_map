@@ -293,7 +293,7 @@ const _layers = new Map();   // id -> layer object
 let _seq = 0;
 
 // ── Layer category grouping (render-layer aggregation; UI state only — never stored in _layers) ──
-export const CATEGORY_LABEL = { heatmap: '热力图', l2: 'L2 · 情绪地图 DATA', l1: 'L1 · 城市情绪 DATA', l0: 'L0 · 原始', range: '范围边界', buffer: '缓冲分析', grid: '网格聚合', terrain: '情绪地形', ai: 'AI 工作区', other: '其他' };
+export const CATEGORY_LABEL = { heatmap: '热力图', l2: 'L2 · 情绪地图 DATA', l1: 'L1 · 城市情绪 DATA', l0: 'L0 · 原始', range: '范围边界', buffer: '缓冲分析', grid: '网格聚合', terrain: '情绪地形', ai: 'EmotionMap Copilot', other: '其他' };
 // 默认图层组序（上→下 = 地图顶层→底层）：L 数据 → 核密度 → 空间聚合(grid/terrain) → Buffer → Range → 其他。
 // 用户可拖拽 group 卡覆写（reorderGroupSegment 改本数组）；组内按 timeRank(T1<T2<T3) + typeRank(热度<综合<极性) 稳定排序。
 // range 与 ai（AI 工作区）恒钉最末（range 在 ai 上）—— applyGroupOrder / renderLayerList 双重保底。
@@ -855,7 +855,7 @@ export function reorderLayers(fromId, toId) {
 export function categoryOf(l) {
   if (!l) return 'other';
   if (l.kind === 'heatmap') return 'heatmap';
-  if (l.kind === 'group') return l.name === 'AI 工作区' ? 'ai' : 'l2';   // AI 工作区组独立成类（钉底），余 group 归 l2
+  if (l.kind === 'group') return l.name === 'EmotionMap Copilot' ? 'ai' : 'l2';   // EmotionMap Copilot 组独立成类（钉底），余 group 归 l2
   if (typeof l.colorMode === 'string' && l.colorMode.indexOf('l2-') === 0) return 'l2';
   if (l.colorMode === 'confidence') return 'l1';
   if (l.needsAnalysis || l.colorMode === 'needsAnalysis') return 'l0';

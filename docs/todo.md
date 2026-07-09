@@ -7,6 +7,14 @@
 
 ## 📅 2026-07-09
 
+### ✅ EMC 增强·阶段 1：AI 结果呈现（revision-log 5.51）
+
+- **①组重命名**：「AI 工作区」→「EmotionMap Copilot」（tools.js + state.js，仍 'ai' 类钉底）。
+- **②直白命名**：六工具 `as` 兜底去「动词·」用内容（overlay「叠置·intersection」→「交·A与B」等）+ prompts.py 加命名规则+补 `as` 参。
+- **③沉浸聚焦**：addResultLayer 每结果→focusOnlyResults 关其余（含 Range/点/旧结果）+ 缩放本轮并集(maxZoom16)+Overview 追随；_curResultIds 每轮 send 清空。
+- **验证**：node/py ✓｜reload 0 错｜mock 测：结果入新组/ai 类、既有层被关/结果显示。命名/真查询待用户。
+- **后续**：阶段 2（空态欢迎/推荐追问/折叠旧轮/EMC 折叠键）→ 阶段 3（用地标准色）。
+
 ### ✅ EMC 模块 Dark 模式（Claude Code 深灰 + 橙）· 纯换肤（revision-log 5.50）
 
 5.49 紫白标题嫌丑 → 整个 EMC 做 Claude Code 风 Dark（深炭灰 + Claude 橙 #D97757）；**仅 EMC 深色，主界面保浅色**。

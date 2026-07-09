@@ -969,6 +969,14 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **未碰**：panel.js（零内联色，CSS 全控）/ state.js / sidebar.js / 承重逻辑 / 5.49 几何与图层钉底。
 - **验证**：reload 0 报错｜DOM 测色全中（panel `rgb(31,31,31)`/head `rgb(22,22,22)`/send+Pro-active `rgb(217,119,87)`/user-bubble `rgb(48,48,48)`/左栏仍 `rgb(255,255,255)`｜EMC 内 `white_bgs=[]` 无白底泄漏）｜vision 复核深底字可读、橙点缀可见、浅/暗分区干净｜5.49 回归：compact(320) chat-messages=146px。
 
+### 5.51 EMC 增强·阶段 1：AI 结果呈现（组重命名 + 直白命名 + 沉浸聚焦）（07月09日）
+
+用户肉眼验后追加需求三阶段，本条为**阶段 1**（最高价值/低风险）。承重逻辑未碰。
+- **①组重命名**：AI 结果图层组「AI 工作区」→「**EmotionMap Copilot**」（tools.js `_aiGroup` + state.js `categoryOf`/`CATEGORY_LABEL.ai`）。组仍独立成 `'ai'` 类、钉底不变。
+- **②直白结果层名**（名=内容，非工程手段）：tools.js 六个产图层工具的 `as` 兜底去掉「动词·」前缀，改用现实内容——`overlay`「叠置·intersection」→「**交·A与B**」；`extract_feature`→要素名（西陵区·伍家岗区）；`buffer`→对象+半径（滨江公园·500m）；`filter_attr`→值；`clip`/`merge`→边界名。**同时** prompts.py 加命名规则 + 给六工具补 `as` 参（LLM 优先用 `as` 按内容命名，兜底系统人话名）。
+- **③沉浸聚焦**（用户选「全部关闭，纯聚焦结果」）：`addResultLayer`（tools.js）每生成结果 → 新 `focusOnlyResults()` 关掉**除本轮结果外的全部图层**（含 Range/点/旧结果；AI 结果是 R-group，enforceMutualExclusion 不动它，故新辅助直关）+ 缩放至本轮所有结果 **bbox 并集**（maxZoom 16 防过度放大）+ Overview 追随末结果（视野-数据-结论同步）。`_curResultIds` 每轮 `send()` 开头 `resetCurrentResults()` 清空 → 多结果同屏、跨轮聚焦。
+- **验证**：node --check + py parse ✓｜reload 0 报错｜mock 测：结果层入「EmotionMap Copilot」组、categoryOf='ai'、既有 L2 点+Range 被关、结果层显。命名/真查询待用户真环境。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

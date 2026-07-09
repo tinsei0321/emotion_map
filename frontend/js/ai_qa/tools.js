@@ -1,7 +1,7 @@
 // ═══ tools.js — Agent Loop 工具集（查询型 + 操作型，直调主窗口函数）═══
 // 还原单窗口后，tools 直调 map/state/panel（删跨窗口协议）。每个 tool 返回 {observation, data?}：
 //   observation = 给 LLM 看的摘要字符串（入 tool_history）；data = 结构化（前端可选用于渲染）。
-import { getLayers, getSelectedLayer, addLayer, addGroup, removeLayer } from '../state.js';
+import { getLayers, getLayer, getSelectedLayer, addLayer, addGroup, removeLayer, setLayerVisible, selectLayer } from '../state.js';
 import { fitBoundsTo, renderLayer, reorderAllZ, removeLayerFromMap } from '../map.js';
 import { activateTab, setOverview } from '../panel.js';
 import { DOMAIN_LABEL, ELEMENT_LABEL } from '../popup.js';
@@ -40,6 +40,8 @@ let _wisdomPromise = null;
 const _LAYER_REF_KEYS = ['layer', 'range', 'layer_a', 'layer_b', 'boundary', 'center', 'target'];
 const _stepResults = [];   // 本轮工具产物（按产出顺序），供 $n 显式引用（addResultLayer push、ref 解析）
 export function resetStepResults() { _stepResults.length = 0; }
+const _curResultIds = [];  // 本轮新生成的结果图层 id（沉浸聚焦用：关其余、留本轮、缩放至并集）
+export function resetCurrentResults() { _curResultIds.length = 0; }
 /** 图层引用解析：① `$n` → 第 n 个工具产物（显式变量，最稳）；② 图层名（精确/唯一包含）；③ 原样（preset_id）。 */
 function ref(v) {
   if (typeof v === 'string' && /^\$\d+$/.test(v.trim())) {
@@ -117,15 +119,42 @@ function fitToFeature(f) {
   if (isFinite(mnX)) fitBoundsTo([mnX, mnY, mxX, mxY]);
 }
 
-/** AI 工具产出的图层统一归入「AI 工作区」组（复用 state.addGroup；组卡片由 sidebar 现有逻辑渲染）。 */
+/** AI 工具产出的图层统一归入「EmotionMap Copilot」组（复用 state.addGroup；组卡片由 sidebar 现有逻辑渲染）。 */
 function _aiGroup() {
-  const existing = getLayers().find((l) => l.kind === 'group' && l.name === 'AI 工作区');
-  return existing || addGroup({ name: 'AI 工作区' });
+  const existing = getLayers().find((l) => l.kind === 'group' && l.name === 'EmotionMap Copilot');
+  return existing || addGroup({ name: 'EmotionMap Copilot' });
+}
+
+/** 多 bbox 并集 → [minX,minY,maxX,maxY]（供多结果同屏缩放）。 */
+function _unionBBox(ids) {
+  let u = null;
+  for (const id of ids) {
+    const l = getLayer(id);
+    const b = l && l.fc ? fcBBox(l.fc) : null;
+    if (!b) continue;
+    if (!u) u = [b[0], b[1], b[2], b[3]];
+    else { u[0] = Math.min(u[0], b[0]); u[1] = Math.min(u[1], b[1]); u[2] = Math.max(u[2], b[2]); u[3] = Math.max(u[3], b[3]); }
+  }
+  return u;
+}
+/** 沉浸聚焦：隐藏除本轮结果外的全部图层（含 Range/点/旧结果），Overview 追随最后一个结果。
+ *   AI 结果是 R-group（enforceMutualExclusion 不动它），故不走互斥，直关。 */
+function focusOnlyResults() {
+  const keep = new Set(_curResultIds);
+  for (const l of getLayers()) {
+    if (l.kind === 'group') continue;                  // 组容器无可见性
+    const want = keep.has(l.id);
+    if (want && !l.visible) { setLayerVisible(l.id, true); renderLayer(l); }
+    else if (!want && l.visible) { setLayerVisible(l.id, false); renderLayer(l); }
+  }
+  const last = getLayer(_curResultIds[_curResultIds.length - 1]);
+  if (last) { selectLayer(last.id); document.dispatchEvent(new CustomEvent('layer:selected', { detail: last.id })); }   // 视野-数据-结论同步：Overview 追随
 }
 
 /** 把 geo 工具产出的 GeoJSON 落地图为新图层（统一回写，复用 range-presets/grid-tool 范式）。
  * 替换语义：同名旧结果层先移除再新建（防重复堆叠）。name=图层名，kind=point|polygon。
- * 点层自动按 polarity 上色（addLayer 默认 colorMode）；面层需传 paint.fillOn 才可见。 */
+ * 点层自动按 polarity 上色（addLayer 默认 colorMode）；面层需传 paint.fillOn 才可见。
+ * 沉浸聚焦：每生成一个结果 → 关其余、留本轮所有结果、缩放至并集（maxZoom 16 防过度放大）。 */
 export function addResultLayer({ name, kind = 'polygon', fc, paint }) {
   if (!fc || !fc.features || !fc.features.length) return null;
   for (const l of getLayers()) {
@@ -133,10 +162,12 @@ export function addResultLayer({ name, kind = 'polygon', fc, paint }) {
   }
   const L = addLayer({ name, kind, fc, paint, parentId: _aiGroup().id });
   L.srcName = name;
+  _curResultIds.push(L.id);                 // 登记本轮结果（沉浸聚焦）
   renderLayer(L);
   renderLayerList(); refreshLegend(); reorderAllZ();
   _stepResults.push(fc);   // 登记 $n 引用（ref 解析）
-  const bb = fcBBox(fc); if (bb) fitBoundsTo(bb);
+  focusOnlyResults();
+  const bb = _unionBBox(_curResultIds); if (bb) fitBoundsTo(bb, 100, 16);
   document.dispatchEvent(new CustomEvent('layers:changed'));
   return L;
 }
@@ -395,7 +426,7 @@ export const TOOLS = {
     try {
       const r = await geoFetch('filter_attr', body);
       const feats = (r.geojson && r.geojson.features) || [];
-      const _fName = params.as || `筛选·${pf.field}=${pf.value}`;
+      const _fName = params.as || String(pf.value || pf.field || '属性筛选');   // 名=内容（值/字段），勿用「筛选·」工程前缀
       const _fL = addResultLayer({ name: _fName, kind: 'point', fc: r.geojson });
       const sample = feats.slice(0, 3).map((f) => {
         const p = f.properties || {};
@@ -413,7 +444,7 @@ export const TOOLS = {
     try {
       const r = await geoFetch('clip', body);
       const feats = (r.geojson && r.geojson.features) || [];
-      const name = params.as || `裁剪·${params.range}`;
+      const name = params.as || (typeof params.range === 'string' ? params.range : '范围裁剪');   // 名=范围（如「西陵区」），勿用「裁剪·」
       const L = addResultLayer({ name, kind: 'point', fc: r.geojson });
       const sample = feats.slice(0, 3).map((f) => { const p = f.properties || {}; return p.name || p.issue_label || '未命名'; });
       return { observation: `裁剪命中 ${r.count} 个要素${r.truncated ? '（已截断）' : ''}（range=${params.range}）→ 已生成图层「${name}」${L ? '(' + feats.length + '点)' : ''}，示例：${sample.join('、') || '（无）'}`, data: { count: r.count, layerId: L && L.id } };
@@ -429,7 +460,7 @@ export const TOOLS = {
       const feats = (r.geojson && r.geojson.features) || [];
       const _nm = (f) => { const p = f.properties || {}; return p.name || p[r.name_field] || Object.values(p).find((v) => typeof v === 'string') || '未命名'; };
       const labels = feats.map(_nm);
-      const name = params.as || `抽取·${labels.slice(0, 2).join('/') || params.layer}`;
+      const name = params.as || (labels.slice(0, 2).join('·') || params.layer);   // 名=要素名（如「西陵区·伍家岗区」/「商业服务业用地」）
       const L = addResultLayer({ name, kind: 'polygon', fc: r.geojson, paint: { fillOn: true, lineWidth: 2, fillOpacity: 0.2 } });
       return { observation: `属性抽取命中 ${r.count} 个面要素（layer=${params.layer}${params.where ? ', where=' + params.where : ''}）→ 已生成图层「${name}」${L ? '(' + feats.length + '面)' : ''}：${labels.slice(0, 5).join('、') || '（无）'}`, data: { count: r.count, layerId: L && L.id } };
     } catch (e) { return _ERR('extract_feature', e); }
@@ -463,7 +494,7 @@ export const TOOLS = {
       const r = await geoFetch('merge', body);
       const feats = (r.geojson && r.geojson.features) || [];
       const total = feats.reduce((a, f) => a + (Number((f.properties || {}).area_km2) || 0), 0);
-      const _mName = params.as || `合并·${params.boundary}`;
+      const _mName = params.as || String(params.boundary || '合并范围');   // 名=边界（如「西陵区」），勿用「合并·」
       const _mL = addResultLayer({ name: _mName, kind: 'polygon', fc: r.geojson, paint: { fillOn: true, lineWidth: 2, fillOpacity: 0.2 } });
       return { observation: `合并得 ${r.count} 个面，总面积 ${total.toFixed(1)} km² → 已生成图层「${_mName}」${_mL ? '(' + feats.length + '面)' : ''}`, data: { count: r.count, layerId: _mL && _mL.id } };
     } catch (e) { return _ERR('merge', e); }
@@ -477,7 +508,7 @@ export const TOOLS = {
       const r = await geoFetch('buffer', body);
       const feats = (r.geojson && r.geojson.features) || [];
       const area = feats.length ? Number((feats[0].properties || {}).area_km2) || 0 : 0;
-      const _bName = params.as || `缓冲·${body.radius_m}m`;
+      const _bName = params.as || `${typeof params.center === 'string' ? params.center : '设施'}·${body.radius_m}m`;   // 名=对象+半径（如「滨江公园·500m」）
       const _bL = addResultLayer({ name: _bName, kind: 'polygon', fc: r.geojson, paint: { fillOn: true, lineWidth: 2, fillOpacity: 0.2 } });
       return { observation: `缓冲区 radius=${r.radius_m || body.radius_m}m，得 ${feats.length} 个面（约 ${area.toFixed(2)} km²）→ 已生成图层「${_bName}」`, data: { radius_m: r.radius_m, layerId: _bL && _bL.id } };
     } catch (e) { return _ERR('buffer', e); }
@@ -491,7 +522,9 @@ export const TOOLS = {
       const r = await geoFetch('overlay', body);
       const feats = (r.geojson && r.geojson.features) || [];
       const total = feats.reduce((a, f) => a + (Number((f.properties || {}).area_km2) || 0), 0);
-      const _oName = params.as || `叠置·${body.how}`;
+      const _howCN = { intersection: '交', union: '并', difference: '差', symmetric_difference: '对称差' }[body.how] || body.how;
+      const _lab = (x) => (typeof x === 'string' ? x : (x && x.name) || '图层');
+      const _oName = params.as || `${_howCN}·${_lab(params.layer_a)}与${_lab(params.layer_b)}`;   // 名=操作语义+两源（如「交·商业用地与西陵区」），勿用「叠置·intersection」
       const _oL = addResultLayer({ name: _oName, kind: 'polygon', fc: r.geojson, paint: { fillOn: true, lineWidth: 2, fillOpacity: 0.25 } });
       return { observation: `叠置(${r.how || body.how}) 得 ${r.count} 个面，总面积 ${total.toFixed(1)} km² → 已生成图层「${_oName}」${_oL ? '(' + feats.length + '面)' : ''}${r.message ? '（' + r.message + '）' : ''}`, data: { count: r.count, layerId: _oL && _oL.id } };
     } catch (e) { return _ERR('overlay', e); }

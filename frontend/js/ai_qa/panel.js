@@ -1,6 +1,6 @@
 // ═══ panel.js — AI 问答 UI（底部滑出 · agent loop · 历史持久化 · 思考深度开关 · 动态状态）═══
 import { orchestrate } from './harness.js';
-import { buildContext, TOOLS, resetStepResults } from './tools.js';
+import { buildContext, TOOLS, resetStepResults, resetCurrentResults } from './tools.js';
 import { getLayers, selectLayer, getSelectedLayer } from '../state.js';
 import { getLastUsage, resetCallStats, getCallStats } from './api.js';
 
@@ -600,6 +600,7 @@ async function send(text) {
   _curTrace = { reason: '', reasonSegments: [], steps: [], final: '', review: null, revised: '', diagnose: null, caliber: null, startedAt: Date.now(), doneAt: null };
   resetCallStats();
   resetStepResults();
+  resetCurrentResults();   // 沉浸聚焦：新一轮查询清空上轮结果登记
   _streaming = true;
   updateSendBtn();
   ensureEmcHeight();

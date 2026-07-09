@@ -52,15 +52,16 @@ AGENT_TEMPLATE = """
 【GIS 工具】（按 intent/问题尺度自动组合，见下方「GIS 操作目录」附录；**结果自动落地图为新图层**；B 纯操作类必走此类产出图层，允许坐标与裸结果）：
 **工具选择决策**：①"某范围内"=clip（点）/extract_feature（面）；②"A 内的 B"（如西陵区内的商业用地）=先 extract_feature(A) 再 overlay(A, B, intersection)；③面∩面/面∪面=overlay（**勿用 clip——clip 只切点，面层会报错**）；④合并多面=merge；⑤周边半径=buffer。
 **工具链（chain，推荐显式变量）**：多步操作用 `$1`/`$2` 引用前序工具产物（第 1/2 个产图层的工具结果，最稳，不依赖图层名匹配）。例：extract_feature(admin_district, MC/eq/西陵区) 得 `$1` → overlay(layer_a="$1", layer_b="land_commercial", how="intersection") 得西陵区内商业用地。也支持传"已生成的图层名"或 preset_id。
+**结果图层命名（重要）**：凡产图层的工具（extract_feature/clip/filter_attr/merge/buffer/overlay）可传 `as` 自定义图层名。**`as` 必须用结果的现实内容命名（如「西陵区内商业用地」「滨江公园·500m」「西陵区·伍家岗区」），严禁用实现术语（叠置/intersection/clip/抽取）**——用户看图，名要说清"这层是什么"。不传 `as` 时系统按内容自动命名兜底。
 - zonal_stats：**宏/中观结论主干**——按行政区/街道/更新单元等边界聚合点层，得每单元极性/点数/4×5 归因+排序。params: {{ "boundary": "admin_district|admin_street|renewal_unit|...(preset_id)", "layer": "(默认 yichang_l2_t1)", "range": "(可选 preset_id 先裁剪)", "pre_filter": "可选，形如 field/op/value 见附录", "top_n": 5 }}
 - rank：Top N 排序（最差/最好/按 domain·element 占比）。params: {{ "by": "worst|best|domain:更新|element:设施", "boundary": "preset_id", "top_n": 5, "layer": "(默认L2)", "range": "(可选)", "pre_filter": "(可选)" }}
-- filter_attr：按属性筛选用地/极性/domain/element/时点。params: {{ "pre_filter": "field/op/value，如 domain/eq/urban_renewal", "layer": "默认L2", "range": "可选" }}
-- extract_feature：从面边界按属性抽单要素为独立面图层（**裁出某区/某单元**，自动落地图）。params: {{ "layer": "preset_id(如 admin_district)", "where": "field/op/value(如 MC/eq/西陵区，field 见 catalog name_field)" }}
-- clip：按几何裁剪（某区/某公园范围内的点，自动落地图）。params: {{ "range": "preset_id(如 land_park/admin_district)", "layer": "(默认L2)", "pre_filter": "可选 field/op/value" }}
+- filter_attr：按属性筛选用地/极性/domain/element/时点。params: {{ "pre_filter": "field/op/value，如 domain/eq/urban_renewal", "layer": "默认L2", "range": "可选", "as": "图层名(现实内容)" }}
+- extract_feature：从面边界按属性抽单要素为独立面图层（**裁出某区/某单元**，自动落地图）。params: {{ "layer": "preset_id(如 admin_district)", "where": "field/op/value(如 MC/eq/西陵区，field 见 catalog name_field)", "as": "图层名(现实内容)" }}
+- clip：按几何裁剪（某区/某公园范围内的点，自动落地图）。params: {{ "range": "preset_id(如 land_park/admin_district)", "layer": "(默认L2)", "pre_filter": "可选 field/op/value", "as": "图层名(现实内容)" }}
 - area_stats：各类用地/各单元面积占比。params: {{ "boundary": "preset_id", "group_by": "字段(如 name)" }}
-- merge：合并/dissolve（几街道合成片区/同类用地合并）。params: {{ "boundary": "preset_id", "by": "字段|空=全部合并" }}
-- buffer：设施缓冲区（地铁500m/奥体1km）。params: {{ "center": "preset_id|geojson", "radius_m": 500 }}
-- overlay：叠置（商业用地∩更新单元 等）。params: {{ "layer_a": "preset_id", "layer_b": "preset_id", "how": "intersection|union|difference|symmetric_difference" }}
+- merge：合并/dissolve（几街道合成片区/同类用地合并）。params: {{ "boundary": "preset_id", "by": "字段|空=全部合并", "as": "图层名(现实内容)" }}
+- buffer：设施缓冲区（地铁500m/奥体1km）。params: {{ "center": "preset_id|geojson", "radius_m": 500, "as": "图层名(现实内容)" }}
+- overlay：叠置（商业用地∩更新单元 等）。params: {{ "layer_a": "preset_id", "layer_b": "preset_id", "how": "intersection|union|difference|symmetric_difference", "as": "图层名(现实内容)" }}
 - nearest：最近邻（离地铁最近的负面点）。params: {{ "layer": "点层", "target": "preset_id|geojson", "k": 1 }}
 - hotspot：Gi* 热点识别（负面聚集/情绪热点）。params: {{ "value_col": "score", "invert": true(负面为热), "layer": "(默认L2)", "range": "(可选)" }}
 - answer：已掌握足够信息，退出 loop 出结论。params: {{}}
