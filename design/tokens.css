@@ -100,8 +100,8 @@
   --geojson-layout-collapse-button-size: 40px;
   --geojson-layout-header-height: 48px;
   --geojson-layout-left-panel-max: 1800px;
-  --geojson-layout-left-panel-min: 220px;
-  --geojson-layout-left-panel-width: 300px;
+  --geojson-layout-left-panel-min: 300px;
+  --geojson-layout-left-panel-width: 380px;
   --geojson-layout-panel-width: 320px;
   --geojson-layout-popup-width: 280px;
   --geojson-layout-right-panel-max: 1800px;

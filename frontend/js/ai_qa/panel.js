@@ -1,7 +1,7 @@
 // ═══ panel.js — AI 问答 UI（底部滑出 · agent loop · 历史持久化 · 思考深度开关 · 动态状态）═══
 import { orchestrate } from './harness.js';
 import { buildContext, TOOLS, resetStepResults } from './tools.js';
-import { getLayers, selectLayer } from '../state.js';
+import { getLayers, selectLayer, getSelectedLayer } from '../state.js';
 import { getLastUsage, resetCallStats, getCallStats } from './api.js';
 
 const HISTORY_KEY = 'ai_qa_history_v1';
@@ -40,6 +40,63 @@ function updateContextCapacity(usage) {
   el.setAttribute('title', `上下文 ${usage.prompt_tokens.toLocaleString()} / 1,000,000 token · ${pct}%`);
 }
 
+// ── EMC 智能高度调度（三档 compact/comfort/expand + 手动基线回退）──
+//   档位按窗口高算 px；setEmcMode 改 --emc-h；手动拖拽写 --emc-h-user（sidebar.js initVDrag），relax 时回落基线。
+//   拖拽中(body.dragging)不自动调，防打架；流式中(_streaming)不让位。
+function _emcTierPx() {
+  const win = window.innerHeight;
+  return { compact: 160, comfort: Math.round(win / 2), expand: Math.round(win * 2 / 3) };
+}
+function _emcClamp(px) {
+  const win = window.innerHeight;
+  return Math.max(160, Math.min(win - win / 3, px));
+}
+function _emcUserBaselinePx() {
+  const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--emc-h-user'));
+  return v > 0 ? v : 0;
+}
+function setEmcMode(mode, { relax = false } = {}) {
+  if (document.body.classList.contains('dragging')) return;
+  let px = relax ? (_emcUserBaselinePx() || _emcTierPx()[mode]) : _emcTierPx()[mode];
+  document.documentElement.style.setProperty('--emc-h', `${_emcClamp(px)}px`);
+}
+/** 提交时：当前 < comfort 则升 comfort（需求 2）。 */
+function ensureEmcHeight() {
+  const panel = document.getElementById('emc-panel');
+  const cur = panel ? panel.offsetHeight : 0;
+  if (cur < _emcTierPx().comfort - 8) setEmcMode('comfort');
+}
+/** 流式后回落：有手动基线回基线，无则回 comfort（不留在 expand）。 */
+function relaxEmc() {
+  const base = _emcUserBaselinePx();
+  if (base) document.documentElement.style.setProperty('--emc-h', `${_emcClamp(base)}px`);
+  else setEmcMode('comfort');
+}
+let _crowdedRaf = 0;
+function _checkCrowded() {
+  if (_streaming) return;
+  const layerCount = document.querySelectorAll('#layer-list .layer-row').length;
+  if (layerCount === 0) { setEmcMode('comfort'); return; }   // 无图层（含 import 空态）→ comfort，不误判 operate 占位为拥挤
+  const op = document.querySelector('.lp-zone-operate');
+  if (!op || op.clientHeight <= 0) return;
+  const crowded = op.scrollHeight > op.clientHeight * 0.92;
+  if (crowded) setEmcMode('compact');
+  else if (layerCount <= 3) setEmcMode('comfort');
+}
+function _scheduleCrowdedCheck() {
+  if (_crowdedRaf) return;
+  _crowdedRaf = requestAnimationFrame(() => { _crowdedRaf = 0; _checkCrowded(); });
+}
+function setupEmcHeightObservers() {
+  const list = document.getElementById('layer-list');
+  if (list && !list._emcObs) {
+    list._emcObs = new MutationObserver(() => _scheduleCrowdedCheck());
+    list._emcObs.observe(list, { childList: true, subtree: true });
+    list.addEventListener('click', () => _scheduleCrowdedCheck());   // 点层→上层焦点→重算
+  }
+  _scheduleCrowdedCheck();
+}
+
 function loadHistory() {
   try { const v = localStorage.getItem(HISTORY_KEY); return v ? JSON.parse(v) : []; }
   catch (_) { return []; }
@@ -68,13 +125,12 @@ function switchSession(id) {
   if (idx >= 0) { _history = _archive[idx].history; _archive.splice(idx, 1); }
   saveArchive(); saveHistory(); restoreHistory();
   updateContextCapacity(null);
-  document.getElementById('chat-history-pop')?.remove();
+  if (_view === 'history') renderHistoryList(document.getElementById('emc-history-search')?.value || '');
 }
 function deleteSession(id) {
   _archive = _archive.filter((s) => s.id !== id);
   saveArchive();
-  document.getElementById('chat-history-pop')?.remove();
-  toggleHistoryDropdown();
+  if (_view === 'history') renderHistoryList(document.getElementById('emc-history-search')?.value || '');
 }
 
 function escapeHtml(s) {
@@ -144,6 +200,40 @@ function stampDone(shell) {
     shell.footerEl.hidden = false;
     shell.footerEl.textContent = `回答完毕 · 用时 ${secs}s · 用量 ${_fmtTokens(cs.total)} token / ${cs.calls} 次 · 情绪地图 v1.0 · ${formatTs(_curTrace && _curTrace.doneAt)}`;
   }
+  updateReasonMeta(shell);
+}
+
+/** Thinking 头：答完显「Thought for Ns · Nk token」（折叠态可见）。trace 缺省=实时 _curTrace。 */
+function updateReasonMeta(shell, trace) {
+  if (!shell || !shell.reasonEl || shell.reasonEl.classList.contains('is-flash')) return;
+  const t = trace || _curTrace;
+  const title = shell.reasonEl.querySelector('.aiq-reason-title');
+  const meta = shell.reasonEl.querySelector('.aiq-reason-meta');
+  const secs = t && t.startedAt && t.doneAt ? Math.max(1, Math.round((t.doneAt - t.startedAt) / 1000)) : 0;
+  if (title) title.textContent = secs ? `Thought for ${secs}s` : 'Thinking…';
+  if (meta) {
+    const cs = trace ? { total: 0 } : getCallStats();   // 仅 live 取实时 token；历史会话不存 token
+    meta.textContent = cs.total ? `· ${_fmtTokens(cs.total)} token` : '';
+  }
+}
+
+/** 代码块加 hover 复制按钮（marked 渲染后后处理）。 */
+function enhanceCodeBlocks(el) {
+  if (!el) return;
+  el.querySelectorAll('pre').forEach((pre) => {
+    if (pre.querySelector('.emc-code-copy')) return;
+    const btn = document.createElement('button');
+    btn.className = 'emc-code-copy';
+    btn.type = 'button';
+    btn.textContent = '复制';
+    btn.addEventListener('click', () => {
+      const code = pre.querySelector('code');
+      navigator.clipboard?.writeText(code ? code.innerText : pre.innerText);
+      btn.textContent = '✓';
+      setTimeout(() => { btn.textContent = '复制'; }, 1200);
+    });
+    pre.appendChild(btn);
+  });
 }
 
 /** 渲染问题理解卡（DIAGNOSE）：domain/scale/decision/outlet + strategy 徽章 + method。 */
@@ -211,6 +301,7 @@ function dockEl() { return document.getElementById('aiq-thinking-dock'); }
 
 /** 动态思考指示器：轮换文案 + 跳动点 + 阶段 chip。 */
 function startThinking() {
+  setEmcMode('expand');
   const d = dockEl();
   if (d) { d.hidden = false; setPhase('诊断'); }
   const txt = d && d.querySelector('.aiq-thinking-text');
@@ -243,17 +334,17 @@ function appendAssistantShell(trace) {
   const el = document.createElement('div');
   el.className = 'chat-msg chat-msg-assistant';
   const isFlash = _thinkMode === 'flash';
-  const reasonHead = isFlash ? 'Flash · 直接作答（无思考链）' : '▸ 思考过程（Pro · 实时）';
   const hasReason = !!(trace && (trace.reasonSegments?.length || trace.reason));
   el.innerHTML = `<div class="chat-bubble">
     <div class="aiq-card aiq-card-diagnose" hidden></div>
-    <div class="aiq-reason ${isFlash ? 'is-flash' : ''}" ${hasReason ? '' : 'hidden'}><div class="aiq-reason-head">${reasonHead}</div><div class="aiq-reason-body"></div></div>
-    <div class="aiq-steps" ${trace && trace.steps && trace.steps.length ? '' : 'hidden'}><div class="aiq-steps-head">解题过程（Agent Loop）</div></div>
+    <div class="aiq-reason ${isFlash ? 'is-flash' : ''}" ${hasReason ? '' : 'hidden'}><div class="aiq-reason-head"><span class="aiq-reason-title">${isFlash ? 'Flash · 直接作答' : 'Thinking…'}</span><span class="aiq-reason-meta"></span></div><div class="aiq-reason-body"></div></div>
+    <div class="aiq-steps" ${trace && trace.steps && trace.steps.length ? '' : 'hidden'}><div class="aiq-steps-head">工具调用（Agent Loop）</div></div>
     <div class="aiq-review" ${trace && trace.review ? '' : 'hidden'}><div class="aiq-review-head">审查</div><div class="aiq-review-body"></div></div>
     <div class="aiq-step aiq-step-final"><span class="aiq-step-tag">结论</span><div class="aiq-answer"><span class="aiq-answer-stream"></span><span class="chat-cursor" hidden>▍</span></div></div>
     <div class="aiq-card aiq-card-caliber" hidden></div>
     <div class="aiq-answer-footer" hidden></div>
-  </div>`;
+  </div>
+  <div class="emc-msg-actions"><button class="emc-copy-btn" type="button" title="复制回答"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg></button></div>`;
   list.appendChild(el);
   const shell = {
     diagnoseEl: el.querySelector('.aiq-card-diagnose'),
@@ -286,9 +377,11 @@ function appendAssistantShell(trace) {
       shell.reasonEl.hidden = false;
       shell.reasonEl.classList.add('is-done');
     }
-    (trace.steps || []).forEach((s) => renderStepRow(shell.stepsEl, s.round, s.thought, s.action, s.observation));
+    (trace.steps || []).forEach((s) => renderToolCard(shell.stepsEl, s.round, s.thought, s.action, s.observation));
     if (trace.review) renderReview(shell.reviewEl, shell.reviewBody, trace.review);
     shell.answerEl.innerHTML = trace.final ? renderAnswer(trace.final, getValidRefNames()) : '<span class="chat-error">（未生成结论）</span>';
+    enhanceCodeBlocks(shell.answerEl);
+    updateReasonMeta(shell, trace);
     if (trace.diagnose) renderDiagnoseCard(shell.diagnoseEl, trace.diagnose);
     if (trace.caliber) renderCaliber(shell, trace.caliber);
     if (trace.doneAt && shell.footerEl) {
@@ -306,16 +399,50 @@ function actionLabel(action) {
   const p = action.params && Object.keys(action.params).length ? JSON.stringify(action.params) : '';
   return `→ ${action.name}${p ? '(' + p + ')' : ''}`;
 }
-function renderStepRow(stepsEl, round, thought, action, observation) {
-  const row = document.createElement('div');
-  row.className = 'aiq-step-row';
-  row.dataset.round = round;
-  row.innerHTML = `<span class="aiq-step-num">${round}</span><div class="aiq-step-content">`
-    + `<div class="aiq-step-thought">${escapeHtml(thought || '…')}</div>`
-    + (action ? `<div class="aiq-step-action">${escapeHtml(actionLabel(action))}</div>` : '')
-    + (observation ? `<div class="aiq-step-obs">${escapeHtml(observation)}</div>` : '')
-    + `</div>`;
-  stepsEl.appendChild(row);
+/** 工具目标摘要（取 params 里最显眼的 name/layer/zone/preset 字段）。 */
+function actionTargetSummary(action) {
+  if (!action || !action.params) return '';
+  const p = action.params;
+  const key = Object.keys(p).find((k) => /name|layer|zone|target|preset|level|field|range/i.test(k)) || Object.keys(p)[0];
+  if (!key) return '';
+  const v = p[key];
+  const s = Array.isArray(v) ? v.slice(0, 3).join(',') : String(v);
+  return s ? '· ' + s.slice(0, 40) : '';
+}
+/** 工具调用卡（Claude Code 式：头=工具名+目标+状态，体=thought/observation 可折叠）。
+ *  增量调用：onThought 建卡设 thought；onAction 填头；onObservation 填 obs+状态+折叠。 */
+function renderToolCard(stepsEl, round, thought, action, observation) {
+  let card = stepsEl.querySelector(`.aiq-toolcard[data-round="${round}"]`);
+  if (!card) {
+    card = document.createElement('div');
+    card.className = 'aiq-toolcard is-open';
+    card.dataset.round = round;
+    card.innerHTML = `<div class="aiq-toolcard-head">
+        <span class="aiq-toolcard-icon run">⏳</span>
+        <span class="aiq-toolcard-name">第 ${round} 步</span>
+        <span class="aiq-toolcard-target"></span>
+        <span class="aiq-toolcard-chev">▸</span>
+      </div>
+      <div class="aiq-toolcard-body">
+        <div class="aiq-toolcard-thought"></div>
+        <div class="aiq-toolcard-obs"></div>
+      </div>`;
+    card.querySelector('.aiq-toolcard-head').addEventListener('click', () => card.classList.toggle('is-open'));
+    stepsEl.appendChild(card);
+  }
+  if (thought != null) card.querySelector('.aiq-toolcard-thought').textContent = thought || '';
+  if (action) {
+    card.querySelector('.aiq-toolcard-name').textContent = action.name || 'step';
+    card.querySelector('.aiq-toolcard-target').textContent = actionTargetSummary(action);
+  }
+  if (observation != null) {
+    card.querySelector('.aiq-toolcard-obs').textContent = observation || '';
+    const fail = /失败|\[ERR\]|错误|未知工具/.test(observation);
+    const icon = card.querySelector('.aiq-toolcard-icon');
+    icon.textContent = fail ? '✕' : '✓';
+    icon.className = 'aiq-toolcard-icon ' + (fail ? 'fail' : 'ok');
+    card.classList.remove('is-open');   // 结果到→折叠（Claude Code 自动折叠已完成调用）
+  }
 }
 
 function buildHooks(shell) {
@@ -384,21 +511,17 @@ function buildHooks(shell) {
     onRound: () => {},
     onThought: (thought, round) => {
       shell.stepsEl.hidden = false;
-      renderStepRow(shell.stepsEl, round, thought, null, null);
+      renderToolCard(shell.stepsEl, round, thought, null, null);
       if (_curTrace) _curTrace.steps.push({ round, thought, action: null, observation: null });
       setPhase('思考');
       autoScroll();
     },
     onAction: (action, round) => {
-      const row = shell.stepsEl.querySelector(`.aiq-step-row[data-round="${round}"]`);
-      if (row) row.querySelector('.aiq-step-content').insertAdjacentHTML('beforeend',
-        `<div class="aiq-step-action">${escapeHtml(actionLabel(action))}</div>`);
+      renderToolCard(shell.stepsEl, round, null, action, null);
       if (_curTrace && _curTrace.steps.length) _curTrace.steps[_curTrace.steps.length - 1].action = action;
     },
     onObservation: (obs, round) => {
-      const row = shell.stepsEl.querySelector(`.aiq-step-row[data-round="${round}"]`);
-      if (row) row.querySelector('.aiq-step-content').insertAdjacentHTML('beforeend',
-        `<div class="aiq-step-obs">${escapeHtml(obs)}</div>`);
+      renderToolCard(shell.stepsEl, round, null, null, obs);
       if (_curTrace && _curTrace.steps.length) _curTrace.steps[_curTrace.steps.length - 1].observation = obs;
       setPhase('检索');
       autoScroll();
@@ -415,6 +538,7 @@ function buildHooks(shell) {
       stopThinking();
       updateContextCapacity(getLastUsage());
       shell.answerEl.innerHTML = renderAnswer(text, getValidRefNames());
+      enhanceCodeBlocks(shell.answerEl);
       if (shell.reasonEl && !isFlash) shell.reasonEl.classList.add('is-done');
       if (_curTrace) _curTrace.final = text;
       // 显示审查中占位（review 回来覆盖）；history 在 send 末尾统一持久化
@@ -444,6 +568,7 @@ function buildHooks(shell) {
       cancelStream();
       streamAcc = text || '';
       shell.answerEl.innerHTML = renderAnswer(text, getValidRefNames());
+      enhanceCodeBlocks(shell.answerEl);
       if (_curTrace) { _curTrace.revised = text; _curTrace.final = text; }
       const v = shell.reviewBody.querySelector('.aiq-review-verdict.fail');
       if (v) v.textContent = '审查未过·已重写';
@@ -453,6 +578,7 @@ function buildHooks(shell) {
       cancelStream();
       stopThinking();
       shell.answerEl.innerHTML = renderAnswer(text || '（未生成有效回答——模型输出无法解析为动作，且最终结论生成失败）', getValidRefNames());
+      enhanceCodeBlocks(shell.answerEl);
     },
   };
 }
@@ -473,6 +599,7 @@ async function send(text) {
   resetStepResults();
   _streaming = true;
   updateSendBtn();
+  ensureEmcHeight();
   startThinking();
   _abortCtl = new AbortController();
   // 多轮上下文：前几轮 user/assistant.final 作为历史带给 LLM（stages.js 拼进 messages）
@@ -500,6 +627,7 @@ async function send(text) {
       ? ' <span class="chat-error">（已停止）</span>'
       : `<span class="chat-error">[请求失败] ${escapeHtml(e.message || e)}</span>`;
   } finally {
+    relaxEmc();
     // 统一在 review/revise 结束后持久化（onFinalDone 不再 push）
     if (_curTrace && (settled || _curTrace.final)) {
       _history.push({ role: 'assistant', trace: JSON.parse(JSON.stringify(_curTrace)) });
@@ -527,14 +655,12 @@ function updateSendBtn() {
   else { btn.innerHTML = _SVG_SEND; btn.classList.remove('is-stop'); btn.title = '发送'; }
 }
 
-function injectModeSwitch() {
-  const head = document.querySelector('#chat-panel .chat-head');
-  if (!head || document.getElementById('aiq-mode')) return;
-  const seg = document.createElement('div');
-  seg.id = 'aiq-mode';
-  seg.className = 'aiq-mode';
-  seg.innerHTML = `<button type="button" data-mode="pro" class="${_thinkMode === 'pro' ? 'is-active' : ''}" title="V4 Pro · 旗舰推理（深度思考，慢）">Pro 深度</button>`
-    + `<button type="button" data-mode="flash" class="${_thinkMode === 'flash' ? 'is-active' : ''}" title="V4 Flash · 快速经济（无深度思考）">Flash 快</button>`;
+/** Pro/Flash 切换：绑定输入区静态 #aiq-mode（不再注入 head）。 */
+function wireModeSwitch() {
+  const seg = document.getElementById('aiq-mode');
+  if (!seg || seg._wired) return;
+  seg._wired = true;
+  seg.querySelectorAll('button').forEach((x) => x.classList.toggle('is-active', x.dataset.mode === _thinkMode));
   seg.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-mode]');
     if (!b) return;
@@ -542,7 +668,6 @@ function injectModeSwitch() {
     localStorage.setItem(MODE_KEY, _thinkMode);
     seg.querySelectorAll('button').forEach((x) => x.classList.toggle('is-active', x.dataset.mode === _thinkMode));
   });
-  head.insertBefore(seg, head.querySelector('.chat-head-spacer'));
 }
 
 function restoreHistory() {
@@ -561,40 +686,60 @@ function clearChat() {
   restoreHistory();
 }
 
-/** 历史记录下拉：列存档会话 + 当前会话；点击切换、垃圾桶删除。 */
-function toggleHistoryDropdown() {
-  const existing = document.getElementById('chat-history-pop');
-  if (existing) { existing.remove(); return; }
-  const pop = document.createElement('div');
-  pop.id = 'chat-history-pop';
-  pop.className = 'chat-pop';
+/** 历史记录：EMC 内就地视图切换（chat ↔ history），1:1 Claude Code。
+ *  搜索 + 点选进入 + 垃圾桶删除。数据层 _archive/_history/switchSession/deleteSession 复用，零改。 */
+let _view = 'chat';   // 'chat' | 'history'
+function setView(v) {
+  _view = v;
+  const c = document.getElementById('emc-view-chat');
+  const h = document.getElementById('emc-view-history');
+  if (c) c.hidden = (v !== 'chat');
+  if (h) h.hidden = (v !== 'history');
+  if (v === 'history') renderHistoryList(document.getElementById('emc-history-search')?.value || '');
+}
+function toggleHistoryView() {
+  if (_streaming) return;
+  setView(_view === 'history' ? 'chat' : 'history');
+}
+function renderHistoryList(q) {
+  const list = document.getElementById('emc-history-list');
+  if (!list) return;
+  q = (q || '').trim().toLowerCase();
+  const items = [];
   const hasCur = _history.some((h) => h.role === 'user');
-  if (!_archive.length && !hasCur) {
-    pop.innerHTML = '<div class="chat-pop-empty">暂无历史会话</div>';
-  } else {
-    const items = [];
-    if (hasCur) items.push({ id: '__current__', title: _titleOf(_history) + '（当前）', isCurrent: true });
-    _archive.forEach((s) => items.push({ id: s.id, title: s.title, isCurrent: false }));
-    pop.innerHTML = items.map((it) =>
-      `<div class="chat-pop-item${it.isCurrent ? ' is-current' : ''}"><span class="chat-pop-txt" data-id="${it.id}">${escapeHtml(it.title)}</span>` +
-      (it.isCurrent ? '' : `<button class="chat-pop-del" data-id="${it.id}" title="删除该会话"><svg viewBox="0 0 24 24" width="13" height="13"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M7 7l1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`) +
-      `</div>`
-    ).join('');
-    pop.querySelectorAll('.chat-pop-txt').forEach((el) => {
-      el.style.cursor = el.dataset.id === '__current__' ? 'default' : 'pointer';
-      el.addEventListener('click', () => { if (el.dataset.id !== '__current__') switchSession(el.dataset.id); });
+  if (hasCur) items.push({ id: '__current__', title: _titleOf(_history), ts: Date.now(), isCurrent: true });
+  _archive.forEach((s) => items.push({ id: s.id, title: s.title || '会话', ts: s.createdAt || 0, isCurrent: false }));
+  const filtered = q ? items.filter((it) => (it.title || '').toLowerCase().includes(q)) : items;
+  if (!filtered.length) { list.innerHTML = '<div class="emc-history-empty">暂无匹配会话</div>'; return; }
+  filtered.sort((a, b) => b.ts - a.ts);
+  list.innerHTML = filtered.map((it) =>
+    `<div class="emc-history-item${it.isCurrent ? ' is-current' : ''}" data-id="${it.id}">`
+    + `<span class="emc-history-txt"><span class="emc-history-title">${escapeHtml(it.title)}</span>`
+    + `<span class="emc-history-time">${formatTs(it.ts)}</span></span>`
+    + (it.isCurrent ? '' : `<button class="emc-history-del" data-id="${it.id}" title="删除该会话"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M7 7l1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>`)
+    + `</div>`
+  ).join('');
+  list.querySelectorAll('.emc-history-item').forEach((row) => {
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.emc-history-del')) return;
+      const id = row.dataset.id;
+      if (id === '__current__') { setView('chat'); return; }
+      switchSession(id); setView('chat');
     });
-    pop.querySelectorAll('.chat-pop-del').forEach((b) => b.addEventListener('click', () => deleteSession(b.dataset.id)));
-  }
-  const head = document.querySelector('#chat-panel .chat-head');
-  if (head) head.appendChild(pop);
-  setTimeout(() => {
-    const onDoc = (e) => { if (!pop.contains(e.target) && !e.target.closest('#chat-history')) { pop.remove(); document.removeEventListener('click', onDoc); } };
-    document.addEventListener('click', onDoc);
-  }, 0);
+  });
+  list.querySelectorAll('.emc-history-del').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); deleteSession(b.dataset.id); }));
 }
 
 function onMsgClick(e) {
+  const copy = e.target.closest('.emc-copy-btn');
+  if (copy) {
+    const bubble = copy.closest('.chat-bubble');
+    const answer = bubble && bubble.querySelector('.aiq-answer');
+    const text = answer ? answer.innerText : (bubble ? bubble.innerText : '');
+    navigator.clipboard?.writeText(text);
+    copy.classList.add('is-ok'); setTimeout(() => copy.classList.remove('is-ok'), 1200);
+    return;
+  }
   const reason = e.target.closest('.aiq-reason.is-done');
   if (reason) { reason.classList.toggle('is-open'); return; }
   const chip = e.target.closest('.cite-chip');
@@ -646,24 +791,8 @@ function mountChatChrome() {
   }
 }
 
-/** 主窗口入口。 */
+/** 主窗口入口。EMC 常驻左端栏下半区（无 trigger / 无 close ×）。 */
 export function initChatPanel() {
-  const trigger = document.getElementById('chat-trigger');
-  trigger?.addEventListener('click', () => {
-    const panel = document.getElementById('chat-panel');
-    if (!panel) return;
-    const open = panel.classList.contains('is-collapsed');
-    panel.classList.toggle('is-collapsed', !open);
-    if (open) {
-      injectModeSwitch(); mountChatChrome();
-      // 流式中不 restoreHistory：它会清空 #chat-messages 重建，破坏进行中的 shell（hooks 指向脱离 DOM 的旧元素 → 回答停住）
-      if (!_streaming) restoreHistory();
-      setTimeout(() => document.getElementById('chat-input')?.focus(), 50);
-    }
-  });
-  document.getElementById('chat-close')?.addEventListener('click', () => {
-    document.getElementById('chat-panel')?.classList.add('is-collapsed');
-  });
   document.getElementById('chat-new')?.addEventListener('click', () => {
     if (_streaming) return;   // 流式中忽略
     if (_history.length) {   // 当前会话存档
@@ -672,9 +801,13 @@ export function initChatPanel() {
     }
     clearChat();
     updateContextCapacity(null);
+    if (_view === 'history') setView('chat');
     document.getElementById('chat-input')?.focus();
   });
-  document.getElementById('chat-history')?.addEventListener('click', (e) => { e.stopPropagation(); toggleHistoryDropdown(); });
+  document.getElementById('chat-history')?.addEventListener('click', () => toggleHistoryView());
+  document.getElementById('emc-history-search')?.addEventListener('input', (e) => renderHistoryList(e.target.value));
+
+  // 发送 / Enter 发送 / Esc 中断
   const sendBtn = document.getElementById('chat-send');
   const input = document.getElementById('chat-input');
   sendBtn?.addEventListener('click', () => {
@@ -683,9 +816,31 @@ export function initChatPanel() {
   });
   input?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input.value); }
+    else if (e.key === 'Escape' && _streaming && _abortCtl) { e.preventDefault(); _abortCtl.abort(); }
   });
+  // textarea 自适应增高（长 prompt 体验，封顶 160px）
+  input?.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(160, input.scrollHeight) + 'px';
+  });
+
+  // + 附加当前选中图层/范围作上下文
+  document.getElementById('emc-affix-add')?.addEventListener('click', () => {
+    const sel = getSelectedLayer();
+    const name = sel && sel.name;
+    if (name && input) {
+      const tag = `（参考图层：${name}）`;
+      input.value = (input.value && !input.value.endsWith(' ')) ? input.value + ' ' + tag : (input.value || '') + tag;
+      input.focus();
+    } else {
+      input?.focus();
+    }
+  });
+
   document.getElementById('chat-messages')?.addEventListener('click', onMsgClick);
-  injectModeSwitch();
+  wireModeSwitch();
   restoreHistory();
   mountChatChrome();
+  setupEmcHeightObservers();
+  setEmcMode('comfort');
 }

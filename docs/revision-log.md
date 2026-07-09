@@ -39,7 +39,7 @@ emotion_map（根）
 │  ├─ Range 范围 🔄  上载模块 ✅（绘制工具迁入 + 两组卡 + 自动 popup）｜绘制模块 ✅（多边形/矩形 移植 geojson.io，绘制卡常驻；点/线/圆 ⬜）｜范围分析 ⬜（缓冲/叠加/聚合）
 │  ├─ Analysis 情绪分析接入 ⬜  L2 管道接前端 / 空间分析 MVP
 │  ├─ Table 数据表格 ⬜  列表 / 筛选 / 导出（联动管线已预留）
-│  └─ AI 问答 🔄  Harness 四层 ✅（知识层 MANIFESTO + 思考层 think{framing,mapping,steps[]} + 执行层 tool 协议化 + 审查层 Review 6条+Revise）｜独立子架构 ✅（后端 ai_qa/ + 前端 js/ai_qa/，从 core/chat_context+llm_client + chat-panel/chat-orchestrator 散落迁入）｜独立窗口化 ✅（chat.html 真独立窗 + 浮窗降级 + BroadcastChannel 协议；panel.js 不调 map/state）｜设计圣经 docs/ai-qa-design.md；provider-agnostic（DeepSeek→溯佰科改 ai_qa/llm.py 一处）
+│  └─ AI 问答 🔄  Harness 四层 ✅（知识层 MANIFESTO + 思考层 think{framing,mapping,steps[]} + 执行层 tool 协议化 + 审查层 Review 6条+Revise）｜独立子架构 ✅（后端 ai_qa/ + 前端 js/ai_qa/，从 core/chat_context+llm_client + chat-panel/chat-orchestrator 散落迁入）｜独立窗口化 ✅（chat.html 真独立窗 + 浮窗降级 + BroadcastChannel 协议；panel.js 不调 map/state）｜设计圣经 docs/ai-qa-design.md；provider-agnostic（DeepSeek→溯佰科改 ai_qa/llm.py 一处）｜EMC UI 重设计 ✅（左端栏融合[上下分区 #lp-upper+.gutter-emc+#emc-panel + 纵向拖拽] + 智能高度三档[compact/comfort/expand + 手动基线回退] + 历史 1:1 Claude Code[就地视图+搜索+列表] + Claude Code 交互语言[Thinking 头/工具卡/复制/Esc/code-block]，5.48）
 │
 └─ 临时分支（搁置 / 待决策）
    ├─ KDE 批1 1a 预览图 ⏸  等 terrain/factor kepler 截图补齐
@@ -935,6 +935,20 @@ flowchart TD
 - **差异化确认**：情绪地图壁垒（4×5 / 尺度范式 / 情绪数据 / answer-level 产物 gate `_verifyClaims` / 18 工具 function-calling）GIS Copilot 没有。
 - **验证**：TestClient catalog samples/dtypes/crs ✓（polarity=str / score=float64 / ...）；preset 不可用 detail 含可用列表 ✓。
 - 详细抽取清单存 plan 附录，项目不再重读。
+
+### 5.48 AI 问答 · EMC UI 重设计：左端栏融合 + 智能高度 + Claude Code 交互语言（07月09日）
+
+AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操作按钮 + 诚实铁律）后，把**底部独立抽屉**重设计为融入左端栏的 **EmotionMap Copilot（EMC）**（VS Code Claude Code 插件式），并 1:1 对齐 Claude Code 对话交互语言。纯前端容器迁移 + EMC 内部交互，**承重逻辑（视野-数据-结论同步 / KDE cascade-exclude / 4×5 归因 / 对称拉伸 / tip-popup）全程未碰**。
+- **结构** [index.html](frontend/index.html) + [layout.css](frontend/css/layout.css)：`#left-panel` 上下分区——上半 `#lp-upper`（Range/Layers/Toolbox）+ 横向拖拽条 `.gutter-emc` + 下半 `#emc-panel`（EMC）；默认宽 240→**380**。
+- **EMC 迁入 + 重命名 + 去控件**：删 `#chat-trigger` FAB + `#chat-close` ×（EMC 非独立浮窗）；标题 "AI 规划问答"→**"EmotionMap Copilot"**；容器 `#chat-panel`→`#emc-panel`（dock 流内，退 fixed 抽屉/is-collapsed）。
+- **历史 1:1 Claude Code** [panel.js](frontend/js/ai_qa/panel.js)：就地视图切换（chat↔history）+ 搜索框 + 列表（标题+时间+垃圾桶）；数据层 `_archive`/`_history`/`switchSession`/`deleteSession` **零改**，仅视图层重写。
+- **Pro/Flash 移至发送左侧**（输入底部条 = ctx 圈/+附加/Pro·Flash … 发送）+ **textarea 加高 2×**（min 76px→封顶 160px 自适应）。
+- **智能高度三档**（compact 160 / comfort 窗口½ / expand 窗口⅔）：图层堆积→让位、对话/流式→撑开、选层→重算；**手动拖设 `--emc-h-user` 基线、自动围绕基线回退**（用户决策：3 档全自适应 + 基线回退）。
+- **Claude Code 交互语言对齐**：Thinking 头 `Thought for Ns · Nk token`（可折叠）+ 工具调用卡（renderToolCard：名+目标+✓/✕+结果可展开）+ Esc 中断 + 助手 hover 复制 + 代码块语言标签+复制。
+- **token** [tokens.json](design/tokens.json)：左栏 `leftPanelMin` 220→300、`leftPanelWidth` 240→380，重跑 `generate_css.py` 同步 [tokens.css](frontend/css/tokens.css)。
+- **2 bug 修**（Playwright 自检发现）：① `.gutter-emc` 被 layout.css 后定义的 `.gutter` 同优先级反覆盖（col-resize）→ 提优先级 `.gutter.gutter-emc`；② `_checkCrowded` 读到隐藏但渲染的 `.lp-zone-operate` 误判拥挤 → 加「无图层→comfort」前置守卫。
+- **主题**：浅色（与主界面一致，用户定；勿改深色）。
+- **验证**：Playwright 自检——console 无 JS 报错｜初始 EMC=comfort(425px=窗口½)｜gutter `row-resize`/满宽 379×8｜历史视图切换+搜索+列表 ✓｜语法 ✓。深度功能（工具卡/真实查询/拖拽手感）待用户肉眼验。
 
 ## 6. 持续追加规则（给 AI）
 

@@ -84,6 +84,54 @@ function initDrag(gutter, side) {
   });
 }
 
+// ── EMC 纵向拖拽（gutter-emc → --emc-h）+ resize 重算 ────────────────────
+//   复用 readVarPx 思路；读 #emc-panel.offsetHeight（px，不受 var 单位影响）。
+//   手动拖拽 = 写 --emc-h-user 基线 + 标 window._emcUserBaseline（panel.js setEmcMode 据此回退）。
+function initVDrag(gutter) {
+  if (!gutter) return;
+  gutter.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    const panel = document.getElementById('emc-panel');
+    if (!panel) return;
+    document.body.classList.add('dragging');
+    const startY = e.clientY;
+    const startH = panel.offsetHeight;
+    const move = (ev) => {
+      const win = window.innerHeight;
+      const min = 160;                       // EMC 最小 ≈ 一个对话框
+      const max = win - win / 3;             // 上层最小 1/3 窗口高 → EMC 上限
+      const h = Math.max(min, Math.min(max, startH - (ev.clientY - startY)));
+      document.documentElement.style.setProperty('--emc-h', `${h}px`);
+      document.documentElement.style.setProperty('--emc-h-user', `${h}px`);
+      window._emcUserBaseline = true;
+    };
+    const up = () => {
+      document.body.classList.remove('dragging');
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  });
+}
+
+function initEmcResize() {
+  let raf = 0;
+  window.addEventListener('resize', () => {
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      const panel = document.getElementById('emc-panel');
+      if (!panel) return;
+      const win = window.innerHeight;
+      const min = 160;
+      const max = win - win / 3;
+      const h = Math.max(min, Math.min(max, panel.offsetHeight));
+      document.documentElement.style.setProperty('--emc-h', `${h}px`);
+    });
+  });
+}
+
 // ── Import trigger ────────────────────────────────────────────────────────
 // Both toolbar Import and left-panel Import are identical: open the NATIVE file
 // picker (no submenu). Does NOT switch the left panel to sections — that only
@@ -687,7 +735,9 @@ export function initSidebar({ onFiles, onRangeFiles } = {}) {
 
   document.querySelectorAll('.collapse-btn').forEach((btn) =>
     btn.addEventListener('click', () => togglePanel(btn.dataset.side)));
-  document.querySelectorAll('.gutter').forEach((g) => initDrag(g, g.dataset.side));
+  document.querySelectorAll('.gutter:not(.gutter-emc)').forEach((g) => initDrag(g, g.dataset.side));
+  initVDrag(document.getElementById('gutter-emc'));
+  initEmcResize();
   // 区1 选择栏：tab 互斥切换（替代原加法式手风琴 .lp-section .open）
   document.querySelectorAll('.lp-tab').forEach((t) =>
     t.addEventListener('click', () => setActiveTab(t.dataset.tab)));

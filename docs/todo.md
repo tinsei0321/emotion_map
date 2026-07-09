@@ -7,6 +7,19 @@
 
 ## 📅 2026-07-09
 
+### ✅ AI 问答 · EMC UI 重设计：左端栏融合 + 智能高度 + Claude Code 交互（revision-log 5.48）
+
+AI 问答基座稳后，从底部独立抽屉重设计为融入左端栏的 **EmotionMap Copilot（EMC）**（VS Code Claude Code 插件式），1:1 对齐 Claude Code 对话交互。**承重逻辑未碰**。
+- **结构** [index.html](frontend/index.html)+[layout.css](frontend/css/layout.css)：`#left-panel` 上下分区（`#lp-upper` + `.gutter-emc` 纵向拖拽 + `#emc-panel`），默认宽 240→380。
+- **EMC 迁入**：删 `#chat-trigger` FAB + `#chat-close` ×；标题→"EmotionMap Copilot"；`#chat-panel`→`#emc-panel`（dock 流内）。
+- **历史 1:1 Claude Code** [panel.js](frontend/js/ai_qa/panel.js)：就地视图(chat↔history)+搜索+列表+垃圾桶；数据层零改。
+- **Pro/Flash 移发送左侧** + **textarea 加高 2×**（76→160 自适应）。
+- **智能高度三档**(compact/comfort/expand)：图层堆积→让位、对话→撑开、选层→重算；手动拖设基线、自动围绕基线回退。
+- **Claude Code 交互**：Thinking 头(Thought for Ns·Nk)+工具卡(renderToolCard)+Esc 中断+hover 复制+代码块复制。
+- **token** [tokens.json](design/tokens.json)：左栏 min/width 上调 + 重跑生成器。
+- **2 bug**：`.gutter` 同优先级反覆盖→`.gutter.gutter-emc`；`_checkCrowded` 误判隐藏 operate 拥挤→无图层守卫。
+- **验证**：Playwright 自检过（console 无错/comfort 425/gutter row-resize/历史切换 ✓/语法 ✓）。深度（工具卡/真实查询/拖拽手感）待用户肉眼验。
+
 ### ✅ AI 问答 · catalog 数据 overview + 错误 detail 可操作化（吸收 GIS Copilot，revision-log 5.47）
 
 一次性通读 docs/SpatialAnalysisAgent-master（Penn State GIS Copilot）。架构不同（code-exec vs tool-schema），吸收两点：

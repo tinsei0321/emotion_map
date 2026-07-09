@@ -7,8 +7,9 @@
 * { box-sizing: border-box; }
 
 :root {
-  --left-w: 240px;                        /* left panel default OPEN（×0.8，三区导航更紧凑） */
+  --left-w: 380px;                        /* left panel default OPEN（加宽以承载 EMC 对话） */
   --right-w: 0px;                         /* right panel default FOLDED (选中图层后自动弹开) */
+  --emc-h: 46vh;                          /* EMC 下半区高度（setEmcMode 三档 px 驱动；vh 仅初始兜底） */
 }
 
 html, body {
@@ -91,8 +92,44 @@ button { font-family: inherit; }
   overflow: hidden;
   transition: width var(--geojson-transition), flex-basis var(--geojson-transition);
 }
+
+/* ── Left panel 上半区（Import / Range·Layers·Toolbox）；最小缩到 1/3 窗口高 ── */
+#lp-upper {
+  flex: 1 1 auto;
+  min-height: calc((100vh - var(--geojson-layout-header-height)) / 3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── 上下拖拽分隔条（纵向调 EMC 高度；复用 .gutter 视觉，覆盖宽/光标）──
+ *   用 .gutter.gutter-emc 提优先级（.gutter 定义在本文件更靠后，同优先级会反向覆盖）。 */
+.gutter.gutter-emc {
+  width: auto;
+  height: 8px;
+  flex: 0 0 8px;
+  cursor: row-resize;
+  border-top: 1px solid var(--geojson-color-border-default);
+}
+
+/* ── Left panel 下半区：EMC（智能高度 --emc-h；最小一对话框，最大受上层 1/3 保底）── */
+#emc-panel {
+  height: var(--emc-h);
+  flex: 0 0 var(--emc-h);
+  min-height: 160px;
+  max-height: calc(100vh - var(--geojson-layout-header-height) - (100vh / 3));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--geojson-color-surface-panel);
+  border-top: 1px solid var(--geojson-color-border-default);
+  transition: height .2s ease, flex-basis .2s ease;
+}
+
 body.dragging #left-panel,
-body.dragging #right-panel { transition: none; }
+body.dragging #right-panel,
+body.dragging #lp-upper,
+body.dragging #emc-panel { transition: none; }
 
 #map {
   flex: 1 1 auto;
