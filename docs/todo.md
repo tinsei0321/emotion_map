@@ -7,6 +7,13 @@
 
 ## 📅 2026-07-09
 
+### ✅ EMC 紧急修：对话空白(再) + 只留最终结果层（revision-log 5.52）
+
+- **bug1 对话空白（第二次）**：根因 = 5.51 focusOnlyResults 对 AI 结果 selectLayer+dispatch layer:selected → refreshOverview→focusLayer(结果)返父组→tier1 读 group.fc.features，而 _aiGroup 建组未传 fc→每次产图层工具崩→查询脱轨对话不完整→"点历史才显示"。修：_aiGroup 传空 fc / focusOnlyResults 去 selectLayer / tier1 加守卫。
+- **bug2 过程层进 Layers**：extract→overlay 链显两层。修：addResultLayer 加新结果前移除本轮前序结果（中间产物），只留最终。$n 走 _stepResults fc 不受影响。
+- **验证**：reload 0 错（原 4 错/查询清零）｜真查询跑通对话全程渲染｜mock 链后仅留最终层。
+- **后续**：阶段 2（EMC 交互）+ 阶段 3（用地色）待续。
+
 ### ✅ EMC 增强·阶段 1：AI 结果呈现（revision-log 5.51）
 
 - **①组重命名**：「AI 工作区」→「EmotionMap Copilot」（tools.js + state.js，仍 'ai' 类钉底）。

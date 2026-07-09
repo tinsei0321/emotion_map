@@ -1,7 +1,7 @@
 // ═══ tools.js — Agent Loop 工具集（查询型 + 操作型，直调主窗口函数）═══
 // 还原单窗口后，tools 直调 map/state/panel（删跨窗口协议）。每个 tool 返回 {observation, data?}：
 //   observation = 给 LLM 看的摘要字符串（入 tool_history）；data = 结构化（前端可选用于渲染）。
-import { getLayers, getLayer, getSelectedLayer, addLayer, addGroup, removeLayer, setLayerVisible, selectLayer } from '../state.js';
+import { getLayers, getLayer, getSelectedLayer, addLayer, addGroup, removeLayer, setLayerVisible } from '../state.js';
 import { fitBoundsTo, renderLayer, reorderAllZ, removeLayerFromMap } from '../map.js';
 import { activateTab, setOverview } from '../panel.js';
 import { DOMAIN_LABEL, ELEMENT_LABEL } from '../popup.js';
@@ -119,10 +119,11 @@ function fitToFeature(f) {
   if (isFinite(mnX)) fitBoundsTo([mnX, mnY, mxX, mxY]);
 }
 
-/** AI 工具产出的图层统一归入「EmotionMap Copilot」组（复用 state.addGroup；组卡片由 sidebar 现有逻辑渲染）。 */
+/** AI 工具产出的图层统一归入「EmotionMap Copilot」组（复用 state.addGroup；组卡片由 sidebar 现有逻辑渲染）。
+ *  必传空 fc：组会被 focusLayer() 当作 Overview 焦点（tier1 读 group.fc.features），无 fc 则崩溃。 */
 function _aiGroup() {
   const existing = getLayers().find((l) => l.kind === 'group' && l.name === 'EmotionMap Copilot');
-  return existing || addGroup({ name: 'EmotionMap Copilot' });
+  return existing || addGroup({ name: 'EmotionMap Copilot', fc: { type: 'FeatureCollection', features: [] } });
 }
 
 /** 多 bbox 并集 → [minX,minY,maxX,maxY]（供多结果同屏缩放）。 */
@@ -137,8 +138,10 @@ function _unionBBox(ids) {
   }
   return u;
 }
-/** 沉浸聚焦：隐藏除本轮结果外的全部图层（含 Range/点/旧结果），Overview 追随最后一个结果。
- *   AI 结果是 R-group（enforceMutualExclusion 不动它），故不走互斥，直关。 */
+/** 沉浸聚焦：隐藏除本轮结果外的全部图层（含 Range/点/旧结果）。
+ *   AI 结果是 R-group（enforceMutualExclusion 不动它），故不走互斥，直关。
+ *   不 selectLayer/dispatch layer:selected：AI 结果是 polygon 无归因数据，强制 Overview 追随会触发
+ *   refreshOverview→tier1 在 group(曾无 fc)上崩溃（bug1）。用户只要缩放+关其余。 */
 function focusOnlyResults() {
   const keep = new Set(_curResultIds);
   for (const l of getLayers()) {
@@ -147,8 +150,6 @@ function focusOnlyResults() {
     if (want && !l.visible) { setLayerVisible(l.id, true); renderLayer(l); }
     else if (!want && l.visible) { setLayerVisible(l.id, false); renderLayer(l); }
   }
-  const last = getLayer(_curResultIds[_curResultIds.length - 1]);
-  if (last) { selectLayer(last.id); document.dispatchEvent(new CustomEvent('layer:selected', { detail: last.id })); }   // 视野-数据-结论同步：Overview 追随
 }
 
 /** 把 geo 工具产出的 GeoJSON 落地图为新图层（统一回写，复用 range-presets/grid-tool 范式）。
@@ -160,6 +161,9 @@ export function addResultLayer({ name, kind = 'polygon', fc, paint }) {
   for (const l of getLayers()) {
     if (l.name === name) { removeLayerFromMap(l.id); removeLayer(l.id); }
   }
+  // 过程层收尾：本轮前序结果视为中间产物移除——Layers/地图只留最终结果（如 extract→overlay 只留 overlay）。
+  // $n 引用走 _stepResults 的 fc（ref 解析不依赖图层存活），不受影响。
+  for (const id of _curResultIds.splice(0)) { removeLayerFromMap(id); removeLayer(id); }
   const L = addLayer({ name, kind, fc, paint, parentId: _aiGroup().id });
   L.srcName = name;
   _curResultIds.push(L.id);                 // 登记本轮结果（沉浸聚焦）

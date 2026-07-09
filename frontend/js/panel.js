@@ -588,6 +588,7 @@ export function setCellOverview(_feature, _layer) { /* removed: 单元深读 →
  *  L2 综合标准网格 → "L2·综合·T3·标准网格·400m"；非分析层同范式按类型给。 */
 const LEVEL_SHORT = { L0: 'L0', L1: 'L1', L2: 'L2', range: 'Range' };
 function tier1(layer, lv) {
+  if (!layer || !layer.fc) return '<div class="ov-tier ov-t1"><div class="ov-t1-name">—</div></div>';   // 防 group/无 fc 焦点崩（bug1）
   const ui = (layer.paint && layer.paint._ui) || {};
   const analysis = isAnalysisLayer(layer);
   const parts = [];

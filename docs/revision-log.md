@@ -977,6 +977,14 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **③沉浸聚焦**（用户选「全部关闭，纯聚焦结果」）：`addResultLayer`（tools.js）每生成结果 → 新 `focusOnlyResults()` 关掉**除本轮结果外的全部图层**（含 Range/点/旧结果；AI 结果是 R-group，enforceMutualExclusion 不动它，故新辅助直关）+ 缩放至本轮所有结果 **bbox 并集**（maxZoom 16 防过度放大）+ Overview 追随末结果（视野-数据-结论同步）。`_curResultIds` 每轮 `send()` 开头 `resetCurrentResults()` 清空 → 多结果同屏、跨轮聚焦。
 - **验证**：node --check + py parse ✓｜reload 0 报错｜mock 测：结果层入「EmotionMap Copilot」组、categoryOf='ai'、既有 L2 点+Range 被关、结果层显。命名/真查询待用户真环境。
 
+### 5.52 EMC 紧急修：对话空白(再) + 只留最终结果层（07月09日）
+
+用户验 5.51 报两 bug，均根于 5.51 沉浸聚焦引入的路径：
+- **bug1·对话空白（第二次）**：根因 = 5.51 `focusOnlyResults` 对 AI 结果 `selectLayer`+dispatch `layer:selected` → `refreshOverview→setOverview→focusLayer(结果)` 返回**父组** → `tier1` 读 `group.fc.features`，而 `_aiGroup()` 建组**未传 fc**（undefined）→ **每次产图层工具都崩**（extract/overlay 全中）→ 工具 try/catch 吞错返 `_ERR` → 查询脱轨、对话渲染不完整 →「点历史才显示」（switchSession 重渲持久 trace）。**修**：①`_aiGroup` 传空 fc；②`focusOnlyResults` 去 `selectLayer`/`layer:selected`（AI 结果是 polygon 无归因数据，不该强 Overview 追随；用户只要缩放+关其余）；③`tier1` 加 `!layer||!fc` 守卫（兜底）。
+- **bug2·过程层也进 Layers**：用户「筛选西陵区内商业用地」=extract(西陵区)→overlay(商业用地) 链，Layers 显了**两层**（西陵区 + 西陵区商业用地），应只留最终。**修**：`addResultLayer` 每加新结果前**移除本轮前序结果**（中间产物）→ Layers/地图只留最终结果。$n 引用走 `_stepResults` 的 fc（不依赖图层存活），不受影响。
+- **验证**：reload 0 报错（原 4 错/查询清零）｜真查询"筛选西陵区商业用地"跑通、对话全程渲染、组名=EmotionMap Copilot｜mock 链 extract→overlay 后仅留 overlay（r1 删除/r2 在）。
+- **承重**：未碰。tier1 守卫是纯加（null/无 fc 返占位）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。
