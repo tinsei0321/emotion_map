@@ -959,6 +959,16 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **清理**：`git rm` 上轮崩溃残留孤儿临时文件 `panel.js.tmp.7336.8a8a4e4363a8`（前端零引用）。
 - **验证**：node --check ✓｜reload 0 报错｜DOM 测三项数值达标｜vision 复核无白底白字/溢出。
 
+### 5.50 EMC 模块 Dark 模式（Claude Code 深灰 + 橙）· 纯换肤（07月09日）
+
+5.49 的紫(#58427c)+白标题用户嫌不好看，要求把**整个 EMC 模块**做成 **Claude Code 风 Dark**（深炭灰 + Claude 橙 #D97757）。**仅 EMC 一块深色，主界面（左栏上半/地图/右栏）保持浅色**——构成对「chrome 永远白」的 scoped 例外。
+- **手法（纯 CSS，零 JS）**：`#emc-panel` 顶部一块 **scope 覆写 `--geojson-color-*`** → 所有 `var()` 规则一键暗化；其中 `--geojson-color-brand-primary: #D97757` 让 thinking/diag-chip/toolcard-run/step-num/cite/strong/back-btn/action-btn **随之一键蓝→橙**（≈16 条省去逐改）。
+- **调色板**：基底 `#1f1f1f`／凸起 `#262626`／hover `#2a2a2a`／边 `#3a3a3a`／正文 `#ECECEC`／次 `#A0A0A0`／弱 `#707070`／**橙 `#D97757`**／用户气泡 `#303030`（灰，非橙——橙留给点缀，助手才出彩，更像 Claude Code）／danger `#E06C5C`。
+- **逐处硬编码改**（≈15 处）：chat-head/send/aiq-mode 紫→暗/橙；蓝 `rgba(66,133,244,*)`→橙 `rgba(217,119,87,*)`；黑分割线 `rgba(0,0,0,*)`→白 `rgba(255,255,255,*)`；`:focus` 白底→`#1a1a1a`；用户气泡橙→灰；状态绿 `#2e8b57`→`#4ADE80`（深底更跳）。
+- **细节**：暗滚动条、`.gutter-emc` 暗化（浅上半→深 EMC 无缝）、textarea `caret-color` 橙、代码块 `pre` 压到 `#161616`（跳出气泡）、`color-scheme:dark`（原生控件/选区跟暗）。
+- **未碰**：panel.js（零内联色，CSS 全控）/ state.js / sidebar.js / 承重逻辑 / 5.49 几何与图层钉底。
+- **验证**：reload 0 报错｜DOM 测色全中（panel `rgb(31,31,31)`/head `rgb(22,22,22)`/send+Pro-active `rgb(217,119,87)`/user-bubble `rgb(48,48,48)`/左栏仍 `rgb(255,255,255)`｜EMC 内 `white_bgs=[]` 无白底泄漏）｜vision 复核深底字可读、橙点缀可见、浅/暗分区干净｜5.49 回归：compact(320) chat-messages=146px。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

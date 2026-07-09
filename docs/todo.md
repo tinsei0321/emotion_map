@@ -7,6 +7,14 @@
 
 ## 📅 2026-07-09
 
+### ✅ EMC 模块 Dark 模式（Claude Code 深灰 + 橙）· 纯换肤（revision-log 5.50）
+
+5.49 紫白标题嫌丑 → 整个 EMC 做 Claude Code 风 Dark（深炭灰 + Claude 橙 #D97757）；**仅 EMC 深色，主界面保浅色**。
+- **手法**：`#emc-panel` scope 覆写 `--geojson-color-*` 一键暗化 + `brand-primary:#D97757` 一键蓝→橙；≈15 处硬编码色逐改（紫→暗/橙、蓝 tint→橙、黑分割线→白、focus 白底→暗、用户气泡橙→灰、状态绿提亮）。
+- **细节**：暗滚动条、gutter-emc 无缝、橙色 caret、代码块压深、color-scheme:dark。
+- **未碰**：JS/承重逻辑/5.49 几何与图层钉底。
+- **验证**：reload 0 错｜DOM 测色全中 + EMC 内 white_bgs=[]｜vision 复核可读/无泄漏｜compact(320) chat-messages=146px 回归过。
+
 ### ✅ EMC 肉眼验修复：对话空白严重 bug + 标题栏配色 + 图层钉底（revision-log 5.49）
 
 用户肉眼验 5.48 后报三类问题，定位根因并修（承重逻辑未碰）。

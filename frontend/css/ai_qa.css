@@ -1,6 +1,36 @@
-/* ═══ ai_qa.css — AI 问答样式（主窗口底部滑出 · agent loop）═══ */
-/* 还原 B1 底部滑出形态（删独立窗/浮窗降级），保留思考流样式（reasoning + 解题步骤 + 结论）。 */
-/* 设计 token 与主页面同源（tokens.css --geojson-*）。 */
+/* ═══ ai_qa.css — AI 问答样式（EMC · agent loop）═══ */
+/* EMC = EmotionMap Copilot，Claude Code 式深色主题（深炭灰 + Claude 橙 #D97757）。 */
+/* 范围：仅 #emc-panel 一块深色；主界面（左栏上半/地图/右栏）保持浅色不动。 */
+
+/* ── EMC Dark 主题（scope 到 #emc-panel：覆写 --geojson-color-* 让所有 var() 规则一键暗化 +
+ *   brand-primary→Claude 橙，使 thinking/diag-chip/toolcard/step-num/cite/back-btn/action-btn 随之转橙）── */
+#emc-panel {
+  --geojson-color-surface-panel: #1f1f1f;       /* 面板基底 */
+  --geojson-color-surface-panel-alt: #262626;   /* 凸起面（dock/输入框/工具卡体） */
+  --geojson-color-text-primary: #ECECEC;
+  --geojson-color-text-secondary: #A0A0A0;
+  --geojson-color-text-tertiary: #707070;
+  --geojson-color-border-default: #3a3a3a;
+  --geojson-color-gray-100: #2a2a2a;            /* hover / 代码块 / 工具卡体底 */
+  --geojson-color-gray-200: #3a3a3a;            /* 卡片边 */
+  --geojson-color-brand-primary: #D97757;       /* Claude 橙（点缀专用，非大面积） */
+  --geojson-color-danger: #E06C5C;
+  --emc-accent: #D97757;
+  --emc-accent-soft: rgba(217, 119, 87, 0.12);
+  --emc-divider: rgba(255, 255, 255, 0.08);
+  --emc-user-bubble: #303030;
+  color-scheme: dark;                           /* 原生滚动条/选区/textarea caret 跟暗 */
+}
+/* EMC 内细滚动条（Claude Code 风） */
+#emc-panel, #emc-panel * { scrollbar-width: thin; scrollbar-color: #3a3a3a transparent; }
+#emc-panel::-webkit-scrollbar, #emc-panel *::-webkit-scrollbar { width: 8px; height: 8px; }
+#emc-panel *::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 4px; }
+#emc-panel *::-webkit-scrollbar-track { background: transparent; }
+
+/* EMC 上沿拖拽条（#left-panel 子级，非 #emc-panel 内）单独暗化，使浅色上半→深色 EMC 过渡无缝。
+   ai_qa.css 晚于 layout.css 加载，同优先级 .gutter.gutter-emc 此处覆盖。 */
+.gutter.gutter-emc { background: #1f1f1f; border-top: 1px solid #3a3a3a; }
+.gutter.gutter-emc:hover { background: #2a2a2a; }
 
 /* ── EMC 视图容器（对话 / 历史 互斥；#emc-panel 几何见 layout.css）── */
 .emc-view { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
@@ -39,9 +69,9 @@
 .emc-history-empty { padding: 24px 12px; text-align: center; font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-tertiary); }
 
 .chat-head {
-  display: flex; align-items: center; gap: 8px; padding: 6px 10px;   /* 压缩高度省空间（原 10px 14px） */
-  border-bottom: 1px solid rgba(255,255,255,0.12);
-  background: #58427c;
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+  border-bottom: 1px solid #303030;
+  background: #161616;   /* 比面板更深，锚定顶部 */
 }
 .chat-head .chat-title { font-size: var(--geojson-typography-size-sm); font-weight: var(--geojson-typography-weight-bold); color: #fff; }
 .chat-head .chat-subtitle { font-size: var(--geojson-typography-size-xs); color: rgba(255,255,255,0.7); }
@@ -69,12 +99,12 @@
   font-size: var(--geojson-typography-size-sm); line-height: 1.55;
   border-radius: 12px; word-break: break-word;
 }
-.chat-msg-user .chat-bubble { background: var(--geojson-color-brand-primary, #4285F4); color: #fff; border-bottom-right-radius: 4px; }
+.chat-msg-user .chat-bubble { background: var(--emc-user-bubble, #303030); color: var(--geojson-color-text-primary, #ECECEC); border-bottom-right-radius: 4px; }
 .chat-msg-assistant .chat-bubble { background: var(--geojson-color-gray-100, #f5f5f5); color: var(--geojson-color-text-primary); border-bottom-left-radius: 4px; }
 .chat-bubble p { margin: 0 0 6px; }
 .chat-bubble p:last-child { margin-bottom: 0; }
 .chat-bubble ul, .chat-bubble ol { margin: 4px 0 6px; padding-left: 20px; }
-.chat-bubble code { background: rgba(0,0,0,0.06); padding: 1px 4px; border-radius: 3px; font-size: 0.9em; }
+.chat-bubble code { background: rgba(255,255,255,0.08); padding: 1px 4px; border-radius: 3px; font-size: 0.9em; }
 .chat-bubble strong { color: var(--geojson-color-brand-primary, #4285F4); }
 
 .chat-cursor { color: var(--geojson-color-brand-primary, #4285F4); animation: chat-blink 0.9s steps(2) infinite; }
@@ -84,10 +114,10 @@
 .cite-chip {
   display: inline-flex; align-items: center; margin: 0 2px; padding: 1px 7px;
   font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-brand-primary, #4285F4);
-  background: rgba(66, 133, 244, 0.1); border: 1px solid rgba(66, 133, 244, 0.3);
+  background: rgba(217, 119, 87, 0.12); border: 1px solid rgba(217, 119, 87, 0.4);
   border-radius: 999px; cursor: pointer; vertical-align: baseline;
 }
-.cite-chip:hover { background: rgba(66, 133, 244, 0.2); }
+.cite-chip:hover { background: rgba(217, 119, 87, 0.22); }
 
 /* ── 输入区（加高 textarea ~2× + 底部条 ctx/+ /Pro·Flash/发送）── */
 .emc-input-area {
@@ -103,7 +133,8 @@
   color: var(--geojson-color-text-primary); background: var(--geojson-color-surface-panel-alt, #f8f8f8);
   border: 1px solid var(--geojson-color-border-default, #e3e5e8); border-radius: 8px; outline: none; overflow-y: auto;
 }
-.chat-input:focus { border-color: var(--geojson-color-brand-primary, #4285F4); background: #fff; }
+.chat-input:focus { border-color: var(--geojson-color-brand-primary, #4285F4); background: #1a1a1a; }
+.chat-input { caret-color: var(--emc-accent, #D97757); }   /* 橙色光标（Claude 感） */
 .emc-input-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
 .emc-input-left { display: flex; align-items: center; gap: 6px; }
 .emc-affix {
@@ -117,12 +148,12 @@
 .chat-send {
   display: inline-flex; align-items: center; justify-content: center;
   width: 32px; height: 32px; line-height: 0;
-  color: #fff; background: #58427c;
+  color: #fff; background: var(--emc-accent, #D97757);
   border: none; border-radius: 6px; cursor: pointer;
 }
 .chat-send:hover { opacity: 0.9; }
 .chat-send.is-stop { background: var(--geojson-color-danger, #d8552f); }
-.chat-action-btn { display: inline-flex; align-items: center; margin: 0 2px; padding: 1px 8px; font-size: var(--geojson-typography-size-xs, 12px); color: var(--geojson-color-brand-primary, #4285F4); background: rgba(66, 133, 244, 0.1); border: 1px solid var(--geojson-color-brand-primary, #4285F4); border-radius: 11px; cursor: pointer; vertical-align: middle; line-height: 1.6; }
+.chat-action-btn { display: inline-flex; align-items: center; margin: 0 2px; padding: 1px 8px; font-size: var(--geojson-typography-size-xs, 12px); color: var(--geojson-color-brand-primary, #4285F4); background: rgba(217, 119, 87, 0.12); border: 1px solid var(--geojson-color-brand-primary, #4285F4); border-radius: 11px; cursor: pointer; vertical-align: middle; line-height: 1.6; }
 .chat-action-btn:hover { background: var(--geojson-color-brand-primary, #4285F4); color: #fff; }
 
 /* ── 思考链（Pro reasoning，跨轮累积，灰显可折叠）── 实时动态 ── */
@@ -137,7 +168,7 @@
 /* ── 工具调用区（Agent Loop 每轮一个 toolcard；容器无框，卡自带框）── */
 .aiq-steps { margin: 0 0 6px; }
 .aiq-steps-head { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 4px; }
-.aiq-step-row { display: flex; gap: 6px; padding: 3px 0; border-bottom: 1px dashed rgba(0,0,0,0.05); }
+.aiq-step-row { display: flex; gap: 6px; padding: 3px 0; border-bottom: 1px dashed rgba(255,255,255,0.06); }
 .aiq-step-row:last-child { border-bottom: none; }
 .aiq-step-num { flex-shrink: 0; width: 1.6em; height: 1.6em; line-height: 1.6em; text-align: center; border-radius: 50%; background: var(--geojson-color-brand-primary, #4285F4); color: #fff; font-size: var(--geojson-typography-size-2xs); font-weight: bold; }
 .aiq-step-content { flex: 1; font-size: var(--geojson-typography-size-xs); line-height: 1.45; }
@@ -151,7 +182,7 @@
 .aiq-answer { min-height: 1em; }
 
 /* ── 动态思考指示器（轮换文案 + 跳动点，参考 Claude/ChatGPT）── */
-.aiq-thinking { display: flex; align-items: center; gap: 6px; margin: 4px 0; padding: 5px 10px; border-radius: 999px; background: rgba(66, 133, 244, 0.08); width: fit-content; }
+.aiq-thinking { display: flex; align-items: center; gap: 6px; margin: 4px 0; padding: 5px 10px; border-radius: 999px; background: rgba(217, 119, 87, 0.08); width: fit-content; }
 .aiq-thinking-text { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-brand-primary, #4285F4); font-weight: var(--geojson-typography-weight-semibold); }
 .aiq-dots { display: inline-flex; gap: 3px; }
 .aiq-dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--geojson-color-brand-primary, #4285F4); animation: aiq-dot 1.2s infinite ease-in-out; }
@@ -163,31 +194,31 @@
 .aiq-mode { display: inline-flex; gap: 0; border: 1px solid var(--geojson-color-border-default, #e3e5e8); border-radius: 999px; overflow: hidden; }
 .aiq-mode button { font-size: var(--geojson-typography-size-2xs); padding: 3px 10px; border: none; background: transparent; color: var(--geojson-color-text-secondary); cursor: pointer; transition: background var(--geojson-transition), color var(--geojson-transition); }
 .aiq-mode button:hover { background: var(--geojson-color-gray-100, #f0f0f0); }
-.aiq-mode button.is-active { background: #58427c; color: #fff; }
+.aiq-mode button.is-active { background: var(--emc-accent, #D97757); color: #fff; }
 
 /* ── 审查状态区（七条 checklist ✓/△/✕ + 整体结论）── */
 .aiq-review { margin: 0 0 6px; padding: 6px 10px; border-left: 2px solid var(--geojson-color-gray-200, #e3e5e8); background: var(--geojson-color-gray-100, #f7f7f7); border-radius: 0 6px 6px 0; }
 .aiq-review-head { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 4px; }
 .aiq-review-verdict { font-size: var(--geojson-typography-size-xs); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 4px; }
-.aiq-review-verdict.pass { color: #2e8b57; }
+.aiq-review-verdict.pass { color: #4ADE80; }
 .aiq-review-verdict.fail { color: var(--geojson-color-danger, #d8552f); }
 .aiq-review-verdict.warn { color: #d9a400; }
 .aiq-review-items { display: flex; flex-wrap: wrap; gap: 4px; }
 .aiq-review-item { display: inline-flex; align-items: center; gap: 2px; padding: 1px 7px; font-size: var(--geojson-typography-size-2xs); border-radius: 999px; border: 1px solid; cursor: default; }
-.aiq-review-item.pass { color: #2e8b57; border-color: #2e8b57; background: rgba(46, 139, 87, 0.08); }
+.aiq-review-item.pass { color: #4ADE80; border-color: #4ADE80; background: rgba(46, 139, 87, 0.08); }
 .aiq-review-item.warn { color: #d9a400; border-color: #d9a400; background: rgba(217, 164, 0, 0.08); }
 .aiq-review-item.fail { color: var(--geojson-color-danger, #d8552f); border-color: var(--geojson-color-danger, #d8552f); background: rgba(216, 85, 47, 0.08); }
 
 /* ── Pro reasoning 按轮分段（每轮一个折叠块，替代跨轮全堆 body）── */
-.aiq-reason-segment { margin-top: 5px; padding-top: 5px; border-top: 1px dashed rgba(0, 0, 0, 0.08); }
+.aiq-reason-segment { margin-top: 5px; padding-top: 5px; border-top: 1px dashed rgba(255, 255, 255, 0.08); }
 .aiq-reason-segment:first-child { border-top: none; margin-top: 0; padding-top: 0; }
 .aiq-reason-seg-head { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 2px; }
 .aiq-reason-seg-body { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
 .aiq-reason.is-flash .aiq-reason-body { display: none; }
 
 /* ── 无效引用 chip（臆造区域名，灰显不可点）── */
-.cite-chip-invalid { color: var(--geojson-color-text-tertiary); background: rgba(0, 0, 0, 0.04); border-color: var(--geojson-color-border-default, #e3e5e8); cursor: not-allowed; text-decoration: line-through; }
-.cite-chip-invalid:hover { background: rgba(0, 0, 0, 0.04); }
+.cite-chip-invalid { color: var(--geojson-color-text-tertiary); background: rgba(255, 255, 255, 0.05); border-color: var(--geojson-color-border-default, #e3e5e8); cursor: not-allowed; text-decoration: line-through; }
+.cite-chip-invalid:hover { background: rgba(255, 255, 255, 0.05); }
 
 /* ── 重写中提示 ── */
 .aiq-revising-hint { color: var(--geojson-color-text-tertiary); font-size: var(--geojson-typography-size-xs); font-style: italic; }
@@ -203,10 +234,10 @@
 .aiq-card-diagnose { border-left-color: var(--geojson-color-brand-primary, #4285F4); }
 .aiq-card-diagnose.is-upload { border-left-color: #ff9000; background: rgba(255, 144, 0, 0.06); }
 .aiq-diag-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
-.aiq-diag-chip { display: inline-flex; padding: 1px 7px; font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-brand-primary, #4285F4); background: rgba(66, 133, 244, 0.1); border-radius: 999px; }
+.aiq-diag-chip { display: inline-flex; padding: 1px 7px; font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-brand-primary, #4285F4); background: rgba(217, 119, 87, 0.1); border-radius: 999px; }
 .aiq-diag-strategy { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-secondary); margin-bottom: 2px; }
 .aiq-diag-strat-tag { display: inline-block; padding: 0 6px; margin-right: 4px; border-radius: 999px; font-weight: var(--geojson-typography-weight-semibold); }
-.aiq-diag-strategy.ready .aiq-diag-strat-tag { color: #2e8b57; background: rgba(46, 139, 87, 0.1); }
+.aiq-diag-strategy.ready .aiq-diag-strat-tag { color: #4ADE80; background: rgba(46, 139, 87, 0.1); }
 .aiq-diag-strategy.fallback_annotated .aiq-diag-strat-tag { color: #d9a400; background: rgba(217, 164, 0, 0.12); }
 .aiq-diag-strategy.request_upload .aiq-diag-strat-tag { color: #ff9000; background: rgba(255, 144, 0, 0.14); }
 .aiq-diag-method { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); }
@@ -215,7 +246,7 @@
 .aiq-card-caliber { border-left-color: #d9a400; background: rgba(217, 164, 0, 0.06); font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); }
 
 /* ── 回答完毕戳（版本 + 时间戳，每轮 assistant 气泡尾）── */
-.aiq-answer-footer { margin-top: 6px; padding-top: 4px; border-top: 1px dashed rgba(0, 0, 0, 0.08); font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); text-align: right; }
+.aiq-answer-footer { margin-top: 6px; padding-top: 4px; border-top: 1px dashed rgba(255, 255, 255, 0.08); font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); text-align: right; }
 
 /* ── 思考 dock（#chat-suggest 槽，单例贴底不被顶走）── */
 .aiq-thinking-dock { padding: 5px 14px 6px; border-top: 1px solid var(--geojson-color-border-default, #e3e5e8); background: var(--geojson-color-surface-panel-alt, #fafafa); }
@@ -233,10 +264,10 @@
 .chat-back-btn {
   position: sticky; bottom: 6px; align-self: flex-end; margin-top: 4px;
   padding: 3px 10px; font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-brand-primary, #4285F4);
-  background: var(--geojson-color-surface-panel, #fff); border: 1px solid rgba(66, 133, 244, 0.4);
+  background: var(--geojson-color-surface-panel, #fff); border: 1px solid rgba(217, 119, 87, 0.4);
   border-radius: 999px; cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
-.chat-back-btn:hover { background: rgba(66, 133, 244, 0.08); }
+.chat-back-btn:hover { background: rgba(217, 119, 87, 0.08); }
 
 /* ═══ Claude Code 交互语言对齐：Thinking 头 / 工具卡 / 复制 / 代码块 ═══ */
 
@@ -250,7 +281,7 @@
 .aiq-toolcard-head:hover { background: var(--geojson-color-gray-100, #f5f5f5); }
 .aiq-toolcard-icon { flex-shrink: 0; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
 .aiq-toolcard-icon.run { color: var(--geojson-color-brand-primary, #4285F4); }
-.aiq-toolcard-icon.ok { color: #2e8b57; }
+.aiq-toolcard-icon.ok { color: #4ADE80; }
 .aiq-toolcard-icon.fail { color: var(--geojson-color-danger, #d8552f); }
 .aiq-toolcard-name { font-size: var(--geojson-typography-size-xs); font-weight: var(--geojson-typography-weight-semibold); color: var(--geojson-color-text-primary); font-family: var(--geojson-typography-mono); }
 .aiq-toolcard-target { flex: 1; min-width: 0; font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -269,7 +300,7 @@
 .emc-copy-btn:hover { background: var(--geojson-color-gray-100, #f5f5f5); color: var(--geojson-color-text-primary); }
 
 /* 代码块：语言标签 + hover 复制按钮（marked 后处理挂 .emc-code-copy）*/
-.chat-bubble pre { position: relative; margin: 6px 0; padding: 10px 12px; background: var(--geojson-color-gray-100, #f6f7f9); border: 1px solid var(--geojson-color-border-default, #e3e5e8); border-radius: 6px; overflow-x: auto; }
+.chat-bubble pre { position: relative; margin: 6px 0; padding: 10px 12px; background: #161616; border: 1px solid var(--geojson-color-border-default, #e3e5e8); border-radius: 6px; overflow-x: auto; }   /* 代码块比气泡更深，跳出 */
 .chat-bubble pre code { background: none; padding: 0; font-size: var(--geojson-typography-size-xs); font-family: var(--geojson-typography-mono); color: var(--geojson-color-text-primary); }
 .emc-code-copy { position: absolute; top: 4px; right: 4px; padding: 2px 6px; font-size: 10px; color: var(--geojson-color-text-secondary); background: var(--geojson-color-surface-panel, #fff); border: 1px solid var(--geojson-color-border-default, #e3e5e8); border-radius: 4px; cursor: pointer; opacity: 0; transition: opacity var(--geojson-transition); }
 .chat-bubble pre:hover .emc-code-copy { opacity: 1; }
