@@ -1049,6 +1049,17 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **承重**：未碰（视野-数据-结论同步/KDE/4×5/对称拉伸/tip-popup/EMC 深色/结果层生命周期全不动）。纯 EMC 面板静态状态（收起/展开/空）+ 欢迎引导。
 - **后续**：Phase 2 余两项——推荐追问（答案后追问胶囊）+ 长对话折叠（旧轮折叠）。
 
+### 5.59 EMC 折叠收窄/复制 + 关审查 + 右栏缝隙 + 网格 2D/3D 闪烁（07月10日）
+
+用户一揽子 3 功能 + 2 bug。
+- **F1·折叠键收窄+橙框+文案**（ai_qa.css/panel.js）：用户报"折叠后 EMC 区域太高"——根因非 `--emc-h`，而是 layout.css:119 `#emc-panel{min-height:320px}` 把折叠态**钳死在 320px 下不去**（我 5.58 只覆盖了 --emc-h 没解 min-height）。修：`.is-collapsed` 连 `min-height:0` 一起覆盖 + `--emc-h:40px`（6+28+6 恰填）。折叠态输入框线框改橙 `--emc-accent`（与展开 focus 一致，原 focus 蓝 #4285F4 也改橙）。placeholder 切换：折叠="对EmotionMap Copilot提问：观察、分析、总结城市情绪。"，展开=原 EMC 提示（setEmcCollapsed + init 同步）。
+- **F2·暂关审查机制**（harness.js）：加总开关 `REVIEW_ENABLED=false`——跳过 Flash 审查员（reviewStep），onReview 显"审查机制暂关·重构中"（清"审查中…"占位）；诚实门 `_verifyClaims` 保留。审查 agent 下轮重构后再开。
+- **F3·复制回答 icon**（panel.js/css）：`_renderFooter(shell, metaText, md)` 渲染页脚=meta 文本(用时/版本/时间戳) + 复制 icon（剪贴板写 markdown，剥离 `{{action}}` UI 模板 + 压多余空行）。onFinalDone/onReviseDone 存 `shell._finalMd`（最终 markdown 源，含重写）；stampDone（live）+ 历史恢复均接 _renderFooter。
+- **B1·右端栏缝隙**（panel.css）：用户报"Overview/Table 与 图层总览/极性深读 中间有缝，信息上滑漏出"。根因=`.panel-body{padding:16px}` + `.ov-subtabs{sticky;top:0}` → sticky 黏在内容盒顶（padding 下方 16px），panel-body 顶部 16px **未被 sticky 覆盖的带**＝漏出处（亦是"浪费空间"）。修：panel-body 去 top padding（`0 16px 16px`）→ sticky 贴 panel-body 顶（紧挨 Overview/Table），无缝无漏。
+- **B2·网格 2D/3D 切换卡顿+闪烁+柱高跳动**（map.js，承重）：根因=`renderLayer`(216-217) 每次 **removeSource+removeLayer→addSource+addLayer 全重建**，而 setViewMode/toggleGridViewMode 每次切 2D↔3D 都对配对层调 renderLayer → 重新解析 fc + 重绑数据表达式，**首帧表达式回退**（颜色=首色阶/高度=0）再吸附 = 颜色极性闪烁 + 柱高跳动；叠加 setView3D 的 setStyle 换底图 = 卡顿。修：新增 `_gridMapSetVis(layer, vis)` 布局级显隐（setLayoutProperty visibility，不拆源/层）——**已在地图的配对层用布局切换免重建**，仅首次创建走 renderLayer；源不在地图时返回 false 走 renderLayer 兜底。setViewMode + toggleGridViewMode 接入。承重视图逻辑（配对生成/reorder/restackZ/互斥）保留。
+- **验证**：node --check（panel/harness/map.js）✓ + CSS/JS 200 加载 ✓。B2 为承重（网格视图配对），逻辑带 renderLayer 兜底；真环境复验待用户切 2D↔3D 看是否还闪/卡。
+- **承重**：B2 改动限于 setViewMode/toggleGridViewMode 的显隐路径（布局 vs 重建），配对生成/reorder/restackZ/互斥/KDE/极性色带/tip-popup 全不动。F1/F2/F3/B1 纯 UI/CSS/编排，未碰承重。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

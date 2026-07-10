@@ -7,6 +7,17 @@
 
 ## 📅 2026-07-10
 
+### ✅ EMC 折叠收窄/复制 + 关审查 + 右栏缝隙 + 网格 2D/3D 闪烁（revision-log 5.59）
+
+用户一揽子 3 功能 + 2 bug。
+- **F1 折叠键收窄+橙框+文案**：根因=layout.css `min-height:320px` 钳死折叠态（非 --emc-h）。修：is-collapsed 连 min-height:0 覆盖 + --emc-h:40px；折叠输入框橙线框（展开 focus 同改橙）；placeholder 切换（折叠=新文案）。
+- **F2 暂关审查**：harness `REVIEW_ENABLED=false` 跳过 Flash 审查员（诚实门保留）；审查 agent 下轮重构。
+- **F3 复制回答 icon**：_renderFooter 页脚=meta + 复制 icon（复制 markdown，剥 {{action}}）；onFinalDone/onReviseDone 存 _finalMd。
+- **B1 右栏缝隙**：根因=panel-body padding:16px + ov-subtabs sticky top:0 → 顶 16px 未覆盖带（漏出+浪费）。修：panel-body 去 top padding → sticky 贴顶无缝。
+- **B2 网格 2D/3D 卡顿+闪烁+柱高跳**（承重）：根因=renderLayer 每次 removeSource+addSource+addLayer 全重建，切视角每调一次 → 首帧表达式回退（色/高闪）+ setStyle 换底图卡。修：_gridMapSetVis 布局显隐快速路径——已在地图的配对层免重建，仅首次走 renderLayer（带兜底）。
+- **验证**：node --check + CSS/JS 200 ✓。B2 承重带兜底，真环境待复验。
+- **后续**：审查 agent 重构；Phase 2 余（推荐追问/长对话折叠）；阶段 3（用地色）。
+
 ### ✅ EMC 交互·阶段 2（上）：折叠键 + 空态欢迎卡（revision-log 5.58）
 
 进入原 3 阶段计划 Phase 2（EMC 交互）。本条做结构性两项，推荐追问/长对话折叠后续。

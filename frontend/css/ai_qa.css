@@ -133,7 +133,7 @@
   color: var(--geojson-color-text-primary); background: var(--geojson-color-surface-panel-alt, #f8f8f8);
   border: 1px solid var(--geojson-color-border-default, #e3e5e8); border-radius: 8px; outline: none; overflow-y: auto;
 }
-.chat-input:focus { border-color: var(--geojson-color-brand-primary, #4285F4); background: #1a1a1a; }
+.chat-input:focus { border-color: var(--emc-accent, #D97757); background: #1a1a1a; }   /* 聚焦橙色线框（EMC 主题一致）*/
 .chat-input { caret-color: var(--emc-accent, #D97757); }   /* 橙色光标（Claude 感） */
 .emc-input-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
 .emc-input-left { display: flex; align-items: center; gap: 6px; }
@@ -246,7 +246,11 @@
 .aiq-card-caliber { border-left-color: #d9a400; background: rgba(217, 164, 0, 0.06); font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); }
 
 /* ── 回答完毕戳（版本 + 时间戳，每轮 assistant 气泡尾）── */
-.aiq-answer-footer { margin-top: 6px; padding-top: 4px; border-top: 1px dashed rgba(255, 255, 255, 0.08); font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); text-align: right; }
+.aiq-answer-footer { margin-top: 6px; padding-top: 4px; border-top: 1px dashed rgba(255, 255, 255, 0.08); font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.aiq-footer-meta { flex: 1; min-width: 0; text-align: right; }
+.aiq-footer-copy { flex-shrink: 0; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; color: var(--geojson-color-text-tertiary); border-radius: var(--geojson-radius-xs); cursor: pointer; transition: color var(--geojson-transition), background var(--geojson-transition); }
+.aiq-footer-copy:hover { color: var(--emc-accent, #D97757); background: rgba(255,255,255,0.06); }
+.aiq-footer-copy.is-ok { color: #4ADE80; }   /* 复制成功反馈 */
 
 /* ── 思考 dock（#chat-suggest 槽，单例贴底不被顶走）── */
 .aiq-thinking-dock { padding: 5px 14px 6px; border-top: 1px solid var(--geojson-color-border-default, #e3e5e8); background: var(--geojson-color-surface-panel-alt, #fafafa); }
@@ -306,14 +310,15 @@
 .chat-bubble pre:hover .emc-code-copy { opacity: 1; }
 
 /* ═══ EMC 折叠态（5.58）：收起 → 只剩一行输入触发条，点击输入框展开 ═══ */
-#emc-panel.is-collapsed { --emc-h: 48px; }            /* 局部覆盖 --emc-h（panel height/flex 读它），绕开 EMC_MIN 钳制 */
+#emc-panel.is-collapsed { --emc-h: 40px; min-height: 0; }   /* 局部覆盖 --emc-h + 解除 min-height:320 钳制（否则折叠态被卡在 320px 下不去）*/
 #emc-panel.is-collapsed .chat-head,
 #emc-panel.is-collapsed .emc-view { display: none !important; }
-#emc-panel.is-collapsed .emc-input-area { padding: 10px; border-top: none; cursor: pointer; }   /* 10+28+10=48 恰填 --emc-h */
 #emc-panel.is-collapsed .emc-input-foot { display: none !important; }
+#emc-panel.is-collapsed .emc-input-area { padding: 6px 10px; border-top: none; cursor: pointer; }   /* 6+28+6=40 恰填 --emc-h */
 #emc-panel.is-collapsed .chat-input {
   min-height: 28px; max-height: 28px; height: 28px; padding: 4px 10px;
   cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  border-color: var(--emc-accent, #D97757);   /* 折叠态橙色线框（与 EMC 主题一致）*/
 }
 
 /* ═══ EMC 空态欢迎卡（5.58）：无对话时问候 + 能力清单 + 示例追问（点击即发）═══ */

@@ -8,6 +8,8 @@ const HISTORY_KEY = 'ai_qa_history_v1';
 const ARCHIVE_KEY = 'ai_qa_archive_v1';
 const MODE_KEY = 'ai_qa_think_mode';
 const COLLAPSE_KEY = 'ai_qa_emc_collapsed';   // EMC 折叠态持久化（收起=只剩一行输入触发条）
+const _INPUT_PH_EXPANDED = '问 EMC：哪些区域情绪最差？为什么？  （Enter 发送 · Shift+Enter 换行 · Esc 中断）';
+const _INPUT_PH_COLLAPSED = '对EmotionMap Copilot提问：观察、分析、总结城市情绪。';
 
 // 动态思考状态文案（轮换，随机感；参考 Claude/ChatGPT "正在思考"动态提示）。
 const THINK_PHRASES = ['正在思考', '正在分析', '正在计算', '正在构思', '正在比对数据', '正在归纳', '正在权衡证据', '正在检索线索', '正在梳理逻辑'];
@@ -86,6 +88,8 @@ function setEmcCollapsed(c) {
   _emcCollapsed = !!c;
   const panel = document.getElementById('emc-panel');
   if (panel) panel.classList.toggle('is-collapsed', _emcCollapsed);
+  const input = document.getElementById('chat-input');
+  if (input) input.placeholder = _emcCollapsed ? _INPUT_PH_COLLAPSED : _INPUT_PH_EXPANDED;   // 折叠/展开切换文案
   try { localStorage.setItem(COLLAPSE_KEY, _emcCollapsed ? '1' : '0'); } catch (_) {}
   if (!_emcCollapsed) relaxEmc();   // 展开：回落 comfort/用户基线
 }
@@ -209,15 +213,33 @@ function formatTs(ts) {
   return `${mm}月${dd}日 ${hh}:${mi}`;
 }
 
-/** 完毕戳（回答完毕 + 版本 + 时间戳）；存 trace.doneAt 供历史恢复。 */
+/** 完毕戳（回答完毕 + 版本 + 时间戳 + 复制回答按钮）；存 trace.doneAt 供历史恢复。 */
 function _fmtTokens(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
+/** 渲染页脚：meta 文本（用时/版本/时间戳）+ 复制回答 icon（复制为 markdown，剥离 {{action}} 模板）。 */
+function _renderFooter(shell, metaText, md) {
+  if (!shell || !shell.footerEl) return;
+  shell.footerEl.hidden = false;
+  shell.footerEl.innerHTML = '';
+  const span = document.createElement('span');
+  span.className = 'aiq-footer-meta'; span.textContent = metaText;
+  const btn = document.createElement('button');
+  btn.className = 'aiq-footer-copy'; btn.type = 'button'; btn.title = '复制回答（Markdown）';
+  btn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+  btn.addEventListener('click', () => {
+    const raw = md || shell._finalMd || (shell.answerEl && shell.answerEl.innerText) || '';
+    const clean = raw.replace(/\{\{[^}]+\}\}/g, '').replace(/\n{3,}/g, '\n\n').trim();   // 剥离 {{action}} UI 模板
+    navigator.clipboard?.writeText(clean);
+    btn.classList.add('is-ok'); setTimeout(() => btn.classList.remove('is-ok'), 1200);
+  });
+  shell.footerEl.appendChild(span);
+  shell.footerEl.appendChild(btn);
+}
 function stampDone(shell) {
   if (_curTrace) _curTrace.doneAt = Date.now();
   if (shell && shell.footerEl) {
     const secs = _curTrace && _curTrace.startedAt ? Math.max(1, Math.round((_curTrace.doneAt - _curTrace.startedAt) / 1000)) : 0;
     const cs = getCallStats();
-    shell.footerEl.hidden = false;
-    shell.footerEl.textContent = `回答完毕 · 用时 ${secs}s · 用量 ${_fmtTokens(cs.total)} token / ${cs.calls} 次 · 情绪地图 v1.0 · ${formatTs(_curTrace && _curTrace.doneAt)}`;
+    _renderFooter(shell, `回答完毕 · 用时 ${secs}s · 用量 ${_fmtTokens(cs.total)} token / ${cs.calls} 次 · 情绪地图 v1.0 · ${formatTs(_curTrace && _curTrace.doneAt)}`, shell._finalMd || (_curTrace && _curTrace.final));
   }
   updateReasonMeta(shell);
 }
@@ -404,8 +426,7 @@ function appendAssistantShell(trace) {
     if (trace.diagnose) renderDiagnoseCard(shell.diagnoseEl, trace.diagnose);
     if (trace.caliber) renderCaliber(shell, trace.caliber);
     if (trace.doneAt && shell.footerEl) {
-      shell.footerEl.hidden = false;
-      shell.footerEl.textContent = '回答完毕 · 情绪地图测试版 v1.0 · ' + formatTs(trace.doneAt);
+      _renderFooter(shell, '回答完毕 · 情绪地图测试版 v1.0 · ' + formatTs(trace.doneAt), trace.final);
     }
   }
   scrollBottom();
@@ -560,6 +581,7 @@ function buildHooks(shell) {
       enhanceCodeBlocks(shell.answerEl);
       if (shell.reasonEl && !isFlash) shell.reasonEl.classList.add('is-done');
       if (_curTrace) _curTrace.final = text;
+      shell._finalMd = text;   // 供页脚「复制回答」取最终 markdown
       // 显示审查中占位（review 回来覆盖）；history 在 send 末尾统一持久化
       shell.reviewEl.hidden = false;
       shell.reviewBody.innerHTML = '<div class="aiq-review-verdict warn">审查中…</div>';
@@ -589,6 +611,7 @@ function buildHooks(shell) {
       shell.answerEl.innerHTML = renderAnswer(text, getValidRefNames());
       enhanceCodeBlocks(shell.answerEl);
       if (_curTrace) { _curTrace.revised = text; _curTrace.final = text; }
+      shell._finalMd = text;   // 重写后更新最终 markdown
       const v = shell.reviewBody.querySelector('.aiq-review-verdict.fail');
       if (v) v.textContent = '审查未过·已重写';
       autoScroll();
@@ -931,5 +954,8 @@ export function initChatPanel() {
   // 折叠键 + 输入框触发展开 + 折叠态持久化恢复
   document.getElementById('chat-collapse')?.addEventListener('click', () => setEmcCollapsed(!_emcCollapsed));
   input?.addEventListener('focus', () => { if (_emcCollapsed) setEmcCollapsed(false); });   // 折叠态点输入框 → 展开
-  if (_emcCollapsed) document.getElementById('emc-panel')?.classList.add('is-collapsed');   // 初始即折叠：套类（局部覆盖 --emc-h=48px）
+  if (_emcCollapsed) {
+    document.getElementById('emc-panel')?.classList.add('is-collapsed');   // 初始即折叠：套类（局部覆盖 --emc-h=40px + min-height:0）
+    if (input) input.placeholder = _INPUT_PH_COLLAPSED;
+  }
 }

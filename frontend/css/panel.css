@@ -33,7 +33,7 @@
 .panel-body {
   flex: 1;
   overflow-y: auto;
-  padding: var(--geojson-spacing-4);                /* 16px */
+  padding: 0 var(--geojson-spacing-4) var(--geojson-spacing-4);   /* 去 top padding：sticky .ov-subtabs(top:0) 贴 panel-body 顶（紧挨 Overview/Table），消除顶部未覆盖带（滚动内容曾从该缝隙漏出）*/
 }
 
 .tab-pane { display: none; }

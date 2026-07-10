@@ -131,25 +131,42 @@ const _lastGridMode = new Map();
 /** 取该 grid sig 最近切换的视角 mode（无记录返回 undefined）。sidebar renderLayerList 选配对代表用。 */
 export function getGridViewMode(sig) { return _lastGridMode.get(sig); }
 
+/** grid 层布局级显隐（不拆源/层）—— 2D/3D 切换用，避免每次 renderLayer 全重建(removeSource+addSource+addLayer)
+ *  致的卡顿 + 首帧数据表达式回退（颜色=首色阶/高度=0 再吸附）= 颜色极性闪烁 + 柱高跳动。
+ *  返回 false 表示源不在地图（层未渲染过），调用方须走 renderLayer 建。 */
+function _gridMapSetVis(layer, visible) {
+  if (!map || !layer) return false;
+  if (!map.getSource(lyrSrc(layer.id))) return false;   // 源不在地图 → 需 renderLayer 建
+  const vis = visible ? 'visible' : 'none';
+  for (const sub of [lyrLid(layer.id), lyrExtruLid(layer.id), lyrLineLid(layer.id), lyrHitLid(layer.id)]) {
+    if (map.getLayer(sub)) { try { map.setLayoutProperty(sub, 'visibility', vis); } catch (_) {} }
+  }
+  return true;
+}
+
 /** 2D/3D 视图切换：遍历可见 grid 层——mode===target 保持；否则隐藏并按签名找配对 target 层
- *  （无则用同 fc 生成独立层，渲染管线独立：3D→fill-extrusion 柱 / 2D→fill 色块）。末尾 setView3D 同步 pitch + 底图（Light/Dark）。 */
+ *  （无则用同 fc 生成独立层，渲染管线独立：3D→fill-extrusion 柱 / 2D→fill 色块）。
+ *  已在地图的配对层用布局显隐切换（免重建闪烁）；仅首次创建走 renderLayer。末尾 setView3D 同步 pitch + 底图。 */
 export function setViewMode(target) {
   if (!map) return;
   const grids = getLayers().filter((l) => l.kind === 'polygon' && l.paint && l.paint._ui && l.paint._ui.tool === 'grid');
   for (const l of grids.filter((g) => g.visible)) {
     if (l.paint._ui.mode === target) continue;              // 已是目标模式，保持
-    setLayerVisible(l.id, false); renderLayer(l);           // 隐藏当前层
+    setLayerVisible(l.id, false);
+    if (!_gridMapSetVis(l, false)) renderLayer(l);          // 隐藏当前层（已在地图→布局隐，免重建；否则拆）
     const sig = gridSig(l.paint);
     let pair = grids.find((g) => g !== l && g.paint._ui.mode === target && gridSig(g.paint) === sig);
-    if (!pair) {                                            // 无配对 → 用同 fc 生成独立 target 层
+    if (!pair) {                                            // 无配对 → 用同 fc 生成独立 target 层（首次：renderLayer 建源+层）
       const tag = target === '3d' ? '3D' : '2D';
       pair = addLayer({ name: (l.name || '网格').replace(/·\s*[23]D\b/, `· ${tag}`),
                         kind: 'polygon', fc: l.fc,
                         paint: { ...l.paint, _ui: { ...l.paint._ui, mode: target } } });
       pair.srcName = l.srcName;
+      setLayerVisible(pair.id, true);
       renderLayer(pair);
-    } else if (!pair.visible) {                             // 有配对 → 显示
-      setLayerVisible(pair.id, true); renderLayer(pair);
+    } else {                                                // 有配对 → 显示（已在地图→布局显免重建；否则 renderLayer 建）
+      setLayerVisible(pair.id, true);
+      if (!_gridMapSetVis(pair, true)) renderLayer(pair);
     }
     reorderLayers(pair.id, l.id);                           // target pair 接替原层 l 顺序位置（保槽位稳定，避免拖拽后切视角跳序）
   }
@@ -170,7 +187,7 @@ export function toggleGridViewMode(layerId) {
   const sig = gridSig(l.paint);
   const wasVisible = l.visible;
   const grids = getLayers().filter((g) => g.kind === 'polygon' && g.paint && g.paint._ui && g.paint._ui.tool === 'grid');
-  for (const g of grids) if (gridSig(g.paint) === sig) { setLayerVisible(g.id, false); renderLayer(g); }   // 隐藏+移除该 sig 所有地图层（防 2D/3D 同显混乱）
+  for (const g of grids) if (gridSig(g.paint) === sig) { setLayerVisible(g.id, false); if (!_gridMapSetVis(g, false)) renderLayer(g); }   // 布局隐（已在地图免重建）；否则拆。防 2D/3D 同显混乱
   let pair = grids.find((g) => g.paint._ui.mode === target && gridSig(g.paint) === sig);
   if (!pair) {
     const tag = target === '3d' ? '3D' : '2D';
@@ -185,7 +202,7 @@ export function toggleGridViewMode(layerId) {
   }
   _lastGridMode.set(sig, target);                   // 记该 sig 当前 mode（sidebar 配对代表选择用）
   reorderLayers(pair.id, l.id);                     // target pair 接替原层 l 顺序位置（每次切都 reorder 保槽位稳定，避免拖拽后切视角跳序）
-  renderLayer(pair);
+  if (pair.visible) { if (!_gridMapSetVis(pair, true)) renderLayer(pair); }   // 已在地图→布局显免重建；否则 renderLayer 建
   setView3D(getLayers().some((g) => g.visible && g.paint && g.paint._ui && g.paint._ui.mode === '3d'));
   document.dispatchEvent(new CustomEvent('layers:changed'));
 }

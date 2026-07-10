@@ -10,6 +10,7 @@ import { getLayers } from '../state.js';
 const MAX_ROUNDS = 8;
 const OBS_TRUNC = 200;      // observation 注入 history 截断长度
 const PARAMS_TRUNC = 80;    // action params 摘要截断长度
+const REVIEW_ENABLED = false;   // 审查机制总开关：false=暂关 Flash 审查员（效果待优化，下轮重构审查 agent）；诚实门 _verifyClaims 仍保留
 
 /** 当前地图图层状态摘要（附入每轮 history，让 LLM 感知操作是否已生效、避免盲目重试）。 */
 function _mapState() {
@@ -259,12 +260,16 @@ export async function orchestrate(ctx, hooks = {}) {
     return { ok: true, rounds: round, final: draft, review: { pass: true, degraded: true, skipped: 'gis_operation' }, degraded };
   }
 
-  // 审查
+  // 审查（REVIEW_ENABLED=false 时跳过 Flash 审查员，仅留诚实门 _verifyClaims）
   let review = null;
-  try {
-    review = await stages.reviewStep(ctx, draft, toolHistoryText);
-  } catch (e) {
-    review = { pass: true, degraded: true, degraded_reason: String(e && e.message || e) };
+  if (REVIEW_ENABLED) {
+    try {
+      review = await stages.reviewStep(ctx, draft, toolHistoryText);
+    } catch (e) {
+      review = { pass: true, degraded: true, degraded_reason: String(e && e.message || e) };
+    }
+  } else {
+    review = { pass: true, degraded: true, degraded_reason: '审查机制暂关·重构中' };
   }
   if (hooks.onReview) hooks.onReview(review);
 
