@@ -25,6 +25,9 @@ export function getGeoCatalog() {
   return _geoCatalogPromise;
 }
 
+/** 上传/激活新边界预设后失效目录缓存 → 下一轮 AI 即可见新预设（不必刷新页面）。 */
+export function invalidateGeoCatalog() { _geoCatalogPromise = null; }
+
 /** GET /api/v1/aiqa/wisdom（模块级缓存，buildContext 增列 L2 答问智慧用）。 */
 export function getWisdom() {
   if (_wisdomPromise) return _wisdomPromise;
@@ -38,15 +41,22 @@ let _wisdomPromise = null;
 
 /** POST /api/v1/geo/<path> 取 JSON；失败抛 Error(.detail)。 */
 const _LAYER_REF_KEYS = ['layer', 'range', 'layer_a', 'layer_b', 'boundary', 'center', 'target'];
-const _stepResults = [];   // 本轮工具产物（按产出顺序），供 $n 显式引用（addResultLayer push、ref 解析）
-export function resetStepResults() { _stepResults.length = 0; }
-const _curResultIds = [];  // 本轮新生成的结果图层 id（沉浸聚焦用：关其余、留本轮、缩放至并集）
-export function resetCurrentResults() { _curResultIds.length = 0; }
-/** 图层引用解析：① `$n` → 第 n 个工具产物（显式变量，最稳）；② 图层名（精确/唯一包含）；③ 原样（preset_id）。 */
+const _stepResults = [];      // 本轮工具产物 fc（按产出序，单调），供 $n 显式引用
+const _resultIdByStep = [];   // 结果层 id（与 _stepResults 平行，单调），供 ref('$n') 标消费
+export function resetStepResults() { _stepResults.length = 0; _resultIdByStep.length = 0; }
+const _curResultIds = [];     // 本轮"存活"的结果层 id（沉浸聚焦用：关其余、留本轮、缩放并集）
+const _consumedIds = new Set(); // 被 $n 引用消费掉的中间结果层 id（addResultLayer 移除它们，保并列最终结果）
+export function resetCurrentResults() { _curResultIds.length = 0; _consumedIds.clear(); }
+/** 图层引用解析：① `$n` → 第 n 个工具产物（显式变量，最稳）；② 图层名（精确/唯一包含）；③ 原样（preset_id）。
+ *  $n 解析时把该步结果标为"已消费"（中间产物）→ addResultLayer 收尾移除它，未消费的并列最终结果保留。 */
 function ref(v) {
   if (typeof v === 'string' && /^\$\d+$/.test(v.trim())) {
-    const fc = _stepResults[Number(v.trim().slice(1)) - 1];
-    if (fc) return fc;
+    const idx = Number(v.trim().slice(1)) - 1;
+    const fc = _stepResults[idx];
+    if (fc) {
+      if (_resultIdByStep[idx]) _consumedIds.add(_resultIdByStep[idx]);   // 标中间产物（消费式收尾移除）
+      return fc;
+    }
   }
   if (typeof v === 'string' && v) {
     const all = getLayers().filter((x) => x.fc && x.fc.features && x.fc.features.length);
@@ -161,15 +171,18 @@ export function addResultLayer({ name, kind = 'polygon', fc, paint }) {
   for (const l of getLayers()) {
     if (l.name === name) { removeLayerFromMap(l.id); removeLayer(l.id); }
   }
-  // 过程层收尾：本轮前序结果视为中间产物移除——Layers/地图只留最终结果（如 extract→overlay 只留 overlay）。
-  // $n 引用走 _stepResults 的 fc（ref 解析不依赖图层存活），不受影响。
-  for (const id of _curResultIds.splice(0)) { removeLayerFromMap(id); removeLayer(id); }
+  // 消费式收尾：仅移除被 $n 引用消费掉的中间结果层（如 extract→overlay 的 extract）；
+  // 未消费的并列最终结果（如 居住+商业）保留。$n 引用走 _stepResults 的 fc，不依赖图层存活。
+  for (let i = _curResultIds.length - 1; i >= 0; i--) {
+    if (_consumedIds.has(_curResultIds[i])) { removeLayerFromMap(_curResultIds[i]); removeLayer(_curResultIds[i]); _curResultIds.splice(i, 1); }
+  }
   const L = addLayer({ name, kind, fc, paint, parentId: _aiGroup().id });
   L.srcName = name;
-  _curResultIds.push(L.id);                 // 登记本轮结果（沉浸聚焦）
+  _curResultIds.push(L.id);                 // 登记本轮存活结果（沉浸聚焦）
   renderLayer(L);
   renderLayerList(); refreshLegend(); reorderAllZ();
   _stepResults.push(fc);   // 登记 $n 引用（ref 解析）
+  _resultIdByStep.push(L.id);   // 与 _stepResults 平行：ref('$n') 据此标消费
   focusOnlyResults();
   const bb = _unionBBox(_curResultIds); if (bb) fitBoundsTo(bb, 100, 16);
   document.dispatchEvent(new CustomEvent('layers:changed'));
@@ -223,7 +236,12 @@ export async function buildContext() {
   const parts = [];
   const loaded = layers
     .filter((l) => l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length)
-    .map((l) => `${l.name}(${l.fc.features.length}条)`).join('、');
+    .map((l) => {
+      const cnt = l.fc.features.length;
+      const p = l.fc.features[0] && l.fc.features[0].properties;
+      const keys = p ? Object.keys(p).filter((k) => k && k[0] !== '_').slice(0, 6) : [];   // 字段名（供 AI 写 where，剔除内部 _xxx）
+      return `${l.name}(${cnt}条${keys.length ? ',字段:' + keys.join('/') : ''})`;
+    }).join('、');
   parts.push('已加载图层：' + (loaded || '（无）'));
   const geo = formatGeoCatalog(await getGeoCatalog());
   if (geo) parts.push(geo);
@@ -458,7 +476,7 @@ export const TOOLS = {
   async extract_feature(params = {}) {
     if (!params.layer) return { observation: '[ERR] extract_feature 需 layer（preset_id|geojson）' };
     const body = { layer: params.layer };
-    if (params.where) body.where = params.where;
+    if (params.where) body.where = normPreFilter(params.where) || params.where;   // 归一：字符串/对象 + in 多值逗号切分（"MC/in/西陵区,伍家岗区"→list）
     try {
       const r = await geoFetch('extract_feature', body);
       const feats = (r.geojson && r.geojson.features) || [];

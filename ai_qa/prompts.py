@@ -51,6 +51,7 @@ AGENT_TEMPLATE = """
 - inspect_zone：深读某聚合域明细。params: {{ "name": "区域名" }}
 【GIS 工具】（按 intent/问题尺度自动组合，见下方「GIS 操作目录」附录；**结果自动落地图为新图层**；B 纯操作类必走此类产出图层，允许坐标与裸结果）：
 **工具选择决策**：①"某范围内"=clip（点）/extract_feature（面）；②"A 内的 B"（如西陵区内的商业用地）=先 extract_feature(A) 再 overlay(A, B, intersection)；③面∩面/面∪面=overlay（**勿用 clip——clip 只切点，面层会报错**）；④合并多面=merge；⑤周边半径=buffer。
+**用地数据模型（重要）**：用地预设（如 land_commercial/land_residential/land_park）是**按地类 dissolve 的全市单面/多面**，**没有"类×区"联合资产**——即无法直接抽取"西陵区的商业用地"。要"某区内的某类用地"，必须**几何叠置**：先 extract_feature(admin_district, 区名) 得该区面 → overlay(layer_a=该区面, layer_b=land_xxx, how="intersection") 得交集。同理"某区内居住+商业两类"= 该区面分别与 land_residential、land_commercial 叠置（或 union 后再叠），不可只传一个 preset 期望自动分区。
 **工具链（chain，推荐显式变量）**：多步操作用 `$1`/`$2` 引用前序工具产物（第 1/2 个产图层的工具结果，最稳，不依赖图层名匹配）。例：extract_feature(admin_district, MC/eq/西陵区) 得 `$1` → overlay(layer_a="$1", layer_b="land_commercial", how="intersection") 得西陵区内商业用地。也支持传"已生成的图层名"或 preset_id。
 **结果图层命名（重要）**：凡产图层的工具（extract_feature/clip/filter_attr/merge/buffer/overlay）可传 `as` 自定义图层名。**`as` 必须用结果的现实内容命名（如「西陵区内商业用地」「滨江公园·500m」「西陵区·伍家岗区」），严禁用实现术语（叠置/intersection/clip/抽取）**——用户看图，名要说清"这层是什么"。不传 `as` 时系统按内容自动命名兜底。
 - zonal_stats：**宏/中观结论主干**——按行政区/街道/更新单元等边界聚合点层，得每单元极性/点数/4×5 归因+排序。params: {{ "boundary": "admin_district|admin_street|renewal_unit|...(preset_id)", "layer": "(默认 yichang_l2_t1)", "range": "(可选 preset_id 先裁剪)", "pre_filter": "可选，形如 field/op/value 见附录", "top_n": 5 }}
@@ -72,6 +73,7 @@ AGENT_TEMPLATE = """
 3. **每轮只做一个动作**（一个 tool 或 answer）。
 4. **信息足够即 answer**：通常 3-6 轮；纯定义类问题（如"什么是情绪地图"）1-2 轮即可 answer，不必 query。
 5. **thought 面向用户、口语化**（"我先看看有哪些数据"），不提 JSON/tool 字眼。
+6. **多目标完整性（铁律）**：问句里的**全部**目标须落地，**不可只做一部分就 answer**。如「西陵+伍家岗的居住和商业用地」= 要覆盖西陵/伍家岗两区 × 居住/商业两类（或其完整组合），产 1/4 就 answer 是失败。多目标优先**多值筛选**（`MC/in/西陵区,伍家岗区` 一调用拿全两区）省步骤；method 含多步须**全做完**再 answer；answer 前自查"问句每个目标是否都已产出对应图层/结论"，未完成则继续做、勿 answer。
 
 【已完成的探索】（历轮 thought + action + 工具观察；首轮为空）：
 {tool_history}

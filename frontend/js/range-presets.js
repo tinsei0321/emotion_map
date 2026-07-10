@@ -4,6 +4,7 @@
 //  available=false → 点击触发文件选择 → 解析(shp/kml/geojson)→WGS84→上传→激活→自动载入
 // 用户上传的矢量按 manifest.file 名落到 DATA/boundaries/presets/（规范化 .geojson 存储）。
 import { fetchRangePresets, fetchRangePreset, uploadRangePreset } from './api.js';
+import { invalidateGeoCatalog } from './ai_qa/tools.js';   // 上传激活新预设后失效 AI 目录缓存 → 当轮 AI 可见
 import { addLayer, getLayers, removeLayer } from './state.js';
 import { renderLayer, fitBoundsTo, reorderAllZ, removeLayerFromMap } from './map.js';
 import { renderLayerList, refreshLegend } from './sidebar.js';
@@ -138,6 +139,7 @@ async function uploadPresetFile(item, fileList) {
     if (!polygons.features.length) { toast.error(`${base}：未含面域几何`); return; }
     const res = await uploadRangePreset(item.id, polygons);
     toast.success(res.message || `已激活「${item.label}」`);
+    invalidateGeoCatalog();                           // 失效 AI 目录缓存：下一轮问答即可用新预设，不必刷新页面
     await renderRangePresets();                       // 刷新按钮态
     await loadPresetRange({ ...item, available: true });   // 自动载入
   } catch (e) {

@@ -995,6 +995,18 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证**：mock 上轮 request_upload（缺商业用地）→ 输"继续" → **agent loop 跑起来并调 overlay**（pre-A 是 rounds:0 零工具），LLM 回答明引"根据上一轮上下文，我已经执行了第一步…"= 真续作。overlay 400 系 mock 无真实商业层，非代码 bug。
 - **承重**：未碰。阶段 B（extract 多值 in / 结果层消费式保留 / 上传层字段透传）+ C（完整性/目录失效/组合提示）待续。
 
+### 5.54 EMC 多轮连续性·阶段 B+C：让该场景真跑通 + 鲁棒收尾（07月10日）
+
+续 5.53 阶段 A。B 让 Q1「筛选西陵+伍家岗居住商业用地」真出完整结果；C 鲁棒收尾。
+- **B1·extract 多值 `in`（Q1"只伍家岗"主因）**：`extract_feature` 的 `where` 原直传不归一，字符串 `"MC/in/西陵区,伍家岗区"` 经后端 `_norm_where` 被压成单值 → `in` 命中 0/1。**修**（tools.js）：where 走 `normPreFilter` → `{field,op,value:[西陵区,伍家岗区]}`（`in` 逗号切 list）→ 后端 `_apply_attr_filter` 的 `in` op 做 `col.isin([list])` 命中两区。一调用拿全，省步骤。
+- **B2·结果层消费式保留（修正 5.52 bug2 过激）**：5.52 每加新结果移除**全部**前序结果 → 并列最终结果（居住+商业）也被清、只留末个。**修**（tools.js）：新增 `_resultIdByStep[]`（与 `_stepResults` 平行、单调）+ `_consumedIds` Set；`ref('$n')` 解析时把 `_resultIdByStep[n-1]` 标消费；`addResultLayer` 收尾**只移除被消费的**中间产物（如 extract→overlay 的 extract），**未消费的并列最终结果保留**（居住+商业都在）。`resetCurrentResults/resetStepResults` 在 `send()` 开头清（panel.js:626-627）→ 不跨轮泄漏。$n→消费 是显式信号，最稳。
+- **B3·上传层字段透传**：`buildContext` 只给图层名字+条数 → AI 对上传层瞎猜 where 字段（DLMC?）。**修**（tools.js）：已加载图层补属性字段名（`fc.features[0].properties` 的 keys，剔除内部 `_xxx`，≤6）→ `商业用地(12条,字段:DLMC/name)`，AI 能写对 where。
+- **C1·多目标完整性提示**（prompts.py AGENT 规则加第 6 条铁律）：问句全部目标须落地，不可只做一部分就 answer；多目标优先多值筛选；method 多步须全做完再 answer；answer 前自查每目标已产出。**不**做 `_verifyClaims` 计划-产物计数检查——B1 多值 `in` 使模型合法地用更少调用，计数必误报；结构性修(B1/B2/C3)已闭合 Q1，提示规则零误报成本。
+- **C2·目录缓存失效**（tools.js 导出 `invalidateGeoCatalog()`；range-presets.js `uploadPresetFile` 成功后调）：上传/激活新预设即清 `_geoCatalogPromise` → 下一轮 AI 即可见新预设，**不必刷新页面**（修 5.53 根因 C"目录缓存会话级静态、上传当轮看不见"）。
+- **C3·用地数据模型提示**（prompts.py 决策附录）：明示用地预设是**按地类 dissolve 的全市单面**、无"类×区"联合资产 → "某区某类用地"必须 overlay(区面, land_xxx, intersection)，不可期望直接抽取。
+- **验证**：`node --check` tools.js/range-presets.js + `ast.parse` prompts.py ✓｜B1 端到端追码（normPreFilter→_norm_where 透传 dict→_apply_attr_filter isin list）✓｜B2 消费式追码（chain 中间产物删 / 并列最终留 / 轮界清空）✓｜无循环依赖（仅 main.js 引 range-presets）。真环境复验待用户重放 Q1→Q2（上传商业后"继续"）。
+- **承重**：未碰（视野-数据-结论同步 / KDE cascade / 4×5 归因 / 对称拉伸 / tip-popup / EMC 深色主题 / 5.51 命名与组 / 5.52 几何全不动）。纯 AI 编排 + 工具归一 + 上下文传递。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

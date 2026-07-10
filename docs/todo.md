@@ -5,6 +5,20 @@
 
 ---
 
+## 📅 2026-07-10
+
+### ✅ EMC 多轮连续性·阶段 B+C：场景真跑通 + 鲁棒收尾（revision-log 5.54）
+
+续 5.53 阶段 A。B 让 Q1「筛选西陵+伍家岗居住商业用地」真出完整结果；C 鲁棒收尾。
+- **B1·extract 多值 `in`**（Q1"只伍家岗"主因）：where 原直传不归一、`in` 被后端压成单值。修 tools.js：where 走 `normPreFilter` → `{field,op,value:[...]}` → 后端 `_apply_attr_filter` `in` 做 `col.isin([list])` 命中两区，一调用拿全。
+- **B2·结果层消费式保留**（修 5.52 bug2 过激）：加 `_resultIdByStep`+`_consumedIds`；`ref('$n')` 标消费；`addResultLayer` 只删被消费的中间产物、保并列最终结果（居住+商业都在）。轮界清空不泄漏。
+- **B3·上传层字段透传**：buildContext 已加载图层补属性字段名（剔除 `_xxx`，≤6），AI 能写对 where。
+- **C1·多目标完整性提示**（prompts.py AGENT 规则铁律）：全部目标须落地、method 多步全做完再 answer。不做 `_verifyClaims` 计数检查（B1 多值使合法更少调用→必误报）。
+- **C2·目录缓存失效**：tools.js 导出 `invalidateGeoCatalog()`；range-presets.js 上传成功后调 → 当轮 AI 即可见新预设，不刷新。
+- **C3·用地数据模型提示**：明示用地预设按类 dissolve、无"类×区"联合 → "某区某类用地"须 overlay(区, land_xxx)。
+- **验证**：node --check + ast.parse ✓｜B1 端到端追码 ✓｜B2 消费式追码 ✓｜无循环依赖。真环境复验待用户重放 Q1→Q2。
+- **后续**：阶段 2（空态欢迎/推荐追问/折叠旧轮/EMC 折叠键）+ 阶段 3（用地标准色）待续。
+
 ## 📅 2026-07-09
 
 ### ✅ EMC 多轮连续性·阶段 A：续作承接上轮 trace（revision-log 5.53）
