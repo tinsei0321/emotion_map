@@ -1116,6 +1116,14 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **build stamp**（解"刷新看不到新代码"反复痛点）：`serve.py` 注入右下角小角标 `build <git短哈希> · <js/css 最新 mtime 时间>`。改任何前端文件→时间变→刷新后看角标时间 > 最后编辑时间 = 拿到新代码。配合 serve 的 no-store + ?v=mtime，**硬刷新 100% 拿新代码**；角标让用户自查不再靠猜。
 - **承重**：未碰（仅给三个 addLayer 收口点加 paint；map.js 渲染管线/极色色带不动；serve.py 仅加角标注入，no-store/?v 逻辑不变）。
 
+### 5.66 start.bat 单实例启动器（07月10日）
+
+用户（初学者）反馈 serve.py 实例堆积（曾攒到 10 个），要避免这类低级错误。
+- **改**（替换根目录 start.bat）：启动前用 `netstat -ano | findstr ":8080/:8000 LISTENING"` 取出占用端口的 PID 并 `taskkill /F` 清掉，再起单实例 serve.py。无论之前有几个旧实例/僵尸，双击即清干净。
+- **编码教训**：start.bat 用 ASCII 英文 + `[OK]/[WAIT]/[ERR]` 标记（遵 CLAUDE.md ASCII 规范）。原因：cmd.exe 按系统 ANSI(GBK) 解析 .bat，Write 工具存 UTF-8 → 中文多字节会**破坏 `^|` 转义致 for 循环崩**（实测 FINDSTR 报"无法打开 |"）。改 ASCII 后实测：正确 kill 旧 PID(42748/2856) + 起新单实例。
+- **延时**用 `ping -n 2 127.0.0.1` 而非 `timeout /t`（后者在 PATH 混入 Unix timeout 时失效，ping 全 Windows 通用）。
+- **验证**：实测 start.bat 正确 kill+起单实例，8080/8000 各单 owner，build 角标正常。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

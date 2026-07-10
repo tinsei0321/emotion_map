@@ -1,7 +1,36 @@
 @echo off
-chcp 65001 >nul
 cd /d "%~dp0"
-echo [OK] emotion-map 启动中（前端 :8080 + 后端 :8000，Ctrl+C 同时停止）...
+
+echo ============================================================
+echo  emotion-map launcher (single instance: auto-cleans old ones)
+echo ============================================================
 echo.
+echo [WAIT] Killing old serve.py / backend (PIDs on 8080 / 8000)...
+set _killed=0
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr /C:":8080 " ^| findstr /C:"LISTENING"') do (
+  echo       - killed PID %%a ^(port 8080^)
+  taskkill /F /PID %%a >nul 2>&1
+  set _killed=1
+)
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr /C:":8000 " ^| findstr /C:"LISTENING"') do (
+  echo       - killed PID %%a ^(port 8000^)
+  taskkill /F /PID %%a >nul 2>&1
+  set _killed=1
+)
+if "%_killed%"=="0" echo       (no old instance - clean start)
+ping -n 2 127.0.0.1 >nul 2>&1
+
+echo.
+echo [OK] Ready. Starting single serve.py ...
+echo.
+echo      URL:  http://localhost:8080/frontend/index.html
+echo      Stop: press Ctrl+C in this window (stops frontend + backend)
+echo      After code edits: hard-reload browser (Ctrl+Shift+R),
+echo             check the build stamp time (bottom-right) updated.
+echo.
+echo ------------------------------------------------------------
 py frontend/serve.py 8080
+
+echo.
+echo [ERR] serve.py exited (if you did not press Ctrl+C, check the error above).
 pause
