@@ -1038,6 +1038,17 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证**：`node --check` + prompts parse ✓｜keep 3 场景追码全过：链式+keep→两层都留 / 链式无 keep→只留最终（默认不变）/ keep 层经 cleanup 兜底仍保留。真环境复验待用户重放"筛选西陵+伍家岗商业用地，保留区图层"→ EMC 组留"区"+"区内商业用地"两层。
 - **承重**：未碰。纯 EMC 结果层生命周期（消费式默认 + keep 显式覆盖）。
 
+### 5.58 EMC 交互·阶段 2（上）：折叠键 + 空态欢迎卡（07月10日）
+
+进入原 3 阶段计划的 Phase 2（EMC 交互体验）。本条做结构性两项（折叠键 + 空态欢迎），推荐追问 / 长对话折叠后续轮。
+- **折叠键**（用户曾给详细规格）：`.chat-head` 加第 3 个图标键 `#chat-collapse`（历史/新建/折叠 三键同 `.chat-icon-btn` 自动右对齐，图标=面板+底栏表意"收起到输入条"）。
+  - **折叠态** `#emc-panel.is-collapsed`：局部覆盖 `--emc-h: 48px`（panel height/flex 读它，绕开 EMC_MIN=320 钳制）+ 藏 `.chat-head`/`.emc-view`/`.emc-input-foot`，只留一行输入触发条（textarea 28px + padding 10×2=48px 恰填）。**点击输入框（focus）→ 展开**（用户规格："对话框只作触发，点击变展开"）。
+  - **状态机**（panel.js）：`_emcCollapsed`（localStorage `ai_qa_emc_collapsed` 持久化）+ `setEmcCollapsed(c)`（套类/回落 relaxEmc）。4 处自动高度函数（setEmcMode/ensureEmcHeight/relaxEmc/_checkCrowded）加 `if(_emcCollapsed) return` 守卫，防自动档打架。init 套类恢复 + 折叠键 click 切换 + input focus 展开。
+- **空态欢迎卡**（无对话时）：`renderEmptyState()`——问候（EmotionMap Copilot logo+标语）+「我能做什么」能力清单（情绪评价/GIS 操作/多轮追问）+「试试这些」4 条示例追问胶囊（情绪分析/区域对比/GIS 操作/周边分析，覆盖三 intent）。点击胶囊即 `send()`（onMsgClick 接 `.emc-welcome-chip`）。`_history` 空→显、非空→移除；restoreHistory 末调、appendMessage 清（首条消息即消欢迎）。
+- **验证**：`node --check` ✓｜index.html 200 加载 ✓｜逻辑逐处追码（折叠态 CSS 覆盖+守卫、欢迎条件渲染+chip→send）。视觉细节（折叠高度/欢迎排版/三键对齐）待用户开页肉眼验。
+- **承重**：未碰（视野-数据-结论同步/KDE/4×5/对称拉伸/tip-popup/EMC 深色/结果层生命周期全不动）。纯 EMC 面板静态状态（收起/展开/空）+ 欢迎引导。
+- **后续**：Phase 2 余两项——推荐追问（答案后追问胶囊）+ 长对话折叠（旧轮折叠）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

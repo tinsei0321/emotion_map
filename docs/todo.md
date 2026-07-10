@@ -7,6 +7,14 @@
 
 ## 📅 2026-07-10
 
+### ✅ EMC 交互·阶段 2（上）：折叠键 + 空态欢迎卡（revision-log 5.58）
+
+进入原 3 阶段计划 Phase 2（EMC 交互）。本条做结构性两项，推荐追问/长对话折叠后续。
+- **折叠键**：`.chat-head` 加 `#chat-collapse`（历史/新建/折叠 三键同 class 对齐）；折叠态 `is-collapsed` 局部覆盖 `--emc-h=48px`（绕开 EMC_MIN）+ 藏 head/view/foot，只留一行输入触发条，**点输入框展开**。`_emcCollapsed` localStorage 持久化；4 处自动高度函数加守卫防打架。
+- **空态欢迎卡**：`renderEmptyState()`——问候+能力清单+4 示例追问胶囊（点击即发 send）。空→显/非空→移除；restoreHistory 调、appendMessage 清。
+- **验证**：node --check ✓ + index.html 200 ✓ + 逐处追码。视觉（折叠高度/欢迎排版/三键对齐）待用户肉眼验。
+- **后续**：Phase 2 余两项——推荐追问（答案后追问胶囊）+ 长对话折叠（旧轮折叠）。阶段 3（用地标准色）待续。
+
 ### ✅ EMC 图层清理·显式意图覆盖默认（keep:true）（revision-log 5.57）
 
 用户点出 5.56 消费式清理太"死板"：用户 prompt 明说要保留某层，仍因被引用过而被清。

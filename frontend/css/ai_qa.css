@@ -304,3 +304,35 @@
 .chat-bubble pre code { background: none; padding: 0; font-size: var(--geojson-typography-size-xs); font-family: var(--geojson-typography-mono); color: var(--geojson-color-text-primary); }
 .emc-code-copy { position: absolute; top: 4px; right: 4px; padding: 2px 6px; font-size: 10px; color: var(--geojson-color-text-secondary); background: var(--geojson-color-surface-panel, #fff); border: 1px solid var(--geojson-color-border-default, #e3e5e8); border-radius: 4px; cursor: pointer; opacity: 0; transition: opacity var(--geojson-transition); }
 .chat-bubble pre:hover .emc-code-copy { opacity: 1; }
+
+/* ═══ EMC 折叠态（5.58）：收起 → 只剩一行输入触发条，点击输入框展开 ═══ */
+#emc-panel.is-collapsed { --emc-h: 48px; }            /* 局部覆盖 --emc-h（panel height/flex 读它），绕开 EMC_MIN 钳制 */
+#emc-panel.is-collapsed .chat-head,
+#emc-panel.is-collapsed .emc-view { display: none !important; }
+#emc-panel.is-collapsed .emc-input-area { padding: 10px; border-top: none; cursor: pointer; }   /* 10+28+10=48 恰填 --emc-h */
+#emc-panel.is-collapsed .emc-input-foot { display: none !important; }
+#emc-panel.is-collapsed .chat-input {
+  min-height: 28px; max-height: 28px; height: 28px; padding: 4px 10px;
+  cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+
+/* ═══ EMC 空态欢迎卡（5.58）：无对话时问候 + 能力清单 + 示例追问（点击即发）═══ */
+.emc-welcome { padding: 10px 2px 4px; display: flex; flex-direction: column; gap: 14px; }
+.emc-welcome-head { display: flex; align-items: flex-start; gap: 10px; }
+.emc-welcome-logo { width: 28px; height: 28px; flex-shrink: 0; color: var(--emc-accent, #D97757); margin-top: 2px; }
+.emc-welcome-title { font-size: var(--geojson-typography-size-base); font-weight: var(--geojson-typography-weight-bold); color: var(--geojson-color-text-primary, #ECECEC); }
+.emc-welcome-sub { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-tertiary); margin-top: 3px; line-height: 1.5; }
+.emc-welcome-section-label { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+.emc-welcome-cap { display: flex; flex-direction: column; gap: 6px; }
+.emc-welcome-cap-row { display: flex; align-items: baseline; gap: 8px; font-size: var(--geojson-typography-size-xs); line-height: 1.5; }
+.emc-welcome-cap-key { color: var(--emc-accent, #D97757); font-weight: var(--geojson-typography-weight-semibold); flex-shrink: 0; min-width: 58px; }
+.emc-welcome-cap-val { color: var(--geojson-color-text-secondary, #999); }
+.emc-welcome-ex { display: flex; flex-direction: column; gap: 7px; }
+.emc-welcome-chip {
+  display: block; width: 100%; text-align: left; padding: 9px 12px;
+  font-size: var(--geojson-typography-size-sm); line-height: 1.45; color: var(--geojson-color-text-primary, #ECECEC);
+  background: var(--emc-user-bubble, #303030); border: 1px solid #3a3a3a; border-radius: 8px;
+  cursor: pointer; transition: border-color var(--geojson-transition), background var(--geojson-transition);
+}
+.emc-welcome-chip:hover { border-color: var(--emc-accent, #D97757); background: #383838; }
+.emc-welcome-chip-tag { display: inline-block; font-size: var(--geojson-typography-size-2xs); color: var(--emc-accent, #D97757); margin-right: 7px; font-weight: var(--geojson-typography-weight-semibold); }

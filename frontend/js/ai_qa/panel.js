@@ -7,6 +7,7 @@ import { getLastUsage, resetCallStats, getCallStats } from './api.js';
 const HISTORY_KEY = 'ai_qa_history_v1';
 const ARCHIVE_KEY = 'ai_qa_archive_v1';
 const MODE_KEY = 'ai_qa_think_mode';
+const COLLAPSE_KEY = 'ai_qa_emc_collapsed';   // EMC 折叠态持久化（收起=只剩一行输入触发条）
 
 // 动态思考状态文案（轮换，随机感；参考 Claude/ChatGPT "正在思考"动态提示）。
 const THINK_PHRASES = ['正在思考', '正在分析', '正在计算', '正在构思', '正在比对数据', '正在归纳', '正在权衡证据', '正在检索线索', '正在梳理逻辑'];
@@ -18,6 +19,7 @@ let _archive = loadArchive();
 let _curTrace = null;
 let _thinkMode = localStorage.getItem(MODE_KEY) || 'pro';   // 'pro' | 'flash'
 let _thinkTimer = null;
+let _emcCollapsed = localStorage.getItem(COLLAPSE_KEY) === '1';   // EMC 折叠态（收起→一行输入触发条，点击展开）
 let _userPinned = false;   // 用户上滑停跟；回到底部后恢复跟随
 
 const CTX_BUDGET = 1000000;   // DeepSeek V4 Pro 上下文 1M token
@@ -60,24 +62,37 @@ function _emcUserBaselinePx() {
 }
 function setEmcMode(mode, { relax = false } = {}) {
   if (document.body.classList.contains('dragging')) return;
+  if (_emcCollapsed) return;   // 折叠态：--emc-h 由 .is-collapsed 局部覆盖，跳过自动档
   let px = relax ? (_emcUserBaselinePx() || _emcTierPx()[mode]) : _emcTierPx()[mode];
   document.documentElement.style.setProperty('--emc-h', `${_emcClamp(px)}px`);
 }
 /** 提交时：当前 < comfort 则升 comfort（需求 2）。 */
 function ensureEmcHeight() {
+  if (_emcCollapsed) return;
   const panel = document.getElementById('emc-panel');
   const cur = panel ? panel.offsetHeight : 0;
   if (cur < _emcTierPx().comfort - 8) setEmcMode('comfort');
 }
 /** 流式后回落：有手动基线回基线，无则回 comfort（不留在 expand）。 */
 function relaxEmc() {
+  if (_emcCollapsed) return;
   const base = _emcUserBaselinePx();
   if (base) document.documentElement.style.setProperty('--emc-h', `${_emcClamp(base)}px`);
   else setEmcMode('comfort');
 }
+/** EMC 折叠/展开切换：折叠→.is-collapsed（局部覆盖 --emc-h=48px，藏 head/view/foot，留一行输入触发条）；
+ *  展开→移除类 + 回落正常档。持久化到 localStorage。 */
+function setEmcCollapsed(c) {
+  _emcCollapsed = !!c;
+  const panel = document.getElementById('emc-panel');
+  if (panel) panel.classList.toggle('is-collapsed', _emcCollapsed);
+  try { localStorage.setItem(COLLAPSE_KEY, _emcCollapsed ? '1' : '0'); } catch (_) {}
+  if (!_emcCollapsed) relaxEmc();   // 展开：回落 comfort/用户基线
+}
 let _crowdedRaf = 0;
 function _checkCrowded() {
   if (_streaming) return;
+  if (_emcCollapsed) return;   // 折叠态不让位
   const layerCount = document.querySelectorAll('#layer-list .layer-row').length;
   if (layerCount === 0) { setEmcMode('comfort'); return; }   // 无图层（含 import 空态）→ comfort，不误判 operate 占位为拥挤
   const op = document.querySelector('.lp-zone-operate');
@@ -157,6 +172,7 @@ function setBackBtn(show) {
 function appendMessage(role, contentHtml) {
   const list = document.getElementById('chat-messages');
   if (!list) return;
+  const w = list.querySelector('.emc-welcome'); if (w) w.remove();   // 有消息即清空态欢迎
   const el = document.createElement('div');
   el.className = `chat-msg chat-msg-${role}`;
   el.innerHTML = `<div class="chat-bubble">${contentHtml}</div>`;
@@ -702,6 +718,39 @@ function wireModeSwitch() {
   });
 }
 
+/** 空态欢迎卡：无对话时显问候 + 能力清单 + 示例追问（点击即发）。有消息则移除。 */
+const WELCOME_PROMPTS = [
+  { tag: '情绪分析', text: '哪些区域情绪最差？为什么？' },
+  { tag: '区域对比', text: '对比西陵区和伍家岗区的情绪与归因' },
+  { tag: 'GIS 操作', text: '筛选西陵区的商业用地' },
+  { tag: '周边分析', text: '滨江公园周边 500 米情绪如何？' },
+];
+function renderEmptyState() {
+  const list = document.getElementById('chat-messages');
+  if (!list) return;
+  const existing = list.querySelector('.emc-welcome');
+  if (_history.length === 0) {
+    if (existing) return;
+    const cap = [
+      ['情绪评价', '区域情绪排序 · 4×5 治理归因 · 热点识别'],
+      ['GIS 操作', '裁剪/抽取/叠置/缓冲，结果自动落地图'],
+      ['多轮追问', '承接上轮计划续做，上传数据即纳入分析'],
+    ].map(([k, v]) => `<div class="emc-welcome-cap-row"><span class="emc-welcome-cap-key">${k}</span><span class="emc-welcome-cap-val">${v}</span></div>`).join('');
+    const chips = WELCOME_PROMPTS.map((p) => `<button type="button" class="emc-welcome-chip" data-prompt="${escapeHtml(p.text)}"><span class="emc-welcome-chip-tag">${p.tag}</span>${escapeHtml(p.text)}</button>`).join('');
+    const el = document.createElement('div');
+    el.className = 'emc-welcome';
+    el.innerHTML = '<div class="emc-welcome-head">'
+      + '<svg class="emc-welcome-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a7 7 0 0 0-7 7c0 3.5 2.5 5 2.5 8h9c0-3 2.5-4.5 2.5-8a7 7 0 0 0-7-7z"/><path d="M9.5 21h5"/></svg>'
+      + '<div><div class="emc-welcome-title">你好，我是 EmotionMap Copilot</div>'
+      + '<div class="emc-welcome-sub">用情绪地图看懂市民心声——问区域情绪、做空间分析、追原因与建议。</div></div></div>'
+      + `<div><div class="emc-welcome-section-label">我能做什么</div><div class="emc-welcome-cap">${cap}</div></div>`
+      + `<div><div class="emc-welcome-section-label">试试这些</div><div class="emc-welcome-ex">${chips}</div></div>`;
+    list.appendChild(el);
+  } else if (existing) {
+    existing.remove();
+  }
+}
+
 function restoreHistory() {
   const list = document.getElementById('chat-messages');
   if (!list) return;
@@ -710,6 +759,7 @@ function restoreHistory() {
     if (m.role === 'user') appendMessage('user', escapeHtml(m.text));
     else appendAssistantShell(m.trace);
   }
+  renderEmptyState();
 }
 
 function clearChat() {
@@ -763,6 +813,8 @@ function renderHistoryList(q) {
 }
 
 function onMsgClick(e) {
+  const wChip = e.target.closest('.emc-welcome-chip');   // 空态示例追问：点击即发
+  if (wChip && wChip.dataset.prompt) { send(wChip.dataset.prompt); return; }
   const copy = e.target.closest('.emc-copy-btn');
   if (copy) {
     const bubble = copy.closest('.chat-bubble');
@@ -875,4 +927,9 @@ export function initChatPanel() {
   mountChatChrome();
   setupEmcHeightObservers();
   setEmcMode('comfort');
+
+  // 折叠键 + 输入框触发展开 + 折叠态持久化恢复
+  document.getElementById('chat-collapse')?.addEventListener('click', () => setEmcCollapsed(!_emcCollapsed));
+  input?.addEventListener('focus', () => { if (_emcCollapsed) setEmcCollapsed(false); });   // 折叠态点输入框 → 展开
+  if (_emcCollapsed) document.getElementById('emc-panel')?.classList.add('is-collapsed');   // 初始即折叠：套类（局部覆盖 --emc-h=48px）
 }
