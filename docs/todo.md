@@ -7,6 +7,31 @@
 
 ## 📅 2026-07-10
 
+### ✅ EMC 图表生成·Phase 1（revision-log 5.67）
+
+用户要 EMC「略复杂任务端到端、超越同行」。检索+zread 实读开源 AI+GIS agent（GIS Copilot DataEye/tool-doc RAG/SmartDebugger、LLM-Geo/GISclaw、GeoGPT、ChartGPT、CARTO）+ 用户上传 mapgpt-main（**纯营销页无代码可 copy**）。结论：EMC agent 骨架已对齐 SOTA，**最大差距=没图表**。
+- **改**：答案里 `{{chart:TYPE|title=..|x=标签|y=数值}}` → Chart.js 柱/折/饼（bar=排序/line=时序/pie=占比）。panel.js `_renderCharts`（挂 enhanceCodeBlocks）+ Chart.js@4 CDN + FINAL_TEMPLATE 教模型出图 + .aiq-chart-wrap CSS。
+- **两个陷阱**：`.format()` 吞一层括号→正则兼容 1~2 花括号；畸形规格用 HTML 实体防二次嵌套。
+- **验证**（Playwright 真实管线）：注入伪答案走 restoreHistory→renderAnswer→_renderCharts → 3 图全渲染+3 实例绑定+畸形留 1 个不嵌套+零崩。承重全未碰（图表纯增量）。
+- **push**：4535303（含上轮积压 410ae0c/a8517ac/4bf9ca5 一起推上）。
+
+### ✅ EMC 回答策略重构 + 阶段3 三项 + 用地色全路径 + 防缓存（revision-log 5.61–5.66）
+
+- **5.61 三态出口契约**（闸门，根治"只说不做"+代码块泄漏）：harness 代码强制终态(做成/缺数据/纯问答)+parseAgentStep 抗漂移(8/8)+onDegraded 永不裸输+密度出口做真(kde_raster/geo/density)+hotspot 修落图+装齐 scipy/libpysal/esda。
+- **5.62 阶段3 三项**：推荐追问胶囊（上下文相关）+ 长对话折叠（>2 自动折叠）+ 用地色（PDF 附录B 39 类 → landuse_colors.js matcher 10/10）。
+- **5.63–5.65 用地色三连修**：DLMC 权威落色→fillOpacity 0.6（原 0.15 看不见）→**全路径覆盖**（预设/手动上传 main.js/EMC tools.js addResultLayer 三处收口 `landuseLayerPaint`）+ serve.py **build 角标**（改代码后硬刷新看角标时间=新代码）。
+- **5.66 start.bat 单实例**：netstat+taskkill 清 8080/8000 旧进程再起单实例；ASCII-only（cmd 按 GBK 解析 .bat，UTF-8 中文会破坏 `^|` 转义）。
+- **验证**：parse 漂移 8/8 / landuse matcher 10/10+landuseLayerPaint 9/9 / KDE 真数据冒烟 / 预设+EMC 真实管线落色确认 / start.bat 实测。
+
+### ⬜ 下会话：EMC 端到端 Phase 2/3 + 收尾
+
+1. **先验 Phase 1**：硬刷新（看 build 角标）→ 问"各区情绪排序"/"T1→T3 演进"→ 看答案出图。
+2. **Phase 2 DataEye 深化**：tools.js buildContext 加字段 dtype+2-3 样本值（borrow GIS Copilot），复杂 where 命中率升。低工作量。
+3. **Phase 3 复合工具+报告导出**：compare/timeseries 一次性取数喂图（geo_routes+spatial_analysis）+ 答案脚"导出报告"钮（Chart.js toBase64Image→markdown/PDF，事企业"城市体检报告"出口）。
+4. **Phase 4（远期）**：tool-doc RAG（工具数翻倍再做）+ code-gen kernel。
+5. **mapgpt-main 待删**：`docs/mapgpt-main/`（未入仓、读完即删）——红线，需用户确认后 `rm -rf`。
+6. **遗留**：`{{focus}}` 单括号隐患（.format 吞括号，模型可能输单括号、前端双括号正则匹配不到）——下次顺手把 focus/show/inspect 正则也改成兼容 1~2 花括号。
+
 ### ✅ 网格 2D/3D 底图切换卡顿·不换底图（revision-log 5.60）
 
 用户报 2D/3D 切换底图卡顿（Dark→天地图影像慢）。
