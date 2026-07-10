@@ -1069,6 +1069,16 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证**：node --check map.js ✓ + 服务器 200。真环境复验待用户切 2D/3D 看是否还卡（应不再换底图=不卡）。
 - **承重**：未碰（仅 setView3D 的底图切换开关；pitch/网格视图配对/极性色带全不动）。
 
+### 5.61 EMC 回答策略重构·三态出口契约（根治"只说不做"+代码块泄漏）（07月10日）
+
+用户报（反复毛病）：EMC 常把工具调用以 ```json 代码块**糊进答案**给用户，且"只说不做"（讲计划不执行）；追问"继续"又甩代码块。要求出口必须是「图层生成 + 说明/分析/结论」，做不成就诚实说缺什么+引导上传，绝不该是计划/代码块。并要求**站在巨人肩膀上**（检索开源 AI+GIS agent 策略），可改既有规则。
+- **站在巨人肩膀上（已检索）**：CARTO「构建地理 AI Agent 的教训」"多数 agent 失败是上下文/结构失败，不是模型失败"+"设计的是体验不是配工具，把每一步显式呈现建信任"；QGIS Copilot(Akinboyewa 2025)"高级任务难自主→优雅交接不可或缺"；LLM-Geo/GISclaw"tool-pool ReAct + 自调试循环 + 地图内联渲染"。**结论：本项目架构已对齐 SOTA，缺的是代码层终态强制 + 几个 bug，故保架构、把出口契约从 prompt 提升为 harness 强制终态机**。
+- **根因（读码确认）**：① 出口逻辑只在 prompt（manifesto §5/§8/§10 + FINAL 诚实铁律都对），全靠模型自觉；② 格式漂移→裸输崩塌：DeepSeek 输出非约定 schema（{action:"x",arguments:{}} / prose 包裹 ```json```）→ parseAgentStep 返畸形/失败 → harness 8 轮空转 → onDegraded **把原始 token 糊进答案泡**（=用户看到的代码块）；③ hotspot 工具不调 addResultLayer（密度/热点类不出图）；④ 入参别名漂移即失败（inverse/output_layer/radius）。
+- **核心设计·三态出口契约**（harness 代码裁定，不靠自觉）：每次问答必落且仅落一种干净终态——**EXIT_RESULT**（做成：≥1 工具成功或产图层→数据驱动结论+操作按钮）/ **EXIT_GAP**（做不成：零成功+零新图层→确定性"缺数据卡"，跳过叙述型 finalStep）/ **EXIT_CONCEPT**（纯问答）。**最高杠杆**：intent∈{B,C} 零成功时禁止走 finalStep，直接 EXIT_GAP。
+- **改**：① stages.js parseAgentStep 重写——归一 drift schema（action 字符串/{tool,params}/fenced）+ 入参别名规整（解析期单源）+ 纯叙述返 `{narrated:true}` 哨兵（不裸输）；② harness.js 终态机——success/newLayer 计数 + narrated 修复通道（纠偏重发≤1 轮）+ 零成功 EXIT_GAP 裁定 + composeGapCard（确定性，不走 LLM）；③ panel.js onDegraded **永不裸输**（固定降级卡，忽略 raw token）+ 三态出口徽章（已生成N图层/缺数据·需上传/纯问答/分析完成）；④ tools.js hotspot 修落图层（hot=红/cold=绿/ns=灰，离散 5 色）+ 新增 density 工具；⑤ 后端 core/spatial_analysis.kde_raster(F_005/D_004，高斯核→规则方格面 _level/_band) + api/geo_routes `/geo/density` + paradigm catalog density；⑥ prompts/manifesto 出口契约入 prompt（域知识保留）；⑦ 装齐 scipy/libpysal/esda（requirements 已声明但本机未装，hotspot Gi* 也因此失败）+ scipy 入 requirements。
+- **验证**：node --check 全过；**格式漂移注入测试 8/8**（用户原症状 prose+```json{action,arguments}``` → 正确归一为可执行 tool，不再泄漏）；后端 wire OK（/geo/density 注册、catalog、F_005 注册）；**KDE 真数据冒烟**（500 真点→110 密度格，band 梯度 {0:77,1:20,2:9,3:1,4:3}，CRS 4326）。真问答端到端待用户复验（核密度→应出图层+结论+零代码块）。
+- **承重**：未碰（视野-数据-结论同步/KDE 级联/4×5/对称拉伸/tip-popup/EMC 深色/网格视图配对全不动；density 复用 isTool 色带 fill 管线 2D，不另起渲染；新色带离散分段）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

@@ -215,11 +215,30 @@ function formatTs(ts) {
 
 /** 完毕戳（回答完毕 + 版本 + 时间戳 + 复制回答按钮）；存 trace.doneAt 供历史恢复。 */
 function _fmtTokens(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
-/** 渲染页脚：meta 文本（用时/版本/时间戳）+ 复制回答 icon（复制为 markdown，剥离 {{action}} 模板）。 */
-function _renderFooter(shell, metaText, md) {
+/** 三态出口徽章（CARTO 教训：显式呈现每一步建信任）。据 trace.exit/newLayerCount/diagnose.intent 派生。
+ *  返回 {txt, cls} 或 null。 */
+function _exitBadge(t) {
+  if (!t) return null;
+  const intent = t.diagnose && !t.diagnose.degraded && t.diagnose.intent;
+  const skipped = t.review && t.review.skipped;
+  if (t.exit === 'gap' || skipped === 'gap') return { txt: '缺数据·需上传', cls: 'warn' };
+  if (intent === 'general' || skipped === 'general') return { txt: '纯问答', cls: 'neutral' };
+  const n = t.newLayerCount || 0;
+  if (n > 0) return { txt: '已生成 ' + n + ' 个图层', cls: 'ok' };
+  return { txt: '分析完成', cls: 'ok' };
+}
+
+/** 渲染页脚：出口徽章 + meta 文本（用时/版本/时间戳）+ 复制回答 icon（复制为 markdown，剥离 {{action}} 模板）。 */
+function _renderFooter(shell, metaText, md, badge) {
   if (!shell || !shell.footerEl) return;
   shell.footerEl.hidden = false;
   shell.footerEl.innerHTML = '';
+  if (badge) {
+    const b = document.createElement('span');
+    b.className = 'aiq-exit-badge ' + (badge.cls || '');
+    b.textContent = badge.txt;
+    shell.footerEl.appendChild(b);
+  }
   const span = document.createElement('span');
   span.className = 'aiq-footer-meta'; span.textContent = metaText;
   const btn = document.createElement('button');
@@ -239,7 +258,7 @@ function stampDone(shell) {
   if (shell && shell.footerEl) {
     const secs = _curTrace && _curTrace.startedAt ? Math.max(1, Math.round((_curTrace.doneAt - _curTrace.startedAt) / 1000)) : 0;
     const cs = getCallStats();
-    _renderFooter(shell, `回答完毕 · 用时 ${secs}s · 用量 ${_fmtTokens(cs.total)} token / ${cs.calls} 次 · 情绪地图 v1.0 · ${formatTs(_curTrace && _curTrace.doneAt)}`, shell._finalMd || (_curTrace && _curTrace.final));
+    _renderFooter(shell, `回答完毕 · 用时 ${secs}s · 用量 ${_fmtTokens(cs.total)} token / ${cs.calls} 次 · 情绪地图 v1.0 · ${formatTs(_curTrace && _curTrace.doneAt)}`, shell._finalMd || (_curTrace && _curTrace.final), _exitBadge(_curTrace));
   }
   updateReasonMeta(shell);
 }
@@ -426,7 +445,7 @@ function appendAssistantShell(trace) {
     if (trace.diagnose) renderDiagnoseCard(shell.diagnoseEl, trace.diagnose);
     if (trace.caliber) renderCaliber(shell, trace.caliber);
     if (trace.doneAt && shell.footerEl) {
-      _renderFooter(shell, '回答完毕 · 情绪地图测试版 v1.0 · ' + formatTs(trace.doneAt), trace.final);
+      _renderFooter(shell, '回答完毕 · 情绪地图测试版 v1.0 · ' + formatTs(trace.doneAt), trace.final, _exitBadge(trace));
     }
   }
   scrollBottom();
@@ -616,11 +635,15 @@ function buildHooks(shell) {
       if (v) v.textContent = '审查未过·已重写';
       autoScroll();
     },
-    onDegraded: (text) => {
+    onDegraded: (_text) => {
       cancelStream();
       stopThinking();
-      shell.answerEl.innerHTML = renderAnswer(text || '（未生成有效回答——模型输出无法解析为动作，且最终结论生成失败）', getValidRefNames());
+      // 永不裸输原始 token（根治代码块/计划文泄漏）：固定降级卡，忽略传入的 raw 文本
+      const _degradedText = '## 暂未能完成此分析\n\n模型输出未能解析为可执行动作，且最终结论生成失败。\n\n**建议**：换一种问法或缩小范围（指定某区、某类用地、某时点）后重试；若反复失败，可上传更明确的数据范围。';
+      shell.answerEl.innerHTML = renderAnswer(_degradedText, getValidRefNames());
       enhanceCodeBlocks(shell.answerEl);
+      if (_curTrace) { _curTrace.exit = 'gap'; _curTrace.final = _degradedText; }
+      shell._finalMd = _degradedText;
     },
   };
 }
@@ -681,8 +704,9 @@ async function send(text) {
   ctx.resume = !!(ctx.priorTurn && _isResumeCue(text));   // 续作线索 → harness 跳过 general/request_upload 短路、续跑上轮 method
   let settled = false;
   try {
-    await orchestrate(ctx, buildHooks(shell));
+    const _result = await orchestrate(ctx, buildHooks(shell));
     settled = true;
+    if (_curTrace && _result) { _curTrace.exit = _result.exit || _curTrace.exit; _curTrace.newLayerCount = _result.newLayerCount; }
     // C：软缺口降级口径标注（fallback_annotated）
     const strat = _curTrace && _curTrace.diagnose && _curTrace.diagnose.data_plan && _curTrace.diagnose.data_plan.strategy;
     if (strat === 'fallback_annotated') {

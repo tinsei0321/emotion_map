@@ -102,6 +102,10 @@ function normPreFilter(pf) {
 }
 
 const _ERR = (name, e) => ({ observation: '[ERR] ' + name + ' 失败：' + ((e && e.message) || e) });
+
+/** 核密度(KDE)离散分段色带（5 段，浅黄→深红热力；遵 ramp-discrete-segments，禁连续渐变）。
+ *  density 面层经 map.js isTool(density) 复用 grid 色带 fill 管线，按 feature._level(0..1) 落色。 */
+const DENSITY_RAMP = [[0, '#FFFADC'], [0.25, '#FED976'], [0.5, '#FD8D3C'], [0.75, '#E03131'], [1.0, '#8B0000']];
 const _fmtPi = (v) => (v !== '' && v != null && !isNaN(v) ? Number(v).toFixed(2) : '?');
 const _fmtRow = (row) => {
   const dom = DOMAIN_LABEL[row.domain_top] || row.domain_top || '?';
@@ -584,7 +588,7 @@ export const TOOLS = {
     } catch (e) { return _ERR('nearest', e); }
   },
 
-  /** Gi* 热点识别。 */
+  /** Gi* 热点识别 → 落图层（hot/cold/ns 点，离散色：hot=负面聚集=红 / cold=正面聚集=绿 / ns=灰）。 */
   async hotspot(params = {}) {
     const body = { layer: params.layer || 'yichang_l2_t1', value_col: params.value_col || 'score', invert: params.invert !== false };
     if (params.range) body.range = params.range;
@@ -592,15 +596,55 @@ export const TOOLS = {
     try {
       const r = await geoFetch('hotspot', body);
       const feats = (r.geojson && r.geojson.features) || [];
+      // hotspot class → 极性色槽（复用离散 5 色极性色带，零 map.js 改动；class 原值保留供弹窗/观察）
+      const _CLS_POL = { hot: 'Very Negative', cold: 'Very Positive', ns: 'Neutral' };
+      const renderFc = {
+        type: 'FeatureCollection',
+        features: feats.map((f) => {
+          const props = { ...(f.properties || {}) };
+          const cls = props.hotspot || props.class || props.gi_class || 'ns';
+          props.polarity = _CLS_POL[cls] || 'Neutral';
+          return { ...f, properties: props };
+        }),
+      };
+      const _hName = params.as || '情绪热点(Gi*)';
+      const _hL = addResultLayer({ name: _hName, kind: 'point', fc: renderFc, keep: !!params.keep });
       const tally = {};
       feats.forEach((f) => {
         const p = f.properties || {};
-        const cls = p.class || p.classification || p.gi_class || p.hot_cold || p.category || 'ns';
+        const cls = p.hotspot || p.class || p.gi_class || 'ns';
         tally[cls] = (tally[cls] || 0) + 1;
       });
-      const dist = Object.keys(tally).length ? Object.entries(tally).map(([k, v]) => `${k}:${v}`).join('、') : `${feats.length}要素`;
-      const leg = r.legend ? '（' + Object.entries(r.legend).map(([k, v]) => `${k}=${v}`).join('、') + '）' : '';
-      return { observation: `热点分析：${dist}${r.truncated ? '（已截断）' : ''}${leg}`, data: { count: r.count, tally } };
+      const _CLS_CN = { hot: '显著热点(负面聚集)', cold: '显著冷点(正面聚集)', ns: '不显著' };
+      const dist = Object.keys(tally).length ? Object.entries(tally).map(([k, v]) => `${_CLS_CN[k] || k}:${v}`).join('、') : `${feats.length}要素`;
+      return { observation: `热点分析：${dist}${r.truncated ? '（已截断）' : ''}（hot=红/cold=绿/ns=灰）→ 已生成图层「${_hName}」${_hL ? '(' + feats.length + '点)' : ''}`, data: { count: r.count, tally, layerId: _hL && _hL.id } };
     } catch (e) { return _ERR('hotspot', e); }
+  },
+
+  /** 核密度(KDE)栅格 → 落面层（2D 密度面，离散分段色带）。"核密度/密度分析"的标准出口=新图层。 */
+  async density(params = {}) {
+    const body = {
+      layer: params.layer || 'yichang_l2_t1',
+      bandwidth_m: Number(params.bandwidth_m) || 800,
+      cell_size_m: Number(params.cell_size_m) || 300,
+    };
+    if (params.value_col) body.value_col = params.value_col;
+    if (params.range) body.range = params.range;
+    const pf = normPreFilter(params.pre_filter); if (pf) body.pre_filter = pf;
+    try {
+      const r = await geoFetch('density', body);
+      const feats = (r.geojson && r.geojson.features) || [];
+      const _dName = params.as || '情绪核密度';
+      const _dL = addResultLayer({
+        name: _dName, kind: 'polygon', fc: r.geojson, keep: !!params.keep,
+        paint: { fillOn: true, _ui: { tool: 'density', gridField: '_level', gridStops: DENSITY_RAMP, extrusionOpacity: 0.72 } },
+      });
+      let hi = 0, md = 0;
+      feats.forEach((f) => { const b = (f.properties || {})._band; if (b >= 3) hi++; else if (b === 2) md++; });
+      return {
+        observation: `核密度(KDE)：${feats.length} 个密度格（bandwidth=${body.bandwidth_m}m·cell=${body.cell_size_m}m${params.value_col ? '·加权' + params.value_col : ''}）${r.truncated ? '（已截断）' : ''}，高密度区 ${hi}、中区 ${md} → 已生成图层「${_dName}」${_dL ? '(' + feats.length + '面)' : ''}`,
+        data: { count: r.count, layerId: _dL && _dL.id, hi, md },
+      };
+    } catch (e) { return _ERR('density', e); }
   },
 };

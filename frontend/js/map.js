@@ -405,7 +405,7 @@ export function updateGridSourceData(layer, fc) {
 function addPolygonPaint(layer, sid, lid, lineLid, hitLid) {
   const p = layer.paint || {};
   const tool = p._ui && p._ui.tool;
-  const isTool = tool === 'grid' || tool === 'terrain';   // grid / terrain 共用极性色带 + fill-extrusion 管线
+  const isTool = tool === 'grid' || tool === 'terrain' || tool === 'density';   // grid/terrain 共用极性色带+fill-extrusion；density 仅 2D 复用色带 fill 管线（无 extrusion）
   const isTool3d = isTool && p._ui.mode === '3d';
   const color = p.color || NAVY;
   const fillExpr = isTool ? _gridColorExpr(p) : null;

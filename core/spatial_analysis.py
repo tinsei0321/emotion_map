@@ -110,6 +110,118 @@ def _classify_hotspot(z_score: float) -> str:
 
 
 # ═══════════════════════════════════════════════════════════
+# 核密度估计(KDE)栅格 — 高斯核，规则方格面输出
+# ═══════════════════════════════════════════════════════════
+
+# 米制投影（宜昌 CGCS2000 CM111E）。geo_routes 用同一投影，KDE 带宽/格长以米计。
+_KDE_PROJECT_CRS = 'EPSG:4546'
+
+
+@track("MOD_SPATIAL.F_005", track_args=False)
+def kde_raster(
+    gdf: gpd.GeoDataFrame,
+    bandwidth_m: float = 800.0,
+    cell_size_m: float = 300.0,
+    value_col: Optional[str] = None,
+    max_cells: int = 6000,
+) -> gpd.GeoDataFrame:
+    """
+    核密度估计(KDE)栅格 — 高斯核，输出规则方格面网格，每格 density + _level(0..1 归一) + _band(离散分段)。
+
+    用途：EMC「核密度/密度分析」出口——结果落地图为面层（前端按 _level 离散分段色带渲染，
+    对称拉伸）。区别于 F_007 的 KDE 等值面 mesh（3D 地形专用）：本函数产 2D 栅格面，通用可叠加。
+
+    参数:
+        gdf: 含 Point geometry 的 GeoDataFrame（任意 CRS，内部转 4546 米制）。
+        bandwidth_m: 高斯核平滑带宽(米)，越大越平滑（默认 800m≈步行范围）。
+        cell_size_m: 输出方格边长(米)，越小越细越慢（默认 300m）。
+        value_col: 可选加权列（如 'score'）；None=纯点密度。
+        max_cells: 网格上限，超过自动放大 cell_size 防爆。
+
+    返回:
+        GeoDataFrame（EPSG:4326），每 feature=一方格面，properties:
+          density(原始核密度) / _level(0..1 归一) / _band(0..4 离散分段) /
+          name('密度网格') / point_count(格内点数)。
+    """
+    try:
+        from scipy.stats import gaussian_kde
+    except ImportError:
+        raise ImportError(
+            'scipy 未安装。运行: pip install scipy\n'
+            'scipy 是科学计算标准库，KDE 直接用 gaussian_kde，不自造轮子。'
+        )
+
+    pts = gdf[gdf.geometry.geom_type == 'Point'].copy()
+    if len(pts) < 3:
+        raise ValueError(f'核密度需要至少 3 个点，当前 {len(pts)}')
+    if pts.crs is None:
+        raise ValueError('点层缺 CRS，无法做米制核密度')
+
+    # 投影到米制（带宽/格长以米计）
+    pts_m = pts.to_crs(_KDE_PROJECT_CRS) if pts.crs.to_epsg() != 4546 else pts.copy()
+    xs = pts_m.geometry.x.to_numpy()
+    ys = pts_m.geometry.y.to_numpy()
+    minx, miny, maxx, maxy = float(xs.min()), float(ys.min()), float(xs.max()), float(ys.max())
+    pad = float(bandwidth_m)
+    minx -= pad; miny -= pad; maxx += pad; maxy += pad
+    span = max(maxx - minx, maxy - miny, 1.0)
+
+    # 自适应格长：超 max_cells 则放大 cell_size（防爆）
+    cell = float(cell_size_m)
+    nx = int(np.ceil((maxx - minx) / cell)) + 1
+    ny = int(np.ceil((maxy - miny) / cell)) + 1
+    while nx * ny > max_cells and cell < span:
+        cell *= 1.5
+        nx = int(np.ceil((maxx - minx) / cell)) + 1
+        ny = int(np.ceil((maxy - miny) / cell)) + 1
+
+    gx = np.arange(minx, maxx + cell, cell)
+    gy = np.arange(miny, maxy + cell, cell)
+    CX, CY = np.meshgrid(gx, gy)
+    centers = np.vstack([CX.ravel(), CY.ravel()])
+    coords = np.vstack([xs, ys])
+
+    # 可选加权（value_col 数值化）
+    weights = None
+    if value_col and value_col in pts_m.columns:
+        w = pd.to_numeric(pts_m[value_col], errors='coerce').fillna(0).to_numpy()
+        if np.nansum(np.abs(w)) > 0:
+            weights = w
+
+    # gaussian_kde 的 bw_method 是相对协方差乘子；换算成期望米制带宽：bw_method ≈ bandwidth/(span/4)，clamp
+    bw = float(np.clip(4.0 * bandwidth_m / span, 0.05, 0.6))
+    try:
+        kde = gaussian_kde(coords, bw_method=bw, weights=weights)
+        dens = kde(centers).reshape(CX.shape)
+    except Exception:
+        kde = gaussian_kde(coords, weights=weights)   # 退化（点共线等）→ 默认 bw
+        dens = kde(centers).reshape(CX.shape)
+
+    dmax = float(np.nanmax(dens)) or 1.0
+    level = dens / dmax   # 0..1 归一
+    band = np.clip((level * 5).astype(int), 0, 4)   # 5 段离散分段索引
+
+    # 仅保留 level>5% 峰值的格（剔除大量空格，减负）
+    keep = level > 0.05
+    polys, props = [], []
+    iy, ix = np.where(keep)
+    for i, j in zip(iy, ix):
+        x0, y0 = gx[j] - cell / 2.0, gy[i] - cell / 2.0
+        polys.append(box(x0, y0, x0 + cell, y0 + cell))
+        props.append({
+            'density': float(dens[i, j]), '_level': float(level[i, j]),
+            '_band': int(band[i, j]), 'name': '密度网格', 'point_count': 0,
+        })
+    if not polys:
+        raise ValueError('核密度结果全为空（点过于稀疏或带宽过小），试增大 bandwidth_m')
+
+    out = gpd.GeoDataFrame(props, geometry=polys, crs=_KDE_PROJECT_CRS)
+    with TrackContext("MOD_SPATIAL.D_004", n_cells=len(out), bandwidth_m=float(bandwidth_m), cell_m=float(cell)):
+        pass
+    return out.to_crs('EPSG:4326')
+
+
+# ═══════════════════════════════════════════════════════════
 # 空间自相关 — Moran's I
 # ═══════════════════════════════════════════════════════════
 
@@ -816,6 +928,8 @@ register_track_id("MOD_SPATIAL.F_003", "行政单元聚合统计")
 register_track_id("MOD_SPATIAL.F_004", "H3 六边形网格聚合")
 register_track_id("MOD_SPATIAL.F_006", "固定方格网格聚合(标准网格)")
 register_track_id("MOD_SPATIAL.F_007", "情绪地形 KDE 等值面 mesh")
+register_track_id("MOD_SPATIAL.F_005", "核密度(KDE)栅格方格面")
 register_track_id("MOD_SPATIAL.D_001", "热点分析：自适应空间权重矩阵构建")
 register_track_id("MOD_SPATIAL.D_002", "热点分析：分类结果统计（hot/cold/ns）")
 register_track_id("MOD_SPATIAL.D_003", "地形：KDE 曲面 + 等值面提取参数")
+register_track_id("MOD_SPATIAL.D_004", "KDE 栅格：网格分辨率自适应 + 峰值阈值裁空")

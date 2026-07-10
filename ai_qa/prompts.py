@@ -30,7 +30,7 @@ AGENT_TEMPLATE = """
 
 ═══════════ 本次任务 · Agent Loop 第 {round} 轮（ReAct）═══════════
 你在用 Thought-Action-Observation 模式解题：每轮思考一步、做一个动作、看结果、再思考。
-本轮你必须输出**严格的 JSON 对象**（仅 JSON，禁 markdown 代码块 / 前后解释），结构如下：
+本轮你必须输出**严格的 JSON 对象**（仅 JSON，禁 markdown 代码块 / 前后解释 / "我打算…我将调用…"之类的只说不做），结构如下：
 {{
   "thought": "这一步你在想什么（口语化、面向用户、可见，如：我先看看当前有哪些数据）",
   "action": {{
@@ -39,6 +39,7 @@ AGENT_TEMPLATE = """
   // 或（信息已足够时）：
   // "action": {{ "type": "answer" }}
 }}
+**出口契约铁律**：你的目标是**做成**（调工具产出图层/结论）或**诚实说做不成**（缺什么→引导上传）。零成功时 harness 会强制出"缺数据卡"——故勿用计划文/代码块敷衍，要么给动作、要么 answer。
 
 【可用工具】（action.name 只能取以下值之一，params 仅列出的键）：
 - query_layers：查当前已加载的图层/数据（有什么可用）。params: {{}}
@@ -65,7 +66,8 @@ AGENT_TEMPLATE = """
 - buffer：设施缓冲区（地铁500m/奥体1km）。params: {{ "center": "preset_id|geojson", "radius_m": 500, "as": "图层名(现实内容)", "keep": "可选 true=保留此层免清理" }}
 - overlay：叠置（商业用地∩更新单元 等）。params: {{ "layer_a": "preset_id", "layer_b": "preset_id", "how": "intersection|union|difference|symmetric_difference", "as": "图层名(现实内容)", "keep": "可选 true=保留此层免清理" }}
 - nearest：最近邻（离地铁最近的负面点）。params: {{ "layer": "点层", "target": "preset_id|geojson", "k": 1 }}
-- hotspot：Gi* 热点识别（负面聚集/情绪热点）。params: {{ "value_col": "score", "invert": true(负面为热), "layer": "(默认L2)", "range": "(可选)" }}
+- hotspot：Gi* 热点识别（负面聚集/情绪热点，逐点 hot/cold/ns，自动落图层）。params: {{ "value_col": "score", "invert": true(负面为热), "layer": "(默认L2)", "range": "(可选)", "as": "(图层名)", "keep": "(可选true)" }}
+- density：核密度(KDE)栅格——用户说"核密度/密度分析/聚集强度/热力分布"时**首选**（产连续密度面，2D 离散分段色带，自动落图层；区别于 hotspot 逐点 Gi*）。params: {{ "bandwidth_m": 800(平滑带宽·越大越平滑), "cell_size_m": 300(格长), "value_col": "(可选加权如score，不传=纯点密度)", "layer": "(默认L2)", "range": "(可选)", "as": "(图层名·现实内容)", "keep": "(可选true)" }}
 - answer：已掌握足够信息，退出 loop 出结论。params: {{}}
 
 【Agent 规则】（严守）
@@ -155,7 +157,7 @@ DIAGNOSE_TEMPLATE = """
 }}
 **intent 判定要点（最高优先级）**：
 - general=通用问答/常识/寒暄/纯概念（今天星期几、什么是等时圈）→ domain_lens=["general"]，method 可空，不进情绪分析。
-- gis_operation=纯 GIS/数据操作（裁剪/抽取某区/缓冲/叠置/合并/字段筛选/上传数据处理）→ outlet="生成图层"，method 选 extract_feature/clip/filter_attr/overlay/merge/buffer 等，出口是新图层而非归因报告。
+- gis_operation=纯 GIS/数据操作（裁剪/抽取某区/缓冲/叠置/合并/字段筛选/上传数据处理/核密度density）→ outlet="生成图层"，method 选 extract_feature/clip/filter_attr/overlay/merge/buffer/density 等，出口是新图层而非归因报告。**注意：「核密度/密度分析/聚集强度/热力分布」属此类（method 选 density），勿判 general 短路。**
 - emotion_analysis=情绪评价/排序/归因/预警（7 场景）→ 走原 domain_lens/scale/decision_type 体系。
 
 **多轮续作（最高优先级，覆盖上文 intent 判定）**：若上文含【上一轮上下文】块，且用户本轮在追问/续做（问句含"继续/接着/补充/我上传了X/那个/把刚才"等，或承接上一轮未完成任务），则：

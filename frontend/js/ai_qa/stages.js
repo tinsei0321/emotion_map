@@ -4,7 +4,32 @@
 // ctx.model = 'pro' | 'flash'（思考深度开关，后端别名解析到 V4 真实 ID）；review 固定 flash。
 import { streamChat } from './api.js';
 
-/** 容错解析 agent_step 的 {thought, action} JSON；失败返回 null（走降级）。 */
+/** 入参别名规整：模型常把 invert 写成 inverse、as 写成 output_layer、radius_m 写成 radius，
+ *  导致执行报错→空转→退化为叙述。此处统一规整为各工具的规范入参名，模型怎么写都能执行。
+ *  仅收编实测出现的漂移别名，保守不过度映射（避免误伤合法字段）。 */
+const _PARAM_ALIAS = {
+  inverse: 'invert', output_layer: 'as', output: 'as', layer_name: 'as', named: 'as',
+  radius: 'radius_m', radius_meters: 'radius_m', buffer_radius: 'radius_m',
+  value: 'value_col', column: 'value_col', field_name: 'field',
+  top: 'top_n', limit: 'top_n', n: 'top_n',
+};
+function normalizeParams(name, params) {
+  if (!params || typeof params !== 'object') return {};
+  const out = {};
+  for (const k of Object.keys(params)) {
+    const canon = _PARAM_ALIAS[k] || k;
+    out[canon] = params[k];
+  }
+  return out;
+}
+
+/** 容错解析 agent_step 的 {thought, action}。
+ *  返回值三态：
+ *    { thought, action:{type:'tool'|'answer', name?, params?} }  — 正常
+ *    { narrated:true, text }   — 模型只写了说明文字没给动作（harness 走修复通道，绝不裸输）
+ *    null                       — 输入为空
+ *  抗格式漂移：兼容多种 DeepSeek 实测漂移 schema，统一归一为 {type:'tool',name,params}。
+ *  这是「代码块泄漏」的根治点——解析不再返畸形 action 致 8 轮空转→onDegraded 裸输。 */
 export function parseAgentStep(raw) {
   if (!raw) return null;
   let s = raw;
@@ -14,27 +39,54 @@ export function parseAgentStep(raw) {
   // 2. 截取首末花括号
   const start = s.indexOf('{');
   const end = s.lastIndexOf('}');
-  if (start < 0 || end < 0 || end <= start) return null;
+  if (start < 0 || end < 0 || end <= start) return { narrated: true, text: raw };   // 无 JSON = 纯叙述
   let candidate = s.slice(start, end + 1);
   // 3. 去尾逗号（}, ] 前的逗号）
   candidate = candidate.replace(/,(\s*[}\]])/g, '$1');
-  // 4. 首次解析
+
+  let obj = null;
   try {
-    const obj = JSON.parse(candidate);
-    if (obj && obj.action) return { thought: obj.thought || '', action: obj.action };
-  } catch (_) { /* fall through to regex extract */ }
-  // 5. 二次：正则提取 action 子对象（容错模型加前后解释/嵌套）
-  const am = candidate.match(/"action"\s*:\s*\{([\s\S]*?)\}\s*[,}]/);
-  if (am) {
-    try {
-      const action = JSON.parse('{' + am[1] + '}');
-      if (action && action.type) {
+    obj = JSON.parse(candidate);
+  } catch (_) {
+    // 4. 二次：正则提取 action 子对象（容错模型加前后解释/嵌套）
+    const am = candidate.match(/"action"\s*:\s*(\{[\s\S]*?\})\s*[,}]/);
+    if (am) {
+      try {
+        const action = JSON.parse(am[1]);
         const tm = candidate.match(/"thought"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-        return { thought: tm ? tm[1] : '', action };
-      }
-    } catch (__) { /* give up */ }
+        obj = { thought: tm ? tm[1] : '', action };
+      } catch (__) { obj = null; }
+    }
   }
-  return null;
+  if (!obj) return { narrated: true, text: raw };
+
+  const thought = obj.thought || obj.reasoning || '';
+
+  // ── 归一化 action：兼容漂移 schema ────────────────────────────
+  let action = obj.action;
+  // drift: action 是字符串（{action:"query_layers", arguments:{}}）
+  if (typeof action === 'string') {
+    if (action === 'answer') return { thought, action: { type: 'answer' } };
+    action = { type: 'tool', name: action, params: obj.arguments || obj.params || obj.parameters || {} };
+  }
+  // drift: {tool:"x", params|parameters|arguments}
+  if (!action && obj.tool) action = { type: 'tool', name: obj.tool, params: obj.params || obj.parameters || obj.arguments || {} };
+  if (!action && obj.tool_name) action = { type: 'tool', name: obj.tool_name, params: obj.params || obj.parameters || {} };
+  // drift: 顶层本身就是 action（{type:"tool",name, params}）
+  if (!action && (obj.type === 'tool' || obj.type === 'answer')) action = obj;
+  if (!action) return { narrated: true, text: raw };
+
+  // ── answer 识别（放宽）──────────────────────────────────────
+  const isAnswer = action.type === 'answer'
+    || action.name === 'answer' || action.tool === 'answer'
+    || obj.answer === true;
+  if (isAnswer) return { thought, action: { type: 'answer' } };
+
+  // ── tool 归一 ────────────────────────────────────────────────
+  const name = action.name || action.tool || action.tool_name;
+  const params = normalizeParams(name, action.params || action.parameters || action.arguments || {});
+  if (!name) return { narrated: true, text: raw };
+  return { thought, action: { type: 'tool', name, params } };
 }
 
 /** 归一化 diagnose 卡（补默认值，防字段缺失）。 */

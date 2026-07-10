@@ -63,6 +63,31 @@ function buildRequestUploadText(d) {
     + '> 若暂无此数据，可在下方说明——我将基于现有情绪数据给出**标注了口径局限**的参考性结论。';
 }
 
+/** EXIT_GAP 缺数据/做不成卡（确定性组装，不走 LLM——杜绝"模型又口头讲一遍"）。
+ *  触发：intent∈{B,C} 且零成功观察+零新图层（含全失败/全叙述/解析塌）。
+ *  内容：缺什么/为何/已尝试但失败的/引导上传或换问法。绝不编造、绝不纯计划文。 */
+function composeGapCard(diagnose, failedObs) {
+  const dp = (diagnose && diagnose.data_plan) || {};
+  const needed = (dp.needed || []).filter(Boolean).join('、');
+  const gap = (dp.gap || []).filter(Boolean).join('、');
+  const strategy = dp.strategy;
+  let head;
+  if (strategy === 'request_upload' || gap || needed) {
+    head = '## 暂未能给出结论——需要补充数据\n\n'
+      + (needed ? `本问需要 **${needed}** 才能严谨作答。` : '当前情绪地图数据尚不足以完成此分析。')
+      + (gap ? `\n\n**缺失**：${gap}。` : '');
+  } else {
+    head = '## 暂未能完成此分析\n\n我尝试了若干操作，但未能生成可用的图层或结论。';
+  }
+  const fails = (failedObs || []).filter(Boolean).slice(0, 4);
+  const failTxt = fails.length ? '\n\n**已尝试但未成功**：\n' + fails.map((f) => '- ' + f).join('\n') : '';
+  const guide = '\n\n**下一步建议**：\n'
+    + '- 上传所需矢量数据（Shapefile / GeoJSON，EPSG:4326 或注明坐标系），在范围选择加载后重提此问；\n'
+    + '- 或换一种问法 / 缩小范围（指定某区、某类用地、某时点）后重试。\n\n'
+    + '> 在没有可靠数据或未生成图层前，我不会硬编结论。补充后我将继续完成分析。';
+  return head + failTxt + guide;
+}
+
 /** A1 产物验证 gate：抽取草稿里声称"已生成/加载"的图层名，对照地图实际图层；谎报→返 hints 注入 revise。 */
 function _verifyClaims(draft) {
   if (!draft) return { ok: true };
@@ -135,6 +160,10 @@ export async function orchestrate(ctx, hooks = {}) {
   let round = 1;
   let degraded = false;
   let forcedContinues = 0;   // F3 完整性 gate 强制续做计数（max 1，防 agent 0 工具就 answer）
+  let successObs = 0;        // 三态出口：成功观察数（非失败）
+  let newLayerCount = 0;     // 三态出口：本轮新生成图层数（工具 data.layerId 计）
+  let narrations = 0;        // 叙述检测：模型只写说明没给动作的轮数（>1 视失败）
+  const failedObs = [];      // 失败观察摘要（EXIT_GAP 卡展示「已尝试」用）
 
   // 多轮连续性：上一轮 trace 蒸馏注入 ctx.context 顶部（diagnose 及后续 phase 均可见，供续作承接）
   const _prior = formatPriorTurn(ctx.priorTurn);
@@ -196,7 +225,17 @@ export async function orchestrate(ctx, hooks = {}) {
     }
 
     const step = await stages.agentStep(ctx, hooks, round, toolHistoryText);
-    if (!step) { degraded = true; break; }   // 解析失败：break + 仍走 finalStep 回退
+    if (!step) { degraded = true; break; }   // 空输出：break（落 EXIT_GAP 兜底，不再裸输）
+
+    // 叙述检测：模型只写说明没给动作 → 纠偏重发（最多 1 轮），不退化裸输
+    if (step.narrated) {
+      narrations++;
+      if (narrations > 1) { degraded = true; break; }   // 两轮仍叙述 → 视失败，落 EXIT_GAP
+      toolHistory.push(`⚠️ 第${round}轮：你输出了说明文字而非动作 JSON。本轮请只输出严格 JSON {"thought":"...","action":{"type":"tool","name":"工具名","params":{...}}}（或 {"action":{"type":"answer"}}），禁止解释/计划/代码块。若信息不足直接 answer。`);
+      if (hooks.onObservation) hooks.onObservation('[格式] 上一轮是说明非动作 JSON，已要求重发', round);
+      round++;
+      continue;
+    }
 
     if (hooks.onThought) hooks.onThought(step.thought, round);
     if (step.action.type === 'answer') {
@@ -225,20 +264,36 @@ export async function orchestrate(ctx, hooks = {}) {
       try {
         const r = await fn(step.action.params || {});
         obs = (r && r.observation) || '（无观察）';
+        if (r && r.data && r.data.layerId) newLayerCount++;   // 三态出口：产图层计 +1
       } catch (e) {
         obs = '工具执行失败：' + (e && e.message ? e.message : e);
       }
     } else {
       obs = `未知工具：${step.action.name}`;
     }
+    const _failed = /失败|\[ERR\]|错误|未知工具/.test(obs);
+    if (_failed) failedObs.push(`${step.action.name}：${obs.slice(0, 80)}`);
+    else successObs++;   // 三态出口：成功观察计 +1
     if (hooks.onObservation) hooks.onObservation(obs, round);
 
     toolHistory.push(compressHistory(round, step.thought, step.action, obs));
     round++;
   }
 
-  // 草稿结论（agent 决定 answer / 达上限 / 降级回退 都走这里）
+  // 三态出口裁定（反「只说不做」核心）：intent∈{B,C} 且零成功观察+零新图层 → EXIT_GAP。
+  // 确定性组装「缺数据/做不成」卡，**跳过叙述型 finalStep**（杜绝模型又口头讲一遍计划）。
   const toolHistoryText = toolHistory.length ? toolHistory.join('\n') : '';
+  const _exitIntent = diagnose && !diagnose.degraded ? (diagnose.intent || 'emotion_analysis') : 'emotion_analysis';
+  const _hardFail = (_exitIntent === 'gis_operation' || _exitIntent === 'emotion_analysis')
+    && successObs === 0 && newLayerCount === 0;
+  if (_hardFail) {
+    const gapText = composeGapCard(diagnose, failedObs);
+    if (hooks.onFinalDone) hooks.onFinalDone(gapText);
+    if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: '零成功·缺数据卡·跳过审查', skipped: 'gap' });
+    return { ok: true, rounds: round, final: gapText, review: { pass: true, degraded: true, skipped: 'gap' }, degraded: true, diagnose, exit: 'gap', newLayerCount };
+  }
+
+  // EXIT_RESULT：草稿结论（agent 决定 answer / 达上限 / 降级回退 都走这里）
   let draft = '';
   try {
     draft = await stages.finalStep(ctx, hooks, toolHistoryText);
@@ -257,7 +312,7 @@ export async function orchestrate(ctx, hooks = {}) {
       const revised = await _reviseOnce(ctx, hooks, draft, verify.hints, toolHistoryText);
       if (revised) draft = revised;
     }
-    return { ok: true, rounds: round, final: draft, review: { pass: true, degraded: true, skipped: 'gis_operation' }, degraded };
+    return { ok: true, rounds: round, final: draft, review: { pass: true, degraded: true, skipped: 'gis_operation' }, degraded, diagnose, exit: 'result', newLayerCount };
   }
 
   // 审查（REVIEW_ENABLED=false 时跳过 Flash 审查员，仅留诚实门 _verifyClaims）
@@ -281,5 +336,5 @@ export async function orchestrate(ctx, hooks = {}) {
     const revised = await _reviseOnce(ctx, hooks, draft, reviseHints, toolHistoryText);
     if (revised) final = revised;
   }
-  return { ok: true, rounds: round, final, review, degraded };
+  return { ok: true, rounds: round, final, review, degraded, diagnose, exit: 'result', newLayerCount };
 }

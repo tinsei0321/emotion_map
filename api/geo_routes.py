@@ -24,7 +24,7 @@ from pydantic import BaseModel
 from core.geo_registry import (
     list_point_layers, list_boundaries, resolve_points, resolve_boundary,
 )
-from core.spatial_analysis import aggregate_by_polygons, hot_spot_analysis
+from core.spatial_analysis import aggregate_by_polygons, hot_spot_analysis, kde_raster
 
 geo_router = APIRouter()
 
@@ -506,3 +506,29 @@ async def hotspot(req: HotspotRequest):
     return {'success': True, 'geojson': fc, 'count': fc['_total'],
             'truncated': fc['_truncated'],
             'legend': {'hot': '显著热点', 'cold': '显著冷点', 'ns': '不显著'}}
+
+
+# ════════════ 11. density · 核密度(KDE)栅格 ════════════
+class DensityRequest(_GeoBase):
+    bandwidth_m: float = 800.0       # 高斯核平滑带宽(米)，越大越平滑
+    cell_size_m: float = 300.0       # 输出方格边长(米)
+    value_col: Optional[str] = None  # 可选加权列(如 'score')；None=纯点密度
+
+
+@geo_router.post('/geo/density')
+async def density(req: DensityRequest):
+    """核密度估计(KDE)栅格：高斯核 → 规则方格面网格，每格 density/_level(0..1)/_band(0..4)。落地图为面层。"""
+    try:
+        pts = _prepare_points(req.layer, req.range, req.pre_filter)
+        vcol = req.value_col if (req.value_col and req.value_col in pts.columns) else None
+        res = kde_raster(pts, bandwidth_m=req.bandwidth_m, cell_size_m=req.cell_size_m, value_col=vcol)
+        fc = _to_geojson(res)
+    except (KeyError, FileNotFoundError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail=f'依赖缺失: {e}（KDE 需 pip install scipy）')
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f'density 失败: {e}')
+    return {'success': True, 'geojson': fc, 'count': fc['_total'],
+            'truncated': fc['_truncated'],
+            'legend': {'_band=4': '高密度', '_band=3': '中高', '_band=2': '中', '_band=1': '中低', '_band=0': '低'}}
