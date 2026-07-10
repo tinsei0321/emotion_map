@@ -83,10 +83,17 @@ async function loadPresetRange(item) {
     for (const l of getLayers()) {
       if (l.name === name) { removeLayer(l.id); removeLayerFromMap(l.id); }
     }
+    // 用地预设(land_*) = 制图规范附录B 标准色（优先读要素 DLMC 落色，label 回退；fillOpacity 0.6 让规范色清晰可辨，否则 addLayer 默认 0.15 几乎看不见）。
+    const _isLand = item.id.startsWith('land_');
     const L = addLayer({
       name, kind: 'polygon', fc,
-      // 行政区 = 中性参考边界（非数据），用浅灰 #d8d8d8；用地预设(land_*) = 制图规范附录B 标准色（优先读要素 DLMC 落色，label 回退——上传即自动附该类标准色）；其余 preset 不指定 → addLayer 按 PRESET_COLORS 自动配。
-      paint: { lineWidth: 2, fillOn: true, color: item.id === 'admin_district' ? '#d8d8d8' : (item.id.startsWith('land_') ? landuseColorForFc(fc, item.label) : undefined) },
+      // 行政区 = 中性参考边界（非数据）浅灰 #d8d8d8；用地预设 = 标准色；其余 preset 不指定 → addLayer 按 PRESET_COLORS 自动配。
+      paint: {
+        lineWidth: _isLand ? 1 : 2,
+        fillOn: true,
+        fillOpacity: _isLand ? 0.6 : 0.15,
+        color: item.id === 'admin_district' ? '#d8d8d8' : (_isLand ? landuseColorForFc(fc, item.label) : undefined),
+      },
     });
     L.srcName = name;
     renderLayer(L);

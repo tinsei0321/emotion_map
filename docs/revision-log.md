@@ -1096,6 +1096,14 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **文档**：docs/landuse-colors.md「如何应用 §1」重写——明确单色是核心设计意图（非妥协），DLMC 权威落色是主路径；§2 多类填充降为少见场景的工具。
 - **承重**：未碰（仍只改 preset 的 paint.color；map.js 渲染管线不动）。
 
+### 5.64 用地预设色不可见·修 fillOpacity（07月10日）
+
+用户报：上传的居住/商业用地预设仍无对应规范色。
+- **根因**：颜色其实算对了（label 回退命中：商业→#FF0000 / 居住→#FFFF2D；后端 resolve_boundary 把 DLMC 重命名为通用 `name` 列致 dominantDLMC 返 null，但 label 回退兜住了）。真正问题在**填充透明度**：`state.js:addLayer` 默认 `fillOpacity:0.15`，而 5.63 的 paint 没覆盖它 → 规范色以 15% 透明度渲染，几乎看不见（红→淡粉、黄→近乎无色）。
+- **修**（range-presets.js loadPresetRange）：land_* 预设 `fillOpacity:0.6`（规范色清晰可辨，仍透底图看上下文），线宽收 1px；非用地预设维持 0.15。
+- **验证**：node --check ✓。肉眼验待用户：商业应见清晰红、居住清晰黄、公园广场清晰绿。
+- **承重**：未碰（仅改 land_* preset 的 paint.fillOpacity；map.js 渲染管线、其他层透明度不动）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。
