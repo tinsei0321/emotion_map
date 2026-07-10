@@ -1007,6 +1007,17 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证**：`node --check` tools.js/range-presets.js + `ast.parse` prompts.py ✓｜B1 端到端追码（normPreFilter→_norm_where 透传 dict→_apply_attr_filter isin list）✓｜B2 消费式追码（chain 中间产物删 / 并列最终留 / 轮界清空）✓｜无循环依赖（仅 main.js 引 range-presets）。真环境复验待用户重放 Q1→Q2（上传商业后"继续"）。
 - **承重**：未碰（视野-数据-结论同步 / KDE cascade / 4×5 归因 / 对称拉伸 / tip-popup / EMC 深色主题 / 5.51 命名与组 / 5.52 几何全不动）。纯 AI 编排 + 工具归一 + 上下文传递。
 
+### 5.55 EMC「回答一半停住」系统性根因修复（07月10日）
+
+用户重报老问题：问「筛选西陵+伍家岗的商业用地」，EMC 给出自相矛盾的诊断卡（intent=general 却同时 outlet=生成图层/decision_type=操作/method=extract→clip），然后**无工具、半截叙述**作答 + "审查中…"永卡。系统性排查定位**单一根因 + 三个连带漏洞**：
+- **根因·诊断 intent 误标致 general 短路**：flash 模型把明摆的 GIS 操作标成 `intent=general`（却填了正确的操作字段）。`normalizeCard`（stages.js）**只在 intent 为空时推断、不纠错标**→ 错误的 general 一路放行 → harness `intent===general` 分支短路：`finalStep` 传**空** toolHistory（不跑任何工具）、**不**走 review（`onReview` 永不调→"审查中…"卡死）。Pro 模型被逼"直接简洁作答"一个要工具的问题 → 只能用文字+代码块**叙述**操作（"第1步：extract_feature(...)"）然后停住；74.6k token/137s/10 次即此矛盾的空转代价。
+- **F1·intent 仲裁**（stages.js normalizeCard）：改为以 `outlet=生成图层|执行操作` 或 `decision_type=操作` **强信号**为准 → gis_operation，压倒 general 误标；`decision_type=通用问答|定义` 或 domain_lens 全 general → general；信号不明才采信 stated intent。**覆盖模型不一致标注**（旧逻辑只补空 intent）。验证：bug 卡→gis_operation / 真通用→general / 情绪→emotion_analysis / 纯操作→gis_operation 四例全过。
+- **F2·矛盾守卫**（harness.js）：normalizeCard 之外的最后防线——仍判 general 却带纯几何 geo method（extract/overlay/clip/filter_attr/merge/buffer）= 误标，改 gis_operation（写回 diagnose 供 loop/trace/priorTurn），避免短路。
+- **F3·完整性 gate**（harness.js）：agent 发 `answer` 前，若 gis_operation 且**诊断计划 geo 步数 > 已执行 geo 步数**（如计划 extract→clip 2 步只做了 1 步）= 半截，注入"继续完成剩余步骤"强制续做（max 1，防 0 工具/部分工具就停）。步数比对而非工具名比对 → clip↔overlay 等价替换不误判；仅 gis_operation 触发（情绪问不受约束）。新增 `_plannedGeoSteps`/`_executedGeoSteps`（method 按 →/，/；/换行分句、**不**按 ASCII 逗号——防 ($1,land) 实参误切）。验证：bug method 计 2 步、单步计划计 1（不 gate）、部分执行 1<2 触发、完整 2<2 不触发 全过。
+- **F4·清"审查中…"占位**（harness.js）：general/request_upload 短路分支补 `onReview({degraded, degraded_reason})` → renderReview 显"审查跳过"，不再永卡"审查中…"。
+- **验证**：`node --check` stages.js/harness.js + 四例 intent 仲裁 + F3 步数追码全过。真环境复验待用户重放「筛选西陵+伍家岗的商业用地」→ 应判 gis_operation、跑 agent loop、产 extract(双区)→overlay/clip(商业) 完整结果。
+- **承重**：未碰。纯 AI 编排核心（诊断 intent 仲裁 + loop 完整性 gate + 短路清理）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

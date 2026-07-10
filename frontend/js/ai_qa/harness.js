@@ -90,6 +90,26 @@ async function _reviseOnce(ctx, hooks, draft, hints, toolHistoryText) {
   return null;
 }
 
+const _GEO_TOOLS = ['extract_feature', 'overlay', 'clip', 'filter_attr', 'merge', 'buffer', 'zonal_stats', 'rank', 'area_stats', 'nearest', 'hotspot'];
+/** F3：诊断 method 里规划的 geo 工具步骤数。数组元素用 ' → ' 拼接后按 →/，/；/换行 分句，
+ *  每句首个工具名计 1 步；**不**按 ASCII 逗号分（工具实参含逗号，如 ($1,land)）。 */
+function _plannedGeoSteps(method) {
+  const m = Array.isArray(method) ? method.join(' → ') : (method || '');
+  return m.split(/[→，；;\n]/).reduce((n, clause) => {
+    const mm = clause.match(/([a-z_]+)\s*\(/i);
+    return (mm && _GEO_TOOLS.includes(mm[1])) ? n + 1 : n;
+  }, 0);
+}
+/** F3：历轮实际执行的 geo 工具步数（toolHistory 每行 = 一轮一个动作，匹配 "动作: tool("）。 */
+function _executedGeoSteps(toolHistory) {
+  let n = 0;
+  for (const line of (toolHistory || [])) {
+    const m = String(line).match(/动作:\s*([a-z_]+)\s*\(/i);
+    if (m && _GEO_TOOLS.includes(m[1])) n++;
+  }
+  return n;
+}
+
 /**
  * Agent Loop 一次问答。
  * @param ctx    {question, context(grounding), contextTokens, signal, model}
@@ -113,6 +133,7 @@ export async function orchestrate(ctx, hooks = {}) {
   const toolHistory = [];   // 每轮压缩摘要（注入下轮 prompt）
   let round = 1;
   let degraded = false;
+  let forcedContinues = 0;   // F3 完整性 gate 强制续做计数（max 1，防 agent 0 工具就 answer）
 
   // 多轮连续性：上一轮 trace 蒸馏注入 ctx.context 顶部（diagnose 及后续 phase 均可见，供续作承接）
   const _prior = formatPriorTurn(ctx.priorTurn);
@@ -129,7 +150,14 @@ export async function orchestrate(ctx, hooks = {}) {
     // 注入下游：卡摘要前插 ctx.context，所有后续 phase 都看到（导工具选型 + 结论颗粒度）
     ctx.context = formatDiagnoseSummary(diagnose) + '\n\n' + (ctx.context || '');
     // intent 分流（A 通用→短路直接答；B 纯操作→agent loop 走 geo 工具；C 情绪→原路径）
-    const intent = diagnose.intent || 'emotion_analysis';
+    let intent = diagnose.intent || 'emotion_analysis';
+    // 矛盾守卫（normalizeCard 之外的最后防线）：仍判 general 却带纯几何 geo method = 误标，
+    // 改 gis_operation（同步写回 diagnose 供 loop/trace/priorTurn 用），避免 general 短路致无工具半截回答。
+    if (intent === 'general' && /extract_feature|overlay|clip|filter_attr|merge|buffer/.test((diagnose.method || []).join(' '))) {
+      intent = 'gis_operation';
+      diagnose.intent = 'gis_operation';
+      ctx.context = '【intent 修正】诊断卡标 general，但 method 含 GIS 操作工具——按纯 GIS 操作处理，走 geo 工具产出图层，勿文字作答。\n\n' + (ctx.context || '');
+    }
     if (ctx.resume) {
       // 续作：跳过 general/request_upload 短路，强制 agent loop 续跑上轮 method（上轮缺口数据现多已就位）
       ctx.context = '【续作上一轮】用户在追问/续做上一轮任务。承接上一轮 intent+method，从断点续做（上轮【缺口】数据若已上传则继续执行原 method 剩余步骤）；勿当全新问题、勿在 method 未完成前 answer。\n\n' + (ctx.context || '');
@@ -141,6 +169,7 @@ export async function orchestrate(ctx, hooks = {}) {
         ctx.context = '【intent=通用问答】直接简洁作答即可，不要 4×5 归因、不要演示逻辑链、不要引导情绪场景。\n\n' + (ctx.context || '');
         const draft = await stages.finalStep(ctx, hooks, '');
         if (hooks.onFinalDone) hooks.onFinalDone(draft);
+        if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: '通用问答·跳过审查' });   // 清「审查中…」占位
         return { ok: true, rounds: 0, final: draft, review: { pass: true, degraded: true, skipped: 'general' }, degraded: false, diagnose };
       }
       if (intent === 'gis_operation') {
@@ -150,6 +179,7 @@ export async function orchestrate(ctx, hooks = {}) {
       if (diagnose.data_plan && diagnose.data_plan.strategy === 'request_upload') {
         const tpl = buildRequestUploadText(diagnose);
         if (hooks.onFinalDone) hooks.onFinalDone(tpl);
+        if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: '数据缺口·跳过审查' });   // 清「审查中…」占位
         return { ok: true, rounds: 0, final: tpl, review: { pass: true, degraded: true }, degraded: false, diagnose };
       }
     }
@@ -168,9 +198,24 @@ export async function orchestrate(ctx, hooks = {}) {
     if (!step) { degraded = true; break; }   // 解析失败：break + 仍走 finalStep 回退
 
     if (hooks.onThought) hooks.onThought(step.thought, round);
+    if (step.action.type === 'answer') {
+      // F3 完整性 gate（计划 vs 已执行，max 1）：纯 GIS 操作 + 诊断有 ≥2 步 geo 计划，却执行步数 < 计划步数就 answer = 半截，强制续做。
+      // 仅 gis_operation 触发（情绪问不受此约束）；按步数比对，工具等价替换(clip↔overlay)不会误判（步数够即放行）。
+      if (diagnose.intent === 'gis_operation' && forcedContinues < 1) {
+        const _planned = _plannedGeoSteps(diagnose.method);
+        const _executed = _executedGeoSteps(toolHistory);
+        if (_planned >= 2 && _executed < _planned) {
+          forcedContinues++;
+          toolHistory.push(`⚠️ 完整性检查：此问判为纯 GIS 操作，诊断计划含 ${_planned} 个 geo 步骤，但你只执行了 ${_executed} 个就要 answer——这是半截回答。请继续完成剩余步骤产出全部应有图层，全部完成后再 answer；本轮禁止 answer。`);
+          if (hooks.onObservation) hooks.onObservation(`[完整性] 计划 ${_planned} 步 / 已执行 ${_executed} 步，继续执行…`, round);
+          round++;
+          continue;
+        }
+      }
+      if (hooks.onAction) hooks.onAction(step.action, round);
+      break;
+    }
     if (hooks.onAction) hooks.onAction(step.action, round);
-
-    if (step.action.type === 'answer') break;
 
     // 执行工具（直调主窗口）
     const fn = TOOLS[step.action.name];

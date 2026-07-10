@@ -40,17 +40,23 @@ export function parseAgentStep(raw) {
 /** 归一化 diagnose 卡（补默认值，防字段缺失）。 */
 function normalizeCard(obj) {
   const dp = obj.data_plan || {};
-  // intent 兜底：老模型/字段缺失时按 domain_lens/decision_type/outlet 线索推断，避免退化成情绪分析
-  let intent = String(obj.intent || '').toLowerCase();
-  if (!intent) {
-    const dom = Array.isArray(obj.domain_lens) ? obj.domain_lens : [];
-    if (dom.includes('general') || obj.decision_type === '通用问答') intent = 'general';
-    else if (obj.decision_type === '操作' || obj.outlet === '生成图层' || obj.outlet === '执行操作') intent = 'gis_operation';
-    else intent = 'emotion_analysis';
+  const dom = Array.isArray(obj.domain_lens) ? obj.domain_lens : (obj.domain_lens ? [obj.domain_lens] : []);
+  // intent 仲裁（覆盖 flash 模型的不一致标注）：以 outlet/decision_type 强信号为准，不盲信 intent 字段。
+  // 曾出现 intent=general 却同时填 outlet=生成图层/decision_type=操作/method=extract→clip 的自相矛盾卡——
+  // 旧逻辑只补空 intent、不纠错标，致 harness 误走 general 短路→无工具半截回答（"回答一半停住"根因）。
+  const looksOperation = obj.outlet === '生成图层' || obj.outlet === '执行操作' || obj.decision_type === '操作';
+  const looksGeneral = obj.decision_type === '通用问答' || obj.decision_type === '定义'
+    || (dom.length > 0 && dom.every((d) => d === 'general'));
+  let intent;
+  if (looksOperation) intent = 'gis_operation';          // 操作出口/决策=强信号，压倒 general 误标
+  else if (looksGeneral) intent = 'general';
+  else {                                                  // 信号不明：采信模型 stated intent，否则情绪分析兜底
+    const stated = String(obj.intent || '').toLowerCase();
+    intent = (stated === 'gis_operation' || stated === 'general') ? stated : 'emotion_analysis';
   }
   return {
     intent,
-    domain_lens: Array.isArray(obj.domain_lens) ? obj.domain_lens : (obj.domain_lens ? [obj.domain_lens] : []),
+    domain_lens: dom,
     scale: obj.scale || 'macro',
     decision_type: obj.decision_type || '',
     outlet: obj.outlet || '',

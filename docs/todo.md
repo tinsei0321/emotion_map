@@ -7,6 +7,17 @@
 
 ## 📅 2026-07-10
 
+### ✅ EMC「回答一半停住」系统性根因修复（revision-log 5.55）
+
+用户重报老问题（问 GIS 操作，EMC 自相矛盾诊断卡 intent=general+操作字段，无工具半截叙述+"审查中…"卡死）。排查定位单一根因 + 三个连带漏洞。
+- **根因**：flash 诊断把 GIS 操作标 `intent=general`（normalizeCard 只补空 intent、不纠错标）→ harness general 短路（空 toolHistory 不跑工具 + 不走 review）→ Pro 被逼文字叙述操作半截停住 + "审查中…"永卡。74.6k/137s/10 次是空转代价。
+- **F1**（stages.js normalizeCard）：intent 改强信号仲裁——outlet=生成图层/decision_type=操作 → gis_operation 压倒 general 误标；通用问答/定义/全 general domain → general；否则采信 stated。四例验证全过。
+- **F2**（harness.js）：矛盾守卫——仍判 general 却带纯几何 geo method → 改 gis_operation 不短路。
+- **F3**（harness.js）：完整性 gate——agent 发 answer 前，gis_operation 且计划 geo 步数 > 已执行步数 = 半截，强制续做(max1)。步数比对（不按工具名，clip↔overlay 不误判）；仅 gis_operation 触发。新增 `_plannedGeoSteps`/`_executedGeoSteps`（不按 ASCII 逗号切，防实参误切）。
+- **F4**（harness.js）：general/request_upload 短路补 onReview(degraded) → 显"审查跳过"，清"审查中…"永卡。
+- **验证**：node --check + intent 仲裁四例 + F3 步数追码全过。真环境复验待重放。
+- **后续**：阶段 2（EMC 交互）+ 阶段 3（用地标准色）待续。
+
 ### ✅ EMC 多轮连续性·阶段 B+C：场景真跑通 + 鲁棒收尾（revision-log 5.54）
 
 续 5.53 阶段 A。B 让 Q1「筛选西陵+伍家岗居住商业用地」真出完整结果；C 鲁棒收尾。
