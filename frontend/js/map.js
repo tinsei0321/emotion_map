@@ -104,17 +104,23 @@ export function setBasemap(key) {
 const PITCH_3D = 60;   // 3D 俯角（与 map-controls.js PITCH_3D 统一）
 const VIEW_EASE_MS = 650;   // 视角切换动画时长（顺滑）
 
-/** 3D 网格视角：on → pitch 倾斜 + 暗色底图（记忆原底图）；off → pitch 复原 + 恢复原底图。setViewMode / generateGrid 共用。
+/** 3D 网格视角：on → pitch 倾斜；off → pitch 复原。setViewMode / generateGrid 共用。
  *  setStyle 不重置 camera（maplibre 保证），故直接 easeTo pitch——一次到位 + 顺滑动画；
- *  不等 style.load（曾用 once('style.load') 防"吞 pitch"是误诊，反而引入 race 致"第二下才转"）。 */
+ *  不等 style.load（曾用 once('style.load') 防"吞 pitch"是误诊，反而引入 race 致"第二下才转"）。
+ *  AUTO_3D_BASEMAP：3D 自动切暗底图（dark-matter）。默认关——setStyle 换底图会重载瓦片（Dark↔天地图影像
+ *  卫星瓦片尤慢）+ 切换瞬间旧底图已拆新瓦片未到 = 空白卡顿。vector 底图无法常驻一键显隐，故平滑=不换底图。
+ *  想恢复 3D 自动暗底图：改 true（代价是切换卡顿）。用户可随时手动选暗底图。 */
+const AUTO_3D_BASEMAP = false;
 export function setView3D(on) {
   if (!map) return;
-  if (on) {
-    if (_currentBasemap !== 'dark-matter') { _pre3dBasemap = _currentBasemap; setBasemap('dark-matter'); }
-  } else {
-    const restore = _pre3dBasemap || (_currentBasemap === 'dark-matter' ? DEFAULT_BASEMAP : _currentBasemap);
-    if (_currentBasemap !== restore) setBasemap(restore);
-    _pre3dBasemap = null;
+  if (AUTO_3D_BASEMAP) {
+    if (on) {
+      if (_currentBasemap !== 'dark-matter') { _pre3dBasemap = _currentBasemap; setBasemap('dark-matter'); }
+    } else {
+      const restore = _pre3dBasemap || (_currentBasemap === 'dark-matter' ? DEFAULT_BASEMAP : _currentBasemap);
+      if (_currentBasemap !== restore) setBasemap(restore);
+      _pre3dBasemap = null;
+    }
   }
   map.easeTo({ pitch: on ? PITCH_3D : 0, bearing: 0, duration: VIEW_EASE_MS });
 }

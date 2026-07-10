@@ -1060,6 +1060,15 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证**：node --check（panel/harness/map.js）✓ + CSS/JS 200 加载 ✓。B2 为承重（网格视图配对），逻辑带 renderLayer 兜底；真环境复验待用户切 2D↔3D 看是否还闪/卡。
 - **承重**：B2 改动限于 setViewMode/toggleGridViewMode 的显隐路径（布局 vs 重建），配对生成/reorder/restackZ/互斥/KDE/极性色带/tip-popup 全不动。F1/F2/F3/B1 纯 UI/CSS/编排，未碰承重。
 
+### 5.60 网格 2D/3D 底图切换卡顿·不换底图（07月10日）
+
+用户报：2D/3D 切换时底图切换很不流畅，要等很久才加载新底图（Dark→天地图影像）。B2 修了网格层重建闪烁后，底图重载成了剩下的可见瓶颈。
+- **根因**：`setView3D` 每次切 2D/3D 都调 `setBasemap`→`map.setStyle` 换整套底图样式：① 新底图瓦片重新下载（天地图影像=卫星瓦片，慢）；② 切换瞬间旧底图已拆、新瓦片未到 = 空白卡顿。vector 底图（dark-matter）无法做成常驻图层一键显隐（自身是复杂样式），故**平滑切换 = 不换底图**。
+- **修**（map.js setView3D）：加 `AUTO_3D_BASEMAP=false` 总开关——3D 不再自动切暗底图，只保留 pitch easeTo 动画。底图保持用户所选（无重载→无卡顿）。`_pre3dBasemap`/setBasemap 逻辑用 flag 包起，想恢复 3D 自动暗底图改 true（代价是切换卡顿）；用户可随时手动选暗底图。
+- **权衡**：失去 3D 自动暗底图观感（换流畅）。用户若要 3D 暗底图，手动切或开 flag。
+- **验证**：node --check map.js ✓ + 服务器 200。真环境复验待用户切 2D/3D 看是否还卡（应不再换底图=不卡）。
+- **承重**：未碰（仅 setView3D 的底图切换开关；pitch/网格视图配对/极性色带全不动）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。
