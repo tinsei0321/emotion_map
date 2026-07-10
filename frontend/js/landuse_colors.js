@@ -74,6 +74,33 @@ export function matchLanduseColor(name) {
 /** land_* 预设 → 规范色（preset 的 label 多为短标签如"商业/居住/公园广场"，走 matchLanduseColor）。 */
 export function presetLanduseColor(label) { return matchLanduseColor(label); }
 
+/** 取 GeoJSON 要素中最常见的 DLMC（单类文件=该类；混类取主类）。
+ *  兼容 DLMC/dlmc/DLMC_NAME/地类名称 多种字段名。 */
+export function dominantDLMC(fc) {
+  const feats = fc && fc.features;
+  if (!feats || !feats.length) return null;
+  const cnt = {}; let best = null, n = 0;
+  for (const f of feats) {
+    const p = f.properties || {};
+    const v = p.DLMC || p.dlmc || p.DLMC_NAME || p['地类名称'];
+    if (!v) continue;
+    cnt[v] = (cnt[v] || 0) + 1;
+    if (cnt[v] > n) { n = cnt[v]; best = v; }
+  }
+  return best;
+}
+
+/** 用地层色（推荐入口）：优先读要素 DLMC（权威地类——数据自带，不受 label 命名影响），
+ *  DLMC 缺失或未命中再回退 label。单类文件 → 该类标准色；这是"上传用地→自动附标准色"的核心路径。 */
+export function landuseColorForFc(fc, fallbackLabel) {
+  const dlmc = dominantDLMC(fc);
+  if (dlmc) {
+    const c = matchLanduseColor(dlmc);
+    if (c !== _DEFAULT) return c;   // DLMC 命中真色
+  }
+  return matchLanduseColor(fallbackLabel);   // 回退 label（可能落兜底灰 #9AA0A6）
+}
+
 /** MapLibre 数据驱动 fill-color 表达式：按 feature[field] 的 DLMC 名称落规范色（离散分段）。
  *  field 默认 'DLMC'。供任意含 DLMC 的多类用地层按类上色（一个图层含多用地类型时）。 */
 export function landuseFillColorExpr(field = 'DLMC') {

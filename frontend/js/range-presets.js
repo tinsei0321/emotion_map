@@ -9,7 +9,7 @@ import { addLayer, getLayers, removeLayer } from './state.js';
 import { renderLayer, fitBoundsTo, reorderAllZ, removeLayerFromMap } from './map.js';
 import { renderLayerList, refreshLegend } from './sidebar.js';
 import { openGridDialog } from './grid-tool.js';
-import { presetLanduseColor } from './landuse_colors.js';   // 用地预设 → 制图规范附录B 标准色
+import { landuseColorForFc } from './landuse_colors.js';   // 用地预设 → 制图规范附录B 标准色（读 DLMC 落色）
 import { toast } from './toast.js';
 import { SIZE_BLOCK } from './dialog.js';
 import {
@@ -85,8 +85,8 @@ async function loadPresetRange(item) {
     }
     const L = addLayer({
       name, kind: 'polygon', fc,
-      // 行政区 = 中性参考边界（非数据），用浅灰 #d8d8d8；用地预设(land_*) = 制图规范附录B 标准色（按 label 模糊匹配 DLMC）；其余 preset 不指定 → addLayer 按 PRESET_COLORS 自动配。
-      paint: { lineWidth: 2, fillOn: true, color: item.id === 'admin_district' ? '#d8d8d8' : (item.id.startsWith('land_') ? presetLanduseColor(item.label) : undefined) },
+      // 行政区 = 中性参考边界（非数据），用浅灰 #d8d8d8；用地预设(land_*) = 制图规范附录B 标准色（优先读要素 DLMC 落色，label 回退——上传即自动附该类标准色）；其余 preset 不指定 → addLayer 按 PRESET_COLORS 自动配。
+      paint: { lineWidth: 2, fillOn: true, color: item.id === 'admin_district' ? '#d8d8d8' : (item.id.startsWith('land_') ? landuseColorForFc(fc, item.label) : undefined) },
     });
     L.srcName = name;
     renderLayer(L);

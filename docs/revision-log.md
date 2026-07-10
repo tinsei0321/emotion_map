@@ -1088,6 +1088,14 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证**：node --check 全过（7 文件）；landuse matcher 10/10；真环境肉眼验待用户（追问胶囊/折叠交互/用地预设落色）。
 - **承重**：未碰（仅加用地色到 preset 的 paint.color；不改 map.js 渲染管线、不动极性/网格/对称拉伸色带）。
 
+### 5.63 用地色修正·DLMC 权威落色（07月10日）
+
+用户纠偏：5.62 把"单类单文件→单色"说成"单色已够"是错误表述——单色是**设计本身**：每上传一个单类用地文件，目的就是**自动给该类附上用地用海分类标准色**，不是妥协。
+- **修**（landuse_colors.js + range-presets.js）：用地预设落色由"按 label 匹配"改为**优先读要素 DLMC（权威地类）落色，label 仅回退**。新增 `dominantDLMC(fc)`（取要素最常见 DLMC，兼容 DLMC/dlmc/DLMC_NAME/地类名称）+ `landuseColorForFc(fc, label)`。这样无论 preset 怎么命名/新上传，只要 DLMC 在就自动附正确标准色（label 无关）。
+- **验证**：`landuseColorForFc` 9/9（含 DLMC="商业服务业用地"+无关 label 仍→#FF0000；DLMC 未命中→回退 label；无 fc→回退 label；小写 dlmc 字段）。
+- **文档**：docs/landuse-colors.md「如何应用 §1」重写——明确单色是核心设计意图（非妥协），DLMC 权威落色是主路径；§2 多类填充降为少见场景的工具。
+- **承重**：未碰（仍只改 preset 的 paint.color；map.js 渲染管线不动）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

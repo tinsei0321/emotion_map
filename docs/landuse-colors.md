@@ -72,15 +72,22 @@
 
 ## 如何应用
 
-### 1. 用地预设（已落地）
-`land_*` 预设载入时，`range-presets.js:loadPresetRange` 按 `item.label` 调 `presetLanduseColor(label)` 落色（单类预设 → 单色填充）。
+### 1. 用地预设（核心路径·已落地）
+**设计意图**：用户上传的每个用地文件都是**单类**（如"用地_商业""用地_居住"），载入时**自动给该类附上对应的用地用海分类标准色**——这是规范配色系统的主用途，不是"够用的妥协"。
 
-### 2. 多类用地层（一个图层含多 DLMC）
-对该层用数据驱动填充色：
+`range-presets.js:loadPresetRange` 对 `land_*` 预设调 `landuseColorForFc(fc, item.label)`：
+- **优先读要素 DLMC**（权威地类——数据自带，不受 preset label 命名影响）→ 命中即落该类标准色；
+- DLMC 缺失/未命中 → 回退 `item.label`；
+- 都不中 → 兜底灰 `#9AA0A6`（表示"知是用地、未识别地类"，比随机调色板诚实）。
+
+例：`land_commercial`（DLMC=商业）→ #FF0000；`land_residential`（DLMC=居住）→ #FFFF2D；`land_park`（DLMC=公园广场）→ #00FF00。**任意命名/新上传的单类文件，只要 DLMC 在，就自动附正确标准色。**
+
+### 2. 多类用地层（一个图层含多 DLMC，少见）
+若一个图层同时含多类用地（非当前"单类单文件"数据模型），可用数据驱动填充色按要素 DLMC 分别上色：
 ```js
 import { landuseFillColorExpr } from './landuse_colors.js';
-addLayer({ ..., paint: { fillOn: true, _ui: { tool: 'landuse', fillColor: landuseFillColorExpr('DLMC') } } });
-// 注：需 map.js addPolygonPaint 增 'landuse' tool 分支读 _ui.fillColor 落 fill-color（本期未做，预留）
+// landuseFillColorExpr('DLMC') → MapLibre match 表达式，按 feature.DLMC 落规范色
+// 注：需 map.js addPolygonPaint 增 'landuse' tool 分支读该表达式（本期未接，遵承重不动渲染管线）
 ```
 
 ### 3. 图例 swatch（UI）
