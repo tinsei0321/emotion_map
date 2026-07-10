@@ -261,6 +261,98 @@ function stampDone(shell) {
     _renderFooter(shell, `回答完毕 · 用时 ${secs}s · 用量 ${_fmtTokens(cs.total)} token / ${cs.calls} 次 · 情绪地图 v1.0 · ${formatTs(_curTrace && _curTrace.doneAt)}`, shell._finalMd || (_curTrace && _curTrace.final), _exitBadge(_curTrace));
   }
   updateReasonMeta(shell);
+  renderSuggest(_curTrace);   // 推荐追问胶囊（答案完毕后）
+}
+
+/** 推荐追问胶囊：据出口/intent 给上下文相关的下一步（静态 starter 兜底）。返回 [{tag, text}]。
+ *  轻量上下文：复用 exit/intent + 抽答案首个 [ref:区域]/{{focus:}} 落到具体区域，不重计算。 */
+function _followUps(t) {
+  const intent = t && t.diagnose && !t.diagnose.degraded && t.diagnose.intent;
+  const exit = t && t.exit;
+  const skipped = t && t.review && t.review.skipped;
+  const ans = (t && t.final) || '';
+  const ref = (ans.match(/\[ref:([^\]]+)\]/) || ans.match(/\{\{focus:([^}]+)\}\}/) || [])[1];
+  const region = ref ? ref.trim() : '';
+  if (exit === 'gap' || skipped === 'gap') {
+    return [
+      { tag: '上传数据', text: '我已上传所需数据，请继续完成刚才的分析' },
+      { tag: '换问法', text: '缩小范围重试：指定某个区或某类用地' },
+      { tag: '现有能力', text: '用现有数据能做哪些分析？' },
+    ];
+  }
+  if (intent === 'general' || skipped === 'general') {
+    return [
+      { tag: '情绪分析', text: '哪些区域情绪最差？为什么？' },
+      { tag: 'GIS 操作', text: '筛选西陵区的商业用地' },
+      { tag: '周边分析', text: '滨江公园周边 500 米情绪如何？' },
+    ];
+  }
+  if (intent === 'gis_operation') {
+    return [
+      { tag: '叠加分析', text: '把刚才的结果与周边情绪点叠置分析' },
+      { tag: '缓冲区', text: '在刚才的结果周边做 500m 缓冲' },
+      { tag: region ? '深读' : '归因', text: region ? `深读「${region}」的情绪归因` : '聚焦看结果区域的情绪归因' },
+    ];
+  }
+  return [   // emotion_analysis（结果）
+    { tag: '深读归因', text: region ? `深读「${region}」的 4×5 归因` : '深读最差区域的 4×5 归因' },
+    { tag: '区域对比', text: '对比情绪最好和最差区域的差异' },
+    { tag: '热点分析', text: '对负面情绪做核密度热点分析' },
+  ];
+}
+
+/** 渲染推荐追问胶囊到 #aiq-suggest（答案完毕后显，点击即发）。 */
+function renderSuggest(t) {
+  const el = document.getElementById('aiq-suggest');
+  if (!el) return;
+  const items = _followUps(t);
+  if (!items.length) { el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  el.innerHTML = '<span class="aiq-suggest-label">追问</span>'
+    + items.map((it) => `<button type="button" class="aiq-suggest-chip" data-prompt="${escapeHtml(it.text)}"><span class="aiq-suggest-tag">${escapeHtml(it.tag)}</span>${escapeHtml(it.text)}</button>`).join('');
+  el.querySelectorAll('.aiq-suggest-chip').forEach((b) => b.addEventListener('click', () => send(b.dataset.prompt)));
+}
+function clearSuggest() {
+  const el = document.getElementById('aiq-suggest');
+  if (el) { el.hidden = true; el.innerHTML = ''; }
+}
+
+/** 长对话折叠：答案摘录（剥离 {{action}} 模板 + 标签，取首 ~70 字）。 */
+function _answerExcerpt(msgEl) {
+  const ans = msgEl.querySelector('.aiq-answer');
+  if (!ans) return '';
+  const t = ans.innerText.replace(/\{\{[^}]+\}\}/g, '').replace(/\s+/g, ' ').trim();
+  return t.length > 70 ? t.slice(0, 70) + '…' : t;
+}
+/** 设单条 assistant 消息折叠/展开态。collapsed=true：藏内容显摘要 stub + 钮文"展开"。 */
+function _setCollapsed(msgEl, collapsed) {
+  if (!msgEl) return;
+  msgEl.classList.toggle('is-collapsed', collapsed);
+  const stub = msgEl.querySelector('.aiq-collapsed-stub');
+  if (stub) {
+    stub.hidden = !collapsed;
+    if (collapsed) {
+      const ex = stub.querySelector('.aiq-collapse-excerpt');
+      if (ex) ex.textContent = _answerExcerpt(msgEl) || '（点击展开查看完整回答）';
+    }
+  }
+  const btn = msgEl.querySelector('.emc-collapse-btn');
+  if (btn) btn.textContent = collapsed ? '展开' : '折叠';
+}
+/** 长对话折叠：assistant 消息 > KEEP 条时，自动折叠旧的（留近 KEEP 条展开）；
+ *  用户手动展开过的（data-user-expanded）保留展开。在 send 末尾 + restoreHistory 调用。 */
+function applyLongConvCollapse() {
+  const list = document.getElementById('chat-messages');
+  if (!list) return;
+  const msgs = [...list.querySelectorAll('.chat-msg-assistant')];
+  const total = msgs.length;
+  const KEEP = 2;
+  msgs.forEach((m, i) => {
+    const btn = m.querySelector('.emc-collapse-btn');
+    if (btn) btn.hidden = total <= KEEP;                  // 消息少（≤KEEP）不显折叠钮
+    if (m.dataset.userExpanded === '1') { _setCollapsed(m, false); return; }
+    _setCollapsed(m, i < total - KEEP);                   // 近 KEEP 条展开，其余折叠
+  });
 }
 
 /** Thinking 头：答完显「Thought for Ns · Nk token」（折叠态可见）。trace 缺省=实时 _curTrace。 */
@@ -362,6 +454,7 @@ function dockEl() { return document.getElementById('aiq-thinking-dock'); }
 /** 动态思考指示器：轮换文案 + 跳动点 + 阶段 chip。 */
 function startThinking() {
   setEmcMode('expand');
+  clearSuggest();   // 新一轮提问：清上一轮的推荐追问胶囊
   const d = dockEl();
   if (d) { d.hidden = false; setPhase('诊断'); }
   const txt = d && d.querySelector('.aiq-thinking-text');
@@ -396,6 +489,7 @@ function appendAssistantShell(trace) {
   const isFlash = _thinkMode === 'flash';
   const hasReason = !!(trace && (trace.reasonSegments?.length || trace.reason));
   el.innerHTML = `<div class="chat-bubble">
+    <div class="aiq-collapsed-stub" hidden><span class="aiq-collapse-chev">▸</span><span class="aiq-collapse-excerpt"></span></div>
     <div class="aiq-card aiq-card-diagnose" hidden></div>
     <div class="aiq-reason ${isFlash ? 'is-flash' : ''}" ${hasReason ? '' : 'hidden'}><div class="aiq-reason-head"><span class="aiq-reason-title">${isFlash ? 'Flash · 直接作答' : 'Thinking…'}</span><span class="aiq-reason-meta"></span></div><div class="aiq-reason-body"></div></div>
     <div class="aiq-steps" ${trace && trace.steps && trace.steps.length ? '' : 'hidden'}><div class="aiq-steps-head">工具调用（Agent Loop）</div></div>
@@ -404,7 +498,7 @@ function appendAssistantShell(trace) {
     <div class="aiq-card aiq-card-caliber" hidden></div>
     <div class="aiq-answer-footer" hidden></div>
   </div>
-  <div class="emc-msg-actions"><button class="emc-copy-btn" type="button" title="复制回答"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg></button></div>`;
+  <div class="emc-msg-actions"><button class="emc-collapse-btn" type="button" title="折叠/展开" hidden>折叠</button><button class="emc-copy-btn" type="button" title="复制回答"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg></button></div>`;
   list.appendChild(el);
   const shell = {
     diagnoseEl: el.querySelector('.aiq-card-diagnose'),
@@ -728,6 +822,7 @@ async function send(text) {
       _history.push({ role: 'assistant', trace: JSON.parse(JSON.stringify(_curTrace)) });
       saveHistory();
     }
+    applyLongConvCollapse();   // 长对话折叠：新答完毕后，折叠旧的留近 N 展开
     // L3 情境日志（自成长闭环原料；fire-and-forget，失败静默不阻塞交付）
     if (_curTrace) {
       fetch('/api/v1/aiqa/episode', {
@@ -807,6 +902,8 @@ function restoreHistory() {
     else appendAssistantShell(m.trace);
   }
   renderEmptyState();
+  applyLongConvCollapse();   // 长对话折叠：恢复后按近 N 展开折叠旧消息
+  clearSuggest();   // 历史/切换会话：不沿用上一轮的推荐追问
 }
 
 function clearChat() {
@@ -862,6 +959,22 @@ function renderHistoryList(q) {
 function onMsgClick(e) {
   const wChip = e.target.closest('.emc-welcome-chip');   // 空态示例追问：点击即发
   if (wChip && wChip.dataset.prompt) { send(wChip.dataset.prompt); return; }
+  const stub = e.target.closest('.aiq-collapsed-stub');   // 长对话折叠：点摘要 stub 展开
+  if (stub) {
+    const msg = stub.closest('.chat-msg-assistant');
+    if (msg) { _setCollapsed(msg, false); msg.dataset.userExpanded = '1'; }
+    return;
+  }
+  const colBtn = e.target.closest('.emc-collapse-btn');   // 折叠/展开钮
+  if (colBtn) {
+    const msg = colBtn.closest('.chat-msg-assistant');
+    if (msg) {
+      const willCollapse = !msg.classList.contains('is-collapsed');
+      _setCollapsed(msg, willCollapse);
+      if (willCollapse) delete msg.dataset.userExpanded; else msg.dataset.userExpanded = '1';
+    }
+    return;
+  }
   const copy = e.target.closest('.emc-copy-btn');
   if (copy) {
     const bubble = copy.closest('.chat-bubble');
@@ -898,7 +1011,8 @@ function mountChatChrome() {
       + '<div class="aiq-thinking-row"><span class="aiq-thinking-text">正在思考…</span><span class="aiq-dots"><i></i><i></i><i></i></span></div>'
       + '<div class="aiq-phase-chips">'
       + ['诊断', '思考', '检索', '生成', '审查'].map((c) => `<span data-phase="${c}">${c}</span>`).join('')
-      + '</div></div>';
+      + '</div></div>'
+      + '<div class="aiq-suggest" id="aiq-suggest" hidden></div>';   // 推荐追问胶囊（答案完毕后显，点击即发）
   }
   const list = document.getElementById('chat-messages');
   if (!list) return;

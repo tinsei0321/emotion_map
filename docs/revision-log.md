@@ -1079,6 +1079,15 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证**：node --check 全过；**格式漂移注入测试 8/8**（用户原症状 prose+```json{action,arguments}``` → 正确归一为可执行 tool，不再泄漏）；后端 wire OK（/geo/density 注册、catalog、F_005 注册）；**KDE 真数据冒烟**（500 真点→110 密度格，band 梯度 {0:77,1:20,2:9,3:1,4:3}，CRS 4326）。真问答端到端待用户复验（核密度→应出图层+结论+零代码块）。
 - **承重**：未碰（视野-数据-结论同步/KDE 级联/4×5/对称拉伸/tip-popup/EMC 深色/网格视图配对全不动；density 复用 isTool 色带 fill 管线 2D，不另起渲染；新色带离散分段）。
 
+### 5.62 EMC 交互·阶段 3：推荐追问 + 长对话折叠 + 用地规范色（07月10日）
+
+闸门（5.61 三态出口）通过后推进的三项。
+- **推荐追问**（panel.js）：`stampDone` 后在 `#chat-suggest` 出追问胶囊（点击即发，复用 send）。上下文相关：据 exit/intent + 抽答案首个 `[ref:区域]`/`{{focus:}}` 落到具体区域（gap→上传/换问法/现有能力；general→情绪/GIS/周边；gis_operation→叠置/缓冲/深读；emotion→深读归因/对比/热点）。`startThinking`/`restoreHistory` 清胶囊。胶囊设计语言（无线框+阴影+悬停灰，遵 capsule-button-design-language）。
+- **长对话折叠**（panel.js）：assistant 消息 >2 条时自动折叠旧的（留近 2 条展开），折叠态显答案摘要 stub（▸ + 首 70 字）+ 钮文"展开"；点 stub 或 hover 显"折叠/展开"钮切换；手动展开的（`data-user-expanded`）保留不再被自动折叠。`send` 末尾 + `restoreHistory` 调 `applyLongConvCollapse`。
+- **用地规范色**（landuse_colors.js + range-presets.js + docs/landuse-colors.md）：一次性从 `docs/市级国土空间总体规划制图规范.pdf` **附录 B** 抽 **39 类**用地用海分类 × RGB（规整 PDF 全角标点：公用设施 `0，99` 全角逗号、盐田 `（0,0,255）` 全角括号）→ `frontend/js/landuse_colors.js`（`LANDUSE_COLORS` 表 + `matchLanduseColor` 三级模糊匹配：精确名/别名/子串 + 兜底灰；preset label 多为短标签如"商业/居住/公园广场"，靠别名+子串命中）。`land_*` 预设载入时按 `item.label` 落规范色（商业#FF0000/居住#FFFF2D/公园广场#00FF00）。**matcher 测试 10/10**。数据色 token 独立于 design tokens（不混入 tokens.json），多类 DLMC 层的 `landuseFillColorExpr` 预留（map.js 'landuse' 分支未接，遵承重不动渲染）。
+- **验证**：node --check 全过（7 文件）；landuse matcher 10/10；真环境肉眼验待用户（追问胶囊/折叠交互/用地预设落色）。
+- **承重**：未碰（仅加用地色到 preset 的 paint.color；不改 map.js 渲染管线、不动极性/网格/对称拉伸色带）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

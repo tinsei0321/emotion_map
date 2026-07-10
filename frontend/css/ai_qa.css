@@ -268,6 +268,13 @@
 .aiq-phase-chips span { font-size: var(--geojson-typography-size-2xs); padding: 1px 7px; border-radius: 999px; color: var(--geojson-color-text-tertiary); background: var(--geojson-color-gray-100, #eee); }
 .aiq-phase-chips span.active { color: #fff; background: var(--geojson-color-brand-primary, #4285F4); font-weight: var(--geojson-typography-weight-semibold); }
 
+/* ── 推荐追问胶囊（答案完毕后，#chat-suggest 内，点击即发；胶囊设计语言：无线框+阴影+悬停灰+紧凑）── */
+.aiq-suggest { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 5px 14px 7px; border-top: 1px solid var(--geojson-color-border-default, #e3e5e8); background: var(--geojson-color-surface-panel-alt, #fafafa); }
+.aiq-suggest-label { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); margin-right: 2px; }
+.aiq-suggest-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 3px 9px; border: none; border-radius: 999px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.08); font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-primary, #1f2328); cursor: pointer; transition: background var(--geojson-transition), box-shadow var(--geojson-transition); }
+.aiq-suggest-chip:hover { background: var(--geojson-color-gray-100, #f0f1f3); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+.aiq-suggest-tag { font-size: var(--geojson-typography-size-2xs); color: var(--emc-accent, #D97757); font-weight: var(--geojson-typography-weight-semibold); flex-shrink: 0; }
+
 /* ── 回到底部浮钮（用户上滑停跟时出现，sticky 贴消息区底右）── */
 .chat-back-btn {
   position: sticky; bottom: 6px; align-self: flex-end; margin-top: 4px;
@@ -306,6 +313,15 @@
 .chat-msg-assistant:hover .emc-msg-actions { opacity: 1; }
 .emc-copy-btn { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; color: var(--geojson-color-text-tertiary); border-radius: var(--geojson-radius-xs); cursor: pointer; }
 .emc-copy-btn:hover { background: var(--geojson-color-gray-100, #f5f5f5); color: var(--geojson-color-text-primary); }
+.emc-collapse-btn { height: 22px; padding: 0 7px; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; color: var(--geojson-color-text-tertiary); border-radius: var(--geojson-radius-xs); cursor: pointer; font-size: var(--geojson-typography-size-2xs); }
+.emc-collapse-btn:hover { background: var(--geojson-color-gray-100, #f5f5f5); color: var(--geojson-color-text-primary); }
+
+/* ── 长对话折叠：旧 assistant 消息折为摘要 stub，点 stub/钮展开 ── */
+.chat-msg-assistant.is-collapsed .chat-bubble > :not(.aiq-collapsed-stub) { display: none !important; }
+.aiq-collapsed-stub { display: none; align-items: center; gap: 6px; cursor: pointer; padding: 1px 0; }
+.chat-msg-assistant.is-collapsed .aiq-collapsed-stub { display: flex; }
+.aiq-collapse-chev { color: var(--geojson-color-text-tertiary); flex-shrink: 0; font-size: var(--geojson-typography-size-xs); }
+.aiq-collapse-excerpt { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 
 /* 代码块：语言标签 + hover 复制按钮（marked 后处理挂 .emc-code-copy）*/
 .chat-bubble pre { position: relative; margin: 6px 0; padding: 10px 12px; background: #161616; border: 1px solid var(--geojson-color-border-default, #e3e5e8); border-radius: 6px; overflow-x: auto; }   /* 代码块比气泡更深，跳出 */
