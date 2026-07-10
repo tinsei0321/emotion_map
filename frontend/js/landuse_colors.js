@@ -101,6 +101,23 @@ export function landuseColorForFc(fc, fallbackLabel) {
   return matchLanduseColor(fallbackLabel);   // 回退 label（可能落兜底灰 #9AA0A6）
 }
 
+// 层名里的用地关键词（保守：只认 用地/地类/DLDM/DLMC，避免"交通分析"等误判；裸类名如"商业"不触发）
+const _LANDUSE_NAME_RE = /用地|地类|DLDM|DLMC/i;
+
+/** 是否像用地层：要素有 DLMC 类属性（权威），或层名含用地关键词（启发式）。
+ *  供通用导入路径识别——任意上传的多边形，只要是用地数据就自动附标准色。 */
+export function isLanduseLayer(fc, name) {
+  if (dominantDLMC(fc)) return true;
+  return _LANDUSE_NAME_RE.test(String(name || ''));
+}
+
+/** 若是用地层 → 返回 paint 片段 {fillOn, lineWidth, fillOpacity, color}（规范色 0.6 清晰可辨）；
+ *  否则返回 null（交回 addLayer 用默认调色板）。供 main.js 通用导入的多边形层落色。 */
+export function landuseLayerPaint(fc, name) {
+  if (!isLanduseLayer(fc, name)) return null;
+  return { fillOn: true, lineWidth: 1, fillOpacity: 0.6, color: landuseColorForFc(fc, name) };
+}
+
 /** MapLibre 数据驱动 fill-color 表达式：按 feature[field] 的 DLMC 名称落规范色（离散分段）。
  *  field 默认 'DLMC'。供任意含 DLMC 的多类用地层按类上色（一个图层含多用地类型时）。 */
 export function landuseFillColorExpr(field = 'DLMC') {

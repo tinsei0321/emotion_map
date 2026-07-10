@@ -58,6 +58,49 @@ def _inject_import_versions(content, basedir):
     return _JS_IMPORT.sub(repl, content)
 
 
+def _git_short(basedir):
+    """git 短哈希（失败返 '?'）—— build stamp 一部分，让用户核对是否跑到新提交。"""
+    try:
+        return subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            cwd=basedir, text=True, stderr=subprocess.DEVNULL,
+        ).strip() or '?'
+    except Exception:
+        return '?'
+
+
+def _build_stamp(basedir):
+    """build stamp = git 短哈希 + 前端 js/css 最新 mtime（可读时间）。
+    改任何前端文件 → mtime 变 → stamp 变；用户刷新后看 stamp 时间 > 自己最后一次编辑时间 = 拿到新代码。
+    每次请求现算（serve 读盘），永远反映当前磁盘状态。"""
+    import time
+    latest = 0
+    for sub in ('js', 'css'):
+        d = os.path.join(basedir, sub)
+        if not os.path.isdir(d):
+            continue
+        for fn in os.listdir(d):
+            p = os.path.join(d, fn)
+            if os.path.isfile(p) and fn.endswith(('.js', '.css')):
+                try:
+                    latest = max(latest, int(os.path.getmtime(p)))
+                except OSError:
+                    pass
+    t = time.strftime('%m-%d %H:%M:%S', time.localtime(latest)) if latest else '?'
+    return f'{_git_short(os.path.dirname(basedir))} · {t}'
+
+
+def _inject_stamp(html, stamp):
+    """把 build stamp 作为右下角小角标注入 index.html（</body> 前）。"""
+    badge = (
+        '<div id="dev-build-stamp" style="position:fixed;bottom:0;right:2px;'
+        'font:9px/1.5 ui-monospace,Consolas,monospace;color:#666;'
+        'background:rgba(255,255,255,.72);padding:1px 5px;border-radius:3px 0 0 0;'
+        'pointer-events:none;z-index:99999;opacity:.55">build ' + stamp + '</div>'
+    )
+    return html.replace('</body>', badge + '</body>', 1) if '</body>' in html else html
+
+
 # 后端 origin（uvicorn :8000）—— /api 反向代理的目标。
 # 前端同源 fetch /api/* → serve.py 透传此后端，消除浏览器跨域这一跳
 #（修 export "Failed to fetch"：浏览器只跟 :8080 说话，:8000 这跳在服务端完成）。
@@ -86,6 +129,7 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
                 with open(fs, 'rb') as f:
                     html = f.read().decode('utf-8')
                 html = _inject_versions(html, basedir)
+                html = _inject_stamp(html, _build_stamp(basedir))
                 body = html.encode('utf-8')
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/html; charset=utf-8')

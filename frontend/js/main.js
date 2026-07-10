@@ -11,6 +11,7 @@ import {
   splitByGeometry, detectColorMode, fcBBox,
 } from './import.js';
 import { openImportDialog } from './dialog.js';
+import { landuseLayerPaint } from './landuse_colors.js';   // 导入的用地多边形自动附标准色
 import { initHeatmapTool } from './heatmap-tool.js';
 import { initBufferTool } from './buffer-tool.js';
 import { initGridTool } from './grid-tool.js';
@@ -95,7 +96,7 @@ async function runImport(files) {
           const { points, lines, polygons } = splitByGeometry(fc);
           if (fc.__crs) { points.__crs = lines.__crs = polygons.__crs = fc.__crs; }   // 传给 addLayer → layer.crsInfo
           if (lines.features.length)    { const L = addLayer({ name: base, kind: 'line',    fc: lines });    L.srcName = base; renderLayer(L); added++; }
-          if (polygons.features.length) { const L = addLayer({ name: base, kind: 'polygon', fc: polygons }); L.srcName = base; renderLayer(L); added++; }
+          if (polygons.features.length) { const L = addLayer({ name: base, kind: 'polygon', fc: polygons, paint: landuseLayerPaint(polygons, base) || undefined }); L.srcName = base; renderLayer(L); added++; }
           if (points.features.length) {
             const { fc: pfc, colorMode, needsAnalysis } = detectColorMode(points);
             if (colorMode === 'polarity') {
@@ -169,7 +170,7 @@ async function runRangeImport(files) {
       const { lines, polygons } = splitByGeometry(fc);   // points intentionally dropped (Range = 面/线)
       if (fc.__crs) { lines.__crs = polygons.__crs = fc.__crs; }
       if (lines.features.length)    { const L = addLayer({ name: base, kind: 'line',    fc: lines });    L.srcName = base; renderLayer(L); if (!firstRange) firstRange = L; added++; }
-      if (polygons.features.length) { const L = addLayer({ name: base, kind: 'polygon', fc: polygons }); L.srcName = base; renderLayer(L); if (!firstRange) firstRange = L; added++; }
+      if (polygons.features.length) { const L = addLayer({ name: base, kind: 'polygon', fc: polygons, paint: landuseLayerPaint(polygons, base) || undefined }); L.srcName = base; renderLayer(L); if (!firstRange) firstRange = L; added++; }
       const bb = fcBBox(fc);
       if (bb) fitBoundsTo(bb);
     } catch (e) {

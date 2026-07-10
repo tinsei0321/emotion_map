@@ -1104,6 +1104,18 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证**：node --check ✓。肉眼验待用户：商业应见清晰红、居住清晰黄、公园广场清晰绿。
 - **承重**：未碰（仅改 land_* preset 的 paint.fillOpacity；map.js 渲染管线、其他层透明度不动）。
 
+### 5.65 用地色全路径覆盖 + serve.py build stamp（07月10日）
+
+用户报：手动上传 用地_商业.geojson 仍不上色（5.63/5.64 只修了预设按钮路径）。
+- **根因**：用地色逻辑只接在 `range-presets.js:loadPresetRange`（预设按钮/"+"路径），**通用导入（main.js）和 EMC 工具产物（tools.js addResultLayer）都没接** → 手动上传走 main.js → 默认调色板。用户要求：**全部用地相关图层**（含 EMC 生成）都要自动上标准色。
+- **修**（统一收口到 `landuse_colors.js`）：新增 `isLanduseLayer(fc,name)`（要素有 DLMC 或层名含 用地/地类/DLDM/DLMC）+ `landuseLayerPaint(fc,name)`（返 {fillOn,lineWidth:1,fillOpacity:0.6,color} 或 null）。三处落色：
+  1. `range-presets.js` 预设路径（5.63 已接，`landuseColorForFc`）；
+  2. `main.js` 通用导入两处 addLayer（拖拽/文件/范围上传）→ `paint: landuseLayerPaint(...) || undefined`；
+  3. `tools.js:addResultLayer` → kind=polygon 且用地 → 标准色覆盖默认 paint（**覆盖所有 EMC 工具产物**：extract/clip/filter/overlay/merge/buffer）。
+- **验证**：node --check 全过；served JS 三处接线确认（main.js×3 / tools.js×2）；`landuseLayerPaint(real商业fc, '用地_商业.geojson')` 浏览器内返 `{color:#FF0000,fillOpacity:0.6}`；预设路径实测 lyr-L001 #FFFF2D/#FF0000。
+- **build stamp**（解"刷新看不到新代码"反复痛点）：`serve.py` 注入右下角小角标 `build <git短哈希> · <js/css 最新 mtime 时间>`。改任何前端文件→时间变→刷新后看角标时间 > 最后编辑时间 = 拿到新代码。配合 serve 的 no-store + ?v=mtime，**硬刷新 100% 拿新代码**；角标让用户自查不再靠猜。
+- **承重**：未碰（仅给三个 addLayer 收口点加 paint；map.js 渲染管线/极色色带不动；serve.py 仅加角标注入，no-store/?v 逻辑不变）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

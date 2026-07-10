@@ -8,6 +8,7 @@ import { DOMAIN_LABEL, ELEMENT_LABEL } from '../popup.js';
 import { generateGridForAI } from '../grid-tool.js';
 import { renderLayerList, refreshLegend } from '../sidebar.js';
 import { fcBBox } from '../import.js';
+import { landuseLayerPaint } from '../landuse_colors.js';   // 用地层自动附标准色（EMC 产物也走此）
 
 let _lastGrid = null;   // 最近生成聚合层（ensure_zone/query 优先用）
 
@@ -186,7 +187,14 @@ export function addResultLayer({ name, kind = 'polygon', fc, paint, keep }) {
   for (let i = _curResultIds.length - 1; i >= 0; i--) {
     if (_consumedIds.has(_curResultIds[i]) && !_keepIds.has(_curResultIds[i])) { removeLayerFromMap(_curResultIds[i]); removeLayer(_curResultIds[i]); _curResultIds.splice(i, 1); }
   }
-  const L = addLayer({ name, kind, fc, paint, parentId: _aiGroup().id });
+  // 用地层自动附制图规范标准色（任何 EMC 工具产物：extract/clip/filter/overlay/merge/buffer…）。
+  // kind=polygon 且检测为用地（有 DLMC 或层名含用地关键词）→ 标准色覆盖默认 paint 的 color/fillOpacity。
+  let _paint = paint;
+  if (kind === 'polygon') {
+    const _lu = landuseLayerPaint(fc, name);
+    if (_lu) _paint = { ...(paint || {}), ..._lu };
+  }
+  const L = addLayer({ name, kind, fc, paint: _paint, parentId: _aiGroup().id });
   L.srcName = name;
   if (keep) _keepIds.add(L.id);              // 显式保留登记（覆盖消费式清理）
   _curResultIds.push(L.id);                 // 登记本轮存活结果（沉浸聚焦）
