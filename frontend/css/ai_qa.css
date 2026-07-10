@@ -275,6 +275,12 @@
 .aiq-suggest-chip:hover { background: var(--geojson-color-gray-100, #f0f1f3); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
 .aiq-suggest-tag { font-size: var(--geojson-typography-size-2xs); color: var(--emc-accent, #D97757); font-weight: var(--geojson-typography-weight-semibold); flex-shrink: 0; }
 
+/* ── 答案内图表（{{chart:...}} → Chart.js canvas；EMC 深色答案泡上显图）── */
+.aiq-chart-wrap { position: relative; height: 220px; margin: 8px 0; background: rgba(255,255,255,0.02); border-radius: var(--geojson-radius-md, 6px); padding: 6px 8px; }
+.aiq-chart-wrap.aiq-chart-inline { display: inline-block; width: 320px; vertical-align: middle; height: 200px; }
+.aiq-chart-wrap .aiq-chart { max-width: 100%; }
+.aiq-chart-bad { color: #FBBF24; font-size: 0.85em; background: rgba(251,191,36,0.08); padding: 0 4px; border-radius: 3px; }   /* 解析失败的原文，不崩 */
+
 /* ── 回到底部浮钮（用户上滑停跟时出现，sticky 贴消息区底右）── */
 .chat-back-btn {
   position: sticky; bottom: 6px; align-self: flex-end; margin-top: 4px;

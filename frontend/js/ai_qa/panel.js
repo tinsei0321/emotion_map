@@ -370,6 +370,76 @@ function updateReasonMeta(shell, trace) {
 }
 
 /** 代码块加 hover 复制按钮（marked 渲染后后处理）。 */
+// ── 答案内图表（{{chart:TYPE|title=..|x=..|y=..}} → Chart.js canvas）──────────────
+// 对标 mapgpt/GIS Copilot/ChartGPT：EMC 不再只有文字，排序/对比/趋势直接出图。
+// 离散分段配色（遵 ramp-discrete-segments，禁连续渐变）；解析失败留原文不崩（graceful）。
+const _CHART_PALETTE = ['#D97757', '#4285F4', '#4ADE80', '#FBBF24', '#A78BFA', '#F472B6', '#34D399', '#60A5FA'];
+
+/** 解析 {{chart:TYPE|title=..|x=labels|y=values}} 紧凑规格 → {type,title,labels,values} 或 null。 */
+function _parseChartSpec(raw) {
+  const parts = String(raw || '').split('|');
+  const type = (parts[0] || '').trim().toLowerCase();
+  if (!['bar', 'line', 'pie', 'doughnut'].includes(type)) return null;
+  const kv = {};
+  for (let i = 1; i < parts.length; i++) {
+    const eq = parts[i].indexOf('=');
+    if (eq < 0) continue;
+    kv[parts[i].slice(0, eq).trim()] = parts[i].slice(eq + 1).trim();
+  }
+  const labels = (kv.x || kv.labels || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const values = (kv.y || kv.values || '').split(',').map((s) => Number(s.trim())).filter((n) => !isNaN(n));
+  if (!labels.length || values.length !== labels.length) return null;
+  return { type, title: kv.title || '', labels, values };
+}
+
+/** 答案内 {{chart:...}} → Chart.js（柱/折/饼）。独占段落的 chart 整段换 wrap div（最干净），
+ *  残留内联的换内联 canvas 兜底。EMC 深色主题 → 浅色字。解析失败留 <code> 不崩。 */
+function _renderCharts(el) {
+  if (!el || !window.Chart) return;
+  if (!window.Chart._emcThemed) {
+    window.Chart.defaults.color = '#9ca3af';            // EMC 深色答案泡 → 浅色刻度/标签
+    window.Chart.defaults.borderColor = 'rgba(255,255,255,0.08)';
+    window.Chart.defaults.font.family = 'system-ui, "Microsoft YaHei", sans-serif';
+    window.Chart._emcThemed = true;
+  }
+  const specs = [];
+  // 单次扫描：兼容 1~2 个花括号（.format 后 {{chart}}→{chart} 单括号；模型也可能双括号）。
+  //  独占段落（<p>{{chart:..}}</p>）→ wrap div；内联 → inline span。bad 用 HTML 实体编码花括号防二次匹配嵌套。
+  el.innerHTML = el.innerHTML.replace(/(<p>\s*)?\{{1,2}chart:([^}]+?)\}{1,2}(\s*<\/p>)?/gi, (m, p1, spec, p2) => {
+    const s = _parseChartSpec(spec);
+    if (!s) return `<code class="aiq-chart-bad">&#123;&#123;chart:${spec}&#125;&#125;</code>`;
+    specs.push(s);
+    return p1 ? `<div class="aiq-chart-wrap"><canvas class="aiq-chart"></canvas></div>`
+      : `<span class="aiq-chart-wrap aiq-chart-inline"><canvas class="aiq-chart"></canvas></span>`;
+  });
+  if (!specs.length) return;
+  el.querySelectorAll('canvas.aiq-chart').forEach((cv, i) => {
+    if (cv.dataset.bound || !specs[i]) return;
+    const s = specs[i];
+    cv.dataset.bound = '1';
+    const colors = s.values.map((_, k) => _CHART_PALETTE[k % _CHART_PALETTE.length]);
+    const isPie = s.type === 'pie' || s.type === 'doughnut';
+    const isLine = s.type === 'line';
+    try {
+      new window.Chart(cv, {
+        type: s.type,
+        data: { labels: s.labels, datasets: [{
+          label: s.title || '数据', data: s.values,
+          backgroundColor: isLine ? 'rgba(217,119,87,0.18)' : (isPie ? colors : colors.map((c) => c + 'CC')),
+          borderColor: isLine ? '#D97757' : colors, borderWidth: 2,
+          fill: isLine, tension: 0.3,
+        }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { title: { display: !!s.title, text: s.title, font: { size: 13 } },
+                     legend: { display: isPie, position: 'right' } },
+          scales: isPie ? {} : { x: { grid: { display: false } }, y: { beginAtZero: true } },
+        },
+      });
+    } catch (e) { /* 解析/渲染失败不崩，留 canvas 空位 */ }
+  });
+}
+
 function enhanceCodeBlocks(el) {
   if (!el) return;
   el.querySelectorAll('pre').forEach((pre) => {
@@ -386,6 +456,7 @@ function enhanceCodeBlocks(el) {
     });
     pre.appendChild(btn);
   });
+  _renderCharts(el);   // 答案内 {{chart:...}} → Chart.js（所有 renderAnswer 站点经此覆盖）
 }
 
 /** 渲染问题理解卡（DIAGNOSE）：domain/scale/decision/outlet + strategy 徽章 + method。 */

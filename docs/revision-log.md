@@ -1124,6 +1124,18 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **延时**用 `ping -n 2 127.0.0.1` 而非 `timeout /t`（后者在 PATH 混入 Unix timeout 时失效，ping 全 Windows 通用）。
 - **验证**：实测 start.bat 正确 kill+起单实例，8080/8000 各单 owner，build 角标正常。
 
+### 5.67 EMC 端到端·Phase 1 图表生成（对标 mapgpt/GIS Copilot/ChartGPT）（07月10日）
+
+用户要求 EMC 实现"略复杂任务端到端体验、超越同行"。检索+zread 实读开源 AI+GIS agent（GIS Copilot DataEye/tool-doc RAG/SmartDebugger、LLM-Geo/GISclaw autonomous GIS+code-gen、GeoGPT 三-agent、ChartGPT、CARTO）+ 用户上传 mapgpt-main（**纯营销页，无代码可 copy**，只印证缺图表+报告导出）。结论：EMC agent 骨架已对齐 SOTA，**最大差距=答案里没图表**（peers 都有，EMC 只文字）。
+- **改（Phase 1 图表，本轮）**：答案里 `{{chart:TYPE|title=..|x=标签|y=数值}}` → Chart.js 柱/折/饼。
+  - [index.html](frontend/index.html)：加 Chart.js@4.4.4 CDN（复用现有 CDN 模式；不可用时 _renderCharts 静默退文本）。
+  - [panel.js](frontend/js/ai_qa/panel.js)：`_parseChartSpec`（紧凑 `|` 分隔，比裸 JSON 抗漂移）+ `_renderCharts`（挂 `enhanceCodeBlocks` 末尾，覆盖所有 renderAnswer 站点）。**单次扫描正则兼容 1~2 花括号**（FINAL_TEMPLATE 经 .format() 后 `{{chart}}`→`{chart}` 单括号，模型也可能双括号）；**bad 用 HTML 实体 `&#123;` 编码花括号防二次匹配嵌套**。EMC 深色主题 → Chart.defaults 浅色字。离散配色（遵 ramp-discrete-segments）。
+  - [prompts.py FINAL_TEMPLATE](ai_qa/prompts.py)：教模型何时出图（排序→bar/时序→line/占比→pie，数据≥3 项才出，一条结论最多 1 张）。
+  - [ai_qa.css](frontend/css/ai_qa.css)：`.aiq-chart-wrap`（220px 高，maintainAspectRatio:false）。
+- **验证（Playwright，走真实管线）**：注入伪 assistant 答案（含 bar/line/pie + 畸形）到 localStorage 历史 → reload → 真实 restoreHistory→renderAnswer→enhanceCodeBlocks→`_renderCharts`：**3 图全渲染 + 3 Chart 实例绑定 + 畸形留 1 个 `<code>` 不嵌套 + 零崩溃**。截图确认 EMC 深色底上图表可见。注入的测试历史已清。
+- **承重**：未碰（图表是答案内纯增量，新模板+后处理器；三态出口/地图内联图层/4×5/对称拉伸/tip-popup/EMC 深色全不动；enhanceCodeBlocks 仅末尾加一行 _renderCharts）。
+- **后续**：Phase 2 DataEye 深化（buildContext 加字段样本值，borrow GIS Copilot）+ Phase 3 复合工具(compare/timeseries)+报告导出 + Phase 4 tool-doc RAG。memory 增 `emc-charts-and-end-to-end`。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

@@ -862,6 +862,9 @@
   <!-- marked：AI 回答 markdown 渲染（CDN 单脚本；不可用时前端退纯文本） -->
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 
+  <!-- Chart.js：EMC 答案内图表（{{chart:TYPE|...}} → canvas）。不可用时 _renderCharts 静默退文本 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
   <!-- Parser libs (UMD globals; used on-demand by import.js). jsdelivr works in CN.
        If a CDN becomes unreachable, vendor these under frontend/vendor/ and point here. -->
   <script src="https://cdn.jsdelivr.net/npm/csv2geojson@5.1.2/csv2geojson.js"></script>
