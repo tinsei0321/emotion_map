@@ -1,6 +1,6 @@
 // ═══ panel.js — AI 问答 UI（底部滑出 · agent loop · 历史持久化 · 思考深度开关 · 动态状态）═══
 import { orchestrate } from './harness.js';
-import { buildContext, TOOLS, resetStepResults, resetCurrentResults } from './tools.js';
+import { buildContext, TOOLS, resetStepResults, resetCurrentResults, cleanupConsumedResults } from './tools.js';
 import { getLayers, selectLayer, getSelectedLayer } from '../state.js';
 import { getLastUsage, resetCallStats, getCallStats } from './api.js';
 
@@ -659,6 +659,7 @@ async function send(text) {
       : `<span class="chat-error">[请求失败] ${escapeHtml(e.message || e)}</span>`;
   } finally {
     relaxEmc();
+    cleanupConsumedResults();   // 轮末兜底：清掉被后续工具消费的中间结果层，EMC 组只留最终答案图层
     // 统一在 review/revise 结束后持久化（onFinalDone 不再 push）
     if (_curTrace && (settled || _curTrace.final)) {
       _history.push({ role: 'assistant', trace: JSON.parse(JSON.stringify(_curTrace)) });
