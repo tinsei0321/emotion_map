@@ -1136,6 +1136,18 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **承重**：未碰（图表是答案内纯增量，新模板+后处理器；三态出口/地图内联图层/4×5/对称拉伸/tip-popup/EMC 深色全不动；enhanceCodeBlocks 仅末尾加一行 _renderCharts）。
 - **后续**：Phase 2 DataEye 深化（buildContext 加字段样本值，borrow GIS Copilot）+ Phase 3 复合工具(compare/timeseries)+报告导出 + Phase 4 tool-doc RAG。memory 增 `emc-charts-and-end-to-end`。
 
+### 5.68 EMC 思考↔结论脱节系统性修复（answered + 概念追问→general + 叙述→finalStep）（07月11日）
+
+用户报：追问"生成的 4 个核密度图层有什么差别吗？"——**思考已正确得结论**（4 层同源异名、建议清理），**最终结论却被换成"暂未能完成此分析"缺数据卡**。要求系统性审计整个回答策略。
+- **系统性审计**（完整决策管线逐干预点：矛盾守卫/F3 gate/_hardFail/verifyClaims/request_upload/successObs/finalStep/diagnose 路由/narration 通道）。**结论：只有一类病——"gate 覆盖模型 deliberate 作答"**。finalStep 经 compressHistory **传全 thought**，故思考↔结论联动本就健全，脱节根因是 gate 跳了 finalStep。
+- **三个复合 bug + 三修**：
+  - **Bug1 `_hardFail` 覆盖 deliberate answer**（[:287](frontend/js/ai_qa/harness.js#L287)）：零工具的概念答被当失败→跳 finalStep。**Fix1**：加 `answered` 标志（模型 `action:answer` 时置真），`_hardFail` 加 `&& !answered`。
+  - **Bug2 diagnose 关键词误路由**（[prompts.py:167](ai_qa/prompts.py#L167)）："核密度"→一律 gis_operation，概念追问被塞操作管线。**Fix2**：DIAGNOSE 加"就已有图层/结果的概念追问（差别/解释/为什么/对比）→ general，即使含核密度/用地关键词"+细化核密度路由（新请求做→gis_op；问已有→general）。
+  - **Bug3 叙述通道→GAP（真凶，实测暴露）**：概念问进 agent loop 后，模型用 **prose 直接作答**（非 {action:answer} JSON）→ `narrated` 哨兵 → repair → 仍叙述 → degrade → EXIT_GAP。**Fix3**：叙述≠失败（常是概念问的直接答）——保留叙述原文入 toolHistory + 加 `narratedAnswer` 标志（两轮仍叙述时置真 break），`_hardFail` 加 `&& !narratedAnswer` → **交 finalStep 出结论，不落 GAP**。
+- **验证（Playwright 真实 LLM）**：问"什么是核密度分析？和热点分析区别？"→ 修前出缺数据卡（走 narration→degrade→GAP，实测暴露 Bug3）；**修后出真结论**（KDE vs Getis-Ord Gi* 原理/输出/平滑性对比表），`isGapCard:false`。三态 EXIT_GAP 路径逻辑保留（条件严格收紧，真失败仍出卡）。
+- **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
+- **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。

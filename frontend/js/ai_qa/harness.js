@@ -163,6 +163,8 @@ export async function orchestrate(ctx, hooks = {}) {
   let successObs = 0;        // 三态出口：成功观察数（非失败）
   let newLayerCount = 0;     // 三态出口：本轮新生成图层数（工具 data.layerId 计）
   let narrations = 0;        // 叙述检测：模型只写说明没给动作的轮数（>1 视失败）
+  let answered = false;      // 模型是否 deliberate `answer`（概念问等可零工具直答；_hardFail 不得覆盖它）
+  let narratedAnswer = false; // 模型持续叙述（prose 作答，常见于概念问）——叙述≠失败，交 finalStep 出结论，不落 GAP
   const failedObs = [];      // 失败观察摘要（EXIT_GAP 卡展示「已尝试」用）
 
   // 多轮连续性：上一轮 trace 蒸馏注入 ctx.context 顶部（diagnose 及后续 phase 均可见，供续作承接）
@@ -227,12 +229,14 @@ export async function orchestrate(ctx, hooks = {}) {
     const step = await stages.agentStep(ctx, hooks, round, toolHistoryText);
     if (!step) { degraded = true; break; }   // 空输出：break（落 EXIT_GAP 兜底，不再裸输）
 
-    // 叙述检测：模型只写说明没给动作 → 纠偏重发（最多 1 轮），不退化裸输
+    // 叙述检测：模型只写说明没给动作 JSON。叙述≠失败——常是概念问/解释问的**直接作答**（prose）。
+    //   → 保留叙述原文供 finalStep 续上思考出结论；两轮仍叙述视作"已直接作答"，交 finalStep，**不落 GAP**。
     if (step.narrated) {
       narrations++;
-      if (narrations > 1) { degraded = true; break; }   // 两轮仍叙述 → 视失败，落 EXIT_GAP
-      toolHistory.push(`⚠️ 第${round}轮：你输出了说明文字而非动作 JSON。本轮请只输出严格 JSON {"thought":"...","action":{"type":"tool","name":"工具名","params":{...}}}（或 {"action":{"type":"answer"}}），禁止解释/计划/代码块。若信息不足直接 answer。`);
-      if (hooks.onObservation) hooks.onObservation('[格式] 上一轮是说明非动作 JSON，已要求重发', round);
+      if (step.text) toolHistory.push(`第${round}轮·模型叙述：${String(step.text).slice(0, 800)}`);
+      if (narrations > 1) { narratedAnswer = true; break; }   // 两轮叙述=模型已 prose 作答 → finalStep 出结论
+      toolHistory.push(`⚠️ 第${round}轮：你输出了说明文字而非动作 JSON。本轮若需工具请只输出严格 JSON {"thought":"...","action":{"type":"tool","name":"工具名","params":{...}}}；若信息已足够，输出 {"action":{"type":"answer"}}；若是解释性回答可直接说明。`);
+      if (hooks.onObservation) hooks.onObservation('[格式] 上一轮是说明非动作 JSON，已要求重发或直接 answer', round);
       round++;
       continue;
     }
@@ -253,6 +257,7 @@ export async function orchestrate(ctx, hooks = {}) {
         }
       }
       if (hooks.onAction) hooks.onAction(step.action, round);
+      answered = true;   // 模型 deliberate answer（含零工具的概念答）→ _hardFail 不得覆盖、必走 finalStep
       break;
     }
     if (hooks.onAction) hooks.onAction(step.action, round);
@@ -280,12 +285,14 @@ export async function orchestrate(ctx, hooks = {}) {
     round++;
   }
 
-  // 三态出口裁定（反「只说不做」核心）：intent∈{B,C} 且零成功观察+零新图层 → EXIT_GAP。
-  // 确定性组装「缺数据/做不成」卡，**跳过叙述型 finalStep**（杜绝模型又口头讲一遍计划）。
+  // 三态出口裁定（反「只说不做」核心）：intent∈{B,C} 且**非 deliberate answer 且非叙述作答** 且零成功观察+零新图层 → EXIT_GAP。
+  // 关键：模型主动 `answer`（含零工具的概念/解释问）或**持续叙述作答**都不算失败——必走 finalStep 出真结论
+  //   （finalStep 见 compressHistory 全 thought + 叙述原文，续上思考）。GAP 只在 loop 到 MAX_ROUNDS / 空输出
+  //   等既未 answer 也未叙述 + 零成功（真失败）时触发。
   const toolHistoryText = toolHistory.length ? toolHistory.join('\n') : '';
   const _exitIntent = diagnose && !diagnose.degraded ? (diagnose.intent || 'emotion_analysis') : 'emotion_analysis';
   const _hardFail = (_exitIntent === 'gis_operation' || _exitIntent === 'emotion_analysis')
-    && successObs === 0 && newLayerCount === 0;
+    && successObs === 0 && newLayerCount === 0 && !answered && !narratedAnswer;
   if (_hardFail) {
     const gapText = composeGapCard(diagnose, failedObs);
     if (hooks.onFinalDone) hooks.onFinalDone(gapText);

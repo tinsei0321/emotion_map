@@ -163,8 +163,8 @@ DIAGNOSE_TEMPLATE = """
   "method": ["从下方 GIS 工具目录选 + 组合；emotion 如 'zonal_stats(更新单元) → rank(worst)'，gis_operation 如 'extract_feature(admin_district, MC/eq/西陵区)'"]
 }}
 **intent 判定要点（最高优先级）**：
-- general=通用问答/常识/寒暄/纯概念（今天星期几、什么是等时圈）→ domain_lens=["general"]，method 可空，不进情绪分析。
-- gis_operation=纯 GIS/数据操作（裁剪/抽取某区/缓冲/叠置/合并/字段筛选/上传数据处理/核密度density）→ outlet="生成图层"，method 选 extract_feature/clip/filter_attr/overlay/merge/buffer/density 等，出口是新图层而非归因报告。**注意：「核密度/密度分析/聚集强度/热力分布」属此类（method 选 density），勿判 general 短路。**
+- general=通用问答/常识/寒暄/纯概念（今天星期几、什么是等时圈）→ domain_lens=["general"]，method 可空，不进情绪分析。**包含"就已有图层/上一轮结果的概念追问"**——用户问"差别/区别/为什么/解释/含义/是什么/对比"且针对**已生成的图层/结果**（不要求新操作），即使含"核密度/用地/极性"等关键词，也判 general（concept，直接作答，method 可空）。例：「生成的 4 个核密度图层有什么差别」「为什么 X 区比 Y 区差」「这些图层是什么意思」→ general。
+- gis_operation=纯 GIS/数据操作（裁剪/抽取某区/缓冲/叠置/合并/字段筛选/上传数据处理/核密度density）→ outlet="生成图层"，method 选 extract_feature/clip/filter_attr/overlay/merge/buffer/density 等，出口是新图层而非归因报告。**注意：「核密度/密度分析/聚集强度/热力分布」属此类（method 选 density）仅当用户「新请求做」分析；若用户是「问已有」密度图层的问题（见上一条），判 general 勿短路进操作。**
 - emotion_analysis=情绪评价/排序/归因/预警（7 场景）→ 走原 domain_lens/scale/decision_type 体系。
 
 **多轮续作（最高优先级，覆盖上文 intent 判定）**：若上文含【上一轮上下文】块，且用户本轮在追问/续做（问句含"继续/接着/补充/我上传了X/那个/把刚才"等，或承接上一轮未完成任务），则：
