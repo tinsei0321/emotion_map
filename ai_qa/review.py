@@ -89,7 +89,7 @@ REVIEW_TEMPLATE = """
   "revise_hints": "pass=false 时必填：列出 fail/warn 项 + 具体可执行的修正方向（指出哪句哪段怎么改）；pass=true 可空字符串"
 }}
 
-【pass 判定】存在任一 fail 即 pass=false；仅有 warn 可 pass=true（小瑕疵不强制重写）。
+【pass 判定】**客观质量项**（data_driven / actionable / scale_paradigm_fit / professional）任一 fail → pass=false；**主观项**（layout / concise / structure）只标 warn，**不轻易 fail**（排版/精炼是主观感受，不强制重写）。仅有 warn 可 pass=true。
 【revise_hints 要求】pass=false 时必须具体可执行（如"第2段缺数值支撑，补极性指数与区域名"），而非泛泛"需改进"。
 """
 
@@ -165,7 +165,11 @@ def _parse_review_json(raw: str) -> dict:
     scores = [by_key[c['key']] for c in REVIEW_CHECKLIST]
 
     pass_flag = bool(obj.get('pass', True))
-    # 后端兜底：有 fail 则强制 pass=false（防模型误判）
+    # 后端兜底：客观质量项 fail 才强制 pass=false；主观项(layout/concise/structure) fail 降为 warn（不强制重写）
+    _OBJECTIVE = {'data_driven', 'actionable', 'scale_paradigm_fit', 'professional'}
+    for sc in scores:
+        if sc['verdict'] == 'fail' and sc['key'] not in _OBJECTIVE:
+            sc['verdict'] = 'warn'
     if any(sc['verdict'] == 'fail' for sc in scores):
         pass_flag = False
 

@@ -241,6 +241,10 @@ function _renderFooter(shell, metaText, md, badge) {
   }
   const span = document.createElement('span');
   span.className = 'aiq-footer-meta'; span.textContent = metaText;
+  const rbtn = document.createElement('button');
+  rbtn.className = 'aiq-footer-report'; rbtn.type = 'button'; rbtn.title = '导出分析报告（可打印存 PDF）';
+  rbtn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>';
+  rbtn.addEventListener('click', () => { _exportReport(shell); rbtn.classList.add('is-ok'); setTimeout(() => rbtn.classList.remove('is-ok'), 1200); });
   const btn = document.createElement('button');
   btn.className = 'aiq-footer-copy'; btn.type = 'button'; btn.title = '复制回答（Markdown）';
   btn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
@@ -251,7 +255,40 @@ function _renderFooter(shell, metaText, md, badge) {
     btn.classList.add('is-ok'); setTimeout(() => btn.classList.remove('is-ok'), 1200);
   });
   shell.footerEl.appendChild(span);
+  shell.footerEl.appendChild(rbtn);
   shell.footerEl.appendChild(btn);
+}
+
+/** 导出分析报告：拼自包含可打印 HTML（答案 + 图表 PNG + 问题），新窗 print→存 PDF。事企业客户（住建局）"城市体检报告"出口。 */
+function _exportReport(shell) {
+  const ans = shell && shell.answerEl;
+  if (!ans) return;
+  const clone = ans.cloneNode(true);
+  // canvas.chart → <img dataURL>（Chart.js 画布支持 toDataURL；纯文字答无图表也不影响）
+  const orig = [...ans.querySelectorAll('canvas.aiq-chart')];
+  const dup = [...clone.querySelectorAll('canvas.aiq-chart')];
+  orig.forEach((cv, i) => { if (dup[i]) { const img = new Image(); img.src = cv.toDataURL('image/png'); img.style.maxWidth = '100%'; dup[i].replaceWith(img); } });
+  const uq = [..._history].reverse().find((m) => m.role === 'user');
+  const qTxt = uq ? uq.text : '';
+  const ts = formatTs(Date.now());
+  const css = 'body{font-family:system-ui,"Microsoft YaHei",sans-serif;max-width:780px;margin:32px auto;padding:0 24px;color:#1f2328;line-height:1.65}'
+    + 'h1{font-size:22px;margin:0 0 4px} .meta{color:#888;font-size:13px;margin-bottom:20px;border-bottom:1px solid #eee;padding-bottom:8px}'
+    + 'h3{font-size:15px;margin:22px 0 8px;color:#555} .answer{font-size:14px} .answer h1,.answer h2,.answer h3{margin:16px 0 6px}'
+    + '.answer table{border-collapse:collapse;width:100%;font-size:13px} .answer td,.answer th{border:1px solid #ddd;padding:4px 8px}'
+    + '.chat-action-btn,.aiq-chart-bad,.emc-msg-actions{display:none} img{display:block;margin:8px 0;max-width:100%}'
+    + 'footer{margin-top:32px;border-top:1px solid #eee;padding-top:8px;color:#aaa;font-size:12px}';
+  const html = '<!doctype html><html lang="zh"><head><meta charset="utf-8"><title>宜昌市情绪地图 · 分析报告</title><style>'
+    + css + '</style></head><body>'
+    + '<h1>宜昌市情绪地图 · 分析报告</h1>'
+    + `<div class="meta">生成时间 ${ts} · 情绪地图控制台 v1.0 · 由 EmotionMap Copilot 生成</div>`
+    + (qTxt ? `<h3>问题</h3><div>${escapeHtml(qTxt)}</div>` : '')
+    + '<h3>分析</h3><div class="answer">' + clone.innerHTML + '</div>'
+    + '<footer>本报告基于多源情绪数据（社交媒体/12345 热线）+ GIS 空间分析自动生成；极性指数约 -2..2；归因落点 = 4 领域（规划/更新/运营/治理）× 5 要素（设施/环境/服务/文化/事件）。</footer>'
+    + '</body></html>';
+  const w = window.open('', '_blank');
+  if (!w) return;   // 弹窗被拦截（罕见）— 静默，is-ok 仍反馈
+  w.document.write(html); w.document.close(); w.focus();
+  setTimeout(() => { try { w.print(); } catch (e) {} }, 500);
 }
 function stampDone(shell) {
   if (_curTrace) _curTrace.doneAt = Date.now();

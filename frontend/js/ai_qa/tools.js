@@ -260,6 +260,33 @@ function formatGeoCatalog(cat) {
   return out.join('\n');
 }
 
+/** DataEye：层的字段 + 类型 + 2 个样本值（borrow GIS Copilot _get_df_types_str）。
+ *  给模型真实值参照 → 写 where（field/op/value）命中率显著升，不再盲猜字段值。
+ *  取前 ~20 feature 的前 maxFields 个非内部字段，每字段最多 2 个去重样本值，紧凑防爆 context。 */
+function _fieldSamples(fc, maxFields = 6) {
+  const feats = fc && fc.features;
+  if (!feats || !feats.length) return '';
+  const sample = feats.slice(0, 20);
+  const keys = [];
+  for (const f of sample) {
+    for (const k of Object.keys(f.properties || {})) {
+      if (k && k[0] !== '_' && !keys.includes(k) && keys.length < maxFields) keys.push(k);
+    }
+  }
+  return keys.map((k) => {
+    const vals = []; let isNum = null;
+    for (const f of sample) {
+      const v = (f.properties || {})[k];
+      if (v === null || v === undefined || v === '') continue;
+      const s = String(v);
+      if (!vals.includes(s)) { vals.push(s); if (isNum === null) isNum = (typeof v === 'number'); }
+      if (vals.length >= 2) break;
+    }
+    if (!vals.length) return k;
+    return `${k}=${isNum ? 'num' : 'str'}:${vals.join('|').slice(0, 24)}`;
+  }).join('/');
+}
+
 /** buildContext：grounding 摘要（panel send + query_layers 共用）。 */
 export async function buildContext() {
   const layers = getLayers();
@@ -269,9 +296,8 @@ export async function buildContext() {
     .filter((l) => l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length)
     .map((l) => {
       const cnt = l.fc.features.length;
-      const p = l.fc.features[0] && l.fc.features[0].properties;
-      const keys = p ? Object.keys(p).filter((k) => k && k[0] !== '_').slice(0, 6) : [];   // 字段名（供 AI 写 where，剔除内部 _xxx）
-      return `${l.name}(${cnt}条${keys.length ? ',字段:' + keys.join('/') : ''})`;
+      const fs = _fieldSamples(l.fc, 6);   // DataEye：字段+类型+样本值（供 AI 写 where 有真实值参照）
+      return `${l.name}(${cnt}条${fs ? ',字段:' + fs : ''})`;
     }).join('、');
   parts.push('已加载图层：' + (loaded || '（无）'));
   const geo = formatGeoCatalog(await getGeoCatalog());

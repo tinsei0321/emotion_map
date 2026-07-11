@@ -10,7 +10,10 @@ import { getLayers } from '../state.js';
 const MAX_ROUNDS = 8;
 const OBS_TRUNC = 200;      // observation 注入 history 截断长度
 const PARAMS_TRUNC = 80;    // action params 摘要截断长度
-const REVIEW_ENABLED = false;   // 审查机制总开关：false=暂关 Flash 审查员（效果待优化，下轮重构审查 agent）；诚实门 _verifyClaims 仍保留
+// 审查质量门（5.70 重启）：默认开——仅审 emotion_analysis(C) 答案（general 短路、gis_operation 早 return、EXIT_GAP 早 return，本就不进审查）。
+// 聚焦客观质量杠杆（data_driven/actionable/scale_paradigm_fit/professional），主观项(layout/concise/structure)只 warn 不 fail。
+// verdict 经 episode 入 L3 → 喂活自成长闭环。运行时杀开关：浏览器 console 跑 localStorage.setItem('emcReviewOff','1') 即关。
+const REVIEW_ENABLED = (() => { try { return !localStorage.getItem('emcReviewOff'); } catch (e) { return true; } })();
 
 /** 当前地图图层状态摘要（附入每轮 history，让 LLM 感知操作是否已生效、避免盲目重试）。 */
 function _mapState() {

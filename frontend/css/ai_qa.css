@@ -251,6 +251,9 @@
 .aiq-footer-copy { flex-shrink: 0; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; color: var(--geojson-color-text-tertiary); border-radius: var(--geojson-radius-xs); cursor: pointer; transition: color var(--geojson-transition), background var(--geojson-transition); }
 .aiq-footer-copy:hover { color: var(--emc-accent, #D97757); background: rgba(255,255,255,0.06); }
 .aiq-footer-copy.is-ok { color: #4ADE80; }   /* 复制成功反馈 */
+.aiq-footer-report { flex-shrink: 0; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; color: var(--geojson-color-text-tertiary); border-radius: var(--geojson-radius-xs); cursor: pointer; transition: color var(--geojson-transition), background var(--geojson-transition); }
+.aiq-footer-report:hover { color: var(--emc-accent, #D97757); background: rgba(255,255,255,0.06); }
+.aiq-footer-report.is-ok { color: #4ADE80; }   /* 报告已打开反馈 */
 .aiq-exit-badge { flex-shrink: 0; padding: 1px 7px; border-radius: 999px; font-size: var(--geojson-typography-size-2xs); line-height: 16px; white-space: nowrap; border: 1px solid rgba(255,255,255,0.14); }
 .aiq-exit-badge.ok { color: #4ADE80; border-color: rgba(74,222,128,0.4); background: rgba(74,222,128,0.08); }
 .aiq-exit-badge.warn { color: #FBBF24; border-color: rgba(251,191,36,0.4); background: rgba(251,191,36,0.08); }

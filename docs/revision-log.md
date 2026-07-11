@@ -1148,6 +1148,15 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.69 EMC 全面审查 → Tier1 三项（DataEye + 审查门 + 报告导出）（07月12日）
+
+用户要"全面系统回顾 EMC，提优化意见，核心=业界领先端到端"。审计 13 个端到端环节：11 强/较全（NL 理解/三态路由/ReAct/工具集/渲染[层+图+按钮]/结论/多轮/流式 UX/错误处理），4 处差距（**审查门关着/自成长半残/DataEye 浅/LLM 脆弱**）。对标 CARTO/GIS Copilot/LLM-Geo/GeoGPT，最大差异化="会自审 + 从使用中成长"。用户选 Tier1 三项打包：
+- **B DataEye 深化**（[tools.js buildContext](frontend/js/ai_qa/tools.js)）：新增 `_fieldSamples(fc)`（borrow GIS Copilot `_get_df_types_str`）——层摘要从"字段名"升级到"字段=类型:2 样本值"（如 `DLMC=str:商业`/`polarity_index=num:0.32|-0.45`）。模型写 where 有真实值参照，命中率升。**实测**：buildContext 输出含 `DLMC=str:商业`。
+- **A 重启审查质量门**（[harness.js REVIEW_ENABLED](frontend/js/ai_qa/harness.js) + [review.py](ai_qa/review.py)）：`REVIEW_ENABLED` 由 false→true（默认开，`localStorage.emcReviewOff` 杀开关）；pass 判定聚焦**客观项**（data_driven/actionable/scale_paradigm_fit/professional fail 才强 fail；layout/concise/structure 主观项只 warn，后端 `_parse_review_json` 同步把主观项 fail 降为 warn）；仅审 emotion_analysis(C)（general/操作/缺数据本就不进）；verdict 经 episode 入 L3→**激活自成长闭环**。
+- **C 报告导出**（[panel.js _exportReport](frontend/js/ai_qa/panel.js) + [ai_qa.css](frontend/css/ai_qa.css)）：答案脚加"导出报告"钮 → 拼自包含可打印 HTML（标题+时间+问题+答案[canvas→`toDataURL` PNG]+落款，CSS 藏 action 按钮），新窗 `print()`→用户存 PDF。对标事企业"城市体检报告"出口。**实测**：点钮生成 21.8KB HTML，含标题/问题/答案/图表 PNG/藏 UI。
+- **验证**：node --check/py AST 全过；Playwright 实测三相（DataEye 输出样本值/报告按钮+HTML 生成+图表 PNG 嵌入）。审查门全 LLM 流程（Flash verdict→revise→episode）待用户真问 C 类肉眼验。
+- **承重**：未碰（buildContext 仅富化 context 字符串；审查 flag+聚焦；报告纯前端增量；不动三态/视野-数据-结论/4×5/渲染管线/EMC 边界）。memory 更新 `emc-tri-state-exit-contract`（审查重启 C-only+自成长激活）+ `emc-charts-and-end-to-end`（报告导出+DataEye）。
+
 ## 6. 持续追加规则（给 AI）
 
 1. **每次 commit 后**，按本文件第 5 节对应板块追加一行：`日期 | commit | 用户意图(精炼) | 文件`。
