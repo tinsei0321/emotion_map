@@ -269,10 +269,12 @@
 .aiq-phase-chips span.active { color: #fff; background: var(--geojson-color-brand-primary, #4285F4); font-weight: var(--geojson-typography-weight-semibold); }
 
 /* ── 推荐追问胶囊（答案完毕后，#chat-suggest 内，点击即发；胶囊设计语言：无线框+阴影+悬停灰+紧凑）── */
-.aiq-suggest { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 5px 14px 7px; border-top: 1px solid var(--geojson-color-border-default, #e3e5e8); background: var(--geojson-color-surface-panel-alt, #fafafa); }
-.aiq-suggest-label { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); margin-right: 2px; }
-.aiq-suggest-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 3px 9px; border: none; border-radius: 999px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.08); font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-primary, #1f2328); cursor: pointer; transition: background var(--geojson-transition), box-shadow var(--geojson-transition); }
-.aiq-suggest-chip:hover { background: var(--geojson-color-gray-100, #f0f1f3); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+/* 推荐追问胶囊（EMC 深色面板内：半透明深底 + 浅字 + 橙标签，对齐 emc-welcome-chip/exit-badge；勿用白底+主题字变量——深色 EMC 里文字变量翻浅→浅字白底看不清）*/
+.aiq-suggest { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 5px 14px 7px; border-top: 1px solid rgba(255,255,255,0.08); background: transparent; }
+.aiq-suggest-label { font-size: var(--geojson-typography-size-2xs); color: rgba(255,255,255,0.45); margin-right: 2px; }
+.aiq-suggest-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 3px 9px; border: 1px solid rgba(255,255,255,0.14); border-radius: 999px; background: rgba(255,255,255,0.06); font-size: var(--geojson-typography-size-xs); color: #ECECEC; cursor: pointer; transition: background var(--geojson-transition), border-color var(--geojson-transition); }
+.aiq-suggest-chip:hover { background: rgba(255,255,255,0.13); border-color: var(--emc-accent, #D97757); }
+.aiq-suggest-chip:focus-visible { outline: 2px solid var(--emc-accent, #D97757); outline-offset: 1px; }
 .aiq-suggest-tag { font-size: var(--geojson-typography-size-2xs); color: var(--emc-accent, #D97757); font-weight: var(--geojson-typography-weight-semibold); flex-shrink: 0; }
 
 /* ── 答案内图表（{{chart:...}} → Chart.js canvas；EMC 深色答案泡上显图）── */
