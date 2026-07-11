@@ -5,6 +5,31 @@
 
 ---
 
+## 📅 2026-07-12
+
+### ✅ EMC 全面审查 → Tier1 三项（DataEye + 审查门 + 报告导出）（revision-log 5.69）
+
+用户要"全面系统回顾 EMC，核心=业界领先端到端"。审计 13 个端到端环节（11 强/较全，4 差距：审查门关/自成长半残/DataEye 浅/LLM 脆弱）。用户选 Tier1 三项打包：
+- **B DataEye**：`buildContext` 层摘要 `字段名`→`字段=类型:2样本值`（borrow GIS Copilot）。实测含 `DLMC=str:商业`。
+- **A 审查门重启**：`REVIEW_ENABLED` true（`localStorage.emcReviewOff` 杀开关）+ 聚焦客观项（data_driven/actionable/scale_fit/professional；主观项只 warn）+ C-only scope + **verdict 入 episode→自成长闭环激活**。
+- **C 报告导出**：答案脚"导出报告"钮→自包含可打印 HTML（标题+问题+答案+图表 PNG+落款）→新窗 print 存 PDF。实测 21.8KB HTML 含图表 PNG。
+- 承重全未碰。push 2363e4f。
+
+### ✅ 追问胶囊深色 UI 修复（白底浅字看不清）
+
+EMC 深色面板里追问胶囊用白底+主题文字变量（深色 EMC 翻浅）→浅字白底看不清。改成 EMC 深色风（半透明深底 `rgba(255,255,255,.06)`+浅字 `#ECECEC`+橙标签+hover 橙边），对齐 welcome-chip/exit-badge。push 213b838。
+
+### ✅ 思考↔结论脱节系统性修复（revision-log 5.68，07-11）
+
+用户报概念追问思考已得结论、结论却被换缺数据卡。系统性审计整条决策管线→**只有一类病：gate 覆盖模型 deliberate 作答**。关键发现 `compressHistory` 传全 thought→finalStep 看得到思考→链本健全，脱节根因是 gate 跳 finalStep。三修：`_hardFail` 加 `answered`（deliberate answer 不当失败）+ `narratedAnswer`（**真凶**：概念问模型 prose 作答→叙述→原 degrade→GAP；改交 finalStep）+ diagnose 概念追问→general。实测"什么是核密度分析"修后出真结论（KDE vs Gi* 对比）。教训：验证别清 localStorage 历史（清了用户聊天史）。push e65a3c0。
+
+### ⬜ 下会话：验 Tier1 + 推 Tier2/3
+1. **用户验 Tier1**（硬刷新看 build 角标）：C 类问→审查 verdict 区；复杂筛选命中率（DataEye）；导出报告钮→PDF。
+2. **审查门是重启**（曾关）——若 Flash 审查噪/降质，`localStorage.setItem('emcReviewOff','1')` 一键关。
+3. **Tier2/3 路线**（计划文件）：LLM 韧性(retry+fallback) / 复合工具 compare·timeseries / 自成长闭环接通(consolidate→L2) / 主动建议 / 提速 / 多模态。
+
+---
+
 ## 📅 2026-07-10
 
 ### ✅ EMC 图表生成·Phase 1（revision-log 5.67）
