@@ -1148,6 +1148,13 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.75 页面 title 加 build 号（git 短哈希·无日期）+ commit/push 分离（07月12日）
+
+用户要：(1) build 号放页面标题（prototype alpha v0.1 后括号，只版本号无日期）方便识别；(2) 以后 Claude 只 commit，用户手动 push。
+- **title build 号**（[serve.py](d:/Github/emotion_map/frontend/serve.py)）：新增 `_inject_title`——把 git 短哈希注入 `<title>` 末尾（幂等：已含括号不重复）。do_GET 改用 `_git_short`（只哈希，去 mtime 日期）同时注入 title + 右下角标。实测 title = `宜昌市情绪地图 prototype v0.1.0-alpha.1（7596eee）`，右下角标 = `build 7596eee`（去日期）。`_git_short` 每请求读 HEAD，commit 后 F5 即更新（无需重启 serve）。
+- **commit/push 分离**（memory `commit-only-user-pushes`）：覆盖 CLAUDE.md「commit+push 组合」——以后只 commit，push 用户手动（网络常断 + 用户自控时机）。
+- **验证**：py_compile 过；curl /frontend/index.html 确认 title + 角标。
+
 ### 5.74 EMC 系统性防谎报（tool-as-truth：artifact registry + 真值注入 + 结构化对账）（07月12日）
 
 用户报 EMC 给完整报告（6 图层+数字）但 Layers 无图——trace 铁证 B 路径（0 工具，finalStep 编）。根因：diagnose 降级→三闸全松（单点失败）+ finalStep 无真值 + _verifyClaims 正则窄。用户要系统性解（不打地鼠，参考业界 tool-as-truth）。范式转变：**从"信任 LLM 叙述"→"工具产出即真值"**（LLM 文字只是解释已注册产物，不能凭空创造产物）。

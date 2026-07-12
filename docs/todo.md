@@ -7,6 +7,10 @@
 
 ## 📅 2026-07-12
 
+### ✅ 页面 title 加 build 号 + commit/push 分离（revision-log 5.75）
+
+title 加 git 短哈希（prototype alpha v0.1（短哈希），无日期，方便识别版本）；右下角标同步去日期。serve.py _inject_title + do_GET 用 _git_short（每请求读 HEAD，commit 后 F5 即更新）。memory commit-only-user-pushes：以后 Claude 只 commit，用户手动 push（覆盖 CLAUDE.md commit+push 组合）。py_compile + curl 验证过。
+
 ### ✅ EMC 系统性防谎报 tool-as-truth（revision-log 5.74）
 
 诊断"报告说生成 6 图层但 Layers 无图"——trace 铁证 B 路径（0 工具，finalStep 编）。范式转变：工具产出即真值（LLM 文字只解释已注册产物）。① artifact registry（tools.js _registry+setToolContext，5 数组保留不破）+ ② getArtifacts/formatRegistry + ④ harness finalStep 前注入 registry 真值（finalStep/review/revise 共用 ctx）+ ⑤ finalStep 后结构化对账（_extractClaimedLayers 抽声称 vs getLayers 实际，missing→退 gap+实际清单，intent 无关=根治单点失败=⑦核心）。正则验证过（编图层全拦、真图层不误拦）。增益后续：③ expected_outputs 计划字段 + ⑥ 自动补做。承重未碰（5 数组/getLayers 只读/composeGapCard 模板/审查客观项）。与阶段2 code-exec 同轨前置（①②⑤ 复用）。node --check 过，待带 key 复现。

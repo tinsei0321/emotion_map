@@ -101,6 +101,15 @@ def _inject_stamp(html, stamp):
     return html.replace('</body>', badge + '</body>', 1) if '</body>' in html else html
 
 
+def _inject_title(html, short):
+    """把 git 短哈希注入 <title> 末尾（build 号，无日期，方便用户识别版本）。
+    幂等：title 已含（）则不重复加。"""
+    m = re.search(r'<title>([^<]*)</title>', html)
+    if not m or '（' in m.group(1):
+        return html
+    return html.replace(f'<title>{m.group(1)}</title>', f'<title>{m.group(1)}（{short}）</title>', 1)
+
+
 # 后端 origin（uvicorn :8000）—— /api 反向代理的目标。
 # 前端同源 fetch /api/* → serve.py 透传此后端，消除浏览器跨域这一跳
 #（修 export "Failed to fetch"：浏览器只跟 :8080 说话，:8000 这跳在服务端完成）。
@@ -129,7 +138,9 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
                 with open(fs, 'rb') as f:
                     html = f.read().decode('utf-8')
                 html = _inject_versions(html, basedir)
-                html = _inject_stamp(html, _build_stamp(basedir))
+                _short = _git_short(os.path.dirname(basedir))   # git 短哈希（版本识别，无日期）
+                html = _inject_title(html, _short)              # <title> 加 build 号（prototype alpha v0.1（短哈希））
+                html = _inject_stamp(html, _short)              # 右下角标也只版本号（去日期）
                 body = html.encode('utf-8')
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/html; charset=utf-8')
