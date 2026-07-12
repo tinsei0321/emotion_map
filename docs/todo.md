@@ -7,6 +7,10 @@
 
 ## 📅 2026-07-12
 
+### ✅ EMC P0 止血（一）：宽容三零容忍（revision-log 5.76）
+
+用户"稍出错没答案"——5.72/5.74 三零容忍违反体验>正确性。P0a drift 命中先 _reviseOnce markdown 重写（失败才退卡）；P0b 对账 missing≤2 保 draft+自动标注"未实际生成"（≥3 大面积才退 gap）；P0c narration narrations≥3 认文字答交 finalStep（不逼 MAX 落 gap）。范式：做不成也体面答。node --check 过，待复现验证。后续月级全计划已批：P0d（第四态+引导式卡）→P1（ask_user+语气）→P3（code-exec）→P2（减GAP）。承重未碰。
+
 ### ✅ 页面 title 加 build 号 + commit/push 分离（revision-log 5.75）
 
 title 加 git 短哈希（prototype alpha v0.1（短哈希），无日期，方便识别版本）；右下角标同步去日期。serve.py _inject_title + do_GET 用 _git_short（每请求读 HEAD，commit 后 F5 即更新）。memory commit-only-user-pushes：以后 Claude 只 commit，用户手动 push（覆盖 CLAUDE.md commit+push 组合）。py_compile + curl 验证过。

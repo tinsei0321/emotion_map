@@ -1148,6 +1148,17 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.76 EMC P0 止血（一）：宽容三零容忍（drift revise / 对账 missing 保 draft 标注 / narration 容忍）（07月12日）
+
+用户报"稍出错没答案"——5.72/5.74 三处零容忍（drift/对账/narration）违反"体验>正确性"。P0 止血改宽容：
+- **P0a drift**（[harness.js:333](d:/Github/emotion_map/frontend/js/ai_qa/harness.js#L333)）：命中先 `_reviseOnce` 让 Flash 用 markdown 重写（提示"上一版 JSON，用 markdown 重写"），revise 成功且不再漂移→采用；失败才退 drift 卡。不直接拦没答案。
+- **P0b 对账 missing**（[harness.js:341](d:/Github/emotion_map/frontend/js/ai_qa/harness.js#L341)）：missing≤2 → 保 draft + 自动标注"（注：未实际生成）" + 末尾局限说明（不丢整答案）；missing≥3 大面积谎报→才退 gap。
+- **P0c narration**（[harness.js:254](d:/Github/emotion_map/frontend/js/ai_qa/harness.js#L254)）：narrations≥3（逼工具 2 轮仍叙述）=模型坚持文字答→认 narratedAnswer 交 finalStep 出参考答（不逼到 MAX 落 gap）。
+- 范式：**体验>正确性**，做不成也体面答（保可用部分+标注）。
+- 验证：node --check 过；待复现"谎报/漂移/叙述"案例看宽容（保 draft 标注/revise/参考答）不再"没答案"。
+- 承重：未碰（_reviseOnce 复用；对账仍 intent 无关；三态出口不改；composeGapCard 模板化）。
+- **后续**（月级全计划已批）：P0d（EXIT_PARTIAL 第四态+composeGapCard 引导式）→ P1（ask_user 主动问+对话引导语气）→ P3（code-exec 沙箱+run_python）→ P2（硬缺口改 fallback_annotated+多轮规划）。
+
 ### 5.75 页面 title 加 build 号（git 短哈希·无日期）+ commit/push 分离（07月12日）
 
 用户要：(1) build 号放页面标题（prototype alpha v0.1 后括号，只版本号无日期）方便识别；(2) 以后 Claude 只 commit，用户手动 push。

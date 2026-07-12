@@ -251,8 +251,9 @@ export async function orchestrate(ctx, hooks = {}) {
     if (step.narrated) {
       narrations++;
       if (step.text) toolHistory.push(`第${round}轮·模型叙述：${String(step.text).slice(0, 800)}`);
-      const _narrationLegit = !diagnose || diagnose.degraded;   // 仅降级诊断（可能概念问）才认叙述作答
-      if (narrations > 1 && _narrationLegit) { narratedAnswer = true; break; }
+      const _narrationLegit = !diagnose || diagnose.degraded;   // 降级诊断（可能概念问）认叙述作答
+      // P0c 宽容：narrations>=3（逼工具 2 轮仍叙述）=模型坚持文字答 → 认 narratedAnswer 交 finalStep 出参考答（体验>正确性，不逼到 MAX 落 gap）
+      if ((narrations > 1 && _narrationLegit) || narrations >= 3) { narratedAnswer = true; break; }
       toolHistory.push(`⚠️ 第${round}轮：你输出了说明文字而非动作 JSON。${!_narrationLegit ? '此问已判定为需工具执行的任务，严禁只说不做；' : ''}本轮若需工具请只输出严格 JSON {"thought":"...","action":{"type":"tool","name":"工具名","params":{...}}}；若信息已足够，输出 {"action":{"type":"answer"}}；${_narrationLegit ? '若是解释性回答可直接说明。' : '继续只说不做将被强制至 MAX_ROUNDS 后判失败。'}`);
       if (hooks.onObservation) hooks.onObservation(`[格式] 上一轮说明非动作 JSON，已要求重发${!_narrationLegit ? '（任务类必须用工具）' : ''}`, round);
       round++;
@@ -329,24 +330,37 @@ export async function orchestrate(ctx, hooks = {}) {
     if (hooks.onDegraded) hooks.onDegraded('');
     return { ok: false, degraded: true, rounds: round };
   }
-  // finalStep 防漂移：LLM 把 agent_step 风格 JSON（含 thought/action）当答案输出 → 拦截，落固定卡（永不裸输 JSON）
+  // P0a finalStep 防漂移（宽容）：命中先 _reviseOnce 让 Flash 用 markdown 重写（体验>正确性，不直接拦没答案）；revise 失败才退固定卡
   const _driftRe = /^\s*(?:```(?:json)?\s*)?\{[\s\S]*"(?:thought|action)"[\s\S]*\}\s*```?\s*$/i;
   if (_driftRe.test(draft.trim())) {
-    const _driftText = '## 未能生成可读结论\n\n模型在最终回答阶段输出了工具调用指令（JSON）而非可读结论，已拦截未显示。\n\n**建议**：换一种问法或缩小范围（指定某区、某类用地、某时点）后重试。';
-    if (hooks.onFinalDone) hooks.onFinalDone(_driftText);
-    if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: 'finalStep 格式漂移·拦截', skipped: 'drift' });
-    return { ok: false, degraded: true, rounds: round, final: _driftText, diagnose, exit: 'drift' };
+    const _revised = await _reviseOnce(ctx, hooks, draft, '诚实格式：上一版最终回答输出了工具调用 JSON（含 thought/action 字段）而非可读 markdown 结论。请基于已完成的探索，用**可读 markdown** 重写结论（禁输出 JSON；若任务未完成改述"未生成/未产出"）。保留已真实完成的结论与数据。', toolHistoryText);
+    if (_revised && _revised.trim() && !_driftRe.test(_revised.trim())) {
+      draft = _revised;   // revise 成功且不再漂移 → 采用，继续走对账
+    } else {
+      const _driftText = '## 未能生成可读结论\n\n模型在最终回答阶段输出了工具调用指令（JSON）而非可读结论，已拦截未显示。\n\n**建议**：换一种问法或缩小范围（指定某区、某类用地、某时点）后重试。';
+      if (hooks.onFinalDone) hooks.onFinalDone(_driftText);
+      if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: 'finalStep 格式漂移·拦截', skipped: 'drift' });
+      return { ok: false, degraded: true, rounds: round, final: _driftText, diagnose, exit: 'drift' };
+    }
   }
-  // ⑤ pre-finalStep 结构化对账（intent 无关硬门）：抽草稿声称的图层 vs 地图实际，missing → 退 gap（不让谎报直达）
+  // ⑤ pre-finalStep 结构化对账（intent 无关，P0b 宽容版）：missing<=2 → 保 draft + 自动标注（体验>正确性，不丢整答案）；missing>=3 大面积谎报 → 退 gap
   const _claimed = _extractClaimedLayers(draft);
   if (_claimed.length) {
     const _actualNames = getLayers().filter((l) => l.name).map((l) => l.name);
     const _missing = _claimed.filter((c) => !_actualNames.some((a) => a === c || a.includes(c) || c.includes(a)));
-    if (_missing.length) {
-      const _gapText = composeGapCard(diagnose, failedObs) + '\n\n---\n**⚠️ 诚实拦截**：草稿声称已生成「' + _missing.join('、') + '」图层，但地图实际图层为 [' + (_actualNames.join('、') || '无') + ']，上述图层未找到。请用 geo 工具真正生成后再回答；严禁编造图层名与数据。';
+    if (_missing.length >= 3) {
+      const _gapText = composeGapCard(diagnose, failedObs) + '\n\n---\n**⚠️ 诚实拦截**：草稿声称已生成「' + _missing.join('、') + '」等图层，但地图实际图层为 [' + (_actualNames.join('、') || '无') + ']，大面积谎报，请用 geo 工具真正生成后再回答。';
       if (hooks.onFinalDone) hooks.onFinalDone(_gapText);
-      if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: '谎报图层拦截', skipped: 'drift' });
+      if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: '谎报图层拦截(大面积)', skipped: 'drift' });
       return { ok: false, degraded: true, rounds: round, final: _gapText, diagnose, exit: 'drift' };
+    } else if (_missing.length) {
+      // 少量 missing（1-2）：保 draft + 标注（不丢整答案）
+      let _annotated = draft;
+      for (const m of _missing) {
+        _annotated = _annotated.replace(new RegExp(m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), `${m}（注：未实际生成）`);
+      }
+      _annotated += '\n\n---\n**⚠️ 口径标注**：上述「' + _missing.join('、') + '」图层实际未生成（地图现有：[' + (_actualNames.join('、') || '无') + ']）。如需这些图层，请明确要求我用工具生成。';
+      draft = _annotated;
     }
   }
   if (hooks.onFinalDone) hooks.onFinalDone(draft);
