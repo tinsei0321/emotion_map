@@ -1148,6 +1148,11 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.78 顶栏 .title-version 加 build 号（与 \<title\> 同源·换环境识别）（07月12日）
+
+用户"换环境"诉求——顶栏 logo 旁版本号（[index.html:44](d:/Github/emotion_map/frontend/index.html) `<span class="title-version">prototype alpha v0.1</span>`）只显静态版本，换机器/分支后难一眼识别 build。加 `（build：git 短哈希）` 后缀。[serve.py](d:/Github/emotion_map/frontend/serve.py) 新 `_inject_header_version(html, short)`（正则匹配 .title-version span，注入 `（build：{short}）`，幂等：span 已含（则跳过），与 5.75 `_inject_title` 同源（同一 `_git_short`，do_GET 每次 serve index.html 时注入）。验证：py_compile + 功能测（注入正确 / 二次幂等不动 / 无 span 不崩）。out.png 测试产物顺手删（沙箱 matplotlib breakthrough 漏清 cwd，下会话查 test_sandbox 清理）。
+- **承重**：未碰（仅 serve.py 加 1 注入器 + 1 调用行；_inject_title/_inject_stamp/_inject_versions 不动）。
+
 ### 5.77 EMC 月级改造（一）：P0d 第四态 EXIT_PARTIAL + P1 ask_user 拟人 + P3 沙箱骨架（07月12日）
 
 月级全计划（[calm-discovering-snowflake.md](C:/Users/admin/.claude/plans/calm-discovering-snowflake.md)）开跑。本次 P0d+P1+P3 沙箱骨架（P3 不挂 /run）。承重：四态出口**扩**非替换、registry/对账 tool-agnostic 复用、沙箱红线、思考透明 5.70 不动。全程两组 Workflow 对抗验证（初验 3 路揪 serious→修→复验 3 路 mostly-fixed→再修 minor）。

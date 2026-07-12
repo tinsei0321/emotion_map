@@ -110,6 +110,15 @@ def _inject_title(html, short):
     return html.replace(f'<title>{m.group(1)}</title>', f'<title>{m.group(1)}（{short}）</title>', 1)
 
 
+def _inject_header_version(html, short):
+    """把 git 短哈希注入顶栏 .title-version span（prototype alpha v0.1（build：短哈希））。
+    与 <title> build 号同源（_git_short），统一版本识别。幂等：span 已含（则不重复加。"""
+    m = re.search(r'(<span class="title-version">)([^<]*)(</span>)', html)
+    if not m or '（' in m.group(2):
+        return html
+    return html.replace(m.group(0), f'{m.group(1)}{m.group(2)}（build：{short}）{m.group(3)}', 1)
+
+
 # 后端 origin（uvicorn :8000）—— /api 反向代理的目标。
 # 前端同源 fetch /api/* → serve.py 透传此后端，消除浏览器跨域这一跳
 #（修 export "Failed to fetch"：浏览器只跟 :8080 说话，:8000 这跳在服务端完成）。
@@ -140,6 +149,7 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
                 html = _inject_versions(html, basedir)
                 _short = _git_short(os.path.dirname(basedir))   # git 短哈希（版本识别，无日期）
                 html = _inject_title(html, _short)              # <title> 加 build 号（prototype alpha v0.1（短哈希））
+                html = _inject_header_version(html, _short)     # 顶栏 .title-version 后加（build：短哈希），与 <title> 同源
                 html = _inject_stamp(html, _short)              # 右下角标也只版本号（去日期）
                 body = html.encode('utf-8')
                 self.send_response(200)
