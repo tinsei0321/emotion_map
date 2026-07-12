@@ -1,11 +1,11 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：07月12日（P0d+P1+P3 收工）| 分支 `main`（**本地领先 origin 6 commit 待用户手动 push**）| 本次 = EMC 月级改造（一）：P0d 第四态 EXIT_PARTIAL + P1 ask_user 拟人 + P3 沙箱骨架（未挂 /run）
+> 最后更新：07月12日（5.77+5.78 收工·换环境）| 分支 `main`（**本地领先 origin 9 commit 待用户手动 push**）| 本次 = EMC 月级改造（一）：P0d 第四态 + P1 ask_user + P3 沙箱骨架 + 5.78 顶栏 build 号（换环境识别）
 
 ---
 
-## 当前节点：5.77 P0d+P1+P3 沙箱骨架完成，下会话 P3 挂 /run → P2
+## 当前节点：5.77+5.78 收工（换环境），下会话 P3 挂 /run → P2
 
 ### 背景
 月级全计划（`C:\Users\admin\.claude\plans\calm-discovering-snowflake.md` 已批）开跑。本次第一段：体验闭环（第四态出口 + 主动问澄清）+ code-exec 沙箱地基。全程两组 Workflow 多 agent 对抗验证（ultracode 模式）——初验揪 CRITICAL+10 项承重 bug，全修；复验确认 + 再修 5 minor；0 新回归。
@@ -15,6 +15,7 @@
 - **P1 ask_user 主动澄清 + 对话引导**：[prompts](ai_qa/prompts.py) action schema 加第三态 ask_user + 出口铁律放宽 + rule8（何时问，硬上限 1-2 次）；[stages parseAgentStep](frontend/js/ai_qa/stages.js) 加 isAsk 归一（含顶层裸 ask_user 收编 + options 对象 coerce）；[harness](frontend/js/ai_qa/harness.js) 主循环 ask 分支（exit='ask' 挂起，用户点选项→新 orchestrate 续作，无死锁）；[panel onAskUser](frontend/js/ai_qa/panel.js) 渲染问+选项胶囊（复用 aiq-suggest-chip）+ 历史恢复重建胶囊；_consecutiveAsks 跨会话速率上限（≥2 禁止 ask）+ 上轮 ask 强制 resume 续作链；FINAL_TEMPLATE「做成一部分也体面」+ 多目标收紧。
 - **P3 沙箱骨架**：[api/sandbox.py](api/sandbox.py)（`SAFE_READY=False` 红线，**未写 run_routes.py、未挂 /run**）+ [tests/test_sandbox.py](tests/test_sandbox.py) 19 测试真跑 subprocess 全过。**核心设计 frame-based trust**（查 importer 帧：用户脚本→拦，库/冻结→放）解 matplotlib lazy-import socket vs 拦用户 socket 矛盾。subprocess `[-I, -X utf8]` + import 白名单 + 30s timeout + 写区隔离。**已知局限**（docstring 文档化）：open builtin 不拦（出图需写文件）、纯 Py 反射绕过——挂 /run 前须叠 OS 级隔离。
 - **两组 Workflow 对抗验证**：① 初验 3 路 serious-issues 揪承重 bug 全修；② 复验 3 路 mostly-fixed + 再修 5 minor。详见 revision-log 5.77。
+- **5.78 顶栏 build 号（换环境识别）**：[serve.py](frontend/serve.py) 新 `_inject_header_version` 注入 `（build：git 短哈希）` 到顶栏 `.title-version` span（与 5.75 `_inject_title` 同源 `_git_short`，幂等）——换机器/分支一眼识别 build。out.png 测试产物顺手删（沙箱 matplotlib breakthrough 漏清 cwd，下会话查 test_sandbox 清理）。
 
 ### 🔍 验证（已过 + 待复现）
 - **静态全过**：node --check（harness/stages/panel）+ prompts format + py_compile sandbox。
@@ -23,7 +24,7 @@
 - **待用户带 key 复现**：P0d（对账 missing→partial 卡，非丢答案）/ P1（模糊问题→ask_user 胶囊点选续作）/ P3（暂不挂，下会话翻 SAFE_READY 后跑 run_python）。
 
 ### 待 push（用户手动）
-本地领先 origin 6 commit：`2023d15`(5.72) / `153251f`(5.73) / `7596eee`(5.74) / `aced31c`(5.75) / `29f13f1`(5.76) / `02df5af`(5.77)。网络恢复后 `git push`。
+本地领先 origin 9 commit：`2023d15`(5.72) / `153251f`(5.73) / `7596eee`(5.74) / `aced31c`(5.75) / `29f13f1`(5.76) / `02df5af`(5.77 代码) / `e388104`(5.77 交接卡) / `2df8fe7`(5.78 顶栏 build) / `<本次交接卡>`。换环境前 `git push`。
 
 ### ⬜ 下会话：P3 挂 /run → P2（月级全计划续）
 1. **P3 挂 /run（先复验沙箱再翻开关）**：
@@ -71,7 +72,7 @@
 
 ```
 继续 EMC 月级改造（计划文件 calm-discovering-snowflake.md 已批），本次 P3 挂 /run → P2。
-上次 5.77 做完 P0d（EXIT_PARTIAL 第四态）+ P1（ask_user 主动澄清+速率上限+历史恢复）+ P3 沙箱骨架（api/sandbox.py + 19 测试，SAFE_READY=False 未挂 /run），两组 Workflow 对抗验证 0 回归，commit 02df5af（待用户 push）。
+上次 5.77 做完 P0d（EXIT_PARTIAL 第四态）+ P1（ask_user 主动澄清+速率上限+历史恢复）+ P3 沙箱骨架（api/sandbox.py + 19 测试，SAFE_READY=False 未挂 /run），两组 Workflow 对抗验证 0 回归；5.78 顶栏加 build 号（换环境识别）。commit 2df8fe7 + 交接卡（用户已 push 到 origin）。
 本次从 P3 挂 /run 开始：先重跑 pytest tests/test_sandbox.py + 人审 sandbox.py 确认安全，再翻 SAFE_READY=True；然后写 api/run_routes.py（/run 端点，范式照 geo_routes）+ api/main.py 条件挂载 + tools.js run_python 第 15 工具（复用 addResultLayer，registry 自动记 provenance）+ paradigm.py CODE_EXEC_CATALOG + prompts 规则 8（何时 run_python vs 窄工具）+ panel.js _renderCharts 扩 {{fig:ID}} 渲染 matplotlib PNG。挂 /run 须叠 OS 级隔离（open/reflex 局限）。然后 P2：request_upload 短路拆→进 loop 跑 fallback_annotated 参考答 + 多轮规划（_buildPriorTurn 加 task_plan/progress）。
 承重：四态出口扩非替换（PARTIAL 仅 _isPartialMissing）/ fallback_annotated 走 result 不走 partial / 卡片模板化+动态值 _esc 转义 / 诚实门 _verifyClaims 不被跳 / ask_user 速率上限 / 沙箱红线（挂 /run 前复验+人审+OS 隔离）/ 思考透明 5.70 不动 / commit 只不 push / 专业词+通俗解释。
 先读交接卡 memories/repo/session-handoff.md + 计划文件，然后从 P3 挂 /run 动手（先复验沙箱）。
