@@ -7,6 +7,10 @@
 
 ## 📅 2026-07-12
 
+### ✅ EMC 系统性防谎报 tool-as-truth（revision-log 5.74）
+
+诊断"报告说生成 6 图层但 Layers 无图"——trace 铁证 B 路径（0 工具，finalStep 编）。范式转变：工具产出即真值（LLM 文字只解释已注册产物）。① artifact registry（tools.js _registry+setToolContext，5 数组保留不破）+ ② getArtifacts/formatRegistry + ④ harness finalStep 前注入 registry 真值（finalStep/review/revise 共用 ctx）+ ⑤ finalStep 后结构化对账（_extractClaimedLayers 抽声称 vs getLayers 实际，missing→退 gap+实际清单，intent 无关=根治单点失败=⑦核心）。正则验证过（编图层全拦、真图层不误拦）。增益后续：③ expected_outputs 计划字段 + ⑥ 自动补做。承重未碰（5 数组/getLayers 只读/composeGapCard 模板/审查客观项）。与阶段2 code-exec 同轨前置（①②⑤ 复用）。node --check 过，待带 key 复现。
+
 ### ✅ serve.py build 角标扫描修复（revision-log 5.73）
 
 改 ai_qa/ 代码 build 角标不更新——查 [serve.py _build_stamp](frontend/serve.py) 用 os.listdir 只扫顶层不递归子目录，frontend/js/ai_qa/ 改动不进 stamp。改 os.walk 递归。澄清：代码生效靠 _inject_import_versions 给 ES module 注入 ?v=<mtime>，与 stamp 独立（stamp 旧 ≠ 代码没生效）。验证 curl /frontend/index.html → build `2023d15 · 07-12 15:19:06`。serve.py HTTP 根=repo root，入口=/frontend/index.html。

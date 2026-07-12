@@ -1148,6 +1148,18 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.74 EMC 系统性防谎报（tool-as-truth：artifact registry + 真值注入 + 结构化对账）（07月12日）
+
+用户报 EMC 给完整报告（6 图层+数字）但 Layers 无图——trace 铁证 B 路径（0 工具，finalStep 编）。根因：diagnose 降级→三闸全松（单点失败）+ finalStep 无真值 + _verifyClaims 正则窄。用户要系统性解（不打地鼠，参考业界 tool-as-truth）。范式转变：**从"信任 LLM 叙述"→"工具产出即真值"**（LLM 文字只是解释已注册产物，不能凭空创造产物）。
+- **① artifact registry**（[tools.js](d:/Github/emotion_map/frontend/js/ai_qa/tools.js)）：5 个并行数组保留（承重零风险），并行加 `_registry`（{id,name,tool,round,t} 带 provenance）+ `setToolContext`（[harness](d:/Github/emotion_map/frontend/js/ai_qa/harness.js) 每轮 TOOLS 执行前注入工具/轮次，addResultLayer 入口写 registry）。
+- **② getArtifacts/formatRegistry**（tools.js 导出）：存活 EMC 产物查询 + 清单字符串（"name（tool·第N轮）"）。
+- **④ 真值注入**（harness finalStep 前）：ctx.context 注入 formatRegistry + "严禁声称生成不在此列表的图层；任务未完成改述'未生成'"。finalStep/review/revise 共用同 ctx（一处注入三阶段都见）。
+- **⑤ 结构化对账**（harness finalStep 后，替换脆弱 _verifyClaims）：`_extractClaimedLayers` 抽 draft 声称的图层名（{{show:X}} + 动词措辞"生成/产出/得到/裁剪 X 图层"，支持全角冒号+反引号+含·名字）vs getLayers 实际，**missing → 退 composeGapCard + 谎报警示**（带实际图层清单）。**intent 无关**——所有 intent 含 degraded 必经，根治单点失败（=⑦ 核心）。**正则验证过**：编造图层全 missing→拦，真图层模糊匹配→不拦。
+- **未做（增益后续）**：③ diagnose.expected_outputs（计划字段，让对账三向）+ ⑥ 自动补做（self-correction）——⑤ 已拦谎报，③⑥ 边际递减；⑦ degraded narration 收紧（误伤概念问风险，靠 ⑤ intent 无关兜底）。
+- **验证**：node --check + 正则抽图层验证过；待用户带 key 复现谎报题（看 ⑤ 拦编图层→退 gap+实际清单；④ 注入让模型少编）。
+- **承重**：5 数组行为不变（ref/cleanup/keep）；getLayers 只读；composeGapCard 模板化；审查聚焦客观项不改；post-hoc 对账 intent 无关（根治单点失败）。
+- **与阶段2（code-exec）关系**：同轨前置——①②⑤ 是架构抽象，code-exec 复用（产物从 geo tool 换 code cell）。
+
 ### 5.73 serve.py build 角标扫描修复（listdir→os.walk 递归，含 ai_qa/ 子目录）（07月12日）
 
 诊断"改 ai_qa/ 代码 build 角标不更新"发现 [serve.py _build_stamp](d:/Github/emotion_map/frontend/serve.py) 用 os.listdir 只扫 js/css 顶层、不递归子目录 → frontend/js/ai_qa/（harness/panel/tools/stages）+ css 子目录的改动不进 stamp，致用户以为"代码没生效"。改 os.walk 递归。**澄清**：代码生效靠 [_inject_import_versions](d:/Github/emotion_map/frontend/serve.py)（L48）给 ES module import 注入 ?v=<mtime>，与 stamp 独立——**stamp 旧 ≠ 代码没生效**（stamp 只是可见指示器）。验证：curl /frontend/index.html → build `2023d15 · 07-12 15:19:06`（= harness.js mtime，递归扫描生效）。serve.py HTTP 根 = repo root，index 入口 = /frontend/index.html（非 /）。

@@ -44,10 +44,13 @@ let _wisdomPromise = null;
 const _LAYER_REF_KEYS = ['layer', 'range', 'layer_a', 'layer_b', 'boundary', 'center', 'target'];
 const _stepResults = [];      // 本轮工具产物 fc（按产出序，单调），供 $n 显式引用
 const _resultIdByStep = [];   // 结果层 id（与 _stepResults 平行，单调），供 ref('$n') 标消费
-export function resetStepResults() { _stepResults.length = 0; _resultIdByStep.length = 0; }
+export function resetStepResults() { _stepResults.length = 0; _resultIdByStep.length = 0; _registry.length = 0; }
 const _curResultIds = [];     // 本轮"存活"的结果层 id（沉浸聚焦用：关其余、留本轮、缩放并集）
 const _consumedIds = new Set(); // 被后续工具引用消费掉的中间结果层 id（$n 或命名引用），addResultLayer 移除它们、保未消费的最终结果
 const _keepIds = new Set();   // 显式保留（keep:true）的结果层 id——用户要求保留/属展示结果的层，即使被引用消费也豁免清理（显式意图覆盖默认启发式）
+const _registry = [];   // ① artifact registry：本轮所有产物 {id,name,tool,round,t}（带 provenance，供 formatRegistry 注入/对账审计）
+let _curTool = null, _curRound = 0;   // harness 每轮 setToolContext 注入当前工具/轮次（addResultLayer 读入 registry）
+export function setToolContext({ tool, round } = {}) { _curTool = tool || null; _curRound = round || 0; }
 export function resetCurrentResults() { _curResultIds.length = 0; _consumedIds.clear(); _keepIds.clear(); }
 /** 图层引用解析：① `$n` → 第 n 个工具产物（显式变量，最稳）；② 图层名（精确/唯一包含）；③ 原样（preset_id）。
  *  $n **和命名**引用本轮 EMC 结果时都把该步结果标为"已消费"（中间产物）→ addResultLayer 收尾移除它；
@@ -196,6 +199,7 @@ export function addResultLayer({ name, kind = 'polygon', fc, paint, keep }) {
   }
   const L = addLayer({ name, kind, fc, paint: _paint, parentId: _aiGroup().id });
   L.srcName = name;
+  _registry.push({ id: L.id, name, tool: _curTool, round: _curRound, t: Date.now() });   // ① registry（provenance 由 harness setToolContext 注入）
   if (keep) _keepIds.add(L.id);              // 显式保留登记（覆盖消费式清理）
   _curResultIds.push(L.id);                 // 登记本轮存活结果（沉浸聚焦）
   renderLayer(L);
@@ -206,6 +210,18 @@ export function addResultLayer({ name, kind = 'polygon', fc, paint, keep }) {
   const bb = _unionBBox(_curResultIds); if (bb) fitBoundsTo(bb, 100, 16);
   document.dispatchEvent(new CustomEvent('layers:changed'));
   return L;
+}
+
+/** ② getArtifacts：当前存活的 EMC 产物（registry 里 id 仍在 getLayers 的），带 provenance。 */
+export function getArtifacts() {
+  const live = new Set(getLayers().filter((l) => l.fc && l.fc.features && l.fc.features.length).map((l) => l.id));
+  return _registry.filter((a) => live.has(a.id));
+}
+/** formatRegistry：产出图层清单（注入 finalStep/review/revise prompt，让模型 ground 在真值，禁编不在列表的层）。 */
+export function formatRegistry() {
+  const a = getArtifacts();
+  if (!a.length) return '（暂无 EMC 产出图层）';
+  return a.map((x) => `${x.name}${x.tool ? `（${x.tool}${x.round ? '·第' + x.round + '轮' : ''}）` : ''}`).join('、');
 }
 
 /** 轮末兜底清理：移除本轮被标记消费、却因后续工具失败（addResultLayer 未再触发）而残留的中间结果层。

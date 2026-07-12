@@ -4,7 +4,7 @@
 // 前置：DIAGNOSE 问题理解卡（认知层）→ 注入 ctx.context 导工具选型 + 结论颗粒度；硬缺口短路请求上传。
 // 降级：agent_step 解析失败不再裸显 raw，break loop 仍走 finalStep 出一次性 answer。
 import * as stages from './stages.js';
-import { TOOLS } from './tools.js';
+import { TOOLS, setToolContext, formatRegistry } from './tools.js';
 import { getLayers } from '../state.js';
 
 const MAX_ROUNDS = 16;   // 阶段1 提限：8→16，够 9-12 步多分支任务（narration 漏边已修，提限不再=更多叙述）
@@ -103,6 +103,19 @@ function _verifyClaims(draft) {
   const missing = claims.filter((c) => !actual.some((a) => a === c || a.includes(c) || c.includes(a)));
   if (!missing.length) return { ok: true };
   return { ok: false, hints: `诚实检查：回答声称已生成/加载「${missing.join('、')}」图层，但地图实际图层为[${actual.join('、') || '无'}]。请补做（调 geo 工具生成缺失图层）或纠正陈述（改为"尝试未成功/未生成"）。严禁谎报已做。` };
+}
+
+/** ⑤ 抽草稿里"声称产出的图层名"（保守：{{show:X}} 模板 + 强措辞"动词+名+图层类后缀"），供对账。
+ *  不抽弱引用（bullet/加粗），避免把地名/归因词误判为图层名。 */
+function _extractClaimedLayers(draft) {
+  if (!draft) return [];
+  const names = new Set();
+  let m;
+  const showRe = /\{\{show:([^}]+)\}\}/g;   // {{show:X}} 最明确（LLM 引用要显示的图层）
+  while ((m = showRe.exec(draft)) !== null) names.add(m[1].trim());
+  const verbRe = /(?:生成|产出|得到|裁出|裁剪|新建|构建|输出)[：:]?\s*[`「\*]*([^\n\s`「」\*，。：:()（）\[\]]{2,20})[`」\*]*\s*(?:的)?(?:图层|层|面|点|网格|热度|分布|聚合)/g;
+  while ((m = verbRe.exec(draft)) !== null) names.add(m[1].trim());
+  return [...names].filter((n) => n && n.length >= 2 && !/^(图层|面|点|网格|分布|热度|清单|列表|数据|结果|图层组|边界)$/.test(n));
 }
 
 /** 跑一次 revise（产物验证或 review 不达标触发；最多 1 轮）。返修订后文本或 null。 */
@@ -272,6 +285,7 @@ export async function orchestrate(ctx, hooks = {}) {
     let obs = '';
     if (fn) {
       try {
+        setToolContext({ tool: step.action.name, round });   // ① 注入 provenance 给 addResultLayer 入 registry
         const r = await fn(step.action.params || {});
         obs = (r && r.observation) || '（无观察）';
         if (r && r.data && r.data.layerId) newLayerCount++;   // 三态出口：产图层计 +1
@@ -307,6 +321,8 @@ export async function orchestrate(ctx, hooks = {}) {
 
   // EXIT_RESULT：草稿结论（agent 决定 answer / 达上限 / 降级回退 都走这里）
   let draft = '';
+  // ④ 注入 registry 真值清单（finalStep/review/revise 共用同 ctx.context）：模型 ground 在实际图层，禁编不在列表的层
+  ctx.context = '【地图实际产出图层】' + formatRegistry() + '（严禁声称生成不在此列表的图层；任务未完成改述"未生成/未产出"，不得编造图层名与数字）\n\n' + (ctx.context || '');
   try {
     draft = await stages.finalStep(ctx, hooks, toolHistoryText);
   } catch (e) {
@@ -320,6 +336,18 @@ export async function orchestrate(ctx, hooks = {}) {
     if (hooks.onFinalDone) hooks.onFinalDone(_driftText);
     if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: 'finalStep 格式漂移·拦截', skipped: 'drift' });
     return { ok: false, degraded: true, rounds: round, final: _driftText, diagnose, exit: 'drift' };
+  }
+  // ⑤ pre-finalStep 结构化对账（intent 无关硬门）：抽草稿声称的图层 vs 地图实际，missing → 退 gap（不让谎报直达）
+  const _claimed = _extractClaimedLayers(draft);
+  if (_claimed.length) {
+    const _actualNames = getLayers().filter((l) => l.name).map((l) => l.name);
+    const _missing = _claimed.filter((c) => !_actualNames.some((a) => a === c || a.includes(c) || c.includes(a)));
+    if (_missing.length) {
+      const _gapText = composeGapCard(diagnose, failedObs) + '\n\n---\n**⚠️ 诚实拦截**：草稿声称已生成「' + _missing.join('、') + '」图层，但地图实际图层为 [' + (_actualNames.join('、') || '无') + ']，上述图层未找到。请用 geo 工具真正生成后再回答；严禁编造图层名与数据。';
+      if (hooks.onFinalDone) hooks.onFinalDone(_gapText);
+      if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: '谎报图层拦截', skipped: 'drift' });
+      return { ok: false, degraded: true, rounds: round, final: _gapText, diagnose, exit: 'drift' };
+    }
   }
   if (hooks.onFinalDone) hooks.onFinalDone(draft);
 
