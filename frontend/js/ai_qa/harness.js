@@ -7,7 +7,7 @@ import * as stages from './stages.js';
 import { TOOLS } from './tools.js';
 import { getLayers } from '../state.js';
 
-const MAX_ROUNDS = 8;
+const MAX_ROUNDS = 16;   // 阶段1 提限：8→16，够 9-12 步多分支任务（narration 漏边已修，提限不再=更多叙述）
 const OBS_TRUNC = 200;      // observation 注入 history 截断长度
 const PARAMS_TRUNC = 80;    // action params 摘要截断长度
 // 审查质量门（5.70 重启）：默认开——仅审 emotion_analysis(C) 答案（general 短路、gis_operation 早 return、EXIT_GAP 早 return，本就不进审查）。
@@ -232,14 +232,16 @@ export async function orchestrate(ctx, hooks = {}) {
     const step = await stages.agentStep(ctx, hooks, round, toolHistoryText);
     if (!step) { degraded = true; break; }   // 空输出：break（落 EXIT_GAP 兜底，不再裸输）
 
-    // 叙述检测：模型只写说明没给动作 JSON。叙述≠失败——常是概念问/解释问的**直接作答**（prose）。
-    //   → 保留叙述原文供 finalStep 续上思考出结论；两轮仍叙述视作"已直接作答"，交 finalStep，**不落 GAP**。
+    // 叙述检测：模型只写说明没给动作 JSON。
+    //   diagnose 正常（intent 明确要工具：gis_operation/emotion_analysis）→ 叙述=逃避执行，逼 JSON 至 MAX_ROUNDS 落 gap；
+    //   diagnose 降级（intent 未知，可能概念问）→ 两轮叙述视作 prose 作答，交 finalStep（保留原语义）。
     if (step.narrated) {
       narrations++;
       if (step.text) toolHistory.push(`第${round}轮·模型叙述：${String(step.text).slice(0, 800)}`);
-      if (narrations > 1) { narratedAnswer = true; break; }   // 两轮叙述=模型已 prose 作答 → finalStep 出结论
-      toolHistory.push(`⚠️ 第${round}轮：你输出了说明文字而非动作 JSON。本轮若需工具请只输出严格 JSON {"thought":"...","action":{"type":"tool","name":"工具名","params":{...}}}；若信息已足够，输出 {"action":{"type":"answer"}}；若是解释性回答可直接说明。`);
-      if (hooks.onObservation) hooks.onObservation('[格式] 上一轮是说明非动作 JSON，已要求重发或直接 answer', round);
+      const _narrationLegit = !diagnose || diagnose.degraded;   // 仅降级诊断（可能概念问）才认叙述作答
+      if (narrations > 1 && _narrationLegit) { narratedAnswer = true; break; }
+      toolHistory.push(`⚠️ 第${round}轮：你输出了说明文字而非动作 JSON。${!_narrationLegit ? '此问已判定为需工具执行的任务，严禁只说不做；' : ''}本轮若需工具请只输出严格 JSON {"thought":"...","action":{"type":"tool","name":"工具名","params":{...}}}；若信息已足够，输出 {"action":{"type":"answer"}}；${_narrationLegit ? '若是解释性回答可直接说明。' : '继续只说不做将被强制至 MAX_ROUNDS 后判失败。'}`);
+      if (hooks.onObservation) hooks.onObservation(`[格式] 上一轮说明非动作 JSON，已要求重发${!_narrationLegit ? '（任务类必须用工具）' : ''}`, round);
       round++;
       continue;
     }
@@ -310,6 +312,14 @@ export async function orchestrate(ctx, hooks = {}) {
   } catch (e) {
     if (hooks.onDegraded) hooks.onDegraded('');
     return { ok: false, degraded: true, rounds: round };
+  }
+  // finalStep 防漂移：LLM 把 agent_step 风格 JSON（含 thought/action）当答案输出 → 拦截，落固定卡（永不裸输 JSON）
+  const _driftRe = /^\s*(?:```(?:json)?\s*)?\{[\s\S]*"(?:thought|action)"[\s\S]*\}\s*```?\s*$/i;
+  if (_driftRe.test(draft.trim())) {
+    const _driftText = '## 未能生成可读结论\n\n模型在最终回答阶段输出了工具调用指令（JSON）而非可读结论，已拦截未显示。\n\n**建议**：换一种问法或缩小范围（指定某区、某类用地、某时点）后重试。';
+    if (hooks.onFinalDone) hooks.onFinalDone(_driftText);
+    if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: 'finalStep 格式漂移·拦截', skipped: 'drift' });
+    return { ok: false, degraded: true, rounds: round, final: _driftText, diagnose, exit: 'drift' };
   }
   if (hooks.onFinalDone) hooks.onFinalDone(draft);
 

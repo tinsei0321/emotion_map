@@ -1148,6 +1148,19 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.72 EMC 阶段1 稳定性修复：narration 逃避堵漏 + finalStep JSON 漂移拦截 + MAX_ROUNDS 16（07月12日）
+
+用户报 EMC 对略复杂多步任务（上传 L1→筛中心城区→分3类→3图层→3网格→3报告+Overview）连续失败：第一次 EXIT_GAP（零工具，LLM 自编"做不成"卡），第二次吐裸 JSON。**诊断基于真实后台 trace**（episodes.jsonl + .trace/trace.log）——老病复发两条漏边（5.68 修了 agent_step parse 失败路，漏了 narration→finalStep 和 finalStep 自身格式漂移）。
+- **narration 漏边修复**（[harness.js:237-245](d:/Github/emotion_map/frontend/js/ai_qa/harness.js)）：原"两轮叙述=合法 prose 作答"对 gis_operation/emotion_analysis 是逃避执行。改：仅 diagnose 降级（intent 未知·概念问）才认叙述作答；diagnose 正常（明确要工具）叙述→逼 JSON 至 MAX_ROUNDS→落 composeGapCard 模板 gap 卡（不让 LLM 自创 EXIT_GAP）。
+- **finalStep 防漂移**（[harness.js:309-318](d:/Github/emotion_map/frontend/js/ai_qa/harness.js)）：finalStep 草稿整段是 agent JSON（含 thought/action）= 格式漂移→拦截，落固定卡"未能生成可读结论"（永不裸输 JSON）。
+- **MAX_ROUNDS 8→16**（[harness.js:10](d:/Github/emotion_map/frontend/js/ai_qa/harness.js)）：够 9-12 步多分支任务（narration 先修，提限不再=更多叙述）。
+- **FINAL_TEMPLATE 格式铁律**（[prompts.py:108](d:/Github/emotion_map/ai_qa/prompts.py)）：软引导禁工具 JSON（配合硬检测双保险）。
+- **后台可访问性结论**：episodes.jsonl + .trace/trace.log 够判大类根因；agent loop 逐步 thought/action 仍在浏览器内存（需 DevTools 或复现）。比"全靠复制粘贴"强一档。
+- **能力边界（客观）**：当前架构单链 ≤4 步稳 / 5-6 看运气 / 多分支 ×N 超 16 轮 / Overview 联动缺工具。本次题目 9-12 artifact，阶段1 修复后 narration 不再逃避（有望跑通主体），但 Overview/Table 联动仍卡工具链（阶段2 code-exec 才解）。
+- **desktop 工作台评估**：用户"Harness+Agent+Skills 已搭好，只需模型深度操作"判断 20%对/80%错——Skills 是 Claude Code 开发工具的、EMC 运行时无 skills；chat→desktop 核心差距按权重 = 工具范式(40%)/规划(25%)/持久化(20%)/循环稳健(10%)/模型(5%)，**模型是最小一环**。务实路径：阶段1（本次·稳现有）→阶段2（code-exec·工作台核心·2-4 周）→阶段3（完整工作台·月级）。
+- **验证**：node --check + py_compile 过；用户带 API key 重问该题复现（看 narration 不逃避 + finalStep 不裸 JSON + 工具真执行[MOD_GEO 触发]）。
+- **承重**：composeGapCard 模板化不变；"永不裸输"扩展到 finalStep；parseAgentStep 容错不退；审查聚焦客观项不改。
+
 ### 5.71 LLM 韧性 retry + fallback（chat_with_fallback 编排，主链路+审查共用）（07月12日）
 
 Explore 核实 [llm.py](ai_qa/llm.py) 单点单次零 retry 零 fallback，DeepSeek 一挂全链路瘫 → Tier2/3 gap 最实。新增模块级 `chat_with_fallback(messages, tier, **chat_kwargs)`（带兜底拨号总机），`LLMClient` 单供应商电话机不改（签名零变更）。
