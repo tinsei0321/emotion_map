@@ -77,9 +77,23 @@
 .chat-head .chat-subtitle { font-size: var(--geojson-typography-size-xs); color: rgba(255,255,255,0.7); }
 .chat-head-spacer { flex: 1; }
 .ctx-cap { color: var(--geojson-color-text-secondary, #666); cursor: help; flex-shrink: 0; align-self: stretch; display: flex; align-items: center; transition: color 0.3s; }
-.ctx-cap.warn { color: #d97706; }
+.ctx-cap.warn { color: var(--emc-accent, #D97757); }
 .ctx-cap-bg { opacity: 0.18; }
 .ctx-cap-fg { transition: stroke-dashoffset 0.4s ease; }
+
+/* ── 容量圆圈 hover 富 tooltip（JS 单例挂 body，position:fixed；EMC 深色风 + Claude 橙，不依赖 #emc-panel scope 变量）── */
+.aiq-cap-tip { position: fixed; z-index: 10000; min-width: 230px; max-width: 290px; padding: 10px 12px; background: #1f1f1f; border: 1px solid #3a3a3a; border-radius: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); color: #ECECEC; font-size: 12px; line-height: 1.5; pointer-events: none; }
+.aiq-cap-tip-title { font-size: 11px; color: #A0A0A0; font-weight: 600; margin-bottom: 6px; }
+.aiq-cap-tip-pct { font-size: 22px; font-weight: 700; color: #D97757; line-height: 1; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+.aiq-cap-tip-pct .pct-sgn { font-size: 13px; font-weight: 600; margin-left: 1px; }
+.aiq-cap-tip-bar { height: 5px; background: #3a3a3a; border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
+.aiq-cap-tip-bar-fill { height: 100%; background: #D97757; border-radius: 3px; transition: width 0.4s ease; }
+.aiq-cap-tip-meta { font-size: 11px; color: #707070; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); font-variant-numeric: tabular-nums; }
+.aiq-cap-tip-rows { display: flex; flex-direction: column; gap: 3px; }
+.aiq-cap-tip-row { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; }
+.aiq-cap-tip-row .k { color: #A0A0A0; }
+.aiq-cap-tip-row .v { color: #ECECEC; font-variant-numeric: tabular-nums; }
+.aiq-cap-tip-empty { font-size: 11px; color: #707070; font-style: italic; }
 .chat-icon-btn {
   font-size: var(--geojson-typography-size-xs); color: #fff;
   background: transparent; border: none; cursor: pointer; padding: 4px 8px;
@@ -215,6 +229,19 @@
 .aiq-reason-seg-head { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 2px; }
 .aiq-reason-seg-body { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
 .aiq-reason.is-flash .aiq-reason-body { display: none; }
+
+/* ── 思考主题折叠（整块展开后，segment 内按主题切目录；reorganizeReason 生成，点标题展开细节）── */
+.aiq-reason-topic { margin-top: 3px; }
+.aiq-reason-topic:first-child { margin-top: 0; }
+.aiq-reason-topic-head { display: flex; align-items: center; gap: 4px; padding: 3px 4px; border-radius: 4px; cursor: pointer; }
+.aiq-reason-topic-head:hover { background: rgba(255, 255, 255, 0.05); }
+.aiq-reason-topic-chev { flex-shrink: 0; color: var(--emc-accent, #D97757); font-size: var(--geojson-typography-size-2xs); display: inline-block; transition: transform 0.15s; }
+.aiq-reason-topic.is-open .aiq-reason-topic-chev { transform: rotate(90deg); }
+.aiq-reason-topic-title { flex: 1; font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aiq-reason-topic-detail { display: none; margin: 4px 0 4px 16px; padding: 2px 0 2px 8px; font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); line-height: 1.5; white-space: pre-wrap; word-break: break-word; border-left: 2px solid var(--emc-divider); }
+.aiq-reason-topic.is-open .aiq-reason-topic-detail { display: block; }
+.aiq-reason-topic-detail.is-solo { display: block; margin-left: 0; padding-left: 0; border-left: none; }
+.aiq-reason-transition { font-weight: var(--geojson-typography-weight-semibold); color: var(--emc-accent, #D97757); }
 
 /* ── 无效引用 chip（臆造区域名，灰显不可点）── */
 .cite-chip-invalid { color: var(--geojson-color-text-tertiary); background: rgba(255, 255, 255, 0.05); border-color: var(--geojson-color-border-default, #e3e5e8); cursor: not-allowed; text-decoration: line-through; }

@@ -26,7 +26,7 @@ let _userPinned = false;   // 用户上滑停跟；回到底部后恢复跟随
 
 const CTX_BUDGET = 1000000;   // DeepSeek V4 Pro 上下文 1M token
 const _CAP_C = 2 * Math.PI * 9;   // SVG 圆周长（r=9）
-/** 容量圆圈（SVG 环）：填充=当前 prompt_tokens 占 1M 比例；深灰常显、≥60% 变橙；悬停 title 显百分比。 */
+/** 容量圆圈（SVG 环）：填充=当前 prompt_tokens 占 1M 比例；深灰常显、≥60% 变橙；悬停弹富 tooltip（5 类明细）。 */
 function updateContextCapacity(usage) {
   const el = document.getElementById('ctx-cap');
   if (!el) return;
@@ -34,14 +34,72 @@ function updateContextCapacity(usage) {
   if (!usage || !usage.prompt_tokens) {
     el.classList.remove('warn');
     if (fg) fg.setAttribute('stroke-dashoffset', _CAP_C.toFixed(2));
-    el.setAttribute('title', '上下文容量（V4 Pro 1M）');
     return;
   }
   const ratio = Math.min(usage.prompt_tokens / CTX_BUDGET, 1);
   el.classList.toggle('warn', ratio >= 0.6);
   if (fg) fg.setAttribute('stroke-dashoffset', (_CAP_C * (1 - ratio)).toFixed(2));
+}
+/** 容量 tooltip 单例（挂 body，position:fixed 不被 EMC overflow 裁切）。 */
+function _ctxCapTip() {
+  let tip = document.getElementById('ctx-cap-tip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'ctx-cap-tip';
+    tip.className = 'aiq-cap-tip';
+    tip.setAttribute('role', 'tooltip');
+    tip.hidden = true;
+    document.body.appendChild(tip);
+  }
+  return tip;
+}
+/** tooltip 内容：顶部容量% + 橙进度条，下方 5 类明细（输入/输出/思考链/缓存命中/会话规模）。
+ *  思考链 reasoning_tokens、缓存 prompt_cache_hit/miss 为运行时确认字段（DeepSeek 返了才显，否则 —）。 */
+function _ctxCapTipHtml(usage, stats) {
+  if (!usage || !usage.prompt_tokens) {
+    return '<div class="aiq-cap-tip-title">上下文容量</div><div class="aiq-cap-tip-empty">暂无数据（尚未生成回答）</div>';
+  }
+  const prompt = usage.prompt_tokens || 0;
+  const ratio = Math.min(prompt / CTX_BUDGET, 1);
   const pct = (ratio * 100).toFixed(ratio < 0.1 ? 1 : 0);
-  el.setAttribute('title', `上下文 ${usage.prompt_tokens.toLocaleString()} / 1,000,000 token · ${pct}%`);
+  const completion = usage.completion_tokens || 0;
+  const reasoning = usage.reasoning_tokens;
+  const hit = usage.prompt_cache_hit_tokens;
+  const miss = usage.prompt_cache_miss_tokens;
+  const cacheRate = (hit != null && (hit + (miss || 0)) > 0) ? Math.round((hit / (hit + (miss || 0))) * 100) : null;
+  const steps = (_curTrace && _curTrace.steps) ? _curTrace.steps.length : 0;
+  const hist = _history ? _history.length : 0;
+  const row = (k, v) => `<div class="aiq-cap-tip-row"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+  return `<div class="aiq-cap-tip-title">上下文容量</div>
+    <div class="aiq-cap-tip-pct">${pct}<span class="pct-sgn">%</span></div>
+    <div class="aiq-cap-tip-bar"><div class="aiq-cap-tip-bar-fill" style="width:${pct}%"></div></div>
+    <div class="aiq-cap-tip-meta">${prompt.toLocaleString()} / 1,000,000 token</div>
+    <div class="aiq-cap-tip-rows">
+      ${row('输入 Prompt', prompt.toLocaleString())}
+      ${row('输出 Completion', completion.toLocaleString())}
+      ${row('思考链 Reasoning', reasoning != null ? Number(reasoning).toLocaleString() : '—')}
+      ${row('缓存命中', cacheRate != null ? `${Number(hit).toLocaleString()} · ${cacheRate}%` : '—')}
+      ${row('会话规模', `${stats.calls} 次 · ${steps} 步 · ${hist} 条`)}
+    </div>`;
+}
+function _ctxCapShowTip() {
+  const cap = document.getElementById('ctx-cap');
+  const tip = _ctxCapTip();
+  if (!cap || !tip) return;
+  tip.innerHTML = _ctxCapTipHtml(getLastUsage(), getCallStats());
+  tip.hidden = false;
+  const r = cap.getBoundingClientRect();
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  let left = r.left + r.width / 2 - tw / 2;   // 水平居中于圆圈
+  let top = r.top - th - 8;                    // 默认上方 8px
+  if (top < 8) top = r.bottom + 8;             // 上方放不下翻下方
+  left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+  tip.style.left = left + 'px';
+  tip.style.top = top + 'px';
+}
+function _ctxCapHideTip() {
+  const tip = document.getElementById('ctx-cap-tip');
+  if (tip) tip.hidden = true;
 }
 
 // ── EMC 智能高度调度（三档 compact/comfort/expand + 手动基线回退）──
@@ -157,6 +215,46 @@ function deleteSession(id) {
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+/* ── 思考链主题折叠（reorganizeReason）：把一段纯文本思考切成「主题目录（默认收起）+ 展开体」。
+ *   流式期 onReason 照常 textContent 累加（保持现场感）；流末 finalizeReason + 历史恢复调 reorganizeReason。 */
+const _REASON_TRANSITIONS = ['不过', '但是', '然而', '因此', '所以', '综上', '首先', '其次', '然后', '另外', '此外', '最终', '需要注意的是', '可见', '由此', '总之', '总的来说'];
+function _splitReasonTopics(text) {
+  let parts = String(text).split(/\n\s*\n+/).map((s) => s.trim()).filter(Boolean);
+  if (parts.length <= 1 && text.length > 120) {   // 单段且长 → 按转折词兜底切（保留词在段首）
+    const re = new RegExp('(?=(' + _REASON_TRANSITIONS.join('|') + '))', 'g');
+    const sub = String(text).split(re).map((s) => s.trim()).filter(Boolean);
+    if (sub.length > 1) parts = sub;
+  }
+  return parts.length ? parts : [String(text)];
+}
+function _reasonTopicTitle(text) {
+  const m = String(text).trim().match(/^[^。？！\n]+[。？！]?/);
+  let first = m ? m[0].trim() : String(text).trim();
+  if (first.length > 32) first = first.slice(0, 32) + '…';
+  return first || '（思考片段）';
+}
+function _highlightReasonTransitions(text) {   // 先 escapeHtml 防注入，再包 <strong>（中文转折词不受转义影响）
+  return escapeHtml(text).replace(new RegExp('(' + _REASON_TRANSITIONS.join('|') + ')', 'g'), '<strong class="aiq-reason-transition">$1</strong>');
+}
+/** 把每个 segment 的纯文本（seg-body.textContent）切成多个 .aiq-reason-topic（默认收起，点 head 展开）。
+ *  从 DOM 读 → 流式路径与历史恢复路径统一；已含 topic 的 segment 跳过（幂等）。 */
+function reorganizeReason(shell) {
+  if (!shell || !shell.reasonEl || shell.reasonEl.classList.contains('is-flash')) return;
+  shell.reasonBody.querySelectorAll('.aiq-reason-segment').forEach((seg) => {
+    const bodyEl = seg.querySelector('.aiq-reason-seg-body');
+    if (!bodyEl || bodyEl.querySelector('.aiq-reason-topic')) return;
+    const raw = bodyEl.textContent || '';
+    if (!raw.trim()) return;
+    const topics = _splitReasonTopics(raw);
+    if (topics.length <= 1) {   // 单主题：直接显示（无需目录），仅加粗转折词
+      bodyEl.innerHTML = `<div class="aiq-reason-topic-detail is-solo">${_highlightReasonTransitions(topics[0])}</div>`;
+    } else {   // 多主题：目录（默认收起）+ 点开看展开体
+      bodyEl.innerHTML = topics.map((tp) =>
+        `<div class="aiq-reason-topic"><div class="aiq-reason-topic-head"><span class="aiq-reason-topic-chev">▸</span><span class="aiq-reason-topic-title">${escapeHtml(_reasonTopicTitle(tp))}</span></div><div class="aiq-reason-topic-detail">${_highlightReasonTransitions(tp)}</div></div>`
+      ).join('');
+    }
+  });
 }
 function scrollBottom() {
   const list = document.getElementById('chat-messages');
@@ -649,6 +747,7 @@ function appendAssistantShell(trace) {
     if (trace.doneAt && shell.footerEl) {
       _renderFooter(shell, '回答完毕 · 情绪地图测试版 v1.0 · ' + formatTs(trace.doneAt), trace.final, _exitBadge(trace));
     }
+    reorganizeReason(shell);   // 历史会话思考也切主题目录（与实时路径一致）
   }
   scrollBottom();
   return shell;
@@ -741,6 +840,22 @@ function buildHooks(shell) {
     autoScroll();
   }
   function cancelStream() { if (streamRaf) { cancelAnimationFrame(streamRaf); streamRaf = 0; } }
+  /** 思考收尾：flush 最后一帧 RAF 文本到 DOM → 整块 is-done → reorganizeReason 切主题目录。 */
+  function finalizeReason() {
+    if (isFlash || !shell.reasonEl) return;
+    if (reasonRaf) { cancelAnimationFrame(reasonRaf); reasonRaf = 0; }
+    for (const r of Object.keys(reasonSegs)) {
+      const body = shell.reasonBody.querySelector(`.aiq-reason-segment[data-round="${r}"] .aiq-reason-seg-body`);
+      if (body) body.textContent = reasonSegs[r];
+    }
+    flushReasonSegs();
+    if (Object.keys(reasonSegs).length) {
+      shell.reasonEl.classList.add('is-done');
+      reorganizeReason(shell);
+    } else {
+      shell.reasonEl.hidden = true;
+    }
+  }
 
   return {
     onDiagnose: (card) => {
@@ -800,7 +915,7 @@ function buildHooks(shell) {
       updateContextCapacity(getLastUsage());
       shell.answerEl.innerHTML = renderAnswer(text, getValidRefNames());
       enhanceCodeBlocks(shell.answerEl);
-      if (shell.reasonEl && !isFlash) shell.reasonEl.classList.add('is-done');
+      finalizeReason();   // flush 最后一帧思考 + 整块 is-done + 主题目录重切
       if (_curTrace) _curTrace.final = text;
       shell._finalMd = text;   // 供页脚「复制回答」取最终 markdown
       // 显示审查中占位（review 回来覆盖）；history 在 send 末尾统一持久化
@@ -846,6 +961,7 @@ function buildHooks(shell) {
       enhanceCodeBlocks(shell.answerEl);
       if (_curTrace) { _curTrace.exit = 'gap'; _curTrace.final = _degradedText; }
       shell._finalMd = _degradedText;
+      finalizeReason();   // 降级前已流式的思考也结构化（无思考内容则藏 reason 块）
     },
   };
 }
@@ -1093,7 +1209,12 @@ function onMsgClick(e) {
     return;
   }
   const reason = e.target.closest('.aiq-reason.is-done');
-  if (reason) { reason.classList.toggle('is-open'); return; }
+  if (reason) {
+    const topicHead = e.target.closest('.aiq-reason-topic-head');   // 主题折叠：点主题标题切该主题（不冒泡整块）
+    if (topicHead) { topicHead.closest('.aiq-reason-topic')?.classList.toggle('is-open'); return; }
+    if (e.target.closest('.aiq-reason-head')) reason.classList.toggle('is-open');   // 仅点"Thought for Ns"标题条收/展整块；body 内其他位置不触发
+    return;
+  }
   const chip = e.target.closest('.cite-chip');
   if (chip) { TOOLS.focus_zones({ names: [chip.dataset.ref] }); return; }
   const act = e.target.closest('.chat-action-btn');
@@ -1157,6 +1278,13 @@ export function initChatPanel() {
     if (_view === 'history') setView('chat');
     document.getElementById('chat-input')?.focus();
   });
+  // 容量圆圈 hover 弹富 tooltip（5 类明细）
+  const cap = document.getElementById('ctx-cap');
+  if (cap && !cap.dataset.capTip) {
+    cap.dataset.capTip = '1';
+    cap.addEventListener('mouseenter', _ctxCapShowTip);
+    cap.addEventListener('mouseleave', _ctxCapHideTip);
+  }
   document.getElementById('chat-history')?.addEventListener('click', () => toggleHistoryView());
   document.getElementById('emc-history-search')?.addEventListener('input', (e) => renderHistoryList(e.target.value));
 

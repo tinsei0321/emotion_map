@@ -1148,6 +1148,14 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.70 EMC 思考过程「主题折叠」+ 容量圆圈 hover 富 tooltip（07月12日）
+
+用户两件前端可读性诉求：(1) 思考"全盘托出"抓不到重点 → 主题目录+点击展开（参考 Claude/ChatGPT）；(2) 容量圆圈 hover 只显百分比 → 进度条+5 类明细（参考 Claude Code 容量 tooltip 图）。
+- **思考主题折叠+排版**（[panel.js](frontend/js/ai_qa/panel.js)）：新增 `reorganizeReason(shell)`——流式期 `onReason` 照常累加（保现场感），流末 `finalizeReason()`（挂 onFinalDone/onDegraded）flush 最后一帧 → 整块 is-done → 按 `\n\n`/转折词切主题 → `.aiq-reason-topic`（默认收起，点 head 展开，复用 toolcard 折叠样板）；展开体先 `escapeHtml` 再 `<strong>` 加粗转折词（不过/但是/因此…）。单主题不折叠直接显。事件委托改：topic-head 不冒泡整块，整块只点"Thought for Ns"标题条。历史恢复同步 reorganize。
+- **容量圆圈富 tooltip**（[panel.js updateContextCapacity](frontend/js/ai_qa/panel.js)）：去原生 title，JS 单例 `.aiq-cap-tip`（挂 body、position:fixed 不被 EMC 裁切），hover 现填——顶部百分比+Claude 橙进度条，下方 5 类明细（输入/输出/思考链 reasoning_tokens/缓存命中·命中率/会话规模 calls·steps·history）。usage 后端已整包透传，纯前端多读字段。顺手统一 `.ctx-cap.warn` amber→Claude 橙。**诚实约束**：图里"消息/工具/技能"是 Claude Code 内部记账，DeepSeek 不拆输入内部，故 EMC 明细按"token 类型+会话规模"重定义（均真实数据，reasoning/cache 字段运行时 console.log 确认）。
+- **验证**：node --check 过；视觉待 F5 验。
+- **承重**：未碰（思考只改渲染不改 reason 协议/harness 决策；tooltip 纯前端增量；不动三态/审查/自成长/渲染管线）。
+
 ### 5.69 EMC 全面审查 → Tier1 三项（DataEye + 审查门 + 报告导出）（07月12日）
 
 用户要"全面系统回顾 EMC，提优化意见，核心=业界领先端到端"。审计 13 个端到端环节：11 强/较全（NL 理解/三态路由/ReAct/工具集/渲染[层+图+按钮]/结论/多轮/流式 UX/错误处理），4 处差距（**审查门关着/自成长半残/DataEye 浅/LLM 脆弱**）。对标 CARTO/GIS Copilot/LLM-Geo/GeoGPT，最大差异化="会自审 + 从使用中成长"。用户选 Tier1 三项打包：
