@@ -1148,6 +1148,10 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.73 serve.py build 角标扫描修复（listdir→os.walk 递归，含 ai_qa/ 子目录）（07月12日）
+
+诊断"改 ai_qa/ 代码 build 角标不更新"发现 [serve.py _build_stamp](d:/Github/emotion_map/frontend/serve.py) 用 os.listdir 只扫 js/css 顶层、不递归子目录 → frontend/js/ai_qa/（harness/panel/tools/stages）+ css 子目录的改动不进 stamp，致用户以为"代码没生效"。改 os.walk 递归。**澄清**：代码生效靠 [_inject_import_versions](d:/Github/emotion_map/frontend/serve.py)（L48）给 ES module import 注入 ?v=<mtime>，与 stamp 独立——**stamp 旧 ≠ 代码没生效**（stamp 只是可见指示器）。验证：curl /frontend/index.html → build `2023d15 · 07-12 15:19:06`（= harness.js mtime，递归扫描生效）。serve.py HTTP 根 = repo root，index 入口 = /frontend/index.html（非 /）。
+
 ### 5.72 EMC 阶段1 稳定性修复：narration 逃避堵漏 + finalStep JSON 漂移拦截 + MAX_ROUNDS 16（07月12日）
 
 用户报 EMC 对略复杂多步任务（上传 L1→筛中心城区→分3类→3图层→3网格→3报告+Overview）连续失败：第一次 EXIT_GAP（零工具，LLM 自编"做不成"卡），第二次吐裸 JSON。**诊断基于真实后台 trace**（episodes.jsonl + .trace/trace.log）——老病复发两条漏边（5.68 修了 agent_step parse 失败路，漏了 narration→finalStep 和 finalStep 自身格式漂移）。

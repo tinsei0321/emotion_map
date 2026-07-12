@@ -7,6 +7,10 @@
 
 ## 📅 2026-07-12
 
+### ✅ serve.py build 角标扫描修复（revision-log 5.73）
+
+改 ai_qa/ 代码 build 角标不更新——查 [serve.py _build_stamp](frontend/serve.py) 用 os.listdir 只扫顶层不递归子目录，frontend/js/ai_qa/ 改动不进 stamp。改 os.walk 递归。澄清：代码生效靠 _inject_import_versions 给 ES module 注入 ?v=<mtime>，与 stamp 独立（stamp 旧 ≠ 代码没生效）。验证 curl /frontend/index.html → build `2023d15 · 07-12 15:19:06`。serve.py HTTP 根=repo root，入口=/frontend/index.html。
+
 ### ✅ EMC 阶段1 稳定性修复（revision-log 5.72）
 
 诊断 EMC 对略复杂多步任务失败（第一次 EXIT_GAP 零工具 / 第二次裸 JSON）——后台 trace（episodes.jsonl + .trace/trace.log）确认老病两条漏边复发。修：narration 逃避堵漏（diagnose 正常的任务逼工具至 MAX_ROUNDS 落 gap 卡模板，不让 LLM 自编"做不成"；仅概念问降级诊断认叙述作答）+ finalStep JSON 漂移拦截（整段 agent JSON→落固定卡，永不裸输）+ MAX_ROUNDS 8→16 + FINAL_TEMPLATE 格式铁律软引导。后台可访问性：episodes+trace 够判大类根因，逐步 thought/action 仍在浏览器内存。能力边界（客观）：≤4步稳/5-6看运气/多分支×N超16轮/Overview联动缺工具。desktop 工作台评估：用户判断 20%对/80%错（Skills 是开发工具的、EMC 运行时无；核心差距工具范式 40% 非模型 5%），路径 阶段1→2(code-exec)→3。node --check/py_compile 过，待用户带 key 重问复现。承重未碰。

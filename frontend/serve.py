@@ -70,22 +70,22 @@ def _git_short(basedir):
 
 
 def _build_stamp(basedir):
-    """build stamp = git 短哈希 + 前端 js/css 最新 mtime（可读时间）。
-    改任何前端文件 → mtime 变 → stamp 变；用户刷新后看 stamp 时间 > 自己最后一次编辑时间 = 拿到新代码。
-    每次请求现算（serve 读盘），永远反映当前磁盘状态。"""
+    """build stamp = git 短哈希 + 前端 js/css 最新 mtime（递归含子目录，如 js/ai_qa/、css/ 子目录）。
+    改任何前端文件 → mtime 变 → stamp 变；用户刷新看 stamp 时间 > 自己最后一次编辑 = 拿到新代码。
+    每次请求现算（读盘），反映当前磁盘状态。"""
     import time
     latest = 0
     for sub in ('js', 'css'):
-        d = os.path.join(basedir, sub)
-        if not os.path.isdir(d):
+        root = os.path.join(basedir, sub)
+        if not os.path.isdir(root):
             continue
-        for fn in os.listdir(d):
-            p = os.path.join(d, fn)
-            if os.path.isfile(p) and fn.endswith(('.js', '.css')):
-                try:
-                    latest = max(latest, int(os.path.getmtime(p)))
-                except OSError:
-                    pass
+        for dirpath, _dirs, files in os.walk(root):   # 递归（旧 os.listdir 漏 ai_qa/ 等子目录，致 stamp 不更新）
+            for fn in files:
+                if fn.endswith(('.js', '.css')):
+                    try:
+                        latest = max(latest, int(os.path.getmtime(os.path.join(dirpath, fn))))
+                    except OSError:
+                        pass
     t = time.strftime('%m-%d %H:%M:%S', time.localtime(latest)) if latest else '?'
     return f'{_git_short(os.path.dirname(basedir))} · {t}'
 
