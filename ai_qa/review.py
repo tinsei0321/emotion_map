@@ -10,7 +10,7 @@ import os
 import json
 from typing import Optional, List
 
-from ai_qa.llm import LLMClient, LLMError
+from ai_qa.llm import LLMError, chat_with_fallback, _tier_of
 from ai_qa.manifesto import MANIFESTO
 
 # 六条审查标准（顺序即审查顺序；key 稳定勿改，前端审查状态区按 key 渲染 ✓/△/✕）。
@@ -187,19 +187,15 @@ def review_answer(draft: str, context: str = '', tool_history: str = '',
     用 Flash + json_mode 拿结构化结果；初始化/调用/解析任一失败均降级
     {pass:True, degraded:True}（跳过审查，不阻塞交付）。
     """
-    try:
-        cli = LLMClient(model=REVIEWER_MODEL)
-    except Exception as e:
-        return {'pass': True, 'degraded': True, 'degraded_reason': f'审查员初始化失败: {e}'}
-
     sys_prompt = _build_review_prompt(draft, context, tool_history, context_tokens)
     messages = [
         {'role': 'system', 'content': sys_prompt},
         {'role': 'user', 'content': '请审查上文草稿并输出 JSON。'},
     ]
     try:
-        gen = cli.chat(messages, stream=False, json_mode=True, with_reason=False,
-                       temperature=0.2, max_tokens=1200)
+        gen = chat_with_fallback(messages, tier=_tier_of(REVIEWER_MODEL), stream=False,
+                                 json_mode=True, with_reason=False,
+                                 temperature=0.2, max_tokens=1200)
         raw = next(gen)
     except LLMError as e:
         return {'pass': True, 'degraded': True, 'degraded_reason': str(e)}

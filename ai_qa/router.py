@@ -22,7 +22,7 @@ router = APIRouter()
 @router.post("/chat")
 async def chat_route(req: ChatRequest):
     """AI 问答 agent loop（agent_step/answer/revise 走 SSE 流式；review 非流式单帧）。"""
-    from ai_qa.llm import LLMClient, LLMError
+    from ai_qa.llm import LLMError, chat_with_fallback, _tier_of
 
     # review 阶段：非流式调 Flash 审查员，结果作单帧 SSE 返回（Starlette threadpool 跑同步 gen）
     if req.phase == 'review':
@@ -54,14 +54,11 @@ async def chat_route(req: ChatRequest):
             req.context or '', req.tool_history or '', req.round_n or 1, req.context_tokens)
 
     messages = [{'role': 'system', 'content': sys_content}] + list(req.messages or [])
-    try:
-        cli = LLMClient(model=req.model) if req.model else LLMClient()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f'LLM 客户端初始化失败: {e}')
+    tier = _tier_of(req.model)
 
     def gen():
         try:
-            for kind, tok in cli.chat(messages, stream=True, with_reason=True, json_mode=False):
+            for kind, tok in chat_with_fallback(messages, tier=tier, stream=True, with_reason=True, json_mode=False):
                 if kind == 'usage':
                     yield f'data: {json.dumps({"usage": tok}, ensure_ascii=False)}\n\n'
                 else:

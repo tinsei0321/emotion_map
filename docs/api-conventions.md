@@ -44,6 +44,18 @@ for attempt in range(MAX_RETRIES):
             raise
 ```
 
+### LLM 流式调用重试边界
+
+LLM chat/completions（流式 SSE）的重试有特殊边界（`ai_qa/llm.py chat_with_fallback`）：
+
+- **首 chunk 之前失败**（建立连接 / HTTP 状态码 / 还没吐第一个字）→ 可重试，也可换备用 provider。
+- **首 chunk 之后失败**（已经开始吐字，中途连接断）→ **不重试、不换家**，直接抛错让上层降级
+  （原因：流式已发给前端，中途换家重头会导致"半截答案 + 突然重来"的错位）。
+
+错误分类（`LLMError.status_code`）：`None`（网络/解析）/ 5xx / 429 → 可重试；4xx 非 429 → 不重试，直接换下一家 provider。
+退避同上（`2 ** attempt` 秒）；主家重试耗尽后按 provider 链顺序 fallback。
+```
+
 ### 超时设置
 
 - 常规请求：30 秒

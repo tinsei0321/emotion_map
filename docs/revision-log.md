@@ -1148,6 +1148,18 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.71 LLM 韧性 retry + fallback（chat_with_fallback 编排，主链路+审查共用）（07月12日）
+
+Explore 核实 [llm.py](ai_qa/llm.py) 单点单次零 retry 零 fallback，DeepSeek 一挂全链路瘫 → Tier2/3 gap 最实。新增模块级 `chat_with_fallback(messages, tier, **chat_kwargs)`（带兜底拨号总机），`LLMClient` 单供应商电话机不改（签名零变更）。
+- **流式边界（关键）**：首 chunk 之前失败可重试/换家；首 chunk 之后失败直接抛（防前端"半截答案突然重来"，交上层 onDegraded）。子生成器维护 `started` 标志。
+- **retry**：连接错/超时/5xx/429 重试 MAX_RETRIES=3 次（退避 2**attempt=1/2/4s）；4xx 非 429 不重试直接换家。`LLMError` 加 `status_code`，`_is_retryable` 判定。
+- **fallback provider 链**（[llm.py _resolve_providers](ai_qa/llm.py)）：DeepSeek 主→火山 Ark 备→讯飞备，空 key 跳过；仅配 DEEPSEEK_API_KEY 时长度=1（向后兼容）。配置在 [.env.example](.env.example)。
+- **调用点**：[router.py](ai_qa/router.py) 主链路 + [review.py](ai_qa/review.py) 审查员各改 2-3 行共用 `chat_with_fallback`，yield 形状不变 → SSE/三态不动。
+- **可观测**：trace_warn/trace_error（MOD_LLM.F_002/D_001-003，retry/换家/流中途断打点）。
+- **trade-off**：备用家可能不支持 reasoning_content 思考链字段，切换时前端"思考过程"或少一段（靠 prompt+parseAgentStep+onDegraded 吸收，少一段 ≫ 全哑火）。
+- **验证**：新建 [tests/test_llm_resilience.py](tests/test_llm_resilience.py) 10 用例（monkeypatch FakeLLMClient 零网络）全过——retry 成功/500→200/401 不重试/全失败/流中途断不重试/单 provider 兼容/无 provider 报错/401 换家/两家全失败/三家链顺序。[api-conventions.md](docs/api-conventions.md) 补 LLM 流式重试边界节。
+- **承重**：未碰（LLMClient 签名零变更；yield 形状不变；审查聚焦客观项不改；自成长人审不动；不重绑 print）。
+
 ### 5.70 EMC 思考过程「主题折叠」+ 容量圆圈 hover 富 tooltip（07月12日）
 
 用户两件前端可读性诉求：(1) 思考"全盘托出"抓不到重点 → 主题目录+点击展开（参考 Claude/ChatGPT）；(2) 容量圆圈 hover 只显百分比 → 进度条+5 类明细（参考 Claude Code 容量 tooltip 图）。

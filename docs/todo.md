@@ -7,6 +7,14 @@
 
 ## 📅 2026-07-12
 
+### ✅ LLM 韧性 retry + fallback（revision-log 5.71）
+
+Explore 核实 llm.py 单点单次零兜底，DeepSeek 一挂全瘫。新增 `chat_with_fallback`（调度员，LLMClient 电话机不改）：流式边界（首 chunk 前失败可重试/换家，首 chunk 后失败直接抛防错位）；retry MAX_RETRIES=3 退避 1/2/4s（5xx/429/网络可重试，4xx 换家）；provider 链 DeepSeek→Ark→讯飞空 key 跳过（仅配 DeepSeek 兼容）；router/review 各改几行共用、yield 形状不变。trade-off：备用家可能不支持思考链字段，切换时思考过程或少一段（≫全哑火）。新建 test_llm_resilience.py 10 用例全过；api-conventions 补流式边界节；.env.example 补 provider 链配置。承重未碰（LLMClient 签名/三态/审查/自成长不动）。
+
+### ✅ EMC 思考过程主题折叠 + 容量圆圈富 tooltip（revision-log 5.70）
+
+用户两件前端可读性诉求。**思考主题折叠**：流式照常累加，流末 `finalizeReason`（onFinalDone/onDegraded）按 \n\n/转折词切主题→默认收起目录+点开看展开体（加粗转折词，先 escapeHtml 防注入）；复用 toolcard 折叠样板；单主题不折叠直接显。事件委托改：topic-head 不冒泡整块。**容量圆圈富 tooltip**：去原生 title，JS 单例挂 body（position:fixed），hover 现填（百分比+Claude 橙进度条+5 类明细：输入/输出/思考链/缓存命中/会话规模）；顺手 warn 色 amber→Claude 橙。诚实约束：DeepSeek 不拆输入内部，明细按 token 类型+会话规模重定义。承重未碰（只改渲染/纯前端增量）。node --check 过，视觉待 F5 验。
+
 ### ✅ EMC 全面审查 → Tier1 三项（DataEye + 审查门 + 报告导出）（revision-log 5.69）
 
 用户要"全面系统回顾 EMC，核心=业界领先端到端"。审计 13 个端到端环节（11 强/较全，4 差距：审查门关/自成长半残/DataEye 浅/LLM 脆弱）。用户选 Tier1 三项打包：
