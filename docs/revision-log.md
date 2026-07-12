@@ -1148,6 +1148,19 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.77 EMC 月级改造（一）：P0d 第四态 EXIT_PARTIAL + P1 ask_user 拟人 + P3 沙箱骨架（07月12日）
+
+月级全计划（[calm-discovering-snowflake.md](C:/Users/admin/.claude/plans/calm-discovering-snowflake.md)）开跑。本次 P0d+P1+P3 沙箱骨架（P3 不挂 /run）。承重：四态出口**扩**非替换、registry/对账 tool-agnostic 复用、沙箱红线、思考透明 5.70 不动。全程两组 Workflow 对抗验证（初验 3 路揪 serious→修→复验 3 路 mostly-fixed→再修 minor）。
+
+- **P0d EXIT_PARTIAL 第四态**（manifesto 第八节三态→四态）：B/C 有部分成功但未全完成 → 出「已为你完成 A + 局限标注 B + 引导补 X」。[harness composePartialCard](d:/Github/emotion_map/frontend/js/ai_qa/harness.js)（确定性组装·引导式，非断言「暂未能完成」）；对账 missing 1-2 升级走 partial 出口（保 draft+inline 标注+引导卡，体验>正确性，不再只 inline）；composeGapCard 头部断言句软化。
+- **P1 ask_user 主动澄清 + 对话引导**：[prompts](d:/Github/emotion_map/ai_qa/prompts.py) action schema 加第三态 ask_user + 出口铁律放宽 + rule8（何时问）；[stages parseAgentStep](d:/Github/emotion_map/frontend/js/ai_qa/stages.js) 加 isAsk 归一分支；[harness](d:/Github/emotion_map/frontend/js/ai_qa/harness.js) 主循环 ask 分支（exit='ask' 挂起，用户点选项→新 orchestrate 续作，无死锁）；[panel onAskUser](d:/Github/emotion_map/frontend/js/ai_qa/panel.js) 渲染问+选项胶囊（复用 aiq-suggest-chip）；FINAL_TEMPLATE「做成一部分也体面」+ 多目标收紧。
+- **P3 沙箱骨架**（[api/sandbox.py](d:/Github/emotion_map/api/sandbox.py) + [tests/test_sandbox.py](d:/Github/emotion_map/tests/test_sandbox.py)）：`SAFE_READY=False` 红线，本会话**不写 run_routes.py、不挂 /run**。subprocess `[-I, -X utf8]` + import 白名单 + 30s timeout + 写区隔离。**关键设计 = frame-based trust**（非 inside 旗标）：matplotlib 等库用户代码调用时 lazy-import socket/subprocess 等危险库，旗标放不了、白名单又会让 reject 失效——改查直接 importer 帧（用户脚本→拦，库/冻结导入→放），同时满足 reject 与突破。19/19 测试真跑 subprocess 全过（拦 os.system/socket/pickle/死循环 + 突破 pandas/scipy/shapely/matplotlib/esda）。**已知局限**（docstring 文档化，未削弱沙箱迁就）：open builtin 不拦（出图需写文件）、纯 Py 反射绕过——生产挂 /run 前须叠 OS 级隔离（容器/低权用户）。
+- **对抗验证（两组 Workflow · 承重护栏）**：
+  - **初验 3 路全 serious-issues**，揪承重 bug：① **CRITICAL fallback_annotated 误当 PARTIAL**（软缺口用替代数据仍完整，跳审查反而劣化、且不追加 composePartialCard 违约）→ 收窄 partial 触发为仅 `_isPartialMissing`，fallback_annotated 回正常 review+result（renderCaliber 本就显口径卡）；② 对账 gapParts 把"现有图层"塞进"未生成"列表（语义反转）→ composePartialCard 加第 4 参 existingLine 单独成行；③ gis 诚实门 _verifyClaims 被 partial 跳过 → partial 分支内补 gis 验证；④ **注入面**（needed/gap/`_missing` 裸拼 marked 无净化）→ 加 `_esc` helper 全转义；⑤ ask 顶层 `{ask_user:{}}` 漂移被叙述吞；⑥ **ask 无速率上限（博弈漏洞·MAX_ROUNDS 对 ask 无效）**；⑦ 历史恢复丢选项胶囊；⑧ 续作链断（选项文本无续作线索词→Flash 误判）；⑨ drift 徽章缺失；⑩ $ 替换特殊语义；⑪ pro-term 通俗化。
+  - **复验 3 路全 mostly-fixed**：承重全修复生效、0 新回归；剩 1 MAJOR（drift 拦截卡 missing≥3 分支 _missing/_actualNames 未转义·我漏的路径）+ 4 MINOR（composeGapCard fails 未转义、composePartialCard JSDoc 残留 fallback_annotated、_consecutiveAsks 跨会话泄漏、renderDiagnoseCard 口径未通俗）→ 全修。
+- **验证**：node --check（harness/stages/panel）+ prompts format + py_compile sandbox 全过；pytest 152 passed（含新 test_sandbox 19 + test_llm_resilience 10），6 failed 全预存环境问题（h3 未装 ×2 / SnowNLP / geocode 阈值 / range 数据），与本改动无关。复验后无新回归。待用户带 key 复现 P0d（对账 missing→partial 卡）/ P1（模糊问题→ask_user 胶囊）/ P3（SAFE_READY=True 后下会话挂 /run）。
+- **承重（必守）**：四态出口**扩**非替换（gap/drift/result 调用方语义不变）；composeGapCard/composePartialCard **模板化**（确定性组装，不让 LLM 自创出口文案）；诚实门 _verifyClaims 不被任何出口跳过；沙箱红线（SAFE_READY=False，单测过才挂 /run）；思考透明 5.70 不动；commit/push 分离。下会话：P3 挂 /run + run_python 工具 + CODE_EXEC_CATALOG → P2 减 GAP（fallback_annotated 进 loop + 多轮规划）。
+
 ### 5.76 EMC P0 止血（一）：宽容三零容忍（drift revise / 对账 missing 保 draft 标注 / narration 容忍）（07月12日）
 
 用户报"稍出错没答案"——5.72/5.74 三处零容忍（drift/对账/narration）违反"体验>正确性"。P0 止血改宽容：

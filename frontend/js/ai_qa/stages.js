@@ -25,7 +25,7 @@ function normalizeParams(name, params) {
 
 /** 容错解析 agent_step 的 {thought, action}。
  *  返回值三态：
- *    { thought, action:{type:'tool'|'answer', name?, params?} }  — 正常
+ *    { thought, action:{type:'tool'|'answer'|'ask_user', name?, params?, question?, options?} }  — 正常
  *    { narrated:true, text }   — 模型只写了说明文字没给动作（harness 走修复通道，绝不裸输）
  *    null                       — 输入为空
  *  抗格式漂移：兼容多种 DeepSeek 实测漂移 schema，统一归一为 {type:'tool',name,params}。
@@ -72,8 +72,10 @@ export function parseAgentStep(raw) {
   // drift: {tool:"x", params|parameters|arguments}
   if (!action && obj.tool) action = { type: 'tool', name: obj.tool, params: obj.params || obj.parameters || obj.arguments || {} };
   if (!action && obj.tool_name) action = { type: 'tool', name: obj.tool_name, params: obj.params || obj.parameters || {} };
-  // drift: 顶层本身就是 action（{type:"tool",name, params}）
-  if (!action && (obj.type === 'tool' || obj.type === 'answer')) action = obj;
+  // drift: 顶层本身就是 action（{type:"tool"|"answer"|"ask_user", ...}）
+  if (!action && (obj.type === 'tool' || obj.type === 'answer' || obj.type === 'ask_user')) action = obj;
+  // drift: 顶层裸 ask_user（{ask_user:{question,options}} 无 action 外层）—— 收编，防被下方 !action 叙述兜底吞掉
+  if (!action && obj.ask_user) action = { type: 'ask_user', ...(typeof obj.ask_user === 'object' && obj.ask_user ? obj.ask_user : {}) };
   if (!action) return { narrated: true, text: raw };
 
   // ── answer 识别（放宽）──────────────────────────────────────
@@ -81,6 +83,21 @@ export function parseAgentStep(raw) {
     || action.name === 'answer' || action.tool === 'answer'
     || obj.answer === true;
   if (isAnswer) return { thought, action: { type: 'answer' } };
+
+  // ── ask_user 识别（P1 主动问澄清：范围/时点/domain 模糊时问一句，带 options 胶囊）──
+  const _isAsk = action.type === 'ask_user'
+    || action.name === 'ask_user' || action.tool === 'ask_user'
+    || !!obj.ask_user || obj.type === 'ask_user';
+  if (_isAsk) {
+    const _askObj = (typeof obj.ask_user === 'object' && obj.ask_user) || {};
+    const _q = String(action.question || _askObj.question || '').trim() || '请补充一点信息，我接着分析';
+    let _opts = action.options || _askObj.options || [];
+    if (typeof _opts === 'string') _opts = _opts.split(/[|,，、]/).map((s) => s.trim()).filter(Boolean);
+    if (!Array.isArray(_opts)) _opts = [];
+    const options = _opts.map((o) => typeof o === 'string' ? o : (o && (o.label || o.text || o.name || o.value)))   // 兼容 {label/value} 对象 schema
+      .filter((o) => typeof o === 'string' && o.trim()).map((o) => o.trim()).slice(0, 6);
+    return { thought, action: { type: 'ask_user', question: _q, options } };
+  }
 
   // ── tool 归一 ────────────────────────────────────────────────
   const name = action.name || action.tool || action.tool_name;

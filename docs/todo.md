@@ -7,6 +7,10 @@
 
 ## 📅 2026-07-12
 
+### ✅ EMC 月级改造（一）：P0d 第四态 + P1 ask_user + P3 沙箱骨架（revision-log 5.77）
+
+月级全计划开跑第一段。**P0d EXIT_PARTIAL 第四态**：三态出口扩四态（做成一部分+标注局限+引导下一步，非替换），composePartialCard 引导式卡（断言句→引导句），对账 missing 1-2 升级走 partial 出口。**P1 ask_user 主动澄清**：prompts action schema 加第三态 + rule8 何时问，stages parseAgentStep 加 isAsk，harness ask 分支挂起（exit='ask'），panel onAskUser 渲染问+选项胶囊（复用 aiq-suggest-chip），对话引导语气。**P3 沙箱骨架**：api/sandbox.py（SAFE_READY=False 红线·不挂 /run）+ tests/test_sandbox.py 19 测试全过；frame-based trust 设计解 matplotlib lazy-import vs 拦 socket 矛盾。**两组 Workflow 对抗验证**：初验 3 路 serious（揪 CRITICAL fallback_annotated 误判 + 注入面 + ask 博弈漏洞 + 8 项）→ 修 11 处 → 复验 3 路 mostly-fixed → 再修 5 处（drift 卡转义/fails 转义/JSDoc/ask 跨会话重置/口径通俗）。node --check + prompts format + pytest 152 passed（6 failed 全预存环境 h3/SnowNLP，无关）全绿，0 新回归。承重未碰（四态扩非替换/composePartialCard 模板化/诚实门不被跳/沙箱红线/思考透明 5.70）。待用户带 key 复现 P0d/P1 + 待 push。下会话：P3 挂 /run + run_python → P2 减 GAP。
+
 ### ✅ EMC P0 止血（一）：宽容三零容忍（revision-log 5.76）
 
 用户"稍出错没答案"——5.72/5.74 三零容忍违反体验>正确性。P0a drift 命中先 _reviseOnce markdown 重写（失败才退卡）；P0b 对账 missing≤2 保 draft+自动标注"未实际生成"（≥3 大面积才退 gap）；P0c narration narrations≥3 认文字答交 finalStep（不逼 MAX 落 gap）。范式：做不成也体面答。node --check 过，待复现验证。后续月级全计划已批：P0d（第四态+引导式卡）→P1（ask_user+语气）→P3（code-exec）→P2（减GAP）。承重未碰。

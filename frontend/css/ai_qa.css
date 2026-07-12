@@ -306,6 +306,8 @@
 .aiq-suggest-chip:hover { background: rgba(255,255,255,0.13); border-color: var(--emc-accent, #D97757); }
 .aiq-suggest-chip:focus-visible { outline: 2px solid var(--emc-accent, #D97757); outline-offset: 1px; }
 .aiq-suggest-tag { font-size: var(--geojson-typography-size-2xs); color: var(--emc-accent, #D97757); font-weight: var(--geojson-typography-weight-semibold); flex-shrink: 0; }
+/* P1 ask_user 选项胶囊容器（答案区内，复用 .aiq-suggest-chip 按钮样式） */
+.aiq-ask-options { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 
 /* ── 答案内图表（{{chart:...}} → Chart.js canvas；EMC 深色答案泡上显图）── */
 .aiq-chart-wrap { position: relative; height: 220px; margin: 8px 0; background: rgba(255,255,255,0.02); border-radius: var(--geojson-radius-md, 6px); padding: 6px 8px; }

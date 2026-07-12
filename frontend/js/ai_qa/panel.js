@@ -19,6 +19,7 @@ let _abortCtl = null;
 let _history = loadHistory();
 let _archive = loadArchive();
 let _curTrace = null;
+let _consecutiveAsks = 0;   // P1 ask_user 跨 orchestrate 连续计数：≥2 时下轮注入"禁止再 ask_user"防博弈式无限追问（MAX_ROUNDS 对 ask 无效，因 ask 直接 return 不计 round）
 let _thinkMode = localStorage.getItem(MODE_KEY) || 'pro';   // 'pro' | 'flash'
 let _thinkTimer = null;
 let _emcCollapsed = localStorage.getItem(COLLAPSE_KEY) === '1';   // EMC 折叠态（收起→一行输入触发条，点击展开）
@@ -203,6 +204,7 @@ function switchSession(id) {
   }
   const idx = _archive.findIndex((s) => s.id === id);
   if (idx >= 0) { _history = _archive[idx].history; _archive.splice(idx, 1); }
+  _consecutiveAsks = 0;   // P1: 切会话重置 ask 计数（switchSession 不走 clearChat，单独补）
   saveArchive(); saveHistory(); restoreHistory();
   updateContextCapacity(null);
   if (_view === 'history') renderHistoryList(document.getElementById('emc-history-search')?.value || '');
@@ -320,6 +322,9 @@ function _exitBadge(t) {
   const intent = t.diagnose && !t.diagnose.degraded && t.diagnose.intent;
   const skipped = t.review && t.review.skipped;
   if (t.exit === 'gap' || skipped === 'gap') return { txt: '缺数据·需上传', cls: 'warn' };
+  if (t.exit === 'drift' || skipped === 'drift') return { txt: '生成异常·已拦截', cls: 'warn' };
+  if (t.exit === 'ask') return { txt: '等你选择', cls: 'warn' };
+  if (t.exit === 'partial' || skipped === 'partial') return { txt: '部分完成·需补充', cls: 'warn' };
   if (intent === 'general' || skipped === 'general') return { txt: '纯问答', cls: 'neutral' };
   const n = t.newLayerCount || 0;
   if (n > 0) return { txt: '已生成 ' + n + ' 个图层', cls: 'ok' };
@@ -413,6 +418,20 @@ function _followUps(t) {
       { tag: '上传数据', text: '我已上传所需数据，请继续完成刚才的分析' },
       { tag: '换问法', text: '缩小范围重试：指定某个区或某类用地' },
       { tag: '现有能力', text: '用现有数据能做哪些分析？' },
+    ];
+  }
+  if (exit === 'ask') return [];   // 选项胶囊已在答案区内（onAskUser 渲染），底部不再重复追问
+  if (exit === 'drift' || skipped === 'drift') {
+    return [
+      { tag: '重试', text: '换一种问法重试刚才的分析' },
+      { tag: '缩小范围', text: '缩小范围重试：指定某区或某类用地' },
+    ];
+  }
+  if (exit === 'partial' || skipped === 'partial') {
+    return [
+      { tag: '补完分析', text: '我已上传所需数据，请补完刚才未完成的部分' },
+      { tag: '换问法', text: '缩小范围重试：指定某个区或某类用地' },
+      { tag: '看现有', text: '基于现有数据先给出完整结论' },
     ];
   }
   if (intent === 'general' || skipped === 'general') {
@@ -608,7 +627,7 @@ function renderDiagnoseCard(el, card) {
     + `<div class="aiq-diag-row">${[dom.join('/'), _SCALE_LABEL[card.scale] || card.scale, card.decision_type, card.outlet].filter(Boolean).map(chip).join('')}</div>`
     + `<div class="aiq-diag-strategy ${strat}"><span class="aiq-diag-strat-tag">${_STRATEGY_LABEL[strat] || strat}</span>${
       strat === 'request_upload' ? '（关键数据缺失，已请用户上传）'
-      : strat === 'fallback_annotated' ? '（结论将标注口径局限）' : ''}</div>`
+      : strat === 'fallback_annotated' ? '（结论将标注口径（=统计范围）局限）' : ''}</div>`
     + (method.length ? `<div class="aiq-diag-method">方法：${escapeHtml(method.join(' → '))}</div>` : '');
 }
 
@@ -741,6 +760,17 @@ function appendAssistantShell(trace) {
     if (trace.review) renderReview(shell.reviewEl, shell.reviewBody, trace.review);
     shell.answerEl.innerHTML = trace.final ? renderAnswer(trace.final, getValidRefNames()) : '<span class="chat-error">（未生成结论）</span>';
     enhanceCodeBlocks(shell.answerEl);
+    // P1：ask_user 历史恢复——重建选项胶囊（onAskUser 存了 trace.ask，刷新/切会话后重渲染 + rebind 点击）
+    if (trace.ask && trace.ask.type === 'ask_user') {
+      const _opts = Array.isArray(trace.ask.options) ? trace.ask.options : [];
+      if (_opts.length) {
+        const _optDiv = document.createElement('div');
+        _optDiv.className = 'aiq-ask-options';
+        _optDiv.innerHTML = _opts.map((o) => `<button type="button" class="aiq-suggest-chip aiq-ask-chip" data-prompt="${escapeHtml(o)}"><span class="aiq-suggest-tag">选项</span>${escapeHtml(o)}</button>`).join('');
+        shell.answerEl.appendChild(_optDiv);
+        _optDiv.querySelectorAll('.aiq-ask-chip').forEach((b) => b.addEventListener('click', () => send(b.dataset.prompt)));
+      }
+    }
     updateReasonMeta(shell, trace);
     if (trace.diagnose) renderDiagnoseCard(shell.diagnoseEl, trace.diagnose);
     if (trace.caliber) renderCaliber(shell, trace.caliber);
@@ -896,6 +926,31 @@ function buildHooks(shell) {
       renderToolCard(shell.stepsEl, round, null, action, null);
       if (_curTrace && _curTrace.steps.length) _curTrace.steps[_curTrace.steps.length - 1].action = action;
     },
+    onAskUser: (action, round) => {
+      // P1 主动问澄清：步骤卡显"问澄清"+问题摘要；答案区渲染问题 + 选项胶囊（复用 aiq-suggest-chip）；用户点选项 → send 续作。
+      cancelStream();
+      stopThinking();
+      updateContextCapacity(getLastUsage());
+      const card = shell.stepsEl.querySelector(`.aiq-toolcard[data-round="${round}"]`);
+      if (card) {
+        card.querySelector('.aiq-toolcard-name').textContent = '问澄清';
+        card.querySelector('.aiq-toolcard-target').textContent = '· ' + String(action && action.question || '').slice(0, 40);
+      }
+      if (_curTrace && _curTrace.steps.length) _curTrace.steps[_curTrace.steps.length - 1].action = action;
+      const q = (action && action.question) || '请补充一点信息，我接着分析';
+      const opts = Array.isArray(action && action.options) ? action.options : [];
+      let html = renderAnswer(q, getValidRefNames());
+      if (opts.length) {
+        html += '<div class="aiq-ask-options">' + opts.map((o) => `<button type="button" class="aiq-suggest-chip aiq-ask-chip" data-prompt="${escapeHtml(o)}"><span class="aiq-suggest-tag">选项</span>${escapeHtml(o)}</button>`).join('') + '</div>';
+      }
+      shell.answerEl.innerHTML = html;
+      enhanceCodeBlocks(shell.answerEl);
+      shell.answerEl.querySelectorAll('.aiq-ask-chip').forEach((b) => b.addEventListener('click', () => send(b.dataset.prompt)));
+      if (_curTrace) { _curTrace.exit = 'ask'; _curTrace.ask = action; _curTrace.final = q; }
+      shell._finalMd = q;
+      finalizeReason();
+      autoScroll();
+    },
     onObservation: (obs, round) => {
       renderToolCard(shell.stepsEl, round, null, null, obs);
       if (_curTrace && _curTrace.steps.length) _curTrace.steps[_curTrace.steps.length - 1].observation = obs;
@@ -976,6 +1031,7 @@ function _buildPriorTurn() {
       const method = Array.isArray(dg.method) ? dg.method.join(' → ') : (dg.method || '');
       const done = (t.steps || []).map((s) => {
         const a = s.action || {};
+        if (a.type === 'ask_user') return '问澄清：' + String(a.question || '').slice(0, 30);   // ask 无 name/params，特化避免 '已做=?' 噪声
         return `${a.name || '?'}${a.params ? '(' + JSON.stringify(a.params).slice(0, 50) + ')' : ''}`;
       }).join('；');
       const gap = ((t.caliber && t.caliber.length) ? t.caliber : (dp.gap || [])).join('、');
@@ -1019,12 +1075,20 @@ async function send(text) {
   const ctx = { question: text, context: await buildContext(), signal: _abortCtl.signal, model: _thinkMode, history: _hist.slice(-10),
     priorTurn: _buildPriorTurn(),               // 多轮连续性：上轮 intent/method/已做/缺口（续作承接）
     resume: false };
-  ctx.resume = !!(ctx.priorTurn && _isResumeCue(text));   // 续作线索 → harness 跳过 general/request_upload 短路、续跑上轮 method
+  // P1：上一轮以 ask_user 结束（用户点选项胶囊续作）→ 强制续作，跳过 general/request_upload 短路，承接上轮 method（选项文本不含"继续/那个"等线索词，正则识别不到）
+  const _prevTrace = _history.length >= 2 ? (_history[_history.length - 2].trace || null) : null;
+  const _resumingAsk = !!(_prevTrace && _prevTrace.exit === 'ask');
+  ctx.resume = _resumingAsk || !!(ctx.priorTurn && _isResumeCue(text));
+  // P1 ask_user 速率上限：连续问 ≥2 次后，本轮注入"禁止再 ask_user"，防博弈式无限追问逃避执行
+  if (_consecutiveAsks >= 2) {
+    ctx.context = '【澄清上限】已连续问过 ' + _consecutiveAsks + ' 次澄清，本轮**禁止 ask_user**——必须基于现有信息直接 answer 或调工具完成，不得再问。\n\n' + (ctx.context || '');
+  }
   let settled = false;
   try {
     const _result = await orchestrate(ctx, buildHooks(shell));
     settled = true;
     if (_curTrace && _result) { _curTrace.exit = _result.exit || _curTrace.exit; _curTrace.newLayerCount = _result.newLayerCount; }
+    if (_result && _result.exit === 'ask') _consecutiveAsks++; else _consecutiveAsks = 0;   // P1 ask 连续计数（跨 orchestrate，≥2 触发下轮禁止）
     // C：软缺口降级口径标注（fallback_annotated）
     const strat = _curTrace && _curTrace.diagnose && _curTrace.diagnose.data_plan && _curTrace.diagnose.data_plan.strategy;
     if (strat === 'fallback_annotated') {
@@ -1132,6 +1196,7 @@ function restoreHistory() {
 
 function clearChat() {
   _history = [];
+  _consecutiveAsks = 0;   // P1: 重置跨会话 ask 计数（防上会话泄漏到新会话首问·chat-new 复用 clearChat 同样覆盖）
   saveHistory();
   restoreHistory();
 }

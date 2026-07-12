@@ -55,15 +55,21 @@ function formatPriorTurn(p) {
 /** 硬缺口（request_upload）→ 请求上传结论文本（说清需要什么/为何/格式）。 */
 function buildRequestUploadText(d) {
   const dp = d.data_plan || {};
-  const needed = (dp.needed || []).join('、') || '所需专业数据';
-  const gap = (dp.gap || []).join('、') || '关键数据维度';
+  const needed = _esc((dp.needed || []).join('、') || '所需专业数据');
+  const gap = _esc((dp.gap || []).join('、') || '关键数据维度');
   return '## 需要您补充数据才能严谨作答\n\n'
     + `本问需要 **${needed}** 才能给出可靠结论，当前情绪地图数据中尚缺：**${gap}**。\n\n`
     + '**为何必需**：情绪地图覆盖市民主观感受（极性/4×5 归因），但本问还涉及上述专业数据维度，'
     + '缺它则结论会偏离，故不硬答。\n\n'
     + '**建议上传**：Shapefile / GeoJSON（投影 EPSG:4326，或注明所用坐标系），'
     + '在范围选择里加载后即可纳入分析；上传后重提此问即可。\n\n'
-    + '> 若暂无此数据，可在下方说明——我将基于现有情绪数据给出**标注了口径局限**的参考性结论。';
+    + '> 若暂无此数据，可在下方说明——我将基于现有情绪数据给出**标注了口径（=统计范围）局限**的参考性结论。';
+}
+
+/** HTML 转义动态文本：diagnose.data_plan 字段 / 对账 _missing 图层名经 composeGapCard/composePartialCard
+ *  拼进 markdown，最终经 renderAnswer→marked.parse→innerHTML 入 DOM；marked v12 不净化 HTML，故此处逐项转义防注入。 */
+function _esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 /** EXIT_GAP 缺数据/做不成卡（确定性组装，不走 LLM——杜绝"模型又口头讲一遍"）。
@@ -71,24 +77,49 @@ function buildRequestUploadText(d) {
  *  内容：缺什么/为何/已尝试但失败的/引导上传或换问法。绝不编造、绝不纯计划文。 */
 function composeGapCard(diagnose, failedObs) {
   const dp = (diagnose && diagnose.data_plan) || {};
-  const needed = (dp.needed || []).filter(Boolean).join('、');
-  const gap = (dp.gap || []).filter(Boolean).join('、');
+  const needed = _esc((dp.needed || []).filter(Boolean).join('、'));
+  const gap = _esc((dp.gap || []).filter(Boolean).join('、'));
   const strategy = dp.strategy;
   let head;
   if (strategy === 'request_upload' || gap || needed) {
-    head = '## 暂未能给出结论——需要补充数据\n\n'
-      + (needed ? `本问需要 **${needed}** 才能严谨作答。` : '当前情绪地图数据尚不足以完成此分析。')
+    head = '## 还差关键数据——补齐后我就能严谨作答\n\n'
+      + (needed ? `本问需要 **${needed}** 才能给出可靠结论。` : '当前情绪地图数据尚不足以完成此分析。')
       + (gap ? `\n\n**缺失**：${gap}。` : '');
   } else {
-    head = '## 暂未能完成此分析\n\n我尝试了若干操作，但未能生成可用的图层或结论。';
+    head = '## 这次没跑通——我没能生成可用的图层\n\n我试了几个操作，但都没能产出可用的图层或结论。咱们换个思路：';
   }
   const fails = (failedObs || []).filter(Boolean).slice(0, 4);
-  const failTxt = fails.length ? '\n\n**已尝试但未成功**：\n' + fails.map((f) => '- ' + f).join('\n') : '';
+  const failTxt = fails.length ? '\n\n**已尝试但未成功**：\n' + fails.map((f) => '- ' + _esc(f)).join('\n') : '';
   const guide = '\n\n**下一步建议**：\n'
     + '- 上传所需矢量数据（Shapefile / GeoJSON，EPSG:4326 或注明坐标系），在范围选择加载后重提此问；\n'
     + '- 或换一种问法 / 缩小范围（指定某区、某类用地、某时点）后重试。\n\n'
-    + '> 在没有可靠数据或未生成图层前，我不会硬编结论。补充后我将继续完成分析。';
+    + '> 在没有可靠数据或未生成图层前，我不会凭空编造结论。补充后我将继续完成分析。';
   return head + failTxt + guide;
+}
+
+/** EXIT_PARTIAL 做成一部分卡（确定性组装·引导式语气，体验>正确性，不让 LLM 自创出口文案）。
+ *  触发：对账发现少量声称图层未实际生成（1-2 个，_isPartialMissing=true）。（注：软缺口 strategy=fallback_annotated 用替代数据仍可完整作答，走 EXIT_RESULT + 口径卡，不触发本卡。）
+ *  doneParts: 已做成要点（string[]｜null——null 时不重复，draft 本身即结论段）；
+ *  gapParts: 未完成/未生成/缺什么（string[]｜null 时取 diagnose.data_plan.gap）。
+ *  三段：已为你完成 → ⚠️ 局限标注 → 下一步引导。绝不伪装成 EXIT_RESULT。 */
+function composePartialCard(diagnose, doneParts, gapParts, existingLine) {
+  const dp = (diagnose && diagnose.data_plan) || {};
+  const done = (doneParts || []).filter(Boolean);
+  const gap = (gapParts || dp.gap || []).filter(Boolean);
+  const needed = (dp.needed || []).filter(Boolean);
+  let s = '## 已为你完成一部分\n\n';
+  if (done.length) {
+    s += '**已完成的结论**：\n' + done.map((d) => '- ' + _esc(d)).join('\n') + '\n\n';
+  } else {
+    s += '上面的结论，是基于现有数据能给出的部分。\n\n';
+  }
+  if (gap.length) s += '**⚠️ 局限标注**：以下未生成或未覆盖——「' + gap.map(_esc).join('、') + '」。\n\n';
+  if (existingLine) s += '**地图现有图层**：' + _esc(existingLine) + '。\n\n';
+  s += '**下一步**：';
+  if (needed.length) s += '上传 **' + needed.map(_esc).join('、') + '** 后重提此问，我将补全完整分析；';
+  s += '或换一种问法 / 缩小范围（指定某区、某类用地、某时点）后重试。\n\n';
+  s += '> 这是标注了口径（=统计范围）局限的参考性结论——在数据补全前，我不会假装已完整做成。';
+  return s;
 }
 
 /** A1 产物验证 gate：抽取草稿里声称"已生成/加载"的图层名，对照地图实际图层；谎报→返 hints 注入 revise。 */
@@ -161,6 +192,7 @@ function _executedGeoSteps(toolHistory) {
  *   onRoundStart(round)        — 每轮开始（Pro 模式新建 reasoning 分段块）
  *   onThought(text, round)     — 第 round 轮 thought
  *   onAction(action, round)    — 第 round 轮 action
+ *   onAskUser(action, round)   — 第 round 轮 ask_user（主动问澄清，渲染问题+选项胶囊，挂起 loop）
  *   onObservation(text, round) — 第 round 轮工具观察
  *   onFinal(tok)               — 草稿结论增量
  *   onFinalDone(text)          — 草稿完成
@@ -261,6 +293,12 @@ export async function orchestrate(ctx, hooks = {}) {
     }
 
     if (hooks.onThought) hooks.onThought(step.thought, round);
+    // P1 ask_user：模型主动问澄清（关键模糊点）→ 渲染问题 + 选项胶囊，挂起 loop（exit='ask'）。
+    //   用户点选项 → 发新消息（send）→ 新 orchestrate（priorTurn 承接）续作，无死锁。
+    if (step.action.type === 'ask_user') {
+      if (hooks.onAskUser) hooks.onAskUser(step.action, round);   // 不走 onAction（非工具）：步骤卡名由 onAskUser 自定义"问澄清"
+      return { ok: true, rounds: round, ask: step.action, diagnose, exit: 'ask', newLayerCount };
+    }
     if (step.action.type === 'answer') {
       // F3 完整性 gate（计划 vs 已执行，max 1）：纯 GIS 操作 + 诊断有 ≥2 步 geo 计划，却执行步数 < 计划步数就 answer = 半截，强制续做。
       // 仅 gis_operation 触发（情绪问不受此约束）；按步数比对，工具等价替换(clip↔overlay)不会误判（步数够即放行）。
@@ -322,6 +360,7 @@ export async function orchestrate(ctx, hooks = {}) {
 
   // EXIT_RESULT：草稿结论（agent 决定 answer / 达上限 / 降级回退 都走这里）
   let draft = '';
+  let _isPartialMissing = false;   // EXIT_PARTIAL：对账发现少量声称图层未实际生成（1-2 个），保 draft+标注后转 partial 出口
   // ④ 注入 registry 真值清单（finalStep/review/revise 共用同 ctx.context）：模型 ground 在实际图层，禁编不在列表的层
   ctx.context = '【地图实际产出图层】' + formatRegistry() + '（严禁声称生成不在此列表的图层；任务未完成改述"未生成/未产出"，不得编造图层名与数字）\n\n' + (ctx.context || '');
   try {
@@ -349,21 +388,39 @@ export async function orchestrate(ctx, hooks = {}) {
     const _actualNames = getLayers().filter((l) => l.name).map((l) => l.name);
     const _missing = _claimed.filter((c) => !_actualNames.some((a) => a === c || a.includes(c) || c.includes(a)));
     if (_missing.length >= 3) {
-      const _gapText = composeGapCard(diagnose, failedObs) + '\n\n---\n**⚠️ 诚实拦截**：草稿声称已生成「' + _missing.join('、') + '」等图层，但地图实际图层为 [' + (_actualNames.join('、') || '无') + ']，大面积谎报，请用 geo 工具真正生成后再回答。';
+      const _gapText = composeGapCard(diagnose, failedObs) + '\n\n---\n**⚠️ 诚实拦截**：草稿声称已生成「' + _missing.map(_esc).join('、') + '」等图层，但地图实际图层为 [' + (_actualNames.map(_esc).join('、') || '无') + ']，大面积谎报，请用 geo 工具真正生成后再回答。';
       if (hooks.onFinalDone) hooks.onFinalDone(_gapText);
       if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: '谎报图层拦截(大面积)', skipped: 'drift' });
       return { ok: false, degraded: true, rounds: round, final: _gapText, diagnose, exit: 'drift' };
     } else if (_missing.length) {
-      // 少量 missing（1-2）：保 draft + 标注（不丢整答案）
+      // 少量 missing（1-2）：保 draft + inline 标注 + composePartialCard 引导段（体验>正确性，不丢整答案），标记走 EXIT_PARTIAL
       let _annotated = draft;
       for (const m of _missing) {
-        _annotated = _annotated.replace(new RegExp(m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), `${m}（注：未实际生成）`);
+        const _re = new RegExp(m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+        _annotated = _annotated.replace(_re, () => m + '（注：未实际生成）');   // 函数替换防 replacement 串里 $ 特殊语义
       }
-      _annotated += '\n\n---\n**⚠️ 口径标注**：上述「' + _missing.join('、') + '」图层实际未生成（地图现有：[' + (_actualNames.join('、') || '无') + ']）。如需这些图层，请明确要求我用工具生成。';
+      _annotated += '\n\n---\n' + composePartialCard(diagnose, null, _missing, _actualNames.join('、') || '无');
       draft = _annotated;
+      _isPartialMissing = true;
     }
   }
   if (hooks.onFinalDone) hooks.onFinalDone(draft);
+
+  // EXIT_PARTIAL 裁定（体验>正确性·四态出口第四态）：仅对账少量 missing（_isPartialMissing）= 真"做成一部分"。
+  //   软缺口 strategy=fallback_annotated 用替代数据仍可完整作答 → 走正常 review + EXIT_RESULT（panel.js renderCaliber 显口径卡），不属此态。
+  //   诚实门 _verifyClaims 不被 partial 跳过：gis_operation 先跑产物验证（"已加载/已创建"类谎报 _extractClaimedLayers 抓不到、_verifyClaims 能抓）。
+  if (_isPartialMissing) {
+    const _pIntent = diagnose && !diagnose.degraded ? (diagnose.intent || 'emotion_analysis') : 'emotion_analysis';
+    if (_pIntent === 'gis_operation') {
+      const _pv = _verifyClaims(draft);
+      if (!_pv.ok) {
+        const _pr = await _reviseOnce(ctx, hooks, draft, _pv.hints, toolHistoryText);
+        if (_pr) draft = _pr;
+      }
+    }
+    if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: '部分完成·标注局限·引导补充', skipped: 'partial' });
+    return { ok: true, rounds: round, final: draft, review: { pass: true, degraded: true, skipped: 'partial' }, degraded: true, diagnose, exit: 'partial', newLayerCount };
+  }
 
   // intent=纯GIS操作：跳过情绪审查（review 的尺度/4×5 标准不适用于操作类回答）
   const _intent = diagnose && !diagnose.degraded ? (diagnose.intent || 'emotion_analysis') : 'emotion_analysis';
