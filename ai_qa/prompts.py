@@ -6,11 +6,20 @@
 
 改 prompt 只改本文件。
 """
+import datetime as _dt
+
 from ai_qa.manifesto import MANIFESTO
 from ai_qa.paradigm import (
     scale_paradigm_text, domain_outlets_text, geo_tool_catalog_text, code_exec_catalog_text,
     DIAGNOSE_CARD_FIELDS, DATA_STRATEGY,
 )
+
+
+def _today_line() -> str:
+    """当前现实日期前缀（喂 LLM 让其知「今天」=通用问答的日期语境，与 T1/T2/T3 数据时点无关）。"""
+    d = _dt.date.today()
+    wk = '周一 周二 周三 周四 周五 周六 周日'.split()[d.weekday()]
+    return f'当前现实日期：{d.year}年{d.month}月{d.day}日（{wk}）。\n'
 
 
 def _inject_tokens(prompt, context_tokens):
@@ -97,7 +106,7 @@ def build_agent_prompt(context: str = '', tool_history: str = '', round_n: int =
     """agent_step 阶段：ReAct 每轮，输出 {thought, action} JSON。"""
     ctx = context or '（未提供数据上下文）'
     hist = tool_history or '（首轮，尚无探索）'
-    prompt = MANIFESTO + AGENT_TEMPLATE.format(round=round_n, tool_history=hist, context=ctx)
+    prompt = _today_line() + MANIFESTO +AGENT_TEMPLATE.format(round=round_n, tool_history=hist, context=ctx)
     # GIS 操作目录附录（format 后拼接，花括号安全）—— 教模型选对 geo 工具 + 入参/产出/出口贡献
     prompt += '\n\n═══════════ 附录 · GIS 操作目录（何时用/入参/产出/出口贡献）═══════════\n' + geo_tool_catalog_text()
     prompt += '\n\n═══════════ 附录 · 代码执行目录（run_python · geo 兜底）═══════════\n' + code_exec_catalog_text()
@@ -139,7 +148,7 @@ def build_final_prompt(context: str = '', tool_history: str = '', context_tokens
     """answer 阶段：基于全部探索出最终结论（流式 markdown + [ref:]）。"""
     ctx = context or '（未提供数据上下文）'
     hist = tool_history or '（无探索历史）'
-    prompt = MANIFESTO + FINAL_TEMPLATE.format(tool_history=hist, context=ctx)
+    prompt = _today_line() + MANIFESTO +FINAL_TEMPLATE.format(tool_history=hist, context=ctx)
     return _inject_tokens(prompt, context_tokens)
 
 
@@ -201,7 +210,7 @@ def build_diagnose_prompt(context: str = '', context_tokens: list = None) -> str
     避免这些含花括号的文本被 str.format 误解析（见 manifesto/py 花括号警示）。
     """
     ctx = context or '（未提供数据上下文）'
-    prompt = MANIFESTO + DIAGNOSE_TEMPLATE.format(context=ctx)
+    prompt = _today_line() + MANIFESTO +DIAGNOSE_TEMPLATE.format(context=ctx)
     # 范式知识附录（format 后拼接，花括号安全）
     prompt += '\n═══════════ 附录 · 尺度-方法-范式矩阵 ═══════════\n' + scale_paradigm_text()
     prompt += '\n\n═══════════ 附录 · 4 领域出口范式启发库 ═══════════\n' + domain_outlets_text()
@@ -245,7 +254,7 @@ def build_revise_prompt(draft: str = '', review_hints: str = '', context: str = 
     """revise 阶段：基于 draft + review_hints 重写（流式 markdown）。"""
     ctx = context or '（未提供数据上下文）'
     hist = tool_history or '（无探索历史）'
-    prompt = MANIFESTO + REVISE_TEMPLATE.format(
+    prompt = _today_line() + MANIFESTO +REVISE_TEMPLATE.format(
         review_hints=review_hints or '（无具体意见，请按六条公约全面检查并改写）',
         draft=draft or '（空）',
         tool_history=hist,
@@ -313,7 +322,7 @@ def build_field_infer_prompt(fields: dict, layer_kind: str = '', context: str = 
             line += f" 统计: {stats_str}"
         profile_lines.append(line)
     field_profiles = '\n'.join(profile_lines) or '（无）'
-    prompt = MANIFESTO + FIELD_INFER_TEMPLATE.format(
+    prompt = _today_line() + MANIFESTO +FIELD_INFER_TEMPLATE.format(
         role_catalog=role_catalog, field_profiles=field_profiles,
     )
     if layer_kind:

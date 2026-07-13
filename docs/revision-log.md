@@ -1148,6 +1148,13 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.85 hotfix：prompt 注入当前现实日期（LLM 不知"今天"致日期问答编造）（07月13日）
+
+用户测「今天星期几」，EMC 的 AI 答错（编造 5月11日）。根因：LLM（DeepSeek）训练数据有截止、运行时无时间概念，须程序显式告知"今天"；EMC 的 prompt（MANIFESTO + 各 TEMPLATE）全程未注入日期，LLM 只能编。
+- **修复**：[ai_qa/prompts.py](d:/Github/emotion_map/ai_qa/prompts.py) 加 `_today_line()` helper（`datetime.date.today()` + 周几），在 5 处 `prompt = MANIFESTO +` 前注入「当前现实日期：YYYY年M月D日（周X）」前缀（agent/final/diagnose/revise/field_infer；review.py 审查员不加）。
+- **教训**：通用问答的"今天"=现实今天（`date.today()`），与 T1/T2/T3 模拟数据时点无关——别把业务语义强加到基本日期语境（一度过度设计"厘清 T1/T2/T3 语义"，被用户纠正）。
+- **验证**：py_compile + build_agent_prompt/final/diagnose 开头均含「当前现实日期：2026年7月13日（周一）」。
+
 ### 5.84 hotfix：tools.js buildContext 括号缺失（5.82 遗留 ESM 语法错致前端半崩）（07月13日）
 
 5.82 P3 把 buildContext 改 async + `Promise.all` 时，[tools.js:431](d:/Github/emotion_map/frontend/js/ai_qa/tools.js) 少一个右括号——`(await Promise.all(... .map(...)))` 闭合缺一。`node --check tools.js` 默认 CommonJS 宽容未报，浏览器 `<script type="module">` ESM 严格 parse 报 `Unexpected token ';'`，致 tools.js / ai_qa-panel.js / harness.js 整个 ai_qa 模块链加载失败 → buildContext 崩 → main.js 初始化中断 → **地图加载不出 + Range/Layers 等按钮不可点**（"加载一半卡住"）。5.82 验证只跑 node --check + 对账正则（没跑页面真加载），括号 bug 潜伏到 5.83 用户验证 run_python 时暴露。
