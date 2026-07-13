@@ -209,10 +209,10 @@ def geo_tool_catalog_text() -> str:
 CODE_EXEC_CATALOG = [
     {
         'name': 'run_python',
-        'when': 'geo 工具覆盖不到的灵活分析/出图（自定义统计、特殊可视化、pandas 复杂变换）',
-        'params': 'code(Python 源码), inputs=[{layer,as}]?(取已加载图层注入), timeout?',
-        'yields': 'stdout + 图片（matplotlib savefig 自动捕获，结论里用 {{fig:fig1}} 引用）',
-        'contributes': '兜底能力——geo 工具够用时优先 geo；需自由代码/自定义图时用此',
+        'when': 'geo 工具覆盖不到的灵活分析/出图（自定义统计、特殊可视化、pandas 复杂变换）。常规柱/折/饼图走 zonal_stats/rank + 结论里 {chart:bar|...}，勿用此',
+        'params': 'code(Python 源码), inputs=[{layer,as}]?(取已加载图层注入；as 变量名须与代码内一致), timeout?。字段名以 buildContext 的 field=dtype:role:sample 为准，勿臆造（先 query_layers 看字段再写代码）',
+        'yields': 'stdout + 图片（matplotlib savefig 自动捕获，结论里用 {fig:fig1} 引用）。失败时观察指明"[sandbox] 数据没注入"还是代码错',
+        'contributes': '兜底能力——geo 工具够用时优先 geo；需自由代码/自定义图时用此。可 import：pandas/numpy/geopandas/shapely/scipy/matplotlib/esda/libpysal/h3 + 标准库（os/sys 等被禁）',
     },
 ]
 

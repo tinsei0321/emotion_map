@@ -158,10 +158,16 @@ if _SB_DATA_REFS:
         if isinstance(_sb_loaded, dict):
             for _sb_k, _sb_v in _sb_loaded.items():
                 globals()[_sb_k] = _sb_v
+            _sb_keys = list(_sb_loaded.keys())
+            _sb_builtins.print('[sandbox] data_refs 注入成功，可用变量：' + (', '.join(_sb_keys) if _sb_keys else '（空 dict，无变量）'))
+        else:
+            _sb_builtins.print('[sandbox] data_refs 格式异常（非 dict），无变量注入——请检查 inputs 参数')
     except FileNotFoundError:
-        pass
-    except Exception:
-        pass   # 加载失败 → 对应 name 不绑定；用户代码会 NameError（可观察，不静默吞安全事件）
+        _sb_builtins.print('[sandbox] data_refs 文件缺失，无数据注入——若代码用到图层变量会 NameError，请检查 inputs 参数')
+    except Exception as _sb_e:
+        # 加载失败 → 对应变量不绑定；print 明确诊断（用 _sb_builtins.print 绕过用户后续劫持），
+        # 让 LLM 看到"数据没注入：<原因>"而非裸 NameError（后者无法与"变量名写错"区分，致反复试错）
+        _sb_builtins.print('[sandbox] data_refs 加载失败：' + str(_sb_e) + '——无数据注入，请检查 inputs 参数')
 
 # ---- 2) 安装 import 守卫（之后所有 USER CODE 的 import 都过 guard）----
 _sb_orig_import = _sb_builtins.__import__

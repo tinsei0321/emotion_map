@@ -7,6 +7,10 @@
 
 ## 📅 2026-07-13
 
+### ✅ run_python 端到端失败治理：沙箱诊断+字段契约+出图路由（revision-log 5.87）
+
+用户验证 run_python（问"用 Python 画各区极性柱图"）反复试错 9 轮才硬编码跑通、审查失败结论无价值。两份并行调研定位三层根因（沙箱静默吞错 / prompt 契约断层 / 路由+兜底缺失），**非策略不可行，是「问题-字段-答案」闭环在 run_python 路径上断了**（字段语义层 P1-P3 已就位、但 run_python prompt 没接上）。修 A 沙箱 data_refs 加载成功/失败都 print 诊断（sandbox.py PRELUDE §1，成功列可用变量治瞎猜、失败明确诊断治裸 NameError）；B 补字段契约（prompts L83 字段名迁移铁律+示例配套+geopandas+白名单 / paradigm CODE_EXEC_CATALOG，顺手修 catalog 双括号 bug）；C 出图路由（prompts 规则 9 柱折饼→zonal_stats+{{chart}} 勿用 run_python，chart 捷径上提 agent 可见）。py_compile + .format 无 KeyError（len 14815）+ 9 项契约落位 + 沙箱诊断 print 实测可见，全过。承重未碰。端到端真跑待用户验。D/E（失败兜底+revise 保图）可选未做。
+
 ### ✅ focus/show/inspect 按钮正则兼容单括号（revision-log 5.86）
 
 沙箱收尾梳理遗留（todo 旧记"下次顺手改"）。`{{focus|show|inspect:target}}` 操作按钮占位符正则只认双括号，但 `TEMPLATE.format()` 吞一层括号（`{{`→`{`）致 LLM 收到/输出单括号，前端双括号正则匹配不到 → 按钮不渲染（裸文字）。panel.js 两处正则（L294 按钮渲染 / L414 `_followUps` 抽首个 focus 区域）对齐 chart(5.67)/fig(5.83) 改 `\{{1,2}...\}{1,2}` 1~2 花括号兼容，capture group 不变回调签名不动。四类答案占位符（chart/fig/focus·show·inspect）正则统一收口。`.mjs` ESM 语法过 + exec 双/单/混合括号逻辑验证 PASS 8/8。承重未碰。

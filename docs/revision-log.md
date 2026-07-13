@@ -1148,6 +1148,23 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.87 run_python 端到端失败治理：沙箱诊断可见 + 字段契约补全 + 出图路由（闭合「问题-字段-答案」闭环）（07月13日）
+
+用户验证 run_python 端到端（问「用 Python 画各行政区平均极性柱图」），LLM 反复试错 **9 轮**才靠硬编码数字跑通，审查判失败、revise 越改越差、结论无价值，用户质疑策略可行性。两份并行调研（数据注入契约 + 引导/重试/审查）定位三层根因，分层修复。
+
+**根因**（不是策略不可行，是「问题-数据类型-属性字段-答案」闭环在 run_python 路径上断了）：
+1. **沙箱静默吞错**：[sandbox.py](api/sandbox.py) data_refs 加载失败 `except: pass`，LLM 只看到裸 NameError，无法区分"数据没注入"vs"变量名写错"——9 轮 NameError 元凶之一。
+2. **run_python prompt 契约断层**：[prompts.py](ai_qa/prompts.py) 已讲变量名机制+DataFrame 转换，但漏字段名迁移规则/示例配套/geopandas 空间用法/白名单/observation 格式——LLM 瞎猜字段名（KeyError MC/polarity）+ 示例变量名 `fc` 与 `inputs` 声明脱节（NameError fc）。
+3. **路由 + 失败兜底**：`{{chart}}` 占位符只在 FINAL_TEMPLATE，agent/diagnose 阶段看不见 → LLM 不知"出图可走 zonal_stats+{{chart}}"捷径，常规柱图也上 run_python；失败反馈是 geo 工具模板话（换字段名/preset/range），对 Python 调试无用。
+
+**修复 A/B/C**（D/E 失败兜底+revise 保图为可选增强，本轮未做）：
+- **A 沙箱诊断可见**（[api/sandbox.py](api/sandbox.py) PRELUDE §1 L154-170）：data_refs 加载**成功 print「注入成功，可用变量：xxx」**（治"不知有哪些变量"——LLM 不再猜变量名）；**加载失败/文件缺/格式异常 print 明确诊断**（治"裸 NameError 无法定位"）。用 `_sb_builtins.print` 绕过用户劫持。保留 try/except 结构（不破坏 guard 安装前的可信 unpickle 语义）。
+- **B 补字段契约**（[ai_qa/prompts.py](ai_qa/prompts.py) L83 使用约束 + [ai_qa/paradigm.py](ai_qa/paradigm.py) CODE_EXEC_CATALOG）：①**字段名迁移铁律**——以 buildContext 的 `field=dtype:role:sample` 为准，**先 query_layers 看字段再写代码**，勿臆造（治 KeyError）；②**示例配套**——`inputs:[{layer:'$1',as:'fc'}]` 必须与代码内变量名 `fc` 字面一致（治 NameError fc）；③geopandas 空间用法 `GeoDataFrame.from_features(fc, crs='EPSG:4326')`；④白名单（pandas/numpy/geopandas/shapely/scipy/matplotlib/esda/libpysal/h3 + 标准库；os/sys/subprocess/socket 被禁）；⑤observation 格式 + 连续同类失败勿盲重试超 2 次。顺手修 catalog 双括号 bug（不被 format，`{{fig}}` 应为单括号 `{fig}`，与 AGENT_TEMPLATE format 后形式统一）。
+- **C 出图路由**（[ai_qa/prompts.py](ai_qa/prompts.py) AGENT_TEMPLATE 规则 9「出图决策」）：柱/折/饼图（排序/对比/时序/占比）→ **zonal_stats/rank 取数 + 结论阶段 `{{chart:bar|...}}`**，勿用 run_python；run_python 仅限 `{{chart}}` 做不到的（散点/空间叠加/双轴/热力矩阵）。配正向范例 `zonal_stats(admin_district)→{{chart:bar|title=...|x=...|y=...}}`。把 chart 捷径从 FINAL_TEMPLATE 暴露给 agent 阶段（agent 现在能看见这条轻路径）。
+
+**承重**：未碰（沙箱安全模型 SAFE_READY/三道底线/AST 反射/open-wrapper 不动；字段语义层 P1-P3 物理列名不改；agent loop/审查框架不重写，只补契约+引导）。prompts 里 `{{chart}}`/`{{fig}}` 示例花括号双写避 .format 吞括号；catalog 不被 format 用单括号。
+- **验证**：py_compile 三文件过；build_agent_prompt `.format()` 无 KeyError（len 14815）+ 9 项关键契约文字全落位（出图决策/字段迁移/geopandas/白名单/数据没注入/`{chart:bar|`/`{fig:fig1}`/as 一致/勿盲重试）；run_sandbox 正常 data_refs 实测 stdout 含「注入成功，可用变量：df, admin」。失败分支（except）逻辑对称、信任。**端到端真跑待用户开 serve 验**（问「画各行政区平均极性柱图」期望走 zonal_stats+chart ≤3 轮；问「画情绪点空间散点图」期望走 run_python ≤3 轮）。
+
 ### 5.86 hotfix：focus/show/inspect 按钮正则兼容单括号（对齐 chart/fig，.format 吞括号致单括号按钮不渲染）（07月13日）
 
 沙箱收尾后梳理遗留（todo 记"下次顺手改"）：`{{focus:区域}}`/`{{show:图层}}`/`{{inspect:区域}}` 三类操作按钮占位符的正则只认双括号，与 chart(5.67)/fig(5.83) 已兼容 1~2 花括号不一致。**根因链**：[FINAL_TEMPLATE](ai_qa/prompts.py) 里示例写双括号 `{{focus:区域名}}`，经 `TEMPLATE.format()` 调用，Python 字符串格式化的字面量转义把 `{{`→`{`、`}}`→`}`（吞一层括号），LLM 实际收到单括号示例 `{focus:区域名}` → 输出单括号；前端 [panel.js](frontend/js/ai_qa/panel.js) 按钮渲染正则 `\{\{...\}\}` 只认双括号 → 单括号匹配不到，按钮不渲染（用户看到裸文字 `{focus:西陵区}` 而非可点按钮）。
