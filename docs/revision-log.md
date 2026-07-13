@@ -1148,6 +1148,17 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.82 字段语义层 P3：catalog/registry 带字段卡片 + _fieldSamples 语义升级（07月13日）
+
+实施 [字段语义层 plan](C:/Users/admin/.claude/plans/emc-plan-emc-field-semantic-layer-md-p1-zazzy-duckling.md) P3。P2 建了字段卡片缓存（getFieldCard），但**没人消费**——registry（产出图层清单）不带字段、_fieldSamples 仍裸 `字段=类型:样本`、渲染契约字段（_level/_ui）泄漏进 LLM context。P3 把字段卡片喂进 catalog/registry + _fieldSamples 升级 role 标注 + 语义过滤。
+- **_fieldSamples 升级（[tools.js](d:/Github/emotion_map/frontend/js/ai_qa/tools.js)）**：async，格式从 `field=类型:样本` 升 `field=dtype:role:sample`（dtype 映射 number→num/datetime→dt/boolean→bool/string→cat；role 经 getFieldCard 标注，rule-miss→'?'）；过滤从硬 `k[0]!=='_'` 改 `isInternalField(k)||isRenderContract(role)`——**保留自产 polarity_index/point_count**（AI 写 where 要用）、**过滤渲染契约** _level/_ui。buildContext 改 `await _fieldSamples(l.fc,6,l.id)`（Promise.all 并发）。
+- **formatRegistry 带字段（[tools.js](d:/Github/emotion_map/frontend/js/ai_qa/tools.js)）**：每条 artifact 后追加 `[字段: f1:role1, f2:role2, …]`（前 5 + …）。字段来源：优先读 registry 项 `fields`（P3.4 addResultLayer 新增可选参）；缺则反查 `getLayer(id).fc` 调 `_fieldBrief` 同步 resolveRole 标（**不调 LLM**）。**承重 5.74 对账**：字段段方括号包裹——`_extractClaimedLayers` verbRe 字符类显式排除 `[` `]`，字段段不会被误抽成层名；**字段段禁入图层名与 `{{show:}}`**（showRe 不排除方括号，会吞——实测确认：show 干净名正常、show 含字段段会误吞，故字段段只进 catalog/context 文本）。
+- **addResultLayer（[tools.js](d:/Github/emotion_map/frontend/js/ai_qa/tools.js)）**：加可选 `fields` 参存入 `_registry`（8-9 调用点不强制改，向后兼容）。
+- **后端 catalog 带字段卡片（[geo_registry.py](d:/Github/emotion_map/core/geo_registry.py)）**：`_point_layer_overview` 返加 `field_cards`（规则标注 `{field:{role,source:'rule'}}`，role=None 表 miss）；`_FIELD_CACHE` value 扩 field_cards；`list_point_layers` 透传。前端 `formatGeoCatalog` 渲染点层 `k[role]:v`。
+- **P3.1 自产层声明**：P1 已闭环（11 self_produced + 6 render_contract 标记全在 field_dictionary），仅核对 `is_self_produced('polarity_index')==True`、`is_render_contract('_level')==True`，无工作。原 plan P2.6（_FIELD_CACHE 扩展）合并到本节 P3.6（与 _point_layer_overview 消费同处，避免 P2 写无消费者的死存储）。`_geojson_fingerprint`（GeoJSON 指纹 key）按 YAGNI 推迟到有 send-in GeoJSON 经后端画像需求时再加。
+- **验证**：py_compile + node --check 全过；**对账正则安全测**（构造含 `[字段:...]` 的 draft 喂 verbRe/showRe → 抽出的 names 零字段 token 泄漏）；_fieldSamples 格式+过滤测（polarity_index 保留/_level 过滤/dtype+role 正确）；pytest **152 passed，6 预存 fail 不变，0 新回归**。
+- **承重**：物理列名不改（全只读 fc.properties）；registry 扩展保持 `层名（tool·round）` 前缀+字段段方括号包裹不破 5.74 对账；自产层契约只声明不改产出（_attach_4x5_attrs 未碰）；懒加载不改上传流程；思考透明 5.70 不动。字段语义层 P1-P3 全闭环。
+
 ### 5.81 字段语义层 P2：profile + LLM 字段角色推断（规则优先 LLM 兜底 · 懒加载）（07月13日）
 
 实施 [字段语义层 plan](C:/Users/admin/.claude/plans/emc-plan-emc-field-semantic-layer-md-p1-zazzy-duckling.md) P2。P1 字典只覆盖 variant（同义词），非 variant 列（如"心情""评分"）规则 miss → EMC 看不懂、`where` 写不对。P2 补 LLM 推断（规则 miss 才调 flash LLM 选 role）+ 字段卡片缓存。**规则优先、LLM 兜底**（业界 schema matching / data dictionary 标准做法），降级不阻塞。
