@@ -36,16 +36,20 @@ _POINT_LAYERS = {
 }
 
 
-_FIELD_CACHE: dict = {}   # fname → {fields, samples, dtypes}（catalog 暴露给 AI，避免瞎猜列名/取值）
+_FIELD_CACHE: dict = {}   # fname → {fields, samples, dtypes, field_cards}（catalog 暴露给 AI，避免瞎猜列名/取值/role）
 # P1: 删 _KEY_FIELDS 硬编码，改用 field_dictionary.resolve_role 判定哪些字段优先给样例值（帮 LLM 构造 pre_filter）
+# P3: value 增 field_cards（规则标注 role，供 catalog/formatGeoCatalog 标注字段语义）
 
 
 def _point_layer_overview(fname: str) -> dict:
-    """读 CSV 表头 + 首行（缓存），返 {fields, samples, dtypes}。供 catalog 暴露字段名 + 取值样例 + 类型。"""
+    """读 CSV 表头 + 首行（缓存），返 {fields, samples, dtypes, field_cards}。
+
+    field_cards = {field: {role, source:'rule'}}——resolve_role 规则标注（role 为 None 表 miss）。
+    供 catalog 暴露字段名 + 取值样例 + 类型 + 语义角色。"""
     if fname in _FIELD_CACHE:
         return _FIELD_CACHE[fname]
     path = os.path.join(PERFORMANCE_DIR, fname)
-    ov = {'fields': [], 'samples': {}, 'dtypes': {}}
+    ov = {'fields': [], 'samples': {}, 'dtypes': {}, 'field_cards': {}}
     if os.path.isfile(path):
         try:
             df = pd.read_csv(path, nrows=2)
@@ -57,6 +61,7 @@ def _point_layer_overview(fname: str) -> dict:
                 'fields': fields,
                 'samples': {c: (str(row0[c])[:24] if row0 is not None and c in row0 else '') for c in key},
                 'dtypes': {c: str(df[c].dtype) for c in key},
+                'field_cards': {c: {'role': resolve_role(c), 'source': 'rule'} for c in key},
             }
         except Exception:
             pass
@@ -69,7 +74,7 @@ def list_point_layers() -> list:
     out = []
     for lid, (fname, label, level) in _POINT_LAYERS.items():
         available = os.path.isfile(os.path.join(PERFORMANCE_DIR, fname))
-        ov = _point_layer_overview(fname) if available else {'fields': [], 'samples': {}, 'dtypes': {}}
+        ov = _point_layer_overview(fname) if available else {'fields': [], 'samples': {}, 'dtypes': {}, 'field_cards': {}}
         out.append({
             'id': lid,
             'label': label,
@@ -78,6 +83,7 @@ def list_point_layers() -> list:
             'fields': ov['fields'],
             'samples': ov['samples'],
             'dtypes': ov['dtypes'],
+            'field_cards': ov['field_cards'],   # P3：规则标注 role，前端 formatGeoCatalog 渲染 k[role]:v
             'crs': 'EPSG:4326',
         })
     return out

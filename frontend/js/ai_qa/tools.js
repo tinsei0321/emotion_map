@@ -8,7 +8,7 @@ import { DOMAIN_LABEL, ELEMENT_LABEL } from '../popup.js';
 import { generateGridForAI } from '../grid-tool.js';
 import { renderLayerList, refreshLegend } from '../sidebar.js';
 import { fcBBox, profileFields } from '../import.js';
-import { resolveRole } from '../field_dictionary.js';   // P2 字段语义层·规则标注（miss 才调 LLM）
+import { resolveRole, isRenderContract, isInternalField } from '../field_dictionary.js';   // P2/P3 字段语义层·规则标注 + _fieldSamples 语义过滤
 import { landuseLayerPaint } from '../landuse_colors.js';   // 用地层自动附标准色（EMC 产物也走此）
 
 let _lastGrid = null;   // 最近生成聚合层（ensure_zone/query 优先用）
@@ -237,7 +237,7 @@ function focusOnlyResults() {
  * keep=true → 显式保留（用户要求/展示结果），即使被后续工具引用消费也豁免清理。
  * 点层自动按 polarity 上色（addLayer 默认 colorMode）；面层需传 paint.fillOn 才可见。
  * 沉浸聚焦：每生成一个结果 → 关其余、留本轮所有结果、缩放至并集（maxZoom 16 防过度放大）。 */
-export function addResultLayer({ name, kind = 'polygon', fc, paint, keep }) {
+export function addResultLayer({ name, kind = 'polygon', fc, paint, keep, fields }) {
   if (!fc || !fc.features || !fc.features.length) return null;
   for (const l of getLayers()) {
     if (l.name === name) { removeLayerFromMap(l.id); removeLayer(l.id); }
@@ -256,7 +256,7 @@ export function addResultLayer({ name, kind = 'polygon', fc, paint, keep }) {
   }
   const L = addLayer({ name, kind, fc, paint: _paint, parentId: _aiGroup().id });
   L.srcName = name;
-  _registry.push({ id: L.id, name, tool: _curTool, round: _curRound, t: Date.now() });   // ① registry（provenance 由 harness setToolContext 注入）
+  _registry.push({ id: L.id, name, tool: _curTool, round: _curRound, t: Date.now(), fields });   // ① registry（provenance 由 harness setToolContext 注入；fields 可选字段简表，P3 formatRegistry 用）
   if (keep) _keepIds.add(L.id);              // 显式保留登记（覆盖消费式清理）
   _curResultIds.push(L.id);                 // 登记本轮存活结果（沉浸聚焦）
   renderLayer(L);
@@ -274,11 +274,41 @@ export function getArtifacts() {
   const live = new Set(getLayers().filter((l) => l.fc && l.fc.features && l.fc.features.length).map((l) => l.id));
   return _registry.filter((a) => live.has(a.id));
 }
-/** formatRegistry：产出图层清单（注入 finalStep/review/revise prompt，让模型 ground 在真值，禁编不在列表的层）。 */
+/** 字段简表（formatRegistry 用）：同步 resolveRole 标 role（**不调 LLM**），返 `[字段: f1:role1, …]`。
+ *  承重（5.74 对账）：方括号包裹——_extractClaimedLayers verbRe 字符类排除 [ ]，故字段段不会被误抽成层名；
+ *  字段段禁入图层名与 {{show:}}（showRe 不排除方括号会误吞）。 */
+function _fieldBrief(fc, maxFields = 5) {
+  const feats = fc && fc.features;
+  if (!feats || !feats.length) return '';
+  const sample = feats.slice(0, 5);
+  const seen = [];
+  for (const f of sample) {
+    for (const k of Object.keys(f.properties || {})) {
+      if (isInternalField(k) || isRenderContract(resolveRole(k))) continue;   // 过滤内部/渲染契约
+      if (!seen.includes(k)) seen.push(k);
+      if (seen.length >= maxFields) break;
+    }
+    if (seen.length >= maxFields) break;
+  }
+  if (!seen.length) return '';
+  const parts = seen.map((k) => `${k}:${resolveRole(k) || '?'}`);
+  return `[字段: ${parts.join(', ')}${seen.length >= maxFields ? '…' : ''}]`;
+}
+/** formatRegistry：产出图层清单（注入 finalStep/review/revise prompt，让模型 ground 在真值，禁编不在列表的层）。
+ *  P3：每条后追加 `[字段: f:role, …]` 段——优先读 registry 存的 fields；缺则反查 getLayer(id).fc 同步标 role。 */
 export function formatRegistry() {
   const a = getArtifacts();
   if (!a.length) return '（暂无 EMC 产出图层）';
-  return a.map((x) => `${x.name}${x.tool ? `（${x.tool}${x.round ? '·第' + x.round + '轮' : ''}）` : ''}`).join('、');
+  return a.map((x) => {
+    let s = `${x.name}${x.tool ? `（${x.tool}${x.round ? '·第' + x.round + '轮' : ''}）` : ''}`;
+    let brief = x.fields;
+    if (!brief) {
+      const l = getLayer(x.id);
+      if (l && l.fc) brief = _fieldBrief(l.fc);
+    }
+    if (brief) s += brief;
+    return s;
+  }).join('、');
 }
 
 /** 轮末兜底清理：移除本轮被标记消费、却因后续工具失败（addResultLayer 未再触发）而残留的中间结果层。
@@ -323,7 +353,11 @@ function formatGeoCatalog(cat) {
   const pls = (cat.point_layers || []).filter((p) => p.available !== false);
   if (pls.length) out.push('【可用地层】' + pls.map((p) => {
     const samp = p.samples || {};
-    const samples = Object.keys(samp).map((k) => `${k}:${samp[k]}`).join(' / ');
+    const cards = p.field_cards || {};   // P3：后端 _point_layer_overview 规则标注的 role
+    const samples = Object.keys(samp).map((k) => {
+      const role = cards[k] && cards[k].role;
+      return role ? `${k}[${role}]:${samp[k]}` : `${k}:${samp[k]}`;
+    }).join(' / ');
     return `${p.label || p.id}${samples ? `（${samples}）` : ''}`;
   }).join('；'));
   const bds = (cat.boundaries || []).filter((b) => b.available !== false);
@@ -333,30 +367,31 @@ function formatGeoCatalog(cat) {
   return out.join('\n');
 }
 
-/** DataEye：层的字段 + 类型 + 2 个样本值（borrow GIS Copilot _get_df_types_str）。
- *  给模型真实值参照 → 写 where（field/op/value）命中率显著升，不再盲猜字段值。
- *  取前 ~20 feature 的前 maxFields 个非内部字段，每字段最多 2 个去重样本值，紧凑防爆 context。 */
-function _fieldSamples(fc, maxFields = 6) {
+/** DataEye（P3 升级）：层的字段 + 类型 + role + 2 样本值。格式 `field=dtype:role:sample`。
+ *  role 经 getFieldCard（规则→LLM 推断）标注；过滤渲染契约（_level/_ui 等），保留自产契约
+ *  （polarity_index/point_count 等，AI 写 where 要用）+ 未登记内部字段（isInternalField 兜底）。
+ *  给模型真实值参照 → 写 where（field/op/value）命中率显著升，不再盲猜字段值。 */
+function _dtypeTag(dtype) {
+  if (dtype === 'number') return 'num';
+  if (dtype === 'datetime') return 'dt';
+  if (dtype === 'boolean') return 'bool';
+  return 'cat';   // string → categorical
+}
+async function _fieldSamples(fc, maxFields = 6, layerId = null) {
   const feats = fc && fc.features;
   if (!feats || !feats.length) return '';
-  const sample = feats.slice(0, 20);
+  const cards = await getFieldCard(layerId, fc);
   const keys = [];
-  for (const f of sample) {
-    for (const k of Object.keys(f.properties || {})) {
-      if (k && k[0] !== '_' && !keys.includes(k) && keys.length < maxFields) keys.push(k);
-    }
+  for (const k of Object.keys(cards)) {
+    if (isInternalField(k) || isRenderContract(cards[k].role)) continue;   // 过滤内部/渲染契约
+    if (!keys.includes(k)) { keys.push(k); if (keys.length >= maxFields) break; }
   }
   return keys.map((k) => {
-    const vals = []; let isNum = null;
-    for (const f of sample) {
-      const v = (f.properties || {})[k];
-      if (v === null || v === undefined || v === '') continue;
-      const s = String(v);
-      if (!vals.includes(s)) { vals.push(s); if (isNum === null) isNum = (typeof v === 'number'); }
-      if (vals.length >= 2) break;
-    }
-    if (!vals.length) return k;
-    return `${k}=${isNum ? 'num' : 'str'}:${vals.join('|').slice(0, 24)}`;
+    const c = cards[k];
+    const role = c.role || '?';
+    const vals = (c.samples || []).slice(0, 2);
+    if (!vals.length) return `${k}=${_dtypeTag(c.dtype)}:${role}`;
+    return `${k}=${_dtypeTag(c.dtype)}:${role}:${vals.join('|').slice(0, 24)}`;
   }).join('/');
 }
 
@@ -365,13 +400,13 @@ export async function buildContext() {
   const layers = getLayers();
   const an = activeAnalysis();
   const parts = [];
-  const loaded = layers
+  const loaded = (await Promise.all(layers
     .filter((l) => l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length)
-    .map((l) => {
+    .map(async (l) => {
       const cnt = l.fc.features.length;
-      const fs = _fieldSamples(l.fc, 6);   // DataEye：字段+类型+样本值（供 AI 写 where 有真实值参照）
+      const fs = await _fieldSamples(l.fc, 6, l.id);   // DataEye（P3）：字段+类型+role+样本值（供 AI 写 where 有真实值参照）
       return `${l.name}(${cnt}条${fs ? ',字段:' + fs : ''})`;
-    }).join('、');
+    })).join('、');
   parts.push('已加载图层：' + (loaded || '（无）'));
   const geo = formatGeoCatalog(await getGeoCatalog());
   if (geo) parts.push(geo);
