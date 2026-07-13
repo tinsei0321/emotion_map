@@ -1148,6 +1148,13 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.86 hotfix：focus/show/inspect 按钮正则兼容单括号（对齐 chart/fig，.format 吞括号致单括号按钮不渲染）（07月13日）
+
+沙箱收尾后梳理遗留（todo 记"下次顺手改"）：`{{focus:区域}}`/`{{show:图层}}`/`{{inspect:区域}}` 三类操作按钮占位符的正则只认双括号，与 chart(5.67)/fig(5.83) 已兼容 1~2 花括号不一致。**根因链**：[FINAL_TEMPLATE](ai_qa/prompts.py) 里示例写双括号 `{{focus:区域名}}`，经 `TEMPLATE.format()` 调用，Python 字符串格式化的字面量转义把 `{{`→`{`、`}}`→`}`（吞一层括号），LLM 实际收到单括号示例 `{focus:区域名}` → 输出单括号；前端 [panel.js](frontend/js/ai_qa/panel.js) 按钮渲染正则 `\{\{...\}\}` 只认双括号 → 单括号匹配不到，按钮不渲染（用户看到裸文字 `{focus:西陵区}` 而非可点按钮）。
+- **修复**（2 行正则，capture group 数量不变、回调签名不动）：L294 按钮渲染 `\{\{(focus|show|inspect):([^}]+)\}\}` → `\{{1,2}(focus|show|inspect):([^}]+)\}{1,2}`；L414 `_followUps` 抽首个 focus 区域 `\{\{focus:([^}]+)\}\}` → `\{{1,2}focus:([^}]+)\}{1,2}`。
+- **承重**：未碰（仅正则字面量；capture 不变 so 回调/抽值签名不动；不改模板/渲染管线/工具协议）。与 chart/fig 同范式收口——四类答案内占位符（chart/fig/focus·show·inspect）正则统一 1~2 花括号兼容。
+- **验证**：`.mjs` 副本 `node --check` ESM 语法过（memory `node-check-esm-unreliable`）；exec 测双/单/混合括号均匹配 + act/tgt capture 正确 + 无关文本不误匹配（PASS 8/8）。
+
 ### 5.85 hotfix：prompt 注入当前现实日期（LLM 不知"今天"致日期问答编造）（07月13日）
 
 用户测「今天星期几」，EMC 的 AI 答错（编造 5月11日）。根因：LLM（DeepSeek）训练数据有截止、运行时无时间概念，须程序显式告知"今天"；EMC 的 prompt（MANIFESTO + 各 TEMPLATE）全程未注入日期，LLM 只能编。

@@ -7,6 +7,10 @@
 
 ## 📅 2026-07-13
 
+### ✅ focus/show/inspect 按钮正则兼容单括号（revision-log 5.86）
+
+沙箱收尾梳理遗留（todo 旧记"下次顺手改"）。`{{focus|show|inspect:target}}` 操作按钮占位符正则只认双括号，但 `TEMPLATE.format()` 吞一层括号（`{{`→`{`）致 LLM 收到/输出单括号，前端双括号正则匹配不到 → 按钮不渲染（裸文字）。panel.js 两处正则（L294 按钮渲染 / L414 `_followUps` 抽首个 focus 区域）对齐 chart(5.67)/fig(5.83) 改 `\{{1,2}...\}{1,2}` 1~2 花括号兼容，capture group 不变回调签名不动。四类答案占位符（chart/fig/focus·show·inspect）正则统一收口。`.mjs` ESM 语法过 + exec 双/单/混合括号逻辑验证 PASS 8/8。承重未碰。
+
 ### ✅ 字段语义层 P1：统一字段字典 + alias 解析（revision-log 5.80）
 
 实施字段语义层 plan P1。新建 core/field_dictionary.py（35 roles 权威源 + resolve_role/alias/find_boundary_name_column）+ frontend/js/field_dictionary.js（镜像 + findKeyByRole）。收敛 9 处零散映射：state.js FIELD_SYNONYMS re-export / geo_routes _apply_attr_filter 注入 alias 解析 + extract_feature 删硬编码 / geo_registry resolve_boundary GeoJSON nameField 推断 + _point_layer_overview 删 _KEY_FIELDS / range_selector name_candidates 改字典 / landuse_colors dominantDMLC 改 resolveRole / import.js detectColorMode pickKey→findKeyByRole。修 pandas Index 真值歧义 bug。物理列名不改（alias 只读）。验证：py_compile + node check + 自检 + pytest 152 passed（6 预存 fail，0 新回归）。承重：registry 未碰（P3）/ 自产层只声明 / 5.74 对账不动。P2（profile+LLM 推断端点）/ P3（catalog/registry 带字段）待续。

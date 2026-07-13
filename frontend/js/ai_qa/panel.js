@@ -291,7 +291,8 @@ function renderAnswer(text, validNames) {
     return `<button class="${cls}" data-ref="${escapeHtml(name)}" type="button"${valid ? '' : ' disabled'}>${escapeHtml(name)}</button>`;
   });
   // D2: {{focus|show|inspect:target}} → 可点操作按钮（点击触发对应 TOOLS：飞到/显示图层/深读归因）
-  html = html.replace(/\{\{(focus|show|inspect):([^}]+)\}\}/g, (_, act, tgt) => {
+  // 兼容 1~2 花括号：.format() 把模板示例 {{focus:}} 吞成单括号喂给 LLM，模型常输出单括号 {focus:}（对齐 chart/fig 5.67/5.83）
+  html = html.replace(/\{{1,2}(focus|show|inspect):([^}]+)\}{1,2}/g, (_, act, tgt) => {
     const t = tgt.trim();
     const lbl = act === 'focus' ? '飞到 ' + t : act === 'show' ? '显示 ' + t : '深读 ' + t;
     return `<button class="chat-action-btn" data-action="${act}" data-target="${escapeHtml(t)}" type="button">${escapeHtml(lbl)}</button>`;
@@ -411,7 +412,7 @@ function _followUps(t) {
   const exit = t && t.exit;
   const skipped = t && t.review && t.review.skipped;
   const ans = (t && t.final) || '';
-  const ref = (ans.match(/\[ref:([^\]]+)\]/) || ans.match(/\{\{focus:([^}]+)\}\}/) || [])[1];
+  const ref = (ans.match(/\[ref:([^\]]+)\]/) || ans.match(/\{{1,2}focus:([^}]+)\}{1,2}/) || [])[1];
   const region = ref ? ref.trim() : '';
   if (exit === 'gap' || skipped === 'gap') {
     return [
