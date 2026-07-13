@@ -7,7 +7,8 @@ import { activateTab, setOverview } from '../panel.js';
 import { DOMAIN_LABEL, ELEMENT_LABEL } from '../popup.js';
 import { generateGridForAI } from '../grid-tool.js';
 import { renderLayerList, refreshLegend } from '../sidebar.js';
-import { fcBBox } from '../import.js';
+import { fcBBox, profileFields } from '../import.js';
+import { resolveRole } from '../field_dictionary.js';   // P2 字段语义层·规则标注（miss 才调 LLM）
 import { landuseLayerPaint } from '../landuse_colors.js';   // 用地层自动附标准色（EMC 产物也走此）
 
 let _lastGrid = null;   // 最近生成聚合层（ensure_zone/query 优先用）
@@ -39,6 +40,62 @@ export function getWisdom() {
   return _wisdomPromise;
 }
 let _wisdomPromise = null;
+
+// ── P2 字段语义层 · 字段卡片缓存 + LLM 推断接线 ─────────────────────────────
+// _fieldCardCache：layerId → {field:{role,dtype,samples,source,confidence}}。懒加载——
+// 首次问询（buildContext/_fieldSamples）调 getFieldCard 算一次，后续命中缓存（图层移除时由 layers:changed 清）。
+const _fieldCardCache = new Map();
+
+/** POST /api/v1/aiqa/profile_fields：为规则 miss 的字段调 LLM 推断 role。
+ *  复用后端 chat_with_fallback 韧性链；失败/降级返 {fields:{},degraded:True} 不抛（AI 仍可用规则命中的字段）。 */
+async function fetchProfileFields(body) {
+  try {
+    const r = await fetch('/api/v1/aiqa/profile_fields', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {}),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error((j && (j.detail || j.error)) || ('HTTP ' + r.status));
+    return j;   // {fields:{field:{role,confidence,reason}}, degraded?}
+  } catch (e) {
+    return { fields: {}, degraded: true, degraded_reason: String((e && e.message) || e) };
+  }
+}
+
+/** 字段卡片（P2）：profile → 规则标注（resolveRole）→ miss 调 /aiqa/profile_fields → 缓存。
+ *  返 {field:{role,dtype,samples,source:'rule'|'llm'|'rule-miss',confidence}}。
+ *  物理列名不改（只读 fc.properties）。LLM 全不可用→miss 字段标 rule-miss 不抛（降级）。 */
+export async function getFieldCard(layerId, fc, layerKind = 'point') {
+  if (layerId && _fieldCardCache.has(layerId)) return _fieldCardCache.get(layerId);
+  const profile = profileFields(fc);
+  const cards = {};
+  const miss = {};
+  for (const field of Object.keys(profile)) {
+    const p = profile[field];
+    const role = resolveRole(field);
+    if (role) {
+      cards[field] = { role, dtype: p.dtype, samples: p.samples, source: 'rule', confidence: 1.0 };
+    } else {
+      miss[field] = p;   // 规则 miss → 交 LLM
+    }
+  }
+  if (Object.keys(miss).length) {
+    const inferred = await fetchProfileFields({ fields: miss, layer_kind: layerKind });
+    const inf = (inferred && inferred.fields) || {};
+    for (const field of Object.keys(miss)) {
+      const p = profile[field];
+      const card = inf[field];
+      if (card && card.role) {
+        cards[field] = { role: card.role, dtype: p.dtype, samples: p.samples, source: 'llm', confidence: card.confidence || 0.5, reason: card.reason || '' };
+      } else {
+        cards[field] = { role: null, dtype: p.dtype, samples: p.samples, source: 'rule-miss', confidence: 0 };
+      }
+    }
+  }
+  if (layerId) _fieldCardCache.set(layerId, cards);
+  return cards;
+}
 
 /** POST /api/v1/geo/<path> 取 JSON；失败抛 Error(.detail)。 */
 const _LAYER_REF_KEYS = ['layer', 'range', 'layer_a', 'layer_b', 'boundary', 'center', 'target'];

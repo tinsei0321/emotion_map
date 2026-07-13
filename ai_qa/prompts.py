@@ -249,3 +249,72 @@ def build_revise_prompt(draft: str = '', review_hints: str = '', context: str = 
         context=ctx,
     )
     return _inject_tokens(prompt, context_tokens)
+
+
+# ── 字段语义推断（P2 /aiqa/profile_fields 用）────────────────────────────────
+# 为规则字典未命中的字段调 LLM 选 role（schema matching 兜底）。返 str（system prompt）。
+FIELD_INFER_TEMPLATE = """
+
+═══════════ 本次任务 · 字段语义推断（FIELD ROLE INFERENCE）═══════════
+你是数据字典（data dictionary，=字段含义清单）专家。下面给你若干**待识别字段**——每个字段有 dtype（数据类型）
++ 样本值 + 统计。请为每个字段选**最贴近的语义角色（role）**。role 是字段的语义类型（如"极性/名称/用地类型"，
+不是物理列名），从下方【role 候选表】选一个；若实在无法判断或都不贴切，role 填 null。
+
+【role 候选表】（name + 一句说明；选最贴近的一个）：
+{role_catalog}
+
+【待推断字段】（仅这些字段需要你判，规则字典已命中的不在此列）：
+{field_profiles}
+
+输出**严格 JSON 对象**（仅 JSON，禁 markdown 代码块 / 前后解释），结构如下：
+{{
+  "字段名1": {{"role": "role_a", "confidence": 0.9, "reason": "一句依据（如：样本含 Positive/Negative→极性）"}},
+  "字段名2": {{"role": null, "confidence": 0, "reason": "无法判断的原因"}}
+}}
+要求：
+- role 必须是上方候选表里的 name 之一（或 null）；非法 role 会被后端置 null。
+- confidence 反映把握：样本清晰→0.9，较有把握→0.7，模糊→0.5，纯猜→0.3。
+- land_use_class 候选的值域见国标用地分类（landuse_codes_2023.py：24 一级/111 二级/40 三级）；
+  样本若像用地类型代码或名称（如"商业用地""居住用地"）→选 land_use_class。
+- 判据举例：样本像情绪标签（Positive/好评/差评）→polarity；像 0~1 或 -2~2 的数值+有正负→score；
+  像地址/地点→location；像行政区/街道/单元名→boundary_name 或 name。
+"""
+
+
+def build_field_infer_prompt(fields: dict, layer_kind: str = '', context: str = '') -> str:
+    """P2 字段语义推断 prompt：为规则字典 miss 的字段选 role。返 str（system prompt）。
+
+    fields = {field: {dtype, samples, stats}}（规则字典未命中、交由 LLM 兜底的字段）。
+    范式照 build_diagnose_prompt：MANIFESTO + TEMPLATE.format() + 附录拼接（花括号安全）。
+    """
+    from core.field_dictionary import FIELD_ROLE_DICT
+    # 候选表只列用户上传可命中的 role（自产/渲染契约规则已命中，不交 LLM 推断）
+    user_roles = [
+        'polarity', 'score', 'text', 'location', 'emotion_type', 'emotion_intensity',
+        'name', 'category', 'domain', 'element', 'topic', 'timestamp',
+        'geometry_lon', 'geometry_lat', 'boundary_name', 'boundary_id', 'land_use_class',
+    ]
+    catalog_lines = [f"- {r}：{(FIELD_ROLE_DICT.get(r) or {}).get('description', '')}" for r in user_roles]
+    role_catalog = '\n'.join(catalog_lines)
+    # 字段画像
+    profile_lines = []
+    for fld, p in (fields or {}).items():
+        p = p or {}
+        dtype = p.get('dtype', '?')
+        samples = p.get('samples', []) or []
+        stats = p.get('stats', {}) or {}
+        samp_str = '|'.join(str(s) for s in samples[:3]) or '（无样本）'
+        stats_str = ', '.join(f'{k}={v}' for k, v in stats.items()) if stats else ''
+        line = f"- {fld}（dtype={dtype}）样本: {samp_str}"
+        if stats_str:
+            line += f" 统计: {stats_str}"
+        profile_lines.append(line)
+    field_profiles = '\n'.join(profile_lines) or '（无）'
+    prompt = MANIFESTO + FIELD_INFER_TEMPLATE.format(
+        role_catalog=role_catalog, field_profiles=field_profiles,
+    )
+    if layer_kind:
+        prompt += f"\n（图层类型：{layer_kind}，可作为推断辅助）"
+    if context:
+        prompt += f"\n（附加上下文：{context}）"
+    return prompt

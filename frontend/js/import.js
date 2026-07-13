@@ -184,6 +184,69 @@ function coercePropertyTypes(fc) {
   }
 }
 
+// ── P2 字段语义层 · 字段画像（profile）─────────────────────────────────────
+// profileFields：纯读 fc.properties（不 mutate），产 {field: {dtype, samples, stats}}。
+// 供 tools.js getFieldCard 规则标注 + miss 字段调 /aiqa/profile_fields 推断 role 用。
+// dtype ∈ {number, string, boolean, datetime}——datetime 靠正则+Date.parse 判（值不转换，只标 dtype）。
+const _DT_PATTERNS = [
+  /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?/,   // ISO YYYY-MM-DD[T ]HH:MM[:SS]
+  /^\d{4}-\d{2}-\d{2}$/,                            // YYYY-MM-DD
+  /^\d{4}\/\d{1,2}\/\d{1,2}/,                       // YYYY/MM/DD
+  /^\d{4}-\d{2}$/,                                  // YYYY-MM
+];
+function _looksDatetime(s) {
+  if (typeof s !== 'string') return false;
+  for (const re of _DT_PATTERNS) if (re.test(s)) return Number.isFinite(Date.parse(s));
+  return false;
+}
+function _profileStats(dtype, a) {
+  if (dtype === 'number' && a.nums.length) {
+    let mn = a.nums[0], mx = a.nums[0], sum = 0;
+    for (const n of a.nums) { if (n < mn) mn = n; if (n > mx) mx = n; sum += n; }
+    return { min: mn, max: mx, mean: Math.round((sum / a.nums.length) * 1e4) / 1e4 };
+  }
+  if (dtype === 'datetime' && a.dts.length) {
+    const ts = a.dts.map((s) => Date.parse(s)).filter((t) => Number.isFinite(t));
+    if (ts.length) return { min: new Date(Math.min(...ts)).toISOString(), max: new Date(Math.max(...ts)).toISOString() };
+  }
+  // string / boolean → 样本去重计数近似（前 20 feature 的样本，标注 approximate）
+  return { distinct: a.samples.length, approximate: true };
+}
+/** 字段画像：{field: {dtype, samples[], stats}}。采样前 20 feature，samples 前 3 去重（截 24 字符）。 */
+export function profileFields(fc) {
+  const out = {};
+  const feats = fc && fc.features;
+  if (!feats || !feats.length) return out;
+  const sample = feats.slice(0, 20);
+  const acc = {};
+  for (const f of sample) {
+    const p = f.properties || {};
+    for (const k of Object.keys(p)) {
+      let a = acc[k];
+      if (!a) a = acc[k] = { samples: [], nonNull: 0, num: 0, dt: 0, bool: 0, nums: [], dts: [] };
+      const v = p[k];
+      if (v === null || v === undefined || v === '') continue;
+      a.nonNull += 1;
+      const s = String(v);
+      if (a.samples.length < 3 && !a.samples.includes(s)) a.samples.push(s.slice(0, 24));
+      if (typeof v === 'boolean') { a.bool += 1; continue; }
+      if (typeof v === 'number') { a.num += 1; if (a.nums.length < 50) a.nums.push(v); continue; }
+      if (_looksDatetime(s)) { a.dt += 1; if (a.dts.length < 50) a.dts.push(s); }
+    }
+  }
+  for (const k of Object.keys(acc)) {
+    const a = acc[k];
+    const dtype = a.nonNull
+      ? (a.bool > a.nonNull / 2 ? 'boolean'
+        : a.num > a.nonNull / 2 ? 'number'
+        : a.dt > a.nonNull / 2 ? 'datetime'
+        : 'string')
+      : 'string';
+    out[k] = { dtype, samples: a.samples, stats: _profileStats(dtype, a) };
+  }
+  return out;
+}
+
 /** 轻量 DSV 解析（仅用于 WKT/GeoJSON/polyline 列模式；coords 模式走 csv2geojson）。
  *  返回 { header:string[], body: Row[] }，Row = { [col]: string }。*/
 function dsvRows(text, delimiter) {

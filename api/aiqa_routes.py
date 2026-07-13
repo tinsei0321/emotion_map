@@ -9,6 +9,7 @@ L3=ai_qa/episode.py 写 DATA/ai_qa/episodes.jsonl（被 ai_qa/consolidate.py 周
 
 挂载：api/main.py `app.include_router(aiqa_router, prefix='/api/v1')` → 总路径 /api/v1/aiqa/*。
 """
+import json
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter
@@ -16,6 +17,9 @@ from pydantic import BaseModel
 
 from ai_qa.wisdom import wisdom_text, retrieve_wisdom
 from ai_qa.episode import log_episode
+from ai_qa.llm import LLMError, chat_with_fallback
+from ai_qa.prompts import build_field_infer_prompt
+from core.field_dictionary import validate_llm_roles
 
 aiqa_router = APIRouter()
 
@@ -51,3 +55,59 @@ def post_episode(ep: EpisodeIn):
         review=ep.review, ok=ep.ok, extra=ep.extra,
     )
     return {'ok': saved}
+
+
+class ProfileFieldsIn(BaseModel):
+    # P2 字段语义推断：fields = 规则字典 miss 的 {field: {dtype, samples, stats}}
+    fields: Dict[str, Dict[str, Any]] = {}
+    layer_kind: str = ''    # 'point' | 'polygon' | ''（推断辅助）
+    context: str = ''       # 可选附加上下文
+
+
+def _parse_field_json(raw: str) -> dict:
+    """容错解析字段推断 JSON；失败返 {}（照 review._parse_review_json 范式）。"""
+    if not raw or not raw.strip():
+        return {}
+    s = raw.find('{')
+    e = raw.rfind('}')
+    if s < 0 or e < 0 or e <= s:
+        return {}
+    candidate = raw[s:e + 1]
+    try:
+        obj = json.loads(candidate)
+    except Exception:
+        try:
+            cleaned = candidate.replace(',}', '}').replace(',]', ']')
+            obj = json.loads(cleaned)
+        except Exception:
+            return {}
+    return obj if isinstance(obj, dict) else {}
+
+
+@aiqa_router.post('/aiqa/profile_fields')
+def post_profile_fields(body: ProfileFieldsIn):
+    """P2 字段语义推断：为规则字典 miss 的字段调 LLM 选 role（schema matching 兜底）。
+
+    复用 chat_with_fallback（tier='flash' + json_mode，DeepSeek→Ark→讯飞 5.71 韧性链）；
+    全 provider 不可用 → 降级 {fields:{}, degraded:True}，不阻塞前端上传/AI（前端只标规则命中字段）。
+    返回 {fields: {field:{role,confidence,reason}}}（非法 role 经 validate_llm_roles 置 null）。
+    """
+    if not body.fields:
+        return {'fields': {}}
+    sys_prompt = build_field_infer_prompt(body.fields, body.layer_kind, body.context)
+    messages = [
+        {'role': 'system', 'content': sys_prompt},
+        {'role': 'user', 'content': '请为上述待推断字段输出 JSON。'},
+    ]
+    try:
+        gen = chat_with_fallback(messages, tier='flash', stream=False,
+                                 json_mode=True, with_reason=False,
+                                 temperature=0.1, max_tokens=1200)
+        raw = next(gen)
+    except LLMError as e:
+        return {'fields': {}, 'degraded': True, 'degraded_reason': str(e)}
+    except Exception as e:
+        return {'fields': {}, 'degraded': True, 'degraded_reason': f'字段推断异常: {e}'}
+    parsed = _parse_field_json(raw)
+    validated = validate_llm_roles(parsed)
+    return {'fields': validated}
