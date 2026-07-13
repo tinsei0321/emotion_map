@@ -1148,6 +1148,16 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.81 字段语义层 P2：profile + LLM 字段角色推断（规则优先 LLM 兜底 · 懒加载）（07月13日）
+
+实施 [字段语义层 plan](C:/Users/admin/.claude/plans/emc-plan-emc-field-semantic-layer-md-p1-zazzy-duckling.md) P2。P1 字典只覆盖 variant（同义词），非 variant 列（如"心情""评分"）规则 miss → EMC 看不懂、`where` 写不对。P2 补 LLM 推断（规则 miss 才调 flash LLM 选 role）+ 字段卡片缓存。**规则优先、LLM 兜底**（业界 schema matching / data dictionary 标准做法），降级不阻塞。
+- **profileFields（[import.js](d:/Github/emotion_map/frontend/js/import.js)）**：纯读 fc 产 `{field:{dtype, samples, stats}}`，dtype 加 **datetime**（不只 boolean/number/null，正则+Date.parse 判，值不转换只标 dtype）；samples 前 3 去重；stats number→min/max/mean、datetime→min/max(ISO)、string→distinct 近似。与 `coercePropertyTypes`（in-place 强转）职责分清（纯读不 mutate）。
+- **build_field_infer_prompt（[prompts.py](d:/Github/emotion_map/ai_qa/prompts.py)）**：范式照 build_diagnose_prompt（MANIFESTO + TEMPLATE.format + 附录拼接，`{{`/`}}` 转义）；从 core.field_dictionary 拉 17 个用户上传 role 候选 + description；要求严格 JSON `{field:{role,confidence,reason}}`。
+- **POST /aiqa/profile_fields（[aiqa_routes.py](d:/Github/emotion_map/api/aiqa_routes.py)）**：复用 `chat_with_fallback`（tier='flash' stream=False json_mode with_reason=False，5.71 DeepSeek→Ark→讯飞韧性链）；全 provider 不可用 → try/except LLMError → 降级 `{fields:{},degraded:True}` 不阻塞；`_parse_field_json` 容错解析（strip fence + 尾逗号修复，照 review._parse_review_json）；`validate_llm_roles`（P1 已实现，零改动）校验非法 role 置 null。
+- **字段卡片缓存（[tools.js](d:/Github/emotion_map/frontend/js/ai_qa/tools.js)）**：模块级 `_fieldCardCache = new Map()`（layerId → fieldCards）+ `getFieldCard(layerId, fc, layerKind)`（profile → resolveRole 规则标注 → miss 调 fetchProfileFields → source:'rule'|'llm'|'rule-miss' 合并 → 缓存）+ `fetchProfileFields`（POST，j.detail||j.error 错误范式）。**懒加载**：首次问询（buildContext/_fieldSamples，P3）才算，后续命中缓存；**不改 main.js 上传流程**。
+- **验证**：py_compile + node --check 全过；功能自检（build_field_infer_prompt 无未填槽+花括号配对 / validate_llm_roles 合法通过非法置 null / profileFields dtype+stats 正确 / resolve_role 规则-miss 分流）；pytest **152 passed，6 预存 fail 不变，0 新回归**。端点真调待用户带 key 复现。
+- **承重**：物理列名不改（profile/getFieldCard 全只读 fc.properties）；LLM 复用 chat_with_fallback 不新写调用；自产层契约只声明不改产出；field_dictionary 在 core/（ai_qa prompts.py 从 core import，反向依赖禁止）；land_use_class 值域 prompt 提示引用 landuse_codes_2023.py 不硬编码；懒加载不改上传流程；思考透明 5.70 不动。P3（catalog/registry 带字段 + _fieldSamples 升级）待续。
+
 ### 5.80 字段语义层 P1：统一字段字典 + alias 解析（收敛 9 处零散映射 · 物理列名不改）（07月13日）
 
 实施 [字段语义层 plan](C:/Users/admin/.claude/plans/emc-field-semantic-layer.md) P1（字典收敛 + alias 解析治痛点）。把散落 9+ 处的字段同义词映射收敛为单一权威源，`where`/`pre_filter` 用别名自动解析，上传面层 nameField 自动推断。**物理列名不改**，只加 canonical 别名解析层。
