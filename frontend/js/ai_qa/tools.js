@@ -428,7 +428,7 @@ export async function buildContext() {
       const cnt = l.fc.features.length;
       const fs = await _fieldSamples(l.fc, 6, l.id);   // DataEye（P3）：字段+类型+role+样本值（供 AI 写 where 有真实值参照）
       return `${l.name}(${cnt}条${fs ? ',字段:' + fs : ''})`;
-    })).join('、');
+    }))).join('、');
   parts.push('已加载图层：' + (loaded || '（无）'));
   const geo = formatGeoCatalog(await getGeoCatalog());
   if (geo) parts.push(geo);
