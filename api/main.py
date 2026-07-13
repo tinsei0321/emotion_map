@@ -53,11 +53,15 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS — 允许溯佰科平台和本地前端访问
+# CORS — 仅允许本机 origin（localhost/127.0.0.1 任意端口）。
+# 收紧自 allow_origins=["*"]（加固③，配合 /run 代码执行端点）：serve.py 反代是同源
+# （:8080→:8000 服务端完成，浏览器不跨域），正常开发链路 CORS 不触发；此设置只在
+# 「浏览器直连后端」的开发场景放行本机，挡住外部网页远程调用 /run 等敏感路由。
+# 生产部署须进一步收紧到真实域名。
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origin_regex=r'https?://(localhost|127\.0\.0\.1)(:\d+)?',
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -78,6 +82,14 @@ app.include_router(geo_router, prefix="/api/v1")
 # 三层闭环：L1=MANIFESTO / L2=ai_qa/wisdom.py（人审策展） / L3=DATA/ai_qa/episodes.jsonl（consolidate 挖掘）。
 from api.aiqa_routes import aiqa_router
 app.include_router(aiqa_router, prefix="/api/v1")
+
+# /run 代码执行端点（P3 sandbox，须 SAFE_READY=True 才挂）。
+# SAFE_READY 是红线开关：sandbox 单测全过 + 人审后置 True；置 False 时此 if 自动卸载 /run（单点 revert）。
+# 安全现状（演示版底线）：open-wrapper + AST 反射 + frame-based eval + CORS 本机，非 OS 级隔离。
+from api.run_routes import run_router
+from api.sandbox import SAFE_READY
+if SAFE_READY:
+    app.include_router(run_router, prefix="/api/v1")
 
 
 @app.get("/")

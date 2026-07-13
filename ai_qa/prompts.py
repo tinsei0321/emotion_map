@@ -8,7 +8,7 @@
 """
 from ai_qa.manifesto import MANIFESTO
 from ai_qa.paradigm import (
-    scale_paradigm_text, domain_outlets_text, geo_tool_catalog_text,
+    scale_paradigm_text, domain_outlets_text, geo_tool_catalog_text, code_exec_catalog_text,
     DIAGNOSE_CARD_FIELDS, DATA_STRATEGY,
 )
 
@@ -70,6 +70,8 @@ AGENT_TEMPLATE = """
 - nearest：最近邻（离地铁最近的负面点）。params: {{ "layer": "点层", "target": "preset_id|geojson", "k": 1 }}
 - hotspot：Gi* 热点识别（负面聚集/情绪热点，逐点 hot/cold/ns，自动落图层）。params: {{ "value_col": "score", "invert": true(负面为热), "layer": "(默认L2)", "range": "(可选)", "as": "(图层名)", "keep": "(可选true)" }}
 - density：核密度(KDE)栅格——用户说"核密度/密度分析/聚集强度/热力分布"时**首选**（产连续密度面，2D 离散分段色带，自动落图层；区别于 hotspot 逐点 Gi*）。params: {{ "bandwidth_m": 800(平滑带宽·越大越平滑), "cell_size_m": 300(格长), "value_col": "(可选加权如score，不传=纯点密度)", "layer": "(默认L2)", "range": "(可选)", "as": "(图层名·现实内容)", "keep": "(可选true)" }}
+- run_python：自由执行 Python（geo 工具覆盖不到的灵活分析/出图兜底；geo 工具够用时**优先 geo**）。params: {{ "code": "Python 源码", "inputs": ["可选 {{layer:$1/图层名, as:变量名}}（取已加载图层为 GeoJSON dict 注入子进程）"], "timeout": 30 }}
+  **使用约束**：① 优先用 geo 工具（zonal_stats/rank/overlay/density/...），run_python 是兜底；② 出图用 matplotlib（Agg 已设），`plt.savefig('fig.png')` 即可（图片自动捕获）；③ 取图层用 inputs 指定变量名，代码里直接用该变量（GeoJSON FeatureCollection dict），转 DataFrame：`import pandas as pd; df = pd.DataFrame([f['properties'] for f in fc['features']])`；④ 结论里引用图片用 `{{fig:fig1}}`（figId 从观察里读，禁编造）；⑤ 描述图片时用「**图片**」「**柱图**」「**折线图**」，**禁用**「图层/分布/网格/面/点」字样（防对账误抽）。
 - answer：已掌握足够信息，退出 loop 出结论。params: {{}}
 
 【Agent 规则】（严守）
@@ -98,6 +100,7 @@ def build_agent_prompt(context: str = '', tool_history: str = '', round_n: int =
     prompt = MANIFESTO + AGENT_TEMPLATE.format(round=round_n, tool_history=hist, context=ctx)
     # GIS 操作目录附录（format 后拼接，花括号安全）—— 教模型选对 geo 工具 + 入参/产出/出口贡献
     prompt += '\n\n═══════════ 附录 · GIS 操作目录（何时用/入参/产出/出口贡献）═══════════\n' + geo_tool_catalog_text()
+    prompt += '\n\n═══════════ 附录 · 代码执行目录（run_python · geo 兜底）═══════════\n' + code_exec_catalog_text()
     return _inject_tokens(prompt, context_tokens)
 
 

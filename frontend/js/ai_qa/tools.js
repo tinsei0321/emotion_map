@@ -63,6 +63,20 @@ async function fetchProfileFields(body) {
   }
 }
 
+/** POST /api/v1/run：执行 agent 生成的 Python（run_python 工具后端，照 fetchProfileFields 范式）。
+ *  返 {ok, stdout, error, figs}；figs=[{id,name,dataUri}]（图片 base64，前端 _figCache 缓存供 {{fig:ID}} 渲染）。
+ *  失败抛 Error（run_python 工具内 catch 归一为 observation，不向 harness 抛）。 */
+async function fetchRun(body) {
+  const r = await fetch('/api/v1/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((j && (j.detail || j.error)) || ('HTTP ' + r.status));
+  return j;
+}
+
 /** 字段卡片（P2）：profile → 规则标注（resolveRole）→ miss 调 /aiqa/profile_fields → 缓存。
  *  返 {field:{role,dtype,samples,source:'rule'|'llm'|'rule-miss',confidence}}。
  *  物理列名不改（只读 fc.properties）。LLM 全不可用→miss 字段标 rule-miss 不抛（降级）。 */
@@ -101,11 +115,19 @@ export async function getFieldCard(layerId, fc, layerKind = 'point') {
 const _LAYER_REF_KEYS = ['layer', 'range', 'layer_a', 'layer_b', 'boundary', 'center', 'target'];
 const _stepResults = [];      // 本轮工具产物 fc（按产出序，单调），供 $n 显式引用
 const _resultIdByStep = [];   // 结果层 id（与 _stepResults 平行，单调），供 ref('$n') 标消费
-export function resetStepResults() { _stepResults.length = 0; _resultIdByStep.length = 0; _registry.length = 0; }
+export function resetStepResults() { _stepResults.length = 0; _resultIdByStep.length = 0; _registry.length = 0; _figCache.clear(); }
 const _curResultIds = [];     // 本轮"存活"的结果层 id（沉浸聚焦用：关其余、留本轮、缩放并集）
 const _consumedIds = new Set(); // 被后续工具引用消费掉的中间结果层 id（$n 或命名引用），addResultLayer 移除它们、保未消费的最终结果
 const _keepIds = new Set();   // 显式保留（keep:true）的结果层 id——用户要求保留/属展示结果的层，即使被引用消费也豁免清理（显式意图覆盖默认启发式）
 const _registry = [];   // ① artifact registry：本轮所有产物 {id,name,tool,round,t}（带 provenance，供 formatRegistry 注入/对账审计）
+
+// figId → dataUri 缓存（run_python 产图，panel.js _renderFigs 读此替换 {{fig:ID}}）。
+// 图是单轮产物，resetStepResults 清；不入 _registry（非图层，getArtifacts 只认 fc.features 非空层）。
+const _figCache = new Map();
+/** 取图 dataUri（panel.js _renderFigs 调）。 */
+export function getFig(id) { return _figCache.get(id); }
+/** 清 fig 缓存（resetStepResults 调，防跨轮累积）。 */
+export function clearFigCache() { _figCache.clear(); }
 let _curTool = null, _curRound = 0;   // harness 每轮 setToolContext 注入当前工具/轮次（addResultLayer 读入 registry）
 export function setToolContext({ tool, round } = {}) { _curTool = tool || null; _curRound = round || 0; }
 export function resetCurrentResults() { _curResultIds.length = 0; _consumedIds.clear(); _keepIds.clear(); }
@@ -788,5 +810,44 @@ export const TOOLS = {
         data: { count: r.count, layerId: _dL && _dL.id, hi, md },
       };
     } catch (e) { return _ERR('density', e); }
+  },
+
+  /** run_python：自由执行 Python（geo 工具覆盖不到的灵活分析/出图兜底）。
+   *  出图用 matplotlib（Agg），plt.savefig('fig.png') 自动捕获；取图层用 inputs[{layer,as}] 注入变量。
+   *  产图片不入地图（不调 addResultLayer），observation 用「图片」不用图层词（避 5.74 对账 verbRe 污染）。 */
+  async run_python(params = {}) {
+    const code = (params.code || '').toString().trim();
+    if (!code) return { observation: '[ERR] run_python 需 code' };
+    const inputs = Array.isArray(params.inputs) ? params.inputs : [];
+    const dataRefs = {};
+    for (const inp of inputs) {
+      if (!inp || !inp.layer || !inp.as) continue;
+      const fc = ref(inp.layer);   // $n / 已加载图层名 → fc；preset_id 返字符串则跳过（data_refs 须 GeoJSON dict）
+      if (fc && fc.features) dataRefs[inp.as] = fc;
+    }
+    try {
+      const r = await fetchRun({
+        code,
+        data_refs: dataRefs,
+        timeout: Number(params.timeout) || 30,
+      });
+      if (!r.ok) {
+        return { observation: '[ERR] 代码执行失败：' + String(r.error || '未知错误').slice(-200) };
+      }
+      const figList = Array.isArray(r.figs) ? r.figs : [];
+      for (const f of figList) {
+        if (f && f.id && f.dataUri) _figCache.set(f.id, f.dataUri);   // panel.js _renderFigs 据此替换 {{fig:ID}}
+      }
+      const outTail = (r.stdout || '').slice(-400).trim();
+      const figLine = figList.length
+        ? `\n已生成图片：${figList.map((f) => f.name).join(', ')}（在结论里用 {{fig:${figList[0].id}}} 引用）`
+        : '';
+      return {
+        observation: '代码执行成功。' + (outTail ? `\n输出末尾：\n${outTail}` : '') + figLine,
+        data: { figs: figList.map((f) => ({ id: f.id, name: f.name })), hasImage: figList.length > 0 },
+      };
+    } catch (e) {
+      return { observation: '[ERR] run_python：' + String((e && e.message) || e) };
+    }
   },
 };

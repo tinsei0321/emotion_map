@@ -203,6 +203,31 @@ def geo_tool_catalog_text() -> str:
     return '\n'.join(lines)
 
 
+# ════════════ 表3b · 代码执行目录（run_python，geo 工具兜底）════════════
+# geo 工具覆盖不到的灵活分析/出图走 run_python（沙箱执行，三道底线加固）。
+# 后端实现见 api/run_routes.py（POST /run → sandbox.run_sandbox）。
+CODE_EXEC_CATALOG = [
+    {
+        'name': 'run_python',
+        'when': 'geo 工具覆盖不到的灵活分析/出图（自定义统计、特殊可视化、pandas 复杂变换）',
+        'params': 'code(Python 源码), inputs=[{layer,as}]?(取已加载图层注入), timeout?',
+        'yields': 'stdout + 图片（matplotlib savefig 自动捕获，结论里用 {{fig:fig1}} 引用）',
+        'contributes': '兜底能力——geo 工具够用时优先 geo；需自由代码/自定义图时用此',
+    },
+]
+
+
+def code_exec_catalog_text() -> str:
+    lines = []
+    for t in CODE_EXEC_CATALOG:
+        lines.append(
+            f"- {t['name']}：{t['when']}\n"
+            f"    入参：{t['params']} → 产出：{t['yields']}\n"
+            f"    贡献：{t['contributes']}"
+        )
+    return '\n'.join(lines)
+
+
 # ════════════ DIAGNOSE 问题理解卡（6 字段，DIAGNOSE 阶段强制输出）════════════
 DIAGNOSE_CARD_FIELDS = {
     'intent': '意图（最高优先级）：general(通用问答) | gis_operation(纯GIS/数据操作) | emotion_analysis(情绪分析)',

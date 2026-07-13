@@ -1382,3 +1382,22 @@ AI 问答基座稳后，从底部独立抽屉重设计为融入左端栏的 **Em
 **下会话筛选提示**：二马路/大南门(ermawu) 跨 pos 三词 + 占道停车共现，是天然高频区；但「1-3 典型格/词」由下会话讨论定。
 
 > **本会话（07月06日 00:46）**：典型格大头针方案试做→用户否（"表达差/关键词越改越少"）→全回退（净 0 代码）。单元深读**重新设计定向**——Q2「推荐深读」清单+cluster①分级（替大头针）/ Q1 四板块·结论先行 / Q3 闭合「看同类」。关键词数量修 floor 10+平坦扩 15（旧"覆盖80%"陡分布时<10）。详见 revision-log 5.24 + 交接卡。**下会话先做 Q2。**
+
+---
+
+## ★ 本会话（07月13日）·5.83 沙箱挂 /run + 三道底线加固
+
+> 字段语义层 P1-P3 收完后挂 /run（AI 助手自写 Python 出图的兜底能力）。沙箱原 `SAFE_READY=False`，补三道底线后切 True 挂载。用户拍板「演示版+底线加固」，不做 Job Object 硬限，定位本地单机演示。
+
+**完成**：
+- [api/sandbox.py](api/sandbox.py) 加固①② + MPLCONFIGDIR + SAFE_READY=True：open-wrapper（写必查 workdir 白名单/用户帧读查/库帧读放行）+ AST 反射审查 4 类拦 + frame-based eval（用户帧禁/库帧放行）。**关键 bug**：wrapper 须补 globals/locals=真正调用帧还原 eval 默认语义（否则 numpy.f2py `eval('lambda v,f=f')` NameError + importlib `exec(code,module.__dict__)` future ImportError）。
+- 新建 [api/run_routes.py](api/run_routes.py)：POST /run（RunIn + run_sandbox + _encode_images figId=fig{n} 纯 ASCII）。
+- [api/main.py](api/main.py)：CORS 收紧本机（allow_origin_regex）+ if SAFE_READY 条件挂载 run_router。
+- [frontend/js/ai_qa/tools.js](frontend/js/ai_qa/tools.js)：run_python 工具（第 15）+ _figCache/getFig/clearFigCache + fetchRun（不调 addResultLayer，observation 用「图片」避对账）。
+- [frontend/js/ai_qa/panel.js](frontend/js/ai_qa/panel.js)：_renderFigs（{{fig:ID}}→`<img>`，照 _renderCharts）+ enhanceCodeBlocks 调用。
+- [ai_qa/paradigm.py](ai_qa/paradigm.py) CODE_EXEC_CATALOG + [ai_qa/prompts.py](ai_qa/prompts.py) run_python schema 行（花括号双写）+ build_agent_prompt 拼 catalog。
+- [tests/test_sandbox.py](tests/test_sandbox.py) +9 加固测试（反射 4 + open-wrapper 2 + frame-based eval 3）。
+
+**验证**：pytest tests/test_sandbox.py **28 passed**（19旧+9新）；post_run 端点真调（matplotlib 出图→fig1+dataUri / 反射端点级拦 / data_refs 注入 rows 2）；openapi 确认 /api/v1/run 挂载（total 34 paths 现有路由全在）；node --check + py_compile 全过。
+
+**承重**：不破 frame-based trust（库帧 lazy-import/lazy-open/eval 放行，pandas/matplotlib/numpy 不误伤）/ 5.74 对账（figId 纯 ASCII + 「图片」措辞不进 verbRe/showRe）/ SAFE_READY 单点 revert（改回 False gate 自动卸载 /run）/ run_sandbox 永不裸输 / 演示版非 OS 隔离（内存 CPU 仅超时软限、别名反射 AST 拦不住靠禁 eval 收敛——文档化，生产须叠容器）。详见 revision-log 5.83。

@@ -1,6 +1,6 @@
 // ═══ panel.js — AI 问答 UI（底部滑出 · agent loop · 历史持久化 · 思考深度开关 · 动态状态）═══
 import { orchestrate } from './harness.js';
-import { buildContext, TOOLS, resetStepResults, resetCurrentResults, cleanupConsumedResults } from './tools.js';
+import { buildContext, TOOLS, resetStepResults, resetCurrentResults, cleanupConsumedResults, getFig } from './tools.js';
 import { getLayers, selectLayer, getSelectedLayer } from '../state.js';
 import { getLastUsage, resetCallStats, getCallStats } from './api.js';
 
@@ -594,6 +594,26 @@ function _renderCharts(el) {
   });
 }
 
+/** 答案内 {{fig:ID}} → <img>（run_python 工具产图，figId→dataUri 从 tools.js _figCache 取）。
+ *  范式照 _renderCharts：兼容 1~2 花括号（marked.parse 后 {{→{ 单括号，模型也可能单括号）、
+ *  独占段落 wrap div、内联 span、解析失败留 <code>（HTML 实体编码花括号防二次匹配）。 */
+function _renderFigs(el) {
+  if (!el) return;
+  el.innerHTML = el.innerHTML.replace(
+    /(<p>\s*)?\{{1,2}fig:(\w+)(\s*<\/p>)?/gi,
+    (m, p1, figId) => {
+      const dataUri = getFig(figId);   // figId=\w+ 纯字母数字，安全无需 escape
+      if (!dataUri) {
+        return `<code class="aiq-fig-bad">&#123;&#123;fig:${figId}&#125;&#125;（图缺失）</code>`;
+      }
+      const img = `<img class="aiq-fig" src="${dataUri}" alt="${figId}" loading="lazy" />`;
+      return p1
+        ? `<div class="aiq-fig-wrap">${img}</div>`
+        : `<span class="aiq-fig-wrap aiq-fig-inline">${img}</span>`;
+    }
+  );
+}
+
 function enhanceCodeBlocks(el) {
   if (!el) return;
   el.querySelectorAll('pre').forEach((pre) => {
@@ -611,6 +631,7 @@ function enhanceCodeBlocks(el) {
     pre.appendChild(btn);
   });
   _renderCharts(el);   // 答案内 {{chart:...}} → Chart.js（所有 renderAnswer 站点经此覆盖）
+  _renderFigs(el);     // 答案内 {{fig:ID}} → <img>（run_python 产图，所有 renderAnswer 站点经此覆盖）
 }
 
 /** 渲染问题理解卡（DIAGNOSE）：domain/scale/decision/outlet + strategy 徽章 + method。 */

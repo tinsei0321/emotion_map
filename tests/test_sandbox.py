@@ -21,9 +21,10 @@ from api.sandbox import run_sandbox, SAFE_READY, WHITELIST
 # ---------------------------------------------------------------------------
 # SAFE_READY gate + 白名单结构校验
 # ---------------------------------------------------------------------------
-def test_safe_ready_default_off():
-    """红线：SAFE_READY 默认 False。单测全过 + 人审前绝不挂 /run。"""
-    assert SAFE_READY is False
+def test_safe_ready_status():
+    """红线开关状态：True=已通过全测+人审，允许 api/main.py 挂 /run（if SAFE_READY gate）。
+    revert 只需改 sandbox.py 的 SAFE_READY=False，gate 自动卸载 /run，本断言同步改回 False。"""
+    assert SAFE_READY is True
 
 
 def test_whitelist_covers_required_libs():
@@ -97,6 +98,78 @@ def test_run_sandbox_never_raises_on_crash():
     assert r['timed_out'] is False
     assert 'RuntimeError' in (r['stderr'] or '') or 'boom' in (r['stderr'] or '')
     assert isinstance(r['artifacts'], list)
+
+
+# ---------------------------------------------------------------------------
+# test_rejects_* —— 加固② AST 反射审查（dunder 反射逃逸，进子进程前静态拦）
+# ---------------------------------------------------------------------------
+def test_rejects_reflection_class_access():
+    """(1).__class__ → AST 拦（防元类逃逸链 ().__class__.__bases__[0].__subclasses__())."""
+    r = run_sandbox("x = (1).__class__", timeout=10)
+    assert r['ok'] is False
+    assert '反射审查' in (r['error'] or '')
+
+
+def test_rejects_reflection_subclasses():
+    """().__class__.__bases__ → 拦（经典元类逃逸链起点）。"""
+    r = run_sandbox("y = ().__class__.__bases__", timeout=10)
+    assert r['ok'] is False
+    assert '反射审查' in (r['error'] or '')
+
+
+def test_rejects_getattr_dunder():
+    """getattr(x, '__class__') → 拦（getattr 同族反射 dunder）。"""
+    r = run_sandbox("getattr(1, '__class__')", timeout=10)
+    assert r['ok'] is False
+    assert '反射审查' in (r['error'] or '')
+
+
+def test_rejects_getattr_concat():
+    """getattr(x, '__cl'+'osure__') → 拦（字符串拼接绕过，BinOp 保守拦）。"""
+    r = run_sandbox("getattr(1, '__cl' + 'osure__')", timeout=10)
+    assert r['ok'] is False
+    assert '反射审查' in (r['error'] or '')
+
+
+# ---------------------------------------------------------------------------
+# test_rejects_* —— 加固① open-wrapper（路径白名单 + frame-based trust）
+# ---------------------------------------------------------------------------
+def test_rejects_open_read_escape_absolute():
+    """open(绝对路径).read() → 用户帧读沙箱外拦（防偷读 .env 密钥 / DATA/raw PII）。"""
+    r = run_sandbox("open('/nonexistent_sb_secret').read()", timeout=10)
+    assert r['ok'] is False
+    assert '禁止读沙箱外' in (r['error'] or '') or '禁止读沙箱外' in (r['stderr'] or '')
+
+
+def test_rejects_open_write_escape():
+    """open(沙箱外绝对路径,'w') → 写逃逸拦（写模式无论帧都查白名单）。"""
+    r = run_sandbox("open('/nonexistent_sb_write.txt', 'w').write('x')", timeout=10)
+    assert r['ok'] is False
+    assert '禁止写沙箱外' in (r['error'] or '') or '禁止写沙箱外' in (r['stderr'] or '')
+
+
+# ---------------------------------------------------------------------------
+# test_rejects_* —— 加固②残余兜底 frame-based eval/exec/compile（用户帧禁、库帧放行）
+# ---------------------------------------------------------------------------
+def test_rejects_user_eval():
+    """用户帧 eval → 拦（防动态字符串构造反射；库帧放行见 breakthrough 组）。"""
+    r = run_sandbox("eval('1+1')", timeout=10)
+    assert r['ok'] is False
+    assert 'eval/exec/compile' in (r['error'] or '') or 'eval/exec/compile' in (r['stderr'] or '')
+
+
+def test_rejects_user_exec():
+    """用户帧 exec → 拦。"""
+    r = run_sandbox("exec('x=1')", timeout=10)
+    assert r['ok'] is False
+    assert 'eval/exec/compile' in (r['error'] or '') or 'eval/exec/compile' in (r['stderr'] or '')
+
+
+def test_rejects_user_eval_import_attack():
+    """用户帧 eval('__import__(\"os\")') → 拦（动态字符串构造反射的真实攻击场景）。"""
+    r = run_sandbox("eval('__import__(\"os\").getcwd()')", timeout=10)
+    assert r['ok'] is False
+    assert 'eval/exec/compile' in (r['error'] or '') or 'eval/exec/compile' in (r['stderr'] or '')
 
 
 # ---------------------------------------------------------------------------
