@@ -8,6 +8,7 @@
 // wellknown / @mapbox/polyline (best-effort; degrade gracefully if CDN blocked).
 
 import { FIELD_SYNONYMS, POLARITY_ORDER } from './state.js';
+import { findKeyByRole } from './field_dictionary.js';   // P1 字段语义层·按 role 找列（替代 pickKey+FIELD_SYNONYMS）
 
 // ── Format table (drives the confirm-dialog dropdown) ──────────────────────
 export const FILE_TYPES = [
@@ -562,8 +563,9 @@ function toMultiPolygonFeature(f) {
 export function detectColorMode(pointFC) {
   if (!pointFC.features.length) return { fc: pointFC, colorMode: 'polarity', needsAnalysis: false };
   const sample = pointFC.features[0].properties || {};
-  const polKey = pickKey(sample, FIELD_SYNONYMS.polarity);
-  const confKey = pickKey(sample, ['l1_confidence', 'confidence', ...FIELD_SYNONYMS.score]);
+  // P1: 用 findKeyByRole 按角色找列（替代 pickKey+FIELD_SYNONYMS，收敛到 field_dictionary）
+  const polKey = findKeyByRole(sample, 'polarity');
+  const confKey = findKeyByRole(sample, 'score');   // 含 l1_confidence/l2_confidence/confidence/...
 
   if (polKey) {                                   // L2 polarity
     for (const f of pointFC.features) {
@@ -573,8 +575,8 @@ export function detectColorMode(pointFC) {
       if (confKey && p[confKey] != null) p.score = Number(p[confKey]);
       if (p.score == null) p.score = scoreFor(p.polarity);
       if (!p.polarity) p.polarity = 'Neutral';
-      const tk = pickKey(p, FIELD_SYNONYMS.text); if (tk && !p.text) p.text = p[tk];
-      const lk = pickKey(p, FIELD_SYNONYMS.location); if (lk && !p.location) p.location = p[lk];
+      const tk = findKeyByRole(p, 'text'); if (tk && !p.text) p.text = p[tk];
+      const lk = findKeyByRole(p, 'location'); if (lk && !p.location) p.location = p[lk];
     }
     return { fc: pointFC, colorMode: 'polarity', needsAnalysis: false };
   }
@@ -583,8 +585,8 @@ export function detectColorMode(pointFC) {
       const p = f.properties || (f.properties = {});
       const v = Number(p[confKey]);
       p.score = Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0.5;
-      const tk = pickKey(p, FIELD_SYNONYMS.text); if (tk && !p.text) p.text = p[tk];
-      const lk = pickKey(p, FIELD_SYNONYMS.location); if (lk && !p.location) p.location = p[lk];
+      const tk = findKeyByRole(p, 'text'); if (tk && !p.text) p.text = p[tk];
+      const lk = findKeyByRole(p, 'location'); if (lk && !p.location) p.location = p[lk];
     }
     return { fc: pointFC, colorMode: 'confidence', needsAnalysis: false };
   }

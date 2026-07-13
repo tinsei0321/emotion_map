@@ -6,6 +6,8 @@
 //   用地图层按 DLMC 落规范色，UI 图例 swatch 引用本表，勿混入 design/tokens.json。
 // 改色 = 改本表（数据，非逻辑）。matcher 做 DLMC/名称→规范色模糊匹配。
 
+import { resolveRole } from './field_dictionary.js';   // P1 字段语义层·land_use_class role 识别
+
 /** 附录 B 用地用海分类 × 规范 RGB（name=规范全称；aliases=常见短标签/同义，供模糊匹配）。 */
 export const LANDUSE_COLORS = [
   { name: '耕地', rgb: [245, 248, 220] },
@@ -75,14 +77,17 @@ export function matchLanduseColor(name) {
 export function presetLanduseColor(label) { return matchLanduseColor(label); }
 
 /** 取 GeoJSON 要素中最常见的 DLMC（单类文件=该类；混类取主类）。
- *  兼容 DLMC/dlmc/DLMC_NAME/地类名称 多种字段名。 */
+ *  P1: 用 resolveRole 找 land_use_class role 字段（DLMC/dlmc/DLMC_NAME/地类名称/用地类型/...），替代硬编码 4 名。 */
 export function dominantDLMC(fc) {
   const feats = fc && fc.features;
   if (!feats || !feats.length) return null;
   const cnt = {}; let best = null, n = 0;
+  // 从首要素 props 找 land_use_class role 命中的字段（兼容所有用地字段命名）
+  const sample = feats[0].properties || {};
+  const dlmcKeys = Object.keys(sample).filter((k) => resolveRole(k) === 'land_use_class');
   for (const f of feats) {
     const p = f.properties || {};
-    const v = p.DLMC || p.dlmc || p.DLMC_NAME || p['地类名称'];
+    const v = dlmcKeys.map((k) => p[k]).find((x) => x != null && x !== '');
     if (!v) continue;
     cnt[v] = (cnt[v] || 0) + 1;
     if (cnt[v] > n) { n = cnt[v]; best = v; }

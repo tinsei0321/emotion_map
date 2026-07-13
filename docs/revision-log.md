@@ -1148,6 +1148,16 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.80 字段语义层 P1：统一字段字典 + alias 解析（收敛 9 处零散映射 · 物理列名不改）（07月13日）
+
+实施 [字段语义层 plan](C:/Users/admin/.claude/plans/emc-field-semantic-layer.md) P1（字典收敛 + alias 解析治痛点）。把散落 9+ 处的字段同义词映射收敛为单一权威源，`where`/`pre_filter` 用别名自动解析，上传面层 nameField 自动推断。**物理列名不改**，只加 canonical 别名解析层。
+- **新建 [core/field_dictionary.py](d:/Github/emotion_map/core/field_dictionary.py)**（后端权威源，35 roles）：`FIELD_ROLE_DICT`（polarity/score/text/name/category/boundary_name/land_use_class/... + 自产层契约 self_produced + 渲染契约 render_contract）+ `resolve_role`/`resolve_field_alias`/`find_boundary_name_column`/`is_self_produced`/`is_render_contract`/`validate_llm_roles`。land_use_class description 引用 landuse_codes_2023.py 值域。放 core/ 不放 ai_qa/（避免 core 反向依赖 ai_qa，被所有层引用）。
+- **新建 [frontend/js/field_dictionary.js](d:/Github/emotion_map/frontend/js/field_dictionary.js)**：前端镜像（FIELD_ROLES + resolveRole/resolveFieldAlias/findBoundaryNameColumn/findKeyByRole + FIELD_SYNONYMS 派生兼容导出）。
+- **收敛 9 处**：① state.js FIELD_SYNONYMS re-export 自 field_dictionary.js ② geo_registry _point_layer_overview 删 _KEY_FIELDS 改 resolve_role ③ range_selector name_candidates 改 find_boundary_name_column ④ landuse_colors dominantDLMC 改 resolveRole(land_use_class) ⑤ import.js detectColorMode pickKey→findKeyByRole ⑥ geo_routes _apply_attr_filter 注入 resolve_field_alias（解析失败才报错+带 role 标注）⑦ geo_routes extract_feature 删硬编码 field→name 兜底 ⑧ geo_registry resolve_boundary GeoJSON 分支加 nameField 推断 ⑨ poi_4x5_map 留（值映射非字段名映射，维度不同）+ manifest nameField 留（preset 级声明）。
+- **修 bug**：`resolve_field_alias`/`find_boundary_name_column` 的 `if columns` 对 pandas Index 触发真值歧义（gdf.columns 是 Index）→ 改 `if columns is not None`（test_geo_routes 2 个回归修复）。
+- **验证**：py_compile 后端 + node --check 前端 4 文件 + field_dictionary 自检（35 roles）+ state.js re-export smoke + pytest 152 passed（6 预存 fail：SnowNLP/geocode/renewal/h3×2，与本改动无关），**0 新回归**。
+- **承重**：物理列名不改（alias 解析只读 columns 不 rename，除 resolve_boundary 临时层 nameField→name 已有行为）；registry 未碰（P3 才带字段）；自产层契约只声明不改产出；5.74 对账不动。P2（profile + LLM 推断端点）/ P3（catalog/registry 带字段）待续。
+
 ### 5.79 国标用地分类固化进规则（24/111/40 + 代码 · 勿再读 PDF）（07月12日）
 
 用户上传《国土空间调查、规划、用途管制用地用海分类指南（2023.11）正式版》PDF，要求梳理用地类型+代码（一/二/三级类）写进规则，以后不读 PDF。新建 [ai_qa/landuse_codes_2023.py](d:/Github/emotion_map/ai_qa/landuse_codes_2023.py) 作单一权威源：`LANDUSE_L1/L2/L3`（24 一级/111 二级/40 三级 + 代码+名称）+ 查询函数（`landuse_name/level/parent/children/search`）+ `EMC_PRESET_TO_GB`（商业→09/0901、居住→07/0701、公园广场→14/1401）+ 自检（层级一致）。[docs/landuse-classification-2023.md](d:/Github/emotion_map/docs/landuse-classification-2023.md) 人可读概览 + "读 .py 勿读 PDF"声明。CLAUDE.md 参考文档索引 + memory `landuse-codes-2023` 同步。提取经 pdfplumber/pdfminer/extract_tables 三法交叉核对。

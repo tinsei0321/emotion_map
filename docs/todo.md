@@ -5,6 +5,12 @@
 
 ---
 
+## 📅 2026-07-13
+
+### ✅ 字段语义层 P1：统一字段字典 + alias 解析（revision-log 5.80）
+
+实施字段语义层 plan P1。新建 core/field_dictionary.py（35 roles 权威源 + resolve_role/alias/find_boundary_name_column）+ frontend/js/field_dictionary.js（镜像 + findKeyByRole）。收敛 9 处零散映射：state.js FIELD_SYNONYMS re-export / geo_routes _apply_attr_filter 注入 alias 解析 + extract_feature 删硬编码 / geo_registry resolve_boundary GeoJSON nameField 推断 + _point_layer_overview 删 _KEY_FIELDS / range_selector name_candidates 改字典 / landuse_colors dominantDMLC 改 resolveRole / import.js detectColorMode pickKey→findKeyByRole。修 pandas Index 真值歧义 bug。物理列名不改（alias 只读）。验证：py_compile + node check + 自检 + pytest 152 passed（6 预存 fail，0 新回归）。承重：registry 未碰（P3）/ 自产层只声明 / 5.74 对账不动。P2（profile+LLM 推断端点）/ P3（catalog/registry 带字段）待续。
+
 ## 📅 2026-07-12
 
 ### ✅ 国标用地分类固化进规则（revision-log 5.79）

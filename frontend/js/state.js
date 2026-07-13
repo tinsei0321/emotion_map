@@ -992,16 +992,9 @@ export function newPointId() {
   return 'e' + String(++_seq + 10000).padStart(5, '0');
 }
 
-/** Field-name synonyms → canonical polarity/score. Lets imported CSV/GeoJSON
- *  with variant column names (sentiment, l2_confidence, 情绪…) map cleanly. */
-export const FIELD_SYNONYMS = {
-  polarity: ['polarity', 'sentiment', 'label', 'emotion', '情绪', '极性'],
-  score: ['score', 'l2_confidence', 'sentiment_score', 'confidence', '分数', '得分'],
-  text: ['text', 'content', 'comment', 'review', '评论', '文本', '内容'],
-  location: ['location', 'place', 'address', '地点', '位置'],
-  emotion_type: ['emotion_type', 'emotionType', '情绪类型', '情感类型', 'emotion'],
-  emotion_intensity: ['emotion_intensity', 'emotionIntensity', '情绪强度', '情感强度', 'intensity'],
-};
+// P1: FIELD_SYNONYMS 收敛到 field_dictionary.js（统一字段语义层）。
+// re-export 兼容旧调用方（import.js detectColorMode 等）；新代码建议直接用 resolveRole/findKeyByRole。
+export { FIELD_SYNONYMS } from './field_dictionary.js';
 
 // ── 「视野-数据-结论同步」图层互斥规则（任务6/7）─────────────────────────────
 // 两组：A=情绪点(l0/l1/l2)，B=Toolbox空间分析(heatmap/grid/terrain/buffer)，R=Range(范围)。

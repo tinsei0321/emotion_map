@@ -19,6 +19,7 @@ import pandas as pd
 
 from core.config import PERFORMANCE_DIR
 from core.range_selector import list_presets, load_preset, _PRESETS_DIR
+from core.field_dictionary import resolve_role, find_boundary_name_column   # P1 字段语义层
 
 # 模块级缓存：layer_id/boundary_id → GeoDataFrame。lazy load，不启动全量加载。
 _CACHE: dict = {}
@@ -36,9 +37,7 @@ _POINT_LAYERS = {
 
 
 _FIELD_CACHE: dict = {}   # fname → {fields, samples, dtypes}（catalog 暴露给 AI，避免瞎猜列名/取值）
-
-# 情绪相关关键字段（优先给样例值，帮 LLM 构造 pre_filter）
-_KEY_FIELDS = ['polarity', 'polarity_index', 'score', 'domain', 'element', 'emotion_type', 'l1_confidence', 'text']
+# P1: 删 _KEY_FIELDS 硬编码，改用 field_dictionary.resolve_role 判定哪些字段优先给样例值（帮 LLM 构造 pre_filter）
 
 
 def _point_layer_overview(fname: str) -> dict:
@@ -51,7 +50,8 @@ def _point_layer_overview(fname: str) -> dict:
         try:
             df = pd.read_csv(path, nrows=2)
             fields = list(df.columns)
-            key = [c for c in _KEY_FIELDS if c in fields] or fields[:8]
+            # 优先给有 canonical role 的字段样例值（resolve_role 命中=polarity/score/text/name/...）
+            key = [c for c in fields if resolve_role(c)] or fields[:8]
             row0 = df.iloc[0] if len(df) else None
             ov = {
                 'fields': fields,
@@ -163,7 +163,13 @@ def resolve_boundary(boundary) -> gpd.GeoDataFrame:
         feats = boundary.get('features') if isinstance(boundary, dict) else None
         if not feats:
             raise ValueError('boundary GeoJSON 无 features')
-        return gpd.GeoDataFrame.from_features(feats, crs='EPSG:4326')
+        polys = gpd.GeoDataFrame.from_features(feats, crs='EPSG:4326')
+        # P1 send-in GeoJSON nameField 推断：find_boundary_name_column 找名称列→重命名 name（与 preset 路径一致）
+        if 'name' not in polys.columns:
+            nf = find_boundary_name_column(polys.columns)
+            if nf:
+                polys = polys.rename(columns={nf: 'name'})
+        return polys
     raise TypeError(f'boundary 需为 preset_id(str) 或 GeoJSON(dict)，收到 {type(boundary)}')
 
 

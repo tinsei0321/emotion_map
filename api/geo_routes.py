@@ -25,6 +25,7 @@ from core.geo_registry import (
     list_point_layers, list_boundaries, resolve_points, resolve_boundary,
 )
 from core.spatial_analysis import aggregate_by_polygons, hot_spot_analysis, kde_raster
+from core.field_dictionary import resolve_field_alias, resolve_role   # P1 字段语义层·alias 解析
 
 geo_router = APIRouter()
 
@@ -72,9 +73,12 @@ def _apply_attr_filter(gdf: gpd.GeoDataFrame, f: dict) -> gpd.GeoDataFrame:
     field = f.get('field')
     op = (f.get('op') or 'eq').lower()
     value = f.get('value')
-    if not field or field not in gdf.columns:
-        raise ValueError(f'过滤字段不存在: {field}（可用: {list(gdf.columns)[:20]}…）')
-    col = gdf[field]
+    # P1 字段语义层·alias 解析：用户传'情绪'/'sentiment'/'区域名称'等别名→解析到实际列（物理列名不改）
+    actual = resolve_field_alias(field, gdf.columns) if field else None
+    if not actual:
+        avail = [(c, resolve_role(c) or '?') for c in list(gdf.columns)[:20]]
+        raise ValueError(f'过滤字段不存在: {field}（可用: {avail}…）')
+    col = gdf[actual]
     if op == 'eq':
         mask = col == value
     elif op == 'ne':
@@ -203,10 +207,7 @@ async def extract_feature(req: ExtractFeatureRequest):
         polys = resolve_boundary(req.layer)
         if req.where:
             pf = _norm_where(req.where)
-            # resolve_boundary 把 preset 的 nameField 规范化为 'name' 列；用户传原始 name_field（如 MC）时兜底映射
-            if pf.get('field') and pf['field'] not in polys.columns and 'name' in polys.columns:
-                pf = {**pf, 'field': 'name'}
-            polys = _apply_attr_filter(polys, pf)
+            polys = _apply_attr_filter(polys, pf)   # alias 解析在 _apply_attr_filter 内（resolve_field_alias），不再硬编码 name 兜底
         if len(polys) == 0:
             raise ValueError('属性抽取无命中——检查 where 的 field/op/value（field 见 catalog name_field）')
         fc = _to_geojson(polys, max_feats=1000)

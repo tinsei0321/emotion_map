@@ -14,6 +14,7 @@ import pandas as pd
 from shapely.geometry import Point
 
 from core.tracker import track, TrackContext, trace_log, trace_error, trace_warn, register_track_id
+from core.field_dictionary import find_boundary_name_column   # P1 字段语义层·名称列推断
 
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -125,17 +126,15 @@ def load_boundaries(file_path: str) -> Dict[str, RangeConfig]:
     if orig_crs and not (hasattr(orig_crs, 'is_geographic') and orig_crs.is_geographic):
         gdf = gdf.to_crs('EPSG:4326')
 
-    # 名称检测：尝试多种常见字段名
-    name_candidates = ['name', 'NAME', 'Name', '区域名称', '县名', '市名',
-                       'Layer', 'LAYER', 'FID_规划', 'FID']
+    # P1 名称检测：用字段语义层 find_boundary_name_column 找名称列（替代硬编码候选名）
+    name_col = find_boundary_name_column(gdf.columns)
     ranges = {}
     for i, row in gdf.iterrows():
         name = None
-        for nc in name_candidates:
-            val = row.get(nc)
+        if name_col:
+            val = row.get(name_col)
             if val is not None and str(val).strip() not in ('', '0', 'None'):
                 name = str(val).strip()
-                break
         if name is None:
             name = f'区域_{len(ranges) + 1}'
 
