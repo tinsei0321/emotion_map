@@ -1148,6 +1148,13 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.84 hotfix：tools.js buildContext 括号缺失（5.82 遗留 ESM 语法错致前端半崩）（07月13日）
+
+5.82 P3 把 buildContext 改 async + `Promise.all` 时，[tools.js:431](d:/Github/emotion_map/frontend/js/ai_qa/tools.js) 少一个右括号——`(await Promise.all(... .map(...)))` 闭合缺一。`node --check tools.js` 默认 CommonJS 宽容未报，浏览器 `<script type="module">` ESM 严格 parse 报 `Unexpected token ';'`，致 tools.js / ai_qa-panel.js / harness.js 整个 ai_qa 模块链加载失败 → buildContext 崩 → main.js 初始化中断 → **地图加载不出 + Range/Layers 等按钮不可点**（"加载一半卡住"）。5.82 验证只跑 node --check + 对账正则（没跑页面真加载），括号 bug 潜伏到 5.83 用户验证 run_python 时暴露。
+- **修复**：`}))` → `})))`（补闭 `await(...)` / `Promise.all(...)` 的括号），commit `cc54e17`。
+- **教训**：`node --check x.js` 对含 import/export 的 ESM 文件**默认 CommonJS 模式不报语法错**；前端 JS 须 `.mjs` 副本或 `--input-type=module` 检查（记 memory `node-check-esm-unreliable`）。5.82 漏「页面真加载」验证步骤。
+- **验证**：`.mjs` ESM 全量扫描全过；Playwright 重载 **0 errors**（原 2 errors）；buildContext 执行 OK（4206 chars）；maplibre 容器初始化 + bodyChildren 15→18 页面完整渲染。
+
 ### 5.83 沙箱挂 /run + 三道底线加固（演示版·让 AI 助手自写 Python 出图）（07月13日）
 
 字段语义层 P1-P3 收完后，挂 /run（POST 端点把 sandbox 暴露给 LLM agent 的 run_python 工具——AI 能自己写 Python 跑灵活分析、matplotlib 出图，geo 工具覆盖不到时的兜底）。但沙箱原 `SAFE_READY=False`（红线不挂），三道文档化硬缺口：①`open` 不拦（能偷读 `.env` 密钥/`DATA/raw` PII）；②`__import__.__closure__` 反射一行破解整个守卫；③CORS 全开（任意网页可远程触发代码执行）。Windows 无 Linux 那套便携 OS 隔离（seccomp/namespace）。用户拍板「演示版+底线加固」：补三道底线后切 SAFE_READY，**不做 Job Object 硬限**（内存/CPU 仅超时软限），定位本地单机演示。
