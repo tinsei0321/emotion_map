@@ -22,18 +22,18 @@ REVIEW_CHECKLIST = [
     },
     {
         'key': 'structure',
-        'name': '结构清晰',
-        'desc': '是否有"问题定性 → 数据证据 → 结论建议"的体系化结构（而非流水账式罗列）。',
+        'name': '图层优先结构',
+        'desc': '是否有"产出图层 → 解题逻辑一句话 → 简短结论 → 可操作按钮"的结构（图层为主出口、文字为注脚）；而非纯文字报告流水账。',
     },
     {
         'key': 'concise',
-        'name': '内容精炼',
-        'desc': '无废话、恭维、不专业或无意义的话；信息密度高，每句都有价值。',
+        'name': '简短直接',
+        'desc': '回答简短（结论 ≤ 几句，复杂问题才展开）；无废话、恭维、铺垫；信息密度高。**超长报告（啰嗦堆砌、为分析而分析）判 fail**。',
     },
     {
         'key': 'professional',
-        'name': '语句专业',
-        'desc': '贴合城市规划行业用语，专业名词与常规说法准确（如"城市更新单元/15分钟生活圈/极性指数/归因矩阵"），不口语化、不外行。',
+        'name': '通俗+专业',
+        'desc': '专业词紧跟通俗解释（如"极性指数(=情绪正负评分)"）；语句简单清晰直接，**不写学术八股、不堆术语**；贴近用户能懂的表达。',
     },
     {
         'key': 'data_driven',
@@ -48,7 +48,7 @@ REVIEW_CHECKLIST = [
     {
         'key': 'scale_paradigm_fit',
         'name': '尺度范式匹配',
-        'desc': '结论颗粒度是否匹配问题尺度（查 MANIFESTO 第十一节）——宏观问题（哪个片区/哪类空间系统性落后）禁落单点坐标；微观问题（哪个点位/聚集区）禁泛泛而谈；中观问题落单元级（哪个街道/社区/更新单元）。',
+        'desc': '结论颗粒度是否匹配问题尺度（查 MANIFESTO 第十一节）——宏观禁落单点、微观禁泛泛、中观落单元级。**仅 emotion_analysis（复杂归因）查此项；简单问题 / 纯 GIS 操作（intent=B）不查**。',
     },
 ]
 
@@ -166,7 +166,7 @@ def _parse_review_json(raw: str) -> dict:
 
     pass_flag = bool(obj.get('pass', True))
     # 后端兜底：客观质量项 fail 才强制 pass=false；主观项(layout/concise/structure) fail 降为 warn（不强制重写）
-    _OBJECTIVE = {'data_driven', 'actionable', 'scale_paradigm_fit', 'professional'}
+    _OBJECTIVE = {'data_driven', 'actionable', 'scale_paradigm_fit', 'professional', 'concise'}
     for sc in scores:
         if sc['verdict'] == 'fail' and sc['key'] not in _OBJECTIVE:
             sc['verdict'] = 'warn'

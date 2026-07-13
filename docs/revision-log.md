@@ -1148,6 +1148,23 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.88 EMC 倾向性重定向：图层优先 + 交互体验（拉回演示逻辑链北极星）（07月13日）
+
+用户批 EMC 跑向学术报告（回答过长/分析太多/偏离核心/**不产图层**），明确三条硬要求：①每回答必新生成图层作主出口（文字辅助）；②逻辑简单清晰直接 + 告诉解题思维逻辑，不要学术复杂；③结论结合地图功能互动、可读可操作。用户两决策：4×5/尺度范式**降权保留**（简单问题别套、复杂归因才用）、长度**软引导+审查卡**。
+
+Explore 调研证实：**用户要的能力 EMC 工程上全有**（geo 工具自动落图层 / `{{show}}·{{focus}}·{{inspect}}` 按钮 / `[ref]` chip / Overview 联动 / thought / 5.74 对账），**缺口 100% 在 prompt 倾向性表达，不新增功能**。根因：MANIFESTO 第七节演示链（=CLAUDE.md 北极星 `张力图面→引导点击→交互分析→识别问题`）被第十节回答公约（专业不口语化/结构八股/4×5 强制）+ 出口契约（OR/conditional）+ 审查门（只卡文字质量、不卡图层/长度）盖过——CLAUDE.md 演示链的"表现力环（图面张力）"被错误翻译成"讲三件事"。
+
+**修复（5 处 prompt 层倾向性重定向）**：
+1. **manifesto 知识层**（[ai_qa/manifesto.py](ai_qa/manifesto.py)）：第十节回答公约重写——删"专业不口语化"、改"结构八股"、4×5 降权"仅复杂情绪分析"、新增「**图层优先(最高)/解题逻辑透明/简单清晰直接/互动可操作/简短**」五条；第七节演示链从"讲三件事"改回"**先产图层让地图有张力可点**"；第八节 EXIT_RESULT "或"改"且"（B/C 都必产图层、零图层降级 PARTIAL）；身份补"交互体验优先于学术结论"；数据流终点补"产出可交互图层"。
+2. **FINAL_TEMPLATE 出口要素**（[ai_qa/prompts.py](ai_qa/prompts.py) L126）：**图层升第一且 unconditional**（删"若涉及空间操作"豁免）+ 加"**解题逻辑一句话**"出口要素（我怎么解的：query→发现 X→产图层 Y）+ 文字定位"图层注脚"；演示链措辞从"指出→解释→指向"改"产图层→互动→简短结论"。
+3. **AGENT_TEMPLATE 提速**（prompts.py 规则4）：**简单问题（单图层能答的 B/轻 C）≤3 轮**，跳 DIAGNOSE 深挖，直接 query→产图层→answer。
+4. **paradigm**（[ai_qa/paradigm.py](ai_qa/paradigm.py)）：DIAGNOSE outlet "生成图层"从 7 选 1 升**默认首位**；三尺度(macro/meso/micro) paradigm 都加"产出 XX 图层"前缀（先图层后结论）。
+5. **review**（[ai_qa/review.py](ai_qa/review.py)）：`concise` 升 **OBJECTIVE**（超长 fail 强制重写 = 软引导+审查卡）；`structure` desc 改"图层优先结构"；`professional` desc 改"通俗+专业"（删"不口语化"）；`scale_paradigm_fit` desc 标注"仅 emotion_analysis 查"。
+
+**承重**：未碰（四态出口契约扩非替换——改 EXIT 判定措辞不改结构；思考透明 5.70 / 字段语义层 P1-P3 / run_python 5.87 / 5.74 对账 不动；review 7 条 key 稳定——只改 name/desc）。prompts `.format()` 花括号双写。
+- **延后**：第 6 处 harness EXIT 图层门（零图层降级）——因 run_python 出图(5.87)不入 `newLayerCount`，harness 只看 newLayerCount 会**误杀合法出图回答**（散点图等）；需先追踪 figCount 再设门，复杂度高 + 碰承重控制流。**先验证 prompt 层效果，不够再加**。
+- **验证**：py_compile 4 文件过；build_agent/final/diagnose `.format()` 无 KeyError（15488/6643/11352）；11 项关键契约词全落位；review `_OBJECTIVE` 含 concise（L169 确认）。**端到端真跑待用户开 serve 验**（简单 GIS「裁出西陵区」/简单情绪「西陵区情绪怎么样」/复杂归因「为什么西陵区消极多」三类，期望：产图层 + 解题一句话 + 按钮互动 + 简短）。
+
 ### 5.87 run_python 端到端失败治理：沙箱诊断可见 + 字段契约补全 + 出图路由（闭合「问题-字段-答案」闭环）（07月13日）
 
 用户验证 run_python 端到端（问「用 Python 画各行政区平均极性柱图」），LLM 反复试错 **9 轮**才靠硬编码数字跑通，审查判失败、revise 越改越差、结论无价值，用户质疑策略可行性。两份并行调研（数据注入契约 + 引导/重试/审查）定位三层根因，分层修复。

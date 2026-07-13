@@ -7,6 +7,10 @@
 
 ## 📅 2026-07-13
 
+### ✅ EMC 倾向性重定向：图层优先 + 交互体验（revision-log 5.88）
+
+用户批 EMC 跑向学术报告（过长/分析多/偏离核心/不产图层），三条硬要求：①每回答必产图层（文字辅助）②简单直接+解题逻辑透明 ③结论结合地图互动。Explore 证实能力全有、缺口 100% 在 prompt 倾向。两决策：4×5/尺度**降权保留**、长度**软引导+审查卡**。修 5 处 prompt 层：①manifesto 第十节回答公约重写（删"专业不口语化"、加"图层优先/解题透明/简单直接/互动/简短"、4×5降权）+ 演示链改"先产图层"+EXIT"或"改"且"+身份/数据流；②FINAL 出口要素图层升首+解题一句话+文字注脚；③AGENT 规则4 简单问题≤3轮提速；④paradigm outlet"生成图层"升默认+三尺度加图层；⑤review concise 升 OBJECTIVE(超长fail)+structure/professional/scale 降权重定向。py_compile+.format 无 KeyError+11 契约落位全过。承重未碰（四态框架/5.70/5.74/P1-P3/5.87 不动，key 稳定）。第6处 harness 图层门延后（run_python 出图不入 newLayerCount 恐误杀，需 figCount 追踪）。端到端真跑待用户验。
+
 ### ✅ run_python 端到端失败治理：沙箱诊断+字段契约+出图路由（revision-log 5.87）
 
 用户验证 run_python（问"用 Python 画各区极性柱图"）反复试错 9 轮才硬编码跑通、审查失败结论无价值。两份并行调研定位三层根因（沙箱静默吞错 / prompt 契约断层 / 路由+兜底缺失），**非策略不可行，是「问题-字段-答案」闭环在 run_python 路径上断了**（字段语义层 P1-P3 已就位、但 run_python prompt 没接上）。修 A 沙箱 data_refs 加载成功/失败都 print 诊断（sandbox.py PRELUDE §1，成功列可用变量治瞎猜、失败明确诊断治裸 NameError）；B 补字段契约（prompts L83 字段名迁移铁律+示例配套+geopandas+白名单 / paradigm CODE_EXEC_CATALOG，顺手修 catalog 双括号 bug）；C 出图路由（prompts 规则 9 柱折饼→zonal_stats+{{chart}} 勿用 run_python，chart 捷径上提 agent 可见）。py_compile + .format 无 KeyError（len 14815）+ 9 项契约落位 + 沙箱诊断 print 实测可见，全过。承重未碰。端到端真跑待用户验。D/E（失败兜底+revise 保图）可选未做。
