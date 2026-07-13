@@ -1148,6 +1148,12 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.79 国标用地分类固化进规则（24/111/40 + 代码 · 勿再读 PDF）（07月12日）
+
+用户上传《国土空间调查、规划、用途管制用地用海分类指南（2023.11）正式版》PDF，要求梳理用地类型+代码（一/二/三级类）写进规则，以后不读 PDF。新建 [ai_qa/landuse_codes_2023.py](d:/Github/emotion_map/ai_qa/landuse_codes_2023.py) 作单一权威源：`LANDUSE_L1/L2/L3`（24 一级/111 二级/40 三级 + 代码+名称）+ 查询函数（`landuse_name/level/parent/children/search`）+ `EMC_PRESET_TO_GB`（商业→09/0901、居住→07/0701、公园广场→14/1401）+ 自检（层级一致）。[docs/landuse-classification-2023.md](d:/Github/emotion_map/docs/landuse-classification-2023.md) 人可读概览 + "读 .py 勿读 PDF"声明。CLAUDE.md 参考文档索引 + memory `landuse-codes-2023` 同步。提取经 pdfplumber/pdfminer/extract_tables 三法交叉核对。
+- **诚实差异**：指南 P5 述"113 二级/140 三级"，PDF 表 2.1+附录 A 实际 111/40（三级类仅 06-12 城镇建设类设立，其余一级类仅设到二级）。差异疑为指南统计含附录 B/E 补充分类或表格合并单元格提取遗漏，**以 PDF 实际为准**，差异已在 .py + 文档标注。
+- **承重**：未碰（纯新增数据文件 + 文档 + 索引；不动现有 landuse_map.json/manifest/poi_4x5_map）。字段语义层 `land_use_class` role 以此为值域（P1 起实施）。
+
 ### 5.78 顶栏 .title-version 加 build 号（与 \<title\> 同源·换环境识别）（07月12日）
 
 用户"换环境"诉求——顶栏 logo 旁版本号（[index.html:44](d:/Github/emotion_map/frontend/index.html) `<span class="title-version">prototype alpha v0.1</span>`）只显静态版本，换机器/分支后难一眼识别 build。加 `（build：git 短哈希）` 后缀。[serve.py](d:/Github/emotion_map/frontend/serve.py) 新 `_inject_header_version(html, short)`（正则匹配 .title-version span，注入 `（build：{short}）`，幂等：span 已含（则跳过），与 5.75 `_inject_title` 同源（同一 `_git_short`，do_GET 每次 serve index.html 时注入）。验证：py_compile + 功能测（注入正确 / 二次幂等不动 / 无 span 不崩）。out.png 测试产物顺手删（沙箱 matplotlib breakthrough 漏清 cwd，下会话查 test_sandbox 清理）。

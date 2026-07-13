@@ -210,6 +210,7 @@ Agent 在工作过程中自动记录的隐形知识：
 | 会话交接 | `memories/repo/session-handoff.md` | 跨机协作上下文 |
 | 视觉中转站 | `docs/vision-inbox/latest.md` | MCP 自动识图（vision-bridge server），备用手动文本桥接 |
 | MCP 视觉桥接 | `.claude/mcp_servers/vision_bridge_server.py` | 火山引擎 Ark Vision MCP Server — 让不支持图片的模型也能看图 |
+| **用地分类标准** | `ai_qa/landuse_codes_2023.py` | 国标用地用海分类（2023.11）权威源：24 一级/111 二级/40 三级 + 代码 + 查询函数。**读 .py 勿再读 PDF**；概览见 `docs/landuse-classification-2023.md` |
 
 ## 沟通方式
 

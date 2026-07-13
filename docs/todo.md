@@ -7,6 +7,10 @@
 
 ## 📅 2026-07-12
 
+### ✅ 国标用地分类固化进规则（revision-log 5.79）
+
+用户上传 2023.11 正式版用地用海分类指南 PDF，要求梳理一/二/三级类+代码写进规则、以后不读 PDF。新建 ai_qa/landuse_codes_2023.py（24 一级/111 二级/40 三级 + 代码 + landuse_name/level/parent/children/search + EMC_PRESET_TO_GB 对照）+ docs 概览 + CLAUDE.md 索引 + memory。三法交叉核对，自检过。诚实差异：指南述 113/140 但 PDF 实际 111/40（三级类仅 06-12 城镇建设类），以 PDF 为准。承重未碰（纯新增）。字段语义层 land_use_class role 以此为值域。
+
 ### ✅ 顶栏 .title-version 加 build 号（换环境识别）（revision-log 5.78）
 
 用户"换环境"诉求——顶栏 logo 旁 `prototype alpha v0.1` 只显静态版本，换机器/分支后难识别 build。serve.py 新 `_inject_header_version`（注入 `（build：git 短哈希）` 到 .title-version span，与 5.75 `_inject_title` 同源 `_git_short`，幂等）。顺手删 out.png 测试产物。py_compile + 功能测过。承重未碰（仅 serve +1 注入器 +1 调用行）。
