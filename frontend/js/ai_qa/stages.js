@@ -33,7 +33,7 @@ export function normalizeParams(name, params) {
  *  仿 field_dictionary 两份字典模式：改后端必同步此处。仅校验/填默认所需字段，不含 voice/triggers（那些只进 prompt）。 */
 export const SKILL_DEFS = {
   concept:  { tool: null,          category: 'concept',  required_slots: [],                     optional_defaults: {} },
-  density:  { tool: 'density',     category: 'single',   required_slots: [],                     optional_defaults: { layer: 'yichang_l2_t1', bandwidth_m: 800, cell_size_m: 300, value_col: 'score' } },
+  density:  { tool: 'density',     category: 'single',   required_slots: [],                     optional_defaults: { mode: '2d', radius: 300, weightField: 'emotion_intensity', cell_size: 600, polarity: 'overall' } },
   rank:     { tool: 'rank',        category: 'single',   required_slots: [],                     optional_defaults: { layer: 'yichang_l2_t1', by: 'polarity', top_n: 5 } },
   buffer:   { tool: 'buffer',      category: 'single',   required_slots: ['center'],              optional_defaults: { radius_m: 500, layer: 'yichang_l2_t1', agg_cols: ['score'] } },
   clip:     { tool: 'clip',        category: 'single',   required_slots: ['range'],               optional_defaults: { layer: 'yichang_l2_t1' } },

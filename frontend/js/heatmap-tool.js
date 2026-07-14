@@ -889,6 +889,51 @@ function generateHeatmap(btn) {
   closeDialog();
 }
 
+/** EMC AI 程序化入口（仿 generateGridForAI 模板）：不开 dialog，AI 传参直接生成 2D 彩虹热力图。
+ *  EMC density/热度 技能委托此函数（不再自造 /api/v1/geo/density + DENSITY_RAMP）——套用 Toolbox 固定 HEATMAP_RAMPS 色段。
+ *  opts: {source(sourceKey), level, polarity, radius, opacity, intensity, weightField, weightCurve, intensityMin, rampKey, silent}。
+ *  2D 热力图无后端（MapLibre 原生 kind:'heatmap'，fc 直喂渲染器）；rampKey 默认 'rainbow'（综合彩虹）。
+ *  返回 {layerId, layerName, featureCount, level, polarity, fc}（与 generateGridForAI 同构）。 */
+export async function generateHeatmapForAI(opts = {}) {
+  const p = { radius: 300, opacity: 0.7, intensity: 1.0, weightField: 'emotion_intensity',
+              weightCurve: 'linear', intensityMin: 0, rampKey: 'rainbow', silent: true, ...opts };
+  const sources = collectSources();
+  if (!sources.length) throw new Error('无可用情绪点图层（先在 Layers 加载/上传）');
+  // 选源：opts.source(sourceKey) 精确匹配（EMC pickVisiblePointLayer 传 visible 层）→ 否则按 level 自动（L2 优先）
+  let src = p.source ? sources.find((s) => s.sourceKey === p.source || s.value === p.source) : null;
+  if (!src) src = sources.find((s) => s.level === (p.level || 'L2')) || sources[0];
+  const level = src.level;
+  const polarity = level === 'L2' ? (p.polarity || 'ALL') : null;
+  const resolved = resolveSource(sources, level, polarity);
+  if (!resolved || !resolved.fc || !resolved.fc.features || !resolved.fc.features.length) throw new Error('所选源无点数据');
+  const fc = filterFc(resolved.fc, null, p.intensityMin);   // AI 入口：selectedTypes=null（全数据）
+  if (!fc.features.length) throw new Error('筛选后无数据点');
+  const rampKey = p.rampKey;
+  const ramp = HEATMAP_RAMPS[rampKey];
+  const rampStops = ramp ? ramp.stops : undefined;
+  const _srcMatch = resolved.sourceKey.match(/^(?:group|layer):([^#]+)/);
+  const _srcLayer = _srcMatch ? getLayer(_srcMatch[1]) : null;
+  const srcName = _srcLayer ? (_srcLayer.srcName || '') : '';
+  const layerName = `热力图·${ramp ? ramp.name : rampKey}·${srcName || level}`;
+  const oldId = getHeatmapForSource(resolved.sourceKey);
+  if (oldId) { removeLayerFromMap(oldId); removeLayer(oldId); removeHeatmapSource(resolved.sourceKey); }
+  const layer = addLayer({
+    name: layerName, kind: 'heatmap', colorMode: 'heatmap-negative', fc,
+    paint: { unit: 'm', radius: p.radius, opacity: p.opacity, intensity: p.intensity, weightField: p.weightField,
+             weightCurve: p.weightCurve, rampKey, rampStops, typesFilter: null, intensityMin: p.intensityMin,
+             _ui: { tool: 'heatmap', analysisKey: 'terrain', dim: '2d', level, polarity: polarity || 'ALL', rampKey } },
+  });
+  layer.srcName = srcName;
+  layer.sourceKey = resolved.sourceKey;
+  setHeatmapForSource(resolved.sourceKey, layer.id);
+  renderLayer(layer);
+  for (const hid of enforceMutualExclusion(layer.id)) { const hl = getLayer(hid); if (hl) renderLayer(hl); }
+  selectLayer(layer.id);
+  document.dispatchEvent(new CustomEvent('layers:changed'));   // 工具生成不自动弹 Overview/Table
+  if (!p.silent) toast.success(`已生成热力图：${ramp ? ramp.name : rampKey} · ${p.radius}m · ${fc.features.length} 点`);
+  return { layerId: layer.id, layerName, featureCount: fc.features.length, level, polarity: polarity || 'ALL', fc };
+}
+
 /** 初始化弹窗事件（仅一次） */
 export function initHeatmapTool() {
   const dlg = dialogEl();

@@ -1431,4 +1431,7 @@ AI 问答基座稳后，从底部独立抽屉重设计为融入左端栏的 **Em
 **EMC 工作机制重构（revision-log 5.92/5.93）**：三 agent 证实用户 4 猜测全中（EMC 自造并行 GIS 没套 Toolbox + 数据用 registry 缓存非 Layers 可见 + run_python 软约束 + 无上传胶囊）。分 2 commit 矫正。
 - **Commit A（5.92）**：① 数据可见纪律——pickVisiblePointLayer 只扫 visible 层，6 点层工具默认 layer 从 registry `'yichang_l2_t1'` 改为 visible fc + 无可见守卫（绝不臆造跑 registry）；buildContext 过滤 visible + 移除 formatGeoCatalog（registry 全量泄漏源）。② addResultLayer 注入 _ui.tool（EMC 产物获 Toolbox 编辑面板身份，buffer 受益）。③ run_python 收口——harness gate 拦截（ctx.allowCodeViz 才放行）+ composeGapCard 缺工具分支（引导后续开发不临场写代码）。
 - **承重**：未碰三大件出图/5.74/四态/frame-based trust；commit 只不 push。
-- **Commit B（5.93 待做）**：generateHeatmapForAI（Toolbox 2D 彩虹程序化入口）+ EMC density 委托 heatmap(2D)/grid(3D) + paradigm/SKILL_DEFS 同步。Phase 2 留 upload 胶囊 + 自造 density 全退场。
+- **Commit B（5.93）**：generateHeatmapForAI（heatmap-tool.js 新增 2D 彩虹程序化入口，仿 generateGridForAI）+ EMC TOOLS.density 委托——2D→generateHeatmapForAI(rainbow) / 3D→generateGridForAI(terrain-9 可切 2D)，弃用自造 /api/v1/geo/density + DENSITY_RAMP；TEMPLATE_REGISTRY/SKILL_DEFS density 同步（optional_defaults 改 Toolbox 入参 mode/radius/weightField/cell_size/polarity，移除 layer 硬默认走可见层）。参数化设计落地：tool=成熟gis+本地化（委托 Toolbox 固定 HEATMAP_RAMPS），design=标准分析图层。
+- **验证**：.mjs ESM（heatmap-tool/tools/stages）+ py_compile + pytest 166 过/6 预存无关；test_emc_template 5/5。运行时（density 出 2D 彩虹/3D 网格、套 HEATMAP_RAMPS、可切 2D/3D）待用户开 serve 验。
+- **承重**：未碰主 Toolbox dialog 流/generateGridForAI 签名/三大件出图/5.74/四态/frame-based trust；commit 只不 push。
+- **Phase 2 下续**：{{upload:preset}} 胶囊（遇缺 Range/商业/居住用地引导点击上传）+ generateTerrainForAI（3D KDE 等值面备选）+ DENSITY_RAMP/`/api/v1/geo/density` 全退场 + catalog 转 upload 引导源。

@@ -14,7 +14,8 @@ _SINGLE_TOOLS = {'density', 'rank', 'buffer', 'clip', 'overlay', 'zonal_stats',
 # required_slots / optional_defaults 键应是工具能接受的入参名（防拼写漂移）
 _KNOWN_SLOTS = {'layer', 'range', 'boundary', 'center', 'radius_m', 'by', 'top_n', 'how',
                 'layer_a', 'layer_b', 'target', 'k', 'value_col', 'agg_cols', 'pre_filter',
-                'bandwidth_m', 'cell_size_m'}
+                'bandwidth_m', 'cell_size_m',
+                'mode', 'radius', 'weightField', 'cell_size', 'polarity', 'level'}   # density 委托 Toolbox 的入参名
 
 
 def test_registry_structure():

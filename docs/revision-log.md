@@ -1148,6 +1148,21 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.93 EMC 工作机制重构·Commit B：density 委托主 Toolbox（generateHeatmapForAI 2D 彩虹 / generateGridForAI 3D），弃用自造 KDE（07月14日）
+
+接 5.92 Commit A（数据纪律 + run_python 收口），本 Commit B 收掉用户核心抱怨——EMC 自造 density（kde_raster + DENSITY_RAMP）≠ Toolbox heatmap（rainbow）/ grid（terrain-9）。现 EMC "分布热度" 委托主 Toolbox 工具，套用其固定 HEATMAP_RAMPS 色段 + 2D/3D 切换，不再自造。**参数化设计落地**：tool=成熟gis+本地化（委托 Toolbox），design=标准分析图层+本地化 token（HEATMAP_RAMPS）。
+
+**改（Commit B，4 处）**：
+- **generateHeatmapForAI**（[heatmap-tool.js:892](frontend/js/heatmap-tool.js) 新增 export，仿 generateGridForAI 模板）：AI 程序化生成 2D 彩虹热力图（无后端——MapLibre 原生 kind:'heatmap'，fc 直喂渲染器）。opts `{source(sourceKey), level, polarity, radius, opacity, intensity, weightField, intensityMin, rampKey, silent}`，rampKey 默认 'rainbow'（综合彩虹）。链 collectSources→resolveSource→filterFc→addLayer(_ui.tool='heatmap')。返回 `{layerId, layerName, featureCount, level, polarity, fc}`（与 generateGridForAI 同构）。
+- **EMC TOOLS.density 委托**（[tools.js:841](frontend/js/ai_qa/tools.js) 重写）：不再 `geoFetch('density')` + 自造 DENSITY_RAMP。2D（默认）→ `generateHeatmapForAI`；3D（params.mode='3d'）→ `generateGridForAI`（cell 600m 默认，terrain-9/grid-warm，可切 2D/3D）。数据走 pickVisiblePointLayer（visible sourceKey）；无可见层→守卫。import generateHeatmapForAI。
+- **TEMPLATE_REGISTRY/SKILL_DEFS 同步**（[paradigm.py](ai_qa/paradigm.py) density skill + [stages.js SKILL_DEFS](frontend/js/ai_qa/stages.js)）：voice 改"热力图(2D彩虹)/网格(3D)"；optional_defaults 从 KDE 的 `{bandwidth_m,cell_size_m,value_col}` 改为 Toolbox 入参 `{mode:'2d',radius:300,weightField:'emotion_intensity',cell_size:600,polarity:'overall'}`（**移除 layer 硬默认**，走可见层）。test_emc_template.py _KNOWN_SLOTS 补 mode/radius/weightField/cell_size/polarity/level。
+- **DENSITY_RAMP 闲置**（tools.js:191）：density 不再用，端点 `/api/v1/geo/density` 保留向后兼容——全退场留 Phase 2。
+
+**验证**：.mjs ESM（heatmap-tool/tools/stages）+ py_compile（paradigm）全过；pytest 166 过/6 失败全预存无关（h3 + 未碰模块）；test_emc_template 5/5（含 diagnose prompt 渲染更新后的 density 技能）。运行时（density 出 2D 彩虹热力图/3D 网格、套 HEATMAP_RAMPS、可切 2D/3D）待用户开 serve 验。
+
+**承重**：未碰主 Toolbox dialog 流（generateHeatmapForAI 新增、generateHeatmap 不动）/ generateGridForAI 签名 / 三大件出图 / 5.74 对账（density 产图层经 addLayer 入 getLayers，_verifyClaims 按 name 命中）/ 四态出口 / frame-based trust。commit 只不 push。
+**下续（Phase 2）**：{{upload:preset}} 胶囊（遇缺 Range/商业/居住用地引导点击上传，接 range-presets triggerUpload）+ generateTerrainForAI（3D KDE 等值面，若需 terrain 而非 grid）+ DENSITY_RAMP/`/api/v1/geo/density` 全退场 + catalog 转 upload 引导源。
+
 ### 5.92 EMC 工作机制重构·Commit A：数据可见纪律 + _ui.tool 身份 + run_python 收口（07月14日）
 
 三 Explore agent 实测证实用户 4 项猜测全中：① EMC 自造并行 GIS 系统（20 工具仅 ensure_zone 调主 Toolbox；density≠heatmap/grid；DENSITY_RAMP≠HEATMAP_RAMPS）② 7 工具硬默认 `layer:'yichang_l2_t1'`（registry 缓存），只传 L1·T1 照跑 L2，无代码阻止 ③ run_python 仅 prompt 软约束无硬 gate ④ 无上传胶囊。本次分 2 commit 矫正，**Commit A = 数据纪律 + 身份 + run_python 收口**（正确性地基，用错数据比样式差更严重），Commit B = Toolbox 委托。

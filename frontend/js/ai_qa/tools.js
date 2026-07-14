@@ -6,6 +6,7 @@ import { fitBoundsTo, renderLayer, reorderAllZ, removeLayerFromMap } from '../ma
 import { activateTab, setOverview } from '../panel.js';
 import { DOMAIN_LABEL, ELEMENT_LABEL } from '../popup.js';
 import { generateGridForAI } from '../grid-tool.js';
+import { generateHeatmapForAI } from '../heatmap-tool.js';   // 工作机制重构：density 委托 Toolbox 2D 彩虹热力图（不自造）
 import { renderLayerList, refreshLegend } from '../sidebar.js';
 import { fcBBox, profileFields } from '../import.js';
 import { resolveRole, isRenderContract, isInternalField } from '../field_dictionary.js';   // P2/P3 字段语义层·规则标注 + _fieldSamples 语义过滤
@@ -837,31 +838,32 @@ export const TOOLS = {
     } catch (e) { return _ERR('hotspot', e); }
   },
 
-  /** 核密度(KDE)栅格 → 落面层（2D 密度面，离散分段色带）。"核密度/密度分析"的标准出口=新图层。 */
+  /** 分布热度分析 → 委托主 Toolbox（工作机制重构·站在巨人肩膀上）：
+   *   2D→generateHeatmapForAI（彩虹热力图，固定 HEATMAP_RAMPS）；3D→generateGridForAI（网格聚合，terrain-9/grid-warm，可切 2D/3D）。
+   *   不再自造 /api/v1/geo/density + DENSITY_RAMP（已弃用；端点保留向后兼容）。数据走 Layers 可见层（pickVisiblePointLayer）。 */
   async density(params = {}) {
-    const body = {
-      layer: params.layer || 'yichang_l2_t1',
-      bandwidth_m: Number(params.bandwidth_m) || 800,
-      cell_size_m: Number(params.cell_size_m) || 300,
-    };
-    body.value_col = params.value_col || 'score';   // 始终发，默认 score（情绪得分密度，色深=高分聚集=偏正面）；后端缺该列自动回退纯点密度
-    if (params.range) body.range = params.range;
-    const pf = normPreFilter(params.pre_filter); if (pf) body.pre_filter = pf;
+    const _vl = params.layer ? null : pickVisiblePointLayer();
+    if (!params.layer && !_vl) return _ERR_NO_VISIBLE_PT();
+    const _srcKey = params.layer ? undefined : _vl.sourceKey;   // 显式 layer → generateXxx 自动选源；否则传可见 sourceKey
+    const _mode = params.mode === '3d' ? '3d' : '2d';
     try {
-      const r = await geoFetch('density', body);
-      const feats = (r.geojson && r.geojson.features) || [];
-      const _dName = params.as || '情绪核密度';
-      const _dL = addResultLayer({
-        name: _dName, kind: 'polygon', fc: r.geojson, keep: !!params.keep,
-        paint: { fillOn: true, _ui: { tool: 'density', gridField: '_level', gridStops: DENSITY_RAMP, extrusionOpacity: 0.72, mode: '3d', heightField: '_level', maxHeight: 1500 } },
-      });
-      let hi = 0, md = 0;
-      feats.forEach((f) => { const b = (f.properties || {})._band; if (b >= 3) hi++; else if (b === 2) md++; });
-      const _wCol = r.weighted_by ? `·按${r.weighted_by}加权` : '·纯点计数';
-      const _cellNote = (r.actual_cell_m && r.actual_cell_m > body.cell_size_m) ? `（请求${body.cell_size_m}m超上限，实际${Math.round(r.actual_cell_m)}m）` : '';
+      let r;
+      if (_mode === '3d') {
+        r = await generateGridForAI({
+          analysis: 'square', cellSize: Number(params.cell_size) || 600, polarity: params.polarity || 'overall',
+          mode: '3d', source: _srcKey, silent: true,
+        });
+      } else {
+        r = await generateHeatmapForAI({
+          source: _srcKey, level: params.level || (params.layer ? undefined : _vl.level),
+          polarity: params.polarity, radius: Number(params.radius) || 300,
+          weightField: params.weightField || 'emotion_intensity', silent: true,
+        });
+      }
+      const _dName = params.as || r.layerName;
       return {
-        observation: `核密度(KDE)：${feats.length} 个密度格（bandwidth=${body.bandwidth_m}m·cell=${body.cell_size_m}m${_wCol}）${_cellNote}${r.truncated ? '（已截断）' : ''}，高密度区 ${hi}、中区 ${md} → 已生成图层「${_dName}」${_dL ? '(' + feats.length + '面)' : ''}`,
-        data: { count: r.count, layerId: _dL && _dL.id, hi, md, weighted_by: r.weighted_by, actual_cell_m: r.actual_cell_m },
+        observation: `${_mode === '3d' ? '网格聚合(3D·固定色段)' : '热力图(2D彩虹)'}：${r.featureCount} 点 → 已生成图层「${_dName}」（套用 Toolbox 固定色段，可切 2D/3D）`,
+        data: { layerId: r.layerId, mode: _mode, count: r.featureCount },
       };
     } catch (e) { return _ERR('density', e); }
   },
