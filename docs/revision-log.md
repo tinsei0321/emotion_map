@@ -1148,6 +1148,21 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.90 EMC Track 1：L1 极性静默全0兜底 + query-first 代码门控（数据兜底/纪律，治"撒谎中性"与"盲目调错工具"）（07月14日）
+
+Track 0（5.89）诊断时暴露两个更深根因，本条收掉第一个（Track 1，独立 checkpoint）：
+- **L1 极性静默全 0**：L1 层经 registry 重命名后有 `polarity` 列但值是小写 3 级（positive/negative/neutral）+ ~50% 空，而 [aggregate_by_polygons](core/spatial_analysis.py) 行357 硬套 5 级英文 `['Very Negative',...]` → `(x==pol).sum()` 五项全 0 → `polarity_index` **静默全 0**（实测确认），下游 rank/digest 撒谎说"中性平衡"。
+- **query-first 仅 prompt**：manifesto/prompts 说"先 query 后操作"，harness 零门控 → run_python 猜字段崩/选错层/选错尺度。
+
+**改（Track 1，3 处）**：
+- **L1 极性 3 级兜底**（[spatial_analysis.py:357](core/spatial_analysis.py)）：探测 `polarity` 实际值集，小写 3 级（含空）→ 3 级路径：`n_positive/n_negative/n_neutral/n_polarity_unknown`，`polarity_index = (n_positive - n_negative) / (三者之和).clip(1)`（**空值剔出分母**，免 ~50% 空值稀释）；否则走原 5 级英文路径（L2 不变）。L2 `score` 自适应默认（行331）：`[c for c in ('score','emotion_intensity') if c in cols]`，让 L1 也产 `emotion_intensity_mean` 代理量。**F_003 签名不改**（仅内部分支）。
+- **query-first observation 注入**（[harness.js:297](frontend/js/ai_qa/harness.js)）：round 0 把 `TOOLS.query_layers({}).observation`（已加载层名+计数）推入 `toolHistory`，零 LLM——schema 本已在 `ctx.context`（buildContext send 时注入），此处作 observation 迫使 round1 thought"看见"数据；resume 跳过。
+
+**验证**：py_compile + .mjs ESM 全过；直测 aggregate_by_polygons——L1 风格（小写3级+12空/60点）`polarity_index=0.083`（改前 0），空值已剔分母；L2 5 级回归 `polarity_index=0.24` 不变。query-first 运行时（round1 thought 见"数据探查"）待用户开 serve 验。
+
+**承重**：未碰三大件出图/5.74 对账/四态出口/frame-based trust；F_003 签名不改；commit 只不 push。
+**下续**：Track 2 P1 编排（TEMPLATE_REGISTRY 技能化 + runTemplatePath + buffer 聚合 + Flash 80% gate）同会话接做，独立 commit。
+
 ### 5.89 EMC 图面本地化收尾（Track 0）：density 无图例/无情绪语义 + 五极色三套打架 → 半成品图面直接解药（07月14日）
 
 用户反馈 EMC 调 geo 工具产出图"半成品/不知所云"（热力/散点像未完成），怀疑"成熟工具本地化没做好、适配不了底座"。两 Explore agent（数据↔硬编码匹配 + 渲染/参数/query）实测**客观定性**：

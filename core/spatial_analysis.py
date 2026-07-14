@@ -329,7 +329,8 @@ def aggregate_by_polygons(
           - polarity_index: 综合情绪指数（-1~1，正值=偏正面）
     """
     if agg_cols is None:
-        agg_cols = ['score']
+        # 自适应：优先 score（L2），缺则 emotion_intensity（L1 情绪强度代理）；都无则保 ['score'] 占位（下游 if-in-columns 守护跳过，不报错）
+        agg_cols = [c for c in ('score', 'emotion_intensity') if c in points_gdf.columns] or ['score']
 
     # 空间连接
     joined = gpd.sjoin(points_gdf, polygons_gdf, how='inner',
@@ -353,22 +354,37 @@ def aggregate_by_polygons(
             agg_stats[f'{col}_mean'] = grouped[col].mean().round(3)
             agg_stats[f'{col}_std'] = grouped[col].std().round(3)
 
-    # 五级极性统计
+    # 极性统计：5 级英文（L2）/ 3 级小写（L1，polarity_hint 经 registry 重命名）自适应。
+    # L1 值是小写 positive/negative/neutral + 大量空，硬套 5 级英文会 (x==pol).sum() 全 0 → polarity_index 静默全 0（实测）。故探测实际值分支。
     if 'polarity' in joined.columns:
-        for pol in ['Very Negative', 'Negative', 'Neutral', 'Positive', 'Very Positive']:
-            col_name = f'n_{pol.lower().replace(" ", "_")}'
-            agg_stats[col_name] = grouped['polarity'].apply(
-                lambda x: (x == pol).sum()
-            )
-
-        # 综合情绪指数 (Polarity Index)
-        agg_stats['polarity_index'] = (
-            (agg_stats['n_very_positive'] * 2 +
-             agg_stats['n_positive'] * 1 +
-             agg_stats['n_negative'] * -1 +
-             agg_stats['n_very_negative'] * -2) /
-            agg_stats['point_count'].clip(lower=1)
-        ).round(3)
+        _norm = joined['polarity'].fillna('').astype(str).str.lower().str.strip()
+        _nonempty = set(_norm.unique()) - {''}
+        _is_3level = bool(_nonempty) and _nonempty.issubset({'positive', 'negative', 'neutral'})
+        if _is_3level:
+            # 3 级路径（L1）：空值剔出分母，免 ~50% 空值稀释 polarity_index
+            joined['_pol_norm'] = _norm
+            _grp_pol = joined.groupby('index_right')['_pol_norm']
+            for _pol in ('positive', 'negative', 'neutral'):
+                agg_stats[f'n_{_pol}'] = _grp_pol.apply(lambda x: (x == _pol).sum())
+            agg_stats['n_polarity_unknown'] = _grp_pol.apply(lambda x: (x == '').sum())
+            _denom = (agg_stats['n_positive'] + agg_stats['n_negative'] + agg_stats['n_neutral']).clip(lower=1)
+            agg_stats['polarity_index'] = ((agg_stats['n_positive'] - agg_stats['n_negative']) / _denom).round(3)
+            joined = joined.drop(columns=['_pol_norm'])
+        else:
+            # 5 级英文路径（L2，不变）
+            for pol in ['Very Negative', 'Negative', 'Neutral', 'Positive', 'Very Positive']:
+                col_name = f'n_{pol.lower().replace(" ", "_")}'
+                agg_stats[col_name] = grouped['polarity'].apply(
+                    lambda x: (x == pol).sum()
+                )
+            # 综合情绪指数 (Polarity Index)
+            agg_stats['polarity_index'] = (
+                (agg_stats['n_very_positive'] * 2 +
+                 agg_stats['n_positive'] * 1 +
+                 agg_stats['n_negative'] * -1 +
+                 agg_stats['n_very_negative'] * -2) /
+                agg_stats['point_count'].clip(lower=1)
+            ).round(3)
 
     # domain/element 4×5 聚合 + DEMO 规则归因（与 create_square_grid 同源 helper）
     _attach_4x5_attrs(joined, grouped, agg_stats)

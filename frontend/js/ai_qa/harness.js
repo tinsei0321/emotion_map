@@ -294,6 +294,13 @@ export async function orchestrate(ctx, hooks = {}) {
 
   // P0 降温：intent-aware 轮数上限（diagnose 后定）。B=6 多目标完整性，A/C=4 降概率链。
   const maxRounds = (!diagnose.degraded && diagnose.intent === 'gis_operation') ? MAX_ROUNDS_GIS : MAX_ROUNDS_OTHER;
+  // Track 1 query-first：round 0 注入数据 schema 探查 observation（零 LLM，复用 TOOLS.query_layers）——
+  // manifesto "先 query 后操作" 的代码落地：schema 本已在 ctx.context（buildContext send 时注入），
+  // 此处把已加载层名+计数作为一条 observation 推入 toolHistory，迫使 round1 agentStep 的 thought "看见"数据，免盲目调错工具/字段/层。
+  if (!ctx.resume) {
+    try { toolHistory.push(`第0轮·数据探查：${TOOLS.query_layers({}).observation}`); }
+    catch (e) { /* query_layers 无 data 不计 newLayerCount、无副作用，失败静默不阻塞主流程 */ }
+  }
   while (round <= maxRounds) {
     if (hooks.onRound) hooks.onRound(round);
     if (hooks.onRoundStart) hooks.onRoundStart(round);
