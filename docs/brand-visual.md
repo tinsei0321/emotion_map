@@ -15,11 +15,13 @@
 
 | 极性 | 颜色 | 色值 | 用途 |
 |------|------|------|------|
-| Very Positive | 蓝绿 | `#1ABC9C` | 极度满意 |
+| Very Positive | 蓝绿 | `#78DC32` | 极度满意 |
 | Positive | 蓝 | `#5DADE2` | 一般正面 |
 | Neutral | 浅灰 | `#C0C0C0` | 中性 |
-| Negative | 琥珀橙 | `#F0A050` | 一般负面 |
-| Very Negative | 珊瑚红 | `#E06050` | 严重不满 |
+| Negative | 暖褐 | `#C4956A` | 一般负面 |
+| Very Negative | 红 | `#B92D2D` | 严重不满 |
+
+> 五极色唯一权威 = `design/tokens.json` `geojson.emotion`（= `frontend/css/tokens.css` `--geojson-color-emotion-*` = `state.js emotionColors()` = `L2_*`）。改色改 tokens 一处，勿在 state.js/brand-visual.md 另立。
 
 ### 地图标记样式
 

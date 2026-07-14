@@ -1148,6 +1148,27 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.89 EMC 图面本地化收尾（Track 0）：density 无图例/无情绪语义 + 五极色三套打架 → 半成品图面直接解药（07月14日）
+
+用户反馈 EMC 调 geo 工具产出图"半成品/不知所云"（热力/散点像未完成），怀疑"成熟工具本地化没做好、适配不了底座"。两 Explore agent（数据↔硬编码匹配 + 渲染/参数/query）实测**客观定性**：
+- **"工具适配不了数据"证伪**：默认层 yichang_l2_t1（16,933 点/61×71km）42 列里 polarity(英文5级)/score/domain(4值)/element(5值)/topic/spatial_hotspot/area_seed **全部与 aggregate_by_polygons/_attach_4x5_attrs 硬编码精确匹配**；zonal_stats/hotspot 实产情绪语义。底座稳，集成方式=REST API 包 shapely/geopandas/scipy + deck.gl/MapLibre，非代码移植。
+- **半成品真因=图面「最后一公里」本地化缺位**（非数据/非编排）：①density/hotspot 无图例（refreshLegend 仅 4 分支，density 误进 range 显 NAVY 假图例、真 DENSITY_RAMP 不渲染）= 主因；②density 默认 value_col=None→纯点计数（"哪发帖多"非"哪情绪差"）；③五极色三套打架（tokens.css/geojson.emotion=#78DC32 套 vs state.js L2_*=#86E61C 套 vs brand-visual.md=#1ABC9C 套，且**图例色≠地图点色**）；④density 300m 格网被 max_cells 静默放粗到 ~1km 无提示。
+- 用户拍板：先做图面本地化收尾（半成品直接解药、小改动高杠杆），P1 编排（治"抽奖"不治"半成品"）降级后续。
+
+**改（Track 0）**：
+- **density 图例**（[sidebar.js:192,211,217](frontend/js/sidebar.js)）：isRange 排除 density（消 NAVY 假图例）+ legend-grid 分支加 density（复用 gridStops 渲离散色带 + 低/高 标签）+ 标题"情绪密度·情绪得分密度"。
+- **density 默认带情绪**（[geo_routes.py:516](api/geo_routes.py) value_col None→'score' + [tools.js:795](frontend/js/ai_qa/tools.js) 始终发）：按 score 加权（色深=高分聚集=偏正面），缺列自动回退纯点密度；负向聚集走 hotspot（已 invert）。
+- **五极色归一 tokens 单源**（[state.js:306-308](frontend/js/state.js) L2_* → #78DC32 套对齐 tokens.css/geojson.emotion/emotionColors；[tools.js:191](frontend/js/ai_qa/tools.js) DENSITY_RAMP → tokens gradient.neg 反向；[brand-visual.md:18](docs/brand-visual.md) 同步 + 注明唯一权威）：一处改、map.js colorMode/图例/popup/panel/settings 全联动；顺带修"图例色≠点色"真 bug。
+- **density 3D + 去噪**（[tools.js:804](frontend/js/ai_qa/tools.js) _ui 加 mode:'3d'+heightField:'_level'+maxHeight:1500；[map.js:442](frontend/js/map.js) density cell 线 width/opacity→0 消莫尔噪点）：密度地形拉伸 + 干净热力面。
+- **粗化透明化**（[spatial_analysis.py:221](core/spatial_analysis.py) kde_raster 回传 attrs.actual_cell_m + [geo_routes.py:533](api/geo_routes.py) response 带 requested/actual_cell_m/weighted_by + [tools.js](frontend/js/ai_qa/tools.js) observation 标"请求 Xm 超上限实际 Ym"）：不再偷偷变分辨率。
+
+**撤销/澄清（agent 误判，客观纠正）**：①0.6 polygon NAVY 隐形——撤销。[addLayer state.js:671](frontend/js/state.js) 给非分析 polygon 配 PRESET_COLORS 循环色（buffer/overlay 走此，可见），map.js:410 NAVY 仅 fallback 不触发。②hotspot 无图例——撤销。addLayer([state.js:696](frontend/js/state.js)) 默认 point→colorMode:'polarity'，legend-polarity 本就触发；L2_* 归一后图例与点色一致。
+
+**验证**：.mjs ESM（state/map/sidebar/tools，5.84 教训：node --check 对 .js 假绿）全过 + py_compile（geo_routes/spatial_analysis）+ pytest 161 过/6 失败全预先存在且无关（h3 未装致 hex grid ImportError + emotion_analysis/geocode/range_selector 模块未碰）。运行时（density 出图例/3D/语义、五极色三处一致）待用户开 serve 肉眼验（自动识图对 UI 配色不准，别依赖）。
+
+**承重**：未碰三大件出图（addResultLayer+paint 固化）/ 5.74 对账 / 四态出口 / frame-based trust；F_005 不改签名（仅 kde_raster 返回增 attrs，向后兼容）；commit 只不 push。
+**后续**：Track 1（L1 兜底防静默全 0 + query-first 代码门控）/ Track 2 P1 编排（TEMPLATE_REGISTRY 技能化少而精 + runTemplatePath + buffer 聚合 + Flash 80% gate）/ Track 3 P2 专业框架，降级后续会话。详见 plan `emc-p0-5-86-commit-compiled-quail.md`。
+
 ### 5.88 EMC 倾向性重定向：图层优先 + 交互体验（拉回演示逻辑链北极星）（07月13日）
 
 用户批 EMC 跑向学术报告（回答过长/分析太多/偏离核心/**不产图层**），明确三条硬要求：①每回答必新生成图层作主出口（文字辅助）；②逻辑简单清晰直接 + 告诉解题思维逻辑，不要学术复杂；③结论结合地图功能互动、可读可操作。用户两决策：4×5/尺度范式**降权保留**（简单问题别套、复杂归因才用）、长度**软引导+审查卡**。

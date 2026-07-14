@@ -303,9 +303,9 @@ const _groupFold = new Set();                                        // folded r
 const _frozenCats = new Set();                                       // 用户手动 within-category 拖拽过的 category → applyGroupOrder 跳过其组内排序（保手动序）；新层加入时解冻让其归位
 
 // ── L2 palettes (polarity split: Positive green / Negative orange-red / Neutral moody blue) ──
-export const L2_POSITIVE = { 'Very Positive': '#86E61C', 'Positive': '#3DBA9E' };   // 鲜艳荧光绿→蓝绿(teal)
-export const L2_NEGATIVE = { 'Very Negative': '#A3321A', 'Negative': '#E07142' };    // 暗橘红→浅橘红
-export const L2_NEUTRAL_COLOR = '#3A7CA5';                                            // 忧郁蓝（会合色）
+export const L2_POSITIVE = { 'Very Positive': '#78DC32', 'Positive': '#5DADE2' };   // 对齐 tokens.css --geojson-color-emotion-*（= tokens.json geojson.emotion 权威源 = emotionColors()）；旧 #86E61C 套是跑偏异类，已归一
+export const L2_NEGATIVE = { 'Very Negative': '#B92D2D', 'Negative': '#C4956A' };    // 同上，红↔褐对齐 tokens
+export const L2_NEUTRAL_COLOR = '#C0C0C0';                                            // 浅灰，对齐 tokens neutral
 
 // ── 4×5 治理要素专用色源（综合/单极性 Overview 共用，单源勿散用）──
 export const DOMAIN_BAR_COLOR = '#4876FF';      // 4 领域横条（综合数据总览 + 单极性总览统一）

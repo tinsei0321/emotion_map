@@ -186,9 +186,9 @@ function normPreFilter(pf) {
 
 const _ERR = (name, e) => ({ observation: '[ERR] ' + name + ' 失败：' + ((e && e.message) || e) });
 
-/** 核密度(KDE)离散分段色带（5 段，浅黄→深红热力；遵 ramp-discrete-segments，禁连续渐变）。
+/** 核密度(KDE)离散分段色带（5 段，浅粉→深红热力；色值取自 tokens.json gradient.neg 反向，单源勿散用；遵 ramp-discrete-segments，禁连续渐变）。
  *  density 面层经 map.js isTool(density) 复用 grid 色带 fill 管线，按 feature._level(0..1) 落色。 */
-const DENSITY_RAMP = [[0, '#FFFADC'], [0.25, '#FED976'], [0.5, '#FD8D3C'], [0.75, '#E03131'], [1.0, '#8B0000']];
+const DENSITY_RAMP = [[0, '#FADBD8'], [0.25, '#E6B0AA'], [0.5, '#C0392B'], [0.75, '#922B21'], [1.0, '#641E16']];
 const _fmtPi = (v) => (v !== '' && v != null && !isNaN(v) ? Number(v).toFixed(2) : '?');
 const _fmtRow = (row) => {
   const dom = DOMAIN_LABEL[row.domain_top] || row.domain_top || '?';
@@ -792,7 +792,7 @@ export const TOOLS = {
       bandwidth_m: Number(params.bandwidth_m) || 800,
       cell_size_m: Number(params.cell_size_m) || 300,
     };
-    if (params.value_col) body.value_col = params.value_col;
+    body.value_col = params.value_col || 'score';   // 始终发，默认 score（情绪得分密度，色深=高分聚集=偏正面）；后端缺该列自动回退纯点密度
     if (params.range) body.range = params.range;
     const pf = normPreFilter(params.pre_filter); if (pf) body.pre_filter = pf;
     try {
@@ -801,13 +801,15 @@ export const TOOLS = {
       const _dName = params.as || '情绪核密度';
       const _dL = addResultLayer({
         name: _dName, kind: 'polygon', fc: r.geojson, keep: !!params.keep,
-        paint: { fillOn: true, _ui: { tool: 'density', gridField: '_level', gridStops: DENSITY_RAMP, extrusionOpacity: 0.72 } },
+        paint: { fillOn: true, _ui: { tool: 'density', gridField: '_level', gridStops: DENSITY_RAMP, extrusionOpacity: 0.72, mode: '3d', heightField: '_level', maxHeight: 1500 } },
       });
       let hi = 0, md = 0;
       feats.forEach((f) => { const b = (f.properties || {})._band; if (b >= 3) hi++; else if (b === 2) md++; });
+      const _wCol = r.weighted_by ? `·按${r.weighted_by}加权` : '·纯点计数';
+      const _cellNote = (r.actual_cell_m && r.actual_cell_m > body.cell_size_m) ? `（请求${body.cell_size_m}m超上限，实际${Math.round(r.actual_cell_m)}m）` : '';
       return {
-        observation: `核密度(KDE)：${feats.length} 个密度格（bandwidth=${body.bandwidth_m}m·cell=${body.cell_size_m}m${params.value_col ? '·加权' + params.value_col : ''}）${r.truncated ? '（已截断）' : ''}，高密度区 ${hi}、中区 ${md} → 已生成图层「${_dName}」${_dL ? '(' + feats.length + '面)' : ''}`,
-        data: { count: r.count, layerId: _dL && _dL.id, hi, md },
+        observation: `核密度(KDE)：${feats.length} 个密度格（bandwidth=${body.bandwidth_m}m·cell=${body.cell_size_m}m${_wCol}）${_cellNote}${r.truncated ? '（已截断）' : ''}，高密度区 ${hi}、中区 ${md} → 已生成图层「${_dName}」${_dL ? '(' + feats.length + '面)' : ''}`,
+        data: { count: r.count, layerId: _dL && _dL.id, hi, md, weighted_by: r.weighted_by, actual_cell_m: r.actual_cell_m },
       };
     } catch (e) { return _ERR('density', e); }
   },

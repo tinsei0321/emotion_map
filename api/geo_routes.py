@@ -513,7 +513,7 @@ async def hotspot(req: HotspotRequest):
 class DensityRequest(_GeoBase):
     bandwidth_m: float = 800.0       # 高斯核平滑带宽(米)，越大越平滑
     cell_size_m: float = 300.0       # 输出方格边长(米)
-    value_col: Optional[str] = None  # 可选加权列(如 'score')；None=纯点密度
+    value_col: Optional[str] = 'score'  # 加权列；默认 'score'(情绪得分密度，色深=高分聚集=偏正面)；None=纯点密度；缺该列端点自动回退 None
 
 
 @geo_router.post('/geo/density')
@@ -524,12 +524,16 @@ async def density(req: DensityRequest):
         vcol = req.value_col if (req.value_col and req.value_col in pts.columns) else None
         res = kde_raster(pts, bandwidth_m=req.bandwidth_m, cell_size_m=req.cell_size_m, value_col=vcol)
         fc = _to_geojson(res)
+        actual_cell = float(res.attrs.get('actual_cell_m', req.cell_size_m))   # 实际格长（可能因 max_cells 放粗）
     except (KeyError, FileNotFoundError, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e))
     except ImportError as e:
         raise HTTPException(status_code=500, detail=f'依赖缺失: {e}（KDE 需 pip install scipy）')
     except Exception as e:
         raise HTTPException(status_code=500, detail=f'density 失败: {e}')
+    weighted = f'按 {vcol} 加权' if vcol else '纯点计数'
     return {'success': True, 'geojson': fc, 'count': fc['_total'],
             'truncated': fc['_truncated'],
-            'legend': {'_band=4': '高密度', '_band=3': '中高', '_band=2': '中', '_band=1': '中低', '_band=0': '低'}}
+            'requested_cell_m': req.cell_size_m, 'actual_cell_m': actual_cell, 'weighted_by': vcol,
+            'legend': {'_band=4': '高密度', '_band=3': '中高', '_band=2': '中', '_band=1': '中低', '_band=0': '低',
+                       '_weighted': weighted}}

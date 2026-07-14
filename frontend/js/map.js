@@ -438,8 +438,12 @@ function addPolygonPaint(layer, sid, lid, lineLid, hitLid) {
 
   // visible outline；3D 去线框（只 2D 加浅灰细线，区分 buffer 实线 / Range 点划线）
   if (!isTool3d) {
+    const _isDensity = tool === 'density';
     const lineColor = isTool ? '#666' : color;
-    const linePaint = { 'line-color': lineColor, 'line-width': p.lineWidth ?? (isTool ? 0.5 : 1), 'line-opacity': isTool ? 0.45 : 0.9 };
+    // density 2D 去格线（密网格灰线成莫尔噪点，热力图本不需格线）；grid/terrain 保留 0.5px 浅灰
+    const linePaint = { 'line-color': lineColor,
+      'line-width': p.lineWidth ?? (isTool ? (_isDensity ? 0 : 0.5) : 1),
+      'line-opacity': p.lineOpacity ?? (isTool ? (_isDensity ? 0 : 0.45) : 0.9) };
     const lineLayout = {};
     if (p.lineStyle === 'dashed') {
       linePaint['line-dasharray'] = [2, 1.5];                    // 缓冲面域：短虚线

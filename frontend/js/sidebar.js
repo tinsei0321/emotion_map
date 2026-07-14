@@ -190,7 +190,7 @@ export function refreshLegend() {
 
   // range — 矩形线框+面域填充，实时同步 focus range 层的线色/填充态；名称=层实际名
   const isRange = (l) => (l.kind === 'polygon' || l.kind === 'line')
-    && !(l.paint && l.paint._ui && (l.paint._ui.tool === 'grid' || l.paint._ui.tool === 'terrain'));
+    && !(l.paint && l.paint._ui && (l.paint._ui.tool === 'grid' || l.paint._ui.tool === 'terrain' || l.paint._ui.tool === 'density'));
   const range = (sel && isRange(sel) && sel.visible) ? sel : vis.find(isRange);
   sethidden('legend-range', !range);
   if (range) {
@@ -207,17 +207,18 @@ export function refreshLegend() {
     if (nameEl) nameEl.textContent = range.name || range.srcName || '范围';
   }
 
-  // grid/terrain — 横向色带 + 极性标题（参考 Kepler/Martin 连续色带图例）
+  // grid/terrain/density — 横向色带 + 极性标题（参考 Kepler/Martin 连续色带图例）
   const grid = vis.find((l) => l.kind === 'polygon' && l.paint && l.paint._ui
-    && (l.paint._ui.tool === 'grid' || l.paint._ui.tool === 'terrain'));
+    && (l.paint._ui.tool === 'grid' || l.paint._ui.tool === 'terrain' || l.paint._ui.tool === 'density'));
   sethidden('legend-grid', !grid);
   if (grid) {
     const ui = grid.paint._ui;
     const pol = ui.terrainPol || ui.polarity;   // terrain 存 terrainPol；grid 存 polarity
     const isTerrain = ui.tool === 'terrain';
-    const polLabel = { overall: '综合', positive: '积极', negative: '消极', neutral: '中性' }[pol] || (isTerrain ? '地形' : '网格');
+    const isDensity = ui.tool === 'density';
+    const polLabel = isDensity ? '情绪得分密度' : ({ overall: '综合', positive: '积极', negative: '消极', neutral: '中性' }[pol] || (isTerrain ? '地形' : '网格'));
     const tEl = document.getElementById('legend-grid-title');
-    if (tEl) tEl.textContent = `${isTerrain ? '情绪地形' : '网格'} · ${polLabel}`;
+    if (tEl) tEl.textContent = `${isTerrain ? '情绪地形' : isDensity ? '情绪密度' : '网格'} · ${polLabel}`;
     const rampEl = document.getElementById('legend-grid-ramp');
     const stops = grid.paint.gridStops || [];
     if (rampEl && stops.length) {

@@ -1413,3 +1413,10 @@ AI 问答基座稳后，从底部独立抽屉重设计为融入左端栏的 **Em
 **验证**：pytest tests/test_sandbox.py **28 passed**（19旧+9新）；post_run 端点真调（matplotlib 出图→fig1+dataUri / 反射端点级拦 / data_refs 注入 rows 2）；openapi 确认 /api/v1/run 挂载（total 34 paths 现有路由全在）；node --check + py_compile 全过。
 
 **承重**：不破 frame-based trust（库帧 lazy-import/lazy-open/eval 放行，pandas/matplotlib/numpy 不误伤）/ 5.74 对账（figId 纯 ASCII + 「图片」措辞不进 verbRe/showRe）/ SAFE_READY 单点 revert（改回 False gate 自动卸载 /run）/ run_sandbox 永不裸输 / 演示版非 OS 隔离（内存 CPU 仅超时软限、别名反射 AST 拦不住靠禁 eval 收敛——文档化，生产须叠容器）。详见 revision-log 5.83。
+
+**EMC 图面本地化 Track 0（revision-log 5.89）**：density 无图例/无情绪语义 + 五极色三套打架 → 半成品图面直接解药（用户原怀疑"工具适配不了数据"经实测证伪，真因=图面最后一公里本地化缺位）。
+- **改**：①density 图例分支（sidebar.js：isRange 排除 density + legend-grid 加 density + 标题"情绪密度"）②density 默认 value_col='score'（geo_routes/tools，按得分加权带情绪语义）③五极色归一 tokens 单源（state.js L2_* #86E61C→#78DC32 套对齐 tokens.css/emotionColors；DENSITY_RAMP→gradient.neg；brand-visual.md 同步）④density 3D + 去噪（tools _ui mode:'3d' + map cell 线归零消莫尔）⑤粗化透明化（kde_raster 回传 actual_cell_m + observation 标实际分辨率）。
+- **撤销（agent 误判纠正）**：0.6 polygon NAVY 隐形——撤销（addLayer 给非分析 polygon 配 PRESET_COLORS，本就可见）；hotspot 无图例——撤销（addLayer 默认 point→colorMode:'polarity'，图例本就触发）。
+- **验证**：.mjs ESM（state/map/sidebar/tools）+ py_compile 全过；pytest 161 过/6 失败全预先存在且无关（h3 未装 + 未碰模块）。运行时待用户开 serve 肉眼验。
+- **承重**：未碰三大件出图/5.74 对账/四态出口/frame-based trust；F_005 仅增 attrs 不改签名；commit 只不 push。
+- **后续**：Track 1（L1 兜底 + query-first 代码门控）/ Track 2 P1 编排（TEMPLATE_REGISTRY 技能化 + runTemplatePath + buffer 聚合 + Flash 80% gate）/ Track 3 P2 专业框架，降级后续会话。

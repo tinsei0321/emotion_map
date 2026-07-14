@@ -218,7 +218,9 @@ def kde_raster(
     out = gpd.GeoDataFrame(props, geometry=polys, crs=_KDE_PROJECT_CRS)
     with TrackContext("MOD_SPATIAL.D_004", n_cells=len(out), bandwidth_m=float(bandwidth_m), cell_m=float(cell)):
         pass
-    return out.to_crs('EPSG:4326')
+    out = out.to_crs('EPSG:4326')
+    out.attrs['actual_cell_m'] = float(cell)   # 回传实际格长（max_cells 放粗后），供端点标注防静默粗化
+    return out
 
 
 # ═══════════════════════════════════════════════════════════
