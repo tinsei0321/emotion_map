@@ -1148,6 +1148,21 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.94 EMC 工作机制重构·Phase 2：generateTerrainForAI 补齐 Toolbox 三件套 + density provenance 补注册 + DENSITY_RAMP 退场（07月14日）
+
+接 5.92/5.93（数据纪律 + density 委托 Toolbox heatmap/grid），Phase 2 收尾（用户指定**跳过 upload 胶囊**留后续开发）：补齐 Toolbox 可视化三件套的第三个程序化入口（terrain 3D 等值面）+ 修上次标注的 provenance 缺口 + 自造 DENSITY_RAMP 死码退场。
+
+**改（Phase 2，4 处）**：
+- **generateTerrainForAI**（[heatmap-tool.js](frontend/js/heatmap-tool.js) 新增 export，仿 generateHeatmapForAI/generateGridForAI）：AI 程序化生成 3D KDE 等值面·情绪地形（**仅 L2**，后端 runTerrain→/api/v1/spatial/terrain→create_terrain_mesh）。opts `{source, polarity(ALL/P/N/O), bandwidth_m, cell_m, levels, maxHeight, extrusionOpacity, silent}`，bandwidth 按 nPts 自适应（<1000?350:<5000?250:180）。ramp overall=terrain-9/极性=green-3·red-3·blue-3；heightField=_level、colorField=_norm(综合)/_level(极性)。返回 `{layerId, layerName, featureCount, level:'L2', polarity, fc}`。至此 Toolbox 可视化三件套（heatmap 2D / grid 3D / terrain 3D）程序化入口齐备，EMC 可全量套用。
+- **density 三模式路由**（[tools.js TOOLS.density](frontend/js/ai_qa/tools.js)）：`mode='2d'`(默认)→generateHeatmapForAI / `mode='3d'`→generateGridForAI / **`mode='terrain'`→generateTerrainForAI**（新增）。import 补 generateTerrainForAI。
+- **provenance 补注册**（[tools.js _registerToolboxLayer](frontend/js/ai_qa/tools.js)）：density 委托 Toolbox 后图层经 addLayer 入 getLayers 但绕过 addResultLayer——补 `_registry`(provenance)/`_stepResults`($n 引用)/`_curResultIds` 注册，修多步链 $n 引用 + formatRegistry 显 provenance + 5.74 对账完整（上次标注的缺口）。density 三模式产出后统一调 `_registerToolboxLayer(r.layerId, r.fc, name)`。
+- **DENSITY_RAMP 退场 + 后端 deprecated**（[tools.js](frontend/js/ai_qa/tools.js) 删 DENSITY_RAMP const 死码 + [geo_routes.py:523](api/geo_routes.py) `/api/v1/geo/density` 段头标 DEPRECATED 注释）：density 不再用自造色带。后端端点 + kde_raster(F_005) 保留（承重，全删须 SOP）。
+
+**验证**：.mjs ESM（heatmap-tool/tools）+ py_compile（geo_routes）全过；pytest 166 过/6 失败全预存无关（h3 + 未碰模块）；test_emc_template 5/5。运行时（density mode=terrain 出 3D 等值面、$n 引用 density 产物、DENSITY_RAMP 无残留引用）待用户开 serve 验。
+
+**承重**：未碰主 Toolbox dialog 流（generateTerrain 不动）/ generateGridForAI 签名 / 三大件出图 / 5.74 对账（_registerToolboxLayer 反而强化之）/ 四态出口 / frame-based trust / F_005（端点保留）；commit 只不 push。
+**Phase 2 跳过项（用户指定后续）**：{{upload:preset}} 胶囊（遇缺 Range/商业/居住用地引导点击上传，接 range-presets triggerUpload）+ catalog 转 upload 引导源。
+
 ### 5.93 EMC 工作机制重构·Commit B：density 委托主 Toolbox（generateHeatmapForAI 2D 彩虹 / generateGridForAI 3D），弃用自造 KDE（07月14日）
 
 接 5.92 Commit A（数据纪律 + run_python 收口），本 Commit B 收掉用户核心抱怨——EMC 自造 density（kde_raster + DENSITY_RAMP）≠ Toolbox heatmap（rainbow）/ grid（terrain-9）。现 EMC "分布热度" 委托主 Toolbox 工具，套用其固定 HEATMAP_RAMPS 色段 + 2D/3D 切换，不再自造。**参数化设计落地**：tool=成熟gis+本地化（委托 Toolbox），design=标准分析图层+本地化 token（HEATMAP_RAMPS）。

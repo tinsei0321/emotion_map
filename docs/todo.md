@@ -1435,3 +1435,12 @@ AI 问答基座稳后，从底部独立抽屉重设计为融入左端栏的 **Em
 - **验证**：.mjs ESM（heatmap-tool/tools/stages）+ py_compile + pytest 166 过/6 预存无关；test_emc_template 5/5。运行时（density 出 2D 彩虹/3D 网格、套 HEATMAP_RAMPS、可切 2D/3D）待用户开 serve 验。
 - **承重**：未碰主 Toolbox dialog 流/generateGridForAI 签名/三大件出图/5.74/四态/frame-based trust；commit 只不 push。
 - **Phase 2 下续**：{{upload:preset}} 胶囊（遇缺 Range/商业/居住用地引导点击上传）+ generateTerrainForAI（3D KDE 等值面备选）+ DENSITY_RAMP/`/api/v1/geo/density` 全退场 + catalog 转 upload 引导源。
+
+**EMC 工作机制重构·Phase 2 完成（revision-log 5.94）**：用户指定跳过 upload 胶囊（留后续），收尾其余：
+- **generateTerrainForAI**（heatmap-tool.js 新增 export）：3D KDE 等值面·情绪地形程序化入口（仅 L2，仿 generateHeatmapForAI/generateGridForAI）。**Toolbox 可视化三件套（heatmap 2D / grid 3D / terrain 3D）程序化入口齐备**，EMC 全量套用。
+- **density 三模式路由**（TOOLS.density）：mode='2d'→heatmap / '3d'→grid / **'terrain'→terrain**。
+- **provenance 补注册**（_registerToolboxLayer）：density 委托 Toolbox 的图层补入 _registry/_stepResults/_curResultIds——修 $n 引用 + formatRegistry provenance + 5.74 对账缺口（5.93 标注的取舍）。
+- **DENSITY_RAMP 退场**（tools.js 删死码 const）+ `/api/v1/geo/density` 后端标 DEPRECATED（保留代码，F_005 承重全删须 SOP）。
+- **验证**：.mjs ESM + py_compile + pytest 166 过/6 预存无关。运行时待用户开 serve 验。
+- **承重**：未碰主 Toolbox dialog 流/generateGridForAI 签名/三大件出图/5.74(强化)/四态/frame-based trust/F_005(保留)；commit 只不 push。
+- **后续（用户指定）**：{{upload:preset}} 胶囊 + catalog 转 upload 引导源。

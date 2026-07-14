@@ -6,7 +6,7 @@ import { fitBoundsTo, renderLayer, reorderAllZ, removeLayerFromMap } from '../ma
 import { activateTab, setOverview } from '../panel.js';
 import { DOMAIN_LABEL, ELEMENT_LABEL } from '../popup.js';
 import { generateGridForAI } from '../grid-tool.js';
-import { generateHeatmapForAI } from '../heatmap-tool.js';   // 工作机制重构：density 委托 Toolbox 2D 彩虹热力图（不自造）
+import { generateHeatmapForAI, generateTerrainForAI } from '../heatmap-tool.js';   // 工作机制重构：density 委托 Toolbox（2D 彩虹/3D 地形，不自造）
 import { renderLayerList, refreshLegend } from '../sidebar.js';
 import { fcBBox, profileFields } from '../import.js';
 import { resolveRole, isRenderContract, isInternalField } from '../field_dictionary.js';   // P2/P3 字段语义层·规则标注 + _fieldSamples 语义过滤
@@ -187,9 +187,8 @@ function normPreFilter(pf) {
 
 const _ERR = (name, e) => ({ observation: '[ERR] ' + name + ' 失败：' + ((e && e.message) || e) });
 
-/** 核密度(KDE)离散分段色带（5 段，浅粉→深红热力；色值取自 tokens.json gradient.neg 反向，单源勿散用；遵 ramp-discrete-segments，禁连续渐变）。
- *  density 面层经 map.js isTool(density) 复用 grid 色带 fill 管线，按 feature._level(0..1) 落色。 */
-const DENSITY_RAMP = [[0, '#FADBD8'], [0.25, '#E6B0AA'], [0.5, '#C0392B'], [0.75, '#922B21'], [1.0, '#641E16']];
+// DENSITY_RAMP 已退场（Phase 2）：density 委托主 Toolbox generateHeatmapForAI/generateGridForAI/generateTerrainForAI，
+// 套用 HEATMAP_RAMPS 固定色段，不再自造 KDE 色带。原 const 已删（端点 /api/v1/geo/density 后端保留 + 标 deprecated）。
 const _fmtPi = (v) => (v !== '' && v != null && !isNaN(v) ? Number(v).toFixed(2) : '?');
 const _fmtRow = (row) => {
   const dom = DOMAIN_LABEL[row.domain_top] || row.domain_top || '?';
@@ -498,6 +497,15 @@ function resolvePointLayer(params) {
 }
 function _ERR_NO_VISIBLE_PT() {
   return { observation: '[ERR] 无可见的情绪点层——EMC 只用 Layers 当前显示的数据，请先加载/上传情绪点（registry 未显示层一律禁用）' };
+}
+/** 补注册 Toolbox 委托产物（generateHeatmapForAI/generateGridForAI/generateTerrainForAI 经 addLayer 入 getLayers，
+ *  但绕过 addResultLayer）——补 _registry(provenance)/_stepResults($n 引用)/_curResultIds，让多步链可 $n 引用 + formatRegistry 显 provenance + 5.74 对账完整。 */
+function _registerToolboxLayer(layerId, fc, name) {
+  if (!layerId) return;
+  _registry.push({ id: layerId, name, tool: _curTool, round: _curRound, t: Date.now() });
+  _curResultIds.push(layerId);
+  _stepResults.push(fc);
+  _resultIdByStep.push(layerId);
 }
 
 export const TOOLS = {
@@ -845,10 +853,12 @@ export const TOOLS = {
     const _vl = params.layer ? null : pickVisiblePointLayer();
     if (!params.layer && !_vl) return _ERR_NO_VISIBLE_PT();
     const _srcKey = params.layer ? undefined : _vl.sourceKey;   // 显式 layer → generateXxx 自动选源；否则传可见 sourceKey
-    const _mode = params.mode === '3d' ? '3d' : '2d';
+    const _mode = params.mode === 'terrain' ? 'terrain' : params.mode === '3d' ? '3d' : '2d';
     try {
       let r;
-      if (_mode === '3d') {
+      if (_mode === 'terrain') {
+        r = await generateTerrainForAI({ source: _srcKey, polarity: params.polarity, silent: true });   // 3D KDE 等值面（仅 L2）
+      } else if (_mode === '3d') {
         r = await generateGridForAI({
           analysis: 'square', cellSize: Number(params.cell_size) || 600, polarity: params.polarity || 'overall',
           mode: '3d', source: _srcKey, silent: true,
@@ -860,9 +870,11 @@ export const TOOLS = {
           weightField: params.weightField || 'emotion_intensity', silent: true,
         });
       }
+      _registerToolboxLayer(r.layerId, r.fc, params.as || r.layerName);   // 补 EMC provenance/$n 引用注册（修委托 Toolbox 的对账缺口）
       const _dName = params.as || r.layerName;
+      const _modeLabel = { '2d': '热力图(2D彩虹)', '3d': '网格聚合(3D·固定色段)', terrain: '情绪地形(3D KDE 等值面)' }[_mode];
       return {
-        observation: `${_mode === '3d' ? '网格聚合(3D·固定色段)' : '热力图(2D彩虹)'}：${r.featureCount} 点 → 已生成图层「${_dName}」（套用 Toolbox 固定色段，可切 2D/3D）`,
+        observation: `${_modeLabel}：${r.featureCount} ${_mode === 'terrain' ? '层等值面' : '点'} → 已生成图层「${_dName}」（套用 Toolbox 固定色段，可切 2D/3D）`,
         data: { layerId: r.layerId, mode: _mode, count: r.featureCount },
       };
     } catch (e) { return _ERR('density', e); }

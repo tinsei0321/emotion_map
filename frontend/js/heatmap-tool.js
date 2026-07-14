@@ -934,6 +934,55 @@ export async function generateHeatmapForAI(opts = {}) {
   return { layerId: layer.id, layerName, featureCount: fc.features.length, level, polarity: polarity || 'ALL', fc };
 }
 
+/** EMC AI 程序化入口（3D KDE 等值面·情绪地形）：仿 generateGridForAI/generateHeatmapForAI 模板，不开 dialog。
+ *  EMC density mode='terrain' 委托此函数（3D 平滑曲面，区别于 grid 的方格柱）。**仅 L2**（地形需极性字段）。
+ *  opts: {source(sourceKey), polarity(ALL/P/N/O), bandwidth_m, cell_m, levels, maxHeight, extrusionOpacity, silent}。
+ *  后端 runTerrain → /api/v1/spatial/terrain → create_terrain_mesh。ramp：overall=terrain-9 / 极性=green-3/red-3/blue-3。
+ *  返回 {layerId, layerName, featureCount, level:'L2', polarity, fc}。 */
+export async function generateTerrainForAI(opts = {}) {
+  const p = { cell_m: 60, levels: 7, maxHeight: 1000, extrusionOpacity: 0.9, silent: true, ...opts };
+  const sources = collectSources();
+  if (!sources.length) throw new Error('无可用情绪点图层（先在 Layers 加载/上传）');
+  let src = p.source ? sources.find((s) => s.sourceKey === p.source || s.value === p.source) : null;
+  if (!src) src = sources.find((s) => s.level === 'L2') || sources[0];
+  if (src.level !== 'L2') throw new Error('情绪地形 3D 仅支持 L2 数据');
+  const polarity = p.polarity || 'ALL';
+  const resolved = resolveSource(sources, 'L2', polarity);
+  if (!resolved || !resolved.fc || !resolved.fc.features.length) throw new Error('所选源无 L2 点数据');
+  const fc0 = resolved.fc;
+  const nPts = fc0.features.length;
+  if (nPts < 30) throw new Error('点数过少（<30），无法生成地形曲面');
+  const terrainPol = TERRAIN_POL_MAP[polarity] || 'overall';
+  const bandwidth = p.bandwidth_m || (nPts < 1000 ? 350 : nPts < 5000 ? 250 : 180);
+  const res = await trackGeneration(runTerrain({ geojson: fc0, polarity: terrainPol, bandwidth_m: bandwidth, cell_m: p.cell_m, levels: p.levels }));
+  if (!res || !res.success || !res.geojson) throw new Error((res && res.message) || '后端返回异常');
+  const fc = res.geojson;
+  if (!fc.features || !fc.features.length) throw new Error('地形生成结果为空');
+  const isOverall = terrainPol === 'overall';
+  const rampKey = terrainRampOf(terrainPol);
+  const colorField = isOverall ? '_norm' : '_level';   // 综合=极性着色(_norm)；极性=密度着色(_level)
+  const stops = _terrainStops(rampKey);
+  const polCN = TERRAIN_POL_CN[terrainPol];
+  const _srcMatch = resolved.sourceKey.match(/^(?:group|layer):([^#]+)/);
+  const _srcLayer = _srcMatch ? getLayer(_srcMatch[1]) : null;
+  const srcName = _srcLayer ? (_srcLayer.srcName || '') : '';
+  const tPrefix = deriveTimeTag(fc0) ? `${deriveTimeTag(fc0)}·` : '';
+  const layerName = `${tPrefix}${polCN}·情绪地形·${srcName || resolved.label}`;
+  const paint = { fillOn: true,
+    _ui: { tool: 'terrain', analysisKey: 'terrain', dim: '3d', level: 'L2', polarity, terrainPol, mode: '3d', heightField: '_level', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity, rampKey },
+    gridField: colorField, gridStops: stops, fillOpacity: p.extrusionOpacity };
+  const L = addLayer({ name: layerName, kind: 'polygon', fc, paint });
+  L.srcName = srcName;
+  renderLayer(L);
+  for (const hid of enforceMutualExclusion(L.id)) { const hl = getLayer(hid); if (hl) renderLayer(hl); }
+  const bb = fcBBox(fc); if (bb) fitBoundsTo(bb);
+  setView3D(true);   // 3D 地形：自动暗底图 + pitch 60°
+  selectLayer(L.id);
+  document.dispatchEvent(new CustomEvent('layers:changed'));   // 工具生成不自动弹 Overview/Table
+  if (!p.silent) toast.success(`已生成 ${polCN}情绪地形 · ${fc.features.length} 层等值面 · ${nPts} 点`);
+  return { layerId: L.id, layerName, featureCount: fc.features.length, level: 'L2', polarity: terrainPol, fc };
+}
+
 /** 初始化弹窗事件（仅一次） */
 export function initHeatmapTool() {
   const dlg = dialogEl();

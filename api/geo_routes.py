@@ -521,6 +521,9 @@ async def hotspot(req: HotspotRequest):
 
 
 # ════════════ 11. density · 核密度(KDE)栅格 ════════════
+# [DEPRECATED · Phase 2 工作机制重构] EMC density 已委托主 Toolbox（generateHeatmapForAI 2D 彩虹 /
+#   generateGridForAI 3D 网格 / generateTerrainForAI 3D 等值面），不再调本端点。保留代码向后兼容；
+#   全退场（删端点 + kde_raster F_005）须走完整 SOP（承重函数）。
 class DensityRequest(_GeoBase):
     bandwidth_m: float = 800.0       # 高斯核平滑带宽(米)，越大越平滑
     cell_size_m: float = 300.0       # 输出方格边长(米)
