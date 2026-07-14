@@ -1427,3 +1427,8 @@ AI 问答基座稳后，从底部独立抽屉重设计为融入左端栏的 **Em
 - **验证**：py_compile + .mjs ESM 全过；node 内联测 parse+validate 6/6；pytest 166 过（+5）/6 预存无关失败；buffer TestClient no-layer 逐字节同原 / with-layer 焊 point_count=396·polarity=-0.596。
 - **承重**：未碰三大件出图/5.74 对账/四态出口/frame-based trust；F_003 不改签名；commit 只不 push。
 - **渐进激活**：Flash 首次见 template，未可靠输出前落 unknown→while-loop（零回归）；达标后 single 主导。运行时 E2E + Flash 实测待用户开 serve + 跑 eval。下续 P2（加技能 #8-11 + B/C 范式树 + field_dictionary 接承重函数）。
+
+**EMC 工作机制重构（revision-log 5.92/5.93）**：三 agent 证实用户 4 猜测全中（EMC 自造并行 GIS 没套 Toolbox + 数据用 registry 缓存非 Layers 可见 + run_python 软约束 + 无上传胶囊）。分 2 commit 矫正。
+- **Commit A（5.92）**：① 数据可见纪律——pickVisiblePointLayer 只扫 visible 层，6 点层工具默认 layer 从 registry `'yichang_l2_t1'` 改为 visible fc + 无可见守卫（绝不臆造跑 registry）；buildContext 过滤 visible + 移除 formatGeoCatalog（registry 全量泄漏源）。② addResultLayer 注入 _ui.tool（EMC 产物获 Toolbox 编辑面板身份，buffer 受益）。③ run_python 收口——harness gate 拦截（ctx.allowCodeViz 才放行）+ composeGapCard 缺工具分支（引导后续开发不临场写代码）。
+- **承重**：未碰三大件出图/5.74/四态/frame-based trust；commit 只不 push。
+- **Commit B（5.93 待做）**：generateHeatmapForAI（Toolbox 2D 彩虹程序化入口）+ EMC density 委托 heatmap(2D)/grid(3D) + paradigm/SKILL_DEFS 同步。Phase 2 留 upload 胶囊 + 自造 density 全退场。

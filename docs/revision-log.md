@@ -1148,6 +1148,20 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.92 EMC 工作机制重构·Commit A：数据可见纪律 + _ui.tool 身份 + run_python 收口（07月14日）
+
+三 Explore agent 实测证实用户 4 项猜测全中：① EMC 自造并行 GIS 系统（20 工具仅 ensure_zone 调主 Toolbox；density≠heatmap/grid；DENSITY_RAMP≠HEATMAP_RAMPS）② 7 工具硬默认 `layer:'yichang_l2_t1'`（registry 缓存），只传 L1·T1 照跑 L2，无代码阻止 ③ run_python 仅 prompt 软约束无硬 gate ④ 无上传胶囊。本次分 2 commit 矫正，**Commit A = 数据纪律 + 身份 + run_python 收口**（正确性地基，用错数据比样式差更严重），Commit B = Toolbox 委托。
+
+**改（Commit A，6 处）**：
+- **数据可见纪律**（[tools.js](frontend/js/ai_qa/tools.js)）：新增 `pickVisiblePointLayer()`（只扫 `getLayers().filter(visible)`，L2 group→L2 点→L1 点，返 fc/level/sourceKey 或 null，registry 未显示层一律不返）+ `resolvePointLayer(params)` + `_ERR_NO_VISIBLE_PT()`。**6 个点层工具**（zonal_stats/rank/filter_attr/clip/nearest/hotspot）默认 layer 从 `'yichang_l2_t1'`（registry）改为 `resolvePointLayer()`（visible fc dict，geoFetch ref() 透传）；无可见层→守卫返 `[ERR] 无可见情绪点层`（落 EXIT_GAP，**绝不臆造跑 registry**）。`buildContext` 过滤 visible + **移除 formatGeoCatalog 注入**（registry 全量泄漏 LLM 的源头）。
+- **_ui.tool 身份注入**（[tools.js addResultLayer](frontend/js/ai_qa/tools.js)）：若 `_curTool` 存在（harness setToolContext 注入）则给 paint 补 `_ui.tool`——EMC buffer/overlay/clip 等产物获 Toolbox 编辑面板身份（按 `_ui.tool` 回填参数），buffer 尤其受益（保留 Track 2 圈内聚合 + 获 `_ui.tool='buffer'`）。
+- **run_python 收口**（[harness.js:417](frontend/js/ai_qa/harness.js)）：工具执行处加 gate——`run_python` 且未 `ctx.allowCodeViz` → 拦截返 `[ERR] 已阻止临场写代码`（计 failedObs → 落 EXIT_GAP 缺工具卡）；`ctx.allowCodeViz=true`（用户显式要自定义可视化/散点/双轴）才放行。composeGapCard 加**缺工具分支**（区别于缺数据）：failedObs 含"缺现成工具/阻止 run_python"→"建议后续开发对应 Toolbox 工具，不临场写代码"。
+
+**验证**：.mjs ESM（tools/harness）全过；pytest 13 过/2 失败全预存无关（h3 未装 hex grid）。运行时（只传 L1·T1 不再跑 L2、buffer 编辑面板生效、run_python 被拦）待用户开 serve 验。
+
+**承重**：未碰三大件出图（addResultLayer 仅补 _ui.tool）/ 5.74 对账 / 四态出口（run_python gate 落现有 EXIT_GAP）/ frame-based trust；commit 只不 push。
+**下续**：Commit B = generateHeatmapForAI（Toolbox 2D 彩虹程序化入口）+ EMC density 委托 heatmap(2D)/grid(3D) + paradigm/SKILL_DEFS 同步。
+
 ### 5.91 EMC Track 2：P1 技能化编排（TEMPLATE_REGISTRY + runTemplatePath，p^N→p²）+ buffer 聚合闭环 + Flash 80% gate（07月14日）
 
 Track 1（5.90）后接做 Track 2——把自由 ReAct agent loop（p^N 概率链）换成约束式技能编排。用户"抽奖"反馈的数学根源收口。**站在巨人肩膀上**：EMC 不自造 GIS，TEMPLATE_REGISTRY 是编排层（每技能=1-2 个成熟 geo 工具 + 规划常识默认 + 拟人化口吻），少而精 7 技能 + 结构可生长。

@@ -98,8 +98,11 @@ function composeGapCard(diagnose, failedObs) {
   const needed = _esc((dp.needed || []).filter(Boolean).join('、'));
   const gap = _esc((dp.gap || []).filter(Boolean).join('、'));
   const strategy = dp.strategy;
+  const _needsTool = (failedObs || []).some((f) => /缺现成工具|阻止 run_python/.test(String(f)));
   let head;
-  if (strategy === 'request_upload' || gap || needed) {
+  if (_needsTool) {
+    head = '## 这个分析缺现成工具——建议后续开发对应 Toolbox 工具\n\nEMC 只用成熟 geo/Toolbox 工具、不临场写代码。当前 Toolbox 还没覆盖这类分析。\n\n**下一步**：告诉我想要的工具能力（如某类可视化/空间统计），我纳入 Toolbox 开发计划；或换用已有 geo 工具组合、换问法。';
+  } else if (strategy === 'request_upload' || gap || needed) {
     head = '## 还差关键数据——补齐后我就能严谨作答\n\n'
       + (needed ? `本问需要 **${needed}** 才能给出可靠结论。` : '当前情绪地图数据尚不足以完成此分析。')
       + (gap ? `\n\n**缺失**：${gap}。` : '');
@@ -416,7 +419,11 @@ export async function orchestrate(ctx, hooks = {}) {
     // 执行工具（直调主窗口）
     const fn = TOOLS[step.action.name];
     let obs = '';
-    if (fn) {
+    // 工作机制·run_python 收口：缺现成 geo/Toolbox 工具时引导后续开发，不临场写代码（用户铁律）。
+    //   ctx.allowCodeViz=true（用户显式要自定义可视化/散点/双轴）才放行；否则拦截计 failedObs → 落 EXIT_GAP 缺工具卡引导。
+    if (step.action.name === 'run_python' && !ctx.allowCodeViz) {
+      obs = '[ERR] 已阻止 run_python 临场写代码——EMC 只用成熟 geo/Toolbox 工具；此分析缺现成工具，按缺工具处理（引导后续开发），勿再调 run_python';
+    } else if (fn) {
       try {
         setToolContext({ tool: step.action.name, round });   // ① 注入 provenance 给 addResultLayer 入 registry
         const r = await fn(step.action.params || {});

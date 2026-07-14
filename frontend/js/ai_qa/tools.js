@@ -276,6 +276,12 @@ export function addResultLayer({ name, kind = 'polygon', fc, paint, keep, fields
     const _lu = landuseLayerPaint(fc, name);
     if (_lu) _paint = { ...(paint || {}), ..._lu };
   }
+  // 工作机制：注入 _ui.tool（from setToolContext 的 _curTool）——让 EMC 产物带工具身份，Toolbox 编辑面板（按 _ui.tool 回填参数）对 EMC buffer/overlay/clip 等生效
+  if (_curTool) {
+    if (!_paint) _paint = { _ui: { tool: _curTool } };
+    else if (!_paint._ui) _paint = { ..._paint, _ui: { tool: _curTool } };
+    else if (!_paint._ui.tool) _paint._ui.tool = _curTool;
+  }
   const L = addLayer({ name, kind, fc, paint: _paint, parentId: _aiGroup().id });
   L.srcName = name;
   _registry.push({ id: L.id, name, tool: _curTool, round: _curRound, t: Date.now(), fields });   // ① registry（provenance 由 harness setToolContext 注入；fields 可选字段简表，P3 formatRegistry 用）
@@ -423,15 +429,14 @@ export async function buildContext() {
   const an = activeAnalysis();
   const parts = [];
   const loaded = (await Promise.all(layers
-    .filter((l) => l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length)
+    .filter((l) => l.visible && l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length)
     .map(async (l) => {
       const cnt = l.fc.features.length;
       const fs = await _fieldSamples(l.fc, 6, l.id);   // DataEye（P3）：字段+类型+role+样本值（供 AI 写 where 有真实值参照）
       return `${l.name}(${cnt}条${fs ? ',字段:' + fs : ''})`;
     }))).join('、');
-  parts.push('已加载图层：' + (loaded || '（无）'));
-  const geo = formatGeoCatalog(await getGeoCatalog());
-  if (geo) parts.push(geo);
+  parts.push('已加载图层（仅 Layers 当前显示·EMC 只用可见层，未显示层禁用）：' + (loaded || '（无）'));
+  // 数据可见纪律：不注入 registry catalog 全量（formatGeoCatalog）——未显示层一律不准用，防"只传 L1·T1 却跑 L2"
   const wisdom = await getWisdom();
   if (wisdom) parts.push(wisdom);
   if (!an) {
@@ -464,6 +469,34 @@ export async function buildContext() {
     }).join('\n'));
   }
   return parts.join('\n');
+}
+
+/** 数据可见纪律（工作机制重构）：EMC 只用 Layers 中【当前显示】的情绪点层，registry 未显示层一律禁用
+ *  （防默认 'yichang_l2_t1' 致"只传 L1·T1 却跑 L2"的用错数据）。与 heatmap/grid collectSources 同源，但强制 visible 过滤。 */
+export function pickVisiblePointLayer() {
+  const vis = getLayers().filter((l) => l.visible && l.fc && l.fc.features && l.fc.features.length);
+  for (const l of vis) {   // L2 group（多极性子层合并）优先
+    if (l.kind === 'group' && l.children && l.children.length) {
+      const merged = [];
+      for (const cid of l.children) { const c = getLayer(cid); if (c && c.fc && c.fc.features.length) merged.push(...c.fc.features); }
+      if (merged.length) return { fc: { type: 'FeatureCollection', features: merged }, name: l.name, level: 'L2', sourceKey: `group:${l.id}` };
+    }
+  }
+  const pts = vis.filter((l) => l.kind === 'point');
+  const l2 = pts.find((l) => l.colorMode && String(l.colorMode).startsWith('l2-'));
+  if (l2) return { fc: l2.fc, name: l2.name, level: 'L2', sourceKey: `layer:${l2.id}` };
+  const l1 = pts.find((l) => l.colorMode === 'confidence');
+  if (l1) return { fc: l1.fc, name: l1.name, level: 'L1', sourceKey: `layer:${l1.id}` };
+  return null;
+}
+/** 工具入参 layer 解析：显式 params.layer 优先（geoFetch ref() 解析图层名/$n/preset_id/GeoJSON），否则用可见层 fc。 */
+function resolvePointLayer(params) {
+  if (params.layer) return params.layer;
+  const vl = pickVisiblePointLayer();
+  return vl ? vl.fc : null;
+}
+function _ERR_NO_VISIBLE_PT() {
+  return { observation: '[ERR] 无可见的情绪点层——EMC 只用 Layers 当前显示的数据，请先加载/上传情绪点（registry 未显示层一律禁用）' };
 }
 
 export const TOOLS = {
@@ -598,7 +631,9 @@ export const TOOLS = {
   /** 宏/中观结论主干：按边界聚合点层，得每单元极性/点数/4×5 归因+排序。 */
   async zonal_stats(params = {}) {
     if (!params.boundary) return { observation: '[ERR] zonal_stats 需 boundary（preset_id）' };
-    const body = { layer: params.layer || 'yichang_l2_t1', boundary: params.boundary };
+    const _layer = resolvePointLayer(params);
+    if (!_layer) return _ERR_NO_VISIBLE_PT();
+    const body = { layer: _layer, boundary: params.boundary };
     if (params.range) body.range = params.range;
     const pf = normPreFilter(params.pre_filter); if (pf) body.pre_filter = pf;
     if (params.top_n != null) body.top_n = Number(params.top_n);
@@ -614,7 +649,9 @@ export const TOOLS = {
   async rank(params = {}) {
     let by = params.by || 'worst';
     if (by.startsWith('domain:')) { const cn = by.split(':')[1]; by = 'domain:' + (_DOMAIN_CN2EN[cn] || cn); }
-    const body = { layer: params.layer || 'yichang_l2_t1', by, top_n: Number(params.top_n) || 5 };
+    const _layer = resolvePointLayer(params);
+    if (!_layer) return _ERR_NO_VISIBLE_PT();
+    const body = { layer: _layer, by, top_n: Number(params.top_n) || 5 };
     if (params.boundary) body.boundary = params.boundary;
     if (params.range) body.range = params.range;
     const pf = normPreFilter(params.pre_filter); if (pf) body.pre_filter = pf;
@@ -630,7 +667,9 @@ export const TOOLS = {
   async filter_attr(params = {}) {
     const pf = normPreFilter(params.pre_filter);
     if (!pf) return { observation: '[ERR] filter_attr 需 pre_filter（field/op/value）' };
-    const body = { layer: params.layer || 'yichang_l2_t1', pre_filter: pf };
+    const _layer = resolvePointLayer(params);
+    if (!_layer) return _ERR_NO_VISIBLE_PT();
+    const body = { layer: _layer, pre_filter: pf };
     if (params.range) body.range = params.range;
     try {
       const r = await geoFetch('filter_attr', body);
@@ -648,7 +687,9 @@ export const TOOLS = {
   /** 按几何裁剪（某区/某公园范围内的点），结果落地图为新点图层。 */
   async clip(params = {}) {
     if (!params.range) return { observation: '[ERR] clip 需 range（preset_id|geojson）' };
-    const body = { layer: params.layer || 'yichang_l2_t1', range: params.range };
+    const _layer = resolvePointLayer(params);
+    if (!_layer) return _ERR_NO_VISIBLE_PT();
+    const body = { layer: _layer, range: params.range };
     const pf = normPreFilter(params.pre_filter); if (pf) body.pre_filter = pf;
     try {
       const r = await geoFetch('clip', body);
@@ -749,7 +790,9 @@ export const TOOLS = {
   /** 最近邻。 */
   async nearest(params = {}) {
     if (!params.target) return { observation: '[ERR] nearest 需 target' };
-    const body = { layer: params.layer || 'yichang_l2_t1', target: params.target, k: Number(params.k) || 1 };
+    const _layer = resolvePointLayer(params);
+    if (!_layer) return _ERR_NO_VISIBLE_PT();
+    const body = { layer: _layer, target: params.target, k: Number(params.k) || 1 };
     try {
       const r = await geoFetch('nearest', body);
       const rows = r.rows || [];
@@ -761,7 +804,9 @@ export const TOOLS = {
 
   /** Gi* 热点识别 → 落图层（hot/cold/ns 点，离散色：hot=负面聚集=红 / cold=正面聚集=绿 / ns=灰）。 */
   async hotspot(params = {}) {
-    const body = { layer: params.layer || 'yichang_l2_t1', value_col: params.value_col || 'score', invert: params.invert !== false };
+    const _layer = resolvePointLayer(params);
+    if (!_layer) return _ERR_NO_VISIBLE_PT();
+    const body = { layer: _layer, value_col: params.value_col || 'score', invert: params.invert !== false };
     if (params.range) body.range = params.range;
     const pf = normPreFilter(params.pre_filter); if (pf) body.pre_filter = pf;
     try {
