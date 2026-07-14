@@ -8,12 +8,18 @@ import { streamChat } from './api.js';
  *  导致执行报错→空转→退化为叙述。此处统一规整为各工具的规范入参名，模型怎么写都能执行。
  *  仅收编实测出现的漂移别名，保守不过度映射（避免误伤合法字段）。 */
 const _PARAM_ALIAS = {
-  inverse: 'invert', output_layer: 'as', output: 'as', layer_name: 'as', named: 'as',
-  radius: 'radius_m', radius_meters: 'radius_m', buffer_radius: 'radius_m',
+  inverse: 'invert', output_layer: 'as', output: 'as', layer_name: 'as', named: 'as', name: 'as',
+  radius: 'radius_m', radius_meters: 'radius_m', buffer_radius: 'radius_m', distance: 'radius_m',
   value: 'value_col', column: 'value_col', field_name: 'field',
   top: 'top_n', limit: 'top_n', n: 'top_n',
+  // P1 扩（实测漂移别名；保守映射，避跨工具冲突——where/filter 不映射：extract_feature 用 where、其余用 pre_filter）
+  point: 'center', center_point: 'center',
+  zone: 'boundary', region: 'boundary',
+  sort: 'by', sort_by: 'by', criteria: 'by',
+  target_layer: 'target', target_poi: 'target',
+  mode: 'how',
 };
-function normalizeParams(name, params) {
+export function normalizeParams(name, params) {
   if (!params || typeof params !== 'object') return {};
   const out = {};
   for (const k of Object.keys(params)) {
@@ -21,6 +27,29 @@ function normalizeParams(name, params) {
     out[canon] = params[k];
   }
   return out;
+}
+
+/** P1 技能槽位镜像（前端校验用，与后端 ai_qa/paradigm.py TEMPLATE_REGISTRY 的 tool/category/required_slots/optional_defaults 同步）。
+ *  仿 field_dictionary 两份字典模式：改后端必同步此处。仅校验/填默认所需字段，不含 voice/triggers（那些只进 prompt）。 */
+export const SKILL_DEFS = {
+  concept:  { tool: null,          category: 'concept',  required_slots: [],                     optional_defaults: {} },
+  density:  { tool: 'density',     category: 'single',   required_slots: [],                     optional_defaults: { layer: 'yichang_l2_t1', bandwidth_m: 800, cell_size_m: 300, value_col: 'score' } },
+  rank:     { tool: 'rank',        category: 'single',   required_slots: [],                     optional_defaults: { layer: 'yichang_l2_t1', by: 'polarity', top_n: 5 } },
+  buffer:   { tool: 'buffer',      category: 'single',   required_slots: ['center'],              optional_defaults: { radius_m: 500, layer: 'yichang_l2_t1', agg_cols: ['score'] } },
+  clip:     { tool: 'clip',        category: 'single',   required_slots: ['range'],               optional_defaults: { layer: 'yichang_l2_t1' } },
+  overlay:  { tool: 'overlay',     category: 'single',   required_slots: ['layer_a', 'layer_b'],  optional_defaults: { how: 'intersection' } },
+  zonal:    { tool: 'zonal_stats', category: 'single',   required_slots: ['boundary'],            optional_defaults: { layer: 'yichang_l2_t1', agg_cols: ['score'] } },
+  multi:    { tool: null,          category: 'multi',    required_slots: [],                     optional_defaults: {} },
+  unknown:  { tool: null,          category: 'unknown',  required_slots: [],                     optional_defaults: {} },
+};
+
+/** P1 单技能路径参数校验：按 SKILL_DEFS[skill].required_slots 查缺槽、optional_defaults 补默认（用户值覆盖默认）。
+ *  返 {ok, missing:[...], params}。镜像 tools.js 各工具 guard 范式——缺不可默认槽→harness 走 EXIT_GAP 诚实兜底（不赌博自纠）。 */
+export function validateParams(skill, params) {
+  const def = SKILL_DEFS[skill];
+  const merged = { ...((def && def.optional_defaults) || {}), ...(params || {}) };
+  const missing = ((def && def.required_slots) || []).filter((k) => merged[k] == null || merged[k] === '');
+  return { ok: !missing.length, missing, params: merged };
 }
 
 /** 容错解析 agent_step 的 {thought, action}。
@@ -134,6 +163,11 @@ function normalizeCard(obj) {
       strategy: dp.strategy || 'ready',
     },
     method: Array.isArray(obj.method) ? obj.method : (obj.method ? [obj.method] : []),
+    template: (() => {
+      const _t = (typeof obj.template === 'string' && obj.template) ? obj.template.trim().toLowerCase() : 'unknown';
+      return SKILL_DEFS[_t] ? _t : 'unknown';   // 非 SKILL 模板归一 unknown（路由跳过落 while-loop；Flash gate 计为 miss）
+    })(),
+    params: (obj.params && typeof obj.params === 'object' && !Array.isArray(obj.params)) ? obj.params : {},
   };
 }
 
@@ -150,7 +184,7 @@ export function parseDiagnoseCard(raw) {
   candidate = candidate.replace(/,(\s*[}\]])/g, '$1');
   try {
     const obj = JSON.parse(candidate);
-    if (obj && (obj.scale || obj.domain_lens || obj.data_plan)) return normalizeCard(obj);
+    if (obj && (obj.scale || obj.domain_lens || obj.data_plan || obj.template)) return normalizeCard(obj);
   } catch (_) { /* fall through */ }
   // 兜底：正则抠 scale/strategy（模型把卡裹在解释里时），尽量救回 strategy 驱动数据自检
   const scale = candidate.match(/"scale"\s*:\s*"(\w+)"/);

@@ -11,6 +11,7 @@ import datetime as _dt
 from ai_qa.manifesto import MANIFESTO
 from ai_qa.paradigm import (
     scale_paradigm_text, domain_outlets_text, geo_tool_catalog_text, code_exec_catalog_text,
+    template_registry_text,
     DIAGNOSE_CARD_FIELDS, DATA_STRATEGY,
 )
 
@@ -178,7 +179,8 @@ DIAGNOSE_TEMPLATE = """
     "gap": ["缺失的，如『更新紧迫度评估』"],
     "strategy": "ready" | "fallback_annotated" | "request_upload"
   }},
-  "method": ["从下方 GIS 工具目录选 + 组合；emotion 如 'zonal_stats(更新单元) → rank(worst)'，gis_operation 如 'extract_feature(admin_district, MC/eq/西陵区)'"]
+  "template": "技能id（density/rank/buffer/clip/overlay/zonal/concept/multi/unknown 之一，见下方【技能目录】）",
+  "params": {{"必填槽名": "值（按所选技能 required_slots 填，可空槽系统补默认）"}}
 }}
 **intent 判定要点（最高优先级）**：
 - general=通用问答/常识/寒暄/纯概念（今天星期几、什么是等时圈）→ domain_lens=["general"]，method 可空，不进情绪分析。**包含"就已有图层/上一轮结果的概念追问"**——用户问"差别/区别/为什么/解释/含义/是什么/对比"且针对**已生成的图层/结果**（不要求新操作），即使含"核密度/用地/极性"等关键词，也判 general（concept，直接作答，method 可空）。例：「生成的 4 个核密度图层有什么差别」「为什么 X 区比 Y 区差」「这些图层是什么意思」→ general。
@@ -215,8 +217,11 @@ def build_diagnose_prompt(context: str = '', context_tokens: list = None) -> str
     # 范式知识附录（format 后拼接，花括号安全）
     prompt += '\n═══════════ 附录 · 尺度-方法-范式矩阵 ═══════════\n' + scale_paradigm_text()
     prompt += '\n\n═══════════ 附录 · 4 领域出口范式启发库 ═══════════\n' + domain_outlets_text()
-    prompt += '\n\n═══════════ 附录 · GIS 操作目录（method 字段据此选型）═══════════\n' \
+    prompt += '\n\n═══════════ 附录 · GIS 操作目录（template 字段选型参照）═══════════\n' \
               + geo_tool_catalog_text()
+    prompt += '\n\n═══════════ 附录 · 技能目录（template 字段据此选型 · 拟人化 · P1 编排层）═══════════\n' \
+              + '【选择要点】intent=general→concept；intent=gis_operation→density/rank/buffer/clip/overlay 之一；intent=emotion_analysis→zonal/rank。单工具能答的问题禁选 multi/unknown（它们进多轮探索，仅用于真复合/无现成技能）。\n' \
+              + template_registry_text()
     prompt += '\n\n═══════════ 附录 · 诊断卡字段说明 ═══════════'
     for k, v in DIAGNOSE_CARD_FIELDS.items():
         prompt += f'\n- {k}：{v}'

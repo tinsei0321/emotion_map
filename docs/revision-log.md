@@ -1148,6 +1148,27 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.91 EMC Track 2：P1 技能化编排（TEMPLATE_REGISTRY + runTemplatePath，p^N→p²）+ buffer 聚合闭环 + Flash 80% gate（07月14日）
+
+Track 1（5.90）后接做 Track 2——把自由 ReAct agent loop（p^N 概率链）换成约束式技能编排。用户"抽奖"反馈的数学根源收口。**站在巨人肩膀上**：EMC 不自造 GIS，TEMPLATE_REGISTRY 是编排层（每技能=1-2 个成熟 geo 工具 + 规划常识默认 + 拟人化口吻），少而精 7 技能 + 结构可生长。
+
+**改（Track 2，6 处 + 2 测试）**：
+- **TEMPLATE_REGISTRY + 渲染**（[paradigm.py:206](ai_qa/paradigm.py)，geo_tool_catalog_text 后）：9 条（concept/density/rank/buffer/clip/overlay/zonal/multi/unknown），每条 `{skill,name,category,voice,triggers,tool,required_slots,optional_defaults,planning_common}`；`template_registry_text()` 仿 geo_tool_catalog_text 纯函数 f-string。`voice`=老规划师拟人化，`planning_common`=buffer 半径 10min≈500m/地铁站 500m 等常识默认。
+- **diagnose method→template**（[prompts.py:181](ai_qa/prompts.py) method 字段替换为 template+params + build_diagnose_prompt:219 注入技能目录附录 + import）：替换非叠加，免 Flash 注意力稀释 + 双框架冲突。选择要点段（intent→template 映射 + 单工具问禁选 multi/unknown）。
+- **前端校验+镜像**（[stages.js](frontend/js/ai_qa/stages.js)）：`SKILL_DEFS` 镜像（tool/category/required_slots/optional_defaults，仿 field_dictionary 两份字典）+ `validateParams(skill,params)`（补默认/查缺槽）+ `_PARAM_ALIAS` 14→25（补 point→center/zone→boundary/sort→by/target_layer→target/mode→how；**where/filter 不映射**——extract_feature 用 where、其余用 pre_filter，跨映射会崩）+ `normalizeCard` 加 template/params（非 SKILL 模板归一 unknown）。
+- **runTemplatePath + 路由**（[harness.js](frontend/js/ai_qa/harness.js)）：路由（degraded 块后）`SKILL_DEFS[template].category==='single'` → runTemplatePath（validateParams→setToolContext→TOOLS[tool]→finalStep，**0 次 agentStep LLM**）；缺槽/失败/空命中→EXIT_GAP 诚实兜底（不赌博自纠）；finalStep draft 仍过 _verifyClaims+_reviseOnce（5.74 对账）。concept 走现有 general 短路；multi/unknown 落 while-loop。
+- **buffer 聚合闭环**（[geo_routes.py:394](api/geo_routes.py) BufferRequest 继承 _GeoBase+agg_cols + 聚合分支 + [tools.js:713](frontend/js/ai_qa/tools.js) 转发 layer/agg_cols/range/pre_filter + surface）：传 layer→焊圈内 point_count/polarity_index/4×5 归因（消除 buffer→zonal 断点，省一轮 LLM 决策）；省略 layer→逐字节同原（向后兼容）。
+- **Flash 80% gate**（[tests/test_emc_template.py](tests/test_emc_template.py) 结构测 5 项 CI 跑 + [tests/eval_template_flash.py](tests/eval_template_flash.py) 手动真 Flash 评测 13 代表问）：≥80% 才 ship single；<80% 只保 concept+multi/unknown。
+
+**两个真 bug（node 内联测抓到）**：① `normalizeParams` 未 export，runTemplatePath 调 `stages.normalizeParams` 会 undefined→加 export。② `parseDiagnoseCard` 行153 要求卡含 scale/domain_lens/data_plan 才接受→纯 template 卡返回 null、single 永不触发→加 `obj.template` 到接受条件。
+
+**验证**：py_compile（paradigm/prompts/geo_routes/spatial_analysis）+ .mjs ESM（stages/harness/tools）全过；node 内联测 parse+validate 管线 6/6（buffer 补默认/缺槽检测/density 默认/bogus→unknown/别名归一/single 路由分类）；pytest 166 过（+5 新结构测）/6 失败全预存无关（h3 未装 + 未碰模块）；buffer 端点 TestClient 测——no-layer props={area_km2,name}（逐字节同原），with-layer=yichang_l2_t1 props 焊 point_count=396/polarity_index=-0.596/全 4×5 归因。运行时（single 路径 E2E、Flash 实测命中率）待用户开 serve + 跑 eval。
+
+**渐进激活**：Flash 首次见 template 字段，未可靠输出前大多卡落 unknown→while-loop（即原行为，零回归）；命中率达标后 single 路径才主导。这是设计内的安全网。
+
+**承重**：未碰三大件出图（runTemplatePath/buffer 聚合仍走 addResultLayer）/ 5.74 对账（single 仍过 _verifyClaims+_reviseOnce）/ 四态出口（single→result，缺槽/失败→gap）/ frame-based trust；F_003 签名不改；commit 只不 push。
+**下续**：P2 加技能 #8-11（nearest/hotspot/area_stats/merge/extract_feature）+ B/C 赛道范式树 + field_dictionary 接承重函数（上传层 alias）+ popularity role + miss 遥测。
+
 ### 5.90 EMC Track 1：L1 极性静默全0兜底 + query-first 代码门控（数据兜底/纪律，治"撒谎中性"与"盲目调错工具"）（07月14日）
 
 Track 0（5.89）诊断时暴露两个更深根因，本条收掉第一个（Track 1，独立 checkpoint）：

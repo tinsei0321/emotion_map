@@ -203,6 +203,73 @@ def geo_tool_catalog_text() -> str:
     return '\n'.join(lines)
 
 
+# ════════════ 表3c · 技能模板目录（P1 编排层 · 站在巨人肩膀上）════════════
+# 每个「技能」= 1-2 个成熟 geo 工具 + 规划常识默认 + 拟人化口吻。diagnose 选 template → harness runTemplatePath 填 params 确定性执行（p^N→p²）。
+# 少而精（7 命名技能 + 2 兜底），结构可生长：追加一条 dict 即新增技能（P2+ 加 nearest/hotspot/area_stats/merge/extract_feature）。
+# 前端 stages.js SKILL_DEFS 镜像 required_slots/optional_defaults/tool/category（仿 field_dictionary 两份字典，改须同步）。
+TEMPLATE_REGISTRY = [
+    {'skill': 'concept', 'name': '概念问答', 'category': 'concept',
+     'voice': '我直接讲解概念，不动地图', 'triggers': '什么是/含义/区别/定义',
+     'tool': None, 'required_slots': [], 'optional_defaults': {},
+     'planning_common': '通用问答，不走空间分析（harness 走 general 短路）'},
+    {'skill': 'density', 'name': '密度聚集分析', 'category': 'single',
+     'voice': '我用核密度(KDE)看清情绪在哪聚集', 'triggers': '哪里最集中/热点/聚集/分布',
+     'tool': 'density', 'required_slots': [],
+     'optional_defaults': {'layer': 'yichang_l2_t1', 'bandwidth_m': 800, 'cell_size_m': 300, 'value_col': 'score'},
+     'planning_common': '带宽 800m≈步行10min覆盖；按 score 加权（色深=高分聚集=偏正面），负向走 hotspot'},
+    {'skill': 'rank', 'name': '排序评价', 'category': 'single',
+     'voice': '我按极性给区域排序找最差/最好', 'triggers': '哪个最需更新/最差/最好/排名',
+     'tool': 'rank', 'required_slots': [],
+     'optional_defaults': {'layer': 'yichang_l2_t1', 'by': 'polarity', 'top_n': 5},
+     'planning_common': 'Top 5 聚焦最突出要素；by 默认极性'},
+    {'skill': 'buffer', 'name': '缓冲影响圈', 'category': 'single',
+     'voice': '我画设施影响范围并聚合圈内情绪', 'triggers': '周边/附近/范围内/地铁站X米',
+     'tool': 'buffer', 'required_slots': ['center'],
+     'optional_defaults': {'radius_m': 500, 'layer': 'yichang_l2_t1', 'agg_cols': ['score']},
+     'planning_common': '半径：5min步行≈300m/10min≈500m/15min≈1000m；地铁站500m/小学500m/社区医院800m/综合医院1500m'},
+    {'skill': 'clip', 'name': '范围裁取', 'category': 'single',
+     'voice': '我按范围裁出点位', 'triggers': '西陵区的XX/某区的/范围内的',
+     'tool': 'clip', 'required_slots': ['range'],
+     'optional_defaults': {'layer': 'yichang_l2_t1'},
+     'planning_common': 'range 用 preset_id（行政区/单元）或 geojson'},
+    {'skill': 'overlay', 'name': '叠置交叉', 'category': 'single',
+     'voice': '我叠两个图层找复合问题区', 'triggers': '居住用地里情绪差的/两图交集',
+     'tool': 'overlay', 'required_slots': ['layer_a', 'layer_b'],
+     'optional_defaults': {'how': 'intersection'},
+     'planning_common': 'how：intersection 交/union 并/difference 差'},
+    {'skill': 'zonal', 'name': '单元归因', 'category': 'single',
+     'voice': '我按行政/规划单元聚合情绪并给 4×5 归因', 'triggers': '这几个街道/社区的归因/单元评价',
+     'tool': 'zonal_stats', 'required_slots': ['boundary'],
+     'optional_defaults': {'layer': 'yichang_l2_t1', 'agg_cols': ['score']},
+     'planning_common': 'boundary=preset_id（街道/社区/更新单元）；C 赛道情绪主干'},
+    {'skill': 'multi', 'name': '多步组合', 'category': 'multi',
+     'voice': '这个问题要组合几步工具，我按固定链做', 'triggers': '多目标/复合问',
+     'tool': None, 'chain': ['clip', 'zonal_stats'], 'required_slots': [], 'optional_defaults': {},
+     'planning_common': '固定工具链，首轮直接执行不重选（进 while-loop 受 cap）'},
+    {'skill': 'unknown', 'name': '自由探索', 'category': 'unknown',
+     'voice': '这个问题我没现成技能，小心探索', 'triggers': '兜底',
+     'tool': None, 'required_slots': [], 'optional_defaults': {},
+     'planning_common': 'MAX_ROUNDS cap 4，受约束 ReAct（进 while-loop）'},
+]
+
+
+def template_registry_text() -> str:
+    """渲染技能目录为模型可读文本（拟人化口吻，注入 diagnose prompt 的 template 字段选型附录）。
+    纯函数 f-string、不 .format()，故 voice/planning_common 内花括号安全。"""
+    lines = []
+    for s in TEMPLATE_REGISTRY:
+        _tool = s['tool'] or ('无（' + s['category'] + '类）')
+        _slots = s['required_slots'] or '无'
+        _def = s['optional_defaults'] or '无'
+        lines.append(
+            f"- 技能 {s['skill']}（{s['name']}，category={s['category']}）：{s['voice']}\n"
+            f"    触发：{s['triggers']}\n"
+            f"    工具：{_tool}；必填槽：{_slots}；默认：{_def}\n"
+            f"    规划常识：{s['planning_common']}"
+        )
+    return '\n'.join(lines)
+
+
 # ════════════ 表3b · 代码执行目录（run_python，geo 工具兜底）════════════
 # geo 工具覆盖不到的灵活分析/出图走 run_python（沙箱执行，三道底线加固）。
 # 后端实现见 api/run_routes.py（POST /run → sandbox.run_sandbox）。

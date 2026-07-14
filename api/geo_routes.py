@@ -391,14 +391,16 @@ async def rank(req: RankRequest):
 
 
 # ════════════ 7. buffer · 缓冲区 ════════════
-class BufferRequest(BaseModel):
+class BufferRequest(_GeoBase):
     center: Any                       # preset_id | GeoJSON（缓冲中心面/点）
     radius_m: float = 500.0
+    agg_cols: Optional[list] = None   # 可选聚合列（如 ['score']）；与 layer 同传时焊圈内点情绪统计
 
 
 @geo_router.post('/geo/buffer')
 async def buffer(req: BufferRequest):
-    """生成中心要素的缓冲区（米制精确）。返回缓冲面域 GeoJSON + 面积。"""
+    """生成中心要素的缓冲区（米制精确）。返回缓冲面域 GeoJSON + 面积；传 layer 时焊上圈内点聚合
+   （point_count/polarity_index/domain_top/...，消除 buffer→zonal 断点）。省略 layer → 逐字节同原（向后兼容）。"""
     try:
         center = resolve_boundary(req.center)
         proj = center.to_crs(_PROJECT_CRS)
@@ -407,6 +409,15 @@ async def buffer(req: BufferRequest):
         buf_gdf = gpd.GeoDataFrame({'name': names},
                                    geometry=buf.values, crs=_PROJECT_CRS).to_crs('EPSG:4326')
         buf_gdf['area_km2'] = (buf.area / 1e6).round(3)
+        # 可选聚合：传 layer → 焊圈内点情绪统计到 buf_gdf（buf_gdf 已 4326，pts 默认 4326，sjoin within 对齐）；
+        # 空 sjoin/无点 → ValueError 降级纯几何（buf_gdf 不变）。省略 layer → 不进此分支，buf_gdf 逐字节同原。
+        if req.layer is not None:
+            try:
+                pts = _prepare_points(req.layer, req.range, req.pre_filter)
+                agg_cols = req.agg_cols or (['score'] if 'score' in pts.columns else [])
+                buf_gdf = aggregate_by_polygons(pts, buf_gdf, agg_cols=agg_cols, polygon_name_col='name')
+            except ValueError:
+                pass
         fc = _to_geojson(buf_gdf)
     except (KeyError, FileNotFoundError, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e))

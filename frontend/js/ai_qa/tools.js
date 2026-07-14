@@ -709,17 +709,24 @@ export const TOOLS = {
     } catch (e) { return _ERR('merge', e); }
   },
 
-  /** 设施缓冲区。 */
+  /** 设施缓冲区（传 layer 时后端焊圈内点情绪聚合，消除 buffer→zonal 断点）。 */
   async buffer(params = {}) {
     if (!params.center) return { observation: '[ERR] buffer 需 center' };
     const body = { center: params.center, radius_m: Number(params.radius_m) || 500 };
+    if (params.layer) body.layer = params.layer;                       // P1 聚合：传点层 → 后端焊圈内情绪统计
+    if (params.agg_cols) body.agg_cols = params.agg_cols;
+    if (params.range) body.range = params.range;
+    const pf = normPreFilter(params.pre_filter); if (pf) body.pre_filter = pf;
     try {
       const r = await geoFetch('buffer', body);
       const feats = (r.geojson && r.geojson.features) || [];
-      const area = feats.length ? Number((feats[0].properties || {}).area_km2) || 0 : 0;
+      const _p0 = (feats[0] && feats[0].properties) || {};
+      const area = Number(_p0.area_km2) || 0;
+      const _agg = _p0.point_count != null;                            // 后端聚合成功则 properties 含 point_count
       const _bName = params.as || `${typeof params.center === 'string' ? params.center : '设施'}·${body.radius_m}m`;   // 名=对象+半径（如「滨江公园·500m」）
       const _bL = addResultLayer({ name: _bName, kind: 'polygon', fc: r.geojson, paint: { fillOn: true, lineWidth: 2, fillOpacity: 0.2 }, keep: !!params.keep });
-      return { observation: `缓冲区 radius=${r.radius_m || body.radius_m}m，得 ${feats.length} 个面（约 ${area.toFixed(2)} km²）→ 已生成图层「${_bName}」`, data: { radius_m: r.radius_m, layerId: _bL && _bL.id } };
+      const _aggTxt = _agg ? `，圈内 ${_p0.point_count} 点·极性 ${Number(_p0.polarity_index).toFixed(2)}` : '';
+      return { observation: `缓冲区 radius=${r.radius_m || body.radius_m}m，得 ${feats.length} 个面（约 ${area.toFixed(2)} km²）${_aggTxt} → 已生成图层「${_bName}」`, data: { radius_m: r.radius_m, layerId: _bL && _bL.id, aggregated: _agg } };
     } catch (e) { return _ERR('buffer', e); }
   },
 

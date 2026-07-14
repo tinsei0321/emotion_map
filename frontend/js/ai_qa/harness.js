@@ -181,6 +181,57 @@ async function _reviseOnce(ctx, hooks, draft, hints, toolHistoryText) {
   return null;
 }
 
+/** P1 编排·单技能路径：diagnose 选定 single 技能 → 填参 → 直接调 TOOLS[tool] → finalStep（**不进 while-loop、0 次 agentStep LLM**，p^N→p²）。
+ *  缺不可默认槽/工具失败/空命中 → EXIT_GAP 诚实兜底（不赌博自纠，与降 p^N 初衷一致）。finalStep draft 仍过 _verifyClaims+_reviseOnce（5.74 对账保留）。 */
+async function runTemplatePath(ctx, hooks, diagnose) {
+  const skill = diagnose.template;
+  const def = stages.SKILL_DEFS[skill];
+  const toolHistory = [];
+  let newLayerCount = 0;
+  // 1. 校验 + 填默认（diagnose.params 经 normalizeParams 归一别名 → validateParams 补 optional_defaults、查 required_slots；用户值覆盖默认）
+  const norm = stages.normalizeParams(def.tool, diagnose.params || {});
+  const v = stages.validateParams(skill, norm);
+  const params = v.params;
+  if (!v.ok) {
+    const gapText = composeGapCard(diagnose, [`单技能「${skill}」缺必填槽：${v.missing.join('、')}——请补充后重提`]);
+    if (hooks.onFinalDone) hooks.onFinalDone(gapText);
+    return { ok: true, rounds: 0, final: gapText, review: { pass: true, degraded: true, skipped: 'template-missing-slot' }, degraded: true, diagnose, exit: 'gap', newLayerCount: 0 };
+  }
+  // 2. 执行工具（不调 agentStep；setToolContext 必调以写 registry provenance）
+  if (hooks.onRoundStart) hooks.onRoundStart(1);
+  setToolContext({ tool: def.tool, round: 1 });
+  let obs;
+  try {
+    const r = await TOOLS[def.tool](params);
+    obs = (r && r.observation) || '[ERR] 工具无观察返回';
+    if (r && r.data && r.data.layerId) newLayerCount = 1;
+  } catch (e) {
+    obs = `[ERR] ${def.tool} 异常：${(e && e.message) || e}`;
+  }
+  toolHistory.push(`第1轮·动作: ${def.tool}(${JSON.stringify(params).slice(0, 120)}) → ${obs}`);
+  // 3. 失败/空命中 → EXIT_GAP 诚实兜底（不裸输/不赌博自纠）
+  const failed = /\[ERR\]|失败|错误/.test(obs);
+  if (failed || newLayerCount === 0) {
+    const gapText = composeGapCard(diagnose, [failed ? obs.slice(0, 200) : `${def.tool} 未产出图层（可能范围内无点/无匹配要素）`]);
+    if (hooks.onFinalDone) hooks.onFinalDone(gapText);
+    return { ok: true, rounds: 1, final: gapText, review: { pass: true, degraded: true, skipped: 'template-tool-failed' }, degraded: true, diagnose, exit: 'gap', newLayerCount };
+  }
+  // 4. finalStep（Pro 写解题一句话 + 短结论 + {{show}}）
+  if (hooks.onRound) hooks.onRound(1);
+  const toolHistoryText = toolHistory.join('\n');
+  ctx.context = `【单技能路径·已执行 ${def.tool}】基于上述工具观察直接出结论，勿重选工具、勿重复执行、勿再调 geo 工具。\n\n` + (ctx.context || '');
+  let draft = await stages.finalStep(ctx, hooks, toolHistoryText);
+  // 5. 5.74 对账（gis_operation 风格·跳过 review）
+  const claims = _verifyClaims(draft);
+  if (!claims.ok) {
+    const revised = await _reviseOnce(ctx, hooks, draft, claims.hints, toolHistoryText);
+    if (revised) draft = revised;
+  }
+  if (hooks.onFinalDone) hooks.onFinalDone(draft);
+  if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: '单技能路径·跳过审查' });
+  return { ok: true, rounds: 1, final: draft, review: { pass: true, degraded: true, skipped: 'single-template' }, degraded: false, diagnose, exit: 'result', newLayerCount };
+}
+
 const _GEO_TOOLS = ['extract_feature', 'overlay', 'clip', 'filter_attr', 'merge', 'buffer', 'zonal_stats', 'rank', 'area_stats', 'nearest', 'hotspot'];
 /** F3：诊断 method 里规划的 geo 工具步骤数。数组元素用 ' → ' 拼接后按 →/，/；/换行 分句，
  *  每句首个工具名计 1 步；**不**按 ASCII 逗号分（工具实参含逗号，如 ($1,land)）。 */
@@ -290,6 +341,13 @@ export async function orchestrate(ctx, hooks = {}) {
         return { ok: true, rounds: 0, final: tpl, review: { pass: true, degraded: true }, degraded: false, diagnose };
       }
     }
+  }
+
+  // P1 编排：single 技能走 runTemplatePath（0 agentStep，p^N→p²）；concept 已被上面 general 短路接走；multi/unknown 落 while-loop。
+  // 渐进激活：Flash 首次见 template 字段，未可靠输出前大多落 unknown→while-loop（即原行为，零回归）；命中率达标（Flash 80% gate）后 single 路径才主导。
+  if (!ctx.resume && !diagnose.degraded && diagnose.template) {
+    const _tdef = stages.SKILL_DEFS[diagnose.template];
+    if (_tdef && _tdef.category === 'single') return await runTemplatePath(ctx, hooks, diagnose);
   }
 
   // P0 降温：intent-aware 轮数上限（diagnose 后定）。B=6 多目标完整性，A/C=4 降概率链。

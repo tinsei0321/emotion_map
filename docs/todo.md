@@ -1420,3 +1420,10 @@ AI 问答基座稳后，从底部独立抽屉重设计为融入左端栏的 **Em
 - **验证**：.mjs ESM（state/map/sidebar/tools）+ py_compile 全过；pytest 161 过/6 失败全预先存在且无关（h3 未装 + 未碰模块）。运行时待用户开 serve 肉眼验。
 - **承重**：未碰三大件出图/5.74 对账/四态出口/frame-based trust；F_005 仅增 attrs 不改签名；commit 只不 push。
 - **后续**：Track 1（L1 兜底 + query-first 代码门控）/ Track 2 P1 编排（TEMPLATE_REGISTRY 技能化 + runTemplatePath + buffer 聚合 + Flash 80% gate）/ Track 3 P2 专业框架，降级后续会话。
+
+**EMC Track 1 + Track 2 完成（revision-log 5.90 / 5.91，commit b8de781 / 待 push）**：
+- **Track 1（5.90, b8de781）**：① L1 极性静默全0兜底（aggregate_by_polygons 探测小写3级→3级路径，空值剔分母，治"撒谎中性"）+ score 自适应默认 ② query-first 代码门控（round0 注入 TOOLS.query_layers observation 到 toolHistory，零 LLM，治"盲目调错工具"）。
+- **Track 2（5.91）**：① TEMPLATE_REGISTRY 9 技能（拟人化·可生长）+ template_registry_text ② diagnose method→template+params + 技能目录附录 ③ stages.js SKILL_DEFS 镜像 + validateParams + _PARAM_ALIAS 25 项 + normalizeCard（非 SKILL 归一 unknown）④ harness runTemplatePath（single 路径 0-agentStep，p^N→p²，缺槽/失败→EXIT_GAP）+ 路由 ⑤ buffer 聚合闭环（BufferRequest 继承 _GeoBase + 焊圈内 4×5 归因，省略逐字节同原）⑥ Flash 80% gate（test_emc_template.py 结构测 + eval_template_flash.py 手动评测）。**两真 bug 修**：normalizeParams 加 export + parseDiagnoseCard 收 template 卡。
+- **验证**：py_compile + .mjs ESM 全过；node 内联测 parse+validate 6/6；pytest 166 过（+5）/6 预存无关失败；buffer TestClient no-layer 逐字节同原 / with-layer 焊 point_count=396·polarity=-0.596。
+- **承重**：未碰三大件出图/5.74 对账/四态出口/frame-based trust；F_003 不改签名；commit 只不 push。
+- **渐进激活**：Flash 首次见 template，未可靠输出前落 unknown→while-loop（零回归）；达标后 single 主导。运行时 E2E + Flash 实测待用户开 serve + 跑 eval。下续 P2（加技能 #8-11 + B/C 范式树 + field_dictionary 接承重函数）。
