@@ -28,7 +28,7 @@ REVIEW_CHECKLIST = [
     {
         'key': 'concise',
         'name': '简短直接',
-        'desc': '回答简短（结论 ≤ 几句，复杂问题才展开）；无废话、恭维、铺垫；信息密度高。**超长报告（啰嗦堆砌、为分析而分析）判 fail**。',
+        'desc': '回答简短（结论 ≤ 几句，复杂问题才展开）；无废话、恭维、铺垫；信息密度高。啰嗦超长时 warn 提示精简，不强制重写。',
     },
     {
         'key': 'professional',
@@ -166,7 +166,7 @@ def _parse_review_json(raw: str) -> dict:
 
     pass_flag = bool(obj.get('pass', True))
     # 后端兜底：客观质量项 fail 才强制 pass=false；主观项(layout/concise/structure) fail 降为 warn（不强制重写）
-    _OBJECTIVE = {'data_driven', 'actionable', 'scale_paradigm_fit', 'professional', 'concise'}
+    _OBJECTIVE = {'data_driven', 'actionable', 'scale_paradigm_fit', 'professional'}   # 删 'concise'：归主观项 warn-only（与 line 31 desc + line 168 注释一致，消自相矛盾）
     for sc in scores:
         if sc['verdict'] == 'fail' and sc['key'] not in _OBJECTIVE:
             sc['verdict'] = 'warn'

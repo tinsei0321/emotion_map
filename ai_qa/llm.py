@@ -70,7 +70,7 @@ class LLMClient:
             )
 
     def chat(self, messages: List[dict], stream: bool = True,
-             temperature: float = 0.6, max_tokens: int = 4000,
+             temperature: float = 0.4, max_tokens: int = 4000,
              with_reason: bool = False, json_mode: bool = False) -> Iterator:
         """OpenAI 兼容 chat/completions。
 

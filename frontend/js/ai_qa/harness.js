@@ -7,7 +7,25 @@ import * as stages from './stages.js';
 import { TOOLS, setToolContext, formatRegistry } from './tools.js';
 import { getLayers } from '../state.js';
 
-const MAX_ROUNDS = 16;   // 阶段1 提限：8→16，够 9-12 步多分支任务（narration 漏边已修，提限不再=更多叙述）
+const MAX_ROUNDS_GIS = 6;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=6（保多目标完整性，如"西陵+伍家岗居住+商业"需多步）
+const MAX_ROUNDS_OTHER = 4;    // A 通用 / C 情绪=4（远紧于 16，配合 temp 0.4 降概率链 p^N）
+
+/** P0 降温：轻量 intent 预判——高置信通用/概念问跳 diagnose 直 finalStep（省整轮 diagnose LLM + 7字段卡）。
+ *  规划思维 A 赛道"快速分流"：概念解释/方法咨询/日常问候→general 直答；含 geo 动词/地名→落 diagnose。
+ *  返 'general'→短路；null→落原 diagnose（保守，宁落不误断）。 */
+function _quickIntent(q) {
+  if (!q) return null;
+  const s = String(q);
+  // 概念/方法咨询词优先（即使含 geo 词，"什么是核密度分析"仍判 general 定义类，免漏断）
+  if (['什么是', '是什么', '含义', '意思', '解释', '区别', '定义', '为什么', '是指', '如何理解', '有哪些方法'].some(w => s.includes(w))) return 'general';
+  // geo 动词（请求做分析，非定义）→ 落 diagnose
+  if (['核密度', '密度分析', '热力', '热点', '裁出', '裁剪', '缓冲', '叠加', '叠置', '聚合', '网格', '排序', '最近邻', '可达性', '出图', '生成图'].some(v => s.includes(v))) return null;
+  // 宜昌地名（空间指代）→ 落 diagnose（可能 B/C）
+  if (['西陵', '伍家岗', '点军', '夷陵', '猇亭', '宜昌', '滨江', '奥体', '二马路', '大南门', 'cbd'].some(p => s.toLowerCase().includes(p.toLowerCase()))) return null;
+  // 日常问候/闲聊 → general
+  if (['今天', '星期', '几点', '你好', '谢谢', '你是谁', '能做什么', '你能', '帮助'].some(w => s.includes(w))) return 'general';
+  return null;   // 模糊 → 落 diagnose
+}
 const OBS_TRUNC = 200;      // observation 注入 history 截断长度
 const PARAMS_TRUNC = 80;    // action params 摘要截断长度
 // 审查质量门（5.70 重启）：默认开——仅审 emotion_analysis(C) 答案（general 短路、gis_operation 早 return、EXIT_GAP 早 return，本就不进审查）。
@@ -219,6 +237,15 @@ export async function orchestrate(ctx, hooks = {}) {
   const _prior = formatPriorTurn(ctx.priorTurn);
   if (_prior) ctx.context = _prior + '\n\n' + (ctx.context || '');
 
+  // P0 降温：_quickIntent 轻量预判——高置信通用/概念问跳 diagnose 直 finalStep（省整轮 diagnose LLM + 7字段卡）
+  if (!ctx.resume && _quickIntent(ctx.question) === 'general') {
+    ctx.context = '【intent=通用问答·快速预判】直接简洁作答，不要 4×5 归因、不要演示逻辑链、不要引导情绪场景。\n\n' + (ctx.context || '');
+    const draft = await stages.finalStep(ctx, hooks, '');
+    if (hooks.onFinalDone) hooks.onFinalDone(draft);
+    if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: '通用问答·快速预判跳过审查' });
+    return { ok: true, rounds: 0, final: draft, review: { pass: true, degraded: true, skipped: 'quick-general' }, degraded: false, diagnose: { degraded: true, intent: 'general', quick: true } };
+  }
+
   // 认知前置步：DIAGNOSE 问题理解卡（失败/降级不阻塞，照走 agent loop）
   let diagnose = null;
   try {
@@ -265,7 +292,9 @@ export async function orchestrate(ctx, hooks = {}) {
     }
   }
 
-  while (round <= MAX_ROUNDS) {
+  // P0 降温：intent-aware 轮数上限（diagnose 后定）。B=6 多目标完整性，A/C=4 降概率链。
+  const maxRounds = (!diagnose.degraded && diagnose.intent === 'gis_operation') ? MAX_ROUNDS_GIS : MAX_ROUNDS_OTHER;
+  while (round <= maxRounds) {
     if (hooks.onRound) hooks.onRound(round);
     if (hooks.onRoundStart) hooks.onRoundStart(round);
     let toolHistoryText = toolHistory.length ? toolHistory.join('\n') : '';
