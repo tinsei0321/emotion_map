@@ -216,13 +216,13 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月15日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.97，约本节中段）**，最近三条：
+> 📍 **最新动态（07月15日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.98，约本节中段）**，最近三条：
 >
+> - **5.98** EMC 架构优化+功能升级**任务计划拟定**：A1 Flash 命中率（解锁器）／A2 density 退场／A3 P2 框架／B1 加技能；推进序 A1→A2→A3→B1。详细见 todo.md 07-15 🗺️ 段。
 > - **5.97**（`ff5bec2`）承重静态清理：density 2D/terrain 侧栏刷新 + query_layers 可见层过滤 + isRange 排除分析产物（buffer 不再显假图例）。
-> - **5.96** lingbot-map 借鉴评估：实为 3D 重建/SLAM 项目，非 AI+地理地图，不采纳（324M 原项目已删，思想笔记留 docs/reference-lingbot-map-eval.md）。
-> - **5.95**（`32a86ac`）承重双修：buffer 编辑面板 _ui 元数据 + visible 纪律被默认 layer 绕过；**Flash 80% gate = 9/13 = 69% NO-GO**，single 路径保渐进激活兜底。
+> - **5.96** lingbot-map 借鉴评估：实为 3D 重建/SLAM，不采纳（324M 原项目已删，思想笔记留 docs/reference-lingbot-map-eval.md）。
 >
-> 本地领先 origin（5.89–5.97）待手动 push。下一步：① 用户开 serve 运行时验证各 track。
+> 本地领先 origin（5.89–5.98）待手动 push。下会话按计划从 **A1（Flash 命中率）** 起。
 
 ### 5.1 前端 · 核密度分析（KDE）弹窗（核心）
 
@@ -1155,6 +1155,18 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证（Playwright 真实 LLM）**：问"什么是核密度分析？和热点分析区别？"→ 修前出缺数据卡（走 narration→degrade→GAP，实测暴露 Bug3）；**修后出真结论**（KDE vs Getis-Ord Gi* 原理/输出/平滑性对比表），`isGapCard:false`。三态 EXIT_GAP 路径逻辑保留（条件严格收紧，真失败仍出卡）。
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
+
+### 5.98 EMC 架构优化 + 功能升级任务计划拟定（07月15日）
+
+承重双修（5.95）+ 静态清理（5.97）+ Flash gate（69% NO-GO）+ lingbot 评估（5.96 不采纳）+ todo/revision-log 结构整改后，拟定 EMC 下一阶段任务计划，**详细版记入 [todo.md](docs/todo.md) 07-15 段顶部 🗺️ 任务计划**：
+
+- **Tier 1 解锁+清债**：**A1** Flash 命中率提升（69%→≥80%，解锁 single-path 主导；关键=概念问 Flash 散文不吐 diagnose JSON 卡 → 改 prompts.py DIAGNOSE_TEMPLATE 强约束吐卡 + few-shot，**单此一项即 85% PASS**；歧义 2 MISS 细化 triggers/voice）／**A2** 后端 density 全退场（SOP 删 F_005）。
+- **Tier 2 专业做厚**：**A3** P2 框架（B/C 赛道范式树 + field_dictionary 接承重 + popularity role + _missStats 遥测 + confidence 0.3）。
+- **Tier 3 扩能（gated A1）**：**B1** 加技能 #8-11（nearest/hotspot/area_stats/merge/extract_feature，TEMPLATE_REGISTRY 9→14）。
+- **持续/搁置**：C1 运行时验证（用户开 serve）／C2 upload 胶囊（⏸️ 07-15 搁置）。
+- **推进序**：A1（解锁器，prompt 工程不涉 SOP/重构）→ A2（并行清债）→ A3（做厚）→ B1（A1 后扩能）。
+
+**决策**：A1 为先——是解锁器，5.91 技能编排投资在 single-path 主导后才变现，且概念吐卡 fix 单独即达 85% PASS。零代码改动（纯规划）。承重未碰；commit 只不 push。下会话按计划从 A1 起一步步推进。
 
 ### 5.97 EMC 承重静态清理：density 2D/terrain 侧栏刷新 + query_layers 可见层 + isRange 分析产物排除（07月15日）
 

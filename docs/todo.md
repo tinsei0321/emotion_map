@@ -42,24 +42,44 @@ Phase 2 跳过项 `{{upload:preset}}` 胶囊（panel.js renderAnswer+onMsgClick 
 
 - **下一步**：① 用户开 serve 运行时验证各 track（density 三模式 / 只传 L1·T1 不跑 L2 / buffer 点 B 回填真半径 / 缺工具卡 + 5.97 三修复：侧栏刷新/可见层/图例）；④ 后端 density 全退场（SOP）；⑤ P2 专业框架；⑥ 加技能 #8-11（Flash 69% 下尚早）。
 
-### 🗺️ 任务计划 · EMC 架构优化 + 功能升级（07-15 拟定）
+### 🗺️ 任务计划 · EMC 架构优化 + 功能升级（07-15 拟定，详细）
+
+> 基线：5.89–5.97 工作机制重构 + 承重双修 + 静态清理全收；Flash 80% gate = 69% NO-GO → single 路径保渐进激活（不主导）。推进序 **A1 → A2（并行）→ A3 → B1**。每步：实现→静态验证（.mjs/py_compile/pytest）→（改承重走 SOP）→commit（只不 push）→同步 todo 顶部当天段 + revision-log + 刷新 §5「最新动态」指针。
 
 **Tier 1 · 解锁 + 清债**
 
-- **A1. Flash 命中率提升 → 解锁 single-path 主导** ★★★（解锁器，最高优先）：69%→≥80%，让 5.91 技能编排投资变现。关键杠杆=概念问 Flash 散文直答不吐 diagnose JSON 卡（2 MISS）→ 改 diagnose prompt 强约束「任何问必先吐 JSON 卡，概念问 template=concept」+ few-shot，单此一项即 85% PASS；歧义 2 MISS（clip↔zonal/overlay↔multi）细化 triggers/voice。文件 ai_qa/prompts.py + paradigm.py；验证重跑 eval_template_flash.py。承重不破 normalizeCard/runTemplatePath/四态/渐进激活兜底。
-- **A2. 后端 density 全退场（SOP 删 F_005）** ★★（承重清债）：删 DEPRECATED 的 /api/v1/geo/density + kde_raster（前端已全委托 Toolbox，无引用）。完整 SOP（Developer→Reviewer→Tester）+ tracker F_005 注册表维护。文件 api/geo_routes.py + core/spatial_analysis.py + core/tracker.py。承重：buffer 聚合闭环 + aggregate_by_polygons L1 兜底/score 自适应不能连带破。
+- **A1. Flash 命中率提升 → 解锁 single-path 主导** ★★★（解锁器，最高优先）
+  - 目标：69% → ≥80%，让 5.91 技能编排投资变现（single 主导，p^N→p²）。
+  - 关键杠杆：概念问 Flash 散文直答不吐 diagnose JSON 卡（2 MISS）→ 改 diagnose prompt 强约束「任何问必先吐 JSON 卡、概念问 template=concept」+ few-shot。**单此一项即 85% PASS**。歧义 2 MISS（clip↔zonal / overlay↔multi）细化 triggers/voice。
+  - 文件：[ai_qa/prompts.py](ai_qa/prompts.py)（DIAGNOSE_TEMPLATE + few-shot）、[ai_qa/paradigm.py](ai_qa/paradigm.py)（triggers/voice 微调）。
+  - 验证：重跑 tests/eval_template_flash.py（`PYTHONPATH=. PYTHONIOENCODING=utf-8` + .env 加载）≥80%；pytest test_emc_template 5/5 不破。
+  - 承重：不破 normalizeCard/runTemplatePath/四态出口/渐进激活兜底（Flash 不命中→unknown→while-loop）。
+  - 演示价值：EMC 响应更稳更准（单技能直走、少绕 ReAct loop）。
+
+- **A2. 后端 density 全退场（SOP 删 F_005）** ★★（承重清债，可与 A1 并行）
+  - 目标：删 DEPRECATED 的 /api/v1/geo/density + kde_raster（F_005）。前端已全委托 Toolbox（5.93/5.94），无引用（5.96 grep 证仅 2 处真代码引用）。
+  - 流程：完整 SOP（Developer→Reviewer→Tester）。删端点 + 函数 + import + tracker F_005 注册表维护（保留 ID null-safe stub 或清注册，按 core/CLAUDE.md「不删已有追踪 ID」）。
+  - 文件：[api/geo_routes.py](api/geo_routes.py)（density 端点 523+）、[core/spatial_analysis.py](core/spatial_analysis.py)（kde_raster 120-228）、[core/tracker.py](core/tracker.py)（F_005 注册）。
+  - 承重：F_005 承重函数；buffer 聚合闭环（同 KDE 类）+ aggregate_by_polygons L1 兜底/score 自适应（spatial_analysis 331-372）不能连带破。
 
 **Tier 2 · 专业层做厚**
 
-- **A3. P2 专业框架** ★★（有用性环，较大）：B/C 赛道范式树（B_TRACK_PARADIGM 9 类 + SCALE_PARADIGM.method_templates 对齐住建部城市体检四层级 + select_template 单一真相源）+ field_dictionary 接承重函数（上传层 alias + spatial_analysis 355 polarity 门控/356 五级值域/576-581 domain-element）+ popularity role（timestamp/boundary_id/category→时间/边界/品类热度）+ _missStats 遥测 + confidence 阈值 0.3。文件 ai_qa/paradigm.py + field_dictionary.py + core/spatial_analysis.py。承重：field_dictionary 接承重须 SOP，polarity 门控/五级/domain-element 不破。与 A1 协同（范式树进 diagnose prompt）。
+- **A3. P2 专业框架** ★★（有用性环，较大，A1 后）
+  - 目标：认知层从「P1 技能编排」做厚到「专业范式 + 字段语义 + 热度维度 + 遥测」。
+  - 改：① B/C 赛道范式树（B_TRACK_PARADIGM 粗粒度 9 类 + SCALE_PARADIGM.method_templates 对齐住建部城市体检四层级 + select_template(track,card) 单一真相源）；② field_dictionary 接承重函数（上传层 alias + spatial_analysis 行 355 polarity 门控/356 五级值域/576-581 domain-element）；③ popularity role（timestamp/boundary_id/category 已存 → 时间/边界/品类热度分析）；④ _missStats 遥测 + confidence 阈值 0.3。
+  - 文件：[ai_qa/paradigm.py](ai_qa/paradigm.py)、ai_qa/field_dictionary.py、[core/spatial_analysis.py](core/spatial_analysis.py)、新增 _missStats。
+  - 承重：field_dictionary 接承重逻辑须 SOP；polarity 门控/五级/domain-element 不破。与 A1 协同（范式树进 diagnose prompt）。
+  - 演示价值：识别更具体城建/更新问题（有用性环），对规划师/住建局更有说服力。
 
 **Tier 3 · 扩能（gated on A1）**
 
-- **B1. 加技能 #8-11** ★（nearest/hotspot/area_stats/merge/extract_feature）：TEMPLATE_REGISTRY 9→14，结构已可生长（paradigm.py dict + stages.js SKILL_DEFS 镜像 + prompts.py 枚举串；TOOLS.* 已实装）。承重：8 字段契约 + SKILL_DEFS 同步 + 白名单 + normalizeCard + runTemplatePath 通用路由不破。依赖 A1（Flash 能路由才有意义）。
+- **B1. 加技能 #8-11** ★（nearest/hotspot/area_stats/merge/extract_feature）
+  - 目标：TEMPLATE_REGISTRY 9→14，让更多查询走 single-path。
+  - 机制已可生长：paradigm.py 追加 dict（8 字段）+ stages.js SKILL_DEFS 镜像 + prompts.py DIAGNOSE_TEMPLATE 枚举串；TOOLS.* + _GEO_TOOLS 白名单已实装。
+  - 承重：TEMPLATE_REGISTRY 8 字段契约 + SKILL_DEFS 同步 + _KNOWN_SLOTS/_SINGLE_TOOLS 白名单（test_emc_template.py 已含新工具名）+ normalizeCard 归一 + runTemplatePath 通用路由不破。
+  - 依赖 A1：Flash 能路由新技能才有意义（69% 下加多半落 unknown→while-loop）。
 
-**持续 / 搁置**：C1 运行时验证（用户开 serve，持续）；C2 upload 胶囊（⏸️ 07-15 搁置）。
-
-**推荐先做**：A1（解锁器，prompt 工程不涉 SOP/重构，快稳，解锁 B1）+ A2（density 退场，独立 SOP 可并行）。
+**持续 / 搁置**：C1 运行时验证（用户开 serve 验各 track + 5.97 三修复，持续）；C2 upload 胶囊（⏸️ 07-15 搁置）。
 
 ## 📅 2026-07-14
 
