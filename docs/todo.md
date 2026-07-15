@@ -38,9 +38,11 @@ Phase 2 跳过项 `{{upload:preset}}` 胶囊（panel.js renderAnswer+onMsgClick 
 
 - **Flash 80% gate 实测 = 11/13 = 85% → PASS（5.99 A1 完成）**：single 路径(runTemplatePath)可主导 ship。改 diagnose prompt「必吐 JSON 不散文」铁律 + concept 映射 + 6 条 few-shot + `DIAGNOSE_CARD_FIELDS` 对齐契约；2 concept MISS 修掉，剩 2 真歧义（各区情绪排序→zonal、居住用地里→clip，「所选皆有效」）。渐进激活兜底保留（不命中→unknown→while-loop 零回归）。
 
-- **本地领先 origin（5.89–5.99）待手动 push**；push 前 `git fetch` 确认真实远端状态。
+- **后端 density 全退场（5.100 A2 完成）**：删 `/geo/density` 端点 + `kde_raster`(F_005) + `_KDE_PROJECT_CRS` + kde 的 F_005/D_004 注册；**顺带修 F_005 重复注册 bug**（kde 抢占→恢复 buffer 唯一归属）。前端已委托 Toolbox 无感；pytest 166 pass/6 预存，0 新回归。
 
-- **下一步**：① 用户开 serve 运行时验证各 track（density 三模式 / 只传 L1·T1 不跑 L2 / buffer 点 B 回填真半径 / 缺工具卡 + 5.97 三修复 + single-path 主导后各 track 走直路）；② A2 后端 density 全退场（SOP 删 F_005）；③ A3 P2 专业框架；④ B1 加技能 #8-11（A1 已解锁可推进）。
+- **本地领先 origin（A2 `5.100` 待手动 push；A1 `5.99` 已 push）**；push 前 `git fetch` 确认真实远端状态。
+
+- **下一步**：① 用户开 serve 运行时验证各 track（density 三模式走 Toolbox / 只传 L1·T1 不跑 L2 / buffer 点 B 回填真半径 / 缺工具卡 + 5.97 三修复 + single-path 主导后各 track 走直路）；② A3 P2 专业框架；③ B1 加技能 #8-11（A1 已解锁可推进）。
 
 ### 🗺️ 任务计划 · EMC 架构优化 + 功能升级（07-15 拟定，详细）
 
@@ -53,11 +55,9 @@ Phase 2 跳过项 `{{upload:preset}}` 胶囊（panel.js renderAnswer+onMsgClick 
   - **主杠杆命中**：2 concept MISS 修掉（diagnose 必吐卡 + concept 映射）；另修地铁站周边→buffer、某区商业用地→clip、并排序→multi（balanced few-shot + anti-multi 规则）。剩 2 MISS 为真歧义「所选皆有效」（各区情绪排序→zonal、居住用地里→clip）。
   - 验证：pytest `test_emc_template` 5/5 + py_compile + Flash gate 11/13=85%。承重未碰（normalizeCard/runTemplatePath/路由/四态/渐进激活兜底全在）；commit 只不 push。
 
-- **A2. 后端 density 全退场（SOP 删 F_005）** ★★（承重清债，可与 A1 并行）
-  - 目标：删 DEPRECATED 的 /api/v1/geo/density + kde_raster（F_005）。前端已全委托 Toolbox（5.93/5.94），无引用（5.96 grep 证仅 2 处真代码引用）。
-  - 流程：完整 SOP（Developer→Reviewer→Tester）。删端点 + 函数 + import + tracker F_005 注册表维护（保留 ID null-safe stub 或清注册，按 core/CLAUDE.md「不删已有追踪 ID」）。
-  - 文件：[api/geo_routes.py](api/geo_routes.py)（density 端点 523+）、[core/spatial_analysis.py](core/spatial_analysis.py)（kde_raster 120-228）、[core/tracker.py](core/tracker.py)（F_005 注册）。
-  - 承重：F_005 承重函数；buffer 聚合闭环（同 KDE 类）+ aggregate_by_polygons L1 兜底/score 自适应（spatial_analysis 331-372）不能连带破。
+- ✅ **A2. 后端 density 全退场（删 F_005 kde_raster）** ★★（承重清债，**5.100 已完成**）
+  - **结果**：删 `/api/v1/geo/density` 端点（`DensityRequest` + `density()`）+ `kde_raster`(F_005) + `_KDE_PROJECT_CRS` 常量 + kde 的 F_005/D_004 注册（2 文件 -150 行）。**顺带修 F_005 重复注册 bug**——[buffer_analysis.py](core/buffer_analysis.py)(原主) 与 spatial_analysis.py(kde) 双重注册，kde 退场后 F_005 唯一→buffer（符合 core/CLAUDE.md「不删已有 ID」，删的是冲突重复，F_005 仍在）。
+  - 验证：py_compile + grep 零 dangling 代码引用（`kde_raster`/`DensityRequest`/`geo/density`/`_KDE_PROJECT_CRS` 全无）+ F_005 唯一→buffer + pytest 166 pass / 6 预存 0 新回归。承重未碰（buffer 聚合 / aggregate_by_polygons(331-372) / hot_spot / moran / F_007 terrain / geo_routes helper / 三大件 / 5.74 / 四态 / frame-based trust 全在）；commit 只不 push。
 
 **Tier 2 · 专业层做厚**
 

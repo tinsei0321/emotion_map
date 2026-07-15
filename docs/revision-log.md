@@ -216,13 +216,13 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月15日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.99，约本节中段）**，最近三条：
+> 📍 **最新动态（07月15日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.100，约本节中段）**，最近三条：
 >
-> - **5.99** EMC **A1 完成**：Flash 模板命中率 **69%→85% PASS**，解锁 single-path 主导——diagnose 加「必吐 JSON 不散文」铁律 + concept 映射 + 6 条 few-shot + `DIAGNOSE_CARD_FIELDS` 对齐契约；2 concept MISS 修掉，剩 2 真歧义「所选皆有效」。承重未碰；commit 只不 push。
+> - **5.100** EMC **A2 完成**：后端 density 全退场——删 `/geo/density` 端点 + `kde_raster`(F_005) + `_KDE_PROJECT_CRS` + kde 的 F_005/D_004 注册；**顺带修 F_005 重复注册 bug**（kde 抢占→恢复 buffer 唯一归属）。前端已委托 Toolbox 无感；pytest 166 pass/6 预存，0 新回归。承重未碰；commit 只不 push。
+> - **5.99** EMC **A1 完成**：Flash 模板命中率 **69%→85% PASS**，解锁 single-path 主导——diagnose 加「必吐 JSON 不散文」铁律 + concept 映射 + 6 条 few-shot + `DIAGNOSE_CARD_FIELDS` 对齐契约；2 concept MISS 修掉，剩 2 真歧义「所选皆有效」。
 > - **5.98** EMC 架构优化+功能升级**任务计划拟定**：A1 Flash 命中率（解锁器）／A2 density 退场／A3 P2 框架／B1 加技能；推进序 A1→A2→A3→B1。详细见 todo.md 07-15 🗺️ 段。
-> - **5.97**（`ff5bec2`）承重静态清理：density 2D/terrain 侧栏刷新 + query_layers 可见层过滤 + isRange 排除分析产物（buffer 不再显假图例）。
 >
-> 本地领先 origin（5.89–5.99）待手动 push。A1 已落地，下会话按计划从 **A2（density 全退场删 F_005）/A3（P2 框架）** 起。
+> 本地领先 origin（A2 `5.100` 待手动 push；A1 `5.99` 已 push）。A1+A2 已落地，下会话按计划从 **A3（P2 框架）/B1（加技能）** 起。
 
 ### 5.1 前端 · 核密度分析（KDE）弹窗（核心）
 
@@ -1155,6 +1155,18 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证（Playwright 真实 LLM）**：问"什么是核密度分析？和热点分析区别？"→ 修前出缺数据卡（走 narration→degrade→GAP，实测暴露 Bug3）；**修后出真结论**（KDE vs Getis-Ord Gi* 原理/输出/平滑性对比表），`isGapCard:false`。三态 EXIT_GAP 路径逻辑保留（条件严格收紧，真失败仍出卡）。
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
+
+### 5.100 EMC A2：后端 density 全退场（删 kde_raster F_005 + /geo/density 端点，承重清债）（07月15日）
+
+用户意图：5.93/5.94 EMC「分布热度」已全量委托主 Toolbox（`generateHeatmap/Grid/TerrainForAI`），前端不再调自造 `/api/v1/geo/density`；5.96 已标端点 DEPRECATED + 删前端 `DENSITY_RAMP` 死码，但后端端点 + `kde_raster`(F_005) 保留（承重函数，全删须 SOP）。本次走完整 SOP 彻底退场。
+
+- **落地**（纯删除，2 文件 -150 行）：
+  - [api/geo_routes.py](api/geo_routes.py) 删 density 整段（`DensityRequest` + `/geo/density` 端点 + DEPRECATED 注释）+ import 去 `kde_raster`。
+  - [core/spatial_analysis.py](core/spatial_analysis.py) 删 `_KDE_PROJECT_CRS` 常量 + `kde_raster` 函数（含 `@track F_005` + 函数内 D_004 TrackContext）+ 注册表 kde 的 F_005/D_004 两行。
+- **顺带修 F_005 重复注册 bug**：`MOD_SPATIAL.F_005` 原被 buffer（[buffer_analysis.py:68](core/buffer_analysis.py#L68)，原主）与 kde（spatial_analysis.py:949）**双重注册**（`register_track_id` 后注册覆盖前），kde 退场后 F_005 恢复唯一归属 buffer。符合 core/CLAUDE.md「不删已有 ID」——删的是冲突重复，F_005 仍在（→buffer）。D_004（kde 专属，删函数后无 live referent）一并清。
+- **验证**：py_compile 两文件 + grep 零 dangling 代码引用（`kde_raster`/`DensityRequest`/`geo/density`/`_KDE_PROJECT_CRS` 全无）+ F_005 唯一→buffer；**pytest 全套 166 pass / 6 预存 fail（h3×2 / SnowNLP / geocode×2 / range_selector，环境无关），0 新回归**。
+- **承重**：未碰 buffer 聚合闭环（独立 F_005）/ aggregate_by_polygons L1 兜底（331-372）/ hot_spot_analysis / moran_i / 情绪地形 mesh(F_007，terrain 路径保留) / geo_routes 公共 helper（`_prepare_points`/`_to_geojson`，他端点复用）/ 三大件出图 / 5.74 / 四态 / frame-based trust（后端删 density 不触及前端编排）；commit 只不 push。
+- **下一步**：A3（P2 专业框架，B/C 赛道范式树 + field_dictionary 接承重 + popularity role + _missStats）/ B1（加技能 #8-11，A1 已解锁 single-path）。
 
 ### 5.99 EMC A1：Flash 模板命中率 69%→85% PASS，解锁 single-path 主导（07月15日）
 
