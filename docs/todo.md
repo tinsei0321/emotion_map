@@ -1452,3 +1452,9 @@ AI 问答基座稳后，从底部独立抽屉重设计为融入左端栏的 **Em
 - **承重**：未碰主 Toolbox dialog 流（仅补 _ui 透传）/ generateGridForAI 签名 / 三大件出图 / 5.74 / 四态 / frame-based trust / F_005；commit 只不 push。
 - **静态另揪中/低风险点（留 ①运行时验证一并修）**：density 2D heatmap 产物侧栏列表可能不刷新 / query_layers 列不可见层 / buffer 层被 isRange 当 range 显假图例 / legend-grid `_ui.tool==='density'` 死码。
 - **下一步**：① Flash 80% gate 实测（py tests/eval_template_flash.py）→ 定 single 路径是否主导 ship；② 运行时验证各 track（用户开 serve）；③ upload 胶囊；④ 后端 density 全退场（SOP）；⑤ P2 专业框架；⑥ 加技能 #8-11。本地领先 origin（5.89-5.95）待用户手动 push。
+
+**借鉴评估 · lingbot-map（revision-log 5.96，零代码改动，待 push）**：用户拟借鉴 docs/lingbot-map-main 的「AI+地图」实现，双 Explore agent 全仓深读证伪——实为 **3D 重建/SLAM** 项目（GCT=几何上下文变换器，图像帧序列→3D 点云+相机位姿，基于 VGGT/DINOv2），**非 AI+地理地图**。与情绪地图（LLM+2D 地理地图）数据模态/AI 角色/「map」含义/技术栈全零重叠，零 LLM/零文本/零 GIS，**可复用代码≈0**。
+- **决策（不采纳）**：仅提炼 3 条架构思想启发（未来设计参考，非现成代码）落 [docs/reference-lingbot-map-eval.md](reference-lingbot-map-eval.md)：① 流式增量更新（paged KV cache）——未来实时情绪管线可借鉴「只处理增量」；② keyframe 降级+滑窗——未来大规模聚合；③ YAML 配置驱动摄段化渲染——emotion_map 已有 design tokens，largely 冗余。
+- **删除**：原项目 324M（含示例图/PDF/权重引用，未跟踪）已 `rm -rf` 删除防重复下载。
+- **承重**：零代码改动（仅新增评估笔记 + 删未跟踪参考目录），未碰任何承重模块；commit 只不 push。
+- **正确参考方向**：找 AI+地理地图参考应转向 GeoLLM/MapGPT/CityGPT/UrbanGPT、LLM 地理实体抽取、MapLibre/Leaflet+LLM demo；agent loop 看 Anthropic SDK + .claude/skills。

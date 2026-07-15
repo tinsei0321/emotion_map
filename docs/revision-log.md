@@ -1148,6 +1148,14 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.96 借鉴评估 · lingbot-map（3D 重建/SLAM，非 AI+地理地图，不采纳，07月15日）
+
+用户提参考项目 `docs/lingbot-map-main` 拟借鉴其「AI+地图」实现。双 Explore agent 全仓深读（README + 论文 + pyproject + 全代码）证伪前提：**lingbot-map 实为计算机视觉 / 3D 重建 / SLAM 项目**（GCT = Geometric Context Transformer 几何上下文变换器，输入图像帧序列 → 输出 3D 点云 + 相机位姿 + 深度，基于 VGGT/DINOv2），**非「AI+地理地图」**。与本项目（LLM + 2D 地理地图）数据模态 / AI 角色 /「map」含义 / 技术栈**全零重叠**，零 LLM / 零文本 / 零 GIS，**可复用代码 ≈ 0**。
+
+**决策（不采纳，记录思想后删除原项目）**：仅提炼 3 条架构思想启发（未来设计参考，非现成代码）落 [reference-lingbot-map-eval.md](docs/reference-lingbot-map-eval.md)：① 流式增量更新（paged KV cache）——未来实时情绪管线可借鉴「只处理增量」而非全量重跑；② keyframe 降级 + windowed 滑窗——未来大规模/长时间跨度聚合；③ YAML 配置驱动摄段化渲染——emotion_map 已有 design tokens，largely 冗余。原项目 324M（含示例图 / PDF / 权重引用，**未跟踪**）已删除防重复下载。
+- **承重**：零代码改动（仅新增评估笔记 + 删未跟踪参考目录），未碰任何承重模块；commit 只不 push。
+- **正确方向**：找「AI + 地理地图」参考应转向 GeoLLM / MapGPT / CityGPT / UrbanGPT（地理问答）、LLM 地理实体抽取、MapLibre/Leaflet + LLM 分析层 demo；agent loop 看 Anthropic SDK + `.claude/skills/`（claude-api / anthropic-claude-api / anthropic-mcp-builder）。
+
 ### 5.95 EMC 承重双修：buffer 编辑面板元数据 + visible 纪律被默认 layer 绕过（07月15日）
 
 接 5.89-5.94 工作机制重构（站在巨人肩膀上落地）后，开 serve 运行时验证前静态深读发现 **2 个承重必破缺陷**（Explore agent 全链追踪 + 直读代码确认）。本次先修，再做 Flash 80% gate 实测。
