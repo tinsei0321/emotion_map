@@ -1458,3 +1458,10 @@ AI 问答基座稳后，从底部独立抽屉重设计为融入左端栏的 **Em
 - **删除**：原项目 324M（含示例图/PDF/权重引用，未跟踪）已 `rm -rf` 删除防重复下载。
 - **承重**：零代码改动（仅新增评估笔记 + 删未跟踪参考目录），未碰任何承重模块；commit 只不 push。
 - **正确参考方向**：找 AI+地理地图参考应转向 GeoLLM/MapGPT/CityGPT/UrbanGPT、LLM 地理实体抽取、MapLibre/Leaflet+LLM demo；agent loop 看 Anthropic SDK + .claude/skills。
+
+**EMC 承重静态清理（revision-log 5.97，commit `ff5bec2` 待 push）**：5.95 双修时静态另揪的 3 个中/低风险兄弟 bug，前置收掉（让 ① 运行时验证少失败点）：
+- **density 2D/terrain 侧栏不刷新**（heatmap-tool.js）：generateHeatmapForAI + generateTerrainForAI 补 renderLayerList/refreshLegend/reorderAllZ/showLayerManager（+ import，与 grid-tool 同模式，环已存在安全）。
+- **query_layers 列不可见层**（tools.js）：加 `l.visible` 过滤 + 标签改「已加载可见图层（未显示层一律禁用）」，与 pickVisiblePointLayer/buildContext 一致。
+- **isRange 分析产物显假图例**（sidebar.js）：改为排除任何 `_ui.tool` 标记层（buffer/overlay/area_stats/merge 不再显 NAVY range 假图例），仅纯面/线显 range；一并收掉 isRange 里的 density 死码。
+- **验证**：.mjs ESM（heatmap-tool/tools/sidebar）全过。legend-grid 侧 density 死分支（polLabel）无害留。运行时待用户开 serve 验。承重未碰三大件出图逻辑/5.74/四态/frame-based trust/F_005；commit 只不 push。
+- **下一步**：① 用户开 serve 运行时验证各 track（density 三模式 / 只传 L1 不跑 L2 / buffer 面板回填真半径 / 缺工具卡 + 本次 3 修复）；③ upload 胶囊；④ 后端 density 全退场（SOP）；⑤ P2 框架；⑥ 加技能（Flash 69% 下尚早）。本地领先 origin（5.89-5.97）待手动 push。

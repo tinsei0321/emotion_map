@@ -1148,6 +1148,18 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.97 EMC 承重静态清理：density 2D/terrain 侧栏刷新 + query_layers 可见层 + isRange 分析产物排除（07月15日）
+
+5.95 承重双修时静态另揪的 3 个中/低风险兄弟 bug（当时标「留 ①运行时验证一并修」），现前置收掉——让随后的 ① 运行时验证少几个失败点（commit `ff5bec2`）。
+
+**改（3 处，3 文件）**：
+- **density 2D/terrain 侧栏不刷新**（[heatmap-tool.js](frontend/js/heatmap-tool.js)）：`generateHeatmapForAI` + `generateTerrainForAI` 末尾缺 `renderLayerList/refreshLegend/reorderAllZ/showLayerManager`（`generateGridForAI` 有）→ density 三模式委托这两入口、缺则侧栏列表不显新层。补 4 调用 + import（map.js `reorderAllZ` + sidebar.js 三函数；与 grid-tool 同模式，环 sidebar↔heatmap-tool 已存在、ESM live bindings 安全）。
+- **query_layers 列不可见层**（[tools.js](frontend/js/ai_qa/tools.js)）：读 `getLayers()` 无 visible 过滤，与 `pickVisiblePointLayer`/`buildContext` 不一致——round0 observation 列不可见层致 LLM 误调、被 `resolvePointLayer` 拒浪费一轮。加 `l.visible` 过滤 + 标签改「已加载可见图层（未显示层一律禁用）」。
+- **isRange 把分析产物当 range 显假图例**（[sidebar.js](frontend/js/sidebar.js)）：isRange 只排除 grid/terrain/density，不排 buffer/overlay/area_stats/merge → 它们显 NAVY range 假图例。改为排除**任何 `_ui.tool` 标记层**（= EMC/Toolbox 分析产物），仅纯面/线（上传/行政边界）显 range 图例。一并收掉 isRange 里的 density 死码。
+
+**验证**：.mjs ESM（heatmap-tool/tools/sidebar）全过。legend-grid 侧 density 死分支（polLabel）无害留。运行时（density 2D 产物侧栏显新层 / query_layers 只列可见层 / buffer 不显 NAVY 假图例）待用户开 serve 验。
+- **承重**：未碰三大件出图逻辑（仅补侧栏刷新调用）/ 5.74 对账 / 四态出口 / frame-based trust / F_005；commit 只不 push。
+
 ### 5.96 借鉴评估 · lingbot-map（3D 重建/SLAM，非 AI+地理地图，不采纳，07月15日）
 
 用户提参考项目 `docs/lingbot-map-main` 拟借鉴其「AI+地图」实现。双 Explore agent 全仓深读（README + 论文 + pyproject + 全代码）证伪前提：**lingbot-map 实为计算机视觉 / 3D 重建 / SLAM 项目**（GCT = Geometric Context Transformer 几何上下文变换器，输入图像帧序列 → 输出 3D 点云 + 相机位姿 + 深度，基于 VGGT/DINOv2），**非「AI+地理地图」**。与本项目（LLM + 2D 地理地图）数据模态 / AI 角色 /「map」含义 / 技术栈**全零重叠**，零 LLM / 零文本 / 零 GIS，**可复用代码 ≈ 0**。
