@@ -216,6 +216,14 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
+> 📍 **最新动态（07月15日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.97，约本节中段）**，最近三条：
+>
+> - **5.97**（`ff5bec2`）承重静态清理：density 2D/terrain 侧栏刷新 + query_layers 可见层过滤 + isRange 排除分析产物（buffer 不再显假图例）。
+> - **5.96** lingbot-map 借鉴评估：实为 3D 重建/SLAM 项目，非 AI+地理地图，不采纳（324M 原项目已删，思想笔记留 docs/reference-lingbot-map-eval.md）。
+> - **5.95**（`32a86ac`）承重双修：buffer 编辑面板 _ui 元数据 + visible 纪律被默认 layer 绕过；**Flash 80% gate = 9/13 = 69% NO-GO**，single 路径保渐进激活兜底。
+>
+> 本地领先 origin（5.89–5.97）待手动 push。下一步：① 用户开 serve 运行时验证各 track。
+
 ### 5.1 前端 · 核密度分析（KDE）弹窗（核心）
 
 | 日期 | commit | 用户意图 → 落地 | 文件 |

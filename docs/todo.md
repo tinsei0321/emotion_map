@@ -5,6 +5,79 @@
 
 ---
 
+## 📅 2026-07-15
+
+### ✅ EMC 承重双修 + 静态清理 + Flash gate + lingbot 评估（revision-log 5.95–5.97）
+
+**EMC 承重双修（revision-log 5.95，commit `32a86ac` 待 push）**：开 serve 运行时验证前，静态深读（Explore 全链追踪 + 直读）揪出 2 个承重必破缺陷，先修再做 Flash 80% gate 实测。
+- **visible 纪律被默认 layer 绕过**（数据可见纪律铁律，5.92 Track 1 核心保证漏）：rank/buffer/clip/zonal 的 SKILL_DEFS（stages.js）+ TEMPLATE_REGISTRY（paradigm.py）optional_defaults 去硬默认 `layer='yichang_l2_t1'`。该默认经 validateParams 合并后使 `resolvePointLayer`（tools.js:494）走 `if (params.layer) return params.layer` 直接返字符串、跳过 `pickVisiblePointLayer` 的 visible 过滤 → 后端拿 'yichang_l2_t1' 当 preset_id 解析可能成功 → **"只传 L1·T1 却跑 L2"**。去默认后 single 技能与 density 同源走可见层；buffer 额外把缺省 layer 改用可见点层名交后端聚合。
+- **buffer 编辑面板元数据丢失**（主 Toolbox dialog 流不破）：TOOLS.buffer（tools.js）产物注入 `_ui`（distance 关键 + dissolve/lineWidth/fillOpacity/lineStyle + sourceLayer 尽力解析）。addResultLayer（tools.js:280）既有 _ui.tool 注入对已有 _ui 仅补 tool，元数据完整透传。修 openBufferDialog（buffer-tool.js:72）seed 残缺致 applyParams 回填 DEFAULTS(1000m) 重做全然不同 buffer 的缺陷。
+- **验证**：py_compile + .mjs ESM（stages/tools）+ pytest test_emc_template 5/5 全过。**Flash 80% gate 实测 = 9/13 = 69% → NO-GO**（真 DeepSeek-v4-flash）：2 概念问 Flash 散文直答不吐 diagnose 卡（走 general 短路、非真回归）+ 2 真歧义（clip↔zonal / overlay↔multi，所选皆有效操作）。**结论：single 路径暂不主导，保渐进激活兜底**（不命中→unknown→while-loop 零回归，符合 5.91 设计）。运行时待用户开 serve 验。
+- **承重**：未碰主 Toolbox dialog 流（仅补 _ui 透传）/ generateGridForAI 签名 / 三大件出图 / 5.74 / 四态 / frame-based trust / F_005；commit 只不 push。
+- **静态另揪中/低风险点（留 ①运行时验证一并修）**：density 2D heatmap 产物侧栏列表可能不刷新 / query_layers 列不可见层 / buffer 层被 isRange 当 range 显假图例 / legend-grid `_ui.tool==='density'` 死码。
+- **下一步**：① Flash 80% gate 实测（py tests/eval_template_flash.py）→ 定 single 路径是否主导 ship；② 运行时验证各 track（用户开 serve）；③ upload 胶囊；④ 后端 density 全退场（SOP）；⑤ P2 专业框架；⑥ 加技能 #8-11。本地领先 origin（5.89-5.95）待用户手动 push。
+
+**借鉴评估 · lingbot-map（revision-log 5.96，零代码改动，待 push）**：用户拟借鉴 docs/lingbot-map-main 的「AI+地图」实现，双 Explore agent 全仓深读证伪——实为 **3D 重建/SLAM** 项目（GCT=几何上下文变换器，图像帧序列→3D 点云+相机位姿，基于 VGGT/DINOv2），**非 AI+地理地图**。与情绪地图（LLM+2D 地理地图）数据模态/AI 角色/「map」含义/技术栈全零重叠，零 LLM/零文本/零 GIS，**可复用代码≈0**。
+- **决策（不采纳）**：仅提炼 3 条架构思想启发（未来设计参考，非现成代码）落 [docs/reference-lingbot-map-eval.md](reference-lingbot-map-eval.md)：① 流式增量更新（paged KV cache）——未来实时情绪管线可借鉴「只处理增量」；② keyframe 降级+滑窗——未来大规模聚合；③ YAML 配置驱动摄段化渲染——emotion_map 已有 design tokens，largely 冗余。
+- **删除**：原项目 324M（含示例图/PDF/权重引用，未跟踪）已 `rm -rf` 删除防重复下载。
+- **承重**：零代码改动（仅新增评估笔记 + 删未跟踪参考目录），未碰任何承重模块；commit 只不 push。
+- **正确参考方向**：找 AI+地理地图参考应转向 GeoLLM/MapGPT/CityGPT/UrbanGPT、LLM 地理实体抽取、MapLibre/Leaflet+LLM demo；agent loop 看 Anthropic SDK + .claude/skills。
+
+**EMC 承重静态清理（revision-log 5.97，commit `ff5bec2` 待 push）**：5.95 双修时静态另揪的 3 个中/低风险兄弟 bug，前置收掉（让 ① 运行时验证少失败点）：
+- **density 2D/terrain 侧栏不刷新**（heatmap-tool.js）：generateHeatmapForAI + generateTerrainForAI 补 renderLayerList/refreshLegend/reorderAllZ/showLayerManager（+ import，与 grid-tool 同模式，环已存在安全）。
+- **query_layers 列不可见层**（tools.js）：加 `l.visible` 过滤 + 标签改「已加载可见图层（未显示层一律禁用）」，与 pickVisiblePointLayer/buildContext 一致。
+- **isRange 分析产物显假图例**（sidebar.js）：改为排除任何 `_ui.tool` 标记层（buffer/overlay/area_stats/merge 不再显 NAVY range 假图例），仅纯面/线显 range；一并收掉 isRange 里的 density 死码。
+- **验证**：.mjs ESM（heatmap-tool/tools/sidebar）全过。legend-grid 侧 density 死分支（polLabel）无害留。运行时待用户开 serve 验。承重未碰三大件出图逻辑/5.74/四态/frame-based trust/F_005；commit 只不 push。
+- **下一步**：① 用户开 serve 运行时验证各 track（density 三模式 / 只传 L1 不跑 L2 / buffer 面板回填真半径 / 缺工具卡 + 本次 3 修复）；③ upload 胶囊；④ 后端 density 全退场（SOP）；⑤ P2 框架；⑥ 加技能（Flash 69% 下尚早）。本地领先 origin（5.89-5.97）待手动 push。
+
+### ⏸️ 暂缓：upload 胶囊（用户 07-15 指定搁置）
+
+Phase 2 跳过项 `{{upload:preset}}` 胶囊（panel.js renderAnswer+onMsgClick / harness compose* / tools.js buildContext / range-presets triggerUpload 导出）——用户 07-15 明确「暂时跳过胶囊开发，搁置」。遇缺 Range/商业/居住用地暂以纯文本 composeGapCard 引导，不做点击上传胶囊。后续需要时再启动。
+
+### 📊 状态
+
+- **Flash 80% gate 实测 = 9/13 = 69% → NO-GO**：single 路径(runTemplatePath)保渐进激活兜底（Flash 不命中 template→unknown→while-loop，零回归，符合 5.91 设计）。2 MISS 为概念问 Flash 散文直答（走 general 短路，非真回归）+ 2 真歧义（clip↔zonal/overlay↔multi）。
+
+- **本地领先 origin（5.89–5.97）待手动 push**；push 前 `git fetch` 确认真实远端状态（本地 ref 已前进到 53d4a9a）。
+
+- **下一步**：① 用户开 serve 运行时验证各 track（density 三模式 / 只传 L1·T1 不跑 L2 / buffer 点 B 回填真半径 / 缺工具卡 + 5.97 三修复：侧栏刷新/可见层/图例）；④ 后端 density 全退场（SOP）；⑤ P2 专业框架；⑥ 加技能 #8-11（Flash 69% 下尚早）。
+
+## 📅 2026-07-14
+
+### ✅ EMC 工作机制重构三阶段·站在巨人肩膀上落地（revision-log 5.89–5.94）
+
+**EMC 图面本地化 Track 0（revision-log 5.89）**：density 无图例/无情绪语义 + 五极色三套打架 → 半成品图面直接解药（用户原怀疑"工具适配不了数据"经实测证伪，真因=图面最后一公里本地化缺位）。
+- **改**：①density 图例分支（sidebar.js：isRange 排除 density + legend-grid 加 density + 标题"情绪密度"）②density 默认 value_col='score'（geo_routes/tools，按得分加权带情绪语义）③五极色归一 tokens 单源（state.js L2_* #86E61C→#78DC32 套对齐 tokens.css/emotionColors；DENSITY_RAMP→gradient.neg；brand-visual.md 同步）④density 3D + 去噪（tools _ui mode:'3d' + map cell 线归零消莫尔）⑤粗化透明化（kde_raster 回传 actual_cell_m + observation 标实际分辨率）。
+- **撤销（agent 误判纠正）**：0.6 polygon NAVY 隐形——撤销（addLayer 给非分析 polygon 配 PRESET_COLORS，本就可见）；hotspot 无图例——撤销（addLayer 默认 point→colorMode:'polarity'，图例本就触发）。
+- **验证**：.mjs ESM（state/map/sidebar/tools）+ py_compile 全过；pytest 161 过/6 失败全预先存在且无关（h3 未装 + 未碰模块）。运行时待用户开 serve 肉眼验。
+- **承重**：未碰三大件出图/5.74 对账/四态出口/frame-based trust；F_005 仅增 attrs 不改签名；commit 只不 push。
+- **后续**：Track 1（L1 兜底 + query-first 代码门控）/ Track 2 P1 编排（TEMPLATE_REGISTRY 技能化 + runTemplatePath + buffer 聚合 + Flash 80% gate）/ Track 3 P2 专业框架，降级后续会话。
+
+**EMC Track 1 + Track 2 完成（revision-log 5.90 / 5.91，commit b8de781 / 待 push）**：
+- **Track 1（5.90, b8de781）**：① L1 极性静默全0兜底（aggregate_by_polygons 探测小写3级→3级路径，空值剔分母，治"撒谎中性"）+ score 自适应默认 ② query-first 代码门控（round0 注入 TOOLS.query_layers observation 到 toolHistory，零 LLM，治"盲目调错工具"）。
+- **Track 2（5.91）**：① TEMPLATE_REGISTRY 9 技能（拟人化·可生长）+ template_registry_text ② diagnose method→template+params + 技能目录附录 ③ stages.js SKILL_DEFS 镜像 + validateParams + _PARAM_ALIAS 25 项 + normalizeCard（非 SKILL 归一 unknown）④ harness runTemplatePath（single 路径 0-agentStep，p^N→p²，缺槽/失败→EXIT_GAP）+ 路由 ⑤ buffer 聚合闭环（BufferRequest 继承 _GeoBase + 焊圈内 4×5 归因，省略逐字节同原）⑥ Flash 80% gate（test_emc_template.py 结构测 + eval_template_flash.py 手动评测）。**两真 bug 修**：normalizeParams 加 export + parseDiagnoseCard 收 template 卡。
+- **验证**：py_compile + .mjs ESM 全过；node 内联测 parse+validate 6/6；pytest 166 过（+5）/6 预存无关失败；buffer TestClient no-layer 逐字节同原 / with-layer 焊 point_count=396·polarity=-0.596。
+- **承重**：未碰三大件出图/5.74 对账/四态出口/frame-based trust；F_003 不改签名；commit 只不 push。
+- **渐进激活**：Flash 首次见 template，未可靠输出前落 unknown→while-loop（零回归）；达标后 single 主导。运行时 E2E + Flash 实测待用户开 serve + 跑 eval。下续 P2（加技能 #8-11 + B/C 范式树 + field_dictionary 接承重函数）。
+
+**EMC 工作机制重构（revision-log 5.92/5.93）**：三 agent 证实用户 4 猜测全中（EMC 自造并行 GIS 没套 Toolbox + 数据用 registry 缓存非 Layers 可见 + run_python 软约束 + 无上传胶囊）。分 2 commit 矫正。
+- **Commit A（5.92）**：① 数据可见纪律——pickVisiblePointLayer 只扫 visible 层，6 点层工具默认 layer 从 registry `'yichang_l2_t1'` 改为 visible fc + 无可见守卫（绝不臆造跑 registry）；buildContext 过滤 visible + 移除 formatGeoCatalog（registry 全量泄漏源）。② addResultLayer 注入 _ui.tool（EMC 产物获 Toolbox 编辑面板身份，buffer 受益）。③ run_python 收口——harness gate 拦截（ctx.allowCodeViz 才放行）+ composeGapCard 缺工具分支（引导后续开发不临场写代码）。
+- **承重**：未碰三大件出图/5.74/四态/frame-based trust；commit 只不 push。
+- **Commit B（5.93）**：generateHeatmapForAI（heatmap-tool.js 新增 2D 彩虹程序化入口，仿 generateGridForAI）+ EMC TOOLS.density 委托——2D→generateHeatmapForAI(rainbow) / 3D→generateGridForAI(terrain-9 可切 2D)，弃用自造 /api/v1/geo/density + DENSITY_RAMP；TEMPLATE_REGISTRY/SKILL_DEFS density 同步（optional_defaults 改 Toolbox 入参 mode/radius/weightField/cell_size/polarity，移除 layer 硬默认走可见层）。参数化设计落地：tool=成熟gis+本地化（委托 Toolbox 固定 HEATMAP_RAMPS），design=标准分析图层。
+- **验证**：.mjs ESM（heatmap-tool/tools/stages）+ py_compile + pytest 166 过/6 预存无关；test_emc_template 5/5。运行时（density 出 2D 彩虹/3D 网格、套 HEATMAP_RAMPS、可切 2D/3D）待用户开 serve 验。
+- **承重**：未碰主 Toolbox dialog 流/generateGridForAI 签名/三大件出图/5.74/四态/frame-based trust；commit 只不 push。
+- **Phase 2 下续**：{{upload:preset}} 胶囊（遇缺 Range/商业/居住用地引导点击上传）+ generateTerrainForAI（3D KDE 等值面备选）+ DENSITY_RAMP/`/api/v1/geo/density` 全退场 + catalog 转 upload 引导源。
+
+**EMC 工作机制重构·Phase 2 完成（revision-log 5.94）**：用户指定跳过 upload 胶囊（留后续），收尾其余：
+- **generateTerrainForAI**（heatmap-tool.js 新增 export）：3D KDE 等值面·情绪地形程序化入口（仅 L2，仿 generateHeatmapForAI/generateGridForAI）。**Toolbox 可视化三件套（heatmap 2D / grid 3D / terrain 3D）程序化入口齐备**，EMC 全量套用。
+- **density 三模式路由**（TOOLS.density）：mode='2d'→heatmap / '3d'→grid / **'terrain'→terrain**。
+- **provenance 补注册**（_registerToolboxLayer）：density 委托 Toolbox 的图层补入 _registry/_stepResults/_curResultIds——修 $n 引用 + formatRegistry provenance + 5.74 对账缺口（5.93 标注的取舍）。
+- **DENSITY_RAMP 退场**（tools.js 删死码 const）+ `/api/v1/geo/density` 后端标 DEPRECATED（保留代码，F_005 承重全删须 SOP）。
+- **验证**：.mjs ESM + py_compile + pytest 166 过/6 预存无关。运行时待用户开 serve 验。
+- **承重**：未碰主 Toolbox dialog 流/generateGridForAI 签名/三大件出图/5.74(强化)/四态/frame-based trust/F_005(保留)；commit 只不 push。
+- **后续（用户指定）**：{{upload:preset}} 胶囊 + catalog 转 upload 引导源。
+
+
 ## 📅 2026-07-13
 
 ### ✅ EMC 倾向性重定向：图层优先 + 交互体验（revision-log 5.88）
@@ -1413,55 +1486,3 @@ AI 问答基座稳后，从底部独立抽屉重设计为融入左端栏的 **Em
 **验证**：pytest tests/test_sandbox.py **28 passed**（19旧+9新）；post_run 端点真调（matplotlib 出图→fig1+dataUri / 反射端点级拦 / data_refs 注入 rows 2）；openapi 确认 /api/v1/run 挂载（total 34 paths 现有路由全在）；node --check + py_compile 全过。
 
 **承重**：不破 frame-based trust（库帧 lazy-import/lazy-open/eval 放行，pandas/matplotlib/numpy 不误伤）/ 5.74 对账（figId 纯 ASCII + 「图片」措辞不进 verbRe/showRe）/ SAFE_READY 单点 revert（改回 False gate 自动卸载 /run）/ run_sandbox 永不裸输 / 演示版非 OS 隔离（内存 CPU 仅超时软限、别名反射 AST 拦不住靠禁 eval 收敛——文档化，生产须叠容器）。详见 revision-log 5.83。
-
-**EMC 图面本地化 Track 0（revision-log 5.89）**：density 无图例/无情绪语义 + 五极色三套打架 → 半成品图面直接解药（用户原怀疑"工具适配不了数据"经实测证伪，真因=图面最后一公里本地化缺位）。
-- **改**：①density 图例分支（sidebar.js：isRange 排除 density + legend-grid 加 density + 标题"情绪密度"）②density 默认 value_col='score'（geo_routes/tools，按得分加权带情绪语义）③五极色归一 tokens 单源（state.js L2_* #86E61C→#78DC32 套对齐 tokens.css/emotionColors；DENSITY_RAMP→gradient.neg；brand-visual.md 同步）④density 3D + 去噪（tools _ui mode:'3d' + map cell 线归零消莫尔）⑤粗化透明化（kde_raster 回传 actual_cell_m + observation 标实际分辨率）。
-- **撤销（agent 误判纠正）**：0.6 polygon NAVY 隐形——撤销（addLayer 给非分析 polygon 配 PRESET_COLORS，本就可见）；hotspot 无图例——撤销（addLayer 默认 point→colorMode:'polarity'，图例本就触发）。
-- **验证**：.mjs ESM（state/map/sidebar/tools）+ py_compile 全过；pytest 161 过/6 失败全预先存在且无关（h3 未装 + 未碰模块）。运行时待用户开 serve 肉眼验。
-- **承重**：未碰三大件出图/5.74 对账/四态出口/frame-based trust；F_005 仅增 attrs 不改签名；commit 只不 push。
-- **后续**：Track 1（L1 兜底 + query-first 代码门控）/ Track 2 P1 编排（TEMPLATE_REGISTRY 技能化 + runTemplatePath + buffer 聚合 + Flash 80% gate）/ Track 3 P2 专业框架，降级后续会话。
-
-**EMC Track 1 + Track 2 完成（revision-log 5.90 / 5.91，commit b8de781 / 待 push）**：
-- **Track 1（5.90, b8de781）**：① L1 极性静默全0兜底（aggregate_by_polygons 探测小写3级→3级路径，空值剔分母，治"撒谎中性"）+ score 自适应默认 ② query-first 代码门控（round0 注入 TOOLS.query_layers observation 到 toolHistory，零 LLM，治"盲目调错工具"）。
-- **Track 2（5.91）**：① TEMPLATE_REGISTRY 9 技能（拟人化·可生长）+ template_registry_text ② diagnose method→template+params + 技能目录附录 ③ stages.js SKILL_DEFS 镜像 + validateParams + _PARAM_ALIAS 25 项 + normalizeCard（非 SKILL 归一 unknown）④ harness runTemplatePath（single 路径 0-agentStep，p^N→p²，缺槽/失败→EXIT_GAP）+ 路由 ⑤ buffer 聚合闭环（BufferRequest 继承 _GeoBase + 焊圈内 4×5 归因，省略逐字节同原）⑥ Flash 80% gate（test_emc_template.py 结构测 + eval_template_flash.py 手动评测）。**两真 bug 修**：normalizeParams 加 export + parseDiagnoseCard 收 template 卡。
-- **验证**：py_compile + .mjs ESM 全过；node 内联测 parse+validate 6/6；pytest 166 过（+5）/6 预存无关失败；buffer TestClient no-layer 逐字节同原 / with-layer 焊 point_count=396·polarity=-0.596。
-- **承重**：未碰三大件出图/5.74 对账/四态出口/frame-based trust；F_003 不改签名；commit 只不 push。
-- **渐进激活**：Flash 首次见 template，未可靠输出前落 unknown→while-loop（零回归）；达标后 single 主导。运行时 E2E + Flash 实测待用户开 serve + 跑 eval。下续 P2（加技能 #8-11 + B/C 范式树 + field_dictionary 接承重函数）。
-
-**EMC 工作机制重构（revision-log 5.92/5.93）**：三 agent 证实用户 4 猜测全中（EMC 自造并行 GIS 没套 Toolbox + 数据用 registry 缓存非 Layers 可见 + run_python 软约束 + 无上传胶囊）。分 2 commit 矫正。
-- **Commit A（5.92）**：① 数据可见纪律——pickVisiblePointLayer 只扫 visible 层，6 点层工具默认 layer 从 registry `'yichang_l2_t1'` 改为 visible fc + 无可见守卫（绝不臆造跑 registry）；buildContext 过滤 visible + 移除 formatGeoCatalog（registry 全量泄漏源）。② addResultLayer 注入 _ui.tool（EMC 产物获 Toolbox 编辑面板身份，buffer 受益）。③ run_python 收口——harness gate 拦截（ctx.allowCodeViz 才放行）+ composeGapCard 缺工具分支（引导后续开发不临场写代码）。
-- **承重**：未碰三大件出图/5.74/四态/frame-based trust；commit 只不 push。
-- **Commit B（5.93）**：generateHeatmapForAI（heatmap-tool.js 新增 2D 彩虹程序化入口，仿 generateGridForAI）+ EMC TOOLS.density 委托——2D→generateHeatmapForAI(rainbow) / 3D→generateGridForAI(terrain-9 可切 2D)，弃用自造 /api/v1/geo/density + DENSITY_RAMP；TEMPLATE_REGISTRY/SKILL_DEFS density 同步（optional_defaults 改 Toolbox 入参 mode/radius/weightField/cell_size/polarity，移除 layer 硬默认走可见层）。参数化设计落地：tool=成熟gis+本地化（委托 Toolbox 固定 HEATMAP_RAMPS），design=标准分析图层。
-- **验证**：.mjs ESM（heatmap-tool/tools/stages）+ py_compile + pytest 166 过/6 预存无关；test_emc_template 5/5。运行时（density 出 2D 彩虹/3D 网格、套 HEATMAP_RAMPS、可切 2D/3D）待用户开 serve 验。
-- **承重**：未碰主 Toolbox dialog 流/generateGridForAI 签名/三大件出图/5.74/四态/frame-based trust；commit 只不 push。
-- **Phase 2 下续**：{{upload:preset}} 胶囊（遇缺 Range/商业/居住用地引导点击上传）+ generateTerrainForAI（3D KDE 等值面备选）+ DENSITY_RAMP/`/api/v1/geo/density` 全退场 + catalog 转 upload 引导源。
-
-**EMC 工作机制重构·Phase 2 完成（revision-log 5.94）**：用户指定跳过 upload 胶囊（留后续），收尾其余：
-- **generateTerrainForAI**（heatmap-tool.js 新增 export）：3D KDE 等值面·情绪地形程序化入口（仅 L2，仿 generateHeatmapForAI/generateGridForAI）。**Toolbox 可视化三件套（heatmap 2D / grid 3D / terrain 3D）程序化入口齐备**，EMC 全量套用。
-- **density 三模式路由**（TOOLS.density）：mode='2d'→heatmap / '3d'→grid / **'terrain'→terrain**。
-- **provenance 补注册**（_registerToolboxLayer）：density 委托 Toolbox 的图层补入 _registry/_stepResults/_curResultIds——修 $n 引用 + formatRegistry provenance + 5.74 对账缺口（5.93 标注的取舍）。
-- **DENSITY_RAMP 退场**（tools.js 删死码 const）+ `/api/v1/geo/density` 后端标 DEPRECATED（保留代码，F_005 承重全删须 SOP）。
-- **验证**：.mjs ESM + py_compile + pytest 166 过/6 预存无关。运行时待用户开 serve 验。
-- **承重**：未碰主 Toolbox dialog 流/generateGridForAI 签名/三大件出图/5.74(强化)/四态/frame-based trust/F_005(保留)；commit 只不 push。
-- **后续（用户指定）**：{{upload:preset}} 胶囊 + catalog 转 upload 引导源。
-
-**EMC 承重双修（revision-log 5.95，commit `32a86ac` 待 push）**：开 serve 运行时验证前，静态深读（Explore 全链追踪 + 直读）揪出 2 个承重必破缺陷，先修再做 Flash 80% gate 实测。
-- **visible 纪律被默认 layer 绕过**（数据可见纪律铁律，5.92 Track 1 核心保证漏）：rank/buffer/clip/zonal 的 SKILL_DEFS（stages.js）+ TEMPLATE_REGISTRY（paradigm.py）optional_defaults 去硬默认 `layer='yichang_l2_t1'`。该默认经 validateParams 合并后使 `resolvePointLayer`（tools.js:494）走 `if (params.layer) return params.layer` 直接返字符串、跳过 `pickVisiblePointLayer` 的 visible 过滤 → 后端拿 'yichang_l2_t1' 当 preset_id 解析可能成功 → **"只传 L1·T1 却跑 L2"**。去默认后 single 技能与 density 同源走可见层；buffer 额外把缺省 layer 改用可见点层名交后端聚合。
-- **buffer 编辑面板元数据丢失**（主 Toolbox dialog 流不破）：TOOLS.buffer（tools.js）产物注入 `_ui`（distance 关键 + dissolve/lineWidth/fillOpacity/lineStyle + sourceLayer 尽力解析）。addResultLayer（tools.js:280）既有 _ui.tool 注入对已有 _ui 仅补 tool，元数据完整透传。修 openBufferDialog（buffer-tool.js:72）seed 残缺致 applyParams 回填 DEFAULTS(1000m) 重做全然不同 buffer 的缺陷。
-- **验证**：py_compile + .mjs ESM（stages/tools）+ pytest test_emc_template 5/5 全过。**Flash 80% gate 实测 = 9/13 = 69% → NO-GO**（真 DeepSeek-v4-flash）：2 概念问 Flash 散文直答不吐 diagnose 卡（走 general 短路、非真回归）+ 2 真歧义（clip↔zonal / overlay↔multi，所选皆有效操作）。**结论：single 路径暂不主导，保渐进激活兜底**（不命中→unknown→while-loop 零回归，符合 5.91 设计）。运行时待用户开 serve 验。
-- **承重**：未碰主 Toolbox dialog 流（仅补 _ui 透传）/ generateGridForAI 签名 / 三大件出图 / 5.74 / 四态 / frame-based trust / F_005；commit 只不 push。
-- **静态另揪中/低风险点（留 ①运行时验证一并修）**：density 2D heatmap 产物侧栏列表可能不刷新 / query_layers 列不可见层 / buffer 层被 isRange 当 range 显假图例 / legend-grid `_ui.tool==='density'` 死码。
-- **下一步**：① Flash 80% gate 实测（py tests/eval_template_flash.py）→ 定 single 路径是否主导 ship；② 运行时验证各 track（用户开 serve）；③ upload 胶囊；④ 后端 density 全退场（SOP）；⑤ P2 专业框架；⑥ 加技能 #8-11。本地领先 origin（5.89-5.95）待用户手动 push。
-
-**借鉴评估 · lingbot-map（revision-log 5.96，零代码改动，待 push）**：用户拟借鉴 docs/lingbot-map-main 的「AI+地图」实现，双 Explore agent 全仓深读证伪——实为 **3D 重建/SLAM** 项目（GCT=几何上下文变换器，图像帧序列→3D 点云+相机位姿，基于 VGGT/DINOv2），**非 AI+地理地图**。与情绪地图（LLM+2D 地理地图）数据模态/AI 角色/「map」含义/技术栈全零重叠，零 LLM/零文本/零 GIS，**可复用代码≈0**。
-- **决策（不采纳）**：仅提炼 3 条架构思想启发（未来设计参考，非现成代码）落 [docs/reference-lingbot-map-eval.md](reference-lingbot-map-eval.md)：① 流式增量更新（paged KV cache）——未来实时情绪管线可借鉴「只处理增量」；② keyframe 降级+滑窗——未来大规模聚合；③ YAML 配置驱动摄段化渲染——emotion_map 已有 design tokens，largely 冗余。
-- **删除**：原项目 324M（含示例图/PDF/权重引用，未跟踪）已 `rm -rf` 删除防重复下载。
-- **承重**：零代码改动（仅新增评估笔记 + 删未跟踪参考目录），未碰任何承重模块；commit 只不 push。
-- **正确参考方向**：找 AI+地理地图参考应转向 GeoLLM/MapGPT/CityGPT/UrbanGPT、LLM 地理实体抽取、MapLibre/Leaflet+LLM demo；agent loop 看 Anthropic SDK + .claude/skills。
-
-**EMC 承重静态清理（revision-log 5.97，commit `ff5bec2` 待 push）**：5.95 双修时静态另揪的 3 个中/低风险兄弟 bug，前置收掉（让 ① 运行时验证少失败点）：
-- **density 2D/terrain 侧栏不刷新**（heatmap-tool.js）：generateHeatmapForAI + generateTerrainForAI 补 renderLayerList/refreshLegend/reorderAllZ/showLayerManager（+ import，与 grid-tool 同模式，环已存在安全）。
-- **query_layers 列不可见层**（tools.js）：加 `l.visible` 过滤 + 标签改「已加载可见图层（未显示层一律禁用）」，与 pickVisiblePointLayer/buildContext 一致。
-- **isRange 分析产物显假图例**（sidebar.js）：改为排除任何 `_ui.tool` 标记层（buffer/overlay/area_stats/merge 不再显 NAVY range 假图例），仅纯面/线显 range；一并收掉 isRange 里的 density 死码。
-- **验证**：.mjs ESM（heatmap-tool/tools/sidebar）全过。legend-grid 侧 density 死分支（polLabel）无害留。运行时待用户开 serve 验。承重未碰三大件出图逻辑/5.74/四态/frame-based trust/F_005；commit 只不 push。
-- **下一步**：① 用户开 serve 运行时验证各 track（density 三模式 / 只传 L1 不跑 L2 / buffer 面板回填真半径 / 缺工具卡 + 本次 3 修复）；③ upload 胶囊；④ 后端 density 全退场（SOP）；⑤ P2 框架；⑥ 加技能（Flash 69% 下尚早）。本地领先 origin（5.89-5.97）待手动 push。
