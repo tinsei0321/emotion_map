@@ -1148,6 +1148,18 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
 
+### 5.95 EMC 承重双修：buffer 编辑面板元数据 + visible 纪律被默认 layer 绕过（07月15日）
+
+接 5.89-5.94 工作机制重构（站在巨人肩膀上落地）后，开 serve 运行时验证前静态深读发现 **2 个承重必破缺陷**（Explore agent 全链追踪 + 直读代码确认）。本次先修，再做 Flash 80% gate 实测。
+
+**改（2 承重缺陷，3 文件，commit `32a86ac`）**：
+- **visible 纪律被默认 layer 绕过**（数据可见纪律铁律，5.92 Track 1 核心保证漏）：`rank/buffer/clip/zonal` 的 SKILL_DEFS（[stages.js](frontend/js/ai_qa/stages.js)）+ TEMPLATE_REGISTRY（[paradigm.py](ai_qa/paradigm.py)）optional_defaults 去掉硬默认 `layer='yichang_l2_t1'`。该默认经 `validateParams` 合并后，使 `resolvePointLayer`（[tools.js:494](frontend/js/ai_qa/tools.js#L494)）走 `if (params.layer) return params.layer` 直接返字符串、**跳过 `pickVisiblePointLayer` 的 visible 过滤** → 后端拿 'yichang_l2_t1' 当 preset_id 解析可能成功 → **"只传 L1·T1 却跑 L2"**。去默认后 single 技能与 density 同源走可见层选源；buffer 额外把 `params.layer` 缺省时改用 `pickVisiblePointLayer().name` 交后端聚合（不再硬默认 L2）。
+- **buffer 编辑面板元数据丢失**（主 Toolbox dialog 流不破）：`TOOLS.buffer`（[tools.js](frontend/js/ai_qa/tools.js)）产物调 `addResultLayer` 时注入 `_ui`（`distance` 关键 + `dissolve/lineWidth/fillOpacity/lineStyle` + `sourceLayer` 尽力解析可见点层 id）。`addResultLayer`（[tools.js:280](frontend/js/ai_qa/tools.js#L280)）既有 `_ui.tool` 注入逻辑对**已有 _ui 仅补 tool**，故 distance 等元数据完整透传。修 `openBufferDialog`（[buffer-tool.js:72](frontend/js/buffer-tool.js#L72)）`seed=_ui` 残缺致 `applyParams` 回填 DEFAULTS(1000m) → 点"调整"重做全然不同 buffer 的缺陷。
+
+**验证**：py_compile（paradigm）+ .mjs ESM（stages/tools）全过；pytest test_emc_template 5/5（结构测不受影响——optional_defaults 缩短不破契约）。**Flash 80% gate 实测（eval_template_flash.py，真 DeepSeek-v4-flash 13 案）= 9/13 = 69% → NO-GO**（未达 80% ship 门限）。4 MISS：2 概念问（「什么是核密度分析」/「情绪地图是什么」）Flash **直接散文作答不吐 diagnose JSON 卡**（诊断实证：raw 响应是 KDE 纯解释、无 template 字段）→ harness 走 general 概念短路、不依赖 single 路径，非真回归；2 真歧义（「某区的商业用地」clip↔zonal、「居住用地里情绪差的」overlay↔multi，所选皆有效 GIS 操作）。**结论：single 路径(runTemplatePath)暂不主导，保渐进激活兜底**（Flash 不命中 template→normalizeCard 归 unknown→while-loop 受约束 ReAct，零回归），符合 5.91 设计。运行时（buffer 点 B 回填真实半径 / 只传 L1·T1 不跑 L2）待用户开 serve 肉眼验。
+- **承重**：未碰主 Toolbox dialog 流（仅补 _ui 元数据透传）/ generateGridForAI 签名 / 三大件出图 / 5.74 对账 / 四态出口 / frame-based trust / F_005；commit 只不 push。
+- **静态另揪的中/低风险点（留 ①运行时验证一并修，非本次范围）**：density 2D 委托 heatmap 产物侧栏列表可能不刷新（generateHeatmapForAI 末尾未调 renderLayerList）/ query_layers observation 列不可见层（无 visible 过滤，与 pickVisiblePointLayer 不一致）/ buffer 层被 isRange 当 range 显假图例（sidebar.js:193 未排 buffer）/ legend-grid 判 `_ui.tool==='density'` 为死码。
+
 ### 5.94 EMC 工作机制重构·Phase 2：generateTerrainForAI 补齐 Toolbox 三件套 + density provenance 补注册 + DENSITY_RAMP 退场（07月14日）
 
 接 5.92/5.93（数据纪律 + density 委托 Toolbox heatmap/grid），Phase 2 收尾（用户指定**跳过 upload 胶囊**留后续开发）：补齐 Toolbox 可视化三件套的第三个程序化入口（terrain 3D 等值面）+ 修上次标注的 provenance 缺口 + 自造 DENSITY_RAMP 死码退场。

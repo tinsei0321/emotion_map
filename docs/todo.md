@@ -1444,3 +1444,11 @@ AI 问答基座稳后，从底部独立抽屉重设计为融入左端栏的 **Em
 - **验证**：.mjs ESM + py_compile + pytest 166 过/6 预存无关。运行时待用户开 serve 验。
 - **承重**：未碰主 Toolbox dialog 流/generateGridForAI 签名/三大件出图/5.74(强化)/四态/frame-based trust/F_005(保留)；commit 只不 push。
 - **后续（用户指定）**：{{upload:preset}} 胶囊 + catalog 转 upload 引导源。
+
+**EMC 承重双修（revision-log 5.95，commit `32a86ac` 待 push）**：开 serve 运行时验证前，静态深读（Explore 全链追踪 + 直读）揪出 2 个承重必破缺陷，先修再做 Flash 80% gate 实测。
+- **visible 纪律被默认 layer 绕过**（数据可见纪律铁律，5.92 Track 1 核心保证漏）：rank/buffer/clip/zonal 的 SKILL_DEFS（stages.js）+ TEMPLATE_REGISTRY（paradigm.py）optional_defaults 去硬默认 `layer='yichang_l2_t1'`。该默认经 validateParams 合并后使 `resolvePointLayer`（tools.js:494）走 `if (params.layer) return params.layer` 直接返字符串、跳过 `pickVisiblePointLayer` 的 visible 过滤 → 后端拿 'yichang_l2_t1' 当 preset_id 解析可能成功 → **"只传 L1·T1 却跑 L2"**。去默认后 single 技能与 density 同源走可见层；buffer 额外把缺省 layer 改用可见点层名交后端聚合。
+- **buffer 编辑面板元数据丢失**（主 Toolbox dialog 流不破）：TOOLS.buffer（tools.js）产物注入 `_ui`（distance 关键 + dissolve/lineWidth/fillOpacity/lineStyle + sourceLayer 尽力解析）。addResultLayer（tools.js:280）既有 _ui.tool 注入对已有 _ui 仅补 tool，元数据完整透传。修 openBufferDialog（buffer-tool.js:72）seed 残缺致 applyParams 回填 DEFAULTS(1000m) 重做全然不同 buffer 的缺陷。
+- **验证**：py_compile + .mjs ESM（stages/tools）+ pytest test_emc_template 5/5 全过。**Flash 80% gate 实测 = 9/13 = 69% → NO-GO**（真 DeepSeek-v4-flash）：2 概念问 Flash 散文直答不吐 diagnose 卡（走 general 短路、非真回归）+ 2 真歧义（clip↔zonal / overlay↔multi，所选皆有效操作）。**结论：single 路径暂不主导，保渐进激活兜底**（不命中→unknown→while-loop 零回归，符合 5.91 设计）。运行时待用户开 serve 验。
+- **承重**：未碰主 Toolbox dialog 流（仅补 _ui 透传）/ generateGridForAI 签名 / 三大件出图 / 5.74 / 四态 / frame-based trust / F_005；commit 只不 push。
+- **静态另揪中/低风险点（留 ①运行时验证一并修）**：density 2D heatmap 产物侧栏列表可能不刷新 / query_layers 列不可见层 / buffer 层被 isRange 当 range 显假图例 / legend-grid `_ui.tool==='density'` 死码。
+- **下一步**：① Flash 80% gate 实测（py tests/eval_template_flash.py）→ 定 single 路径是否主导 ship；② 运行时验证各 track（用户开 serve）；③ upload 胶囊；④ 后端 density 全退场（SOP）；⑤ P2 专业框架；⑥ 加技能 #8-11。本地领先 origin（5.89-5.95）待用户手动 push。
