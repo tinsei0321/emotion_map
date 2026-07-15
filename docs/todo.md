@@ -61,11 +61,12 @@ Phase 2 跳过项 `{{upload:preset}}` 胶囊（panel.js renderAnswer+onMsgClick 
 
 **Tier 2 · 专业层做厚**
 
-- **A3. P2 专业框架** ★★（有用性环，较大，A1 后）
+- **A3. P2 专业框架** ★★（有用性环，较大，A1 后）— **① 已完成 5.101（②③④ 待续）**
   - 目标：认知层从「P1 技能编排」做厚到「专业范式 + 字段语义 + 热度维度 + 遥测」。
-  - 改：① B/C 赛道范式树（B_TRACK_PARADIGM 粗粒度 9 类 + SCALE_PARADIGM.method_templates 对齐住建部城市体检四层级 + select_template(track,card) 单一真相源）；② field_dictionary 接承重函数（上传层 alias + spatial_analysis 行 355 polarity 门控/356 五级值域/576-581 domain-element）；③ popularity role（timestamp/boundary_id/category 已存 → 时间/边界/品类热度分析）；④ _missStats 遥测 + confidence 阈值 0.3。
-  - 文件：[ai_qa/paradigm.py](ai_qa/paradigm.py)、ai_qa/field_dictionary.py、[core/spatial_analysis.py](core/spatial_analysis.py)、新增 _missStats。
-  - 承重：field_dictionary 接承重逻辑须 SOP；polarity 门控/五级/domain-element 不破。与 A1 协同（范式树进 diagnose prompt）。
+  - ✅ **① 专业范式树（5.101 完成）**：B_TRACK_PARADIGM 9 原型（Load→Transform→Analyze，顺序=关键词优先级）+ SCALE_PARADIGM.method_templates 对齐住建部城市体检四层级（住房→小区→街区→城区）+ select_template(track,card,question) 单一真相源。**业界调研汲取 GeoLLM-Engine**（single-path 验证 + Load-Filter-Plot + intent→工具序列），CityGPT/MapLibre-demo 不采纳。Flash 命中率 85%→92%（A1 协同提升）；pytest 177 pass 0 新回归；承重未碰（Python+prompt 层）。
+  - ⬜ ② field_dictionary 接承重函数（上传层 alias + spatial_analysis polarity 门控/五级/domain-element 硬编码列名→resolve_field_alias）。
+  - ⬜ ③ popularity role（timestamp/boundary_id/category 已存 → 时间/边界/品类热度分析）。
+  - ⬜ ④ _missStats 遥测 + confidence 阈值 0.3。
   - 演示价值：识别更具体城建/更新问题（有用性环），对规划师/住建局更有说服力。
 
 **Tier 3 · 扩能（gated on A1）**

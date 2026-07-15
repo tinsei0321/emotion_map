@@ -11,7 +11,7 @@ import datetime as _dt
 from ai_qa.manifesto import MANIFESTO
 from ai_qa.paradigm import (
     scale_paradigm_text, domain_outlets_text, geo_tool_catalog_text, code_exec_catalog_text,
-    template_registry_text,
+    template_registry_text, b_track_paradigm_text, select_template_text,
     DIAGNOSE_CARD_FIELDS, DATA_STRATEGY,
 )
 
@@ -218,11 +218,16 @@ def build_diagnose_prompt(context: str = '', context_tokens: list = None) -> str
     # 范式知识附录（format 后拼接，花括号安全）
     prompt += '\n═══════════ 附录 · 尺度-方法-范式矩阵 ═══════════\n' + scale_paradigm_text()
     prompt += '\n\n═══════════ 附录 · 4 领域出口范式启发库 ═══════════\n' + domain_outlets_text()
+    prompt += '\n\n═══════════ 附录 · B 赛道操作范式树（gis_operation · Load→Transform→Analyze）═══════════\n' \
+              + '【list 顺序 = 关键词匹配优先级，B 操作歧义裁断的单一真相源】\n' \
+              + b_track_paradigm_text()
     prompt += '\n\n═══════════ 附录 · GIS 操作目录（template 字段选型参照）═══════════\n' \
               + geo_tool_catalog_text()
     prompt += '\n\n═══════════ 附录 · 技能目录（template 字段据此选型 · 拟人化 · P1 编排层）═══════════\n' \
               + '【选择要点·铁律】intent=general→template=concept；intent=gis_operation→density/rank/buffer/clip/overlay 之一；intent=emotion_analysis→zonal/rank。**单一空间关系就是 single，严禁选 multi/unknown**——周边/附近/半径→buffer；某区/某范围/XX区内的目标→clip；两图层关系（A∩B、A里的B）→overlay；排序/最差最好→rank；密度/聚集→density。**只有一句话含≥2个不同动作（如"裁出来并排序"）才选 multi**；真无任何现成技能才选 unknown。勿把单一关系当复合、勿因不确定就退 unknown。\n' \
               + template_registry_text()
+    prompt += '\n\n═══════════ 附录 · 选型决策树（单一真相源 · track+scale+关键词→template）═══════════\n' \
+              + select_template_text()
     prompt += '\n\n═══════════ 附录 · 诊断卡字段说明 ═══════════'
     for k, v in DIAGNOSE_CARD_FIELDS.items():
         prompt += f'\n- {k}：{v}'

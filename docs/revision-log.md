@@ -216,13 +216,13 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月15日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.100，约本节中段）**，最近三条：
+> 📍 **最新动态（07月15日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.101，约本节中段）**，最近三条：
 >
-> - **5.100** EMC **A2 完成**：后端 density 全退场——删 `/geo/density` 端点 + `kde_raster`(F_005) + `_KDE_PROJECT_CRS` + kde 的 F_005/D_004 注册；**顺带修 F_005 重复注册 bug**（kde 抢占→恢复 buffer 唯一归属）。前端已委托 Toolbox 无感；pytest 166 pass/6 预存，0 新回归。承重未碰；commit 只不 push。
-> - **5.99** EMC **A1 完成**：Flash 模板命中率 **69%→85% PASS**，解锁 single-path 主导——diagnose 加「必吐 JSON 不散文」铁律 + concept 映射 + 6 条 few-shot + `DIAGNOSE_CARD_FIELDS` 对齐契约；2 concept MISS 修掉，剩 2 真歧义「所选皆有效」。
-> - **5.98** EMC 架构优化+功能升级**任务计划拟定**：A1 Flash 命中率（解锁器）／A2 density 退场／A3 P2 框架／B1 加技能；推进序 A1→A2→A3→B1。详细见 todo.md 07-15 🗺️ 段。
+> - **5.101** EMC **A3① 完成**：专业范式树——B_TRACK_PARADIGM 9 原型（Load→Transform→Analyze）+ SCALE_PARADIGM method_templates 对齐住建部城市体检四层级 + select_template 单一真相源；**业界调研汲取 GeoLLM-Engine**（Load-Filter-Plot + intent→工具序列），CityGPT/MapLibre-demo 不采纳。Flash 命中率 **85%→92%**（A1 协同提升）；pytest 177 pass 0 新回归。承重未碰；commit 只不 push。
+> - **5.100** EMC **A2 完成**：后端 density 全退场——删 `/geo/density` 端点 + `kde_raster`(F_005) + 修 F_005 重复注册 bug（→buffer 唯一）。pytest 166 pass 0 新回归。
+> - **5.99** EMC **A1 完成**：Flash 模板命中率 **69%→85% PASS**，解锁 single-path 主导。
 >
-> 本地领先 origin（A2 `5.100` 待手动 push；A1 `5.99` 已 push）。A1+A2 已落地，下会话按计划从 **A3（P2 框架）/B1（加技能）** 起。
+> 本地领先 origin（A3① `5.101` + A2 `5.100` 待手动 push；A1 `5.99` 已 push）。A1+A2+A3① 已落地，下会话按计划从 **B1（加技能，点亮 A3① 范式树）/A3②③④** 起。
 
 ### 5.1 前端 · 核密度分析（KDE）弹窗（核心）
 
@@ -1155,6 +1155,24 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证（Playwright 真实 LLM）**：问"什么是核密度分析？和热点分析区别？"→ 修前出缺数据卡（走 narration→degrade→GAP，实测暴露 Bug3）；**修后出真结论**（KDE vs Getis-Ord Gi* 原理/输出/平滑性对比表），`isGapCard:false`。三态 EXIT_GAP 路径逻辑保留（条件严格收紧，真失败仍出卡）。
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
+
+### 5.101 EMC A3①：专业范式树（B_TRACK_PARADIGM + 城市体检 method_templates + select_template 真相源）（07月15日）
+
+用户意图：A1 让 Flash 可靠输出 template（格式层），但选型规则散落 prompt 散文、无结构化决策树、对规划师/住建局缺专业说服力。A3① 把选型规则**数据结构化 + 函数化**（认知层做厚，有用性环）。
+
+**业界参考汲取**（设计前调研，在 EMC 核心目标下选择性吸收——[GeoLLM-Engine](https://arxiv.org/html/2404.15500v1)／[CityGPT](https://arxiv.org/abs/2406.13948)／[LLM-Geo](https://giscience.psu.edu/llm-geo-an-open-source-autonomous-gis-prototype/)／[MapLibre demo](https://github.com/maplibre/awesome-maplibre)／[SpatialWebAgent](https://aclanthology.org/2025.acl-demo.25.pdf)）：
+- ✅ **汲取 GeoLLM-Engine**：Intent 三分类≈EMC A/B/C 三赛道；**single-tool SR>95% vs 8+工具<70%** 强证 EMC single-path 方向正确；intent={q,工具序列,…} 思路→select_template 真相源（track+scale 定义期望 template）；Load-Filter-Plot 范式→B_TRACK_PARADIGM 按 Load→Transform→Analyze 组织。
+- ❌ **不采纳**：CityGPT（city world model + 微调注入，EMC 不微调）；MapLibre+LLM demo（业界 emerging，EMC geojson.io+harness 已领先）；SpatialWebAgent 地理实体抽取（属 A3②）。
+- **结论**：业界主要验证 EMC 已在正确路径，A3① 是自然做厚；零代码依赖（纯思想启发）。
+
+**落地**（纯 Python + prompt 层，不碰前端承重）：
+- [ai_qa/paradigm.py](ai_qa/paradigm.py)：① **B_TRACK_PARADIGM 9 原型**（buffer/nearest/density/hotspot/overlay/merge/clip/extract_feature/filter_attr，**list 顺序=关键词匹配优先级**，未登记技能→降级 multi，前向兼容 B1）；② **SCALE_PARADIGM 加 method_templates + city_checkup_level**（对齐住建部 2024 城市体检四层级：住房→小区→街区→城区）+ scale_paradigm_text 渲染；③ **select_template(track,card,question) 单一真相源纯函数** + select_template_text() 决策树。
+- [ai_qa/prompts.py](ai_qa/prompts.py)：build_diagnose_prompt 注入「B 赛道范式树」+「选型决策树」附录（A1 协同：从「凭语感」升级「按范式」）。
+- [tests/test_a3_paradigm.py](tests/test_a3_paradigm.py)（新增 11 测）：select_template 关键词优先级 / B1 待建降级 multi / C scale 映射 + 范式结构 + prompt 注入。
+
+**验证**：py_compile + pytest **177 pass / 6 预存 0 新回归** + 渲染检查；**Flash eval 12/13 = 92% PASS（A1 85%→92% 协同提升）**——结构化范式让 Flash 选型更一致（剩 1 真歧义：居住用地里→multi，A1 时也在）。
+**承重**：未碰 normalizeCard/runTemplatePath/路由/前端/四态/三大件/5.74（Python+prompt 层）；select_template 新增纯函数，JS 强制执行有意延后（另开 plan）；commit 只不 push。
+**下一步**：B1（加技能 #8-11，点亮 A3① 范式树里 B1 待建原型）/A3②③④（field_dict 接承重 / popularity / _missStats）/JS select_template 强制执行。
 
 ### 5.100 EMC A2：后端 density 全退场（删 kde_raster F_005 + /geo/density 端点，承重清债）（07月15日）
 

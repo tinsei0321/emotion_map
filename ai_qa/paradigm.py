@@ -21,6 +21,8 @@ SCALE_PARADIGM = [
         'paradigm': '产出宏观聚合图层（如行政区极性面）+ 体系化结论：哪类空间 / 哪些街道 / 哪类用地系统性落后或领先',
         'forbidden': '禁止落到单一坐标 / 单一网格（用微观结论答宏观问）',
         'typical_q': '"中心城区整体情绪如何？哪里好哪里坏？""哪个片区最需优先更新？"',
+        'city_checkup_level': '城区（城市）',  # 对齐住建部 2024 城市体检四层级（住房→小区→街区→城区）
+        'method_templates': ['zonal_stats(admin_district)→4×5归因+排序', 'area_stats(用地结构)'],
     },
     {
         'scale': 'meso',
@@ -30,6 +32,8 @@ SCALE_PARADIGM = [
         'paradigm': '产出单元聚合图层 + 单元级结论：哪个单元最差/最好 + 归因（domain×element）+ 单元针对性建议',
         'forbidden': '不混到单点、也不泛到整城',
         'typical_q': '"这几个街道里哪个最需更新？""某社区的 4×5 归因偏哪一格？"',
+        'city_checkup_level': '街区/小区（社区）',
+        'method_templates': ['zonal_stats(street/renewal_unit)→4×5归因', 'buffer(15min生活圈)'],
     },
     {
         'scale': 'micro',
@@ -39,6 +43,8 @@ SCALE_PARADIGM = [
         'paradigm': '产出精细网格/热点图层 + 落点结论：哪个具体网格 / 聚集区 / POI + 精确定位（可飞到地图）',
         'forbidden': '禁止泛泛而谈（用宏观结论答微观问）',
         'typical_q': '"这个公园里哪里情绪最差？""这条街上哪个点位被吐槽最多？"',
+        'city_checkup_level': '住房/小区',
+        'method_templates': ['hotspot(Gi*冷热点)', 'nearest(设施锚定)', '精细网格 50-100m'],
     },
 ]
 
@@ -52,7 +58,9 @@ def scale_paradigm_text() -> str:
             f"    方法：{s['method']}\n"
             f"    出口范式：{s['paradigm']}\n"
             f"    禁止：{s['forbidden']}\n"
-            f"    典型问：{s['typical_q']}"
+            f"    典型问：{s['typical_q']}\n"
+            f"    城市体检层级：{s.get('city_checkup_level', '—')}（对齐住建部四层级：住房→小区→街区→城区）\n"
+            f"    默认方法模板：{' / '.join(s.get('method_templates', []))}"
         )
     return '\n'.join(lines)
 
@@ -98,6 +106,55 @@ def domain_outlets_text() -> str:
     lines = []
     for d, info in DOMAIN_OUTLETS.items():
         lines.append(f"- {info['name']}（{d}）：" + ' / '.join(info['outlets']))
+    return '\n'.join(lines)
+
+
+# ════════════ 表2b · B 赛道操作范式树（gis_operation · Load→Transform→Analyze pipeline）════════════
+# B 赛道（纯 GIS 操作，出口=图层，不受 manifesto§11 尺度范式约束）的操作原型分类。
+# 汲取 GeoLLM-Engine 的 Load-Filter-Plot 范式：B 操作本质 = 加载层 → 空间变换 → 落图分析。
+# **list 顺序 = select_template 关键词匹配优先级**（先具体/不易混，后泛）——歧义裁断的单一真相源。
+# template 字段=理想技能 id；未在 TEMPLATE_REGISTRY 登记（B1 待建）→ select_template 降级 multi。
+B_TRACK_PARADIGM = [
+    {'archetype': '缓冲影响', 'stage': 'Transform', 'voice': '我画设施周边半径范围并聚合圈内情绪',
+     'triggers': ['周边', '附近', '半径', '缓冲', '米内', '公里内'],
+     'template': 'buffer'},
+    {'archetype': '邻近锚定', 'stage': 'Transform', 'voice': '我找离某设施/POI 最近的点',
+     'triggers': ['最近', '邻近', '最近邻'],
+     'template': 'nearest'},
+    {'archetype': '密度分布', 'stage': 'Analyze', 'voice': '我用核密度看聚集强度连续分布',
+     'triggers': ['核密度', '密度分析', '聚集强度', '热力分布', '密度', '集中'],
+     'template': 'density'},
+    {'archetype': '聚集识别', 'stage': 'Analyze', 'voice': '我用 Gi* 识别显著冷热点聚集',
+     'triggers': ['聚集', '热点', '冷热', '显著聚集'],
+     'template': 'hotspot'},
+    {'archetype': '叠置交叉', 'stage': 'Transform', 'voice': '我叠两个图层找复合关系区',
+     'triggers': ['交集', '叠置', '叠加', '用地里', '用地中', '两图', '里的'],
+     'template': 'overlay'},
+    {'archetype': '合并上卷', 'stage': 'Transform', 'voice': '我合并多面成片区或同类用地 dissolve',
+     'triggers': ['合并', '合成', 'dissolve', '并成'],
+     'template': 'merge'},
+    {'archetype': '范围裁取', 'stage': 'Transform', 'voice': '我按范围（某区/公园/单元）裁出目标',
+     'triggers': ['范围内', '区的', '区内的', '片区'],
+     'template': 'clip'},
+    {'archetype': '要素抽取', 'stage': 'Load', 'voice': '我从面边界按属性抽单要素为独立面',
+     'triggers': ['抽某', '裁出某', '单独裁出', '提取某'],
+     'template': 'extract_feature'},
+    {'archetype': '属性筛选', 'stage': 'Load', 'voice': '我按字段属性切片子集',
+     'triggers': ['按字段', '用地类', '属性筛选', '筛选某类'],
+     'template': 'filter_attr'},
+]
+
+
+def b_track_paradigm_text() -> str:
+    """渲染 B 赛道范式树（注入 diagnose prompt，教 Flash B 操作选型）。list 顺序即匹配优先级。"""
+    _single = {s['skill'] for s in TEMPLATE_REGISTRY if s.get('category') == 'single'}
+    lines = []
+    for a in B_TRACK_PARADIGM:
+        pending = '（技能待 B1 建，现落 multi 多步）' if a['template'] not in _single else ''
+        lines.append(
+            f"- [{a['stage']}] {a['archetype']}（template={a['template']}）{a['voice']}{pending}\n"
+            f"    触发词：{' / '.join(a['triggers'])}"
+        )
     return '\n'.join(lines)
 
 
@@ -313,3 +370,58 @@ DATA_STRATEGY = {
     'fallback_annotated': '软缺口：有合理替代（如社区代街道），降级作答 + 显著标注口径与局限',
     'request_upload': '硬缺口：关键数据无替代（如更新紧迫度），输出"请求上传"卡，该问不硬答',
 }
+
+
+# ════════════ 选型真相源：select_template（track + card → template）════════════
+# 把「赛道 → 范式 → template」选型规则收口为一个可测纯函数（单一真相源）。
+# 渲染进 diagnose prompt（select_template_text）→ Flash 按结构化决策树选型（A1 协同：从「凭语感」升级到「按范式」）。
+# 汲取 GeoLLM-Engine intent={q,工具序列,...} 思路：track+scale 定义「期望 template（隐含工具序列）」作基准。
+# Python-only；JS normalizeCard 强制执行有意延后（涉承重，另开 plan）。
+_SINGLE_SKILL_IDS = {s['skill'] for s in TEMPLATE_REGISTRY if s.get('category') == 'single'}
+# = {density, rank, buffer, clip, overlay, zonal}（B1 加技能后自动扩）
+
+
+def select_template(track, card=None, question=''):
+    """单一真相源：track + diagnose card（+可选原始问句）→ canonical template id。
+
+    track ∈ {'A','B','C'}（A 通用/B 纯GIS操作/C 情绪分析）；card = diagnose 卡字段
+    （scale/domain_lens/decision_type/outlet/...）；question = 可选原始问句（B 赛道关键词匹配用，card 不含问句）。
+    返 template id（与 TEMPLATE_REGISTRY 对齐：concept/density/rank/buffer/clip/overlay/zonal/multi/unknown）。
+
+    判定：
+    - A → concept
+    - B → 按 B_TRACK_PARADIGM（顺序即优先级）关键词匹配 question → 命中原型 template；
+          未登记技能（B1 待建）→ multi；识别不到→multi
+    - C → scale=micro→rank（落点排序）；macro/meso→zonal（单元归因）
+    """
+    card = card or {}
+    if track == 'A':
+        return 'concept'
+    if track == 'B':
+        q = str(question or card.get('question') or '')
+        for arch in B_TRACK_PARADIGM:   # list 顺序 = 匹配优先级
+            if any(t in q for t in arch['triggers']):
+                tpl = arch['template']
+                return tpl if tpl in _SINGLE_SKILL_IDS else 'multi'   # 未建技能→降级 multi
+        return 'multi'   # B 操作识别不到具体原型→多步兜底
+    if track == 'C':
+        scale = str(card.get('scale', '')).lower()
+        if scale == 'micro':
+            return 'rank'
+        return 'zonal'   # macro/meso → 单元归因
+    return 'unknown'
+
+
+def select_template_text() -> str:
+    """渲染选型决策树（单一真相源）为可读文本，注入 diagnose prompt——Flash 据此结构化选型。"""
+    return (
+        '【选型决策树·单一真相源】track + scale + 问句关键词 → template：\n'
+        '- track=A（通用问答/概念/定义）→ template=concept\n'
+        '- track=B（纯 GIS 操作）：按问句关键词匹配【B 赛道操作范式树】（顺序即优先级，先具体后泛）'
+        '→ 命中原型的 template；若该 template 未在技能目录登记（nearest/hotspot/merge/extract_feature/filter_attr，B1 待建）'
+        '→ 选 multi（多步）；识别不到任何原型→multi。\n'
+        '- track=C（情绪分析）：scale=macro/meso→zonal（行政/规划单元归因）；'
+        'scale=micro→rank（落点排序）；真复合归因（多目标）→multi。\n'
+        '**单一空间关系就是 single，禁选 multi/unknown**（仅真复合≥2 动作才 multi）。'
+        '结论颗粒度须匹配城市体检层级（macro=城区/meso=街区·小区/micro=住房·POI）。'
+    )
