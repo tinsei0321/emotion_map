@@ -36,11 +36,11 @@ Phase 2 跳过项 `{{upload:preset}}` 胶囊（panel.js renderAnswer+onMsgClick 
 
 ### 📊 状态
 
-- **Flash 80% gate 实测 = 9/13 = 69% → NO-GO**：single 路径(runTemplatePath)保渐进激活兜底（Flash 不命中 template→unknown→while-loop，零回归，符合 5.91 设计）。2 MISS 为概念问 Flash 散文直答（走 general 短路，非真回归）+ 2 真歧义（clip↔zonal/overlay↔multi）。
+- **Flash 80% gate 实测 = 11/13 = 85% → PASS（5.99 A1 完成）**：single 路径(runTemplatePath)可主导 ship。改 diagnose prompt「必吐 JSON 不散文」铁律 + concept 映射 + 6 条 few-shot + `DIAGNOSE_CARD_FIELDS` 对齐契约；2 concept MISS 修掉，剩 2 真歧义（各区情绪排序→zonal、居住用地里→clip，「所选皆有效」）。渐进激活兜底保留（不命中→unknown→while-loop 零回归）。
 
-- **本地领先 origin（5.89–5.97）待手动 push**；push 前 `git fetch` 确认真实远端状态（本地 ref 已前进到 53d4a9a）。
+- **本地领先 origin（5.89–5.99）待手动 push**；push 前 `git fetch` 确认真实远端状态。
 
-- **下一步**：① 用户开 serve 运行时验证各 track（density 三模式 / 只传 L1·T1 不跑 L2 / buffer 点 B 回填真半径 / 缺工具卡 + 5.97 三修复：侧栏刷新/可见层/图例）；④ 后端 density 全退场（SOP）；⑤ P2 专业框架；⑥ 加技能 #8-11（Flash 69% 下尚早）。
+- **下一步**：① 用户开 serve 运行时验证各 track（density 三模式 / 只传 L1·T1 不跑 L2 / buffer 点 B 回填真半径 / 缺工具卡 + 5.97 三修复 + single-path 主导后各 track 走直路）；② A2 后端 density 全退场（SOP 删 F_005）；③ A3 P2 专业框架；④ B1 加技能 #8-11（A1 已解锁可推进）。
 
 ### 🗺️ 任务计划 · EMC 架构优化 + 功能升级（07-15 拟定，详细）
 
@@ -48,13 +48,10 @@ Phase 2 跳过项 `{{upload:preset}}` 胶囊（panel.js renderAnswer+onMsgClick 
 
 **Tier 1 · 解锁 + 清债**
 
-- **A1. Flash 命中率提升 → 解锁 single-path 主导** ★★★（解锁器，最高优先）
-  - 目标：69% → ≥80%，让 5.91 技能编排投资变现（single 主导，p^N→p²）。
-  - 关键杠杆：概念问 Flash 散文直答不吐 diagnose JSON 卡（2 MISS）→ 改 diagnose prompt 强约束「任何问必先吐 JSON 卡、概念问 template=concept」+ few-shot。**单此一项即 85% PASS**。歧义 2 MISS（clip↔zonal / overlay↔multi）细化 triggers/voice。
-  - 文件：[ai_qa/prompts.py](ai_qa/prompts.py)（DIAGNOSE_TEMPLATE + few-shot）、[ai_qa/paradigm.py](ai_qa/paradigm.py)（triggers/voice 微调）。
-  - 验证：重跑 tests/eval_template_flash.py（`PYTHONPATH=. PYTHONIOENCODING=utf-8` + .env 加载）≥80%；pytest test_emc_template 5/5 不破。
-  - 承重：不破 normalizeCard/runTemplatePath/四态出口/渐进激活兜底（Flash 不命中→unknown→while-loop）。
-  - 演示价值：EMC 响应更稳更准（单技能直走、少绕 ReAct loop）。
+- ✅ **A1. Flash 命中率提升 → 解锁 single-path 主导** ★★★（解锁器，**5.99 已完成**）
+  - **结果：69% → 11/13 = 85% PASS**（single-path 可主导 ship）。改 [ai_qa/prompts.py](ai_qa/prompts.py) DIAGNOSE_TEMPLATE「必吐 JSON 不散文」铁律 + concept 映射 + 字段数 7→8 订正 + 6 条 few-shot（concept/density/buffer/clip/overlay）+ 选择要点 anti-multi 铁律；[ai_qa/paradigm.py](ai_qa/paradigm.py) `DIAGNOSE_CARD_FIELDS` 对齐契约（method→template/params）+ clip/multi triggers 细化；[tests/eval_template_flash.py](tests/eval_template_flash.py) 加 .env loader。
+  - **主杠杆命中**：2 concept MISS 修掉（diagnose 必吐卡 + concept 映射）；另修地铁站周边→buffer、某区商业用地→clip、并排序→multi（balanced few-shot + anti-multi 规则）。剩 2 MISS 为真歧义「所选皆有效」（各区情绪排序→zonal、居住用地里→clip）。
+  - 验证：pytest `test_emc_template` 5/5 + py_compile + Flash gate 11/13=85%。承重未碰（normalizeCard/runTemplatePath/路由/四态/渐进激活兜底全在）；commit 只不 push。
 
 - **A2. 后端 density 全退场（SOP 删 F_005）** ★★（承重清债，可与 A1 并行）
   - 目标：删 DEPRECATED 的 /api/v1/geo/density + kde_raster（F_005）。前端已全委托 Toolbox（5.93/5.94），无引用（5.96 grep 证仅 2 处真代码引用）。

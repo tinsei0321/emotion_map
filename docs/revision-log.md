@@ -216,13 +216,13 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月15日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.98，约本节中段）**，最近三条：
+> 📍 **最新动态（07月15日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.99，约本节中段）**，最近三条：
 >
+> - **5.99** EMC **A1 完成**：Flash 模板命中率 **69%→85% PASS**，解锁 single-path 主导——diagnose 加「必吐 JSON 不散文」铁律 + concept 映射 + 6 条 few-shot + `DIAGNOSE_CARD_FIELDS` 对齐契约；2 concept MISS 修掉，剩 2 真歧义「所选皆有效」。承重未碰；commit 只不 push。
 > - **5.98** EMC 架构优化+功能升级**任务计划拟定**：A1 Flash 命中率（解锁器）／A2 density 退场／A3 P2 框架／B1 加技能；推进序 A1→A2→A3→B1。详细见 todo.md 07-15 🗺️ 段。
 > - **5.97**（`ff5bec2`）承重静态清理：density 2D/terrain 侧栏刷新 + query_layers 可见层过滤 + isRange 排除分析产物（buffer 不再显假图例）。
-> - **5.96** lingbot-map 借鉴评估：实为 3D 重建/SLAM，不采纳（324M 原项目已删，思想笔记留 docs/reference-lingbot-map-eval.md）。
 >
-> 本地领先 origin（5.89–5.98）待手动 push。下会话按计划从 **A1（Flash 命中率）** 起。
+> 本地领先 origin（5.89–5.99）待手动 push。A1 已落地，下会话按计划从 **A2（density 全退场删 F_005）/A3（P2 框架）** 起。
 
 ### 5.1 前端 · 核密度分析（KDE）弹窗（核心）
 
@@ -1155,6 +1155,19 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证（Playwright 真实 LLM）**：问"什么是核密度分析？和热点分析区别？"→ 修前出缺数据卡（走 narration→degrade→GAP，实测暴露 Bug3）；**修后出真结论**（KDE vs Getis-Ord Gi* 原理/输出/平滑性对比表），`isGapCard:false`。三态 EXIT_GAP 路径逻辑保留（条件严格收紧，真失败仍出卡）。
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
+
+### 5.99 EMC A1：Flash 模板命中率 69%→85% PASS，解锁 single-path 主导（07月15日）
+
+用户意图：5.91 投资了技能化编排（TEMPLATE_REGISTRY + diagnose `method→template` + harness `runTemplatePath` single 路径，p^N→p²），但 single 路径「渐进激活」——需 Flash 可靠输出 `template` 才主导；Flash 80% gate 实测 **69% NO-GO**。本次 A1 解锁：把命中率拉到 ≥80%，让 single-path 主导 ship，5.91 投资变现。
+
+- **根因（主杠杆）**：概念问（"什么是核密度分析"/"情绪地图是什么"）Flash 见了直接散文作答、**不吐 diagnose JSON 卡**，eval `_parse_template` 抓不到 `{...}` → 计 MISS（4 MISS 中占 2 个）。**关键认知**：生产里这类概念问被 harness `_quickIntent` 在 diagnose 前短路接走、根本不进 diagnose——故这 2 MISS 是 eval 绕过 `_quickIntent` 直喂 diagnose 的产物；修 diagnose prompt 既过 eval、又补 defense-in-depth。
+- **落地**：
+  - [ai_qa/prompts.py](ai_qa/prompts.py) DIAGNOSE_TEMPLATE 加「输出铁律」——诊断阶段**不是答题**，任何问（含概念/定义/通用）必且仅吐一张 JSON 卡、概念问 `template=concept`、绝不散文直答；intent 判定要点 stale 的「method 可空」→「template 必填 concept」；字段数 7→8 订正。build_diagnose_prompt 末尾追加 **6 条 few-shot**（concept/density/buffer/clip/overlay 覆盖主要 single 技能）+ 选择要点升「anti-multi 铁律」（单一空间关系就是 single，禁选 multi/unknown；周边→buffer、某区内的→clip、两图关系→overlay）。
+  - [ai_qa/paradigm.py](ai_qa/paradigm.py) `DIAGNOSE_CARD_FIELDS` 对齐契约（`method`→`template`/`params`，消除"字段说明文档化 method、但 JSON 契约自 5.91 起 用 template/params"的矛盾信号——Flash 不稳共因之一）；`TEMPLATE_REGISTRY` clip/multi triggers 细化（clip 补"某区内的"、multi 补"并排序"）。
+  - [tests/eval_template_flash.py](tests/eval_template_flash.py) 顶部加 .env loader（镜像 api/main.py，无新依赖，一条命令可跑）。
+- **验证**：pytest `test_emc_template` 5/5 + py_compile + 渲染检查全过；**Flash gate 实测 11/13 = 85% PASS**（2 concept MISS 修掉 + 地铁站周边→buffer / 某区商业用地→clip / 并排序→multi 修复；剩 2 MISS 为真歧义「所选皆有效」：各区情绪排序→zonal、居住用地里→clip）。**渐进激活兜底不破**（Flash 不吐 template→normalizeCard 归一 unknown→while-loop，零回归）。
+- **承重**：未碰 normalizeCard/runTemplatePath/路由/四态出口/frame-based trust/F_005/三大件出图/5.74 对账/主 Toolbox dialog 流（A1 纯 prompt+数据）；commit 只不 push。
+- **下一步**：A2（density 全退场 SOP 删 F_005，承重清债，建议单独 plan）／A3（P2 框架）／B1（加技能 #8-11，A1 已解锁可推进）。
 
 ### 5.98 EMC 架构优化 + 功能升级任务计划拟定（07月15日）
 

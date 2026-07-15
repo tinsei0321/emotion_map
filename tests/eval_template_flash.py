@@ -8,8 +8,33 @@
 注：    非 pytest 测（无 test_ 函数 + 需 API Key + 花钱），CI 不跑；手动 go/no-go 用。
 """
 import json
+import os
 import re
 import sys
+
+
+def _load_env_file():
+    """轻量 .env 加载（镜像 api/main.py，无 python-dotenv 依赖）：解析项目根 .env → 注入 os.environ（不覆盖已有）。
+    本脚本直 import LLMClient、不经 api/main.py，故 .env 不会自动加载——补齐后 `py tests/eval_template_flash.py` 一条命令即可跑（key 缺失由 LLMClient._ensure_key 明确报错）。"""
+    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
+    if not os.path.isfile(env_path):
+        return
+    try:
+        with open(env_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                k, _, v = line.partition('=')
+                k = k.strip()
+                v = v.strip().strip('"').strip("'")
+                if k and k not in os.environ:
+                    os.environ[k] = v
+    except Exception:
+        pass
+
+
+_load_env_file()
 
 # N 条代表问（问题 → 期望 template skill id）
 CASES = [

@@ -228,7 +228,7 @@ TEMPLATE_REGISTRY = [
      'optional_defaults': {'radius_m': 500, 'agg_cols': ['score']},
      'planning_common': '半径：5min步行≈300m/10min≈500m/15min≈1000m；地铁站500m/小学500m/社区医院800m/综合医院1500m'},
     {'skill': 'clip', 'name': '范围裁取', 'category': 'single',
-     'voice': '我按范围裁出点位', 'triggers': '西陵区的XX/某区的/范围内的',
+     'voice': '我按范围（某区/公园/单元边界）裁出范围内的目标', 'triggers': '某区的/某范围内的/XX区内的/范围内的（"某区内的YY"优先 clip 取范围内目标，而非 overlay）',
      'tool': 'clip', 'required_slots': ['range'],
      'optional_defaults': {},
      'planning_common': 'range 用 preset_id（行政区/单元）或 geojson；点层走可见层选源（不硬默认）'},
@@ -243,7 +243,7 @@ TEMPLATE_REGISTRY = [
      'optional_defaults': {'agg_cols': ['score']},
      'planning_common': 'boundary=preset_id（街道/社区/更新单元）；点层走可见层选源（不硬默认）；C 赛道情绪主干'},
     {'skill': 'multi', 'name': '多步组合', 'category': 'multi',
-     'voice': '这个问题要组合几步工具，我按固定链做', 'triggers': '多目标/复合问',
+     'voice': '这个问题要组合几步工具，我按固定链做', 'triggers': '多目标/复合问/并排序/并…再…/且…（一句话含多个动作，如"裁出来并排序"）',
      'tool': None, 'chain': ['clip', 'zonal_stats'], 'required_slots': [], 'optional_defaults': {},
      'planning_common': '固定工具链，首轮直接执行不重选（进 while-loop 受 cap）'},
     {'skill': 'unknown', 'name': '自由探索', 'category': 'unknown',
@@ -295,7 +295,7 @@ def code_exec_catalog_text() -> str:
     return '\n'.join(lines)
 
 
-# ════════════ DIAGNOSE 问题理解卡（6 字段，DIAGNOSE 阶段强制输出）════════════
+# ════════════ DIAGNOSE 问题理解卡（8 字段，DIAGNOSE 阶段强制输出）════════════
 DIAGNOSE_CARD_FIELDS = {
     'intent': '意图（最高优先级）：general(通用问答) | gis_operation(纯GIS/数据操作) | emotion_analysis(情绪分析)',
     'domain_lens': '行业视角：urban_planning/urban_renewal/urban_operation/urban_governance/general（可多选；general 对应 intent=general/gis_operation）',
@@ -303,7 +303,8 @@ DIAGNOSE_CARD_FIELDS = {
     'decision_type': '决策类型：评价 | 选址 | 排查 | 对比 | 监测 | 定义 | 操作 | 通用问答',
     'outlet': '出口形态（默认=生成图层，地图交互优先）：生成图层 | 地图定位 | 指标排序 | 报告结论（仅复杂归因）| 建议清单 | 预警 | 执行操作',
     'data_plan': '数据盘点：{needed[], available[], gap[], strategy: ready|fallback_annotated|request_upload}',
-    'method': '方法选型：从 GIS 工具目录选 + 组合（emotion 如 zonal_stats→rank；gis_operation 如 extract_feature(admin_district,MC/eq/西陵区)）',
+    'template': '技能选型（必填·P1 编排层）：从技能目录选 id——general 概念问填 concept；gis_operation 填 density/rank/buffer/clip/overlay 之一；emotion_analysis 填 zonal/rank；真复合/无现成技能填 multi/unknown',
+    'params': '技能入参：按所选技能 required_slots 填必填槽（如 buffer 的 center、clip 的 range、overlay 的 layer_a/layer_b），可空槽由系统补 optional_defaults；concept/multi/unknown 留空 {}',
 }
 
 # strategy 语义（数据自检 loop）：

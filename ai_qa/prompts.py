@@ -166,7 +166,7 @@ DIAGNOSE_TEMPLATE = """
 微观禁泛泛）。数据盘点要诚实——缺关键数据须在 strategy 标 request_upload 或 fallback_annotated，
 勿假装全知。
 
-输出**严格 JSON 对象**（仅 JSON，禁 markdown 代码块 / 前后解释），结构如下（7 字段必填，intent 置顶）：
+输出**严格 JSON 对象**（仅 JSON，禁 markdown 代码块 / 前后解释），结构如下（8 字段必填，intent 置顶）：
 {{
   "intent": "general" | "gis_operation" | "emotion_analysis",
   "domain_lens": ["urban_planning" | "urban_renewal" | "urban_operation" | "urban_governance" | "general", ...],
@@ -182,9 +182,10 @@ DIAGNOSE_TEMPLATE = """
   "template": "技能id（density/rank/buffer/clip/overlay/zonal/concept/multi/unknown 之一，见下方【技能目录】）",
   "params": {{"必填槽名": "值（按所选技能 required_slots 填，可空槽系统补默认）"}}
 }}
+**输出铁律（最高优先级·违者计 MISS）**：本阶段是**问题诊断**，不是答题——无论问题是什么类型（概念/定义/通用问答/纯 GIS 操作/情绪分析），你**必须且仅输出一个 JSON 诊断卡，绝不能用自然语言/散文直接回答用户的问题**。即使问"什么是核密度""情绪地图是什么"这类概念问，也**只输出一张 `template="concept"` 的卡**（概念解释交给后续阶段作答），**绝不可直接写出概念解释的正文**。卡里 `template` 字段必填（概念/定义/通用问答→填 concept；操作问→填对应技能 id），不可省略、不可留空字符串。无 `{{...}}` 形式 JSON 的纯文字输出 = 失败。
 **intent 判定要点（最高优先级）**：
-- general=通用问答/常识/寒暄/纯概念（今天星期几、什么是等时圈）→ domain_lens=["general"]，method 可空，不进情绪分析。**包含"就已有图层/上一轮结果的概念追问"**——用户问"差别/区别/为什么/解释/含义/是什么/对比"且针对**已生成的图层/结果**（不要求新操作），即使含"核密度/用地/极性"等关键词，也判 general（concept，直接作答，method 可空）。例：「生成的 4 个核密度图层有什么差别」「为什么 X 区比 Y 区差」「这些图层是什么意思」→ general。
-- gis_operation=纯 GIS/数据操作（裁剪/抽取某区/缓冲/叠置/合并/字段筛选/上传数据处理/核密度density）→ outlet="生成图层"，method 选 extract_feature/clip/filter_attr/overlay/merge/buffer/density 等，出口是新图层而非归因报告。**注意：「核密度/密度分析/聚集强度/热力分布」属此类（method 选 density）仅当用户「新请求做」分析；若用户是「问已有」密度图层的问题（见上一条），判 general 勿短路进操作。**
+- general=通用问答/常识/寒暄/纯概念（今天星期几、什么是等时圈）→ domain_lens=["general"]，**template 必填 "concept"**，不进情绪分析。**包含"就已有图层/上一轮结果的概念追问"**——用户问"差别/区别/为什么/解释/含义/是什么/对比"且针对**已生成的图层/结果**（不要求新操作），即使含"核密度/用地/极性"等关键词，也判 general（**template=concept**，概念解释交后续阶段作答，本阶段只出卡）。例：「生成的 4 个核密度图层有什么差别」「为什么 X 区比 Y 区差」「这些图层是什么意思」→ general（concept）。
+- gis_operation=纯 GIS/数据操作（裁剪/抽取某区/缓冲/叠置/合并/字段筛选/上传数据处理/核密度density）→ outlet="生成图层"，**template 选 clip/overlay/buffer/density/rank/zonal 等对应技能 id**（见【技能目录】），出口是新图层而非归因报告。**注意：「核密度/密度分析/聚集强度/热力分布」属此类（template="density"）仅当用户「新请求做」分析；若用户是「问已有」密度图层的问题（见上一条），判 general（template=concept）勿短路进操作。**
 - emotion_analysis=情绪评价/排序/归因/预警（7 场景）→ 走原 domain_lens/scale/decision_type 体系。
 
 **多轮续作（最高优先级，覆盖上文 intent 判定）**：若上文含【上一轮上下文】块，且用户本轮在追问/续做（问句含"继续/接着/补充/我上传了X/那个/把刚才"等，或承接上一轮未完成任务），则：
@@ -220,7 +221,7 @@ def build_diagnose_prompt(context: str = '', context_tokens: list = None) -> str
     prompt += '\n\n═══════════ 附录 · GIS 操作目录（template 字段选型参照）═══════════\n' \
               + geo_tool_catalog_text()
     prompt += '\n\n═══════════ 附录 · 技能目录（template 字段据此选型 · 拟人化 · P1 编排层）═══════════\n' \
-              + '【选择要点】intent=general→concept；intent=gis_operation→density/rank/buffer/clip/overlay 之一；intent=emotion_analysis→zonal/rank。单工具能答的问题禁选 multi/unknown（它们进多轮探索，仅用于真复合/无现成技能）。\n' \
+              + '【选择要点·铁律】intent=general→template=concept；intent=gis_operation→density/rank/buffer/clip/overlay 之一；intent=emotion_analysis→zonal/rank。**单一空间关系就是 single，严禁选 multi/unknown**——周边/附近/半径→buffer；某区/某范围/XX区内的目标→clip；两图层关系（A∩B、A里的B）→overlay；排序/最差最好→rank；密度/聚集→density。**只有一句话含≥2个不同动作（如"裁出来并排序"）才选 multi**；真无任何现成技能才选 unknown。勿把单一关系当复合、勿因不确定就退 unknown。\n' \
               + template_registry_text()
     prompt += '\n\n═══════════ 附录 · 诊断卡字段说明 ═══════════'
     for k, v in DIAGNOSE_CARD_FIELDS.items():
@@ -228,7 +229,43 @@ def build_diagnose_prompt(context: str = '', context_tokens: list = None) -> str
     prompt += '\n\n═══════════ 附录 · data_plan.strategy 语义 ═══════════'
     for k, v in DATA_STRATEGY.items():
         prompt += f'\n- {k}：{v}'
+    # 输出示例（few-shot·纯字符串拼接于 .format 之后，花括号安全）：教 Flash「任何问必先吐 JSON 卡、概念问 template=concept」，
+    # 治概念问散文直答不吐卡的 2 MISS（eval 69% 主因）。概念解释交后续阶段，本阶段只出卡。
+    prompt += _DIAGNOSE_FEW_SHOT
     return _inject_tokens(prompt, context_tokens)
+
+
+# 输出示例（注入 diagnose prompt 末尾·最强 recency）：3 条 Q→完整 JSON 卡，覆盖概念问(→concept)、
+# 单工具操作(→density)、对已有结果的概念追问(→concept，防被 geo 词误导短路进操作)。
+_DIAGNOSE_FEW_SHOT = """
+
+═══════════ 附录 · 输出示例（仿此格式，**只输出 JSON 卡，不要任何前后解释/正文**）═══════════
+【例1·概念问】用户问：什么是核密度分析
+你的输出（仅此 JSON，不写概念解释正文）：
+{"intent":"general","domain_lens":["general"],"scale":"macro","decision_type":"定义","outlet":"报告结论","data_plan":{"needed":[],"available":[],"gap":[],"strategy":"ready"},"template":"concept","params":{}}
+
+【例2·单工具操作】用户问：做核密度分析
+你的输出：
+{"intent":"gis_operation","domain_lens":["general"],"scale":"macro","decision_type":"操作","outlet":"生成图层","data_plan":{"needed":["L2 极性点"],"available":["L2 T1 极性点"],"gap":[],"strategy":"ready"},"template":"density","params":{"mode":"2d"}}
+
+【例3·对已有结果的概念追问】用户问：刚生成的核密度图层是什么意思 / 这几个密度图有什么差别
+你的输出（含"核密度/密度图"也判 concept，勿短路进操作）：
+{"intent":"general","domain_lens":["general"],"scale":"macro","decision_type":"定义","outlet":"报告结论","data_plan":{"needed":[],"available":["已生成的密度图层"],"gap":[],"strategy":"ready"},"template":"concept","params":{}}
+
+【例4·缓冲（single，勿选 multi）】用户问：奥体中心周边 1 公里情绪怎么样 / 地铁站周边情绪
+你的输出（"周边/附近/半径"→buffer，单一空间关系不是复合）：
+{"intent":"gis_operation","domain_lens":["urban_operation"],"scale":"meso","decision_type":"排查","outlet":"生成图层","data_plan":{"needed":["L2 极性点","设施位置"],"available":["L2 T1 极性点"],"gap":[],"strategy":"ready"},"template":"buffer","params":{"center":"奥体中心","radius_m":1000}}
+
+【例5·范围裁取（single，勿选 multi/unknown）】用户问：伍家岗区内的居住用地 / 某区的商业用地
+你的输出（"某区内的/范围内的"目标→clip，能答就别选 unknown）：
+{"intent":"gis_operation","domain_lens":["urban_renewal"],"scale":"meso","decision_type":"操作","outlet":"生成图层","data_plan":{"needed":["行政区边界","用地层"],"available":["admin_district","land_residential"],"gap":[],"strategy":"ready"},"template":"clip","params":{"range":"admin_district","pre_filter":"MC/eq/伍家岗区"}}
+
+【例6·叠置（single，勿选 multi）】用户问：公园用地与商业用地的交集 / 居住用地里情绪差的地方
+你的输出（"两图层关系/A里的B"→overlay，单一关系不是复合）：
+{"intent":"gis_operation","domain_lens":["urban_planning"],"scale":"meso","decision_type":"操作","outlet":"生成图层","data_plan":{"needed":["用地图层"],"available":["land_park","land_commercial"],"gap":[],"strategy":"ready"},"template":"overlay","params":{"layer_a":"land_park","layer_b":"land_commercial","how":"intersection"}}
+
+记住：**任何问题都先吐一张 JSON 诊断卡**（template 必填），再由后续阶段作答——绝不直接用文字回答用户。**单一空间关系（周边/范围内/两图关系/排序/密度）一律选对应 single 技能，只有一句话含≥2个不同动作（如"裁出来并排序"）才选 multi。**
+"""
 
 
 # ── revise 阶段：审查未过，基于 draft + hints 重写 ───────────────────────────
