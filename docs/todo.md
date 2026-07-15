@@ -50,15 +50,16 @@
 
 Phase 2 跳过项 `{{upload:preset}}` 胶囊（panel.js renderAnswer+onMsgClick / harness compose* / tools.js buildContext / range-presets triggerUpload 导出）——用户 07-15 明确「暂时跳过胶囊开发，搁置」。遇缺 Range/商业/居住用地暂以纯文本 composeGapCard 引导，不做点击上传胶囊。后续需要时再启动。
 
-### 📊 状态
+### 📊 状态（07-15 收工）
 
-- **Flash 80% gate 实测 = 11/13 = 85% → PASS（5.99 A1 完成）**：single 路径(runTemplatePath)可主导 ship。改 diagnose prompt「必吐 JSON 不散文」铁律 + concept 映射 + 6 条 few-shot + `DIAGNOSE_CARD_FIELDS` 对齐契约；2 concept MISS 修掉，剩 2 真歧义（各区情绪排序→zonal、居住用地里→clip，「所选皆有效」）。渐进激活兜底保留（不命中→unknown→while-loop 零回归）。
+- **EMC 三层齐备 + Flash 18/19=95%（历史最高）**——07-15 一日完成 A1→A2→A3①→行业知识库 v1+设计哲学→B1→收尾（filter_attr+知识库接入），全部 commit + **push 至 `da4a687`**。
+  - **执行层**：15 技能 single-path（B 赛道 B_TRACK 9 原型 100% 覆盖）。
+  - **认知层**：范式树 + select_template 真相源 + Flash 95%。
+  - **知识层**：行业知识库 v1 接入 diagnose（官方术语+项目类型）+ 项目设计哲学 6 原则入 CLAUDE.md。
 
-- **后端 density 全退场（5.100 A2 完成）**：删 `/geo/density` 端点 + `kde_raster`(F_005) + `_KDE_PROJECT_CRS` + kde 的 F_005/D_004 注册；**顺带修 F_005 重复注册 bug**（kde 抢占→恢复 buffer 唯一归属）。前端已委托 Toolbox 无感；pytest 166 pass/6 预存，0 新回归。
+- **已 push 至 `da4a687`（5.99–5.104 全部），本地与 origin/main 同步**。
 
-- **本地领先 origin（A2 `5.100` 待手动 push；A1 `5.99` 已 push）**；push 前 `git fetch` 确认真实远端状态。
-
-- **下一步**：① 用户开 serve 运行时验证各 track（density 三模式走 Toolbox / 只传 L1·T1 不跑 L2 / buffer 点 B 回填真半径 / 缺工具卡 + 5.97 三修复 + single-path 主导后各 track 走直路）；② A3 P2 专业框架；③ B1 加技能 #8-11（A1 已解锁可推进）。
+- **下一步（按优先级，详见交接卡）**：① **C1 运行时验证**（用户开 serve——今日积累一直没验过）；② **事件领域成体系化**（补官方盲区差异化·战略）；③ 知识库做厚（指标细化）；④ industry_kb_text 按 domain_lens 动态注入（harness 改·承重）；⑤ A3②③④（field_dict 接承重/popularity/_missStats）。
 
 ### 🗺️ 任务计划 · EMC 架构优化 + 功能升级（07-15 拟定，详细）
 
