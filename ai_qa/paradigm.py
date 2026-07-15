@@ -117,7 +117,7 @@ def domain_outlets_text() -> str:
 # B 赛道（纯 GIS 操作，出口=图层，不受 manifesto§11 尺度范式约束）的操作原型分类。
 # 汲取 GeoLLM-Engine 的 Load-Filter-Plot 范式：B 操作本质 = 加载层 → 空间变换 → 落图分析。
 # **list 顺序 = select_template 关键词匹配优先级**（先具体/不易混，后泛）——歧义裁断的单一真相源。
-# template 字段=理想技能 id；未在 TEMPLATE_REGISTRY 登记（B1 待建）→ select_template 降级 multi。
+# template 字段=理想技能 id；B_TRACK 9 原型均已登记 single 技能（B1+B1.5）。
 B_TRACK_PARADIGM = [
     {'archetype': '缓冲影响', 'stage': 'Transform', 'voice': '我画设施周边半径范围并聚合圈内情绪',
      'triggers': ['周边', '附近', '半径', '缓冲', '米内', '公里内'],
@@ -328,6 +328,11 @@ TEMPLATE_REGISTRY = [
      'tool': 'hotspot', 'required_slots': [],
      'optional_defaults': {'value_col': 'score'},
      'planning_common': '点层走可见层选源（不硬默认）；value_col=score（invert 由工具默认：负面为热）；产 hot/cold/ns 点图层'},
+    {'skill': 'filter_attr', 'name': '属性筛选', 'category': 'single',
+     'voice': '我按字段属性筛子集（用地/极性/domain/element/时点）', 'triggers': '按字段/用地类/属性筛选/筛选某类/只看',
+     'tool': 'filter_attr', 'required_slots': ['pre_filter'],
+     'optional_defaults': {},
+     'planning_common': 'pre_filter=field/op/value（如 domain/eq/urban_renewal、polarity/eq/negative）；点层走可见层选源；产点子集图层'},
     {'skill': 'multi', 'name': '多步组合', 'category': 'multi',
      'voice': '这个问题要组合几步工具，我按固定链做', 'triggers': '多目标/复合问/并排序/并…再…/且…（一句话含多个动作，如"裁出来并排序"）',
      'tool': None, 'chain': ['clip', 'zonal_stats'], 'required_slots': [], 'optional_defaults': {},
@@ -420,7 +425,7 @@ def select_template(track, card=None, question=''):
     判定：
     - A → concept
     - B → 按 B_TRACK_PARADIGM（顺序即优先级）关键词匹配 question → 命中原型 template；
-          未登记技能（B1 待建）→ multi；识别不到→multi
+          未登记技能→ multi；识别不到→multi（B_TRACK 9 原型均已登记 single）
     - C → scale=micro→rank（落点排序）；macro/meso→zonal（单元归因）
     """
     card = card or {}
@@ -447,8 +452,8 @@ def select_template_text() -> str:
         '【选型决策树·单一真相源】track + scale + 问句关键词 → template：\n'
         '- track=A（通用问答/概念/定义）→ template=concept\n'
         '- track=B（纯 GIS 操作）：按问句关键词匹配【B 赛道操作范式树】（顺序即优先级，先具体后泛）'
-        '→ 命中原型的 template；若该 template 未在技能目录登记（nearest/hotspot/merge/extract_feature/filter_attr，B1 待建）'
-        '→ 选 multi（多步）；识别不到任何原型→multi。\n'
+        '→ 命中原型的 template（B_TRACK 9 原型均已登记 single 技能：buffer/nearest/density/hotspot/overlay/merge/clip/extract_feature/filter_attr）；'
+        '识别不到任何原型、或真复合≥2 动作→multi。\n'
         '- track=C（情绪分析）：scale=macro/meso→zonal（行政/规划单元归因）；'
         'scale=micro→rank（落点排序）；真复合归因（多目标）→multi。\n'
         '**单一空间关系就是 single，禁选 multi/unknown**（仅真复合≥2 动作才 multi）。'

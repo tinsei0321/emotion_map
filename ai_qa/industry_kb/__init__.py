@@ -55,6 +55,18 @@ def industry_kb_text(domain_key):
     return '\n'.join(lines)
 
 
+def industry_kb_brief_text():
+    """四领域官方术语 + 项目类型速查（精简，注入 diagnose prompt 让 Flash 用官方话语 + 指向具体项目）。
+    增量（vs DOMAIN_OUTLETS framework）：KEY_TERMS 精确术语表 + PROJECT_TYPES 项目落点（呼应"政策→情绪→项目"闭环）。
+    完整权威语境见 industry_kb_text(domain_key)；本 brief 是全四领域精简速查。"""
+    lines = ['四领域官方术语与项目类型速查（回答用权威术语；归因指向具体项目类型，呼应"政策→情绪→项目"）：']
+    for dk, mod in INDUSTRY_DOMAINS.items():
+        terms = '、'.join(list(mod.KEY_TERMS.keys())[:4])
+        proj = '、'.join(mod.PROJECT_TYPES[:4])
+        lines.append(f"- {mod.NAME}：术语[{terms}]；项目类型[{proj}]")
+    return '\n'.join(lines)
+
+
 def all_matrix_mappings():
     """全领域矩阵映射汇总 → list of (domain_key, element, role, source_domain)。
     供"某矩阵格被哪些领域知识覆盖"的反查（数据模拟逆推/归因展示用）。"""
@@ -67,6 +79,6 @@ def all_matrix_mappings():
 
 __all__ = [
     'INDUSTRY_DOMAINS', 'DOMAIN_KEYS', 'ELEMENTS', 'ROLES',
-    'get_matrix_mapping', 'industry_kb_text', 'all_matrix_mappings',
+    'get_matrix_mapping', 'industry_kb_text', 'industry_kb_brief_text', 'all_matrix_mappings',
     'urban_planning', 'urban_renewal', 'urban_operation', 'urban_governance',
 ]

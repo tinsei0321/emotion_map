@@ -14,6 +14,7 @@ from ai_qa.paradigm import (
     template_registry_text, b_track_paradigm_text, select_template_text,
     DIAGNOSE_CARD_FIELDS, DATA_STRATEGY,
 )
+from ai_qa.industry_kb import industry_kb_brief_text
 
 
 def _today_line() -> str:
@@ -218,6 +219,8 @@ def build_diagnose_prompt(context: str = '', context_tokens: list = None) -> str
     # 范式知识附录（format 后拼接，花括号安全）
     prompt += '\n═══════════ 附录 · 尺度-方法-范式矩阵 ═══════════\n' + scale_paradigm_text()
     prompt += '\n\n═══════════ 附录 · 4 领域出口范式启发库 ═══════════\n' + domain_outlets_text()
+    prompt += '\n\n═══════════ 附录 · 四领域官方术语与项目类型速查（行业知识库 brief）═══════════\n' \
+              + industry_kb_brief_text()
     prompt += '\n\n═══════════ 附录 · B 赛道操作范式树（gis_operation · Load→Transform→Analyze）═══════════\n' \
               + '【list 顺序 = 关键词匹配优先级，B 操作歧义裁断的单一真相源】\n' \
               + b_track_paradigm_text()

@@ -7,6 +7,13 @@
 
 ## 📅 2026-07-15
 
+### ✅ EMC 收尾变现：filter_attr(B1.5) + 行业知识库接入 diagnose（revision-log 5.104，commit 待 push）
+
+让已建基础设施变现，两件收尾：
+- **filter_attr 登记 single 技能（B1.5）**：paradigm TEMPLATE_REGISTRY +1 + stages.js SKILL_DEFS 镜像（零白名单改，pre_filter/filter_attr 已在白名单、TOOLS 已实装）→ **B_TRACK 9 原型全点亮**（B 赛道 single-path 100% 覆盖）。
+- **行业知识库接入 diagnose**：industry_kb_brief_text()（四领域官方术语+项目类型速查，精简）注入 build_diagnose_prompt → 让 Flash 用官方话语、归因指向具体项目（呼应"政策→情绪→项目"闭环）。增量 vs DOMAIN_OUTLETS framework：KEY_TERMS 精确术语表 + PROJECT_TYPES 项目落点。
+- **验证**：py_compile + .mjs + pytest **192 pass / 6 预存 0 新回归**；**Flash eval 18/19 = 95%（历史最高）**——filter_attr 命中 + brief 注入未伤路由反达峰值。承重未碰（纯 prompt 层 + 追加，不碰 harness/normalizeCard/前端）。commit 只不 push。
+
 ### ✅ 行业知识库 v1 + 项目顶层设计哲学（revision-log 5.102，commit 待 push）
 
 用户要求对标住建部等权威源建可做厚的行业知识库（四领域），经三次澄清确立**项目顶层设计哲学**（全项目，不只 EMC）：

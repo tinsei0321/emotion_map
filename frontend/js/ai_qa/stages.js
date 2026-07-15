@@ -46,6 +46,7 @@ export const SKILL_DEFS = {
   merge:           { tool: 'merge',           category: 'single', required_slots: ['boundary'],          optional_defaults: {} },
   nearest:         { tool: 'nearest',         category: 'single', required_slots: ['target'],            optional_defaults: { k: 1 } },
   hotspot:         { tool: 'hotspot',         category: 'single', required_slots: [],                    optional_defaults: { value_col: 'score' } },
+  filter_attr:     { tool: 'filter_attr',     category: 'single', required_slots: ['pre_filter'],        optional_defaults: {} },
   multi:    { tool: null,          category: 'multi',    required_slots: [],                     optional_defaults: {} },
   unknown:  { tool: null,          category: 'unknown',  required_slots: [],                     optional_defaults: {} },
 };

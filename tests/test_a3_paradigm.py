@@ -38,9 +38,9 @@ def test_select_B_b1_skills_resolve_directly():
     assert select_template('B', {}, '合并几个街道成片区') == 'merge'        # 合并→merge（B1 已登记）
 
 
-def test_select_B_unregistered_degrades_to_multi():
-    """未登记技能（filter_attr，B1 未入）→ 降级 multi。"""
-    assert select_template('B', {}, '按用地类筛选') == 'multi'              # filter_attr 待建→multi
+def test_select_B_filter_attr_resolves():
+    """filter_attr（B1.5 已登记）→ 直接解析（B_TRACK 9 原型全 single，无 unregistered）。"""
+    assert select_template('B', {}, '按用地类筛选') == 'filter_attr'        # 用地类→filter_attr（B1.5 已登记）
 
 
 def test_select_B_no_match_multi():

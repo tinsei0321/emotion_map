@@ -216,13 +216,13 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月15日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.103，约本节中段）**，最近三条：
+> 📍 **最新动态（07月15日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.104，约本节中段）**，最近三条：
 >
-> - **5.103** EMC **B1 完成**：加技能 9→14（nearest/hotspot/area_stats/merge/extract_feature 登记 single 技能）→ A3① B_TRACK 4 原型自动点亮、normalizeCard 路由新技能。**Flash eval 5 新技能 5/5 全命中**（single-path B 赛道打通）；零白名单改（optional_defaults 避开 invert/where/group_by）；pytest 191 pass 0 新回归。
-> - **5.102** **行业知识库 v1 + 项目顶层设计哲学**：6 原则（4×5=归因矩阵 + 政策→情绪→项目 + 补盲区 + 知识库可成长）+ 四领域权威源（ai_qa/industry_kb/）。
-> - **5.101** EMC **A3① 完成**：专业范式树（B_TRACK_PARADIGM + select_template），Flash 85%→92%。
+> - **5.104** EMC **收尾变现**：① filter_attr(B1.5) 登记 single 技能 → **B_TRACK 9 原型全点亮**（B 赛道 single-path 100% 覆盖）；② **行业知识库接入 diagnose**——industry_kb_brief_text() 注入四领域官方术语+项目类型速查，让 Flash 用权威话语、归因指向具体项目。**Flash eval 18/19=95%（历史最高）**；pytest 192 pass 0 新回归。
+> - **5.103** EMC **B1 完成**：加技能 9→14，5 新技能全命中，single-path B 赛道打通。
+> - **5.102** **行业知识库 v1 + 项目顶层设计哲学**：6 原则 + 四领域权威源（ai_qa/industry_kb/）。
 >
-> 本地领先 origin（5.103 B1 + 5.102 知识库 + 5.101 A3① + 5.100 A2 待手动 push；5.99 A1 已 push）。下会话：filter_attr(B1.5) / 事件专题 / 知识库做厚 / A3②③④。
+> 本地领先 origin（5.104 收尾 + 5.103 B1 + 5.102 知识库 + 5.101 A3① + 5.100 A2 待手动 push；5.99 A1 已 push）。下会话：事件专题 / 知识库做厚 / A3②③④ / C1 运行时验证。
 
 ### 5.1 前端 · 核密度分析（KDE）弹窗（核心）
 
@@ -1155,6 +1155,20 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证（Playwright 真实 LLM）**：问"什么是核密度分析？和热点分析区别？"→ 修前出缺数据卡（走 narration→degrade→GAP，实测暴露 Bug3）；**修后出真结论**（KDE vs Getis-Ord Gi* 原理/输出/平滑性对比表），`isGapCard:false`。三态 EXIT_GAP 路径逻辑保留（条件严格收紧，真失败仍出卡）。
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
+
+### 5.104 EMC 收尾变现：filter_attr(B1.5) + 行业知识库接入 diagnose（07月15日）
+
+用户意图：B1 后 B_TRACK 仅剩 filter_attr 一个 pending 原型；同时行业知识库 v1 建了但未接入 EMC（Flash 不用官方术语）。两件收尾变现：① 补完 B_TRACK；② 让知识库真正影响 EMC 回答。
+
+**落地**：
+- **filter_attr 登记 single 技能（B1.5）**：[paradigm.py](ai_qa/paradigm.py) TEMPLATE_REGISTRY +1（插 hotspot 后，required=['pre_filter']，零白名单改——pre_filter∈_KNOWN_SLOTS、filter_attr∈_SINGLE_TOOLS、TOOLS 已实装 tools.js:677）；[stages.js](frontend/js/ai_qa/stages.js) SKILL_DEFS +1 镜像（.mjs 过）。→ B_TRACK 9 原型全点亮（无 pending）、normalizeCard 路由 filter_attr。
+- **行业知识库接入 diagnose**：[industry_kb/__init__.py](ai_qa/industry_kb/__init__.py) 新增 `industry_kb_brief_text()`（精简四领域速查：每领域 KEY_TERMS 前 4 + PROJECT_TYPES 前 4，~400 字）；[prompts.py](ai_qa/prompts.py) build_diagnose_prompt 注入为「附录·四领域官方术语与项目类型速查」。**增量价值**（vs DOMAIN_OUTLETS framework）：精确术语表 + 项目落点（呼应"政策→情绪→项目"闭环）。urban_planning KEY_TERMS 重排（三区三线提至前 4，更代表）。
+- **select_template_text 去 stale**：原"nearest/hotspot/.../filter_attr，B1 待建"改为"B_TRACK 9 原型均已登记 single"（B1+B1.5 后该描述过时）。
+- eval CASES +1（filter_attr，18→19）；test_a3_paradigm（filter_attr 现直解）+ test_industry_kb（+brief 测）更新。
+
+**验证**：py_compile + .mjs ESM + pytest **192 pass / 6 预存 0 新回归** + 渲染检查（prompt 无 stale、含 filter_attr + 四领域术语）；**Flash eval 18/19 = 95%（历史最高）**——filter_attr 命中 + brief 注入未伤路由（反达峰值，"居住用地里→overlay" 等 persistent miss 本轮也命中）。
+**承重**：filter_attr（8 字段契约/SKILL_DEFS 同步/白名单不改/数据可见纪律）；industry_kb_brief 纯 prompt 层（diagnose +~0.5KB，Flash-safe，不碰 harness/normalizeCard/前端）；三大件/5.74/四态/frame-based trust 不破。commit 只不 push。
+**下一步**：事件专题成体系化（补盲区）/ 知识库做厚 / industry_kb_text 按 domain_lens 动态注入（harness 改·承重）/ A3②③④ / C1 运行时验证。
 
 ### 5.103 EMC B1：加技能 9→14（nearest/hotspot/area_stats/merge/extract_feature）（07月15日）
 

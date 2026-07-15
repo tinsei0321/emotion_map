@@ -10,7 +10,7 @@ import pytest
 
 from ai_qa.industry_kb import (
     INDUSTRY_DOMAINS, DOMAIN_KEYS, ELEMENTS, ROLES,
-    get_matrix_mapping, industry_kb_text, all_matrix_mappings,
+    get_matrix_mapping, industry_kb_text, industry_kb_brief_text, all_matrix_mappings,
 )
 
 _SCHEMA_FIELDS = (
@@ -70,6 +70,18 @@ def test_render_nonempty_with_terms():
         assert txt and '权威语境' in txt and '顶层政策' in txt and '矩阵多归属映射' in txt
         mod = INDUSTRY_DOMAINS[dk]
         assert mod.NAME in txt
+
+
+def test_brief_text_has_all_domains_terms_projects():
+    """industry_kb_brief_text（注入 diagnose）：含四领域 + 术语 + 项目类型。"""
+    txt = industry_kb_brief_text()
+    assert txt and '官方术语与项目类型速查' in txt
+    for dk in DOMAIN_KEYS:
+        mod = INDUSTRY_DOMAINS[dk]
+        assert mod.NAME in txt, f'brief 缺领域名: {dk}'
+    # 含代表性官方术语（各领域一个）
+    for term in ('三区三线', '留改拆', '一网统管', '接诉即办'):
+        assert term in txt, f'brief 缺术语: {term}'
 
 
 def test_urban_planning_is_design_full_spectrum():
