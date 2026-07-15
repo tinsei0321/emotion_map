@@ -34,11 +34,13 @@ export function normalizeParams(name, params) {
 export const SKILL_DEFS = {
   concept:  { tool: null,          category: 'concept',  required_slots: [],                     optional_defaults: {} },
   density:  { tool: 'density',     category: 'single',   required_slots: [],                     optional_defaults: { mode: '2d', radius: 300, weightField: 'emotion_intensity', cell_size: 600, polarity: 'overall' } },
-  rank:     { tool: 'rank',        category: 'single',   required_slots: [],                     optional_defaults: { layer: 'yichang_l2_t1', by: 'polarity', top_n: 5 } },
-  buffer:   { tool: 'buffer',      category: 'single',   required_slots: ['center'],              optional_defaults: { radius_m: 500, layer: 'yichang_l2_t1', agg_cols: ['score'] } },
-  clip:     { tool: 'clip',        category: 'single',   required_slots: ['range'],               optional_defaults: { layer: 'yichang_l2_t1' } },
+  // 承重（数据可见纪律）：rank/buffer/clip/zonal 不硬默认 layer——该默认经 validateParams 合并后绕过
+  // resolvePointLayer 的 visible 过滤，致"只传 L1·T1 却跑 L2"（5.92 Track 1 核心保证漏）。改走可见点层选源（同 density）。
+  rank:     { tool: 'rank',        category: 'single',   required_slots: [],                     optional_defaults: { by: 'polarity', top_n: 5 } },
+  buffer:   { tool: 'buffer',      category: 'single',   required_slots: ['center'],              optional_defaults: { radius_m: 500, agg_cols: ['score'] } },
+  clip:     { tool: 'clip',        category: 'single',   required_slots: ['range'],               optional_defaults: {} },
   overlay:  { tool: 'overlay',     category: 'single',   required_slots: ['layer_a', 'layer_b'],  optional_defaults: { how: 'intersection' } },
-  zonal:    { tool: 'zonal_stats', category: 'single',   required_slots: ['boundary'],            optional_defaults: { layer: 'yichang_l2_t1', agg_cols: ['score'] } },
+  zonal:    { tool: 'zonal_stats', category: 'single',   required_slots: ['boundary'],            optional_defaults: { agg_cols: ['score'] } },
   multi:    { tool: null,          category: 'multi',    required_slots: [],                     optional_defaults: {} },
   unknown:  { tool: null,          category: 'unknown',  required_slots: [],                     optional_defaults: {} },
 };

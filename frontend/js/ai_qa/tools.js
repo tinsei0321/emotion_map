@@ -759,11 +759,16 @@ export const TOOLS = {
     } catch (e) { return _ERR('merge', e); }
   },
 
-  /** 设施缓冲区（传 layer 时后端焊圈内点情绪聚合，消除 buffer→zonal 断点）。 */
+  /** 设施缓冲区（传 layer/可见点层时后端焊圈内点情绪聚合，消除 buffer→zonal 断点）。
+   *  承重① 数据可见纪律：不硬默认 'yichang_l2_t1'——显式 layer 优先，否则用可见点层名交后端聚合（防"只传 L1·T1 却跑 L2"）。
+   *  承重② 主 Toolbox dialog 流不破：buffer 产物注入 _ui 元数据（distance 关键 + dissolve/样式 + sourceLayer 尽力解析），
+   *    让侧栏 B 按钮打开 Toolbox 编辑面板时回填真实半径，而非 DEFAULTS(1000m) 重做全然不同的 buffer。 */
   async buffer(params = {}) {
     if (!params.center) return { observation: '[ERR] buffer 需 center' };
     const body = { center: params.center, radius_m: Number(params.radius_m) || 500 };
-    if (params.layer) body.layer = params.layer;                       // P1 聚合：传点层 → 后端焊圈内情绪统计
+    const _vl = params.layer ? null : pickVisiblePointLayer();          // 无显式 layer → 可见点层（visible 纪律）
+    if (params.layer) body.layer = params.layer;
+    else if (_vl) body.layer = _vl.name;                                // 可见点层名交后端解析聚合（不再硬默认 L2）
     if (params.agg_cols) body.agg_cols = params.agg_cols;
     if (params.range) body.range = params.range;
     const pf = normPreFilter(params.pre_filter); if (pf) body.pre_filter = pf;
@@ -774,7 +779,11 @@ export const TOOLS = {
       const area = Number(_p0.area_km2) || 0;
       const _agg = _p0.point_count != null;                            // 后端聚合成功则 properties 含 point_count
       const _bName = params.as || `${typeof params.center === 'string' ? params.center : '设施'}·${body.radius_m}m`;   // 名=对象+半径（如「滨江公园·500m」）
-      const _bL = addResultLayer({ name: _bName, kind: 'polygon', fc: r.geojson, paint: { fillOn: true, lineWidth: 2, fillOpacity: 0.2 }, keep: !!params.keep });
+      // _ui 元数据：distance 关键（编辑面板回填真实半径）+ dissolve/样式 + sourceLayer（尽力解析可见点层 id；解析不到则省略，dialog 不锁源层无碍）。
+      const _ui = { tool: 'buffer', distance: body.radius_m, dissolve: false, lineWidth: 2, fillOpacity: 0.2, lineStyle: 'solid' };
+      if (_vl && _vl.sourceKey && _vl.sourceKey.startsWith('layer:')) _ui.sourceLayer = _vl.sourceKey.slice(6);
+      else if (params.layer) { const _m = getLayers().find((l) => l.name === params.layer || l.id === params.layer); if (_m) _ui.sourceLayer = _m.id; }
+      const _bL = addResultLayer({ name: _bName, kind: 'polygon', fc: r.geojson, paint: { fillOn: true, lineWidth: 2, fillOpacity: 0.2, _ui }, keep: !!params.keep });
       const _aggTxt = _agg ? `，圈内 ${_p0.point_count} 点·极性 ${Number(_p0.polarity_index).toFixed(2)}` : '';
       return { observation: `缓冲区 radius=${r.radius_m || body.radius_m}m，得 ${feats.length} 个面（约 ${area.toFixed(2)} km²）${_aggTxt} → 已生成图层「${_bName}」`, data: { radius_m: r.radius_m, layerId: _bL && _bL.id, aggregated: _agg } };
     } catch (e) { return _ERR('buffer', e); }
