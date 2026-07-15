@@ -8,7 +8,8 @@ import {
   getHeatmapForSource, setHeatmapForSource, removeHeatmapSource,
   deriveTimeTag,
 } from './state.js';
-import { renderLayer, removeLayerFromMap, setView3D, fitBoundsTo } from './map.js';
+import { renderLayer, removeLayerFromMap, setView3D, fitBoundsTo, reorderAllZ } from './map.js';
+import { renderLayerList, refreshLegend, showLayerManager } from './sidebar.js';
 import { fcBBox } from './import.js';
 import { runTerrain } from './api.js';
 import { trackGeneration } from './geocode-loader.js';   // 地形生成接入放大镜外环（青→橙）
@@ -929,6 +930,7 @@ export async function generateHeatmapForAI(opts = {}) {
   renderLayer(layer);
   for (const hid of enforceMutualExclusion(layer.id)) { const hl = getLayer(hid); if (hl) renderLayer(hl); }
   selectLayer(layer.id);
+  renderLayerList(); refreshLegend(); reorderAllZ(); showLayerManager();   // 与 generateGridForAI 对齐：刷侧栏列表+图例+Z 序+层管理（density 2D 委托此入口，缺则侧栏不显新层）
   document.dispatchEvent(new CustomEvent('layers:changed'));   // 工具生成不自动弹 Overview/Table
   if (!p.silent) toast.success(`已生成热力图：${ramp ? ramp.name : rampKey} · ${p.radius}m · ${fc.features.length} 点`);
   return { layerId: layer.id, layerName, featureCount: fc.features.length, level, polarity: polarity || 'ALL', fc };
@@ -978,6 +980,7 @@ export async function generateTerrainForAI(opts = {}) {
   const bb = fcBBox(fc); if (bb) fitBoundsTo(bb);
   setView3D(true);   // 3D 地形：自动暗底图 + pitch 60°
   selectLayer(L.id);
+  renderLayerList(); refreshLegend(); reorderAllZ(); showLayerManager();   // 与 generateGridForAI 对齐：刷侧栏列表+图例+Z 序+层管理（density terrain 委托此入口，缺则侧栏不显新层）
   document.dispatchEvent(new CustomEvent('layers:changed'));   // 工具生成不自动弹 Overview/Table
   if (!p.silent) toast.success(`已生成 ${polCN}情绪地形 · ${fc.features.length} 层等值面 · ${nPts} 点`);
   return { layerId: L.id, layerName, featureCount: fc.features.length, level: 'L2', polarity: terrainPol, fc };

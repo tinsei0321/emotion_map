@@ -188,9 +188,11 @@ export function refreshLegend() {
     if (rampEl) rampEl.innerHTML = HOTNESS_RAMP.map((c) => `<span class="legend-heat-seg" style="background:${c}"></span>`).join('');
   }
 
-  // range — 矩形线框+面域填充，实时同步 focus range 层的线色/填充态；名称=层实际名
+  // range — 矩形线框+面域填充，实时同步 focus range 层的线色/填充态；名称=层实际名。
+  // range = 上传/行政边界等「纯面/线」（无 _ui.tool）；任何 _ui.tool 标记的层都是 EMC/Toolbox 分析产物
+  //   （grid/terrain/buffer/overlay/area_stats/merge…），不是 range，不应显 range 假图例（承重：density 死码一并收掉）。
   const isRange = (l) => (l.kind === 'polygon' || l.kind === 'line')
-    && !(l.paint && l.paint._ui && (l.paint._ui.tool === 'grid' || l.paint._ui.tool === 'terrain' || l.paint._ui.tool === 'density'));
+    && !(l.paint && l.paint._ui && l.paint._ui.tool);
   const range = (sel && isRange(sel) && sel.visible) ? sel : vis.find(isRange);
   sethidden('legend-range', !range);
   if (range) {

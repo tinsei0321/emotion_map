@@ -509,13 +509,14 @@ function _registerToolboxLayer(layerId, fc, name) {
 }
 
 export const TOOLS = {
-  /** 查当前已加载的图层/数据。 */
+  /** 查当前已加载的图层/数据（数据可见纪律：只列 visible 层，与 pickVisiblePointLayer/buildContext 同源——
+   *  防 round0 observation 列不可见层致 LLM 误调，被 resolvePointLayer 拒浪费一轮）。 */
   query_layers() {
     const an = activeAnalysis();
     const loaded = getLayers()
-      .filter((l) => l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length)
+      .filter((l) => l.visible && l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length)
       .map((l) => `${l.name}(${l.fc.features.length}条)`).join('、');
-    return { observation: `已加载图层：${loaded || '（无）'}\n当前分析层：${an ? an.name + '（' + an.fc.features.length + ' 单元）' : '暂无聚合层（区域级问题建议 ensure_zone）'}` };
+    return { observation: `已加载可见图层：${loaded || '（无）'}（未显示层一律禁用）\n当前分析层：${an ? an.name + '（' + an.fc.features.length + ' 单元）' : '暂无聚合层（区域级问题建议 ensure_zone）'}` };
   },
 
   /** 按维度排序找区域（地图同步飞到）。 */
