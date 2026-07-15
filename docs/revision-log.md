@@ -216,13 +216,13 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月15日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.101，约本节中段）**，最近三条：
+> 📍 **最新动态（07月15日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.102，约本节中段）**，最近三条：
 >
-> - **5.101** EMC **A3① 完成**：专业范式树——B_TRACK_PARADIGM 9 原型（Load→Transform→Analyze）+ SCALE_PARADIGM method_templates 对齐住建部城市体检四层级 + select_template 单一真相源；**业界调研汲取 GeoLLM-Engine**（Load-Filter-Plot + intent→工具序列），CityGPT/MapLibre-demo 不采纳。Flash 命中率 **85%→92%**（A1 协同提升）；pytest 177 pass 0 新回归。承重未碰；commit 只不 push。
-> - **5.100** EMC **A2 完成**：后端 density 全退场——删 `/geo/density` 端点 + `kde_raster`(F_005) + 修 F_005 重复注册 bug（→buffer 唯一）。pytest 166 pass 0 新回归。
-> - **5.99** EMC **A1 完成**：Flash 模板命中率 **69%→85% PASS**，解锁 single-path 主导。
+> - **5.102** **行业知识库 v1 + 项目顶层设计哲学**：确立 6 原则（4×5=归因矩阵非指标清单 + 政策→情绪→项目闭环 + 补盲区 + 知识库可成长 + 城市规划=设计全谱）；落地四领域权威源（ai_qa/industry_kb/，宏观政策+项目聚焦+案例+情绪归因+4×5 多归属映射）；CLAUDE.md 新增哲学节 + paradigm DOMAIN_OUTLETS 注入官方框架；pytest 190 pass 0 新回归。**全项目纲领（不只 EMC）**。
+> - **5.101** EMC **A3① 完成**：专业范式树（B_TRACK_PARADIGM + select_template），Flash 85%→92%。
+> - **5.100** EMC **A2 完成**：density 退场 + 修 F_005 重复注册。
 >
-> 本地领先 origin（A3① `5.101` + A2 `5.100` 待手动 push；A1 `5.99` 已 push）。A1+A2+A3① 已落地，下会话按计划从 **B1（加技能，点亮 A3① 范式树）/A3②③④** 起。
+> 本地领先 origin（5.102 行业知识库 + 5.101 A3① + 5.100 A2 待手动 push；5.99 A1 已 push）。下会话：知识库做厚 / B1 加技能 / A3②③④。
 
 ### 5.1 前端 · 核密度分析（KDE）弹窗（核心）
 
@@ -1155,6 +1155,32 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证（Playwright 真实 LLM）**：问"什么是核密度分析？和热点分析区别？"→ 修前出缺数据卡（走 narration→degrade→GAP，实测暴露 Bug3）；**修后出真结论**（KDE vs Getis-Ord Gi* 原理/输出/平滑性对比表），`isGapCard:false`。三态 EXIT_GAP 路径逻辑保留（条件严格收紧，真失败仍出卡）。
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
+
+### 5.102 行业知识库 v1 + 项目顶层设计哲学确立（07月15日）
+
+用户意图（逐次深化）：① 对标住建部城市体检等权威源，建**可不断做厚的行业知识库**（四领域：城乡规划设计/城市更新·体检/城市运营/城市治理）。② 经三次澄清确立**项目顶层设计哲学**（全项目生效，不只 EMC），并纠正我用"官方指标分类完整性"量"归因矩阵"的错标尺——交通是矩阵交叉 feature 非缺位、事件是补官方盲区的前瞻差异化、安全民生部分已落硬件矩阵格。
+
+**项目设计哲学（6 原则，入 CLAUDE.md 顶层纲领，与演示逻辑链同优先级）**：
+1. 4×5 = 归因落点矩阵（非指标分类清单），跨领域×跨要素**多归属**，**骨架稳定不动**。
+2. 归因底层逻辑 = **政策→情绪→项目**闭环（情绪地图核心价值：在宏观政策与具体项目间用市民情绪数据牵线归因）。
+3. 官方话语对齐 + **补盲区**（事件瞬时空间影响 = 差异化价值）。
+4. 行业知识库 = 全项目可成长基础设施，矩阵多归属映射做厚、骨架稳定。
+5. 城市规划 = **城市规划设计全谱**（宏观国土空间 + 中微观城市设计/景观/详规）。
+6. 多归属主/次约定（落 poi_4x5_map）。
+
+**落地**：
+- 新增 [ai_qa/industry_kb/](ai_qa/industry_kb/)（四领域模块 urban_planning/renewal/operation/governance + __init__，仿 landuse_codes 模式）：每领域 TOP_DESIGN/CORE_FRAMEWORK/KEY_TERMS/METRICS_BASELINE/PROJECT_TYPES（中微观聚焦）/CASES（其他城市案例）/EMOTION_FOCUS/MATRIX_MAPPING（4×5 多归属）/ELEMENT_HINTS/SOURCES + __main__ 自检。23 条矩阵映射汇总。
+- [CLAUDE.md](CLAUDE.md)：新增「项目设计哲学」节（6 原则）+ 4×5 段标注（归因矩阵 v1）+ 参考文档表加行业知识库索引。
+- [ai_qa/paradigm.py](ai_qa/paradigm.py) DOMAIN_OUTLETS：四领域加 framework 字段（官方术语）+ 渲染；城市规划 name→"城市规划·设计"。
+- [docs/industry-knowledge-base.md](docs/industry-knowledge-base.md)：概览（四领域表 + 政策→情绪→项目闭环图 + 矩阵多归属 + 全项目贯穿点 + 做厚路径 + 成长机制）。
+- [tests/test_industry_kb.py](tests/test_industry_kb.py)：13 测（schema 完整 + MATRIX_MAPPING 合法性 + 渲染 + 哲学落位）。
+- memory `project-design-philosophy`：项目顶层隐性知识沉淀（避免再用错标尺质疑 4×5）。
+
+**权威调研**：四领域顶层设计（国土空间规划五级三类四体系/三区三线；城市更新留改拆/完整社区/体检四层级；城市生命线/运管服/一网统管；人民城市/网格化/12345 接诉即办），权威出处留各模块 SOURCES + docs 概览。
+
+**验证**：py_compile + 每模块自检 + 渲染检查 + pytest **190 pass / 6 预存 0 新回归**；diagnose prompt 注入官方框架（+247 字，Flash-safe；industry_kb_text v1 未注 prompt 故 eval 不受影响）。
+**承重**：4×5 矩阵骨架不动；CLAUDE.md 新增节 additive；知识库新增模块不改签名/逻辑；DOMAIN_OUTLETS framework additive；三大件/5.74/四态/frame-based trust/前端全不碰；commit 只不 push。
+**下一步**：知识库做厚（完整社区设施/体检 76 指标/生命线 7 类/接诉即办三率）+ 事件领域成体系化（补盲区）+ industry_kb_text 注 diagnose。
 
 ### 5.101 EMC A3①：专业范式树（B_TRACK_PARADIGM + 城市体检 method_templates + select_template 真相源）（07月15日）
 

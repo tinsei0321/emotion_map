@@ -68,7 +68,8 @@ def scale_paradigm_text() -> str:
 # ════════════ 表2 · 4 领域 × 出口范式启发库（DIAGNOSE 选型参考，可扩）════════════
 DOMAIN_OUTLETS = {
     'urban_planning': {
-        'name': '城市规划',
+        'name': '城市规划·设计',
+        'framework': '国土空间规划（五级三类四体系/三区三线/多规合一）+ 城市设计/景观设计/修建性详规（设计全谱）',
         'outlets': [
             '选址研判（设施缺口 × 情绪，中观）',
             '15 分钟生活圈品质评价（中观单元）',
@@ -77,6 +78,7 @@ DOMAIN_OUTLETS = {
     },
     'urban_renewal': {
         'name': '城市更新',
+        'framework': '城市更新行动（留改拆/防止大拆大建：拆≤20%）+ 完整社区/15min 生活圈 + 城市体检四层级',
         'outlets': [
             '更新时序排序 / 优先级（中观，按更新单元）',
             '微更新点位识别（微观，老旧小区 100m 网格）',
@@ -85,6 +87,7 @@ DOMAIN_OUTLETS = {
     },
     'urban_operation': {
         'name': '城市运营',
+        'framework': '城市生命线安全工程（燃气/桥梁/供水…）+ 运管服平台（国-省-市三级）+ 一网统管',
         'outlets': [
             '场馆 / 商圈活动复盘（事件前后情绪对比）',
             '舆情监测预警（负面聚集热点）',
@@ -93,6 +96,7 @@ DOMAIN_OUTLETS = {
     },
     'urban_governance': {
         'name': '城市治理',
+        'framework': '人民城市 + 网格化管理（主动/精细）+ 12345 接诉即办（三率：响应/解决/满意）',
         'outlets': [
             '12345 / 投诉热点预警（负面聚集 + 关键词）',
             '交通 / 停车拥堵点排查（微观落点）',
@@ -105,7 +109,7 @@ DOMAIN_OUTLETS = {
 def domain_outlets_text() -> str:
     lines = []
     for d, info in DOMAIN_OUTLETS.items():
-        lines.append(f"- {info['name']}（{d}）：" + ' / '.join(info['outlets']))
+        lines.append(f"- {info['name']}（{d}）｜官方框架：{info.get('framework', '—')}\n    出口范式：" + ' / '.join(info['outlets']))
     return '\n'.join(lines)
 
 

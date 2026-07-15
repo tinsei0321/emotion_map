@@ -7,6 +7,15 @@
 
 ## 📅 2026-07-15
 
+### ✅ 行业知识库 v1 + 项目顶层设计哲学（revision-log 5.102，commit 待 push）
+
+用户要求对标住建部等权威源建可做厚的行业知识库（四领域），经三次澄清确立**项目顶层设计哲学**（全项目，不只 EMC）：
+- **6 原则入 CLAUDE.md 顶层纲领**：① 4×5=归因落点矩阵（非指标分类清单）+ 多归属 + 骨架稳定不动；② 归因=**政策→情绪→项目**闭环（情绪地图核心价值）；③ 官方话语对齐 + 补盲区（事件瞬时空间影响=差异化）；④ 知识库全项目可成长；⑤ 城市规划=**城市规划设计全谱**；⑥ 多归属主/次约定。
+- **纠正错标尺**：我曾用"官方指标分类完整性"质疑 4×5（交通缺位/事件定位/安全），用户指出这是错标尺——体检"指标维度"（互斥穷尽）≠ EMC"归因矩阵"（多归属）；交通是矩阵交叉 feature、事件是补盲区差异化、安全民生部分已落硬件格。
+- **落地**：新增 [ai_qa/industry_kb/](ai_qa/industry_kb/)（四领域权威源，宏观政策+项目聚焦+案例+情绪归因+4×5 多归属映射）+ [docs/industry-knowledge-base.md](docs/industry-knowledge-base.md) 概览 + paradigm DOMAIN_OUTLETS 注入官方框架 + [tests/test_industry_kb.py](tests/test_industry_kb.py)（13 测）+ memory `project-design-philosophy`。
+- **验证**：py_compile + 每模块自检 + pytest **190 pass / 6 预存 0 新回归**；diagnose prompt 注入官方框架（+247 字 Flash-safe）。承重：4×5 矩阵骨架不动，新增节/模块全 additive。commit 只不 push。
+- **下一步（做厚路径）**：各领域 PROJECT_TYPES/CASES 细化 + **事件领域成体系化**（补盲区差异化核心）+ industry_kb_text 注 diagnose。
+
 ### ✅ EMC 承重双修 + 静态清理 + Flash gate + lingbot 评估（revision-log 5.95–5.97）
 
 **EMC 承重双修（revision-log 5.95，commit `32a86ac` 待 push）**：开 serve 运行时验证前，静态深读（Explore 全链追踪 + 直读）揪出 2 个承重必破缺陷，先修再做 Flash 80% gate 实测。
