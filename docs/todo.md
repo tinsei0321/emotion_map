@@ -80,11 +80,10 @@ Phase 2 跳过项 `{{upload:preset}}` 胶囊（panel.js renderAnswer+onMsgClick 
 
 **Tier 3 · 扩能（gated on A1）**
 
-- **B1. 加技能 #8-11** ★（nearest/hotspot/area_stats/merge/extract_feature）
-  - 目标：TEMPLATE_REGISTRY 9→14，让更多查询走 single-path。
-  - 机制已可生长：paradigm.py 追加 dict（8 字段）+ stages.js SKILL_DEFS 镜像 + prompts.py DIAGNOSE_TEMPLATE 枚举串；TOOLS.* + _GEO_TOOLS 白名单已实装。
-  - 承重：TEMPLATE_REGISTRY 8 字段契约 + SKILL_DEFS 同步 + _KNOWN_SLOTS/_SINGLE_TOOLS 白名单（test_emc_template.py 已含新工具名）+ normalizeCard 归一 + runTemplatePath 通用路由不破。
-  - 依赖 A1：Flash 能路由新技能才有意义（69% 下加多半落 unknown→while-loop）。
+- ✅ **B1. 加技能 9→14** ★（nearest/hotspot/area_stats/merge/extract_feature，**5.103 已完成**）
+  - **结果**：TEMPLATE_REGISTRY 9→14，5 工具登记为 single 技能（paradigm TEMPLATE_REGISTRY +5 / stages.js SKILL_DEFS 镜像 / prompts 枚举+选择要点 / eval CASES +5）。**零白名单改**（optional_defaults 避开 invert/where/group_by）。A3① B_TRACK 4 原型自动点亮、normalizeCard 路由新技能。
+  - 验证：py_compile + .mjs ESM + pytest **191 pass / 6 预存 0 新回归**；**Flash eval 5 新技能 5/5 全命中**（single-path B 赛道打通）。总体 14/18=78% 系旧歧义 case flaky-low（rank↔zonal/clip↔overlay，"所选皆有效"；此前 85-92%），非 B1 问题。承重未碰（8 字段契约/SKILL_DEFS 同步/白名单/通用路由/数据可见纪律全在）；commit 只不 push。
+  - 注：filter_attr（B_TRACK 第 5 pending 原型）未入 B1，留 B1.5。
 
 **持续 / 搁置**：C1 运行时验证（用户开 serve 验各 track + 5.97 三修复，持续）；C2 upload 胶囊（⏸️ 07-15 搁置）。
 

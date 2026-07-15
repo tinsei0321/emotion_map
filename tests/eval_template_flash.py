@@ -51,6 +51,12 @@ CASES = [
     ('什么是核密度分析', 'concept'),
     ('情绪地图是什么', 'concept'),
     ('西陵区内的商业用地并排序', 'multi'),
+    # B1 新技能（验 single-path 变现）
+    ('裁出西陵区', 'extract_feature'),
+    ('各街道面积占比', 'area_stats'),
+    ('把几个街道合并成片区', 'merge'),
+    ('离地铁最近的负面点', 'nearest'),
+    ('哪里负面情绪聚集', 'hotspot'),
 ]
 
 

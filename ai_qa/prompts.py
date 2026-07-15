@@ -179,7 +179,7 @@ DIAGNOSE_TEMPLATE = """
     "gap": ["缺失的，如『更新紧迫度评估』"],
     "strategy": "ready" | "fallback_annotated" | "request_upload"
   }},
-  "template": "技能id（density/rank/buffer/clip/overlay/zonal/concept/multi/unknown 之一，见下方【技能目录】）",
+  "template": "技能id（density/rank/buffer/clip/overlay/zonal/nearest/hotspot/area_stats/merge/extract_feature/concept/multi/unknown 之一，见下方【技能目录】）",
   "params": {{"必填槽名": "值（按所选技能 required_slots 填，可空槽系统补默认）"}}
 }}
 **输出铁律（最高优先级·违者计 MISS）**：本阶段是**问题诊断**，不是答题——无论问题是什么类型（概念/定义/通用问答/纯 GIS 操作/情绪分析），你**必须且仅输出一个 JSON 诊断卡，绝不能用自然语言/散文直接回答用户的问题**。即使问"什么是核密度""情绪地图是什么"这类概念问，也**只输出一张 `template="concept"` 的卡**（概念解释交给后续阶段作答），**绝不可直接写出概念解释的正文**。卡里 `template` 字段必填（概念/定义/通用问答→填 concept；操作问→填对应技能 id），不可省略、不可留空字符串。无 `{{...}}` 形式 JSON 的纯文字输出 = 失败。
@@ -224,7 +224,7 @@ def build_diagnose_prompt(context: str = '', context_tokens: list = None) -> str
     prompt += '\n\n═══════════ 附录 · GIS 操作目录（template 字段选型参照）═══════════\n' \
               + geo_tool_catalog_text()
     prompt += '\n\n═══════════ 附录 · 技能目录（template 字段据此选型 · 拟人化 · P1 编排层）═══════════\n' \
-              + '【选择要点·铁律】intent=general→template=concept；intent=gis_operation→density/rank/buffer/clip/overlay 之一；intent=emotion_analysis→zonal/rank。**单一空间关系就是 single，严禁选 multi/unknown**——周边/附近/半径→buffer；某区/某范围/XX区内的目标→clip；两图层关系（A∩B、A里的B）→overlay；排序/最差最好→rank；密度/聚集→density。**只有一句话含≥2个不同动作（如"裁出来并排序"）才选 multi**；真无任何现成技能才选 unknown。勿把单一关系当复合、勿因不确定就退 unknown。\n' \
+              + '【选择要点·铁律】intent=general→template=concept；intent=gis_operation→density/rank/buffer/clip/overlay/nearest/hotspot/area_stats/merge/extract_feature 之一；intent=emotion_analysis→zonal/rank。**单一空间关系就是 single，严禁选 multi/unknown**——周边/附近/半径→buffer；某区/某范围/XX区内的目标→clip；两图层关系（A∩B、A里的B）→overlay；排序/最差最好→rank；密度/聚集→density。**只有一句话含≥2个不同动作（如"裁出来并排序"）才选 multi**；真无任何现成技能才选 unknown。勿把单一关系当复合、勿因不确定就退 unknown。\n' \
               + template_registry_text()
     prompt += '\n\n═══════════ 附录 · 选型决策树（单一真相源 · track+scale+关键词→template）═══════════\n' \
               + select_template_text()

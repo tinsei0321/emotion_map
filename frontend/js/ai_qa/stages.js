@@ -40,7 +40,12 @@ export const SKILL_DEFS = {
   buffer:   { tool: 'buffer',      category: 'single',   required_slots: ['center'],              optional_defaults: { radius_m: 500, agg_cols: ['score'] } },
   clip:     { tool: 'clip',        category: 'single',   required_slots: ['range'],               optional_defaults: {} },
   overlay:  { tool: 'overlay',     category: 'single',   required_slots: ['layer_a', 'layer_b'],  optional_defaults: { how: 'intersection' } },
-  zonal:    { tool: 'zonal_stats', category: 'single',   required_slots: ['boundary'],            optional_defaults: { agg_cols: ['score'] } },
+  zonal:           { tool: 'zonal_stats',     category: 'single', required_slots: ['boundary'],          optional_defaults: { agg_cols: ['score'] } },
+  extract_feature: { tool: 'extract_feature', category: 'single', required_slots: ['layer'],             optional_defaults: {} },
+  area_stats:      { tool: 'area_stats',      category: 'single', required_slots: ['boundary'],          optional_defaults: {} },
+  merge:           { tool: 'merge',           category: 'single', required_slots: ['boundary'],          optional_defaults: {} },
+  nearest:         { tool: 'nearest',         category: 'single', required_slots: ['target'],            optional_defaults: { k: 1 } },
+  hotspot:         { tool: 'hotspot',         category: 'single', required_slots: [],                    optional_defaults: { value_col: 'score' } },
   multi:    { tool: null,          category: 'multi',    required_slots: [],                     optional_defaults: {} },
   unknown:  { tool: null,          category: 'unknown',  required_slots: [],                     optional_defaults: {} },
 };

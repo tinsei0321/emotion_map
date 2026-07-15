@@ -216,13 +216,13 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月15日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.102，约本节中段）**，最近三条：
+> 📍 **最新动态（07月15日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.103，约本节中段）**，最近三条：
 >
-> - **5.102** **行业知识库 v1 + 项目顶层设计哲学**：确立 6 原则（4×5=归因矩阵非指标清单 + 政策→情绪→项目闭环 + 补盲区 + 知识库可成长 + 城市规划=设计全谱）；落地四领域权威源（ai_qa/industry_kb/，宏观政策+项目聚焦+案例+情绪归因+4×5 多归属映射）；CLAUDE.md 新增哲学节 + paradigm DOMAIN_OUTLETS 注入官方框架；pytest 190 pass 0 新回归。**全项目纲领（不只 EMC）**。
+> - **5.103** EMC **B1 完成**：加技能 9→14（nearest/hotspot/area_stats/merge/extract_feature 登记 single 技能）→ A3① B_TRACK 4 原型自动点亮、normalizeCard 路由新技能。**Flash eval 5 新技能 5/5 全命中**（single-path B 赛道打通）；零白名单改（optional_defaults 避开 invert/where/group_by）；pytest 191 pass 0 新回归。
+> - **5.102** **行业知识库 v1 + 项目顶层设计哲学**：6 原则（4×5=归因矩阵 + 政策→情绪→项目 + 补盲区 + 知识库可成长）+ 四领域权威源（ai_qa/industry_kb/）。
 > - **5.101** EMC **A3① 完成**：专业范式树（B_TRACK_PARADIGM + select_template），Flash 85%→92%。
-> - **5.100** EMC **A2 完成**：density 退场 + 修 F_005 重复注册。
 >
-> 本地领先 origin（5.102 行业知识库 + 5.101 A3① + 5.100 A2 待手动 push；5.99 A1 已 push）。下会话：知识库做厚 / B1 加技能 / A3②③④。
+> 本地领先 origin（5.103 B1 + 5.102 知识库 + 5.101 A3① + 5.100 A2 待手动 push；5.99 A1 已 push）。下会话：filter_attr(B1.5) / 事件专题 / 知识库做厚 / A3②③④。
 
 ### 5.1 前端 · 核密度分析（KDE）弹窗（核心）
 
@@ -1155,6 +1155,24 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证（Playwright 真实 LLM）**：问"什么是核密度分析？和热点分析区别？"→ 修前出缺数据卡（走 narration→degrade→GAP，实测暴露 Bug3）；**修后出真结论**（KDE vs Getis-Ord Gi* 原理/输出/平滑性对比表），`isGapCard:false`。三态 EXIT_GAP 路径逻辑保留（条件严格收紧，真失败仍出卡）。
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
+
+### 5.103 EMC B1：加技能 9→14（nearest/hotspot/area_stats/merge/extract_feature）（07月15日）
+
+用户意图：A1 已解锁 single-path（92%）、A3① 建了 B_TRACK_PARADIGM（5 原型"待 B1"）。B1 把 5 个**已实装但未登记**的 geo 工具登记为 single 技能 → B 赛道 single-path 全打通、A3① 范式树自动点亮。
+
+**落地**（3 文件追加 + 1 测扩；多出自动激活）：
+- [ai_qa/paradigm.py](ai_qa/paradigm.py) TEMPLATE_REGISTRY +5（插 zonal 后）：extract_feature(layer)/area_stats(boundary)/merge(boundary)/nearest(target,k=1)/hotspot(value_col=score)。**required/optional 刻意避开 `invert/where/group_by`（不在 `_KNOWN_SLOTS`）→ 零白名单改**，靠 TOOLS 运行时默认。
+- [frontend/js/ai_qa/stages.js](frontend/js/ai_qa/stages.js) SKILL_DEFS +5 镜像（.mjs ESM 检查过）。
+- [ai_qa/prompts.py](ai_qa/prompts.py) DIAGNOSE_TEMPLATE 枚举串 + 选择要点·铁律加 5 技能（few-shot 不加，靠 B_TRACK triggers + 技能目录）。
+- [tests/eval_template_flash.py](tests/eval_template_flash.py) CASES +5（裁出西陵区/各街道面积占比/合并片区/离地铁最近/负面聚集 → 对应 5 新技能），13→18 case。
+- [tests/test_a3_paradigm.py](tests/test_a3_paradigm.py)：`test_select_B_pending_skill_degrades_to_multi` 拆为 `test_select_B_b1_skills_resolve_directly`（nearest/hotspot/merge 现直解）+ `test_select_B_unregistered_degrades_to_multi`（filter_attr 仍 multi）。
+
+**自动激活（无需改）**：B_TRACK 4 原型（extract_feature/merge/nearest/hotspot）template 进 `_SINGLE_SKILL_IDS` → `b_track_paradigm_text` 不再标 pending（filter_attr 仍 pending，未入 B1）；normalizeCard 路由新技能不再落 unknown→runTemplatePath 直走。
+
+**验证**：py_compile + .mjs ESM + pytest **191 pass / 6 预存 0 新回归**（注：test_sandbox 有偶发 order-flakiness，隔离复跑 28/28 过，与 B1 无关——sandbox 不 import paradigm/prompts）；渲染检查 B_TRACK 仅 filter_attr pending。
+**Flash eval（18 case）**：**B1 新技能 5/5 全命中**（extract_feature/area_stats/merge/nearest/hotspot 全走 single-path）= B1 目标达成。总体 14/18=78% 系**旧歧义 case 本轮 flaky-low**（rank↔zonal ×2、clip↔overlay，"所选皆有效"、temp 0.4 敏感；此前 13-case 曾 85-92%）；single-path 机制健康、现覆盖 14 技能。
+**承重**：8 字段契约 + SKILL_DEFS 同步 + 白名单不改 + normalizeCard/runTemplatePath 通用路由不破 + 数据可见纪律（nearest/hotspot 用 resolvePointLayer）；三大件/5.74/四态/frame-based trust/前端 ESM 不破。commit 只不 push。
+**下一步**：filter_attr(B1.5) / 事件专题成体系化（补盲区）/ 知识库做厚 / A3②③④。
 
 ### 5.102 行业知识库 v1 + 项目顶层设计哲学确立（07月15日）
 

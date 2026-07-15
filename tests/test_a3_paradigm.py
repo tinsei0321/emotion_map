@@ -31,10 +31,16 @@ def test_select_B_keyword_priority():
     assert select_template('B', {}, '西陵区的情绪点') == 'clip'             # 区的→clip
 
 
-def test_select_B_pending_skill_degrades_to_multi():
-    """B1 待建技能（nearest/hotspot/merge/extract_feature/filter_attr）→ 降级 multi。"""
-    assert select_template('B', {}, '离地铁最近的负面点') == 'multi'        # 最近→nearest（待建）→multi
-    assert select_template('B', {}, '负面聚集热点') == 'multi'              # 聚集/热点→hotspot（待建）→multi
+def test_select_B_b1_skills_resolve_directly():
+    """B1 已登记的 single 技能（nearest/hotspot/merge）→ 直接解析（不再降级 multi）。"""
+    assert select_template('B', {}, '离地铁最近的负面点') == 'nearest'      # 最近→nearest（B1 已登记）
+    assert select_template('B', {}, '负面聚集热点') == 'hotspot'            # 聚集/热点→hotspot（B1 已登记）
+    assert select_template('B', {}, '合并几个街道成片区') == 'merge'        # 合并→merge（B1 已登记）
+
+
+def test_select_B_unregistered_degrades_to_multi():
+    """未登记技能（filter_attr，B1 未入）→ 降级 multi。"""
+    assert select_template('B', {}, '按用地类筛选') == 'multi'              # filter_attr 待建→multi
 
 
 def test_select_B_no_match_multi():
