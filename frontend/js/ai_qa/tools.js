@@ -423,6 +423,28 @@ async function _fieldSamples(fc, maxFields = 6, layerId = null) {
   }).join('/');
 }
 
+/** 面层 boundary 优先级（层名启发式）：行政/片区/范围类 = boundary 首选；用地类显式标可作 boundary；
+ *  分析网格（grid/terrain）单列——防 merge/clip/overlay/area_stats 多面层候选时 Flash 选错对象（如把「合并行政区」错配到「用地_商业」）。 */
+const _BOUNDARY_NAME_RE = /(行政区|行政区划|片区|范围|边界|核心|主城|中心城区|建成区|社区|街道|乡镇)/;
+const _LANDUSE_NAME_RE = /(用地|landuse)/;
+function _polyRole(l) {
+  const ui = l.paint && l.paint._ui;
+  if (ui && (ui.tool === 'grid' || ui.tool === 'terrain')) return '分析网格';
+  const n = l.name || '';
+  if (_BOUNDARY_NAME_RE.test(n)) return 'boundary首选';
+  if (_LANDUSE_NAME_RE.test(n)) return '用地·可作boundary';
+  return '可作boundary';
+}
+/** 层类型中文标签（grounding 用）：点/线/热力直接标；面层按 _polyRole 标 boundary 优先级。 */
+const _kindTag = (l) => {
+  const k = l.kind;
+  if (k === 'point') return '点层';
+  if (k === 'line') return '线层';
+  if (k === 'heatmap') return '热力层';
+  if (k === 'polygon') return '面层·' + _polyRole(l);
+  return k || '层';
+};
+
 /** buildContext：grounding 摘要（panel send + query_layers 共用）。 */
 export async function buildContext() {
   const layers = getLayers();
@@ -433,14 +455,14 @@ export async function buildContext() {
     .map(async (l) => {
       const cnt = l.fc.features.length;
       const fs = await _fieldSamples(l.fc, 6, l.id);   // DataEye（P3）：字段+类型+role+样本值（供 AI 写 where 有真实值参照）
-      return `${l.name}(${cnt}条${fs ? ',字段:' + fs : ''})`;
+      return `${l.name}(${cnt}条,${_kindTag(l)}${fs ? ',字段:' + fs : ''})`;
     }))).join('、');
   parts.push('已加载图层（仅 Layers 当前显示·EMC 只用可见层，未显示层禁用）：' + (loaded || '（无）'));
   // 数据可见纪律：不注入 registry catalog 全量（formatGeoCatalog）——未显示层一律不准用，防"只传 L1·T1 却跑 L2"
   const wisdom = await getWisdom();
   if (wisdom) parts.push(wisdom);
   if (!an) {
-    parts.push('（暂无聚合层——区域级问题建议先 ensure_zone 生成）');
+    parts.push('（暂无聚合层——zonal/rank 类区域统计建议先 ensure_zone 生成；merge/clip/overlay/area_stats 可直接用上方已加载的面层作 boundary）');
     return parts.join('\n');
   }
   const feats = an.fc.features;
@@ -515,8 +537,8 @@ export const TOOLS = {
     const an = activeAnalysis();
     const loaded = getLayers()
       .filter((l) => l.visible && l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length)
-      .map((l) => `${l.name}(${l.fc.features.length}条)`).join('、');
-    return { observation: `已加载可见图层：${loaded || '（无）'}（未显示层一律禁用）\n当前分析层：${an ? an.name + '（' + an.fc.features.length + ' 单元）' : '暂无聚合层（区域级问题建议 ensure_zone）'}` };
+      .map((l) => `${l.name}(${l.fc.features.length}条,${_kindTag(l)})`).join('、');
+    return { observation: `已加载可见图层：${loaded || '（无）'}（未显示层一律禁用）\n当前分析层：${an ? an.name + '（' + an.fc.features.length + ' 单元）' : '暂无聚合层（zonal/rank 用 ensure_zone；面层可作 boundary）'}` };
   },
 
   /** 按维度排序找区域（地图同步飞到）。 */

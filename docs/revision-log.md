@@ -216,13 +216,13 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月15日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.104，约本节中段）**，最近三条：
+> 📍 **最新动态（07月16日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.105，约本节中段）**，最近三条：
 >
-> - **5.104** EMC **收尾变现**：① filter_attr(B1.5) 登记 single 技能 → **B_TRACK 9 原型全点亮**（B 赛道 single-path 100% 覆盖）；② **行业知识库接入 diagnose**——industry_kb_brief_text() 注入四领域官方术语+项目类型速查，让 Flash 用权威话语、归因指向具体项目。**Flash eval 18/19=95%（历史最高）**；pytest 192 pass 0 新回归。
-> - **5.103** EMC **B1 完成**：加技能 9→14，5 新技能全命中，single-path B 赛道打通。
-> - **5.102** **行业知识库 v1 + 项目顶层设计哲学**：6 原则 + 四领域权威源（ai_qa/industry_kb/）。
+> - **5.105** EMC **C1 运行时验证 + merge grounding 修复**：首次开 serve 端到端验 07-15 积累。发现 merge/clip/overlay 等 boundary 类首轮不识已加载面层（出缺槽 GAP 追问）→ buildContext grounding 加**层类型标签**（_kindTag）+ **boundary 优先级启发式**（_polyRole：行政片区=首选/用地类/分析网格）+ 软化 ensure_zone 误导线；query_layers 同步。直连 API probe 验：merge 填对 boundary ✅；6 个 B1 端点全 HTTP200。**C6 发现**：eval（空context）vs 运行时（有层）对「里」类歧义路由分歧（zonal vs overlay），接受现状。
+> - **5.104** EMC **收尾变现**：filter_attr(B1.5) → B_TRACK 9 原型全点亮；行业知识库接入 diagnose。Flash eval 18/19=95%。
+> - **5.103** EMC **B1 完成**：加技能 9→14，5 新技能全命中。
 >
-> 本地领先 origin（5.104 收尾 + 5.103 B1 + 5.102 知识库 + 5.101 A3① + 5.100 A2 待手动 push；5.99 A1 已 push）。下会话：事件专题 / 知识库做厚 / A3②③④ / C1 运行时验证。
+> 本地领先 origin（5.105 C1 修复待手动 push）。下会话：A4/A6 browser 补验 / 事件专题 / 知识库做厚 / industry_kb 动态注入 / A3②③④。
 
 ### 5.1 前端 · 核密度分析（KDE）弹窗（核心）
 
@@ -1155,6 +1155,24 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证（Playwright 真实 LLM）**：问"什么是核密度分析？和热点分析区别？"→ 修前出缺数据卡（走 narration→degrade→GAP，实测暴露 Bug3）；**修后出真结论**（KDE vs Getis-Ord Gi* 原理/输出/平滑性对比表），`isGapCard:false`。三态 EXIT_GAP 路径逻辑保留（条件严格收紧，真失败仍出卡）。
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
+
+### 5.105 EMC C1 运行时验证 + merge grounding 修复：层类型标签 + boundary 优先级启发式（07月16日）
+
+用户意图：07-15 一日六步推进（single-path 15 技能 / 范式树 / 知识库接入 / Flash 95%）全是静态测 + Flash eval（**空 context**）模拟，**从没在真实 serve 端到端验过**。C1 = 开 serve 抓「静态绿、运行时红」隐患。
+
+**发现 + 修复**：
+- **merge 首轮不识已加载面层**（C1 Tier A3 测出）：用户载多个面层问「合并行政区」，Flash 首轮未填 boundary → 缺槽 GAP → 追问一轮才识别。**根因 3 层叠加**：① buildContext grounding 列层只给 `名字(条数,字段)`，**不标层类型**（点/面不分）；② 多面层候选歧义（行政区+用地_商业+用地_居住 都是面层），Flash 不敢乱填；③ grounding 末尾「区域级问题建议 ensure_zone」误导 boundary 类问题。**修复**（[tools.js](frontend/js/ai_qa/tools.js) buildContext + query_layers）：新增 `_kindTag(l)`（点/线/热力直接标，面层走 `_polyRole`）+ `_polyRole(l)` **层名启发式**（行政/片区/范围/核心/主城/社区/街道类→boundary首选；用地类→用地·可作boundary；grid/terrain→分析网格；其他→可作boundary）+ 软化 ensure_zone 线区分 zonal/rank vs boundary 类。**数据可见纪律铁律三处同源未动**。
+
+**验证**（直连 API，省 LLM——不搞 Playwright UI 自动化）：
+- **merge 修复**：手搓新 grounding（含 boundary首选 标签）跑 Flash diagnose，问「把这几个行政区合并成一个片区」→ template=merge + params.boundary=中心城区行政区划_1623（**首轮填对、不再追问**）✅。
+- **执行层 6 端点**（0 LLM，POST /api/v1/geo/* 带真 geojson）：merge(1面)/area_stats(9 区真实面积)/hotspot(2500点)/filter_attr(polarity_hint=negative→1181点)/nearest/extract_feature(西陵区) 全 HTTP200 ✅。
+- **代码证**：A5 density 三模式委托 Toolbox / A7 官方术语注入（test_industry_kb 断言）/ run_python 拦截 / 四态出口 / C1-C5 场景。**user browser 验**：A1 侧栏刷新 / A2 可见层 / A3 isRange 图例。
+
+**C6 探针发现（接受现状）**：问「居住用地里情绪差的地方」，eval（空 context）→ overlay，**运行时（有层加载）→ zonal**（boundary=用地_居住）。即 95% eval 是空 context 测的，真实有层场景对「里」类歧义可能路由不同；zonal 合理（按居住片区聚合），非硬错。不确定 grounding 修复是否加剧（eval 不存逐案历史）。用户决策：接受。
+
+**承重**：仅 buildContext/query_layers grounding 文本层（LLM-facing 字符串，无代码解析），未碰 harness 路由/normalizeCard/三大件出图/5.74 对账/四态/run_python gate/数据可见纪律三处同源/F_005。ESM .mjs node --check 过。commit 只不 push。
+**待验**：A4（只载 L1·T1 不跑 L2 纪律）/ A6（buffer 侧栏 B 钮回填真半径）需 browser 视觉交互，用户方便补验（不阻塞）。
+**下一步**：A4/A6 browser 补验 / 事件专题成体系化 / 知识库做厚 / industry_kb_text 按 domain_lens 动态注入（harness 承重）/ A3②③④。
 
 ### 5.104 EMC 收尾变现：filter_attr(B1.5) + 行业知识库接入 diagnose（07月15日）
 

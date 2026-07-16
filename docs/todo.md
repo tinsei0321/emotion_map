@@ -5,6 +5,17 @@
 
 ---
 
+## 📅 2026-07-16
+
+### ✅ EMC C1 运行时验证 + merge grounding 修复（revision-log 5.105，commit 待 push）
+
+首次开 serve 端到端验 07-15 积累（之前全是静态测 + Flash eval 空 context 模拟）。
+- **发现 + 修**：merge/clip/overlay 等 boundary 类首轮不识已加载面层（出缺槽 GAP 追问）→ buildContext grounding 加**层类型标签**（_kindTag：点/面/线/热力）+ **boundary 优先级启发式**（_polyRole：行政片区=首选 / 用地类 / 分析网格）+ 软化 ensure_zone 误导线；query_layers 同步（设计语言一致）。
+- **验证（直连 API 省 LLM）**：① merge 修复——手搓新 grounding 跑 Flash，问「合并行政区」→ template=merge + boundary 填对 ✅ 不再追问；② 执行层 6 端点（merge/area_stats/hotspot/filter_attr/nearest/extract_feature）POST 真 geojson 全 HTTP200 ✅；③ A1-A3 user browser 验 ✅；A5/A7/run_python/四态 代码证。
+- **C6 探针发现（接受）**：eval（空context）vs 运行时（有层）对「里」类歧义路由分歧（zonal vs overlay），zonal 合理非错。
+- **承重**：仅 grounding 文本层，未碰 harness/三大件/数据可见纪律三处同源。ESM .mjs 过。commit 只不 push。
+- **待验**：A4（L1 纪律）/A6（buffer B 钮回填）需 browser 视觉，用户方便补。
+
 ## 📅 2026-07-15
 
 ### ✅ EMC 收尾变现：filter_attr(B1.5) + 行业知识库接入 diagnose（revision-log 5.104，commit 待 push）
