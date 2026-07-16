@@ -7,6 +7,14 @@
 
 ## 📅 2026-07-16
 
+### ✅ EMC ⑤②+⑤④ 字段 role 承重加固（revision-log 5.109，commit 待 push）
+
+⑤ A3 字段角色系统的两个承重缺口。
+- **⑤② 别名解析**：[spatial_analysis.py](core/spatial_analysis.py) 4 孤岛（aggregate_by_polygons/_attach_4x5_attrs/create_hex_grid/create_square_grid）接 `resolve_field_alias`——polarity/domain/element/topic gate 字面列名改按 role 解析实际列去读，输出保规范名（polarity_index/domain_top）。中文别名（情绪/领域/要素）走得通，**polarity_index 不再静默零**。
+- **⑤④ confidence 0.3 阈值**：[field_dictionary.py](core/field_dictionary.py) `validate_llm_roles`（所有 LLM role choke point）加 `LLM_ROLE_CONFIDENCE_FLOOR=0.3`，conf<0.3（纯猜档）→ role=null 不承重。
+- **验证**：承重 smoke——中文别名列 aggregate 得 polarity_index=0.8 + domain_top/归因链通；规范列名零回归；confidence 阈值 ≥0.3 保留/<0.3 null；字典自检 35 roles 全过。承重：仅字段解析层，规范数据零回归。commit 只不 push。
+- **未做（待决策）**：⑤③ popularity（timestamp/boundary_id/category 热度，设计 A/B 待择）；⑤④-_missStats（遥测，待 80% gate 消费方定，不建空计数器）。
+
 ### ✅ EMC ④ industry_kb 按 domain_lens 动态注入（revision-log 5.108，commit 待 push）
 
 ②③ 厚化的权威细则运行时 0 消费（`industry_kb_text` 0 调用、ELEMENT_HINTS 无渲染路径）+ diagnose 的 `domain_lens` 前端压扁成标签不回传后端。④ 闭环断链：domain_lens 回传 → 后端按命中域渲染完整权威语境 → 注入 post-diagnose step。

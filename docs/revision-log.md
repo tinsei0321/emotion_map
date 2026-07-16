@@ -216,13 +216,13 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月16日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.108，约本节中段）**，最近三条：
+> 📍 **最新动态（07月16日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.109，约本节中段）**，最近三条：
 >
+> - **5.109** EMC **⑤②+⑤④ 字段 role 承重加固**：aggregate 4 孤岛接 `resolve_field_alias`（中文别名 情绪/领域/要素 走得通，polarity_index 不再静默零）+ FIELD_INFER confidence 0.3 阈值（`validate_llm_roles` choke point，<0.3 纯猜档 role 不承重）。承重 smoke 过，规范数据零回归。
 > - **5.108** EMC **④ industry_kb 按 domain_lens 动态注入**（harness 承重·深交付）：domain_lens 前端回传后端（ChatRequest 加字段）+ `industry_kb_text` 全量厚化（+ELEMENT_HINTS/术语全表/底线/案例）→ 注入 agent/answer/revise/review 四 step；**diagnose 不动保 eval**。test_industry_kb 20 pass。
 > - **5.107** EMC **③知识库做厚**：四领域权威细则补全——renewal（完整社区 106 试点设施清单 + 体检指标维度，**标注与 4×5 归因矩阵层次不同防错标尺**）+ planning（街道设计导则/完整街道/慢行优先）+ governance（三率口径）+ operation（生命线 7 类）。EMC 全回归 31 pass。
-> - **5.106** EMC **②事件领域成体系化**（补官方盲区·差异化核心）：urban_operation 增厚（条例+四步法，事件词进 brief 前 4）+ governance 镜像。pytest 14 pass。
 >
-> 本地领先 origin（5.105 C1 + 5.106 事件 + 5.107 做厚 + 5.108 动态注入 共 4 commits 待手动 push）。下会话：⑤A3②③④ / A4/A6 browser 补验 / Flash eval 复核②③（Tier 0）。
+> 本地领先 origin（5.105/106/107/108/109 共 5 commits 待手动 push）。下会话：⑤③ popularity（设计 A/B 待择）/ ⑤④-_missStats（待 80% gate 消费方）/ A4/A6 browser 补验 / Flash eval 复核②③。
 
 ### 5.1 前端 · 核密度分析（KDE）弹窗（核心）
 
@@ -1155,6 +1155,17 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证（Playwright 真实 LLM）**：问"什么是核密度分析？和热点分析区别？"→ 修前出缺数据卡（走 narration→degrade→GAP，实测暴露 Bug3）；**修后出真结论**（KDE vs Getis-Ord Gi* 原理/输出/平滑性对比表），`isGapCard:false`。三态 EXIT_GAP 路径逻辑保留（条件严格收紧，真失败仍出卡）。
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
+
+### 5.109 EMC ⑤②+⑤④ 字段 role 承重加固：aggregate 别名解析 + FIELD_INFER confidence 0.3 阈值（07月16日）
+
+用户意图：⑤ A3 字段角色系统的两个承重缺口。② aggregate（4 孤岛）硬编码 polarity/domain/element 英文列名，上传层中文别名（情绪/领域/要素）走不进 gate → polarity_index 静默零、domain_top/element_top 静默空（历史同类 bug 注释 [spatial_analysis.py:243](core/spatial_analysis.py#L243)）；④ FIELD_INFER 的 LLM 推断 confidence 无阈值，0.2「纯猜」档 role 会与规则命中(1.0)同等承重进 grounding 误导 LLM。
+
+**落地**（⑤②③④ 中的 ② + ④-confidence，承重 correctness）：
+- **⑤② 别名解析**（[spatial_analysis.py](core/spatial_analysis.py)）：4 孤岛接 `resolve_field_alias`（[field_dictionary.py](core/field_dictionary.py) 已存在、P1 已接 filter_attr 等 3 处，唯独 aggregate 系列未接）。aggregate_by_polygons / _attach_4x5_attrs（aggregate+square_grid 共享）/ create_hex_grid / create_square_grid 的 polarity/domain/element/topic gate，字面列名检查改 `resolve_field_alias(role, cols)` 拿实际列去**读**，输出仍用规范名（polarity_index/domain_top/n_dom_*）保前端契约。score/emotion_intensity 非本次范围（缺失仅 graceful degradation，非静默错值）。
+- **⑤④ confidence 0.3 阈值**（[field_dictionary.py](core/field_dictionary.py) `validate_llm_roles`）：所有 LLM role 必经的 choke point，加 `LLM_ROLE_CONFIDENCE_FLOOR=0.3`（rubric 0.3=纯猜档），conf<0.3 → role=null 不承重（reason 标 low confidence）。前端 getFieldCard 信任后端输出（role=null→rule-miss），无需改。
+
+**验证（承重 smoke·省 LLM）**：中文别名列（情绪/领域/要素）跑 aggregate → polarity_index=0.8（非静默零）+ domain_top=urban_governance + issue_label=交通便利/设施完善（4×5 归因链通）；规范列名（polarity/domain/element）零回归同结果；square_grid 别名 polarity 解析。confidence 阈值 smoke：≥0.3 保留 / ==0.3 保留 / <0.3 置 null / 非法 role 置 null。字典 __main__ 自检 35 roles 全过（⑤②/④ 未破不变量）。**承重**：仅改字段解析层，未碰 schema/矩阵骨架/渲染/数据可见纪律/run_python 收口；规范数据零回归（resolve_field_alias 精确命中优先，别名是额外启用）。commit 只不 push。
+**下一步**：⑤③ popularity（timestamp/boundary_id/category 热度消费·设计 A/B 待用户择）/ ⑤④-_missStats 遥测（待 80% gate 消费方定，暂不建空计数器）。
 
 ### 5.108 EMC ④ industry_kb_text 按 domain_lens 动态注入（harness 承重·深交付权威语境）（07月16日）
 

@@ -21,6 +21,7 @@ from shapely.geometry import Point, Polygon, box
 from typing import Optional, Tuple
 
 from core.tracker import track, TrackContext, register_track_id
+from core.field_dictionary import resolve_field_alias
 
 
 # ═══════════════════════════════════════════════════════════
@@ -241,9 +242,11 @@ def aggregate_by_polygons(
             agg_stats[f'{col}_std'] = grouped[col].std().round(3)
 
     # 极性统计：5 级英文（L2）/ 3 级小写（L1，polarity_hint 经 registry 重命名）自适应。
+    # 列名按 role 解析（支持上传层中文别名 情绪/sentiment/情感倾向），输出仍用规范名 polarity_index/n_*。
     # L1 值是小写 positive/negative/neutral + 大量空，硬套 5 级英文会 (x==pol).sum() 全 0 → polarity_index 静默全 0（实测）。故探测实际值分支。
-    if 'polarity' in joined.columns:
-        _norm = joined['polarity'].fillna('').astype(str).str.lower().str.strip()
+    _pol_col = resolve_field_alias('polarity', joined.columns)
+    if _pol_col is not None:
+        _norm = joined[_pol_col].fillna('').astype(str).str.lower().str.strip()
         _nonempty = set(_norm.unique()) - {''}
         _is_3level = bool(_nonempty) and _nonempty.issubset({'positive', 'negative', 'neutral'})
         if _is_3level:
@@ -260,7 +263,7 @@ def aggregate_by_polygons(
             # 5 级英文路径（L2，不变）
             for pol in ['Very Negative', 'Negative', 'Neutral', 'Positive', 'Very Positive']:
                 col_name = f'n_{pol.lower().replace(" ", "_")}'
-                agg_stats[col_name] = grouped['polarity'].apply(
+                agg_stats[col_name] = grouped[_pol_col].apply(
                     lambda x: (x == pol).sum()
                 )
             # 综合情绪指数 (Polarity Index)
@@ -358,10 +361,12 @@ def create_hex_grid(
         'score_mean': grouped['score'].mean().round(3),
     })
 
-    if 'polarity' in gdf.columns:
+    # 极性 5 级计数（列名按 role 解析，支持中文别名 情绪/sentiment；输出规范名 n_*）
+    _pol_col = resolve_field_alias('polarity', gdf.columns)
+    if _pol_col is not None:
         for pol in ['Very Negative', 'Negative', 'Neutral', 'Positive', 'Very Positive']:
             col_name = f'n_{pol.lower().replace(" ", "_")}'
-            stats[col_name] = grouped['polarity'].apply(
+            stats[col_name] = grouped[_pol_col].apply(
                 lambda x: (x == pol).sum()
             )
 
@@ -474,19 +479,23 @@ def _attach_4x5_attrs(joined, grouped, stats):
     joined = sjoin 结果（含点侧 domain/element 列）；grouped = joined.groupby('index_right')；
     stats = 按 index_right 索引的聚合 DataFrame（已含 polarity_index）。
     L3/L4 LLM 归因上线后本函数整体替换为 LLM 产出。"""
-    for _c in ('domain', 'element', 'spatial_hotspot', 'area_seed', 'topic'):
+    # 列名按 role 解析（支持上传层中文别名 领域/要素/主题），输出仍用规范名 domain_top/element_top/topic_top/n_*。
+    _dom_col = resolve_field_alias('domain', joined.columns)
+    _elm_col = resolve_field_alias('element', joined.columns)
+    _topic_col = resolve_field_alias('topic', joined.columns)
+    for _c in [_c for _c in (_dom_col, _elm_col, _topic_col, 'spatial_hotspot', 'area_seed') if _c]:
         if _c in joined.columns:
             joined[_c] = joined[_c].fillna('').astype(str)
-    if 'domain' in joined.columns:
-        stats['domain_top'] = grouped['domain'].agg(
+    if _dom_col is not None:
+        stats['domain_top'] = grouped[_dom_col].agg(
             lambda x: x.mode().iloc[0] if not x.mode().empty else '')
         for _d in ('urban_operation', 'urban_governance', 'urban_renewal', 'urban_planning'):
-            stats[f'n_dom_{_d}'] = grouped['domain'].apply(lambda x: int((x == _d).sum())).astype(int)
-    if 'element' in joined.columns:
-        stats['element_top'] = grouped['element'].agg(
+            stats[f'n_dom_{_d}'] = grouped[_dom_col].apply(lambda x: int((x == _d).sum())).astype(int)
+    if _elm_col is not None:
+        stats['element_top'] = grouped[_elm_col].agg(
             lambda x: x.mode().iloc[0] if not x.mode().empty else '')
         for _e in ('facility', 'environment', 'service', 'culture', 'event'):
-            stats[f'n_elem_{_e}'] = grouped['element'].apply(lambda x: int((x == _e).sum())).astype(int)
+            stats[f'n_elem_{_e}'] = grouped[_elm_col].apply(lambda x: int((x == _e).sum())).astype(int)
     # place_name：格内代表地名（点侧 spatial_hotspot 多数；空则 area_seed 多数兜底）。
     # 供单极性 Overview 关键词「地点 Top5」（item 5）—— 让"地点-4×5-判断"三点一致有具体地名。
     if 'spatial_hotspot' in joined.columns or 'area_seed' in joined.columns:
@@ -501,8 +510,8 @@ def _attach_4x5_attrs(joined, grouped, stats):
             return ''
         stats['place_name'] = grouped.apply(_place_mode)
     # topic_top：格内主题词众数（供前端关键词按 topic 聚合 + 地点聚集；空值不计）。
-    if 'topic' in joined.columns:
-        stats['topic_top'] = grouped['topic'].agg(
+    if _topic_col is not None:
+        stats['topic_top'] = grouped[_topic_col].agg(
             lambda x: (x[x != ''].mode().iloc[0] if not x[x != ''].mode().empty else ''))
     if 'domain_top' in stats.columns and 'polarity_index' in stats.columns:
         _attrs = stats.apply(lambda _r: lookup_attribution(
@@ -585,11 +594,12 @@ def create_square_grid(
     if 'emotion_intensity' in joined.columns:
         stats['emotion_intensity_mean'] = grouped['emotion_intensity'].mean().round(3)
 
-    # 五级极性统计 + 综合情绪指数（公式同 aggregate_by_polygons）
-    if 'polarity' in joined.columns:
+    # 五级极性统计 + 综合情绪指数（列名按 role 解析支持中文别名 情绪；公式同 aggregate_by_polygons）
+    _pol_col = resolve_field_alias('polarity', joined.columns)
+    if _pol_col is not None:
         for pol in ['Very Negative', 'Negative', 'Neutral', 'Positive', 'Very Positive']:
             col_name = f'n_{pol.lower().replace(" ", "_")}'
-            stats[col_name] = grouped['polarity'].apply(lambda x: (x == pol).sum())
+            stats[col_name] = grouped[_pol_col].apply(lambda x: (x == pol).sum())
         stats['polarity_index'] = (
             (stats['n_very_positive'] * 2 +
              stats['n_positive'] * 1 +

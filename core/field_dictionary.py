@@ -250,18 +250,26 @@ def role_label(role):
     return info['description'] if info else ''
 
 
+# FIELD_INFER 推断 confidence 低于此值视为"纯猜"不可承重（rubric 0.3=纯猜档）→ role 置 null，
+# 防低置信 role 经 grounding/aggregate 误导（承重：与 ⑤② alias 解析配套，只让有把握的 LLM role 进链路）。
+LLM_ROLE_CONFIDENCE_FLOOR = 0.3
+
+
 def validate_llm_roles(inferred):
-    """校验 LLM 推断返回的 {field: {role, confidence, reason}} —— role 必须在字典内，否则置 None。
-    用于 P2 /aiqa/profile_fields 端点。"""
+    """校验 LLM 推断返回的 {field: {role, confidence, reason}} ——
+    1) role 必须在字典内；2) confidence ≥ LLM_ROLE_CONFIDENCE_FLOOR(0.3)。任一不满足 → role 置 None（不承重）。
+    用于 P2 /aiqa/profile_fields 端点（所有 LLM 推断 role 的唯一 choke point）。"""
     out = {}
     for fld, v in (inferred or {}).items():
         if not isinstance(v, dict):
             continue
         role = v.get('role')
-        if role and role in FIELD_ROLE_DICT:
-            out[fld] = {'role': role, 'confidence': v.get('confidence', 0.5), 'reason': v.get('reason', '')}
+        conf = v.get('confidence', 0.5)
+        if role and role in FIELD_ROLE_DICT and conf >= LLM_ROLE_CONFIDENCE_FLOOR:
+            out[fld] = {'role': role, 'confidence': conf, 'reason': v.get('reason', '')}
         else:
-            out[fld] = {'role': None, 'confidence': 0, 'reason': 'invalid role'}
+            _why = 'invalid role' if not (role and role in FIELD_ROLE_DICT) else f'low confidence ({conf} < {LLM_ROLE_CONFIDENCE_FLOOR})'
+            out[fld] = {'role': None, 'confidence': 0, 'reason': _why}
     return out
 
 
