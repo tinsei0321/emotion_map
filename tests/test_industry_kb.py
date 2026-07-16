@@ -10,7 +10,8 @@ import pytest
 
 from ai_qa.industry_kb import (
     INDUSTRY_DOMAINS, DOMAIN_KEYS, ELEMENTS, ROLES,
-    get_matrix_mapping, industry_kb_text, industry_kb_brief_text, all_matrix_mappings,
+    get_matrix_mapping, industry_kb_text, industry_kb_brief_text, industry_kb_lens_appendix,
+    all_matrix_mappings,
 )
 
 _SCHEMA_FIELDS = (
@@ -96,6 +97,59 @@ def test_operation_event_is_differentiation():
     """事件要素在城市运营/治理有主/次归属（补官方盲区的差异化价值点）。"""
     op_ev = [(e, r) for d, e, r in get_matrix_mapping('urban_operation') if e == '事件']
     assert op_ev, '城市运营应在事件格有映射（差异化价值）'
+
+
+@pytest.mark.parametrize('dk', list(DOMAIN_KEYS))
+def test_render_full_enriched_fields(dk):
+    """④ v2 全量渲染：含官方术语全表/底线指标/要素归因细化/他城案例四新段落（v1 仅 8 字段漏这 4 项）。
+    锁 ELEMENT_HINTS（③ 厚化内容）/ KEY_TERMS 全表（非 brief 前 4）/ METRICS_BASELINE 进入渲染。"""
+    txt = industry_kb_text(dk)
+    mod = INDUSTRY_DOMAINS[dk]
+    # 四新段落标题（v1 漏）
+    for header in ('官方术语：', '底线指标：', '要素归因细化：', '他城案例：'):
+        assert header in txt, f'{dk} 全量渲染缺段落: {header}'
+    # KEY_TERMS 全表（brief 只取前 4；全量应含全部 key）
+    for k in mod.KEY_TERMS:
+        assert k in txt, f'{dk} 全量渲染漏 KEY_TERMS: {k}'
+    # METRICS_BASELINE 每条整句进入渲染
+    for m in mod.METRICS_BASELINE:
+        assert m in txt, f'{dk} 全量渲染漏底线指标: {m}'
+    # ELEMENT_HINTS 每个 element 名进入渲染
+    for e in mod.ELEMENT_HINTS:
+        assert e in txt, f'{dk} 全量渲染漏 ELEMENT_HINTS element: {e}'
+    # 不变量（test_render_nonempty_with_terms 的四关键词）仍保持
+    assert '权威语境' in txt and '顶层政策' in txt and '矩阵多归属映射' in txt and mod.NAME in txt
+
+
+def test_lens_appendix_gating():
+    """industry_kb_lens_appendix 门控：命中有效域→含标题+该域权威语境；'general'/空/None/非法→空串；去重。"""
+    # 命中有效域
+    ap = industry_kb_lens_appendix(['urban_renewal'])
+    assert ap and '聚焦领域权威语境' in ap and '城市更新' in ap and '留改拆' in ap
+    # 多域
+    ap2 = industry_kb_lens_appendix(['urban_planning', 'urban_renewal'])
+    assert '城市规划' in ap2 and '城市更新' in ap2
+    # 'general' 过滤（通用问答无需领域权威）
+    assert industry_kb_lens_appendix(['general']) == ''
+    # 空 / None / 非法 domain
+    assert industry_kb_lens_appendix(None) == ''
+    assert industry_kb_lens_appendix([]) == ''
+    assert industry_kb_lens_appendix(['not_a_domain']) == ''
+    # 去重保序（同一域不重复渲染）
+    ap3 = industry_kb_lens_appendix(['urban_renewal', 'urban_renewal'])
+    assert ap3.count('【城市更新') == 1
+
+
+def test_build_final_prompt_injects_lens_appendix():
+    """build_final_prompt(domain_lens) 注入门控：有效域→含权威语境附录；'general'/None→不含。
+    （diagnose 不注此，保 Flash eval 95%。）"""
+    from ai_qa.prompts import build_final_prompt
+    p_hit = build_final_prompt(context='x', domain_lens=['urban_renewal'])
+    assert '聚焦领域权威语境' in p_hit and '城市更新' in p_hit
+    p_general = build_final_prompt(context='x', domain_lens=['general'])
+    assert '聚焦领域权威语境' not in p_general
+    p_none = build_final_prompt(context='x', domain_lens=None)
+    assert '聚焦领域权威语境' not in p_none
 
 
 if __name__ == '__main__':

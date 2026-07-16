@@ -19,3 +19,4 @@ class ChatRequest(BaseModel):
     round_n: Optional[int] = Field(default=1, description="agent_step 用：当前轮次（注入 prompt 让模型知道进度）")
     draft: Optional[str] = Field(default=None, description="review/revise 用：待审查/待修订的草稿答案")
     review_hints: Optional[str] = Field(default=None, description="revise 用：审查员给出的修正方向")
+    domain_lens: Optional[List[str]] = Field(default=None, description="diagnose 产出的领域聚焦数组；post-diagnose step 据此注入命中领域完整权威语境（前端回传）")

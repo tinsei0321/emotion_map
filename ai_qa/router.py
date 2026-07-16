@@ -32,7 +32,7 @@ async def chat_route(req: ChatRequest):
             try:
                 result = review_answer(
                     req.draft or '', req.context or '',
-                    req.tool_history or '', req.context_tokens)
+                    req.tool_history or '', req.context_tokens, req.domain_lens)
             except Exception as e:
                 result = {'pass': True, 'degraded': True, 'degraded_reason': f'审查异常: {e}'}
             yield f'data: {json.dumps({"review": result}, ensure_ascii=False)}\n\n'
@@ -43,15 +43,15 @@ async def chat_route(req: ChatRequest):
     if req.phase == 'revise':
         sys_content = build_revise_prompt(
             req.draft or '', req.review_hints or '',
-            req.context or '', req.tool_history or '', req.context_tokens)
+            req.context or '', req.tool_history or '', req.context_tokens, req.domain_lens)
     elif req.phase == 'answer':
-        sys_content = build_final_prompt(req.context or '', req.tool_history or '', req.context_tokens)
+        sys_content = build_final_prompt(req.context or '', req.tool_history or '', req.context_tokens, req.domain_lens)
     elif req.phase == 'diagnose':
         # 问题诊断（专业认知前置步）：流式 reason + content JSON 卡（不用 json_mode，同 agent_step）
         sys_content = build_diagnose_prompt(req.context or '', req.context_tokens)
     else:   # agent_step
         sys_content = build_agent_prompt(
-            req.context or '', req.tool_history or '', req.round_n or 1, req.context_tokens)
+            req.context or '', req.tool_history or '', req.round_n or 1, req.context_tokens, req.domain_lens)
 
     messages = [{'role': 'system', 'content': sys_content}] + list(req.messages or [])
     tier = _tier_of(req.model)

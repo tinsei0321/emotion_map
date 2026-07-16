@@ -212,7 +212,7 @@ export async function agentStep(ctx, hooks, round, toolHistory) {
     (err) => { throw new Error(err); },
     {
       phase: 'agent_step', roundN: round, toolHistory, signal: ctx.signal,
-      model: ctx.model,
+      model: ctx.model, domainLens: ctx.domainLens,
       onReason: (t) => { hooks.onReason && hooks.onReason(t, round); },
     });
   const step = parseAgentStep(acc.token);
@@ -246,7 +246,7 @@ export async function finalStep(ctx, hooks, toolHistory) {
     (err) => { throw new Error(err); },
     {
       phase: 'answer', toolHistory, signal: ctx.signal,
-      model: ctx.model,
+      model: ctx.model, domainLens: ctx.domainLens,
       onReason: (t) => { hooks.onReason && hooks.onReason(t, 0); },
     });
   return final;
@@ -260,7 +260,7 @@ export async function reviewStep(ctx, draft, toolHistory) {
     (err) => { throw new Error(err); },
     {
       phase: 'review', draft, toolHistory, signal: ctx.signal,
-      model: 'flash',
+      model: 'flash', domainLens: ctx.domainLens,
       onReview: (r) => { review = r; },
     });
   return review || { pass: true, degraded: true, degraded_reason: '审查员无响应' };
@@ -275,7 +275,7 @@ export async function reviseStep(ctx, draft, hints, toolHistory, hooks) {
     (err) => { throw new Error(err); },
     {
       phase: 'revise', draft, reviewHints: hints, toolHistory, signal: ctx.signal,
-      model: ctx.model,
+      model: ctx.model, domainLens: ctx.domainLens,
       onReason: (t) => { hooks.onReason && hooks.onReason(t, 0); },
     });
   return revised;

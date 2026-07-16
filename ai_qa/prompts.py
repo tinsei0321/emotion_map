@@ -14,7 +14,7 @@ from ai_qa.paradigm import (
     template_registry_text, b_track_paradigm_text, select_template_text,
     DIAGNOSE_CARD_FIELDS, DATA_STRATEGY,
 )
-from ai_qa.industry_kb import industry_kb_brief_text
+from ai_qa.industry_kb import industry_kb_brief_text, industry_kb_lens_appendix
 
 
 def _today_line() -> str:
@@ -105,7 +105,7 @@ AGENT_TEMPLATE = """
 
 
 def build_agent_prompt(context: str = '', tool_history: str = '', round_n: int = 1,
-                       context_tokens: list = None) -> str:
+                       context_tokens: list = None, domain_lens: list = None) -> str:
     """agent_step 阶段：ReAct 每轮，输出 {thought, action} JSON。"""
     ctx = context or '（未提供数据上下文）'
     hist = tool_history or '（首轮，尚无探索）'
@@ -113,6 +113,7 @@ def build_agent_prompt(context: str = '', tool_history: str = '', round_n: int =
     # GIS 操作目录附录（format 后拼接，花括号安全）—— 教模型选对 geo 工具 + 入参/产出/出口贡献
     prompt += '\n\n═══════════ 附录 · GIS 操作目录（何时用/入参/产出/出口贡献）═══════════\n' + geo_tool_catalog_text()
     prompt += '\n\n═══════════ 附录 · 代码执行目录（run_python · geo 兜底）═══════════\n' + code_exec_catalog_text()
+    prompt += industry_kb_lens_appendix(domain_lens)   # 命中领域完整权威语境（diagnose domain_lens 注入）
     return _inject_tokens(prompt, context_tokens)
 
 
@@ -147,11 +148,13 @@ FINAL_TEMPLATE = """
 """
 
 
-def build_final_prompt(context: str = '', tool_history: str = '', context_tokens: list = None) -> str:
+def build_final_prompt(context: str = '', tool_history: str = '', context_tokens: list = None,
+                       domain_lens: list = None) -> str:
     """answer 阶段：基于全部探索出最终结论（流式 markdown + [ref:]）。"""
     ctx = context or '（未提供数据上下文）'
     hist = tool_history or '（无探索历史）'
     prompt = _today_line() + MANIFESTO +FINAL_TEMPLATE.format(tool_history=hist, context=ctx)
+    prompt += industry_kb_lens_appendix(domain_lens)   # 命中领域完整权威语境（用权威话语 + 归因落具体项目）
     return _inject_tokens(prompt, context_tokens)
 
 
@@ -301,7 +304,8 @@ REVISE_TEMPLATE = """
 
 
 def build_revise_prompt(draft: str = '', review_hints: str = '', context: str = '',
-                        tool_history: str = '', context_tokens: list = None) -> str:
+                        tool_history: str = '', context_tokens: list = None,
+                        domain_lens: list = None) -> str:
     """revise 阶段：基于 draft + review_hints 重写（流式 markdown）。"""
     ctx = context or '（未提供数据上下文）'
     hist = tool_history or '（无探索历史）'
@@ -311,6 +315,7 @@ def build_revise_prompt(draft: str = '', review_hints: str = '', context: str = 
         tool_history=hist,
         context=ctx,
     )
+    prompt += industry_kb_lens_appendix(domain_lens)   # 命中领域完整权威语境（重写时用权威话语）
     return _inject_tokens(prompt, context_tokens)
 
 

@@ -28,6 +28,7 @@ export async function streamChat(messages, context, onToken, onError, opts = {})
   if (opts.roundN) body.round_n = opts.roundN;
   if (opts.draft) body.draft = opts.draft;
   if (opts.reviewHints) body.review_hints = opts.reviewHints;
+  if (opts.domainLens && opts.domainLens.length) body.domain_lens = opts.domainLens;
   const r = await fetch(`${BASE}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

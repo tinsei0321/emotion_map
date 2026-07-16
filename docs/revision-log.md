@@ -216,13 +216,13 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月16日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.107，约本节中段）**，最近三条：
+> 📍 **最新动态（07月16日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.108，约本节中段）**，最近三条：
 >
+> - **5.108** EMC **④ industry_kb 按 domain_lens 动态注入**（harness 承重·深交付）：domain_lens 前端回传后端（ChatRequest 加字段）+ `industry_kb_text` 全量厚化（+ELEMENT_HINTS/术语全表/底线/案例）→ 注入 agent/answer/revise/review 四 step；**diagnose 不动保 eval**。test_industry_kb 20 pass。
 > - **5.107** EMC **③知识库做厚**：四领域权威细则补全——renewal（完整社区 106 试点设施清单 + 体检指标维度，**标注与 4×5 归因矩阵层次不同防错标尺**）+ planning（街道设计导则/完整街道/慢行优先）+ governance（三率口径）+ operation（生命线 7 类）。EMC 全回归 31 pass。
 > - **5.106** EMC **②事件领域成体系化**（补官方盲区·差异化核心）：urban_operation 增厚（条例+四步法，事件词进 brief 前 4）+ governance 镜像。pytest 14 pass。
-> - **5.105** EMC **C1 运行时验证 + merge grounding 修复**：buildContext 层类型标签+boundary 优先级；probe 验 merge 填对 boundary。
 >
-> 本地领先 origin（5.105 C1 + 5.106 事件 + 5.107 做厚待手动 push）。下会话：④industry_kb 动态注入（承重） / ⑤A3②③④ / A4/A6 补验。
+> 本地领先 origin（5.105 C1 + 5.106 事件 + 5.107 做厚 + 5.108 动态注入 共 4 commits 待手动 push）。下会话：⑤A3②③④ / A4/A6 browser 补验 / Flash eval 复核②③（Tier 0）。
 
 ### 5.1 前端 · 核密度分析（KDE）弹窗（核心）
 
@@ -1155,6 +1155,19 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证（Playwright 真实 LLM）**：问"什么是核密度分析？和热点分析区别？"→ 修前出缺数据卡（走 narration→degrade→GAP，实测暴露 Bug3）；**修后出真结论**（KDE vs Getis-Ord Gi* 原理/输出/平滑性对比表），`isGapCard:false`。三态 EXIT_GAP 路径逻辑保留（条件严格收紧，真失败仍出卡）。
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
+
+### 5.108 EMC ④ industry_kb_text 按 domain_lens 动态注入（harness 承重·深交付权威语境）（07月16日）
+
+用户意图：②③ 把四领域权威细则厚化进了 ELEMENT_HINTS/各字段，但这些内容**运行时 0 消费**——`industry_kb_text`（完整版）全仓 0 调用、ELEMENT_HINTS 无任何渲染路径，③ 的厚化对 LLM 回答毫无影响；且 diagnose 产出的 `domain_lens` 在前端被压扁成中文标签、结构化数组从不回传后端（`ChatRequest` 无字段）。④ 闭环这条断链：domain_lens 回传 → 后端按命中域渲染完整权威语境 → 注入 post-diagnose 各 step prompt（政策→情绪→项目闭环在回答层接通）。
+
+**落地**（用户决策：不在乎 token/调用成本 → 注全 4 个 post-diagnose step；渲染全量字段）：
+- **断点链修复（前端回传）**：[harness.js:308](frontend/js/ai_qa/harness.js#L308) diagnose 后设 `ctx.domainLens`（过滤 'general'，_quickIntent 路径未设→不注入）→ [stages.js](frontend/js/ai_qa/stages.js) 四 step（agent/final/review/revise）opts 透传 `domainLens: ctx.domainLens` → [api.js](frontend/js/ai_qa/api.js) body 加 `domain_lens`。
+- **断点链修复（后端注入）**：[schemas.py](ai_qa/schemas.py) ChatRequest 加 `domain_lens` 字段 → [router.py](ai_qa/router.py) 四 phase（agent/answer/revise/review）透传 `req.domain_lens`。
+- **厚化渲染**：[industry_kb 包](ai_qa/industry_kb/__init__.py) `industry_kb_text` 补齐 v1 漏的 4 段（官方术语全表/底线指标/要素归因细化 ELEMENT_HINTS/他城案例），单域 1.2KB→~1.8KB；新增公共 `industry_kb_lens_appendix(domain_lens)`（过滤 general/非法、去重保序、标题头），helper 放 industry_kb 公共位避私有跨模块 import + 无环。
+- **注入 4 step**：[prompts.py](ai_qa/prompts.py) agent/final/revise + [review.py](ai_qa/review.py) 审查员各加 `domain_lens` 参拼附录（范式照 build_diagnose_prompt 拼 brief：format 后纯字符串拼接，花括号安全）。**diagnose 一字不改**（产 lens + 已有 brief 全 4 域速查，保 Flash eval 95%）。
+
+**验证**：pytest test_industry_kb **20 pass**（原 14 + 新 6：4 参数化厚化锁 + 附录门控锁 + build_final 注入锁）+ test_a3_paradigm 12 pass + EMC 全回归 0 回归；前端 3 文件 .mjs 过 `node --check`（ESM，避 node --check x.js 假绿）；后端 import 无环 + 签名自检过；probe 验单域 ~1.8KB/双域 ~4.5KB 形态正常。**eval 未跑（刻意·冗余）**：④ 未动 diagnose prompt（字节不变）→ eval 必然不受影响；且 C6 洞见 eval 空 context 无法验证回答层注入改进（须 browser/probe 实跑验）。**承重**：全 additive（14 字段 schema 不动 / 4×5 矩阵骨架不动 / diagnose 不动 / 数据可见纪律·run_python 收口·三大件·四态·frame-based trust 不碰）。commit 只不 push。
+**下一步**：用户 push 4 commits（5.105/106/107/108）+ A4/A6 browser 补验 + Flash eval 复核②③（Tier 0）/ ⑤A3②③④。
 
 ### 5.107 EMC ③知识库做厚：四领域权威细则补全（完整社区/体检 76/生命线 7 类/三率/街道导则）（07月16日）
 

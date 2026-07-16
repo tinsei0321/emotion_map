@@ -7,6 +7,15 @@
 
 ## 📅 2026-07-16
 
+### ✅ EMC ④ industry_kb 按 domain_lens 动态注入（revision-log 5.108，commit 待 push）
+
+②③ 厚化的权威细则运行时 0 消费（`industry_kb_text` 0 调用、ELEMENT_HINTS 无渲染路径）+ diagnose 的 `domain_lens` 前端压扁成标签不回传后端。④ 闭环断链：domain_lens 回传 → 后端按命中域渲染完整权威语境 → 注入 post-diagnose step。
+- **用户决策**：不在乎 token/调用成本 → 注全 4 个 post-diagnose step（agent/answer/revise/review）；渲染全量字段。
+- **前端回传**：[harness.js](frontend/js/ai_qa/harness.js) 设 `ctx.domainLens`（过滤 general）→ [stages.js](frontend/js/ai_qa/stages.js) 四 step opts 透传 → [api.js](frontend/js/ai_qa/api.js) body 加 `domain_lens`。
+- **后端注入**：[schemas.py](ai_qa/schemas.py) ChatRequest 加字段 → [router.py](ai_qa/router.py) 四 phase 透传 → [prompts.py](ai_qa/prompts.py) agent/final/revise + [review.py](ai_qa/review.py) 审查员拼附录（范式照 build_diagnose_prompt 拼 brief）。**diagnose 不动保 eval**。
+- **厚化渲染**：[industry_kb 包](ai_qa/industry_kb/__init__.py) `industry_kb_text` 补 4 段（官方术语全表/底线指标/ELEMENT_HINTS 要素归因/他城案例），单域 1.2KB→~1.8KB；新增公共 `industry_kb_lens_appendix`。
+- **验证**：pytest test_industry_kb **20 pass**（+新 6 测）+ test_a3_paradigm 12 pass；前端 3 文件 .mjs 过 node --check；后端 import 无环 + 签名自检；probe 验单/双域附录形态。**eval 刻意不跑**（diagnose 字节不变→必然不受影响；C6：eval 空 context 验不了回答层改进）。承重：全 additive。commit 只不 push。
+
 ### ✅ EMC ③知识库做厚（revision-log 5.107，commit 待 push）
 
 四领域权威细则补全（中等深度，不扰 brief top-4）。

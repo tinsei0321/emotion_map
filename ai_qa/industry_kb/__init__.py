@@ -10,7 +10,8 @@
 - 可成长：政策更新→模块更新→矩阵映射丰富；做厚路径见 docs/industry-knowledge-base.md。
 
 本包是**单一权威源**（仿 ai_qa/landuse_codes_2023.py 模式）；改各领域 = 改权威源。
-EMC 按 domain_lens 命中时，可调 industry_kb_text(domain_key) 渲染该领域权威语境（v1 预留）。
+EMC 按 diagnose 产出的 domain_lens 命中时，post-diagnose 各 step（answer/revise/agent_step/review）
+调 industry_kb_text(domain_key) 渲染该领域完整权威语境注入 prompt（diagnose 用 brief 速查）。
 """
 from . import urban_planning, urban_renewal, urban_operation, urban_governance
 
@@ -36,8 +37,13 @@ def get_matrix_mapping(domain_key):
 
 
 def industry_kb_text(domain_key):
-    """渲染某领域权威语境为可读文本（供 diagnose prompt 按需注入 / 人读）。
-    v1 不自动注 prompt（避免 prompt 过长、保 Flash eval 不回归）；future 按 domain_lens 注入。"""
+    """渲染某领域权威语境为可读文本（全量字段，供 post-diagnose 各 step 按 domain_lens 注入 / 人读）。
+
+    diagnose 出 domain_lens 后，answer/revise/agent_step/review 的 prompt 据此注入命中领域
+    的完整权威语境——政策方向 / 核心概念 / 官方术语 / 底线指标 / 项目落点 / 要素归因细化 /
+    他城案例 / 情绪归因焦点 / 4×5 矩阵多归属映射，使回答用权威话语 + 归因落到具体项目
+    （政策→情绪→项目闭环）。diagnose 阶段用 brief 速查（全 4 域），不注本完整版（保 Flash eval）。
+    v1→v2：补齐 ELEMENT_HINTS/KEY_TERMS 全表/METRICS_BASELINE/CASES（原仅 8 字段）。"""
     mod = INDUSTRY_DOMAINS.get(domain_key)
     if not mod:
         return ''
@@ -48,11 +54,56 @@ def industry_kb_text(domain_key):
     lines.append('核心概念：')
     for k, v in mod.CORE_FRAMEWORK.items():
         lines.append(f'  - {k}：{v}')
+    # 官方术语全表（brief 只取前 4，此处全量供回答用权威话语）
+    kt = getattr(mod, 'KEY_TERMS', {})
+    if kt:
+        lines.append('官方术语：')
+        for k, v in kt.items():
+            lines.append(f'  - {k}：{v}')
+    # 可量化底线（防止大拆大建拆≤20%、拆建比≤2 等硬约束）
+    mb = getattr(mod, 'METRICS_BASELINE', [])
+    if mb:
+        lines.append('底线指标：')
+        for m in mb:
+            lines.append(f'  - {m}')
     lines.append(f'项目类型（指向具体项目）：{" / ".join(mod.PROJECT_TYPES)}')
+    # 要素归因细化（③ 厚化：设施/环境/服务/文化/事件在该域具体指什么，回答层归因落点）
+    eh = getattr(mod, 'ELEMENT_HINTS', {})
+    if eh:
+        lines.append('要素归因细化：')
+        for e, h in eh.items():
+            lines.append(f'  - {e}：{h}')
+    # 他城案例（佐证，回答可引）
+    cs = getattr(mod, 'CASES', [])
+    if cs:
+        lines.append('他城案例：')
+        for c in cs:
+            lines.append(f"  - {c.get('city', '?')}·{c.get('project', '?')}：{c.get('point', '')}")
     lines.append(f'情绪归因焦点：{mod.EMOTION_FOCUS}')
     mp = get_matrix_mapping(domain_key)
     lines.append('4×5 矩阵多归属映射：' + ' / '.join(f"{e}({r})@{dom.split('_')[-1]}" for dom, e, r in mp))
     return '\n'.join(lines)
+
+
+def industry_kb_lens_appendix(domain_lens):
+    """按 diagnose 的 domain_lens 渲染命中领域完整权威语境附录（post-diagnose step 注入用）。
+
+    过滤 'general'/falsy/非法 domain，去重保序；对每个有效域调 industry_kb_text 全量渲染，
+    空行分隔。空（无命中域）返回 ''（调用方据此跳过拼接）。
+    diagnose 不注此（它产 lens + 已有 brief 全 4 域速查，保 Flash eval 95%）；
+    answer/revise/agent_step/review 注此——回答用权威话语 + 归因落到具体项目（政策→情绪→项目闭环）。
+    """
+    if not domain_lens:
+        return ''
+    seen = []
+    for dk in domain_lens:
+        if dk and dk in INDUSTRY_DOMAINS and dk not in seen:
+            seen.append(dk)
+    if not seen:
+        return ''
+    body = '\n\n'.join(industry_kb_text(dk) for dk in seen)
+    return ('\n\n═══════════ 附录 · 聚焦领域权威语境（按 diagnose domain_lens 注入·政策→情绪→项目）═══════════\n'
+            + body)
 
 
 def industry_kb_brief_text():
@@ -79,6 +130,7 @@ def all_matrix_mappings():
 
 __all__ = [
     'INDUSTRY_DOMAINS', 'DOMAIN_KEYS', 'ELEMENTS', 'ROLES',
-    'get_matrix_mapping', 'industry_kb_text', 'industry_kb_brief_text', 'all_matrix_mappings',
+    'get_matrix_mapping', 'industry_kb_text', 'industry_kb_brief_text', 'industry_kb_lens_appendix',
+    'all_matrix_mappings',
     'urban_planning', 'urban_renewal', 'urban_operation', 'urban_governance',
 ]

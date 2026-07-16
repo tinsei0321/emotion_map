@@ -306,6 +306,11 @@ export async function orchestrate(ctx, hooks = {}) {
     diagnose = await stages.diagnoseStep(ctx, hooks);
   } catch (e) { diagnose = null; }
   diagnose = diagnose || { degraded: true };
+  // domain_lens 结构化数组回传后端：post-diagnose step（answer/revise/agent_step/review）据此注入
+  // 命中领域完整权威语境。过滤 'general'（通用问答无需领域权威）。_quickIntent 路径跳过 diagnose
+  // → 此处未设 → 各 step 读 undefined → 不注入（正确，通用问答无需领域权威）。
+  ctx.domainLens = Array.isArray(diagnose.domain_lens)
+    ? diagnose.domain_lens.filter((k) => k && k !== 'general') : [];
   if (hooks.onDiagnose) hooks.onDiagnose(diagnose);
   if (!diagnose.degraded) {
     // 注入下游：卡摘要前插 ctx.context，所有后续 phase 都看到（导工具选型 + 结论颗粒度）

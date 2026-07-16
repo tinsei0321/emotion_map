@@ -12,6 +12,7 @@ from typing import Optional, List
 
 from ai_qa.llm import LLMError, chat_with_fallback, _tier_of
 from ai_qa.manifesto import MANIFESTO
+from ai_qa.industry_kb import industry_kb_lens_appendix
 
 # 六条审查标准（顺序即审查顺序；key 稳定勿改，前端审查状态区按 key 渲染 ✓/△/✕）。
 REVIEW_CHECKLIST = [
@@ -95,11 +96,13 @@ REVIEW_TEMPLATE = """
 
 
 def _build_review_prompt(draft: str, context: str, tool_history: str,
-                         context_tokens: Optional[List[dict]] = None) -> str:
+                         context_tokens: Optional[List[dict]] = None,
+                         domain_lens: Optional[List[str]] = None) -> str:
     """构造审查员 system prompt。
 
     前置 MANIFESTO（含第十一节尺度-方法-范式）——审查员需行业语境才能判准
     professional/actionable/scale_paradigm_fit；此前漏拼致判定偏松。
+    另按 diagnose domain_lens 注入命中领域完整权威语境，使 professional（行业用语）判得更准。
     """
     checklist_str = '\n'.join(
         f"- {c['key']}（{c['name']}）：{c['desc']}" for c in REVIEW_CHECKLIST
@@ -116,6 +119,7 @@ def _build_review_prompt(draft: str, context: str, tool_history: str,
             for t in context_tokens
         )
         prompt += '\n用户本次@关联的对象（审查时关注是否围绕它们展开）：' + refs
+    prompt += industry_kb_lens_appendix(domain_lens)   # 命中领域完整权威语境（审 professional 行业用语用）
     return prompt
 
 
@@ -181,13 +185,14 @@ def _parse_review_json(raw: str) -> dict:
 
 
 def review_answer(draft: str, context: str = '', tool_history: str = '',
-                  context_tokens: Optional[List[dict]] = None) -> dict:
+                  context_tokens: Optional[List[dict]] = None,
+                  domain_lens: Optional[List[str]] = None) -> dict:
     """审查 draft，返回 {pass, scores, revise_hints, degraded?}。
 
     用 Flash + json_mode 拿结构化结果；初始化/调用/解析任一失败均降级
     {pass:True, degraded:True}（跳过审查，不阻塞交付）。
     """
-    sys_prompt = _build_review_prompt(draft, context, tool_history, context_tokens)
+    sys_prompt = _build_review_prompt(draft, context, tool_history, context_tokens, domain_lens)
     messages = [
         {'role': 'system', 'content': sys_prompt},
         {'role': 'user', 'content': '请审查上文草稿并输出 JSON。'},
