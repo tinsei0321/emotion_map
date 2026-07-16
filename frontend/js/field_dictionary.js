@@ -9,7 +9,8 @@
 export const FIELD_ROLES = {
   // —— 用户上传情绪点层常见字段 ——
   polarity: { variants: ['polarity', 'sentiment', 'label', 'sentiment_label', 'emotion', '情绪', '极性', '情感倾向'], dtypeHint: 'categorical', description: '情绪极性标签（5 级）' },
-  score: { variants: ['score', 'l1_confidence', 'l2_confidence', 'sentiment_score', 'confidence', 'ai_confidence', '分数', '得分', '评分', '置信度'], dtypeHint: 'number', description: '情绪得分/置信度（数值）' },
+  score: { variants: ['score', 'sentiment_score', '分数', '得分', '评分'], dtypeHint: 'number', description: '情绪得分（数值，sentiment score，非置信度）' },
+  confidence: { variants: ['l1_confidence', 'l2_confidence', 'confidence', 'ai_confidence', '置信度', '可信度', '数据置信度'], dtypeHint: 'number', description: '数据置信度（L1 治理阶段 LLM 判断的数据相关性置信度，0~1；与 score 不同）' },
   text: { variants: ['text', 'content', 'comment', 'review', '评论', '文本', '内容', '正文'], dtypeHint: 'string', description: '评论文本内容' },
   location: { variants: ['location', 'place', 'address', '地点', '位置', '地址'], dtypeHint: 'string', description: '地点/位置描述' },
   emotion_type: { variants: ['emotion_type', 'emotionType', '情绪类型', '情感类型'], dtypeHint: 'categorical', description: '情绪类型分类' },

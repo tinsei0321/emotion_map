@@ -7,6 +7,16 @@
 
 ## 📅 2026-07-16
 
+### ✅ EMC ⑤② 遗留：拆 confidence role + score 别名化（revision-log 5.112，commit 待 push）
+
+⑤② 遗留 + 修 design smell（l1_confidence 原归 score role）。
+- **拆 role**（[field_dictionary.py](core/field_dictionary.py)+[.js](frontend/js/field_dictionary.js)）：score 只留情绪得分变体；新 `confidence` role（l1_confidence/置信度/...）。36 roles。
+- **候选**（[prompts.py](ai_qa/prompts.py)）：user_roles 加 'confidence'。
+- **import.js**（[:631](frontend/js/import.js#L631)）：scoreKey/confKey 分离（原 findKeyByRole('score') 找 confidence 是冲突源）；demo 零回归，score-only 层改正 needsAnalysis。
+- **score 别名化**（[spatial_analysis.py](core/spatial_analysis.py)）：aggregate/hex/square_grid 数值 mean 按 role 解析（得分/评分/置信度/情绪强度），输出规范名；square_grid confidence→`l1_confidence_mean`（保 popup/state 契约）。hex 顺带修无 score KeyError。
+- **验证**：承重 smoke——square_grid 去冲突（得分+置信度+情绪强度→三独立 mean）；规范名零回归；字典 36 roles 自检；EMC 32 pass；ESM 绿。承重：未碰 demo 数据/popup 契约名/colorMode UI。commit 只不 push。
+- **⑤② 真收口**（polarity/domain/element/topic + score/ei/confidence 全 alias 化）。⑤ 剩 ⑤③ boundary_id 分组键 + ⑤④ execSkips 分桶（低优先）。
+
 ### ✅ EMC ⑤④ _missStats 遥测 + Flash 80% gate（revision-log 5.111，commit 待 push）
 
 harness.js:354 注释提的「Flash 80% gate」原只有注释无逻辑（greenfield），补齐。

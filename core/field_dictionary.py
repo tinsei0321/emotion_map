@@ -25,9 +25,14 @@ FIELD_ROLE_DICT = {
         'description': '情绪极性标签（5 级：very_positive/positive/neutral/negative/very_negative）',
     },
     'score': {
-        'variants': ['score', 'l1_confidence', 'l2_confidence', 'sentiment_score', 'confidence', 'ai_confidence', '分数', '得分', '评分', '置信度'],
+        'variants': ['score', 'sentiment_score', '分数', '得分', '评分'],
         'dtype_hint': 'number',
-        'description': '情绪得分/置信度（数值）',
+        'description': '情绪得分（数值，sentiment score，非置信度）',
+    },
+    'confidence': {
+        'variants': ['l1_confidence', 'l2_confidence', 'confidence', 'ai_confidence', '置信度', '可信度', '数据置信度'],
+        'dtype_hint': 'number',
+        'description': '数据置信度（L1 治理阶段 LLM 判断的数据相关性置信度，0~1；与 score 情绪得分不同）',
     },
     'text': {
         'variants': ['text', 'content', 'comment', 'review', '评论', '文本', '内容', '正文'],

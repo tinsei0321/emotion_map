@@ -216,13 +216,13 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月16日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.111，约本节中段）**，最近三条：
+> 📍 **最新动态（07月16日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.112，约本节中段）**，最近三条：
 >
-> - **5.111** EMC **⑤④ _missStats 遥测 + Flash 80% gate**：Flash template 命中率（'unknown'=miss）localStorage 跨会话累积 + footer 显示；80% gate（self-protection，冷启动放行零回归，成熟<80% 退 while-loop）接入 runTemplatePath 激活。ESM+gate 数学 smoke 过。**⑤ 全收口**。
-> - **5.110** EMC **⑤③ popularity 热度消费**：新 `_attach_popularity_attrs` 共享 helper，aggregate/square_grid 消费 category（category_top 众数 + category_count 多样性）+ timestamp（ts_count + ts_peak_hour 最热小时），复用 ⑤② alias。承重 smoke 过。
-> - **5.109** EMC **⑤②+⑤④ 字段 role 承重加固**：aggregate 4 孤岛接 `resolve_field_alias`（中文别名 情绪/领域/要素 走得通，polarity_index 不再静默零）+ FIELD_INFER confidence 0.3 阈值（`validate_llm_roles` choke point）。
+> - **5.112** EMC **⑤② 遗留 拆 confidence role + score 别名化**：修 design smell（l1_confidence 原归 score role 致 square_grid 别名化抢同列）——拆 confidence 独立 role（36 roles）+ import.js scoreKey/confKey 分离 + aggregate/hex/square_grid 数值 mean 全 role 解析（得分/置信度/情绪强度 别名）。square_grid 去冲突 + 规范名零回归。
+> - **5.111** EMC **⑤④ _missStats 遥测 + Flash 80% gate**：Flash template 命中率 localStorage 跨会话累积 + footer 显示；80% gate（self-protection，冷启动放行零回归，成熟<80% 退 while-loop）。**⑤ 全收口**。
+> - **5.110** EMC **⑤③ popularity 热度消费**：`_attach_popularity_attrs` 消费 category（category_top+count）+ timestamp（ts_count+ts_peak_hour），复用 ⑤② alias。
 >
-> 本地领先 origin（5.105–5.111 共 7 commits 待手动 push）。⑤ 已全收口。下会话：browser 终验 ④⑤ 数据流（Flash eval 复核②③ + ⑤④ gate/命中率 + 中文别名 aggregate + ④ 权威术语）/ A4-A6 补验。
+> 本地领先 origin（5.105–5.112 共 8 commits 待手动 push）。⑤② 真收口（polarity/domain/element/topic/score/ei/confidence 全 alias 化）。下会话：browser 终验 ④⑤ 数据流 / Flash eval 复核②③ / ⑤③ boundary_id 分组键 + ⑤④ execSkips 分桶（低优先）。
 
 ### 5.1 前端 · 核密度分析（KDE）弹窗（核心）
 
@@ -1155,6 +1155,19 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证（Playwright 真实 LLM）**：问"什么是核密度分析？和热点分析区别？"→ 修前出缺数据卡（走 narration→degrade→GAP，实测暴露 Bug3）；**修后出真结论**（KDE vs Getis-Ord Gi* 原理/输出/平滑性对比表），`isGapCard:false`。三态 EXIT_GAP 路径逻辑保留（条件严格收紧，真失败仍出卡）。
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
+
+### 5.112 EMC ⑤② 遗留：拆 confidence 独立 role + score 别名化（修设计 smell·square_grid 去冲突）（07月16日）
+
+用户意图：⑤② 遗留——score/emotion_intensity/l1_confidence 仍硬编码英文列名。探查发现 design smell：`l1_confidence`/`l2_confidence`/`confidence` 原归 `score` role（**情绪得分与数据置信度混一个 role**），致 square_grid 三列别名化时 `resolve_field_alias('score')` 与 `resolve_field_alias('l1_confidence')` 抢同列（同 role）。用户择「拆 confidence role 后做 score 别名化」。
+
+**落地**（dict×2 + prompts 候选 + import.js + 三聚合函数）：
+- **拆 role**（[field_dictionary.py](core/field_dictionary.py) + [field_dictionary.js](frontend/js/field_dictionary.js) 镜像）：score role 只留情绪得分变体（score/sentiment_score/分数/得分/评分）；新 `confidence` role（l1_confidence/l2_confidence/confidence/ai_confidence/置信度/可信度/数据置信度，0~1）。**36 roles（+1）**。
+- **FIELD_INFER 候选**（[prompts.py](ai_qa/prompts.py) user_roles）：加 'confidence'，LLM 可标置信度字段。
+- **import.js**（[import.js:631](frontend/js/import.js#L631) detectColorMode）：原 `findKeyByRole(sample,'score')` 找 confidence（冲突源）→ 拆 `scoreKey`(score role) + `confKey`(confidence role)，`p.score = scoreKey||confKey`。**demo 数据零回归**（L1 l1_confidence / L2 polarity+score 行为不变）；score-only 边界层从误判 L1 confidence 改正为 needsAnalysis（score≠confidence，bug fix）。
+- **score 别名化**（[spatial_analysis.py](core/spatial_analysis.py)）：aggregate_by_polygons / create_hex_grid / create_square_grid 数值 mean 按 role 解析实际列（得分/评分/置信度/情绪强度 别名友好），输出规范名。square_grid 的 confidence role 映射输出 **`l1_confidence_mean`**（保 [popup.js:334,350](frontend/js/popup.js#L334) + [state.js:116](frontend/js/state.js#L116) hotness 契约，不重命名）。hex_grid 顺带修无 score 时 KeyError → graceful。
+
+**验证（承重 smoke）**：role 分离干净（得分→score / 置信度→confidence 不抢同列）；square_grid **去冲突**——得分+置信度+情绪强度 同时在 → score_mean(0.48)/l1_confidence_mean(0.70)/emotion_intensity_mean(0.50) 三独立；规范列名零回归；字典 36 roles 自检过；EMC 回归 32 pass（test_industry_kb 20 + test_a3_paradigm 12）；ESM import.js+field_dictionary.js 过 node --check。**承重**：仅字段分类 + 聚合数值解析层，未碰 demo 数据 / popup 契约名 / colorMode UI（colorMode==='confidence' 是另一概念不碰）；commit 只不 push。
+**⑤② 真收口**：polarity/domain/element/topic（5.109）+ score/emotion_intensity/confidence（5.112）全 alias 化。⑤ 剩仅 ⑤③ boundary_id 分组键 + ⑤④ execSkips/lowConfField 分桶（低优先）。
 
 ### 5.111 EMC ⑤④ _missStats 遥测 + Flash 80% gate（self-protection·零冷启动回归）（07月16日）
 

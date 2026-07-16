@@ -358,7 +358,7 @@ def build_field_infer_prompt(fields: dict, layer_kind: str = '', context: str = 
     from core.field_dictionary import FIELD_ROLE_DICT
     # 候选表只列用户上传可命中的 role（自产/渲染契约规则已命中，不交 LLM 推断）
     user_roles = [
-        'polarity', 'score', 'text', 'location', 'emotion_type', 'emotion_intensity',
+        'polarity', 'score', 'confidence', 'text', 'location', 'emotion_type', 'emotion_intensity',
         'name', 'category', 'domain', 'element', 'topic', 'timestamp',
         'geometry_lon', 'geometry_lat', 'boundary_name', 'boundary_id', 'land_use_class',
     ]

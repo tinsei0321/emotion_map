@@ -627,15 +627,19 @@ export function detectColorMode(pointFC) {
   if (!pointFC.features.length) return { fc: pointFC, colorMode: 'polarity', needsAnalysis: false };
   const sample = pointFC.features[0].properties || {};
   // P1: 用 findKeyByRole 按角色找列（替代 pickKey+FIELD_SYNONYMS，收敛到 field_dictionary）
+  // ⑤② 拆 role：score（情绪得分）与 confidence（数据置信度）分离——不再混找一个，免 conflates。
   const polKey = findKeyByRole(sample, 'polarity');
-  const confKey = findKeyByRole(sample, 'score');   // 含 l1_confidence/l2_confidence/confidence/...
+  const scoreKey = findKeyByRole(sample, 'score');        // 情绪得分（score/得分/评分）
+  const confKey = findKeyByRole(sample, 'confidence');    // 数据置信度（l1_confidence/l2_confidence/置信度）
 
   if (polKey) {                                   // L2 polarity
     for (const f of pointFC.features) {
       const p = f.properties || (f.properties = {});
       p.polarity = canonicalPolarity(p[polKey]);
-      if (!p.polarity && confKey) p.polarity = polarityFromScore(Number(p[confKey]));
-      if (confKey && p[confKey] != null) p.score = Number(p[confKey]);
+      // score 优先 scoreKey（情绪得分），次 confKey（兼容旧 L2 带 l2_confidence 作 score 代理），末 scoreFor
+      const _sk = scoreKey || confKey;
+      if (!p.polarity && _sk) p.polarity = polarityFromScore(Number(p[_sk]));
+      if (_sk && p[_sk] != null) p.score = Number(p[_sk]);
       if (p.score == null) p.score = scoreFor(p.polarity);
       if (!p.polarity) p.polarity = 'Neutral';
       const tk = findKeyByRole(p, 'text'); if (tk && !p.text) p.text = p[tk];

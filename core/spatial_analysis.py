@@ -216,8 +216,15 @@ def aggregate_by_polygons(
           - polarity_index: 综合情绪指数（-1~1，正值=偏正面）
     """
     if agg_cols is None:
-        # 自适应：优先 score（L2），缺则 emotion_intensity（L1 情绪强度代理）；都无则保 ['score'] 占位（下游 if-in-columns 守护跳过，不报错）
-        agg_cols = [c for c in ('score', 'emotion_intensity') if c in points_gdf.columns] or ['score']
+        # ⑤② alias 友好：按 role 解析 score/emotion_intensity 实际列（支持中文别名 得分/评分/情绪强度）；
+        # actual_col 仅用于读，输出规范名 {role}_mean 保前端契约。都无则 _num 空（下游 graceful 不报错）。
+        _num = []
+        for _r in ('score', 'emotion_intensity'):
+            _c = resolve_field_alias(_r, points_gdf.columns)
+            if _c:
+                _num.append((_c, _r))
+    else:
+        _num = [(c, c) for c in agg_cols if c in points_gdf.columns]   # legacy：用户显式传列名，输出 {col}_mean
 
     # 空间连接
     joined = gpd.sjoin(points_gdf, polygons_gdf, how='inner',
@@ -226,8 +233,8 @@ def aggregate_by_polygons(
     if len(joined) == 0:
         raise ValueError('空间连接结果为空——点不在任何面域内，请检查坐标系是否一致')
 
-    # 数值列强制 numeric（容错 str 化，同 F_006；agg_cols 默认 ['score']）
-    for _c in agg_cols:
+    # 数值列强制 numeric（容错 str 化，同 F_006）
+    for _c, _ in _num:
         if _c in joined.columns:
             joined[_c] = pd.to_numeric(joined[_c], errors='coerce')
 
@@ -236,10 +243,10 @@ def aggregate_by_polygons(
 
     agg_stats = pd.DataFrame({'point_count': grouped.size()})
 
-    for col in agg_cols:
-        if col in joined.columns:
-            agg_stats[f'{col}_mean'] = grouped[col].mean().round(3)
-            agg_stats[f'{col}_std'] = grouped[col].std().round(3)
+    for _c, _role in _num:
+        if _c in joined.columns:
+            agg_stats[f'{_role}_mean'] = grouped[_c].mean().round(3)
+            agg_stats[f'{_role}_std'] = grouped[_c].std().round(3)
 
     # 极性统计：5 级英文（L2）/ 3 级小写（L1，polarity_hint 经 registry 重命名）自适应。
     # 列名按 role 解析（支持上传层中文别名 情绪/sentiment/情感倾向），输出仍用规范名 polarity_index/n_*。
@@ -351,17 +358,17 @@ def create_hex_grid(
     gdf = gdf.copy()
     gdf['h3_idx'] = h3_indices
 
-    # 数值列强制 numeric（容错 str 化，同 F_006；score 列 str 化时 mean 崩）
-    if 'score' in gdf.columns:
-        gdf['score'] = pd.to_numeric(gdf['score'], errors='coerce')
+    # 数值列按 role 解析（⑤② alias 友好：得分/评分），强制 numeric + 求均值（输出规范名 score_mean）
+    _score_col = resolve_field_alias('score', gdf.columns)
+    if _score_col:
+        gdf[_score_col] = pd.to_numeric(gdf[_score_col], errors='coerce')
 
     # 按 H3 格网聚合
     grouped = gdf.groupby('h3_idx')
 
-    stats = pd.DataFrame({
-        'point_count': grouped.size(),
-        'score_mean': grouped['score'].mean().round(3),
-    })
+    stats = pd.DataFrame({'point_count': grouped.size()})
+    if _score_col:
+        stats['score_mean'] = grouped[_score_col].mean().round(3)
 
     # 极性 5 级计数（列名按 role 解析，支持中文别名 情绪/sentiment；输出规范名 n_*）
     _pol_col = resolve_field_alias('polarity', gdf.columns)
@@ -608,23 +615,22 @@ def create_square_grid(
     if len(joined) == 0:
         raise ValueError('方格空间连接为空——点未落入任何格，检查坐标系/几何')
 
-    # 数值列强制 numeric（容错：GeoJSON 经文本中转会把 score/置信度/强度序列化成 str，
-    # 直接 mean() 抛 "dtype 'str' does not support operation 'mean'"）
-    for _c in ('score', 'l1_confidence', 'emotion_intensity'):
-        if _c in joined.columns:
+    # 数值列按 role 解析（⑤② alias 友好：得分/置信度/情绪强度），强制 numeric + 求均值。
+    # GeoJSON 经文本中转会把数值序列化成 str，直接 mean() 抛 "dtype 'str' does not support mean'"，故先 coerce。
+    # 输出规范名：score_mean / l1_confidence_mean（popup/state.js 契约——confidence role 映射此名）/ emotion_intensity_mean。
+    _sq_num = []
+    for _r, _out in (('score', 'score_mean'), ('confidence', 'l1_confidence_mean'), ('emotion_intensity', 'emotion_intensity_mean')):
+        _c = resolve_field_alias(_r, joined.columns)
+        if _c:
             joined[_c] = pd.to_numeric(joined[_c], errors='coerce')
+            _sq_num.append((_c, _out))
 
     grouped = joined.groupby('index_right')
     stats = pd.DataFrame({'point_count': grouped.size()})
 
-    if 'score' in joined.columns:
-        stats['score_mean'] = grouped['score'].mean().round(3)
-
-    # L1 舆论热度辅助字段（置信度/强度均值，供前端算"密度×置信度"热度）
-    if 'l1_confidence' in joined.columns:
-        stats['l1_confidence_mean'] = grouped['l1_confidence'].mean().round(3)
-    if 'emotion_intensity' in joined.columns:
-        stats['emotion_intensity_mean'] = grouped['emotion_intensity'].mean().round(3)
+    # L1 舆论热度辅助字段（置信度/强度均值，供前端算"密度×置信度"热度）+ score 均值
+    for _c, _out in _sq_num:
+        stats[_out] = grouped[_c].mean().round(3)
 
     # 五级极性统计 + 综合情绪指数（列名按 role 解析支持中文别名 情绪；公式同 aggregate_by_polygons）
     _pol_col = resolve_field_alias('polarity', joined.columns)
