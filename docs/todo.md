@@ -7,6 +7,15 @@
 
 ## 📅 2026-07-16
 
+### ✅ EMC ③知识库做厚（revision-log 5.107，commit 待 push）
+
+四领域权威细则补全（中等深度，不扰 brief top-4）。
+- [urban_renewal](ai_qa/industry_kb/urban_renewal.py)：完整社区（[106 试点](http://zw.china.com.cn/2023-07/24/content_94525225.shtml)设施清单）+ 体检指标维度（**标注与 4×5 归因矩阵层次不同防错标尺**）。
+- [urban_planning](ai_qa/industry_kb/urban_planning.py)：街道设计导则（[上海](https://up.caup.net/pdf/shanghai-jiedao-daoze.pdf)/深圳/株洲，车本位→人本位/慢行优先）+ 完整街道。
+- [urban_governance](ai_qa/industry_kb/urban_governance.py)：三率口径（响应/解决/满意）。
+- [urban_operation](ai_qa/industry_kb/urban_operation.py)：生命线 7 类（燃气/桥梁/隧道/供水/排水/热力/管廊）。
+- **验证**：4 模块自检 + EMC 全回归 **31 pass 0 回归**。承重：仅知识层 additive。commit 只不 push。
+
 ### ✅ EMC ②事件领域成体系化（revision-log 5.106，commit 待 push）
 
 事件（瞬时活动）是 EMC 补官方盲区的差异化核心，v1 仅一句带过、未成体系。

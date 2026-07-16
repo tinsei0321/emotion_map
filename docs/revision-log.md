@@ -216,13 +216,13 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月16日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.106，约本节中段）**，最近三条：
+> 📍 **最新动态（07月16日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.107，约本节中段）**，最近三条：
 >
-> - **5.106** EMC **②事件领域成体系化**（补官方盲区·差异化核心）：调研实证官方有《大型群众性活动安全管理条例》（安全底线）但城市体检 61/76 指标**事件瞬时影响缺失**→ urban_operation 增厚（条例+瞬时空间影响+活动情绪复盘四步法，KEY_TERMS 重排使事件词进 brief 前 4）+ governance 镜像；归因四步法复用 rank/hotspot/buffer/overlay。pytest 14 pass。
-> - **5.105** EMC **C1 运行时验证 + merge grounding 修复**：buildContext 加层类型标签+boundary 优先级启发式；probe 验 merge 填对 boundary；C6 发现 eval(空ctx) vs 运行时(有层) 分歧，接受。
-> - **5.104** EMC **收尾变现**：filter_attr(B1.5) → B_TRACK 9 原型全点亮；行业知识库接入 diagnose。Flash eval 18/19=95%。
+> - **5.107** EMC **③知识库做厚**：四领域权威细则补全——renewal（完整社区 106 试点设施清单 + 体检指标维度，**标注与 4×5 归因矩阵层次不同防错标尺**）+ planning（街道设计导则/完整街道/慢行优先）+ governance（三率口径）+ operation（生命线 7 类）。EMC 全回归 31 pass。
+> - **5.106** EMC **②事件领域成体系化**（补官方盲区·差异化核心）：urban_operation 增厚（条例+四步法，事件词进 brief 前 4）+ governance 镜像。pytest 14 pass。
+> - **5.105** EMC **C1 运行时验证 + merge grounding 修复**：buildContext 层类型标签+boundary 优先级；probe 验 merge 填对 boundary。
 >
-> 本地领先 origin（5.105 C1 修复 + 5.106 事件专题待手动 push）。下会话：③知识库做厚 / ④industry_kb 动态注入（承重） / ⑤A3②③④ / A4/A6 补验。
+> 本地领先 origin（5.105 C1 + 5.106 事件 + 5.107 做厚待手动 push）。下会话：④industry_kb 动态注入（承重） / ⑤A3②③④ / A4/A6 补验。
 
 ### 5.1 前端 · 核密度分析（KDE）弹窗（核心）
 
@@ -1155,6 +1155,19 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证（Playwright 真实 LLM）**：问"什么是核密度分析？和热点分析区别？"→ 修前出缺数据卡（走 narration→degrade→GAP，实测暴露 Bug3）；**修后出真结论**（KDE vs Getis-Ord Gi* 原理/输出/平滑性对比表），`isGapCard:false`。三态 EXIT_GAP 路径逻辑保留（条件严格收紧，真失败仍出卡）。
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
+
+### 5.107 EMC ③知识库做厚：四领域权威细则补全（完整社区/体检 76/生命线 7 类/三率/街道导则）（07月16日）
+
+用户意图：v1 知识库各领域框架已立但细则偏薄（handoff 做厚路径）。③ = 5 项权威细则补全，跨 4 模块，中等深度（不扰 brief top-4 核心词，做厚 ELEMENT_HINTS/行业细则层，深交付待 ④）。
+
+**落地**（4 模块增厚，14 字段 schema 不破）：
+- [urban_renewal.py](ai_qa/industry_kb/urban_renewal.py)：完整社区（[住建部 7 部门 106 试点 2023](http://zw.china.com.cn/2023-07/24/content_94525225.shtml)，四方向+设施清单养老托育/社区卫生/便民商业/公共活动场地/充电/家政，"一老一小"重点，问题清单→建设清单、需求清单→服务清单）+ 城市体检指标维度（生态宜居/健康舒适/安全韧性/交通便捷/风貌特色/多元共治——**官方评价打分分类，与 EMC 4×5 归因矩阵层次不同：前者互斥穷尽打分、后者多归属归因，防错标尺**）。
+- [urban_planning.py](ai_qa/industry_kb/urban_planning.py)：街道设计导则（[上海](https://up.caup.net/pdf/shanghai-jiedao-daoze.pdf)/深圳罗湖完整街道/株洲完整街道/城市步行和自行车交通系统规划设计导则；车本位→人本位、道路→街道、慢行优先、全要素一体化设计）+ 完整街道理念 + 慢行优先指标。
+- [urban_governance.py](ai_qa/industry_kb/urban_governance.py)：接诉即办三率口径细化（响应率=响应时效 / 解决率=办结比例 / 满意率=市民评价）。
+- [urban_operation.py](ai_qa/industry_kb/urban_operation.py)：城市生命线 7 类设施（燃气/桥梁/隧道/供水/排水/热力/管廊）+ 合肥/湖北监测模式（16.8 万套设备）。
+
+**验证**：4 模块 __main__ 自检过 + pytest test_industry_kb **14 pass** + EMC 全回归（emc_template/a3_paradigm/industry_kb）**31 pass 0 回归**。**承重**：仅知识层 additive（schema 不破、矩阵骨架不动、未碰 harness/paradigm/tools/前端；brief top-4 核心词未扰）。commit 只不 push。
+**下一步**：④industry_kb_text 按 domain_lens 动态注入（harness 承重，深交付 ELEMENT_HINTS 归因框架）/ ⑤A3②③④。
 
 ### 5.106 EMC ②事件领域成体系化（补官方盲区·差异化核心）：urban_operation 增厚 + governance 镜像（07月16日）
 
