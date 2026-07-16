@@ -1,12 +1,9 @@
-# Emotion Map — Claude Code Memory Index
+# Emotion Map — Memory Index
 
-- [User Preferences](.claude/memory/user-prefs.md) — 用户偏好：中文对话
-- [Handoff Context Awareness](.claude/memory/handoff-context-awareness.md) — 交接任务时根据时间智能推断场景
-- [UI Design System](.claude/memory/ui-design-system.md) — UI 设计系统：颜色/按钮/布局/交互铁律
-- [Button Design Language](.claude/memory/button-design-language.md) — 按钮间距设计规则
-- [Toast Notification Rule](.claude/memory/toast-notification-rule.md) — Toast 提示铁律
-- [Streamlit Dialog Patterns](.claude/memory/streamlit-dialog-patterns.md) — Dialog rerun 交互模式
-- [Dev Workflow](.claude/memory/dev-workflow-auto-reload.md) — 改代码→清缓存→重启→刷新
-- [Project Overview](.claude/memory/project-overview.md) — 项目总览
-- [PRD](docs/prd.md) — 产品需求文档
-- [Spec](docs/spec.md) — 产品规范文档
+> **本项目记忆已统一至用户全局树**（单一权威源，跨会话/跨机）：
+> `C:\Users\admin\.claude\projects\d--Github-emotion-map\memory\MEMORY.md`
+>
+> 本文件不再维护条目。`docs/prd.md` / `docs/spec.md` 等专项文档见项目 `CLAUDE.md` 参考文档索引。
+>
+> `/.claude/memory/_archived/` 保留 Streamlit 迁移期（2026-06）遗留快照（dialog rerun / toast / UI 基线等），
+> 仅供 `apps/`（Streamlit 遗留层）查阅，不再增量。新记忆一律写全局树。

@@ -144,7 +144,7 @@ emotion_map/
 9. **决策追踪必埋点** — 公开函数 `@track("MOD_XXX.F_NNN")`，关键分支 `TrackContext("MOD_XXX.D_NNN")`
 10. **追踪 ID 必注册** — 所有 ID 在 `core/tracker.py` 的 `_REGISTRY` 中登记，编号连续不跳号
 11. **图像粘贴自动识别** — 用户粘贴图片后，自动查找 `%LOCALAPPDATA%\Temp\ScreenShot_*.png` 中最新的文件，调用 `mcp__zai-mcp-server__analyze_image`（智谱，主）识图；智谱不可用退 `mcp__vision-bridge__analyze_image`（火山引擎）。不需要等待用户明确说"看图"
-12. **MCP 同类择优选智谱** — 同功能 MCP 优先智谱（Z.AI/BigModel），连不上再退备选：视觉=`zai-mcp-server`（主）→`vision-bridge`（火山引擎，备）；联网搜索=`web-search-prime`；读网页=`web-reader`；读开源仓=`zread`。完整路由见 `docs/mcp-strategy.md`
+12. **MCP 同类择优选智谱** — 同功能 MCP 优先智谱（Z.AI/BigModel），连不上再退备选：视觉=`zai-mcp-server`（主）→`vision-bridge`（火山引擎，备）；联网搜索=`web-search-prime`；读网页=`web-reader`；读开源仓=`zread`。完整路由见 `docs/mcp-strategy.md`。**注**：智谱栈由用户全局（`~/.claude`）托管、跨项目可用；项目 `.mcp.json` 只列项目专属 server（playwright/vision-bridge），勿重复塞智谱栈（错层）
 
 **Bug 定位流程**：`[TRACE] 日志 → 决策 ID → 代码跳转（O(1)）`
 
@@ -155,7 +155,7 @@ emotion_map/
 - ✅ 项目框架搭建完成（七层架构；初版基于 Streamlit）
 - ✅ 前端迁移 Phase 1（`frontend/` MapLibre GL JS，geojson.io 1:1 外壳，已 Playwright 验证）
 - ✅ L0→L1→L2 数据管道实现（L1 LLM 分类需 API Key）
-- ✅ 决策追踪系统（`core/tracker.py`，13 模块 55+ 追踪 ID）
+- ✅ 决策追踪系统（`core/tracker.py`，18 模块 510+ 追踪 ID；5.x 主力 ai_qa/field_dictionary/spatial_analysis 待正式 MOD_ 分配，见 AGENTS.md）
 - ✅ 坐标转换工具（GCJ-02 ↔ WGS84 ↔ CGCS2000）
 - ✅ 范围选择引擎（Shapefile/GeoJSON/GPKG 上传 + CRS 检测）
 - ✅ Design Token 体系（双主题 Light/Dark + 150+ Token）

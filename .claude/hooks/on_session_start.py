@@ -57,6 +57,25 @@ def main():
     except Exception:
         print(f"  Git: 检查失败")
 
+    # 5. 上下文树阈值提醒（/garden 除草触发线；零 LLM 调用，超阈值才提示）
+    try:
+        import re
+        slug = re.sub(r'[^A-Za-z0-9]', '-', os.path.abspath(PROJECT_ROOT))
+        mem_dir = os.path.join(os.path.expanduser('~'), '.claude', 'projects', slug, 'memory')
+        mem_count = len([f for f in os.listdir(mem_dir)
+                        if f.endswith('.md') and f != 'MEMORY.md']) if os.path.isdir(mem_dir) else 0
+        rl_path = os.path.join(PROJECT_ROOT, 'docs', 'revision-log.md')
+        rl_kb = os.path.getsize(rl_path) // 1024 if os.path.exists(rl_path) else 0
+        flags = []
+        if mem_count > 50:
+            flags.append(f"memory={mem_count} 条")
+        if rl_kb > 500:
+            flags.append(f"revision-log={rl_kb}KB")
+        if flags:
+            print(f"  [GARDEN] {' / '.join(flags)} 超阈值 — 考虑 /garden 除草")
+    except Exception:
+        pass
+
     print(f"[HOOK] SessionStart 完成\n")
 
 if __name__ == "__main__":

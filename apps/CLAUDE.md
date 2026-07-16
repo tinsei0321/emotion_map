@@ -42,7 +42,7 @@
 ## Streamlit 特殊约定
 
 - 使用 `st.session_state` 保持地图中心/缩放（避免 rerun 后复位）
-- **`@st.dialog` 内 `st.rerun()` 规则**（详见 `.claude/memory/streamlit-dialog-patterns.md`）：
+- **`@st.dialog` 内 `st.rerun()` 规则**（详见 `.claude/memory/_archived/streamlit-dialog-patterns.md`，Streamlit 遗留快照）：
   - ❌ toggle/checkbox/radio 等控件的值变更回调中**禁止** `st.rerun()` — Streamlit 自动重绘 dialog
   - ✅ "确定"/"确认"/"关闭"按钮 + 批量操作按钮中**需要** `st.rerun()` — 用户明确表示操作完成
   - ✅ Toast 通知使用 `st.session_state['_toast']` 模式，不在 dialog 内直接 `st.markdown`

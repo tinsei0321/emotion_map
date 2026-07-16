@@ -19,6 +19,7 @@ design/tokens.py
 design/tokens.css
 .claude/.last-session
 .claude/.trace-digest-cursor
+memories/repo/.wip.md
 docs/vision-inbox/latest.md
 .playwright-mcp/
 .trace/

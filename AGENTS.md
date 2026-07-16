@@ -180,6 +180,8 @@ Agent 启动时根据下表选择性阅读知识源：
 | `MOD_PLACE` | `core/place_layer.py` |
 | `MOD_GEOCODE` | `core/geocode.py` |
 
+> **5.x 主力待登记**：`ai_qa/`（含 `industry_kb/`）、`core/field_dictionary.py`、`core/spatial_analysis.py` 为 EMC 子系统主力，已借现有 MOD_ 空间埋点（spatial_analysis 18+ 引用、ai_qa/llm 12+），正式 `MOD_AIQA`/`MOD_FIELD`/`MOD_SPATIAL` 分配待 `/garden` 整理后补——**勿擅自加 ID**（守 `core/tracker.py` `_REGISTRY` 连续不跳号红线）。
+
 **埋点规则**：
 - 公开函数（非 `_` 前缀）→ `@track("MOD_XXX.F_NNN")`
 - 关键分支（>5 行 if/else/循环体）→ `with TrackContext("MOD_XXX.D_NNN", ...):`

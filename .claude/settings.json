@@ -62,6 +62,11 @@
         "command": "python .claude/hooks/on_session_end.py"
       }
     ],
+    "PreCompact": [
+      {
+        "command": "py .claude/hooks/on_precompact.py"
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",

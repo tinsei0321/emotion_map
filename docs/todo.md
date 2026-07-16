@@ -7,6 +7,18 @@
 
 ## 📅 2026-07-16
 
+### ✅ 工作策略·上下文连贯园丁层（revision-log 5.113，commit 待 push）
+
+用户要"先做工作策略优化（process/method）"，参考 OpenAI《Harness Engineering》。诊断：已有 7 机制=上下文树（对齐"地图非说明书"），缺园丁层。
+- **除草**：`/garden` 命令（[garden.md](.claude/commands/garden.md)，按需扫过期 memory/巨型文件/漂移 manifest/僵尸注释，产清单不自动改）+ 阈值提醒（[on_session_start.py](.claude/hooks/on_session_start.py)：memory>50 或 revision-log>500KB 打印一行，零 LLM 开销）。
+- **压缩前快照**：PreCompact hook（[on_precompact.py](.claude/hooks/on_precompact.py) → `memories/repo/.wip.md`，git/trace 锚点，gitignore）+ [settings.json](.claude/settings.json) 注册。
+- **记忆树归档**：僵尸 `.claude/memory/` 10 文件 → `_archived/`（git mv）；[MEMORY.md](MEMORY.md) + [apps/CLAUDE.md](apps/CLAUDE.md) 重定向用户全局树（单一权威源）。
+- **纪律固化**：全局 `~/.claude/CLAUDE.md` 加「Harness 工作方式·四纪律」+ memory `context-coherence-discipline`。
+- **manifest 刷新**：[CLAUDE.md](CLAUDE.md)「13 模块 55+」→「18 模块 510+」+ rule 12 智谱栈全局托管说明；[AGENTS.md](AGENTS.md) 模块表加 5.x 主力备注。
+- **可见地图**：新 [context-map.md](docs/context-map.md) + [harness-engineering-baseline.md](docs/harness-engineering-baseline.md)（六要素详表）。
+- **验证**：settings.json JSON 合法；两 hook py_compile 过 + 实跑（session_start 阈值未触发零噪声 / precompact 写 .wip.md 成功）；全仓无残留 `.claude/memory/` 引用。承重：未动 EMC 承重代码。commit 只不 push。
+- **下一步**：阶段二 EMC compare 技能根治（欢迎胶囊"对比"老毛病：代码块/回答一半/方法不做）。
+
 ### ✅ EMC ⑤② 遗留：拆 confidence role + score 别名化（revision-log 5.112，commit 待 push）
 
 ⑤② 遗留 + 修 design smell（l1_confidence 原归 score role）。

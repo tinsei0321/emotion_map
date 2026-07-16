@@ -216,13 +216,27 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月16日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.112，约本节中段）**，最近三条：
+> 📍 **最新动态（07月16日）** · 本节按板块分组、组内倒序；最新工作 = **5.113 工作策略·上下文连贯园丁层**（本次）+ EMC 板块组（5.89–5.112，约本节中段）。最近：
 >
+> - **5.113 工作策略 · 上下文连贯园丁层**：诊断"项目已有 7 机制=上下文树（对齐 OpenAI harness），缺的是园丁层"→ 补 `/garden` 除草 + session-start 阈值提醒 + PreCompact 快照 hook + 漂移自检/单写者纪律（入全局 CLAUDE.md）；归档僵尸记忆树 + 刷新过期 manifest。详见下方 5.113。
 > - **5.112** EMC **⑤② 遗留 拆 confidence role + score 别名化**：修 design smell（l1_confidence 原归 score role 致 square_grid 别名化抢同列）——拆 confidence 独立 role（36 roles）+ import.js scoreKey/confKey 分离 + aggregate/hex/square_grid 数值 mean 全 role 解析（得分/置信度/情绪强度 别名）。square_grid 去冲突 + 规范名零回归。
 > - **5.111** EMC **⑤④ _missStats 遥测 + Flash 80% gate**：Flash template 命中率 localStorage 跨会话累积 + footer 显示；80% gate（self-protection，冷启动放行零回归，成熟<80% 退 while-loop）。**⑤ 全收口**。
-> - **5.110** EMC **⑤③ popularity 热度消费**：`_attach_popularity_attrs` 消费 category（category_top+count）+ timestamp（ts_count+ts_peak_hour），复用 ⑤② alias。
 >
-> 本地领先 origin（5.105–5.112 共 8 commits 待手动 push）。⑤② 真收口（polarity/domain/element/topic/score/ei/confidence 全 alias 化）。下会话：browser 终验 ④⑤ 数据流 / Flash eval 复核②③ / ⑤③ boundary_id 分组键 + ⑤④ execSkips 分桶（低优先）。
+> 阶段一（5.113）已 commit 待 push；EMC 5.105–5.112 共 8 commits 亦待 push。下会话：**阶段二 EMC compare 技能根治**（欢迎胶囊"对比"老毛病）/ browser 终验 ④⑤ / Flash eval 复核②③。
+
+### 5.113 工作策略 · 上下文连贯园丁层（07-16，process/method）
+
+**用户意图**：项目越来越厚，担心上下文丢失/碎片；参考 OpenAI《Harness Engineering》强化 vibe coding 工作架构，并系统提出全局 Plan + 六要素评估。
+**诊断**：已有 7 套连贯机制构成上下文树（CLAUDE.md 四级根 + revision-log ★任务路线图主干 + 三层 memory 分支 + docs 叶 + 交接卡快照 + §5 账本 + tracker 运行时），高度对齐 OpenAI"地图非说明书 + 渐进式披露"。缺的是"园丁层"（只长不烂）+ 3 裂缝（两套记忆树 / 巨型文件 / manifest 过期）。
+**落地**：
+- `/garden` 命令（按需除草：过期 memory/巨型文件/漂移 manifest/僵尸注释，**产清单不自动改**）+ `on_session_start.py` 阈值提醒（memory>50 或 revision-log>500KB 打印一行，零 LLM 开销）。
+- PreCompact hook（`on_precompact.py`）→ `memories/repo/.wip.md`（git/trace 锚点，gitignore）；`.claude/settings.json` 注册。
+- 僵尸记忆树归档：`.claude/memory/` 10 文件 → `_archived/`（git mv 保历史）；项目根 `MEMORY.md` + `apps/CLAUDE.md` 重定向到用户全局树（单一权威源）。
+- 全局 `~/.claude/CLAUDE.md` 加「Harness 工作方式·上下文连贯四纪律」+ feedback memory `context-coherence-discipline`。
+- manifest 刷新：CLAUDE.md「13 模块 55+」→「18 模块 510+」+ rule 12 加智谱栈全局托管说明；AGENTS.md 模块表加 5.x 主力备注（ai_qa/field_dictionary/spatial_analysis，待正式 MOD_ 分配）。
+- 新 `docs/context-map.md`（一页可见上下文树）+ `docs/harness-engineering-baseline.md`（六要素详表，防 memory 膨胀）。
+**承重**：未动 EMC 承重代码（diagnose prompt/resolve_field_alias/四态出口等全不碰）；阶段二（compare 技能根治）另起。
+**文件**：`.claude/commands/garden.md`、`.claude/hooks/{on_session_start,on_precompact}.py`、`.claude/settings.json`、`.gitignore`、`MEMORY.md`、`apps/CLAUDE.md`、`CLAUDE.md`、`AGENTS.md`、`docs/{context-map,harness-engineering-baseline}.md`、`~/.claude/CLAUDE.md`、`memory/context-coherence-discipline.md`。
 
 ### 5.1 前端 · 核密度分析（KDE）弹窗（核心）
 
