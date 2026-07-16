@@ -216,13 +216,13 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月16日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.105，约本节中段）**，最近三条：
+> 📍 **最新动态（07月16日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.106，约本节中段）**，最近三条：
 >
-> - **5.105** EMC **C1 运行时验证 + merge grounding 修复**：首次开 serve 端到端验 07-15 积累。发现 merge/clip/overlay 等 boundary 类首轮不识已加载面层（出缺槽 GAP 追问）→ buildContext grounding 加**层类型标签**（_kindTag）+ **boundary 优先级启发式**（_polyRole：行政片区=首选/用地类/分析网格）+ 软化 ensure_zone 误导线；query_layers 同步。直连 API probe 验：merge 填对 boundary ✅；6 个 B1 端点全 HTTP200。**C6 发现**：eval（空context）vs 运行时（有层）对「里」类歧义路由分歧（zonal vs overlay），接受现状。
+> - **5.106** EMC **②事件领域成体系化**（补官方盲区·差异化核心）：调研实证官方有《大型群众性活动安全管理条例》（安全底线）但城市体检 61/76 指标**事件瞬时影响缺失**→ urban_operation 增厚（条例+瞬时空间影响+活动情绪复盘四步法，KEY_TERMS 重排使事件词进 brief 前 4）+ governance 镜像；归因四步法复用 rank/hotspot/buffer/overlay。pytest 14 pass。
+> - **5.105** EMC **C1 运行时验证 + merge grounding 修复**：buildContext 加层类型标签+boundary 优先级启发式；probe 验 merge 填对 boundary；C6 发现 eval(空ctx) vs 运行时(有层) 分歧，接受。
 > - **5.104** EMC **收尾变现**：filter_attr(B1.5) → B_TRACK 9 原型全点亮；行业知识库接入 diagnose。Flash eval 18/19=95%。
-> - **5.103** EMC **B1 完成**：加技能 9→14，5 新技能全命中。
 >
-> 本地领先 origin（5.105 C1 修复待手动 push）。下会话：A4/A6 browser 补验 / 事件专题 / 知识库做厚 / industry_kb 动态注入 / A3②③④。
+> 本地领先 origin（5.105 C1 修复 + 5.106 事件专题待手动 push）。下会话：③知识库做厚 / ④industry_kb 动态注入（承重） / ⑤A3②③④ / A4/A6 补验。
 
 ### 5.1 前端 · 核密度分析（KDE）弹窗（核心）
 
@@ -1155,6 +1155,19 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证（Playwright 真实 LLM）**：问"什么是核密度分析？和热点分析区别？"→ 修前出缺数据卡（走 narration→degrade→GAP，实测暴露 Bug3）；**修后出真结论**（KDE vs Getis-Ord Gi* 原理/输出/平滑性对比表），`isGapCard:false`。三态 EXIT_GAP 路径逻辑保留（条件严格收紧，真失败仍出卡）。
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
+
+### 5.106 EMC ②事件领域成体系化（补官方盲区·差异化核心）：urban_operation 增厚 + governance 镜像（07月16日）
+
+用户意图：事件（瞬时活动）是 EMC 补官方盲区的差异化核心，但 v1 仅在 MATRIX_MAPPING/ELEMENT_HINTS 一句带过、未成体系。② = 调研官方标准/盲区 + 成体系灌进知识库 + 归因框架。
+
+**调研结论**（联网实证）：① 官方有 [《大型群众性活动安全管理条例》(国务院令505号)](https://www.mps.gov.cn/n6557558/c8238968/content.html)——公安口，≥1000 人分级安全许可（1000-5000 县级/5000+ 市级）+ 应急预案，管**安全底线**；地方条例（[北京](https://www.bjrd.gov.cn/rdzl/dfxfgk/dfxfg/202101/t20210106_2200080.html)/[广州](https://www.gz.gov.cn/zwgk/fggw/zfgz/content/post_4756937.html)）同脉络。② [城市体检 61/76 指标](http://tj.sina.cn/news/2023-07-24/detail_20230724.html)全是**常态空间指标**——事件瞬时影响（交通/情绪/舆情）**明显缺失**（搜索小结实证）。③ 学术有事件舆情导控（武大学报）但与体检结合少。→ **差异化定位**：官方管「安全不出事」，EMC 补「散场堵不堵/体验好不好/周边业态受影响」的体验·情绪·聚集维度。
+
+**落地**（[urban_operation.py](ai_qa/industry_kb/urban_operation.py) 8 字段增厚，14 字段 schema 不破；[urban_governance.py](ai_qa/industry_kb/urban_governance.py) 镜像次归属）：
+- TOP_DESIGN +大型群众性活动安全管理条例（官方对齐）；CORE_FRAMEWORK +「瞬时活动空间影响」「活动情绪复盘四步法」；KEY_TERMS 重排使 **活动复盘/瞬时空间影响进 brief 前 4**（立即影响 Flash 词汇）；METRICS_BASELINE +活动情绪指数/散场聚集响应/影响圈业态（EMC 前瞻占位）；PROJECT_TYPES 事件运营提前进 brief；CASES +宜昌奥体演唱会/楚超/节假日展演（二马路/滨江公园/夷陵广场）；ELEMENT_HINTS['事件'] 扩为完整归因框架；EMOTION_FOCUS 补四步法+条例对齐。
+- **归因框架四步法（复用现有工具·不造新）**：① 活动前后情绪对比（时序 rank/zonal）② 负面聚集（hotspot Gi*）③ 影响圈（场馆 buffer N km）④ 交通关联（overlay/nearest）。
+
+**验证**：两模块 __main__ 自检过 + pytest test_industry_kb **14 pass 0 回归** + brief 打印确认事件词进运营 brief 前 4。**承重**：仅知识层 additive（schema 不破、矩阵骨架不动、未碰 harness/paradigm/tools/前端）。commit 只不 push。
+**下一步**：③知识库做厚（完整社区/76 指标/生命线 7 类/三率/街道导则）/ ④industry_kb_text 按 domain_lens 动态注入（harness 承重，深交付 ELEMENT_HINTS 归因框架）/ ⑤A3②③④。
 
 ### 5.105 EMC C1 运行时验证 + merge grounding 修复：层类型标签 + boundary 优先级启发式（07月16日）
 

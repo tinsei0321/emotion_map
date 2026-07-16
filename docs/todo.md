@@ -7,6 +7,14 @@
 
 ## 📅 2026-07-16
 
+### ✅ EMC ②事件领域成体系化（revision-log 5.106，commit 待 push）
+
+事件（瞬时活动）是 EMC 补官方盲区的差异化核心，v1 仅一句带过、未成体系。
+- **调研实证**：官方有《大型群众性活动安全管理条例》（国务院令505号，公安口安全许可/应急）管**安全底线**；[城市体检 61/76 指标](http://tj.sina.cn/news/2023-07-24/detail_20230724.html)全是常态空间指标，**事件瞬时影响缺失**→ EMC 补「散场拥堵/体验/情绪聚集」维度。
+- **落地**：[urban_operation.py](ai_qa/industry_kb/urban_operation.py) 8 字段增厚（条例+瞬时空间影响+活动情绪复盘四步法，KEY_TERMS 重排使**事件词进 brief 前 4** 立即影响 Flash）；[urban_governance.py](ai_qa/industry_kb/urban_governance.py) 镜像次归属。
+- **归因四步法**（复用现有工具·不造新）：① 前后情绪对比(rank/zonal) ② 负面聚集(hotspot) ③ 影响圈(buffer) ④ 交通关联(overlay/nearest)。
+- **验证**：两模块 __main__ 自检 + pytest test_industry_kb **14 pass 0 回归** + brief 打印确认事件词进运营 brief 前 4。承重：仅知识层 additive（14 字段 schema 不破、矩阵骨架不动）。commit 只不 push。
+
 ### ✅ EMC C1 运行时验证 + merge grounding 修复（revision-log 5.105，commit 待 push）
 
 首次开 serve 端到端验 07-15 积累（之前全是静态测 + Flash eval 空 context 模拟）。
