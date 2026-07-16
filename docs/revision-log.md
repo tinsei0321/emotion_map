@@ -216,13 +216,13 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月16日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.109，约本节中段）**，最近三条：
+> 📍 **最新动态（07月16日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.110，约本节中段）**，最近三条：
 >
+> - **5.110** EMC **⑤③ popularity 热度消费**：新 `_attach_popularity_attrs` 共享 helper，aggregate/square_grid 消费 category（category_top 众数 + category_count 多样性）+ timestamp（ts_count + ts_peak_hour 最热小时），复用 ⑤② alias（类别/时间 别名友好）。承重 smoke 过，⑤ 收口（②+④-conf+③）。
 > - **5.109** EMC **⑤②+⑤④ 字段 role 承重加固**：aggregate 4 孤岛接 `resolve_field_alias`（中文别名 情绪/领域/要素 走得通，polarity_index 不再静默零）+ FIELD_INFER confidence 0.3 阈值（`validate_llm_roles` choke point，<0.3 纯猜档 role 不承重）。承重 smoke 过，规范数据零回归。
-> - **5.108** EMC **④ industry_kb 按 domain_lens 动态注入**（harness 承重·深交付）：domain_lens 前端回传后端（ChatRequest 加字段）+ `industry_kb_text` 全量厚化（+ELEMENT_HINTS/术语全表/底线/案例）→ 注入 agent/answer/revise/review 四 step；**diagnose 不动保 eval**。test_industry_kb 20 pass。
-> - **5.107** EMC **③知识库做厚**：四领域权威细则补全——renewal（完整社区 106 试点设施清单 + 体检指标维度，**标注与 4×5 归因矩阵层次不同防错标尺**）+ planning（街道设计导则/完整街道/慢行优先）+ governance（三率口径）+ operation（生命线 7 类）。EMC 全回归 31 pass。
+> - **5.108** EMC **④ industry_kb 按 domain_lens 动态注入**（harness 承重·深交付）：domain_lens 前端回传后端 + `industry_kb_text` 全量厚化 → 注入 agent/answer/revise/review 四 step；**diagnose 不动保 eval**。
 >
-> 本地领先 origin（5.105/106/107/108/109 共 5 commits 待手动 push）。下会话：⑤③ popularity（设计 A/B 待择）/ ⑤④-_missStats（待 80% gate 消费方）/ A4/A6 browser 补验 / Flash eval 复核②③。
+> 本地领先 origin（5.105/106/107/108/109/110 共 6 commits 待手动 push）。⑤④-`_missStats` 暂缓（待 80% gate 消费方）。下会话：A4/A6 browser 补验 / Flash eval 复核②③ / ⑤④-_missStats+80% gate。
 
 ### 5.1 前端 · 核密度分析（KDE）弹窗（核心）
 
@@ -1155,6 +1155,19 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证（Playwright 真实 LLM）**：问"什么是核密度分析？和热点分析区别？"→ 修前出缺数据卡（走 narration→degrade→GAP，实测暴露 Bug3）；**修后出真结论**（KDE vs Getis-Ord Gi* 原理/输出/平滑性对比表），`isGapCard:false`。三态 EXIT_GAP 路径逻辑保留（条件严格收紧，真失败仍出卡）。
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
+
+### 5.110 EMC ⑤③ popularity 热度消费：category 众数 + timestamp 时间分桶（07月16日）
+
+用户意图：⑤③ timestamp/boundary_id/category 三 role 早已登记但 aggregate 未消费（无热度分析路径）。用户择「消费现有 role·category 优先」（不加新 popularity role——避免与三个 dimension role 重叠混淆；category 优先，timestamp 次之）。
+
+**落地**（[spatial_analysis.py](core/spatial_analysis.py) 新 `_attach_popularity_attrs` 共享 helper，与 `_attach_4x5_attrs` 并列；aggregate_by_polygons + create_square_grid 各加一行调用）：
+- **category**：`category_top`（格/面内主导品类 mode；值域用户自定义非固定枚举，故只取众数不枚举 n_cat_*）+ `category_count`（品类多样性去重数）。
+- **timestamp**：`ts_count`（可解析时间戳点数）+ `ts_peak_hour`（最热小时 0-23，datetime 解析成功的众数 hour；不可解析则跳过不报错）。
+- 列名按 role 解析（复用 ⑤② alias：类别/类型/分类→category，时间/日期→timestamp）。**boundary_id 作面域分组键是另一聚合模式（非 sjoin），暂不做**（note）。产物自动进 zone 属性 + 前端 grounding（`_fieldSamples`），LLM/弹窗直接引用，前端无需改。
+
+**验证（承重 smoke）**：中文别名列（类别/时间）aggregate → category_top=购物 + category_count=3 + ts_count=5 + ts_peak_hour=8（08 时 3 次最热）；无 category/timestamp 列 → graceful 跳过零回归。**承重**：纯 additive（新 helper + 2 调用点），未碰 schema/矩阵骨架/既有 polarity/domain 路径/前端；规范数据零回归。commit 只不 push。
+
+**⑤ 收口**：⑤②（alias 解析）+ ⑤④-confidence（0.3 阈值）+ ⑤③（popularity 消费）全交付。**⑤④-`_missStats` 遥测暂缓**——其消费方（harness.js:354 注释提的 Flash 80% gate，决定 runTemplatePath 何时激活）尚未实现，先建空计数器是推测性基础设施，待 80% gate 设计时一并做更合理（当前渐进激活注释已留位）。
 
 ### 5.109 EMC ⑤②+⑤④ 字段 role 承重加固：aggregate 别名解析 + FIELD_INFER confidence 0.3 阈值（07月16日）
 

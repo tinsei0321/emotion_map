@@ -277,6 +277,8 @@ def aggregate_by_polygons(
 
     # domain/element 4×5 聚合 + DEMO 规则归因（与 create_square_grid 同源 helper）
     _attach_4x5_attrs(joined, grouped, agg_stats)
+    # category/timestamp 热度属性（⑤③，与 create_square_grid 同源 helper）
+    _attach_popularity_attrs(joined, grouped, agg_stats)
 
     # 合并回面域 GeoDataFrame
     result = polygons_gdf.copy()
@@ -521,6 +523,36 @@ def _attach_4x5_attrs(joined, grouped, stats):
         stats['suggestion'] = _attrs.apply(lambda _d: _d['suggestion'])
 
 
+def _attach_popularity_attrs(joined, grouped, stats):
+    """热度属性（⑤③）：category 众数 + timestamp 时间分桶，按 role 解析列名（中文别名友好）。
+    create_square_grid / aggregate_by_polygons 共用（DRY，与 _attach_4x5_attrs 并列）。in-place 写 stats。
+
+    - category_top：格/面内主导品类（mode，值域用户自定义非固定枚举，故只取众数不枚举 n_cat_*）；
+      category_count：品类多样性（去重数）。
+    - ts_count：带可解析时间戳的点数；ts_peak_hour：最热小时（0-23，datetime 解析成功的众数 hour）。
+      timestamp 不可解析为 datetime 则跳过（不报错）。
+    产物自动进 zone 属性 + 前端 grounding（_fieldSamples），LLM/弹窗可直接引用，无需前端改。
+    boundary_id 作面域分组键是另一聚合模式（非 sjoin），暂不做。"""
+    _cat_col = resolve_field_alias('category', joined.columns)
+    if _cat_col is not None:
+        joined[_cat_col] = joined[_cat_col].fillna('').astype(str)
+        stats['category_top'] = grouped[_cat_col].agg(
+            lambda x: (x[x.astype(str) != ''].mode().iloc[0] if not x[x.astype(str) != ''].mode().empty else ''))
+        stats['category_count'] = grouped[_cat_col].agg(
+            lambda x: int(x[x.astype(str) != ''].nunique())).astype(int)
+    _ts_col = resolve_field_alias('timestamp', joined.columns)
+    if _ts_col is not None:
+        _parsed = pd.to_datetime(joined[_ts_col], errors='coerce')
+        if _parsed.notna().any():
+            _tmp = pd.DataFrame({'ir': joined['index_right'], 'h': _parsed.dt.hour}).dropna(subset=['h'])
+            if len(_tmp):
+                _tmp['h'] = _tmp['h'].astype(int)
+                _by = _tmp.groupby('ir')['h']
+                stats['ts_count'] = _by.size().reindex(stats.index, fill_value=0).astype(int)
+                stats['ts_peak_hour'] = _by.agg(
+                    lambda x: int(x.mode().iloc[0]) if not x.mode().empty else -1).reindex(stats.index, fill_value=-1)
+
+
 # ═══════════════════════════════════════════════════════════
 # 固定方格网格（标准网格）
 # ═══════════════════════════════════════════════════════════
@@ -610,6 +642,8 @@ def create_square_grid(
 
     # domain/element 4×5 聚合 + DEMO 规则归因（共享 helper，与 aggregate_by_polygons 同源）
     _attach_4x5_attrs(joined, grouped, stats)
+    # category/timestamp 热度属性（⑤③，共享 helper）
+    _attach_popularity_attrs(joined, grouped, stats)
 
     # 合并统计回方格（inner：仅保留有点的格）→ 回 WGS84
     result = cells_gdf.merge(stats, left_index=True, right_index=True, how='inner')

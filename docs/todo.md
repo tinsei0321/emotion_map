@@ -7,6 +7,14 @@
 
 ## 📅 2026-07-16
 
+### ✅ EMC ⑤③ popularity 热度消费（revision-log 5.110，commit 待 push）
+
+用户择「消费现有 role·category 优先」（不加新 popularity role）。
+- [spatial_analysis.py](core/spatial_analysis.py) 新 `_attach_popularity_attrs` 共享 helper（与 `_attach_4x5_attrs` 并列），aggregate_by_polygons + create_square_grid 调用。
+- **category** → `category_top`(众数) + `category_count`(去重多样性)；**timestamp** → `ts_count` + `ts_peak_hour`(最热小时，datetime 解析)。复用 ⑤② alias（类别/时间 别名友好）。boundary_id 分组键暂不做（另一聚合模式）。产物自动进 zone 属性+grounding，前端无需改。
+- **验证**：承重 smoke——类别/时间别名列 aggregate 得 category_top=购物/count=3 + ts_count=5/peak_hour=8；无列 graceful 跳过零回归。承重：纯 additive，规范数据零回归。commit 只不 push。
+- **⑤ 收口**：⑤②+⑤④-conf+⑤③ 全交付。**⑤④-`_missStats` 暂缓**（消费方 Flash 80% gate 未实现，建空计数器=推测性基建，待 gate 设计时一并做）。
+
 ### ✅ EMC ⑤②+⑤④ 字段 role 承重加固（revision-log 5.109，commit 待 push）
 
 ⑤ A3 字段角色系统的两个承重缺口。
