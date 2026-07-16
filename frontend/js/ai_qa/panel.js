@@ -1,5 +1,5 @@
 // ═══ panel.js — AI 问答 UI（底部滑出 · agent loop · 历史持久化 · 思考深度开关 · 动态状态）═══
-import { orchestrate } from './harness.js';
+import { orchestrate, getTemplateStats } from './harness.js';
 import { buildContext, TOOLS, resetStepResults, resetCurrentResults, cleanupConsumedResults, getFig } from './tools.js';
 import { getLayers, selectLayer, getSelectedLayer } from '../state.js';
 import { getLastUsage, resetCallStats, getCallStats } from './api.js';
@@ -399,7 +399,9 @@ function stampDone(shell) {
   if (shell && shell.footerEl) {
     const secs = _curTrace && _curTrace.startedAt ? Math.max(1, Math.round((_curTrace.doneAt - _curTrace.startedAt) / 1000)) : 0;
     const cs = getCallStats();
-    _renderFooter(shell, `回答完毕 · 用时 ${secs}s · 用量 ${_fmtTokens(cs.total)} token / ${cs.calls} 次 · 情绪地图 v1.0 · ${formatTs(_curTrace && _curTrace.doneAt)}`, shell._finalMd || (_curTrace && _curTrace.final), _exitBadge(_curTrace));
+    const ts = getTemplateStats();   // ⑤④ Flash template 累积命中率（跨会话，驱动 80% gate）
+    const _tplMeta = ts.samples > 0 ? ` · Flash 模板 ${ts.hits}/${ts.samples}(${Math.round(ts.rate * 100)}%)` : '';
+    _renderFooter(shell, `回答完毕 · 用时 ${secs}s · 用量 ${_fmtTokens(cs.total)} token / ${cs.calls} 次${_tplMeta} · 情绪地图 v1.0 · ${formatTs(_curTrace && _curTrace.doneAt)}`, shell._finalMd || (_curTrace && _curTrace.final), _exitBadge(_curTrace));
   }
   updateReasonMeta(shell);
   renderSuggest(_curTrace);   // 推荐追问胶囊（答案完毕后）

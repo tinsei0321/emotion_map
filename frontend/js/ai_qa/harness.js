@@ -33,6 +33,41 @@ const PARAMS_TRUNC = 80;    // action params 摘要截断长度
 // verdict 经 episode 入 L3 → 喂活自成长闭环。运行时杀开关：浏览器 console 跑 localStorage.setItem('emcReviewOff','1') 即关。
 const REVIEW_ENABLED = (() => { try { return !localStorage.getItem('emcReviewOff'); } catch (e) { return true; } })();
 
+// ⑤④ Flash template 命中率遥测 + 80% gate（self-protection）。
+// diagnose 后记 template 命中(非 unknown)/未中(unknown)，落 localStorage 跨会话累积（clearChat 不重置）。
+// gate 语义（承重·零冷启动回归）：冷启动(samples<MIN)放行保当前 fast-path；成熟后命中率≥80% 放行；
+// <80%（Flash 经 ≥MIN 次验证系统性不可靠）退 while-loop（更稳健：query-first + 多轮 + 对账）。
+const _TPL_STATS_KEY = 'ai_qa_template_stats_v1';
+const _TPL_MIN_SAMPLES = 10;
+const _TPL_HIT_RATE_GATE = 0.8;
+
+function _loadTplStats() {
+  try { return JSON.parse(localStorage.getItem(_TPL_STATS_KEY) || '') || { hits: 0, misses: 0 }; }
+  catch (_) { return { hits: 0, misses: 0 }; }
+}
+function _saveTplStats(s) {
+  try { localStorage.setItem(_TPL_STATS_KEY, JSON.stringify(s)); } catch (_) { /* 隐私模式禁用 localStorage 静默 */ }
+}
+/** diagnose 成功后记 Flash template 命中/未中（'unknown'=miss）。degraded 不计（diagnose 自身失败≠Flash template 不可靠）。 */
+function _recordTplResult(template) {
+  const s = _loadTplStats();
+  if (template === 'unknown') s.misses += 1; else s.hits += 1;
+  _saveTplStats(s);
+}
+/** gate：冷启动放行（samples<MIN，保当前 fast-path 零回归）；成熟后命中率≥GATE 放行，<GATE（Flash 经验证不可靠）退 while-loop。 */
+function _tplHitRateReady() {
+  const s = _loadTplStats();
+  const n = s.hits + s.misses;
+  if (n < _TPL_MIN_SAMPLES) return true;
+  return s.hits / n >= _TPL_HIT_RATE_GATE;
+}
+/** 遥测读取（footer 显示累积命中率 + gate 状态）。 */
+export function getTemplateStats() {
+  const s = _loadTplStats();
+  const n = s.hits + s.misses;
+  return { hits: s.hits, misses: s.misses, samples: n, rate: n > 0 ? s.hits / n : 0, gateReady: _tplHitRateReady() };
+}
+
 /** 当前地图图层状态摘要（附入每轮 history，让 LLM 感知操作是否已生效、避免盲目重试）。 */
 function _mapState() {
   const ls = getLayers().filter((l) => l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length);
@@ -313,6 +348,7 @@ export async function orchestrate(ctx, hooks = {}) {
     ? diagnose.domain_lens.filter((k) => k && k !== 'general') : [];
   if (hooks.onDiagnose) hooks.onDiagnose(diagnose);
   if (!diagnose.degraded) {
+    _recordTplResult(diagnose.template);   // ⑤④ Flash template 命中率遥测（'unknown'=miss，驱动 80% gate）
     // 注入下游：卡摘要前插 ctx.context，所有后续 phase 都看到（导工具选型 + 结论颗粒度）
     ctx.context = formatDiagnoseSummary(diagnose) + '\n\n' + (ctx.context || '');
     // intent 分流（A 通用→短路直接答；B 纯操作→agent loop 走 geo 工具；C 情绪→原路径）
@@ -352,10 +388,11 @@ export async function orchestrate(ctx, hooks = {}) {
   }
 
   // P1 编排：single 技能走 runTemplatePath（0 agentStep，p^N→p²）；concept 已被上面 general 短路接走；multi/unknown 落 while-loop。
-  // 渐进激活：Flash 首次见 template 字段，未可靠输出前大多落 unknown→while-loop（即原行为，零回归）；命中率达标（Flash 80% gate）后 single 路径才主导。
+  // ⑤④ 80% gate（self-protection）：_tplHitRateReady 冷启动放行保零回归；Flash 经 ≥10 次验证命中率<80%（系统性不可靠）时
+  // 退 while-loop（更稳健：query-first + 多轮 + 对账），命中率≥80% 才主导 single 快路径。
   if (!ctx.resume && !diagnose.degraded && diagnose.template) {
     const _tdef = stages.SKILL_DEFS[diagnose.template];
-    if (_tdef && _tdef.category === 'single') return await runTemplatePath(ctx, hooks, diagnose);
+    if (_tdef && _tdef.category === 'single' && _tplHitRateReady()) return await runTemplatePath(ctx, hooks, diagnose);
   }
 
   // P0 降温：intent-aware 轮数上限（diagnose 后定）。B=6 多目标完整性，A/C=4 降概率链。

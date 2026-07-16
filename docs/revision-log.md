@@ -216,13 +216,13 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月16日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.110，约本节中段）**，最近三条：
+> 📍 **最新动态（07月16日）** · 本节按板块分组、组内倒序；最新工作在 **EMC 板块组（5.89–5.111，约本节中段）**，最近三条：
 >
-> - **5.110** EMC **⑤③ popularity 热度消费**：新 `_attach_popularity_attrs` 共享 helper，aggregate/square_grid 消费 category（category_top 众数 + category_count 多样性）+ timestamp（ts_count + ts_peak_hour 最热小时），复用 ⑤② alias（类别/时间 别名友好）。承重 smoke 过，⑤ 收口（②+④-conf+③）。
-> - **5.109** EMC **⑤②+⑤④ 字段 role 承重加固**：aggregate 4 孤岛接 `resolve_field_alias`（中文别名 情绪/领域/要素 走得通，polarity_index 不再静默零）+ FIELD_INFER confidence 0.3 阈值（`validate_llm_roles` choke point，<0.3 纯猜档 role 不承重）。承重 smoke 过，规范数据零回归。
-> - **5.108** EMC **④ industry_kb 按 domain_lens 动态注入**（harness 承重·深交付）：domain_lens 前端回传后端 + `industry_kb_text` 全量厚化 → 注入 agent/answer/revise/review 四 step；**diagnose 不动保 eval**。
+> - **5.111** EMC **⑤④ _missStats 遥测 + Flash 80% gate**：Flash template 命中率（'unknown'=miss）localStorage 跨会话累积 + footer 显示；80% gate（self-protection，冷启动放行零回归，成熟<80% 退 while-loop）接入 runTemplatePath 激活。ESM+gate 数学 smoke 过。**⑤ 全收口**。
+> - **5.110** EMC **⑤③ popularity 热度消费**：新 `_attach_popularity_attrs` 共享 helper，aggregate/square_grid 消费 category（category_top 众数 + category_count 多样性）+ timestamp（ts_count + ts_peak_hour 最热小时），复用 ⑤② alias。承重 smoke 过。
+> - **5.109** EMC **⑤②+⑤④ 字段 role 承重加固**：aggregate 4 孤岛接 `resolve_field_alias`（中文别名 情绪/领域/要素 走得通，polarity_index 不再静默零）+ FIELD_INFER confidence 0.3 阈值（`validate_llm_roles` choke point）。
 >
-> 本地领先 origin（5.105/106/107/108/109/110 共 6 commits 待手动 push）。⑤④-`_missStats` 暂缓（待 80% gate 消费方）。下会话：A4/A6 browser 补验 / Flash eval 复核②③ / ⑤④-_missStats+80% gate。
+> 本地领先 origin（5.105–5.111 共 7 commits 待手动 push）。⑤ 已全收口。下会话：browser 终验 ④⑤ 数据流（Flash eval 复核②③ + ⑤④ gate/命中率 + 中文别名 aggregate + ④ 权威术语）/ A4-A6 补验。
 
 ### 5.1 前端 · 核密度分析（KDE）弹窗（核心）
 
@@ -1155,6 +1155,19 @@ AI 问答基座稳（意图路由 + 工具链 $n + 产物 gate + 多会话 + 操
 - **验证（Playwright 真实 LLM）**：问"什么是核密度分析？和热点分析区别？"→ 修前出缺数据卡（走 narration→degrade→GAP，实测暴露 Bug3）；**修后出真结论**（KDE vs Getis-Ord Gi* 原理/输出/平滑性对比表），`isGapCard:false`。三态 EXIT_GAP 路径逻辑保留（条件严格收紧，真失败仍出卡）。
 - **代价/教训**：本次验证 `localStorage.removeItem('ai_qa_history_v1')` 清了用户本地聊天史做隔离测试——**用户的对话历史丢了**（本地可重建）。以后测试用"append + 只查末条"而非清空。
 - **承重**：未碰（仅 harness.js 加 2 标志 + 收紧 gate + 叙述原文入史；diagnose prompt 加路由；不动三态框架/视野-数据-结论同步/4×5/渲染管线）。memory 更新 `emc-tri-state-exit-contract`（answered/narratedAnswer 双标志 + 概念追问→general + 审计结论）。
+
+### 5.111 EMC ⑤④ _missStats 遥测 + Flash 80% gate（self-protection·零冷启动回归）（07月16日）
+
+用户意图：⑤④ 余下部分（confidence 0.3 阈值已在 5.109 落）。harness.js:354 注释提的「Flash 80% gate」原只有注释、**无计数器/逻辑（greenfield）**。补：① _missStats 遥测 Flash template 命中率（'unknown'=miss），localStorage 跨会话累积；② 80% gate 用命中率决定 runTemplatePath（single 快路径）是否激活。
+
+**落地**（[harness.js](frontend/js/ai_qa/harness.js) + [panel.js](frontend/js/ai_qa/panel.js)）：
+- **遥测**：新 localStorage key `ai_qa_template_stats_v1={hits,misses}`（clearChat 不重置，跨会话累积）。diagnose 成功后（!degraded）`_recordTplResult(template)`：'unknown'→misses++，否则 hits++。`getTemplateStats()` export 返 {hits,misses,samples,rate,gateReady}。范式照 [api.js](frontend/js/ai_qa/api.js) getCallStats（模块级计数器 + getter，不动 trace 结构/持久化 schema）。
+- **80% gate（self-protection·承重决策）**：`_tplHitRateReady()` = 冷启动(samples<10)放行保当前 fast-path **零回归**；成熟后命中率≥80% 放行，<80%（Flash 经 ≥10 次验证系统性不可靠）退 while-loop（更稳健：query-first+多轮+对账）。harness.js 激活条件加 `&& _tplHitRateReady()`。**比原注释（harness.js:355「冷启动→while-loop」）更安全**——不改变冷启动可观察行为，gate 仅在 Flash 被证不可靠时触发。若要原注释语义（冷启动即 while-loop），翻 `_tplHitRateReady` 冷启动子句一行即可。
+- **显示**：[panel.js](frontend/js/ai_qa/panel.js) stampDone footer 追加「Flash 模板 X/Y(Z%)」累积命中率（footer 已是 trace 派生+计数器混排区，语义自洽）。
+
+**验证（承重 smoke·省 LLM）**：ESM `.mjs` 过 `node --check`（harness+panel）；gate 阈值数学 7 case 全对（冷启动 3/0 放行 / 8/2=80% 放行 / 7/3=70% 退 while-loop / 0/10 退 / 9/10=90% 放 / 80/100=80% 放 / 79/100=79% 退）。**承重**：仅 harness 加遥测+gate+panel 显示，未碰 trace 结构/`_curTrace` 字段/history 持久化/episode 上报/既有 runTemplatePath 3 出口；冷启动零回归。commit 只不 push。
+**待 browser 终验（用户）**：① diagnose 后 localStorage `ai_qa_template_stats_v1` 累积；② footer 显命中率；③ 冷启动 runTemplatePath 仍激活（零回归）；④（可选）Flash 系统性 unknown 场景验 gate 退 while-loop。
+**范围 note**：runTemplatePath 执行 skip（missing-slot/tool-failed）+ 低置信 field role 为次要遥测，未纳入（gate 仅需 template 命中率）；后续可加 execSkips/fieldLowConf 分桶。**⑤ 全收口**（②alias+④-conf+③popularity+④-_missStats/gate）。
 
 ### 5.110 EMC ⑤③ popularity 热度消费：category 众数 + timestamp 时间分桶（07月16日）
 

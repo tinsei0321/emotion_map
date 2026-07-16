@@ -7,6 +7,15 @@
 
 ## 📅 2026-07-16
 
+### ✅ EMC ⑤④ _missStats 遥测 + Flash 80% gate（revision-log 5.111，commit 待 push）
+
+harness.js:354 注释提的「Flash 80% gate」原只有注释无逻辑（greenfield），补齐。
+- **遥测**（[harness.js](frontend/js/ai_qa/harness.js)）：localStorage key `ai_qa_template_stats_v1={hits,misses}`（clearChat 不重置，跨会话累积）；diagnose 成功后 `_recordTplResult`（'unknown'→miss）；`getTemplateStats()` export。范式照 api.js getCallStats。
+- **80% gate（self-protection）**：`_tplHitRateReady()` = 冷启动(samples<10)放行**保零回归**；成熟后 ≥80% 放行、<80%（Flash 经验证不可靠）退 while-loop。激活条件加 `&& _tplHitRateReady()`。比原注释「冷启动→while-loop」更安全（不改冷启动行为）；要原语义翻冷启动子句即可。
+- **显示**（[panel.js](frontend/js/ai_qa/panel.js)）：footer 追加「Flash 模板 X/Y(Z%)」累积命中率。
+- **验证**：ESM .mjs 过 node --check（harness+panel）；gate 阈值数学 7 case 全对。承重：未碰 trace 结构/持久化 schema/既有 runTemplatePath 出口；冷启动零回归。commit 只不 push。
+- **⑤ 全收口**（②alias+④-conf+③popularity+④-_missStats/gate）。**待 browser 终验**：localStorage 累积 / footer 显示 / 冷启动零回归 / gate 退 while-loop。次要遥测（execSkips/lowConfField）未纳入（gate 仅需命中率）。
+
 ### ✅ EMC ⑤③ popularity 热度消费（revision-log 5.110，commit 待 push）
 
 用户择「消费现有 role·category 优先」（不加新 popularity role）。
