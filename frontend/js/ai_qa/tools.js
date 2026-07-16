@@ -677,6 +677,36 @@ export const TOOLS = {
     } catch (e) { return _ERR('zonal_stats', e); }
   },
 
+  /** 区域对比（≥2 区并排）：复用 zonal_stats 逐区聚合（不造 geo 端点，守委托 Toolbox 红线）。
+   *  boundaries=数组 或 "|,，、" 分隔字符串；上限 4 区防滥用。后端 zonal_stats 已 resolve_field_alias，
+   *  compare 继承规范名（polarity_index/score_mean 等），不重复 alias 逻辑（守 emc-aggregate-column-alias-silent-zero）。 */
+  async compare_regions(params = {}) {
+    let bs = params.boundaries != null ? params.boundaries : params.boundary;
+    if (typeof bs === 'string') bs = bs.split(/[|,，、]/).map((s) => s.trim()).filter(Boolean);
+    if (!Array.isArray(bs) || bs.length < 2) return { observation: '[ERR] compare_regions 需 boundaries（≥2 个 preset_id，数组或 "|," 分隔）' };
+    const _layer = resolvePointLayer(params);
+    if (!_layer) return _ERR_NO_VISIBLE_PT();
+    const pf = normPreFilter(params.pre_filter); if (pf) params.pre_filter = pf;
+    const results = [];
+    for (const b of bs.slice(0, 4)) {
+      const body = { layer: _layer, boundary: b };
+      if (pf) body.pre_filter = pf;
+      try {
+        const r = await geoFetch('zonal_stats', body);
+        const rows = r.rows || [];
+        results.push({ boundary: b, row: rows[0] || null, n: rows.length, sort_by: r.sort_by });
+      } catch (e) { results.push({ boundary: b, row: null, err: String((e && e.message) || e) }); }
+    }
+    const lines = results.map((x) => {
+      if (x.err) return `- ${x.boundary}：[ERR] ${x.err.slice(0, 80)}`;
+      if (!x.row) return `- ${x.boundary}：无结果（preset_id 无效或该区无点）`;
+      return `- ${x.boundary}：${_fmtRow(x.row)}`;
+    });
+    const _ok = results.filter((x) => x.row).length;
+    if (_ok < 2) return { observation: `区域对比仅 ${_ok}/${results.length} 区有结果（${results.map((x) => x.boundary).join('、')}）——确认 boundaries 为有效 preset_id（行政区/单元）后重试\n` + lines.join('\n') };
+    return { observation: `区域对比（${results.length} 区并排，按极性/归因）：\n` + lines.join('\n'), data: { comparison: results } };
+  },
+
   /** Top N 排序（最差/最好/按 domain·element 占比）。 */
   async rank(params = {}) {
     let by = params.by || 'worst';

@@ -56,6 +56,28 @@ def test_select_C_scale_mapping():
     assert select_template('C', {}) == 'zonal'   # scale 缺省→zonal
 
 
+def test_select_C_compare():
+    """C 赛道：decision_type=对比 或问句含 对比/比较/VS → compare（优先级高于 zonal/rank）。"""
+    assert select_template('C', {'decision_type': '对比', 'scale': 'macro'}) == 'compare'
+    assert select_template('C', {'decision_type': '对比', 'scale': 'micro'}) == 'compare'  # 优先于 rank
+    assert select_template('C', {'scale': 'macro'}, '对比西陵区和伍家岗区') == 'compare'
+    assert select_template('C', {'scale': 'meso'}, '比较两个街道的情绪') == 'compare'
+    assert select_template('C', {}, '西陵区 VS 伍家岗区') == 'compare'
+    # 无对比语义仍走 scale（回归保护）
+    assert select_template('C', {'scale': 'macro'}, '这几个街道的归因') == 'zonal'
+
+
+def test_compare_skill_in_registry():
+    """compare 技能登记：category=single + required_slots=boundaries + tool=compare_regions。"""
+    compare = next((s for s in TEMPLATE_REGISTRY if s['skill'] == 'compare'), None)
+    assert compare is not None, 'compare 未登记进 TEMPLATE_REGISTRY'
+    assert compare['category'] == 'single'
+    assert compare['tool'] == 'compare_regions'
+    assert 'boundaries' in compare['required_slots']
+    # diagnose prompt 应含 compare 技能目录条目（template_registry_text 自动渲染）
+    assert 'compare' in build_diagnose_prompt('')
+
+
 def test_select_unknown_track():
     assert select_template('X', {}) == 'unknown'
 

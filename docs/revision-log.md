@@ -216,13 +216,29 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月16日）** · 本节按板块分组、组内倒序；最新工作 = **5.113 工作策略·上下文连贯园丁层**（本次）+ EMC 板块组（5.89–5.112，约本节中段）。最近：
+> 📍 **最新动态（07月16日）** · 本节按板块分组、组内倒序；最新工作 = **5.114 EMC·compare 区域对比技能 + _driftRe 拓宽**（本次）+ 5.113 工作策略 + EMC 板块组（5.89–5.112）。最近：
 >
+> - **5.114 EMC · 区域对比 compare 技能 + _driftRe 拓宽**：治欢迎胶囊"对比西陵伍家岗"老毛病（代码块/回答一半/方法不做）——新增 `compare` 单技能（复用 zonal_stats 逐区聚合，不造 geo 端点，守红线）+ select_template C 路由（decision_type=对比 优先）+ 拓宽 `_driftRe`（任意 ``` 围栏→revise 重写 prose，治代码块泄漏）。详见下方 5.114。
 > - **5.113 工作策略 · 上下文连贯园丁层**：诊断"项目已有 7 机制=上下文树（对齐 OpenAI harness），缺的是园丁层"→ 补 `/garden` 除草 + session-start 阈值提醒 + PreCompact 快照 hook + 漂移自检/单写者纪律（入全局 CLAUDE.md）；归档僵尸记忆树 + 刷新过期 manifest。详见下方 5.113。
 > - **5.112** EMC **⑤② 遗留 拆 confidence role + score 别名化**：修 design smell（l1_confidence 原归 score role 致 square_grid 别名化抢同列）——拆 confidence 独立 role（36 roles）+ import.js scoreKey/confKey 分离 + aggregate/hex/square_grid 数值 mean 全 role 解析（得分/置信度/情绪强度 别名）。square_grid 去冲突 + 规范名零回归。
 > - **5.111** EMC **⑤④ _missStats 遥测 + Flash 80% gate**：Flash template 命中率 localStorage 跨会话累积 + footer 显示；80% gate（self-protection，冷启动放行零回归，成熟<80% 退 while-loop）。**⑤ 全收口**。
 >
-> 阶段一（5.113）已 commit 待 push；EMC 5.105–5.112 共 8 commits 亦待 push。下会话：**阶段二 EMC compare 技能根治**（欢迎胶囊"对比"老毛病）/ browser 终验 ④⑤ / Flash eval 复核②③。
+> 阶段一（5.113）+ 阶段二（5.114）均 commit 待 push；EMC 5.105–5.112 此前已 push。下会话：browser 终验 compare 胶囊（C6，eval 测不出）+ ④⑤ 数据流。
+
+### 5.114 EMC · 区域对比 compare 技能 + _driftRe 拓宽（07-16，治老毛病）
+
+**用户意图**：实测 EMC 略复杂问题（欢迎胶囊"对比西陵区和伍家岗区的情绪与归因"）仍犯三老毛病——结论给代码块 / 回答一半 / 说方法不做。问：老毛病彻底解决了吗？胶囊是否该优化？选「彻底：加 compare 技能」。
+**根因**：四态出口+parseAgentStep+onDegraded+_driftRe 只覆盖常见降级路径，复杂问题有 3 缝 + 1 能力缺位——①`_driftRe`（harness.js:516）只拦 action-JSON 代码块，非 action 代码块泄漏；②F3 完整性门仅 gis_operation，emotion_analysis 无门致半截；③无 compare 技能致叙述拒绝；④TEMPLATE_REGISTRY 15 技能无 compare（"对比"仅 decision_type/voice），胶囊自挖坑。
+**落地**：
+- **compare 技能三件套**（守委托 Toolbox，复用 zonal_stats 不造 geo 端点）：
+  - [paradigm.py](ai_qa/paradigm.py)：TEMPLATE_REGISTRY 加 `compare`（single/tool=compare_regions/required=boundaries）；`select_template` C 分支 `decision_type=='对比'`（或问句含 对比/比较/VS）→ compare（优先于 scale 的 rank/zonal）；决策树文本 + `_SINGLE_SKILL_IDS` 注释同步（注入 diagnose）。
+  - [tools.js](frontend/js/ai_qa/tools.js)：新 `compare_regions`——入参 boundaries（数组或"|,"分隔，上限 4 区），逐区 `geoFetch('zonal_stats')`（后端已 resolve_field_alias，compare 继承规范名），产出并排对比 observation + `data.comparison`；<2 区有结果→引导有效 preset_id。
+  - [stages.js](frontend/js/ai_qa/stages.js)：SKILL_DEFS 加 compare 镜像；`normalizeParams` 加 `regions/areas→boundaries`（不动 `boundary`，zonal/clip 等单数用）。
+- **_driftRe 拓宽**（[harness.js:516](frontend/js/ai_qa/harness.js)）：草稿含任意 ``` 围栏 → _reviseOnce 重写 prose（EMC 结论设计上无代码块，图表走内联 {chart}/{fig}）；复用既有 revise-失败→固定卡 通道，不静默 strip。
+- **欢迎胶囊**：compare 就位后"区域对比"变合法 demo，无需改文案。
+**验证**：pytest 34 pass（+2 compare 路由测试：decision_type/问句关键词→compare、registry 登记）；三 JS 文件 ESM .mjs 语法绿；paradigm py_compile 过；**Flash eval 16/19=84% PASS**（≥80% gate，3 MISS 全是 C6 记录的"里-class"边界模糊老案例 rank/zonal·clip/overlay，与 compare 无关——compare 问句不在 19 例、且这些走 B-track/scale 不经 compare 路由）。
+**承重**：diagnose prompt 因技能目录+决策树加 compare 而变→已重跑 eval 验 ≥80%；未碰 resolve_field_alias 站点/canonical 输出名/四态出口/visible-Layers-only（compare 复用 zonal_stats 继承其 alias 解析）。**待 browser 终验**（C6：compare 胶囊→并排对比不代码块/不半截/不拒；_driftRe→非 action 代码块重写）。
+**文件**：[paradigm.py](ai_qa/paradigm.py)、[tools.js](frontend/js/ai_qa/tools.js)、[stages.js](frontend/js/ai_qa/stages.js)、[harness.js](frontend/js/ai_qa/harness.js)、[test_a3_paradigm.py](tests/test_a3_paradigm.py)。
 
 ### 5.113 工作策略 · 上下文连贯园丁层（07-16，process/method）
 

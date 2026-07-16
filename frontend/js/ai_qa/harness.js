@@ -513,13 +513,19 @@ export async function orchestrate(ctx, hooks = {}) {
     return { ok: false, degraded: true, rounds: round };
   }
   // P0a finalStep 防漂移（宽容）：命中先 _reviseOnce 让 Flash 用 markdown 重写（体验>正确性，不直接拦没答案）；revise 失败才退固定卡
+  // 拓宽（治"代码块泄漏"老毛病）：不只拦 action-JSON——任意 ``` 围栏都判漂移（EMC 结论设计上无代码块，
+  //   图表走内联 {chart}/{fig} 指令，勿围栏），走 _reviseOnce 重写 prose。
   const _driftRe = /^\s*(?:```(?:json)?\s*)?\{[\s\S]*"(?:thought|action)"[\s\S]*\}\s*```?\s*$/i;
-  if (_driftRe.test(draft.trim())) {
-    const _revised = await _reviseOnce(ctx, hooks, draft, '诚实格式：上一版最终回答输出了工具调用 JSON（含 thought/action 字段）而非可读 markdown 结论。请基于已完成的探索，用**可读 markdown** 重写结论（禁输出 JSON；若任务未完成改述"未生成/未产出"）。保留已真实完成的结论与数据。', toolHistoryText);
-    if (_revised && _revised.trim() && !_driftRe.test(_revised.trim())) {
-      draft = _revised;   // revise 成功且不再漂移 → 采用，继续走对账
+  const _hasFence = /```/.test(draft);
+  if (_driftRe.test(draft.trim()) || _hasFence) {
+    const _hint = _hasFence && !_driftRe.test(draft.trim())
+      ? '诚实格式：上一版最终回答输出了代码块（``` 围栏）而非可读 markdown 结论。请基于已完成的探索，用**可读 markdown** 重写结论（禁输出代码块/JSON；图表用内联 {chart:...}/{fig:...} 指令，勿用围栏；若任务未完成改述"未生成/未产出"）。保留已真实完成的结论与数据。'
+      : '诚实格式：上一版最终回答输出了工具调用 JSON（含 thought/action 字段）而非可读 markdown 结论。请基于已完成的探索，用**可读 markdown** 重写结论（禁输出 JSON；若任务未完成改述"未生成/未产出"）。保留已真实完成的结论与数据。';
+    const _revised = await _reviseOnce(ctx, hooks, draft, _hint, toolHistoryText);
+    if (_revised && _revised.trim() && !_driftRe.test(_revised.trim()) && !/```/.test(_revised)) {
+      draft = _revised;   // revise 成功且无围栏无 action-JSON → 采用，继续走对账
     } else {
-      const _driftText = '## 未能生成可读结论\n\n模型在最终回答阶段输出了工具调用指令（JSON）而非可读结论，已拦截未显示。\n\n**建议**：换一种问法或缩小范围（指定某区、某类用地、某时点）后重试。';
+      const _driftText = '## 未能生成可读结论\n\n模型在最终回答阶段输出了代码块/工具调用指令而非可读结论，已拦截未显示。\n\n**建议**：换一种问法或缩小范围（指定某区、某类用地、某时点）后重试。';
       if (hooks.onFinalDone) hooks.onFinalDone(_driftText);
       if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: 'finalStep 格式漂移·拦截', skipped: 'drift' });
       return { ok: false, degraded: true, rounds: round, final: _driftText, diagnose, exit: 'drift' };

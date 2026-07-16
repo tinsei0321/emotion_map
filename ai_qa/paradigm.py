@@ -303,6 +303,11 @@ TEMPLATE_REGISTRY = [
      'tool': 'zonal_stats', 'required_slots': ['boundary'],
      'optional_defaults': {'agg_cols': ['score']},
      'planning_common': 'boundary=preset_id（街道/社区/更新单元）；点层走可见层选源（不硬默认）；C 赛道情绪主干'},
+    {'skill': 'compare', 'name': '区域对比', 'category': 'single',
+     'voice': '我并排对比 ≥2 个区域（区/街道/单元）的情绪与归因，给差异方向（谁更消极/差在哪）', 'triggers': '对比/比较/VS/哪个更/谁更/两地/A与B',
+     'tool': 'compare_regions', 'required_slots': ['boundaries'],
+     'optional_defaults': {'agg_cols': ['score', 'polarity_index']},
+     'planning_common': 'boundaries=≥2 个 preset_id（行政区/街道/单元，数组或 | ，分隔）；复用 zonal_stats 逐区聚合（不造 geo 端点，守委托 Toolbox 红线）；出口=并排对比+差异叙述。C 赛道对比主干——decision_type=对比 时优先级高于单区 zonal/rank'},
     {'skill': 'extract_feature', 'name': '要素抽取', 'category': 'single',
      'voice': '我从面边界按属性抽单要素为独立面（裁出某区/某单元/某类用地）', 'triggers': '抽某/裁出某/单独裁出/提取某',
      'tool': 'extract_feature', 'required_slots': ['layer'],
@@ -412,7 +417,7 @@ DATA_STRATEGY = {
 # 汲取 GeoLLM-Engine intent={q,工具序列,...} 思路：track+scale 定义「期望 template（隐含工具序列）」作基准。
 # Python-only；JS normalizeCard 强制执行有意延后（涉承重，另开 plan）。
 _SINGLE_SKILL_IDS = {s['skill'] for s in TEMPLATE_REGISTRY if s.get('category') == 'single'}
-# = {density, rank, buffer, clip, overlay, zonal}（B1 加技能后自动扩）
+# = {density, rank, buffer, clip, overlay, zonal, extract_feature, area_stats, merge, nearest, hotspot, filter_attr, compare}（加 single 技能后自动扩）
 
 
 def select_template(track, card=None, question=''):
@@ -420,13 +425,14 @@ def select_template(track, card=None, question=''):
 
     track ∈ {'A','B','C'}（A 通用/B 纯GIS操作/C 情绪分析）；card = diagnose 卡字段
     （scale/domain_lens/decision_type/outlet/...）；question = 可选原始问句（B 赛道关键词匹配用，card 不含问句）。
-    返 template id（与 TEMPLATE_REGISTRY 对齐：concept/density/rank/buffer/clip/overlay/zonal/multi/unknown）。
+    返 template id（与 TEMPLATE_REGISTRY 对齐：concept/density/rank/buffer/clip/overlay/zonal/compare/multi/unknown）。
 
     判定：
     - A → concept
     - B → 按 B_TRACK_PARADIGM（顺序即优先级）关键词匹配 question → 命中原型 template；
           未登记技能→ multi；识别不到→multi（B_TRACK 9 原型均已登记 single）
-    - C → scale=micro→rank（落点排序）；macro/meso→zonal（单元归因）
+    - C → decision_type=对比（或问句含 对比/比较/VS）→ compare（区域对比，优先级最高）；
+          否则 scale=micro→rank（落点排序）；macro/meso→zonal（单元归因）
     """
     card = card or {}
     if track == 'A':
@@ -439,6 +445,10 @@ def select_template(track, card=None, question=''):
                 return tpl if tpl in _SINGLE_SKILL_IDS else 'multi'   # 未建技能→降级 multi
         return 'multi'   # B 操作识别不到具体原型→多步兜底
     if track == 'C':
+        # 对比优先：decision_type=对比 或问句显含对比语义 → compare（≥2 区域并排）
+        _q = str(question or card.get('question') or '')
+        if str(card.get('decision_type', '')) == '对比' or any(k in _q for k in ('对比', '比较', 'VS', 'vs')):
+            return 'compare'
         scale = str(card.get('scale', '')).lower()
         if scale == 'micro':
             return 'rank'
@@ -454,7 +464,8 @@ def select_template_text() -> str:
         '- track=B（纯 GIS 操作）：按问句关键词匹配【B 赛道操作范式树】（顺序即优先级，先具体后泛）'
         '→ 命中原型的 template（B_TRACK 9 原型均已登记 single 技能：buffer/nearest/density/hotspot/overlay/merge/clip/extract_feature/filter_attr）；'
         '识别不到任何原型、或真复合≥2 动作→multi。\n'
-        '- track=C（情绪分析）：scale=macro/meso→zonal（行政/规划单元归因）；'
+        '- track=C（情绪分析）：decision_type=对比（或问句含 对比/比较/VS，如"对比A区与B区"）→compare（区域对比，并排 ≥2 区）；'
+        '否则 scale=macro/meso→zonal（行政/规划单元归因）；'
         'scale=micro→rank（落点排序）；真复合归因（多目标）→multi。\n'
         '**单一空间关系就是 single，禁选 multi/unknown**（仅真复合≥2 动作才 multi）。'
         '结论颗粒度须匹配城市体检层级（macro=城区/meso=街区·小区/micro=住房·POI）。'

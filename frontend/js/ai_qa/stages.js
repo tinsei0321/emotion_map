@@ -15,6 +15,7 @@ const _PARAM_ALIAS = {
   // P1 扩（实测漂移别名；保守映射，避跨工具冲突——where/filter 不映射：extract_feature 用 where、其余用 pre_filter）
   point: 'center', center_point: 'center',
   zone: 'boundary', region: 'boundary',
+  regions: 'boundaries', areas: 'boundaries',
   sort: 'by', sort_by: 'by', criteria: 'by',
   target_layer: 'target', target_poi: 'target',
   mode: 'how',
@@ -41,6 +42,7 @@ export const SKILL_DEFS = {
   clip:     { tool: 'clip',        category: 'single',   required_slots: ['range'],               optional_defaults: {} },
   overlay:  { tool: 'overlay',     category: 'single',   required_slots: ['layer_a', 'layer_b'],  optional_defaults: { how: 'intersection' } },
   zonal:           { tool: 'zonal_stats',     category: 'single', required_slots: ['boundary'],          optional_defaults: { agg_cols: ['score'] } },
+  compare:         { tool: 'compare_regions', category: 'single', required_slots: ['boundaries'],        optional_defaults: {} },
   extract_feature: { tool: 'extract_feature', category: 'single', required_slots: ['layer'],             optional_defaults: {} },
   area_stats:      { tool: 'area_stats',      category: 'single', required_slots: ['boundary'],          optional_defaults: {} },
   merge:           { tool: 'merge',           category: 'single', required_slots: ['boundary'],          optional_defaults: {} },

@@ -7,6 +7,18 @@
 
 ## 📅 2026-07-16
 
+### ✅ EMC·区域对比 compare 技能 + _driftRe 拓宽（revision-log 5.114，commit 待 push）
+
+实测欢迎胶囊"对比西陵伍家岗"犯三老毛病（代码块/回答一半/方法不做），选「彻底：加 compare 技能」。
+- **compare 三件套**（复用 zonal_stats 不造端点，守红线）：
+  - [paradigm.py](ai_qa/paradigm.py)：TEMPLATE_REGISTRY 加 compare（single/compare_regions/boundaries）；select_template C 分支 decision_type=对比→compare（优先于 rank/zonal）；决策树文本+_SINGLE_SKILL_IDS 同步。
+  - [tools.js](frontend/js/ai_qa/tools.js)：`compare_regions`——boundaries（数组/分隔串，≤4 区）逐区 geoFetch('zonal_stats')，并排 observation+data.comparison；<2 区→引导 preset_id。
+  - [stages.js](frontend/js/ai_qa/stages.js)：SKILL_DEFS 加 compare 镜像；normalizeParams 加 regions/areas→boundaries。
+- **_driftRe 拓宽**（[harness.js:516](frontend/js/ai_qa/harness.js)）：草稿任意 ``` 围栏→_reviseOnce 重写 prose（治代码块泄漏，图表走内联 {chart}/{fig}）。
+- **胶囊**：compare 就位后"区域对比"合法，不改文案。
+- **验证**：pytest 34 pass（+2 compare 路由测试）；三 JS ESM .mjs 绿；**Flash eval 16/19=84% PASS**（3 MISS 全是 C6"里-class"边界老案例，与 compare 无关）。承重：diagnose 因技能目录变已重跑 eval≥80%；未碰 alias 站点/canonical 名/四态/visible-only。commit 只不 push。
+- **待 browser 终验（C6，你肉眼）**：compare 胶囊→并排对比（不代码块/不半截/不拒）；_driftRe→非 action 代码块重写。
+
 ### ✅ 工作策略·上下文连贯园丁层（revision-log 5.113，commit 待 push）
 
 用户要"先做工作策略优化（process/method）"，参考 OpenAI《Harness Engineering》。诊断：已有 7 机制=上下文树（对齐"地图非说明书"），缺园丁层。
