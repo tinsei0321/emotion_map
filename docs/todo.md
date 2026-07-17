@@ -7,6 +7,16 @@
 
 ## 📅 2026-07-17
 
+### ✅ A1+Sim 展示闭环（revision-log 5.121，commit 待 push · **用户手动 push**）
+
+①号后续——打通"前端 Import ermawu_l3l4 → 聚合 → deep_read_attribution 跑在富归因数据上"闭环。Sim 数据带 curated L4 种子，但旧 deep_read_attribution 只发 sample_texts+rule_suggestion（种子没用）。**用户指示：不验证（手动），push 用户手动。**
+- **tools.js** `deep_read_attribution`：语义过滤簇点时**并行计数** policy_seed/project_seed/aspect_primary（普通 L2 无则空→退原行为），top 2/2/3 作 hints 发端点；observation 显「簇 aspect」。
+- **aiqa_routes.py** `DeepAttributionIn`：加 policy_seed_hint/project_seed_hint/aspect_hint 三可选字段，透传 prompt。
+- **prompts.py** `build_deep_attribution_prompt`：注入「簇预提取种子（**优先采用**）」为权威锚——LLM 用数据 curated 种子而非凭空联想。
+- **链路**：Sim L4 种子 → 工具收集 → 端点 → prompt 权威锚 → deep_attribution 落到具体政策/项目（防止大拆大建/历史街区保护更新/业态多元化/回迁）。
+- **承重**：additive（普通 L2 无种子→hints 空→退 5.119 行为）；不碰 aggregate/diagnose/规则底。syntax sanity 过（ESM 绿 + hint 注入）。commit 只不 push（用户手动）。
+- **下步**：browser 验证全链路（用户手动：Import ermawu_l3l4 → 聚合 → deep_read_attribution 看政策/项目落地）。
+
 ### ✅ Phase Sim 大南门·二马路 L3+L4 数据生成器（revision-log 5.120，commit 待 push · **用户手动 push**）
 
 EMC 三阶段 plan Phase Sim——为 A1 L4 归因提供文化/历史街区富归因展示输入（策略异于 L1/L2）。**用户指示：本次起不验证（手动），push 用户手动。**

@@ -674,22 +674,31 @@ export const TOOLS = {
     const polIdx = Number(p.polarity_index || 0);
     const polarity = polIdx > 0.05 ? 'positive' : (polIdx < -0.05 ? 'negative' : 'neutral');
     const rule_suggestion = [p.issue_label, p.attribution, p.suggestion].filter(Boolean).join('；');
-    // sample_texts：活动点层按 domain+element 语义过滤取 ≤8 条（MVP 语义代理；空间过滤待 refinement）
+    // sample_texts + L4 种子：活动点层按 domain+element 语义过滤取 ≤8 条（MVP 语义代理；空间过滤待 refinement）
+    // 同时计数 policy_seed/project_seed/aspect_primary（Sim ermawu_l3l4 富归因数据携带；普通 L2 无则空）
     const ptLayer = getLayers().find((l) => l.kind === 'point' && l.fc && l.visible !== false);
     const sample_texts = [];
+    const _policy = {}, _project = {}, _aspect = {};
     if (ptLayer && (domain || element)) {
       for (const ft of (ptLayer.fc.features || [])) {
         const pp = ft.properties || {};
         if ((!domain || pp.domain === domain) && (!element || pp.element === element)) {
           if (pp.text) sample_texts.push(String(pp.text).slice(0, 120));
+          if (pp.policy_seed) { const k = String(pp.policy_seed); _policy[k] = (_policy[k] || 0) + 1; }
+          if (pp.project_seed) { const k = String(pp.project_seed); _project[k] = (_project[k] || 0) + 1; }
+          if (pp.aspect_primary) { const k = String(pp.aspect_primary); _aspect[k] = (_aspect[k] || 0) + 1; }
         }
         if (sample_texts.length >= 8) break;
       }
     }
+    const _top = (d, n) => Object.entries(d).sort((a, b) => b[1] - a[1]).slice(0, n).map(([k]) => k);
+    const policy_seed_hint = _top(_policy, 2).join('；');
+    const project_seed_hint = _top(_project, 2).join('；');
+    const aspect_hint = _top(_aspect, 3).join('、');
     try {
       const r = await fetch('/api/v1/aiqa/deep_attribution', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain, element, polarity, zone_name: name, sample_texts, rule_suggestion }),
+        body: JSON.stringify({ domain, element, polarity, zone_name: name, sample_texts, rule_suggestion, policy_seed_hint, project_seed_hint, aspect_hint }),
       });
       const j = r.ok ? await r.json() : null;
       if (!j) return { observation: `[ERR] deep_attribution 调用失败: ${r.status}` };
@@ -697,6 +706,7 @@ export const TOOLS = {
       if (j.policy_link) parts.push(`政策锚：${j.policy_link}`);
       if (j.project_link) parts.push(`落点项目：${j.project_link}`);
       if (j.blind_spot) parts.push(`官方盲区：${j.blind_spot}`);
+      if (aspect_hint) parts.push(`簇 aspect：${aspect_hint}`);   // Sim 数据预提取的 aspect 分布
       parts.push(`置信度=${Number(j.confidence || 0).toFixed(2)}${j.degraded ? '（回退规则底·' + String(j.degraded_reason || '').slice(0, 40) + '）' : '（LLM 深化）'}`);
       return { observation: parts.join('\n'), data: { deep_attribution: j } };
     } catch (e) { return { observation: `[ERR] deep_attribution 异常: ${(e && e.message) || e}` }; }

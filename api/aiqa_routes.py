@@ -121,6 +121,10 @@ class DeepAttributionIn(BaseModel):
     zone_name: str = ''        # 簇/区域名（如"二马路历史街区"）
     sample_texts: List[str] = []   # 簇内代表性评论（≤8 条）
     rule_suggestion: str = ''  # 规则底归因 suggestion（_attach_4x5_attrs 产出）
+    # L4 种子 hints（Sim ermawu_l3l4 富归因数据预提取；普通 L2 无则空）
+    policy_seed_hint: str = ''   # 簇点 policy_seed top（权威锚，LLM 优先用）
+    project_seed_hint: str = ''  # 簇点 project_seed top
+    aspect_hint: str = ''        # 簇点 aspect_primary top（ABSA 维度）
 
 
 def _deep_attribution_fallback(body: DeepAttributionIn, reason: str, parsed: dict = None) -> dict:
@@ -145,7 +149,8 @@ def post_deep_attribution(body: DeepAttributionIn):
     if not body.sample_texts and not body.rule_suggestion:
         return _deep_attribution_fallback(body, '缺 sample_texts 与 rule_suggestion，无可深化素材')
     sys_prompt = build_deep_attribution_prompt(
-        body.domain, body.element, body.polarity, body.zone_name, body.sample_texts, body.rule_suggestion)
+        body.domain, body.element, body.polarity, body.zone_name, body.sample_texts, body.rule_suggestion,
+        body.policy_seed_hint, body.project_seed_hint, body.aspect_hint)
     messages = [
         {'role': 'system', 'content': sys_prompt},
         {'role': 'user', 'content': '请为上述簇输出深度归因 JSON。'},

@@ -423,9 +423,11 @@ def build_field_infer_prompt(fields: dict, layer_kind: str = '', context: str = 
 
 
 @track("MOD_AIQA.F_007", track_args=False)
-def build_deep_attribution_prompt(domain, element, polarity, zone_name, sample_texts, rule_suggestion):
+def build_deep_attribution_prompt(domain, element, polarity, zone_name, sample_texts, rule_suggestion,
+                                  policy_seed_hint='', project_seed_hint='', aspect_hint=''):
     """L4 深度归因 prompt：簇评论 + 规则底 + 权威语境 → 政策→情绪→项目闭环 JSON（deep_attribution/policy_link/project_link/confidence/blind_spot）。
     lazy enrichment（EMC 深读某簇时按需触发，非 eager 每 aggregate 跑）；低置信/LLM 不可用由上层（/aiqa/deep_attribution）回退规则底。
+    policy_seed_hint/project_seed_hint/aspect_hint：Sim 富归因数据（ermawu_l3l4）预提取的簇种子，作权威锚（LLM 优先采用，比凭空联想更准）。
     范式照 build_field_infer_prompt：MANIFESTO + TEMPLATE.format() + industry_kb 附录拼接（花括号安全）。"""
     from ai_qa.industry_kb import industry_kb_text
     samp = '\n'.join(f'  - {t}' for t in (sample_texts or [])[:8]) or '  - （无代表性评论）'
@@ -434,6 +436,16 @@ def build_deep_attribution_prompt(domain, element, polarity, zone_name, sample_t
         f'- 簇内代表性评论：\n{samp}\n'
         f'- 规则底归因建议（base，按 domain×element 查表，在此基础上深化，勿照抄）：{rule_suggestion or "（无）"}'
     )
+    # Sim 富归因数据预提取的种子（A1+Sim 闭环：数据带 policy_seed/project_seed/aspect → 权威锚）
+    hints = []
+    if aspect_hint:
+        hints.append(f'aspect 维度（簇内主导 ABSA 方面）：{aspect_hint}')
+    if policy_seed_hint:
+        hints.append(f'预提取政策锚（数据 policy_seed，**优先采用**）：{policy_seed_hint}')
+    if project_seed_hint:
+        hints.append(f'预提取落点项目（数据 project_seed，**优先采用**）：{project_seed_hint}')
+    if hints:
+        cluster += '\n- ' + '\n- '.join(hints)
     prompt = _today_line() + MANIFESTO + DEEP_ATTRIBUTION_TEMPLATE.format(cluster_context=cluster)
     kb = industry_kb_text(domain) if domain else ''
     if kb:
