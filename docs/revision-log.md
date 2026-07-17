@@ -216,14 +216,29 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月16日）** · 本节按板块分组、组内倒序；最新工作 = **5.114 EMC·compare 区域对比技能 + _driftRe 拓宽**（本次）+ 5.113 工作策略 + EMC 板块组（5.89–5.112）。最近：
+> 📍 **最新动态（07月17日）** · 本节按板块分组、组内倒序；最新工作 = **5.115 browser 终验 Tier1（compare 机制/④⑤ 数据流）全 PASS + SKILLS_INDEX 刷新**（本次）+ 5.114 compare 技能 + EMC 板块组（5.89–5.114）。最近：
 >
+> - **5.115 browser 终验 Tier1 全 PASS + SKILLS_INDEX 刷新**：07-16 compare/_driftRe/④⑤ 全是 eval 测不出的运行时行为（C6），本次 browser 实跑闭环——①compare 胶囊机制走通（路由 decision_type=对比→compare_regions 逐区调 zonal_stats，网络验证 2×POST /geo/zonal_stats；优雅降级 gap 卡，不犯老三毛病）②_driftRe 代码确认（4 轮 Flash 均不吐 ``` 围栏，DOM 0 个 `<pre>/<code>`）③⑤④ footer 命中率累积显示（Flash 模板 3/3=100%）④⑤② aggregate 别名双端点 PASS（zonal_stats polarity_index=-0.22 非零+domain_top 非空=静默零 bug 修复；square_grid 真端点 score_mean/l1_confidence_mean/emotion_intensity_mean 三别名非零）⑤城市更新问答用权威术语（15 分钟生活圈/口袋公园/公共服务设施/长效治理）。**新发现·延后**：compare 中文地点名↔preset_id 语义错配（boundaries 传"西陵区"中文名→后端 load_preset FileNotFoundError→"区域对比仅 0/2 区"），机制优雅降级 PASS 但 happy path 未通——**开新 plan 专门讨论**。另：_driftRe 现范围（``` 围栏 + action-JSON）外的「无围栏裸 JSON 内联」边缘 case（仅"请输出 JSON"反常态请求触发）记笔不修。SKILLS_INDEX.md 加🟣项目自有能力节（ai_qa 16 技能谱+industry_kb 四领域+用地国标+/garden+/verify）。详见下方 5.115。
 > - **5.114 EMC · 区域对比 compare 技能 + _driftRe 拓宽**：治欢迎胶囊"对比西陵伍家岗"老毛病（代码块/回答一半/方法不做）——新增 `compare` 单技能（复用 zonal_stats 逐区聚合，不造 geo 端点，守红线）+ select_template C 路由（decision_type=对比 优先）+ 拓宽 `_driftRe`（任意 ``` 围栏→revise 重写 prose，治代码块泄漏）。详见下方 5.114。
 > - **5.113 工作策略 · 上下文连贯园丁层**：诊断"项目已有 7 机制=上下文树（对齐 OpenAI harness），缺的是园丁层"→ 补 `/garden` 除草 + session-start 阈值提醒 + PreCompact 快照 hook + 漂移自检/单写者纪律（入全局 CLAUDE.md）；归档僵尸记忆树 + 刷新过期 manifest。详见下方 5.113。
 > - **5.112** EMC **⑤② 遗留 拆 confidence role + score 别名化**：修 design smell（l1_confidence 原归 score role 致 square_grid 别名化抢同列）——拆 confidence 独立 role（36 roles）+ import.js scoreKey/confKey 分离 + aggregate/hex/square_grid 数值 mean 全 role 解析（得分/置信度/情绪强度 别名）。square_grid 去冲突 + 规范名零回归。
 > - **5.111** EMC **⑤④ _missStats 遥测 + Flash 80% gate**：Flash template 命中率 localStorage 跨会话累积 + footer 显示；80% gate（self-protection，冷启动放行零回归，成熟<80% 退 while-loop）。**⑤ 全收口**。
 >
-> 阶段一（5.113）+ 阶段二（5.114）均 commit 待 push；EMC 5.105–5.112 此前已 push。下会话：browser 终验 compare 胶囊（C6，eval 测不出）+ ④⑤ 数据流。
+> 阶段一（5.113）+ 阶段二（5.114）+ 5.115 browser 终验 + SKILLS_INDEX 刷新 均已 commit（push 随缘·网络）。下会话：**compare 中文地点名↔preset_id 语义适配（开新 plan，happy path 打通）** + Tier2 低优先（⑤③ boundary_id 分组键 / ⑤④ execSkips 分桶 / PreCompact hook 自然触发实测 .wip.md）。
+
+### 5.115 browser 终验 Tier1 全 PASS + SKILLS_INDEX 刷新（07-17，C6 运行时闭环）
+
+**用户意图**：07-16 compare/_driftRe/④⑤ 全是 eval 测不出的运行时行为（C6：eval 空 context ≠ 运行时有层/preset/真答），需 browser 实跑才算闭环。用户定调：compare 只要**机制走通**（路由+四态出口+不犯老三毛病），**中文地点名↔矢量语义适配开新 plan 延后**。
+**落地/验证**（Playwright + 真端点 probe，加载 L2 T1 点层 `xiling_wujia_L2_T1` 后跑）：
+- **①compare 机制 PASS**：胶囊"对比西陵区和伍家岗区"→ 问题理解 `对比`→compare 路由；`compare_regions` 真执行（网络验 2×POST /geo/zonal_stats）；输出优雅降级 gap 卡，**无代码块/不半截/不说"方法不做"**。
+- **②_driftRe PASS**：harness.js:519 `_hasFence` 代码确认；4 轮 Flash 终答 DOM 0 个 `<pre>/<code>`，自然路径围栏泄漏不可达。
+- **⑤④ gate+footer PASS**：footer `Flash 模板 3/3(100%)` 跨问句累积显示。
+- **⑤② aggregate 别名 PASS（双端点）**：zonal_stats 返回 `polarity_index=-0.22`/`domain_top=urban_operation`/`score_mean=0.452`（核心静默零 bug 修复）；square_grid 真端点（POST /spatial/grid 1000m）首格 `score_mean=0.177`/`l1_confidence_mean=0.458`/`emotion_intensity_mean=0.747` 三别名非零（line 622 三 role 循环运行时成立）。
+- **④城市更新权威术语 PASS**：问答用「15 分钟生活圈配套/口袋公园/公共服务设施/业委会物管会长效治理」，对齐 `ai_qa/industry_kb/urban_renewal`。
+- **SKILLS_INDEX 刷新**：[.claude/SKILLS_INDEX.md](.claude/SKILLS_INDEX.md) 加🟣项目自有能力节（ai_qa TEMPLATE_REGISTRY 16 技能含 compare / industry_kb 四领域 / 用地国标 / `/garden` / `/verify`），日期→07-17。
+**新发现·延后**：
+- **compare 中文地点名↔preset_id 语义错配**（开新 plan）：capsule 问"西陵区/伍家岗区"（同 admin_district 层的两要素），但 `compare_regions` 逐区传 `boundary` 给 zonal_stats，后端 `boundary` 期望 preset_id（整层），中文名→`load_preset` FileNotFoundError→"区域对比仅 0/2 区"。机制优雅降级 PASS，但 happy path（真出两区并排数值）未通。修复方向（待新 plan 定）：`compare_regions` 支持单 preset_id + nameField 名单逐要素过滤，或 prompt 引导模型传 preset_id+names。
+- **_driftRe 边缘 case**（记笔不修）：现范围拦 ``` 围栏 + action-JSON；反常态请求"请输出 JSON"会产出**无围栏裸 JSON 内联**（DOM 无 `<pre>`），不在 _driftRe 拦截范围。自然问句不触发，低优先。
 
 ### 5.114 EMC · 区域对比 compare 技能 + _driftRe 拓宽（07-16，治老毛病）
 
