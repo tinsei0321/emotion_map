@@ -116,6 +116,30 @@ function formatPriorTurn(p) {
   return parts.join(' | ');
 }
 
+/** 多轮滚动记忆（ctx.turnHistory，最近 2-3 轮）→ 注入 ctx.context 顶部，显意图收敛轨迹（旧→新）。
+ *  B2 做厚：5.51 单轮 priorTurn → 多轮（oldest 蒸馏 → newest 详细），让 LLM 承接"先问全域→缩到某区→聚焦某要素"。
+ *  单轮时退为 formatPriorTurn 行为（向后兼容）。 */
+function formatTurnHistory(turns) {
+  if (!turns || !turns.length) return '';
+  if (turns.length === 1) return formatPriorTurn(turns[0]);
+  const lines = [`【近 ${turns.length} 轮上下文（意图收敛轨迹，旧→新）】`];
+  turns.forEach((p, i) => {
+    const isLast = i === turns.length - 1;
+    const done = (p.done && p.done !== '（无工具调用）') ? p.done : '';
+    if (isLast) {
+      const d = [];
+      if (p.intent) d.push(`intent=${p.intent}`);
+      if (p.method) d.push(`method=${p.method}`);
+      if (done) d.push(`已做=${done}`);
+      if (p.gap) d.push(`缺口=${p.gap}`);
+      lines.push(`  · 最近一轮：${d.join(' | ')}`);
+    } else {
+      lines.push(`  · 第${i + 1}轮：intent=${p.intent || '?'}${done ? ' | 已做=' + done.slice(0, 60) : ''}${p.gap ? ' | 缺口=' + String(p.gap).slice(0, 40) : ''}`);
+    }
+  });
+  return lines.join('\n');
+}
+
 /** 硬缺口（request_upload）→ 请求上传结论文本（说清需要什么/为何/格式）。 */
 function buildRequestUploadText(d) {
   const dp = d.data_plan || {};
@@ -335,9 +359,9 @@ export async function orchestrate(ctx, hooks = {}) {
   let narratedAnswer = false; // 模型持续叙述（prose 作答，常见于概念问）——叙述≠失败，交 finalStep 出结论，不落 GAP
   const failedObs = [];      // 失败观察摘要（EXIT_GAP 卡展示「已尝试」用）
 
-  // 多轮连续性：上一轮 trace 蒸馏注入 ctx.context 顶部（diagnose 及后续 phase 均可见，供续作承接）
-  const _prior = formatPriorTurn(ctx.priorTurn);
-  if (_prior) ctx.context = _prior + '\n\n' + (ctx.context || '');
+  // 多轮连续性：近 2-3 轮 trace 蒸馏注入 ctx.context 顶部（B2：5.51 单轮 priorTurn → 多轮滚动 turnHistory，意图收敛轨迹）
+  const _histCtx = formatTurnHistory(ctx.turnHistory) || formatPriorTurn(ctx.priorTurn);
+  if (_histCtx) ctx.context = _histCtx + '\n\n' + (ctx.context || '');
 
   // P0 降温：_quickIntent 轻量预判——高置信通用/概念问跳 diagnose 直 finalStep（省整轮 diagnose LLM + 7字段卡）
   if (!ctx.resume && _quickIntent(ctx.question) === 'general') {

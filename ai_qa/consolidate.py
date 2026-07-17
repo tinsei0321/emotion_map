@@ -8,6 +8,14 @@
 输出标记全 ASCII（Windows GBK 安全，遵 CLAUDE.md 编码规范）。
 """
 from collections import Counter, defaultdict
+import sys
+
+# Windows GBK 兼容：episode final_excerpt 可能含 emoji（✅ 等），裸 print 会 UnicodeEncodeError。
+# reconfigure stdout 为 utf-8（同 sim_performance_data.py:36 范式；docstring「全 ASCII」未覆盖用户答文 excerpt）。
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+except Exception:
+    pass
 
 from ai_qa.episode import read_episodes, episode_path
 from ai_qa.wisdom import WISDOM

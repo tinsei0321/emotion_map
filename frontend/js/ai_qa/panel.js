@@ -1047,24 +1047,33 @@ function buildHooks(shell) {
   };
 }
 
-/** 蒸馏上一个 assistant trace → priorTurn（多轮续作用：让下轮 LLM 承接上轮 intent/method/已做/缺口）。
- *  trace 全量已存 _history/localStorage，但旧逻辑只回灌 trace.final → 续作失忆；此处补结构化上轮。 */
-function _buildPriorTurn() {
-  for (let i = _history.length - 2; i >= 0; i--) {   // -1 = 当前 user；往前找末个 assistant
+/** 蒸馏单个 assistant trace → 一轮上下文摘要（intent/method/已做/缺口/strategy）。 */
+function _distillTurn(h) {
+  const t = h.trace, dg = t.diagnose || {}, dp = (dg.data_plan || {});
+  const method = Array.isArray(dg.method) ? dg.method.join(' → ') : (dg.method || '');
+  const done = (t.steps || []).map((s) => {
+    const a = s.action || {};
+    if (a.type === 'ask_user') return '问澄清：' + String(a.question || '').slice(0, 30);   // ask 无 name/params，特化避免 '已做=?' 噪声
+    return `${a.name || '?'}${a.params ? '(' + JSON.stringify(a.params).slice(0, 50) + ')' : ''}`;
+  }).join('；');
+  const gap = ((t.caliber && t.caliber.length) ? t.caliber : (dp.gap || [])).join('、');
+  return { intent: dg.intent || '', method, done: done || '（无工具调用）', gap: gap || '', strategy: dp.strategy || '' };
+}
+
+/** 收集最近 maxN 轮 assistant trace → oldest-first 列表（B2 多轮滚动记忆）。
+ *  trace 全量已存 _history/localStorage；旧逻辑只回灌上 1 轮 final → 续作失忆，此处扩多轮结构化。 */
+function _buildTurnHistory(maxN = 3) {
+  const turns = [];
+  for (let i = _history.length - 2; i >= 0 && turns.length < maxN; i--) {   // -1 = 当前 user；往前收末 maxN 个 assistant
     const h = _history[i];
-    if (h.role === 'assistant' && h.trace) {
-      const t = h.trace, dg = t.diagnose || {}, dp = (dg.data_plan || {});
-      const method = Array.isArray(dg.method) ? dg.method.join(' → ') : (dg.method || '');
-      const done = (t.steps || []).map((s) => {
-        const a = s.action || {};
-        if (a.type === 'ask_user') return '问澄清：' + String(a.question || '').slice(0, 30);   // ask 无 name/params，特化避免 '已做=?' 噪声
-        return `${a.name || '?'}${a.params ? '(' + JSON.stringify(a.params).slice(0, 50) + ')' : ''}`;
-      }).join('；');
-      const gap = ((t.caliber && t.caliber.length) ? t.caliber : (dp.gap || [])).join('、');
-      return { intent: dg.intent || '', method, done: done || '（无工具调用）', gap: gap || '', strategy: dp.strategy || '' };
-    }
+    if (h.role === 'assistant' && h.trace) turns.push(_distillTurn(h));
   }
-  return null;
+  return turns.reverse();   // oldest-first（意图收敛轨迹：旧→新）
+}
+
+/** 蒸馏上一个 assistant trace → priorTurn（单轮；harness 的 gis_operation 续作检查仍用此）。 */
+function _buildPriorTurn() {
+  return _buildTurnHistory(1)[0] || null;
 }
 /** 续作线索识别：继续/接着/补充/那个/上一个/把刚才 等（命中且存在 priorTurn → 视为续作）。 */
 function _isResumeCue(q) {
@@ -1099,7 +1108,8 @@ async function send(text) {
     else if (h.role === 'assistant' && h.trace && h.trace.final) _hist.push({ role: 'assistant', content: h.trace.final });
   }
   const ctx = { question: text, context: await buildContext(), signal: _abortCtl.signal, model: _thinkMode, history: _hist.slice(-10),
-    priorTurn: _buildPriorTurn(),               // 多轮连续性：上轮 intent/method/已做/缺口（续作承接）
+    priorTurn: _buildPriorTurn(),               // 多轮连续性：上轮 intent/method/已做/缺口（续作承接；harness gis 续作检查用）
+    turnHistory: _buildTurnHistory(3),          // B2 多轮滚动记忆：最近 ≤3 轮（意图收敛轨迹，旧→新），注入 ctx.context 顶部
     resume: false };
   // P1：上一轮以 ask_user 结束（用户点选项胶囊续作）→ 强制续作，跳过 general/request_upload 短路，承接上轮 method（选项文本不含"继续/那个"等线索词，正则识别不到）
   const _prevTrace = _history.length >= 2 ? (_history[_history.length - 2].trace || null) : null;

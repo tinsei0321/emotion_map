@@ -7,6 +7,15 @@
 
 ## 📅 2026-07-17
 
+### ✅ EMC 基建做厚 + Sim-0 资讯收集落地（revision-log 5.118，commit 待 push）
+
+用户定 EMC 整体优化三阶段路线（**B 基建 → A1 L4 多维归因 → Sim 大南门·二马路 L3+L4 数据**，master plan 经多轮 co-design 批准），本次执行 Phase B + 落 Sim-0 资讯库。
+- **Sim-0 资讯收集（通用模式）**：实跑 web-search-prime 采大南门·二马路真实新闻+口碑（1877 始建/2025-01-25 开街/「修旧如旧最小干预不大规模拆除搬迁」**直扣防止大拆大建 63 号**/20 小区 44 栋/日均 1.5 万游客·五一 10 万+），落 [DATA/sim/research/ermawu.md](DATA/sim/research/ermawu.md)——以后所有模拟沿用此 Phase 0（CLAUDE.md「新闻报道」素材源从想象升级为实测）。
+- **B1 wisdom 策展补全**：[wisdom.py](ai_qa/wisdom.py) 加 3 条（culture-block-attribution 历史街区深归因为 Sim 铺路 / planning-meso-locate 街区规划落点 / operation-event-transient 赛事瞬时影响·官方盲区差异化），WISDOM 6→9；[consolidate.py](ai_qa/consolidate.py) 修 utf-8 bug（final_excerpt 含 emoji ✅ 致 GBK 崩，加 stdout.reconfigure），重跑出 115 episode 挖掘报告。
+- **B2 多轮记忆做厚**：[harness.js](frontend/js/ai_qa/harness.js) 新 `formatTurnHistory`（oldest 蒸馏→newest 详细，显意图收敛轨迹）；[panel.js](frontend/js/ai_qa/panel.js) 抽 `_distillTurn` + `_buildTurnHistory(3)` + 退 `_buildPriorTurn` 为薄包装 + ctx 加 `turnHistory`。
+- **验证**：retrieve_wisdom 命中 3 新条目；consolidate 重跑不崩；ESM `.mjs` 绿；pytest 199 pass / 8 预存 fail（零回归）。承重：wisdom 纯数据；formatTurnHistory 单轮退 formatPriorTurn 向后兼容；不动 trace 结构/持久化。commit 只不 push。
+- **下步**：Phase A1（L4 多维归因·混合 rule 底 + lazy LLM enrichment，新 `/aiqa/deep_attribution`）→ Phase Sim（大南门·二马路 L3+L4 数据，延伸 ermawu 叙事 + buffer 科学化 + ABSU aspect + policy/project 种子）。
+
 ### ✅ ⑤③ membership 列设计 + ⑤④ execSkips 遥测 + MOD_AIQA 埋点（revision-log 5.117，commit `5213bc1` 待 push）
 
 推进 5.116 延期的三项，均 additive 不碰承重语义。

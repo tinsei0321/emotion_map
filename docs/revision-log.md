@@ -216,8 +216,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月17日）** · 本节按板块分组、组内倒序；最新工作 = **5.117 ⑤③ membership 列设计 + ⑤④ execSkips 遥测 + MOD_AIQA 埋点**（本次）+ 5.116 tracker 对账 + EMC 板块组（5.89–5.116）。最近：
+> 📍 **最新动态（07月17日）** · 本节按板块分组、组内倒序；最新工作 = **5.118 EMC 基建做厚（B1 wisdom 策展 + B2 多轮记忆）+ Sim-0 资讯收集落地**（本次）+ EMC 整体优化三阶段 plan（B→A1→Sim）批准 + 5.117 ⑤③⑤④MOD_AIQA。最近：
 >
+> - **5.118 EMC 基建做厚 + Sim-0 资讯收集落地**：用户定 EMC 整体优化路线（**B 基建 → A1 L4 多维归因 → Sim 大南门·二马路 L3+L4 数据**，三阶段 plan 已批），本次执行 Phase B + 落 Sim-0 资讯库。**Sim-0 资讯收集（通用模式）**：实跑 web-search-prime 采真实新闻+口碑（1877 始建/2025-01-25 开街/「修旧如旧最小干预不大规模拆除搬迁」**直扣防止大拆大建 63 号**/20 小区 44 栋/日均 1.5 万游客·五一 10 万+），落 [DATA/sim/research/ermawu.md](DATA/sim/research/ermawu.md)——以后所有模拟沿用此 Phase 0（CLAUDE.md「新闻报道」素材源从想象升级为实测）。**B1 wisdom 策展补全**：[wisdom.py](ai_qa/wisdom.py) 加 3 条（culture-block-attribution 历史街区深归因为 Sim 铺路 / planning-meso-locate 街区规划落点 / operation-event-transient 赛事瞬时影响·官方盲区差异化），WISDOM 6→9；[consolidate.py](ai_qa/consolidate.py) 修 utf-8 bug（episode final_excerpt 含 emoji ✅ 致 GBK 崩，加 `sys.stdout.reconfigure(utf-8)`），重跑出 115 episode 挖掘报告。**B2 多轮记忆做厚**：[harness.js](frontend/js/ai_qa/harness.js) 新 `formatTurnHistory`（oldest 蒸馏→newest 详细，显意图收敛轨迹）注入 ctx.context；[panel.js](frontend/js/ai_qa/panel.js) 抽 `_distillTurn` + 新 `_buildTurnHistory(3)` + 退 `_buildPriorTurn` 为薄包装（DRY，harness gis 续作检查的单轮 priorTurn 不破）+ ctx 加 `turnHistory`。承重：wisdom 纯数据；formatTurnHistory 单轮退 formatPriorTurn 向后兼容；不动 trace 结构/持久化 schema。零回归（pytest 199 pass / 8 预存 fail，ESM 绿）。详见下方 5.118。
 > - **5.117 ⑤③ membership 原语 + ⑤④ execSkips 分桶 + MOD_AIQA 埋点**：推进上会话延期的三项，均 additive 不碰承重语义。**⑤③**：[field_dictionary](core/field_dictionary.py) 加 `zone` role（membership=点归属哪个面，variants zone/area_tag/area_seed/片区/街区/所属区/归属，不与 boundary_name「区域名称」/area_km2「area」重叠）；[spatial_analysis](core/spatial_analysis.py) 新 `aggregate_by_boundary_id`（MOD_SPATIAL.F_008，合成 index_right 复用 _attach_4x5/_popularity helpers + 内联最小核心 stats，DRY-debt 记注释）——点带 zone role 直接 groupby 非 sjoin，无面层返 DataFrame；**只交原语+设计，消费者接线（zonal_stats 可选分支 / 新端点）记 docstring 待下步**（守不造推测代码）。**⑤④**：[harness.js](frontend/js/ai_qa/harness.js) _TPL_STATS schema 加 `skips:{missing_slot,tool_failed}`（向后兼容）+ `_recordSkip(reason)` 接 runTemplatePath 两 skip 点（review.skipped 已编码，现才计数）+ getTemplateStats 返 skips + [panel.js](frontend/js/ai_qa/panel.js) footer 显「· skip N」；**gate 公式不动**（execSkips 是另一轴，不污染 hits/misses 命中率）；fieldLowConf 已由后端 MOD_FIELD.D_001 覆盖。**MOD_AIQA**：[paradigm.py](ai_qa/paradigm.py) `select_template`(F_001, track_result=True 捕获路由决策，参数名 track 与装饰器同名但装饰时无冲突) + [prompts.py](ai_qa/prompts.py) 5 build_*_prompt(F_002-F_006)；跳过 6 *_text 装配器（同 field_dictionary convention）；diagnose prompt 永不动·@track pass-through 不改内容（保 Flash eval，20562 字符 intact）；AGENTS.md 补 MOD_AIQA ✅ + note，CLAUDE.md manifest 12→13。承重：aggregate_by_boundary_id 不碰 aggregate_by_polygons/_attach 内部；gate/3 出口不动；_REGISTRY 连续（F_008 / F_001-F_006）。零回归（pytest 199 pass +1 新测试，8 预存 fail 不变）。详见下方 5.117。
 > - **5.116 tracker 文档对账 + MOD_FIELD 埋点**：AGENTS.md 模块表 + CLAUDE.md manifest **双重漂移**修正——MOD_SPATIAL(spatial_analysis)/MOD_LLM(ai_qa/llm)/MOD_PERF(sim_performance_data) 早有埋点却不在表，补入并标 ✅；8 个只列名无埋点的标 ⬜ 待埋点（保留规划）；「5.x 待登记」note 改写（5.x 主力 MOD_SPATIAL/MOD_LLM 已 done，本会话补 MOD_FIELD）。`core/field_dictionary.py` 补 **MOD_FIELD**（F_001 resolve_field_alias ⑤② 承重 / F_002 find_boundary_name_column / F_003 validate_llm_roles 0.3 choke point + D_001 低置信丢弃；热路径 helper resolve_role/is_* 不 track 防日志刷爆，同 spatial_analysis convention）。CLAUDE.md rule 10 `_REGISTRY`→`_TRACKING_REGISTRY`（运行时各模块 register 填充，非静态 dict）。承重 note：MOD_SPATIAL.F_005 非跳号（属 buffer_analysis.py，MOD_SPATIAL 跨两文件 F_001-F_007 连续）。**Tier2 ⑤③/⑤④ 评估后延期**（见下方）。零回归（pytest 198 pass，8 预存 fail 与本次无关）。详见下方 5.116。
 > - **5.115 browser 终验 Tier1 全 PASS + SKILLS_INDEX 刷新**：07-16 compare/_driftRe/④⑤ 全是 eval 测不出的运行时行为（C6），本次 browser 实跑闭环——①compare 胶囊机制走通（路由 decision_type=对比→compare_regions 逐区调 zonal_stats，网络验证 2×POST /geo/zonal_stats；优雅降级 gap 卡，不犯老三毛病）②_driftRe 代码确认（4 轮 Flash 均不吐 ``` 围栏，DOM 0 个 `<pre>/<code>`）③⑤④ footer 命中率累积显示（Flash 模板 3/3=100%）④⑤② aggregate 别名双端点 PASS（zonal_stats polarity_index=-0.22 非零+domain_top 非空=静默零 bug 修复；square_grid 真端点 score_mean/l1_confidence_mean/emotion_intensity_mean 三别名非零）⑤城市更新问答用权威术语（15 分钟生活圈/口袋公园/公共服务设施/长效治理）。**新发现·延后**：compare 中文地点名↔preset_id 语义错配（boundaries 传"西陵区"中文名→后端 load_preset FileNotFoundError→"区域对比仅 0/2 区"），机制优雅降级 PASS 但 happy path 未通——**开新 plan 专门讨论**。另：_driftRe 现范围（``` 围栏 + action-JSON）外的「无围栏裸 JSON 内联」边缘 case（仅"请输出 JSON"反常态请求触发）记笔不修。SKILLS_INDEX.md 加🟣项目自有能力节（ai_qa 16 技能谱+industry_kb 四领域+用地国标+/garden+/verify）。详见下方 5.115。
@@ -227,6 +228,27 @@ flowchart TD
 > - **5.111** EMC **⑤④ _missStats 遥测 + Flash 80% gate**：Flash template 命中率 localStorage 跨会话累积 + footer 显示；80% gate（self-protection，冷启动放行零回归，成熟<80% 退 while-loop）。**⑤ 全收口**。
 >
 > 5.113–5.117 均已 commit（push 随缘·网络）。下会话：**compare 中文地点名↔preset_id 语义适配（开新 plan，happy path 打通）** + ⑤③ 消费者接线（aggregate_by_boundary_id→zonal_stats 可选分支或新 `/geo/aggregate_by_field` 端点）/ PreCompact hook 自然触发实测 .wip.md / 9 个 ⬜ 模块按需埋点。
+
+### 5.118 EMC 基建做厚（B1 wisdom + B2 多轮记忆）+ Sim-0 资讯收集落地（07-17，EMC 整体优化 Phase B）
+
+**用户意图**：07-17 主线 done 后定 EMC 整体优化路线——**B 基建做厚 → A1 L4 多维归因 → Sim 大南门·二马路 L3+L4 数据**（三阶段 master plan 经多轮 co-design 批准：含 Sim 详细 sub-plan + 资讯收集通用模式 + buffer 科学化）。本次执行 Phase B + 落 Sim-0 资讯库。
+
+**Sim-0 资讯收集落地（通用模式·以后所有模拟沿用）**：
+- 实跑 `web-search-prime`（智谱优先）采大南门·二马路真实新闻+口碑 → 落 [DATA/sim/research/ermawu.md](DATA/sim/research/ermawu.md)。
+- 关键素材：1877 始建 / 2021 启动更新一期 / **2025-01-25 开街**（与既有 sim T1「2025-02 春节开街爆满」实吻合）/ 原则「**修旧如旧、修新如旧、最小干预、不大规模拆除、不大规模搬迁原住民**」（住新局副局长叶帮宏/科长南希）**直扣 industry_kb 防止大拆大建 63 号 + 留改拆** / 规模 20 小区+44 栋+6 文保+50 历史建筑 / 日均 1.5 万游客·五一 10 万+ / 打卡墙花墙烟火气。
+- 落地 CLAUDE.md 数据模拟方法论「新闻报道」素材源——**从想象升级为实测采集**，以后新片区模拟均走此 Phase 0。
+
+**B1 wisdom 策展补全**：
+- [wisdom.py](ai_qa/wisdom.py) WISDOM 加 3 条（6→9）：`culture-block-attribution`（meso/renewal+operation，历史街区深归因——aspect 级+政策→项目闭环，为 Phase Sim 铺路）/ `planning-meso-locate`（meso/planning，街区设施短板+用地匹配+完整社区项目）/ `operation-event-transient`（meso/operation，赛事/节庆瞬时空间影响·**官方体检按日均评估忽视的盲区=EMC 差异化价值**）。`retrieve_wisdom` 命中验证通过。
+- [consolidate.py](ai_qa/consolidate.py) 修 GBK bug：episode `final_excerpt` 含 ✅ emoji 致裸 `print` UnicodeEncodeError（违反 CLAUDE.md rule 2 安全打印 + docstring「全 ASCII」未覆盖用户答文 excerpt）→ 加 `sys.stdout.reconfigure(encoding='utf-8')`（同 sim_performance_data.py:36 范式）。重跑出 115 episode 挖掘报告（macro/planning fail 模式 data_driven/structure/actionable；meso/governance exemplar candidate）。
+
+**B2 多轮记忆做厚**：
+- 现状：`formatPriorTurn`（[harness.js:108](frontend/js/ai_qa/harness.js#L108)）+ `_buildPriorTurn`（[panel.js](frontend/js/ai_qa/panel.js)）只回灌**上 1 轮**（5.51）。
+- 做厚：[panel.js](frontend/js/ai_qa/panel.js) 抽 `_distillTurn(h)` + 新 `_buildTurnHistory(maxN=3)`（oldest-first 收近 3 轮）+ 退 `_buildPriorTurn` 为 `_buildTurnHistory(1)[0]` 薄包装（DRY，harness:379 `priorTurn.intent==='gis_operation'` 单轮续作检查不破）；ctx 加 `turnHistory`。[harness.js](frontend/js/ai_qa/harness.js) 新 `formatTurnHistory`（oldest 蒸馏→newest 详细，显**意图收敛轨迹**"先问全域→缩到某区→聚焦某要素"），注入 ctx.context 顶部；单轮退 `formatPriorTurn` 向后兼容。
+- 承重：不动 trace 结构/持久化 schema（history 持久化不动）；仅扩 in-memory 滚动窗口 + 注入；ctx.priorTurn 保留（gis 续作检查）。
+
+**验证**：retrieve_wisdom 命中 3 新条目（meso×renewal/operation/planning）；consolidate 重跑不崩（utf-8）；ESM `.mjs` 绿（harness+panel）；pytest **199 pass / 8 预存 fail**（零回归）。
+**承重不破**：wisdom 纯数据；formatTurnHistory 向后兼容；consolidate 是手动工具非承重；trace/持久化不动。
 
 ### 5.117 ⑤③ membership 列设计 + ⑤④ execSkips 遥测 + MOD_AIQA 埋点（07-17，三项 additive）
 
