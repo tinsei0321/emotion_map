@@ -6,24 +6,17 @@
   <title>项目架构拓扑图 · emotion_map</title>
   <link rel="stylesheet" href="css/tokens.css" />
   <link rel="stylesheet" href="css/topo.css" />
-  <!-- 3d-force-graph（vasturiano，Obsidian graph 的 3D 版，d3-force-3d + 自带 three.js/WebGL）UMD 全局 ForceGraph3D（需 new）。
-       three 通过 ESM import 在 topology.js 给 nodeThreeObject 用，不暴露全局，避免与 3d-force-graph 内部 three 冲突（r123 缺 Timer 会让 1.80 崩）。 -->
+  <!-- 3d-force-graph（自带 three.js）UMD 全局 ForceGraph3D；three ESM + CSS2DRenderer 在 topology.js import 给 nodeThreeObject/标签用 -->
   <script src="vendor/3d-force-graph.min.js"></script>
-  <!-- marked + DOMPurify：md 渲染（详情抽屉 docs 区，解决浏览器直接打开 raw .md 乱码） -->
   <script src="vendor/marked.min.js"></script>
   <script src="vendor/purify.min.js"></script>
 </head>
 <body>
   <header id="topo-header">
     <span class="topo-title">项目架构拓扑图</span>
-    <span class="topo-subtitle">Project Topology · 3D 分层架构 · 成熟度成片（拖拽转球 · 滚轮缩放）</span>
-    <div class="topo-header-actions">
-      <button id="topo-refresh" title="强制刷新扫描（忽略缓存）">↻ 刷新</button>
-      <button id="topo-close" title="关闭窗口">关闭</button>
-    </div>
+    <span class="topo-subtitle">3D 分层 + 聚落星座 · 拖拽转球 · 滚轮缩放 · 双击聚焦群组 · 图例点选高亮</span>
   </header>
 
-  <!-- 预设视图按钮栏：默认 overview（3D 分层球 + 成片），files 为原文件级平铺 -->
   <nav id="topo-presets" role="tablist">
     <button class="topo-preset is-active" data-view="overview">架构总览</button>
     <button class="topo-preset" data-view="pipeline">数据管道 L0→L4</button>
@@ -37,46 +30,55 @@
   </nav>
 
   <main id="topo-main">
-    <!-- 左侧：图例 + 最新动态 -->
     <aside id="topo-sidebar">
       <div class="topo-sec">
-        <div class="topo-sec-title">架构层 · Layer（同心球层 + 着色）</div>
+        <div class="topo-sec-title">架构层 · Layer（悬停/点击高亮）</div>
         <ul id="topo-legend-layer" class="topo-legend"></ul>
       </div>
       <div class="topo-sec">
-        <div class="topo-sec-title">成熟度 · Maturity（用形状区分）</div>
-        <ul class="topo-legend">
-          <li><span class="st st-mature"></span>成熟 mature（实心球）</li>
-          <li><span class="st st-progressing"></span>推进中（空心线框）</li>
-          <li><span class="st st-planned"></span>计划 planned（虚线空心）</li>
+        <div class="topo-sec-title">成熟度 · Maturity（形状）</div>
+        <ul class="topo-legend" id="legend-maturity">
+          <li data-maturity="mature"><span class="st st-mature"></span>成熟（实心球）</li>
+          <li data-maturity="progressing"><span class="st st-progressing"></span>推进中（空心线框）</li>
+          <li data-maturity="planned"><span class="st st-planned"></span>计划（虚线空心）</li>
         </ul>
       </div>
       <div class="topo-sec">
         <div class="topo-sec-title">色系 · 4 类</div>
-        <ul class="topo-legend">
-          <li><span class="st" style="background:var(--topo-c-primary)"></span>主程序 + EMC（Claude 橙）</li>
-          <li><span class="st" style="background:var(--topo-c-infra)"></span>架构/infra（深青蓝）</li>
-          <li><span class="st" style="background:var(--topo-c-data)"></span>DATA 数据（柔翠绿）</li>
-          <li><span class="st" style="background:var(--topo-c-doc)"></span>docs/设计（暖驼）</li>
+        <ul class="topo-legend" id="legend-family">
+          <li data-family="primary"><span class="st" style="background:var(--topo-c-primary)"></span>主程序 + EMC</li>
+          <li data-family="infra"><span class="st" style="background:var(--topo-c-infra)"></span>架构/infra</li>
+          <li data-family="data"><span class="st" style="background:var(--topo-c-data)"></span>DATA 数据</li>
+          <li data-family="doc"><span class="st" style="background:var(--topo-c-doc)"></span>docs/设计</li>
         </ul>
       </div>
       <div class="topo-sec">
-        <div class="topo-sec-title">操作</div>
-        <div class="topo-hint">拖拽空白：转球体<br/>滚轮：缩放<br/>悬停节点：富信息卡<br/>点击节点：详情抽屉</div>
-      </div>
-      <div class="topo-sec">
-        <div class="topo-sec-title">最近动态</div>
+        <div class="topo-sec-title">最近动态 + build</div>
         <div id="topo-latest" class="topo-latest-box">—</div>
       </div>
     </aside>
 
-    <!-- 主图画布（3D） -->
     <div id="topo-graph"></div>
 
-    <!-- 悬停富信息卡片（跟随节点屏幕位置） -->
+    <!-- 悬停富信息卡片 -->
     <div id="topo-tip" hidden></div>
 
-    <!-- 右侧节点详情抽屉（点节点弹出，docs 区 marked 渲染） -->
+    <!-- 操作卡：右下角 icon 排（复位/全屏/刷新/关闭）-->
+    <div id="topo-actionbar">
+      <button data-act="reset" title="复位视角（zoomToFit 全图）">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+      <button data-act="fullscreen" title="全屏（折叠边栏，悬停展开）">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+      </button>
+      <button data-act="refresh" title="强制重扫（忽略缓存）">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+      </button>
+      <button data-act="close" title="关闭窗口">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
     <aside id="topo-detail" hidden>
       <button class="topo-detail-close" id="topo-detail-close">&times;</button>
       <div class="topo-detail-name" id="td-name"></div>

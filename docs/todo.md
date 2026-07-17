@@ -5,6 +5,16 @@
 
 ---
 
+## 📅 2026-07-18
+
+### ✅ 拓扑图深度 UX + 数据星图重塑（revision-log 5.125，commit 待 push · **用户手动 push**）
+
+5.124 后用户提 9 项深度优化 + 数据星图重塑。
+- **后端数据重塑**：修 JS import bug（`_resolve_js_spec` .js 后缀）→ 前端 import 边 **0→127**（边 549→**723**，main.js 邻居 0→23）；补**叙事边**（pipeline-dep/task-dep/doc-of/test-of，消除孤岛+串数据流）；`inDegree`+`build`(git)+`todoBrief`+edge.`style`+`orphan`。
+- **前端 9 项**：① 字体 **CSS2DRenderer** 矢量标签（弃 3D Sprite 糊字）+ 核心加粗；② 动态卡 build+todoBrief；③ 操作卡右下角半透明；④ icon 化（复位/全屏/刷新/关闭）+ **全屏**（边栏 hover 折叠）；⑤ 双击缩放群组；⑥ 图例 hover/click 高亮（onBackgroundClick 取消）；⑦ 白线+实虚线（contains 默认不显）+ 聚落星座；⑧ 核心节点加大加深；⑨ 空白关提示（drag 不触发）。
+- **Playwright 验证**：canvas 1863/358 节点/CSS2D 标签 171（核心 54）/actionbar 4/动态卡 build+todo/0 JS error。
+- **承重**：CSS2DRenderer ESM 本地（避全局 three 冲突）；纯 stdlib scanner；不碰 tracker。三类清理清单在 plan 待批准。**push 用户手动。**
+
 ## 📅 2026-07-17
 
 ### ✅ 拓扑图修 bug + 成熟度形状化 + 颜色优化（revision-log 5.124，commit 待 push · **用户手动 push**）

@@ -114,8 +114,12 @@ def build_topology(root: Path, view: str = "global") -> dict:
     latest = _parse_latest_pointer(root / "docs" / "revision-log.md")
     _parse_section_matrix(root / "docs" / "revision-log.md", file_index)
     _inject_pipeline_stages(nodes, links)
+    _add_semantic_links(nodes, links, file_index)
     _apply_default_maturity(nodes)
     _cleanup_links(nodes, links)
+    _apply_edge_style(links)
+    _compute_in_degree(nodes, links)
+    _mark_orphans(nodes, links)
 
     data = {
         "nodes": nodes,
@@ -123,6 +127,8 @@ def build_topology(root: Path, view: str = "global") -> dict:
         "modules": modules,
         "tasks": tasks,
         "latest": latest,
+        "build": _build_info(),
+        "todoBrief": _todo_summary(root),
         "generatedAt": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "stats": _summarize(nodes, links),
         "cache": {"hit": False, "ageMs": 0},
@@ -310,14 +316,14 @@ def _resolve_js_spec(spec: str, src_id: str, root: Path) -> Optional[str]:
             continue
         else:
             d = f"{d}/{part}" if d else part
+    # 先试 d 本身（spec 可能已含 .js/.mjs 扩展名，避免追加成 map.js.js）
+    if d and (root / d).is_file():
+        return d
+    # 再试追加扩展名 / index
     for ext in ('.js', '.mjs', '/index.js', '/index.mjs'):
         cand = d + ext
         if (root / cand).is_file():
             return cand
-    # 兜底：源文件可能省略扩展名
-    for ext in ('.js', '.mjs'):
-        if (root / (d + ext)).is_file():
-            return d + ext
     return None
 
 
@@ -490,6 +496,132 @@ def _apply_default_maturity(nodes: List[dict]) -> None:
     for n in nodes:
         if n.get('maturity') is None:
             n['maturity'] = _LAYER_DEFAULT_MATURITY.get(n.get('layer', 'other'), 'progressing')
+
+
+# ════════════════════════════════════════════════════════════════════
+# 叙事边 + 度量（补孤岛 + 核心节点依据 + 清理标记 + build/todo）
+# ════════════════════════════════════════════════════════════════════
+def _add_semantic_links(nodes: List[dict], links: List[dict], file_index: Dict[str, dict]) -> None:
+    """补叙事边（消除孤岛 + 串"L0→L4→代码 / task→module / docs·tests→code"）。"""
+    fid_list = list(file_index.keys())
+    # pipeline-dep：L0-L4 合成节点 → 真实代码（串数据流叙事）
+    pipeline_map = {
+        'L0': ['SCRAPER/', 'DATA/raw'],
+        'L1': ['SCRIPT/data_governance.py', 'SCRIPT/relevance_filter.py'],
+        'L2': ['SCRIPT/emotion_analysis_v1.py', 'SCRIPT/emotion_lexicon.py'],
+        'L3': ['ai_qa/llm.py', 'ai_qa/prompts.py'],
+        'L4': ['core/spatial_analysis.py', 'core/field_dictionary.py'],
+    }
+    for stage, prefixes in pipeline_map.items():
+        for fid in fid_list:
+            if any(fid.startswith(p) or fid == p for p in prefixes):
+                links.append({"source": stage, "target": fid, "type": "pipeline-dep"})
+    # task-dep：task label 关键词 → 同 group 代表文件（修任务脱钩）
+    task_kw = [('数据', 'pipeline'), ('管道', 'pipeline'), ('前端', 'frontend'), ('导航', 'frontend'),
+               ('外壳', 'frontend'), ('EMC', 'ai_qa'), ('AI', 'ai_qa'), ('问答', 'ai_qa'),
+               ('空间', 'core'), ('采集', 'SCRAPER'), ('可视化', 'frontend')]
+    grp_rep: Dict[str, str] = {}
+    for nn in nodes:
+        if nn.get('type') == 'file' and nn.get('group') and nn.get('group') not in grp_rep:
+            grp_rep[nn['group']] = nn['id']
+    for n in nodes:
+        if n.get('type') != 'task':
+            continue
+        label = n.get('name', '')
+        for kw, grp in task_kw:
+            if kw in label and grp in grp_rep:
+                links.append({"source": n['id'], "target": grp_rep[grp], "type": "task-dep"})
+                break
+    # doc-of：根 md + docs → 相关代码（按文件名约定）
+    doc_map = [('ai-qa-design', 'ai_qa/'), ('architecture', 'core/'), ('mcp-strategy', '.claude/'),
+               ('landuse-colors', 'landuse_colors'), ('revision-log', 'CLAUDE.md'),
+               ('AGENTS.md', 'AGENTS'), ('CLAUDE.md', 'core/config')]
+    for n in nodes:
+        if n.get('fileType') != 'md':
+            continue
+        path = n.get('path', '')
+        for key, code_pat in doc_map:
+            if key in path:
+                for fid in fid_list[:300]:
+                    if code_pat in fid and fid != path and not fid.endswith('.md'):
+                        links.append({"source": path, "target": fid, "type": "doc-of"})
+                        break
+                break
+    # test-of：tests/test_X.py → 被测模块（test_industry_kb → ai_qa/industry_kb）
+    for n in nodes:
+        path = n.get('path', '')
+        if n.get('type') != 'file' or not path.startswith('tests/test_'):
+            continue
+        key = n['name'].replace('test_', '').replace('.py', '')  # industry_kb
+        if len(key) < 3:
+            continue
+        for fid in fid_list:
+            if key in fid and not fid.startswith('tests/') and fid != path:
+                links.append({"source": path, "target": fid, "type": "test-of"})
+                break
+
+
+def _apply_edge_style(links: List[dict]) -> None:
+    """边分实线/虚线（solid=运行驱动 import/pipeline/route/test-of；dashed=概念归属 其余）。"""
+    solid = {'import', 'pipeline', 'route', 'test-of'}
+    for l in links:
+        l['style'] = 'solid' if l.get('type') in solid else 'dashed'
+
+
+def _compute_in_degree(nodes: List[dict], links: List[dict]) -> None:
+    """算每节点被 import 指向次数（核心节点放大依据）。"""
+    idmap = {n['id']: n for n in nodes}
+    for n in nodes:
+        n['inDegree'] = 0
+    for l in links:
+        if l.get('type') == 'import':
+            t = idmap.get(l.get('target'))
+            if t:
+                t['inDegree'] = t.get('inDegree', 0) + 1
+
+
+def _mark_orphans(nodes: List[dict], links: List[dict]) -> None:
+    """degree=0 节点标 orphan（三类清理依据）。"""
+    deg: Dict[str, int] = {n['id']: 0 for n in nodes}
+    for l in links:
+        s, t = l.get('source'), l.get('target')
+        if s in deg:
+            deg[s] += 1
+        if t in deg:
+            deg[t] += 1
+    for n in nodes:
+        n['orphan'] = deg.get(n['id'], 0) == 0
+
+
+def _build_info() -> dict:
+    """build 信息（git commit + 时间 + python 版本），subprocess 容错。"""
+    import platform
+    info = {"python": platform.python_version(), "builtAt": time.strftime("%Y-%m-%dT%H:%M:%S")}
+    try:
+        import subprocess
+        info["commit"] = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True, text=True, cwd=PROJECT_ROOT, timeout=2).stdout.strip()
+        info["commitTime"] = subprocess.run(["git", "show", "-s", "--format=%ci", "HEAD"],
+            capture_output=True, text=True, cwd=PROJECT_ROOT, timeout=2).stdout.strip()[:16]
+    except Exception:
+        info["commit"] = info.get("commit") or None
+    return info
+
+
+def _todo_summary(root: Path) -> List[dict]:
+    """读 docs/todo.md 当日段（## 📅 today）前 8 条 ### state title。"""
+    fp = root / "docs" / "todo.md"
+    if not fp.is_file():
+        return []
+    text = fp.read_text(encoding='utf-8', errors='ignore')
+    today = time.strftime("%Y-%m-%d")
+    m = re.search(rf"## 📅 {today}\n(.*?)(?=\n## 📅|\Z)", text, re.DOTALL)
+    if not m:
+        return []
+    out = []
+    for block in re.finditer(r"###\s*(✅|🔄|⬜|⏸|❌)\s*(.+?)(?:\n|$)", m.group(1)):
+        out.append({"state": block.group(1), "title": block.group(2).strip()[:80]})
+    return out[:8]
 
 
 # ════════════════════════════════════════════════════════════════════
