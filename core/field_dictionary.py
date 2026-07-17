@@ -15,6 +15,8 @@ dominantDLMC / range_selector name_candidates / resolve_boundary / extract_featu
 LLM 推断端点（P2）复用 ai_qa/llm.py chat_with_fallback，miss 字段才调。
 """
 
+from core.tracker import track, trace_log, register_track_id
+
 # ════════════ 字段角色字典 ═════════════
 # variants 之间不重叠（name/boundary_name/land_use_class 各自独占其物理字段名）。
 FIELD_ROLE_DICT = {
@@ -183,6 +185,7 @@ def resolve_role(field, hint=None):
     return _VARIANT_INDEX.get(f.lower())
 
 
+@track("MOD_FIELD.F_001", track_args=False)
 def resolve_field_alias(field, columns, hint=None):
     """把用户传的 field 名解析到 columns 里实际存在的列名。命中返回列名，miss 返回 None。
 
@@ -234,6 +237,7 @@ def is_internal_field(field):
     return bool(field) and str(field).startswith('_')
 
 
+@track("MOD_FIELD.F_002", track_args=False)
 def find_boundary_name_column(columns):
     """面层/边界 nameField 推断：按优先级找名称列，返回列名或 None。
 
@@ -260,6 +264,7 @@ def role_label(role):
 LLM_ROLE_CONFIDENCE_FLOOR = 0.3
 
 
+@track("MOD_FIELD.F_003", track_args=False)
 def validate_llm_roles(inferred):
     """校验 LLM 推断返回的 {field: {role, confidence, reason}} ——
     1) role 必须在字典内；2) confidence ≥ LLM_ROLE_CONFIDENCE_FLOOR(0.3)。任一不满足 → role 置 None（不承重）。
@@ -274,8 +279,21 @@ def validate_llm_roles(inferred):
             out[fld] = {'role': role, 'confidence': conf, 'reason': v.get('reason', '')}
         else:
             _why = 'invalid role' if not (role and role in FIELD_ROLE_DICT) else f'low confidence ({conf} < {LLM_ROLE_CONFIDENCE_FLOOR})'
+            # D_001 choke point：低置信/无效 role 不承重（防误导 grounding/aggregate），记一笔便于排查
+            trace_log('MOD_FIELD.D_001', f'role dropped field={fld} conf={conf} why={_why}', status='WARN')
             out[fld] = {'role': None, 'confidence': 0, 'reason': _why}
     return out
+
+
+# ════════════ MOD_FIELD 追踪 ID 注册 ════════════
+# 仅 track 承重入口（resolve_field_alias/find_boundary_name_column/validate_llm_roles）；
+# resolve_role + is_self_produced/is_render_contract/is_internal_field/role_label 为热路径 helper
+# （resolve_role 在 resolve_field_alias 内按列循环调用、谓词在 _fieldSamples 过滤热路径），@track 会刷爆
+# trace 日志，故不 track——与 spatial_analysis.py「只 track 主入口非每个谓词」同 convention。
+register_track_id("MOD_FIELD.F_001", "resolve_field_alias（⑤② 承重：field→实际列名 alias 解析，全域调用）")
+register_track_id("MOD_FIELD.F_002", "find_boundary_name_column（面层 nameField 优先级推断）")
+register_track_id("MOD_FIELD.F_003", "validate_llm_roles（FIELD_INFER choke point：LLM role 校验）")
+register_track_id("MOD_FIELD.D_001", "LLM role 因低置信(<0.3)/无效被丢弃（不承重，防误导）")
 
 
 if __name__ == '__main__':

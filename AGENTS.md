@@ -159,28 +159,34 @@ Agent 启动时根据下表选择性阅读知识源：
 
 **模块 ID 分配**：
 
-| 模块 ID | 文件 | 
-|---------|------|
-| `MOD_GOV` | `SCRIPT/data_governance.py` |
-| `MOD_ANA` | `SCRIPT/emotion_analysis_v1.py` |
-| `MOD_REL` | `SCRIPT/relevance_filter.py` |
-| `MOD_RUN` | `SCRIPT/run_analysis.py` |
-| `MOD_LOADER` | `core/data_loader.py` |
-| `MOD_MAP` | `core/map_engine.py` |
-| `MOD_TRANSFORM` | `core/coord_transform.py` |
-| `MOD_RANGE` | `core/range_selector.py` |
-| `MOD_EXPORT` | `core/export.py` |
-| `MOD_UI` | `core/ui_components.py` |
-| `MOD_APP` | `apps/app_main.py` |
-| `MOD_GEN` | `SCRIPT/generate_l1_mock.py` |
-| `MOD_SCRAPER` | `SCRAPER/spiders/` |
-| `MOD_TRACKER` | `core/tracker.py` |
-| `MOD_MM` | `SCRIPT/multimodal_analysis.py` |
-| `MOD_UTILS` | `core/utils.py` |
-| `MOD_PLACE` | `core/place_layer.py` |
-| `MOD_GEOCODE` | `core/geocode.py` |
+| 状态 | 模块 ID | 文件 |
+|------|---------|------|
+| ✅ | `MOD_GOV` | `SCRIPT/data_governance.py` |
+| ✅ | `MOD_ANA` | `SCRIPT/emotion_analysis_v1.py` |
+| ✅ | `MOD_REL` | `SCRIPT/relevance_filter.py` |
+| ✅ | `MOD_RUN` | `SCRIPT/run_analysis.py` |
+| ✅ | `MOD_GEN` | `SCRIPT/generate_l1_mock.py` |
+| ✅ | `MOD_PERF` | `SCRIPT/sim_performance_data.py` |
+| ✅ | `MOD_SCRAPER` | `SCRAPER/spiders/` |
+| ✅ | `MOD_GEOCODE` | `core/geocode.py` |
+| ✅ | `MOD_LLM` | `ai_qa/llm.py` |
+| ✅ | `MOD_SPATIAL` | `core/spatial_analysis.py` + `core/buffer_analysis.py` |
+| ✅ | `MOD_FIELD` | `core/field_dictionary.py` |
+| ✅ | `MOD_APP` | `apps/app_main.py` + `app_dialogs.py` + `app_console.py` |
+| ⬜ | `MOD_LOADER` | `core/data_loader.py` |
+| ⬜ | `MOD_MAP` | `core/map_engine.py` |
+| ⬜ | `MOD_TRANSFORM` | `core/coord_transform.py` |
+| ⬜ | `MOD_RANGE` | `core/range_selector.py` |
+| ⬜ | `MOD_EXPORT` | `core/export.py` |
+| ⬜ | `MOD_MM` | `SCRIPT/multimodal_analysis.py` |
+| ⬜ | `MOD_UTILS` | `core/utils.py` |
+| ⬜ | `MOD_PLACE` | `core/place_layer.py` |
+| ⬜ | `MOD_UI` | `core/ui_components.py`（仅 `design/backups/` 残留引用） |
+| 🔧 | `MOD_TRACKER` | `core/tracker.py`（infra 本体，非业务模块） |
 
-> **5.x 主力待登记**：`ai_qa/`（含 `industry_kb/`）、`core/field_dictionary.py`、`core/spatial_analysis.py` 为 EMC 子系统主力，已借现有 MOD_ 空间埋点（spatial_analysis 18+ 引用、ai_qa/llm 12+），正式 `MOD_AIQA`/`MOD_FIELD`/`MOD_SPATIAL` 分配待 `/garden` 整理后补——**勿擅自加 ID**（守 `core/tracker.py` `_REGISTRY` 连续不跳号红线）。
+> **状态图例**：✅ 已埋点+`register_track_id` 注册 / ⬜ 占位待埋点（保留规划意图，不删） / 🔧 追踪 infra 本体。**注册机制** = 各模块 `register_track_id()` 在 import 时调用，运行时填充 `core/tracker.py` 的 `_TRACKING_REGISTRY`（**非** tracker.py 内静态 dict）。
+>
+> **5.x 主力**：`MOD_SPATIAL` / `MOD_LLM` / `MOD_FIELD` 已正式分配 ✅。仍待埋点：ai_qa broader（`paradigm.py`/`manifesto.py`/`prompts.py`——select_template/路由核心，拟 `MOD_AIQA`）+ 上表 9 个 ⬜ 模块。**低优先，勿擅自加 ID**（守 `_TRACKING_REGISTRY` 编号连续不跳号红线——待正式分配时整体规划）。
 
 **埋点规则**：
 - 公开函数（非 `_` 前缀）→ `@track("MOD_XXX.F_NNN")`

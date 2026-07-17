@@ -216,15 +216,34 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月17日）** · 本节按板块分组、组内倒序；最新工作 = **5.115 browser 终验 Tier1（compare 机制/④⑤ 数据流）全 PASS + SKILLS_INDEX 刷新**（本次）+ 5.114 compare 技能 + EMC 板块组（5.89–5.114）。最近：
+> 📍 **最新动态（07月17日）** · 本节按板块分组、组内倒序；最新工作 = **5.116 tracker 文档对账 + field_dictionary 补 MOD_FIELD**（本次）+ 5.115 browser 终验 + EMC 板块组（5.89–5.115）。最近：
 >
+> - **5.116 tracker 文档对账 + MOD_FIELD 埋点**：AGENTS.md 模块表 + CLAUDE.md manifest **双重漂移**修正——MOD_SPATIAL(spatial_analysis)/MOD_LLM(ai_qa/llm)/MOD_PERF(sim_performance_data) 早有埋点却不在表，补入并标 ✅；8 个只列名无埋点的标 ⬜ 待埋点（保留规划）；「5.x 待登记」note 改写（5.x 主力 MOD_SPATIAL/MOD_LLM 已 done，本会话补 MOD_FIELD）。`core/field_dictionary.py` 补 **MOD_FIELD**（F_001 resolve_field_alias ⑤② 承重 / F_002 find_boundary_name_column / F_003 validate_llm_roles 0.3 choke point + D_001 低置信丢弃；热路径 helper resolve_role/is_* 不 track 防日志刷爆，同 spatial_analysis convention）。CLAUDE.md rule 10 `_REGISTRY`→`_TRACKING_REGISTRY`（运行时各模块 register 填充，非静态 dict）。承重 note：MOD_SPATIAL.F_005 非跳号（属 buffer_analysis.py，MOD_SPATIAL 跨两文件 F_001-F_007 连续）。**Tier2 ⑤③/⑤④ 评估后延期**（见下方）。零回归（pytest 198 pass，8 预存 fail 与本次无关）。详见下方 5.116。
 > - **5.115 browser 终验 Tier1 全 PASS + SKILLS_INDEX 刷新**：07-16 compare/_driftRe/④⑤ 全是 eval 测不出的运行时行为（C6），本次 browser 实跑闭环——①compare 胶囊机制走通（路由 decision_type=对比→compare_regions 逐区调 zonal_stats，网络验证 2×POST /geo/zonal_stats；优雅降级 gap 卡，不犯老三毛病）②_driftRe 代码确认（4 轮 Flash 均不吐 ``` 围栏，DOM 0 个 `<pre>/<code>`）③⑤④ footer 命中率累积显示（Flash 模板 3/3=100%）④⑤② aggregate 别名双端点 PASS（zonal_stats polarity_index=-0.22 非零+domain_top 非空=静默零 bug 修复；square_grid 真端点 score_mean/l1_confidence_mean/emotion_intensity_mean 三别名非零）⑤城市更新问答用权威术语（15 分钟生活圈/口袋公园/公共服务设施/长效治理）。**新发现·延后**：compare 中文地点名↔preset_id 语义错配（boundaries 传"西陵区"中文名→后端 load_preset FileNotFoundError→"区域对比仅 0/2 区"），机制优雅降级 PASS 但 happy path 未通——**开新 plan 专门讨论**。另：_driftRe 现范围（``` 围栏 + action-JSON）外的「无围栏裸 JSON 内联」边缘 case（仅"请输出 JSON"反常态请求触发）记笔不修。SKILLS_INDEX.md 加🟣项目自有能力节（ai_qa 16 技能谱+industry_kb 四领域+用地国标+/garden+/verify）。详见下方 5.115。
 > - **5.114 EMC · 区域对比 compare 技能 + _driftRe 拓宽**：治欢迎胶囊"对比西陵伍家岗"老毛病（代码块/回答一半/方法不做）——新增 `compare` 单技能（复用 zonal_stats 逐区聚合，不造 geo 端点，守红线）+ select_template C 路由（decision_type=对比 优先）+ 拓宽 `_driftRe`（任意 ``` 围栏→revise 重写 prose，治代码块泄漏）。详见下方 5.114。
 > - **5.113 工作策略 · 上下文连贯园丁层**：诊断"项目已有 7 机制=上下文树（对齐 OpenAI harness），缺的是园丁层"→ 补 `/garden` 除草 + session-start 阈值提醒 + PreCompact 快照 hook + 漂移自检/单写者纪律（入全局 CLAUDE.md）；归档僵尸记忆树 + 刷新过期 manifest。详见下方 5.113。
 > - **5.112** EMC **⑤② 遗留 拆 confidence role + score 别名化**：修 design smell（l1_confidence 原归 score role 致 square_grid 别名化抢同列）——拆 confidence 独立 role（36 roles）+ import.js scoreKey/confKey 分离 + aggregate/hex/square_grid 数值 mean 全 role 解析（得分/置信度/情绪强度 别名）。square_grid 去冲突 + 规范名零回归。
 > - **5.111** EMC **⑤④ _missStats 遥测 + Flash 80% gate**：Flash template 命中率 localStorage 跨会话累积 + footer 显示；80% gate（self-protection，冷启动放行零回归，成熟<80% 退 while-loop）。**⑤ 全收口**。
 >
-> 阶段一（5.113）+ 阶段二（5.114）+ 5.115 browser 终验 + SKILLS_INDEX 刷新 均已 commit（push 随缘·网络）。下会话：**compare 中文地点名↔preset_id 语义适配（开新 plan，happy path 打通）** + Tier2 低优先（⑤③ boundary_id 分组键 / ⑤④ execSkips 分桶 / PreCompact hook 自然触发实测 .wip.md）。
+> 5.113–5.116 均已 commit（push 随缘·网络）。下会话：**compare 中文地点名↔preset_id 语义适配（开新 plan，happy path 打通）** + Tier2 低优先（⑤③ boundary_id 分组键·需 membership 列设计 / ⑤④ execSkips 分桶·需 harness 遥测 schema / PreCompact hook 自然触发实测 .wip.md / MOD_AIQA 给 ai_qa broader 补埋点）。
+
+### 5.116 tracker 文档对账 + field_dictionary 补 MOD_FIELD（07-17，doc-代码一致性）
+
+**用户意图**：「记得写 tracker 相关的文档」——核查发现 `core/tracker.py` 文档**双重漂移**。
+**诊断（漂移）**：
+- [AGENTS.md:162-183](AGENTS.md) 模块表过时：`MOD_SPATIAL`(spatial_analysis)/`MOD_LLM`(ai_qa/llm)/`MOD_PERF`(sim_performance_data) **早有埋点 + register_track_id 注册**却不在表；表里 8 个模块（MOD_LOADER/MAP/TRANSFORM/RANGE/EXPORT/MM/UTILS/PLACE）只列名无实际埋点；line 183「5.x 待登记」note 把已 done 的 spatial_analysis/llm 误标「待登记」。
+- [CLAUDE.md:158](CLAUDE.md)「18 模块 510+ / 5.x 待分配」同源过时；:145 rule 10 称 `_REGISTRY`（实为 `_TRACKING_REGISTRY`，运行时各模块 register 填充）。
+- `core/field_dictionary.py`（⑤② 承重 `resolve_field_alias` + `validate_llm_roles` 0.3 choke point）**完全无埋点**。
+- 承重发现：`MOD_SPATIAL.F_005` **非跳号**——属 [core/buffer_analysis.py](core/buffer_analysis.py)（缓冲区分析），MOD_SPATIAL 跨 spatial_analysis + buffer_analysis 两文件，F_001-F_007 连续。
+**落地**：
+- **field_dictionary 补 MOD_FIELD**：[core/field_dictionary.py](core/field_dictionary.py) `from core.tracker import track, trace_log, register_track_id`；`@track` 3 承重入口——F_001 `resolve_field_alias`（⑤②）/ F_002 `find_boundary_name_column` / F_003 `validate_llm_roles`（0.3 choke point）+ D_001 低置信/无效 role 丢弃 `trace_log`（WARN）；文件尾 register 4 ID。**热路径 helper（resolve_role + is_self_produced/is_render_contract/is_internal_field/role_label）故意不 track**——resolve_role 在 resolve_field_alias 内按列循环、谓词在 _fieldSamples 过滤热路径，@track 会刷爆 trace；同 spatial_analysis「只 track 主入口非每个谓词」convention。
+- **AGENTS.md 模块表重构**：加状态列（✅/⬜/🔧），12 ✅ 已埋点（补 MOD_LLM/MOD_SPATIAL[含 buffer_analysis]/MOD_PERF/MOD_FIELD）+ 9 ⬜ 待埋点（保留不删）+ 🔧 MOD_TRACKER；「5.x 待登记」note 改写。
+- **CLAUDE.md**：:158 manifest「18 模块 510+」→「12 已埋点 + 9 待埋点，5.x 主力 MOD_SPATIAL/MOD_LLM/MOD_FIELD 已分配」；:145 `_REGISTRY`→`_TRACKING_REGISTRY` + 运行时 register 说明。
+**Tier2 ⑤③/⑤④ 评估后延期**（守纪律·不造推测/无消费者代码）：
+- **⑤③ boundary_id 分组键**：`boundary_id` role 语义 = 「面层唯一标识」（OBJECTID/FID/code，多边形 id），**非点的「归属哪个面」属性**；L2 点的归属列是 zone/area_tag（无对应 role）。实现需先设计 membership 列识别 + 无现消费者（zonal_stats 走 sjoin 未接）→ 强造 = 死代码。延期。
+- **⑤④ execSkips/lowConfField 分桶**：扩 ⑤④ _missStats 活遥测（additive，不动 gate 语义/3 出口），但需 harness.js skip 点 + 低置信检测 spelunking + 遥测 schema 设计 → 非快速顺带。延期。
+**验证**：`list_track_ids()` 确认 MOD_FIELD 4 ID 注册 + @track enter/exit 触发 + D_001 在 conf<0.3 触发；`pytest tests/ -q` **198 pass / 8 fail**，stash 对比确认 8 fail 全预存（h3 缺依赖等）与本次零回归。
+**承重**：MOD_FIELD 编号连续不跳号（4 ID）；未碰 tracker.py 本体/spatial_analysis 承重 helper/EMC harness；文档对账匹配代码 grep 实况。
 
 ### 5.115 browser 终验 Tier1 全 PASS + SKILLS_INDEX 刷新（07-17，C6 运行时闭环）
 
