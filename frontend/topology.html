@@ -6,30 +6,32 @@
   <title>项目架构拓扑图 · emotion_map</title>
   <link rel="stylesheet" href="css/tokens.css" />
   <link rel="stylesheet" href="css/topo.css" />
-  <!-- force-graph（vasturiano）— Obsidian graph view 同款引擎（d3-force + Canvas），UMD 全局 forceGraph。
-       本地 vendor（不依赖外网 CDN，CLAUDE.md 约定 frontend/vendor/ 存本地库）；版本 1.51.0。 -->
-  <script src="vendor/force-graph.min.js"></script>
+  <!-- 3d-force-graph（vasturiano，Obsidian graph 的 3D 版，d3-force-3d + three.js/WebGL）UMD 全局 ForceGraph3D（需 new）-->
+  <script src="vendor/3d-force-graph.min.js"></script>
+  <!-- marked + DOMPurify：md 渲染（详情抽屉 docs 区，解决浏览器直接打开 raw .md 乱码） -->
+  <script src="vendor/marked.min.js"></script>
+  <script src="vendor/purify.min.js"></script>
 </head>
 <body>
   <header id="topo-header">
     <span class="topo-title">项目架构拓扑图</span>
-    <span class="topo-subtitle">Project Topology · 文件依赖 / 模块 / 开发进度（实时扫描）</span>
+    <span class="topo-subtitle">Project Topology · 3D 分层架构 · 成熟度成片（拖拽转球 · 滚轮缩放）</span>
     <div class="topo-header-actions">
       <button id="topo-refresh" title="强制刷新扫描（忽略缓存）">↻ 刷新</button>
       <button id="topo-close" title="关闭窗口">关闭</button>
     </div>
   </header>
 
-  <!-- 预设视图按钮栏：同一张图，不同过滤聚焦 -->
+  <!-- 预设视图按钮栏：默认 overview（3D 分层球 + 成片），files 为原文件级平铺 -->
   <nav id="topo-presets" role="tablist">
-    <button class="topo-preset is-active" data-view="global">全局架构</button>
+    <button class="topo-preset is-active" data-view="overview">架构总览</button>
     <button class="topo-preset" data-view="pipeline">数据管道 L0→L4</button>
     <button class="topo-preset" data-view="emc">EMC · AI 问答</button>
     <button class="topo-preset" data-view="agent_skills">agent-skills</button>
     <button class="topo-preset" data-view="roadmap">任务路线图</button>
     <button class="topo-preset" data-view="module">模块视图</button>
+    <button class="topo-preset" data-view="files">文件级平铺</button>
     <span class="topo-spacer"></span>
-    <label class="topo-toggle"><input type="checkbox" id="topo-collapse-all" /> 折叠所有目录</label>
     <span class="topo-stats" id="topo-stats">加载中…</span>
   </nav>
 
@@ -37,27 +39,29 @@
     <!-- 左侧：图例 + 最新动态 -->
     <aside id="topo-sidebar">
       <div class="topo-sec">
-        <div class="topo-sec-title">领域 · Domain（节点着色）</div>
-        <ul id="topo-legend-domain" class="topo-legend"></ul>
+        <div class="topo-sec-title">架构层 · Layer（同心球层 + 着色）</div>
+        <ul id="topo-legend-layer" class="topo-legend"></ul>
       </div>
       <div class="topo-sec">
-        <div class="topo-sec-title">边类型 · Edge Type</div>
+        <div class="topo-sec-title">成熟度 · Maturity（成片：色深浅 + 透明度）</div>
         <ul class="topo-legend">
-          <li><span class="edge-swatch" data-type="import"></span>import 依赖</li>
-          <li><span class="edge-swatch" data-type="pipeline"></span>数据流 L0→L4</li>
-          <li><span class="edge-swatch" data-type="route"></span>FastAPI 路由挂载</li>
-          <li><span class="edge-swatch" data-type="contains"></span>目录包含</li>
-          <li><span class="edge-swatch" data-type="owns"></span>模块归属</li>
+          <li><span class="st st-mature"></span>成熟 mature（实色深）</li>
+          <li><span class="st st-progressing"></span>推进中 progressing（中色）</li>
+          <li><span class="st st-planned"></span>计划 planned（浅色半透）</li>
         </ul>
       </div>
       <div class="topo-sec">
-        <div class="topo-sec-title">状态 · State</div>
+        <div class="topo-sec-title">色系 · 4 类</div>
         <ul class="topo-legend">
-          <li><span class="st st-done"></span>✅ 完成</li>
-          <li><span class="st st-progress"></span>🔄 进行中</li>
-          <li><span class="st st-todo"></span>⬜ 待启动</li>
-          <li><span class="st st-milestone"></span>◆ 架构转折点</li>
+          <li><span class="st" style="background:var(--topo-c-primary-mature)"></span>主程序 + EMC（Claude 橙）</li>
+          <li><span class="st" style="background:var(--topo-c-infra-mature)"></span>架构/infra（蓝青）</li>
+          <li><span class="st" style="background:var(--topo-c-data-mature)"></span>DATA 数据（绿）</li>
+          <li><span class="st" style="background:var(--topo-c-doc-mature)"></span>docs/设计（暖灰）</li>
         </ul>
+      </div>
+      <div class="topo-sec">
+        <div class="topo-sec-title">操作</div>
+        <div class="topo-hint">拖拽空白：转球体<br/>滚轮：缩放<br/>悬停节点：富信息卡<br/>点击节点：详情抽屉</div>
       </div>
       <div class="topo-sec">
         <div class="topo-sec-title">最近动态</div>
@@ -65,17 +69,19 @@
       </div>
     </aside>
 
-    <!-- 主图画布 -->
+    <!-- 主图画布（3D） -->
     <div id="topo-graph"></div>
 
-    <!-- 右侧节点详情抽屉（点节点弹出） -->
+    <!-- 悬停富信息卡片（跟随节点屏幕位置） -->
+    <div id="topo-tip" hidden></div>
+
+    <!-- 右侧节点详情抽屉（点节点弹出，docs 区 marked 渲染） -->
     <aside id="topo-detail" hidden>
       <button class="topo-detail-close" id="topo-detail-close">&times;</button>
       <div class="topo-detail-name" id="td-name"></div>
       <div class="topo-detail-path" id="td-path"></div>
       <dl class="topo-detail-grid" id="td-grid"></dl>
       <div class="topo-detail-docs" id="td-docs"></div>
-      <button class="topo-detail-collapse-btn" id="td-collapse" hidden>折叠 / 展开此目录</button>
     </aside>
   </main>
 

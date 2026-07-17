@@ -7,6 +7,14 @@
 
 ## 📅 2026-07-17
 
+### ✅ 拓扑图 3D 重构 + vibe coding 策略梳理（revision-log 5.123，commit 待 push · **用户手动 push**）
+
+5.122 拓扑图 v1 是"文件展示器"，用户反馈 6 问题（尺寸/挤/配色乱/看不出架构+进度/悬停薄/md乱码）。两方面重构。
+- **方面2 拓扑图 3D**：换 3d-force-graph（3D 球+拖拽转+滚轮zoom，vendor 本地）+ 尺寸 bug 修（body flex column + min-height:0 自适应 21:9）+ 4 色系（Claude 橙主+蓝青/绿/暖灰）×3 档（成熟度成片，去 emoji）+ 后端 [topo_scanner.py](core/topo_scanner.py) 加 layer/pipelinePos/maturity（§3 板块矩阵聚合成熟度）+ 默认 overview 3D 分层 + 7 preset + hover `#topo-tip` 富信息卡 + marked+DOMPurify md 渲染。
+- **方面1 策略**：诊断 8 agent 僵尸化（vs 不派 subagent 铁律，仅 sim-emotion-data 活跃）+ 464 skill 缓存重负（hooks 5 个承重保留）；自创 3 skill（[/sync-log](.claude/commands/sync-log.md) / [/curate-memory](.claude/commands/curate-memory.md) / [/frontend-pitfall-check](.claude/commands/frontend-pitfall-check.md)）；项目三类清理清单（删除标安全等级/整合/未来，**本轮只出清单不执行**）。
+- **Playwright 全验 PASS**：3D 球/尺寸占满(1242×765)/4 色成片/hover tip/click detail/md(AGENTS.md→GFM)。
+- **承重**：纯 stdlib；前端 vendor；不碰 tracker；删除只出清单。**push 用户手动。**
+
 ### ✅ 项目架构动态拓扑图（revision-log 5.122，commit 待 push · **用户手动 push**）
 
 新任务——Obsidian 式动态拓扑图掌控项目全貌（10 层/百文件/21 模块/121 revision/9 agent）。3 Explore + Plan + 4 决策落地。

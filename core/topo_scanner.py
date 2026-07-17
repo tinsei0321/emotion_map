@@ -59,6 +59,27 @@ _TASK_STATE_MAP = {'✅': 'done', '🔄': 'progress', '⬜': 'todo', '⏸': 'pau
 # AGENTS.md 模块表状态 emoji → state
 _MOD_STATE_MAP = {'✅': 'done', '⬜': 'todo', '🔧': 'milestone', '🔄': 'progress'}
 
+# 架构分层：顶层目录 → layer（拓扑图分层球 + 管线叙事用）
+_LAYER_MAP = {
+    'DATA': 'data', 'SCRIPT': 'tool', 'SCRAPER': 'tool',
+    'frontend': 'ui', 'apps': 'ui', 'design': 'ui',
+    'core': 'infra', 'api': 'infra', 'ai_qa': 'infra',
+    'docs': 'doc', '.claude': 'harness',
+}
+# 成熟度：§3 板块矩阵 emoji → maturity（成片色/几何用）
+_MATURITY_MAP = {'✅': 'mature', '🔄': 'progressing', '⬜': 'planned', '⏸': 'paused', '❌': 'rejected'}
+# state → maturity（pipeline-stage / 模块表 state 转成片用）
+_STATE_TO_MATURITY = {'done': 'mature', 'progress': 'progressing', 'todo': 'planned',
+                      'milestone': 'mature', 'paused': 'paused', 'rejected': 'rejected'}
+# 无 §3 命中时按 layer 给默认成熟度（主架构已搭=mature，管道/工具在建=progressing）
+_LAYER_DEFAULT_MATURITY = {'data': 'mature', 'ui': 'mature', 'infra': 'mature',
+                           'doc': 'mature', 'harness': 'mature', 'tool': 'progressing',
+                           'pipeline': 'progressing', 'task': 'progressing', 'other': 'progressing'}
+# revision-log §3 板块总览行：| 板块 | emoji 状态词 | `主文件列` | 日期 |
+_SECTION_MATRIX_RE = re.compile(
+    r"\|\s*([^|]+?)\s*\|\s*(✅|🔄|⬜|⏸|❌)\s*[^|]*\|\s*([^|]+?)\s*\|\s*[^|]*\|"
+)
+
 # revision-log §0 ```text 任务树行：缩进（树形字符+空格）+ 标签 + 可选状态 emoji
 _TASK_LINE_RE = re.compile(r"^([├└─│\s]+)(.+?)(✅|🔄|⬜|⏸|❌|◆)?\s*$")
 # AGENTS.md 模块表行：| emoji | `MOD_XXX` | `path` |
@@ -91,7 +112,9 @@ def build_topology(root: Path, view: str = "global") -> dict:
     modules = _parse_agents_modules(root / "AGENTS.md", nodes, links, file_index)
     tasks = _parse_revision_tasks(root / "docs" / "revision-log.md", nodes)
     latest = _parse_latest_pointer(root / "docs" / "revision-log.md")
+    _parse_section_matrix(root / "docs" / "revision-log.md", file_index)
     _inject_pipeline_stages(nodes, links)
+    _apply_default_maturity(nodes)
     _cleanup_links(nodes, links)
 
     data = {
@@ -144,6 +167,29 @@ def _rel(p: Path, root: Path) -> str:
     return os.path.relpath(p, root).replace('\\', '/')
 
 
+def _classify_layer(rel_dir: str) -> str:
+    """顶层目录 → 架构层（data/tool/ui/infra/doc/harness/other）。"""
+    top = rel_dir.split('/')[0] if rel_dir else 'root'
+    return _LAYER_MAP.get(top, 'other')
+
+
+def _classify_pipeline_pos(rel_dir: str, file_type: Optional[str]) -> Optional[str]:
+    """路径 → 管线阶段（L0/L1/L2/L3-L4/runtime/None），表达"数据如何生成到跑起来"。"""
+    if not rel_dir:
+        return None
+    if rel_dir.startswith('DATA/raw'):
+        return 'L0'
+    if 'data_governance' in rel_dir or 'relevance_filter' in rel_dir:
+        return 'L1'
+    if 'emotion_analysis' in rel_dir or 'emotion_lexicon' in rel_dir:
+        return 'L2'
+    if rel_dir.startswith('ai_qa/') or rel_dir.startswith('DATA/sim'):
+        return 'L3-L4'
+    if rel_dir.startswith('apps/') or rel_dir.startswith('frontend/'):
+        return 'runtime'
+    return None
+
+
 def _scan_dir_tree(root: Path, nodes: List[dict], links: List[dict],
                    file_index: Dict[str, dict]) -> None:
     """os.walk → dir + file 节点 + contains 边。原地改 dirnames 剪枝。"""
@@ -168,6 +214,9 @@ def _scan_dir_tree(root: Path, nodes: List[dict], links: List[dict],
                     "id": rel_dir, "name": os.path.basename(dirpath), "group": group,
                     "type": "dir", "path": rel_dir + '/', "fileType": None, "lines": None,
                     "state": None, "module": None, "docs": [], "collapsed": True,
+                    "layer": _classify_layer(rel_dir),
+                    "pipelinePos": _classify_pipeline_pos(rel_dir, None),
+                    "maturity": None,
                 })
                 parent = '/'.join(rel_dir.split('/')[:-1])
                 if parent:
@@ -189,6 +238,9 @@ def _scan_dir_tree(root: Path, nodes: List[dict], links: List[dict],
                 "id": fid, "name": fn, "group": group, "type": "file", "path": fid,
                 "fileType": ext.lstrip('.') or None, "lines": lines, "state": None,
                 "module": None, "docs": [], "collapsed": False,
+                "layer": _classify_layer(rel_dir),
+                "pipelinePos": _classify_pipeline_pos(rel_dir, ext.lstrip('.') or None),
+                "maturity": None,
             }
             nodes.append(node)
             file_index[fid] = node
@@ -325,6 +377,8 @@ def _parse_agents_modules(path: Path, nodes: List[dict], links: List[dict],
             "id": mod_id, "name": mod_id, "group": "module", "type": "module",
             "path": mod_path, "fileType": None, "lines": None, "state": state,
             "module": mod_id, "docs": ["AGENTS.md"], "collapsed": False,
+            "layer": _classify_layer(mod_path.split('/')[0] if '/' in mod_path else mod_path),
+            "maturity": _STATE_TO_MATURITY.get(state, 'progressing'),
         })
         # 反查文件节点回填 module + state + owns 边（mod_path 可能含 + 多文件，逐一匹配）
         matched = False
@@ -400,6 +454,44 @@ def _parse_latest_pointer(path: Path) -> Optional[dict]:
     return None
 
 
+def _parse_section_matrix(path: Path, file_index: Dict[str, dict]) -> Dict[str, str]:
+    """解析 revision-log §3 板块总览表 → 文件级 maturity 回填（成片色/几何的数据源）。
+
+    §3 行：| 板块 | emoji 状态词 | `主文件列` | 日期 | → emoji 映射 maturity → 回填 file_index。
+    主文件列含多个 `path`（空格分隔）；目录型（如 SCRAPER/）回填该前缀下所有文件。
+    """
+    if not path.is_file():
+        return {}
+    text = path.read_text(encoding='utf-8', errors='ignore')
+    m = re.search(r"##\s*3\.\s*板块总览(.*?)(?:\n##\s|\n```mermaid)", text, re.DOTALL)
+    if not m:
+        return {}
+    table = m.group(1)
+    file_to_maturity: Dict[str, str] = {}
+    for row in _SECTION_MATRIX_RE.finditer(table):
+        emoji, files_col = row.group(2), row.group(3)
+        maturity = _MATURITY_MAP.get(emoji, 'progressing')
+        for fp_raw in re.findall(r'`([^`]+)`', files_col):
+            fp = fp_raw.replace('\\', '/').rstrip('/')
+            file_to_maturity[fp] = maturity
+            node = file_index.get(fp)
+            if node:
+                node['maturity'] = maturity
+            else:
+                # 目录型前缀（SCRAPER/ .claude/ 等）→ 回填前缀下所有文件
+                for fid, nd in file_index.items():
+                    if (fid.startswith(fp + '/') or fid == fp) and nd.get('maturity') is None:
+                        nd['maturity'] = maturity
+    return file_to_maturity
+
+
+def _apply_default_maturity(nodes: List[dict]) -> None:
+    """无 §3 命中的节点按 layer 给默认成熟度（主架构已搭 mature / 管道工具 progressing）。"""
+    for n in nodes:
+        if n.get('maturity') is None:
+            n['maturity'] = _LAYER_DEFAULT_MATURITY.get(n.get('layer', 'other'), 'progressing')
+
+
 # ════════════════════════════════════════════════════════════════════
 # 合成 L0→L4 pipeline-stage 节点
 # ════════════════════════════════════════════════════════════════════
@@ -410,6 +502,8 @@ def _inject_pipeline_stages(nodes: List[dict], links: List[dict]) -> None:
             "path": f"CLAUDE.md#数据管道-{sid}", "fileType": None, "lines": None,
             "state": state, "module": None,
             "docs": ["CLAUDE.md"], "collapsed": False, "note": note,
+            "layer": "pipeline", "maturity": _STATE_TO_MATURITY.get(state, 'progressing'),
+            "pipelinePos": sid,
         })
     for a, b in zip(_PIPELINE_STAGES, _PIPELINE_STAGES[1:]):
         links.append({"source": a[0], "target": b[0], "type": "pipeline"})

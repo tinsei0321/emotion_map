@@ -1,6 +1,6 @@
-/* ══ topology.html 专用样式（独立暗底页，不继承主界面 LIGHT token）══
-   视觉：Obsidian 经典暗底 + Claude 橙 #D97757（替代 Obsidian 紫做主色/高亮）。
-   参考 frontend/css/tokens.css 的 CSS 变量范式，但用 --topo-* 自定义命名空间。 */
+/* ══ topology.html 3D 版专用样式 ══
+   视觉：Obsidian 暗底 + Claude 橙主色 + 3 辅色（蓝青/绿/暖灰），每色 3 档深浅=成熟度。
+   布局：body flex column + min-height:0 修"21:9 屏只显示一半"尺寸 bug（弃硬编码 calc）。 */
 
 :root {
   /* ── 暗底（Obsidian 风格）── */
@@ -11,56 +11,41 @@
   --topo-text: #c9d1d9;
   --topo-text-muted: #8b949e;
 
-  /* ── Claude 橙（主色/高亮，替代 Obsidian 紫）── */
-  --topo-accent: #D97757;
-  --topo-accent-hover: #E88A6E;
-  --topo-accent-soft: rgba(217, 119, 87, 0.15);
+  /* ── 4 色系 × 3 档深浅（成熟度）── 主色 Claude 橙 + 3 辅 */
+  --topo-c-primary-mature: #D97757;      /* 主程序 + EMC：frontend/core/ai_qa */
+  --topo-c-primary-progressing: #E8A48A;
+  --topo-c-primary-planned: #F4D0BF;
 
-  /* ── 领域分类色（GitHub dark 协调组）── */
-  --topo-domain-frontend: #58A6FF;   /* 蓝 - 前端主界面 */
-  --topo-domain-apps:      #56D4DD;   /* 青 - Streamlit 遗留 */
-  --topo-domain-core:      #7EE787;   /* 绿 - 基础设施 */
-  --topo-domain-SCRIPT:    #FFA657;   /* 橙 - 分析引擎 */
-  --topo-domain-SCRAPER:   #BC8CFF;   /* 紫 - 数据采集 */
-  --topo-domain-DATA:      #F97583;   /* 红 - 数据层 */
-  --topo-domain-api:       #79C0FF;   /* 浅蓝 - API */
-  --topo-domain-ai_qa:     #FF7B72;   /* 暖红 - AI 问答 */
-  --topo-domain-docs:      #A371F7;   /* 紫罗兰 - 文档 */
-  --topo-domain-design:    #FF9F1C;   /* 琥珀 - 设计令牌 */
-  --topo-domain-tests:     #56D364;   /* 浅绿 - 测试 */
-  --topo-domain-claude:    #D2A8FF;   /* 淡紫 - Claude harness */
-  --topo-domain-module:    #D2A8FF;   /* 淡紫 - MOD_* */
-  --topo-domain-pipeline:  var(--topo-accent);
-  --topo-domain-task:      #E3B341;   /* 金 - 任务 */
-  --topo-domain-root:      var(--topo-accent);
-  --topo-domain-default:   #8b949e;
+  --topo-c-infra-mature: #4A90A4;        /* 架构/infra：api/apps/SCRIPT/.claude/module/pipeline */
+  --topo-c-infra-progressing: #7DB5C4;
+  --topo-c-infra-planned: #B5D8E0;
 
-  /* ── 状态色（角标）── */
-  --topo-state-done:      #3FB950;
-  --topo-state-progress:  #D29922;
-  --topo-state-todo:      #6E7681;
-  --topo-state-milestone: #E3B341;
+  --topo-c-data-mature: #3FB950;         /* DATA 数据：DATA/SCRAPER */
+  --topo-c-data-progressing: #7DCB8A;
+  --topo-c-data-planned: #B5E2BD;
 
-  /* ── 边色 ── */
-  --topo-edge-import:   #58A6FF;
-  --topo-edge-pipeline: var(--topo-accent);
-  --topo-edge-route:    #BC8CFF;
-  --topo-edge-contains: #30363d;
-  --topo-edge-owns:     #6E7681;
+  --topo-c-doc-mature: #B1ADA1;          /* docs/设计：docs/design/tests/memories/root */
+  --topo-c-doc-progressing: #CDC9BE;
+  --topo-c-doc-planned: #E2DFD6;
+
+  --topo-c-other: #6E7681;               /* other（根任务等）*/
 }
 
 * { box-sizing: border-box; }
 
+/* ── flex column 自适应布局（修尺寸 bug：弃 calc，header/nav 多高自动扣除）── */
+html, body { height: 100%; margin: 0; }
 body {
-  margin: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--topo-bg);
   color: var(--topo-text);
   font-family: 'Open Sans', 'Inter', system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   overflow: hidden;
 }
 
-/* ── 顶部标题栏 ── */
 #topo-header {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -68,7 +53,7 @@ body {
   background: var(--topo-panel);
   border-bottom: 1px solid var(--topo-border);
 }
-.topo-title { font-weight: 600; color: var(--topo-accent); font-size: 15px; }
+.topo-title { font-weight: 600; color: var(--topo-c-primary-mature); font-size: 15px; }
 .topo-subtitle { color: var(--topo-text-muted); font-size: 12px; }
 .topo-header-actions { margin-left: auto; display: flex; gap: 8px; }
 .topo-header-actions button {
@@ -80,10 +65,10 @@ body {
   cursor: pointer;
   font-size: 12px;
 }
-.topo-header-actions button:hover { border-color: var(--topo-accent); color: var(--topo-accent); }
+.topo-header-actions button:hover { border-color: var(--topo-c-primary-mature); color: var(--topo-c-primary-mature); }
 
-/* ── 预设视图按钮栏 ── */
 #topo-presets {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -103,18 +88,20 @@ body {
 }
 .topo-preset:hover { color: var(--topo-text); background: var(--topo-panel-2); }
 .topo-preset.is-active {
-  background: var(--topo-accent-soft);
-  color: var(--topo-accent);
-  border-color: var(--topo-accent);
+  background: rgba(217, 119, 87, 0.15);
+  color: var(--topo-c-primary-mature);
+  border-color: var(--topo-c-primary-mature);
 }
 .topo-spacer { flex: 1; }
-.topo-toggle { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--topo-text-muted); cursor: pointer; }
-.topo-toggle input { cursor: pointer; accent-color: var(--topo-accent); }
 .topo-stats { color: var(--topo-text-muted); font-size: 12px; margin-left: 12px; }
-.topo-stats .cache-hit { color: var(--topo-state-done); }
 
-/* ── 主区：左 sidebar | 图 | 右 detail ── */
-#topo-main { display: flex; height: calc(100vh - 88px); position: relative; }
+/* ── 主区：左 sidebar | 3D图 | 右 detail（flex 自适应，min-height:0 防溢出）── */
+#topo-main {
+  flex: 1;
+  display: flex;
+  position: relative;
+  min-height: 0;
+}
 
 #topo-sidebar {
   width: 240px;
@@ -134,30 +121,36 @@ body {
 }
 .topo-legend { list-style: none; padding: 0; margin: 0; font-size: 12px; }
 .topo-legend li { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
-.edge-swatch { display: inline-block; width: 24px; height: 0; }
-.edge-swatch[data-type="import"]   { border-top: 2px solid var(--topo-edge-import); }
-.edge-swatch[data-type="pipeline"] { border-top: 3px solid var(--topo-edge-pipeline); }
-.edge-swatch[data-type="route"]    { border-top: 2px solid var(--topo-edge-route); }
-.edge-swatch[data-type="contains"] { border-top: 1px solid var(--topo-edge-contains); }
-.edge-swatch[data-type="owns"]     { border-top: 1px dashed var(--topo-edge-owns); }
+.topo-legend .count { color: var(--topo-text-muted); }
 .st { display: inline-block; width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
-.st-done      { background: var(--topo-state-done); }
-.st-progress  { background: var(--topo-state-progress); animation: topo-pulse 1.6s infinite; }
-.st-todo      { background: transparent; border: 1.5px solid var(--topo-state-todo); }
-.st-milestone { background: var(--topo-state-milestone); transform: rotate(45deg); border-radius: 2px; }
-@keyframes topo-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.st-mature { background: var(--topo-c-primary-mature); }
+.st-progressing { background: var(--topo-c-primary-progressing); opacity: 0.75; }
+.st-planned { background: var(--topo-c-primary-planned); opacity: 0.45; border: 1px dashed var(--topo-text-muted); }
+.topo-hint {
+  font-size: 11px;
+  color: var(--topo-text-muted);
+  line-height: 1.7;
+  background: var(--topo-panel-2);
+  padding: 6px 8px;
+  border-radius: 4px;
+}
 .topo-latest-box {
   background: var(--topo-panel-2);
-  border-left: 3px solid var(--topo-accent);
+  border-left: 3px solid var(--topo-c-primary-mature);
   padding: 8px 10px;
   border-radius: 0 4px 4px 0;
   font-size: 12px;
 }
-.topo-latest-box b { color: var(--topo-accent); }
+.topo-latest-box b { color: var(--topo-c-primary-mature); }
 .topo-latest-box .ts { color: var(--topo-text-muted); font-size: 11px; }
 
-/* ── 主图画布 ── */
-#topo-graph { flex: 1; background: var(--topo-bg); }
+/* ── 3D 主图画布（force-graph 容器）── */
+#topo-graph {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  background: var(--topo-bg);
+}
 .topo-error {
   padding: 24px;
   color: #F97583;
@@ -166,12 +159,35 @@ body {
   line-height: 1.6;
 }
 
+/* ── 悬停富信息卡片（跟随节点屏幕位置）── */
+#topo-tip {
+  position: absolute;
+  z-index: 20;
+  pointer-events: none;
+  background: var(--topo-panel);
+  border: 1px solid var(--topo-c-primary-mature);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  max-width: 280px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  line-height: 1.5;
+}
+#topo-tip .tip-name { font-weight: 600; color: var(--topo-c-primary-mature); word-break: break-all; margin-bottom: 4px; }
+#topo-tip .tip-path { font-family: ui-monospace, Consolas, monospace; font-size: 10px; color: var(--topo-text-muted); word-break: break-all; margin-bottom: 6px; }
+#topo-tip .tip-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 4px; }
+#topo-tip .tip-badge { padding: 1px 6px; border-radius: 3px; font-size: 10px; background: var(--topo-panel-2); border: 1px solid var(--topo-border); }
+#topo-tip .tip-badge.mat-mature { color: #3FB950; border-color: #3FB950; }
+#topo-tip .tip-badge.mat-progressing { color: #D29922; border-color: #D29922; }
+#topo-tip .tip-badge.mat-planned { color: var(--topo-text-muted); border-color: var(--topo-text-muted); }
+#topo-tip .tip-lines { color: var(--topo-text-muted); font-size: 11px; }
+
 /* ── 右侧节点详情抽屉 ── */
 #topo-detail {
   position: absolute;
   right: 16px;
   top: 16px;
-  width: 320px;
+  width: 340px;
   max-height: calc(100% - 32px);
   overflow-y: auto;
   background: var(--topo-panel);
@@ -189,36 +205,47 @@ body {
   cursor: pointer;
   line-height: 1;
 }
-.topo-detail-close:hover { color: var(--topo-accent); }
-.topo-detail-name {
-  font-weight: 600;
-  color: var(--topo-accent);
-  margin: 6px 0 4px;
-  word-break: break-all;
-  font-size: 14px;
-}
-.topo-detail-path {
-  font-family: ui-monospace, Consolas, monospace;
-  font-size: 11px;
-  color: var(--topo-text-muted);
-  margin-bottom: 10px;
-  word-break: break-all;
-}
-.topo-detail-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12px; }
+.topo-detail-close:hover { color: var(--topo-c-primary-mature); }
+.topo-detail-name { font-weight: 600; color: var(--topo-c-primary-mature); margin: 6px 0 4px; word-break: break-all; font-size: 14px; }
+.topo-detail-path { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: var(--topo-text-muted); margin-bottom: 10px; word-break: break-all; }
+.topo-detail-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12px; margin: 0; }
 .topo-detail-grid dt { color: var(--topo-text-muted); }
 .topo-detail-grid dd { margin: 0; word-break: break-all; }
-.topo-detail-docs { margin-top: 10px; font-size: 12px; }
-.topo-detail-docs a { color: var(--topo-accent); text-decoration: none; }
-.topo-detail-docs a:hover { text-decoration: underline; }
-.topo-detail-collapse-btn {
-  margin-top: 10px;
-  width: 100%;
-  background: var(--topo-accent-soft);
-  color: var(--topo-accent);
-  border: 1px solid var(--topo-accent);
-  padding: 5px;
+
+/* ── md 渲染区（详情抽屉 docs，marked + DOMPurify）── */
+.topo-detail-docs { margin-top: 10px; }
+.topo-doc-md {
+  background: var(--topo-panel-2);
+  border: 1px solid var(--topo-border);
   border-radius: 4px;
-  cursor: pointer;
+  padding: 8px 10px;
+  margin-top: 6px;
   font-size: 12px;
+  line-height: 1.6;
+  max-height: 320px;
+  overflow-y: auto;
 }
-.topo-detail-collapse-btn:hover { background: var(--topo-accent); color: #fff; }
+.topo-doc-md h1, .topo-doc-md h2, .topo-doc-md h3 { color: var(--topo-c-primary-mature); margin: 8px 0 4px; }
+.topo-doc-md h1 { font-size: 15px; }
+.topo-doc-md h2 { font-size: 13px; }
+.topo-doc-md h3 { font-size: 12px; }
+.topo-doc-md p { margin: 4px 0; }
+.topo-doc-md code {
+  font-family: ui-monospace, Consolas, monospace;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+.topo-doc-md pre {
+  background: rgba(0, 0, 0, 0.4);
+  padding: 8px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+.topo-doc-md pre code { background: none; padding: 0; }
+.topo-doc-md a { color: var(--topo-c-primary-mature); }
+.topo-doc-md table { border-collapse: collapse; width: 100%; margin: 6px 0; }
+.topo-doc-md th, .topo-doc-md td { border: 1px solid var(--topo-border); padding: 3px 6px; text-align: left; }
+.topo-doc-md ul, .topo-doc-md ol { padding-left: 18px; }
+.topo-doc-md blockquote { border-left: 3px solid var(--topo-c-primary-mature); margin: 4px 0; padding-left: 8px; color: var(--topo-text-muted); }
