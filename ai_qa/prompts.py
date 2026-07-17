@@ -63,7 +63,8 @@ AGENT_TEMPLATE = """
 - ensure_zone：生成/确保聚合域（仅当无聚合层时用）。params: {{ "analysis": "square" | "zonal"(默认square), "cell_size": 米(square默认500), "polarity": "overall", "mode": "2d" | "3d"(默认2d) }}
 - focus_zones：定位区域到地图（飞到+高亮）。params: {{ "names": ["区域A", "区域B"] }}
 - open_attribution：展开 Overview 归因面板。params: {{}}
-- inspect_zone：深读某聚合域明细。params: {{ "name": "区域名" }}
+- inspect_zone：深读某聚合域明细（极性/4×5/问题）。params: {{ "name": "区域名" }}
+- deep_read_attribution：L4 深度归因——某簇 rule 底（issue_label/attribution/suggestion）+ 簇评论 → 政策→情绪→项目闭环（deep_attribution + 政策锚 policy_link + 落点项目 project_link + 官方盲区 blind_spot）。**当用户要"这里什么问题/归因/怎么治/政策依据/落什么项目"时用此**（在 inspect_zone 极性/4×5 基础上深化到可落地项目）。params: {{ "name": "区域名" }}
 【GIS 工具】（按 intent/问题尺度自动组合，见下方「GIS 操作目录」附录；**结果自动落地图为新图层**；B 纯操作类必走此类产出图层，允许坐标与裸结果）：
 **工具选择决策**：①"某范围内"=clip（点）/extract_feature（面）；②"A 内的 B"（如西陵区内的商业用地）=先 extract_feature(A) 再 overlay(A, B, intersection)；③面∩面/面∪面=overlay（**勿用 clip——clip 只切点，面层会报错**）；④合并多面=merge；⑤周边半径=buffer。
 **用地数据模型（重要）**：用地预设（如 land_commercial/land_residential/land_park）是**按地类 dissolve 的全市单面/多面**，**没有"类×区"联合资产**——即无法直接抽取"西陵区的商业用地"。要"某区内的某类用地"，必须**几何叠置**：先 extract_feature(admin_district, 区名) 得该区面 → overlay(layer_a=该区面, layer_b=land_xxx, how="intersection") 得交集。同理"某区内居住+商业两类"= 该区面分别与 land_residential、land_commercial 叠置（或 union 后再叠），不可只传一个 preset 期望自动分区。
@@ -353,6 +354,33 @@ FIELD_INFER_TEMPLATE = """
   像地址/地点→location；像行政区/街道/单元名→boundary_name 或 name。
 """
 
+DEEP_ATTRIBUTION_TEMPLATE = """
+
+═══════════ 本次任务 · 深度归因（L4 DEEP ATTRIBUTION）═══════════
+你是城市情绪归因专家。下面给你一个**空间簇（zone/网格/单元内的评论集合）**的【领域×要素×极性】+ 簇内代表性评论
++ 规则底归因建议。请输出**政策→情绪→项目闭环**的深度归因：国家/主管政策（该领域应怎样）→ 情绪数据定位
+（市民实际反馈什么、差在哪）→ 具体可落地项目（工程/治理/规划）。区别于规则底（按 domain×element 查表），
+你要结合评论实质 + 下方权威语境，给**有具体所指、可操作**的归因，不泛泛。
+
+【簇上下文】
+{cluster_context}
+
+输出**严格 JSON 对象**（仅 JSON，禁 markdown 代码块 / 前后解释）：
+{{
+  "deep_attribution": "一句深度归因（评论实质 + 落点矩阵格 + 差/好在哪。如：'修旧如旧获好评但业态同质化+烟火气商业化流失担忧，落 更新×文化/运营×服务，差在业态多元与原住民保留'）",
+  "policy_link": "关联的顶层政策/标准（如：'住建部防止大拆大建通知（不大规模拆除/搬迁）+ 城市更新意见'）。无则空串",
+  "project_link": "指向的具体项目类型（如：'历史街区保护更新 / 业态多元化引导 / 完整社区试点'）。无则空串",
+  "confidence": 0.0,
+  "blind_spot": "若涉及官方标准忽视的盲区（事件的瞬时空间影响 / 情绪微观颗粒）指明；无则空串"
+}}
+要求：
+- 政策→情绪→项目必须闭合：policy_link（方向）+ deep_attribution（情绪实质+落点）+ project_link（可操作项目）。
+- 多归属：一现象可落多矩阵格（domain×element），deep_attribution 点明主+次落点。
+- 事件(element=事件)要素：给**瞬时空间影响**归因（官方体检按日均评估忽视的盲区=EMC 差异化价值）→ 填 blind_spot。
+- confidence：评论充足+归因清晰→0.8+；评论少或泛→0.5；勉强→0.3。低置信会被上层回退规则底。
+- 禁编造政策/项目名（须在下方权威语境内）；禁学术八股；权威术语+通俗解释。
+"""
+
 
 @track("MOD_AIQA.F_006", track_args=False)
 def build_field_infer_prompt(fields: dict, layer_kind: str = '', context: str = '') -> str:
@@ -394,6 +422,25 @@ def build_field_infer_prompt(fields: dict, layer_kind: str = '', context: str = 
     return prompt
 
 
+@track("MOD_AIQA.F_007", track_args=False)
+def build_deep_attribution_prompt(domain, element, polarity, zone_name, sample_texts, rule_suggestion):
+    """L4 深度归因 prompt：簇评论 + 规则底 + 权威语境 → 政策→情绪→项目闭环 JSON（deep_attribution/policy_link/project_link/confidence/blind_spot）。
+    lazy enrichment（EMC 深读某簇时按需触发，非 eager 每 aggregate 跑）；低置信/LLM 不可用由上层（/aiqa/deep_attribution）回退规则底。
+    范式照 build_field_infer_prompt：MANIFESTO + TEMPLATE.format() + industry_kb 附录拼接（花括号安全）。"""
+    from ai_qa.industry_kb import industry_kb_text
+    samp = '\n'.join(f'  - {t}' for t in (sample_texts or [])[:8]) or '  - （无代表性评论）'
+    cluster = (
+        f'- 领域(domain)={domain or "?"} | 要素(element)={element or "?"} | 极性={polarity or "?"} | 区域={zone_name or "?"}\n'
+        f'- 簇内代表性评论：\n{samp}\n'
+        f'- 规则底归因建议（base，按 domain×element 查表，在此基础上深化，勿照抄）：{rule_suggestion or "（无）"}'
+    )
+    prompt = _today_line() + MANIFESTO + DEEP_ATTRIBUTION_TEMPLATE.format(cluster_context=cluster)
+    kb = industry_kb_text(domain) if domain else ''
+    if kb:
+        prompt += '\n\n═══════════ 附录 · 聚焦领域权威语境（政策/项目/案例/归因焦点，政策→情绪→项目闭环依据）═══════════\n' + kb
+    return prompt
+
+
 # ════════════ MOD_AIQA 追踪 ID 注册（build_*_prompt 承重入口）════════════
 # diagnose prompt 永不动（保 Flash eval）——@track 是 pass-through 装饰器，不改 prompt 内容。
 register_track_id("MOD_AIQA.F_002", "build_agent_prompt（ReAct agent loop 每轮 prompt）")
@@ -401,3 +448,4 @@ register_track_id("MOD_AIQA.F_003", "build_final_prompt（最终结论 prompt）
 register_track_id("MOD_AIQA.F_004", "build_revise_prompt（_reviseOnce 重写 prompt）")
 register_track_id("MOD_AIQA.F_005", "build_diagnose_prompt（承重 eval-anchor：6 字段问题理解卡，永不动内容）")
 register_track_id("MOD_AIQA.F_006", "build_field_infer_prompt（P2 字段语义推断）")
+register_track_id("MOD_AIQA.F_007", "build_deep_attribution_prompt（L4 深度归因·政策→情绪→项目闭环，lazy enrichment）")

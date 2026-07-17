@@ -7,6 +7,16 @@
 
 ## 📅 2026-07-17
 
+### ✅ A1 L4 多维归因做厚（revision-log 5.119，commit 待 push）
+
+EMC 三阶段 plan Phase A1——4×5 归因从规则 based 升级为**政策→情绪→项目闭环**深度归因（混合路径：规则底 + LLM enrichment）。
+- **核心决策**：**lazy enrichment**（aggregate 规则归因 `_attach_4x5_attrs` 不动，L4 按需触发；否决 eager 每 aggregate 跑 LLM 太贵）。
+- **A1-2 prompt**：[prompts.py](ai_qa/prompts.py) `DEEP_ATTRIBUTION_TEMPLATE` + `build_deep_attribution_prompt`（**MOD_AIQA.F_007**）——簇评论 + 规则底 + `industry_kb_text(domain)` → JSON {deep_attribution/policy_link/project_link/confidence/blind_spot}，event 要素给瞬时盲区。
+- **A1-1 端点**：[aiqa_routes.py](api/aiqa_routes.py) `POST /aiqa/deep_attribution`（mirror profile_fields：chat_with_fallback flash+json_mode + 低置信<0.5/LLM 断→回退规则底 degraded）。
+- **A1-3 前端**：[tools.js](frontend/js/ai_qa/tools.js) `deep_read_attribution` 工具（取簇属性 + 语义过滤点层 sample_texts + fetch 端点 → 展示政策锚/落点项目/盲区）；agent prompt 工具目录加该工具。
+- **验证（真端点 probe）**：urban_renewal×文化 + ermawu 评论 → degraded=False/confidence=0.8，policy_link=防止大拆大建通知+城市更新十五五、project_link=历史街区保护更新/业态多元化/原住民保留、blind_spot=节假日瞬时人流影响。**政策→情绪→项目闭环 + 官方补盲区全打通**。承重：规则归因零改动；diagnose prompt 不动（改 agent 工具目录，Flash eval 不受影响）；规则底常在保零回归。零回归（199 pass / 8 预存，ESM 绿）。commit 只不 push。
+- **下步**：Phase Sim（大南门·二马路 L3+L4 数据）→ A1+Sim 展示闭环。
+
 ### ✅ EMC 基建做厚 + Sim-0 资讯收集落地（revision-log 5.118，commit 待 push）
 
 用户定 EMC 整体优化三阶段路线（**B 基建 → A1 L4 多维归因 → Sim 大南门·二马路 L3+L4 数据**，master plan 经多轮 co-design 批准），本次执行 Phase B + 落 Sim-0 资讯库。

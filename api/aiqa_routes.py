@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from ai_qa.wisdom import wisdom_text, retrieve_wisdom
 from ai_qa.episode import log_episode
 from ai_qa.llm import LLMError, chat_with_fallback
-from ai_qa.prompts import build_field_infer_prompt
+from ai_qa.prompts import build_field_infer_prompt, build_deep_attribution_prompt
 from core.field_dictionary import validate_llm_roles
 
 aiqa_router = APIRouter()
@@ -111,3 +111,68 @@ def post_profile_fields(body: ProfileFieldsIn):
     parsed = _parse_field_json(raw)
     validated = validate_llm_roles(parsed)
     return {'fields': validated}
+
+
+class DeepAttributionIn(BaseModel):
+    # L4 深度归因（lazy enrichment）：簇评论 + 规则底 → LLM 政策→情绪→项目闭环
+    domain: str = ''           # urban_renewal/...（簇 domain_top）
+    element: str = ''          # 设施/环境/服务/文化/事件（element_top）
+    polarity: str = ''         # positive/negative/neutral 或中文
+    zone_name: str = ''        # 簇/区域名（如"二马路历史街区"）
+    sample_texts: List[str] = []   # 簇内代表性评论（≤8 条）
+    rule_suggestion: str = ''  # 规则底归因 suggestion（_attach_4x5_attrs 产出）
+
+
+def _deep_attribution_fallback(body: DeepAttributionIn, reason: str, parsed: dict = None) -> dict:
+    """低置信(<0.5)/LLM 不可用/未产出 → 回退规则底（degraded）。规则底常在保零回归。"""
+    p = parsed or {}
+    return {
+        'deep_attribution': p.get('deep_attribution') or body.rule_suggestion or '（规则底归因，LLM 未深化）',
+        'policy_link': p.get('policy_link', ''),
+        'project_link': p.get('project_link', ''),
+        'confidence': float(p.get('confidence') or 0),
+        'blind_spot': p.get('blind_spot', ''),
+        'degraded': True,
+        'degraded_reason': reason,
+    }
+
+
+@aiqa_router.post('/aiqa/deep_attribution')
+def post_deep_attribution(body: DeepAttributionIn):
+    """L4 深度归因（lazy enrichment）：EMC 深读某簇时按需触发（非 eager 每 aggregate 跑）。
+    簇评论 + 规则底 + 权威语境 → LLM 政策→情绪→项目闭环 JSON。
+    低置信(<0.5)/LLM 不可用 → 回退规则底（degraded）。复用 chat_with_fallback（DeepSeek→Ark→讯飞韧性链）。"""
+    if not body.sample_texts and not body.rule_suggestion:
+        return _deep_attribution_fallback(body, '缺 sample_texts 与 rule_suggestion，无可深化素材')
+    sys_prompt = build_deep_attribution_prompt(
+        body.domain, body.element, body.polarity, body.zone_name, body.sample_texts, body.rule_suggestion)
+    messages = [
+        {'role': 'system', 'content': sys_prompt},
+        {'role': 'user', 'content': '请为上述簇输出深度归因 JSON。'},
+    ]
+    try:
+        gen = chat_with_fallback(messages, tier='flash', stream=False,
+                                 json_mode=True, with_reason=False,
+                                 temperature=0.2, max_tokens=900)
+        raw = next(gen)
+    except LLMError as e:
+        return _deep_attribution_fallback(body, str(e))
+    except Exception as e:
+        return _deep_attribution_fallback(body, f'deep_attribution 异常: {e}')
+    parsed = _parse_field_json(raw)
+    if not parsed or not parsed.get('deep_attribution'):
+        return _deep_attribution_fallback(body, 'LLM 未产出有效 deep_attribution')
+    try:
+        conf = float(parsed.get('confidence') or 0)
+    except (TypeError, ValueError):
+        conf = 0.0
+    if conf < 0.5:
+        return _deep_attribution_fallback(body, f'low confidence ({conf} < 0.5)', parsed=parsed)
+    return {
+        'deep_attribution': parsed.get('deep_attribution', ''),
+        'policy_link': parsed.get('policy_link', ''),
+        'project_link': parsed.get('project_link', ''),
+        'confidence': conf,
+        'blind_spot': parsed.get('blind_spot', ''),
+        'degraded': False,
+    }

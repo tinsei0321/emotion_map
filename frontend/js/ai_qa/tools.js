@@ -659,6 +659,49 @@ export const TOOLS = {
     return { observation: `「${name}」深读：极性${Number(p.polarity_index).toFixed(2)}，${DOMAIN_LABEL[p.domain_top] || p.domain_top}×${ELEMENT_LABEL[p.element_top] || p.element_top}，${p.point_count || 0}点，问题=${p.issue_label || '—'}` };
   },
 
+  /** L4 深度归因（A1·lazy enrichment）：某簇 rule 底（issue_label/attribution/suggestion）+ 簇文本 → /aiqa/deep_attribution
+   *  → 政策→情绪→项目闭环（deep_attribution/policy_link/project_link/blind_spot）。低置信/LLM 断→后端回退规则底（degraded）。
+   *  sample_texts 当前按 domain+element 语义过滤活动点层（空间精确过滤待 refinement）。EMC 深读归因时触发，非 eager。 */
+  async deep_read_attribution(params = {}) {
+    const an = activeAnalysis();
+    const name = (params.name || '').trim();
+    if (!an || !name) return { observation: '缺区域名或暂无聚合层（先 zonal_stats/grid 生成聚合层）' };
+    const f = an.fc.features.find((ff) => { const nm = (ff.properties || {}).name || ''; return nm === name || nm.includes(name) || name.includes(nm); });
+    if (!f) return { observation: `未找到「${name}」` };
+    const p = f.properties || {};
+    const domain = p.domain_top || '';
+    const element = p.element_top || '';
+    const polIdx = Number(p.polarity_index || 0);
+    const polarity = polIdx > 0.05 ? 'positive' : (polIdx < -0.05 ? 'negative' : 'neutral');
+    const rule_suggestion = [p.issue_label, p.attribution, p.suggestion].filter(Boolean).join('；');
+    // sample_texts：活动点层按 domain+element 语义过滤取 ≤8 条（MVP 语义代理；空间过滤待 refinement）
+    const ptLayer = getLayers().find((l) => l.kind === 'point' && l.fc && l.visible !== false);
+    const sample_texts = [];
+    if (ptLayer && (domain || element)) {
+      for (const ft of (ptLayer.fc.features || [])) {
+        const pp = ft.properties || {};
+        if ((!domain || pp.domain === domain) && (!element || pp.element === element)) {
+          if (pp.text) sample_texts.push(String(pp.text).slice(0, 120));
+        }
+        if (sample_texts.length >= 8) break;
+      }
+    }
+    try {
+      const r = await fetch('/api/v1/aiqa/deep_attribution', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain, element, polarity, zone_name: name, sample_texts, rule_suggestion }),
+      });
+      const j = r.ok ? await r.json() : null;
+      if (!j) return { observation: `[ERR] deep_attribution 调用失败: ${r.status}` };
+      const parts = [`「${name}」L4 深度归因（${DOMAIN_LABEL[domain] || domain}×${ELEMENT_LABEL[element] || element}）：${j.deep_attribution}`];
+      if (j.policy_link) parts.push(`政策锚：${j.policy_link}`);
+      if (j.project_link) parts.push(`落点项目：${j.project_link}`);
+      if (j.blind_spot) parts.push(`官方盲区：${j.blind_spot}`);
+      parts.push(`置信度=${Number(j.confidence || 0).toFixed(2)}${j.degraded ? '（回退规则底·' + String(j.degraded_reason || '').slice(0, 40) + '）' : '（LLM 深化）'}`);
+      return { observation: parts.join('\n'), data: { deep_attribution: j } };
+    } catch (e) { return { observation: `[ERR] deep_attribution 异常: ${(e && e.message) || e}` }; }
+  },
+
   // ── GIS 工具骨干（POST /api/v1/geo/*，结构化/归因/排序结论主干）─────────────
   /** 宏/中观结论主干：按边界聚合点层，得每单元极性/点数/4×5 归因+排序。 */
   async zonal_stats(params = {}) {
