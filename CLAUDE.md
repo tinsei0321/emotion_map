@@ -155,7 +155,7 @@ emotion_map/
 - ✅ 项目框架搭建完成（七层架构；初版基于 Streamlit）
 - ✅ 前端迁移 Phase 1（`frontend/` MapLibre GL JS，geojson.io 1:1 外壳，已 Playwright 验证）
 - ✅ L0→L1→L2 数据管道实现（L1 LLM 分类需 API Key）
-- ✅ 决策追踪系统（`core/tracker.py`，**12 模块已埋点 ✅ + 9 待埋点 ⬜**；5.x 主力 `MOD_SPATIAL`/`MOD_LLM`/`MOD_FIELD` 已正式分配，详见 AGENTS.md 模块表）
+- ✅ 决策追踪系统（`core/tracker.py`，**13 模块已埋点 ✅ + 9 待埋点 ⬜**；5.x 主力 `MOD_SPATIAL`/`MOD_LLM`/`MOD_FIELD`/`MOD_AIQA` 已正式分配，详见 AGENTS.md 模块表）
 - ✅ 坐标转换工具（GCJ-02 ↔ WGS84 ↔ CGCS2000）
 - ✅ 范围选择引擎（Shapefile/GeoJSON/GPKG 上传 + CRS 检测）
 - ✅ Design Token 体系（双主题 Light/Dark + 150+ Token）

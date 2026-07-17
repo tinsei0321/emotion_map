@@ -15,6 +15,7 @@ from ai_qa.paradigm import (
     DIAGNOSE_CARD_FIELDS, DATA_STRATEGY,
 )
 from ai_qa.industry_kb import industry_kb_brief_text, industry_kb_lens_appendix
+from core.tracker import track, register_track_id
 
 
 def _today_line() -> str:
@@ -104,6 +105,7 @@ AGENT_TEMPLATE = """
 """
 
 
+@track("MOD_AIQA.F_002", track_args=False)
 def build_agent_prompt(context: str = '', tool_history: str = '', round_n: int = 1,
                        context_tokens: list = None, domain_lens: list = None) -> str:
     """agent_step 阶段：ReAct 每轮，输出 {thought, action} JSON。"""
@@ -148,6 +150,7 @@ FINAL_TEMPLATE = """
 """
 
 
+@track("MOD_AIQA.F_003", track_args=False)
 def build_final_prompt(context: str = '', tool_history: str = '', context_tokens: list = None,
                        domain_lens: list = None) -> str:
     """answer 阶段：基于全部探索出最终结论（流式 markdown + [ref:]）。"""
@@ -211,6 +214,7 @@ DIAGNOSE_TEMPLATE = """
 """
 
 
+@track("MOD_AIQA.F_005", track_args=False)
 def build_diagnose_prompt(context: str = '', context_tokens: list = None) -> str:
     """diagnose 阶段：输出 6 字段问题理解卡（流式 reasoning + content JSON）。
 
@@ -303,6 +307,7 @@ REVISE_TEMPLATE = """
 """
 
 
+@track("MOD_AIQA.F_004", track_args=False)
 def build_revise_prompt(draft: str = '', review_hints: str = '', context: str = '',
                         tool_history: str = '', context_tokens: list = None,
                         domain_lens: list = None) -> str:
@@ -349,6 +354,7 @@ FIELD_INFER_TEMPLATE = """
 """
 
 
+@track("MOD_AIQA.F_006", track_args=False)
 def build_field_infer_prompt(fields: dict, layer_kind: str = '', context: str = '') -> str:
     """P2 字段语义推断 prompt：为规则字典 miss 的字段选 role。返 str（system prompt）。
 
@@ -386,3 +392,12 @@ def build_field_infer_prompt(fields: dict, layer_kind: str = '', context: str = 
     if context:
         prompt += f"\n（附加上下文：{context}）"
     return prompt
+
+
+# ════════════ MOD_AIQA 追踪 ID 注册（build_*_prompt 承重入口）════════════
+# diagnose prompt 永不动（保 Flash eval）——@track 是 pass-through 装饰器，不改 prompt 内容。
+register_track_id("MOD_AIQA.F_002", "build_agent_prompt（ReAct agent loop 每轮 prompt）")
+register_track_id("MOD_AIQA.F_003", "build_final_prompt（最终结论 prompt）")
+register_track_id("MOD_AIQA.F_004", "build_revise_prompt（_reviseOnce 重写 prompt）")
+register_track_id("MOD_AIQA.F_005", "build_diagnose_prompt（承重 eval-anchor：6 字段问题理解卡，永不动内容）")
+register_track_id("MOD_AIQA.F_006", "build_field_infer_prompt（P2 字段语义推断）")

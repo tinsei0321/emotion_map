@@ -170,6 +170,7 @@ Agent 启动时根据下表选择性阅读知识源：
 | ✅ | `MOD_SCRAPER` | `SCRAPER/spiders/` |
 | ✅ | `MOD_GEOCODE` | `core/geocode.py` |
 | ✅ | `MOD_LLM` | `ai_qa/llm.py` |
+| ✅ | `MOD_AIQA` | `ai_qa/paradigm.py` + `ai_qa/prompts.py`（select_template 路由 + 5 build_*_prompt；manifesto.py 纯常量） |
 | ✅ | `MOD_SPATIAL` | `core/spatial_analysis.py` + `core/buffer_analysis.py` |
 | ✅ | `MOD_FIELD` | `core/field_dictionary.py` |
 | ✅ | `MOD_APP` | `apps/app_main.py` + `app_dialogs.py` + `app_console.py` |
@@ -186,7 +187,7 @@ Agent 启动时根据下表选择性阅读知识源：
 
 > **状态图例**：✅ 已埋点+`register_track_id` 注册 / ⬜ 占位待埋点（保留规划意图，不删） / 🔧 追踪 infra 本体。**注册机制** = 各模块 `register_track_id()` 在 import 时调用，运行时填充 `core/tracker.py` 的 `_TRACKING_REGISTRY`（**非** tracker.py 内静态 dict）。
 >
-> **5.x 主力**：`MOD_SPATIAL` / `MOD_LLM` / `MOD_FIELD` 已正式分配 ✅。仍待埋点：ai_qa broader（`paradigm.py`/`manifesto.py`/`prompts.py`——select_template/路由核心，拟 `MOD_AIQA`）+ 上表 9 个 ⬜ 模块。**低优先，勿擅自加 ID**（守 `_TRACKING_REGISTRY` 编号连续不跳号红线——待正式分配时整体规划）。
+> **5.x 主力**：`MOD_SPATIAL` / `MOD_LLM` / `MOD_FIELD` / `MOD_AIQA` 均已正式分配 ✅（ai_qa broader paradigm+prompts 已埋点；manifesto.py 纯常量无函数）。仍待埋点：上表 9 个 ⬜ 模块。**低优先，勿擅自加 ID**（守 `_TRACKING_REGISTRY` 编号连续不跳号红线——待正式分配时整体规划）。
 
 **埋点规则**：
 - 公开函数（非 `_` 前缀）→ `@track("MOD_XXX.F_NNN")`

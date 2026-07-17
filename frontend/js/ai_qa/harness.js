@@ -42,8 +42,12 @@ const _TPL_MIN_SAMPLES = 10;
 const _TPL_HIT_RATE_GATE = 0.8;
 
 function _loadTplStats() {
-  try { return JSON.parse(localStorage.getItem(_TPL_STATS_KEY) || '') || { hits: 0, misses: 0 }; }
-  catch (_) { return { hits: 0, misses: 0 }; }
+  let s;
+  try { s = JSON.parse(localStorage.getItem(_TPL_STATS_KEY) || '') || { hits: 0, misses: 0 }; }
+  catch (_) { s = { hits: 0, misses: 0 }; }
+  // ⑤④ execSkips 分桶（向后兼容：旧 {hits,misses} 无 skips → 填默认）
+  if (!s.skips) s.skips = { missing_slot: 0, tool_failed: 0 };
+  return s;
 }
 function _saveTplStats(s) {
   try { localStorage.setItem(_TPL_STATS_KEY, JSON.stringify(s)); } catch (_) { /* 隐私模式禁用 localStorage 静默 */ }
@@ -54,6 +58,12 @@ function _recordTplResult(template) {
   if (template === 'unknown') s.misses += 1; else s.hits += 1;
   _saveTplStats(s);
 }
+/** ⑤④ runTemplatePath 执行 skip 遥测（另一轴：不污染 hits/misses gate）。reason ∈ {missing_slot, tool_failed}。 */
+function _recordSkip(reason) {
+  const s = _loadTplStats();
+  if (s.skips[reason] != null) s.skips[reason] += 1;
+  _saveTplStats(s);
+}
 /** gate：冷启动放行（samples<MIN，保当前 fast-path 零回归）；成熟后命中率≥GATE 放行，<GATE（Flash 经验证不可靠）退 while-loop。 */
 function _tplHitRateReady() {
   const s = _loadTplStats();
@@ -61,11 +71,12 @@ function _tplHitRateReady() {
   if (n < _TPL_MIN_SAMPLES) return true;
   return s.hits / n >= _TPL_HIT_RATE_GATE;
 }
-/** 遥测读取（footer 显示累积命中率 + gate 状态）。 */
+/** 遥测读取（footer 显示累积命中率 + gate 状态 + execSkips）。 */
 export function getTemplateStats() {
   const s = _loadTplStats();
   const n = s.hits + s.misses;
-  return { hits: s.hits, misses: s.misses, samples: n, rate: n > 0 ? s.hits / n : 0, gateReady: _tplHitRateReady() };
+  const skips = s.skips || { missing_slot: 0, tool_failed: 0 };
+  return { hits: s.hits, misses: s.misses, samples: n, rate: n > 0 ? s.hits / n : 0, gateReady: _tplHitRateReady(), skips };
 }
 
 /** 当前地图图层状态摘要（附入每轮 history，让 LLM 感知操作是否已生效、避免盲目重试）。 */
@@ -233,6 +244,7 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   if (!v.ok) {
     const gapText = composeGapCard(diagnose, [`单技能「${skill}」缺必填槽：${v.missing.join('、')}——请补充后重提`]);
     if (hooks.onFinalDone) hooks.onFinalDone(gapText);
+    _recordSkip('missing_slot');   // ⑤④ execSkips 遥测
     return { ok: true, rounds: 0, final: gapText, review: { pass: true, degraded: true, skipped: 'template-missing-slot' }, degraded: true, diagnose, exit: 'gap', newLayerCount: 0 };
   }
   // 2. 执行工具（不调 agentStep；setToolContext 必调以写 registry provenance）
@@ -252,6 +264,7 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   if (failed || newLayerCount === 0) {
     const gapText = composeGapCard(diagnose, [failed ? obs.slice(0, 200) : `${def.tool} 未产出图层（可能范围内无点/无匹配要素）`]);
     if (hooks.onFinalDone) hooks.onFinalDone(gapText);
+    _recordSkip('tool_failed');   // ⑤④ execSkips 遥测
     return { ok: true, rounds: 1, final: gapText, review: { pass: true, degraded: true, skipped: 'template-tool-failed' }, degraded: true, diagnose, exit: 'gap', newLayerCount };
   }
   // 4. finalStep（Pro 写解题一句话 + 短结论 + {{show}}）

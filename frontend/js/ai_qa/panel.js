@@ -401,7 +401,9 @@ function stampDone(shell) {
     const cs = getCallStats();
     const ts = getTemplateStats();   // ⑤④ Flash template 累积命中率（跨会话，驱动 80% gate）
     const _tplMeta = ts.samples > 0 ? ` · Flash 模板 ${ts.hits}/${ts.samples}(${Math.round(ts.rate * 100)}%)` : '';
-    _renderFooter(shell, `回答完毕 · 用时 ${secs}s · 用量 ${_fmtTokens(cs.total)} token / ${cs.calls} 次${_tplMeta} · 情绪地图 v1.0 · ${formatTs(_curTrace && _curTrace.doneAt)}`, shell._finalMd || (_curTrace && _curTrace.final), _exitBadge(_curTrace));
+    const _skipSum = ts.skips ? (ts.skips.missing_slot + ts.skips.tool_failed) : 0;   // ⑤④ execSkips（另一轴，不污染 gate）
+    const _skipMeta = _skipSum > 0 ? ` · skip ${_skipSum}` : '';
+    _renderFooter(shell, `回答完毕 · 用时 ${secs}s · 用量 ${_fmtTokens(cs.total)} token / ${cs.calls} 次${_tplMeta}${_skipMeta} · 情绪地图 v1.0 · ${formatTs(_curTrace && _curTrace.doneAt)}`, shell._finalMd || (_curTrace && _curTrace.final), _exitBadge(_curTrace));
   }
   updateReasonMeta(shell);
   renderSuggest(_curTrace);   // 推荐追问胶囊（答案完毕后）

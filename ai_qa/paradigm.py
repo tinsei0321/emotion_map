@@ -10,6 +10,8 @@ review.REVIEW_CHECKLIST 的 scale_paradigm_fit；方法论镜像沉淀于
 .claude/skills/emotion-scale-paradigm/（供开发维护演进）。
 """
 
+from core.tracker import track, register_track_id
+
 # ════════════ 表1 · 尺度-方法-范式矩阵（结论颗粒度硬约束）════════════
 # 情绪地图的专业认知皇冠：分析的"尺度感"决定结论的"形态"。尺度错位 = 答非所问。
 SCALE_PARADIGM = [
@@ -420,6 +422,7 @@ _SINGLE_SKILL_IDS = {s['skill'] for s in TEMPLATE_REGISTRY if s.get('category') 
 # = {density, rank, buffer, clip, overlay, zonal, extract_feature, area_stats, merge, nearest, hotspot, filter_attr, compare}（加 single 技能后自动扩）
 
 
+@track("MOD_AIQA.F_001", track_result=True)
 def select_template(track, card=None, question=''):
     """单一真相源：track + diagnose card（+可选原始问句）→ canonical template id。
 
@@ -470,3 +473,7 @@ def select_template_text() -> str:
         '**单一空间关系就是 single，禁选 multi/unknown**（仅真复合≥2 动作才 multi）。'
         '结论颗粒度须匹配城市体检层级（macro=城区/meso=街区·小区/micro=住房·POI）。'
     )
+
+
+# ════════════ MOD_AIQA 追踪 ID 注册 ════════════
+register_track_id("MOD_AIQA.F_001", "select_template（承重路由：track+card→canonical template id，track_result 捕获决策）")

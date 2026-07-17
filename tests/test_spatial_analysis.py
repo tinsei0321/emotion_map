@@ -15,6 +15,7 @@ from shapely.geometry import Point, box
 
 from core.spatial_analysis import (
     create_square_grid, create_hex_grid, aggregate_by_polygons,
+    aggregate_by_boundary_id,
 )
 
 
@@ -109,6 +110,26 @@ def test_aggregate_by_polygons_smoke():
     assert int(merged['point_count'].sum()) > 0
     assert merged['polarity_index'].between(-2, 2).all()
     assert 'name' in merged.columns
+
+
+# ═══ aggregate_by_boundary_id（⑤③ membership 分组·非 sjoin）════
+
+def test_aggregate_by_boundary_id_smoke():
+    """⑤③：点带 zone role(area_tag) → 直接 groupby 出每区 stats + 4×5 归因；无列 raises。"""
+    pts = _synth_points(60).copy()
+    pts['area_tag'] = (['A'] * 40 + ['B'] * 20)   # 60 点归属两区
+    pts['domain'] = (['urban_operation'] * 30 + ['urban_renewal'] * 30)   # 验 _attach_4x5_attrs 复用
+    r = aggregate_by_boundary_id(pts)
+    assert len(r) == 2
+    assert set(r['zone']) == {'A', 'B'}
+    assert int(r['point_count'].sum()) == 60
+    assert r['score_mean'].between(0, 1).all()
+    assert r['polarity_index'].between(-2, 2).all()
+    assert 'domain_top' in r.columns          # _attach_4x5_attrs 复用生效
+    assert r['domain_top'].isin(['urban_operation', 'urban_renewal']).all()
+    # 无 zone role 列 → raises（graceful）
+    with pytest.raises(ValueError):
+        aggregate_by_boundary_id(_synth_points(10))
 
 
 # ═══ API 端点（TestClient）═══

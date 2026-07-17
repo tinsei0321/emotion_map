@@ -111,6 +111,13 @@ FIELD_ROLE_DICT = {
         'dtype_hint': 'string',
         'description': '面层/边界唯一标识',
     },
+    'zone': {
+        # ⑤③ membership：点「归属哪个面」的标识（非面自身 boundary_id）。
+        # variants 不与既有 role 重叠（避开 boundary_name 的「区域名称」、area_km2 的「area」）。
+        'variants': ['zone', 'area_tag', 'area_seed', '片区', '街区', '所属区', '归属'],
+        'dtype_hint': 'string',
+        'description': '点所属面域/片区标识（membership=点归属哪个面，供 aggregate_by_boundary_id 直接 groupby，非 sjoin）',
+    },
     'land_use_class': {
         'variants': ['DLMC', 'dlmc', 'DLMC_NAME', '地类名称', '地类编码', '用地类型', '用地代码',
                      'landuse', 'land_use'],

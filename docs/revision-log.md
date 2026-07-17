@@ -216,8 +216,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月17日）** · 本节按板块分组、组内倒序；最新工作 = **5.116 tracker 文档对账 + field_dictionary 补 MOD_FIELD**（本次）+ 5.115 browser 终验 + EMC 板块组（5.89–5.115）。最近：
+> 📍 **最新动态（07月17日）** · 本节按板块分组、组内倒序；最新工作 = **5.117 ⑤③ membership 列设计 + ⑤④ execSkips 遥测 + MOD_AIQA 埋点**（本次）+ 5.116 tracker 对账 + EMC 板块组（5.89–5.116）。最近：
 >
+> - **5.117 ⑤③ membership 原语 + ⑤④ execSkips 分桶 + MOD_AIQA 埋点**：推进上会话延期的三项，均 additive 不碰承重语义。**⑤③**：[field_dictionary](core/field_dictionary.py) 加 `zone` role（membership=点归属哪个面，variants zone/area_tag/area_seed/片区/街区/所属区/归属，不与 boundary_name「区域名称」/area_km2「area」重叠）；[spatial_analysis](core/spatial_analysis.py) 新 `aggregate_by_boundary_id`（MOD_SPATIAL.F_008，合成 index_right 复用 _attach_4x5/_popularity helpers + 内联最小核心 stats，DRY-debt 记注释）——点带 zone role 直接 groupby 非 sjoin，无面层返 DataFrame；**只交原语+设计，消费者接线（zonal_stats 可选分支 / 新端点）记 docstring 待下步**（守不造推测代码）。**⑤④**：[harness.js](frontend/js/ai_qa/harness.js) _TPL_STATS schema 加 `skips:{missing_slot,tool_failed}`（向后兼容）+ `_recordSkip(reason)` 接 runTemplatePath 两 skip 点（review.skipped 已编码，现才计数）+ getTemplateStats 返 skips + [panel.js](frontend/js/ai_qa/panel.js) footer 显「· skip N」；**gate 公式不动**（execSkips 是另一轴，不污染 hits/misses 命中率）；fieldLowConf 已由后端 MOD_FIELD.D_001 覆盖。**MOD_AIQA**：[paradigm.py](ai_qa/paradigm.py) `select_template`(F_001, track_result=True 捕获路由决策，参数名 track 与装饰器同名但装饰时无冲突) + [prompts.py](ai_qa/prompts.py) 5 build_*_prompt(F_002-F_006)；跳过 6 *_text 装配器（同 field_dictionary convention）；diagnose prompt 永不动·@track pass-through 不改内容（保 Flash eval，20562 字符 intact）；AGENTS.md 补 MOD_AIQA ✅ + note，CLAUDE.md manifest 12→13。承重：aggregate_by_boundary_id 不碰 aggregate_by_polygons/_attach 内部；gate/3 出口不动；_REGISTRY 连续（F_008 / F_001-F_006）。零回归（pytest 199 pass +1 新测试，8 预存 fail 不变）。详见下方 5.117。
 > - **5.116 tracker 文档对账 + MOD_FIELD 埋点**：AGENTS.md 模块表 + CLAUDE.md manifest **双重漂移**修正——MOD_SPATIAL(spatial_analysis)/MOD_LLM(ai_qa/llm)/MOD_PERF(sim_performance_data) 早有埋点却不在表，补入并标 ✅；8 个只列名无埋点的标 ⬜ 待埋点（保留规划）；「5.x 待登记」note 改写（5.x 主力 MOD_SPATIAL/MOD_LLM 已 done，本会话补 MOD_FIELD）。`core/field_dictionary.py` 补 **MOD_FIELD**（F_001 resolve_field_alias ⑤② 承重 / F_002 find_boundary_name_column / F_003 validate_llm_roles 0.3 choke point + D_001 低置信丢弃；热路径 helper resolve_role/is_* 不 track 防日志刷爆，同 spatial_analysis convention）。CLAUDE.md rule 10 `_REGISTRY`→`_TRACKING_REGISTRY`（运行时各模块 register 填充，非静态 dict）。承重 note：MOD_SPATIAL.F_005 非跳号（属 buffer_analysis.py，MOD_SPATIAL 跨两文件 F_001-F_007 连续）。**Tier2 ⑤③/⑤④ 评估后延期**（见下方）。零回归（pytest 198 pass，8 预存 fail 与本次无关）。详见下方 5.116。
 > - **5.115 browser 终验 Tier1 全 PASS + SKILLS_INDEX 刷新**：07-16 compare/_driftRe/④⑤ 全是 eval 测不出的运行时行为（C6），本次 browser 实跑闭环——①compare 胶囊机制走通（路由 decision_type=对比→compare_regions 逐区调 zonal_stats，网络验证 2×POST /geo/zonal_stats；优雅降级 gap 卡，不犯老三毛病）②_driftRe 代码确认（4 轮 Flash 均不吐 ``` 围栏，DOM 0 个 `<pre>/<code>`）③⑤④ footer 命中率累积显示（Flash 模板 3/3=100%）④⑤② aggregate 别名双端点 PASS（zonal_stats polarity_index=-0.22 非零+domain_top 非空=静默零 bug 修复；square_grid 真端点 score_mean/l1_confidence_mean/emotion_intensity_mean 三别名非零）⑤城市更新问答用权威术语（15 分钟生活圈/口袋公园/公共服务设施/长效治理）。**新发现·延后**：compare 中文地点名↔preset_id 语义错配（boundaries 传"西陵区"中文名→后端 load_preset FileNotFoundError→"区域对比仅 0/2 区"），机制优雅降级 PASS 但 happy path 未通——**开新 plan 专门讨论**。另：_driftRe 现范围（``` 围栏 + action-JSON）外的「无围栏裸 JSON 内联」边缘 case（仅"请输出 JSON"反常态请求触发）记笔不修。SKILLS_INDEX.md 加🟣项目自有能力节（ai_qa 16 技能谱+industry_kb 四领域+用地国标+/garden+/verify）。详见下方 5.115。
 > - **5.114 EMC · 区域对比 compare 技能 + _driftRe 拓宽**：治欢迎胶囊"对比西陵伍家岗"老毛病（代码块/回答一半/方法不做）——新增 `compare` 单技能（复用 zonal_stats 逐区聚合，不造 geo 端点，守红线）+ select_template C 路由（decision_type=对比 优先）+ 拓宽 `_driftRe`（任意 ``` 围栏→revise 重写 prose，治代码块泄漏）。详见下方 5.114。
@@ -225,7 +226,32 @@ flowchart TD
 > - **5.112** EMC **⑤② 遗留 拆 confidence role + score 别名化**：修 design smell（l1_confidence 原归 score role 致 square_grid 别名化抢同列）——拆 confidence 独立 role（36 roles）+ import.js scoreKey/confKey 分离 + aggregate/hex/square_grid 数值 mean 全 role 解析（得分/置信度/情绪强度 别名）。square_grid 去冲突 + 规范名零回归。
 > - **5.111** EMC **⑤④ _missStats 遥测 + Flash 80% gate**：Flash template 命中率 localStorage 跨会话累积 + footer 显示；80% gate（self-protection，冷启动放行零回归，成熟<80% 退 while-loop）。**⑤ 全收口**。
 >
-> 5.113–5.116 均已 commit（push 随缘·网络）。下会话：**compare 中文地点名↔preset_id 语义适配（开新 plan，happy path 打通）** + Tier2 低优先（⑤③ boundary_id 分组键·需 membership 列设计 / ⑤④ execSkips 分桶·需 harness 遥测 schema / PreCompact hook 自然触发实测 .wip.md / MOD_AIQA 给 ai_qa broader 补埋点）。
+> 5.113–5.117 均已 commit（push 随缘·网络）。下会话：**compare 中文地点名↔preset_id 语义适配（开新 plan，happy path 打通）** + ⑤③ 消费者接线（aggregate_by_boundary_id→zonal_stats 可选分支或新 `/geo/aggregate_by_field` 端点）/ PreCompact hook 自然触发实测 .wip.md / 9 个 ⬜ 模块按需埋点。
+
+### 5.117 ⑤③ membership 列设计 + ⑤④ execSkips 遥测 + MOD_AIQA 埋点（07-17，三项 additive）
+
+**用户意图**：推进上会话（5.116）延期的三项（⑤③ membership / ⑤④ execSkips / MOD_AIQA）。均 additive、不碰承重语义。
+
+**⑤③ membership 列设计（只交原语+设计）**：
+- 根因（5.116 定位）：`boundary_id` role 是多边形 id（OBJECTID/FID），**非点「归属哪个面」**；L2 点归属列 zone/area_tag 无 role。
+- [field_dictionary.py](core/field_dictionary.py) 加 `zone` role（membership 语义；variants zone/area_tag/area_seed/片区/街区/所属区/归属；不与 boundary_name「区域名称」、area_km2「area」重叠——守 variants 不重叠）。
+- [spatial_analysis.py](core/spatial_analysis.py) 新 `aggregate_by_boundary_id`（**MOD_SPATIAL.F_008**，@track）：入参 `points_gdf, membership_col=None`；resolve zone role col，无则 raise ValueError（graceful）；合成 `index_right=zone值` → **复用 _attach_4x5_attrs + _attach_popularity_attrs**（两 helper 按 index_right 设计，无需改）；核心 stats（point_count/score_mean/emotion_intensity_mean/polarity_index 3级/5级自适应）内联最小版（不 refactor aggregate_by_polygons 承重路径，DRY-debt 记注释）；返 DataFrame（无面层无 geometry）。**消费者接线记 docstring 待下步**（zonal_stats 可选分支 / 新 `/geo/aggregate_by_field` 端点）——本次不接，守「不造推测代码」。
+- [tests/test_spatial_analysis.py](tests/test_spatial_analysis.py) `test_aggregate_by_boundary_id_smoke`：带 area_tag+domain 列 → 两区 stats + domain_top（验 _attach_4x5 复用）+ 无 zone 列 raises。
+
+**⑤④ execSkips 分桶（harness.js 遥测·另一轴）**：
+- [harness.js](frontend/js/ai_qa/harness.js)：_TPL_STATS schema 加 `skips:{missing_slot,tool_failed}`（_loadTplStats 向后兼容旧 {hits,misses}）+ `_recordSkip(reason)` 接 runTemplatePath 两 skip 点（harness.js:236 template-missing-slot / :255 template-tool-failed——review.skipped 早编码，现才计数）+ getTemplateStats 返 skips。
+- [panel.js:402](frontend/js/ai_qa/panel.js) footer 追加「· skip N」（>0 才显）。
+- **承重**：`_tplHitRateReady` gate 公式**不动**（仍 hits/(hits+misses)，execSkips 是执行 skip 另一轴，不污染 template 命中率 gate）；3 出口不动。fieldLowConf 已由后端 `MOD_FIELD.D_001` 覆盖（前端只做 execSkips）。
+
+**MOD_AIQA 埋点（承重 6·跳过装配器）**：
+- [paradigm.py](ai_qa/paradigm.py)：`@track("MOD_AIQA.F_001", track_result=True)` on `select_template`——track_result 捕获路由决策（返 compare/rank/zonal…，无需侵入分支）；**参数名 `track`(A/B/C 路径) 与装饰器同名，但装饰器在函数定义前模块作用域求值，无冲突**。
+- [prompts.py](ai_qa/prompts.py)：`@track` 5 个 build_*_prompt——F_002 build_agent_prompt / F_003 build_final_prompt / F_004 build_revise_prompt / F_005 build_diagnose_prompt（承重 eval-anchor）/ F_006 build_field_infer_prompt。
+- 跳过 6 个 *_text catalog 装配器（确定性、每次 diagnose 都调，trace 价值低，同 field_dictionary 跳过热路径谓词 convention）；manifesto.py 纯 MANIFESTO 常量无函数。
+- **承重**：diagnose prompt 永不动——@track 是 pass-through 装饰器不改内容（实测 build_diagnose_prompt 返 20562 字符 intact，保 Flash eval）；select_template 路由不变（compare/rank 验证通过）。
+- [AGENTS.md](AGENTS.md) 模块表补 MOD_AIQA ✅（paradigm+prompts）+ note 改写（ai_qa broader 已埋点）；[CLAUDE.md:158](CLAUDE.md) manifest 12→13 已埋点。
+
+**验证**：MOD_AIQA 6 ID 注册 + select_template 路由（compare/rank）+ diagnose prompt 20562 字符 intact；harness.js/panel.js `.mjs` ESM 绿；`pytest tests/ -q` **199 pass（+1 新测试）/ 8 fail**（全预存：h3 缺依赖/geocode/range_selector，与本次零回归）。
+**承重不破**：aggregate_by_boundary_id 不碰 aggregate_by_polygons/_attach helper 内部（只复用）；gate 公式/3 出口不动；diagnose prompt 内容不动；_REGISTRY 编号连续（MOD_SPATIAL.F_008 / MOD_AIQA.F_001-F_006）。
 
 ### 5.116 tracker 文档对账 + field_dictionary 补 MOD_FIELD（07-17，doc-代码一致性）
 

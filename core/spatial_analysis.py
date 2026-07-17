@@ -316,6 +316,83 @@ def aggregate_by_polygons(
     return merged
 
 
+@track("MOD_SPATIAL.F_008", track_args=False)
+def aggregate_by_boundary_id(
+    points_gdf: gpd.GeoDataFrame,
+    membership_col: Optional[str] = None,
+) -> pd.DataFrame:
+    """⑤③ 按 membership 列直接分组聚合（非 sjoin）——点自带「归属哪个面」标识时用。
+
+    与 aggregate_by_polygons 的区别：后者 sjoin 点×面（within）；本函数假定点已带 membership
+    列（role `zone`：zone/area_tag/area_seed/片区/街区/所属区/归属），直接 groupby，**无需面层**。
+    适用：L2 点带 area_tag/zone、或点预归属到单元/街道的场景。
+
+    参数:
+        points_gdf: 情绪点 GeoDataFrame（需含 zone role 列 + score/polarity）
+        membership_col: 显式指定 membership 列名；None 则 resolve_field_alias('zone', columns)
+
+    返回:
+        DataFrame（zone id 为索引 + 聚合 stats 列；**无 geometry**——无面层，与
+        aggregate_by_polygons 返回 GeoDataFrame 区分）。列含 point_count/score_mean/
+        emotion_intensity_mean/polarity_index + 4×5 归因 + category/timestamp 热度（复用 helper）。
+
+    消费者待接（本次只交原语+设计，守「不造推测代码」）：zonal_stats 可选分支（点带 zone 且值匹
+    polygon boundary_id 时跳过 sjoin）/ 新 `/geo/aggregate_by_field` 端点。
+
+    注：核心 stats（point_count/score/polarity）内联最小版，与 aggregate_by_polygons 有 DRY-debt；
+    日后可抽 `_attach_core_emotion_stats(joined, grouped, stats)` 共享（守「不碰既有 polarity/domain 路径」，
+    本次不 refactor 承重函数）。"""
+    _bid_col = membership_col or resolve_field_alias('zone', points_gdf.columns)
+    if _bid_col is None:
+        raise ValueError('aggregate_by_boundary_id 需 zone role 列（zone/area_tag/片区…）；当前点层无此列')
+
+    joined = points_gdf.copy()
+    # 合成 index_right = zone 值 → 复用 _attach_4x5_attrs / _attach_popularity_attrs（两 helper 按 index_right 设计）
+    joined['index_right'] = joined[_bid_col].fillna('').astype(str)
+    joined = joined[joined['index_right'] != '']
+    if len(joined) == 0:
+        raise ValueError('membership 列全空——无有效分组键')
+
+    grouped = joined.groupby('index_right')
+    agg_stats = pd.DataFrame({'point_count': grouped.size()})
+
+    # 数值列（⑤② alias 友好：score/emotion_intensity 按 role 解析，输出规范名）
+    for _r in ('score', 'emotion_intensity'):
+        _c = resolve_field_alias(_r, joined.columns)
+        if _c:
+            joined[_c] = pd.to_numeric(joined[_c], errors='coerce')
+            agg_stats[f'{_r}_mean'] = grouped[_c].mean().round(3)
+
+    # 极性 polarity_index（3 级小写 L1 / 5 级英文 L2 自适应，同 aggregate_by_polygons 逻辑·最小版）
+    _pol_col = resolve_field_alias('polarity', joined.columns)
+    if _pol_col is not None:
+        _norm = joined[_pol_col].fillna('').astype(str).str.lower().str.strip()
+        _nonempty = set(_norm.unique()) - {''}
+        if _nonempty and _nonempty.issubset({'positive', 'negative', 'neutral'}):
+            joined['_pol_norm'] = _norm
+            _g = joined.groupby('index_right')['_pol_norm']
+            for _p in ('positive', 'negative', 'neutral'):
+                agg_stats[f'n_{_p}'] = _g.apply(lambda x: (x == _p).sum())
+            _denom = (agg_stats['n_positive'] + agg_stats['n_negative'] + agg_stats['n_neutral']).clip(lower=1)
+            agg_stats['polarity_index'] = ((agg_stats['n_positive'] - agg_stats['n_negative']) / _denom).round(3)
+            joined = joined.drop(columns=['_pol_norm'])
+        else:
+            for _pol in ['Very Negative', 'Negative', 'Neutral', 'Positive', 'Very Positive']:
+                agg_stats[f'n_{_pol.lower().replace(" ", "_")}'] = grouped[_pol_col].apply(lambda x: (x == _pol).sum())
+            agg_stats['polarity_index'] = (
+                (agg_stats['n_very_positive'] * 2 + agg_stats['n_positive']
+                 - agg_stats['n_negative'] - agg_stats['n_very_negative'] * 2)
+                / agg_stats['point_count'].clip(lower=1)
+            ).round(3)
+
+    # 4×5 归因 + category/timestamp 热度（与 aggregate_by_polygons / create_square_grid 同源 helper）
+    _attach_4x5_attrs(joined, grouped, agg_stats)
+    _attach_popularity_attrs(joined, grouped, agg_stats)
+
+    agg_stats.index.name = 'zone'
+    return agg_stats.reset_index()
+
+
 # ═══════════════════════════════════════════════════════════
 # 六边形网格
 # ═══════════════════════════════════════════════════════════
@@ -882,6 +959,7 @@ register_track_id("MOD_SPATIAL.F_003", "行政单元聚合统计")
 register_track_id("MOD_SPATIAL.F_004", "H3 六边形网格聚合")
 register_track_id("MOD_SPATIAL.F_006", "固定方格网格聚合(标准网格)")
 register_track_id("MOD_SPATIAL.F_007", "情绪地形 KDE 等值面 mesh")
+register_track_id("MOD_SPATIAL.F_008", "⑤③ membership 分组聚合（点带 zone role 直接 groupby，非 sjoin）")
 register_track_id("MOD_SPATIAL.D_001", "热点分析：自适应空间权重矩阵构建")
 register_track_id("MOD_SPATIAL.D_002", "热点分析：分类结果统计（hot/cold/ns）")
 register_track_id("MOD_SPATIAL.D_003", "地形：KDE 曲面 + 等值面提取参数")
