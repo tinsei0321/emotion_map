@@ -7,6 +7,15 @@
 
 ## 📅 2026-07-17
 
+### ✅ Phase Sim 大南门·二马路 L3+L4 数据生成器（revision-log 5.120，commit 待 push · **用户手动 push**）
+
+EMC 三阶段 plan Phase Sim——为 A1 L4 归因提供文化/历史街区富归因展示输入（策略异于 L1/L2）。**用户指示：本次起不验证（手动），push 用户手动。**
+- **Sim-A config**（[ermawu_l3l4_config.py](SCRIPT/ermawu_l3l4_config.py)）：10 ABSA aspect（修旧如旧/烟火气/网红打卡/夜经济/业态/文旅活力/施工扰民/垃圾秩序/回迁/停车），每 aspect 落 element+domain + policy_seed（防止大拆大建/城市更新意见/十五五）+ project_seed（历史街区保护更新/业态多元化/回迁）+ matrix_multi 多归属 + 文本池（源自 ermawu.md 实采）；T1→T3 归因深化弧（_check 权重+极性和=1）。
+- **Sim-B 生成器**（[sim_ermawu_l3l4.py](SCRIPT/sim_ermawu_l3l4.py)，**MOD_PERF.F_013**，standalone）：boundary→EPSG:4546 米制 buffer 200m（核心 0.599km²→buffered 1.434km²）+ rejection-sample tapered（核心密/buffer 稀）→ 每点 L2 既有列 + L3 语义（aspect_primary/aspect_polarity/aspects_json/semantic_target）+ L4 种子（policy_seed/project_seed/matrix_multi/attribution_confidence/blind_spot）。
+- **产出 6 文件**：`DATA/processed/ermawu_l3l4_{T1,T2,T3}_result_{geojson,csv}`（独立集）。
+- **内置 validate_aspects 跑通**：T1 700点 pos率=0.06（施工扰民/盼开街/垃圾）→ T2 800点 pos率=0.56（网红/夜经济/烟火气）→ T3 900点 pos率=0.70（修旧如旧/文旅活力/回迁）；文化/事件占比 T2/T3≈0.73-0.75（高于 L1/L2）；policy→project 闭合 100%；弧升温 ✓。承重：standalone 不动城市 sim/aggregate/EMC；新数据独立集；industry_kb 只读；F_013 连续。commit 只不 push（用户手动）。
+- **下步**：A1+Sim 展示闭环（前端 Import ermawu_l3l4 → zonal/grid 聚合 → deep_read_attribution 跑在富归因数据上）；browser 验证用户手动。
+
 ### ✅ A1 L4 多维归因做厚（revision-log 5.119，commit 待 push）
 
 EMC 三阶段 plan Phase A1——4×5 归因从规则 based 升级为**政策→情绪→项目闭环**深度归因（混合路径：规则底 + LLM enrichment）。
