@@ -91,6 +91,11 @@ from api.sandbox import SAFE_READY
 if SAFE_READY:
     app.include_router(run_router, prefix="/api/v1")
 
+# 项目架构拓扑图（/topo 总路径 /api/v1/topo）——dev 工具，实时扫描项目结构可视化（force-graph）。
+# 核心扫描逻辑在 core/topo_scanner.py（os.walk + ast + regex + AGENTS.md/revision-log 解析）。
+from api.topo_routes import topo_router
+app.include_router(topo_router, prefix="/api/v1")
+
 
 @app.get("/")
 async def root():

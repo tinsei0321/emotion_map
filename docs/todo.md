@@ -7,6 +7,17 @@
 
 ## 📅 2026-07-17
 
+### ✅ 项目架构动态拓扑图（revision-log 5.122，commit 待 push · **用户手动 push**）
+
+新任务——Obsidian 式动态拓扑图掌控项目全貌（10 层/百文件/21 模块/121 revision/9 agent）。3 Explore + Plan + 4 决策落地。
+- **引擎**：`force-graph`（vasturiano，Obsidian graph view 同款 d3-force+Canvas）vendor 本地 [frontend/vendor/force-graph.min.js](frontend/vendor/force-graph.min.js)（不依赖外网 CDN）。
+- **后端实时扫**：[core/topo_scanner.py](core/topo_scanner.py) `build_topology()`（os.walk + ast .py import 含相对 level + regex .js import + AGENTS.md 21 MOD_* + revision-log 任务树 + L0→L4 合成管道）+ mtime 签名缓存；[api/topo_routes.py](api/topo_routes.py) `GET /api/v1/topo?view=&refresh=` 挂 [api/main.py](api/main.py)。
+- **前端**：[topology.html](frontend/topology.html) + [topo.css](frontend/css/topo.css)（暗底 #0d1117 + Claude 橙 #D97757）+ [topology.js](frontend/js/topology.js)（6 预设[全局/管道 dagMode=lr/EMC/agent-skills/路线图 dagMode=td/模块] + hover 高亮 + click 详情 + 双击折叠 + 实时刷新）。
+- **集成**：[index.html](frontend/index.html)「i」旁加 tb-topology 按钮 + [toolbar.js](frontend/js/toolbar.js) `window.open`（自包含只读页，不踩 EMC 独立窗 5.33→5.34 删除坑）。
+- **Playwright 终验 PASS**：353 节点/540 边渲染 / preset dagMode 生效（检出 apps 循环依赖）/ 实时性 353→354 / hover tooltip / click 详情抽屉。
+- **三大踩坑**：① force-graph UMD 全局名 `ForceGraph`（大写 F）+ 需 `new ForceGraph(el)`（无 new 返 connector 静默不渲染）；② CDN `//` 协议相对在 http 页降级被 jsdelivr 拒→vendor 本地；③ 排除 .claude/skills+skills_archive marketplace 缓存（否则 3089 节点）。
+- **承重**：dev 工具不碰 tracker 红线（不加 MOD_TOPO/register_track_id）；纯 stdlib；safe_print。**用户指示：不验证（已 Playwright 自验），push 用户手动。**
+
 ### ✅ A1+Sim 展示闭环（revision-log 5.121，commit 待 push · **用户手动 push**）
 
 ①号后续——打通"前端 Import ermawu_l3l4 → 聚合 → deep_read_attribution 跑在富归因数据上"闭环。Sim 数据带 curated L4 种子，但旧 deep_read_attribution 只发 sample_texts+rule_suggestion（种子没用）。**用户指示：不验证（手动），push 用户手动。**

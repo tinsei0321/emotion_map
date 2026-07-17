@@ -44,6 +44,11 @@ export function initToolbar({ onTool, onImport, onExport, onBasemap } = {}) {
   document.querySelector('[data-action="info"]')?.addEventListener('click', () => {
     document.getElementById('modal-info')?.showModal();
   });
+  // 项目架构拓扑图（独立只读页，自包含无 BroadcastChannel，不踩 EMC 独立窗 5.33→5.34 删除的坑）
+  document.querySelector('[data-action="topology"]')?.addEventListener('click', () => {
+    window.open('topology.html', 'emotion_map_topology',
+      'width=1400,height=900,menubar=no,toolbar=no,location=no,status=no,resizable=yes');
+  });
 
   // ── Basemap popover cells ──
   document.querySelectorAll('.bm-cell').forEach((cell) => {

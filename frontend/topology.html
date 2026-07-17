@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>项目架构拓扑图 · emotion_map</title>
+  <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="css/topo.css" />
+  <!-- force-graph（vasturiano）— Obsidian graph view 同款引擎（d3-force + Canvas），UMD 全局 forceGraph。
+       本地 vendor（不依赖外网 CDN，CLAUDE.md 约定 frontend/vendor/ 存本地库）；版本 1.51.0。 -->
+  <script src="vendor/force-graph.min.js"></script>
+</head>
+<body>
+  <header id="topo-header">
+    <span class="topo-title">项目架构拓扑图</span>
+    <span class="topo-subtitle">Project Topology · 文件依赖 / 模块 / 开发进度（实时扫描）</span>
+    <div class="topo-header-actions">
+      <button id="topo-refresh" title="强制刷新扫描（忽略缓存）">↻ 刷新</button>
+      <button id="topo-close" title="关闭窗口">关闭</button>
+    </div>
+  </header>
+
+  <!-- 预设视图按钮栏：同一张图，不同过滤聚焦 -->
+  <nav id="topo-presets" role="tablist">
+    <button class="topo-preset is-active" data-view="global">全局架构</button>
+    <button class="topo-preset" data-view="pipeline">数据管道 L0→L4</button>
+    <button class="topo-preset" data-view="emc">EMC · AI 问答</button>
+    <button class="topo-preset" data-view="agent_skills">agent-skills</button>
+    <button class="topo-preset" data-view="roadmap">任务路线图</button>
+    <button class="topo-preset" data-view="module">模块视图</button>
+    <span class="topo-spacer"></span>
+    <label class="topo-toggle"><input type="checkbox" id="topo-collapse-all" /> 折叠所有目录</label>
+    <span class="topo-stats" id="topo-stats">加载中…</span>
+  </nav>
+
+  <main id="topo-main">
+    <!-- 左侧：图例 + 最新动态 -->
+    <aside id="topo-sidebar">
+      <div class="topo-sec">
+        <div class="topo-sec-title">领域 · Domain（节点着色）</div>
+        <ul id="topo-legend-domain" class="topo-legend"></ul>
+      </div>
+      <div class="topo-sec">
+        <div class="topo-sec-title">边类型 · Edge Type</div>
+        <ul class="topo-legend">
+          <li><span class="edge-swatch" data-type="import"></span>import 依赖</li>
+          <li><span class="edge-swatch" data-type="pipeline"></span>数据流 L0→L4</li>
+          <li><span class="edge-swatch" data-type="route"></span>FastAPI 路由挂载</li>
+          <li><span class="edge-swatch" data-type="contains"></span>目录包含</li>
+          <li><span class="edge-swatch" data-type="owns"></span>模块归属</li>
+        </ul>
+      </div>
+      <div class="topo-sec">
+        <div class="topo-sec-title">状态 · State</div>
+        <ul class="topo-legend">
+          <li><span class="st st-done"></span>✅ 完成</li>
+          <li><span class="st st-progress"></span>🔄 进行中</li>
+          <li><span class="st st-todo"></span>⬜ 待启动</li>
+          <li><span class="st st-milestone"></span>◆ 架构转折点</li>
+        </ul>
+      </div>
+      <div class="topo-sec">
+        <div class="topo-sec-title">最近动态</div>
+        <div id="topo-latest" class="topo-latest-box">—</div>
+      </div>
+    </aside>
+
+    <!-- 主图画布 -->
+    <div id="topo-graph"></div>
+
+    <!-- 右侧节点详情抽屉（点节点弹出） -->
+    <aside id="topo-detail" hidden>
+      <button class="topo-detail-close" id="topo-detail-close">&times;</button>
+      <div class="topo-detail-name" id="td-name"></div>
+      <div class="topo-detail-path" id="td-path"></div>
+      <dl class="topo-detail-grid" id="td-grid"></dl>
+      <div class="topo-detail-docs" id="td-docs"></div>
+      <button class="topo-detail-collapse-btn" id="td-collapse" hidden>折叠 / 展开此目录</button>
+    </aside>
+  </main>
+
+  <script type="module" src="js/topology.js"></script>
+</body>
+</html>

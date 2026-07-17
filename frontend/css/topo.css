@@ -1,0 +1,224 @@
+/* ══ topology.html 专用样式（独立暗底页，不继承主界面 LIGHT token）══
+   视觉：Obsidian 经典暗底 + Claude 橙 #D97757（替代 Obsidian 紫做主色/高亮）。
+   参考 frontend/css/tokens.css 的 CSS 变量范式，但用 --topo-* 自定义命名空间。 */
+
+:root {
+  /* ── 暗底（Obsidian 风格）── */
+  --topo-bg: #0d1117;
+  --topo-panel: #161b22;
+  --topo-panel-2: #1c2128;
+  --topo-border: #30363d;
+  --topo-text: #c9d1d9;
+  --topo-text-muted: #8b949e;
+
+  /* ── Claude 橙（主色/高亮，替代 Obsidian 紫）── */
+  --topo-accent: #D97757;
+  --topo-accent-hover: #E88A6E;
+  --topo-accent-soft: rgba(217, 119, 87, 0.15);
+
+  /* ── 领域分类色（GitHub dark 协调组）── */
+  --topo-domain-frontend: #58A6FF;   /* 蓝 - 前端主界面 */
+  --topo-domain-apps:      #56D4DD;   /* 青 - Streamlit 遗留 */
+  --topo-domain-core:      #7EE787;   /* 绿 - 基础设施 */
+  --topo-domain-SCRIPT:    #FFA657;   /* 橙 - 分析引擎 */
+  --topo-domain-SCRAPER:   #BC8CFF;   /* 紫 - 数据采集 */
+  --topo-domain-DATA:      #F97583;   /* 红 - 数据层 */
+  --topo-domain-api:       #79C0FF;   /* 浅蓝 - API */
+  --topo-domain-ai_qa:     #FF7B72;   /* 暖红 - AI 问答 */
+  --topo-domain-docs:      #A371F7;   /* 紫罗兰 - 文档 */
+  --topo-domain-design:    #FF9F1C;   /* 琥珀 - 设计令牌 */
+  --topo-domain-tests:     #56D364;   /* 浅绿 - 测试 */
+  --topo-domain-claude:    #D2A8FF;   /* 淡紫 - Claude harness */
+  --topo-domain-module:    #D2A8FF;   /* 淡紫 - MOD_* */
+  --topo-domain-pipeline:  var(--topo-accent);
+  --topo-domain-task:      #E3B341;   /* 金 - 任务 */
+  --topo-domain-root:      var(--topo-accent);
+  --topo-domain-default:   #8b949e;
+
+  /* ── 状态色（角标）── */
+  --topo-state-done:      #3FB950;
+  --topo-state-progress:  #D29922;
+  --topo-state-todo:      #6E7681;
+  --topo-state-milestone: #E3B341;
+
+  /* ── 边色 ── */
+  --topo-edge-import:   #58A6FF;
+  --topo-edge-pipeline: var(--topo-accent);
+  --topo-edge-route:    #BC8CFF;
+  --topo-edge-contains: #30363d;
+  --topo-edge-owns:     #6E7681;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--topo-bg);
+  color: var(--topo-text);
+  font-family: 'Open Sans', 'Inter', system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  overflow: hidden;
+}
+
+/* ── 顶部标题栏 ── */
+#topo-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--topo-panel);
+  border-bottom: 1px solid var(--topo-border);
+}
+.topo-title { font-weight: 600; color: var(--topo-accent); font-size: 15px; }
+.topo-subtitle { color: var(--topo-text-muted); font-size: 12px; }
+.topo-header-actions { margin-left: auto; display: flex; gap: 8px; }
+.topo-header-actions button {
+  background: var(--topo-panel-2);
+  color: var(--topo-text);
+  border: 1px solid var(--topo-border);
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.topo-header-actions button:hover { border-color: var(--topo-accent); color: var(--topo-accent); }
+
+/* ── 预设视图按钮栏 ── */
+#topo-presets {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 16px;
+  background: var(--topo-panel);
+  border-bottom: 1px solid var(--topo-border);
+  flex-wrap: wrap;
+}
+.topo-preset {
+  background: transparent;
+  color: var(--topo-text-muted);
+  border: 1px solid transparent;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.topo-preset:hover { color: var(--topo-text); background: var(--topo-panel-2); }
+.topo-preset.is-active {
+  background: var(--topo-accent-soft);
+  color: var(--topo-accent);
+  border-color: var(--topo-accent);
+}
+.topo-spacer { flex: 1; }
+.topo-toggle { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--topo-text-muted); cursor: pointer; }
+.topo-toggle input { cursor: pointer; accent-color: var(--topo-accent); }
+.topo-stats { color: var(--topo-text-muted); font-size: 12px; margin-left: 12px; }
+.topo-stats .cache-hit { color: var(--topo-state-done); }
+
+/* ── 主区：左 sidebar | 图 | 右 detail ── */
+#topo-main { display: flex; height: calc(100vh - 88px); position: relative; }
+
+#topo-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--topo-panel);
+  border-right: 1px solid var(--topo-border);
+  padding: 12px;
+  overflow-y: auto;
+}
+.topo-sec { margin-bottom: 16px; }
+.topo-sec-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--topo-text-muted);
+  margin-bottom: 6px;
+}
+.topo-legend { list-style: none; padding: 0; margin: 0; font-size: 12px; }
+.topo-legend li { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+.edge-swatch { display: inline-block; width: 24px; height: 0; }
+.edge-swatch[data-type="import"]   { border-top: 2px solid var(--topo-edge-import); }
+.edge-swatch[data-type="pipeline"] { border-top: 3px solid var(--topo-edge-pipeline); }
+.edge-swatch[data-type="route"]    { border-top: 2px solid var(--topo-edge-route); }
+.edge-swatch[data-type="contains"] { border-top: 1px solid var(--topo-edge-contains); }
+.edge-swatch[data-type="owns"]     { border-top: 1px dashed var(--topo-edge-owns); }
+.st { display: inline-block; width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.st-done      { background: var(--topo-state-done); }
+.st-progress  { background: var(--topo-state-progress); animation: topo-pulse 1.6s infinite; }
+.st-todo      { background: transparent; border: 1.5px solid var(--topo-state-todo); }
+.st-milestone { background: var(--topo-state-milestone); transform: rotate(45deg); border-radius: 2px; }
+@keyframes topo-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.topo-latest-box {
+  background: var(--topo-panel-2);
+  border-left: 3px solid var(--topo-accent);
+  padding: 8px 10px;
+  border-radius: 0 4px 4px 0;
+  font-size: 12px;
+}
+.topo-latest-box b { color: var(--topo-accent); }
+.topo-latest-box .ts { color: var(--topo-text-muted); font-size: 11px; }
+
+/* ── 主图画布 ── */
+#topo-graph { flex: 1; background: var(--topo-bg); }
+.topo-error {
+  padding: 24px;
+  color: #F97583;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* ── 右侧节点详情抽屉 ── */
+#topo-detail {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  width: 320px;
+  max-height: calc(100% - 32px);
+  overflow-y: auto;
+  background: var(--topo-panel);
+  border: 1px solid var(--topo-border);
+  border-radius: 6px;
+  padding: 12px 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.topo-detail-close {
+  float: right;
+  background: none;
+  border: none;
+  color: var(--topo-text-muted);
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+}
+.topo-detail-close:hover { color: var(--topo-accent); }
+.topo-detail-name {
+  font-weight: 600;
+  color: var(--topo-accent);
+  margin: 6px 0 4px;
+  word-break: break-all;
+  font-size: 14px;
+}
+.topo-detail-path {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px;
+  color: var(--topo-text-muted);
+  margin-bottom: 10px;
+  word-break: break-all;
+}
+.topo-detail-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12px; }
+.topo-detail-grid dt { color: var(--topo-text-muted); }
+.topo-detail-grid dd { margin: 0; word-break: break-all; }
+.topo-detail-docs { margin-top: 10px; font-size: 12px; }
+.topo-detail-docs a { color: var(--topo-accent); text-decoration: none; }
+.topo-detail-docs a:hover { text-decoration: underline; }
+.topo-detail-collapse-btn {
+  margin-top: 10px;
+  width: 100%;
+  background: var(--topo-accent-soft);
+  color: var(--topo-accent);
+  border: 1px solid var(--topo-accent);
+  padding: 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.topo-detail-collapse-btn:hover { background: var(--topo-accent); color: #fff; }
