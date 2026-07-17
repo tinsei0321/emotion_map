@@ -11,24 +11,12 @@
   --topo-text: #c9d1d9;
   --topo-text-muted: #8b949e;
 
-  /* ── 4 色系 × 3 档深浅（成熟度）── 主色 Claude 橙 + 3 辅 */
-  --topo-c-primary-mature: #D97757;      /* 主程序 + EMC：frontend/core/ai_qa */
-  --topo-c-primary-progressing: #E8A48A;
-  --topo-c-primary-planned: #F4D0BF;
-
-  --topo-c-infra-mature: #4A90A4;        /* 架构/infra：api/apps/SCRIPT/.claude/module/pipeline */
-  --topo-c-infra-progressing: #7DB5C4;
-  --topo-c-infra-planned: #B5D8E0;
-
-  --topo-c-data-mature: #3FB950;         /* DATA 数据：DATA/SCRAPER */
-  --topo-c-data-progressing: #7DCB8A;
-  --topo-c-data-planned: #B5E2BD;
-
-  --topo-c-doc-mature: #B1ADA1;          /* docs/设计：docs/design/tests/memories/root */
-  --topo-c-doc-progressing: #CDC9BE;
-  --topo-c-doc-planned: #E2DFD6;
-
-  --topo-c-other: #6E7681;               /* other（根任务等）*/
+  /* ── 4 色系（每类一色，成熟度用形状不用颜色深浅）── Claude 橙主 + 3 辅（精致协调暗调）*/
+  --topo-c-primary: #D97757;   /* 主程序 + EMC：frontend/core/ai_qa（Claude 橙）*/
+  --topo-c-infra: #4E7A8C;     /* 架构/infra：api/apps/SCRIPT/.claude/module/pipeline（深青蓝）*/
+  --topo-c-data: #6FA177;      /* DATA 数据：DATA/SCRAPER（柔翠绿）*/
+  --topo-c-doc: #B59A82;       /* docs/设计：docs/design/tests/memories/root（暖驼）*/
+  --topo-c-other: #8B8B8B;     /* other */
 }
 
 * { box-sizing: border-box; }
@@ -53,7 +41,7 @@ body {
   background: var(--topo-panel);
   border-bottom: 1px solid var(--topo-border);
 }
-.topo-title { font-weight: 600; color: var(--topo-c-primary-mature); font-size: 15px; }
+.topo-title { font-weight: 600; color: var(--topo-c-primary); font-size: 15px; }
 .topo-subtitle { color: var(--topo-text-muted); font-size: 12px; }
 .topo-header-actions { margin-left: auto; display: flex; gap: 8px; }
 .topo-header-actions button {
@@ -65,7 +53,7 @@ body {
   cursor: pointer;
   font-size: 12px;
 }
-.topo-header-actions button:hover { border-color: var(--topo-c-primary-mature); color: var(--topo-c-primary-mature); }
+.topo-header-actions button:hover { border-color: var(--topo-c-primary); color: var(--topo-c-primary); }
 
 #topo-presets {
   flex-shrink: 0;
@@ -89,8 +77,8 @@ body {
 .topo-preset:hover { color: var(--topo-text); background: var(--topo-panel-2); }
 .topo-preset.is-active {
   background: rgba(217, 119, 87, 0.15);
-  color: var(--topo-c-primary-mature);
-  border-color: var(--topo-c-primary-mature);
+  color: var(--topo-c-primary);
+  border-color: var(--topo-c-primary);
 }
 .topo-spacer { flex: 1; }
 .topo-stats { color: var(--topo-text-muted); font-size: 12px; margin-left: 12px; }
@@ -123,9 +111,9 @@ body {
 .topo-legend li { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
 .topo-legend .count { color: var(--topo-text-muted); }
 .st { display: inline-block; width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
-.st-mature { background: var(--topo-c-primary-mature); }
-.st-progressing { background: var(--topo-c-primary-progressing); opacity: 0.75; }
-.st-planned { background: var(--topo-c-primary-planned); opacity: 0.45; border: 1px dashed var(--topo-text-muted); }
+.st-mature { background: var(--topo-c-primary); }                                       /* 实心 */
+.st-progressing { background: transparent; border: 2px solid var(--topo-c-primary); }    /* 空心 */
+.st-planned { background: transparent; border: 1.5px dashed var(--topo-c-primary); }     /* 虚线空心 */
 .topo-hint {
   font-size: 11px;
   color: var(--topo-text-muted);
@@ -136,12 +124,12 @@ body {
 }
 .topo-latest-box {
   background: var(--topo-panel-2);
-  border-left: 3px solid var(--topo-c-primary-mature);
+  border-left: 3px solid var(--topo-c-primary);
   padding: 8px 10px;
   border-radius: 0 4px 4px 0;
   font-size: 12px;
 }
-.topo-latest-box b { color: var(--topo-c-primary-mature); }
+.topo-latest-box b { color: var(--topo-c-primary); }
 .topo-latest-box .ts { color: var(--topo-text-muted); font-size: 11px; }
 
 /* ── 3D 主图画布（force-graph 容器）── */
@@ -165,7 +153,7 @@ body {
   z-index: 20;
   pointer-events: none;
   background: var(--topo-panel);
-  border: 1px solid var(--topo-c-primary-mature);
+  border: 1px solid var(--topo-c-primary);
   border-radius: 6px;
   padding: 8px 10px;
   font-size: 12px;
@@ -173,7 +161,7 @@ body {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
   line-height: 1.5;
 }
-#topo-tip .tip-name { font-weight: 600; color: var(--topo-c-primary-mature); word-break: break-all; margin-bottom: 4px; }
+#topo-tip .tip-name { font-weight: 600; color: var(--topo-c-primary); word-break: break-all; margin-bottom: 4px; }
 #topo-tip .tip-path { font-family: ui-monospace, Consolas, monospace; font-size: 10px; color: var(--topo-text-muted); word-break: break-all; margin-bottom: 6px; }
 #topo-tip .tip-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 4px; }
 #topo-tip .tip-badge { padding: 1px 6px; border-radius: 3px; font-size: 10px; background: var(--topo-panel-2); border: 1px solid var(--topo-border); }
@@ -205,8 +193,8 @@ body {
   cursor: pointer;
   line-height: 1;
 }
-.topo-detail-close:hover { color: var(--topo-c-primary-mature); }
-.topo-detail-name { font-weight: 600; color: var(--topo-c-primary-mature); margin: 6px 0 4px; word-break: break-all; font-size: 14px; }
+.topo-detail-close:hover { color: var(--topo-c-primary); }
+.topo-detail-name { font-weight: 600; color: var(--topo-c-primary); margin: 6px 0 4px; word-break: break-all; font-size: 14px; }
 .topo-detail-path { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: var(--topo-text-muted); margin-bottom: 10px; word-break: break-all; }
 .topo-detail-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12px; margin: 0; }
 .topo-detail-grid dt { color: var(--topo-text-muted); }
@@ -225,7 +213,7 @@ body {
   max-height: 320px;
   overflow-y: auto;
 }
-.topo-doc-md h1, .topo-doc-md h2, .topo-doc-md h3 { color: var(--topo-c-primary-mature); margin: 8px 0 4px; }
+.topo-doc-md h1, .topo-doc-md h2, .topo-doc-md h3 { color: var(--topo-c-primary); margin: 8px 0 4px; }
 .topo-doc-md h1 { font-size: 15px; }
 .topo-doc-md h2 { font-size: 13px; }
 .topo-doc-md h3 { font-size: 12px; }
@@ -244,8 +232,8 @@ body {
   overflow-x: auto;
 }
 .topo-doc-md pre code { background: none; padding: 0; }
-.topo-doc-md a { color: var(--topo-c-primary-mature); }
+.topo-doc-md a { color: var(--topo-c-primary); }
 .topo-doc-md table { border-collapse: collapse; width: 100%; margin: 6px 0; }
 .topo-doc-md th, .topo-doc-md td { border: 1px solid var(--topo-border); padding: 3px 6px; text-align: left; }
 .topo-doc-md ul, .topo-doc-md ol { padding-left: 18px; }
-.topo-doc-md blockquote { border-left: 3px solid var(--topo-c-primary-mature); margin: 4px 0; padding-left: 8px; color: var(--topo-text-muted); }
+.topo-doc-md blockquote { border-left: 3px solid var(--topo-c-primary); margin: 4px 0; padding-left: 8px; color: var(--topo-text-muted); }

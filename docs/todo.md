@@ -7,6 +7,17 @@
 
 ## 📅 2026-07-17
 
+### ✅ 拓扑图修 bug + 成熟度形状化 + 颜色优化（revision-log 5.124，commit 待 push · **用户手动 push**）
+
+5.123 后用户报"只线没点"bug + 成熟度改形状 + 颜色优化。
+- **bug 根因**：3d-force-graph 1.80 复用全局 THREE，5.123 引 three@0.123（r123）缺 Timer（r163+ 新增）→ 崩 → ForceGraph3D undefined 只剩线。
+- **修法**：删全局 three.min.js，改 [topology.js](frontend/js/topology.js) ESM `import three@0.163`（仅 nodeThreeObject 用，3d-force-graph 用内部 three 不冲突）。
+- **成熟度改形状**（去颜色深浅+去 emoji）：nodeThreeObject 三档——实心球(mature)/线框空心(progressing)/虚线空心(planned)。
+- **颜色优化**：4 色系单色（Claude 橙 + 深青蓝 + 柔翠绿 + 暖驼）。
+- **标签**：自建 canvas→Sprite（不依赖 spritetext 全局 THREE）。
+- **Playwright 全验 PASS**：ForceGraph3D 加载(0 error)/358 节点可见/形状三档/标签/4 色。
+- **承重**：ESM three 不污染全局；不碰 tracker。**push 用户手动。**
+
 ### ✅ 拓扑图 3D 重构 + vibe coding 策略梳理（revision-log 5.123，commit 待 push · **用户手动 push**）
 
 5.122 拓扑图 v1 是"文件展示器"，用户反馈 6 问题（尺寸/挤/配色乱/看不出架构+进度/悬停薄/md乱码）。两方面重构。
