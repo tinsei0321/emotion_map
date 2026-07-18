@@ -19,12 +19,12 @@
 emotion_map（根）
 │
 ├─ 主干 · 系统架构（奠基层）
-│  ├─ 七层骨架 ✅  frontend · apps · core · SCRIPT · SCRAPER · DATA · design
+│  ├─ 七层骨架 ✅  frontend · core · SCRIPT · SCRAPER · DATA · design · api · ai_qa（apps/ Streamlit 2026-07-18 退役）
 │  ├─ Import/Export 管道 ✅  Import（geojson.io 1:1 解析配置弹窗 + 多格式[geojson/topojson/csv/kml/gpx/shp] + 源 CRS 手选[自动/WGS84/GCJ-02/CGCS2000·西安80·北京54/Mercator/自定义]）｜Export ✅（geojson/csv/shp.zip + CRS + 脱敏，后端 geopandas `/export`）｜⬜ GDB/CAD(dxf/dwg) 服务端轮
-│  ├─ 外壳/控件/视觉 ✅  MapLibre GL + 天地图 + Design Token 双主题
+│  ├─ 外壳/控件/视觉 ✅  MapLibre GL + 天地图（5.130 raster style 内联）+ Design Token 双主题
 │  ├─ 数据采集 Scrapy ✅  框架就绪
-│  ├─ 数据管道 L0→L4 🔄  L0→L1→L2 通（L1 待 API Key 验证）｜L3 语义 ⬜｜L4 归因 ⬜
-│  └─ Harness · MCP/Agent ✅  v2.1：8 Agent 编排 + 7 MCP（智谱优先）
+│  ├─ 数据管道 L0→L4 🔄  L0→L1→L2 sim 跑通（**L0 未来走购买途径**·sim 当下充分；L1 待 DeepSeek key 常规验证）｜L3/L4 backend ⬜（EMC 分析时归因 deep_attribution + Sim L3/L4 生成器功能覆盖，非 pipeline 级）
+│  └─ Harness · MCP/Agent ✅  v2.1：9 Agent 编排（含 sim，概念框架·主线程不派 subagent）+ 7 MCP（智谱优先）
 │
 ├─ 分支 · 功能模块
 │  ├─ 导航架构重塑（Martin）🔄  B0 色彩(#4285F4/#384555) ✅｜B1 单层顶栏 ✅｜B2 3 按钮集 ✅｜B3 左端栏三区 ✅（B6 随动复核通过）｜B4 左端弹出栏 ⬜｜B5 色板圆角 ⬜ ◆
@@ -216,7 +216,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月18日）** · 本节按板块分组、组内倒序；最新工作 = **5.132 项目全局复盘 + CB-1（SCAN_DeepSeek 反评价 + Tier 0.2/0.3 清理）**（本次）。上一轮 5.131 清测试债。最近：
+> 📍 **最新动态（07月18日）** · 本节按板块分组、组内倒序；最新工作 = **5.133 CB-1 续：删僵尸 + 入库 .zcode/SCAN + Tier 1 文档卫生**（本次）。上一轮 5.132 复盘+CB-1。最近：
+>
+> - **5.133 CB-1 续：删 Streamlit/pydeck 僵尸 + 入库 .zcode/SCAN + Tier 1 文档卫生**：用户双环境同步诉求 → `git rm core/ui_components.py + layer_registry.py + map_engine.py + .streamlit/config.toml`（4 文件 **-1439 行**；删除前再核零活引用，仅 design/backups 退役残留；pytest 207 零回归）+ 入库 `.zcode/`（ZCode 工具状态，双机同步）+ `docs/SCAN_DeepSeek.md`（CB 输入历史）。建 [retired.md](docs/retired.md) 退役台账（消除"被引用但不存在"漂移）。**tracking-progress.md 漂移修正**（SCAN §2.6 指控 + 我方核验更严重：frozen 2026-06-13、把已删 map_engine/ui_components + 退役 apps/app_main 标 [x] 已埋点、缺 7 月全部新模块）→ 改为指向 [AGENTS.md](AGENTS.md) 权威源 + 退役模块清单，杜绝双源漂移。**§0 任务树主干 refresh**（七层去 apps 加 api/ai_qa / 数据管道标 L0 购买+归因覆盖 / Harness 8→9 Agent / 底图 5.130 内联）。承重：删除前 grep 零活引用；不碰 tracker/diagnose/四态。详见 [cb-journal.md](docs/cb-journal.md) CB-1。
 >
 > - **5.132 项目全局复盘 + CB Round 1（SCAN_DeepSeek 反评价 + Tier 0.2/0.3 清理）**：用户要做覆盖整个项目的全局复盘 + 引入第三方评价（DeepSeek V4 Pro `docs/SCAN_DeepSeek.md`）做 catch-ball（CB：深读→反评价→行动→定期总结）。**我方复盘 ~7.6/10**（架构 8.5/模块 7.0/数据管道 7.5/测试 7.5/债 7.0/文档 8.0）；用户澄清 **L0 未来走购买途径、sim 当下充分非风险**（撤回初版"真实数据=0 是最大风险"误判，写 memory `l0-acquisition-purchase-strategy`）。**CB-1 反评价**：agree=Streamlit 僵尸（ui_components+layer_registry+map_engine 零活引用已核）/ geo_routes 冗余 / sim agent 未注册 / db iterrows / 前端无单测；disagree=数据管道"90%"事实错（SCRIPT 层 L3/L4 backend ⬜ 非"全部实现"）+ 调用次数优化前提不成立（项目跑在"不派 subagent"规则下，SOP spawns 是理论值）+ MANIFESTO 分层撞 diagnose 永不动承重红线 + MCP"与 DeepSeek 匹配"错标尺；partial=追踪 ROI 同意测量不预设简化（编号连续是 rule 10 红线）。**清理中挖出 latent bug**：zonal_stats 想补 n_dom_*/n_elem_* 占比列，但 discover 循环遍历 `rows.columns`（_props_df 只返请求列→永不含 n_dom_）→ **补充从未生效**；SCAN 只看到"冗余"未发现"失效意图"。**已执行**：[geo_routes.py](api/geo_routes.py) 三处清理（zonal_stats 死循环+冗余 / rank 一行双调用 / nearest 死三元 `'distance' if X else 'distance'`，零行为变化）+ sim-emotion-data agent 注册 [settings.json](.claude/settings.json) + 建 [cb-journal.md](docs/cb-journal.md) + memory。**pytest 207 passed 零回归**。**待执行（受阻）**：Tier 0.1 删 3 僵尸（ui_components/layer_registry/map_engine）—— 安全分类器拦了 `git rm`（Irreversible Local Destruction），**待用户显式授权**（文件 git-tracked 可恢复，零活引用已核）。承重：不碰 tracker/diagnose prompt/四态出口；L0 购买策略勿当风险。详见 [cb-journal.md](docs/cb-journal.md) CB-1。
 >

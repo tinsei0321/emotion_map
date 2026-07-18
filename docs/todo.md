@@ -14,7 +14,9 @@
 - **复盘 ~7.6/10**：架构 8.5 / 模块 7.0 / 数据管道 7.5 / 测试 7.5 / 债 7.0 / 文档 8.0。**用户澄清**：L0 未来走购买途径、sim 当下充分——非风险（撤回初版"真实数据=0 是最大风险"误判）。
 - **CB-1 反评价**（详见 [cb-journal.md](docs/cb-journal.md)）：SCAN 4-Explore 扫描扎实，但 3 处用错标尺（数据管道"90% 全部实现"事实错 / 调用次数优化前提不成立 / MANIFESTO 分层撞红线 / MCP 错标尺）。agree=Streamlit 僵尸+geo_routes 冗余+sim 未注册+前端无单测。清理中挖出 **latent bug**（zonal_stats n_dom/n_elem 补充从未生效，discover 循环遍历错源）。
 - **已执行**：① geo_routes 三处清理（零行为变化）② sim-emotion-data agent 注册 settings.json ③ 建 cb-journal.md ④ memory `l0-acquisition-purchase-strategy`。**pytest 207 passed 零回归**。
-- **待执行（受阻）**：Tier 0.1 删 3 僵尸（ui_components/layer_registry/map_engine）—— 安全分类器拦了 `git rm`（Irreversible Local Destruction），**待用户显式授权**（文件 git-tracked 可恢复，零活引用已核）。
+- ✅ **Tier 0.1 已删**（5.133，commit 5e7b8c6）：3 僵尸 + .streamlit/config.toml 退役（-1439 行），retired.md 留痕；入库 .zcode/（双环境同步）+ SCAN_DeepSeek.md。
+- ✅ **Tier 1 文档卫生**（5.133）：§0 主干 refresh / retired.md 建 / tracking-progress 对账（改指 AGENTS.md 权威源，修 frozen-0613 漂移）。
+- **Tier 1 余 + Tier 2 待续**：§0 分支补 topology / `?e2e=1` 去生产化 / C6 补 3 / db.py 批量插 / 前端 JS 单测 / 9⬜ 埋点细化 / zonal_stats latent bug。
 - **承重**：不碰 tracker/diagnose prompt/四态出口；L0 购买策略勿当风险；调动次数优先（不派 subagent）。
 
 ### ✅ 清测试债（pytest 5 红→全绿，复盘修复日）（revision-log 5.131，commit 055126c · **用户手动 push**）

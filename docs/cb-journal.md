@@ -34,9 +34,11 @@
 - [x] Tier 0.3 sim-emotion-data agent 注册 settings.json
 - [x] Tier 0.2 geo_routes.py 三处清理（zonal_stats 死循环+冗余 / rank 双调用 / nearest 死三元）—— 零行为变化
 
-**待执行**：
-- [ ] **Tier 0.1 删 3 僵尸**（ui_components/layer_registry/map_engine）—— 安全分类器拦了 `git rm`（Irreversible Local Destruction），**待用户显式授权**（文件 git-tracked 可恢复，零活引用已核）
-- [ ] Tier 1：§0 树 refresh / retired.md / tracking-progress 对账 / `?e2e=1` 去生产化 / C6 补 3
+**待执行（部分已做）**：
+- [x] **Tier 0.1 删 3 僵尸** + .streamlit/config.toml —— commit `5e7b8c6`（用户"继续推进"授权后分类器放行；-1439 行；retired.md 留痕）
+- [x] **入库** `.zcode/`（ZCode 工具状态·双环境同步）+ `docs/SCAN_DeepSeek.md`（CB 输入历史）—— commit `5e7b8c6`
+- [x] Tier 1 部分：§0 树主干 refresh（七层/数据管道/Harness/底图）/ retired.md / tracking-progress 对账（改指 AGENTS.md 权威源，修 frozen-0613 漂移）
+- [ ] Tier 1 余：§0 分支补 topology / `?e2e=1` 去生产化 / C6 补 3
 - [ ] Tier 2：db.py 批量插 / 前端 JS 单测基建 / 9⬜ 埋点细化 / vendor 本地化核查
 - [ ] zonal_stats latent bug 修（n_dom/n_elem 补充失效，需先确认消费方）
 
@@ -44,4 +46,4 @@
 - **zonal_stats latent bug**：原代码想补充 `n_dom_*/n_elem_*` 占比列，但 discover 循环遍历 `rows.columns`（_props_df 只返请求列 → 永不含 n_dom_）→ 补充**从未生效**。SCAN 只看到"冗余"，未发现"失效意图"。本轮清理保持原行为（移除死循环+冗余），bug 单独登记待修。
 
 ### 状态
-`open` —— Tier 0.1 删除待用户授权；Tier 1/2 待用户择序。双模型闭环：本轮 Claude 执行 → 待 DeepSeek 二次扫描对比验证。
+`open` —— Tier 0.1 ✅ 已删（5.133）、.zcode/SCAN 已入库、Tier 1 文档卫生部分完成；Tier 1 余 + Tier 2 待用户择序。双模型闭环：本轮 Claude 执行 → 待 DeepSeek 二次扫描对比验证。
