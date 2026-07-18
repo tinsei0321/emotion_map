@@ -217,7 +217,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月18日）** · 本节按板块分组、组内倒序；最新工作 = **5.134 ?e2e=1 seam 去生产化 + §0 补 topology/AI问答 7 月**（本次）。上一轮 5.133 CB-1 续。最近：
+> 📍 **最新动态（07月18日）** · 本节按板块分组、组内倒序；最新工作 = **5.135 db.py 退役 + zonal_stats latent bug wontfix（CB-1 深挖定级）**（本次）。上一轮 5.134 seam 去生产化。最近：
+>
+> - **5.135 db.py 退役 + zonal_stats latent bug wontfix（CB-1 深挖定级）**：用户定 db.py 去留后两件闭环。① **db.py 退役**：`EmotionDB` SQLite 层（296 行）全仓零活引用、无 test_db（demo 走 GeoJSON 文件非 SQLite）；且 `insert_points` **早已用 executemany**（`iterrows()` 仅构建记录列表做 col_map+NaN 过滤，非逐行 DB 插入）→ **SCAN 建议7 既优化死代码、又描述失准，declined** → `git rm core/db.py` + [retired.md](docs/retired.md) 留痕（可恢复；未来购买数据需 DB 时按当时 schema 重建）。pytest 207 零回归。② **zonal_stats latent bug → wontfix**：原 discover 循环想补 `n_dom_*/n_elem_*` 到响应、遍历错源（rows.columns，_props_df 只返请求列）从未生效；深挖确认**无活消费方**（rank 直读 gdf.columns 不经 _props_df / panel.js 矩阵 `_cellsByBucket` 读地图图层 `f.properties` 含完整 stats 列，均不经 zonal_stats trimmed 响应）→ 修复=向无人读响应加列=死重 → **wontfix**（[geo_routes.py](api/geo_routes.py) 注释 + cb-journal 标注）。承重：db.py 零引用安全删；不碰 tracker/diagnose/四态；zonal_stats 零行为变化维持。
 >
 > - **5.134 ?e2e=1 test seam 去生产化 + §0 任务树补 topology/AI问答 7 月**：把 [main.js](frontend/js/main.js) 的 test seam（?e2e=1 → window.__emcTest.loadPoints，39 行）抽到独立 [e2e-seam.js](frontend/js/e2e-seam.js)，[index.html](frontend/index.html) 加一行条件 dynamic-import bootstrap（仅 ?e2e=1 时加载）→ **main.js 零 test 代码、生产永不加载 seam**（生产零影响：无 flag 时 bootstrap 不触发）。seam 逻辑 byte-identical 搬迁；ESM 语法 .mjs 核双绿（e2e-seam.js + main.js）。**browser e2e 验证因环境挂延后**——serve/Playwright 启动卡在 pre-seam 路径（open_emc 阶段），与 seam 无关（seam 坏会 45s 退出非挂死）；用户环境恢复后跑 `py tests/browser/test_compare_regions.py` 复验。**§0 任务树补**（CB-1 Tier 1）：AI 问答补 7 月做厚项（行业知识库/deep_attribution L4/compare/wisdom/多轮记忆/e2e 框架）+ 新增"项目架构动态拓扑图（dev 可视化）✅"分支（5.122-5.127 此前漏入树）。承重：seam 逻辑零改动仅搬迁；不碰 tracker/diagnose/四态；生产路径（无 flag）完全不受影响。
 >

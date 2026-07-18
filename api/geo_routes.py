@@ -319,7 +319,9 @@ async def zonal_stats(req: ZonalStatsRequest):
                      'domain_top', 'element_top', 'issue_label', 'attribution', 'suggestion']
         # [CB-1] 原为 discover-then-refetch：遍历 rows.columns 找 n_dom_*/n_elem_* 想补，
         # 但 _props_df 只返请求列 → 永不含 n_dom_ → 循环空转、二次 _props_df 冗余。
-        # 清为单次调用（零行为变化）；n_dom/n_elem 补充从未生效=latent bug，已登记待修。
+        # 清为单次调用（零行为变化）。补充虽从未生效，但深挖确认**无活消费方**：
+        # rank 直读 gdf.columns（不经 _props_df）/ panel.js 矩阵读地图图层 feature.properties
+        # （图层含完整 stats 列）—— 均不经此 trimmed 响应。修复=向无人读的响应加列=死重 → wontfix。
         rows = _props_df(merged, prop_cols)
         rows = rows.where(pd.notna(rows), '').to_dict('records')
     except (KeyError, FileNotFoundError) as e:

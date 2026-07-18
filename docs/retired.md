@@ -13,6 +13,7 @@
 | `core/layer_registry.py` | Streamlit session_state 图层注册（3 处 st.） | 同上，Streamlit 会话绑定，FastAPI/脚本环境不可复用 | git 历史 |
 | `core/map_engine.py` | pydeck 底图+标记+热力+边界 | 前端迁 MapLibre GL JS 后 pydeck 渲染路径废弃；零活引用（仅退役 apps 备份） | git 历史 |
 | `.streamlit/config.toml` | Streamlit 主题配置 | apps/ 退役，无消费方 | git 历史 |
+| `core/db.py` | SQLite+SpatiaLite 存储层（EmotionDB，296 行，含 insert_points/query_by_bbox/export_csv 等） | 全仓零活引用、无 test_db；demo 走 GeoJSON 文件非 SQLite；SCAN 建议7（iterrows→executemany）= 死代码优化 declined（且 insert_points 早已用 executemany）。未来购买数据需 DB 时按当时 schema 重建 | git 历史 |
 
 **删除前核验**：`grep -rn "from core.ui_components\|from core.layer_registry\|from core.map_engine" --include=*.py` = **零活 import**（仅 `design/backups/` 退役 app 残留 + `core/__init__.py` docstring 文字提及，均已清）。pytest 207 passed 零回归。
 

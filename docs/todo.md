@@ -17,7 +17,8 @@
 - ✅ **Tier 0.1 已删**（5.133，commit 5e7b8c6）：3 僵尸 + .streamlit/config.toml 退役（-1439 行），retired.md 留痕；入库 .zcode/（双环境同步）+ SCAN_DeepSeek.md。
 - ✅ **Tier 1 文档卫生**（5.133）：§0 主干 refresh / retired.md 建 / tracking-progress 对账（改指 AGENTS.md 权威源，修 frozen-0613 漂移）。
 - ✅ **Tier 1 续**（5.134）：§0 补 topology + AI问答 7 月做厚项 / `?e2e=1` seam 去生产化（main.js 零 test 代码 → 独立 e2e-seam.js + index.html 条件 dynamic-import；ESM 绿，browser 验证因环境挂延后）。
-- **余 + Tier 2 待续**：C6 补 3 / db.py 批量插 / 前端 JS 单测 / 9⬜ 埋点细化 / zonal_stats latent bug。
+- ✅ **5.135**：db.py 退役（SCAN 建议7 declined——零活引用死代码，且 insert_points 早已用 executemany）/ zonal_stats latent bug wontfix（无活消费方——rank 读 gdf、panel.js 读图层，均不经 trimmed 响应）。pytest 207 零回归。
+- **余 + Tier 2 待续**：C6 补 3（需 browser 环境恢复）/ 前端 JS 单测基建（头号短板）/ 9⬜ 埋点细化。
 - **承重**：不碰 tracker/diagnose prompt/四态出口；L0 购买策略勿当风险；调动次数优先（不派 subagent）。
 
 ### ✅ 清测试债（pytest 5 红→全绿，复盘修复日）（revision-log 5.131，commit 055126c · **用户手动 push**）

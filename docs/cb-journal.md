@@ -43,8 +43,9 @@
 - [ ] Tier 2：db.py 批量插 / 前端 JS 单测基建 / 9⬜ 埋点细化 / vendor 本地化核查
 - [ ] zonal_stats latent bug 修（n_dom/n_elem 补充失效，需先确认消费方）
 
-### ④ 新发现（SCAN 之外，清理中挖出）
-- **zonal_stats latent bug**：原代码想补充 `n_dom_*/n_elem_*` 占比列，但 discover 循环遍历 `rows.columns`（_props_df 只返请求列 → 永不含 n_dom_）→ 补充**从未生效**。SCAN 只看到"冗余"，未发现"失效意图"。本轮清理保持原行为（移除死循环+冗余），bug 单独登记待修。
+### ④ 新发现（SCAN 之外，清理中挖出 + 深挖定级）
+- **zonal_stats latent bug → wontfix（无活消费方）**：原 discover 循环想补 `n_dom_*/n_elem_*` 到 zonal_stats 响应，遍历错源（rows.columns，而 _props_df 只返请求列）→ 补充从未生效。**深挖消费方**：`rank` 直读 gdf.columns（不经 _props_df）/ `panel.js` 矩阵 `_cellsByBucket` 读地图图层 `f.properties`（图层 GeoJSON 含完整 stats 列）—— **均不经 zonal_stats 的 trimmed 响应**，故无消费方读这两列。修复=向无人读的响应加列=死重 → **wontfix**（geo_routes 注释已标注）。
+- **db.py 全闲置 → SCAN 建议7 declined**：`EmotionDB` 全仓零活引用、无 test_db（demo 走 GeoJSON 文件非 SQLite）。且 `insert_points` **早已用 executemany 批量插**（`iterrows()` 只用于构建记录列表做 col_map+NaN 过滤，非逐行 DB 插入）。SCAN 建议7 既优化死代码、又描述失准 → **declined**。db.py 去留（retire vs 留作未来购买数据 DB 预留）待用户定。
 
 ### 状态
-`open` —— Tier 0.1 ✅ 已删（5.133）、.zcode/SCAN 已入库、Tier 1 文档卫生部分完成；Tier 1 余 + Tier 2 待用户择序。双模型闭环：本轮 Claude 执行 → 待 DeepSeek 二次扫描对比验证。
+`open` —— Tier 0 ✅（5.132-5.133）/ Tier 1 大部分 ✅（§0 refresh + ?e2e=1 去生产化 + retired.md + tracking-progress 对账，5.134）/ db.py 退役 + zonal_stats wontfix 闭环（5.135）。**待**：browser 环境恢复后复验 seam + C6 补 3；前端 JS 单测基建（头号短板）。双模型闭环：待 DeepSeek 二次扫描对比验证。
