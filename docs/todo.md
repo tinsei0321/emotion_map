@@ -7,6 +7,15 @@
 
 ## 📅 2026-07-18
 
+### ✅ 修底图不显示（天地图 style 内联，治 apps 退役遗留 404）（revision-log 5.130，commit a57e188 · **用户手动 push**）
+
+5.129 测试 compare 时发现地图底图 404。修复让地图恢复显示。
+
+- **根因**：`map.js` BASEMAPS 天地图三项引 `../apps/static/tianditu_*.json`（Phase 2 apps 退役删了 + 从未入 git）→ 默认底图即坏 → style 永不加载。
+- **key 验证**：config.py TIANDITU_KEY 有效，浏览器端权限（验 Referer）—— curl 裸请求 403、带 Referer 200。
+- **修**：内联 raster style 对象（`_tiandituStyle` + t0-t3 子域 + img/cia/vec/cva），不再依赖外部 JSON。CARTO 三项保持 CDN URL。默认仍干净卫星。
+- **验证**（Playwright）：isStyleLoaded True / 瓦片 20×200 / apps/static 请求 0。
+
 ### ✅ EMC 稳定性 Phase 5：browser e2e 测试框架 + compare 中文地名错配首例（revision-log 5.129，commit 61d1e50 · **用户手动 push**）
 
 继续 EMC 稳定性主线。建 browser 端到端测试框架（补 eval 测不出的运行时行为 C6）+ 第一用例治 compare 5.115。

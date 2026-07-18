@@ -3,15 +3,30 @@ import { emotionColors, token, POLARITY_ORDER, getLayers, addLayer, setLayerVisi
 import { initControls } from './map-controls.js';
 import { bindTipPopup } from './tip-popup.js';
 
+// 天地图 Key（非敏感，前端可公开；同 core/config.py TIANDITU_KEY）—— 浏览器端权限类型（验 Referer）。
+// 修复底图 404：原引 ../apps/static/tianditu_*.json（随 apps/ Phase 2 退役被删、且从未入 git）→ 404 →
+// style 永不加载 → 底图不显示。改为**内联 raster style 对象**（不再依赖外部 JSON 文件，根除路径脆弱）。
+const TIANDITU_KEY = '4d4dc85287c003c8a18d5520b8920796';
+const _tiandituTiles = (T) => [0, 1, 2, 3].map((s) =>
+  `https://t${s}.tianditu.gov.cn/DataServer?T=${T}&x={x}&y={y}&l={z}&tk=${TIANDITU_KEY}`);
+// specs = [{id, T}]：img_w 影像 / cia_w 影像注记 / vec_w 矢量 / cva_w 矢量注记（皆 EPSG:3857 Web Mercator）
+function _tiandituStyle(specs) {
+  const sources = {}, layers = [];
+  for (const { id, T } of specs) {
+    sources[`tdt-${id}`] = { type: 'raster', tiles: _tiandituTiles(T), tileSize: 256, maxzoom: 18 };
+    layers.push({ id: `tdt-${id}`, type: 'raster', source: `tdt-${id}` });
+  }
+  return { version: 8, sources, layers };
+}
 export const BASEMAPS = {
   // CARTO GL 矢量素图（kepler/MVP 同款，无注记，CDN 矢量瓦片，细节丰富+缩放清晰+快）
   'positron':    'https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json',
   'dark-matter': 'https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json',
   'voyager':     'https://basemaps.cartocdn.com/gl/voyager-nolabels-gl-style/style.json',
-  // 天地图（可选，非默认；HTTP+影像/矢量大瓦片，较慢）
-  'tianditu-img': '../apps/static/tianditu_img.json',            // 影像（带注记 cia）
-  'tianditu-vec': '../apps/static/tianditu_label.json',          // 矢量（带注记 cva）
-  'tianditu-img-nolabel': '../apps/static/tianditu_img_nolabel.json',  // 影像（无注记，干净卫星底图）
+  // 天地图（影像/矢量 raster 瓦片，内联 style 对象；浏览器端 key 验 Referer，CDN 子域 t0-t3 负载均衡）
+  'tianditu-img':         _tiandituStyle([{ id: 'img', T: 'img_w' }, { id: 'cia', T: 'cia_w' }]),   // 影像 + 注记
+  'tianditu-vec':         _tiandituStyle([{ id: 'vec', T: 'vec_w' }, { id: 'cva', T: 'cva_w' }]),   // 矢量 + 注记
+  'tianditu-img-nolabel': _tiandituStyle([{ id: 'img', T: 'img_w' }]),                              // 影像（无注记，干净卫星）
 };
 export const DEFAULT_BASEMAP = 'tianditu-img-nolabel';   // 初始底图：天地图影像（无注记，干净卫星）
 const YICHANG = { center: [111.286, 30.708], zoom: 12 };
