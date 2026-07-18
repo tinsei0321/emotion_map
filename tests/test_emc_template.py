@@ -9,13 +9,16 @@ from ai_qa.paradigm import TEMPLATE_REGISTRY, template_registry_text
 
 _CATEGORIES = {'concept', 'single', 'multi', 'unknown'}
 # single 技能的 tool 必须是已知 geo 工具（与 tools.js TOOLS / GEO_TOOL_CATALOG 对齐）
+# 注：compare_regions 是前端复合工具（复用 zonal_stats 逐区聚合，无独立 geo 端点，守委托 Toolbox 红线）
 _SINGLE_TOOLS = {'density', 'rank', 'buffer', 'clip', 'overlay', 'zonal_stats',
-                 'nearest', 'hotspot', 'area_stats', 'merge', 'extract_feature', 'filter_attr'}
+                 'nearest', 'hotspot', 'area_stats', 'merge', 'extract_feature', 'filter_attr',
+                 'compare_regions'}
 # required_slots / optional_defaults 键应是工具能接受的入参名（防拼写漂移）
 _KNOWN_SLOTS = {'layer', 'range', 'boundary', 'center', 'radius_m', 'by', 'top_n', 'how',
                 'layer_a', 'layer_b', 'target', 'k', 'value_col', 'agg_cols', 'pre_filter',
                 'bandwidth_m', 'cell_size_m',
-                'mode', 'radius', 'weightField', 'cell_size', 'polarity', 'level'}   # density 委托 Toolbox 的入参名
+                'mode', 'radius', 'weightField', 'cell_size', 'polarity', 'level',
+                'boundaries'}   # density 委托 Toolbox 的入参名；boundaries = compare_regions 多区入参
 
 
 def test_registry_structure():

@@ -11,6 +11,7 @@ import { renderLayerList, refreshLegend } from '../sidebar.js';
 import { fcBBox, profileFields } from '../import.js';
 import { resolveRole, isRenderContract, isInternalField } from '../field_dictionary.js';   // P2/P3 字段语义层·规则标注 + _fieldSamples 语义过滤
 import { landuseLayerPaint } from '../landuse_colors.js';   // 用地层自动附标准色（EMC 产物也走此）
+import { resolveBoundaryInput } from './boundary-resolve.js';   // 中文地名→GeoJSON（治 compare 中文名错配 5.115）
 
 let _lastGrid = null;   // 最近生成聚合层（ensure_zone/query 优先用）
 
@@ -718,7 +719,8 @@ export const TOOLS = {
     if (!params.boundary) return { observation: '[ERR] zonal_stats 需 boundary（preset_id）' };
     const _layer = resolvePointLayer(params);
     if (!_layer) return _ERR_NO_VISIBLE_PT();
-    const body = { layer: _layer, boundary: params.boundary };
+    const boundary = await resolveBoundaryInput(params.boundary);   // 中文地名(西陵区)→GeoJSON；preset_id 直通
+    const body = { layer: _layer, boundary };
     if (params.range) body.range = params.range;
     const pf = normPreFilter(params.pre_filter); if (pf) body.pre_filter = pf;
     if (params.top_n != null) body.top_n = Number(params.top_n);
@@ -742,7 +744,8 @@ export const TOOLS = {
     const pf = normPreFilter(params.pre_filter); if (pf) params.pre_filter = pf;
     const results = [];
     for (const b of bs.slice(0, 4)) {
-      const body = { layer: _layer, boundary: b };
+      const boundary = await resolveBoundaryInput(b);   // 中文名(西陵区)→GeoJSON；preset_id 直通
+      const body = { layer: _layer, boundary };
       if (pf) body.pre_filter = pf;
       try {
         const r = await geoFetch('zonal_stats', body);

@@ -7,6 +7,18 @@
 
 ## 📅 2026-07-18
 
+### ✅ EMC 稳定性 Phase 5：browser e2e 测试框架 + compare 中文地名错配首例（revision-log 5.129，commit 61d1e50 · **用户手动 push**）
+
+继续 EMC 稳定性主线。建 browser 端到端测试框架（补 eval 测不出的运行时行为 C6）+ 第一用例治 compare 5.115。
+
+- **根因**：compare_regions 把"西陵区"中文名当 preset_id 传 zonal_stats → load_preset 按 manifest 英文 id 查无 → "仅 0/2 区"。地名是 admin_district preset 内 feature 的 MC 属性，非 preset_id。
+- **修复**：新增 `boundary-resolve.js`（中文地名→单 feature GeoJSON dict，复用 zonal_stats 不造端点）；接入 compare_regions + zonal_stats。
+- **测试框架**：`tests/browser/`（Playwright + 自管 serve.py，单命令可跑）+ 用例 1（硬断言 2× zonal_stats 200 + 两区）+ 点层 fixture；`main.js` 加 `?e2e=1` test seam（注入 fixture，零生产影响）。
+- **C6 清单**：`docs/emc-test-cases.md` 登 4 例（compare/domain_lens/_driftRe/路由分歧）。
+- **顺手治**：5.114 加 compare 遗留的 test_emc_template 白名单缺口（compare_regions + boundaries）。
+- **验证**：用例 1 EXIT=0（2× zonal_stats 200, units=西陵区/伍家岗区）；3 JS 语法绿；pytest 203 passed（5 既有环境失败 git stash 确认非本次引入）。
+- **观察（未治）**：地图底图 404（apps 退役遗留 `map.js` 引 `../apps/static/tianditu_*.json`）——既有 bug，zonal_stats 不依赖地图渲染故测试不受影响；compare 工具层成功但 LLM 回答散文偏保守（"建议上传数据"）——answer 综合层问题，非 fix 问题。
+
 ### ✅ 项目除草三连 + vibe coding 策略定型（revision-log 5.128，commit 待 push · **用户手动 push**）
 
 用户反馈"项目臃肿需除草"+ 要求系统梳理 vibe coding 策略 + EMC 方向。开 plan 定 6 Phase。
