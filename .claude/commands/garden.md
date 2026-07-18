@@ -9,9 +9,10 @@ argument-hint: "(可选) 只扫某类: memory | files | manifest | zombies"
 
 ## 步骤
 
-1. **memory 过期**（`memory`）：读 `C:\Users\admin\.claude\projects\d--Github-emotion-map\memory\` 全部 `.md`（除 `MEMORY.md` 索引）。
+1. **memory 过期**（`memory`）：读 `C:\Users\Hi\.claude\projects\d--Github-emotion-map\memory\` 全部 `.md`（除 `MEMORY.md` 索引）。
    对每条：若其正文 `name:` 引用了具体**文件/函数/标志位/端点**，用 Grep/Read 验证该引用是否仍存在。
    - 引用已不存在（文件删/函数改名/端点移除）→ 标 `[STALE]`，建议改写或删（`忘掉 XXX`）。
+   - **记忆层细审（STALE/DUP/REDUNDANT + MEMORY.md 索引对账 + apply 执行）用 `/curate-memory`**；本类只做粗扫标 `[STALE]`，避免与 curate-memory 重叠。
    - 内容仍真但措辞过期 → 标 `[DUST]`，建议刷新措辞。
    - 记忆体系总量（文件数）若 >50 → 建议合并同主题、拆分过肥者。
 2. **巨型文件**（`files`）：`docs/revision-log.md` 与 `docs/todo.md` 字节数。
