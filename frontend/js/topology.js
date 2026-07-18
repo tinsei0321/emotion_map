@@ -1,8 +1,6 @@
-// ═══ topology.js — 3D 项目架构拓扑图（深度 UX 优化版）═══
-// 9 项：CSS2D 矢量字 / 双击缩放群组 / 图例 hover-click 高亮 / 白线实虚 / 聚落星座 /
-//       核心节点加大 / 空白关提示 / 全屏 / icon 操作卡 / 动态卡 build+todo
+// ═══ topology.js — 3D 项目架构拓扑图（自建标签层版，弃 CSS2DRenderer 避累积 bug）═══
+// 标签：自建 #topo-labels DOM + graph2ScreenCoords 锚定（切 preset 清空重建，无累积）
 import * as THREE from '../vendor/three.module.js';
-import { CSS2DRenderer, CSS2DObject } from '../vendor/CSS2DRenderer.js';
 
 const GROUP_FAMILY = {
   frontend: 'primary', core: 'primary', ai_qa: 'primary',
@@ -42,28 +40,27 @@ const PRESETS = {
   files: { nodeFilter: () => true, linkFilter: (l) => l.type !== 'contains', dagMode: null },
 };
 
-let _graph = null, _data = null, _curPreset = 'overview', _selectedId = null, _hoveredId = null;
+let _graph = null, _data = null, _curPreset = 'overview', _selectedId = null, _hoveredId = null, _loaded = false;
 let _legendLock = null, _legendHover = null;
 let _lastClick = { id: null, t: 0 };
+let _labelNodes = [];
 const _cssCache = {};
 
-// ══════════════════════════════════════════════════════════════
 async function init() {
   const el = document.getElementById('topo-graph');
   if (typeof ForceGraph3D === 'undefined' || typeof THREE === 'undefined') {
     el.innerHTML = '<div class="topo-error">[ERR] 3d-force-graph 或 three.js 加载失败。请确认 frontend/vendor/ 下库存在。</div>';
     return;
   }
-  const css2d = new CSS2DRenderer();
-  _graph = new ForceGraph3D(el, { extraRenderers: [css2d] })
+  _graph = new ForceGraph3D(el)
     .backgroundColor('#0d1117')
     .nodeThreeObjectExtend(false)
     .nodeThreeObject((n) => buildNode(n))
     .nodeLabel(() => '')
     .linkColor(() => '#ffffff')
-    .linkWidth((l) => (l.type === 'pipeline' ? 2.5 : 0))            // pipeline 圆柱，其余 THREE.Line
+    .linkWidth((l) => (l.type === 'pipeline' ? 2.5 : 0))
     .linkOpacity(0.5)
-    .linkVisibility((l) => l.type !== 'contains' && linkVisible(l))  // contains 默认不显（太密）
+    .linkVisibility((l) => l.type !== 'contains' && linkVisible(l))
     .linkDirectionalParticles((l) => (l.type === 'pipeline' ? 4 : 0))
     .linkDirectionalParticleWidth(1.5)
     .linkDirectionalParticleSpeed(0.006)
@@ -81,7 +78,7 @@ async function init() {
     .onNodeHover((n, prev) => onHover(n, prev))
     .onNodeClick((n) => onNodeClick(n))
     .onBackgroundClick(() => onBackgroundClick())
-    .onEngineTick(() => updateTipPos())
+    .onEngineTick(() => { updateTipPos(); updateLabels(); })
     .cooldownTicks(150)
     .nodeVisibility((n) => isVisible(n));
 
@@ -97,36 +94,23 @@ async function init() {
   wireUI();
 }
 
-// ═══ 节点几何（成熟度形状 + CSS2D 矢量标签 + 核心加大）═══
+// ═══ 节点几何（只球 mesh，标签在自建 DOM 层）═══
 function buildNode(n) {
-  const group = new THREE.Group();
   const color = colorOf(n);
   const r = nodeRadius(n);
   const core = isCore(n);
-  let mesh;
   if (n.maturity === 'mature') {
-    mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 14),
+    return new THREE.Mesh(new THREE.SphereGeometry(r, 18, 14),
       new THREE.MeshStandardMaterial({ color, metalness: core ? 0.6 : 0.25, roughness: core ? 0.3 : 0.55 }));
   } else if (n.maturity === 'progressing') {
-    mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0),
+    return new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0),
       new THREE.MeshBasicMaterial({ color, wireframe: true }));
   } else if (n.maturity === 'planned') {
-    mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(r * 0.85, 0),
+    return new THREE.Mesh(new THREE.IcosahedronGeometry(r * 0.85, 0),
       new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: 0.5 }));
-  } else {
-    mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 10),
-      new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.5 }));
   }
-  group.add(mesh);
-  if (showLabel(n)) {
-    const div = document.createElement('div');
-    div.className = 'node-label' + (core ? ' is-core' : '');
-    div.textContent = shortName(n);
-    const label = new CSS2DObject(div);
-    label.position.set(0, r + 2, 0);
-    group.add(label);
-  }
-  return group;
+  return new THREE.Mesh(new THREE.SphereGeometry(r, 12, 10),
+    new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.5 }));
 }
 function nodeRadius(n) {
   let r;
@@ -142,7 +126,8 @@ function isCore(n) {
   return ['module', 'pipeline-stage'].includes(n.type) || (n.inDegree || 0) >= 5;
 }
 function showLabel(n) {
-  return ['dir', 'module', 'pipeline-stage', 'task'].includes(n.type) || (n.lines && n.lines > 400) || isCore(n);
+  // 只核心节点常显字（module/pipeline-stage + 高入度）；其余 hover/click 的 #topo-tip 显示
+  return ['module', 'pipeline-stage'].includes(n.type) || (n.inDegree || 0) >= 8;
 }
 function colorOf(n) {
   return resolveCss(`var(--topo-c-${GROUP_FAMILY[n.group] || 'doc'})`);
@@ -152,11 +137,42 @@ function shortName(n) {
   return p.length > 22 ? p.slice(0, 20) + '…' : p;
 }
 
-// ═══ load / preset / 可见性 ═══
+// ═══ 自建标签层（#topo-labels DOM + graph2ScreenCoords 锚定，切 preset 清空重建避累积）═══
+function renderLabels() {
+  const cont = document.getElementById('topo-labels');
+  if (!cont || !_data) return;
+  cont.innerHTML = '';
+  _labelNodes = _data.nodes.filter((n) => showLabel(n));
+  _labelNodes.forEach((n) => {
+    const div = document.createElement('div');
+    div.className = 'node-label' + (isCore(n) ? ' is-core' : '');
+    div.textContent = shortName(n);
+    div.style.display = 'none';
+    cont.appendChild(div);
+    n._labelDiv = div;
+  });
+}
+function updateLabels() {
+  if (!_graph || !_labelNodes.length) return;
+  _labelNodes.forEach((n) => {
+    const div = n._labelDiv;
+    if (!div) return;
+    if (!isVisible(n)) { div.style.display = 'none'; return; }
+    try {
+      const co = _graph.graph2ScreenCoords(n.x, n.y, n.z);
+      div.style.display = 'block';
+      div.style.left = co.x + 'px';
+      div.style.top = (co.y - 10) + 'px';
+    } catch (e) { div.style.display = 'none'; }
+  });
+}
+
+// ═══ load / preset ═══
 async function load(view, refresh = false) {
+  if (refresh) { location.reload(); return; }
   _curPreset = view;
   document.getElementById('topo-stats').textContent = '加载中…';
-  const url = `/api/v1/topo?view=${view}${refresh ? '&refresh=1' : ''}`;
+  const url = `/api/v1/topo?view=${view}`;
   try {
     const r = await fetch(url);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -173,6 +189,7 @@ async function load(view, refresh = false) {
     const t = idMap.get(typeof l.target === 'object' ? l.target.id : l.target);
     if (s && t) { s.neighbors.push(t); t.neighbors.push(s); }
   });
+  if (!_loaded) { _graph.graphData(_data); _loaded = true; }
   applyPreset();
   renderLegend();
   renderLatest();
@@ -186,12 +203,14 @@ function applyPreset() {
   _graph.dagMode(p.dagMode || null);
   _graph.nodeVisibility((n) => isVisible(n));
   _graph.linkVisibility((l) => l.type !== 'contains' && linkVisible(l));
-  _graph.graphData(_data);
+  _graph.d3VelocityDecay(0.35);
   if (!p.dagMode) {
-    _graph.d3Force('charge').strength(-55);
-    _graph.d3Force('link').distance(38);
+    _graph.d3Force('charge').strength(-42);
+    _graph.d3Force('link').distance(52);
   }
-  setTimeout(() => { try { _graph.zoomToFit(400, 60); } catch (e) {} }, 700);
+  _graph.d3ReheatSimulation();
+  renderLabels();
+  setTimeout(() => { try { _graph.zoomToFit(400, 60); } catch (e) {} }, 900);
 }
 function isVisible(n) { return (PRESETS[_curPreset] || PRESETS.overview).nodeFilter(n); }
 function linkVisible(l) {
@@ -202,7 +221,7 @@ function linkVisible(l) {
   return p.linkFilter(l);
 }
 
-// ═══ hover（放大）+ click（手动判定双击）+ 空白 ═══
+// ═══ hover / click / 空白 ═══
 function onHover(node, prev) {
   if (prev && prev.__threeObj) prev.__threeObj.scale.set(1, 1, 1);
   _hoveredId = node ? node.id : null;
@@ -230,7 +249,7 @@ function onBackgroundClick() {
   if (_legendLock) { _legendLock = null; applyLegendHighlight(); updateLegendLockCSS(); }
 }
 
-// ═══ 图例 hover/click → 拓扑高亮（__threeObj material opacity/scale）═══
+// ═══ 图例高亮 ═══
 function applyLegendHighlight() {
   if (!_data) return;
   const active = _legendLock || _legendHover;
@@ -244,7 +263,7 @@ function applyLegendHighlight() {
         o.material.opacity = match ? 1 : (active ? 0.1 : 1);
       }
     });
-    if (!(_hoveredId && (n.id === _hoveredId))) {
+    if (!(_hoveredId && n.id === _hoveredId)) {
       obj.scale.set(match ? 1.3 : 1, match ? 1.3 : 1, match ? 1.3 : 1);
     }
   });
@@ -284,7 +303,7 @@ function bindLegendItems() {
   });
 }
 
-// ═══ tip / detail / renderDocs ═══
+// ═══ tip / detail ═══
 function showTip(n) {
   const tip = document.getElementById('topo-tip');
   const mat = n.maturity || 'progressing';
@@ -362,7 +381,7 @@ async function renderDocs(n) {
   }
 }
 
-// ═══ 侧栏渲染 ═══
+// ═══ 侧栏 ═══
 function renderLegend() {
   const used = new Map();
   _data.nodes.forEach((n) => { used.set(n.layer, (used.get(n.layer) || 0) + 1); });
@@ -391,16 +410,10 @@ function updateStats() {
   document.getElementById('topo-stats').textContent = `${s.nodes || 0} 节点 / ${s.links || 0} 边`;
 }
 
-// ═══ 全屏 ═══
 function toggleFullscreen() {
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen().catch(() => {});
-  } else {
-    document.exitFullscreen();
-  }
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+  else document.exitFullscreen();
 }
-
-// ═══ 工具 ═══
 function resolveCss(v) {
   if (!v) return '#8B8B8B';
   if (!v.startsWith('var(')) return v;

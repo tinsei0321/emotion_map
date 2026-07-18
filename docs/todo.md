@@ -7,6 +7,16 @@
 
 ## 📅 2026-07-18
 
+### ✅ 拓扑图 bug 修（切 preset 叠加 / 字堆积 / 主程序挤）（revision-log 5.126，commit 待 push · **用户手动 push**）
+
+5.125 后用户报 4 bug。
+- **① 切 preset 叠加**：根因 CSS2DRenderer 的 DOM 不随 nodeThreeObject 重建清空 → **弃 CSS2DRenderer**，自建 `#topo-labels` DOM 层（graph2ScreenCoords 锚定 + 切 preset 清空重建 + onEngineTick 更新位置）；applyPreset 改 nodeVisibility+dagMode+reheat（不 graphData）+ refresh reload。
+- **② 字堆积**：showLabel 只核心（module/pipeline-stage + inDegree≥8，171→39）+ 去外框改 text-shadow。
+- **③ 主程序挤**：charge -55→-42 + link 38→52 + velocityDecay 0.35 舒展成球。
+- **④ 循环依赖**（apps/app_main↔app_dialogs dagMode 警告）= 项目真实非拓扑 bug。
+- **Playwright 验证**：标签 39 稳定（切 preset 不叠加）/ 0 JS error。同步 dev-starmap templates。
+- **承重**：弃 CSS2DRenderer 改自建层（避累积 bug）；不碰 tracker。**push 用户手动。**
+
 ### ✅ 拓扑图深度 UX + 数据星图重塑（revision-log 5.125，commit 待 push · **用户手动 push**）
 
 5.124 后用户提 9 项深度优化 + 数据星图重塑。
