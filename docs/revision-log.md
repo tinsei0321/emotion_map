@@ -216,7 +216,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月18日）** · 本节按板块分组、组内倒序；最新工作 = **5.130 修底图不显示（天地图 style 内联，治 apps 退役遗留 404）**（本次）。上一轮 5.129 EMC Phase 5 测试框架 + compare 中文地名修复。最近：
+> 📍 **最新动态（07月18日）** · 本节按板块分组、组内倒序；最新工作 = **5.131 清测试债（pytest 5 红→全绿，复盘修复日）**（本次）。上一轮 5.130 修底图不显示。最近：
+>
+> - **5.131 清测试债（pytest 5 红→全绿，复盘修复日）**：用户要求停下来复盘 + 修复优化，选定"清测试债"方向。复盘定位 5 个既有失败（5.129 已确认非本次引入），逐一治：**① 3× test_sandbox** = `No module named 'matplotlib'` —— requirements.txt **已声明** `matplotlib>=3.8.0`（KDE 地形 create_terrain_mesh 用）但本地未装 → `pip install` 补齐（环境缺口非代码 bug；CI/fresh-clone 走 requirements.txt 不受影响）。**② test_emotion_analysis::test_capabilities** = 断言 stale —— L2 engine（[emotion_analysis_v1.py:434](SCRIPT/emotion_analysis_v1.py#L434)）已支持 `supports_category`（emotion_type 规则分类），测试仍断言 `is False` → 翻 `is True`。**③ test_range_selector_presets::renewal_numbering** = `更新单元.geojson` 未随仓分发（本地数据，同天地图）→ 改 `pytest.skip` if not available（clean checkout 不应硬失败）。**验证**：`py -m pytest tests/ -q` → **207 passed / 3 skipped / 0 failed**（原 203+5fail+2skip → 207+0fail+3skip）。承重：不改 engine 逻辑（supports_category 行为正确，只更测试）；matplotlib 是声明依赖非新增（requirements 不动）；不碰 tracker。复盘另识别的待办（compare answer 散文保守 / ?e2e=1 seam 去生产化 / C6 用例补 3 个）本轮未做，留后续。**push 用户手动。**
 >
 > - **5.130 修底图不显示（天地图 style 内联，治 apps 退役遗留 404）**：5.129 测试 compare 时发现地图底图 404（isStyleLoaded 永不 true）。**根因**：[map.js](frontend/js/map.js) `BASEMAPS` 天地图三项引 `../apps/static/tianditu_*.json`——apps/ Phase 2 退役删了 apps/ 且这些 JSON **从未入 git**（本地文件，丢了无法恢复）→ 默认底图 `tianditu-img-nolabel` 即坏的那个 → style 永不加载 → 底图不显示（曾致 renderLayer "Style is not done loading"，5.129 测试 seam 故 tolerate 之）。**key 验证**：[config.py](core/config.py) `TIANDITU_KEY` 仍有效，权限类型=**浏览器端（验 Referer）**（curl 裸请求 403「请使用浏览器访问」，带 localhost Referer 200 返 JPEG）。**修**：内联 raster style 对象（`_tiandituStyle` helper + t0-t3 子域 + img_w/cia_w/vec_w/cva_w），不再依赖外部 JSON 文件——**根除路径脆弱**；CARTO 三项保持 CDN URL；默认仍 `tianditu-img-nolabel`（干净卫星，设计意图）。**验证**（Playwright）：`isStyleLoaded: True` / 天地图瓦片 20×200 零失败 / `apps/static` 请求 0。承重：map.setStyle/style 接受 style 对象（非仅 URL）；transformStyle carry sources 仍生效；不碰 tracker。**push 用户手动。**
 >

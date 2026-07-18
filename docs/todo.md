@@ -7,6 +7,16 @@
 
 ## 📅 2026-07-18
 
+### ✅ 清测试债（pytest 5 红→全绿，复盘修复日）（revision-log 5.131，commit 055126c · **用户手动 push**）
+
+复盘定位 5 个既有失败，逐一治，pytest 恢复全绿。
+
+- **3× sandbox**：matplotlib 缺包 —— requirements 已声明 `>=3.8.0` 但本地没装 → pip install 补齐（环境缺口，非代码 bug）。
+- **capabilities**：L2 engine 已支持 supports_category（emotion_type 规则分类），断言 stale → 翻 True。
+- **renewal_numbering**：更新单元.geojson 未随仓分发（本地数据）→ 改 skip-if-absent。
+- **验证**：207 passed / 3 skipped / 0 failed（原 5 failed 全清）。
+- **复盘另识别（未做，留后续）**：compare answer 散文保守 / ?e2e=1 seam 去生产化 / EMC C6 用例补 3 个。
+
 ### ✅ 修底图不显示（天地图 style 内联，治 apps 退役遗留 404）（revision-log 5.130，commit a57e188 · **用户手动 push**）
 
 5.129 测试 compare 时发现地图底图 404。修复让地图恢复显示。

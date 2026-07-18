@@ -155,7 +155,7 @@ class TestSnowNLPAnalyzer:
         caps = self.engine.get_capabilities()
         assert caps['supports_batch'] is True
         assert caps['supports_keywords'] is True
-        assert caps['supports_category'] is False  # L2 不支持
+        assert caps['supports_category'] is True  # L2 规则分类 (emotion_type)，已支持
 
 
 class TestCreateAnalyzer:
