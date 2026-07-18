@@ -16,7 +16,8 @@
 - **已执行**：① geo_routes 三处清理（零行为变化）② sim-emotion-data agent 注册 settings.json ③ 建 cb-journal.md ④ memory `l0-acquisition-purchase-strategy`。**pytest 207 passed 零回归**。
 - ✅ **Tier 0.1 已删**（5.133，commit 5e7b8c6）：3 僵尸 + .streamlit/config.toml 退役（-1439 行），retired.md 留痕；入库 .zcode/（双环境同步）+ SCAN_DeepSeek.md。
 - ✅ **Tier 1 文档卫生**（5.133）：§0 主干 refresh / retired.md 建 / tracking-progress 对账（改指 AGENTS.md 权威源，修 frozen-0613 漂移）。
-- **Tier 1 余 + Tier 2 待续**：§0 分支补 topology / `?e2e=1` 去生产化 / C6 补 3 / db.py 批量插 / 前端 JS 单测 / 9⬜ 埋点细化 / zonal_stats latent bug。
+- ✅ **Tier 1 续**（5.134）：§0 补 topology + AI问答 7 月做厚项 / `?e2e=1` seam 去生产化（main.js 零 test 代码 → 独立 e2e-seam.js + index.html 条件 dynamic-import；ESM 绿，browser 验证因环境挂延后）。
+- **余 + Tier 2 待续**：C6 补 3 / db.py 批量插 / 前端 JS 单测 / 9⬜ 埋点细化 / zonal_stats latent bug。
 - **承重**：不碰 tracker/diagnose prompt/四态出口；L0 购买策略勿当风险；调动次数优先（不派 subagent）。
 
 ### ✅ 清测试债（pytest 5 红→全绿，复盘修复日）（revision-log 5.131，commit 055126c · **用户手动 push**）

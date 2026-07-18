@@ -38,7 +38,8 @@
 - [x] **Tier 0.1 删 3 僵尸** + .streamlit/config.toml —— commit `5e7b8c6`（用户"继续推进"授权后分类器放行；-1439 行；retired.md 留痕）
 - [x] **入库** `.zcode/`（ZCode 工具状态·双环境同步）+ `docs/SCAN_DeepSeek.md`（CB 输入历史）—— commit `5e7b8c6`
 - [x] Tier 1 部分：§0 树主干 refresh（七层/数据管道/Harness/底图）/ retired.md / tracking-progress 对账（改指 AGENTS.md 权威源，修 frozen-0613 漂移）
-- [ ] Tier 1 余：§0 分支补 topology / `?e2e=1` 去生产化 / C6 补 3
+- [x] Tier 1 余（部分）：§0 分支补 topology ✅（5.134）/ `?e2e=1` 去生产化 ✅（5.134，main.js 零 test 代码→独立 e2e-seam.js + index.html 条件 dynamic-import；ESM 绿，browser 验证因环境挂延后）
+- [ ] Tier 1 余：C6 补 3
 - [ ] Tier 2：db.py 批量插 / 前端 JS 单测基建 / 9⬜ 埋点细化 / vendor 本地化核查
 - [ ] zonal_stats latent bug 修（n_dom/n_elem 补充失效，需先确认消费方）
 

@@ -878,5 +878,7 @@
 
   <!-- App scripts (ES modules) -->
   <script type="module" src="js/main.js"></script>
+  <!-- E2E test seam：仅 ?e2e=1 时 dynamic-load e2e-seam.js（生产永不加载，main.js 零 test 代码）-->
+  <script>if(new URLSearchParams(location.search).get('e2e')==='1'){import('./js/e2e-seam.js').catch(e=>console.error('[e2e] seam load failed',e));}</script>
 </body>
 </html>

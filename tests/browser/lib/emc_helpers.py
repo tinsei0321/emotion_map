@@ -4,7 +4,7 @@
 """
 from playwright.sync_api import sync_playwright, Page
 
-EMC_URL = 'http://localhost:8080/frontend/index.html?e2e=1'   # ?e2e=1 激活 main.js test seam（注入 fixture 点层）
+EMC_URL = 'http://localhost:8080/frontend/index.html?e2e=1'   # ?e2e=1 → index.html dynamic-load e2e-seam.js（注入 fixture 点层；main.js 零 test 代码）
 GEO_BASE = '/api/v1/geo/'
 
 
@@ -33,7 +33,7 @@ def inject_points(page: Page, fc: dict) -> None:
 
     地图空启动（main.js "No seed sample"），compare/zonal 需可见点层。
     不走 Import 对话框（file_chooser/set_input_files 均受 UI 时序影响 flaky）；
-    直接调 main.js 暴露的 loadPoints（复用 Import 点层装载逻辑）。fc = GeoJSON dict。
+    直接调 e2e-seam.js 暴露的 loadPoints（复用 Import 点层装载逻辑）。fc = GeoJSON dict。
     """
     page.wait_for_function("() => !!window.__emcTest", timeout=45000)   # seam 就绪（main 模块加载后；冷启动 main.js 加载较慢）
     # 直接注入：loadPoints 容忍地图底图未加载（addLayer 入 state 即可被 zonal_stats 用，不依赖地图渲染）。

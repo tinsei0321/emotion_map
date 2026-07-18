@@ -39,7 +39,8 @@ emotion_map（根）
 │  ├─ Range 范围 🔄  上载模块 ✅（绘制工具迁入 + 两组卡 + 自动 popup）｜绘制模块 ✅（多边形/矩形 移植 geojson.io，绘制卡常驻；点/线/圆 ⬜）｜范围分析 ⬜（缓冲/叠加/聚合）
 │  ├─ Analysis 情绪分析接入 ⬜  L2 管道接前端 / 空间分析 MVP
 │  ├─ Table 数据表格 ⬜  列表 / 筛选 / 导出（联动管线已预留）
-│  └─ AI 问答 🔄  Harness 四层 ✅（知识层 MANIFESTO + 思考层 think{framing,mapping,steps[]} + 执行层 tool 协议化 + 审查层 Review 6条+Revise）｜独立子架构 ✅（后端 ai_qa/ + 前端 js/ai_qa/，从 core/chat_context+llm_client + chat-panel/chat-orchestrator 散落迁入）｜独立窗口化 ✅（chat.html 真独立窗 + 浮窗降级 + BroadcastChannel 协议；panel.js 不调 map/state）｜设计圣经 docs/ai-qa-design.md；provider-agnostic（DeepSeek→溯佰科改 ai_qa/llm.py 一处）｜EMC UI 重设计 ✅（左端栏融合[上下分区 #lp-upper+.gutter-emc+#emc-panel + 纵向拖拽] + 智能高度三档[compact/comfort/expand + 手动基线回退] + 历史 1:1 Claude Code[就地视图+搜索+列表] + Claude Code 交互语言[Thinking 头/工具卡/复制/Esc/code-block]，5.48）
+│  ├─ AI 问答 🔄  Harness 四层 ✅（知识层 MANIFESTO + 思考层 think{framing,mapping,steps[]} + 执行层 tool 协议化 + 审查层 Review 6条+Revise）｜独立子架构 ✅（后端 ai_qa/ + 前端 js/ai_qa/，从 core/chat_context+llm_client + chat-panel/chat-orchestrator 散落迁入）｜独立窗口化 ✅（chat.html 真独立窗 + 浮窗降级 + BroadcastChannel 协议；panel.js 不调 map/state）｜设计圣经 docs/ai-qa-design.md；provider-agnostic（DeepSeek→溯佰科改 ai_qa/llm.py 一处）｜EMC UI 重设计 ✅（左端栏融合[上下分区 #lp-upper+.gutter-emc+#emc-panel + 纵向拖拽] + 智能高度三档[compact/comfort/expand + 手动基线回退] + 历史 1:1 Claude Code[就地视图+搜索+列表] + Claude Code 交互语言[Thinking 头/工具卡/复制/Esc/code-block]，5.48）｜**7 月做厚**：行业知识库 v1→做厚 ✅（四领域权威源，5.102-5.108）｜deep_attribution L4 归因 ✅（规则底+lazy LLM·政策→情绪→项目闭环，5.119）｜compare 区域对比 ✅（5.114/5.129）｜wisdom 策展+多轮记忆 ✅（5.118）｜browser e2e 框架 ✅（5.129）
+│  └─ 项目架构动态拓扑图（dev 可视化）✅  3d-force-graph + topo_scanner 实时依赖图（5.122-5.127；21 模块+数据流叙事边+成熟度形状）；dev-starmap skill
 │
 └─ 临时分支（搁置 / 待决策）
    ├─ KDE 批1 1a 预览图 ⏸  等 terrain/factor kepler 截图补齐
@@ -216,7 +217,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月18日）** · 本节按板块分组、组内倒序；最新工作 = **5.133 CB-1 续：删僵尸 + 入库 .zcode/SCAN + Tier 1 文档卫生**（本次）。上一轮 5.132 复盘+CB-1。最近：
+> 📍 **最新动态（07月18日）** · 本节按板块分组、组内倒序；最新工作 = **5.134 ?e2e=1 seam 去生产化 + §0 补 topology/AI问答 7 月**（本次）。上一轮 5.133 CB-1 续。最近：
+>
+> - **5.134 ?e2e=1 test seam 去生产化 + §0 任务树补 topology/AI问答 7 月**：把 [main.js](frontend/js/main.js) 的 test seam（?e2e=1 → window.__emcTest.loadPoints，39 行）抽到独立 [e2e-seam.js](frontend/js/e2e-seam.js)，[index.html](frontend/index.html) 加一行条件 dynamic-import bootstrap（仅 ?e2e=1 时加载）→ **main.js 零 test 代码、生产永不加载 seam**（生产零影响：无 flag 时 bootstrap 不触发）。seam 逻辑 byte-identical 搬迁；ESM 语法 .mjs 核双绿（e2e-seam.js + main.js）。**browser e2e 验证因环境挂延后**——serve/Playwright 启动卡在 pre-seam 路径（open_emc 阶段），与 seam 无关（seam 坏会 45s 退出非挂死）；用户环境恢复后跑 `py tests/browser/test_compare_regions.py` 复验。**§0 任务树补**（CB-1 Tier 1）：AI 问答补 7 月做厚项（行业知识库/deep_attribution L4/compare/wisdom/多轮记忆/e2e 框架）+ 新增"项目架构动态拓扑图（dev 可视化）✅"分支（5.122-5.127 此前漏入树）。承重：seam 逻辑零改动仅搬迁；不碰 tracker/diagnose/四态；生产路径（无 flag）完全不受影响。
 >
 > - **5.133 CB-1 续：删 Streamlit/pydeck 僵尸 + 入库 .zcode/SCAN + Tier 1 文档卫生**：用户双环境同步诉求 → `git rm core/ui_components.py + layer_registry.py + map_engine.py + .streamlit/config.toml`（4 文件 **-1439 行**；删除前再核零活引用，仅 design/backups 退役残留；pytest 207 零回归）+ 入库 `.zcode/`（ZCode 工具状态，双机同步）+ `docs/SCAN_DeepSeek.md`（CB 输入历史）。建 [retired.md](docs/retired.md) 退役台账（消除"被引用但不存在"漂移）。**tracking-progress.md 漂移修正**（SCAN §2.6 指控 + 我方核验更严重：frozen 2026-06-13、把已删 map_engine/ui_components + 退役 apps/app_main 标 [x] 已埋点、缺 7 月全部新模块）→ 改为指向 [AGENTS.md](AGENTS.md) 权威源 + 退役模块清单，杜绝双源漂移。**§0 任务树主干 refresh**（七层去 apps 加 api/ai_qa / 数据管道标 L0 购买+归因覆盖 / Harness 8→9 Agent / 底图 5.130 内联）。承重：删除前 grep 零活引用；不碰 tracker/diagnose/四态。详见 [cb-journal.md](docs/cb-journal.md) CB-1。
 >
