@@ -1,5 +1,4 @@
-// ═══ topology.js — 3D 项目架构拓扑图（自建标签层版，弃 CSS2DRenderer 避累积 bug）═══
-// 标签：自建 #topo-labels DOM + graph2ScreenCoords 锚定（切 preset 清空重建，无累积）
+// ═══ topology.js — 3D 项目架构拓扑图（单图专注版：去 preset / 中文功能名 / 组团虚线框 / 中键平移 / 双击聚焦）═══
 import * as THREE from '../vendor/three.module.js';
 
 const GROUP_FAMILY = {
@@ -10,6 +9,21 @@ const GROUP_FAMILY = {
   docs: 'doc', design: 'doc', tests: 'doc', memories: 'doc',
   root: 'doc', static: 'doc', task: 'doc',
 };
+// group 中文名（组团框 + 节点显示用）
+const GROUP_LABEL_ZH = {
+  frontend: '前端主界面', core: '基础设施', ai_qa: 'AI 问答·EMC', SCRIPT: '分析管道',
+  DATA: '数据层', api: 'API 路由', SCRAPER: '数据采集', docs: '文档',
+  '.claude': '开发工具', apps: 'Streamlit 遗留', design: '设计令牌', tests: '测试',
+};
+// module 中文名（核心节点 label 用，非文件名）
+const MODULE_LABEL_ZH = {
+  MOD_GOV: '数据治理', MOD_ANA: '情绪分析', MOD_REL: '相关性筛选', MOD_RUN: '分析入口',
+  MOD_GEN: 'Mock 生成', MOD_PERF: '城市演示数据', MOD_SCRAPER: '采集爬虫', MOD_GEOCODE: '地理编码',
+  MOD_LLM: 'LLM 调用', MOD_AIQA: 'AI 问答技能谱', MOD_SPATIAL: '空间分析', MOD_FIELD: '字段语义',
+  MOD_APP: 'Streamlit 应用', MOD_LOADER: '数据加载', MOD_MAP: '地图引擎', MOD_TRANSFORM: '坐标转换',
+  MOD_RANGE: '范围选择', MOD_EXPORT: '导出', MOD_MM: '多模态', MOD_UTILS: '工具库',
+  MOD_PLACE: 'POI 图层', MOD_UI: 'UI 组件', MOD_TRACKER: '决策追踪',
+};
 const MATURITY_LABEL = { mature: '成熟', progressing: '推进中', planned: '计划', paused: '搁置', rejected: '否决' };
 const LAYER_LABEL = {
   data: '数据层', tool: '工具层·管道', ui: 'UI 层', infra: '基础设施',
@@ -17,33 +31,11 @@ const LAYER_LABEL = {
 };
 const TYPE_LABEL = { file: '文件', dir: '目录', module: '模块', 'pipeline-stage': '管道阶段', task: '任务' };
 
-const PRESETS = {
-  overview: { nodeFilter: () => true, linkFilter: () => true, dagMode: null },
-  pipeline: {
-    nodeFilter: (n) => n.type === 'pipeline-stage'
-      || (n.path && (n.path.startsWith('SCRIPT/') || n.path.startsWith('SCRAPER/') || n.path.startsWith('DATA/')))
-      || ['MOD_GOV', 'MOD_ANA', 'MOD_REL', 'MOD_PERF', 'MOD_SCRAPER'].includes(n.id),
-    linkFilter: (l) => ['pipeline', 'pipeline-dep', 'import'].includes(l.type), dagMode: 'radialout',
-  },
-  emc: {
-    nodeFilter: (n) => (n.path && (n.path.startsWith('ai_qa/') || n.path.startsWith('frontend/js/ai_qa/')))
-      || n.id === 'api/aiqa_routes.py' || ['MOD_AIQA', 'MOD_LLM'].includes(n.id),
-    linkFilter: (l) => ['import', 'route'].includes(l.type), dagMode: null,
-  },
-  agent_skills: {
-    nodeFilter: (n) => n.path && (n.path.startsWith('.claude/agents') || n.path.startsWith('.claude/commands')
-      || n.path.startsWith('.claude/hooks') || n.path === '.claude/SKILLS_INDEX.md'),
-    linkFilter: () => true, dagMode: null,
-  },
-  roadmap: { nodeFilter: (n) => n.type === 'task', linkFilter: (l) => ['task-dep'].includes(l.type), dagMode: 'td' },
-  module: { nodeFilter: (n) => n.type === 'module' || !!n.module, linkFilter: (l) => ['owns', 'import'].includes(l.type), dagMode: null },
-  files: { nodeFilter: () => true, linkFilter: (l) => l.type !== 'contains', dagMode: null },
-};
-
-let _graph = null, _data = null, _curPreset = 'overview', _selectedId = null, _hoveredId = null, _loaded = false;
+let _graph = null, _data = null, _selectedId = null, _hoveredId = null, _loaded = false;
 let _legendLock = null, _legendHover = null;
 let _lastClick = { id: null, t: 0 };
 let _labelNodes = [];
+let _boxGroups = [];   // [{group, label, nodes, boxDiv, labelDiv}]
 const _cssCache = {};
 
 async function init() {
@@ -60,7 +52,7 @@ async function init() {
     .linkColor(() => '#ffffff')
     .linkWidth((l) => (l.type === 'pipeline' ? 2.5 : 0))
     .linkOpacity(0.5)
-    .linkVisibility((l) => l.type !== 'contains' && linkVisible(l))
+    .linkVisibility((l) => l.type !== 'contains')
     .linkDirectionalParticles((l) => (l.type === 'pipeline' ? 4 : 0))
     .linkDirectionalParticleWidth(1.5)
     .linkDirectionalParticleSpeed(0.006)
@@ -78,23 +70,30 @@ async function init() {
     .onNodeHover((n, prev) => onHover(n, prev))
     .onNodeClick((n) => onNodeClick(n))
     .onBackgroundClick(() => onBackgroundClick())
-    .onEngineTick(() => { updateTipPos(); updateLabels(); })
-    .cooldownTicks(150)
-    .nodeVisibility((n) => isVisible(n));
+    .onEngineTick(() => { updateLabels(); updateBoxes(); updateTipPos(); })
+    .cooldownTicks(150);
 
+  // 灯光
   const scene = _graph.scene();
   scene.add(new THREE.AmbientLight(0xffffff, 0.65));
   const dl = new THREE.DirectionalLight(0xffffff, 0.85); dl.position.set(200, 400, 200); scene.add(dl);
+
+  // 中键→平移（移除默认中键 dolly/zoom），滚轮缩放保留
+  const ctrl = _graph.controls();
+  ctrl.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.PAN };
+  ctrl.enableZoom = true;   // 滚轮 zoom
+  // 视角变化时同步标签/框/tip（修"拖拽字体不跟随"）
+  ctrl.addEventListener('change', () => { updateLabels(); updateBoxes(); updateTipPos(); });
 
   const resize = () => { if (_graph) _graph.width(el.clientWidth).height(el.clientHeight); };
   requestAnimationFrame(resize);
   window.addEventListener('resize', resize);
 
-  await load('overview');
+  await load();
   wireUI();
 }
 
-// ═══ 节点几何（只球 mesh，标签在自建 DOM 层）═══
+// ═══ 节点几何 ═══
 function buildNode(n) {
   const color = colorOf(n);
   const r = nodeRadius(n);
@@ -125,9 +124,14 @@ function nodeRadius(n) {
 function isCore(n) {
   return ['module', 'pipeline-stage'].includes(n.type) || (n.inDegree || 0) >= 5;
 }
+// 只核心节点常显字（module/pipeline-stage），用中文功能名
 function showLabel(n) {
-  // 只核心节点常显字（module/pipeline-stage + 高入度）；其余 hover/click 的 #topo-tip 显示
-  return ['module', 'pipeline-stage'].includes(n.type) || (n.inDegree || 0) >= 8;
+  return ['module', 'pipeline-stage'].includes(n.type);
+}
+function nodeDisplayName(n) {
+  if (n.type === 'pipeline-stage') return n.name;              // _PIPELINE_STAGES name 已含中文（L0 原始采集…）
+  if (n.type === 'module') return MODULE_LABEL_ZH[n.id] || n.id;
+  return GROUP_LABEL_ZH[n.group] || n.name;
 }
 function colorOf(n) {
   return resolveCss(`var(--topo-c-${GROUP_FAMILY[n.group] || 'doc'})`);
@@ -137,7 +141,7 @@ function shortName(n) {
   return p.length > 22 ? p.slice(0, 20) + '…' : p;
 }
 
-// ═══ 自建标签层（#topo-labels DOM + graph2ScreenCoords 锚定，切 preset 清空重建避累积）═══
+// ═══ 自建标签层（graph2ScreenCoords 锚定）═══
 function renderLabels() {
   const cont = document.getElementById('topo-labels');
   if (!cont || !_data) return;
@@ -146,7 +150,7 @@ function renderLabels() {
   _labelNodes.forEach((n) => {
     const div = document.createElement('div');
     div.className = 'node-label' + (isCore(n) ? ' is-core' : '');
-    div.textContent = shortName(n);
+    div.textContent = nodeDisplayName(n);
     div.style.display = 'none';
     cont.appendChild(div);
     n._labelDiv = div;
@@ -157,7 +161,6 @@ function updateLabels() {
   _labelNodes.forEach((n) => {
     const div = n._labelDiv;
     if (!div) return;
-    if (!isVisible(n)) { div.style.display = 'none'; return; }
     try {
       const co = _graph.graph2ScreenCoords(n.x, n.y, n.z);
       div.style.display = 'block';
@@ -167,14 +170,62 @@ function updateLabels() {
   });
 }
 
-// ═══ load / preset ═══
-async function load(view, refresh = false) {
+// ═══ 组团虚线框（主要 group 的屏幕 bbox + 中文名）═══
+function renderBoxes() {
+  const cont = document.getElementById('topo-boxes');
+  if (!cont || !_data) return;
+  cont.innerHTML = '';
+  _boxGroups = [];
+  const grouped = {};
+  _data.nodes.forEach((n) => {
+    if (n.type === 'file' || n.type === 'dir') {
+      const g = n.group;
+      if (GROUP_LABEL_ZH[g]) {
+        (grouped[g] = grouped[g] || []).push(n);
+      }
+    }
+  });
+  Object.entries(grouped).forEach(([g, nodes]) => {
+    if (nodes.length < 3) return;   // 太小的组不框
+    const box = document.createElement('div');
+    box.className = 'cluster-box';
+    const lab = document.createElement('div');
+    lab.className = 'cluster-box-label';
+    lab.textContent = `${GROUP_LABEL_ZH[g]} · ${nodes.length}`;
+    box.appendChild(lab);
+    cont.appendChild(box);
+    _boxGroups.push({ group: g, nodes, boxDiv: box, labelDiv: lab });
+  });
+}
+function updateBoxes() {
+  if (!_graph || !_boxGroups.length) return;
+  _boxGroups.forEach((bg) => {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, vis = 0;
+    bg.nodes.forEach((n) => {
+      if (n.x == null) return;
+      try {
+        const co = _graph.graph2ScreenCoords(n.x, n.y, n.z);
+        minX = Math.min(minX, co.x); minY = Math.min(minY, co.y);
+        maxX = Math.max(maxX, co.x); maxY = Math.max(maxY, co.y);
+        vis++;
+      } catch (e) {}
+    });
+    if (vis < 2) { bg.boxDiv.style.display = 'none'; return; }
+    const pad = 24;
+    bg.boxDiv.style.display = 'block';
+    bg.boxDiv.style.left = (minX - pad) + 'px';
+    bg.boxDiv.style.top = (minY - pad) + 'px';
+    bg.boxDiv.style.width = (maxX - minX + pad * 2) + 'px';
+    bg.boxDiv.style.height = (maxY - minY + pad * 2) + 'px';
+  });
+}
+
+// ═══ load（无 preset，单图全显）═══
+async function load(refresh = false) {
   if (refresh) { location.reload(); return; }
-  _curPreset = view;
   document.getElementById('topo-stats').textContent = '加载中…';
-  const url = `/api/v1/topo?view=${view}`;
   try {
-    const r = await fetch(url);
+    const r = await fetch('/api/v1/topo?view=overview');
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     _data = await r.json();
   } catch (e) {
@@ -189,39 +240,23 @@ async function load(view, refresh = false) {
     const t = idMap.get(typeof l.target === 'object' ? l.target.id : l.target);
     if (s && t) { s.neighbors.push(t); t.neighbors.push(s); }
   });
-  if (!_loaded) { _graph.graphData(_data); _loaded = true; }
-  applyPreset();
+  if (!_loaded) {
+    _graph.graphData(_data);
+    _graph.d3VelocityDecay(0.35);
+    _graph.d3Force('charge').strength(-42);
+    _graph.d3Force('link').distance(52);
+    _loaded = true;
+  }
+  renderLabels();
+  renderBoxes();
   renderLegend();
   renderLatest();
   updateStats();
   bindLegendItems();
-}
-function applyPreset() {
-  const p = PRESETS[_curPreset] || PRESETS.overview;
-  _legendLock = null; _legendHover = null; _hoveredId = null;
-  hideTip();
-  _graph.dagMode(p.dagMode || null);
-  _graph.nodeVisibility((n) => isVisible(n));
-  _graph.linkVisibility((l) => l.type !== 'contains' && linkVisible(l));
-  _graph.d3VelocityDecay(0.35);
-  if (!p.dagMode) {
-    _graph.d3Force('charge').strength(-42);
-    _graph.d3Force('link').distance(52);
-  }
-  _graph.d3ReheatSimulation();
-  renderLabels();
   setTimeout(() => { try { _graph.zoomToFit(400, 60); } catch (e) {} }, 900);
 }
-function isVisible(n) { return (PRESETS[_curPreset] || PRESETS.overview).nodeFilter(n); }
-function linkVisible(l) {
-  const p = PRESETS[_curPreset] || PRESETS.overview;
-  const s = typeof l.source === 'object' ? l.source.id : l.source;
-  const t = typeof l.target === 'object' ? l.target.id : l.target;
-  if (!isVisible({ id: s }) || !isVisible({ id: t })) return false;
-  return p.linkFilter(l);
-}
 
-// ═══ hover / click / 空白 ═══
+// ═══ hover / 双击聚焦 / 空白 ═══
 function onHover(node, prev) {
   if (prev && prev.__threeObj) prev.__threeObj.scale.set(1, 1, 1);
   _hoveredId = node ? node.id : null;
@@ -232,7 +267,7 @@ function onNodeClick(n) {
   const now = Date.now();
   if (_lastClick.id === n.id && now - _lastClick.t < 300) {
     _lastClick = { id: null, t: 0 };
-    zoomToCluster(n);
+    zoomToCluster(n);    // 双击：聚焦该节点所在组团（节点为视角中心）
   } else {
     _lastClick = { id: n.id, t: now };
     showDetail(n);
@@ -241,7 +276,13 @@ function onNodeClick(n) {
 function zoomToCluster(n) {
   const key = n.module || n.group || n.layer;
   if (!key) return;
-  _graph.zoomToFit(800, 80, (nn) => (nn.module || nn.group || nn.layer) === key);
+  const cnodes = _data.nodes.filter((nn) => (nn.module || nn.group || nn.layer) === key && nn.x != null);
+  if (!cnodes.length) return;
+  const cx = cnodes.reduce((s, nn) => s + nn.x, 0) / cnodes.length;
+  const cy = cnodes.reduce((s, nn) => s + nn.y, 0) / cnodes.length;
+  const cz = cnodes.reduce((s, nn) => s + nn.z, 0) / cnodes.length;
+  // 相机看向 cluster 中心（节点为视角中心），pos 在前上方
+  _graph.cameraPosition({ x: cx, y: cy - 140, z: cz + 240 }, { x: cx, y: cy, z: cz }, 1000);
 }
 function onBackgroundClick() {
   document.getElementById('topo-detail').hidden = true;
@@ -303,21 +344,21 @@ function bindLegendItems() {
   });
 }
 
-// ═══ tip / detail ═══
+// ═══ tip（hover 富信息，显示文件名等具体） ═══
 function showTip(n) {
   const tip = document.getElementById('topo-tip');
   const mat = n.maturity || 'progressing';
   const fam = GROUP_FAMILY[n.group] || 'doc';
   const c = resolveCss(`var(--topo-c-${fam})`);
+  const dispName = nodeDisplayName(n);
   tip.innerHTML = `
-    <div class="tip-name">${esc(n.name)}</div>
+    <div class="tip-name">${esc(dispName)}</div>
     <div class="tip-path">${esc(n.path || '—')}</div>
     <div class="tip-badges">
       <span class="tip-badge" style="color:${c};border-color:${c}">${MATURITY_LABEL[mat] || mat}</span>
       ${n.layer ? `<span class="tip-badge">${esc(LAYER_LABEL[n.layer] || n.layer)}</span>` : ''}
       ${n.module ? `<span class="tip-badge">${esc(n.module)}</span>` : ''}
       ${n.inDegree ? `<span class="tip-badge">入度 ${n.inDegree}</span>` : ''}
-      ${n.orphan ? `<span class="tip-badge" style="color:#F97583;border-color:#F97583">孤立</span>` : ''}
     </div>
     ${n.lines ? `<div class="tip-lines">${n.lines} 行${n.fileType ? ' · ' + n.fileType : ''}</div>` : ''}
   `;
@@ -347,14 +388,14 @@ function showDetail(n) {
   _selectedId = n.id;
   const d = document.getElementById('topo-detail');
   d.hidden = false;
-  document.getElementById('td-name').textContent = n.name;
+  document.getElementById('td-name').textContent = nodeDisplayName(n);
   document.getElementById('td-path').textContent = n.path || '—';
   const rows = [
     ['类型', TYPE_LABEL[n.type] || n.type],
+    ['文件名', n.name || '—'],
     ['架构层', LAYER_LABEL[n.layer] || n.layer || '—'],
     ['成熟度', MATURITY_LABEL[n.maturity] || n.maturity || '—'],
-    ['模块', n.module || '—'],
-    ['管线阶段', n.pipelinePos || '—'],
+    ['模块', n.module ? (MODULE_LABEL_ZH[n.module] || n.module) : '—'],
     ['入度', n.inDegree != null ? n.inDegree : '—'],
     ['行数', n.lines != null ? n.lines : '—'],
   ];
@@ -430,19 +471,12 @@ function esc(s) {
 }
 
 function wireUI() {
-  document.querySelectorAll('.topo-preset').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.topo-preset').forEach((b) => b.classList.remove('is-active'));
-      btn.classList.add('is-active');
-      load(btn.dataset.view);
-    });
-  });
   document.querySelectorAll('#topo-actionbar button').forEach((btn) => {
     btn.addEventListener('click', () => {
       const act = btn.dataset.act;
       if (act === 'reset') { _graph.zoomToFit(400, 60); _legendLock = null; applyLegendHighlight(); updateLegendLockCSS(); }
       else if (act === 'fullscreen') toggleFullscreen();
-      else if (act === 'refresh') load(_curPreset, true);
+      else if (act === 'refresh') load(true);
       else if (act === 'close') window.close();
     });
   });

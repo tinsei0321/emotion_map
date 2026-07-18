@@ -14,20 +14,9 @@
 <body>
   <header id="topo-header">
     <span class="topo-title">项目架构拓扑图</span>
-    <span class="topo-subtitle">3D 分层 + 聚落星座 · 拖拽转球 · 滚轮缩放 · 双击聚焦群组 · 图例点选高亮</span>
+    <span class="topo-subtitle">拖拽转球 · 滚轮缩放 · 中键平移 · 双击聚焦群组 · 图例点选高亮</span>
+    <span class="topo-stats" id="topo-stats" style="margin-left:auto">加载中…</span>
   </header>
-
-  <nav id="topo-presets" role="tablist">
-    <button class="topo-preset is-active" data-view="overview">架构总览</button>
-    <button class="topo-preset" data-view="pipeline">数据管道 L0→L4</button>
-    <button class="topo-preset" data-view="emc">EMC · AI 问答</button>
-    <button class="topo-preset" data-view="agent_skills">agent-skills</button>
-    <button class="topo-preset" data-view="roadmap">任务路线图</button>
-    <button class="topo-preset" data-view="module">模块视图</button>
-    <button class="topo-preset" data-view="files">文件级平铺</button>
-    <span class="topo-spacer"></span>
-    <span class="topo-stats" id="topo-stats">加载中…</span>
-  </nav>
 
   <main id="topo-main">
     <aside id="topo-sidebar">
@@ -59,6 +48,7 @@
     </aside>
 
     <div id="topo-graph"></div>
+    <div id="topo-boxes"></div>
     <div id="topo-labels"></div>
 
     <!-- 悬停富信息卡片 -->

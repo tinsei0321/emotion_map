@@ -7,6 +7,17 @@
 
 ## 📅 2026-07-18
 
+### ✅ 拓扑图单图专注 + 组团框 + 中文功能名（revision-log 5.127，commit 待 push · **用户手动 push**）
+
+5 项优化。
+- **① 拖拽标签锚定**：controls 'change' → updateLabels+updateBoxes+updateTipPos（修拖拽视角标签不跟随）。
+- **② 中键平移**：mouseButtons {LEFT:rotate, MIDDLE:pan, RIGHT:pan} + 滚轮 zoom。
+- **③ 双击聚焦组团**：cameraPosition 到 cluster 中心（节点为视角中心）。
+- **④ 组团虚线框**：主要 group 屏幕 bbox 虚线框 + 中文名（12 框：前端主界面/分析管道/AI 问答…）。
+- **⑤ 去 preset + 中文功能名**：删 preset nav 专注一张图；label 用 MODULE_LABEL_ZH/GROUP_LABEL_ZH（数据治理/AI 问答…非文件名），hover 显示 path。
+- **Playwright 验证**：preset nav 删 / 标签 28 中文 / 组团框 12 / 0 error。同步 dev-starmap templates。
+- **承重**：controls 'change' 锚定（自建 DOM 层）；不碰 tracker。**push 用户手动。**
+
 ### ✅ 拓扑图 bug 修（切 preset 叠加 / 字堆积 / 主程序挤）（revision-log 5.126，commit 待 push · **用户手动 push**）
 
 5.125 后用户报 4 bug。
