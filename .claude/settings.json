@@ -49,6 +49,10 @@
     "ops": {
       "description": "🖥 环境管家 — 环境诊断、依赖同步、requirements.txt 维护",
       "agentPath": ".claude/agents/ops.agent.md"
+    },
+    "sim-emotion-data": {
+      "description": "🎯 演示数据模拟师 — 百度热力点为底座，从演示目的逆推生成 L0~L4 演示情绪数据",
+      "agentPath": ".claude/agents/sim-emotion-data.agent.md"
     }
   },
   "hooks": {

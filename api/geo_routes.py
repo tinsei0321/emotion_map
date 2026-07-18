@@ -317,11 +317,9 @@ async def zonal_stats(req: ZonalStatsRequest):
         # 属性表输出（轻量；含 name/极性/4×5/issue）—— AI 友好的"单元排行"
         prop_cols = ['name', 'point_count', 'polarity_index', 'score_mean',
                      'domain_top', 'element_top', 'issue_label', 'attribution', 'suggestion']
-        rows = _props_df(merged, prop_cols)
-        # 补 n_dom_*/n_elem_* 占比（如存在）
-        for c in list(rows.columns):
-            if c.startswith('n_dom_') or c.startswith('n_elem_'):
-                prop_cols.append(c)
+        # [CB-1] 原为 discover-then-refetch：遍历 rows.columns 找 n_dom_*/n_elem_* 想补，
+        # 但 _props_df 只返请求列 → 永不含 n_dom_ → 循环空转、二次 _props_df 冗余。
+        # 清为单次调用（零行为变化）；n_dom/n_elem 补充从未生效=latent bug，已登记待修。
         rows = _props_df(merged, prop_cols)
         rows = rows.where(pd.notna(rows), '').to_dict('records')
     except (KeyError, FileNotFoundError) as e:
@@ -381,8 +379,8 @@ async def rank(req: RankRequest):
         gdf = gdf.head(int(req.top_n))
         prop_cols = ['name', 'point_count', 'polarity_index', 'score_mean',
                      'domain_top', 'element_top', 'issue_label']
-        rows = _props_df(gdf, prop_cols).where(pd.notna(_props_df(gdf, prop_cols)), '') \
-                                          .to_dict('records')
+        _props = _props_df(gdf, prop_cols)
+        rows = _props.where(pd.notna(_props), '').to_dict('records')
     except (KeyError, FileNotFoundError, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -479,11 +477,10 @@ async def nearest(req: NearestRequest):
         tgt_proj = target.to_crs(_PROJECT_CRS)
         joined = gpd.sjoin_nearest(tgt_proj, pts_proj, max_distance=float('inf'))
         joined = joined.drop(columns='geometry', errors='ignore')
-        # 距离列
-        dist_col = 'distance' if 'distance' not in joined.columns else 'distance'
+        # 距离列（sjoin_nearest 通常已带 distance；无则补 0.0）
         if 'distance' not in joined.columns:
-            joined[dist_col] = 0.0
-        joined[dist_col] = (joined[dist_col]).round(1)
+            joined['distance'] = 0.0
+        joined['distance'] = joined['distance'].round(1)
         rows = joined.where(pd.notna(joined), '').to_dict('records')
         rows = rows[: max(1, int(req.k)) * len(target)]   # 每 target 至多 k 个
     except (KeyError, FileNotFoundError, ValueError) as e:
