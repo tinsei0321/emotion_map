@@ -143,7 +143,7 @@ Agent 启动时根据下表选择性阅读知识源：
 1. **禁用 emoji**：代码中只允许 ASCII 标记 `[OK]` `[WARN]` `[LOAD]` `[ERR]`
 2. **安全打印**：所有 `print()` 必须通过 `_safe_print()` 调用
 3. **禁止劫持 builtins.print**：不得重新绑定 `builtins.print`
-4. **入口统一**：前端主界面 = `frontend/`（MapLibre GL JS，`py -m http.server`）；Streamlit（:8501）为迁移期遗留，仅维护不扩展，不再新增页面
+4. **入口统一**：前端主界面 = `frontend/`（MapLibre GL JS，`py frontend/serve.py 8080`，自起 uvicorn 后端 + Ctrl+C 同停；`apps/` Streamlit 已于 2026-07-18 退役）
 5. **分析逻辑共用**：所有入口调用同一个 `run_analysis_task()`
 6. **导出命名**：`{name}_{L1|L2|L3|L4}_result_csv.csv`
 7. **数据脱敏**：输出的分析结果中禁止包含用户名/用户ID等个人身份信息
@@ -173,7 +173,7 @@ Agent 启动时根据下表选择性阅读知识源：
 | ✅ | `MOD_AIQA` | `ai_qa/paradigm.py` + `ai_qa/prompts.py`（select_template 路由 + 5 build_*_prompt；manifesto.py 纯常量） |
 | ✅ | `MOD_SPATIAL` | `core/spatial_analysis.py` + `core/buffer_analysis.py` |
 | ✅ | `MOD_FIELD` | `core/field_dictionary.py` |
-| ✅ | `MOD_APP` | `apps/app_main.py` + `app_dialogs.py` + `app_console.py` |
+| ❌ retired | `MOD_APP` | ~~`apps/`~~ 2026-07-18 整层退役（`frontend/` 接管） |
 | ⬜ | `MOD_LOADER` | `core/data_loader.py` |
 | ⬜ | `MOD_MAP` | `core/map_engine.py` |
 | ⬜ | `MOD_TRANSFORM` | `core/coord_transform.py` |

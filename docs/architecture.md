@@ -2,6 +2,8 @@
 
 > 情绪地图 (Emotion Map) — 基于 NLP 情绪分析的城市感知与可视化平台  
 > 将社交媒体/点评数据的情感分析结果映射到地理空间，辅助城市规划决策。
+>
+> **⚠ 2026-07-18 退役声明**：`apps/` Streamlit 层 + `launch.py` 已整层退役（前端 `frontend/` 完全接管，启动 `py frontend/serve.py 8080`）。下文涉及 `apps/` / Streamlit / `:8501` / `launch.py` 的描述仅作历史记录，不再有效。
 
 ---
 

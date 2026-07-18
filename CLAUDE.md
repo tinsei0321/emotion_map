@@ -96,7 +96,7 @@
 ## 技术栈
 
 - **语言**：Python 3.14.5
-- **前端**：MapLibre GL JS（`frontend/`，geojson.io 1:1 外壳，主 UI 面）；Streamlit 1.58.0 为迁移期遗留（`apps/` :8501）
+- **前端**：MapLibre GL JS（`frontend/`，geojson.io 1:1 外壳，主 UI 面；`apps/` Streamlit 层已于 2026-07-18 整层退役）
 - **情感分析**：SnowNLP + jieba 分词
 - **空间分析**：Shapely + pyproj（EPSG:4546）；地图渲染 = MapLibre GL JS + 天地图瓦片（`frontend/`），pydeck 仅遗留
 - **数据采集**：Scrapy 2.16
@@ -112,8 +112,6 @@
 ```
 emotion_map/
 ├── frontend/       # 前端主界面（MapLibre GL JS，geojson.io 1:1 外壳）
-├── apps/           # Streamlit 迁移期遗留层（app_main.py + 子页面，:8501）
-│   └── CLAUDE.md   ── 模块级约定
 ├── core/           # 基础设施层（config/loader/export/tracker/map/UI）
 │   └── CLAUDE.md   ── 模块级约定
 ├── SCRIPT/         # 分析引擎层（L0→L1→L2→L3→L4 管道）
@@ -129,7 +127,7 @@ emotion_map/
 **数据管道**：`L0(原始采集) → L1(治理:坐标+相关+脱敏) → L2(SnowNLP情绪) → L3(LLM语义) → L4(归因)`
 - L0→L1: `SCRIPT/data_governance.py`（需 DEEPSEEK_API_KEY）
 - L1→L2: `SCRIPT/emotion_analysis_v1.py` → `run_analysis_task()`
-- 所有入口（CLI/Tkinter/Streamlit）共用同一个 `run_analysis_task()`
+- 所有入口（CLI/Tkinter）共用同一个 `run_analysis_task()`（Streamlit 入口随 apps/ 退役）
 
 ## 编码规范
 
@@ -265,7 +263,6 @@ Agent 在工作过程中自动记录的隐形知识：
    `__pycache__` 中的过期 `.pyc`，无需手动 `find ... -delete`。
 2. **重启服务（手动，按需）**：
    - **前端**（`frontend/`，主）：改 HTML/CSS/JS 后浏览器 F5 即可，无需重启。
-   - **遗留 Streamlit**（`apps/`/`core/`，:8501）：仅改动影响遗留运行态时，杀旧进程 → `py launch.py`（后台）；未改运行逻辑可跳过。
 3. **跑测试（手动，提交前必做）**：`py -m pytest tests/ -q` 确认全过；
    走 SOP 时由 Tester 统一执行。
 4. **验证节奏（不每次跑 Playwright/识图）**：常规前端/CSS/HTML/JS 改动 → 实现后
@@ -278,4 +275,4 @@ Agent 在工作过程中自动记录的隐形知识：
    默认链路：**实现 → 交付 → 用户验证**。
 
 > 注：hook 命令用 `py`（Windows launcher）；若环境 `python` 可用亦可。
-> 重启服务（前端 http.server / 遗留 Streamlit）与 pytest 不纳入 hook——它们耗时会打断会话，由人按需触发。
+> 重启服务（前端 serve.py）与 pytest 不纳入 hook——它们耗时会打断会话，由人按需触发。

@@ -2,6 +2,8 @@
 
 > 情绪地图 (Emotion Map) v1.0 — 技术实现规范
 > 本文档定义"怎么做才对"，是 Developer / Reviewer / Tester 的共同参考基准。
+>
+> **⚠ 2026-07-18 退役声明**：`apps/` Streamlit 层 + `launch.py` 已整层退役（前端 `frontend/` 完全接管，启动 `py frontend/serve.py 8080`）。下文 1.1~1.3「遗留 Streamlit」规格及涉及 `apps/` / `:8501` 的描述仅作历史记录，不再有效。
 
 ---
 

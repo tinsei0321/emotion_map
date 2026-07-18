@@ -7,6 +7,17 @@
 
 ## 📅 2026-07-18
 
+### ✅ 项目除草三连 + vibe coding 策略定型（revision-log 5.128，commit 待 push · **用户手动 push**）
+
+用户反馈"项目臃肿需除草"+ 要求系统梳理 vibe coding 策略 + EMC 方向。开 plan 定 6 Phase。
+
+- **核心认知纠正**：agent 定义文件（9 个）不调用不花调动次数；marketplace skill 加载才吃 token/间接吃调动——头号靶。
+- **Phase 0 skill 精简**：`.claude/skills/` **468→31**（git rm 437 项目无关 marketplace skill，保留前端/测试/Python/文档/MCP/Git 31 个）。context 瘦身。
+- **Phase 1 安全档**：删根目录 13 dev 截图 + 3 散落 py + 过期 REFACTOR_PLAN.md + SCRIPT 3 散落 test_scripts。
+- **Phase 2 apps 退役**：`apps/` Streamlit + `launch.py` 删（前端接管，零依赖核查）+ 5 文档同步。
+- **vibe coding 策略定型**：6 条（调动优先/agent 不僵尸/skill 精简纪律/记忆三层/除草即纪律/commit 只不 push）。详见 plan。
+- **承重**：serve.py 不依赖 apps（核查）；CLAUDE/AGENTS 活规则精改；参考文档顶部声明；不碰 tracker。**push 用户手动。**
+
 ### ✅ 拓扑图单图专注 + 组团框 + 中文功能名（revision-log 5.127，commit 待 push · **用户手动 push**）
 
 5 项优化。
