@@ -37,7 +37,7 @@
 **全部已 push**（origin/main 含至 `8cea41a`）。明天换环境 `git pull` 即可同步。
 
 ### 承重（必守，下会话续改时留意）
-- **调动次数优先**（用户全局规则，覆盖 plan mode 派 Explore/Plan 默认）：不派 subagent，自己读/grep/改；批量并行只读；合并多文件修改；给推荐不穷举。
+- **调用次数优先策略**（全局 `~/.claude/CLAUDE.md`「调用次数优先策略」唯一权威）：默认主线程 + 会话切分首选 + subagent 仅大宗隔离；批量并行/合并修改/给推荐不穷举/不跑非必要验证沿用；plan mode 不默认派 agent。
 - **CB 反评价标尺**：agree/disagree/partial 有论据；承重红线（tracker 编号连续 / diagnose 永不动 / 四态出口）不接受简化；L0 购买策略勿把 sim 当风险。CB 轨迹按轮追加 `docs/catch-ball/cb-journal.md`（不覆写）；不编辑 `docs/catch-ball/SCAN_DeepSeek_01.md`（第三方专属）。
 - **?e2e=1 seam 已去生产化**（5.134）：seam 在 `frontend/js/e2e-seam.js`（独立），`index.html` 条件 dynamic-import（仅 ?e2e=1 加载，生产永不加载）；main.js 零 test 代码。**待 browser 真验**（环境挂未解）。
 - **browser 环境挂**（未解）：本会话 serve/Playwright 启动卡在 open_emc，疑似环境问题。明天换环境先跑 `py tests/browser/test_compare_regions.py` 验 seam + 排查。
@@ -74,5 +74,5 @@
 - docs/catch-ball/cb-journal.md（CB-1 轨迹 + declined 清单）
 - docs/revision-log.md §0（任务树已刷新）+ §5（5.132–5.135）
 
-承重：调动次数优先（不派 subagent）/ CB 反评价标尺（承重红线不接受简化）/ L0 购买策略勿把 sim 当风险 / browser 环境挂未解（换环境先验）/ 只 commit 不 push（用户手动）。
+承重：调用次数优先策略（全局权威；默认主线程+会话切分+大宗隔离，非"不派 subagent"绝对化）/ CB 反评价标尺（承重红线不接受简化）/ L0 购买策略勿把 sim 当风险 / browser 环境挂未解（换环境先验）/ 只 commit 不 push（用户手动）。
 ```

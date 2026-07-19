@@ -38,7 +38,7 @@
 
 | SCAN 倾向 | 正确标尺 | 溯源 |
 |-----------|---------|------|
-| 基于 AGENTS.md 理论模型判运行时（算 SOP spawn 次数） | 项目不派 subagent，主线程直接干 → 调用次数/SOP 类建议常前提不成立 | ← CB-01（4 条高优全 declined），CB-02 §0.2 确认 |
+| 基于 AGENTS.md 理论模型判运行时（算 SOP spawn 次数） | SOP spawn 前提误判（项目不跑 SOP spawn）；但**调用次数确实关键**——优化靠会话切分+精准读+大宗隔离（全局「调用次数优先策略」），非 SOP 合并 | ← CB-01（4 条高优 declined），CB-02 §0.2 确认；CB-03 后策略厘清 |
 | 优化前不查活引用（直接建议 perf 改进） | 先 Grep/Read verify usage；死代码→退役非优化（CB-01 db.py 实为 executemany + 零引用） | ← CB-01 建议7 |
 | 未察觉 MANIFESTO ↔ diagnose prompt 耦合 | MANIFESTO 分层破坏 Flash eval 路由完整性 → 撞承重红线 | ← CB-01 建议4，CB-02 §0.2 确认 |
 | 完成度把"接口预留"计为"已实现" | 偏高；真实约 8 折（L3/L4 backend ⬜ 预留 ≠ 实现） | ← CB-01（90%→真实 75-80%），CB-02 折中 80% |
