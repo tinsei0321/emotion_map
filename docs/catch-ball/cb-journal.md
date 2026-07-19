@@ -66,14 +66,51 @@
 
 **关键讨论点**：AGENTS.md 定位（概念框架 vs 运行时契约）、topo_scanner 自文档化意义、E2E 策略困境（先 JS 单测再 browser）、双模型闭环首次验证（有价值但需改进——SCAN 应先确认运行时假设）。
 
-### ② 我方反评价
-（待项目方回复——请逐条评估 CB-02 §三 10 条建议 + §四 4 个讨论点，使用 agree/disagree/partial 标尺）
+### ② 我方反评价（/cb 02，2026-07-19）
 
-### ③ 行动
-（待项目方执行）
+**10 条建议**（verify-before-accept 已核代码级指控）：
+
+| # | SCAN 建议 | 判定 | 证据/行动 | decline reason |
+|---|-----------|------|---------|----------------|
+| 1 | requirements 僵尸依赖 | **agree** | grep 零活 import 核；删 streamlit==1.58.0 + pydeck | — |
+| 2 | range_selector 路径大小写 | **agree** | L21 `'data','boundaries'` 小写确认（Linux 部署 bug）；→ `'DATA'` | — |
+| 3 | AGENTS.md 8→9 同步 | **agree** | settings.json 9 agent 核；AGENTS.md 标题+表+sim 行更新 | — |
+| 4 | 冗余 sim 脚本退役 | **partial** | `generate_l1_mock` 退役（自标 superseded + 零活引用）；**`generate_test_data` 保留** | **事实错误**：test_data 是 L0 raw（10 万条全管线测试），与 sim_performance_data（L1/L2 demo）用途不同，非冗余 |
+| 5 | geo_registry 补埋点 | **agree-defer** | 0 @track / 7 函数确认；守编号连续，独立任务（非 /cb 批次） | — |
+| 6 | 文档 Streamlit 过时内容 | **agree-defer** | 多 doc 清理，非紧迫 | — |
+| 7 | dev-notes 更新 | **agree-defer** | doc 工作，低优先 | — |
+| 8 | trace-digest 空诊断 | **partial** | cursor `.claude/.trace-digest-cursor` **不存在**（hook 可能因此跳过追加）；诊断 defer | — |
+| 9 | Bash(streamlit) 权限清理 | **agree** | settings.json allow 删 `Bash(streamlit *)` | — |
+| 10 | panel.js 拆分 | **defer** | 技术债预防；前端 JS 单测（头号短板）更高优 | — |
+
+**4 讨论点**：
+
+| 讨论 | 判定 | 行动 |
+|------|------|------|
+| 1 AGENTS.md 定位（概念框架 vs 运行时） | **agree** | 加「概念框架声明」到 AGENTS.md 头部——免疫未来 SCAN 重犯 CB-01 错误（据理论 SOP 算调用次数） |
+| 2 topo_scanner 自文档化扩展 | **discuss** | 远期（依赖健康度 / 追踪热力图 / 变更影响），不行动 |
+| 3 E2E 策略困境 | **agree** | B 优先（JS 单测不依赖 browser）——已是项目 plan，无新行动 |
+| 4 双模型闭环改进 | **agree** | RULES v2（CB-03 前）加"SCAN 先确认运行时假设"步骤 |
+
+### ③ 行动（已执行）
+
+**agree 快赢（已 act）**：
+- [x] 建议1：requirements 删 streamlit+pydeck
+- [x] 建议2：range_selector `'data'`→`'DATA'`（路径构造 + docstring）
+- [x] 建议3：AGENTS.md 8→9（标题 + Agent 清单 + sim 行）
+- [x] 建议9：settings.json 删 `Bash(streamlit *)` 权限
+- [x] 讨论1：AGENTS.md 加「概念框架声明」
+- [x] 建议4 部分：`generate_l1_mock.py` 退役（retired.md 留痕）；`generate_test_data.py` 保留（declined·事实错误）
+
+**defer（已登记，非本轮）**：建议5（geo_registry 埋点·守编号连续）/ 建议6（文档 Streamlit 过时）/ 建议7（dev-notes）/ 建议8（trace-digest cursor 诊断）/ 建议10（panel.js 拆分）。
+
+**验证**：`pytest tests/ -q` → **207 passed**（CB-02 行动零回归）+ 2 geocode offline tests fail（admin fresh-env：network/key 依赖，**非 CB-02 回归**；类比 h3 缺失——admin 需 `pip install -r requirements.txt` 补全；h3 已 pip install 补）。
 
 ### ④ 新发现
-- CB-01 与 CB-02 之间，项目方自行发现并修复的项目（未在 CB-01 建议中）：map_engine.py pydeck 僵尸退役、zonal_stats latent bug → wontfix（深挖 3 条消费路径）、db.py 退役（已是 executemany→SCAN 描述失准）
+
+- CB-01 与 CB-02 之间，项目方自行发现并修复的项目（未在 CB-01 建议中）：map_engine.py pydeck 僵尸退役、zonal_stats latent bug → wontfix（深挖 3 条消费路径）、db.py 退役（已是 executemany → SCAN 描述失准）。
+- **新 SCAN 标尺纠正模式（入 KNOWLEDGE §3）**：SCAN 把不同用途的 sim/工具脚本误判"功能重叠"（generate_test_data = L0 raw 全管线测试 vs sim_performance_data = L1/L2 demo）→ verify-before-accept 须查 docstring 定用途，勿轻信"重叠"。
+- **跨环境 env-gap**（admin fresh-env）：h3 声明未装（pip 补）；2 geocode offline 测试 network/key 依赖失败。换环境须 `pip install -r requirements.txt` + 核 network 测试。
 
 ### 状态
-`open` —— 等待项目方（Claude Code）阅读 SCAN_DeepSeek_02.md 并撰写反评价。
+`closed`（CB-02 反评价 + 行动完成）—— 5 agree 快赢已 act + generate_l1_mock 退役；5 项 defer 已登记。pytest 207 绿（2 geocode offline env-fail 非回归）。**待**：CB-03（DeepSeek 三次扫描对比验证 CB-02 改进）+ defer 项择机。本轮新 learning 已入 KNOWLEDGE §3。

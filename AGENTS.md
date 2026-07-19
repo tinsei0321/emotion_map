@@ -1,12 +1,14 @@
 # Emotion Map — Agent 协作规范
 
-> v2.1 | 8 Agent + 自动编排 + MCP 外挂 | 2026-06-17
+> v2.1 | 9 Agent + 自动编排 + MCP 外挂 | 2026-06-17
+>
+> ⚠️ **概念框架声明（CB-02 讨论1）**：本文件为 AI 行为约束参考 + 新人 onboarding，**不描述运行时 Agent spawn 机制**。实际任务由 Claude Code 主线程直接执行（用户全局「不派 subagent」铁律），SOP 分级指导执行深度而非触发独立 Agent。9 个 Agent 定义 = 角色卡片，非独立执行单元。**避免第三方基于本文件做运行时误判**（CB-01 曾据 AGENTS.md 理论 SOP 模型算调用次数，与实际"主线程直接干"不符）。
 
 ## 核心理念
 
 **Claude Code 主线程 = PM**。你不再需要手动 `@agent` 切换。给我一个任务，我在内部自动编排合适的 Agent 完成开发→审查→测试→文档的全流程，你只看到最终结果。
 
-## Agent 清单（8 个）
+## Agent 清单（9 个）
 
 | Agent | 文件 | 职责 | 可调用 |
 |-------|------|------|--------|
@@ -18,6 +20,7 @@
 | 🗺 GIS Dev | `.claude/agents/gis-developer.agent.md` | 地理空间数据处理、坐标系转换、空间分析 | — |
 | 📝 Docs | `.claude/agents/docs.agent.md` | 维护文档体系、更新开发日志、记录 ADR | — |
 | 🖥 Ops | `.claude/agents/ops.agent.md` | 环境诊断、依赖同步、requirements.txt 维护 | — |
+| 🎯 Sim | `.claude/agents/sim-emotion-data.agent.md` | 演示数据模拟（百度热力点为底座，从演示目的逆推生成 L0~L4） | — |
 
 > **v1.0 → v2.0 变化**：
 > - 🐛 Debugger 并入 Developer — Developer 现在同时具备开发和诊断能力

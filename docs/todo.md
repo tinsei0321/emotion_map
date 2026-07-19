@@ -7,6 +7,17 @@
 
 ## 📅 2026-07-19
 
+### ✅ CB-02 反评价（/cb 02 首跑 dogfood）（revision-log 5.137 · **待 push**）
+
+用 5.136 建的 /cb 命令处理 CB-02（10 建议 + 4 讨论），验证全链路。
+
+- **agree 快赢已 act**：① requirements 删 streamlit+pydeck ② range_selector `'data'`→`'DATA'`（Linux bug）③ AGENTS.md 8→9 + sim 行 + 概念框架声明 ④ settings 删 Bash(streamlit) 权限 ⑤ generate_l1_mock 退役。
+- **partial**：generate_test_data **保留**（declined·事实错误，L0 raw 非冗余）；trace-digest cursor 缺（诊断 defer）。
+- **defer**：geo_registry 埋点 / 文档 Streamlit 过时 / dev-notes / panel.js 拆分。
+- **验证**：pytest 207 passed（零回归）+ 2 geocode offline env-fail（admin fresh-env，非回归；h3 缺失已补）。
+- **新 learning** 入 KNOWLEDGE §3：SCAN 把不同用途脚本误判"重叠"。
+- **dogfood 结论**：/cb 命令 + hook + KNOWLEDGE 全链路跑通；verify-before-accept + 承重 auto-flag 生效（挡掉 generate_test_data 误退役）。
+
 ### ✅ CB 流程自动化（/cb 命令 + hook 检测 + 记忆库 + 记忆共享通则）（revision-log 5.136 · **待 push**）
 
 CB-01/02 跑通后，把手动 CB 升级为系统化编排（用户诉求）。5 交付物：
@@ -17,6 +28,10 @@ CB-01/02 跑通后，把手动 CB 升级为系统化编排（用户诉求）。5
 - **⑤ 路径迁移 + 去重**：删 docs/ 3 根重复 + 5 文件旧引用改指 catch-ball/。
 - **验证**：hook 出 CB-02 提示 / 旧路径零残留 / KNOWLEDGE 5 节 / 反孤岛双指。
 - **下次**（范围外）：`/cb 02` 首跑 dogfood（CB-02 反评价 + 10 条建议处置）。
+
+### ⬜ 跨环境待办：Hi 机补写 AutoMemory 指针（防遗忘）
+
+- **⬜ Hi 机补写 AutoMemory 指针条目**（`~/.claude` 机本地局限）：admin 机已写 `cb-knowledge-base.md` + `MEMORY.md` 索引行（CB 记忆库指针）；**Hi 机缺**。换到 Hi 机后补写（内容同 admin 机的 cb-knowledge-base.md，指向 `docs/catch-ball/KNOWLEDGE.md`）。repo 内 `context-map.md` 登记已跨环境同步（KNOWLEDGE 可发现），指针条目为补充（守记忆共享通则：不孤岛）。
 
 ## 📅 2026-07-18
 

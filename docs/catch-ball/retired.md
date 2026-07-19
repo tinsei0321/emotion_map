@@ -21,3 +21,17 @@
 **删除前核验**：`grep -rn "from core.ui_components\|from core.layer_registry\|from core.map_engine" --include=*.py` = **零活 import**（仅 `design/backups/` 退役 app 残留 + `core/__init__.py` docstring 文字提及，均已清）。pytest 207 passed 零回归。
 
 **来源**：CB-01（[SCAN_DeepSeek_01.md](SCAN_DeepSeek_01.md) §2.5.3/讨论5 指出 ui_components+layer_registry；我方核验扩到 map_engine 同类 pydeck 僵尸）。详见 [cb-journal.md](cb-journal.md) CB-01。
+
+---
+
+## 2026-07-19（CB-02 · sim 脚本退役）
+
+| 文件 | 原职责 | 退役原因 | 可恢复 |
+|------|--------|----------|--------|
+| `SCRIPT/generate_l1_mock.py` | L1 模拟数据生成器（522 行，POI-anchored，西陵伍家） | 自标 superseded，被 `sim_performance_data.py` 替代（百度热力点真实密度底座更优）；零活引用（仅注释提及） | git 历史 |
+
+**删除前核验**：`grep -rn "generate_l1_mock" --include="*.py"` = 零活 import（仅 `sim_performance_data.py`/`snapshot_config.py`/`poi_4x5_map.py` 注释提及「替/superseded」，非调用）。
+
+**保留 `SCRIPT/generate_test_data.py`**（SCAN 建议4 建议同退役，**declined·事实错误**）：它生成 **L0 原始数据**（10 万条社交媒体 raw，测 L0→L1→L2 全管线），与 sim_performance_data（L1/L2 POI-anchored demo）**用途不同、非冗余**。SCAN"功能重叠"判断不准（verify-before-accept 查 docstring 确认）。
+
+**来源**：CB-02（[SCAN_DeepSeek_02.md](SCAN_DeepSeek_02.md) 建议4）。详见 [cb-journal.md](cb-journal.md) CB-02。

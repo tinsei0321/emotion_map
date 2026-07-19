@@ -8,7 +8,6 @@
       "Bash(node *)",
       "Bash(python *)",
       "Bash(pip *)",
-      "Bash(streamlit *)",
       "Bash(mkdir *)",
       "Bash(ls *)"
     ],
