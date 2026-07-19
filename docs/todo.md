@@ -7,7 +7,19 @@
 
 ## 📅 2026-07-19
 
-### ✅ CB-02 反评价（/cb 02 首跑 dogfood）（revision-log 5.137 · **待 push**）
+### ✅ CB 收尾（CB-03 反评价 + 拓扑同步）（revision-log 5.139 · **待 push**）
+
+CB-03 META 轮收尾 + 拓扑图加入 CB 机制（用户要求）。
+- **CB-03 反评价**：建议1 RULES §3.3→pointer KNOWLEDGE §1 / 建议2 KNOWLEDGE §6 Auto-Check + /cb step5 数据驱动 / 建议5 trace-digest 闭环更正（cursor fallback，空=健康）/ 讨论2 pruning 触发 / 讨论3 CB 转低频维护；3 defer + 2 PROPOSE CB-04。
+- **拓扑同步**：§0 加 Catch-Ball 闭环分支 + topo_scanner cb-flow 边（11 条，冒烟验）+ core/CLAUDE.md 去退役 + topo-sync-discipline memory。
+- **验证**：topo_scanner py_compile + cb-flow 11 条（363 节点 693 边）。
+- **下会话**：极性深读时间轴（T1→T3 演进，路线 A JS rAF 推荐）。
+
+### ✅ 工作策略厘清：调用次数优先 + 三层防御（revision-log 5.138 · 已 push fa5073e）
+
+统一矛盾 memo（项目"不派 subagent" vs memory"use subagents"）。全局 CLAUDE.md 加「调用次数优先策略」（三层防御：会话切分首选 / 主线程精准读 / subagent 仅大宗隔离）。
+
+### ✅ CB-02 反评价（/cb 02 首跑 dogfood）（revision-log 5.137 · 已 push 6bdc9ac）
 
 用 5.136 建的 /cb 命令处理 CB-02（10 建议 + 4 讨论），验证全链路。
 

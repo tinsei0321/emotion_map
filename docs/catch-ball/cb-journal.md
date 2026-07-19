@@ -130,16 +130,45 @@
 
 **关键讨论点**：CB 自动化 ROI（当前投入合理，建议 CB-05 正式评估）/ KNOWLEDGE.md pruning 策略（预设触发条件）/ 项目阶段信号（质量巩固期应结束，CB 进入低频维护模式，每 5-10 个功能 commit 一次 SCAN）/ 双模型闭环三轮回望（4/5 目标成熟）。
 
-### ② 我方反评价
-（待项目方回复——请逐条评估 CB-03 §三 6 条建议 + §四 4 个讨论点。特别注意讨论 3"CB 进入低频维护模式"的节奏建议）
+### ② 我方反评价（/cb 03，2026-07-19）
 
-### ③ 行动
-（待项目方执行）
+**6 条建议**（verify-before-accept 已核；建议5 已核 on_session_end.py）：
+
+| # | CB-03 建议 | 判定 | 证据/行动 |
+|---|-----------|------|---------|
+| 1 | KNOWLEDGE vs RULES 承重边界（重复） | **agree** | 真重复（RULES §3.3 + KNOWLEDGE §1 同 6 红线）→ 撞记忆共享通则"单一权威源"。RULES §3.3 → pointer to KNOWLEDGE §1（保留摘要 + 指针） |
+| 2 | /cb auto-check 可配置清单（硬编码） | **agree** | step 5 硬编码 4 检查 → 数据驱动。KNOWLEDGE 加 §6 Auto-Check 清单 + /cb step 5 改"加载 §6" |
+| 3 | geo_registry 埋点（重申） | **defer** | 守编号连续·独立任务（未变）；下个功能 sprint |
+| 4 | 文档 Streamlit 过时（重申·2 轮） | **defer·提升优先级** | 下个文档维护日首项 |
+| 5 | trace-digest cursor 根因（SCAN 深化） | **agree·更正 CB-02** | 已核 on_session_end.py：cursor 缺失 fallback `last_read=0`（L29-35）+ `if not errs: return`（L47）→ **空 digest = trace.log 无 ERR/WARN（健康）或 trace.log 不存在（fresh env），非 bug**。CB-02"cursor 缺失=疑似 bug"partial 被闭环深化更正 |
+| 6 | panel.js 拆分（重申） | **defer** | JS 单测后（时间轴会话之后） |
+
+**4 讨论点**：
+
+| 讨论 | 立场 | 行动 |
+|------|------|------|
+| 1 CB 自动化 ROI | **agree**（当前合理） | CB-05 正式 ROI 评估（总投入 vs 实际修复/避免回归） |
+| 2 KNOWLEDGE pruning | **agree** | KNOWLEDGE 加 pruning 触发（§3>15/§5>10/file>200 归档） |
+| 3 CB 节奏高频→低频 | **强 agree** | KNOWLEDGE 加节奏决议；**本计划即践行**（CB 收尾后转时间轴，CB 低频，每 5-10 commit 一次 SCAN） |
+| 4 "SCAN 先确认运行时假设" | **agree·PROPOSE** | 给第三方 CB-04 RULES 修订（加 SCAN 前置步骤：读 KNOWLEDGE §2 + 确认运行时）；不擅改 RULES 方法论 |
+
+### ③ 行动（已执行）
+
+- [x] 建议1：RULES §3.3 承重 → pointer to KNOWLEDGE §1（保留摘要 + 指针，单一权威源）。
+- [x] 建议2：KNOWLEDGE 加 §6 Auto-Check 清单 + /cb step 5 改"加载 §6"。
+- [x] 讨论2：KNOWLEDGE 加 pruning 触发条件。
+- [x] 讨论3：KNOWLEDGE 加 CB 节奏决议（高频→低频维护）。
+- [x] 建议5：本 journal 记 trace-digest 闭环更正（CB-02 partial → CB-03 确认健康；无代码改）。
+
+**defer**：建议3（geo_registry 埋点·下个 sprint）/ 建议4（文档 Streamlit·下个文档日）/ 建议6（panel.js·JS 单测后）。
+**PROPOSE 给第三方 CB-04**：讨论1（CB-05 ROI）/ 讨论4（RULES 加 SCAN 前置步骤）。
 
 ### ④ 新发现
-- CB 自动化 5 组件在 ~30 小时内从 0 到完整系统——体现了项目方的工程化能力
-- 三轮 CB 累计退役 6 文件（-2,257 行）、修复 7 个问题（geo_routes 冗余×3 + 路径 case + 依赖僵尸 + AGENTS 漂移 + settings 权限）
-- KNOWLEDGE.md 的"跨轮学习积累"设计是三轮 CB 中最有价值的架构创新
+
+- CB 自动化 5 组件在 ~30 小时内从 0 到完整系统——工程化能力的体现。
+- 三轮 CB 累计退役 6 文件（-2,257 行）、修复 7 个问题（geo_routes 冗余×3 + 路径 case + 依赖僵尸 + AGENTS 漂移 + settings 权限）。
+- **KNOWLEDGE.md 的"跨轮学习积累"是三轮 CB 最有价值的架构创新**——每轮新 learning 入库，未来 CB-N 自动避免重犯前 N-1 轮错误。
+- **trace-digest 闭环深化**：CB-02 标"cursor 缺失=疑似 bug"，CB-03 核代码后确认"cursor 缺失有 fallback，空 digest=健康"——双模型闭环的"发现→深化→更正"价值兑现。
 
 ### 状态
-`open` —— 等待项目方（Claude Code）阅读 SCAN_DeepSeek_03.md 并撰写反评价。建议本轮反评价重点关注讨论 3（CB 节奏从高频→低频维护）。
+`closed`（CB-03 反评价完成）—— 4 agree 已 act（RULES pointer / KNOWLEDGE §6·pruning·cadence / /cb step5 / trace-digest 更正）；3 defer + 2 PROPOSE 给 CB-04。CB 转低频维护模式（每 5-10 功能 commit 一次 SCAN）。**下一会话推进极性深读时间轴**（T1→T3 演进）。

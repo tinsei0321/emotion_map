@@ -4,7 +4,7 @@
 
 ## 模块职责
 
-提供全局基础设施：配置、数据加载、坐标转换、导出、地图引擎、范围选择、追踪系统、UI 组件。
+提供全局基础设施：配置、数据加载、坐标转换、导出、范围选择、追踪系统（map_engine/ui_components 已于 CB-01 退役）。
 
 ## 文件清单
 
@@ -15,9 +15,7 @@
 | `data_loader.py` | 统一数据加载入口 | 中 |
 | `export.py` | CSV/GeoJSON 导出 | 中 |
 | `coord_transform.py` | GCJ-02↔WGS84 数学转换 | 中 |
-| `map_engine.py` | pydeck 底图 + 标记 + 热力 + 边界 | 中 |
 | `range_selector.py` | 范围 Shapefile 加载 + CRS 检测 | 中 |
-| `ui_components.py` | Streamlit 可复用 UI 组件 | 低（UI 调整） |
 
 ## 配置规范
 

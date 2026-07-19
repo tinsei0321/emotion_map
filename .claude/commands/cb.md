@@ -15,7 +15,7 @@ Catch-Ball（CB）反评价编排流。第三方 DeepSeek 扫描产出 `docs/cat
    - `docs/catch-ball/KNOWLEDGE.md`（**CB 记忆库**）：§1 承重合并 / §2 项目语境卡片 / §3 SCAN 标尺纠正模式 / §4 decline 模式库 / §5 轮次溯源。
 3. **载入上下文**：`docs/catch-ball/cb-journal.md`（历史轮次，esp. 目标轮 ① 若第三方已预填）、`docs/catch-ball/retired.md`、`memories/repo/session-handoff.md`（当前承重）。
 4. **深读目标 SCAN**：`SCAN_DeepSeek_{NN}.md` 全文（§0 回顾 / §1 扫描 / §2 评价 / §3 建议 / §4 讨论 / 附录）。**禁编辑此文件**（第三方专属，只读）。
-5. **反评价（②，结构化表）**：逐条 SCAN 建议/讨论点 → `{agree/disagree/partial + 证据 + 行动}`。跑 **4 条 KNOWLEDGE 驱动自动检查**：
+5. **反评价（②，结构化表）**：逐条 SCAN 建议/讨论点 → `{agree/disagree/partial + 证据 + 行动}`。执行 **KNOWLEDGE §6 Auto-Check 清单**（4 项，数据驱动——清单在 KNOWLEDGE.md §6，不在此硬编码；CB-03 建议2）：
    - **承重红线 auto-flag**（KNOWLEDGE §1）：建议触碰 tracker 编号连续 / diagnose 永不动 / 四态 / L0 购买 / EMC 委托主 Toolbox / aggregate 别名静默零 → 自动 disagree（撞红线）。
    - **verify-before-accept**：SCAN 代码级指控（"X 用 iterrows""Y 零引用"）**先 Read/Grep 核实再 accept**（CB-01 db.py iterrows 实为 executemany 之训）。
    - **no-consumer → wontfix**：修复若无人消费（如 zonal_stats latent bug）→ wontfix 不盲修。

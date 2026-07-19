@@ -24,7 +24,8 @@ emotion_map（根）
 │  ├─ 外壳/控件/视觉 ✅  MapLibre GL + 天地图（5.130 raster style 内联）+ Design Token 双主题
 │  ├─ 数据采集 Scrapy ✅  框架就绪
 │  ├─ 数据管道 L0→L4 🔄  L0→L1→L2 sim 跑通（**L0 未来走购买途径**·sim 当下充分；L1 待 DeepSeek key 常规验证）｜L3/L4 backend ⬜（EMC 分析时归因 deep_attribution + Sim L3/L4 生成器功能覆盖，非 pipeline 级）
-│  └─ Harness · MCP/Agent ✅  v2.1：9 Agent 编排（含 sim，概念框架·主线程不派 subagent）+ 7 MCP（智谱优先）
+│  ├─ Harness · MCP/Agent ✅  v2.1：9 Agent 编排（含 sim，概念框架·调用次数优先·默认主线程）+ 7 MCP（智谱优先）
+│  └─ Catch-Ball 闭环 ✅  RULES（CB 规范）+ /cb 命令（反评价编排）+ hook 检测（新 SCAN 提示）+ KNOWLEDGE（跨轮记忆库）+ cb-journal/retired + SCAN_{NN}（第三方·只读）｜CB-03 后转低频维护（每 5-10 commit 一次 SCAN）
 │
 ├─ 分支 · 功能模块
 │  ├─ 导航架构重塑（Martin）🔄  B0 色彩(#4285F4/#384555) ✅｜B1 单层顶栏 ✅｜B2 3 按钮集 ✅｜B3 左端栏三区 ✅（B6 随动复核通过）｜B4 左端弹出栏 ⬜｜B5 色板圆角 ⬜ ◆
@@ -217,7 +218,11 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月19日）** · 本节按板块分组、组内倒序；最新工作 = **5.137 CB-02 反评价（/cb 02 首跑 dogfood）**（本次）。上一轮 5.136 CB 自动化。最近：
+> 📍 **最新动态（07月19日）** · 本节按板块分组、组内倒序；最新工作 = **5.139 CB 收尾（CB-03 反评价 + 拓扑同步）**（本次）。上一轮 5.138 工作策略厘清。最近：
+>
+> - **5.139 CB 收尾（CB-03 反评价 + 拓扑同步）**：CB-03 META 轮（评估 CB 自动化，综合 7.6→**7.7 首升**）。① **CB-03 反评价**（[cb-journal](docs/catch-ball/cb-journal.md) ②③④）：建议1 [RULES](docs/catch-ball/RULES.md) §3.3 承重→pointer [KNOWLEDGE](docs/catch-ball/KNOWLEDGE.md) §1（单一权威）/ 建议2 KNOWLEDGE 加 §6 Auto-Check 清单 + [/cb](.claude/commands/cb.md) step5 改"加载 §6"（数据驱动）/ 建议5 trace-digest 闭环更正（核 [on_session_end.py](.claude/hooks/on_session_end.py)：cursor 缺失 fallback 0，空 digest=健康非 bug，CB-02 partial 被深化）/ 讨论2 KNOWLEDGE 加 pruning 触发 / **讨论3 CB 节奏决议**（高频→低频，每 5-10 commit 一次 SCAN）；3 defer（geo_registry/文档/panel.js）+ 2 PROPOSE 给 CB-04。② **拓扑同步**（用户要求"拓扑图加入 CB 机制"）：§0 加 Catch-Ball 闭环分支（roadmap 视图显 CB）+ [topo_scanner.py](core/topo_scanner.py) `_add_semantic_links` 加 cb-flow 边（**11 条**：cb.md→KNOWLEDGE/RULES/cb-journal/retired + hook→SCAN_*×3；冒烟验 363 节点 693 边）+ [core/CLAUDE.md](core/CLAUDE.md) 去退役 map_engine/ui_components（CB-02 建议6 遗漏）+ memory `topo-sync-discipline`（新子系统→§0+语义边防漂移）。验证：topo_scanner py_compile + cb-flow 11 条生成。承重：CB 转低频维护；**下会话推进极性深读时间轴**。
+>
+> - **5.138 工作策略厘清：调用次数优先 + 三层防御（统一矛盾 memo）**：用户厘清"只在乎调用次数，不在意 token"——统一项目"不派 subagent"（调用优先）与 memory `token-saving-workstyle`"use subagents"（token 优先）的矛盾。**全局 `~/.claude/CLAUDE.md`** 加「调用次数优先策略」节（唯一权威·跨项目）：三层防御（会话切分首选·零调用 / 主线程精准读默认 / subagent 仅大宗隔离）+ 禁止项（SOP 全链 spawn / 承重或单文件派 subagent / 为省 token 派）+ 沿用战术。项目 CLAUDE.md 去"不派"绝对化指全局；memory `token-saving-workstyle` 重写（三层防御替换 use subagents）；新增 `communication-style-framework-items-synthesis`（沟通风格：框架+条目+总结）；session-handoff/KNOWLEDGE §3 同步。承重：subagent 由常规工具降为大宗隔离最后手段，会话切分提为首选免费工具。
 >
 > - **5.137 CB-02 反评价（/cb 02 首跑 dogfood）**：用 5.136 建的 /cb 命令处理 CB-02（[SCAN_DeepSeek_02.md](docs/catch-ball/SCAN_DeepSeek_02.md) 10 建议 + 4 讨论）。**verify-before-accept 核 6 项指控**（CB-01 之训）：requirements 零活 import ✓ / range_selector L21 小写 `data` ✓ / AGENTS 8→9 ✓ / generate_l1_mock+test_data 零活引用（仅注释）✓ / geo_registry 0 @track 7 函数 ✓ / settings Bash(streamlit) ✓。**agree 快赢已 act**：① requirements 删 streamlit+pydeck ② [range_selector.py](core/range_selector.py) `'data'`→`'DATA'`（Linux 部署 bug，Windows NTFS 掩盖）③ [AGENTS.md](AGENTS.md) 8→9 + sim 行 + **概念框架声明**（讨论1，免疫未来 SCAN 重犯 CB-01"据理论 SOP 算调用次数"误判）④ [settings.json](.claude/settings.json) 删 Bash(streamlit) 权限 ⑤ `generate_l1_mock.py` 退役（自标 superseded，[retired.md](docs/catch-ball/retired.md) 留痕）。**partial**：建议4 `generate_test_data` **保留**（declined·**事实错误**——L0 raw 全管线测试 vs sim_performance L1/L2 demo，非冗余，SCAN"重叠"判断不准）；建议8 trace-digest cursor 不存在（诊断 defer）。**defer**：geo_registry 埋点（守编号连续·独立任务）/ 文档 Streamlit 过时 / dev-notes / panel.js 拆分。**验证**：pytest **207 passed**（CB-02 零回归）+ 2 geocode offline env-fail（admin fresh-env network/key 依赖，非回归；h3 缺失已 pip 补）。**新 learning 入 [KNOWLEDGE](docs/catch-ball/KNOWLEDGE.md) §3**：SCAN 把不同用途脚本误判"重叠"。[cb-journal](docs/catch-ball/cb-journal.md) CB-02 ②③④ 填满。承重：守 verify-before-accept + 承重红线；不碰 tracker/diagnose。
 >

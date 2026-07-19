@@ -559,6 +559,26 @@ def _add_semantic_links(nodes: List[dict], links: List[dict], file_index: Dict[s
             if key in fid and not fid.startswith('tests/') and fid != path:
                 links.append({"source": path, "target": fid, "type": "test-of"})
                 break
+    # cb-flow：Catch-Ball 组件关系（CB 机制加入拓扑图·CB-03 收尾）
+    cb_src_map = {
+        '.claude/commands/cb.md': ['docs/catch-ball/KNOWLEDGE.md', 'docs/catch-ball/RULES.md',
+                                    'docs/catch-ball/cb-journal.md', 'docs/catch-ball/retired.md'],
+        '.claude/hooks/on_session_start.py': ['docs/catch-ball/cb-journal.md'],
+    }
+    for n in nodes:
+        src = n.get('path', '')
+        if src not in cb_src_map:
+            continue
+        for tgt in cb_src_map[src]:
+            if tgt in file_index and tgt != src:
+                links.append({"source": src, "target": tgt, "type": "cb-flow"})
+    # hook + cb-journal → SCAN_DeepSeek_*.md（检测/引用；通配）
+    for n in nodes:
+        spath = n.get('path', '')
+        if spath.startswith('docs/catch-ball/SCAN_DeepSeek_') and spath.endswith('.md'):
+            for src in ['.claude/hooks/on_session_start.py', 'docs/catch-ball/cb-journal.md']:
+                if src in file_index:
+                    links.append({"source": src, "target": spath, "type": "cb-flow"})
 
 
 def _apply_edge_style(links: List[dict]) -> None:

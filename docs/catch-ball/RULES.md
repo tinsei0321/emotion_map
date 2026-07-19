@@ -107,6 +107,8 @@ CB-N 轮开始
 
 ### 3.3 承重红线（不可协商）
 
+> **权威源 = [KNOWLEDGE.md](KNOWLEDGE.md) §1 承重红线清单**（单一权威，含来源标注，CB-03 建议1）。以下为摘要，详见 KNOWLEDGE §1。
+
 以下项目方声明的红线，SCAN 建议不得触碰：
 - 决策追踪系统编号连续性（铁律 10）
 - diagnose prompt 永不动（保 Flash eval）
