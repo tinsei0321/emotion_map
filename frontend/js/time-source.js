@@ -60,13 +60,16 @@ function _templateRegex(dataset) {
 }
 
 /** 层 srcName（或 name）→ { datasetId, sliceKey }；未匹配返 null。
- *  遍历 datasets，首个正则命中即返。manifest 未就绪返 null（层暂不打标，后续不参与时间过滤）。 */
+ *  遍历 datasets，首个正则命中即返。manifest 未就绪返 null（层暂不打标，后续不参与时间过滤）。
+ *  注意：layerName()（main.js）对普通文件上传不去扩展名 → srcName 带 .geojson/.csv 等；
+ *  此处先剥常见扩展名再匹配（模板正则是按去 ext 的 basename 生成的）。 */
 export function matchDataset(srcName) {
   if (!srcName || !_manifest) return null;
+  const clean = String(srcName).replace(/\.(geojson|json|csv|kml|gpx|topojson|shp)$/i, '');
   for (const d of datasets()) {
     const re = _templateRegex(d);
     if (!re) continue;
-    const m = re.exec(srcName);
+    const m = re.exec(clean);
     if (m) return { datasetId: d.id, sliceKey: m[1] };
   }
   return null;

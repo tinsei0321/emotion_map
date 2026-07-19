@@ -28,7 +28,7 @@
 }
 .time-bar:hover { color: var(--geojson-color-text, #1a1a1a); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14); }
 .time-bar:active { transform: translateX(-50%) scale(0.94); }
-.time-bar.is-open { color: #4285F4; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.20); }
+.time-bar.is-open { color: #1A73E8; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.20); }
 .time-bar svg { display: block; }
 
 /* ── 展开卡片（向上展开，底部居中锚定）── */
@@ -90,7 +90,7 @@
   transition: all var(--geojson-transition, 150ms);
 }
 .tb-p:hover { background: rgba(0, 0, 0, 0.04); color: var(--geojson-color-text, #1a1a1a); }
-.tb-p.is-active { background: #4285F4; border-color: #4285F4; color: #fff; }
+.tb-p.is-active { background: #1A73E8; border-color: #1A73E8; color: #fff; }
 
 /* body 通用 */
 .tb-body { min-height: 40px; }
@@ -109,7 +109,7 @@
   transition: all var(--geojson-transition, 150ms);
 }
 .tb-stop:hover { background: rgba(0, 0, 0, 0.04); }
-.tb-stop.is-active { background: #4285F4; border-color: #4285F4; }
+.tb-stop.is-active { background: #1A73E8; border-color: #1A73E8; }
 .tb-stop.is-active .tb-stop-k,
 .tb-stop.is-active .tb-stop-l { color: #fff; }
 .tb-stop-k { font-size: 14px; font-weight: 700; color: var(--geojson-color-text, #1a1a1a); }
@@ -151,6 +151,51 @@
   cursor: pointer;
   font-weight: 500;
 }
-.tb-cal-d.is-data:hover { background: rgba(66, 133, 244, 0.10); }
-.tb-cal-d.is-active { background: #4285F4; color: #fff; font-weight: 600; }
+.tb-cal-d.is-data:hover { background: rgba(26, 115, 232, 0.10); }
+.tb-cal-d.is-active { background: #1A73E8; color: #fff; font-weight: 600; }
 .tb-cal-blank { cursor: default; }
+
+/* ── 底部滑动条（通用 scrubber；play/lerp 动画 = A3）── */
+.tb-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+.tb-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.12);
+  outline: none;
+  cursor: pointer;
+}
+.tb-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: #1A73E8;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+.tb-slider::-moz-range-thumb {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: #1A73E8;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+.tb-slider-i {
+  font-size: 11px;
+  color: var(--geojson-color-text-secondary, #999);
+  font-variant-numeric: tabular-nums;
+  min-width: 32px;
+  text-align: right;
+}

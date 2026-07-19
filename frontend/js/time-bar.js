@@ -80,15 +80,22 @@ function _render() {
       <button class="tb-x" type="button" title="收起" aria-label="收起"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <div class="tb-periods">${periods.map((p) => `<button class="tb-p ${p === _period ? 'is-active' : ''}" data-period="${p}" type="button">${periodLabel(p)}</button>`).join('')}</div>
-    <div class="tb-body">${_renderBody(slices)}</div>`;
+    <div class="tb-body">${_renderBody(slices)}</div>
+    ${slices.length > 1 ? `<div class="tb-foot"><input class="tb-slider" type="range" min="0" max="${slices.length - 1}" step="1" value="${_sliceIndex(slices)}" aria-label="时间滑动"><span class="tb-slider-i">${_sliceIndex(slices) + 1}/${slices.length}</span></div>` : ''}`;
   _card.querySelector('.tb-x').addEventListener('click', _closeCard);
   _card.querySelectorAll('.tb-p').forEach((b) => b.addEventListener('click', () => _setPeriod(b.dataset.period)));
   _wireBody(slices);
+  const _sl = _card.querySelector('.tb-slider');
+  if (_sl) _sl.addEventListener('input', () => { const s = slices[Number(_sl.value)]; if (s) _pick(s.key); });
 }
 
 function _sliceLabel(slices) {
   const s = slices.find((x) => x.key === _sliceKey);
   return s ? s.label : _sliceKey;
+}
+function _sliceIndex(slices) {
+  const i = slices.findIndex((x) => x.key === _sliceKey);
+  return i < 0 ? 0 : i;
 }
 
 /** body：阶段→停点条；日→月历；周/月/季/年/自选→占位（待数据接入）。 */
@@ -158,10 +165,14 @@ function _setPeriod(p) {
 /** 只刷 active 高亮（避免选片重渲整卡，保 hover/动画态）。 */
 function _syncActive() {
   if (!_card) return;
-  const cur = _card.querySelector('.tb-cur');
   const slices = slicesForPeriod(_period);
+  const cur = _card.querySelector('.tb-cur');
   if (cur) cur.textContent = _sliceLabel(slices) || '—';
   _card.querySelectorAll('.tb-stop,.tb-cal-d').forEach((b) => {
-    b.classList.toggle('is-active', b.dataset.key === _sliceKey && b.dataset.key);
+    b.classList.toggle('is-active', b.dataset.key === _sliceKey && !!b.dataset.key);
   });
+  const sl = _card.querySelector('.tb-slider');
+  if (sl) sl.value = _sliceIndex(slices);
+  const sli = _card.querySelector('.tb-slider-i');
+  if (sli) sli.textContent = (_sliceIndex(slices) + 1) + '/' + slices.length;
 }
