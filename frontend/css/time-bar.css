@@ -1,0 +1,156 @@
+/* ═══ time-bar.css — 全局时间轴 · 时间按钮 + Martin 风展开卡片 ═══════════════════════════
+   设计语言镜像 .search-bar（search-bar.css）+ capsule-button-design-language：
+   无线框 + 阴影 + 白底 + hover 灰 + 选中蓝(#4285F4) + 圆角；过渡 var(--geojson-transition)。
+   按钮底部居中（对齐顶部居中搜索按钮，同中轴线）；卡片向上展开。
+   ═══════════════════════════════════════════════════════════════════════════════════════ */
+
+/* ── 圆按钮（折叠态，底部居中）── */
+.time-bar {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 96;                                  /* 与 .search-bar 同层 */
+  width: var(--geojson-layout-search-collapsed-size, 32px);   /* 32px，镜像搜索按钮 */
+  height: var(--geojson-layout-search-collapsed-size, 32px);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #ffffff;
+  color: var(--geojson-color-text-secondary, #737373);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.10);    /* 折叠态弱阴影（同 search-bar.is-collapsed） */
+  cursor: pointer;
+  transition: box-shadow var(--geojson-transition, 150ms),
+              color var(--geojson-transition, 150ms),
+              transform var(--geojson-transition, 150ms);
+}
+.time-bar:hover { color: var(--geojson-color-text, #1a1a1a); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14); }
+.time-bar:active { transform: translateX(-50%) scale(0.94); }
+.time-bar.is-open { color: #4285F4; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.20); }
+.time-bar svg { display: block; }
+
+/* ── 展开卡片（向上展开，底部居中锚定）── */
+.tb-card {
+  position: absolute;
+  bottom: 48px;                                 /* 按钮(32)+gap(8)+margin(8) 上方 */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 97;
+  width: 340px;
+  padding: 12px 14px 14px;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.16);
+  color: var(--geojson-color-text, #1a1a1a);
+  font-size: 13px;
+  animation: tb-pop 160ms ease-out;
+}
+.tb-card[hidden] { display: none; }
+@keyframes tb-pop {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* 头部：当前片 + 关闭 */
+.tb-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.tb-cur { font-weight: 600; font-size: 14px; }
+.tb-x {
+  display: grid; place-items: center;
+  width: 22px; height: 22px;
+  border: none; border-radius: 6px;
+  background: transparent;
+  color: var(--geojson-color-text-secondary, #737373);
+  cursor: pointer;
+  transition: background var(--geojson-transition, 150ms), color var(--geojson-transition, 150ms);
+}
+.tb-x:hover { background: rgba(0, 0, 0, 0.06); color: var(--geojson-color-text, #1a1a1a); }
+
+/* 粒度胶囊条 */
+.tb-periods {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.tb-p {
+  flex: 1;
+  padding: 5px 0;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--geojson-color-text-secondary, #737373);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--geojson-transition, 150ms);
+}
+.tb-p:hover { background: rgba(0, 0, 0, 0.04); color: var(--geojson-color-text, #1a1a1a); }
+.tb-p.is-active { background: #4285F4; border-color: #4285F4; color: #fff; }
+
+/* body 通用 */
+.tb-body { min-height: 40px; }
+.tb-empty { padding: 18px 0; text-align: center; color: var(--geojson-color-text-secondary, #999); font-size: 12px; }
+
+/* 阶段停点条 */
+.tb-stops { display: flex; gap: 8px; }
+.tb-stop {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 0;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: 10px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all var(--geojson-transition, 150ms);
+}
+.tb-stop:hover { background: rgba(0, 0, 0, 0.04); }
+.tb-stop.is-active { background: #4285F4; border-color: #4285F4; }
+.tb-stop.is-active .tb-stop-k,
+.tb-stop.is-active .tb-stop-l { color: #fff; }
+.tb-stop-k { font-size: 14px; font-weight: 700; color: var(--geojson-color-text, #1a1a1a); }
+.tb-stop-l { font-size: 11px; color: var(--geojson-color-text-secondary, #737373); }
+
+/* 月历（日粒度） */
+.tb-cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.tb-cal-title { font-weight: 600; font-size: 13px; }
+.tb-cal-a {
+  display: grid; place-items: center;
+  width: 22px; height: 22px;
+  border: none; border-radius: 6px;
+  background: transparent;
+  color: var(--geojson-color-text-secondary, #737373);
+  cursor: pointer;
+  transition: background var(--geojson-transition, 150ms), color var(--geojson-transition, 150ms);
+}
+.tb-cal-a:hover { background: rgba(0, 0, 0, 0.06); color: var(--geojson-color-text, #1a1a1a); }
+.tb-cal-grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.tb-cal-grid th {
+  padding: 4px 0;
+  font-size: 11px; font-weight: 500;
+  color: var(--geojson-color-text-secondary, #999);
+  text-align: center;
+}
+.tb-cal-grid td {
+  padding: 2px 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--geojson-color-text-secondary, #bbb);
+}
+.tb-cal-d {
+  cursor: default;
+  height: 30px;
+  border-radius: 50%;
+}
+.tb-cal-d.is-data {
+  color: var(--geojson-color-text, #1a1a1a);
+  cursor: pointer;
+  font-weight: 500;
+}
+.tb-cal-d.is-data:hover { background: rgba(66, 133, 244, 0.10); }
+.tb-cal-d.is-active { background: #4285F4; color: #fff; font-weight: 600; }
+.tb-cal-blank { cursor: default; }

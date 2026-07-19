@@ -1,0 +1,68 @@
+{
+  "_schema": "时间目录 manifest — 全局时间轴（global temporal axis）的单一权威源。时间是一等公民：时间轴从这里『发现』时间片，不写死 T1/T2/T3。新增带时间数据集（含未来购买数据）= 往 datasets 加一条。详见 frontend/js/time-source.js。",
+  "_schema_dataset_fields": {
+    "id": "数据集唯一 id（层导入时按 sourceTemplate 匹配，给层打 datasetId 标）",
+    "label": "人类可读名（时间轴头部/卡片显示）",
+    "period": "周期类型：phase（抽象阶段 T1-T3）| day | week | month | quarter | year | custom-range",
+    "level": "数据层级 L0/L1/L2/L3L4（仅描述用，时间轴不强依赖）",
+    "sourceTemplate": "按片拼 URL 的模板，{slice} 占位替换 slice.key（serve 暴露 DATA 于 /DATA 根）",
+    "area": "空间范围描述（仅描述用）",
+    "slices": "时间片数组；每片 {key, label, order}；key 须与 feature.properties.time_label 对齐（phase=T1/T2/T3；day=2026-01-01；week=2026-W01；month=2026-01）"
+  },
+  "version": 1,
+  "datasets": [
+    {
+      "id": "yichang_L2",
+      "label": "宜昌全域 · L2 情绪地图",
+      "period": "phase",
+      "level": "L2",
+      "area": "宜昌全域",
+      "sourceTemplate": "/DATA/performance/yichang_L2_{slice}_L2_result_geojson.geojson",
+      "slices": [
+        { "key": "T1", "label": "T1 · 基线", "order": 0 },
+        { "key": "T2", "label": "T2 · 过渡", "order": 1 },
+        { "key": "T3", "label": "T3 · 成效", "order": 2 }
+      ]
+    },
+    {
+      "id": "xiling_wujia_L1",
+      "label": "西陵·伍家岗 · L1 热度分布",
+      "period": "phase",
+      "level": "L1",
+      "area": "西陵区·伍家岗区",
+      "sourceTemplate": "/DATA/processed/xiling_wujia_L1_{slice}_result_geojson.geojson",
+      "slices": [
+        { "key": "T1", "label": "T1 · 基线", "order": 0 },
+        { "key": "T2", "label": "T2 · 过渡", "order": 1 },
+        { "key": "T3", "label": "T3 · 成效", "order": 2 }
+      ]
+    },
+    {
+      "id": "xiling_wujia_L2",
+      "label": "西陵·伍家岗 · L2 情绪地图",
+      "period": "phase",
+      "level": "L2",
+      "area": "西陵区·伍家岗区",
+      "sourceTemplate": "/DATA/processed/xiling_wujia_L2_{slice}_result_geojson.geojson",
+      "slices": [
+        { "key": "T1", "label": "T1 · 基线", "order": 0 },
+        { "key": "T2", "label": "T2 · 过渡", "order": 1 },
+        { "key": "T3", "label": "T3 · 成效", "order": 2 }
+      ]
+    },
+    {
+      "id": "ermawu_l3l4",
+      "label": "二马路 · L3+L4 归因",
+      "period": "phase",
+      "level": "L3L4",
+      "area": "二马路历史街区",
+      "sourceTemplate": "/DATA/processed/ermawu_l3l4_{slice}_result_geojson.geojson",
+      "slices": [
+        { "key": "T1", "label": "T1 · 基线", "order": 0 },
+        { "key": "T2", "label": "T2 · 过渡", "order": 1 },
+        { "key": "T3", "label": "T3 · 成效", "order": 2 }
+      ]
+    }
+  ],
+  "_future_slot": "未来购买数据示例（直接往 datasets 加，时间轴自动发现）：{ 'id':'yichang_2026_daily', 'label':'宜昌 2026 日度', 'period':'day', 'sourceTemplate':'/DATA/purchased/yichang_2026_{slice}.geojson', 'slices':[{'key':'2026-01-01','label':'1月1日','order':0}, ... 365条] }"
+}

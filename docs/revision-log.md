@@ -31,7 +31,11 @@ emotion_map（根）
 │  ├─ 导航架构重塑（Martin）🔄  B0 色彩(#4285F4/#384555) ✅｜B1 单层顶栏 ✅｜B2 3 按钮集 ✅｜B3 左端栏三区 ✅（B6 随动复核通过）｜B4 左端弹出栏 ⬜｜B5 色板圆角 ⬜ ◆
 │  ├─ 核密度分析（KDE）弹窗 🔄
 │  │  ├─ 批1 快赢 🔄  1a 预览图 ⏸｜1b 色带系统（随胶囊+HSL+色相细分）✅
-│  │  ├─ 批2 全局时间轴 ⬜  ◆ 架构转折点（解锁批3/4）
+│  │  ├─ 批2 全局时间轴 🔄  ◆ 架构转折点（解锁批3/4）— 极性深读·时间轴推倒重做（全局时间维度）
+│  │  │  ├─ A0-A2 manifest+TimeSource+applyTime+时间按钮 UI ✅（5.140；manifest 单一权威源 + 点层换源 + Martin 风卡片）
+│  │  │  ├─ A3 grid 演进+play 动画 ⬜（timeline.js 接 global currentTime；阶段 lerp / 日度离散）
+│  │  │  ├─ A4 Overview 原地追随 ⬜
+│  │  │  └─ Track B 矢量瓦片 tippecanoe+Martin 文件模式 ⬜（A 落地后；TimeSource MVT 实现可插拔）
 │  │  ├─ 批3 3D 渲染 ⬜  地形凸凹 / 网格柱体（依赖批2）
 │  │  ├─ 批4 时间对比 ⬜  A/B 双窗（依赖批2）
 │  │  └─ 批5 图层分组 🔄  5A 自动归类 ✅｜5B 自由编组 ⬜
@@ -46,7 +50,7 @@ emotion_map（根）
 └─ 临时分支（搁置 / 待决策）
    ├─ KDE 批1 1a 预览图 ⏸  等 terrain/factor kepler 截图补齐
    ├─ 高级参数 bug（C5）⏸  暂不修
-   └─ 待决策  KDE 批2 粒度｜批3 地形 vs 柱体｜极性深读·时间轴（任务2 ⬜：T1→T3 成效动画；路线 A JS rAF+setData 推荐 / B deck.gl 重引入 / C 阶梯淡入；前置 Overview 原地更新重构）
+   └─ 待决策  KDE 批2 粒度｜批3 地形 vs 柱体（极性深读·时间轴 已决→批2 🔄：全局时间维度重做，路线 A JS rAF+setData；A0-A2 ✅ / A3-A4 ⬜，详见 §5.140）
 ```
 
 ---
@@ -218,7 +222,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月19日）** · 本节按板块分组、组内倒序；最新工作 = **5.139 CB 收尾（CB-03 反评价 + 拓扑同步）**（本次）。上一轮 5.138 工作策略厘清。最近：
+> 📍 **最新动态（07月19日）** · 本节按板块分组、组内倒序；最新工作 = **5.140 极性深读·时间轴推倒重做 阶段一（全局时间维度 A0-A2）**（本次）。上一轮 5.139 CB 收尾。最近：
+>
+> - **5.140 极性深读·时间轴推倒重做 阶段一（全局时间维度 · A0-A2 地基+时间按钮 UI）**：revision-log §0「批2 全局时间轴 ◆ 架构转折点」启动。核心 reframe：T1/T2/T3 烧死文件名 → **时间是一等公民**（manifest 声明，时间轴从数据发现片，适配未来天/周/月购买数据）。三方向已定（plan `07-19-cb-lovely-quiche`）：后端 tippecanoe+Martin 文件模式（Track B，A 落地后）/ 全局时间轴（非局部小工具）/ 展示=混合（日历+粒度切换+播放）。**A0 时间目录 manifest**（[DATA/processed/_time_manifest.json](DATA/processed/_time_manifest.json)）：4 数据集（yichang_L2 / xiling_wujia_L1·L2 / ermawu_l3l4，全 phase T1-T3）+ `period`∈{phase,day,week,month,quarter,year,custom-range} + `sourceTemplate` `{slice}` 占位，未来购买数据直接加一条。**A1 TimeSource 抽象+GeoJSON 实现**（[time-source.js](frontend/js/time-source.js)）：manifest 加载/缓存 + `matchDataset`（sourceTemplate→正则匹配层文件名→datasetId/sliceKey）+ `tagLayer` + `loadSlice`（带缓存）+ `applyTime` 控制器（setCurrentTime + 换源所有时间感知点/面层，L2 极性子层按 colorMode 重切，grid/terrain 跳过留 A3，**全换源完才 dispatch layers:changed 避竞态**）+ `slicesForPeriod`/`availablePeriods`；[state.js](frontend/js/state.js) 加 `currentTime` 全局状态 + `time:changed` 事件；[main.js](frontend/js/main.js) 启动 `loadManifest`+`tagAllLayers`（竞态兜底）+ 导入后打标。**A2 时间按钮+Martin 风展开卡片**（[time-bar.js](frontend/js/time-bar.js) + [time-bar.css](frontend/css/time-bar.css)）：底部居中 32px 圆按钮（对齐顶部居中搜索按钮同中轴线，calendar-clock 图标，镜像 search-bar 设计语言 无线框+阴影+白底+hover灰+选中蓝#4285F4）→ 点击向上展开卡片（头部当前片+✕ / 粒度胶囊条只显 manifest 存在的 period / body：阶段=停点条 T1-T3，日=Martin 同款月历，周月=占位待数据）→ 选片 `applyTime` 换源点层 + Overview 追随。**排序策略**：Track A（GeoJSON，优先交付）+ Track B（MVT，可插拔）靠 `TimeSource` 接缝解耦，上层零改动。承重：paint-inplace-swap-view（applyTime 走 setData 不重建层）/ tool-no-auto-overview（time-bar 不抢焦点）/ 四态·diagnose 不碰；grid 演进+play 动画=A3，Overview 原地追随细化=A4。验证：ESM 语法 4 文件绿（node --check --input-type=module）；启动 loadManifest/initTimeBar 失败均被吞、页面正常加载，交互层交用户肉眼验证（守 no-routine-playwright-verify）。**A3-A4+拓扑同步续。push 用户手动。**
 >
 > - **5.139 CB 收尾（CB-03 反评价 + 拓扑同步）**：CB-03 META 轮（评估 CB 自动化，综合 7.6→**7.7 首升**）。① **CB-03 反评价**（[cb-journal](docs/catch-ball/cb-journal.md) ②③④）：建议1 [RULES](docs/catch-ball/RULES.md) §3.3 承重→pointer [KNOWLEDGE](docs/catch-ball/KNOWLEDGE.md) §1（单一权威）/ 建议2 KNOWLEDGE 加 §6 Auto-Check 清单 + [/cb](.claude/commands/cb.md) step5 改"加载 §6"（数据驱动）/ 建议5 trace-digest 闭环更正（核 [on_session_end.py](.claude/hooks/on_session_end.py)：cursor 缺失 fallback 0，空 digest=健康非 bug，CB-02 partial 被深化）/ 讨论2 KNOWLEDGE 加 pruning 触发 / **讨论3 CB 节奏决议**（高频→低频，每 5-10 commit 一次 SCAN）；3 defer（geo_registry/文档/panel.js）+ 2 PROPOSE 给 CB-04。② **拓扑同步**（用户要求"拓扑图加入 CB 机制"）：§0 加 Catch-Ball 闭环分支（roadmap 视图显 CB）+ [topo_scanner.py](core/topo_scanner.py) `_add_semantic_links` 加 cb-flow 边（**11 条**：cb.md→KNOWLEDGE/RULES/cb-journal/retired + hook→SCAN_*×3；冒烟验 363 节点 693 边）+ [core/CLAUDE.md](core/CLAUDE.md) 去退役 map_engine/ui_components（CB-02 建议6 遗漏）+ memory `topo-sync-discipline`（新子系统→§0+语义边防漂移）。验证：topo_scanner py_compile + cb-flow 11 条生成。承重：CB 转低频维护；**下会话推进极性深读时间轴**。
 >

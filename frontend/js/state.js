@@ -831,6 +831,18 @@ export function getSelectedLayer() { return _selectedLayerId ? _layers.get(_sele
 export function getSelectedLayerId() { return _selectedLayerId; }
 export function clearSelection() { _selectedLayerId = null; }
 
+// ── 全局时间状态（global temporal axis）──
+// 数据层 = time-source.js（manifest + 按片加载）；本状态 = 当前选中时间片；事件 = time:changed。
+// currentTime = { period, sliceKey } 或 null（null=无时间过滤，各层显各自原始 T）。
+// 消费方：time-bar.js（触发）/ timeline.js（grid 重聚合）/ panel.js（Overview 原地追随）。
+let _currentTime = null;
+export function getCurrentTime() { return _currentTime; }
+export function setCurrentTime(t) {
+  _currentTime = t;
+  document.dispatchEvent(new CustomEvent('time:changed', { detail: _currentTime }));
+}
+export function clearCurrentTime() { setCurrentTime(null); }
+
 /** Reorder layers: move `fromId` to the position of `toId` (before it). toId=null
  *  appends to the end. List order (top→bottom) = map z-order (top→bottom). */
 export function reorderLayers(fromId, toId) {

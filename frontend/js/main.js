@@ -24,6 +24,8 @@ import { initDrawTool, startDraw, stopDraw } from './draw-tool.js';
 import { initHeatmapLegend } from './heatmap-legend.js';
 import { initSearchBar } from './search-bar.js';
 import { initTimeline, showTimeline, hideTimeline } from './timeline.js';
+import { loadManifest, tagLayer } from './time-source.js';
+import { initTimeBar } from './time-bar.js';
 import { toast } from './toast.js';
 import { runExport } from './api.js';
 
@@ -46,6 +48,12 @@ function updateExportState() {
   const has = getLayers().some((l) => l.kind !== 'group');
   const btn = document.getElementById('btn-export');
   if (btn) btn.disabled = !has;
+}
+
+/** 给所有层打时间标（datasetId/sliceKey，time-source.tagLayer）。
+ *  幂等：manifest 未就绪时静默跳过，loadManifest 就绪后会再调一次兜底（处理「导入早于 manifest 就绪」竞态）。 */
+function tagAllLayers() {
+  getLayers().forEach(tagLayer);
 }
 
 /** Overview reflects the current VISIBLE focus layer（视野-数据-结论同步）。
@@ -141,6 +149,7 @@ async function runImport(files) {
       renderLayerList();
       refreshLegend();
       refreshOverview();
+      tagAllLayers();            // 全局时间轴：给新导入层打 datasetId/sliceKey 标
       reorderAllZ();             // align map z-order with list order (list-top = map-top)
       if (added) {
         showLayerManager();                 // B5: switch to sections + expand Layers
@@ -260,6 +269,8 @@ function main() {
   initParamPanel();
   initSearchBar();
   initTimeline();
+  initTimeBar();
+  loadManifest().then(tagAllLayers).catch(() => {});   // 全局时间轴 manifest（就绪后给已导入层补打标）
   initDrawTool(map);
   initHeatmapLegend();
 
