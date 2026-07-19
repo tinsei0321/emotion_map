@@ -8,7 +8,7 @@
 ## 当前节点：CB-1 实质完成；明天换环境续（前端 JS 单测 / browser 复验 / 待 CB-2）
 
 ### 背景
-07-18 上半场（5.129–5.131 复盘修复日）已在 origin。**本会话**用户要做项目全局复盘 + 引入第三方评价（`docs/SCAN_DeepSeek.md`，DeepSeek V4 Pro）做 **catch-ball（CB）**：我方复盘 → 读 SCAN → 反评价（agree/disagree/partial）→ 行动 → 定期总结。CB 轨迹在 [docs/cb-journal.md](docs/cb-journal.md)。
+07-18 上半场（5.129–5.131 复盘修复日）已在 origin。**本会话**用户要做项目全局复盘 + 引入第三方评价（`docs/catch-ball/SCAN_DeepSeek_01.md`，DeepSeek V4 Pro）做 **catch-ball（CB）**：我方复盘 → 读 SCAN → 反评价（agree/disagree/partial）→ 行动 → 定期总结。CB 轨迹在 [docs/catch-ball/cb-journal.md](docs/catch-ball/cb-journal.md)。
 
 **我方复盘 ~7.6/10**（架构 8.5/模块 7.0/数据管道 7.5/测试 7.5/债 7.0/文档 8.0）。用户澄清关键策略：**L0 未来走购买途径，sim 当下充分非风险**（memory `l0-acquisition-purchase-strategy`）。唯一真短板 = 前端测试薄。
 
@@ -38,19 +38,19 @@
 
 ### 承重（必守，下会话续改时留意）
 - **调动次数优先**（用户全局规则，覆盖 plan mode 派 Explore/Plan 默认）：不派 subagent，自己读/grep/改；批量并行只读；合并多文件修改；给推荐不穷举。
-- **CB 反评价标尺**：agree/disagree/partial 有论据；承重红线（tracker 编号连续 / diagnose 永不动 / 四态出口）不接受简化；L0 购买策略勿把 sim 当风险。CB 轨迹按轮追加 `docs/cb-journal.md`（不覆写）；不编辑 `docs/SCAN_DeepSeek.md`（第三方专属）。
+- **CB 反评价标尺**：agree/disagree/partial 有论据；承重红线（tracker 编号连续 / diagnose 永不动 / 四态出口）不接受简化；L0 购买策略勿把 sim 当风险。CB 轨迹按轮追加 `docs/catch-ball/cb-journal.md`（不覆写）；不编辑 `docs/catch-ball/SCAN_DeepSeek_01.md`（第三方专属）。
 - **?e2e=1 seam 已去生产化**（5.134）：seam 在 `frontend/js/e2e-seam.js`（独立），`index.html` 条件 dynamic-import（仅 ?e2e=1 加载，生产永不加载）；main.js 零 test 代码。**待 browser 真验**（环境挂未解）。
 - **browser 环境挂**（未解）：本会话 serve/Playwright 启动卡在 open_emc，疑似环境问题。明天换环境先跑 `py tests/browser/test_compare_regions.py` 验 seam + 排查。
-- **退役台账** `docs/retired.md`：apps/ + ui_components + layer_registry + map_engine + .streamlit + db.py（皆 git 可恢复）。
+- **退役台账** `docs/catch-ball/retired.md`：apps/ + ui_components + layer_registry + map_engine + .streamlit + db.py（皆 git 可恢复）。
 - **EMC 承重（沿用）**：L4 lazy enrichment / Sim 资讯+buffer 方法论 / compare 技能契约 / 委托主 Toolbox 不自造 / aggregate 别名静默零（resolve_field_alias）/ diagnose prompt 永不动保 Flash eval / 四态出口+frame-based trust / C6（eval 空 context≠运行时）/ node --check ESM 假绿须 .mjs。
 - **项目顶层设计哲学**：4×5=归因矩阵（非指标清单）+多归属+政策→情绪→项目闭环+补盲区+知识库可成长；勿用官方指标完备性质疑 4×5（错标尺）。
 - 专业词+通俗解释（用户是初学者）/ todo+revision-log 最新置顶同步 / 交付物中文（代码/路径英文）/ 只 commit 不 push（用户手动；本次「换环境」例外已 push）。
 
 ### 本轮改的关键文件
 - **CB-1 清理**：[api/geo_routes.py](api/geo_routes.py)（三处冗余清 + zonal_stats wontfix 注释）/ [.claude/settings.json](.claude/settings.json)（sim agent 注册，8→9）。
-- **退役**：[core/__init__.py](core/__init__.py)（docstring 去 map_engine/ui_components）/ [docs/retired.md](docs/retired.md)（台账）。
-- **入库**：[.zcode/](.zcode/)（ZCode 工具状态·双环境同步）/ [docs/SCAN_DeepSeek.md](docs/SCAN_DeepSeek.md)（CB 输入历史，**第三方写勿编辑**）。
-- **Tier 1 文档**：[memories/repo/tracking-progress.md](memories/repo/tracking-progress.md)（指 AGENTS.md 权威源）/ [docs/revision-log.md](docs/revision-log.md) §0 任务树刷新（主干+topology+AI 7 月）+ §5（5.132–5.135）/ [docs/cb-journal.md](docs/cb-journal.md)（CB-1 轨迹）/ [docs/todo.md](docs/todo.md)。
+- **退役**：[core/__init__.py](core/__init__.py)（docstring 去 map_engine/ui_components）/ [docs/catch-ball/retired.md](docs/catch-ball/retired.md)（台账）。
+- **入库**：[.zcode/](.zcode/)（ZCode 工具状态·双环境同步）/ [docs/catch-ball/SCAN_DeepSeek_01.md](docs/catch-ball/SCAN_DeepSeek_01.md)（CB 输入历史，**第三方写勿编辑**）。
+- **Tier 1 文档**：[memories/repo/tracking-progress.md](memories/repo/tracking-progress.md)（指 AGENTS.md 权威源）/ [docs/revision-log.md](docs/revision-log.md) §0 任务树刷新（主干+topology+AI 7 月）+ §5（5.132–5.135）/ [docs/catch-ball/cb-journal.md](docs/catch-ball/cb-journal.md)（CB-1 轨迹）/ [docs/todo.md](docs/todo.md)。
 - **seam 去生产化**：[frontend/js/e2e-seam.js](frontend/js/e2e-seam.js)（新）/ [frontend/js/main.js](frontend/js/main.js)（seam 移出）/ [frontend/index.html](frontend/index.html)（条件 dynamic-import bootstrap）/ [tests/browser/lib/emc_helpers.py](tests/browser/lib/emc_helpers.py)（注释）。
 
 ### 承重 memory 索引
@@ -71,7 +71,7 @@
 
 先读（不动代码）：
 - memories/repo/session-handoff.md（当前节点 + 承重）
-- docs/cb-journal.md（CB-1 轨迹 + declined 清单）
+- docs/catch-ball/cb-journal.md（CB-1 轨迹 + declined 清单）
 - docs/revision-log.md §0（任务树已刷新）+ §5（5.132–5.135）
 
 承重：调动次数优先（不派 subagent）/ CB 反评价标尺（承重红线不接受简化）/ L0 购买策略勿把 sim 当风险 / browser 环境挂未解（换环境先验）/ 只 commit 不 push（用户手动）。

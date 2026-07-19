@@ -1,12 +1,15 @@
 # CB Journal（Catch-Ball 轨迹）
 
-> 我方（Claude Code）与第三方评价（`docs/SCAN_DeepSeek.md`，DeepSeek V4 Pro）的多轮 catch-ball 对话轨迹。
+> 我方（Claude Code）与第三方评价（`docs/catch-ball/SCAN_DeepSeek_01.md`，DeepSeek V4 Pro）的多轮 catch-ball 对话轨迹。
 > 按轮追加不覆写（区别于 session-handoff 的"覆写当前节点"）。每轮四节：① SCAN 摘要 ② 我方反评价 ③ 行动 ④ 状态/新发现。
 > 反评价标尺：agree=证据支持/我方漏掉；disagree=用错标尺/事实错误；partial=方向对细节偏。承重红线（tracker 编号连续/diagnose 永不动/四态）不接受简化。
+>
+> ---
+> **归档信息**：原始路径 `docs/cb-journal.md`，于 2026-07-19 移入 `docs/catch-ball/` 归档。
 
 ---
 
-## CB-1 · 2026-07-18（首轮）
+## CB-01 · 2026-07-18（首轮）
 
 ### ① SCAN 摘要
 4 个 Explore agent 扫描 ~100 文件。总评 7.6/10（架构 8.5 / 代码 7.5 / 测试 6.5 / Harness 9 / 文档 8 / 调用效率 6）。头号高优建议=调用次数优化（合并 Reviewer+Tester、批量变更、本地脚本替代 spawn、MANIFESTO 分层）。关键发现：core/ui_components+layer_registry 是 Streamlit 僵尸 / geo_routes 冗余计算 / db.py iterrows / sim agent 未注册 / Skills 落地率低 / 前端无单测。
@@ -49,3 +52,28 @@
 
 ### 状态
 `open` —— Tier 0 ✅（5.132-5.133）/ Tier 1 大部分 ✅（§0 refresh + ?e2e=1 去生产化 + retired.md + tracking-progress 对账，5.134）/ db.py 退役 + zonal_stats wontfix 闭环（5.135）。**待**：browser 环境恢复后复验 seam + C6 补 3；前端 JS 单测基建（头号短板）。双模型闭环：待 DeepSeek 二次扫描对比验证。
+
+---
+
+## CB-02 · 2026-07-19
+
+### ① SCAN 摘要
+3 个 Explore Agent + 主线程核实，覆盖 ~200 文件 / ~51,000 行。综合 7.6/10（架构 8.5 / 代码 7.5 / 测试 6.0 / Harness 9.0 / 文档 7.5 / 调用效率 7.0）。CB-01 10 条建议：✅ 2 完成 / ❌ 4 拒绝（其中 2 条因 CB-01 描述失准或撞红线）/ ⬜ 3 待处理 / 1 部分。CB-01 退役清理验证通过（5 文件已删，-1,735 行），geo_routes 修复生效，sim agent 已注册，e2e seam 正确分离。
+
+**CB-02 新发现**：requirements.txt 残留 streamlit+pydeck 僵尸依赖；range_selector.py 路径大小写不一致（Linux 部署会 break）；AGENTS.md 声称 8 Agent 但实际 9；geo_registry.py 零 @track；prd/spec/architecture 含过时 Streamlit 内容；trace-digest.md 空；panel.js 2,098 行过大。新增 10 条建议（3 高 / 3 中 / 4 低）。
+
+**CB-01 反评价第三方审核**：agree 4 条全部核实通过；disagree 4 条中 3 条反驳成立、1 条部分成立（数据管道完成度 90% 确实偏高但 75% 也偏保守→建议折中 80%）；partial 1 条平衡立场。
+
+**关键讨论点**：AGENTS.md 定位（概念框架 vs 运行时契约）、topo_scanner 自文档化意义、E2E 策略困境（先 JS 单测再 browser）、双模型闭环首次验证（有价值但需改进——SCAN 应先确认运行时假设）。
+
+### ② 我方反评价
+（待项目方回复——请逐条评估 CB-02 §三 10 条建议 + §四 4 个讨论点，使用 agree/disagree/partial 标尺）
+
+### ③ 行动
+（待项目方执行）
+
+### ④ 新发现
+- CB-01 与 CB-02 之间，项目方自行发现并修复的项目（未在 CB-01 建议中）：map_engine.py pydeck 僵尸退役、zonal_stats latent bug → wontfix（深挖 3 条消费路径）、db.py 退役（已是 executemany→SCAN 描述失准）
+
+### 状态
+`open` —— 等待项目方（Claude Code）阅读 SCAN_DeepSeek_02.md 并撰写反评价。

@@ -24,7 +24,7 @@
 
 ## 退役模块（勿再埋点，ID 保留不删）
 - `MOD_APP` (apps/app_main.py) — 2026-07-18 apps/ 整层退役
-- `MOD_MAP` (core/map_engine.py) — 2026-07-18 退役（pydeck 僵尸，CB-1；详见 [`docs/retired.md`](../../docs/retired.md)）
+- `MOD_MAP` (core/map_engine.py) — 2026-07-18 退役（pydeck 僵尸，CB-1；详见 [`docs/catch-ball/retired.md`](../../docs/catch-ball/retired.md)）
 - `MOD_UI` (core/ui_components.py) — 2026-07-18 退役（Streamlit 僵尸，CB-1）
 
 ## 进度（快照；权威见 AGENTS.md + 运行时 `_TRACKING_REGISTRY`）

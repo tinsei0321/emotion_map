@@ -76,6 +76,34 @@ def main():
     except Exception:
         pass
 
+    # 6. CB 未反评价评估报告提醒（零 LLM；新 SCAN → 提示用户 /cb 开启，不自动跑）
+    try:
+        cb_dir = os.path.join(PROJECT_ROOT, 'docs', 'catch-ball')
+        if os.path.isdir(cb_dir):
+            import re, glob
+            scans = {}
+            for f in glob.glob(os.path.join(cb_dir, 'SCAN_DeepSeek_*.md')):
+                m = re.search(r'SCAN_DeepSeek_(\d+)\.md$', f)
+                if m:
+                    scans[int(m.group(1))] = f
+            if scans:
+                journal = os.path.join(cb_dir, 'cb-journal.md')
+                processed = set()
+                if os.path.exists(journal):
+                    with open(journal, encoding='utf-8') as fh:
+                        txt = fh.read()
+                    for nn in scans:
+                        sec = re.search(rf'## CB-{nn:02}\b.*?(?=\n## CB-|\Z)', txt, re.S)
+                        # 未处理 = ②③ 仍是占位（"待项目方"）
+                        if sec and '待项目方' not in sec.group(0) and '（待' not in sec.group(0):
+                            processed.add(nn)
+                unprocessed = sorted(nn for nn in scans if nn not in processed)
+                if unprocessed:
+                    latest = unprocessed[-1]
+                    print(f"  [CB] 未反评价评估报告：SCAN_DeepSeek_{latest:02}.md（共 {len(unprocessed)} 份）— 运行 /cb {latest:02} 开启")
+    except Exception:
+        pass
+
     print(f"[HOOK] SessionStart 完成\n")
 
 if __name__ == "__main__":

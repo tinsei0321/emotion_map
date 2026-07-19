@@ -5,14 +5,27 @@
 
 ---
 
+## 📅 2026-07-19
+
+### ✅ CB 流程自动化（/cb 命令 + hook 检测 + 记忆库 + 记忆共享通则）（revision-log 5.136 · **待 push**）
+
+CB-01/02 跑通后，把手动 CB 升级为系统化编排（用户诉求）。5 交付物：
+- **① `/cb` 命令**（`.claude/commands/cb.md`）：8 步编排（载入 RULES+KNOWLEDGE → 深读 SCAN → 反评价 + 4 条自动检查 → 行动 → 写 journal+入库 → 同步）。主线程，不派 subagent。
+- **② SessionStart hook CB 检测**（`on_session_start.py`）：新 SCAN → 一行提示，零 LLM、只提示不自动跑。
+- **③ CB 记忆库**（`docs/catch-ball/KNOWLEDGE.md`）：5 节跨轮蒸馏（承重合并/项目语境/SCAN 标尺纠正/decline 模式/轮次溯源），CB-01/02 首填。
+- **④ 记忆共享通则（用户通则）**：context-map.md 登记+通则节 / KNOWLEDGE↔AutoMemory 双链（cb-knowledge-base 指针）/ CLAUDE.md 通则规则——任何记忆系统不孤岛。
+- **⑤ 路径迁移 + 去重**：删 docs/ 3 根重复 + 5 文件旧引用改指 catch-ball/。
+- **验证**：hook 出 CB-02 提示 / 旧路径零残留 / KNOWLEDGE 5 节 / 反孤岛双指。
+- **下次**（范围外）：`/cb 02` 首跑 dogfood（CB-02 反评价 + 10 条建议处置）。
+
 ## 📅 2026-07-18
 
 ### ✅ 项目全局复盘 + CB Round 1（SCAN_DeepSeek 反评价 + Tier 0.2/0.3 清理）（revision-log 5.132 · **待 push**）
 
-用户要做覆盖整个项目的全局复盘 + 引入第三方评价（DeepSeek V4 Pro `docs/SCAN_DeepSeek.md`）做 catch-ball（CB：深读→反评价→行动→定期总结）。
+用户要做覆盖整个项目的全局复盘 + 引入第三方评价（DeepSeek V4 Pro `docs/catch-ball/SCAN_DeepSeek_01.md`）做 catch-ball（CB：深读→反评价→行动→定期总结）。
 
 - **复盘 ~7.6/10**：架构 8.5 / 模块 7.0 / 数据管道 7.5 / 测试 7.5 / 债 7.0 / 文档 8.0。**用户澄清**：L0 未来走购买途径、sim 当下充分——非风险（撤回初版"真实数据=0 是最大风险"误判）。
-- **CB-1 反评价**（详见 [cb-journal.md](docs/cb-journal.md)）：SCAN 4-Explore 扫描扎实，但 3 处用错标尺（数据管道"90% 全部实现"事实错 / 调用次数优化前提不成立 / MANIFESTO 分层撞红线 / MCP 错标尺）。agree=Streamlit 僵尸+geo_routes 冗余+sim 未注册+前端无单测。清理中挖出 **latent bug**（zonal_stats n_dom/n_elem 补充从未生效，discover 循环遍历错源）。
+- **CB-1 反评价**（详见 [cb-journal.md](docs/catch-ball/cb-journal.md)）：SCAN 4-Explore 扫描扎实，但 3 处用错标尺（数据管道"90% 全部实现"事实错 / 调用次数优化前提不成立 / MANIFESTO 分层撞红线 / MCP 错标尺）。agree=Streamlit 僵尸+geo_routes 冗余+sim 未注册+前端无单测。清理中挖出 **latent bug**（zonal_stats n_dom/n_elem 补充从未生效，discover 循环遍历错源）。
 - **已执行**：① geo_routes 三处清理（零行为变化）② sim-emotion-data agent 注册 settings.json ③ 建 cb-journal.md ④ memory `l0-acquisition-purchase-strategy`。**pytest 207 passed 零回归**。
 - ✅ **Tier 0.1 已删**（5.133，commit 5e7b8c6）：3 僵尸 + .streamlit/config.toml 退役（-1439 行），retired.md 留痕；入库 .zcode/（双环境同步）+ SCAN_DeepSeek.md。
 - ✅ **Tier 1 文档卫生**（5.133）：§0 主干 refresh / retired.md 建 / tracking-progress 对账（改指 AGENTS.md 权威源，修 frozen-0613 漂移）。

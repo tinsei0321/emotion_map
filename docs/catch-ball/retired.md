@@ -2,10 +2,13 @@
 
 > /weed 与手动退役的文件留痕。删除前 grep 零活引用；退役即追加一行。
 > 凡入此台账的文件均经 `git rm`，**可从 git 历史恢复**。
+>
+> ---
+> **归档信息**：原始路径 `docs/retired.md`，于 2026-07-19 移入 `docs/catch-ball/` 归档。
 
 ---
 
-## 2026-07-18（CB-1 · apps 退役遗留僵尸清理）
+## 2026-07-18（CB-01 · apps 退役遗留僵尸清理）
 
 | 文件 | 原职责 | 退役原因 | 可恢复 |
 |------|--------|----------|--------|
@@ -17,4 +20,4 @@
 
 **删除前核验**：`grep -rn "from core.ui_components\|from core.layer_registry\|from core.map_engine" --include=*.py` = **零活 import**（仅 `design/backups/` 退役 app 残留 + `core/__init__.py` docstring 文字提及，均已清）。pytest 207 passed 零回归。
 
-**来源**：CB-1（[SCAN_DeepSeek.md](SCAN_DeepSeek.md) §2.5.3/讨论5 指出 ui_components+layer_registry；我方核验扩到 map_engine 同类 pydeck 僵尸）。详见 [cb-journal.md](cb-journal.md) CB-1。
+**来源**：CB-01（[SCAN_DeepSeek_01.md](SCAN_DeepSeek_01.md) §2.5.3/讨论5 指出 ui_components+layer_registry；我方核验扩到 map_engine 同类 pydeck 僵尸）。详见 [cb-journal.md](cb-journal.md) CB-01。
