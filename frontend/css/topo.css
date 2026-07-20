@@ -8,8 +8,9 @@
   --topo-border: #30363d;
   --topo-text: #c9d1d9;
   --topo-text-muted: #8b949e;
-  /* 4 家族色（Martin 风宝石色调，4 明确色相：珊瑚/蓝/紫/青；成熟度改用 opacity 不用色深浅）*/
-  --topo-c-primary: #E68B5C;   /* 主应用（前端/基础/AI）— 暖珊瑚 */
+  /* 家族色（Martin 风宝石色调；EMC 单独高饱和橙与主程序珊瑚区分）*/
+  --topo-c-primary: #E68B5C;   /* 主程序（前端/基础）— 暖珊瑚 */
+  --topo-c-emc: #F97316;      /* EMC（AI 问答）— 高饱和橙，与主程序区分 */
   --topo-c-infra: #5B8DEF;    /* 基础设施（API/管道/工具）— Martin 蓝 */
   --topo-c-data: #9D7BE0;     /* 数据层 — Martin 紫 */
   --topo-c-doc: #4FB8A8;      /* 文档/设计/测试 — 青绿 */
@@ -107,7 +108,8 @@ body.is-fs #topo-labels { left: 8px; }
 #topo-boxes { position: absolute; top: 0; bottom: 0; left: 240px; right: 0; pointer-events: none; z-index: 1; overflow: hidden; }
 body.is-fs #topo-boxes { left: 8px; }
 .cluster-box { position: absolute; border: 1.5px dashed rgba(255,255,255,0.16); border-radius: 14px; }
-.cluster-box-label { position: absolute; top: -9px; left: 14px; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7); background: var(--topo-bg); padding: 0 8px; white-space: nowrap; letter-spacing: .03em; }
+.cluster-box-label { position: absolute; top: -9px; left: 14px; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7); background: var(--topo-bg); padding: 0 8px; white-space: nowrap; letter-spacing: .03em; pointer-events: auto; cursor: zoom-in; border-radius: 3px; transition: color .15s, background .15s; }
+.cluster-box-label:hover { color: #fff; background: rgba(255,255,255,0.14); }
 
 /* 悬停富信息卡片 */
 #topo-tip {

@@ -2,7 +2,7 @@
 import * as THREE from '../vendor/three.module.js';
 
 const GROUP_FAMILY = {
-  frontend: 'primary', core: 'primary', ai_qa: 'primary',
+  frontend: 'primary', core: 'primary', ai_qa: 'emc',
   api: 'infra', apps: 'infra', SCRIPT: 'infra', '.claude': 'infra',
   module: 'infra', pipeline: 'infra',
   DATA: 'data', SCRAPER: 'data',
@@ -189,6 +189,8 @@ function renderBoxes() {
     const lab = document.createElement('div');
     lab.className = 'cluster-box-label';
     lab.textContent = `${GROUP_LABEL_ZH[g]} · ${nodes.length}`;
+    lab.title = '双击缩放至该组团';
+    lab.addEventListener('dblclick', (e) => { e.stopPropagation(); zoomToGroup(g); });
     box.appendChild(lab);
     cont.appendChild(box);
     _boxGroups.push({ group: g, nodes, boxDiv: box, labelDiv: lab });
@@ -307,6 +309,13 @@ function zoomToCluster(n) {
   const has = _data.nodes.some((nn) => inCluster(nn) && nn.x != null);
   if (!has) return;
   try { _graph.zoomToFit(800, 80, inCluster); } catch (e) {}
+}
+/** 双击组团框字体：zoomToFit 该组团（filter=group），居中+放大（pad 40 紧凑些）。 */
+function zoomToGroup(group) {
+  if (!_data || !_graph) return;
+  const inGroup = (nn) => nn.group === group;
+  if (!_data.nodes.some(inGroup)) return;
+  try { _graph.zoomToFit(800, 40, inGroup); } catch (e) {}
 }
 function onBackgroundClick() {
   document.getElementById('topo-detail').hidden = true;
