@@ -37,6 +37,14 @@ let _lastClick = { id: null, t: 0 };
 let _labelNodes = [];
 let _boxGroups = [];   // [{group, label, nodes, boxDiv, labelDiv}]
 const _cssCache = {};
+let _domRafPending = false;
+/** rAF 批处理 DOM 更新：合并一帧内多次 onEngineTick / ctrl.change 为一次 updateLabels+Boxes+TipPos
+ *  （force sim 220 tick 冷却期 + 双击 zoomToFit 相机动画叠加 → 每 tick 直调 DOM 抢帧卡顿；rAF 对齐刷新消除抢帧）。 */
+function _scheduleDomUpdate() {
+  if (_domRafPending) return;
+  _domRafPending = true;
+  requestAnimationFrame(() => { _domRafPending = false; updateLabels(); updateBoxes(); updateTipPos(); });
+}
 
 async function init() {
   const el = document.getElementById('topo-graph');
@@ -70,7 +78,7 @@ async function init() {
     .onNodeHover((n, prev) => onHover(n, prev))
     .onNodeClick((n) => onNodeClick(n))
     .onBackgroundClick(() => onBackgroundClick())
-    .onEngineTick(() => { updateLabels(); updateBoxes(); updateTipPos(); })
+    .onEngineTick(() => _scheduleDomUpdate())
     .cooldownTicks(220);
 
   // 灯光
@@ -83,7 +91,7 @@ async function init() {
   ctrl.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.PAN };
   ctrl.enableZoom = true;   // 滚轮 zoom
   // 视角变化时同步标签/框/tip（修"拖拽字体不跟随"）
-  ctrl.addEventListener('change', () => { updateLabels(); updateBoxes(); updateTipPos(); });
+  ctrl.addEventListener('change', () => _scheduleDomUpdate());
 
   const resize = () => { if (_graph) _graph.width(el.clientWidth).height(el.clientHeight); };
   requestAnimationFrame(resize);

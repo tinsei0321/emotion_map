@@ -222,7 +222,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月20日）** · 本节按板块分组、组内倒序；最新工作 = **5.145 拓扑图两小项（EMC 单独高饱和橙 + 组团框字体双击 zoom）**（本次）。上一轮 5.144 复测三修。最近：
+> 📍 **最新动态（07月20日）** · 本节按板块分组、组内倒序；最新工作 = **5.146 拓扑图卡顿修复（rAF 批处理 DOM 更新）**（本次）。上一轮 5.145 拓扑两小项。最近：
+>
+> - **5.146 拓扑图卡顿修复（rAF 批处理 DOM 更新）**：治 5.143 起用户反馈的"双击/拖拽偶尔卡顿"。根因：`onEngineTick` 每 force 模拟 tick 都直调 `updateLabels+updateBoxes+updateTipPos`（~40 标签节点 + ~12 组团框 × 各节点 `graph2ScreenCoords` + style 写），force sim **220 tick 冷却期**（加载后数秒活跃）叠加双击 `zoomToFit` 相机动画 → 每 tick DOM 抖动抢主线程 = 偶尔卡顿（尤加载后 sim 活跃时双击）。修：[topology.js](frontend/js/topology.js) 加 `_scheduleDomUpdate()`——`requestAnimationFrame` 合并 + `_domRafPending` 标志去抖；`onEngineTick`（line 73）+ `ctrl 'change'`（line 86）两处直调改调它。一帧内多次 tick/相机变化合并为一次 DOM 写（≤60/sec），消除抢帧；rAF 对齐显示刷新 → 标签/框视觉无延迟感。验证：ESM 绿；**F5 手感验证**（守 no-routine-playwright-verify：加载后 sim 活跃期立即双击/拖拽 → 卡顿应明显减轻）。承重：只动 DOM 更新调度，不改节点几何/数据/force 参数。若仍偶发（疑 GPU/节点数），再降 sphere 几何精度或 throttle tick 频率。**push 待用户。**
 >
 > - **5.145 拓扑图两小项（EMC 单独高饱和橙色 + 组团框字体双击 zoom）**：① **EMC 单独色**：ai_qa 从 primary 家族拆出独立 `emc` 家族——[topology.js](frontend/js/topology.js) GROUP_FAMILY `ai_qa:'primary'`→`'emc'`，[topo.css](frontend/css/topo.css) 加 `--topo-c-emc: #F97316`（高饱和橙，与主程序珊瑚 `#E68B5C` 区分）。② **新 feature：组团框字体双击 zoom**：双击虚线组团框的文字标签 → `zoomToGroup(group)`（zoomToFit filter=`nn.group===group`，800ms 动画，pad 40 紧凑居中+放大）；renderBoxes 给 `.cluster-box-label` 加 dblclick 监听 + title；CSS label 开 `pointer-events:auto` + `cursor:zoom-in` + hover 高亮（之前 #topo-boxes 整层 pointer-events:none，label 不可点）。验证：ESM 绿；**EMC 橙色 + 组团框双击 zoom 待 F5 验**。承重：只动 GROUP_FAMILY/renderBoxes/CSS，不碰 topo_scanner 数据。**push 待用户。**
 >
