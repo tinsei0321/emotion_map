@@ -94,32 +94,19 @@ async function init() {
 }
 
 // ═══ 节点几何 ═══
-/** hex 向白混合（t=0 原色→t=1 纯白）：成熟度浅色 tint，同家族色内区分 mature(深)/progressing(浅)/planned(更浅)。 */
-function tint(hex, t) {
-  const h = String(hex || '').replace('#', '');
-  if (h.length !== 6) return hex;
-  const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
-  const mix = (c) => Math.round(c + (255 - c) * t).toString(16).padStart(2, '0');
-  return '#' + mix(r) + mix(g) + mix(b);
-}
-/** 节点几何：mature=光滑球(glossy 深) / progressing=平面宝石(matte 浅，flatShading 晶面) / planned=线框(更浅)。
- *  颜色(深→浅 tint)+材质(glossy↔matte)+形状(球↔宝石↔线框) 三重编码成熟度，同家族色内可辨，保高级感。 */
+/** 节点几何：颜色=家族（Martin 风 4 宝石色相，CSS var），成熟度=opacity（mature 实心 / progressing 半透 / planned 线框）。
+ *  弃光滑/磨砂材质区分（用户反馈"看不出区别"）→ 统一 glossy 球 + opacity 区分成熟度；颜色多色相做主要区分。 */
 function buildNode(n) {
-  const base = colorOf(n);
+  const color = colorOf(n);
   const r = nodeRadius(n);
   const core = isCore(n);
-  if (n.maturity === 'mature') {
-    return new THREE.Mesh(new THREE.SphereGeometry(r, 20, 16),
-      new THREE.MeshStandardMaterial({ color: base, metalness: core ? 0.55 : 0.3, roughness: core ? 0.32 : 0.45 }));
-  } else if (n.maturity === 'progressing') {
-    return new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0),
-      new THREE.MeshStandardMaterial({ color: tint(base, 0.34), metalness: 0.0, roughness: 0.92, flatShading: true }));
-  } else if (n.maturity === 'planned') {
+  if (n.maturity === 'planned') {
     return new THREE.Mesh(new THREE.IcosahedronGeometry(r * 0.85, 0),
-      new THREE.MeshBasicMaterial({ color: tint(base, 0.55), wireframe: true, transparent: true, opacity: 0.5 }));
+      new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: 0.4 }));
   }
-  return new THREE.Mesh(new THREE.SphereGeometry(r, 12, 10),
-    new THREE.MeshStandardMaterial({ color: base, transparent: true, opacity: 0.5 }));
+  const opacity = n.maturity === 'progressing' ? 0.6 : 1.0;   // mature=1.0 / progressing=0.6
+  return new THREE.Mesh(new THREE.SphereGeometry(r, 20, 16),
+    new THREE.MeshStandardMaterial({ color, metalness: core ? 0.45 : 0.25, roughness: 0.4, transparent: true, opacity }));
 }
 function nodeRadius(n) {
   let r;
@@ -311,16 +298,15 @@ function onNodeClick(n) {
     showDetail(n);
   }
 }
+/** 双击节点：zoomToFit 该节点所在组团（filter=同 module/group/layer）——自适应取景，比固定偏移 cameraPosition
+ *  视野稳（治"视野常不理想"）。800ms 动画 + 80px padding 留上下文。 */
 function zoomToCluster(n) {
   const key = n.module || n.group || n.layer;
   if (!key) return;
-  const cnodes = _data.nodes.filter((nn) => (nn.module || nn.group || nn.layer) === key && nn.x != null);
-  if (!cnodes.length) return;
-  const cx = cnodes.reduce((s, nn) => s + nn.x, 0) / cnodes.length;
-  const cy = cnodes.reduce((s, nn) => s + nn.y, 0) / cnodes.length;
-  const cz = cnodes.reduce((s, nn) => s + nn.z, 0) / cnodes.length;
-  // 相机看向 cluster 中心（节点为视角中心），pos 在前上方
-  _graph.cameraPosition({ x: cx, y: cy - 140, z: cz + 240 }, { x: cx, y: cy, z: cz }, 1000);
+  const inCluster = (nn) => (nn.module || nn.group || nn.layer) === key;
+  const has = _data.nodes.some((nn) => inCluster(nn) && nn.x != null);
+  if (!has) return;
+  try { _graph.zoomToFit(800, 80, inCluster); } catch (e) {}
 }
 function onBackgroundClick() {
   document.getElementById('topo-detail').hidden = true;

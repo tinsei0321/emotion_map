@@ -8,12 +8,12 @@
   --topo-border: #30363d;
   --topo-text: #c9d1d9;
   --topo-text-muted: #8b949e;
-  /* 4 色系（成熟度用形状不用色深浅）*/
-  --topo-c-primary: #D97757;
-  --topo-c-infra: #4E7A8C;
-  --topo-c-data: #6FA177;
-  --topo-c-doc: #B59A82;
-  --topo-c-other: #8B8B8B;
+  /* 4 家族色（Martin 风宝石色调，4 明确色相：珊瑚/蓝/紫/青；成熟度改用 opacity 不用色深浅）*/
+  --topo-c-primary: #E68B5C;   /* 主应用（前端/基础/AI）— 暖珊瑚 */
+  --topo-c-infra: #5B8DEF;    /* 基础设施（API/管道/工具）— Martin 蓝 */
+  --topo-c-data: #9D7BE0;     /* 数据层 — Martin 紫 */
+  --topo-c-doc: #4FB8A8;      /* 文档/设计/测试 — 青绿 */
+  --topo-c-other: #8B949E;
   --topo-c-link: rgba(255,255,255,0.45);   /* 白色线 */
 }
 

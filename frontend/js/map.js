@@ -70,15 +70,15 @@ let _tooltip = null;
 let _currentBasemap = DEFAULT_BASEMAP;   // 当前底图 key（setBasemap 同步）
 let _pre3dBasemap = null;                 // （遗留：旧 AUTO_3D_BASEMAP 方案用，暗色遮罩方案后弃用，保留无害）
 
-// ── 3D 暗色遮罩：单 fill 层（世界面 polygon）插在底图与数据层之间，pitch>1 时显隐 ──
-//  不 setStyle 换底图 → 避瓦片重载卡顿（旧 AUTO_3D_BASEMAP setStyle 方案的根因：新旧瓦片交替空白）。
-//  数据层（lyr-/emotion-）在遮罩之上，保持原色亮度；遮罩只盖底图 → "3D 暗底图"观感。
-const DARK_OVERLAY_SRC = 'dark-overlay-src';
-const DARK_OVERLAY_LAYER = 'dark-overlay';
-const DARK_BG = '#0c0e13';               // 3D 暗底图观感（深蓝黑，高级感）
-const DARK_OVERLAY_FC = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: [[[-180, -90], [-180, 90], [180, 90], [180, -90], [-180, -90]]] }, properties: {} }] };
+// ── 3D 暗底图：预载 dark-matter 真实矢量图层（dm-* 前缀），插在底图与数据层之间，pitch>1 时显隐 ──
+//  不 setStyle 换底图（旧方案根因：setStyle 重载瓦片新旧交替=空白卡顿）→ 改 addSource/addLayer 预载 +
+//  setLayoutProperty 显隐（零 setStyle 操作）。dark-matter 自带 opaque background + 路网/区块纹理 =
+//  真"暗色（无注记）"观感（非纯黑遮罩）。数据层在 dm 之上保持亮。dm 层 vector 瓦片首显加载、后缓存。
+const DM_BASEMAP_KEY = 'dark-matter';
 const _BASEMAP_BG = { 'dark-matter': '#0e0e0e', 'positron': '#ffffff', 'voyager': '#f4f1ea', 'tianditu-img': '#a6c8e0', 'tianditu-vec': '#e8eef4', 'tianditu-img-nolabel': '#a6c8e0' };
 let _dark3DOn = false;                    // 当前是否处暗色 3D 态（pitch>1）
+let _dmLoaded = false;                    // dark-matter 图层是否已预载
+const _dmLayerIds = [];                   // 预载的 dm 图层 id 列表（显隐用）
 
 export function initMap(container = 'map') {
   map = new maplibregl.Map({
@@ -94,7 +94,7 @@ export function initMap(container = 'map') {
   if (map.setVerticalFieldOfView) map.setVerticalFieldOfView(55);
   const _onStyleLoad = () => {
     if (map.setLight) map.setLight({ anchor: 'viewport', position: [1.5, 45, 60], color: '#ffffff', intensity: 0.5 });
-    _ensureDarkOverlay();
+    _loadDarkMatter();
   };
   map.on('style.load', _onStyleLoad);
   map.on('pitch', _onPitch);   // 3D 视角全局触发暗色遮罩（setView3D / map-controls 等任何 pitch 变化）
@@ -111,44 +111,58 @@ export function setBasemap(key) {
   _currentBasemap = key;
   // #map 容器背景随底图（3D 高 pitch/宽 FOV 视口上沿露容器背景；暗底图配白底=刺眼白条）。
   // 3D 暗色态(_dark3DOn)强制深色背景；否则与底图同色。
-  map.getContainer().style.background = _dark3DOn ? DARK_BG : (_BASEMAP_BG[key] || '#ffffff');
+  map.getContainer().style.background = _dark3DOn ? _BASEMAP_BG[DM_BASEMAP_KEY] : (_BASEMAP_BG[key] || '#ffffff');
   map.setStyle(BASEMAPS[key], {
     transformStyle: (prev, next) => {
       const carrySources = {};
       for (const [id, spec] of Object.entries(prev?.sources || {})) {
-        if (id.startsWith('lyr-') || id.startsWith('emotion-') || id === DARK_OVERLAY_SRC) carrySources[id] = spec;
+        if (id.startsWith('lyr-') || id.startsWith('emotion-') || id.startsWith('dm-')) carrySources[id] = spec;
       }
-      if (!carrySources[DARK_OVERLAY_SRC]) carrySources[DARK_OVERLAY_SRC] = { type: 'geojson', data: DARK_OVERLAY_FC };
-      const carryLayers = (prev?.layers || []).filter((l) => l.id.startsWith('lyr-') || l.id.startsWith('emotion-'));
-      // 暗色遮罩层：插在底图(next.layers)与数据层(carryLayers)之间；visibility 沿用 prev（3D 态切底图不闪）
-      const prevDarkVis = (prev?.layers || []).find((l) => l.id === DARK_OVERLAY_LAYER)?.layout?.visibility || (_dark3DOn ? 'visible' : 'none');
-      const darkLayer = { id: DARK_OVERLAY_LAYER, type: 'fill', source: DARK_OVERLAY_SRC, layout: { visibility: prevDarkVis }, paint: { 'fill-color': DARK_BG, 'fill-opacity': 1 } };
-      return { ...next, sources: { ...(next.sources || {}), ...carrySources }, layers: [...(next.layers || []), darkLayer, ...carryLayers] };
+      // 携带 dm 层 + 数据层（prev 顺序：dm 在数据前 → next: 底图 < dm < 数据），visibility 沿用（3D 态切底图不闪）
+      const carryLayers = (prev?.layers || []).filter((l) => l.id.startsWith('lyr-') || l.id.startsWith('emotion-') || l.id.startsWith('dm-'));
+      return { ...next, sources: { ...(next.sources || {}), ...carrySources }, layers: [...(next.layers || []), ...carryLayers] };
     },
   });
 }
 
-/** style.load 时确保暗色遮罩存在（init 首载 + 每次 setBasemap 后）；插在第一个数据层之前，否则追加（数据层后加自然盖其上）。 */
-function _ensureDarkOverlay() {
-  if (!map || map.getSource(DARK_OVERLAY_SRC)) return;
-  map.addSource(DARK_OVERLAY_SRC, { type: 'geojson', data: DARK_OVERLAY_FC });
-  const firstData = (map.getStyle().layers || []).find((l) => l.id.startsWith('lyr-') || l.id.startsWith('emotion-'));
-  map.addLayer({
-    id: DARK_OVERLAY_LAYER, type: 'fill', source: DARK_OVERLAY_SRC,
-    layout: { visibility: _dark3DOn ? 'visible' : 'none' },
-    paint: { 'fill-color': DARK_BG, 'fill-opacity': 1 },
-  }, firstData ? firstData.id : undefined);
+/** 预载 dark-matter 真实矢量图层（fetch style JSON → addSource/addLayer，dm- 前缀避冲突；插在首个数据层前）。
+ *  各 addLayer 包 try/catch（跳过依赖 sprite 的符号层等）；visibility 初值 none（2D 不显）。style.load 调一次。 */
+async function _loadDarkMatter() {
+  if (_dmLoaded || !map) return;
+  try {
+    const r = await fetch(BASEMAPS[DM_BASEMAP_KEY]);
+    if (!r.ok) return;
+    const style = await r.json();
+    for (const [sid, spec] of Object.entries(style.sources || {})) {
+      const id = 'dm-' + sid;
+      if (!map.getSource(id)) { try { map.addSource(id, spec); } catch (e) { /* source 冲突跳过 */ } }
+    }
+    const firstData = (map.getStyle().layers || []).find((l) => l.id.startsWith('lyr-') || l.id.startsWith('emotion-'));
+    const beforeId = firstData ? firstData.id : undefined;
+    for (const layer of style.layers || []) {
+      const id = 'dm-' + layer.id;
+      if (map.getLayer(id)) continue;
+      const def = { ...layer, id, layout: { ...(layer.layout || {}), visibility: 'none' } };
+      if (layer.source) def.source = 'dm-' + layer.source;
+      try { map.addLayer(def, beforeId); _dmLayerIds.push(id); } catch (e) { /* 跳过依赖 sprite 的层 */ }
+    }
+    _dmLoaded = true;
+    if (_dark3DOn) _applyDark3D(true);   // 预载完成时若已在 3D 态，立即显
+  } catch (e) { console.warn('[map] dark-matter 预载失败', e); }
 }
 
-/** pitch 全局监听：pitch>1（任何 3D 触发）→ 显暗色遮罩 + #map 深背景；pitch≈0（2D）→ 隐 + 还原。
- *  去抖：仅状态翻转时操作（setLayoutProperty 一次，不每帧）。 */
+/** pitch 全局监听：pitch>1（任何 3D 触发）→ 显 dm 层 + #map 暗背景；pitch≈0 → 隐 + 还原。仅状态翻转时操作。 */
 function _onPitch() {
   if (!map) return;
   const is3d = map.getPitch() > 1;
   if (is3d === _dark3DOn) return;
   _dark3DOn = is3d;
-  if (map.getLayer(DARK_OVERLAY_LAYER)) map.setLayoutProperty(DARK_OVERLAY_LAYER, 'visibility', is3d ? 'visible' : 'none');
-  map.getContainer().style.background = is3d ? DARK_BG : (_BASEMAP_BG[_currentBasemap] || '#ffffff');
+  _applyDark3D(is3d);
+}
+function _applyDark3D(on) {
+  if (!map) return;
+  if (_dmLoaded) for (const id of _dmLayerIds) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
+  map.getContainer().style.background = on ? _BASEMAP_BG[DM_BASEMAP_KEY] : (_BASEMAP_BG[_currentBasemap] || '#ffffff');
 }
 
 const PITCH_3D = 60;   // 3D 俯角（与 map-controls.js PITCH_3D 统一）
