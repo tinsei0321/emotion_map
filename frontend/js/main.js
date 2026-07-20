@@ -23,7 +23,7 @@ import { initParamPanel } from './param-panel.js';
 import { initDrawTool, startDraw, stopDraw } from './draw-tool.js';
 import { initHeatmapLegend } from './heatmap-legend.js';
 import { initSearchBar } from './search-bar.js';
-import { initTimeline, showTimeline, hideTimeline } from './timeline.js';
+import { initTimeline, bindGrid, unbindGrid } from './timeline.js';
 import { loadManifest, tagLayer } from './time-source.js';
 import { initTimeBar } from './time-bar.js';
 import { toast } from './toast.js';
@@ -70,8 +70,8 @@ function refreshOverview() {
   setOverview(layer);
   // 时间轴（任务2）：仅 L2·综合·标准网格 焦点层时显（其 scaffold cell 承载 T1→T3 演进）
   const fl = layer && (focusLayer(layer) || layer);
-  if (fl && isOverallGrid((fl.paint && fl.paint._ui) || {})) showTimeline(fl);
-  else hideTimeline();
+  if (fl && isOverallGrid((fl.paint && fl.paint._ui) || {})) bindGrid(fl);
+  else unbindGrid();
   const fc = (layer && layer.kind === 'point') ? layer.fc : { type: 'FeatureCollection', features: [] };
   setTable(fc, layer);
 }

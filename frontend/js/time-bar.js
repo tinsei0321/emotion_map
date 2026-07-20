@@ -10,6 +10,7 @@
 // 详见 plan 07-19-cb-lovely-quiche.md。
 
 import { applyTime, availablePeriods, slicesForPeriod, periodLabel, isManifestReady, loadManifest } from './time-source.js';
+import { renderSlice, play as playGrid, stop as stopGrid, isBound as gridBound } from './timeline.js';
 
 let _btn = null;          // .time-bar 圆按钮
 let _card = null;         // .tb-card 展开卡片
@@ -17,6 +18,10 @@ let _isOpen = false;
 let _period = null;       // 当前粒度（phase/day/...）
 let _sliceKey = null;     // 当前选中片 key
 let _cal = { y: 2026, m: 0 };   // 月历游标（日粒度用）
+let _isPlaying = false;         // play 按钮态（▶/⏸）
+
+const ICON_PLAY = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M7 5v14l12-7z"/></svg>';
+const ICON_PAUSE = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
 
 const CAL_WEEKS = ['日', '一', '二', '三', '四', '五', '六'];
 const CAL_MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
@@ -64,6 +69,7 @@ async function _openCard() {
   _render();
 }
 function _closeCard() {
+  _stopPlay();
   _isOpen = false;
   _btn.classList.remove('is-open');
   _card.hidden = true;
@@ -81,12 +87,14 @@ function _render() {
     </div>
     <div class="tb-periods">${periods.map((p) => `<button class="tb-p ${p === _period ? 'is-active' : ''}" data-period="${p}" type="button">${periodLabel(p)}</button>`).join('')}</div>
     <div class="tb-body">${_renderBody(slices)}</div>
-    ${slices.length > 1 ? `<div class="tb-foot"><input class="tb-slider" type="range" min="0" max="${slices.length - 1}" step="1" value="${_sliceIndex(slices)}" aria-label="时间滑动"><span class="tb-slider-i">${_sliceIndex(slices) + 1}/${slices.length}</span></div>` : ''}`;
+    ${slices.length > 1 ? `<div class="tb-foot"><button class="tb-play" type="button" title="播放/暂停" aria-label="播放/暂停">${_isPlaying ? ICON_PAUSE : ICON_PLAY}</button><input class="tb-slider" type="range" min="0" max="${slices.length - 1}" step="1" value="${_sliceIndex(slices)}" aria-label="时间滑动"><span class="tb-slider-i">${_sliceIndex(slices) + 1}/${slices.length}</span></div>` : ''}`;
   _card.querySelector('.tb-x').addEventListener('click', _closeCard);
   _card.querySelectorAll('.tb-p').forEach((b) => b.addEventListener('click', () => _setPeriod(b.dataset.period)));
   _wireBody(slices);
   const _sl = _card.querySelector('.tb-slider');
   if (_sl) _sl.addEventListener('input', () => { const s = slices[Number(_sl.value)]; if (s) _pick(s.key); });
+  const _pl = _card.querySelector('.tb-play');
+  if (_pl) _pl.addEventListener('click', _togglePlay);
 }
 
 function _sliceLabel(slices) {
@@ -146,15 +154,46 @@ function _wireBody(slices) {
 
 // ── 选片 / 切粒度 ──
 
-/** 选片：applyTime 换源 + 刷新卡片高亮（不全量重渲，仅刷 active 态）。 */
+/** 选片：applyTime 换源（点层）+ renderSlice（grid，若 timeline 已绑）+ 刷新高亮。 */
 function _pick(key) {
   if (!key || key === _sliceKey) return;
+  _stopPlay();                    // 用户选片 → 停播
   _sliceKey = key;
-  applyTime(_period, key);
+  applyTime(_period, key, gridBound());   // grid 绑定时 silent（renderSlice 驱动 grid Overview，避抢刷）
+  renderSlice(key);               // grid 跟随（timeline 未绑则 no-op）
   _syncActive();
 }
+
+// ── 播放（grid lerp 平滑演进 + 点层片边界离散换源）──
+function _togglePlay() { _isPlaying ? _stopPlay() : _startPlay(); }
+function _startPlay() {
+  const slices = slicesForPeriod(_period);
+  if (!slices.length) return;
+  const fromK = _sliceKey || slices[0].key;
+  const toK = slices[slices.length - 1].key;
+  _isPlaying = true; _setIcon(true);
+  playGrid(fromK, toK, _onPlaySlice, _onPlayDone);
+}
+function _stopPlay() {
+  if (!_isPlaying) return;
+  _isPlaying = false;
+  stopGrid();
+  _setIcon(false);
+}
+function _onPlaySlice(key) {            // 片边界：点层换源 + UI 跟随
+  _sliceKey = key;
+  applyTime(_period, key, gridBound());  // grid 绑定时 silent（_renderFrame 驱动 grid Overview，避抢刷）
+  _syncActive();
+}
+function _onPlayDone() { _isPlaying = false; _setIcon(false); }
+function _setIcon(playing) {
+  const b = _card && _card.querySelector('.tb-play');
+  if (b) b.innerHTML = playing ? ICON_PAUSE : ICON_PLAY;
+}
+
 function _setPeriod(p) {
   if (p === _period) return;
+  _stopPlay();
   _period = p;
   const slices = slicesForPeriod(p);
   _sliceKey = slices[0] && slices[0].key;   // 切粒度 → 回到该片首片

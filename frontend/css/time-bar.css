@@ -164,6 +164,22 @@
   padding-top: 10px;
   border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
+.tb-play {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 26px; height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #1A73E8;
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--geojson-transition, 150ms), transform var(--geojson-transition, 150ms);
+}
+.tb-play:hover { background: #1557b8; }
+.tb-play:active { transform: scale(0.92); }
+.tb-play svg { display: block; }
 .tb-slider {
   flex: 1;
   -webkit-appearance: none;

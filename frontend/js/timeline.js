@@ -1,36 +1,31 @@
-// ═══ timeline.js — 任务2 时间轴（T1→T3 成效动画演示）═══════════════════════════════
-// 一条通用时间轴（Tab 条下）：scrub 进度条 + 离散 T1/T2/T3 停点 + play/pause/prev/next。
-// 播放尊重当前 sub-Tab：图层总览 → 演进综合（count line + 饼图）；极性深读 → 演进当前极性（count + 矩阵）。
+// ═══ timeline.js — 全局时间轴 · grid 演进 headless 引擎（A3）═══════════════════════════
+// 从「带 UI 的 T1-T3 小动画玩具」改造为 headless 引擎：无自带 UI，由 time-bar 驱动。
+//   - 数据：从 manifest 发现片（slicesOf/loadSlice，time-source.js），不再写死 T1/T2/T3。
+//   - 片数泛化 N（_progress 0..n-1）；阶段=lerp 平滑演进 / 日度=离散（按 period，time-bar 决定）。
+//   - 导出：bindGrid/unbindGrid（绑定焦点 grid）/ renderSlice（离散）/ play+stop（动画）/ isBound。
+//   - UI（旧侧栏 #timeline-wrap widget）已 retire → 时间按钮 + 卡片在 time-bar.js。
 //
-// 地图柱体动画 = 路线 A（JS rAF + setData）：每帧 lerp 各 cell 的 _grid_h/_grid_norm 等属性 →
-//   map.getSource(sid).setData(lerpedFc)（updateGridSourceData）。承重 paint-inplace-swap-view：单 source、
+// 地图柱体动画 = 路线 A（JS rAF + setData）：每帧 lerp 各 cell 的 _grid_h/_grid_norm →
+//   updateGridSourceData（= getSource().setData）。承重 paint-inplace-swap-view：单 source、
 //   不注册隐藏层、不 removeSource/re-renderLayer（保 tip/选中/bindings）。
 //
-// 数据：L2 点要素（DATA/performance/yichang_L2_T{1,2,3}_*.geojson）自带 polarity/domain/element/time_label。
-//   snap-to-grid O(1) 聚合进活跃 grid scaffold 格 → 每 T 的 per-cell 统计 → 共享 max 归一化 _grid_h（跨 T 可比）。
-//
-// 错峰：柱体(800ms) → 数字/饼/矩阵(600ms, delay 200ms) → 关键词淡入(300ms)。
-// 色彩 #3A5368 主 / #8B658B 副（timeline.css）。
-// 详见 plan + revision-log 5.29；承重 memory: paint-inplace-swap-view / sticky-hover-priority /
-//   generate-grid-exclusive-vs-viewmode / verify-with-webapp-testing-skill。
+// 播放语义：grid 平滑 lerp（张力来源），点层在片边界离散换源（time-bar 的 onSlice 回调 applyTime）。
+//   grid 焦点时 _renderFrame 已 paint OverallKpi（按 Overview 当前 sub-Tab）。
+// 详见 plan 07-19-cb-lovely-quiche.md（A3）；承重 memory: paint-inplace-swap-view / tool-no-auto-overview。
 
-import { getLayer, deriveTimeTag } from './state.js';
 import { updateGridSourceData } from './map.js';
 import { piToNorm } from './grid-tool.js';
+import { slicesOf, loadSlice, tagLayer } from './time-source.js';
 import {
   overviewKpiFromFeats, polarityKpiFromFeats, overallMatrixFromFeats,
   paintOverallKpi, paintPolarityKpi, paintOverallMatrix, paintOverallKeywords, flashOverviewKeywords,
 } from './panel.js';
 
 // ── 常量 ──
-const TL_T = ['T1', 'T2', 'T3'];                    // 进度 0/1/2
-const PT_URL = (T) => `/DATA/performance/yichang_L2_${T}_L2_result_geojson.geojson`;
-const SEG_DUR = 1100;                                // 每 T 段时长 ms（柱体 800 + 关键词尾 300）
-const KPI_DELAY = 200, KPI_WINDOW = 600;            // KPI 窗口（错峰）
-const TL_MAIN = '#3A5368', TL_SUB = '#8B658B';      // 与 css 同源（JS 动态色用）
-const T_LABEL = { T1: 'T1 · 基线', T2: 'T2 · 过渡', T3: 'T3 · 成效' };
+const SEG_DUR = 1100;                                // 每片段时长 ms（柱体 800 + 关键词尾 300）
+const KPI_DELAY = 200, KPI_WINDOW = 600;            // KPI 错峰窗口
 
-// heightOf 复刻自 grid-tool.preprocessGrid（offset+sqrt γ=0.5；shared max 跨 T 可比 → 不调 preprocessGrid 承重路径）
+// heightOf 复刻自 grid-tool.preprocessGrid（offset+sqrt γ=0.5；shared max 跨片可比 → 不调 preprocessGrid 承重路径）
 const H_OFFSET = 2, H_GAMMA = 0.5, H_LOW_UNIT = 0.025;
 function heightOf(val, maxVal) {
   if (val <= 0) return 0;
@@ -42,104 +37,103 @@ const easeInOut = (t) => { t = Math.max(0, Math.min(1, t)); return t < 0.5 ? 2 *
 const lerp = (a, b, t) => a + (b - a) * t;
 
 // ── 状态 ──
-let _el = null;             // 时间轴根 DOM (.tl-wrap)
 let _layer = null;          // 绑定的活跃 L2 综合 grid 层
-let _snaps = null;          // { T1:{fc,overall,polarities}, T2:.., T3:.. }
-let _progress = 0;          // 0..2 连续进度
+let _snaps = null;          // { _for, step, idx, scaffold, byKey:Map<key,snap>, keys:[key...] }
+let _progress = 0;          // 0..(n-1) 连续进度
 let _playing = false, _raf = 0, _playStart = 0, _playFrom = 0, _playTo = 0;
-let _segFlashed = -1;       // 错峰关键词 flash 已触发的段（-1 none）
-let _busy = false;          // 数据 prep 中（禁用控件）
+let _segFlashed = -1;       // 错峰关键词 flash 已触发的段
+let _lastFiredSeg = -1;     // onSlice 已触发的片索引（去重）
+let _onSlice = null;        // play 片边界回调 (key)=>...（time-bar 用来 applyTime 换点层 + 刷高亮）
+let _onDone = null;          // play 自然结束回调（time-bar 用来复位 ▶ 图标）
+let _busy = false;          // 数据 prep 中
+let _lastKwSnap = null;     // 上次关键词所用 snap（综合模式跨段才换词）
 
-// ── DOM 构建（自包含组件，注入 #timeline-wrap）──
-function _buildDom() {
-  const wrap = document.createElement('div');
-  wrap.className = 'tl-wrap';
-  wrap.innerHTML = `
-    <div class="tl-head"><span class="tl-title">时间轴</span><span class="tl-label" id="tl-label">—</span></div>
-    <div class="tl-bar">
-      <div class="tl-track" id="tl-track">
-        <div class="tl-progress" id="tl-progress"></div>
-        <button class="tl-stop" data-t="0" style="left:0%">T1</button>
-        <button class="tl-stop" data-t="1" style="left:50%">T2</button>
-        <button class="tl-stop" data-t="2" style="left:100%">T3</button>
-        <div class="tl-thumb" id="tl-thumb"></div>
-      </div>
-    </div>
-    <div class="tl-controls">
-      <button class="tl-btn" id="tl-prev" title="上一时间点" type="button">&#9664;</button>
-      <button class="tl-btn tl-play" id="tl-play" title="播放/暂停" type="button">&#9654;</button>
-      <button class="tl-btn" id="tl-next" title="下一时间点" type="button">&#9654;</button>
-    </div>`;
-  return wrap;
-}
+/** headless：无 DOM 初始化。main.js 启动仍调用（兼容），此处 no-op。 */
+export function initTimeline() { /* headless engine — 无 widget DOM */ }
 
-/** 初始化：注入 DOM + 绑事件（main.js 启动时调一次）。 */
-export function initTimeline() {
-  const host = document.getElementById('timeline-wrap');
-  if (!host || _el) return;
-  _el = _buildDom();
-  _el.hidden = true;   // 初始隐藏（refreshOverview 先于 init 跑过 hideTimeline 但 _el 尚未建）
-  host.appendChild(_el);
-  // [DEBUG 临时] 暴露内部状态便于诊断（提交前删）
-  window.__tl = () => ({
-    hasLayer: !!_layer, layerId: _layer && _layer.id, layerFeats: _layer && _layer.fc && _layer.fc.features && _layer.fc.features.length,
-    layerUi: _layer && _layer.paint && _layer.paint._ui && { tool: _layer.paint._ui.tool, level: _layer.paint._ui.level, polarity: _layer.paint._ui.polarity },
-    hidden: _el && _el.hidden,
-    hasSnaps: !!_snaps, forId: _snaps && _snaps._for, snapKeys: _snaps && Object.keys(_snaps.T),
-    t1: _snaps && _snaps.T && _snaps.T.T1 && { feats: _snaps.T.T1.fc.features.length, withPts: _snaps.T.T1.fc.features.filter((f) => (f.properties.point_count || 0) > 0).length, overall: _snaps.T.T1.overall },
-    busy: _busy, playing: _playing, progress: _progress,
-  });
-  _el.querySelector('#tl-track').addEventListener('click', (e) => {
-    if (_busy) return;
-    const r = e.currentTarget.getBoundingClientRect();
-    const p = Math.max(0, Math.min(2, ((e.clientX - r.left) / r.width) * 2));
-    _jumpTo(p);
-  });
-  _el.querySelectorAll('.tl-stop').forEach((b) =>
-    b.addEventListener('click', (e) => { e.stopPropagation(); if (!_busy) _jumpTo(parseInt(b.dataset.t, 10)); }));
-  _el.querySelector('#tl-prev').addEventListener('click', () => { if (!_busy) _jumpTo(Math.round(_progress) - 1); });
-  _el.querySelector('#tl-next').addEventListener('click', () => { if (!_busy) _jumpTo(Math.round(_progress) + 1); });
-  _el.querySelector('#tl-play').addEventListener('click', () => { if (!_busy) _togglePlay(); });
-}
+// ── 绑定 / 解绑（main.js refreshOverview 调：焦点是 L2 综合 grid → bindGrid，否则 unbindGrid）──
 
-// ── 显隐（仅 L2 综合 grid 焦点层时显；main.js 调）──
-export function showTimeline(layer) {
-  if (!_el) initTimeline();
-  console.log('[timeline] showTimeline', layer && layer.id, 'feats=', layer && layer.fc && layer.fc.features && layer.fc.features.length);
-  _el.hidden = false;
+/** 绑定焦点 grid 层：补打 datasetId（grid 生成时未打）→ 按 manifest 预聚所有片 → 渲染当前片。 */
+export function bindGrid(layer) {
+  if (!layer) return;
+  if (!layer.datasetId) tagLayer(layer);            // grid-tool 生成时未 tag → 按源 srcName 补打（matchDataset）
   _layer = layer;
-  _lastKwSnap = null;   // 重新激活 → 关键词首帧重画
-  _progress = Math.max(0, Math.min(2, TL_T.indexOf(layer.timeTag || deriveTimeTag(layer.fc))));
-  _prepare(layer).then(() => { console.log('[timeline] prepare done →', window.__tl && window.__tl()); _renderAt(_progress); _updateLabel(); });
+  _lastKwSnap = null;
+  _prepare(layer).then(() => {
+    if (!_snaps) return;
+    const cur = (layer.sliceKey && _snaps.keys.includes(layer.sliceKey)) ? layer.sliceKey : _snaps.keys[0];
+    renderSlice(cur);
+  });
 }
-export function hideTimeline() {
-  _stop();
-  if (_layer && _snaps) {
-    // 还原活跃层原始 source data（回到该层真实 T 的 _grid_h/_grid_norm）
-    updateGridSourceData(_layer, _layer.fc);
-  }
+/** 解绑：停播 + 还原活跃层原始 source data（回该层真实片的 _grid_h/_grid_norm）。 */
+export function unbindGrid() {
+  stop();
+  if (_layer && _snaps) updateGridSourceData(_layer, _layer.fc);
   _layer = null; _snaps = null;
-  if (_el) _el.hidden = true;
+}
+export function isBound() { return !!(_layer && _snaps); }
+
+// ── 离散渲染（time-bar _pick / bindGrid 初始片用）──
+
+/** 即时把绑定 grid 设到 sliceKey 片（a=b=snap, t=1 → 无 lerp）。片不在 snaps → no-op。 */
+export function renderSlice(sliceKey) {
+  if (!_snaps || !_layer) return;
+  const snap = _snaps.byKey.get(sliceKey);
+  if (!snap) return;
+  _progress = _snaps.keys.indexOf(sliceKey);
+  _renderFrame(snap, snap, 1, 1);
 }
 
-// ── 数据 prep：snap-to-grid 聚合 T1/T2/T3 进 scaffold，建 per-T snapshot ──
+// ── 播放（time-bar play 按钮驱动）──
+
+/** 播放 fromKey..toKey（rAF lerp 跨片）；每进新片边界调 onSlice(key)；自然结束调 onDone()。 */
+export function play(fromKey, toKey, onSlice, onDone) {
+  if (!_snaps) return;
+  const keys = _snaps.keys;
+  const from = Math.max(0, keys.indexOf(fromKey));
+  let to = keys.indexOf(toKey);
+  if (to < 0 || to <= from) to = keys.length - 1;    // 越界/单段 → 播到末
+  _playing = true;
+  _playFrom = from; _playTo = to;
+  _onSlice = onSlice || null;
+  _onDone = onDone || null;
+  _segFlashed = -1;
+  _lastFiredSeg = from - 1;                          // 首帧 from 片也触发 onSlice
+  _playStart = performance.now();
+  _tick();
+}
+/** 停播（用户操作 slider/stop/切粒度/收起时调；清回调不调 onDone）。 */
+export function stop() {
+  if (!_playing) return;
+  _playing = false;
+  if (_raf) cancelAnimationFrame(_raf);
+  _raf = 0;
+  _onSlice = null;
+  _onDone = null;
+}
+
+// ── 数据 prep：snap-to-grid 聚合所有片进 scaffold，建 per-key snapshot ──
+
 async function _prepare(layer) {
   if (_snaps && _snaps._for === layer.id) return;
-  _busy = true; _setBusy(true);
+  const datasetId = layer.datasetId;
+  const keys = datasetId ? slicesOf(datasetId).map((s) => s.key) : [];
+  if (!keys.length) { _snaps = null; return; }       // 无数据集/无片 → 不动画（grid 保持原状）
+  _busy = true;
   try {
     const scaffold = layer.fc.features;
     const step = (layer.paint && layer.paint._ui && layer.paint._ui.cellSize) || 400;
-    const idx = _buildCellIndex(scaffold, step);   // {originX,originY,step,cells:Map}
-    // 拉 3 T 点集 + 聚合
-    const perT = {};
-    for (const T of TL_T) {
-      const fc = await _fetchPoints(T);
-      perT[T] = fc ? _aggregate(fc.features, idx) : null;
+    const idx = _buildCellIndex(scaffold, step);
+    // 拉所有片点集 + 聚合（phase 片少全量；日/周/月密集 → 未来改 lazy，当前 manifest 仅 phase）
+    const perKey = {};
+    for (const k of keys) {
+      const fc = await loadSlice(datasetId, k);
+      perKey[k] = fc ? _aggregate(fc.features, idx) : null;
     }
-    // 共享 max（跨 T 可比）
+    // 共享 max（跨片可比）
     const maxes = { all: 0, pos: 0, neg: 0, neu: 0 };
-    for (const T of TL_T) {
-      const a = perT[T]; if (!a) continue;
+    for (const k of keys) {
+      const a = perKey[k]; if (!a) continue;
       for (const c of a.cells) {
         if (c.point_count > maxes.all) maxes.all = c.point_count;
         if (c.np > maxes.pos) maxes.pos = c.np;
@@ -147,12 +141,12 @@ async function _prepare(layer) {
         if (c.ne > maxes.neu) maxes.neu = c.ne;
       }
     }
-    // 建 per-T virtual fc + KPI snapshot
-    _snaps = { _for: layer.id, step, idx, scaffold, T: {} };
-    for (const T of TL_T) {
-      const a = perT[T]; if (!a) { _snaps.T[T] = _snaps.T[TL_T[0]] || _emptySnap(layer); continue; }
-      const fc = _buildVirtualFc(layer, a, maxes);
-      _snaps.T[T] = {
+    // 建 per-key virtual fc + KPI snapshot
+    const byKey = new Map();
+    for (const k of keys) {
+      const a = perKey[k];
+      const fc = a ? _buildVirtualFc(layer, a, maxes) : _emptyFc(layer);
+      byKey.set(k, {
         fc,
         overall: overviewKpiFromFeats(fc.features),
         overallMatrix: overallMatrixFromFeats(fc.features),
@@ -161,27 +155,23 @@ async function _prepare(layer) {
           negative: polarityKpiFromFeats(fc.features, 'negative'),
           neutral: polarityKpiFromFeats(fc.features, 'neutral'),
         },
-      };
+      });
     }
+    _snaps = { _for: layer.id, step, idx, scaffold, byKey, keys };
   } catch (e) {
     console.error('[timeline] prep 失败：', e);
-    _setLabel('数据准备失败：' + ((e && e.message) || e));
+    _snaps = null;
   } finally {
-    _busy = false; _setBusy(false);
+    _busy = false;
   }
 }
 
-function _emptySnap(layer) {
+function _emptyFc(layer) {
   const fc = { type: 'FeatureCollection', features: layer.fc.features.map((f) => ({ ...f, properties: { ...(f.properties || {}) } })) };
-  return { fc, overall: overviewKpiFromFeats(fc.features), overallMatrix: overallMatrixFromFeats(fc.features), polarities: { positive: { cell: {}, total: 0 }, negative: { cell: {}, total: 0 }, neutral: { cell: {}, total: 0 } } };
+  return fc;
 }
 
-async function _fetchPoints(T) {
-  try {
-    const r = await fetch(PT_URL(T), { cache: 'force-cache' });
-    return r.ok ? await r.json() : null;
-  } catch { return null; }
-}
+// ── snap-to-grid 算法（承重：保留不动）──
 
 /** scaffold 格 → snap-to-grid 桶索引（${ix},${iy} → [{i,cx,cy}]）。
  *  step 必须是「度」（cell 经纬度宽高），不是 cellSize 米——用米除经纬度会让所有格塌进一格。
@@ -260,7 +250,7 @@ function _topKey(obj) {
   return best || '';
 }
 
-/** scaffold 几何 + per-T 统计 + _grid_* （共享 max）。返回独立 fc（不污染 layer.fc）。 */
+/** scaffold 几何 + per-片统计 + _grid_*（共享 max）。返回独立 fc（不污染 layer.fc）。 */
 function _buildVirtualFc(layer, agg, maxes) {
   const scaffold = layer.fc.features;
   const feats = new Array(scaffold.length);
@@ -290,9 +280,9 @@ function _buildVirtualFc(layer, agg, maxes) {
   return { type: 'FeatureCollection', features: feats };
 }
 
-// ── 渲染（每帧 / scrub）──
+// ── 渲染（每帧 / 离散）──
 
-/** 检测当前 sub-Tab + 极性。返回 {mode:'layer'|'polarity', pol?}。 */
+/** 检测当前 Overview sub-Tab + 极性。返回 {mode:'layer'|'polarity', pol?}。 */
 function _currentMode() {
   const polPane = document.getElementById('ov-polarity-pane');
   if (polPane && polPane.classList.contains('is-active')) {
@@ -302,19 +292,18 @@ function _currentMode() {
   return { mode: 'layer' };
 }
 
-/** 在 progress（0..2 连续）处渲染一帧（scrub 用；无错峰）。 */
+/** 在 progress（0..n-1 连续）处渲染一帧（离散 renderSlice 走 a=b=t=1）。 */
 function _renderAt(progress) {
   if (!_snaps || !_layer) return;
-  const i = Math.floor(progress);
-  const a = _snaps.T[TL_T[Math.max(0, Math.min(2, i))]];
-  const b = _snaps.T[TL_T[Math.max(0, Math.min(2, i + 1))]] || a;
+  const keys = _snaps.keys, n = keys.length;
+  const i = Math.max(0, Math.min(n - 1, Math.floor(progress)));
+  const a = _snaps.byKey.get(keys[i]);
+  const b = _snaps.byKey.get(keys[Math.min(n - 1, i + 1)]) || a;
   const t = easeInOut(progress - i);
   _renderFrame(a, b, t, t);
-  _updateThumb(progress);
 }
 
 /** 核心帧渲染：map bars 用 barsT、KPI 用 kpiT（错峰时两者不同步）。 */
-let _lastKwSnap = null;   // 上次关键词所用 snap（综合模式跨段才换词，避免每帧重渲染）
 function _renderFrame(snapA, snapB, barsT, kpiT) {
   // map：lerp 每 cell 的高度/色字段 → setData。**不 lerp _grid_n_***（极性 filter `_grid_n_*>0`
   //   若 lerp 穿越 0 → cell 闪烁；保持 snapA 值让 filter 稳定，高度/色用 _grid_h_* 平滑过渡）。
@@ -324,7 +313,7 @@ function _renderFrame(snapA, snapB, barsT, kpiT) {
   for (let i = 0; i < fa.length; i++) {
     const pa = fa[i].properties || {}, pb = (fb[i] && fb[i].properties) || {};
     const props = {};
-    for (const k of Object.keys(pa)) props[k] = pa[k];   // 拷贝（含 _grid_n_*/domain_top/element_top/topic_top 等非动画字段）
+    for (const k of Object.keys(pa)) props[k] = pa[k];   // 拷贝（含 _grid_n_*/domain_top/element_top 等非动画字段）
     for (const k of flds) props[k] = lerp(pa[k] || 0, pb[k] || 0, barsT);
     props._grid_norm = lerp(pa._grid_norm ?? 0.5, pb._grid_norm ?? 0.5, barsT);   // 颜色随 pi 平滑
     lerped[i] = { type: 'Feature', geometry: fa[i].geometry, properties: props };
@@ -339,12 +328,12 @@ function _renderFrame(snapA, snapB, barsT, kpiT) {
   } else {
     paintOverallKpi(_lerpOvKpi(snapA.overall, snapB.overall, kpiT));
     paintOverallMatrix(_lerpOverallMatrix(snapA.overallMatrix, snapB.overallMatrix, kpiT));
-    // 关键词离散切换：按最近 T 停点，跨 0.5 才换（避免每帧重渲染、保 flash 动画）
+    // 关键词离散切换：按最近片停点，跨 0.5 才换（避免每帧重渲染、保 flash 动画）
     const kwSnap = barsT < 0.5 ? snapA : snapB;
     if (kwSnap !== _lastKwSnap) { paintOverallKeywords(kwSnap.fc.features); _lastKwSnap = kwSnap; }
   }
 }
-/** 综合 4×5 矩阵 lerp：n 固定（scaffold 格数跨 T 不变），pi 均值 lerp（→ 颜色变）。
+/** 综合 4×5 矩阵 lerp：n 固定（scaffold 格数跨片不变），pi 均值 lerp（→ 颜色变）。
  *  返回 cell map；piSum=piAvg, piCnt=1 → _matrixHtml 算 pi=piAvg。 */
 function _lerpOverallMatrix(a, b, t) {
   const cell = {};
@@ -368,95 +357,43 @@ function _lerpPolKpi(a, b, t) {
   return { total: lerp(a.total, b.total, t), cell };
 }
 
-function _updateThumb(p) {
-  if (!_el) return;
-  const pct = (p / 2) * 100;
-  const prog = _el.querySelector('#tl-progress');
-  const thumb = _el.querySelector('#tl-thumb');
-  if (prog) prog.style.width = pct + '%';
-  if (thumb) thumb.style.left = pct + '%';
-}
-function _updateLabel() {
-  if (!_el) return;
-  const T = TL_T[Math.max(0, Math.min(2, Math.round(_progress)))];
-  const lab = _el.querySelector('#tl-label');
-  if (lab) lab.textContent = T_LABEL[T] || T;
-}
+// ── rAF 播放循环（N 片泛化）──
 
-// ── 播放控制 ──
-function _togglePlay() {
-  if (_playing) _stop();
-  else _play();
-}
-function _setLabel(txt) {
-  const lab = _el && _el.querySelector('#tl-label');
-  if (lab) lab.textContent = txt;
-}
-function _play() {
-  if (!_snaps) {
-    console.error('[timeline] play 阻塞：_snaps 为 null（数据 prep 失败或未完成）', window.__tl && window.__tl());
-    _setLabel('数据未就绪（F12 控制台见 [timeline]）');
-    return;
-  }
-  _playing = true;
-  _playFrom = (Math.round(_progress) >= 2) ? 0 : _progress;   // 已到 T3 → 回 T1 重播
-  _playTo = 2;
-  _playStart = performance.now();
-  _segFlashed = -1;
-  _setPlayIcon(true);
-  _tick();
-}
-function _stop() {
-  if (!_playing) return;
-  _playing = false;
-  if (_raf) cancelAnimationFrame(_raf);
-  _raf = 0;
-  _setPlayIcon(false);
-}
 function _tick() {
-  if (!_playing) return;
+  if (!_playing || !_snaps) return;
+  const keys = _snaps.keys, n = keys.length;
   const elapsed = performance.now() - _playStart;
   const totalSegs = _playTo - _playFrom;
   const totalDur = totalSegs * SEG_DUR;
   if (elapsed >= totalDur) {
     _progress = _playTo;
-    _renderAt(_progress); _updateThumb(_progress); _updateLabel();
-    _stop(); return;
+    _renderAt(_progress);
+    _fireOnSlice(Math.round(_progress));        // 末片边界
+    const done = _onDone;                        // 捕获后 stop 清空不调
+    stop();
+    if (done) done();
+    return;
   }
-  const p = _playFrom + elapsed / SEG_DUR;   // 每段 SEG_DUR ms（段 = 相邻 T 停点）
+  const p = _playFrom + elapsed / SEG_DUR;      // 每段 SEG_DUR ms（段 = 相邻片）
   _progress = p;
-  // 错峰：每段内 barsT(0..1 全程) / kpiT(delay+window) / 关键词 flash(段尾)
   const seg = Math.floor(p);
+  // 片边界 onSlice：进入新片（seg 增）→ 通知 time-bar 换点层
+  if (seg > _lastFiredSeg && seg <= _playTo) { _fireOnSlice(seg); }
   const segLocal = p - seg;
   const barsT = easeInOut(segLocal);
   const kpiT = easeInOut(Math.max(0, Math.min(1, (segLocal * SEG_DUR - KPI_DELAY) / KPI_WINDOW)));
   if (segLocal >= 0.75 && _segFlashed < seg) { flashOverviewKeywords(); _segFlashed = seg; }
-  const a = _snaps.T[TL_T[seg]];
-  const b = _snaps.T[TL_T[Math.min(2, seg + 1)]] || a;
+  const a = _snaps.byKey.get(keys[Math.min(n - 1, seg)]);
+  const b = _snaps.byKey.get(keys[Math.min(n - 1, seg + 1)]) || a;
   _renderFrame(a, b, barsT, kpiT);
-  _updateThumb(p);
-  _updateLabel();
   _raf = requestAnimationFrame(_tick);
 }
 
-/** 跳到 progress（scrub click / 停点 / prev/next）：停点用 easeTo 短动画，否则即时。 */
-function _jumpTo(p) {
-  p = Math.max(0, Math.min(2, p));
-  console.log('[timeline] jumpTo', p, 'snaps=', !!_snaps);
-  _stop();
-  _progress = p;
-  _renderAt(p);
-  _updateThumb(p);
-  _updateLabel();
-}
-
-function _setPlayIcon(playing) {
-  const b = _el && _el.querySelector('#tl-play');
-  if (b) b.innerHTML = playing ? '&#10074;&#10074;' : '&#9654;';
-}
-function _setBusy(busy) {
-  if (!_el) return;
-  _el.classList.toggle('is-busy', busy);
-  const lab = _el.querySelector('#tl-label');
-  if (lab) lab.textContent = busy ? '加载数据…' : (T_LABEL[TL_T[Math.max(0, Math.min(2, Math.round(_progress)))]] || '—');
+/** 触发片边界回调（去重：同 seg 不重复）。 */
+function _fireOnSlice(seg) {
+  if (!_snaps || _onSlice === null) return;
+  if (seg === _lastFiredSeg) return;
+  _lastFiredSeg = seg;
+  const key = _snaps.keys[Math.max(0, Math.min(_snaps.keys.length - 1, seg))];
+  if (key) _onSlice(key);
 }

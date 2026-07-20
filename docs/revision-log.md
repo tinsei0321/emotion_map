@@ -33,8 +33,8 @@ emotion_map（根）
 │  │  ├─ 批1 快赢 🔄  1a 预览图 ⏸｜1b 色带系统（随胶囊+HSL+色相细分）✅
 │  │  ├─ 批2 全局时间轴 🔄  ◆ 架构转折点（解锁批3/4）— 极性深读·时间轴推倒重做（全局时间维度）
 │  │  │  ├─ A0-A2 manifest+TimeSource+applyTime+时间按钮 UI ✅（5.140；manifest 单一权威源 + 点层换源 + Martin 风卡片）
-│  │  │  ├─ A3 grid 演进+play 动画 ⬜（timeline.js 接 global currentTime；阶段 lerp / 日度离散）
-│  │  │  ├─ A4 Overview 原地追随 ⬜
+│  │  │  ├─ A3 grid 演进+play+retire 旧 widget ✅（5.142；timeline.js headless 引擎 + time-bar play 编排）
+│  │  │  ├─ A4 Overview silent 追随 ✅（5.142；applyTime silent=gridBound 避抢刷 _renderFrame）
 │  │  │  └─ Track B 矢量瓦片 tippecanoe+Martin 文件模式 ⬜（A 落地后；TimeSource MVT 实现可插拔）
 │  │  ├─ 批3 3D 渲染 ⬜  地形凸凹 / 网格柱体（依赖批2）
 │  │  ├─ 批4 时间对比 ⬜  A/B 双窗（依赖批2）
@@ -222,7 +222,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月19日）** · 本节按板块分组、组内倒序；最新工作 = **5.141 时间轴 A2 复测修复（matchDataset 扩展名根因 + 蓝 + 滑动轴）**（本次）。上一轮 5.140 时间轴 A0-A2。最近：
+> 📍 **最新动态（07月20日）** · 本节按板块分组、组内倒序；最新工作 = **5.142 时间轴 A3 grid 演进+play+retire widget + A4 Overview silent**（本次）。上一轮 5.141 时间轴 A2 复测修复。最近：
+>
+> - **5.142 时间轴 A3 grid 演进 + play + retire 旧 widget + A4 Overview silent 机制**：A0-A2 后推进 A3（grid 演进 + 播放 + retire 旧侧栏 widget）+ A4。**Step 1 timeline.js → headless 引擎**（[timeline.js](frontend/js/timeline.js) 重写，保算法）：删自带 UI（`_buildDom`/widget 显隐/`_updateThumb`/`_setLabel` 等）；`showTimeline/hideTimeline`→`bindGrid/unbindGrid`；`_prepare` 改 manifest 驱动（`slicesOf(layer.datasetId)`+`loadSlice`，删 `TL_T`/`PT_URL` 硬编码，`_snaps.byKey` 按 sliceKey）；`_progress` 泛化 0..(n-1)；新导出 `renderSlice(sliceKey)`/`play(from,to,onSlice,onDone)`/`stop()`/`isBound()`。**算法逐字保留**（`_buildCellIndex`/`_aggregate`/`_tally`/`_buildVirtualFc`/`_renderFrame`/`_tick`）。grid datasetId：bindGrid 补调 `tagLayer`（grid-tool 生成时设 srcName=源 srcName → matchDataset 拿 datasetId）。**Step 2 time-bar 加 play + 驱动 grid**（[time-bar.js](frontend/js/time-bar.js)）：卡片 foot 加 play 按钮（▶/⏸）+ `_pick` 加 `renderSlice`（grid 跟随）+ `_togglePlay/_startPlay/_stopPlay/_onPlaySlice/_onPlayDone/_setIcon` 编排（play→playGrid + 片边界 onSlice→applyTime 换点层 + _syncActive 跟滑块）。**Step 3 retire 旧侧栏 widget**：[index.html](frontend/index.html) 删 `#timeline-wrap` div + `timeline.css` link；[main.js](frontend/js/main.js) `showTimeline/hideTimeline`→`bindGrid/unbindGrid`；`timeline.css` 文件保留未删（红线：删文件先问），成孤儿待 /weed；grep 零活引用。**A4 Overview silent 机制**（[time-source.js](frontend/js/time-source.js)）：applyTime 加 `silent` 参——`applyTime(period,key,silent=gridBound())`；grid 绑定时 silent（不 dispatch layers:changed，避用旧 grid.fc 抢刷 _renderFrame 的正确 Overview），点焦点时 dispatch（refreshOverview 读新 fc）。**播放语义**：grid 平滑 lerp（张力来源），点层片边界离散换源。承重：paint-inplace-swap-view（grid 演进走 setData 不重建层）/ 算法保留只改组织 / 四态·diagnose 不碰 / retire 前 grep 零引用。验证：ESM 4 文件绿 + 无 ESM 环；**grid 演进+play 待用户 F5 复测**（导入 L2 + 生成标准网格 → 时间按钮 → play → grid 平滑演进 + 点层边界换源 + Overview 追随）。新 memory `global-time-axis`（三分架构 + silent gotcha）+ MEMORY.md 索引。**push 待用户。**
 >
 > - **5.141 时间轴 A2 用户复测修复（matchDataset 扩展名根因 + 蓝 + 滑动轴）**：5.140 A0-A2 提交（`486488d`）后用户开页复测报三问题。① **切换无反应根因**：[main.js](frontend/js/main.js) `layerName()` 对普通文件上传**不去扩展名**（仅 bundle shapefile 去）→ `srcName` 带 `.geojson`；而 [time-source.js](frontend/js/time-source.js) `matchDataset` 的正则按"去扩展名"的模板 basename 生成 → `^..._result_geojson$` 匹配不上 `..._result_geojson.geojson` → **层未打时间标 → applyTime 跳过所有层 → 无反应**。修：matchDataset 先剥 `.geojson/.json/.csv/.kml/.gpx/.topojson/.shp` 再匹配（只加 normalize，不正则改动）。② **蓝色** `#4285F4` → **`#1A73E8`**（Martin 风高饱和蓝；图片链接过期 HTTP 400 未采到精确 hex，用户可替换）—— 按钮选中态/粒度胶囊/停点/日历选中/滑块 thumb 全替换 + rgba 派生色同步。③ **滑动轴**：[time-bar.js](frontend/js/time-bar.js) 卡片底部加通用 range 滑块（拖动=离散 applyTime，与停点同步；新增 `_sliceIndex` + `_syncActive` 跟随滑块位）+ [time-bar.css](frontend/css/time-bar.css) 滑块样式（thumb 蓝 + 进度槽）。**澄清（非 bug）**：月历控件只在**日/周/月粒度数据**存在时显（当前 manifest 仅 phase → 显停点条 T1-T3）；日历钟图标在底部圆按钮上（非卡片内）；play + 平滑演进动画 = **A3**（未做）。承重：matchDataset 只加剥 ext 不改正则；paint-inplace-swap-view 不变；不碰四态/diagnose。验证：ESM 语法绿（time-bar.js + time-source.js node --check --input-type=module）；**点层换源待用户复测确认**（用户收工前未复测；applyTime 仅换点/面层，grid/terrain 跳过留 A3——若用户看的是网格层则无变化属预期）。**push 本次（用户指定）。**
 >

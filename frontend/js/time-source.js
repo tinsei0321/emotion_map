@@ -177,9 +177,11 @@ function _filterPolarity(fc, set) {
  *  - grid/terrain 层跳过：由 timeline.js 监听 time:changed 重聚合（A3）。
  *  - L2 极性子层按 colorMode 重切极性。
  *  - 承重 paint-inplace-swap-view：走 updateGridSourceData（= getSource().setData），不重建层/不碰 tip·选中。
- *  - 全部换源完成后才 dispatch layers:changed → refreshOverview 读焦点层新 fc（避免异步竞态读到旧 fc）。
+ *  - silent=true（grid 焦点时）：跳过 layers:changed dispatch——避与 timeline._renderFrame 抢刷 Overview
+ *    （grid 层 fc 不随 renderSlice 更新，dispatch 会用旧 fc 覆盖 _renderFrame 的正确 Overview 画）。
+ *    点焦点时 silent=false：dispatch → refreshOverview 读焦点点层新 fc 追随。
  *  loadSlice 失败（fc=null）静默跳过（兜底不崩）。返回 Promise（调用方可 await，也可忽略）。 */
-export function applyTime(period, sliceKey) {
+export function applyTime(period, sliceKey, silent = false) {
   setCurrentTime({ period, sliceKey });
   const tasks = [];
   for (const layer of getLayers()) {
@@ -195,7 +197,7 @@ export function applyTime(period, sliceKey) {
       updateGridSourceData(layer, out);   // 点/面层也走 lyrSrc setData（函数名 legacy，实为通用换源）
     }));
   }
-  return Promise.all(tasks).then(() => {
-    document.dispatchEvent(new CustomEvent('layers:changed'));   // 全换源完 → refreshOverview 追随焦点层新 fc
-  });
+  const done = Promise.all(tasks);
+  if (silent) return done;   // grid 焦点：不 dispatch（避抢刷 _renderFrame 的 Overview）
+  return done.then(() => document.dispatchEvent(new CustomEvent('layers:changed')));   // 点焦点：追随新 fc
 }
