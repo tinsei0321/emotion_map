@@ -91,16 +91,17 @@ body {
 #topo-graph { flex: 1; min-width: 0; position: relative; background: var(--topo-bg); }
 .topo-error { padding: 24px; color: #F97583; font-family: ui-monospace, Consolas, monospace; font-size: 13px; line-height: 1.6; }
 
-/* CSS2D 矢量标签（CSS2DRenderer 管理的 DOM）*/
+/* 矢量标签：去 text-shadow/描边，只用粗细+大小区分核心/非核心（用户要求）*/
 .node-label {
   position: absolute;
   font-family: 'Open Sans', 'PingFang SC', sans-serif;
-  font-size: 12px; color: #e6edf3;
+  font-weight: 400;
+  font-size: 12px; color: #c9d1d9;
   pointer-events: none; white-space: nowrap;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.95), 0 0 3px rgba(0,0,0,0.95);
+  letter-spacing: .01em;
   transform: translate(-50%, -120%);
 }
-.node-label.is-core { font-weight: 700; font-size: 14px; color: #fff; }
+.node-label.is-core { font-weight: 700; font-size: 14px; color: #ffffff; }
 #topo-labels { position: absolute; top: 0; bottom: 0; left: 240px; right: 0; pointer-events: none; z-index: 3; overflow: hidden; }
 body.is-fs #topo-labels { left: 8px; }
 #topo-boxes { position: absolute; top: 0; bottom: 0; left: 240px; right: 0; pointer-events: none; z-index: 1; overflow: hidden; }

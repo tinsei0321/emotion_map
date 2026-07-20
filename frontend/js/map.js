@@ -67,8 +67,18 @@ let _selectedLayerId = null;   // which layer the selection halo belongs to (cle
 const _boundPoint = new Set();
 const _boundRange = new Set();
 let _tooltip = null;
-let _currentBasemap = DEFAULT_BASEMAP;   // 当前底图 key（setBasemap 同步；进 3D 前记忆以便退 2D 恢复）
-let _pre3dBasemap = null;                 // 进 3D 暗色底图前的底图 key
+let _currentBasemap = DEFAULT_BASEMAP;   // 当前底图 key（setBasemap 同步）
+let _pre3dBasemap = null;                 // （遗留：旧 AUTO_3D_BASEMAP 方案用，暗色遮罩方案后弃用，保留无害）
+
+// ── 3D 暗色遮罩：单 fill 层（世界面 polygon）插在底图与数据层之间，pitch>1 时显隐 ──
+//  不 setStyle 换底图 → 避瓦片重载卡顿（旧 AUTO_3D_BASEMAP setStyle 方案的根因：新旧瓦片交替空白）。
+//  数据层（lyr-/emotion-）在遮罩之上，保持原色亮度；遮罩只盖底图 → "3D 暗底图"观感。
+const DARK_OVERLAY_SRC = 'dark-overlay-src';
+const DARK_OVERLAY_LAYER = 'dark-overlay';
+const DARK_BG = '#0c0e13';               // 3D 暗底图观感（深蓝黑，高级感）
+const DARK_OVERLAY_FC = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: [[[-180, -90], [-180, 90], [180, 90], [180, -90], [-180, -90]]] }, properties: {} }] };
+const _BASEMAP_BG = { 'dark-matter': '#0e0e0e', 'positron': '#ffffff', 'voyager': '#f4f1ea', 'tianditu-img': '#a6c8e0', 'tianditu-vec': '#e8eef4', 'tianditu-img-nolabel': '#a6c8e0' };
+let _dark3DOn = false;                    // 当前是否处暗色 3D 态（pitch>1）
 
 export function initMap(container = 'map') {
   map = new maplibregl.Map({
@@ -82,10 +92,12 @@ export function initMap(container = 'map') {
   // 光源 position=[r, 方位角°, 极角°]（anchor=viewport：0°=上/北、顺时针；极角 0°=正上、90°=水平）：
   // 方位 45°=东北来光（亮面朝东北、暗面朝西南，默认北朝上视角下四梯度清晰）+ 极角 60°（偏低侧光，强化暗/次暗/亮面划分）。
   if (map.setVerticalFieldOfView) map.setVerticalFieldOfView(55);
-  const _applyLight = () => map.setLight && map.setLight({
-    anchor: 'viewport', position: [1.5, 45, 60], color: '#ffffff', intensity: 0.5,
-  });
-  map.on('style.load', _applyLight);
+  const _onStyleLoad = () => {
+    if (map.setLight) map.setLight({ anchor: 'viewport', position: [1.5, 45, 60], color: '#ffffff', intensity: 0.5 });
+    _ensureDarkOverlay();
+  };
+  map.on('style.load', _onStyleLoad);
+  map.on('pitch', _onPitch);   // 3D 视角全局触发暗色遮罩（setView3D / map-controls 等任何 pitch 变化）
   const canvas = map.getCanvas();
   map.on('dragstart', () => canvas.classList.add('is-grabbing'));
   map.on('dragend', () => canvas.classList.remove('is-grabbing'));
@@ -97,46 +109,57 @@ export function getMap() { return map; }
 export function setBasemap(key) {
   if (!map || !BASEMAPS[key]) return;
   _currentBasemap = key;
-  // #map 容器背景随底图：3D 高 pitch/宽 FOV 下视口上沿（地平线以上）会露出容器背景，
-  // 暗底图配白底=刺眼白条；此处令背景与底图同色，露空区自然融入（如天空/地平线）。
-  const BG = {
-    'dark-matter': '#0e0e0e', 'positron': '#ffffff', 'voyager': '#f4f1ea',
-    'tianditu-img': '#a6c8e0', 'tianditu-vec': '#e8eef4', 'tianditu-img-nolabel': '#a6c8e0',
-  };
-  map.getContainer().style.background = BG[key] || '#ffffff';
+  // #map 容器背景随底图（3D 高 pitch/宽 FOV 视口上沿露容器背景；暗底图配白底=刺眼白条）。
+  // 3D 暗色态(_dark3DOn)强制深色背景；否则与底图同色。
+  map.getContainer().style.background = _dark3DOn ? DARK_BG : (_BASEMAP_BG[key] || '#ffffff');
   map.setStyle(BASEMAPS[key], {
     transformStyle: (prev, next) => {
       const carrySources = {};
       for (const [id, spec] of Object.entries(prev?.sources || {})) {
-        if (id.startsWith('lyr-') || id.startsWith('emotion-')) carrySources[id] = spec;
+        if (id.startsWith('lyr-') || id.startsWith('emotion-') || id === DARK_OVERLAY_SRC) carrySources[id] = spec;
       }
+      if (!carrySources[DARK_OVERLAY_SRC]) carrySources[DARK_OVERLAY_SRC] = { type: 'geojson', data: DARK_OVERLAY_FC };
       const carryLayers = (prev?.layers || []).filter((l) => l.id.startsWith('lyr-') || l.id.startsWith('emotion-'));
-      return { ...next, sources: { ...(next.sources || {}), ...carrySources }, layers: [...(next.layers || []), ...carryLayers] };
+      // 暗色遮罩层：插在底图(next.layers)与数据层(carryLayers)之间；visibility 沿用 prev（3D 态切底图不闪）
+      const prevDarkVis = (prev?.layers || []).find((l) => l.id === DARK_OVERLAY_LAYER)?.layout?.visibility || (_dark3DOn ? 'visible' : 'none');
+      const darkLayer = { id: DARK_OVERLAY_LAYER, type: 'fill', source: DARK_OVERLAY_SRC, layout: { visibility: prevDarkVis }, paint: { 'fill-color': DARK_BG, 'fill-opacity': 1 } };
+      return { ...next, sources: { ...(next.sources || {}), ...carrySources }, layers: [...(next.layers || []), darkLayer, ...carryLayers] };
     },
   });
+}
+
+/** style.load 时确保暗色遮罩存在（init 首载 + 每次 setBasemap 后）；插在第一个数据层之前，否则追加（数据层后加自然盖其上）。 */
+function _ensureDarkOverlay() {
+  if (!map || map.getSource(DARK_OVERLAY_SRC)) return;
+  map.addSource(DARK_OVERLAY_SRC, { type: 'geojson', data: DARK_OVERLAY_FC });
+  const firstData = (map.getStyle().layers || []).find((l) => l.id.startsWith('lyr-') || l.id.startsWith('emotion-'));
+  map.addLayer({
+    id: DARK_OVERLAY_LAYER, type: 'fill', source: DARK_OVERLAY_SRC,
+    layout: { visibility: _dark3DOn ? 'visible' : 'none' },
+    paint: { 'fill-color': DARK_BG, 'fill-opacity': 1 },
+  }, firstData ? firstData.id : undefined);
+}
+
+/** pitch 全局监听：pitch>1（任何 3D 触发）→ 显暗色遮罩 + #map 深背景；pitch≈0（2D）→ 隐 + 还原。
+ *  去抖：仅状态翻转时操作（setLayoutProperty 一次，不每帧）。 */
+function _onPitch() {
+  if (!map) return;
+  const is3d = map.getPitch() > 1;
+  if (is3d === _dark3DOn) return;
+  _dark3DOn = is3d;
+  if (map.getLayer(DARK_OVERLAY_LAYER)) map.setLayoutProperty(DARK_OVERLAY_LAYER, 'visibility', is3d ? 'visible' : 'none');
+  map.getContainer().style.background = is3d ? DARK_BG : (_BASEMAP_BG[_currentBasemap] || '#ffffff');
 }
 
 const PITCH_3D = 60;   // 3D 俯角（与 map-controls.js PITCH_3D 统一）
 const VIEW_EASE_MS = 650;   // 视角切换动画时长（顺滑）
 
-/** 3D 网格视角：on → pitch 倾斜；off → pitch 复原。setViewMode / generateGrid 共用。
- *  setStyle 不重置 camera（maplibre 保证），故直接 easeTo pitch——一次到位 + 顺滑动画；
- *  不等 style.load（曾用 once('style.load') 防"吞 pitch"是误诊，反而引入 race 致"第二下才转"）。
- *  AUTO_3D_BASEMAP：3D 自动切暗底图（dark-matter）。默认关——setStyle 换底图会重载瓦片（Dark↔天地图影像
- *  卫星瓦片尤慢）+ 切换瞬间旧底图已拆新瓦片未到 = 空白卡顿。vector 底图无法常驻一键显隐，故平滑=不换底图。
- *  想恢复 3D 自动暗底图：改 true（代价是切换卡顿）。用户可随时手动选暗底图。 */
-const AUTO_3D_BASEMAP = false;
+/** 3D 网格视角：on → pitch 倾斜；off → pitch 复原。setViewMode / generateGrid / toggleGridViewMode 共用。
+ *  setStyle 不重置 camera（maplibre 保证），故直接 easeTo pitch。底图暗色由 pitch 事件全局驱动
+ *  （_onPitch → DARK_OVERLAY 显隐），不在此 setStyle 换底图——任何 pitch>1 的视角切换都会触发暗色遮罩，
+ *  且无瓦片重载卡顿。 */
 export function setView3D(on) {
   if (!map) return;
-  if (AUTO_3D_BASEMAP) {
-    if (on) {
-      if (_currentBasemap !== 'dark-matter') { _pre3dBasemap = _currentBasemap; setBasemap('dark-matter'); }
-    } else {
-      const restore = _pre3dBasemap || (_currentBasemap === 'dark-matter' ? DEFAULT_BASEMAP : _currentBasemap);
-      if (_currentBasemap !== restore) setBasemap(restore);
-      _pre3dBasemap = null;
-    }
-  }
   map.easeTo({ pitch: on ? PITCH_3D : 0, bearing: 0, duration: VIEW_EASE_MS });
 }
 

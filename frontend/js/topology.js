@@ -71,7 +71,7 @@ async function init() {
     .onNodeClick((n) => onNodeClick(n))
     .onBackgroundClick(() => onBackgroundClick())
     .onEngineTick(() => { updateLabels(); updateBoxes(); updateTipPos(); })
-    .cooldownTicks(150);
+    .cooldownTicks(220);
 
   // 灯光
   const scene = _graph.scene();
@@ -94,22 +94,32 @@ async function init() {
 }
 
 // ═══ 节点几何 ═══
+/** hex 向白混合（t=0 原色→t=1 纯白）：成熟度浅色 tint，同家族色内区分 mature(深)/progressing(浅)/planned(更浅)。 */
+function tint(hex, t) {
+  const h = String(hex || '').replace('#', '');
+  if (h.length !== 6) return hex;
+  const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+  const mix = (c) => Math.round(c + (255 - c) * t).toString(16).padStart(2, '0');
+  return '#' + mix(r) + mix(g) + mix(b);
+}
+/** 节点几何：mature=光滑球(glossy 深) / progressing=平面宝石(matte 浅，flatShading 晶面) / planned=线框(更浅)。
+ *  颜色(深→浅 tint)+材质(glossy↔matte)+形状(球↔宝石↔线框) 三重编码成熟度，同家族色内可辨，保高级感。 */
 function buildNode(n) {
-  const color = colorOf(n);
+  const base = colorOf(n);
   const r = nodeRadius(n);
   const core = isCore(n);
   if (n.maturity === 'mature') {
-    return new THREE.Mesh(new THREE.SphereGeometry(r, 18, 14),
-      new THREE.MeshStandardMaterial({ color, metalness: core ? 0.6 : 0.25, roughness: core ? 0.3 : 0.55 }));
+    return new THREE.Mesh(new THREE.SphereGeometry(r, 20, 16),
+      new THREE.MeshStandardMaterial({ color: base, metalness: core ? 0.55 : 0.3, roughness: core ? 0.32 : 0.45 }));
   } else if (n.maturity === 'progressing') {
     return new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0),
-      new THREE.MeshBasicMaterial({ color, wireframe: true }));
+      new THREE.MeshStandardMaterial({ color: tint(base, 0.34), metalness: 0.0, roughness: 0.92, flatShading: true }));
   } else if (n.maturity === 'planned') {
     return new THREE.Mesh(new THREE.IcosahedronGeometry(r * 0.85, 0),
-      new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: 0.5 }));
+      new THREE.MeshBasicMaterial({ color: tint(base, 0.55), wireframe: true, transparent: true, opacity: 0.5 }));
   }
   return new THREE.Mesh(new THREE.SphereGeometry(r, 12, 10),
-    new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.5 }));
+    new THREE.MeshStandardMaterial({ color: base, transparent: true, opacity: 0.5 }));
 }
 function nodeRadius(n) {
   let r;
@@ -242,9 +252,9 @@ async function load(refresh = false) {
   });
   if (!_loaded) {
     _graph.graphData(_data);
-    _graph.d3VelocityDecay(0.35);
-    _graph.d3Force('charge').strength(-42);
-    _graph.d3Force('link').distance(52);
+    _graph.d3VelocityDecay(0.4);
+    _graph.d3Force('charge').strength(-60);
+    _graph.d3Force('link').distance(66);
     _loaded = true;
   }
   renderLabels();
@@ -258,10 +268,38 @@ async function load(refresh = false) {
 
 // ═══ hover / 双击聚焦 / 空白 ═══
 function onHover(node, prev) {
-  if (prev && prev.__threeObj) prev.__threeObj.scale.set(1, 1, 1);
+  if (prev && prev.__threeObj) _setGlow(prev.__threeObj, false);
   _hoveredId = node ? node.id : null;
-  if (node && node.__threeObj) node.__threeObj.scale.set(1.6, 1.6, 1.6);
+  if (node && node.__threeObj) _setGlow(node.__threeObj, true);
   if (node) showTip(node); else hideTip();
+}
+/** 节点高光：scale 放大 1.7 + 白色 halo 边缘发光（additive 球，半径 ×1.55）+ emissive 自发光（lit 材质）。
+ *  halo 挂 obj.userData._halo 复用/清理；几何半径从 obj.geometry.parameters.radius 取（球/二十面体均支持）。 */
+function _setGlow(obj, on) {
+  if (!obj) return;
+  obj.scale.set(on ? 1.7 : 1, on ? 1.7 : 1, on ? 1.7 : 1);
+  const mat = obj.material;
+  if (mat) {
+    if (on) {
+      if (mat._origEmissive === undefined) mat._origEmissive = mat.emissive ? mat.emissive.getHex() : null;
+      if (mat._origEI === undefined) mat._origEI = mat.emissiveIntensity;
+      if (mat.emissive) { mat.emissive.setHex(0xffffff); mat.emissiveIntensity = 0.55; }
+    } else if (mat._origEmissive !== null && mat.emissive) {
+      mat.emissive.setHex(mat._origEmissive); mat.emissiveIntensity = mat._origEI;
+    }
+  }
+  if (on && !obj.userData._halo) {
+    const r = (obj.geometry && obj.geometry.parameters && obj.geometry.parameters.radius) || 8;
+    const halo = new THREE.Mesh(new THREE.SphereGeometry(r * 1.55, 16, 12),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false }));
+    obj.add(halo);
+    obj.userData._halo = halo;
+  } else if (!on && obj.userData._halo) {
+    obj.remove(obj.userData._halo);
+    obj.userData._halo.geometry.dispose();
+    obj.userData._halo.material.dispose();
+    obj.userData._halo = null;
+  }
 }
 function onNodeClick(n) {
   const now = Date.now();
