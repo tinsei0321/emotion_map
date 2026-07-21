@@ -37,7 +37,7 @@ emotion_map（根）
 │  │  │  ├─ A4 Overview silent 追随 ✅（5.142；applyTime silent=gridBound 避抢刷 _renderFrame）
 │  │  │  └─ Track B 矢量瓦片 tippecanoe+Martin 文件模式 ⬜（A 落地后；TimeSource MVT 实现可插拔）
 │  │  ├─ 批3 3D 渲染 ⬜  地形凸凹 / 网格柱体（依赖批2）
-│  │  ├─ 批4 时间对比 ⬜  A/B 双窗（依赖批2）
+│  │  ├─ 批4 时间对比 ⬜↑宏  A/B 双窗（依赖批2 ✅）情绪气象图核心·治前vs治后
 │  │  └─ 批5 图层分组 🔄  5A 自动归类 ✅｜5B 自由编组 ⬜
 │  ├─ 图层/设置/Overview 🔄  联动 ✅｜Layers 分组重做 ✅
 │  ├─ Toolbox 工具箱 🔄  多维归因分析 ⬜（自 KDE ① 剥离）｜缓冲分析 ✅（后端 geopandas EPSG:4546 + 3 段弹窗 + 独立组卡 + B 编辑 + 复用 Range popup）｜网格聚合 ✅（P2：方格 2D/3D + fill-extrusion + 横向色带图例 + G 编辑，接 /spatial/grid(square)；5.25 去 Toolbox 极性直生成 + Layers 拆标准网格/指定单元子卡 + 单元深读→极性深读 paint 就地切换 + 动态矩阵块关键词副本）｜数据语义化 P3 ✅（POI-anchored 4×5/极性三层/置信度密度自相关 + _norm 对称拉伸张力 + 聚合层 4×5 归因 issue_label/attribution，L3/L4 接管后删表；grid/terrain 同步）
@@ -50,7 +50,8 @@ emotion_map（根）
 └─ 临时分支（搁置 / 待决策）
    ├─ KDE 批1 1a 预览图 ⏸  等 terrain/factor kepler 截图补齐
    ├─ 高级参数 bug（C5）⏸  暂不修
-   └─ 待决策  KDE 批2 粒度｜批3 地形 vs 柱体（极性深读·时间轴 已决→批2 🔄：全局时间维度重做，路线 A JS rAF+setData；A0-A2 ✅ / A3-A4 ⬜，详见 §5.140）
+   ├─ 待决策  KDE 批2 粒度｜批3 地形 vs 柱体
+   └─ 宏观 reframe lean（5.148）：↑批4 时间对比（情绪气象图核心）｜↑主观+客观 pairing（官方指标 context layer=护城河）｜↑空间分析 MVP 重定位（区域对比/宏观概况）｜↓多维归因/deep_attribution 深化（微观陷阱，方向性政策锚够用）
 ```
 
 ---
@@ -222,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.147 收尾杂项（timeline.css 退役 + stale 清理 + 拓扑图例订正）**（本次）。上一轮 5.146 拓扑卡顿修复。最近：
+> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.148 产品定位 reframe：宏观主观诊断透镜（thesis 固化 + 路线图重排）**（本次）。上一轮 5.147 收尾杂项。最近：
+>
+> - **5.148 产品定位 reframe：宏观主观诊断透镜（用户洞见 + 业界验证 → thesis 固化）**：用户重新思考项目本质——情绪地图分析基础=海量"评论"→产物"性格"注定**偏宏观**（统计聚合，非精确测量）。**业界验证**：官方城市体检双臂（社会满意度调查=主观采样问卷"中医望闻问切" + 第三方体检=客观遥感"西医化验"）→ 情绪地图=其「连续地理版」；国际 emotional mapping（EU eMOTIONAL Cities / MIT "Cities That Feel" / Missouri / Pánek）皆宏观聚合、不声称微观精度。**结论**：宏观是定位护城河不是局限；「越细归因=越精确」是陷阱（数据撑不起微观精度）。系统梳理见 plan `07-19-cb-lovely-quiche.md` §一-七（思路/架构/工具/UI + 业界对标）。**固化** [CLAUDE.md](CLAUDE.md)：新增「产品本质（宏观主观诊断透镜·定位护城河）」节（业界对标 + 双轨架构=主观轨情绪地图+客观轨官方指标 context layer pairing）+ 演示逻辑链末环「识别具体问题」→「定位关注区+主题倾向+排序优先级」+ 有用性环改"宏观定位+排序" + 设计哲学 item1「4×5=主题倾向分布矩阵（宏观）非精确归因」+ item2「政策→情绪→项目 方向性锚（宏观）非精确闭环」+ 业内同行画像"宏观假设生成"。**重排 §0**：批4 时间对比↑宏 + 临时分支 lean 注（↑批4/↑主观+客观 pairing/↑空间分析 MVP 重定位/↓多维归因+deep_attribution 深化=微观陷阱）。承重：纯文档/路线图校准不动代码；thesis 入 CLAUDE.md 顶层权威源（不另建 memory，只同步指针）。**push 待用户。**
 >
 > - **5.147 收尾杂项（timeline.css 退役 + stale 清理 + 拓扑图例订正）**：用户选"收尾杂项"方向。① **timeline.css 退役**：`git rm frontend/css/timeline.css`（孤儿——5.142 retire 旧侧栏 widget 后 index.html 已去 link，grep 零活引用），入 [retired.md](docs/catch-ball/retired.md) 2026-07-20 批（可恢复 git 历史）。② **stale 清理**：[map.js](frontend/js/map.js) 删 `_pre3dBasemap`（旧 AUTO_3D_BASEMAP 方案遗留声明，5.143 暗色遮罩方案后 unused；showTimeline/PT_URL/TL_T 等早已清零）。③ **拓扑图例订正**（查漏：图例文字与 5.144/5.145 新编码矛盾）：[topology.html](frontend/topology.html) maturity 图例标题"（形状）"→"（透明度）" + 文字（推进中"空心线框"→"半透实心" / 计划"虚线空心"→"线框"，对齐 opacity 编码）；family 图例拆"主程序+EMC"为两条目（主程序珊瑚 + EMC 高饱和橙 `--topo-c-emc`），"4 类"→"5 类"；[topo.css](frontend/css/topo.css) `.st-progressing` 从 `border` 改 `solid + opacity:0.55`（对齐 3D 节点半透实心）。验证：ESM 绿（map.js）。承重：timeline.css 删前 grep 零引用 + retired 留痕；图例纯文字/CSS 订正不动逻辑。**push 待用户。**
 >
