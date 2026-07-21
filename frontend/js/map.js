@@ -139,8 +139,10 @@ function _enterCompare() {
       attributionControl: false,
     });
     _mapB.on('move', _syncFromB);
+    _mapB.on('style.load', _onMapBStyleLoad);   // basemap 就绪：敷 3D 光 + 镜像 mapA 数据层
   } else {
     _mapB.jumpTo({ center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() });
+    _mirrorLayersToMapB();                        // 已加载，直接镜像
   }
   if (!_divider) {
     _divider = document.createElement('div');
@@ -200,6 +202,41 @@ function _wireDividerDrag() {
   window.addEventListener('mouseup', () => { dragging = false; });
   window.addEventListener('touchmove', (e) => { if (e.touches[0]) onMove(e.touches[0].clientX); }, { passive: true });
   window.addEventListener('touchend', () => { dragging = false; });
+}
+
+/** mapB basemap 就绪：敷 3D 光（与 mapA 同）+ 镜像 mapA 数据层（Step 2 同片）。 */
+function _onMapBStyleLoad() {
+  if (!_mapB) return;
+  if (_mapB.setLight) _mapB.setLight({ anchor: 'viewport', position: [1.5, 45, 60], color: '#ffffff', intensity: 0.5 });
+  _mirrorLayersToMapB();
+}
+
+/** Step 2：镜像 mapA 的数据层（lyr-/emotion-）到 mapB（同片数据，验证双 map 层一致）。
+ *  非侵入——读 mapA.getStyle() 复制 source+layer 到 mapB，不动 renderLayer（承重 mapA 路径零改动）。
+ *  mapA/mapB 是独立实例，同 id 不冲突。Step 3 起换 A/B 分片数据。 */
+function _mirrorLayersToMapB() {
+  if (!map || !_mapB) return;
+  try {
+    const bStyle = _mapB.getStyle();
+    for (const l of (bStyle.layers || []).slice()) {
+      if (l.id.startsWith('lyr-') || l.id.startsWith('emotion-')) _mapB.removeLayer(l.id);
+    }
+    for (const sid of Object.keys(bStyle.sources || {})) {
+      if (sid.startsWith('lyr-') || sid.startsWith('emotion-')) _mapB.removeSource(sid);
+    }
+    const aStyle = map.getStyle();
+    for (const [sid, spec] of Object.entries(aStyle.sources || {})) {
+      if (sid.startsWith('lyr-') || sid.startsWith('emotion-')) { try { _mapB.addSource(sid, spec); } catch (e) {} }
+    }
+    for (const layerSpec of (aStyle.layers || [])) {
+      if (layerSpec.id.startsWith('lyr-') || layerSpec.id.startsWith('emotion-')) { try { _mapB.addLayer(layerSpec); } catch (e) {} }
+    }
+  } catch (e) { console.warn('[compare] mirror 失败', e); }
+}
+
+// compare 模式下 mapA 层变化（renderLayer/applyTime 等 dispatch layers:changed）→ 重镜像 mapB（Step 2 同片）
+if (typeof document !== 'undefined') {
+  document.addEventListener('layers:changed', () => { if (_compareOn && _mapB) _mirrorLayersToMapB(); });
 }
 
 export function setBasemap(key) {

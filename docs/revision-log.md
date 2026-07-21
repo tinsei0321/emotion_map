@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.149 批4 时间对比·Swipe 卷帘 Step 1 scaffold（mapB + sync + clip divider POC）**（本次）。上一轮 5.148 产品定位 reframe。最近：
+> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.150 批4 Swipe Step 2 镜像层到 mapB（非侵入）**（本次）。上一轮 5.149 Step 1 scaffold。最近：
+>
+> - **5.150 批4 Swipe Step 2 镜像层到 mapB（非侵入）**：Step 1 mechanics 验过后接 Step 2（mapB 显同款数据层）。[map.js](frontend/js/map.js) 加 `_mirrorLayersToMapB()`——读 mapA.getStyle() 把 `lyr-/emotion-` source+layer 复制到 mapB（mapA/mapB 独立实例，同 id 不冲突），**不动 renderLayer（承重 mapA 路径零改动）**。`_onMapBStyleLoad`（mapB basemap 就绪：敷 3D 光 + 镜像）。`_enterCompare` 接线（mapB `style.load`→`_onMapBStyleLoad`；已加载→直接镜像）。模块级 `layers:changed` 监听（compare 模式 mapA 层变→重镜像 mapB，Step 2 同片）。承重：**非侵入镜像，mapA 路径 + paint-inplace-swap-view 零改动**；mapB 是只读跟随（Step 3 起设 A/B 分片）。验证：ESM 绿；**F5 → 进 compare（`c`）→ mapB 右半显 mapA 同款 grid/points（同片数据）**。注：mapB 敷了 3D 光；底图暗色 overlay 同步留 Step 4。详见 plan §批4。**push 待用户。**
 >
 > - **5.149 批4 时间对比·Swipe 卷帘 Step 1 scaffold（mapB 第二实例 + sync + clip divider POC）**：宏观 thesis（5.148）首个落地功能 = 批4 时间对比（情绪气象图核心叙事·治前 vs 治后）。用户选 **Swipe 卷帘**方案（单地图架构下双 map 实例各 clip 一半——MapLibre 不支持层屏幕裁剪，双 map 是唯一路径；不引新库 manual sync + CSS clip-path）。**Step 1 = 低风险 POC**（仅 basemap，验证 mechanics）。[map.js](frontend/js/map.js) 加：mapB 第二 `maplibregl.Map` 实例（同位叠加 `#map`，lazy 建于 `_enterCompare`，同 basemap+同步视图）+ manual 双向 sync（mapA↔mapB `move`→`jumpTo`，`_syncing` 标志防反馈环）+ 可拖 clip divider（`_setDivider`→mapB `clip-path: inset(0 0 0 pct%)` = 左显 mapA/右显 mapB；clip-path 同时切视觉+事件，裁掉区不收事件→左半穿透到 mapA）+ `setCompareMode`/`isCompareMode` toggle。[compare.css](frontend/css/compare.css)（`.map-b-wrap` z1 + `.swipe-divider` z90 + 双拖手 + `#map.is-compare` 显隐）。[main.js](frontend/js/main.js) `'c'` 键 toggle（POC 入口，Step 4 改 time-bar 正式按钮）。承重：**additive 不动 renderLayer/applyTime**；compare 是 toggle 不改默认单 map 体验；不碰四态/diagnose。验证：ESM 绿（map+main）；**F5 → 按 `c` 进 compare → 双 map 同步 pan/zoom + 卷帘拖动 mechanics**（Step 2 起接分析层渲染 + Step 3 时间 A/B）。详见 plan §批4。**push 待用户。**
 >
