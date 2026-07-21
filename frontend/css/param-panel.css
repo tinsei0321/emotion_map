@@ -1,23 +1,24 @@
-/* ═══ param-panel.css — B4 左端参数弹出栏 ═══
-   紧贴 #left-panel 右缘（left:var(--left-w)，随 B6 联动）；不可拖宽；默认隐藏。
-   1:2 分栏：左=点/线/面样式（#settings-popover，settings.js build 填充）
-            右=分析（核密度|Buffer 子页签，#heatmap-dialog/#buffer-dialog）。
-   迁移自原浮窗/dialog：apply 链零改，仅在此重置容器外观以贴合分栏。 */
+/* ═══ param-panel.css — CPD ④ 浮窗抽屉卡（与 Range/Layers 抽屉同设计语言）═══
+   不再侧贴 #left-panel 全高；改为 floating card：圆角+阴影+内容自适应高、
+   left 由 relayoutFloats 自适应（锚抽屉/EMC 右沿）。
+   1:2 分栏：左=点/线/面样式（#settings-popover）/ 右=分析（核密度|网格|Buffer）。 */
 
-/* ── 容器：absolute 锚 #app-main，flush 左栏右缘 ── */
+/* ── 容器：floating card，锚 #app-main ── */
 #param-panel {
   position: absolute;
-  left: var(--left-w);                 /* 紧贴 #left-panel 右缘；随 --left-w 联动 */
-  top: 0;
-  bottom: 0;
-  width: 480px;                        /* 固定，不可拖宽 */
-  max-width: calc(100vw - var(--left-w));
-  z-index: 74;                         /* 高于 gutter(60)/map，低于 collapse-btn(76) */
-  display: none;                       /* 默认隐藏 */
+  left: 320px;                          /* 兜底；relayoutFloats 自适应覆盖 */
+  top: 30px;                            /* 与 EMC/抽屉顶对齐 */
+  bottom: auto;                         /* 解除全高 → 高度随内容自适应 */
+  width: 460px;
+  max-width: calc(100vw - 340px);
+  max-height: calc(100vh - 60px);       /* 内容超长则内部滚动，不顶满屏 */
+  z-index: 74;                          /* 高于 map/drawer(55)，低于 collapse-btn(76) */
+  display: none;                        /* 默认隐藏 */
   flex-direction: column;
   background: var(--geojson-color-surface-panel, #ffffff);
-  border-left: 1px solid var(--geojson-color-border-default, #e5e5e5);
-  box-shadow: 4px 0 14px rgba(0, 0, 0, 0.10);
+  border: 1px solid var(--geojson-color-border-default, #e5e5e5);
+  border-radius: 10px;                  /* 浮窗卡片圆角（与抽屉统一） */
+  box-shadow: var(--geojson-shadow-lg); /* 浮窗阴影（原 4px 0 14px 侧贴废止） */
   color: var(--geojson-color-text-primary);
   overflow: hidden;
 }

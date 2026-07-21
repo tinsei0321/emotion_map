@@ -398,20 +398,20 @@
   position: relative;
   isolation: isolate;                          /* ::before z-index:-1 只相对此处栈 */
 }
-/* 动态波浪光晕：胶囊背后，Gemini 渐变——色彩流动(background-position) + 起伏(transform) +
-   呼吸(opacity) 三轨并行 = 波浪感。范围增大(inset -8/blur 9/undulate 1.1)、颜色更凸显(0.5→0.92)。 */
+/* 动态波浪光晕：胶囊背后，整圈环绕——色彩流动 + 起伏(scale→1.8≈2× 尺寸、摆幅±8°) + 呼吸 三轨并行。
+   注：opacity 上限 1.0，「2.0」用 scale 实现（光晕尺寸≈2× 胶囊，整圈弥漫环绕）。 */
 #emc-panel.is-collapsed .emc-input-area::before {
-  content: ''; position: absolute; inset: -8px;
-  border-radius: 36px;
+  content: ''; position: absolute; inset: -12px;       /* 整圈基底外扩 */
+  border-radius: 40px;
   background: linear-gradient(120deg, #4796E3, #7B5DFC, #BF4AD6, #D96570, #4FC3F7, #4796E3, #7B5DFC);
   background-size: 300% 300%;
-  filter: blur(9px);
+  filter: blur(12px);                                   /* 更散，光晕弥漫整圈 */
   z-index: -1;
   animation: emc-wave-flow 4s linear infinite, emc-wave-undulate 3.4s ease-in-out infinite, emc-wave-breathe 2.8s ease-in-out infinite;
 }
 @keyframes emc-wave-flow { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
-@keyframes emc-wave-undulate { 0%,100% { transform: scale(1) rotate(-4deg); } 50% { transform: scale(1.1) rotate(6deg); } }
-@keyframes emc-wave-breathe { 0%,100% { opacity: 0.5; } 50% { opacity: 0.92; } }
+@keyframes emc-wave-undulate { 0%,100% { transform: scale(1.2) rotate(-8deg); } 50% { transform: scale(1.8) rotate(8deg); } }   /* 起伏放大（峰值 1.8≈2×）+ 摆幅加大 */
+@keyframes emc-wave-breathe { 0%,100% { opacity: 0.55; } 50% { opacity: 0.95; } }
 #emc-panel.is-collapsed .chat-input {
   box-sizing: border-box;
   min-height: 56px; max-height: 56px; height: 56px;

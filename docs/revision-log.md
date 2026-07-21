@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.163 CPD ①②精修(透明/动态波浪/修暗框) + ④ param-panel 自适应抽屉**（本次，分支 `cpd`）。上一轮 5.162。最近：
+> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.164 CPD 呼吸范围增大 + param 浮窗卡化（用户三轮反馈 ①②）**（本次，分支 `cpd`）。上一轮 5.163。最近：
+>
+> - **5.164 CPD 呼吸范围增大 + param 浮窗卡化（用户三轮反馈）**：① 折叠背后光环范围再增大（[ai_qa.css](frontend/css/ai_qa.css)）：inset -8→-12、blur 9→12、undulate scale 1.1→**1.8≈2×**（峰值约 2 倍胶囊尺寸，整圈弥漫环绕）+ 摆幅 ±5°→±8°（更强波浪起伏）；opacity 上限 1.0，「2.0」以 scale 实现（已向用户说明）。② **param-panel 浮窗卡化**（[param-panel.css](frontend/css/param-panel.css)）：弃全高侧贴模式（`top:0/bottom:0/border-left/4px侧阴影`），改 **floating card**（top:30 与 EMC/抽屉顶对齐、`bottom:auto` 高度随内容自适应、`max-height:calc(100vh-60px)` 超长内部滚、460 宽、圆角 10 + lg 阴影，与 Range/Layers 抽屉同设计语言）；left 由 relayoutFloats 自适应（锚抽屉/EMC 右沿）。**设计统一**：EMC→抽屉→param 三级浮层皆为圆角阴影卡 + 自适应位置铁律。push 待用户。
 >
 > - **5.163 CPD ①②精修 + ④ param-panel 自适应（用户二轮反馈）**：① +/- 小圆钮更透（[map-controls.css](frontend/css/map-controls.css) bg 0.72→0.38）。② 折叠背后光环改 **动态波浪**（[ai_qa.css](frontend/css/ai_qa.css)：conic 旋转→三轨并行——background-position 色彩流动 + transform 起伏(scale 1.1/rotate ±5°) + opacity 呼吸(0.5→0.92)，范围增大 inset -5→-8/blur 7→9）；**修黑色线框 bug**：折叠 `.emc-input-area` 原仅 `border-top:none`，基底 `1px` 左/右/下边仍在→呼吸周围暗框，改 `border:none` 全去。④ **param-panel 自适应抽屉**（[cpd-state.js](frontend/js/ai_qa/cpd-state.js)）：新增 `positionFloatingPanels`（#param-panel left 跟随**抽屉**右沿；抽屉关→锚 EMC）+ `relayoutFloats` 总编排（抽屉+浮层）；initCpdState 加 #param-panel `.is-open` MutationObserver + window resize → 自动定位；panel.js ResizeObserver / sidebar.js cpd:focus-tab 改调 relayoutFloats。**修 2b 回归**：`#param-panel left:var(--left-w)=380px` 锚旧左栏→工具弹窗与抽屉错位重叠，现 inline left 覆盖自适应。注：#settings-popover 已内嵌 #param-panel 左栏(B4)，定位随 param-panel。ESM 三绿。**CPD 6 条反馈全闭环**。push 待用户。
 >
