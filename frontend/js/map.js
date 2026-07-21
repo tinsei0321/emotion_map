@@ -105,6 +105,103 @@ export function initMap(container = 'map') {
 
 export function getMap() { return map; }
 
+// ═══ 批4 时间对比 · Swipe 卷帘（mapB 第二实例 + manual sync + clip divider）═══════════
+// Step 1 scaffold POC：仅 basemap，验证双 map 同步 + 卷帘 mechanics。层渲染/时间 A/B = Step 2/3。
+// compare 是 toggle（setCompareMode），进/出不影响默认单 map 体验。不碰 renderLayer/applyTime（additive）。
+let _mapB = null;
+let _compareOn = false;
+let _syncing = false;        // 防 mapA↔mapB move sync 反馈环
+let _mapBWrap = null;
+let _divider = null;
+
+export function isCompareMode() { return _compareOn; }
+
+/** 进/出 compare 卷帘模式。进：建 mapB（同 basemap + 同步视图）+ divider（默认 50%）+ 开 mapA→mapB sync。 */
+export function setCompareMode(on) {
+  if (on) _enterCompare(); else _exitCompare();
+}
+
+function _enterCompare() {
+  if (!map) return;
+  const host = document.getElementById('map');
+  if (!host) return;
+  if (!_mapBWrap) {
+    _mapBWrap = document.createElement('div');
+    _mapBWrap.className = 'map-b-wrap';
+    host.appendChild(_mapBWrap);
+  }
+  _mapBWrap.style.display = 'block';
+  if (!_mapB) {
+    _mapB = new maplibregl.Map({
+      container: _mapBWrap,
+      style: BASEMAPS[_currentBasemap] || BASEMAPS[DEFAULT_BASEMAP],
+      center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch(),
+      attributionControl: false,
+    });
+    _mapB.on('move', _syncFromB);
+  } else {
+    _mapB.jumpTo({ center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() });
+  }
+  if (!_divider) {
+    _divider = document.createElement('div');
+    _divider.className = 'swipe-divider';
+    host.appendChild(_divider);
+    _wireDividerDrag();
+  }
+  _divider.style.display = 'block';
+  _setDivider(50);
+  map.on('move', _syncFromA);
+  _compareOn = true;
+  host.classList.add('is-compare');
+}
+
+function _exitCompare() {
+  if (map) map.off('move', _syncFromA);
+  if (_mapBWrap) _mapBWrap.style.display = 'none';
+  if (_divider) _divider.style.display = 'none';
+  _compareOn = false;
+  const host = document.getElementById('map');
+  if (host) host.classList.remove('is-compare');
+}
+
+function _syncFromA() {
+  if (!_mapB || _syncing) return;
+  _syncing = true;
+  _mapB.jumpTo({ center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() });
+  _syncing = false;
+}
+function _syncFromB() {
+  if (!map || _syncing) return;
+  _syncing = true;
+  map.jumpTo({ center: _mapB.getCenter(), zoom: _mapB.getZoom(), bearing: _mapB.getBearing(), pitch: _mapB.getPitch() });
+  _syncing = false;
+}
+
+/** divider 位置 pct(0..100)：mapB clip 到 pct 右侧（左显 mapA / 右显 mapB）。clip-path 同时切视觉+事件。 */
+function _setDivider(pct) {
+  if (_mapBWrap) _mapBWrap.style.clipPath = `inset(0 0 0 ${pct}%)`;
+  if (_divider) _divider.style.left = pct + '%';
+}
+
+function _wireDividerDrag() {
+  if (!_divider) return;
+  let dragging = false;
+  _divider.addEventListener('mousedown', (e) => { dragging = true; e.preventDefault(); });
+  _divider.addEventListener('touchstart', () => { dragging = true; }, { passive: true });
+  const onMove = (clientX) => {
+    if (!dragging || !_compareOn) return;
+    const host = document.getElementById('map');
+    if (!host) return;
+    const r = host.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(100, ((clientX - r.left) / r.width) * 100));
+    _setDivider(pct);
+  };
+  window.addEventListener('mousemove', (e) => onMove(e.clientX));
+  window.addEventListener('mouseup', () => { dragging = false; });
+  window.addEventListener('touchmove', (e) => { if (e.touches[0]) onMove(e.touches[0].clientX); }, { passive: true });
+  window.addEventListener('touchend', () => { dragging = false; });
+}
+
 export function setBasemap(key) {
   if (!map || !BASEMAPS[key]) return;
   _currentBasemap = key;

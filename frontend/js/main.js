@@ -1,5 +1,5 @@
 // ═══ main.js — entry: wire map + sidebar + panel + toolbar + popup + import ═══
-import { initMap, setBasemap, setClickHandler, renderLayer, fitBoundsTo, reorderAllZ, getMap } from './map.js';
+import { initMap, setBasemap, setClickHandler, renderLayer, fitBoundsTo, reorderAllZ, getMap, setCompareMode, isCompareMode } from './map.js';
 import { initPanel, activateTab, setOverview, setTable, activateOvTab, isOverallGrid } from './panel.js';
 import { initTipPopup } from './tip-popup.js';
 import { initToolbar, setActiveBasemap } from './toolbar.js';
@@ -270,6 +270,12 @@ function main() {
   initSearchBar();
   initTimeline();
   initTimeBar();
+  // 批4 Swipe 卷帘 POC：'c' 键 toggle compare 模式（Step 4 改 time-bar 正式入口）
+  document.addEventListener('keydown', (e) => {
+    if ((e.key === 'c' || e.key === 'C') && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) {
+      setCompareMode(!isCompareMode());
+    }
+  });
   loadManifest().then(tagAllLayers).catch(() => {});   // 全局时间轴 manifest（就绪后给已导入层补打标）
   initDrawTool(map);
   initHeatmapLegend();

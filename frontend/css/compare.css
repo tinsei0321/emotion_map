@@ -1,0 +1,42 @@
+/* ═══ 批4 时间对比 · Swipe 卷帘（compare 模式：mapB 第二实例叠加 + clip divider）══════
+   Step 1 POC：mapB 同位叠加 mapA，clip-path 切右半（左显 mapA / 右显 mapB）；divider 可拖。
+   clip-path 同时切视觉与事件（裁掉区域不收事件 → 左半事件穿透到 mapA）。
+   ═══════════════════════════════════════════════════════════════════════════════════ */
+
+/* mapB 容器：absolute 铺满 #map，z1（mapA canvas 之上、UI 控件 z96 之下）*/
+.map-b-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: auto;
+  display: none;            /* 默认隐，compare 模式显 */
+}
+#map.is-compare .map-b-wrap { display: block; }
+
+/* 卷帘分割线：可拖（z90 = 两 map 之上、search-bar/time-bar z96 之下，保 UI 可点）*/
+.swipe-divider {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 4px;
+  transform: translateX(-50%);
+  background: #ffffff;
+  z-index: 90;
+  cursor: ew-resize;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.45);
+  display: none;
+}
+#map.is-compare .swipe-divider { display: block; }
+.swipe-divider::before,
+.swipe-divider::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 6px;
+  background: #ffffff;
+  border-radius: 3px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+.swipe-divider::before { top: calc(50% - 14px); }
+.swipe-divider::after { top: calc(50% + 8px); }
