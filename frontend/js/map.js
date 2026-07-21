@@ -215,7 +215,10 @@ function _onMapBStyleLoad() {
 
 /** 批4 grid compare 焦点 grid 的 layer id（visible + tool=grid）。无焦点 → null（不镜像）。 */
 function _focusedGridId() {
-  const g = getLayers().find((l) => l.visible && l.paint && l.paint._ui && l.paint._ui.tool === 'grid');
+  const all = getLayers();
+  const grids = all.filter((l) => l.paint && l.paint._ui && l.paint._ui.tool === 'grid');
+  const g = grids.find((l) => l.visible);
+  console.log('[compare] _focusedGridId: layers=' + all.length, 'grids=[' + grids.map((l) => l.id + ':vis=' + l.visible).join(',') + ']', '→ ' + (g && g.id));
   return g && g.id;
 }
 
@@ -232,8 +235,11 @@ function _mirrorLayersToMapB() {
     for (const l of (bStyle.layers || []).slice()) { if (want(l.id)) _mapB.removeLayer(l.id); }
     for (const sid of Object.keys(bStyle.sources || {})) { if (want(sid)) _mapB.removeSource(sid); }
     const aStyle = map.getStyle();
-    for (const [sid, spec] of Object.entries(aStyle.sources || {})) { if (want(sid)) { try { _mapB.addSource(sid, spec); } catch (e) {} } }
-    for (const layerSpec of (aStyle.layers || [])) { if (want(layerSpec.id)) { try { _mapB.addLayer(layerSpec); } catch (e) {} } }
+    for (const [sid, spec] of Object.entries(aStyle.sources || {})) { if (want(sid)) { try { _mapB.addSource(sid, spec); } catch (e) { console.warn('[compare] addSource ' + sid + ' 失败:', e.message); } } }
+    for (const layerSpec of (aStyle.layers || [])) { if (want(layerSpec.id)) { try { _mapB.addLayer(layerSpec); } catch (e) { console.warn('[compare] addLayer ' + layerSpec.id + ' 失败:', e.message); } } }
+    const aSrcs = Object.keys(aStyle.sources || {}).filter(want).length;
+    const aLays = (aStyle.layers || []).filter((l) => want(l.id)).length;
+    console.log('[compare] mirror grid=' + gridId, 'mapA srcs=' + aSrcs, 'layers=' + aLays, '→ dispatch mapBready');
     if (_compareOn) document.dispatchEvent(new CustomEvent('compare:mapBready', { detail: { gridId } }));
   } catch (e) { console.warn('[compare] mirror 失败', e); }
 }

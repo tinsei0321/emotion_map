@@ -26,9 +26,11 @@ let _compareB = null;           // 批4 compare：mapB 的 grid 片 key（Step 3
 document.addEventListener('compare:mapBready', () => {
   const mapB = getMapB();
   const keys = getBoundSliceKeys();
+  console.log('[compare] mapBready: mapB=' + !!mapB, 'boundKeys=' + keys.length, 'compareB=' + _compareB);
   if (!mapB || !keys.length) return;
   if (_compareB === null || !keys.includes(_compareB)) _compareB = keys[keys.length - 1];   // 默认末片
-  renderSliceToMap(mapB, _compareB);
+  const ok = renderSliceToMap(mapB, _compareB);
+  console.log('[compare] renderSliceToMap(B=' + _compareB + ') → ' + ok);
   _syncActive();               // 刷新卡片显 B
   _updateCompareLabels();
 });
