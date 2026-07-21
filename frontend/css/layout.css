@@ -82,16 +82,28 @@ button { font-family: inherit; }
   align-items: stretch;
 }
 
+/* CPD Phase 2b：#left-panel 从常驻左栏改为 chip 唤出的浮动抽屉。
+   默认 display:none（#map 全宽），chip 点击加 .is-drawer-open 显示。
+   Range/Layers/Toolbox 仍在其中（基础设施保留），仅以抽屉按需出现（软折叠）。 */
 #left-panel {
-  width: var(--left-w);
-  flex: 0 0 var(--left-w);
-  display: flex;
+  position: absolute;
+  top: 30px;                                    /* 与 EMC 顶对齐 */
+  left: 320px;                                  /* EMC 右侧（10 + 300 + 10） */
+  width: 340px;
+  max-height: calc(100vh - 70px);
+  display: none;                                /* 默认隐藏 */
   flex-direction: column;
   background: var(--geojson-color-surface-panel);
-  border-right: 1px solid var(--geojson-color-border-default);
+  border: 1px solid var(--geojson-color-border-default);
+  border-radius: 10px;
+  box-shadow: var(--geojson-shadow-lg);
   overflow: hidden;
-  transition: width var(--geojson-transition), flex-basis var(--geojson-transition);
+  z-index: 55;                                  /* 浮于 EMC(50)/地图之上，低于 search-bar(96) */
 }
+#left-panel.is-drawer-open { display: flex; }   /* chip 唤出 */
+#left-panel .lp-upper { min-height: 0; flex: 1 1 auto; }   /* 抽屉内解除 1/3 窗口高下限 */
+/* 抽屉模式下左拖拽条/左折叠钮退役（drawer 用 display 控制，无需 resize/collapse） */
+.gutter[data-side="left"], .collapse-btn[data-side="left"] { display: none !important; }
 
 /* ── Left panel 上半区（Import / Range·Layers·Toolbox）；最小缩到 1/3 窗口高 ── */
 #lp-upper {

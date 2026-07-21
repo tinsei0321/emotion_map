@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.160 CPD Phase 2a · 软折叠壳（cpd-state 客户端推导 + EMC 进度条 + 摘要 chip 行）**（本次，分支 `cpd`）。上一轮 5.159。最近：
+> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.161 CPD Phase 2b · 撤常驻左栏改 chip 抽屉 + 折叠欢迎胶囊重设计**（本次，分支 `cpd`）。上一轮 5.160。最近：
+>
+> - **5.161 CPD Phase 2b · 撤常驻左栏改 chip 唤出抽屉 + 折叠欢迎胶囊重设计**：**A 折叠欢迎胶囊** [ai_qa.css](frontend/css/ai_qa.css)：从"生硬输入框"改"AI 助手问候泡"——**修线框不均**（textarea 默认 content-box 致 border+padding 溢出 100% 宽→边缘错位，加 `box-sizing:border-box`）+ **4px 橙线框** + **全圆胶囊**（radius 28=56/2）+ 左 **sparkle 图标**（橙色，AI 身份）+ 右 **→ CTA 箭头**（点我进入）+ **2.6s 呼吸光环**（吸引首次注意，hover 暂停）+ hover 浮起。**B Phase 2b**：[layout.css](frontend/css/layout.css) `#left-panel` 从常驻 flex 左栏改为 **chip 唤出的浮动抽屉**（`position:absolute; display:none` 默认、`.is-drawer-open` 显示、EMC 右侧 left:320/top:30/340 宽、z-index 55、圆角阴影）；`#map` 随之全宽；`.gutter-left/.collapse-left` 退役隐藏。panes（Range/Layers/Toolbox）**留原处免重宿主**（图层管理器 renderLayerList 等零改）。[sidebar.js](frontend/js/sidebar.js)：`cpd:focus-tab` 改抽屉 toggle（同 tab 再点关）+ 外部点/Esc 关 + `showLayerManager` 导入后自动展开抽屉。[tools.js](frontend/js/ai_qa/tools.js) `buildContext` 增 curState 语境 hint（**不参与路由、不动 diagnose**）。承重未破。ESM 绿（tools/sidebar）。**CPD 软折叠闭环**：EMC chip → 抽屉按需出现 → 用完即隐。push 待用户。
 >
 > - **5.160 CPD Phase 2a · 软折叠壳（CPD 状态机落地的第一步）**：新增 [cpd-state.js](frontend/js/ai_qa/cpd-state.js)——**客户端推导 curState**（S0 空/S2 有可见层/S3 对话中/S4 有结论卡；S1 range-only、S5 导出为瞬态不自动判），信号=visible layers + `#chat-messages .chat-msg-user`/`.aiq-conclusion`；pub/sub + 监听 `layers:changed`/`layer:selected`/chat-messages MutationObserver。**承重：不动 diagnose prompt（保 eval）**——curState 纯客户端派生，不进 LLM context 必需项。[panel.js](frontend/js/ai_qa/panel.js) `_setupCpdBar`：EMC 顶部（chat-head 下）注入 **5 步进度条**（当前蓝光晕/已完成绿/未达灰 + 步骤标签）+ **Layers/范围/工具 摘要 chip 行**（软折叠·始终可达，图层 chip 带计数）；chip 点击派发 `cpd:focus-tab`。[sidebar.js](frontend/js/sidebar.js) 监听 `cpd:focus-tab` → 切左栏 tab + 折叠则展开（2a 桥接，左栏暂不移除）。[ai_qa.css](frontend/css/ai_qa.css) 进度点 + chip 胶囊（无线框+悬停灰+计数蓝，胶囊设计语言；折叠态隐藏）。**2a 为 CPD 壳：左栏与 chip 暂时并存（冗余），2b 将 chip 改开 EMC 内抽屉并撤 `#left-panel` + `buildContext` curState hint。** ESM 三绿（cpd-state/panel/sidebar）。push 待用户。
 >

@@ -12,6 +12,7 @@ import { fcBBox, profileFields } from '../import.js';
 import { resolveRole, isRenderContract, isInternalField } from '../field_dictionary.js';   // P2/P3 字段语义层·规则标注 + _fieldSamples 语义过滤
 import { landuseLayerPaint } from '../landuse_colors.js';   // 用地层自动附标准色（EMC 产物也走此）
 import { resolveBoundaryInput } from './boundary-resolve.js';   // 中文地名→GeoJSON（治 compare 中文名错配 5.115）
+import { getCurState, CPD_STEPS } from './cpd-state.js';   // CPD Phase 2b：curState 语境 hint（不动路由）
 
 let _lastGrid = null;   // 最近生成聚合层（ensure_zone/query 优先用）
 
@@ -451,6 +452,10 @@ export async function buildContext() {
   const layers = getLayers();
   const an = activeAnalysis();
   const parts = [];
+  // CPD Phase 2b：curState 语境 hint（仅丰富 LLM 语境，不参与路由裁定/不动 diagnose）。
+  const _cs = getCurState();
+  const _csl = CPD_STEPS.find((s) => s.id === _cs);
+  parts.push(`引导阶段：${_cs}${_csl ? '·' + _csl.label : ''}（用户所处进度，仅供参考，不改变工具选型）`);
   const loaded = (await Promise.all(layers
     .filter((l) => l.visible && l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length)
     .map(async (l) => {

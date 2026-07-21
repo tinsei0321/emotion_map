@@ -145,6 +145,8 @@ export function openImport() {
 /** After a successful load: switch left panel to sections + activate the Layers
  *  tab so the layer manager is visible. Called by main.js runImport. */
 export function showLayerManager() {
+  const panel = document.getElementById('left-panel');
+  if (panel) panel.classList.add('is-drawer-open');   // CPD Phase 2b：导入后自动展开抽屉显图层
   setLeftMode('sections');
   setActiveTab('layers');
 }
@@ -777,13 +779,31 @@ export function initSidebar({ onFiles, onRangeFiles } = {}) {
   // popover closed via outside-click/Escape → clear the kind marker's active state
   document.addEventListener('layer-settings:closed', renderLayerList);
 
-  // CPD Phase 2a：EMC 摘要 chip → 聚焦左栏对应 tab（软折叠桥接，左栏 2a 暂不移除）
+  // CPD Phase 2b：EMC chip 唤出左栏抽屉（同 tab 再点 → 关；外部点 / Esc → 关）
   document.addEventListener('cpd:focus-tab', (e) => {
     const tab = e.detail;
     if (tab !== 'layers' && tab !== 'range' && tab !== 'toolbox') return;
-    if (readVarPx('--left-w') < 1) togglePanel('left');   // 折叠则展开
-    setLeftMode('sections');                                // 切到三区模式（非 import 空态）
+    const panel = document.getElementById('left-panel');
+    if (!panel) return;
+    if (panel.classList.contains('is-drawer-open') && _activeTab === tab) {
+      panel.classList.remove('is-drawer-open');   // 同 tab 再点 → 关（toggle）
+      return;
+    }
+    panel.classList.add('is-drawer-open');
+    setLeftMode('sections');                       // 切到三区模式（非 import 空态）
     setActiveTab(tab);
+  });
+  // 抽屉外部点击 → 关（点抽屉内 / EMC 不关）
+  document.addEventListener('pointerdown', (e) => {
+    const panel = document.getElementById('left-panel');
+    if (!panel || !panel.classList.contains('is-drawer-open')) return;
+    if (panel.contains(e.target)) return;
+    if (e.target.closest('#emc-panel')) return;
+    panel.classList.remove('is-drawer-open');
+  });
+  // Esc → 关抽屉
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.getElementById('left-panel')?.classList.remove('is-drawer-open');
   });
 
   // Analysis 段已移除（整合入数据库）；以下为 Toolbox 工具入口
