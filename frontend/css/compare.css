@@ -40,3 +40,39 @@
 }
 .swipe-divider::before { top: calc(50% - 14px); }
 .swipe-divider::after { top: calc(50% + 8px); }
+
+/* ── 对比按钮（time-bar 卡片头）── */
+.tb-compare {
+  margin-left: auto;
+  padding: 3px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--geojson-color-text-secondary, #737373);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all var(--geojson-transition, 150ms);
+}
+.tb-compare:hover { background: rgba(0, 0, 0, 0.04); color: var(--geojson-color-text, #1a1a1a); }
+.tb-compare.is-active { background: #1A73E8; border-color: #1A73E8; color: #fff; }
+
+/* ── A/B 地图角标（compare 模式显；A 蓝 / B 橙 区分两半）── */
+.compare-label {
+  position: absolute;
+  top: 10px;
+  z-index: 95;
+  padding: 3px 10px;
+  border-radius: 4px;
+  background: rgba(22, 27, 34, 0.82);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+  display: none;
+}
+.compare-label-a { left: 10px; border-left: 3px solid #1A73E8; }   /* A 蓝（mapA 左半）*/
+.compare-label-b { right: 10px; border-left: 3px solid #F97316; }  /* B 橙（mapB 右半）*/
+#map.is-compare .compare-label { display: block; }

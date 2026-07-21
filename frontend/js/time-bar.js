@@ -11,7 +11,7 @@
 
 import { applyTime, availablePeriods, slicesForPeriod, periodLabel, isManifestReady, loadManifest } from './time-source.js';
 import { renderSlice, play as playGrid, stop as stopGrid, isBound as gridBound, renderSliceToMap, getBoundSliceKeys } from './timeline.js';
-import { getMapB } from './map.js';
+import { getMapB, isCompareMode, setCompareMode } from './map.js';
 
 let _btn = null;          // .time-bar 圆按钮
 let _card = null;         // .tb-card 展开卡片
@@ -29,8 +29,10 @@ document.addEventListener('compare:mapBready', () => {
   if (!mapB || !keys.length) return;
   if (_compareB === null || !keys.includes(_compareB)) _compareB = keys[keys.length - 1];   // 默认末片
   renderSliceToMap(mapB, _compareB);
+  _syncActive();               // 刷新卡片显 B
+  _updateCompareLabels();
 });
-document.addEventListener('compare:exit', () => { _compareB = null; });
+document.addEventListener('compare:exit', () => { _compareB = null; _updateCompareLabels(); });
 
 const ICON_PLAY = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M7 5v14l12-7z"/></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
@@ -57,6 +59,12 @@ export function initTimeBar() {
 
   host.appendChild(_btn);
   host.appendChild(_card);
+
+  // 批4 A/B 地图角标（compare 模式显，CSS #map.is-compare 控制显隐）
+  const labA = document.createElement('div'); labA.className = 'compare-label compare-label-a'; labA.textContent = 'A';
+  const labB = document.createElement('div'); labB.className = 'compare-label compare-label-b'; labB.textContent = 'B';
+  host.appendChild(labA);
+  host.appendChild(labB);
 }
 
 async function _ensureState() {
@@ -94,13 +102,16 @@ function _render() {
   const periods = availablePeriods();
   _card.innerHTML = `
     <div class="tb-head">
-      <span class="tb-cur">${_sliceLabel(slices) || '—'}</span>
+      <span class="tb-cur">${(isCompareMode() ? 'B · ' : '') + (_sliceLabel(slices) || '—')}</span>
+      <button class="tb-compare ${isCompareMode() ? 'is-active' : ''}" type="button" title="A/B 时间对比（卷帘）">${isCompareMode() ? '退出对比' : '对比'}</button>
       <button class="tb-x" type="button" title="收起" aria-label="收起"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <div class="tb-periods">${periods.map((p) => `<button class="tb-p ${p === _period ? 'is-active' : ''}" data-period="${p}" type="button">${periodLabel(p)}</button>`).join('')}</div>
     <div class="tb-body">${_renderBody(slices)}</div>
     ${slices.length > 1 ? `<div class="tb-foot"><button class="tb-play" type="button" title="播放/暂停" aria-label="播放/暂停">${_isPlaying ? ICON_PAUSE : ICON_PLAY}</button><input class="tb-slider" type="range" min="0" max="${slices.length - 1}" step="1" value="${_sliceIndex(slices)}" aria-label="时间滑动"><span class="tb-slider-i">${_sliceIndex(slices) + 1}/${slices.length}</span></div>` : ''}`;
   _card.querySelector('.tb-x').addEventListener('click', _closeCard);
+  const _cmp = _card.querySelector('.tb-compare');
+  if (_cmp) _cmp.addEventListener('click', () => { setCompareMode(!isCompareMode()); _render(); _updateCompareLabels(); });
   _card.querySelectorAll('.tb-p').forEach((b) => b.addEventListener('click', () => _setPeriod(b.dataset.period)));
   _wireBody(slices);
   const _sl = _card.querySelector('.tb-slider');
@@ -109,19 +120,23 @@ function _render() {
   if (_pl) _pl.addEventListener('click', _togglePlay);
 }
 
+/** 当前 UI 反映的片：compare 模式显 B（mapB 可调），否则 A（mapA）。 */
+function _activeSliceKey() { return (isCompareMode() && _compareB) ? _compareB : _sliceKey; }
 function _sliceLabel(slices) {
-  const s = slices.find((x) => x.key === _sliceKey);
-  return s ? s.label : _sliceKey;
+  const k = _activeSliceKey();
+  const s = slices.find((x) => x.key === k);
+  return s ? s.label : k;
 }
 function _sliceIndex(slices) {
-  const i = slices.findIndex((x) => x.key === _sliceKey);
+  const k = _activeSliceKey();
+  const i = slices.findIndex((x) => x.key === k);
   return i < 0 ? 0 : i;
 }
 
 /** body：阶段→停点条；日→月历；周/月/季/年/自选→占位（待数据接入）。 */
 function _renderBody(slices) {
   if (_period === 'phase') {
-    return `<div class="tb-stops">${slices.map((s, i) => `<button class="tb-stop ${s.key === _sliceKey ? 'is-active' : ''}" data-key="${s.key}" data-i="${i}" type="button"><span class="tb-stop-k">${s.key}</span><span class="tb-stop-l">${(s.label || '').replace(/^T\d\s*·\s*/, '')}</span></button>`).join('')}</div>`;
+    return `<div class="tb-stops">${slices.map((s, i) => `<button class="tb-stop ${s.key === _activeSliceKey() ? 'is-active' : ''}" data-key="${s.key}" data-i="${i}" type="button"><span class="tb-stop-k">${s.key}</span><span class="tb-stop-l">${(s.label || '').replace(/^T\d\s*·\s*/, '')}</span></button>`).join('')}</div>`;
   }
   if (_period === 'day') return _renderCalendar(slices);
   return `<div class="tb-empty">该粒度（${periodLabel(_period)}）数据待接入</div>`;
@@ -139,7 +154,7 @@ function _renderCalendar(slices) {
   for (let d = 1; d <= daysInMonth; d++) {
     const key = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const has = sliceSet.has(key);
-    const sel = key === _sliceKey;
+    const sel = key === _activeSliceKey();
     cells.push(`<td class="tb-cal-d ${has ? 'is-data' : ''} ${sel ? 'is-active' : ''}" data-key="${has ? key : ''}">${d}</td>`);
   }
   const rows = [];
@@ -166,13 +181,19 @@ function _wireBody(slices) {
 
 // ── 选片 / 切粒度 ──
 
-/** 选片：applyTime 换源（点层）+ renderSlice（grid，若 timeline 已绑）+ 刷新高亮。 */
+/** 选片：compare 模式 → 设 mapB 片B（renderSliceToMap）；否则 → mapA 片A（applyTime + renderSlice）。 */
 function _pick(key) {
-  if (!key || key === _sliceKey) return;
-  _stopPlay();                    // 用户选片 → 停播
-  _sliceKey = key;
-  applyTime(_period, key, gridBound());   // grid 绑定时 silent（renderSlice 驱动 grid Overview，避抢刷）
-  renderSlice(key);               // grid 跟随（timeline 未绑则 no-op）
+  if (!key) return;
+  if (!isCompareMode() && key === _sliceKey) return;
+  _stopPlay();
+  if (isCompareMode()) {
+    _compareB = key;                                    // compare：调的是 mapB 片B
+    renderSliceToMap(getMapB(), key);
+  } else {
+    _sliceKey = key;
+    applyTime(_period, key, gridBound());
+    renderSlice(key);
+  }
   _syncActive();
 }
 
@@ -220,10 +241,21 @@ function _syncActive() {
   const cur = _card.querySelector('.tb-cur');
   if (cur) cur.textContent = _sliceLabel(slices) || '—';
   _card.querySelectorAll('.tb-stop,.tb-cal-d').forEach((b) => {
-    b.classList.toggle('is-active', b.dataset.key === _sliceKey && !!b.dataset.key);
+    b.classList.toggle('is-active', b.dataset.key === _activeSliceKey() && !!b.dataset.key);
   });
   const sl = _card.querySelector('.tb-slider');
   if (sl) sl.value = _sliceIndex(slices);
   const sli = _card.querySelector('.tb-slider-i');
   if (sli) sli.textContent = (_sliceIndex(slices) + 1) + '/' + slices.length;
+}
+
+/** 刷新地图角 A/B 标签（A=mapA 片 / B=mapB 片）。compare 模式显，CSS 控制显隐。 */
+function _updateCompareLabels() {
+  const slices = slicesForPeriod(_period);
+  const aS = slices.find((s) => s.key === _sliceKey);
+  const bS = slices.find((s) => s.key === _compareB);
+  const aLab = document.querySelector('.compare-label-a');
+  const bLab = document.querySelector('.compare-label-b');
+  if (aLab) aLab.textContent = 'A · ' + ((aS && aS.label) || _sliceKey || '—');
+  if (bLab) bLab.textContent = 'B · ' + ((bS && bS.label) || _compareB || '—');
 }
