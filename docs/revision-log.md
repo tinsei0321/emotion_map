@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月22日）** · 本节按板块分组、组内倒序；最新工作 = **5.170 CPD 折叠光环推翻重做（水平/实色/间歇慢呼吸）**（本次，分支 `cpd`）。上一轮 5.169。最近：
+> 📍 **最新动态（07月22日）** · 本节按板块分组、组内倒序；最新工作 = **5.171 CPD 光环淡出再现+引导飞快色 + chip 凸出 + 进度点提示 + 引导测试快捷键**（本次，分支 `cpd`）。上一轮 5.170。最近：
+>
+> - **5.171 CPD 光环淡出再现 + chip 凸出 + 进度点提示 + 引导测试键**（用户反馈 ①②③）：① **光环改「淡出→再现」**（[ai_qa.css](frontend/css/ai_qa.css)）：**去 scale 放大缩小** → opacity 慢循环 0.9→0.12→0.9（淡出再現，16s 慢）；**保颜色流动**（emc-halo-flow 40s 缓交替）；**`.has-guidance`（AI 新提示）→ 颜色飞快交替**（flow 2.5s 强吸引）。**临时测试快捷键**（[panel.js](frontend/js/ai_qa/panel.js) `_setupCpdBar` Ctrl+Shift+G）：模拟「AI 新引导」→ 加 `.has-guidance`（光环飞快颜色）+ 示例提示文本，预览引导耦合（CPD 核心上线后删）。② **图层/范围/工具 chip 凸出放大**：padding 3/9→6/13、字号 11→12.5px、加 **accent 边框 + 阴影 + hover 浮起**、计数徽章 accent 实色（重要功能更显眼）。③ **进度点加 hover 提示**：每点 title 改「步骤 N/5：名称」+ 进度行加「进度」说明 caption（去「意义不明」）。ESM 绿。push 待用户。
 >
 > - **5.170 CPD 折叠光环重做（用户反馈三根因）**：① **歪了**——`emc-wave-undulate` 的 `rotate(-2/3deg)` 旋转了光晕→**去 rotate**，呼吸改纯 scale，保水平。② **半透明+边缘糊**——opacity 呼吸(0.42→0.65)+blur(3px)→**实色 opacity 0.9 + blur 1px**（去半透明、波浪边缘清晰）。③ **太快+不间歇**——单 keyframe 内嵌「前 18% 三次缩放呼吸 + 后 82% 静止休息」循环 = 呼吸3下→长休息(~20s)→重复；整体减速至 ~0.3×（flow 45s / breathe 周期 24s）。三档：default(慢间歇) < :hover(周期 14s 少休息) < .has-guidance(连续 `emc-halo-breathe-on` 强呼吸)。`emc-halo-flow` 色彩缓慢推进（波浪感，水平）。纯 CSS，承重未动。push 待用户。
 >

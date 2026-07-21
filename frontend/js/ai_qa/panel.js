@@ -1475,8 +1475,9 @@ function _setupCpdBar() {
   // 进度条（5 点 + 步骤标签）
   const prog = document.createElement('div');
   prog.className = 'emc-cpd-prog';
-  prog.innerHTML = CPD_STEPS.map((s, i) =>
-    `<span class="emc-cpd-dot" data-idx="${i}" title="${s.id} ${s.label}"></span>`).join('')
+  // CPD ③：进度行加「进度」说明 + 每点描述性 hover title（明确意义，去「意义不明」）
+  prog.innerHTML = '<span class="emc-cpd-prog-cap">进度</span>'
+    + CPD_STEPS.map((s, i) => `<span class="emc-cpd-dot" data-idx="${i}" title="步骤 ${i + 1}/${CPD_STEPS.length}：${s.label}"></span>`).join('')
     + '<span class="emc-cpd-prog-label">—</span>';
   bar.appendChild(prog);
   // chip 行（软折叠·始终可达；图层 chip 带计数）
@@ -1510,6 +1511,21 @@ function _setupCpdBar() {
   document.addEventListener('layers:changed', render);
   render();
   initCpdState();   // 启动状态推导 + 全局监听
+
+  // CPD 临时测试（CPD 核心引导上线后删）：Ctrl+Shift+G 模拟「AI 新引导」
+  // → 折叠胶囊加 .has-guidance（光环飞快颜色交替）+ 示例提示文本，便于预览引导耦合效果。
+  document.addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey && e.shiftKey && (e.key === 'G' || e.key === 'g'))) return;
+    const panel = document.getElementById('emc-panel');
+    if (!panel) return;
+    const on = panel.classList.toggle('has-guidance');
+    const ta = document.getElementById('chat-input');
+    if (ta) {
+      ta.placeholder = on ? '【测试·新引导】试试框选西陵区，看居住情绪分布' : _INPUT_PH_COLLAPSED;
+      _fitCollapsedText();
+    }
+    console.log('[CPD test] has-guidance =', on, '（Ctrl+Shift+G 切换；光环应飞快颜色交替）');
+  });
 }
 
 export function initChatPanel() {
