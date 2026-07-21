@@ -5,6 +5,20 @@
 
 ---
 
+## 📅 2026-07-21（分支 `cpd` · CPD 系统级重构）
+
+### 🔄 CPD — 情境式渐进披露（contextual progressive disclosure）
+
+> EMC 升为系统底层主控、摈弃工程化操作体验、情境式渐进披露（软折叠）。分支 `cpd` 从 main 切出，完成后引导合并；main 遗留（批4 grid 镜像 bug）延后。plan：`~/.claude/plans/07-21-4-swipe-compressed-dawn.md`。单一真理源 `docs/design-system.md`。
+
+- [✅] **Phase 0 · POI 入库**（revision-log 5.155 · 待 push）：`DATA/POI/` 3220 真实 POI 入 `core/place_layer.py`（无 SQL DB，库=place_layer 单 owner）。新增 `SCRIPT/poi_data/ingest_centralcity_poi.py`（字段映射 + 10 类→4×5 + 覆写 `amap_poi_centralcity_wgs84.json`，place_layer 零改动）。all_pois 4497。修 test_geocode 2 例（limit 30→200）。1623 边界 = 已有 `admin_district` preset（同 9 区），无需重复。
+- [🔄] **Phase 1 · 布局重构**：工具簇横排（比例尺右侧）+ 左栏窗口退场（基础设施保留换宿主）+ EMC `position:absolute` 浮窗 + `resize:both` 高帧率双向缩放。
+- [⬜] **Phase 2 · CPD 软折叠状态机**：新增 `cpd-state.js` 客户端推导 curState（**不动 diagnose 保 eval**）+ 进度条/摘要 chip 行/主动作卡 + `buildContext` 增可选 hint。
+- [⬜] **Phase 3 · 主题**：design-system 正冷/负暖五色带对齐 tokens + Light·yakushimabus（森绿 `#143a35` + 金黄）+ EMC 三级权重。
+- [⬜] **Phase 4 · 附加**：CPD 抽象为可复用底层架构（CPD 完成后提示用户启动）。
+
+---
+
 ## 📅 2026-07-19
 
 ### ✅ CB 收尾（CB-03 反评价 + 拓扑同步）（revision-log 5.139 · **待 push**）
