@@ -1521,7 +1521,7 @@ export function initChatPanel() {
     const b = document.getElementById('chat-theme');
     if (b) b.title = (t === 'light') ? '切换 Dark 主题' : '切换 Light 主题';
   };
-  try { _applyTheme(localStorage.getItem('emc-theme') || 'dark'); } catch (_) { _applyTheme('dark'); }
+  try { _applyTheme(localStorage.getItem('emc-theme') || 'light'); } catch (_) { _applyTheme('light'); }   // CPD：默认 Light（用户定）
   document.getElementById('chat-theme')?.addEventListener('click', () => {
     const cur = document.documentElement.getAttribute('data-theme') || 'dark';
     const next = cur === 'dark' ? 'light' : 'dark';

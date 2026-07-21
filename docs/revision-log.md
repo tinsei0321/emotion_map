@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月22日）** · 本节按板块分组、组内倒序；最新工作 = **5.167 CPD 折叠光环回 linear+收窄柔化 + Light chat-head 浅森绿 + 结论卡浮出**（本次，分支 `cpd`）。上一轮 5.166。最近：
+> 📍 **最新动态（07月22日）** · 本节按板块分组、组内倒序；最新工作 = **5.168 CPD 光环回 2.6s 慢呼吸版 + EMC 默认 Light**（本次，分支 `cpd`）。上一轮 5.167。最近：
+>
+> - **5.168 CPD 光环 2.6s 慢呼吸 + EMC 默认 Light**（用户反馈 ①②）：① 折叠光环改回**慢呼吸版**（[ai_qa.css](frontend/css/ai_qa.css)）：上一版(3.4/3.8/2.9s + blur8)过于显眼、呼吸太频繁 → flow 5s / undulate 4.5s（scale 1.1 小幅 ±2-3° 更柔）/ **breathe 2.6s**（用户指定的 2.6s 慢呼吸）/ blur 8→**5**（波浪边缘清晰可辨）/ opacity 0.3→0.58（不显眼、若隐若现）；保 `overflow:visible` bug 修复。② **EMC 默认 Light**（[panel.js](frontend/js/ai_qa/panel.js) `_applyTheme` 默认 `dark→light`，用户认可 Light 效果）。**【CPD 范围校正】**：用户明确——至今所成（EMC UI + EMC 层级逻辑重构）**仅是 CPD 的地基**，**非 CPD 完工**；CPD 核心 = 用 EMC 交互引导情绪地图所有功能体验，如何引导/实现需详细 plan 讨论。**不到合分支 / 抽离模块之时**。push 待用户。
 >
 > - **5.167 CPD 光环回 linear + Light chat-head + 结论卡**（用户反馈 ①② + 3c 余项）：① 折叠光环 **改回 linear 流动**（conic 旋转非用户所要；linear 方向对）[ai_qa.css](frontend/css/ai_qa.css)：保 `overflow:visible` 修复（几轮失效根因），收窄 inset -16→**-10**（太宽），起伏更柔（rotate ±3-4° + scale 1.18 波浪推进，原 ±8° 僵硬）；三轨 flow+undulate+breathe，半透明 0.45→0.8，7 色带=层叠波浪感。② **Light chat-head 去近黑**：硬编码 `#161616`（Light 下显深突兀）→ 浅森绿 `#ecf2f0` 底 + 森绿 `#143a35` 字（yakushimabus 配套，不深不突兀）。**3c 余项·结论卡浮出**：`.aiq-step-final`（结论 step）升级为**浮出卡**（白底+阴影 lg+顶 6px 强调带，§2.1/2.3）——CSS-only 免 DOM 重构，结论升为视线第一落点；过程卡/审查胶囊 CSS 已在 5.166。极性动态色带 + swallow 注入留作更深 refinement。push 待用户。
 >
