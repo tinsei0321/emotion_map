@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.158 CPD Phase 1 视觉精修二轮（折叠白胶囊 + 浮窗贴顶 40px + 输入盒收窄 18px + 工具钮 20px）**（本次，分支 `cpd`）。上一轮 5.157。最近：
+> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.159 CPD Phase 1 视觉精修三轮（折叠浅灰胶囊 + 浮窗 30px + 输入钮 32px + 工具钮方正/3+5 断开）**（本次，分支 `cpd`）。上一轮 5.158。最近：
+>
+> - **5.159 CPD Phase 1 视觉精修三轮（按用户 F5 反馈 4 条 + 纠设计直觉跑偏）**：① 折叠胶囊 [ai_qa.css](frontend/css/ai_qa.css) 纯白→**浅灰底 `#ececec`**（白太突兀，记用户偏好柔和浅底）+ 橙色 2px 线框恢复。② 浮窗 [layout.css](frontend/css/layout.css) `top:40→30px`（再上移 10）。③ 输入钮 18→**32px**（18 触达差，回调合理可点尺寸；ctx-cap/+ /Pro·Flash/发送 等高 32，send 箭头 16）。④ 工具钮 [map-controls.css](frontend/css/map-controls.css) 加 `aspect-ratio:1 + flex:0 0 auto` 锁死**正方形**（防内容撑变形）+ [map-controls.js](frontend/js/map-controls.js) btnReset 加 `.emotion-ctrl-break` → 中间 `margin-left:8px` 维持 **3+5 断开格局**（组内 1px 紧凑）。**自省**：近轮过度字面分析、把能据设计常识+用户习惯自判的决策甩回用户（上移方向、18px 偏小、纯白突兀）——新增 feedback memory 固化「先调设计常识与习惯，勿回弹能自决问题」。push 待用户。
 >
 > - **5.158 CPD Phase 1 视觉精修二轮（按用户 F5 反馈 4 条）**：① 折叠态输入胶囊 [ai_qa.css](frontend/css/ai_qa.css) 改 **白底 `#fff` + 炭黑字 `#1a1a1a` + 2px 黑轮廓**（点击展开恢复 Dark）；折叠 placeholder 改 [panel.js](frontend/js/ai_qa/panel.js) `_INPUT_PH_COLLAPSED` = 「向 EmotionMap Copilot 提问：了解"情绪地图"，观察、分析、总结城市情绪数据。」。② 浮窗位置 [layout.css](frontend/css/layout.css) `top:180→40px`（距标题栏下端约 40px，贴顶栏）+ `max-height:calc(100vh-138px)`（下拉底留 ≥50px）+ grip JS maxH 同步 `innerHeight-138`。③ 一体化输入盒收窄：textarea `min-height 56→34`、padding/margin 减、**四按钮等高 28→18px**（ctx-cap/+ /Pro·Flash/发送 方形比例不破，send 箭头缩 11px）。④ 工具簇 [map-controls.css](frontend/css/map-controls.css) 按钮 `32→20px`、SVG 图标缩至 14px、文本 12px。push 待用户。
 >

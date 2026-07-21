@@ -155,24 +155,24 @@
 .chat-input { caret-color: var(--emc-accent, #D97757); }   /* 橙色光标（Claude 感） */
 .emc-input-foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 4px; }
 .emc-input-left { display: flex; align-items: center; gap: 5px; }
-/* CPD：四按钮等高 18px（方形比例不破）；图标缩至 12px 适配 */
-.emc-input-foot .ctx-cap { width: 18px; height: 18px; align-self: center; flex-shrink: 0; }
+/* CPD：四按钮等高 32px（18 太小触达差，回调 32；方形比例 + 图标适配） */
+.emc-input-foot .ctx-cap { width: 32px; height: 32px; align-self: center; flex-shrink: 0; }
 .emc-affix {
-  width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center;
-  font-size: 12px; line-height: 1; color: var(--geojson-color-text-secondary);
+  width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 18px; line-height: 1; color: var(--geojson-color-text-secondary);
   background: transparent; border: 1px solid var(--geojson-color-border-default, #3a3a3a);
-  border-radius: 4px; cursor: pointer;
+  border-radius: 6px; cursor: pointer;
   transition: background var(--geojson-transition), color var(--geojson-transition);
 }
 .emc-affix:hover { background: var(--geojson-color-gray-100, #2a2a2a); color: var(--geojson-color-text-primary); }
-.aiq-mode button { height: 18px; display: inline-flex; align-items: center; padding: 0 6px; font-size: 10px; }
+.aiq-mode button { height: 32px; display: inline-flex; align-items: center; padding: 0 10px; font-size: 12px; }
 .chat-send {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 18px; height: 18px; line-height: 0;
+  width: 32px; height: 32px; line-height: 0;
   color: #fff; background: var(--emc-accent, #D97757);
-  border: none; border-radius: 4px; cursor: pointer;
+  border: none; border-radius: 6px; cursor: pointer;
 }
-.chat-send svg { width: 11px; height: 11px; }   /* 发送箭头缩至 11px 适配 18px 方钮 */
+.chat-send svg { width: 16px; height: 16px; }
 .chat-send:hover { opacity: 0.9; }
 .chat-send.is-stop { background: var(--geojson-color-danger, #d8552f); }
 .chat-action-btn { display: inline-flex; align-items: center; margin: 0 2px; padding: 1px 8px; font-size: var(--geojson-typography-size-xs, 12px); color: var(--geojson-color-brand-primary, #4285F4); background: rgba(217, 119, 87, 0.12); border: 1px solid var(--geojson-color-brand-primary, #4285F4); border-radius: 11px; cursor: pointer; vertical-align: middle; line-height: 1.6; }
@@ -396,10 +396,10 @@
 #emc-panel.is-collapsed .chat-input {
   min-height: 56px; max-height: 56px; height: 56px; padding: 8px 12px; line-height: 1.5;
   cursor: pointer; overflow: hidden; white-space: normal;          /* 2 行可换行 */
-  border: 2px solid #1f1f1f;                                       /* CPD：加粗 2px 轮廓 */
+  border: 2px solid var(--emc-accent, #F0997B);                   /* CPD：橙色 2px 线框（保留） */
   border-radius: 14px;
-  background: #ffffff;                                             /* CPD：白底 */
-  color: #1a1a1a;                                                  /* CPD：炭黑字（展开恢复 Dark） */
+  background: #ececec;                                            /* CPD：浅灰底（纯白太突兀） */
+  color: #1a1a1a;                                                 /* 炭黑字（展开恢复 Dark） */
 }
 #emc-panel.is-collapsed .chat-input::placeholder { color: #1a1a1a; opacity: 0.7; }   /* 占位字炭黑 */
 #emc-panel.is-collapsed .emc-resize-grip { display: none; }   /* 折叠态不显缩放手柄 */

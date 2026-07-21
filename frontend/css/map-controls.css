@@ -114,7 +114,9 @@
   box-shadow: var(--geojson-shadow-sm);
 }
 .emotion-ctrl-row button {
-  width: 20px; height: 20px;                 /* CPD：缩至 20px（原 32，用户定） */
+  width: 20px; height: 20px;                 /* CPD：20px 正方形 */
+  aspect-ratio: 1;                            /* 锁死正方形比例（内容不撑变形） */
+  flex: 0 0 auto;
   display: flex; align-items: center; justify-content: center; padding: 0;
   color: var(--geojson-color-chrome-text, #404040);
   background: transparent;
@@ -128,6 +130,8 @@
 }
 .emotion-ctrl-row button:hover { background: var(--geojson-color-gray-100, #f0f0f0); }
 .emotion-ctrl-row button svg { display: block; pointer-events: none; width: 14px; height: 14px; }
+/* CPD：3+5 中间断开（tools 3 + nav 5 之间留 8px gap，组内 1px 紧凑） */
+.emotion-ctrl-row .emotion-ctrl-break { margin-left: 8px; }
 .emotion-ctrl-row .draw-tool[aria-pressed="true"] {
   background: var(--geojson-color-chrome-active-fill, #4285F4);
   color: var(--geojson-color-text-inverse, #fff);

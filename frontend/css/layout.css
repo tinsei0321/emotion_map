@@ -119,7 +119,7 @@ button { font-family: inherit; }
  *   搜索栏 top-center / popup top-right / legend bottom-right / 工具簇 bottom-left → 左上浮窗不冲突。 */
 #emc-panel {
   position: absolute;
-  top: 40px;                  /* CPD：距标题栏下端约 40px（贴顶栏，留呼吸空隙） */
+  top: 30px;                  /* CPD：距标题栏下端约 30px（贴顶栏，再上移 10） */
   left: 10px;
   width: 300px;               /* 默认宽 = 最小宽（用户定） */
   height: 360px;

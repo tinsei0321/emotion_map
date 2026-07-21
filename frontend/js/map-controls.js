@@ -127,6 +127,7 @@ export function initControls(map, { getFC } = {}) {
   btnLayers.setAttribute('data-action', 'basemap');
   btnLayers.setAttribute('aria-pressed', 'false');
   const btnReset = makeButton('emotion-ctrl-reset', ICON_RESET, '复位定位 / Reset view');
+  btnReset.classList.add('emotion-ctrl-break');   /* CPD：3+5 中间断开（5 组首位留左 margin） */
   const btnView = makeButton('emotion-ctrl-view', '2D', '切换 2D / 3D 视图');
   const btnZoomIn = makeButton('emotion-ctrl-zoom-in', '+', '放大 / Zoom in');
   const btnZoomOut = makeButton('emotion-ctrl-zoom-out', '−', '缩小 / Zoom out');
