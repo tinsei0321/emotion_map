@@ -401,19 +401,18 @@
   isolation: isolate;                          /* ::before z-index:-1 只相对此处栈 */
 }
 #emc-panel.is-collapsed .emc-input-area::before {
-  content: ''; position: absolute; inset: -16px;       /* 整圈等距外扩 16，上下不再被裁 */
-  border-radius: 48px;
-  background: conic-gradient(from 0deg, #4796E3, #7B5DFC, #BF4AD6, #D96570, #4FC3F7, #4796E3);
-  filter: blur(11px);
+  content: ''; position: absolute; inset: -10px;       /* 收窄（-16 太宽）；overflow:visible 保整圈可见 */
+  border-radius: 38px;
+  background: linear-gradient(115deg, #4796E3, #7B5DFC, #BF4AD6, #D96570, #4FC3F7, #4796E3, #7B5DFC);
+  background-size: 280% 280%;
+  filter: blur(8px);
   z-index: -1;
-  animation: emc-halo 4.5s ease-in-out infinite;
+  animation: emc-wave-flow 3.4s linear infinite, emc-wave-undulate 3.8s ease-in-out infinite, emc-wave-breathe 2.9s ease-in-out infinite;
 }
-/* 一轨复合：转圈(rotate 0→360，conic 色相围绕胶囊转) + 起伏(scale 1.05→1.22 波浪) + 呼吸(opacity 0.42→0.72 若隐若现) */
-@keyframes emc-halo {
-  0%   { transform: rotate(0deg)   scale(1.05); opacity: 0.42; }
-  50%  { transform: rotate(180deg) scale(1.22);  opacity: 0.72; }
-  100% { transform: rotate(360deg) scale(1.05); opacity: 0.42; }
-}
+/* 一层一层波浪：流动(色彩沿线推进) + 起伏(小幅旋转+大缩放=波浪推进，柔不僵硬) + 呼吸(半透明) 三轨并行 */
+@keyframes emc-wave-flow { 0% { background-position: 0% 50%; } 100% { background-position: 280% 50%; } }
+@keyframes emc-wave-undulate { 0%,100% { transform: scale(1.02) rotate(-3deg); } 50% { transform: scale(1.18) rotate(4deg); } }
+@keyframes emc-wave-breathe { 0%,100% { opacity: 0.45; } 50% { opacity: 0.8; } }
 #emc-panel.is-collapsed .chat-input {
   box-sizing: border-box;
   min-height: 56px; max-height: 56px; height: 56px;
@@ -469,6 +468,11 @@
 [data-theme="light"] #emc-panel .chat-input:focus { background: #ffffff; }
 [data-theme="light"] #emc-panel .chat-send { background: #143a35; }   /* 发送钮随 Light 森绿 */
 [data-theme="light"] #emc-panel .emc-cpd-dot.is-done { background: #b8860b; }   /* 金黄完成点（yakushimabus 金） */
+/* CPD：Light chat-head 去 #161616 近黑 → 浅森绿底 + 森绿字（不深、不突兀，yakushimabus 配套）*/
+[data-theme="light"] #emc-panel .chat-head { background: #ecf2f0; border-bottom-color: #d7e0dc; }
+[data-theme="light"] #emc-panel .chat-head .chat-title { color: #143a35; }
+[data-theme="light"] #emc-panel .chat-icon-btn { color: #2d5a52; }
+[data-theme="light"] #emc-panel .chat-icon-btn:hover { background: rgba(20,58,53,0.10); color: #143a35; }
 
 /* ═══ CPD Phase 3c：EMC 答案三级权重（design-system §2）═══ */
 /* 一级 结论卡：白底 + 阴影 lg + 顶部 8px 极性色带（浮出，视线第一落点）— CSS 备好，渲染挂钩见 panel.js（3c 余项）*/
