@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.150 批4 Swipe Step 2 镜像层到 mapB（非侵入）**（本次）。上一轮 5.149 Step 1 scaffold。最近：
+> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.151 批4 Swipe Step 3 grid A/B（mapA=片A/mapB=片B 核心）**（本次）。上一轮 5.150 Step 2 镜像。最近：
+>
+> - **5.151 批4 Swipe Step 3 grid A/B（mapA=片A / mapB=片B 核心）**：批4 核心——双 map 显不同时间片的 grid（治前 vs 治后）。[timeline.js](frontend/js/timeline.js) 加 `renderSliceToMap(targetMap, sliceKey)`（纯 setData 指定 map 的 grid source `lyr-{_layer.id}`，不 paint Overview/不 lerp；mapA 走既有 `renderSlice`，mapB 走本函数）+ `getBoundSliceKeys`。**cycle 约束**（timeline→map，故 map 不能 import timeline）→ **time-bar 编排**。[map.js](frontend/js/map.js) mirror 改 **grid-only**（`_focusedGridId` 找焦点 grid，只镜像 `lyr-{gridId}`+子层 -line/-hit/-extru；points/range 不上 mapB 避免片不一致）+ 镜像完 dispatch `compare:mapBready` + `_exitCompare` dispatch `compare:exit` + 导出 `getMapB`。[time-bar.js](frontend/js/time-bar.js) 听 `compare:mapBready` → mapB 设片B（`_compareB` 默认末片；Step 4 加用户挑）+ 听 `compare:exit` 清 `_compareB`。承重：**mapA 路径零改动**；mapB grid = mirror（结构）+ renderSliceToMap（片B 数据）。验证：ESM 绿（timeline+map+time-bar）；**进 compare（`c`）→ mapA grid 片A（当前）/ mapB grid 片B（末片如 T3）= 治前 vs 治后默认对比**（Step 4 加用户挑 A/B + 正式入口 + mapB 底图/暗/light 同步）。**push 待用户。**
 >
 > - **5.150 批4 Swipe Step 2 镜像层到 mapB（非侵入）**：Step 1 mechanics 验过后接 Step 2（mapB 显同款数据层）。[map.js](frontend/js/map.js) 加 `_mirrorLayersToMapB()`——读 mapA.getStyle() 把 `lyr-/emotion-` source+layer 复制到 mapB（mapA/mapB 独立实例，同 id 不冲突），**不动 renderLayer（承重 mapA 路径零改动）**。`_onMapBStyleLoad`（mapB basemap 就绪：敷 3D 光 + 镜像）。`_enterCompare` 接线（mapB `style.load`→`_onMapBStyleLoad`；已加载→直接镜像）。模块级 `layers:changed` 监听（compare 模式 mapA 层变→重镜像 mapB，Step 2 同片）。承重：**非侵入镜像，mapA 路径 + paint-inplace-swap-view 零改动**；mapB 是只读跟随（Step 3 起设 A/B 分片）。验证：ESM 绿；**F5 → 进 compare（`c`）→ mapB 右半显 mapA 同款 grid/points（同片数据）**。注：mapB 敷了 3D 光；底图暗色 overlay 同步留 Step 4。详见 plan §批4。**push 待用户。**
 >

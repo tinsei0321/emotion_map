@@ -84,6 +84,21 @@ export function renderSlice(sliceKey) {
   _renderFrame(snap, snap, 1, 1);
 }
 
+/** 批4 compare：把指定 map 的绑定 grid source 设到 sliceKey 片（纯 setData，不 paint Overview/不 lerp）。
+ *  mapA 走 renderSlice（既有，含 Overview paint）；mapB 走本函数（targetMap=getMapB()）。
+ *  source id = lyr-{_layer.id}（mirror 后 mapB 同 id）。片未聚合/源不在 → false。 */
+export function renderSliceToMap(targetMap, sliceKey) {
+  if (!_snaps || !_layer || !targetMap) return false;
+  const snap = _snaps.byKey.get(sliceKey);
+  if (!snap) return false;
+  const src = targetMap.getSource(`lyr-${_layer.id}`);
+  if (!src) return false;
+  src.setData(snap.fc);
+  return true;
+}
+export function getBoundLayerId() { return _layer && _layer.id; }
+export function getBoundSliceKeys() { return _snaps ? _snaps.keys.slice() : []; }
+
 // ── 播放（time-bar play 按钮驱动）──
 
 /** 播放 fromKey..toKey（rAF lerp 跨片）；每进新片边界调 onSlice(key)；自然结束调 onDone()。 */

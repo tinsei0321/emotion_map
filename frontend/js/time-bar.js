@@ -10,7 +10,8 @@
 // 详见 plan 07-19-cb-lovely-quiche.md。
 
 import { applyTime, availablePeriods, slicesForPeriod, periodLabel, isManifestReady, loadManifest } from './time-source.js';
-import { renderSlice, play as playGrid, stop as stopGrid, isBound as gridBound } from './timeline.js';
+import { renderSlice, play as playGrid, stop as stopGrid, isBound as gridBound, renderSliceToMap, getBoundSliceKeys } from './timeline.js';
+import { getMapB } from './map.js';
 
 let _btn = null;          // .time-bar 圆按钮
 let _card = null;         // .tb-card 展开卡片
@@ -19,6 +20,17 @@ let _period = null;       // 当前粒度（phase/day/...）
 let _sliceKey = null;     // 当前选中片 key
 let _cal = { y: 2026, m: 0 };   // 月历游标（日粒度用）
 let _isPlaying = false;         // play 按钮态（▶/⏸）
+let _compareB = null;           // 批4 compare：mapB 的 grid 片 key（Step 3 默认末片；Step 4 用户挑）
+
+// 批4 compare：mapB grid 镜像就绪 → 设片B（默认末片）；退出 → 清。mapA 片A 走既有 renderSlice。
+document.addEventListener('compare:mapBready', () => {
+  const mapB = getMapB();
+  const keys = getBoundSliceKeys();
+  if (!mapB || !keys.length) return;
+  if (_compareB === null || !keys.includes(_compareB)) _compareB = keys[keys.length - 1];   // 默认末片
+  renderSliceToMap(mapB, _compareB);
+});
+document.addEventListener('compare:exit', () => { _compareB = null; });
 
 const ICON_PLAY = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M7 5v14l12-7z"/></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';

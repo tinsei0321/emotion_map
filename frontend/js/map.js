@@ -115,6 +115,7 @@ let _mapBWrap = null;
 let _divider = null;
 
 export function isCompareMode() { return _compareOn; }
+export function getMapB() { return _mapB; }
 
 /** 进/出 compare 卷帘模式。进：建 mapB（同 basemap + 同步视图）+ divider（默认 50%）+ 开 mapA→mapB sync。 */
 export function setCompareMode(on) {
@@ -164,6 +165,7 @@ function _exitCompare() {
   _compareOn = false;
   const host = document.getElementById('map');
   if (host) host.classList.remove('is-compare');
+  document.dispatchEvent(new CustomEvent('compare:exit'));
 }
 
 function _syncFromA() {
@@ -211,26 +213,28 @@ function _onMapBStyleLoad() {
   _mirrorLayersToMapB();
 }
 
-/** Step 2：镜像 mapA 的数据层（lyr-/emotion-）到 mapB（同片数据，验证双 map 层一致）。
- *  非侵入——读 mapA.getStyle() 复制 source+layer 到 mapB，不动 renderLayer（承重 mapA 路径零改动）。
- *  mapA/mapB 是独立实例，同 id 不冲突。Step 3 起换 A/B 分片数据。 */
+/** 批4 grid compare 焦点 grid 的 layer id（visible + tool=grid）。无焦点 → null（不镜像）。 */
+function _focusedGridId() {
+  const g = getLayers().find((l) => l.visible && l.paint && l.paint._ui && l.paint._ui.tool === 'grid');
+  return g && g.id;
+}
+
+/** Step 3：镜像焦点 grid（+子层 -line/-hit/-extru）到 mapB——批4 grid A/B compare。
+ *  points/range 不上 mapB（避免 grid 片B + points 片A 不一致）。非侵入（不动 renderLayer）。
+ *  镜像完 dispatch compare:mapBready → time-bar 听 → renderSliceToMap(mapB, 片B)。 */
 function _mirrorLayersToMapB() {
   if (!map || !_mapB) return;
+  const gridId = _focusedGridId();
+  if (!gridId) return;
+  const want = (id) => id.startsWith(`lyr-${gridId}`);
   try {
     const bStyle = _mapB.getStyle();
-    for (const l of (bStyle.layers || []).slice()) {
-      if (l.id.startsWith('lyr-') || l.id.startsWith('emotion-')) _mapB.removeLayer(l.id);
-    }
-    for (const sid of Object.keys(bStyle.sources || {})) {
-      if (sid.startsWith('lyr-') || sid.startsWith('emotion-')) _mapB.removeSource(sid);
-    }
+    for (const l of (bStyle.layers || []).slice()) { if (want(l.id)) _mapB.removeLayer(l.id); }
+    for (const sid of Object.keys(bStyle.sources || {})) { if (want(sid)) _mapB.removeSource(sid); }
     const aStyle = map.getStyle();
-    for (const [sid, spec] of Object.entries(aStyle.sources || {})) {
-      if (sid.startsWith('lyr-') || sid.startsWith('emotion-')) { try { _mapB.addSource(sid, spec); } catch (e) {} }
-    }
-    for (const layerSpec of (aStyle.layers || [])) {
-      if (layerSpec.id.startsWith('lyr-') || layerSpec.id.startsWith('emotion-')) { try { _mapB.addLayer(layerSpec); } catch (e) {} }
-    }
+    for (const [sid, spec] of Object.entries(aStyle.sources || {})) { if (want(sid)) { try { _mapB.addSource(sid, spec); } catch (e) {} } }
+    for (const layerSpec of (aStyle.layers || [])) { if (want(layerSpec.id)) { try { _mapB.addLayer(layerSpec); } catch (e) {} } }
+    if (_compareOn) document.dispatchEvent(new CustomEvent('compare:mapBready', { detail: { gridId } }));
   } catch (e) { console.warn('[compare] mirror 失败', e); }
 }
 
