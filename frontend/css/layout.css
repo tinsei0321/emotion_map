@@ -119,14 +119,14 @@ button { font-family: inherit; }
  *   搜索栏 top-center / popup top-right / legend bottom-right / 工具簇 bottom-left → 左上浮窗不冲突。 */
 #emc-panel {
   position: absolute;
-  top: 180px;                 /* CPD：距标题栏底部约 180px（上移至舒适位，不挤顶栏） */
+  top: 40px;                  /* CPD：距标题栏下端约 40px（贴顶栏，留呼吸空隙） */
   left: 10px;
   width: 300px;               /* 默认宽 = 最小宽（用户定） */
   height: 360px;
   min-width: 300px;
   min-height: 200px;
   max-width: 92vw;
-  max-height: calc(100vh - 380px);   /* 底部留 ≥100px 不压比例尺/工具簇（header48+top180+gap100+scale区~50） */
+  max-height: calc(100vh - 138px);   /* 底部下拉留 ≥50px（header48+top40+gap50 → 减 138） */
   z-index: 50;               /* 浮于地图图层之上，低于 search-bar(96)/popup */
   overflow: hidden;           /* CPD：缩放改自持 grip（panel.js _setupEmcFloat），去原生 resize:both */
   display: flex;

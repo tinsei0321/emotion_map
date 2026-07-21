@@ -9,7 +9,7 @@ const ARCHIVE_KEY = 'ai_qa_archive_v1';
 const MODE_KEY = 'ai_qa_think_mode';
 const COLLAPSE_KEY = 'ai_qa_emc_collapsed';   // EMC 折叠态持久化（收起=只剩一行输入触发条）
 const _INPUT_PH_EXPANDED = '问 EMC：哪些区域情绪最差？为什么？  （Enter 发送 · Shift+Enter 换行 · Esc 中断）';
-const _INPUT_PH_COLLAPSED = '对EmotionMap Copilot提问：观察、分析、总结城市情绪。';
+const _INPUT_PH_COLLAPSED = '向 EmotionMap Copilot 提问：了解"情绪地图"，观察、分析、总结城市情绪数据。';
 
 // 动态思考状态文案（轮换，随机感；参考 Claude/ChatGPT "正在思考"动态提示）。
 const THINK_PHRASES = ['正在思考', '正在分析', '正在计算', '正在构思', '正在比对数据', '正在归纳', '正在权衡证据', '正在检索线索', '正在梳理逻辑'];
@@ -1407,7 +1407,7 @@ function _setupEmcFloat() {
       if (!dragging) return;
       const minW = 300, minH = 200;
       const maxW = Math.floor(window.innerWidth * 0.92);
-      const maxH = Math.max(minH, window.innerHeight - 380);   // 与 layout.css max-height 同步
+      const maxH = Math.max(minH, window.innerHeight - 138);   // 与 layout.css max-height 同步（top40+底留50）
       emc.style.width = Math.max(minW, Math.min(maxW, sw + (e.clientX - sx))) + 'px';
       emc.style.height = Math.max(minH, Math.min(maxH, sh + (e.clientY - sy))) + 'px';
     });

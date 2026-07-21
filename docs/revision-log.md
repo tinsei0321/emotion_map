@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.157 CPD Phase 1 视觉精修（EMC 浮窗尺寸/圆角/输入胶囊 + 工具簇单行 + 缩放手柄）**（本次，分支 `cpd`）。上一轮 5.156 Phase 1。最近：
+> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.158 CPD Phase 1 视觉精修二轮（折叠白胶囊 + 浮窗贴顶 40px + 输入盒收窄 18px + 工具钮 20px）**（本次，分支 `cpd`）。上一轮 5.157。最近：
+>
+> - **5.158 CPD Phase 1 视觉精修二轮（按用户 F5 反馈 4 条）**：① 折叠态输入胶囊 [ai_qa.css](frontend/css/ai_qa.css) 改 **白底 `#fff` + 炭黑字 `#1a1a1a` + 2px 黑轮廓**（点击展开恢复 Dark）；折叠 placeholder 改 [panel.js](frontend/js/ai_qa/panel.js) `_INPUT_PH_COLLAPSED` = 「向 EmotionMap Copilot 提问：了解"情绪地图"，观察、分析、总结城市情绪数据。」。② 浮窗位置 [layout.css](frontend/css/layout.css) `top:180→40px`（距标题栏下端约 40px，贴顶栏）+ `max-height:calc(100vh-138px)`（下拉底留 ≥50px）+ grip JS maxH 同步 `innerHeight-138`。③ 一体化输入盒收窄：textarea `min-height 56→34`、padding/margin 减、**四按钮等高 28→18px**（ctx-cap/+ /Pro·Flash/发送 方形比例不破，send 箭头缩 11px）。④ 工具簇 [map-controls.css](frontend/css/map-controls.css) 按钮 `32→20px`、SVG 图标缩至 14px、文本 12px。push 待用户。
 >
 > - **5.157 CPD Phase 1 视觉精修（按用户 F5 反馈 4 条）**：① EMC 浮窗 [layout.css](frontend/css/layout.css)：`top:180px`（距标题栏底约 180px）、默认 `width:300px`（=最小宽）、`border-radius:16px`（更圆润）、`max-height:calc(100vh-380px)`（底留 ≥100px 不压比例尺）；折叠态 [ai_qa.css](frontend/css/ai_qa.css) 改 **浮动输入胶囊**（去外部深色填充、面板透明、textarea 自成 14px 圆角胶囊、2 行 56px 高、300px 宽 `!important` 覆盖拖大）；展开态输入区 **一体化盒子**（textarea+底部按钮同框 12px 圆角，容量圈/+ /Pro·Flash/发送 **等高 28px** 视觉统一）。② 工具簇 [map-controls.js](frontend/js/map-controls.js)+[map-controls.css](frontend/css/map-controls.css)：弃 `maplibregl-ctrl-group`（默认 column 渲染错），改单一 `.emotion-ctrl-row` flex 行——**3+5=8 按钮一字横排**（cursor/measure/layers + reset/2D/zoom±/north），比例尺最左。③ EMC 缩放：去原生 `resize:both`（角太小难发现），改 [panel.js](frontend/js/ai_qa/panel.js) `_setupEmcFloat` 自持 `.emc-resize-grip`（SE 角 22px 斜线符号、pointer 事件、min 300×200/max 不压比例尺、hover 强调色）+ ResizeObserver 持久化 localStorage。验证：ESM 双绿（panel/map-controls .mjs --check）。**待用户 F5 终验**（注：top:180 按字面「距标题栏底 180px」落地，若用户本意更靠上请告）。push 待用户。
 >
