@@ -52,14 +52,14 @@ export function initParamPanel() {
   // 面板内 [data-close]（heatmap/buffer 取消按钮）→ 关闭
   p.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => closeParamPanel()));
 
-  // outside-click 关闭：点在面板外、且不在地图上（保护 pan/zoom）、且非三入口触发器时关闭。
-  document.addEventListener('click', (e) => {
+  // outside-click 关闭（pointerdown，与 Range/Layers 抽屉一致）：点空白/地图→关；
+  // 点面板内 / EMC / 抽屉（伴生）/ 要素按钮 / 三入口触发器不关。
+  document.addEventListener('pointerdown', (e) => {
     const panel = panelEl();
     if (!panel || !panel.classList.contains('is-open')) return;
     if (panel.contains(e.target)) return;
-    if (e.target.closest && e.target.closest('#map')) return;              // 地图交互不关
+    if (e.target.closest && (e.target.closest('#emc-panel') || e.target.closest('#left-panel'))) return;  // EMC/抽屉伴生不关
     if (e.target.closest && e.target.closest('.layer-kind')) return;       // 要素按钮：sidebar 自行开/切
-    if (e.target.id === 'tool-heatmap' || e.target.id === 'tool-buffer' || e.target.id === 'tool-grid') return;
     if (e.target.closest && (e.target.closest('#tool-heatmap') || e.target.closest('#tool-buffer') || e.target.closest('#tool-grid'))) return;
     closeParamPanel();
   });

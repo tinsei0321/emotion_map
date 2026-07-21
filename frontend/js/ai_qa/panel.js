@@ -163,7 +163,7 @@ function _fitCollapsedText() {
   m.style.width = (r.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) + 'px';
   m.style.fontFamily = cs.fontFamily;
   m.style.lineHeight = '1.3';
-  m.style.fontWeight = '400';
+  m.style.fontWeight = '700';   /* CPD ③：折叠态内容粗体，镜像须同权重以保自适应量测准 */
   const maxH = r.height - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
   m.textContent = text;
   let fs = 14;
@@ -1515,6 +1515,19 @@ function _setupCpdBar() {
 export function initChatPanel() {
   _setupEmcFloat();   // CPD Phase 1b：reparent EMC 到 #map 浮窗 + 恢复尺寸（先于事件绑定）
   _setupCpdBar();     // CPD Phase 2a：顶部进度条 + 摘要 chip（软折叠）
+  // CPD Phase 3b：主题切换（仅 #emc-panel scope，chrome 保持 Light）。localStorage 持久化。
+  const _applyTheme = (t) => {
+    document.documentElement.setAttribute('data-theme', t);
+    const b = document.getElementById('chat-theme');
+    if (b) b.title = (t === 'light') ? '切换 Dark 主题' : '切换 Light 主题';
+  };
+  try { _applyTheme(localStorage.getItem('emc-theme') || 'dark'); } catch (_) { _applyTheme('dark'); }
+  document.getElementById('chat-theme')?.addEventListener('click', () => {
+    const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+    const next = cur === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem('emc-theme', next); } catch (_) {}
+    _applyTheme(next);
+  });
   document.getElementById('chat-new')?.addEventListener('click', () => {
     if (_streaming) return;   // 流式中忽略
     if (_history.length) {   // 当前会话存档

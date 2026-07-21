@@ -383,66 +383,116 @@
 #emc-panel.is-collapsed {
   height: auto !important; min-height: 0 !important;
   width: 300px !important;                 /* 折叠=最小默认宽（覆盖用户拖大的 inline 尺寸） */
-  background: transparent !important;     /* 去外部深色填充 */
+  background: transparent !important;
   box-shadow: none !important;
   border: none !important;
+  overflow: visible !important;            /* CPD ②：解 overflow:hidden 裁剪——光晕整圈溢出可见（上下不再被裁，几轮失效的根因） */
 }
 #emc-panel.is-collapsed .chat-head,
 #emc-panel.is-collapsed .emc-view,
 #emc-panel.is-collapsed .emc-input-foot { display: none !important; }
-/* CPD：折叠态 = 欢迎+引导胶囊（Gemini 星 + 彩虹背后呼吸 + 强阴影浮附地图，非生硬输入框）。
-   去橙色外框；胶囊用强阴影「附在地图上」；背后 conic 彩虹（Gemini 蓝→紫→品红→珊瑚）旋转+呼吸。
-   sparkle 1:1 复刻 Gemini 渐变四角星，放大至 22px。文本自适应字体（panel.js _fitCollapsedText）。 */
+/* CPD：折叠态 = 欢迎+引导胶囊（Gemini 星 + 波浪呼吸光环 + 强阴影浮附地图）。
+   光环围绕胶囊转圈（conic 旋转）+ 起伏（scale）+ 呼吸（opacity）合为一轨 = 波浪动态呼吸感；
+   整圈均匀（inset -16 等距 + blur 弥散 + overflow:visible 不裁）；半透明若隐若现（0.42→0.72）。
+   sparkle Gemini 渐变四角星 22px；文本粗体；_fitCollapsedText 自适应字号。 */
 #emc-panel.is-collapsed .emc-input-area {
-  padding: 0; margin: 0; border: none; background: transparent; cursor: pointer;   /* border:none 全去（修暗框 bug：原仅 border-top:none，基底 1px 左/右/下边仍在→呼吸周围黑线框） */
+  padding: 0; margin: 0; border: none; background: transparent; cursor: pointer;
   position: relative;
   isolation: isolate;                          /* ::before z-index:-1 只相对此处栈 */
 }
-/* 动态波浪光晕：胶囊背后，整圈环绕——色彩流动 + 起伏(scale→1.8≈2× 尺寸、摆幅±8°) + 呼吸 三轨并行。
-   注：opacity 上限 1.0，「2.0」用 scale 实现（光晕尺寸≈2× 胶囊，整圈弥漫环绕）。 */
 #emc-panel.is-collapsed .emc-input-area::before {
-  content: ''; position: absolute; inset: -12px;       /* 整圈基底外扩 */
-  border-radius: 40px;
-  background: linear-gradient(120deg, #4796E3, #7B5DFC, #BF4AD6, #D96570, #4FC3F7, #4796E3, #7B5DFC);
-  background-size: 300% 300%;
-  filter: blur(12px);                                   /* 更散，光晕弥漫整圈 */
+  content: ''; position: absolute; inset: -16px;       /* 整圈等距外扩 16，上下不再被裁 */
+  border-radius: 48px;
+  background: conic-gradient(from 0deg, #4796E3, #7B5DFC, #BF4AD6, #D96570, #4FC3F7, #4796E3);
+  filter: blur(11px);
   z-index: -1;
-  animation: emc-wave-flow 4s linear infinite, emc-wave-undulate 3.4s ease-in-out infinite, emc-wave-breathe 2.8s ease-in-out infinite;
+  animation: emc-halo 4.5s ease-in-out infinite;
 }
-@keyframes emc-wave-flow { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
-@keyframes emc-wave-undulate { 0%,100% { transform: scale(1.2) rotate(-8deg); } 50% { transform: scale(1.8) rotate(8deg); } }   /* 起伏放大（峰值 1.8≈2×）+ 摆幅加大 */
-@keyframes emc-wave-breathe { 0%,100% { opacity: 0.55; } 50% { opacity: 0.95; } }
+/* 一轨复合：转圈(rotate 0→360，conic 色相围绕胶囊转) + 起伏(scale 1.05→1.22 波浪) + 呼吸(opacity 0.42→0.72 若隐若现) */
+@keyframes emc-halo {
+  0%   { transform: rotate(0deg)   scale(1.05); opacity: 0.42; }
+  50%  { transform: rotate(180deg) scale(1.22);  opacity: 0.72; }
+  100% { transform: rotate(360deg) scale(1.05); opacity: 0.42; }
+}
 #emc-panel.is-collapsed .chat-input {
   box-sizing: border-box;
   min-height: 56px; max-height: 56px; height: 56px;
-  padding: 8px 34px 8px 38px;                   /* 左 Gemini 星(22) 位、右 箭头 位 */
+  padding: 8px 32px 8px 38px;                   /* 左 Gemini 星(22) 位、右 箭头 位 */
   line-height: 1.3;
   cursor: pointer; overflow: hidden; white-space: normal; word-break: break-word;
-  border: none;                                 /* 去橙色外框 */
+  border: none;
   border-radius: 28px;
   background-color: #ececec;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='24' y2='24' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0' stop-color='%234796E3'/%3E%3Cstop offset='0.45' stop-color='%237B5DFC'/%3E%3Cstop offset='0.75' stop-color='%23BF4AD6'/%3E%3Cstop offset='1' stop-color='%23D96570'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M12 2c0 5.5 4.5 10 10 10-5.5 0-10 4.5-10 10 0-5.5-4.5-10-10-10 5.5 0 10-4.5 10-10z' fill='url(%23g)'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: 9px center;
-  background-size: 22px;                        /* Gemini 星放大 */
+  background-size: 22px;
   color: #1a1a1a;
+  font-weight: 700;                             /* CPD ③：折叠态内容粗体 */
   font-size: 13px;                              /* 默认；_fitCollapsedText 据内容自适应下调 */
   box-shadow: 0 8px 22px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.14);   /* 强阴影=附在地图上的胶囊 */
   transition: box-shadow .2s ease, transform .15s ease;
 }
-#emc-panel.is-collapsed .chat-input::placeholder { color: #1a1a1a; opacity: 0.78; }
+#emc-panel.is-collapsed .chat-input::placeholder { color: #1a1a1a; opacity: 0.82; font-weight: 700; }   /* CPD ③：占位粗体 */
 #emc-panel.is-collapsed .chat-input:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 30px rgba(0,0,0,0.28), 0 4px 10px rgba(0,0,0,0.16);
 }
-/* 右侧 CTA 箭头（点我进入） */
+/* 右侧 CTA 箭头（点我进入）—— CPD ③：弱化（13px 山形 ›、浅 #bbb、半透明 0.5），去突兀 */
 #emc-panel.is-collapsed .emc-input-area::after {
   content: ''; position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-  width: 16px; height: 16px; pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E");
+  width: 13px; height: 13px; pointer-events: none; opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23bbb' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: center; background-size: contain;
 }
 #emc-panel.is-collapsed .emc-resize-grip { display: none; }   /* 折叠态不显缩放手柄 */
+
+/* ═══ CPD Phase 3b：Light 模式 #emc-panel scope（yakushimabus 白+森绿+金黄）═══
+   仅 EMC 浮窗随主题切换；chrome/地图保持 Light。森绿 #143a35 = 动作/强调，金黄 = 完成点缀。 */
+[data-theme="light"] #emc-panel {
+  --geojson-color-surface-panel: #ffffff;
+  --geojson-color-surface-panel-alt: #f5f8f7;
+  --geojson-color-text-primary: #2d3a36;
+  --geojson-color-text-secondary: #5e6f68;
+  --geojson-color-text-tertiary: #8a9994;
+  --geojson-color-border-default: #e1e6e3;
+  --geojson-color-gray-100: #f1f5f3;
+  --geojson-color-gray-200: #e1e6e3;
+  --geojson-color-brand-primary: #143a35;       /* yakushimabus 深森绿（动作态） */
+  --geojson-color-danger: #b45309;
+  --emc-accent: #143a35;                         /* 森绿强调（发送按钮/聚焦/链接） */
+  --emc-accent-soft: rgba(20, 58, 53, 0.10);
+  --emc-divider: rgba(20, 58, 53, 0.10);
+  --emc-user-bubble: #eef3f1;
+  color-scheme: light;
+}
+[data-theme="light"] #emc-panel .chat-input:focus { background: #ffffff; }
+[data-theme="light"] #emc-panel .chat-send { background: #143a35; }   /* 发送钮随 Light 森绿 */
+[data-theme="light"] #emc-panel .emc-cpd-dot.is-done { background: #b8860b; }   /* 金黄完成点（yakushimabus 金） */
+
+/* ═══ CPD Phase 3c：EMC 答案三级权重（design-system §2）═══ */
+/* 一级 结论卡：白底 + 阴影 lg + 顶部 8px 极性色带（浮出，视线第一落点）— CSS 备好，渲染挂钩见 panel.js（3c 余项）*/
+.aiq-conclusion { background: var(--geojson-color-surface-panel); border-radius: var(--geojson-radius-lg, 8px); box-shadow: var(--geojson-shadow-lg); overflow: hidden; margin: 8px 0 4px; }
+.aiq-conclusion-band { height: 8px; }
+.aiq-conclusion-band.very-positive { background: var(--geojson-color-emotion-very-positive); }
+.aiq-conclusion-band.positive { background: var(--geojson-color-emotion-positive); }
+.aiq-conclusion-band.neutral { background: var(--geojson-color-emotion-neutral); }
+.aiq-conclusion-band.negative { background: var(--geojson-color-emotion-negative); }
+.aiq-conclusion-band.very-negative { background: var(--geojson-color-emotion-very-negative); }
+.aiq-conclusion-body { padding: 12px 14px; }
+/* 二级 过程卡：浅灰底 + 无线框（覆原 border-left）+ 默认折叠（§2.4）*/
+.aiq-reason { border-left: none !important; background: var(--geojson-color-gray-100) !important; border-radius: var(--geojson-radius-md, 6px) !important; }
+/* 三级 审查胶囊：默认一行 verdict，hover 展开 items（§2.5）*/
+.aiq-review { border-left: none !important; background: transparent !important; }
+.aiq-review .aiq-review-items { display: none; }
+.aiq-review:hover .aiq-review-items { display: flex; }
+/* 答案内联 emotion-swatch（§2.6）*/
+.emotion-swatch { display: inline-block; width: 8px; height: 8px; border-radius: 2px; vertical-align: middle; margin: 0 2px; }
+.emotion-swatch.very-positive { background: var(--geojson-color-emotion-very-positive); }
+.emotion-swatch.positive { background: var(--geojson-color-emotion-positive); }
+.emotion-swatch.neutral { background: var(--geojson-color-emotion-neutral); }
+.emotion-swatch.negative { background: var(--geojson-color-emotion-negative); }
+.emotion-swatch.very-negative { background: var(--geojson-color-emotion-very-negative); }
 
 /* ── CPD：EMC 缩放手柄（自持 grip，替代难发现的原生 resize 角）── 显眼斜线符号 + hover 强调 ── */
 .emc-resize-grip {

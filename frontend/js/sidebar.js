@@ -795,12 +795,13 @@ export function initSidebar({ onFiles, onRangeFiles } = {}) {
     setLeftMode('sections');                       // 切到三区模式（非 import 空态）
     setActiveTab(tab);
   });
-  // 抽屉外部点击 → 关（点抽屉内 / EMC 不关）
+  // 抽屉外部点击 → 关（点抽屉内 / EMC / param-panel 伴生不关）
   document.addEventListener('pointerdown', (e) => {
     const panel = document.getElementById('left-panel');
     if (!panel || !panel.classList.contains('is-drawer-open')) return;
     if (panel.contains(e.target)) return;
     if (e.target.closest('#emc-panel')) return;
+    if (e.target.closest('#param-panel')) return;   // param-panel 伴生不关
     panel.classList.remove('is-drawer-open');
   });
   // Esc → 关抽屉
