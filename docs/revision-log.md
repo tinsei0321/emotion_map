@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.153 批4 Swipe Step 5 收尾（批4 完成 + memory）**（本次）。上一轮 5.152 Step 4 A/B UI。最近：
+> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.154 design-system.md 设计系统规范 v1.0 + 会话收尾交接**（本次）。上一轮 5.153 批4 Step 5 收尾。最近：
+>
+> - **5.154 design-system.md 设计系统规范 v1.0 + 会话收尾交接**：用户加入 [docs/design-system.md](docs/design-system.md)——前端设计 single source of truth：**情绪五级色带「正冷/负暖」**（正=青绿 `#5DCAA5`/`#0F6E56`，负=珊瑚 `#F0997B`/`#D85A30`，中=`#C0C0C0`；与中国股市涨红跌绿同向、CVD 友好）+ EMC 三级权重系统 + 情境式渐进披露交互逻辑 + 设计 Token 制作与生成管线。**待办（下会话）**：当前 `design/tokens.json`+`state.js emotionColors` 仍是旧棕红负色（Negative `#C4956A`），与规范「负=珊瑚」不一致，待对齐。会话交接卡覆写（批4 完成 + grid 镜像 bug 待诊断 + design-system.md 加入；第三方配色 mishap 已退回 8 未提交、保留 2 commit）。承重：design-system.md 是规范文档，不改代码；配色对齐留后续。**push 本次（用户指定）。**
 >
 > - **5.153 批4 Swipe Step 5 收尾（批4 完成 + memory + 进度）**：批4 时间对比 Swipe 卷帘 Step 1-4 完成（scaffold / 镜像 / grid A/B / A/B UI），Step 5 = 收尾。批4 全链路：`'c'` 或卡片「对比」→ 进 compare → 双 map 卷帘（左 mapA 片A / 右 mapB 片B）+ 同步 pan/zoom + 拖分割线 + slider/停点调 mapB 片B + A/B 角标（A 蓝/B 橙）。新 memory `batch4-swipe-compare`（双 map + manual sync + clip divider + grid-only mirror + A/B + cycle 约束 time-bar 编排）+ MEMORY.md 索引。**待办**：mapB 底图/暗 overlay 在 3D compare 的视觉同步（polish，2D compare 不影响）；批4 全链路待用户 F5 终验。承重：批4 全程 **mapA 承重路径零改动**（mirror 非侵入 + renderSliceToMap 纯 setData）。详见 plan §批4。**push 待用户。**
 >
