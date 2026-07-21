@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月22日）** · 本节按板块分组、组内倒序；最新工作 = **5.168 CPD 光环回 2.6s 慢呼吸版 + EMC 默认 Light**（本次，分支 `cpd`）。上一轮 5.167。最近：
+> 📍 **最新动态（07月22日）** · 本节按板块分组、组内倒序；最新工作 = **5.169 CPD 追问胶囊/Light 容量圈 theme 同步 + 光环三档策略（.has-guidance 引导耦合钩子）**（本次，分支 `cpd`）。上一轮 5.168。最近：
+>
+> - **5.169 CPD theme 同步根治 + 光环三档策略**（用户反馈 ①②③ + 引导 feature 契约）：**铁律强化**——EMC 内颜色全走 theme var（根治「硬编码→模式不同步」低级错误）。① **追问胶囊** [ai_qa.css](frontend/css/ai_qa.css) `.aiq-suggest*`（line 323-328）硬编码 `#ECECEC/rgba(255,255,255,*)` → `var(--geojson-color-text-primary/gray-100/border-default/emc-accent/emc-divider)`，随 Dark/Light 自动正确（修 Light 下浅字浅底看不清）。② **Light 容量圈**：`.ctx-cap` ring（currentColor）→ Light 森绿 `#143a35`；`.aiq-cap-tip` 富 tooltip（position:fixed 在 body，故不缀 #emc-panel）整组 Light 覆写（白底 `#fff`+森绿 `#143a35` 强调+深绿灰字），替原硬编码 `#1f1f1f/#D97757` Dark 风。③ **光环调优 + 三档策略**：收窄 `inset -10→-5`（半）、边缘清晰 `blur 5→3`、减速至 1/3（flow 15s/undulate 13.5s/breathe 7.8s）、opacity `0.42→0.65`（边缘可见）；**三档** default(平静常驻) < `:hover`(提速~1.7×) < `.has-guidance`(强脉冲 `emc-wave-breathe-strong` 0.5→0.9，2.6s)。**引导耦合钩子就绪**：`.has-guidance` 类 CSS 定义，CPD 核心 toggle（有新引导→加类强呼吸+胶囊文本/高度自适应）留后续引导 plan。纯 CSS，承重未动。push 待用户。
 >
 > - **5.168 CPD 光环 2.6s 慢呼吸 + EMC 默认 Light**（用户反馈 ①②）：① 折叠光环改回**慢呼吸版**（[ai_qa.css](frontend/css/ai_qa.css)）：上一版(3.4/3.8/2.9s + blur8)过于显眼、呼吸太频繁 → flow 5s / undulate 4.5s（scale 1.1 小幅 ±2-3° 更柔）/ **breathe 2.6s**（用户指定的 2.6s 慢呼吸）/ blur 8→**5**（波浪边缘清晰可辨）/ opacity 0.3→0.58（不显眼、若隐若现）；保 `overflow:visible` bug 修复。② **EMC 默认 Light**（[panel.js](frontend/js/ai_qa/panel.js) `_applyTheme` 默认 `dark→light`，用户认可 Light 效果）。**【CPD 范围校正】**：用户明确——至今所成（EMC UI + EMC 层级逻辑重构）**仅是 CPD 的地基**，**非 CPD 完工**；CPD 核心 = 用 EMC 交互引导情绪地图所有功能体验，如何引导/实现需详细 plan 讨论。**不到合分支 / 抽离模块之时**。push 待用户。
 >

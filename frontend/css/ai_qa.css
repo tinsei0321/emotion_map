@@ -320,12 +320,13 @@
 
 /* ── 推荐追问胶囊（答案完毕后，#chat-suggest 内，点击即发；胶囊设计语言：无线框+阴影+悬停灰+紧凑）── */
 /* 推荐追问胶囊（EMC 深色面板内：半透明深底 + 浅字 + 橙标签，对齐 emc-welcome-chip/exit-badge；勿用白底+主题字变量——深色 EMC 里文字变量翻浅→浅字白底看不清）*/
-.aiq-suggest { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 5px 14px 7px; border-top: 1px solid rgba(255,255,255,0.08); background: transparent; }
-.aiq-suggest-label { font-size: var(--geojson-typography-size-2xs); color: rgba(255,255,255,0.45); margin-right: 2px; }
-.aiq-suggest-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 3px 9px; border: 1px solid rgba(255,255,255,0.14); border-radius: 999px; background: rgba(255,255,255,0.06); font-size: var(--geojson-typography-size-xs); color: #ECECEC; cursor: pointer; transition: background var(--geojson-transition), border-color var(--geojson-transition); }
-.aiq-suggest-chip:hover { background: rgba(255,255,255,0.13); border-color: var(--emc-accent, #D97757); }
-.aiq-suggest-chip:focus-visible { outline: 2px solid var(--emc-accent, #D97757); outline-offset: 1px; }
-.aiq-suggest-tag { font-size: var(--geojson-typography-size-2xs); color: var(--emc-accent, #D97757); font-weight: var(--geojson-typography-weight-semibold); flex-shrink: 0; }
+/* CPD：追问胶囊全走 theme var（随 Dark/Light 自动正确——原硬编码 #ECECEC/rgba(255,255,255,*) 仅适配 Dark，Light 下浅字浅底看不清）*/
+.aiq-suggest { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 5px 14px 7px; border-top: 1px solid var(--emc-divider, rgba(255,255,255,0.08)); background: transparent; }
+.aiq-suggest-label { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); margin-right: 2px; }
+.aiq-suggest-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 3px 9px; border: 1px solid var(--geojson-color-border-default); border-radius: 999px; background: var(--geojson-color-gray-100); font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-primary); cursor: pointer; transition: background var(--geojson-transition), border-color var(--geojson-transition); }
+.aiq-suggest-chip:hover { background: var(--geojson-color-gray-200); border-color: var(--emc-accent); }
+.aiq-suggest-chip:focus-visible { outline: 2px solid var(--emc-accent); outline-offset: 1px; }
+.aiq-suggest-tag { font-size: var(--geojson-typography-size-2xs); color: var(--emc-accent); font-weight: var(--geojson-typography-weight-semibold); flex-shrink: 0; }
 /* P1 ask_user 选项胶囊容器（答案区内，复用 .aiq-suggest-chip 按钮样式） */
 .aiq-ask-options { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 
@@ -413,18 +414,23 @@
   isolation: isolate;                          /* ::before z-index:-1 只相对此处栈 */
 }
 #emc-panel.is-collapsed .emc-input-area::before {
-  content: ''; position: absolute; inset: -10px;       /* 收窄；overflow:visible 保整圈可见（bug 修复） */
-  border-radius: 38px;
+  content: ''; position: absolute; inset: -5px;        /* CPD：收窄至半（-10→-5）；overflow:visible 保整圈可见 */
+  border-radius: 34px;
   background: linear-gradient(115deg, #4796E3, #7B5DFC, #BF4AD6, #D96570, #4FC3F7, #4796E3, #7B5DFC);
   background-size: 280% 280%;
-  filter: blur(5px);                                    /* 减模糊→波浪边缘清晰可辨 */
+  filter: blur(3px);                                    /* 减模糊→波浪边缘清晰可辨 */
   z-index: -1;
-  animation: emc-wave-flow 5s linear infinite, emc-wave-undulate 4.5s ease-in-out infinite, emc-wave-breathe 2.6s ease-in-out infinite;
+  animation: emc-wave-flow 15s linear infinite, emc-wave-undulate 13.5s ease-in-out infinite, emc-wave-breathe 7.8s ease-in-out infinite;
 }
-/* 一层一层波浪（慢、不显眼）：流动(5s 缓推进) + 起伏(4.5s 小幅=波浪推进，柔) + 呼吸(2.6s 慢，半透明 0.3→0.58) */
+/* CPD 三档呼吸策略：default(平静常驻，慢/窄/清晰，不分散) < hover(中，靠近反馈) < .has-guidance(强脉冲=有新引导) */
+#emc-panel.is-collapsed:hover .emc-input-area::before { animation-duration: 9s, 8s, 4.6s; }   /* hover 提速 ~1.7× */
+#emc-panel.is-collapsed.has-guidance .emc-input-area::before {   /* CPD 核心 toggle：有新引导→明显呼吸吸引 */
+  animation: emc-wave-flow 6s linear infinite, emc-wave-undulate 5s ease-in-out infinite, emc-wave-breathe-strong 2.6s ease-in-out infinite;
+}
 @keyframes emc-wave-flow { 0% { background-position: 0% 50%; } 100% { background-position: 280% 50%; } }
 @keyframes emc-wave-undulate { 0%,100% { transform: scale(1.02) rotate(-2deg); } 50% { transform: scale(1.1) rotate(3deg); } }
-@keyframes emc-wave-breathe { 0%,100% { opacity: 0.3; } 50% { opacity: 0.58; } }
+@keyframes emc-wave-breathe { 0%,100% { opacity: 0.42; } 50% { opacity: 0.65; } }            /* 平静常驻：若隐若现但边缘可见 */
+@keyframes emc-wave-breathe-strong { 0%,100% { opacity: 0.5; } 50% { opacity: 0.9; } }       /* 强脉冲：明显呼吸（.has-guidance）*/
 #emc-panel.is-collapsed .chat-input {
   box-sizing: border-box;
   min-height: 56px; max-height: 56px; height: 56px;
@@ -485,6 +491,18 @@
 [data-theme="light"] #emc-panel .chat-head .chat-title { color: #143a35; }
 [data-theme="light"] #emc-panel .chat-icon-btn { color: #2d5a52; }
 [data-theme="light"] #emc-panel .chat-icon-btn:hover { background: rgba(20,58,53,0.10); color: #143a35; }
+/* CPD ②：Light 容量圈 ring（currentColor）→ 森绿；.ctx-cap.warn 已是 emc-accent（Light 森绿）自动 */
+[data-theme="light"] #emc-panel .ctx-cap { color: #143a35; }
+/* CPD ②：Light 容量圈 hover 富 tooltip（position:fixed 在 body，故不缀 #emc-panel）→ 白底森绿 */
+[data-theme="light"] .aiq-cap-tip { background: #ffffff; border-color: #e1e6e3; color: #2d3a36; box-shadow: 0 6px 20px rgba(20,58,53,0.16); }
+[data-theme="light"] .aiq-cap-tip-title { color: #5e6f68; }
+[data-theme="light"] .aiq-cap-tip-pct { color: #143a35; }
+[data-theme="light"] .aiq-cap-tip-bar { background: #e1e6e3; }
+[data-theme="light"] .aiq-cap-tip-bar-fill { background: #143a35; }
+[data-theme="light"] .aiq-cap-tip-meta { color: #8a9994; border-bottom-color: rgba(20,58,53,0.10); }
+[data-theme="light"] .aiq-cap-tip-row .k { color: #5e6f68; }
+[data-theme="light"] .aiq-cap-tip-row .v { color: #2d3a36; }
+[data-theme="light"] .aiq-cap-tip-empty { color: #8a9994; }
 
 /* ═══ CPD Phase 3c：EMC 答案三级权重（design-system §2）═══ */
 /* 一级 结论卡：白底 + 阴影 lg + 顶部 8px 极性色带（浮出，视线第一落点）— CSS 备好，渲染挂钩见 panel.js（3c 余项）*/
