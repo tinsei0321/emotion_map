@@ -101,8 +101,9 @@ function makeButton(cls, innerHTML, title) {
 
 /**
  * Build the unified bottom-left control cluster + scale bar as ONE MapLibre control
- * (single addControl call → deterministic DOM order: scale leftmost, nav group + tools
- * group to its right, horizontal row — see .emotion-controls-root in map-controls.css).
+ * (single addControl call → deterministic DOM order: scale leftmost, then ONE
+ * .emotion-ctrl-row of 8 buttons (cursor/measure/layers + reset/2D/zoom±/north)
+ * to its right — horizontal single line, see map-controls.css).
  *
  * @param {maplibregl.Map} map
  * @param {() => object|null} getFC  accessor for current emotion FeatureCollection
@@ -113,12 +114,11 @@ export function initControls(map, { getFC } = {}) {
   const root = document.createElement('div');
   root.className = 'maplibregl-ctrl emotion-controls-root';
 
-  // ── B2: 3-button tool set (cursor / measure / layers) — ABOVE the nav cluster ──
-  // cursor + layers carry data-tool / data-action so initToolbar (toolbar.js) auto-binds
-  // them via the SAME selectors the old header buttons used (.draw-tool[data-tool],
-  // [data-action="basemap"]). measure is a placeholder (toast).
-  const toolsGroup = document.createElement('div');
-  toolsGroup.className = 'maplibregl-ctrl-group emotion-tools-ctrl';
+  // ── CPD：3+5 = 8 按钮一字横排（cursor/measure/layers + reset/2D/zoom±/north）──
+  // 单一 .emotion-ctrl-row flex 行（不再用 maplibregl-ctrl-group，避免其默认 column 与
+  // 分组视觉割裂）。cursor/layers 带 data-tool/data-action，toolbar.js 仍自动绑定同款选择器。
+  const row = document.createElement('div');
+  row.className = 'emotion-ctrl-row';
   const btnCursor = makeButton('draw-tool is-active', ICON_CURSOR, '选择 / Select');
   btnCursor.setAttribute('data-tool', 'select');
   btnCursor.setAttribute('aria-pressed', 'true');
@@ -126,21 +126,13 @@ export function initControls(map, { getFC } = {}) {
   const btnLayers = makeButton('draw-tool', ICON_LAYERS, '底图 / Basemap');
   btnLayers.setAttribute('data-action', 'basemap');
   btnLayers.setAttribute('aria-pressed', 'false');
-  toolsGroup.append(btnCursor, btnMeasure, btnLayers);
-  btnMeasure.addEventListener('click', () => toast.info('测量功能待开发'));
-
-  // ── cluster group (5 buttons, shares geojson.io ctrl-group styling) ──
-  const group = document.createElement('div');
-  group.className = 'maplibregl-ctrl-group emotion-nav-ctrl';
-
   const btnReset = makeButton('emotion-ctrl-reset', ICON_RESET, '复位定位 / Reset view');
   const btnView = makeButton('emotion-ctrl-view', '2D', '切换 2D / 3D 视图');
-  // plain emotion-* classes (no maplibregl-ctrl-zoom-*) so MapLibre's background-icon
-  // CSS doesn't double up with our text "+" / "−".
   const btnZoomIn = makeButton('emotion-ctrl-zoom-in', '+', '放大 / Zoom in');
   const btnZoomOut = makeButton('emotion-ctrl-zoom-out', '−', '缩小 / Zoom out');
   const btnNorth = makeButton('emotion-ctrl-compass', ICON_NORTH, '复北 / Reset north');
-  group.append(btnReset, btnView, btnZoomIn, btnZoomOut, btnNorth);
+  row.append(btnCursor, btnMeasure, btnLayers, btnReset, btnView, btnZoomIn, btnZoomOut, btnNorth);
+  btnMeasure.addEventListener('click', () => toast.info('测量功能待开发'));
 
   // ── one-segment scale bar (white, auto-adaptive) ──
   // Label sits ABOVE the bar (standard layout) so the value can't dangle off the
@@ -149,9 +141,8 @@ export function initControls(map, { getFC } = {}) {
   scale.className = 'emotion-scale-ctrl';
   scale.innerHTML = '<span class="emotion-scale-label">—</span><div class="emotion-scale"></div>';
 
-  // 横排：比例尺在最左 → nav 组(reset/2D-3D/zoom±/north) → tools 组(cursor/measure/layers)，
-  // 整体底对齐、左缘对齐（.emotion-controls-root flex-direction:row，见 map-controls.css）。
-  root.append(scale, group, toolsGroup);
+  // 横排：比例尺最左 → 8 按钮单行在其右（.emotion-controls-root flex-direction:row）
+  root.append(scale, row);
 
   // ── behaviors ──
   // zoom +/- and reset-north: functionally equivalent to the removed native NavigationControl.

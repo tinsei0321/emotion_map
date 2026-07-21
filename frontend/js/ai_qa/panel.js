@@ -1367,16 +1367,17 @@ function mountChatChrome() {
 }
 
 /** 主窗口入口。EMC 常驻左端栏下半区（无 trigger / 无 close ×）。 */
-// ── CPD Phase 1b：EMC 浮窗化（reparent 到 #map + 尺寸持久化）──
+// ── CPD：EMC 浮窗化（reparent 到 #map + 自持缩放手柄 + 尺寸持久化）──
 //   #emc-panel DOM 仍在 #left-panel（index.html），运行期 reparent 到 #map 作浮窗
-//   （position:absolute 锚 #map，见 layout.css）。原生 resize:both 改宽高 → ResizeObserver 存 localStorage。
-//   原 setEmcMode 三档自动调高（写 --emc-h）随浮窗化退役为无害 no-op（height 已改为固定 360px+resize）。
+//   （position:absolute 锚 #map，见 layout.css）。缩放用自持 .emc-resize-grip（显眼斜线符号，
+//   pointer 事件驱动，min/max 钳制不压比例尺）—— 替代难发现的原生 resize 角；ResizeObserver 存 localStorage。
+//   原 setEmcMode 三档自动调高（写 --emc-h）随浮窗化退役为无害 no-op（height 固定 + grip 自持）。
 const EMC_FLOAT_KEY = 'emc-float-size';
 function _setupEmcFloat() {
   const emc = document.getElementById('emc-panel');
   const map = document.getElementById('map');
-  if (!emc || !map || emc.parentElement === map) return;   // 已 reparent 或无 #map → 跳过
-  map.appendChild(emc);   // reparent 到 #map（浮窗锚定，消除 #left-panel 内的瞬显）
+  if (!emc || !map) return;
+  if (emc.parentElement !== map) map.appendChild(emc);   // reparent 到 #map（幂等）
   // 恢复持久化尺寸（用户上次 resize 的宽高）
   try {
     const saved = localStorage.getItem(EMC_FLOAT_KEY);
@@ -1386,7 +1387,35 @@ function _setupEmcFloat() {
       if (h) emc.style.height = h + 'px';
     }
   } catch (_) {}
-  // ResizeObserver：用户拖 resize:both → 持久化（rAF 节流，折叠态不存）
+  // 自持缩放手柄（pointer 事件；min 300×200 / max 不压比例尺，与 CSS max-height 同步）
+  if (!emc.querySelector('.emc-resize-grip')) {
+    const grip = document.createElement('div');
+    grip.className = 'emc-resize-grip';
+    grip.title = '拖拽调整窗口大小';
+    grip.innerHTML = '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">'
+      + '<path d="M11 5.5L5.5 11M14 8.5L8.5 14M8 14L14 8" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>';
+    emc.appendChild(grip);
+    let dragging = false, sx = 0, sy = 0, sw = 0, sh = 0;
+    grip.addEventListener('pointerdown', (e) => {
+      if (emc.classList.contains('is-collapsed')) return;   // 折叠态不缩放
+      e.preventDefault(); e.stopPropagation();
+      dragging = true; sx = e.clientX; sy = e.clientY;
+      sw = emc.offsetWidth; sh = emc.offsetHeight;
+      try { grip.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+    grip.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const minW = 300, minH = 200;
+      const maxW = Math.floor(window.innerWidth * 0.92);
+      const maxH = Math.max(minH, window.innerHeight - 380);   // 与 layout.css max-height 同步
+      emc.style.width = Math.max(minW, Math.min(maxW, sw + (e.clientX - sx))) + 'px';
+      emc.style.height = Math.max(minH, Math.min(maxH, sh + (e.clientY - sy))) + 'px';
+    });
+    const end = (e) => { if (!dragging) return; dragging = false; try { grip.releasePointerCapture(e.pointerId); } catch (_) {} };
+    grip.addEventListener('pointerup', end);
+    grip.addEventListener('pointercancel', end);
+  }
+  // ResizeObserver：尺寸变化（grip 拖动 / 恢复）→ 持久化（rAF 节流，折叠态不存）
   let raf = 0;
   if (typeof ResizeObserver !== 'undefined' && !emc._floatObs) {
     emc._floatObs = new ResizeObserver(() => {
