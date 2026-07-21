@@ -55,6 +55,13 @@ export function initCpdState() {
     list._cpdObs = new MutationObserver(() => recompute());
     list._cpdObs.observe(list, { childList: true, subtree: true });
   }
+  // CPD ④：#param-panel 显隐（.is-open）→ 自适应定位（紧跟抽屉/EMC 右沿）
+  const pp = document.getElementById('param-panel');
+  if (pp && typeof MutationObserver !== 'undefined' && !pp._cpdPos) {
+    pp._cpdPos = new MutationObserver(() => { if (pp.classList.contains('is-open')) positionFloatingPanels(); });
+    pp._cpdPos.observe(pp, { attributes: true, attributeFilter: ['class'] });
+  }
+  window.addEventListener('resize', relayoutFloats);   // 窗口缩放 → 浮层重排
   recompute();
 }
 
@@ -67,3 +74,24 @@ export function positionDrawer() {
   if (!emc || !drawer) return;
   drawer.style.left = (emc.getBoundingClientRect().right + 10) + 'px';
 }
+
+/** CPD ④：param-panel（含内嵌 #settings-popover 要素按钮弹层）left 跟随**抽屉**右沿
+ *  （抽屉开→锚抽屉；关→锚 EMC）。替代 2b 留下的 `left:var(--left-w)` 错位回归。
+ *  #param-panel 在 #app-main（left:0=viewport 左），viewport 坐标直传。 */
+export function positionFloatingPanels() {
+  const emc = document.getElementById('emc-panel');
+  const drawer = document.getElementById('left-panel');
+  let anchorRight;
+  if (drawer && drawer.classList.contains('is-drawer-open')) anchorRight = drawer.getBoundingClientRect().right;
+  else if (emc) anchorRight = emc.getBoundingClientRect().right;
+  else return;
+  const left = anchorRight + 10;
+  const pp = document.getElementById('param-panel');
+  if (pp) {
+    pp.style.left = left + 'px';
+    pp.style.maxWidth = Math.max(280, window.innerWidth - left - 10) + 'px';
+  }
+}
+
+/** CPD 自适应总编排：EMC 宽/位变 → 重排抽屉 + 所有浮层。 */
+export function relayoutFloats() { positionDrawer(); positionFloatingPanels(); }

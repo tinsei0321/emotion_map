@@ -1,7 +1,7 @@
 // ═══ panel.js — AI 问答 UI（底部滑出 · agent loop · 历史持久化 · 思考深度开关 · 动态状态）═══
 import { orchestrate, getTemplateStats } from './harness.js';
 import { buildContext, TOOLS, resetStepResults, resetCurrentResults, cleanupConsumedResults, getFig } from './tools.js';
-import { initCpdState, subscribe, getCurStepIdx, CPD_STEPS, positionDrawer } from './cpd-state.js';
+import { initCpdState, subscribe, getCurStepIdx, CPD_STEPS, relayoutFloats } from './cpd-state.js';
 import { getLayers, selectLayer, getSelectedLayer } from '../state.js';
 import { getLastUsage, resetCallStats, getCallStats } from './api.js';
 
@@ -1457,7 +1457,7 @@ function _setupEmcFloat() {
         } else {
           _fitCollapsedText();   // CPD：折叠态宽度变 → 文本自适应重排
         }
-        positionDrawer();        // CPD ③：EMC 宽度变 → 抽屉位置自适应（不重叠）
+        relayoutFloats();        // CPD ③④：EMC 宽度变 → 抽屉 + param-panel 浮层自适应重排
       });
     });
     emc._floatObs.observe(emc);
