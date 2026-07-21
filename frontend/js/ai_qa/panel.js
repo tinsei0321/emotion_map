@@ -144,6 +144,33 @@ function relaxEmc() {
 }
 /** EMC 折叠/展开切换：折叠→.is-collapsed（局部覆盖 --emc-h=48px，藏 head/view/foot，留一行输入触发条）；
  *  展开→移除类 + 回落正常档。持久化到 localStorage。 */
+/** CPD：折叠态文本自适应——镜像量测 placeholder 实际占高，11-14px 自调字号塞进胶囊 2 行。
+ *  未来 AI 动态改此处文案（_INPUT_PH_COLLAPSED）时，调本函数即可保持完整显示。 */
+function _fitCollapsedText() {
+  const ta = document.getElementById('chat-input');
+  const panel = document.getElementById('emc-panel');
+  if (!ta || !panel || !panel.classList.contains('is-collapsed')) return;
+  const text = ta.placeholder || '';
+  if (!text) return;
+  let m = document.getElementById('_emc-fit');
+  if (!m) {
+    m = document.createElement('div'); m.id = '_emc-fit';
+    m.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre-wrap;word-break:break-word;pointer-events:none;';
+    document.body.appendChild(m);
+  }
+  const cs = getComputedStyle(ta);
+  const r = ta.getBoundingClientRect();
+  m.style.width = (r.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) + 'px';
+  m.style.fontFamily = cs.fontFamily;
+  m.style.lineHeight = '1.3';
+  m.style.fontWeight = '400';
+  const maxH = r.height - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  m.textContent = text;
+  let fs = 14;
+  for (; fs >= 11; fs -= 0.5) { m.style.fontSize = fs + 'px'; if (m.offsetHeight <= maxH + 1) break; }
+  ta.style.fontSize = fs + 'px';
+}
+
 function setEmcCollapsed(c) {
   _emcCollapsed = !!c;
   const panel = document.getElementById('emc-panel');
@@ -151,6 +178,7 @@ function setEmcCollapsed(c) {
   const input = document.getElementById('chat-input');
   if (input) input.placeholder = _emcCollapsed ? _INPUT_PH_COLLAPSED : _INPUT_PH_EXPANDED;   // 折叠/展开切换文案
   try { localStorage.setItem(COLLAPSE_KEY, _emcCollapsed ? '1' : '0'); } catch (_) {}
+  if (_emcCollapsed) _fitCollapsedText();   // CPD：折叠态文本自适应
   if (!_emcCollapsed) relaxEmc();   // 展开：回落 comfort/用户基线
 }
 let _crowdedRaf = 0;
@@ -1423,10 +1451,12 @@ function _setupEmcFloat() {
       if (raf) return;
       raf = requestAnimationFrame(() => {
         raf = 0;
-        if (emc.classList.contains('is-collapsed')) return;
-        try {
-          localStorage.setItem(EMC_FLOAT_KEY, JSON.stringify({ w: emc.offsetWidth, h: emc.offsetHeight }));
-        } catch (_) {}
+        const collapsed = emc.classList.contains('is-collapsed');
+        if (!collapsed) {
+          try { localStorage.setItem(EMC_FLOAT_KEY, JSON.stringify({ w: emc.offsetWidth, h: emc.offsetHeight })); } catch (_) {}
+        } else {
+          _fitCollapsedText();   // CPD：折叠态宽度变 → 文本自适应重排
+        }
       });
     });
     emc._floatObs.observe(emc);
@@ -1548,5 +1578,6 @@ export function initChatPanel() {
   if (_emcCollapsed) {
     document.getElementById('emc-panel')?.classList.add('is-collapsed');   // 初始即折叠：套类（局部覆盖 --emc-h=40px + min-height:0）
     if (input) input.placeholder = _INPUT_PH_COLLAPSED;
+    _fitCollapsedText();   // CPD：初始折叠态文本自适应
   }
 }
