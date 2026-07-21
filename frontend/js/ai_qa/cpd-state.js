@@ -57,3 +57,13 @@ export function initCpdState() {
   }
   recompute();
 }
+
+/** CPD ③「自适应位置」铁律：抽屉 left 跟随 EMC 右沿（EMC 拖宽→抽屉右移，不重叠）。
+ *  EMC 在 #map、抽屉在 #app-main，但 #app-main left:0=viewport 左，故 left 用 viewport 坐标直传。
+ *  top 固定（EMC 暂无纵向移动）。要素按钮/param-panel 弹层同理（④ 扩展）。 */
+export function positionDrawer() {
+  const emc = document.getElementById('emc-panel');
+  const drawer = document.getElementById('left-panel');
+  if (!emc || !drawer) return;
+  drawer.style.left = (emc.getBoundingClientRect().right + 10) + 'px';
+}

@@ -44,6 +44,9 @@ const ICON_MEASURE =
 const ICON_LAYERS =
   '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">' +
   '<path d="M12 3L22 8L12 13L2 8L12 3Z"/><path d="M2 12L12 17L22 12"/><path d="M2 16L12 21L22 16"/></svg>';
+const ICON_TIMELINE =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
 
 // ── geometry helpers ──
 function metersPerPixel(map) {
@@ -100,58 +103,54 @@ function makeButton(cls, innerHTML, title) {
 }
 
 /**
- * Build the unified bottom-left control cluster + scale bar as ONE MapLibre control
- * (single addControl call → deterministic DOM order: scale leftmost, then ONE
- * .emotion-ctrl-row of 8 buttons (cursor/measure/layers + reset/2D/zoom±/north)
- * to its right — horizontal single line, see map-controls.css).
+ * CPD Bottom dock + scale cluster (⑤⑥)。
+ *  - 底部左 .emotion-controls-root：比例尺 + 放大/缩小 小圆钮（与 dock 底间隙一致）。
+ *  - 底部中央 .bottom-dock：7 圆钮 cursor/measure/timeline/2D-3D/reset/north/basemap，
+ *    与 time-bar / search 同尺寸 32px 圆形，gap 2px，始终居中。时间轴并入 dock
+ *    （proxy 点击隐藏的 .time-bar，其 .tb-card 卡片独立定位照常弹出）。
+ *  - reset 保当前 2D/3D 视角（只 recenter）；north 恢复 2D 正北（pitch 0 + bearing 0）。
  *
  * @param {maplibregl.Map} map
- * @param {() => object|null} getFC  accessor for current emotion FeatureCollection
- *   (reset uses it to fitBounds to the data; null → fall back to HOME).
+ * @param {() => object|null} getFC  reset 用其 fitBounds 到数据；null → HOME。
  */
 export function initControls(map, { getFC } = {}) {
-  // root wrapper — owns layout of group + scale; inherits maplibregl-ctrl margins.
+  // ══ 底部左：比例尺 + 缩放 +/- 小圆钮 ══
   const root = document.createElement('div');
   root.className = 'maplibregl-ctrl emotion-controls-root';
+  const scale = document.createElement('div');
+  scale.className = 'emotion-scale-ctrl';
+  scale.innerHTML = '<span class="emotion-scale-label">—</span><div class="emotion-scale"></div>';
+  const btnZoomIn = makeButton('emotion-scale-zoom', '+', '放大 / Zoom in');
+  const btnZoomOut = makeButton('emotion-scale-zoom', '−', '缩小 / Zoom out');
+  root.append(scale, btnZoomIn, btnZoomOut);
 
-  // ── CPD：3+5 = 8 按钮一字横排（cursor/measure/layers + reset/2D/zoom±/north）──
-  // 单一 .emotion-ctrl-row flex 行（不再用 maplibregl-ctrl-group，避免其默认 column 与
-  // 分组视觉割裂）。cursor/layers 带 data-tool/data-action，toolbar.js 仍自动绑定同款选择器。
-  const row = document.createElement('div');
-  row.className = 'emotion-ctrl-row';
+  // ══ 底部中央：Bottom dock（7 圆钮，与 time-bar/search 同尺寸 32px）══
+  const dock = document.createElement('div');
+  dock.className = 'bottom-dock';
+  dock.setAttribute('role', 'toolbar');
+  dock.setAttribute('aria-label', '底部 dock 栏');
   const btnCursor = makeButton('draw-tool is-active', ICON_CURSOR, '选择 / Select');
   btnCursor.setAttribute('data-tool', 'select');
   btnCursor.setAttribute('aria-pressed', 'true');
   const btnMeasure = makeButton('draw-tool', ICON_MEASURE, '测量 / Measure（待开发）');
-  const btnLayers = makeButton('draw-tool', ICON_LAYERS, '底图 / Basemap');
-  btnLayers.setAttribute('data-action', 'basemap');
-  btnLayers.setAttribute('aria-pressed', 'false');
-  const btnReset = makeButton('emotion-ctrl-reset', ICON_RESET, '复位定位 / Reset view');
-  btnReset.classList.add('emotion-ctrl-break');   /* CPD：3+5 中间断开（5 组首位留左 margin） */
+  const btnTimeline = makeButton('dock-timeline', ICON_TIMELINE, '时间轴 / Timeline');
   const btnView = makeButton('emotion-ctrl-view', '2D', '切换 2D / 3D 视图');
-  const btnZoomIn = makeButton('emotion-ctrl-zoom-in', '+', '放大 / Zoom in');
-  const btnZoomOut = makeButton('emotion-ctrl-zoom-out', '−', '缩小 / Zoom out');
-  const btnNorth = makeButton('emotion-ctrl-compass', ICON_NORTH, '复北 / Reset north');
-  row.append(btnCursor, btnMeasure, btnLayers, btnReset, btnView, btnZoomIn, btnZoomOut, btnNorth);
+  const btnReset = makeButton('emotion-ctrl-reset', ICON_RESET, '复位（保持当前 2D/3D 视角）');
+  const btnNorth = makeButton('emotion-ctrl-compass', ICON_NORTH, '复北（恢复 2D 视图）');
+  const btnBasemap = makeButton('draw-tool', ICON_LAYERS, '底图 / Basemap');
+  btnBasemap.setAttribute('data-action', 'basemap');
+  btnBasemap.setAttribute('aria-pressed', 'false');
+  dock.append(btnCursor, btnMeasure, btnTimeline, btnView, btnReset, btnNorth, btnBasemap);
   btnMeasure.addEventListener('click', () => toast.info('测量功能待开发'));
-
-  // ── one-segment scale bar (white, auto-adaptive) ──
-  // Label sits ABOVE the bar (standard layout) so the value can't dangle off the
-  // bottom edge on short screens — the bar is the lowest element.
-  const scale = document.createElement('div');
-  scale.className = 'emotion-scale-ctrl';
-  scale.innerHTML = '<span class="emotion-scale-label">—</span><div class="emotion-scale"></div>';
-
-  // 横排：比例尺最左 → 8 按钮单行在其右（.emotion-controls-root flex-direction:row）
-  root.append(scale, row);
+  btnTimeline.addEventListener('click', () => document.querySelector('.time-bar')?.click());   // proxy 隐藏的 time-bar
 
   // ── behaviors ──
-  // zoom +/- and reset-north: functionally equivalent to the removed native NavigationControl.
   btnZoomIn.addEventListener('click', () => map.zoomIn());
   btnZoomOut.addEventListener('click', () => map.zoomOut());
-  btnNorth.addEventListener('click', () => map.resetNorth());
+  // 复北：恢复 2D 正北（pitch 0 + bearing 0）
+  btnNorth.addEventListener('click', () => map.easeTo({ pitch: 0, bearing: 0, duration: TOGGLE_DURATION }));
 
-  // 2D/3D: preserve center + zoom, animate pitch (0 ⇄ 60) + bearing 0.
+  // 2D/3D：保持 center+zoom，切 pitch（事件解耦 map.js setViewMode，免循环依赖）
   const syncViewLabel = () => {
     const is3D = map.getPitch() > 0.5;
     btnView.textContent = is3D ? '3D' : '2D';
@@ -160,27 +159,24 @@ export function initControls(map, { getFC } = {}) {
   };
   btnView.addEventListener('click', () => {
     const to3D = map.getPitch() <= 0.5;
-    // 事件解耦触发 map.js setViewMode（切图层 mode + 配对生成/显隐 + pitch + 底图），免 map↔map-controls 循环依赖
     document.dispatchEvent(new CustomEvent('grid:viewmode', { detail: to3D ? '3d' : '2d' }));
   });
-  // keep label synced if pitch changes by other means (drag, reset, programmatic).
   map.on('pitchend', syncViewLabel);
   syncViewLabel();
 
-  // reset: one-click locate + ensure layers framed. Fit to data if loaded, else HOME.
+  // 复位：fit 数据/HOME，保持当前 pitch+bearing（不强制回 2D）
   btnReset.addEventListener('click', () => {
+    const pitch = map.getPitch(), bearing = map.getBearing();
     const fc = getFC && getFC();
     const bounds = fc ? featureBounds(fc) : null;
     if (bounds) {
-      map.fitBounds(bounds, { padding: 40, pitch: 0, bearing: 0, duration: RESET_DURATION });
+      map.fitBounds(bounds, { padding: 40, pitch, bearing, duration: RESET_DURATION });
     } else {
-      map.flyTo({
-        center: HOME.center, zoom: HOME.zoom, pitch: 0, bearing: 0, duration: RESET_DURATION,
-      });
+      map.flyTo({ center: HOME.center, zoom: HOME.zoom, pitch, bearing, duration: RESET_DURATION });
     }
   });
 
-  // scale: recompute on any move (covers pan / zoom / pitch).
+  // 比例尺：随 move 重算
   const label = scale.querySelector('.emotion-scale-label');
   const bar = scale.querySelector('.emotion-scale');
   const updateScale = () => {
@@ -193,12 +189,7 @@ export function initControls(map, { getFC } = {}) {
   map.on('move', updateScale);
   updateScale();
 
-  // Anchor directly to #map (absolute, bottom-left) instead of a MapLibre control.
-  // This puts the cluster on the SAME positioning mechanism as the legend/popup
-  // (absolute, bottom:60) so their bottoms are geometrically level — MapLibre's
-  // ctrl-container offset otherwise makes them un-alignable. Button/scale handlers
-  // are bound to the elements and work regardless of DOM host.
   map.getContainer().appendChild(root);
-
-  return { root };
+  map.getContainer().appendChild(dock);
+  return { root, dock };
 }

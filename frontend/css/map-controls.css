@@ -86,57 +86,76 @@
   color: var(--geojson-color-brand-primary);
 }
 
-/* ── Horizontal cluster + scale bar — per CPD Phase 1a (2026-07-21) ──
-   比例尺在最左，nav 组 + tools 组横向排其右侧，整体底对齐、左缘对齐。
-   原「纵向堆叠 tools→nav→scale」改为横排一行（flex-direction:row）。 */
+/* ═══ CPD ⑤⑥：底部左 比例尺+缩放小圆钮 + 底部中央 Bottom dock ═══
+   左簇与 dock 底隙一致（bottom:8），统一「贴页面底端」的呼吸感（设计常识）。 */
+
+/* ── 底部左：比例尺 + +/- 小圆钮（.emotion-controls-root）── */
 .emotion-controls-root {
-  position: absolute;           /* anchor to #map（同 legend 机制）→ bottoms align */
-  bottom: 28px;
+  position: absolute;
+  bottom: 8px;                  /* CPD：与 dock 底隙一致（原 28） */
   left: 10px;
   z-index: 20;
   display: flex;
-  flex-direction: row;          /* CPD：横排（原 column） */
-  align-items: flex-end;        /* 比例尺标签+条 与按钮组 底对齐 */
-  gap: 10px;                    /* 比例尺 ↔ nav 组 ↔ tools 组 间距 */
+  flex-direction: row;
+  align-items: flex-end;        /* 比例尺与 +/- 底对齐 */
+  gap: 6px;
   margin: 0;
 }
-/* CPD：8 按钮单行 .emotion-ctrl-row —— 弃 maplibregl-ctrl-group（默认 column 易渲染错），
-   自持 flex row。3(cursor/measure/layers) + 5(reset/2D/zoom±/north) 一字排开。 */
-.emotion-ctrl-row {
+/* +/- 小圆钮：与比例尺同高区、白色半透明、小巧 */
+.emotion-scale-zoom {
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center; padding: 0;
+  font-size: 14px; font-weight: 700; line-height: 1;
+  color: var(--geojson-color-text-inverse, #fff);
+  background: rgba(255,255,255,0.72);
+  border: 1px solid rgba(255,255,255,0.5);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background .15s;
+}
+.emotion-scale-zoom:hover { background: rgba(255,255,255,0.95); }
+
+/* ── 底部中央：Bottom dock（⑤）7 圆钮，与 time-bar/search 同尺寸 32px ── */
+.bottom-dock {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 96;                  /* 与 .time-bar/.search-bar 同层 */
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 1px;
-  padding: 3px;
-  background: var(--geojson-color-surface-page);
-  border: 1px solid var(--geojson-color-border-default);
-  border-radius: var(--geojson-radius-sm, 4px);
-  box-shadow: var(--geojson-shadow-sm);
+  gap: 2px;                     /* CPD：按钮间隔 2px */
+  padding: 4px;
+  background: rgba(255,255,255,0.82);
+  border: 1px solid var(--geojson-color-border-default, #e5e5e5);
+  border-radius: 999px;         /* 整体胶囊外壳 */
+  box-shadow: var(--geojson-shadow-md);
+  backdrop-filter: blur(6px);
 }
-.emotion-ctrl-row button {
-  width: 20px; height: 20px;                 /* CPD：20px 正方形 */
-  aspect-ratio: 1;                            /* 锁死正方形比例（内容不撑变形） */
+.bottom-dock button {
+  width: 32px; height: 32px;
+  aspect-ratio: 1;
   flex: 0 0 auto;
   display: flex; align-items: center; justify-content: center; padding: 0;
   color: var(--geojson-color-chrome-text, #404040);
   background: transparent;
   border: none;
-  border-radius: var(--geojson-radius-xs, 4px);
+  border-radius: 50%;           /* 圆形 */
   cursor: pointer;
-  font-size: 12px;                            /* +/−/2D 文本随之缩小 */
-  font-weight: var(--geojson-typography-weight-bold, 700);
-  line-height: 1;
-  transition: background var(--geojson-transition, .15s), color var(--geojson-transition, .15s);
+  font-size: 12px; font-weight: 700; line-height: 1;
+  transition: background .15s, color .15s;
 }
-.emotion-ctrl-row button:hover { background: var(--geojson-color-gray-100, #f0f0f0); }
-.emotion-ctrl-row button svg { display: block; pointer-events: none; width: 14px; height: 14px; }
-/* CPD：3+5 中间断开（tools 3 + nav 5 之间留 8px gap，组内 1px 紧凑） */
-.emotion-ctrl-row .emotion-ctrl-break { margin-left: 8px; }
-.emotion-ctrl-row .draw-tool[aria-pressed="true"] {
+.bottom-dock button:hover { background: var(--geojson-color-gray-100, #f0f0f0); }
+.bottom-dock button svg { display: block; pointer-events: none; width: 16px; height: 16px; }
+.bottom-dock .draw-tool[aria-pressed="true"] {
   background: var(--geojson-color-chrome-active-fill, #4285F4);
   color: var(--geojson-color-text-inverse, #fff);
 }
-.emotion-ctrl-row .emotion-ctrl-view.is-active { color: var(--geojson-color-brand-primary, #4285F4); }
+.bottom-dock .emotion-ctrl-view.is-active { color: var(--geojson-color-brand-primary, #4285F4); }
+
+/* 时间轴并入 dock：隐藏原 .time-bar 钮（.tb-card 卡片独立定位照常弹） */
+.time-bar { display: none !important; }
 .emotion-scale-ctrl {
   margin-top: 6px;
   padding-left: 1px;            /* align the bar's left tick with the cluster's left edge */

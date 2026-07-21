@@ -7,6 +7,7 @@ import { closeParamPanel } from './param-panel.js';
 import { openHeatmapDialog } from './heatmap-tool.js';
 import { openBufferDialog } from './buffer-tool.js';
 import { openGridDialog } from './grid-tool.js';
+import { positionDrawer } from './ai_qa/cpd-state.js';   // CPD ③：抽屉位置自适应 EMC 宽度
 
 /** 工具层（heatmap/grid/buffer/terrain）要素按钮 toggle-close 判定：
  *  param-panel 开着 + 当前激活 tab 对应该工具 + 该对话框正编辑此层 → true（再点应关闭）。
@@ -789,6 +790,7 @@ export function initSidebar({ onFiles, onRangeFiles } = {}) {
       panel.classList.remove('is-drawer-open');   // 同 tab 再点 → 关（toggle）
       return;
     }
+    positionDrawer();                             // CPD ③：打开前定位到 EMC 右沿（自适应宽度）
     panel.classList.add('is-drawer-open');
     setLeftMode('sections');                       // 切到三区模式（非 import 空态）
     setActiveTab(tab);
