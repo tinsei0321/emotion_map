@@ -68,7 +68,6 @@ const _boundPoint = new Set();
 const _boundRange = new Set();
 let _tooltip = null;
 let _currentBasemap = DEFAULT_BASEMAP;   // 当前底图 key（setBasemap 同步）
-let _pre3dBasemap = null;                 // （遗留：旧 AUTO_3D_BASEMAP 方案用，暗色遮罩方案后弃用，保留无害）
 
 // ── 3D 暗底图：预载 dark-matter 真实矢量图层（dm-* 前缀），插在底图与数据层之间，pitch>1 时显隐 ──
 //  不 setStyle 换底图（旧方案根因：setStyle 重载瓦片新旧交替=空白卡顿）→ 改 addSource/addLayer 预载 +

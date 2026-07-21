@@ -25,17 +25,18 @@
         <ul id="topo-legend-layer" class="topo-legend"></ul>
       </div>
       <div class="topo-sec">
-        <div class="topo-sec-title">成熟度 · Maturity（形状）</div>
+        <div class="topo-sec-title">成熟度 · Maturity（透明度）</div>
         <ul class="topo-legend" id="legend-maturity">
-          <li data-maturity="mature"><span class="st st-mature"></span>成熟（实心球）</li>
-          <li data-maturity="progressing"><span class="st st-progressing"></span>推进中（空心线框）</li>
-          <li data-maturity="planned"><span class="st st-planned"></span>计划（虚线空心）</li>
+          <li data-maturity="mature"><span class="st st-mature"></span>成熟（实心）</li>
+          <li data-maturity="progressing"><span class="st st-progressing"></span>推进中（半透实心）</li>
+          <li data-maturity="planned"><span class="st st-planned"></span>计划（线框）</li>
         </ul>
       </div>
       <div class="topo-sec">
-        <div class="topo-sec-title">色系 · 4 类</div>
+        <div class="topo-sec-title">色系 · 5 类</div>
         <ul class="topo-legend" id="legend-family">
-          <li data-family="primary"><span class="st" style="background:var(--topo-c-primary)"></span>主程序 + EMC</li>
+          <li data-family="primary"><span class="st" style="background:var(--topo-c-primary)"></span>主程序（前端/基础）</li>
+          <li data-family="emc"><span class="st" style="background:var(--topo-c-emc)"></span>EMC（AI 问答）</li>
           <li data-family="infra"><span class="st" style="background:var(--topo-c-infra)"></span>架构/infra</li>
           <li data-family="data"><span class="st" style="background:var(--topo-c-data)"></span>DATA 数据</li>
           <li data-family="doc"><span class="st" style="background:var(--topo-c-doc)"></span>docs/设计</li>

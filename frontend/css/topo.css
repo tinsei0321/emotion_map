@@ -77,7 +77,7 @@ body {
 .topo-legend .count { color: var(--topo-text-muted); }
 .st { display: inline-block; width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
 .st-mature { background: var(--topo-c-primary); }
-.st-progressing { background: transparent; border: 2px solid var(--topo-c-primary); }
+.st-progressing { background: var(--topo-c-primary); opacity: 0.55; }
 .st-planned { background: transparent; border: 1.5px dashed var(--topo-c-primary); }
 .topo-latest-box {
   background: var(--topo-panel-2); border-left: 3px solid var(--topo-c-primary);

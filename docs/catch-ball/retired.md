@@ -35,3 +35,13 @@
 **保留 `SCRIPT/generate_test_data.py`**（SCAN 建议4 建议同退役，**declined·事实错误**）：它生成 **L0 原始数据**（10 万条社交媒体 raw，测 L0→L1→L2 全管线），与 sim_performance_data（L1/L2 POI-anchored demo）**用途不同、非冗余**。SCAN"功能重叠"判断不准（verify-before-accept 查 docstring 确认）。
 
 **来源**：CB-02（[SCAN_DeepSeek_02.md](SCAN_DeepSeek_02.md) 建议4）。详见 [cb-journal.md](cb-journal.md) CB-02。
+
+---
+
+## 2026-07-20（时间轴 retire · timeline.css 孤儿）
+
+| 文件 | 原职责 | 退役原因 | 可恢复 |
+|------|--------|----------|--------|
+| `frontend/css/timeline.css` | 旧侧栏时间轴 widget 样式（.tl-wrap/.tl-track/.tl-stop/.tl-btn，5.29 任务2） | 5.142 timeline.js 改 headless 引擎 + retire 旧侧栏 widget（底部 time-bar 接管），index.html 已去 link；零活引用 | git 历史 |
+
+**删除前核验**：`grep -rn "timeline\.css" frontend/` = 零活引用（仅 timeline.css 自身首行注释）。time-bar.css 已接管时间 UI 样式。

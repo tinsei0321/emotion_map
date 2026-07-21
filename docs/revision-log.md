@@ -222,7 +222,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月20日）** · 本节按板块分组、组内倒序；最新工作 = **5.146 拓扑图卡顿修复（rAF 批处理 DOM 更新）**（本次）。上一轮 5.145 拓扑两小项。最近：
+> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.147 收尾杂项（timeline.css 退役 + stale 清理 + 拓扑图例订正）**（本次）。上一轮 5.146 拓扑卡顿修复。最近：
+>
+> - **5.147 收尾杂项（timeline.css 退役 + stale 清理 + 拓扑图例订正）**：用户选"收尾杂项"方向。① **timeline.css 退役**：`git rm frontend/css/timeline.css`（孤儿——5.142 retire 旧侧栏 widget 后 index.html 已去 link，grep 零活引用），入 [retired.md](docs/catch-ball/retired.md) 2026-07-20 批（可恢复 git 历史）。② **stale 清理**：[map.js](frontend/js/map.js) 删 `_pre3dBasemap`（旧 AUTO_3D_BASEMAP 方案遗留声明，5.143 暗色遮罩方案后 unused；showTimeline/PT_URL/TL_T 等早已清零）。③ **拓扑图例订正**（查漏：图例文字与 5.144/5.145 新编码矛盾）：[topology.html](frontend/topology.html) maturity 图例标题"（形状）"→"（透明度）" + 文字（推进中"空心线框"→"半透实心" / 计划"虚线空心"→"线框"，对齐 opacity 编码）；family 图例拆"主程序+EMC"为两条目（主程序珊瑚 + EMC 高饱和橙 `--topo-c-emc`），"4 类"→"5 类"；[topo.css](frontend/css/topo.css) `.st-progressing` 从 `border` 改 `solid + opacity:0.55`（对齐 3D 节点半透实心）。验证：ESM 绿（map.js）。承重：timeline.css 删前 grep 零引用 + retired 留痕；图例纯文字/CSS 订正不动逻辑。**push 待用户。**
 >
 > - **5.146 拓扑图卡顿修复（rAF 批处理 DOM 更新）**：治 5.143 起用户反馈的"双击/拖拽偶尔卡顿"。根因：`onEngineTick` 每 force 模拟 tick 都直调 `updateLabels+updateBoxes+updateTipPos`（~40 标签节点 + ~12 组团框 × 各节点 `graph2ScreenCoords` + style 写），force sim **220 tick 冷却期**（加载后数秒活跃）叠加双击 `zoomToFit` 相机动画 → 每 tick DOM 抖动抢主线程 = 偶尔卡顿（尤加载后 sim 活跃时双击）。修：[topology.js](frontend/js/topology.js) 加 `_scheduleDomUpdate()`——`requestAnimationFrame` 合并 + `_domRafPending` 标志去抖；`onEngineTick`（line 73）+ `ctrl 'change'`（line 86）两处直调改调它。一帧内多次 tick/相机变化合并为一次 DOM 写（≤60/sec），消除抢帧；rAF 对齐显示刷新 → 标签/框视觉无延迟感。验证：ESM 绿；**F5 手感验证**（守 no-routine-playwright-verify：加载后 sim 活跃期立即双击/拖拽 → 卡顿应明显减轻）。承重：只动 DOM 更新调度，不改节点几何/数据/force 参数。若仍偶发（疑 GPU/节点数），再降 sphere 几何精度或 throttle tick 频率。**push 待用户。**
 >
