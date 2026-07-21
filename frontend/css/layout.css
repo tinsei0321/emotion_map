@@ -112,18 +112,29 @@ button { font-family: inherit; }
   border-top: 1px solid var(--geojson-color-border-default);
 }
 
-/* ── Left panel 下半区：EMC（智能高度 --emc-h；最小一对话框，最大受上层 1/3 保底）── */
+/* ── EMC 浮窗（CPD Phase 1b，2026-07-21）：脱离 #left-panel，浮于 #map 左上 ──
+ *   panel.js initChatPanel 运行期 reparent #emc-panel 到 #map（position:absolute 锚 #map）。
+ *   原生 resize:both = 高帧率自由缩放宽高；尺寸持久化 localStorage（panel.js _setupEmcResizePersist）。
+ *   折叠态 .is-collapsed 在 ai_qa.css 用 height!important 覆盖（原 --emc-h 机制退役）。
+ *   搜索栏 top-center / popup top-right / legend bottom-right / 工具簇 bottom-left → 左上浮窗不冲突。 */
 #emc-panel {
-  height: var(--emc-h);
-  flex: 0 0 var(--emc-h);
-  min-height: 320px;   /* = EMC_MIN（panel.js）：chat-head+input-area+chat-messages 下限，低于此对话区塌缩空白 */
-  max-height: calc(100vh - var(--geojson-layout-header-height) - (100vh / 3));
+  position: absolute;
+  top: 56px;                 /* header(48) + 8 gap */
+  left: 10px;
+  width: 380px;              /* = 旧 --left-w 默认宽 */
+  height: 360px;             /* 默认 = 欢迎卡内容 */
+  min-width: 300px;
+  min-height: 200px;         /* chat-head + input + messages 下限 */
+  max-width: 92vw;
+  max-height: calc(100vh - 116px);   /* 留底（header 56 + 工具簇 ~60）不顶满 */
+  z-index: 50;               /* 浮于地图图层之上，低于 search-bar(96)/popup */
+  resize: both;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   background: var(--geojson-color-surface-panel);
-  border-top: 1px solid var(--geojson-color-border-default);
-  transition: height .2s ease, flex-basis .2s ease;
+  box-shadow: var(--geojson-shadow-lg);
+  border-radius: 8px;
 }
 
 body.dragging #left-panel,

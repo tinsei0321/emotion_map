@@ -1367,7 +1367,44 @@ function mountChatChrome() {
 }
 
 /** 主窗口入口。EMC 常驻左端栏下半区（无 trigger / 无 close ×）。 */
+// ── CPD Phase 1b：EMC 浮窗化（reparent 到 #map + 尺寸持久化）──
+//   #emc-panel DOM 仍在 #left-panel（index.html），运行期 reparent 到 #map 作浮窗
+//   （position:absolute 锚 #map，见 layout.css）。原生 resize:both 改宽高 → ResizeObserver 存 localStorage。
+//   原 setEmcMode 三档自动调高（写 --emc-h）随浮窗化退役为无害 no-op（height 已改为固定 360px+resize）。
+const EMC_FLOAT_KEY = 'emc-float-size';
+function _setupEmcFloat() {
+  const emc = document.getElementById('emc-panel');
+  const map = document.getElementById('map');
+  if (!emc || !map || emc.parentElement === map) return;   // 已 reparent 或无 #map → 跳过
+  map.appendChild(emc);   // reparent 到 #map（浮窗锚定，消除 #left-panel 内的瞬显）
+  // 恢复持久化尺寸（用户上次 resize 的宽高）
+  try {
+    const saved = localStorage.getItem(EMC_FLOAT_KEY);
+    if (saved) {
+      const { w, h } = JSON.parse(saved);
+      if (w) emc.style.width = w + 'px';
+      if (h) emc.style.height = h + 'px';
+    }
+  } catch (_) {}
+  // ResizeObserver：用户拖 resize:both → 持久化（rAF 节流，折叠态不存）
+  let raf = 0;
+  if (typeof ResizeObserver !== 'undefined' && !emc._floatObs) {
+    emc._floatObs = new ResizeObserver(() => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        if (emc.classList.contains('is-collapsed')) return;
+        try {
+          localStorage.setItem(EMC_FLOAT_KEY, JSON.stringify({ w: emc.offsetWidth, h: emc.offsetHeight }));
+        } catch (_) {}
+      });
+    });
+    emc._floatObs.observe(emc);
+  }
+}
+
 export function initChatPanel() {
+  _setupEmcFloat();   // CPD Phase 1b：reparent EMC 到 #map 浮窗 + 恢复尺寸（先于事件绑定）
   document.getElementById('chat-new')?.addEventListener('click', () => {
     if (_streaming) return;   // 流式中忽略
     if (_history.length) {   // 当前会话存档

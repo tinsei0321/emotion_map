@@ -101,7 +101,8 @@ function makeButton(cls, innerHTML, title) {
 
 /**
  * Build the unified bottom-left control cluster + scale bar as ONE MapLibre control
- * (single addControl call → deterministic DOM order: buttons on top, scale below).
+ * (single addControl call → deterministic DOM order: scale leftmost, nav group + tools
+ * group to its right, horizontal row — see .emotion-controls-root in map-controls.css).
  *
  * @param {maplibregl.Map} map
  * @param {() => object|null} getFC  accessor for current emotion FeatureCollection
@@ -148,7 +149,9 @@ export function initControls(map, { getFC } = {}) {
   scale.className = 'emotion-scale-ctrl';
   scale.innerHTML = '<span class="emotion-scale-label">—</span><div class="emotion-scale"></div>';
 
-  root.append(toolsGroup, group, scale);
+  // 横排：比例尺在最左 → nav 组(reset/2D-3D/zoom±/north) → tools 组(cursor/measure/layers)，
+  // 整体底对齐、左缘对齐（.emotion-controls-root flex-direction:row，见 map-controls.css）。
+  root.append(scale, group, toolsGroup);
 
   // ── behaviors ──
   // zoom +/- and reset-north: functionally equivalent to the removed native NavigationControl.

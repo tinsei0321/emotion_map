@@ -167,10 +167,9 @@
       </div>
       </div><!-- /#lp-upper -->
 
-      <!-- 上下拖拽分隔条（纵向调 EMC 高度） -->
-      <div class="gutter gutter-emc" id="gutter-emc" data-axis="y" title="拖拽调整上下高度"></div>
-
-      <!-- 下半区：EmotionMap Copilot (EMC) — Claude Code 式左栏对话 -->
+      <!-- EmotionMap Copilot (EMC) — CPD Phase 1b 起：脱离 #left-panel，由 panel.js initChatPanel
+           运行期 reparent 到 #map 作浮窗（position:absolute 左上 + resize:both 自由缩放）。
+           gutter-emc 纵向拖拽已退役（浮窗用原生 resize）；#lp-upper flex:1 填满整个左栏。 -->
       <div id="emc-panel" class="emc-panel">
         <!-- 头部：标题 + 历史 + 新对话（无关闭 ×；EMC 非独立浮窗） -->
         <div class="chat-head">

@@ -86,17 +86,32 @@
   color: var(--geojson-color-brand-primary);
 }
 
-/* ── One-segment scale bar (white, auto-adaptive) — per reference 图1 ──
-   Sits directly below the cluster, left-aligned. */
+/* ── Horizontal cluster + scale bar — per CPD Phase 1a (2026-07-21) ──
+   比例尺在最左，nav 组 + tools 组横向排其右侧，整体底对齐、左缘对齐。
+   原「纵向堆叠 tools→nav→scale」改为横排一行（flex-direction:row）。 */
 .emotion-controls-root {
-  position: absolute;           /* anchor to #map (same mechanism as legend) → bottoms align */
-  bottom: 28px;                 /* 再下移 16px */
+  position: absolute;           /* anchor to #map（同 legend 机制）→ bottoms align */
+  bottom: 28px;
   left: 10px;
   z-index: 20;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  flex-direction: row;          /* CPD：横排（原 column） */
+  align-items: flex-end;        /* 比例尺标签+条 与按钮组 底对齐 */
+  gap: 10px;                    /* 比例尺 ↔ nav 组 ↔ tools 组 间距 */
   margin: 0;
+}
+/* 横排时各组内按钮也横向（MapLibre ctrl-group 默认 column，这里翻成 row） */
+.emotion-controls-root .maplibregl-ctrl-group {
+  flex-direction: row;
+}
+/* 横排分隔线：原 button+button 的 border-top → border-left */
+.emotion-controls-root .maplibregl-ctrl-group button + button {
+  border-top: none;
+  border-left: 1px solid var(--geojson-color-border-default);
+}
+/* tools 组在横排下不再需要与 nav 组的纵向间距 */
+.emotion-controls-root .emotion-tools-ctrl {
+  margin-bottom: 0;
 }
 .emotion-scale-ctrl {
   margin-top: 6px;

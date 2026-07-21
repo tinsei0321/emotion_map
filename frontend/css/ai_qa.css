@@ -370,7 +370,9 @@
 .chat-bubble pre:hover .emc-code-copy { opacity: 1; }
 
 /* ═══ EMC 折叠态（5.58）：收起 → 只剩一行输入触发条，点击输入框展开 ═══ */
-#emc-panel.is-collapsed { --emc-h: 40px; min-height: 0; }   /* 局部覆盖 --emc-h + 解除 min-height:320 钳制（否则折叠态被卡在 320px 下不去）*/
+/* CPD Phase 1b：浮窗固定 height:360px（非 --emc-h var），折叠态须 !important 覆盖 + 关 resize。
+   原注释「--emc-h:40px + 解除 min-height:320 钳制」随 --emc-h 机制退役而改。 */
+#emc-panel.is-collapsed { height: 40px !important; min-height: 0 !important; resize: none; }
 #emc-panel.is-collapsed .chat-head,
 #emc-panel.is-collapsed .emc-view { display: none !important; }
 #emc-panel.is-collapsed .emc-input-foot { display: none !important; }
