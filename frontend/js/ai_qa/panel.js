@@ -1,6 +1,7 @@
 // ═══ panel.js — AI 问答 UI（底部滑出 · agent loop · 历史持久化 · 思考深度开关 · 动态状态）═══
 import { orchestrate, getTemplateStats } from './harness.js';
 import { buildContext, TOOLS, resetStepResults, resetCurrentResults, cleanupConsumedResults, getFig } from './tools.js';
+import { initCpdState, subscribe, getCurStepIdx, CPD_STEPS } from './cpd-state.js';
 import { getLayers, selectLayer, getSelectedLayer } from '../state.js';
 import { getLastUsage, resetCallStats, getCallStats } from './api.js';
 
@@ -1432,8 +1433,57 @@ function _setupEmcFloat() {
   }
 }
 
+// ── CPD Phase 2a：EMC 顶部软折叠栏（5 步进度条 + Layers/Range/Toolbox 摘要 chip）──
+//   软折叠：chip 行始终可达（业内同行可一键聚焦左栏对应 tab）；进度点据 curState 染色。
+//   chip 点击派发 cpd:focus-tab → sidebar.js 监听切 tab + 展开左栏（2a 桥接，左栏暂不移除）。
+function _setupCpdBar() {
+  const emc = document.getElementById('emc-panel');
+  if (!emc || emc.querySelector('.emc-cpd-bar')) return;
+  const bar = document.createElement('div');
+  bar.className = 'emc-cpd-bar';
+  // 进度条（5 点 + 步骤标签）
+  const prog = document.createElement('div');
+  prog.className = 'emc-cpd-prog';
+  prog.innerHTML = CPD_STEPS.map((s, i) =>
+    `<span class="emc-cpd-dot" data-idx="${i}" title="${s.id} ${s.label}"></span>`).join('')
+    + '<span class="emc-cpd-prog-label">—</span>';
+  bar.appendChild(prog);
+  // chip 行（软折叠·始终可达；图层 chip 带计数）
+  const chips = document.createElement('div');
+  chips.className = 'emc-cpd-chips';
+  chips.innerHTML =
+    '<button class="emc-cpd-chip" data-tab="layers" title="图层管理">'
+    + '<span class="emc-cpd-chip-lbl">图层</span><span class="emc-cpd-chip-cnt" data-cnt="layers">0</span></button>'
+    + '<button class="emc-cpd-chip" data-tab="range" title="指定范围"><span class="emc-cpd-chip-lbl">范围</span></button>'
+    + '<button class="emc-cpd-chip" data-tab="toolbox" title="空间分析工具"><span class="emc-cpd-chip-lbl">工具</span></button>';
+  bar.appendChild(chips);
+  // 插入 chat-head 之后（chat-head 之下、emc-view 之上）
+  const head = emc.querySelector('.chat-head');
+  if (head) head.after(bar); else emc.prepend(bar);
+  // chip 点击 → 聚焦左栏 tab（sidebar.js 监听 cpd:focus-tab）
+  bar.querySelectorAll('.emc-cpd-chip').forEach((c) =>
+    c.addEventListener('click', () => document.dispatchEvent(new CustomEvent('cpd:focus-tab', { detail: c.dataset.tab }))));
+  // 渲染：进度点染色 + 步骤标签 + 图层计数
+  const render = () => {
+    const idx = getCurStepIdx();
+    bar.querySelectorAll('.emc-cpd-dot').forEach((d, i) => {
+      d.classList.toggle('is-cur', i === idx);
+      d.classList.toggle('is-done', i < idx);
+    });
+    const lbl = bar.querySelector('.emc-cpd-prog-label');
+    if (lbl && CPD_STEPS[idx]) lbl.textContent = `${idx + 1}/${CPD_STEPS.length} · ${CPD_STEPS[idx].label}`;
+    const cnt = bar.querySelector('[data-cnt="layers"]');
+    if (cnt) cnt.textContent = String(document.querySelectorAll('#layer-list .layer-row').length);
+  };
+  subscribe(render);
+  document.addEventListener('layers:changed', render);
+  render();
+  initCpdState();   // 启动状态推导 + 全局监听
+}
+
 export function initChatPanel() {
   _setupEmcFloat();   // CPD Phase 1b：reparent EMC 到 #map 浮窗 + 恢复尺寸（先于事件绑定）
+  _setupCpdBar();     // CPD Phase 2a：顶部进度条 + 摘要 chip（软折叠）
   document.getElementById('chat-new')?.addEventListener('click', () => {
     if (_streaming) return;   // 流式中忽略
     if (_history.length) {   // 当前会话存档

@@ -777,6 +777,15 @@ export function initSidebar({ onFiles, onRangeFiles } = {}) {
   // popover closed via outside-click/Escape → clear the kind marker's active state
   document.addEventListener('layer-settings:closed', renderLayerList);
 
+  // CPD Phase 2a：EMC 摘要 chip → 聚焦左栏对应 tab（软折叠桥接，左栏 2a 暂不移除）
+  document.addEventListener('cpd:focus-tab', (e) => {
+    const tab = e.detail;
+    if (tab !== 'layers' && tab !== 'range' && tab !== 'toolbox') return;
+    if (readVarPx('--left-w') < 1) togglePanel('left');   // 折叠则展开
+    setLeftMode('sections');                                // 切到三区模式（非 import 空态）
+    setActiveTab(tab);
+  });
+
   // Analysis 段已移除（整合入数据库）；以下为 Toolbox 工具入口
   document.getElementById('tool-heatmap')?.addEventListener('click', () => openHeatmapDialog());
   document.getElementById('tool-buffer')?.addEventListener('click', () => openBufferDialog());

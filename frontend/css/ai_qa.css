@@ -419,6 +419,44 @@
 .emc-resize-grip:hover { opacity: 1; color: var(--emc-accent, #F0997B); }
 .emc-resize-grip svg { display: block; pointer-events: none; }
 
+/* ── CPD Phase 2a：软折叠栏（5 步进度条 + Layers/Range/Toolbox 摘要 chip；chat-head 之下）── */
+.emc-cpd-bar {
+  flex: 0 0 auto;
+  padding: 7px 10px 8px;
+  border-bottom: 1px solid var(--emc-divider, rgba(255,255,255,0.08));
+  display: flex; flex-direction: column; gap: 7px;
+}
+.emc-cpd-prog { display: flex; align-items: center; gap: 5px; }
+.emc-cpd-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--geojson-color-gray-200, #3a3a3a);          /* 未到达：灰 */
+  flex: 0 0 auto; transition: background .2s, box-shadow .2s;
+}
+.emc-cpd-dot.is-done { background: #16A085; }                   /* 已完成：绿 */
+.emc-cpd-dot.is-cur {                                           /* 当前：蓝 + 光晕 */
+  background: var(--geojson-color-brand-primary, #4285F4);
+  box-shadow: 0 0 0 3px rgba(66,133,244,0.22);
+}
+.emc-cpd-prog-label { margin-left: auto; font-size: 10px; color: var(--geojson-color-text-tertiary, #707070); white-space: nowrap; }
+
+.emc-cpd-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.emc-cpd-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; font-size: 11px; line-height: 1.4;
+  color: var(--geojson-color-text-secondary, #A0A0A0);
+  background: var(--geojson-color-gray-100, #2a2a2a);          /* 无线框 + 紧凑圆角 */
+  border: none; border-radius: 999px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.emc-cpd-chip:hover { background: var(--geojson-color-gray-200, #3a3a3a); color: var(--geojson-color-text-primary); }
+.emc-cpd-chip-cnt {
+  font-size: 10px; min-width: 14px; text-align: center;
+  padding: 0 4px; border-radius: 999px;
+  background: rgba(66,133,244,0.18); color: var(--geojson-color-brand-primary, #4285F4);
+}
+#emc-panel.is-collapsed .emc-cpd-bar { display: none !important; }   /* 折叠态不显软折叠栏 */
+
 /* ═══ EMC 空态欢迎卡（5.58）：无对话时问候 + 能力清单 + 示例追问（点击即发）═══ */
 .emc-welcome { padding: 10px 2px 4px; display: flex; flex-direction: column; gap: 14px; }
 .emc-welcome-head { display: flex; align-items: flex-start; gap: 10px; }

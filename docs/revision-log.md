@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.159 CPD Phase 1 视觉精修三轮（折叠浅灰胶囊 + 浮窗 30px + 输入钮 32px + 工具钮方正/3+5 断开）**（本次，分支 `cpd`）。上一轮 5.158。最近：
+> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.160 CPD Phase 2a · 软折叠壳（cpd-state 客户端推导 + EMC 进度条 + 摘要 chip 行）**（本次，分支 `cpd`）。上一轮 5.159。最近：
+>
+> - **5.160 CPD Phase 2a · 软折叠壳（CPD 状态机落地的第一步）**：新增 [cpd-state.js](frontend/js/ai_qa/cpd-state.js)——**客户端推导 curState**（S0 空/S2 有可见层/S3 对话中/S4 有结论卡；S1 range-only、S5 导出为瞬态不自动判），信号=visible layers + `#chat-messages .chat-msg-user`/`.aiq-conclusion`；pub/sub + 监听 `layers:changed`/`layer:selected`/chat-messages MutationObserver。**承重：不动 diagnose prompt（保 eval）**——curState 纯客户端派生，不进 LLM context 必需项。[panel.js](frontend/js/ai_qa/panel.js) `_setupCpdBar`：EMC 顶部（chat-head 下）注入 **5 步进度条**（当前蓝光晕/已完成绿/未达灰 + 步骤标签）+ **Layers/范围/工具 摘要 chip 行**（软折叠·始终可达，图层 chip 带计数）；chip 点击派发 `cpd:focus-tab`。[sidebar.js](frontend/js/sidebar.js) 监听 `cpd:focus-tab` → 切左栏 tab + 折叠则展开（2a 桥接，左栏暂不移除）。[ai_qa.css](frontend/css/ai_qa.css) 进度点 + chip 胶囊（无线框+悬停灰+计数蓝，胶囊设计语言；折叠态隐藏）。**2a 为 CPD 壳：左栏与 chip 暂时并存（冗余），2b 将 chip 改开 EMC 内抽屉并撤 `#left-panel` + `buildContext` curState hint。** ESM 三绿（cpd-state/panel/sidebar）。push 待用户。
 >
 > - **5.159 CPD Phase 1 视觉精修三轮（按用户 F5 反馈 4 条 + 纠设计直觉跑偏）**：① 折叠胶囊 [ai_qa.css](frontend/css/ai_qa.css) 纯白→**浅灰底 `#ececec`**（白太突兀，记用户偏好柔和浅底）+ 橙色 2px 线框恢复。② 浮窗 [layout.css](frontend/css/layout.css) `top:40→30px`（再上移 10）。③ 输入钮 18→**32px**（18 触达差，回调合理可点尺寸；ctx-cap/+ /Pro·Flash/发送 等高 32，send 箭头 16）。④ 工具钮 [map-controls.css](frontend/css/map-controls.css) 加 `aspect-ratio:1 + flex:0 0 auto` 锁死**正方形**（防内容撑变形）+ [map-controls.js](frontend/js/map-controls.js) btnReset 加 `.emotion-ctrl-break` → 中间 `margin-left:8px` 维持 **3+5 断开格局**（组内 1px 紧凑）。**自省**：近轮过度字面分析、把能据设计常识+用户习惯自判的决策甩回用户（上移方向、18px 偏小、纯白突兀）——新增 feedback memory 固化「先调设计常识与习惯，勿回弹能自决问题」。push 待用户。
 >
