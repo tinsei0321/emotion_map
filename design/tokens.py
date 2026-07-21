@@ -49,11 +49,11 @@ GEOJSON_COLOR_CHROME_TEXT = '#404040'
 GEOJSON_COLOR_CHROME_TITLE_BAR_BG = '#0c1c2e'
 GEOJSON_COLOR_CHROME_TOOLBAR_BG = '#ffffff'
 GEOJSON_COLOR_DANGER = '#dc2626'
-GEOJSON_COLOR_EMOTION_NEGATIVE = '#C4956A'
+GEOJSON_COLOR_EMOTION_NEGATIVE = '#F0997B'
 GEOJSON_COLOR_EMOTION_NEUTRAL = '#C0C0C0'
-GEOJSON_COLOR_EMOTION_POSITIVE = '#5DADE2'
-GEOJSON_COLOR_EMOTION_VERY_NEGATIVE = '#B92D2D'
-GEOJSON_COLOR_EMOTION_VERY_POSITIVE = '#78DC32'
+GEOJSON_COLOR_EMOTION_POSITIVE = '#5DCAA5'
+GEOJSON_COLOR_EMOTION_VERY_NEGATIVE = '#D85A30'
+GEOJSON_COLOR_EMOTION_VERY_POSITIVE = '#0F6E56'
 GEOJSON_COLOR_GRAY_100 = '#f5f5f5'
 GEOJSON_COLOR_GRAY_200 = '#e5e5e5'
 GEOJSON_COLOR_GRAY_300 = '#d4d4d4'
@@ -224,16 +224,16 @@ COLOR_BRAND_PRIMARY_HOVER = '#5DD8C0'
 COLOR_BRAND_SECONDARY = '#5DADE2'
 COLOR_BRAND_SECONDARY_ACTIVE = '#4A9AD0'
 COLOR_BRAND_SECONDARY_HOVER = '#7DBDE8'
-COLOR_CHART_POLARITY_NEGATIVE = '#C4956A'
-COLOR_CHART_POLARITY_NEUTRAL = '#C0C0C0'
-COLOR_CHART_POLARITY_POSITIVE = '#5DADE2'
-COLOR_CHART_POLARITY_VERY_NEGATIVE = '#B92D2D'
-COLOR_CHART_POLARITY_VERY_POSITIVE = '#78DC32'
-COLOR_EMOTION_NEGATIVE = '#D2AB8B'
+COLOR_CHART_POLARITY_NEGATIVE = '#F5C4B3'
+COLOR_CHART_POLARITY_NEUTRAL = '#E6E6E6'
+COLOR_CHART_POLARITY_POSITIVE = '#9FE1CB'
+COLOR_CHART_POLARITY_VERY_NEGATIVE = '#F0997B'
+COLOR_CHART_POLARITY_VERY_POSITIVE = '#5DCAA5'
+COLOR_EMOTION_NEGATIVE = '#F5C4B3'
 COLOR_EMOTION_NEUTRAL = '#E6E6E6'
-COLOR_EMOTION_POSITIVE = '#7FC0EC'
-COLOR_EMOTION_VERY_NEGATIVE = '#B92D2D'
-COLOR_EMOTION_VERY_POSITIVE = '#9CE365'
+COLOR_EMOTION_POSITIVE = '#9FE1CB'
+COLOR_EMOTION_VERY_NEGATIVE = '#F0997B'
+COLOR_EMOTION_VERY_POSITIVE = '#5DCAA5'
 COLOR_FUNCTIONAL_BORDER_LIGHT = 'rgba(72,201,176,0.15)'
 COLOR_FUNCTIONAL_BORDER_MEDIUM = 'rgba(72,201,176,0.22)'
 COLOR_FUNCTIONAL_BORDER_STRONG = 'rgba(72,201,176,0.35)'
@@ -248,11 +248,11 @@ COLOR_FUNCTIONAL_SELECTED = '#48C9B0'
 COLOR_FUNCTIONAL_TEXT_ON_DARK = '#F0F0F0'
 COLOR_FUNCTIONAL_TEXT_SECONDARY = '#C0C0C0'
 COLOR_FUNCTIONAL_TEXT_TERTIARY = '#888888'
-COLOR_GRADIENT_HOTCOLD0 = '#48C9B0'
-COLOR_GRADIENT_HOTCOLD1 = '#5DADE2'
+COLOR_GRADIENT_HOTCOLD0 = '#5DCAA5'
+COLOR_GRADIENT_HOTCOLD1 = '#9FE1CB'
 COLOR_GRADIENT_HOTCOLD2 = '#909090'
-COLOR_GRADIENT_HOTCOLD3 = '#F0A050'
-COLOR_GRADIENT_HOTCOLD4 = '#E06050'
+COLOR_GRADIENT_HOTCOLD3 = '#F5C4B3'
+COLOR_GRADIENT_HOTCOLD4 = '#F0997B'
 COLOR_GRADIENT_NEG0 = '#641E16'
 COLOR_GRADIENT_NEG1 = '#922B21'
 COLOR_GRADIENT_NEG2 = '#C0392B'
@@ -483,16 +483,16 @@ DARK_TOKENS = {
     'color-brand-secondary': '#5DADE2',
     'color-brand-secondary-active': '#4A9AD0',
     'color-brand-secondary-hover': '#7DBDE8',
-    'color-chart-polarity-negative': '#C4956A',
-    'color-chart-polarity-neutral': '#C0C0C0',
-    'color-chart-polarity-positive': '#5DADE2',
-    'color-chart-polarity-very-negative': '#B92D2D',
-    'color-chart-polarity-very-positive': '#78DC32',
-    'color-emotion-negative': '#D2AB8B',
+    'color-chart-polarity-negative': '#F5C4B3',
+    'color-chart-polarity-neutral': '#E6E6E6',
+    'color-chart-polarity-positive': '#9FE1CB',
+    'color-chart-polarity-very-negative': '#F0997B',
+    'color-chart-polarity-very-positive': '#5DCAA5',
+    'color-emotion-negative': '#F5C4B3',
     'color-emotion-neutral': '#E6E6E6',
-    'color-emotion-positive': '#7FC0EC',
-    'color-emotion-very-negative': '#B92D2D',
-    'color-emotion-very-positive': '#9CE365',
+    'color-emotion-positive': '#9FE1CB',
+    'color-emotion-very-negative': '#F0997B',
+    'color-emotion-very-positive': '#5DCAA5',
     'color-functional-border-light': 'rgba(72,201,176,0.15)',
     'color-functional-border-medium': 'rgba(72,201,176,0.22)',
     'color-functional-border-strong': 'rgba(72,201,176,0.35)',
@@ -507,11 +507,11 @@ DARK_TOKENS = {
     'color-functional-text-on-dark': '#F0F0F0',
     'color-functional-text-secondary': '#C0C0C0',
     'color-functional-text-tertiary': '#888888',
-    'color-gradient-hotcold0': '#48C9B0',
-    'color-gradient-hotcold1': '#5DADE2',
+    'color-gradient-hotcold0': '#5DCAA5',
+    'color-gradient-hotcold1': '#9FE1CB',
     'color-gradient-hotcold2': '#909090',
-    'color-gradient-hotcold3': '#F0A050',
-    'color-gradient-hotcold4': '#E06050',
+    'color-gradient-hotcold3': '#F5C4B3',
+    'color-gradient-hotcold4': '#F0997B',
     'color-gradient-neg0': '#641E16',
     'color-gradient-neg1': '#922B21',
     'color-gradient-neg2': '#C0392B',
@@ -658,16 +658,16 @@ LIGHT_TOKENS = {
     'color-brand-secondary': '#2980B9',
     'color-brand-secondary-active': '#1E6BA0',
     'color-brand-secondary-hover': '#5DADE2',
-    'color-chart-polarity-negative': '#C4956A',
+    'color-chart-polarity-negative': '#F0997B',
     'color-chart-polarity-neutral': '#C0C0C0',
-    'color-chart-polarity-positive': '#5DADE2',
-    'color-chart-polarity-very-negative': '#B92D2D',
-    'color-chart-polarity-very-positive': '#78DC32',
-    'color-emotion-negative': '#D68910',
+    'color-chart-polarity-positive': '#5DCAA5',
+    'color-chart-polarity-very-negative': '#D85A30',
+    'color-chart-polarity-very-positive': '#0F6E56',
+    'color-emotion-negative': '#F0997B',
     'color-emotion-neutral': '#888888',
-    'color-emotion-positive': '#2980B9',
-    'color-emotion-very-negative': '#C0392B',
-    'color-emotion-very-positive': '#16A085',
+    'color-emotion-positive': '#5DCAA5',
+    'color-emotion-very-negative': '#D85A30',
+    'color-emotion-very-positive': '#0F6E56',
     'color-functional-border-light': 'rgba(22,160,133,0.15)',
     'color-functional-border-medium': 'rgba(22,160,133,0.22)',
     'color-functional-border-strong': 'rgba(22,160,133,0.35)',
@@ -682,11 +682,11 @@ LIGHT_TOKENS = {
     'color-functional-text-on-dark': '#1A1A1A',
     'color-functional-text-secondary': '#585858',
     'color-functional-text-tertiary': '#808080',
-    'color-gradient-hotcold0': '#16A085',
-    'color-gradient-hotcold1': '#2980B9',
+    'color-gradient-hotcold0': '#0F6E56',
+    'color-gradient-hotcold1': '#5DCAA5',
     'color-gradient-hotcold2': '#909090',
-    'color-gradient-hotcold3': '#D68910',
-    'color-gradient-hotcold4': '#C0392B',
+    'color-gradient-hotcold3': '#F0997B',
+    'color-gradient-hotcold4': '#D85A30',
     'color-gradient-neg0': '#641E16',
     'color-gradient-neg1': '#922B21',
     'color-gradient-neg2': '#C0392B',

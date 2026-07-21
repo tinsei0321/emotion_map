@@ -41,37 +41,37 @@ SCORE_NEGATIVE = 0.3   # ≤ 此值 = 负面
 
 # ── 情绪颜色映射（五级制）──
 # 设计原则：蓝绿→蓝→白→橙黄→红，低饱和适中明度
-# 在天地图卫星影像（深色底图）上清晰可辨
-# 颜色渐变：蓝绿(清新) → 蓝(平静) → 浅灰(中性) → 琥珀橙(紧张) → 珊瑚红(紧迫)
+# 情绪五级色带（design-system.md §1.3「正冷/负暖」，与 tokens.json geojson.color.emotion 同源）
+# 正=青绿（清新/健康）→ 浅灰（中性）→ 负=珊瑚橙（警示/紧迫）
 COLOR_MAP = {
-    'Very Positive': '#48C9B0',   # 蓝绿 — 清新活泼
-    'Positive':      '#5DADE2',   # 蓝 — 平静正面
+    'Very Positive': '#0F6E56',   # 深青绿 — 极正
+    'Positive':      '#5DCAA5',   # 青绿 — 正
     'Neutral':       '#C0C0C0',   # 浅灰 — 中性
-    'Negative':      '#F0A050',   # 琥珀橙 — 紧张感
-    'Very Negative': '#E06050',   # 珊瑚红 — 紧迫感
+    'Negative':      '#F0997B',   # 浅珊瑚 — 负
+    'Very Negative': '#D85A30',   # 深珊瑚橙 — 极负
 }
 
 # Folium 渲染专用色映射（与 COLOR_MAP 保持一致）
 FOLIUM_COLOR_MAP = {
-    'Very Positive': '#48C9B0',
-    'Positive':      '#5DADE2',
+    'Very Positive': '#0F6E56',
+    'Positive':      '#5DCAA5',
     'Neutral':       '#C0C0C0',
-    'Negative':      '#F0A050',
-    'Very Negative': '#E06050',
+    'Negative':      '#F0997B',
+    'Very Negative': '#D85A30',
 }
 
 # ── L2 情绪关键词提取配置 ──
 KEYWORD_MIN_LEN = 2        # 关键词最小长度
 KEYWORD_TOP_N = 5          # 每条文本提取关键词数
 
-# ── pydeck 极性颜色映射（RGBA 格式：[R, G, B, A] 0-255）──
-# 蓝绿 → 蓝 → 浅灰 → 琥珀橙 → 珊瑚红
+# ── pydeck 极性颜色映射（RGBA 格式：[R, G, B, A] 0-255；design-system §1.3 正冷/负暖）──
+# 青绿(深) → 青绿 → 浅灰 → 浅珊瑚 → 深珊瑚橙
 POLARITY_RGBA = {
-    'Very Positive': [120, 220, 50, 230],   # #78DC32 黄绿
-    'Positive':      [93, 173, 226, 230],   # #5DADE2 蓝
+    'Very Positive': [15, 110, 86, 230],    # #0F6E56 深青绿
+    'Positive':      [93, 202, 165, 230],   # #5DCAA5 青绿
     'Neutral':       [192, 192, 192, 230],  # #C0C0C0 浅灰
-    'Negative':      [196, 149, 106, 230],  # #C4956A 茶色
-    'Very Negative': [185, 45, 45, 230],    # #B92D2D 深红色
+    'Negative':      [240, 153, 123, 230],  # #F0997B 浅珊瑚
+    'Very Negative': [216, 90, 48, 230],    # #D85A30 深珊瑚橙
 }
 
 # ── 地图渲染安全阈值 ──

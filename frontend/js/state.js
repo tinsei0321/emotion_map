@@ -56,11 +56,11 @@ export function deriveTimeTag(fc) {
 /** Five emotion colors, keyed by polarity, straight from tokens. */
 export function emotionColors() {
   return {
-    'Very Positive': token('--geojson-color-emotion-very-positive') || '#78DC32',
-    'Positive':      token('--geojson-color-emotion-positive')      || '#5DADE2',
+    'Very Positive': token('--geojson-color-emotion-very-positive') || '#0F6E56',
+    'Positive':      token('--geojson-color-emotion-positive')      || '#5DCAA5',
     'Neutral':       token('--geojson-color-emotion-neutral')       || '#C0C0C0',
-    'Negative':      token('--geojson-color-emotion-negative')      || '#C4956A',
-    'Very Negative': token('--geojson-color-emotion-very-negative') || '#B92D2D',
+    'Negative':      token('--geojson-color-emotion-negative')      || '#F0997B',
+    'Very Negative': token('--geojson-color-emotion-very-negative') || '#D85A30',
   };
 }
 
@@ -303,8 +303,8 @@ const _groupFold = new Set();                                        // folded r
 const _frozenCats = new Set();                                       // 用户手动 within-category 拖拽过的 category → applyGroupOrder 跳过其组内排序（保手动序）；新层加入时解冻让其归位
 
 // ── L2 palettes (polarity split: Positive green / Negative orange-red / Neutral moody blue) ──
-export const L2_POSITIVE = { 'Very Positive': '#78DC32', 'Positive': '#5DADE2' };   // 对齐 tokens.css --geojson-color-emotion-*（= tokens.json geojson.emotion 权威源 = emotionColors()）；旧 #86E61C 套是跑偏异类，已归一
-export const L2_NEGATIVE = { 'Very Negative': '#B92D2D', 'Negative': '#C4956A' };    // 同上，红↔褐对齐 tokens
+export const L2_POSITIVE = { 'Very Positive': '#0F6E56', 'Positive': '#5DCAA5' };   // 对齐 tokens.css --geojson-color-emotion-*（= tokens.json geojson.emotion 权威源 = emotionColors()）；CPD Phase 3 正冷/负暖
+export const L2_NEGATIVE = { 'Very Negative': '#D85A30', 'Negative': '#F0997B' };    // 同上，珊瑚对齐 tokens（正冷/负暖）
 export const L2_NEUTRAL_COLOR = '#C0C0C0';                                            // 浅灰，对齐 tokens neutral
 
 // ── 4×5 治理要素专用色源（综合/单极性 Overview 共用，单源勿散用）──

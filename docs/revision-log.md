@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.164 CPD 呼吸范围增大 + param 浮窗卡化（用户三轮反馈 ①②）**（本次，分支 `cpd`）。上一轮 5.163。最近：
+> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.165 CPD Phase 3a · 情绪五级色带对齐 design-system「正冷/负暖」**（本次，分支 `cpd`）。上一轮 5.164。最近：
+>
+> - **5.165 CPD Phase 3a · 情绪五级色带对齐（正冷/负暖，design-system §5）**：[tokens.json](design/tokens.json) 7 段统一改：`geojson.color.emotion`（前端唯一源）= veryPositive `#0F6E56`/positive `#5DCAA5`/neutral `#C0C0C0`/negative `#F0997B`/veryNegative `#D85A30`（§5.3）；`theme.dark.emotion`=亮青绿系（深底可读，§5.4）；`theme.light.emotion`=深青绿系（§5.5）；`chart.polarity`（dark/light）+ `gradient.hotcold`（dark/light）同步（§5.6/5.7）。重跑 [generate_css.py](design/generate_css.py) → tokens.css/tokens.py 自动再生成。前端 [state.js](frontend/js/state.js) `emotionColors()` fallback + `L2_POSITIVE/NEGATIVE` 对齐；后端 [config.py](core/config.py) `COLOR_MAP`/`FOLIUM_COLOR_MAP`/`POLARITY_RGBA` 三映射对齐（去旧 #78DC32/#B92D2D/#C4956A/#E06050 棕红杂色）。验证：无测试断言旧色；state.js ESM 绿；config 导入新值正确。**承重未动**（色值同义替换，路由/逻辑零改）。**Phase 3 待续**：3b Light·yakushimabus（森绿 `#143a35` + 金黄）+ 3c EMC 三级权重（结论卡浮出/过程卡折叠/审查胶囊）。push 待用户。
 >
 > - **5.164 CPD 呼吸范围增大 + param 浮窗卡化（用户三轮反馈）**：① 折叠背后光环范围再增大（[ai_qa.css](frontend/css/ai_qa.css)）：inset -8→-12、blur 9→12、undulate scale 1.1→**1.8≈2×**（峰值约 2 倍胶囊尺寸，整圈弥漫环绕）+ 摆幅 ±5°→±8°（更强波浪起伏）；opacity 上限 1.0，「2.0」以 scale 实现（已向用户说明）。② **param-panel 浮窗卡化**（[param-panel.css](frontend/css/param-panel.css)）：弃全高侧贴模式（`top:0/bottom:0/border-left/4px侧阴影`），改 **floating card**（top:30 与 EMC/抽屉顶对齐、`bottom:auto` 高度随内容自适应、`max-height:calc(100vh-60px)` 超长内部滚、460 宽、圆角 10 + lg 阴影，与 Range/Layers 抽屉同设计语言）；left 由 relayoutFloats 自适应（锚抽屉/EMC 右沿）。**设计统一**：EMC→抽屉→param 三级浮层皆为圆角阴影卡 + 自适应位置铁律。push 待用户。
 >
