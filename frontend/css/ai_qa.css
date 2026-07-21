@@ -199,7 +199,19 @@
 .aiq-step-obs { color: var(--geojson-color-text-secondary); font-size: var(--geojson-typography-size-2xs); margin-top: 1px; white-space: pre-wrap; }
 
 /* ── 结论区 ── */
-.aiq-step-final { margin-top: 4px; }
+/* CPD Phase 3c：结论卡 = 浮出（白底+阴影+顶强调带），结论 step 升为视线第一落点（design-system §2.1/2.3）。
+   band 默认 emc-accent；极性动态色待 harness 注入 polarity（余项）。*/
+.aiq-step-final {
+  margin-top: 8px;
+  background: var(--geojson-color-surface-panel);
+  border: 1px solid var(--geojson-color-border-default, #3a3a3a);
+  border-radius: var(--geojson-radius-lg, 8px);
+  box-shadow: var(--geojson-shadow-lg);
+  overflow: hidden;
+}
+.aiq-step-final::before { content: ''; display: block; height: 6px; background: var(--emc-accent, #F0997B); }   /* 顶部强调带 */
+.aiq-step-final .aiq-step-tag { display: block; padding: 8px 14px 0; }
+.aiq-step-final .aiq-answer { padding: 2px 14px 12px; }
 .aiq-step-tag { display: inline-block; font-size: var(--geojson-typography-size-2xs); font-weight: var(--geojson-typography-weight-semibold); color: var(--geojson-color-text-tertiary); margin-bottom: 2px; }
 .aiq-answer { min-height: 1em; }
 

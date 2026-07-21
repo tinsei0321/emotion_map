@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月21日）** · 本节按板块分组、组内倒序；最新工作 = **5.166 CPD 折叠光环重做+param 点击外关+箭头/粗体 + Phase 3b 主题切换 + 3c 三级权重**（本次，分支 `cpd`）。上一轮 5.165。最近：
+> 📍 **最新动态（07月22日）** · 本节按板块分组、组内倒序；最新工作 = **5.167 CPD 折叠光环回 linear+收窄柔化 + Light chat-head 浅森绿 + 结论卡浮出**（本次，分支 `cpd`）。上一轮 5.166。最近：
+>
+> - **5.167 CPD 光环回 linear + Light chat-head + 结论卡**（用户反馈 ①② + 3c 余项）：① 折叠光环 **改回 linear 流动**（conic 旋转非用户所要；linear 方向对）[ai_qa.css](frontend/css/ai_qa.css)：保 `overflow:visible` 修复（几轮失效根因），收窄 inset -16→**-10**（太宽），起伏更柔（rotate ±3-4° + scale 1.18 波浪推进，原 ±8° 僵硬）；三轨 flow+undulate+breathe，半透明 0.45→0.8，7 色带=层叠波浪感。② **Light chat-head 去近黑**：硬编码 `#161616`（Light 下显深突兀）→ 浅森绿 `#ecf2f0` 底 + 森绿 `#143a35` 字（yakushimabus 配套，不深不突兀）。**3c 余项·结论卡浮出**：`.aiq-step-final`（结论 step）升级为**浮出卡**（白底+阴影 lg+顶 6px 强调带，§2.1/2.3）——CSS-only 免 DOM 重构，结论升为视线第一落点；过程卡/审查胶囊 CSS 已在 5.166。极性动态色带 + swallow 注入留作更深 refinement。push 待用户。
 >
 > - **5.166 CPD 折叠光环重做 + param 点击外关 + 箭头/粗体 + Phase 3b 主题 + 3c 三级权重**：① param-panel 点击外关与抽屉一致（[param-panel.js](frontend/js/param-panel.js) 去 #map 排除 + pointerdown + EMC/抽屉伴生排除；[sidebar.js](frontend/js/sidebar.js) 抽屉侧加 #param-panel 排除）。② **折叠光环重做（几轮失效根因）**：`#emc-panel.is-collapsed` 加 `overflow:visible`（基底 overflow:hidden 把整圈光晕裁了→上下看不到）；linear 流动→**conic 旋转**（色相围绕胶囊转圈）+ 复合 `emc-halo` 一轨（rotate 0→360 + scale 1.05→1.22 起伏 + opacity 0.42→0.72 若隐若现）；inset -16 等距整圈 + blur 11 弥散。③ 箭头弱化（16px→→改 13px 山形 ›、#bbb、半透明 0.5，去突兀）+ 折叠内容**粗体**（chat-input + ::placeholder font-weight 700 + _fitCollapsedText 镜像 700 量测同步）。**Phase 3b 主题切换**（[index.html](frontend/index.html) chat-head 加 `#chat-theme` 钮 + [panel.js](frontend/js/ai_qa/panel.js) data-theme 应用/切换 + localStorage；仅 #emc-panel scope，chrome 保持 Light）+ [ai_qa.css](frontend/css/ai_qa.css) **Light·yakushimabus scope**（白底 + 森绿 `#143a35` 强调 + 金黄 `#b8860b` 完成点）。**Phase 3c 三级权重 CSS**（design-system §2）：一级结论卡 `.aiq-conclusion`（白底+阴影+8px 极性色带）、二级过程卡 `.aiq-reason`（无线框+浅灰+折叠，覆原 border-left）、三级审查 `.aiq-review`（一行 verdict + hover 展开 items）、答案内联 `.emotion-swatch`。**3c 余项**：`.aiq-conclusion` 渲染挂钩（结论卡裹答案）+ swallow 注入待 panel.js 答案渲染层（CSS 已备）。ESM 三绿。push 待用户。
 >
