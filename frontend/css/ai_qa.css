@@ -394,21 +394,24 @@
    去橙色外框；胶囊用强阴影「附在地图上」；背后 conic 彩虹（Gemini 蓝→紫→品红→珊瑚）旋转+呼吸。
    sparkle 1:1 复刻 Gemini 渐变四角星，放大至 22px。文本自适应字体（panel.js _fitCollapsedText）。 */
 #emc-panel.is-collapsed .emc-input-area {
-  padding: 0; margin: 0; border-top: none; background: transparent; cursor: pointer;
+  padding: 0; margin: 0; border: none; background: transparent; cursor: pointer;   /* border:none 全去（修暗框 bug：原仅 border-top:none，基底 1px 左/右/下边仍在→呼吸周围黑线框） */
   position: relative;
   isolation: isolate;                          /* ::before z-index:-1 只相对此处栈 */
 }
-/* 彩虹呼吸光晕：胶囊背后，Gemini 渐变 conic 旋转 + 透明度呼吸（不同属性可并行动画） */
+/* 动态波浪光晕：胶囊背后，Gemini 渐变——色彩流动(background-position) + 起伏(transform) +
+   呼吸(opacity) 三轨并行 = 波浪感。范围增大(inset -8/blur 9/undulate 1.1)、颜色更凸显(0.5→0.92)。 */
 #emc-panel.is-collapsed .emc-input-area::before {
-  content: ''; position: absolute; inset: -5px;
-  border-radius: 33px;
-  background: conic-gradient(from 0deg, #4796E3, #7B5DFC, #BF4AD6, #D96570, #4FC3F7, #4796E3);
-  filter: blur(7px);
+  content: ''; position: absolute; inset: -8px;
+  border-radius: 36px;
+  background: linear-gradient(120deg, #4796E3, #7B5DFC, #BF4AD6, #D96570, #4FC3F7, #4796E3, #7B5DFC);
+  background-size: 300% 300%;
+  filter: blur(9px);
   z-index: -1;
-  animation: emc-rainbow-spin 5s linear infinite, emc-rainbow-breathe 2.8s ease-in-out infinite;
+  animation: emc-wave-flow 4s linear infinite, emc-wave-undulate 3.4s ease-in-out infinite, emc-wave-breathe 2.8s ease-in-out infinite;
 }
-@keyframes emc-rainbow-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-@keyframes emc-rainbow-breathe { 0%,100% { opacity: 0.32; } 50% { opacity: 0.85; } }
+@keyframes emc-wave-flow { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
+@keyframes emc-wave-undulate { 0%,100% { transform: scale(1) rotate(-4deg); } 50% { transform: scale(1.1) rotate(6deg); } }
+@keyframes emc-wave-breathe { 0%,100% { opacity: 0.5; } 50% { opacity: 0.92; } }
 #emc-panel.is-collapsed .chat-input {
   box-sizing: border-box;
   min-height: 56px; max-height: 56px; height: 56px;
