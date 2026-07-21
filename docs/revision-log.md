@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月22日）** · 本节按板块分组、组内倒序；最新工作 = **5.171 CPD 光环淡出再现+引导飞快色 + chip 凸出 + 进度点提示 + 引导测试快捷键**（本次，分支 `cpd`）。上一轮 5.170。最近：
+> 📍 **最新动态（07月22日）** · 本节按板块分组、组内倒序；最新工作 = **5.172 CPD 核心引导 plan 初稿 v0.1 + Catch-Ball 评价专轨**（本次，分支 `cpd`）。上一轮 5.171。最近：
+>
+> - **5.172 CPD 核心引导 plan 初稿 + CB 评价专轨**（系统级重构 plan；进 plan 模式，自读自规划，**未派 subagent**——承重）：开 **CPD 核心**（curState 从「反映」升「编排」）详细 plan，产出 [docs/cpd-core-plan.md](cpd-core-plan.md) v0.1——核心 = 新增确定性引导引擎 `cpd-guide.js`（`deriveGuidance()` 从 curState + 特征存在性 hasImport/hasRange/hasAnalysis + 上轮 exit 算「此刻唯一动作」）+ **两路径分工**（主动引导 = 新·UI nudge / 对话分析 = harness **原样不动**；唯一接缝 = `cpd:turn-ended {exit}` 客户端事件作结论回灌）；覆盖功能图谱(逐项标 已由EMC引导/裸按钮/待编排) / 状态机 S0-S4 映射 / 对话→功能桥 / 渐进披露细则(.has-guidance 耦合+engage 解除) / 承重边界 / 分阶段 G1-G4 / 关键文件 / 验证。**多轮评价机制复用 CB**（用户定，不另造）→ [docs/cpd-core-plan-review.md](cpd-core-plan-review.md)：被评 artifact = cpd-core-plan.md，协议走 [catch-ball/RULES.md](catch-ball/RULES.md)（反评价标尺 agree/disagree/partial + 承重红线，**正好覆盖 CPD 的 diagnose/四态出口边界**），第三方评价存 `SCAN_CPDPlan_{NN}.md`，反评价 append [cb-journal.md](catch-ball/cb-journal.md) `## CB-CPD-{N}` 章。含评价 prompt 模板 + plan 专项六维 + 未决项 U1-U5。**下一步（换环境 9 点后）**：跑 CB-CPD-01 第三方首评（DeepSeek/ChatGPT/Gemini）→ 反评价 → 修订(bump v0.x) → 连续 2 轮无新实质分歧定稿 v1.0 → 进 Phase G1。承重未动（纯文档 + plan，零代码）。**本次收工例外 push**（用户明确）。
 >
 > - **5.171 CPD 光环淡出再现 + chip 凸出 + 进度点提示 + 引导测试键**（用户反馈 ①②③）：① **光环改「淡出→再现」**（[ai_qa.css](frontend/css/ai_qa.css)）：**去 scale 放大缩小** → opacity 慢循环 0.9→0.12→0.9（淡出再現，16s 慢）；**保颜色流动**（emc-halo-flow 40s 缓交替）；**`.has-guidance`（AI 新提示）→ 颜色飞快交替**（flow 2.5s 强吸引）。**临时测试快捷键**（[panel.js](frontend/js/ai_qa/panel.js) `_setupCpdBar` Ctrl+Shift+G）：模拟「AI 新引导」→ 加 `.has-guidance`（光环飞快颜色）+ 示例提示文本，预览引导耦合（CPD 核心上线后删）。② **图层/范围/工具 chip 凸出放大**：padding 3/9→6/13、字号 11→12.5px、加 **accent 边框 + 阴影 + hover 浮起**、计数徽章 accent 实色（重要功能更显眼）。③ **进度点加 hover 提示**：每点 title 改「步骤 N/5：名称」+ 进度行加「进度」说明 caption（去「意义不明」）。ESM 绿。push 待用户。
 >

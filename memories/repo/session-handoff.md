@@ -1,76 +1,61 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：07月22日（**CPD UI 地基全完 + 多轮精修暂时 OK；下一步 = CPD 核心引导逻辑 plan，建议新会话**）| 分支 `cpd` | HEAD `0fd3629`
+> 最后更新：07月22日（**CPD 核心 plan 初稿 v0.1 + CB 评价专轨搭建完毕；凌晨收工，待换环境跑 CB-CPD-01 第三方首评**）| 分支 `cpd`
 
 ---
 
-## 当前节点：CPD UI 地基完工；下一步 = CPD 核心引导逻辑（新会话进 plan）
+## 当前节点：CPD 核心 plan 初稿就绪 + 多轮评价机制（复用 CB）搭好；下一步 = 第三方首评
 
-### 重要范围校正（用户明确）
-**CPD 才刚开始**。至今所成 = **CPD 的「地基」**：EMC 浮窗 + 软折叠 chip/抽屉 + curState 反映 + 色带/主题/三级权重 + 自适应位置 + 折叠光环/chip/进度点。这些是**容器和表皮**。
-**CPD 核心（未开始）= EMC 作为主控，引导情绪地图的所有功能体验**：import/range/layers/toolbox(KDE/Grid/Buffer/归因)/timeline T1-T3/compare 批4/export/search + EMC 问答，**全部经 EMC 交互引导**完成。curState 从「反映」升级为「**编排**」——EMC 每阶段主动奉上「此刻唯一动作」，调度底层。**如何引导/实现需详细 plan**。
+### 本会话做了什么（分支 cpd）
+开 **CPD 核心引导逻辑** 详细 plan（进 plan 模式，自读自规划，未派 subagent——承重）。产出三件套：
 
-**不合分支、不抽离模块**——都在 cpd 分支继续，CPD 真正完成才谈。
+1. **`docs/cpd-core-plan.md`**（v0.1 初稿，被评 artifact）——EMC 从被动反映升主动编排的完整设计：
+   - 核心 = 新增确定性引导引擎 `cpd-guide.js`：`deriveGuidance()` 从 curState + 特征存在性(hasImport/hasRange/hasAnalysis) + 上轮 exit 算出"此刻唯一动作"。
+   - **两路径分工**：主动引导（新·UI nudge）/ 对话分析（harness **原样不动**）；唯一接缝 = `cpd:turn-ended {exit}` 客户端事件（panel.js send() 末尾 dispatch）作结论回灌。
+   - 覆盖：功能图谱（逐项标 已由EMC引导/裸按钮/待编排）/ 状态机 S0-S4 映射 / 对话→功能桥 / 渐进披露细则（.has-guidance 耦合 + engage 解除）/ 承重边界 / 分阶段 G1-G4 / 关键文件 / 验证。
+2. **`docs/cpd-core-plan-review.md`**（评价专轨指南）——**复用项目 Catch-Ball 闭环**（不另造）：被评 artifact = cpd-core-plan.md；协议走 `docs/catch-ball/RULES.md`（反评价标尺 agree/disagree/partial + 承重红线）；第三方评价存 `docs/catch-ball/SCAN_CPDPlan_{NN}.md`；反评价 append `docs/catch-ball/cb-journal.md` `## CB-CPD-{N}` 章。含评价 prompt 模板 + plan 专项六维 + 未决项 U1-U5。
+3. plan 副本亦存 `~/.claude/plans/cpd-cpd-ui-graceful-lake.md`（plan 模式产物）；repo 内 `docs/cpd-core-plan.md` 为权威。
 
-### ✅ 本会话已做（分支 cpd，全量 push 到 origin/cpd）
+### 关键设计决策（plan §二）
+- **引导 = 纯客户端确定性引擎，不进 LLM**（保 diagnose eval + 四态出口不动）。
+- **两路径 clean 分工**：引导是 UI nudge（非对话消息）；对话走 harness 不改。
+- **软折叠基调**（非严格隐身，chip 始终可达）。
 
-| Phase | 内容 |
-|---|---|
-| Phase 0 | 3220 真实 POI 入库 `core/place_layer.py`（commit be3f6b3） |
-| Phase 1 | 工具簇横排→底部 dock 圆钮 + EMC 浮窗化 + 多轮精修 |
-| Phase 2a/2b | CPD 软折叠壳：`cpd-state.js` 客户端 curState 推导（不动 diagnose）+ 进度条/chip 行 + 左栏→chip 唤出抽屉 + 自适应位置（`positionDrawer`/`positionFloatingPanels`/`relayoutFloats`）+ param-panel 浮窗卡 |
-| Phase 3a/3b/3c | 情绪五级色带「正冷/负暖」对齐 design-system + 主题切换（默认 Light·yakushimabus 森绿金黄）+ EMC 三级权重 CSS（结论卡浮出/过程卡/审查胶囊）|
-| 精修轮 | 折叠欢迎胶囊（Gemini 星 + 光环「淡出→再现」+ `.has-guidance` 飞快色引导钩子 + 临时测试 Ctrl+Shift+G）+ 追问胶囊/容量圈 theme 同步（铁律：EMC 颜色全走 theme var）+ chip 凸出 + 进度点 hover 提示 |
-
-**最近 commit**：0fd3629（光环淡出/引导飞快色 + chip 凸出 + 进度点提示）。详见 revision-log §5.165-5.171。
-
-### 🔧 引导耦合钩子已就绪（待 CPD 核心 toggle）
-- 折叠胶囊 `.has-guidance` 类（CSS 定义）：加类→光环飞快颜色交替（强吸引）；CPD 核心 toggle 它（有新引导→加类 + 更新 `#chat-input` placeholder + `_fitCollapsedText` + 高度自适应）。
-- 临时测试：`Ctrl+Shift+G` 模拟新引导（panel.js `_setupCpdBar`，CPD 核心上线后删）。
+### 下一步（换环境，9 点后）
+1. **跑 CB-CPD-01 第三方首评**：用 `docs/cpd-core-plan-review.md` §五 prompt 模板 + cpd-core-plan.md 全文喂第三方大模型（DeepSeek/ChatGPT/Gemini）。
+2. 第三方评价存 `docs/catch-ball/SCAN_CPDPlan_01.md`（只读）。
+3. 主线程按 CB RULES §3 反评价（agree/disagree/partial，撞红线 disagree）→ 修订 plan（bump v0.x）→ append `cb-journal.md` `## CB-CPD-01`。
+4. 连续 2 轮无新实质分歧 → plan 定稿 v1.0 → 进 **Phase G1**（建 cpd-guide.js + 折叠态耦合，删 Ctrl+Shift+G 测试）。
+5. 新会话 prompt 见下方。
 
 ### 承重（必守）
-- **调用次数优先**（全局 ~/.claude 唯一权威）：默认主线程 + 会话切分首选 + subagent 仅大宗隔离。**不派 Explore/Plan subagent**（直接自己读/grep/规划，覆盖 plan mode 默认）。
-- **diagnose prompt 永不动**（保 eval）→ curState 纯客户端推导；四态出口(EXIT_RESULT/GAP/PARTIAL/CONCEPT)/tracker 签名/网格算法/paint-inplace 不动。
-- **EMC 颜色全走 theme var**（`var(--geojson-color-*)`/`var(--emc-accent)`/`var(--emc-divider)`），**严禁硬编码** hex/rgba（反复踩坑，5.169 根治；memory `apply-design-sense-no-bounce` §5）。
-- **自适应位置铁律**：浮层 left 随锚点(EMC/抽屉)右沿动态算（`getBoundingClientRect().right+gap`），勿写死固定 left（memory `adaptive-position-design-rule`）。
-- **设计决策先自判别甩用户**：视觉琐问(方向/尺寸/颜色)据常识+memory 习惯直接定，别回弹（memory `apply-design-sense-no-bounce`）。
+- **调用次数优先**（全局唯一权威）：默认主线程 + 会话切分首选 + subagent 仅大宗隔离。**不派 Explore/Plan subagent**（直接自己读/grep/规划，覆盖 plan mode 默认）。
+- **diagnose prompt 永不动**（保 eval）→ curState/引导纯客户端推导；四态出口(EXIT_RESULT/GAP/PARTIAL/CONCEPT)/tracker 签名/网格算法/paint-inplace 不动。
+- **CPD plan 评价走 CB**（用户定）：复用 RULES/cb-journal/KNOWLEDGE，不另造框架。
+- **EMC 颜色全走 theme var**，严禁硬编码 hex/rgba（memory `apply-design-sense-no-bounce` §5）。
+- **自适应位置铁律**：浮层 left 随锚点动态算（memory `adaptive-position-design-rule`）。
+- **设计决策先自判别甩用户**（memory `apply-design-sense-no-bounce`）。
 - 批4 grid 镜像 bug + diag 日志(b13eb62)→ main 遗留，CPD 期间不动。
-- 只 commit 不 push（用户手动 push）；commit 后告知"待你 push"。
+- 只 commit 不 push（用户手动 push）；**本次收工例外已 push**。
 
 ### 关键文件
-- `docs/design-system.md`（设计 single source of truth，冲突以它为准）
-- `frontend/js/ai_qa/cpd-state.js`（curState 推导 + positionDrawer/positionFloatingPanels/relayoutFloats + initCpdState）
-- `frontend/js/ai_qa/panel.js`（EMC 浮窗 _setupEmcFloat + _setupCpdBar 进度/chip + _fitCollapsedText 文本自适应 + 折叠光环 `.has-guidance` 钩子 + 主题切换 + 临时 Ctrl+Shift+G）
-- `frontend/js/ai_qa/harness.js`（五步 diagnose/agent/final/review/revise + 四态出口——**不动**）
-- `frontend/css/ai_qa.css`（EMC 全样式：浮窗/折叠光环/欢迎胶囊/chip/进度点/三级权重/Light scope）
-- `frontend/css/layout.css`（#emc-panel 浮窗几何 + #left-panel 抽屉化）
-- `design/tokens.json` + `generate_css.py`（色带单一源 → tokens.css/py）
-- `core/place_layer.py`（POI 库，无 DB）
+- **`docs/cpd-core-plan.md`**（CPD 核心 plan v0.1，被评 artifact，权威）
+- **`docs/cpd-core-plan-review.md`**（CB 评价专轨指南 + prompt 模板 + 未决项）
+- `docs/catch-ball/RULES.md` / `cb-journal.md` / `KNOWLEDGE.md`（CB 机制，复用）
+- `docs/design-system.md` §4（CPD 状态机 S0-S5 single source of truth）
+- `frontend/js/ai_qa/cpd-state.js`（curState 推导 + 自适应位置）
+- `frontend/js/ai_qa/harness.js`（五步+四态出口——**不动**）
+- `frontend/js/ai_qa/panel.js`（_setupCpdBar + _fitCollapsedText + .has-guidance 钩子，G1 改）
+- `frontend/js/sidebar.js`（cpd:focus-tab 抽屉桥，G2 复用）
 
 ---
 
-## 新会话 prompt（CPD 核心引导逻辑 plan，复制即用）
+## 新会话 prompt（CPD 核心 plan 第三方评价，复制即用）
 
 ```
-接续 cpd 分支（CPD UI 地基全完 + 多轮精修暂时 OK，详见 memories/repo/session-handoff.md + docs/revision-log.md §5.165-5.171）。
-本会话目标：开 CPD 核心引导逻辑的详细 plan（进 plan 模式）——EMC 作为主控，引导情绪地图所有功能体验。
-
-【先读，不动代码】
-- memories/repo/session-handoff.md（当前节点 + 承重 + 范围校正：CPD 才刚开始，核心=EMC 编排所有功能）
-- docs/design-system.md §4（情境式渐进披露状态机 S0-S5 + 出现/隐身规则）
-- frontend/js/ai_qa/cpd-state.js（curState 客户端推导 + positionDrawer 等自适应）
-- frontend/js/ai_qa/harness.js（五步+四态出口——不动；理解 EMC 路由边界）
-- frontend/js/ai_qa/panel.js（_setupCpdBar 进度/chip + _fitCollapsedText + .has-guidance 钩子）
-- memory cpd-soft-collapse / apply-design-sense-no-bounce / adaptive-position-design-rule
-
-【plan 要覆盖】
-1. 功能图谱：情绪地图全部能力(import/range/layers/toolbox·KDE/Grid/Buffer/归因/timeline T1-T3/compare 批4/export/search)+EMC 问答，逐一标注「已由 EMC 引导 / 仍是裸按钮 / 待编排」。
-2. 引导状态机：curState 从「反映」升「编排」——每态 EMC 主动作 + 唤出/隐身规则 + 与 harness/工具链的调度接口（不改 diagnose/四态出口）。
-3. 对话→功能桥：用户自然语言意图如何经 EMC 路由到底层功能，结论如何回灌引导下一步。
-4. 渐进披露细则：每功能「何时出现/如何呈现/用完如何退场」+ 折叠胶囊引导耦合（.has-guidance toggle + 文本/高度自适应 + engage 解除 + curState 联动）。
-5. 承重边界：diagnose 不动 / 四态出口不动 / curState 客户端推导 / 自适应位置 / EMC 颜色 theme var。
-
-承重：调用次数优先 / 不派 Explore·Plan subagent / 只 commit 不 push。
-不合分支、不抽离模块——CPD 真正完成才谈。
+接续 cpd 分支 CPD 核心引导 plan 的多轮第三方评价（Catch-Ball 专轨）。
+读：docs/cpd-core-plan.md（初稿 v0.1，被评 artifact）+ docs/cpd-core-plan-review.md（CB 评价专轨指南 + prompt 模板 + 未决项）+ docs/catch-ball/RULES.md（CB 协议权威）。
+我会把第三方大模型的评价贴给你（或存成 docs/catch-ball/SCAN_CPDPlan_01.md）→ 你按 review.md §三 + RULES §3 反评价（agree/disagree/partial，撞承重红线 disagree，不派 subagent）→ 修订 plan(bump v0.x) → append docs/catch-ball/cb-journal.md `## CB-CPD-01` 四节。
+承重：调用次数优先 / 不派 subagent / 只 commit 不 push / diagnose 与四态出口不动。
 ```
