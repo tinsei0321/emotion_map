@@ -414,23 +414,35 @@
   isolation: isolate;                          /* ::before z-index:-1 只相对此处栈 */
 }
 #emc-panel.is-collapsed .emc-input-area::before {
-  content: ''; position: absolute; inset: -5px;        /* CPD：收窄至半（-10→-5）；overflow:visible 保整圈可见 */
+  content: ''; position: absolute; inset: -5px;        /* 收窄；overflow:visible 保整圈可见 */
   border-radius: 34px;
   background: linear-gradient(115deg, #4796E3, #7B5DFC, #BF4AD6, #D96570, #4FC3F7, #4796E3, #7B5DFC);
-  background-size: 280% 280%;
-  filter: blur(3px);                                    /* 减模糊→波浪边缘清晰可辨 */
+  background-size: 200% 200%;
+  filter: blur(1px);                                    /* 近无模糊→波浪边缘清晰（去糊）*/
+  opacity: 0.9;                                         /* 去半透明，实色（边缘清晰可辨）*/
   z-index: -1;
-  animation: emc-wave-flow 15s linear infinite, emc-wave-undulate 13.5s ease-in-out infinite, emc-wave-breathe 7.8s ease-in-out infinite;
+  animation: emc-halo-flow 45s linear infinite, emc-halo-breathe 24s ease-in-out infinite;
 }
-/* CPD 三档呼吸策略：default(平静常驻，慢/窄/清晰，不分散) < hover(中，靠近反馈) < .has-guidance(强脉冲=有新引导) */
-#emc-panel.is-collapsed:hover .emc-input-area::before { animation-duration: 9s, 8s, 4.6s; }   /* hover 提速 ~1.7× */
-#emc-panel.is-collapsed.has-guidance .emc-input-area::before {   /* CPD 核心 toggle：有新引导→明显呼吸吸引 */
-  animation: emc-wave-flow 6s linear infinite, emc-wave-undulate 5s ease-in-out infinite, emc-wave-breathe-strong 2.6s ease-in-out infinite;
+/* CPD 三档：default(慢+间歇呼吸) < hover(周期缩短，少休息) < .has-guidance(连续强呼吸=有新引导) */
+#emc-panel.is-collapsed:hover .emc-input-area::before { animation-duration: 30s, 14s; }
+#emc-panel.is-collapsed.has-guidance .emc-input-area::before {   /* CPD 核心 toggle：有新引导→连续明显呼吸 */
+  animation: emc-halo-flow 12s linear infinite, emc-halo-breathe-on 2.8s ease-in-out infinite;
 }
-@keyframes emc-wave-flow { 0% { background-position: 0% 50%; } 100% { background-position: 280% 50%; } }
-@keyframes emc-wave-undulate { 0%,100% { transform: scale(1.02) rotate(-2deg); } 50% { transform: scale(1.1) rotate(3deg); } }
-@keyframes emc-wave-breathe { 0%,100% { opacity: 0.42; } 50% { opacity: 0.65; } }            /* 平静常驻：若隐若现但边缘可见 */
-@keyframes emc-wave-breathe-strong { 0%,100% { opacity: 0.5; } 50% { opacity: 0.9; } }       /* 强脉冲：明显呼吸（.has-guidance）*/
+/* 流动：色彩沿线缓慢推进（波浪推进感），水平无旋转 */
+@keyframes emc-halo-flow { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+/* 间歇呼吸：前段 3 次缩放呼吸（scale，无 rotate→水平不歪），后段静止休息——循环=呼吸3下→长休息→重复 */
+@keyframes emc-halo-breathe {
+  0%   { transform: scale(1); }
+  3%   { transform: scale(1.08); }
+  6%   { transform: scale(1); }
+  9%   { transform: scale(1.08); }
+  12%  { transform: scale(1); }
+  15%  { transform: scale(1.08); }
+  18%  { transform: scale(1); }
+  100% { transform: scale(1); }                        /* 18%→100% 静止休息（约 20s）*/
+}
+/* .has-guidance 连续呼吸（无休息段，持续明显）*/
+@keyframes emc-halo-breathe-on { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
 #emc-panel.is-collapsed .chat-input {
   box-sizing: border-box;
   min-height: 56px; max-height: 56px; height: 56px;

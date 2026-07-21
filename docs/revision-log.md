@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月22日）** · 本节按板块分组、组内倒序；最新工作 = **5.169 CPD 追问胶囊/Light 容量圈 theme 同步 + 光环三档策略（.has-guidance 引导耦合钩子）**（本次，分支 `cpd`）。上一轮 5.168。最近：
+> 📍 **最新动态（07月22日）** · 本节按板块分组、组内倒序；最新工作 = **5.170 CPD 折叠光环推翻重做（水平/实色/间歇慢呼吸）**（本次，分支 `cpd`）。上一轮 5.169。最近：
+>
+> - **5.170 CPD 折叠光环重做（用户反馈三根因）**：① **歪了**——`emc-wave-undulate` 的 `rotate(-2/3deg)` 旋转了光晕→**去 rotate**，呼吸改纯 scale，保水平。② **半透明+边缘糊**——opacity 呼吸(0.42→0.65)+blur(3px)→**实色 opacity 0.9 + blur 1px**（去半透明、波浪边缘清晰）。③ **太快+不间歇**——单 keyframe 内嵌「前 18% 三次缩放呼吸 + 后 82% 静止休息」循环 = 呼吸3下→长休息(~20s)→重复；整体减速至 ~0.3×（flow 45s / breathe 周期 24s）。三档：default(慢间歇) < :hover(周期 14s 少休息) < .has-guidance(连续 `emc-halo-breathe-on` 强呼吸)。`emc-halo-flow` 色彩缓慢推进（波浪感，水平）。纯 CSS，承重未动。push 待用户。
 >
 > - **5.169 CPD theme 同步根治 + 光环三档策略**（用户反馈 ①②③ + 引导 feature 契约）：**铁律强化**——EMC 内颜色全走 theme var（根治「硬编码→模式不同步」低级错误）。① **追问胶囊** [ai_qa.css](frontend/css/ai_qa.css) `.aiq-suggest*`（line 323-328）硬编码 `#ECECEC/rgba(255,255,255,*)` → `var(--geojson-color-text-primary/gray-100/border-default/emc-accent/emc-divider)`，随 Dark/Light 自动正确（修 Light 下浅字浅底看不清）。② **Light 容量圈**：`.ctx-cap` ring（currentColor）→ Light 森绿 `#143a35`；`.aiq-cap-tip` 富 tooltip（position:fixed 在 body，故不缀 #emc-panel）整组 Light 覆写（白底 `#fff`+森绿 `#143a35` 强调+深绿灰字），替原硬编码 `#1f1f1f/#D97757` Dark 风。③ **光环调优 + 三档策略**：收窄 `inset -10→-5`（半）、边缘清晰 `blur 5→3`、减速至 1/3（flow 15s/undulate 13.5s/breathe 7.8s）、opacity `0.42→0.65`（边缘可见）；**三档** default(平静常驻) < `:hover`(提速~1.7×) < `.has-guidance`(强脉冲 `emc-wave-breathe-strong` 0.5→0.9，2.6s)。**引导耦合钩子就绪**：`.has-guidance` 类 CSS 定义，CPD 核心 toggle（有新引导→加类强呼吸+胶囊文本/高度自适应）留后续引导 plan。纯 CSS，承重未动。push 待用户。
 >
