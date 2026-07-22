@@ -172,3 +172,82 @@
 
 ### 状态
 `closed`（CB-03 反评价完成）—— 4 agree 已 act（RULES pointer / KNOWLEDGE §6·pruning·cadence / /cb step5 / trace-digest 更正）；3 defer + 2 PROPOSE 给 CB-04。CB 转低频维护模式（每 5-10 功能 commit 一次 SCAN）。**下一会话推进极性深读时间轴**（T1→T3 演进）。
+
+---
+
+## CB-CPD-01 · 2026-07-22（CPD 专轨 · DeepSeek + K3 双模型首评）
+
+> 专轨定义见 `docs/cpd-core-plan-review.md`。评审对象：`docs/cpd-core-plan.md` **v0.2**（单份 plan，非全项目）。
+> 评审模型：DeepSeek V4 Pro + K3（均自读项目文件 + 承重实证）。报告：[DeepSeek](SCAN_CPDPlan_01-deepseek.md) / [K3](SCAN_CPDPlan_01-k3.md)。
+
+### ① SCAN 摘要（双模型）
+
+**DeepSeek（综合 B-）**：六维——架构 B+ / 功能 B / 承重 B+ / **演示表现力 C+（最大短板）** / 分阶段 B / 风险 C+。核心判断：CPD v0.2 是"功能教程"非"诊断叙事"；S3"问我想看什么"反模式（应引导点地图非打字）。阻塞 G1 的 4 硬伤（ask 漏态 / 状态回退 / localStorage 脏态 / turnId 未绑）+ 演示表现力 3 关键建议（文案叙事化 / S3 空间交互优先 / S4 融入宏观诊断信号）。
+
+**K3（更精准，附大量 file:line）**：方向与承重纪律合格，无撞红线；但 §4 引导状态机是全 plan 最弱一节——**3 个 P0 spec 错误**（plan 对"已就绪地基"的事实陈述与代码不符）：
+- P0-1 `.aiq-conclusion` **死信号**（cpd-state.js:29 查询，全前端无 JS 创建者）→ curState 永不到 S4。
+- P0-2 exit 词表不匹配（plan 大写 RESULT/CONCEPT；harness 实际小写 `result/gap/partial/ask/drift`；general 短路无 exit；drift 缺席）。
+- P0-3 映射表 key=curState 与 deriveState 矛盾（任何可见层→S2，S0/S1 不可达）。
+K3 另指：光环硬编码 hex（ai_qa.css:431）违 theme var；交互环未闭合（U6 实质）；review desc 灰度缺口。附 U1-U7 立场表。
+
+**共识**：ask→null、exit 读 `_curTrace.exit`、turn-ended 竞态（init 恢复）、curState 承重措辞、review desc 灰度、状态回退、流式读 `_streaming`、光环 theme-var、`_followUps` 优先级。
+**分歧**：G1 独立 ship（DS 否·半成品 / K3 能·agree U2）→ v0.3 调和。
+
+### ② 我方反评价（主线程，verify-before-accept 已 grep/read 核实 4 承重证据）
+
+**4 承重核实（全部属实）**：`.aiq-conclusion` 死信号（全前端仅 cpd-state.js:29 + ai_qa.css:523，无 JS 创建）/ exit 小写词表（harness 272/292/307/476/568/608/620/644）/ curState 进 buildContext（tools.js:455-458）/ 光环硬编码 hex（ai_qa.css:431）。
+
+| # | 条目 | 来源 | 判定 | 证据/采纳 |
+|---|---|---|---|---|
+| 1 | exit 词表大写错误 | K3 P0-2+DS | **agree** | 小写五值 ∪ undefined；CONCEPT 改判 intent/skipped（同 _followUps:478）；补 drift |
+| 2 | .aiq-conclusion 死信号 | K3 P0-1 | **agree** | 改 .aiq-exit-badge（panel.js:378，免疫流式误推） |
+| 3 | 映射 key=curState 矛盾 | K3 P0-3 | **agree** | 改特征向量真值表（deriveState S0/S1 不可达） |
+| 4 | ask 漏态 | DS+K3 | **agree** | exit='ask'→null |
+| 5 | turn-ended 数据源+竞态 | DS+K3 | **agree** | 读 _curTrace.exit + {exit,turnId,intent} + finally 守卫 + 引擎 init 恢复 |
+| 6 | 状态回退 | DS+K3 | **agree** | 特征向量真值表覆盖（同表重算） |
+| 7 | 流式误推 | DS+K3 | **agree** | 读 _streaming 硬门 + exit-badge 天然免疫 |
+| 8 | curState 承重措辞错误 | DS+K3 | **agree** | 改"推导纯客户端，注入 buildContext 仅语境提示，不参与路由" |
+| 9 | 光环硬编码 hex | K3 | **agree** | 抽 --emc-halo-* theme var（G2/G4） |
+| 10 | review desc 灰度 | DS+K3 | **agree** | ≥10 条历史微观问题对比 fail 率，>30% 调话术 |
+| 11 | U7 三态分级 | K3+DS | **agree** | fail/warn/pass（warn 不触发 revise 防飙升） |
+| 12 | 引导 vs 追问胶囊冲突 | DS+K3 | **agree** | gap/partial/ask/drift 时引擎 null；banner 内视觉分组 |
+| 13 | 谓词定义缺口 | K3 M5 | **agree** | hasImport 排除 AI 组/tool 产出；hasAnalysis=_ui.tool∈{grid,zonal,heatmap} |
+| 14 | localStorage 脏态 | DS+K3 | **agree** | 引擎 init 检测有图层无历史→null+warn；引导态不持久化 |
+| 15 | 交互环未闭合（U6） | K3 M3+DS | **agree** | S4·result 含 ref 时加"地图定位"CTA 闭合视野端 |
+| 16 | S3 空间交互优先 | DS | **agree** | 文案"点地图深红/深绿"，对话作备选 |
+| 17 | P0 用例顺序矛盾 | K3 L1 | **agree** | 引擎状态转移挪 G1（P0 引擎不存在） |
+| 18 | G3 绿色摘要条未定义 | K3 L2 | **agree** | §六补（banner done 变体） |
+| 19 | S4→S0 重置路径 | DS | **agree** | "换范围"CTA dispatch cpd:reset |
+| 20 | review.py docstring 漂移 | K3 L5 | **agree** | "六条"→"七条"顺手修（P1） |
+| 21 | 文案叙事化 | DS | **partial** | 方向 agree；具体文案 G1/G2 打磨，plan 立原则+示例 |
+| 22 | G1 独立 ship（分歧） | DS否/K3能 | **partial·调和** | G1 独立 ship + 含光环 click 最小 CTA（DS 方案 A） |
+| 23 | 光环改胶囊整体呼吸色 | DS | **partial** | G4 抛光期（先 theme-var 化） |
+| 24 | 地图层引导浮层 | DS | **partial** | 另一子系统；先用 #15 轻量闭合，浮层列 U10 |
+| 25 | 用户忙检测 | DS | **partial** | 列 U8（G3 边界） |
+| 26 | engage 再亮兜底 | K3 | **partial** | 列 U9（观察项） |
+
+**disagree：0**。两份均未撞承重红线，建议皆有 file:line 证据。
+
+### ③ 行动（plan v0.2 → v0.3，本轮 commit）
+
+修订 cpd-core-plan.md 九点（详见 v0.3 头部变更说明）：
+- §4.1 信号源重写（exit-badge / 小写 exit / 谓词 / _streaming）。
+- §4.2 特征向量真值表（key 从 curState 改特征向量；ask→null / drift→retry / 回退同表重算）。
+- §4.3 调度强化（turn-ended {exit,turnId,intent} + finally 守卫 + init 恢复 + cpd:reset）。
+- §七 curState 措辞修正 + 光环 theme-var 列入 §九。
+- §八 P0 用例改地基行为 / G1 含光环可点 / G3 绿色摘要条补 §六。
+- §配套 A 灰度 + U7 三态。
+- §六 6.4 演示链服务（S3 空间优先 + S4 地图定位 CTA + 文案叙事化）。
+- 新增 U8-U10。
+
+不动代码（review.py / 前端 / tests 留待 P0-P2 实施）。
+
+### ④ 新发现
+
+- **双模型互补**：DeepSeek 强产品/演示视角（功能教程 vs 诊断叙事），K3 强代码级精准（file:line 实证 3 P0 spec 错误）。同轮双模型比单模型覆盖更全——DS 指方向，K3 定落点。**这是 CPD 专轨首次双模型，值得固化为主轨实践**（未来 SCAN_DeepSeek_{NN} 也允许多模型 `-{model}` 后缀）。
+- **4 承重证据全部属实**：plan v0.2 对"已就绪地基"的 3 处事实陈述错误（死信号/词表/映射 key）+ 1 处措辞错误（curState），均 grep/read 核实。教训：写 plan 引用"已就绪"信号须核实生产者，勿信"已订阅"=存在。
+- **G1 分歧调和**：DS（半成品不可独立 ship）与 K3（可独立 ship）不悖——G1 独立 ship 指不依赖 G2 banner，但 G1 本身含光环 click 最小 CTA（DS 方案 A）。两者并取。
+- **演示表现力共识**：交互环闭合（S4 地图定位 CTA）= U6 实质解法——引导从"装载自动化"升"诊断叙事"，解除"为引导而引导"风险。这是本轮最大方向收益。
+
+### 状态
+`本轮反评价完成` —— plan v0.2→**v0.3**（九点修订，吸收 26 条建议：agree 20 / partial 6 / disagree 0）。4 承重证据已核实。**待 CB-CPD-02**：v0.3 喂第三方验证修订是否落地 + 演示表现力升维是否到位（尤其 S3 空间交互 / S4 地图定位 / 文案叙事化的具体落地）。

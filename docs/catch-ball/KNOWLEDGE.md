@@ -31,6 +31,7 @@
 - **4×5 = 归因落点矩阵（非指标分类清单）**：跨领域×要素多归属。勿用"官方指标完备性"质疑 4×5（错标尺）。[[project-design-philosophy]]
 - **eval 空 context ≠ 运行时**（C6）：Flash eval 用 `build_diagnose_prompt('')` 空 context 模拟，不反映已加载层；路由分歧验路由须带 grounding 或 browser，别只信空 context eval。[[emc-eval-empty-context-vs-runtime]]
 - **唯一真短板 = 前端测试薄**（34 JS 文件零单测）；非数据、非架构（数据管道 sim 充分、架构七层稳）。
+- **演示逻辑链是项目北极星**（CLAUDE.md 最高优先级，[[emotion-map-logic-chain]]）：张力图面→引导点击→交互分析→定位关注区+主题倾向+排序优先级（宏观诊断信号，非精确识别）。**UI/UX 与视觉表现力 = 与架构/代码同等的承重维度**（RULES §2.1 第七轴「演示表现力」10%）——勿用纯工程标尺（架构/代码/测试）低估 UI 债、勿把表现力当"装饰"。SCAN 评估须覆盖演示逻辑链落地度。
 
 ## §3 SCAN 标尺纠正模式（SCAN 倾向 → 正确标尺）
 
