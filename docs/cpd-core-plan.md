@@ -3,6 +3,8 @@
 > 状态：**v1.0 定稿**（2026-07-22）· CB-CPD-03 反评价后收敛定稿（DS A- + K3 A-；DS 建议收尾 + K3 发现 v0.4 H1 断链必修）→ **CB-CPD 专轨收尾，进 P0/G1**。见 [cpd-core-plan-review.md](cpd-core-plan-review.md) + [cb-journal.md `## CB-CPD-03`](catch-ball/cb-journal.md)
 > 分支 `cpd` | 承重：调用次数优先 / 不派 subagent / 只 commit 不 push / 不合分支不抽离
 >
+> **P0 增量吸收（2026-07-22）**：§八 P0 吸收 [GUIDANCE_E2E-k3.md](catch-ball/GUIDANCE_E2E-k3.md) 两项增量——A1 谓词级测试基建（§1.1）+ 组合场景回归（§4.4）。**核心 6 决策与承重清单不变**（打磨 = 交叉链接，非 CB 迭代，不开 CB-CPD-04）；前瞻丰富轨（F1-F8/G3+）见 GUIDANCE 独立文。
+>
 > **v0.4 → v1.0 定稿变更**（CB-CPD-03 反评价，DS 建议收尾 + K3 发现 v0.4 新引入 H1 链式缺陷必修）：
 > - **H1 general 断链修复**（K3 H1，已核实 [panel.js:1161/1162/1181](frontend/js/ai_qa/panel.js#L1161) 链）：v0.4 finally 守卫 `exit!==undefined` × 严格 turnId+1 去重 × general 无 exit（[harness.js:372/412](frontend/js/ai_qa/harness.js#L372)）= general 轮 `settled=true` 照常 push 致 `_history` 跳号但不 dispatch → 引擎丢事件 → **引导永久冻结（静默失败）**。改：① 守卫 `exit!==undefined` → **`settled`**（正常完成即 dispatch，abort/异常不 dispatch，覆盖 general）；② 去重"严格 +1"→**单调递增**（turnId > lastProcessed）；③ 真值表 row 4 lastExit∈{null（含 general 短路）}，intent==='general' 区分。
 > - **M1 hasAnalysis 死信号 → interpret 分支**（K3 M1）：§4.1 定义但真值表零引用 → row 4 加 `hasAnalysis=true` 升级 `interpret`「这张图已就绪——问我说明了什么」桥 dock 产图回 EMC（闭合 dock→EMC 编排环）。
@@ -194,6 +196,7 @@ chip/控件始终可达，引导 = 高亮 + 文案 + 光环 + CTA，不强制隐
   - **引擎状态转移用例挪 G1**（CB-CPD-01 K3 L1：P0 引擎不存在，测不了——v0.2 自相矛盾，此修正）。
 - 落地 `tests/browser/` 复用 [lib/emc_helpers.py](tests/browser/lib/emc_helpers.py)；断言硬挂真端点。
 - 前端 vitest 单测基建：本次不搭（后续可选）。
+- **P0 测试基建增量**（吸收 [GUIDANCE_E2E-k3.md](catch-ball/GUIDANCE_E2E-k3.md)，非 CB 迭代）：① §1.1 **A1 谓词级测试**——谓词导出纯函数 + Playwright 谓词真值断言（G1 谓词就绪后启用，P0 建范式 + catalog 登记），把死信号/谓词盲区（`.aiq-conclusion` / `hasVisibleEmotionLayer`）从评审发现变测试发现；② §4.4 **组合场景回归**——每 Phase Playwright 回归必含 ≥1 组合场景（事件×状态×去重咬合，H1 静默冻结教训制度化）。
 
 ### P1 · 尺度诚实（§配套 A · 小工作 + 灰度）
 - 改 [review.py:50-53](ai_qa/review.py#L50) `scale_paradigm_fit` desc（详见 §配套 A）。

@@ -2,10 +2,66 @@
 复用 frontend/serve.py 链路（with_server.py 起 :8080，serve.py 自起后端 :8000 + /api 反代）。
 提供：开页 → 发问 → 抓 /geo 网络调用 → 等回答完成。供 tests/browser/ 下各用例复用。
 """
+import contextlib
+import json
+import os
+import subprocess
+import time
+import urllib.request
+
 from playwright.sync_api import sync_playwright, Page
 
 EMC_URL = 'http://localhost:8080/frontend/index.html?e2e=1'   # ?e2e=1 → index.html dynamic-load e2e-seam.js（注入 fixture 点层；main.js 零 test 代码）
 GEO_BASE = '/api/v1/geo/'
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))   # tests/browser/lib/ → repo root
+
+
+def _wait_health(port: int, timeout: int = 90) -> bool:
+    """等 serve.py + 后端就绪（/api/v1/health 通）。"""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            urllib.request.urlopen(f'http://127.0.0.1:{port}/api/v1/health', timeout=2).read()
+            return True
+        except Exception:
+            time.sleep(1)
+    return False
+
+
+@contextlib.contextmanager
+def emc_session(port: int = 8080, headless: bool = True, open: bool = True):
+    """一键自管：起 serve.py（自起后端 :8000 + /api 反代）+ 等 health + 起 chromium + open_emc。
+
+    yield 已 open 的 page；退出同停 serve + browser。复用 test_compare_regions 的稳定手动流程
+    （不用 with_server.py：该包装下 main.js 模体加载时序异常）。新用例复用本上下文，勿各自重抄。
+    """
+    serve = subprocess.Popen(['py', 'frontend/serve.py', str(port)], cwd=REPO)
+    try:
+        if not _wait_health(port):
+            raise RuntimeError(f'serve.py 后端未就绪（port {port}，查 DEEPSEEK_API_KEY / uvicorn 启动）')
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=headless)
+            page = browser.new_page()
+            try:
+                if open:
+                    open_emc(page)
+                yield page
+            finally:
+                browser.close()
+    finally:
+        # 杀进程树（serve.py 自起 uvicorn :8000 子进程；仅 terminate 父进程会留 uvicorn 孤儿占端口，
+        # 跨测试级联冲突 → Windows 用 taskkill /T 杀全树）。
+        try:
+            if os.name == 'nt':
+                subprocess.run(['taskkill', '/F', '/T', '/PID', str(serve.pid)], capture_output=True)
+            else:
+                serve.terminate()
+            serve.wait(timeout=10)
+        except Exception:
+            try:
+                serve.kill()
+            except Exception:
+                pass
 
 
 def open_emc(page: Page, url: str = EMC_URL, wait_ms: int = 1500) -> None:
@@ -18,7 +74,7 @@ def open_emc(page: Page, url: str = EMC_URL, wait_ms: int = 1500) -> None:
     """
     page.goto(url, wait_until='commit')
     page.wait_for_selector('#chat-input', timeout=30000)   # EMC 面板挂载
-    page.wait_for_selector('#lp-upload', timeout=15000)     # 左栏侧栏 init 完成（change 监听已绑）
+    page.wait_for_selector('#lp-upload', timeout=15000, state='attached')     # 左栏侧栏 init 完成（change 监听绑在 attach，非可见态——左栏折叠时按钮 hidden 但监听已就绪）
     page.wait_for_timeout(wait_ms)   # 等左栏/图层工具栏就绪
 
 
@@ -126,3 +182,81 @@ def wait_answer_done(page: Page, timeout_ms: int = 60000) -> str:
         pass
     els = page.locator('.aiq-answer')
     return els.last.inner_text(timeout=5000) if els.count() else ''
+
+
+# ── A1 谓词测试范式（GUIDANCE §1.1；G1 谓词导出后启用，P0 先就位） ──────────────
+def read_predicate(page: Page, expr: str):
+    """读客户端谓词真值（A1 谓词级测试基建）。
+
+    expr = page.evaluate 求值的 JS（函数体或表达式），返回布尔/可强转布尔。
+    例（G1 谓词就绪后）：read_predicate(page, "() => window.__cpdPredicates.hasVisibleEmotionLayer()")。
+    把死信号/谓词盲区从评审发现变测试发现——P0 建范式，谓词 cpd-state.js 导出后用例 10 直接用。
+    """
+    return page.evaluate(expr)
+
+
+def wait_predicate(page: Page, expr: str, expected=True, timeout_ms: int = 10000):
+    """轮询直到谓词 == expected（状态变化有延迟，如注入点层后情绪性判定）。超时返当前值。"""
+    deadline = time.time() + timeout_ms / 1000
+    val = None
+    while time.time() < deadline:
+        try:
+            val = page.evaluate(expr)
+        except Exception:
+            val = None
+        if bool(val) == expected:
+            return val
+        page.wait_for_timeout(200)
+    return val
+
+
+# ── /chat 请求体捕获（用例 2 domain_lens threading） ─────────────────────────────
+class ChatRequestCapture:
+    """捕获 POST /api/v1/chat 请求体（解析 domain_lens 等结构字段 threading）。
+
+    用 page.on('request') 收请求；post_data JSON 解析在 all() 现取。
+    用例 2：diagnose 产 domain_lens 后，后续 step 前端须结构化回传 ChatRequest.domain_lens
+    （非压扁进 context）——断言 ≥1 个 /chat 请求体 domain_lens 为非空数组。
+    """
+
+    CHAT_PATH = '/api/v1/chat'
+
+    def __init__(self, page: Page):
+        self.page = page
+        self._reqs = []
+        page.on('request', self._on_req)
+
+    def _on_req(self, req):
+        try:
+            if req.method != 'POST' or self.CHAT_PATH not in req.url:
+                return
+        except Exception:
+            return
+        self._reqs.append(req)
+
+    def _read(self, req):
+        payload = None
+        try:
+            pd = req.post_data
+            payload = json.loads(pd) if pd else None
+        except Exception:
+            payload = None
+        return {
+            'phase': (payload or {}).get('phase'),
+            'domain_lens': (payload or {}).get('domain_lens'),
+            'payload': payload,
+        }
+
+    def all(self):
+        return [self._read(r) for r in self._reqs]
+
+    def wait_domain_lens(self, timeout_ms: int = 60000):
+        """等到至少一个 /chat 请求体携带非空 domain_lens 数组（结构化回传证据）。超时返 None。"""
+        deadline = time.time() + timeout_ms / 1000
+        while time.time() < deadline:
+            for r in self.all():
+                dl = r.get('domain_lens')
+                if isinstance(dl, list) and dl:
+                    return r
+            self.page.wait_for_timeout(300)
+        return None

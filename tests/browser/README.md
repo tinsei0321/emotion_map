@@ -7,11 +7,19 @@
 
 ```text
 tests/browser/
-  lib/emc_helpers.py          # 通用：open_emc / send_prompt / GeoCapture（抓 /geo 调用）/ wait_answer_done
-  test_compare_regions.py     # 用例 1：compare 西陵 vs 伍家岗
-  fixtures/compare_points.geojson  # 点层 fixture（落西陵/伍家岗区内，供 zonal_stats 聚合）
-  README.md                   # 本文件
-docs/emc-test-cases.md        # C6 运行时用例清单（catalog，4 例）
+  lib/emc_helpers.py          # 通用：emc_session(自管 serve) / open_emc / send_prompt / inject_points
+                              #       GeoCapture(抓 /geo) / ChatRequestCapture(抓 /chat 请求体·domain_lens)
+                              #       read_predicate/wait_predicate(A1 谓词范式·G1) / wait_answer_done
+  test_compare_regions.py             # 用例 1：compare 西陵 vs 伍家岗（✅）
+  test_cpd_collapsed_welcome.py       # 用例 5：默认折叠欢迎卡（无 LLM，最稳，先验管线）
+  test_exit_badge.py                  # 用例 6：exit-badge 出口徽章（result ok / general neutral）
+  test_emc_height_adapt.py            # 用例 7：高度自适应（collapse/expand 往返）
+  test_history_clear.py               # 用例 8：历史垃圾桶全清
+  test_domain_lens_threading.py       # 用例 2：domain_lens 结构化回传（/chat 请求体）
+  test_drift_fence.py                 # 用例 3：_driftRe 围栏拦截（LLM 不稳→🤚，exit 2=WARN）
+  fixtures/compare_points.geojson     # 点层 fixture（落西陵/伍家岗区内，供 zonal_stats 聚合）
+  README.md                           # 本文件
+docs/emc-test-cases.md        # C6 运行时用例清单（catalog，11 例：5-8 地基 / 2-3 落地 / 9-11 登记 P1·G1）
 ```
 
 ## 前置
@@ -23,11 +31,17 @@ docs/emc-test-cases.md        # C6 运行时用例清单（catalog，4 例）
 ## 运行（单命令：测试自管 serve.py）
 
 ```bash
-py tests/browser/test_compare_regions.py
+py tests/browser/test_cpd_collapsed_welcome.py   # 无 LLM，最稳，先验管线
+py tests/browser/test_compare_regions.py          # 用例 1（需 DEEPSEEK key）
+py tests/browser/test_exit_badge.py               # 用例 6（需 key）
+py tests/browser/test_emc_height_adapt.py         # 用例 7（无 LLM）
+py tests/browser/test_history_clear.py            # 用例 8（无 LLM，localStorage 预置）
+py tests/browser/test_domain_lens_threading.py    # 用例 2（需 key）
+py tests/browser/test_drift_fence.py              # 用例 3（需 key，exit 2=WARN→🤚）
 ```
 
-测试自起 `frontend/serve.py :8080`（serve.py 自起后端 uvicorn :8000 + /api 反代 + 等 health），跑完同停。
-脚本 exit 0 = 用例绿。
+每个脚本经 `emc_helpers.emc_session()` 自管：起 `frontend/serve.py :8080`（自起后端 uvicorn :8000 +
+/api 反代 + 等 health）+ 起 chromium + open_emc，跑完同停全部。exit 0 = 绿；exit 2 = WARN（人工复核）。
 
 > 不用 `with_server.py`：实测该包装下 main.js 模体加载时序异常（test seam `window.__emcTest` 长时间不可用），
 > 而测试自管 serve.py（subprocess + health wait）稳定复现已验证的手动流程。anthropic-webapp-testing skill
@@ -41,5 +55,5 @@ py tests/browser/test_compare_regions.py
 ## 加新用例
 
 1. `docs/emc-test-cases.md` 里把用例状态 ⬜→🔄，补描述/前置/步骤/断言。
-2. 复制 `test_compare_regions.py` → 改 PROMPT + 断言（复用 `emc_helpers`）。
-3. 跑通后 catalog 标 ✅。
+2. 新建 `test_xxx.py` → `with emc_session() as page:` + 复用 `emc_helpers`（open/send/inject/capture/wait）；LLM 用例挂 `.env` DEEPSEEK key。
+3. 跑通后 catalog 标 ✅；flaky 的标 🤚（exit 2=WARN）。

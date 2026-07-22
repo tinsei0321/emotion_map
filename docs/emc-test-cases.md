@@ -21,24 +21,27 @@
 
 ---
 
-## 用例 2 · domain_lens 等结构字段被前端压扁 ⬜
+## 用例 2 · domain_lens 等结构字段被前端压扁 ✅
 
 - **描述**：diagnose 卡的结构字段（`domain_lens` 等）被前端压扁进 `ctx.context` 字符串丢结构，
   下游结构化用（compare/threading）须显式回传 ChatRequest（④5.108 范式），别正则抠。
-- **前置**：问一句会触发 domain_lens 的多领域问句（如"对比规划与治理两板块"）。
-- **步骤**：开 EMC → 发多领域问句 → 抓 `/chat` SSE agent_step → 看 domain_lens 是否数组传到下游。
-- **断言**：硬=下游（如 compare/归因）按 domain_lens 分组正确；软=回答体现两板块对比。
+- **前置**：`.env` DEEPSEEK key；注入点层；问一句触发多领域 domain_lens 的问句（如"对比规划与治理两板块的情绪"）。
+- **步骤**：开 EMC → 注入点层 → 发多领域问句 → 捕 **POST `/chat` 请求体**（diagnose 产 domain_lens 后，后续 agent_step/answer 步前端须结构化回传 `domain_lens` 数组——router.py:35/46/54 `req.domain_lens`）。
+- **断言**：硬=≥1 个 POST `/chat` 捕到（chat 管线跑通）；软=domain_lens 结构化回传（实测 `['urban_planning','urban_renewal']` phase=agent_step ✓；threading 代码层已核实 [api.js:31](frontend/js/ai_qa/api.js#L31) + [harness.js:384](frontend/js/ai_qa/harness.js#L384) 过滤 general——runtime 观测依赖 LLM 产非-general 多领域诊断，软断言兜底）。
+- **脚本**：`tests/browser/test_domain_lens_threading.py`（emc_helpers 加 `/chat` 请求体捕获）。
 - **关联**：memory `emc-domain-lens-threading`。
 
 ---
 
-## 用例 3 · `_driftRe` 无围栏裸 JSON 边缘 ⬜
+## 用例 3 · `_driftRe` 无围栏裸 JSON 边缘 ✅
 
 - **描述**：harness.js `_driftRe` 拦「任意 ``` 围栏」→ revise；边缘 case = 草稿含裸 JSON 内联（无围栏）
   或围栏内非 action-JSON，确认不静默 strip、走 revise-失败→固定卡 通道。
-- **前置**：构造会触发 LLM 产围栏/裸 JSON 的问句（如强求"给 JSON"）。
-- **步骤**：开 EMC → 发问 → 看回答是否泄漏代码块 / 是否走 revise 兜底。
+- **前置**：`.env` DEEPSEEK key；构造会触发 LLM 产围栏/裸 JSON 的问句（如强求"给我 JSON 格式"）。
+- **步骤**：开 EMC → 发问 → `wait_answer_done` → 读 `.aiq-answer` 文本。
 - **断言**：硬=回答无裸 ``` 围栏泄漏；软=有合理兜底叙述。
+- **风险**：LLM 是否产围栏非确定 → 若 flaky 降级 🤚 手工（不强求硬绿，软断言 [WARN] 兜底）。
+- **脚本**：`tests/browser/test_drift_fence.py`（若可稳定触发则 ✅，否则 🤚）。
 - **关联**：memory `emc-compare-skill`（_driftRe 拓宽段）。
 
 ---
@@ -55,4 +58,83 @@
 ---
 
 > 加例守则：先在此 catalog 登记（状态⬜）→ 实现 `tests/browser/` 脚本 → 跑通标 ✅。
-> 断言一律硬挂网络层/数据层（测真业务端点），软挂回答散文。
+> 断言一律硬挂网络层/数据层/DOM（测真业务端点 + 真实 DOM 状态），软挂回答散文。
+> **组合场景回归**（GUIDANCE §4.4）：每 Phase 新增 Playwright 用例须含 ≥1 组合场景（多事件/多状态/事件×状态×去重咬合），防 CB 三轮"修订引入新缺陷"模式重演。
+> 状态分级：✅ 跑通 ｜ 🔄 进行中 ｜ ⬜ 待实现（标所属 Phase）｜ 🤚 手工（难自动化）。
+
+---
+
+## 用例 5 · CPD 默认折叠欢迎卡（地基行为）✅
+
+- **描述**：F5 默认折叠胶囊（不记忆上轮展开态，用户定 2026-07-22）+ 空态欢迎卡开场。守 CPD 地基"默认折叠 + 欢迎卡"契约。
+- **前置**：无需 LLM（纯 load）；清 localStorage 确保无展开态残留。
+- **步骤**：开 EMC → 不发问 → 读 `#emc-panel` class + `.emc-welcome` + 输入框 placeholder。
+- **断言**：硬=`#emc-panel.is-collapsed` 存在 + `.emc-welcome` 可见 + placeholder=折叠态文案。
+- **脚本**：`tests/browser/test_cpd_collapsed_welcome.py`（**最稳，无 LLM，先跑验管线**）。
+- **关联**：plan v1.0 §八 P0 地基行为；memory `cpd-soft-collapse`。
+
+---
+
+## 用例 6 · exit-badge 出口徽章渲染（地基行为）✅
+
+- **描述**：回答完毕时 `_renderFooter` 创建 `.aiq-exit-badge`（[panel.js:378](frontend/js/ai_qa/panel.js#L378)），txt/cls 按 exit 编码——result→`分析完成`/`已生成 N 个图层`(cls=ok)；general→`纯问答`(cls=neutral)；gap/drift/ask/partial→`warn`（[:360-368](frontend/js/ai_qa/panel.js#L360)）。
+- **前置**：`.env` DEEPSEEK key；`compare_points.geojson`（result 分支需点层）。
+- **步骤**：开 EMC → 注入点层 → 发 result 型问句（`对比西陵区和伍家岗区的情绪与归因`）→ `wait_answer_done` → 读末条 `.aiq-exit-badge`；再发 general 型（`什么是4×5矩阵`）→ 读 badge。
+- **断言**：硬=分析轮 `.aiq-exit-badge` 渲染 + cls∈{ok,warn}（exit 取决 LLM+数据非确定——compare 实测落 gap/warn）；软=general 问句路由 general→badge `纯问答`/neutral（H1 DOM 级前置，LLM 路由非确定，观测到=bonus）。
+- **脚本**：`tests/browser/test_exit_badge.py`。
+- **关联**：plan v1.0 §4.1 S4 信号 `.aiq-exit-badge`；general 分支 = H1 教训 DOM 级前置（为用例 11 铺路）；memory `emc-tri-state-exit-contract`。
+
+---
+
+## 用例 7 · 内容驱动高度自适应（地基行为）✅
+
+- **描述**：展开态 EMC 高度 `--emc-h` 随内容驱动（`_fitEmcToContent` [panel.js:1471](frontend/js/ai_qa/panel.js#L1471)）；折叠态 `.is-collapsed` 局部覆盖 `--emc-h` 固定（[:144](frontend/js/ai_qa/panel.js#L144)）。
+- **前置**：无需 LLM（注入点层触发 `layers:changed` → 高度重算）；或发长 prompt。
+- **步骤**：开 EMC（折叠态）→ focus `#chat-input` 触发展开 → 读 `--emc-h` 基线 → 注入点层/发长内容 → 读 `--emc-h` → 折叠 → 读 `--emc-h`。
+- **断言**：硬=展开态注入后 `--emc-h` > 基线（内容拉长）；硬=折叠态 `--emc-h` 固定（不随内容变）。
+- **脚本**：`tests/browser/test_emc_height_adapt.py`。
+- **关联**：plan v1.0 §八 P0 地基行为（拉长+缩回）。
+
+---
+
+## 用例 8 · 历史垃圾桶全清（地基行为）✅
+
+- **描述**：`#emc-history-clear`（[panel.js:1601](frontend/js/ai_qa/panel.js#L1601)）→ `clearAllHistory()`（[:245](frontend/js/ai_qa/panel.js#L245)）清空 `_archive`，`#emc-history-list`（[:1295](frontend/js/ai_qa/panel.js#L1295)）的 `.emc-history-item` 归零（confirm dialog 二次确认）。
+- **前置**：`_archive` 需有项——`page.add_init_script` 预置 localStorage `ai_qa_archive_v1` 假会话（确定性，免 LLM 归档）。
+- **步骤**：预置 archive → 开 EMC → 开历史记录面板 → 读 `.emc-history-item` 计数 → 点 `#emc-history-clear` → `page.on('dialog')` accept → 重读计数。
+- **断言**：硬=清后 `.emc-history-item` 计数 = 0（或仅剩当前会话项）。
+- **脚本**：`tests/browser/test_history_clear.py`。
+- **关联**：plan v1.0 §八 P0 地基行为（历史垃圾桶加大+全清）；用户定 2026-07-22。
+
+---
+
+## 用例 9 · 尺度诚实话术（P1 配套）⬜
+
+- **描述**：问"某条街精确情绪分"（微观尺度细于数据支撑）→ 回答须含"宏观方向/非精确测量"声明 + 给替代趋势。P1 改 [review.py](ai_qa/review.py) `scale_paradigm_fit` desc（U7 三态：无声明 fail / 有声明无趋势 warn / 齐全 pass）后启用。
+- **前置**：P1 review.py desc 强化 + 灰度（≥10 条历史微观问题 fail 率对比 <30%）。
+- **步骤**：开 EMC → 注入点层 → 发"西陵区某条街的精确情绪分是多少"→ 读回答。
+- **断言**：软=回答含宏观声明（`宏观`/`非精确`/`趋势`类词）；硬（P1 后）= review verdict 不因缺声明 pass。
+- **脚本**：`tests/browser/test_scale_honesty.py`（P1 启用）。
+- **关联**：plan v1.0 §配套 A；memory `project-design-philosophy`。
+
+---
+
+## 用例 10 · A1 谓词真值（G1 配套）⬜
+
+- **描述**：[cpd-state.js](frontend/js/ai_qa/cpd-state.js) 谓词（hasImport/hasRange/hasVisibleEmotionLayer/hasAnalysis）导出为纯函数后，`page.evaluate` 直读谓词真值——把死信号/谓词盲区（`.aiq-conclusion` 死信号 / M2 无情绪层撒谎"点击深绿/深橙"）从评审发现变测试发现。
+- **前置**：G1 谓词导出（plan §九 cpd-state.js）；新增 `fixtures/plain_poi.geojson`（无 polarity 字段，测 M2）。
+- **步骤**：开 EMC → 各场景（空 / 注入情绪层 / 注入无情绪层 / range 层 / dock 产图）→ `read_predicate(page, ...)` 读各谓词。
+- **断言**：硬=无情绪字段层 → `hasVisibleEmotionLayer`=false（M2 演示链断点回归）；硬=情绪层 → true。
+- **脚本**：`tests/browser/test_cpd_predicates.py`（G1 启用）；helper `emc_helpers.read_predicate`。
+- **关联**：GUIDANCE §1.1 A1；plan v1.0 §4.1 谓词 + §八 P0 增量；CB-CPD-03 M2。
+
+---
+
+## 用例 11 · H1 引擎不冻结（G1 配套）⬜
+
+- **描述**：general 短路轮（exit=null）后引导引擎仍响应——`cpd:turn-ended` dispatch 守 `settled`（非 `exit!==undefined`）+ 单调去重 `turnId > lastProcessed`（非严格 +1），防 CB-CPD-03 H1 静默冻结。
+- **前置**：G1 引擎就绪（plan §九 cpd-guide.js + panel.js finally dispatch）。
+- **步骤**：开 EMC → 发 result 型 → 发 general 型（`什么是4×5矩阵`）→ 再发 result 型 → 读引导态（`.has-guidance` / banner）。
+- **断言**：硬=general 轮后引擎仍响应后续 result 轮引导（不冻结）；**组合场景**（事件×状态×去重咬合，H1 教训制度化）。
+- **脚本**：`tests/browser/test_cpd_guide_no_freeze.py`（G1 启用）。
+- **关联**：plan v1.0 §4.3 H1 + §八 P0 组合场景回归；CB-CPD-03 H1；GUIDANCE §4.4。
