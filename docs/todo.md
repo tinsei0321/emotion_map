@@ -5,6 +5,27 @@
 
 ---
 
+## 📅 2026-07-22（分支 `cpd` · CPD 核心 plan v0.3 + CB 专轨 + EMC 浮窗交互）
+
+### ✅ CB-CPD-01 双模型首评反评价 → plan v0.3（revision-log 5.173 · commit c9eeed0 · **待用户 push**）
+
+第三方 DeepSeek + K3 双模型首评 cpd-core-plan.md v0.2（均自读项目文件，报告 `SCAN_CPDPlan_01-{deepseek,k3}.md`）。
+
+- **反评价 26 条**（agree 20 / partial 6 / disagree 0），**4 承重证据 grep/read 全部核实**：`.aiq-conclusion` 死信号 / exit 小写词表 / curState 进 buildContext / 光环硬编码 hex。
+- **K3 三 P0 spec 错误**（plan 对"已就绪地基"事实陈述错）：死信号→`.aiq-exit-badge`；exit 大写→小写；映射 key=curState（S0/S1 不可达）→特征向量真值表。
+- **DeepSeek 演示表现力最短板**（功能教程非诊断叙事）：S3 空间交互优先 + S4 地图定位 CTA 闭合交互环 + 文案叙事化。
+- **plan v0.2→v0.3 九点修订** + cb-journal CB-CPD-01 四节 + review.md prompt 自包含（CB 协议/纪律/轮次/语境/必读文件/署名）+ SCAN 命名 `-{model}` + RULES 七轴（演示表现力）+ KNOWLEDGE 演示逻辑链北极星。
+- **承重未动**（纯文档；review.py/前端/tests 留 P0-P2）。**待 CB-CPD-02** 验证修订落地 + 演示升维。
+
+### 🔄 EMC 浮窗交互改进（前端·**未 commit，待 F5 肉眼验**）
+
+- F5 后默认折叠胶囊 + 展开欢迎卡（不记忆上轮态，430×640 默认）+ 历史垃圾桶加大 + 一键全清。
+- 内容驱动高度自适应（增量法，拉长+缩回；修 flex 撑满 scrollHeight 失真 bug）。
+- exit-badge 去线框改填充式 teal（全局避免线框设计原则）。
+- 待用户 F5 验过后合并 commit（panel.js / index.html / ai_qa.css）。
+
+---
+
 ## 📅 2026-07-21（分支 `cpd` · CPD 系统级重构）
 
 ### 🔄 CPD — 情境式渐进披露（contextual progressive disclosure）
