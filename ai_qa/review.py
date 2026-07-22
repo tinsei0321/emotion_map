@@ -1,10 +1,10 @@
-"""审查层 · REVIEW_CHECKLIST 六条 + review_answer() 审查执行。
+"""审查层 · REVIEW_CHECKLIST 七条 + review_answer() 审查执行。
 
-Draft Answer 出稿后，审查员（默认 Flash，省 token、快）按六条 checklist 审查；
-不达标（pass=False）带 revise_hints 让出稿模型重写（最多 1 轮，router 控制）。
+Draft Answer 出稿后，审查员（默认 Flash，省 token、快）按七条 checklist 审查（verdict pass/warn/fail）；
+客观项 fail（data_driven/actionable/scale_paradigm_fit/professional）→ pass=False，带 revise_hints 让出稿模型重写（最多 1 轮，router 控制）；主观项只 warn 不强制重写。
 
-六条来自用户对"最终回答质量"的硬要求：
-排版易读 / 结构清晰 / 内容精炼 / 语句专业（规划行业用语）/ 数据驱动 / 结论有指向性。
+七条（key 稳定勿改，前端审查状态区按 key 渲染）：
+排版易读 / 图层优先结构 / 简短直接 / 通俗+专业 / 数据驱动 / 结论有指向性 / 尺度范式匹配。
 """
 import os
 import json
@@ -14,7 +14,7 @@ from ai_qa.llm import LLMError, chat_with_fallback, _tier_of
 from ai_qa.manifesto import MANIFESTO
 from ai_qa.industry_kb import industry_kb_lens_appendix
 
-# 六条审查标准（顺序即审查顺序；key 稳定勿改，前端审查状态区按 key 渲染 ✓/△/✕）。
+# 七条审查标准（顺序即审查顺序；key 稳定勿改，前端审查状态区按 key 渲染 ✓/△/✕）。
 REVIEW_CHECKLIST = [
     {
         'key': 'layout',
@@ -49,7 +49,9 @@ REVIEW_CHECKLIST = [
     {
         'key': 'scale_paradigm_fit',
         'name': '尺度范式匹配',
-        'desc': '结论颗粒度是否匹配问题尺度（查 MANIFESTO 第十一节）——宏观禁落单点、微观禁泛泛、中观落单元级。**仅 emotion_analysis（复杂归因）查此项；简单问题 / 纯 GIS 操作（intent=B）不查**。',
+        'desc': '结论颗粒度匹配问题尺度（查 MANIFESTO 第十一节「尺度-方法-范式」）——宏观禁落单点、微观禁泛泛、中观落单元级。'
+              '**尺度诚实（U7 三态）**：问题尺度细于数据支撑（精确到单点/单街/单建筑/单米）时，回答须含「情绪地图看的是宏观分布与演变、非精确测量」诚实声明 + 给能给的宏观趋势（周边区域/上级单元的走向），禁假装精确数值。三态判定：无声明→fail / 有声明无替代趋势→warn / 声明+替代趋势齐全→pass。'
+              '**仅 emotion_analysis（复杂归因）查此项；简单问题 / 纯 GIS 操作（intent=B）不查**。',
     },
 ]
 

@@ -108,14 +108,14 @@
 
 ---
 
-## 用例 9 · 尺度诚实话术（P1 配套）⬜
+## 用例 9 · 尺度诚实话术（P1 配套）🔄
 
-- **描述**：问"某条街精确情绪分"（微观尺度细于数据支撑）→ 回答须含"宏观方向/非精确测量"声明 + 给替代趋势。P1 改 [review.py](ai_qa/review.py) `scale_paradigm_fit` desc（U7 三态：无声明 fail / 有声明无趋势 warn / 齐全 pass）后启用。
-- **前置**：P1 review.py desc 强化 + 灰度（≥10 条历史微观问题 fail 率对比 <30%）。
-- **步骤**：开 EMC → 注入点层 → 发"西陵区某条街的精确情绪分是多少"→ 读回答。
-- **断言**：软=回答含宏观声明（`宏观`/`非精确`/`趋势`类词）；硬（P1 后）= review verdict 不因缺声明 pass。
-- **脚本**：`tests/browser/test_scale_honesty.py`（P1 启用）。
-- **关联**：plan v1.0 §配套 A；memory `project-design-philosophy`。
+- **描述**：问"某条街精确情绪分"（微观尺度细于数据支撑）→ 回答须含"宏观方向/非精确测量"声明 + 给替代趋势。P1 已强化 [review.py](ai_qa/review.py) `scale_paradigm_fit` desc（U7 三态：无声明→fail / 有声明无替代趋势→warn / 齐全→pass；scale_paradigm_fit 是客观项，fail→pass=false→revise）。
+- **前置**：✅ desc 强化已落地（5.178）；⚠️ 灰度对比**待数据**——`DATA/ai_qa/episodes.jsonl` 63 条全宏观/GIS 操作，**微观精确问题 0 命中**，无法跑"≥10 条 fail 率对比"。待微观数据积累后补灰度（防 fail 率突增>30%）。
+- **步骤**：开 EMC → 注入点层 → 发"西陵区某条街的精确情绪分是多少"→ 读回答 + 抓 review verdict。
+- **断言**：软=回答含宏观声明（`宏观`/`非精确`/`趋势`类词）；硬=review `scale_paradigm_fit` verdict ∈ {fail, warn}（无声明应 fail→revise，有声明无趋势 warn）。
+- **脚本**：`tests/browser/test_scale_honesty.py`（待落——需 LLM + 抓 /chat review 帧）。
+- **关联**：plan v1.0 §配套 A；memory `project-design-philosophy`；U7 三态（CLAUDE.md「AI·Copilot 开发内核」无直接，见 review.py desc）。
 
 ---
 
