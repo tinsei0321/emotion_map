@@ -5,7 +5,16 @@
 
 ---
 
-## 📅 2026-07-22（分支 `cpd` · CPD 核心 plan v0.4 + CB 专轨 + EMC 浮窗交互）
+## 📅 2026-07-22（分支 `cpd` · CPD 核心 plan **v1.0 定稿** + CB 专轨收敛 + EMC 浮窗交互）
+
+### ✅ CB-CPD-03 双模型三轮 → v1.0 定稿（CB-CPD 专轨收敛）（revision-log 5.175 · commit bc5c5ee · **待用户 push**）
+
+DeepSeek + K3 三轮验证 v0.4（报告 `SCAN_CPDPlan_03-{deepseek,k3}.md`）。
+
+- DS 综合 A- 建议收尾；**K3 发现 v0.4 新引入 H1 链式缺陷**——general 短路 × `exit!==undefined` 守卫 × 严格 turnId+1 去重 → 引导永久冻结静默失败（已核实 panel.js:1161/1181 链）。
+- 修 v1.0：① H1 dispatch 守卫→`settled` + 去重→单调递增 + `exit??null`；② M1 row 4 `hasAnalysis=true` 升级 `interpret`（dock→EMC 桥）；③ M2 hasVisibleEmotionLayer 谓词收紧 +判情绪性；④ L1 U8 改 `#param-panel.is-open` 同步谓词。
+- **CB-CPD 专轨收敛**：三轮双模型闭环（v0.1→v1.0），核心 6 决策全自洽，演示 C+→B+，承重零触。
+- **下一步**：P0 测试铺底 → P1 尺度诚实 → P2 引擎 G1-G4。
 
 ### ✅ CB-CPD-02 双模型二轮验证 → plan v0.4（revision-log 5.174 · commit a572ad8 · **待用户 push**）
 
