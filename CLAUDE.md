@@ -60,6 +60,27 @@
 
 6. **矩阵多归属主/次约定**：归因/计数时标主归属 + 次归属（`MATRIX_MAPPING` 的 role∈{主,次}），避免重复计或不可比——落 `poi_4x5_map` 实现细节。
 
+## AI·Copilot 开发内核（Smart Agent, Dumb Tool · 全项目纲领）
+
+> EMC/Copilot 模块开发的北极星之一，与「演示逻辑链」「项目设计哲学」同级。凡 Agent/Tool/编排决策对照此内核。完整展开见 `docs/copilot-architecture.md`。
+
+**一句话**：把"聪明"只放在两端（理解 + 表达），把"执行"做成最笨最稳的中间件——灵活来自 Agent，稳定来自 Tool，编排器机械接线。
+
+**三角色**：
+- **Smart Agent**（聪明的 Agent）= 意图理解 Agent（NL→意图+计划）+ 结果输出 Agent（结果→优化呈现+审查）。LLM 驱动，负责"想"：理解模糊性、生成计划、推理校验、优化表达。EMC 实例 = `diagnoseStep` + `finalStep`/answer + Review。
+- **Dumb Tool**（笨的工具）= Skill/Toolbox 标准化工具组。负责"做"、不思考：功能单一、参数契约、纯执行、制式化产出。EMC 实例 = `SKILL_DEFS`(`{tool,category,slots,defaults}`+`validateParams`) + `TOOLS`。
+- **Orchestrator 编排器**（桥梁）= Smart↔Dumb 确定性翻译官 + 传菜员。把计划翻成执行参数、派发、回收制式结果、裁定终态，**不调 LLM、不推理**。EMC 实例 = `harness.orchestrate`（分流 + 三态出口代码裁定）。
+
+**四条推论铁律**：
+1. **Tool 越 dumb 越好**——单一职责 + 参数契约 + 纯函数式 + **不内嵌 LLM 推理**。Tool 一旦"聪明"（内嵌推理/动态决策）就丧失稳定性，违背内核。
+2. **Agent 聪明只在两端**——意图理解（入口）+ 结果输出（出口）；中间执行交 dumb tool，避免"边想边做"低效不稳（纯 ReAct 反复推理-执行陷阱）。
+3. **编排器确定性**——协调是机械的（分流/派发/回收/裁定），不调 LLM、不推理。三态出口由代码裁定（非模型自觉）。
+4. **计划-执行分离**——先计划（Smart 产意图+method+data_plan），后执行（Dumb 按 plan 跑 tool，可 0 LLM 轮）；同类型任务不重复推理。
+
+**价值**：灵活+稳定兼得（灵活集中 Smart 两端，稳定集中 Dumb 中间，不互污染）/ 可测（Dumb 纯函数单测、Smart eval）/ 可扩展（加能力=加 dumb tool + 编排器登记，Smart 不需改）/ 抗退化（新功能判据：会推理→Smart，纯执行→Dumb，协调→编排器，防"大杂烩 panel.js"坍塌）。
+
+> 落地：EMC 现状已是此内核的成熟实现（经 CB 三轮 + 三态出口承重验证），**不需推倒重来**；本内核是命名/判据沉淀，指导后续 Copilot 开发与通用化。CPD 引擎（`deriveGuidance` 纯函数推导·不进 LLM）= 客户端确定性编排器，天然遵循铁律3。
+
 ## 目标客户画像（演示定向 · 全局生效）
 
 本平台面向三类客户，**所有数据/功能/演示决策须对照画像，不走偏**：

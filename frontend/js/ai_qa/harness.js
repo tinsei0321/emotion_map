@@ -348,6 +348,8 @@ function _executedGeoSteps(toolHistory) {
  * @returns {Promise<{ok, degraded?, rounds?, final?, review?, revised?}>}
  */
 export async function orchestrate(ctx, hooks = {}) {
+  // ══ 编排器·确定性裁定（Smart Agent/Dumb Tool 内核 · CLAUDE.md「AI·Copilot 开发内核」铁律3：不调 LLM、只接线）══
+  // 流程：Smart·计划（diagnose 意图卡）→ 编排器分流（短路 / plan-once-execute / ReAct 兜底）→ Dumb·执行（SKILL/TOOLS 纯参数化）→ 三态出口代码裁定（result/gap/concept）。详见 docs/copilot-architecture.md。
   const toolHistory = [];   // 每轮压缩摘要（注入下轮 prompt）
   let round = 1;
   let degraded = false;
@@ -372,7 +374,7 @@ export async function orchestrate(ctx, hooks = {}) {
     return { ok: true, rounds: 0, final: draft, review: { pass: true, degraded: true, skipped: 'quick-general' }, degraded: false, diagnose: { degraded: true, intent: 'general', quick: true } };
   }
 
-  // 认知前置步：DIAGNOSE 问题理解卡（失败/降级不阻塞，照走 agent loop）
+  // 【Smart·计划阶段】认知前置步：DIAGNOSE 问题理解卡（LLM 产意图+method+data_plan；失败/降级不阻塞，照走 agent loop）
   let diagnose = null;
   try {
     diagnose = await stages.diagnoseStep(ctx, hooks);
@@ -424,7 +426,7 @@ export async function orchestrate(ctx, hooks = {}) {
     }
   }
 
-  // P1 编排：single 技能走 runTemplatePath（0 agentStep，p^N→p²）；concept 已被上面 general 短路接走；multi/unknown 落 while-loop。
+  // 【Dumb·执行阶段】P1 编排：single 技能走 runTemplatePath（0 agentStep LLM 轮·纯参数化执行，p^N→p²）；concept 已被上面 general 短路接走；multi/unknown 落 while-loop（ReAct 兜底）。
   // ⑤④ 80% gate（self-protection）：_tplHitRateReady 冷启动放行保零回归；Flash 经 ≥10 次验证命中率<80%（系统性不可靠）时
   // 退 while-loop（更稳健：query-first + 多轮 + 对账），命中率≥80% 才主导 single 快路径。
   if (!ctx.resume && !diagnose.degraded && diagnose.template) {

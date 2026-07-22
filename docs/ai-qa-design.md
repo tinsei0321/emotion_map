@@ -3,6 +3,7 @@
 > 版本：Harness v1（2026-07-07，四层 SOP + Review + 独立子架构 + 独立窗口化）
 > 范围：AI 问答作为独立子系统的权威设计文档。未来做厚（多轮记忆 / Agent / 多模型协作 / 知识库 RAG）就扩本文。
 > 关联：后端 `ai_qa/` + 前端 `frontend/js/ai_qa/` + `frontend/chat.html` + `frontend/js/ai_qa_host.js`。
+> **通用抽象层**：本文 = 情绪地图实现细节；Copilot 内核（Smart Agent/Dumb Tool）+ 四层骨架 + 三铁律 + 落地模板见 [`docs/copilot-architecture.md`](copilot-architecture.md)（内核已入 [`CLAUDE.md`](../CLAUDE.md)「AI·Copilot 开发内核」节）。
 
 ---
 
