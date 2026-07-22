@@ -37,12 +37,17 @@ DeepSeek + K3 二轮验证 cpd-core-plan.md v0.3（报告 `SCAN_CPDPlan_02-{deep
 - **plan v0.2→v0.3 九点修订** + cb-journal CB-CPD-01 四节 + review.md prompt 自包含（CB 协议/纪律/轮次/语境/必读文件/署名）+ SCAN 命名 `-{model}` + RULES 七轴（演示表现力）+ KNOWLEDGE 演示逻辑链北极星。
 - **承重未动**（纯文档；review.py/前端/tests 留 P0-P2）。**待 CB-CPD-02** 验证修订落地 + 演示升维。
 
-### 🔄 EMC 浮窗交互改进（前端·**未 commit，待 F5 肉眼验**）
+### 🔄 EMC 浮窗交互改进（前端·**已 commit 待 F5 验**·panel.js/index.html/ai_qa.css）
 
-- F5 后默认折叠胶囊 + 展开欢迎卡（不记忆上轮态，430×640 默认）+ 历史垃圾桶加大 + 一键全清。
-- 内容驱动高度自适应（增量法，拉长+缩回；修 flex 撑满 scrollHeight 失真 bug）。
-- exit-badge 去线框改填充式 teal（全局避免线框设计原则）。
-- 待用户 F5 验过后合并 commit（panel.js / index.html / ai_qa.css）。
+- F5 后默认折叠胶囊 + 展开欢迎卡（不记忆上轮态，430×640）+ 历史垃圾桶加大 + 一键全清。
+- 内容驱动高度自适应（增量法，拉长+缩回；修 flex 撑满 scrollHeight 失真）。
+- exit-badge 去线框改填充式 teal（避免线框设计原则）。
+- **换环境后 F5 验**：折叠欢迎卡 / 高度自适应缩回 / exit-badge teal / 历史桶；有问题修后再处理。
+
+### ⬜ 下一步：P0 测试铺底（plan §八 · v1.0 定稿后）
+
+- 扩 `docs/emc-test-cases.md`（地基行为用例 4→N）+ 落 `tests/browser/`（复用 emc_helpers.py，断言挂真端点）。
+- 详见 [cpd-core-plan.md](cpd-core-plan.md) v1.0 定稿声明 + roadmap（P0→P1 尺度诚实→P2 引擎 G1-G4）。
 
 ---
 

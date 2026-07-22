@@ -8,7 +8,6 @@ import { getLastUsage, resetCallStats, getCallStats } from './api.js';
 const HISTORY_KEY = 'ai_qa_history_v1';
 const ARCHIVE_KEY = 'ai_qa_archive_v1';
 const MODE_KEY = 'ai_qa_think_mode';
-const COLLAPSE_KEY = 'ai_qa_emc_collapsed';   // EMC 折叠态持久化（收起=只剩一行输入触发条）
 const _INPUT_PH_EXPANDED = '问 EMC：哪些区域情绪最差？为什么？  （Enter 发送 · Shift+Enter 换行 · Esc 中断）';
 const _INPUT_PH_COLLAPSED = '向 EmotionMap Copilot 提问：了解"情绪地图"，观察、分析、总结城市情绪数据。';
 
@@ -23,7 +22,7 @@ let _curTrace = null;
 let _consecutiveAsks = 0;   // P1 ask_user 跨 orchestrate 连续计数：≥2 时下轮注入"禁止再 ask_user"防博弈式无限追问（MAX_ROUNDS 对 ask 无效，因 ask 直接 return 不计 round）
 let _thinkMode = localStorage.getItem(MODE_KEY) || 'pro';   // 'pro' | 'flash'
 let _thinkTimer = null;
-let _emcCollapsed = localStorage.getItem(COLLAPSE_KEY) === '1';   // EMC 折叠态（收起→一行输入触发条，点击展开）
+let _emcCollapsed = true;   // F5 默认折叠胶囊（不记忆上轮展开态·用户定 2026-07-22）
 let _userPinned = false;   // 用户上滑停跟；回到底部后恢复跟随
 
 const CTX_BUDGET = 1000000;   // DeepSeek V4 Pro 上下文 1M token
@@ -177,9 +176,8 @@ function setEmcCollapsed(c) {
   if (panel) panel.classList.toggle('is-collapsed', _emcCollapsed);
   const input = document.getElementById('chat-input');
   if (input) input.placeholder = _emcCollapsed ? _INPUT_PH_COLLAPSED : _INPUT_PH_EXPANDED;   // 折叠/展开切换文案
-  try { localStorage.setItem(COLLAPSE_KEY, _emcCollapsed ? '1' : '0'); } catch (_) {}
   if (_emcCollapsed) _fitCollapsedText();   // CPD：折叠态文本自适应
-  if (!_emcCollapsed) relaxEmc();   // 展开：回落 comfort/用户基线
+  if (!_emcCollapsed) { relaxEmc(); _scheduleFit(); }   // 展开：回落 + 内容驱动高度自适应
 }
 let _crowdedRaf = 0;
 function _checkCrowded() {
@@ -240,6 +238,15 @@ function switchSession(id) {
 }
 function deleteSession(id) {
   _archive = _archive.filter((s) => s.id !== id);
+  saveArchive();
+  if (_view === 'history') renderHistoryList(document.getElementById('emc-history-search')?.value || '');
+}
+/** 一键清空全部历史会话（仅 _archive；当前会话 _history 不动）。用户定 2026-07-22。 */
+function clearAllHistory() {
+  if (_streaming) return;
+  if (!_archive.length) return;
+  if (!window.confirm('确定清空全部历史会话？此操作不可撤销。')) return;
+  _archive = [];
   saveArchive();
   if (_view === 'history') renderHistoryList(document.getElementById('emc-history-search')?.value || '');
 }
@@ -1244,6 +1251,7 @@ function renderEmptyState() {
   } else if (existing) {
     existing.remove();
   }
+  _scheduleFit();   // CPD：欢迎卡显/隐→内容高变→重算 panel 高（缩回欢迎卡高度；内容增则拉长）
 }
 
 function restoreHistory() {
@@ -1264,6 +1272,7 @@ function clearChat() {
   _consecutiveAsks = 0;   // P1: 重置跨会话 ask 计数（防上会话泄漏到新会话首问·chat-new 复用 clearChat 同样覆盖）
   saveHistory();
   restoreHistory();
+  _scheduleFit();   // CPD：新对话回欢迎卡→显式触发高度缩回（保险，不单靠 MutationObserver）
 }
 
 /** 历史记录：EMC 内就地视图切换（chat ↔ history），1:1 Claude Code。
@@ -1276,6 +1285,7 @@ function setView(v) {
   if (c) c.hidden = (v !== 'chat');
   if (h) h.hidden = (v !== 'history');
   if (v === 'history') renderHistoryList(document.getElementById('emc-history-search')?.value || '');
+  if (v === 'chat') _scheduleFit();   // CPD：切回对话视图→内容驱动重算高度
 }
 function toggleHistoryView() {
   if (_streaming) return;
@@ -1296,7 +1306,7 @@ function renderHistoryList(q) {
     `<div class="emc-history-item${it.isCurrent ? ' is-current' : ''}" data-id="${it.id}">`
     + `<span class="emc-history-txt"><span class="emc-history-title">${escapeHtml(it.title)}</span>`
     + `<span class="emc-history-time">${formatTs(it.ts)}</span></span>`
-    + (it.isCurrent ? '' : `<button class="emc-history-del" data-id="${it.id}" title="删除该会话"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M7 7l1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>`)
+    + (it.isCurrent ? '' : `<button class="emc-history-del" data-id="${it.id}" title="删除该会话"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M7 7l1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>`)
     + `</div>`
   ).join('');
   list.querySelectorAll('.emc-history-item').forEach((row) => {
@@ -1401,21 +1411,14 @@ function mountChatChrome() {
 //   （position:absolute 锚 #map，见 layout.css）。缩放用自持 .emc-resize-grip（显眼斜线符号，
 //   pointer 事件驱动，min/max 钳制不压比例尺）—— 替代难发现的原生 resize 角；ResizeObserver 存 localStorage。
 //   原 setEmcMode 三档自动调高（写 --emc-h）随浮窗化退役为无害 no-op（height 固定 + grip 自持）。
-const EMC_FLOAT_KEY = 'emc-float-size';
 function _setupEmcFloat() {
   const emc = document.getElementById('emc-panel');
   const map = document.getElementById('map');
   if (!emc || !map) return;
   if (emc.parentElement !== map) map.appendChild(emc);   // reparent 到 #map（幂等）
-  // 恢复持久化尺寸（用户上次 resize 的宽高）
-  try {
-    const saved = localStorage.getItem(EMC_FLOAT_KEY);
-    if (saved) {
-      const { w, h } = JSON.parse(saved);
-      if (w) emc.style.width = w + 'px';
-      if (h) emc.style.height = h + 'px';
-    }
-  } catch (_) {}
+  // F5 默认尺寸（不记忆上轮 resize·用户定 2026-07-22）：宽 430（欢迎卡副标题整句一行）× 高 640
+  emc.style.width = '430px';
+  emc.style.height = '640px';
   // 自持缩放手柄（pointer 事件；min 300×200 / max 不压比例尺，与 CSS max-height 同步）
   if (!emc.querySelector('.emc-resize-grip')) {
     const grip = document.createElement('div');
@@ -1451,16 +1454,48 @@ function _setupEmcFloat() {
       if (raf) return;
       raf = requestAnimationFrame(() => {
         raf = 0;
-        const collapsed = emc.classList.contains('is-collapsed');
-        if (!collapsed) {
-          try { localStorage.setItem(EMC_FLOAT_KEY, JSON.stringify({ w: emc.offsetWidth, h: emc.offsetHeight })); } catch (_) {}
-        } else {
-          _fitCollapsedText();   // CPD：折叠态宽度变 → 文本自适应重排
-        }
+        if (emc.classList.contains('is-collapsed')) _fitCollapsedText();   // CPD：折叠态宽度变 → 文本自适应重排
         relayoutFloats();        // CPD ③④：EMC 宽度变 → 抽屉 + param-panel 浮层自适应重排
       });
     });
     emc._floatObs.observe(emc);
+  }
+}
+
+// ── CPD：内容驱动高度自适应（用户定 2026-07-22）──
+//   chat-messages 内容增→panel 拉长至容纳（不超 max-height，超则内部滚）；内容减/跳欢迎卡→缩短。
+//   增量法：need = panel高 - msgs可见高 + msgs内容总高（= 非内容部分 head/input/suggest + 内容总高）。
+//   rAF 节流防抖（流式 characterData 高频触发）；折叠态/历史视图跳过。grip 手动拖动改 height 不触发
+//   chat-messages MutationObserver，故用户拖大后内容不变→保持手动尺寸，内容再变才重算。
+let _fitRaf = 0;
+function _fitEmcToContent() {
+  if (_emcCollapsed) return;
+  if (_view === 'history') return;   // 历史列表自管高度
+  const emc = document.getElementById('emc-panel');
+  const msgs = document.getElementById('chat-messages');
+  if (!emc || !msgs) return;
+  const minH = 360;   // 下限（保 head + input + 最小消息区；同 EMC_MIN 量级）
+  const maxH = Math.max(minH, window.innerHeight - 138);   // 同 layout.css max-height（top30+底留约108）
+  // 非内容部分（head/suggest/input）= panel - msgs 当前撑满可见高
+  const nonContent = emc.offsetHeight - msgs.clientHeight;
+  // 内容自然高：临时取消 flex 拉伸量真实高——直接 scrollHeight 在「内容<可见区」时 = clientHeight
+  // （flex 撑满致失真，是"缩短"失效根因；内容多溢出时 scrollHeight 才大于 clientHeight，故"拉长"原正常）
+  const sf = msgs.style.flex, sh = msgs.style.height;
+  msgs.style.flex = '0 0 auto'; msgs.style.height = 'auto';
+  const contentH = msgs.offsetHeight;
+  msgs.style.flex = sf; msgs.style.height = sh;   // 同步恢复（同帧不绘制无闪烁；style 变不触发 MutationObserver）
+  const need = nonContent + contentH;
+  emc.style.height = Math.max(minH, Math.min(maxH, need)) + 'px';
+}
+function _scheduleFit() {
+  if (_fitRaf) return;
+  _fitRaf = requestAnimationFrame(() => { _fitRaf = 0; _fitEmcToContent(); });
+}
+function _setupEmcContentFit() {
+  const msgs = document.getElementById('chat-messages');
+  if (msgs && !msgs._fitObs) {
+    msgs._fitObs = new MutationObserver(() => _scheduleFit());
+    msgs._fitObs.observe(msgs, { childList: true, subtree: true, characterData: true });
   }
 }
 
@@ -1563,6 +1598,7 @@ export function initChatPanel() {
     cap.addEventListener('mouseleave', _ctxCapHideTip);
   }
   document.getElementById('chat-history')?.addEventListener('click', () => toggleHistoryView());
+  document.getElementById('emc-history-clear')?.addEventListener('click', clearAllHistory);
   document.getElementById('emc-history-search')?.addEventListener('input', (e) => renderHistoryList(e.target.value));
 
   // 发送 / Enter 发送 / Esc 中断
@@ -1597,8 +1633,15 @@ export function initChatPanel() {
 
   document.getElementById('chat-messages')?.addEventListener('click', onMsgClick);
   wireModeSwitch();
+  // F5 启动：上轮当前会话归档进 _archive（可从历史记录翻看，不丢），主区从欢迎卡开场·用户定 2026-07-22
+  if (_history.length) {
+    _archive.unshift({ id: 's' + Date.now(), title: _titleOf(_history), history: [..._history], createdAt: Date.now() });
+    _history = [];
+    saveArchive(); saveHistory();
+  }
   restoreHistory();
   mountChatChrome();
+  _setupEmcContentFit();   // CPD：内容驱动高度自适应（监听 chat-messages DOM 变化）
   setupEmcHeightObservers();
   setEmcMode('comfort');
 
