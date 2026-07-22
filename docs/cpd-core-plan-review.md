@@ -155,5 +155,6 @@ v0.2 相对 v0.1 新增：① 决策 4 + §配套 A「尺度诚实」（落 revi
 - **CB-CPD-00b · 2026-07-22**：CB 机制优化——RULES §2.1 六轴→七轴（加「演示表现力」10%）、§2.3 八维→九维；KNOWLEDGE §2 补"演示逻辑链北极星"语境；**本专轨升 v2**（维度 4 升格演示表现力 + U6）。机制层动作，不动 plan 正文。
 - **CB-CPD-00c · 2026-07-22**：cpd-core-plan.md v0.1 → **v0.2**——吸收两条 EMC 思路建议（① 决策 4 + §配套 A「尺度诚实」落 `review.py` `scale_paradigm_fit` desc；② §配套 B「测试加固」P0 最高优 + §八优先级重排 P0 测试 / P1 尺度 / P2 引擎）；加 U7（尺度诚实话术分寸）。**v0.2 作为 CB-CPD-01 被评 artifact 就绪**，待第三方首评。
 - **CB-CPD-01 · 2026-07-22**：DeepSeek + K3 双模型首评 v0.2。反评价 26 条（agree 20 / partial 6 / disagree 0，4 承重证据 grep/read 核实）→ plan v0.2→**v0.3**（九点修订：§4.1 信号修正 / §4.2 特征向量真值表 / §4.3 调度强化 / §七 curState 措辞 / §九 光环 theme-var / §八 分阶段修正 / §配套A 灰度+U7 三态 / §六 6.4 演示链 / U8-U10）。正文见 [cb-journal.md](catch-ball/cb-journal.md) `## CB-CPD-01`。待 CB-CPD-02 验证修订落地 + 演示表现力升维。
+- **CB-CPD-02 · 2026-07-22**：DeepSeek + K3 双模型二轮验证 v0.3。首轮建议全执行（DS 12/12、K3 15/15），v0.3 升 B+（两份一致）。**两份独立收敛 2 高优**（init 循环 import→依赖注入 / S4 动态变量无源→降级 {区域名}）+ M1 色名脱节（已核实 tokens.css 色板无"深红"）+ M3 优先级文字矛盾。反评价 14 条（agree 11 / partial 3 / disagree 0）→ plan v0.3→**v0.4**（11 点修订）。正文见 `## CB-CPD-02`。待 CB-CPD-03 验证定稿；v0.3/v0.4 可进 P0。
 
 > 轮次反评价正文落 [cb-journal.md](catch-ball/cb-journal.md) `## CB-CPD-{N}` 章（不在此文件重复），本文件只作专轨指南 + 未决项索引。

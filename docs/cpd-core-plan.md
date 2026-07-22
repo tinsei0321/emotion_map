@@ -1,13 +1,15 @@
 # CPD 核心引导逻辑（EMC 主控编排）实施计划
 
-> 状态：**v0.3**（2026-07-22）· CB-CPD-01 反评价后修订（DeepSeek + K3 首轮）→ 待 CB-CPD-02 验证，见 [cpd-core-plan-review.md](cpd-core-plan-review.md) + [cb-journal.md `## CB-CPD-01`](catch-ball/cb-journal.md)
+> 状态：**v0.4**（2026-07-22）· CB-CPD-02 反评价后修订（DeepSeek + K3 双模型，首轮建议全执行、v0.3 升 B+）→ 待 CB-CPD-03 验证，见 [cpd-core-plan-review.md](cpd-core-plan-review.md) + [cb-journal.md `## CB-CPD-02`](catch-ball/cb-journal.md)
 > 分支 `cpd` | 承重：调用次数优先 / 不派 subagent / 只 commit 不 push / 不合分支不抽离
 >
-> **v0.2 → v0.3 变更**（CB-CPD-01 反评价，26 条建议 agree 20 / partial 6 / disagree 0）：
-> - **修 3 处事实错误**（K3 P0，已 grep 核实）：① `.aiq-conclusion` 死信号→改 `.aiq-exit-badge`；② exit 词表大写→小写五值 ∪ undefined（CONCEPT 改判 intent/skipped，补 drift）；③ §4.2 映射 key=curState（deriveState 使 S0/S1 不可达）→ 特征向量真值表。
-> - **强化承重实证**：curState 措辞修正（已进 buildContext 语境，非"不进 LLM"）；光环硬编码 hex（ai_qa.css:431）→ theme-var 化。
-> - **演示表现力升维**（DeepSeek 最短板）：引导从"功能教程"→"诊断叙事"——S3 空间交互优先、S4 地图定位 CTA 闭合交互环、文案叙事化。
-> - turn-ended 载荷 `{exit,turnId,intent}` + finally 守卫 + 引擎 init 恢复；U7 三态分级 + 灰度；新增 U8-U10。
+> **v0.3 → v0.4 变更**（CB-CPD-02 反评价，DS+K3 两份独立收敛；首轮建议全执行，本轮修 v0.3 引入的新高优）：
+> - **H1 init 循环 import → 依赖注入**（DS R2 + K3 H1 收敛）：v0.3 "导出只读 getter" 致 panel.js↔cpd-guide.js 循环 import → 改 panel.js→cpd-guide.js 单向（init 注入 getter），cpd-guide.js 零 import panel.js。
+> - **H2 S4 动态变量无源 → 降级**（DS R1 + K3 H2 收敛）：~~"主题倾向 X×Y，排序第 N"~~ 客户端无源（正则抠违背用例 2 反模式）→「{区域名}的归因已就绪」（复用 _followUps:455）。
+> - **M1 色名同步色带**（已核实 tokens.css:28-29）：文案"深红"→"深橙"（very-negative #D85A30 深珊瑚橙，无"深红"）；色名从 theme var 派生（铁律）。
+> - **M3 优先级文字矛盾**：streaming 第一优先（v0.3 文字"hasImport 优先→streaming"致无数据+流式首匹 import，违反流式门）。
+> - 中优：M2 hasRange=false+result 兼带深读/导出次 CTA；R3 hasImport 谓词注释；R4 S3 路径（G1 被动/G3 高亮三端同步）；U8 改 is-open 确定性信号（弃 3 秒魔数）；L1 init 重置 expectedTurnId；L5 引导态不持久化明文。
+> - v0.2→v0.3 变更见 cb-journal `## CB-CPD-01`。
 >
 > 原引导引擎主体（§二决策 / §三图谱 / §五桥 / §六披露 / §七承重）保留并修正。
 
@@ -73,7 +75,7 @@ chip/控件始终可达，引导 = 高亮 + 文案 + 光环 + CTA，不强制隐
 - 复用 `cpd-state.js` 已订阅：`getLayers()`（visible 非 group）、`#chat-messages .chat-msg-user`、`layers:changed`/`layer:selected`/MutationObserver。
 - **S4 结论信号（v0.3 修正）**：~~`.aiq-conclusion`~~（cpd-state.js:29 查询，但**全前端无 JS 创建者 = 死信号**，curState 永不到 S4——CB-CPD-01 K3 P0-1 核实）→ 改用 **`.aiq-exit-badge`**（[panel.js:378](frontend/js/ai_qa/panel.js#L378) 回答完毕时创建，流式中不存在，顺带免疫流式误推）。deriveState 的 `concl` 判据同步改。
 - **特征谓词（v0.3 定义，CB-CPD-01 K3 M5）**：
-  - `hasImport` = 存在**非 AI 组、非 tool 产出**的 point 层（排除 EMC grid/AI 组含 point 的误判）。
+  - `hasImport` = 存在**非 AI 组、非 tool 产出**的 point 层（排除 EMC grid/AI 组含 point 误判；G1 实现注释列出排除来源：inspect_zone focus marker / zonal grid point / AI 组 point，CB-CPD-02 R3）。
   - `hasRange` = 有 isRange 层（复用 [state.js:662](frontend/js/state.js#L662) `isRangeLayer`，无歧义）。
   - `hasAnalysis` = 存在 `paint._ui.tool∈{grid,zonal,heatmap}` 或归属 'EmotionMap Copilot' 组的层。
   - `hasVisibleEmotionLayer` = 有可见情绪层（visible 非 group 非 range）。
@@ -88,11 +90,11 @@ chip/控件始终可达，引导 = 高亮 + 文案 + 光环 + CTA，不强制隐
 
 | hasImport | hasRange | visEmotion | lastExit | streaming | kind | 文案（叙事化·服务演示链） | target |
 |---|---|---|---|---|---|---|---|
-| **false** | * | * | * | false | `import` | 「生成第一张情绪地图——导入数据，我帮你定位最值得关注的区域」 | `openImport` |
-| true | **false** | * | * | false | `range` | 「聚焦一片城区——框选范围，看情绪的高低起伏」 | `cpd:focus-tab range` |
-| true | true | **false** | * | false | `layers` | 「看张力——选情绪图层，深红深绿告诉你哪里最值得关注」 | 高亮 layers chip |
-| true | true | true | ∈{undefined, general} | false | `analyze`（空间优先） | 「点击地图上深红/深绿的区域——我告诉你那里为什么」（备选 CTA：「或问我：哪里情绪最差？」） | 地图 hover/click 引导 / input |
-| true | true | true | `result` | false | `export`(+地图定位) | 「这片主题倾向 X×Y，排序第 N——深读 / 在地图定位 / 导出」 | export + 地图 focus + range |
+| **false** | * | * | * | false | `import` | 「生成第一张情绪地图——导入数据，我帮你定位最值得关注的区域」（注：`visEmotion=true` 纯 AI 层场景降级为「导入数据继续分析」，G1 实现分支·CB-CPD-02 L3） | `openImport` |
+| true | **false** | * | * | false | `range` | 「聚焦一片城区——框选范围，看情绪的高低起伏」（注：`hasRange=false ∧ lastExit=result` 时**兼带**深读/导出次 CTA，避免演示高潮断档·CB-CPD-02 M2） | `cpd:focus-tab range` |
+| true | true | **false** | * | false | `layers` | 「看张力——选情绪图层，**深绿**（情绪好）/ **深橙**（情绪差）告诉你哪里最值得关注」 | 高亮 layers chip |
+| true | true | true | ∈{undefined, general} | false | `analyze`（空间优先） | 「点击地图上**深绿/深橙**的区域——我告诉你那里为什么」（备选 CTA：「或问我：哪里情绪最差？」） | 地图 hover/click 引导 / input |
+| true | true | true | `result` | false | `export`(+地图定位) | 「**{区域名}**的归因已就绪——深读 / 在地图定位 / 导出」 | export + 地图 focus + range |
 | true | true | true | `gap`/`partial` | false | `null` | —（`_followUps` 已覆盖追问胶囊，引擎不重复推） | — |
 | true | true | true | `ask` | false | `null` | —（选项胶囊已在答案区，U3 收敛为不介入） | — |
 | true | true | true | `drift` | false | `retry` | 「生成异常·已拦截——换个问法或缩小范围」 | input（同 `_followUps`:465） |
@@ -100,12 +102,14 @@ chip/控件始终可达，引导 = 高亮 + 文案 + 光环 + CTA，不强制隐
 
 **规则**：
 - **回退 = 同真值表重算**（无特殊路径，CB-CPD-01 共识）：用户删图层/range → hasImport/hasRange 变 false → 自然回推 import/range。
-- **优先级**：`hasImport=false` 优先一切（先导数据）→ `streaming=true`（不打扰）→ `lastExit∈{gap,partial,ask}` → null（让 `_followUps` 接手）→ `drift` → retry → 其余按表。
-- **文案叙事化**（v0.3·CB-CPD-01 演示表现力）：从"功能名"（导入/框选/加载）改"诊断叙事步骤"（生成张力地图/聚焦城区/看张力分布），服务演示逻辑链的诊断叙事，非功能教程。具体文案 G1/G2 实现时打磨。
+- **优先级（v0.4 修正 CB-CPD-02 M3：streaming 第一，与表格语义对齐）**：`streaming=true`（不打扰，第一优先）→ `hasImport=false`（先导数据）→ `lastExit∈{gap,partial,ask}` → null（让 `_followUps` 接手）→ `drift` → retry → 其余按表。
+- **文案叙事化**（v0.3·CB-CPD-01 演示表现力）：从"功能名"改"诊断叙事步骤"。具体文案 G1/G2 实现时打磨。
+- **色名铁律（v0.4·CB-CPD-02 M1）**：文案色名须取自 theme var 端点——当前色板 very-positive `#0F6E56`（深青绿）/ very-negative `#D85A30`（深珊瑚橙），**无"深红"**（v0.3 文案"深红"与色带脱节，已改"深绿/深橙"）。色名放进 `deriveGuidance` 常量、从 `--geojson-color-emotion-very-*` 派生显示名——色带调整时文案只改一处（视野端 ↔ 结论端同步在文案层）。
+- **S4 动态变量来源（v0.4·CB-CPD-02 H2/R1 两份收敛）**：~~"主题倾向 X×Y，排序第 N"~~ 客户端无源（X×Y/N 非确定性信号，正则抠违背用例 2 反模式）→ 降级为**确定性变量 `{区域名}`**（复用 `_followUps`:455 region 抽取，§4.3 已声明）。若未来要 domain/element/rank，由 turn-ended 载荷从 `diagnose.card` 结构字段带（harness 侧读取非改动，留 G3）。
 
 ### 4.3 调度接口（v0.3 强化：事件载荷 + init 恢复 + reset）
 
-- **不改** harness.js / stages.js / diagnose / 四态出口 / tracker。引擎只读（trace/curState），不写 harness；**不 import panel.js 内部**。
+- **不改** harness.js / stages.js / diagnose / 四态出口 / tracker。引擎只读（trace/curState），不写 harness；**运行时事件松耦合（turn-ended 携带数据），init 经依赖注入（panel.js→cpd-guide.js 单向，cpd-guide.js 零 import panel.js）——CB-CPD-02 H1 消除循环 import**。
 - **turn-ended 事件载荷（v0.3）**——panel.js `send()` finally 段 dispatch：
   ```js
   if (_curTrace?.exit !== undefined) document.dispatchEvent(new CustomEvent('cpd:turn-ended', {
@@ -114,7 +118,7 @@ chip/控件始终可达，引导 = 高亮 + 文案 + 光环 + CTA，不强制隐
   ```
   - 携带 `{exit, turnId, intent}`：`turnId` 供引擎去重（快速连续 send 只处理 expectedTurnId+1，CB-CPD-01 DS 竞态解）；`intent` 供 general 判定。
   - **finally 守卫** `_curTrace?.exit !== undefined`（abort/异常 orchestrate 抛错时不误 dispatch）。
-- **引擎 init 主动恢复（v0.3，CB-CPD-01 K3 竞态）**：F5/switchSession/clearChat 不 dispatch turn-ended → 引擎初始化时经 panel.js 导出的**只读 getter** 读 `_history` 末条 trace.exit 一次，算初始引导（非 import 闭包）。G1 验收三硬用例：F5 恢复 / 切会话 / abort 不误推。
+- **引擎 init 主动恢复（v0.3→v0.4 改依赖注入，CB-CPD-02 H1/R2 收敛）**：F5/switchSession/clearChat 不 dispatch turn-ended → 引擎初始化需读末条 trace.exit。**v0.3 "导出只读 getter" 方案致 panel.js↔cpd-guide.js 循环 import** → v0.4 改**依赖注入（单向）**：`initCpdGuide({ getLastExit: () => _history.at(-1)?.trace?.exit ?? null, isStreaming: () => _streaming })`（panel.js 调，注入 getter），cpd-guide.js 零 import panel.js（与决策 2 自洽）。**init 时重置 expectedTurnId**（切会话/clearChat 致 `_history.length` 回退断链，CB-CPD-02 L1）。G1 验收三硬用例：F5 恢复 / 切会话 / abort 不误推。
 - **"换范围"重置（v0.3，CB-CPD-01 DS）**：S4·result 的"换范围"CTA dispatch `cpd:reset` → 引擎重置 lastExit + recompute（不依赖手动删图层）。
 - CTA 复用既有入口：`openImport`/`cpd:focus-tab`/`openHeatmap/Buffer/GridDialog`/`_exportReport` + 地图 focus/popup（S4 地图定位，复用 `_followUps`:455 region 抽取）。
 
@@ -155,10 +159,13 @@ chip/控件始终可达，引导 = 高亮 + 文案 + 光环 + CTA，不强制隐
 
 ### 6.4 演示链服务 + 绿色摘要条（v0.3·CB-CPD-01 演示表现力共识）
 - **引导服务演示链交互环**（U6 实质解法）：引导不止于"装载链"（import→range→layers），须闭合"点击要素→分析→归因"交互环——
-  - **S3 analyze 空间交互优先**：文案"点击地图深红/深绿区域"（引导 hover/click 要素），对话作备选 CTA（非首选）——服务演示逻辑链"引导点击突出要素"环节。
+  - **S3 analyze 空间交互优先**：文案"点击地图**深绿/深橙**区域"（色名同步色带·CB-CPD-02 M1；引导 hover/click 要素），对话作备选 CTA（非首选）——服务演示逻辑链"引导点击突出要素"环节。**实现路径（CB-CPD-02 R4）**：G1=被动文案（banner 到位即可）；G3=地图高亮（极性 top/bottom 区域橙色 `#ff9000` 呼吸闪烁，三端同步——视野↔数据↔结论同步铁律的视觉落地）。
   - **S4·result 地图定位 CTA**：结论含 `[ref:区域]`/`{{focus:}}` 时，banner 次 CTA「在地图上定位该区域」（复用 `_followUps`:455 region 抽取 + 现有 focus/popup），把引导环从"结论"闭合回"视野端"——落实"视野↔数据↔结论"同步铁律。
-- **文案叙事化**：S0-S4 从"功能名"改"诊断叙事步骤"（生成张力地图/聚焦城区/看张力分布/点击深红格子/宏观诊断信号），服务"定位关注区+主题倾向+排序优先级"有用性环。具体文案 G1/G2 打磨（见 §4.2 文案列）。
+- **文案叙事化**：S0-S4 从"功能名"改"诊断叙事步骤"（生成张力地图/聚焦城区/看张力分布/点击**深橙**格子/宏观诊断信号），服务"定位关注区+主题倾向+排序优先级"有用性环。具体文案 G1/G2 打磨（见 §4.2 文案列）。
 - **绿色摘要条定义**（§八 G3 提及但 v0.2 未定义，CB-CPD-01 K3 L2）：已完成步骤（import/range）折叠成的「● 已导入 · 修改」条 = **banner 的 done 变体**（同组件不同态，非新视觉方言）；点「修改」回退引导（同真值表重算）。
+
+### 6.5 引导态不持久化（v0.4·CB-CPD-02 L5）
+引导态（guidance kind / `.has-guidance` 类）**不写 localStorage**——每次加载由引擎 init 主动恢复重算（信号全客户端可重推，依赖注入 getter 即时读末条 trace）。`_emcCollapsed` 折叠态已改 F5 默认折叠不记忆（2026-07-22 用户定），引导态同哲学。
 
 ---
 
@@ -206,8 +213,8 @@ chip/控件始终可达，引导 = 高亮 + 文案 + 光环 + CTA，不强制隐
 
 | 文件 | 改动 | 时机 |
 |---|---|---|
-| `frontend/js/ai_qa/cpd-guide.js` | **新建**：确定性引擎（deriveGuidance + 特征向量 + 映射 + subscribe + init 恢复） | P2·G1 |
-| `frontend/js/ai_qa/panel.js` | `send()` finally 加 `cpd:turn-ended {exit,turnId,intent}`（守卫）；`_setupCpdBar` 删测试接引擎 + 光环 click CTA；导出末条 trace 只读 getter；banner 渲染 | P2·G1/G2 |
+| `frontend/js/ai_qa/cpd-guide.js` | **新建**：确定性引擎（deriveGuidance + 特征向量 + 映射 + subscribe + **依赖注入 init**，零 import panel.js） | P2·G1 |
+| `frontend/js/ai_qa/panel.js` | `send()` finally 加 `cpd:turn-ended {exit,turnId,intent}`（守卫）；`_setupCpdBar` 删测试接引擎 + 光环 click CTA；**init 时注入 getter**（非导出，消除循环 import·CB-CPD-02 H1）；banner 渲染 | P2·G1/G2 |
 | `frontend/js/ai_qa/cpd-state.js` | S4 信号 `.aiq-conclusion`→`.aiq-exit-badge`；导出 hasImport/hasRange/hasAnalysis/hasVisibleEmotionLayer 谓词（不改 deriveState 逻辑） | P2·G1 |
 | `frontend/js/sidebar.js` | 监听 `cpd:guide-cta`/`cpd:reset`（复用 `cpd:focus-tab`） | P2·G2 |
 | `frontend/css/ai_qa.css` | `.emc-guide-banner` + `.has-guidance` 微调；**光环渐变抽 `--emc-halo-*` theme var**（ai_qa.css:431 硬编码 hex→var，Light 另校准） | P2·G2/G4 |
@@ -269,6 +276,6 @@ chip/控件始终可达，引导 = 高亮 + 文案 + 光环 + CTA，不强制隐
 5. **U5 banner 与空态欢迎卡融合**——CB-CPD-01 agree 融合（§6.3）。
 6. **U6 引导是否真服务演示链**——CB-CPD-01 partial：当前只服务前链路（装载），**交互环未闭合**；v0.3 解法 = S3 空间交互优先 + S4 地图定位 CTA（§6.4），闭合后才解除"为引导而引导"风险。
 7. **U7 尺度诚实话术分寸**——CB-CPD-01 收敛**三态分级**（fail/warn/pass）+ 灰度（§配套 A）。
-8. **U8（v0.3）用户忙检测**：S2→S3 过渡时用户在手动操作 dock（3 秒内 dock 点击）→ guidance=null。G3 边界。
+8. **U8（v0.3→v0.4 改确定性信号）用户忙检测**：S2→S3 过渡时用户在手动操作 dock/param-panel → guidance=null。**v0.3 "3 秒时间窗" 弃**（魔数无依据，CB-CPD-02 L4/R5 收敛）→ 改 dock/param-panel `is-open` 确定性状态（复用 cpd-state.js:60-63 observer，比时间窗稳）。G3 边界。
 9. **U9（v0.3）engage 解除后再亮兜底**：长期无动作引导消失，是否加"N 分钟→轻量再亮"或保持不打扰优先。留观察。
 10. **U10（v0.3）地图层引导浮层**：S0/S1 地图中心叠加引导浮层（DS 建议），属另一子系统；先用 S4 地图定位 CTA 轻量闭合，地图浮层抛光期评估。
