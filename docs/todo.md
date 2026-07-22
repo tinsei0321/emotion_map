@@ -5,7 +5,18 @@
 
 ---
 
-## 📅 2026-07-22（分支 `cpd` · CPD 核心 plan v0.3 + CB 专轨 + EMC 浮窗交互）
+## 📅 2026-07-22（分支 `cpd` · CPD 核心 plan v0.4 + CB 专轨 + EMC 浮窗交互）
+
+### ✅ CB-CPD-02 双模型二轮验证 → plan v0.4（revision-log 5.174 · commit a572ad8 · **待用户 push**）
+
+DeepSeek + K3 二轮验证 cpd-core-plan.md v0.3（报告 `SCAN_CPDPlan_02-{deepseek,k3}.md`）。
+
+- **首轮建议全执行**（DS 12/12、K3 15/15），v0.3 升 **B+**（两份一致，v0.2 B-→B+）。
+- **两份独立收敛 2 高优**（高置信）：① init 循环 import → 依赖注入（panel.js→cpd-guide.js 单向）；② S4 动态变量无源（X×Y/N）→ 降级「{区域名}的归因已就绪」。
+- **M1 色名脱节**（核实 tokens.css:28-29 色板无"深红"，very-negative #D85A30 深珊瑚橙）→ 文案"深红"改"深橙" + 色名从 theme var 派生铁律。
+- M3 优先级文字矛盾（streaming 第一）；M2 range+result 兼带次 CTA。
+- 反评价 14 条（agree 11 / partial 3 / disagree 0）→ plan v0.3→**v0.4** 11 点修订。
+- **承重未动**（纯文档）。**v0.3/v0.4 可进 P0 测试铺底**；待 CB-CPD-03 验证定稿。
 
 ### ✅ CB-CPD-01 双模型首评反评价 → plan v0.3（revision-log 5.173 · commit c9eeed0 · **待用户 push**）
 
