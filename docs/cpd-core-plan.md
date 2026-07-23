@@ -5,6 +5,8 @@
 >
 > **P0 增量吸收（2026-07-22）**：§八 P0 吸收 [GUIDANCE_E2E-k3.md](catch-ball/GUIDANCE_E2E-k3.md) 两项增量——A1 谓词级测试基建（§1.1）+ 组合场景回归（§4.4）。**核心 6 决策与承重清单不变**（打磨 = 交叉链接，非 CB 迭代，不开 CB-CPD-04）；前瞻丰富轨（F1-F8/G3+）见 GUIDANCE 独立文。
 >
+> **v1.1 修订（2026-07-23·实施发现 plan 层新问题·不开 CB-CPD-04）**：G1 实施后发现 §4.2 row 7 `analyze` 阶段（点+范围就绪）引导过窄——下一步分支爆炸（gis操作 × gis分析 × 操作→分析），确定性引导穷举不了，硬给固定 CTA 卡用户。改为**多分支→对话交接**：光环 CTA 打开对话窗口（展开 input）+ 确定性 examples 起点（点击→harness diagnose 识别意图→plan→execute）。**CPD 只确定性交接，不调 LLM**（铁律3·plan §决策2 接缝）；意图识别归 EMC Smart Agent。原「点击地图深绿/深橙」空间交互（§6.4 S3）降为 examples 一项。见 §4.2 row 7 + §6.4 修订。
+>
 > **v0.4 → v1.0 定稿变更**（CB-CPD-03 反评价，DS 建议收尾 + K3 发现 v0.4 新引入 H1 链式缺陷必修）：
 > - **H1 general 断链修复**（K3 H1，已核实 [panel.js:1161/1162/1181](frontend/js/ai_qa/panel.js#L1161) 链）：v0.4 finally 守卫 `exit!==undefined` × 严格 turnId+1 去重 × general 无 exit（[harness.js:372/412](frontend/js/ai_qa/harness.js#L372)）= general 轮 `settled=true` 照常 push 致 `_history` 跳号但不 dispatch → 引擎丢事件 → **引导永久冻结（静默失败）**。改：① 守卫 `exit!==undefined` → **`settled`**（正常完成即 dispatch，abort/异常不 dispatch，覆盖 general）；② 去重"严格 +1"→**单调递增**（turnId > lastProcessed）；③ 真值表 row 4 lastExit∈{null（含 general 短路）}，intent==='general' 区分。
 > - **M1 hasAnalysis 死信号 → interpret 分支**（K3 M1）：§4.1 定义但真值表零引用 → row 4 加 `hasAnalysis=true` 升级 `interpret`「这张图已就绪——问我说明了什么」桥 dock 产图回 EMC（闭合 dock→EMC 编排环）。
@@ -95,7 +97,7 @@ chip/控件始终可达，引导 = 高亮 + 文案 + 光环 + CTA，不强制隐
 | **false** | * | * | * | false | `import` | 「生成第一张情绪地图——导入数据，我帮你定位最值得关注的区域」（注：`visEmotion=true` 纯 AI 层场景降级为「导入数据继续分析」，G1 实现分支·CB-CPD-02 L3） | `openImport` |
 | true | **false** | * | * | false | `range` | 「聚焦一片城区——框选范围，看情绪的高低起伏」（注：`hasRange=false ∧ lastExit=result` 时**兼带**深读/导出次 CTA，避免演示高潮断档·CB-CPD-02 M2） | `cpd:focus-tab range` |
 | true | true | **false** | * | false | `layers` | 「看张力——选情绪图层，**深绿**（情绪好）/ **深橙**（情绪差）告诉你哪里最值得关注」 | 高亮 layers chip |
-| true | true | true | ∈{**null**, undefined, general} | false | `analyze`（默认）/ `interpret`（hasAnalysis=true） | 默认「点击地图上**深绿/深橙**的区域——我告诉你那里为什么」；**`hasAnalysis=true`（dock 产图无对话）升级 `interpret`**「这张图已就绪——问我：这张图说明了什么？」（桥 dock→EMC·CB-CPD-03 M1）（备选：「或问我：哪里情绪最差？」） | 地图 hover/click / input |
+| true | true | true | ∈{**null**, undefined, general} | false | `analyze`（默认）/ `interpret`（hasAnalysis=true） | **v1.1 修订（多分支→对话交接）**：默认「数据已就绪——告诉我你想分析什么」+ **确定性 examples**（情绪分析/GIS操作/周边分析/深读区域·点击→harness diagnose·plan §决策2 接缝）；`hasAnalysis=true` 升级 `interpret`「这张图已就绪——问我：这张图说明了什么？」+ examples（读图侧重）。~~原「点击地图深绿/深橙」空间交互~~ 降为 examples「深读区域」一项（§6.4 修订）。**CPD 不做意图识别**（铁律3·确定性交接），gis操作/分析/组合的分辨归 EMC Smart Agent（diagnose） | 打开对话窗口（展开 input + examples） |
 | true | true | true | `result` | false | `export`(+地图定位) | 「**{区域名}**的归因已就绪——深读 / 在地图定位 / 导出」 | export + 地图 focus + range |
 | true | true | true | `gap`/`partial` | false | `null` | —（`_followUps` 已覆盖追问胶囊，引擎不重复推） | — |
 | true | true | true | `ask` | false | `null` | —（选项胶囊已在答案区，U3 收敛为不介入） | — |
@@ -162,7 +164,7 @@ chip/控件始终可达，引导 = 高亮 + 文案 + 光环 + CTA，不强制隐
 
 ### 6.4 演示链服务 + 绿色摘要条（v0.3·CB-CPD-01 演示表现力共识）
 - **引导服务演示链交互环**（U6 实质解法）：引导不止于"装载链"（import→range→layers），须闭合"点击要素→分析→归因"交互环——
-  - **S3 analyze 空间交互优先**：文案"点击地图**深绿/深橙**区域"（色名同步色带·CB-CPD-02 M1；引导 hover/click 要素），对话作备选 CTA（非首选）——服务演示逻辑链"引导点击突出要素"环节。**实现路径（CB-CPD-02 R4）**：G1=被动文案（banner 到位即可）；G3=地图高亮（极性 top/bottom 区域橙色 `#ff9000` 呼吸闪烁，三端同步——视野↔数据↔结论同步铁律的视觉落地）。
+  - **S3 analyze 多分支→对话交接优先**（v1.1 修订·用户定）：点+范围就绪后下一步分支爆炸（gis操作 × gis分析 × 操作→分析），**确定性引导穷举不了**，硬给固定 CTA 会卡用户。改为**主推对话收集意图**：光环 CTA 展开对话窗口（input）+ 确定性 examples 起点（情绪分析/GIS操作/周边分析/深读区域，点击→harness diagnose 识别意图→plan→execute）。**CPD 只确定性交接，不调 LLM**（铁律3）；意图识别归 EMC Smart Agent（plan §决策2 接缝）。~~原"空间交互优先（点击地图深绿/深橙）"~~ **降为 examples「深读区域」一项** + G2 banner 次入口（不独占 analyze 引导）。G3=地图高亮（极性 top/bottom 区域橙色 `#ff9000` 呼吸闪烁）仍为 banner 次入口预留。
   - **S4·result 地图定位 CTA**：结论含 `[ref:区域]`/`{{focus:}}` 时，banner 次 CTA「在地图上定位该区域」（复用 `_followUps`:455 region 抽取 + 现有 focus/popup），把引导环从"结论"闭合回"视野端"——落实"视野↔数据↔结论"同步铁律。
 - **文案叙事化**：S0-S4 从"功能名"改"诊断叙事步骤"（生成张力地图/聚焦城区/看张力分布/点击**深橙**格子/宏观诊断信号），服务"定位关注区+主题倾向+排序优先级"有用性环。具体文案 G1/G2 打磨（见 §4.2 文案列）。
 - **绿色摘要条定义**（§八 G3 提及但 v0.2 未定义，CB-CPD-01 K3 L2）：已完成步骤（import/range）折叠成的「● 已导入 · 修改」条 = **banner 的 done 变体**（同组件不同态，非新视觉方言）；点「修改」回退引导（同真值表重算）。

@@ -16,6 +16,21 @@ import { hasImport, hasRange, hasAnalysis, hasVisibleEmotionLayer, subscribe } f
 const COLOR_POS = '深绿';
 const COLOR_NEG = '深橙';
 
+// 引导态示例追问（确定性常量·plan §4.2 row 7·铁律3 不调 LLM）：多分支态（点+范围就绪）→ 主推对话收集意图
+// （交接 EMC harness diagnose 识别 gis操作/gis分析/组合·plan §决策2 接缝）。点击 → panel.js send → orchestrate。
+// 空间交互（点击地图深绿/深橙深读）降为 examples 一项（plan §6.4 S3 修订·用户定）。
+const _EXAMPLES_ANALYZE = [
+  { tag: '情绪分析', text: '这片范围里情绪最差的区域在哪？为什么？' },
+  { tag: 'GIS操作', text: '在这个范围里筛选商业用地' },
+  { tag: '周边分析', text: '某设施周边 500 米情绪如何？' },
+  { tag: '深读区域', text: '深读情绪最差区域的归因' },
+];
+const _EXAMPLES_INTERPRET = [
+  { tag: '读图', text: '这张图说明了什么？' },
+  { tag: '情绪分析', text: '图里情绪最差的区域在哪？为什么？' },
+  { tag: '深读区域', text: '深读情绪最差区域的归因' },
+];
+
 let _deps = null;          // { getLastExit, isStreaming, getLastRegion }（panel.js 依赖注入）
 let _lastTurnId = -1;      // 单调去重：仅处理 turnId > _lastTurnId（H1 修复·免疫 general 跳号）
 let _suppressedKind = null;   // engage 解除：用户已 engage 某 kind → 同 kind 不重亮，直至 kind 变化（plan §6.2.3）
@@ -39,10 +54,10 @@ export function deriveGuidance(f) {
   if (!f.visEmotion) {                                                             // 6
     return { kind: 'layers', text: `看张力——选情绪图层，${COLOR_POS}（情绪好）/ ${COLOR_NEG}（情绪差）告诉你哪里最值得关注`, ctaKind: 'layers' };
   }
-  if (f.lastExit === null || f.lastExit === undefined || f.lastExit === 'general') {   // 7 默认 analyze / hasAnalysis 升级 interpret（M1·dock 产图桥回 EMC）
+  if (f.lastExit === null || f.lastExit === undefined || f.lastExit === 'general') {   // 7 多分支态：主推对话收集意图（确定性 examples 起点 → 交接 EMC harness·plan §决策2）
     return f.hasAnalysis
-      ? { kind: 'interpret', text: '这张图已就绪——问我：这张图说明了什么？', ctaKind: 'analyze' }
-      : { kind: 'analyze', text: `点击地图上${COLOR_POS}/${COLOR_NEG}的区域——我告诉你那里为什么`, ctaKind: 'analyze' };
+      ? { kind: 'interpret', text: '这张图已就绪——问我：这张图说明了什么？', ctaKind: 'analyze', examples: _EXAMPLES_INTERPRET }
+      : { kind: 'analyze', text: '数据已就绪——告诉我你想分析什么', ctaKind: 'analyze', examples: _EXAMPLES_ANALYZE };
   }
   if (f.lastExit === 'result') {                                                   // 8
     const r = f.region ? `${f.region}的` : '';

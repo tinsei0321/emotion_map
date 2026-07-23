@@ -182,9 +182,9 @@ function setEmcCollapsed(c) {
   _applyGuidance();   // CPD G1：折叠态引导光环 + 文案覆盖（有引导时覆盖默认 placeholder）
 }
 
-// ── CPD G1：引导引擎落地（cpd-guide.js 派发 cpd:guidance → 此处套光环/文案/CTA）──
-// 引导仅折叠态显（光环 + placeholder）；展开态 banner 留 G2。engage 解除：CTA 点击 → suppressGuidance。
-let _curGuidance = null;   // 最近一次 cpd:guidance 载荷（{kind,text,ctaKind}|null）
+// ── CPD G1：引导引擎落地（cpd-guide.js 派发 cpd:guidance → 此处套光环/文案/CTA/examples）──
+// 折叠态：光环 + placeholder；展开态：examples 示例胶囊（多分支→对话交接·plan §决策2）。engage 解除：CTA 点击 → suppressGuidance。
+let _curGuidance = null;   // 最近一次 cpd:guidance 载荷（{kind,text,ctaKind,examples?}|null）
 /** 末条答案 [ref:区域]/{{focus:}} 抽取的区域名（确定性变量·复用 _followUps 同源正则·plan §4.3）。 */
 function _lastRegion() {
   const tr = _history.at(-1) && _history.at(-1).trace;
@@ -203,14 +203,42 @@ function _applyGuidance() {
   input.placeholder = show ? _curGuidance.text : _INPUT_PH_COLLAPSED;   // 有引导→文案；无→默认折叠文案
   _fitCollapsedText();
 }
-/** 光环 CTA 调度：import/range/layers → cpd:focus-tab（sidebar 监听）；analyze/export → 展开 input 聚焦。 */
+/** 光环 CTA 调度：import/range/layers → cpd:focus-tab（sidebar 监听）；analyze/interpret/export → 打开对话窗口（展开 input）。 */
 function _runGuidanceCta(kind) {
   if (kind === 'import' || kind === 'range' || kind === 'layers') {
     document.dispatchEvent(new CustomEvent('cpd:focus-tab', { detail: kind }));
     return;
   }
-  const input = document.getElementById('chat-input');   // analyze/interpret/export/input → 用户要说话
+  // analyze/interpret/export/input → 打开对话窗口收集意图（展开 input 聚焦）→ 用户选示例或自由输入 → EMC harness
+  const input = document.getElementById('chat-input');
   if (input) { setEmcCollapsed(false); input.focus(); }
+  if (_curGuidance && _curGuidance.examples && _shouldShowGuidanceExamples()) {
+    renderGuidanceExamples(_curGuidance.examples);   // 首次分析前：展开后确保 examples 可见（cpd:guidance 已渲染则幂等）
+  }
+}
+
+// ── 引导态 examples（多分支→对话交接·plan §4.2 row 7·铁律3 CPD 只给确定性起点，意图识别归 harness）──
+let _guidanceExamplesShown = false;   // examples 占用 #aiq-suggest 标志（防 clearGuidanceExamples 误清答案后 _followUps）
+/** examples 仅在「从未问答过」（首次分析前）显——一旦有答案，追问胶囊 _followUps 接管（互斥）。 */
+function _shouldShowGuidanceExamples() {
+  return !_streaming && !_history.some((h) => h.role === 'assistant');
+}
+/** 渲染 examples 到 #aiq-suggest（复用 .aiq-suggest-chip 样式·零新 CSS）；点击 → send → harness diagnose。 */
+function renderGuidanceExamples(items) {
+  const el = document.getElementById('aiq-suggest');
+  if (!el || !Array.isArray(items) || !items.length) return;
+  el.hidden = false;
+  el.innerHTML = '<span class="aiq-suggest-label">试试</span>'
+    + items.map((it) => `<button type="button" class="aiq-suggest-chip" data-prompt="${escapeHtml(it.text)}"><span class="aiq-suggest-tag">${escapeHtml(it.tag)}</span>${escapeHtml(it.text)}</button>`).join('');
+  el.querySelectorAll('.aiq-suggest-chip').forEach((b) => b.addEventListener('click', () => send(b.dataset.prompt)));
+  _guidanceExamplesShown = true;
+}
+/** 清 examples（仅当 examples 占用时清，不动答案后 _followUps）。 */
+function clearGuidanceExamples() {
+  if (!_guidanceExamplesShown) return;
+  const el = document.getElementById('aiq-suggest');
+  if (el) { el.hidden = true; el.innerHTML = ''; }
+  _guidanceExamplesShown = false;
 }
 let _crowdedRaf = 0;
 function _checkCrowded() {
@@ -533,6 +561,7 @@ function _followUps(t) {
 function renderSuggest(t) {
   const el = document.getElementById('aiq-suggest');
   if (!el) return;
+  _guidanceExamplesShown = false;   // 答案后 _followUps 接管 #aiq-suggest，清 examples 占用标志（防 clearGuidanceExamples 误清追问）
   const items = _followUps(t);
   if (!items.length) { el.hidden = true; el.innerHTML = ''; return; }
   el.hidden = false;
@@ -543,6 +572,7 @@ function renderSuggest(t) {
 function clearSuggest() {
   const el = document.getElementById('aiq-suggest');
   if (el) { el.hidden = true; el.innerHTML = ''; }
+  _guidanceExamplesShown = false;   // send/切会话清空时，examples 占用标志同步清
 }
 
 /** 长对话折叠：答案摘录（剥离 {{action}} 模板 + 标签，取首 ~70 字）。 */
@@ -1591,6 +1621,12 @@ function _setupCpdBar() {
   document.addEventListener('cpd:guidance', (e) => {
     _curGuidance = (e && e.detail && e.detail.guidance) || null;
     _applyGuidance();
+    // 展开态 examples（多分支→对话交接）：首次分析前显，有答案后 _followUps 接管（互斥）
+    if (_curGuidance && _curGuidance.examples && _shouldShowGuidanceExamples()) {
+      renderGuidanceExamples(_curGuidance.examples);
+    } else {
+      clearGuidanceExamples();
+    }
   });
   // 光环可点 CTA（plan §八 G1·U2）：折叠态有引导时，点 .emc-input-area = CTA（拦截 focus-expand）。
   const area = emc.querySelector('.emc-input-area');
