@@ -5,6 +5,35 @@
 
 ---
 
+## 📅 2026-07-23（分支 `main` · cpd 合并清理 + 测试飞轮 v3→v4 + _fill 修复 + todo 机制反思）
+
+### ✅ 分支收敛（cpd → main）
+cpd 分支（~60 commit：CPD 引擎 + EMC v1.4-1.6 + 测试飞轮 v1-3）fast-forward 合并进 main，历史线性；删 cpd 本地+远程 + `backup/pre-forcepush-9be02c3`（9be02c3 未合并，用户确认弃）。仓库收敛为单 `main`。
+
+### ✅ 测试飞轮 v3（行内摘要+工具标注+固定位置报告+一键启动）（revision-log 5.196 · commit b63acca）
+行内摘要（工具类显 tool 名·fetch 拦截 /geo /spatial 端点抓）/ 重跑 R 修复（批量中先停再重跑）/ 报告落盘 `tests/reports/`（serve `/_test/report`）/ `start.bat --open=both` 一键开主页+测试页。
+
+### ✅ 测试飞轮 v4（方向纠偏 + 意图/工具各 100）（revision-log 5.197 · commit 89c6a31）
+**意图识别 = NL→工作流转译**（断言 template+工具，非回答文本）；DATA 资产系统 `test-assets.js`（语义清单自动加载，不再让用户补范围）；意图 100 + 工具 100 生成器（270 总·≤2 工具≤4 步·针对性）；slider 默认 25；存报告覆盖确认；按钮状态机（停止↔重新开始）。用户重组 boundaries（presets/→顶层）一并修。
+
+### ✅ _fill 中文占位符修复（revision-log 5.198 · commit 524305d）
+根因：`_fill` 正则 `\w`=[A-Za-z0-9_] 不含中文 → `{区}`/`{要素}` 全未替换（200 例 prompt 失效·语法绿·仅输出扫描查出）；全局审查 4 文件正则仅此一处同类；修 `[^}]+`，270 例 0 残留；memory `js-regex-word-chinese-trap` 防复发。
+
+### ✅ 测试报告入库（commit 81288aa）
+`tests/reports/`（3 份报告）纳入 git 同步（换环境要用，勿 gitignore）。
+
+### 📝 todo 机制反思（本日最大教训）
+用户多次报"todo 不更新"，我乱找方向（TodoWrite 工具 → .workbuddy），**真 todo = 本文件 docs/todo.md**——我只更了 revision-log/handoff，**漏同步 todo.md** → 停在 07-22。
+- 教训 1：同步须 **todo.md + revision-log 一起**（记忆 `todo-revision-log-sync` 早有，我没守）。
+- 教训 2：诊断"不生效"先问用户"你看到什么内容"定位，别反复换工具瞎试。
+- 清理：删 `.workbuddy/`（第三方工具 memo，与 claude code 无关）。
+
+### ⬜ 下一步
+- v4 实测：跑 LLM 例（slider 25 起）收转译断言失败 → 调 INTENT/TOOL prompt 池提 pass 率
+- C grid 独立 skill（中期·前后端 paradigm 同步）/ D method 标准化（远期·需拍板·触 diagnose 输出）
+
+---
+
 ## 📅 2026-07-22（分支 `cpd` · CPD 核心 plan **v1.0 定稿** + CB 专轨收敛 + EMC 浮窗交互）
 
 ### ✅ CB-CPD-03 双模型三轮 → v1.0 定稿（CB-CPD 专轨收敛）（revision-log 5.175 · commit bc5c5ee · **待用户 push**）
