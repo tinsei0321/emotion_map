@@ -131,7 +131,7 @@ const DISTRICTS = ['西陵区', '伍家岗区', '夷陵区'];
 const ELEMENTS = ['环境', '服务', '设施', '文化'];
 const POLARITY = ['最差', '最好', '消极', '积极'];
 
-function _fill(tmpl, v) { return tmpl.replace(/\{(\w+)\}/g, (_, k) => (v[k] != null ? v[k] : `{${k}}`)); }
+function _fill(tmpl, v) { return tmpl.replace(/\{([^}]+)\}/g, (_, k) => (v[k] != null ? v[k] : `{${k}}`)); }   // [^}]+ 含中文 key（\w 不匹配中文，旧版致 {区} 未替换）
 function _vars(di, qi) {
   return {
     '区': DISTRICTS[di % DISTRICTS.length],
