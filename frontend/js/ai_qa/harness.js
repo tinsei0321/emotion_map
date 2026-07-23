@@ -271,6 +271,14 @@ async function runTemplatePath(ctx, hooks, diagnose) {
     _recordSkip('missing_slot');   // ⑤④ execSkips 遥测
     return { ok: true, rounds: 0, final: gapText, review: { pass: true, degraded: true, skipped: 'template-missing-slot' }, degraded: true, diagnose, exit: 'gap', newLayerCount: 0 };
   }
+  // 1.5 deliberateStep（Pro 研判·执行前·Step 3·阶段 G+H）：仅 Pro 模式（Flash 跳过省调用）；
+  //     Pro 研判"工具+参数是否回答真实意图 + 数据局限"→ 注入 finalStep context 提升结论质量。失败不阻塞执行（try/catch）。
+  if (ctx.model === 'pro') {
+    try {
+      const judg = await stages.deliberateStep(ctx, diagnose, params);
+      if (judg) ctx.context = `【研判】${judg}\n\n` + (ctx.context || '');
+    } catch (e) { /* 研判失败不阻塞主流程 */ }
+  }
   // 2. 执行工具（不调 agentStep；setToolContext 必调以写 registry provenance）
   if (hooks.onRoundStart) hooks.onRoundStart(1);
   setToolContext({ tool: def.tool, round: 1 });

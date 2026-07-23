@@ -254,6 +254,22 @@ export async function finalStep(ctx, hooks, toolHistory) {
   return final;
 }
 
+/** deliberateStep（Pro 研判·执行前·Step 3·用户工作流阶段 G+H）：Pro 基于用户问题 + diagnose(template/method) + 将执行参数，
+ *  研判"工具+参数是否真能回答用户真实意图 + 数据局限/口径注意事项"。返研判文本（harness 注入 finalStep context，提升结论质量）。
+ *  返 null = 空/失败（harness try/catch 兜底，不阻塞执行）。承重：不改 diagnose prompt（保 eval）；新 prompt 不破 eval（eval 只测 diagnose 路由）。 */
+export async function deliberateStep(ctx, diagnose, params) {
+  const messages = [
+    { role: 'system', content: '你是情绪地图的研判员。基于用户问题、已诊断的意图（template/method）、将执行的参数、当前已加载图层，研判：(1) 这个工具+参数是否真能回答用户的真实意图？(2) 有无数据局限或口径（统计范围）需在结论中标注？简要输出 1-2 句研判结论，供最终回答参考。不要重复执行工具，不要编造数据或具体数字。' },
+    { role: 'user', content: `问题：${ctx.question || ''}\n诊断：template=${(diagnose && diagnose.template) || '?'}，method=${(((diagnose && diagnose.method) || []).join(' → ')) || '?'}\n将执行参数：${JSON.stringify(params || {})}` },
+  ];
+  let out = '';
+  await streamChat(messages, ctx.context,
+    (tok) => { out += tok; },
+    (err) => { throw new Error(err); },
+    { phase: 'deliberate', signal: ctx.signal, model: ctx.model, domainLens: ctx.domainLens });
+  return out.trim() || null;
+}
+
 /** 审查草稿：非流式拿 Flash 审查员 JSON {pass, scores, revise_hints}。失败返回 degraded。 */
 export async function reviewStep(ctx, draft, toolHistory) {
   let review = null;

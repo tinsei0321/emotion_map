@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月23日）** · 本节按板块分组、组内倒序；最新工作 = **5.187 CPD 阶段 D 参数引导（diagnose 卡片整合·Step 2）**（本次，分支 `cpd`）。上一轮 5.186。最近：
+> 📍 **最新动态（07月23日）** · 本节按板块分组、组内倒序；最新工作 = **5.188 CPD 阶段 G+H Pro 研判 deliberateStep（Step 3）**（本次，分支 `cpd`）。上一轮 5.187。最近：
+>
+> - **5.188 CPD 阶段 G+H Pro 研判 deliberateStep（Step 3）**（用户工作流阶段 G 研判真实意图 + H 计划；主线程 **未派 subagent**——承重）：新增 `deliberateStep`（[stages.js](frontend/js/ai_qa/stages.js)·Pro·执行前）——基于用户问题 + diagnose(template/method) + 将执行参数 + 地图状态，Pro 研判"工具+参数是否真能回答用户真实意图 + 数据局限/口径注意事项"，返研判文本注入 finalStep context（提升结论质量·对应工作流阶段 G+H）。[harness.js](frontend/js/ai_qa/harness.js) `runTemplatePath` 在 `validateParams.ok` 后、工具执行前插 deliberateStep（**gated `ctx.model==='pro'`**·Flash 跳过省调用·try/catch 失败不阻塞主流程）。**承重**：diagnose prompt 永不动（保 eval）；新研判 prompt 不破 eval（eval 只测 diagnose 路由）；四态出口不动（deliberateStep 是 finalStep 前研判注入，不改出口裁定）。**Playwright 验证**（Pro 模式发"对比西陵区/伍家岗区情绪归因"）：diagnose 卡片显参数提示「需要对比范围（多区）」（Step 2）→ deliberateStep（Pro chat #2）执行无崩 → 2× zonal_stats 200 → 流程完成（exit=gap「缺数据·需上传」= fixture 点 vs 边界口径问题·**非 deliberateStep 致**）。node --check `.mjs` 绿 + 无中文标识符。commit·**待用户 push**。
 >
 > - **5.187 CPD 阶段 D 参数引导（diagnose 卡片整合·Step 2）**（用户工作流阶段 D「根据意图匹配具体工具生成标准化引导→要哪些参数」；主线程 **未派 subagent**——承重）：diagnose 选定 `template` → `SKILL_DEFS[template].required_slots` → diagnose 卡片加「需要：X · Y」参数提示行（**确定性·CPD 导游预告要哪些参数**·整合进既有 `renderDiagnoseCard` 避免与新引导卡的"首次分析前"门控冲突）。[panel.js](frontend/js/ai_qa/panel.js) `import { SKILL_DEFS } from './stages.js'`（单一源·不重造）+ `_PARAM_LABELS`（boundary→聚合范围（面/方格）/center→设施位置/range→范围 等）+ `renderDiagnoseCard` 加 `.aiq-diag-params` 行；[ai_qa.css](frontend/css/ai_qa.css) `.aiq-diag-params` + `.aiq-diag-params-tag`（accent-soft）。**承重零触**（diagnose prompt/四态出口/harness 不动；只读 SKILL_DEFS 常量）。node --check `.mjs` 绿。commit·**待用户 push**。
 >
