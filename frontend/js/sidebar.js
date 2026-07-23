@@ -783,6 +783,7 @@ export function initSidebar({ onFiles, onRangeFiles } = {}) {
   // CPD Phase 2b：EMC chip 唤出左栏抽屉（同 tab 再点 → 关；外部点 / Esc → 关）
   document.addEventListener('cpd:focus-tab', (e) => {
     const tab = e.detail;
+    if (tab === 'import') return openImport();   // CPD G1：光环 import CTA 闭环（复用 openImport）
     if (tab !== 'layers' && tab !== 'range' && tab !== 'toolbox') return;
     const panel = document.getElementById('left-panel');
     if (!panel) return;

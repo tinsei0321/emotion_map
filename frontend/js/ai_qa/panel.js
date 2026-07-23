@@ -2,6 +2,7 @@
 import { orchestrate, getTemplateStats } from './harness.js';
 import { buildContext, TOOLS, resetStepResults, resetCurrentResults, cleanupConsumedResults, getFig } from './tools.js';
 import { initCpdState, subscribe, getCurStepIdx, CPD_STEPS, relayoutFloats } from './cpd-state.js';
+import { initCpdGuide, recomputeGuidance, suppressGuidance } from './cpd-guide.js';   // CPD G1：引导引擎（依赖注入，零反向 import）
 import { getLayers, selectLayer, getSelectedLayer } from '../state.js';
 import { getLastUsage, resetCallStats, getCallStats } from './api.js';
 
@@ -178,6 +179,38 @@ function setEmcCollapsed(c) {
   if (input) input.placeholder = _emcCollapsed ? _INPUT_PH_COLLAPSED : _INPUT_PH_EXPANDED;   // 折叠/展开切换文案
   if (_emcCollapsed) _fitCollapsedText();   // CPD：折叠态文本自适应
   if (!_emcCollapsed) { relaxEmc(); _scheduleFit(); }   // 展开：回落 + 内容驱动高度自适应
+  _applyGuidance();   // CPD G1：折叠态引导光环 + 文案覆盖（有引导时覆盖默认 placeholder）
+}
+
+// ── CPD G1：引导引擎落地（cpd-guide.js 派发 cpd:guidance → 此处套光环/文案/CTA）──
+// 引导仅折叠态显（光环 + placeholder）；展开态 banner 留 G2。engage 解除：CTA 点击 → suppressGuidance。
+let _curGuidance = null;   // 最近一次 cpd:guidance 载荷（{kind,text,ctaKind}|null）
+/** 末条答案 [ref:区域]/{{focus:}} 抽取的区域名（确定性变量·复用 _followUps 同源正则·plan §4.3）。 */
+function _lastRegion() {
+  const tr = _history.at(-1) && _history.at(-1).trace;
+  const ans = (tr && tr.final) || '';
+  const ref = (ans.match(/\[ref:([^\]]+)\]/) || ans.match(/\{{1,2}focus:([^}]+)\}{1,2}/) || [])[1];
+  return ref ? ref.trim() : '';
+}
+/** 折叠态套/解 .has-guidance + 引导文案覆盖 placeholder（cpd:guidance/setEmcCollapsed 调）。 */
+function _applyGuidance() {
+  const panel = document.getElementById('emc-panel');
+  if (!panel) return;
+  const show = _emcCollapsed && !!_curGuidance;
+  panel.classList.toggle('has-guidance', show);
+  const input = document.getElementById('chat-input');
+  if (!input || !_emcCollapsed) return;   // 展开态 placeholder 由 setEmcCollapsed 管
+  input.placeholder = show ? _curGuidance.text : _INPUT_PH_COLLAPSED;   // 有引导→文案；无→默认折叠文案
+  _fitCollapsedText();
+}
+/** 光环 CTA 调度：import/range/layers → cpd:focus-tab（sidebar 监听）；analyze/export → 展开 input 聚焦。 */
+function _runGuidanceCta(kind) {
+  if (kind === 'import' || kind === 'range' || kind === 'layers') {
+    document.dispatchEvent(new CustomEvent('cpd:focus-tab', { detail: kind }));
+    return;
+  }
+  const input = document.getElementById('chat-input');   // analyze/interpret/export/input → 用户要说话
+  if (input) { setEmcCollapsed(false); input.focus(); }
 }
 let _crowdedRaf = 0;
 function _checkCrowded() {
@@ -1193,6 +1226,12 @@ async function send(text) {
     _streaming = false;
     _abortCtl = null;
     updateSendBtn();
+    // CPD G1 引擎接缝（plan §4.3·H1 修 general 断链）：settled 守卫 dispatch turn-ended（覆盖 general exit=null）
+    // + 单调去重（cpd-guide.js turnId > lastProcessed）。abort（settled=false）不 dispatch（无假 exit 信号）。
+    if (settled) document.dispatchEvent(new CustomEvent('cpd:turn-ended', {
+      detail: { exit: _curTrace?.exit ?? null, turnId: _history.length, intent: _curTrace?.diagnose?.intent ?? null },
+    }));
+    recomputeGuidance();   // abort/streaming 后恢复引导（settled=false 不 dispatch，但仍按当前状态重算 guide）
   }
 }
 
@@ -1273,6 +1312,7 @@ function clearChat() {
   saveHistory();
   restoreHistory();
   _scheduleFit();   // CPD：新对话回欢迎卡→显式触发高度缩回（保险，不单靠 MutationObserver）
+  recomputeGuidance();   // CPD G1：切会话/新对话恢复引导（reset 去重 + 按 _history=[] 重算→import）
 }
 
 /** 历史记录：EMC 内就地视图切换（chat ↔ history），1:1 Claude Code。
@@ -1547,20 +1587,28 @@ function _setupCpdBar() {
   render();
   initCpdState();   // 启动状态推导 + 全局监听
 
-  // CPD 临时测试（CPD 核心引导上线后删）：Ctrl+Shift+G 模拟「AI 新引导」
-  // → 折叠胶囊加 .has-guidance（光环飞快颜色交替）+ 示例提示文本，便于预览引导耦合效果。
-  document.addEventListener('keydown', (e) => {
-    if (!(e.ctrlKey && e.shiftKey && (e.key === 'G' || e.key === 'g'))) return;
-    const panel = document.getElementById('emc-panel');
-    if (!panel) return;
-    const on = panel.classList.toggle('has-guidance');
-    const ta = document.getElementById('chat-input');
-    if (ta) {
-      ta.placeholder = on ? '【测试·新引导】试试框选西陵区，看居住情绪分布' : _INPUT_PH_COLLAPSED;
-      _fitCollapsedText();
-    }
-    console.log('[CPD test] has-guidance =', on, '（Ctrl+Shift+G 切换；光环应飞快颜色交替）');
+  // CPD G1：引导引擎落地接线（cpd-guide.js 派发 cpd:guidance → 套光环/文案；光环 click → CTA）。
+  document.addEventListener('cpd:guidance', (e) => {
+    _curGuidance = (e && e.detail && e.detail.guidance) || null;
+    _applyGuidance();
   });
+  // 光环可点 CTA（plan §八 G1·U2）：折叠态有引导时，点 .emc-input-area = CTA（拦截 focus-expand）。
+  const area = emc.querySelector('.emc-input-area');
+  if (area && !area._cpdCta) {
+    area._cpdCta = true;
+    area.addEventListener('mousedown', (e) => {
+      if (_emcCollapsed && _curGuidance) e.preventDefault();   // 拦截 textarea 聚焦（聚焦会展开，与 CTA 冲突）
+    });
+    area.addEventListener('click', () => {
+      if (!_emcCollapsed || !_curGuidance) return;             // 无引导：默认 focus→展开（既有行为）
+      _runGuidanceCta(_curGuidance.ctaKind);
+      suppressGuidance();                                      // engage 解除（同 kind 不重亮·plan §6.2.3）
+      const panel = document.getElementById('emc-panel');
+      if (panel) panel.classList.remove('has-guidance');       // 立即移除光环（下次状态变化 _compute 重算）
+      const input = document.getElementById('chat-input');
+      if (input) { input.placeholder = _INPUT_PH_COLLAPSED; _fitCollapsedText(); }
+    });
+  }
 }
 
 export function initChatPanel() {
@@ -1653,4 +1701,11 @@ export function initChatPanel() {
     if (input) input.placeholder = _INPUT_PH_COLLAPSED;
     _fitCollapsedText();   // CPD：初始折叠态文本自适应
   }
+  // CPD G1：启动引导引擎（依赖注入 getter；首次 _compute 读末条 trace.exit 恢复引导·plan §4.3）。
+  // 放 F5 归档（_history=[]）之后，保证首算用最终 _history。
+  initCpdGuide({
+    getLastExit: () => _history.at(-1)?.trace?.exit ?? null,
+    isStreaming: () => _streaming,
+    getLastRegion: _lastRegion,
+  });
 }

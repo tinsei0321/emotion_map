@@ -6,7 +6,7 @@
 // 信号：visible layers（state.js getLayers）/ 用户消息（#chat-messages .chat-msg-user）/ 结论卡（.aiq-conclusion）。
 // 订阅 layers:changed + layer:selected + chat-messages MutationObserver → recompute → 通知 UI。
 
-import { getLayers } from '../state.js';
+import { getLayers, isRangeLayer } from '../state.js';
 
 export const CPD_STEPS = [
   { id: 'S0', label: '开场' },
@@ -26,12 +26,65 @@ export function getCurStepIdx() { return _IDX[_cur] ?? 0; }
 /** 从会话状态派生 curState（纯客户端，不动 diagnose）。 */
 export function deriveState() {
   const vis = getLayers().filter((l) => l.visible && l.kind !== 'group');
-  const concl = document.querySelectorAll('#chat-messages .aiq-conclusion').length;
+  // S4 信号：.aiq-exit-badge（panel.js 回答完毕创建·流式中不存在，顺带免疫流式误推）。
+  // ~~.aiq-conclusion~~ 全前端无 JS 创建者 = 死信号（CB-CPD-01 K3 P0-1 核实），此修正。
+  const concl = document.querySelectorAll('#chat-messages .aiq-exit-badge').length;
   const msgs = document.querySelectorAll('#chat-messages .chat-msg-user').length;
   if (concl) return 'S4';        // 有结论卡
   if (msgs) return 'S3';         // 对话中（无结论）
   if (vis.length) return 'S2';   // 有可见图层
   return 'S0';                   // 空
+}
+
+// ── 特征谓词（plan v1.0 §4.1 · deriveGuidance 特征向量信号源）─────────────────────
+// 纯函数只读 getLayers()，不改 deriveState 逻辑；供 cpd-guide.js 组装特征向量 + e2e 谓词测试。
+const _ANALYSIS_TOOLS = new Set(['grid', 'zonal', 'heatmap']);
+/** AI 工具产出组 id（'EmotionMap Copilot'）；组不存在返 undefined（谓词自然不排除）。 */
+function _aiGroupId() {
+  const g = getLayers().find((l) => l.kind === 'group' && l.name === 'EmotionMap Copilot');
+  return g && g.id;
+}
+/** 工具产出层标记（paint._ui.tool 存在 = EMC/Toolbox 工具产物，非用户导入）。 */
+function _isToolOutput(l) { return !!(l.paint && l.paint._ui && l.paint._ui.tool); }
+
+/** hasImport = 存在非 AI 组、非 tool 产出的可见 point 层（= 用户真实导入的点数据）。
+ *  排除 EMC 工具产物（addResultLayer 入 'EmotionMap Copilot' 组 + 注入 _ui.tool）·CB-CPD-02 R3。 */
+export function hasImport() {
+  const ai = _aiGroupId();
+  return getLayers().some((l) =>
+    l.kind === 'point' && l.visible && l.parentId !== ai && !_isToolOutput(l));
+}
+
+/** hasRange = 有范围层（复用 state.isRangeLayer：polygon/line 无 _ui.tool，无歧义）。 */
+export function hasRange() {
+  return getLayers().some((l) => isRangeLayer(l));
+}
+
+/** hasAnalysis = 存在聚合/分析层（grid/zonal/heatmap 工具产物 ∨ 'EmotionMap Copilot' 组层）。
+ *  deriveGuidance row 4 interpret 分支用（dock 产图桥回 EMC·CB-CPD-03 M1）。 */
+export function hasAnalysis() {
+  const ai = _aiGroupId();
+  return getLayers().some((l) => l.visible && (
+    (l.paint && l.paint._ui && _ANALYSIS_TOOLS.has(l.paint._ui.tool)) || l.parentId === ai));
+}
+
+/** 判情绪性：paint 引用情绪色板 ∨ feature 含情绪/score 字段（CB-CPD-03 M2 收紧）。 */
+function _isEmotionLayer(l) {
+  if (l.colorMode && typeof l.colorMode === 'string' && l.colorMode.indexOf('l2-') === 0) return true;   // L2 极性拆分层
+  if (l.paint && l.paint._ui && _ANALYSIS_TOOLS.has(l.paint._ui.tool)) return true;                      // 聚合层按极性染色
+  const feats = (l.fc && l.fc.features) || [];
+  for (const f of feats) {   // feature 级情绪字段（polarity_index/polarity/score）
+    const p = (f && f.properties) || {};
+    if (p.polarity_index != null || p.polarity != null || p.score != null) return true;
+  }
+  return false;
+}
+
+/** hasVisibleEmotionLayer = 有可见情绪层（visible 非 group 非 range ∧ 判情绪性）。
+ *  M2 收紧：否则对无情绪层撒谎"点击深绿/深橙"（演示链第一环断点·CB-CPD-03 M2）。 */
+export function hasVisibleEmotionLayer() {
+  return getLayers().some((l) =>
+    l.visible && l.kind !== 'group' && !isRangeLayer(l) && _isEmotionLayer(l));
 }
 
 /** 重算并通知（状态变化才派发）。 */

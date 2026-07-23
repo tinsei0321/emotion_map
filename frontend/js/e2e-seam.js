@@ -5,6 +5,7 @@
 import { renderLayer, getMap } from './map.js';
 import { addLayer, addGroup } from './state.js';
 import { splitByGeometry, detectColorMode } from './import.js';
+import { hasImport, hasRange, hasAnalysis, hasVisibleEmotionLayer } from './ai_qa/cpd-state.js';
 
 window.__emcTest = {
   ready() { const m = getMap(); return !!(m && m.isStyleLoaded && m.isStyleLoaded()); },   // map style 加载完（仅参考；地图底图 404 时永 false，loadPoints 容忍之）
@@ -37,4 +38,8 @@ window.__emcTest = {
     return { ok: true };
   },
 };
+
+// CPD G1 谓词暴露（用例 10·A1 谓词真值测试）：把死信号/谓词盲区（M2 无情绪层撒谎）从评审发现变测试发现。
+// emc_helpers.read_predicate(page, "() => window.__cpdPredicates.hasVisibleEmotionLayer()")。
+window.__cpdPredicates = { hasImport, hasRange, hasAnalysis, hasVisibleEmotionLayer };
 console.log('[e2e] window.__emcTest.loadPoints ready (e2e-seam.js)');

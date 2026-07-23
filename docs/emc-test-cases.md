@@ -119,22 +119,22 @@
 
 ---
 
-## 用例 10 · A1 谓词真值（G1 配套）⬜
+## 用例 10 · A1 谓词真值（G1 配套）🔄
 
-- **描述**：[cpd-state.js](frontend/js/ai_qa/cpd-state.js) 谓词（hasImport/hasRange/hasVisibleEmotionLayer/hasAnalysis）导出为纯函数后，`page.evaluate` 直读谓词真值——把死信号/谓词盲区（`.aiq-conclusion` 死信号 / M2 无情绪层撒谎"点击深绿/深橙"）从评审发现变测试发现。
-- **前置**：G1 谓词导出（plan §九 cpd-state.js）；新增 `fixtures/plain_poi.geojson`（无 polarity 字段，测 M2）。
-- **步骤**：开 EMC → 各场景（空 / 注入情绪层 / 注入无情绪层 / range 层 / dock 产图）→ `read_predicate(page, ...)` 读各谓词。
-- **断言**：硬=无情绪字段层 → `hasVisibleEmotionLayer`=false（M2 演示链断点回归）；硬=情绪层 → true。
-- **脚本**：`tests/browser/test_cpd_predicates.py`（G1 启用）；helper `emc_helpers.read_predicate`。
+- **描述**：[cpd-state.js](frontend/js/ai_qa/cpd-state.js) 谓词（hasImport/hasRange/hasVisibleEmotionLayer/hasAnalysis）导出为纯函数 + 经 [e2e-seam.js](frontend/js/e2e-seam.js) 暴露 `window.__cpdPredicates`，`page.evaluate` 直读真值——把死信号/谓词盲区（`.aiq-conclusion` 死信号 / M2 无情绪层撒谎"点击深绿/深橙"）从评审发现变测试发现。
+- **前置**：✅ G1 谓词导出 + e2e-seam 暴露已落地；✅ `fixtures/plain_poi.geojson`（无 polarity/score 字段，测 M2）已就位。
+- **步骤**：开 EMC → 各场景（空 / 注入情绪层 / 注入无情绪层 / range 层 / dock 产图）→ `read_predicate(page, "() => window.__cpdPredicates.<pred>()")` 读各谓词。
+- **断言**：硬=无情绪字段层（plain_poi）→ `hasVisibleEmotionLayer`=false（M2 演示链断点回归）；硬=情绪层 → true。
+- **脚本**：`tests/browser/test_cpd_predicates.py`（G1 已就位，待跑）；helper `emc_helpers.read_predicate`。
 - **关联**：GUIDANCE §1.1 A1；plan v1.0 §4.1 谓词 + §八 P0 增量；CB-CPD-03 M2。
 
 ---
 
-## 用例 11 · H1 引擎不冻结（G1 配套）⬜
+## 用例 11 · H1 引擎不冻结（G1 配套）🔄
 
 - **描述**：general 短路轮（exit=null）后引导引擎仍响应——`cpd:turn-ended` dispatch 守 `settled`（非 `exit!==undefined`）+ 单调去重 `turnId > lastProcessed`（非严格 +1），防 CB-CPD-03 H1 静默冻结。
-- **前置**：G1 引擎就绪（plan §九 cpd-guide.js + panel.js finally dispatch）。
-- **步骤**：开 EMC → 发 result 型 → 发 general 型（`什么是4×5矩阵`）→ 再发 result 型 → 读引导态（`.has-guidance` / banner）。
-- **断言**：硬=general 轮后引擎仍响应后续 result 轮引导（不冻结）；**组合场景**（事件×状态×去重咬合，H1 教训制度化）。
-- **脚本**：`tests/browser/test_cpd_guide_no_freeze.py`（G1 启用）。
+- **前置**：✅ G1 引擎就绪（[cpd-guide.js](frontend/js/ai_qa/cpd-guide.js) + [panel.js](frontend/js/ai_qa/panel.js) finally dispatch）。
+- **步骤**（确定性 dispatch 模拟，**免 LLM**）：开 EMC → 计数 `cpd:guidance` 派发 → dispatch `cpd:turn-ended` 序列：result(turnId=1) → general(exit=null·turnId=2) → 跳号 result(turnId=4) → 低 turnId(turnId=2)。
+- **断言**：硬=result→general(exit=null)→跳号 result 均 `cpd:guidance` 响应（gCount 递增，不冻结）；硬=低 turnId 去重（不重复处理）。**组合场景**（事件×状态×去重咬合，H1 教训制度化）。panel.js finally `settled` dispatch 侧由代码审查 + 用例 6（exit-badge answer 路径）覆盖。
+- **脚本**：`tests/browser/test_cpd_guide_no_freeze.py`（G1 已就位，待跑）。
 - **关联**：plan v1.0 §4.3 H1 + §八 P0 组合场景回归；CB-CPD-03 H1；GUIDANCE §4.4。
