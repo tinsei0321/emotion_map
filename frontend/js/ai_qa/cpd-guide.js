@@ -35,7 +35,7 @@ export function deriveGuidance(f) {
   }
   if (f.lastExit === 'gap' || f.lastExit === 'partial' || f.lastExit === 'ask') return null;   // 3 _followUps 已覆盖追问胶囊，不双 CTA
   if (f.lastExit === 'drift') return { kind: 'retry', text: '生成异常·已拦截——换个问法或缩小范围', ctaKind: 'input' };  // 4
-  if (!f.hasRange) return { kind: 'range', text: '聚焦一片城区——框选范围，看情绪的高低起伏', ctaKind: 'range' };        // 5
+  if (!f.hasRange) return { kind: 'range', text: '聚焦一片城区——上传范围文件，或在地图框选', ctaKind: 'range' };        // 5
   if (!f.visEmotion) {                                                             // 6
     return { kind: 'layers', text: `看张力——选情绪图层，${COLOR_POS}（情绪好）/ ${COLOR_NEG}（情绪差）告诉你哪里最值得关注`, ctaKind: 'layers' };
   }

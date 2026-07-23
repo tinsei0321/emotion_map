@@ -151,6 +151,7 @@ async function runImport(files) {
       refreshOverview();
       tagAllLayers();            // 全局时间轴：给新导入层打 datasetId/sliceKey 标
       reorderAllZ();             // align map z-order with list order (list-top = map-top)
+      document.dispatchEvent(new CustomEvent('layers:changed'));   // CPD：导入后统一通知（引擎 recompute 推进引导 + popup/Overview/legend/compare 等监听者刷新；renderLayerList 已直调，listener 再调幂等）
       if (added) {
         showLayerManager();                 // B5: switch to sections + expand Layers
         toast.success(`已导入 ${added} 个图层`);
@@ -193,6 +194,7 @@ async function runRangeImport(files) {
   refreshLegend();
   refreshOverview();
   reorderAllZ();
+  document.dispatchEvent(new CustomEvent('layers:changed'));   // CPD：范围上载后统一通知（引擎 recompute 推进引导；draw-tool 框选已有 dispatch，上传走此补齐）
   if (added) {
     showLayerManager();
     toast.success(`已上载 ${added} 个范围图层`);
