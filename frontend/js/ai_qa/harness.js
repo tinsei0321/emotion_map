@@ -283,8 +283,9 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   if (hooks.onRoundStart) hooks.onRoundStart(1);
   setToolContext({ tool: def.tool, round: 1 });
   let obs;
+  let r = null;
   try {
-    const r = await TOOLS[def.tool](params);
+    r = await TOOLS[def.tool](params);
     obs = (r && r.observation) || '[ERR] 工具无观察返回';
     if (r && r.data && r.data.layerId) newLayerCount = 1;
   } catch (e) {
@@ -292,9 +293,25 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   }
   toolHistory.push(`第1轮·动作: ${def.tool}(${JSON.stringify(params).slice(0, 120)}) → ${obs}`);
   // 3. 失败/空命中 → EXIT_GAP 诚实兜底（不裸输/不赌博自纠）
+  //    P0（v1.4 修误判）：分析型工具（zonal/compare/rank/area_stats·表格型无 layerId）成功=rows 非空，
+  //    不再因 newLayerCount=0 误判"未产出图层"（数据齐全却喊缺数据的根因）。
   const failed = /\[ERR\]|失败|错误/.test(obs);
-  if (failed || newLayerCount === 0) {
-    const gapText = composeGapCard(diagnose, [failed ? obs.slice(0, 200) : `${def.tool} 未产出图层（可能范围内无点/无匹配要素）`]);
+  const analytical = _ANALYTICAL_TOOLS.has(def.tool);
+  const hasRows = !!(analytical && r && r.data && Array.isArray(r.data.rows) && r.data.rows.length > 0);
+  if (failed || (newLayerCount === 0 && !hasRows)) {
+    // P2（Smart·v1.4）：非硬 ERR 的空结果（范围内无点/无匹配）→ ask_user 提问，不直接 GAP 放弃。
+    //   守 Smart Agent「不确定/失败时交流、不猜不放弃」；用户答 → resume 续作。硬 ERR（工具异常）仍走 GAP（非提问可解）。
+    if (!failed) {
+      const _lbl = params.boundary || params.layer || params.center || '该范围';
+      const ask = {
+        type: 'ask_user',
+        question: `「${_lbl}」范围内未聚合到足够的情绪点数据（可能该区无 L2 点层覆盖，或范围与数据不重叠）。要怎么处理？`,
+        options: ['换一个区域重试（请指定：如伍家岗区 / 西陵区）', '我已上传该区域数据，请重新分析', '先看全域情绪分布如何？'],
+      };
+      if (hooks.onAskUser) hooks.onAskUser(ask, 1);
+      return { ok: true, rounds: 1, ask, diagnose, exit: 'ask', newLayerCount };
+    }
+    const gapText = composeGapCard(diagnose, [obs.slice(0, 200)]);
     if (hooks.onFinalDone) hooks.onFinalDone(gapText);
     _recordSkip('tool_failed');   // ⑤④ execSkips 遥测
     return { ok: true, rounds: 1, final: gapText, review: { pass: true, degraded: true, skipped: 'template-tool-failed' }, degraded: true, diagnose, exit: 'gap', newLayerCount };
@@ -316,6 +333,7 @@ async function runTemplatePath(ctx, hooks, diagnose) {
 }
 
 const _GEO_TOOLS = ['extract_feature', 'overlay', 'clip', 'filter_attr', 'merge', 'buffer', 'zonal_stats', 'rank', 'area_stats', 'nearest', 'hotspot'];
+const _ANALYTICAL_TOOLS = new Set(['zonal_stats', 'compare_regions', 'rank', 'area_stats']);   // P0：表格型分析工具（返 rows·无 layerId）→ 成功判定认 rows 非空，不误判 GAP
 /** F3：诊断 method 里规划的 geo 工具步骤数。数组元素用 ' → ' 拼接后按 →/，/；/换行 分句，
  *  每句首个工具名计 1 步；**不**按 ASCII 逗号分（工具实参含逗号，如 ($1,land)）。 */
 function _plannedGeoSteps(method) {

@@ -5,7 +5,7 @@ import { getLayers, getLayer, getSelectedLayer, addLayer, addGroup, removeLayer,
 import { fitBoundsTo, renderLayer, reorderAllZ, removeLayerFromMap } from '../map.js';
 import { activateTab, setOverview } from '../panel.js';
 import { DOMAIN_LABEL, ELEMENT_LABEL } from '../popup.js';
-import { generateGridForAI } from '../grid-tool.js';
+import { generateGridForAI, piToNorm, polarityStops } from '../grid-tool.js';   // P1：zonal 合成聚合图层复用 piToNorm（极性→_grid_norm）+ polarityStops（terrain-9 红绿色带）
 import { generateHeatmapForAI, generateTerrainForAI } from '../heatmap-tool.js';   // 工作机制重构：density 委托 Toolbox（2D 彩虹/3D 地形，不自造）
 import { renderLayerList, refreshLegend } from '../sidebar.js';
 import { fcBBox, profileFields } from '../import.js';
@@ -201,7 +201,7 @@ const _fmtRow = (row) => {
 
 function isAnalysis(l) {
   const ui = l && l.paint && l.paint._ui;
-  return !!(l && l.kind === 'polygon' && ui && (ui.tool === 'grid' || ui.tool === 'terrain'));
+  return !!(l && l.kind === 'polygon' && ui && (ui.tool === 'grid' || ui.tool === 'terrain' || ui.tool === 'zonal'));
 }
 function activeAnalysis() {
   if (_lastGrid && _lastGrid.layerId) {
@@ -211,6 +211,45 @@ function activeAnalysis() {
   const sel = getSelectedLayer();
   if (sel && isAnalysis(sel)) return sel;
   return getLayers().find((l) => isAnalysis(l) && l.fc && l.fc.features && l.fc.features.length) || null;
+}
+/** P1（v1.4）：rows + boundary geojson → 合成聚合 polygon FC（每 feature 注入 _grid_norm/polarity_index 供 choropleth 着色）。
+ *  仅当 boundary 解析为 GeoJSON（中文名）时合成；preset_id（无 geojson）返 null（只给表格 rows）。 */
+function _buildZonalFc(rows, boundary) {
+  const feats = !boundary ? [] : (boundary.type === 'FeatureCollection' ? boundary.features : (boundary.type === 'Feature' ? [boundary] : []));
+  if (!feats.length) return null;
+  const findRow = (nm) => {
+    const s = String(nm || '').trim();
+    return rows.find((r) => String(r.name || '').trim() === s)
+      || rows.find((r) => { const rn = String(r.name || '').trim(); return rn && (rn.includes(s) || s.includes(rn)); });
+  };
+  const out = [];
+  for (const f of feats) {
+    const nm = (f.properties && f.properties.name) || '';
+    const row = findRow(nm);
+    const pi = row && row.polarity_index != null && !isNaN(Number(row.polarity_index)) ? Number(row.polarity_index) : null;
+    out.push({
+      ...f,
+      properties: {
+        ...(f.properties || {}), name: nm || (row && row.name) || '',
+        polarity_index: pi, _grid_norm: pi != null ? piToNorm(pi) : 0.5,
+        point_count: row ? (row.point_count || 0) : 0,
+        domain_top: row ? row.domain_top : null, element_top: row ? row.element_top : null,
+        issue_label: row ? row.issue_label : null,
+      },
+    });
+  }
+  return { type: 'FeatureCollection', features: out };
+}
+/** P1：zonal 合成聚合图层（choropleth 红绿）→ addResultLayer（_ui.tool='zonal' 复用 grid 着色管线）。返 layerId 或 null。 */
+function _zonalToLayer(boundaryLabel, rows, boundary) {
+  const fc = _buildZonalFc(rows, boundary);
+  if (!fc || !fc.features.length) return null;
+  const L = addResultLayer({
+    name: `聚合·${boundaryLabel}`, kind: 'polygon', fc, keep: true,
+    paint: { _ui: { tool: 'zonal' }, fillOn: true, fillOpacity: 0.72, lineWidth: 1, lineOpacity: 0.6,
+      gridField: '_grid_norm', gridStops: polarityStops('overall') || [] },
+  });
+  return L && L.id;
 }
 function fitToFeature(f) {
   const g = f && f.geometry;
@@ -733,7 +772,8 @@ export const TOOLS = {
       const r = await geoFetch('zonal_stats', body);
       const rows = r.rows || [];
       if (!rows.length) return { observation: `面域聚合（boundary=${params.boundary}）无结果` };
-      return { observation: `面域聚合 ${rows.length} 单元（boundary=${params.boundary}，按 |${r.sort_by || 'polarity_index'}| 降序）：\n` + rows.map(_fmtRow).join('\n'), data: { rows, sort_by: r.sort_by } };
+      const layerId = _zonalToLayer(params.boundary, rows, boundary);   // P1：合成红-绿聚合图层（activeAnalysis 可认→深读可工作）
+      return { observation: `面域聚合 ${rows.length} 单元（boundary=${params.boundary}，按 |${r.sort_by || 'polarity_index'}| 降序）：\n` + rows.map(_fmtRow).join('\n'), data: { rows, sort_by: r.sort_by, layerId } };
     } catch (e) { return _ERR('zonal_stats', e); }
   },
 

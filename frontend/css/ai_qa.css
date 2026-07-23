@@ -245,6 +245,7 @@
 .aiq-mode button { font-size: var(--geojson-typography-size-2xs); padding: 3px 10px; border: none; background: transparent; color: var(--geojson-color-text-secondary); cursor: pointer; transition: background var(--geojson-transition), color var(--geojson-transition); }
 .aiq-mode button:hover { background: var(--geojson-color-gray-100, #f0f0f0); }
 .aiq-mode button.is-active { background: var(--emc-accent, #D97757); color: #fff; }
+.aiq-mode button svg { display: block; }   /* 大脑/闪电图标（v1.4）：去 inline 基线，居中 */
 
 /* ── 审查状态区（七条 checklist ✓/△/✕ + 整体结论）── */
 .aiq-review { margin: 0 0 6px; padding: 6px 10px; border-left: 2px solid var(--geojson-color-gray-200, #e3e5e8); background: var(--geojson-color-gray-100, #f7f7f7); border-radius: 0 6px 6px 0; }
