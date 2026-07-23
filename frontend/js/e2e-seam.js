@@ -57,7 +57,7 @@ window.__emcTest = {
     return window._testFetchLog.filter((e) => e.url.includes('/chat') && e.body)
       .map((e) => ({ phase: e.body.phase, template: e.body.diagnose && e.body.diagnose.template }));
   },
-  geoCalls() { return window._testFetchLog.filter((e) => e.url.includes('/geo/')); },
+  geoCalls() { return window._testFetchLog.filter((e) => /\/(geo|spatial)\//.test(e.url)); },   // 含 /spatial/（grid 等走此路径，否则漏抓）
   send(text) {
     const i = document.getElementById('chat-input'); if (i) i.value = text;
     const b = document.getElementById('chat-send'); if (b) b.click();

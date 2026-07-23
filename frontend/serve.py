@@ -19,6 +19,8 @@ import socketserver
 import sys
 import os
 import re
+import json
+import time
 import subprocess
 
 # 本地 css/js 引用（相对路径 css/.. js/..）→ 注入 ?v=<mtime>
@@ -177,8 +179,12 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self):
+        path = self.path.split('?')[0]
+        # /_test/report：测试飞轮报告落盘到 tests/reports/（dev-only，不走后端）
+        if path == '/_test/report':
+            return self._save_test_report()
         # /api/* POST（export/buffer/analyze/governance）→ 反代后端
-        if self.path.split('?')[0].startswith('/api/'):
+        if path.startswith('/api/'):
             return self._proxy_api()
         self.send_error(405, 'Method Not Allowed')
 
@@ -222,6 +228,40 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Content-Length', str(len(rbody)))
         self.end_headers()
         self.wfile.write(rbody)
+
+    def _test_reports_dir(self):
+        """测试报告固定落盘目录：<repo>/tests/reports/（不存在则建）。"""
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        d = os.path.join(repo_root, 'tests', 'reports')
+        os.makedirs(d, exist_ok=True)
+        return d
+
+    def _save_test_report(self):
+        """POST /_test/report {content,date,type} → 写 tests/reports/report-<date>-<NN>-<type>.md。
+        编号按同日已有文件数自增（跨会话唯一）。dev-only（?test=1 抽屉调用）。"""
+        length = int(self.headers.get('Content-Length') or 0)
+        raw = self.rfile.read(length) if length else b''
+        try:
+            payload = json.loads(raw.decode('utf-8') or '{}')
+        except Exception:
+            payload = {}
+        content = str(payload.get('content', ''))
+        date = str(payload.get('date') or time.strftime('%Y-%m-%d'))
+        typ = re.sub(r'[^a-zA-Z0-9_-]', '', str(payload.get('type', 'run'))) or 'run'
+        d = self._test_reports_dir()
+        existing = [f for f in os.listdir(d) if f.startswith(f'report-{date}-') and f.endswith('.md')]
+        n = len(existing) + 1
+        name = f'report-{date}-{n:02d}-{typ}.md'
+        with open(os.path.join(d, name), 'w', encoding='utf-8') as f:
+            f.write(content)
+        rel = f'tests/reports/{name}'
+        body = json.dumps({'ok': True, 'name': name, 'path': rel, 'n': n}).encode('utf-8')
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+        sys.stderr.write(f'[serve] 测试报告已存: {rel}\n')
 
     def log_message(self, fmt, *args):
         sys.stderr.write(f'[serve] {self.address_string()} - {fmt % args}\n')
@@ -296,14 +336,41 @@ def _spawn_backend(repo_root, backend_port=8000):
     return proc
 
 
+def _open_browser(which, port):
+    """serve 就绪后自动开浏览器（main / test / both）。后台线程延迟开，socket 已 listen 必连得上。"""
+    import threading, webbrowser
+    base = f'http://localhost:{port}'
+
+    def _go():
+        time.sleep(0.6)
+        if which in ('main', 'both'):
+            try: webbrowser.open(f'{base}/frontend/index.html')
+            except Exception: pass
+        if which in ('test', 'both'):
+            time.sleep(0.5)
+            try: webbrowser.open(f'{base}/frontend/index.html?test=1')
+            except Exception: pass
+
+    threading.Thread(target=_go, daemon=True).start()
+
+
 def main():
     args = sys.argv[1:]
     port = int(args[0]) if args and args[0].isdigit() else 8080
     no_backend = '--no-backend' in args
+    # --open=both|main|test|none：serve 就绪后自动开浏览器（start.bat 用 both；直接 py serve 默认 none 不开）
+    open_what = 'none'
+    for _a in args:
+        if _a.startswith('--open='):
+            open_what = _a.split('=', 1)[1]
+        elif _a == '--open':
+            open_what = 'both'
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # frontend/ 的上一层 = repo root
     _free_port(port)   # 清掉同端口的僵尸 serve，避免返回旧版
     backend_proc = None if no_backend else _spawn_backend(repo_root)
     with ReuseTCPServer(('', port), NoCacheHandler) as httpd:
+        if open_what != 'none':
+            _open_browser(open_what, port)   # socket 已 listen → 后台线程延迟开浏览器
         print(f'[OK] frontend serve on http://localhost:{port} (no-cache + ?v auto-inject)')
         print('     访问 http://localhost:{}/frontend/index.html'.format(port))
         print('     Ctrl+C 停止' + ('（同时停后端）' if backend_proc else ''))

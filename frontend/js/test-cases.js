@@ -19,7 +19,15 @@ async function llmRun(t, q, assert, opts = {}) {
   if (!ok) return { pass: false, stage: 's3', obs: '回答超时（90s）' };
   const b = t.badge();
   if (!b) return { pass: false, stage: 's4', obs: '无 exit-badge' };
-  return assert(b, t);
+  const r = assert(b, t);
+  // 抓真实调用的工具端点（/geo /spatial）→ 行内摘要 + 报告标注（工具类一眼看出调了啥）
+  if (r && typeof r === 'object') {
+    r.tools = [...new Set(t.geoCalls().map((e) => {
+      const m = String(e.url).split('?')[0].match(/(?:geo|spatial)\/([a-z_0-9]+)/i);
+      return m ? m[1] : null;
+    }).filter(Boolean))];
+  }
+  return r;
 }
 
 // ═══════════════════════════════════════════════════════

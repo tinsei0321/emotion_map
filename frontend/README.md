@@ -5,7 +5,22 @@
 
 ---
 
-## 一、每次启动测试页面（3 步）
+## 一、启动
+
+### 方式 A：双击 `start.bat`（推荐·一键开主页 + 测试页）
+
+项目根的 **`d:\Github\emotion_map\start.bat`** 双击即可：
+
+- 自动清旧 serve / 后端 → 起 serve（no-cache）→ **serve 一就绪就自动开「主页 + 测试页」两个标签**
+- 这个黑窗口要一直开着；**Ctrl+C 同停前端 + 后端**。
+
+- **主页（纯界面）**：`http://localhost:8080/frontend/index.html`
+- **测试页（带测试飞轮）**：`http://localhost:8080/frontend/index.html?test=1`
+
+> 不想看测试时，关掉那个标签即可；`?test=1` 不加就是纯主页。
+> 测试报告落盘在项目根 `tests/reports/`（文件名 = 日期 + 编号 + 类型）。
+
+### 方式 B：手动起（3 步·VS Code）
 
 > 用 VS Code 操作最省事。命令里的 `py` 是 Windows 的 Python 启动器（别用 `python`，本机 `python` 会报错）。
 
@@ -30,9 +45,13 @@ py frontend/serve.py 8080
 > （临时回退：`py -m http.server 8080` 仍可用，但会有缓存问题。）
 
 **第 3 步：浏览器打开**
-地址栏粘贴：
+主页地址栏粘贴：
 ```
 http://127.0.0.1:8080/frontend/index.html
+```
+要开**测试飞轮**（100 例 + 重跑 + 行内摘要 + 存报告）就加 `?test=1`：
+```
+http://127.0.0.1:8080/frontend/index.html?test=1
 ```
 看到 **深蓝标题栏「宜昌市情绪地图 v1.0」+ 工具栏 + 浅色矢量底图（CARTO Positron）**，就成了。
 

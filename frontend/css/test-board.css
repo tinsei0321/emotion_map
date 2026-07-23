@@ -78,3 +78,15 @@
 @keyframes tb-flash { 0%,100% { background: transparent; } 50% { background: rgba(217,119,87,0.15); } }
 
 @keyframes tb-blink { 50% { opacity: 0.3; } }
+
+/* ═══ v3：行两行布局 + 行内摘要（工具标注）═══ */
+.tb-row { flex-wrap: wrap; }
+.tb-summary { flex-basis: 100%; padding: 1px 0 2px 70px; font-size: 10px; color: var(--geojson-color-text-secondary, #999); line-height: 1.35; word-break: break-all; }
+.tb-summary .tb-tool { color: var(--emc-accent, #D97757); font-weight: 600; }
+.tb-summary .tb-review-inline { color: #d9a400; margin-left: 4px; }
+.tb-summary .tb-run { color: #4285F4; }
+.tb-summary .tb-rerun-tag { color: var(--emc-accent, #D97757); font-weight: 700; }
+
+/* toast（操作反馈）*/
+.tb-toast { position: fixed; right: 16px; bottom: 70px; z-index: 100001; max-width: 360px; padding: 8px 14px; border-radius: 8px; background: rgba(31,31,31,0.96); color: #ECECEC; font: 12px/1.45 system-ui, sans-serif; box-shadow: 0 6px 20px rgba(0,0,0,0.45); opacity: 0; transform: translateY(6px); transition: opacity .18s ease, transform .18s ease; pointer-events: none; border: 1px solid var(--emc-accent, #D97757); }
+.tb-toast.tb-show { opacity: 1; transform: translateY(0); }
