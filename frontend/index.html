@@ -881,5 +881,7 @@
   <script type="module" src="js/main.js"></script>
   <!-- E2E test seam：仅 ?e2e=1 时 dynamic-load e2e-seam.js（生产永不加载，main.js 零 test 代码）-->
   <script>if(new URLSearchParams(location.search).get('e2e')==='1'){import('./js/e2e-seam.js').catch(e=>console.error('[e2e] seam load failed',e));}</script>
+  <!-- 测试飞轮：?test=1 时加载 test-board.js + css + e2e-seam（生产永不加载）-->
+  <script>if(new URLSearchParams(location.search).get('test')==='1'){var _tbCss=document.createElement('link');_tbCss.rel='stylesheet';_tbCss.href='css/test-board.css';document.head.appendChild(_tbCss);import('./js/e2e-seam.js').then(function(){return import('./js/test-board.js');}).catch(function(e){console.error('[test] load failed',e);});}</script>
 </body>
 </html>
