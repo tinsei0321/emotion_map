@@ -251,6 +251,23 @@ function _zonalToLayer(boundaryLabel, rows, boundary) {
   });
   return L && L.id;
 }
+/** P1-extend（v1.4）：compare 多区合成合并聚合图层（每区 choropleth 合并为一个 FC）。复用 _buildZonalFc 逐区合成。 */
+function _compareToLayer(results) {
+  const feats = [];
+  const labels = [];
+  for (const x of results) {
+    if (!x.row || !x.boundaryGeo) continue;
+    const fc = _buildZonalFc([x.row], x.boundaryGeo);
+    if (fc && fc.features.length) { feats.push(...fc.features); labels.push(x.boundary); }
+  }
+  if (!feats.length) return null;
+  const L = addResultLayer({
+    name: `对比·${labels.join('·')}`, kind: 'polygon', fc: { type: 'FeatureCollection', features: feats }, keep: true,
+    paint: { _ui: { tool: 'zonal' }, fillOn: true, fillOpacity: 0.72, lineWidth: 1, lineOpacity: 0.6,
+      gridField: '_grid_norm', gridStops: polarityStops('overall') || [] },
+  });
+  return L && L.id;
+}
 function fitToFeature(f) {
   const g = f && f.geometry;
   if (!g) return;
@@ -793,9 +810,9 @@ export const TOOLS = {
       const body = { layer: _layer, boundary };
       if (pf) body.pre_filter = pf;
       try {
-        const r = await geoFetch('zonal_stats', body);
-        const rows = r.rows || [];
-        results.push({ boundary: b, row: rows[0] || null, n: rows.length, sort_by: r.sort_by });
+      const r = await geoFetch('zonal_stats', body);
+      const rows = r.rows || [];
+      results.push({ boundary: b, boundaryGeo: boundary, row: rows[0] || null, n: rows.length, sort_by: r.sort_by });
       } catch (e) { results.push({ boundary: b, row: null, err: String((e && e.message) || e) }); }
     }
     const lines = results.map((x) => {
@@ -805,7 +822,8 @@ export const TOOLS = {
     });
     const _ok = results.filter((x) => x.row).length;
     if (_ok < 2) return { observation: `区域对比仅 ${_ok}/${results.length} 区有结果（${results.map((x) => x.boundary).join('、')}）——确认 boundaries 为有效 preset_id（行政区/单元）后重试\n` + lines.join('\n') };
-    return { observation: `区域对比（${results.length} 区并排，按极性/归因）：\n` + lines.join('\n'), data: { comparison: results } };
+    const layerId = _compareToLayer(results);   // P1-extend：多区合并聚合图层（choropleth 红绿·activeAnalysis 可认）
+    return { observation: `区域对比（${results.length} 区并排，按极性/归因）：\n` + lines.join('\n'), data: { comparison: results, layerId } };
   },
 
   /** Top N 排序（最差/最好/按 domain·element 占比）。 */

@@ -256,6 +256,23 @@ async function _reviseOnce(ctx, hooks, draft, hints, toolHistoryText) {
 
 /** P1 编排·单技能路径：diagnose 选定 single 技能 → 填参 → 直接调 TOOLS[tool] → finalStep（**不进 while-loop、0 次 agentStep LLM**，p^N→p²）。
  *  缺不可默认槽/工具失败/空命中 → EXIT_GAP 诚实兜底（不赌博自纠，与降 p^N 初衷一致）。finalStep draft 仍过 _verifyClaims+_reviseOnce（5.74 对账保留）。 */
+/** P2（Smart·v1.4）：缺必填槽 → 构造 ask_user 提问（精准选项·引导用户指定，避免模糊地名）。 */
+const _SLOT_HINT = {
+  boundary: { q: '分析哪个区域？', opts: ['西陵区的情绪归因', '伍家岗区的情绪归因', '夷陵区的情绪归因', '我来输入其他区域'] },
+  boundaries: { q: '对比哪些区域（≥2 个）？', opts: ['对比西陵区和伍家岗区', '对比西陵区和夷陵区', '我来指定两个区'] },
+  center: { q: '哪个设施/地点？（点地图选点，或输入地名）', opts: ['滨江公园周边', '奥体中心周边', '夷陵广场周边', '我来点地图选/输入地名'] },
+  range: { q: '指定哪个范围？', opts: ['西陵区', '伍家岗区', '我来上传范围文件'] },
+  layer: { q: '对哪个图层分析？', opts: ['最新载入的图层', '我来指定图层名'] },
+  target: { q: '找哪类目标？', opts: ['最近的公园', '最近的学校', '我来指定'] },
+  layer_a: { q: '叠置的第一个图层？', opts: ['最新载入的图层', '我来指定'] },
+  layer_b: { q: '叠置的第二个图层？', opts: ['范围层', '我来指定'] },
+};
+function _missingSlotAsk(skill, missing) {
+  const m = missing[0];
+  const hint = _SLOT_HINT[m] || { q: `这个分析需要：${missing.join('、')}——请补充`, opts: ['我来补充说明'] };
+  return { type: 'ask_user', question: `要做「${skill}」分析，还缺「${m}」。${hint.q}`, options: hint.opts };
+}
+
 async function runTemplatePath(ctx, hooks, diagnose) {
   const skill = diagnose.template;
   const def = stages.SKILL_DEFS[skill];
@@ -266,10 +283,11 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   const v = stages.validateParams(skill, norm);
   const params = v.params;
   if (!v.ok) {
-    const gapText = composeGapCard(diagnose, [`单技能「${skill}」缺必填槽：${v.missing.join('、')}——请补充后重提`]);
-    if (hooks.onFinalDone) hooks.onFinalDone(gapText);
+    // P2 扩展（Smart·v1.4）：缺必填槽 → ask_user 提问（精准选项·引导用户指定），非直接 GAP 放弃。用户答 → resume 续作。
+    const ask = _missingSlotAsk(skill, v.missing);
+    if (hooks.onAskUser) hooks.onAskUser(ask, 0);
     _recordSkip('missing_slot');   // ⑤④ execSkips 遥测
-    return { ok: true, rounds: 0, final: gapText, review: { pass: true, degraded: true, skipped: 'template-missing-slot' }, degraded: true, diagnose, exit: 'gap', newLayerCount: 0 };
+    return { ok: true, rounds: 0, ask, diagnose, exit: 'ask', newLayerCount: 0 };
   }
   // 1.5 deliberateStep（Pro 研判·执行前·Step 3·阶段 G+H）：仅 Pro 模式（Flash 跳过省调用）；
   //     Pro 研判"工具+参数是否回答真实意图 + 数据局限"→ 注入 finalStep context 提升结论质量。失败不阻塞执行（try/catch）。
@@ -560,10 +578,15 @@ export async function orchestrate(ctx, hooks = {}) {
   const _hardFail = (_exitIntent === 'gis_operation' || _exitIntent === 'emotion_analysis')
     && successObs === 0 && newLayerCount === 0 && !answered && !narratedAnswer;
   if (_hardFail) {
-    const gapText = composeGapCard(diagnose, failedObs);
-    if (hooks.onFinalDone) hooks.onFinalDone(gapText);
-    if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: '零成功·缺数据卡·跳过审查', skipped: 'gap' });
-    return { ok: true, rounds: round, final: gapText, review: { pass: true, degraded: true, skipped: 'gap' }, degraded: true, diagnose, exit: 'gap', newLayerCount };
+    // P2 扩展（Smart·v1.4）：零成功（全失败）→ ask_user 提问（换问法/范围/上传/看现有），非直接 GAP 放弃。守 Smart「失败时交流、不放弃」。
+    const _tried = failedObs.slice(0, 2).map((f) => String(f).split('：')[0]).filter(Boolean).join('、');
+    const ask = {
+      type: 'ask_user',
+      question: `这次没能跑通${_tried ? `（试了 ${_tried} 均未成功）` : ''}——可能是范围与数据不匹配，或缺关键数据。要怎么处理？`,
+      options: ['换个问法重试（缩小到某区/某类用地/某时点）', '我已上传所需数据，请重新分析', '用现有数据能做哪些分析？'],
+    };
+    if (hooks.onAskUser) hooks.onAskUser(ask, round);
+    return { ok: true, rounds: round, ask, diagnose, exit: 'ask', newLayerCount };
   }
 
   // EXIT_RESULT：草稿结论（agent 决定 answer / 达上限 / 降级回退 都走这里）
