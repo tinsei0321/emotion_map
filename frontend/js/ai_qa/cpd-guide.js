@@ -74,18 +74,22 @@ function _compute() {
     streaming: _deps.isStreaming(),
     region: _deps.getLastRegion ? _deps.getLastRegion() : '',
   });
-  // engage 解除：用户已 engage 此 kind → 不重亮（null）；kind 变化 → 清除抑制、恢复正常引导。
+  // engage 解除（仅折叠态光环）：用户已 engage 此 kind → 折叠态不重亮光环（null）；
+  //   展开态提示条始终反映当前引导（不抑制·v1.3 修 hint 消失 bug——展开后 _compute 触发致 guidance=null、hint 隐藏）。
+  //   kind 变化（状态推进）→ 清除抑制、恢复正常引导。
   let guidance = raw;
-  if (raw && _suppressedKind && raw.kind === _suppressedKind) guidance = null;
+  const collapsed = _deps.isCollapsed ? _deps.isCollapsed() : false;
+  if (raw && _suppressedKind && raw.kind === _suppressedKind && collapsed) guidance = null;
   else if (raw && raw.kind !== _suppressedKind) _suppressedKind = null;
   document.dispatchEvent(new CustomEvent('cpd:guidance', { detail: { guidance } }));
 }
 
 /** 依赖注入 init（panel.js 调，单向；cpd-guide.js 零 import panel.js·CB-CPD-02 H1）。
- *  @param {{getLastExit:()=>*, isStreaming:()=>boolean, getLastRegion?:()=>string}} deps
+ *  @param {{getLastExit:()=>*, isStreaming:()=>boolean, getLastRegion?:()=>string, isCollapsed?:()=>boolean}} deps
  *  - getLastExit()   读末条 trace.exit（panel.js `_history.at(-1)?.trace?.exit ?? null`）
  *  - isStreaming()   读流式态（panel.js `_streaming`）
- *  - getLastRegion() （可选）读末条答案 [ref:区域]/{{focus:}} 抽取的区域名（确定性变量·plan §4.3） */
+ *  - getLastRegion() （可选）读末条答案 [ref:区域]/{{focus:}} 抽取的区域名（确定性变量·plan §4.3）
+ *  - isCollapsed()   （可选）读 EMC 折叠态——suppress 仅折叠态光环生效，展开态提示条不抑制（v1.3 修 hint bug） */
 export function initCpdGuide(deps) {
   _deps = deps || _deps;
   _lastTurnId = -1;            // 重置（切会话/clearChat 致 _history.length 回退断链·CB-CPD-02 L1）
@@ -108,6 +112,10 @@ export function recomputeGuidance() {
   _suppressedKind = null;
   _compute();
 }
+
+/** 刷新引导（仅 _compute，不 reset 去重/抑制）：供 panel.js 折叠↔展开切换时重算——
+ *  展开后 isCollapsed()=false → suppress 不生效 → 提示条反映当前引导（修 hint 消失 bug）。 */
+export function refreshGuidance() { _compute(); }
 
 /** engage 解除（plan §6.2.3）：用户已点击 CTA / 聚焦输入 → 抑制当前 kind 重亮，直至状态变化。 */
 export function suppressGuidance() {

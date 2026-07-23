@@ -2,7 +2,7 @@
 import { orchestrate, getTemplateStats } from './harness.js';
 import { buildContext, TOOLS, resetStepResults, resetCurrentResults, cleanupConsumedResults, getFig } from './tools.js';
 import { initCpdState, subscribe, getCurStepIdx, CPD_STEPS, relayoutFloats } from './cpd-state.js';
-import { initCpdGuide, recomputeGuidance, suppressGuidance } from './cpd-guide.js';   // CPD G1：引导引擎（依赖注入，零反向 import）
+import { initCpdGuide, recomputeGuidance, refreshGuidance, suppressGuidance } from './cpd-guide.js';   // CPD：引导引擎（依赖注入，零反向 import）
 import { getLayers, selectLayer, getSelectedLayer } from '../state.js';
 import { getLastUsage, resetCallStats, getCallStats } from './api.js';
 
@@ -179,7 +179,7 @@ function setEmcCollapsed(c) {
   if (input) input.placeholder = _emcCollapsed ? _INPUT_PH_COLLAPSED : _INPUT_PH_EXPANDED;   // 折叠/展开切换文案
   if (_emcCollapsed) _fitCollapsedText();   // CPD：折叠态文本自适应
   if (!_emcCollapsed) { relaxEmc(); _scheduleFit(); }   // 展开：回落 + 内容驱动高度自适应
-  _applyGuidance();   // CPD G1：折叠态引导光环 + 文案覆盖（有引导时覆盖默认 placeholder）
+  refreshGuidance();   // CPD：折叠↔展开重算引导（展开后 suppress 不生效→提示条反映当前引导·修 hint 消失 bug）
 }
 
 // ── CPD G1：引导引擎落地（cpd-guide.js 派发 cpd:guidance → 此处套光环/文案/CTA/examples）──
@@ -1769,5 +1769,6 @@ export function initChatPanel() {
     getLastExit: () => _history.at(-1)?.trace?.exit ?? null,
     isStreaming: () => _streaming,
     getLastRegion: _lastRegion,
+    isCollapsed: () => _emcCollapsed,
   });
 }
