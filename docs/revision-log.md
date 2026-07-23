@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月23日）** · 本节按板块分组、组内倒序；最新工作 = **5.192 K3 评价 + 痛点 4 假完成修复 + deliberateStep gate 收紧（K3 审查回应）**（本次，分支 `cpd`）。上一轮 5.191。最近：
+> 📍 **最新动态（07月23日）** · 本节按板块分组、组内倒序；最新工作 = **5.193 EMC 架构优化 A/B（短期）·density 网格兜底 + 字段校验 + clip 语义**（本次，分支 `cpd`）。上一轮 5.192。最近：
+>
+> - **5.193 EMC 架构优化 A/B（短期）·density 网格兜底 + 字段校验 + clip 语义**（用户报"答非所问"+ 架构审查后选 A/B/C/D 全优化；本次短期；主线程 **未派 subagent**——承重）：① **A density 网格语义兜底**（[harness.js](frontend/js/ai_qa/harness.js) runTemplatePath）：skill=density + question 含"网格/方格/grid/标准格"且不含"热力/密度"→ 强制 `mode='3d'`（方格网格·非热力图）；+ cell_size 从 question 抽取（"1000m"→1000）。**解"网格分析→彩虹热力图"答非所问**。② **B extract_feature 前置字段校验**（[tools.js](frontend/js/ai_qa/tools.js)）：`getFieldCard` 查 `where.field` 是否存在 → 不存在直接返"字段X不存在，可用Y"（非 [ERR]→ 走 recoverable→ask_user·**防 MC 臆造**）。③ **clip 语义提示**：observation 标注"裁剪点层·结果为点图层；要抽取范围面用 extract_feature"（解"范围剪裁→点图层"困惑）。**承重零触**（diagnose prompt 不动·harness/tool 层）。**C**(grid 独立 skill)/**D**(method 标准化·需拍板) 留中期/远期。node --check `.mjs` 绿 + 无中文标识符。commit·**待用户 push**。
 >
 > - **5.192 K3 评价 + 痛点 4 假完成修复 + deliberateStep gate 收紧（K3 审查回应·v1.5）**（用户用 kimi-K3 审查 EMC 策略产出 [K3-0723.md](catch-ball/K3-0723.md) 审查计划；主线程评价 + 实施 **未派 subagent**——承重）：**K3 评价**——方法论合理（系统三阶段 + 痛点→根因映射 + 证据链 + 承重边界）但**执行过重**（M1-M5 全量 25-35 问实测违背「调用次数优先」·不做）+ **基线过时**（v1.4/v1.5 已修痛点 2/3 主因：误判 GAP、字段失败 ask、滚动跳顶）。取精华（痛点映射）。**P0 痛点 4 假完成**（[harness.js:530](frontend/js/ai_qa/harness.js#L530) F3 完整性 gate）：扩 `emotion_analysis`（C 类·原仅 gis_operation）—— C 类 while-loop 多步做一部分就 answer → 强制续做 max 1（复用 `_plannedGeoSteps` 已覆盖 zonal/rank/area_stats/hotspot；density 委托边缘漏·接受）。**P1 deliberateStep gate 收紧**（[harness.js:294](frontend/js/ai_qa/harness.js#L294) + 新 `_needsDeliberate`）：仅 `strategy≠ready`（低置信/数据缺口）或 `method≥3 步`（复杂）才研判；**简单单技能跳过** → 省 1 轮 Pro LLM（缓解痛点 1「效率慢」·反思 v1.3 Step3 deliberateStep 是"叠加 gate"）。**承重**：F3 是"强制续做"非改四态出口裁定；deliberateStep gate 是减调用；diagnose prompt 不动。node --check `.mjs` 绿 + 无中文标识符。commit·**待用户 push**。
 >

@@ -878,12 +878,27 @@ export const TOOLS = {
       const name = params.as || (typeof params.range === 'string' ? params.range : '范围裁剪');   // 名=范围（如「西陵区」），勿用「裁剪·」
       const L = addResultLayer({ name, kind: 'point', fc: r.geojson, keep: !!params.keep });
       const sample = feats.slice(0, 3).map((f) => { const p = f.properties || {}; return p.name || p.issue_label || '未命名'; });
-      return { observation: `裁剪命中 ${r.count} 个要素${r.truncated ? '（已截断）' : ''}（range=${params.range}）→ 已生成图层「${name}」${L ? '(' + feats.length + '点)' : ''}，示例：${sample.join('、') || '（无）'}`, data: { count: r.count, layerId: L && L.id } };
+      return { observation: `裁剪命中 ${r.count} 个点要素${r.truncated ? '（已截断）' : ''}（range=${params.range}）→ 已生成点图层「${name}」${L ? '(' + feats.length + '点)' : ''}。注：clip 裁剪点层到范围·结果为点图层；要抽取范围面用 extract_feature。示例：${sample.join('、') || '（无）'}`, data: { count: r.count, layerId: L && L.id } };
     } catch (e) { return _ERR('clip', e); }
   },
   /** 从面边界按属性抽单要素为独立面图层（裁出某区/某单元），结果落地图。 */
   async extract_feature(params = {}) {
     if (!params.layer) return { observation: '[ERR] extract_feature 需 layer（preset_id|geojson）' };
+    // B（v1.6）：前置字段校验——getFieldCard 查 where.field 是否存在，不存在直接返提示（非 [ERR]·走 recoverable→ask_user 恢复）。
+    const _where = params.where ? normPreFilter(params.where) : null;
+    const _field = _where && _where.field;
+    if (_field && !isInternalField(_field)) {
+      const _layerObj = getLayers().find((l) => l.name === params.layer || l.id === params.layer);
+      if (_layerObj && _layerObj.fc) {
+        try {
+          const cards = await getFieldCard(_layerObj.id, _layerObj.fc, 'polygon');
+          if (cards && cards.fields && !cards.fields[_field]) {
+            const _avail = Object.keys(cards.fields).filter((f) => !isInternalField(f)).slice(0, 8).join('、');
+            return { observation: `字段「${_field}」不存在${_avail ? `，可用字段：${_avail}` : ''}。请用可用字段重试，或告诉我你要抽取什么内容。` };
+          }
+        } catch (_) { /* getFieldCard 失败（LLM 不可用/降级）→ 校验降级 skip·不阻塞 */ }
+      }
+    }
     const body = { layer: params.layer };
     if (params.where) body.where = normPreFilter(params.where) || params.where;   // 归一：字符串/对象 + in 多值逗号切分（"MC/in/西陵区,伍家岗区"→list）
     try {

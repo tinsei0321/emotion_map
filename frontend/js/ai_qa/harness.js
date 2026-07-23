@@ -298,6 +298,15 @@ async function runTemplatePath(ctx, hooks, diagnose) {
     _recordSkip('missing_slot');   // ⑤④ execSkips 遥测
     return { ok: true, rounds: 0, ask, diagnose, exit: 'ask', newLayerCount: 0 };
   }
+  // A-短期（v1.6）：density 网格语义兜底——question 含"网格/方格/grid/标准格"且不含"热力/密度"→ mode='3d'（方格网格·非热力图）。
+  // diagnose(Flash) 偶尔不把"网格"映射 mode='3d'，harness 层兜底（不动 prompt）。cell_size 从 question 抽取（"1000m"→1000）。
+  if (skill === 'density' && params.mode === '2d' && /网格|方格|标准格|grid/i.test(ctx.question || '') && !/热力|密度|heatmap/i.test(ctx.question || '')) {
+    params.mode = '3d';
+  }
+  if (skill === 'density') {
+    const _m = (ctx.question || '').match(/(\d+)\s*[米m]\b/i);
+    if (_m && Number(_m[1]) >= 50) params.cell_size = Number(_m[1]);
+  }
   // 1.5 deliberateStep（Pro 研判·执行前·Step 3·阶段 G+H）：仅 Pro 模式 + 低置信/复杂任务（v1.5 gate 收紧·痛点 1）；
   //     Pro 研判"工具+参数是否回答真实意图 + 数据局限"→ 注入 finalStep context 提升结论质量。失败不阻塞（try/catch）。
   if (ctx.model === 'pro' && _needsDeliberate(diagnose)) {
