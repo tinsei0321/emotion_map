@@ -658,3 +658,33 @@
 }
 .emc-welcome-chip:hover { border-color: var(--emc-accent, #D97757); background: #383838; }
 .emc-welcome-chip-tag { display: inline-block; font-size: var(--geojson-typography-size-2xs); color: var(--emc-accent, #D97757); margin-right: 7px; font-weight: var(--geojson-typography-weight-semibold); }
+
+/* ── CPD 引导焦点卡片（v1.3·主显示区视觉焦点·取代边缘小胶囊·用户定）── 大卡片 + accent 顶条 + 强阴影，引导用户一步步操作。 */
+.cpd-guide-card {
+  margin: 8px 2px 12px;
+  padding: 14px 14px 12px;
+  background: var(--geojson-color-gray-100, #2a2a2a);
+  border-radius: 12px;
+  border-top: 3px solid var(--emc-accent);                 /* 焦点：accent 顶条 */
+  box-shadow: 0 4px 18px rgba(0,0,0,0.22);                 /* 焦点：强阴影 */
+  display: flex; flex-direction: column; gap: 11px;
+}
+.cpd-guide-card-head { display: flex; align-items: center; gap: 8px; }
+.cpd-guide-card-icon { width: 20px; height: 20px; color: var(--emc-accent); flex-shrink: 0; }
+.cpd-guide-card-title { font-size: 15px; font-weight: 700; color: var(--geojson-color-text-primary, #ECECEC); }
+.cpd-guide-card-body { display: flex; flex-direction: column; gap: 8px; }
+.cpd-guide-opt {                                        /* 大选项按钮（非小胶囊·视觉焦点） */
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px;
+  background: var(--geojson-color-surface-panel, #fff);
+  border: 1px solid var(--emc-divider, rgba(255,255,255,0.08));
+  border-radius: 10px;
+  cursor: pointer; text-align: left;
+  transition: background .15s, border-color .15s, transform .1s, box-shadow .15s;
+}
+.cpd-guide-opt:hover { background: var(--emc-accent-soft); border-color: var(--emc-accent); transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,0.16); }
+.cpd-guide-opt-tag { font-size: 13px; font-weight: 700; color: var(--emc-accent); min-width: 66px; flex-shrink: 0; }
+.cpd-guide-opt-text { font-size: 12.5px; color: var(--geojson-color-text-secondary, #999); line-height: 1.4; }
+.cpd-guide-back { align-self: flex-start; font-size: 12px; color: var(--geojson-color-text-tertiary, #707070); cursor: pointer; padding: 2px 0; background: none; border: none; }
+.cpd-guide-back:hover { color: var(--emc-accent); }
+[data-theme="light"] .cpd-guide-card { box-shadow: 0 3px 12px rgba(20,58,53,0.10); }   /* Light 阴影更柔 */

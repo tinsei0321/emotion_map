@@ -234,30 +234,13 @@ function _runGuidanceCta(kind) {
 
 // ── CPD 阶段 A/B 引导内容（导游·确定性·不调 LLM·意图识别归 harness）──
 // intent（点+范围就绪）= 阶段 A 大方向胶囊 → 阶段 B 细化追问胶囊；interpret（dock 产图）= examples 读图。
-let _guidanceExamplesShown = false;   // 引导内容占用 #aiq-suggest 标志（防 clearGuidanceExamples 误清答案后 _followUps）
+let _guidanceCardShown = false;       // CPD 引导焦点卡片占用 #chat-messages 标志（与欢迎卡/追问互斥）
 let _curDirection = null;             // 阶段 A→B 级联：用户选的大方向（null=显方向；已选=显细化）
-/** 引导内容仅在「从未问答过」（首次分析前）显——一旦有答案，追问胶囊 _followUps 接管（互斥）。 */
+/** 引导卡片仅在「从未问答过」（首次分析前）显——一旦有答案，追问 _followUps 接管（互斥）。 */
 function _shouldShowGuidanceExamples() {
   return !_streaming && !_history.some((h) => h.role === 'assistant');
 }
-/** 渲染 examples 到 #aiq-suggest（复用 .aiq-suggest-chip 样式·零新 CSS）；点击 → send → harness diagnose。 */
-function renderGuidanceExamples(items) {
-  const el = document.getElementById('aiq-suggest');
-  if (!el || !Array.isArray(items) || !items.length) return;
-  el.hidden = false;
-  el.innerHTML = '<span class="aiq-suggest-label">试试</span>'
-    + items.map((it) => `<button type="button" class="aiq-suggest-chip" data-prompt="${escapeHtml(it.text)}"><span class="aiq-suggest-tag">${escapeHtml(it.tag)}</span>${escapeHtml(it.text)}</button>`).join('');
-  el.querySelectorAll('.aiq-suggest-chip').forEach((b) => b.addEventListener('click', () => _fillInput(b.dataset.prompt)));
-  _guidanceExamplesShown = true;
-}
-/** 清引导内容（仅当占用时清，不动答案后 _followUps）。 */
-function clearGuidanceExamples() {
-  if (!_guidanceExamplesShown) return;
-  const el = document.getElementById('aiq-suggest');
-  if (el) { el.hidden = true; el.innerHTML = ''; }
-  _guidanceExamplesShown = false;
-}
-/** 点击引导胶囊 → 填入对话框（不直接发·让用户确认/编辑后自发送·导游不代决定）。 */
+/** 点击引导选项 → 填入对话框（不直接发·让用户确认/编辑后自发送·导游不代决定）。 */
 function _fillInput(text) {
   const input = document.getElementById('chat-input');
   if (!input) return;
@@ -266,46 +249,56 @@ function _fillInput(text) {
   input.style.height = Math.min(160, input.scrollHeight) + 'px';   // textarea 自适应高度
   input.focus();
 }
-/** 渲染引导内容总调度（cpd:guidance/CTA/级联切换调）：intent=方向级联(A/B)；interpret=examples；其余清。末尾同步欢迎卡显隐。 */
+/** 渲染 CPD 引导焦点卡片到 #chat-messages 主显示区（视觉焦点·大卡片·取代边缘小胶囊·用户定）。
+ *  @param {{title:string, opts:[{tag?,text,dir?,prompt?}], back?:boolean}} spec */
+function _renderGuideCard(spec) {
+  const list = document.getElementById('chat-messages');
+  if (!list || !spec || !Array.isArray(spec.opts) || !spec.opts.length) return;
+  let card = list.querySelector('.cpd-guide-card');
+  if (!card) { card = document.createElement('div'); card.className = 'cpd-guide-card'; list.prepend(card); }
+  const optHtml = (o) => {
+    const tag = o.tag ? `<span class="cpd-guide-opt-tag">${escapeHtml(o.tag)}</span>` : '';
+    const attrs = `${o.dir ? ` data-dir="${escapeHtml(o.dir)}"` : ''}${o.prompt ? ` data-prompt="${escapeHtml(o.prompt)}"` : ''}`;
+    return `<button type="button" class="cpd-guide-opt"${attrs}>${tag}<span class="cpd-guide-opt-text">${escapeHtml(o.text)}</span></button>`;
+  };
+  card.innerHTML = '<div class="cpd-guide-card-head">'
+    + '<svg class="cpd-guide-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>'
+    + `<div class="cpd-guide-card-title">${escapeHtml(spec.title)}</div></div>`
+    + `<div class="cpd-guide-card-body">${spec.opts.map(optHtml).join('')}</div>`
+    + (spec.back ? '<button type="button" class="cpd-guide-back">‹ 返回方向</button>' : '');
+  card.querySelectorAll('.cpd-guide-opt').forEach((b) => {
+    if (b.dataset.dir) b.addEventListener('click', () => { _curDirection = b.dataset.dir; _renderGuidanceContent(); });
+    else if (b.dataset.prompt) b.addEventListener('click', () => _fillInput(b.dataset.prompt));
+  });
+  const back = card.querySelector('.cpd-guide-back');
+  if (back) back.addEventListener('click', () => { _curDirection = null; _renderGuidanceContent(); });
+  _guidanceCardShown = true;
+}
+/** 清引导焦点卡片。 */
+function _clearGuideCard() {
+  const card = document.querySelector('.cpd-guide-card');
+  if (card) card.remove();
+  _guidanceCardShown = false;
+}
+/** 渲染引导内容总调度（cpd:guidance/CTA/级联切换调）：intent=方向级联(A/B)/interpret=examples → 焦点卡片；其余清。末尾同步欢迎卡。 */
 function _renderGuidanceContent() {
-  if (!_shouldShowGuidanceExamples()) { clearGuidanceExamples(); renderEmptyState(); return; }
+  if (!_shouldShowGuidanceExamples()) { _clearGuideCard(); renderEmptyState(); return; }
   const g = _curGuidance;
-  if (!g) { clearGuidanceExamples(); renderEmptyState(); return; }
+  if (!g) { _clearGuideCard(); renderEmptyState(); return; }
   if (g.kind === 'intent' && g.directions) {
-    if (_curDirection && g.refinements && g.refinements[_curDirection]) _renderRefinements(g.refinements[_curDirection]);
-    else _renderDirections(g.directions);
+    if (_curDirection && g.refinements && g.refinements[_curDirection]) {
+      const dir = g.directions.find((d) => d.dir === _curDirection);
+      _renderGuideCard({ title: (dir ? dir.tag + ' · ' : '') + '细化你的需求', back: true, opts: g.refinements[_curDirection].map((t) => ({ text: t, prompt: t })) });
+    } else {
+      _renderGuideCard({ title: '选一个分析方向', opts: g.directions.map((d) => ({ tag: d.tag, text: d.hint || '', dir: d.dir })) });
+    }
   } else if (g.examples) {
     _curDirection = null;
-    renderGuidanceExamples(g.examples);
+    _renderGuideCard({ title: '这张图说明了什么？试试', opts: g.examples.map((e) => ({ tag: e.tag, text: e.text, prompt: e.text })) });
   } else {
-    clearGuidanceExamples();
+    _clearGuideCard();
   }
-  renderEmptyState();   // 同步欢迎卡（有引导内容→隐；清空且 _history 空→显·避免与引导胶囊冲突）
-}
-/** 阶段 A：渲染大方向胶囊（label「方向」）；点击 → 记 _curDirection → 阶段 B 细化。 */
-function _renderDirections(dirs) {
-  const el = document.getElementById('aiq-suggest');
-  if (!el || !Array.isArray(dirs) || !dirs.length) return;
-  el.hidden = false;
-  el.innerHTML = '<span class="aiq-suggest-label">方向</span>'
-    + dirs.map((d) => `<button type="button" class="aiq-suggest-chip" data-dir="${escapeHtml(d.dir)}"><span class="aiq-suggest-tag">${escapeHtml(d.tag)}</span>${escapeHtml(d.hint || '')}</button>`).join('');
-  el.querySelectorAll('.aiq-suggest-chip[data-dir]').forEach((b) =>
-    b.addEventListener('click', () => { _curDirection = b.dataset.dir; _renderGuidanceContent(); }));
-  _guidanceExamplesShown = true;
-}
-/** 阶段 B：渲染细化追问胶囊 +「‹ 返回方向」；点击细化 → 填入对话框（用户确认后发送）；返回 → 重选方向。 */
-function _renderRefinements(refs) {
-  const el = document.getElementById('aiq-suggest');
-  if (!el || !Array.isArray(refs) || !refs.length) return;
-  el.hidden = false;
-  el.innerHTML = '<span class="aiq-suggest-label">细化</span>'
-    + refs.map((t) => `<button type="button" class="aiq-suggest-chip" data-prompt="${escapeHtml(t)}">${escapeHtml(t)}</button>`).join('')
-    + '<button type="button" class="aiq-suggest-chip aiq-suggest-back">‹ 返回方向</button>';
-  el.querySelectorAll('.aiq-suggest-chip[data-prompt]').forEach((b) =>
-    b.addEventListener('click', () => _fillInput(b.dataset.prompt)));
-  const back = el.querySelector('.aiq-suggest-back');
-  if (back) back.addEventListener('click', () => { _curDirection = null; _renderGuidanceContent(); });
-  _guidanceExamplesShown = true;
+  renderEmptyState();   // 同步欢迎卡（引导卡显→欢迎隐；清空且 _history 空→显）
 }
 let _crowdedRaf = 0;
 function _checkCrowded() {
@@ -628,7 +621,7 @@ function _followUps(t) {
 function renderSuggest(t) {
   const el = document.getElementById('aiq-suggest');
   if (!el) return;
-  _guidanceExamplesShown = false;   // 答案后 _followUps 接管 #aiq-suggest，清 examples 占用标志（防 clearGuidanceExamples 误清追问）
+  _guidanceCardShown = false;   // 答案后 _followUps 接管，清引导卡片标志
   const items = _followUps(t);
   if (!items.length) { el.hidden = true; el.innerHTML = ''; return; }
   el.hidden = false;
@@ -639,8 +632,10 @@ function renderSuggest(t) {
 function clearSuggest() {
   const el = document.getElementById('aiq-suggest');
   if (el) { el.hidden = true; el.innerHTML = ''; }
-  _guidanceExamplesShown = false;   // send/切会话清空时，examples 占用标志同步清
-  _curDirection = null;             // 重置阶段 A→B 级联（下次 analyze 重新显方向）
+  const card = document.querySelector('.cpd-guide-card');
+  if (card) card.remove();            // send/切会话：清引导焦点卡片（对话接管）
+  _guidanceCardShown = false;
+  _curDirection = null;               // 重置阶段 A→B 级联（下次 analyze 重新显方向）
 }
 
 /** 长对话折叠：答案摘录（剥离 {{action}} 模板 + 标签，取首 ~70 字）。 */
@@ -1368,7 +1363,7 @@ function renderEmptyState() {
   const list = document.getElementById('chat-messages');
   if (!list) return;
   const existing = list.querySelector('.emc-welcome');
-  if (_history.length === 0 && !_guidanceExamplesShown) {   // 空态且无 CPD 引导内容才显欢迎卡（避免与方向/细化胶囊冲突）
+  if (_history.length === 0 && !_guidanceCardShown) {   // 空态且无 CPD 引导卡片才显欢迎卡（互斥）
     if (existing) return;
     const cap = [
       ['情绪评价', '区域情绪排序 · 4×5 治理归因 · 热点识别'],
