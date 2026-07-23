@@ -90,6 +90,45 @@ window.__emcTest = {
   getMode() { const b = document.querySelector('#aiq-mode button.is-active'); return b ? b.dataset.mode : null; },
   setMode(m) { const b = document.querySelector(`#aiq-mode button[data-mode="${m}"]`); if (b) b.click(); },
   newChat() { document.getElementById('chat-new')?.click(); },
+  async loadCSV(path) {
+    const txt = await fetch('/DATA/processed/' + path).then((r) => r.text());
+    const lines = txt.trim().split('\n');
+    const hdr = lines[0].replace(/^﻿/, '').split(',');
+    const li = hdr.indexOf('lon') >= 0 ? hdr.indexOf('lon') : hdr.indexOf('longitude');
+    const ai = hdr.indexOf('lat') >= 0 ? hdr.indexOf('lat') : hdr.indexOf('latitude');
+    const pi = hdr.indexOf('polarity');
+    const si = hdr.indexOf('score') >= 0 ? hdr.indexOf('score') : hdr.indexOf('emotion_intensity');
+    const ti = hdr.indexOf('text');
+    const di = hdr.indexOf('domain');
+    const ei = hdr.indexOf('element');
+    if (li < 0 || ai < 0) return { ok: false, reason: 'CSV 缺 lon/lat 列' };
+    const feats = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',');
+      const lon = parseFloat(cols[li]); const lat = parseFloat(cols[ai]);
+      if (!isFinite(lon) || !isFinite(lat)) continue;
+      const props = {};
+      if (pi >= 0) { const p = cols[pi]; props.polarity = p === 'Positive' || p === 'positive' ? 'Positive' : p === 'Negative' || p === 'negative' ? 'Negative' : 'Neutral'; }
+      if (si >= 0) props.score = parseFloat(cols[si]) || 0;
+      if (ti >= 0) props.text = (cols[ti] || '').slice(0, 200);
+      if (di >= 0) props.domain = cols[di] || '';
+      if (ei >= 0) props.element = cols[ei] || '';
+      feats.push({ type: 'Feature', properties: props, geometry: { type: 'Point', coordinates: [lon, lat] } });
+    }
+    if (!feats.length) return { ok: false, reason: 'CSV 无有效点' };
+    return this.loadPoints({ type: 'FeatureCollection', features: feats });
+  },
+  async loadRange(name) {
+    const fc = await fetch('/DATA/boundaries/' + name).then((r) => r.json());
+    const { polygons } = splitByGeometry(fc);
+    if (polygons.features.length) {
+      const L = addLayer({ name: name.split('/').pop().replace('.geojson', ''), kind: 'polygon', fc: polygons, paint: { fillOn: false, lineWidth: 1.5, fillOpacity: 0.1 } });
+      L.srcName = 'e2e_range';
+      safe(() => renderLayer(L));
+    }
+    document.dispatchEvent(new CustomEvent('layers:changed'));
+    return { ok: true, count: polygons.features.length };
+  },
 };
 
 // CPD G1 谓词暴露（用例 10·A1 谓词真值测试）：把死信号/谓词盲区（M2 无情绪层撒谎）从评审发现变测试发现。
