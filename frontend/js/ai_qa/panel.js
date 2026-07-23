@@ -247,7 +247,7 @@ function renderGuidanceExamples(items) {
   el.hidden = false;
   el.innerHTML = '<span class="aiq-suggest-label">试试</span>'
     + items.map((it) => `<button type="button" class="aiq-suggest-chip" data-prompt="${escapeHtml(it.text)}"><span class="aiq-suggest-tag">${escapeHtml(it.tag)}</span>${escapeHtml(it.text)}</button>`).join('');
-  el.querySelectorAll('.aiq-suggest-chip').forEach((b) => b.addEventListener('click', () => send(b.dataset.prompt)));
+  el.querySelectorAll('.aiq-suggest-chip').forEach((b) => b.addEventListener('click', () => _fillInput(b.dataset.prompt)));
   _guidanceExamplesShown = true;
 }
 /** 清引导内容（仅当占用时清，不动答案后 _followUps）。 */
@@ -257,11 +257,20 @@ function clearGuidanceExamples() {
   if (el) { el.hidden = true; el.innerHTML = ''; }
   _guidanceExamplesShown = false;
 }
-/** 渲染引导内容总调度（cpd:guidance/CTA/级联切换调）：intent=方向级联(A/B)；interpret=examples；其余清。 */
+/** 点击引导胶囊 → 填入对话框（不直接发·让用户确认/编辑后自发送·导游不代决定）。 */
+function _fillInput(text) {
+  const input = document.getElementById('chat-input');
+  if (!input) return;
+  input.value = text;
+  input.style.height = 'auto';
+  input.style.height = Math.min(160, input.scrollHeight) + 'px';   // textarea 自适应高度
+  input.focus();
+}
+/** 渲染引导内容总调度（cpd:guidance/CTA/级联切换调）：intent=方向级联(A/B)；interpret=examples；其余清。末尾同步欢迎卡显隐。 */
 function _renderGuidanceContent() {
-  if (!_shouldShowGuidanceExamples()) { clearGuidanceExamples(); return; }
+  if (!_shouldShowGuidanceExamples()) { clearGuidanceExamples(); renderEmptyState(); return; }
   const g = _curGuidance;
-  if (!g) { clearGuidanceExamples(); return; }
+  if (!g) { clearGuidanceExamples(); renderEmptyState(); return; }
   if (g.kind === 'intent' && g.directions) {
     if (_curDirection && g.refinements && g.refinements[_curDirection]) _renderRefinements(g.refinements[_curDirection]);
     else _renderDirections(g.directions);
@@ -271,6 +280,7 @@ function _renderGuidanceContent() {
   } else {
     clearGuidanceExamples();
   }
+  renderEmptyState();   // 同步欢迎卡（有引导内容→隐；清空且 _history 空→显·避免与引导胶囊冲突）
 }
 /** 阶段 A：渲染大方向胶囊（label「方向」）；点击 → 记 _curDirection → 阶段 B 细化。 */
 function _renderDirections(dirs) {
@@ -283,7 +293,7 @@ function _renderDirections(dirs) {
     b.addEventListener('click', () => { _curDirection = b.dataset.dir; _renderGuidanceContent(); }));
   _guidanceExamplesShown = true;
 }
-/** 阶段 B：渲染细化追问胶囊 +「‹ 返回方向」；点击细化 → send → EMC harness；返回 → 重选方向。 */
+/** 阶段 B：渲染细化追问胶囊 +「‹ 返回方向」；点击细化 → 填入对话框（用户确认后发送）；返回 → 重选方向。 */
 function _renderRefinements(refs) {
   const el = document.getElementById('aiq-suggest');
   if (!el || !Array.isArray(refs) || !refs.length) return;
@@ -292,7 +302,7 @@ function _renderRefinements(refs) {
     + refs.map((t) => `<button type="button" class="aiq-suggest-chip" data-prompt="${escapeHtml(t)}">${escapeHtml(t)}</button>`).join('')
     + '<button type="button" class="aiq-suggest-chip aiq-suggest-back">‹ 返回方向</button>';
   el.querySelectorAll('.aiq-suggest-chip[data-prompt]').forEach((b) =>
-    b.addEventListener('click', () => send(b.dataset.prompt)));
+    b.addEventListener('click', () => _fillInput(b.dataset.prompt)));
   const back = el.querySelector('.aiq-suggest-back');
   if (back) back.addEventListener('click', () => { _curDirection = null; _renderGuidanceContent(); });
   _guidanceExamplesShown = true;
@@ -1358,7 +1368,7 @@ function renderEmptyState() {
   const list = document.getElementById('chat-messages');
   if (!list) return;
   const existing = list.querySelector('.emc-welcome');
-  if (_history.length === 0) {
+  if (_history.length === 0 && !_guidanceExamplesShown) {   // 空态且无 CPD 引导内容才显欢迎卡（避免与方向/细化胶囊冲突）
     if (existing) return;
     const cap = [
       ['情绪评价', '区域情绪排序 · 4×5 治理归因 · 热点识别'],
