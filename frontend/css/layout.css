@@ -90,7 +90,7 @@ button { font-family: inherit; }
   top: 30px;                                    /* 与 EMC 顶对齐 */
   left: 320px;                                  /* EMC 右侧（10 + 300 + 10） */
   width: 340px;
-  max-height: calc(100vh - 70px);
+  max-height: calc(100vh - 138px);              /* 与 EMC 底部对齐（同 top:30px + 同底部空间 108px） */
   display: none;                                /* 默认隐藏 */
   flex-direction: column;
   background: var(--geojson-color-surface-panel);

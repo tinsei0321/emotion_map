@@ -11,7 +11,7 @@
   bottom: auto;                         /* 解除全高 → 高度随内容自适应 */
   width: 460px;
   max-width: calc(100vw - 340px);
-  max-height: calc(100vh - 60px);       /* 内容超长则内部滚动，不顶满屏 */
+  max-height: calc(100vh - 138px);             /* 与 EMC/抽屉底部对齐（同 top:30px → 同底部空间） */
   z-index: 74;                          /* 高于 map/drawer(55)，低于 collapse-btn(76) */
   display: none;                        /* 默认隐藏 */
   flex-direction: column;
