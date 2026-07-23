@@ -314,3 +314,5 @@ Agent 在工作过程中自动记录的隐形知识：
 
 > 注：hook 命令用 `py`（Windows launcher）；若环境 `python` 可用亦可。
 > 重启服务（前端 serve.py）与 pytest 不纳入 hook——它们耗时会打断会话，由人按需触发。
+
+**docs/todo.md 周归档**：每周（自然周·周一~周日）把**上周及更早**的日段（`## 📅 YYYY-MM-DD`）归档到 `docs/todo-archive/<周一>_<周日>.md`；**本周（含）留 todo.md**。收工/换周时执行（按 `## 📅` 分段 + 周一日期分组）。同步 revision-log §5 时一并检查是否该周归档。
