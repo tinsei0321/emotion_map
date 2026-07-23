@@ -273,6 +273,15 @@ function _missingSlotAsk(skill, missing) {
   return { type: 'ask_user', question: `要做「${skill}」分析，还缺「${m}」。${hint.q}`, options: hint.opts };
 }
 
+/** P1（v1.5 反思·痛点 1）：deliberateStep 仅低置信/复杂任务触发——strategy≠ready（数据缺口/降级标注）或 method≥3 步（复杂多步）。
+ *  简单单技能（ready + <3 步）跳过 → 省 1 轮 Pro LLM（缓解"效率慢"·K3 痛点 1·反思 deliberateStep 叠加）。 */
+function _needsDeliberate(diagnose) {
+  if (!diagnose || diagnose.degraded) return false;   // 降级诊断（可能概念问/诊断失败）不研判
+  const strat = diagnose.data_plan && diagnose.data_plan.strategy;
+  const method = diagnose.method || [];
+  return (strat && strat !== 'ready') || method.length >= 3;
+}
+
 async function runTemplatePath(ctx, hooks, diagnose) {
   const skill = diagnose.template;
   const def = stages.SKILL_DEFS[skill];
@@ -289,9 +298,9 @@ async function runTemplatePath(ctx, hooks, diagnose) {
     _recordSkip('missing_slot');   // ⑤④ execSkips 遥测
     return { ok: true, rounds: 0, ask, diagnose, exit: 'ask', newLayerCount: 0 };
   }
-  // 1.5 deliberateStep（Pro 研判·执行前·Step 3·阶段 G+H）：仅 Pro 模式（Flash 跳过省调用）；
-  //     Pro 研判"工具+参数是否回答真实意图 + 数据局限"→ 注入 finalStep context 提升结论质量。失败不阻塞执行（try/catch）。
-  if (ctx.model === 'pro') {
+  // 1.5 deliberateStep（Pro 研判·执行前·Step 3·阶段 G+H）：仅 Pro 模式 + 低置信/复杂任务（v1.5 gate 收紧·痛点 1）；
+  //     Pro 研判"工具+参数是否回答真实意图 + 数据局限"→ 注入 finalStep context 提升结论质量。失败不阻塞（try/catch）。
+  if (ctx.model === 'pro' && _needsDeliberate(diagnose)) {
     try {
       const judg = await stages.deliberateStep(ctx, diagnose, params);
       if (judg) ctx.context = `【研判】${judg}\n\n` + (ctx.context || '');
@@ -525,14 +534,16 @@ export async function orchestrate(ctx, hooks = {}) {
       return { ok: true, rounds: round, ask: step.action, diagnose, exit: 'ask', newLayerCount };
     }
     if (step.action.type === 'answer') {
-      // F3 完整性 gate（计划 vs 已执行，max 1）：纯 GIS 操作 + 诊断有 ≥2 步 geo 计划，却执行步数 < 计划步数就 answer = 半截，强制续做。
-      // 仅 gis_operation 触发（情绪问不受此约束）；按步数比对，工具等价替换(clip↔overlay)不会误判（步数够即放行）。
-      if (diagnose.intent === 'gis_operation' && forcedContinues < 1) {
+      // F3 完整性 gate（计划 vs 已执行，max 1）：GIS 操作 + 情绪分析（C）+ 诊断有 ≥2 步 geo 计划，却执行步数 < 计划步数就 answer = 半截，强制续做。
+      // v1.5 扩 emotion_analysis（痛点 4 假完成·K3 确认）：C 类多步做一部分就报 result 的"假完成"根因。
+      // 按步数比对，工具等价替换(clip↔overlay)不会误判（步数够即放行）。
+      const _f3Intent = diagnose.intent === 'gis_operation' || diagnose.intent === 'emotion_analysis';
+      if (_f3Intent && forcedContinues < 1) {
         const _planned = _plannedGeoSteps(diagnose.method);
         const _executed = _executedGeoSteps(toolHistory);
         if (_planned >= 2 && _executed < _planned) {
           forcedContinues++;
-          toolHistory.push(`⚠️ 完整性检查：此问判为纯 GIS 操作，诊断计划含 ${_planned} 个 geo 步骤，但你只执行了 ${_executed} 个就要 answer——这是半截回答。请继续完成剩余步骤产出全部应有图层，全部完成后再 answer；本轮禁止 answer。`);
+          toolHistory.push(`⚠️ 完整性检查：此问诊断计划含 ${_planned} 个步骤，但你只执行了 ${_executed} 个就要 answer——这是半截回答。请继续完成剩余步骤产出全部应有图层/分析，全部完成后再 answer；本轮禁止 answer。`);
           if (hooks.onObservation) hooks.onObservation(`[完整性] 计划 ${_planned} 步 / 已执行 ${_executed} 步，继续执行…`, round);
           round++;
           continue;
