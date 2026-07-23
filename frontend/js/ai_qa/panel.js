@@ -5,6 +5,7 @@ import { initCpdState, subscribe, getCurStepIdx, CPD_STEPS, relayoutFloats } fro
 import { initCpdGuide, recomputeGuidance, refreshGuidance, suppressGuidance } from './cpd-guide.js';   // CPD：引导引擎（依赖注入，零反向 import）
 import { getLayers, selectLayer, getSelectedLayer } from '../state.js';
 import { getLastUsage, resetCallStats, getCallStats } from './api.js';
+import { SKILL_DEFS } from './stages.js';   // 阶段 D：diagnose.template→required_slots 参数引导（确定性·单一源）
 
 const HISTORY_KEY = 'ai_qa_history_v1';
 const ARCHIVE_KEY = 'ai_qa_archive_v1';
@@ -802,6 +803,11 @@ function enhanceCodeBlocks(el) {
 }
 
 /** 渲染问题理解卡（DIAGNOSE）：domain/scale/decision/outlet + strategy 徽章 + method。 */
+// 阶段 D 参数提示（确定性·SKILL_DEFS.required_slots → 人话标签·CPD 导游预告"要哪些参数"）。
+const _PARAM_LABELS = {
+  boundary: '聚合范围（上传面/选方格）', boundaries: '对比范围（多区）', center: '设施位置（点地图/输入地名）',
+  range: '范围', layer: '图层', layer_a: '图层A', layer_b: '图层B', pre_filter: '筛选条件', target: '目标',
+};
 function renderDiagnoseCard(el, card) {
   if (!el) return;
   if (!card || card.degraded) { el.hidden = true; return; }
@@ -810,13 +816,18 @@ function renderDiagnoseCard(el, card) {
   const strat = (card.data_plan && card.data_plan.strategy) || 'ready';
   const method = (card.method || []).filter(Boolean);
   el.classList.toggle('is-upload', strat === 'request_upload');
+  // 阶段 D：diagnose 选定 template → SKILL_DEFS.required_slots → 参数提示（缺参时预告用户要补什么）
+  const def = card.template && SKILL_DEFS[card.template];
+  const req = (def && def.required_slots) || [];
+  const params = req.length ? `<div class="aiq-diag-params"><span class="aiq-diag-params-tag">需要</span>${req.map((s) => _PARAM_LABELS[s] || s).join(' · ')}</div>` : '';
   const chip = (t) => `<span class="aiq-diag-chip">${escapeHtml(t)}</span>`;
   el.innerHTML = `<div class="aiq-card-head">问题理解</div>`
     + `<div class="aiq-diag-row">${[dom.join('/'), _SCALE_LABEL[card.scale] || card.scale, card.decision_type, card.outlet].filter(Boolean).map(chip).join('')}</div>`
     + `<div class="aiq-diag-strategy ${strat}"><span class="aiq-diag-strat-tag">${_STRATEGY_LABEL[strat] || strat}</span>${
       strat === 'request_upload' ? '（关键数据缺失，已请用户上传）'
       : strat === 'fallback_annotated' ? '（结论将标注口径（=统计范围）局限）' : ''}</div>`
-    + (method.length ? `<div class="aiq-diag-method">方法：${escapeHtml(method.join(' → '))}</div>` : '');
+    + (method.length ? `<div class="aiq-diag-method">方法：${escapeHtml(method.join(' → '))}</div>` : '')
+    + params;
 }
 
 /** 渲染软缺口口径标注（fallback_annotated），append 到答案后。 */

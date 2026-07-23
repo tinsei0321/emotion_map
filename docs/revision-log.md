@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月23日）** · 本节按板块分组、组内倒序；最新工作 = **5.186 CPD 引导视觉焦点卡片（主显示区·取代边缘胶囊）**（本次，分支 `cpd`）。上一轮 5.185。最近：
+> 📍 **最新动态（07月23日）** · 本节按板块分组、组内倒序；最新工作 = **5.187 CPD 阶段 D 参数引导（diagnose 卡片整合·Step 2）**（本次，分支 `cpd`）。上一轮 5.186。最近：
+>
+> - **5.187 CPD 阶段 D 参数引导（diagnose 卡片整合·Step 2）**（用户工作流阶段 D「根据意图匹配具体工具生成标准化引导→要哪些参数」；主线程 **未派 subagent**——承重）：diagnose 选定 `template` → `SKILL_DEFS[template].required_slots` → diagnose 卡片加「需要：X · Y」参数提示行（**确定性·CPD 导游预告要哪些参数**·整合进既有 `renderDiagnoseCard` 避免与新引导卡的"首次分析前"门控冲突）。[panel.js](frontend/js/ai_qa/panel.js) `import { SKILL_DEFS } from './stages.js'`（单一源·不重造）+ `_PARAM_LABELS`（boundary→聚合范围（面/方格）/center→设施位置/range→范围 等）+ `renderDiagnoseCard` 加 `.aiq-diag-params` 行；[ai_qa.css](frontend/css/ai_qa.css) `.aiq-diag-params` + `.aiq-diag-params-tag`（accent-soft）。**承重零触**（diagnose prompt/四态出口/harness 不动；只读 SKILL_DEFS 常量）。node --check `.mjs` 绿。commit·**待用户 push**。
 >
 > - **5.186 CPD 引导视觉焦点卡片（主显示区·取代边缘胶囊·用户定）**（用户反馈"引导话语应作视觉焦点在主显示窗口，非下方小胶囊"——用视觉焦点逻辑一步步引导；主线程 **未派 subagent**——承重）：CPD 引导（方向/细化/examples）从 #aiq-suggest 边缘小胶囊 → **#chat-messages 主显示区焦点卡片** `.cpd-guide-card`（大卡片 + accent 顶条 3px + 强阴影·Light/Dark·视觉焦点）。① [panel.js](frontend/js/ai_qa/panel.js) 重构：`_renderGuideCard({title,opts,back})`（prepend 到 #chat-messages·大选项按钮 `.cpd-guide-opt` 非胶囊·点击填 input/级联）+ `_clearGuideCard`，**删** `_renderDirections/_renderRefinements/renderGuidanceExamples/clearGuidanceExamples`（旧 #aiq-suggest 胶囊版）；`_renderGuidanceContent` 统一调度（intent 方向级联 / interpret examples → 焦点卡片）；`_guidanceExamplesShown`→`_guidanceCardShown`（renderEmptyState/clearSuggest/renderSuggest 同步）；clearSuggest 清卡片。② [ai_qa.css](frontend/css/ai_qa.css) `.cpd-guide-card`（accent 顶条+强阴影 0 4px 18px）+ `.cpd-guide-opt`（大按钮 padding 11/14·hover accent-soft+浮起）+ Light 阴影校准。**Playwright 冒烟**：mock intent→焦点卡显 #chat-messages（欢迎隐）+ 3 方向 → 点 buffer→阶段 B「周边分析·细化」+ 返回 → 点细化→填 input。承重零触（diagnose/四态出口/harness 不动）。node --check `.mjs` 绿。commit·**待用户 push**。**下一步 Step 2/3**：diagnose 回传+阶段 D 参数引导 + Pro 研判 deliberateStep。
 >
