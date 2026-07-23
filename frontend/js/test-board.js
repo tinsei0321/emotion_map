@@ -74,11 +74,24 @@ function _populateList(cases) {
   for (const c of cases) {
     const row = _el('div', 'tb-row tb-pending');
     row.id = `tb-row-${c.id}`;
-    row.innerHTML = `<span class="tb-dot"></span><span class="tb-id">${c.id}</span><span class="tb-name">${c.name}</span><span class="tb-cat">${c.category}</span><span class="tb-type">${c.type}</span><span class="tb-stage"></span><span class="tb-time"></span><button class="tb-rerun" title="重跑">[R]</button>`;
-    // 点击行（非 rerun）→ EMC 跳转
-    row.addEventListener('click', (e) => { if (!e.target.classList.contains('tb-rerun') && !e.target.classList.contains('tb-thumb')) _jumpToAnswer(c.id); });
+    row.innerHTML = `<span class="tb-dot"></span><span class="tb-id">${c.id}</span><span class="tb-name">${c.name}</span><span class="tb-cat">${c.category}</span><span class="tb-type">${c.type}</span><span class="tb-stage"></span><span class="tb-time"></span><button class="tb-vote-btn tb-vote-ok" data-id="${c.id}" data-vote="ok" title="通过">V</button><button class="tb-vote-btn tb-vote-bad" data-id="${c.id}" data-vote="bad" title="不通过">X</button><button class="tb-rerun" title="重跑">[R]</button>`;
+    // 点击行（非按钮）→ EMC 跳转
+    row.addEventListener('click', (e) => { if (!e.target.classList.contains('tb-rerun') && !e.target.classList.contains('tb-vote-btn')) _jumpToAnswer(c.id); });
     // 重跑按钮
     row.querySelector('.tb-rerun').addEventListener('click', (e) => { e.stopPropagation(); _rerunOne(c); });
+    // 评价按钮（行内·V/X·灰色默认·点击亮起）
+    row.querySelectorAll('.tb-vote-btn').forEach((b) => b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const vid = e.target.dataset.id; const vt = e.target.dataset.vote;
+      if (!_results[vid]) _results[vid] = {};
+      _results[vid].userVote = vt;
+      // 同行清除另一个的 active，点亮当前
+      const r = document.getElementById(`tb-row-${vid}`);
+      r.querySelectorAll('.tb-vote-btn').forEach((x) => x.classList.remove('active'));
+      e.target.classList.add('active');
+      // 覆盖行状态
+      r.className = `tb-row tb-${vt === 'ok' ? 'pass' : 'fail'}`;
+    }));
     list.appendChild(row);
   }
 }

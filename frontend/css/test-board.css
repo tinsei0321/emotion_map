@@ -56,6 +56,12 @@
 .tb-rerun { background: none; border: 1px solid var(--geojson-color-text-tertiary, #555); color: var(--geojson-color-text-tertiary, #707070); font-size: 10px; padding: 1px 6px; border-radius: 4px; cursor: pointer; flex-shrink: 0; }
 .tb-rerun:hover { border-color: var(--emc-accent, #D97757); color: var(--emc-accent, #D97757); }
 
+/* 行内评价按钮（V/X·灰色默认·点击亮起） */
+.tb-vote-btn { background: none; border: 1px solid var(--geojson-color-text-tertiary, #444); color: var(--geojson-color-text-tertiary, #555); font-size: 11px; font-weight: 700; width: 22px; height: 22px; border-radius: 4px; cursor: pointer; flex-shrink: 0; padding: 0; line-height: 1; transition: all .12s; }
+.tb-vote-btn:hover { opacity: 0.8; }
+.tb-vote-ok.active { border-color: #0F6E56; color: #0F6E56; background: rgba(15,110,86,0.12); }
+.tb-vote-bad.active { border-color: #D85A30; color: #D85A30; background: rgba(216,90,48,0.12); }
+
 .tb-extra { display: none; padding: 4px 14px 6px 70px; }
 .tb-obs { font-size: 11px; color: var(--geojson-color-text-secondary, #999); line-height: 1.4; }
 .tb-vote { margin-top: 4px; display: flex; align-items: center; gap: 4px; }
