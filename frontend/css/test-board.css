@@ -90,3 +90,10 @@
 /* toast（操作反馈）*/
 .tb-toast { position: fixed; right: 16px; bottom: 70px; z-index: 100001; max-width: 360px; padding: 8px 14px; border-radius: 8px; background: rgba(31,31,31,0.96); color: #ECECEC; font: 12px/1.45 system-ui, sans-serif; box-shadow: 0 6px 20px rgba(0,0,0,0.45); opacity: 0; transform: translateY(6px); transition: opacity .18s ease, transform .18s ease; pointer-events: none; border: 1px solid var(--emc-accent, #D97757); }
 .tb-toast.tb-show { opacity: 1; transform: translateY(0); }
+
+/* ═══ v4：数量 slider + 重新开始 按钮 ═══ */
+.tb-slider-row { display: flex; align-items: center; gap: 8px; }
+.tb-slider-row input[type="range"] { flex: 1; accent-color: var(--emc-accent, #D97757); cursor: pointer; }
+.tb-limit-val { font-weight: 700; color: var(--emc-accent, #D97757); min-width: 26px; text-align: center; font-size: 13px; }
+.tb-limit-hint { font-size: 10px; color: var(--geojson-color-text-tertiary, #707070); }
+.tb-restart { background: var(--geojson-color-gray-100, #2a2a2a); color: var(--emc-accent, #D97757); border: 1px solid var(--emc-accent, #D97757); }

@@ -250,8 +250,13 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         typ = re.sub(r'[^a-zA-Z0-9_-]', '', str(payload.get('type', 'run'))) or 'run'
         d = self._test_reports_dir()
         existing = [f for f in os.listdir(d) if f.startswith(f'report-{date}-') and f.endswith('.md')]
-        n = len(existing) + 1
-        name = f'report-{date}-{n:02d}-{typ}.md'
+        req_name = payload.get('name')
+        if req_name:   # 覆写指定文件（手动存报告「覆盖」分支·不 +1 编号）
+            name = re.sub(r'[^a-zA-Z0-9_\-]', '', str(req_name)) + '.md'
+            n = existing.index(name) + 1 if name in existing else len(existing) + 1
+        else:
+            n = len(existing) + 1
+            name = f'report-{date}-{n:02d}-{typ}.md'
         with open(os.path.join(d, name), 'w', encoding='utf-8') as f:
             f.write(content)
         rel = f'tests/reports/{name}'

@@ -1,33 +1,61 @@
-// ═══ test-cases.js — 测试飞轮用例集 v3（100 例·prompt 遵循设计原则）═══
+// ═══ test-cases.js — 测试飞轮用例集 v4 ═══
+// v4 要点：① 意图识别 = NL→工作流转译（断言 template+工具，非回答文本）；
+//         ② 工具类针对性训练（每条窄指 1 工具，≤2 工具 ≤4 步）；③ DATA 资产语义引用（test-assets）。
 // Prompt 设计原则：docs/emc-prompt-design-principles.md
-// 每条 LLM 问题 = [范围] + [拓扑关系] + [点/设施数据] + [分析目的] + [可选：时态/对比]
+import { resolveRange, resolvePoints } from './test-assets.js';
+
 const w = (ms) => new Promise((r) => setTimeout(r, ms));
-const CSV = 'xiling_wujia_L1_T1_result_csv.csv';   // 默认 L1 点层（有 polarity 列）
+const CSV = 'xiling_wujia_L1_T1_result_csv.csv';   // 默认 L1 点层（直接文件名·向后兼容）
 const CSV_T2 = 'xiling_wujia_L1_T2_result_csv.csv';
 const CSV_T3 = 'xiling_wujia_L1_T3_result_csv.csv';
-const RANGE = 'presets/行政区.geojson';
-const RANGE_ERMAWU = '大南门二马路滨江片区.geojson';   // 大南门·二马路滨江片区边界
+const RANGE = '行政区.geojson';                     // 顶层（presets/ 已并于顶层）
+const RANGE_ERMAWU = '大南门二马路滨江片区.geojson';
 
-// ── 辅助：LLM 用例 run 模板 ──
+// ── llmRun：跑一问 + 抓「转译链」信号（template / 工具 / 参数 / 产物）──
 async function llmRun(t, q, assert, opts = {}) {
   t.clearLog();
-  if (opts.csv !== false) { try { await t.loadCSV(opts.csv || CSV); await w(800); } catch (_) {} }
-  if (opts.range) { try { await t.loadRange(opts.range); await w(300); } catch (_) {} }
+  const layersBefore = t.layerNames().length;
+  if (opts.csv !== false) {
+    const f = resolvePoints(opts.csv || 'L2-T1');
+    try { await t.loadCSV(f); await w(800); } catch (_) {}
+  }
+  if (opts.range) {
+    const f = resolveRange(opts.range);
+    try { await t.loadRange(f); await w(300); } catch (_) {}
+  }
   if (opts.mode) t.setMode(opts.mode);
   t.send(q);
   const ok = await t.waitAnswer(opts.timeout || 90000);
   if (!ok) return { pass: false, stage: 's3', obs: '回答超时（90s）' };
   const b = t.badge();
   if (!b) return { pass: false, stage: 's4', obs: '无 exit-badge' };
-  const r = assert(b, t);
-  // 抓真实调用的工具端点（/geo /spatial）→ 行内摘要 + 报告标注（工具类一眼看出调了啥）
-  if (r && typeof r === 'object') {
-    r.tools = [...new Set(t.geoCalls().map((e) => {
+  // 抓转译信号（意图识别验证用）
+  const geo = t.geoCalls();
+  const sig = {
+    tools: [...new Set(geo.map((e) => {
       const m = String(e.url).split('?')[0].match(/(?:geo|spatial)\/([a-z_0-9]+)/i);
       return m ? m[1] : null;
-    }).filter(Boolean))];
-  }
+    }).filter(Boolean))],
+    template: (t.chatPhases().find((p) => p.template) || {}).template || null,
+    params: _extractParams(geo),
+    newLayers: Math.max(0, t.layerNames().length - layersBefore),
+  };
+  const r = assert(b, t, sig);
+  if (r && typeof r === 'object') { r.tools = sig.tools; r.template = sig.template; r.params = sig.params; r.newLayers = sig.newLayers; }
   return r;
+}
+
+function _extractParams(geo) {
+  const p = {};
+  for (const e of geo) {
+    const b = e.body || {};
+    if (!p.boundary && b.boundary) p.boundary = b.boundary;
+    if (!p.boundaries && b.boundaries) p.boundaries = b.boundaries;
+    if (b.cell_size != null && p.cell == null) p.cell = b.cell_size;
+    if (b.radius_m != null && p.radius == null) p.radius = b.radius_m;
+    if (!p.center && b.center) p.center = b.center;
+  }
+  return p;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -73,9 +101,9 @@ const UI_NO_LLM = [
 ].map((c) => ({ ...c, category: 'UI渲染', type: 'no-llm' }));
 
 const UI_LLM = [
-  { id: 'UI-L01', name: 'exit-badge 渲染（分析型）', run: async (t) => llmRun(t, '西陵区范围内情绪点按极性排序，找出最差 Top 3 片区及 4×5 归因', (b) => ({ pass: true, obs: `badge="${b}"`, review: 'badge 是否准确？' }), { range: RANGE }) },
+  { id: 'UI-L01', name: 'exit-badge 渲染（分析型）', run: async (t) => llmRun(t, '西陵区范围内情绪点按极性排序，找出最差 Top 3 片区及 4×5 归因', (b) => ({ pass: true, obs: `badge="${b}"`, review: 'badge 是否准确？' }), { range: '行政区', csv: 'L2-T1' }) },
   { id: 'UI-L02', name: 'exit-badge 渲染（通用型）', run: async (t) => llmRun(t, '什么是情绪地图的 4×5 归因矩阵？', (b) => ({ pass: true, obs: `badge="${b}"`, review: '通用 badge 准确？' }), { csv: false }) },
-  { id: 'UI-L03', name: '回答含 markdown 排版', run: async (t) => llmRun(t, '西陵区范围内情绪最差的 Top 3 片区，每个片区的 4×5 归因是什么？', (b, tt) => { const a = tt.answerText(); return { pass: true, obs: `badge="${b}" md=${/[#\*\-]/.test(a)}`, review: '排版是否美观？' }; }, { range: RANGE }) },
+  { id: 'UI-L03', name: '回答含 markdown 排版', run: async (t) => llmRun(t, '西陵区范围内情绪最差的 Top 3 片区，每个片区的 4×5 归因是什么？', (b, tt) => { const a = tt.answerText(); return { pass: true, obs: `badge="${b}" md=${/[#\*\-]/.test(a)}`, review: '排版是否美观？' }; }, { range: '行政区', csv: 'L2-T1' }) },
 ].map((c) => ({ ...c, category: 'UI渲染', type: 'llm' }));
 
 // ═══════════════════════════════════════════════════════
@@ -95,71 +123,140 @@ const PRED = [
 ].map((c) => ({ ...c, category: '引擎谓词', type: 'no-llm' }));
 
 // ═══════════════════════════════════════════════════════
-// D. 意图识别（15 例·全 llm）—— prompt 遵循设计原则
+// D. 意图识别（100 例·全 llm）—— v4 核心纠偏：断言 NL→工作流转译（template+工具），非回答文本
+//    意图 = 把自然语言转译成「范围→筛选→分支→工具→步骤」的可执行工作流。
+//    通过 = diagnose 选对 template（语义匹配·软）或触发了相关工具。
 // ═══════════════════════════════════════════════════════
-const INTENT_DATA = [
-  // 通用问答（概念/定义·无要素需求）
-  { q: '什么是情绪地图的 4×5 归因矩阵？', expect: '!缺数据', review: '是否简洁准确回答概念？' },
-  { q: '核密度分析适合什么尺度的城市规划场景？', expect: '!缺数据', review: '是否回答方法适用性？' },
-  { q: '情绪地图与官方城市体检有什么区别？', expect: '!缺数据', review: '是否对比产品定位？' },
-  { q: '在 EMC 里我能做哪些类型的空间分析？', expect: '!缺数据', review: '是否列出能力清单？' },
-  // 情绪分析（有范围+点+目的）
-  { q: '西陵区范围内情绪点的极性分布如何？消极占比多少？', expect: '!缺数据', review: '是否给出分布+占比？' },
-  { q: '伍家岗区范围内情绪最差的 Top 3 片区是哪些？各自 4×5 归因是什么？', expect: '!缺数据', review: '是否排序+归因？' },
-  { q: '西陵区范围内情绪点哪些片区在「环境」要素上最消极？', expect: '!缺数据', review: '是否按 element 归因？' },
-  { q: '西陵区范围内情绪最积极的 Top 3 片区是哪些？为什么积极？', expect: '!缺数据', review: '是否排序正面+归因？' },
-  { q: '西陵区范围内「城市运营」领域的情绪状况如何？主要矛盾在哪？', expect: '!缺数据', review: '是否按 domain 归因？' },
-  // GIS 操作（有范围+点+目的）
-  { q: '从已载行政区中抽取西陵区范围作为独立面图层', expect: '!缺数据', review: '是否 extract 出西陵区面？' },
-  { q: '筛选西陵区范围内 polarity 为 Negative 的情绪点', expect: '!缺数据', review: '是否筛选出消极点？' },
-  { q: '裁剪西陵区范围内的全部情绪点为独立点图层', expect: '!缺数据', review: '是否 clip 出点层？' },
-  // 周边/缓冲（有拓扑+点+目的）
-  { q: '大南门·二马路滨江片区周边 500 米范围内的情绪点分布如何？积极还是消极为主？', expect: '!缺数据', review: '是否 buffer+分布判断？' },
-  // 对比（有 2 个对比对象+目的）
-  { q: '对比西陵区与伍家岗区范围内情绪极性，哪个区消极占比更高？差异在哪些 domain×element？', expect: '!缺数据', review: '是否对比+差异归因？' },
-  // 排序（有范围+目的）
-  { q: '西陵区范围内按情绪极性排序最差 Top 5 片区，标出每个的 domain×element 主归属', expect: '!缺数据', review: '是否 rank+4×5 标注？' },
+const DISTRICTS = ['西陵区', '伍家岗区', '夷陵区'];
+const ELEMENTS = ['环境', '服务', '设施', '文化'];
+const POLARITY = ['最差', '最好', '消极', '积极'];
+
+function _fill(tmpl, v) { return tmpl.replace(/\{(\w+)\}/g, (_, k) => (v[k] != null ? v[k] : `{${k}}`)); }
+function _vars(di, qi) {
+  return {
+    '区': DISTRICTS[di % DISTRICTS.length],
+    '要素': ELEMENTS[(qi + di) % ELEMENTS.length],
+    'n': [3, 5, 10][di % 3],
+    'r': [300, 500, 1000][di % 3],
+    'cell': [500, 1000, 2000][di % 3],
+    'pol': POLARITY[(qi + di) % POLARITY.length],
+  };
+}
+
+const PAIRS = [['西陵区', '伍家岗区'], ['西陵区', '夷陵区'], ['伍家岗区', '夷陵区']];
+const INTENT_TYPES = [
+  { kind: '情绪分析', cycle: '区', expectTmpl: ['zonal', 'rank', 'density', 'multi'], expectTools: ['zonal_stats', 'rank', 'density'], qs: [
+    '{区}哪里情绪{pol}', '{区}情绪分布如何', '{区}消极情绪集中在哪', '{区}内{要素}要素的情绪状况', '{区}情绪整体偏向如何', '{区}情绪归因分析', '{区}情绪状况'] },
+  { kind: 'GIS操作', cycle: '区', expectTmpl: ['clip', 'extract_feature', 'filter_attr'], expectTools: ['clip', 'extract_feature', 'filter_attr'], qs: [
+    '把{区}的情绪点裁剪出来', '筛选{区}内消极极性情绪点', '抽取{区}范围为独立图层', '筛选{区}积极情绪点', '裁剪{区}情绪点为独立层', '提取{区}范围面', '筛选{区}内{要素}相关情绪点'] },
+  { kind: '周边分析', cycle: 'r', expectTmpl: ['buffer'], expectTools: ['buffer'], qs: [
+    '二马路片区周边{r}米内情绪点分布', '二马路片区附近{r}米情绪点是否消极为主', '二马路片区周围{r}米情绪状况', '二马路片区周边{r}米情绪聚集', '二马路片区{r}米范围内情绪', '二马路片区周边{r}米情绪分析'] },
+  { kind: '区域对比', cycle: 'pair', expectTmpl: ['compare'], expectTools: ['compare_regions'], qs: [
+    '对比{区A}与{区B}情绪极性差异', '{区A}与{区B}哪个消极占比更高', '对比{区A}与{区B}情绪归因', '{区A} vs {区B}情绪分布', '对比{区A}与{区B}情绪状况', '{区A}与{区B}情绪差异在哪'] },
+  { kind: '排序', cycle: '区', expectTmpl: ['rank'], expectTools: ['rank'], qs: [
+    '{区}情绪{pol} Top {n} 片区', '{区}最差片区排序', '{区}情绪最好片区排名', '{区}情绪最差片区排行', '{区}情绪 Top {n}', '{区}最差 Top {n}'] },
+  { kind: '概念问答', cycle: null, expectTmpl: ['concept'], expectTools: [], qs: [
+    '什么是情绪地图的 4×5 归因矩阵', '情绪地图与官方城市体检有何区别', '核密度分析适合什么尺度场景', 'EMC 能做哪些空间分析', '什么是极性', '情绪地图的数据来源是什么', '4×5 矩阵的领域有哪些', '什么是 15 分钟生活圈', '情绪地图如何保护隐私', '城市体检社会满意度调查是什么', '情绪归因的政策锚点是什么', '什么是完整社区'] },
 ];
-const INTENT = INTENT_DATA.map((d, i) => ({
-  id: `INT-${String(i + 1).padStart(2, '0')}`, name: `意图:${d.q.slice(0, 16)}`,
-  category: '意图识别', type: 'llm',
-  run: async (t) => llmRun(t, d.q, (b) => {
-    if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's1', obs: `误判GAP: "${b}"` };
-    return { pass: true, obs: `badge="${b}"`, review: d.review };
-  }, { range: RANGE }),
-}));
+
+function _assertIntent(b, sig, type) {
+  if (type.expectTools.length === 0) {   // 概念型：无工具，看非误 GAP
+    if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's1', obs: `误GAP:"${b}"` };
+    return { pass: true, obs: `tpl=${sig.template || '?'}` };
+  }
+  if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's1', obs: `误GAP:"${b}"（应 ${type.expectTools.join('|')}）` };
+  const tmplOk = sig.template && type.expectTmpl.includes(sig.template);
+  const toolOk = type.expectTools.some((x) => sig.tools.includes(x));
+  const pass = tmplOk || toolOk;
+  return { pass, stage: pass ? '' : 's1', obs: `tpl=${sig.template || '?'} tools=${sig.tools.join(',') || '无'}`, review: `${type.kind}：转译是否合理？` };
+}
+
+const INTENT = [];
+{
+  let n = 0;
+  for (const type of INTENT_TYPES) {
+    let combos;
+    if (type.cycle === '区') combos = DISTRICTS.map((d) => ({ '区': d, '要素': ELEMENTS[n % ELEMENTS.length], 'pol': POLARITY[n % POLARITY.length], 'n': 5 }));
+    else if (type.cycle === 'r') combos = [300, 500, 1000].map((r) => ({ 'r': r }));
+    else if (type.cycle === 'pair') combos = PAIRS.map((p) => ({ '区A': p[0], '区B': p[1] }));
+    else combos = [{}];
+    for (const v of combos) {
+      for (const qtmpl of type.qs) {
+        if (n >= 100) break;
+        const q = _fill(qtmpl, v);
+        n++;
+        const _t = type;
+        INTENT.push({ id: `INT-${String(n).padStart(3, '0')}`, name: `意图:${q.slice(0, 16)}`, category: '意图识别', type: 'llm',
+          run: async (t) => llmRun(t, q, (b, _tt, sig) => _assertIntent(b, sig, _t), { csv: 'L2-T1', range: '行政区' }) });
+      }
+    }
+    if (n >= 100) break;
+  }
+}
 
 // ═══════════════════════════════════════════════════════
-// E. 工具选择（15 例·全 llm）—— 范围+拓扑+目的精准
+// E. 工具选择（100 例·全 llm）—— 针对性训练：每条窄指 1 个 GIS 工具，≤2 工具 ≤4 步
+//    断言：触发了目标工具（硬——这是训练 LLM 选对工具的核心信号）
 // ═══════════════════════════════════════════════════════
-const TOOL_DATA = [
-  { q: '西陵区范围内做 1000m 标准方格网格聚合，看每格的极性分布', expectTool: 'density|grid', review: '是否方格网格（非热力图）？', opts: {} },
-  { q: '西陵区范围内情绪点的密度热力图，看哪里最密集', expectTool: 'density', review: '是否热力图？', opts: {} },
-  { q: '西陵区范围内按行政区面聚合情绪统计，每区的极性和归因', expectTool: 'zonal', review: '是否面域聚合？', opts: {} },
-  { q: '全域范围内情绪点空间分布如何？做一张密度图看聚集趋势', expectTool: 'density|zonal', review: '是否分布图？', opts: {} },
-  { q: '对比西陵区与伍家岗区范围内情绪极性与 4×5 归因差异', expectTool: 'compare', review: '是否多区对比？', opts: {} },
-  { q: '大南门·二马路滨江片区周边 500 米范围内情绪点的分布状况', expectTool: 'buffer', review: '是否缓冲分析？', opts: {} },
-  { q: '从已载行政区面中筛选出商业服务业用地的面要素', expectTool: 'filter|extract', review: '是否属性筛选？', opts: {} },
-  { q: '裁剪西陵区范围内的全部情绪点为独立点图层', expectTool: 'clip', review: '是否裁剪点层？', opts: {} },
-  { q: '西陵区范围内情绪极性最差 Top 5 片区排序', expectTool: 'rank', review: '是否排序？', opts: {} },
-  { q: '西陵区范围内各类用地的面积占比统计', expectTool: 'area_stats', review: '是否面积统计？', opts: {} },
-  { q: '西陵区范围内情绪点的空间热点分布', expectTool: 'hotspot|density', review: '是否热点？', opts: {} },
-  { q: '西陵区内每个情绪点到最近的公园距离', expectTool: 'nearest', review: '是否最近邻？', opts: {} },
-  { q: '居住用地范围与西陵区边界的交集面', expectTool: 'overlay', review: '是否叠置？', opts: {} },
-  { q: '将西陵区与伍家岗区合并为一个范围面', expectTool: 'merge', review: '是否合并？', opts: {} },
-  { q: '西陵区范围内情绪点的 4×5 归因分布统计', expectTool: 'zonal', review: '是否面域聚合+归因？', opts: {} },
+const LANDUSE = ['商业', '居住', '公园广场'];
+function _varsTool(di, qi) {
+  return {
+    '区': DISTRICTS[di % DISTRICTS.length],
+    '用地': LANDUSE[(qi + di) % LANDUSE.length],
+    '用地A': LANDUSE[(qi + di + 1) % LANDUSE.length],
+    '要素': ELEMENTS[(qi + di) % ELEMENTS.length],
+    'n': [3, 5, 10][di % 3],
+    'r': [300, 500, 1000][di % 3],
+    'cell': [500, 1000, 2000][di % 3],
+  };
+}
+
+const TOOL_TARGETS = [
+  { tool: 'density', qs: ['{区}内情绪点的密度热力图', '看{区}情绪点哪里最密集', '{区}情绪点空间密度分布', '全域情绪点密度分布如何'] },
+  { tool: 'zonal_stats', qs: ['{区}按面聚合情绪统计及 4×5 归因', '{区}各片区极性分布', '{区}内{要素}要素的情绪归因', '{区}情绪归因分析'] },
+  { tool: 'compare_regions', fixed: true, qs: ['对比西陵区与伍家岗区情绪极性差异', '对比西陵区与伍家岗区情绪归因', '对比西陵区与夷陵区情绪分布', '西陵区与伍家岗区哪个消极多', '对比伍家岗区与夷陵区情绪', '西陵区 vs 伍家岗区情绪归因差异'] },
+  { tool: 'buffer', fixed: true, qs: ['二马路片区周边 300 米内情绪点分布', '二马路片区周边 500 米情绪点', '二马路片区周边 1 公里情绪点是否消极为主', '二马路片区周围 1000 米情绪', '二马路片区附近 800 米情绪状况', '二马路片区周边 600 米情绪聚集'] },
+  { tool: 'rank', qs: ['{区}情绪最差 Top {n} 片区', '{区}情绪最好 Top {n} 片区', '{区}最差片区排序', '{区}情绪片区排名'] },
+  { tool: 'clip', qs: ['裁剪{区}内全部情绪点为独立图层', '截取{区}范围内情绪点', '把{区}情绪点裁出来'] },
+  { tool: 'extract_feature', fixed: true, qs: ['从行政区筛选商业服务业用地的面', '从行政区筛选居住用地', '从行政区抽取公园广场用地', '筛选行政区{要素}相关用地', '抽取行政区商业用地', '从行政区筛选居住用地要素'] },
+  { tool: 'area_stats', qs: ['{区}各类用地面积占比统计', '{区}用地结构面积统计', '{区}用地面积分布'] },
+  { tool: 'hotspot', qs: ['{区}情绪点空间热点分布', '{区}情绪热点聚集在哪', '{区}情绪热点分析'] },
+  { tool: 'nearest', fixed: true, qs: ['每个情绪点到最近公园的距离', '情绪点最近的{用地}用地', '情绪点距最近绿地的距离', '情绪点最近{用地}用地在哪', '各情绪点离最近{用地}多远', '情绪点到最近{用地}的距离'] },
+  { tool: 'overlay', fixed: true, qs: ['商业用地与居住用地的交集面', '居住用地与公园广场叠置', '商业用地与公园广场交集', '居住与商业用地叠置分析', '公园广场与居住用地交集面', '商业与居住用地叠置'] },
+  { tool: 'merge', fixed: true, qs: ['合并西陵区与伍家岗区为一个范围', '合并西陵区与夷陵区范围', '把伍家岗区与夷陵区合并', '西陵区伍家岗区合并范围', '合并西陵区与伍家岗区范围面', '伍家岗区与夷陵区合并为一个面'] },
+  { tool: 'density', grid: true, qs: ['{区}做{cell}m 标准方格网格聚合', '{区}{cell}m 方格网格情绪聚合', '{区}{cell}m 网格看每格极性', '{区}标准方格网格聚合情绪'] },
+  { tool: 'filter_attr', qs: ['筛选{区}内消极极性情绪点', '筛选{区}内积极情绪点', '筛选{区}内{要素}相关情绪点', '筛选{区}消极情绪点'] },
 ];
-const TOOLS = TOOL_DATA.map((d, i) => ({
-  id: `TOL-${String(i + 1).padStart(2, '0')}`, name: `工具:${d.q.slice(0, 16)}`,
-  category: '工具选择', type: 'llm',
-  run: async (t) => llmRun(t, d.q, (b) => {
-    if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's2', obs: `GAP: "${b}"（应 ${d.expectTool}）` };
-    return { pass: true, obs: `badge="${b}"`, review: d.review };
-  }, { range: RANGE, ...d.opts }),
-}));
+
+function _assertTool(b, sig, tgt) {
+  if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's2', obs: `GAP:"${b}"（应 ${tgt.tool}）` };
+  const ok = sig.tools.includes(tgt.tool);
+  return { pass: ok, stage: ok ? '' : 's2', obs: ok ? `触发 ${tgt.tool}` : `未触发 ${tgt.tool}（实 ${sig.tools.join(',') || '无'}）`, review: `${tgt.tool}${tgt.grid ? '(方格)' : ''}是否正确？` };
+}
+
+const TOOLS = [];
+{
+  let n = 0;
+  outer: for (const tgt of TOOL_TARGETS) {
+    const cap = tgt.fixed ? tgt.qs.length : Math.ceil(100 / TOOL_TARGETS.length) + 2;  // 固定型全用；轮换型每类 ~9
+    let made = 0;
+    for (let qi = 0; qi < tgt.qs.length; qi++) {
+      const diMax = tgt.fixed ? 1 : DISTRICTS.length;
+      for (let di = 0; di < diMax; di++) {
+        if (made >= cap) break;
+        const q = _fill(tgt.qs[qi], _varsTool(di, qi));
+        n++; made++;
+        const _tgt = tgt;
+        TOOLS.push({ id: `TOL-${String(n).padStart(3, '0')}`, name: `工具:${q.slice(0, 14)}`, category: '工具选择', type: 'llm',
+          run: async (t) => llmRun(t, q, (b, _tt, sig) => _assertTool(b, sig, _tgt), { csv: 'L2-T1', range: '行政区' }) });
+        if (n >= 100) break outer;
+      }
+    }
+  }
+}
 
 // ═══════════════════════════════════════════════════════
-// F. 参数正确性（10 例·全 llm）—— 要素+拓扑精准
+// F. 参数正确性（10 例·全 llm）
 // ═══════════════════════════════════════════════════════
 const PARAM_DATA = [
   { q: '西陵区范围内做 500m 标准方格网格聚合', expectCell: 500, review: 'cell_size=500m？' },
@@ -176,10 +273,10 @@ const PARAM_DATA = [
 const PARAMS = PARAM_DATA.map((d, i) => ({
   id: `PRM-${String(i + 1).padStart(2, '0')}`, name: `参数:${d.q.slice(0, 16)}`,
   category: '参数正确性', type: 'llm',
-  run: async (t) => llmRun(t, d.q, (b) => {
+  run: async (t) => llmRun(t, d.q, (b, _tt, sig) => {
     if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's2', obs: `GAP: "${b}"` };
-    return { pass: true, obs: `badge="${b}" geo=${t.geoCalls().length}`, review: d.review };
-  }, { range: RANGE }),
+    return { pass: true, obs: `badge="${b}" geo=${sig.tools.length}`, review: d.review };
+  }, { range: '行政区', csv: 'L2-T1' }),
 }));
 
 // ═══════════════════════════════════════════════════════
@@ -194,10 +291,10 @@ const RESULT_NO_LLM = [
 ].map((c) => ({ ...c, category: '成果范式', type: 'no-llm' }));
 
 const RESULT_LLM = [
-  { id: 'RST-L01', name: 'zonal 产聚合图层', run: async (t) => llmRun(t, '西陵区范围内按面聚合情绪统计及 4×5 归因', (b) => { const n = t.layerNames(); return { pass: true, obs: `badge="${b}" layers=${n.length}`, review: '是否产聚合层+着色？' }; }, { range: RANGE }) },
-  { id: 'RST-L02', name: 'compare 产对比图层', run: async (t) => llmRun(t, '对比西陵区与伍家岗区范围内情绪极性差异', (b) => { const n = t.layerNames(); return { pass: true, obs: `badge="${b}" layers=${n.length}`, review: '是否产对比层？' }; }, { range: RANGE }) },
-  { id: 'RST-L03', name: 'clip 产点图层', run: async (t) => llmRun(t, '裁剪西陵区范围内的全部情绪点为独立图层', (b) => { const n = t.layerNames(); return { pass: true, obs: `badge="${b}" layers=${n.length}`, review: '是否裁剪出点层？' }; }, { range: RANGE }) },
-  { id: 'RST-L04', name: '网格产方格层（非热力）', run: async (t) => llmRun(t, '西陵区范围内做 1000m 标准方格网格聚合', (b) => { const n = t.layerNames(); return { pass: true, obs: `badge="${b}" layers=${n.join(',')}`, review: '是否方格（非彩虹热力）？' }; }, { range: RANGE }) },
+  { id: 'RST-L01', name: 'zonal 产聚合图层', run: async (t) => llmRun(t, '西陵区范围内按面聚合情绪统计及 4×5 归因', (b, _tt, sig) => ({ pass: true, obs: `badge="${b}" +${sig.newLayers}层`, review: '是否产聚合层+着色？' }), { range: '行政区', csv: 'L2-T1' }) },
+  { id: 'RST-L02', name: 'compare 产对比图层', run: async (t) => llmRun(t, '对比西陵区与伍家岗区范围内情绪极性差异', (b, _tt, sig) => ({ pass: true, obs: `badge="${b}" +${sig.newLayers}层`, review: '是否产对比层？' }), { range: '行政区', csv: 'L2-T1' }) },
+  { id: 'RST-L03', name: 'clip 产点图层', run: async (t) => llmRun(t, '裁剪西陵区范围内的全部情绪点为独立图层', (b, _tt, sig) => ({ pass: true, obs: `badge="${b}" +${sig.newLayers}层`, review: '是否裁剪出点层？' }), { range: '行政区', csv: 'L2-T1' }) },
+  { id: 'RST-L04', name: '网格产方格层（非热力）', run: async (t) => llmRun(t, '西陵区范围内做 1000m 标准方格网格聚合', (b, _tt, sig) => ({ pass: true, obs: `badge="${b}" tools=${sig.tools.join(',')} +${sig.newLayers}层`, review: '是否方格（非彩虹热力）？' }), { range: '行政区', csv: 'L2-T1' }) },
   { id: 'RST-L05', name: '通用问答无图层', run: async (t) => llmRun(t, '什么是情绪地图的 4×5 归因矩阵？', (b, tt) => { const a = tt.answerText(); return a && a.length > 10 ? { pass: true, obs: `badge="${b}" ans=${a.length}字`, review: '回答合理？' } : { pass: false, stage: 's4', obs: '回答太短' }; }, { csv: false }) },
 ].map((c) => ({ ...c, category: '成果范式', type: 'llm' }));
 
@@ -215,9 +312,9 @@ const SMART_NO_LLM = [
 
 const SMART_LLM = [
   { id: 'SMT-L01', name: '缺参提问（无范围名）', run: async (t) => llmRun(t, '帮我分析周边情绪分布', (b) => { const ask = document.querySelectorAll('.aiq-ask-chip'); return ask.length > 0 ? { pass: true, obs: `ask ${ask.length} 选项`, review: '问题是否精准？' } : { pass: true, obs: `badge="${b}"`, review: '是否提问了？' }; }, { csv: false }) },
-  { id: 'SMT-L02', name: '字段校验（坏字段）', run: async (t) => llmRun(t, '从已载行政区中按 MC 字段筛选要素', (b, tt) => { const a = tt.answerText(); return /字段.*不存在|可用字段/.test(a) ? { pass: true, obs: '字段校验 OK', review: '是否提示可用字段？' } : { pass: true, obs: `badge="${b}"`, review: '字段错是否 Smart 恢复？' }; }, { csv: false, range: RANGE }) },
+  { id: 'SMT-L02', name: '字段校验（坏字段）', run: async (t) => llmRun(t, '从已载行政区中按 MC 字段筛选要素', (b, tt) => { const a = tt.answerText(); return /字段.*不存在|可用字段/.test(a) ? { pass: true, obs: '字段校验 OK', review: '是否提示可用字段？' } : { pass: true, obs: `badge="${b}"`, review: '字段错是否 Smart 恢复？' }; }, { csv: false, range: '行政区' }) },
   { id: 'SMT-L03', name: '换问法（不存在区）', run: async (t) => llmRun(t, ' nonexistent区范围内情绪归因', (b) => { const ask = document.querySelectorAll('.aiq-ask-chip, .aiq-suggest-chip'); return ask.length > 0 || /缺数据|需上传|换/.test(b) ? { pass: true, obs: `badge="${b}"`, review: '是否引导换问法？' } : { pass: true, obs: `badge="${b}"`, review: '响应合理？' }; }, { csv: false }) },
-  { id: 'SMT-L04', name: '多轮续作', run: async (t) => { await llmRun(t, '什么是情绪地图？', () => ({ pass: true, obs: '第1轮 general' }), { csv: false }); await w(500); return llmRun(t, '西陵区范围内情绪最差 Top 3 片区及 4×5 归因', (b) => ({ pass: true, obs: `第2轮 badge="${b}"`, review: '多轮续作正常？' }), { range: RANGE }); } },
+  { id: 'SMT-L04', name: '多轮续作', run: async (t) => { await llmRun(t, '什么是情绪地图？', () => ({ pass: true, obs: '第1轮 general' }), { csv: false }); await w(500); return llmRun(t, '西陵区范围内情绪最差 Top 3 片区及 4×5 归因', (b) => ({ pass: true, obs: `第2轮 badge="${b}"`, review: '多轮续作正常？' }), { range: '行政区', csv: 'L2-T1' }); } },
 ].map((c) => ({ ...c, category: 'Smart交流', type: 'llm' }));
 
 // ═══ 导出 ═══
