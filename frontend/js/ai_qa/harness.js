@@ -314,18 +314,21 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   //    P0（v1.4 修误判）：分析型工具（zonal/compare/rank/area_stats·表格型无 layerId）成功=rows 非空，
   //    不再因 newLayerCount=0 误判"未产出图层"（数据齐全却喊缺数据的根因）。
   const failed = /\[ERR\]|失败|错误/.test(obs);
+  const recoverable = /字段不存在|可用:|缺.*槽|无可见点|无可见情绪点|未找到|无结果|无匹配/.test(obs);   // 可恢复：字段错/缺参/无数据（换字段/提问可解）
   const analytical = _ANALYTICAL_TOOLS.has(def.tool);
   const hasRows = !!(analytical && r && r.data && Array.isArray(r.data.rows) && r.data.rows.length > 0);
   if (failed || (newLayerCount === 0 && !hasRows)) {
-    // P2（Smart·v1.4）：非硬 ERR 的空结果（范围内无点/无匹配）→ ask_user 提问，不直接 GAP 放弃。
-    //   守 Smart Agent「不确定/失败时交流、不猜不放弃」；用户答 → resume 续作。硬 ERR（工具异常）仍走 GAP（非提问可解）。
-    if (!failed) {
+    // P2（Smart·v1.5）：空结果(!failed) 或 可恢复失败(recoverable·字段错/缺参/无数据) → ask_user 提问（反馈失败原因+引导），
+    //   不直接 GAP 放弃。守 Smart Agent「失败时交流、不猜不放弃」；硬 ERR（网络/异常·非提问可解）仍走 GAP。
+    if (!failed || recoverable) {
       const _lbl = params.boundary || params.layer || params.center || '该范围';
-      const ask = {
-        type: 'ask_user',
-        question: `「${_lbl}」范围内未聚合到足够的情绪点数据（可能该区无 L2 点层覆盖，或范围与数据不重叠）。要怎么处理？`,
-        options: ['换一个区域重试（请指定：如伍家岗区 / 西陵区）', '我已上传该区域数据，请重新分析', '先看全域情绪分布如何？'],
-      };
+      const ask = recoverable
+        ? { type: 'ask_user',
+            question: `${def.tool} 没成功：${obs.replace(/^\[ERR\]\s*[^：]*：?/, '').slice(0, 140) || '返回可恢复错误'}。请按可用字段/数据重试，或说明你的具体需求。`,
+            options: ['我来指定正确的字段/值重试', '换一个分析方向', '看现有数据能做哪些分析？'] }
+        : { type: 'ask_user',
+            question: `「${_lbl}」范围内未聚合到足够的情绪点数据（可能该区无 L2 点层覆盖，或范围与数据不重叠）。要怎么处理？`,
+            options: ['换一个区域重试（请指定：如伍家岗区 / 西陵区）', '我已上传该区域数据，请重新分析', '先看全域情绪分布如何？'] };
       if (hooks.onAskUser) hooks.onAskUser(ask, 1);
       return { ok: true, rounds: 1, ask, diagnose, exit: 'ask', newLayerCount };
     }

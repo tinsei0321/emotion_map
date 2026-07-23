@@ -1624,10 +1624,11 @@ function _fitEmcToContent() {
   const nonContent = emc.offsetHeight - msgs.clientHeight;
   // 内容自然高：临时取消 flex 拉伸量真实高——直接 scrollHeight 在「内容<可见区」时 = clientHeight
   // （flex 撑满致失真，是"缩短"失效根因；内容多溢出时 scrollHeight 才大于 clientHeight，故"拉长"原正常）
-  const sf = msgs.style.flex, sh = msgs.style.height;
+  const sf = msgs.style.flex, sh = msgs.style.height, savedTop = msgs.scrollTop;
   msgs.style.flex = '0 0 auto'; msgs.style.height = 'auto';
   const contentH = msgs.offsetHeight;
   msgs.style.flex = sf; msgs.style.height = sh;   // 同步恢复（同帧不绘制无闪烁；style 变不触发 MutationObserver）
+  msgs.scrollTop = savedTop;   // Bug 修复（v1.5）：height='auto' 测量会重置 scrollTop=0（容器撑满无溢出）→ 流式期 MutationObserver 每 token 触发 → 一直跳顶。save/restore 保滚动位置。
   const need = nonContent + contentH;
   emc.style.height = Math.max(minH, Math.min(maxH, need)) + 'px';
 }
