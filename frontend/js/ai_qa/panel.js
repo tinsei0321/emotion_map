@@ -192,16 +192,33 @@ function _lastRegion() {
   const ref = (ans.match(/\[ref:([^\]]+)\]/) || ans.match(/\{{1,2}focus:([^}]+)\}{1,2}/) || [])[1];
   return ref ? ref.trim() : '';
 }
-/** 折叠态套/解 .has-guidance + 引导文案覆盖 placeholder（cpd:guidance/setEmcCollapsed 调）。 */
+/** 引导落地（cpd:guidance/setEmcCollapsed 调）：折叠态=光环+placeholder；展开态=CPD 提示条（双域 UI）。 */
 function _applyGuidance() {
   const panel = document.getElementById('emc-panel');
   if (!panel) return;
-  const show = _emcCollapsed && !!_curGuidance;
-  panel.classList.toggle('has-guidance', show);
-  const input = document.getElementById('chat-input');
-  if (!input || !_emcCollapsed) return;   // 展开态 placeholder 由 setEmcCollapsed 管
-  input.placeholder = show ? _curGuidance.text : _INPUT_PH_COLLAPSED;   // 有引导→文案；无→默认折叠文案
-  _fitCollapsedText();
+  const has = !!_curGuidance;
+  // 折叠态：光环胶囊 + placeholder 文案
+  panel.classList.toggle('has-guidance', _emcCollapsed && has);
+  if (_emcCollapsed) {
+    const input = document.getElementById('chat-input');
+    if (input) {
+      input.placeholder = has ? _curGuidance.text : _INPUT_PH_COLLAPSED;
+      _fitCollapsedText();
+    }
+  }
+  // 展开态：CPD 提示条（进度点上方·EMC 接手时 CPD 同步进界面作提示语·v1.2 双域）
+  _applyCpdHint(has ? _curGuidance : null);
+}
+
+/** 展开态 CPD 提示条（.emc-cpd-hint）：填 guidance.text + data-cta；无引导则隐。点击 → _runGuidanceCta。 */
+function _applyCpdHint(g) {
+  const hint = document.querySelector('.emc-cpd-hint');
+  if (!hint) return;
+  if (!g) { hint.hidden = true; return; }
+  hint.hidden = false;
+  const txt = hint.querySelector('.emc-cpd-hint-text');
+  if (txt) txt.textContent = g.text;
+  hint.dataset.cta = g.ctaKind || '';
 }
 /** 光环 CTA 调度：import/range/layers → cpd:focus-tab（sidebar 监听）；analyze/interpret/export → 打开对话窗口（展开 input）。 */
 function _runGuidanceCta(kind) {
@@ -1594,6 +1611,15 @@ function _setupCpdBar() {
     + '<button class="emc-cpd-chip" data-tab="range" title="指定范围"><span class="emc-cpd-chip-lbl">范围</span></button>'
     + '<button class="emc-cpd-chip" data-tab="toolbox" title="空间分析工具"><span class="emc-cpd-chip-lbl">工具</span></button>';
   bar.appendChild(chips);
+  // CPD v1.2 双域 UI：展开态提示条（进度点上方·收起态随 .emc-cpd-bar display:none 隐藏）。
+  // EMC 接手时 CPD 同步进界面作提示语（去光环·阴影·Light/Dark），点击 = 光环同款 CTA。
+  const hint = document.createElement('div');
+  hint.className = 'emc-cpd-hint';
+  hint.hidden = true;
+  hint.innerHTML = '<span class="emc-cpd-hint-text"></span><span class="emc-cpd-hint-arrow" aria-hidden="true">›</span>';
+  hint.title = '点击执行下一步';
+  hint.addEventListener('click', () => { if (_curGuidance) _runGuidanceCta(_curGuidance.ctaKind); });
+  bar.prepend(hint);   // 进度点 .emc-cpd-prog 上方
   // 插入 chat-head 之后（chat-head 之下、emc-view 之上）
   const head = emc.querySelector('.chat-head');
   if (head) head.after(bar); else emc.prepend(bar);

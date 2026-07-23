@@ -43,11 +43,7 @@ export function deriveGuidance(f) {
   if (!f) return null;
   // 优先级自上而下首匹（plan §4.2 规则 v1.0：streaming 第一 → hasImport 先导 → gap/partial/ask 让 _followUps → drift → 其余按表）
   if (f.streaming) return null;                                                    // 1 流式硬门（不打扰，第一优先）
-  if (!f.hasImport) {                                                              // 2 先导数据
-    return f.visEmotion
-      ? { kind: 'import', text: '导入数据继续分析', ctaKind: 'import' }             //   纯 AI 层降级（CB-CPD-02 L3）
-      : { kind: 'import', text: '生成第一张情绪地图——导入数据，我帮你定位最值得关注的区域', ctaKind: 'import' };
-  }
+  if (!f.hasImport) return null;   // 2 空态：显欢迎语「向 Copilot 提问…」（不一上来引导操作·用户定 v1.2）；用户导入后才入装载链（row 5+）
   if (f.lastExit === 'gap' || f.lastExit === 'partial' || f.lastExit === 'ask') return null;   // 3 _followUps 已覆盖追问胶囊，不双 CTA
   if (f.lastExit === 'drift') return { kind: 'retry', text: '生成异常·已拦截——换个问法或缩小范围', ctaKind: 'input' };  // 4
   if (!f.hasRange) return { kind: 'range', text: '聚焦一片城区——上传范围文件，或在地图框选', ctaKind: 'range' };        // 5

@@ -583,6 +583,25 @@
   border-bottom: 1px solid var(--emc-divider, rgba(255,255,255,0.08));
   display: flex; flex-direction: column; gap: 7px;
 }
+/* CPD v1.2 双域 UI：展开态提示条（.emc-cpd-bar 内、进度点上方）。EMC 接手时 CPD 同步进界面作提示语。
+   去光环·阴影加深·缩小字体·Light/Dark 走 theme var 自动适配；填充式无线框（avoid-frames-fill-style）。 */
+.emc-cpd-hint {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 11px;
+  background: var(--emc-accent-soft);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);            /* 阴影加深（去光环后代之以阴影凸出） */
+  font-size: 11.5px; font-weight: 600; line-height: 1.35;
+  color: var(--emc-accent);
+  cursor: pointer;
+  transition: background .15s, color .15s, box-shadow .15s;
+}
+.emc-cpd-hint[hidden] { display: none !important; }  /* 显式覆盖 display:flex，保 hidden 生效 */
+.emc-cpd-hint:hover { background: var(--emc-accent); color: #fff; box-shadow: 0 3px 10px rgba(0,0,0,0.24); }
+.emc-cpd-hint-text { flex: 1; min-width: 0; }
+.emc-cpd-hint-arrow { flex-shrink: 0; font-size: 15px; line-height: 1; opacity: 0.7; }
+[data-theme="light"] .emc-cpd-hint { box-shadow: 0 2px 6px rgba(20,58,53,0.12); }      /* Light 阴影更柔 */
+[data-theme="light"] .emc-cpd-hint:hover { box-shadow: 0 3px 8px rgba(20,58,53,0.20); }
 .emc-cpd-prog { display: flex; align-items: center; gap: 5px; }
 .emc-cpd-dot {
   width: 8px; height: 8px; border-radius: 50%;
