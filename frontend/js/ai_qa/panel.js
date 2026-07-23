@@ -226,17 +226,17 @@ function _runGuidanceCta(kind) {
     document.dispatchEvent(new CustomEvent('cpd:focus-tab', { detail: kind }));
     return;
   }
-  // analyze/interpret/export/input → 打开对话窗口收集意图（展开 input 聚焦）→ 用户选示例或自由输入 → EMC harness
+  // analyze/interpret/export/input → 打开对话窗口收集意图（展开 input 聚焦）→ 用户选方向/细化/示例或自由输入 → EMC harness
   const input = document.getElementById('chat-input');
   if (input) { setEmcCollapsed(false); input.focus(); }
-  if (_curGuidance && _curGuidance.examples && _shouldShowGuidanceExamples()) {
-    renderGuidanceExamples(_curGuidance.examples);   // 首次分析前：展开后确保 examples 可见（cpd:guidance 已渲染则幂等）
-  }
+  _renderGuidanceContent();   // 展开（或已展开）后显引导内容（方向级联/examples·幂等）
 }
 
-// ── 引导态 examples（多分支→对话交接·plan §4.2 row 7·铁律3 CPD 只给确定性起点，意图识别归 harness）──
-let _guidanceExamplesShown = false;   // examples 占用 #aiq-suggest 标志（防 clearGuidanceExamples 误清答案后 _followUps）
-/** examples 仅在「从未问答过」（首次分析前）显——一旦有答案，追问胶囊 _followUps 接管（互斥）。 */
+// ── CPD 阶段 A/B 引导内容（导游·确定性·不调 LLM·意图识别归 harness）──
+// intent（点+范围就绪）= 阶段 A 大方向胶囊 → 阶段 B 细化追问胶囊；interpret（dock 产图）= examples 读图。
+let _guidanceExamplesShown = false;   // 引导内容占用 #aiq-suggest 标志（防 clearGuidanceExamples 误清答案后 _followUps）
+let _curDirection = null;             // 阶段 A→B 级联：用户选的大方向（null=显方向；已选=显细化）
+/** 引导内容仅在「从未问答过」（首次分析前）显——一旦有答案，追问胶囊 _followUps 接管（互斥）。 */
 function _shouldShowGuidanceExamples() {
   return !_streaming && !_history.some((h) => h.role === 'assistant');
 }
@@ -250,12 +250,52 @@ function renderGuidanceExamples(items) {
   el.querySelectorAll('.aiq-suggest-chip').forEach((b) => b.addEventListener('click', () => send(b.dataset.prompt)));
   _guidanceExamplesShown = true;
 }
-/** 清 examples（仅当 examples 占用时清，不动答案后 _followUps）。 */
+/** 清引导内容（仅当占用时清，不动答案后 _followUps）。 */
 function clearGuidanceExamples() {
   if (!_guidanceExamplesShown) return;
   const el = document.getElementById('aiq-suggest');
   if (el) { el.hidden = true; el.innerHTML = ''; }
   _guidanceExamplesShown = false;
+}
+/** 渲染引导内容总调度（cpd:guidance/CTA/级联切换调）：intent=方向级联(A/B)；interpret=examples；其余清。 */
+function _renderGuidanceContent() {
+  if (!_shouldShowGuidanceExamples()) { clearGuidanceExamples(); return; }
+  const g = _curGuidance;
+  if (!g) { clearGuidanceExamples(); return; }
+  if (g.kind === 'intent' && g.directions) {
+    if (_curDirection && g.refinements && g.refinements[_curDirection]) _renderRefinements(g.refinements[_curDirection]);
+    else _renderDirections(g.directions);
+  } else if (g.examples) {
+    _curDirection = null;
+    renderGuidanceExamples(g.examples);
+  } else {
+    clearGuidanceExamples();
+  }
+}
+/** 阶段 A：渲染大方向胶囊（label「方向」）；点击 → 记 _curDirection → 阶段 B 细化。 */
+function _renderDirections(dirs) {
+  const el = document.getElementById('aiq-suggest');
+  if (!el || !Array.isArray(dirs) || !dirs.length) return;
+  el.hidden = false;
+  el.innerHTML = '<span class="aiq-suggest-label">方向</span>'
+    + dirs.map((d) => `<button type="button" class="aiq-suggest-chip" data-dir="${escapeHtml(d.dir)}"><span class="aiq-suggest-tag">${escapeHtml(d.tag)}</span>${escapeHtml(d.hint || '')}</button>`).join('');
+  el.querySelectorAll('.aiq-suggest-chip[data-dir]').forEach((b) =>
+    b.addEventListener('click', () => { _curDirection = b.dataset.dir; _renderGuidanceContent(); }));
+  _guidanceExamplesShown = true;
+}
+/** 阶段 B：渲染细化追问胶囊 +「‹ 返回方向」；点击细化 → send → EMC harness；返回 → 重选方向。 */
+function _renderRefinements(refs) {
+  const el = document.getElementById('aiq-suggest');
+  if (!el || !Array.isArray(refs) || !refs.length) return;
+  el.hidden = false;
+  el.innerHTML = '<span class="aiq-suggest-label">细化</span>'
+    + refs.map((t) => `<button type="button" class="aiq-suggest-chip" data-prompt="${escapeHtml(t)}">${escapeHtml(t)}</button>`).join('')
+    + '<button type="button" class="aiq-suggest-chip aiq-suggest-back">‹ 返回方向</button>';
+  el.querySelectorAll('.aiq-suggest-chip[data-prompt]').forEach((b) =>
+    b.addEventListener('click', () => send(b.dataset.prompt)));
+  const back = el.querySelector('.aiq-suggest-back');
+  if (back) back.addEventListener('click', () => { _curDirection = null; _renderGuidanceContent(); });
+  _guidanceExamplesShown = true;
 }
 let _crowdedRaf = 0;
 function _checkCrowded() {
@@ -590,6 +630,7 @@ function clearSuggest() {
   const el = document.getElementById('aiq-suggest');
   if (el) { el.hidden = true; el.innerHTML = ''; }
   _guidanceExamplesShown = false;   // send/切会话清空时，examples 占用标志同步清
+  _curDirection = null;             // 重置阶段 A→B 级联（下次 analyze 重新显方向）
 }
 
 /** 长对话折叠：答案摘录（剥离 {{action}} 模板 + 标签，取首 ~70 字）。 */
@@ -1647,12 +1688,7 @@ function _setupCpdBar() {
   document.addEventListener('cpd:guidance', (e) => {
     _curGuidance = (e && e.detail && e.detail.guidance) || null;
     _applyGuidance();
-    // 展开态 examples（多分支→对话交接）：首次分析前显，有答案后 _followUps 接管（互斥）
-    if (_curGuidance && _curGuidance.examples && _shouldShowGuidanceExamples()) {
-      renderGuidanceExamples(_curGuidance.examples);
-    } else {
-      clearGuidanceExamples();
-    }
+    _renderGuidanceContent();   // 展开态：intent=方向级联(A/B) / interpret=examples / 其余清（首次分析前显·有答案 _followUps 接管）
   });
   // 光环可点 CTA（plan §八 G1·U2）：折叠态有引导时，点 .emc-input-area = CTA（拦截 focus-expand）。
   const area = emc.querySelector('.emc-input-area');

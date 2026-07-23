@@ -9,6 +9,8 @@
 >
 > **v1.2 修订（2026-07-23·双域架构重做·用户定）**：① **空态恢复欢迎语**——§4.2 row 2 `!hasImport → null`（删 import 引导），空态显「向 Copilot 提问…」欢迎语，不一上来引导操作；点开折叠→欢迎卡。② **双域架构（§决策3）**——EMC 与 CPD 独立两域互不干扰：收起 CPD 接替（光环胶囊）/ 展开 EMC 接手 + CPD 缩小为提示条（`.emc-cpd-hint`·进度点上方·去光环·阴影·Light/Dark）。③ **意图 agent 轻·复用现有 harness**（用户选·不改承重）：diagnose + ask_user 多轮渐进 + 聚合参数（面/方格）由模型问；展开显确定性引导，用户首次输入才触发 LLM。装载链引导保留。
 >
+> **v1.3 修订（2026-07-23·CPD 导游多阶段 + hint bug·用户定「完整深改」）**：重梳理 CPD+EMC 工作流——**CPD 是导游**（确定性·不思考/不派发），**EMC 是 agent**（Flash 收集 + Pro 研判/计划 + 执行）。9 阶段交替循环（A CPD大方向→B EMC细化追问→C Flash推理→D CPD参数引导→E 循环→F 判断够了→G Pro研判→H Pro计划→I 执行）。本次 Step 1：① **hint 消失 bug 修复**——suppress 仅折叠态光环生效（展开态提示条始终反映当前引导）；② **阶段 A 大方向分类**（row 7 analyze→`{kind:'intent', directions:[4类], refinements:{...}}`·情绪分析/GIS操作/周边分析/深读区域）+ **阶段 B 细化追问**（方向→细化追问胶囊级联·确定性·不调 LLM·CPD 只指方向，意图识别归 EMC Flash diagnose）。**Step 2/3 待做**：diagnose 回传 + 阶段 D 参数引导（template→SKILL_DEFS）+ Pro 研判 deliberateStep。
+>
 > **v0.4 → v1.0 定稿变更**（CB-CPD-03 反评价，DS 建议收尾 + K3 发现 v0.4 新引入 H1 链式缺陷必修）：
 > - **H1 general 断链修复**（K3 H1，已核实 [panel.js:1161/1162/1181](frontend/js/ai_qa/panel.js#L1161) 链）：v0.4 finally 守卫 `exit!==undefined` × 严格 turnId+1 去重 × general 无 exit（[harness.js:372/412](frontend/js/ai_qa/harness.js#L372)）= general 轮 `settled=true` 照常 push 致 `_history` 跳号但不 dispatch → 引擎丢事件 → **引导永久冻结（静默失败）**。改：① 守卫 `exit!==undefined` → **`settled`**（正常完成即 dispatch，abort/异常不 dispatch，覆盖 general）；② 去重"严格 +1"→**单调递增**（turnId > lastProcessed）；③ 真值表 row 4 lastExit∈{null（含 general 短路）}，intent==='general' 区分。
 > - **M1 hasAnalysis 死信号 → interpret 分支**（K3 M1）：§4.1 定义但真值表零引用 → row 4 加 `hasAnalysis=true` 升级 `interpret`「这张图已就绪——问我说明了什么」桥 dock 产图回 EMC（闭合 dock→EMC 编排环）。
