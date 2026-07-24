@@ -209,6 +209,7 @@ DIAGNOSE_TEMPLATE = """
 - "定义"类问题（如"什么是情绪地图"）scale 可填 macro 但 decision_type=定义，method 可空。
 【strategy 判定要点】（查下方 strategy 语义）：硬缺口（无替代）→ request_upload；
 有合理替代（社区代街道、用极性近似紧迫度）→ fallback_annotated；齐全 → ready。
+**可派生（易误判 GAP·重点）**：所需范围/数据若可从已加载层"派生"——如问句提到的区/街道是某已加载 boundary（行政区/片区/社区）的命名子要素（见 grounding 已加载层的「含:」清单，如「行政区·含:西陵区/伍家岗区/…」），则 clip/extract_feature 可裁出该子区 → **strategy=ready**（非 request_upload）。即"超集可派生子集"算齐全，勿因未单独加载该子区层就保守判 GAP。例：问"西陵区情绪归因"+已加载行政区（含西陵区）→ ready（zonal boundary=西陵区）；问"伍家岗区的点"+行政区已加载 → ready（clip range=伍家岗区）。
 
 当前数据（grounding，主窗口推送的图层摘要；据此判断 available/gap）：
 {context}
