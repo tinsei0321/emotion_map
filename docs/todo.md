@@ -9,6 +9,15 @@
 
 ## 📅 2026-07-24（分支 `main` · 测试飞轮机制评估）
 
+### ✅ EMC P0 安全批·滚动复位 + srcId 去重 + density 执行信号（revision-log 5.200，commit 89d7d70/ed1d97f/4a01052 · **用户手动 push**）
+
+- **1a 滚动复位**（[panel.js:1260](frontend/js/ai_qa/panel.js#L1260) send）：`_userPinned` 发新问即复位（治 E6 上滑后所有新回答不跟）。
+- **1b srcId 去重**（[main.js:79-98](frontend/js/main.js#L79-L98) + runImport）：内容签名 srcSig（collision-free 串键·优于 hash）→ 同文件复用 / 异名同内容关联 toast / 快照打 `layer.srcId`（L001 编号零动，srcId 供 EMC grounding 稳定引用）。
+- **1c density 执行信号**（harness:332 + e2e-seam + test-cases）：runTemplatePath 派发 `tool:executed` 事件 → e2e-seam 监听 → test-cases 并集 `sig.tools`（治 density 委托前端无 fetch·TOL-001 永远 tool_hit=0）。
+- **承重零触**（diagnose prompt / harness orchestrate / ChatRequest 三承重不动）。
+- **验证**：语法肉眼复核（node 不在环境）；待用户肉眼验 1a + 跑飞轮 TOL-001 验 density 入 sig.tools。
+- **下一步**：模型路由(超时#1·harness 红线)独立 plan + 先扩 eval。
+
 ### ✅ 测试飞轮两批修复入库 + EMC 治本 backlog 起步（revision-log 5.199，commit a90fac1 · **用户手动 push**）
 
 - **入库两批**（13 文件）：批1 信号链 H1(template 信号·治 C1 断链)/H3(参数断言硬化)/H5(JSON 报告)/EMC-SUM v1；批2 覆盖 A(字段识别扩容)/B(摘要中文)/C(渲染断言)。已验证 H1 生效（TOL-001 template=density 非 null）+ pytest 203 pass。
