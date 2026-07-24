@@ -35,11 +35,12 @@ const REVIEW_ENABLED = (() => { try { return !localStorage.getItem('emcReviewOff
 
 // ⑤④ Flash template 命中率遥测 + 80% gate（self-protection）。
 // diagnose 后记 template 命中(非 unknown)/未中(unknown)，落 localStorage 跨会话累积（clearChat 不重置）。
-// gate 语义（承重·零冷启动回归）：冷启动(samples<MIN)放行保当前 fast-path；成熟后命中率≥80% 放行；
-// <80%（Flash 经 ≥MIN 次验证系统性不可靠）退 while-loop（更稳健：query-first + 多轮 + 对账）。
+// gate 语义（承重·零冷启动回归）：冷启动(samples<MIN)放行保当前 fast-path；成熟后命中率≥GATE 放行；
+// B1-2b 松 gate 0.8→0.6：misses 仅计 unknown（Flash 没出任何 template），故 0.6 = "Flash 真坏（>40% unknown）"才退 while-loop，
+//   非"路由不完美"即退。runTemplatePath 自带 ask_user/gap 恢复兜底；保 fast path 作单技能默认（治超时#1·省 agent 多轮）。
 const _TPL_STATS_KEY = 'ai_qa_template_stats_v1';
 const _TPL_MIN_SAMPLES = 10;
-const _TPL_HIT_RATE_GATE = 0.8;
+const _TPL_HIT_RATE_GATE = 0.6;
 
 function _loadTplStats() {
   let s;
