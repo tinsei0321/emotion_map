@@ -1260,6 +1260,7 @@ function _isResumeCue(q) {
 async function send(text) {
   text = (text || '').trim();
   if (!text || _streaming) return;
+  _userPinned = false;   // E6 新话轮强制跟随：上滑停跟仅话轮内有效，发新问即复位（appendMessage 已滚底 + 流式 autoScroll 续跟；ChatGPT/Claude 标准）
   const input = document.getElementById('chat-input');
   if (input) input.value = '';
   appendMessage('user', escapeHtml(text));
