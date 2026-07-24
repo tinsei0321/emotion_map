@@ -9,6 +9,14 @@
 
 ## 📅 2026-07-24（分支 `main` · 测试飞轮机制评估）
 
+### ✅ 测试飞轮两批修复入库 + EMC 治本 backlog 起步（revision-log 5.199，commit a90fac1 · **用户手动 push**）
+
+- **入库两批**（13 文件）：批1 信号链 H1(template 信号·治 C1 断链)/H3(参数断言硬化)/H5(JSON 报告)/EMC-SUM v1；批2 覆盖 A(字段识别扩容)/B(摘要中文)/C(渲染断言)。已验证 H1 生效（TOL-001 template=density 非 null）+ pytest 203 pass。
+- **治本 backlog** [emc-fix-backlog.md](emc-fix-backlog.md)：6 类问题（超时/density信号/选错工具/字段manifest/渲染bug/摘要）+ 证据 + K3 P0/P1/P2 方向。
+- **纠正 K3 过时认知**：diagnose 已跑 flash（stages.js:236）；超时真因 = agent 多轮 + final/revise pro 串行（非 diagnose）。
+- **P0 切分（用户拍板·安全 3 项优先）**：模型路由(超时#1·harness 红线)单列独立 plan + 先扩 eval；本批先做安全 3 项——🔄 滚动复位(1a)/🔄 srcId 去重(1b)/🔄 density 执行信号(1c)。
+- **承重零触**（diagnose prompt / harness orchestrate / ChatRequest 三承重不动）。
+
 ### ✅ 测试飞轮全面评估（静态审查·用户指示跳过实测）
 
 - 产出：[test-flywheel-audit-2026-07-24.md](test-flywheel-audit-2026-07-24.md)（总评 5.1/10；机制事实清单 + 三维度不足 + 业界对照 + H/M/L 优化清单 + Prompt 预设调整专章）。
