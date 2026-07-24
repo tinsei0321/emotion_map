@@ -9,6 +9,15 @@
 
 ## 📅 2026-07-24（分支 `main` · 测试飞轮机制评估）
 
+### ✅ EMC 治本 B0 护承重 + B1 模型路由（治超时#1）（revision-log 5.201，commit 9fd8dc4/a93ce67/a96bfea/d2cd5be/78395c6/1e49182 · **用户手动 push**）
+
+- **K3 深度消化**：智能倒挂 + 五脱节；本批攻 ③延迟架构错位（深度研究串行管道 vs 交互工具秒级期望）。
+- **B0 护承重**：eval 加 compare+负例 → **冻结基线 83%**（a93ce67）；词表 single-source（`template_id_list_text` 从 TEMPLATE_REGISTRY 派生）→ 重跑 **91% 无退化**（a96bfea）。
+- **B1 路由+预算**（治超时#1·三刀合击）：**2a** final/revise→flash（复杂升 pro·d2cd5be）/ **2b** 松 gate 0.8→0.6（fast path 默认·78395c6）/ **2c** while-loop 75s 预算守卫（保必有回答·1e49182）。
+- **承重纪律**：B0 先冻结 eval 再改 prompt（红线 eval-first）；B1 三子步按风险升序独立 commit。
+- **验证**：eval PASS；**待用户跑飞轮** density/zonal/rank 验 p95<60s + 无 90s 超时无答 + 无质量崩。
+- **下一步**：P0-4 进度+取消 / B2 飞轮v5 / B3 P1 本体（GIS 工具 SOP 卡·治 4 MISS 路由歧义）。
+
 ### ✅ EMC P0 安全批·滚动复位 + srcId 去重 + density 执行信号（revision-log 5.200，commit 89d7d70/ed1d97f/4a01052 · **用户手动 push**）
 
 - **1a 滚动复位**（[panel.js:1260](frontend/js/ai_qa/panel.js#L1260) send）：`_userPinned` 发新问即复位（治 E6 上滑后所有新回答不跟）。
