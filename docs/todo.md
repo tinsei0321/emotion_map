@@ -7,6 +7,25 @@
 
 ---
 
+## 📅 2026-07-24（分支 `main` · 测试飞轮机制评估）
+
+### ✅ 测试飞轮全面评估（静态审查·用户指示跳过实测）
+
+- 产出：[test-flywheel-audit-2026-07-24.md](test-flywheel-audit-2026-07-24.md)（总评 5.1/10；机制事实清单 + 三维度不足 + 业界对照 + H/M/L 优化清单 + Prompt 预设调整专章）。
+- **三处闭环断裂石锤**：① template 信号断链（ChatRequest 无 diagnose 字段，schemas.py:11-22 → 意图断言 `tmplOk` 永 false，tpl=? 根因）；② 词表三处硬编码漂移（prompts.py:190 缺 compare/filter_attr vs paradigm.py:454/470 决策树 vs 飞轮 expectTmpl）；③ 投票不落盘 + 失败不回流 prompt 池（闭环断在"报告"处）。
+- **覆盖假象**：参数正确性 10 例断言恒 pass（expect* 定义未接断言，test-cases.js:276-279）；全正模式零负例（八原则反模式无一落地）；时序 T1-T3 / POI 缓冲零用例。
+- **优化清单**：H 级 5 项（信号接通/词表单源/断言硬化/反馈落盘/JSON 报告）+ M 级 8 项 + L 级 5 项；Prompt 专章 P1-P5（负例池/时序变体/POI 变体/词表派生/失败回流五环）。
+- 留痕：实测驱动 `tests/browser/flywheel_audit.py` 已建（三路采集，未跑）；本机 Playwright chromium 待装（cdn 慢，可配镜像）。
+
+### ⬜ 待用户拍板（评估优化项，按报告 §六路线）
+
+- [ ] 第一批：H1 接通 template 信号（触 ChatRequest schema·需拍板）+ H3 参数断言硬化 + H5 JSON 报告
+- [ ] 第二批：H4 反馈落盘+backlog + H2 词表单源 + M8 遥测连通
+- [ ] 第三批：P1 负例池 + M2 批级 setup + M3 分层抽样 + M5 时序/POI
+- [ ] 第四批：M7 catalog 登记 + M4 聚类 diff + L 级抛光
+
+---
+
 ## 📅 2026-07-23（分支 `main` · cpd 合并清理 + 测试飞轮 v3→v4 + _fill 修复 + todo 机制反思）
 
 ### ✅ 分支收敛（cpd → main）
