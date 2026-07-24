@@ -1,0 +1,70 @@
+[OK] 已清理端口 8080 上的旧进程 PID 31232
+[OK] 已清理端口 8000 上的旧进程 PID 34632
+[OK] backend uvicorn 启动中（:8000, PID 18132），等待就绪…
+INFO:     127.0.0.1:65058 - "GET /api/v1/health HTTP/1.1" 200 OK
+[OK] backend 就绪 (:8000)
+[OK] frontend serve on http://localhost:8080 (no-cache + ?v auto-inject)
+     访问 http://localhost:8080/frontend/index.html
+     Ctrl+C 停止（同时停后端）
+[TRACE] 11:06:39 | MOD_AIQA.F_005 | [enter]
+[TRACE] 11:06:39 | MOD_AIQA.F_005 | [exit] | 0.2ms
+INFO:     127.0.0.1:65059 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[TRACE] 11:06:39 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0
+[TRACE] 11:06:39 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=12 reason=True json=False
+[TRACE] 11:06:55 | MOD_AIQA.F_002 | [enter]
+[TRACE] 11:06:55 | MOD_AIQA.F_002 | [exit] | 0.1ms
+INFO:     127.0.0.1:61894 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[TRACE] 11:06:55 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-pro tier=pro attempt=0
+[TRACE] 11:06:55 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-pro msgs=12 reason=True json=False
+INFO:     127.0.0.1:51844 - "GET /api/v1/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50604 - "GET /api/v1/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50605 - "GET /api/v1/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50606 - "GET /api/v1/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50607 - "GET /api/v1/health HTTP/1.1" 200 OK
+[TRACE] 11:07:01 | MOD_AIQA.F_002 | [enter]
+[TRACE] 11:07:01 | MOD_AIQA.F_002 | [exit] | 0.2ms
+INFO:     127.0.0.1:50608 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[TRACE] 11:07:01 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-pro tier=pro attempt=0
+[TRACE] 11:07:01 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-pro msgs=12 reason=True json=False
+[TRACE] 11:07:12 | MOD_AIQA.F_002 | [enter]
+[TRACE] 11:07:12 | MOD_AIQA.F_002 | [exit] | 0.1ms
+INFO:     127.0.0.1:58447 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[TRACE] 11:07:12 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-pro tier=pro attempt=0
+[TRACE] 11:07:12 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-pro msgs=12 reason=True json=False
+INFO:     127.0.0.1:59326 - "GET /api/v1/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59327 - "GET /api/v1/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59851 - "GET /api/v1/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59852 - "GET /api/v1/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59853 - "GET /api/v1/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54629 - "GET /api/v1/health HTTP/1.1" 200 OK
+[TRACE] 11:07:47 | MOD_FIELD.F_002 | [enter]
+[TRACE] 11:07:47 | MOD_FIELD.F_002 | [exit] | 0.1ms
+[TRACE] 11:07:47 | MOD_SPATIAL.F_003 | [enter]
+  [TRACE] 11:07:47 | MOD_FIELD.F_001 | [enter]
+  [TRACE] 11:07:47 | MOD_FIELD.F_001 | [exit] | 0.1ms
+  [TRACE] 11:07:47 | MOD_FIELD.F_001 | [enter]
+  [TRACE] 11:07:47 | MOD_FIELD.F_001 | [exit] | 0.1ms
+  [TRACE] 11:07:47 | MOD_FIELD.F_001 | [enter]
+  [TRACE] 11:07:47 | MOD_FIELD.F_001 | [exit] | 0.1ms
+  [TRACE] 11:07:47 | MOD_FIELD.F_001 | [enter]
+  [TRACE] 11:07:47 | MOD_FIELD.F_001 | [exit] | 0.1ms
+  [TRACE] 11:07:47 | MOD_FIELD.F_001 | [enter]
+  [TRACE] 11:07:47 | MOD_FIELD.F_001 | [exit] | 0.1ms
+  [TRACE] 11:07:47 | MOD_FIELD.F_001 | [enter]
+  [TRACE] 11:07:47 | MOD_FIELD.F_001 | [exit] | 0.1ms
+[TRACE] 11:07:47 | MOD_SPATIAL.F_003 | [exit] | 59.5ms
+INFO:     127.0.0.1:54631 - "POST /api/v1/geo/zonal_stats HTTP/1.1" 200 OK
+[TRACE] 11:07:47 | MOD_AIQA.F_002 | [enter]
+[TRACE] 11:07:47 | MOD_AIQA.F_002 | [exit] | 0.2ms
+INFO:     127.0.0.1:53494 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[TRACE] 11:07:47 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-pro tier=pro attempt=0
+[TRACE] 11:07:47 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-pro msgs=12 reason=True json=False
+[B0] FATAL: BrowserType.launch: Executable doesn't exist at C:\Users\admin\AppData\Local\ms-playwright\chromium_headless_shell-1223\chrome-headless-shell-win64\chrome-headless-shell.exe
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝

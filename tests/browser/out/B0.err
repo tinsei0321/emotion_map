@@ -1,0 +1,370 @@
+INFO:     Started server process [16460]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /api/v1/health HTTP/1.1" 200 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 65065)
+Traceback (most recent call last):
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 318, in _handle_request_noblock
+    self.process_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 349, in process_request
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 732, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 496, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 484, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\Github\emotion_map\frontend\serve.py", line 142, in do_GET
+    return self._proxy_api()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\Github\emotion_map\frontend\serve.py", line 230, in _proxy_api
+    self.wfile.write(rbody)
+    ~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接。
+----------------------------------------
+[serve] 127.0.0.1 - "GET /api/v1/health HTTP/1.1" 200 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 52472)
+Traceback (most recent call last):
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 318, in _handle_request_noblock
+    self.process_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 349, in process_request
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 732, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 496, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 484, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\Github\emotion_map\frontend\serve.py", line 142, in do_GET
+    return self._proxy_api()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\Github\emotion_map\frontend\serve.py", line 230, in _proxy_api
+    self.wfile.write(rbody)
+    ~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接。
+----------------------------------------
+[serve] 127.0.0.1 - "GET /api/v1/health HTTP/1.1" 200 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 52483)
+Traceback (most recent call last):
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 318, in _handle_request_noblock
+    self.process_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 349, in process_request
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 732, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 496, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 484, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\Github\emotion_map\frontend\serve.py", line 142, in do_GET
+    return self._proxy_api()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\Github\emotion_map\frontend\serve.py", line 230, in _proxy_api
+    self.wfile.write(rbody)
+    ~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接。
+----------------------------------------
+[serve] 127.0.0.1 - "GET /api/v1/health HTTP/1.1" 200 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 52488)
+Traceback (most recent call last):
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 318, in _handle_request_noblock
+    self.process_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 349, in process_request
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 732, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 496, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 484, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\Github\emotion_map\frontend\serve.py", line 142, in do_GET
+    return self._proxy_api()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\Github\emotion_map\frontend\serve.py", line 230, in _proxy_api
+    self.wfile.write(rbody)
+    ~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接。
+----------------------------------------
+[serve] 127.0.0.1 - "GET /api/v1/health HTTP/1.1" 200 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 61892)
+Traceback (most recent call last):
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 318, in _handle_request_noblock
+    self.process_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 349, in process_request
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 732, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 496, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 484, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\Github\emotion_map\frontend\serve.py", line 142, in do_GET
+    return self._proxy_api()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\Github\emotion_map\frontend\serve.py", line 230, in _proxy_api
+    self.wfile.write(rbody)
+    ~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接。
+----------------------------------------
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /api/v1/health HTTP/1.1" 200 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 50309)
+Traceback (most recent call last):
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 318, in _handle_request_noblock
+    self.process_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 349, in process_request
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 732, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 496, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 484, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\Github\emotion_map\frontend\serve.py", line 142, in do_GET
+    return self._proxy_api()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\Github\emotion_map\frontend\serve.py", line 230, in _proxy_api
+    self.wfile.write(rbody)
+    ~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接。
+----------------------------------------
+[serve] 127.0.0.1 - "GET /api/v1/health HTTP/1.1" 200 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 51242)
+Traceback (most recent call last):
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 318, in _handle_request_noblock
+    self.process_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 349, in process_request
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 732, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 496, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 484, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\Github\emotion_map\frontend\serve.py", line 142, in do_GET
+    return self._proxy_api()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\Github\emotion_map\frontend\serve.py", line 230, in _proxy_api
+    self.wfile.write(rbody)
+    ~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接。
+----------------------------------------
+[serve] 127.0.0.1 - "GET /api/v1/health HTTP/1.1" 200 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 51248)
+Traceback (most recent call last):
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 318, in _handle_request_noblock
+    self.process_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 349, in process_request
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 732, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 496, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 484, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\Github\emotion_map\frontend\serve.py", line 142, in do_GET
+    return self._proxy_api()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\Github\emotion_map\frontend\serve.py", line 230, in _proxy_api
+    self.wfile.write(rbody)
+    ~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接。
+----------------------------------------
+[serve] 127.0.0.1 - "GET /api/v1/health HTTP/1.1" 200 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 58440)
+Traceback (most recent call last):
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 318, in _handle_request_noblock
+    self.process_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 349, in process_request
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 732, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 496, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 484, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\Github\emotion_map\frontend\serve.py", line 142, in do_GET
+    return self._proxy_api()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\Github\emotion_map\frontend\serve.py", line 230, in _proxy_api
+    self.wfile.write(rbody)
+    ~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接。
+----------------------------------------
+[serve] 127.0.0.1 - "GET /api/v1/health HTTP/1.1" 200 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 58459)
+Traceback (most recent call last):
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 318, in _handle_request_noblock
+    self.process_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 349, in process_request
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 732, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 496, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\http\server.py", line 484, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "D:\Github\emotion_map\frontend\serve.py", line 142, in do_GET
+    return self._proxy_api()
+           ~~~~~~~~~~~~~~~^^
+  File "D:\Github\emotion_map\frontend\serve.py", line 230, in _proxy_api
+    self.wfile.write(rbody)
+    ~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\admin\AppData\Local\Python\pythoncore-3.14-64\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] 你的主机中的软件中止了一个已建立的连接。
+----------------------------------------
+[serve] 127.0.0.1 - "GET /api/v1/health HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "POST /api/v1/geo/zonal_stats HTTP/1.1" 200 -
