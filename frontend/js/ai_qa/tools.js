@@ -518,6 +518,37 @@ const _kindTag = (l) => {
   return k || '层';
 };
 
+/** D4：boundary 层子要素枚举（治可见性缺口·D2 可派生规则的燃料）。
+ *  对 boundary首选 面层，找 name 字段（categorical·≤20 unique·值含地名后缀 或 字段名似 name/MC/名称）→ 返全 distinct 值串。
+ *  让 diagnose 看见「行政区·含:西陵区/伍家岗区/…」→ 配合 D2 判 strategy=ready，治假 GAP（04-llm INT-002~007 根因）。 */
+const _PLACE_NAME_RE = /(区|街道|社区|镇|乡|片|园|路|广场|中心|村|工业园|管委会)$/;
+function _boundaryEnum(l) {
+  if (_polyRole(l) !== 'boundary首选') return '';
+  const feats = l.fc && l.fc.features;
+  if (!feats || !feats.length) return '';
+  let best = null;
+  for (const k of Object.keys(feats[0].properties || {})) {
+    if (isInternalField(k) || isRenderContract(resolveRole(k))) continue;
+    const vals = new Set();
+    for (const f of feats) {
+      const v = f.properties && f.properties[k];
+      if (v == null || v === '') continue;
+      vals.add(String(v));
+      if (vals.size > 20) break;   // 高基数·非 name 字段
+    }
+    const n = vals.size;
+    if (n > 0 && n <= 20) {
+      const arr = [...vals];
+      const placeLike = arr.filter((v) => _PLACE_NAME_RE.test(v)).length;
+      const fieldLikeName = /name|MC|名|名称/i.test(k);
+      if (fieldLikeName || (placeLike >= Math.min(3, n) && placeLike >= n / 2)) {
+        if (!best || arr.length > best.arr.length) best = { arr };   // 多候选取值最多者
+      }
+    }
+  }
+  return best && best.arr.length ? `·含:${best.arr.join('/')}` : '';
+}
+
 /** buildContext：grounding 摘要（panel send + query_layers 共用）。 */
 export async function buildContext() {
   const layers = getLayers();
@@ -532,7 +563,7 @@ export async function buildContext() {
     .map(async (l) => {
       const cnt = l.fc.features.length;
       const fs = await _fieldSamples(l.fc, 12, l.id);   // DataEye（P3）：字段+类型+role+样本值（关键字段全值·治误判缺数据 2c）
-      return `${l.name}(${cnt}条,${_kindTag(l)}${fs ? ',字段:' + fs : ''})`;
+      return `${l.name}(${cnt}条,${_kindTag(l)}${_boundaryEnum(l)}${fs ? ',字段:' + fs : ''})`;
     }))).join('、');
   parts.push('已加载图层（仅 Layers 当前显示·EMC 只用可见层，未显示层禁用）：' + (loaded || '（无）'));
   // 数据可见纪律：不注入 registry catalog 全量（formatGeoCatalog）——未显示层一律不准用，防"只传 L1·T1 却跑 L2"
