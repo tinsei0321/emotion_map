@@ -76,6 +76,27 @@ function refreshOverview() {
   setTable(fc, layer);
 }
 
+// ── E3 srcId 去重：文件内容签名 → 重复上传复用，避免堆叠（治 addLayer 顺序发号零去重） ──
+// srcSig = 文件名 + 内容签名（collision-free 串键，优于 hash——Map 精确匹配无碰撞）；
+// contentSig = 去文件名内容签名（异名同内容关联）。layer.srcId 挂层对象供 EMC grounding 稳定引用（比易变 L001 序号更适合 $n 引用）。
+const _srcIndex = new Map();      // srcSig -> layerId[]（一文件可拆多子层，故值是数组）
+const _contentIndex = new Map();  // contentSig -> layerId[]
+function _round4(x) { return Math.round(x * 1e4) / 1e4; }
+/** 内容签名：featureCount + bbox + 前 5 feature 几何类型/坐标前缀/属性键（稳定·串键精确匹配）。 */
+function _contentSig(fc) {
+  const feats = (fc && fc.features) || [];
+  const bb = fcBBox(fc);
+  const head = feats.slice(0, 5).map((f) => {
+    const g = f.geometry || {};
+    const c = g.coordinates;
+    let cSig = '';
+    if (Array.isArray(c)) cSig = (typeof c[0] === 'number') ? `${_round4(c[0])},${_round4(c[1])}` : JSON.stringify(c).slice(0, 48);
+    const keys = f.properties ? Object.keys(f.properties).sort().join(',') : '';
+    return `${g.type || ''}:${cSig}:${keys}`;
+  }).join('|');
+  return `${feats.length}|${bb ? bb.map(_round4).join(',') : ''}|${head}`;
+}
+
 /** Import pipeline: group → detect → confirm dialog → parse → CRS → split → register. */
 async function runImport(files) {
   const groups = groupFiles(files);
@@ -102,6 +123,22 @@ async function runImport(files) {
             : ck?.type === 'gcj02' ? 'GCJ-02 → WGS84 (EPSG:4326)'
             : ck?.type === 'proj' ? '源坐标系 → WGS84 (EPSG:4326)'
             : 'WGS84 (EPSG:4326)';
+
+          // E3 srcId 去重：同文件重复上传 → 复用（不堆叠）；异名同内容 → 关联提示
+          const contentSig = _contentSig(fc);
+          const srcSig = `${base}|${contentSig}`;
+          const _existSame = _srcIndex.get(srcSig);
+          if (_existSame && _existSame.length) {
+            selectLayer(_existSame[0]);
+            toast.info(`${base} 已加载过，已为你选中（不再重复添加）`);
+            continue;
+          }
+          const _existContent = _contentIndex.get(contentSig);
+          if (_existContent && _existContent.length) {
+            const _dup = getLayers().find((l) => l.id === _existContent[0]);
+            if (_dup) toast.info(`${base} 与已加载的「${_dup.name}」内容相同，已关联`);
+          }
+          const _before = new Set(getLayers().map((l) => l.id));
 
           const { points, lines, polygons } = splitByGeometry(fc);
           if (fc.__crs) { points.__crs = lines.__crs = polygons.__crs = fc.__crs; }   // 传给 addLayer → layer.crsInfo
@@ -138,6 +175,19 @@ async function runImport(files) {
               if (needsAnalysis) needsAny = true;
             }
           }
+          // E3 登记新层 srcId/contentId + 入索引（一文件多子层 → 同 srcSig）
+          const _newIds = [];
+          for (const L of getLayers()) {
+            if (_before.has(L.id)) continue;
+            L.srcId = srcSig;
+            L.contentId = contentSig;
+            _newIds.push(L.id);
+          }
+          if (_newIds.length) {
+            _srcIndex.set(srcSig, _newIds);
+            _contentIndex.set(contentSig, [...(_contentIndex.get(contentSig) || []), ..._newIds]);
+          }
+
           const bb = fcBBox(fc);
           if (bb) fitBoundsTo(bb);
         } catch (e) {
