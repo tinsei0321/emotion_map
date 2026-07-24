@@ -430,6 +430,7 @@ export async function orchestrate(ctx, hooks = {}) {
   let narratedAnswer = false; // 模型持续叙述（prose 作答，常见于概念问）——叙述≠失败，交 finalStep 出结论，不落 GAP
   const failedObs = [];      // 失败观察摘要（EXIT_GAP 卡展示「已尝试」用）
   ctx.answerModel = 'flash';   // B1-2a：答案默认 flash（省 finalStep pro reasoner 串行·治超时#1）；复杂任务 diagnose 后升 pro（_needsDeliberate）
+  const _deadline = Date.now() + 75000;   // B1-2c 单问总预算 75s（while-loop 守卫·超时强制作答·保证必有回答·治 E1/E2 90s 超时无答）
 
   // 多轮连续性：近 2-3 轮 trace 蒸馏注入 ctx.context 顶部（B2：5.51 单轮 priorTurn → 多轮滚动 turnHistory，意图收敛轨迹）
   const _histCtx = formatTurnHistory(ctx.turnHistory) || formatPriorTurn(ctx.priorTurn);
@@ -516,6 +517,11 @@ export async function orchestrate(ctx, hooks = {}) {
     catch (e) { /* query_layers 无 data 不计 newLayerCount、无副作用，失败静默不阻塞主流程 */ }
   }
   while (round <= maxRounds) {
+    if (Date.now() > _deadline) {   // B1-2c 预算守卫：超 75s 强制作答（narratedAnswer=true → post-loop 走 finalStep 出已执行结果，非 GAP/超时无答）
+      toolHistory.push('⚠️ 已达单问预算（75s），用已执行步骤的结果作答，不再续轮。');
+      narratedAnswer = true;
+      break;
+    }
     if (hooks.onRound) hooks.onRound(round);
     if (hooks.onRoundStart) hooks.onRoundStart(round);
     let toolHistoryText = toolHistory.length ? toolHistory.join('\n') : '';
