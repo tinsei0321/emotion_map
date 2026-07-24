@@ -22,6 +22,25 @@
 
 ---
 
+## 05-llm 修复路线（T1-T7 / D3 · 2026-07-24 · 状态跟踪）
+
+> 来源：05-llm 四问题（Q1-Q4）+ K3 报告（`.codebuddy/reports/emc-eval-report05-2026-07-24.md`）。数据池（用户定）：情绪点=`DATA/performance`，范围=`DATA/boundaries`。
+
+| 项 | 治 | 状态 | 要点 / 落点 |
+|---|---|---|---|
+| **T1** | Q1 只有中性 | ✅ 本批（6f880a7）| seam 三修：pool `processed`→`performance` + 文件名 `xiling_wujia`→`yichang` + washing（dsvRows 解引号 + `^polarity$` 精确列 + 保留五档值）。真数据 16933 行·5 档充足（Very Neg 6610 / Very Pos 4716 / Neutral 3810 / Neg 1203 / Pos 594）。**K3 漏 pool+文件名，本批补**。 |
+| T7 | 重跑干净基线 | ⬜ 待用户 | T1 后重跑 04/05 → 重估涉极性例结论 + 验 R1（西陵区不再假 GAP）。 |
+| T4 | Q2 胶囊矛盾 | ⬜ pending | [panel.js:816](../frontend/js/ai_qa/panel.js#L816) 无 strategy 不显"齐全" + 值层面缺口回写 diagnose。 |
+| T5 | Q3 对比 C键 | ⬜ pending | 批4 Swipe 入口收敛 + 无焦点提示 + 双屏标题（[map.js:110](../frontend/js/map.js#L110) POC·左点右格=无时间片语境退化）。 |
+| T6 | Q4 断言 | ⬜ pending | 飞轮断言加任务完成校验三件套（答案产出/落图/切题·非只信号）。 |
+| T3 | Q4 参数 | ⬜ pending | 区=`[object Object]` 参数序列化 bug。 |
+| D3 | R2 真超时 | ⬜ pending | 链式方法库（extract→clip→density/grid→rank·0 中间 LLM 轮）。05 的 t_p50 77s 是快失败非提速，D3 适应证不变（INT-001/002/008 仍超时）。 |
+
+**R1（5.202 已修·待 T7 干净基线验）**：D2 可派生语义 + D4 grounding 枚举 + D1 派生判定器 — 治假 GAP·INT-002~007。
+**本批（5.203）已修**：T1 修 seam（6f880a7）+ UI 固定图钉（9fe6521）+ EMC 排版/字体/标签通俗化（bc62e72）+ 答语文风（284ae94）。
+
+---
+
 ## 待修（治本 · 按 K3 P0→P1→P2）
 
 ### ① 超时 91s（模型路由 · P0 红线 · 单列 plan）

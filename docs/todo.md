@@ -9,6 +9,15 @@
 
 ## 📅 2026-07-24（分支 `main` · 测试飞轮机制评估）
 
+### ✅ EMC 05-llm 修复 T1 + UI 固定图钉 + EMC 排版/文风（revision-log 5.203，commit 6f880a7/9fe6521/bc62e72/284ae94 · **用户手动 push**）
+
+- **自评+K3 对账**：05-llm Q1-Q4 全命中（Q1 seam 洗坏+错池 / Q2 胶囊矛盾 / Q3 对比 POC 退化 / Q4 信号-only 断言）。**补 K3**：T1 不只 washing，pool（processed→performance）+ 文件名（xiling_wujia→yichang）也错。
+- **T1 修 seam**（6f880a7·关键·解锁极性评估）：三修（pool+文件名+dsvRows/五档）→ 真数据 16933 行·5 档充足（Very Neg 6610/Very Pos 4716/Neutral 3810/Neg 1203/Pos 594·非 ~89% Neutral）。**05/04 涉极性例结论作废·待 T7 重跑**。
+- **UI 固定图钉**（9fe6521）：Range/Layers/Toolbox 抽屉右上角图钉（品牌蓝亮起）·固定后点空白不隐（+param-panel 联动）·Esc/X 仍关。
+- **EMC 排版**（bc62e72）：问题理解卡字体 2xs→xs/sm + 标签通俗化（软缺口·降级标注→部分数据替代）。
+- **答语文风**（284ae94·红线·飞轮验）：FINAL_TEMPLATE 加「文风」指令（简短/生动具体/通俗优先/结论先）·不碰承重规则。
+- **路线**（[emc-fix-backlog](emc-fix-backlog.md)）：T4/T5/T6/T3/D3 pending·T7 待用户重跑。**下一步**：D3 链式方法库治 R2 真超时，或 T4/T5（你报的可见 bug）。
+
 ### ✅ EMC R1 数据认知治假 GAP（D2+D4+D1）（revision-log 5.202，commit f1ee84a/83b073b/f77129b/37568f8 · **用户手动 push**）
 
 - **根因（K3 深化）**：R1 双缺口——strategy 语义缺口（prompts.py:210-211 缺"超集可派生"类）+ 可见性缺口（grounding 不枚举 boundary 子要素名）。工具层已能解析中文区名，**认知层没告诉模型"西陵区可用"**。
