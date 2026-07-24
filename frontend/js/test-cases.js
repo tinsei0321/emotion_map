@@ -14,7 +14,6 @@ const RANGE_ERMAWU = '大南门二马路滨江片区.geojson';
 // ── llmRun：跑一问 + 抓「转译链」信号（template / 工具 / 参数 / 产物）──
 async function llmRun(t, q, assert, opts = {}) {
   t.clearLog();
-  const layersBefore = t.layerNames().length;
   if (opts.csv !== false) {
     const f = resolvePoints(opts.csv || 'L2-T1');
     try { await t.loadCSV(f); await w(800); } catch (_) {}
@@ -24,6 +23,9 @@ async function llmRun(t, q, assert, opts = {}) {
     try { await t.loadRange(f); await w(300); } catch (_) {}
   }
   if (opts.mode) t.setMode(opts.mode);
+  // baseline 在点层/范围加载后取 → newLayers/renderedNew 只算工具产出（不含 loadCSV 加的点层）
+  const layersBefore = t.layerNames().length;
+  const srcBefore = ((t.mapSources && t.mapSources()) || []).length;   // C: map 真渲染 source 基线
   t.send(q);
   const ok = await t.waitAnswer(opts.timeout || 90000);
   if (!ok) return { pass: false, stage: 's3', obs: '回答超时（90s）' };
@@ -39,9 +41,10 @@ async function llmRun(t, q, assert, opts = {}) {
     template: (t.chatPhases().find((p) => p.template) || {}).template || null,
     params: _extractParams(geo),
     newLayers: Math.max(0, t.layerNames().length - layersBefore),
+    renderedNew: Math.max(0, ((t.mapSources && t.mapSources()) || []).length - srcBefore),   // C: 地图真渲染 source 差值
   };
   const r = assert(b, t, sig);
-  if (r && typeof r === 'object') { r.tools = sig.tools; r.template = sig.template; r.params = sig.params; r.newLayers = sig.newLayers; }
+  if (r && typeof r === 'object') { r.tools = sig.tools; r.template = sig.template; r.params = sig.params; r.newLayers = sig.newLayers; r.renderedNew = sig.renderedNew; }
   return r;
 }
 
@@ -228,10 +231,17 @@ const TOOL_TARGETS = [
   { tool: 'filter_attr', qs: ['筛选{区}内消极极性情绪点', '筛选{区}内积极情绪点', '筛选{区}内{要素}相关情绪点', '筛选{区}消极情绪点'] },
 ];
 
+// C: 产图层工具白名单——成功须真在地图渲染（不仅入 state），治「标 OK 实际地图空」
+const LAYER_TOOLS = new Set(['density', 'buffer', 'clip', 'overlay', 'merge', 'extract_feature', 'hotspot']);
 function _assertTool(b, sig, tgt) {
   if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's2', obs: `GAP:"${b}"（应 ${tgt.tool}）` };
   const ok = sig.tools.includes(tgt.tool);
-  return { pass: ok, stage: ok ? '' : 's2', obs: ok ? `触发 ${tgt.tool}` : `未触发 ${tgt.tool}（实 ${sig.tools.join(',') || '无'}）`, review: `${tgt.tool}${tgt.grid ? '(方格)' : ''}是否正确？` };
+  if (!ok) return { pass: false, stage: 's2', obs: `未触发 ${tgt.tool}（实 ${sig.tools.join(',') || '无'}）`, review: `${tgt.tool}${tgt.grid ? '(方格)' : ''}是否正确？` };
+  // C: 产图层工具触发但地图未渲染新 source = 渲染失败（治「标 OK 实际地图空」）
+  if (LAYER_TOOLS.has(tgt.tool) && (sig.renderedNew || 0) === 0) {
+    return { pass: false, stage: 's4', obs: `触发${tgt.tool}但地图未渲染(renderedNew=0)`, review: '图层为何不显示？(2a)' };
+  }
+  return { pass: true, obs: `触发 ${tgt.tool}${sig.newLayers ? `(渲染${sig.renderedNew || 0}/${sig.newLayers}层)` : ''}`, review: `${tgt.tool}${tgt.grid ? '(方格)' : ''}是否正确？` };
 }
 
 const TOOLS = [];
@@ -275,7 +285,18 @@ const PARAMS = PARAM_DATA.map((d, i) => ({
   category: '参数正确性', type: 'llm',
   run: async (t) => llmRun(t, d.q, (b, _tt, sig) => {
     if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's2', obs: `GAP: "${b}"` };
-    return { pass: true, obs: `badge="${b}" geo=${sig.tools.length}`, review: d.review };
+    // H3: 真比对 sig.params 与 expect*（替代恒 pass）。cell/radius 数值 ±5% 容差；boundary 正则包含。
+    const p = sig.params || {};
+    const ck = [];
+    if (d.expectCell != null) ck.push(['cell', p.cell != null && Math.abs(p.cell - d.expectCell) <= d.expectCell * 0.05, `${p.cell ?? '无'}≠${d.expectCell}`]);
+    if (d.expectRadius != null) ck.push(['radius', p.radius != null && Math.abs(p.radius - d.expectRadius) <= d.expectRadius * 0.05, `${p.radius ?? '无'}≠${d.expectRadius}`]);
+    if (d.expectBoundary) { const hay = [p.boundary, p.boundaries].filter(Boolean).join('|'); ck.push(['boundary', new RegExp(d.expectBoundary).test(hay), `${hay || '无'}≠/${d.expectBoundary}/`]); }
+    // sig 不抓 layer/range 字段，退化为「工具触发」兜底（仍强于恒 pass）
+    if (d.expectLayer) ck.push(['layer(tool)', sig.tools.includes('extract_feature'), sig.tools.join(',')]);
+    if (d.expectRange) ck.push(['range(tool)', sig.tools.includes('clip'), sig.tools.join(',')]);
+    const fail = ck.filter((c) => !c[1]);
+    const pass = !fail.length;
+    return { pass, stage: pass ? '' : 's2', obs: ck.map((c) => `${c[0]}${c[1] ? '[OK]' : '[ERR]'}`).join(' '), review: d.review };
   }, { range: '行政区', csv: 'L2-T1' }),
 }));
 

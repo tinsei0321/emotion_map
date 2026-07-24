@@ -1,0 +1,98 @@
+{
+ "meta": {
+  "schema": "EMC-SUM",
+  "version": "v1",
+  "mode": "llm",
+  "cats": [
+   "工具选择"
+  ],
+  "total": 5,
+  "startedAt": 1784868002365,
+  "commit": "090a3f8",
+  "savedAt": "2026-07-24T12:45:44"
+ },
+ "cases": [
+  {
+   "id": "TOL-001",
+   "name": "工具:西陵区内情绪点的密度热力图",
+   "category": "工具选择",
+   "type": "llm",
+   "pass": false,
+   "stage": "s2",
+   "template": "density",
+   "tools": [],
+   "params": {},
+   "newLayers": 2,
+   "durationSolo": 30404,
+   "userVote": null,
+   "obs": "未触发 density（实 无）",
+   "review": "density是否正确？"
+  },
+  {
+   "id": "TOL-002",
+   "name": "工具:伍家岗区内情绪点的密度热力图",
+   "category": "工具选择",
+   "type": "llm",
+   "pass": false,
+   "stage": "s3",
+   "template": null,
+   "tools": [],
+   "params": null,
+   "newLayers": 0,
+   "durationSolo": 91328,
+   "userVote": null,
+   "obs": "回答超时（90s）",
+   "review": ""
+  },
+  {
+   "id": "TOL-003",
+   "name": "工具:夷陵区内情绪点的密度热力图",
+   "category": "工具选择",
+   "type": "llm",
+   "pass": false,
+   "stage": "s2",
+   "template": null,
+   "tools": [
+    "clip"
+   ],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 18117,
+   "userVote": null,
+   "obs": "未触发 density（实 clip）",
+   "review": "density是否正确？"
+  },
+  {
+   "id": "TOL-004",
+   "name": "工具:看西陵区情绪点哪里最密集",
+   "category": "工具选择",
+   "type": "llm",
+   "pass": false,
+   "stage": "s3",
+   "template": null,
+   "tools": [],
+   "params": null,
+   "newLayers": 0,
+   "durationSolo": 91327,
+   "userVote": null,
+   "obs": "回答超时（90s）",
+   "review": ""
+  },
+  {
+   "id": "TOL-005",
+   "name": "工具:看伍家岗区情绪点哪里最密集",
+   "category": "工具选择",
+   "type": "llm",
+   "pass": false,
+   "stage": "s2",
+   "template": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 1,
+   "durationSolo": 98710,
+   "userVote": null,
+   "obs": "未触发 density（实 无）",
+   "review": "density是否正确？"
+  }
+ ]
+}

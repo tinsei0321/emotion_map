@@ -463,18 +463,33 @@ function _dtypeTag(dtype) {
   if (dtype === 'boolean') return 'bool';
   return 'cat';   // string → categorical
 }
-async function _fieldSamples(fc, maxFields = 6, layerId = null) {
+async function _fieldSamples(fc, maxFields = 12, layerId = null) {
   const feats = fc && fc.features;
   if (!feats || !feats.length) return '';
   const cards = await getFieldCard(layerId, fc);
+  // 2c 修复：语义关键字段（role 命中 element/polarity/domain/...）强制纳入 + 给全 unique 值分布，
+  // 让 LLM 看到真实值域——治「误判 element 无 environment / 极性全中性」式误 GAP。
+  // 根因：旧 maxFields=6 把后置的 element/polarity 截断了，LLM 压根没看到这些字段。
+  const VALUE_ROLES = new Set(['element', 'polarity', 'domain', 'score', 'emotion_type', 'emotion_intensity', 'land_use_class', 'hotspot']);
+  const uniq = (field) => {
+    const s = new Set();
+    for (const f of feats) { const v = f.properties && f.properties[field]; if (v != null && v !== '') s.add(String(v)); }
+    return [...s];
+  };
   const keys = [];
   for (const k of Object.keys(cards)) {
     if (isInternalField(k) || isRenderContract(cards[k].role)) continue;   // 过滤内部/渲染契约
-    if (!keys.includes(k)) { keys.push(k); if (keys.length >= maxFields) break; }
+    if (keys.includes(k)) continue;
+    const role = cards[k].role;
+    if ((role && VALUE_ROLES.has(role)) || keys.length < maxFields) keys.push(k);   // 关键字段强制纳入（不受 maxFields 限）
   }
   return keys.map((k) => {
     const c = cards[k];
     const role = c.role || '?';
+    if (role && VALUE_ROLES.has(role)) {
+      const uv = uniq(k);
+      if (uv.length) return `${k}=${_dtypeTag(c.dtype)}:${role}:${uv.slice(0, 8).join('|').slice(0, 80)}`;   // 全 unique 值分布
+    }
     const vals = (c.samples || []).slice(0, 2);
     if (!vals.length) return `${k}=${_dtypeTag(c.dtype)}:${role}`;
     return `${k}=${_dtypeTag(c.dtype)}:${role}:${vals.join('|').slice(0, 24)}`;
@@ -516,7 +531,7 @@ export async function buildContext() {
     .filter((l) => l.visible && l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length)
     .map(async (l) => {
       const cnt = l.fc.features.length;
-      const fs = await _fieldSamples(l.fc, 6, l.id);   // DataEye（P3）：字段+类型+role+样本值（供 AI 写 where 有真实值参照）
+      const fs = await _fieldSamples(l.fc, 12, l.id);   // DataEye（P3）：字段+类型+role+样本值（关键字段全值·治误判缺数据 2c）
       return `${l.name}(${cnt}条,${_kindTag(l)}${fs ? ',字段:' + fs : ''})`;
     }))).join('、');
   parts.push('已加载图层（仅 Layers 当前显示·EMC 只用可见层，未显示层禁用）：' + (loaded || '（无）'));

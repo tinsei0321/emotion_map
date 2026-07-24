@@ -10,6 +10,9 @@ import { hasImport, hasRange, hasAnalysis, hasVisibleEmotionLayer } from './ai_q
 // v1.7 测试飞轮：fetch 拦截 — 抓 /chat + /geo 请求供分阶段断言（fail fast）。
 const _origFetch = window.fetch.bind(window);
 window._testFetchLog = [];
+// H1: template 信号从 diagnose:done 事件取（panel.js onDiagnose 派发），不再抓 /chat 请求体（其无 diagnose 字段·C1 断链根因）。
+window._testDiagnoseLog = [];
+document.addEventListener('diagnose:done', (e) => { window._testDiagnoseLog.push(e.detail); });
 window.fetch = async function (...args) {
   const url = typeof args[0] === 'string' ? args[0] : ((args[0] && args[0].url) || '');
   const opts = args[1] || {};
@@ -52,10 +55,10 @@ window.__emcTest = {
     return { ok: true };
   },
   // ── v1.7 测试飞轮 helpers ──
-  clearLog() { window._testFetchLog = []; },
+  clearLog() { window._testFetchLog = []; window._testDiagnoseLog = []; },
   chatPhases() {
-    return window._testFetchLog.filter((e) => e.url.includes('/chat') && e.body)
-      .map((e) => ({ phase: e.body.phase, template: e.body.diagnose && e.body.diagnose.template }));
+    // H1: template 来自 diagnose:done 事件累积（每问一句 diagnose 一次），替代抓请求体。
+    return (window._testDiagnoseLog || []).map((card) => ({ phase: 'diagnose', template: card && card.template }));
   },
   geoCalls() { return window._testFetchLog.filter((e) => /\/(geo|spatial)\//.test(e.url)); },   // 含 /spatial/（grid 等走此路径，否则漏抓）
   send(text) {
@@ -80,6 +83,7 @@ window.__emcTest = {
   scrollTop() { const l = document.getElementById('chat-messages'); return l ? l.scrollTop : -1; },
   layerCount() { return document.querySelectorAll('#layer-list .layer-row').length; },
   layerNames() { return [...document.querySelectorAll('#layer-list .layer-name')].map((e) => e.textContent.trim()).filter(Boolean); },
+  mapSources() { try { const m = getMap(); const s = m && m.getStyle() && m.getStyle().sources; return s ? Object.keys(s) : []; } catch (_) { return []; } },   // C: map 真渲染的 source（验图层不只是入 state）
   async injectFixture(name) {
     const fc = await fetch(`/tests/browser/fixtures/${name}.geojson`).then((r) => r.json());
     return this.loadPoints(fc);

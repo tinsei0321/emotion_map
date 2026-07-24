@@ -237,8 +237,8 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         return d
 
     def _save_test_report(self):
-        """POST /_test/report {content,date,type} → 写 tests/reports/report-<date>-<NN>-<type>.md。
-        编号按同日已有文件数自增（跨会话唯一）。dev-only（?test=1 抽屉调用）。"""
+        """POST /_test/report {content,date,type,json} → 写 tests/reports/report-<date>-<NN>-<type>.md(+.json)。
+        编号按同日已有文件数自增（跨会话唯一）。json=结构化报告（H5），补 commit/savedAt 落同名 .json。dev-only（?test=1 抽屉调用）。"""
         length = int(self.headers.get('Content-Length') or 0)
         raw = self.rfile.read(length) if length else b''
         try:
@@ -259,14 +259,31 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
             name = f'report-{date}-{n:02d}-{typ}.md'
         with open(os.path.join(d, name), 'w', encoding='utf-8') as f:
             f.write(content)
+        # H5: 同步落结构化 JSON（同名异后缀），补 commit + savedAt（前端拿不到 git sha）
+        json_name = None
+        data = payload.get('json')
+        if isinstance(data, dict):
+            meta = data.setdefault('meta', {})
+            try:
+                import subprocess
+                repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                meta['commit'] = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'],
+                    cwd=repo, stderr=subprocess.DEVNULL, text=True, timeout=3).strip()
+            except Exception:
+                meta['commit'] = 'unknown'
+            meta['savedAt'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+            json_name = name[:-3] + '.json'
+            with open(os.path.join(d, json_name), 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=1)
         rel = f'tests/reports/{name}'
-        body = json.dumps({'ok': True, 'name': name, 'path': rel, 'n': n}).encode('utf-8')
+        body = json.dumps({'ok': True, 'name': name, 'path': rel, 'n': n, 'json': json_name}).encode('utf-8')
         self.send_response(200)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Content-Length', str(len(body)))
         self.end_headers()
         self.wfile.write(body)
-        sys.stderr.write(f'[serve] 测试报告已存: {rel}\n')
+        extra = f' +{json_name}' if json_name else ''
+        sys.stderr.write(f'[serve] 测试报告已存: {rel}{extra}\n')
 
     def log_message(self, fmt, *args):
         sys.stderr.write(f'[serve] {self.address_string()} - {fmt % args}\n')

@@ -1089,6 +1089,9 @@ function buildHooks(shell) {
   return {
     onDiagnose: (card) => {
       if (_curTrace) _curTrace.diagnose = card;
+      // H1 信号源：派发 diagnose 卡可观测面，飞轮/调试工具据此抓 template（生产零副作用·无人听则空转）。
+      // 替代「抓 /chat 请求体」——diagnose 是后端响应产物，请求体（ChatRequest）本无此字段。
+      document.dispatchEvent(new CustomEvent('diagnose:done', { detail: card }));
       renderDiagnoseCard(shell.diagnoseEl, card);
       if (card && !card.degraded) setPhase('思考');
     },
