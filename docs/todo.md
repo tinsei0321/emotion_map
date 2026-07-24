@@ -9,6 +9,13 @@
 
 ## 📅 2026-07-24（分支 `main` · 测试飞轮机制评估）
 
+### ✅ EMC R1 数据认知治假 GAP（D2+D4+D1）（revision-log 5.202，commit f1ee84a/83b073b/f77129b/37568f8 · **用户手动 push**）
+
+- **根因（K3 深化）**：R1 双缺口——strategy 语义缺口（prompts.py:210-211 缺"超集可派生"类）+ 可见性缺口（grounding 不枚举 boundary 子要素名）。工具层已能解析中文区名，**认知层没告诉模型"西陵区可用"**。
+- **Step1** eval 扩区片例冻结（D2 gate·f1ee84a）；**D2** prompt 补"可派生→ready"（83b073b）；**D4** grounding 枚举 boundary 全量名（f77129b）；**D1** `deriveAvailable` post-diagnose 强制 ready 挡假 GAP（37568f8）。
+- **承重纪律**：D2 触 diagnose prompt → eval-first；D4/D1 非红线。
+- **验证**：eval PASS 25/27=93%；**待用户跑飞轮** INT-002~007 验不再假 GAP。**下一步**：D3 链式方法库治 R2 多步超时（INT-008~017）。
+
 ### ✅ EMC 治本 B0 护承重 + B1 模型路由（治超时#1）（revision-log 5.201，commit 9fd8dc4/a93ce67/a96bfea/d2cd5be/78395c6/1e49182 · **用户手动 push**）
 
 - **K3 深度消化**：智能倒挂 + 五脱节；本批攻 ③延迟架构错位（深度研究串行管道 vs 交互工具秒级期望）。
