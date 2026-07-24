@@ -37,6 +37,9 @@ def _load_env_file():
 _load_env_file()
 
 # N 条代表问（问题 → 期望 template skill id）
+# 冻结基线 2026-07-24（B0·eval-first 红线 gate）：19/23 = 83% ≥ 80% → 解锁 runTemplatePath single 默认（B1-2b）。
+#   MISS 4（Flash 路由歧义·非本批引入·留 B3 SOP 卡+method→tool 映射治）：rank/zonal「优先更新」·clip/unknown「商业用地」·overlay/clip「居住用地里」·hotspot/density「负面聚集」。
+#   B0 新增 4（全命中）：compare×2（原缺·select_template :437/453 路由）+ concept 负例×2（问原理/问已有图层·非工具）。
 CASES = [
     ('做核密度分析', 'density'),
     ('哪里情绪最集中', 'density'),
@@ -58,6 +61,11 @@ CASES = [
     ('离地铁最近的负面点', 'nearest'),
     ('哪里负面情绪聚集', 'hotspot'),
     ('按属性筛选出负面点', 'filter_attr'),
+    # B0 扩例：compare（C 赛道区域对比·原缺·select_template :437/453 路由）+ 负例（问原理/问已有→concept·非工具）
+    ('对比西陵区和伍家岗区情绪', 'compare'),
+    ('比较两个区的消极占比', 'compare'),
+    ('核密度分析的原理是什么', 'concept'),
+    ('这几个图层是什么意思', 'concept'),
 ]
 
 
