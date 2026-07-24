@@ -413,6 +413,12 @@ DATA_STRATEGY = {
 }
 
 
+def template_id_list_text() -> str:
+    """渲染全部 template id 为斜杠分隔串（diagnose 卡说明 enum 用·单一真相源，消三处词表漂移 E9）。
+    从 TEMPLATE_REGISTRY 派生 → 加/改技能自动同步，不再硬编码。"""
+    return '/'.join(s['skill'] for s in TEMPLATE_REGISTRY)
+
+
 # ════════════ 选型真相源：select_template（track + card → template）════════════
 # 把「赛道 → 范式 → template」选型规则收口为一个可测纯函数（单一真相源）。
 # 渲染进 diagnose prompt（select_template_text）→ Flash 按结构化决策树选型（A1 协同：从「凭语感」升级到「按范式」）。

@@ -11,7 +11,7 @@ import datetime as _dt
 from ai_qa.manifesto import MANIFESTO
 from ai_qa.paradigm import (
     scale_paradigm_text, domain_outlets_text, geo_tool_catalog_text, code_exec_catalog_text,
-    template_registry_text, b_track_paradigm_text, select_template_text,
+    template_registry_text, b_track_paradigm_text, select_template_text, template_id_list_text,
     DIAGNOSE_CARD_FIELDS, DATA_STRATEGY,
 )
 from ai_qa.industry_kb import industry_kb_brief_text, industry_kb_lens_appendix
@@ -187,7 +187,7 @@ DIAGNOSE_TEMPLATE = """
     "gap": ["缺失的，如『更新紧迫度评估』"],
     "strategy": "ready" | "fallback_annotated" | "request_upload"
   }},
-  "template": "技能id（density/rank/buffer/clip/overlay/zonal/nearest/hotspot/area_stats/merge/extract_feature/concept/multi/unknown 之一，见下方【技能目录】）",
+  "template": "技能id（{template_ids} 之一，见下方【技能目录】）",
   "params": {{"必填槽名": "值（按所选技能 required_slots 填，可空槽系统补默认）"}}
 }}
 **输出铁律（最高优先级·违者计 MISS）**：本阶段是**问题诊断**，不是答题——无论问题是什么类型（概念/定义/通用问答/纯 GIS 操作/情绪分析），你**必须且仅输出一个 JSON 诊断卡，绝不能用自然语言/散文直接回答用户的问题**。即使问"什么是核密度""情绪地图是什么"这类概念问，也**只输出一张 `template="concept"` 的卡**（概念解释交给后续阶段作答），**绝不可直接写出概念解释的正文**。卡里 `template` 字段必填（概念/定义/通用问答→填 concept；操作问→填对应技能 id），不可省略、不可留空字符串。无 `{{...}}` 形式 JSON 的纯文字输出 = 失败。
@@ -223,7 +223,7 @@ def build_diagnose_prompt(context: str = '', context_tokens: list = None) -> str
     避免这些含花括号的文本被 str.format 误解析（见 manifesto/py 花括号警示）。
     """
     ctx = context or '（未提供数据上下文）'
-    prompt = _today_line() + MANIFESTO +DIAGNOSE_TEMPLATE.format(context=ctx)
+    prompt = _today_line() + MANIFESTO +DIAGNOSE_TEMPLATE.format(context=ctx, template_ids=template_id_list_text())
     # 范式知识附录（format 后拼接，花括号安全）
     prompt += '\n═══════════ 附录 · 尺度-方法-范式矩阵 ═══════════\n' + scale_paradigm_text()
     prompt += '\n\n═══════════ 附录 · 4 领域出口范式启发库 ═══════════\n' + domain_outlets_text()
