@@ -327,6 +327,9 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   } catch (e) {
     obs = `[ERR] ${def.tool} 异常：${(e && e.message) || e}`;
   }
+  // #2 tool:executed 观测信号：density 等前端委托工具不走 fetch（飞轮 geoCalls 抓不到），派发事件供 e2e-seam 观测。
+  //   纯观测·不改控制流/出口/prompt；tool=skill 名（与 /geo/<name> 抽取一致）。
+  try { document.dispatchEvent(new CustomEvent('tool:executed', { detail: { tool: skill, implTool: def.tool, layerId: (r && r.data && r.data.layerId) || null, ok: !/\[ERR\]|失败|错误/.test(obs), ts: Date.now() } })); } catch (_) { /* 观测信号失败不影响主流程 */ }
   toolHistory.push(`第1轮·动作: ${def.tool}(${JSON.stringify(params).slice(0, 120)}) → ${obs}`);
   // 3. 失败/空命中 → EXIT_GAP 诚实兜底（不裸输/不赌博自纠）
   //    P0（v1.4 修误判）：分析型工具（zonal/compare/rank/area_stats·表格型无 layerId）成功=rows 非空，

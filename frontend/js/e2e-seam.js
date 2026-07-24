@@ -13,6 +13,9 @@ window._testFetchLog = [];
 // H1: template 信号从 diagnose:done 事件取（panel.js onDiagnose 派发），不再抓 /chat 请求体（其无 diagnose 字段·C1 断链根因）。
 window._testDiagnoseLog = [];
 document.addEventListener('diagnose:done', (e) => { window._testDiagnoseLog.push(e.detail); });
+// #2 tool:executed 信号（density 等前端委托工具不走 fetch·geoCalls 抓不到 → harness 派发此事件补观测）
+window._testToolExecLog = [];
+document.addEventListener('tool:executed', (e) => { window._testToolExecLog.push(e.detail); });
 window.fetch = async function (...args) {
   const url = typeof args[0] === 'string' ? args[0] : ((args[0] && args[0].url) || '');
   const opts = args[1] || {};
@@ -55,12 +58,13 @@ window.__emcTest = {
     return { ok: true };
   },
   // ── v1.7 测试飞轮 helpers ──
-  clearLog() { window._testFetchLog = []; window._testDiagnoseLog = []; },
+  clearLog() { window._testFetchLog = []; window._testDiagnoseLog = []; window._testToolExecLog = []; },
   chatPhases() {
     // H1: template 来自 diagnose:done 事件累积（每问一句 diagnose 一次），替代抓请求体。
     return (window._testDiagnoseLog || []).map((card) => ({ phase: 'diagnose', template: card && card.template }));
   },
   geoCalls() { return window._testFetchLog.filter((e) => /\/(geo|spatial)\//.test(e.url)); },   // 含 /spatial/（grid 等走此路径，否则漏抓）
+  toolExecs() { return (window._testToolExecLog || []).slice(); },   // #2 tool:executed 事件（前端委托工具如 density·补 geoCalls 盲区）
   send(text) {
     const i = document.getElementById('chat-input'); if (i) i.value = text;
     const b = document.getElementById('chat-send'); if (b) b.click();

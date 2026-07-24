@@ -33,11 +33,15 @@ async function llmRun(t, q, assert, opts = {}) {
   if (!b) return { pass: false, stage: 's4', obs: '无 exit-badge' };
   // 抓转译信号（意图识别验证用）
   const geo = t.geoCalls();
+  const _execs = (t.toolExecs && t.toolExecs()) || [];   // #2 density 等前端委托工具（不走 fetch·geoCalls 盲区）
   const sig = {
-    tools: [...new Set(geo.map((e) => {
-      const m = String(e.url).split('?')[0].match(/(?:geo|spatial)\/([a-z_0-9]+)/i);
-      return m ? m[1] : null;
-    }).filter(Boolean))],
+    tools: [...new Set([
+      ...geo.map((e) => {
+        const m = String(e.url).split('?')[0].match(/(?:geo|spatial)\/([a-z_0-9]+)/i);
+        return m ? m[1] : null;
+      }).filter(Boolean),
+      ..._execs.map((x) => x && x.tool).filter(Boolean),
+    ])],
     template: (t.chatPhases().find((p) => p.template) || {}).template || null,
     params: _extractParams(geo),
     newLayers: Math.max(0, t.layerNames().length - layersBefore),
