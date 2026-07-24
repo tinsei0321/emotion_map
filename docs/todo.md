@@ -9,6 +9,13 @@
 
 ## 📅 2026-07-24（分支 `main` · 测试飞轮机制评估）
 
+### 🔄 收工·06/07 评估 + density 治本 plan 定稿（待下会话执行）（revision-log 5.204，本次 push）
+
+- **06/07 评估**：06 工具 pass=0% / 07 意图 pass=33%（3 OK 全空心·有效≈0%）·**EMC 本体核心未动**（K3 "相位差"：测量 4 批真进展·本体 C2/C3/C5/C6/C8 未修）。
+- **3 Explore agent + K3**（`.codebuddy/reports/emc-eval-report06-07-2026-07-24.md`·C1-C9 簇）根因收敛：C5 渲染（weight 透明）/ C6 工具认知（"密集"缺触发词 + density 僵尸文案 + Toolbox 缺席 catalog）/ C 分组（categoryOf 不用 parentId）/ B srcId 工具层 / T9 清层 / C7 夷陵资产（无夷陵·EMC 判缺对）。
+- **density 治本 plan 已存** `~/.claude/plans/emc-gis-rippling-dream.md`（6 步·下会话执行·C5 最大见效→C6 eval-first→C 分组→B srcId→T9/C7）。
+- 交接卡 [session-handoff.md](../memories/repo/session-handoff.md) 已更。**DATA 迁移留用户处理（数据红线·未 commit）**。本次 push 30 commit。
+
 ### ✅ EMC 05-llm 修复 T1 + UI 固定图钉 + EMC 排版/文风（revision-log 5.203，commit 6f880a7/9fe6521/bc62e72/284ae94 · **用户手动 push**）
 
 - **自评+K3 对账**：05-llm Q1-Q4 全命中（Q1 seam 洗坏+错池 / Q2 胶囊矛盾 / Q3 对比 POC 退化 / Q4 信号-only 断言）。**补 K3**：T1 不只 washing，pool（processed→performance）+ 文件名（xiling_wujia→yichang）也错。
