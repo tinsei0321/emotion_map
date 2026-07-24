@@ -10,4 +10,4 @@
 | [emc-experience-review-2026-07-24.md](emc-experience-review-2026-07-24.md) | 2026-07-24 | EMC 体验差距 Review（五个脱节点根因诊断；H1-H6/M1-M6/L1-L3） |
 | [emc-experience-plan-2026-07-24.md](emc-experience-plan-2026-07-24.md) | 2026-07-24 | EMC 体验优化 Plan（北极星；飞轮 v5；B0-B4 批次；§五 04 报告深化 D1-D5） |
 | [emc-eval-report05-2026-07-24.md](emc-eval-report05-2026-07-24.md) | 2026-07-24 | 05-llm 报告评估（seam 洗数据石锤；四问题定性；T1-T7 增量） |
-| [emc-eval-report06-2026-07-24.md](emc-eval-report06-2026-07-24.md) | 2026-07-24 | 06-llm 报告评估（0% 正确读法；seam 路径 stale+层堆叠；夷陵区错期望；工具认知四重断裂；T8-T12 增量） |
+| [emc-eval-report06-07-2026-07-24.md](emc-eval-report06-07-2026-07-24.md) | 2026-07-24 | 06+07 合并评估（问题簇 C1-C9 归纳；相位差总裁定：测量层真进展/本体未开工/基建咬人；修复总账 12 序） |

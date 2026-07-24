@@ -1,0 +1,167 @@
+{
+ "meta": {
+  "schema": "EMC-SUM",
+  "version": "v1",
+  "mode": "llm",
+  "cats": [
+   "意图识别"
+  ],
+  "total": 9,
+  "startedAt": 1784883788026,
+  "commit": "d706c2f",
+  "savedAt": "2026-07-24T17:13:22"
+ },
+ "cases": [
+  {
+   "id": "INT-001",
+   "name": "意图:西陵区哪里情绪最差",
+   "category": "意图识别",
+   "type": "llm",
+   "pass": false,
+   "stage": "s1",
+   "template": "clip",
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 7483,
+   "userVote": null,
+   "obs": "tpl=clip tools=无",
+   "review": "情绪分析：转译是否合理？"
+  },
+  {
+   "id": "INT-002",
+   "name": "意图:西陵区情绪分布如何",
+   "category": "意图识别",
+   "type": "llm",
+   "pass": false,
+   "stage": "s3",
+   "template": null,
+   "tools": [],
+   "params": null,
+   "newLayers": 0,
+   "durationSolo": 91770,
+   "userVote": null,
+   "obs": "回答超时（90s）",
+   "review": ""
+  },
+  {
+   "id": "INT-003",
+   "name": "意图:西陵区消极情绪集中在哪",
+   "category": "意图识别",
+   "type": "llm",
+   "pass": false,
+   "stage": "s1",
+   "template": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 42758,
+   "userVote": null,
+   "obs": "tpl=? tools=无",
+   "review": "情绪分析：转译是否合理？"
+  },
+  {
+   "id": "INT-004",
+   "name": "意图:西陵区内环境要素的情绪状况",
+   "category": "意图识别",
+   "type": "llm",
+   "pass": false,
+   "stage": "s1",
+   "template": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 81730,
+   "userVote": null,
+   "obs": "tpl=? tools=无",
+   "review": "情绪分析：转译是否合理？"
+  },
+  {
+   "id": "INT-005",
+   "name": "意图:西陵区情绪整体偏向如何",
+   "category": "意图识别",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "multi",
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 58989,
+   "userVote": null,
+   "obs": "tpl=multi tools=无",
+   "review": "情绪分析：转译是否合理？"
+  },
+  {
+   "id": "INT-006",
+   "name": "意图:西陵区情绪归因分析",
+   "category": "意图识别",
+   "type": "llm",
+   "pass": false,
+   "stage": "s1",
+   "template": null,
+   "tools": [
+    "extract_feature"
+   ],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 69633,
+   "userVote": null,
+   "obs": "tpl=? tools=extract_feature",
+   "review": "情绪分析：转译是否合理？"
+  },
+  {
+   "id": "INT-007",
+   "name": "意图:西陵区情绪状况",
+   "category": "意图识别",
+   "type": "llm",
+   "pass": false,
+   "stage": "s3",
+   "template": null,
+   "tools": [],
+   "params": null,
+   "newLayers": 0,
+   "durationSolo": 104007,
+   "userVote": null,
+   "obs": "回答超时（90s）",
+   "review": ""
+  },
+  {
+   "id": "INT-008",
+   "name": "意图:伍家岗区哪里情绪最差",
+   "category": "意图识别",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "multi",
+   "tools": [
+    "clip"
+   ],
+   "params": {},
+   "newLayers": 1,
+   "durationSolo": 62100,
+   "userVote": null,
+   "obs": "tpl=multi tools=clip",
+   "review": "情绪分析：转译是否合理？"
+  },
+  {
+   "id": "INT-009",
+   "name": "意图:伍家岗区情绪分布如何",
+   "category": "意图识别",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "multi",
+   "tools": [
+    "clip",
+    "extract_feature"
+   ],
+   "params": {},
+   "newLayers": 2,
+   "durationSolo": 89328,
+   "userVote": null,
+   "obs": "tpl=multi tools=clip,extract_feature",
+   "review": "情绪分析：转译是否合理？"
+  }
+ ]
+}
