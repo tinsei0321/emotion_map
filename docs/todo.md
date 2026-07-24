@@ -17,12 +17,22 @@
 - **优化清单**：H 级 5 项（信号接通/词表单源/断言硬化/反馈落盘/JSON 报告）+ M 级 8 项 + L 级 5 项；Prompt 专章 P1-P5（负例池/时序变体/POI 变体/词表派生/失败回流五环）。
 - 留痕：实测驱动 `tests/browser/flywheel_audit.py` 已建（三路采集，未跑）；本机 Playwright chromium 待装（cdn 慢，可配镜像）。
 
+### ✅ EMC×飞轮 系统性改进方案（四问咨询答复）
+
+- 产出：[emc-sys-improvement-2026-07-24.md](emc-sys-improvement-2026-07-24.md)——证据基线 11 条（E1-E11 挂行号）+ 四问方案 + P0/P1/P2 路线。
+- **Q1 摘要格式**：EMC-SUM v1（3+1 行·键值定序）——单例记数/占比上浮批级；新增 tmpl 维度与耗时/调用列；judge 分误杀/漏判；同 schema 双渲染（测试报告+产品回答页脚）。
+- **Q2 文件与交互**：① 去重根因=`addLayer` 零去重（state.js:667）→ srcId 指纹三态策略（复用/覆盖/并存）；② 字段识别→Layer Manifest 三级管线（嗅探→字典 core/field_dictionary.py→LLM 兜底按 srcId 缓存）+ 低置信确认向导；③ 滚动根因=`_userPinned` 发送新问题时**不复位**（panel.js:1535/1547）→ 新话轮强制跟随。
+- **Q3 失败剖析**：超时=串行多 Pro 管道（report-01 14/15 超时石锤）→ 预算制+模型路由+进度透明；数据碎片化→Dataset Registry+预检喂 diagnose；推理链断裂→Tool SOP 卡+method→tool 确定性映射（QGIS Processing 描述符模式）；以图说话→10 工具成图范式+落图自检+回答图层芯片。
+- **Q4 体系化**：LLM 网关/异步任务/Artifact Store/上下文编译器；episodes 重放 golden set；路由模式分流；红线=涉 diagnose/出口/harness 改动先扩 eval。
+- 落地顺序：先审计报告第一批（H1/H3/H5），再接本方案 P0（共享"词表收编"项）。
+
 ### ⬜ 待用户拍板（评估优化项，按报告 §六路线）
 
 - [ ] 第一批：H1 接通 template 信号（触 ChatRequest schema·需拍板）+ H3 参数断言硬化 + H5 JSON 报告
 - [ ] 第二批：H4 反馈落盘+backlog + H2 词表单源 + M8 遥测连通
 - [ ] 第三批：P1 负例池 + M2 批级 setup + M3 分层抽样 + M5 时序/POI
 - [ ] 第四批：M7 catalog 登记 + M4 聚类 diff + L 级抛光
+- [ ] 改进方案 P0 五项（滚动复位/srcId 去重/模型路由+预算/EMC-SUM v1/词表收编）——与第一批有依赖交叉，拍板时一并定序
 
 ---
 
