@@ -4,7 +4,7 @@
 // 复用 Import 的点层装载逻辑（splitByGeometry + detectColorMode + L2 极性拆分 + addLayer/renderLayer）。
 import { renderLayer, getMap } from './map.js';
 import { addLayer, addGroup } from './state.js';
-import { splitByGeometry, detectColorMode } from './import.js';
+import { splitByGeometry, detectColorMode, dsvRows } from './import.js';
 import { hasImport, hasRange, hasAnalysis, hasVisibleEmotionLayer } from './ai_qa/cpd-state.js';
 
 // v1.7 测试飞轮：fetch 拦截 — 抓 /chat + /geo 请求供分阶段断言（fail fast）。
@@ -99,28 +99,26 @@ window.__emcTest = {
   setMode(m) { const b = document.querySelector(`#aiq-mode button[data-mode="${m}"]`); if (b) b.click(); },
   newChat() { document.getElementById('chat-new')?.click(); },
   async loadCSV(path) {
-    const txt = await fetch('/DATA/processed/' + path).then((r) => r.text());
-    const lines = txt.trim().split('\n');
-    const hdr = lines[0].replace(/^﻿/, '').split(',');
-    const li = hdr.indexOf('lon') >= 0 ? hdr.indexOf('lon') : hdr.indexOf('longitude');
-    const ai = hdr.indexOf('lat') >= 0 ? hdr.indexOf('lat') : hdr.indexOf('latitude');
-    const pi = hdr.indexOf('polarity');
-    const si = hdr.indexOf('score') >= 0 ? hdr.indexOf('score') : hdr.indexOf('emotion_intensity');
-    const ti = hdr.indexOf('text');
-    const di = hdr.indexOf('domain');
-    const ei = hdr.indexOf('element');
+    // T1 修（2026-07-24）：① pool processed→performance ② 复用产品 dsvRows 解引号（治 text 含逗号致列错位/丢行）
+    //   ③ polarity 精确列名（^polarity$·非 polarity_hint 子串）+ 保留原始五档值交 loadPoints→detectColorMode 拆分（治 :119 二档塌缩 Very→Neutral）
+    const txt = await fetch('/DATA/performance/' + path).then((r) => r.text());
+    const { header, body } = dsvRows(txt);
+    const find = (re) => header.findIndex((h) => re.test((h || '').trim()));
+    const li = find(/^(lon|lng|longitude|经度)$/i), ai = find(/^(lat|latitude|纬度)$/i);
     if (li < 0 || ai < 0) return { ok: false, reason: 'CSV 缺 lon/lat 列' };
+    const pi = find(/^polarity$/i), si = find(/^(score|emotion_intensity)$/i);
+    const ti = find(/^text$/i), di = find(/^domain$/i), ei = find(/^element$/i);
+    const hl = header[li], ha = header[ai], g = (i) => (i >= 0 ? header[i] : '');
     const feats = [];
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(',');
-      const lon = parseFloat(cols[li]); const lat = parseFloat(cols[ai]);
+    for (const row of body) {
+      const lon = parseFloat(row[hl]); const lat = parseFloat(row[ha]);
       if (!isFinite(lon) || !isFinite(lat)) continue;
       const props = {};
-      if (pi >= 0) { const p = cols[pi]; props.polarity = p === 'Positive' || p === 'positive' ? 'Positive' : p === 'Negative' || p === 'negative' ? 'Negative' : 'Neutral'; }
-      if (si >= 0) props.score = parseFloat(cols[si]) || 0;
-      if (ti >= 0) props.text = (cols[ti] || '').slice(0, 200);
-      if (di >= 0) props.domain = cols[di] || '';
-      if (ei >= 0) props.element = cols[ei] || '';
+      if (pi >= 0) props.polarity = row[g(pi)] || '';   // 保留原始极性（Very Positive 等）→ detectColorMode 五档拆分
+      if (si >= 0) props.score = parseFloat(row[g(si)]) || 0;
+      if (ti >= 0) props.text = (row[g(ti)] || '').slice(0, 200);
+      if (di >= 0) props.domain = row[g(di)] || '';
+      if (ei >= 0) props.element = row[g(ei)] || '';
       feats.push({ type: 'Feature', properties: props, geometry: { type: 'Point', coordinates: [lon, lat] } });
     }
     if (!feats.length) return { ok: false, reason: 'CSV 无有效点' };

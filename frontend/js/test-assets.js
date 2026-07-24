@@ -1,6 +1,6 @@
 // ═══ test-assets.js — DATA 资产语义清单（测试自动提取，不硬编码路径）═══
 // 范围文件：DATA/boundaries/（顶层；presets/ 已并于顶层）
-// 点层：DATA/processed/
+// 点层：DATA/performance/（主数据池·2026-07-24 由 processed 迁来 + xiling_wujia→yichang 改名）
 // 用例通过语义名引用（'L2-T1' / '行政区' / '二马路片区'），llmRun 解析为实际文件。
 // 数据增减只改本文件，用例零改动。
 
@@ -17,10 +17,10 @@ export const RANGES = {
 };
 
 export const POINTS = {
-  'L2-T1':    'xiling_wujia_L2_T1_L2_result_csv.csv',
-  'L2-T2':    'xiling_wujia_L2_T2_L2_result_csv.csv',
-  'L2-T3':    'xiling_wujia_L2_T3_L2_result_csv.csv',
-  'L1-T1':    'xiling_wujia_L1_T1_result_csv.csv',
+  'L2-T1':    'yichang_L2_T1_L2_result_csv.csv',
+  'L2-T2':    'yichang_L2_T2_L2_result_csv.csv',
+  'L2-T3':    'yichang_L2_T3_L2_result_csv.csv',
+  'L1-T1':    'yichang_L1_T1_result_csv.csv',
   'ermawu-T1':'ermawu_l3l4_T1_result_csv.csv',
 };
 

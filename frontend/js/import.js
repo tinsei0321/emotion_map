@@ -249,7 +249,7 @@ export function profileFields(fc) {
 
 /** 轻量 DSV 解析（仅用于 WKT/GeoJSON/polyline 列模式；coords 模式走 csv2geojson）。
  *  返回 { header:string[], body: Row[] }，Row = { [col]: string }。*/
-function dsvRows(text, delimiter) {
+export function dsvRows(text, delimiter) {
   const delim = resolveDelim(delimiter);
   const lines = text.replace(/\r\n/g, '\n').split('\n').filter((l) => l.length);
   if (!lines.length) return { header: [], body: [] };
