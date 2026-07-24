@@ -44,7 +44,7 @@
 
 ### ✅ 测试飞轮全面评估（静态审查·用户指示跳过实测）
 
-- 产出：[test-flywheel-audit-2026-07-24.md](test-flywheel-audit-2026-07-24.md)（总评 5.1/10；机制事实清单 + 三维度不足 + 业界对照 + H/M/L 优化清单 + Prompt 预设调整专章）。
+- 产出：[test-flywheel-audit-2026-07-24.md](../.codebuddy/reports/test-flywheel-audit-2026-07-24.md)（总评 5.1/10；机制事实清单 + 三维度不足 + 业界对照 + H/M/L 优化清单 + Prompt 预设调整专章）。
 - **三处闭环断裂石锤**：① template 信号断链（ChatRequest 无 diagnose 字段，schemas.py:11-22 → 意图断言 `tmplOk` 永 false，tpl=? 根因）；② 词表三处硬编码漂移（prompts.py:190 缺 compare/filter_attr vs paradigm.py:454/470 决策树 vs 飞轮 expectTmpl）；③ 投票不落盘 + 失败不回流 prompt 池（闭环断在"报告"处）。
 - **覆盖假象**：参数正确性 10 例断言恒 pass（expect* 定义未接断言，test-cases.js:276-279）；全正模式零负例（八原则反模式无一落地）；时序 T1-T3 / POI 缓冲零用例。
 - **优化清单**：H 级 5 项（信号接通/词表单源/断言硬化/反馈落盘/JSON 报告）+ M 级 8 项 + L 级 5 项；Prompt 专章 P1-P5（负例池/时序变体/POI 变体/词表派生/失败回流五环）。
@@ -52,7 +52,7 @@
 
 ### ✅ EMC×飞轮 系统性改进方案（四问咨询答复）
 
-- 产出：[emc-sys-improvement-2026-07-24.md](emc-sys-improvement-2026-07-24.md)——证据基线 11 条（E1-E11 挂行号）+ 四问方案 + P0/P1/P2 路线。
+- 产出：[emc-sys-improvement-2026-07-24.md](../.codebuddy/reports/emc-sys-improvement-2026-07-24.md)——证据基线 11 条（E1-E11 挂行号）+ 四问方案 + P0/P1/P2 路线。
 - **Q1 摘要格式**：EMC-SUM v1（3+1 行·键值定序）——单例记数/占比上浮批级；新增 tmpl 维度与耗时/调用列；judge 分误杀/漏判；同 schema 双渲染（测试报告+产品回答页脚）。
 - **Q2 文件与交互**：① 去重根因=`addLayer` 零去重（state.js:667）→ srcId 指纹三态策略（复用/覆盖/并存）；② 字段识别→Layer Manifest 三级管线（嗅探→字典 core/field_dictionary.py→LLM 兜底按 srcId 缓存）+ 低置信确认向导；③ 滚动根因=`_userPinned` 发送新问题时**不复位**（panel.js:1535/1547）→ 新话轮强制跟随。
 - **Q3 失败剖析**：超时=串行多 Pro 管道（report-01 14/15 超时石锤）→ 预算制+模型路由+进度透明；数据碎片化→Dataset Registry+预检喂 diagnose；推理链断裂→Tool SOP 卡+method→tool 确定性映射（QGIS Processing 描述符模式）；以图说话→10 工具成图范式+落图自检+回答图层芯片。

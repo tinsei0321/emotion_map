@@ -1,7 +1,7 @@
 # EMC × 测试飞轮 系统性改进方案
 
 > 2026-07-24 ｜ 咨询答复 ｜ 依据：四问清单 + 测试报告（tests/reports/ 01~03）+ 代码证据（挂行号）
-> 前置文档：[test-flywheel-audit-2026-07-24.md](test-flywheel-audit-2026-07-24.md)（飞轮机制审计）、[cpd-core-plan.md](cpd-core-plan.md)（v1.3 工作流）
+> 前置文档：[test-flywheel-audit-2026-07-24.md](test-flywheel-audit-2026-07-24.md)（飞轮机制审计）、[cpd-core-plan.md](../../docs/cpd-core-plan.md)（v1.3 工作流）
 
 ---
 
