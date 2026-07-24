@@ -428,6 +428,7 @@ export async function orchestrate(ctx, hooks = {}) {
   let answered = false;      // 模型是否 deliberate `answer`（概念问等可零工具直答；_hardFail 不得覆盖它）
   let narratedAnswer = false; // 模型持续叙述（prose 作答，常见于概念问）——叙述≠失败，交 finalStep 出结论，不落 GAP
   const failedObs = [];      // 失败观察摘要（EXIT_GAP 卡展示「已尝试」用）
+  ctx.answerModel = 'flash';   // B1-2a：答案默认 flash（省 finalStep pro reasoner 串行·治超时#1）；复杂任务 diagnose 后升 pro（_needsDeliberate）
 
   // 多轮连续性：近 2-3 轮 trace 蒸馏注入 ctx.context 顶部（B2：5.51 单轮 priorTurn → 多轮滚动 turnHistory，意图收敛轨迹）
   const _histCtx = formatTurnHistory(ctx.turnHistory) || formatPriorTurn(ctx.priorTurn);
@@ -453,6 +454,8 @@ export async function orchestrate(ctx, hooks = {}) {
   // → 此处未设 → 各 step 读 undefined → 不注入（正确，通用问答无需领域权威）。
   ctx.domainLens = Array.isArray(diagnose.domain_lens)
     ? diagnose.domain_lens.filter((k) => k && k !== 'general') : [];
+  // B1-2a：复杂任务（strategy≠ready / method≥3 步）且用户 pro 模式 → 答案升 pro reasoner（复用 _needsDeliberate 复杂度门控）
+  if (ctx.model === 'pro' && _needsDeliberate(diagnose)) ctx.answerModel = 'pro';
   if (hooks.onDiagnose) hooks.onDiagnose(diagnose);
   if (!diagnose.degraded) {
     _recordTplResult(diagnose.template);   // ⑤④ Flash template 命中率遥测（'unknown'=miss，驱动 80% gate）

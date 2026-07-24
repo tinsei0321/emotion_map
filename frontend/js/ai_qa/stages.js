@@ -248,7 +248,7 @@ export async function finalStep(ctx, hooks, toolHistory) {
     (err) => { throw new Error(err); },
     {
       phase: 'answer', toolHistory, signal: ctx.signal,
-      model: ctx.model, domainLens: ctx.domainLens,
+      model: ctx.answerModel || 'flash', domainLens: ctx.domainLens,
       onReason: (t) => { hooks.onReason && hooks.onReason(t, 0); },
     });
   return final;
@@ -293,7 +293,7 @@ export async function reviseStep(ctx, draft, hints, toolHistory, hooks) {
     (err) => { throw new Error(err); },
     {
       phase: 'revise', draft, reviewHints: hints, toolHistory, signal: ctx.signal,
-      model: ctx.model, domainLens: ctx.domainLens,
+      model: 'flash', domainLens: ctx.domainLens,
       onReason: (t) => { hooks.onReason && hooks.onReason(t, 0); },
     });
   return revised;
