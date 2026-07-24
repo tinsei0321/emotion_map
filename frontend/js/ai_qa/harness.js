@@ -4,7 +4,7 @@
 // 前置：DIAGNOSE 问题理解卡（认知层）→ 注入 ctx.context 导工具选型 + 结论颗粒度；硬缺口短路请求上传。
 // 降级：agent_step 解析失败不再裸显 raw，break loop 仍走 finalStep 出一次性 answer。
 import * as stages from './stages.js';
-import { TOOLS, setToolContext, formatRegistry } from './tools.js';
+import { TOOLS, setToolContext, formatRegistry, deriveAvailable } from './tools.js';
 import { getLayers } from '../state.js';
 
 const MAX_ROUNDS_GIS = 6;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=6（保多目标完整性，如"西陵+伍家岗居住+商业"需多步）
@@ -458,6 +458,14 @@ export async function orchestrate(ctx, hooks = {}) {
     ? diagnose.domain_lens.filter((k) => k && k !== 'general') : [];
   // B1-2a：复杂任务（strategy≠ready / method≥3 步）且用户 pro 模式 → 答案升 pro reasoner（复用 _needsDeliberate 复杂度门控）
   if (ctx.model === 'pro' && _needsDeliberate(diagnose)) ctx.answerModel = 'pro';
+  // R1-D1 派生判定器（代码确定性·治假 GAP·Smart/Dumb 铁律：代码可知不问 LLM）：问句区名属已加载 boundary 子要素 → 强制 strategy=ready（覆盖 request_upload，挡 :488 假 GAP 短路）
+  if (!diagnose.degraded && diagnose.data_plan && diagnose.data_plan.strategy === 'request_upload') {
+    const _deriv = deriveAvailable(ctx.question, getLayers());
+    if (_deriv) {
+      diagnose.data_plan.strategy = 'ready';
+      if (hooks.onObservation) hooks.onObservation(`[派生] 「${_deriv.name}」属已加载「${_deriv.layer}」(${_deriv.field}) 子要素 → clip/extract 可派生，strategy=ready`, 0);
+    }
+  }
   if (hooks.onDiagnose) hooks.onDiagnose(diagnose);
   if (!diagnose.degraded) {
     _recordTplResult(diagnose.template);   // ⑤④ Flash template 命中率遥测（'unknown'=miss，驱动 80% gate）

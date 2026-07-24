@@ -522,10 +522,11 @@ const _kindTag = (l) => {
  *  对 boundary首选 面层，找 name 字段（categorical·≤20 unique·值含地名后缀 或 字段名似 name/MC/名称）→ 返全 distinct 值串。
  *  让 diagnose 看见「行政区·含:西陵区/伍家岗区/…」→ 配合 D2 判 strategy=ready，治假 GAP（04-llm INT-002~007 根因）。 */
 const _PLACE_NAME_RE = /(区|街道|社区|镇|乡|片|园|路|广场|中心|村|工业园|管委会)$/;
-function _boundaryEnum(l) {
-  if (_polyRole(l) !== 'boundary首选') return '';
+/** 找 boundary首选 层的 name 字段 + 全 distinct 值（D4 枚举 + D1 派生判定共用·单一 name 定位逻辑）。 */
+function _boundaryNames(l) {
+  if (_polyRole(l) !== 'boundary首选') return null;
   const feats = l.fc && l.fc.features;
-  if (!feats || !feats.length) return '';
+  if (!feats || !feats.length) return null;
   let best = null;
   for (const k of Object.keys(feats[0].properties || {})) {
     if (isInternalField(k) || isRenderContract(resolveRole(k))) continue;
@@ -542,11 +543,31 @@ function _boundaryEnum(l) {
       const placeLike = arr.filter((v) => _PLACE_NAME_RE.test(v)).length;
       const fieldLikeName = /name|MC|名|名称/i.test(k);
       if (fieldLikeName || (placeLike >= Math.min(3, n) && placeLike >= n / 2)) {
-        if (!best || arr.length > best.arr.length) best = { arr };   // 多候选取值最多者
+        if (!best || arr.length > best.values.length) best = { field: k, values: arr };   // 多候选取值最多者
       }
     }
   }
-  return best && best.arr.length ? `·含:${best.arr.join('/')}` : '';
+  return best;
+}
+/** D4：boundary 层子要素枚举串（注入 grounding·D2 可派生规则的燃料）。 */
+function _boundaryEnum(l) {
+  const b = _boundaryNames(l);
+  return b && b.values.length ? `·含:${b.values.join('/')}` : '';
+}
+/** D1：派生数据判定器（代码确定性·治假 GAP 兜底·Smart/Dumb 铁律：代码可知不问 LLM）。
+ *  扫已加载 boundary首选 层 name distinct 值，与问句字符串匹配 → 命中即返 {name, layer, field}。
+ *  harness post-diagnose 调用：问句提"西陵区"+行政区已加载 → 强制 data_plan.strategy=ready（覆盖 request_upload）。 */
+export function deriveAvailable(question, layers) {
+  const q = String(question || '');
+  if (!q) return null;
+  for (const l of layers || []) {
+    const b = _boundaryNames(l);
+    if (!b || !b.values || !b.values.length) continue;
+    for (const nm of b.values) {
+      if (nm && q.includes(nm)) return { name: nm, layer: l.name, field: b.field };
+    }
+  }
+  return null;
 }
 
 /** buildContext：grounding 摘要（panel send + query_layers 共用）。 */
