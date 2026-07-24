@@ -460,7 +460,7 @@ function renderAnswer(text, validNames) {
 
 const _DOMAIN_LABEL = { urban_planning: '城市规划', urban_renewal: '城市更新', urban_operation: '城市运营', urban_governance: '城市治理' };
 const _SCALE_LABEL = { macro: '宏观（片区/城区）', meso: '中观（街道/单元）', micro: '微观（点位）' };
-const _STRATEGY_LABEL = { ready: '数据齐全', fallback_annotated: '软缺口·降级标注', request_upload: '硬缺口·需上传' };
+const _STRATEGY_LABEL = { ready: '数据齐全', fallback_annotated: '部分数据替代', request_upload: '需补充数据' };
 
 /** MM月DD日 HH:MM（不写星期）。 */
 function formatTs(ts) {
@@ -824,8 +824,8 @@ function renderDiagnoseCard(el, card) {
   el.innerHTML = `<div class="aiq-card-head">问题理解</div>`
     + `<div class="aiq-diag-row">${[dom.join('/'), _SCALE_LABEL[card.scale] || card.scale, card.decision_type, card.outlet].filter(Boolean).map(chip).join('')}</div>`
     + `<div class="aiq-diag-strategy ${strat}"><span class="aiq-diag-strat-tag">${_STRATEGY_LABEL[strat] || strat}</span>${
-      strat === 'request_upload' ? '（关键数据缺失，已请用户上传）'
-      : strat === 'fallback_annotated' ? '（结论将标注口径（=统计范围）局限）' : ''}</div>`
+      strat === 'request_upload' ? '（缺关键数据，已请你上传）'
+      : strat === 'fallback_annotated' ? '（部分数据用替代，结论会注明）' : ''}</div>`
     + (method.length ? `<div class="aiq-diag-method">方法：${escapeHtml(method.join(' → '))}</div>` : '')
     + params;
 }

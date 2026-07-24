@@ -292,20 +292,20 @@
 
 /* ── 通用卡片基类（问题理解卡 / 口径卡 共用）── */
 .aiq-card { margin: 0 0 6px; padding: 6px 10px; border-left: 2px solid var(--geojson-color-gray-200, #e3e5e8); background: var(--geojson-color-gray-100, #f7f7f7); border-radius: 0 6px 6px 0; }
-.aiq-card-head { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 4px; }
+.aiq-card-head { font-size: var(--geojson-typography-size-sm); color: var(--geojson-color-text-secondary); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 5px; }
 
 /* ── 问题理解卡（DIAGNOSE 认知前置步）── */
 .aiq-card-diagnose { border-left-color: var(--geojson-color-brand-primary, #4285F4); }
 .aiq-card-diagnose.is-upload { border-left-color: #ff9000; background: rgba(255, 144, 0, 0.06); }
 .aiq-diag-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
-.aiq-diag-chip { display: inline-flex; padding: 1px 7px; font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-brand-primary, #4285F4); background: rgba(217, 119, 87, 0.1); border-radius: 999px; }
-.aiq-diag-strategy { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-secondary); margin-bottom: 2px; }
+.aiq-diag-chip { display: inline-flex; padding: 2px 8px; font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-brand-primary, #4285F4); background: rgba(217, 119, 87, 0.1); border-radius: 999px; }
+.aiq-diag-strategy { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); margin-bottom: 3px; }
 .aiq-diag-strat-tag { display: inline-block; padding: 0 6px; margin-right: 4px; border-radius: 999px; font-weight: var(--geojson-typography-weight-semibold); }
 .aiq-diag-strategy.ready .aiq-diag-strat-tag { color: #4ADE80; background: rgba(46, 139, 87, 0.1); }
 .aiq-diag-strategy.fallback_annotated .aiq-diag-strat-tag { color: #d9a400; background: rgba(217, 164, 0, 0.12); }
 .aiq-diag-strategy.request_upload .aiq-diag-strat-tag { color: #ff9000; background: rgba(255, 144, 0, 0.14); }
-.aiq-diag-method { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); }
-.aiq-diag-params { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-secondary); margin-top: 3px; }
+.aiq-diag-method { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); margin-top: 1px; }
+.aiq-diag-params { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); margin-top: 4px; }
 .aiq-diag-params-tag { display: inline-block; padding: 1px 6px; margin-right: 5px; color: var(--emc-accent); background: var(--emc-accent-soft); border-radius: 999px; font-weight: 600; }
 
 /* ── 口径标注卡（fallback_annotated 软缺口）── */
