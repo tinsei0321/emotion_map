@@ -57,6 +57,7 @@ export function initParamPanel() {
   document.addEventListener('pointerdown', (e) => {
     const panel = panelEl();
     if (!panel || !panel.classList.contains('is-open')) return;
+    if (document.body.classList.contains('drawer-pinned')) return;   // 固定态：outside-click 不隐（与 #lp-pin 联动）
     if (panel.contains(e.target)) return;
     if (e.target.closest && (e.target.closest('#emc-panel') || e.target.closest('#left-panel'))) return;  // EMC/抽屉伴生不关
     if (e.target.closest && e.target.closest('.layer-kind')) return;       // 要素按钮：sidebar 自行开/切

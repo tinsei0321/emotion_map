@@ -796,10 +796,17 @@ export function initSidebar({ onFiles, onRangeFiles } = {}) {
     setLeftMode('sections');                       // 切到三区模式（非 import 空态）
     setActiveTab(tab);
   });
-  // 抽屉外部点击 → 关（点抽屉内 / EMC / param-panel 伴生不关）
+  // 固定图钉（抽屉右上角）：toggle body.drawer-pinned → outside-click 不隐抽屉/param-panel（Esc/X 仍关）
+  document.getElementById('lp-pin')?.addEventListener('click', () => {
+    const on = document.body.classList.toggle('drawer-pinned');
+    const btn = document.getElementById('lp-pin');
+    if (btn) { btn.classList.toggle('is-pinned', on); btn.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+  });
+  // 抽屉外部点击 → 关（点抽屉内 / EMC / param-panel 伴生不关；固定态不关）
   document.addEventListener('pointerdown', (e) => {
     const panel = document.getElementById('left-panel');
     if (!panel || !panel.classList.contains('is-drawer-open')) return;
+    if (document.body.classList.contains('drawer-pinned')) return;   // 固定态：outside-click 不隐
     if (panel.contains(e.target)) return;
     if (e.target.closest('#emc-panel')) return;
     if (e.target.closest('#param-panel')) return;   // param-panel 伴生不关

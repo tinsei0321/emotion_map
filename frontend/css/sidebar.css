@@ -120,6 +120,25 @@
   color: var(--geojson-color-card-fill);    /* #384555 深灰 */
   border-bottom-color: var(--geojson-color-card-fill);
 }
+/* 固定图钉（抽屉右上角）：点亮=固定态，outside-click 不隐；Esc/X 仍关 */
+.lp-pin {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-left: 4px;
+  border: none;
+  background: transparent;
+  color: var(--geojson-color-text-tertiary);
+  border-radius: var(--geojson-radius-sm);
+  cursor: pointer;
+  transition: color var(--geojson-transition), background var(--geojson-transition);
+}
+.lp-pin:hover { color: var(--geojson-color-text-primary); background: var(--geojson-color-gray-100); }
+.lp-pin.is-pinned { color: var(--geojson-color-brand-primary); }   /* 亮起 = 品牌蓝 #4285F4 */
+.lp-pin.is-pinned svg { fill: var(--geojson-color-brand-primary); fill-opacity: 0.16; }   /* 浅填充强化"已固定" */
 
 /* 区2 工具栏 — 白底 + 深灰 #384555 图标 + hover 浅灰（ref 截图）；顺序：+ / 文件夹 / 方片叠加 / 眼睛 / 垃圾桶 … 漏斗+计数 */
 .lp-zone-tools {
