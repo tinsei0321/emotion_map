@@ -7,6 +7,18 @@
 
 ---
 
+## 📅 2026-07-25（分支 `main` · EMC density 治本 3 包执行）
+
+### ✅ EMC density 治本 3 包执行（revision-log 5.205，commit d8dbcb2 · **用户手动 push**）
+
+- **K3 合成报告根因**（[emc-eval-synthesis-2026-07-25](.codebuddy/reports/emc-eval-synthesis-2026-07-25.md)）："相位差→**错位**"——修复队列（系统健康序）vs 演示链（用户可见序）5.200-5.203 交集空·改对病没改疼。主因 C5+C6 缺口 + 验证债务；架构/红线无罪。
+- **主线程核验 K3**：三承重判断属实（time-source manifest 404 首报 / C5 机制二分 / C6"密集"0 触发词）+ 补两漏（addHotpointLayer 同病 / buildWeight 0.3 非 0.24）。
+- **包A C5 渲染**（map.js·非红线）：resolveWeightField（emotion_intensity→score→uniform 兜底）+ 同步 addHotpointLayer + renderLayer addSource 容错 + _renderState。
+- **包C 低耦合小项**：C 分组（density 委托补 parentId·组卡非空·用户#2）/ C7（夷陵描述改正）/ B srcId（_toolContentSig + 按 srcId 去重·闭合用户#3）/ T9（例间清层）/ time-source（路径同源）。
+- **包B C6 认知**（paradigm.py·**eval-first 红线**）：density 触发词加密集/集聚/热力图 + yields 改委托实况；eval 扩 2 例双命中，**25/28=89% PASS** 不退化。
+- **承重纪律**：C6 触 diagnose prompt → eval-first；harness/ChatRequest 未触。
+- **留用户验证**：T7 飞轮全量重跑 04-07（?test=1·偿验证债务）+ C5 density 彩虹图肉眼验。**红线未决**：DATA 迁移未 commit（数据红线）/ manifest 再生成留用户 / R1 残余 s1 4/9（T7 后定夺扩 D1）。
+
 ## 📅 2026-07-24（分支 `main` · 测试飞轮机制评估）
 
 ### 🔄 收工·06/07 评估 + density 治本 plan 定稿（待下会话执行）（revision-log 5.204，本次 push）
