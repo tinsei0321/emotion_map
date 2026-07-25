@@ -477,12 +477,21 @@ async def nearest(req: NearestRequest):
             raise ValueError('target 无要素')
         pts_proj = pts.to_crs(_PROJECT_CRS)
         tgt_proj = target.to_crs(_PROJECT_CRS)
-        joined = gpd.sjoin_nearest(tgt_proj, pts_proj, max_distance=float('inf'))
-        joined = joined.drop(columns='geometry', errors='ignore')
-        # 距离列（sjoin_nearest 通常已带 distance；无则补 0.0）
-        if 'distance' not in joined.columns:
-            joined['distance'] = 0.0
+        # distance_col：取真实最近距离（修复 distance 恒 0.0——此前未传 distance_col，fallback 全 0，演示数据失真）
+        joined = gpd.sjoin_nearest(tgt_proj, pts_proj, distance_col='distance')
         joined['distance'] = joined['distance'].round(1)
+        # A1 连线坐标（前端连线层用·additive 列，不改配对逻辑/核心算法）：
+        # target 代表点 + 最近点，均转 WGS84；.loc 按标签对齐（唯一 index），to_numpy 保查询序。
+        tgt_rp = gpd.GeoSeries(tgt_proj.geometry.representative_point(), crs=_PROJECT_CRS).to_crs('EPSG:4326')
+        tgt_rp = tgt_rp.loc[joined.index]
+        right_geom = gpd.GeoSeries(
+            pts_proj.geometry.loc[joined['index_right'].to_numpy()].to_numpy(), crs=_PROJECT_CRS
+        ).to_crs('EPSG:4326')
+        joined['tgt_lon'] = tgt_rp.x.to_numpy().round(6)
+        joined['tgt_lat'] = tgt_rp.y.to_numpy().round(6)
+        joined['pt_lon'] = right_geom.x.to_numpy().round(6)
+        joined['pt_lat'] = right_geom.y.to_numpy().round(6)
+        joined = joined.drop(columns='geometry', errors='ignore')
         rows = joined.where(pd.notna(joined), '').to_dict('records')
         rows = rows[: max(1, int(req.k)) * len(target)]   # 每 target 至多 k 个
     except (KeyError, FileNotFoundError, ValueError) as e:
