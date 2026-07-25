@@ -153,8 +153,28 @@
               </button>
               <button class="tool-row" id="tool-buffer" data-tool="buffer">
                 <span class="tool-icon"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="7"/></svg></span>
-                <span class="tool-name">Buffer · 覆盖范围分析</span>
-                <span class="tool-info" data-tip="对一类设施（点/线/面）做 N 米缓冲，看服务覆盖范围与盲区。整层缓冲，可选合并。后端 EPSG:4546 米制精确；不涉及情绪聚合。">i</span>
+                <span class="tool-name">Buffer · 缓冲分析</span>
+                <span class="tool-info" data-tip="双模式：覆盖范围=对一类设施（点/线/面）做 N 米整层缓冲，看服务覆盖与盲区；圈内情绪=以地点/取点/要素/坐标为中心，统计缓冲圈内情绪点数量与极性。后端米制精确。">i</span>
+              </button>
+              <button class="tool-row" id="tool-zonal" data-tool="zonal">
+                <span class="tool-icon"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13V7l4-3 4 3 4-4v10"/><line x1="2" y1="13" x2="14" y2="13"/></svg></span>
+                <span class="tool-name">Zonal · 面域归因聚合</span>
+                <span class="tool-info" data-tip="按行政区/街道/更新单元等面域聚合情绪点，得每单元点数/极性/归因排序（红绿 choropleth）；多区对比模式并排 ≤4 个区域。">i</span>
+              </button>
+              <button class="tool-row" id="tool-area-stats" data-tool="area-stats">
+                <span class="tool-icon"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg></span>
+                <span class="tool-name">面积统计</span>
+                <span class="tool-info" data-tip="统计边界内各类用地/各单元的面积与占比（用地按 DLMC 自动附国标色）；面积/占比写入要素属性，点击要素可查。">i</span>
+              </button>
+              <button class="tool-row" id="tool-rank" data-tool="rank">
+                <span class="tool-icon"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="4" x2="13" y2="4"/><line x1="3" y1="8" x2="11" y2="8"/><line x1="3" y1="12" x2="9" y2="12"/></svg></span>
+                <span class="tool-name">Rank · 排序</span>
+                <span class="tool-info" data-tip="按极性找 Top N 情绪最差/最好单元（先按边界聚合），生成 Top N 高亮层（极性 choropleth），回答「哪里最需优先」。">i</span>
+              </button>
+              <button class="tool-row" id="tool-vector" data-tool="vector">
+                <span class="tool-icon"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="8" r="4"/><circle cx="10" cy="8" r="4"/></svg></span>
+                <span class="tool-name">矢量分析</span>
+                <span class="tool-info" data-tip="五操作合一：叠置（交/并/差/对称差）/ 裁剪（点层裁到范围）/ 抽取（按属性出面要素）/ 合并（dissolve）/ 筛选（按属性出点）。">i</span>
               </button>
               <button class="tool-row" id="tool-attribution" data-tool="attribution">
                 <span class="tool-icon"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="3" cy="4" r="1.5"/><circle cx="3" cy="12" r="1.5"/><circle cx="13" cy="8" r="2"/><line x1="4.4" y1="4.6" x2="11.2" y2="7.4"/><line x1="4.4" y1="11.4" x2="11.2" y2="8.6"/></svg></span>
@@ -386,6 +406,10 @@
             <button class="pp-tab is-active" data-pp-tab="heatmap" role="tab">核密度</button>
             <button class="pp-tab" data-pp-tab="grid" role="tab">网格</button>
             <button class="pp-tab" data-pp-tab="buffer" role="tab">Buffer</button>
+            <button class="pp-tab" data-pp-tab="zonal" role="tab">面域</button>
+            <button class="pp-tab" data-pp-tab="area-stats" role="tab">面积</button>
+            <button class="pp-tab" data-pp-tab="rank" role="tab">排序</button>
+            <button class="pp-tab" data-pp-tab="vector" role="tab">矢量</button>
           </div>
 
           <div class="pp-pane" data-pp-pane="heatmap" role="tabpanel">

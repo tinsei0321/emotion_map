@@ -17,6 +17,10 @@ import { landuseLayerPaint } from './landuse_colors.js';   // 导入的用地多
 import { initHeatmapTool } from './heatmap-tool.js';
 import { initBufferTool } from './buffer-tool.js';
 import { initGridTool } from './grid-tool.js';
+import { initZonalTool } from './toolbox/zonal-tool.js';
+import { initAreaStatsTool } from './toolbox/area-stats-tool.js';
+import { initRankTool } from './toolbox/rank-tool.js';
+import { initVectorTool } from './toolbox/vector-tool.js';
 import { initRangePresets } from './range-presets.js';
 import { initChatPanel } from './ai_qa/panel.js';
 import { initParamPanel } from './param-panel.js';
@@ -316,6 +320,10 @@ function main() {
   initHeatmapTool();
   initBufferTool();
   initGridTool();
+  initZonalTool();
+  initAreaStatsTool();
+  initRankTool();
+  initVectorTool();
   initRangePresets();
   initChatPanel();
   initParamPanel();

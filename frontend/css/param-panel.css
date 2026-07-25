@@ -112,6 +112,7 @@
 .pp-tabs {
   flex-shrink: 0;
   display: flex;
+  flex-wrap: wrap;   /* 7 页签（核密度/网格/Buffer/面域/面积/排序/矢量）460px 面板防溢出（手册 §3.4） */
   gap: 4px;
   padding: 6px var(--geojson-spacing-3);
   border-bottom: 1px solid var(--geojson-color-border-default, #e5e5e5);
