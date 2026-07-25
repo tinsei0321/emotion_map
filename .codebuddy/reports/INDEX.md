@@ -12,3 +12,4 @@
 | [emc-eval-report05-2026-07-24.md](emc-eval-report05-2026-07-24.md) | 2026-07-24 | 05-llm 报告评估（seam 洗数据石锤；四问题定性；T1-T7 增量） |
 | [emc-eval-report06-07-2026-07-24.md](emc-eval-report06-07-2026-07-24.md) | 2026-07-24 | 06+07 合并评估（问题簇 C1-C9 归纳；相位差总裁定：测量层真进展/本体未开工/基建咬人；修复总账 12 序） |
 | [emc-eval-synthesis-2026-07-25.md](emc-eval-synthesis-2026-07-25.md) | 2026-07-25 | "基本不可用"根因合成（相位差→错位修正：本体已动但非演示链；5.200-5.203 逐批审计；C5 机制二分；最小 demo 集 + 红线速度建议；首报时间轴 manifest 404） |
+| [emc-toolset-completion-2026-07-25.md](emc-toolset-completion-2026-07-25.md) | 2026-07-25 | EMC 工具集补齐组 A 完成报告（A1 rank/area_stats/nearest 成图 + nearest distance 恒 0 修复；A2 paint 统一+落图自检；A3 尺度表+目录文案 eval-first；A4 评估单列；承重三不动零改动） |
