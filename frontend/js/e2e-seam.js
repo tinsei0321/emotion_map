@@ -28,6 +28,10 @@ window.fetch = async function (...args) {
   return r;
 };
 
+// renderLayer 容忍失败（底图 style 未加载时 addSource 抛错，但 addLayer 已入 state——
+// zonal_stats/compare 只需 state 可见点层，不依赖地图渲染）。loadPoints/loadRange/addTestLayer 共用。
+const safe = (fn) => { try { fn(); } catch (e) { /* map 未就绪，忽略——state 层仍可用 */ } };
+
 window.__emcTest = {
   ready() { const m = getMap(); return !!(m && m.isStyleLoaded && m.isStyleLoaded()); },   // map style 加载完（仅参考；地图底图 404 时永 false，loadPoints 容忍之）
   loadPoints(fc) {
@@ -39,9 +43,6 @@ window.__emcTest = {
     for (const l of getLayers().slice()) {
       if (l.srcName === base) { try { removeLayerFromMap(l.id); } catch (_) {} removeLayer(l.id); }
     }
-    // renderLayer 容忍失败（底图 style 未加载时 addSource 抛错，但 addLayer 已入 state——
-    // zonal_stats/compare 只需 state 可见点层，不依赖地图渲染）。
-    const safe = (fn) => { try { fn(); } catch (e) { /* map 未就绪，忽略——state 层仍可用 */ } };
     if (colorMode === 'polarity') {
       const pos = [], neu = [], neg = [];
       for (const f of pfc.features) {
@@ -144,6 +145,13 @@ window.__emcTest = {
   TOOLS,
   getLayers,
   resetToolState() { resetStepResults(); resetCurrentResults(); },
+  /** 步 8：存量产物模拟（legacy 无 kind _ui 的编辑回填 color 判据测试）。 */
+  addTestLayer(name, kind, fc, paint) {
+    const L = addLayer({ name, kind, fc, paint });
+    safe(() => renderLayer(L));
+    document.dispatchEvent(new CustomEvent('layers:changed'));
+    return L.id;
+  },
 };
 
 // CPD G1 谓词暴露（用例 10·A1 谓词真值测试）：把死信号/谓词盲区（M2 无情绪层撒谎）从评审发现变测试发现。

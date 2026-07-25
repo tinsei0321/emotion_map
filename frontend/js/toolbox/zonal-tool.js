@@ -22,6 +22,25 @@ function setHidden(dlg, sel, hidden) { const el = dlg.querySelector(sel); if (el
 function selectedMode(dlg) { return dlg.querySelector('#zonal-mode .buf-cap.is-sel')?.dataset.mode || DEFAULTS.mode; }
 function constrainMode(dlg) { setHidden(dlg, '#zonal-compare-section', selectedMode(dlg) !== 'compare'); }
 
+/** 要素名探测（导入面域不改物理列名：MC/区名 等也认——与后端 find_boundary_name_column 同语义优先级）。 */
+const _NAME_KEYS = ['name', 'Name', 'NAME', 'MC', '区名', '街道', '社区', '行政区', '单元'];
+function _featName(f, i) {
+  const p = (f && f.properties) || {};
+  for (const k of _NAME_KEYS) {
+    if (p[k] != null && p[k] !== '') return String(p[k]);
+  }
+  return `要素 ${(i ?? 0) + 1}`;
+}
+/** 合成前归一：features 缺 name 时按 _featName 补（buildZonalFc 按 name 回匹配 rows——
+ *  否则 MC 系面域全部特征模糊命中首行（现状 fuzzy fallback·勿放大）。 */
+function _normalizeGeoNames(geo) {
+  if (!geo || !geo.features) return geo;
+  return { ...geo, features: geo.features.map((f, i) => {
+    const p = f.properties || {};
+    return p.name != null && p.name !== '' ? f : { ...f, properties: { ...p, name: _featName(f, i) } };
+  }) };
+}
+
 /** 红绿 choropleth 色带预览（polarityStops('overall')·只读）。 */
 function renderRampPreview(dlg) {
   const box = dlg.querySelector('#zonal-ramp-preview');
@@ -64,7 +83,7 @@ async function loadCompareFeatures(dlg, selNames) {
   const feats = (geo && geo.features) || [];
   if (!feats.length) { box.innerHTML = '<span class="zonal-feat-empty">（该边界无可选要素）</span>'; return; }
   box.innerHTML = feats.slice(0, 60).map((f, i) => {
-    const nm = (f.properties && (f.properties.name || f.properties.Name || f.properties.NAME)) || `要素 ${i + 1}`;
+    const nm = _featName(f, i);
     const on = selNames && selNames.includes(nm) ? ' is-sel' : '';
     return `<button type="button" class="buf-cap zonal-feat${on}" data-name="${nm}">${nm}</button>`;
   }).join('');
@@ -113,7 +132,7 @@ async function _execute(params, { editLayerId = '', silent = true } = {}) {
     for (const x of results) {
       if (!x.row || !x.boundaryGeo) continue;
       const geo = typeof x.boundaryGeo === 'object' ? x.boundaryGeo : await resolveBoundaryGeo(x.boundaryGeo);
-      const fc = geo ? buildZonalFc([x.row], geo) : null;
+      const fc = geo ? buildZonalFc([x.row], _normalizeGeoNames(geo)) : null;
       if (fc && fc.features.length) { feats.push(...fc.features); labels.push(x.boundary); }
     }
     const okN = results.filter((x) => x.row).length;
@@ -138,7 +157,7 @@ async function _execute(params, { editLayerId = '', silent = true } = {}) {
   const rows = r.rows || [];
   if (!rows.length) return { layerId: null, layerName: null, featureCount: 0, fc: null, rows, sortBy: r.sort_by, boundaryLabel: params.boundaryLabel };
   const geo = typeof params.boundary === 'object' ? params.boundary : await resolveBoundaryGeo(params.boundary);
-  const fc = buildZonalFc(rows, geo);
+  const fc = buildZonalFc(rows, _normalizeGeoNames(geo));
   const label = params.boundaryLabel || (typeof params.boundary === 'string' ? params.boundary
     : ((((geo && geo.features) || [])[0] || {}).properties || {}).name) || '面域';
   const name = params.as || `聚合·${label}`;
@@ -213,7 +232,7 @@ async function generateZonal() {
       const geo = await boundarySourceGeo(bnd);
       const feats = (geo && geo.features) || [];
       const boundaries = names.map((nm) => {
-        const f = feats.find((x) => ((x.properties || {}).name || (x.properties || {}).Name || (x.properties || {}).NAME) === nm);
+        const f = feats.find((x, i) => _featName(x, i) === nm);
         return { label: nm, geo: f ? { type: 'FeatureCollection', features: [f] } : null };
       }).filter((b) => b.geo);
       r = await _execute({ mode, layer: src.fc, boundaries, pre_filter,

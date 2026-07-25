@@ -185,3 +185,18 @@ DeepSeek + K3 二轮验证 cpd-core-plan.md v0.3（报告 `SCAN_CPDPlan_02-{deep
 - [⬜] **Phase 4 · 附加**：CPD 抽象为可复用底层架构（CPD 完成后提示用户启动）。
 
 ---
+
+
+## 📅 2026-07-25（分支 	oolbox-unified-toolset · Toolbox 统一工具集层）
+
+### ✅ Toolbox 统一工具集层（8 步全完成·执行手册 v2.2）
+
+- [✅] **步 1 基建**：	oolbox/shared.js（7 函数自 tools.js 逐字迁移 + addToolboxLayer 通用落图 + placeToolLayer）+ api.js geoPost；tools.js 抽取 re-export + addResultLayer 拆分（行为零回归）。
+- [✅] **步 2 Buffer 合一**：kind:'cover'|'emotion' 双模式单一 _execute；emotion 中心四路（地点搜索/地图取点/图层要素/手输坐标）；generateBufferForAI；编辑回填显式 kind + 存量 color 判据（§4.3 v2.2）。
+- [✅] **步 3/4 新模块**：zonal（聚合/对比）+ area-stats + rank + vector（叠置/裁剪/抽取/合并/筛选五合一）+ UI 三步向导 dialog。
+- [✅] **步 5 内嵌**：nearest/hotspot 纯 ForAI（无 UI）。
+- [✅] **步 6 接线**：Toolbox +4 入口（tool-row/pp-tab/sidebar 分派/main init/param-panel 白名单泛化）。
+- [✅] **步 7 委托（最敏感）**：tools.js 12 工具改薄委托（observation 逐字保留）；_adoptToolboxResult（C4 全项·focusOnlyResults 沉浸聚焦保留·v2.2 建议 1）；删 geoFetch + 5 合成器；**快照 diff 0/12 全过**。
+- [✅] **步 8 验证**：E2E 	est_toolbox_unified ALL-PASS（7 入口/两路径同核/Buffer 双模式+回填/color 判据/console 红线）；流水线回归 	est_toolbox_pipeline ALL-PASS（geo 200×2·机制断言）；obs diff 终跑 0/12；既存用例 compare_regions/exit_badge/domain_lens_threading 全 PASS。
+- **环境注记**：DATA/boundaries/presets/ 本机激活 5 预设 + manifest（测试前置·非代码）；既存用例对 LLM 路由/超时有固有方差（exit_badge 首跑失败复跑过·实证非回归）。
+- **遗留另案**：① density 委托产物无沉浸聚焦（组 A 遗留·不迁移防未评审行为变更）；② isToolAnalysisLayer 未扩新工具类别（扩会破 EMC R-group 互斥免疫·需评审）；③ MC 系面域模糊匹配首行（现状 fuzzy fallback·zonal-tool 已加 _featName/_normalizeGeoNames 缓解 UI 路径）。
