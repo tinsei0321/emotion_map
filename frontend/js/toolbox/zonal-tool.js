@@ -5,7 +5,8 @@
 // 边界解析：模块只收 preset_id/GeoJSON（shared resolveBoundaryGeo）；中文要素名由调用方预解析（§3.3①）。
 import { getLayer } from '../state.js';
 import { geoPost, defaultPaint, buildZonalFc, resolveBoundaryGeo, placeToolLayer,
-  collectPointSources, collectBoundarySources, boundarySourceGeo } from './shared.js';
+  collectPointSources, collectBoundarySources, boundarySourceGeo,
+  featName as _featName, normalizeGeoNames as _normalizeGeoNames } from './shared.js';
 import { polarityStops } from '../grid-tool.js';
 import { openParamPanel, closeParamPanel } from '../param-panel.js';
 import { trackGeneration } from '../geocode-loader.js';
@@ -22,24 +23,7 @@ function setHidden(dlg, sel, hidden) { const el = dlg.querySelector(sel); if (el
 function selectedMode(dlg) { return dlg.querySelector('#zonal-mode .buf-cap.is-sel')?.dataset.mode || DEFAULTS.mode; }
 function constrainMode(dlg) { setHidden(dlg, '#zonal-compare-section', selectedMode(dlg) !== 'compare'); }
 
-/** 要素名探测（导入面域不改物理列名：MC/区名 等也认——与后端 find_boundary_name_column 同语义优先级）。 */
-const _NAME_KEYS = ['name', 'Name', 'NAME', 'MC', '区名', '街道', '社区', '行政区', '单元'];
-function _featName(f, i) {
-  const p = (f && f.properties) || {};
-  for (const k of _NAME_KEYS) {
-    if (p[k] != null && p[k] !== '') return String(p[k]);
-  }
-  return `要素 ${(i ?? 0) + 1}`;
-}
-/** 合成前归一：features 缺 name 时按 _featName 补（buildZonalFc 按 name 回匹配 rows——
- *  否则 MC 系面域全部特征模糊命中首行（现状 fuzzy fallback·勿放大）。 */
-function _normalizeGeoNames(geo) {
-  if (!geo || !geo.features) return geo;
-  return { ...geo, features: geo.features.map((f, i) => {
-    const p = f.properties || {};
-    return p.name != null && p.name !== '' ? f : { ...f, properties: { ...p, name: _featName(f, i) } };
-  }) };
-}
+// _featName/_normalizeGeoNames 已上移 shared.js（v2.1·rank/area-stats 共用）。
 
 /** 红绿 choropleth 色带预览（polarityStops('overall')·只读）。 */
 function renderRampPreview(dlg) {

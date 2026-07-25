@@ -1061,13 +1061,9 @@ export const TOOLS = {
           weightField: params.weightField || 'emotion_intensity', silent: true,
         });
       }
-      _registerToolboxLayer(r.layerId, r.fc, params.as || r.layerName);   // 补 EMC provenance/$n 引用注册（修委托 Toolbox 的对账缺口）
-      // C分组（用户#2）：density 委托 Toolbox 产出的层挂 AI 组（与 addResultLayer :343 parentId 对齐），
-      // 让 EmotionMap Copilot 组卡非空。generateHeatmapForAI 的 layers:changed 在 parentId 设上前已 fire，故补 dispatch。
-      {
-        const _aiL = getLayers().find((x) => x.id === r.layerId);
-        if (_aiL && !_aiL.parentId) { _aiL.parentId = _aiGroup().id; document.dispatchEvent(new CustomEvent('layers:changed')); }
-      }
+      // 补 EMC provenance/$n/AI 组 + 沉浸聚焦（v2.2 另案落地：density 迁移 _adoptToolboxResult，与 12 委托工具同则；
+      // 组 A 遗留「density 委托丢 focusOnlyResults」修复——observation 不变，仅图面行为与全员工具对齐）。
+      _adoptToolboxResult(r.layerId, r.fc, params.as || r.layerName);
       const _dName = params.as || r.layerName;
       const _modeLabel = { '2d': '热力图(2D彩虹)', '3d': '网格聚合(3D·固定色段)', terrain: '情绪地形(3D KDE 等值面)' }[_mode];
       return {

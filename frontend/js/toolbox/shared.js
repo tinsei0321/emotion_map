@@ -15,14 +15,36 @@ import { piToNorm, polarityStops } from '../grid-tool.js';
 // geoPost 实现于 api.js（通用 /api/v1/geo/* POST），此处 re-export 供 toolbox 模块单点引用。
 export { geoPost } from '../api.js';
 
+/** 要素名探测（导入面域不改物理列名：MC/区名 等也认——与后端 find_boundary_name_column 同语义优先级）。 */
+const _NAME_KEYS = ['name', 'Name', 'NAME', 'MC', '区名', '街道', '社区', '行政区', '单元'];
+export function featName(f, i) {
+  const p = (f && f.properties) || {};
+  for (const k of _NAME_KEYS) {
+    if (p[k] != null && p[k] !== '') return String(p[k]);
+  }
+  return `要素 ${(i ?? 0) + 1}`;
+}
+/** 合成前归一：features 缺 name 时按 featName 补（buildZonalFc/面积统计按 name 回匹配 rows——
+ *  否则 MC 系面域全部特征模糊命中首行（旧 fuzzy fallback 放大器）。 */
+export function normalizeGeoNames(geo) {
+  if (!geo || !geo.features) return geo;
+  return { ...geo, features: geo.features.map((f, i) => {
+    const p = f.properties || {};
+    return p.name != null && p.name !== '' ? f : { ...f, properties: { ...p, name: featName(f, i) } };
+  }) };
+}
+
 /** P1（v1.4）：rows + boundary geojson → 合成聚合 polygon FC（每 feature 注入 _grid_norm/polarity_index 供 choropleth 着色）。
  *  仅当 boundary 解析为 GeoJSON（中文名）时合成；preset_id（无 geojson）返 null（只给表格 rows）。
- *  （自 tools.js _buildZonalFc :218 迁移） */
+ *  （自 tools.js _buildZonalFc :218 迁移）
+ *  v2.1 修：空名特征不再 fuzzy 命中首行（s='' 时 includes('') 恒真→全部特征拿首行极性·数据错误放大器）；
+ *  调用方应先用 normalizeGeoNames 补名（zonal/rank 模块已接）。 */
 export function buildZonalFc(rows, boundary) {
   const feats = !boundary ? [] : (boundary.type === 'FeatureCollection' ? boundary.features : (boundary.type === 'Feature' ? [boundary] : []));
   if (!feats.length) return null;
   const findRow = (nm) => {
     const s = String(nm || '').trim();
+    if (!s) return null;   // v2.1：空名不模糊匹配（防首行放大器）
     return rows.find((r) => String(r.name || '').trim() === s)
       || rows.find((r) => { const rn = String(r.name || '').trim(); return rn && (rn.includes(s) || s.includes(rn)); });
   };

@@ -6,7 +6,7 @@
 // 本模块显式覆写 _ui（§4.3 契约优先）；着色管线（gridField/gridStops）沿用 defaultPaint。
 import { getLayers, getLayer } from '../state.js';
 import { geoPost, defaultPaint, buildZonalFc, resolveBoundaryGeo, placeToolLayer,
-  collectPointSources, collectBoundarySources, boundarySourceGeo } from './shared.js';
+  collectPointSources, collectBoundarySources, boundarySourceGeo, normalizeGeoNames } from './shared.js';
 import { piToNorm, polarityStops } from '../grid-tool.js';
 import { openParamPanel, closeParamPanel } from '../param-panel.js';
 import { trackGeneration } from '../geocode-loader.js';
@@ -66,7 +66,7 @@ async function _execute(params, { editLayerId = '', silent = true } = {}) {
   let fc = null;
   if (params.boundary) {
     const geo = typeof params.boundary === 'object' ? params.boundary : await resolveBoundaryGeo(params.boundary);
-    fc = geo ? buildZonalFc(rows, geo) : null;
+    fc = geo ? buildZonalFc(rows, normalizeGeoNames(geo)) : null;   // v2.1：MC 系面域先归一要素名（防模糊命中首行）
   }
   if ((!fc || !fc.features.length) && params.layerRef && typeof params.layerRef === 'string') {
     const src = getLayers().find((x) => x.name === params.layerRef || x.id === params.layerRef);

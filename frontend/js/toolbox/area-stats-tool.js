@@ -5,7 +5,7 @@
 // 边界解析：模块只收 preset_id/GeoJSON；中文要素名由调用方预解析（§3.3①）。
 import { getLayer } from '../state.js';
 import { geoPost, defaultPaint, resolveBoundaryGeo, placeToolLayer,
-  collectBoundarySources, boundarySourceGeo } from './shared.js';
+  collectBoundarySources, boundarySourceGeo, normalizeGeoNames } from './shared.js';
 import { openParamPanel, closeParamPanel } from '../param-panel.js';
 import { trackGeneration } from '../geocode-loader.js';
 import { toast } from '../toast.js';
@@ -47,14 +47,22 @@ async function _execute(params, { editLayerId = '', silent = true } = {}) {
   const rows = r.rows || [];
   // 合成着色 FC（现状 _areaStatsToLayer :333-357 逻辑：byGroup 精确 / name 模糊双路匹配，无命中不成图）
   const geo = typeof params.boundary === 'object' ? params.boundary : await resolveBoundaryGeo(params.boundary);
-  const feats = geo ? (geo.type === 'FeatureCollection' ? geo.features : (geo.type === 'Feature' ? [geo] : [])) : [];
+  const geoN = normalizeGeoNames(geo);   // v2.1：MC 系面域先归一要素名（name 路径防模糊命中首行）
+  const feats = geoN ? (geoN.type === 'FeatureCollection' ? geoN.features : (geoN.type === 'Feature' ? [geoN] : [])) : [];
   let fc = null;
   if (feats.length) {
-    const byGroup = params.group_by && rows.some((row) => row[params.group_by] != null);
+    // v2.1 修（latent 数据 bug·现状同有）：分组 rows 不回显 group 字段——组值在 row.name（backend area_stats
+    // rows={name:组标签,area_km2,share}）。旧 byGroup 判定（rows.some(r[group_by]!=null)）恒 false → 落 name 路径，
+    // 空名特征靠 includes('') 恒真模糊命中首行（放大器）。修：byGroup 直接信 group_by；匹配兼容 row[group_by] ?? row.name。
+    const byGroup = !!params.group_by;
     const findRow = (f) => {
       const p = f.properties || {};
-      if (byGroup) return rows.find((row) => String(row[params.group_by]) === String(p[params.group_by] ?? '')) || null;
+      if (byGroup) {
+        const gv = String(p[params.group_by] ?? '');
+        return rows.find((row) => String(row[params.group_by] ?? row.name ?? '') === gv) || null;
+      }
       const nm = String(p.name || '').trim();
+      if (!nm) return null;   // 空名不模糊（与 buildZonalFc 守卫同则）
       return rows.find((row) => String(row.name || '').trim() === nm)
         || rows.find((row) => { const rn = String(row.name || '').trim(); return rn && (rn.includes(nm) || nm.includes(rn)); }) || null;
     };
