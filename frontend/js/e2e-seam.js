@@ -6,6 +6,7 @@ import { renderLayer, getMap, removeLayerFromMap } from './map.js';
 import { addLayer, addGroup, getLayers, removeLayer } from './state.js';
 import { splitByGeometry, detectColorMode, dsvRows } from './import.js';
 import { hasImport, hasRange, hasAnalysis, hasVisibleEmotionLayer } from './ai_qa/cpd-state.js';
+import { TOOLS, resetStepResults, resetCurrentResults } from './ai_qa/tools.js';   // 步 7 observation 快照基线（手册 v2.2·修订 6）：TOOLS 直调 + 状态重置
 
 // v1.7 测试飞轮：fetch 拦截 — 抓 /chat + /geo 请求供分阶段断言（fail fast）。
 const _origFetch = window.fetch.bind(window);
@@ -139,6 +140,10 @@ window.__emcTest = {
     document.dispatchEvent(new CustomEvent('layers:changed'));
     return { ok: true, count: polygons.features.length };
   },
+  // ── 步 7 observation 快照基线（手册 v2.2·修订 6/E-③）：TOOLS 直调 + 状态重置 + 层读取 ──
+  TOOLS,
+  getLayers,
+  resetToolState() { resetStepResults(); resetCurrentResults(); },
 };
 
 // CPD G1 谓词暴露（用例 10·A1 谓词真值测试）：把死信号/谓词盲区（M2 无情绪层撒谎）从评审发现变测试发现。
