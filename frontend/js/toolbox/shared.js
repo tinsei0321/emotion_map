@@ -168,6 +168,7 @@ export function addToolboxLayer({ name, kind = 'polygon', fc, paint, parentId, f
  *  editLayerId 命中且同 _ui.tool → 原地更新（layer id 稳定·镜像「继续编辑」）；否则新建。
  *  silent=false（UI 路径）时 selectLayer + showLayerManager + layer:selected 超链。 */
 export function placeToolLayer({ name, kind = 'polygon', fc, paint, editLayerId = '', silent = true }) {
+  if (!fc || !fc.features || !fc.features.length) return null;   // 空结果守卫（镜像 addResultLayer :474·0 命中 filter/clip/overlay 不崩）
   const editingLayer = editLayerId ? getLayer(editLayerId) : null;
   const tool = paint && paint._ui && paint._ui.tool;
   if (editingLayer && tool && editingLayer.paint && editingLayer.paint._ui && editingLayer.paint._ui.tool === tool) {
