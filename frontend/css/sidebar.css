@@ -554,6 +554,52 @@
   color: var(--geojson-color-text-inverse, #fff);
   border-color: var(--geojson-color-brand-primary);
 }
+/* ── Buffer 对话框补丁 III：圈内情绪中心输入（地点候选/坐标行/已选提示）── */
+.buf-hits {
+  margin-top: 4px;
+  border: 1px solid var(--geojson-color-gray-200, #e5e5e5);
+  border-radius: var(--geojson-radius-sm);
+  background: #fff;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.buf-hit {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-primary);
+  cursor: pointer;
+}
+.buf-hit:hover { background: var(--geojson-color-gray-100); }
+.buf-hit-addr {
+  display: block;
+  font-size: 10px;
+  color: var(--geojson-color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.buf-hit-empty {
+  padding: 6px 8px;
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-secondary);
+}
+.buf-coord-row {
+  display: flex;
+  gap: 8px;
+}
+.buf-coord-row .buf-num { width: 110px; }
+.buf-center-val {
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-brand-primary);
+  min-height: 14px;
+}
+#buf-center-mode { flex-wrap: wrap; }
+#buf-center-mode .buf-cap { padding: 3px 10px; }
 /* tooltip 挂 body、fixed 定位（工具栏非 top-layer，body 上的 fixed 可正常覆盖）。
  * 配色与 .hm-tooltip 一致：白底 + 深灰小字 + 细边框。 */
 .tool-tooltip {
