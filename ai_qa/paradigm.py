@@ -199,8 +199,8 @@ GEO_TOOL_CATALOG = [
     {
         'name': 'area_stats',
         'when': '面积统计：各类用地面积占比、单元面积、单位面积情绪密度',
-        'params': 'layer, group_by(字段)',
-        'yields': '面积 + 占比 + 密度',
+        'params': 'boundary(preset_id | geojson), group_by(字段·如 DLMC)',
+        'yields': '面积 + 占比 + 着色面层（choropleth·用地自动附国标标准色，自动落地图）',
         'contributes': '量化"占比""密度"，让结论从计数升级为强度/结构判断',
     },
     {
@@ -213,14 +213,14 @@ GEO_TOOL_CATALOG = [
     {
         'name': 'rank',
         'when': '排序：按极性/domain/element 找 Top N 最差/最好',
-        'params': 'layer, by(polarity|domain|element), top_n, range',
-        'yields': '排序后的 Top N 单元',
-        'contributes': '给出"最需优先…"的明确排序，结论有指向性',
+        'params': 'layer, by(polarity|domain|element), top_n, range, boundary?',
+        'yields': '排序后的 Top N 单元 + Top N 高亮层（极性 choropleth·自动落地图）',
+        'contributes': '给出"最需优先…"的明确排序，结论有指向性且以图说话',
     },
     {
         'name': 'buffer',
         'when': '缓冲区：某设施/POI 周边半径内的情绪（地铁站 500m、奥体 1km）',
-        'params': 'layer, center(POI | geojson), radius_m',
+        'params': 'layer, center(POI | geojson), radius_m(默认 500·尺度表：社区/街道 250·行政区/片区 500·主城/全域 1000)',
         'yields': '缓冲面域 + 范围内聚合',
         'contributes': '回答"某设施影响范围"，支撑设施评估/选址',
     },
@@ -235,7 +235,7 @@ GEO_TOOL_CATALOG = [
         'name': 'nearest',
         'when': '最近邻：离某类 POI/设施最近的负面点，或 POI 锚定',
         'params': 'layer, target(POI 类型 | geojson), k',
-        'yields': '邻近配对 + 距离',
+        'yields': '邻近配对 + 距离 + 连线层（target→最近点·自动落地图）',
         'contributes': '锚定"问题点离什么设施近"，支撑归因落点',
     },
     {
@@ -248,7 +248,7 @@ GEO_TOOL_CATALOG = [
     {
         'name': 'density',
         'when': '核密度(KDE)/热力图：用户说"核密度/密度分析/聚集强度/热力分布/密集/集聚/哪里最集中/热力图/情绪热度分布"时首选——产连续密度面（=热力聚合，非逐点 Gi*）',
-        'params': 'layer, bandwidth_m(默认800), cell_size_m(默认300), value_col?(加权·默认 score), range?, mode?(2d|3d|terrain), as?, keep?',
+        'params': 'layer, radius?(2D 热力带宽·默认300), cell_size?(3D 网格边长·默认600)（尺度表同 buffer：社区250/区500/主城1000）, value_col?(加权·默认 score), range?, mode?(2d|3d|terrain), as?, keep?',
         'yields': '连续密度面——2D 彩虹热力图 / 3D 网格聚合 / 3D KDE 等值面地形（委托 Toolbox 标准色段·对称拉伸），自动落地图',
         'contributes': '"密度/密集/热力"类的标准出口=新热力图层（彩虹色带·最直观的分布可视化）；区别于 hotspot(逐点 Gi*·冷热点分类)与 zonal_stats(情绪网格聚合·归因排序)',
     },
