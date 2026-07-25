@@ -638,6 +638,14 @@
   background: var(--geojson-color-gray-100);
   border-radius: var(--geojson-radius-sm);
 }
+/* ── Vector 对话框：操作/叠置方式胶囊 ── */
+.vec-op-caps { flex-wrap: wrap; }
+.vec-op-caps .buf-cap { padding: 3px 12px; }
+.vec-how-caps { margin-top: 6px; }
+.vec-how-caps .buf-cap { padding: 3px 10px; }
+#vector-dialog .sec-select + .sec-select { margin-top: 4px; }
+#vector-dialog .buf-pf-row { margin-top: 4px; }
+#vector-dialog #vec-flt-range { margin-top: 4px; }
 /* tooltip 挂 body、fixed 定位（工具栏非 top-layer，body 上的 fixed 可正常覆盖）。
  * 配色与 .hm-tooltip 一致：白底 + 深灰小字 + 细边框。 */
 .tool-tooltip {

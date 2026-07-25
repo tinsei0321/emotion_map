@@ -813,6 +813,167 @@
             </div>
           </div>
 
+          <!-- Rank 排序（Top N 最差/最好高亮层） -->
+          <div class="pp-pane" data-pp-pane="rank" role="tabpanel" hidden>
+            <div id="rank-dialog" class="app-dialog hm-dialog">
+              <div class="dialog-body">
+
+                <!-- ① 排序维度 -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">排序维度</span></div>
+                  <div class="hm-section">
+                    <div class="buf-capsules" id="rank-by">
+                      <button type="button" class="buf-cap is-sel" data-by="worst">情绪最差</button>
+                      <button type="button" class="buf-cap" data-by="best">情绪最好</button>
+                    </div>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">Top N <span class="hm-val" id="rank-topn-val">Top 5</span></div>
+                    <input type="range" class="set-range" id="rank-topn" min="3" max="10" value="5" step="1">
+                  </div>
+                </div>
+
+                <!-- ② 数据 / 边界 -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">2</span><span class="hm-step-label">数据 / 边界</span></div>
+                  <div class="hm-section">
+                    <div class="hm-label">情绪点层 <span class="hm-info" data-tip="选情绪数据源（L1 热度 / L2 极性）。先按边界聚合再排序。">i</span></div>
+                    <select class="sec-select" id="rank-source"></select>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">排序边界 <span class="hm-info" data-tip="已加载的 Range 面层或预设边界库（行政区/街道/更新单元等）。点层需先按边界聚合成单元再排序。">i</span></div>
+                    <select class="sec-select" id="rank-boundary"></select>
+                  </div>
+                </div>
+
+                <!-- ③ 显示样式（只读色带预览） -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">3</span><span class="hm-step-label">显示样式</span></div>
+                  <div class="hm-section">
+                    <div class="hm-label">色板 <span class="hm-info" data-tip="高亮层复用极性 choropleth 色带（terrain-9 红绿发散）：红=最差，绿=最好。仅 Top N 单元着色。">i</span></div>
+                    <div class="hm-style-list" id="rank-ramp-preview"></div>
+                  </div>
+                </div>
+
+              </div>
+              <div class="dialog-foot">
+                <button class="btn btn-secondary" data-close>取消</button>
+                <button class="btn btn-primary" id="rank-generate">生成</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 矢量分析（叠置/裁剪/抽取/合并/筛选 五操作合一） -->
+          <div class="pp-pane" data-pp-pane="vector" role="tabpanel" hidden>
+            <div id="vector-dialog" class="app-dialog hm-dialog">
+              <div class="dialog-body">
+
+                <!-- ① 操作 -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">操作</span></div>
+                  <div class="hm-section">
+                    <div class="buf-capsules vec-op-caps" id="vec-op">
+                      <button type="button" class="buf-cap is-sel" data-op="overlay">叠置</button>
+                      <button type="button" class="buf-cap" data-op="clip">裁剪</button>
+                      <button type="button" class="buf-cap" data-op="extract_feature">抽取</button>
+                      <button type="button" class="buf-cap" data-op="merge">合并</button>
+                      <button type="button" class="buf-cap" data-op="filter_attr">筛选</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ② 参数（按操作显隐） -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">2</span><span class="hm-step-label">参数</span></div>
+
+                  <div class="hm-section" data-vop-pane="overlay">
+                    <div class="hm-label">图层 A / 图层 B <span class="hm-info" data-tip="两个面域图层做叠置分析（Range 面层或预设边界）。">i</span></div>
+                    <select class="sec-select" id="vec-layer-a"></select>
+                    <select class="sec-select" id="vec-layer-b"></select>
+                    <div class="buf-capsules vec-how-caps" id="vec-how">
+                      <button type="button" class="buf-cap is-sel" data-how="intersection">交</button>
+                      <button type="button" class="buf-cap" data-how="union">并</button>
+                      <button type="button" class="buf-cap" data-how="difference">差</button>
+                      <button type="button" class="buf-cap" data-how="symmetric_difference">对称差</button>
+                    </div>
+                  </div>
+
+                  <div class="hm-section" data-vop-pane="clip" hidden>
+                    <div class="hm-label">目标点层 / 裁剪范围 <span class="hm-info" data-tip="把点层裁到范围面内（结果为点图层）。要抽范围面本身用「抽取」。">i</span></div>
+                    <select class="sec-select" id="vec-clip-source"></select>
+                    <select class="sec-select" id="vec-clip-range"></select>
+                    <div class="hm-label">属性过滤（可选）</div>
+                    <div class="buf-pf-row">
+                      <select class="sec-select" id="vec-clip-pf-field"></select>
+                      <select class="sec-select buf-pf-op" id="vec-clip-pf-op">
+                        <option value="eq">=</option><option value="ne">≠</option>
+                        <option value="gt">&gt;</option><option value="gte">≥</option>
+                        <option value="lt">&lt;</option><option value="lte">≤</option>
+                        <option value="contains">包含</option>
+                      </select>
+                      <input type="text" class="buf-num buf-pf-val" id="vec-clip-pf-value" placeholder="值">
+                    </div>
+                  </div>
+
+                  <div class="hm-section" data-vop-pane="extract_feature" hidden>
+                    <div class="hm-label">抽取面层 / 条件 <span class="hm-info" data-tip="从面边界按属性抽单要素为独立面图层（如 用地分类 MC=商业服务业用地）。无条件=整层抽出。">i</span></div>
+                    <select class="sec-select" id="vec-ext-source"></select>
+                    <div class="buf-pf-row">
+                      <select class="sec-select" id="vec-ext-where-field"></select>
+                      <select class="sec-select buf-pf-op" id="vec-ext-where-op">
+                        <option value="eq">=</option><option value="ne">≠</option>
+                        <option value="gt">&gt;</option><option value="gte">≥</option>
+                        <option value="lt">&lt;</option><option value="lte">≤</option>
+                        <option value="contains">包含</option>
+                      </select>
+                      <input type="text" class="buf-num buf-pf-val" id="vec-ext-where-value" placeholder="值">
+                    </div>
+                  </div>
+
+                  <div class="hm-section" data-vop-pane="merge" hidden>
+                    <div class="hm-label">合并面层 / 分组字段 <span class="hm-info" data-tip=" dissolve 合并面要素：整体合并成一片，或按字段分组合并（如 按 DLMC 合并同类用地）。">i</span></div>
+                    <select class="sec-select" id="vec-merge-source"></select>
+                    <select class="sec-select" id="vec-merge-by"></select>
+                  </div>
+
+                  <div class="hm-section" data-vop-pane="filter_attr" hidden>
+                    <div class="hm-label">筛选点层 / 条件（必填） <span class="hm-info" data-tip="按属性筛点（如 极性=消极），可选再限范围。结果为点图层。">i</span></div>
+                    <select class="sec-select" id="vec-flt-source"></select>
+                    <div class="buf-pf-row">
+                      <select class="sec-select" id="vec-flt-pf-field"></select>
+                      <select class="sec-select buf-pf-op" id="vec-flt-pf-op">
+                        <option value="eq">=</option><option value="ne">≠</option>
+                        <option value="gt">&gt;</option><option value="gte">≥</option>
+                        <option value="lt">&lt;</option><option value="lte">≤</option>
+                        <option value="contains">包含</option>
+                      </select>
+                      <input type="text" class="buf-num buf-pf-val" id="vec-flt-pf-value" placeholder="值">
+                    </div>
+                    <select class="sec-select" id="vec-flt-range"></select>
+                  </div>
+                </div>
+
+                <!-- ③ 显示样式（面结果显示：取色 + 填充透明度） -->
+                <div class="hm-group" id="vec-style-group">
+                  <div class="hm-group-title"><span class="hm-step-no">3</span><span class="hm-step-label">显示样式</span></div>
+                  <div class="hm-section">
+                    <div class="hm-label">颜色 <span class="hm-info" data-tip="面结果轮廓与填充同色。用地层结果自动改附国标色（DLMC）。">i</span></div>
+                    <div id="vec-color-list"></div>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">填充透明度 <span class="hm-val" id="vec-opacity-val">20%</span></div>
+                    <input type="range" class="set-range" id="vec-opacity" min="0" max="100" value="20" step="5">
+                  </div>
+                </div>
+
+              </div>
+              <div class="dialog-foot">
+                <button class="btn btn-secondary" data-close>取消</button>
+                <button class="btn btn-primary" id="vec-generate">生成</button>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </aside>
