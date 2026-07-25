@@ -600,6 +600,44 @@
 }
 #buf-center-mode { flex-wrap: wrap; }
 #buf-center-mode .buf-cap { padding: 3px 10px; }
+/* ── Zonal/Area-stats 对话框：色带预览 / 要素胶囊 / 过滤三段 / 样式提示 ── */
+.zonal-ramp-bar {
+  height: 10px;
+  border-radius: var(--geojson-radius-sm);
+  border: 1px solid var(--geojson-color-gray-200, #e5e5e5);
+}
+.zonal-ramp-ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--geojson-color-text-secondary);
+}
+.zonal-feat-caps {
+  flex-wrap: wrap;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.zonal-feat { padding: 3px 10px; }
+.zonal-feat-empty {
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-secondary);
+}
+.buf-pf-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.buf-pf-row .sec-select { flex: 1; min-width: 0; }
+.buf-pf-op { max-width: 64px; }
+.buf-pf-val { width: 90px; }
+.as-style-hint {
+  padding: 6px 8px;
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-secondary);
+  background: var(--geojson-color-gray-100);
+  border-radius: var(--geojson-radius-sm);
+}
 /* tooltip 挂 body、fixed 定位（工具栏非 top-layer，body 上的 fixed 可正常覆盖）。
  * 配色与 .hm-tooltip 一致：白底 + 深灰小字 + 细边框。 */
 .tool-tooltip {

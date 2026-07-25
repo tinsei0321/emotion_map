@@ -715,6 +715,104 @@
             </div>
           </div>
 
+          <!-- Zonal 面域归因聚合（聚合/多区对比） -->
+          <div class="pp-pane" data-pp-pane="zonal" role="tabpanel" hidden>
+            <div id="zonal-dialog" class="app-dialog hm-dialog">
+              <div class="dialog-body">
+
+                <!-- ① 分析模式 -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">分析模式</span></div>
+                  <div class="hm-section">
+                    <div class="buf-capsules" id="zonal-mode">
+                      <button type="button" class="buf-cap is-sel" data-mode="aggregate">面域聚合</button>
+                      <button type="button" class="buf-cap" data-mode="compare">多区对比</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ② 数据 / 边界 -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">2</span><span class="hm-step-label">数据 / 边界</span></div>
+                  <div class="hm-section">
+                    <div class="hm-label">情绪点层 <span class="hm-info" data-tip="选情绪数据源（L1 热度 / L2 极性，组源为合并极性子层）。聚合按单元统计点数与极性。">i</span></div>
+                    <select class="sec-select" id="zonal-source"></select>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">聚合边界 <span class="hm-info" data-tip="已加载的 Range 面层或预设边界库（行政区/街道/更新单元等）。对比模式下先从边界选要素（≤4 区）。">i</span></div>
+                    <select class="sec-select" id="zonal-boundary"></select>
+                  </div>
+                  <div class="hm-section" id="zonal-compare-section" hidden>
+                    <div class="hm-label">对比要素（选 2-4 个）</div>
+                    <div class="buf-capsules zonal-feat-caps" id="zonal-features"></div>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">属性过滤（可选） <span class="hm-info" data-tip="按属性先筛点再聚合（如 极性=消极）。留空字段名=不过滤。">i</span></div>
+                    <div class="buf-pf-row">
+                      <select class="sec-select" id="zonal-pf-field"></select>
+                      <select class="sec-select buf-pf-op" id="zonal-pf-op">
+                        <option value="eq">=</option><option value="ne">≠</option>
+                        <option value="gt">&gt;</option><option value="gte">≥</option>
+                        <option value="lt">&lt;</option><option value="lte">≤</option>
+                        <option value="contains">包含</option>
+                      </select>
+                      <input type="text" class="buf-num buf-pf-val" id="zonal-pf-value" placeholder="值">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ③ 显示样式（只读色带预览） -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">3</span><span class="hm-step-label">显示样式</span></div>
+                  <div class="hm-section">
+                    <div class="hm-label">色板 <span class="hm-info" data-tip="极性 choropleth 固定色带（terrain-9 红绿发散·与网格聚合同源）：红=负面，绿=正面。">i</span></div>
+                    <div class="hm-style-list" id="zonal-ramp-preview"></div>
+                  </div>
+                </div>
+
+              </div>
+              <div class="dialog-foot">
+                <button class="btn btn-secondary" data-close>取消</button>
+                <button class="btn btn-primary" id="zonal-generate">生成</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 面积统计（用地/分组面积占比 choropleth） -->
+          <div class="pp-pane" data-pp-pane="area-stats" role="tabpanel" hidden>
+            <div id="area-stats-dialog" class="app-dialog hm-dialog">
+              <div class="dialog-body">
+
+                <!-- ① 统计对象（边界 + 分组字段） -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">统计对象 <span class="hm-info" data-tip="按边界统计面积与占比：用地图层按 DLMC 分组得各类用地面积占比；行政面域按名称字段得各单元面积。">i</span></span></div>
+                  <div class="hm-section">
+                    <div class="hm-label">统计边界 <span class="hm-info" data-tip="已加载的 Range 面层或预设边界库（用地分类/行政区/更新单元等）。">i</span></div>
+                    <select class="sec-select" id="as-boundary"></select>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">分组字段 <span class="hm-info" data-tip="面积按此字段分组汇总（用地数据默认 DLMC；行政面域可选名称字段）。不分组=按单元。">i</span></div>
+                    <select class="sec-select" id="as-group-by"></select>
+                  </div>
+                </div>
+
+                <!-- ② 显示样式（国标色提示 + 占比说明） -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">2</span><span class="hm-step-label">显示样式</span></div>
+                  <div class="hm-section">
+                    <div class="hm-label">着色 <span class="hm-info" data-tip="用地（DLMC）自动附国土空间规划标准色（居住黄/商业红/工业棕/绿地绿等）；非用地走默认浅填充。面积与占比写入要素属性，点击要素可查。">i</span></div>
+                    <div class="as-style-hint">用地国标色自动着色 · 面积/占比入要素属性</div>
+                  </div>
+                </div>
+
+              </div>
+              <div class="dialog-foot">
+                <button class="btn btn-secondary" data-close>取消</button>
+                <button class="btn btn-primary" id="as-generate">生成</button>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </aside>

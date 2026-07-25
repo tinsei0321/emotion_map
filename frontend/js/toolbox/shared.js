@@ -4,9 +4,9 @@
 // 循环说明：import sidebar（renderLayerList/refreshLegend）为既有模式（grid-tool.js:12 /
 // heatmap-tool.js:12 / buffer-tool.js:7 同），二者均 export function 提升声明，ES module
 // 循环下仅作运行时调用、不触 TDZ；严禁顶层 const 求值依赖 sidebar export。
-import { getLayers, addLayer, removeLayer } from '../state.js';
+import { getLayers, getLayer, addLayer, removeLayer, selectLayer, enforceMutualExclusion, isRangeLayer } from '../state.js';
 import { renderLayer, fitBoundsTo, reorderAllZ, removeLayerFromMap } from '../map.js';
-import { renderLayerList, refreshLegend } from '../sidebar.js';
+import { renderLayerList, refreshLegend, showLayerManager } from '../sidebar.js';
 import { fcBBox } from '../import.js';
 import { landuseLayerPaint } from '../landuse_colors.js';
 import { fetchRangePresets, fetchRangePreset } from '../api.js';
@@ -162,4 +162,90 @@ export function addToolboxLayer({ name, kind = 'polygon', fc, paint, parentId, f
   if (fit && _bb) fitBoundsTo(_bb, 100, 16);
   document.dispatchEvent(new CustomEvent('layers:changed'));
   return L;
+}
+
+/** 工具产物落位（手册 §4.2 骨架配套·新建或原地更新）：addToolboxLayer 通用落图 + 同类互斥 + 可选选中。
+ *  editLayerId 命中且同 _ui.tool → 原地更新（layer id 稳定·镜像「继续编辑」）；否则新建。
+ *  silent=false（UI 路径）时 selectLayer + showLayerManager + layer:selected 超链。 */
+export function placeToolLayer({ name, kind = 'polygon', fc, paint, editLayerId = '', silent = true }) {
+  const editingLayer = editLayerId ? getLayer(editLayerId) : null;
+  const tool = paint && paint._ui && paint._ui.tool;
+  if (editingLayer && tool && editingLayer.paint && editingLayer.paint._ui && editingLayer.paint._ui.tool === tool) {
+    editingLayer.fc = fc;
+    editingLayer.paint = paint;
+    editingLayer.name = name;
+    removeLayerFromMap(editLayerId);
+    renderLayer(editingLayer);
+    if (!silent) {
+      selectLayer(editLayerId);
+      document.dispatchEvent(new CustomEvent('layers:changed'));
+      document.dispatchEvent(new CustomEvent('layer:selected', { detail: editLayerId }));
+    }
+    const bb = fcBBox(fc); if (bb) fitBoundsTo(bb);
+    return editingLayer;
+  }
+  const L = addToolboxLayer({ name, kind, fc, paint });
+  for (const hid of enforceMutualExclusion(L.id)) { const hl = getLayer(hid); if (hl) renderLayer(hl); }
+  if (!silent) {
+    selectLayer(L.id);
+    showLayerManager();
+    document.dispatchEvent(new CustomEvent('layer:selected', { detail: L.id }));
+  }
+  return L;
+}
+
+// ── 数据源/边界收集（toolbox 各模块 dialog 共用）──
+/** 情绪点层源（镜像 grid-tool collectSources：L2 group 合并极性子层 + L1/L2 单点层）。 */
+export function collectPointSources() {
+  const sources = [];
+  for (const l of getLayers()) {
+    if (l.kind === 'group' && l.children && l.children.length) {
+      let merged = [];
+      for (const cid of l.children) {
+        const child = getLayer(cid);
+        if (child && child.fc && child.fc.features.length) merged = merged.concat(child.fc.features);
+      }
+      if (merged.length) sources.push({
+        value: `group:${l.id}`, label: l.name, level: 'L2', srcName: l.srcName || l.name,
+        fc: { type: 'FeatureCollection', features: merged },
+      });
+    } else if (l.kind === 'point' && l.fc && l.fc.features.length &&
+               (l.colorMode === 'l2-positive' || l.colorMode === 'l2-negative' || l.colorMode === 'l2-neutral' ||
+                l.colorMode === 'confidence')) {
+      sources.push({
+        value: `layer:${l.id}`, label: l.name, srcName: l.srcName || l.name,
+        level: l.colorMode === 'confidence' ? 'L1' : 'L2', fc: l.fc,
+      });
+    }
+  }
+  return sources;
+}
+
+/** 聚合边界源（已载 Range 面层 + 预设库合并；preset 的 GeoJSON 懒取 boundarySourceGeo）。 */
+export async function collectBoundarySources() {
+  const out = getLayers()
+    .filter((l) => l.kind === 'polygon' && isRangeLayer(l) && l.fc && l.fc.features && l.fc.features.length)
+    .map((l) => ({ value: `layer:${l.id}`, label: l.name, fc: l.fc }));
+  try {
+    const groups = await fetchRangePresets();
+    for (const g of (groups || [])) {
+      for (const it of (g.items || [])) {
+        if (it.available) out.push({ value: `preset:${it.id}`, label: `${it.label || it.id}（预设）`, presetId: it.id });
+      }
+    }
+  } catch (_) { /* 预设库不可达 → 仅用已载面层 */ }
+  return out;
+}
+
+/** 边界源 → GeoJSON（layer 直通；preset 经 /range/preset 取）。 */
+export async function boundarySourceGeo(src) {
+  if (!src) return null;
+  if (src.fc) return src.fc;
+  if (src.presetId) {
+    try {
+      const res = await fetchRangePreset(src.presetId);
+      return (res && res.geojson) || null;
+    } catch (_) { return null; }
+  }
+  return null;
 }
