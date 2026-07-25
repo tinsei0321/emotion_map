@@ -1,19 +1,24 @@
 // ═══ tools.js — Agent Loop 工具集（查询型 + 操作型，直调主窗口函数）═══
 // 还原单窗口后，tools 直调 map/state/panel（删跨窗口协议）。每个 tool 返回 {observation, data?}：
 //   observation = 给 LLM 看的摘要字符串（入 tool_history）；data = 结构化（前端可选用于渲染）。
-import { getLayers, getLayer, getSelectedLayer, addLayer, addGroup, removeLayer, setLayerVisible } from '../state.js';
+import { getLayers, getLayer, getSelectedLayer, addGroup, removeLayer, setLayerVisible } from '../state.js';
 import { fitBoundsTo, renderLayer, reorderAllZ, removeLayerFromMap } from '../map.js';
 import { activateTab, setOverview } from '../panel.js';
 import { DOMAIN_LABEL, ELEMENT_LABEL } from '../popup.js';
-import { generateGridForAI, piToNorm, polarityStops } from '../grid-tool.js';   // P1：zonal 合成聚合图层复用 piToNorm（极性→_grid_norm）+ polarityStops（terrain-9 红绿色带）
+import { generateGridForAI, piToNorm } from '../grid-tool.js';   // P1：zonal/rank 合成复用 piToNorm（极性→_grid_norm）
 import { generateHeatmapForAI, generateTerrainForAI } from '../heatmap-tool.js';   // 工作机制重构：density 委托 Toolbox（2D 彩虹/3D 地形，不自造）
 import { renderLayerList, refreshLegend } from '../sidebar.js';
 import { fcBBox, profileFields } from '../import.js';
 import { resolveRole, isRenderContract, isInternalField } from '../field_dictionary.js';   // P2/P3 字段语义层·规则标注 + _fieldSamples 语义过滤
-import { landuseLayerPaint } from '../landuse_colors.js';   // 用地层自动附标准色（EMC 产物也走此）
 import { resolveBoundaryInput } from './boundary-resolve.js';   // 中文地名→GeoJSON（治 compare 中文名错配 5.115）
-import { fetchRangePresets, fetchRangePreset } from '../api.js';   // A1：rank/area_stats 成图需 preset boundary 的 GeoJSON
 import { getCurState, CPD_STEPS } from './cpd-state.js';   // CPD Phase 2b：curState 语境 hint（不动路由）
+// ── Toolbox 统一工具集层 · 步 1：共享基建抽取至 toolbox/shared.js（手册 §3.2 去向表）——
+// import 别名保内部调用点零改动；re-export 保 tools.js 导出面兼容。
+import { buildZonalFc as _buildZonalFc, defaultPaint as _defaultPaint, renderNote as _renderNote,
+  scaleRadius as _scaleRadius, clampM as _clampM, toolContentSig as _toolContentSig,
+  addToolboxLayer, resolveBoundaryGeo as _resolveBoundaryGeoCore } from '../toolbox/shared.js';
+export { buildZonalFc, defaultPaint, renderNote, scaleRadius, clampM, toolContentSig,
+  addToolboxLayer, resolveBoundaryGeo, SCALE_TABLE, geoPost } from '../toolbox/shared.js';
 
 let _lastGrid = null;   // 最近生成聚合层（ensure_zone/query 优先用）
 
@@ -213,34 +218,7 @@ function activeAnalysis() {
   if (sel && isAnalysis(sel)) return sel;
   return getLayers().find((l) => isAnalysis(l) && l.fc && l.fc.features && l.fc.features.length) || null;
 }
-/** P1（v1.4）：rows + boundary geojson → 合成聚合 polygon FC（每 feature 注入 _grid_norm/polarity_index 供 choropleth 着色）。
- *  仅当 boundary 解析为 GeoJSON（中文名）时合成；preset_id（无 geojson）返 null（只给表格 rows）。 */
-function _buildZonalFc(rows, boundary) {
-  const feats = !boundary ? [] : (boundary.type === 'FeatureCollection' ? boundary.features : (boundary.type === 'Feature' ? [boundary] : []));
-  if (!feats.length) return null;
-  const findRow = (nm) => {
-    const s = String(nm || '').trim();
-    return rows.find((r) => String(r.name || '').trim() === s)
-      || rows.find((r) => { const rn = String(r.name || '').trim(); return rn && (rn.includes(s) || s.includes(rn)); });
-  };
-  const out = [];
-  for (const f of feats) {
-    const nm = (f.properties && f.properties.name) || '';
-    const row = findRow(nm);
-    const pi = row && row.polarity_index != null && !isNaN(Number(row.polarity_index)) ? Number(row.polarity_index) : null;
-    out.push({
-      ...f,
-      properties: {
-        ...(f.properties || {}), name: nm || (row && row.name) || '',
-        polarity_index: pi, _grid_norm: pi != null ? piToNorm(pi) : 0.5,
-        point_count: row ? (row.point_count || 0) : 0,
-        domain_top: row ? row.domain_top : null, element_top: row ? row.element_top : null,
-        issue_label: row ? row.issue_label : null,
-      },
-    });
-  }
-  return { type: 'FeatureCollection', features: out };
-}
+// _buildZonalFc 已迁 toolbox/shared.js（步 1·手册 §3.2），本文件经 import 别名 _buildZonalFc 使用。
 /** P1：zonal 合成聚合图层（choropleth 红绿）→ addResultLayer（_ui.tool='zonal' 复用 grid 着色管线）。返层对象或 null。 */
 function _zonalToLayer(boundaryLabel, rows, boundary) {
   const fc = _buildZonalFc(rows, boundary);
@@ -265,33 +243,9 @@ function _compareToLayer(results) {
     paint: _defaultPaint('zonal', 'polygon'),   // A2 paint 统一
   });
 }
-const _presetGeoCache = new Map();   // preset_id → 归一化 GeoJSON（properties.name 已对齐·Dumb 缓存）
-/** A1 共用：boundary 入参（preset_id | 中文 preset 标签 | 中文要素名 | GeoJSON dict）→ 归一化 GeoJSON（features 带 properties.name）。
- *  解析失败返 null（调用方降级纯表格，不报错·Dumb Tool 不猜）。 */
-async function _resolveBoundaryGeo(input) {
-  if (!input) return null;
-  if (typeof input === 'object') return input;   // GeoJSON dict 直通
-  let pid = String(input);
-  try {
-    const via = await resolveBoundaryInput(input);   // 中文要素名 → 单要素 GeoJSON dict；preset_id → 原样 str
-    if (via && typeof via === 'object') return via;
-    if (typeof via === 'string') pid = via;
-  } catch (_) { /* 索引构建失败 → 继续 preset 路径 */ }
-  if (_presetGeoCache.has(pid)) return _presetGeoCache.get(pid);
-  try {
-    const groups = await fetchRangePresets();
-    const items = [];
-    for (const g of (groups || [])) for (const it of (g.items || [])) items.push(it);
-    const hit = items.find((it) => it.id === pid || it.label === pid);   // 中文标签（如「行政区」）→ preset_id
-    if (hit) pid = hit.id;
-    const res = await fetchRangePreset(pid);
-    if (!res || !res.geojson) return null;
-    const nf = res.nameField || 'name';
-    const fc = { type: 'FeatureCollection', features: (res.geojson.features || []).map((f) => ({ ...f, properties: { ...(f.properties || {}), name: (f.properties || {})[nf] ?? (f.properties || {}).name } })) };
-    _presetGeoCache.set(pid, fc);
-    return fc;
-  } catch (_) { return null; }
-}
+// _resolveBoundaryGeo 核心已迁 toolbox/shared.js（步 1·手册 §3.3①：shared 不 import ai_qa/*；
+// _presetGeoCache 随迁为 shared 模块单例）。本层注入 resolveName=resolveBoundaryInput（中文要素名预解析），行为不变。
+async function _resolveBoundaryGeo(input) { return _resolveBoundaryGeoCore(input, { resolveName: resolveBoundaryInput }); }
 
 /** A1：rank Top N 高亮层（演示链「哪里最差」成图断点）。
  *  设计语言：复用 zonal 极性 choropleth（_buildZonalFc + piToNorm + polarityStops），不新造配色（与 zonal/compare 统一）。
@@ -418,52 +372,8 @@ function focusOnlyResults() {
   }
 }
 
-/** 工具产物层内容签名（B srcId·用户#3 点名两次）：与 main.js _contentSig 同语义——
- *  featureCount + bbox + 前 5 feature 几何/属性键。治 addResultLayer 仅按 name 去重 → 异名同内容堆叠。
- *  待统一：后续重构移到 state.js 共享，消除与 main.js 重复（两处签名须保持一致）。 */
-const _r4 = (x) => Math.round(x * 1e4) / 1e4;
-function _toolContentSig(fc) {
-  const feats = (fc && fc.features) || [];
-  const bb = fcBBox(fc);
-  const head = feats.slice(0, 5).map((f) => {
-    const g = f.geometry || {}; const c = g.coordinates;
-    const cSig = Array.isArray(c) ? (typeof c[0] === 'number' ? `${_r4(c[0])},${_r4(c[1])}` : JSON.stringify(c).slice(0, 48)) : '';
-    const keys = f.properties ? Object.keys(f.properties).sort().join(',') : '';
-    return `${g.type || ''}:${cSig}:${keys}`;
-  }).join('|');
-  return `${feats.length}|${bb ? bb.map(_r4).join(',') : ''}|${head}`;
-}
-
-/** A2 paint 统一：EMC 落图层确定性默认（设计语言单一来源·样式不再散落各工具）。
- *  kind=line → 关联连线（#ff9000 标注色·非数据编码）；tool=zonal/rank → 极性 choropleth（复用 grid 着色管线）；
- *  其余面结果 → 浅填充描边。buffer 等带 _ui 元数据的工具自行展开合并（{..._defaultPaint(...), _ui}）。 */
-function _defaultPaint(tool, kind) {
-  if (kind === 'line') return { color: '#ff9000', lineWidth: 2 };
-  if (tool === 'zonal' || tool === 'rank') {
-    return { _ui: { tool: 'zonal' }, fillOn: true, fillOpacity: 0.72, lineWidth: 1, lineOpacity: 0.6,
-      gridField: '_grid_norm', gridStops: polarityStops('overall') || [] };
-  }
-  return { fillOn: true, lineWidth: 2, fillOpacity: 0.2 };
-}
-/** A2 落图自检备注：渲染异常（partial/failed）时给 observation 追加中文提示（渲染层标记·不触出口裁定承重）。 */
-function _renderNote(L) {
-  return (L && L._renderState && L._renderState !== 'ok') ? '（注意：落图异常，图层已入列表但可能未正确渲染）' : '';
-}
-
-/** A3 尺度表（确定性钳制·K3 §4.3）：按范围/对象名推断分析尺度默认半径（米）。
- *  社区/街道级 250 · 行政区/单元/片区 500 · 主城/全域 1000（ tier 序敏感：先细后粗）。
- *  LLM 显式给值时经 _clampM 钳到 [50, 5000] 合理域（双保险·Dumb Tool 不盲信数值参数）。 */
-const _SCALE_TABLE = [
-  { re: /社区|街道|小区|公园|广场|学校/, radius: 250 },
-  { re: /主城|城区|中心|全域|全市|宜昌/, radius: 1000 },
-  { re: /区|单元|片区/, radius: 500 },
-];
-function _scaleRadius(hint) {
-  const s = String(hint || '');
-  for (const t of _SCALE_TABLE) if (t.re.test(s)) return t.radius;
-  return null;
-}
-function _clampM(v) { return Math.min(5000, Math.max(50, Math.round(v))); }
+// _toolContentSig / _defaultPaint / _renderNote / _SCALE_TABLE / _scaleRadius / _clampM
+// 已迁 toolbox/shared.js（步 1·手册 §3.2），本文件经 import 别名使用；main.js 同语义 _contentSig 本次不动（手册 §3.2 注）。
 
 /** 把 geo 工具产出的 GeoJSON 落地图为新图层（统一回写，复用 range-presets/grid-tool 范式）。
  * 替换语义：同名旧结果层先移除再新建（防重复堆叠）。name=图层名，kind=point|polygon。
@@ -472,44 +382,25 @@ function _clampM(v) { return Math.min(5000, Math.max(50, Math.round(v))); }
  * 沉浸聚焦：每生成一个结果 → 关其余、留本轮所有结果、缩放至并集（maxZoom 16 防过度放大）。 */
 export function addResultLayer({ name, kind = 'polygon', fc, paint, keep, fields }) {
   if (!fc || !fc.features || !fc.features.length) return null;
-  const _sig = _toolContentSig(fc);   // B srcId：异名同内容也去重（治仅按 name 去重漏洞·用户#3）
-  for (const l of getLayers()) {
-    if (l.name === name || l.srcId === _sig) { removeLayerFromMap(l.id); removeLayer(l.id); }
-  }
   // 消费式收尾：移除被引用消费的中间结果层，但 _keepIds（显式保留）豁免——显式意图覆盖默认清理。
   // 未消费的并列最终结果（如 居住+商业）保留；$n/命名引用走 _stepResults 的 fc，不依赖图层存活。
+  // （原顺序为先签名去重后收尾：二者作用不同层集、移除幂等，最终态一致；去重 + srcId 挂层现由 addToolboxLayer 内部完成）
   for (let i = _curResultIds.length - 1; i >= 0; i--) {
     if (_consumedIds.has(_curResultIds[i]) && !_keepIds.has(_curResultIds[i])) { removeLayerFromMap(_curResultIds[i]); removeLayer(_curResultIds[i]); _curResultIds.splice(i, 1); }
   }
-  // 用地层自动附制图规范标准色（任何 EMC 工具产物：extract/clip/filter/overlay/merge/buffer…）。
-  // kind=polygon 且检测为用地（有 DLMC 或层名含用地关键词）→ 标准色覆盖默认 paint 的 color/fillOpacity。
-  let _paint = paint;
-  if (kind === 'polygon') {
-    const _lu = landuseLayerPaint(fc, name);
-    if (_lu) _paint = { ...(paint || {}), ..._lu };
-  }
   // 工作机制：注入 _ui.tool（from setToolContext 的 _curTool）——让 EMC 产物带工具身份，Toolbox 编辑面板（按 _ui.tool 回填参数）对 EMC buffer/overlay/clip 等生效
+  let _paint = paint;
   if (_curTool) {
     if (!_paint) _paint = { _ui: { tool: _curTool } };
     else if (!_paint._ui) _paint = { ..._paint, _ui: { tool: _curTool } };
     else if (!_paint._ui.tool) _paint._ui.tool = _curTool;
   }
-  const L = addLayer({ name, kind, fc, paint: _paint, parentId: _aiGroup().id });
-  L.srcName = name;
-  L.srcId = _sig;   // 工具产物层挂 srcId（与 main.js 导入层同语义·供 EMC grounding + 后续去重）
+  // 通用落图（手册 §3.3②：去重/用地标准色/addLayer/renderLayer/落图自检/列表刷新）；fit=false——缩放由下方并集统一做（保持原行为）
+  const L = addToolboxLayer({ name, kind, fc, paint: _paint, parentId: _aiGroup().id, fit: false });
+  if (!L) return null;
   _registry.push({ id: L.id, name, tool: _curTool, round: _curRound, t: Date.now(), fields });   // ① registry（provenance 由 harness setToolContext 注入；fields 可选字段简表，P3 formatRegistry 用）
   if (keep) _keepIds.add(L.id);              // 显式保留登记（覆盖消费式清理）
   _curResultIds.push(L.id);                 // 登记本轮存活结果（沉浸聚焦）
-  renderLayer(L);
-  // A2 落图自检（渲染层标记·不触出口裁定承重）：bbox 越界（WGS84 合法域外）→ partial；
-  // renderLayer addSource 失败（map.js 已标 _renderState=failed）→ 告警。observation 侧经 _renderNote 消费。
-  const _bb = fcBBox(fc);
-  const _bboxBad = !!_bb && !(_bb[0] >= -180 && _bb[2] <= 180 && _bb[1] >= -90 && _bb[3] <= 90);
-  if (_bboxBad || L._renderState !== 'ok') {
-    L._renderState = _bboxBad ? 'partial' : (L._renderState || 'failed');
-    console.warn('[addResultLayer] 落图异常:', name, L._renderState, _bboxBad ? 'bbox 越界' : '');
-  }
-  renderLayerList(); refreshLegend(); reorderAllZ();
   _stepResults.push(fc);   // 登记 $n 引用（ref 解析）
   _resultIdByStep.push(L.id);   // 与 _stepResults 平行：ref('$n') 据此标消费
   focusOnlyResults();
