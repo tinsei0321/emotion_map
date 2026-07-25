@@ -17,7 +17,9 @@
 import { getLayers, setCurrentTime } from './state.js';
 import { updateGridSourceData } from './map.js';
 
-const MANIFEST_URL = '/DATA/processed/_time_manifest.json';
+// C1/T8：路径同源——DATA/processed 已迁至 performance（用户本地迁移），manifest 路径须同步。
+// 注：DATA/performance/ 当前无 _time_manifest.json，再生成属数据红线（留用户）；改路径仅为指向正确位置。
+const MANIFEST_URL = '/DATA/performance/_time_manifest.json';
 
 let _manifest = null;          // manifest 对象（datasets 数组）
 let _manifestLoading = null;   // 进行中的 Promise（防重复拉）

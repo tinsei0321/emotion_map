@@ -2,8 +2,8 @@
 // 仅 index.html 在 ?e2e=1 时 dynamic-import 此文件（生产永不加载，main.js 零 test 代码）。
 // tests/browser/ 经 window.__emcTest.loadPoints(fc) 注入 fixture 点层，供 zonal_stats/compare 聚合。
 // 复用 Import 的点层装载逻辑（splitByGeometry + detectColorMode + L2 极性拆分 + addLayer/renderLayer）。
-import { renderLayer, getMap } from './map.js';
-import { addLayer, addGroup } from './state.js';
+import { renderLayer, getMap, removeLayerFromMap } from './map.js';
+import { addLayer, addGroup, getLayers, removeLayer } from './state.js';
 import { splitByGeometry, detectColorMode, dsvRows } from './import.js';
 import { hasImport, hasRange, hasAnalysis, hasVisibleEmotionLayer } from './ai_qa/cpd-state.js';
 
@@ -34,6 +34,10 @@ window.__emcTest = {
     if (!points.features.length) return { ok: false, reason: 'no points' };
     const { fc: pfc, colorMode } = detectColorMode(points);
     const base = 'e2e_points';
+    // T9 例间清层：清旧 e2e_points 层（治每例 loadCSV +3~4 层堆叠·K3 C1·加剧超时与 context 膨胀）
+    for (const l of getLayers().slice()) {
+      if (l.srcName === base) { try { removeLayerFromMap(l.id); } catch (_) {} removeLayer(l.id); }
+    }
     // renderLayer 容忍失败（底图 style 未加载时 addSource 抛错，但 addLayer 已入 state——
     // zonal_stats/compare 只需 state 可见点层，不依赖地图渲染）。
     const safe = (fn) => { try { fn(); } catch (e) { /* map 未就绪，忽略——state 层仍可用 */ } };

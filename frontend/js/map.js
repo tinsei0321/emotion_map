@@ -452,7 +452,16 @@ export function renderLayer(layer) {
     layer.paint = layer.paint || {};
     layer.paint.hotnessBuckets = hotnessBuckets(feats);
   }
-  map.addSource(sid, { type: 'geojson', data: layer.fc });
+  // C5：addSource 容错——底图 style 未加载/数据异常时 addSource 抛错，吞则 state 与地图脱节（renderedNew=0 无上报）。
+  // 标 layer._renderState 供上层（density observation / 飞轮 renderedNew / C4 落图自检）消费，不触出口裁定承重。
+  try {
+    map.addSource(sid, { type: 'geojson', data: layer.fc });
+  } catch (e) {
+    console.warn('[render] addSource 失败:', layer.id, e.message);
+    layer._renderState = 'failed';
+    return;
+  }
+  layer._renderState = 'ok';
   if (layer.kind === 'point') {
     addPointPaint(layer, sid, lid);
     bindPointInteractions(layer, lid);
@@ -682,7 +691,7 @@ function addHeatmapPaint(layer, sid, lid) {
   const radius = p.radius ?? (unit === 'm' ? 300 : 45);
   const opacity = p.opacity ?? 0.7;
   const intensity = p.intensity ?? 1;
-  const weightField = p.weightField || 'emotion_intensity';
+  const weightField = resolveWeightField(layer, p.weightField);
   const weightCurve = p.weightCurve || 'linear';
   const rampKey = p.rampKey || 'rainbow';
   const ramp = p.rampStops || (HEATMAP_RAMPS[rampKey] && HEATMAP_RAMPS[rampKey].stops) || HEATMAP_NEGATIVE_STOPS;
@@ -739,7 +748,7 @@ function addHotpointLayer(layer, sid, lid) {
     return;
   }
   const p = layer.paint || {};
-  const weightField = p.weightField || 'emotion_intensity';
+  const weightField = resolveWeightField(layer, p.weightField);
   const rampKey = p.rampKey || 'rainbow';
   const ramp = p.rampStops || (HEATMAP_RAMPS[rampKey] && HEATMAP_RAMPS[rampKey].stops) || HEATMAP_NEGATIVE_STOPS;
   const opacity = p.opacity ?? 0.8;
@@ -762,7 +771,7 @@ function addHotpointLayer(layer, sid, lid) {
     id: lid,
     data: layer.fc.features,
     getPosition: (f) => f.geometry.coordinates,
-    getWeight: (f) => Number((f.properties || {})[weightField] ?? 0.5),
+    getWeight: (f) => weightField === 'uniform' ? 1 : Number((f.properties || {})[weightField] ?? 0.5),
     cellSize, colorRange, opacity,
     pickable: false,
   });
@@ -783,6 +792,20 @@ function addHotpointLayer(layer, sid, lid) {
 // grid 工具 square/zonal 都走 addPolygonPaint（fill + fill-extrusion + _gridColorExpr 极性色带）。
 // 放弃原因：deck.gl GridLayer extruded（方柱）在 MapLibre+MapboxOverlay 不渲染；ColumnLayer 效果不及 kepler 理想 → 用户决定回自创 fill-extrusion（去透明度+去线框）。
 // addHotpointLayer（热点图）仍用 deck.gl ScreenGridLayer（搁置，独立功能）。
+
+/** 解析有效 weight 字段：数据真有 requested → 用；否则回退 score（情绪强度·保极性张力）；再缺则 uniform（纯聚集）。
+ *  治 rainbow 压暗（C5）：emotion_intensity 缺失时不再走 coalesce 0.3（linear 插值≈0.24 低压暗→色带低端近透明）。
+ *  addHeatmapPaint + addHotpointLayer 共用同一扳机，故在此处统一解析。 */
+function resolveWeightField(layer, requested) {
+  const f = requested || 'emotion_intensity';
+  const feats = (layer.fc && layer.fc.features) || [];
+  const sample = feats.find((ft) => ft && ft.properties && Object.keys(ft.properties).length);
+  const p = sample && sample.properties;
+  if (!p) return 'uniform';
+  if (p[f] != null && p[f] !== '') return f;            // 数据真有该字段 → 用
+  if (p['score'] != null && p['score'] !== '') return 'score';   // 回退 score（情绪强度）
+  return 'uniform';                                      // 保底纯聚集（buildWeightExpression 与 getWeight 均特判）
+}
 
 /** Build a heatmap-weight expression from field + curve mode.
  *  Modes: linear|exponential × normal|inverse. "inverse" = lower value → higher weight. */

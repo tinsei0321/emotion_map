@@ -312,6 +312,22 @@ function focusOnlyResults() {
   }
 }
 
+/** 工具产物层内容签名（B srcId·用户#3 点名两次）：与 main.js _contentSig 同语义——
+ *  featureCount + bbox + 前 5 feature 几何/属性键。治 addResultLayer 仅按 name 去重 → 异名同内容堆叠。
+ *  待统一：后续重构移到 state.js 共享，消除与 main.js 重复（两处签名须保持一致）。 */
+const _r4 = (x) => Math.round(x * 1e4) / 1e4;
+function _toolContentSig(fc) {
+  const feats = (fc && fc.features) || [];
+  const bb = fcBBox(fc);
+  const head = feats.slice(0, 5).map((f) => {
+    const g = f.geometry || {}; const c = g.coordinates;
+    const cSig = Array.isArray(c) ? (typeof c[0] === 'number' ? `${_r4(c[0])},${_r4(c[1])}` : JSON.stringify(c).slice(0, 48)) : '';
+    const keys = f.properties ? Object.keys(f.properties).sort().join(',') : '';
+    return `${g.type || ''}:${cSig}:${keys}`;
+  }).join('|');
+  return `${feats.length}|${bb ? bb.map(_r4).join(',') : ''}|${head}`;
+}
+
 /** 把 geo 工具产出的 GeoJSON 落地图为新图层（统一回写，复用 range-presets/grid-tool 范式）。
  * 替换语义：同名旧结果层先移除再新建（防重复堆叠）。name=图层名，kind=point|polygon。
  * keep=true → 显式保留（用户要求/展示结果），即使被后续工具引用消费也豁免清理。
@@ -319,8 +335,9 @@ function focusOnlyResults() {
  * 沉浸聚焦：每生成一个结果 → 关其余、留本轮所有结果、缩放至并集（maxZoom 16 防过度放大）。 */
 export function addResultLayer({ name, kind = 'polygon', fc, paint, keep, fields }) {
   if (!fc || !fc.features || !fc.features.length) return null;
+  const _sig = _toolContentSig(fc);   // B srcId：异名同内容也去重（治仅按 name 去重漏洞·用户#3）
   for (const l of getLayers()) {
-    if (l.name === name) { removeLayerFromMap(l.id); removeLayer(l.id); }
+    if (l.name === name || l.srcId === _sig) { removeLayerFromMap(l.id); removeLayer(l.id); }
   }
   // 消费式收尾：移除被引用消费的中间结果层，但 _keepIds（显式保留）豁免——显式意图覆盖默认清理。
   // 未消费的并列最终结果（如 居住+商业）保留；$n/命名引用走 _stepResults 的 fc，不依赖图层存活。
@@ -342,6 +359,7 @@ export function addResultLayer({ name, kind = 'polygon', fc, paint, keep, fields
   }
   const L = addLayer({ name, kind, fc, paint: _paint, parentId: _aiGroup().id });
   L.srcName = name;
+  L.srcId = _sig;   // 工具产物层挂 srcId（与 main.js 导入层同语义·供 EMC grounding + 后续去重）
   _registry.push({ id: L.id, name, tool: _curTool, round: _curRound, t: Date.now(), fields });   // ① registry（provenance 由 harness setToolContext 注入；fields 可选字段简表，P3 formatRegistry 用）
   if (keep) _keepIds.add(L.id);              // 显式保留登记（覆盖消费式清理）
   _curResultIds.push(L.id);                 // 登记本轮存活结果（沉浸聚焦）
@@ -653,6 +671,9 @@ function _ERR_NO_VISIBLE_PT() {
  *  但绕过 addResultLayer）——补 _registry(provenance)/_stepResults($n 引用)/_curResultIds，让多步链可 $n 引用 + formatRegistry 显 provenance + 5.74 对账完整。 */
 function _registerToolboxLayer(layerId, fc, name) {
   if (!layerId) return;
+  // B srcId：density 委托产物层补 srcId（generateHeatmapForAI 创建时未设，与 addResultLayer 对齐）
+  const _tl = getLayers().find((x) => x.id === layerId);
+  if (_tl && !_tl.srcId) _tl.srcId = _toolContentSig(fc);
   _registry.push({ id: layerId, name, tool: _curTool, round: _curRound, t: Date.now() });
   _curResultIds.push(layerId);
   _stepResults.push(fc);
@@ -1134,6 +1155,12 @@ export const TOOLS = {
         });
       }
       _registerToolboxLayer(r.layerId, r.fc, params.as || r.layerName);   // 补 EMC provenance/$n 引用注册（修委托 Toolbox 的对账缺口）
+      // C分组（用户#2）：density 委托 Toolbox 产出的层挂 AI 组（与 addResultLayer :343 parentId 对齐），
+      // 让 EmotionMap Copilot 组卡非空。generateHeatmapForAI 的 layers:changed 在 parentId 设上前已 fire，故补 dispatch。
+      {
+        const _aiL = getLayers().find((x) => x.id === r.layerId);
+        if (_aiL && !_aiL.parentId) { _aiL.parentId = _aiGroup().id; document.dispatchEvent(new CustomEvent('layers:changed')); }
+      }
       const _dName = params.as || r.layerName;
       const _modeLabel = { '2d': '热力图(2D彩虹)', '3d': '网格聚合(3D·固定色段)', terrain: '情绪地形(3D KDE 等值面)' }[_mode];
       return {

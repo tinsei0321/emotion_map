@@ -247,10 +247,10 @@ GEO_TOOL_CATALOG = [
     },
     {
         'name': 'density',
-        'when': '核密度(KDE)栅格：用户说"核密度/密度分析/聚集强度/热力分布"时首选——产连续密度面',
-        'params': 'layer, bandwidth_m(默认800), cell_size_m(默认300), value_col?(加权), range?, as?, keep?',
-        'yields': '规则方格面网格，每格 density + _level(0..1) + _band(0..4 离散分段)，自动落地图',
-        'contributes': '"核密度分析"的标准出口=新图层（离散分段色带，对称拉伸）；区别于 hotspot(逐点Gi*)与 ensure_zone(情绪网格聚合)',
+        'when': '核密度(KDE)/热力图：用户说"核密度/密度分析/聚集强度/热力分布/密集/集聚/哪里最集中/热力图/情绪热度分布"时首选——产连续密度面（=热力聚合，非逐点 Gi*）',
+        'params': 'layer, bandwidth_m(默认800), cell_size_m(默认300), value_col?(加权·默认 score), range?, mode?(2d|3d|terrain), as?, keep?',
+        'yields': '连续密度面——2D 彩虹热力图 / 3D 网格聚合 / 3D KDE 等值面地形（委托 Toolbox 标准色段·对称拉伸），自动落地图',
+        'contributes': '"密度/密集/热力"类的标准出口=新热力图层（彩虹色带·最直观的分布可视化）；区别于 hotspot(逐点 Gi*·冷热点分类)与 zonal_stats(情绪网格聚合·归因排序)',
     },
 ]
 
