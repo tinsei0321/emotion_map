@@ -7,7 +7,16 @@
 
 ---
 
-## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + LLM优化键四修）
+## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + 优化工程系统化）
+
+### ✅ EMC prompt 优化工程系统化（revision-log 5.217，commit 2bcc08c/65add16/b491c23 · **待用户 push**）
+
+- bug JSON 根治：OPTIMIZE_TEMPLATE 弱约束 → Flash 出 JSON。修 meta-prompt 强化（禁 JSON + few-shot 用户理想例）+ _parseOptimize 拦 JSON + onOptimize 流式拦截。
+- 简洁条目化风格：分号短句 + 去修饰 + 关键词（用户精确 spec + few-shot）。
+- 超时 <3s：buildOptimizeContext（精简·层名+kind+字段role·~500 token）替换 buildContext。
+- feature：Layers 数据消费（关联层名）+ 智能场景（守不增维度）。
+- 客观评估：大工程·meta-prompt 多轮迭代（3-5 轮·反馈驱动）。
+- **留用户**：浏览器验 bug 不复现 + 简洁条目化 + <3s + 不增维度。
 
 ### ✅ EMC 优化键四修（revision-log 5.216，commit fd077e0 · **待用户 push**）
 
