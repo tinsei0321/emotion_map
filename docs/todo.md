@@ -7,9 +7,16 @@
 
 ---
 
-## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + UI 显化）
+## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + 优化键(反转UI显化)）
 
-### ✅ EMC UI 显化已识别标签（revision-log 5.213，commit 0a02412 · **待用户 push**）
+### ✅ EMC 一键优化 prompt 键（revision-log 5.214，commit d6e9add · **待用户 push**）
+
+- 反转 5.213（删 chip 显示）+ 加真功能键（用户澄清"要功能键非显示"）。
+- #aiq-optimize 发送键左 32×32（sparkle icon）·[_optimizePrompt](frontend/js/ai_qa/panel.js#L984) 代码改写（指代展开+口语规范+意图模板）·撤销（.is-optimized ⇄ undo icon）。
+- 纯代码（毫秒级无 LLM）·非深度优化（接受改写有限）。纯前端·不动 diagnose/schema/orchestrate。
+- **留用户**：浏览器肉眼验输入"这边怎么样"+选中西陵区→点优化→改写→撤销恢复。
+
+### ✅ EMC UI 显化已识别标签（revision-log 5.213，commit 0a02412 · **已反转于 5.214**）
 
 - 用户想法"发送键左侧加 LLM 优化键"·校准否决（重复 diagnose + 多 2-5s + 改写风险）·选 A UI 显化。
 - [_liveRecognize](frontend/js/ai_qa/panel.js#L947)（代码关键词·几 ms·非 LLM）→ 区名/意图/尺度 chip·输入时实时显。
