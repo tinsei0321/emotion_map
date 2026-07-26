@@ -576,6 +576,7 @@ export async function buildContext() {
       return `${l.name}(${cnt}条,${_kindTag(l)}${_boundaryEnum(l)}${fs ? ',字段:' + fs : ''})`;
     }))).join('、');
   parts.push('已加载图层（仅 Layers 当前显示·EMC 只用可见层，未显示层禁用）：' + (loaded || '（无）'));
+  parts.push('EMC 分析能力（可生成·勿判缺数据需上传）：密度热力图（2D 彩虹/3D）/ 网格聚合（任意尺度·400m/1000m/...）/ 情绪地形（3D KDE）/ 区域聚合统计（行政/规划单元）/ 排序（最差最好 Top N）/ 缓冲区 / 叠置 / 裁取范围 / 抽取要素 / 属性筛选 / 合并 / 邻近 / 聚集热点 / 面积统计 / 区域对比。用户要这类分析时直接选对应工具生成·勿判"缺面层/网格层需上传"。');
   // 数据可见纪律：不注入 registry catalog 全量（formatGeoCatalog）——未显示层一律不准用，防"只传 L1·T1 却跑 L2"
   const wisdom = await getWisdom();
   if (wisdom) parts.push(wisdom);
@@ -662,7 +663,12 @@ function _adoptToolboxResult(layerId, fc, name, { keep = false } = {}) {
     if (_consumedIds.has(_curResultIds[i]) && !_keepIds.has(_curResultIds[i])) { removeLayerFromMap(_curResultIds[i]); removeLayer(_curResultIds[i]); _curResultIds.splice(i, 1); }
   }
   const L = getLayers().find((x) => x.id === layerId);
-  if (L && !L.parentId) L.parentId = _aiGroup().id;
+  if (L && !L.parentId) {
+    L.parentId = _aiGroup().id;
+    // 补 group.children（getChildren 用此字段·addLayer 无 parentId 时未 push·5.221 治 Layers 组卡数=0）
+    const _g = getLayers().find((x) => x.id === L.parentId);
+    if (_g && _g.kind === 'group' && !_g.children.includes(L.id)) _g.children.push(L.id);
+  }
   focusOnlyResults();
   const bb = _unionBBox(_curResultIds); if (bb) fitBoundsTo(bb, 100, 16);
   document.dispatchEvent(new CustomEvent('layers:changed'));
