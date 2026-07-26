@@ -37,3 +37,17 @@ skills-lock.json
 
 # AI 问答自成长知识闭环（含用户问题，本地不提交）
 DATA/ai_qa/
+
+# 参赛文件生成工具链（node 依赖本地，不入库）
+node_modules/
+
+# 其他 AI 工具产物（不入库）
+.workbuddy/
+.zcode/
+
+# 参赛文件（含个人信息·姓名/报名 token，本地保管不入库；2026 火山杯 AI 创客大赛）
+大赛报名_内容草稿.md
+signup_page.yml
+输出/
+package.json
+package-lock.json
