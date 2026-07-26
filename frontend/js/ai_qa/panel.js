@@ -988,14 +988,30 @@ function _liveRecognize(t) {   // 5.216 发散启发：基于用户输入类型�
 }
 // 5.215 优化键（LLM·Flash 流式 <3s·不增维度）+ 输入提示（5.213 chip 恢复·对话框下）
 let _originalInput = '';   // 优化前原文（撤销用）
-/** 5.213/5.215 输入时实时"已识别"chip（对话框下·代码几 ms·非 LLM·预览）。 */
-function _renderRecognize(tags) {
+/** 5.213/5.218 输入时实时 chip 提示（对话框下·两行：短语 + 方法 tip·代码几 ms·非 LLM）。 */
+function _renderRecognize(tags, tip) {
   const el = document.getElementById('aiq-recognize');
   if (!el) return;
-  el.hidden = !tags.length;
-  if (!tags.length) { el.innerHTML = ''; return; }
-  const _sparkle = '<span class="aiq-rec-icon" title="EMC 已识别"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/><path d="M5 4v2M4 5h2"/><path d="M19 18v2M18 19h2"/></svg></span>';
-  el.innerHTML = _sparkle + tags.map((t) => `<span class="aiq-rec-chip">${escapeHtml(t)}</span>`).join('');
+  const has = (tags && tags.length) || tip;
+  el.hidden = !has;
+  if (!has) { el.innerHTML = ''; return; }
+  const _sparkle = '<span class="aiq-rec-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/><path d="M5 4v2M4 5h2"/><path d="M19 18v2M18 19h2"/></svg></span>';
+  const line1 = (tags && tags.length) ? `<div class="aiq-rec-line">${_sparkle}${tags.map((t) => `<span class="aiq-rec-chip">${escapeHtml(t)}</span>`).join('')}</div>` : '';
+  const line2 = tip ? `<div class="aiq-rec-tip">${escapeHtml(tip)}</div>` : '';
+  el.innerHTML = line1 + line2;
+}
+/** 5.218 方法 tip（第二行·基于意图+区名→分析方法长句·启发用户操作思路）。 */
+function _liveRecTip(t) {
+  const tags = _liveRecognize(t);
+  const d = tags.find((x) => /区$/.test(x)) || '该范围';
+  const intent = tags.find((x) => ['密度', '排序', '归因', '对比', '热点', '面积'].includes(x));
+  if (intent === '密度') return `tip：通过 density（热力图）或 zonal_stats（区域着色）分析${d}的极性（积极/中性/消极）空间分布`;
+  if (intent === '排序') return `tip：通过 rank 按极性排序·找出${d}最差/最好区域 Top N`;
+  if (intent === '归因') return `tip：通过 zonal_stats 聚合${d}·4×5 domain×element 归因`;
+  if (intent === '对比') return `tip：通过 compare 并排对比${d}的情绪极性差异`;
+  if (intent === '热点') return `tip：通过 hotspot（Gi*）识别${d}负面情绪聚集冷热点`;
+  if (intent === '面积') return `tip：通过 area_stats 统计${d}各类用地面积占比`;
+  return '';
 }
 /** 5.217 优化输出解析：拦 JSON（thought/action）/ 去围栏·返干净文本（空=失败）。 */
 function _parseOptimize(raw) {
@@ -1050,7 +1066,7 @@ function _resetOptimize() {   // send 后重置（清原文 + 按钮回 sparkle 
   _originalInput = '';
   const btn = document.getElementById('aiq-optimize');
   if (btn) { btn.classList.remove('is-optimized', 'is-loading'); btn.title = '一键优化 prompt（再点撤销原文）'; }
-  _renderRecognize([]);
+  _renderRecognize([], '');
 }
 
 /** assistant 消息骨架（思考链 + 动态状态 + 解题步骤 + 结论）。trace 非空 = 历史恢复。 */
@@ -1939,7 +1955,7 @@ export function initChatPanel() {
   input?.addEventListener('input', () => {
     input.style.height = 'auto';
     input.style.height = Math.min(160, input.scrollHeight) + 'px';
-    _renderRecognize(_liveRecognize(input.value));   // 5.213/5.215 输入时实时 chip 提示（对话框下）
+    const _tags = _liveRecognize(input.value); _renderRecognize(_tags, _liveRecTip(input.value));   // 5.218 chip 两行：短语 + 方法 tip
   });
 
   // + 附加当前选中图层/范围作上下文

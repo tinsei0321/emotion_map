@@ -361,10 +361,12 @@
 [data-theme="dark"] #emc-panel .aiq-optimize:hover { background: rgba(255,255,255,0.15); color: #fff; }
 [data-theme="dark"] #emc-panel .aiq-optimize.is-optimized { color: #D97757; background: rgba(217,119,87,0.2); }
 /* 5.213/5.215 输入提示 chip（对话框下·实时已识别·填充式胶囊·设计语言统一）*/
-.aiq-recognize { display: flex; gap: 4px; align-items: center; padding: 2px 6px; flex-wrap: wrap; }
+.aiq-recognize { display: flex; flex-direction: column; gap: 2px; padding: 2px 6px; }
 .aiq-recognize[hidden] { display: none; }
-.aiq-rec-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; color: var(--geojson-color-text-secondary, #666); background: var(--geojson-color-gray-100, #f0f0f0); flex-shrink: 0; }
-[data-theme="dark"] #emc-panel .aiq-rec-icon { color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.08); }
+.aiq-rec-line { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.aiq-rec-tip { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary, #999); padding: 1px 4px; line-height: 1.4; }
+.aiq-rec-icon { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 5px; color: var(--geojson-color-text-secondary, #666); background: transparent; flex-shrink: 0; }
+[data-theme="dark"] #emc-panel .aiq-rec-icon { color: rgba(255,255,255,0.7); }
 .aiq-rec-chip { font-size: var(--geojson-typography-size-2xs); padding: 1px 7px; border-radius: 999px; color: var(--geojson-color-text-secondary, #666); background: var(--geojson-color-gray-100, #eee); }
 
 /* ── 推荐追问胶囊（答案完毕后，#chat-suggest 内，点击即发；胶囊设计语言：无线框+阴影+悬停灰+紧凑）── */

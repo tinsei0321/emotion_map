@@ -360,18 +360,13 @@ function _fieldBrief(fc, maxFields = 5) {
   const parts = seen.map((k) => `${k}:${resolveRole(k) || '?'}`);
   return `[字段: ${parts.join(', ')}${seen.length >= maxFields ? '…' : ''}]`;
 }
-/** 5.217 优化专用精简 grounding（层名+kind+字段role·同步·非样本值·~500 token·<3s）。
- *  区别 buildContext（完整·DataEye 样本值+分析层+wisdom·diagnose 用）：优化只需层标识·精简提速。 */
+/** 5.217/5.218 优化专用极简 grounding（只层名+kind·~200 token·大幅减 token 提速）。
+ *  区别 buildContext（完整·diagnose 用）：优化只需层标识·极简。 */
 export function buildOptimizeContext() {
-  const layers = getLayers();
-  const loaded = layers
+  const loaded = getLayers()
     .filter((l) => l.visible && l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length)
-    .map((l) => {
-      const cnt = l.fc.features.length;
-      const fs = _fieldBrief(l.fc);
-      return `${l.name}(${cnt}条,${_kindTag(l)}${fs ? ',' + fs : ''})`;
-    }).join(' | ');
-  return loaded ? `已加载可见图层：${loaded}` : '（无可见图层）';
+    .map((l) => `${l.name}(${_kindTag(l)})`).join(' | ');
+  return loaded ? `可见图层：${loaded}` : '（无可见图层）';
 }
 
 /** formatRegistry：产出图层清单（注入 finalStep/review/revise prompt，让模型 ground 在真值，禁编不在列表的层）。
