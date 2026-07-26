@@ -2,7 +2,7 @@
 // 还原单窗口后，tools 直调 map/state/panel（删跨窗口协议）。每个 tool 返回 {observation, data?}：
 //   observation = 给 LLM 看的摘要字符串（入 tool_history）；data = 结构化（前端可选用于渲染）。
 import { getLayers, getLayer, getSelectedLayer, addGroup, removeLayer, setLayerVisible } from '../state.js';
-import { fitBoundsTo, renderLayer, reorderAllZ, removeLayerFromMap } from '../map.js';
+import { fitBoundsTo, renderLayer, reorderAllZ, removeLayerFromMap, getMap } from '../map.js';
 import { activateTab, setOverview } from '../panel.js';
 import { DOMAIN_LABEL, ELEMENT_LABEL } from '../popup.js';
 import { generateGridForAI } from '../grid-tool.js';   // density/ensure_zone 委托（piToNorm 已随迁 toolbox 模块·步 7 prune）
@@ -1093,7 +1093,9 @@ export const TOOLS = {
     const _vl = params.layer ? null : pickVisiblePointLayer();
     if (!params.layer && !_vl) return _ERR_NO_VISIBLE_PT();
     const _srcKey = params.layer ? undefined : _vl.sourceKey;   // 显式 layer → generateXxx 自动选源；否则传可见 sourceKey
-    const _mode = params.mode === 'terrain' ? 'terrain' : params.mode === '3d' ? '3d' : '2d';
+    const _mode = params.mode === 'terrain' ? 'terrain' : params.mode === '3d' ? '3d' : params.mode === '2d' ? '2d' : (() => {   // 5.222 视角默认：2D 视角(pitch≤1)→2d 热力图·3D(pitch>1)→3d 网格柱
+      try { const _m = getMap(); return (_m && _m.getPitch() > 1) ? '3d' : '2d'; } catch (_) { return '2d'; }
+    })();
     try {
       let r;
       if (_mode === 'terrain') {
