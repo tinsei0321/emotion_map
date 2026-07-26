@@ -341,6 +341,11 @@
 .aiq-phase-chips { display: flex; gap: 4px; margin-top: 4px; }
 .aiq-phase-chips span { font-size: var(--geojson-typography-size-2xs); padding: 1px 7px; border-radius: 999px; color: var(--geojson-color-text-tertiary); background: var(--geojson-color-gray-100, #eee); }
 .aiq-phase-chips span.active { color: #fff; background: var(--geojson-color-brand-primary, #4285F4); font-weight: var(--geojson-typography-weight-semibold); }
+.aiq-phase-chips span.done { color: var(--geojson-color-text-secondary, #666); background: var(--geojson-color-gray-200, #e0e0e0); }
+/* E2 进度透明（治 C9 延迟感知）：阶段计时 + 取消按钮（填充式无线框·胶囊设计语言·memory avoid-frames-fill-style/capsule-button-design-language）*/
+.aiq-thinking-elapsed { display: inline-block; margin-left: 6px; font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary, #999); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.aiq-abort-btn { display: inline-block; margin-left: 8px; font-size: var(--geojson-typography-size-2xs); padding: 1px 8px; border-radius: 999px; color: var(--geojson-color-text-tertiary, #999); background: transparent; border: none; cursor: pointer; transition: background 0.15s, color 0.15s; }
+.aiq-abort-btn:hover { background: var(--geojson-color-gray-200, #e0e0e0); color: var(--geojson-color-text-primary, #333); }
 
 /* ── 推荐追问胶囊（答案完毕后，#chat-suggest 内，点击即发；胶囊设计语言：无线框+阴影+悬停灰+紧凑）── */
 /* 推荐追问胶囊（EMC 深色面板内：半透明深底 + 浅字 + 橙标签，对齐 emc-welcome-chip/exit-badge；勿用白底+主题字变量——深色 EMC 里文字变量翻浅→浅字白底看不清）*/
