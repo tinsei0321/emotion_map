@@ -7,7 +7,15 @@
 
 ---
 
-## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + LLM优化键）
+## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + LLM优化键四修）
+
+### ✅ EMC 优化键四修（revision-log 5.216，commit fd077e0 · **待用户 push**）
+
+- bug 缺数据代码块：_esc 加反引号转义（composeGapCard 动态值含 ` 致 marked 代码块）。
+- 优化键位置：margin-left:auto + margin-right:2px（发送键左 2px 间隔）。
+- 撤销 icon：Lucide undo（左上箭头+弧·换旧丑回箭头）。
+- chip 发散：_liveRecognize 升级（区名→子地点/密度→热力图名词/多地点→对比·最多 6 chip·启发）。
+- chip 发散 vs 优化不增维度（语境不同·并存）。
 
 ### ✅ EMC LLM prompt 优化键（revision-log 5.215，commit 30237cb · **待用户 push**）
 
