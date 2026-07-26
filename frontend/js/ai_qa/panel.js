@@ -1,6 +1,6 @@
 // ═══ panel.js — AI 问答 UI（底部滑出 · agent loop · 历史持久化 · 思考深度开关 · 动态状态）═══
 import { orchestrate, getTemplateStats } from './harness.js';
-import { buildContext, TOOLS, resetStepResults, resetCurrentResults, cleanupConsumedResults, getFig } from './tools.js';
+import { buildContext, buildOptimizeContext, TOOLS, resetStepResults, resetCurrentResults, cleanupConsumedResults, getFig } from './tools.js';
 import { initCpdState, subscribe, getCurStepIdx, CPD_STEPS, relayoutFloats } from './cpd-state.js';
 import { initCpdGuide, recomputeGuidance, refreshGuidance, suppressGuidance } from './cpd-guide.js';   // CPD：引导引擎（依赖注入，零反向 import）
 import { getLayers, selectLayer, getSelectedLayer } from '../state.js';
@@ -1020,7 +1020,7 @@ async function _toggleOptimize() {
   _originalInput = input.value;
   const _oldPh = input.placeholder;
   try {
-    const ctx = { context: await buildContext(), signal: _abortCtl ? _abortCtl.signal : undefined };
+    const ctx = { context: buildOptimizeContext(), signal: _abortCtl ? _abortCtl.signal : undefined };   // 5.217 精简 context（同步·<3s）·非 buildContext（完整·慢）
     input.placeholder = 'prompt 优化中…';
     input.value = '';
     const finalAcc = await optimizeStep(ctx, {
