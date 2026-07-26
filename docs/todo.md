@@ -7,7 +7,14 @@
 
 ---
 
-## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + 优化工程+chip tip修）
+## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + 优化工程+chip+密度修+中文化）
+
+### ✅ EMC density 红色修 + 中文化（revision-log 5.220，commit 689abf6 · **待用户 push**）
+
+- Bug 2 density 红色大面积：intensity 1→0.6 + radius 300→200 + rainbow stops 红段 0.85→0.92（红只最高·低密度可见）。
+- 中文化：_liveRecTip 英文→中文（密度热力图/分区统计...）+ FINAL_TEMPLATE 加⑤禁英文 GIS 术语。
+- Bug 1（Layers）：根因误判（addLayer push group.children）·待 Playwright 实测（visible/gfold/css）。
+- **留用户**：浏览器验 density 红色 + 中文化 + Bug 1（实测给场景）。
 
 ### ✅ EMC chip tip 标签对齐 + 衔接确认 + 自成长 P2（revision-log 5.219，commit b5e0675 · **待用户 push**）
 
