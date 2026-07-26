@@ -1004,13 +1004,14 @@ function _renderRecognize(tags, tip) {
 function _liveRecTip(t) {
   const tags = _liveRecognize(t);
   const d = tags.find((x) => /区$/.test(x)) || '该范围';
-  const intent = tags.find((x) => ['密度', '排序', '归因', '对比', '热点', '面积'].includes(x));
-  if (intent === '密度') return `tip：通过 density（热力图）或 zonal_stats（区域着色）分析${d}的极性（积极/中性/消极）空间分布`;
-  if (intent === '排序') return `tip：通过 rank 按极性排序·找出${d}最差/最好区域 Top N`;
-  if (intent === '归因') return `tip：通过 zonal_stats 聚合${d}·4×5 domain×element 归因`;
-  if (intent === '对比') return `tip：通过 compare 并排对比${d}的情绪极性差异`;
-  if (intent === '热点') return `tip：通过 hotspot（Gi*）识别${d}负面情绪聚集冷热点`;
-  if (intent === '面积') return `tip：通过 area_stats 统计${d}各类用地面积占比`;
+  if (tags.includes('热力图') || tags.includes('核密度') || tags.includes('热点分布')) return `tip：通过 density（热力图）或 zonal_stats（区域着色）分析${d}的极性（积极/中性/消极）空间分布`;
+  if (tags.includes('Top N 排序')) return `tip：通过 rank 按极性排序·找出${d}最差/最好区域 Top N`;
+  if (tags.includes('4×5 归因')) return `tip：通过 zonal_stats 聚合${d}·4×5 domain×element 归因`;
+  if (tags.includes('区域对比')) return `tip：通过 compare 并排对比${d}的情绪极性差异`;
+  if (tags.includes('Gi* 热点') || tags.includes('冷热点')) return `tip：通过 hotspot（Gi*）识别${d}负面情绪聚集冷热点`;
+  if (tags.includes('用地占比')) return `tip：通过 area_stats 统计${d}各类用地面积占比`;
+  if (tags.includes('缓冲区')) return `tip：通过 buffer 分析${d}周边缓冲区内情绪聚合`;
+  if (tags.includes('范围裁取')) return `tip：通过 clip 裁取${d}范围内的情绪点`;
   return '';
 }
 /** 5.217 优化输出解析：拦 JSON（thought/action）/ 去围栏·返干净文本（空=失败）。 */
