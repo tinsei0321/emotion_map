@@ -7,7 +7,14 @@
 
 ---
 
-## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + 优化精准化+chip两行）
+## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + 优化工程+chip tip修）
+
+### ✅ EMC chip tip 标签对齐 + 衔接确认 + 自成长 P2（revision-log 5.219，commit b5e0675 · **待用户 push**）
+
+- chip tip bug：_liveRecTip 标签（'密度'）≠ _liveRecognize（'热力图'）→ tip 空。修 tags.includes 实际标签（8 类）·实时生效。
+- 衔接确认：路径 1（优化键→diagnose）+ 路径 2（diagnose 内部 prompt 工程）都通·已实现。
+- 自成长 P2：运行时不自动学·开发层手动·自动学（golden/RAG/反馈）需用户量·P2 后续。
+- **留用户**：浏览器验 chip 两行 tip 实时 + 优化→diagnose 衔接。
 
 ### ✅ EMC prompt 优化方向修正 + chip 两行 tip + 减 token（revision-log 5.218，commit bdf4d3a · **待用户 push**）
 
