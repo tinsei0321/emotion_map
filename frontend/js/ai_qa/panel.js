@@ -224,13 +224,15 @@ function _applyCpdHint(g) {
 }
 /** 光环 CTA 调度：import/range/layers → cpd:focus-tab（sidebar 监听）；analyze/interpret/export → 打开对话窗口（展开 input）。 */
 function _runGuidanceCta(kind) {
+  // 先展开 EMC 对话框（用户点胶囊期望展开·无论 kind·5.224 治 Bug5 上传点数据后无法展开）
+  const input = document.getElementById('chat-input');
+  if (input) setEmcCollapsed(false);
   if (kind === 'import' || kind === 'range' || kind === 'layers') {
-    document.dispatchEvent(new CustomEvent('cpd:focus-tab', { detail: kind }));
+    document.dispatchEvent(new CustomEvent('cpd:focus-tab', { detail: kind }));   // 再切 tab 提示补数据
     return;
   }
-  // analyze/interpret/export/input → 打开对话窗口收集意图（展开 input 聚焦）→ 用户选方向/细化/示例或自由输入 → EMC harness
-  const input = document.getElementById('chat-input');
-  if (input) { setEmcCollapsed(false); input.focus(); }
+  // analyze/interpret/export/input → input 聚焦 + 引导内容
+  if (input) input.focus();
   _renderGuidanceContent();   // 展开（或已展开）后显引导内容（方向级联/examples·幂等）
 }
 
