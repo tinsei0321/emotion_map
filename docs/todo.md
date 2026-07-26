@@ -7,7 +7,15 @@
 
 ---
 
-## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注）
+## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + UI 显化）
+
+### ✅ EMC UI 显化已识别标签（revision-log 5.213，commit 0a02412 · **待用户 push**）
+
+- 用户想法"发送键左侧加 LLM 优化键"·校准否决（重复 diagnose + 多 2-5s + 改写风险）·选 A UI 显化。
+- [_liveRecognize](frontend/js/ai_qa/panel.js#L947)（代码关键词·几 ms·非 LLM）→ 区名/意图/尺度 chip·输入时实时显。
+- sparkle 圆角正方图标 32×32（同 chat-send·Light token + Dark EMC 覆盖）+ chip（填充胶囊·设计语言统一）。
+- 定位：预览（代码大概）·diagnose 精确卡不重复。纯前端·不动 diagnose/schema/orchestrate。
+- **留用户**：浏览器肉眼验输入"西陵区情绪归因"→显 chip。
 
 ### ✅ EMC grounding 指代标注（revision-log 5.212，commit e3c4266 · **待用户 push**）
 
