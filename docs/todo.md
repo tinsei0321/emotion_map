@@ -7,7 +7,15 @@
 
 ---
 
-## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + 优化工程+Layers根治+能力hint）
+## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + 优化工程+Layers+Bug修）
+
+### ✅ EMC Bug3 删除符号 + Bug1 density 视角（revision-log 5.222，commit 44df49f/dd559cc · **待用户 push**）
+
+- Bug3 删除符号：streamChat 过滤控制符（DEL 等）+ FINAL_TEMPLATE 禁 markdown ~~。需用户确认具体。
+- Bug1 density 视角默认：_mode 读地图 pitch（2D→2d/3D→3d·非硬 2d）。
+- Bug1 其余（消失/2D-3D 切换）：5 机制交织·标 Playwright 实测 + 多轮。
+- Bug2（review 慢）已有降级·异步后续。Bug4（交互胶囊）列后续·讨论。
+- **留用户**：结论删除符号确认 + density 视角验 + Bug1 其余实测。
 
 ### ✅ EMC Layers 数=0根治 + 能力 hint（revision-log 5.221，commit 8348624 · **待用户 push**）
 
