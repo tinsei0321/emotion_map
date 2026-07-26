@@ -96,36 +96,52 @@ async function fetchRun(body) {
 /** 字段卡片（P2）：profile → 规则标注（resolveRole）→ miss 调 /aiqa/profile_fields → 缓存。
  *  返 {field:{role,dtype,samples,source:'rule'|'llm'|'rule-miss',confidence}}。
  *  物理列名不改（只读 fc.properties）。LLM 全不可用→miss 字段标 rule-miss 不抛（降级）。 */
+/** 字段卡片（P2 · Layer Manifest 最小版 5.211）：profile → 规则标注（resolveRole）→ miss 调 /aiqa/profile_fields → 缓存。
+ *  返 {field:{role,dtype,samples,source:'rule'|'llm'|'rule-miss',confidence}}。物理列名不改（只读 fc.properties）。LLM 全不可用→miss 字段标 rule-miss 不抛（降级）。
+ *  Layer Manifest 最小版（5.211）：_fieldCardCache 存 **Promise**（非值）→ 并发首次（layers:changed 预计算 + buildContext 同帧调）
+ *  命中同一 Promise·不重复 LLM。调用方 await 不变。 */
 export async function getFieldCard(layerId, fc, layerKind = 'point') {
-  if (layerId && _fieldCardCache.has(layerId)) return _fieldCardCache.get(layerId);
-  const profile = profileFields(fc);
-  const cards = {};
-  const miss = {};
-  for (const field of Object.keys(profile)) {
-    const p = profile[field];
-    const role = resolveRole(field);
-    if (role) {
-      cards[field] = { role, dtype: p.dtype, samples: p.samples, source: 'rule', confidence: 1.0 };
-    } else {
-      miss[field] = p;   // 规则 miss → 交 LLM
-    }
-  }
-  if (Object.keys(miss).length) {
-    const inferred = await fetchProfileFields({ fields: miss, layer_kind: layerKind });
-    const inf = (inferred && inferred.fields) || {};
-    for (const field of Object.keys(miss)) {
+  if (layerId && _fieldCardCache.has(layerId)) return _fieldCardCache.get(layerId);   // Promise·await 得值
+  const _p = (async () => {
+    const profile = profileFields(fc);
+    const cards = {};
+    const miss = {};
+    for (const field of Object.keys(profile)) {
       const p = profile[field];
-      const card = inf[field];
-      if (card && card.role) {
-        cards[field] = { role: card.role, dtype: p.dtype, samples: p.samples, source: 'llm', confidence: card.confidence || 0.5, reason: card.reason || '' };
+      const role = resolveRole(field);
+      if (role) {
+        cards[field] = { role, dtype: p.dtype, samples: p.samples, source: 'rule', confidence: 1.0 };
       } else {
-        cards[field] = { role: null, dtype: p.dtype, samples: p.samples, source: 'rule-miss', confidence: 0 };
+        miss[field] = p;   // 规则 miss → 交 LLM
       }
     }
-  }
-  if (layerId) _fieldCardCache.set(layerId, cards);
-  return cards;
+    if (Object.keys(miss).length) {
+      const inferred = await fetchProfileFields({ fields: miss, layer_kind: layerKind });
+      const inf = (inferred && inferred.fields) || {};
+      for (const field of Object.keys(miss)) {
+        const p = profile[field];
+        const card = inf[field];
+        if (card && card.role) {
+          cards[field] = { role: card.role, dtype: p.dtype, samples: p.samples, source: 'llm', confidence: card.confidence || 0.5, reason: card.reason || '' };
+        } else {
+          cards[field] = { role: null, dtype: p.dtype, samples: p.samples, source: 'rule-miss', confidence: 0 };
+        }
+      }
+    }
+    return cards;
+  })();
+  if (layerId) _fieldCardCache.set(layerId, _p);   // 首次即存 Promise·并发命中同一（并发安全）
+  return _p;
 }
+/** Layer Manifest 最小版（5.211）：新可见层导入即预计算 fieldCard（fire-and-forget·首次 diagnose 命中缓存·治首字延迟·C9 根治）。
+ *  监听 layers:changed（addLayer/addResultLayer 派发）→ 无缓存的可见层 getFieldCard 预热。失败静默（buildContext 时重试）。 */
+document.addEventListener('layers:changed', () => {
+  for (const l of getLayers()) {
+    if (l.visible && l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length && !_fieldCardCache.has(l.id)) {
+      getFieldCard(l.id, l.fc, l.kind || 'point').catch(() => {});   // fire-and-forget·失败静默
+    }
+  }
+});
 
 // geoFetch 已删（步 7·手册 §3.2：由 api.js geoPost 取代）；_LAYER_REF_KEYS 随迁——
 // $n/命名引用预解析在各委托层内联（ref() 保留：run_python inputs 与委托层同用）。
