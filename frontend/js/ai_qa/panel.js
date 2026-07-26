@@ -224,16 +224,10 @@ function _applyCpdHint(g) {
 }
 /** 光环 CTA 调度：import/range/layers → cpd:focus-tab（sidebar 监听）；analyze/interpret/export → 打开对话窗口（展开 input）。 */
 function _runGuidanceCta(kind) {
-  // 先展开 EMC 对话框（用户点胶囊期望展开·无论 kind·5.224 治 Bug5 上传点数据后无法展开）
+  // 所有 kind → 展开 EMC 对话框 + input 聚焦 + 引导内容（5.224 治 Bug5·移除 cpd:focus-tab 切走·用户点胶囊期望留在 EMC）
   const input = document.getElementById('chat-input');
-  if (input) setEmcCollapsed(false);
-  if (kind === 'import' || kind === 'range' || kind === 'layers') {
-    document.dispatchEvent(new CustomEvent('cpd:focus-tab', { detail: kind }));   // 再切 tab 提示补数据
-    return;
-  }
-  // analyze/interpret/export/input → input 聚焦 + 引导内容
-  if (input) input.focus();
-  _renderGuidanceContent();   // 展开（或已展开）后显引导内容（方向级联/examples·幂等）
+  if (input) { setEmcCollapsed(false); input.focus(); }
+  _renderGuidanceContent();   // 展开 + 显引导内容（含补数据提示·非切 tab 离开 EMC）
 }
 
 // ── CPD 阶段 A/B 引导内容（导游·确定性·不调 LLM·意图识别归 harness）──
