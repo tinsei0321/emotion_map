@@ -53,6 +53,26 @@ export const SKILL_DEFS = {
   unknown:  { tool: null,          category: 'unknown',  required_slots: [],                     optional_defaults: {} },
 };
 
+/** E1 多步链注册表（纯前端·chain_id 由 harness _deriveChainId 派生·不进 diagnose prompt·非 Flash 选）。
+ *  标准 multi 链走 runChainPath（0 中间 LLM 轮·确定性执行）·治 C3 多步超时（INT-008~017）。
+ *  steps 的 params 模板：{占位} 由 runChainPath._resolveChainParams 从 diagnose.params/问句填；
+ *  $n 前序产物引用（tools.js ref 自动解析·addResultLayer 已推 _stepResults）。
+ *  list 顺序 = _deriveChainId 匹配优先级（先具体后泛·同 B_TRACK_PARADIGM 范式）。 */
+export const CHAIN_REGISTRY = [
+  { chain_id: 'extract_overlay', name: '区内某类用地',
+    triggers: [/区.{0,6}(的|内)?.{0,8}用地/, /用地.{0,4}里/],
+    steps: [
+      { tool: 'extract_feature', params: { layer: 'admin_district', where: '{question}' } },
+      { tool: 'overlay', params: { layer_a: '$1', layer_b: '{land}' } },
+    ] },
+  { chain_id: 'clip_density', name: '范围密度',
+    triggers: [/范围.{0,4}密度/, /区.{0,4}(热力|密度分布|分布)/],
+    steps: [
+      { tool: 'clip', params: { range: '{boundary}' } },
+      { tool: 'density', params: { layer: '$1' } },
+    ] },
+];
+
 /** P1 单技能路径参数校验：按 SKILL_DEFS[skill].required_slots 查缺槽、optional_defaults 补默认（用户值覆盖默认）。
  *  返 {ok, missing:[...], params}。镜像 tools.js 各工具 guard 范式——缺不可默认槽→harness 走 EXIT_GAP 诚实兜底（不赌博自纠）。 */
 export function validateParams(skill, params) {

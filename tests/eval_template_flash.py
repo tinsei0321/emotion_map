@@ -83,6 +83,10 @@ CASES = [
     ('公园与商业用地重叠部分', 'overlay'),       # 面∩面→overlay
     ('只要西陵区这个面', 'extract_feature'),    # 抽单面要素→extract 非 clip（extract/clip 边界）
     ('各区用地面积占比', 'area_stats'),         # 面积结构→area_stats 非 zonal（area_stats/zonal 边界）
+    # E1（5.210）：多步链用例（template=multi·runChainPath 目标·治 C3）。Flash 倾向 single（clip/density·也 0 轮治超时）；
+    #   期望 multi 验 Flash 识别复合。MISS（选 single）非退化（single 也 0 LLM 轮）·只是 chain 路径覆盖 = Flash 选 multi 时。
+    ('西陵区的商业用地', 'multi'),              # extract_overlay chain 目标（区内某类用地）
+    ('西陵区范围内密度分析', 'multi'),           # clip_density chain 目标（范围密度）
 ]
 
 
