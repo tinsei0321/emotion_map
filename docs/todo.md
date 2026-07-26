@@ -7,7 +7,14 @@
 
 ---
 
-## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1）
+## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest）
+
+### ✅ EMC Layer Manifest 最小版（revision-log 5.211，commit 80d09c4 · **待用户 push**）
+
+- backlog ④「字段识别分散」已被 getFieldCard 缓存（5.200-5.205）解决·本轮补两小缺口。
+- ① getFieldCard Promise 缓存（[:99](frontend/js/ai_qa/tools.js#L99)·并发首次不重复 LLM）② layers:changed 监听预计算（fire-and-forget·新层导入即算·首次 diagnose 命中缓存·治首字延迟）。
+- tools.js 单文件·不动 import.js/diagnose/schema/orchestrate。结构化 manifest + 消费统一（backlog ④ 完整版）标 YAGNI。
+- **留用户**：飞轮验首次 diagnose 首字更快 + 并发不重复 LLM。
 
 ### ✅ EMC 专题 E1 · 多步链 runChainPath（revision-log 5.210，commit f5b4078/3f31c15/3dbfcdf · **待用户 push**）
 
