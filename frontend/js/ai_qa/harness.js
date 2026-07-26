@@ -222,7 +222,7 @@ function _verifyClaims(draft) {
   let m;
   while ((m = re.exec(draft)) !== null) claims.push(m[1].trim());
   if (!claims.length) return { ok: true };
-  const actual = getLayers().map((l) => l.name).filter(Boolean);
+  const actual = getLayers().filter((l) => (l._renderState || 'ok') === 'ok').map((l) => l.name).filter(Boolean);   // E3：渲染失败层（_renderState≠ok·入列表但地图未真渲染）不计实际产出（治假完成·同 orchestrate :690 对账口径）
   const missing = claims.filter((c) => !actual.some((a) => a === c || a.includes(c) || c.includes(a)));
   if (!missing.length) return { ok: true };
   return { ok: false, hints: `诚实检查：回答声称已生成/加载「${missing.join('、')}」图层，但地图实际图层为[${actual.join('、') || '无'}]。请补做（调 geo 工具生成缺失图层）或纠正陈述（改为"尝试未成功/未生成"）。严禁谎报已做。` };
@@ -687,7 +687,7 @@ export async function orchestrate(ctx, hooks = {}) {
   // ⑤ pre-finalStep 结构化对账（intent 无关，P0b 宽容版）：missing<=2 → 保 draft + 自动标注（体验>正确性，不丢整答案）；missing>=3 大面积谎报 → 退 gap
   const _claimed = _extractClaimedLayers(draft);
   if (_claimed.length) {
-    const _actualNames = getLayers().filter((l) => l.name).map((l) => l.name);
+    const _actualNames = getLayers().filter((l) => l.name && (l._renderState || 'ok') === 'ok').map((l) => l.name);   // E3：渲染失败层（_renderState≠ok·入列表但地图未真渲染）不计"实际产出"→ 声称的若渲染失败=missing→EXIT_PARTIAL 标注（治假完成制度化）
     const _missing = _claimed.filter((c) => !_actualNames.some((a) => a === c || a.includes(c) || c.includes(a)));
     if (_missing.length >= 3) {
       const _gapText = composeGapCard(diagnose, failedObs) + '\n\n---\n**⚠️ 诚实拦截**：草稿声称已生成「' + _missing.map(_esc).join('、') + '」等图层，但地图实际图层为 [' + (_actualNames.map(_esc).join('、') || '无') + ']，大面积谎报，请用 geo 工具真正生成后再回答。';
