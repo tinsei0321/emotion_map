@@ -7,9 +7,18 @@
 
 ---
 
-## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + 优化键(反转UI显化)）
+## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + LLM优化键）
 
-### ✅ EMC 一键优化 prompt 键（revision-log 5.214，commit d6e9add · **待用户 push**）
+### ✅ EMC LLM prompt 优化键（revision-log 5.215，commit 30237cb · **待用户 push**）
+
+- 用户校准：prompt 工程=梳理已有要素（非改写/非增维度）·业界 LLM（5.214 代码差）·启发=需求更清晰。
+- [build_optimize_prompt](ai_qa/prompts.py) meta-prompt（Flash 流式·不增维度·只梳理已有·自然语言）+ router phase optimize + stages optimizeStep。
+- _toggleOptimize LLM 三态（sparkle⇄loading[spinner+placeholder"prompt优化中..."]⇄undo 撤销）。
+- 恢复 5.213 输入提示 chip（对话框下·代码预览·与优化键并存）。删 5.214 代码版。
+- 不动 diagnose/schema/orchestrate。<3s（Flash+精简+流式）。
+- **留用户**：浏览器验输入模糊→优化→梳理已有（不增维度）→启发→撤销。
+
+### ✅ EMC 一键优化 prompt 键（revision-log 5.214，commit d6e9add · **已升级为 5.215 LLM**）
 
 - 反转 5.213（删 chip 显示）+ 加真功能键（用户澄清"要功能键非显示"）。
 - #aiq-optimize 发送键左 32×32（sparkle icon）·[_optimizePrompt](frontend/js/ai_qa/panel.js#L984) 代码改写（指代展开+口语规范+意图模板）·撤销（.is-optimized ⇄ undo icon）。
