@@ -7,7 +7,32 @@
 
 ---
 
-## 📅 2026-07-27（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + 优化工程+全字段值域识别）
+## 📅 2026-07-27（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + 优化工程+全字段值域识别 + KDE 去3D）
+
+### 🔄 遗留：明早办公室大讨论 + KDE 去 3D 连带设计问题（用户主持·议题本会话未告知）
+
+- **明早办公室大讨论**：用户主持·议题本会话未告知（用户已澄清 ≠ 下方 KDE 连带问题）·等用户开题再 brainstorming。
+- **KDE 去 3D 连带设计问题**（本次改动撬动·备查·非大讨论主题）：
+  - 「情绪地形」命名：去 3D 后"地形"语义失真·是否改名（综合热度/情绪密度）？
+  - 「总体情况」栏仅剩 1 卡（情绪地形）·是否补总体分析或并入类型细分？
+  - EMC `generateTerrainForAI` 仍 3D（density mode='terrain'）·与 Toolbox 去 3D 口径分裂·是否同步去？
+  - 3D 能力收口：Grid 仍有 3D 地形（[index.html:723](frontend/index.html#L723)）·是否统一 3D 收口到 Grid？
+- **按钮文案**：现「生成 2D 热力图」（带空格·与兄弟按钮排版一致）·用户原话「生成2D热力图」·待定。
+- **浏览器验证 5.225**：KDE 情绪地形 → 单按钮「生成 2D 热力图」→ 2D 综合彩虹热力图（L1/L2 一致）。
+- **浏览器验证 5.224**：EMC 折叠胶囊点击正常展开。
+
+### ✅ KDE「情绪地形」去 3D · 统一 2D 综合彩虹热力图（revision-log 5.225，commit d6b7d2c · **已 push**）
+
+- 用户要「总体情况·情绪地形」去 3D·确认键改名「生成 2D 热力图」·结果 2D 综合彩虹。
+- 单文件 [heatmap-tool.js](frontend/js/heatmap-tool.js)：terrain 恒出 rainbow 2D + 删 3D 分支 + 删死码 generateTerrain() + 极性锁综合 + 标签/描述去 3D。
+- **未动**：Grid 3D（[index.html:723](frontend/index.html#L723)）+ EMC `generateTerrainForAI`（见遗留）。
+- node --check .mjs 语法过·浏览器视觉验留用户。
+
+### ✅ EMC Bug5 折叠胶囊无法展开（revision-log 5.224，commit 0f8761b/38b64ed · **已 push**）
+
+- 上轮代码 commit 未 sync·本次补记。Bug5：EMC 折叠胶囊点不展开。
+- 5.224（0f8761b）`_runGuidanceCta` 先展开；5.224b（38b64ed）真根因——移除 `cpd:focus-tab` 切走（点 EMC 胶囊留 EMC）。
+- 浏览器验留用户。
 
 ### ✅ EMC Flash 全字段值域识别 + EMC 组 + L2 消极（revision-log 5.223，commit b5b3981 · **待用户 push**）
 

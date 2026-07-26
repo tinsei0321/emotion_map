@@ -1,41 +1,32 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：07月26日收工（**toolbox 验收 + EMC 大收敛 5.206**）| 分支 `toolbox-unified-toolset` | 本次 push
+> 最后更新：07月27日收工（**KDE 情绪地形去 3D 5.225 + Bug5 补记 5.224**）| 分支 `main` | 本次 push
 
-## 当前节点：toolbox 验收通过待合并 + EMC 大收敛 5.206 落地，下会话推进专题 D/E（红线 eval-first）
+## 当前节点：KDE 去 3D 落地·明早办公室展开大讨论（用户主持·议题未告知 AI）
 
-今日（07-26）做 toolbox 工程验收 + EMC 大收敛批次。**toolbox 工程验收通过（建议合并·暂缓）**——三件套本机复现全绿（obs diff 0/12 + unified ALL-PASS + pipeline ALL-PASS）+ 静态 A-E 全过 + 4 裁决（§7-4 互斥扩集接受 / M6 color 判据接受 K3 修正·评审 distance 失误自认 / §6-7 area_stats 接受 / §7-3·§7-5 遗留）。EMC 大收敛 5.206 落 4 代码 commit + 文档 sync + 全盘点 18 项（不遗漏）。
+今日（07-27）收工批次：KDE「情绪地形」去 3D 统一 2D 彩虹热力图（5.225）+ 补记上轮未 sync 的 Bug5（5.224）。**明早办公室环境用户将展开一个"大讨论 + plan"**——议题用户已定但本会话未告知 AI（AI 曾据改动撬动的设计问题猜了 4 条·用户明确澄清"不是这个问题"）·下会话等用户开题再进入 brainstorming。
 
-## 今日已 commit（5.206 · revision-log §5 · branch toolbox-unified-toolset）
-- **547a334** 验收报告（`.codebuddy/reports/toolbox-unified-acceptance-2026-07-26.md`·建议合并）+ 步 1 `_contentSig` 统一（main.js import shared.toolContentSig·消重复）
-- **3d1e12b** 步 2 T3 参数序列化（治 `[object Object]`）+ T6 hasAction 门控（灭绝空心 OK·C8）
-- **1fb9dfb** 批次 A T4 胶囊矛盾（panel.js:816 strat 缺省 unknown·治 05-llm Q2）+ T5 对比入口收敛（time-bar 无焦点提示 + main.js 'c' 键注释）
-- **62f25e7** 批次 C D1 扩覆盖（harness.js:462·deriveAvailable 扩 request_upload + strategy 缺失·治 s1 残余 INT-003/004/006·eval 25/28=89% 不退化）
-- **aa61ca0** docs sync（revision-log §5 5.206 + todo 2026-07-26 当日段）
+## 今日已 commit（5.225 / 5.224 · revision-log §5 · branch main）
+- **d6b7d2c** 5.225 KDE 情绪地形去 3D·统一 2D 综合彩虹热力图（[heatmap-tool.js](frontend/js/heatmap-tool.js) 单文件：computeStyle terrain 恒出 rainbow 2D + 按钮改名「生成 2D 热力图」+ 删 3D 分支 + 删死码 generateTerrain() + 极性锁综合；未动 Grid 3D + EMC generateTerrainForAI）
+- **（补记）** 5.224 Bug5 EMC 折叠胶囊无法展开——0f8761b `_runGuidanceCta` 先展开 / 38b64ed 真根因移除 `cpd:focus-tab` 切走（上轮代码 commit·本次 sync 补入 revision-log §5 + todo）
+- **docs(sync)** revision-log §5（5.225 + 5.224 补记）+ todo 当日段 + 本交接卡
 
-## 下会话执行：专题 D/E（红线 eval-first · 后续会话各个击破）
+## 下会话：明早办公室大讨论（用户主持）
 
-**plan 文件**：`~/.claude/plans/plan-claude-plans-emc-gis-rippling-drea-whimsical-lobster.md`（全盘点 18 项 + 专题 D/E 计划·不遗漏）。**先读它 + `git log --oneline -8` 对账 5.206**。
-
-- **专题 D diagnose 认知深化**（eval-first）：D1 SOP 卡扩字段（GEO_TOOL_CATALOG paradigm.py:170-255 加 scale/preconditions/failure_modes/examples·降 eval 3 MISS 路由歧义）+ D2 method→tool 确定性映射 + D3 EMC-SUM 摘要 method/plan 采集（domain_lens threading 5.108 范式·不改 ChatRequest schema）。
-- **专题 E harness 承重**（eval-first）：E1 D3 多步链（CHAIN_REGISTRY + runChainPath + orchestrate :513 分流·0 中间 LLM 轮·治 C3 残余超时）+ E2 P0-4 进度透明（SSE 阶段时间线 + 增量落图 + 可取消·治 C9）+ E3 P1-4 partial 出口裁定（EXIT_RESULT :327/:600 + addToolboxLayer _renderState 联动·治假完成制度化）。
-- **建议序**：D 先（SOP 卡改善路由·eval gate 已稳 89%）→ E（harness 大专题·每子步独立 commit）。
+- **等用户开题**：用户将主导一个大讨论 + plan。AI 不要预设议题（本会话猜的 4 条 KDE 连带问题已被用户否决"不是这个问题"）·用户开口后再用 brainstorming 把意图聊透 → 出 plan。
+- **KDE 去 3D 连带设计问题**（备查·非大讨论主题·用户已澄清）：「情绪地形」命名（去 3D 后语义失真）/「总体情况」栏仅剩 1 卡 / EMC `generateTerrainForAI` 仍 3D（口径分裂）/ 3D 收口到 Grid / 按钮文案空格。详见 todo 🔄 遗留段。
 
 ## 留用户验证 / 未决
-- **T7 飞轮全量重跑**（`?test=1`·04-07 干净基线·首次端到端裁决·验 D1 s1 收敛 + T4/T5 效果 + T6 灭绝空心 + 干净 pass 率）。
-- **toolbox 合并**（验收通过·暂缓·用户定时机 merge `toolbox-unified-toolset` → main·20 commits）。
-- **manifest 再生成**（time-source·DATA/performance/_time_manifest.json·数据红线·时光叙事 F5 产品侧恢复）。
-- **DATA 迁移 commit**（processed→performance·用户本地未 commit·数据红线）。
-- **CPD predicates failing 另案查**（test_cpd_predicates inject_points 后 wait_predicate 超时·pre-existing 嫌疑·K3 §7-7 称未跑·与 toolbox 改动面正交）。
+- **浏览器验 5.225**：KDE → 总体情况 → 情绪地形 → 单按钮「生成 2D 热力图」→ 2D 综合彩虹热力图（L1/L2 一致·无 3D 入口）。
+- **浏览器验 5.224**：EMC 折叠胶囊点击正常展开（cpd:focus-tab 已不切走）。
+- **明早大讨论议题**：用户带到办公室。
 
 ## 红线 / 纪律（下会话守）
-- **承重三不动**：diagnose prompt（prompts.py build_diagnose_prompt）/ harness orchestrate（harness.js orchestrate 主循环）/ ChatRequest schema（schemas.py）—— 改前先扩 eval，每次只改一处，不派 subagent（承重走主线程）。
-- chain_id/method 走 domain_lens threading 不改 schema；后端零改动；不改 SKILL_DEFS/TEMPLATE_REGISTRY；禁 emoji（[OK]/[ERR]）；不动归因占位；依赖单向不破。
+- **承重三不动**：diagnose prompt（prompts.py build_diagnose_prompt）/ harness orchestrate（harness.js orchestrate 主循环）/ ChatRequest schema（schemas.py）—— 改前先扩 eval，每次只改一处，不派 subagent。
+- KDE/Toolbox 改动守「视野-数据-结论同步」+「设计语言一致性」；禁 emoji（[OK]/[ERR]）。
 
-## 恢复指引（新会话）
-1. 读 plan（`~/.claude/plans/plan-claude-plans-emc-gis-rippling-drea-whimsical-lobster.md`）+ `git log --oneline -8` 对账 5.206（547a334/3d1e12b/1fb9dfb/62f25e7/aa61ca0）。
-2. 读验收报告（`.codebuddy/reports/toolbox-unified-acceptance-2026-07-26.md`）+ K3 完成报告（`toolbox-unified-completion-2026-07-26.md`）+ 手册 v2.2。
-3. 选专题 D 或 E 起（用户定优先级·建议 D 先）。
-4. eval-first：先扩 eval → 冻结基线 → 改 → 重跑验不退化（≥89%）。
-5. 承重三不动 / 每次只改一处 / 不派 subagent。
+## 恢复指引（新会话·办公机）
+1. `git log --oneline -8` 对账（d6b7d2c 5.225 / 0f8761b+38b64ed 5.224 / b5b3981 5.223）。
+2. 读 [docs/todo.md](docs/todo.md) 当日段（2026-07-27）🔄 遗留 + revision-log §5 最新动态。
+3. 等用户开大讨论议题 → brainstorming → plan（不预设）。
