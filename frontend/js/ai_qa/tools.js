@@ -230,6 +230,24 @@ function activeAnalysis() {
   if (sel && isAnalysis(sel)) return sel;
   return getLayers().find((l) => isAnalysis(l) && l.fc && l.fc.features && l.fc.features.length) || null;
 }
+
+/** 指代解析（NL 预处理·几 ms·非 LLM·5.212）：检测问句指代词 → 标注当前聚焦对象/上轮结果。
+ *  让 diagnose Flash 知"这边/刚才"指代·不靠猜（grounding 显式关联）。保守：对象不存在不标（不误导）。 */
+export function resolveCoref(question, priorTurn) {
+  const q = String(question || '');
+  const bits = [];
+  if (/(这边|这个区|这里|此地|该区|这个)/.test(q)) {   // 空间指代 → activeAnalysis / selectedLayer
+    const an = activeAnalysis();
+    const sel = !an && getSelectedLayer && getSelectedLayer();   // an 已优先 analysis sel·无 an 才看普通 sel
+    const focus = (an && an.name && `分析层「${an.name}」`) || (sel && sel.name && `选中层「${sel.name}」`);
+    if (focus) bits.push(`「这边/这个区」→ 当前${focus}`);
+  }
+  if (/(刚才|上次|上轮|那个|之前)/.test(q) && priorTurn) {   // 时序指代 → priorTurn（上轮已做）
+    const done = priorTurn.done;
+    if (done && done !== '（无工具调用）') bits.push(`「刚才」→ 上轮 ${String(done).slice(0, 60)}`);
+  }
+  return bits.length ? `【指代解析】${bits.join('；')}。据此关联用户指代·勿再追问已可推断的对象。` : '';
+}
 // _buildZonalFc 已迁 toolbox/shared.js（步 1·手册 §3.2），本文件经 import 别名 _buildZonalFc 使用。
 // _zonalToLayer/_compareToLayer 已迁 toolbox/zonal-tool.js（步 7·合成逻辑入模块 _execute）。
 // _resolveBoundaryGeo wrapper 已删（步 7）：rank/area_stats 合成随迁模块；中文名预解析由委托层 resolveBoundaryInput 内联（§3.3①）。

@@ -4,7 +4,7 @@
 // 前置：DIAGNOSE 问题理解卡（认知层）→ 注入 ctx.context 导工具选型 + 结论颗粒度；硬缺口短路请求上传。
 // 降级：agent_step 解析失败不再裸显 raw，break loop 仍走 finalStep 出一次性 answer。
 import * as stages from './stages.js';
-import { TOOLS, setToolContext, formatRegistry, deriveAvailable, resetStepResults } from './tools.js';
+import { TOOLS, setToolContext, formatRegistry, deriveAvailable, resetStepResults, resolveCoref } from './tools.js';
 import { getLayers } from '../state.js';
 
 const MAX_ROUNDS_GIS = 6;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=6（保多目标完整性，如"西陵+伍家岗居住+商业"需多步）
@@ -531,6 +531,9 @@ export async function orchestrate(ctx, hooks = {}) {
     return { ok: true, rounds: 0, final: draft, review: { pass: true, degraded: true, skipped: 'quick-general' }, degraded: false, diagnose: { degraded: true, intent: 'general', quick: true } };
   }
 
+  // 指代解析（NL 预处理·5.212·几 ms·非 LLM）：检测"这边/刚才"→ grounding 显式标注聚焦对象·让 diagnose 不靠猜
+  const _coref = resolveCoref(ctx.question, ctx.priorTurn);
+  if (_coref) ctx.context = _coref + '\n\n' + (ctx.context || '');
   // 【Smart·计划阶段】认知前置步：DIAGNOSE 问题理解卡（LLM 产意图+method+data_plan；失败/降级不阻塞，照走 agent loop）
   let diagnose = null;
   try {
