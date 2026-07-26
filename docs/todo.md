@@ -7,6 +7,20 @@
 
 ---
 
+## 📅 2026-07-26（分支 `toolbox-unified-toolset` · toolbox 验收 + EMC 大收敛）
+
+### ✅ toolbox 验收 + EMC 大收敛批次（revision-log 5.206，commit 547a334/3d1e12b/1fb9dfb/62f25e7 · **用户手动 push**）
+
+- **toolbox 验收**（[报告](.codebuddy/reports/toolbox-unified-acceptance-2026-07-26.md)）：建议合并·三件套本机复现全绿（obs 0/12 + unified + pipeline ALL-PASS）+ 4 裁决（M6 接受 K3 color 修正·评审 distance 失误自认）。
+- **全盘点 18 项**（不遗漏·emc-fix-backlog + K3 §9 + 验收 §四 + plan 步 1-6 交叉去重）。
+- **步1** _contentSig 统一（547a334）/ **步2** T3 参数序列化 + T6 hasAction 灭绝空心 OK（3d1e12b）。
+- **批次A** T4 胶囊矛盾（strat 缺省 unknown）+ T5 对比入口收敛（无焦点提示）（1fb9dfb）。
+- **批次C** D1 扩覆盖（harness :462·治 s1 残余·eval 89% 不退化）（62f25e7）。
+- **批次B** CPD predicates failing（pre-existing 嫌疑·K3 §7-7 称未跑·登记另案）。
+- **推迟**：A3 $n 链 diff / ensure_zone registry / Layer Manifest / P2。
+- **专题 D/E 计划就绪**（diagnose SOP / harness D3+P0-4+P1-4·红线 eval-first·后续会话）。
+- **留用户**：T7 飞轮 + manifest 再生成 + DATA 迁移 commit。分支 19 commits 待合并（暂不合并）。
+
 ## 📅 2026-07-25（分支 `main` · EMC density 治本 3 包执行）
 
 ### ✅ EMC density 治本 3 包执行（revision-log 5.205，commit d8dbcb2 · **用户手动 push**）
