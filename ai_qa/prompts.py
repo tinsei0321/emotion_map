@@ -456,6 +456,38 @@ def build_deep_attribution_prompt(domain, element, polarity, zone_name, sample_t
     return prompt
 
 
+# ════════════ Prompt 优化（5.215 · Flash 流式·不增维度·梳理已有要素）════════════
+OPTIMIZE_TEMPLATE = """
+
+═══════════ 本次任务 · Prompt 优化（OPTIMIZE）═══════════
+你是情绪地图（Emotion Map·基于多源社交数据的城市情绪空间分析平台）的 prompt 工程师。把用户输入优化成**更具体、更有利于实操、逻辑更清晰**的 prompt——让用户对自己的需求更清晰（被启发）。
+
+**核心原则（不增加维度）**：
+- **只梳理用户已有的要素**（用户提到的区域/目的/对象/动作）·**不引入用户没提的维度**：
+  - 用户没提时间 → **绝不加** T1/T3 时序对比
+  - 用户没提"归因" → **绝不引导** 4×5 domain×element 归因
+  - 用户没提对比 → **绝不加** 区域对比
+- **具体化**（已有要素展开·非新增）：模糊词明确化（"这边"→具体区域名·"怎么样"→具体看什么：情绪极性 / 空间分布·"最差"→按极性最消极的位置）
+- **逻辑化**：要素间关系清晰（区域 + 看什么 + 期望呈现）
+- **操作化**：让 LLM 直接理解 + 执行（明确范围/对象/期望）·但不规定具体工具
+- **保留原意**：不编造·不额外引导用户没提的方向
+
+输出：优化后的 prompt（**自然语言·逻辑清晰·要素具体化·勿条目化编号**·除非用户原文已是条目）·禁 JSON / 禁解释 / 禁前后缀。
+
+用户输入：{user_input}
+当前数据语境（grounding）：
+{context}
+"""
+
+
+@track("MOD_AIQA.F_008", track_args=False)
+def build_optimize_prompt(context: str = '', user_input: str = '') -> str:
+    """优化阶段（5.215）：把用户 NL 优化成具体/实操/逻辑清晰的 prompt（Flash 流式·<3s）。
+    不增维度（只梳理已有要素）·让用户对需求更清晰（启发）。无 MANIFESTO（精简提速）。"""
+    prompt = _today_line() + OPTIMIZE_TEMPLATE.format(user_input=user_input or '', context=context or '（未提供数据上下文）')
+    return prompt
+
+
 # ════════════ MOD_AIQA 追踪 ID 注册（build_*_prompt 承重入口）════════════
 # diagnose prompt 永不动（保 Flash eval）——@track 是 pass-through 装饰器，不改 prompt 内容。
 register_track_id("MOD_AIQA.F_002", "build_agent_prompt（ReAct agent loop 每轮 prompt）")
@@ -464,3 +496,4 @@ register_track_id("MOD_AIQA.F_004", "build_revise_prompt（_reviseOnce 重写 pr
 register_track_id("MOD_AIQA.F_005", "build_diagnose_prompt（承重 eval-anchor：6 字段问题理解卡，永不动内容）")
 register_track_id("MOD_AIQA.F_006", "build_field_infer_prompt（P2 字段语义推断）")
 register_track_id("MOD_AIQA.F_007", "build_deep_attribution_prompt（L4 深度归因·政策→情绪→项目闭环，lazy enrichment）")
+register_track_id("MOD_AIQA.F_008", "build_optimize_prompt（5.215 Prompt 优化·Flash 流式·不增维度·梳理已有要素）")

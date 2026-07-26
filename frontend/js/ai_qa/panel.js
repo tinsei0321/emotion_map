@@ -5,7 +5,7 @@ import { initCpdState, subscribe, getCurStepIdx, CPD_STEPS, relayoutFloats } fro
 import { initCpdGuide, recomputeGuidance, refreshGuidance, suppressGuidance } from './cpd-guide.js';   // CPD：引导引擎（依赖注入，零反向 import）
 import { getLayers, selectLayer, getSelectedLayer } from '../state.js';
 import { getLastUsage, resetCallStats, getCallStats } from './api.js';
-import { SKILL_DEFS } from './stages.js';   // 阶段 D：diagnose.template→required_slots 参数引导（确定性·单一源）
+import { SKILL_DEFS, optimizeStep } from './stages.js';   // 阶段 D 参数引导 + 5.215 optimizeStep（LLM 优化 prompt）
 
 const HISTORY_KEY = 'ai_qa_history_v1';
 const ARCHIVE_KEY = 'ai_qa_archive_v1';
@@ -966,61 +966,51 @@ function _liveRecognize(t) {
   for (const [re, label] of _REC_SCALE) if (re.test(t)) { tags.push(label); break; }    // 一个尺度
   return tags.slice(0, 4);
 }
-// 5.214 一键优化 prompt（代码·几 ms·非 LLM）：指代展开 + 口语规范 + 意图模板补全。点击改写入输入框·再点撤销恢复原文。
+// 5.215 优化键（LLM·Flash 流式 <3s·不增维度）+ 输入提示（5.213 chip 恢复·对话框下）
 let _originalInput = '';   // 优化前原文（撤销用）
-const _OPT_TEMPLATES = {   // 意图 → 专业 prompt 模板（{D}=区名 {S}=尺度）
-  '归因': '分析{D}的情绪归因（按{S}行政单元聚合·极性 + 4×5 domain×element）',
-  '排序': '按情绪极性排序·找出{D}最差/最好的区域 Top 5',
-  '密度': '{D}情绪密度分布（核密度热力图）',
-  '对比': '对比{D}的情绪极性差异',
-  '缓冲': '{D}周边缓冲区情绪聚合',
-  '热点': '{D}负面情绪 Gi* 热点聚集识别',
-  '面积': '{D}各类用地面积占比统计',
-  '裁取': '裁取{D}范围内的情绪点',
-};
-function _optimizePrompt(text) {
-  const orig = String(text || '').trim();
-  if (!orig) return orig;
-  const tags = _liveRecognize(orig);
-  const district = tags.find((t) => /区$/.test(t)) || '';
-  const intent = tags.find((t) => _OPT_TEMPLATES[t]);
-  const scale = tags.find((t) => ['宏观', '中观', '微观'].includes(t)) || '中观';
-  // 指代展开（这边→选中层名）+ 口语规范
-  let t = orig;
-  const sel = getSelectedLayer && getSelectedLayer();
-  const focus = district || (sel && sel.name) || '';
-  if (focus) t = t.replace(/(这边|这个区|这里|此地|该区|这个)/g, focus);
-  t = t.replace(/怎么样|咋样|如何/g, '情绪状况');
-  t = t.replace(/看看|看一下|查查|了解下/g, '分析');
-  // 意图模板补全（识别到意图·且原文简短/模糊·包装专业结构）
-  if (intent) {
-    const tpl = _OPT_TEMPLATES[intent].replace(/\{D\}/g, focus || '该区域').replace(/\{S\}/g, scale);
-    if (t.length < 20 || /这边|怎么样|看看|咋样/.test(orig)) t = tpl;
-  }
-  return t || orig;
+/** 5.213/5.215 输入时实时"已识别"chip（对话框下·代码几 ms·非 LLM·预览）。 */
+function _renderRecognize(tags) {
+  const el = document.getElementById('aiq-recognize');
+  if (!el) return;
+  el.hidden = !tags.length;
+  if (!tags.length) { el.innerHTML = ''; return; }
+  const _sparkle = '<span class="aiq-rec-icon" title="EMC 已识别"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/><path d="M5 4v2M4 5h2"/><path d="M19 18v2M18 19h2"/></svg></span>';
+  el.innerHTML = _sparkle + tags.map((t) => `<span class="aiq-rec-chip">${escapeHtml(t)}</span>`).join('');
 }
-/** 5.214 优化/撤销切换（sparkle ⇄ undo icon via .is-optimized class）。 */
-function _toggleOptimize() {
+/** 5.215 优化/撤销切换（LLM·sparkle ⇄ loading ⇄ undo 三态）。 */
+async function _toggleOptimize() {
   const input = document.getElementById('chat-input');
   const btn = document.getElementById('aiq-optimize');
   if (!input || !btn) return;
-  if (_originalInput) {   // 已优化 → 撤销
+  if (_originalInput) {   // 撤销
     input.value = _originalInput; _originalInput = '';
     btn.classList.remove('is-optimized'); btn.title = '一键优化 prompt（再点撤销原文）';
-  } else {   // 优化
-    const opt = _optimizePrompt(input.value);
-    if (opt && opt !== input.value) {
-      _originalInput = input.value; input.value = opt;
-      btn.classList.add('is-optimized'); btn.title = '撤销（恢复原文）';
-    }
+    input.focus(); input.dispatchEvent(new Event('input'));
+    return;
+  }
+  const orig = (input.value || '').trim();
+  if (!orig) return;
+  btn.classList.add('is-loading'); btn.title = 'prompt 优化中…';
+  _originalInput = input.value;
+  const _oldPh = input.placeholder;
+  try {
+    const ctx = { context: await buildContext(), signal: _abortCtl ? _abortCtl.signal : undefined };
+    input.placeholder = 'prompt 优化中…';
+    input.value = '';
+    await optimizeStep(ctx, { onOptimize: (acc) => { input.value = acc; input.scrollTop = input.scrollHeight; } }, orig);
+    input.placeholder = _oldPh;
+    btn.classList.remove('is-loading'); btn.classList.add('is-optimized'); btn.title = '撤销（恢复原文）';
+  } catch (e) {
+    input.value = _originalInput; _originalInput = ''; input.placeholder = _oldPh;
+    btn.classList.remove('is-loading'); btn.title = '一键优化 prompt（再点撤销）';
   }
   input.focus();
-  input.dispatchEvent(new Event('input'));   // 触发自适应增高
 }
-function _resetOptimize() {   // send 后重置（清原文 + 按钮回 sparkle）
+function _resetOptimize() {   // send 后重置（清原文 + 按钮回 sparkle + 清 chip）
   _originalInput = '';
   const btn = document.getElementById('aiq-optimize');
-  if (btn) { btn.classList.remove('is-optimized'); btn.title = '一键优化 prompt（再点撤销原文）'; }
+  if (btn) { btn.classList.remove('is-optimized', 'is-loading'); btn.title = '一键优化 prompt（再点撤销原文）'; }
+  _renderRecognize([]);
 }
 
 /** assistant 消息骨架（思考链 + 动态状态 + 解题步骤 + 结论）。trace 非空 = 历史恢复。 */
@@ -1909,6 +1899,7 @@ export function initChatPanel() {
   input?.addEventListener('input', () => {
     input.style.height = 'auto';
     input.style.height = Math.min(160, input.scrollHeight) + 'px';
+    _renderRecognize(_liveRecognize(input.value));   // 5.213/5.215 输入时实时 chip 提示（对话框下）
   });
 
   // + 附加当前选中图层/范围作上下文

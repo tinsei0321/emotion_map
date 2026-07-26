@@ -259,6 +259,17 @@ export async function diagnoseStep(ctx, hooks) {
   return parseDiagnoseCard(acc.token);   // null = 解析失败（harness 降级，不抛）
 }
 
+/** 5.215 Prompt 优化（Flash 流式·把用户 NL 优化成具体/实操/逻辑清晰 prompt·不增维度·梳理已有要素）。 */
+export async function optimizeStep(ctx, hooks, userInput) {
+  const messages = [{ role: 'user', content: userInput }];
+  let acc = '';
+  await streamChat(messages, ctx.context,
+    (tok) => { acc += tok; if (hooks.onOptimize) hooks.onOptimize(acc); },
+    (err) => { throw new Error(err); },
+    { phase: 'optimize', signal: ctx.signal, model: 'flash' });
+  return acc;
+}
+
 /** 草稿结论：基于 tool_history 流式出 markdown + [ref:]。 */
 export async function finalStep(ctx, hooks, toolHistory) {
   const messages = [...(ctx.history || []), { role: 'user', content: ctx.question }];
