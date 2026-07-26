@@ -688,9 +688,9 @@ function addHitLayer(hitLid, sid, filter) {
 function addHeatmapPaint(layer, sid, lid) {
   const p = layer.paint || {};
   const unit = p.unit || 'm';                       // 'm' default, 'px' advanced
-  const radius = p.radius ?? (unit === 'm' ? 300 : 45);
+  const radius = p.radius ?? (unit === 'm' ? 200 : 45);
   const opacity = p.opacity ?? 0.7;
-  const intensity = p.intensity ?? 1;
+  const intensity = p.intensity ?? 0.6;
   const weightField = resolveWeightField(layer, p.weightField);
   const weightCurve = p.weightCurve || 'linear';
   const rampKey = p.rampKey || 'rainbow';

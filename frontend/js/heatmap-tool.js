@@ -896,7 +896,7 @@ function generateHeatmap(btn) {
  *  2D 热力图无后端（MapLibre 原生 kind:'heatmap'，fc 直喂渲染器）；rampKey 默认 'rainbow'（综合彩虹）。
  *  返回 {layerId, layerName, featureCount, level, polarity, fc}（与 generateGridForAI 同构）。 */
 export async function generateHeatmapForAI(opts = {}) {
-  const p = { radius: 300, opacity: 0.7, intensity: 1.0, weightField: 'emotion_intensity',
+  const p = { radius: 200, opacity: 0.7, intensity: 0.6, weightField: 'emotion_intensity',
               weightCurve: 'linear', intensityMin: 0, rampKey: 'rainbow', silent: true, ...opts };
   const sources = collectSources();
   if (!sources.length) throw new Error('无可用情绪点图层（先在 Layers 加载/上传）');

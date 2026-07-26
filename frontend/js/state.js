@@ -463,10 +463,10 @@ export const HEATMAP_RAMPS = {
     stops: [
       [0.00, 'rgba(0,0,255,0)'],
       [0.15, '#0000FF'],
-      [0.30, '#00FF00'],
-      [0.50, '#FFFF00'],
-      [0.70, '#FF8800'],
-      [0.85, '#FF4400'],
+      [0.35, '#00FF00'],
+      [0.55, '#FFFF00'],
+      [0.75, '#FF8800'],
+      [0.92, '#FF4400'],
       [1.00, '#FF0000'],
     ],
   },
@@ -680,9 +680,9 @@ export function addLayer({ name, kind, fc, needsAnalysis = false, colorMode, pai
       : kind === 'heatmap'
         ? {
             unit: 'm',           // 'm' (geographic meters, default) | 'px' (screen pixels)
-            radius: 300,         // 300 m default — 城市规划尺度核密度带宽
+            radius: 200,         // 200 m default — 收窄带宽·聚集区更精细（5.220 治红色大面积）
             opacity: 0.7,
-            intensity: 1,
+            intensity: 0.6,      // 降放大·高分少·红少（5.220）
             rampKey: 'rainbow',  // 中立色带，不暗示极性
             weightField: 'emotion_intensity',  // 强度做权重（v2 L2 颗粒度）
             weightCurve: 'linear',
