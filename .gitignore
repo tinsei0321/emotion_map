@@ -37,3 +37,10 @@ skills-lock.json
 
 # AI 问答自成长知识闭环（含用户问题，本地不提交）
 DATA/ai_qa/
+
+# 参赛文件生成工具链 + 参赛文件（main a8fdf09 忽略·toolbox 同步忽略规则·参赛文件本身不同步 toolbox）
+node_modules/
+大赛报名_内容草稿.md
+signup_page.yml
+package.json
+package-lock.json
