@@ -632,16 +632,22 @@ function closeDialog() {
  *  v5：selectedTypes 语义见 getSelectedTypes。
  *    - null：跳过 type 过滤（L1 无字段）
  *    - 数组：按数组过滤（空数组 = 一个都不留，generateHeatmap 提前拦截） */
-function filterFc(fc, selectedTypes, intensityMin) {
+function filterFc(fc, selectedTypes, intensityMin, polarity) {
   if (!fc || !fc.features) return { type: 'FeatureCollection', features: [] };
   const needTypeFilter = Array.isArray(selectedTypes);
   const needIntensityFilter = intensityMin > 0;
-  if (!needTypeFilter && !needIntensityFilter) return fc;
+  const _POL_MAP = { P: ['positive', 'Positive', '积极', 'very_positive', 'Very Positive', '非常积极'],
+                     N: ['negative', 'Negative', '消极', 'very_negative', 'Very Negative', '非常消极'],
+                     O: ['neutral', 'Neutral', '中性'] };
+  const needPolFilter = polarity && polarity !== 'ALL' && _POL_MAP[polarity];
+  const polSet = needPolFilter ? new Set(_POL_MAP[polarity].map((s) => s.toLowerCase())) : null;
+  if (!needTypeFilter && !needIntensityFilter && !needPolFilter) return fc;
   const set = needTypeFilter ? new Set(selectedTypes) : null;
   const features = fc.features.filter((f) => {
     const p = f.properties || {};
     if (needTypeFilter && !set.has(emotionTypeOf(f))) return false;
     if (needIntensityFilter && Number(p.emotion_intensity ?? 0) < intensityMin) return false;
+    if (needPolFilter) { const pv = p.polarity; if (pv == null || !polSet.has(String(pv).toLowerCase())) return false; }   // 5.223 polarity 筛（消极/积极/中性·治消极=综合）
     return true;
   });
   return { type: 'FeatureCollection', features };
@@ -907,7 +913,7 @@ export async function generateHeatmapForAI(opts = {}) {
   const polarity = level === 'L2' ? (p.polarity || 'ALL') : null;
   const resolved = resolveSource(sources, level, polarity);
   if (!resolved || !resolved.fc || !resolved.fc.features || !resolved.fc.features.length) throw new Error('所选源无点数据');
-  const fc = filterFc(resolved.fc, null, p.intensityMin);   // AI 入口：selectedTypes=null（全数据）
+  const fc = filterFc(resolved.fc, null, p.intensityMin, polarity);   // 5.223 加 polarity 筛（消极/积极/中性·治消极=综合）
   if (!fc.features.length) throw new Error('筛选后无数据点');
   const rampKey = p.rampKey;
   const ramp = HEATMAP_RAMPS[rampKey];

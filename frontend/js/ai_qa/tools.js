@@ -576,7 +576,35 @@ export async function buildContext() {
       return `${l.name}(${cnt}条,${_kindTag(l)}${_boundaryEnum(l)}${fs ? ',字段:' + fs : ''})`;
     }))).join('、');
   parts.push('已加载图层（仅 Layers 当前显示·EMC 只用可见层，未显示层禁用）：' + (loaded || '（无）'));
-  parts.push('EMC 分析能力（可生成·勿判缺数据需上传）：密度热力图（2D 彩虹/3D）/ 网格聚合（任意尺度·400m/1000m/...）/ 情绪地形（3D KDE）/ 区域聚合统计（行政/规划单元）/ 排序（最差最好 Top N）/ 缓冲区 / 叠置 / 裁取范围 / 抽取要素 / 属性筛选 / 合并 / 邻近 / 聚集热点 / 面积统计 / 区域对比。用户要这类分析时直接选对应工具生成·勿判"缺面层/网格层需上传"。');
+  // 数据内容摘要（5.223·系统全字段值域识别·Flash 知有什么/值域/缺什么·Layer Manifest 完整版）
+  const _ptLayers = layers.filter((l) => l.visible && l.kind === 'point' && l.fc && l.fc.features && l.fc.features.length);
+  const _summ = [];
+  for (const pl of _ptLayers.slice(0, 3)) {
+    const cards = await getFieldCard(pl.id, pl.fc);
+    const feats = pl.fc.features;
+    const lines = [];
+    for (const [field, card] of Object.entries(cards)) {
+      if (isInternalField(field) || isRenderContract(card.role)) continue;
+      const role = card.role || '?';
+      const vals = feats.map((f) => (f.properties || {})[field]).filter((v) => v != null && v !== '');
+      if (!vals.length) continue;
+      if (card.dtype === 'number') {
+        const nums = vals.map(Number).filter((n) => !isNaN(n));
+        if (nums.length) { const mn = Math.min(...nums), mx = Math.max(...nums), mean = (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2);
+          lines.push(`${field}(${role})数值${mn}~${mx}均${mean}`); }
+      } else if (card.dtype === 'datetime' || /time|date|timestamp|时|日/i.test(field)) {
+        const uniq = [...new Set(vals)].sort();
+        lines.push(`${field}(${role})时间${uniq[0]}~${uniq[uniq.length - 1]}(${uniq.length}值)`);
+      } else {
+        const _c = {}; for (const v of vals) { const k = String(v); _c[k] = (_c[k] || 0) + 1; }
+        const top = Object.entries(_c).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${k}(${v})`).join('/');
+        if (top) lines.push(`${field}(${role})${top}`);
+      }
+    }
+    if (lines.length) _summ.push(`${pl.name}(${feats.length}点): ${lines.slice(0, 8).join(' | ')}`);
+  }
+  if (_summ.length) parts.push('数据内容摘要（字段值域·知有什么）:\n' + _summ.join('\n'));
+  parts.push('EMC 分析能力（可生成·勿判缺数据需上传）：密度热力图（2D 彩虹/3D·可按极性筛：综合/积极/消极/中性）/ 网格聚合（任意尺度）/ 情绪地形 / 区域聚合统计 / 排序 / 缓冲 / 叠置 / 裁取 / 抽取 / 筛选 / 合并 / 邻近 / 聚集热点 / 面积统计 / 区域对比。L2 已含 polarity（积极/中性/消极）·要"消极/积极热力图"直接生成（极性筛）·勿判"缺极性点"。');
   // 数据可见纪律：不注入 registry catalog 全量（formatGeoCatalog）——未显示层一律不准用，防"只传 L1·T1 却跑 L2"
   const wisdom = await getWisdom();
   if (wisdom) parts.push(wisdom);
@@ -761,6 +789,7 @@ export const TOOLS = {
         mode: params.mode === '3d' ? '3d' : '2d',
         silent: true,
       });
+      if (r && r.layerId) _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: true });   // 5.223 入 EMC 组（与 density 一致·治网格没入）
       _lastGrid = { layerId: r && (r.layerId || r.id) };
       return { observation: `已生成聚合层「${r.layerName}」（${r.featureCount} 单元）` };
     } catch (e) {
