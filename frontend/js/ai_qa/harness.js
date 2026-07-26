@@ -437,6 +437,14 @@ function _fillChainSlot(key, diagnoseParams, question) {
   if (diagnoseParams && diagnoseParams[key] != null) return diagnoseParams[key];
   return '';
 }
+/** E1（5.210）：问句 + diagnose → 标准多步链（CHAIN_REGISTRY triggers 匹配·首个命中·顺序即优先级·同 B_TRACK_PARADIGM 范式）。未命中 null（落 while-loop ReAct 兜底）。 */
+function _deriveChainId(question, diagnose) {
+  const q = String(question || '');
+  for (const c of stages.CHAIN_REGISTRY) {
+    if (c.triggers.some((t) => t.test(q))) return c;
+  }
+  return null;
+}
 
 const _GEO_TOOLS = ['extract_feature', 'overlay', 'clip', 'filter_attr', 'merge', 'buffer', 'zonal_stats', 'rank', 'area_stats', 'nearest', 'hotspot'];
 const _ANALYTICAL_TOOLS = new Set(['zonal_stats', 'compare_regions', 'rank', 'area_stats']);   // P0：表格型分析工具（返 rows·无 layerId）→ 成功判定认 rows 非空，不误判 GAP
@@ -597,6 +605,10 @@ export async function orchestrate(ctx, hooks = {}) {
   if (!ctx.resume && !diagnose.degraded && diagnose.template) {
     const _tdef = stages.SKILL_DEFS[diagnose.template];
     if (_tdef && _tdef.category === 'single' && _tplHitRateReady()) return await runTemplatePath(ctx, hooks, diagnose);
+    if (diagnose.template === 'multi' && _tplHitRateReady()) {                     // E1（5.210）：multi 标准链分流（治 C3 多步超时）
+      const _chain = _deriveChainId(ctx.question, diagnose);
+      if (_chain) return await runChainPath(ctx, hooks, diagnose, _chain);          // 命中 → 0 LLM 轮确定性链（治 C3）
+    }                                                                              // 未命中落 while-loop（ReAct 兜底）
   }
 
   // P0 降温：intent-aware 轮数上限（diagnose 后定）。B=6 多目标完整性，A/C=4 降概率链。
