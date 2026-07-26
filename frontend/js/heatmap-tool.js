@@ -49,8 +49,8 @@ function applySegmentDefaults(dlg, analysis) {
 // tier 决定 ①排版分组 + ②类型/表现胶囊是否启用（overall 禁用、segment 启用）。
 const DEFAULT_ANALYSIS = 'terrain';
 const ANALYSIS_PRESETS = {
-  terrain: { label: '情绪地形（2D/3D）', tier: 'overall',
-    desc: '综合情绪密度/强度表达。L1=综合舆情热度（2D 彩虹）；L2=正负面情绪高低洼地（3D 地形，红洼/蓝中/绿高）。',
+  terrain: { label: '情绪地形', tier: 'overall',
+    desc: '综合情绪密度/热度表达（2D 彩虹热力图），体现密度与关注度，不暗示极性。',
     preview: 'assets/analysis-previews/terrain.svg' },
   positive:{ label: '积极', tier: 'segment',
     desc: '类型细分：只看积极情绪密度（仅 L2）。胶囊色（喜→乐）渐变 7 段。',
@@ -92,16 +92,10 @@ function terrainRampOf(terrainPol) {
 
 function computeStyle(analysis, level, polarity, macroFilter) {
   if (analysis === 'terrain') {
-    if (level === 'L1') return { ramp: 'rainbow', name: '综合彩虹',
-      tip: 'L1 综合舆情热度（2D 彩虹），体现密度与关注度，不暗示极性。',
-      buttons: [{ dim: '2d', label: '生成 2D 彩虹图' }] };
-    // L2 3D 情绪地形（等值面 mesh）：综合=terrain-9 极性着色，极性=对应3段密度着色
-    const terrainPol = TERRAIN_POL_MAP[polarity] || 'overall';
-    const rampKey = terrainRampOf(terrainPol);
-    const name = terrainPol === 'overall' ? '综合情绪地形（消极/中性/积极）' : `${TERRAIN_POL_CN[terrainPol]}情绪地形`;
-    return { ramp: rampKey, terrainPol, name,
-      tip: 'L2 3D 情绪地形（等值面）：高度=密度×强度，颜色=极性。综合=山顶积极/山腰中性/山底消极。',
-      buttons: [{ dim: '3d', label: '生成 3D 地形图' }] };
+    // 情绪地形：恒 2D 综合彩虹热力图（密度/热度表达，不区分极性、不暗示极性）
+    return { ramp: 'rainbow', name: '综合彩虹',
+      tip: '综合情绪密度/热度（2D 彩虹热力图），体现密度与关注度，不暗示极性。',
+      buttons: [{ dim: '2d', label: '生成 2D 热力图' }] };
   }
   // grid 分析类型已剥离至 Grid 工具（空间聚合网格），KDE 不再处理
   if (analysis === 'positive') return _segmentStyle('positive', '积极', macroFilter, '喜→乐',
@@ -456,13 +450,8 @@ function constrainPolarityOptions(dlg, level, analysis) {
   if (analysis === 'positive') locked = 'P';
   else if (analysis === 'negative') locked = 'N';
   else if (analysis === 'neutral') locked = 'O';
-  else if (analysis === 'terrain') {
-    // 地形：L2 可选 综合/积极/消极/中性（特性下拉）；非 L2 锁综合（地形 3D 仅 L2）
-    if (level !== 'L2') { allOff('ALL'); sel.value = 'ALL'; sel.disabled = true; return; }
-    allOn(); sel.disabled = false; return;
-  }
   else if (tier === 'overall') {
-    // 其他总体（占位）：始终综合，不可选
+    // 总体（地形/占位）：始终综合，不可选（2D 彩虹不区分极性）
     locked = 'ALL';
   }
 
@@ -672,74 +661,6 @@ function _terrainStops(rampKey) {
   return all.map(([d, c]) => [(d - dMin) / span, c]);
 }
 
-/** 生成 L2 情绪地形（3D 等值面 mesh）：后端 KDE 密度×强度 → 等值面 → fill-extrusion 分层曲面。
- *  综合：gridField=_norm + terrain-9（极性着色）；极性：gridField=_level + green/red/blue-3（密度着色）。
- *  独占显示 + 自动暗底图/pitch 60° + 不弹 Overview/Table。 */
-async function generateTerrain(dlg, btn) {
-  const polarity = dlg.querySelector('#hm-subset').value;
-  const terrainPol = TERRAIN_POL_MAP[polarity] || 'overall';
-  const sources = collectSources();
-  const resolved = resolveSource(sources, 'L2', polarity);
-  if (!resolved || !resolved.fc || !resolved.fc.features.length) {
-    toast.error('请选择有效的 L2 情绪数据'); return;
-  }
-  const fc0 = resolved.fc;
-  const nPts = fc0.features.length;
-  if (nPts < 30) { toast.error('点数过少（<30），无法生成地形曲面'); return; }
-  const bandwidth = nPts < 1000 ? 350 : nPts < 5000 ? 250 : 180;
-
-  const origText = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = '生成中…'; }
-  try {
-    const res = await trackGeneration(runTerrain({ geojson: fc0, polarity: terrainPol, bandwidth_m: bandwidth, cell_m: 60, levels: 7 }));
-    if (!res || !res.success || !res.geojson) throw new Error((res && res.message) || '后端返回异常');
-    const fc = res.geojson;
-    if (!fc.features || !fc.features.length) { toast.error('地形生成结果为空'); return; }
-
-    const isOverall = terrainPol === 'overall';
-    const rampKey = terrainRampOf(terrainPol);
-    const colorField = isOverall ? '_norm' : '_level';   // 综合=极性着色(_norm)；极性=密度着色(_level)
-    const stops = _terrainStops(rampKey);
-    const polCN = TERRAIN_POL_CN[terrainPol];
-    const _srcMatch = resolved.sourceKey.match(/^(?:group|layer):([^#]+)/);
-    const _srcLayer = _srcMatch ? getLayer(_srcMatch[1]) : null;
-    const srcName = _srcLayer ? (_srcLayer.srcName || '') : '';
-    const tPrefix = deriveTimeTag(fc0) ? `${deriveTimeTag(fc0)}·` : '';
-    const labelName = `${tPrefix}${polCN}·情绪地形·${srcName || resolved.label}`;
-
-    // 高度恒为 _level（密度×强度，地形高程）；颜色字段分综合/极性。
-    const paint = { fillOn: true,
-      _ui: { tool: 'terrain', analysisKey: 'terrain', dim: '3d', level: 'L2', polarity,
-             terrainPol, mode: '3d', heightField: '_level', maxHeight: 1000, extrusionOpacity: 0.9, rampKey },
-      gridField: colorField, gridStops: stops, fillOpacity: 0.9 };
-
-    // 编辑态（H 按钮重开 terrain 层）：原地更新；否则新建 + 独占显示
-    const editLayerId = dlg.dataset.editLayerId;
-    const editingLayer = editLayerId ? getLayer(editLayerId) : null;
-    let L;
-    if (editingLayer && editingLayer.paint && editingLayer.paint._ui && editingLayer.paint._ui.tool === 'terrain') {
-      editingLayer.fc = fc; editingLayer.paint = paint; editingLayer.name = labelName; editingLayer.srcName = srcName;
-      renderLayer(editingLayer); L = editingLayer;
-    } else {
-      L = addLayer({ name: labelName, kind: 'polygon', fc, paint });
-      L.srcName = srcName;
-      renderLayer(L);
-      for (const hid of enforceMutualExclusion(L.id)) { const hl = getLayer(hid); if (hl) renderLayer(hl); }
-    }
-    const bb = fcBBox(fc); if (bb) fitBoundsTo(bb);
-    setView3D(true);   // 3D 地形：自动暗底图 + pitch 60°
-    selectLayer(L.id);
-    document.dispatchEvent(new CustomEvent('layers:changed'));   // 工具生成不自动弹 Overview/Table
-    closeDialog();
-    toast.success(`已生成 ${polCN}情绪地形 · ${fc.features.length} 层等值面 · ${nPts} 点`);
-  } catch (e) {
-    console.error('[terrain]', e);
-    toast.error(`情绪地形生成失败：${e.message || e}（确认后端已启动 + pip install matplotlib）`);
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = origText || '生成 3D 地形图'; }
-  }
-}
-
 /** 生成热力图 —— 由生成按钮（#hm-generate-row 内）触发，按钮自带 dim/ramp/dev。
  *  v6：色板随 analysis+level+特性自动（computeStyle），不再从 ③手选 style-btn 读。 */
 function generateHeatmap(btn) {
@@ -750,14 +671,6 @@ function generateHeatmap(btn) {
   const preset = ANALYSIS_PRESETS[analysisKey];
   const dim = btn ? btn.dataset.dim : '2d';
   const isDev = btn ? btn.classList.contains('is-dev') : true;
-
-  // terrain L2 3D → 情绪地形（等值面 mesh，新分支，先于 3D 占位拦截）
-  if (analysisKey === 'terrain' && dim === '3d') {
-    const level = dlg.querySelector('#hm-level').value;
-    if (level !== 'L2') { toast.info('情绪地形 3D 仅支持 L2 数据'); return; }
-    generateTerrain(dlg, btn);
-    return;
-  }
 
   // 占位拦截：dev 按钮（其他 3D 表达）/ 占位分析类型
   if (isDev || dim === '3d') { toast.info('该表达（3D / 网格聚合）待后续批次开发，UI 已就位'); return; }
