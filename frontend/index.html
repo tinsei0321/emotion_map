@@ -153,8 +153,28 @@
               </button>
               <button class="tool-row" id="tool-buffer" data-tool="buffer">
                 <span class="tool-icon"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="7"/></svg></span>
-                <span class="tool-name">Buffer · 覆盖范围分析</span>
-                <span class="tool-info" data-tip="对一类设施（点/线/面）做 N 米缓冲，看服务覆盖范围与盲区。整层缓冲，可选合并。后端 EPSG:4546 米制精确；不涉及情绪聚合。">i</span>
+                <span class="tool-name">Buffer · 缓冲分析</span>
+                <span class="tool-info" data-tip="双模式：覆盖范围=对一类设施（点/线/面）做 N 米整层缓冲，看服务覆盖与盲区；圈内情绪=以地点/取点/要素/坐标为中心，统计缓冲圈内情绪点数量与极性。后端米制精确。">i</span>
+              </button>
+              <button class="tool-row" id="tool-zonal" data-tool="zonal">
+                <span class="tool-icon"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13V7l4-3 4 3 4-4v10"/><line x1="2" y1="13" x2="14" y2="13"/></svg></span>
+                <span class="tool-name">Zonal · 面域归因聚合</span>
+                <span class="tool-info" data-tip="按行政区/街道/更新单元等面域聚合情绪点，得每单元点数/极性/归因排序（红绿 choropleth）；多区对比模式并排 ≤4 个区域。">i</span>
+              </button>
+              <button class="tool-row" id="tool-area-stats" data-tool="area-stats">
+                <span class="tool-icon"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg></span>
+                <span class="tool-name">面积统计</span>
+                <span class="tool-info" data-tip="统计边界内各类用地/各单元的面积与占比（用地按 DLMC 自动附国标色）；面积/占比写入要素属性，点击要素可查。">i</span>
+              </button>
+              <button class="tool-row" id="tool-rank" data-tool="rank">
+                <span class="tool-icon"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="4" x2="13" y2="4"/><line x1="3" y1="8" x2="11" y2="8"/><line x1="3" y1="12" x2="9" y2="12"/></svg></span>
+                <span class="tool-name">Rank · 排序</span>
+                <span class="tool-info" data-tip="按极性找 Top N 情绪最差/最好单元（先按边界聚合），生成 Top N 高亮层（极性 choropleth），回答「哪里最需优先」。">i</span>
+              </button>
+              <button class="tool-row" id="tool-vector" data-tool="vector">
+                <span class="tool-icon"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="8" r="4"/><circle cx="10" cy="8" r="4"/></svg></span>
+                <span class="tool-name">矢量分析</span>
+                <span class="tool-info" data-tip="五操作合一：叠置（交/并/差/对称差）/ 裁剪（点层裁到范围）/ 抽取（按属性出面要素）/ 合并（dissolve）/ 筛选（按属性出点）。">i</span>
               </button>
               <button class="tool-row" id="tool-attribution" data-tool="attribution">
                 <span class="tool-icon"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="3" cy="4" r="1.5"/><circle cx="3" cy="12" r="1.5"/><circle cx="13" cy="8" r="2"/><line x1="4.4" y1="4.6" x2="11.2" y2="7.4"/><line x1="4.4" y1="11.4" x2="11.2" y2="8.6"/></svg></span>
@@ -386,6 +406,10 @@
             <button class="pp-tab is-active" data-pp-tab="heatmap" role="tab">核密度</button>
             <button class="pp-tab" data-pp-tab="grid" role="tab">网格</button>
             <button class="pp-tab" data-pp-tab="buffer" role="tab">Buffer</button>
+            <button class="pp-tab" data-pp-tab="zonal" role="tab">面域</button>
+            <button class="pp-tab" data-pp-tab="area-stats" role="tab">面积</button>
+            <button class="pp-tab" data-pp-tab="rank" role="tab">排序</button>
+            <button class="pp-tab" data-pp-tab="vector" role="tab">矢量</button>
           </div>
 
           <div class="pp-pane" data-pp-pane="heatmap" role="tabpanel">
@@ -510,21 +534,70 @@
             <div id="buffer-dialog" class="app-dialog hm-dialog">
               <div class="dialog-body">
 
-                <!-- ① 输入图层（缓冲对象：已加载的点/线/面图层，整层缓冲） -->
+                <!-- ① 分析模式（覆盖范围=纯几何整层缓冲 / 圈内情绪=中心+半径圈内情绪聚合） -->
                 <div class="hm-group">
-                  <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">输入图层</span></div>
+                  <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">分析模式</span></div>
+                  <div class="hm-section">
+                    <div class="buf-capsules" id="buf-kind">
+                      <button type="button" class="buf-cap is-sel" data-kind="cover">覆盖范围</button>
+                      <button type="button" class="buf-cap" data-kind="emotion">圈内情绪</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ② 输入图层（cover：缓冲对象，已加载的点/线/面图层，整层缓冲） -->
+                <div class="hm-group" id="buf-cover-params">
+                  <div class="hm-group-title"><span class="hm-step-no">2</span><span class="hm-step-label">输入图层</span></div>
                   <div class="hm-section">
                     <div class="hm-label">设施图层（整层缓冲） <span class="hm-info" data-tip="选一个已加载的点/线/面图层作为缓冲对象。地图数据均统一为 WGS84，源 CRS（投影 shp / 地理坐标）在导入时已消解。">i</span></div>
                     <select class="sec-select" id="buf-layer"></select>
                   </div>
                 </div>
 
-                <!-- ② 缓冲参数（距离手动输入 + 滑块 + 预设 + Dissolve） -->
+                <!-- ② 圈内情绪参数（emotion：中心四路输入 + 情绪点层） -->
+                <div class="hm-group" id="buf-emotion-params" hidden>
+                  <div class="hm-group-title"><span class="hm-step-no">2</span><span class="hm-step-label">圈内情绪</span></div>
+                  <div class="hm-section">
+                    <div class="hm-label">缓冲中心 <span class="hm-info" data-tip="四选一：地点搜索（高德 POI）/ 地图取点 / 图层要素（点取坐标·面取质心）/ 手输坐标。">i</span></div>
+                    <div class="buf-capsules" id="buf-center-mode">
+                      <button type="button" class="buf-cap is-sel" data-cmode="search">地点搜索</button>
+                      <button type="button" class="buf-cap" data-cmode="pick">地图取点</button>
+                      <button type="button" class="buf-cap" data-cmode="feature">图层要素</button>
+                      <button type="button" class="buf-cap" data-cmode="coord">手输坐标</button>
+                    </div>
+                  </div>
+                  <div class="hm-section" data-cmode-pane="search">
+                    <input type="text" class="sec-select" id="buf-center-search" placeholder="搜索地点（如 滨江公园）" autocomplete="off">
+                    <div class="buf-hits" id="buf-center-hits" hidden></div>
+                  </div>
+                  <div class="hm-section" data-cmode-pane="pick" hidden>
+                    <button type="button" class="btn btn-secondary" id="buf-pick-btn">进入取点</button>
+                  </div>
+                  <div class="hm-section" data-cmode-pane="feature" hidden>
+                    <select class="sec-select" id="buf-center-layer"></select>
+                    <select class="sec-select" id="buf-center-feature"></select>
+                  </div>
+                  <div class="hm-section" data-cmode-pane="coord" hidden>
+                    <div class="buf-coord-row">
+                      <input type="number" class="buf-num" id="buf-center-lng" placeholder="经度 lng" step="any">
+                      <input type="number" class="buf-num" id="buf-center-lat" placeholder="纬度 lat" step="any">
+                    </div>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label buf-center-val" id="buf-center-val"></div>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">情绪点层（圈内聚合） <span class="hm-info" data-tip="统计缓冲圈内情绪点的数量与极性（point_count/polarity_index 写入结果属性）。">i</span></div>
+                    <select class="sec-select" id="buf-emo-layer"></select>
+                  </div>
+                </div>
+
+                <!-- ③ 缓冲参数（距离手动输入 + 滑块 + 预设 + Dissolve；emotion 隐藏 Dissolve） -->
                 <div class="hm-group">
-                  <div class="hm-group-title"><span class="hm-step-no">2</span><span class="hm-step-label">缓冲参数</span></div>
+                  <div class="hm-group-title"><span class="hm-step-no">3</span><span class="hm-step-label">缓冲参数</span></div>
                   <div class="hm-section">
                     <div class="hm-label buf-dist-label">
-                      <span>缓冲距离</span>
+                      <span id="buf-dist-label">缓冲距离</span>
                       <span class="buf-dist-controls">
                         <input type="number" class="buf-num" id="buf-distance-num" value="1000" min="0" step="50">
                         <span class="buf-unit">m</span>
@@ -539,7 +612,7 @@
                       <button type="button" class="buf-preset" data-dist="1000">1000</button>
                     </div>
                   </div>
-                  <div class="hm-section">
+                  <div class="hm-section" id="buf-dissolve-section">
                     <div class="hm-label">Dissolve（合并） <span class="hm-info" data-tip="各自独立=每个设施单独缓冲，便于对比；合并覆盖区=unary_union 成一片，看总覆盖与服务盲区。">i</span></div>
                     <div class="buf-radio-row">
                       <label class="buf-radio"><input type="radio" name="buf-dissolve" value="false" checked> 各自独立</label>
@@ -548,9 +621,9 @@
                   </div>
                 </div>
 
-                <!-- ③ 显示样式（线型 / 线宽 / 颜色 / 填充透明度；轮廓与填充同色） -->
-                <div class="hm-group">
-                  <div class="hm-group-title"><span class="hm-step-no">3</span><span class="hm-step-label">显示样式</span></div>
+                <!-- ④ 显示样式（cover 专属：线型 / 线宽 / 颜色 / 填充透明度；轮廓与填充同色） -->
+                <div class="hm-group" id="buf-style-group">
+                  <div class="hm-group-title"><span class="hm-step-no">4</span><span class="hm-step-label">显示样式</span></div>
                   <div class="hm-section">
                     <div class="hm-label">线型</div>
                     <div class="buf-capsules" id="buf-linestyle">
@@ -662,6 +735,265 @@
               <div class="dialog-foot">
                 <button class="btn btn-secondary" data-close>取消</button>
                 <button class="btn btn-primary" id="grid-generate">生成</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Zonal 面域归因聚合（聚合/多区对比） -->
+          <div class="pp-pane" data-pp-pane="zonal" role="tabpanel" hidden>
+            <div id="zonal-dialog" class="app-dialog hm-dialog">
+              <div class="dialog-body">
+
+                <!-- ① 分析模式 -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">分析模式</span></div>
+                  <div class="hm-section">
+                    <div class="buf-capsules" id="zonal-mode">
+                      <button type="button" class="buf-cap is-sel" data-mode="aggregate">面域聚合</button>
+                      <button type="button" class="buf-cap" data-mode="compare">多区对比</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ② 数据 / 边界 -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">2</span><span class="hm-step-label">数据 / 边界</span></div>
+                  <div class="hm-section">
+                    <div class="hm-label">情绪点层 <span class="hm-info" data-tip="选情绪数据源（L1 热度 / L2 极性，组源为合并极性子层）。聚合按单元统计点数与极性。">i</span></div>
+                    <select class="sec-select" id="zonal-source"></select>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">聚合边界 <span class="hm-info" data-tip="已加载的 Range 面层或预设边界库（行政区/街道/更新单元等）。对比模式下先从边界选要素（≤4 区）。">i</span></div>
+                    <select class="sec-select" id="zonal-boundary"></select>
+                  </div>
+                  <div class="hm-section" id="zonal-compare-section" hidden>
+                    <div class="hm-label">对比要素（选 2-4 个）</div>
+                    <div class="buf-capsules zonal-feat-caps" id="zonal-features"></div>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">属性过滤（可选） <span class="hm-info" data-tip="按属性先筛点再聚合（如 极性=消极）。留空字段名=不过滤。">i</span></div>
+                    <div class="buf-pf-row">
+                      <select class="sec-select" id="zonal-pf-field"></select>
+                      <select class="sec-select buf-pf-op" id="zonal-pf-op">
+                        <option value="eq">=</option><option value="ne">≠</option>
+                        <option value="gt">&gt;</option><option value="gte">≥</option>
+                        <option value="lt">&lt;</option><option value="lte">≤</option>
+                        <option value="contains">包含</option>
+                      </select>
+                      <input type="text" class="buf-num buf-pf-val" id="zonal-pf-value" placeholder="值">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ③ 显示样式（只读色带预览） -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">3</span><span class="hm-step-label">显示样式</span></div>
+                  <div class="hm-section">
+                    <div class="hm-label">色板 <span class="hm-info" data-tip="极性 choropleth 固定色带（terrain-9 红绿发散·与网格聚合同源）：红=负面，绿=正面。">i</span></div>
+                    <div class="hm-style-list" id="zonal-ramp-preview"></div>
+                  </div>
+                </div>
+
+              </div>
+              <div class="dialog-foot">
+                <button class="btn btn-secondary" data-close>取消</button>
+                <button class="btn btn-primary" id="zonal-generate">生成</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 面积统计（用地/分组面积占比 choropleth） -->
+          <div class="pp-pane" data-pp-pane="area-stats" role="tabpanel" hidden>
+            <div id="area-stats-dialog" class="app-dialog hm-dialog">
+              <div class="dialog-body">
+
+                <!-- ① 统计对象（边界 + 分组字段） -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">统计对象 <span class="hm-info" data-tip="按边界统计面积与占比：用地图层按 DLMC 分组得各类用地面积占比；行政面域按名称字段得各单元面积。">i</span></span></div>
+                  <div class="hm-section">
+                    <div class="hm-label">统计边界 <span class="hm-info" data-tip="已加载的 Range 面层或预设边界库（用地分类/行政区/更新单元等）。">i</span></div>
+                    <select class="sec-select" id="as-boundary"></select>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">分组字段 <span class="hm-info" data-tip="面积按此字段分组汇总（用地数据默认 DLMC；行政面域可选名称字段）。不分组=按单元。">i</span></div>
+                    <select class="sec-select" id="as-group-by"></select>
+                  </div>
+                </div>
+
+                <!-- ② 显示样式（国标色提示 + 占比说明） -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">2</span><span class="hm-step-label">显示样式</span></div>
+                  <div class="hm-section">
+                    <div class="hm-label">着色 <span class="hm-info" data-tip="用地（DLMC）自动附国土空间规划标准色（居住黄/商业红/工业棕/绿地绿等）；非用地走默认浅填充。面积与占比写入要素属性，点击要素可查。">i</span></div>
+                    <div class="as-style-hint">用地国标色自动着色 · 面积/占比入要素属性</div>
+                  </div>
+                </div>
+
+              </div>
+              <div class="dialog-foot">
+                <button class="btn btn-secondary" data-close>取消</button>
+                <button class="btn btn-primary" id="as-generate">生成</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rank 排序（Top N 最差/最好高亮层） -->
+          <div class="pp-pane" data-pp-pane="rank" role="tabpanel" hidden>
+            <div id="rank-dialog" class="app-dialog hm-dialog">
+              <div class="dialog-body">
+
+                <!-- ① 排序维度 -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">排序维度</span></div>
+                  <div class="hm-section">
+                    <div class="buf-capsules" id="rank-by">
+                      <button type="button" class="buf-cap is-sel" data-by="worst">情绪最差</button>
+                      <button type="button" class="buf-cap" data-by="best">情绪最好</button>
+                    </div>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">Top N <span class="hm-val" id="rank-topn-val">Top 5</span></div>
+                    <input type="range" class="set-range" id="rank-topn" min="3" max="10" value="5" step="1">
+                  </div>
+                </div>
+
+                <!-- ② 数据 / 边界 -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">2</span><span class="hm-step-label">数据 / 边界</span></div>
+                  <div class="hm-section">
+                    <div class="hm-label">情绪点层 <span class="hm-info" data-tip="选情绪数据源（L1 热度 / L2 极性）。先按边界聚合再排序。">i</span></div>
+                    <select class="sec-select" id="rank-source"></select>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">排序边界 <span class="hm-info" data-tip="已加载的 Range 面层或预设边界库（行政区/街道/更新单元等）。点层需先按边界聚合成单元再排序。">i</span></div>
+                    <select class="sec-select" id="rank-boundary"></select>
+                  </div>
+                </div>
+
+                <!-- ③ 显示样式（只读色带预览） -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">3</span><span class="hm-step-label">显示样式</span></div>
+                  <div class="hm-section">
+                    <div class="hm-label">色板 <span class="hm-info" data-tip="高亮层复用极性 choropleth 色带（terrain-9 红绿发散）：红=最差，绿=最好。仅 Top N 单元着色。">i</span></div>
+                    <div class="hm-style-list" id="rank-ramp-preview"></div>
+                  </div>
+                </div>
+
+              </div>
+              <div class="dialog-foot">
+                <button class="btn btn-secondary" data-close>取消</button>
+                <button class="btn btn-primary" id="rank-generate">生成</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 矢量分析（叠置/裁剪/抽取/合并/筛选 五操作合一） -->
+          <div class="pp-pane" data-pp-pane="vector" role="tabpanel" hidden>
+            <div id="vector-dialog" class="app-dialog hm-dialog">
+              <div class="dialog-body">
+
+                <!-- ① 操作 -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">操作</span></div>
+                  <div class="hm-section">
+                    <div class="buf-capsules vec-op-caps" id="vec-op">
+                      <button type="button" class="buf-cap is-sel" data-op="overlay">叠置</button>
+                      <button type="button" class="buf-cap" data-op="clip">裁剪</button>
+                      <button type="button" class="buf-cap" data-op="extract_feature">抽取</button>
+                      <button type="button" class="buf-cap" data-op="merge">合并</button>
+                      <button type="button" class="buf-cap" data-op="filter_attr">筛选</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ② 参数（按操作显隐） -->
+                <div class="hm-group">
+                  <div class="hm-group-title"><span class="hm-step-no">2</span><span class="hm-step-label">参数</span></div>
+
+                  <div class="hm-section" data-vop-pane="overlay">
+                    <div class="hm-label">图层 A / 图层 B <span class="hm-info" data-tip="两个面域图层做叠置分析（Range 面层或预设边界）。">i</span></div>
+                    <select class="sec-select" id="vec-layer-a"></select>
+                    <select class="sec-select" id="vec-layer-b"></select>
+                    <div class="buf-capsules vec-how-caps" id="vec-how">
+                      <button type="button" class="buf-cap is-sel" data-how="intersection">交</button>
+                      <button type="button" class="buf-cap" data-how="union">并</button>
+                      <button type="button" class="buf-cap" data-how="difference">差</button>
+                      <button type="button" class="buf-cap" data-how="symmetric_difference">对称差</button>
+                    </div>
+                  </div>
+
+                  <div class="hm-section" data-vop-pane="clip" hidden>
+                    <div class="hm-label">目标点层 / 裁剪范围 <span class="hm-info" data-tip="把点层裁到范围面内（结果为点图层）。要抽范围面本身用「抽取」。">i</span></div>
+                    <select class="sec-select" id="vec-clip-source"></select>
+                    <select class="sec-select" id="vec-clip-range"></select>
+                    <div class="hm-label">属性过滤（可选）</div>
+                    <div class="buf-pf-row">
+                      <select class="sec-select" id="vec-clip-pf-field"></select>
+                      <select class="sec-select buf-pf-op" id="vec-clip-pf-op">
+                        <option value="eq">=</option><option value="ne">≠</option>
+                        <option value="gt">&gt;</option><option value="gte">≥</option>
+                        <option value="lt">&lt;</option><option value="lte">≤</option>
+                        <option value="contains">包含</option>
+                      </select>
+                      <input type="text" class="buf-num buf-pf-val" id="vec-clip-pf-value" placeholder="值">
+                    </div>
+                  </div>
+
+                  <div class="hm-section" data-vop-pane="extract_feature" hidden>
+                    <div class="hm-label">抽取面层 / 条件 <span class="hm-info" data-tip="从面边界按属性抽单要素为独立面图层（如 用地分类 MC=商业服务业用地）。无条件=整层抽出。">i</span></div>
+                    <select class="sec-select" id="vec-ext-source"></select>
+                    <div class="buf-pf-row">
+                      <select class="sec-select" id="vec-ext-where-field"></select>
+                      <select class="sec-select buf-pf-op" id="vec-ext-where-op">
+                        <option value="eq">=</option><option value="ne">≠</option>
+                        <option value="gt">&gt;</option><option value="gte">≥</option>
+                        <option value="lt">&lt;</option><option value="lte">≤</option>
+                        <option value="contains">包含</option>
+                      </select>
+                      <input type="text" class="buf-num buf-pf-val" id="vec-ext-where-value" placeholder="值">
+                    </div>
+                  </div>
+
+                  <div class="hm-section" data-vop-pane="merge" hidden>
+                    <div class="hm-label">合并面层 / 分组字段 <span class="hm-info" data-tip=" dissolve 合并面要素：整体合并成一片，或按字段分组合并（如 按 DLMC 合并同类用地）。">i</span></div>
+                    <select class="sec-select" id="vec-merge-source"></select>
+                    <select class="sec-select" id="vec-merge-by"></select>
+                  </div>
+
+                  <div class="hm-section" data-vop-pane="filter_attr" hidden>
+                    <div class="hm-label">筛选点层 / 条件（必填） <span class="hm-info" data-tip="按属性筛点（如 极性=消极），可选再限范围。结果为点图层。">i</span></div>
+                    <select class="sec-select" id="vec-flt-source"></select>
+                    <div class="buf-pf-row">
+                      <select class="sec-select" id="vec-flt-pf-field"></select>
+                      <select class="sec-select buf-pf-op" id="vec-flt-pf-op">
+                        <option value="eq">=</option><option value="ne">≠</option>
+                        <option value="gt">&gt;</option><option value="gte">≥</option>
+                        <option value="lt">&lt;</option><option value="lte">≤</option>
+                        <option value="contains">包含</option>
+                      </select>
+                      <input type="text" class="buf-num buf-pf-val" id="vec-flt-pf-value" placeholder="值">
+                    </div>
+                    <select class="sec-select" id="vec-flt-range"></select>
+                  </div>
+                </div>
+
+                <!-- ③ 显示样式（面结果显示：取色 + 填充透明度） -->
+                <div class="hm-group" id="vec-style-group">
+                  <div class="hm-group-title"><span class="hm-step-no">3</span><span class="hm-step-label">显示样式</span></div>
+                  <div class="hm-section">
+                    <div class="hm-label">颜色 <span class="hm-info" data-tip="面结果轮廓与填充同色。用地层结果自动改附国标色（DLMC）。">i</span></div>
+                    <div id="vec-color-list"></div>
+                  </div>
+                  <div class="hm-section">
+                    <div class="hm-label">填充透明度 <span class="hm-val" id="vec-opacity-val">20%</span></div>
+                    <input type="range" class="set-range" id="vec-opacity" min="0" max="100" value="20" step="5">
+                  </div>
+                </div>
+
+              </div>
+              <div class="dialog-foot">
+                <button class="btn btn-secondary" data-close>取消</button>
+                <button class="btn btn-primary" id="vec-generate">生成</button>
               </div>
             </div>
           </div>

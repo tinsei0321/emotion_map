@@ -61,7 +61,7 @@ export function initParamPanel() {
     if (panel.contains(e.target)) return;
     if (e.target.closest && (e.target.closest('#emc-panel') || e.target.closest('#left-panel'))) return;  // EMC/抽屉伴生不关
     if (e.target.closest && e.target.closest('.layer-kind')) return;       // 要素按钮：sidebar 自行开/切
-    if (e.target.closest && (e.target.closest('#tool-heatmap') || e.target.closest('#tool-buffer') || e.target.closest('#tool-grid'))) return;
+    if (e.target.closest && e.target.closest('.tool-row')) return;   // Toolbox 工具入口（.tool-row 泛化·手册 §3.4）：sidebar 自行开/切
     closeParamPanel();
   });
 

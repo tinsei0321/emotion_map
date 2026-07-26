@@ -128,3 +128,33 @@ except Exception as e:
 ```
 报错 → 看 [TRACE] 日志 → 定位出错决策 ID → grep 跳转代码 → 精准修复
 ```
+## Toolbox 缁熶竴宸ュ叿闆嗗眰锛?026-07-25 路 鍒嗘敮 toolbox-unified-toolset锛?
+EMC 鐨?GIS 宸ュ叿涓?Toolbox 鎵嬪姩宸ュ叿鏇炬槸涓ゅ瀹炵幇锛坱ools.js 鍐呰仈 vs *-tool.js锛夈€傛湰灞傜粺涓€涓猴細
+**涓ゆ潯瑙﹀彂璺緞锛圗MC 瀵硅瘽 / Toolbox 鎵嬪姩锛夎皟鐢ㄥ悓涓€鎵瑰伐鍏锋ā鍧楋紝鍥惧眰浜у嚭涓€鑷达紙鍚屼竴 _execute 鏍革級**銆?
+### 鏋舵瀯
+
+`
+瑙﹀彂灞?  璺緞涓€ EMC: frontend/js/ai_qa/tools.js锛堣杽濮旀墭锛氬弬鏁板綊涓€/observation 鏂囨/registry 绨胯锛?  璺緞浜?UI : index.html tool-row 鈫?param-panel pp-pane dialog锛堜笁姝ュ悜瀵硷級
+                鈹? 閮借皟 generateXxxForAI(opts) / 鍚屼竴 _execute 鏍?宸ュ叿闆嗗眰锛堝悓灞傜骇銆侀珮鍐呰仛浣庤€﹀悎銆佹ā鍧楅棿浜掍笉 import锛?  frontend/js/         heatmap-tool.js 路 grid-tool.js 路 buffer-tool.js锛堝師鍦奥穊uffer 鍙屾ā寮忓悎涓€锛?  frontend/js/toolbox/ shared.js锛堝敮涓€鍏变韩鍩哄缓锛?                       zonal-tool.js 路 area-stats-tool.js 路 rank-tool.js 路 vector-tool.js锛堜簲鎿嶄綔鍚堜竴锛?                       nearest-tool.js 路 hotspot-tool.js锛堢函鍐呭祵路鏃?UI锛?鍚庣  /api/v1/spatial/*锛坔eatmap/grid/buffer-cover锛壜?/api/v1/geo/*锛堝叾浣欏叏閮风粡 api.js geoPost锛?`
+
+### 渚濊禆绾㈢嚎锛堝崟鍚戯級
+
+i_qa/tools.js 鈫?toolbox/* + js/涓夊伐鍏穈锛沗toolbox/* 鈫?shared.js + state/map/sidebar/import/api/landuse_colors/grid-tool锛?**toolbox 妯″潡涓ョ import ai_qa/**銆俿hared.js import sidebar 涓烘棦鏈夊惊鐜ā寮忥紙grid-tool.js:12 鍚屄?export function 鎻愬崌澹版槑涓嬭繍琛屾椂璋冪敤 TDZ 瀹夊叏锛涗弗绂?sidebar 椤跺眰 const 姹傚€间緷璧?toolbox export锛夈€?
+### 妯″潡濂戠害
+
+- **ForAI 杩斿洖**锛堜笌 generateGridForAI 鍚屾瀯锛夛細{ layerId, layerName, featureCount, fc, rows?, ... }锛?  澶辫触 throw锛堝鎵樺眰 catch 褰掍竴 [ERR] 鏂囨锛夈€?- **妯″潡楠ㄦ灦**锛氭瘡妯″潡 _execute(params, {editLayerId, silent}) 鍗曚竴鎵ц鏍?+ openXxxDialog(layerId)
+  锛堢紪杈戞€佷粠 paint._ui 鍥炲～锛? initXxxTool() + generateXxxForAI(opts)銆?- **paint._ui**锛氭墍鏈変骇鐗╁啓 _ui={tool, ...params} 鏀拺渚ф爮瑕佺礌鎸夐挳缂栬緫鍥炲～锛沚uffer 鍙屾ā寮忔樉寮?  kind:'cover'|'emotion'锛堝瓨閲忔棤 kind 鎸?color 鍒ゆ嵁锛氭湁 color鈫抍over 鍚﹀垯 emotion路绂?distance/sourceLayer锛夈€?- **鍛藉悕**锛圕6 绾㈢嚎锛夛細鍚?鍐呭/鑼冨洿/瑕佺礌鍚嶏紝鍕垮伐绋嬪墠缂€锛堝銆岃仛鍚埪疯鏀垮尯銆嶃€屾花姹熷叕鍥?00m銆嶃€屼氦路鍟嗕笟鐢ㄥ湴涓庤タ闄靛尯銆嶏級銆?- **浜掓枼/鑱氱劍鍒嗗伐**锛氭ā鍧?_execute 钀藉浘璋?enforceMutualExclusion锛堟墜鍔ㄥ満鏅悓绫荤嫭鍗狅級锛汦MC 濮旀墭灞?  _adoptToolboxResult锛? _registerToolboxLayer + consumed 娓呯悊 + AI 缁?parentId + focusOnlyResults
+  娌夋蹈鑱氱劍 + layers:changed 琛ュ彂锛夆€斺€斾袱璺緞鍥惧眰浜у嚭涓€鑷淬€佽仛鐒﹁涓哄樊寮傚寲锛堜骇鍝佹湰鎰忥級銆?
+### EMC 娴佹按绾挎壙閲嶅绾︼紙C1-C6锛?
+宸ュ叿鍚嶄笉鍙橈紙stages.js SKILL_DEFS 鈫?paradigm.py TEMPLATE_REGISTRY锛? 杩?{observation, data:{rows?, layerId?}}
+锛坃ANALYTICAL_TOOLS 璁?rows 闈炵┖锛? 鍙傛暟 schema 闆跺彉鍖栦笖鍐呴儴瀛楁绂?mode|how锛坃PARAM_ALIAS 閬胯路鐢?kind锛?
+setToolContext provenance锛坮egistry//瀵硅处锛? _GEO_TOOLS F3 gate锛堝悕涓嶅彉鍗冲厤鐤級/ 鍛藉悕璇箟锛坃verifyClaims锛夈€?
+### UI 鍏ュ彛
+
+Toolbox 椤?7 鍏ュ彛锛欻eatMap / Grid / Buffer锛堝弻妯″紡锛氳鐩栬寖鍥绰峰湀鍐呮儏缁級/ Zonal锛堣仛鍚埪峰鍖哄姣旓級/
+闈㈢Н缁熻 / Rank / 鐭㈤噺鍒嗘瀽锛堝彔缃疯鍓锋娊鍙柭峰悎骞堵风瓫閫夛級锛沶earest/hotspot 绾唴宓屼粎 EMC 鍙Е鍙戯紱
+澶氱淮褰掑洜淇濇寔鍗犱綅銆?
+### 楠岃瘉璁炬柦
+
+- 	ests/browser/tool_obs_snapshot.py锛?2 宸ュ叿 observation 蹇収锛?-save 鍩虹嚎 / --diff 姣斿路
+  鍩虹嚎 	ests/reports/toolbox-obs-baseline.json锛夆€斺€斿鎵樻敼閫犻€愬瓧瀹堥棬锛堟紨绀洪摼鍛介棬锛夈€?- 	ests/browser/test_toolbox_unified.py锛? 鍏ュ彛/涓よ矾寰勬瘮瀵?Buffer 鍙屾ā寮?鍥炲～/color 鍒ゆ嵁/console 绾㈢嚎銆?- 	ests/browser/test_toolbox_pipeline.py锛欵MC 娴佹按绾挎満鍒舵柇瑷€锛堟棤 [ERR]/geo 200/鍑哄彛瑁佸畾路瀹瑰繊 LLM 璺敱鏂瑰樊锛夈€?- 鎵ц鎵嬪唽锛歚.codebuddy/plans/toolbox-unified-toolset-execution.md锛坴2.2路鍚?EMC 濂戠害 C1-C6 涓庡叓姝?DoD锛夈€?

@@ -73,6 +73,16 @@ CASES = [
     # C6（5.204·eval-first）：density 触发词扩——"密集/热力图"原 0 命中（K3 C6③·paradigm:250 触发词无"密集"）
     ('哪里最密集', 'density'),
     ('情绪热力图分布', 'density'),
+    # D1（5.207·eval-first）：工具选型边界歧义扩例——冻结基线后验 catalog failure_modes/examples 改善。
+    #   针对 4 类残余歧义：rank/zonal（整体 vs 落点）、clip/overlay（点裁 vs 面∩面）、
+    #   hotspot/density（逐点 Gi* vs 连续面）、extract/clip（抽单面 vs 裁点）、area_stats/zonal（面积 vs 情绪）。
+    ('中心城区整体情绪如何', 'zonal'),          # 宏观整体→zonal 非 rank（rank/zonal 边界）
+    ('这个公园里哪个点位最差', 'rank'),          # micro 落点→rank 非 zonal（rank/zonal 边界）
+    ('显著负面聚集区在哪', 'hotspot'),          # Gi* 逐点冷热（hotspot/density 边界）
+    ('商业用地和居住用地的交集', 'overlay'),     # 面∩面→overlay 非 clip（clip/overlay 边界）
+    ('公园与商业用地重叠部分', 'overlay'),       # 面∩面→overlay
+    ('只要西陵区这个面', 'extract_feature'),    # 抽单面要素→extract 非 clip（extract/clip 边界）
+    ('各区用地面积占比', 'area_stats'),         # 面积结构→area_stats 非 zonal（area_stats/zonal 边界）
 ]
 
 

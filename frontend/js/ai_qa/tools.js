@@ -1,19 +1,31 @@
 // ═══ tools.js — Agent Loop 工具集（查询型 + 操作型，直调主窗口函数）═══
 // 还原单窗口后，tools 直调 map/state/panel（删跨窗口协议）。每个 tool 返回 {observation, data?}：
 //   observation = 给 LLM 看的摘要字符串（入 tool_history）；data = 结构化（前端可选用于渲染）。
-import { getLayers, getLayer, getSelectedLayer, addLayer, addGroup, removeLayer, setLayerVisible } from '../state.js';
+import { getLayers, getLayer, getSelectedLayer, addGroup, removeLayer, setLayerVisible } from '../state.js';
 import { fitBoundsTo, renderLayer, reorderAllZ, removeLayerFromMap } from '../map.js';
 import { activateTab, setOverview } from '../panel.js';
 import { DOMAIN_LABEL, ELEMENT_LABEL } from '../popup.js';
-import { generateGridForAI, piToNorm, polarityStops } from '../grid-tool.js';   // P1：zonal 合成聚合图层复用 piToNorm（极性→_grid_norm）+ polarityStops（terrain-9 红绿色带）
+import { generateGridForAI } from '../grid-tool.js';   // density/ensure_zone 委托（piToNorm 已随迁 toolbox 模块·步 7 prune）
 import { generateHeatmapForAI, generateTerrainForAI } from '../heatmap-tool.js';   // 工作机制重构：density 委托 Toolbox（2D 彩虹/3D 地形，不自造）
+// ── 步 7 emc-delegate：12 GIS 工具委托 Toolbox 统一工具集层（手册 v2.2 §6 步 7；模块名 = 手册 §1 架构）──
+import { generateBufferForAI } from '../buffer-tool.js';   // buffer 委托固定 kind:'emotion'（§5.7/D3）
+import { generateZonalForAI, generateCompareForAI } from '../toolbox/zonal-tool.js';
+import { generateAreaStatsForAI } from '../toolbox/area-stats-tool.js';
+import { generateRankForAI } from '../toolbox/rank-tool.js';
+import { generateOverlayForAI, generateClipForAI, generateExtractForAI, generateMergeForAI, generateFilterForAI } from '../toolbox/vector-tool.js';
+import { generateNearestForAI } from '../toolbox/nearest-tool.js';
+import { generateHotspotForAI } from '../toolbox/hotspot-tool.js';
 import { renderLayerList, refreshLegend } from '../sidebar.js';
 import { fcBBox, profileFields } from '../import.js';
 import { resolveRole, isRenderContract, isInternalField } from '../field_dictionary.js';   // P2/P3 字段语义层·规则标注 + _fieldSamples 语义过滤
-import { landuseLayerPaint } from '../landuse_colors.js';   // 用地层自动附标准色（EMC 产物也走此）
 import { resolveBoundaryInput } from './boundary-resolve.js';   // 中文地名→GeoJSON（治 compare 中文名错配 5.115）
-import { fetchRangePresets, fetchRangePreset } from '../api.js';   // A1：rank/area_stats 成图需 preset boundary 的 GeoJSON
 import { getCurState, CPD_STEPS } from './cpd-state.js';   // CPD Phase 2b：curState 语境 hint（不动路由）
+// ── Toolbox 统一工具集层 · 步 1：共享基建抽取至 toolbox/shared.js（手册 §3.2 去向表）——
+// import 别名保内部调用点零改动；re-export 保 tools.js 导出面兼容。
+import { renderNote as _renderNote, scaleRadius as _scaleRadius, clampM as _clampM,
+  toolContentSig as _toolContentSig, addToolboxLayer } from '../toolbox/shared.js';
+export { buildZonalFc, defaultPaint, renderNote, scaleRadius, clampM, toolContentSig,
+  addToolboxLayer, resolveBoundaryGeo, SCALE_TABLE, geoPost } from '../toolbox/shared.js';
 
 let _lastGrid = null;   // 最近生成聚合层（ensure_zone/query 优先用）
 
@@ -115,8 +127,8 @@ export async function getFieldCard(layerId, fc, layerKind = 'point') {
   return cards;
 }
 
-/** POST /api/v1/geo/<path> 取 JSON；失败抛 Error(.detail)。 */
-const _LAYER_REF_KEYS = ['layer', 'range', 'layer_a', 'layer_b', 'boundary', 'center', 'target'];
+// geoFetch 已删（步 7·手册 §3.2：由 api.js geoPost 取代）；_LAYER_REF_KEYS 随迁——
+// $n/命名引用预解析在各委托层内联（ref() 保留：run_python inputs 与委托层同用）。
 const _stepResults = [];      // 本轮工具产物 fc（按产出序，单调），供 $n 显式引用
 const _resultIdByStep = [];   // 结果层 id（与 _stepResults 平行，单调），供 ref('$n') 标消费
 export function resetStepResults() { _stepResults.length = 0; _resultIdByStep.length = 0; _registry.length = 0; _figCache.clear(); }
@@ -161,18 +173,7 @@ function ref(v) {
   }
   return v;
 }
-async function geoFetch(path, body) {
-  const b = {};
-  for (const k of Object.keys(body || {})) b[k] = _LAYER_REF_KEYS.includes(k) ? ref(body[k]) : body[k];
-  const r = await fetch('/api/v1/geo/' + path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(b),
-  });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error((j && (j.detail || j.error)) || ('HTTP ' + r.status));
-  return j;
-}
+
 
 /** pre_filter 容错：字符串 'field/op/value'（或 | 分隔）或对象 → 后端 {field,op,value}。 */
 function normPreFilter(pf) {
@@ -213,166 +214,11 @@ function activeAnalysis() {
   if (sel && isAnalysis(sel)) return sel;
   return getLayers().find((l) => isAnalysis(l) && l.fc && l.fc.features && l.fc.features.length) || null;
 }
-/** P1（v1.4）：rows + boundary geojson → 合成聚合 polygon FC（每 feature 注入 _grid_norm/polarity_index 供 choropleth 着色）。
- *  仅当 boundary 解析为 GeoJSON（中文名）时合成；preset_id（无 geojson）返 null（只给表格 rows）。 */
-function _buildZonalFc(rows, boundary) {
-  const feats = !boundary ? [] : (boundary.type === 'FeatureCollection' ? boundary.features : (boundary.type === 'Feature' ? [boundary] : []));
-  if (!feats.length) return null;
-  const findRow = (nm) => {
-    const s = String(nm || '').trim();
-    return rows.find((r) => String(r.name || '').trim() === s)
-      || rows.find((r) => { const rn = String(r.name || '').trim(); return rn && (rn.includes(s) || s.includes(rn)); });
-  };
-  const out = [];
-  for (const f of feats) {
-    const nm = (f.properties && f.properties.name) || '';
-    const row = findRow(nm);
-    const pi = row && row.polarity_index != null && !isNaN(Number(row.polarity_index)) ? Number(row.polarity_index) : null;
-    out.push({
-      ...f,
-      properties: {
-        ...(f.properties || {}), name: nm || (row && row.name) || '',
-        polarity_index: pi, _grid_norm: pi != null ? piToNorm(pi) : 0.5,
-        point_count: row ? (row.point_count || 0) : 0,
-        domain_top: row ? row.domain_top : null, element_top: row ? row.element_top : null,
-        issue_label: row ? row.issue_label : null,
-      },
-    });
-  }
-  return { type: 'FeatureCollection', features: out };
-}
-/** P1：zonal 合成聚合图层（choropleth 红绿）→ addResultLayer（_ui.tool='zonal' 复用 grid 着色管线）。返层对象或 null。 */
-function _zonalToLayer(boundaryLabel, rows, boundary) {
-  const fc = _buildZonalFc(rows, boundary);
-  if (!fc || !fc.features.length) return null;
-  return addResultLayer({
-    name: `聚合·${boundaryLabel}`, kind: 'polygon', fc, keep: true,
-    paint: _defaultPaint('zonal', 'polygon'),   // A2 paint 统一
-  });
-}
-/** P1-extend（v1.4）：compare 多区合成合并聚合图层（每区 choropleth 合并为一个 FC）。复用 _buildZonalFc 逐区合成。 */
-function _compareToLayer(results) {
-  const feats = [];
-  const labels = [];
-  for (const x of results) {
-    if (!x.row || !x.boundaryGeo) continue;
-    const fc = _buildZonalFc([x.row], x.boundaryGeo);
-    if (fc && fc.features.length) { feats.push(...fc.features); labels.push(x.boundary); }
-  }
-  if (!feats.length) return null;
-  return addResultLayer({
-    name: `对比·${labels.join('·')}`, kind: 'polygon', fc: { type: 'FeatureCollection', features: feats }, keep: true,
-    paint: _defaultPaint('zonal', 'polygon'),   // A2 paint 统一
-  });
-}
-const _presetGeoCache = new Map();   // preset_id → 归一化 GeoJSON（properties.name 已对齐·Dumb 缓存）
-/** A1 共用：boundary 入参（preset_id | 中文 preset 标签 | 中文要素名 | GeoJSON dict）→ 归一化 GeoJSON（features 带 properties.name）。
- *  解析失败返 null（调用方降级纯表格，不报错·Dumb Tool 不猜）。 */
-async function _resolveBoundaryGeo(input) {
-  if (!input) return null;
-  if (typeof input === 'object') return input;   // GeoJSON dict 直通
-  let pid = String(input);
-  try {
-    const via = await resolveBoundaryInput(input);   // 中文要素名 → 单要素 GeoJSON dict；preset_id → 原样 str
-    if (via && typeof via === 'object') return via;
-    if (typeof via === 'string') pid = via;
-  } catch (_) { /* 索引构建失败 → 继续 preset 路径 */ }
-  if (_presetGeoCache.has(pid)) return _presetGeoCache.get(pid);
-  try {
-    const groups = await fetchRangePresets();
-    const items = [];
-    for (const g of (groups || [])) for (const it of (g.items || [])) items.push(it);
-    const hit = items.find((it) => it.id === pid || it.label === pid);   // 中文标签（如「行政区」）→ preset_id
-    if (hit) pid = hit.id;
-    const res = await fetchRangePreset(pid);
-    if (!res || !res.geojson) return null;
-    const nf = res.nameField || 'name';
-    const fc = { type: 'FeatureCollection', features: (res.geojson.features || []).map((f) => ({ ...f, properties: { ...(f.properties || {}), name: (f.properties || {})[nf] ?? (f.properties || {}).name } })) };
-    _presetGeoCache.set(pid, fc);
-    return fc;
-  } catch (_) { return null; }
-}
+// _buildZonalFc 已迁 toolbox/shared.js（步 1·手册 §3.2），本文件经 import 别名 _buildZonalFc 使用。
+// _zonalToLayer/_compareToLayer 已迁 toolbox/zonal-tool.js（步 7·合成逻辑入模块 _execute）。
+// _resolveBoundaryGeo wrapper 已删（步 7）：rank/area_stats 合成随迁模块；中文名预解析由委托层 resolveBoundaryInput 内联（§3.3①）。
 
-/** A1：rank Top N 高亮层（演示链「哪里最差」成图断点）。
- *  设计语言：复用 zonal 极性 choropleth（_buildZonalFc + piToNorm + polarityStops），不新造配色（与 zonal/compare 统一）。
- *  boundary 路径：解析 boundary GeoJSON 合成后过滤到命中 Top N 的单元；无 boundary（layer=已聚合层）：按 name 回匹配源层。
- *  解析不到 → 返 null（rank 降级纯表格 rows，与 zonal preset_id 限制同级）。 */
-async function _rankToLayer(rows, by, boundaryInput, layerRef) {
-  let fc = null;
-  if (boundaryInput) {
-    const geo = await _resolveBoundaryGeo(boundaryInput);
-    fc = geo ? _buildZonalFc(rows, geo) : null;
-  }
-  if ((!fc || !fc.features.length) && layerRef && typeof layerRef === 'string') {
-    const src = getLayers().find((x) => x.name === layerRef || x.id === layerRef);
-    if (src && src.fc && src.fc.features && src.fc.features.length) {
-      const names = new Set(rows.map((r) => String(r.name || '').trim()));
-      const feats = src.fc.features.filter((f) => names.has(String((f.properties || {}).name || '').trim()));
-      if (feats.length) fc = { type: 'FeatureCollection', features: feats };
-    }
-  }
-  if (!fc || !fc.features.length) return null;
-  // 仅保留命中 Top N 的单元（_buildZonalFc 对未命中单元给 polarity_index=null·_grid_norm=0.5 中性色，勿误导）
-  const hits = fc.features.filter((f) => (f.properties || {}).polarity_index != null);
-  if (hits.length) fc = { type: 'FeatureCollection', features: hits };
-  for (const f of fc.features) {   // 源层路径补 _grid_norm（choropleth 着色扳机）
-    const p = f.properties || {};
-    if (p._grid_norm == null) p._grid_norm = p.polarity_index != null ? piToNorm(Number(p.polarity_index)) : 0.5;
-  }
-  const _byCN = by === 'worst' ? '最差' : by === 'best' ? '最好' : String(by).replace(':', '·');
-  const _scope = boundaryInput ? String(boundaryInput) : (layerRef ? String(layerRef) : '排序');
-  return addResultLayer({
-    name: `Top${rows.length}·${_byCN}·${_scope}`, kind: 'polygon', fc, keep: true,
-    paint: _defaultPaint('rank', 'polygon'),   // A2 paint 统一（极性 choropleth·复用 zonal 管线）
-  });
-}
-
-/** A1：area_stats choropleth（演示链成图断点·「各类用地/各单元面积占比」从纯表格升级为着色面层）。
- *  着色复用 addResultLayer 内 landuseLayerPaint 范式：用地（DLMC）自动附国标标准色；非用地走面结果默认 paint，
- *  统计值（area_km2/share）写入要素 properties 供弹窗/表格。解析不到 boundary → null（降级纯表格）。 */
-async function _areaStatsToLayer(rows, boundaryInput, groupBy) {
-  const geo = await _resolveBoundaryGeo(boundaryInput);
-  const feats = geo ? (geo.type === 'FeatureCollection' ? geo.features : (geo.type === 'Feature' ? [geo] : [])) : [];
-  if (!feats.length) return null;
-  const byGroup = groupBy && rows.some((r) => r[groupBy] != null);
-  const findRow = (f) => {
-    const p = f.properties || {};
-    if (byGroup) return rows.find((r) => String(r[groupBy]) === String(p[groupBy] ?? '')) || null;
-    const nm = String(p.name || '').trim();
-    return rows.find((r) => String(r.name || '').trim() === nm)
-      || rows.find((r) => { const rn = String(r.name || '').trim(); return rn && (rn.includes(nm) || nm.includes(rn)); }) || null;
-  };
-  let hit = 0;
-  const out = feats.map((f) => {
-    const row = findRow(f);
-    if (row) hit++;
-    return { ...f, properties: { ...(f.properties || {}), area_km2: row ? row.area_km2 : null, share: row ? row.share : null } };
-  });
-  if (!hit) return null;
-  return addResultLayer({
-    name: `面积·${String(boundaryInput)}${groupBy ? '·按' + groupBy : ''}`, kind: 'polygon',
-    fc: { type: 'FeatureCollection', features: out }, keep: true,
-    paint: _defaultPaint('area_stats', 'polygon'),   // A2 paint 统一（用地 DLMC 由 addResultLayer 内 landuseLayerPaint 覆写）
-  });
-}
-
-/** A1：nearest 连线层（演示链成图断点·「离 X 最近的点」从纯表格升级为连线图）。
- *  后端 rows 带 tgt_lon/tgt_lat/pt_lon/pt_lat（geo_routes A1 additive）；缺坐标行跳过（Dumb 不猜）。
- *  连线色 #ff9000 = 关联标注色（非数据编码·与结论同步色一致），区别于极性 choropleth 数据语言。 */
-function _nearestToLayer(rows, targetLabel) {
-  const feats = [];
-  for (const row of rows || []) {
-    const c = [Number(row.tgt_lon), Number(row.tgt_lat), Number(row.pt_lon), Number(row.pt_lat)];
-    if (!c.every(Number.isFinite)) continue;
-    feats.push({ type: 'Feature',
-      properties: { name: row.name || row.issue_label || '最近点', distance: row.distance, target: targetLabel },
-      geometry: { type: 'LineString', coordinates: [[c[0], c[1]], [c[2], c[3]]] } });
-  }
-  if (!feats.length) return null;
-  return addResultLayer({ name: `最近邻·${targetLabel}`, kind: 'line',
-    fc: { type: 'FeatureCollection', features: feats }, keep: true,
-    paint: _defaultPaint('nearest', 'line') });   // A2 paint 统一（#ff9000 关联标注色）
-}
+// _rankToLayer/_areaStatsToLayer/_nearestToLayer 已迁 toolbox/{rank,area-stats,nearest}-tool.js（步 7·手册 §3.2）。
 
 function fitToFeature(f) {
   const g = f && f.geometry;
@@ -418,52 +264,8 @@ function focusOnlyResults() {
   }
 }
 
-/** 工具产物层内容签名（B srcId·用户#3 点名两次）：与 main.js _contentSig 同语义——
- *  featureCount + bbox + 前 5 feature 几何/属性键。治 addResultLayer 仅按 name 去重 → 异名同内容堆叠。
- *  待统一：后续重构移到 state.js 共享，消除与 main.js 重复（两处签名须保持一致）。 */
-const _r4 = (x) => Math.round(x * 1e4) / 1e4;
-function _toolContentSig(fc) {
-  const feats = (fc && fc.features) || [];
-  const bb = fcBBox(fc);
-  const head = feats.slice(0, 5).map((f) => {
-    const g = f.geometry || {}; const c = g.coordinates;
-    const cSig = Array.isArray(c) ? (typeof c[0] === 'number' ? `${_r4(c[0])},${_r4(c[1])}` : JSON.stringify(c).slice(0, 48)) : '';
-    const keys = f.properties ? Object.keys(f.properties).sort().join(',') : '';
-    return `${g.type || ''}:${cSig}:${keys}`;
-  }).join('|');
-  return `${feats.length}|${bb ? bb.map(_r4).join(',') : ''}|${head}`;
-}
-
-/** A2 paint 统一：EMC 落图层确定性默认（设计语言单一来源·样式不再散落各工具）。
- *  kind=line → 关联连线（#ff9000 标注色·非数据编码）；tool=zonal/rank → 极性 choropleth（复用 grid 着色管线）；
- *  其余面结果 → 浅填充描边。buffer 等带 _ui 元数据的工具自行展开合并（{..._defaultPaint(...), _ui}）。 */
-function _defaultPaint(tool, kind) {
-  if (kind === 'line') return { color: '#ff9000', lineWidth: 2 };
-  if (tool === 'zonal' || tool === 'rank') {
-    return { _ui: { tool: 'zonal' }, fillOn: true, fillOpacity: 0.72, lineWidth: 1, lineOpacity: 0.6,
-      gridField: '_grid_norm', gridStops: polarityStops('overall') || [] };
-  }
-  return { fillOn: true, lineWidth: 2, fillOpacity: 0.2 };
-}
-/** A2 落图自检备注：渲染异常（partial/failed）时给 observation 追加中文提示（渲染层标记·不触出口裁定承重）。 */
-function _renderNote(L) {
-  return (L && L._renderState && L._renderState !== 'ok') ? '（注意：落图异常，图层已入列表但可能未正确渲染）' : '';
-}
-
-/** A3 尺度表（确定性钳制·K3 §4.3）：按范围/对象名推断分析尺度默认半径（米）。
- *  社区/街道级 250 · 行政区/单元/片区 500 · 主城/全域 1000（ tier 序敏感：先细后粗）。
- *  LLM 显式给值时经 _clampM 钳到 [50, 5000] 合理域（双保险·Dumb Tool 不盲信数值参数）。 */
-const _SCALE_TABLE = [
-  { re: /社区|街道|小区|公园|广场|学校/, radius: 250 },
-  { re: /主城|城区|中心|全域|全市|宜昌/, radius: 1000 },
-  { re: /区|单元|片区/, radius: 500 },
-];
-function _scaleRadius(hint) {
-  const s = String(hint || '');
-  for (const t of _SCALE_TABLE) if (t.re.test(s)) return t.radius;
-  return null;
-}
-function _clampM(v) { return Math.min(5000, Math.max(50, Math.round(v))); }
+// _toolContentSig / _defaultPaint / _renderNote / _SCALE_TABLE / _scaleRadius / _clampM
+// 已迁 toolbox/shared.js（步 1·手册 §3.2），本文件经 import 别名使用；main.js 同语义 _contentSig 本次不动（手册 §3.2 注）。
 
 /** 把 geo 工具产出的 GeoJSON 落地图为新图层（统一回写，复用 range-presets/grid-tool 范式）。
  * 替换语义：同名旧结果层先移除再新建（防重复堆叠）。name=图层名，kind=point|polygon。
@@ -472,44 +274,25 @@ function _clampM(v) { return Math.min(5000, Math.max(50, Math.round(v))); }
  * 沉浸聚焦：每生成一个结果 → 关其余、留本轮所有结果、缩放至并集（maxZoom 16 防过度放大）。 */
 export function addResultLayer({ name, kind = 'polygon', fc, paint, keep, fields }) {
   if (!fc || !fc.features || !fc.features.length) return null;
-  const _sig = _toolContentSig(fc);   // B srcId：异名同内容也去重（治仅按 name 去重漏洞·用户#3）
-  for (const l of getLayers()) {
-    if (l.name === name || l.srcId === _sig) { removeLayerFromMap(l.id); removeLayer(l.id); }
-  }
   // 消费式收尾：移除被引用消费的中间结果层，但 _keepIds（显式保留）豁免——显式意图覆盖默认清理。
   // 未消费的并列最终结果（如 居住+商业）保留；$n/命名引用走 _stepResults 的 fc，不依赖图层存活。
+  // （原顺序为先签名去重后收尾：二者作用不同层集、移除幂等，最终态一致；去重 + srcId 挂层现由 addToolboxLayer 内部完成）
   for (let i = _curResultIds.length - 1; i >= 0; i--) {
     if (_consumedIds.has(_curResultIds[i]) && !_keepIds.has(_curResultIds[i])) { removeLayerFromMap(_curResultIds[i]); removeLayer(_curResultIds[i]); _curResultIds.splice(i, 1); }
   }
-  // 用地层自动附制图规范标准色（任何 EMC 工具产物：extract/clip/filter/overlay/merge/buffer…）。
-  // kind=polygon 且检测为用地（有 DLMC 或层名含用地关键词）→ 标准色覆盖默认 paint 的 color/fillOpacity。
-  let _paint = paint;
-  if (kind === 'polygon') {
-    const _lu = landuseLayerPaint(fc, name);
-    if (_lu) _paint = { ...(paint || {}), ..._lu };
-  }
   // 工作机制：注入 _ui.tool（from setToolContext 的 _curTool）——让 EMC 产物带工具身份，Toolbox 编辑面板（按 _ui.tool 回填参数）对 EMC buffer/overlay/clip 等生效
+  let _paint = paint;
   if (_curTool) {
     if (!_paint) _paint = { _ui: { tool: _curTool } };
     else if (!_paint._ui) _paint = { ..._paint, _ui: { tool: _curTool } };
     else if (!_paint._ui.tool) _paint._ui.tool = _curTool;
   }
-  const L = addLayer({ name, kind, fc, paint: _paint, parentId: _aiGroup().id });
-  L.srcName = name;
-  L.srcId = _sig;   // 工具产物层挂 srcId（与 main.js 导入层同语义·供 EMC grounding + 后续去重）
+  // 通用落图（手册 §3.3②：去重/用地标准色/addLayer/renderLayer/落图自检/列表刷新）；fit=false——缩放由下方并集统一做（保持原行为）
+  const L = addToolboxLayer({ name, kind, fc, paint: _paint, parentId: _aiGroup().id, fit: false });
+  if (!L) return null;
   _registry.push({ id: L.id, name, tool: _curTool, round: _curRound, t: Date.now(), fields });   // ① registry（provenance 由 harness setToolContext 注入；fields 可选字段简表，P3 formatRegistry 用）
   if (keep) _keepIds.add(L.id);              // 显式保留登记（覆盖消费式清理）
   _curResultIds.push(L.id);                 // 登记本轮存活结果（沉浸聚焦）
-  renderLayer(L);
-  // A2 落图自检（渲染层标记·不触出口裁定承重）：bbox 越界（WGS84 合法域外）→ partial；
-  // renderLayer addSource 失败（map.js 已标 _renderState=failed）→ 告警。observation 侧经 _renderNote 消费。
-  const _bb = fcBBox(fc);
-  const _bboxBad = !!_bb && !(_bb[0] >= -180 && _bb[2] <= 180 && _bb[1] >= -90 && _bb[3] <= 90);
-  if (_bboxBad || L._renderState !== 'ok') {
-    L._renderState = _bboxBad ? 'partial' : (L._renderState || 'failed');
-    console.warn('[addResultLayer] 落图异常:', name, L._renderState, _bboxBad ? 'bbox 越界' : '');
-  }
-  renderLayerList(); refreshLegend(); reorderAllZ();
   _stepResults.push(fc);   // 登记 $n 引用（ref 解析）
   _resultIdByStep.push(L.id);   // 与 _stepResults 平行：ref('$n') 据此标消费
   focusOnlyResults();
@@ -824,6 +607,24 @@ function _registerToolboxLayer(layerId, fc, name) {
   _stepResults.push(fc);
   _resultIdByStep.push(layerId);
 }
+/** 委托产物 EMC 簿记（手册 v2.2 §2 C4/§6 步 7·density :1305-1311 范式提取）：
+ *  _registerToolboxLayer（registry/$n/_curResultIds/srcId）+ keep 登记 + consumed 清理（addResultLayer
+ *  同则·_keepIds 豁免）+ AI 组 parentId + focusOnlyResults（沉浸聚焦·v2.2 建议 1）+ 并集缩放 +
+ *  layers:changed 补发（parentId 晚于模块内 dispatch）。返层对象（observation 侧 _renderNote 消费）。 */
+function _adoptToolboxResult(layerId, fc, name, { keep = false } = {}) {
+  if (!layerId) return null;
+  _registerToolboxLayer(layerId, fc, name);
+  if (keep) _keepIds.add(layerId);
+  for (let i = _curResultIds.length - 1; i >= 0; i--) {
+    if (_consumedIds.has(_curResultIds[i]) && !_keepIds.has(_curResultIds[i])) { removeLayerFromMap(_curResultIds[i]); removeLayer(_curResultIds[i]); _curResultIds.splice(i, 1); }
+  }
+  const L = getLayers().find((x) => x.id === layerId);
+  if (L && !L.parentId) L.parentId = _aiGroup().id;
+  focusOnlyResults();
+  const bb = _unionBBox(_curResultIds); if (bb) fitBoundsTo(bb, 100, 16);
+  document.dispatchEvent(new CustomEvent('layers:changed'));
+  return L || null;
+}
 
 export const TOOLS = {
   /** 查当前已加载的图层/数据（数据可见纪律：只列 visible 层，与 pickVisiblePointLayer/buildContext 同源——
@@ -1013,17 +814,15 @@ export const TOOLS = {
     if (!params.boundary) return { observation: '[ERR] zonal_stats 需 boundary（preset_id）' };
     const _layer = resolvePointLayer(params);
     if (!_layer) return _ERR_NO_VISIBLE_PT();
-    const boundary = await resolveBoundaryInput(params.boundary);   // 中文地名(西陵区)→GeoJSON；preset_id 直通
-    const body = { layer: _layer, boundary };
-    if (params.range) body.range = params.range;
-    const pf = normPreFilter(params.pre_filter); if (pf) body.pre_filter = pf;
-    if (params.top_n != null) body.top_n = Number(params.top_n);
+    const boundary = await resolveBoundaryInput(params.boundary);   // 中文地名(西陵区)→GeoJSON；preset_id 直通（§3.3① 委托层预解析，模块不碰中文名）
     try {
-      const r = await geoFetch('zonal_stats', body);
+      const r = await generateZonalForAI({ layer: ref(_layer), boundary: ref(boundary), boundaryLabel: String(params.boundary),
+        range: params.range ? ref(params.range) : undefined, pre_filter: normPreFilter(params.pre_filter),
+        top_n: params.top_n != null ? Number(params.top_n) : undefined, as: params.as });
       const rows = r.rows || [];
       if (!rows.length) return { observation: `面域聚合（boundary=${params.boundary}）无结果` };
-      const _zL = _zonalToLayer(params.boundary, rows, boundary);   // P1：合成红-绿聚合图层（activeAnalysis 可认→深读可工作）
-      return { observation: `面域聚合 ${rows.length} 单元（boundary=${params.boundary}，按 |${r.sort_by || 'polarity_index'}| 降序）：\n` + rows.map(_fmtRow).join('\n') + _renderNote(_zL), data: { rows, sort_by: r.sort_by, layerId: _zL && _zL.id } };
+      const _zL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: true }) : null;   // P1：合成红-绿聚合图层（activeAnalysis 可认→深读可工作）
+      return { observation: `面域聚合 ${rows.length} 单元（boundary=${params.boundary}，按 |${r.sortBy || 'polarity_index'}| 降序）：\n` + rows.map(_fmtRow).join('\n') + _renderNote(_zL), data: { rows, sort_by: r.sortBy, layerId: r.layerId } };
     } catch (e) { return _ERR('zonal_stats', e); }
   },
 
@@ -1036,27 +835,24 @@ export const TOOLS = {
     if (!Array.isArray(bs) || bs.length < 2) return { observation: '[ERR] compare_regions 需 boundaries（≥2 个 preset_id，数组或 "|," 分隔）' };
     const _layer = resolvePointLayer(params);
     if (!_layer) return _ERR_NO_VISIBLE_PT();
-    const pf = normPreFilter(params.pre_filter); if (pf) params.pre_filter = pf;
-    const results = [];
+    const pf = normPreFilter(params.pre_filter);
+    const boundaries = [];
     for (const b of bs.slice(0, 4)) {
-      const boundary = await resolveBoundaryInput(b);   // 中文名(西陵区)→GeoJSON；preset_id 直通
-      const body = { layer: _layer, boundary };
-      if (pf) body.pre_filter = pf;
-      try {
-      const r = await geoFetch('zonal_stats', body);
-      const rows = r.rows || [];
-      results.push({ boundary: b, boundaryGeo: boundary, row: rows[0] || null, n: rows.length, sort_by: r.sort_by });
-      } catch (e) { results.push({ boundary: b, row: null, err: String((e && e.message) || e) }); }
+      boundaries.push({ label: b, geo: await resolveBoundaryInput(b) });   // 中文名(西陵区)→GeoJSON；preset_id 直通（§3.3① 委托层预解析）
     }
-    const lines = results.map((x) => {
-      if (x.err) return `- ${x.boundary}：[ERR] ${x.err.slice(0, 80)}`;
-      if (!x.row) return `- ${x.boundary}：无结果（preset_id 无效或该区无点）`;
-      return `- ${x.boundary}：${_fmtRow(x.row)}`;
-    });
-    const _ok = results.filter((x) => x.row).length;
-    if (_ok < 2) return { observation: `区域对比仅 ${_ok}/${results.length} 区有结果（${results.map((x) => x.boundary).join('、')}）——确认 boundaries 为有效 preset_id（行政区/单元）后重试\n` + lines.join('\n') };
-    const _cL = _compareToLayer(results);   // P1-extend：多区合并聚合图层（choropleth 红绿·activeAnalysis 可认）
-    return { observation: `区域对比（${results.length} 区并排，按极性/归因）：\n` + lines.join('\n') + _renderNote(_cL), data: { comparison: results, layerId: _cL && _cL.id } };
+    try {
+      const r = await generateCompareForAI({ layer: ref(_layer), boundaries, pre_filter: pf, as: params.as });
+      const results = r.comparison || [];
+      const lines = results.map((x) => {
+        if (x.err) return `- ${x.boundary}：[ERR] ${x.err.slice(0, 80)}`;
+        if (!x.row) return `- ${x.boundary}：无结果（preset_id 无效或该区无点）`;
+        return `- ${x.boundary}：${_fmtRow(x.row)}`;
+      });
+      const _ok = r.okCount;
+      if (_ok < 2) return { observation: `区域对比仅 ${_ok}/${results.length} 区有结果（${results.map((x) => x.boundary).join('、')}）——确认 boundaries 为有效 preset_id（行政区/单元）后重试\n` + lines.join('\n') };
+      const _cL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: true }) : null;   // P1-extend：多区合并聚合图层（choropleth 红绿·activeAnalysis 可认）
+      return { observation: `区域对比（${results.length} 区并排，按极性/归因）：\n` + lines.join('\n') + _renderNote(_cL), data: { comparison: results, layerId: r.layerId } };
+    } catch (e) { return _ERR('compare_regions', e); }
   },
 
   /** Top N 排序（最差/最好/按 domain·element 占比）。 */
@@ -1065,16 +861,16 @@ export const TOOLS = {
     if (by.startsWith('domain:')) { const cn = by.split(':')[1]; by = 'domain:' + (_DOMAIN_CN2EN[cn] || cn); }
     const _layer = resolvePointLayer(params);
     if (!_layer) return _ERR_NO_VISIBLE_PT();
-    const body = { layer: _layer, by, top_n: Number(params.top_n) || 5 };
-    if (params.boundary) body.boundary = params.boundary;
-    if (params.range) body.range = params.range;
-    const pf = normPreFilter(params.pre_filter); if (pf) body.pre_filter = pf;
     try {
-      const r = await geoFetch('rank', body);
+      const r = await generateRankForAI({ layer: ref(_layer), by, top_n: Number(params.top_n) || 5,
+        boundary: params.boundary ? ref(params.boundary) : undefined,
+        boundaryLabel: params.boundary ? String(params.boundary) : undefined,
+        layerRef: typeof params.layer === 'string' ? params.layer : undefined,
+        range: params.range ? ref(params.range) : undefined, pre_filter: normPreFilter(params.pre_filter), as: params.as });
       const rows = r.rows || [];
       if (!rows.length) return { observation: `排序（by=${by}）无结果` };
-      const _rk = await _rankToLayer(rows, by, params.boundary, params.layer);   // A1：Top N 高亮层（解析不到 boundary 降级纯表格）
-      return { observation: `排序 Top${rows.length}（by=${by}）：\n` + rows.map(_fmtRow).join('\n') + (_rk ? `\n→ 已生成高亮层「${_rk.name}」（极性 choropleth·Top N 单元）` : '') + _renderNote(_rk), data: { rows, by, layerId: _rk && _rk.id } };
+      const _rk = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: true }) : null;   // A1：Top N 高亮层（解析不到 boundary 降级纯表格）
+      return { observation: `排序 Top${rows.length}（by=${by}）：\n` + rows.map(_fmtRow).join('\n') + (_rk ? `\n→ 已生成高亮层「${_rk.name}」（极性 choropleth·Top N 单元）` : '') + _renderNote(_rk), data: { rows, by, layerId: r.layerId } };
     } catch (e) { return _ERR('rank', e); }
   },
 
@@ -1084,18 +880,16 @@ export const TOOLS = {
     if (!pf) return { observation: '[ERR] filter_attr 需 pre_filter（field/op/value）' };
     const _layer = resolvePointLayer(params);
     if (!_layer) return _ERR_NO_VISIBLE_PT();
-    const body = { layer: _layer, pre_filter: pf };
-    if (params.range) body.range = params.range;
     try {
-      const r = await geoFetch('filter_attr', body);
-      const feats = (r.geojson && r.geojson.features) || [];
-      const _fName = params.as || String(pf.value || pf.field || '属性筛选');   // 名=内容（值/字段），勿用「筛选·」工程前缀
-      const _fL = addResultLayer({ name: _fName, kind: 'point', fc: r.geojson, keep: !!params.keep });
+      const r = await generateFilterForAI({ layer: ref(_layer), pre_filter: pf,
+        range: params.range ? ref(params.range) : undefined, as: params.as });
+      const feats = (r.fc && r.fc.features) || [];
+      const _fL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // 名=内容（值/字段·模块 C6 沿用）
       const sample = feats.slice(0, 3).map((f) => {
         const p = f.properties || {};
         return '{' + Object.keys(p).slice(0, 5).map((k) => `${k}=${p[k]}`).join(', ') + '}';
       });
-      return { observation: `属性筛选命中 ${r.count} 个要素${r.truncated ? '（已截断）' : ''} → 已生成图层「${_fName}」${_fL ? '(' + feats.length + '点)' : ''}，示例：${sample.join(' | ') || '（无属性）'}` + _renderNote(_fL), data: { count: r.count, layerId: _fL && _fL.id } };
+      return { observation: `属性筛选命中 ${r.count} 个要素${r.truncated ? '（已截断）' : ''} → 已生成图层「${r.layerName}」${_fL ? '(' + feats.length + '点)' : ''}，示例：${sample.join(' | ') || '（无属性）'}` + _renderNote(_fL), data: { count: r.count, layerId: r.layerId } };
     } catch (e) { return _ERR('filter_attr', e); }
   },
 
@@ -1104,15 +898,14 @@ export const TOOLS = {
     if (!params.range) return { observation: '[ERR] clip 需 range（preset_id|geojson）' };
     const _layer = resolvePointLayer(params);
     if (!_layer) return _ERR_NO_VISIBLE_PT();
-    const body = { layer: _layer, range: params.range };
-    const pf = normPreFilter(params.pre_filter); if (pf) body.pre_filter = pf;
     try {
-      const r = await geoFetch('clip', body);
-      const feats = (r.geojson && r.geojson.features) || [];
-      const name = params.as || (typeof params.range === 'string' ? params.range : '范围裁剪');   // 名=范围（如「西陵区」），勿用「裁剪·」
-      const L = addResultLayer({ name, kind: 'point', fc: r.geojson, keep: !!params.keep });
+      const r = await generateClipForAI({ layer: ref(_layer), range: ref(params.range),
+        rangeLabel: typeof params.range === 'string' ? params.range : undefined,
+        pre_filter: normPreFilter(params.pre_filter), as: params.as });
+      const feats = (r.fc && r.fc.features) || [];
+      const L = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // 名=范围（如「西陵区」·模块 C6 沿用）
       const sample = feats.slice(0, 3).map((f) => { const p = f.properties || {}; return p.name || p.issue_label || '未命名'; });
-      return { observation: `裁剪命中 ${r.count} 个点要素${r.truncated ? '（已截断）' : ''}（range=${params.range}）→ 已生成点图层「${name}」${L ? '(' + feats.length + '点)' : ''}。注：clip 裁剪点层到范围·结果为点图层；要抽取范围面用 extract_feature。示例：${sample.join('、') || '（无）'}` + _renderNote(L), data: { count: r.count, layerId: L && L.id } };
+      return { observation: `裁剪命中 ${r.count} 个点要素${r.truncated ? '（已截断）' : ''}（range=${params.range}）→ 已生成点图层「${r.layerName}」${L ? '(' + feats.length + '点)' : ''}。注：clip 裁剪点层到范围·结果为点图层；要抽取范围面用 extract_feature。示例：${sample.join('、') || '（无）'}` + _renderNote(L), data: { count: r.count, layerId: r.layerId } };
     } catch (e) { return _ERR('clip', e); }
   },
   /** 从面边界按属性抽单要素为独立面图层（裁出某区/某单元），结果落地图。 */
@@ -1133,51 +926,46 @@ export const TOOLS = {
         } catch (_) { /* getFieldCard 失败（LLM 不可用/降级）→ 校验降级 skip·不阻塞 */ }
       }
     }
-    const body = { layer: params.layer };
-    if (params.where) body.where = normPreFilter(params.where) || params.where;   // 归一：字符串/对象 + in 多值逗号切分（"MC/in/西陵区,伍家岗区"→list）
     try {
-      const r = await geoFetch('extract_feature', body);
-      const feats = (r.geojson && r.geojson.features) || [];
-      const _nm = (f) => { const p = f.properties || {}; return p.name || p[r.name_field] || Object.values(p).find((v) => typeof v === 'string') || '未命名'; };
-      const labels = feats.map(_nm);
-      const name = params.as || (labels.slice(0, 2).join('·') || params.layer);   // 名=要素名（如「西陵区·伍家岗区」/「商业服务业用地」）
-      const L = addResultLayer({ name, kind: 'polygon', fc: r.geojson, paint: _defaultPaint('extract_feature', 'polygon'), keep: !!params.keep });   // A2 paint 统一
-      return { observation: `属性抽取命中 ${r.count} 个面要素（layer=${params.layer}${params.where ? ', where=' + params.where : ''}）→ 已生成图层「${name}」${L ? '(' + feats.length + '面)' : ''}：${labels.slice(0, 5).join('、') || '（无）'}` + _renderNote(L), data: { count: r.count, layerId: L && L.id } };
+      const r = await generateExtractForAI({ layer: ref(params.layer),
+        sourceLabel: params.layer != null ? String(params.layer) : undefined,   // 空命中命名兜底=原始 layer 串（[object Object]/$n 逐字·C6）
+        where: params.where ? (normPreFilter(params.where) || params.where) : undefined, as: params.as });
+      const feats = (r.fc && r.fc.features) || [];
+      const labels = r.labels || [];
+      const L = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // 名=要素名（如「西陵区·伍家岗区」/「商业服务业用地」·模块 C6 沿用）
+      return { observation: `属性抽取命中 ${r.count} 个面要素（layer=${params.layer}${params.where ? ', where=' + params.where : ''}）→ 已生成图层「${r.layerName}」${L ? '(' + feats.length + '面)' : ''}：${labels.slice(0, 5).join('、') || '（无）'}` + _renderNote(L), data: { count: r.count, layerId: r.layerId } };
     } catch (e) { return _ERR('extract_feature', e); }
   },
 
   /** 各类用地/各单元面积占比。 */
   async area_stats(params = {}) {
     if (!params.boundary) return { observation: '[ERR] area_stats 需 boundary' };
-    const body = { boundary: params.boundary };
-    if (params.group_by) body.group_by = params.group_by;
     try {
-      const r = await geoFetch('area_stats', body);
+      const r = await generateAreaStatsForAI({ boundary: ref(params.boundary), boundaryLabel: String(params.boundary),
+        group_by: params.group_by, as: params.as });
       const rows = r.rows || [];
-      const _as = await _areaStatsToLayer(rows, params.boundary, params.group_by);   // A1：choropleth 着色面层（解析不到 boundary 降级纯表格）
-      const total = r.total_area_km2 != null ? `（总 ${Number(r.total_area_km2).toFixed(1)} km²）` : '';
+      const _as = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: true }) : null;   // A1：choropleth 着色面层（解析不到 boundary 降级纯表格）
+      const total = r.totalAreaKm2 != null ? `（总 ${Number(r.totalAreaKm2).toFixed(1)} km²）` : '';
       const seg = rows.map((row) => {
         const label = row[params.group_by] || row.name || '组';
         const share = row.share != null ? (Number(row.share) * 100).toFixed(1) + '%' : '?';
         const area = row.area_km2 != null ? Number(row.area_km2).toFixed(1) + 'km²' : '?';
         return `${label} ${share}(${area})`;
       });
-      return { observation: `面积统计${total}：${seg.join('、') || '（无）'}` + (_as ? ` → 已生成着色层「${_as.name}」（面积/占比已入要素属性）` : '') + _renderNote(_as), data: { rows, layerId: _as && _as.id } };
+      return { observation: `面积统计${total}：${seg.join('、') || '（无）'}` + (_as ? ` → 已生成着色层「${_as.name}」（面积/占比已入要素属性）` : '') + _renderNote(_as), data: { rows, layerId: r.layerId } };
     } catch (e) { return _ERR('area_stats', e); }
   },
 
   /** 合并/dissolve。 */
   async merge(params = {}) {
     if (!params.boundary) return { observation: '[ERR] merge 需 boundary' };
-    const body = { boundary: params.boundary };
-    if (params.by) body.by = params.by;
     try {
-      const r = await geoFetch('merge', body);
-      const feats = (r.geojson && r.geojson.features) || [];
-      const total = feats.reduce((a, f) => a + (Number((f.properties || {}).area_km2) || 0), 0);
-      const _mName = params.as || String(params.boundary || '合并范围');   // 名=边界（如「西陵区」），勿用「合并·」
-      const _mL = addResultLayer({ name: _mName, kind: 'polygon', fc: r.geojson, paint: _defaultPaint('merge', 'polygon'), keep: !!params.keep });   // A2 paint 统一
-      return { observation: `合并得 ${r.count} 个面，总面积 ${total.toFixed(1)} km² → 已生成图层「${_mName}」${_mL ? '(' + feats.length + '面)' : ''}` + _renderNote(_mL), data: { count: r.count, layerId: _mL && _mL.id } };
+      const r = await generateMergeForAI({ boundary: ref(params.boundary), boundaryLabel: String(params.boundary),
+        by: params.by, as: params.as });
+      const feats = (r.fc && r.fc.features) || [];
+      const total = r.totalAreaKm2 != null ? r.totalAreaKm2 : feats.reduce((a, f) => a + (Number((f.properties || {}).area_km2) || 0), 0);
+      const _mL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // 名=边界（如「西陵区」·模块 C6 沿用）
+      return { observation: `合并得 ${r.count} 个面，总面积 ${total.toFixed(1)} km² → 已生成图层「${r.layerName}」${_mL ? '(' + feats.length + '面)' : ''}` + _renderNote(_mL), data: { count: r.count, layerId: r.layerId } };
     } catch (e) { return _ERR('merge', e); }
   },
 
@@ -1187,43 +975,32 @@ export const TOOLS = {
    *    让侧栏 B 按钮打开 Toolbox 编辑面板时回填真实半径，而非 DEFAULTS(1000m) 重做全然不同的 buffer。 */
   async buffer(params = {}) {
     if (!params.center) return { observation: '[ERR] buffer 需 center' };
-    const body = { center: params.center, radius_m: _clampM(Number(params.radius_m) || _scaleRadius(params.center) || 500) };   // A3 尺度表：缺省按对象尺度推断（社区250/区500/主城1000），显式值钳制
     const _vl = params.layer ? null : pickVisiblePointLayer();          // 无显式 layer → 可见点层（visible 纪律）
-    if (params.layer) body.layer = params.layer;
-    else if (_vl) body.layer = _vl.name;                                // 可见点层名交后端解析聚合（不再硬默认 L2）
-    if (params.agg_cols) body.agg_cols = params.agg_cols;
-    if (params.range) body.range = params.range;
-    const pf = normPreFilter(params.pre_filter); if (pf) body.pre_filter = pf;
     try {
-      const r = await geoFetch('buffer', body);
-      const feats = (r.geojson && r.geojson.features) || [];
-      const _p0 = (feats[0] && feats[0].properties) || {};
-      const area = Number(_p0.area_km2) || 0;
-      const _agg = _p0.point_count != null;                            // 后端聚合成功则 properties 含 point_count
-      const _bName = params.as || `${typeof params.center === 'string' ? params.center : '设施'}·${body.radius_m}m`;   // 名=对象+半径（如「滨江公园·500m」）
-      // _ui 元数据：distance 关键（编辑面板回填真实半径）+ dissolve/样式 + sourceLayer（尽力解析可见点层 id；解析不到则省略，dialog 不锁源层无碍）。
-      const _ui = { tool: 'buffer', distance: body.radius_m, dissolve: false, lineWidth: 2, fillOpacity: 0.2, lineStyle: 'solid' };
-      if (_vl && _vl.sourceKey && _vl.sourceKey.startsWith('layer:')) _ui.sourceLayer = _vl.sourceKey.slice(6);
-      else if (params.layer) { const _m = getLayers().find((l) => l.name === params.layer || l.id === params.layer); if (_m) _ui.sourceLayer = _m.id; }
-      const _bL = addResultLayer({ name: _bName, kind: 'polygon', fc: r.geojson, paint: { ..._defaultPaint('buffer', 'polygon'), _ui }, keep: !!params.keep });   // A2 paint 统一（_ui 元数据保留）
-      const _aggTxt = _agg ? `，圈内 ${_p0.point_count} 点·极性 ${Number(_p0.polarity_index).toFixed(2)}` : '';
-      return { observation: `缓冲区 radius=${r.radius_m || body.radius_m}m，得 ${feats.length} 个面（约 ${area.toFixed(2)} km²）${_aggTxt} → 已生成图层「${_bName}」` + _renderNote(_bL), data: { radius_m: r.radius_m, layerId: _bL && _bL.id, aggregated: _agg } };
+      const r = await generateBufferForAI({ kind: 'emotion',   // D3：EMC 委托固定 emotion（§5.7）
+        center: ref(params.center), centerName: typeof params.center === 'string' ? params.center : undefined,
+        radius: _clampM(Number(params.radius_m) || _scaleRadius(params.center) || 500),   // A3 尺度表：缺省按对象尺度推断（社区250/区500/主城1000），显式值钳制
+        layer: params.layer ? ref(params.layer) : (_vl ? _vl.name : undefined),   // 可见点层名交后端解析聚合（不再硬默认 L2）
+        agg_cols: params.agg_cols, range: params.range ? ref(params.range) : undefined,
+        pre_filter: normPreFilter(params.pre_filter), as: params.as });
+      const _aggTxt = r.aggregated ? `，圈内 ${r.pointCount} 点·极性 ${Number(r.polarityIndex).toFixed(2)}` : '';
+      const _bL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // 名=对象+半径（如「滨江公园·500m」·模块 C6 沿用；_ui 显式 kind:'emotion'·§4.3）
+      return { observation: `缓冲区 radius=${r.radiusM}m，得 ${r.featureCount} 个面（约 ${Number(r.areaKm2).toFixed(2)} km²）${_aggTxt} → 已生成图层「${r.layerName}」` + _renderNote(_bL), data: { radius_m: r.radiusM, layerId: r.layerId, aggregated: r.aggregated } };
     } catch (e) { return _ERR('buffer', e); }
   },
 
   /** 叠置（交/并/差/对称差）。 */
   async overlay(params = {}) {
     if (!params.layer_a || !params.layer_b) return { observation: '[ERR] overlay 需 layer_a + layer_b' };
-    const body = { layer_a: params.layer_a, layer_b: params.layer_b, how: params.how || 'intersection' };
     try {
-      const r = await geoFetch('overlay', body);
-      const feats = (r.geojson && r.geojson.features) || [];
-      const total = feats.reduce((a, f) => a + (Number((f.properties || {}).area_km2) || 0), 0);
-      const _howCN = { intersection: '交', union: '并', difference: '差', symmetric_difference: '对称差' }[body.how] || body.how;
       const _lab = (x) => (typeof x === 'string' ? x : (x && x.name) || '图层');
-      const _oName = params.as || `${_howCN}·${_lab(params.layer_a)}与${_lab(params.layer_b)}`;   // 名=操作语义+两源（如「交·商业用地与西陵区」），勿用「叠置·intersection」
-      const _oL = addResultLayer({ name: _oName, kind: 'polygon', fc: r.geojson, paint: _defaultPaint('overlay', 'polygon'), keep: !!params.keep });   // A2 paint 统一（fillOpacity 0.25→0.2 收敛）
-      return { observation: `叠置(${r.how || body.how}) 得 ${r.count} 个面，总面积 ${total.toFixed(1)} km² → 已生成图层「${_oName}」${_oL ? '(' + feats.length + '面)' : ''}${r.message ? '（' + r.message + '）' : ''}` + _renderNote(_oL), data: { count: r.count, layerId: _oL && _oL.id } };
+      const r = await generateOverlayForAI({ layer_a: ref(params.layer_a), layer_b: ref(params.layer_b),
+        layer_a_label: _lab(params.layer_a), layer_b_label: _lab(params.layer_b),
+        how: params.how || 'intersection', as: params.as });
+      const feats = (r.fc && r.fc.features) || [];
+      const total = r.totalAreaKm2 != null ? r.totalAreaKm2 : feats.reduce((a, f) => a + (Number((f.properties || {}).area_km2) || 0), 0);
+      const _oL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // 名=操作语义+两源（如「交·商业用地与西陵区」·模块 C6 沿用）
+      return { observation: `叠置(${r.how}) 得 ${r.count} 个面，总面积 ${total.toFixed(1)} km² → 已生成图层「${r.layerName}」${_oL ? '(' + feats.length + '面)' : ''}${r.message ? '（' + r.message + '）' : ''}` + _renderNote(_oL), data: { count: r.count, layerId: r.layerId } };
     } catch (e) { return _ERR('overlay', e); }
   },
 
@@ -1232,14 +1009,15 @@ export const TOOLS = {
     if (!params.target) return { observation: '[ERR] nearest 需 target' };
     const _layer = resolvePointLayer(params);
     if (!_layer) return _ERR_NO_VISIBLE_PT();
-    const body = { layer: _layer, target: params.target, k: Number(params.k) || 1 };
     try {
-      const r = await geoFetch('nearest', body);
+      const r = await generateNearestForAI({ layer: ref(_layer), target: ref(params.target),
+        targetLabel: typeof params.target === 'string' ? params.target : undefined,
+        k: Number(params.k) || 1, as: params.as });
       const rows = r.rows || [];
       if (!rows.length) return { observation: '最近邻无结果' };
       const lines = rows.map((row) => `${row.name || row.issue_label || '点'}(${row.distance != null ? Number(row.distance).toFixed(0) + 'm' : '?'})`);
-      const _nr = _nearestToLayer(rows, typeof params.target === 'string' ? params.target : '目标');   // A1：连线层
-      return { observation: `最近邻(k=${body.k})：${lines.join('、')}` + (_nr ? ` → 已生成连线层「${_nr.name}」（${rows.length} 条连线·距离入属性）` : '') + _renderNote(_nr), data: { rows, layerId: _nr && _nr.id } };
+      const _nr = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: true }) : null;   // A1：连线层
+      return { observation: `最近邻(k=${r.k})：${lines.join('、')}` + (_nr ? ` → 已生成连线层「${_nr.name}」（${rows.length} 条连线·距离入属性）` : '') + _renderNote(_nr), data: { rows, layerId: r.layerId } };
     } catch (e) { return _ERR('nearest', e); }
   },
 
@@ -1247,34 +1025,15 @@ export const TOOLS = {
   async hotspot(params = {}) {
     const _layer = resolvePointLayer(params);
     if (!_layer) return _ERR_NO_VISIBLE_PT();
-    const body = { layer: _layer, value_col: params.value_col || 'score', invert: params.invert !== false };
-    if (params.range) body.range = params.range;
-    const pf = normPreFilter(params.pre_filter); if (pf) body.pre_filter = pf;
     try {
-      const r = await geoFetch('hotspot', body);
-      const feats = (r.geojson && r.geojson.features) || [];
-      // hotspot class → 极性色槽（复用离散 5 色极性色带，零 map.js 改动；class 原值保留供弹窗/观察）
-      const _CLS_POL = { hot: 'Very Negative', cold: 'Very Positive', ns: 'Neutral' };
-      const renderFc = {
-        type: 'FeatureCollection',
-        features: feats.map((f) => {
-          const props = { ...(f.properties || {}) };
-          const cls = props.hotspot || props.class || props.gi_class || 'ns';
-          props.polarity = _CLS_POL[cls] || 'Neutral';
-          return { ...f, properties: props };
-        }),
-      };
-      const _hName = params.as || '情绪热点(Gi*)';
-      const _hL = addResultLayer({ name: _hName, kind: 'point', fc: renderFc, keep: !!params.keep });
-      const tally = {};
-      feats.forEach((f) => {
-        const p = f.properties || {};
-        const cls = p.hotspot || p.class || p.gi_class || 'ns';
-        tally[cls] = (tally[cls] || 0) + 1;
-      });
+      const r = await generateHotspotForAI({ layer: ref(_layer), value_col: params.value_col || 'score',
+        invert: params.invert !== false, range: params.range ? ref(params.range) : undefined,
+        pre_filter: normPreFilter(params.pre_filter), as: params.as });
+      const tally = r.tally || {};
       const _CLS_CN = { hot: '显著热点(负面聚集)', cold: '显著冷点(正面聚集)', ns: '不显著' };
-      const dist = Object.keys(tally).length ? Object.entries(tally).map(([k, v]) => `${_CLS_CN[k] || k}:${v}`).join('、') : `${feats.length}要素`;
-      return { observation: `热点分析：${dist}${r.truncated ? '（已截断）' : ''}（hot=红/cold=绿/ns=灰）→ 已生成图层「${_hName}」${_hL ? '(' + feats.length + '点)' : ''}` + _renderNote(_hL), data: { count: r.count, tally, layerId: _hL && _hL.id } };
+      const dist = Object.keys(tally).length ? Object.entries(tally).map(([k, v]) => `${_CLS_CN[k] || k}:${v}`).join('、') : `${r.featureCount}要素`;
+      const _hL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // class→极性重映射由模块完成（_CLS_POL 随迁·§5.6）
+      return { observation: `热点分析：${dist}${r.truncated ? '（已截断）' : ''}（hot=红/cold=绿/ns=灰）→ 已生成图层「${r.layerName}」${_hL ? '(' + r.featureCount + '点)' : ''}` + _renderNote(_hL), data: { count: r.count, tally, layerId: r.layerId } };
     } catch (e) { return _ERR('hotspot', e); }
   },
 
@@ -1302,13 +1061,9 @@ export const TOOLS = {
           weightField: params.weightField || 'emotion_intensity', silent: true,
         });
       }
-      _registerToolboxLayer(r.layerId, r.fc, params.as || r.layerName);   // 补 EMC provenance/$n 引用注册（修委托 Toolbox 的对账缺口）
-      // C分组（用户#2）：density 委托 Toolbox 产出的层挂 AI 组（与 addResultLayer :343 parentId 对齐），
-      // 让 EmotionMap Copilot 组卡非空。generateHeatmapForAI 的 layers:changed 在 parentId 设上前已 fire，故补 dispatch。
-      {
-        const _aiL = getLayers().find((x) => x.id === r.layerId);
-        if (_aiL && !_aiL.parentId) { _aiL.parentId = _aiGroup().id; document.dispatchEvent(new CustomEvent('layers:changed')); }
-      }
+      // 补 EMC provenance/$n/AI 组 + 沉浸聚焦（v2.2 另案落地：density 迁移 _adoptToolboxResult，与 12 委托工具同则；
+      // 组 A 遗留「density 委托丢 focusOnlyResults」修复——observation 不变，仅图面行为与全员工具对齐）。
+      _adoptToolboxResult(r.layerId, r.fc, params.as || r.layerName);
       const _dName = params.as || r.layerName;
       const _modeLabel = { '2d': '热力图(2D彩虹)', '3d': '网格聚合(3D·固定色段)', terrain: '情绪地形(3D KDE 等值面)' }[_mode];
       return {

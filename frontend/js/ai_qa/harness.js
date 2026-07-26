@@ -222,7 +222,7 @@ function _verifyClaims(draft) {
   let m;
   while ((m = re.exec(draft)) !== null) claims.push(m[1].trim());
   if (!claims.length) return { ok: true };
-  const actual = getLayers().map((l) => l.name).filter(Boolean);
+  const actual = getLayers().filter((l) => (l._renderState || 'ok') === 'ok').map((l) => l.name).filter(Boolean);   // E3：渲染失败层（_renderState≠ok·入列表但地图未真渲染）不计实际产出（治假完成·同 orchestrate :690 对账口径）
   const missing = claims.filter((c) => !actual.some((a) => a === c || a.includes(c) || c.includes(a)));
   if (!missing.length) return { ok: true };
   return { ok: false, hints: `诚实检查：回答声称已生成/加载「${missing.join('、')}」图层，但地图实际图层为[${actual.join('、') || '无'}]。请补做（调 geo 工具生成缺失图层）或纠正陈述（改为"尝试未成功/未生成"）。严禁谎报已做。` };
@@ -396,6 +396,21 @@ function _executedGeoSteps(toolHistory) {
   return n;
 }
 
+/** D2（5.207）：diagnose 卡 template+params → 计划工具序列（代码确定性·非 LLM 兜底）。
+ *  Flash 偶发输出 method；未输出时按 template 派生，让 _plannedGeoSteps(F3 完整性 gate)/
+ *  formatDiagnoseSummary/_needsDeliberate 皆有源（Smart/Dumb 铁律：代码可知不靠 LLM）。
+ *  元素格式 'tool()' 兼容 _plannedGeoSteps 的 `tool(` 匹配。
+ *  single→[tool()]；multi→params.chain 元素补()；concept/unknown→[]。 */
+function deriveDiagnoseMethod(template, params) {
+  if (!template || template === 'concept' || template === 'unknown') return [];
+  if (template === 'multi') {
+    const chain = (params && params.chain) || [];
+    return Array.isArray(chain) ? chain.map((t) => (String(t).includes('(') ? String(t) : String(t) + '()')) : [];
+  }
+  const def = stages.SKILL_DEFS[template];
+  return def && def.tool ? [def.tool + '()'] : [];
+}
+
 /**
  * Agent Loop 一次问答。
  * @param ctx    {question, context(grounding), contextTokens, signal, model}
@@ -451,6 +466,11 @@ export async function orchestrate(ctx, hooks = {}) {
     diagnose = await stages.diagnoseStep(ctx, hooks);
   } catch (e) { diagnose = null; }
   diagnose = diagnose || { degraded: true };
+  // D2（5.207）：method 确定性派生兜底——Flash 偶发输出 method；未输出时按 template 派生，
+  // 让 _plannedGeoSteps(F3 完整性 gate)/formatDiagnoseSummary/_needsDeliberate 皆有源。
+  if (!diagnose.degraded && (!Array.isArray(diagnose.method) || diagnose.method.length === 0)) {
+    diagnose.method = deriveDiagnoseMethod(diagnose.template, diagnose.params);
+  }
   // domain_lens 结构化数组回传后端：post-diagnose step（answer/revise/agent_step/review）据此注入
   // 命中领域完整权威语境。过滤 'general'（通用问答无需领域权威）。_quickIntent 路径跳过 diagnose
   // → 此处未设 → 各 step 读 undefined → 不注入（正确，通用问答无需领域权威）。
@@ -458,8 +478,9 @@ export async function orchestrate(ctx, hooks = {}) {
     ? diagnose.domain_lens.filter((k) => k && k !== 'general') : [];
   // B1-2a：复杂任务（strategy≠ready / method≥3 步）且用户 pro 模式 → 答案升 pro reasoner（复用 _needsDeliberate 复杂度门控）
   if (ctx.model === 'pro' && _needsDeliberate(diagnose)) ctx.answerModel = 'pro';
-  // R1-D1 派生判定器（代码确定性·治假 GAP·Smart/Dumb 铁律：代码可知不问 LLM）：问句区名属已加载 boundary 子要素 → 强制 strategy=ready（覆盖 request_upload，挡 :488 假 GAP 短路）
-  if (!diagnose.degraded && diagnose.data_plan && diagnose.data_plan.strategy === 'request_upload') {
+  // R1-D1 派生判定器（代码确定性·治假 GAP·Smart/Dumb 铁律：代码可知不问 LLM）：问句区名属已加载 boundary 子要素 → 强制 strategy=ready（挡 :488 假 GAP 短路）
+  // D1 扩覆盖（5.206·治 s1 残余·INT-003/004/006）：request_upload + strategy 缺失（unknown·diagnose 未明确完备性）→ 派生判定·代码可知区名即 ready
+  if (!diagnose.degraded && diagnose.data_plan && (diagnose.data_plan.strategy === 'request_upload' || !diagnose.data_plan.strategy)) {
     const _deriv = deriveAvailable(ctx.question, getLayers());
     if (_deriv) {
       diagnose.data_plan.strategy = 'ready';
@@ -666,7 +687,7 @@ export async function orchestrate(ctx, hooks = {}) {
   // ⑤ pre-finalStep 结构化对账（intent 无关，P0b 宽容版）：missing<=2 → 保 draft + 自动标注（体验>正确性，不丢整答案）；missing>=3 大面积谎报 → 退 gap
   const _claimed = _extractClaimedLayers(draft);
   if (_claimed.length) {
-    const _actualNames = getLayers().filter((l) => l.name).map((l) => l.name);
+    const _actualNames = getLayers().filter((l) => l.name && (l._renderState || 'ok') === 'ok').map((l) => l.name);   // E3：渲染失败层（_renderState≠ok·入列表但地图未真渲染）不计"实际产出"→ 声称的若渲染失败=missing→EXIT_PARTIAL 标注（治假完成制度化）
     const _missing = _claimed.filter((c) => !_actualNames.some((a) => a === c || a.includes(c) || c.includes(a)));
     if (_missing.length >= 3) {
       const _gapText = composeGapCard(diagnose, failedObs) + '\n\n---\n**⚠️ 诚实拦截**：草稿声称已生成「' + _missing.map(_esc).join('、') + '」等图层，但地图实际图层为 [' + (_actualNames.map(_esc).join('、') || '无') + ']，大面积谎报，请用 geo 工具真正生成后再回答。';

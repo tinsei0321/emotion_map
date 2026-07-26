@@ -102,6 +102,20 @@ export async function runTerrain(payload) {
   return r.json();
 }
 
+// ── GIS 工具骨干（/api/v1/geo/* · EMC 委托层与 toolbox 模块共用）──
+/** POST /api/v1/geo/{path} → JSON；失败抛 Error(detail)。
+ *  自 ai_qa/tools.js geoFetch 泛化——不含 $n/图层名 ref 预处理（调用方负责先把引用解析成 GeoJSON/名称）。 */
+export async function geoPost(path, body) {
+  const r = await fetch(`${BASE}/geo/${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((j && (j.detail || j.error)) || ('HTTP ' + r.status));
+  return j;
+}
+
 export async function runExport(payload) {
   // payload: { geojson, format:'geojson'|'csv'|'shp', crs, geom_csv, desensitize, filename } → Blob
   const r = await fetch(`${BASE}/export`, {

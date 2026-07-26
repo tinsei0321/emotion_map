@@ -7,6 +7,42 @@
 
 ---
 
+## 📅 2026-07-26（分支 `toolbox-unified-toolset` · toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3）
+
+### ✅ EMC 专题 E3 · partial 出口消费 _renderState（revision-log 5.209，commit 32924b9 · **待用户 push**）
+
+- 治假完成制度化：[_verifyClaims:225](frontend/js/ai_qa/harness.js#L225) + orchestrate [:690](frontend/js/ai_qa/harness.js#L690) 两处 actual 过滤加 `_renderState`（渲染失败层不计"实际产出"→声称的若渲染失败=missing→EXIT_PARTIAL）。
+- 信号源：[map.js:461](frontend/js/map.js#L461) _renderState=failed/ok + [shared.js:176](frontend/js/toolbox/shared.js#L176) addToolboxLayer 检测。
+- 纯对账真值源增强·不动主循环/分流/出口裁定条件/prompt/schema。composePartialCard"未生成"语境涵盖渲染失败。
+- **留用户**：飞轮渲染失败用例（如 density bbox 越界）→ 验 partial 标注。
+
+### ✅ EMC 专题 E2 · 进度透明（revision-log 5.208，commit 4e15134 · **待用户 push**）
+
+- 治 C9 延迟感知：[setPhase](frontend/js/ai_qa/panel.js#L903) 加时间戳+done（已完成段填充）+ 阶段计时（"检索 8s·共 12s"·0.5s 刷新）+ onAction "正在执行·[工具CN]"（[_TOOL_CN](frontend/js/ai_qa/panel.js#L925) 映射）+ onObservation "已生成 N 层"（layer delta）+ 可见取消按钮（复用 _abortCtl·Esc/Ctrl-C 保留）。
+- 纯前端（panel.js + ai_qa.css）**零承重**·复用 hooks 时序不加 onProgress·不动 orchestrate/router/schema/prompt/SKILL_DEFS。
+- 设计语言：填充式无线框 + 胶囊紧凑 + 离散分段（memory avoid-frames/capsule/ramp）。
+- **留用户**：start.bat 肉眼验进度条/计时/增量落图/取消。
+
+### ✅ EMC 专题 D · diagnose 认知深化（revision-log 5.207，commit ded4696/c074b75/02ec4ba/64244c8 · **待用户 push**）
+
+- **D1 SOP 卡扩字段**（[paradigm.py](ai_qa/paradigm.py)·eval-first）：GEO_TOOL_CATALOG 12 工具 +scale/preconditions/failure_modes（歧义工具 +examples 正负例）。failure_modes 给 Flash 反向判据（clip 只切点/单一关系勿 multi/hotspot vs density/area_stats 非情绪）。eval 3 跑：基线 91% → 扩字段 89% → 微调 **91% 不退化**（公园点位/各区排序/离地铁 deterministic 改善）。残余 MISS = LLM 方差 + 商业用地 select_template triggers 张力（B_TRACK"区内的"→clip 过宽·另案）。
+- **D2 method 确定性派生**（[harness.js](frontend/js/ai_qa/harness.js)）：`deriveDiagnoseMethod` Flash 未输出时按 template 派生（single→[tool()]），解锁 F3 gate/formatDiagnoseSummary/_needsDeliberate 悬挂读取。不动 diagnose prompt/schema/orchestrate。
+- **D3 EMC-SUM 计划→实产**（e2e-seam/test-cases/test-board）：chatPhases +method → ②`计划N→实产M层` + EMC-SUM 头`计划命中` + 报表 method 字段。闭合 test-board:26 TODO。method 留前端 trace 不改 schema。
+- **红线守约**：D1 不动 DIAGNOSE_TEMPLATE 本体（附录数据）；D2/D3 不动 ChatRequest schema + orchestrate 主循环。test_a3+emc_template 19 pass + 三前端 .mjs 语法过。
+- **留用户**：?test=1 飞轮验 计划→实产 + method 渲染。
+
+### ✅ toolbox 验收 + EMC 大收敛批次（revision-log 5.206，commit 547a334/3d1e12b/1fb9dfb/62f25e7 · **用户手动 push**）
+
+- **toolbox 验收**（[报告](.codebuddy/reports/toolbox-unified-acceptance-2026-07-26.md)）：建议合并·三件套本机复现全绿（obs 0/12 + unified + pipeline ALL-PASS）+ 4 裁决（M6 接受 K3 color 修正·评审 distance 失误自认）。
+- **全盘点 18 项**（不遗漏·emc-fix-backlog + K3 §9 + 验收 §四 + plan 步 1-6 交叉去重）。
+- **步1** _contentSig 统一（547a334）/ **步2** T3 参数序列化 + T6 hasAction 灭绝空心 OK（3d1e12b）。
+- **批次A** T4 胶囊矛盾（strat 缺省 unknown）+ T5 对比入口收敛（无焦点提示）（1fb9dfb）。
+- **批次C** D1 扩覆盖（harness :462·治 s1 残余·eval 89% 不退化）（62f25e7）。
+- **批次B** CPD predicates failing（pre-existing 嫌疑·K3 §7-7 称未跑·登记另案）。
+- **推迟**：A3 $n 链 diff / ensure_zone registry / Layer Manifest / P2。
+- **专题 D/E 计划就绪**（diagnose SOP / harness D3+P0-4+P1-4·红线 eval-first·后续会话）。
+- **留用户**：T7 飞轮 + manifest 再生成 + DATA 迁移 commit。分支 19 commits 待合并（暂不合并）。
+
 ## 📅 2026-07-25（分支 `main` · EMC density 治本 3 包执行）
 
 ### ✅ EMC density 治本 3 包执行（revision-log 5.205，commit d8dbcb2 · **用户手动 push**）
@@ -185,3 +221,18 @@ DeepSeek + K3 二轮验证 cpd-core-plan.md v0.3（报告 `SCAN_CPDPlan_02-{deep
 - [⬜] **Phase 4 · 附加**：CPD 抽象为可复用底层架构（CPD 完成后提示用户启动）。
 
 ---
+
+
+## 📅 2026-07-25（分支 	oolbox-unified-toolset · Toolbox 统一工具集层）
+
+### ✅ Toolbox 统一工具集层（8 步全完成·执行手册 v2.2）
+
+- [✅] **步 1 基建**：	oolbox/shared.js（7 函数自 tools.js 逐字迁移 + addToolboxLayer 通用落图 + placeToolLayer）+ api.js geoPost；tools.js 抽取 re-export + addResultLayer 拆分（行为零回归）。
+- [✅] **步 2 Buffer 合一**：kind:'cover'|'emotion' 双模式单一 _execute；emotion 中心四路（地点搜索/地图取点/图层要素/手输坐标）；generateBufferForAI；编辑回填显式 kind + 存量 color 判据（§4.3 v2.2）。
+- [✅] **步 3/4 新模块**：zonal（聚合/对比）+ area-stats + rank + vector（叠置/裁剪/抽取/合并/筛选五合一）+ UI 三步向导 dialog。
+- [✅] **步 5 内嵌**：nearest/hotspot 纯 ForAI（无 UI）。
+- [✅] **步 6 接线**：Toolbox +4 入口（tool-row/pp-tab/sidebar 分派/main init/param-panel 白名单泛化）。
+- [✅] **步 7 委托（最敏感）**：tools.js 12 工具改薄委托（observation 逐字保留）；_adoptToolboxResult（C4 全项·focusOnlyResults 沉浸聚焦保留·v2.2 建议 1）；删 geoFetch + 5 合成器；**快照 diff 0/12 全过**。
+- [✅] **步 8 验证**：E2E 	est_toolbox_unified ALL-PASS（7 入口/两路径同核/Buffer 双模式+回填/color 判据/console 红线）；流水线回归 	est_toolbox_pipeline ALL-PASS（geo 200×2·机制断言）；obs diff 终跑 0/12；既存用例 compare_regions/exit_badge/domain_lens_threading 全 PASS。
+- **环境注记**：DATA/boundaries/presets/ 本机激活 5 预设 + manifest（测试前置·非代码）；既存用例对 LLM 路由/超时有固有方差（exit_badge 首跑失败复跑过·实证非回归）。
+- **遗留另案**：① density 委托产物无沉浸聚焦（组 A 遗留·不迁移防未评审行为变更）；② isToolAnalysisLayer 未扩新工具类别（扩会破 EMC R-group 互斥免疫·需评审）；③ MC 系面域模糊匹配首行（现状 fuzzy fallback·zonal-tool 已加 _featName/_normalizeGeoNames 缓解 UI 路径）。

@@ -259,5 +259,5 @@ function _updateCompareLabels() {
   const aLab = document.querySelector('.compare-label-a');
   const bLab = document.querySelector('.compare-label-b');
   if (aLab) aLab.textContent = 'A · ' + ((aS && aS.label) || _sliceKey || '—');
-  if (bLab) bLab.textContent = 'B · ' + ((bS && bS.label) || _compareB || '—');
+  if (bLab) bLab.textContent = 'B · ' + ((bS && bS.label) || _compareB || (isCompareMode() ? '先选/生成 grid 聚合层' : '—'));   // T5：compare 模式无 grid 焦点（_compareB null）时显提示
 }

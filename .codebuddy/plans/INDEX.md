@@ -5,7 +5,7 @@
 
 | 手册 | 日期 | 状态 | 主题 |
 |------|------|------|------|
-| [toolbox-unified-toolset-execution.md](toolbox-unified-toolset-execution.md) | 2026-07-25 | 已冻结待执行 | Toolbox 统一工具集层（9 个 EMC 内联工具收敛为 toolbox/ 同层级模块 + Buffer 合一双模式 + 4 个新 UI 入口；8 步实施；EMC 流水线 6 条承重契约 C1-C6） |
+| [toolbox-unified-toolset-execution.md](toolbox-unified-toolset-execution.md) | 2026-07-25 | ✅ 已执行完成（v2.2·分支 toolbox-unified-toolset·8 步全过） | Toolbox 统一工具集层（9 个 EMC 内联工具收敛为 toolbox/ 同层级模块 + Buffer 合一双模式 + 4 个新 UI 入口；8 步实施；EMC 流水线 6 条承重契约 C1-C6）。验证：obs 快照 diff 0/12 + test_toolbox_unified/pipeline ALL-PASS + 既存 3 用例 PASS |
 
 ## 关联背景（执行前必读）
 

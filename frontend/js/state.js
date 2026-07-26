@@ -1012,10 +1012,19 @@ export { FIELD_SYNONYMS } from './field_dictionary.js';
 // 两组：A=情绪点(l0/l1/l2)，B=Toolbox空间分析(heatmap/grid/terrain/buffer)，R=Range(范围)。
 // 规则：① B 组内部同时只显示一个（开一个关其他 B）。② A 与 B 不能同屏（开 A 关 B，开 B 关 A）。
 //       ③ A 组同时只显示一个数据源（同一 L2 group 的极性子层视为同源，保留）。④ R 与谁都共存，永不被动关。
-/** Toolbox 空间分析层（B 组）。 */
+/** Toolbox 空间分析层（B 组）。
+ *  v2.1 扩（toolbox-unified-toolset 分支）：改经 categoryOf（其 polygon/line 仅认 buffer/grid/terrain、
+ *  余工具落 'range' 盲区）为直读 paint._ui.tool，覆盖统一工具集层全部工具。
+ *  影响面：① enforceMutualExclusion 手动场景同类独占（新工具产物不再互斥空转）；② main.js refreshOverview
+ *  焦点候选补全（修 zonal 等结果对 Overview 不可见的遗留盲区——zonal 归因字段齐、与 grid 同可追随）。
+ *  安全：互斥仅 setLayerVisible+renderLayer、不 selectLayer，不触 tools.js:407-410 的 Overview tier1 崩溃面
+ *  （focusOnlyResults 每 EMC 工具重申结果可见，EMC 路径最终态不变）。 */
+const _TOOL_ANALYSIS = new Set(['grid', 'terrain', 'buffer', 'zonal', 'area_stats', 'rank',
+  'overlay', 'clip', 'extract_feature', 'merge', 'filter_attr', 'nearest', 'hotspot']);
 export function isToolAnalysisLayer(l) {
-  const c = categoryOf(l);
-  return c === 'heatmap' || c === 'grid' || c === 'terrain' || c === 'buffer';
+  if (!l) return false;
+  if (l.kind === 'heatmap') return true;
+  return !!(l.paint && l.paint._ui && _TOOL_ANALYSIS.has(l.paint._ui.tool));
 }
 /** 情绪点层（A 组）。 */
 export function isEmotionPointLayer(l) {

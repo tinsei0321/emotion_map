@@ -23,7 +23,7 @@ const _TPL_CN = {
 
 // ── 行内摘要（3 行中文·固定结构）：①工具 ②图层 ③状态。
 //    转译例（有 template/tools/newLayers）显示 3 行；no-llm/非转译例回退 obs/stage。
-//    完整 ①②③ 含「计划执行命中数/判断正确数占比/计划生成数」需 diagnose method/plan 采集（后续批），本批用现有数据。
+//    D3（5.207）：② 含「计划→实产」（diagnose method 派生步数 vs 实际产图层）；EMC-SUM 头含「计划命中」批级统计。
 function _summary(r) {
   if (!r) return '';
   const tools = Array.isArray(r.tools) && r.tools.length ? r.tools : [];
@@ -36,13 +36,14 @@ function _summary(r) {
   if (r.template) tBits.push(_TPL_CN[r.template] || r.template);
   for (const t of tools) if (t !== r.template) tBits.push(_TPL_CN[t] || t);
   const line1 = `①工具：${tools.length ? `触发${tools.length}个(${tBits.slice(0, 4).join('·')})` : (r.template ? `选${_TPL_CN[r.template] || r.template}` : '未触发')}`;
-  // ②图层（实际生成数 + 参数摘要）
+  // ②图层（D3：计划步数→实际层数 + 参数摘要·计划来自 diagnose method）
+  const _plan = Array.isArray(r.method) ? r.method.length : 0;
   const p = r.params || {};
   const pBits = [];
   if (p.boundary) pBits.push(`区=${p.boundary}`); else if (p.boundaries) pBits.push(`区=${p.boundaries}`);
   if (p.cell != null) pBits.push(`格${p.cell}m`);
   if (p.radius != null) pBits.push(`缓冲${p.radius}m`);
-  const line2 = `②图层：${r.newLayers ? `实际${r.newLayers}层` : '未生成'}${pBits.length ? `(${pBits.join(' ')})` : ''}`;
+  const line2 = `②图层：${_plan ? `计划${_plan}→` : ''}${r.newLayers ? `实产${r.newLayers}层` : '未生成'}${pBits.length ? `(${pBits.join(' ')})` : ''}`;
   // ③状态（pass=完成 / s3=超时未完成 / 否则未完成）
   const st = r.pass ? '完成' : (r.stage === 's3' ? '未完成(超时)' : '未完成');
   const line3 = `③状态：${st}`;
@@ -267,6 +268,7 @@ function _buildMarkdown() {
   const ids = Object.keys(_results);
   let p = 0, f = 0, uo = 0, ub = 0;
   let timeout = 0, gap = 0, falseKill = 0, missFail = 0;   // EMC-SUM 批级聚合
+  let planned = 0, planHit = 0;   // D3: 计划步数Σ / 计划命中Σ（实产≥计划步的 case 数）
   const durs = [];
   for (const id of ids) {
     const r = _results[id];
@@ -277,28 +279,32 @@ function _buildMarkdown() {
     if (r.pass === false && r.userVote === 'ok') falseKill++;    // 误杀：系统判败但用户认可
     if (r.pass === true && r.userVote === 'bad') missFail++;     // 漏判：系统判过但用户否定
     if (r.durationSolo) durs.push(r.durationSolo);
+    const _pl = Array.isArray(r.method) ? r.method.length : 0;   // D3: 计划步数（diagnose method）
+    if (_pl > 0) { planned += _pl; if ((r.newLayers || 0) >= _pl) planHit++; }
   }
   durs.sort((a, b) => a - b);
   const pct = (q) => durs.length ? Math.round(durs[Math.min(durs.length - 1, Math.floor(q * durs.length))] / 1000) : 0;
   const cats = _runMeta.cats?.length ? _runMeta.cats.join(', ') : '全选';
   let md = `# EMC 测试报告 · ${ts}\n\n`;
   // EMC-SUM v1 批级头部（占比唯一住所·键值定序·可 grep；commit 由 serve.py 落 JSON 时补）
-  md += `## RUN ${date} | schema=EMC-SUM v1 | mode=${_runMeta.mode || 'all'} | n=${ids.length} | pass=${p} ${ids.length ? (p / ids.length * 100).toFixed(0) : 0}% | timeout=${timeout} | gap=${gap} | 误杀=${falseKill} 漏判=${missFail} | t_p50=${pct(0.5)}s t_p95=${pct(0.95)}s | cats=${cats}\n`;
+  md += `## RUN ${date} | schema=EMC-SUM v1 | mode=${_runMeta.mode || 'all'} | n=${ids.length} | pass=${p} ${ids.length ? (p / ids.length * 100).toFixed(0) : 0}% | timeout=${timeout} | gap=${gap} | 误杀=${falseKill} 漏判=${missFail} | 计划命中=${planHit}/${planned}步 | t_p50=${pct(0.5)}s t_p95=${pct(0.95)}s | cats=${cats}\n`;
   md += `- 用户 OK ${uo} / BAD ${ub} / 未评 ${ids.length - uo - ub}\n\n`;
-  md += `| ID | 名称 | 类型 | 判定 | judge | 用户 | template | 工具 | 参数/产物 | obs |\n|---|---|---|---|---|---|---|---|---|---|\n`;
+  md += `| ID | 名称 | 类型 | 判定 | judge | 用户 | template | 计划→实产 | 工具 | 参数/产物 | obs |\n|---|---|---|---|---|---|---|---|---|---|---|\n`;
   for (const id of ids) {
     const r = _results[id]; const c = CASES.find((x) => x.id === id) || {};
     const auto = r.pass ? 'OK' : 'ERR';
     const judge = (r.userVote === 'ok' && !r.pass) ? '误杀' : (r.userVote === 'bad' && r.pass) ? '漏判' : (r.pass ? 'ok' : 'err');
     const user = r.userVote ? (r.userVote === 'ok' ? 'OK' : 'BAD') : '—';
     const tmpl = r.template || '?';                 // 键永在·值缺失填 ?（H1 修通前 template=? 即观测盲区信号）
+    const _pl = Array.isArray(r.method) ? r.method.length : 0;   // D3: 计划步数（diagnose method）
+    const planStr = _pl ? `${_pl}→${r.newLayers || 0}层` : `?→${r.newLayers || 0}层`;
     const tools = Array.isArray(r.tools) && r.tools.length ? r.tools.join('+') : '?';
     const pp = [];
     if (r.params) { if (r.params.boundary) pp.push(`区=${r.params.boundary}`); if (r.params.boundaries) pp.push(`区=${r.params.boundaries}`); if (r.params.cell != null) pp.push(`cell=${r.params.cell}`); if (r.params.radius != null) pp.push(`r=${r.params.radius}`); }
     if (r.newLayers) pp.push(`+${r.newLayers}层`);
     const ppStr = pp.join(' ') || '?';
     const obs = (r.obs || '').replace(/\|/g, '/').slice(0, 60) || '?';
-    md += `| ${id} | ${c.name || ''} | ${c.type || ''} | ${auto} | ${judge} | ${user} | ${tmpl} | ${tools} | ${ppStr} | ${obs} |\n`;
+    md += `| ${id} | ${c.name || ''} | ${c.type || ''} | ${auto} | ${judge} | ${user} | ${tmpl} | ${planStr} | ${tools} | ${ppStr} | ${obs} |\n`;
   }
   const fails = ids.filter((id) => { const r = _results[id]; return r.userVote === 'bad' || (!r.userVote && !r.pass); });
   if (fails.length) {
@@ -320,7 +326,8 @@ function _buildJSON() {
     return {
       id, name: c.name || '', category: c.category || '', type: c.type || '',
       pass: !!r.pass, stage: r.stage || '',
-      template: r.template || null, tools: Array.isArray(r.tools) ? r.tools : [],
+      template: r.template || null, method: Array.isArray(r.method) ? r.method : null,   // D3: diagnose method（计划工具序列）
+      tools: Array.isArray(r.tools) ? r.tools : [],
       params: r.params || null, newLayers: r.newLayers || 0,
       durationSolo: r.durationSolo || 0, userVote: r.userVote || null,
       obs: r.obs || '', review: r.review || '',

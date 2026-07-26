@@ -34,6 +34,7 @@ async function llmRun(t, q, assert, opts = {}) {
   // 抓转译信号（意图识别验证用）
   const geo = t.geoCalls();
   const _execs = (t.toolExecs && t.toolExecs()) || [];   // #2 density 等前端委托工具（不走 fetch·geoCalls 盲区）
+  const _dg = (t.chatPhases().find((p) => p.template) || {});   // D3: diagnose 卡（template+method·method 派生自 D2）
   const sig = {
     tools: [...new Set([
       ...geo.map((e) => {
@@ -42,25 +43,40 @@ async function llmRun(t, q, assert, opts = {}) {
       }).filter(Boolean),
       ..._execs.map((x) => x && x.tool).filter(Boolean),
     ])],
-    template: (t.chatPhases().find((p) => p.template) || {}).template || null,
+    template: _dg.template || null,
+    method: _dg.method || null,   // D3: 计划工具序列（diagnose method·D2 派生）→ EMC-SUM ② 计划n
     params: _extractParams(geo),
     newLayers: Math.max(0, t.layerNames().length - layersBefore),
     renderedNew: Math.max(0, ((t.mapSources && t.mapSources()) || []).length - srcBefore),   // C: 地图真渲染 source 差值
   };
   const r = assert(b, t, sig);
-  if (r && typeof r === 'object') { r.tools = sig.tools; r.template = sig.template; r.params = sig.params; r.newLayers = sig.newLayers; r.renderedNew = sig.renderedNew; }
+  if (r && typeof r === 'object') { r.tools = sig.tools; r.template = sig.template; r.method = sig.method; r.params = sig.params; r.newLayers = sig.newLayers; r.renderedNew = sig.renderedNew; }
   return r;
 }
 
 function _extractParams(geo) {
   const p = {};
+  // T3：参数对象序列化（治 boundary/center 为 GeoJSON 对象时显示 [object Object]·05·INT-005/006）
+  const _sum = (v) => {
+    if (v == null || v === '') return undefined;
+    if (typeof v === 'string') return v;
+    if (typeof v === 'number') return v;
+    if (Array.isArray(v)) return `[${v.length}]`;
+    if (typeof v === 'object') {
+      if (v.type === 'FeatureCollection' && v.features) return `GeoJSON{${v.features.length}}`;
+      if (v.type === 'Feature') return 'Feature';
+      if (v.coordinates) return `${v.type || ''}{${Array.isArray(v.coordinates) ? v.coordinates.length : '?'}}`;
+      return JSON.stringify(v).slice(0, 40);
+    }
+    return String(v);
+  };
   for (const e of geo) {
     const b = e.body || {};
-    if (!p.boundary && b.boundary) p.boundary = b.boundary;
-    if (!p.boundaries && b.boundaries) p.boundaries = b.boundaries;
+    if (p.boundary == null && b.boundary != null) p.boundary = _sum(b.boundary);
+    if (p.boundaries == null && b.boundaries != null) p.boundaries = _sum(b.boundaries);
     if (b.cell_size != null && p.cell == null) p.cell = b.cell_size;
     if (b.radius_m != null && p.radius == null) p.radius = b.radius_m;
-    if (!p.center && b.center) p.center = b.center;
+    if (p.center == null && b.center != null) p.center = _sum(b.center);
   }
   return p;
 }
@@ -174,8 +190,10 @@ function _assertIntent(b, sig, type) {
   if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's1', obs: `误GAP:"${b}"（应 ${type.expectTools.join('|')}）` };
   const tmplOk = sig.template && type.expectTmpl.includes(sig.template);
   const toolOk = type.expectTools.some((x) => sig.tools.includes(x));
-  const pass = tmplOk || toolOk;
-  return { pass, stage: pass ? '' : 's1', obs: `tpl=${sig.template || '?'} tools=${sig.tools.join(',') || '无'}`, review: `${type.kind}：转译是否合理？` };
+  // T6 完成校验：工具型需至少工具执行或落图（灭绝空心 OK·C8·如 INT-005 tpl=multi tools=无 newLayers=0）
+  const hasAction = sig.tools.length > 0 || (sig.newLayers > 0) || (sig.renderedNew > 0);
+  const pass = (tmplOk || toolOk) && hasAction;
+  return { pass, stage: pass ? '' : 's1', obs: `tpl=${sig.template || '?'} tools=${sig.tools.join(',') || '无'} layers=${sig.newLayers || 0}/${sig.renderedNew || 0}`, review: `${type.kind}：转译是否合理？` };
 }
 
 const INTENT = [];

@@ -6,6 +6,7 @@ import { renderLayer, getMap, removeLayerFromMap } from './map.js';
 import { addLayer, addGroup, getLayers, removeLayer } from './state.js';
 import { splitByGeometry, detectColorMode, dsvRows } from './import.js';
 import { hasImport, hasRange, hasAnalysis, hasVisibleEmotionLayer } from './ai_qa/cpd-state.js';
+import { TOOLS, resetStepResults, resetCurrentResults } from './ai_qa/tools.js';   // 步 7 observation 快照基线（手册 v2.2·修订 6）：TOOLS 直调 + 状态重置
 
 // v1.7 测试飞轮：fetch 拦截 — 抓 /chat + /geo 请求供分阶段断言（fail fast）。
 const _origFetch = window.fetch.bind(window);
@@ -27,6 +28,10 @@ window.fetch = async function (...args) {
   return r;
 };
 
+// renderLayer 容忍失败（底图 style 未加载时 addSource 抛错，但 addLayer 已入 state——
+// zonal_stats/compare 只需 state 可见点层，不依赖地图渲染）。loadPoints/loadRange/addTestLayer 共用。
+const safe = (fn) => { try { fn(); } catch (e) { /* map 未就绪，忽略——state 层仍可用 */ } };
+
 window.__emcTest = {
   ready() { const m = getMap(); return !!(m && m.isStyleLoaded && m.isStyleLoaded()); },   // map style 加载完（仅参考；地图底图 404 时永 false，loadPoints 容忍之）
   loadPoints(fc) {
@@ -38,9 +43,6 @@ window.__emcTest = {
     for (const l of getLayers().slice()) {
       if (l.srcName === base) { try { removeLayerFromMap(l.id); } catch (_) {} removeLayer(l.id); }
     }
-    // renderLayer 容忍失败（底图 style 未加载时 addSource 抛错，但 addLayer 已入 state——
-    // zonal_stats/compare 只需 state 可见点层，不依赖地图渲染）。
-    const safe = (fn) => { try { fn(); } catch (e) { /* map 未就绪，忽略——state 层仍可用 */ } };
     if (colorMode === 'polarity') {
       const pos = [], neu = [], neg = [];
       for (const f of pfc.features) {
@@ -65,7 +67,7 @@ window.__emcTest = {
   clearLog() { window._testFetchLog = []; window._testDiagnoseLog = []; window._testToolExecLog = []; },
   chatPhases() {
     // H1: template 来自 diagnose:done 事件累积（每问一句 diagnose 一次），替代抓请求体。
-    return (window._testDiagnoseLog || []).map((card) => ({ phase: 'diagnose', template: card && card.template }));
+    return (window._testDiagnoseLog || []).map((card) => ({ phase: 'diagnose', template: card && card.template, method: (card && card.method) || null }));   // D3: +method（D2 派生）供 EMC-SUM ② 计划n
   },
   geoCalls() { return window._testFetchLog.filter((e) => /\/(geo|spatial)\//.test(e.url)); },   // 含 /spatial/（grid 等走此路径，否则漏抓）
   toolExecs() { return (window._testToolExecLog || []).slice(); },   // #2 tool:executed 事件（前端委托工具如 density·补 geoCalls 盲区）
@@ -138,6 +140,17 @@ window.__emcTest = {
     }
     document.dispatchEvent(new CustomEvent('layers:changed'));
     return { ok: true, count: polygons.features.length };
+  },
+  // ── 步 7 observation 快照基线（手册 v2.2·修订 6/E-③）：TOOLS 直调 + 状态重置 + 层读取 ──
+  TOOLS,
+  getLayers,
+  resetToolState() { resetStepResults(); resetCurrentResults(); },
+  /** 步 8：存量产物模拟（legacy 无 kind _ui 的编辑回填 color 判据测试）。 */
+  addTestLayer(name, kind, fc, paint) {
+    const L = addLayer({ name, kind, fc, paint });
+    safe(() => renderLayer(L));
+    document.dispatchEvent(new CustomEvent('layers:changed'));
+    return L.id;
   },
 };
 

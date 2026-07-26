@@ -1,36 +1,41 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：07月24日收工（**EMC 治本 4 批 + 06/07 评估 + density 治本 plan 定稿**）| 分支 `main` | 本次 push
+> 最后更新：07月26日收工（**toolbox 验收 + EMC 大收敛 5.206**）| 分支 `toolbox-unified-toolset` | 本次 push
 
-## 当前节点：EMC "基本不可用"根因已定位，density 治本 plan 已存待执行
+## 当前节点：toolbox 验收通过待合并 + EMC 大收敛 5.206 落地，下会话推进专题 D/E（红线 eval-first）
 
-今日（07-24）连做 4 批治本 + 06/07 评估。**EMC 本体核心（density 渲染 / 工具认知）仍"基本不可用"**——测量层修好了（信号/断言/报告/EMC-SUM/JSON sidecar），**本体核心未动**（K3 "相位差"诊断成立：测量进展 vs 本体未修 vs 测试基建污染）。06 工具 pass=0% / 07 意图 pass=33%（3 OK 全空心·有效≈0%）。
+今日（07-26）做 toolbox 工程验收 + EMC 大收敛批次。**toolbox 工程验收通过（建议合并·暂缓）**——三件套本机复现全绿（obs diff 0/12 + unified ALL-PASS + pipeline ALL-PASS）+ 静态 A-E 全过 + 4 裁决（§7-4 互斥扩集接受 / M6 color 判据接受 K3 修正·评审 distance 失误自认 / §6-7 area_stats 接受 / §7-3·§7-5 遗留）。EMC 大收敛 5.206 落 4 代码 commit + 文档 sync + 全盘点 18 项（不遗漏）。
 
-## 今日已 commit（4 批 · revision-log 5.200-5.203）
-- **5.200 P0 安全批**：滚动复位 / srcId 导入去重 / density 执行信号。
-- **5.201 B0+B1**（治超时#1）：eval 冻结 + 词表 single-source + 模型路由（final/revise→flash + gate 0.8→0.6 + while-loop 75s 预算守卫）。
-- **5.202 R1**（治假 GAP·区片可分析）：D2 strategy 可派生语义 + D4 grounding 枚举 boundary 子要素 + D1 派生判定器。
-- **5.203 05-llm 修复**：T1 seam 三修（pool `processed`→`performance` + `xiling_wujia`→`yichang` + dsvRows 解引号 + 五档极性·真数据 16933 行 5 档充足）+ UI 固定图钉（Range/Layers/Toolbox）+ EMC 排版/字体/答语文风。
+## 今日已 commit（5.206 · revision-log §5 · branch toolbox-unified-toolset）
+- **547a334** 验收报告（`.codebuddy/reports/toolbox-unified-acceptance-2026-07-26.md`·建议合并）+ 步 1 `_contentSig` 统一（main.js import shared.toolContentSig·消重复）
+- **3d1e12b** 步 2 T3 参数序列化（治 `[object Object]`）+ T6 hasAction 门控（灭绝空心 OK·C8）
+- **1fb9dfb** 批次 A T4 胶囊矛盾（panel.js:816 strat 缺省 unknown·治 05-llm Q2）+ T5 对比入口收敛（time-bar 无焦点提示 + main.js 'c' 键注释）
+- **62f25e7** 批次 C D1 扩覆盖（harness.js:462·deriveAvailable 扩 request_upload + strategy 缺失·治 s1 残余 INT-003/004/006·eval 25/28=89% 不退化）
+- **aa61ca0** docs sync（revision-log §5 5.206 + todo 2026-07-26 当日段）
 
-## 下会话执行：density 治本 plan（已存）
-**plan 文件**：`~/.claude/plans/emc-gis-rippling-dream.md`（第 5 批·6 步）。**先读它 + `git log --oneline -15` 对账**。
-3 Explore agent + K3（`.codebuddy/reports/emc-eval-report06-07-2026-07-24.md`·C1-C9 簇）根因收敛，按优先级：
-1. **C5 渲染**（用户#1 彩虹图不显示·最大见效）：`addHeatmapPaint` weightField=`emotion_intensity` 默认·数据缺该字段→weight 表达式=0→rainbow 透明（[map.js:685](frontend/js/map.js#L685)）→ **weight 兜底 1.0** + renderLayer try/catch + source 断言。
-2. **C6 工具认知**（用户#4 密集→clip / #5 "不支持热力"幻觉）：`"密集"`触发词 5 处全空 + density 僵尸文案"方格面网格"（[paradigm.py:252](ai_qa/paradigm.py#L252)）+ Toolbox heatmap/grid/terrain 缺席 catalog → **Agent2 八 prompt 文案改**（paradigm.py + prompts.py·**eval-first 红线**）。"不支持热力聚合"= LLM 幻觉（非硬编码）。
-3. **C 分组**（用户#2）：`categoryOf`（[state.js:867](frontend/js/state.js#L867)）**不用 parentId**·"EmotionMap Copilot"组卡永远空 → 加 parentId 短路（1 处）+ density/grid 入口传 parentId。
-4. **B srcId 工具层**（用户#3 点名两次）：addResultLayer 只按名去重·异名同内容堆叠·工具层无 srcId → `_contentSig` 抽共享（[main.js:86](frontend/js/main.js#L86)）+ addResultLayer/_registerToolboxLayer 去重。
-5. **T9 例间清层**（测试侧 e2e_points 堆叠·治超时加剧）。
-6. **C7 夷陵资产**：行政区.geojson 9 feature **无夷陵区**·EMC 判缺**对**·[test-assets.js:8](frontend/js/test-assets.js#L8) 描述错 → 改描述 + 用例期望。
-**后续（非本批）**：D3 链式模板（C3 超时）/ T4 胶囊矛盾（C4·[panel.js:816](frontend/js/ai_qa/panel.js#L816) default ready）/ T6+T3 断言（C8 空心 OK）。
+## 下会话执行：专题 D/E（红线 eval-first · 后续会话各个击破）
 
-## 红线 / 未决
-- **DATA/processed→performance 迁移**：用户的本地数据操作（删 `DATA/processed/*` + 新增 `DATA/performance/` + `DATA/old_data_processed/`）·**未 commit·数据红线·留用户处理**（我未碰）。
-- 本次 push 30 commit（29 旧 + 1 收工）。
-- C6 触 diagnose prompt → **eval-first**（先冻结→改→重跑验"密集"→density）。
+**plan 文件**：`~/.claude/plans/plan-claude-plans-emc-gis-rippling-drea-whimsical-lobster.md`（全盘点 18 项 + 专题 D/E 计划·不遗漏）。**先读它 + `git log --oneline -8` 对账 5.206**。
+
+- **专题 D diagnose 认知深化**（eval-first）：D1 SOP 卡扩字段（GEO_TOOL_CATALOG paradigm.py:170-255 加 scale/preconditions/failure_modes/examples·降 eval 3 MISS 路由歧义）+ D2 method→tool 确定性映射 + D3 EMC-SUM 摘要 method/plan 采集（domain_lens threading 5.108 范式·不改 ChatRequest schema）。
+- **专题 E harness 承重**（eval-first）：E1 D3 多步链（CHAIN_REGISTRY + runChainPath + orchestrate :513 分流·0 中间 LLM 轮·治 C3 残余超时）+ E2 P0-4 进度透明（SSE 阶段时间线 + 增量落图 + 可取消·治 C9）+ E3 P1-4 partial 出口裁定（EXIT_RESULT :327/:600 + addToolboxLayer _renderState 联动·治假完成制度化）。
+- **建议序**：D 先（SOP 卡改善路由·eval gate 已稳 89%）→ E（harness 大专题·每子步独立 commit）。
+
+## 留用户验证 / 未决
+- **T7 飞轮全量重跑**（`?test=1`·04-07 干净基线·首次端到端裁决·验 D1 s1 收敛 + T4/T5 效果 + T6 灭绝空心 + 干净 pass 率）。
+- **toolbox 合并**（验收通过·暂缓·用户定时机 merge `toolbox-unified-toolset` → main·20 commits）。
+- **manifest 再生成**（time-source·DATA/performance/_time_manifest.json·数据红线·时光叙事 F5 产品侧恢复）。
+- **DATA 迁移 commit**（processed→performance·用户本地未 commit·数据红线）。
+- **CPD predicates failing 另案查**（test_cpd_predicates inject_points 后 wait_predicate 超时·pre-existing 嫌疑·K3 §7-7 称未跑·与 toolbox 改动面正交）。
+
+## 红线 / 纪律（下会话守）
+- **承重三不动**：diagnose prompt（prompts.py build_diagnose_prompt）/ harness orchestrate（harness.js orchestrate 主循环）/ ChatRequest schema（schemas.py）—— 改前先扩 eval，每次只改一处，不派 subagent（承重走主线程）。
+- chain_id/method 走 domain_lens threading 不改 schema；后端零改动；不改 SKILL_DEFS/TEMPLATE_REGISTRY；禁 emoji（[OK]/[ERR]）；不动归因占位；依赖单向不破。
 
 ## 恢复指引（新会话）
-1. 读 plan（`~/.claude/plans/emc-gis-rippling-dream.md`）+ `git log --oneline -15` 对账 5.200-5.203。
-2. 读 K3 报告（`.codebuddy/reports/emc-eval-report06-07-2026-07-24.md`·C1-C9 簇 + 12 序路线）+ [docs/emc-fix-backlog.md](docs/emc-fix-backlog.md)（05-llm T1-T7/D3 状态表）。
-3. 执行 density plan：**Step 1（C5 渲染·非红线·最大见效）→ Step 3（C 分组·最便宜）→ Step 2（C6·eval-first 红线）→ Step 4（B srcId）→ Step 5/6（T9/C7）**。
-4. **承重三不动**（diagnose prompt / harness orchestrate / ChatRequest）·改前先扩 eval·每次只改一处·不派 subagent（承重走主线程）。
+1. 读 plan（`~/.claude/plans/plan-claude-plans-emc-gis-rippling-drea-whimsical-lobster.md`）+ `git log --oneline -8` 对账 5.206（547a334/3d1e12b/1fb9dfb/62f25e7/aa61ca0）。
+2. 读验收报告（`.codebuddy/reports/toolbox-unified-acceptance-2026-07-26.md`）+ K3 完成报告（`toolbox-unified-completion-2026-07-26.md`）+ 手册 v2.2。
+3. 选专题 D 或 E 起（用户定优先级·建议 D 先）。
+4. eval-first：先扩 eval → 冻结基线 → 改 → 重跑验不退化（≥89%）。
+5. 承重三不动 / 每次只改一处 / 不派 subagent。

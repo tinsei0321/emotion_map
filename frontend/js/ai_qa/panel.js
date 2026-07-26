@@ -17,6 +17,7 @@ const _INPUT_PH_COLLAPSED = '向 EmotionMap Copilot 提问：了解"情绪地图
 const THINK_PHRASES = ['正在思考', '正在分析', '正在计算', '正在构思', '正在比对数据', '正在归纳', '正在权衡证据', '正在检索线索', '正在梳理逻辑'];
 
 let _streaming = false;
+let _t0 = 0, _phaseTs = {}, _elapsedTimer = null, _layerBase = 0, _abortDelegation = false;   // E2 进度透明（治 C9）：总起始/阶段时间戳/计时循环/图层基线/取消 delegation
 let _abortCtl = null;
 let _history = loadHistory();
 let _archive = loadArchive();
@@ -813,7 +814,7 @@ function renderDiagnoseCard(el, card) {
   if (!card || card.degraded) { el.hidden = true; return; }
   el.hidden = false;
   const dom = (card.domain_lens || []).map((k) => _DOMAIN_LABEL[k] || k).filter(Boolean);
-  const strat = (card.data_plan && card.data_plan.strategy) || 'ready';
+  const strat = (card.data_plan && card.data_plan.strategy) || 'unknown';   // T4：缺省不显「齐全」（unknown）·治胶囊矛盾（05-llm Q2·真缺口勿伪装 ready）
   const method = (card.method || []).filter(Boolean);
   el.classList.toggle('is-upload', strat === 'request_upload');
   // 阶段 D：diagnose 选定 template → SKILL_DEFS.required_slots → 参数提示（缺参时预告用户要补什么）
@@ -823,9 +824,11 @@ function renderDiagnoseCard(el, card) {
   const chip = (t) => `<span class="aiq-diag-chip">${escapeHtml(t)}</span>`;
   el.innerHTML = `<div class="aiq-card-head">问题理解</div>`
     + `<div class="aiq-diag-row">${[dom.join('/'), _SCALE_LABEL[card.scale] || card.scale, card.decision_type, card.outlet].filter(Boolean).map(chip).join('')}</div>`
-    + `<div class="aiq-diag-strategy ${strat}"><span class="aiq-diag-strat-tag">${_STRATEGY_LABEL[strat] || strat}</span>${
+    + `<div class="aiq-diag-strategy ${strat}"><span class="aiq-diag-strat-tag">${
+      strat === 'unknown' ? '数据状况待确认' : (_STRATEGY_LABEL[strat] || strat)}</span>${
       strat === 'request_upload' ? '（缺关键数据，已请你上传）'
-      : strat === 'fallback_annotated' ? '（部分数据用替代，结论会注明）' : ''}</div>`
+      : strat === 'fallback_annotated' ? '（部分数据用替代，结论会注明）'
+      : strat === 'unknown' ? '（诊断未明确数据完备性）' : ''}</div>`
     + (method.length ? `<div class="aiq-diag-method">方法：${escapeHtml(method.join(' → '))}</div>` : '')
     + params;
 }
@@ -875,12 +878,19 @@ function renderReview(reviewEl, body, review) {
 /** 思考 dock（单例，挂 #chat-suggest 槽，永贴底不被顶走）。 */
 function dockEl() { return document.getElementById('aiq-thinking-dock'); }
 
-/** 动态思考指示器：轮换文案 + 跳动点 + 阶段 chip。 */
+/** 动态思考指示器：轮换文案 + 跳动点 + 阶段 chip + 阶段计时（E2 进度透明·治 C9"还在跑/跑到哪/已多久"）。 */
 function startThinking() {
   setEmcMode('expand');
   clearSuggest();   // 新一轮提问：清上一轮的推荐追问胶囊
+  _t0 = Date.now(); _phaseTs = {};   // E2：总起始 + 阶段时间戳重置
+  try { _layerBase = document.querySelectorAll('#layer-list .layer-row').length; } catch (_) { _layerBase = 0; }   // E2：图层基线（本轮新增 = 现 - 基线）
   const d = dockEl();
-  if (d) { d.hidden = false; setPhase('诊断'); }
+  if (d) { d.hidden = false; const ab = d.querySelector('.aiq-abort-btn'); if (ab) ab.hidden = false; setPhase('诊断'); }
+  _startElapsedTimer();
+  if (!_abortDelegation) {   // E2：取消按钮 delegation（dock 单例动态建·挂一次最稳）
+    document.addEventListener('click', (e) => { const t = e.target; if (_streaming && _abortCtl && t && t.closest && t.closest('.aiq-abort-btn')) _abortCtl.abort(); });
+    _abortDelegation = true;
+  }
   const txt = d && d.querySelector('.aiq-thinking-text');
   let i = 0;
   if (txt) txt.textContent = THINK_PHRASES[0] + '…';
@@ -894,15 +904,47 @@ function startThinking() {
 }
 function stopThinking() {
   if (_thinkTimer) { clearInterval(_thinkTimer); _thinkTimer = null; }
+  _stopElapsedTimer();   // E2：停计时
   const d = dockEl();
-  if (d) d.hidden = true;
+  if (d) { d.hidden = true; const ab = d.querySelector('.aiq-abort-btn'); if (ab) ab.hidden = true; }
 }
-/** 阶段进度 chip 点亮（诊断/思考/检索/生成/审查）。 */
+const _PHASE_ORDER = ['诊断', '思考', '检索', '生成', '审查'];
+/** 阶段进度 chip 点亮 + done 标记（E2 加阶段时间戳 + 已完成段填充）。 */
 function setPhase(chip) {
   const d = dockEl();
   if (!d) return;
-  d.querySelectorAll('.aiq-phase-chips span').forEach((s) => s.classList.toggle('active', s.dataset.phase === chip));
+  _phaseTs[chip] = _phaseTs[chip] || Date.now();   // E2：阶段进入时间戳（首次·防回切重置耗时）
+  const idx = _PHASE_ORDER.indexOf(chip);
+  d.querySelectorAll('.aiq-phase-chips span').forEach((s) => {
+    const si = _PHASE_ORDER.indexOf(s.dataset.phase);
+    s.classList.toggle('active', s.dataset.phase === chip);
+    s.classList.toggle('done', si >= 0 && si < idx);   // E2：已完成段（当前之前的）
+  });
+  _renderElapsed();
 }
+/** E2：工具名 → 中文名（onAction 显"正在执行·CN"·治 C9 跑到哪感知）。 */
+const _TOOL_CN = {
+  zonal_stats: '分区统计', rank: '排序', density: '密度', buffer: '缓冲', clip: '裁剪',
+  overlay: '叠置', extract_feature: '抽取要素', filter_attr: '属性筛选', merge: '合并',
+  nearest: '邻近', hotspot: '热点', area_stats: '面积统计', compare_regions: '区域对比',
+  query_layers: '查图层', query_zone_stats: '查区域统计', query_attribution: '查归因',
+  query_keywords: '查关键词', inspect_zone: '深读单元', deep_read_attribution: '深度归因',
+  focus_zones: '定位区域', open_attribution: '展开归因', ensure_zone: '生成聚合域',
+};
+/** E2：渲染阶段耗时（当前段 + 总耗时），0.5s 刷新·治 C9"已多久"感知。 */
+function _renderElapsed() {
+  const d = dockEl(); if (!d || d.hidden) return;
+  const el = d.querySelector('.aiq-thinking-elapsed'); if (!el) return;
+  const now = Date.now();
+  const total = _t0 ? Math.floor((now - _t0) / 1000) : 0;
+  const phases = Object.keys(_phaseTs);
+  const cur = phases.length ? phases[phases.length - 1] : '';
+  const curS = cur ? Math.floor((now - _phaseTs[cur]) / 1000) : 0;
+  el.hidden = false;
+  el.textContent = cur ? `${cur} ${curS}s · 共 ${total}s` : `${total}s`;
+}
+function _startElapsedTimer() { _stopElapsedTimer(); _renderElapsed(); _elapsedTimer = setInterval(_renderElapsed, 500); }
+function _stopElapsedTimer() { if (_elapsedTimer) { clearInterval(_elapsedTimer); _elapsedTimer = null; } }
 
 /** assistant 消息骨架（思考链 + 动态状态 + 解题步骤 + 结论）。trace 非空 = 历史恢复。 */
 function appendAssistantShell(trace) {
@@ -1127,6 +1169,8 @@ function buildHooks(shell) {
     onAction: (action, round) => {
       renderToolCard(shell.stepsEl, round, null, action, null);
       if (_curTrace && _curTrace.steps.length) _curTrace.steps[_curTrace.steps.length - 1].action = action;
+      const _cn = action && _TOOL_CN[action.name];   // E2：dock 显"正在执行·CN"（治 C9 跑到哪）
+      if (_cn) { const _t = dockEl() && dockEl().querySelector('.aiq-thinking-text'); if (_t) _t.textContent = `正在执行·${_cn}…`; }
     },
     onAskUser: (action, round) => {
       // P1 主动问澄清：步骤卡显"问澄清"+问题摘要；答案区渲染问题 + 选项胶囊（复用 aiq-suggest-chip）；用户点选项 → send 续作。
@@ -1157,6 +1201,9 @@ function buildHooks(shell) {
       renderToolCard(shell.stepsEl, round, null, null, obs);
       if (_curTrace && _curTrace.steps.length) _curTrace.steps[_curTrace.steps.length - 1].observation = obs;
       setPhase('检索');
+      const _lc = (() => { try { return document.querySelectorAll('#layer-list .layer-row').length - _layerBase; } catch (_) { return 0; } })();
+      const _t = dockEl() && dockEl().querySelector('.aiq-thinking-text');   // E2：dock 显"已生成 N 层"（增量落图·图在长感知）
+      if (_t) _t.textContent = _lc > 0 ? `已生成 ${_lc} 层·继续…` : '整合结果中…';
       autoScroll();
     },
     onFinal: (tok) => {
@@ -1525,7 +1572,7 @@ function mountChatChrome() {
   const suggest = document.getElementById('chat-suggest');
   if (suggest && !document.getElementById('aiq-thinking-dock')) {
     suggest.innerHTML = '<div class="aiq-thinking-dock" id="aiq-thinking-dock" hidden>'
-      + '<div class="aiq-thinking-row"><span class="aiq-thinking-text">正在思考…</span><span class="aiq-dots"><i></i><i></i><i></i></span></div>'
+      + '<div class="aiq-thinking-row"><span class="aiq-thinking-text">正在思考…</span><span class="aiq-dots"><i></i><i></i><i></i></span><span class="aiq-thinking-elapsed" hidden></span><button class="aiq-abort-btn" type="button" title="取消（Esc）" hidden>取消</button></div>'
       + '<div class="aiq-phase-chips">'
       + ['诊断', '思考', '检索', '生成', '审查'].map((c) => `<span data-phase="${c}">${c}</span>`).join('')
       + '</div></div>'

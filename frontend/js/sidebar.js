@@ -7,6 +7,10 @@ import { closeParamPanel } from './param-panel.js';
 import { openHeatmapDialog } from './heatmap-tool.js';
 import { openBufferDialog } from './buffer-tool.js';
 import { openGridDialog } from './grid-tool.js';
+import { openZonalDialog } from './toolbox/zonal-tool.js';
+import { openAreaStatsDialog } from './toolbox/area-stats-tool.js';
+import { openRankDialog } from './toolbox/rank-tool.js';
+import { openVectorDialog } from './toolbox/vector-tool.js';
 import { relayoutFloats } from './ai_qa/cpd-state.js';   // CPD ③④：抽屉+浮层自适应 EMC 宽度
 
 /** 工具层（heatmap/grid/buffer/terrain）要素按钮 toggle-close 判定：
@@ -15,7 +19,9 @@ import { relayoutFloats } from './ai_qa/cpd-state.js';   // CPD ③④：抽屉+
 function isToolPanelEditing(tool, id) {
   const panel = document.getElementById('param-panel');
   if (!panel || !panel.classList.contains('is-open')) return false;
-  const tab = { heatmap: 'heatmap', grid: 'grid', buffer: 'buffer', terrain: 'heatmap' }[tool];
+  const tab = { heatmap: 'heatmap', grid: 'grid', buffer: 'buffer', terrain: 'heatmap',
+    zonal: 'zonal', area_stats: 'area-stats', rank: 'rank',
+    overlay: 'vector', clip: 'vector', extract_feature: 'vector', merge: 'vector', filter_attr: 'vector' }[tool];   // 约定：pp-tab 名 + '-dialog' = dialog id（手册 §3.4）
   const activeTab = panel.querySelector('.pp-tab.is-active')?.dataset.ppTab;
   if (activeTab !== tab) return false;
   const dlg = document.getElementById(`${tab}-dialog`);
@@ -449,6 +455,10 @@ export function renderLayerList() {
       if (l.paint && l.paint._ui && l.paint._ui.tool === 'buffer') { if (isToolPanelEditing('buffer', id)) closeParamPanel(); else openBufferDialog(id); return; }
       if (l.paint && l.paint._ui && l.paint._ui.tool === 'grid') { if (isToolPanelEditing('grid', id)) closeParamPanel(); else openGridDialog(id); return; }
       if (l.paint && l.paint._ui && l.paint._ui.tool === 'terrain') { if (isToolPanelEditing('terrain', id)) closeParamPanel(); else openHeatmapDialog(id); return; }
+      if (l.paint && l.paint._ui && l.paint._ui.tool === 'zonal') { if (isToolPanelEditing('zonal', id)) closeParamPanel(); else openZonalDialog(id); return; }
+      if (l.paint && l.paint._ui && l.paint._ui.tool === 'area_stats') { if (isToolPanelEditing('area_stats', id)) closeParamPanel(); else openAreaStatsDialog(id); return; }
+      if (l.paint && l.paint._ui && l.paint._ui.tool === 'rank') { if (isToolPanelEditing('rank', id)) closeParamPanel(); else openRankDialog(id); return; }
+      if (l.paint && l.paint._ui && ['overlay', 'clip', 'extract_feature', 'merge', 'filter_attr'].includes(l.paint._ui.tool)) { const _vt = l.paint._ui.tool; if (isToolPanelEditing(_vt, id)) closeParamPanel(); else openVectorDialog(id); return; }
       if (isOpen() && openSettingsLayerId() === id) closeSettingsPopover();
       else {
         openSettingsPopover(l, b);
@@ -821,6 +831,10 @@ export function initSidebar({ onFiles, onRangeFiles } = {}) {
   document.getElementById('tool-heatmap')?.addEventListener('click', () => openHeatmapDialog());
   document.getElementById('tool-buffer')?.addEventListener('click', () => openBufferDialog());
   document.getElementById('tool-grid')?.addEventListener('click', () => openGridDialog());
+  document.getElementById('tool-zonal')?.addEventListener('click', () => openZonalDialog());
+  document.getElementById('tool-area-stats')?.addEventListener('click', () => openAreaStatsDialog());
+  document.getElementById('tool-rank')?.addEventListener('click', () => openRankDialog());
+  document.getElementById('tool-vector')?.addEventListener('click', () => openVectorDialog());
   document.getElementById('tool-attribution')?.addEventListener('click', () => {
     toast.info('多维归因分析（Toolbox 独立工具，开发中）');
   });

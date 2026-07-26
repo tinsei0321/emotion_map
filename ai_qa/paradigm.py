@@ -174,6 +174,9 @@ GEO_TOOL_CATALOG = [
         'params': 'layer, field, op(eq|in|gt|lt), value',
         'yields': '子集（点或聚合）',
         'contributes': '聚焦切片（"商业用地"/"T1 负面"/"治理域"），支撑类型化结论',
+        'scale': '全尺度（属性切片，不限空间范围）',
+        'preconditions': '点层已加载 + field/op/value 已知（先 query_layers 看字段）',
+        'failure_modes': '误当空间裁剪——它只按属性不按几何；要"某范围内"用 clip',
     },
     {
         'name': 'extract_feature',
@@ -181,6 +184,10 @@ GEO_TOOL_CATALOG = [
         'params': 'layer(preset_id|geojson), where(field/op/value，field 见 catalog name_field)',
         'yields': '面子集 GeoJSON（自动落地图）',
         'contributes': '纯 GIS 操作出口：用户要"裁出西陵区"等几何产物时用此，不走情绪归因',
+        'scale': '宏观/中观（面要素）',
+        'preconditions': '面边界层（preset）+ name_field（field/op/value）',
+        'failure_modes': '误用于"某区内的某类用地"——它只抽单要素，跨层交集要走 extract+overlay 链；误用于取点（→clip）',
+        'examples': '正:裁出西陵区 / 正:抽出滨江公园 / 误:西陵区的商业用地(→extract+overlay 链)',
     },
     {
         'name': 'clip',
@@ -188,6 +195,10 @@ GEO_TOOL_CATALOG = [
         'params': 'layer, range(preset_id | geojson), pre_filter?',
         'yields': '范围内的点子集（自动落地图）',
         'contributes': '限定空间范围取点（"西陵区内的情绪点"），支撑中/微观落点',
+        'scale': '中观/微观（范围内取**点**）',
+        'preconditions': 'range preset/geojson + 点层',
+        'failure_modes': '误用于面∩面——clip 只切点，面层会报错；面∩面/面∪面用 overlay',
+        'examples': '正:西陵区的情绪点 / 正:公园范围内的点 / 误:商业∩居住用地(→overlay)',
     },
     {
         'name': 'merge',
@@ -195,6 +206,9 @@ GEO_TOOL_CATALOG = [
         'params': 'layer, by(字段) | all',
         'yields': '合并后的面域',
         'contributes': '上卷到更大尺度（几街道→一片区），支撑宏观结构结论',
+        'scale': '宏观（上卷片区）',
+        'preconditions': '面边界层',
+        'failure_modes': '误用于取子集——要某子区用 extract/clip，非 merge',
     },
     {
         'name': 'area_stats',
@@ -202,6 +216,10 @@ GEO_TOOL_CATALOG = [
         'params': 'boundary(preset_id | geojson), group_by(字段·如 DLMC)',
         'yields': '面积 + 占比 + 着色面层（choropleth·用地自动附国标标准色，自动落地图）',
         'contributes': '量化"占比""密度"，让结论从计数升级为强度/结构判断',
+        'scale': '宏观/中观（面积结构）',
+        'preconditions': 'boundary preset + group_by 字段',
+        'failure_modes': '误用于情绪归因——它只算面积占比；要情绪极性/4×5 归因用 zonal_stats/rank',
+        'examples': '正:各区用地面积占比 / 正:用地结构 / 误:哪区情绪最差(→rank/zonal)',
     },
     {
         'name': 'zonal_stats',
@@ -209,6 +227,10 @@ GEO_TOOL_CATALOG = [
         'params': 'layer, boundary(preset_id | geojson), metrics, top_n',
         'yields': '每单元 point_count/极性/4×5 归因 + 排序',
         'contributes': '产出"哪个单元最差 + 归因"，宏观/中观结论的主干',
+        'scale': '宏观/中观（单元聚合主干）',
+        'preconditions': 'boundary preset + 点层',
+        'failure_modes': '误用于单点定位——micro 落点用 rank/hotspot；误用于纯面积结构（→area_stats）',
+        'examples': '正:各街道情绪归因 / 正:更新单元排序 / 误:这个公园哪个点最差(→rank micro)',
     },
     {
         'name': 'rank',
@@ -216,6 +238,10 @@ GEO_TOOL_CATALOG = [
         'params': 'layer, by(polarity|domain|element), top_n, range, boundary?',
         'yields': '排序后的 Top N 单元 + Top N 高亮层（极性 choropleth·自动落地图）',
         'contributes': '给出"最需优先…"的明确排序，结论有指向性且以图说话',
+        'scale': '中观/微观（排序落点）',
+        'preconditions': 'boundary 或点层 + by 维度',
+        'failure_modes': '误用于宏观整体归纳（整城/中心城区整体如何，**无排序意图**）→ zonal；含"排序/最差/最好/Top/哪个点位最差"=有排序意图→rank，勿因含"最差"就退 multi、也勿把"各区排序"当整体归纳',
+        'examples': '正:最差的5个区 / 正:这个公园哪个点位最差 / 误:中心城区整体如何(→zonal)',
     },
     {
         'name': 'buffer',
@@ -223,6 +249,9 @@ GEO_TOOL_CATALOG = [
         'params': 'layer, center(POI | geojson), radius_m(默认 500·尺度表：社区/街道 250·行政区/片区 500·主城/全域 1000)',
         'yields': '缓冲面域 + 范围内聚合',
         'contributes': '回答"某设施影响范围"，支撑设施评估/选址',
+        'scale': '中观（设施影响圈）',
+        'preconditions': 'center POI/geojson',
+        'failure_modes': '误用于面要素裁剪——要某区范围内用 clip/overlay；半径按尺度表（社区250/区500/主城1000）',
     },
     {
         'name': 'overlay',
@@ -230,6 +259,10 @@ GEO_TOOL_CATALOG = [
         'params': 'layer_a, layer_b, how(intersection|union|difference|symmetric)',
         'yields': '叠置结果面域',
         'contributes': '跨图层交叉（用地 × 更新），识别复合问题区',
+        'scale': '中观（跨图层面）',
+        'preconditions': '两图层面（layer_a/layer_b）',
+        'failure_modes': '误用于取点——范围内取点用 clip；误用于抽单要素（→extract）；"A 内的 B"（面∩面）是单一空间关系，用 overlay 勿选 multi',
+        'examples': '正:商业∩更新单元 / 正:居住用地里情绪差的 / 误:西陵区的点(→clip)',
     },
     {
         'name': 'nearest',
@@ -237,6 +270,9 @@ GEO_TOOL_CATALOG = [
         'params': 'layer, target(POI 类型 | geojson), k',
         'yields': '邻近配对 + 距离 + 连线层（target→最近点·自动落地图）',
         'contributes': '锚定"问题点离什么设施近"，支撑归因落点',
+        'scale': '微观（POI 锚定）',
+        'preconditions': 'target POI/geojson + 点层',
+        'failure_modes': '误用于面范围——要设施周边范围用 buffer，要区内点用 clip；"离X最近"是单一邻近关系，勿选 multi',
     },
     {
         'name': 'hotspot',
@@ -244,6 +280,10 @@ GEO_TOOL_CATALOG = [
         'params': 'layer, value_col(score), invert(负面为热)',
         'yields': '每点 Gi* Z-score + hot/cold 分类',
         'contributes': '识别"聚集在哪"，支撑预警/排查类出口',
+        'scale': '微观（Gi* 逐点聚集）',
+        'preconditions': '点层 + value_col',
+        'failure_modes': '与 density 混——hotspot=逐点 Gi* 冷热点分类（每点 hot/cold/ns）；要连续密度面/热力图用 density',
+        'examples': '正:显著负面聚集区 / 正:冷热点识别 / 误:情绪热度连续分布(→density)',
     },
     {
         'name': 'density',
@@ -251,6 +291,10 @@ GEO_TOOL_CATALOG = [
         'params': 'layer, radius?(2D 热力带宽·默认300), cell_size?(3D 网格边长·默认600)（尺度表同 buffer：社区250/区500/主城1000）, value_col?(加权·默认 score), range?, mode?(2d|3d|terrain), as?, keep?',
         'yields': '连续密度面——2D 彩虹热力图 / 3D 网格聚合 / 3D KDE 等值面地形（委托 Toolbox 标准色段·对称拉伸），自动落地图',
         'contributes': '"密度/密集/热力"类的标准出口=新热力图层（彩虹色带·最直观的分布可视化）；区别于 hotspot(逐点 Gi*·冷热点分类)与 zonal_stats(情绪网格聚合·归因排序)',
+        'scale': '全尺度（连续密度面）',
+        'preconditions': '点层（+可选加权 value_col）',
+        'failure_modes': '与 hotspot 混——density=连续密度面/热力图（聚合强度）；要逐点显著冷热分类用 hotspot',
+        'examples': '正:核密度分析 / 正:哪里最集中 / 误:显著冷热点分类(→hotspot)',
     },
 ]
 
@@ -258,11 +302,15 @@ GEO_TOOL_CATALOG = [
 def geo_tool_catalog_text() -> str:
     lines = []
     for t in GEO_TOOL_CATALOG:
-        lines.append(
+        bit = (
             f"- {t['name']}：{t['when']}\n"
             f"    入参：{t['params']} → 产出：{t['yields']}\n"
-            f"    贡献：{t['contributes']}"
+            f"    贡献：{t['contributes']}\n"
+            f"    适用：{t.get('scale', '—')} | 前置：{t.get('preconditions', '—')} | 勿用：{t.get('failure_modes', '—')}"
         )
+        if t.get('examples'):
+            bit += f"\n    正负例：{t['examples']}"
+        lines.append(bit)
     return '\n'.join(lines)
 
 
