@@ -458,8 +458,9 @@ export async function orchestrate(ctx, hooks = {}) {
     ? diagnose.domain_lens.filter((k) => k && k !== 'general') : [];
   // B1-2a：复杂任务（strategy≠ready / method≥3 步）且用户 pro 模式 → 答案升 pro reasoner（复用 _needsDeliberate 复杂度门控）
   if (ctx.model === 'pro' && _needsDeliberate(diagnose)) ctx.answerModel = 'pro';
-  // R1-D1 派生判定器（代码确定性·治假 GAP·Smart/Dumb 铁律：代码可知不问 LLM）：问句区名属已加载 boundary 子要素 → 强制 strategy=ready（覆盖 request_upload，挡 :488 假 GAP 短路）
-  if (!diagnose.degraded && diagnose.data_plan && diagnose.data_plan.strategy === 'request_upload') {
+  // R1-D1 派生判定器（代码确定性·治假 GAP·Smart/Dumb 铁律：代码可知不问 LLM）：问句区名属已加载 boundary 子要素 → 强制 strategy=ready（挡 :488 假 GAP 短路）
+  // D1 扩覆盖（5.206·治 s1 残余·INT-003/004/006）：request_upload + strategy 缺失（unknown·diagnose 未明确完备性）→ 派生判定·代码可知区名即 ready
+  if (!diagnose.degraded && diagnose.data_plan && (diagnose.data_plan.strategy === 'request_upload' || !diagnose.data_plan.strategy)) {
     const _deriv = deriveAvailable(ctx.question, getLayers());
     if (_deriv) {
       diagnose.data_plan.strategy = 'ready';
