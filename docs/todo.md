@@ -7,7 +7,15 @@
 
 ---
 
-## 📅 2026-07-26（分支 `toolbox-unified-toolset` · toolbox 验收 + EMC 大收敛）
+## 📅 2026-07-26（分支 `toolbox-unified-toolset` · toolbox 验收 + EMC 大收敛 + 专题 D）
+
+### ✅ EMC 专题 D · diagnose 认知深化（revision-log 5.207，commit ded4696/c074b75/02ec4ba/64244c8 · **待用户 push**）
+
+- **D1 SOP 卡扩字段**（[paradigm.py](ai_qa/paradigm.py)·eval-first）：GEO_TOOL_CATALOG 12 工具 +scale/preconditions/failure_modes（歧义工具 +examples 正负例）。failure_modes 给 Flash 反向判据（clip 只切点/单一关系勿 multi/hotspot vs density/area_stats 非情绪）。eval 3 跑：基线 91% → 扩字段 89% → 微调 **91% 不退化**（公园点位/各区排序/离地铁 deterministic 改善）。残余 MISS = LLM 方差 + 商业用地 select_template triggers 张力（B_TRACK"区内的"→clip 过宽·另案）。
+- **D2 method 确定性派生**（[harness.js](frontend/js/ai_qa/harness.js)）：`deriveDiagnoseMethod` Flash 未输出时按 template 派生（single→[tool()]），解锁 F3 gate/formatDiagnoseSummary/_needsDeliberate 悬挂读取。不动 diagnose prompt/schema/orchestrate。
+- **D3 EMC-SUM 计划→实产**（e2e-seam/test-cases/test-board）：chatPhases +method → ②`计划N→实产M层` + EMC-SUM 头`计划命中` + 报表 method 字段。闭合 test-board:26 TODO。method 留前端 trace 不改 schema。
+- **红线守约**：D1 不动 DIAGNOSE_TEMPLATE 本体（附录数据）；D2/D3 不动 ChatRequest schema + orchestrate 主循环。test_a3+emc_template 19 pass + 三前端 .mjs 语法过。
+- **留用户**：?test=1 飞轮验 计划→实产 + method 渲染。
 
 ### ✅ toolbox 验收 + EMC 大收敛批次（revision-log 5.206，commit 547a334/3d1e12b/1fb9dfb/62f25e7 · **用户手动 push**）
 
