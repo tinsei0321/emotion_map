@@ -396,6 +396,21 @@ function _executedGeoSteps(toolHistory) {
   return n;
 }
 
+/** D2（5.207）：diagnose 卡 template+params → 计划工具序列（代码确定性·非 LLM 兜底）。
+ *  Flash 偶发输出 method；未输出时按 template 派生，让 _plannedGeoSteps(F3 完整性 gate)/
+ *  formatDiagnoseSummary/_needsDeliberate 皆有源（Smart/Dumb 铁律：代码可知不靠 LLM）。
+ *  元素格式 'tool()' 兼容 _plannedGeoSteps 的 `tool(` 匹配。
+ *  single→[tool()]；multi→params.chain 元素补()；concept/unknown→[]。 */
+function deriveDiagnoseMethod(template, params) {
+  if (!template || template === 'concept' || template === 'unknown') return [];
+  if (template === 'multi') {
+    const chain = (params && params.chain) || [];
+    return Array.isArray(chain) ? chain.map((t) => (String(t).includes('(') ? String(t) : String(t) + '()')) : [];
+  }
+  const def = stages.SKILL_DEFS[template];
+  return def && def.tool ? [def.tool + '()'] : [];
+}
+
 /**
  * Agent Loop 一次问答。
  * @param ctx    {question, context(grounding), contextTokens, signal, model}
@@ -451,6 +466,11 @@ export async function orchestrate(ctx, hooks = {}) {
     diagnose = await stages.diagnoseStep(ctx, hooks);
   } catch (e) { diagnose = null; }
   diagnose = diagnose || { degraded: true };
+  // D2（5.207）：method 确定性派生兜底——Flash 偶发输出 method；未输出时按 template 派生，
+  // 让 _plannedGeoSteps(F3 完整性 gate)/formatDiagnoseSummary/_needsDeliberate 皆有源。
+  if (!diagnose.degraded && (!Array.isArray(diagnose.method) || diagnose.method.length === 0)) {
+    diagnose.method = deriveDiagnoseMethod(diagnose.template, diagnose.params);
+  }
   // domain_lens 结构化数组回传后端：post-diagnose step（answer/revise/agent_step/review）据此注入
   // 命中领域完整权威语境。过滤 'general'（通用问答无需领域权威）。_quickIntent 路径跳过 diagnose
   // → 此处未设 → 各 step 读 undefined → 不注入（正确，通用问答无需领域权威）。
