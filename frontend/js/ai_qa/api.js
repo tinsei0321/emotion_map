@@ -61,7 +61,7 @@ export async function streamChat(messages, context, onToken, onError, opts = {})
         if (obj.usage) { _lastUsage = obj.usage; _totalPrompt += obj.usage.prompt_tokens || 0; _totalCompletion += obj.usage.completion_tokens || 0; if (opts.onUsage) opts.onUsage(obj.usage); }
         if (obj.review !== undefined && onReview) { onReview(obj.review); return; }
         if (obj.reason && onReason) onReason(obj.reason);
-        if (obj.token) onToken(obj.token);
+        if (obj.token) onToken(obj.token.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ''));   // 5.222 过滤控制符（DEL 等·治"删除符号"Bug 3）
       } catch (_) { /* skip malformed */ }
     }
   }
