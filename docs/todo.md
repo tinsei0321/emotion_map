@@ -7,7 +7,14 @@
 
 ---
 
-## 📅 2026-07-26（分支 `toolbox-unified-toolset` · toolbox 验收 + EMC 大收敛 + 专题 D）
+## 📅 2026-07-26（分支 `toolbox-unified-toolset` · toolbox 验收 + EMC 大收敛 + 专题 D + E2）
+
+### ✅ EMC 专题 E2 · 进度透明（revision-log 5.208，commit 4e15134 · **待用户 push**）
+
+- 治 C9 延迟感知：[setPhase](frontend/js/ai_qa/panel.js#L903) 加时间戳+done（已完成段填充）+ 阶段计时（"检索 8s·共 12s"·0.5s 刷新）+ onAction "正在执行·[工具CN]"（[_TOOL_CN](frontend/js/ai_qa/panel.js#L925) 映射）+ onObservation "已生成 N 层"（layer delta）+ 可见取消按钮（复用 _abortCtl·Esc/Ctrl-C 保留）。
+- 纯前端（panel.js + ai_qa.css）**零承重**·复用 hooks 时序不加 onProgress·不动 orchestrate/router/schema/prompt/SKILL_DEFS。
+- 设计语言：填充式无线框 + 胶囊紧凑 + 离散分段（memory avoid-frames/capsule/ramp）。
+- **留用户**：start.bat 肉眼验进度条/计时/增量落图/取消。
 
 ### ✅ EMC 专题 D · diagnose 认知深化（revision-log 5.207，commit ded4696/c074b75/02ec4ba/64244c8 · **待用户 push**）
 
