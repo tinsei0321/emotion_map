@@ -7,7 +7,14 @@
 
 ---
 
-## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest）
+## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注）
+
+### ✅ EMC grounding 指代标注（revision-log 5.212，commit e3c4266 · **待用户 push**）
+
+- 用户认知校准：EMC NL→计划 = diagnose Flash 一步（2-5s·计划阶段唯一 LLM）；prompt 工程已重度内嵌 build_diagnose_prompt（MANIFESTO+8 附录+few-shot+grounding）；加独立 NL→prompt 层价值边际（LLM 已理解 NL）。
+- resolveCoref（[tools.js:233](frontend/js/ai_qa/tools.js#L233)·几 ms·非 LLM）：检测指代词（这边/这个区/这里/刚才/上次）→ activeAnalysis/selectedLayer（这边）+ priorTurn.done（刚才）→ grounding 显式标注。
+- orchestrate diagnose 前注入 ctx.context（[:449](frontend/js/ai_qa/harness.js#L449)）。保守（不标误·不改写 NL）。不动 diagnose prompt/schema/主循环。
+- **留用户**：飞轮验选中西陵区+问"这边情绪"→diagnose 知指代。
 
 ### ✅ EMC Layer Manifest 最小版（revision-log 5.211，commit 80d09c4 · **待用户 push**）
 
