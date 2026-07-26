@@ -7,7 +7,15 @@
 
 ---
 
-## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + 优化工程系统化）
+## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + 优化精准化+chip两行）
+
+### ✅ EMC prompt 优化方向修正 + chip 两行 tip + 减 token（revision-log 5.218，commit bdf4d3a · **待用户 push**）
+
+- 用户校准（推翻前几轮）：prompt 优化=精准化扩充+逻辑梳理（非改写/条目化/启发）·用户提问语气·启发是 chip/CPD 职能。
+- OPTIMIZE_TEMPLATE 重写（精准化+用户语气+few-shot 理想例·~150 token）+ buildOptimizeContext 极简（层名·~200 token）→ Flash <2s。
+- chip 两行（[_renderRecognize](frontend/js/ai_qa/panel.js)+[_liveRecTip](frontend/js/ai_qa/panel.js)）：第一行短语 + 第二行方法 tip（density/zonal/rank...）。
+- 不动 diagnose/schema/orchestrate。
+- **留用户**：浏览器验精准化（层名+极性）+ 用户语气 + <2s + chip 两行 tip。
 
 ### ✅ EMC prompt 优化工程系统化（revision-log 5.217，commit 2bcc08c/65add16/b491c23 · **待用户 push**）
 
