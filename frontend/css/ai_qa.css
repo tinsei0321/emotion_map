@@ -347,7 +347,7 @@
 .aiq-abort-btn { display: inline-block; margin-left: 8px; font-size: var(--geojson-typography-size-2xs); padding: 1px 8px; border-radius: 999px; color: var(--geojson-color-text-tertiary, #999); background: transparent; border: none; cursor: pointer; transition: background 0.15s, color 0.15s; }
 .aiq-abort-btn:hover { background: var(--geojson-color-gray-200, #e0e0e0); color: var(--geojson-color-text-primary, #333); }
 /* 5.214/5.215 一键优化 prompt 键（发送键左·同 chat-send·sparkle ⇄ loading ⇄ undo 三态）+ 输入提示 chip（对话框下）*/
-.aiq-optimize { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; color: var(--geojson-color-text-secondary, #666); background: var(--geojson-color-gray-100, #f0f0f0); border: none; cursor: pointer; flex-shrink: 0; transition: background 0.15s, color 0.15s; }
+.aiq-optimize { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-left: auto; margin-right: 2px; border-radius: 6px; color: var(--geojson-color-text-secondary, #666); background: var(--geojson-color-gray-100, #f0f0f0); border: none; cursor: pointer; flex-shrink: 0; transition: background 0.15s, color 0.15s; }
 .aiq-optimize:hover { background: var(--geojson-color-gray-200, #e0e0e0); color: var(--geojson-color-text-primary, #333); }
 .aiq-optimize .aiq-opt-undo, .aiq-optimize .aiq-opt-loading { display: none; }
 .aiq-optimize.is-loading { color: var(--geojson-color-text-tertiary, #999); pointer-events: none; }

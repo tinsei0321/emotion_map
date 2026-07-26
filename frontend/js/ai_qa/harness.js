@@ -157,8 +157,8 @@ function buildRequestUploadText(d) {
 
 /** HTML 转义动态文本：diagnose.data_plan 字段 / 对账 _missing 图层名经 composeGapCard/composePartialCard
  *  拼进 markdown，最终经 renderAnswer→marked.parse→innerHTML 入 DOM；marked v12 不净化 HTML，故此处逐项转义防注入。 */
-function _esc(s) {
-  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function _esc(s) {   // 转义 HTML + 反引号（防 marked 把动态值 needed/gap/failedObs 当代码块渲染）
+  return String(s == null ? '' : s).replace(/[&<>"'`]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]));
 }
 
 /** EXIT_GAP 缺数据/做不成卡（确定性组装，不走 LLM——杜绝"模型又口头讲一遍"）。

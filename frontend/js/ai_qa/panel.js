@@ -957,14 +957,34 @@ const _REC_INTENT = [
   [/裁出|裁剪|范围内|区内/, '裁取'],
 ];
 const _REC_SCALE = [[/整体|中心城区|全域|哪类/, '宏观'], [/街道|社区|单元|哪个区/, '中观'], [/点位|这个点|哪条街|哪里最/, '微观']];
-function _liveRecognize(t) {
+function _liveRecognize(t) {   // 5.216 发散启发：基于用户输入类型·提示更多相关要素（地点→子地点/密度→专业名词/多地点→对比）
   if (!t || !t.trim()) return [];
+  const q = t;
   const tags = [];
-  const d = t.match(/(西陵|伍家岗|夷陵|点军|猇亭)区?/);   // 区名
-  if (d) tags.push(d[1] + '区');
-  for (const [re, label] of _REC_INTENT) if (re.test(t)) { tags.push(label); break; }   // 一个意图
-  for (const [re, label] of _REC_SCALE) if (re.test(t)) { tags.push(label); break; }    // 一个尺度
-  return tags.slice(0, 4);
+  // 区名 → 发散子地点/相关（启发用户具体化）
+  if (/中心城区|全域|整体|全市/.test(q)) tags.push('中心城区', '西陵区', '伍家岗区', '夷陵区');
+  else if (/西陵/.test(q)) tags.push('西陵区', '二马路', 'CBD');
+  else if (/伍家岗/.test(q)) tags.push('伍家岗区', '东站片区');
+  else if (/夷陵/.test(q)) tags.push('夷陵区', '小溪塔');
+  else if (/点军/.test(q)) tags.push('点军区');
+  else if (/猇亭/.test(q)) tags.push('猇亭区');
+  // 情绪/密度/分布 → 专业名词（启发用户用术语）
+  if (/密度|热力|分布|集中|密集|集聚|热度/.test(q)) tags.push('热力图', '核密度', '热点分布');
+  if (/聚集|热点|冷热/.test(q)) tags.push('Gi* 热点', '冷热点');
+  if (/归因|为什么|原因|怎么回事/.test(q)) tags.push('4×5 归因');
+  if (/排序|最差|最好|排名|优先/.test(q)) tags.push('Top N 排序');
+  if (/缓冲|周边|附近|半径/.test(q)) tags.push('缓冲区');
+  if (/面积|占比|用地结构/.test(q)) tags.push('用地占比');
+  if (/裁出|裁剪|范围内|区内/.test(q)) tags.push('范围裁取');
+  // 多地点 → 对比提示
+  const _dc = (q.match(/(西陵|伍家岗|夷陵|点军|猇亭)区?/g) || []);
+  if (_dc.length >= 2 && !tags.includes('区域对比')) tags.push('区域对比');
+  else if (/对比|比较|vs|哪个更/.test(q)) tags.push('区域对比');
+  // 尺度（启发颗粒度）
+  if (/整体|全域|哪类/.test(q)) tags.push('宏观');
+  else if (/街道|社区|单元|哪个区/.test(q)) tags.push('中观');
+  if (/点位|这个点|哪条街|哪里最/.test(q)) tags.push('微观');
+  return tags.slice(0, 6);   // 最多 6 chip（发散·flex-wrap 换行）
 }
 // 5.215 优化键（LLM·Flash 流式 <3s·不增维度）+ 输入提示（5.213 chip 恢复·对话框下）
 let _originalInput = '';   // 优化前原文（撤销用）
