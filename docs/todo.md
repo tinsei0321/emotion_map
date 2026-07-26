@@ -7,7 +7,15 @@
 
 ---
 
-## 📅 2026-07-26（分支 `toolbox-unified-toolset` · toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3）
+## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1）
+
+### ✅ EMC 专题 E1 · 多步链 runChainPath（revision-log 5.210，commit f5b4078/3f31c15/3dbfcdf · **待用户 push**）
+
+- 治 C3 多步超时：template=multi 标准链走 runChainPath（0 中间 LLM 轮·确定性）非 while-loop ReAct。
+- 3 step：① CHAIN_REGISTRY（[stages.js](frontend/js/ai_qa/stages.js) 纯前端·extract_overlay/clip_density·chain_id harness 派生非 Flash）② runChainPath（[harness.js](frontend/js/ai_qa/harness.js) 类比 runTemplatePath·复用 $n/_stepResults）③ orchestrate :537 multi 分流（最小 if + _deriveChainId）。
+- 红线：前端为主·不改后端 paradigm/prompts/schema；orchestrate 最小 if 不动 single/while-loop/出口裁定。
+- 验证：eval 31/37=84%（multi 命中）+ 三步 .mjs 语法过；chain 执行留用户飞轮。
+- 风险：覆盖面窄（仅标准链）+ triggers 误匹配（保守起步）。
 
 ### ✅ EMC 专题 E3 · partial 出口消费 _renderState（revision-log 5.209，commit 32924b9 · **待用户 push**）
 
