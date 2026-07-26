@@ -7,7 +7,14 @@
 
 ---
 
-## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + 优化工程+Layers+Bug修）
+## 📅 2026-07-27（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + 优化工程+全字段值域识别）
+
+### ✅ EMC Flash 全字段值域识别 + EMC 组 + L2 消极（revision-log 5.223，commit b5b3981 · **待用户 push**）
+
+- 全字段值域摘要（buildContext·categorical/数值/时间·Flash 知有什么/缺什么）—— Layer Manifest 完整版。
+- 能力 hint（极性筛选·勿判缺）。EMC 组（ensure_zone _adoptToolboxResult）。filterFc polarity 筛（消极≠综合）。
+- 不动 diagnose/schema/orchestrate。
+- **留用户**：浏览器验 grounding 全字段值域 + EMC 组 + L2 消极热力图。
 
 ### ✅ EMC Bug3 删除符号 + Bug1 density 视角（revision-log 5.222，commit 44df49f/dd559cc · **待用户 push**）
 
