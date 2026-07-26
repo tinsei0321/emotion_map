@@ -997,7 +997,13 @@ function _renderRecognize(tags) {
   const _sparkle = '<span class="aiq-rec-icon" title="EMC 已识别"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/><path d="M5 4v2M4 5h2"/><path d="M19 18v2M18 19h2"/></svg></span>';
   el.innerHTML = _sparkle + tags.map((t) => `<span class="aiq-rec-chip">${escapeHtml(t)}</span>`).join('');
 }
-/** 5.215 优化/撤销切换（LLM·sparkle ⇄ loading ⇄ undo 三态）。 */
+/** 5.217 优化输出解析：拦 JSON（thought/action）/ 去围栏·返干净文本（空=失败）。 */
+function _parseOptimize(raw) {
+  const t = String(raw || '').trim();
+  if (/^\s*\{[\s\S]*"(thought|action)"/.test(t)) return '';   // JSON（diagnose/agent 误出）→ 拦截
+  return t.replace(/^```[a-z]*\n?|\n?```$/g, '');   // 去围栏（防御代码块显示）
+}
+/** 5.215/5.217 优化/撤销切换（LLM·sparkle ⇄ loading ⇄ undo·拦 JSON·失败提示）。 */
 async function _toggleOptimize() {
   const input = document.getElementById('chat-input');
   const btn = document.getElementById('aiq-optimize');
@@ -1017,9 +1023,23 @@ async function _toggleOptimize() {
     const ctx = { context: await buildContext(), signal: _abortCtl ? _abortCtl.signal : undefined };
     input.placeholder = 'prompt 优化中…';
     input.value = '';
-    await optimizeStep(ctx, { onOptimize: (acc) => { input.value = acc; input.scrollTop = input.scrollHeight; } }, orig);
+    const finalAcc = await optimizeStep(ctx, {
+      onOptimize: (acc) => {
+        if (/^\s*\{[\s\S]*"(thought|action)"/.test(acc)) return;   // JSON → 不写输入框（拦截流式·防代码块闪）
+        input.value = acc; input.scrollTop = input.scrollHeight;
+      },
+    }, orig);
     input.placeholder = _oldPh;
-    btn.classList.remove('is-loading'); btn.classList.add('is-optimized'); btn.title = '撤销（恢复原文）';
+    const _opt = _parseOptimize(finalAcc);
+    if (_opt) {
+      input.value = _opt;
+      btn.classList.remove('is-loading'); btn.classList.add('is-optimized'); btn.title = '撤销（恢复原文）';
+    } else {   // JSON 或空 → 失败·恢复原文 + 提示
+      input.value = _originalInput; _originalInput = '';
+      btn.classList.remove('is-loading'); btn.title = '一键优化 prompt（再点撤销原文）';
+      input.placeholder = '优化失败（格式错）·请重试或手动描述';
+      setTimeout(() => { input.placeholder = _oldPh; }, 3000);
+    }
   } catch (e) {
     input.value = _originalInput; _originalInput = ''; input.placeholder = _oldPh;
     btn.classList.remove('is-loading'); btn.title = '一键优化 prompt（再点撤销）';
