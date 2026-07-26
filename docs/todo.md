@@ -7,7 +7,14 @@
 
 ---
 
-## 📅 2026-07-26（分支 `toolbox-unified-toolset` · toolbox 验收 + EMC 大收敛 + 专题 D + E2）
+## 📅 2026-07-26（分支 `toolbox-unified-toolset` · toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3）
+
+### ✅ EMC 专题 E3 · partial 出口消费 _renderState（revision-log 5.209，commit 32924b9 · **待用户 push**）
+
+- 治假完成制度化：[_verifyClaims:225](frontend/js/ai_qa/harness.js#L225) + orchestrate [:690](frontend/js/ai_qa/harness.js#L690) 两处 actual 过滤加 `_renderState`（渲染失败层不计"实际产出"→声称的若渲染失败=missing→EXIT_PARTIAL）。
+- 信号源：[map.js:461](frontend/js/map.js#L461) _renderState=failed/ok + [shared.js:176](frontend/js/toolbox/shared.js#L176) addToolboxLayer 检测。
+- 纯对账真值源增强·不动主循环/分流/出口裁定条件/prompt/schema。composePartialCard"未生成"语境涵盖渲染失败。
+- **留用户**：飞轮渲染失败用例（如 density bbox 越界）→ 验 partial 标注。
 
 ### ✅ EMC 专题 E2 · 进度透明（revision-log 5.208，commit 4e15134 · **待用户 push**）
 
