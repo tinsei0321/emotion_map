@@ -346,6 +346,12 @@
 .aiq-thinking-elapsed { display: inline-block; margin-left: 6px; font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary, #999); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .aiq-abort-btn { display: inline-block; margin-left: 8px; font-size: var(--geojson-typography-size-2xs); padding: 1px 8px; border-radius: 999px; color: var(--geojson-color-text-tertiary, #999); background: transparent; border: none; cursor: pointer; transition: background 0.15s, color 0.15s; }
 .aiq-abort-btn:hover { background: var(--geojson-color-gray-200, #e0e0e0); color: var(--geojson-color-text-primary, #333); }
+/* 5.213 实时已识别 chip（输入时显·prompt 工程显化·填充式胶囊·设计语言统一）*/
+.aiq-recognize { display: flex; gap: 4px; align-items: center; padding: 2px 6px; flex-wrap: wrap; }
+.aiq-recognize[hidden] { display: none; }
+.aiq-rec-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; color: var(--geojson-color-text-secondary, #666); background: var(--geojson-color-gray-100, #f0f0f0); flex-shrink: 0; }
+[data-theme="dark"] #emc-panel .aiq-rec-icon { color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.08); }
+.aiq-rec-chip { font-size: var(--geojson-typography-size-2xs); padding: 1px 7px; border-radius: 999px; color: var(--geojson-color-text-secondary, #666); background: var(--geojson-color-gray-100, #eee); }
 
 /* ── 推荐追问胶囊（答案完毕后，#chat-suggest 内，点击即发；胶囊设计语言：无线框+阴影+悬停灰+紧凑）── */
 /* 推荐追问胶囊（EMC 深色面板内：半透明深底 + 浅字 + 橙标签，对齐 emc-welcome-chip/exit-badge；勿用白底+主题字变量——深色 EMC 里文字变量翻浅→浅字白底看不清）*/

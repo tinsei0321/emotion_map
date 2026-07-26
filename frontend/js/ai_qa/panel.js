@@ -945,6 +945,36 @@ function _renderElapsed() {
 }
 function _startElapsedTimer() { _stopElapsedTimer(); _renderElapsed(); _elapsedTimer = setInterval(_renderElapsed, 500); }
 function _stopElapsedTimer() { if (_elapsedTimer) { clearInterval(_elapsedTimer); _elapsedTimer = null; } }
+// 5.213 实时识别（输入时显"已识别"chip·prompt 工程显化·代码关键词·几 ms·非 LLM·预览非 diagnose 精确）
+const _REC_INTENT = [
+  [/排序|最差|最好|排名|优先/, '排序'],
+  [/对比|比较|\bvs\b|哪个更/, '对比'],
+  [/密度|热力|分布|集中|密集/, '密度'],
+  [/缓冲|周边|附近|半径/, '缓冲'],
+  [/归因|为什么|原因|怎么回事/, '归因'],
+  [/聚集|热点|冷热/, '热点'],
+  [/面积|占比|用地结构/, '面积'],
+  [/裁出|裁剪|范围内|区内/, '裁取'],
+];
+const _REC_SCALE = [[/整体|中心城区|全域|哪类/, '宏观'], [/街道|社区|单元|哪个区/, '中观'], [/点位|这个点|哪条街|哪里最/, '微观']];
+function _liveRecognize(t) {
+  if (!t || !t.trim()) return [];
+  const tags = [];
+  const d = t.match(/(西陵|伍家岗|夷陵|点军|猇亭)区?/);   // 区名
+  if (d) tags.push(d[1] + '区');
+  for (const [re, label] of _REC_INTENT) if (re.test(t)) { tags.push(label); break; }   // 一个意图
+  for (const [re, label] of _REC_SCALE) if (re.test(t)) { tags.push(label); break; }    // 一个尺度
+  return tags.slice(0, 4);
+}
+function _renderRecognize(tags) {
+  const el = document.getElementById('aiq-recognize');
+  if (!el) return;
+  el.hidden = !tags.length;
+  if (!tags.length) { el.innerHTML = ''; return; }
+  // 5.213 sparkle 圆角正方图标（发送键尺寸 32×32·AI 已识别标识·Light/Dark 双主题 token 自适应）
+  const _sparkle = '<span class="aiq-rec-icon" title="EMC 已识别"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/><path d="M5 4v2M4 5h2"/><path d="M19 18v2M18 19h2"/></svg></span>';
+  el.innerHTML = _sparkle + tags.map((t) => `<span class="aiq-rec-chip">${escapeHtml(t)}</span>`).join('');
+}
 
 /** assistant 消息骨架（思考链 + 动态状态 + 解题步骤 + 结论）。trace 非空 = 历史恢复。 */
 function appendAssistantShell(trace) {
@@ -1310,6 +1340,7 @@ async function send(text) {
   _userPinned = false;   // E6 新话轮强制跟随：上滑停跟仅话轮内有效，发新问即复位（appendMessage 已滚底 + 流式 autoScroll 续跟；ChatGPT/Claude 标准）
   const input = document.getElementById('chat-input');
   if (input) input.value = '';
+  _renderRecognize([]);   // 5.213 清已识别标签
   appendMessage('user', escapeHtml(text));
   _history.push({ role: 'user', text });
   saveHistory();
@@ -1830,6 +1861,7 @@ export function initChatPanel() {
   input?.addEventListener('input', () => {
     input.style.height = 'auto';
     input.style.height = Math.min(160, input.scrollHeight) + 'px';
+    _renderRecognize(_liveRecognize(input.value));   // 5.213 实时识别 chip（prompt 工程显化）
   });
 
   // + 附加当前选中图层/范围作上下文
