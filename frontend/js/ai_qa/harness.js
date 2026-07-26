@@ -4,7 +4,7 @@
 // 前置：DIAGNOSE 问题理解卡（认知层）→ 注入 ctx.context 导工具选型 + 结论颗粒度；硬缺口短路请求上传。
 // 降级：agent_step 解析失败不再裸显 raw，break loop 仍走 finalStep 出一次性 answer。
 import * as stages from './stages.js';
-import { TOOLS, setToolContext, formatRegistry, deriveAvailable } from './tools.js';
+import { TOOLS, setToolContext, formatRegistry, deriveAvailable, resetStepResults } from './tools.js';
 import { getLayers } from '../state.js';
 
 const MAX_ROUNDS_GIS = 6;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=6（保多目标完整性，如"西陵+伍家岗居住+商业"需多步）
@@ -373,6 +373,69 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   if (hooks.onFinalDone) hooks.onFinalDone(draft);
   if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: '单技能路径·跳过审查' });
   return { ok: true, rounds: 1, final: draft, review: { pass: true, degraded: true, skipped: 'single-template' }, degraded: false, diagnose, exit: 'result', newLayerCount };
+}
+
+/** E1（5.210）：多步链确定性执行（0 中间 LLM 轮·治 C3 多步超时）。类比 runTemplatePath 循环 chain.steps；
+ *  复用 $n（_stepResults·工具内 ref 自动解析）+ setToolContext + runTemplatePath 出口范式（失败 ask/gap·成功 finalStep+_verifyClaims）。
+ *  链中断（步失败）→ ask_user；零图层 → ask_user；成功 → finalStep 出结论。chain 来自 stages.CHAIN_REGISTRY。 */
+async function runChainPath(ctx, hooks, diagnose, chain) {
+  resetStepResults();   // 清 $n 引用（新一轮）
+  const toolHistory = []; let newLayerCount = 0; const failedObs = [];
+  for (let i = 0; i < chain.steps.length; i++) {
+    const step = chain.steps[i];
+    if (hooks.onRoundStart) hooks.onRoundStart(i + 1);
+    setToolContext({ tool: step.tool, round: i + 1 });
+    const params = _resolveChainParams(step.params, diagnose && diagnose.params, ctx.question);
+    let r = null;
+    try { r = await TOOLS[step.tool](params); }   // 工具内 addResultLayer 自动推 _stepResults → 后序 $n 可解析
+    catch (e) { failedObs.push(`${step.tool}: ${(e && e.message) || e}`); break; }   // 链中断
+    const obs = (r && r.observation) || '[ERR] 工具无观察返回';
+    if (/\[ERR\]|失败|错误/.test(obs)) { failedObs.push(`${step.tool}: ${obs.slice(0, 80)}`); break; }   // 步失败中断
+    if (r && r.data && r.data.layerId) newLayerCount++;
+    toolHistory.push(`第${i + 1}轮·动作: ${step.tool}(${JSON.stringify(params).slice(0, 120)}) → ${obs}`);
+    if (hooks.onObservation) hooks.onObservation(obs, i + 1);
+    try { document.dispatchEvent(new CustomEvent('tool:executed', { detail: { tool: step.tool, layerId: (r && r.data && r.data.layerId) || null, ok: !/\[ERR\]|失败/.test(obs), ts: Date.now() } })); } catch (_) { /* 观测信号失败不阻塞 */ }
+  }
+  // 链中断/零图层 → ask_user（守 Smart 不放弃·同 runTemplatePath :345-356）
+  if (failedObs.length || newLayerCount === 0) {
+    const _tried = failedObs.slice(0, 2).map((f) => String(f).split(':')[0]).join('、');
+    const ask = { type: 'ask_user',
+      question: `${chain.name}（${chain.steps.map((s) => s.tool).join('→')}）没跑通${_tried ? `（${_tried} 失败）` : '（未产出图层）'}——可能是范围与数据不匹配。要怎么处理？`,
+      options: ['换个区域/范围重试（请指定）', '我已上传所需数据，请重新分析', '用现有数据能做哪些分析？'] };
+    if (hooks.onAskUser) hooks.onAskUser(ask, chain.steps.length);
+    _recordSkip('chain_failed');
+    return { ok: true, rounds: chain.steps.length, ask, diagnose, exit: 'ask', newLayerCount };
+  }
+  // finalStep + 对账（同 runTemplatePath :362-375）
+  if (hooks.onRound) hooks.onRound(chain.steps.length);
+  const toolHistoryText = toolHistory.join('\n');
+  ctx.context = `【多步链路径·已执行 ${chain.steps.map((s) => s.tool).join(' → ')}】基于上述工具观察直接出结论，勿重选工具、勿重复执行、勿再调 geo 工具。\n\n` + (ctx.context || '');
+  let draft = await stages.finalStep(ctx, hooks, toolHistoryText);
+  const claims = _verifyClaims(draft);
+  if (!claims.ok) { const revised = await _reviseOnce(ctx, hooks, draft, claims.hints, toolHistoryText); if (revised) draft = revised; }
+  if (hooks.onFinalDone) hooks.onFinalDone(draft);
+  if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: '多步链路径·跳过审查', skipped: 'chain' });
+  return { ok: true, rounds: chain.steps.length, final: draft, review: { pass: true, degraded: true, skipped: 'chain' }, degraded: false, diagnose, exit: 'result', newLayerCount };
+}
+/** E1：chain step params 模板 → 实参。{占位} 填值（问句/diagnose.params）；$n 原样（工具内 ref 解析）。 */
+function _resolveChainParams(template, diagnoseParams, question) {
+  const out = {};
+  for (const k of Object.keys(template || {})) {
+    const v = template[k];
+    if (typeof v === 'string' && /^\{(\w+)\}$/.test(v.trim())) {
+      out[k] = _fillChainSlot(v.trim().slice(1, -1), diagnoseParams, question);
+    } else { out[k] = v; }   // $n / 字面值（$n 工具内 ref 解析）
+  }
+  return out;
+}
+/** E1：{question}→抽区名（extract_feature where 用）；{boundary}/{land}→diagnose.params。 */
+function _fillChainSlot(key, diagnoseParams, question) {
+  if (key === 'question') {
+    const m = (question || '').match(/(西陵|伍家岗|夷陵|点军|猇亭)区?/);
+    return m ? m[1] + '区' : (question || '');
+  }
+  if (diagnoseParams && diagnoseParams[key] != null) return diagnoseParams[key];
+  return '';
 }
 
 const _GEO_TOOLS = ['extract_feature', 'overlay', 'clip', 'filter_attr', 'merge', 'buffer', 'zonal_stats', 'rank', 'area_stats', 'nearest', 'hotspot'];
