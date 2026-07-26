@@ -21,6 +21,7 @@ import { initZonalTool } from './toolbox/zonal-tool.js';
 import { initAreaStatsTool } from './toolbox/area-stats-tool.js';
 import { initRankTool } from './toolbox/rank-tool.js';
 import { initVectorTool } from './toolbox/vector-tool.js';
+import { toolContentSig } from './toolbox/shared.js';   // 步 1：srcId 内容签名单一事实源（统一 main.js ↔ shared.js·消重复定义）
 import { initRangePresets } from './range-presets.js';
 import { initChatPanel } from './ai_qa/panel.js';
 import { initParamPanel } from './param-panel.js';
@@ -85,21 +86,7 @@ function refreshOverview() {
 // contentSig = 去文件名内容签名（异名同内容关联）。layer.srcId 挂层对象供 EMC grounding 稳定引用（比易变 L001 序号更适合 $n 引用）。
 const _srcIndex = new Map();      // srcSig -> layerId[]（一文件可拆多子层，故值是数组）
 const _contentIndex = new Map();  // contentSig -> layerId[]
-function _round4(x) { return Math.round(x * 1e4) / 1e4; }
-/** 内容签名：featureCount + bbox + 前 5 feature 几何类型/坐标前缀/属性键（稳定·串键精确匹配）。 */
-function _contentSig(fc) {
-  const feats = (fc && fc.features) || [];
-  const bb = fcBBox(fc);
-  const head = feats.slice(0, 5).map((f) => {
-    const g = f.geometry || {};
-    const c = g.coordinates;
-    let cSig = '';
-    if (Array.isArray(c)) cSig = (typeof c[0] === 'number') ? `${_round4(c[0])},${_round4(c[1])}` : JSON.stringify(c).slice(0, 48);
-    const keys = f.properties ? Object.keys(f.properties).sort().join(',') : '';
-    return `${g.type || ''}:${cSig}:${keys}`;
-  }).join('|');
-  return `${feats.length}|${bb ? bb.map(_round4).join(',') : ''}|${head}`;
-}
+// _contentSig/_round4 已统一至 toolbox/shared.js toolContentSig（步 1 单一事实源）
 
 /** Import pipeline: group → detect → confirm dialog → parse → CRS → split → register. */
 async function runImport(files) {
@@ -129,7 +116,7 @@ async function runImport(files) {
             : 'WGS84 (EPSG:4326)';
 
           // E3 srcId 去重：同文件重复上传 → 复用（不堆叠）；异名同内容 → 关联提示
-          const contentSig = _contentSig(fc);
+          const contentSig = toolContentSig(fc);
           const srcSig = `${base}|${contentSig}`;
           const _existSame = _srcIndex.get(srcSig);
           if (_existSame && _existSame.length) {
