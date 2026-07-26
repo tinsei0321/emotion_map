@@ -7,7 +7,15 @@
 
 ---
 
-## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + 优化工程+chip+密度修+中文化）
+## 📅 2026-07-26（分支 `main`（合并 toolbox 后）· toolbox 验收 + EMC 大收敛 + 专题 D + E2 + E3 + E1 + Layer Manifest + 指代标注 + 优化工程+Layers根治+能力hint）
+
+### ✅ EMC Layers 数=0根治 + 能力 hint（revision-log 5.221，commit 8348624 · **待用户 push**）
+
+- Bug 1 根治：_adoptToolboxResult 补 parentId 后 push group.children（getChildren 用此·addLayer 无 parentId 未 push 致数=0）。
+- 能力 hint（系统覆盖）：buildContext 加全 EMC geo 工具能力（15+）→ Flash 知能生成不判缺。
+- 系统 check（非报一个修一个）：一次性排查所有工具认知缺口。
+- 不动 diagnose/schema/orchestrate。
+- **留用户**：浏览器验 density/grid → 组卡数正确 + 「400m 方格网」不判缺。
 
 ### ✅ EMC density 红色修 + 中文化（revision-log 5.220，commit 689abf6 · **待用户 push**）
 
