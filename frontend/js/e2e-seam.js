@@ -67,7 +67,7 @@ window.__emcTest = {
   clearLog() { window._testFetchLog = []; window._testDiagnoseLog = []; window._testToolExecLog = []; },
   chatPhases() {
     // H1: template 来自 diagnose:done 事件累积（每问一句 diagnose 一次），替代抓请求体。
-    return (window._testDiagnoseLog || []).map((card) => ({ phase: 'diagnose', template: card && card.template }));
+    return (window._testDiagnoseLog || []).map((card) => ({ phase: 'diagnose', template: card && card.template, method: (card && card.method) || null }));   // D3: +method（D2 派生）供 EMC-SUM ② 计划n
   },
   geoCalls() { return window._testFetchLog.filter((e) => /\/(geo|spatial)\//.test(e.url)); },   // 含 /spatial/（grid 等走此路径，否则漏抓）
   toolExecs() { return (window._testToolExecLog || []).slice(); },   // #2 tool:executed 事件（前端委托工具如 density·补 geoCalls 盲区）
