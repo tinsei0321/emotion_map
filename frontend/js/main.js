@@ -317,7 +317,7 @@ function main() {
   initSearchBar();
   initTimeline();
   initTimeBar();
-  // 批4 Swipe 卷帘 POC：'c' 键 toggle compare 模式（Step 4 改 time-bar 正式入口）
+  // 批4 Swipe：'c' 键快捷 toggle compare（time-bar tb-compare 按钮为主入口·T5 入口收敛·保留快捷键双入口）
   document.addEventListener('keydown', (e) => {
     if ((e.key === 'c' || e.key === 'C') && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) {
       setCompareMode(!isCompareMode());

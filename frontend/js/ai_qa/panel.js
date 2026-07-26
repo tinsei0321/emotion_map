@@ -813,7 +813,7 @@ function renderDiagnoseCard(el, card) {
   if (!card || card.degraded) { el.hidden = true; return; }
   el.hidden = false;
   const dom = (card.domain_lens || []).map((k) => _DOMAIN_LABEL[k] || k).filter(Boolean);
-  const strat = (card.data_plan && card.data_plan.strategy) || 'ready';
+  const strat = (card.data_plan && card.data_plan.strategy) || 'unknown';   // T4：缺省不显「齐全」（unknown）·治胶囊矛盾（05-llm Q2·真缺口勿伪装 ready）
   const method = (card.method || []).filter(Boolean);
   el.classList.toggle('is-upload', strat === 'request_upload');
   // 阶段 D：diagnose 选定 template → SKILL_DEFS.required_slots → 参数提示（缺参时预告用户要补什么）
@@ -823,9 +823,11 @@ function renderDiagnoseCard(el, card) {
   const chip = (t) => `<span class="aiq-diag-chip">${escapeHtml(t)}</span>`;
   el.innerHTML = `<div class="aiq-card-head">问题理解</div>`
     + `<div class="aiq-diag-row">${[dom.join('/'), _SCALE_LABEL[card.scale] || card.scale, card.decision_type, card.outlet].filter(Boolean).map(chip).join('')}</div>`
-    + `<div class="aiq-diag-strategy ${strat}"><span class="aiq-diag-strat-tag">${_STRATEGY_LABEL[strat] || strat}</span>${
+    + `<div class="aiq-diag-strategy ${strat}"><span class="aiq-diag-strat-tag">${
+      strat === 'unknown' ? '数据状况待确认' : (_STRATEGY_LABEL[strat] || strat)}</span>${
       strat === 'request_upload' ? '（缺关键数据，已请你上传）'
-      : strat === 'fallback_annotated' ? '（部分数据用替代，结论会注明）' : ''}</div>`
+      : strat === 'fallback_annotated' ? '（部分数据用替代，结论会注明）'
+      : strat === 'unknown' ? '（诊断未明确数据完备性）' : ''}</div>`
     + (method.length ? `<div class="aiq-diag-method">方法：${escapeHtml(method.join(' → '))}</div>` : '')
     + params;
 }
