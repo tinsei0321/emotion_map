@@ -283,6 +283,20 @@ function _needsDeliberate(diagnose) {
   return (strat && strat !== 'ready') || method.length >= 3;
 }
 
+/** CB-07 Layer 3：finalStep 超时/网络错的零 LLM 降级结论（基于 formatRegistry + toolHistory·治"图出但请求失败"矛盾）。 */
+function _composeDegradedConclusion(toolHistoryText) {
+  const _reg = (typeof formatRegistry === 'function' ? formatRegistry() : []) || [];
+  const _layers = _reg.filter((r) => r.tool && r.tool !== 'query_layers').map((r) => `{{show:${r.name}}}`).join('\n');
+  const _lastObs = (toolHistoryText || '').split('\n').filter((l) => /已生成|产出|单元|点|层/.test(l)).slice(-1)[0] || '';
+  return [
+    '## 分析图已生成',
+    '',
+    _lastObs || '地图已生成分析图层。',
+    _layers ? `\n**已产出图层**（点击查看）：\n${_layers}` : '',
+    '\n详细结论文本生成超时·可点击上方图层按钮查看，或简化问题后重试（如指定更具体区域/时点）。',
+  ].filter(Boolean).join('\n');
+}
+
 async function runTemplatePath(ctx, hooks, diagnose) {
   const skill = diagnose.template;
   const def = stages.SKILL_DEFS[skill];
@@ -364,7 +378,13 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   if (hooks.onRound) hooks.onRound(1);
   const toolHistoryText = toolHistory.join('\n');
   ctx.context = `【单技能路径·已执行 ${def.tool}】基于上述工具观察直接出结论，勿重选工具、勿重复执行、勿再调 geo 工具。\n\n` + (ctx.context || '');
-  let draft = await stages.finalStep(ctx, hooks, toolHistoryText);
+  let draft;
+  try {
+    draft = await stages.finalStep(ctx, hooks, toolHistoryText);
+  } catch (e) {
+    if (ctx.signal && ctx.signal.aborted) throw e;   // 用户取消 → 传播
+    draft = _composeDegradedConclusion(toolHistoryText);   // CB-07 Layer 3：finalStep 超时/网络 → 零 LLM 降级结论（图已出·非"请求失败"矛盾）
+  }
   // 5. 5.74 对账（gis_operation 风格·跳过 review）
   const claims = _verifyClaims(draft);
   if (!claims.ok) {
@@ -411,7 +431,13 @@ async function runChainPath(ctx, hooks, diagnose, chain) {
   if (hooks.onRound) hooks.onRound(chain.steps.length);
   const toolHistoryText = toolHistory.join('\n');
   ctx.context = `【多步链路径·已执行 ${chain.steps.map((s) => s.tool).join(' → ')}】基于上述工具观察直接出结论，勿重选工具、勿重复执行、勿再调 geo 工具。\n\n` + (ctx.context || '');
-  let draft = await stages.finalStep(ctx, hooks, toolHistoryText);
+  let draft;
+  try {
+    draft = await stages.finalStep(ctx, hooks, toolHistoryText);
+  } catch (e) {
+    if (ctx.signal && ctx.signal.aborted) throw e;   // 用户取消 → 传播
+    draft = _composeDegradedConclusion(toolHistoryText);   // CB-07 Layer 3：finalStep 超时/网络 → 零 LLM 降级结论（图已出·非"请求失败"矛盾）
+  }
   const claims = _verifyClaims(draft);
   if (!claims.ok) { const revised = await _reviseOnce(ctx, hooks, draft, claims.hints, toolHistoryText); if (revised) draft = revised; }
   if (hooks.onFinalDone) hooks.onFinalDone(draft);

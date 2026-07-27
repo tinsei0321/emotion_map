@@ -360,7 +360,7 @@ export function setViewMode(target) {
     if (!pair) {                                            // 无配对 → 用同 fc 生成独立 target 层（首次：renderLayer 建源+层）
       const tag = target === '3d' ? '3D' : '2D';
       pair = addLayer({ name: (l.name || '网格').replace(/·\s*[23]D\b/, `· ${tag}`),
-                        kind: 'polygon', fc: l.fc,
+                        kind: 'polygon', fc: l.fc, parentId: l.parentId,   // CB-07 bug2：补 parentId→配对层留 EMC 组（不跳网格聚合组）
                         paint: { ...l.paint, _ui: { ...l.paint._ui, mode: target } } });
       pair.srcName = l.srcName;
       setLayerVisible(pair.id, true);
@@ -393,7 +393,7 @@ export function toggleGridViewMode(layerId) {
   if (!pair) {
     const tag = target === '3d' ? '3D' : '2D';
     pair = addLayer({ name: (l.name || '网格').replace(/·\s*[23]D\b/, `· ${tag}`),
-                      kind: 'polygon', fc: l.fc,
+                      kind: 'polygon', fc: l.fc, parentId: l.parentId,   // CB-07 bug2：补 parentId→配对层留 EMC 组
                       paint: { ...l.paint, _ui: { ...l.paint._ui, mode: target } } });
     pair.srcName = l.srcName;
   }

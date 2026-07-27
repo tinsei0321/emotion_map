@@ -9,6 +9,34 @@
 
 ---
 
+## CB-07 · 2026-07-27（EMC finalStep 超时矛盾 + 2D/3D 跳组）
+
+### ① SCAN 摘要
+[SCAN_EMCTimeout](report/SCAN_EMCTimeout_deepseek_2026-07-27.md)（DeepSeek）：CB-06 后两遗留——①finalStep 超时"[请求失败]"·图已出但结论失败·矛盾（CB-06 P0-A 漏 finalStep·runTemplatePath/runChainPath 无 try/catch）②2D/3D 按钮跳组（map.js 漏 parentId）。
+
+### ② 反评价（全 agree·已核实）
+| 条目 | 判定 | 核实 |
+|---|---|---|
+| finalStep prompt 过大（MANIFESTO+industry_kb 20-44KB）致 prefill 超 45s | agree | build_final_prompt |
+| runTemplatePath/runChainPath finalStep 无 try/catch | agree | :367/:414 核实·CB-06 漏 |
+| Layer 3 降级结论 _composeDegradedConclusion（零 LLM） | agree | 治矛盾核心 |
+| Layer 2 answer phase 60s | agree | 分级 timeout |
+| Layer 1 轻量 prompt | agree（P1·评估后不做） | answer 质量风险·Layer 2+3 已治矛盾 |
+| bug2 map.js parentId 漏 | agree | :362/:395 核实 |
+
+**CB-07: 全 agree/0 disagree**。Layer 1 评估后留 P1（manifesto 11 节·answer 必需七/八/九/十/十一·瘦身风险 answer 质量·Layer 2+3 已治矛盾）。
+
+### ③ 行动
+- Layer 3 [harness:367/414](../../frontend/js/ai_qa/harness.js#L367) runTemplatePath/runChainPath finalStep try/catch + `_composeDegradedConclusion`（零 LLM·formatRegistry+toolHistory 拼"分析图已生成+{{show}}"·非"请求失败"丢图）。
+- Layer 2 [api.js](../../frontend/js/ai_qa/api.js) phase answer → 60s timeout。
+- bug2 [map.js:362/395](../../frontend/js/map.js#L362) addLayer 补 `parentId: l.parentId`（配对层留 EMC 组·不跳网格聚合组）。
+- Layer 1 评估：不做（Layer 2+3 治矛盾·Layer 1 answer 质量风险·P1 留）。
+
+### ④ 状态
+`done` —— pytest 191 passed 零回归 + 浏览器加载 PAGEERRORS=0。
+
+---
+
 ## CB-06 · 2026-07-27（EMC ReAct 超时根治·while-loop 体验）
 
 ### ① SCAN 摘要

@@ -21,6 +21,12 @@
 - **浏览器验证 5.225**：KDE 情绪地形 → 单按钮「生成 2D 热力图」→ 2D 综合彩虹热力图（L1/L2 一致）。
 - **浏览器验证 5.224**：EMC 折叠胶囊点击正常展开。
 
+### ✅ CB-07 finalStep 超时矛盾 + 2D/3D 跳组修复（revision-log 5.230）
+
+- bug1：finalStep 超时"[请求失败]"矛盾→Layer 3 try/catch + `_composeDegradedConclusion`（零 LLM 降级结论·图+{{show}} 按钮·非"请求失败"）+ Layer 2 answer phase 60s。
+- bug2：2D/3D 跳组→[map.js:362/395](frontend/js/map.js#L362) addLayer 补 `parentId: l.parentId`（配对层留 EMC 组）。
+- Layer 1 评估后不做（answer 质量风险·Layer 2+3 已治矛盾·P1 留）。详见 [cb-journal CB-07](docs/catch-ball/cb-journal.md)。
+
 ### ✅ CB-06 EMC ReAct 超时根治·while-loop 7 策略（revision-log 5.229）
 
 - 用户报"思考阶段已出图但卡检索·超时请求失败·丢图"。第三方 DeepSeek 评估（[SCAN_EMCReAct](docs/catch-ball/report/SCAN_EMCReAct_deepseek_2026-07-27.md)），反评价全 agree。

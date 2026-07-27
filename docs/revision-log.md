@@ -223,7 +223,10 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月27日）** · 本节按板块分组、组内倒序；最新工作 = **5.229 CB-06 EMC ReAct 超时根治（while-loop 7 策略·防+兜）**（本次，分支 `main`）。上一轮 5.228（visible bug）。最近：
+> 📍 **最新动态（07月27日）** · 本节按板块分组、组内倒序；最新工作 = **5.230 CB-07 finalStep 超时矛盾 + 2D/3D 跳组修复**（本次，分支 `main`）。上一轮 5.229（CB-06 ReAct）。最近：
+>
+> - **5.230 CB-07 finalStep 超时矛盾 + 2D/3D 跳组修复**（用户报"图出但[请求失败]矛盾" + "2D/3D 跳组老 bug"·第三方 DeepSeek 评估·CB 反评价全 agree·主线程）：**bug1 根因**——[harness:367/414](frontend/js/ai_qa/harness.js#L367) runTemplatePath/runChainPath finalStep **无 try/catch**（CB-06 P0-A 漏 finalStep·只包 agentStep）+ finalStep prompt 20-44KB 致 prefill 超 45s。**修**：Layer 3 finalStep try/catch + `_composeDegradedConclusion`（零 LLM·formatRegistry+toolHistory 拼"分析图已生成+{{show}}"·非"请求失败"丢图）+ Layer 2 [api.js](frontend/js/ai_qa/api.js) phase answer→60s。**bug2** [map.js:362/395](frontend/js/map.js#L362) addLayer 补 `parentId: l.parentId`（配对层留 EMC 组·不跳网格聚合组·治老 bug）。**Layer 1 评估后不做**（answer 质量风险·Layer 2+3 已治矛盾·P1 留）。**验证**：pytest 191 passed + 浏览器 PAGEERRORS=0。详见 [cb-journal CB-07](docs/catch-ball/cb-journal.md)。
+>
 >
 > - **5.229 CB-06 EMC ReAct 超时根治（while-loop 体验·7 策略·DeepSeek 4 防 + 我 2 兜）**（用户报"思考阶段已出图但卡检索·超时请求失败·丢图"·第三方 DeepSeek 评估·CB 反评价全 agree·主线程·未派 subagent）：**根因**——①[paradigm:131](ai_qa/paradigm.py#L131) density triggers 缺"网格/方格"→落 while-loop（DeepSeek）②"先 query 后操作/通常 3-6 轮"致 Flash 过度验证（DeepSeek）③[harness:641](frontend/js/ai_qa/harness.js#L641) agent_step throw 不降级·丢图·"请求失败"（我补）④[api.js:36](frontend/js/ai_qa/api.js#L36) 无单轮超时（我补）。**防（DeepSeek）**：L0 triggers 补网格/方格→runTemplatePath（~5-8s·避 while-loop 30-75s）+ L1 生成类缩轮 2-3 + L2 工具完成信号 + L3 prompt 条件化 4 处。**兜（我）**：P0-A [harness:641](frontend/js/ai_qa/harness.js#L641) agentStep try/catch·throw 降级 finalStep 出已执行结果（非"请求失败"丢图·区分 AbortError）+ P0-B [api.js](frontend/js/ai_qa/api.js) streamChat per-call timeout（45s·慢轮 abort）。P1-C 生成类+已产出+query 验证→早终止。**验证**：pytest 191 passed 零回归（含 eval·diagnose 不破）+ 浏览器加载 PAGEERRORS=0。详见 [cb-journal CB-06](docs/catch-ball/cb-journal.md)。
 >

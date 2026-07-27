@@ -63,7 +63,8 @@
 
 | 版本 | 修复 | CB |
 |------|------|:--:|
-| **5.229** | **CB-06 ReAct 超时根治**（while-loop 7 策略·防+兜·不丢图） | CB-06 |
+| **5.230** | **CB-07 finalStep 超时矛盾 + 2D/3D 跳组**（降级结论不丢图 + parentId 留 EMC 组） | CB-07 |
+| 5.229 | CB-06 ReAct 超时根治（while-loop 7 策略·防+兜·不丢图） | CB-06 |
 | 5.228 | 数据识别 visible bug（眼睛关的点层仍可用） | — |
 | 5.227 | 去 LLM 审查 + 删除符号四层根治 | CB-05 |
 | 5.226 | density 契约整改 L1+L2+L3（tool_contracts 单一源） | CB-04 |
