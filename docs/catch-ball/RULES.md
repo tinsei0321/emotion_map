@@ -137,7 +137,7 @@ docs/catch-ball/report/SCAN_DeepSeek_{NN}.md
 ```
 docs/catch-ball/cb-journal.md
 ```
-- 单文件，按轮追加不覆写
+- 单文件，按轮**倒序**（最新在顶·CB-NN 大→小·便于看最新进展；不覆写；新轮次写在文件顶部 CB-01 之前）
 - 内部章节命名：`## CB-01`、`## CB-02` …
 - 每轮四节：① SCAN 摘要 ② 我方反评价 ③ 行动 ④ 状态/新发现
 

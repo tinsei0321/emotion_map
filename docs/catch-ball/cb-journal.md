@@ -1,7 +1,7 @@
 # CB Journal（Catch-Ball 轨迹）
 
 > 我方（Claude Code）与第三方评价（`docs/catch-ball/SCAN_DeepSeek_01.md`，DeepSeek V4 Pro）的多轮 catch-ball 对话轨迹。
-> 按轮追加不覆写（区别于 session-handoff 的"覆写当前节点"）。每轮四节：① SCAN 摘要 ② 我方反评价 ③ 行动 ④ 状态/新发现。
+> 按轮**倒序**（最新在顶·CB-NN 大→小·便于看最新进展；不覆写）。新轮次写在文件顶部（CB-01 之前）（区别于 session-handoff 的"覆写当前节点"）。每轮四节：① SCAN 摘要 ② 我方反评价 ③ 行动 ④ 状态/新发现。
 > 反评价标尺：agree=证据支持/我方漏掉；disagree=用错标尺/事实错误；partial=方向对细节偏。承重红线（tracker 编号连续/diagnose 永不动/四态）不接受简化。
 >
 > ---
@@ -9,169 +9,181 @@
 
 ---
 
-## CB-01 · 2026-07-18（首轮）
+## CB-05 · 2026-07-27（EMC UX·去审查 + 删除符号根治）
 
 ### ① SCAN 摘要
-4 个 Explore agent 扫描 ~100 文件。总评 7.6/10（架构 8.5 / 代码 7.5 / 测试 6.5 / Harness 9 / 文档 8 / 调用效率 6）。头号高优建议=调用次数优化（合并 Reviewer+Tester、批量变更、本地脚本替代 spawn、MANIFESTO 分层）。关键发现：core/ui_components+layer_registry 是 Streamlit 僵尸 / geo_routes 冗余计算 / db.py iterrows / sim agent 未注册 / Skills 落地率低 / 前端无单测。
+[SCAN_EMCUX](report/SCAN_EMCUX_deepseek_2026-07-27.md)（DeepSeek·UX 专项）：用户报两体验问题——①工具出图后 EMC 对话仍"思考"+ 审查未通过循环等待；②地名胶囊被删除线。DeepSeek 全审审查链路 + 删除符号双根因。
 
-### ② 我方反评价
-**agree（采纳，已验证）**：
-- Streamlit 僵尸——ui_components(835 行/29 streamlit)+layer_registry(3 st.)+**map_engine(pydeck，SCAN 未点名但同类)** 全部零活引用已核（core/__init__.py 仅 docstring 文字，活代码无 import）。删除安全。
-- geo_routes 冗余——逐行核实，且发现比 SCAN 更深的问题（见 ④）。
-- sim agent 未注册 settings.json——已核（仅 8 agent）。
-- db.py iterrows perf、Skills 落地率、前端无单测、微服务化否决——均合理。
+### ② 反评价（全 agree·verify-before-accept 核实）
+| 条目 | 判定 | 核实 |
+|---|---|---|
+| 方案 B 去审查（覆盖窄/假阳性/_verifyClaims 替代） | agree | 印证·论证更细 |
+| runTemplatePath 无 onObservation（UX 根因·我漏） | agree | [harness:325-366](../../frontend/js/ai_qa/harness.js#L325) 核实 |
+| 内嵌自查清单（FINAL_TEMPLATE 5 条） | agree | 零额外 LLM |
+| 空答案检测（代码门防只说不做） | agree | 补 _verifyClaims 漏 |
+| 删除符号根因 A（REVISE_TEMPLATE 缺禁~~·我漏） | agree | [:292-312](../../ai_qa/prompts.py#L292) 核实 |
+| 删除符号根因 B（CSS cite-chip-invalid line-through·**主因**·我漏） | agree | [:847](../../frontend/js/ai_qa/panel.js#L847)+[css:284](../../frontend/css/ai_qa.css#L284) 核实·**关键修正** |
+| 四层根治 | agree | 全采纳 |
 
-**disagree（用错标尺，反驳）**：
-1. "数据管道 90%、L0-L4 全部实现"=**事实错误**。L1 治理从未在真实 key 实跑；SCRIPT 层 L3/L4 是 ⬜ 预留（SCAN 自身 §2.6.2 又说 9 模块⬜，自相矛盾）。归因靠 EMC 分析时 + Sim。真实 ~75%。**且 L0 未来走购买途径，sim 充分非风险**（用户澄清，memory `l0-acquisition-purchase-strategy`）。
-2. "调用次数优化=头号高优"=**前提不成立**。项目跑在用户全局"不派 subagent"规则下，AGENTS.md 8 Agent 是概念框架，主线程直接干。SCAN 假设的"标准 SOP=7 spawns"是理论值非实际——解一个已基本解决的问题。
-3. "MANIFESTO 分层减 token"=**撞承重红线**（diagnose 永不动保 Flash eval）。不采纳。
-4. "MCP 应与 DeepSeek 匹配"=**provider-neutral 错标尺**。智谱优先因国内视觉/搜索质量，与主 LLM 厂商无关。（但 vendor SLA 单点论部分认同。）
+**CB-05: 全 agree/0 disagree/0 partial**。DeepSeek 补我漏的 3 根因（runTemplatePath 无信号/CSS invalid 主因/REVISE 缺规则）。**关键修正**：删除符号主因是 CSS cite-chip-invalid（非 markdown ~~），原"仅 strip ~~"治不了，需扩展 getValidRefNames 治本。
 
-**partial**：追踪 ROI 测量——同意做实验（30 天 trace.log 触发统计），**不同意预设简化**（编号连续是 rule 10 红线，追踪是 LLM 调试 O(1) 利器）。
+### ③ 行动（去审查 + 删除符号四层）
+- **A 去审查**：REVIEW_ENABLED 默认 false + FINAL_TEMPLATE 内嵌自查 5 条 + 空答案检测（newLayerCount>0 但结论<20 字符→补引导）+ runTemplatePath 加 onObservation + panel 清审查 UI（占位/_PHASE_ORDER/审查区/文案）。review.py 保留开关（emcReviewOn 调试）。
+- **B 删除符号四层**：renderAnswer strip ~~ + REVISE 补禁~~ + getValidRefNames 扩展所有 polygon（治 CSS invalid 主因）+ cite-chip-invalid line-through→opacity。
 
-**SCAN 漏掉（我补）**：§0 任务树漂移 3 周 / retired.md 缺失 / Toolbox 多维归因 ⬜ vs EMC deep_attribution ✅ 重叠 / `?e2e=1` seam 去生产化。
-
-### ③ 行动
-**已执行（本轮 commit）**：
-- [x] memory `l0-acquisition-purchase-strategy` 写入（防再误判）
-- [x] Tier 0.3 sim-emotion-data agent 注册 settings.json
-- [x] Tier 0.2 geo_routes.py 三处清理（zonal_stats 死循环+冗余 / rank 双调用 / nearest 死三元）—— 零行为变化
-
-**待执行（部分已做）**：
-- [x] **Tier 0.1 删 3 僵尸** + .streamlit/config.toml —— commit `5e7b8c6`（用户"继续推进"授权后分类器放行；-1439 行；retired.md 留痕）
-- [x] **入库** `.zcode/`（ZCode 工具状态·双环境同步）+ `docs/SCAN_DeepSeek.md`（CB 输入历史）—— commit `5e7b8c6`
-- [x] Tier 1 部分：§0 树主干 refresh（七层/数据管道/Harness/底图）/ retired.md / tracking-progress 对账（改指 AGENTS.md 权威源，修 frozen-0613 漂移）
-- [x] Tier 1 余（部分）：§0 分支补 topology ✅（5.134）/ `?e2e=1` 去生产化 ✅（5.134，main.js 零 test 代码→独立 e2e-seam.js + index.html 条件 dynamic-import；ESM 绿，browser 验证因环境挂延后）
-- [ ] Tier 1 余：C6 补 3
-- [ ] Tier 2：db.py 批量插 / 前端 JS 单测基建 / 9⬜ 埋点细化 / vendor 本地化核查
-- [ ] zonal_stats latent bug 修（n_dom/n_elem 补充失效，需先确认消费方）
-
-### ④ 新发现（SCAN 之外，清理中挖出 + 深挖定级）
-- **zonal_stats latent bug → wontfix（无活消费方）**：原 discover 循环想补 `n_dom_*/n_elem_*` 到 zonal_stats 响应，遍历错源（rows.columns，而 _props_df 只返请求列）→ 补充从未生效。**深挖消费方**：`rank` 直读 gdf.columns（不经 _props_df）/ `panel.js` 矩阵 `_cellsByBucket` 读地图图层 `f.properties`（图层 GeoJSON 含完整 stats 列）—— **均不经 zonal_stats 的 trimmed 响应**，故无消费方读这两列。修复=向无人读的响应加列=死重 → **wontfix**（geo_routes 注释已标注）。
-- **db.py 全闲置 → SCAN 建议7 declined**：`EmotionDB` 全仓零活引用、无 test_db（demo 走 GeoJSON 文件非 SQLite）。且 `insert_points` **早已用 executemany 批量插**（`iterrows()` 只用于构建记录列表做 col_map+NaN 过滤，非逐行 DB 插入）。SCAN 建议7 既优化死代码、又描述失准 → **declined**。db.py 去留（retire vs 留作未来购买数据 DB 预留）待用户定。
-
-### 状态
-`open` —— Tier 0 ✅（5.132-5.133）/ Tier 1 大部分 ✅（§0 refresh + ?e2e=1 去生产化 + retired.md + tracking-progress 对账，5.134）/ db.py 退役 + zonal_stats wontfix 闭环（5.135）。**待**：browser 环境恢复后复验 seam + C6 补 3；前端 JS 单测基建（头号短板）。双模型闭环：待 DeepSeek 二次扫描对比验证。
+### ④ 状态
+`done` —— pytest 191 passed 零回归 + 浏览器加载/console 无 JS 错。体验：工具出图→finalStep 流式结论→完成（省审查 7-14s）。地名胶囊无删除线（CSS invalid 治本）。
 
 ---
 
-## CB-02 · 2026-07-19
+## CB-04 · 2026-07-27（EMC 架构 · density/polarity 流水线契约整改）
 
 ### ① SCAN 摘要
-3 个 Explore Agent + 主线程核实，覆盖 ~200 文件 / ~51,000 行。综合 7.6/10（架构 8.5 / 代码 7.5 / 测试 6.0 / Harness 9.0 / 文档 7.5 / 调用效率 7.0）。CB-01 10 条建议：✅ 2 完成 / ❌ 4 拒绝（其中 2 条因 CB-01 描述失准或撞红线）/ ⬜ 3 待处理 / 1 部分。CB-01 退役清理验证通过（5 文件已删，-1,735 行），geo_routes 修复生效，sim agent 已注册，e2e seam 正确分离。
 
-**CB-02 新发现**：requirements.txt 残留 streamlit+pydeck 僵尸依赖；range_selector.py 路径大小写不一致（Linux 部署会 break）；AGENTS.md 声称 8 Agent 但实际 9；geo_registry.py 零 @track；prd/spec/architecture 含过时 Streamlit 内容；trace-digest.md 空；panel.js 2,098 行过大。新增 10 条建议（3 高 / 3 中 / 4 低）。
+[SCAN_EMCArch_deepseek_2026-07-27](report/SCAN_EMCArch_deepseek_2026-07-27.md)（DeepSeek，L1 全量审计）：触发用例"生成 L2 消极点的热力图"→ 实出综合彩虹图。**全量审计 14 个 `generate*ForAI` 入口**，定性为**系统性参数契约不完整**（非孤立 bug）。总评 6.5/10（认知 6 / 编排 9 / **执行 4↓** / 输出 8）。
 
-**CB-01 反评价第三方审核**：agree 4 条全部核实通过；disagree 4 条中 3 条反驳成立、1 条部分成立（数据管道完成度 90% 确实偏高但 75% 也偏保守→建议折中 80%）；partial 1 条平衡立场。
+分级发现：🔴 P0 = H1 [generateHeatmapForAI:819](../../frontend/js/heatmap-tool.js#L819) 硬编码 `rampKey:'rainbow'` 绕过 [computeStyle:93](../../frontend/js/heatmap-tool.js#L93)；H2 [tools.js density](../../frontend/js/ai_qa/tools.js#L1121) 未传 analysis/rampKey；R1 [SKILL_DEFS.rank:40](../../frontend/js/ai_qa/stages.js#L40) 默认 `by:'polarity'` 非有效值。⚠️ P1 = P1a density prompt 参数名漂移（bandwidth_m/cell_size_m/value_col vs radius/cell_size/weightField）；P1b [_PARAM_ALIAS:12](../../frontend/js/ai_qa/stages.js#L12) 全局 radius→radius_m 误伤 density；P1c compare_regions 不在 prompt；P1d/e/f 多工具缺 agg_cols/layer/as·keep。⚠️ P2 = 触发词缺「热力图」+ 高级参数无 AI 通道。
 
-**关键讨论点**：AGENTS.md 定位（概念框架 vs 运行时契约）、topo_scanner 自文档化意义、E2E 策略困境（先 JS 单测再 browser）、双模型闭环首次验证（有价值但需改进——SCAN 应先确认运行时假设）。
+一句话：**Smart Agent 想得对，Dumb Tool 做不到——不是 Tool 不够 Dumb，是参数契约不够完整**（非架构问题，是接口完整性问题）。
 
-### ② 我方反评价（/cb 02，2026-07-19）
+### ② 我方反评价（verify-before-accept · 逐条核实）
 
-**10 条建议**（verify-before-accept 已核代码级指控）：
+| # | SCAN 条目 | 判定 | 核实/行动 |
+|---|---|---|---|
+| H1 | ForAI 硬编码 rainbow | **agree** | 核实；ForAI 加 analysis 复用 computeStyle |
+| H2 | density 未传 analysis | **agree** | density 补 polarity→analysis 映射 |
+| R1 | rank by:'polarity' 无效 | **agree** | 核实 [rank-tool.js:16](../../frontend/js/toolbox/rank-tool.js#L16)+[geo_routes.py:376](../../api/geo_routes.py#L376)；默认改 worst |
+| P1a | density prompt 参数名漂移 | **agree** | contracts 对齐 |
+| P1b | _PARAM_ALIAS 误伤 density | **agree** | 核实 [harness.js:292](../../frontend/js/ai_qa/harness.js#L292) 确调 normalizeParams；改按工具区分别名 |
+| P1c | compare_regions 缺 prompt | **agree** | 核实；补 |
+| P1d/e/f | 多工具参数缺口 | **agree** | 并入 L3 四步法 |
+| P2a | 触发词缺热力图 | **agree** | L3 补 |
+| P2d | 高级参数无 AI 通道 | **partial** | 按最高纪律先核查参数面板；PANEL_MISSING→提醒开发者补 |
+| Phase 0 density 止血 | **agree** | 采纳并修正：analysis（色板）+ polarity（筛选）双维度 |
+| Phase 1 手动补三处 | **agree（路径调）** | 走 `tool_contracts.py` 单一源（用户定） |
+| Phase 3 validate 脚本 | **agree** | 并入 L2 guard |
+| Phase 3 AGENTS 铁律 11 | **agree** | 落为最高纪律第 2 条 |
 
-| # | SCAN 建议 | 判定 | 证据/行动 | decline reason |
-|---|-----------|------|---------|----------------|
-| 1 | requirements 僵尸依赖 | **agree** | grep 零活 import 核；删 streamlit==1.58.0 + pydeck | — |
-| 2 | range_selector 路径大小写 | **agree** | L21 `'data','boundaries'` 小写确认（Linux 部署 bug）；→ `'DATA'` | — |
-| 3 | AGENTS.md 8→9 同步 | **agree** | settings.json 9 agent 核；AGENTS.md 标题+表+sim 行更新 | — |
-| 4 | 冗余 sim 脚本退役 | **partial** | `generate_l1_mock` 退役（自标 superseded + 零活引用）；**`generate_test_data` 保留** | **事实错误**：test_data 是 L0 raw（10 万条全管线测试），与 sim_performance_data（L1/L2 demo）用途不同，非冗余 |
-| 5 | geo_registry 补埋点 | **agree-defer** | 0 @track / 7 函数确认；守编号连续，独立任务（非 /cb 批次） | — |
-| 6 | 文档 Streamlit 过时内容 | **agree-defer** | 多 doc 清理，非紧迫 | — |
-| 7 | dev-notes 更新 | **agree-defer** | doc 工作，低优先 | — |
-| 8 | trace-digest 空诊断 | **partial** | cursor `.claude/.trace-digest-cursor` **不存在**（hook 可能因此跳过追加）；诊断 defer | — |
-| 9 | Bash(streamlit) 权限清理 | **agree** | settings.json allow 删 `Bash(streamlit *)` | — |
-| 10 | panel.js 拆分 | **defer** | 技术债预防；前端 JS 单测（头号短板）更高优 | — |
+**CB-04: 13 agree / 0 disagree / 1 partial — pytest 待 L1 后跑 — 待 push**
 
-**4 讨论点**：
+**disagree: 0**。本轮 SCAN 质量极高（14 入口全审 + 行号对比表 + 根因链），KNOWLEDGE §3 老毛病（文档当运行时/完成度偏高/sim 当风险）一个没犯，反补我漏掉的 R1/P1b 两真 bug。
 
-| 讨论 | 判定 | 行动 |
-|------|------|------|
-| 1 AGENTS.md 定位（概念框架 vs 运行时） | **agree** | 加「概念框架声明」到 AGENTS.md 头部——免疫未来 SCAN 重犯 CB-01 错误（据理论 SOP 算调用次数） |
-| 2 topo_scanner 自文档化扩展 | **discuss** | 远期（依赖健康度 / 追踪热力图 / 变更影响），不行动 |
-| 3 E2E 策略困境 | **agree** | B 优先（JS 单测不依赖 browser）——已是项目 plan，无新行动 |
-| 4 双模型闭环改进 | **agree** | RULES v2（CB-03 前）加"SCAN 先确认运行时假设"步骤 |
+### ③ 行动（plan 融合定稿 → L1 实现）
 
-### ③ 行动（已执行）
+plan 据 SCAN 融合（用户批准）：**L1 止血** density 双维度（analysis 色板 + polarity 筛选，修正原"纯 polarity"）+ R1 by worst + P1b alias 按工具区分 + P1c compare 入 prompt；**L2 治本** 新建 `ai_qa/tool_contracts.py` 单一权威源 + prompt/SKILL_DEFS 派生 + 并入 SCAN `tests/validate_skill_params.py`；**L3 全扫** 13 工具四步法（独立轮次）；**最高纪律**（用户指示 + SCAN 铁律）EMC 分析图严格复用 Toolbox 参数面板、ForAI=dialog 镜像、PANEL_MISSING 提醒开发者补 → 入 memory/CLAUDE.md/AGENTS.md。
 
-**agree 快赢（已 act）**：
-- [x] 建议1：requirements 删 streamlit+pydeck
-- [x] 建议2：range_selector `'data'`→`'DATA'`（路径构造 + docstring）
-- [x] 建议3：AGENTS.md 8→9（标题 + Agent 清单 + sim 行）
-- [x] 建议9：settings.json 删 `Bash(streamlit *)` 权限
-- [x] 讨论1：AGENTS.md 加「概念框架声明」
-- [x] 建议4 部分：`generate_l1_mock.py` 退役（retired.md 留痕）；`generate_test_data.py` 保留（declined·事实错误）
+### ④ 新发现 + 状态
 
-**defer（已登记，非本轮）**：建议5（geo_registry 埋点·守编号连续）/ 建议6（文档 Streamlit 过时）/ 建议7（dev-notes）/ 建议8（trace-digest cursor 诊断）/ 建议10（panel.js 拆分）。
-
-**验证**：`pytest tests/ -q` → **207 passed**（CB-02 行动零回归）+ 2 geocode offline tests fail（admin fresh-env：network/key 依赖，**非 CB-02 回归**；类比 h3 缺失——admin 需 `pip install -r requirements.txt` 补全；h3 已 pip install 补）。
-
-### ④ 新发现
-
-- CB-01 与 CB-02 之间，项目方自行发现并修复的项目（未在 CB-01 建议中）：map_engine.py pydeck 僵尸退役、zonal_stats latent bug → wontfix（深挖 3 条消费路径）、db.py 退役（已是 executemany → SCAN 描述失准）。
-- **新 SCAN 标尺纠正模式（入 KNOWLEDGE §3）**：SCAN 把不同用途的 sim/工具脚本误判"功能重叠"（generate_test_data = L0 raw 全管线测试 vs sim_performance_data = L1/L2 demo）→ verify-before-accept 须查 docstring 定用途，勿轻信"重叠"。
-- **跨环境 env-gap**（admin fresh-env）：h3 声明未装（pip 补）；2 geocode offline 测试 network/key 依赖失败。换环境须 `pip install -r requirements.txt` + 核 network 测试。
+- **契约分裂模式**（新 learning → KNOWLEDGE §2）：density 参数契约在 [prompts.py:85](../../ai_qa/prompts.py#L85) / [paradigm GEO_TOOL_CATALOG:289](../../ai_qa/paradigm.py#L289) / [TEMPLATE_REGISTRY:329](../../ai_qa/paradigm.py#L329) / SKILL_DEFS+TOOLS **四处各写一份且不一致**——"参数加在哪、加几次"失控的系统性坑（同类 [[emc-aggregate-column-alias-silent-zero]]）。治本 = 单一源 `tool_contracts.py` + 派生 + 校验。
+- **SCAN 高质量范式**（正例，不入 §3）：本轮零 decline——扎实代码级审计，不犯老毛病。双模型闭环再现：我诊断覆盖 H1/H2/P1a，SCAN 全审补 R1/P1b/P1c + 14 入口系统化。**多模型 = 视角正交覆盖盲区**（同 CB-CPD-03 H1 之训）。
 
 ### 状态
-`closed`（CB-02 反评价 + 行动完成）—— 5 agree 快赢已 act + generate_l1_mock 退役；5 项 defer 已登记。pytest 207 绿（2 geocode offline env-fail 非回归）。**待**：CB-03（DeepSeek 三次扫描对比验证 CB-02 改进）+ defer 项择机。本轮新 learning 已入 KNOWLEDGE §3。
+`open → L1 实现中` —— plan 融合定稿（13 agree/0 disagree/1 partial）。L1 density 止血 + R1/P1b/P1c 紧急修进行中；L2 contracts + L3 全扫待续。双模型闭环：L1 落地后可触发下一轮 SCAN 对比验证（density 极性图 + rank by 回归）。
 
 ---
 
-## CB-03 · 2026-07-19
+## CB-CPD-03 · 2026-07-22（DeepSeek + K3 双模型第三轮 · 稳定化验证 → 收敛定稿）
 
-### ① SCAN 摘要
-本轮特殊：项目代码（core/api/ai_qa/frontend）零变化。焦点为 CB 流程自身的成熟度评估。综合 7.7/10（首次上升 +0.1：Harness 9.0→9.2 + 文档 7.5→7.8）。CB-02 全部 5 项 agree 行动验证通过；4 项 defer 理由充分。
+> 评审对象：`docs/cpd-core-plan.md` **v0.4**。基线 v0.3→v0.4。报告：[DeepSeek](SCAN_CPDPlan_03-deepseek.md) / [K3](SCAN_CPDPlan_03-k3.md)。**本轮 = CB-CPD 专轨收尾轮**（用户授权此轮收敛）。
 
-**核心发现——CB 自动化基础设施**：5 组件全 A 评级——`/cb` command（9 步流水线，45 行）、Hook CB detector（零 LLM 调用，27 行）、KNOWLEDGE.md（5 章节跨轮知识库，71 行）、记忆共享通则（context-map.md + CLAUDE.md）、路径归档（cb-journal/retired 移入 catch-ball/）。这是从"手动 ad-hoc"到"工程化流程"的关键跃迁。
+### ① SCAN 摘要（双模型）
 
-**CB-02 反评价质量**：较 CB-01 显著提升。agree 5/5 兑现，decline/defer 理由全部充分。KNOWLEDGE.md 将 CB-02 的误判（generate_test_data ≠ 功能重叠）提炼为 §3 新模式。
+**DS 综合 A-**（v0.3 B+→A-）：CB-CPD-02 5/7 修复（R2/R5 超越）。v0.4 核心贡献：消除循环 import（依赖注入）+ 流式优先级修正 + 色名同步 + S4 动态变量降级。**v0.4 是第一个所有架构决策自洽的版本**（映射 key/信号源/exit 词表/载荷/init/优先级全收敛）。**建议 CB-CPD 专轨在此轮收尾**，进 P0。残留 1 条（streaming 行物理位置歧义，G1 实现按文字优先级即可）。
 
-**新建议（6 条）**：3 高（KNOWLEDGE vs RULES 边界 + auto-check 可配置化 + 回归功能开发）、2 中（geo_registry 埋点重申 + 文档过时重申）、1 低（trace-digest cursor 根因分析）。
+**K3 综合 A-**（上轮 B+）：CB-CPD-02 9/9 属实。**但本轮组合推演发现 1 个 v0.4 新引入的高优链式缺陷 H1**（general 断链）+ M1（hasAnalysis 死信号）+ M2（hasVisibleEmotionLayer 不判情绪性）。agree v0.4 整体收敛，**H1 G1 动手前必修**（两行代码级）；M1 建议 interpret 行；M2 谓词收紧。K3："修 H1/M2/M1 后预期末轮 A 级收敛"。
 
-**关键讨论点**：CB 自动化 ROI（当前投入合理，建议 CB-05 正式评估）/ KNOWLEDGE.md pruning 策略（预设触发条件）/ 项目阶段信号（质量巩固期应结束，CB 进入低频维护模式，每 5-10 个功能 commit 一次 SCAN）/ 双模型闭环三轮回望（4/5 目标成熟）。
+**分歧**：DS 说收尾（v0.4 稳定无阻塞）；K3 发现 H1（真 bug 静默冻结）→ 须先修 H1 再收敛。**项目方立场：修 K3 H1/M1/M2/L1 后此轮收敛**（用户授权），不再开 CB-CPD-04。
 
-### ② 我方反评价（/cb 03，2026-07-19）
+### ② 我方反评价（主线程，H1 已核实 [panel.js:1161/1162/1181](frontend/js/ai_qa/panel.js#L1161) 链）
 
-**6 条建议**（verify-before-accept 已核；建议5 已核 on_session_end.py）：
+| # | 条目 | 来源 | 判定 | 证据/采纳 |
+|---|---|---|---|---|
+| 1 | H1 general 断链（v0.4 新引入） | K3 H1 | **agree** | 已核实：general 短路（[harness.js:372/412](frontend/js/ai_qa/harness.js#L372)）无 exit → v0.4 守卫 `exit!==undefined` 不 dispatch，但 general 轮 `settled=true` 照常 push（panel.js:1181）致 `_history` 跳号 → 严格 turnId+1 去重丢事件 → 引擎**永久冻结（静默）**。改：守卫 `settled` + 去重单调递增 + `exit??null` + 真值表 lastExit∈{null} |
+| 2 | M1 hasAnalysis 死信号 → interpret 分支 | K3 M1 | **agree** | §4.1 定义但真值表零引用 → row 4 `hasAnalysis=true` 升级 interpret（dock 产图桥回 EMC） |
+| 3 | M2 hasVisibleEmotionLayer 不判情绪性 | K3 M2 | **agree** | v0.4 "非 group 非 range" 对无情绪层撒谎"点击深绿/深橙"（演示链第一环断点）→ 谓词收紧 +判情绪性 |
+| 4 | L1 U8 措辞（#dock 不存在） | K3 L1 | **agree** | 全前端无 #dock（统一 openParamPanel）→ U8 改 `#param-panel.is-open` 同步谓词（无需 observer） |
+| 5 | DS streaming 行物理位置歧义 | DS | **partial** | G1 实现按文字优先级（streaming 第一），无需改 plan |
+| 6 | L2 #ff9000 token | K3 L2 | **partial** | G3 实现期确认是否 token 化 |
+| 7 | R6 range 文案 / S4 远期扩展 | DS | **partial** | G3 实施细节 |
 
-| # | CB-03 建议 | 判定 | 证据/行动 |
-|---|-----------|------|---------|
-| 1 | KNOWLEDGE vs RULES 承重边界（重复） | **agree** | 真重复（RULES §3.3 + KNOWLEDGE §1 同 6 红线）→ 撞记忆共享通则"单一权威源"。RULES §3.3 → pointer to KNOWLEDGE §1（保留摘要 + 指针） |
-| 2 | /cb auto-check 可配置清单（硬编码） | **agree** | step 5 硬编码 4 检查 → 数据驱动。KNOWLEDGE 加 §6 Auto-Check 清单 + /cb step 5 改"加载 §6" |
-| 3 | geo_registry 埋点（重申） | **defer** | 守编号连续·独立任务（未变）；下个功能 sprint |
-| 4 | 文档 Streamlit 过时（重申·2 轮） | **defer·提升优先级** | 下个文档维护日首项 |
-| 5 | trace-digest cursor 根因（SCAN 深化） | **agree·更正 CB-02** | 已核 on_session_end.py：cursor 缺失 fallback `last_read=0`（L29-35）+ `if not errs: return`（L47）→ **空 digest = trace.log 无 ERR/WARN（健康）或 trace.log 不存在（fresh env），非 bug**。CB-02"cursor 缺失=疑似 bug"partial 被闭环深化更正 |
-| 6 | panel.js 拆分（重申） | **defer** | JS 单测后（时间轴会话之后） |
+**disagree：0**。两份均未撞红线。本轮关键 = K3 H1（DS 未发现的静默冻结路径），已核实必修。
 
-**4 讨论点**：
+### ③ 行动（plan v0.4 → **v1.0 定稿**，本轮 commit，CB-CPD 专轨收尾）
 
-| 讨论 | 立场 | 行动 |
-|------|------|------|
-| 1 CB 自动化 ROI | **agree**（当前合理） | CB-05 正式 ROI 评估（总投入 vs 实际修复/避免回归） |
-| 2 KNOWLEDGE pruning | **agree** | KNOWLEDGE 加 pruning 触发（§3>15/§5>10/file>200 归档） |
-| 3 CB 节奏高频→低频 | **强 agree** | KNOWLEDGE 加节奏决议；**本计划即践行**（CB 收尾后转时间轴，CB 低频，每 5-10 commit 一次 SCAN） |
-| 4 "SCAN 先确认运行时假设" | **agree·PROPOSE** | 给第三方 CB-04 RULES 修订（加 SCAN 前置步骤：读 KNOWLEDGE §2 + 确认运行时）；不擅改 RULES 方法论 |
+修订 cpd-core-plan.md → **v1.0 定稿**：
+- §4.3 H1 修复：dispatch 守卫 `exit!==undefined`→**`settled`** + 去重"严格+1"→**单调递增** + `exit??null` + intent 供 general 判定。
+- §4.2 row 4：lastExit∈{null,undefined,general}（null 含 general 短路）+ `hasAnalysis=true` 升级 interpret 分支（M1）。
+- §4.1：hasVisibleEmotionLayer 谓词收紧 +判情绪性（M2）；hasAnalysis 标注 interpret 用。
+- §十一 U8 措辞改 `#param-panel.is-open` 同步谓词（L1）。
+- **新增定稿声明**（§十一后）：核心 6 决策自洽 + 三轮链式缺陷全修 + CB-CPD 收尾 + 下一步 roadmap。
 
-### ③ 行动（已执行）
+不动代码（review.py/前端/tests 留 P0-P2）。
 
-- [x] 建议1：RULES §3.3 承重 → pointer to KNOWLEDGE §1（保留摘要 + 指针，单一权威源）。
-- [x] 建议2：KNOWLEDGE 加 §6 Auto-Check 清单 + /cb step 5 改"加载 §6"。
-- [x] 讨论2：KNOWLEDGE 加 pruning 触发条件。
-- [x] 讨论3：KNOWLEDGE 加 CB 节奏决议（高频→低频维护）。
-- [x] 建议5：本 journal 记 trace-digest 闭环更正（CB-02 partial → CB-03 确认健康；无代码改）。
+### ④ 新发现 + 收敛声明
 
-**defer**：建议3（geo_registry 埋点·下个 sprint）/ 建议4（文档 Streamlit·下个文档日）/ 建议6（panel.js·JS 单测后）。
-**PROPOSE 给第三方 CB-04**：讨论1（CB-05 ROI）/ 讨论4（RULES 加 SCAN 前置步骤）。
+- **双模型互补的极限案例**：CB-CPD-03 DS（产品视角，说稳定收尾）vs K3（代码推演，发现 H1 静默冻结）——DS 漏 H1 因其偏架构/演示视角；K3 靠组合推演（general×守卫×去重×push）挖出。**多模型价值 = 视角正交覆盖盲区**。H1 是"修订动作引入新缺陷"模式的第 3 次（CB-CPD-01 spec 错误 / CB-CPD-02 循环 import / CB-CPD-03 general 断链）——启示：每次修 plan 要自检组合场景（尤其事件+状态机+去重咬合）。
+- **H1 静默失败的危险性**：引导引擎永久冻结但零报错——若非 K3 推演发现，G1 实施后会以"引导偶尔不工作"的玄学 bug 出现。`settled` 守卫 + 单调去重是正确解（覆盖所有正常完成轮 + 免疫跳号）。
+- **收敛达成**：核心 6 架构决策全自洽（DS §2.1 表），三轮链式缺陷全修，演示表现力 C+→B+，承重零触。剩余 U8-U10/R6/streaming 行/L2 = G1-G3 实施细节。**CB-CPD 专轨收尾**（DS 建议 + K3"修后末轮 A 级" + 用户授权）。v1.0 进 P0/G1。
+
+### 状态
+`CB-CPD 专轨收尾 · v1.0 定稿` —— plan v0.4→**v1.0**（修 K3 H1 断链 + M1 interpret + M2 谓词 + L1 措辞）。反评价 7 条（agree 4 / partial 3 / disagree 0）。H1 已核实。**CB-CPD-01/02/03 三轮闭环**（v0.1→v1.0，核心决策全收敛）。**进 P0 测试铺底 → P1 尺度诚实 → P2 引擎 G1-G4**。若实施中发现 plan 层新问题，再开 CB-CPD-04。
+
+---
+
+## CB-CPD-02 · 2026-07-22（DeepSeek + K3 双模型第二轮验证评审）
+
+> 评审对象：`docs/cpd-core-plan.md` **v0.3**。基线 v0.2→v0.3。报告：[DeepSeek](SCAN_CPDPlan_02-deepseek.md) / [K3](SCAN_CPDPlan_02-k3.md)。两份独立评审（K3 未读 DS 全文，重合发现 = 收敛信号）。
+
+### ① SCAN 摘要（双模型）
+
+**DS 综合 B+**（v0.2 B-，↑1.5 级）：六维 架构 A- / 功能 A- / 承重 A- / 演示表现力 B-（C+→B-）/ 分阶段 B+ / 风险 B+。**CB-CPD-01 12/12 全部核实通过**；特征向量真值表根治 S0/S1 不可达；回退"同表重算"比 `_lastCur` 更优雅。演示升至 B-（文案叙事化 + S3 空间交互 + S4 地图闭合），尚未到"诊断叙事完整体"（S4 动态变量 + 三端同步未落地）。v0.3 可进 P0。
+
+**K3 综合 B+**（与 DS 独立收敛）：**CB-CPD-01 15/15 执行或合理处置**，2 处修法超建议（exit-badge 免疫流式 / 同表重算无状态腐烂）。**v0.3 新增内容自身引入 2 高优**（均不在 v0.2，修订动作产生）：H1 init 循环 import / H2 S4 动态变量无源；3 中优（M1 色名脱节 / M2 真值表组合 / M3 优先级文字矛盾）。agree v0.3 可进 P0，H1/H2 G1 动手前必修。
+
+**两份独立收敛（高置信）**：① init 模块边界（v0.3 "只读 getter" 致循环 import → 依赖注入）；② S4 文案动态变量客户端无源（X×Y/N → 降级 {区域名}）。
+
+### ② 我方反评价（主线程，M1 色板已 grep 核实 tokens.css:28-29）
+
+| # | 条目 | 来源 | 判定 | 证据/采纳 |
+|---|---|---|---|---|
+| 1 | init 循环 import → 依赖注入 | DS R2+K3 H1 | **agree** | v0.3 "导出 getter" 致 panel.js↔cpd-guide.js 循环 → 改 panel.js→cpd-guide.js 单向（init 注入 getter），cpd-guide.js 零 import panel.js |
+| 2 | S4 动态变量无源 → 降级 | DS R1+K3 H2 | **agree** | X×Y/N 非确定性（正则抠违背用例 2 反模式）→ 「{区域名}的归因已就绪」（复用 _followUps:455） |
+| 3 | M1 色名脱节 | K3 M1 | **agree** | 已核实 tokens.css:28-29（very-negative #D85A30 深珊瑚橙、very-positive #0F6E56 深青绿，**无"深红"**）→ 文案"深红"改"深橙"；色名从 theme var 派生（铁律） |
+| 4 | M3 优先级文字矛盾 | K3 M3 | **agree** | v0.3 文字"hasImport 优先→streaming"致无数据+流式首匹 import → 改 streaming 第一优先 |
+| 5 | M2 hasRange=false+result 组合 | K3 M2 | **agree** | range 引导兼带深读/导出次 CTA（避免演示高潮断档） |
+| 6 | L1 init 重置 expectedTurnId | K3 L1 | **agree** | 切会话/clearChat 致 _history.length 回退断链 |
+| 7 | R3 hasImport 谓词注释 | DS R3 | **agree** | G1 实现注释列出排除来源（inspect_zone focus marker 等） |
+| 8 | R4 S3 实现路径明确 | DS R4 | **agree** | G1=被动文案 / G3=地图高亮三端同步 #ff9000 |
+| 9 | U8 改确定性信号 | DS R5+K3 L4 | **agree** | 弃"3 秒"魔数 → dock/param-panel is-open（复用 cpd-state.js:60-63） |
+| 10 | L5 引导态不持久化明文 | K3 L5 | **agree** | §6.5 补一句（init 重算） |
+| 11 | L3 纯 AI 层文案降级 | K3 L3 | **agree** | §4.2 import 行注释（visEmotion=true 降级） |
+| 12 | DS 2.2 layers 文案加 CTA | DS | **partial** | 方向 agree（"点深橙格子我告诉你为什么"）；G1/G2 打磨 |
+| 13 | R6/L2 range 导入中文案 | DS R6/K3 L2 | **partial** | G3 边界低优 |
+| 14 | turnId 去重价值有限 | K3 L1 | **partial** | 保留（无害），补 #6 expectedTurnId 重置 |
+
+**disagree：0**。两份均未撞红线；新增建议皆有 file:line 证据，且两份独立收敛（init/S4）= 高置信。
+
+### ③ 行动（plan v0.3 → v0.4，本轮 commit）
+
+修订 cpd-core-plan.md 11 点（详见 v0.4 头部变更）：
+- §4.2 真值表：色名深红→深橙（M1）+ S4 文案降级 {区域名}（H2）+ 优先级 streaming 第一（M3）+ range+result 兼带次 CTA（M2）+ import 纯 AI 层注释（L3）+ 色名铁律 + S4 动态变量来源说明。
+- §4.3 init 改依赖注入（H1）+ 重置 expectedTurnId（L1）。
+- §4.1 hasImport 谓词注释（R3）。
+- §6.4 S3 路径（R4）+ 色名；§6.5 引导态不持久化（L5）。
+- §九 panel.js/cpd-guide.js 行（getter→注入）。
+- U8 改 is-open。
+
+不动代码（review.py/前端/tests 留 P0-P2）。
 
 ### ④ 新发现
 
-- CB 自动化 5 组件在 ~30 小时内从 0 到完整系统——工程化能力的体现。
-- 三轮 CB 累计退役 6 文件（-2,257 行）、修复 7 个问题（geo_routes 冗余×3 + 路径 case + 依赖僵尸 + AGENTS 漂移 + settings 权限）。
-- **KNOWLEDGE.md 的"跨轮学习积累"是三轮 CB 最有价值的架构创新**——每轮新 learning 入库，未来 CB-N 自动避免重犯前 N-1 轮错误。
-- **trace-digest 闭环深化**：CB-02 标"cursor 缺失=疑似 bug"，CB-03 核代码后确认"cursor 缺失有 fallback，空 digest=健康"——双模型闭环的"发现→深化→更正"价值兑现。
+- **双模型独立收敛 = 高置信信号**：CB-CPD-01（init 数据源/exit 词表）+ CB-CPD-02（init 循环 import/S4 动态变量）两轮均有"两份独立得出相同结论"——收敛点应优先处理。双模型比单模型更可靠（DS 指产品方向，K3 定代码落点）。
+- **修订动作产生新问题（v0.3→v0.4 教训）**：v0.3 修 v0.2 的 3 spec 错误时引入 2 新高优（init getter 致循环 import / S4 文案用了无源变量）——修订本身的回归。本轮修掉。启示：修 plan 时新方案要自检"是否引入新依赖/无源变量"。
+- **色名同步色带（M1）是"视野↔结论同步"在文案层的体现**：文案属结论端，色名须与视野端渲染（theme var 端点）同色——演示逻辑链同步铁律的细化。
+- **v0.3/v0.4 可进 P0（两份共识）**：H1/H2 不阻塞 P0 测试铺底，只阻塞 G1 编码。P0（地基行为测试）可与 CB 并行启动。
 
 ### 状态
-`closed`（CB-03 反评价完成）—— 4 agree 已 act（RULES pointer / KNOWLEDGE §6·pruning·cadence / /cb step5 / trace-digest 更正）；3 defer + 2 PROPOSE 给 CB-04。CB 转低频维护模式（每 5-10 功能 commit 一次 SCAN）。**下一会话推进极性深读时间轴**（T1→T3 演进）。
+`本轮反评价完成` —— plan v0.3→**v0.4**（11 点修订，吸收两份收敛 + 11 agree + 3 partial，disagree 0）。M1 色板已核实。**待 CB-CPD-03**：验证 v0.4 修订落地（H1 依赖注入 / H2 S4 降级 / M1 色名 / M3 优先级）+ 是否达"连续 2 轮无新实质分歧"定稿条件。**v0.3/v0.4 可进 P0 测试铺底**（与 CB 并行）。
 
 ---
 
@@ -254,178 +266,169 @@ K3 另指：光环硬编码 hex（ai_qa.css:431）违 theme var；交互环未�
 
 ---
 
-## CB-CPD-02 · 2026-07-22（DeepSeek + K3 双模型第二轮验证评审）
+## CB-03 · 2026-07-19
 
-> 评审对象：`docs/cpd-core-plan.md` **v0.3**。基线 v0.2→v0.3。报告：[DeepSeek](SCAN_CPDPlan_02-deepseek.md) / [K3](SCAN_CPDPlan_02-k3.md)。两份独立评审（K3 未读 DS 全文，重合发现 = 收敛信号）。
+### ① SCAN 摘要
+本轮特殊：项目代码（core/api/ai_qa/frontend）零变化。焦点为 CB 流程自身的成熟度评估。综合 7.7/10（首次上升 +0.1：Harness 9.0→9.2 + 文档 7.5→7.8）。CB-02 全部 5 项 agree 行动验证通过；4 项 defer 理由充分。
 
-### ① SCAN 摘要（双模型）
+**核心发现——CB 自动化基础设施**：5 组件全 A 评级——`/cb` command（9 步流水线，45 行）、Hook CB detector（零 LLM 调用，27 行）、KNOWLEDGE.md（5 章节跨轮知识库，71 行）、记忆共享通则（context-map.md + CLAUDE.md）、路径归档（cb-journal/retired 移入 catch-ball/）。这是从"手动 ad-hoc"到"工程化流程"的关键跃迁。
 
-**DS 综合 B+**（v0.2 B-，↑1.5 级）：六维 架构 A- / 功能 A- / 承重 A- / 演示表现力 B-（C+→B-）/ 分阶段 B+ / 风险 B+。**CB-CPD-01 12/12 全部核实通过**；特征向量真值表根治 S0/S1 不可达；回退"同表重算"比 `_lastCur` 更优雅。演示升至 B-（文案叙事化 + S3 空间交互 + S4 地图闭合），尚未到"诊断叙事完整体"（S4 动态变量 + 三端同步未落地）。v0.3 可进 P0。
+**CB-02 反评价质量**：较 CB-01 显著提升。agree 5/5 兑现，decline/defer 理由全部充分。KNOWLEDGE.md 将 CB-02 的误判（generate_test_data ≠ 功能重叠）提炼为 §3 新模式。
 
-**K3 综合 B+**（与 DS 独立收敛）：**CB-CPD-01 15/15 执行或合理处置**，2 处修法超建议（exit-badge 免疫流式 / 同表重算无状态腐烂）。**v0.3 新增内容自身引入 2 高优**（均不在 v0.2，修订动作产生）：H1 init 循环 import / H2 S4 动态变量无源；3 中优（M1 色名脱节 / M2 真值表组合 / M3 优先级文字矛盾）。agree v0.3 可进 P0，H1/H2 G1 动手前必修。
+**新建议（6 条）**：3 高（KNOWLEDGE vs RULES 边界 + auto-check 可配置化 + 回归功能开发）、2 中（geo_registry 埋点重申 + 文档过时重申）、1 低（trace-digest cursor 根因分析）。
 
-**两份独立收敛（高置信）**：① init 模块边界（v0.3 "只读 getter" 致循环 import → 依赖注入）；② S4 文案动态变量客户端无源（X×Y/N → 降级 {区域名}）。
+**关键讨论点**：CB 自动化 ROI（当前投入合理，建议 CB-05 正式评估）/ KNOWLEDGE.md pruning 策略（预设触发条件）/ 项目阶段信号（质量巩固期应结束，CB 进入低频维护模式，每 5-10 个功能 commit 一次 SCAN）/ 双模型闭环三轮回望（4/5 目标成熟）。
 
-### ② 我方反评价（主线程，M1 色板已 grep 核实 tokens.css:28-29）
+### ② 我方反评价（/cb 03，2026-07-19）
 
-| # | 条目 | 来源 | 判定 | 证据/采纳 |
-|---|---|---|---|---|
-| 1 | init 循环 import → 依赖注入 | DS R2+K3 H1 | **agree** | v0.3 "导出 getter" 致 panel.js↔cpd-guide.js 循环 → 改 panel.js→cpd-guide.js 单向（init 注入 getter），cpd-guide.js 零 import panel.js |
-| 2 | S4 动态变量无源 → 降级 | DS R1+K3 H2 | **agree** | X×Y/N 非确定性（正则抠违背用例 2 反模式）→ 「{区域名}的归因已就绪」（复用 _followUps:455） |
-| 3 | M1 色名脱节 | K3 M1 | **agree** | 已核实 tokens.css:28-29（very-negative #D85A30 深珊瑚橙、very-positive #0F6E56 深青绿，**无"深红"**）→ 文案"深红"改"深橙"；色名从 theme var 派生（铁律） |
-| 4 | M3 优先级文字矛盾 | K3 M3 | **agree** | v0.3 文字"hasImport 优先→streaming"致无数据+流式首匹 import → 改 streaming 第一优先 |
-| 5 | M2 hasRange=false+result 组合 | K3 M2 | **agree** | range 引导兼带深读/导出次 CTA（避免演示高潮断档） |
-| 6 | L1 init 重置 expectedTurnId | K3 L1 | **agree** | 切会话/clearChat 致 _history.length 回退断链 |
-| 7 | R3 hasImport 谓词注释 | DS R3 | **agree** | G1 实现注释列出排除来源（inspect_zone focus marker 等） |
-| 8 | R4 S3 实现路径明确 | DS R4 | **agree** | G1=被动文案 / G3=地图高亮三端同步 #ff9000 |
-| 9 | U8 改确定性信号 | DS R5+K3 L4 | **agree** | 弃"3 秒"魔数 → dock/param-panel is-open（复用 cpd-state.js:60-63） |
-| 10 | L5 引导态不持久化明文 | K3 L5 | **agree** | §6.5 补一句（init 重算） |
-| 11 | L3 纯 AI 层文案降级 | K3 L3 | **agree** | §4.2 import 行注释（visEmotion=true 降级） |
-| 12 | DS 2.2 layers 文案加 CTA | DS | **partial** | 方向 agree（"点深橙格子我告诉你为什么"）；G1/G2 打磨 |
-| 13 | R6/L2 range 导入中文案 | DS R6/K3 L2 | **partial** | G3 边界低优 |
-| 14 | turnId 去重价值有限 | K3 L1 | **partial** | 保留（无害），补 #6 expectedTurnId 重置 |
+**6 条建议**（verify-before-accept 已核；建议5 已核 on_session_end.py）：
 
-**disagree：0**。两份均未撞红线；新增建议皆有 file:line 证据，且两份独立收敛（init/S4）= 高置信。
+| # | CB-03 建议 | 判定 | 证据/行动 |
+|---|-----------|------|---------|
+| 1 | KNOWLEDGE vs RULES 承重边界（重复） | **agree** | 真重复（RULES §3.3 + KNOWLEDGE §1 同 6 红线）→ 撞记忆共享通则"单一权威源"。RULES §3.3 → pointer to KNOWLEDGE §1（保留摘要 + 指针） |
+| 2 | /cb auto-check 可配置清单（硬编码） | **agree** | step 5 硬编码 4 检查 → 数据驱动。KNOWLEDGE 加 §6 Auto-Check 清单 + /cb step 5 改"加载 §6" |
+| 3 | geo_registry 埋点（重申） | **defer** | 守编号连续·独立任务（未变）；下个功能 sprint |
+| 4 | 文档 Streamlit 过时（重申·2 轮） | **defer·提升优先级** | 下个文档维护日首项 |
+| 5 | trace-digest cursor 根因（SCAN 深化） | **agree·更正 CB-02** | 已核 on_session_end.py：cursor 缺失 fallback `last_read=0`（L29-35）+ `if not errs: return`（L47）→ **空 digest = trace.log 无 ERR/WARN（健康）或 trace.log 不存在（fresh env），非 bug**。CB-02"cursor 缺失=疑似 bug"partial 被闭环深化更正 |
+| 6 | panel.js 拆分（重申） | **defer** | JS 单测后（时间轴会话之后） |
 
-### ③ 行动（plan v0.3 → v0.4，本轮 commit）
+**4 讨论点**：
 
-修订 cpd-core-plan.md 11 点（详见 v0.4 头部变更）：
-- §4.2 真值表：色名深红→深橙（M1）+ S4 文案降级 {区域名}（H2）+ 优先级 streaming 第一（M3）+ range+result 兼带次 CTA（M2）+ import 纯 AI 层注释（L3）+ 色名铁律 + S4 动态变量来源说明。
-- §4.3 init 改依赖注入（H1）+ 重置 expectedTurnId（L1）。
-- §4.1 hasImport 谓词注释（R3）。
-- §6.4 S3 路径（R4）+ 色名；§6.5 引导态不持久化（L5）。
-- §九 panel.js/cpd-guide.js 行（getter→注入）。
-- U8 改 is-open。
+| 讨论 | 立场 | 行动 |
+|------|------|------|
+| 1 CB 自动化 ROI | **agree**（当前合理） | CB-05 正式 ROI 评估（总投入 vs 实际修复/避免回归） |
+| 2 KNOWLEDGE pruning | **agree** | KNOWLEDGE 加 pruning 触发（§3>15/§5>10/file>200 归档） |
+| 3 CB 节奏高频→低频 | **强 agree** | KNOWLEDGE 加节奏决议；**本计划即践行**（CB 收尾后转时间轴，CB 低频，每 5-10 commit 一次 SCAN） |
+| 4 "SCAN 先确认运行时假设" | **agree·PROPOSE** | 给第三方 CB-04 RULES 修订（加 SCAN 前置步骤：读 KNOWLEDGE §2 + 确认运行时）；不擅改 RULES 方法论 |
 
-不动代码（review.py/前端/tests 留 P0-P2）。
+### ③ 行动（已执行）
+
+- [x] 建议1：RULES §3.3 承重 → pointer to KNOWLEDGE §1（保留摘要 + 指针，单一权威源）。
+- [x] 建议2：KNOWLEDGE 加 §6 Auto-Check 清单 + /cb step 5 改"加载 §6"。
+- [x] 讨论2：KNOWLEDGE 加 pruning 触发条件。
+- [x] 讨论3：KNOWLEDGE 加 CB 节奏决议（高频→低频维护）。
+- [x] 建议5：本 journal 记 trace-digest 闭环更正（CB-02 partial → CB-03 确认健康；无代码改）。
+
+**defer**：建议3（geo_registry 埋点·下个 sprint）/ 建议4（文档 Streamlit·下个文档日）/ 建议6（panel.js·JS 单测后）。
+**PROPOSE 给第三方 CB-04**：讨论1（CB-05 ROI）/ 讨论4（RULES 加 SCAN 前置步骤）。
 
 ### ④ 新发现
 
-- **双模型独立收敛 = 高置信信号**：CB-CPD-01（init 数据源/exit 词表）+ CB-CPD-02（init 循环 import/S4 动态变量）两轮均有"两份独立得出相同结论"——收敛点应优先处理。双模型比单模型更可靠（DS 指产品方向，K3 定代码落点）。
-- **修订动作产生新问题（v0.3→v0.4 教训）**：v0.3 修 v0.2 的 3 spec 错误时引入 2 新高优（init getter 致循环 import / S4 文案用了无源变量）——修订本身的回归。本轮修掉。启示：修 plan 时新方案要自检"是否引入新依赖/无源变量"。
-- **色名同步色带（M1）是"视野↔结论同步"在文案层的体现**：文案属结论端，色名须与视野端渲染（theme var 端点）同色——演示逻辑链同步铁律的细化。
-- **v0.3/v0.4 可进 P0（两份共识）**：H1/H2 不阻塞 P0 测试铺底，只阻塞 G1 编码。P0（地基行为测试）可与 CB 并行启动。
+- CB 自动化 5 组件在 ~30 小时内从 0 到完整系统——工程化能力的体现。
+- 三轮 CB 累计退役 6 文件（-2,257 行）、修复 7 个问题（geo_routes 冗余×3 + 路径 case + 依赖僵尸 + AGENTS 漂移 + settings 权限）。
+- **KNOWLEDGE.md 的"跨轮学习积累"是三轮 CB 最有价值的架构创新**——每轮新 learning 入库，未来 CB-N 自动避免重犯前 N-1 轮错误。
+- **trace-digest 闭环深化**：CB-02 标"cursor 缺失=疑似 bug"，CB-03 核代码后确认"cursor 缺失有 fallback，空 digest=健康"——双模型闭环的"发现→深化→更正"价值兑现。
 
 ### 状态
-`本轮反评价完成` —— plan v0.3→**v0.4**（11 点修订，吸收两份收敛 + 11 agree + 3 partial，disagree 0）。M1 色板已核实。**待 CB-CPD-03**：验证 v0.4 修订落地（H1 依赖注入 / H2 S4 降级 / M1 色名 / M3 优先级）+ 是否达"连续 2 轮无新实质分歧"定稿条件。**v0.3/v0.4 可进 P0 测试铺底**（与 CB 并行）。
+`closed`（CB-03 反评价完成）—— 4 agree 已 act（RULES pointer / KNOWLEDGE §6·pruning·cadence / /cb step5 / trace-digest 更正）；3 defer + 2 PROPOSE 给 CB-04。CB 转低频维护模式（每 5-10 功能 commit 一次 SCAN）。**下一会话推进极性深读时间轴**（T1→T3 演进）。
 
 ---
 
-## CB-CPD-03 · 2026-07-22（DeepSeek + K3 双模型第三轮 · 稳定化验证 → 收敛定稿）
-
-> 评审对象：`docs/cpd-core-plan.md` **v0.4**。基线 v0.3→v0.4。报告：[DeepSeek](SCAN_CPDPlan_03-deepseek.md) / [K3](SCAN_CPDPlan_03-k3.md)。**本轮 = CB-CPD 专轨收尾轮**（用户授权此轮收敛）。
-
-### ① SCAN 摘要（双模型）
-
-**DS 综合 A-**（v0.3 B+→A-）：CB-CPD-02 5/7 修复（R2/R5 超越）。v0.4 核心贡献：消除循环 import（依赖注入）+ 流式优先级修正 + 色名同步 + S4 动态变量降级。**v0.4 是第一个所有架构决策自洽的版本**（映射 key/信号源/exit 词表/载荷/init/优先级全收敛）。**建议 CB-CPD 专轨在此轮收尾**，进 P0。残留 1 条（streaming 行物理位置歧义，G1 实现按文字优先级即可）。
-
-**K3 综合 A-**（上轮 B+）：CB-CPD-02 9/9 属实。**但本轮组合推演发现 1 个 v0.4 新引入的高优链式缺陷 H1**（general 断链）+ M1（hasAnalysis 死信号）+ M2（hasVisibleEmotionLayer 不判情绪性）。agree v0.4 整体收敛，**H1 G1 动手前必修**（两行代码级）；M1 建议 interpret 行；M2 谓词收紧。K3："修 H1/M2/M1 后预期末轮 A 级收敛"。
-
-**分歧**：DS 说收尾（v0.4 稳定无阻塞）；K3 发现 H1（真 bug 静默冻结）→ 须先修 H1 再收敛。**项目方立场：修 K3 H1/M1/M2/L1 后此轮收敛**（用户授权），不再开 CB-CPD-04。
-
-### ② 我方反评价（主线程，H1 已核实 [panel.js:1161/1162/1181](frontend/js/ai_qa/panel.js#L1161) 链）
-
-| # | 条目 | 来源 | 判定 | 证据/采纳 |
-|---|---|---|---|---|
-| 1 | H1 general 断链（v0.4 新引入） | K3 H1 | **agree** | 已核实：general 短路（[harness.js:372/412](frontend/js/ai_qa/harness.js#L372)）无 exit → v0.4 守卫 `exit!==undefined` 不 dispatch，但 general 轮 `settled=true` 照常 push（panel.js:1181）致 `_history` 跳号 → 严格 turnId+1 去重丢事件 → 引擎**永久冻结（静默）**。改：守卫 `settled` + 去重单调递增 + `exit??null` + 真值表 lastExit∈{null} |
-| 2 | M1 hasAnalysis 死信号 → interpret 分支 | K3 M1 | **agree** | §4.1 定义但真值表零引用 → row 4 `hasAnalysis=true` 升级 interpret（dock 产图桥回 EMC） |
-| 3 | M2 hasVisibleEmotionLayer 不判情绪性 | K3 M2 | **agree** | v0.4 "非 group 非 range" 对无情绪层撒谎"点击深绿/深橙"（演示链第一环断点）→ 谓词收紧 +判情绪性 |
-| 4 | L1 U8 措辞（#dock 不存在） | K3 L1 | **agree** | 全前端无 #dock（统一 openParamPanel）→ U8 改 `#param-panel.is-open` 同步谓词（无需 observer） |
-| 5 | DS streaming 行物理位置歧义 | DS | **partial** | G1 实现按文字优先级（streaming 第一），无需改 plan |
-| 6 | L2 #ff9000 token | K3 L2 | **partial** | G3 实现期确认是否 token 化 |
-| 7 | R6 range 文案 / S4 远期扩展 | DS | **partial** | G3 实施细节 |
-
-**disagree：0**。两份均未撞红线。本轮关键 = K3 H1（DS 未发现的静默冻结路径），已核实必修。
-
-### ③ 行动（plan v0.4 → **v1.0 定稿**，本轮 commit，CB-CPD 专轨收尾）
-
-修订 cpd-core-plan.md → **v1.0 定稿**：
-- §4.3 H1 修复：dispatch 守卫 `exit!==undefined`→**`settled`** + 去重"严格+1"→**单调递增** + `exit??null` + intent 供 general 判定。
-- §4.2 row 4：lastExit∈{null,undefined,general}（null 含 general 短路）+ `hasAnalysis=true` 升级 interpret 分支（M1）。
-- §4.1：hasVisibleEmotionLayer 谓词收紧 +判情绪性（M2）；hasAnalysis 标注 interpret 用。
-- §十一 U8 措辞改 `#param-panel.is-open` 同步谓词（L1）。
-- **新增定稿声明**（§十一后）：核心 6 决策自洽 + 三轮链式缺陷全修 + CB-CPD 收尾 + 下一步 roadmap。
-
-不动代码（review.py/前端/tests 留 P0-P2）。
-
-### ④ 新发现 + 收敛声明
-
-- **双模型互补的极限案例**：CB-CPD-03 DS（产品视角，说稳定收尾）vs K3（代码推演，发现 H1 静默冻结）——DS 漏 H1 因其偏架构/演示视角；K3 靠组合推演（general×守卫×去重×push）挖出。**多模型价值 = 视角正交覆盖盲区**。H1 是"修订动作引入新缺陷"模式的第 3 次（CB-CPD-01 spec 错误 / CB-CPD-02 循环 import / CB-CPD-03 general 断链）——启示：每次修 plan 要自检组合场景（尤其事件+状态机+去重咬合）。
-- **H1 静默失败的危险性**：引导引擎永久冻结但零报错——若非 K3 推演发现，G1 实施后会以"引导偶尔不工作"的玄学 bug 出现。`settled` 守卫 + 单调去重是正确解（覆盖所有正常完成轮 + 免疫跳号）。
-- **收敛达成**：核心 6 架构决策全自洽（DS §2.1 表），三轮链式缺陷全修，演示表现力 C+→B+，承重零触。剩余 U8-U10/R6/streaming 行/L2 = G1-G3 实施细节。**CB-CPD 专轨收尾**（DS 建议 + K3"修后末轮 A 级" + 用户授权）。v1.0 进 P0/G1。
-
-### 状态
-`CB-CPD 专轨收尾 · v1.0 定稿` —— plan v0.4→**v1.0**（修 K3 H1 断链 + M1 interpret + M2 谓词 + L1 措辞）。反评价 7 条（agree 4 / partial 3 / disagree 0）。H1 已核实。**CB-CPD-01/02/03 三轮闭环**（v0.1→v1.0，核心决策全收敛）。**进 P0 测试铺底 → P1 尺度诚实 → P2 引擎 G1-G4**。若实施中发现 plan 层新问题，再开 CB-CPD-04。
-
----
-
-## CB-04 · 2026-07-27（EMC 架构 · density/polarity 流水线契约整改）
+## CB-02 · 2026-07-19
 
 ### ① SCAN 摘要
+3 个 Explore Agent + 主线程核实，覆盖 ~200 文件 / ~51,000 行。综合 7.6/10（架构 8.5 / 代码 7.5 / 测试 6.0 / Harness 9.0 / 文档 7.5 / 调用效率 7.0）。CB-01 10 条建议：✅ 2 完成 / ❌ 4 拒绝（其中 2 条因 CB-01 描述失准或撞红线）/ ⬜ 3 待处理 / 1 部分。CB-01 退役清理验证通过（5 文件已删，-1,735 行），geo_routes 修复生效，sim agent 已注册，e2e seam 正确分离。
 
-[SCAN_EMCArch_deepseek_2026-07-27](report/SCAN_EMCArch_deepseek_2026-07-27.md)（DeepSeek，L1 全量审计）：触发用例"生成 L2 消极点的热力图"→ 实出综合彩虹图。**全量审计 14 个 `generate*ForAI` 入口**，定性为**系统性参数契约不完整**（非孤立 bug）。总评 6.5/10（认知 6 / 编排 9 / **执行 4↓** / 输出 8）。
+**CB-02 新发现**：requirements.txt 残留 streamlit+pydeck 僵尸依赖；range_selector.py 路径大小写不一致（Linux 部署会 break）；AGENTS.md 声称 8 Agent 但实际 9；geo_registry.py 零 @track；prd/spec/architecture 含过时 Streamlit 内容；trace-digest.md 空；panel.js 2,098 行过大。新增 10 条建议（3 高 / 3 中 / 4 低）。
 
-分级发现：🔴 P0 = H1 [generateHeatmapForAI:819](../../frontend/js/heatmap-tool.js#L819) 硬编码 `rampKey:'rainbow'` 绕过 [computeStyle:93](../../frontend/js/heatmap-tool.js#L93)；H2 [tools.js density](../../frontend/js/ai_qa/tools.js#L1121) 未传 analysis/rampKey；R1 [SKILL_DEFS.rank:40](../../frontend/js/ai_qa/stages.js#L40) 默认 `by:'polarity'` 非有效值。⚠️ P1 = P1a density prompt 参数名漂移（bandwidth_m/cell_size_m/value_col vs radius/cell_size/weightField）；P1b [_PARAM_ALIAS:12](../../frontend/js/ai_qa/stages.js#L12) 全局 radius→radius_m 误伤 density；P1c compare_regions 不在 prompt；P1d/e/f 多工具缺 agg_cols/layer/as·keep。⚠️ P2 = 触发词缺「热力图」+ 高级参数无 AI 通道。
+**CB-01 反评价第三方审核**：agree 4 条全部核实通过；disagree 4 条中 3 条反驳成立、1 条部分成立（数据管道完成度 90% 确实偏高但 75% 也偏保守→建议折中 80%）；partial 1 条平衡立场。
 
-一句话：**Smart Agent 想得对，Dumb Tool 做不到——不是 Tool 不够 Dumb，是参数契约不够完整**（非架构问题，是接口完整性问题）。
+**关键讨论点**：AGENTS.md 定位（概念框架 vs 运行时契约）、topo_scanner 自文档化意义、E2E 策略困境（先 JS 单测再 browser）、双模型闭环首次验证（有价值但需改进——SCAN 应先确认运行时假设）。
 
-### ② 我方反评价（verify-before-accept · 逐条核实）
+### ② 我方反评价（/cb 02，2026-07-19）
 
-| # | SCAN 条目 | 判定 | 核实/行动 |
-|---|---|---|---|
-| H1 | ForAI 硬编码 rainbow | **agree** | 核实；ForAI 加 analysis 复用 computeStyle |
-| H2 | density 未传 analysis | **agree** | density 补 polarity→analysis 映射 |
-| R1 | rank by:'polarity' 无效 | **agree** | 核实 [rank-tool.js:16](../../frontend/js/toolbox/rank-tool.js#L16)+[geo_routes.py:376](../../api/geo_routes.py#L376)；默认改 worst |
-| P1a | density prompt 参数名漂移 | **agree** | contracts 对齐 |
-| P1b | _PARAM_ALIAS 误伤 density | **agree** | 核实 [harness.js:292](../../frontend/js/ai_qa/harness.js#L292) 确调 normalizeParams；改按工具区分别名 |
-| P1c | compare_regions 缺 prompt | **agree** | 核实；补 |
-| P1d/e/f | 多工具参数缺口 | **agree** | 并入 L3 四步法 |
-| P2a | 触发词缺热力图 | **agree** | L3 补 |
-| P2d | 高级参数无 AI 通道 | **partial** | 按最高纪律先核查参数面板；PANEL_MISSING→提醒开发者补 |
-| Phase 0 density 止血 | **agree** | 采纳并修正：analysis（色板）+ polarity（筛选）双维度 |
-| Phase 1 手动补三处 | **agree（路径调）** | 走 `tool_contracts.py` 单一源（用户定） |
-| Phase 3 validate 脚本 | **agree** | 并入 L2 guard |
-| Phase 3 AGENTS 铁律 11 | **agree** | 落为最高纪律第 2 条 |
+**10 条建议**（verify-before-accept 已核代码级指控）：
 
-**CB-04: 13 agree / 0 disagree / 1 partial — pytest 待 L1 后跑 — 待 push**
+| # | SCAN 建议 | 判定 | 证据/行动 | decline reason |
+|---|-----------|------|---------|----------------|
+| 1 | requirements 僵尸依赖 | **agree** | grep 零活 import 核；删 streamlit==1.58.0 + pydeck | — |
+| 2 | range_selector 路径大小写 | **agree** | L21 `'data','boundaries'` 小写确认（Linux 部署 bug）；→ `'DATA'` | — |
+| 3 | AGENTS.md 8→9 同步 | **agree** | settings.json 9 agent 核；AGENTS.md 标题+表+sim 行更新 | — |
+| 4 | 冗余 sim 脚本退役 | **partial** | `generate_l1_mock` 退役（自标 superseded + 零活引用）；**`generate_test_data` 保留** | **事实错误**：test_data 是 L0 raw（10 万条全管线测试），与 sim_performance_data（L1/L2 demo）用途不同，非冗余 |
+| 5 | geo_registry 补埋点 | **agree-defer** | 0 @track / 7 函数确认；守编号连续，独立任务（非 /cb 批次） | — |
+| 6 | 文档 Streamlit 过时内容 | **agree-defer** | 多 doc 清理，非紧迫 | — |
+| 7 | dev-notes 更新 | **agree-defer** | doc 工作，低优先 | — |
+| 8 | trace-digest 空诊断 | **partial** | cursor `.claude/.trace-digest-cursor` **不存在**（hook 可能因此跳过追加）；诊断 defer | — |
+| 9 | Bash(streamlit) 权限清理 | **agree** | settings.json allow 删 `Bash(streamlit *)` | — |
+| 10 | panel.js 拆分 | **defer** | 技术债预防；前端 JS 单测（头号短板）更高优 | — |
 
-**disagree: 0**。本轮 SCAN 质量极高（14 入口全审 + 行号对比表 + 根因链），KNOWLEDGE §3 老毛病（文档当运行时/完成度偏高/sim 当风险）一个没犯，反补我漏掉的 R1/P1b 两真 bug。
+**4 讨论点**：
 
-### ③ 行动（plan 融合定稿 → L1 实现）
+| 讨论 | 判定 | 行动 |
+|------|------|------|
+| 1 AGENTS.md 定位（概念框架 vs 运行时） | **agree** | 加「概念框架声明」到 AGENTS.md 头部——免疫未来 SCAN 重犯 CB-01 错误（据理论 SOP 算调用次数） |
+| 2 topo_scanner 自文档化扩展 | **discuss** | 远期（依赖健康度 / 追踪热力图 / 变更影响），不行动 |
+| 3 E2E 策略困境 | **agree** | B 优先（JS 单测不依赖 browser）——已是项目 plan，无新行动 |
+| 4 双模型闭环改进 | **agree** | RULES v2（CB-03 前）加"SCAN 先确认运行时假设"步骤 |
 
-plan 据 SCAN 融合（用户批准）：**L1 止血** density 双维度（analysis 色板 + polarity 筛选，修正原"纯 polarity"）+ R1 by worst + P1b alias 按工具区分 + P1c compare 入 prompt；**L2 治本** 新建 `ai_qa/tool_contracts.py` 单一权威源 + prompt/SKILL_DEFS 派生 + 并入 SCAN `tests/validate_skill_params.py`；**L3 全扫** 13 工具四步法（独立轮次）；**最高纪律**（用户指示 + SCAN 铁律）EMC 分析图严格复用 Toolbox 参数面板、ForAI=dialog 镜像、PANEL_MISSING 提醒开发者补 → 入 memory/CLAUDE.md/AGENTS.md。
+### ③ 行动（已执行）
 
-### ④ 新发现 + 状态
+**agree 快赢（已 act）**：
+- [x] 建议1：requirements 删 streamlit+pydeck
+- [x] 建议2：range_selector `'data'`→`'DATA'`（路径构造 + docstring）
+- [x] 建议3：AGENTS.md 8→9（标题 + Agent 清单 + sim 行）
+- [x] 建议9：settings.json 删 `Bash(streamlit *)` 权限
+- [x] 讨论1：AGENTS.md 加「概念框架声明」
+- [x] 建议4 部分：`generate_l1_mock.py` 退役（retired.md 留痕）；`generate_test_data.py` 保留（declined·事实错误）
 
-- **契约分裂模式**（新 learning → KNOWLEDGE §2）：density 参数契约在 [prompts.py:85](../../ai_qa/prompts.py#L85) / [paradigm GEO_TOOL_CATALOG:289](../../ai_qa/paradigm.py#L289) / [TEMPLATE_REGISTRY:329](../../ai_qa/paradigm.py#L329) / SKILL_DEFS+TOOLS **四处各写一份且不一致**——"参数加在哪、加几次"失控的系统性坑（同类 [[emc-aggregate-column-alias-silent-zero]]）。治本 = 单一源 `tool_contracts.py` + 派生 + 校验。
-- **SCAN 高质量范式**（正例，不入 §3）：本轮零 decline——扎实代码级审计，不犯老毛病。双模型闭环再现：我诊断覆盖 H1/H2/P1a，SCAN 全审补 R1/P1b/P1c + 14 入口系统化。**多模型 = 视角正交覆盖盲区**（同 CB-CPD-03 H1 之训）。
+**defer（已登记，非本轮）**：建议5（geo_registry 埋点·守编号连续）/ 建议6（文档 Streamlit 过时）/ 建议7（dev-notes）/ 建议8（trace-digest cursor 诊断）/ 建议10（panel.js 拆分）。
+
+**验证**：`pytest tests/ -q` → **207 passed**（CB-02 行动零回归）+ 2 geocode offline tests fail（admin fresh-env：network/key 依赖，**非 CB-02 回归**；类比 h3 缺失——admin 需 `pip install -r requirements.txt` 补全；h3 已 pip install 补）。
+
+### ④ 新发现
+
+- CB-01 与 CB-02 之间，项目方自行发现并修复的项目（未在 CB-01 建议中）：map_engine.py pydeck 僵尸退役、zonal_stats latent bug → wontfix（深挖 3 条消费路径）、db.py 退役（已是 executemany → SCAN 描述失准）。
+- **新 SCAN 标尺纠正模式（入 KNOWLEDGE §3）**：SCAN 把不同用途的 sim/工具脚本误判"功能重叠"（generate_test_data = L0 raw 全管线测试 vs sim_performance_data = L1/L2 demo）→ verify-before-accept 须查 docstring 定用途，勿轻信"重叠"。
+- **跨环境 env-gap**（admin fresh-env）：h3 声明未装（pip 补）；2 geocode offline 测试 network/key 依赖失败。换环境须 `pip install -r requirements.txt` + 核 network 测试。
 
 ### 状态
-`open → L1 实现中` —— plan 融合定稿（13 agree/0 disagree/1 partial）。L1 density 止血 + R1/P1b/P1c 紧急修进行中；L2 contracts + L3 全扫待续。双模型闭环：L1 落地后可触发下一轮 SCAN 对比验证（density 极性图 + rank by 回归）。
+`closed`（CB-02 反评价 + 行动完成）—— 5 agree 快赢已 act + generate_l1_mock 退役；5 项 defer 已登记。pytest 207 绿（2 geocode offline env-fail 非回归）。**待**：CB-03（DeepSeek 三次扫描对比验证 CB-02 改进）+ defer 项择机。本轮新 learning 已入 KNOWLEDGE §3。
 
 ---
 
-## CB-05 · 2026-07-27（EMC UX·去审查 + 删除符号根治）
+## CB-01 · 2026-07-18（首轮）
 
 ### ① SCAN 摘要
-[SCAN_EMCUX](report/SCAN_EMCUX_deepseek_2026-07-27.md)（DeepSeek·UX 专项）：用户报两体验问题——①工具出图后 EMC 对话仍"思考"+ 审查未通过循环等待；②地名胶囊被删除线。DeepSeek 全审审查链路 + 删除符号双根因。
+4 个 Explore agent 扫描 ~100 文件。总评 7.6/10（架构 8.5 / 代码 7.5 / 测试 6.5 / Harness 9 / 文档 8 / 调用效率 6）。头号高优建议=调用次数优化（合并 Reviewer+Tester、批量变更、本地脚本替代 spawn、MANIFESTO 分层）。关键发现：core/ui_components+layer_registry 是 Streamlit 僵尸 / geo_routes 冗余计算 / db.py iterrows / sim agent 未注册 / Skills 落地率低 / 前端无单测。
 
-### ② 反评价（全 agree·verify-before-accept 核实）
-| 条目 | 判定 | 核实 |
-|---|---|---|
-| 方案 B 去审查（覆盖窄/假阳性/_verifyClaims 替代） | agree | 印证·论证更细 |
-| runTemplatePath 无 onObservation（UX 根因·我漏） | agree | [harness:325-366](../../frontend/js/ai_qa/harness.js#L325) 核实 |
-| 内嵌自查清单（FINAL_TEMPLATE 5 条） | agree | 零额外 LLM |
-| 空答案检测（代码门防只说不做） | agree | 补 _verifyClaims 漏 |
-| 删除符号根因 A（REVISE_TEMPLATE 缺禁~~·我漏） | agree | [:292-312](../../ai_qa/prompts.py#L292) 核实 |
-| 删除符号根因 B（CSS cite-chip-invalid line-through·**主因**·我漏） | agree | [:847](../../frontend/js/ai_qa/panel.js#L847)+[css:284](../../frontend/css/ai_qa.css#L284) 核实·**关键修正** |
-| 四层根治 | agree | 全采纳 |
+### ② 我方反评价
+**agree（采纳，已验证）**：
+- Streamlit 僵尸——ui_components(835 行/29 streamlit)+layer_registry(3 st.)+**map_engine(pydeck，SCAN 未点名但同类)** 全部零活引用已核（core/__init__.py 仅 docstring 文字，活代码无 import）。删除安全。
+- geo_routes 冗余——逐行核实，且发现比 SCAN 更深的问题（见 ④）。
+- sim agent 未注册 settings.json——已核（仅 8 agent）。
+- db.py iterrows perf、Skills 落地率、前端无单测、微服务化否决——均合理。
 
-**CB-05: 全 agree/0 disagree/0 partial**。DeepSeek 补我漏的 3 根因（runTemplatePath 无信号/CSS invalid 主因/REVISE 缺规则）。**关键修正**：删除符号主因是 CSS cite-chip-invalid（非 markdown ~~），原"仅 strip ~~"治不了，需扩展 getValidRefNames 治本。
+**disagree（用错标尺，反驳）**：
+1. "数据管道 90%、L0-L4 全部实现"=**事实错误**。L1 治理从未在真实 key 实跑；SCRIPT 层 L3/L4 是 ⬜ 预留（SCAN 自身 §2.6.2 又说 9 模块⬜，自相矛盾）。归因靠 EMC 分析时 + Sim。真实 ~75%。**且 L0 未来走购买途径，sim 充分非风险**（用户澄清，memory `l0-acquisition-purchase-strategy`）。
+2. "调用次数优化=头号高优"=**前提不成立**。项目跑在用户全局"不派 subagent"规则下，AGENTS.md 8 Agent 是概念框架，主线程直接干。SCAN 假设的"标准 SOP=7 spawns"是理论值非实际——解一个已基本解决的问题。
+3. "MANIFESTO 分层减 token"=**撞承重红线**（diagnose 永不动保 Flash eval）。不采纳。
+4. "MCP 应与 DeepSeek 匹配"=**provider-neutral 错标尺**。智谱优先因国内视觉/搜索质量，与主 LLM 厂商无关。（但 vendor SLA 单点论部分认同。）
 
-### ③ 行动（去审查 + 删除符号四层）
-- **A 去审查**：REVIEW_ENABLED 默认 false + FINAL_TEMPLATE 内嵌自查 5 条 + 空答案检测（newLayerCount>0 但结论<20 字符→补引导）+ runTemplatePath 加 onObservation + panel 清审查 UI（占位/_PHASE_ORDER/审查区/文案）。review.py 保留开关（emcReviewOn 调试）。
-- **B 删除符号四层**：renderAnswer strip ~~ + REVISE 补禁~~ + getValidRefNames 扩展所有 polygon（治 CSS invalid 主因）+ cite-chip-invalid line-through→opacity。
+**partial**：追踪 ROI 测量——同意做实验（30 天 trace.log 触发统计），**不同意预设简化**（编号连续是 rule 10 红线，追踪是 LLM 调试 O(1) 利器）。
 
-### ④ 状态
-`done` —— pytest 191 passed 零回归 + 浏览器加载/console 无 JS 错。体验：工具出图→finalStep 流式结论→完成（省审查 7-14s）。地名胶囊无删除线（CSS invalid 治本）。
+**SCAN 漏掉（我补）**：§0 任务树漂移 3 周 / retired.md 缺失 / Toolbox 多维归因 ⬜ vs EMC deep_attribution ✅ 重叠 / `?e2e=1` seam 去生产化。
+
+### ③ 行动
+**已执行（本轮 commit）**：
+- [x] memory `l0-acquisition-purchase-strategy` 写入（防再误判）
+- [x] Tier 0.3 sim-emotion-data agent 注册 settings.json
+- [x] Tier 0.2 geo_routes.py 三处清理（zonal_stats 死循环+冗余 / rank 双调用 / nearest 死三元）—— 零行为变化
+
+**待执行（部分已做）**：
+- [x] **Tier 0.1 删 3 僵尸** + .streamlit/config.toml —— commit `5e7b8c6`（用户"继续推进"授权后分类器放行；-1439 行；retired.md 留痕）
+- [x] **入库** `.zcode/`（ZCode 工具状态·双环境同步）+ `docs/SCAN_DeepSeek.md`（CB 输入历史）—— commit `5e7b8c6`
+- [x] Tier 1 部分：§0 树主干 refresh（七层/数据管道/Harness/底图）/ retired.md / tracking-progress 对账（改指 AGENTS.md 权威源，修 frozen-0613 漂移）
+- [x] Tier 1 余（部分）：§0 分支补 topology ✅（5.134）/ `?e2e=1` 去生产化 ✅（5.134，main.js 零 test 代码→独立 e2e-seam.js + index.html 条件 dynamic-import；ESM 绿，browser 验证因环境挂延后）
+- [ ] Tier 1 余：C6 补 3
+- [ ] Tier 2：db.py 批量插 / 前端 JS 单测基建 / 9⬜ 埋点细化 / vendor 本地化核查
+- [ ] zonal_stats latent bug 修（n_dom/n_elem 补充失效，需先确认消费方）
+
+### ④ 新发现（SCAN 之外，清理中挖出 + 深挖定级）
+- **zonal_stats latent bug → wontfix（无活消费方）**：原 discover 循环想补 `n_dom_*/n_elem_*` 到 zonal_stats 响应，遍历错源（rows.columns，而 _props_df 只返请求列）→ 补充从未生效。**深挖消费方**：`rank` 直读 gdf.columns（不经 _props_df）/ `panel.js` 矩阵 `_cellsByBucket` 读地图图层 `f.properties`（图层 GeoJSON 含完整 stats 列）—— **均不经 zonal_stats 的 trimmed 响应**，故无消费方读这两列。修复=向无人读的响应加列=死重 → **wontfix**（geo_routes 注释已标注）。
+- **db.py 全闲置 → SCAN 建议7 declined**：`EmotionDB` 全仓零活引用、无 test_db（demo 走 GeoJSON 文件非 SQLite）。且 `insert_points` **早已用 executemany 批量插**（`iterrows()` 只用于构建记录列表做 col_map+NaN 过滤，非逐行 DB 插入）。SCAN 建议7 既优化死代码、又描述失准 → **declined**。db.py 去留（retire vs 留作未来购买数据 DB 预留）待用户定。
+
+### 状态
+`open` —— Tier 0 ✅（5.132-5.133）/ Tier 1 大部分 ✅（§0 refresh + ?e2e=1 去生产化 + retired.md + tracking-progress 对账，5.134）/ db.py 退役 + zonal_stats wontfix 闭环（5.135）。**待**：browser 环境恢复后复验 seam + C6 补 3；前端 JS 单测基建（头号短板）。双模型闭环：待 DeepSeek 二次扫描对比验证。
+
+---
+
