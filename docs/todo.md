@@ -21,6 +21,15 @@
 - **浏览器验证 5.225**：KDE 情绪地形 → 单按钮「生成 2D 热力图」→ 2D 综合彩虹热力图（L1/L2 一致）。
 - **浏览器验证 5.224**：EMC 折叠胶囊点击正常展开。
 
+### ✅ 模块八 CPD 收尾（D030-D034·9/9 第2步·revision-log 5.239）
+
+- **honest 判断**：[08-cpd-engine.md](docs/catch-ball/emc-arch-deepdive/08-cpd-engine.md) 的「CPD 独立对话框消费 Pro plans」与 5.234 追问胶囊 UI 重复（都「点击→跳 Flash→执行」）→ **不另造对话框**。
+- **D030 ✅** cpd-guide/state 客户端纯规则（5.224）·**D031 ✅** [runCapsule](frontend/js/ai_qa/harness.js#L506) 胶囊跳 Flash 直执（5.234）·**D032 ✅** turn-over 移除·**D033 ✅** 无胶囊=完成态。
+- **D034 ✅（本次·唯一真缺口）**：[EpisodeIn](api/aiqa_routes.py)+[log_episode](ai_qa/episode.py) 加 `capsule_clicked` 字段·[panel.js](frontend/js/ai_qa/panel.js#L1485) episode POST 带点击 skill→consolidate 挖掘 Pro 排序偏好。
+- **测试**：[test_emc_template.py](tests/test_emc_template.py) +1（log_episode 写 capsule_clicked·tmp_path）。
+- **验证**：pytest **212 passed** 零回归 + serve/boot 干净·**待用户 push**。
+- **进度**：模块八 🔄 → **✅**·9 模块 **8/9 ✅**（仅剩 模块六 D026）。
+
 ### ✅ 模块七 L3 panel_source 全核查（D027 契约完整·9/9 第1步·revision-log 5.238）
 
 - [tool_contracts.py](ai_qa/tool_contracts.py) 31 处 `panel_source='待 L3 核查'` 全Resolved：

@@ -171,3 +171,19 @@ def test_panel_missing_excludes_emc_only():
     # EMC-only 工具确实存在（sanity：L3 标记生效）
     emc_only_count = sum(1 for c in TOOL_CONTRACTS for p in c.get('params', []) if 'EMC-only' in p.get('panel_source', ''))
     assert emc_only_count > 0, '应有多于 0 个 EMC-only 参数（rank/clip/overlay 等）'
+
+
+def test_log_episode_capsule_clicked(tmp_path, monkeypatch):
+    """模块八 D034（5.239）：log_episode 写 capsule_clicked 到 jsonl（Pro 排序自我成长偏好信号）。"""
+    import json
+    import ai_qa.episode as ep_mod
+    monkeypatch.setattr(ep_mod, '_EPISODE_DIR', str(tmp_path))
+    monkeypatch.setattr(ep_mod, '_EPISODE_PATH', str(tmp_path / 'ep.jsonl'))
+    # 胶囊点击 → capsule_clicked=skill
+    assert ep_mod.log_episode(question='切密度', capsule_clicked='density') is True
+    # 非胶囊 → capsule_clicked=None
+    assert ep_mod.log_episode(question='普通问', capsule_clicked=None) is True
+    lines = (tmp_path / 'ep.jsonl').read_text(encoding='utf-8').strip().split('\n')
+    assert len(lines) == 2
+    assert json.loads(lines[0]).get('capsule_clicked') == 'density'
+    assert json.loads(lines[1]).get('capsule_clicked') is None

@@ -502,7 +502,8 @@ async function runTemplatePath(ctx, hooks, diagnose) {
 /** CB-09 D020 追问胶囊执行路径（L1 直达 / L2 轻判·跳 diagnose Flash）：合成 synthDiagnose → 复用 runTemplatePath 全套出口+防线。
  *  L1（同工具换参）：_forceDeliberate=false → runTemplatePath 不触发 deliberate → 0 LLM 中间轮（<2s 出图）。
  *  L2（跨工具单步）：_forceDeliberate=true → Pro 模式下 deliberateStep 确认 params 再执行（5-8s）；Flash 退化直接执行。
- *  skill 无效（concept/unknown）→ composeGapCard 兜底。params 已 R5 校验（产时）+ validateParams（执行时）双保险。 */
+ *  skill 无效（concept/unknown）→ composeGapCard 兜底。params 已 R5 校验（产时）+ validateParams（执行时）双保险。
+ *  CB-09 D031（5.239 CPD 收尾）：胶囊点击跳 Flash 直执 = CPD「选项点击直执」核心·追问胶囊系统实现 CPD 意图（非另造对话框）。 */
 async function runCapsule(ctx, hooks, capsule) {
   const skill = capsule && capsule.skill;
   const def = stages.SKILL_DEFS[skill];
