@@ -21,6 +21,13 @@
 - **浏览器验证 5.225**：KDE 情绪地形 → 单按钮「生成 2D 热力图」→ 2D 综合彩虹热力图（L1/L2 一致）。
 - **浏览器验证 5.224**：EMC 折叠胶囊点击正常展开。
 
+### ✅ CB-06 EMC ReAct 超时根治·while-loop 7 策略（revision-log 5.229）
+
+- 用户报"思考阶段已出图但卡检索·超时请求失败·丢图"。第三方 DeepSeek 评估（[SCAN_EMCReAct](docs/catch-ball/report/SCAN_EMCReAct_deepseek_2026-07-27.md)），反评价全 agree。
+- **防（DeepSeek）**：L0 density triggers 补"网格/方格"→"方格网"走 runTemplatePath（避 while-loop）+ L1 生成类缩轮 + L2 工具完成信号 + L3 prompt 条件化（首 query/数据驱动/最少轮次/勿追加查询）。
+- **兜（我补）**：P0-A agentStep try/catch·throw 降级 finalStep（不"请求失败"丢图）+ P0-B streamChat 45s timeout。P1-C 早终止。
+- 详见 [cb-journal CB-06](docs/catch-ball/cb-journal.md)。
+
 ### ✅ 数据识别 visible bug 修 + emc-fix-progress 汇总卡（revision-log 5.228）
 
 - **bug**：上传 L2 点层眼睛关·EMC 判缺数据（pickVisiblePointLayer/buildContext 三处 visible 过滤·眼睛关=显示控制非数据可用性）。

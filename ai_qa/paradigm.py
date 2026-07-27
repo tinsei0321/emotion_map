@@ -128,7 +128,7 @@ B_TRACK_PARADIGM = [
      'triggers': ['最近', '邻近', '最近邻'],
      'template': 'nearest'},
     {'archetype': '密度分布', 'stage': 'Analyze', 'voice': '我用核密度看聚集强度连续分布',
-     'triggers': ['核密度', '密度分析', '聚集强度', '热力分布', '热力图', '热力', '密度', '集中', '情绪热度'],
+     'triggers': ['核密度', '密度分析', '聚集强度', '热力分布', '热力图', '热力', '密度', '集中', '情绪热度', '网格', '方格', '方格网', '聚合域', '空间聚合'],   # CB-06 L0：补网格/方格→"方格网"路由 density（避 while-loop·联动 harness mode='3d' 兜底）
      'template': 'density'},
     {'archetype': '聚集识别', 'stage': 'Analyze', 'voice': '我用 Gi* 识别显著冷热点聚集',
      'triggers': ['聚集', '热点', '冷热', '显著聚集'],

@@ -17,6 +17,7 @@
 - ⬜ 13 工具 `panel_source` 全核查（L3·density 完整·其余 28 项待·非色板核心）
 
 ### 体验层（UX · EMC 核心价值）
+- ✅ **ReAct 超时根治**（while-loop 7 策略·L0 路由补"网格/方格"+L1 缩轮+L2 完成信号+L3 prompt 条件化+P0-A 异常降级不丢图+P0-B 单轮 45s 超时+P1-C 早终止·CB-06·5.229）
 - ✅ **去 LLM 审查**（REVIEW_ENABLED 默认 false + FINAL_TEMPLATE 内嵌自查 5 条·省 7-14s·CB-05·5.227）
 - ✅ **删除符号四层根治**（strip~~ + `getValidRefNames` 扩展治 CSS invalid 主因 + css 弱化 + REVISE 补·CB-05）
 - ✅ `runTemplatePath` 加 `onObservation`（地图出图后 dock 反馈·治"出图但 dots 不停"·CB-05）
@@ -62,7 +63,8 @@
 
 | 版本 | 修复 | CB |
 |------|------|:--:|
-| **5.228** | **数据识别 visible bug**（眼睛关的点层仍可用） | — |
+| **5.229** | **CB-06 ReAct 超时根治**（while-loop 7 策略·防+兜·不丢图） | CB-06 |
+| 5.228 | 数据识别 visible bug（眼睛关的点层仍可用） | — |
 | 5.227 | 去 LLM 审查 + 删除符号四层根治 | CB-05 |
 | 5.226 | density 契约整改 L1+L2+L3（tool_contracts 单一源） | CB-04 |
 | 5.225 | KDE 去 3D 统一 2D 彩虹 | — |

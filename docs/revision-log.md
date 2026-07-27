@@ -223,7 +223,10 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月27日）** · 本节按板块分组、组内倒序；最新工作 = **5.228 数据识别 visible bug 修 + emc-fix-progress 汇总卡**（本次，分支 `main`）。上一轮 5.227（CB-05 UX）。最近：
+> 📍 **最新动态（07月27日）** · 本节按板块分组、组内倒序；最新工作 = **5.229 CB-06 EMC ReAct 超时根治（while-loop 7 策略·防+兜）**（本次，分支 `main`）。上一轮 5.228（visible bug）。最近：
+>
+> - **5.229 CB-06 EMC ReAct 超时根治（while-loop 体验·7 策略·DeepSeek 4 防 + 我 2 兜）**（用户报"思考阶段已出图但卡检索·超时请求失败·丢图"·第三方 DeepSeek 评估·CB 反评价全 agree·主线程·未派 subagent）：**根因**——①[paradigm:131](ai_qa/paradigm.py#L131) density triggers 缺"网格/方格"→落 while-loop（DeepSeek）②"先 query 后操作/通常 3-6 轮"致 Flash 过度验证（DeepSeek）③[harness:641](frontend/js/ai_qa/harness.js#L641) agent_step throw 不降级·丢图·"请求失败"（我补）④[api.js:36](frontend/js/ai_qa/api.js#L36) 无单轮超时（我补）。**防（DeepSeek）**：L0 triggers 补网格/方格→runTemplatePath（~5-8s·避 while-loop 30-75s）+ L1 生成类缩轮 2-3 + L2 工具完成信号 + L3 prompt 条件化 4 处。**兜（我）**：P0-A [harness:641](frontend/js/ai_qa/harness.js#L641) agentStep try/catch·throw 降级 finalStep 出已执行结果（非"请求失败"丢图·区分 AbortError）+ P0-B [api.js](frontend/js/ai_qa/api.js) streamChat per-call timeout（45s·慢轮 abort）。P1-C 生成类+已产出+query 验证→早终止。**验证**：pytest 191 passed 零回归（含 eval·diagnose 不破）+ 浏览器加载 PAGEERRORS=0。详见 [cb-journal CB-06](docs/catch-ball/cb-journal.md)。
+>
 >
 > - **5.228 数据识别 visible bug 修 + emc-fix-progress 汇总卡**（用户报"上传 L2 点层眼睛关·EMC 判缺数据"老 bug + 要进度汇总卡·主线程·未派 subagent）：**根因**——[pickVisiblePointLayer:646](frontend/js/ai_qa/tools.js#L646) + [buildContext:572/580](frontend/js/ai_qa/tools.js#L572) 三处 `l.visible` 过滤 + [:608](frontend/js/ai_qa/tools.js#L608) 老纪律"未显示层禁用"——眼睛关=显示控制非数据可用性，hidden 层 fc 仍有效。**修**：三处去 visible（已加载即用·含 hidden·buildContext grounding 列全部+标"隐藏"·pickVisiblePointLayer pool 优先 visible fallback all）+ _ERR 文案 + 纪律注释改。**emc-fix-progress.md**：新建总进度汇总卡（契约/体验/数据/路由/质量 五层·一页看清·5.203-5.228 时序·backlog 更名重写·旧归档 `.archived`）。**验证**：serve 加载/console PAGEERRORS=0。
 >

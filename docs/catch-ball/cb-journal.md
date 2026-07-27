@@ -9,6 +9,37 @@
 
 ---
 
+## CB-06 · 2026-07-27（EMC ReAct 超时根治·while-loop 体验）
+
+### ① SCAN 摘要
+[SCAN_EMCReAct](report/SCAN_EMCReAct_deepseek_2026-07-27.md)（DeepSeek）：用户报"思考阶段已出图（838 单元）但卡检索·超时请求失败·丢图"。全审 ReAct while-loop。根因：①B_TRACK density triggers 缺"网格/方格"→落 while-loop ②"先 query 后操作"致过度验证 ③"通常 3-6 轮"正常化多轮 ④ensure_zone observation 缺完成信号 ⑤agent_step throw 不降级丢图（我补）⑥无单轮超时（我补）。
+
+### ② 反评价（全 agree·verify-before-accept 核实）
+| 条目 | 来源 | 判定 | 核实 |
+|---|---|---|---|
+| L0 路由 triggers 补"网格/方格" | DeepSeek | agree | [paradigm:131](../../ai_qa/paradigm.py#L131) 核实无·CB-04 漏补 |
+| L1 生成类缩轮 | DeepSeek | agree | [harness:618](../../frontend/js/ai_qa/harness.js#L618) |
+| L2 工具完成信号 | DeepSeek | agree | [harness:709](../../frontend/js/ai_qa/harness.js#L709)·系统级 |
+| L3 prompt 条件化 4 处 | DeepSeek | agree | prompts :92/93/95 + FINAL（AGENT_TEMPLATE·非 diagnose·不破 eval） |
+| P0-A 异常降级·不丢图 | 我补 | — | DeepSeek 未提·治"万一超时/网络·不丢图·不请求失败" |
+| P0-B 单轮超时 | 我补 | — | DeepSeek 未提·确定性（最坏 45s） |
+
+**CB-06: DeepSeek 4 agree/0 disagree + 我补 2 兜底**。防（L0-L3）+ 兜（P0-A/B）互补。时间："生成方格网" 30-75s→~5s。
+
+### ③ 行动（7 策略）
+- L0 [paradigm:131](../../ai_qa/paradigm.py#L131) density triggers 补"网格/方格/方格网/聚合域/空间聚合" → "方格网"路由 density → runTemplatePath（避 while-loop）。
+- L1 [harness:618](../../frontend/js/ai_qa/harness.js#L618) `_IS_GEN` 生成类缩轮 2-3。
+- L2 [harness:712](../../frontend/js/ai_qa/harness.js#L712) 工具产出后 toolHistory 追加完成信号。
+- P1-C [harness:686](../../frontend/js/ai_qa/harness.js#L686) 生成类+已产出+`query_*` 验证→早终止 break。
+- L3 prompts :92/93/95 + FINAL 条件化（首 query 即可/数据驱动/最少轮次/勿追加查询）。
+- P0-A [harness:641](../../frontend/js/ai_qa/harness.js#L641) agentStep try/catch·throw 降级 finalStep（区分 AbortError）。
+- P0-B [api.js](../../frontend/js/ai_qa/api.js) streamChat per-call timeout（45s·AbortController）。
+
+### ④ 状态
+`done` —— pytest 191 passed 零回归（含 eval·diagnose 路由不破）+ 浏览器加载 PAGEERRORS=0。
+
+---
+
 ## CB-05 · 2026-07-27（EMC UX·去审查 + 删除符号根治）
 
 ### ① SCAN 摘要

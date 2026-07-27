@@ -29,40 +29,51 @@ export async function streamChat(messages, context, onToken, onError, opts = {})
   if (opts.draft) body.draft = opts.draft;
   if (opts.reviewHints) body.review_hints = opts.reviewHints;
   if (opts.domainLens && opts.domainLens.length) body.domain_lens = opts.domainLens;
-  const r = await fetch(`${BASE}/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal,
-  });
-  if (!r.ok) {
-    let detail = `问答失败: ${r.status}`;
-    try { const j = await r.json(); detail = j.detail || detail; } catch (_) {}
-    throw new Error(detail);
+  // CB-06 P0-B：per-call timeout（45s·慢轮 abort → harness P0-A 降级·治 Flash 过度思考卡死·最坏等 45s 非数十秒）
+  const _ac = new AbortController();
+  const _timer = setTimeout(() => _ac.abort(new Error('LLM 单轮超时(45s)')), 45000);
+  if (signal) {
+    if (signal.aborted) { clearTimeout(_timer); _ac.abort(signal.reason); }
+    else signal.addEventListener('abort', () => { clearTimeout(_timer); _ac.abort(signal.reason); }, { once: true });
   }
-  const reader = r.body.getReader();
-  const dec = new TextDecoder();
-  let buf = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    let i;
-    while ((i = buf.indexOf('\n\n')) >= 0) {
-      const chunk = buf.slice(0, i);
-      buf = buf.slice(i + 2);
-      const line = chunk.split('\n').find((l) => l.startsWith('data:'));
-      if (!line) continue;
-      const data = line.slice(5).trim();
-      if (data === '[DONE]') return;
-      try {
-        const obj = JSON.parse(data);
-        if (obj.error) { if (onError) onError(obj.error); return; }
-        if (obj.usage) { _lastUsage = obj.usage; _totalPrompt += obj.usage.prompt_tokens || 0; _totalCompletion += obj.usage.completion_tokens || 0; if (opts.onUsage) opts.onUsage(obj.usage); }
-        if (obj.review !== undefined && onReview) { onReview(obj.review); return; }
-        if (obj.reason && onReason) onReason(obj.reason);
-        if (obj.token) onToken(obj.token.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ''));   // 5.222 过滤控制符（DEL 等·治"删除符号"Bug 3）
-      } catch (_) { /* skip malformed */ }
+  try {
+    const r = await fetch(`${BASE}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: _ac.signal,
+    });
+    if (!r.ok) {
+      let detail = `问答失败: ${r.status}`;
+      try { const j = await r.json(); detail = j.detail || detail; } catch (_) {}
+      throw new Error(detail);
     }
+    const reader = r.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n\n')) >= 0) {
+        const chunk = buf.slice(0, i);
+        buf = buf.slice(i + 2);
+        const line = chunk.split('\n').find((l) => l.startsWith('data:'));
+        if (!line) continue;
+        const data = line.slice(5).trim();
+        if (data === '[DONE]') return;
+        try {
+          const obj = JSON.parse(data);
+          if (obj.error) { if (onError) onError(obj.error); return; }
+          if (obj.usage) { _lastUsage = obj.usage; _totalPrompt += obj.usage.prompt_tokens || 0; _totalCompletion += obj.usage.completion_tokens || 0; if (opts.onUsage) opts.onUsage(obj.usage); }
+          if (obj.review !== undefined && onReview) { onReview(obj.review); return; }
+          if (obj.reason && onReason) onReason(obj.reason);
+          if (obj.token) onToken(obj.token.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ''));   // 5.222 过滤控制符（DEL 等·治"删除符号"Bug 3）
+        } catch (_) { /* skip malformed */ }
+      }
+    }
+  } finally {
+    clearTimeout(_timer);   // CB-06 P0-B：流式结束/出错/超时 都清 timer
   }
 }

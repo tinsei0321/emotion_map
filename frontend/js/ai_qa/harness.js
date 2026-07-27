@@ -616,7 +616,11 @@ export async function orchestrate(ctx, hooks = {}) {
   }
 
   // P0 降温：intent-aware 轮数上限（diagnose 后定）。B=6 多目标完整性，A/C=4 降概率链。
-  const maxRounds = (!diagnose.degraded && diagnose.intent === 'gis_operation') ? MAX_ROUNDS_GIS : MAX_ROUNDS_OTHER;
+  // CB-06 L1：生成类请求（生成/出图/网格/方格/分析图）缩轮到 2-3（漏网 while-loop 也少浪费·DeepSeek）
+  const _IS_GEN = /生成|出图|做图|热力图|网格|方格|分析图|画图|画一个|分布图|聚合图/.test(ctx.question || '');
+  const maxRounds = (!diagnose.degraded && diagnose.intent === 'gis_operation')
+    ? (_IS_GEN ? 3 : MAX_ROUNDS_GIS)
+    : (_IS_GEN ? 2 : MAX_ROUNDS_OTHER);
   // Track 1 query-first：round 0 注入数据 schema 探查 observation（零 LLM，复用 TOOLS.query_layers）——
   // manifesto "先 query 后操作" 的代码落地：schema 本已在 ctx.context（buildContext send 时注入），
   // 此处把已加载层名+计数作为一条 observation 推入 toolHistory，迫使 round1 agentStep 的 thought "看见"数据，免盲目调错工具/字段/层。
@@ -638,7 +642,15 @@ export async function orchestrate(ctx, hooks = {}) {
       toolHistoryText = '⚠️ 上一步工具失败（见观察末尾）。换参数（字段名/preset/range）或换工具重试，勿重复同样失败调用。\n\n' + toolHistoryText;
     }
 
-    const step = await stages.agentStep(ctx, hooks, round, toolHistoryText);
+    // CB-06 P0-A：agent_step throw（LLM 超时/网络·非用户取消）→ 降级·不丢图·不"请求失败"（复用 _deadline 降级范式 :628）
+    let step;
+    try {
+      step = await stages.agentStep(ctx, hooks, round, toolHistoryText);
+    } catch (e) {
+      if (ctx.signal && ctx.signal.aborted) throw e;   // 用户主动取消 → 传播（panel 显"已停止"·不降级）
+      toolHistory.push(`⚠️ 第${round}轮 LLM 调用失败（${(e && e.message) || e}）——用已执行步骤的结果作答，不再续轮。`);
+      narratedAnswer = true; degraded = true; break;   // LLM 超时/网络错 → 降级走 finalStep 出已执行结果（图+结论·非"请求失败"丢图）
+    }
     if (!step) { degraded = true; break; }   // 空输出：break（落 EXIT_GAP 兜底，不再裸输）
 
     // 叙述检测：模型只写说明没给动作 JSON。
@@ -684,6 +696,11 @@ export async function orchestrate(ctx, hooks = {}) {
       break;
     }
     if (hooks.onAction) hooks.onAction(step.action, round);
+    // CB-06 P1-C：生成类 + 工具已产出 + Flash 还 query_* 验证 → 早终止（图已出·不容忍纠结·break finalStep）
+    if (_IS_GEN && newLayerCount > 0 && step.action.type === 'tool' && /^query_/.test(step.action.name || '')) {
+      if (hooks.onObservation) hooks.onObservation('[早终止] 分析图已生成·无需 query 验证·直接出结论', round);
+      break;
+    }
 
     // 执行工具（直调主窗口）
     const fn = TOOLS[step.action.name];
@@ -710,6 +727,10 @@ export async function orchestrate(ctx, hooks = {}) {
     if (hooks.onObservation) hooks.onObservation(obs, round);
 
     toolHistory.push(compressHistory(round, step.thought, step.action, obs));
+    // CB-06 L2：生成类 + 工具产出图层 → toolHistory 追加完成信号（系统级·治 Flash 不知"任务完成"·DeepSeek）
+    if (_IS_GEN && newLayerCount > 0) {
+      toolHistory[toolHistory.length - 1] += '\n[系统] 已生成用户要求的分析图层。如无进一步操作需求，请直接 answer——勿再 query/verify 验证。';
+    }
     round++;
   }
 
