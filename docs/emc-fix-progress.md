@@ -103,20 +103,7 @@
 | **5.233** | **CB-09 轮次2a finalStep 极瘦**（FINAL_TEMPLATE 17KB→1.86KB·prefill <1s） | CB-09 |
 | **5.232** | **CB-09 轮次1 删旧R+R + 质量防线三层**（删 review.py + applyQualityDefense 全代码防线） | CB-09 |
 | **5.231** | **CB-09 轮次1 P0 消矛盾**（focusLayer 返子层 + observation 自述 + density 3d 清 radius + 单技能注入 formatRegistry） | CB-09 |
-| **5.230** | **CB-07 finalStep 超时矛盾 + 2D/3D 跳组**（降级结论不丢图 + parentId 留 EMC 组） | CB-07 |
-| 5.229 | CB-06 ReAct 超时根治（while-loop 7 策略·防+兜·不丢图） | CB-06 |
-| 5.228 | 数据识别 visible bug（眼睛关的点层仍可用） | — |
-| 5.227 | 去 LLM 审查 + 删除符号四层根治 | CB-05 |
-| 5.226 | density 契约整改 L1+L2+L3（tool_contracts 单一源） | CB-04 |
-| 5.225 | KDE 去 3D 统一 2D 彩虹 | — |
-| 5.224 | Bug5 折叠胶囊展开 | — |
-| 5.223 | Flash 全字段值域 + EMC 组统一 | — |
-| 5.222 | Bug3 删除符号初修 + density 视角默认 | — |
-| 5.221 | Layers 组卡数=0 + 能力 hint | — |
-| 5.220 | density 红色修 + 中文化 | — |
-| 5.215-219 | prompt 优化 + chip 两行 + 优化键 | — |
-| 5.210 | E1 多步链 runChainPath + E3 partial | — |
-| 5.203 | T1 seam 修 + UI/排版（backlog 已修项） | — |
+| 5.203-5.230 | **CB-04~07 + density 治本**（契约整改/去审查/超时根治/finalStep 矛盾/visible bug/KDE 去3D 等·11 版本）·详 [revision-log §5](revision-log.md#L226) | CB-04~07 |
 
 ---
 
