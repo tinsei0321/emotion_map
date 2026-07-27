@@ -14,7 +14,7 @@
 # params 结构化 schema：
 #   {name, type, enum?, default, required, alias[], hint?, panel_source?}
 #   - default is None = 无默认（可选·缺省由工具自处理）
-#   - panel_source 缺省 = '待 L3 核查'（density 首例完整，其余 L3 补）
+#   - panel_source = Toolbox dialog 控件来源 / 'EMC-only'（无 Toolbox dialog·AI 执行·设计如此）/ 'PANEL_MISSING'（真缺口·提醒补 dialog）；L3 5.238 全Resolved（旧 pending 标记已清）
 
 # ── 参数契约清单（skill 顺序对齐 TEMPLATE_REGISTRY）──
 TOOL_CONTRACTS = [
@@ -66,8 +66,8 @@ TOOL_CONTRACTS = [
         'params': [
             {'name': 'by', 'type': 'enum', 'enum': ['worst', 'best', 'domain:X', 'element:X'], 'default': 'worst', 'required': False, 'alias': ['sort', 'sort_by', 'criteria'], 'hint': '排序维度', 'panel_source': 'Rank dialog #rank-by'},
             {'name': 'top_n', 'type': 'int', 'default': 5, 'required': False, 'alias': ['top', 'limit', 'n'], 'hint': 'Top N', 'panel_source': 'Rank dialog topN'},
-            {'name': 'layer', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '默认 L2', 'panel_source': '待 L3 核查'},
-            {'name': 'boundary', 'type': 'source', 'default': None, 'required': False, 'alias': ['zone', 'region'], 'hint': 'preset_id', 'panel_source': '待 L3 核查'},
+            {'name': 'layer', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '默认 L2', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'boundary', 'type': 'source', 'default': None, 'required': False, 'alias': ['zone', 'region'], 'hint': 'preset_id', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
             {'name': 'range', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '可选先裁剪', 'panel_source': '通用 range'},
             {'name': 'pre_filter', 'type': 'str', 'default': None, 'required': False, 'alias': [], 'hint': 'field/op/value', 'panel_source': '通用 pre_filter'},
         ],
@@ -86,8 +86,8 @@ TOOL_CONTRACTS = [
         'params': [
             {'name': 'center', 'type': 'source', 'default': None, 'required': True, 'alias': ['point', 'center_point'], 'hint': 'POI preset|geojson', 'panel_source': 'Buffer dialog center'},
             {'name': 'radius_m', 'type': 'int', 'default': 500, 'required': False, 'alias': ['radius', 'radius_meters', 'buffer_radius', 'distance'], 'hint': '半径米（尺度表）', 'panel_source': 'Buffer dialog radius'},
-            {'name': 'agg_cols', 'type': 'list', 'default': ['score'], 'required': False, 'alias': [], 'hint': '聚合列', 'panel_source': '待 L3 核查'},
-            {'name': 'layer', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '默认 L2', 'panel_source': '待 L3 核查'},
+            {'name': 'agg_cols', 'type': 'list', 'default': ['score'], 'required': False, 'alias': [], 'hint': '聚合列', 'panel_source': 'Buffer dialog #buf-emotion-params'},
+            {'name': 'layer', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '默认 L2', 'panel_source': 'Buffer dialog #buf-layer'},
         ],
     },
     {
@@ -103,7 +103,7 @@ TOOL_CONTRACTS = [
         'planning_common': 'range 用 preset_id（行政区/单元）或 geojson；点层走可见层选源（不硬默认）',
         'params': [
             {'name': 'range', 'type': 'source', 'default': None, 'required': True, 'alias': [], 'hint': 'preset_id|geojson', 'panel_source': 'Range popup'},
-            {'name': 'layer', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '默认 L2', 'panel_source': '待 L3 核查'},
+            {'name': 'layer', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '默认 L2', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
             {'name': 'pre_filter', 'type': 'str', 'default': None, 'required': False, 'alias': [], 'hint': 'field/op/value', 'panel_source': '通用 pre_filter'},
             {'name': 'as', 'type': 'str', 'default': None, 'required': False, 'alias': ['output', 'output_layer', 'layer_name', 'named', 'name'], 'hint': '图层名', 'panel_source': '通用 as'},
             {'name': 'keep', 'type': 'bool', 'default': None, 'required': False, 'alias': [], 'hint': '保留免清理', 'panel_source': '通用 keep'},
@@ -121,9 +121,9 @@ TOOL_CONTRACTS = [
         'required_slots': ['layer_a', 'layer_b'],
         'planning_common': 'how：intersection 交/union 并/difference 差',
         'params': [
-            {'name': 'layer_a', 'type': 'source', 'default': None, 'required': True, 'alias': [], 'hint': 'preset_id', 'panel_source': '待 L3 核查'},
-            {'name': 'layer_b', 'type': 'source', 'default': None, 'required': True, 'alias': [], 'hint': 'preset_id', 'panel_source': '待 L3 核查'},
-            {'name': 'how', 'type': 'enum', 'enum': ['intersection', 'union', 'difference', 'symmetric_difference'], 'default': 'intersection', 'required': False, 'alias': ['mode'], 'hint': '叠置方式', 'panel_source': '待 L3 核查'},
+            {'name': 'layer_a', 'type': 'source', 'default': None, 'required': True, 'alias': [], 'hint': 'preset_id', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'layer_b', 'type': 'source', 'default': None, 'required': True, 'alias': [], 'hint': 'preset_id', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'how', 'type': 'enum', 'enum': ['intersection', 'union', 'difference', 'symmetric_difference'], 'default': 'intersection', 'required': False, 'alias': ['mode'], 'hint': '叠置方式', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
             {'name': 'as', 'type': 'str', 'default': None, 'required': False, 'alias': ['output', 'output_layer', 'layer_name', 'named', 'name'], 'hint': '图层名', 'panel_source': '通用 as'},
             {'name': 'keep', 'type': 'bool', 'default': None, 'required': False, 'alias': [], 'hint': '保留免清理', 'panel_source': '通用 keep'},
         ],
@@ -140,12 +140,12 @@ TOOL_CONTRACTS = [
         'required_slots': ['boundary'],
         'planning_common': 'boundary=preset_id（街道/社区/更新单元）；点层走可见层选源（不硬默认）；C 赛道情绪主干',
         'params': [
-            {'name': 'boundary', 'type': 'source', 'default': None, 'required': True, 'alias': ['zone', 'region'], 'hint': 'preset_id', 'panel_source': '待 L3 核查'},
-            {'name': 'agg_cols', 'type': 'list', 'default': ['score'], 'required': False, 'alias': [], 'hint': '聚合列', 'panel_source': '待 L3 核查'},
-            {'name': 'layer', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '默认 yichang_l2_t1', 'panel_source': '待 L3 核查'},
+            {'name': 'boundary', 'type': 'source', 'default': None, 'required': True, 'alias': ['zone', 'region'], 'hint': 'preset_id', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'agg_cols', 'type': 'list', 'default': ['score'], 'required': False, 'alias': [], 'hint': '聚合列', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'layer', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '默认 yichang_l2_t1', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
             {'name': 'range', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '可选先裁剪', 'panel_source': '通用 range'},
             {'name': 'pre_filter', 'type': 'str', 'default': None, 'required': False, 'alias': [], 'hint': 'field/op/value', 'panel_source': '通用 pre_filter'},
-            {'name': 'top_n', 'type': 'int', 'default': None, 'required': False, 'alias': ['top', 'limit', 'n'], 'hint': 'Top N', 'panel_source': '待 L3 核查'},
+            {'name': 'top_n', 'type': 'int', 'default': None, 'required': False, 'alias': ['top', 'limit', 'n'], 'hint': 'Top N', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
         ],
     },
     {
@@ -160,9 +160,9 @@ TOOL_CONTRACTS = [
         'required_slots': ['boundaries'],
         'planning_common': 'boundaries=≥2 个 preset_id（行政区/街道/单元，数组或 | ，分隔）；复用 zonal_stats 逐区聚合（不造 geo 端点，守委托 Toolbox 红线）；出口=并排对比+差异叙述。C 赛道对比主干——decision_type=对比 时优先级高于单区 zonal/rank',
         'params': [
-            {'name': 'boundaries', 'type': 'list', 'default': None, 'required': True, 'alias': ['regions', 'areas'], 'hint': '≥2 个 preset_id', 'panel_source': '待 L3 核查'},
-            {'name': 'agg_cols', 'type': 'list', 'default': ['score', 'polarity_index'], 'required': False, 'alias': [], 'hint': '聚合列', 'panel_source': '待 L3 核查'},
-            {'name': 'layer', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '默认 L2', 'panel_source': '待 L3 核查'},
+            {'name': 'boundaries', 'type': 'list', 'default': None, 'required': True, 'alias': ['regions', 'areas'], 'hint': '≥2 个 preset_id', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'agg_cols', 'type': 'list', 'default': ['score', 'polarity_index'], 'required': False, 'alias': [], 'hint': '聚合列', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'layer', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '默认 L2', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
             {'name': 'range', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '可选', 'panel_source': '通用 range'},
         ],
     },
@@ -178,8 +178,8 @@ TOOL_CONTRACTS = [
         'required_slots': ['layer'],
         'planning_common': 'layer=preset_id（行政区/单元/用地层）；where=field/op/value 抽特定要素；产面子图层自动落图',
         'params': [
-            {'name': 'layer', 'type': 'source', 'default': None, 'required': True, 'alias': [], 'hint': 'preset_id', 'panel_source': '待 L3 核查'},
-            {'name': 'where', 'type': 'str', 'default': None, 'required': False, 'alias': [], 'hint': 'field/op/value', 'panel_source': '待 L3 核查'},
+            {'name': 'layer', 'type': 'source', 'default': None, 'required': True, 'alias': [], 'hint': 'preset_id', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'where', 'type': 'str', 'default': None, 'required': False, 'alias': [], 'hint': 'field/op/value', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
             {'name': 'as', 'type': 'str', 'default': None, 'required': False, 'alias': ['output', 'output_layer', 'layer_name', 'named', 'name'], 'hint': '图层名', 'panel_source': '通用 as'},
             {'name': 'keep', 'type': 'bool', 'default': None, 'required': False, 'alias': [], 'hint': '保留免清理', 'panel_source': '通用 keep'},
         ],
@@ -196,8 +196,8 @@ TOOL_CONTRACTS = [
         'required_slots': ['boundary'],
         'planning_common': 'boundary=preset_id；group_by=字段（如 name/用地类）；出口=占比表（结论支撑，非主图层）',
         'params': [
-            {'name': 'boundary', 'type': 'source', 'default': None, 'required': True, 'alias': ['zone', 'region'], 'hint': 'preset_id', 'panel_source': '待 L3 核查'},
-            {'name': 'group_by', 'type': 'str', 'default': None, 'required': False, 'alias': ['by'], 'hint': '分组字段', 'panel_source': '待 L3 核查'},
+            {'name': 'boundary', 'type': 'source', 'default': None, 'required': True, 'alias': ['zone', 'region'], 'hint': 'preset_id', 'panel_source': 'Area-stats dialog boundary'},
+            {'name': 'group_by', 'type': 'str', 'default': None, 'required': False, 'alias': ['by'], 'hint': '分组字段', 'panel_source': 'Area-stats dialog group_by'},
         ],
     },
     {
@@ -212,8 +212,8 @@ TOOL_CONTRACTS = [
         'required_slots': ['boundary'],
         'planning_common': 'boundary=preset_id；by=字段|空=全部合并；产合并面图层自动落图（上卷到更大尺度）',
         'params': [
-            {'name': 'boundary', 'type': 'source', 'default': None, 'required': True, 'alias': ['zone', 'region'], 'hint': 'preset_id', 'panel_source': '待 L3 核查'},
-            {'name': 'by', 'type': 'str', 'default': None, 'required': False, 'alias': ['sort', 'sort_by', 'criteria'], 'hint': '字段|空=全部', 'panel_source': '待 L3 核查'},
+            {'name': 'boundary', 'type': 'source', 'default': None, 'required': True, 'alias': ['zone', 'region'], 'hint': 'preset_id', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'by', 'type': 'str', 'default': None, 'required': False, 'alias': ['sort', 'sort_by', 'criteria'], 'hint': '字段|空=全部', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
             {'name': 'as', 'type': 'str', 'default': None, 'required': False, 'alias': ['output', 'output_layer', 'layer_name', 'named', 'name'], 'hint': '图层名', 'panel_source': '通用 as'},
             {'name': 'keep', 'type': 'bool', 'default': None, 'required': False, 'alias': [], 'hint': '保留免清理', 'panel_source': '通用 keep'},
         ],
@@ -230,9 +230,9 @@ TOOL_CONTRACTS = [
         'required_slots': ['target'],
         'planning_common': 'target=preset_id|geojson（设施/POI）；点层走可见层选源（不硬默认）；k=近邻数',
         'params': [
-            {'name': 'target', 'type': 'source', 'default': None, 'required': True, 'alias': ['target_layer', 'target_poi'], 'hint': 'preset_id|geojson', 'panel_source': '待 L3 核查'},
-            {'name': 'k', 'type': 'int', 'default': 1, 'required': False, 'alias': [], 'hint': '近邻数', 'panel_source': '待 L3 核查'},
-            {'name': 'layer', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '点层', 'panel_source': '待 L3 核查'},
+            {'name': 'target', 'type': 'source', 'default': None, 'required': True, 'alias': ['target_layer', 'target_poi'], 'hint': 'preset_id|geojson', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'k', 'type': 'int', 'default': 1, 'required': False, 'alias': [], 'hint': '近邻数', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'layer', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '点层', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
         ],
     },
     {
@@ -247,9 +247,9 @@ TOOL_CONTRACTS = [
         'required_slots': [],
         'planning_common': '点层走可见层选源（不硬默认）；value_col=score（invert 由工具默认：负面为热）；产 hot/cold/ns 点图层',
         'params': [
-            {'name': 'value_col', 'type': 'str', 'default': 'score', 'required': False, 'alias': ['value', 'column', 'field_name'], 'hint': '计量列', 'panel_source': '待 L3 核查'},
-            {'name': 'invert', 'type': 'bool', 'default': None, 'required': False, 'alias': ['inverse'], 'hint': 'true=负面为热', 'panel_source': '待 L3 核查'},
-            {'name': 'layer', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '默认 L2', 'panel_source': '待 L3 核查'},
+            {'name': 'value_col', 'type': 'str', 'default': 'score', 'required': False, 'alias': ['value', 'column', 'field_name'], 'hint': '计量列', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'invert', 'type': 'bool', 'default': None, 'required': False, 'alias': ['inverse'], 'hint': 'true=负面为热', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'layer', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '默认 L2', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
             {'name': 'range', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '可选', 'panel_source': '通用 range'},
             {'name': 'as', 'type': 'str', 'default': None, 'required': False, 'alias': ['output', 'output_layer', 'layer_name', 'named', 'name'], 'hint': '图层名', 'panel_source': '通用 as'},
             {'name': 'keep', 'type': 'bool', 'default': None, 'required': False, 'alias': [], 'hint': '保留免清理', 'panel_source': '通用 keep'},
@@ -268,7 +268,7 @@ TOOL_CONTRACTS = [
         'planning_common': 'pre_filter=field/op/value（如 domain/eq/urban_renewal、polarity/eq/negative）；点层走可见层选源；产点子集图层',
         'params': [
             {'name': 'pre_filter', 'type': 'str', 'default': None, 'required': True, 'alias': [], 'hint': 'field/op/value', 'panel_source': '通用 pre_filter'},
-            {'name': 'layer', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '默认 L2', 'panel_source': '待 L3 核查'},
+            {'name': 'layer', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '默认 L2', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
             {'name': 'range', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '可选', 'panel_source': '通用 range'},
             {'name': 'as', 'type': 'str', 'default': None, 'required': False, 'alias': ['output', 'output_layer', 'layer_name', 'named', 'name'], 'hint': '图层名', 'panel_source': '通用 as'},
             {'name': 'keep', 'type': 'bool', 'default': None, 'required': False, 'alias': [], 'hint': '保留免清理', 'panel_source': '通用 keep'},
@@ -351,12 +351,13 @@ def all_aliases():
 
 
 def panel_missing():
-    """L3：列出 panel_source='PANEL_MISSING' 或 '待 L3 核查' 的参数（提醒开发者补齐参数面板）。"""
+    """L3（5.238 全Resolved）：列出 panel_source='PANEL_MISSING' 的**真缺口**参数（提醒开发者补 dialog）。
+    'EMC-only'（设计无 Toolbox dialog·AI 执行）不计缺失；旧 pending 标记已全消灭（5.238）。"""
     out = []
     for c in TOOL_CONTRACTS:
         for p in c.get('params', []):
-            src = p.get('panel_source', '待 L3 核查')
-            if 'PANEL_MISSING' in src or '待 L3' in src:
+            src = p.get('panel_source', '')
+            if 'PANEL_MISSING' in src:
                 out.append({'skill': c['skill'], 'param': p['name'], 'panel_source': src})
     return out
 
@@ -367,4 +368,4 @@ if __name__ == '__main__':
     tpl = derive_template_registry()
     pm = panel_missing()
     print(f'[OK] TOOL_CONTRACTS={len(TOOL_CONTRACTS)} → GEO_TOOL_CATALOG={len(geo)}, TEMPLATE_REGISTRY={len(tpl)}')
-    print(f'[L3] panel 待核查/缺失={len(pm)} 项（密度工具完整·其余待 L3）')
+    print(f'[L3] panel 真缺口(PANEL_MISSING)={len(pm)} 项（EMC-only 不计·L3 5.238 全Resolved）')

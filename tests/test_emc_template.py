@@ -144,3 +144,30 @@ def test_plan_prompt_includes_chain_convention():
     assert '$1' in p, 'plan prompt 缺 $n 引用约定'
     assert 'chain' in p and 'steps' in p, 'plan prompt 缺 chain/steps schema'
     assert 'multi' in p, 'plan prompt 缺 template=multi 指示'
+
+
+def test_no_pending_l3_panel_source():
+    """模块七 L3（5.238）：TOOL_CONTRACTS 无 '待 L3 核查' panel_source（全Resolved为 dialog 控件/EMC-only/PANEL_MISSING）。"""
+    from ai_qa.tool_contracts import TOOL_CONTRACTS
+    pending = []
+    for c in TOOL_CONTRACTS:
+        for p in c.get('params', []):
+            src = p.get('panel_source', '')
+            if '待 L3' in src:
+                pending.append(f"{c['skill']}.{p['name']}")
+    assert not pending, f'仍有待 L3 核查 panel_source：{pending}'
+
+
+def test_panel_missing_excludes_emc_only():
+    """模块七 L3（5.238）：panel_missing() 只列真 PANEL_MISSING·'EMC-only'（设计无 dialog）不计缺失。"""
+    from ai_qa.tool_contracts import panel_missing, TOOL_CONTRACTS
+    pm = panel_missing()
+    # EMC-only 不在 panel_missing 列表
+    emc_only_in_pm = [x for x in pm if 'EMC-only' in x.get('panel_source', '')]
+    assert not emc_only_in_pm, f'EMC-only 不应计缺失：{emc_only_in_pm}'
+    # 列表只含 PANEL_MISSING
+    for x in pm:
+        assert 'PANEL_MISSING' in x['panel_source'], f'panel_missing 含非 PANEL_MISSING 项：{x}'
+    # EMC-only 工具确实存在（sanity：L3 标记生效）
+    emc_only_count = sum(1 for c in TOOL_CONTRACTS for p in c.get('params', []) if 'EMC-only' in p.get('panel_source', ''))
+    assert emc_only_count > 0, '应有多于 0 个 EMC-only 参数（rank/clip/overlay 等）'

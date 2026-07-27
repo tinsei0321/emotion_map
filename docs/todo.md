@@ -21,6 +21,16 @@
 - **浏览器验证 5.225**：KDE 情绪地形 → 单按钮「生成 2D 热力图」→ 2D 综合彩虹热力图（L1/L2 一致）。
 - **浏览器验证 5.224**：EMC 折叠胶囊点击正常展开。
 
+### ✅ 模块七 L3 panel_source 全核查（D027 契约完整·9/9 第1步·revision-log 5.238）
+
+- [tool_contracts.py](ai_qa/tool_contracts.py) 31 处 `panel_source='待 L3 核查'` 全Resolved：
+  - **dialog 工具映射控件**：buffer agg_cols/layer → `Buffer dialog #buf-*`·area_stats boundary/group_by → `Area-stats dialog`。
+  - **EMC-only 工具**（rank/clip/overlay/zonal/compare/extract/merge/nearest/hotspot/filter）→ `EMC-only（无 Toolbox dialog·AI 执行）`（设计无 dialog·非缺失）。
+- `panel_missing()` 收紧：只列真 PANEL_MISSING（EMC-only 不计·旧 pending 消灭）。三态清晰：dialog / EMC-only / PANEL_MISSING。
+- **测试**：[test_emc_template.py](tests/test_emc_template.py) +2（grep=0 + panel_missing 排除 EMC-only）。
+- **验证**：`grep '待 L3 核查'` = **0** + panel_missing()=0 + pytest **211 passed** 零回归·**待用户 push**。
+- **进度**：模块七 ✅基本 → **✅**·9 模块 **7/9 ✅**（剩 六 D026 / 八 CPD）。
+
 ### ✅ CB-09 轮次3c Pro 推理 + 动态 chain（D009+D012·Phase C·9 模块核心收尾·revision-log 5.237）
 
 - 复合查询 25-45s（大 prompt 兜底）→ **Pro 计划 5-10s**：复合（select_candidates 返 multi）走 Pro 产工具链 chain → runChainPath 动态消费。
