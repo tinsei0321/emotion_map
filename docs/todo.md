@@ -21,6 +21,16 @@
 - **浏览器验证 5.225**：KDE 情绪地形 → 单按钮「生成 2D 热力图」→ 2D 综合彩虹热力图（L1/L2 一致）。
 - **浏览器验证 5.224**：EMC 折叠胶囊点击正常展开。
 
+### ✅ CB-09 轮次3a 0LLM 候选选择器（模块九·Phase A·revision-log 5.235）
+
+- D006 Flash 瘦身（45.8KB→1-3.5KB·25-45s→<5s）须伴三阶段重构·**Phase A = 建 0LLM 选择器（eval-safe 基础）**。
+- 新 [candidate_selector.py](ai_qa/candidate_selector.py) `select_candidates(question, context)`：纯规则·复用 B_TRACK keyword + field_dictionary role→tool 消歧（FIELD_TO_TOOLS/GEOMETRY_TOOLS·新）+ track 派生（A 定义优先/compare 次优先）+ 化合物检测 + 三态出口（=0 短路/≥5 追问/1-4 交 Flash）。
+- **不动 diagnose prompt / eval_template_flash**（守 83% 基线）·**不接 harness 路由**（延 Phase B）。
+- **测试**：[test_candidate_selector.py](tests/test_candidate_selector.py) 复用 eval CASES 37 例·**命中率 97%（36/37·远超 83% Phase B 门）** + 10 边界测。**去风险价值兑现**（规则够准→Phase B 可启动）。
+- **验证**：pytest 202 passed+5 skipped（+11 新测·零回归）+ diagnose prompt 45.8KB 不变（eval 守）·**待用户 push**。
+- **设计偏离**：09-field-recognition.md「本地 JS」→ Python 权威源（eval 红线 + B_TRACK 单一源 + 后端 <100ms）。
+- **待续**：Phase B（Flash 选型前移 + prompt 瘦身 + eval 重写·SPEED WIN·高危）→ Phase C（Pro 推理 + 模块二 D012）。
+
 ### ✅ emc-fix-progress 整合九模块矩阵 + 5.229-5.234（监控卡刷新）
 
 - [emc-fix-progress.md](docs/emc-fix-progress.md) 顶部新增「**九模块实施进度矩阵**」（D001-D040 → ✅/🔄/⬜ + 版本 + 待办·**设计定稿 9/9 ✅ ≠ 实施落地 3/9 ✅**）；5 层补 5.229-5.234（CB-06/07/09）；时序到 5.234。**监控主入口 = §一矩阵**（解决"deepdive README 全 ✅ 是设计定稿·非实施"的混淆）。

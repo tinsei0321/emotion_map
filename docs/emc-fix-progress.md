@@ -1,7 +1,7 @@
 # EMC 修复工程 · 总进度汇总卡
 
 > **一页看清** EMC 修复整体状态。**九模块实施进度矩阵（§一·监控主视图）** + 5 层分层明细（§二）+ 待修（§三）+ 时序（§四）。
-> **更新**：2026-07-27（CB-09 轮次2b·**5.234**·追问胶囊三级 + 绑定工具集 R5/R6/R8）
+> **更新**：2026-07-27（CB-09 轮次3a·**5.235**·0LLM 候选选择器 Phase A）
 > **承继**：本卡由 `emc-fix-backlog.md`（2026-07-24 快照）更名重写，聚焦"9 模块进度 + 分层 + 时序"。
 > **⚠️ 关键区分**：**设计定稿 9/9 ✅**（[deepdive 讨论](catch-ball/emc-arch-deepdive/SUMMARY.md) 全定稿·README「进度总览」✅ 指此）**≠ 实施落地 3/9 ✅**（见 §一矩阵）。看代码进度只认本卡 §一 + revision-log §5，勿认 deepdive README 的 ✅。
 
@@ -22,11 +22,11 @@
 | 6 | **Prompt Engineering** | P4 | D025-D026+R1 | 🔄 | D025 [`tool_contracts.py`](../ai_qa/tool_contracts.py) 单一源 ✅（CB-04·5.226）+ R1 rank `by` worst ✅；**D026 Flash/Pro/finalStep prompt 全派生自 contracts 待**（finalStep 极瘦手写·Flash 未瘦身·轮次4） |
 | 7 | **Toolbox ↔ EMC 接口** | P4 | D027-D029 | ✅基本 | **CB-04（5.226）**：D027 15 `generate*ForAI` 全审计 + D028 `enforceMutualExclusion` 保留 + D029 ForAI=dialog 镜像 CI（[`validate_skill_params.py`](../tests/validate_skill_params.py)）；⬜ L3 `panel_source` 28 项待核查（非色板核心） |
 | 8 | **CPD 引擎** | P3 | D030-D034 | 🔄 | D030 不调 LLM ✅（客户端 `cpd-guide.js`/`cpd-state.js`·5.224 引导卡 + focus-tab）；**D031-D034 待**（CPD 选项直执跳 Flash / 已执行自动移除 / 偏好成长·依赖 Pro 动态 chain D012·P3） |
-| 9 | **字段识别（0LLM）** | P2 | D035-D040 | ⬜ | 待启动：纯规则 `field→tool`·候选≤4·候选≥5 追问 6 场景模板·候选=0 短路提示导入（与 Flash 瘦身绑轮次4·同 D006） |
+| 9 | **字段识别（0LLM）** | P2 | D035-D040 | 🔄 | **Phase A ✅（5.235）**：[`candidate_selector.py`](../ai_qa/candidate_selector.py) `select_candidates` 纯规则（B_TRACK keyword + field role→tool 消歧 + track 派生 + 化合物 + 三态出口）·eval 语料 **97% 命中**·**不接路由**（延 Phase B）；**Phase B/C 待**（接 diagnose + Pro） |
 
-**总计**：设计定稿 **9/9 ✅** · 实施落地 **3/9 ✅（三/四/五）· 5/9 🔄（一/二/六/七/八）· 1/9 ⬜（九）**
+**总计**：设计定稿 **9/9 ✅** · 实施落地 **3/9 ✅（三/四/五）· 6/9 🔄（一/二/六/七/八/九·Phase A）· 0/9 ⬜**
 
-**当前推进**：CB-09 多轮次（[plan](catch-ball/emc-arch-deepdive/)）— 轮次1 P0 消矛盾（5.231）✅ + 轮次1 删旧R+R/质量防线（5.232）✅ + 轮次2a finalStep 极瘦（5.233）✅ + 轮次2b 胶囊三级（5.234）✅；**待启动**：轮次3-5 + 模块一 Flash 瘦身（轮次4·D006）+ 模块二 Pro 动态 chain（D012）+ 模块九字段识别（D035-D040）。
+**当前推进**：CB-09 多轮次（[plan](catch-ball/emc-arch-deepdive/)）— 轮次1 P0 消矛盾（5.231）✅ + 轮次1 删旧R+R/质量防线（5.232）✅ + 轮次2a finalStep 极瘦（5.233）✅ + 轮次2b 胶囊三级（5.234）✅ + **轮次3a 0LLM 选择器 Phase A（5.235）✅**；**待启动**：轮次3b Phase B（Flash 选型前移 + prompt 瘦身 + eval 重写·SPEED WIN·高危）+ 模块二 Pro 动态 chain（D012）+ 模块九 Phase B/C。
 
 ---
 
@@ -84,7 +84,7 @@
 | ⬜ D012 Pro 动态 chain | 二 | runChainPath 从固定链→Pro 动态生成（解锁 CPD D031-D034） | SUMMARY §六 P2 |
 | ⬜ D026 prompt 全派生 contracts | 六 | Flash/Pro/finalStep 从 tool_contracts 派生（依赖 D006） | SUMMARY §六 P4 |
 | ⬜ D031-D034 CPD 选项直执/移除/成长 | 八 | 依赖 Pro plans 产出（D012） | SUMMARY §六 P3 |
-| ⬜ D035-D040 字段识别 0LLM | 九 | 纯规则 field→tool·候选≤4·6 场景追问（与 D006 绑轮次4） | SUMMARY §六 P2 |
+| 🔄 D035-D040 字段识别 0LLM | 九 | **Phase A ✅（5.235）** select_candidates 97% 命中；Phase B/C 待（接 diagnose + Pro） | SUMMARY §六 P2 |
 | ⬜ L3 panel_source 全核查 | 七 | 13 工具·density 完整·其余 28 项（非色板核心） | CB-04 |
 | ⬜ T4 胶囊矛盾 | — | 无 strategy 不显"齐全" + 值层面缺口回写 diagnose | backlog |
 | ⬜ T5 对比 C 键 | — | 批4 Swipe 入口收敛 + 无焦点提示 + 双屏标题 | backlog |
@@ -97,6 +97,7 @@
 
 | 版本 | 修复 | CB |
 |------|------|:--:|
+| **5.235** | **CB-09 轮次3a 0LLM 候选选择器（模块九·Phase A·eval-safe）**（candidate_selector.py 纯规则 + eval 语料 97% 命中·不接路由） | CB-09 |
 | **5.234** | **CB-09 轮次2b 追问胶囊三级 + 绑定工具集**（`runCapsule` L1/L2 路由 + applyQualityDefense 扩 R5/R6/R8 + 动态胶囊 chip） | CB-09 |
 | **5.233** | **CB-09 轮次2a finalStep 极瘦**（FINAL_TEMPLATE 17KB→1.86KB·prefill <1s） | CB-09 |
 | **5.232** | **CB-09 轮次1 删旧R+R + 质量防线三层**（删 review.py + applyQualityDefense 全代码防线） | CB-09 |
