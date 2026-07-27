@@ -200,6 +200,15 @@ def test_geo_catalog_derives_all_gis_tools():
     assert not missing, f'geo_tool_catalog 附录缺工具（派生遗漏）：{missing}'
 
 
+def test_diagnose_dispatch_empty_candidates_request_upload():
+    """5.242 S1：layer_meta 提供 + 数据过滤后候选空 → fill_card_empty（Flash 出 request_upload·非 fallback 大 prompt）。"""
+    from ai_qa.prompts import build_diagnose_prompt_dispatch
+    prompt, path, model = build_diagnose_prompt_dispatch('生成热力图', '', None, {'has_point': False, 'has_polygon': True})
+    assert path == 'fill_card_empty', f'数据不支撑应 fill_card_empty·实 {path}'
+    assert model is None
+    assert 'request_upload' in prompt, 'fill_card_empty prompt 应含 request_upload 指令'
+
+
 def test_agent_prompt_no_handwritten_gis_specs():
     """模块六 D026（5.240）：agent_step prompt 不含手写 GIS 工具规格（已全派生至 geo_tool_catalog 附录）。
     注：派生附录从 density.when 渲染会含'核密度(KDE)'字样（合法·源自 contracts）·手写规格的独特签名是

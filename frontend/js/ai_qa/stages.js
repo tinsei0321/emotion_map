@@ -273,6 +273,7 @@ export async function diagnoseStep(ctx, hooks) {
     (err) => { throw new Error(err); },
     {
       phase: 'diagnose', signal: ctx.signal, model: 'flash',
+      layerMeta: ctx.layerMeta || null,   // CB-09 5.242：{has_point,has_polygon} 喂 select_candidates 数据感知过滤
       onReason: (t) => { hooks.onReason && hooks.onReason(t, 0); },
     });
   return parseDiagnoseCard(acc.token);   // null = 解析失败（harness 降级，不抛）

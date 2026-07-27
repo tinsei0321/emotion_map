@@ -214,10 +214,7 @@ function composePartialCard(diagnose, doneParts, gapParts, existingLine) {
  *  CB-09 D023：失败动作从「LLM revise」改为「代码 inline 标注」（applyQualityDefense L1）·hints 保留供日志。 */
 function _verifyClaims(draft) {
   if (!draft) return { ok: true, missing: [] };
-  const re = /(?:已生成|已加载|已裁出|裁出了|生成了|已创建|新建了|产出了)\s*[「]?([^\n「」，。：:]{2,15})[」]?\s*(?:的?图层|层|面)/g;
-  const claims = [];
-  let m;
-  while ((m = re.exec(draft)) !== null) claims.push(m[1].trim());
+  const claims = _extractClaimedLayers(draft);   // CB-09 5.242 S7：单一正则源（与 while-loop 漂移检测同源·治两套正则不一致 missing 检测）
   if (!claims.length) return { ok: true, missing: [] };
   const actual = getLayers().filter((l) => (l._renderState || 'ok') === 'ok').map((l) => l.name).filter(Boolean);   // E3：渲染失败层（_renderState≠ok·入列表但地图未真渲染）不计实际产出（治假完成·同 orchestrate :690 对账口径）
   const missing = claims.filter((c) => !actual.some((a) => a === c || a.includes(c) || c.includes(a)));
@@ -465,10 +462,17 @@ async function runTemplatePath(ctx, hooks, diagnose) {
     //   不直接 GAP 放弃。守 Smart Agent「失败时交流、不猜不放弃」；硬 ERR（网络/异常·非提问可解）仍走 GAP。
     if (!failed || recoverable) {
       const _lbl = params.boundary || params.layer || params.center || '该范围';
+      // CB-09 5.242 S3：clip 失败 + 有面层（无点）→ 智能建议 extract_feature 替代（非误导"上传点数据"）
+      const _hasPoly = getLayers().some((l) => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
+      const _suggestExtract = def.tool === 'clip' && /无可见.*点|无已加载的情绪点层/.test(obs) && _hasPoly;
       const ask = recoverable
         ? { type: 'ask_user',
-            question: `${def.tool} 没成功：${obs.replace(/^\[ERR\]\s*[^：]*：?/, '').slice(0, 140) || '返回可恢复错误'}。请按可用字段/数据重试，或说明你的具体需求。`,
-            options: ['我来指定正确的字段/值重试', '换一个分析方向', '看现有数据能做哪些分析？'] }
+            question: _suggestExtract
+              ? `${def.tool} 需要点层（裁点）·但当前只有面层。若要从面层中提取要素（如裁出西陵区），请选下方「抽取」·或上传点数据做点裁剪。`
+              : `${def.tool} 没成功：${obs.replace(/^\[ERR\]\s*[^：]*：?/, '').slice(0, 140) || '返回可恢复错误'}。请按可用字段/数据重试，或说明你的具体需求。`,
+            options: _suggestExtract
+              ? ['用「抽取」(extract_feature) 从面层提取要素', '我来上传点数据后重试', '换一个分析方向']
+              : ['我来指定正确的字段/值重试', '换一个分析方向', '看现有数据能做哪些分析？'] }
         : { type: 'ask_user',
             question: `「${_lbl}」范围内未聚合到足够的情绪点数据（可能该区无 L2 点层覆盖，或范围与数据不重叠）。要怎么处理？`,
             options: ['换一个区域重试（请指定：如伍家岗区 / 西陵区）', '我已上传该区域数据，请重新分析', '先看全域情绪分布如何？'] };
@@ -516,7 +520,7 @@ async function runCapsule(ctx, hooks, capsule) {
     template: skill,
     params: (capsule.params && typeof capsule.params === 'object') ? capsule.params : {},
     degraded: false,
-    intent: 'emotion_analysis',
+    intent: skill === 'concept' ? 'general' : (/^(clip|extract_feature|overlay|merge|buffer|filter_attr|area_stats)$/.test(skill) ? 'gis_operation' : 'emotion_analysis'),   // CB-09 5.242 S6：按 skill 推导（非硬编码 emotion_analysis·治 gis 胶囊误注入 emotion intent）
     domain_lens: [],
     scale: 'macro',
     data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
@@ -532,7 +536,7 @@ async function runCapsule(ctx, hooks, capsule) {
  *  链中断（步失败）→ ask_user；零图层 → ask_user；成功 → finalStep 出结论。chain 来自 stages.CHAIN_REGISTRY。 */
 async function runChainPath(ctx, hooks, diagnose, chain) {
   resetStepResults();   // 清 $n 引用（新一轮）
-  const toolHistory = []; let newLayerCount = 0; const failedObs = [];
+  const toolHistory = []; let newLayerCount = 0; const failedObs = []; let hasRows = false;   // CB-09 5.242 S9：hasRows（分析型链步产 rows 非 layer·治 zonal→rank 链误判失败）
   for (let i = 0; i < chain.steps.length; i++) {
     const step = chain.steps[i];
     if (hooks.onRoundStart) hooks.onRoundStart(i + 1);
@@ -544,12 +548,13 @@ async function runChainPath(ctx, hooks, diagnose, chain) {
     const obs = (r && r.observation) || '[ERR] 工具无观察返回';
     if (/\[ERR\]|失败|错误/.test(obs)) { failedObs.push(`${step.tool}: ${obs.slice(0, 80)}`); break; }   // 步失败中断
     if (r && r.data && r.data.layerId) newLayerCount++;
+    if (r && r.data && Array.isArray(r.data.rows) && r.data.rows.length) hasRows = true;
     toolHistory.push(`第${i + 1}轮·动作: ${step.tool}(${JSON.stringify(params).slice(0, 120)}) → ${obs}`);
     if (hooks.onObservation) hooks.onObservation(obs, i + 1);
     try { document.dispatchEvent(new CustomEvent('tool:executed', { detail: { tool: step.tool, layerId: (r && r.data && r.data.layerId) || null, ok: !/\[ERR\]|失败/.test(obs), ts: Date.now() } })); } catch (_) { /* 观测信号失败不阻塞 */ }
   }
-  // 链中断/零图层 → ask_user（守 Smart 不放弃·同 runTemplatePath :345-356）
-  if (failedObs.length || newLayerCount === 0) {
+  // 链中断/零图层 → ask_user（守 Smart 不放弃·同 runTemplatePath :345-356）·S9：hasRows（分析型链步）非空不算失败
+  if (failedObs.length || (newLayerCount === 0 && !hasRows)) {
     const _tried = failedObs.slice(0, 2).map((f) => String(f).split(':')[0]).join('、');
     const ask = { type: 'ask_user',
       question: `${chain.name}（${chain.steps.map((s) => s.tool).join('→')}）没跑通${_tried ? `（${_tried} 失败）` : '（未产出图层）'}——可能是范围与数据不匹配。要怎么处理？`,
@@ -605,7 +610,7 @@ function _deriveChainId(question, diagnose) {
   return null;
 }
 
-const _GEO_TOOLS = ['extract_feature', 'overlay', 'clip', 'filter_attr', 'merge', 'buffer', 'zonal_stats', 'rank', 'area_stats', 'nearest', 'hotspot'];
+const _GEO_TOOLS = ['extract_feature', 'overlay', 'clip', 'filter_attr', 'merge', 'buffer', 'zonal_stats', 'rank', 'area_stats', 'nearest', 'hotspot', 'ensure_zone'];   // CB-09 D015（5.242 补 ensure_zone·F3 完整性 gate 统计）
 const _ANALYTICAL_TOOLS = new Set(['zonal_stats', 'compare_regions', 'rank', 'area_stats']);   // P0：表格型分析工具（返 rows·无 layerId）→ 成功判定认 rows 非空，不误判 GAP
 /** F3：诊断 method 里规划的 geo 工具步骤数。数组元素用 ' → ' 拼接后按 →/，/；/换行 分句，
  *  每句首个工具名计 1 步；**不**按 ASCII 逗号分（工具实参含逗号，如 ($1,land)）。 */
@@ -691,6 +696,12 @@ export async function orchestrate(ctx, hooks = {}) {
   // 指代解析（NL 预处理·5.212·几 ms·非 LLM）：检测"这边/刚才"→ grounding 显式标注聚焦对象·让 diagnose 不靠猜
   const _coref = resolveCoref(ctx.question, ctx.priorTurn);
   if (_coref) ctx.context = _coref + '\n\n' + (ctx.context || '');
+  // CB-09 5.242：结构化 layer_meta（{has_point,has_polygon}）喂 select_candidates → _filter_by_context 激活（解 context=None 数据盲·治「剪裁面层误路由 clip」类问题）
+  const _ls = getLayers();
+  ctx.layerMeta = {
+    has_point: _ls.some((l) => l.kind === 'point' && l.fc && l.fc.features && l.fc.features.length),
+    has_polygon: _ls.some((l) => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length),
+  };
   // 【Smart·计划阶段】认知前置步：DIAGNOSE 问题理解卡（LLM 产意图+method+data_plan；失败/降级不阻塞，照走 agent loop）
   let diagnose = null;
   try {

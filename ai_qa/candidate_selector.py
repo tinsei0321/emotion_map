@@ -38,8 +38,8 @@ TOOL_FIELD_REQUIRE = {
 # 工具所需几何（'point'/'polygon'/None=不限）。context 提供时收紧。
 TOOL_GEOMETRY_REQUIRE = {
     'density': 'point', 'hotspot': 'point', 'rank': 'point', 'nearest': 'point',
-    'buffer': 'point',
-    'zonal': None, 'compare': None, 'filter_attr': None, 'clip': None,
+    'buffer': 'point', 'clip': 'point',   # 5.242：clip 需点层（resolvePointLayer）·Phase A 误设 None·治剪裁面层误路由
+    'zonal': None, 'compare': None, 'filter_attr': None,
     'overlay': None, 'merge': None, 'extract_feature': None, 'area_stats': None,
 }
 
@@ -51,8 +51,8 @@ ANALYSIS_TOOLS = frozenset({'density', 'hotspot', 'zonal', 'rank', 'compare'})
 # 本选择器在 base 之上补 trigger（仅本地用·不回灌 prompt）。补的词是规则选择器需显式、而 Flash 靠语感能命的。
 _B_TRACK_TRIGGER_EXT = {
     'overlay': ['重叠', '重合', '相交', '同一块'],
-    'clip': ['里面的', '当中的', '某区', '这个区', '那个区', '剪裁', '裁剪', '裁剪出'],  # 剪裁/裁剪 补用户原话（"剪裁西陵区"曾误路由 zonal·5.241）
-    'extract_feature': ['只要', '单独', '抽出', '抠出', '裁出', '提取', '剪裁出'],  # 裁出/提取/剪裁出 补实名（B_TRACK "裁出某" 模板不匹配"裁出西陵区"）
+    'clip': ['里面的', '当中的', '某区', '这个区', '那个区', '剪裁', '裁剪', '裁剪出'],  # 剪裁/裁剪 = 裁点（has_point 时）·歧义词·与 extract 都入候选由 _filter_by_context 按数据裁决
+    'extract_feature': ['只要', '单独', '抽出', '抠出', '裁出', '提取', '剪裁', '裁剪', '裁剪出', '剪裁出'],  # 剪裁/裁剪 = 抽面（has_polygon 时）·5.242 与 clip 歧义·数据过滤定夺
     'density': ['密集'],  # 补"密集"（B_TRACK 有"集中"无"密集"）
     'rank': [],  # rank 非 B 赛道（C 赛道·下方规则）
 }
@@ -194,6 +194,10 @@ def select_candidates(question, context=None):
     # 3. field-role + geometry 收紧（仅 context 提供时·eval 无 context 跳过保可比性）
     if field_roles or has_point is not None or has_polygon is not None:
         candidates = _filter_by_context(candidates, field_roles, has_point, has_polygon)
+        # 5.242：过滤后若 real tools（非 multi/concept）< 2 → 移除 stale multi（compound 在过滤前判·过滤后可能只剩 1 工具·不再是复合）
+        _real_after = [t for t in candidates if t not in ('multi', 'concept')]
+        if 'multi' in candidates and len(_real_after) < 2:
+            candidates = [t for t in candidates if t != 'multi']
 
     # 4. 分析型优先排序（multi/concept 保头）+ 截断到 4
     def _sort_key(t):
@@ -216,15 +220,17 @@ def select_candidates(question, context=None):
 
 
 def _filter_by_context(candidates, field_roles, has_point, has_polygon):
-    """按可见字段角色 + 几何收紧候选（D035 field 消歧）。"""
+    """按可见字段角色 + 几何收紧候选（D035 field 消歧·5.242 数据感知）。
+
+    field_roles 空时只按几何（has_point/has_polygon）过滤·不按字段（前端 layer_meta 只送几何·字段未送时勿误剔）。"""
     out = []
     for t in candidates:
         if t in ('multi', 'concept', 'unknown'):
             out.append(t)
             continue
         require = TOOL_FIELD_REQUIRE.get(t)
-        if require and not (field_roles & require):
-            continue  # 缺所需字段 → 移除
+        if require and field_roles and not (field_roles & require):
+            continue  # field_roles 提供时才按字段过滤（空=未知=跳过·5.242 防 density 被误剔）
         geo = TOOL_GEOMETRY_REQUIRE.get(t)
         if geo == 'point' and has_point is False:
             continue
@@ -260,7 +266,7 @@ def _grounding(field_roles, has_point, has_polygon):
 
 
 # ════════════ 追踪 ID 注册（MOD_AIQA 扩展）═══════════
-register_track_id("MOD_AIQA.F_008", "select_candidates（0LLM 候选工具选择·模块九 D035-D038·Phase A 纯规则）")
+register_track_id("MOD_AIQA.F_012", "select_candidates（0LLM 候选工具选择·模块九 D035-D038·Phase A 纯规则·5.242 context 接回）")
 
 
 if __name__ == '__main__':

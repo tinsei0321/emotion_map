@@ -89,8 +89,8 @@ def test_compound_detection():
 
 
 def test_context_field_filter_removes_unsupported():
-    """D035 field-role 消歧：缺情绪字段 → density 移除（数据不支撑）。"""
-    r = select_candidates('做核密度分析', {'field_roles': set(), 'has_point': True, 'has_polygon': False})
+    """D035 field-role 消歧：field_roles 有字段但无情绪角色 → density 移除（5.242：field_roles 空时跳过字段过滤·须非空才测）。"""
+    r = select_candidates('做核密度分析', {'field_roles': {'boundary_name'}, 'has_point': True, 'has_polygon': False})
     assert 'density' not in r['candidates']
 
 
@@ -118,3 +118,28 @@ def test_return_shape():
     r = select_candidates('做核密度分析')
     assert set(r.keys()) >= {'candidates', 'grounding', 'ask_scenario', 'track', 'compound'}
     assert r['track'] in ('A', 'B', 'C')
+
+
+def test_data_aware_jiancai_polygon_only():
+    """5.242 S1 数据感知：剪裁+只有面（无点）→ extract_feature（clip 被几何过滤剔除）。"""
+    r = select_candidates('剪裁西陵区', {'has_point': False, 'has_polygon': True})
+    assert 'extract_feature' in r['candidates'], f'剪裁面层应留 extract·实 {r["candidates"]}'
+    assert 'clip' not in r['candidates'], f'clip 需点·应被几何过滤剔·实 {r["candidates"]}'
+
+
+def test_data_aware_jiancai_has_point():
+    """5.242 S1 数据感知：剪裁+有点层 → clip 保留（可裁点）。"""
+    r = select_candidates('剪裁西陵区', {'has_point': True, 'has_polygon': False})
+    assert 'clip' in r['candidates'], f'剪裁有点层时 clip 应留·实 {r["candidates"]}'
+
+
+def test_data_aware_density_no_point_filtered():
+    """5.242 S1 数据感知：生成热力图+无点 → density 几何过滤剔除（→ dispatch request_upload）。"""
+    r = select_candidates('生成热力图', {'has_point': False, 'has_polygon': True})
+    assert 'density' not in r['candidates'], f'density 需点·无点应剔·实 {r["candidates"]}'
+
+
+def test_data_aware_density_has_point_kept():
+    """5.242 S1 数据感知：生成热力图+有点 → density 保留（field_roles 空不误剔）。"""
+    r = select_candidates('生成热力图', {'has_point': True, 'has_polygon': False})
+    assert 'density' in r['candidates'], f'density 有点层应留（field_roles 空勿误剔）·实 {r["candidates"]}'

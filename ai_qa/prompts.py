@@ -272,6 +272,7 @@ FILL_CARD_TEMPLATE = """
 3. data_plan.strategy：ready=数据齐·fallback_annotated=软缺口有替代·request_upload=硬缺口（关键数据无替代·该问不硬答）。
 4. concept（概念问）→ intent=general·template=concept·params={{}}·method=[]。
 5. domain_lens/scale/decision_type/outlet 据问句语义判·outlet 默认「生成图层」。
+6. **数据纠错兜底（5.242·S8）**：若 grounding 显示预选工具数据明显不支撑（如 clip 但无点层 / density 但无情绪点）·即使预选了也须 data_plan.strategy=request_upload + rationale 说明需什么数据·勿硬填 ready 跑工具致失败。无候选时同理→request_upload。
 
 【问句】
 {question}
@@ -296,14 +297,15 @@ def _candidate_schema_text(candidates):
         opt_hint = ', '.join(f'{k}={v!r}' for k, v in opt.items()) or '（无）'
         req_hint = ('必填:' + ','.join(req)) if req else '无必填'
         lines.append(f'- {sk}（{s.get("name", "")}）：{req_hint}；可选：{opt_hint}')
-    return '\n'.join(lines) if lines else '- concept（无候选·填概念卡）'
+    return '\n'.join(lines) if lines else '- （无候选工具·当前数据不支撑任何预选工具·输出 data_plan.strategy=request_upload + rationale 说明需什么数据）'
 
 
 @track("MOD_AIQA.F_009", track_args=False)
 def build_fill_card_prompt(question, candidates, context: str = '', context_tokens: list = None) -> str:
     """Phase B 极瘦填卡 prompt（<3.5KB·D006）：select_candidates 预选工具 → Flash 只填卡（不选型）。
 
-    卡 schema 8 字段不变 → 前端 parseDiagnoseCard/harness 路由不动。复合/0 候选走 build_diagnose_prompt 兜底（router 分派）。"""
+    卡 schema 8 字段不变 → 前端 parseDiagnoseCard/harness 路由不动。复合/0 候选走 build_diagnose_prompt 兜底（router 分派）。
+    5.242：空候选（数据过滤后无工具可执）→ FILL_CARD 出 request_upload 卡（Flash 说明需什么数据）。"""
     schema = _candidate_schema_text(candidates or [])
     prompt = _today_line() + FILL_CARD_TEMPLATE.format(
         candidates_schema=schema, question=question or '（空）', context=context or '（无 grounding）')
@@ -311,16 +313,21 @@ def build_fill_card_prompt(question, candidates, context: str = '', context_toke
 
 
 @track("MOD_AIQA.F_010", track_args=False)
-def build_diagnose_prompt_dispatch(question, context: str = '', context_tokens: list = None):
+def build_diagnose_prompt_dispatch(question, context: str = '', context_tokens: list = None, layer_meta=None):
     """Phase B+C（D006·5.236/5.237）diagnose prompt 分派（router 调·可单测·不打 LLM）：
-    select_candidates 预选 → 单/少候选（无 multi）走极瘦填卡（Flash·<3.5KB·<5s）·复合（multi）走 Pro 计划（D009·<5KB·5-10s·产 chain）·0 候选走现大 prompt 兜底（45.8KB·不回归）。
-    返 (prompt, path, model_override)·path ∈ {'fill_card','plan','fallback'}·model_override ∈ {None,'pro'}（router 据此切 tier）。"""
+    select_candidates(question, layer_meta) 预选 → 单/少候选（无 multi）走极瘦填卡（Flash·<3.5KB·<5s）·复合（multi）走 Pro 计划（D009·<5KB·5-10s·产 chain）。
+    **5.242 数据感知**：layer_meta（{has_point,has_polygon}）喂 select_candidates → _filter_by_context 激活（解 context=None 数据盲）。
+    空候选分二态：layer_meta 提供 + 空 = 数据不支撑 → fill_card 空（Flash 出 request_upload）；无 layer_meta + 空 = 大 prompt 兜底。
+    返 (prompt, path, model_override)·path ∈ {'fill_card','fill_card_empty','plan','fallback'}。"""
     from ai_qa.candidate_selector import select_candidates
-    cands = select_candidates(question or '', None)['candidates']
+    cands = select_candidates(question or '', layer_meta)['candidates']
     if cands and 'multi' not in cands:
         return build_fill_card_prompt(question, cands, context, context_tokens), 'fill_card', None
     if 'multi' in cands:   # Phase C（D009+D012）：复合 → Pro 产工具链 plan → runChainPath 动态消费
         return build_plan_prompt(question, cands, context, context_tokens), 'plan', 'pro'
+    # 空候选：layer_meta 提供（数据感知模式）→ 数据不支撑任何工具 → fill_card 空（Flash 出 request_upload）
+    if layer_meta:
+        return build_fill_card_prompt(question, [], context, context_tokens), 'fill_card_empty', None
     return build_diagnose_prompt(context, context_tokens), 'fallback', None
 
 
@@ -579,3 +586,6 @@ register_track_id("MOD_AIQA.F_005", "build_diagnose_prompt（承重 eval-anchor�
 register_track_id("MOD_AIQA.F_006", "build_field_infer_prompt（P2 字段语义推断）")
 register_track_id("MOD_AIQA.F_007", "build_deep_attribution_prompt（L4 深度归因·政策→情绪→项目闭环，lazy enrichment）")
 register_track_id("MOD_AIQA.F_008", "build_optimize_prompt（5.215 Prompt 优化·Flash 流式·不增维度·梳理已有要素）")
+register_track_id("MOD_AIQA.F_009", "build_fill_card_prompt（Phase B 极瘦填卡·select_candidates 预选→Flash 填卡）")
+register_track_id("MOD_AIQA.F_010", "build_diagnose_prompt_dispatch（Phase B+C 三路分派·5.242 数据感知 layer_meta）")
+register_track_id("MOD_AIQA.F_011", "build_plan_prompt（Phase C Pro 复合计划·产 chain）")
