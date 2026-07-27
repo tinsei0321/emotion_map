@@ -21,6 +21,14 @@
 - **浏览器验证 5.225**：KDE 情绪地形 → 单按钮「生成 2D 热力图」→ 2D 综合彩虹热力图（L1/L2 一致）。
 - **浏览器验证 5.224**：EMC 折叠胶囊点击正常展开。
 
+### ✅ CB-09 轮次2a finalStep 极瘦（revision-log 5.233）
+
+- FINAL_TEMPLATE **17KB→1.25KB**（省 93%·prefill 20-35s→<1s）：[build_final_prompt](ai_qa/prompts.py#L168) 删 MANIFESTO（-11.2KB）+ industry_kb_lens_appendix（-0~20KB）；模板重写极瘦（三句骨架 + 诚实 + 格式防漂移 + 内联模板 + 简短文风）。[api.js](frontend/js/ai_qa/api.js#L33) answer timeout 60→45s。
+- **用户裁决 B**：diagnose 瘦身延轮次4（伴 0LLM 三阶段彻底重构·A 增量剪裁半吊子）·轮次2 不碰 diagnose 保 83% eval。
+- 质量守卫：applyQualityDefense（5.232）代码守诚实/结构·prompt 不再内嵌自查清单。test_industry_kb 同步（no_lens_appendix）。
+- **验证**：pytest 191 passed + serve/boot 干净·**answer 质量深度交用户肉眼**（归因若太干反馈·回补 MANIFESTO §10 ~200 字节）·**待用户 push**。
+- **待续**：轮次2b capsule 三级（D020/D021·落 R5/R6/R8·承重）→ 轮次3-5。
+
 ### ✅ CB-09 轮次1 EMC 彻底重构·消矛盾 + 删旧R+R/质量防线三层（revision-log 5.231 + 5.232）
 
 - **5.231 P0 消矛盾**（已 commit 4c2d783·上次会话）：① focusLayer 父组空 FC 返子层（治 Overview 0 条）② observation 参数自述（cell_size/radius·网格单元非点·治 LLM 锚定 300m）③ density 3d 清 radius ④ 单技能注入 formatRegistry。

@@ -140,16 +140,14 @@ def test_lens_appendix_gating():
     assert ap3.count('【城市更新') == 1
 
 
-def test_build_final_prompt_injects_lens_appendix():
-    """build_final_prompt(domain_lens) 注入门控：有效域→含权威语境附录；'general'/None→不含。
-    （diagnose 不注此，保 Flash eval 95%。）"""
+def test_build_final_prompt_no_lens_appendix():
+    """CB-09 D019 极瘦：build_final_prompt 不再注 industry_kb_lens_appendix（省 0-20KB·17KB→1.25KB·prefill <1s）。
+    domain_lens 无论传什么·finalStep prompt 都不含权威语境附录（质量守卫移至前端 harness.applyQualityDefense）。
+    （agent_step prompt 仍注 lens 附录·不在本测范围。）"""
     from ai_qa.prompts import build_final_prompt
-    p_hit = build_final_prompt(context='x', domain_lens=['urban_renewal'])
-    assert '聚焦领域权威语境' in p_hit and '城市更新' in p_hit
-    p_general = build_final_prompt(context='x', domain_lens=['general'])
-    assert '聚焦领域权威语境' not in p_general
-    p_none = build_final_prompt(context='x', domain_lens=None)
-    assert '聚焦领域权威语境' not in p_none
+    for lens in (['urban_renewal'], ['urban_planning', 'urban_governance'], ['general'], None):
+        p = build_final_prompt(context='x', domain_lens=lens)
+        assert '聚焦领域权威语境' not in p, f'finalStep 仍注 lens appendix（domain_lens={lens}）·违反 D019 极瘦'
 
 
 if __name__ == '__main__':
