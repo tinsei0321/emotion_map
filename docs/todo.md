@@ -21,6 +21,17 @@
 - **浏览器验证 5.225**：KDE 情绪地形 → 单按钮「生成 2D 热力图」→ 2D 综合彩虹热力图（L1/L2 一致）。
 - **浏览器验证 5.224**：EMC 折叠胶囊点击正常展开。
 
+### ✅ CB-09 轮次2b 追问胶囊三级 + 绑定工具集（revision-log 5.234）
+
+- 追问胶囊：静态 {tag,text}（走完整 diagnose 15-20s）→ **动态 {label,level,skill,params}**·LLM 产 + 代码校验 + 按 level 路由。
+- **prompt**：[FINAL_TEMPLATE](ai_qa/prompts.py#L141) 追加胶囊规则（~360B·1.5→1.86KB·<2KB）·`{{capsule:标签|级别|技能|参数=值}}`·L1/L2（禁 L3·L3 走 CPD 下轮）·flat key=val（避 .format 花括号冲突·同 chart spec 范式）。
+- **harness**：[applyQualityDefense](frontend/js/ai_qa/harness.js#L233) 扩 **R5**（validateParams 硬剔无效）/ **R6**（可达性软标·不剔）/ **R8**（无 L2 记 episode）+ `_extractCapsules` 剥标记+结构化；[runCapsule](frontend/js/ai_qa/harness.js#L506)（新）合成 synthDiagnose 复用 runTemplatePath 全套出口+防线（L1 `_forceDeliberate=false` 0 LLM 轮 <2s / L2 Pro 确认 params 5-8s·Flash 退化直执）；[_needsDeliberate](frontend/js/ai_qa/harness.js#L386) +_forceDeliberate；[orchestrate](frontend/js/ai_qa/harness.js#L661) 顶 ctx.capsule 路由跳 diagnose；4 caller（runTemplate/runChain/while-loop gis+result）透传 capsules。
+- **panel**：[send(text,capsule)](frontend/js/ai_qa/panel.js#L1406) 接胶囊（label 当用户消息）+ `_result.defense` 兜底合并 trace（gis 路径不调 onDefense）；[renderSuggest](frontend/js/ai_qa/panel.js#L623) 动态读 trace.defense.capsules（无则静态 _followUps 兜底·gap/ask/general）·data-capsule-idx 索引避 JSON-in-attr；[renderAnswer](frontend/js/ai_qa/panel.js#L458) 防漏剥 capsule 标记。
+- **测试**：[test_emc_template.py](tests/test_emc_template.py) +2（capsule 规则在 + 极瘦 <2KB 守门）。
+- **验证**：pytest 193 passed+3 skipped（含 2 新测·基线 194→196）+ prompt 1.86KB + grep 零残留 + serve/boot 干净·**L1 <2s / L2 5-8s / R5 剔无效 交用户浏览器肉眼**·**待用户 push**。
+- **MVP 限**：flat key=val 不支持数组参数（compare/overlay boundaries）·聚焦标量工具（density/rank/buffer/zonal/clip 等）。
+- **§0 拓扑 N/A**：runCapsule 住现有 harness.js·非新子系统·topo_scanner 不漂移。
+
 ### ✅ CB-09 轮次2a finalStep 极瘦（revision-log 5.233）
 
 - FINAL_TEMPLATE **17KB→1.25KB**（省 93%·prefill 20-35s→<1s）：[build_final_prompt](ai_qa/prompts.py#L168) 删 MANIFESTO（-11.2KB）+ industry_kb_lens_appendix（-0~20KB）；模板重写极瘦（三句骨架 + 诚实 + 格式防漂移 + 内联模板 + 简短文风）。[api.js](frontend/js/ai_qa/api.js#L33) answer timeout 60→45s。

@@ -454,6 +454,8 @@ function renderAnswer(text, validNames) {
     const lbl = act === 'focus' ? '飞到 ' + t : act === 'show' ? '显示 ' + t : '深读 ' + t;
     return `<button class="chat-action-btn" data-action="${act}" data-target="${escapeHtml(t)}" type="button">${escapeHtml(lbl)}</button>`;
   });
+  // CB-09 D020：剥离 {{capsule:...}} 标记（defense 已抽走·防早返路径 quick-general 等漏网·胶囊只在 #aiq-suggest 显·不内联）
+  html = html.replace(/\{{1,2}capsule:[^}]+\}{1,2}/g, '');
   return html;
 }
 
@@ -621,13 +623,27 @@ function _followUps(t) {
 function renderSuggest(t) {
   const el = document.getElementById('aiq-suggest');
   if (!el) return;
-  _guidanceCardShown = false;   // 答案后 _followUps 接管，清引导卡片标志
-  const items = _followUps(t);
-  if (!items.length) { el.hidden = true; el.innerHTML = ''; return; }
+  _guidanceCardShown = false;   // 答案后 胶囊/_followUps 接管，清引导卡片标志
+  // CB-09 D020：优先动态胶囊（LLM 产·trace.defense.capsules·{label,level,skill,params}）·无则静态 _followUps 兜底（gap/ask/general）
+  const capsules = (t && t.defense && Array.isArray(t.defense.capsules)) ? t.defense.capsules : [];
+  let chipHtml;
+  if (capsules.length) {
+    chipHtml = capsules.map((c, i) => `<button type="button" class="aiq-suggest-chip aiq-capsule" data-capsule-idx="${i}"><span class="aiq-suggest-tag">${escapeHtml(c.level || 'L1')}</span>${escapeHtml(c.label)}</button>`).join('');
+  } else {
+    const items = _followUps(t);
+    if (!items.length) { el.hidden = true; el.innerHTML = ''; return; }
+    chipHtml = items.map((it) => `<button type="button" class="aiq-suggest-chip" data-prompt="${escapeHtml(it.text)}"><span class="aiq-suggest-tag">${escapeHtml(it.tag)}</span>${escapeHtml(it.text)}</button>`).join('');
+  }
   el.hidden = false;
-  el.innerHTML = '<span class="aiq-suggest-label">追问</span>'
-    + items.map((it) => `<button type="button" class="aiq-suggest-chip" data-prompt="${escapeHtml(it.text)}"><span class="aiq-suggest-tag">${escapeHtml(it.tag)}</span>${escapeHtml(it.text)}</button>`).join('');
-  el.querySelectorAll('.aiq-suggest-chip').forEach((b) => b.addEventListener('click', () => send(b.dataset.prompt)));
+  el.innerHTML = '<span class="aiq-suggest-label">追问</span>' + chipHtml;
+  el.querySelectorAll('.aiq-suggest-chip').forEach((b) => b.addEventListener('click', () => {
+    if (b.dataset.capsuleIdx != null) {   // 胶囊 chip → send(null,capsule) 走 runCapsule（L1 直达/L2 Pro 确认）
+      const cap = capsules[Number(b.dataset.capsuleIdx)];
+      if (cap) send(null, cap);
+    } else {                               // 静态文本 chip → send(text) 走完整管线
+      send(b.dataset.prompt);
+    }
+  }));
 }
 function clearSuggest() {
   const el = document.getElementById('aiq-suggest');
@@ -1387,12 +1403,18 @@ function _isResumeCue(q) {
   return !!s && /继续|接着|续做|补充|那个|上一个|把刚才/.test(s);
 }
 
-async function send(text) {
-  text = (text || '').trim();
-  if (!text || _streaming) return;
+async function send(text, capsule) {
+  const isCapsule = !!capsule;
+  if (_streaming) return;
+  if (isCapsule) {   // CB-09 D020 胶囊点击：label 当用户消息 + ctx.capsule 路由 runCapsule（跳 diagnose Flash）
+    text = (capsule && capsule.label) || '';
+  } else {
+    text = (text || '').trim();
+    if (!text) return;
+  }
   _userPinned = false;   // E6 新话轮强制跟随：上滑停跟仅话轮内有效，发新问即复位（appendMessage 已滚底 + 流式 autoScroll 续跟；ChatGPT/Claude 标准）
   const input = document.getElementById('chat-input');
-  if (input) input.value = '';
+  if (input && !isCapsule) input.value = '';
   _resetOptimize();   // 5.214 清优化状态（原文 + 按钮回 sparkle）
   appendMessage('user', escapeHtml(text));
   _history.push({ role: 'user', text });
@@ -1418,6 +1440,7 @@ async function send(text) {
   const ctx = { question: text, context: await buildContext(), signal: _abortCtl.signal, model: _thinkMode, history: _hist.slice(-10),
     priorTurn: _buildPriorTurn(),               // 多轮连续性：上轮 intent/method/已做/缺口（续作承接；harness gis 续作检查用）
     turnHistory: _buildTurnHistory(3),          // B2 多轮滚动记忆：最近 ≤3 轮（意图收敛轨迹，旧→新），注入 ctx.context 顶部
+    capsule: isCapsule ? capsule : null,        // CB-09 D020 胶囊路由（null=NL 走 diagnose·对象=orchestrate 顶路由 runCapsule）
     resume: false };
   // P1：上一轮以 ask_user 结束（用户点选项胶囊续作）→ 强制续作，跳过 general/request_upload 短路，承接上轮 method（选项文本不含"继续/那个"等线索词，正则识别不到）
   const _prevTrace = _history.length >= 2 ? (_history[_history.length - 2].trace || null) : null;
@@ -1431,7 +1454,7 @@ async function send(text) {
   try {
     const _result = await orchestrate(ctx, buildHooks(shell));
     settled = true;
-    if (_curTrace && _result) { _curTrace.exit = _result.exit || _curTrace.exit; _curTrace.newLayerCount = _result.newLayerCount; }
+    if (_curTrace && _result) { _curTrace.exit = _result.exit || _curTrace.exit; _curTrace.newLayerCount = _result.newLayerCount; if (_result.defense) _curTrace.defense = _result.defense; }
     if (_result && _result.exit === 'ask') _consecutiveAsks++; else _consecutiveAsks = 0;   // P1 ask 连续计数（跨 orchestrate，≥2 触发下轮禁止）
     // C：软缺口降级口径标注（fallback_annotated）
     const strat = _curTrace && _curTrace.diagnose && _curTrace.diagnose.data_plan && _curTrace.diagnose.data_plan.strategy;

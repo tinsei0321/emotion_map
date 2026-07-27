@@ -239,6 +239,11 @@ function applyQualityDefense(draft, opts) {
   const reg = (typeof formatRegistry === 'function' ? formatRegistry() : []) || [];
   const realLayers = reg.filter((r) => r.tool && r.tool !== 'query_layers').map((r) => r.name).filter(Boolean);
 
+  // CB-09 D020 追问胶囊：先剥离 {{capsule:...}} 标记 → cleanDraft（下游 R1-R7 跑净文本）·capsules 待 R5/R6/R8 校验
+  const _cap = _extractCapsules(final);
+  final = _cap.cleanDraft;
+  let capsules = _cap.capsules;
+
   // L1 产物验证（skipL1=false·_verifyClaims missing → inline 标注「（注：未实际生成）」·复用 :826 函数替换范式防 $ 语义）
   if (!_opts.skipL1) {
     const claims = _verifyClaims(final);
@@ -281,13 +286,38 @@ function applyQualityDefense(draft, opts) {
     fixes.push({ rule: 'R7', action: 'truncate' });
   }
 
+  // R5/R6/R8 追问胶囊校验（CB-09 D020·capsule 绑定工具集）：R5 schema 硬剔 / R6 可达性软标 / R8 多样性记 episode
+  if (capsules.length) {
+    capsules = capsules.filter((c) => {
+      const def = stages.SKILL_DEFS[c.skill];
+      if (!def || !def.tool) { fixes.push({ rule: 'R5', action: 'drop-invalid-capsule', label: c.label, reason: 'skill-no-tool' }); return false; }
+      if (c.level !== 'L1' && c.level !== 'L2') { fixes.push({ rule: 'R5', action: 'drop-invalid-capsule', label: c.label, reason: 'bad-level' }); return false; }
+      const v = stages.validateParams(c.skill, c.params || {});
+      if (!v.ok) { fixes.push({ rule: 'R5', action: 'drop-invalid-capsule', label: c.label, reason: 'missing:' + v.missing.join(',') }); return false; }
+      return true;
+    });
+    const _lyrs = getLayers();
+    const _hasAny = _lyrs.length > 0;
+    const _POINT_SKILLS = new Set(['density', 'buffer', 'hotspot', 'rank', 'nearest', 'extract_feature', 'filter_attr']);
+    const _BOUNDARY_SKILLS = new Set(['zonal', 'compare', 'area_stats', 'merge', 'clip']);
+    capsules.forEach((c) => {
+      let exe = true;
+      if (c.skill === 'overlay') exe = _lyrs.length >= 2;
+      else if (_POINT_SKILLS.has(c.skill) || _BOUNDARY_SKILLS.has(c.skill)) exe = _hasAny;
+      c.executable = exe;
+      if (!exe) fixes.push({ rule: 'R6', action: 'mark-unexecutable', label: c.label, skill: c.skill });
+    });
+    if (!capsules.some((c) => c.level === 'L2')) fixes.push({ rule: 'R8', action: 'no-l2-capsule' });
+  }
+
   // L3 降级渲染（R1/R4 触发 → 跳 LLM 结论·展示 observation + 图层按钮·复用 CB-07 _composeDegradedConclusion）
   if (degrade) {
     final = _composeDegradedConclusion(_opts.toolHistoryText);
     fixes.push({ rule: 'L3', action: 'degrade' });
+    capsules = [];   // 降级（空答/矛盾）→ 丢胶囊（LLM 已混乱·胶囊可疑）·降级卡自有图层按钮
   }
 
-  return { final, degraded: degrade, fixes };
+  return { final, degraded: degrade, fixes, capsules };
 }
 
 /** ⑤ 抽草稿里"声称产出的图层名"（保守：{{show:X}} 模板 + 强措辞"动词+名+图层类后缀"），供对账。
@@ -301,6 +331,33 @@ function _extractClaimedLayers(draft) {
   const verbRe = /(?:生成|产出|得到|裁出|裁剪|新建|构建|输出)[：:]?\s*[`「\*]*([^\n\s`「」\*，。：:()（）\[\]]{2,20})[`」\*]*\s*(?:的)?(?:图层|层|面|点|网格|热度|分布|聚合)/g;
   while ((m = verbRe.exec(draft)) !== null) names.add(m[1].trim());
   return [...names].filter((n) => n && n.length >= 2 && !/^(图层|面|点|网格|分布|热度|清单|列表|数据|结果|图层组|边界)$/.test(n));
+}
+
+/** CB-09 D020 抽草稿里的追问胶囊 {{capsule:label|level|skill|k=v|...}} → 剥离标记 + 结构化。
+ *  格式同 chart spec（| 分隔·flat key=val·无嵌套花括号·避 .format() 吞蚀 + JSON }冲突）。
+ *  兼容 1~2 花括号（.format 后 {{capsule}}→{capsule}）；数值/bool 串强转。返 {cleanDraft, capsules:[{label,level,skill,params}]}。 */
+function _extractCapsules(draft) {
+  if (!draft) return { cleanDraft: '', capsules: [] };
+  const capsules = [];
+  const cleanDraft = String(draft).replace(/\{{1,2}capsule:([^|}]+)\|([Ll][12])\|([a-z_]+)((?:\|[^|}]+=[^|}]*)*)\}{1,2}/g, (_, label, level, skill, paramStr) => {
+    const params = {};
+    if (paramStr) {
+      paramStr.split('|').forEach((kv) => {
+        const i = kv.indexOf('=');
+        if (i > 0) {
+          const k = kv.slice(0, i).trim();
+          let v = kv.slice(i + 1).trim();
+          if (/^-?\d+$/.test(v)) v = Number(v);
+          else if (v === 'true') v = true;
+          else if (v === 'false') v = false;
+          if (k) params[k] = v;
+        }
+      });
+    }
+    capsules.push({ label: label.trim(), level: level.toUpperCase(), skill: skill.trim(), params });
+    return '';   // 剥离标记（下游 R1-R7 跑净文本）
+  });
+  return { cleanDraft: cleanDraft.replace(/\n{3,}/g, '\n\n'), capsules };
 }
 
 /** P1 编排·单技能路径：diagnose 选定 single 技能 → 填参 → 直接调 TOOLS[tool] → finalStep（**不进 while-loop、0 次 agentStep LLM**，p^N→p²）。
@@ -326,6 +383,7 @@ function _missingSlotAsk(skill, missing) {
  *  简单单技能（ready + <3 步）跳过 → 省 1 轮 Pro LLM（缓解"效率慢"·K3 痛点 1·反思 deliberateStep 叠加）。 */
 function _needsDeliberate(diagnose) {
   if (!diagnose || diagnose.degraded) return false;   // 降级诊断（可能概念问/诊断失败）不研判
+  if (diagnose._forceDeliberate) return true;   // CB-09 D020 L2 胶囊：强制 Pro 确认 params（跨工具单步须研判）
   const strat = diagnose.data_plan && diagnose.data_plan.strategy;
   const method = diagnose.method || [];
   return (strat && strat !== 'ready') || method.length >= 3;
@@ -437,8 +495,35 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   const _qd = applyQualityDefense(draft, { obsOk: true, toolHistoryText, skipL1: false });
   draft = _qd.final;
   if (hooks.onFinalDone) hooks.onFinalDone(draft);
-  if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template' });
-  return { ok: true, rounds: 1, final: draft, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template' }, degraded: false, diagnose, exit: 'result', newLayerCount };
+  if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template', capsules: _qd.capsules || [] });
+  return { ok: true, rounds: 1, final: draft, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template', capsules: _qd.capsules || [] }, degraded: false, diagnose, exit: 'result', newLayerCount };
+}
+
+/** CB-09 D020 追问胶囊执行路径（L1 直达 / L2 轻判·跳 diagnose Flash）：合成 synthDiagnose → 复用 runTemplatePath 全套出口+防线。
+ *  L1（同工具换参）：_forceDeliberate=false → runTemplatePath 不触发 deliberate → 0 LLM 中间轮（<2s 出图）。
+ *  L2（跨工具单步）：_forceDeliberate=true → Pro 模式下 deliberateStep 确认 params 再执行（5-8s）；Flash 退化直接执行。
+ *  skill 无效（concept/unknown）→ composeGapCard 兜底。params 已 R5 校验（产时）+ validateParams（执行时）双保险。 */
+async function runCapsule(ctx, hooks, capsule) {
+  const skill = capsule && capsule.skill;
+  const def = stages.SKILL_DEFS[skill];
+  if (!def || !def.tool) {
+    const gapText = composeGapCard({ intent: 'emotion_analysis', template: skill }, ['胶囊工具不可执行：' + skill]);
+    if (hooks.onFinalDone) hooks.onFinalDone(gapText);
+    return { ok: true, rounds: 0, final: gapText, defense: { degraded: true, fixes: [], skipped: 'capsule-bad-skill', capsules: [] }, degraded: true, diagnose: { degraded: true, intent: 'emotion_analysis', _capsule: true }, exit: 'gap', newLayerCount: 0 };
+  }
+  const synthDiagnose = {
+    template: skill,
+    params: (capsule.params && typeof capsule.params === 'object') ? capsule.params : {},
+    degraded: false,
+    intent: 'emotion_analysis',
+    domain_lens: [],
+    scale: 'macro',
+    data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+    method: [],
+    _capsule: true,
+    _forceDeliberate: capsule.level === 'L2',
+  };
+  return await runTemplatePath(ctx, hooks, synthDiagnose);
 }
 
 /** E1（5.210）：多步链确定性执行（0 中间 LLM 轮·治 C3 多步超时）。类比 runTemplatePath 循环 chain.steps；
@@ -487,8 +572,8 @@ async function runChainPath(ctx, hooks, diagnose, chain) {
   const _qd = applyQualityDefense(draft, { obsOk: true, toolHistoryText, skipL1: false });
   draft = _qd.final;
   if (hooks.onFinalDone) hooks.onFinalDone(draft);
-  if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'chain' });
-  return { ok: true, rounds: chain.steps.length, final: draft, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'chain' }, degraded: false, diagnose, exit: 'result', newLayerCount };
+  if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'chain', capsules: _qd.capsules || [] });
+  return { ok: true, rounds: chain.steps.length, final: draft, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'chain', capsules: _qd.capsules || [] }, degraded: false, diagnose, exit: 'result', newLayerCount };
 }
 /** E1：chain step params 模板 → 实参。{占位} 填值（问句/diagnose.params）；$n 原样（工具内 ref 解析）。 */
 function _resolveChainParams(template, diagnoseParams, question) {
@@ -573,6 +658,7 @@ function deriveDiagnoseMethod(template, params) {
  * @returns {Promise<{ok, degraded?, rounds?, final?, defense?}>}
  */
 export async function orchestrate(ctx, hooks = {}) {
+  if (ctx && ctx.capsule) return runCapsule(ctx, hooks, ctx.capsule);   // CB-09 D020 胶囊点击跳 diagnose Flash·直达 runCapsule（L1 0 轮/L2 Pro 确认）
   // ══ 编排器·确定性裁定（Smart Agent/Dumb Tool 内核 · CLAUDE.md「AI·Copilot 开发内核」铁律3：不调 LLM、只接线）══
   // 流程：Smart·计划（diagnose 意图卡）→ 编排器分流（短路 / plan-once-execute / ReAct 兜底）→ Dumb·执行（SKILL/TOOLS 纯参数化）→ 三态出口代码裁定（result/gap/concept）。详见 docs/copilot-architecture.md。
   const toolHistory = [];   // 每轮压缩摘要（注入下轮 prompt）
@@ -890,13 +976,13 @@ export async function orchestrate(ctx, hooks = {}) {
   if (_intent === 'gis_operation') {
     const _gQd = applyQualityDefense(draft, { obsOk: successObs > 0 || newLayerCount > 0, toolHistoryText, skipL1: true });
     draft = _gQd.final;
-    return { ok: true, rounds: round, final: draft, defense: { degraded: _gQd.degraded, fixes: _gQd.fixes, skipped: 'gis_operation' }, degraded, diagnose, exit: 'result', newLayerCount };
+    return { ok: true, rounds: round, final: draft, defense: { degraded: _gQd.degraded, fixes: _gQd.fixes, skipped: 'gis_operation', capsules: _gQd.capsules || [] }, degraded, diagnose, exit: 'result', newLayerCount };
   }
 
   // CB-09 D023 质量防线（删旧 R+R·reviewStep/REVIEW_ENABLED/_reviseOnce 全去）：L1+R1/R2/R3/R4/R7+L3 代码兜底
   // _extractClaimedLayers 对账（:864）已标注 missing → skipL1:true；R2/R3/R4/R7 仍跑
   const _fQd = applyQualityDefense(draft, { obsOk: successObs > 0 || newLayerCount > 0, toolHistoryText, skipL1: true });
   const final = _fQd.final;
-  if (hooks.onDefense) hooks.onDefense({ degraded: _fQd.degraded, fixes: _fQd.fixes, skipped: 'result' });
-  return { ok: true, rounds: round, final, defense: { degraded: _fQd.degraded, fixes: _fQd.fixes, skipped: 'result' }, degraded, diagnose, exit: 'result', newLayerCount };
+  if (hooks.onDefense) hooks.onDefense({ degraded: _fQd.degraded, fixes: _fQd.fixes, skipped: 'result', capsules: _fQd.capsules || [] });
+  return { ok: true, rounds: round, final, defense: { degraded: _fQd.degraded, fixes: _fQd.fixes, skipped: 'result', capsules: _fQd.capsules || [] }, degraded, diagnose, exit: 'result', newLayerCount };
 }

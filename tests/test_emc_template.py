@@ -65,3 +65,21 @@ def test_optional_defaults_keys_known():
     for s in TEMPLATE_REGISTRY:
         for k in s['optional_defaults']:
             assert k in _KNOWN_SLOTS, f'{s["skill"]} optional_defaults 未知键: {k}'
+
+
+def test_final_prompt_includes_capsule_rule():
+    """CB-09 D020：finalStep 极瘦 prompt 须含追问胶囊规则（LLM 产 {{capsule:...}} 三级胶囊）。"""
+    from ai_qa.prompts import build_final_prompt
+    p = build_final_prompt('', '')
+    assert '追问胶囊' in p, 'final prompt 缺追问胶囊规则段'
+    assert 'capsule:' in p, 'final prompt 缺 {{capsule:}} 格式说明'
+    # 范例须含一个合法 skill（density）+ L1 级别（防 prompt 把级别/技能写错）
+    assert 'density' in p and 'L1' in p, 'final prompt 胶囊范例缺 skill/level'
+
+
+def test_final_prompt_stays_lean():
+    """CB-09 D019 极瘦回归守门：final prompt 须 <2KB（防 MANIFESTO/industry_kb 回灌致 17KB+·prefill 20-35s 回潮）。
+    含胶囊规则（~360 字节·Chinese UTF-8）仍远低于 2KB·与 D019 表 ~1-2KB 目标一致。"""
+    from ai_qa.prompts import build_final_prompt
+    n = len(build_final_prompt('', '').encode())
+    assert n < 2000, f'final prompt 膨胀到 {n} bytes（应 <2KB·查是否回灌 MANIFESTO/industry_kb）'

@@ -138,6 +138,8 @@ FINAL_TEMPLATE = """
 
 **内联模板**（独占一行·渲染成按钮/图）：`{{show:图层}}` 显示 · `{{focus:区域}}` 飞到 · `{{inspect:区域}}` 深读 · 数据≥3 项比较/排序/趋势出图 `{{chart:TYPE|title=|x=标签|y=数值}}`（TYPE=bar/line/pie·xy 等长·y 真实值·最多 1 张）。
 
+**追问胶囊**（末尾产 1-3 个·各占一行）：`{{capsule:标签|级别|技能|参数=值|...}}`。级别 `L1`=同工具换参（直达·换极性/排序）/`L2`=跨工具单步（轻判·叠置/缓冲）·禁 L3。技能 ∈ density/rank/buffer/clip/overlay/zonal/compare/extract_feature/area_stats/hotspot/nearest/filter_attr。参数=值 从本问结果派生（density→analysis=negative|polarity=N；rank→by=worst|top_n=5；buffer→center=地名|radius_m=500）·禁提做不到的。例：`{{capsule:切换消极热力图|L1|density|analysis=negative|polarity=N}}`。
+
 **文风**：简短（3-5 句）·通俗+专业词紧跟解释（极性=情绪正负）·禁学术八股·禁英文术语·勿追加"建议进一步分析"。
 
 【探索历史】（历轮 thought + action + 工具观察）：
