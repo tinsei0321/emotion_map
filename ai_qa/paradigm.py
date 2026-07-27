@@ -128,7 +128,7 @@ B_TRACK_PARADIGM = [
      'triggers': ['最近', '邻近', '最近邻'],
      'template': 'nearest'},
     {'archetype': '密度分布', 'stage': 'Analyze', 'voice': '我用核密度看聚集强度连续分布',
-     'triggers': ['核密度', '密度分析', '聚集强度', '热力分布', '密度', '集中'],
+     'triggers': ['核密度', '密度分析', '聚集强度', '热力分布', '热力图', '热力', '密度', '集中', '情绪热度'],
      'template': 'density'},
     {'archetype': '聚集识别', 'stage': 'Analyze', 'voice': '我用 Gi* 识别显著冷热点聚集',
      'triggers': ['聚集', '热点', '冷热', '显著聚集'],
@@ -167,6 +167,7 @@ def b_track_paradigm_text() -> str:
 # ════════════ 表3 · GIS 操作目录（AI 自动选用 = Skill+Agent 层）════════════
 # 每项：何时用 / 入参 / 产出 / 对结论范式的贡献。DIAGNOSE 的 method 字段据此组合。
 # 后端实现见 api/geo_routes.py（复用 core/spatial_analysis + range_selector，GeoPandas）。
+# ⚠ CB-04 单一真相源 = ai_qa/tool_contracts.py·本 list 为镜像·tests/validate_skill_params.py 守护一致。
 GEO_TOOL_CATALOG = [
     {
         'name': 'filter_attr',
@@ -233,6 +234,17 @@ GEO_TOOL_CATALOG = [
         'examples': '正:各街道情绪归因 / 正:更新单元排序 / 误:这个公园哪个点最差(→rank micro)',
     },
     {
+        'name': 'compare_regions',
+        'when': '区域对比：≥2 个区/街道/单元并排对比情绪与归因，给差异方向',
+        'params': 'layer, boundaries(≥2 个 preset_id·数组或 | ，分隔), range?',
+        'yields': '并排对比 + 差异叙述',
+        'contributes': '"谁更消极/差在哪"的对比结论（C 赛道对比主干）',
+        'scale': '宏观/中观（区域对比）',
+        'preconditions': '≥2 个 boundary preset',
+        'failure_modes': '误用于单区归因——单区用 zonal/rank；compare 需 ≥2 区',
+        'examples': '正:西陵vs伍家岗 / 正:这两个区谁更差 / 误:西陵区归因(→zonal)',
+    },
+    {
         'name': 'rank',
         'when': '排序：按极性/domain/element 找 Top N 最差/最好',
         'params': 'layer, by(polarity|domain|element), top_n, range, boundary?',
@@ -288,7 +300,7 @@ GEO_TOOL_CATALOG = [
     {
         'name': 'density',
         'when': '核密度(KDE)/热力图：用户说"核密度/密度分析/聚集强度/热力分布/密集/集聚/哪里最集中/热力图/情绪热度分布"时首选——产连续密度面（=热力聚合，非逐点 Gi*）',
-        'params': 'layer, radius?(2D 热力带宽·默认300), cell_size?(3D 网格边长·默认600)（尺度表同 buffer：社区250/区500/主城1000）, value_col?(加权·默认 score), range?, mode?(2d|3d|terrain), as?, keep?',
+        'params': 'layer, polarity?(overall|positive|negative|neutral·默认overall·=极性筛点+着色), analysis?(terrain|positive|negative|neutral·色板主驱动·缺省由polarity推), mode?(2d|3d|terrain·默认2d), radius?(2D热力带宽·默认300), cell_size?(3D网格边长·默认600)（尺度表同buffer：社区250/区500/主城1000）, weightField?(加权·默认emotion_intensity), level?(L1|L2|L3|L4), range?, as?, keep?',
         'yields': '连续密度面——2D 彩虹热力图 / 3D 网格聚合 / 3D KDE 等值面地形（委托 Toolbox 标准色段·对称拉伸），自动落地图',
         'contributes': '"密度/密集/热力"类的标准出口=新热力图层（彩虹色带·最直观的分布可视化）；区别于 hotspot(逐点 Gi*·冷热点分类)与 zonal_stats(情绪网格聚合·归因排序)',
         'scale': '全尺度（连续密度面）',
@@ -318,6 +330,7 @@ def geo_tool_catalog_text() -> str:
 # 每个「技能」= 1-2 个成熟 geo 工具 + 规划常识默认 + 拟人化口吻。diagnose 选 template → harness runTemplatePath 填 params 确定性执行（p^N→p²）。
 # 少而精（7 命名技能 + 2 兜底），结构可生长：追加一条 dict 即新增技能（P2+ 加 nearest/hotspot/area_stats/merge/extract_feature）。
 # 前端 stages.js SKILL_DEFS 镜像 required_slots/optional_defaults/tool/category（仿 field_dictionary 两份字典，改须同步）。
+# ⚠ CB-04 单一真相源 = ai_qa/tool_contracts.py·本 list 为镜像·tests/validate_skill_params.py 守护 optional_defaults 一致。
 TEMPLATE_REGISTRY = [
     {'skill': 'concept', 'name': '概念问答', 'category': 'concept',
      'voice': '我直接讲解概念，不动地图', 'triggers': '什么是/含义/区别/定义',
@@ -326,13 +339,13 @@ TEMPLATE_REGISTRY = [
     {'skill': 'density', 'name': '分布热度分析', 'category': 'single',
      'voice': '我用热力图(2D彩虹)/网格聚合(3D)看清情绪点分布热度', 'triggers': '哪里最集中/热点/聚集/分布/密度',
      'tool': 'density', 'required_slots': [],
-     'optional_defaults': {'mode': '2d', 'radius': 300, 'weightField': 'emotion_intensity', 'cell_size': 600, 'polarity': 'overall'},
-     'planning_common': '委托主 Toolbox（固定 HEATMAP_RAMPS 色段，可切 2D/3D）：2D=彩虹热力图(radius 步行尺度)；3D=网格聚合(cell 400~1000m)。数据走 Layers 可见层（未显示层禁用）'},
+     'optional_defaults': {'mode': '2d', 'polarity': 'overall', 'radius': 300, 'weightField': 'emotion_intensity', 'cell_size': 600},
+     'planning_common': '委托主 Toolbox（固定 HEATMAP_RAMPS 色段·ForAI=dialog 镜像）：2D 综合彩虹热力图(radius 步行尺度)/3D 网格聚合(cell 400~1000m)/3D KDE 地形。**极性细分（CB-04）**：综合/总体→polarity=overall（彩虹·analysis=terrain）；积极/消极/中性→polarity=positive/negative/neutral（对应 segment 色板·只筛该极性点）。数据走 Layers 可见层（未显示层禁用）'},
     {'skill': 'rank', 'name': '排序评价', 'category': 'single',
      'voice': '我按极性给区域排序找最差/最好', 'triggers': '哪个最需更新/最差/最好/排名',
      'tool': 'rank', 'required_slots': [],
-     'optional_defaults': {'by': 'polarity', 'top_n': 5},
-     'planning_common': 'Top 5 聚焦最突出要素；by 默认极性'},
+     'optional_defaults': {'by': 'worst', 'top_n': 5},
+     'planning_common': 'Top 5 聚焦最突出要素；by=worst(最差)/best(最好)/domain:X/element:X（CB-04 修：旧默认 polarity 非有效值·[geo_routes:376] 抛错）'},
     {'skill': 'buffer', 'name': '缓冲影响圈', 'category': 'single',
      'voice': '我画设施影响范围并聚合圈内情绪', 'triggers': '周边/附近/范围内/地铁站X米',
      'tool': 'buffer', 'required_slots': ['center'],

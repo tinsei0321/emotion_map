@@ -356,3 +356,49 @@ K3 另指：光环硬编码 hex（ai_qa.css:431）违 theme var；交互环未�
 
 ### 状态
 `CB-CPD 专轨收尾 · v1.0 定稿` —— plan v0.4→**v1.0**（修 K3 H1 断链 + M1 interpret + M2 谓词 + L1 措辞）。反评价 7 条（agree 4 / partial 3 / disagree 0）。H1 已核实。**CB-CPD-01/02/03 三轮闭环**（v0.1→v1.0，核心决策全收敛）。**进 P0 测试铺底 → P1 尺度诚实 → P2 引擎 G1-G4**。若实施中发现 plan 层新问题，再开 CB-CPD-04。
+
+---
+
+## CB-04 · 2026-07-27（EMC 架构 · density/polarity 流水线契约整改）
+
+### ① SCAN 摘要
+
+[SCAN_EMCArch_deepseek_2026-07-27](report/SCAN_EMCArch_deepseek_2026-07-27.md)（DeepSeek，L1 全量审计）：触发用例"生成 L2 消极点的热力图"→ 实出综合彩虹图。**全量审计 14 个 `generate*ForAI` 入口**，定性为**系统性参数契约不完整**（非孤立 bug）。总评 6.5/10（认知 6 / 编排 9 / **执行 4↓** / 输出 8）。
+
+分级发现：🔴 P0 = H1 [generateHeatmapForAI:819](../../frontend/js/heatmap-tool.js#L819) 硬编码 `rampKey:'rainbow'` 绕过 [computeStyle:93](../../frontend/js/heatmap-tool.js#L93)；H2 [tools.js density](../../frontend/js/ai_qa/tools.js#L1121) 未传 analysis/rampKey；R1 [SKILL_DEFS.rank:40](../../frontend/js/ai_qa/stages.js#L40) 默认 `by:'polarity'` 非有效值。⚠️ P1 = P1a density prompt 参数名漂移（bandwidth_m/cell_size_m/value_col vs radius/cell_size/weightField）；P1b [_PARAM_ALIAS:12](../../frontend/js/ai_qa/stages.js#L12) 全局 radius→radius_m 误伤 density；P1c compare_regions 不在 prompt；P1d/e/f 多工具缺 agg_cols/layer/as·keep。⚠️ P2 = 触发词缺「热力图」+ 高级参数无 AI 通道。
+
+一句话：**Smart Agent 想得对，Dumb Tool 做不到——不是 Tool 不够 Dumb，是参数契约不够完整**（非架构问题，是接口完整性问题）。
+
+### ② 我方反评价（verify-before-accept · 逐条核实）
+
+| # | SCAN 条目 | 判定 | 核实/行动 |
+|---|---|---|---|
+| H1 | ForAI 硬编码 rainbow | **agree** | 核实；ForAI 加 analysis 复用 computeStyle |
+| H2 | density 未传 analysis | **agree** | density 补 polarity→analysis 映射 |
+| R1 | rank by:'polarity' 无效 | **agree** | 核实 [rank-tool.js:16](../../frontend/js/toolbox/rank-tool.js#L16)+[geo_routes.py:376](../../api/geo_routes.py#L376)；默认改 worst |
+| P1a | density prompt 参数名漂移 | **agree** | contracts 对齐 |
+| P1b | _PARAM_ALIAS 误伤 density | **agree** | 核实 [harness.js:292](../../frontend/js/ai_qa/harness.js#L292) 确调 normalizeParams；改按工具区分别名 |
+| P1c | compare_regions 缺 prompt | **agree** | 核实；补 |
+| P1d/e/f | 多工具参数缺口 | **agree** | 并入 L3 四步法 |
+| P2a | 触发词缺热力图 | **agree** | L3 补 |
+| P2d | 高级参数无 AI 通道 | **partial** | 按最高纪律先核查参数面板；PANEL_MISSING→提醒开发者补 |
+| Phase 0 density 止血 | **agree** | 采纳并修正：analysis（色板）+ polarity（筛选）双维度 |
+| Phase 1 手动补三处 | **agree（路径调）** | 走 `tool_contracts.py` 单一源（用户定） |
+| Phase 3 validate 脚本 | **agree** | 并入 L2 guard |
+| Phase 3 AGENTS 铁律 11 | **agree** | 落为最高纪律第 2 条 |
+
+**CB-04: 13 agree / 0 disagree / 1 partial — pytest 待 L1 后跑 — 待 push**
+
+**disagree: 0**。本轮 SCAN 质量极高（14 入口全审 + 行号对比表 + 根因链），KNOWLEDGE §3 老毛病（文档当运行时/完成度偏高/sim 当风险）一个没犯，反补我漏掉的 R1/P1b 两真 bug。
+
+### ③ 行动（plan 融合定稿 → L1 实现）
+
+plan 据 SCAN 融合（用户批准）：**L1 止血** density 双维度（analysis 色板 + polarity 筛选，修正原"纯 polarity"）+ R1 by worst + P1b alias 按工具区分 + P1c compare 入 prompt；**L2 治本** 新建 `ai_qa/tool_contracts.py` 单一权威源 + prompt/SKILL_DEFS 派生 + 并入 SCAN `tests/validate_skill_params.py`；**L3 全扫** 13 工具四步法（独立轮次）；**最高纪律**（用户指示 + SCAN 铁律）EMC 分析图严格复用 Toolbox 参数面板、ForAI=dialog 镜像、PANEL_MISSING 提醒开发者补 → 入 memory/CLAUDE.md/AGENTS.md。
+
+### ④ 新发现 + 状态
+
+- **契约分裂模式**（新 learning → KNOWLEDGE §2）：density 参数契约在 [prompts.py:85](../../ai_qa/prompts.py#L85) / [paradigm GEO_TOOL_CATALOG:289](../../ai_qa/paradigm.py#L289) / [TEMPLATE_REGISTRY:329](../../ai_qa/paradigm.py#L329) / SKILL_DEFS+TOOLS **四处各写一份且不一致**——"参数加在哪、加几次"失控的系统性坑（同类 [[emc-aggregate-column-alias-silent-zero]]）。治本 = 单一源 `tool_contracts.py` + 派生 + 校验。
+- **SCAN 高质量范式**（正例，不入 §3）：本轮零 decline——扎实代码级审计，不犯老毛病。双模型闭环再现：我诊断覆盖 H1/H2/P1a，SCAN 全审补 R1/P1b/P1c + 14 入口系统化。**多模型 = 视角正交覆盖盲区**（同 CB-CPD-03 H1 之训）。
+
+### 状态
+`open → L1 实现中` —— plan 融合定稿（13 agree/0 disagree/1 partial）。L1 density 止血 + R1/P1b/P1c 紧急修进行中；L2 contracts + L3 全扫待续。双模型闭环：L1 落地后可触发下一轮 SCAN 对比验证（density 极性图 + rank by 回归）。

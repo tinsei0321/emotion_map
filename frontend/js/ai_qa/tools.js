@@ -604,7 +604,7 @@ export async function buildContext() {
     if (lines.length) _summ.push(`${pl.name}(${feats.length}点): ${lines.slice(0, 8).join(' | ')}`);
   }
   if (_summ.length) parts.push('数据内容摘要（字段值域·知有什么）:\n' + _summ.join('\n'));
-  parts.push('EMC 分析能力（可生成·勿判缺数据需上传）：密度热力图（2D 彩虹/3D·可按极性筛：综合/积极/消极/中性）/ 网格聚合（任意尺度）/ 情绪地形 / 区域聚合统计 / 排序 / 缓冲 / 叠置 / 裁取 / 抽取 / 筛选 / 合并 / 邻近 / 聚集热点 / 面积统计 / 区域对比。L2 已含 polarity（积极/中性/消极）·要"消极/积极热力图"直接生成（极性筛）·勿判"缺极性点"。');
+  parts.push('EMC 分析能力（可生成·勿判缺数据需上传）：密度热力图（2D 彩虹/3D·可按极性筛：综合/积极/消极/中性）/ 网格聚合（任意尺度）/ 情绪地形 / 区域聚合统计 / 排序 / 缓冲 / 叠置 / 裁取 / 抽取 / 筛选 / 合并 / 邻近 / 聚集热点 / 面积统计 / 区域对比。L2 已含 polarity（积极/中性/消极）·要"消极/积极热力图"直接生成（density.params.polarity=overall|positive|negative|neutral·综合=彩虹·极性=对应色板）·勿判"缺极性点"。');
   // 数据可见纪律：不注入 registry catalog 全量（formatGeoCatalog）——未显示层一律不准用，防"只传 L1·T1 却跑 L2"
   const wisdom = await getWisdom();
   if (wisdom) parts.push(wisdom);
@@ -1137,7 +1137,8 @@ export const TOOLS = {
       } else {
         r = await generateHeatmapForAI({
           source: _srcKey, level: params.level || (params.layer ? undefined : _vl.level),
-          polarity: params.polarity, radius: _clampM(Number(params.radius) || _scaleRadius(params.range) || 300),   // A3 尺度表
+          analysis: params.analysis, polarity: params.polarity,                     // CB-04 analysis（色板）+ polarity（筛选）；analysis 缺省时 generateHeatmapForAI 由 polarity 推导
+          radius: _clampM(Number(params.radius) || _scaleRadius(params.range) || 300),   // A3 尺度表
           weightField: params.weightField || 'emotion_intensity', silent: true,
         });
       }

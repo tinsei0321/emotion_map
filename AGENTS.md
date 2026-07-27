@@ -125,18 +125,19 @@ Agent 启动时根据下表选择性阅读知识源：
 | 开发笔记 | `docs/dev-notes.md` | 历史踩坑记录 |
 | 决策记录 | `docs/decisions.md` | 架构决策 (ADR) |
 | MCP 策略 | `docs/mcp-strategy.md` | MCP 路由手册、智谱优先、清单与测试日志 |
+| CB 评估规则 | `docs/catch-ball/RULES.md` | Catch-Ball 第三方评估流程、文档编号规范、CB 权限约束；**所有 CB/第三方评估文件统一放入 `docs/catch-ball/`，其中 SCAN 类评估报告放入 `docs/catch-ball/report/`** |
 
 ### 按角色推荐阅读
 
 | Agent | 必读 | 选读 |
 |-------|------|------|
 | **Developer** | `spec.md`, `architecture-pattern.md`, `tracker.py` | `decisions.md`, `dev-notes.md` |
-| **Reviewer** | `spec.md`, `architecture-pattern.md`, `tracker.py` | `decisions.md` |
+| **Reviewer** | `spec.md`, `architecture-pattern.md`, `tracker.py` | `decisions.md`, `docs/catch-ball/RULES.md`（CB 评估文件规范） |
 | **Tester** | `spec.md`, `architecture-pattern.md` | `tracker.py`, `dev-notes.md` |
 | **Data** | `spec.md`（数据管道章节）, `architecture-pattern.md` | `decisions.md` |
 | **GIS Dev** | `spec.md`（坐标规范章节）, `architecture-pattern.md` | `tracker.py` |
 | **Designer** | `spec.md`（UI 组件章节）, `design/tokens.css` | — |
-| **Docs** | `architecture-pattern.md`, `decisions.md` | `dev-notes.md`, `tracker.py` |
+| **Docs** | `architecture-pattern.md`, `decisions.md` | `dev-notes.md`, `tracker.py`, `docs/catch-ball/RULES.md`（CB 评估文件规范） |
 | **Ops** | `requirements.txt`, `spec.md`（依赖章节） | — |
 
 ## 编码铁律
@@ -153,6 +154,7 @@ Agent 启动时根据下表选择性阅读知识源：
 8. **空间范围优先**：数据采集以指定范围 Polygon 为第一过滤条件，关键词仅作辅助
 9. **决策追踪必埋点**：每个公开函数必须 `@track()`，每个关键决策分支必须 `TrackContext`
 10. **追踪 ID 必注册**：所有追踪 ID 必须在 `core/tracker.py` 注册表登记，编号连续不跳号
+11. **Toolbox AI 入口与手动 UI 同构**（CB-04·SCAN Phase 3.2）：每新增/修改 `generate*ForAI` 函数须同步契约三处——① `ai_qa/tool_contracts.py`（单一权威源·L2）② 前端 `SKILL_DEFS` 镜像 ③ `prompts.py` 工具描述（参数集为 AI 入口实参的超集·可少不可多·可漏不可错）。**ForAI 入口 = dialog 入口镜像**：色板/参数映射必须复用 dialog 路径同一函数（`computeStyle`/`terrainRampOf`），不得自带默认另搞一套（CB-04 H1：generateHeatmapForAI 硬编码 rainbow 绕过 computeStyle 致"消极热力图出综合彩虹图"）。参数面板缺的能力（`PANEL_MISSING`）→ 提醒开发者补齐+标准化+本地化，EMC 侧不自行造。**极性值域统一全词**（overall/positive/negative/neutral），入口 `_normalizePolarity` 归一。
 
 ### 决策追踪系统说明（铁律 9 & 10）
 

@@ -90,6 +90,18 @@ function terrainRampOf(terrainPol) {
     : { positive: 'green-3', negative: 'red-3', neutral: 'blue-3' }[terrainPol];
 }
 
+// ── 极性值域统一（CB-04 · 对外全词为唯一契约）──
+// Flash/SKILL_DEFS/density 工具传全词（overall/positive/negative/neutral）；
+// resolveSource 内部用单字母（ALL/P/N/O·选 L2 childByPolarity 子层）→ _POL_LETTER 转；
+// filterFc._POL_MAP 用全词键。治旧 _POL_MAP 单字母键遇全词 'negative' 静默回退 overall（致"消极热力图出综合彩虹图"根因②）。
+const _POL_WORD = { overall: 'overall', all: 'overall', positive: 'positive', p: 'positive',
+                    negative: 'negative', n: 'negative', neutral: 'neutral', o: 'neutral' };
+const _POL_LETTER = { overall: 'ALL', positive: 'P', negative: 'N', neutral: 'O' };
+function _normalizePolarity(p) {
+  if (!p) return 'overall';
+  return _POL_WORD[String(p).toLowerCase().trim()] || 'overall';
+}
+
 function computeStyle(analysis, level, polarity, macroFilter) {
   if (analysis === 'terrain') {
     // 情绪地形：恒 2D 综合彩虹热力图（密度/热度表达，不区分极性、不暗示极性）
@@ -625,11 +637,12 @@ function filterFc(fc, selectedTypes, intensityMin, polarity) {
   if (!fc || !fc.features) return { type: 'FeatureCollection', features: [] };
   const needTypeFilter = Array.isArray(selectedTypes);
   const needIntensityFilter = intensityMin > 0;
-  const _POL_MAP = { P: ['positive', 'Positive', '积极', 'very_positive', 'Very Positive', '非常积极'],
-                     N: ['negative', 'Negative', '消极', 'very_negative', 'Very Negative', '非常消极'],
-                     O: ['neutral', 'Neutral', '中性'] };
-  const needPolFilter = polarity && polarity !== 'ALL' && _POL_MAP[polarity];
-  const polSet = needPolFilter ? new Set(_POL_MAP[polarity].map((s) => s.toLowerCase())) : null;
+  const _POL_MAP = { positive: ['positive', 'Positive', '积极', 'very_positive', 'Very Positive', '非常积极'],
+                     negative: ['negative', 'Negative', '消极', 'very_negative', 'Very Negative', '非常消极'],
+                     neutral: ['neutral', 'Neutral', '中性'] };
+  const _pol = _normalizePolarity(polarity);   // CB-04 归一全词（治旧单字母键遇全词 'negative' 静默回退 overall）
+  const needPolFilter = _pol && _pol !== 'overall' && _POL_MAP[_pol];
+  const polSet = needPolFilter ? new Set(_POL_MAP[_pol].map((s) => s.toLowerCase())) : null;
   if (!needTypeFilter && !needIntensityFilter && !needPolFilter) return fc;
   const set = needTypeFilter ? new Set(selectedTypes) : null;
   const features = fc.features.filter((f) => {
@@ -815,22 +828,25 @@ function generateHeatmap(btn) {
  *  2D 热力图无后端（MapLibre 原生 kind:'heatmap'，fc 直喂渲染器）；rampKey 默认 'rainbow'（综合彩虹）。
  *  返回 {layerId, layerName, featureCount, level, polarity, fc}（与 generateGridForAI 同构）。 */
 export async function generateHeatmapForAI(opts = {}) {
-  const p = { radius: 200, opacity: 0.7, intensity: 0.6, weightField: 'emotion_intensity',
-              weightCurve: 'linear', intensityMin: 0, rampKey: 'rainbow', silent: true, ...opts };
+  const p = { analysis: null, radius: 200, opacity: 0.7, intensity: 0.6, weightField: 'emotion_intensity',
+              weightCurve: 'linear', intensityMin: 0, silent: true, ...opts };
   const sources = collectSources();
   if (!sources.length) throw new Error('无可用情绪点图层（先在 Layers 加载/上传）');
   // 选源：opts.source(sourceKey) 精确匹配（EMC pickVisiblePointLayer 传 visible 层）→ 否则按 level 自动（L2 优先）
   let src = p.source ? sources.find((s) => s.sourceKey === p.source || s.value === p.source) : null;
   if (!src) src = sources.find((s) => s.level === (p.level || 'L2')) || sources[0];
   const level = src.level;
-  const polarity = level === 'L2' ? (p.polarity || 'ALL') : null;
-  const resolved = resolveSource(sources, level, polarity);
+  // CB-04 极性归一 + analysis 色板主驱动（ForAI=dialog 镜像·复用 computeStyle·删自带 rainbow 默认·H1 根治）
+  const polarity = _normalizePolarity(p.polarity);                              // 对外全词统一（治旧单字母/全词混用静默回退 overall）
+  const analysis = p.analysis || (polarity === 'overall' ? 'terrain' : polarity);  // 显式 > polarity 推 > 默认 terrain（综合彩虹）
+  const resolved = resolveSource(sources, level, level === 'L2' ? _POL_LETTER[polarity] : null);
   if (!resolved || !resolved.fc || !resolved.fc.features || !resolved.fc.features.length) throw new Error('所选源无点数据');
-  const fc = filterFc(resolved.fc, null, p.intensityMin, polarity);   // 5.223 加 polarity 筛（消极/积极/中性·治消极=综合）
+  const fc = filterFc(resolved.fc, null, p.intensityMin, level === 'L2' ? polarity : null);   // 极性筛（消极/积极/中性·治消极=综合）
   if (!fc.features.length) throw new Error('筛选后无数据点');
-  const rampKey = p.rampKey;
-  const ramp = HEATMAP_RAMPS[rampKey];
-  const rampStops = ramp ? ramp.stops : undefined;
+  const _sty = computeStyle(analysis, level, _POL_LETTER[polarity], null);   // 复用 dialog 同款 analysis→rampKey 路由
+  const rampKey = _sty.ramp;
+  const ramp = rampKey ? HEATMAP_RAMPS[rampKey] : null;
+  const rampStops = _sty.rampStops || (ramp ? ramp.stops : undefined);
   const _srcMatch = resolved.sourceKey.match(/^(?:group|layer):([^#]+)/);
   const _srcLayer = _srcMatch ? getLayer(_srcMatch[1]) : null;
   const srcName = _srcLayer ? (_srcLayer.srcName || '') : '';
@@ -841,7 +857,7 @@ export async function generateHeatmapForAI(opts = {}) {
     name: layerName, kind: 'heatmap', colorMode: 'heatmap-negative', fc,
     paint: { unit: 'm', radius: p.radius, opacity: p.opacity, intensity: p.intensity, weightField: p.weightField,
              weightCurve: p.weightCurve, rampKey, rampStops, typesFilter: null, intensityMin: p.intensityMin,
-             _ui: { tool: 'heatmap', analysisKey: 'terrain', dim: '2d', level, polarity: polarity || 'ALL', rampKey } },
+             _ui: { tool: 'heatmap', analysisKey: analysis, dim: '2d', level, polarity, rampKey } },
   });
   layer.srcName = srcName;
   layer.sourceKey = resolved.sourceKey;
@@ -852,7 +868,7 @@ export async function generateHeatmapForAI(opts = {}) {
   renderLayerList(); refreshLegend(); reorderAllZ(); showLayerManager();   // 与 generateGridForAI 对齐：刷侧栏列表+图例+Z 序+层管理（density 2D 委托此入口，缺则侧栏不显新层）
   document.dispatchEvent(new CustomEvent('layers:changed'));   // 工具生成不自动弹 Overview/Table
   if (!p.silent) toast.success(`已生成热力图：${ramp ? ramp.name : rampKey} · ${p.radius}m · ${fc.features.length} 点`);
-  return { layerId: layer.id, layerName, featureCount: fc.features.length, level, polarity: polarity || 'ALL', fc };
+  return { layerId: layer.id, layerName, featureCount: fc.features.length, level, polarity, fc };
 }
 
 /** EMC AI 程序化入口（3D KDE 等值面·情绪地形）：仿 generateGridForAI/generateHeatmapForAI 模板，不开 dialog。
@@ -867,13 +883,13 @@ export async function generateTerrainForAI(opts = {}) {
   let src = p.source ? sources.find((s) => s.sourceKey === p.source || s.value === p.source) : null;
   if (!src) src = sources.find((s) => s.level === 'L2') || sources[0];
   if (src.level !== 'L2') throw new Error('情绪地形 3D 仅支持 L2 数据');
-  const polarity = p.polarity || 'ALL';
-  const resolved = resolveSource(sources, 'L2', polarity);
+  const polarity = _normalizePolarity(p.polarity);   // CB-04 归一全词（对外契约·治旧 ALL/P/N/O 与全词混用静默回退 overall）
+  const resolved = resolveSource(sources, 'L2', _POL_LETTER[polarity]);
   if (!resolved || !resolved.fc || !resolved.fc.features.length) throw new Error('所选源无 L2 点数据');
   const fc0 = resolved.fc;
   const nPts = fc0.features.length;
   if (nPts < 30) throw new Error('点数过少（<30），无法生成地形曲面');
-  const terrainPol = TERRAIN_POL_MAP[polarity] || 'overall';
+  const terrainPol = polarity;   // 全词（terrainRampOf/TERRAIN_POL_CN 接受 overall/positive/negative/neutral）
   const bandwidth = p.bandwidth_m || (nPts < 1000 ? 350 : nPts < 5000 ? 250 : 180);
   const res = await trackGeneration(runTerrain({ geojson: fc0, polarity: terrainPol, bandwidth_m: bandwidth, cell_m: p.cell_m, levels: p.levels }));
   if (!res || !res.success || !res.geojson) throw new Error((res && res.message) || '后端返回异常');

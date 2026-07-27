@@ -72,6 +72,7 @@ AGENT_TEMPLATE = """
 **结果图层命名（重要）**：凡产图层的工具（extract_feature/clip/filter_attr/merge/buffer/overlay）可传 `as` 自定义图层名。**`as` 必须用结果的现实内容命名（如「西陵区内商业用地」「滨江公园·500m」「西陵区·伍家岗区」），严禁用实现术语（叠置/intersection/clip/抽取）**——用户看图，名要说清"这层是什么"。不传 `as` 时系统按内容自动命名兜底。
 **图层生命周期（重要·勿死板）**：EMC 组**默认只留最终结果**——链式中间产物（被后续工具引用的，如 extract→overlay 的 extract）自动清理；并列最终结果（居住+商业）保留。**但用户的显式意图优先于该默认**：凡产图层工具可传 `keep: true` 标记"此层要保留"——被标记的层**即使被后续引用也不会被清理**。何时用 keep：① 用户明确说"保留/留下/也显示 某图层"；② 该层本身就是要展示给用户的结论图层（非纯中间步骤），你不确定它会不会被后续引用。**判据：问自己"这层用户最终要在地图上看到吗？"——是，就 keep:true；只是通往结果的跳板，就不传（默认清）。**
 - zonal_stats：**宏/中观结论主干**——按行政区/街道/更新单元等边界聚合点层，得每单元极性/点数/4×5 归因+排序。params: {{ "boundary": "admin_district|admin_street|renewal_unit|...(preset_id)", "layer": "(默认 yichang_l2_t1)", "range": "(可选 preset_id 先裁剪)", "pre_filter": "可选，形如 field/op/value 见附录", "top_n": 5 }}
+- compare_regions：区域对比（≥2 区并排对比情绪与归因·给差异方向·谁更消极/差在哪）。params: {{ "boundaries": "preset_id 列表（行政区/街道/单元，≥2 个，数组或 | ，分隔）", "layer": "(默认L2)", "range": "(可选)" }}
 - rank：Top N 排序（最差/最好/按 domain·element 占比）。params: {{ "by": "worst|best|domain:更新|element:设施", "boundary": "preset_id", "top_n": 5, "layer": "(默认L2)", "range": "(可选)", "pre_filter": "(可选)" }}
 - filter_attr：按属性筛选用地/极性/domain/element/时点。params: {{ "pre_filter": "field/op/value，如 domain/eq/urban_renewal", "layer": "默认L2", "range": "可选", "as": "图层名(现实内容)", "keep": "可选 true=保留此层免清理" }}
 - extract_feature：从面边界按属性抽单要素为独立面图层（**裁出某区/某单元**，自动落地图）。params: {{ "layer": "preset_id(如 admin_district)", "where": "field/op/value(如 MC/eq/西陵区，field 见 catalog name_field)", "as": "图层名(现实内容)", "keep": "可选 true=保留此层免清理" }}
@@ -82,7 +83,7 @@ AGENT_TEMPLATE = """
 - overlay：叠置（商业用地∩更新单元 等）。params: {{ "layer_a": "preset_id", "layer_b": "preset_id", "how": "intersection|union|difference|symmetric_difference", "as": "图层名(现实内容)", "keep": "可选 true=保留此层免清理" }}
 - nearest：最近邻（离地铁最近的负面点）。params: {{ "layer": "点层", "target": "preset_id|geojson", "k": 1 }}
 - hotspot：Gi* 热点识别（负面聚集/情绪热点，逐点 hot/cold/ns，自动落图层）。params: {{ "value_col": "score", "invert": true(负面为热), "layer": "(默认L2)", "range": "(可选)", "as": "(图层名)", "keep": "(可选true)" }}
-- density：核密度(KDE)栅格——用户说"核密度/密度分析/聚集强度/热力分布"时**首选**（产连续密度面，2D 离散分段色带，自动落图层；区别于 hotspot 逐点 Gi*）。params: {{ "bandwidth_m": 800(平滑带宽·越大越平滑), "cell_size_m": 300(格长), "value_col": "(可选加权如score，不传=纯点密度)", "layer": "(默认L2)", "range": "(可选)", "as": "(图层名·现实内容)", "keep": "(可选true)" }}
+- density：核密度(KDE)/热力图——用户说"核密度/密度分析/聚集强度/热力分布/热力图/情绪热度分布"时**首选**（产连续密度面，2D 离散分段色带，自动落图层；区别于 hotspot 逐点 Gi*）。params: {{ "polarity": "overall|positive|negative|neutral"(默认overall·极性筛点+着色), "analysis": "terrain|positive|negative|neutral"(色板主驱动·缺省由polarity推), "mode": "2d|3d|terrain"(默认2d), "radius": 300(2D热力带宽), "cell_size": 600(3D网格边长), "weightField": "emotion_intensity"(加权), "layer": "(默认L2)", "range": "(可选)", "as": "(图层名·现实内容)", "keep": "(可选true)" }}。**极性映射（CB-04）**：综合/总体→polarity=overall(彩虹)；积极→positive；消极→negative；中性→neutral。
 - run_python：自由执行 Python（geo 工具覆盖不到的灵活分析/出图兜底；geo 工具够用时**优先 geo**）。params: {{ "code": "Python 源码", "inputs": ["可选 {{layer:$1/图层名, as:变量名}}（取已加载图层为 GeoJSON dict 注入子进程）"], "timeout": 30 }}
   **使用约束**：① 优先用 geo 工具（zonal_stats/rank/overlay/density/...），run_python 是兜底——常规柱/折/饼图（排序/对比/时序/占比）用 zonal_stats/rank 取数 + 结论阶段 `{{chart:bar|...}}` 即可（见下规则 9「出图决策」），勿用 run_python；② 出图用 matplotlib（Agg 已设），`plt.savefig('fig.png')` 即可（图片自动捕获）；③ 取图层用 inputs 指定变量名，代码里直接用该变量（GeoJSON FeatureCollection dict）——**inputs 的 as 必须与代码内变量名字面一致**：`inputs:[{{layer:'$1', as:'fc'}}]` 配代码 `import pandas as pd; df = pd.DataFrame([f['properties'] for f in fc['features']])`（as='fc' ↔ 代码用 fc，不一致会 NameError）；④ **字段名必须以 query_layers/buildContext 观察到的为准**——buildContext 里 `field=dtype:role:sample` 列出的就是真实字段名，**勿臆造**（臆造会 KeyError）；**先 query_layers 看字段，再写 run_python 代码**；⑤ 空间连接用 geopandas：`import geopandas as gpd; gdf = gpd.GeoDataFrame.from_features(fc, crs='EPSG:4326')`。可 import：pandas/numpy/geopandas/shapely/scipy/matplotlib/esda/libpysal/h3 + 标准库（math/statistics/json/datetime/re/pathlib）；os/sys/subprocess/socket 等被禁；⑥ 结论里引用图片用 `{{fig:fig1}}`（figId 从观察里读，禁编造；观察输出"已生成图片：fig.png（用 {{fig:figN}} 引用）"）；⑦ 描述图片用「**图片**」「**柱图**」「**折线图**」，**禁用**「图层/分布/网格/面/点」字样（防对账误抽）；⑧ run_python 失败时观察会指明"[sandbox] 数据没注入"还是"代码错"——按提示修；**连续同类失败勿盲重试超 2 次**，换 geo 工具（zonal_stats/rank + {{chart}}）。
 - answer：已掌握足够信息，退出 loop 出结论。params: {{}}
@@ -263,9 +264,9 @@ _DIAGNOSE_FEW_SHOT = """
 你的输出（仅此 JSON，不写概念解释正文）：
 {"intent":"general","domain_lens":["general"],"scale":"macro","decision_type":"定义","outlet":"报告结论","data_plan":{"needed":[],"available":[],"gap":[],"strategy":"ready"},"template":"concept","params":{}}
 
-【例2·单工具操作】用户问：做核密度分析
-你的输出：
-{"intent":"gis_operation","domain_lens":["general"],"scale":"macro","decision_type":"操作","outlet":"生成图层","data_plan":{"needed":["L2 极性点"],"available":["L2 T1 极性点"],"gap":[],"strategy":"ready"},"template":"density","params":{"mode":"2d"}}
+【例2·单工具操作】用户问：做核密度分析 / 生成 L2 消极点的热力图
+你的输出（综合→polarity=overall；极性词"消极/积极/中性"→对应 polarity，图面用对应色板非彩虹）：
+{"intent":"gis_operation","domain_lens":["general"],"scale":"macro","decision_type":"操作","outlet":"生成图层","data_plan":{"needed":["L2 极性点"],"available":["L2 T1 极性点"],"gap":[],"strategy":"ready"},"template":"density","params":{"mode":"2d","polarity":"negative"}}
 
 【例3·对已有结果的概念追问】用户问：刚生成的核密度图层是什么意思 / 这几个密度图有什么差别
 你的输出（含"核密度/密度图"也判 concept，勿短路进操作）：

@@ -72,11 +72,12 @@
 - **Dumb Tool**（笨的工具）= Skill/Toolbox 标准化工具组。负责"做"、不思考：功能单一、参数契约、纯执行、制式化产出。EMC 实例 = `SKILL_DEFS`(`{tool,category,slots,defaults}`+`validateParams`) + `TOOLS`。
 - **Orchestrator 编排器**（桥梁）= Smart↔Dumb 确定性翻译官 + 传菜员。把计划翻成执行参数、派发、回收制式结果、裁定终态，**不调 LLM、不推理**。EMC 实例 = `harness.orchestrate`（分流 + 三态出口代码裁定）。
 
-**四条推论铁律**：
+**五条推论铁律**：
 1. **Tool 越 dumb 越好**——单一职责 + 参数契约 + 纯函数式 + **不内嵌 LLM 推理**。Tool 一旦"聪明"（内嵌推理/动态决策）就丧失稳定性，违背内核。
 2. **Agent 聪明只在两端**——意图理解（入口）+ 结果输出（出口）；中间执行交 dumb tool，避免"边想边做"低效不稳（纯 ReAct 反复推理-执行陷阱）。
 3. **编排器确定性**——协调是机械的（分流/派发/回收/裁定），不调 LLM、不推理。三态出口由代码裁定（非模型自觉）。
 4. **计划-执行分离**——先计划（Smart 产意图+method+data_plan），后执行（Dumb 按 plan 跑 tool，可 0 LLM 轮）；同类型任务不重复推理。
+5. **ForAI 入口=dialog 镜像 + 契约单一源**——Toolbox AI 入口（`generate*ForAI`）的色板/参数映射复用 dialog 同款函数，不自带默认另搞一套（CB-04 H1：自带 rainbow 绕过 computeStyle 致"消极热力图出综合彩虹图"）；工具参数契约单一权威源（`ai_qa/tool_contracts.py`），prompt/SKILL_DEFS 从它派生，参数面板缺的能力（`PANEL_MISSING`）提醒开发者补、不临时造。详见 AGENTS.md 铁律 11。
 
 **价值**：灵活+稳定兼得（灵活集中 Smart 两端，稳定集中 Dumb 中间，不互污染）/ 可测（Dumb 纯函数单测、Smart eval）/ 可扩展（加能力=加 dumb tool + 编排器登记，Smart 不需改）/ 抗退化（新功能判据：会推理→Smart，纯执行→Dumb，协调→编排器，防"大杂烩 panel.js"坍塌）。
 

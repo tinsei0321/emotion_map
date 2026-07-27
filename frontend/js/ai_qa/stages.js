@@ -7,9 +7,11 @@ import { streamChat } from './api.js';
 /** 入参别名规整：模型常把 invert 写成 inverse、as 写成 output_layer、radius_m 写成 radius，
  *  导致执行报错→空转→退化为叙述。此处统一规整为各工具的规范入参名，模型怎么写都能执行。
  *  仅收编实测出现的漂移别名，保守不过度映射（避免误伤合法字段）。 */
+/** 通用参数别名（所有工具生效）。radius_meters/buffer_radius/distance→radius_m 留此（皆 buffer 语义，不冲突 density 的 radius）。
+ *  `radius→radius_m` 曾在此全局生效→误伤 density（规范名即 radius，被改名后丢失）·CB-04 P1b 移到 _TOOL_ALIAS.buffer。 */
 const _PARAM_ALIAS = {
   inverse: 'invert', output_layer: 'as', output: 'as', layer_name: 'as', named: 'as', name: 'as',
-  radius: 'radius_m', radius_meters: 'radius_m', buffer_radius: 'radius_m', distance: 'radius_m',
+  radius_meters: 'radius_m', buffer_radius: 'radius_m', distance: 'radius_m',
   value: 'value_col', column: 'value_col', field_name: 'field',
   top: 'top_n', limit: 'top_n', n: 'top_n',
   // P1 扩（实测漂移别名；保守映射，避跨工具冲突——where/filter 不映射：extract_feature 用 where、其余用 pre_filter）
@@ -20,11 +22,17 @@ const _PARAM_ALIAS = {
   target_layer: 'target', target_poi: 'target',
   mode: 'how',
 };
+/** 工具专属别名（仅对该 tool 生效·CB-04 治 P1b）。key = tool name（SKILL_DEFS[*].tool / harness 传 def.tool）。 */
+const _TOOL_ALIAS = {
+  buffer: { radius: 'radius_m' },          // buffer 规范名 radius_m；Flash 填 radius → 映射（不波及 density）
+  density: { bandwidth_m: 'radius', cell_size_m: 'cell_size', value_col: 'weightField' },  // CB-04 P1a：旧 prompt 漂移别名收编
+};
 export function normalizeParams(name, params) {
   if (!params || typeof params !== 'object') return {};
+  const alias = { ..._PARAM_ALIAS, ...(_TOOL_ALIAS[name] || {}) };   // 通用 + 工具专属（CB-04 按工具区分·治 P1b 全局 radius→radius_m 误伤 density）
   const out = {};
   for (const k of Object.keys(params)) {
-    const canon = _PARAM_ALIAS[k] || k;
+    const canon = alias[k] || k;
     out[canon] = params[k];
   }
   return out;
@@ -37,7 +45,7 @@ export const SKILL_DEFS = {
   density:  { tool: 'density',     category: 'single',   required_slots: [],                     optional_defaults: { mode: '2d', radius: 300, weightField: 'emotion_intensity', cell_size: 600, polarity: 'overall' } },
   // 承重（数据可见纪律）：rank/buffer/clip/zonal 不硬默认 layer——该默认经 validateParams 合并后绕过
   // resolvePointLayer 的 visible 过滤，致"只传 L1·T1 却跑 L2"（5.92 Track 1 核心保证漏）。改走可见点层选源（同 density）。
-  rank:     { tool: 'rank',        category: 'single',   required_slots: [],                     optional_defaults: { by: 'polarity', top_n: 5 } },
+  rank:     { tool: 'rank',        category: 'single',   required_slots: [],                     optional_defaults: { by: 'worst', top_n: 5 } },
   buffer:   { tool: 'buffer',      category: 'single',   required_slots: ['center'],              optional_defaults: { radius_m: 500, agg_cols: ['score'] } },
   clip:     { tool: 'clip',        category: 'single',   required_slots: ['range'],               optional_defaults: {} },
   overlay:  { tool: 'overlay',     category: 'single',   required_slots: ['layer_a', 'layer_b'],  optional_defaults: { how: 'intersection' } },

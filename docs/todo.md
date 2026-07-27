@@ -21,6 +21,21 @@
 - **浏览器验证 5.225**：KDE 情绪地形 → 单按钮「生成 2D 热力图」→ 2D 综合彩虹热力图（L1/L2 一致）。
 - **浏览器验证 5.224**：EMC 折叠胶囊点击正常展开。
 
+### ✅ L1+L2+L3 density/polarity 契约整改全完成（CB-04 · pytest 191 passed 零回归）
+
+- **根因**（CB-04 全审 14 `generate*ForAI`）：density 参数契约四处分裂（[prompts:85](ai_qa/prompts.py#L85)/[paradigm:289](ai_qa/paradigm.py#L289)/TEMPLATE_REGISTRY/SKILL_DEFS）+ [generateHeatmapForAI:819](frontend/js/heatmap-tool.js#L819) 硬编码 rainbow + [_PARAM_ALIAS:12](frontend/js/ai_qa/stages.js#L12) 误伤 density + rank by 无效。
+- **L1-a** density 双维度（analysis 色板 + polarity 筛选）：generateHeatmapForAI 复用 computeStyle + tools.js 补 polarity→analysis + `_normalizePolarity`。
+- **L1-b** normalizeParams 按工具区分别名（治 _PARAM_ALIAS 误伤）+ density 别名收编。
+- **L1-c** paradigm+prompts density 补 analysis/polarity + few-shot + buildContext hint。
+- **L1-d** rank by 默认 worst。**L1-e** compare_regions 入 prompt。
+- **L2 ✅** 新建 [tool_contracts.py](ai_qa/tool_contracts.py)（16 工具单一真相源·density 首例完整 panel_source）+ [validate_skill_params.py](tests/validate_skill_params.py)（守护 contracts<->paradigm<->SKILL_DEFS·4 PASS）。**L3 ✅** panel_missing 清单 28 项（density 完整·其余待开发者核查·务实版避 eval 红线·不派生）。
+- **最高纪律**（用户指示）：EMC 分析图严格复用 Toolbox 参数面板已有色板/参数·ForAI=dialog 镜像·缺失提醒开发者补。
+
+### ✅ CB-04 第三方 SCAN 全审 EMC 架构 + density/polarity 契约整改 plan 定稿（revision-log 5.226）
+
+- 第三方 DeepSeek 全审 14 `generate*ForAI` 入口（[SCAN_EMCArch](docs/catch-ball/report/SCAN_EMCArch_deepseek_2026-07-27.md)）：系统性参数契约不完整（H1/H2/R1 P0 + P1a-f）。
+- 反评价 **13 agree / 0 disagree / 1 partial**（R1/P1b verify-before-accept 核实·补漏 2 真 bug·无 decline）。详见 [cb-journal CB-04](docs/catch-ball/cb-journal.md)。
+
 ### ✅ KDE「情绪地形」去 3D · 统一 2D 综合彩虹热力图（revision-log 5.225，commit d6b7d2c · **已 push**）
 
 - 用户要「总体情况·情绪地形」去 3D·确认键改名「生成 2D 热力图」·结果 2D 综合彩虹。

@@ -33,6 +33,8 @@
 - **唯一真短板 = 前端测试薄**（34 JS 文件零单测）；非数据、非架构（数据管道 sim 充分、架构七层稳）。
 - **演示逻辑链是项目北极星**（CLAUDE.md 最高优先级，[[emotion-map-logic-chain]]）：张力图面→引导点击→交互分析→定位关注区+主题倾向+排序优先级（宏观诊断信号，非精确识别）。**UI/UX 与视觉表现力 = 与架构/代码同等的承重维度**（RULES §2.1 第七轴「演示表现力」10%）——勿用纯工程标尺（架构/代码/测试）低估 UI 债、勿把表现力当"装饰"。SCAN 评估须覆盖演示逻辑链落地度。
 
+- **EMC-Toolbox 参数契约单一源** = `ai_qa/tool_contracts.py`（CB-04 立）：density 参数契约曾四处分裂（[prompts:85](../../ai_qa/prompts.py#L85)/[paradigm:289](../../ai_qa/paradigm.py#L289)/TEMPLATE_REGISTRY/SKILL_DEFS+Tool 各一份不一致·致"消极热力图出综合彩虹图"）→ 单一权威源 + prompt/SKILL_DEFS 派生 + `tests/validate_skill_params.py` 校验治本。**ForAI 入口须 = dialog 入口镜像**（复用 `computeStyle`/`terrainRampOf`，不自带默认另搞一套）；参数面板缺的能力（`PANEL_MISSING`）→ 提醒开发者补，EMC 不自行造。同类坑 [[emc-aggregate-column-alias-silent-zero]]。← CB-04
+
 ## §3 SCAN 标尺纠正模式（SCAN 倾向 → 正确标尺）
 
 > 每条 = 跨轮验证的 SCAN 评估倾向 + 项目方正确标尺。/cb step 4 遇匹配模式 → 套结论，不重推。
@@ -67,6 +69,7 @@
 |----|------|------|--------|---------|-----------|
 | CB-01 | 2026-07-18 | [SCAN_DeepSeek_01.md](SCAN_DeepSeek_01.md) | 7.6 | 删 5 僵尸（Streamlit/pydeck/db）/ geo_routes 三处清理 / sim 注册 / e2e seam 去生产化 / §0 任务树刷新 / **5 类 declined**（调用次数前提不成立等） | `## CB-01` |
 | CB-02 | 2026-07-19 | [SCAN_DeepSeek_02.md](SCAN_DeepSeek_02.md) | 7.6（持平） | CB-01 回顾核验（agree 4 通过 / disagree 3 成立）/ 新发现 requirements 僵尸依赖 + range_selector 路径大小写 + AGENTS.md 8→9 漂移 / 10 条新建议待 `/cb 02` 反评价 | `## CB-02`（②③ 待填） |
+| CB-04 | 2026-07-27 | [SCAN_EMCArch](report/SCAN_EMCArch_deepseek_2026-07-27.md) | 6.5（执行层 4↓） | EMC density/polarity 流水线契约整改：14 入口全审·13 agree/0 disagree/1 partial·plan 融合定稿（L1 双维度+R1+P1b+P1c / L2 tool_contracts 单一源 / L3 全扫）·契约分裂模式入 §2·最高纪律（复用参数面板） | `## CB-04` |
 
 ---
 

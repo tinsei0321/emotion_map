@@ -125,8 +125,9 @@ CB-N 轮开始
 
 ### 4.1 SCAN 文档
 ```
-docs/catch-ball/SCAN_DeepSeek_{NN}.md
+docs/catch-ball/report/SCAN_DeepSeek_{NN}.md
 ```
+- 所有 SCAN 类评估报告统一放入 `docs/catch-ball/report/` 子文件夹
 - `{NN}` 为两位零填充序号（01, 02, 03, …）
 - 每轮一个文件，不覆写
 - 文件头包含归档元信息（轮次、日期、原始路径）
