@@ -402,3 +402,30 @@ plan 据 SCAN 融合（用户批准）：**L1 止血** density 双维度（analy
 
 ### 状态
 `open → L1 实现中` —— plan 融合定稿（13 agree/0 disagree/1 partial）。L1 density 止血 + R1/P1b/P1c 紧急修进行中；L2 contracts + L3 全扫待续。双模型闭环：L1 落地后可触发下一轮 SCAN 对比验证（density 极性图 + rank by 回归）。
+
+---
+
+## CB-05 · 2026-07-27（EMC UX·去审查 + 删除符号根治）
+
+### ① SCAN 摘要
+[SCAN_EMCUX](report/SCAN_EMCUX_deepseek_2026-07-27.md)（DeepSeek·UX 专项）：用户报两体验问题——①工具出图后 EMC 对话仍"思考"+ 审查未通过循环等待；②地名胶囊被删除线。DeepSeek 全审审查链路 + 删除符号双根因。
+
+### ② 反评价（全 agree·verify-before-accept 核实）
+| 条目 | 判定 | 核实 |
+|---|---|---|
+| 方案 B 去审查（覆盖窄/假阳性/_verifyClaims 替代） | agree | 印证·论证更细 |
+| runTemplatePath 无 onObservation（UX 根因·我漏） | agree | [harness:325-366](../../frontend/js/ai_qa/harness.js#L325) 核实 |
+| 内嵌自查清单（FINAL_TEMPLATE 5 条） | agree | 零额外 LLM |
+| 空答案检测（代码门防只说不做） | agree | 补 _verifyClaims 漏 |
+| 删除符号根因 A（REVISE_TEMPLATE 缺禁~~·我漏） | agree | [:292-312](../../ai_qa/prompts.py#L292) 核实 |
+| 删除符号根因 B（CSS cite-chip-invalid line-through·**主因**·我漏） | agree | [:847](../../frontend/js/ai_qa/panel.js#L847)+[css:284](../../frontend/css/ai_qa.css#L284) 核实·**关键修正** |
+| 四层根治 | agree | 全采纳 |
+
+**CB-05: 全 agree/0 disagree/0 partial**。DeepSeek 补我漏的 3 根因（runTemplatePath 无信号/CSS invalid 主因/REVISE 缺规则）。**关键修正**：删除符号主因是 CSS cite-chip-invalid（非 markdown ~~），原"仅 strip ~~"治不了，需扩展 getValidRefNames 治本。
+
+### ③ 行动（去审查 + 删除符号四层）
+- **A 去审查**：REVIEW_ENABLED 默认 false + FINAL_TEMPLATE 内嵌自查 5 条 + 空答案检测（newLayerCount>0 但结论<20 字符→补引导）+ runTemplatePath 加 onObservation + panel 清审查 UI（占位/_PHASE_ORDER/审查区/文案）。review.py 保留开关（emcReviewOn 调试）。
+- **B 删除符号四层**：renderAnswer strip ~~ + REVISE 补禁~~ + getValidRefNames 扩展所有 polygon（治 CSS invalid 主因）+ cite-chip-invalid line-through→opacity。
+
+### ④ 状态
+`done` —— pytest 191 passed 零回归 + 浏览器加载/console 无 JS 错。体验：工具出图→finalStep 流式结论→完成（省审查 7-14s）。地名胶囊无删除线（CSS invalid 治本）。

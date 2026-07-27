@@ -21,6 +21,13 @@
 - **浏览器验证 5.225**：KDE 情绪地形 → 单按钮「生成 2D 热力图」→ 2D 综合彩虹热力图（L1/L2 一致）。
 - **浏览器验证 5.224**：EMC 折叠胶囊点击正常展开。
 
+### ✅ CB-05 EMC UX 优化·去审查 + 删除符号根治（revision-log 5.227）
+
+- 用户报两体验问题：审查等待 + 删除符号。第三方 DeepSeek UX 评估（[SCAN_EMCUX](docs/catch-ball/report/SCAN_EMCUX_deepseek_2026-07-27.md)），反评价全 agree。
+- **去审查**：REVIEW_ENABLED 默认 false + FINAL_TEMPLATE 自查清单 + 空答案检测 + runTemplatePath onObservation + panel 清审查 UI。
+- **删除符号四层**：strip ~~ + REVISE 补禁~~ + getValidRefNames 扩展（治 CSS invalid 主因·DeepSeek 发现）+ invalid 视觉弱化。
+- 详见 [cb-journal CB-05](docs/catch-ball/cb-journal.md)。
+
 ### ✅ L1+L2+L3 density/polarity 契约整改全完成（CB-04 · pytest 191 passed 零回归）
 
 - **根因**（CB-04 全审 14 `generate*ForAI`）：density 参数契约四处分裂（[prompts:85](ai_qa/prompts.py#L85)/[paradigm:289](ai_qa/paradigm.py#L289)/TEMPLATE_REGISTRY/SKILL_DEFS）+ [generateHeatmapForAI:819](frontend/js/heatmap-tool.js#L819) 硬编码 rainbow + [_PARAM_ALIAS:12](frontend/js/ai_qa/stages.js#L12) 误伤 density + rank by 无效。

@@ -31,7 +31,7 @@ const PARAMS_TRUNC = 80;    // action params 摘要截断长度
 // 审查质量门（5.70 重启）：默认开——仅审 emotion_analysis(C) 答案（general 短路、gis_operation 早 return、EXIT_GAP 早 return，本就不进审查）。
 // 聚焦客观质量杠杆（data_driven/actionable/scale_paradigm_fit/professional），主观项(layout/concise/structure)只 warn 不 fail。
 // verdict 经 episode 入 L3 → 喂活自成长闭环。运行时杀开关：浏览器 console 跑 localStorage.setItem('emcReviewOff','1') 即关。
-const REVIEW_ENABLED = (() => { try { return !localStorage.getItem('emcReviewOff'); } catch (e) { return true; } })();
+const REVIEW_ENABLED = (() => { try { return !!localStorage.getItem('emcReviewOn'); } catch (e) { return false; } })();   // CB-05：默认关 LLM 审查（体验>假阳性审查·硬性错误已由代码 gate 守）·console localStorage.setItem('emcReviewOn','1') 可开调试
 
 // ⑤④ Flash template 命中率遥测 + 80% gate（self-protection）。
 // diagnose 后记 template 命中(非 unknown)/未中(unknown)，落 localStorage 跨会话累积（clearChat 不重置）。
@@ -330,6 +330,7 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   }
   // #2 tool:executed 观测信号：density 等前端委托工具不走 fetch（飞轮 geoCalls 抓不到），派发事件供 e2e-seam 观测。
   //   纯观测·不改控制流/出口/prompt；tool=skill 名（与 /geo/<name> 抽取一致）。
+  if (hooks.onObservation) hooks.onObservation(obs, 1);   // CB-05 A5：工具出图后 UI 信号（runTemplatePath 原漏·地图已出但 dock dots 不停·DeepSeek 发现）
   try { document.dispatchEvent(new CustomEvent('tool:executed', { detail: { tool: skill, implTool: def.tool, layerId: (r && r.data && r.data.layerId) || null, ok: !/\[ERR\]|失败|错误/.test(obs), ts: Date.now() } })); } catch (_) { /* 观测信号失败不影响主流程 */ }
   toolHistory.push(`第1轮·动作: ${def.tool}(${JSON.stringify(params).slice(0, 120)}) → ${obs}`);
   // 3. 失败/空命中 → EXIT_GAP 诚实兜底（不裸输/不赌博自纠）
@@ -783,6 +784,10 @@ export async function orchestrate(ctx, hooks = {}) {
       draft = _annotated;
       _isPartialMissing = true;
     }
+  }
+  // CB-05 A4 空答案检测（代码门·防"只说不做"·工具已产出但结论过短 → 补引导·补 _verifyClaims 漏的纯叙述无工具）
+  if (newLayerCount > 0 && draft.replace(/[#\s\-*]/g, '').length < 20) {
+    draft = `## 地图已产出图层\n\n工具已执行（地图已更新），但结论文本过短。请查看地图/EMC 组的产出图层，或换一种问法。\n\n${draft}`;
   }
   if (hooks.onFinalDone) hooks.onFinalDone(draft);
 

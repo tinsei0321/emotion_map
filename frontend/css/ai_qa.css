@@ -281,7 +281,7 @@
 .aiq-reason-transition { font-weight: var(--geojson-typography-weight-semibold); color: var(--emc-accent, #D97757); }
 
 /* ── 无效引用 chip（臆造区域名，灰显不可点）── */
-.cite-chip-invalid { color: var(--geojson-color-text-tertiary); background: rgba(255, 255, 255, 0.05); border-color: var(--geojson-color-border-default, #e3e5e8); cursor: not-allowed; text-decoration: line-through; }
+.cite-chip-invalid { color: var(--geojson-color-text-tertiary); background: rgba(255, 255, 255, 0.05); border-color: var(--geojson-color-border-default, #e3e5e8); cursor: not-allowed; opacity: 0.5; }   /* CB-05 Layer 4：line-through→opacity 弱化（中文语境删除线=错误/废弃·困惑用户·改弱化） */
 .cite-chip-invalid:hover { background: rgba(255, 255, 255, 0.05); }
 
 /* ── 重写中提示 ── */

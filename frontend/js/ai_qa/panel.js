@@ -439,6 +439,8 @@ function appendMessage(role, contentHtml) {
   scrollBottom();
 }
 function renderAnswer(text, validNames) {
+  // CB-05 删除符号根治 Layer 1：strip markdown 删除线（~~text~~ → text·治根因A·不可绕过·不靠 Flash 守 prompt）
+  text = String(text).replace(/~~([\s\S]+?)~~/g, '$1').replace(/~~/g, '');
   let html = window.marked ? window.marked.parse(text) : `<p>${escapeHtml(text).replace(/\n/g, '<br>')}</p>`;
   html = html.replace(/\[ref:([^\]]+)\]/g, (_, name) => {
     const valid = !validNames || validNames.has(name);
@@ -843,8 +845,8 @@ function getValidRefNames() {
   const names = new Set();
   for (const l of getLayers()) {
     if (!l || l.kind !== 'polygon' || !l.fc || !l.fc.features) continue;
-    const ui = l.paint && l.paint._ui;
-    if (!ui || (ui.tool !== 'grid' && ui.tool !== 'terrain')) continue;
+    // CB-05 Layer 3：去掉 grid/terrain 限制——所有 polygon 图层的 feature name 都入白名单
+    // （zonal_stats/area_stats/extract_feature 等工具产出的地名同样有效·治 cite-chip-invalid 假阳性删除线·治根因B 主因）
     for (const f of l.fc.features) {
       const p = f.properties || {};
       const nm = p.name || p.issue_label;
@@ -856,12 +858,8 @@ function getValidRefNames() {
 
 /** 渲染审查状态区（七条 ✓/△/✕ + 整体结论）。 */
 function renderReview(reviewEl, body, review) {
-  if (!review) { reviewEl.hidden = true; return; }
+  if (!review || review.degraded) { reviewEl.hidden = true; return; }   // CB-05 A6：去审查（REVIEW_ENABLED 默认 false→degraded）→ 审查区隐藏（不显"审查跳过"占位）
   reviewEl.hidden = false;
-  if (review.degraded) {
-    body.innerHTML = `<div class="aiq-review-verdict warn">审查跳过（${escapeHtml(review.degraded_reason || '审查员不可用')}）</div>`;
-    return;
-  }
   const icon = { pass: '✓', warn: '△', fail: '✕' };
   const items = (review.scores || []).map((s) =>
     `<span class="aiq-review-item ${s.verdict}" title="${escapeHtml(s.comment || s.name || '')}">${icon[s.verdict] || '?'} ${escapeHtml(s.name || s.key)}</span>`
@@ -904,7 +902,7 @@ function stopThinking() {
   const d = dockEl();
   if (d) { d.hidden = true; const ab = d.querySelector('.aiq-abort-btn'); if (ab) ab.hidden = true; }
 }
-const _PHASE_ORDER = ['诊断', '思考', '检索', '生成', '审查'];
+const _PHASE_ORDER = ['诊断', '思考', '检索', '生成'];   // CB-05 A6：去'审查'（去 LLM 审查后无审查阶段·默认关）
 /** 阶段进度 chip 点亮 + done 标记（E2 加阶段时间戳 + 已完成段填充）。 */
 function setPhase(chip) {
   const d = dockEl();
@@ -1342,22 +1340,20 @@ function buildHooks(shell) {
       finalizeReason();   // flush 最后一帧思考 + 整块 is-done + 主题目录重切
       if (_curTrace) _curTrace.final = text;
       shell._finalMd = text;   // 供页脚「复制回答」取最终 markdown
-      // 显示审查中占位（review 回来覆盖）；history 在 send 末尾统一持久化
-      shell.reviewEl.hidden = false;
-      shell.reviewBody.innerHTML = '<div class="aiq-review-verdict warn">审查中…</div>';
-      setPhase('审查');
+      // CB-05 A6：去 LLM 审查后 onFinalDone 即完成（不显"审查中"占位·审查区保持隐藏）；history 在 send 末尾统一持久化
+      // 审查区 reviewEl 保持默认 hidden（仅 REVIEW_ENABLED 开·onReview 非 degraded 时显）
     },
     onReview: (review) => {
       if (_curTrace) _curTrace.review = review;
       renderReview(shell.reviewEl, shell.reviewBody, review);
-      setPhase('审查');
+      if (!review.degraded) setPhase('审查');   // CB-05 A6：仅非 degraded（用户开 REVIEW_ENABLED 调试）才转审查阶段·默认关时不变 phase
       autoScroll();
     },
     onReviseStart: () => {
       cancelStream();
       streamAcc = '';
       setPhase('生成');
-      shell.answerEl.innerHTML = '<span class="aiq-revising-hint">审查未过，重写中…</span><span class="chat-cursor">▍</span>';
+      shell.answerEl.innerHTML = '<span class="aiq-revising-hint">校验修正中…</span><span class="chat-cursor">▍</span>';   // CB-05 A6：诚实门 _verifyClaims 触发·文案去"审查"字眼
       autoScroll();
     },
     onRevise: (tok) => {
@@ -1373,7 +1369,7 @@ function buildHooks(shell) {
       if (_curTrace) { _curTrace.revised = text; _curTrace.final = text; }
       shell._finalMd = text;   // 重写后更新最终 markdown
       const v = shell.reviewBody.querySelector('.aiq-review-verdict.fail');
-      if (v) v.textContent = '审查未过·已重写';
+      if (v) v.textContent = '已校验修正';
       autoScroll();
     },
     onDegraded: (_text) => {
