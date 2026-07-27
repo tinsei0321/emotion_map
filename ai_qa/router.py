@@ -14,6 +14,7 @@ from fastapi.responses import StreamingResponse
 from ai_qa.schemas import ChatRequest
 from ai_qa.prompts import (
     build_agent_prompt, build_final_prompt, build_diagnose_prompt, build_optimize_prompt,
+    build_diagnose_prompt_dispatch,
 )
 
 router = APIRouter()
@@ -29,7 +30,9 @@ async def chat_route(req: ChatRequest):
         sys_content = build_final_prompt(req.context or '', req.tool_history or '', req.context_tokens, req.domain_lens)
     elif req.phase == 'diagnose':
         # 问题诊断（专业认知前置步）：流式 reason + content JSON 卡（不用 json_mode，同 agent_step）
-        sys_content = build_diagnose_prompt(req.context or '', req.context_tokens)
+        # CB-09 D006（5.236）Phase B：select_candidates 预选 → 单/少候选走极瘦填卡（<3.5KB·<5s）·复合走大 prompt 兜底
+        _q = (req.messages or [{}])[-1].get('content', '') if req.messages else ''
+        sys_content, _diag_path = build_diagnose_prompt_dispatch(_q, req.context or '', req.context_tokens)
     elif req.phase == 'optimize':
         # Prompt 优化（5.215）：Flash 把用户 NL 优化成具体/实操/逻辑清晰 prompt（不增维度·梳理已有要素）
         _ui = (req.messages or [{}])[-1].get('content', '') if req.messages else ''

@@ -21,6 +21,17 @@
 - **浏览器验证 5.225**：KDE 情绪地形 → 单按钮「生成 2D 热力图」→ 2D 综合彩虹热力图（L1/L2 一致）。
 - **浏览器验证 5.224**：EMC 折叠胶囊点击正常展开。
 
+### ✅ CB-09 轮次3b Flash 瘦身（D006·Phase B·SPEED WIN·revision-log 5.236）
+
+- diagnose Flash prompt **45.8KB → 1.85KB**（1 候选·4 候选 2.15KB·均 <3.5KB）·**25-45s → <5s**（EMC 最后一块慢骨头）。
+- **核心简化**：后端 [router.py:30](ai_qa/router.py#L30) 顶调 `build_diagnose_prompt_dispatch`（新·[prompts.py](ai_qa/prompts.py) F_010）→ `select_candidates(question, None)` 单/少候选 → 走**极瘦填卡**（[FILL_CARD_TEMPLATE](ai_qa/prompts.py) + `build_fill_card_prompt` F_009）·复合/0 → 走**现大 prompt 兜底**（不回归）。
+- **卡 schema 8 字段不变**（DIAGNOSE_CARD_FIELDS）→ parseDiagnoseCard/harness 路由/ChatRequest **全不动**·blast radius 收敛到 prompts.py + router.py + 测试。
+- 候选 schema 从 TEMPLATE_REGISTRY 过滤注入（只注候选 1-4 个·非全量 catalog）·去 MANIFESTO/全量 catalog/B_TRACK/few-shot。
+- **eval 策略**：选型 gate 角色迁移—Phase A test（select_candidates 97%）成主 gate·eval_template_flash 保留测兜底·极瘦质量交浏览器肉眼。
+- **测试**：[test_emc_template.py](tests/test_emc_template.py) +5（FILL_CARD 体量 + schema + dispatch fill_card/fallback/concept 三路）。
+- **验证**：pytest **207 passed**+5 skipped（+5 新测·零回归）+ FILL_CARD 1.85-2.15KB + 大 prompt 45.8KB 不变 + serve/boot 干净·**单候选 diagnose <5s + 复合兜底不回归 交用户浏览器肉眼**·**待用户 push**。
+- **待续**：Phase C（Pro 推理·D009·接模块二 D012 动态 chain·治复合兜底慢）。
+
 ### ✅ CB-09 轮次3a 0LLM 候选选择器（模块九·Phase A·revision-log 5.235）
 
 - D006 Flash 瘦身（45.8KB→1-3.5KB·25-45s→<5s）须伴三阶段重构·**Phase A = 建 0LLM 选择器（eval-safe 基础）**。

@@ -15,7 +15,7 @@ from ai_qa.manifesto import MANIFESTO
 from ai_qa.paradigm import (
     scale_paradigm_text, domain_outlets_text, geo_tool_catalog_text, code_exec_catalog_text,
     template_registry_text, b_track_paradigm_text, select_template_text, template_id_list_text,
-    DIAGNOSE_CARD_FIELDS, DATA_STRATEGY,
+    DIAGNOSE_CARD_FIELDS, DATA_STRATEGY, TEMPLATE_REGISTRY,
 )
 from ai_qa.industry_kb import industry_kb_brief_text, industry_kb_lens_appendix
 from core.tracker import track, register_track_id
@@ -250,6 +250,88 @@ def build_diagnose_prompt(context: str = '', context_tokens: list = None) -> str
     # 治概念问散文直答不吐卡的 2 MISS（eval 69% 主因）。概念解释交后续阶段，本阶段只出卡。
     prompt += _DIAGNOSE_FEW_SHOT
     return _inject_tokens(prompt, context_tokens)
+
+
+# ════════════ Phase B（D006·5.236）极瘦填卡 prompt：select_candidates 预选 → Flash 只填卡 ════════════
+# 与 build_diagnose_prompt（复合兜底·45.8KB）配对：单/少候选（无 multi）走本极瘦版（<3.5KB·<5s）。
+# 卡 schema 8 字段不变（DIAGNOSE_CARD_FIELDS）→ parseDiagnoseCard/harness 路由不动。
+# 去 MANIFESTO/全量 catalog/B_TRACK/few-shot（候选 schema 过滤注入·只注 1-4 个）。
+FILL_CARD_TEMPLATE = """
+
+═══ Diagnose · 填卡（预选工具已定·你不选型·只填卡）═══
+
+为下列**预选工具**填 diagnose 信息卡（8 字段 JSON）。**不做工具选型**（已由 0LLM 规则预选）·只填参数 + 维度 + 数据状态。
+
+【预选工具】（template 只能取其一·method=[template]）：
+{candidates_schema}
+
+【输出】**严格 JSON 对象**（仅 JSON·禁 markdown 代码块/前后解释）：
+{{
+  "intent": "general|gis_operation|emotion_analysis",
+  "domain_lens": ["urban_planning|urban_renewal|urban_operation|urban_governance|general"],
+  "scale": "macro|meso|micro",
+  "decision_type": "评价|选址|排查|对比|监测|定义|操作|通用问答",
+  "outlet": "生成图层|地图定位|指标排序|报告结论|建议清单|预警|执行操作",
+  "data_plan": {{ "strategy": "ready|fallback_annotated|request_upload", "needed": [], "available": [], "gap": [] }},
+  "template": "<预选工具 id>",
+  "method": ["<预选工具 id>"],
+  "params": {{}}
+}}
+
+【规则】
+1. template/method = 预选工具（1 个→直接填；多个→选最匹配问句的·**禁选预选外的**）。
+2. params 按预选工具入参 schema 填（值从问句/grounding 派生·缺必填槽→strategy=request_upload·**禁编造字段名/数值**）。
+3. data_plan.strategy：ready=数据齐·fallback_annotated=软缺口有替代·request_upload=硬缺口（关键数据无替代·该问不硬答）。
+4. concept（概念问）→ intent=general·template=concept·params={{}}·method=[]。
+5. domain_lens/scale/decision_type/outlet 据问句语义判·outlet 默认「生成图层」。
+
+【问句】
+{question}
+
+【grounding】（据此判 available/gap）
+{context}
+"""
+
+
+def _candidate_schema_text(candidates):
+    """渲染候选工具紧凑 schema（FILL_CARD 注入·从 TEMPLATE_REGISTRY 过滤·<400B/候选）。
+
+    候选 skill id（select_candidates 产）→ TEMPLATE_REGISTRY 查·渲 required_slots + optional_defaults（=入参 schema）。"""
+    by_skill = {s['skill']: s for s in TEMPLATE_REGISTRY}
+    lines = []
+    for sk in candidates:
+        s = by_skill.get(sk)
+        if not s:
+            continue
+        req = s.get('required_slots') or []
+        opt = s.get('optional_defaults') or {}
+        opt_hint = ', '.join(f'{k}={v!r}' for k, v in opt.items()) or '（无）'
+        req_hint = ('必填:' + ','.join(req)) if req else '无必填'
+        lines.append(f'- {sk}（{s.get("name", "")}）：{req_hint}；可选：{opt_hint}')
+    return '\n'.join(lines) if lines else '- concept（无候选·填概念卡）'
+
+
+@track("MOD_AIQA.F_009", track_args=False)
+def build_fill_card_prompt(question, candidates, context: str = '', context_tokens: list = None) -> str:
+    """Phase B 极瘦填卡 prompt（<3.5KB·D006）：select_candidates 预选工具 → Flash 只填卡（不选型）。
+
+    卡 schema 8 字段不变 → 前端 parseDiagnoseCard/harness 路由不动。复合/0 候选走 build_diagnose_prompt 兜底（router 分派）。"""
+    schema = _candidate_schema_text(candidates or [])
+    prompt = _today_line() + FILL_CARD_TEMPLATE.format(
+        candidates_schema=schema, question=question or '（空）', context=context or '（无 grounding）')
+    return _inject_tokens(prompt, context_tokens)
+
+
+@track("MOD_AIQA.F_010", track_args=False)
+def build_diagnose_prompt_dispatch(question, context: str = '', context_tokens: list = None):
+    """Phase B（D006·5.236）diagnose prompt 分派（router 调·可单测·不打 Flash）：
+    select_candidates 预选 → 单/少候选（无 multi）走极瘦填卡（<3.5KB·<5s）·复合/0 候选走现大 prompt 兜底（45.8KB·不回归）。
+    返 (prompt, path)·path ∈ {'fill_card','fallback'}（供日志/单测）。"""
+    from ai_qa.candidate_selector import select_candidates
+    cands = select_candidates(question or '', None)['candidates']
+    if cands and 'multi' not in cands:
+        return build_fill_card_prompt(question, cands, context, context_tokens), 'fill_card'
+    return build_diagnose_prompt(context, context_tokens), 'fallback'
 
 
 # 输出示例（注入 diagnose prompt 末尾·最强 recency）：3 条 Q→完整 JSON 卡，覆盖概念问(→concept)、

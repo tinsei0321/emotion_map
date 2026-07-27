@@ -1,7 +1,7 @@
 # EMC 修复工程 · 总进度汇总卡
 
 > **一页看清** EMC 修复整体状态。**九模块实施进度矩阵（§一·监控主视图）** + 5 层分层明细（§二）+ 待修（§三）+ 时序（§四）。
-> **更新**：2026-07-27（CB-09 轮次3a·**5.235**·0LLM 候选选择器 Phase A）
+> **更新**：2026-07-27（CB-09 轮次3b·**5.236**·Flash 瘦身 Phase B·SPEED WIN）
 > **承继**：本卡由 `emc-fix-backlog.md`（2026-07-24 快照）更名重写，聚焦"9 模块进度 + 分层 + 时序"。
 > **⚠️ 关键区分**：**设计定稿 9/9 ✅**（[deepdive 讨论](catch-ball/emc-arch-deepdive/SUMMARY.md) 全定稿·README「进度总览」✅ 指此）**≠ 实施落地 3/9 ✅**（见 §一矩阵）。看代码进度只认本卡 §一 + revision-log §5，勿认 deepdive README 的 ✅。
 
@@ -17,7 +17,7 @@
 | 3 | **Execution Layer**（执行层） | P0 | D016-D018 | ✅ | **5.231**：D016 observation 参数自述（cell_size/radius·网格单元非点）+ D017 `computeStyle` 镜像（CB-04·5.226）+ D018 `focusLayer` 父组空 FC 返子层（治 Overview「0 条」） |
 | 5 | **Review + Revise** | P0 | D022-D024 | ✅ | **5.232**：D022 删旧 R+R（`review.py` 215 行 + reviewStep/reviseStep + REVISE_TEMPLATE 全清）+ D023 质量防线三层（[`applyQualityDefense`](../frontend/js/ai_qa/harness.js#L233)·全代码 <20ms·取代 LLM 审查 5-15s）+ D024 episode 迁移（review→defense） |
 | 4 | **FinalStep Agent**（输出层） | P1 | D019-D021 | ✅ | **5.233 + 5.234**：D019 极瘦 prompt（17KB→1.86KB·prefill 20-35s→<1s）+ D020 追问胶囊三级（L1 0 LLM 轮 <2s / L2 Pro 确认 5-8s·`runCapsule` 复用 runTemplatePath）+ D021 工具集绑定（R5 schema 硬剔 / R6 可达性软标 / R8 多样性记 episode） |
-| 1 | **Diagnose Agent**（认知层） | P1 | D001-D011 | 🔄 | 架构方向已落（单技能 `runTemplatePath` 短路 + `_quickIntent` general 短路）；**D006 Flash 瘦身 30-54KB→1-3.5KB 延轮次4**（伴 0LLM 字段识别三阶段彻底重构·5.233 裁决 B·保 83% eval 基线）；D007-D011 字段识别归模块九 |
+| 1 | **Diagnose Agent**（认知层） | P1 | D001-D011 | 🔄 | **D006 Flash 瘦身 Phase B ✅（5.236）**：[`build_diagnose_prompt_dispatch`](../ai_qa/prompts.py) 顶调 select_candidates → 单/少候选走极瘦填卡（45.8KB→**1.85KB**·25-45s→**<5s**）·复合走大 prompt 兜底（不回归）·卡 schema 不变；**Phase C 待**（D009 Pro 推理·多卡→Pro 计划 chain·接模块二 D012） |
 | 2 | **Orchestrator**（编排层） | P2 | D012-D015 | 🔄 | D014 `_PARAM_ALIAS` 按工具别 ✅（CB-04）+ D015 `_GEO_TOOLS` 补 ensure_zone ✅；**D012 Pro 动态 chain 待**（当前 `CHAIN_REGISTRY` 固定链 E1·5.210·`runChainPath` 0 LLM 中间轮）；D013 while-loop 已降为异常兜底（单技能已走 runTemplatePath） |
 | 6 | **Prompt Engineering** | P4 | D025-D026+R1 | 🔄 | D025 [`tool_contracts.py`](../ai_qa/tool_contracts.py) 单一源 ✅（CB-04·5.226）+ R1 rank `by` worst ✅；**D026 Flash/Pro/finalStep prompt 全派生自 contracts 待**（finalStep 极瘦手写·Flash 未瘦身·轮次4） |
 | 7 | **Toolbox ↔ EMC 接口** | P4 | D027-D029 | ✅基本 | **CB-04（5.226）**：D027 15 `generate*ForAI` 全审计 + D028 `enforceMutualExclusion` 保留 + D029 ForAI=dialog 镜像 CI（[`validate_skill_params.py`](../tests/validate_skill_params.py)）；⬜ L3 `panel_source` 28 项待核查（非色板核心） |
@@ -26,7 +26,7 @@
 
 **总计**：设计定稿 **9/9 ✅** · 实施落地 **3/9 ✅（三/四/五）· 6/9 🔄（一/二/六/七/八/九·Phase A）· 0/9 ⬜**
 
-**当前推进**：CB-09 多轮次（[plan](catch-ball/emc-arch-deepdive/)）— 轮次1 P0 消矛盾（5.231）✅ + 轮次1 删旧R+R/质量防线（5.232）✅ + 轮次2a finalStep 极瘦（5.233）✅ + 轮次2b 胶囊三级（5.234）✅ + **轮次3a 0LLM 选择器 Phase A（5.235）✅**；**待启动**：轮次3b Phase B（Flash 选型前移 + prompt 瘦身 + eval 重写·SPEED WIN·高危）+ 模块二 Pro 动态 chain（D012）+ 模块九 Phase B/C。
+**当前推进**：CB-09 多轮次（[plan](catch-ball/emc-arch-deepdive/)）— 轮次1 P0 消矛盾（5.231）✅ + 轮次1 删旧R+R/质量防线（5.232）✅ + 轮次2a finalStep 极瘦（5.233）✅ + 轮次2b 胶囊三级（5.234）✅ + 轮次3a 0LLM 选择器 Phase A（5.235）✅ + **轮次3b Flash 瘦身 Phase B（5.236）✅**；**待启动**：轮次3c Phase C（D009 Pro 推理 + 模块二 D012 动态 chain·治复合兜底慢）+ 模块九 Phase B/C。
 
 ---
 
@@ -97,6 +97,7 @@
 
 | 版本 | 修复 | CB |
 |------|------|:--:|
+| **5.236** | **CB-09 轮次3b Flash 瘦身（D006·Phase B·SPEED WIN）**（build_diagnose_prompt_dispatch + FILL_CARD_TEMPLATE 45.8KB→1.85KB·单候选 <5s·复合兜底） | CB-09 |
 | **5.235** | **CB-09 轮次3a 0LLM 候选选择器（模块九·Phase A·eval-safe）**（candidate_selector.py 纯规则 + eval 语料 97% 命中·不接路由） | CB-09 |
 | **5.234** | **CB-09 轮次2b 追问胶囊三级 + 绑定工具集**（`runCapsule` L1/L2 路由 + applyQualityDefense 扩 R5/R6/R8 + 动态胶囊 chip） | CB-09 |
 | **5.233** | **CB-09 轮次2a finalStep 极瘦**（FINAL_TEMPLATE 17KB→1.86KB·prefill <1s） | CB-09 |

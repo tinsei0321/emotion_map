@@ -83,3 +83,45 @@ def test_final_prompt_stays_lean():
     from ai_qa.prompts import build_final_prompt
     n = len(build_final_prompt('', '').encode())
     assert n < 2000, f'final prompt 膨胀到 {n} bytes（应 <2KB·查是否回灌 MANIFESTO/industry_kb）'
+
+
+def test_fill_card_prompt_lean():
+    """CB-09 D006 Phase B 极瘦填卡守门：<3.5KB（1-4 候选·prefill <2s·diagnose <5s）。
+    防 build_fill_card_prompt 回灌 MANIFESTO/全量 catalog 致 45.8KB 回潮。"""
+    from ai_qa.prompts import build_fill_card_prompt
+    n1 = len(build_fill_card_prompt('做核密度分析', ['density'], '', None).encode())
+    n4 = len(build_fill_card_prompt('多候选', ['density', 'hotspot', 'zonal', 'rank'], '', None).encode())
+    assert n1 < 3500, f'fill_card prompt（1 候选）{n1}B 应 <3.5KB'
+    assert n4 < 3500, f'fill_card prompt（4 候选）{n4}B 应 <3.5KB'
+
+
+def test_fill_card_includes_candidate_schema():
+    """fill_card prompt 须注入候选 skill 的入参 schema（required/optional）·Flash 据此填 params。"""
+    from ai_qa.prompts import build_fill_card_prompt
+    p = build_fill_card_prompt('做核密度分析', ['density'], '', None)
+    assert 'density' in p and 'template' in p, 'fill_card 缺候选 skill / 卡 schema'
+    assert 'polarity' in p or 'mode' in p, 'fill_card 缺 density 入参 schema'  # density optional_defaults 键
+
+
+def test_diagnose_dispatch_fill_card_for_single():
+    """D006 Phase B 分派：单候选问 → fill_card 路径（极瘦）。"""
+    from ai_qa.prompts import build_diagnose_prompt_dispatch
+    prompt, path = build_diagnose_prompt_dispatch('做核密度分析', '', None)
+    assert path == 'fill_card', f'单候选应走 fill_card·实走 {path}'
+    assert len(prompt.encode()) < 3500, 'fill_card prompt 应 <3.5KB'
+
+
+def test_diagnose_dispatch_fallback_for_compound():
+    """D006 Phase B 分派：复合问（multi）→ fallback 大 prompt（不回归·45.8KB）。"""
+    from ai_qa.prompts import build_diagnose_prompt_dispatch
+    # 复合（scope+analyze）→ select_candidates 返 multi → fallback
+    prompt, path = build_diagnose_prompt_dispatch('西陵区范围内密度分析', '', None)
+    assert path == 'fallback', f'复合应走 fallback·实走 {path}'
+    assert len(prompt.encode()) > 20000, 'fallback 大 prompt 应 ~45.8KB（非极瘦）'
+
+
+def test_diagnose_dispatch_fallback_for_concept():
+    """D006 Phase B 分派：概念问 → fill_card（concept 候选·极瘦概念卡）。"""
+    from ai_qa.prompts import build_diagnose_prompt_dispatch
+    _prompt, path = build_diagnose_prompt_dispatch('什么是核密度分析', '', None)
+    assert path == 'fill_card', f'概念问应走 fill_card（concept）·实走 {path}'
