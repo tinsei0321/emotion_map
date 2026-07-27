@@ -223,7 +223,10 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月27日）** · 本节按板块分组、组内倒序；最新工作 = **5.227 CB-05 EMC UX·去 LLM 审查 + 删除符号四层根治**（本次，分支 `main`）。上一轮 5.226（CB-04 契约整改）。最近：
+> 📍 **最新动态（07月27日）** · 本节按板块分组、组内倒序；最新工作 = **5.228 数据识别 visible bug 修 + emc-fix-progress 汇总卡**（本次，分支 `main`）。上一轮 5.227（CB-05 UX）。最近：
+>
+> - **5.228 数据识别 visible bug 修 + emc-fix-progress 汇总卡**（用户报"上传 L2 点层眼睛关·EMC 判缺数据"老 bug + 要进度汇总卡·主线程·未派 subagent）：**根因**——[pickVisiblePointLayer:646](frontend/js/ai_qa/tools.js#L646) + [buildContext:572/580](frontend/js/ai_qa/tools.js#L572) 三处 `l.visible` 过滤 + [:608](frontend/js/ai_qa/tools.js#L608) 老纪律"未显示层禁用"——眼睛关=显示控制非数据可用性，hidden 层 fc 仍有效。**修**：三处去 visible（已加载即用·含 hidden·buildContext grounding 列全部+标"隐藏"·pickVisiblePointLayer pool 优先 visible fallback all）+ _ERR 文案 + 纪律注释改。**emc-fix-progress.md**：新建总进度汇总卡（契约/体验/数据/路由/质量 五层·一页看清·5.203-5.228 时序·backlog 更名重写·旧归档 `.archived`）。**验证**：serve 加载/console PAGEERRORS=0。
+>
 >
 > - **5.227 CB-05 EMC UX 优化·去 LLM 审查 + 删除符号四层根治**（用户报两体验问题·第三方 DeepSeek UX 评估·CB 反评价全 agree·主线程·未派 subagent）：**问题1 审查等待**——根因 finalStep→reviewStep→reviseStep 串行 LLM（12-30s）+ runTemplatePath 无 onObservation（[harness:325](frontend/js/ai_qa/harness.js#L325) 漏 UI 信号·DeepSeek 发现）+ 审查假阳性（Flash 审 DeepSeek）。**问题2 删除符号**——**双根因**：A markdown ~~（REVISE_TEMPLATE 缺禁~~·[prompts:292](ai_qa/prompts.py#L292)）+ **B CSS cite-chip-invalid line-through（主因·[panel:847](frontend/js/ai_qa/panel.js#L847) getValidRefNames 只认 grid/terrain·zonal/area_stats/extract 等地名全 invalid·我漏）**。**A 去审查**：REVIEW_ENABLED 默认 false + FINAL_TEMPLATE 内嵌自查 5 条 + 空答案检测 + runTemplatePath 加 onObservation + panel 清审查 UI。**B 四层根治**：renderAnswer strip ~~ + REVISE 补禁~~ + getValidRefNames 扩展所有 polygon（治 CSS invalid 主因）+ cite-chip-invalid line-through→opacity。保留代码诚实门（_verifyClaims 等）+ review.py 开关。**验证**：pytest 191 passed 零回归 + 浏览器加载/console 无 JS 错。详见 [cb-journal CB-05](docs/catch-ball/cb-journal.md)。
 >

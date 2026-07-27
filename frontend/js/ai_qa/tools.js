@@ -569,15 +569,15 @@ export async function buildContext() {
   const _csl = CPD_STEPS.find((s) => s.id === _cs);
   parts.push(`引导阶段：${_cs}${_csl ? '·' + _csl.label : ''}（用户所处进度，仅供参考，不改变工具选型）`);
   const loaded = (await Promise.all(layers
-    .filter((l) => l.visible && l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length)
+    .filter((l) => l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length)   // CB-0528：去 visible·已加载即列（含 hidden·眼睛关仍可用）
     .map(async (l) => {
       const cnt = l.fc.features.length;
       const fs = await _fieldSamples(l.fc, 12, l.id);   // DataEye（P3）：字段+类型+role+样本值（关键字段全值·治误判缺数据 2c）
-      return `${l.name}(${cnt}条,${_kindTag(l)}${_boundaryEnum(l)}${fs ? ',字段:' + fs : ''})`;
+      return `${l.name}(${cnt}条,${_kindTag(l)}${_boundaryEnum(l)}${fs ? ',字段:' + fs : ''}${l.visible ? '' : ',隐藏'})`;
     }))).join('、');
-  parts.push('已加载图层（仅 Layers 当前显示·EMC 只用可见层，未显示层禁用）：' + (loaded || '（无）'));
+  parts.push('已加载图层（眼睛开关不影响 EMC 可用·隐藏层仍可分析·标"隐藏"者为 hidden）：' + (loaded || '（无）'));
   // 数据内容摘要（5.223·系统全字段值域识别·Flash 知有什么/值域/缺什么·Layer Manifest 完整版）
-  const _ptLayers = layers.filter((l) => l.visible && l.kind === 'point' && l.fc && l.fc.features && l.fc.features.length);
+  const _ptLayers = layers.filter((l) => l.kind === 'point' && l.fc && l.fc.features && l.fc.features.length);   // CB-0528：去 visible·含 hidden（眼睛关仍摘要给 Flash）
   const _summ = [];
   for (const pl of _ptLayers.slice(0, 3)) {
     const cards = await getFieldCard(pl.id, pl.fc);
@@ -605,7 +605,7 @@ export async function buildContext() {
   }
   if (_summ.length) parts.push('数据内容摘要（字段值域·知有什么）:\n' + _summ.join('\n'));
   parts.push('EMC 分析能力（可生成·勿判缺数据需上传）：密度热力图（2D 彩虹/3D·可按极性筛：综合/积极/消极/中性）/ 网格聚合（任意尺度）/ 情绪地形 / 区域聚合统计 / 排序 / 缓冲 / 叠置 / 裁取 / 抽取 / 筛选 / 合并 / 邻近 / 聚集热点 / 面积统计 / 区域对比。L2 已含 polarity（积极/中性/消极）·要"消极/积极热力图"直接生成（density.params.polarity=overall|positive|negative|neutral·综合=彩虹·极性=对应色板）·勿判"缺极性点"。');
-  // 数据可见纪律：不注入 registry catalog 全量（formatGeoCatalog）——未显示层一律不准用，防"只传 L1·T1 却跑 L2"
+  // 数据纪律（CB-0528 修）：已加载层（含 hidden）均可用——防"用未加载层"，但眼睛关≠未加载（hidden 层 fc 仍有效·EMC 可用）
   const wisdom = await getWisdom();
   if (wisdom) parts.push(wisdom);
   if (!an) {
@@ -643,15 +643,19 @@ export async function buildContext() {
 /** 数据可见纪律（工作机制重构）：EMC 只用 Layers 中【当前显示】的情绪点层，registry 未显示层一律禁用
  *  （防默认 'yichang_l2_t1' 致"只传 L1·T1 却跑 L2"的用错数据）。与 heatmap/grid collectSources 同源，但强制 visible 过滤。 */
 export function pickVisiblePointLayer() {
-  const vis = getLayers().filter((l) => l.visible && l.fc && l.fc.features && l.fc.features.length);
-  for (const l of vis) {   // L2 group（多极性子层合并）优先
+  // CB-0528：已加载点层不论 visible（眼睛关仍可用·数据在）；优先 visible，无 visible fallback 全部已加载
+  // （治"上传后眼睛关·EMC 判缺数据"老 bug·眼睛是显示控制非数据可用性）
+  const _all = getLayers().filter((l) => l.fc && l.fc.features && l.fc.features.length);
+  const vis = _all.filter((l) => l.visible);
+  const pool = vis.length ? vis : _all;
+  for (const l of pool) {   // L2 group（多极性子层合并）优先
     if (l.kind === 'group' && l.children && l.children.length) {
       const merged = [];
       for (const cid of l.children) { const c = getLayer(cid); if (c && c.fc && c.fc.features.length) merged.push(...c.fc.features); }
       if (merged.length) return { fc: { type: 'FeatureCollection', features: merged }, name: l.name, level: 'L2', sourceKey: `group:${l.id}` };
     }
   }
-  const pts = vis.filter((l) => l.kind === 'point');
+  const pts = pool.filter((l) => l.kind === 'point');
   const l2 = pts.find((l) => l.colorMode && String(l.colorMode).startsWith('l2-'));
   if (l2) return { fc: l2.fc, name: l2.name, level: 'L2', sourceKey: `layer:${l2.id}` };
   const l1 = pts.find((l) => l.colorMode === 'confidence');
@@ -665,7 +669,7 @@ function resolvePointLayer(params) {
   return vl ? vl.fc : null;
 }
 function _ERR_NO_VISIBLE_PT() {
-  return { observation: '[ERR] 无可见的情绪点层——EMC 只用 Layers 当前显示的数据，请先加载/上传情绪点（registry 未显示层一律禁用）' };
+  return { observation: '[ERR] 无已加载的情绪点层——请先在 Layers 上传/加载情绪点数据（眼睛开关不影响 EMC 可用·hidden 层仍可分析）' };
 }
 /** 补注册 Toolbox 委托产物（generateHeatmapForAI/generateGridForAI/generateTerrainForAI 经 addLayer 入 getLayers，
  *  但绕过 addResultLayer）——补 _registry(provenance)/_stepResults($n 引用)/_curResultIds，让多步链可 $n 引用 + formatRegistry 显 provenance + 5.74 对账完整。 */

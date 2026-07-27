@@ -21,6 +21,12 @@
 - **浏览器验证 5.225**：KDE 情绪地形 → 单按钮「生成 2D 热力图」→ 2D 综合彩虹热力图（L1/L2 一致）。
 - **浏览器验证 5.224**：EMC 折叠胶囊点击正常展开。
 
+### ✅ 数据识别 visible bug 修 + emc-fix-progress 汇总卡（revision-log 5.228）
+
+- **bug**：上传 L2 点层眼睛关·EMC 判缺数据（pickVisiblePointLayer/buildContext 三处 visible 过滤·眼睛关=显示控制非数据可用性）。
+- **修**：三处去 visible（已加载即用·含 hidden·buildContext 标"隐藏"·pool 优先 visible fallback all）+ _ERR/纪律文案改。
+- **emc-fix-progress.md**：总进度汇总卡（五层·一页看清·详 [emc-fix-progress.md](docs/emc-fix-progress.md)）·backlog 更名归档 `.archived`。
+
 ### ✅ CB-05 EMC UX 优化·去审查 + 删除符号根治（revision-log 5.227）
 
 - 用户报两体验问题：审查等待 + 删除符号。第三方 DeepSeek UX 评估（[SCAN_EMCUX](docs/catch-ball/report/SCAN_EMCUX_deepseek_2026-07-27.md)），反评价全 agree。
