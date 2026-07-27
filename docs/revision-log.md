@@ -223,7 +223,10 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月27日）** · 本节按板块分组、组内倒序；最新工作 = **5.240 模块六 D026 prompt 全派生 contracts（9/9 完整收尾·里程碑）**（本次，分支 `main`）。上一轮 5.239（模块八 CPD 收尾）。最近：
+> 📍 **最新动态（07月27日）** · 本节按板块分组、组内倒序；最新工作 = **5.241 selector trigger 补「剪裁/裁剪」+ 诊断"无变化"根因（uvicorn 需重启）**（本次，分支 `main`）。上一轮 5.240（模块六 D026 prompt 全派生）。最近：
+>
+> - **5.241 selector trigger 补「剪裁/裁剪」+ 诊断"重构后无变化"根因**（用户验证 9 模块后反馈"无变化/仍慢/简单问失败"·主线程）：**根因诊断**——① **主因：serve.py 未重启**（[serve.py:340](frontend/serve.py#L340) uvicorn 无 `--reload`·10 commit 的 Python 未载入·跑旧代码→Phase B 极瘦没生效·"随便问也无变化"铁证）② selector trigger 缺漏：「剪裁西陵区」误路由 zonal（实测）③ 预存数据问题（range 识别/density 失败·重构未触及 buildContext/density 工具）。**修**（根因②）：[`candidate_selector.py`](ai_qa/candidate_selector.py) `_B_TRACK_TRIGGER_EXT` clip 补 `剪裁/裁剪/裁剪出` + extract_feature 补 `剪裁出` → 「剪裁西陵区」→ [clip]（不再 zonal）。**用户操作**（根因①）：重启 serve.py（Ctrl+C + start.bat·`_free_port` 起最新代码）+ 浏览器硬刷 → Phase B 生效（diagnose <5s 铁证）。**runtime 诊断**（根因③·重启后按需）：density/range 失败看 [TRACE] 定位。**验证**：pytest 214 passed 零回归 + selector 路由正确。**关键结论**：9 模块代码已 wired（214 passed）·非重构失效·是运维（serve 未重启）+ 1 trigger 缺漏 + 预存数据问题。详见 plan。
+>
 >
 > - **5.240 模块六 D026 prompt 全派生 contracts（9/9 完整收尾·里程碑）**（消灭 prompt 手写工具规格与 tool_contracts 分裂·P4 基础设施·主线程）：[AGENT_TEMPLATE](ai_qa/prompts.py#L71)（while-loop 兜底）的【GIS 工具】**12 个手写规格（zonal_stats/rank/.../density 的 params+说明）与 [`geo_tool_catalog_text()`](ai_qa/prompts.py#L121) 派生附录重复** → 替换为**指针行**（指向派生附录·由 [`tool_contracts.py`](ai_qa/tool_contracts.py) 单一源派生）·agent prompt 减小。**派生现状审计**：FILL_CARD/PLAN 用 `_candidate_schema_text`（TEMPLATE_REGISTRY 派生）✅ · DIAGNOSE 用 GEO_TOOL_CATALOG/template_registry 派生附录 ✅ · FINAL 无工具规格 ✅ · AGENT 手写规格（本次移除）❌→✅。**保留**：EMC 元工具（query_layers/ensure_zone/inspect 等·非 contracts 工具·合法手写）+ 用地数据模型/工具链/命名/生命周期 guidance + run_python 使用约束（操作指南·非规格）。**测试** [test_emc_template.py](tests/test_emc_template.py) +2（`geo_catalog_derives_all_gis_tools` 派生完整性 + `agent_prompt_no_handwritten_gis_specs` 手写签名清零·签名用 `zonal_stats：**宏/中观` 粗体格式区分派生附录）。**验证**：pytest **214 passed**+5 skipped（+2·零回归）+ serve/boot 干净。**里程碑**：**9 模块实施 9/9 全 ✅**（一/二/三/四/五/六/七/八/九）·待用户一次性浏览器齐验。详见 plan。
 >
