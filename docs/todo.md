@@ -8,18 +8,35 @@
 
 ---
 
-## 📅 2026-07-28（明日计划·**开 plan**）
+## 📅 2026-07-29（明日计划·**开 plan**）
 
 ### 🔄 测试飞轮更新 + 9 模块测试围绕新飞轮
 
-- **用户主导**：根据今日落地的最新 EMC 架构（三阶段 diagnose + 追问胶囊 + 质量防线 + Pro 动态 chain）**更新测试飞轮机制 + 模拟测试内容**。
-- **9 大模块测试围绕新飞轮展开**——飞轮是 9 模块齐验的载体（用户约定「9 模块做完一起验」·今日 9/9 全落地·明日飞轮就绪后齐验）。
-- **开 plan**（用户明示）·plan 要含：新飞轮机制设计（信号链/断言/报告/闭环）+ 模拟测试内容（覆盖三阶段路径·单候选/复合/胶囊/防线/概念问）。
-- 参考旧评估：[test-flywheel-audit-2026-07-24](../.codebuddy/reports/test-flywheel-audit-2026-07-24.md)（5.1/10·三处闭环断裂·H/M/L 清单）+ [emc-fix-progress §一](emc-fix-progress.md)（9 模块矩阵·验什么）。
+- **用户主导**：根据 5.242 修复后的 EMC 架构（三阶段 diagnose + **数据感知选型** + 追问胶囊 + 质量防线 + Pro 动态 chain）**更新测试飞轮机制 + 模拟测试内容**。
+- **飞轮核心**：覆盖「**数据×问句**」组合测（不只关键词）——DeepSeek 评估报告 §十一（缺失测试 7 项）+ §九 P2 建议（S10-S15）可参考。
+- **开 plan**（用户明示）。
+- 参考：[DeepSeek EVAL_REPORT_unified_2026-07-28](docs/catch-ball/emc-arch-deepdive/EVAL_REPORT_unified_2026-07-28.md)（8 bug·P0 已修·P1 部分修·P2 待续）+ [emc-fix-progress §一](emc-fix-progress.md)（9 模块矩阵）。
 
 ---
 
-## 📅 2026-07-27（今日·**CB-09 9 模块全落地** + 收尾·commit+push）
+## 📅 2026-07-28（今日·**9 模块验证暴露链路缺陷 → 系统性修复**·commit+push）
+
+### ✅ 5.242 EMC 链路系统性修复（选型数据感知 + 9 bug·融合 DeepSeek 评估·revision-log 5.242）
+
+- 用户验证 9 模块后报「剪裁西陵区」失败 + 「无变化」+ 「基本功能丧失」。
+- **根因**（DeepSeek EVAL 确认）：`select_candidates(question, None)` context 硬 None → 0LLM 选型**数据盲**（不知点/面）→ 误路由 + `TOOL_GEOMETRY_REQUIRE['clip']` 误设 None（Phase A 漏设）。
+- **修复 11 项**：S1 数据感知（layer_meta 端到端）+ clip 几何表修正 + stale multi 移除 + 剪裁歧义词 + 空候选→request_upload + S3-S9（clip 恢复/ensure_zone/F_008/capsule intent/正则统一/chain hasRows/FILL_CARD 兜底）。
+- **验证**：pytest **219 passed** 零回归 + 实测（剪裁+polygon→extract / 无点→request_upload）+ serve 干净。
+- **教训**：选型不能脱离数据上下文（question-only = 架构债）+ clip 几何表 Phase A 漏设 + 改 Python 后须重启 serve。
+
+### ✅ 5.241 selector trigger 补 + 诊断「无变化」根因（uvicorn 需重启）
+
+- 用户报「无变化」→ 诊断主因 = serve.py 未重启（uvicorn 无 --reload·旧 Python 未载入）。
+- selector 补「剪裁/裁剪」trigger（5.241 初版·5.242 修正为歧义词）。
+
+---
+
+## 📅 2026-07-27（CB-09 9 模块全落地 + 收尾）
 
 ### 🎯 CB-09 EMC 架构重构 · 9 模块实施 9/9 全 ✅（5.231-5.240）
 
