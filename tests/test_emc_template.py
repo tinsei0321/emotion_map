@@ -187,3 +187,27 @@ def test_log_episode_capsule_clicked(tmp_path, monkeypatch):
     assert len(lines) == 2
     assert json.loads(lines[0]).get('capsule_clicked') == 'density'
     assert json.loads(lines[1]).get('capsule_clicked') is None
+
+
+def test_geo_catalog_derives_all_gis_tools():
+    """模块六 D026（5.240）：geo_tool_catalog_text() 含 TOOL_CONTRACTS 所有 single GIS 工具（派生无遗漏）。"""
+    from ai_qa.paradigm import geo_tool_catalog_text
+    from ai_qa.tool_contracts import TOOL_CONTRACTS
+    catalog = geo_tool_catalog_text()
+    gis_tools = [c.get('tool') for c in TOOL_CONTRACTS if c.get('category') == 'single' and c.get('when')]
+    assert gis_tools, '应至少有 1 个 single GIS 工具'
+    missing = [t for t in gis_tools if t not in catalog]
+    assert not missing, f'geo_tool_catalog 附录缺工具（派生遗漏）：{missing}'
+
+
+def test_agent_prompt_no_handwritten_gis_specs():
+    """模块六 D026（5.240）：agent_step prompt 不含手写 GIS 工具规格（已全派生至 geo_tool_catalog 附录）。
+    注：派生附录从 density.when 渲染会含'核密度(KDE)'字样（合法·源自 contracts）·手写规格的独特签名是
+    'zonal_stats：**宏/中观' 等粗体+内联 params 格式（派生附录用'- name：when\\n    入参：params'格式）。"""
+    from ai_qa.prompts import build_agent_prompt
+    p = build_agent_prompt('', '', 1)
+    # 手写规格独特签名（**粗体** + —— 破折号）·派生附录无此格式
+    assert 'zonal_stats：**宏/中观' not in p, 'agent prompt 仍含手写 zonal_stats 规格（D026 未派生）'
+    assert 'density：核密度(KDE)/热力图——' not in p, 'agent prompt 仍含手写 density 规格（—— 签名）'
+    # 派生指针应在
+    assert 'GIS 操作目录' in p and 'tool_contracts' in p, 'agent prompt 缺派生附录指针'

@@ -21,6 +21,15 @@
 - **浏览器验证 5.225**：KDE 情绪地形 → 单按钮「生成 2D 热力图」→ 2D 综合彩虹热力图（L1/L2 一致）。
 - **浏览器验证 5.224**：EMC 折叠胶囊点击正常展开。
 
+### ✅ 模块六 D026 prompt 全派生 contracts（9/9 完整收尾·里程碑·revision-log 5.240）
+
+- [AGENT_TEMPLATE](ai_qa/prompts.py#L71)（while-loop 兜底）【GIS 工具】12 手写规格（与 `geo_tool_catalog_text()` 派生附录重复）→ **指针行**（指向派生附录·由 tool_contracts.py 单一源派生）·agent prompt 减小。
+- **派生现状**：FILL_CARD/PLAN（`_candidate_schema_text` ← TEMPLATE_REGISTRY）✅ · DIAGNOSE（GEO_TOOL_CATALOG 派生附录）✅ · FINAL（无规格）✅ · AGENT（本次）✅。
+- **保留**：EMC 元工具（query/inspect·非 contracts·合法手写）+ guidance + run_python 约束。
+- **测试**：[test_emc_template.py](tests/test_emc_template.py) +2（派生完整性 + 手写签名清零）。
+- **验证**：pytest **214 passed** 零回归 + serve/boot 干净·**待用户 push**。
+- **🎯 里程碑**：**9 模块实施 9/9 全 ✅**（一/二/三/四/五/六/七/八/九）·待用户一次性浏览器齐验。
+
 ### ✅ 模块八 CPD 收尾（D030-D034·9/9 第2步·revision-log 5.239）
 
 - **honest 判断**：[08-cpd-engine.md](docs/catch-ball/emc-arch-deepdive/08-cpd-engine.md) 的「CPD 独立对话框消费 Pro plans」与 5.234 追问胶囊 UI 重复（都「点击→跳 Flash→执行」）→ **不另造对话框**。
