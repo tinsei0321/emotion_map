@@ -104,24 +104,43 @@ def test_fill_card_includes_candidate_schema():
 
 
 def test_diagnose_dispatch_fill_card_for_single():
-    """D006 Phase B 分派：单候选问 → fill_card 路径（极瘦）。"""
+    """D006 Phase B 分派：单候选问 → fill_card 路径（极瘦·Flash）。"""
     from ai_qa.prompts import build_diagnose_prompt_dispatch
-    prompt, path = build_diagnose_prompt_dispatch('做核密度分析', '', None)
+    prompt, path, model = build_diagnose_prompt_dispatch('做核密度分析', '', None)
     assert path == 'fill_card', f'单候选应走 fill_card·实走 {path}'
+    assert model is None, f'fill_card 应 Flash（model=None）·实 {model}'
     assert len(prompt.encode()) < 3500, 'fill_card prompt 应 <3.5KB'
 
 
-def test_diagnose_dispatch_fallback_for_compound():
-    """D006 Phase B 分派：复合问（multi）→ fallback 大 prompt（不回归·45.8KB）。"""
+def test_diagnose_dispatch_plan_for_compound():
+    """D009+D012 Phase C 分派：复合问（multi）→ plan 路径（Pro 产 chain·<5KB·5-10s）。"""
     from ai_qa.prompts import build_diagnose_prompt_dispatch
-    # 复合（scope+analyze）→ select_candidates 返 multi → fallback
-    prompt, path = build_diagnose_prompt_dispatch('西陵区范围内密度分析', '', None)
-    assert path == 'fallback', f'复合应走 fallback·实走 {path}'
-    assert len(prompt.encode()) > 20000, 'fallback 大 prompt 应 ~45.8KB（非极瘦）'
+    prompt, path, model = build_diagnose_prompt_dispatch('西陵区范围内密度分析', '', None)
+    assert path == 'plan', f'复合应走 plan（Pro）·实走 {path}'
+    assert model == 'pro', f'plan 应 Pro（model=pro）·实 {model}'
+    assert len(prompt.encode()) < 5000, f'plan prompt 应 <5KB·实 {len(prompt.encode())}B'
+    assert 'chain' in prompt and 'steps' in prompt, 'plan prompt 缺 chain/steps schema'
 
 
-def test_diagnose_dispatch_fallback_for_concept():
-    """D006 Phase B 分派：概念问 → fill_card（concept 候选·极瘦概念卡）。"""
+def test_diagnose_dispatch_fill_card_for_concept():
+    """D006 Phase B 分派：概念问 → fill_card（concept 候选·极瘦概念卡·Flash）。"""
     from ai_qa.prompts import build_diagnose_prompt_dispatch
-    _prompt, path = build_diagnose_prompt_dispatch('什么是核密度分析', '', None)
+    _prompt, path, model = build_diagnose_prompt_dispatch('什么是核密度分析', '', None)
     assert path == 'fill_card', f'概念问应走 fill_card（concept）·实走 {path}'
+    assert model is None, f'concept fill_card 应 Flash·实 {model}'
+
+
+def test_plan_prompt_lean():
+    """D009+D012 Phase C 守门：Pro plan prompt <5KB（vs 复合大 prompt 45.8KB·省 90%+）。"""
+    from ai_qa.prompts import build_plan_prompt
+    n = len(build_plan_prompt('西陵区范围内密度分析', ['density', 'clip'], '', None).encode())
+    assert n < 5000, f'plan prompt {n}B 应 <5KB（防回灌 MANIFESTO/全量 catalog）'
+
+
+def test_plan_prompt_includes_chain_convention():
+    """plan prompt 须教 Pro 产 chain：含 $1 引用 + {question} 占位 + chain schema。"""
+    from ai_qa.prompts import build_plan_prompt
+    p = build_plan_prompt('西陵区范围内密度分析', ['density', 'clip'], '', None)
+    assert '$1' in p, 'plan prompt 缺 $n 引用约定'
+    assert 'chain' in p and 'steps' in p, 'plan prompt 缺 chain/steps schema'
+    assert 'multi' in p, 'plan prompt 缺 template=multi 指示'

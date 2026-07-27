@@ -764,7 +764,8 @@ export async function orchestrate(ctx, hooks = {}) {
   if (!ctx.resume && !diagnose.degraded && diagnose.template) {
     const _tdef = stages.SKILL_DEFS[diagnose.template];
     if (_tdef && _tdef.category === 'single' && _tplHitRateReady()) return await runTemplatePath(ctx, hooks, diagnose);
-    if (diagnose.template === 'multi' && _tplHitRateReady()) {                     // E1（5.210）：multi 标准链分流（治 C3 多步超时）
+    if (diagnose.chain) return await runChainPath(ctx, hooks, diagnose, diagnose.chain);  // CB-09 D009+D012（5.237）Phase C: Pro 产复合链优先·不受 Flash hit-rate gate（Pro 非 Flash）
+    if (diagnose.template === 'multi' && _tplHitRateReady()) {                     // E1（5.210）：Flash multi 固定链分流（治 C3 多步超时）
       const _chain = _deriveChainId(ctx.question, diagnose);
       if (_chain) return await runChainPath(ctx, hooks, diagnose, _chain);          // 命中 → 0 LLM 轮确定性链（治 C3）
     }                                                                              // 未命中落 while-loop（ReAct 兜底）

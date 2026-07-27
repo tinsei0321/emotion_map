@@ -30,9 +30,12 @@ async def chat_route(req: ChatRequest):
         sys_content = build_final_prompt(req.context or '', req.tool_history or '', req.context_tokens, req.domain_lens)
     elif req.phase == 'diagnose':
         # 问题诊断（专业认知前置步）：流式 reason + content JSON 卡（不用 json_mode，同 agent_step）
-        # CB-09 D006（5.236）Phase B：select_candidates 预选 → 单/少候选走极瘦填卡（<3.5KB·<5s）·复合走大 prompt 兜底
+        # CB-09 D006（5.236）Phase B：select_candidates 预选 → 单/少候选走极瘦填卡（<3.5KB·<5s）
+        # CB-09 D009+D012（5.237）Phase C：复合 → Pro 计划（产 chain·<5KB·5-10s）·0 候选走大 prompt 兜底
         _q = (req.messages or [{}])[-1].get('content', '') if req.messages else ''
-        sys_content, _diag_path = build_diagnose_prompt_dispatch(_q, req.context or '', req.context_tokens)
+        sys_content, _diag_path, _diag_model = build_diagnose_prompt_dispatch(_q, req.context or '', req.context_tokens)
+        if _diag_model:
+            req.model = _diag_model   # 复合 → pro（下方 tier=_tier_of(req.model) 在分支后算·自动生效）
     elif req.phase == 'optimize':
         # Prompt 优化（5.215）：Flash 把用户 NL 优化成具体/实操/逻辑清晰 prompt（不增维度·梳理已有要素）
         _ui = (req.messages or [{}])[-1].get('content', '') if req.messages else ''

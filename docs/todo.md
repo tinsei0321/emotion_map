@@ -21,6 +21,16 @@
 - **浏览器验证 5.225**：KDE 情绪地形 → 单按钮「生成 2D 热力图」→ 2D 综合彩虹热力图（L1/L2 一致）。
 - **浏览器验证 5.224**：EMC 折叠胶囊点击正常展开。
 
+### ✅ CB-09 轮次3c Pro 推理 + 动态 chain（D009+D012·Phase C·9 模块核心收尾·revision-log 5.237）
+
+- 复合查询 25-45s（大 prompt 兜底）→ **Pro 计划 5-10s**：复合（select_candidates 返 multi）走 Pro 产工具链 chain → runChainPath 动态消费。
+- **核心洞察**：[runChainPath](frontend/js/ai_qa/harness.js#L532) 已通用（{steps:[{tool,params}]}·$n 解析·步失败 ask_user）→ **只改 chain 来源**（Pro vs CHAIN_REGISTRY）·主体不动。
+- **后端**：[`build_diagnose_prompt_dispatch`](ai_qa/prompts.py) 扩 3-tuple（复合→plan/pro）+ 新 [PLAN_TEMPLATE](ai_qa/prompts.py) + `build_plan_prompt`（F_011·<5KB·Pro 拆 2-3 步 + $1/$2 引用）；[router.py:30](ai_qa/router.py#L30) 应用 model 覆盖（复合→pro）。
+- **前端**：[normalizeCard](frontend/js/ai_qa/stages.js#L196) 加 chain 解析+校验（step.tool ∈ SKILL_DEFS + ≥2 步）；[orchestrate:764](frontend/js/ai_qa/harness.js#L764) `diagnose.chain` 优先（不经 Flash gate）·固定链 + while-loop 三层兜底。
+- **测试**：[test_emc_template.py](tests/test_emc_template.py) +2（plan 体量 + chain 约定）+ 修 Phase B dispatch 测为 3-tuple + compound→plan。
+- **验证**：pytest **209 passed**+5 skipped（零回归）+ plan <5KB + serve/boot 干净·**复合 Pro plan + runChainPath 交用户 9 模块齐验**·**待用户 push**。
+- **9 模块核心全落地**：一/二/三/四/五/九 ✅（6/9）·六/七/八 P3/P4 精进待（D026 prompt 全派生 / L3 panel_source / D031-D034 CPD 消费 plan）。
+
 ### ✅ CB-09 轮次3b Flash 瘦身（D006·Phase B·SPEED WIN·revision-log 5.236）
 
 - diagnose Flash prompt **45.8KB → 1.85KB**（1 候选·4 候选 2.15KB·均 <3.5KB）·**25-45s → <5s**（EMC 最后一块慢骨头）。

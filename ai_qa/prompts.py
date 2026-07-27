@@ -324,14 +324,72 @@ def build_fill_card_prompt(question, candidates, context: str = '', context_toke
 
 @track("MOD_AIQA.F_010", track_args=False)
 def build_diagnose_prompt_dispatch(question, context: str = '', context_tokens: list = None):
-    """Phase B（D006·5.236）diagnose prompt 分派（router 调·可单测·不打 Flash）：
-    select_candidates 预选 → 单/少候选（无 multi）走极瘦填卡（<3.5KB·<5s）·复合/0 候选走现大 prompt 兜底（45.8KB·不回归）。
-    返 (prompt, path)·path ∈ {'fill_card','fallback'}（供日志/单测）。"""
+    """Phase B+C（D006·5.236/5.237）diagnose prompt 分派（router 调·可单测·不打 LLM）：
+    select_candidates 预选 → 单/少候选（无 multi）走极瘦填卡（Flash·<3.5KB·<5s）·复合（multi）走 Pro 计划（D009·<5KB·5-10s·产 chain）·0 候选走现大 prompt 兜底（45.8KB·不回归）。
+    返 (prompt, path, model_override)·path ∈ {'fill_card','plan','fallback'}·model_override ∈ {None,'pro'}（router 据此切 tier）。"""
     from ai_qa.candidate_selector import select_candidates
     cands = select_candidates(question or '', None)['candidates']
     if cands and 'multi' not in cands:
-        return build_fill_card_prompt(question, cands, context, context_tokens), 'fill_card'
-    return build_diagnose_prompt(context, context_tokens), 'fallback'
+        return build_fill_card_prompt(question, cands, context, context_tokens), 'fill_card', None
+    if 'multi' in cands:   # Phase C（D009+D012）：复合 → Pro 产工具链 plan → runChainPath 动态消费
+        return build_plan_prompt(question, cands, context, context_tokens), 'plan', 'pro'
+    return build_diagnose_prompt(context, context_tokens), 'fallback', None
+
+
+# ════════════ Phase C（D009+D012·5.237）Pro 复合计划 prompt：复合 → Pro 产工具链 chain ════════════
+# 与 fill_card（单候选·Flash）/ diagnose（0 候选兜底）配对：复合（select_candidates 返 multi）走本 Pro plan。
+# 产 diagnose 卡 + chain({name,steps:[{tool,params}]}) → 前端 normalizeCard 透传 chain → runChainPath 动态消费（取代固定 CHAIN_REGISTRY）。
+PLAN_TEMPLATE = """
+
+═══ Plan · 复合计划（Pro 推理·多步组合）═══
+
+用户问句需**多步工具组合**（0LLM 规则预判为复合·select_candidates）。你的任务：拆解为工具链 plan（不做单步填卡·不做选型——复合组件已预选）。
+
+【问句】
+{question}
+
+【候选工具（chain 的 tool 只能取这些）】
+{candidates_schema}
+
+【grounding】（据此判 available/gap）
+{context}
+
+【拆链规则】
+- 拆 **2-3 步**·每步 {{ "tool": "...", "params": {{...}} }}。
+- **$1/$2** 引用前序产图层步骤的结果（第 1/2 个产图层工具的输出·作下步的 layer/layer_a 等）。
+- **{{question}}** 占位由问句填·其他上下文占位按语义填。
+- tool+params 须**合法**（按候选 schema·禁编工具名/字段/数值）。
+- name 用**现实内容**（如「西陵区内商业用地」·非"叠置/intersection"实现术语）。
+
+【输出】**严格 JSON 对象**（仅 JSON·禁 markdown 代码块/解释）：
+{{
+  "intent": "gis_operation|emotion_analysis",
+  "domain_lens": ["urban_planning|urban_renewal|urban_operation|urban_governance|general"],
+  "scale": "macro|meso|micro",
+  "template": "multi",
+  "method": ["<step1 tool>", "<step2 tool>"],
+  "data_plan": {{ "strategy": "ready|fallback_annotated|request_upload", "needed": [], "available": [], "gap": [] }},
+  "chain": {{
+    "name": "<现实内容名>",
+    "steps": [
+      {{ "tool": "<候选1>", "params": {{...}} }},
+      {{ "tool": "<候选2>", "params": {{ "layer_a": "$1", ... }} }}
+    ]
+  }}
+}}
+
+【规则】① chain.steps ≥2·tool ∈ 候选·params 按 schema；② 缺数据→strategy=request_upload·chain 仍给但标局限；③ 诚实（禁编字段/数值·地图状态用户可见）。
+"""
+
+
+@track("MOD_AIQA.F_011", track_args=False)
+def build_plan_prompt(question, candidates, context: str = '', context_tokens: list = None) -> str:
+    """Phase C（D009+D012·5.237）Pro 复合计划 prompt（<5KB）：select_candidates 复合 → Pro 产工具链 plan。
+    产 diagnose 卡 + chain({name,steps:[{tool,params}]}) → runChainPath 动态消费（取代固定 CHAIN_REGISTRY）。"""
+    schema = _candidate_schema_text(candidates or [])
+    prompt = _today_line() + PLAN_TEMPLATE.format(
+        candidates_schema=schema, question=question or '（空）', context=context or '（无 grounding）')
+    return _inject_tokens(prompt, context_tokens)
 
 
 # 输出示例（注入 diagnose prompt 末尾·最强 recency）：3 条 Q→完整 JSON 卡，覆盖概念问(→concept)、
