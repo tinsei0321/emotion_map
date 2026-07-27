@@ -21,6 +21,13 @@
 - **浏览器验证 5.225**：KDE 情绪地形 → 单按钮「生成 2D 热力图」→ 2D 综合彩虹热力图（L1/L2 一致）。
 - **浏览器验证 5.224**：EMC 折叠胶囊点击正常展开。
 
+### ✅ CB-09 轮次1 EMC 彻底重构·消矛盾 + 删旧R+R/质量防线三层（revision-log 5.231 + 5.232）
+
+- **5.231 P0 消矛盾**（已 commit 4c2d783·上次会话）：① focusLayer 父组空 FC 返子层（治 Overview 0 条）② observation 参数自述（cell_size/radius·网格单元非点·治 LLM 锚定 300m）③ density 3d 清 radius ④ 单技能注入 formatRegistry。
+- **5.232 模块五 删旧 R+R + 质量防线三层**（D022-D024·本次）：删 [review.py](ai_qa/review.py)（215 行）+ reviewStep/reviseStep/REVISE_TEMPLATE/REVIEW_CHECKLIST + router/api/panel review 路径全清；新增 [harness.applyQualityDefense](frontend/js/ai_qa/harness.js#L233)（L1 产物验证 + R1/R2/R3/R4/R7 + L3 降级·**全代码不调 LLM·<20ms·取代 LLM 审查+重写 5-15s**）；6 处 _reviseOnce rewire；episode review→defense 迁移（episode/aiqa_routes/consolidate + 前端 POST）。**R5/R6/R8 延期轮次2**（依赖胶囊绑定工具集·当前静态 {tag,text} 无 params）。
+- **验证**：pytest 191 passed + 后端 import 通 + grep 零残留 + serve/boot 干净（JS 执行交用户肉眼）·**待用户 push**。
+- **待续**：轮次2 P1（finalStep 极瘦 0.6-1.3KB + Flash diagnose 瘦身 1-3.5KB·eval 重写）→ 轮次3-5。
+
 ### ✅ CB-07 finalStep 超时矛盾 + 2D/3D 跳组修复（revision-log 5.230）
 
 - bug1：finalStep 超时"[请求失败]"矛盾→Layer 3 try/catch + `_composeDegradedConclusion`（零 LLM 降级结论·图+{{show}} 按钮·非"请求失败"）+ Layer 2 answer phase 60s。

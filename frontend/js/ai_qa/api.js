@@ -3,8 +3,8 @@
 const BASE = '/api/v1';
 
 /**
- * SSE 流式问答（agent_step / answer / revise 流式；review 单帧 JSON）。
- * @param opts {onReason, onReview, model, contextTokens, signal, phase, toolHistory, roundN, draft, reviewHints}
+ * SSE 流式问答（diagnose / agent_step / answer / optimize 流式）。
+ * @param opts {onReason, model, contextTokens, signal, phase, toolHistory, roundN, domainLens}
  */
 let _lastUsage = null;
 let _callCount = 0, _totalPrompt = 0, _totalCompletion = 0;
@@ -19,15 +19,13 @@ export function getCallStats() {
 
 export async function streamChat(messages, context, onToken, onError, opts = {}) {
   _callCount++;
-  const { onReason, onReview, model, contextTokens, signal } = opts;
+  const { onReason, model, contextTokens, signal } = opts;
   const body = { messages, context };
   if (model) body.model = model;
   if (contextTokens && contextTokens.length) body.context_tokens = contextTokens;
   if (opts.phase) body.phase = opts.phase;
   if (opts.toolHistory) body.tool_history = opts.toolHistory;
   if (opts.roundN) body.round_n = opts.roundN;
-  if (opts.draft) body.draft = opts.draft;
-  if (opts.reviewHints) body.review_hints = opts.reviewHints;
   if (opts.domainLens && opts.domainLens.length) body.domain_lens = opts.domainLens;
   // CB-06 P0-B：per-call timeout（45s·慢轮 abort → harness P0-A 降级·治 Flash 过度思考卡死·最坏等 45s 非数十秒）
   const _timeout = opts.phase === 'answer' ? 60000 : 45000;   // CB-07 Layer 2：finalStep（answer）prompt 大→60s·其他 45s
@@ -68,7 +66,6 @@ export async function streamChat(messages, context, onToken, onError, opts = {})
           const obj = JSON.parse(data);
           if (obj.error) { if (onError) onError(obj.error); return; }
           if (obj.usage) { _lastUsage = obj.usage; _totalPrompt += obj.usage.prompt_tokens || 0; _totalCompletion += obj.usage.completion_tokens || 0; if (opts.onUsage) opts.onUsage(obj.usage); }
-          if (obj.review !== undefined && onReview) { onReview(obj.review); return; }
           if (obj.reason && onReason) onReason(obj.reason);
           if (obj.token) onToken(obj.token.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ''));   // 5.222 过滤控制符（DEL 等·治"删除符号"Bug 3）
         } catch (_) { /* skip malformed */ }

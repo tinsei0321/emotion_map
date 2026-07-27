@@ -478,7 +478,7 @@ function _fmtTokens(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String
 function _exitBadge(t) {
   if (!t) return null;
   const intent = t.diagnose && !t.diagnose.degraded && t.diagnose.intent;
-  const skipped = t.review && t.review.skipped;
+  const skipped = t.defense && t.defense.skipped;
   if (t.exit === 'gap' || skipped === 'gap') return { txt: '缺数据·需上传', cls: 'warn' };
   if (t.exit === 'drift' || skipped === 'drift') return { txt: '生成异常·已拦截', cls: 'warn' };
   if (t.exit === 'ask') return { txt: '等你选择', cls: 'warn' };
@@ -571,7 +571,7 @@ function stampDone(shell) {
 function _followUps(t) {
   const intent = t && t.diagnose && !t.diagnose.degraded && t.diagnose.intent;
   const exit = t && t.exit;
-  const skipped = t && t.review && t.review.skipped;
+  const skipped = t && t.defense && t.defense.skipped;
   const ans = (t && t.final) || '';
   const ref = (ans.match(/\[ref:([^\]]+)\]/) || ans.match(/\{{1,2}focus:([^}]+)\}{1,2}/) || [])[1];
   const region = ref ? ref.trim() : '';
@@ -856,17 +856,9 @@ function getValidRefNames() {
   return names;
 }
 
-/** 渲染审查状态区（七条 ✓/△/✕ + 整体结论）。 */
-function renderReview(reviewEl, body, review) {
-  if (!review || review.degraded) { reviewEl.hidden = true; return; }   // CB-05 A6：去审查（REVIEW_ENABLED 默认 false→degraded）→ 审查区隐藏（不显"审查跳过"占位）
-  reviewEl.hidden = false;
-  const icon = { pass: '✓', warn: '△', fail: '✕' };
-  const items = (review.scores || []).map((s) =>
-    `<span class="aiq-review-item ${s.verdict}" title="${escapeHtml(s.comment || s.name || '')}">${icon[s.verdict] || '?'} ${escapeHtml(s.name || s.key)}</span>`
-  ).join('');
-  const cls = review.pass ? 'pass' : 'fail';
-  const txt = review.pass ? '审查通过' : '审查未过·重写中';
-  body.innerHTML = `<div class="aiq-review-verdict ${cls}">${txt}</div><div class="aiq-review-items">${items}</div>`;
+/** CB-09 D024：质量防线结果供 episode 自成长·不显 UI（旧 review 七条 ✓/△/✕ 审查区已退役·永隐）。 */
+function renderReview(reviewEl) {
+  if (reviewEl) reviewEl.hidden = true;
 }
 
 /** 思考 dock（单例，挂 #chat-suggest 槽，永贴底不被顶走）。 */
@@ -1077,7 +1069,7 @@ function appendAssistantShell(trace) {
     <div class="aiq-card aiq-card-diagnose" hidden></div>
     <div class="aiq-reason ${isFlash ? 'is-flash' : ''}" ${hasReason ? '' : 'hidden'}><div class="aiq-reason-head"><span class="aiq-reason-title">${isFlash ? 'Flash · 直接作答' : 'Thinking…'}</span><span class="aiq-reason-meta"></span></div><div class="aiq-reason-body"></div></div>
     <div class="aiq-steps" ${trace && trace.steps && trace.steps.length ? '' : 'hidden'}><div class="aiq-steps-head">工具调用（Agent Loop）</div></div>
-    <div class="aiq-review" ${trace && trace.review ? '' : 'hidden'}><div class="aiq-review-head">审查</div><div class="aiq-review-body"></div></div>
+    <div class="aiq-review" hidden><div class="aiq-review-head">审查</div><div class="aiq-review-body"></div></div>
     <div class="aiq-step aiq-step-final"><span class="aiq-step-tag">结论</span><div class="aiq-answer"><span class="aiq-answer-stream"></span><span class="chat-cursor" hidden>▍</span></div></div>
     <div class="aiq-card aiq-card-caliber" hidden></div>
     <div class="aiq-answer-footer" hidden></div>
@@ -1116,7 +1108,7 @@ function appendAssistantShell(trace) {
       shell.reasonEl.classList.add('is-done');
     }
     (trace.steps || []).forEach((s) => renderToolCard(shell.stepsEl, s.round, s.thought, s.action, s.observation));
-    if (trace.review) renderReview(shell.reviewEl, shell.reviewBody, trace.review);
+    renderReview(shell.reviewEl);   // CB-09 D024：defense 不显 UI（永隐）
     shell.answerEl.innerHTML = trace.final ? renderAnswer(trace.final, getValidRefNames()) : '<span class="chat-error">（未生成结论）</span>';
     enhanceCodeBlocks(shell.answerEl);
     // P1：ask_user 历史恢复——重建选项胶囊（onAskUser 存了 trace.ask，刷新/切会话后重渲染 + rebind 点击）
@@ -1196,7 +1188,7 @@ function renderToolCard(stepsEl, round, thought, action, observation) {
 
 function buildHooks(shell) {
   const reasonSegs = {};   // round -> text
-  let streamAcc = '';      // onFinal/onRevise 共用流缓冲（RAF drain，治 O(n²) 每 token marked.parse）
+  let streamAcc = '';      // onFinal 流缓冲（RAF drain·治 O(n²) 每 token marked.parse）
   let streamRaf = 0;
   let reasonRaf = 0;
   const isFlash = _thinkMode === 'flash';
@@ -1213,7 +1205,7 @@ function buildHooks(shell) {
   function flushReasonSegs() {
     if (_curTrace) _curTrace.reasonSegments = Object.keys(reasonSegs).map((k) => ({ round: Number(k), text: reasonSegs[k] }));
   }
-  /** 流式期裸文本节点（流末 onFinalDone/onReviseDone 才 marked.parse 一次）。 */
+  /** 流式期裸文本节点（流末 onFinalDone 才 marked.parse 一次）。 */
   function ensureStream() {
     if (!shell.answerEl.querySelector('.aiq-answer-stream')) {
       shell.answerEl.innerHTML = '<span class="aiq-answer-stream"></span><span class="chat-cursor">▍</span>';
@@ -1340,37 +1332,12 @@ function buildHooks(shell) {
       finalizeReason();   // flush 最后一帧思考 + 整块 is-done + 主题目录重切
       if (_curTrace) _curTrace.final = text;
       shell._finalMd = text;   // 供页脚「复制回答」取最终 markdown
-      // CB-05 A6：去 LLM 审查后 onFinalDone 即完成（不显"审查中"占位·审查区保持隐藏）；history 在 send 末尾统一持久化
-      // 审查区 reviewEl 保持默认 hidden（仅 REVIEW_ENABLED 开·onReview 非 degraded 时显）
+      // CB-09 D024：onFinalDone 即完成（defense 不显 UI·renderReview 永隐）；history 在 send 末尾统一持久化
     },
-    onReview: (review) => {
-      if (_curTrace) _curTrace.review = review;
-      renderReview(shell.reviewEl, shell.reviewBody, review);
-      if (!review.degraded) setPhase('审查');   // CB-05 A6：仅非 degraded（用户开 REVIEW_ENABLED 调试）才转审查阶段·默认关时不变 phase
-      autoScroll();
-    },
-    onReviseStart: () => {
-      cancelStream();
-      streamAcc = '';
-      setPhase('生成');
-      shell.answerEl.innerHTML = '<span class="aiq-revising-hint">校验修正中…</span><span class="chat-cursor">▍</span>';   // CB-05 A6：诚实门 _verifyClaims 触发·文案去"审查"字眼
-      autoScroll();
-    },
-    onRevise: (tok) => {
-      streamAcc += tok;
-      if (_curTrace) { _curTrace.revised = streamAcc; _curTrace.final = streamAcc; }
-      if (!streamRaf) streamRaf = requestAnimationFrame(drainStream);
-    },
-    onReviseDone: (text) => {
-      cancelStream();
-      streamAcc = text || '';
-      shell.answerEl.innerHTML = renderAnswer(text, getValidRefNames());
-      enhanceCodeBlocks(shell.answerEl);
-      if (_curTrace) { _curTrace.revised = text; _curTrace.final = text; }
-      shell._finalMd = text;   // 重写后更新最终 markdown
-      const v = shell.reviewBody.querySelector('.aiq-review-verdict.fail');
-      if (v) v.textContent = '已校验修正';
-      autoScroll();
+    // CB-09 D024：质量防线结果（取代旧 onReview）·供 episode 自成长·不显 UI（renderReview 永隐）
+    onDefense: (defense) => {
+      if (_curTrace) _curTrace.defense = defense;
+      renderReview(shell.reviewEl);
     },
     onDegraded: (_text) => {
       cancelStream();
@@ -1433,7 +1400,7 @@ async function send(text) {
 
   const shell = appendAssistantShell(null);
   if (!shell) return;
-  _curTrace = { reason: '', reasonSegments: [], steps: [], final: '', review: null, revised: '', diagnose: null, caliber: null, startedAt: Date.now(), doneAt: null };
+  _curTrace = { reason: '', reasonSegments: [], steps: [], final: '', defense: null, diagnose: null, caliber: null, startedAt: Date.now(), doneAt: null };
   resetCallStats();
   resetStepResults();
   resetCurrentResults();   // 沉浸聚焦：新一轮查询清空上轮结果登记
@@ -1482,7 +1449,7 @@ async function send(text) {
   } finally {
     relaxEmc();
     cleanupConsumedResults();   // 轮末兜底：清掉被后续工具消费的中间结果层，EMC 组只留最终答案图层
-    // 统一在 review/revise 结束后持久化（onFinalDone 不再 push）
+    // 统一在答案结束后持久化（onFinalDone 不再 push）
     if (_curTrace && (settled || _curTrace.final)) {
       _history.push({ role: 'assistant', trace: JSON.parse(JSON.stringify(_curTrace)) });
       saveHistory();
@@ -1492,7 +1459,7 @@ async function send(text) {
     if (_curTrace) {
       fetch('/api/v1/aiqa/episode', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: text, diagnose: _curTrace.diagnose, final: _curTrace.final, review: _curTrace.review, ok: settled }),
+        body: JSON.stringify({ question: text, diagnose: _curTrace.diagnose, final: _curTrace.final, defense: _curTrace.defense, ok: settled }),
       }).catch(() => {});
     }
     _streaming = false;

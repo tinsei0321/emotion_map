@@ -1,7 +1,8 @@
-// ═══ stages.js — Agent Loop 阶段（agentStep / finalStep / reviewStep / reviseStep）═══
-// 四阶段：agentStep（ReAct 每轮 reasoning + {thought,action}）/ finalStep（草稿 markdown）
-//       / reviewStep（Flash 审查员 JSON）/ reviseStep（审查未过重写 markdown）。
-// ctx.model = 'pro' | 'flash'（思考深度开关，后端别名解析到 V4 真实 ID）；review 固定 flash。
+// ═══ stages.js — Agent Loop 阶段（agentStep / diagnoseStep / optimizeStep / finalStep / deliberateStep）═══
+// 阶段：agentStep（ReAct 每轮 reasoning + {thought,action}）/ diagnoseStep（问题理解卡）/ optimizeStep（NL 优化）
+//      / finalStep（草稿 markdown）/ deliberateStep（Pro 研判·执行前）。
+// ctx.model = 'pro' | 'flash'（思考深度开关，后端别名解析到 V4 真实 ID）。
+// CB-09 D022：删旧 reviewStep/reviseStep（LLM 审查+重写 5-15s·假阳性高）→ 质量防线移至 harness.applyQualityDefense（代码·不调 LLM·<20ms）。
 import { streamChat } from './api.js';
 
 /** 入参别名规整：模型常把 invert 写成 inverse、as 写成 output_layer、radius_m 写成 radius，
@@ -309,33 +310,4 @@ export async function deliberateStep(ctx, diagnose, params) {
     (err) => { throw new Error(err); },
     { phase: 'deliberate', signal: ctx.signal, model: ctx.model, domainLens: ctx.domainLens });
   return out.trim() || null;
-}
-
-/** 审查草稿：非流式拿 Flash 审查员 JSON {pass, scores, revise_hints}。失败返回 degraded。 */
-export async function reviewStep(ctx, draft, toolHistory) {
-  let review = null;
-  await streamChat([], ctx.context,
-    () => {},
-    (err) => { throw new Error(err); },
-    {
-      phase: 'review', draft, toolHistory, signal: ctx.signal,
-      model: 'flash', domainLens: ctx.domainLens,
-      onReview: (r) => { review = r; },
-    });
-  return review || { pass: true, degraded: true, degraded_reason: '审查员无响应' };
-}
-
-/** 修订重写：基于 draft + hints 流式出修订 markdown。 */
-export async function reviseStep(ctx, draft, hints, toolHistory, hooks) {
-  const messages = [...(ctx.history || []), { role: 'user', content: ctx.question }];
-  let revised = '';
-  await streamChat(messages, ctx.context,
-    (tok) => { revised += tok; if (hooks.onRevise) hooks.onRevise(tok); },
-    (err) => { throw new Error(err); },
-    {
-      phase: 'revise', draft, reviewHints: hints, toolHistory, signal: ctx.signal,
-      model: 'flash', domainLens: ctx.domainLens,
-      onReason: (t) => { hooks.onReason && hooks.onReason(t, 0); },
-    });
-  return revised;
 }

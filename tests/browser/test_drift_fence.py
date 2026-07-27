@@ -1,6 +1,6 @@
 """用例 3 · _driftRe 无围栏裸 JSON 边缘。
 
-强求 LLM 产 ``` 围栏时 harness.js _driftRe 拦截 → revise；断言最终回答无裸 ``` 围栏泄漏。
+强求 LLM 产 ``` 围栏时 harness.js _driftRe 拦截 → drift 卡（CB-09 D022·删 LLM revise·直接走代码兜底）；断言最终回答无裸 ``` 围栏泄漏。
 
 风险：LLM 是否产围栏非确定 → exit 2 = WARN（提示人工复核，非硬绿）。反复 WARN → _driftRe 兜底
 有缺口；偶发 WARN → LLM 不稳，降 🤚 手工。

@@ -1,8 +1,11 @@
 """思考层 · Agent Loop prompt builder（ReAct）。
 
-替代上一轮的 think/answer/review 三阶段。现两阶段：
+阶段（phase）：
+- diagnose   ：问题理解卡（6 字段 JSON，Flash·eval-anchor，永不动内容）。
 - agent_step ：ReAct 每轮，输出 {thought, action} JSON（流式 reasoning + content JSON）。
 - answer     ：agent 决定 answer 后，基于全部探索历史出最终结论（流式 markdown）。
+- optimize   ：Flash 把用户 NL 优化成具体/实操 prompt（5.215·不增维度·梳理已有要素）。
+（CB-09 D022：删旧 review/revise 阶段 → 前端 harness.applyQualityDefense 代码防线取代 LLM 审查+重写）
 
 改 prompt 只改本文件。
 """
@@ -295,46 +298,7 @@ _DIAGNOSE_FEW_SHOT = """
 """
 
 
-# ── revise 阶段：审查未过，基于 draft + hints 重写 ───────────────────────────
-REVISE_TEMPLATE = """
-
-═══════════ 本次任务 · 修订重写 ═══════════
-你之前的草稿未通过审查员审查（审查意见见下）。请基于审查意见修订重写，逐条修正不达标项，输出修订后的完整结论。
-
-严格遵守 MANIFESTO 第十节回答公约：**图层为主出口**（`{{show:图层名}}`）+ 解题逻辑一句话 + 简短结论（1-3 句，含 1 条可落地建议）；数据驱动（引用数值/区域 + [ref:区域名]）、专业用语、**禁学术八股**（问题定性→数据证据→结论建议 那套，与 manifesto 公约3 一致）、**禁长报告**、**禁 markdown 删除线**（勿输出 ~~ 包裹文本·会渲染成删除符号·CB-05 补·与 FINAL_TEMPLATE 规则6 同步·治 revise 重新引入 ~~ 根因）。
-
-【审查意见】（六条中不达标/警告项 + 修正方向，须逐条对照修正）：
-{review_hints}
-
-【原草稿】（在此基础上改，不要推翻重写、保留正确部分）：
-{draft}
-
-【探索历史】（你历轮的 thought/action/工具观察）：
-{tool_history}
-
-当前数据：
-{context}
-
-输出修订后的完整结论（markdown + [ref:区域名]），不要解释"我改了什么"、不要前后缀解释。
-"""
-
-
-@track("MOD_AIQA.F_004", track_args=False)
-def build_revise_prompt(draft: str = '', review_hints: str = '', context: str = '',
-                        tool_history: str = '', context_tokens: list = None,
-                        domain_lens: list = None) -> str:
-    """revise 阶段：基于 draft + review_hints 重写（流式 markdown）。"""
-    ctx = context or '（未提供数据上下文）'
-    hist = tool_history or '（无探索历史）'
-    prompt = _today_line() + MANIFESTO +REVISE_TEMPLATE.format(
-        review_hints=review_hints or '（无具体意见，请按六条公约全面检查并改写）',
-        draft=draft or '（空）',
-        tool_history=hist,
-        context=ctx,
-    )
-    prompt += industry_kb_lens_appendix(domain_lens)   # 命中领域完整权威语境（重写时用权威话语）
-    return _inject_tokens(prompt, context_tokens)
-
+# CB-09 D022: revise stage deleted (REVISE_TEMPLATE + build_revise_prompt) -> frontend harness.applyQualityDefense (code defense, no LLM)
 
 # ── 字段语义推断（P2 /aiqa/profile_fields 用）────────────────────────────────
 # 为规则字典未命中的字段调 LLM 选 role（schema matching 兜底）。返 str（system prompt）。
@@ -495,7 +459,7 @@ def build_optimize_prompt(context: str = '', user_input: str = '') -> str:
 # diagnose prompt 永不动（保 Flash eval）——@track 是 pass-through 装饰器，不改 prompt 内容。
 register_track_id("MOD_AIQA.F_002", "build_agent_prompt（ReAct agent loop 每轮 prompt）")
 register_track_id("MOD_AIQA.F_003", "build_final_prompt（最终结论 prompt）")
-register_track_id("MOD_AIQA.F_004", "build_revise_prompt（_reviseOnce 重写 prompt）")
+# CB-09 D022：F_004（build_revise_prompt）已随 revise 阶段退役——ID 不重分配（保历史·新函数续 F_009+）。
 register_track_id("MOD_AIQA.F_005", "build_diagnose_prompt（承重 eval-anchor：6 字段问题理解卡，永不动内容）")
 register_track_id("MOD_AIQA.F_006", "build_field_infer_prompt（P2 字段语义推断）")
 register_track_id("MOD_AIQA.F_007", "build_deep_attribution_prompt（L4 深度归因·政策→情绪→项目闭环，lazy enrichment）")

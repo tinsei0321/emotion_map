@@ -1,6 +1,6 @@
-// ═══ harness.js — Agent Loop 编排器（ReAct：Thought→Action→Observation 循环 + 审查→修订）═══
+// ═══ harness.js — Agent Loop 编排器（ReAct：Thought→Action→Observation 循环 + 质量防线）═══
 // 模型每轮自主思考 + 决定动作 + 看结果再想，多轮（上限 MAX_ROUNDS）直到 action='answer'，
-// 出草稿 → Flash 审查员按七条 checklist 审查 → 不达标带 hints 自动 revise 重写 1 轮。
+// 出草稿 → applyQualityDefense 三层代码防线（L1 产物验证 + R 规则 + L3 降级·不调 LLM·CB-09 D023 取代旧 R+R）。
 // 前置：DIAGNOSE 问题理解卡（认知层）→ 注入 ctx.context 导工具选型 + 结论颗粒度；硬缺口短路请求上传。
 // 降级：agent_step 解析失败不再裸显 raw，break loop 仍走 finalStep 出一次性 answer。
 import * as stages from './stages.js';
@@ -28,10 +28,6 @@ function _quickIntent(q) {
 }
 const OBS_TRUNC = 200;      // observation 注入 history 截断长度
 const PARAMS_TRUNC = 80;    // action params 摘要截断长度
-// 审查质量门（5.70 重启）：默认开——仅审 emotion_analysis(C) 答案（general 短路、gis_operation 早 return、EXIT_GAP 早 return，本就不进审查）。
-// 聚焦客观质量杠杆（data_driven/actionable/scale_paradigm_fit/professional），主观项(layout/concise/structure)只 warn 不 fail。
-// verdict 经 episode 入 L3 → 喂活自成长闭环。运行时杀开关：浏览器 console 跑 localStorage.setItem('emcReviewOff','1') 即关。
-const REVIEW_ENABLED = (() => { try { return !!localStorage.getItem('emcReviewOn'); } catch (e) { return false; } })();   // CB-05：默认关 LLM 审查（体验>假阳性审查·硬性错误已由代码 gate 守）·console localStorage.setItem('emcReviewOn','1') 可开调试
 
 // ⑤④ Flash template 命中率遥测 + 80% gate（self-protection）。
 // diagnose 后记 template 命中(非 unknown)/未中(unknown)，落 localStorage 跨会话累积（clearChat 不重置）。
@@ -214,18 +210,84 @@ function composePartialCard(diagnose, doneParts, gapParts, existingLine) {
   return s;
 }
 
-/** A1 产物验证 gate：抽取草稿里声称"已生成/加载"的图层名，对照地图实际图层；谎报→返 hints 注入 revise。 */
+/** A1 产物验证 gate：抽取草稿里声称"已生成/加载"的图层名，对照地图实际图层；谎报→返 missing + hints。
+ *  CB-09 D023：失败动作从「LLM revise」改为「代码 inline 标注」（applyQualityDefense L1）·hints 保留供日志。 */
 function _verifyClaims(draft) {
-  if (!draft) return { ok: true };
+  if (!draft) return { ok: true, missing: [] };
   const re = /(?:已生成|已加载|已裁出|裁出了|生成了|已创建|新建了|产出了)\s*[「]?([^\n「」，。：:]{2,15})[」]?\s*(?:的?图层|层|面)/g;
   const claims = [];
   let m;
   while ((m = re.exec(draft)) !== null) claims.push(m[1].trim());
-  if (!claims.length) return { ok: true };
+  if (!claims.length) return { ok: true, missing: [] };
   const actual = getLayers().filter((l) => (l._renderState || 'ok') === 'ok').map((l) => l.name).filter(Boolean);   // E3：渲染失败层（_renderState≠ok·入列表但地图未真渲染）不计实际产出（治假完成·同 orchestrate :690 对账口径）
   const missing = claims.filter((c) => !actual.some((a) => a === c || a.includes(c) || c.includes(a)));
-  if (!missing.length) return { ok: true };
-  return { ok: false, hints: `诚实检查：回答声称已生成/加载「${missing.join('、')}」图层，但地图实际图层为[${actual.join('、') || '无'}]。请补做（调 geo 工具生成缺失图层）或纠正陈述（改为"尝试未成功/未生成"）。严禁谎报已做。` };
+  if (!missing.length) return { ok: true, missing: [] };
+  return { ok: false, missing, hints: `诚实检查：回答声称已生成/加载「${missing.join('、')}」图层，但地图实际图层为[${actual.join('、') || '无'}]。` };
+}
+
+/** CB-09 D023 质量防线（三层全代码·不调 LLM·<20ms）：取代旧 R+R（reviewStep+reviseStep·LLM 重写 5-15s·假阳性高·CB-05 起已默认关）。
+ *  L1 _verifyClaims（产物验证·声称图层不在地图→代码标注）+ L2 结构化规则（R1/R2/R3/R4/R7·draft 级）+ L3 降级渲染（_composeDegradedConclusion）。
+ *  R5/R6/R8（胶囊级·参数合法/工具可达/多样性）随轮次2 胶囊绑定工具集落地——当前追问胶囊是静态 {tag,text} prompt 串（panel.js _followUps）·无 tool+params 可校验。
+ *  入参 opts: {toolHistoryText, obsOk, skipL1}——skipL1=true 跳过产物验证（while-loop 路径 _extractClaimedLayers 对账已标注 missing·防双重标注）。
+ *  返 {final, degraded, fixes}——fixes 供 episode 自成长（D024·取代旧 review verdicts）。 */
+function applyQualityDefense(draft, opts) {
+  const _opts = opts || {};
+  let final = draft || '';
+  const fixes = [];
+  let degrade = false;
+  const _isNonEmpty = (s) => String(s).replace(/[#\s\-*`>]/g, '').length;
+  const reg = (typeof formatRegistry === 'function' ? formatRegistry() : []) || [];
+  const realLayers = reg.filter((r) => r.tool && r.tool !== 'query_layers').map((r) => r.name).filter(Boolean);
+
+  // L1 产物验证（skipL1=false·_verifyClaims missing → inline 标注「（注：未实际生成）」·复用 :826 函数替换范式防 $ 语义）
+  if (!_opts.skipL1) {
+    const claims = _verifyClaims(final);
+    if (!claims.ok && claims.missing && claims.missing.length) {
+      for (const m of claims.missing) {
+        const re = new RegExp(m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+        final = final.replace(re, () => m + '（注：未实际生成）');
+      }
+      fixes.push({ rule: 'L1', action: 'annotate-false-claims', missing: claims.missing });
+    }
+  }
+
+  // R1 非空结论（硬拦截·去格式符后 <10 字符 → L3 降级·防 finalStep 空答）
+  if (_isNonEmpty(final) < 10) { degrade = true; fixes.push({ rule: 'R1', action: 'empty-degrade' }); }
+
+  // R2 图层按钮存在（obs OK + 有产出层 + draft 无 {{show:}} → 自动追加·代码补·治"图出但结论没按钮"）
+  if (_opts.obsOk && realLayers.length && !/\{\{show:/.test(final)) {
+    const btns = realLayers.map((n) => `{{show:${n}}}`).join('\n');
+    final += `\n\n**已产出图层**（点击查看）：\n${btns}`;
+    fixes.push({ rule: 'R2', action: 'append-buttons' });
+  }
+
+  // R3 参数一致性（标记·不拦截）：draft 引用数值 vs toolHistory observation 的 cell_size/radius·差异记 fixes
+  if (_opts.toolHistoryText) {
+    const _draftNums = String(final).match(/\d{2,5}\s*(?:米|m)\b/g) || [];
+    const _obsNums = String(_opts.toolHistoryText).match(/\d{2,5}\s*(?:米|m)\b/g) || [];
+    if (_draftNums.length && _obsNums.length) {
+      const _diff = _draftNums.filter((n) => !_obsNums.includes(n));
+      if (_diff.length) fixes.push({ rule: 'R3', action: 'param-mismatch', values: _diff.slice(0, 3) });
+    }
+  }
+
+  // R4 状态不矛盾（硬拦截）：obsOK 却说「失败」/ obsERR 却说「已生成」→ L3 降级（治"图出但请求失败"矛盾·CB-07 同源）
+  if (_opts.obsOk && /请求失败|未成功生成|生成失败|未能生成/.test(final)) { degrade = true; fixes.push({ rule: 'R4', action: 'ok-says-fail' }); }
+  if (_opts.obsOk === false && /已生成|已产出|生成了|已创建/.test(final)) { degrade = true; fixes.push({ rule: 'R4', action: 'err-says-ok' }); }
+
+  // R7 结论三句骨架（>800 字 → 截断·代码兜底·prompt 已约束 brevity·此为真失控拦截）
+  if (final.length > 800) {
+    final = final.slice(0, 800) + '\n\n…（结论已截断·详见上方图层）';
+    fixes.push({ rule: 'R7', action: 'truncate' });
+  }
+
+  // L3 降级渲染（R1/R4 触发 → 跳 LLM 结论·展示 observation + 图层按钮·复用 CB-07 _composeDegradedConclusion）
+  if (degrade) {
+    final = _composeDegradedConclusion(_opts.toolHistoryText);
+    fixes.push({ rule: 'L3', action: 'degrade' });
+  }
+
+  return { final, degraded: degrade, fixes };
 }
 
 /** ⑤ 抽草稿里"声称产出的图层名"（保守：{{show:X}} 模板 + 强措辞"动词+名+图层类后缀"），供对账。
@@ -241,22 +303,8 @@ function _extractClaimedLayers(draft) {
   return [...names].filter((n) => n && n.length >= 2 && !/^(图层|面|点|网格|分布|热度|清单|列表|数据|结果|图层组|边界)$/.test(n));
 }
 
-/** 跑一次 revise（产物验证或 review 不达标触发；最多 1 轮）。返修订后文本或 null。 */
-async function _reviseOnce(ctx, hooks, draft, hints, toolHistoryText) {
-  if (!hints) return null;
-  if (hooks.onReviseStart) hooks.onReviseStart();
-  try {
-    const revised = await stages.reviseStep(ctx, draft, hints, toolHistoryText, hooks);
-    if (revised && revised.trim()) {
-      if (hooks.onReviseDone) hooks.onReviseDone(revised);
-      return revised;
-    }
-  } catch (e) { /* revise 失败保留 draft */ }
-  return null;
-}
-
 /** P1 编排·单技能路径：diagnose 选定 single 技能 → 填参 → 直接调 TOOLS[tool] → finalStep（**不进 while-loop、0 次 agentStep LLM**，p^N→p²）。
- *  缺不可默认槽/工具失败/空命中 → EXIT_GAP 诚实兜底（不赌博自纠，与降 p^N 初衷一致）。finalStep draft 仍过 _verifyClaims+_reviseOnce（5.74 对账保留）。 */
+ *  缺不可默认槽/工具失败/空命中 → EXIT_GAP 诚实兜底（不赌博自纠，与降 p^N 初衷一致）。finalStep draft 过 applyQualityDefense（CB-09 D023·代码防线·取代旧 _verifyClaims+_reviseOnce）。 */
 /** P2（Smart·v1.4）：缺必填槽 → 构造 ask_user 提问（精准选项·引导用户指定，避免模糊地名）。 */
 const _SLOT_HINT = {
   boundary: { q: '分析哪个区域？', opts: ['西陵区的情绪归因', '伍家岗区的情绪归因', '夷陵区的情绪归因', '我来输入其他区域'] },
@@ -372,7 +420,7 @@ async function runTemplatePath(ctx, hooks, diagnose) {
     const gapText = composeGapCard(diagnose, [obs.slice(0, 200)]);
     if (hooks.onFinalDone) hooks.onFinalDone(gapText);
     _recordSkip('tool_failed');   // ⑤④ execSkips 遥测
-    return { ok: true, rounds: 1, final: gapText, review: { pass: true, degraded: true, skipped: 'template-tool-failed' }, degraded: true, diagnose, exit: 'gap', newLayerCount };
+    return { ok: true, rounds: 1, final: gapText, defense: { degraded: true, skipped: 'template-tool-failed' }, degraded: true, diagnose, exit: 'gap', newLayerCount };
   }
   // 4. finalStep（Pro 写解题一句话 + 短结论 + {{show}}）
   if (hooks.onRound) hooks.onRound(1);
@@ -385,15 +433,12 @@ async function runTemplatePath(ctx, hooks, diagnose) {
     if (ctx.signal && ctx.signal.aborted) throw e;   // 用户取消 → 传播
     draft = _composeDegradedConclusion(toolHistoryText);   // CB-07 Layer 3：finalStep 超时/网络 → 零 LLM 降级结论（图已出·非"请求失败"矛盾）
   }
-  // 5. 5.74 对账（gis_operation 风格·跳过 review）
-  const claims = _verifyClaims(draft);
-  if (!claims.ok) {
-    const revised = await _reviseOnce(ctx, hooks, draft, claims.hints, toolHistoryText);
-    if (revised) draft = revised;
-  }
+  // 5. CB-09 D023 质量防线（L1 产物验证 + R1/R2/R3/R4/R7·代码·不调 LLM）取代旧 _verifyClaims+_reviseOnce
+  const _qd = applyQualityDefense(draft, { obsOk: true, toolHistoryText, skipL1: false });
+  draft = _qd.final;
   if (hooks.onFinalDone) hooks.onFinalDone(draft);
-  if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: '单技能路径·跳过审查' });
-  return { ok: true, rounds: 1, final: draft, review: { pass: true, degraded: true, skipped: 'single-template' }, degraded: false, diagnose, exit: 'result', newLayerCount };
+  if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template' });
+  return { ok: true, rounds: 1, final: draft, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template' }, degraded: false, diagnose, exit: 'result', newLayerCount };
 }
 
 /** E1（5.210）：多步链确定性执行（0 中间 LLM 轮·治 C3 多步超时）。类比 runTemplatePath 循环 chain.steps；
@@ -438,11 +483,12 @@ async function runChainPath(ctx, hooks, diagnose, chain) {
     if (ctx.signal && ctx.signal.aborted) throw e;   // 用户取消 → 传播
     draft = _composeDegradedConclusion(toolHistoryText);   // CB-07 Layer 3：finalStep 超时/网络 → 零 LLM 降级结论（图已出·非"请求失败"矛盾）
   }
-  const claims = _verifyClaims(draft);
-  if (!claims.ok) { const revised = await _reviseOnce(ctx, hooks, draft, claims.hints, toolHistoryText); if (revised) draft = revised; }
+  // CB-09 D023 质量防线（L1 + R 规则·代码·取代旧 _verifyClaims+_reviseOnce）
+  const _qd = applyQualityDefense(draft, { obsOk: true, toolHistoryText, skipL1: false });
+  draft = _qd.final;
   if (hooks.onFinalDone) hooks.onFinalDone(draft);
-  if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: '多步链路径·跳过审查', skipped: 'chain' });
-  return { ok: true, rounds: chain.steps.length, final: draft, review: { pass: true, degraded: true, skipped: 'chain' }, degraded: false, diagnose, exit: 'result', newLayerCount };
+  if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'chain' });
+  return { ok: true, rounds: chain.steps.length, final: draft, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'chain' }, degraded: false, diagnose, exit: 'result', newLayerCount };
 }
 /** E1：chain step params 模板 → 实参。{占位} 填值（问句/diagnose.params）；$n 原样（工具内 ref 解析）。 */
 function _resolveChainParams(template, diagnoseParams, question) {
@@ -513,7 +559,7 @@ function deriveDiagnoseMethod(template, params) {
  * Agent Loop 一次问答。
  * @param ctx    {question, context(grounding), contextTokens, signal, model}
  * @param hooks  渲染回调（panel.js 实现）：
- *   onReason(tok, round)       — reasoning 思考链增量（round 标识所属轮，0=最终/修订阶段）
+ *   onReason(tok, round)       — reasoning 思考链增量（round 标识所属轮，0=最终阶段）
  *   onDiagnose(card)           — 问题理解卡（DIAGNOSE 前置步；{degraded:true}=降级）
  *   onRoundStart(round)        — 每轮开始（Pro 模式新建 reasoning 分段块）
  *   onThought(text, round)     — 第 round 轮 thought
@@ -522,12 +568,9 @@ function deriveDiagnoseMethod(template, params) {
  *   onObservation(text, round) — 第 round 轮工具观察
  *   onFinal(tok)               — 草稿结论增量
  *   onFinalDone(text)          — 草稿完成
- *   onReview(review)           — 审查结果 {pass, scores, revise_hints, degraded?}
- *   onReviseStart()            — 开始重写
- *   onRevise(tok)              — 修订结论增量
- *   onReviseDone(text)         — 修订完成
+ *   onDefense(defense)         — 质量防线结果 {degraded, fixes, skipped}（CB-09 D023·取代旧 onReview/onRevise*）
  *   onDegraded(text)           — finalStep 也失败时的最终降级
- * @returns {Promise<{ok, degraded?, rounds?, final?, review?, revised?}>}
+ * @returns {Promise<{ok, degraded?, rounds?, final?, defense?}>}
  */
 export async function orchestrate(ctx, hooks = {}) {
   // ══ 编排器·确定性裁定（Smart Agent/Dumb Tool 内核 · CLAUDE.md「AI·Copilot 开发内核」铁律3：不调 LLM、只接线）══
@@ -554,8 +597,8 @@ export async function orchestrate(ctx, hooks = {}) {
     ctx.context = '【intent=通用问答·快速预判】直接简洁作答，不要 4×5 归因、不要演示逻辑链、不要引导情绪场景。\n\n' + (ctx.context || '');
     const draft = await stages.finalStep(ctx, hooks, '');
     if (hooks.onFinalDone) hooks.onFinalDone(draft);
-    if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: '通用问答·快速预判跳过审查' });
-    return { ok: true, rounds: 0, final: draft, review: { pass: true, degraded: true, skipped: 'quick-general' }, degraded: false, diagnose: { degraded: true, intent: 'general', quick: true } };
+    if (hooks.onDefense) hooks.onDefense({ degraded: false, skipped: 'quick-general' });
+    return { ok: true, rounds: 0, final: draft, defense: { degraded: false, skipped: 'quick-general' }, degraded: false, diagnose: { degraded: true, intent: 'general', quick: true } };
   }
 
   // 指代解析（NL 预处理·5.212·几 ms·非 LLM）：检测"这边/刚才"→ grounding 显式标注聚焦对象·让 diagnose 不靠猜
@@ -572,7 +615,7 @@ export async function orchestrate(ctx, hooks = {}) {
   if (!diagnose.degraded && (!Array.isArray(diagnose.method) || diagnose.method.length === 0)) {
     diagnose.method = deriveDiagnoseMethod(diagnose.template, diagnose.params);
   }
-  // domain_lens 结构化数组回传后端：post-diagnose step（answer/revise/agent_step/review）据此注入
+  // domain_lens 结构化数组回传后端：post-diagnose step（answer/agent_step/diagnose）据此注入
   // 命中领域完整权威语境。过滤 'general'（通用问答无需领域权威）。_quickIntent 路径跳过 diagnose
   // → 此处未设 → 各 step 读 undefined → 不注入（正确，通用问答无需领域权威）。
   ctx.domainLens = Array.isArray(diagnose.domain_lens)
@@ -613,8 +656,8 @@ export async function orchestrate(ctx, hooks = {}) {
         ctx.context = '【intent=通用问答】直接简洁作答即可，不要 4×5 归因、不要演示逻辑链、不要引导情绪场景。\n\n' + (ctx.context || '');
         const draft = await stages.finalStep(ctx, hooks, '');
         if (hooks.onFinalDone) hooks.onFinalDone(draft);
-        if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: '通用问答·跳过审查' });   // 清「审查中…」占位
-        return { ok: true, rounds: 0, final: draft, review: { pass: true, degraded: true, skipped: 'general' }, degraded: false, diagnose };
+        if (hooks.onDefense) hooks.onDefense({ degraded: false, skipped: 'general' });
+        return { ok: true, rounds: 0, final: draft, defense: { degraded: false, skipped: 'general' }, degraded: false, diagnose };
       }
       if (intent === 'gis_operation') {
         ctx.context = '【intent=纯GIS操作】用 geo 工具（extract_feature/clip/filter_attr/overlay/merge/buffer）完成操作，出口=新图层（自动落地图）。不要 4×5 归因报告、不受尺度范式约束；操作完成后简述产出了什么图层即 answer。\n\n' + (ctx.context || '');
@@ -623,8 +666,8 @@ export async function orchestrate(ctx, hooks = {}) {
       if (diagnose.data_plan && diagnose.data_plan.strategy === 'request_upload') {
         const tpl = buildRequestUploadText(diagnose);
         if (hooks.onFinalDone) hooks.onFinalDone(tpl);
-        if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: '数据缺口·跳过审查' });   // 清「审查中…」占位
-        return { ok: true, rounds: 0, final: tpl, review: { pass: true, degraded: true }, degraded: false, diagnose };
+        if (hooks.onDefense) hooks.onDefense({ degraded: false, skipped: 'request_upload' });
+        return { ok: true, rounds: 0, final: tpl, defense: { degraded: false, skipped: 'request_upload' }, degraded: false, diagnose };
       }
     }
   }
@@ -783,7 +826,7 @@ export async function orchestrate(ctx, hooks = {}) {
   // EXIT_RESULT：草稿结论（agent 决定 answer / 达上限 / 降级回退 都走这里）
   let draft = '';
   let _isPartialMissing = false;   // EXIT_PARTIAL：对账发现少量声称图层未实际生成（1-2 个），保 draft+标注后转 partial 出口
-  // ④ 注入 registry 真值清单（finalStep/review/revise 共用同 ctx.context）：模型 ground 在实际图层，禁编不在列表的层
+  // ④ 注入 registry 真值清单（finalStep 共用同 ctx.context）：模型 ground 在实际图层，禁编不在列表的层
   ctx.context = '【地图实际产出图层】' + formatRegistry() + '（严禁声称生成不在此列表的图层；任务未完成改述"未生成/未产出"，不得编造图层名与数字）\n\n' + (ctx.context || '');
   try {
     draft = await stages.finalStep(ctx, hooks, toolHistoryText);
@@ -791,24 +834,15 @@ export async function orchestrate(ctx, hooks = {}) {
     if (hooks.onDegraded) hooks.onDegraded('');
     return { ok: false, degraded: true, rounds: round };
   }
-  // P0a finalStep 防漂移（宽容）：命中先 _reviseOnce 让 Flash 用 markdown 重写（体验>正确性，不直接拦没答案）；revise 失败才退固定卡
-  // 拓宽（治"代码块泄漏"老毛病）：不只拦 action-JSON——任意 ``` 围栏都判漂移（EMC 结论设计上无代码块，
-  //   图表走内联 {chart}/{fig} 指令，勿围栏），走 _reviseOnce 重写 prose。
+  // CB-09 D022 finalStep 防漂移（代码兜底·删 LLM revise）：action-JSON / ```围栏 = 格式漂移，直接走 drift 卡（不再 _reviseOnce 重写）。
+  // EMC 结论设计上无代码块（图表走内联 {chart}/{fig} 指令，勿围栏）；drift = 模型失序 → 代码拦截 + 引导重试。
   const _driftRe = /^\s*(?:```(?:json)?\s*)?\{[\s\S]*"(?:thought|action)"[\s\S]*\}\s*```?\s*$/i;
   const _hasFence = /```/.test(draft);
   if (_driftRe.test(draft.trim()) || _hasFence) {
-    const _hint = _hasFence && !_driftRe.test(draft.trim())
-      ? '诚实格式：上一版最终回答输出了代码块（``` 围栏）而非可读 markdown 结论。请基于已完成的探索，用**可读 markdown** 重写结论（禁输出代码块/JSON；图表用内联 {chart:...}/{fig:...} 指令，勿用围栏；若任务未完成改述"未生成/未产出"）。保留已真实完成的结论与数据。'
-      : '诚实格式：上一版最终回答输出了工具调用 JSON（含 thought/action 字段）而非可读 markdown 结论。请基于已完成的探索，用**可读 markdown** 重写结论（禁输出 JSON；若任务未完成改述"未生成/未产出"）。保留已真实完成的结论与数据。';
-    const _revised = await _reviseOnce(ctx, hooks, draft, _hint, toolHistoryText);
-    if (_revised && _revised.trim() && !_driftRe.test(_revised.trim()) && !/```/.test(_revised)) {
-      draft = _revised;   // revise 成功且无围栏无 action-JSON → 采用，继续走对账
-    } else {
-      const _driftText = '## 未能生成可读结论\n\n模型在最终回答阶段输出了代码块/工具调用指令而非可读结论，已拦截未显示。\n\n**建议**：换一种问法或缩小范围（指定某区、某类用地、某时点）后重试。';
-      if (hooks.onFinalDone) hooks.onFinalDone(_driftText);
-      if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: 'finalStep 格式漂移·拦截', skipped: 'drift' });
-      return { ok: false, degraded: true, rounds: round, final: _driftText, diagnose, exit: 'drift' };
-    }
+    const _driftText = '## 未能生成可读结论\n\n模型在最终回答阶段输出了代码块/工具调用指令而非可读结论，已拦截未显示。\n\n**建议**：换一种问法或缩小范围（指定某区、某类用地、某时点）后重试。';
+    if (hooks.onFinalDone) hooks.onFinalDone(_driftText);
+    if (hooks.onDefense) hooks.onDefense({ degraded: true, fixes: [{ rule: 'drift', action: 'intercept' }], skipped: 'drift' });
+    return { ok: false, degraded: true, rounds: round, final: _driftText, defense: { degraded: true, skipped: 'drift' }, diagnose, exit: 'drift' };
   }
   // ⑤ pre-finalStep 结构化对账（intent 无关，P0b 宽容版）：missing<=2 → 保 draft + 自动标注（体验>正确性，不丢整答案）；missing>=3 大面积谎报 → 退 gap
   const _claimed = _extractClaimedLayers(draft);
@@ -818,8 +852,8 @@ export async function orchestrate(ctx, hooks = {}) {
     if (_missing.length >= 3) {
       const _gapText = composeGapCard(diagnose, failedObs) + '\n\n---\n**⚠️ 诚实拦截**：草稿声称已生成「' + _missing.map(_esc).join('、') + '」等图层，但地图实际图层为 [' + (_actualNames.map(_esc).join('、') || '无') + ']，大面积谎报，请用 geo 工具真正生成后再回答。';
       if (hooks.onFinalDone) hooks.onFinalDone(_gapText);
-      if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: '谎报图层拦截(大面积)', skipped: 'drift' });
-      return { ok: false, degraded: true, rounds: round, final: _gapText, diagnose, exit: 'drift' };
+      if (hooks.onDefense) hooks.onDefense({ degraded: true, skipped: 'drift' });
+      return { ok: false, degraded: true, rounds: round, final: _gapText, defense: { degraded: true, skipped: 'drift' }, diagnose, exit: 'drift' };
     } else if (_missing.length) {
       // 少量 missing（1-2）：保 draft + inline 标注 + composePartialCard 引导段（体验>正确性，不丢整答案），标记走 EXIT_PARTIAL
       let _annotated = draft;
@@ -839,53 +873,30 @@ export async function orchestrate(ctx, hooks = {}) {
   if (hooks.onFinalDone) hooks.onFinalDone(draft);
 
   // EXIT_PARTIAL 裁定（体验>正确性·四态出口第四态）：仅对账少量 missing（_isPartialMissing）= 真"做成一部分"。
-  //   软缺口 strategy=fallback_annotated 用替代数据仍可完整作答 → 走正常 review + EXIT_RESULT（panel.js renderCaliber 显口径卡），不属此态。
-  //   诚实门 _verifyClaims 不被 partial 跳过：gis_operation 先跑产物验证（"已加载/已创建"类谎报 _extractClaimedLayers 抓不到、_verifyClaims 能抓）。
+  //   软缺口 strategy=fallback_annotated 用替代数据仍可完整作答 → 走正常质量防线 + EXIT_RESULT，不属此态。
   if (_isPartialMissing) {
     const _pIntent = diagnose && !diagnose.degraded ? (diagnose.intent || 'emotion_analysis') : 'emotion_analysis';
     if (_pIntent === 'gis_operation') {
-      const _pv = _verifyClaims(draft);
-      if (!_pv.ok) {
-        const _pr = await _reviseOnce(ctx, hooks, draft, _pv.hints, toolHistoryText);
-        if (_pr) draft = _pr;
-      }
+      // CB-09 D023：_extractClaimedLayers 已标注 missing → skipL1:true 防双重；R2/R4/R7 仍跑
+      const _pQd = applyQualityDefense(draft, { obsOk: newLayerCount > 0, toolHistoryText, skipL1: true });
+      draft = _pQd.final;
     }
-    if (hooks.onReview) hooks.onReview({ pass: true, degraded: true, degraded_reason: '部分完成·标注局限·引导补充', skipped: 'partial' });
-    return { ok: true, rounds: round, final: draft, review: { pass: true, degraded: true, skipped: 'partial' }, degraded: true, diagnose, exit: 'partial', newLayerCount };
+    if (hooks.onDefense) hooks.onDefense({ degraded: true, skipped: 'partial' });
+    return { ok: true, rounds: round, final: draft, defense: { degraded: true, skipped: 'partial' }, degraded: true, diagnose, exit: 'partial', newLayerCount };
   }
 
-  // intent=纯GIS操作：跳过情绪审查（review 的尺度/4×5 标准不适用于操作类回答）
+  // intent=纯GIS操作：质量防线（L1+R 规则·代码兜底·_extractClaimedLayers 已标注→skipL1:true）
   const _intent = diagnose && !diagnose.degraded ? (diagnose.intent || 'emotion_analysis') : 'emotion_analysis';
   if (_intent === 'gis_operation') {
-    // A1：操作类易谎报，产物验证 gate（跳 review 但不跳诚实检查）
-    const verify = _verifyClaims(draft);
-    if (!verify.ok) {
-      const revised = await _reviseOnce(ctx, hooks, draft, verify.hints, toolHistoryText);
-      if (revised) draft = revised;
-    }
-    return { ok: true, rounds: round, final: draft, review: { pass: true, degraded: true, skipped: 'gis_operation' }, degraded, diagnose, exit: 'result', newLayerCount };
+    const _gQd = applyQualityDefense(draft, { obsOk: successObs > 0 || newLayerCount > 0, toolHistoryText, skipL1: true });
+    draft = _gQd.final;
+    return { ok: true, rounds: round, final: draft, defense: { degraded: _gQd.degraded, fixes: _gQd.fixes, skipped: 'gis_operation' }, degraded, diagnose, exit: 'result', newLayerCount };
   }
 
-  // 审查（REVIEW_ENABLED=false 时跳过 Flash 审查员，仅留诚实门 _verifyClaims）
-  let review = null;
-  if (REVIEW_ENABLED) {
-    try {
-      review = await stages.reviewStep(ctx, draft, toolHistoryText);
-    } catch (e) {
-      review = { pass: true, degraded: true, degraded_reason: String(e && e.message || e) };
-    }
-  } else {
-    review = { pass: true, degraded: true, degraded_reason: '审查机制暂关·重构中' };
-  }
-  if (hooks.onReview) hooks.onReview(review);
-
-  // 不达标 或 谎报（A1 产物验证）→ revise 重写（最多 1 轮，不递归）
-  let final = draft;
-  const verify = _verifyClaims(draft);
-  const reviseHints = [review && !review.pass && !review.degraded && review.revise_hints, !verify.ok ? verify.hints : null].filter(Boolean).join('\n');
-  if (reviseHints) {
-    const revised = await _reviseOnce(ctx, hooks, draft, reviseHints, toolHistoryText);
-    if (revised) final = revised;
-  }
-  return { ok: true, rounds: round, final, review, degraded, diagnose, exit: 'result', newLayerCount };
+  // CB-09 D023 质量防线（删旧 R+R·reviewStep/REVIEW_ENABLED/_reviseOnce 全去）：L1+R1/R2/R3/R4/R7+L3 代码兜底
+  // _extractClaimedLayers 对账（:864）已标注 missing → skipL1:true；R2/R3/R4/R7 仍跑
+  const _fQd = applyQualityDefense(draft, { obsOk: successObs > 0 || newLayerCount > 0, toolHistoryText, skipL1: true });
+  const final = _fQd.final;
+  if (hooks.onDefense) hooks.onDefense({ degraded: _fQd.degraded, fixes: _fQd.fixes, skipped: 'result' });
+  return { ok: true, rounds: round, final, defense: { degraded: _fQd.degraded, fixes: _fQd.fixes, skipped: 'result' }, degraded, diagnose, exit: 'result', newLayerCount };
 }

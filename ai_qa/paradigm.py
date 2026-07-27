@@ -5,9 +5,8 @@
 2) 结论颗粒度必须匹配问题尺度（宏观禁落单点 / 微观禁泛泛）—— 这是城市规划系统性思维的核心；
 3) 从 GIS 工具目录自动选型 + 组合（Data+Skill+Agent+Harness 的 "Skill" 层）。
 
-改范式 = 改本文件（数据，非逻辑）。运行时强制靠 prompts.build_diagnose_prompt +
-review.REVIEW_CHECKLIST 的 scale_paradigm_fit；方法论镜像沉淀于
-.claude/skills/emotion-scale-paradigm/（供开发维护演进）。
+改范式 = 改本文件（数据，非逻辑）。运行时强制靠 prompts.build_diagnose_prompt（scale 硬约束注入）；
+方法论镜像沉淀于 .claude/skills/emotion-scale-paradigm/（供开发维护演进）。
 """
 
 from core.tracker import track, register_track_id

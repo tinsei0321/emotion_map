@@ -42,7 +42,7 @@ class EpisodeIn(BaseModel):
     question: str = ''
     diagnose: Optional[Dict[str, Any]] = None
     final: Optional[str] = None
-    review: Optional[Dict[str, Any]] = None
+    defense: Optional[Dict[str, Any]] = None   # CB-09 D024：质量防线结果（取代旧 review）
     ok: bool = True
     extra: Optional[Dict[str, Any]] = None
 
@@ -52,7 +52,7 @@ def post_episode(ep: EpisodeIn):
     """记一条 L3 episode（append DATA/ai_qa/episodes.jsonl）。失败不抛（返回 ok=False）。"""
     saved = log_episode(
         question=ep.question, diagnose=ep.diagnose, final=ep.final,
-        review=ep.review, ok=ep.ok, extra=ep.extra,
+        defense=ep.defense, ok=ep.ok, extra=ep.extra,
     )
     return {'ok': saved}
 
@@ -65,7 +65,7 @@ class ProfileFieldsIn(BaseModel):
 
 
 def _parse_field_json(raw: str) -> dict:
-    """容错解析字段推断 JSON；失败返 {}（照 review._parse_review_json 范式）。"""
+    """容错解析字段推断 JSON；失败返 {}（首末花括号截取 + 尾逗号清理·通用范式）。"""
     if not raw or not raw.strip():
         return {}
     s = raw.find('{')

@@ -3,7 +3,7 @@
 不动 prompt（不注入）；只被 ai_qa/consolidate.py 周期挖掘 → 提议 L2 编辑（人审）。
 存储：DATA/ai_qa/episodes.jsonl（本地，.gitignore 排除——含用户问题，隐私）。
 
-字段精简到"够挖掘"：question 摘要 / diagnose 卡关键字段 / review 判定 / final 摘要（不全文）。
+字段精简到"够挖掘"：question 摘要 / diagnose 卡关键字段 / defense 防线结果（CB-09 D024·取代旧 review 判定）/ final 摘要（不全文）。
 """
 import json
 import os
@@ -20,11 +20,11 @@ def _excerpt(s, n=_FINAL_EXCERPT):
     return s if len(s) <= n else s[:n] + '…'
 
 
-def log_episode(question, diagnose=None, final=None, review=None, ok=True, extra=None):
+def log_episode(question, diagnose=None, final=None, defense=None, ok=True, extra=None):
     """append 一条 episode 到 jsonl。失败静默（不阻塞问答交付）。
 
     diagnose: diagnose 卡 dict（取 scale/domain_lens/decision_type/outlet/data_plan.strategy/method）
-    review:   审查结果 dict（取 pass/degraded/scores 的 verdict）
+    defense:  质量防线结果 dict（CB-09 D024·取 degraded/fixes/skipped·取代旧 review verdicts）
     final:    最终答文（excerpt）
     """
     try:
@@ -32,8 +32,6 @@ def log_episode(question, diagnose=None, final=None, review=None, ok=True, extra
     except Exception:
         return False
     dp = (diagnose or {}).get('data_plan') or {}
-    scores = (review or {}).get('scores') or []
-    verdicts = {s.get('key'): s.get('verdict') for s in scores if isinstance(s, dict)}
     rec = {
         'ts': int(time.time()),
         'ok': bool(ok),
@@ -46,11 +44,11 @@ def log_episode(question, diagnose=None, final=None, review=None, ok=True, extra
             'strategy': dp.get('strategy'),
             'method': (diagnose or {}).get('method') or [],
         } if diagnose and not diagnose.get('degraded') else {'degraded': True},
-        'review': {
-            'pass': (review or {}).get('pass'),
-            'degraded': (review or {}).get('degraded', False),
-            'verdicts': verdicts,
-        } if review else None,
+        'defense': {
+            'degraded': (defense or {}).get('degraded', False),
+            'fixes': (defense or {}).get('fixes') or [],
+            'skipped': (defense or {}).get('skipped'),
+        } if defense else None,
         'final_excerpt': _excerpt(final),
     }
     if extra:

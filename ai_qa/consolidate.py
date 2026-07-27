@@ -44,14 +44,22 @@ def _covered(scale, dom):
     return False
 
 
-def _rev(e):
-    """安全取 review dict。"""
-    return e.get('review') or {}
+def _def(e):
+    """安全取 defense dict（CB-09 D024·取代旧 review）。"""
+    return e.get('defense') or {}
 
 
 def _is_fail(e):
-    r = _rev(e)
-    return bool(r) and not r.get('pass') and not r.get('degraded')
+    """CB-09 D024：fail = 防线降级（degraded=true·结论被 L3 替换）且 fixes 非空（真问题·非纯跳过）。
+    向后兼容：旧 episode 无 defense 字段→返 False（旧 review 数据自然老化·不强报错）。"""
+    d = _def(e)
+    return bool(d) and bool(d.get('degraded')) and bool(d.get('fixes'))
+
+
+def _is_clean(e):
+    """高质量范例：无降级 + 无任何 fix（防线一无所修·LLM 结论干净）。"""
+    d = _def(e)
+    return bool(d) and not d.get('degraded') and not (d.get('fixes') or [])
 
 
 def propose():
@@ -68,18 +76,19 @@ def propose():
     print('>> by scale x domain:')
     for (scale, dom), es in sorted(clusters.items(), key=lambda kv: -len(kv[1])):
         n = len(es)
-        npass = sum(1 for e in es if _rev(e).get('pass'))
+        nclean = sum(1 for e in es if _is_clean(e))
         nfail = sum(1 for e in es if _is_fail(e))
-        ndeg = sum(1 for e in es if _rev(e).get('degraded'))
-        bad = Counter()
+        ndeg = sum(1 for e in es if _def(e).get('degraded'))
+        fixed = Counter()   # CB-09 D024：fixes 规则计数（取代旧 verdicts fail/warn）
         for e in es:
-            for k, v in (_rev(e).get('verdicts') or {}).items():
-                if v in ('fail', 'warn'):
-                    bad[k] += 1
+            for f in (_def(e).get('fixes') or []):
+                r = f.get('rule') if isinstance(f, dict) else None
+                if r:
+                    fixed[r] += 1
         cov = '[v] covered' if _covered(scale, dom) else '[x] WISDOM gap'
-        print('  {}/{}: {} rows (pass {} / fail {} / degraded {}) {}'.format(scale, dom, n, npass, nfail, ndeg, cov))
-        if bad:
-            print('    oft-fail/warn checklist: ' + ', '.join('{}({})'.format(k, v) for k, v in bad.most_common(4)))
+        print('  {}/{}: {} rows (clean {} / fail {} / degraded {}) {}'.format(scale, dom, n, nclean, nfail, ndeg, cov))
+        if fixed:
+            print('    oft-fixed rules: ' + ', '.join('{}({})'.format(k, v) for k, v in fixed.most_common(4)))
 
     print('\n>> proposals (human reviews, then edits ai_qa/wisdom.py; this cmd does NOT auto-write):')
     proposed = False
@@ -89,21 +98,23 @@ def propose():
         n = len(es)
         nfail = sum(1 for e in es if _is_fail(e))
         if n >= 3 and nfail / n >= 0.34:
-            bad = Counter()
+            bad = Counter()   # CB-09 D024：fail 集的 fixes 规则计数（取代旧 verdicts fail）
             for e in es:
-                for k, v in (_rev(e).get('verdicts') or {}).items():
-                    if v == 'fail':
-                        bad[k] += 1
+                if not _is_fail(e):
+                    continue
+                for f in (_def(e).get('fixes') or []):
+                    r = f.get('rule') if isinstance(f, dict) else None
+                    if r:
+                        bad[r] += 1
             top = bad.most_common(1)
-            tag = ' (oft-fail {})'.format(top[0][0]) if top else ''
+            tag = ' (oft-fix {})'.format(top[0][0]) if top else ''
             print('  [!] [{}/{}] fail rate {}/{}{} -> strengthen dont (see failing Q below)'.format(scale, dom, nfail, n, tag))
             for e in es:
                 if _is_fail(e):
                     print('      fail eg: ' + (e.get('question') or '')[:60])
                     break
             proposed = True
-        exemplars = [e for e in es if _rev(e).get('pass')
-                     and all(v == 'pass' for v in (_rev(e).get('verdicts') or {}).values())]
+        exemplars = [e for e in es if _is_clean(e)]
         if exemplars:
             e = exemplars[-1]
             print('  [*] [{}/{}] exemplar candidate (pass + all verdicts pass): '.format(scale, dom) + (e.get('question') or '')[:60])
