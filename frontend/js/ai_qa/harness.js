@@ -377,7 +377,7 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   // 4. finalStep（Pro 写解题一句话 + 短结论 + {{show}}）
   if (hooks.onRound) hooks.onRound(1);
   const toolHistoryText = toolHistory.join('\n');
-  ctx.context = `【单技能路径·已执行 ${def.tool}】基于上述工具观察直接出结论，勿重选工具、勿重复执行、勿再调 geo 工具。\n\n` + (ctx.context || '');
+  ctx.context = `【单技能路径·已执行 ${def.tool}】基于上述工具观察直接出结论，勿重选工具、勿重复执行、勿再调 geo 工具。\n【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层）\n\n` + (ctx.context || '');
   let draft;
   try {
     draft = await stages.finalStep(ctx, hooks, toolHistoryText);

@@ -86,6 +86,8 @@ export const CHAIN_REGISTRY = [
 export function validateParams(skill, params) {
   const def = SKILL_DEFS[skill];
   const merged = { ...((def && def.optional_defaults) || {}), ...(params || {}) };
+  // CB-09 DeepSeek 微调3：density mode='3d'（grid）时 radius 无意义·合并后剔除（治 LLM 锚定 300m 致矛盾结论）
+  if (skill === 'density' && merged.mode === '3d') delete merged.radius;
   const missing = ((def && def.required_slots) || []).filter((k) => merged[k] == null || merged[k] === '');
   return { ok: !missing.length, missing, params: merged };
 }

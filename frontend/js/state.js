@@ -796,7 +796,12 @@ export function layerLevel(layer) {
  *  group/standalone → itself. (Overview recognizes the big level, not sub-layers.) */
 export function focusLayer(layer) {
   if (!layer) return null;
-  if (layer.parentId) return _layers.get(layer.parentId) || layer;
+  if (layer.parentId) {
+    const _p = _layers.get(layer.parentId);
+    // CB-09 D018：父组 FC 空（EMC 组 fc=[] 防崩）→ 返子层自身（治 Overview「0 条」·子层 fc 即正确数据）
+    if (_p && (!_p.fc || !_p.fc.features || !_p.fc.features.length)) return layer;
+    return _p || layer;
+  }
   return layer;
 }
 

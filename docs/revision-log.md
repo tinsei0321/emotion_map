@@ -223,7 +223,10 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（07月27日）** · 本节按板块分组、组内倒序；最新工作 = **5.230 CB-07 finalStep 超时矛盾 + 2D/3D 跳组修复**（本次，分支 `main`）。上一轮 5.229（CB-06 ReAct）。最近：
+> 📍 **最新动态（07月27日）** · 本节按板块分组、组内倒序；最新工作 = **5.231 CB-09 轮次1 P0 execution（EMC 彻底重构·消矛盾）**（本次，分支 `main`）。上一轮 5.230（CB-07）。最近：
+>
+> - **5.231 CB-09 轮次1 P0 execution**（EMC 架构彻底重构·DeepSeek 9 模块 43 决策 + CB-08 + 互评·实施分轮次·超大型工程跨多会话）：**双模型共识**——审查非瓶颈·真瓶颈 finalStep/diagnose prompt 20-54KB·矛盾 5 因素·0 条 focusLayer·**LLM 简化链路**（保 LLM·不分边界·瘦 prompt·用户裁决·DeepSeek 撤回 0 LLM）。**轮次1 execution（消矛盾·治痛点）**：①[state:797](frontend/js/state.js#L797) focusLayer 父组空 FC 返子层（治 Overview 0 条）②[tools:1155](frontend/js/ai_qa/tools.js#L1155) observation 参数自述（cell_size/radius·网格单元非点·DeepSeek 微调2·治 LLM 锚定 300m 矛盾）③[stages validateParams](frontend/js/ai_qa/stages.js#L86) density 3d 清 radius（DeepSeek 微调3）④[harness:366](frontend/js/ai_qa/harness.js#L366) 单技能注入 formatRegistry（对齐 ReAct 强约束）。**待续**：轮次1 review 删旧R+R + 新质量防线 8 规则 → 轮次2 P1（finalStep 极瘦 0.6-1.3KB + Flash 瘦身·eval 重写）→ 轮次3-5。详见 [plan](../../C:/Users/admin/.claude/plans/git-log-oneline-witty-ripple.md) + [emc-arch-deepdive](docs/catch-ball/emc-arch-deepdive/)（9 模块）+ [CB-08 报告](docs/catch-ball/report/CB-08_claude-2026-07-27.md) + [SCAN_CB08-response 互评](docs/catch-ball/report/SCAN_CB08-response_deepseek_2026-07-27.md)。
+>
 >
 > - **5.230 CB-07 finalStep 超时矛盾 + 2D/3D 跳组修复**（用户报"图出但[请求失败]矛盾" + "2D/3D 跳组老 bug"·第三方 DeepSeek 评估·CB 反评价全 agree·主线程）：**bug1 根因**——[harness:367/414](frontend/js/ai_qa/harness.js#L367) runTemplatePath/runChainPath finalStep **无 try/catch**（CB-06 P0-A 漏 finalStep·只包 agentStep）+ finalStep prompt 20-44KB 致 prefill 超 45s。**修**：Layer 3 finalStep try/catch + `_composeDegradedConclusion`（零 LLM·formatRegistry+toolHistory 拼"分析图已生成+{{show}}"·非"请求失败"丢图）+ Layer 2 [api.js](frontend/js/ai_qa/api.js) phase answer→60s。**bug2** [map.js:362/395](frontend/js/map.js#L362) addLayer 补 `parentId: l.parentId`（配对层留 EMC 组·不跳网格聚合组·治老 bug）。**Layer 1 评估后不做**（answer 质量风险·Layer 2+3 已治矛盾·P1 留）。**验证**：pytest 191 passed + 浏览器 PAGEERRORS=0。详见 [cb-journal CB-07](docs/catch-ball/cb-journal.md)。
 >

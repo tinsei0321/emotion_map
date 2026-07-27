@@ -1151,8 +1151,11 @@ export const TOOLS = {
       _adoptToolboxResult(r.layerId, r.fc, params.as || r.layerName);
       const _dName = params.as || r.layerName;
       const _modeLabel = { '2d': '热力图(2D彩虹)', '3d': '网格聚合(3D·固定色段)', terrain: '情绪地形(3D KDE 等值面)' }[_mode];
+      // CB-09 D016：observation 参数自述 + 单位明确（治 LLM 锚定"点"+300m 致矛盾结论·DeepSeek 微调2）
+      const _unit = _mode === 'terrain' ? '层等值面' : (_mode === '3d' ? '网格单元' : '点');
+      const _param = _mode === '3d' ? `(cell_size=${_clampM(Number(params.cell_size) || _scaleRadius(params.range) || 600)}m)` : (_mode === '2d' ? `(radius=${_clampM(Number(params.radius) || _scaleRadius(params.range) || 300)}m)` : '');
       return {
-        observation: `${_modeLabel}：${r.featureCount} ${_mode === 'terrain' ? '层等值面' : '点'} → 已生成图层「${_dName}」（套用 Toolbox 固定色段，可切 2D/3D）` + _renderNote(getLayer(r.layerId)),   // A2 落图自检（委托 Toolbox 层同样消费 _renderState）
+        observation: `${_modeLabel}：${r.featureCount} ${_unit}${_param} → 已生成图层「${_dName}」（套用 Toolbox 固定色段，可切 2D/3D）` + _renderNote(getLayer(r.layerId)),
         data: { layerId: r.layerId, mode: _mode, count: r.featureCount },
       };
     } catch (e) { return _ERR('density', e); }
