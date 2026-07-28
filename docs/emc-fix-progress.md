@@ -1,9 +1,9 @@
 # EMC 修复工程 · 总进度汇总卡
 
 > **一页看清** EMC 修复整体状态。**九模块实施进度矩阵（§一·监控主视图）** + 5 层分层明细（§二）+ 待修（§三）+ 时序（§四）。
-> **更新**：2026-07-27（模块六 D026·**5.240**·prompt 全派生 contracts·**9/9 全落地里程碑**）
+> **更新**：2026-07-28（v3.1·**657c2e3**·reg.filter 崩溃修复 + SCAN P1·**架构已转型 v2 单次 LLM + FC**）
 > **承继**：本卡由 `emc-fix-backlog.md`（2026-07-24 快照）更名重写，聚焦"9 模块进度 + 分层 + 时序"。
-> **⚠️ 关键区分**：**设计定稿 9/9 ✅**（[deepdive 讨论](catch-ball/emc-arch-deepdive/SUMMARY.md) 全定稿·README「进度总览」✅ 指此）**≠ 实施落地 6/9 ✅**（见 §一矩阵）。看代码进度只认本卡 §一 + revision-log §5，勿认 deepdive README 的 ✅。
+> **⚠️ 关键区分**：**v1（三阶段 5.231-5.242）已被 v2（单次 LLM + FC·5.243-5.245b 第三方）取代** → v3（GLM 修复 3C+4H·7858d5a）→ **v3.1（reg.filter 崩溃修复·657c2e3·当前）**。v1 diagnose 管线（select_candidates/FILL_CARD/PLAN/dispatch）代码保留过渡期·Phase 4 清理待 v3 稳定后。架构设计源 [SUMMARY v2](catch-ball/emc-arch-deepdive/SUMMARY.md)（61 决策 D041-D068）。
 
 ---
 
@@ -17,16 +17,16 @@
 | 3 | **Execution Layer**（执行层） | P0 | D016-D018 | ✅ | **5.231**：D016 observation 参数自述（cell_size/radius·网格单元非点）+ D017 `computeStyle` 镜像（CB-04·5.226）+ D018 `focusLayer` 父组空 FC 返子层（治 Overview「0 条」） |
 | 5 | **Review + Revise** | P0 | D022-D024 | ✅ | **5.232**：D022 删旧 R+R（`review.py` 215 行 + reviewStep/reviseStep + REVISE_TEMPLATE 全清）+ D023 质量防线三层（[`applyQualityDefense`](../frontend/js/ai_qa/harness.js#L233)·全代码 <20ms·取代 LLM 审查 5-15s）+ D024 episode 迁移（review→defense） |
 | 4 | **FinalStep Agent**（输出层） | P1 | D019-D021 | ✅ | **5.233 + 5.234**：D019 极瘦 prompt（17KB→1.86KB·prefill 20-35s→<1s）+ D020 追问胶囊三级（L1 0 LLM 轮 <2s / L2 Pro 确认 5-8s·`runCapsule` 复用 runTemplatePath）+ D021 工具集绑定（R5 schema 硬剔 / R6 可达性软标 / R8 多样性记 episode） |
-| 1 | **Diagnose Agent**（认知层） | P1 | D001-D011 | ✅ | **D006 Phase B ✅（5.236）** + **D009 Phase C ✅（5.237）**：三阶段落地—[`build_diagnose_prompt_dispatch`](../ai_qa/prompts.py) 顶调 select_candidates → 单/少候选走极瘦填卡（45.8KB→1.85KB·<5s）·复合走 Pro 计划（D009·产 chain·5-10s）·0 候选走大 prompt 兜底；卡 schema 不变 |
-| 2 | **Orchestrator**（编排层） | P2 | D012-D015 | ✅ | **D012 动态 chain ✅（5.237）**：复合 → Pro 产 chain → [`runChainPath`](../frontend/js/ai_qa/harness.js#L532) 动态消费（取代固定 CHAIN_REGISTRY·主体不动）；D013 while-loop 降为兜底 ✅；D014 `_PARAM_ALIAS` 按工具 ✅（CB-04）+ D015 ensure_zone ✅ |
+| 1 | **Diagnose Agent**（认知层） | P1 | D041-D049 (v2) | ✅ v3 | **v2 FC ✅（5.243）+ v3 修复（7858d5a）**：单次 LLM + function calling + 契约 Schema（废弃 v1 三阶段）·[`fcDiagnoseStep`](../frontend/js/ai_qa/stages.js) + [`contracts_to_tools_schema`](../ai_qa/tool_contracts.py) ·v3 加 C1 provider fallback / C2 data gate / C3 domain_lens A+B |
+| 2 | **Orchestrator**（编排层） | P2 | D050-D051 (v2) | ✅ v3 | **v2 消费 tool_calls[0] ✅（5.243）**：直接用 `tool_calls[0].function.name`·不查 SKILL_DEFS·`_TOOL_TO_SKILL` 反映射 ·v3 H6 删前端校验·后端 `validate_tool_call` 单源 ·D013 while-loop 降为兜底 ✅·D015 ensure_zone ✅ |
 | 6 | **Prompt Engineering** | P4 | D025-D026+R1 | ✅ | D025 [`tool_contracts.py`](../ai_qa/tool_contracts.py) 单一源 ✅（CB-04·5.226）+ R1 rank `by` worst ✅；**D026 prompt 全派生 contracts ✅（5.240）**：FILL_CARD/PLAN（`_candidate_schema_text`）+ DIAGNOSE（GEO_TOOL_CATALOG 附录）+ FINAL（无规格）+ AGENT（手写→指针·本次）全派生 |
 | 7 | **Toolbox ↔ EMC 接口** | P4 | D027-D029 | ✅ | **CB-04（5.226）**：D027 15 `generate*ForAI` 全审计 + D028 `enforceMutualExclusion` 保留 + D029 ForAI=dialog 镜像 CI；**L3 `panel_source` 全核查 ✅（5.238）**：31 处 Resolved（dialog 控件 / EMC-only / PANEL_MISSING 三态） |
 | 8 | **CPD 引擎** | P3 | D030-D034 | ✅ | **D030 ✅**（cpd-guide/state 客户端纯规则·5.224）+ **D031 ✅**（[runCapsule](../frontend/js/ai_qa/harness.js#L506) 胶囊点击跳 Flash 直执·5.234·实现 CPD「选项直执」核心）+ D032 turn-over 移除 ✅ + D033 完成态 ✅ + **D034 ✅（5.239）** `capsule_clicked` episode 埋点→Pro 排序偏好·honest：不另造重复对话框 |
-| 9 | **字段识别（0LLM）** | P2 | D035-D040 | ✅ | **Phase A ✅（5.235）+ Phase B 接 diagnose ✅（5.236）**：[`candidate_selector.py`](../ai_qa/candidate_selector.py) `select_candidates` 纯规则（B_TRACK keyword + field role→tool 消歧 + track 派生 + 化合物 + 三态出口）·eval 语料 **97% 命中**·Phase B 接 router dispatch 落地（单/少/复合三路分派）；Phase C compound → Pro（5.237） |
+| 9 | **字段识别（0LLM）** | P2 | D063-D064 (v2) | ✅ v3 | **v2 简化 ✅（5.243）**：废弃 tools_hint/筛选·全注入 13 工具（7.4KB/2.7s）·0LLM 只做 grounding + 数据缺失检测 ·v1 `candidate_selector.py` 保留过渡期（Phase 4 清理待 v3 稳定后） |
 
-**总计**：设计定稿 **9/9 ✅** · 实施落地 **9/9 ✅（一/二/三/四/五/六/七/八/九·全落地）· 0/9 🔄 · 0/9 ⬜**
+**总计**：v1 设计定稿 9/9 ✅ · **v2 架构转型 ✅**（D041-D068·单次 LLM + FC）· v3 修复 ✅（3C+4H+reg.filter）· **当前 v3.1**（657c2e3）· pytest **221 passed** · 待浏览器验证 FC 全链。
 
-**🎯 当前推进**：CB-09 多轮次 + 9/9 完整收尾—核心 6/9（5.231→5.237）✅ + 模块七 L3（5.238）+ 模块八 CPD（5.239）+ **模块六 D026（5.240）✅**；**9 模块实施全 ✅**·待用户一次性浏览器齐验。下方 §三 仅剩 backlog（T4-T6/⑥·非 9 模块决策）。
+**🎯 当前状态**：v2/v3 FC 架构已落地 + reg.filter 崩溃已修。**待浏览器验证**：重启 serve + 硬刷 → FC 出图 → applyQualityDefense 不崩 → 胶囊显示 → ~10s。Phase 4 清理（删 v1 ~500 行）待 v3 稳定后。
 
 ---
 
@@ -89,11 +89,18 @@
 
 ---
 
-## 四、时序（5.203→5.240 · 详 [revision-log §5](revision-log.md#L226)）
+## 四、时序（5.203→v3.1 · 详 [revision-log §5](revision-log.md#L226)）
 
 | 版本 | 修复 | CB |
 |------|------|:--:|
-| **5.240** | **模块六 D026 prompt 全派生 contracts（9/9 完整收尾·里程碑）**（AGENT 手写 GIS 规格→指针·全派生 tool_contracts·9 模块 9/9 ✅） | CB-09 |
+| **v3.1** | **reg.filter 崩溃修复 + SCAN P1 边界**（formatRegistry()→getArtifacts()·治 [请求失败]+胶囊消失+速度·SCAN P1: zonal_stats/parsePlans/fc_fixes/domain_lens） | v3 |
+| **v3** | **修复第三方 v2 的 3 CRITICAL + 4 HIGH**（C1 provider fallback / C2 data gate / C3 domain_lens / H2 range / H5 timeout / H6 校验统一） | v3 |
+| **5.245b** | stages.js 语法错误修复（多余 }·第三方） | v2 |
+| **5.245** | FC diagnose 兼容性修复 7 项（tool→skill / normalizeCard 补全 / intent 推导·第三方） | v2 |
+| **5.244** | v2 CPD plans→胶囊（D068 _plansToCapsules·第三方） | v2 |
+| **5.243** | **v2 FC 后端+前端**（contracts_to_tools_schema + chat_with_tools + fcDiagnoseStep + D062 + D065·第三方） | v2 |
+| **5.242** | v1 选型数据感知系统性修复（11 项·GLM） | CB-09 |
+| **5.240** | 模块六 D026 prompt 全派生 contracts（v1·已被 v2 FC 取代） | CB-09 |
 | **5.239** | **模块八 CPD 收尾（D030-D034·9/9 第2步）**（D031 由 5.234 胶囊实现·D034 capsule_clicked episode 埋点·不另造重复对话框） | CB-09 |
 | **5.238** | **模块七 L3 panel_source 全核查（D027 契约完整·9/9 第1步）**（31 处 Resolved：dialog 控件/EMC-only/PANEL_MISSING 三态·panel_missing 收紧） | CB-04 |
 | **5.237** | **CB-09 轮次3c Pro 推理 + 动态 chain（D009+D012·Phase C·9 模块核心收尾）**（build_plan_prompt Pro 产 chain + normalizeCard 解析 + orchestrate Pro chain 优先·复合 5-10s） | CB-09 |

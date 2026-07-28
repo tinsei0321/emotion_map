@@ -3,69 +3,47 @@
 > 每日 = TODO List + 开发日志。倒序排列。  
 > 状态：⬜ 待办 / 🔄 进行中 / ✅ 完成 / ⏸️ 暂缓
 
-> 📦 周归档机制：按自然周（周一~周日）归档历史内容至 `todo-archive/`；本周（含）留本文件，历史周已移归档。上周（07-20~07-26）见 [todo-archive/2026-07-20_2026-07-26.md](todo-archive/2026-07-20_2026-07-26.md)。
-> 📝 详版历史 = [revision-log §5](revision-log.md#L226)（永久审计底·5.x 逐条）·本文件只记当前 + 计划。
+> 📦 周归档机制：按自然周（周一~周日）归档历史内容至 `todo-archive/`；本周（含）留本文件，历史周已移归档。
+> 📝 详版历史 = [revision-log §5](revision-log.md#L226)（永久审计底）·本文件只记当前 + 计划。
+> 📌 **架构版本**：v1（三阶段 5.231-5.242）→ **v2（单次 LLM + FC·5.243-5.245b·第三方实施）** → **v3（v2 做对·5.246-657c2e3·GLM 修复）** → 当前 **v3.1**（reg.filter 崩溃修复 + SCAN P1）。
 
 ---
 
-## 📅 2026-07-29（明日计划·**开 plan**）
+## 📅 2026-07-28（今日·**v2→v3 架构转型 + 修复**·commit+push）
 
-### 🔄 测试飞轮更新 + 9 模块测试围绕新飞轮
+### 🎯 架构转型：v1 三阶段 → v2 单次 LLM + Function Calling → v3 做对
 
-- **用户主导**：根据 5.242 修复后的 EMC 架构（三阶段 diagnose + **数据感知选型** + 追问胶囊 + 质量防线 + Pro 动态 chain）**更新测试飞轮机制 + 模拟测试内容**。
-- **飞轮核心**：覆盖「**数据×问句**」组合测（不只关键词）——DeepSeek 评估报告 §十一（缺失测试 7 项）+ §九 P2 建议（S10-S15）可参考。
-- **开 plan**（用户明示）。
-- 参考：[DeepSeek EVAL_REPORT_unified_2026-07-28](docs/catch-ball/emc-arch-deepdive/EVAL_REPORT_unified_2026-07-28.md)（8 bug·P0 已修·P1 部分修·P2 待续）+ [emc-fix-progress §一](emc-fix-progress.md)（9 模块矩阵）。
+用户 + DeepSeek 产出 v2 改良混合架构（[SUMMARY](docs/catch-ball/emc-arch-deepdive/SUMMARY.md)·61 决策 D041-D068）·废弃 v1 三阶段 + 信息卡·改用 DeepSeek V4 原生 function calling + 契约 Schema。第三方实施（5.243-5.245b）→ GLM 审查发现 3 CRITICAL + 6 HIGH → v3 修复（7858d5a）→ 用户实测发现 `reg.filter` 崩溃 → v3.1 修复（657c2e3）。
 
----
+### ✅ v3.1 reg.filter 崩溃修复 + SCAN P1 边界（revision-log 5.246·commit 657c2e3）
 
-## 📅 2026-07-28（今日·**9 模块验证暴露链路缺陷 → 系统性修复**·commit+push）
+- **根因（治用户全部 4 问题）**：`formatRegistry()` 返**字符串**·`applyQualityDefense` + `_composeDegradedConclusion` 对其调 `.filter()` → 类型错误崩溃 → `[请求失败]` + 胶囊消失 + dock 永转（感知 70s+）。
+- **修复**：`getArtifacts()` 替代（返数组）。+ SCAN P1：zonal_stats 补 _NEEDS_POINT / _parsePlans strip domain_lens 前缀 / _fc_fixes 传回 / domain_lens 默认返 []。
+- **验证**：pytest **221 passed**+3 skipped 零回归 + serve/boot 干净。**待浏览器验证**：重启 serve + 硬刷 → 「分析情绪热度」→ FC → 出图 → applyQualityDefense **不崩** → 胶囊显示 → ~10s。
 
-### ✅ 5.242 EMC 链路系统性修复（选型数据感知 + 9 bug·融合 DeepSeek 评估·revision-log 5.242）
+### ✅ v3 修复第三方 v2 的 3 CRITICAL + 4 HIGH（commit 7858d5a）
 
-- 用户验证 9 模块后报「剪裁西陵区」失败 + 「无变化」+ 「基本功能丧失」。
-- **根因**（DeepSeek EVAL 确认）：`select_candidates(question, None)` context 硬 None → 0LLM 选型**数据盲**（不知点/面）→ 误路由 + `TOOL_GEOMETRY_REQUIRE['clip']` 误设 None（Phase A 漏设）。
-- **修复 11 项**：S1 数据感知（layer_meta 端到端）+ clip 几何表修正 + stale multi 移除 + 剪裁歧义词 + 空候选→request_upload + S3-S9（clip 恢复/ensure_zone/F_008/capsule intent/正则统一/chain hasRows/FILL_CARD 兜底）。
-- **验证**：pytest **219 passed** 零回归 + 实测（剪裁+polygon→extract / 无点→request_upload）+ serve 干净。
-- **教训**：选型不能脱离数据上下文（question-only = 架构债）+ clip 几何表 Phase A 漏设 + 改 Python 后须重启 serve。
+- **C1**：`chat_with_tools_fallback`（DeepSeek→Ark→讯飞 provider 链·治 FC 单点故障）。
+- **C2**：执行前 data gate（`_normalizeFcDiagnose` 检查 layer_meta.has_point + _NEEDS_POINT→request_upload·治 5.242 数据感知回归）。
+- **C3**：domain_lens A+B 混合（`_deriveDomainLens`：先 parse FC content `[domain_lens:xxx]`→空则关键词推导）。
+- **H2**：`_PARAM_RANGES`（radius/cell_size/top_n 等 minimum/maximum）。**H5**：timeout 45s→20s。**H6**：删前端 `_validateFcParams`·后端 router 调 `validate_tool_call`。
 
-### ✅ 5.241 selector trigger 补 + 诊断「无变化」根因（uvicorn 需重启）
+### ✅ 第三方 v2 实施（5.243-5.245b·commit 810139c→143f3da）
 
-- 用户报「无变化」→ 诊断主因 = serve.py 未重启（uvicorn 无 --reload·旧 Python 未载入）。
-- selector 补「剪裁/裁剪」trigger（5.241 初版·5.242 修正为歧义词）。
+- **5.243** v2 FC 后端+前端（contracts_to_tools_schema + chat_with_tools + fcDiagnoseStep + D062 校验 + D065 数据变化检测）。
+- **5.244** v2 CPD plans→胶囊（D068 _plansToCapsules）。
+- **5.245** FC diagnose 兼容性修复（7 项：tool→skill 映射 / normalizeCard 补全 / intent 推导 / signal+timeout / usage 统计）。
 
----
+### ✅ v1 三阶段实施（5.231-5.242·已被 v2 取代·代码保留过渡期）
 
-## 📅 2026-07-27（CB-09 9 模块全落地 + 收尾）
+- 5.231-5.240：9 模块 v1 三阶段（select_candidates + FILL_CARD + PLAN + dispatch）。
+- 5.241-5.242：selector trigger + 数据感知修复。
+- **v2 取代**：v1 diagnose 管线（select_candidates / FILL_CARD / PLAN / dispatch）被 FC 取代·但代码保留（Phase 4 清理待 v3 稳定后）。
 
-### 🎯 CB-09 EMC 架构重构 · 9 模块实施 9/9 全 ✅（5.231-5.240）
+### 🔄 遗留（待处理）
 
-**新架构全景**（三阶段 diagnose + 胶囊 + 防线 + 动态 chain）：
-
-| 路径 | 改造前 | 改造后 | 模块/版本 |
-|------|:---:|:---:|------|
-| 单/少候选（~80%） | diagnose 25-45s | **<5s** | 一 D006 Phase B（5.236）·极瘦填卡 45.8KB→1.85KB |
-| 复合（~20%） | 大 prompt 25-45s | **5-10s** | 一 D009 + 二 D012 Phase C（5.237）·Pro 产 chain→runChainPath |
-| finalStep | 25-50s | **<1s** | 四 D019（5.233）·17KB→1.86KB |
-| 追问胶囊 | 静态 NL 15-20s | **动态 L1 <2s / L2 5-8s** | 四 D020-D021（5.234）·runCapsule 跳 Flash |
-| 选型 | Flash 13 选 1 | **0LLM 规则 97%** | 九 D035-D038 Phase A（5.235）·select_candidates |
-| 质量 | LLM 审查 5-15s | **代码防线 <20ms** | 五 D023（5.232）·applyQualityDefense |
-| 契约 | 四处分裂 | **tool_contracts 单一源** | 六 D025-D026（5.226/5.240）·全派生 |
-| Toolbox 接口 | ForAI 自带默认 | **dialog 镜像 + CI** | 七 D027-D029（5.226/5.238）·L3 全Resolved |
-| CPD | 独立对话框（设计） | **胶囊实现 D031 + 偏好埋点** | 八 D030-D034（5.239）·不另造重复 |
-| 执行层 | 矛盾（谎报/锚定） | **observation 自述 + 镜像** | 三 D016-D018（5.231） |
-
-**9 模块实施 9/9 ✅**（D001-D040 全落地）·详 [revision-log §5](revision-log.md#L226)（5.231-5.240 逐条）+ [emc-fix-progress §一 矩阵](emc-fix-progress.md)。
-**验证**：pytest **214 passed**+5 skipped（零回归）+ serve/boot 干净。**待用户飞轮齐验**（明日）。
-
-### ✅ 收尾（今日）
-
-- [emc-fix-progress.md](emc-fix-progress.md) §一 矩阵 9/9 + §三 backlog 清零（仅剩 T4-T6/⑥·非 9 模块决策）+ §四 时序到 5.240。
-- todo/revision-log 按新架构清理：旧 CB-09 轮次详条留 revision-log §5（审计底）·todo 精简为新架构视图；上周日段归档 [todo-archive/2026-07-20_2026-07-26.md](todo-archive/2026-07-20_2026-07-26.md)。
-
-### 🔄 遗留（待用户）
-
-- **明早办公室大讨论**（用户主持·议题未告知）。
-- **KDE 去 3D 连带设计**（备查·非大讨论主题）：「情绪地形」命名 / 「总体情况」栏仅剩 1 卡 / EMC `generateTerrainForAI` 仍 3D / Grid 3D 收口。
-- **9 模块浏览器齐验**（明日飞轮就绪后·用户约定）。
-- **按钮文案**：「生成 2D 热力图」（带空格）vs 用户原话「生成2D热力图」·待定。
+- **浏览器验证**：重启 serve + 硬刷 → 测「分析情绪热度」+「剪裁西陵区」→ 确认 reg.filter 不崩 + 胶囊显示 + ~10s 速度。
+- **Phase 4 清理**：v3 稳定后删 v1 diagnose 管线（select_candidates / FILL_CARD / PLAN / dispatch / triggers·~500 行）。
+- **测试飞轮**：围绕 v2/v3 FC 架构更新飞轮机制 + 模拟测试内容（开 plan）。
+- **FC 稳定性**：DeepSeek V4 FC 复杂场景（R1 社区报告空响应/循环）·fallback 降级。
+- **plans[] 常空**（R2）：LLM FC 模式倾向不产 content → CPD plans 设计名存实亡·finalStep 胶囊兜底。
