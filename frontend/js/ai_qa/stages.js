@@ -387,7 +387,6 @@ function _normalizeFcDiagnose(skillName, params, plans, toolName) {
     method: [toolName + '()'],    // deriveDiagnoseMethod 等价格式
   };
 }
-}
 
 /** v2 plans[] 容错解析（D067）：JSON.parse + 字段校验·解析失败=空 plans·不崩溃。 */
 function _parsePlans(content) {
