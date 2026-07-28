@@ -35,14 +35,16 @@ async def chat_route(req: ChatRequest):
         # system prompt：极简——接地上下文 + 指令（无 MANIFESTO·无 industry_kb·D046）
         _q = (req.messages or [{}])[-1].get('content', '') if req.messages else ''
         sys_content = (
-            '你是情绪地图分析助手。根据用户问题选择一个工具并填写参数。\n'
-            '同时输出 plans 数组（后续分析建议，按优先级排序）。\n\n'
-            '规则：\n'
-            '1. 只输出 1 个 tool_call（最优先执行的工具）\n'
-            '2. 其余候选方案放在 content 字段的 JSON plans 数组中\n'
-            '3. 每个 plan 含 rank/label/tool/params/confidence/rationale\n'
-            '4. 参数值必须在工具 schema 的 enum 范围内\n\n'
-            f'数据上下文：\n{req.context or "（无数据上下文）"}\n'
+            '你是情绪地图分析助手。根据用户问题选择一个工具并填写参数。\n\n'
+            '## 任务\n'
+            '1. 从可用工具中选择最优先执行的一个（tool_call）\n'
+            '2. 在回复文本中输出 plans JSON（后续分析建议）\n\n'
+            '## plans 格式\n'
+            '在回复文本中输出如下 JSON（不要用 markdown 代码块）：\n'
+            '{"plans":[{"rank":1,"label":"工具中文描述","tool":"工具名","params":{...},"confidence":"high|medium|low","rationale":"选择理由"},...]}\n\n'
+            'rank=1 是当前 tool_call 执行的工具；rank=2+ 是后续可做的分析建议。\n'
+            '每个 plan 的 tool 必须是可用工具之一，params 必须符合该工具参数 schema。\n\n'
+            f'## 数据上下文\n{req.context or "（无数据上下文）"}\n'
         )
         messages = [{'role': 'system', 'content': sys_content}] + list(req.messages or [])
         try:
