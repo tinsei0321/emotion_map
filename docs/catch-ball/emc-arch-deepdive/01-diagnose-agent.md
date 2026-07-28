@@ -124,8 +124,8 @@ generateHeatmapForAI(analysis="negative", polarity="N")
         },
         "polarity": {
           "type": "string",
-          "enum": ["ALL", "P", "N", "O"],
-          "description": "ALL=综合·P=积极·N=消极·O=中性。须与 analysis 联动"
+          "enum": ["overall", "positive", "negative", "neutral"],
+          "description": "overall=综合·positive=积极·negative=消极·neutral=中性。须与 analysis 联动"
         },
         "mode": {
           "type": "string",
