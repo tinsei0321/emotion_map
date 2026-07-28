@@ -342,6 +342,194 @@ const RESULT_LLM = [
 ].map((c) => ({ ...c, category: '成果范式', type: 'llm' }));
 
 // ═══════════════════════════════════════════════════════
+// F. FC 全链路（20 例·emc_test_cases.md → 可执行飞轮用例）
+//    覆盖 v2/v3 架构：FC 诊断→工具执行→finalStep→追问→诚实→语言
+// ═══════════════════════════════════════════════════════
+const EMC_FC = [
+  { id: 'FC-01', name: '生成综合热力图', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '帮我生成一张L2数据的情绪热力图，我想看到分布情况',
+      (b, _t, sig) => {
+        if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's1', obs: `误GAP:"${b}"` };
+        const toolOk = sig.tools.includes('density');
+        const hasLayer = sig.newLayers > 0 || sig.renderedNew > 0;
+        return { pass: toolOk && hasLayer, stage: toolOk ? '' : 's1', obs: `tools=${sig.tools.join(',')} layers=${sig.newLayers}/${sig.renderedNew}`, review: '综合热力图是否正常生成？' };
+      }, { csv: 'L2-T1' }) },
+
+  { id: 'FC-02', name: '切换消极热力图（追问）', category: 'FC全链路', type: 'llm',
+    run: async (t) => {
+      await llmRun(t, '帮我生成一张情绪热力图', () => ({ pass: true, obs: '第1轮综合' }), { csv: 'L2-T1' });
+      await w(500);
+      return llmRun(t, '进一步分析消极情绪点的分布',
+        (b, _t, sig) => {
+          if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's1', obs: `追问失败:"${b}"` };
+          const toolOk = sig.tools.includes('density');
+          const noFilterAttr = !sig.tools.includes('filter_attr');
+          const hasLayer = sig.newLayers > 0 || sig.renderedNew > 0;
+          return { pass: toolOk && noFilterAttr && hasLayer, stage: '', obs: `tools=${sig.tools.join(',')} layers=${sig.newLayers}/${sig.renderedNew}`, review: '追问应直接 density(negative)·非 filter_attr' };
+        }, { csv: false });
+    } },
+
+  { id: 'FC-03', name: '区域排序', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '哪些区域情绪最差？排序看看',
+      (b, _t, sig) => {
+        if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's1', obs: `误GAP:"${b}"` };
+        const toolOk = sig.tools.includes('rank');
+        return { pass: toolOk, stage: toolOk ? '' : 's1', obs: `tools=${sig.tools.join(',')}`, review: 'rank 被选中？' };
+      }, { csv: 'L2-T1', range: '行政区' }) },
+
+  { id: 'FC-04', name: '区域归因', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '这几个街道的情绪归因分析',
+      (b, _t, sig) => {
+        if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's1', obs: `误GAP:"${b}"` };
+        const toolOk = sig.tools.includes('zonal_stats');
+        return { pass: toolOk, stage: toolOk ? '' : 's1', obs: `tools=${sig.tools.join(',')}`, review: 'zonal 被选中？' };
+      }, { csv: 'L2-T1', range: '行政区' }) },
+
+  { id: 'FC-05', name: '区域对比', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '对比西陵区和伍家岗区的情绪差异',
+      (b, _t, sig) => {
+        if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's1', obs: `误GAP:"${b}"` };
+        const toolOk = sig.tools.includes('compare_regions');
+        return { pass: toolOk, stage: toolOk ? '' : 's1', obs: `tools=${sig.tools.join(',')}`, review: 'compare 被选中？' };
+      }, { csv: 'L2-T1', range: '行政区' }) },
+
+  { id: 'FC-06', name: '抽取面层要素', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '帮我从中心城区范围中裁剪出西陵区的范围',
+      (b, _t, sig) => {
+        const toolOk = sig.tools.includes('extract_feature');
+        const hasLayer = sig.newLayers > 0 || sig.renderedNew > 0;
+        const noErr = !/\[ERR\]|没成功|未成功/.test(b);
+        return { pass: toolOk && hasLayer && noErr, stage: '', obs: `tools=${sig.tools.join(',')} badge="${String(b).slice(0,20)}" layers=${sig.newLayers}`, review: '字段自纠正 MC→name 是否生效？' };
+      }, { csv: false, range: '行政区' }) },
+
+  { id: 'FC-07', name: '概念问短路', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '什么是情绪地图？',
+      (b) => {
+        if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's1', obs: `误GAP:"${b}"` };
+        return { pass: true, obs: `概念问直答 badge="${b}"`, review: '回答是否生动专业？' };
+      }, { csv: false }) },
+
+  { id: 'FC-08', name: '缓冲分析', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '滨江公园周边500米的情绪分布',
+      (b, _t, sig) => {
+        const toolOk = sig.tools.includes('buffer');
+        const hasLayer = sig.newLayers > 0 || sig.renderedNew > 0;
+        return { pass: toolOk && hasLayer, stage: toolOk ? '' : 's1', obs: `tools=${sig.tools.join(',')} layers=${sig.newLayers}`, review: 'buffer radius=500？' };
+      }, { csv: 'L2-T1' }) },
+
+  { id: 'FC-09', name: '叠置分析', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '商业用地和居住用地的交集区域',
+      (b, _t, sig) => {
+        const toolOk = sig.tools.includes('overlay');
+        return { pass: toolOk, stage: toolOk ? '' : 's1', obs: `tools=${sig.tools.join(',')}`, review: 'overlay how=intersection？' };
+      }, { csv: false, range: '行政区' }) },
+
+  { id: 'FC-10', name: '裁剪点层', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '西陵区范围内的情绪点',
+      (b, _t, sig) => {
+        const toolOk = sig.tools.includes('clip');
+        const hasLayer = sig.newLayers > 0 || sig.renderedNew > 0;
+        const noErr = !/\[ERR\]|没成功/.test(b);
+        return { pass: toolOk && hasLayer && noErr, stage: '', obs: `tools=${sig.tools.join(',')} layers=${sig.newLayers}`, review: 'clip 裁点成功？' };
+      }, { csv: 'L2-T1', range: '行政区' }) },
+
+  { id: 'FC-11', name: '切换积极热力图', category: 'FC全链路', type: 'llm',
+    run: async (t) => {
+      await llmRun(t, '生成情绪热力图', () => ({ pass: true, obs: '第1轮综合' }), { csv: 'L2-T1' });
+      await w(500);
+      return llmRun(t, '换个角度看看积极情绪的分布',
+        (b, _t, sig) => {
+          const toolOk = sig.tools.includes('density');
+          const hasLayer = sig.newLayers > 0 || sig.renderedNew > 0;
+          return { pass: toolOk && hasLayer, stage: '', obs: `tools=${sig.tools.join(',')} layers=${sig.newLayers}`, review: '积极热力图？' };
+        }, { csv: false });
+    } },
+
+  { id: 'FC-12', name: '无点数据时拒绝', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '生成情绪热力图',
+      (b) => {
+        const graceful = /需上传|请上传|需要.*数据|数据.*上传/.test(b);
+        const noErr = !/\[ERR\]|无已加载的情绪点层/.test(b);
+        return { pass: graceful && noErr, stage: graceful ? '' : 's1', obs: `badge="${String(b).slice(0,30)}"`, review: '是否优雅提示而非硬报错？' };
+      }, { csv: false, range: '行政区' }) },
+
+  { id: 'FC-13', name: '失败后智能建议', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '帮我裁剪西陵区的点',
+      (b) => {
+        const hasSuggest = /抽取|extract|换个|分析方向|能做哪些/.test(b);
+        const noRawErr = !/\[ERR\]/.test(b);
+        return { pass: noRawErr, stage: '', obs: `badge="${String(b).slice(0,30)}" suggest=${hasSuggest}`, review: '失败后是否建议 extract_feature？' };
+      }, { csv: false, range: '行政区' }) },
+
+  { id: 'FC-14', name: 'qualityDefense 不崩', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '帮我生成一张情绪热力图',
+      (b, _t, sig) => {
+        const noCrash = !/请求失败|reg\.filter|not a function/.test(b);
+        const hasLayer = sig.newLayers > 0 || sig.renderedNew > 0;
+        return { pass: noCrash && hasLayer, stage: '', obs: `crash=${!noCrash} layers=${sig.newLayers}`, review: 'quality defense 正常运行？' };
+      }, { csv: 'L2-T1' }) },
+
+  { id: 'FC-15', name: 'FC 失败降级', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '生成全域情绪分布',
+      (b) => {
+        const noCrash = !/请求失败|502|500/.test(b);
+        return { pass: noCrash, stage: '', obs: `badge="${String(b).slice(0,30)}"`, review: 'FC 失败优雅降级？' };
+      }, { csv: 'L2-T1', timeout: 120000 }) },
+
+  { id: 'FC-16', name: '禁英文术语', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '分析情绪热度',
+      (b) => {
+        const text = (t.answerText && t.answerText()) || '';
+        const hasEng = /\b(density|extract_feature|zonal_stats|polarity|boundary|radius|emotion_intensity|filter_attr|overlay|buffer|compare_regions|rank|hotspot|nearest|merge|area_stats)\b/.test(text);
+        return { pass: !hasEng, stage: '', obs: hasEng ? '含英文术语' : '全中文', review: '结论是否含英文工具名/字段名？' };
+      }, { csv: 'L2-T1' }) },
+
+  { id: 'FC-17', name: '禁箭头符号', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '哪些区域情绪最差？排序',
+      (b) => {
+        const text = (t.answerText && t.answerText()) || '';
+        const hasArrow = /→/.test(text);
+        return { pass: !hasArrow, stage: '', obs: hasArrow ? '含箭头' : '无箭头', review: '结论是否含 → 符号？' };
+      }, { csv: 'L2-T1', range: '行政区' }) },
+
+  { id: 'FC-18', name: '生动专业表达', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '什么是情绪地图？',
+      (b) => {
+        const text = (t.answerText && t.answerText()) || '';
+        const hasBg = /人民城市|温情|情绪价值|急难愁盼|人本视角/.test(text);
+        const long = text.length > 50;
+        return { pass: hasBg && long, stage: '', obs: `len=${text.length} bg=${hasBg}`, review: '回答是否含背景词汇且生动？' };
+      }, { csv: false }) },
+
+  { id: 'FC-19', name: '多轮复合追问', category: 'FC全链路', type: 'llm',
+    run: async (t) => {
+      const r1 = await llmRun(t, '生成情绪热力图', () => ({ pass: true, obs: 'R1 ok' }), { csv: 'L2-T1' });
+      if (!r1.pass) return { pass: false, stage: 's1', obs: `R1 失败: ${r1.obs}` };
+      await w(500);
+      const r2 = await llmRun(t, '分析消极情绪', () => ({ pass: true, obs: 'R2 ok' }), { csv: false });
+      if (!r2.pass) return { pass: false, stage: 's2', obs: `R2 失败: ${r2.obs}` };
+      await w(500);
+      return llmRun(t, '哪些区域最差', (b, _t, sig) => {
+        const toolOk = sig.tools.includes('rank');
+        return { pass: toolOk, stage: toolOk ? '' : 's3', obs: `R3 tools=${sig.tools.join(',')}`, review: '多轮链每轮不失败？' };
+      }, { csv: false, range: '行政区' });
+    } },
+
+  { id: 'FC-20', name: '胶囊点击执行', category: 'FC全链路', type: 'llm',
+    run: async (t) => {
+      await llmRun(t, '生成情绪热力图', () => ({ pass: true, obs: '第1轮' }), { csv: 'L2-T1' });
+      await w(500);
+      const chip = document.querySelector('.aiq-suggest-chip.aiq-capsule, .aiq-suggest-chip[data-capsule-idx]');
+      if (!chip) return { pass: true, obs: '无胶囊（finalStep 未产·plans 常空·可接受）', review: '追问胶囊是否出现？' };
+      chip.click();
+      const ok = await t.waitAnswer(30000);
+      if (!ok) return { pass: false, stage: 's3', obs: '胶囊点击超时' };
+      const b = t.badge();
+      return { pass: !/请求失败|ERR/.test(b || ''), stage: '', obs: `胶囊执行 badge="${String(b || '').slice(0,20)}"`, review: '胶囊点击是否快速出图？' };
+    } },
+];
+
+// ═══════════════════════════════════════════════════════
 // H. Smart 交流（10 例：6 no-llm + 4 llm）
 // ═══════════════════════════════════════════════════════
 const SMART_NO_LLM = [
@@ -370,6 +558,7 @@ export const CASES = [
   ...PARAMS,
   ...RESULT_NO_LLM, ...RESULT_LLM,
   ...SMART_NO_LLM, ...SMART_LLM,
+  ...EMC_FC,
 ];
 
-export const CATEGORIES = ['CPD导游', 'UI渲染', '引擎谓词', '意图识别', '工具选择', '参数正确性', '成果范式', 'Smart交流'];
+export const CATEGORIES = ['CPD导游', 'UI渲染', '引擎谓词', '意图识别', '工具选择', '参数正确性', '成果范式', 'Smart交流', 'FC全链路'];
