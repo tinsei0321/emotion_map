@@ -281,14 +281,26 @@ export async function diagnoseStep(ctx, hooks) {
 
 /** v2 function calling 诊断（5.243·D041）：单次 LLM + function calling·非流式 JSON。
  *  替代旧 diagnoseStep（三阶段 SSE + select_candidates + FILL_CARD/PLAN）。
- *  返兼容 orchestrate 的 diagnose 对象：{ template, params, plans, degraded, intent, _fc:true }。
- *  - template = tool_calls[0].function.name（工具名·如 density/clip）
+ *  返兼容 orchestrate 的 diagnose 对象——经 _normalizeFcDiagnose 补全为 normalizeCard 等价结构。
+ *  - template = skill name（从 tool name 反映射·治 zonal_stats→zonal / compare_regions→compare）
  *  - params = JSON.parse(tool_calls[0].function.arguments)
  *  - plans = content 字段的 plans[] JSON（CPD 素材·rank=2+）
+ *  - 补全 data_plan/domain_lens/scale/outlet/method 等（默认值·兼容下游消费者）
  *  失败（网络/无 tool_calls/解析错误）→ 返 { degraded:true }·harness 降级处理 */
+// tool name → skill name 反映射（contracts 中 tool≠skill 的两个）
+const _TOOL_TO_SKILL = { zonal_stats: 'zonal', compare_regions: 'compare' };
+
 export async function fcDiagnoseStep(ctx, hooks) {
   const messages = [...(ctx.history || []), { role: 'user', content: ctx.question }];
   if (hooks.onReason) hooks.onReason('Function Calling 诊断中…', 0);
+  // 5a/5b：AbortController + 45s timeout（同 streamChat·治用户取消 + 挂起）
+  const _ac = new AbortController();
+  const _timer = setTimeout(() => _ac.abort(new Error('FC 单轮超时(45s)')), 45000);
+  // 用户取消信号联动
+  if (ctx.signal) {
+    if (ctx.signal.aborted) _ac.abort();
+    else ctx.signal.addEventListener('abort', () => _ac.abort(), { once: true });
+  }
   try {
     const resp = await fetch('/api/v1/chat', {
       method: 'POST',
@@ -298,6 +310,7 @@ export async function fcDiagnoseStep(ctx, hooks) {
         messages,
         context: ctx.context || '',
       }),
+      signal: _ac.signal,   // 5a：用户可取消
     });
     if (!resp.ok) {
       const errBody = await resp.text().catch(() => '');
@@ -305,6 +318,10 @@ export async function fcDiagnoseStep(ctx, hooks) {
       return { degraded: true, _fc: true, _fcError: `HTTP ${resp.status}` };
     }
     const data = await resp.json();
+    // 5c：更新用量统计（FC 不走 streamChat·手动更新）
+    if (data.usage && typeof window !== 'undefined') {
+      try { window._emcLastUsage = data.usage; } catch (_) { /* 观测·失败不阻塞 */ }
+    }
     if (data.error) {
       console.warn('[FC] error:', data.error);
       return { degraded: true, _fc: true, _fcError: data.error };
@@ -327,18 +344,49 @@ export async function fcDiagnoseStep(ctx, hooks) {
     if (data.plans) {
       plans = _parsePlans(data.plans);
     }
-    return {
-      template: tc.function.name,   // 工具名（density/clip/...）
-      params,
-      plans,
-      degraded: false,
-      intent: 'gis_operation',      // FC 选了工具 = 操作意图
-      _fc: true,
-    };
+    // ISSUE 1 修复：tool name → skill name 反映射
+    const toolName = tc.function.name;
+    const skillName = _TOOL_TO_SKILL[toolName] || toolName;
+    // ISSUE 2+3 修复：补全为 normalizeCard 等价结构（下游消费者兼容）
+    return _normalizeFcDiagnose(skillName, params, plans, toolName);
   } catch (e) {
-    console.warn('[FC] 异常:', e);
-    return { degraded: true, _fc: true, _fcError: String(e) };
+    const aborted = e && e.name === 'AbortError';
+    console.warn('[FC] 异常:', aborted ? '用户取消/超时' : String(e));
+    return { degraded: true, _fc: true, _fcError: aborted ? 'aborted' : String(e) };
+  } finally {
+    clearTimeout(_timer);   // 5b：清理 timeout
   }
+}
+
+/** ISSUE 2+3 修复：FC diagnose 补全为 normalizeCard 等价结构。
+ *  下游消费者（formatDiagnoseSummary / _needsDeliberate / renderDiagnoseCard / composeGapCard）
+ *  依赖 data_plan/domain_lens/scale/outlet/method 等字段——FC 不产这些·补默认值。 */
+function _normalizeFcDiagnose(skillName, params, plans, toolName) {
+  // intent：FC 选了工具 = 操作类（gis_operation）；concept/multi/unknown 不走 FC
+  // ISSUE 5 修复：不硬编码 gis_operation——按 skill 推导（zonal/rank/density/hotspot 可能是 emotion_analysis）
+  const _EMOTION_TOOLS = new Set(['zonal_stats', 'rank', 'density', 'hotspot']);
+  const intent = _EMOTION_TOOLS.has(toolName) ? 'emotion_analysis' : 'gis_operation';
+  return {
+    template: skillName,          // skill name（density/zonal/compare·SKILL_DEFS key）
+    params,
+    plans,
+    degraded: false,
+    intent,
+    _fc: true,
+    // 补全 normalizeCard 等价字段（下游消费者兼容）
+    domain_lens: [],              // FC 不产 domain_lens（无领域知识注入）
+    scale: 'macro',               // 默认宏观（FC 无尺度判断·保守值）
+    decision_type: '操作',         // FC 选了工具 = 操作决策
+    outlet: '生成图层',            // FC 默认出口
+    data_plan: {
+      needed: [],
+      available: [],
+      gap: [],
+      strategy: 'ready',          // FC 默认数据就绪（0LLM grounding 已确认）
+    },
+    method: [toolName + '()'],    // deriveDiagnoseMethod 等价格式
+  };
+}
 }
 
 /** v2 plans[] 容错解析（D067）：JSON.parse + 字段校验·解析失败=空 plans·不崩溃。 */
