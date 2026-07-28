@@ -293,7 +293,7 @@ const _TOOL_TO_SKILL = { zonal_stats: 'zonal', compare_regions: 'compare' };
 export async function fcDiagnoseStep(ctx, hooks) {
   const messages = [...(ctx.history || []), { role: 'user', content: ctx.question }];
   if (hooks.onReason) hooks.onReason('Function Calling 诊断中…', 0);
-  // 5a/5b：AbortController + 45s timeout（同 streamChat·治用户取消 + 挂起）
+  // 5a/5b：AbortController + 20s timeout（FC 非流式·治用户取消 + 挂起·CB-05 H11 注释更新）
   const _ac = new AbortController();
   const _timer = setTimeout(() => _ac.abort(new Error('FC 单轮超时(20s)')), 20000);   // v3 H5：20s（FC 正常 2.7s·45s 太长致降级 70s+）
   // 用户取消信号联动

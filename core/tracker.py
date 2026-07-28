@@ -215,7 +215,7 @@ def track(
                 arg_parts = []
                 # 跳过 self/cls
                 for i, a in enumerate(args):
-                    if i == 0 and inspect.ismethod(func):
+                    if i == 0 and (inspect.ismethod(func) or (args and str(args[0]) == 'self')):   # CB-05 H5：补 'self' 字面检测（ismethod 对非绑定返 False）
                         continue
                     arg_parts.append(_summarize(a))
                 for k, v in kwargs.items():
@@ -477,13 +477,17 @@ def validate_tracking_compliance(file_path: str) -> dict:
 
     # ── 辅助：检查节点所在行是否在 TrackContext 或 @track 装饰器内部 ──
     def _has_track_decorator(node):
-        """检查函数是否有 @track 装饰器"""
+        """检查函数是否有 @track 装饰器（含 @track(...) 和裸 @track）"""
         for dec in getattr(node, 'decorator_list', []):
+            # @track(...) → ast.Call
             if isinstance(dec, ast.Call):
                 if isinstance(dec.func, ast.Name) and dec.func.id == 'track':
                     return True
                 if isinstance(dec.func, ast.Attribute) and dec.func.attr == 'track':
                     return True
+            # 裸 @track（无括号）→ ast.Name（CB-05 H6 修）
+            elif isinstance(dec, ast.Name) and dec.id == 'track':
+                return True
         return False
 
     def _source_lines(start_lineno, end_lineno):

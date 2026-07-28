@@ -57,7 +57,7 @@ class LLMClient:
     def __init__(self, base_url: Optional[str] = None, model: Optional[str] = None,
                  api_key: Optional[str] = None, timeout: float = 60.0):
         self.base_url = (base_url or DEFAULT_BASE_URL).rstrip('/')
-        self.model = _resolve_model(model or os.environ.get(MODEL_ENV))
+        self.model = _resolve_model(model) if model else _resolve_model(os.environ.get(MODEL_ENV))   # CB-05 H1：model 显式传时不读 env 覆盖（保 provider 级配置）
         self.api_key = api_key or os.environ.get(DEFAULT_KEY_ENV, '')
         self.timeout = timeout
 
@@ -170,7 +170,7 @@ class LLMClient:
             'stream': False,
             'tools': tools, 'tool_choice': tool_choice,
         }
-        trace_log('MOD_LLM.F_002', f'chat_with_tools tools={len(tools)} msgs={len(messages)}')
+        trace_log('MOD_LLM.F_003', f'chat_with_tools tools={len(tools)} msgs={len(messages)}')
         try:
             with httpx.Client(timeout=self.timeout) as client:
                 resp = client.post(url, headers=headers, json=body)
@@ -195,7 +195,7 @@ class LLMClient:
 
 
 register_track_id("MOD_LLM.F_001", "LLM chat/completions（流式 SSE，provider-agnostic，V4）")
-register_track_id("MOD_LLM.F_002", "LLM chat_with_tools（function calling，非流式，v2 改良混合）")
+register_track_id("MOD_LLM.F_003", "LLM chat_with_tools（function calling，非流式，v2 改良混合·CB-05 CR1 修：从 F_002 改避碰撞）")
 
 
 # ── 韧性层：retry（单 provider 内重拨）+ fallback（provider 链换家）──
@@ -313,16 +313,17 @@ def chat_with_tools_fallback(messages, tools, tier: str = 'flash', **kwargs) -> 
         model = prov.model_flash if tier == 'flash' else prov.model_pro
         cli = LLMClient(base_url=prov.base_url, model=model, api_key=prov.api_key)
         try:
-            trace_log('MOD_LLM.F_002', f'chat_with_tools provider={prov.name} model={model}')
+            trace_log('MOD_LLM.F_004', f'chat_with_tools_fallback provider={prov.name} model={model}')
             return cli.chat_with_tools(messages, tools, **kwargs)
         except LLMError as e:
             last_err = e
             trace_warn('MOD_LLM.D_002', f'FC fallback provider={prov.name} status={getattr(e,"status_code","?")}: {e}')
-    trace_error('MOD_LLM.F_002', f'FC all providers exhausted: {last_err}')
+    trace_error('MOD_LLM.F_004', f'FC all providers exhausted: {last_err}')
     raise last_err or LLMError('FC 所有 provider 均失败')
 
 
 register_track_id("MOD_LLM.F_002", "chat_with_fallback（retry+fallback 编排，主链路+审查共用）")
+register_track_id("MOD_LLM.F_004", "chat_with_tools_fallback（FC provider fallback·v3 C1·CB-05 CR1 新 ID 避碰撞）")
 register_track_id("MOD_LLM.D_001", "LLM retry 触发（pre-stream 失败，退避后重拨）")
 register_track_id("MOD_LLM.D_002", "LLM fallback 切换 provider（重试耗尽或 4xx）")
 register_track_id("MOD_LLM.D_003", "LLM 流中途失败（不重试不换家，交上层降级）")

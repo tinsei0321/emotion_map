@@ -1001,8 +1001,8 @@ export const TOOLS = {
       if (_layerObj && _layerObj.fc) {
         try {
           const cards = await getFieldCard(_layerObj.id, _layerObj.fc, 'polygon');
-          if (cards && cards.fields && !cards.fields[_field]) {
-            const _avail = Object.keys(cards.fields).filter((f) => !isInternalField(f)).slice(0, 8).join('、');
+          if (cards && !cards[_field]) {   // CB-05 H12：getFieldCard 返平铺 {field:{role,...}} 非 {fields:{}}·修字段检查
+            const _avail = Object.keys(cards).filter((f) => !isInternalField(f)).slice(0, 8).join('、');
             return { observation: `字段「${_field}」不存在${_avail ? `，可用字段：${_avail}` : ''}。请用可用字段重试，或告诉我你要抽取什么内容。` };
           }
         } catch (_) { /* getFieldCard 失败（LLM 不可用/降级）→ 校验降级 skip·不阻塞 */ }

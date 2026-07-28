@@ -130,7 +130,7 @@ B_TRACK_PARADIGM = [
      'triggers': ['核密度', '密度分析', '聚集强度', '热力分布', '热力图', '热力', '密度', '集中', '情绪热度', '网格', '方格', '方格网', '聚合域', '空间聚合'],   # CB-06 L0：补网格/方格→"方格网"路由 density（避 while-loop·联动 harness mode='3d' 兜底）
      'template': 'density'},
     {'archetype': '聚集识别', 'stage': 'Analyze', 'voice': '我用 Gi* 识别显著冷热点聚集',
-     'triggers': ['聚集', '热点', '冷热', '显著聚集'],
+     'triggers': ['聚集区', '热点', '冷热', '显著聚集'],   # CB-05 H3：'聚集'→'聚集区'（避 density '聚集强度' substring 歧义）
      'template': 'hotspot'},
     {'archetype': '叠置交叉', 'stage': 'Transform', 'voice': '我叠两个图层找复合关系区',
      'triggers': ['交集', '叠置', '叠加', '用地里', '用地中', '两图', '里的'],

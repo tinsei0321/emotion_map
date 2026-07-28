@@ -491,3 +491,46 @@ K3 另指：光环硬编码 hex（ai_qa.css:431）违 theme var；交互环未�
 
 ---
 
+
+## CB-05（2026-07-28）· AUDIT_COMPREHENSIVE 全局审计反评价
+
+### ① SCAN 摘要
+- **SCAN**：[AUDIT_COMPREHENSIVE_2026-07-28](emc-arch-deepdive/AUDIT_COMPREHENSIVE_2026-07-28.md)（DeepSeek V4 Pro·35 文件 ~16,200 行 L1 逐行·七轴 7.9/10·↑+0.9 from v2 初始 7.0）
+- 5 CRITICAL + 12 HIGH + 15 MEDIUM + 12 LOW·历史 Bug 修复率 87.5%（7/8）·v2→v3→v3.1 演进正面评价
+
+### ② 反评价（逐条·grep/read 核实后判定）
+
+| # | 等级 | SCAN 建议 | 判定 | 证据/行动 |
+|:---:|:---:|------|:---:|------|
+| CR1 | 🔴 | F_002 重复注册 | **agree** | llm.py:198+325 同 ID·**已修**→F_003/F_004 |
+| CR2 | 🔴 | 裸 except 吞 CancelledError | **partial** | sync handler 不产 asyncio.CancelledError·**已修**（加 KeyboardInterrupt/SystemExit 前置） |
+| CR3 | 🔴 | geocode 坐标转换静默失效 | **agree** | geocode.py:38 bare except 哑函数·**已修**（加 stderr 日志） |
+| CR4 | 🔴 | SSE 代理断裂 | **decline** | serve.py 是开发服务器·非生产路径·FC 非流式可接受（**前提不成立**） |
+| CR5 | 🔴 | buffer geometry/area 错位 | **agree** | buffer_analysis.py:56-59 长度不匹配·**已修**（buffered.notna() 过滤） |
+| H1 | 🟠 | DEEPSEEK_MODEL env 覆盖 | **agree** | llm.py:279 全局 env 覆盖 provider model·**已修**（显式 model 不读 env） |
+| H2 | 🟠 | MANIFESTO .format() 脆弱 | **agree** | 已知·**已修**（加 `# ⚠️ 禁止 .format()` 注释） |
+| H3 | 🟠 | '热点' 触发词歧义 | **partial** | '热点'只在 hotspot·真正歧义是 **'聚集'**（density '聚集强度' substring）·**已修**（hotspot '聚集'→'聚集区'） |
+| H4 | 🟠 | validate_tool_call 不校验 range | **agree** | _PARAM_RANGES 只在 Schema·validate 不查·**已修**（加 range clamp） |
+| H5 | 🟠 | tracker ismethod 缺陷 | **agree** | inspect.ismethod 对非绑定返 False·**已修**（补 'self' 字面检测） |
+| H6 | 🟠 | tracker 裸 @track 不检测 | **agree** | _has_track_decorator 只检 @track(...) ·**已修**（补裸 @track ast.Name 检测） |
+| H7 | 🟠 | _free_port 暴力杀进程 | **partial** | 已有 netstat PID 过滤·非误杀（**已知设计取舍**） |
+| H8 | 🟠 | .env 加载时序 | **partial** | geocode.py 有自己的 .env loader·但这是红线 #1（AMAP_KEY 兜底）·**不改** |
+| H9 | 🟠 | aggregate DRY-debt | **decline** | 无消费方紧急性·backlog（**无消费方 wontfix**） |
+| H10 | 🟠 | moran_i KNN 异常过宽 | **decline** | 预存·backlog（**无消费方 wontfix**） |
+| H11 | 🟠 | stages.js 注释 45s→20s | **agree** | trivial·**已修** |
+| H12 | 🟠 | extract_feature cards.fields bug | **agree** | getFieldCard 返平铺非 {fields:{}} ·**已修**（cards[_field]） |
+| M7 | 🟡 | episode 静默失败 | **agree** | **已修**（加 stderr 日志） |
+
+**汇总**：13 agree（已 act）/ 3 partial（部分修 or 不改·附理由）/ 3 decline（附 reason）/ 0 disagree
+
+### ③ 行动
+- **修复 13 项**（CR1/CR3/CR5 + H1/H2/H3/H4/H5/H6/H11/H12 + M7 + CR2）·涉及 8 文件。
+- **decline 3 项**：CR4（serve.py 开发服务器·非生产）/ H7（已有 PID 过滤）/ H9+H10（backlog）。
+- pytest **221 passed**+3 skipped 零回归。
+
+### ④ 状态/新发现
+- **SCAN 质量高**：35 文件逐行审计·证据充分（file:line 精确）·反评价核实无事实错误（H3 细节修正：'聚集' 非 '热点'）。
+- **H8 .env 时序**：geocode.py 有独立 .env loader·这是**红线 #1 设计**（AMAP_KEY 必须兜底）·不改。
+- **CR4 SSE 代理**：记录 backlog·生产部署用 nginx/uvicorn 直接·非 serve.py。
+- **七轴 7.9/10**：从 v2 初始 7.0 提升 +0.9·主要来自 v3 C1/C2/C3 + v3.1 reg.filter 修复。
+

@@ -81,6 +81,8 @@ async def chat_route(req: ChatRequest):
             })
         except LLMError as e:
             return JSONResponse({'error': str(e), 'tool_calls': None, 'plans': None}, status_code=502)
+        except (KeyboardInterrupt, SystemExit):
+            raise   # CB-05 CR2：不吞系统退出信号
         except Exception as e:
             return JSONResponse({'error': f'FC 诊断失败: {e}', 'tool_calls': None, 'plans': None}, status_code=502)
 

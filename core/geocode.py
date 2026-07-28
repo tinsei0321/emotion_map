@@ -42,7 +42,11 @@ try:
     from core.utils import safe_print as _safe_print
     from core.coord_transform import gcj02_to_wgs84, wgs84_to_gcj02
     from core.place_layer import get_place_layer
-except Exception:  # 独立调试兜底
+except Exception as _imp_err:  # 独立调试兜底（CB-05 CR3：加日志·不再完全静默）
+    import sys
+    print(f'[WARN] geocode 依赖导入失败（coord_transform/place_layer/tracker 等）: {_imp_err}', file=sys.stderr)
+    print('[WARN] 坐标转换将使用哑函数（GCJ-02→WGS84 偏移 50-500m 零转换）·空间操作可能偏移', file=sys.stderr)
+
     def track(*a, **k):
         def deco(f):
             return f

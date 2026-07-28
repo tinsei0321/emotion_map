@@ -53,10 +53,11 @@ def create_buffer(
             geometry=[merged], crs=target_crs,
         )
     else:
-        bufs = [g for g in buffered if g is not None]
+        # CB-05 CR5 修：buffered_valid 过滤 None 后再取 area（治 geometry/area 长度不匹配）
+        buffered_valid = buffered[buffered.notna()]
         buf = gpd.GeoDataFrame(
-            {'buffer_area_km2': (buffered.area / 1e6).round(4).values},
-            geometry=bufs, crs=target_crs,
+            {'buffer_area_km2': (buffered_valid.area / 1e6).round(4).values},
+            geometry=list(buffered_valid), crs=target_crs,
         )
 
     total = round(float(buf['buffer_area_km2'].sum()), 4)

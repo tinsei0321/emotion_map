@@ -30,7 +30,8 @@ def log_episode(question, diagnose=None, final=None, defense=None, ok=True, extr
     """
     try:
         os.makedirs(_EPISODE_DIR, exist_ok=True)
-    except Exception:
+    except Exception as e:
+        import sys; print(f'[WARN] episode 目录创建失败: {e}', file=sys.stderr)   # CB-05 M7：不再完全静默
         return False
     dp = (diagnose or {}).get('data_plan') or {}
     rec = {
@@ -59,7 +60,8 @@ def log_episode(question, diagnose=None, final=None, defense=None, ok=True, extr
         with open(_EPISODE_PATH, 'a', encoding='utf-8') as f:
             f.write(json.dumps(rec, ensure_ascii=False) + '\n')
         return True
-    except Exception:
+    except Exception as e:
+        import sys; print(f'[WARN] episode 写入失败: {e}', file=sys.stderr)   # CB-05 M7
         return False
 
 

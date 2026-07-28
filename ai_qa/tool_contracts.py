@@ -522,6 +522,15 @@ def validate_tool_call(tool_name, args):
             else:
                 del fixed[name]
                 fixes.append(f'{name}={val} 非法→删除')
+        # CB-05 H4：数值 range 校验 → 超范围 clamp 到边界
+        if val is not None and name in _PARAM_RANGES and isinstance(val, (int, float)):
+            lo, hi = _PARAM_RANGES[name]
+            if val < lo:
+                fixed[name] = lo
+                fixes.append(f'{name}={val} 超下限→clamp {lo}')
+            elif val > hi:
+                fixed[name] = hi
+                fixes.append(f'{name}={val} 超上限→clamp {hi}')
 
     return {'ok': True, 'params': fixed, 'fixes': fixes}
 
