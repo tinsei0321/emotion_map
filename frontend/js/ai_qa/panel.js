@@ -621,6 +621,7 @@ function _followUps(t) {
 
 /** 渲染推荐追问胶囊到 #aiq-suggest（答案完毕后显，点击即发）。 */
 function renderSuggest(t) {
+  // CB-09 D032/D033（5.239 CPD 收尾）：胶囊 turn-over 自然移除（新话轮重建·D032）+ 无胶囊时静态 _followUps 或空（D033 完成态）。
   const el = document.getElementById('aiq-suggest');
   if (!el) return;
   _guidanceCardShown = false;   // 答案后 胶囊/_followUps 接管，清引导卡片标志
@@ -1482,7 +1483,7 @@ async function send(text, capsule) {
     if (_curTrace) {
       fetch('/api/v1/aiqa/episode', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: text, diagnose: _curTrace.diagnose, final: _curTrace.final, defense: _curTrace.defense, ok: settled }),
+        body: JSON.stringify({ question: text, diagnose: _curTrace.diagnose, final: _curTrace.final, defense: _curTrace.defense, ok: settled, capsule_clicked: isCapsule ? (capsule && capsule.skill) || null : null }),   // CB-09 D034：点击的胶囊 skill→episode→Pro 排序自我成长偏好
       }).catch(() => {});
     }
     _streaming = false;

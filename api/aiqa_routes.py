@@ -45,6 +45,7 @@ class EpisodeIn(BaseModel):
     defense: Optional[Dict[str, Any]] = None   # CB-09 D024：质量防线结果（取代旧 review）
     ok: bool = True
     extra: Optional[Dict[str, Any]] = None
+    capsule_clicked: Optional[str] = None   # CB-09 D034：用户点击的胶囊 skill（Pro 排序自我成长偏好信号·5.239）
 
 
 @aiqa_router.post('/aiqa/episode')
@@ -52,7 +53,7 @@ def post_episode(ep: EpisodeIn):
     """记一条 L3 episode（append DATA/ai_qa/episodes.jsonl）。失败不抛（返回 ok=False）。"""
     saved = log_episode(
         question=ep.question, diagnose=ep.diagnose, final=ep.final,
-        defense=ep.defense, ok=ep.ok, extra=ep.extra,
+        defense=ep.defense, ok=ep.ok, extra=ep.extra, capsule_clicked=ep.capsule_clicked,
     )
     return {'ok': saved}
 

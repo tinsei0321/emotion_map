@@ -209,6 +209,14 @@ function normalizeCard(obj) {
       return SKILL_DEFS[_t] ? _t : 'unknown';   // 非 SKILL 模板归一 unknown（路由跳过落 while-loop；Flash gate 计为 miss）
     })(),
     params: (obj.params && typeof obj.params === 'object' && !Array.isArray(obj.params)) ? obj.params : {},
+    chain: (() => {   // CB-09 D009+D012（5.237）Phase C：Pro 产的复合链 {name,steps:[{tool,params}]}·runChainPath 动态消费
+      const ch = obj.chain;
+      if (!ch || !Array.isArray(ch.steps)) return null;
+      // 合法性校验：step.tool ∈ SKILL_DEFS + params 对象·过滤无效步·<2 有效步→null（落 _deriveChainId/while-loop）
+      const valid = ch.steps.filter((s) => s && typeof s.tool === 'string' && SKILL_DEFS[s.tool]
+        && (!s.params || typeof s.params === 'object'));
+      return valid.length >= 2 ? { name: ch.name || '复合链', steps: valid } : null;
+    })(),
   };
 }
 
@@ -265,6 +273,7 @@ export async function diagnoseStep(ctx, hooks) {
     (err) => { throw new Error(err); },
     {
       phase: 'diagnose', signal: ctx.signal, model: 'flash',
+      layerMeta: ctx.layerMeta || null,   // CB-09 5.242：{has_point,has_polygon} 喂 select_candidates 数据感知过滤
       onReason: (t) => { hooks.onReason && hooks.onReason(t, 0); },
     });
   return parseDiagnoseCard(acc.token);   // null = 解析失败（harness 降级，不抛）

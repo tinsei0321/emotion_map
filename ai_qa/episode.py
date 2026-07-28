@@ -20,12 +20,13 @@ def _excerpt(s, n=_FINAL_EXCERPT):
     return s if len(s) <= n else s[:n] + '…'
 
 
-def log_episode(question, diagnose=None, final=None, defense=None, ok=True, extra=None):
+def log_episode(question, diagnose=None, final=None, defense=None, ok=True, extra=None, capsule_clicked=None):
     """append 一条 episode 到 jsonl。失败静默（不阻塞问答交付）。
 
     diagnose: diagnose 卡 dict（取 scale/domain_lens/decision_type/outlet/data_plan.strategy/method）
     defense:  质量防线结果 dict（CB-09 D024·取 degraded/fixes/skipped·取代旧 review verdicts）
     final:    最终答文（excerpt）
+    capsule_clicked: CB-09 D034 用户点击的胶囊 skill（Pro 排序自我成长偏好信号·供 consolidate 挖掘）
     """
     try:
         os.makedirs(_EPISODE_DIR, exist_ok=True)
@@ -50,6 +51,7 @@ def log_episode(question, diagnose=None, final=None, defense=None, ok=True, extr
             'skipped': (defense or {}).get('skipped'),
         } if defense else None,
         'final_excerpt': _excerpt(final),
+        'capsule_clicked': capsule_clicked,   # CB-09 D034：None=非胶囊点击 / skill=点击的胶囊
     }
     if extra:
         rec.update(extra)
