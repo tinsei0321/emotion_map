@@ -136,7 +136,9 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
         self.send_header('Pragma', 'no-cache')
         self.send_header('Expires', '0')
+        self.send_header('Connection', 'close')   # WS1 F1.4 修正：HTTP/1.1 + 单线程 HTTPServer 必须关连接（keep-alive 占死唯一线程·致 :8080 全挂）
         super().end_headers()
+        self.close_connection = True   # 每响应后关连接·单线程服务不阻塞·SSE 仍按 Connection:close 流式
 
     def do_GET(self):
         # /api/* → 反代后端（同源，消除浏览器跨域这一跳）
@@ -243,15 +245,13 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
 
     def _send_streamed(self, status, rheaders, resp):
         """SSE 流式：分块转发（WS1 F1.4）。不设 Content-Length·Connection: close（浏览器读到 EOF）·
-        每块 wfile.flush() 强制渐进渲染（HTTP/1.1 下生效·1.0 无效）。"""
+        每块 wfile.flush() 强制渐进渲染。Connection/close_connection 由 end_headers 统一设（避免重复头）。"""
         self.send_response(status)
         for k, v in rheaders:
             if k.lower() in ('content-type', 'content-disposition',
                              'content-language', 'etag', 'last-modified'):
                 self.send_header(k, v)
-        self.send_header('Connection', 'close')   # 无 Content-Length → 关连接示 EOF（不用 chunked·更简）
         self.end_headers()
-        self.close_connection = True              # HTTP/1.1 keep-alive 关闭·读完即断
         try:
             while True:
                 chunk = resp.read(4096)
