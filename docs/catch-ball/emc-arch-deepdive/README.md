@@ -1,9 +1,9 @@
 # EMC 架构深度拆解讨论 — 会议记录
 
-> **会议日期**：2026-07-27  
+> **会议日期**：2026-07-27（v1 三阶段）→ 2026-07-28（v2 改良混合）  
 > **参与方**：用户（产品 owner）+ DeepSeek（第三方 LLM·架构评估）  
-> **背景**：经 CB-04 六轮 SCAN + CB-08 互评，共识为「LLM 简化链路」方向。现逐个模块拆解 EMC 架构与运行机制，产出可执行改造方案。  
-> **既定方向**：保 LLM·不分简单/复杂边界·瘦 prompt 提速度  
+> **背景**：v1 三阶段设计经业界对标（kepler.gl/Mapbox/Power BI）后修订为 v2 改良混合架构——单次 LLM + function calling + 契约 Schema。废弃「信息卡」概念。  
+> **既定方向**：保 LLM 灵活性·单次 function calling·契约 Schema 强制参数合法·CPD 多轮引导  
 > **产出目录**：`docs/catch-ball/emc-arch-deepdive/`
 
 ---
@@ -12,15 +12,30 @@
 
 | # | 模块 | 状态 | 决议数 | 关键结论 |
 |:---:|------|:---:|:---:|------|
-| 1 | **Diagnose Agent**（认知层） | ✅ 已完成 | 11 | 三阶段低耦合·进入编排器 |
+| 1 | **Diagnose Agent**（认知层） | ✅ v2 已完成 | 9 | 单次 LLM + function calling + 契约 Schema·废弃信息卡 |
 | 2 | **Orchestrator**（编排层） | ✅ 已完成 | 4 | 动态 chain·while-loop降级·别名分区·门禁修 |
 | 3 | **Execution Layer**（执行层） | ✅ 已完成 | 3 | 统一observation·computeStyle路由·EMC组修 |
 | 4 | **FinalStep Agent**（输出层） | ✅ 已完成 | 3 | 轻prompt·追问胶囊三级·3-5s |
 | 5 | **Review + Revise** | ✅ 已完成 | 5 | 删除旧R+R·新质量防线8条·<20ms |
-| 6 | **Prompt Engineering** | ✅ 已完成 | 2 | contracts单一源·prompt全派生 |
+| 6 | **Prompt Engineering** | ✅ 已完成 | 2 | contracts单一源·契约 Schema 派生 |
 | 7 | **Toolbox ↔ EMC 接口** | ✅ 已完成 | 3 | 参数审计全过·互斥保留·镜像落地 |
-| 8 | **CPD 引擎** | ✅ 已完成 | 5 | 不调LLM·Pro plans消费·选项直执 |
-| 9 | **字段识别** | ✅ 已完成 | 6 | 纯规则·6场景追问·候选≤4 |
+| 8 | **CPD 引擎** | ✅ 已完成 | 5 | 不调LLM·plans消费·选项直执 |
+| 9 | **字段识别** | ✅ v2 简化 | 2 | 全注入 13 工具·0LLM 只做接地·废弃筛选 |
+
+---
+
+## v1 → v2 架构变更摘要
+
+| 维度 | v1（三阶段·已废弃） | v2（改良混合·当前） |
+|------|------|------|
+| 认知架构 | 0LLM → Flash 填信息卡 → Pro 推理 | 0LLM → 单次 LLM + function calling |
+| LLM 调用 | 2-3 次 | **1-2 次** |
+| 参数约束 | Flash prompt 描述 schema | **契约 Schema**（contracts → JSON Schema → strict） |
+| 信息卡 | Flash 产出·Pro 消费 | **废弃**——契约 Schema 覆盖 |
+| 工具选择 | 0LLM 硬筛选 | 0LLM **软建议**（tools_hint + tools_fallback） |
+| plans[] | Pro 产出 | function call 响应 content 字段附带 |
+| Pro 阶段 | 独立第二次 LLM | **取消** |
+| 业界对标 | ❌ 无先例 | ✅ kepler.gl / Mapbox / Power BI |
 
 ---
 
@@ -28,7 +43,62 @@
 
 | ID | 模块 | 决策 | 日期 |
 |----|------|------|------|
-| — | — | 暂无 | — |
+| D041 | Diagnose v2 | 单次 LLM + function calling + 契约 Schema（修订 D001 三阶段） | 07-28 |
+| D042 | Diagnose v2 | 废弃信息卡·参数约束由契约 Schema 承担（修订 D002/D003） | 07-28 |
+| D043 | Diagnose v2 | 契约 Schema 从 contracts 派生·strict 服务端强制 | 07-28 |
+| D044 | Diagnose v2 | 0LLM 软建议（tools_hint + fallback）·不做硬筛选（修订 D007） | 07-28 |
+| D045 | Diagnose v2 | plans[] 在 function call content 字段附带产出 | 07-28 |
+| D046 | Diagnose v2 | LLM prompt 30-54KB → 1-3KB·prefill <2s（修订 D006） | 07-28 |
+| D047 | Diagnose v2 | 数据三态在 function calling 内完成（修订 D008） | 07-28 |
+| D048 | Diagnose v2 | 单工具直执·多工具 plans 交 CPD·取消 Pro 阶段（修订 D004/D009） | 07-28 |
+| D049 | Diagnose v2 | 数据缺失→0LLM 短路提示导入 | 07-28 |
+| D050 | Orchestrator v2 | 编排器消费 tool_calls[0]·不再查 SKILL_DEFS | 07-28 |
+| D051 | Orchestrator v2 | _PARAM_ALIAS 废弃·契约 Schema additionalProperties:false | 07-28 |
+| D057 | Orchestrator v2 | LLM 只输出 1 个 tool_call·其余进 plans[] | 07-28 |
+| D058 | Orchestrator v2 | arguments JSON.parse·strict 保证合法性 | 07-28 |
+| D052 | Prompt v2 | contracts 新增 contracts_to_tools_schema() | 07-28 |
+| D053 | Prompt v2 | paradigm.py / SKILL_DEFS 过渡期保留 | 07-28 |
+| D059 | Prompt v2 | 旧 diagnose prompt 删除（MANIFESTO+8附录+6few-shot） | 07-28 |
+| D060 | Prompt v2 | 保留极简 fallback prompt·function calling 失败兜底 | 07-28 |
+| D061 | Prompt v2 | 契约 Schema 参数名以工具实际读取为准·消灭别名 | 07-28 |
+| D054 | CPD v2 | plans[] 数据源改为 function call content·格式不变 | 07-28 |
+| D056 | Field v2 | ~~候选≥5 追问保留~~ → 废弃（全注入） | 07-28 |
+| D062 | Orchestrator v2 | 编排器加代码层参数校验（strict 实测不强制） | 07-28 |
+| D063 | Field v2 | 废弃 tools_hint·全注入 13 工具（测试: 7.4KB/2.7s） | 07-28 |
+| D064 | Field v2 | 0LLM 简化·只做接地上下文 + 数据缺失检测 | 07-28 |
+| D065 | Harness | 数据变化检测放 harness·_dataSignature 对比 | 07-28 |
+| D066 | Prompt | fallback prompt 从 contracts 派生 contracts_to_text | 07-28 |
+| D067 | Orchestrator | plans[] 解析后代码校验·容错 | 07-28 |
+| D068 | Orchestrator | plans[] 存 ctx.plans·finalStep/CPD 共享 | 07-28 |
+| D012 | Orchestrator | runChainPath 从固定链 → 动态 chain | 07-27 |
+| D013 | Orchestrator | while-loop 降级·MAX_ROUNDS 缩至 2-3 | 07-27 |
+| D014 | Orchestrator | _PARAM_ALIAS 按工具注册别名 | 07-27 |
+| D015 | Orchestrator | _GEO_TOOLS 补 ensure_zone | 07-27 |
+| D016 | Execution | 统一 observation 格式 [OK]/[ERR]/[WARN] | 07-27 |
+| D017 | Execution | generateHeatmapForAI 接入 computeStyle | 07-27 |
+| D018 | Execution | focusLayer 父组空 FC 返子层 | 07-27 |
+| D019 | FinalStep | 保 LLM·轻 prompt ~0.6-1.3KB·3-5s | 07-27 |
+| D020 | FinalStep | 追问胶囊三级·L1直达 L2轻判 L3走CPD | 07-27 |
+| D021 | FinalStep | 胶囊绑定工具集·参数从 observation 派生 | 07-27 |
+| D022 | Review | 删除旧 R+R 全部代码 | 07-27 |
+| D023 | Review | 新质量防线·全部代码 <20ms | 07-27 |
+| D024 | Review | 旧 R+R episode 日志迁至新防线 | 07-27 |
+| D025 | Prompt | tool_contracts.py 单一真相源 | 07-27 |
+| D026 | Prompt | 契约 Schema 从 contracts 派生·注入 function calling | 07-28 |
+| D027 | Toolbox | generate*ForAI 15 个全审计·契约完整 | 07-27 |
+| D028 | Toolbox | 保留互斥·增隐藏提示+空组隐藏 | 07-27 |
+| D029 | Toolbox | ForAI=dialog 镜像通过 contracts+CI 校验 | 07-27 |
+| D030 | CPD | CPD 不调 LLM·内容来自 plans | 07-27 |
+| D031 | CPD | CPD 选项点击后直接执行·跳过 LLM | 07-27 |
+| D032 | CPD | 已执行选项自动移除·剩余继续 | 07-27 |
+| D033 | CPD | 全部执行后展示完成·不进一步建议 | 07-27 |
+| D034 | CPD | 用户偏好记入自我成长 | 07-27 |
+| D035 | Field | 字段→tools_hint·分析型优先·≤4 | 07-27 |
+| D036 | Field | 关键词累积匹配·取并集 | 07-27 |
+| D037 | Field | 候选为空→短路·提示导入数据 | 07-27 |
+| D038 | Field | tools_hint 不硬筛·fallback 兜底 | 07-28 |
+| D039 | Field | 追问文案纯中文+专业术语·不调 LLM | 07-27 |
+| D040 | Field | density analysis 维度分歧单独追问 | 07-27 |
 
 ---
 

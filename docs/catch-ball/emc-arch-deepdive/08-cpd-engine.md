@@ -1,50 +1,30 @@
-# 模块八：CPD 引擎 — 定稿
+# 模块八：CPD 引擎 — v2 改良混合架构
 
-> **状态**：✅ 已决议  
-> **日期**：2026-07-27  
-> **关联决策**：D030-D034
+> **状态**：✅ 已决议（v2）  
+> **日期**：2026-07-28  
+> **关联决策**：D054（v2）·D030-D034（v1·全部保留）
 
 ---
 
-## 一、定位
+## 一、v1 → v2 变更
 
-> CPD 不调 LLM。消费 Pro 产出的 plans[]，展示为引导选项。和追问胶囊相辅相成——L3 胶囊触发 CPD 介入。
-
-## 二、Pro → CPD 数据流
-
-```
-Pro 产出: plans = [
-  { rank:1, label, tool, params },  → 编排器执行
-  { rank:2, label, tool, params },  → CPD 选项
-  { rank:3, label, tool, params },  → CPD 选项
-  ...
-]
-```
-
-| 消费方 | 取什么 | 做什么 |
+| 维度 | v1 | v2 |
 |------|------|------|
-| 编排器 | rank=1 | 直接执行（跳过 Flash·params 已由 Pro 填好） |
-| CPD | rank=2+ | 展示为可点击选项 |
+| plans[] 来源 | Pro LLM 独立产出 | **function call content 字段附带** |
+| plans[] 格式 | `{rank,label,tool,params,confidence,rationale}` | **完全相同** |
+| CPD 展示逻辑 | rank=2+ 选项 | **不变** |
+| CPD 执行逻辑 | 点击→直执→移除 | **不变** |
+| 跨轮复用 | plans 存 turnHistory | **不变** |
 
-## 三、交互流程
+**唯一改动**：数据源从 `proResult.plans` 改为 `llmResponse.content.plans`。
 
-```
-用户点 CPD 选项 → 编排器直接执行（跳过 Flash）→ finalStep 出结论
-  → 该选项从 CPD 列表中移除
-  → 剩余选项继续展示
-  → 全部执行完 → 展示完成状态
-```
-
-## 四、设计决策
+## 二、决策
 
 | ID | 决策 |
 |----|------|
-| D030 | CPD 不调 LLM·内容全部来自 Pro plans |
-| D031 | CPD 选项点击后直接执行·跳过 Flash（params 已由 Pro 填好） |
-| D032 | 已执行选项自动移除·剩余继续展示·不重新走 Pro |
-| D033 | 全部执行完毕后展示完成状态·不进一步建议新问题 |
-| D034 | 用户选项偏好记入自我成长·优化 Pro 排序 |
+| D054 | CPD plans[] 数据源改为 function call content·格式不变 |
+| D030-D034 | v1 决策全部保留（不调LLM/直执/移除/完成/偏好） |
 
 ---
 
-*关联文档：README.md·`docs/catch-ball/emc-arch-deepdive/`*
+*关联文档：README.md·01-diagnose-agent.md（v2）*
