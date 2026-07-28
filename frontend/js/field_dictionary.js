@@ -28,7 +28,11 @@ export const FIELD_ROLES = {
   // —— 面层/边界字段 ——
   boundary_name: { variants: ['MC', '街道', '社区', '编号', '区域名称', '县名', '市名', 'Layer', 'LAYER', 'FID_规划', 'FID', '行政区', '行政区名称', '单元名', '单元编号'], dtypeHint: 'string', description: '面层/边界的名称字段' },
   boundary_id: { variants: ['id', 'ID', 'fid', 'FID', 'code', '代码', 'OBJECTID', 'objectid'], dtypeHint: 'string', description: '面层/边界唯一标识' },
+  zone: { variants: ['zone', 'area_tag', 'area_seed', '片区', '街区', '所属区', '归属'], dtypeHint: 'string', description: '点所属面域/片区标识（membership·供 aggregate_by_boundary_id groupby）' },
   land_use_class: { variants: ['DLMC', 'dlmc', 'DLMC_NAME', '地类名称', '地类编码', '用地类型', '用地代码', 'landuse', 'land_use'], dtypeHint: 'categorical', description: '用地类型分类（值域见 landuse_codes_2023.py）' },
+  // —— WS2 F2.6：扩展域（规划/人口·用户 CSV 常见·减少 role=null 走 LLM 推断·仅识别不归因）——
+  planning_metric: { variants: ['容积率', '绿地率', '绿化率', '建筑密度', '用地面积', '建筑面积'], dtypeHint: 'number', description: '规划指标（非情绪字段·仅识别）' },
+  population: { variants: ['人口', '人口数', '常住人口', '户数', '家庭数'], dtypeHint: 'number', description: '人口/户数统计（非情绪字段·仅识别）' },
   // —— 自产层契约（self_produced，只声明不归一；_fieldSamples 不过滤）——
   polarity_index: { variants: ['polarity_index'], dtypeHint: 'number', selfProduced: true, description: '极性指数（EMC 自产）' },
   point_count: { variants: ['point_count'], dtypeHint: 'number', selfProduced: true, description: '点数（EMC 自产）' },
@@ -65,7 +69,15 @@ export function resolveRole(field, _hint) {
   for (const [role, info] of Object.entries(FIELD_ROLES)) {
     if (info.variants.includes(f)) return role;
   }
-  return _VARIANT_INDEX[f.toLowerCase()] || null;
+  const _low = _VARIANT_INDEX[f.toLowerCase()];
+  if (_low) return _low;
+  // WS2 F2.6：中文 variant 模糊（field 含 variant·治"情绪倾向值→情绪""得分分→得分"类扩展/简写·英文不走子串避假阳）
+  for (const [role, info] of Object.entries(FIELD_ROLES)) {
+    for (const v of info.variants) {
+      if (v.length >= 2 && /[一-鿿]/.test(v) && f.includes(v)) return role;
+    }
+  }
+  return null;
 }
 
 /** 把 field 解析到 columns 里实际存在的列名。物理列名不改，只读找对应列。miss 返回 null。 */

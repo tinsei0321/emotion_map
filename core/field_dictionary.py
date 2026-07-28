@@ -124,6 +124,17 @@ FIELD_ROLE_DICT = {
         'dtype_hint': 'categorical',
         'description': '用地类型分类（值域见 ai_qa/landuse_codes_2023.py：国标 24 一级/111 二级/40 三级）',
     },
+    # —— WS2 F2.6：扩展域（规划/人口·用户 CSV 常见·减少 role=null 走 LLM 推断·仅识别不归因）——
+    'planning_metric': {
+        'variants': ['容积率', '绿地率', '绿化率', '建筑密度', '用地面积', '建筑面积'],
+        'dtype_hint': 'number',
+        'description': '规划指标（容积率/绿地率/密度/面积·非情绪字段·仅识别）',
+    },
+    'population': {
+        'variants': ['人口', '人口数', '常住人口', '户数', '家庭数'],
+        'dtype_hint': 'number',
+        'description': '人口/户数统计（非情绪字段·仅识别）',
+    },
     # —— 自产层契约字段（只声明，不归一；_fieldSamples 不过滤，AI 写 where 要用）——
     'polarity_index': {'variants': ['polarity_index'], 'dtype_hint': 'number', 'self_produced': True,
                        'description': '极性指数（-2~+2，EMC 自产聚合层）'},
@@ -189,7 +200,16 @@ def resolve_role(field, hint=None):
         if f in info['variants']:
             return role
     # 小写归一匹配
-    return _VARIANT_INDEX.get(f.lower())
+    role = _VARIANT_INDEX.get(f.lower())
+    if role:
+        return role
+    # WS2 F2.6：中文 variant 模糊（field 含 variant·治"情绪倾向值→情绪""得分分→得分"类扩展/简写）。
+    # 仅中文 variant（len≥2·含 CJK）走子串·英文不走（避"id"∈"provider_id"等假阳）。
+    for _role, _info in FIELD_ROLE_DICT.items():
+        for _v in _info['variants']:
+            if len(_v) >= 2 and any(u'一' <= _c <= u'鿿' for _c in _v) and _v in f:
+                return _role
+    return None
 
 
 @track("MOD_FIELD.F_001", track_args=False)

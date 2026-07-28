@@ -39,9 +39,10 @@ window.__emcTest = {
     if (!points.features.length) return { ok: false, reason: 'no points' };
     const { fc: pfc, colorMode } = detectColorMode(points);
     const base = 'e2e_points';
-    // T9 例间清层：清旧 e2e_points 层（治每例 loadCSV +3~4 层堆叠·K3 C1·加剧超时与 context 膨胀）
+    // T9 例间清层：清旧 e2e_points 层 + 残留点层/group（治每例堆叠·K3 C1·+ FC-12 跨例点层残留 has_point 假阳）。
+    // 保留 polygon（range/boundary·部分用例先加载范围再加载点·核清会误删范围）。
     for (const l of getLayers().slice()) {
-      if (l.srcName === base) { try { removeLayerFromMap(l.id); } catch (_) {} removeLayer(l.id); }
+      if (l.srcName === base || l.kind === 'point' || l.kind === 'group') { try { removeLayerFromMap(l.id); } catch (_) {} removeLayer(l.id); }
     }
     if (colorMode === 'polarity') {
       const pos = [], neu = [], neg = [];

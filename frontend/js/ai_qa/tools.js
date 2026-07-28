@@ -154,7 +154,7 @@ export async function getFieldCard(layerId, fc, layerKind = 'point') {
  *  监听 layers:changed（addLayer/addResultLayer 派发）→ 无缓存的可见层 getFieldCard 预热。失败静默（buildContext 时重试）。 */
 document.addEventListener('layers:changed', () => {
   for (const l of getLayers()) {
-    if (l.visible && l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length && !_fieldCardCache.has(l.id)) {
+    if (l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length && !_fieldCardCache.has(l.id)) {   // WS2 F2.4：去 visible·hidden 层也预热（对齐 buildContext）
       getFieldCard(l.id, l.fc, l.kind || 'point').catch(() => {});   // fire-and-forget·失败静默
     }
   }
@@ -683,6 +683,10 @@ export function pickVisiblePointLayer() {
   if (l2) return { fc: l2.fc, name: l2.name, level: 'L2', sourceKey: `layer:${l2.id}` };
   const l1 = pts.find((l) => l.colorMode === 'confidence');
   if (l1) return { fc: l1.fc, name: l1.name, level: 'L1', sourceKey: `layer:${l1.id}` };
+  // WS2 F2.0：兜底——任意已加载点层（colorMode='polarity' 上传点层 / needsAnalysis 等）。
+  // 飞轮点数据走 L2-group 分支测不出，但用户独立上传 polarity 点层正中此（致 density/zonal 等判"缺数据"）。
+  const anyPt = pts[0];
+  if (anyPt) return { fc: anyPt.fc, name: anyPt.name, level: anyPt.colorMode === 'confidence' ? 'L1' : 'L2', sourceKey: `layer:${anyPt.id}` };
   return null;
 }
 /** 工具入参 layer 解析：显式 params.layer 优先（geoFetch ref() 解析图层名/$n/preset_id/GeoJSON），否则用可见层 fc。 */
@@ -736,9 +740,9 @@ export const TOOLS = {
   query_layers() {
     const an = activeAnalysis();
     const loaded = getLayers()
-      .filter((l) => l.visible && l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length)
-      .map((l) => `${l.name}(${l.fc.features.length}条,${_kindTag(l)})`).join('、');
-    return { observation: `已加载可见图层：${loaded || '（无）'}（未显示层一律禁用）\n当前分析层：${an ? an.name + '（' + an.fc.features.length + ' 单元）' : '暂无聚合层（zonal/rank 用 ensure_zone；面层可作 boundary）'}` };
+      .filter((l) => l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length)   // WS2 F2.4：去 visible·hidden 层也可用（对齐 buildContext/pickVisiblePointLayer·眼睛=显示控制非数据可用性）
+      .map((l) => `${l.name}(${l.fc.features.length}条,${_kindTag(l)}${l.visible ? '' : ',隐藏'})`).join('、');
+    return { observation: `已加载图层：${loaded || '（无）'}（眼睛开关不影响 EMC 可用·hidden 层仍可分析）\n当前分析层：${an ? an.name + '（' + an.fc.features.length + ' 单元）' : '暂无聚合层（zonal/rank 用 ensure_zone；面层可作 boundary）'}` };
   },
 
   /** 按维度排序找区域（地图同步飞到）。 */
