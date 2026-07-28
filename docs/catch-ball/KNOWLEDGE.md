@@ -34,6 +34,10 @@
 - **演示逻辑链是项目北极星**（CLAUDE.md 最高优先级，[[emotion-map-logic-chain]]）：张力图面→引导点击→交互分析→定位关注区+主题倾向+排序优先级（宏观诊断信号，非精确识别）。**UI/UX 与视觉表现力 = 与架构/代码同等的承重维度**（RULES §2.1 第七轴「演示表现力」10%）——勿用纯工程标尺（架构/代码/测试）低估 UI 债、勿把表现力当"装饰"。SCAN 评估须覆盖演示逻辑链落地度。
 
 - **EMC-Toolbox 参数契约单一源** = `ai_qa/tool_contracts.py`（CB-04 立）：density 参数契约曾四处分裂（[prompts:85](../../ai_qa/prompts.py#L85)/[paradigm:289](../../ai_qa/paradigm.py#L289)/TEMPLATE_REGISTRY/SKILL_DEFS+Tool 各一份不一致·致"消极热力图出综合彩虹图"）→ 单一权威源 + prompt/SKILL_DEFS 派生 + `tests/validate_skill_params.py` 校验治本。**ForAI 入口须 = dialog 入口镜像**（复用 `computeStyle`/`terrainRampOf`，不自带默认另搞一套）；参数面板缺的能力（`PANEL_MISSING`）→ 提醒开发者补，EMC 不自行造。同类坑 [[emc-aggregate-column-alias-silent-zero]]。← CB-04
+- **pickVisiblePointLayer 飞轮盲区**（CB-08 F2.0）：[`pickVisiblePointLayer`](../../frontend/js/ai_qa/tools.js#L664) 曾只认 l2-/confidence 点层·漏 colorMode='polarity'（上传点层默认·[state.js:696](../../frontend/js/state.js#L696)）→ resolvePointLayer null → 全点工具报"缺数据"。**飞轮用 L2-group 结构（走 group 分支）测不出**·只有用户独立上传 polarity 点层才中——评估数据布局须覆盖独立 polarity 上传·勿只靠 group 结构飞轮。修法=any-point 兜底。
+- **SSE 流式 HTTP/1.0 陷阱**（CB-08 F1.4）：serve.py 代理流式转发须 `protocol_version='HTTP/1.1'`（`SimpleHTTPRequestHandler` 默认 1.0·浏览器缓冲到连接关闭·`wfile.flush()` 无效）·前开发卡此。渐进 token 全链已就绪（后端 `httpx stream+yield` / 前端 `onFinal(tok)`）·唯一断点=代理 `resp.read()` 全缓冲；修法=SSE 分支分块 read+flush+`Connection: close`。
+- **工具选型 100%·填参才是路由瓶颈**（CB-08 F3.1）：v2 FC 下工具选择准确率 100%（DeepSeek 实测 12/12）·路由问题在**参数填充**（buffer.center / overlay.layer_a,b / compare.boundaries 缺）非选型。优化投参数提取 few-shot（FC sys prompt）·非选型逻辑；eval 须测参数（`run_fc_param_eval`）·不只 template 字段。
+- **字段字典前后端人工同步易漂移**（CB-08 F2.6）：`core/field_dictionary.py`（权威）↔ `frontend/js/field_dictionary.js`（镜像）原人工同步无 CI·曾 `.py` 有 `zone`/`.js` 缺。新 `tests/validate_field_dict_sync.py` CI 守护（role 集 + variant 集一致）·改字典须两侧同步。
 
 ## §3 SCAN 标尺纠正模式（SCAN 倾向 → 正确标尺）
 
@@ -70,6 +74,7 @@
 | CB-01 | 2026-07-18 | [SCAN_DeepSeek_01.md](SCAN_DeepSeek_01.md) | 7.6 | 删 5 僵尸（Streamlit/pydeck/db）/ geo_routes 三处清理 / sim 注册 / e2e seam 去生产化 / §0 任务树刷新 / **5 类 declined**（调用次数前提不成立等） | `## CB-01` |
 | CB-02 | 2026-07-19 | [SCAN_DeepSeek_02.md](SCAN_DeepSeek_02.md) | 7.6（持平） | CB-01 回顾核验（agree 4 通过 / disagree 3 成立）/ 新发现 requirements 僵尸依赖 + range_selector 路径大小写 + AGENTS.md 8→9 漂移 / 10 条新建议待 `/cb 02` 反评价 | `## CB-02`（②③ 待填） |
 | CB-04 | 2026-07-27 | [SCAN_EMCArch](report/SCAN_EMCArch_deepseek_2026-07-27.md) | 6.5（执行层 4↓） | EMC density/polarity 流水线契约整改：14 入口全审·13 agree/0 disagree/1 partial·plan 融合定稿（L1 双维度+R1+P1b+P1c / L2 tool_contracts 单一源 / L3 全扫）·契约分裂模式入 §2·最高纪律（复用参数面板） | `## CB-04` |
+| CB-08 | 2026-07-28 | [DEEP_DIVE](emc-arch-deepdive/DEEP_DIVE_2026-07-28.md) | —（修复轮·非评分） | EMC v1.0 聚焦修复 3 WS（耗时 Flash 默认+SSE 流式 / 识别 F2.0 polarity 元凶+字段 dict fuzzy+同步 CI / 路由 FC 参数 few-shot+eval 参数覆盖）·9 agree/1 disagree/5 partial·**据实 drop** F1.3（single 类别非 while-loop）+F2.1-3（C2 门已对·field-role 门重造假缺数据）+F3.2-3（前端已捕获·alias 撞名）·4 新 learning 入 §2 | `## CB-08` |
 
 ---
 

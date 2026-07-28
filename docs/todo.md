@@ -11,6 +11,16 @@
 
 ## 📅 2026-07-28（今日·**v2→v3 架构转型 + 修复**·commit+push）
 
+### ✅ EMC v1.0 聚焦修复工程·3 WS（commit b2a24ab+943ced4+afa5db4·CB-08·**待浏览器验证**）
+
+双源核实（3 Explore agent + DeepSeek `DEEP_DIVE_2026-07-28` CB 反评价）·架构骨架 Smart/Dumb/Orchestrator 完好·**3 个实现层缺口·不推倒重来**。plan：`emc-v1-0-report-2026-07-28-01-llm-1-emc-inherited-swing.md`。
+
+- **WS1 耗时**（b2a24ab）：Flash 默认（去 deliberate 串行）+ 收紧 `_needsDeliberate`（去 method>=3 过触发）+ **SSE 流式**（[serve.py](frontend/serve.py) HTTP/1.1+分块 flush·前开发卡 HTTP/1.0 默认·致 flush 无效）+ 超时 75→30s/FC 20→9s + profile_fields localStorage 缓存 + per-phase 计时。→ 简单 ~12-18s（设计 6-11s 需 1-LLM 模式·长期 F10）。
+- **WS2 识别**（943ced4）：**F2.0 元凶**——[`pickVisiblePointLayer`](frontend/js/ai_qa/tools.js#L664) 漏 colorMode='polarity' 上传点层（默认·[state.js:696](frontend/js/state.js#L696)）→ 全点工具报"缺数据"·**飞轮 L2-group 测不出·用户独立上传必中**·加 any-point 兜底；+ hidden 纪律一致（query_layers/预热）+ e2e-seam 例间清点层（治 FC-12）+ 字段字典中文 fuzzy+补规划/人口域 + **新 CI [`validate_field_dict_sync.py`](tests/validate_field_dict_sync.py)**（即抓 zone 漂移）。
+- **WS3 路由**（afa5db4）：**reframe「工具选型 100%·填参才是瓶颈」**·[router.py](ai_qa/router.py) FC sys prompt 加参数提取 few-shot（buffer.center/compare.boundaries≥2/overlay.layer_a,b）+ eval 加 `run_fc_param_eval`（测参数·治 eval 测不到"模板对参数空"）。
+- **据实 drop**：F1.3（zonal/compare 是 single 类别走 runTemplatePath·非 while-loop）/ F2.1-3（C2 门已对·元凶在 F2.0 下游·field-role 门会重造假缺数据）/ F3.2-3（前端 validateParams 已捕获缺槽·compare alias 撞 zonal boundary）。
+- **验证**：pytest **221 passed**+3 skipped 零回归·serve/boot 干净。**待浏览器验证**：重启 serve + 硬刷 → 上传 **polarity 点层**（非 L2-group）→ density 出图（F2.0 核心）→ 渐进 token 蹦出（F1.4）→ ~12-18s。
+
 ### 🎯 架构转型：v1 三阶段 → v2 单次 LLM + Function Calling → v3 做对
 
 用户 + DeepSeek 产出 v2 改良混合架构（[SUMMARY](docs/catch-ball/emc-arch-deepdive/SUMMARY.md)·61 决策 D041-D068）·废弃 v1 三阶段 + 信息卡·改用 DeepSeek V4 原生 function calling + 契约 Schema。第三方实施（5.243-5.245b）→ GLM 审查发现 3 CRITICAL + 6 HIGH → v3 修复（7858d5a）→ 用户实测发现 `reg.filter` 崩溃 → v3.1 修复（657c2e3）。

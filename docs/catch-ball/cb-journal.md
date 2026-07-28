@@ -9,6 +9,29 @@
 
 ---
 
+## CB-08 · 2026-07-28（EMC v1.0 聚焦修复工程·双源核实）
+
+### ① SCAN 摘要
+DeepSeek [DEEP_DIVE_2026-07-28](emc-arch-deepdive/DEEP_DIVE_2026-07-28.md)（V4 Pro·全链路+识别+路由）+ 我方 3 Explore agent 并行（链路耗时 / 数据识别 / 工具路由）。基准飞轮 `report-2026-07-28-01-llm`：75% pass、t_p50=27s、t_p95=93s。DeepSeek 结论：架构方向正确、**工具选型 100%**、瓶颈在 LLM 延迟（结构非代码）+ 数据识别盲区（pickVisiblePointLayer polarity）+ 参数填充。给 4 CRITICAL（S1-S4）+ 4 HIGH + 3 MEDIUM + 17 条 F1-F17 建议。
+
+### ② 反评价（agree 9 / disagree 1 / partial 5·详见会话反评价表·主线程已 verify-before-accept 读真码）
+**agree（采纳）**：S1 pickVisiblePointLayer 漏 polarity（**真码核实 [tools.js:664](../../frontend/js/ai_qa/tools.js#L664)·飞轮测不出·用户上传必中·入 WS2 元凶）/ S3 multi-tool while-loop 假设（部分·单工具成立）/ S4 参数填充 #1 失败 / S6 SSE 缓冲破坏流式 / S7 超时全景 / S9 字段词典缺域 / F13 per-phase 计时 / F6 FC few-shot / 工具选型 100% reframe。
+**disagree**：F8 _normalizeFcDiagnose 加必填检查——**已存在** [harness.js:444](../../frontend/js/ai_qa/harness.js#L444) validateParams→exit='ask'（事实错误·DeepSeek 漏看）。
+**partial**：S2 has_point 不递归 group（事实部分错·标准 L2-split 子层是顶层条目·has_point 已 true·飞轮 density 过即证·但递归加固便宜无害→采纳防御）/ S5 LLM 延迟结构性的（部分·单次调用 API 层不可解·但仍有代码级赢面）/ S8 compare boundaries 改名（partial·改 canonical 撞 schema·采 alias 更稳·但 alias 撞 zonal → 最终 drop 改 few-shot）/ S10 confidence floor 0.3（先观测·不贸然调）/ F7 rename（同 S8）。
+**Auto-Check**：承重红线无触碰（F6 改 FC sys prompt 非 diagnose eval prompt·不撞红线）✅ / verify-before-accept S1/S2/S3 读真码 ✅ / 已知模式（eval≠runtime）DeepSeek 正确认识未套错 ✅。
+
+### ③ 行动（3 WS·commit b2a24ab+943ced4+afa5db4·plan `emc-v1-0-report-...-swing.md`）
+- **WS1 耗时**（b2a24ab）：Flash 默认 + 收紧 `_needsDeliberate` + SSE 流式（HTTP/1.1+分块 flush）+ 超时收紧 + profile_fields 缓存 + per-phase 计时。
+- **WS2 识别**（943ced4）：**F2.0 pickVisiblePointLayer 加 any-point 兜底**（元凶）+ hidden 纪律一致 + e2e-seam 例间清点层 + 字段字典中文 fuzzy + 补规划/人口域 + **新 CI validate_field_dict_sync.py**（即抓 zone 漂移）。
+- **WS3 路由**（afa5db4）：FC sys prompt 加参数提取 few-shot + eval 加 `run_fc_param_eval`。
+- **据实 drop**：F1.3（zonal/compare single 类别非 while-loop·S3 归因此 moot）/ F2.1-3（C2 门已对·元凶 F2.0 下游·field-role 门重造假缺数据）/ F3.2-3（前端 validateParams 已捕获·compare alias 撞 zonal）。
+
+### ④ 状态
+`done`（commit）—— pytest **221 passed**+3 skipped 零回归·serve/boot 干净。**待浏览器验证**：重启 serve + 硬刷 → 上传 polarity 点层 → density 出图（F2.0）→ 渐进 token（F1.4）→ ~12-18s。
+**新 learning 入 KNOWLEDGE**：① S1 polarity 点层飞轮盲区（飞轮 L2-group 结构测不出独立 polarity 上传）② SSE 流式 HTTP/1.0 陷阱（前开发卡此）③ 工具选型 100%·填参才是路由瓶颈（非选型）④ 字段字典前后端人工同步漂移（zone 例·新 CI 守护）。
+
+---
+
 ## CB-07 · 2026-07-27（EMC finalStep 超时矛盾 + 2D/3D 跳组）
 
 ### ① SCAN 摘要
