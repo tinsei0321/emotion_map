@@ -1240,7 +1240,7 @@ function buildHooks(shell) {
   function cancelStream() { if (streamRaf) { cancelAnimationFrame(streamRaf); streamRaf = 0; } }
   /** 思考收尾：flush 最后一帧 RAF 文本到 DOM → 整块 is-done → reorganizeReason 切主题目录。 */
   function finalizeReason() {
-    if (isFlash || !shell.reasonEl) return;
+    if (!shell.reasonEl) return;   // Hotfix R2 S6：去 isFlash 门（Flash 也渲染+收尾 reason）
     if (reasonRaf) { cancelAnimationFrame(reasonRaf); reasonRaf = 0; }
     for (const r of Object.keys(reasonSegs)) {
       const body = shell.reasonBody.querySelector(`.aiq-reason-segment[data-round="${r}"] .aiq-reason-seg-body`);
@@ -1270,7 +1270,8 @@ function buildHooks(shell) {
       ensureSeg(round);
     },
     onReason: (tok, round) => {
-      if (isFlash) return;
+      // Hotfix R2 S6：去 isFlash 门——Flash 默认下也渲染 reason（逐 token RAF drain），
+      // 否则 LLM 先产 ~20s reason（被丢弃不渲染）→ 用户感"卡住"+无渐进 token（answer 仅末尾迸一下）。
       shell.reasonEl.hidden = false;
       const r = round || 0;
       ensureSeg(r);
