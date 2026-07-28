@@ -993,7 +993,7 @@ export const TOOLS = {
   /** 从面边界按属性抽单要素为独立面图层（裁出某区/某单元），结果落地图。 */
   async extract_feature(params = {}) {
     if (!params.layer) return { observation: '[ERR] extract_feature 需 layer（preset_id|geojson）' };
-    // B（v1.6）：前置字段校验——getFieldCard 查 where.field 是否存在，不存在直接返提示（非 [ERR]·走 recoverable→ask_user 恢复）。
+    // B（v1.6）：前置字段校验——getFieldCard 查 where.field 是否存在·不存在时自纠正（治 LLM 猜字段名降智）。
     const _where = params.where ? normPreFilter(params.where) : null;
     const _field = _where && _where.field;
     if (_field && !isInternalField(_field)) {
@@ -1001,9 +1001,24 @@ export const TOOLS = {
       if (_layerObj && _layerObj.fc) {
         try {
           const cards = await getFieldCard(_layerObj.id, _layerObj.fc, 'polygon');
-          if (cards && !cards[_field]) {   // CB-05 H12：getFieldCard 返平铺 {field:{role,...}} 非 {fields:{}}·修字段检查
-            const _avail = Object.keys(cards).filter((f) => !isInternalField(f)).slice(0, 8).join('、');
-            return { observation: `字段「${_field}」不存在${_avail ? `，可用字段：${_avail}` : ''}。请用可用字段重试，或告诉我你要抽取什么内容。` };
+          if (cards && !cards[_field]) {
+            // 字段自纠正：LLM 常猜 MC（训练数据）但实际字段是 name 等 → 找 boundary_name/name role 字段 + 值匹配
+            const _candidates = Object.entries(cards)
+              .filter(([f, c]) => !isInternalField(f) && (c.role === 'boundary_name' || c.role === 'name' || f.toLowerCase() === 'name'))
+              .map(([f]) => f);
+            let _corrected = false;
+            for (const _alt of _candidates) {
+              const _featVals = new Set((_layerObj.fc.features || []).map((ft) => String((ft.properties || {})[_alt] || '')).filter(Boolean));
+              if (_featVals.has(String(_where.value))) {
+                params.where = `${_alt}/${_where.op}/${_where.value}`;   // 自纠正
+                _corrected = true;
+                break;
+              }
+            }
+            if (!_corrected) {
+              const _avail = Object.keys(cards).filter((f) => !isInternalField(f)).slice(0, 8).join('、');
+              return { observation: `字段「${_field}」不存在${_avail ? `，可用字段：${_avail}` : ''}。请用可用字段重试，或告诉我你要抽取什么内容。` };
+            }
           }
         } catch (_) { /* getFieldCard 失败（LLM 不可用/降级）→ 校验降级 skip·不阻塞 */ }
       }

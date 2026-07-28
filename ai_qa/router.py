@@ -57,6 +57,9 @@ async def chat_route(req: ChatRequest):
             '- extract_feature/overlay/merge/area_stats 需**面层**（polygon boundary）\n'
             '- buffer/nearest 需**点层 + 目标**（center/target）\n'
             '若数据不支撑所选工具，换一个合适的工具或说明缺什么数据。\n\n'
+            '## 参数填写纪律\n'
+            '- where/pre_filter 的 field **必须用「数据上下文」中列出的实际字段名**（非训练数据假设的 MC/name 等）\n'
+            '- 先看「数据上下文」的「字段:xxx=type:role:sample」段·用其中列出的字段名\n\n'
             f'## 数据上下文\n{req.context or "（无数据上下文）"}\n'
         )
         messages = [{'role': 'system', 'content': sys_content}] + list(req.messages or [])

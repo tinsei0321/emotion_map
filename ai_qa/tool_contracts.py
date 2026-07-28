@@ -179,7 +179,7 @@ TOOL_CONTRACTS = [
         'planning_common': 'layer=preset_id（行政区/单元/用地层）；where=field/op/value 抽特定要素；产面子图层自动落图',
         'params': [
             {'name': 'layer', 'type': 'source', 'default': None, 'required': True, 'alias': [], 'hint': 'preset_id', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
-            {'name': 'where', 'type': 'str', 'default': None, 'required': False, 'alias': [], 'hint': 'field/op/value', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'where', 'type': 'str', 'default': None, 'required': False, 'alias': [], 'hint': 'field/op/value（field 须用数据上下文实际字段名·非 MC 等假设值）', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
             {'name': 'as', 'type': 'str', 'default': None, 'required': False, 'alias': ['output', 'output_layer', 'layer_name', 'named', 'name'], 'hint': '图层名', 'panel_source': '通用 as'},
             {'name': 'keep', 'type': 'bool', 'default': None, 'required': False, 'alias': [], 'hint': '保留免清理', 'panel_source': '通用 keep'},
         ],
