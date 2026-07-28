@@ -75,6 +75,18 @@ def _apply_attr_filter(gdf: gpd.GeoDataFrame, f: dict) -> gpd.GeoDataFrame:
     value = f.get('value')
     # P1 字段语义层·alias 解析：用户传'情绪'/'sentiment'/'区域名称'等别名→解析到实际列（物理列名不改）
     actual = resolve_field_alias(field, gdf.columns) if field else None
+    # CB-05+ 字段自纠正：LLM 常猜 MC（训练数据）但实际列是 name 等 → 遍历列找含该值的字段
+    if not actual and field and value is not None:
+        _strval = str(value)
+        for _col in gdf.columns:
+            if _col == 'geometry':
+                continue
+            try:
+                if _strval in gdf[_col].astype(str).values:
+                    actual = _col
+                    break
+            except Exception:
+                continue
     if not actual:
         avail = [(c, resolve_role(c) or '?') for c in list(gdf.columns)[:20]]
         raise ValueError(f'过滤字段不存在: {field}（可用: {avail}…）')
