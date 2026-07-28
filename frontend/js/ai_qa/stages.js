@@ -295,7 +295,7 @@ export async function fcDiagnoseStep(ctx, hooks) {
   if (hooks.onReason) hooks.onReason('Function Calling 诊断中…', 0);
   // 5a/5b：AbortController + 45s timeout（同 streamChat·治用户取消 + 挂起）
   const _ac = new AbortController();
-  const _timer = setTimeout(() => _ac.abort(new Error('FC 单轮超时(45s)')), 45000);
+  const _timer = setTimeout(() => _ac.abort(new Error('FC 单轮超时(20s)')), 20000);   // v3 H5：20s（FC 正常 2.7s·45s 太长致降级 70s+）
   // 用户取消信号联动
   if (ctx.signal) {
     if (ctx.signal.aborted) _ac.abort();
@@ -347,8 +347,8 @@ export async function fcDiagnoseStep(ctx, hooks) {
     // ISSUE 1 修复：tool name → skill name 反映射
     const toolName = tc.function.name;
     const skillName = _TOOL_TO_SKILL[toolName] || toolName;
-    // ISSUE 2+3 修复：补全为 normalizeCard 等价结构（下游消费者兼容）
-    return _normalizeFcDiagnose(skillName, params, plans, toolName);
+    // v3 C2/C3 修复：补全为 normalizeCard 等价结构 + data gate + domain_lens A+B
+    return _normalizeFcDiagnose(skillName, params, plans, toolName, ctx.question, ctx.layerMeta, data.plans);
   } catch (e) {
     const aborted = e && e.name === 'AbortError';
     console.warn('[FC] 异常:', aborted ? '用户取消/超时' : String(e));
@@ -358,33 +358,62 @@ export async function fcDiagnoseStep(ctx, hooks) {
   }
 }
 
-/** ISSUE 2+3 修复：FC diagnose 补全为 normalizeCard 等价结构。
- *  下游消费者（formatDiagnoseSummary / _needsDeliberate / renderDiagnoseCard / composeGapCard）
- *  依赖 data_plan/domain_lens/scale/outlet/method 等字段——FC 不产这些·补默认值。 */
-function _normalizeFcDiagnose(skillName, params, plans, toolName) {
-  // intent：FC 选了工具 = 操作类（gis_operation）；concept/multi/unknown 不走 FC
-  // ISSUE 5 修复：不硬编码 gis_operation——按 skill 推导（zonal/rank/density/hotspot 可能是 emotion_analysis）
+/** v3 C2/C3 修复：FC diagnose 补全为 normalizeCard 等价结构 + 数据 gate + domain_lens A+B。
+ *  C2：工具需点层但 ctx.layerMeta.has_point=false → strategy='request_upload'（治 5.242 回归）。
+ *  C3：domain_lens A+B 混合（先 parse FC content 的 [domain_lens:xxx]·空则关键词推导兜底）。 */
+function _normalizeFcDiagnose(skillName, params, plans, toolName, question, layerMeta, fcContent) {
   const _EMOTION_TOOLS = new Set(['zonal_stats', 'rank', 'density', 'hotspot']);
   const intent = _EMOTION_TOOLS.has(toolName) ? 'emotion_analysis' : 'gis_operation';
+  // v3 C2：执行前 data gate——工具需点层但无点层 → request_upload（非硬跑失败·治 5.242 回归）
+  const _NEEDS_POINT = /^(density|hotspot|rank|clip|buffer|nearest)$/.test(toolName);
+  const _noPoint = layerMeta && layerMeta.has_point === false;
+  const _strategy = (_NEEDS_POINT && _noPoint) ? 'request_upload' : 'ready';
+  // v3 C3：domain_lens A+B 混合
+  const domain_lens = _deriveDomainLens(question || '', fcContent || '');
   return {
-    template: skillName,          // skill name（density/zonal/compare·SKILL_DEFS key）
+    template: skillName,
     params,
     plans,
     degraded: false,
     intent,
     _fc: true,
-    // 补全 normalizeCard 等价字段（下游消费者兼容）
-    domain_lens: [],              // FC 不产 domain_lens（无领域知识注入）
-    scale: 'macro',               // 默认宏观（FC 无尺度判断·保守值）
-    decision_type: '操作',         // FC 选了工具 = 操作决策
-    outlet: '生成图层',            // FC 默认出口
+    domain_lens,                  // v3 C3：A+B 混合推导（非恒空 []）
+    scale: 'macro',
+    decision_type: '操作',
+    outlet: '生成图层',
     data_plan: {
       needed: [],
       available: [],
-      gap: [],
-      strategy: 'ready',          // FC 默认数据就绪（0LLM grounding 已确认）
+      gap: _strategy === 'request_upload' ? ['情绪点数据'] : [],
+      strategy: _strategy,        // v3 C2：数据不匹配→request_upload（非恒 ready）
     },
-    method: [toolName + '()'],    // deriveDiagnoseMethod 等价格式
+    method: [toolName + '()'],
+  };
+}
+
+/** v3 C3：domain_lens A+B 混合推导。
+ *  A：先 parse FC content 里的 [domain_lens:xxx] 标签（LLM 自主判领域·router system prompt 指令产）。
+ *  B：A 空（LLM 常不产 content·R2）→ 关键词推导兜底（确定性·不依赖 LLM）。
+ *  A+B 都空 → 默认 urban_renewal（情绪分析主场景）或不输出。 */
+function _deriveDomainLens(question, fcContent) {
+  // A：parse FC content [domain_lens:xxx]
+  if (fcContent) {
+    const m = String(fcContent).match(/\[domain_lens:(urban_planning|urban_renewal|urban_operation|urban_governance)\]/);
+    if (m) return [m[1]];
+  }
+  // B：关键词推导兜底
+  const _DK = {
+    urban_planning: ['规划', '用地', '商业用地', '居住用地', '功能区', '土地'],
+    urban_renewal: ['更新', '老旧', '改造', '棚改', '小区', '归因', '情绪'],
+    urban_operation: ['运营', '商圈', '场馆', '奥体', '商业街', '演唱会'],
+    urban_governance: ['治理', '交通', '停车', '施工', '城管', '环境'],
+  };
+  const hits = [];
+  for (const [domain, kws] of Object.entries(_DK)) {
+    if (kws.some((kw) => question.includes(kw))) { hits.push(domain); break; }   // 取首个命中·最多 1 个
+  }
+  return hits.length ? hits : ['urban_renewal'];   // 默认 urban_renewal（情绪分析主场景）
+}
   };
 }
 

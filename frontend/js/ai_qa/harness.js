@@ -10,35 +10,8 @@ import { getLayers } from '../state.js';
 const MAX_ROUNDS_GIS = 6;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=6（保多目标完整性，如"西陵+伍家岗居住+商业"需多步）
 const MAX_ROUNDS_OTHER = 4;    // A 通用 / C 情绪=4（远紧于 16，配合 temp 0.4 降概率链 p^N）
 
-/** v2 D062 前端参数校验镜像（strict 实测不强制·兜底）。
- *  从 SKILL_DEFS + 前端 contracts 镜像做轻量校验：enum 外→用默认值替代（非报错）。
- *  完整校验在后端 validate_tool_call（tool_contracts.py）——此处是执行前最后一道防线。 */
-function _validateFcParams(toolName, params) {
-  const def = stages.SKILL_DEFS[toolName];
-  if (!def) return { ok: true, params, fixes: [] };   // 未知工具不阻塞（编排器 TOOLS[name] 会兜底报错）
-  const merged = { ...params };
-  const fixes = [];
-  // 简单 enum 校验：检查常见 enum 参数（polarity/analysis/mode/by）
-  const _ENUM_CHECKS = {
-    polarity: ['overall', 'positive', 'negative', 'neutral'],
-    analysis: ['terrain', 'positive', 'negative', 'neutral'],
-    mode: ['2d', '3d', 'terrain'],
-  };
-  for (const [k, allowed] of Object.entries(_ENUM_CHECKS)) {
-    if (merged[k] != null && !allowed.includes(merged[k])) {
-      const def = stages.SKILL_DEFS[toolName];
-      const defaultVal = def?.optional_defaults?.[k];
-      if (defaultVal != null) {
-        fixes.push(`${k}=${merged[k]} 非法→替代默认 ${defaultVal}`);
-        merged[k] = defaultVal;
-      } else {
-        delete merged[k];
-        fixes.push(`${k}=${merged[k]} 非法→删除`);
-      }
-    }
-  }
-  return { ok: true, params: merged, fixes };
-}
+// v3 H6：前端 _validateFcParams 已删除——信赖后端 validate_tool_call（router fc_diagnose 调·D062）。
+// 后端在返回 tool_calls 前已校验 + 修正参数（enum 外→默认值替代·required 缺→补默认）·前端不重复。
 
 /** P0 降温：轻量 intent 预判——高置信通用/概念问跳 diagnose 直 finalStep（省整轮 diagnose LLM + 7字段卡）。
  *  规划思维 A 赛道"快速分流"：概念解释/方法咨询/日常问候→general 直答；含 geo 动词/地名→落 diagnose。
@@ -775,17 +748,7 @@ export async function orchestrate(ctx, hooks = {}) {
   if (diagnose.plans && diagnose.plans.length) {
     ctx.plans = diagnose.plans;
   }
-  // v2 D062：FC params 代码层校验（strict 实测不强制·兜底）
-  if (!diagnose.degraded && diagnose._fc && diagnose.template && diagnose.params) {
-    const _v = _validateFcParams(diagnose.template, diagnose.params);
-    if (!_v.ok) {
-      console.warn('[FC] 参数校验失败:', _v.fixes);
-      diagnose.degraded = true;   // 校验失败→降级
-    } else if (_v.fixes.length) {
-      diagnose.params = _v.params;   // 用修正后参数
-      console.info('[FC] 参数修正:', _v.fixes);
-    }
-  }
+  // v3 H6：前端 _validateFcParams 已删——信赖后端 validate_tool_call（router fc_diagnose 已校验）。
   // D2（5.207）：method 确定性派生兜底——Flash 偶发输出 method；未输出时按 template 派生，
   // 让 _plannedGeoSteps(F3 完整性 gate)/formatDiagnoseSummary/_needsDeliberate 皆有源。
   if (!diagnose.degraded && (!Array.isArray(diagnose.method) || diagnose.method.length === 0)) {

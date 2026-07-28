@@ -25,31 +25,54 @@ router = APIRouter()
 @router.post("/chat")
 async def chat_route(req: ChatRequest):
     """AI 问答 agent loop（diagnose/agent_step/answer/optimize 走 SSE 流式；fc_diagnose 走 JSON）。"""
-    from ai_qa.llm import LLMError, chat_with_fallback, _tier_of, LLMClient
+    from ai_qa.llm import LLMError, chat_with_fallback, chat_with_tools_fallback, _tier_of, LLMClient
 
-    # ═══ v2 function calling diagnose（5.243·D041）═══
+    # ═══ v2/v3 function calling diagnose（5.243·D041·v3 C1/C2/C3 修复）═══
     # 非流式 JSON 响应——FC 2-3s 一次返完整 tool_calls + plans[]
     if req.phase == 'fc_diagnose':
         from ai_qa.tool_contracts import contracts_to_tools_schema
         tools = contracts_to_tools_schema()
-        # system prompt：极简——接地上下文 + 指令（无 MANIFESTO·无 industry_kb·D046）
         _q = (req.messages or [{}])[-1].get('content', '') if req.messages else ''
+        # v3 C2：system prompt 含「数据×工具兼容性」提示（让 LLM 避开数据不支撑的工具）
+        # v3 C3：system prompt 含 domain_lens 产出指令（A+B 混合的 A 部·LLM 自主判领域）
         sys_content = (
             '你是情绪地图分析助手。根据用户问题选择一个工具并填写参数。\n\n'
             '## 任务\n'
             '1. 从可用工具中选择最优先执行的一个（tool_call）\n'
-            '2. 在回复文本中输出 plans JSON（后续分析建议）\n\n'
+            '2. 在回复文本中输出 plans JSON（后续分析建议）\n'
+            '3. 在回复文本中输出 domain_lens（领域聚焦）\n\n'
             '## plans 格式\n'
             '在回复文本中输出如下 JSON（不要用 markdown 代码块）：\n'
             '{"plans":[{"rank":1,"label":"工具中文描述","tool":"工具名","params":{...},"confidence":"high|medium|low","rationale":"选择理由"},...]}\n\n'
-            'rank=1 是当前 tool_call 执行的工具；rank=2+ 是后续可做的分析建议。\n'
-            '每个 plan 的 tool 必须是可用工具之一，params 必须符合该工具参数 schema。\n\n'
+            'rank=1 是当前 tool_call 执行的工具；rank=2+ 是后续可做的分析建议。\n\n'
+            '## domain_lens\n'
+            '在回复文本开头输出领域标签（选 0-2 个最匹配的）：\n'
+            '[domain_lens:urban_planning] 或 [domain_lens:urban_renewal] 或 [domain_lens:urban_operation] 或 [domain_lens:urban_governance]\n'
+            '判断依据：规划/用地→planning·更新/老旧/改造→renewal·运营/商圈/场馆→operation·治理/交通/停车→governance\n'
+            '情绪分析类（极性/归因/排序）默认 urban_renewal。无明确领域则不输出。\n\n'
+            '## 工具×数据兼容性\n'
+            '选工具前先看下方「数据上下文」——确认数据类型匹配：\n'
+            '- density/hotspot/rank/zonal_stats/compare_regions 需**情绪点层**（含 polarity/score 字段）\n'
+            '- clip 需**点层 + 范围**（range）\n'
+            '- extract_feature/overlay/merge/area_stats 需**面层**（polygon boundary）\n'
+            '- buffer/nearest 需**点层 + 目标**（center/target）\n'
+            '若数据不支撑所选工具，换一个合适的工具或说明缺什么数据。\n\n'
             f'## 数据上下文\n{req.context or "（无数据上下文）"}\n'
         )
         messages = [{'role': 'system', 'content': sys_content}] + list(req.messages or [])
         try:
-            client = LLMClient(model='flash')   # FC 用 Flash（快·2-3s）
-            result = client.chat_with_tools(messages, tools)
+            # v3 C1 修复：走 provider fallback（DeepSeek→Ark→讯飞·非单点 LLMClient）
+            result = chat_with_tools_fallback(messages, tools, tier='flash')
+            # v3 H6 修复：后端调 validate_tool_call（D062·strict 不强制→代码兜底）·前端信赖后端不重复校验
+            from ai_qa.tool_contracts import validate_tool_call
+            tc = (result.get('tool_calls') or [{}])[0]
+            if tc and tc.get('function'):
+                import json as _json
+                _args = _json.loads(tc['function'].get('arguments', '{}'))
+                _v = validate_tool_call(tc['function']['name'], _args)
+                if _v['fixes']:
+                    tc['function']['arguments'] = _json.dumps(_v['params'], ensure_ascii=False)
+                    result.setdefault('_fc_fixes', _v['fixes'])   # 供前端日志
             return JSONResponse({
                 'tool_calls': result.get('tool_calls'),
                 'plans': result.get('content'),

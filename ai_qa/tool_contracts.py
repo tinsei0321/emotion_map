@@ -384,8 +384,15 @@ _JSON_TYPE_MAP = {
 }
 
 
+_PARAM_RANGES = {
+    'radius': (50, 3000), 'cell_size': (50, 5000), 'radius_m': (50, 3000),
+    'top_n': (1, 20), 'k': (1, 10), 'bandwidth_m': (50, 3000),
+}
+
+
 def _param_to_json_schema(p):
-    """单个 contracts param → JSON Schema property（含 enum/range/描述）。"""
+    """单个 contracts param → JSON Schema property（含 enum/range/描述）。
+    v3 H2：数值参数加 minimum/maximum（治 LLM 填 radius=1 或 99999）。"""
     prop = {'type': _JSON_TYPE_MAP.get(p.get('type', 'str'), 'string')}
     hint = p.get('hint', '')
     if hint:
@@ -394,6 +401,11 @@ def _param_to_json_schema(p):
         prop['enum'] = list(p['enum'])
     if p.get('type') == 'list':
         prop['items'] = {'type': 'string'}
+    # v3 H2：数值参数 range 约束
+    if p['name'] in _PARAM_RANGES:
+        lo, hi = _PARAM_RANGES[p['name']]
+        prop['minimum'] = lo
+        prop['maximum'] = hi
     return prop
 
 

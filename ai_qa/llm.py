@@ -302,6 +302,26 @@ def chat_with_fallback(messages, tier: str = 'pro', **chat_kwargs) -> Iterator:
     raise last_err or LLMError('所有 LLM provider 均失败')
 
 
+def chat_with_tools_fallback(messages, tools, tier: str = 'flash', **kwargs) -> dict:
+    """v3 C1 修复：FC 带 provider fallback（DeepSeek→Ark→讯飞·复用 _resolve_providers 链）。
+    非流式版 chat_with_fallback——每家试 1 次（FC 无 mid-stream 概念·失败直接换家）。"""
+    providers = _resolve_providers(tier)
+    if not providers:
+        raise LLMError(f'无可用 LLM provider（FC function calling）。')
+    last_err = None
+    for prov in providers:
+        model = prov.model_flash if tier == 'flash' else prov.model_pro
+        cli = LLMClient(base_url=prov.base_url, model=model, api_key=prov.api_key)
+        try:
+            trace_log('MOD_LLM.F_002', f'chat_with_tools provider={prov.name} model={model}')
+            return cli.chat_with_tools(messages, tools, **kwargs)
+        except LLMError as e:
+            last_err = e
+            trace_warn('MOD_LLM.D_002', f'FC fallback provider={prov.name} status={getattr(e,"status_code","?")}: {e}')
+    trace_error('MOD_LLM.F_002', f'FC all providers exhausted: {last_err}')
+    raise last_err or LLMError('FC 所有 provider 均失败')
+
+
 register_track_id("MOD_LLM.F_002", "chat_with_fallback（retry+fallback 编排，主链路+审查共用）")
 register_track_id("MOD_LLM.D_001", "LLM retry 触发（pre-stream 失败，退避后重拨）")
 register_track_id("MOD_LLM.D_002", "LLM fallback 切换 provider（重试耗尽或 4xx）")
