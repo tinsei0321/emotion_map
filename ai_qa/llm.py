@@ -146,8 +146,56 @@ class LLMClient:
         except Exception as e:
             raise LLMError(f'LLM 调用异常: {e}') from e
 
+    def chat_with_tools(self, messages: List[dict], tools: List[dict],
+                        tool_choice: str = 'auto', temperature: float = 0.4,
+                        max_tokens: int = 2000) -> dict:
+        """DeepSeek V4 function calling（v2 改良混合架构·D041）。
+
+        非流式——FC 2-3s 一次返完整 tool_calls + content（plans[]）。
+        不改 chat() 签名——独立方法。
+
+        返:
+            {
+              'tool_calls': [{id, type, function:{name, arguments(str)}}] or None,
+              'content': str or None,   # plans[] JSON 字符串（CPD 素材）
+              'usage': {...} or None,
+            }
+        """
+        self._ensure_key()
+        url = f'{self.base_url}/chat/completions'
+        headers = {'Authorization': f'Bearer {self.api_key}', 'Content-Type': 'application/json'}
+        body = {
+            'model': self.model, 'messages': messages,
+            'temperature': temperature, 'max_tokens': max_tokens,
+            'stream': False,
+            'tools': tools, 'tool_choice': tool_choice,
+        }
+        trace_log('MOD_LLM.F_002', f'chat_with_tools tools={len(tools)} msgs={len(messages)}')
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                resp = client.post(url, headers=headers, json=body)
+                if resp.status_code != 200:
+                    body_txt = resp.text[:400]
+                    if resp.status_code == 401:
+                        raise LLMError(f'API Key 无效 (401)。检查 {DEFAULT_KEY_ENV}。', status_code=401)
+                    raise LLMError(f'LLM HTTP {resp.status_code}: {body_txt}', status_code=resp.status_code)
+                obj = resp.json()
+                msg = (obj.get('choices') or [{}])[0].get('message', {})
+                return {
+                    'tool_calls': msg.get('tool_calls'),
+                    'content': msg.get('content'),
+                    'usage': obj.get('usage'),
+                }
+        except httpx.HTTPError as e:
+            raise LLMError(f'LLM 网络错误: {e}') from e
+        except LLMError:
+            raise
+        except Exception as e:
+            raise LLMError(f'LLM function calling 异常: {e}') from e
+
 
 register_track_id("MOD_LLM.F_001", "LLM chat/completions（流式 SSE，provider-agnostic，V4）")
+register_track_id("MOD_LLM.F_002", "LLM chat_with_tools（function calling，非流式，v2 改良混合）")
 
 
 # ── 韧性层：retry（单 provider 内重拨）+ fallback（provider 链换家）──

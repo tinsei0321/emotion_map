@@ -279,6 +279,88 @@ export async function diagnoseStep(ctx, hooks) {
   return parseDiagnoseCard(acc.token);   // null = 解析失败（harness 降级，不抛）
 }
 
+/** v2 function calling 诊断（5.243·D041）：单次 LLM + function calling·非流式 JSON。
+ *  替代旧 diagnoseStep（三阶段 SSE + select_candidates + FILL_CARD/PLAN）。
+ *  返兼容 orchestrate 的 diagnose 对象：{ template, params, plans, degraded, intent, _fc:true }。
+ *  - template = tool_calls[0].function.name（工具名·如 density/clip）
+ *  - params = JSON.parse(tool_calls[0].function.arguments)
+ *  - plans = content 字段的 plans[] JSON（CPD 素材·rank=2+）
+ *  失败（网络/无 tool_calls/解析错误）→ 返 { degraded:true }·harness 降级处理 */
+export async function fcDiagnoseStep(ctx, hooks) {
+  const messages = [...(ctx.history || []), { role: 'user', content: ctx.question }];
+  if (hooks.onReason) hooks.onReason('Function Calling 诊断中…', 0);
+  try {
+    const resp = await fetch('/api/v1/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phase: 'fc_diagnose',
+        messages,
+        context: ctx.context || '',
+      }),
+    });
+    if (!resp.ok) {
+      const errBody = await resp.text().catch(() => '');
+      console.warn('[FC] HTTP', resp.status, errBody.slice(0, 200));
+      return { degraded: true, _fc: true, _fcError: `HTTP ${resp.status}` };
+    }
+    const data = await resp.json();
+    if (data.error) {
+      console.warn('[FC] error:', data.error);
+      return { degraded: true, _fc: true, _fcError: data.error };
+    }
+    const tc = data.tool_calls && data.tool_calls[0];
+    if (!tc || !tc.function) {
+      console.warn('[FC] 无 tool_calls');
+      return { degraded: true, _fc: true, _fcError: 'no_tool_calls' };
+    }
+    // 解析 arguments（JSON 字符串 → 对象）
+    let params = {};
+    try {
+      params = JSON.parse(tc.function.arguments || '{}');
+    } catch (e) {
+      console.warn('[FC] arguments 解析失败:', tc.function.arguments);
+      return { degraded: true, _fc: true, _fcError: 'arguments_parse_fail' };
+    }
+    // 解析 plans[]（content 字段·容错 D067）
+    let plans = [];
+    if (data.plans) {
+      plans = _parsePlans(data.plans);
+    }
+    return {
+      template: tc.function.name,   // 工具名（density/clip/...）
+      params,
+      plans,
+      degraded: false,
+      intent: 'gis_operation',      // FC 选了工具 = 操作意图
+      _fc: true,
+    };
+  } catch (e) {
+    console.warn('[FC] 异常:', e);
+    return { degraded: true, _fc: true, _fcError: String(e) };
+  }
+}
+
+/** v2 plans[] 容错解析（D067）：JSON.parse + 字段校验·解析失败=空 plans·不崩溃。 */
+function _parsePlans(content) {
+  if (!content) return [];
+  try {
+    const parsed = JSON.parse(content);
+    const arr = Array.isArray(parsed) ? parsed : (parsed.plans || []);
+    if (!Array.isArray(arr)) return [];
+    return arr.filter((p) => p && typeof p.rank === 'number' && p.tool).map((p) => ({
+      rank: p.rank,
+      label: String(p.label || p.tool),
+      tool: String(p.tool),
+      params: p.params || {},
+      confidence: ['high', 'medium', 'low'].includes(p.confidence) ? p.confidence : 'medium',
+      rationale: String(p.rationale || ''),
+    }));
+  } catch (e) {
+    return [];
+  }
+}
+
 /** 5.215 Prompt 优化（Flash 流式·把用户 NL 优化成具体/实操/逻辑清晰 prompt·不增维度·梳理已有要素）。 */
 export async function optimizeStep(ctx, hooks, userInput) {
   const messages = [{ role: 'user', content: userInput }];

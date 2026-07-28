@@ -6,10 +6,12 @@
 
 不用 json_mode（抑制 reasoning）；靠 prompt 强约束 + 前端 parseAgentStep 容错解析。
 SSE 帧：{"token": tok}=正文 / {"reason": tok}=思考链 / {"error": ...} / [DONE]。
+
+v2（5.243）：fc_diagnose phase → function calling 非流式 JSON 响应（替代旧 diagnose SSE）。
 """
 import json
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 
 from ai_qa.schemas import ChatRequest
 from ai_qa.prompts import (
@@ -22,9 +24,41 @@ router = APIRouter()
 
 @router.post("/chat")
 async def chat_route(req: ChatRequest):
-    """AI 问答 agent loop（diagnose/agent_step/answer/optimize 走 SSE 流式）。"""
-    from ai_qa.llm import LLMError, chat_with_fallback, _tier_of
+    """AI 问答 agent loop（diagnose/agent_step/answer/optimize 走 SSE 流式；fc_diagnose 走 JSON）。"""
+    from ai_qa.llm import LLMError, chat_with_fallback, _tier_of, LLMClient
 
+    # ═══ v2 function calling diagnose（5.243·D041）═══
+    # 非流式 JSON 响应——FC 2-3s 一次返完整 tool_calls + plans[]
+    if req.phase == 'fc_diagnose':
+        from ai_qa.tool_contracts import contracts_to_tools_schema
+        tools = contracts_to_tools_schema()
+        # system prompt：极简——接地上下文 + 指令（无 MANIFESTO·无 industry_kb·D046）
+        _q = (req.messages or [{}])[-1].get('content', '') if req.messages else ''
+        sys_content = (
+            '你是情绪地图分析助手。根据用户问题选择一个工具并填写参数。\n'
+            '同时输出 plans 数组（后续分析建议，按优先级排序）。\n\n'
+            '规则：\n'
+            '1. 只输出 1 个 tool_call（最优先执行的工具）\n'
+            '2. 其余候选方案放在 content 字段的 JSON plans 数组中\n'
+            '3. 每个 plan 含 rank/label/tool/params/confidence/rationale\n'
+            '4. 参数值必须在工具 schema 的 enum 范围内\n\n'
+            f'数据上下文：\n{req.context or "（无数据上下文）"}\n'
+        )
+        messages = [{'role': 'system', 'content': sys_content}] + list(req.messages or [])
+        try:
+            client = LLMClient(model='flash')   # FC 用 Flash（快·2-3s）
+            result = client.chat_with_tools(messages, tools)
+            return JSONResponse({
+                'tool_calls': result.get('tool_calls'),
+                'plans': result.get('content'),
+                'usage': result.get('usage'),
+            })
+        except LLMError as e:
+            return JSONResponse({'error': str(e), 'tool_calls': None, 'plans': None}, status_code=502)
+        except Exception as e:
+            return JSONResponse({'error': f'FC 诊断失败: {e}', 'tool_calls': None, 'plans': None}, status_code=502)
+
+    # ═══ 旧 SSE phases（diagnose/agent_step/answer/optimize）═══
     # CB-09 D022：删旧 review/revise 阶段（LLM 审查+重写）→ 前端 harness.applyQualityDefense 代码防线取代。
     if req.phase == 'answer':
         sys_content = build_final_prompt(req.context or '', req.tool_history or '', req.context_tokens, req.domain_lens)

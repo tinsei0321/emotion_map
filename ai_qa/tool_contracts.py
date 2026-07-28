@@ -369,3 +369,157 @@ if __name__ == '__main__':
     pm = panel_missing()
     print(f'[OK] TOOL_CONTRACTS={len(TOOL_CONTRACTS)} → GEO_TOOL_CATALOG={len(geo)}, TEMPLATE_REGISTRY={len(tpl)}')
     print(f'[L3] panel 真缺口(PANEL_MISSING)={len(pm)} 项（EMC-only 不计·L3 5.238 全Resolved）')
+
+
+# ════════════ v2 function calling 派生（D052/D066）════════════
+# CB-09 v2 改良混合架构：单次 LLM + function calling + 契约 Schema
+# - contracts_to_tools_schema(): TOOL_CONTRACTS → DeepSeek V4 tools 参数（JSON Schema）
+# - contracts_to_text(): TOOL_CONTRACTS → 纯文本工具列表（fallback prompt 用·D066）
+# - validate_tool_call(): strict 实测不强制 → 代码兜底（D062）
+
+# JSON Schema type 映射：contracts type → JSON Schema type
+_JSON_TYPE_MAP = {
+    'enum': 'string', 'str': 'string', 'int': 'number', 'float': 'number',
+    'bool': 'boolean', 'source': 'string', 'list': 'array',
+}
+
+
+def _param_to_json_schema(p):
+    """单个 contracts param → JSON Schema property（含 enum/range/描述）。"""
+    prop = {'type': _JSON_TYPE_MAP.get(p.get('type', 'str'), 'string')}
+    hint = p.get('hint', '')
+    if hint:
+        prop['description'] = hint
+    if p.get('enum'):
+        prop['enum'] = list(p['enum'])
+    if p.get('type') == 'list':
+        prop['items'] = {'type': 'string'}
+    return prop
+
+
+def contracts_to_tools_schema(exclude_categories=('concept',)):
+    """TOOL_CONTRACTS → DeepSeek V4 function calling tools 参数（D052）。
+
+    返 [{type:'function', function:{name, description, strict:true,
+          parameters:{type:'object', properties:{...}, required:[...], additionalProperties:false}}}]。
+
+    - 全 13 GIS 工具（排除 concept/multi/unknown 无 tool 的）
+    - additionalProperties:false（D051·禁别名）
+    - strict:true（D043·标记保留·实测不强制但无害）
+    - 参数名以工具实际读取为准（D061·buffer radius_m / density radius）
+    - enum 值从 contracts params 的 enum 字段派生（如 polarity=overall/positive/...）
+    """
+    schemas = []
+    for c in TOOL_CONTRACTS:
+        tool_name = c.get('tool')
+        if not tool_name:  # concept/multi/unknown 无 tool
+            continue
+        if c.get('category') in exclude_categories:
+            continue
+        params = c.get('params', [])
+        properties = {}
+        required = []
+        for p in params:
+            properties[p['name']] = _param_to_json_schema(p)
+            if p.get('required'):
+                required.append(p['name'])
+        # description：优先 when（给 LLM 的工具说明）·fallback voice
+        desc = c.get('when') or c.get('voice') or c.get('name_cn', tool_name)
+        schemas.append({
+            'type': 'function',
+            'function': {
+                'name': tool_name,
+                'description': desc,
+                'strict': True,
+                'parameters': {
+                    'type': 'object',
+                    'properties': properties,
+                    'required': required,
+                    'additionalProperties': False,
+                },
+            },
+        })
+    return schemas
+
+
+def contracts_to_text(exclude_categories=('concept',)):
+    """TOOL_CONTRACTS → 纯文本工具列表（D066·fallback prompt 用）。
+
+    避免 fallback prompt 双重维护——从 contracts 派生·和契约 Schema 同源。
+
+    返 "- tool_name(param=default, ...): description\\n..." 纯文本。
+    """
+    lines = []
+    for c in TOOL_CONTRACTS:
+        tool_name = c.get('tool')
+        if not tool_name:
+            continue
+        if c.get('category') in exclude_categories:
+            continue
+        params = c.get('params', [])
+        # 精简参数列表：name=default（有默认值）或 name（必填）
+        param_parts = []
+        for p in params:
+            if p.get('required'):
+                param_parts.append(p['name'])
+            elif p.get('default') is not None:
+                param_parts.append(f"{p['name']}={p['default']}")
+            else:
+                param_parts.append(f"{p['name']}?")
+        param_str = ', '.join(param_parts)
+        desc = c.get('when') or c.get('voice') or c.get('name_cn', tool_name)
+        lines.append(f"- {tool_name}({param_str}): {desc}")
+    return '\n'.join(lines)
+
+
+def validate_tool_call(tool_name, args):
+    """strict 实测不强制 → 代码兜底校验（D062）。
+
+    - 未知工具 → {ok:False}
+    - required 缺 → 补默认值（如有）否则 {ok:False}
+    - enum 外 → 用默认值替代（非报错·02 §D062）
+    - 返 {ok, params(修正后), fixes[]}
+    """
+    contract = None
+    for c in TOOL_CONTRACTS:
+        if c.get('tool') == tool_name:
+            contract = c
+            break
+    if not contract:
+        return {'ok': False, 'params': args, 'fixes': [f'未知工具: {tool_name}']}
+
+    params_def = {p['name']: p for p in contract.get('params', [])}
+    fixed = dict(args)
+    fixes = []
+
+    for name, p in params_def.items():
+        val = fixed.get(name)
+        # required 缺失 → 补默认值
+        if p.get('required') and (val is None or val == ''):
+            if p.get('default') is not None:
+                fixed[name] = p['default']
+                fixes.append(f'{name} 缺失→补默认 {p["default"]}')
+            else:
+                return {'ok': False, 'params': fixed, 'fixes': fixes + [f'缺必填参数: {name}']}
+        # enum 校验 → 非法值用默认值替代
+        if val is not None and p.get('enum') and val not in p['enum']:
+            if p.get('default') is not None:
+                fixed[name] = p['default']
+                fixes.append(f'{name}={val} 非法→替代默认 {p["default"]}')
+            # 无默认值的 enum 非法值 → 删除（让工具用自身默认）
+            else:
+                del fixed[name]
+                fixes.append(f'{name}={val} 非法→删除')
+
+    return {'ok': True, 'params': fixed, 'fixes': fixes}
+
+
+if __name__ == '__main__':
+    # v2 自检
+    schemas = contracts_to_tools_schema()
+    text = contracts_to_text()
+    print(f'[v2] tools_schema: {len(schemas)} 工具 · {sum(len(s["function"]["parameters"]["properties"]) for s in schemas)} 参数')
+    print(f'[v2] tools_text: {len(text)} bytes')
+    # validate 测试
+    r = validate_tool_call('density', {'analysis': 'happy', 'polarity': 'N', 'mode': '2d'})
+    print(f'[v2] validate density(analysis=happy): ok={r["ok"]} fixes={r["fixes"]} → analysis={r["params"].get("analysis")}')
