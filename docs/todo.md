@@ -11,6 +11,15 @@
 
 ## 📅 2026-07-28（今日·**v2→v3 架构转型 + 修复**·commit+push）
 
+### ✅ EMC 渐进 token 显示三连修 S6/S7/S8（commit 07b3736/8228fc9/3aaaaeb·**待浏览器验证**）
+
+用户验证：结论渐进 token 通了，但诊断思考仍"卡住"。要求 DeepSeek 式思考可见。
+
+- **S6 Flash reason 渲染**：[`panel.js onReason`](frontend/js/ai_qa/panel.js#L1273) 去 `if(isFlash)return`——Flash 默认下 reason 也逐 token 渲染（之前被丢·致"卡住"）。
+- **S7 FC 流式**：实测 V4 flash FC stream 吐 reasoning_content → [`llm.py`](ai_qa/llm.py) `chat_with_tools_stream`（实测 87 reason chunk+正确 tool_call）+ router FC→SSE + api.js `streamFcDiagnose` + stages fcDiagnoseStep 改用。**诊断思考渐进可见**。
+- **S8（用户猜中）去 is-flash 折叠**：[`panel.js:1087`](frontend/js/ai_qa/panel.js#L1087) 去 `is-flash` class——[`ai_qa.css:268`](frontend/css/ai_qa.css#L268) `.is-flash .reason-body{display:none}` 把 Flash 思考藏了。去后流式展开·完成收起 DeepSeek 同款。
+- **验证**：:8000+:8080 FC 实测 408 reason line 流式 + pytest 221 passed 零回归。**待浏览器验证**：硬刷 → 诊断思考逐字蹦 + 结论渐进 + 完成收起「Thought for Ns」。
+
 ### ✅ EMC Hotfix R2（commit 4322504·重启后实测两问题·**待浏览器验证**）
 
 重启验证 3 WS 后报：①渐进 token 仍无 ②复杂问 finalStep 超时→降级结论泄 `density({...})`"代码块"。双源核实 DeepSeek 两 ROOTCAUSE 报告 + 我方实测。

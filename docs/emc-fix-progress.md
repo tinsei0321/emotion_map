@@ -1,7 +1,7 @@
 # EMC 修复工程 · 总进度汇总卡
 
 > **一页看清** EMC 修复整体状态。**九模块实施进度矩阵（§一·监控主视图）** + 5 层分层明细（§二）+ 待修（§三）+ 时序（§四）。
-> **更新**：2026-07-28（v3.1·**657c2e3**·reg.filter 崩溃修复 + SCAN P1·**架构已转型 v2 单次 LLM + FC**）
+> **更新**：2026-07-28（**渐进 token 显示三连修 S6/S7/S8**·commit 3aaaaeb·Flash 思考可见 + FC 流式诊断 + 去 is-flash 折叠·DeepSeek 式思考；前轮 Hotfix R2 SSE 流式+per-phase 超时+降级清洗·3 WS 聚焦修复耗时/识别/路由·pytest 221 passed）
 > **承继**：本卡由 `emc-fix-backlog.md`（2026-07-24 快照）更名重写，聚焦"9 模块进度 + 分层 + 时序"。
 > **⚠️ 关键区分**：**v1（三阶段 5.231-5.242）已被 v2（单次 LLM + FC·5.243-5.245b 第三方）取代** → v3（GLM 修复 3C+4H·7858d5a）→ **v3.1（reg.filter 崩溃修复·657c2e3·当前）**。v1 diagnose 管线（select_candidates/FILL_CARD/PLAN/dispatch）代码保留过渡期·Phase 4 清理待 v3 稳定后。架构设计源 [SUMMARY v2](catch-ball/emc-arch-deepdive/SUMMARY.md)（61 决策 D041-D068）。
 
