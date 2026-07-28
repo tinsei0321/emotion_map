@@ -29,7 +29,7 @@ export async function streamChat(messages, context, onToken, onError, opts = {})
   if (opts.domainLens && opts.domainLens.length) body.domain_lens = opts.domainLens;
   if (opts.layerMeta) body.layer_meta = opts.layerMeta;   // CB-09 5.242：{has_point,has_polygon}→select_candidates 数据感知
   // CB-06 P0-B：per-call timeout（45s·慢轮 abort → harness P0-A 降级·治 Flash 过度思考卡死·最坏等 45s 非数十秒）
-  const _timeout = 45000;   // CB-09 D019：finalStep 极瘦（17KB→0.9KB）后统一 45s（CB-07 Layer 2 升 60s 因 prompt 大·已不再需）
+  const _timeout = 25000;   // WS1 F1.5：25s（finalStep 极瘦后实测 4-10s·25s 留余量；原 45s 与 30s 总预算矛盾·慢轮会吞整预算）
   const _ac = new AbortController();
   const _timer = setTimeout(() => _ac.abort(new Error(`LLM 单轮超时(${_timeout / 1000}s)`)), _timeout);
   if (signal) {

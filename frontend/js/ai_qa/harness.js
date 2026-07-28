@@ -408,14 +408,13 @@ function _missingSlotAsk(skill, missing) {
   return { type: 'ask_user', question: `要做「${skill}」分析，还缺「${m}」。${hint.q}`, options: hint.opts };
 }
 
-/** P1（v1.5 反思·痛点 1）：deliberateStep 仅低置信/复杂任务触发——strategy≠ready（数据缺口/降级标注）或 method≥3 步（复杂多步）。
- *  简单单技能（ready + <3 步）跳过 → 省 1 轮 Pro LLM（缓解"效率慢"·K3 痛点 1·反思 deliberateStep 叠加）。 */
+/** P1：deliberateStep 仅真数据缺口/降级触发（strategy≠ready）。去 method≥3 过触发（多步不再叠 Pro 研判·治串行 LLM 致超时）。
+ *  仅 Pro 模式生效（harness.js:810 ctx.model==='pro' 守卫）；Flash 默认不进 deliberate。WS1 F1.2。 */
 function _needsDeliberate(diagnose) {
   if (!diagnose || diagnose.degraded) return false;   // 降级诊断（可能概念问/诊断失败）不研判
   if (diagnose._forceDeliberate) return true;   // CB-09 D020 L2 胶囊：强制 Pro 确认 params（跨工具单步须研判）
   const strat = diagnose.data_plan && diagnose.data_plan.strategy;
-  const method = diagnose.method || [];
-  return (strat && strat !== 'ready') || method.length >= 3;
+  return !!(strat && strat !== 'ready');   // 仅真数据缺口/降级（去 method>=3 过触发）
 }
 
 /** CB-07 Layer 3：finalStep 超时/网络错的零 LLM 降级结论（基于 formatRegistry + toolHistory·治"图出但请求失败"矛盾）。 */
@@ -471,7 +470,9 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   let obs;
   let r = null;
   try {
+    console.time('[emc-timing] tool:' + def.tool);   // WS1 F1.7：工具执行计时
     r = await TOOLS[def.tool](params);
+    console.timeEnd('[emc-timing] tool:' + def.tool);
     obs = (r && r.observation) || '[ERR] 工具无观察返回';
     if (r && r.data && r.data.layerId) newLayerCount = 1;
   } catch (e) {
@@ -522,7 +523,9 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   ctx.context = `【单技能路径·已执行 ${def.tool}】基于上述工具观察直接出结论，勿重选工具、勿重复执行、勿再调 geo 工具。\n【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层）\n\n` + (ctx.context || '');
   let draft;
   try {
+    console.time('[emc-timing] finalStep');   // WS1 F1.7：finalStep 计时
     draft = await stages.finalStep(ctx, hooks, toolHistoryText);
+    console.timeEnd('[emc-timing] finalStep');
   } catch (e) {
     if (ctx.signal && ctx.signal.aborted) throw e;   // 用户取消 → 传播
     draft = _composeDegradedConclusion(toolHistoryText);   // CB-07 Layer 3：finalStep 超时/网络 → 零 LLM 降级结论（图已出·非"请求失败"矛盾）
@@ -727,7 +730,7 @@ export async function orchestrate(ctx, hooks = {}) {
   let narratedAnswer = false; // 模型持续叙述（prose 作答，常见于概念问）——叙述≠失败，交 finalStep 出结论，不落 GAP
   const failedObs = [];      // 失败观察摘要（EXIT_GAP 卡展示「已尝试」用）
   ctx.answerModel = 'flash';   // B1-2a：答案默认 flash（省 finalStep pro reasoner 串行·治超时#1）；复杂任务 diagnose 后升 pro（_needsDeliberate）
-  const _deadline = Date.now() + 75000;   // B1-2c 单问总预算 75s（while-loop 守卫·超时强制作答·保证必有回答·治 E1/E2 90s 超时无答）
+  const _deadline = Date.now() + 30000;   // WS1 F1.5：单问总预算 30s（while-loop 守卫·超时强制作答；原 75s 远超设计 6-11s 致用户感 60s+）
 
   // 多轮连续性：近 2-3 轮 trace 蒸馏注入 ctx.context 顶部（B2：5.51 单轮 priorTurn → 多轮滚动 turnHistory，意图收敛轨迹）
   const _histCtx = formatTurnHistory(ctx.turnHistory) || formatPriorTurn(ctx.priorTurn);
@@ -781,7 +784,9 @@ export async function orchestrate(ctx, hooks = {}) {
 
   let diagnose = null;
   try {
+    console.time('[emc-timing] fcDiagnose');   // WS1 F1.7：per-phase 计时（定位真实瓶颈）
     diagnose = await stages.fcDiagnoseStep(ctx, hooks);
+    console.timeEnd('[emc-timing] fcDiagnose');
   } catch (e) { diagnose = null; }
   // v2 FC 降级 fallback：FC 失败 → 退回旧 SSE diagnose（过渡期保留·D053）
   if (!diagnose || diagnose.degraded) {

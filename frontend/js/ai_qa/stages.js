@@ -295,7 +295,7 @@ export async function fcDiagnoseStep(ctx, hooks) {
   if (hooks.onReason) hooks.onReason('Function Calling 诊断中…', 0);
   // 5a/5b：AbortController + 20s timeout（FC 非流式·治用户取消 + 挂起·CB-05 H11 注释更新）
   const _ac = new AbortController();
-  const _timer = setTimeout(() => _ac.abort(new Error('FC 单轮超时(20s)')), 20000);   // v3 H5：20s（FC 正常 2.7s·45s 太长致降级 70s+）
+  const _timer = setTimeout(() => _ac.abort(new Error('FC 单轮超时(9s)')), 9000);   // WS1 F1.5：9s（FC 正常 2.7s·实测 3-6s·9s 留余量；原 20s 致降级链 70s+）
   // 用户取消信号联动
   if (ctx.signal) {
     if (ctx.signal.aborted) _ac.abort();

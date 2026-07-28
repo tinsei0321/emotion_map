@@ -62,6 +62,17 @@ let _wisdomPromise = null;
 // 首次问询（buildContext/_fieldSamples）调 getFieldCard 算一次，后续命中缓存（图层移除时由 layers:changed 清）。
 const _fieldCardCache = new Map();
 
+// WS1 F1.6：localStorage 持久层（跨重载/跨 send·字段签名=列名集·值变不触发重推断·治 buildContext 隐式 profile_fields LLM）
+const _FIELDCARD_LS = 'emc_fieldcard_';
+function _fieldSig(fc) { try { return Object.keys(profileFields(fc)).sort().join(','); } catch (e) { return ''; } }
+function _lsGetCard(layerId, sig) {
+  try { const raw = localStorage.getItem(_FIELDCARD_LS + layerId); if (!raw) return null;
+    const o = JSON.parse(raw); return (o && o.sig === sig) ? o.cards : null; } catch (e) { return null; }
+}
+function _lsSetCard(layerId, sig, cards) {
+  try { localStorage.setItem(_FIELDCARD_LS + layerId, JSON.stringify({ sig, cards })); } catch (e) {}
+}
+
 /** POST /api/v1/aiqa/profile_fields：为规则 miss 的字段调 LLM 推断 role。
  *  复用后端 chat_with_fallback 韧性链；失败/降级返 {fields:{},degraded:True} 不抛（AI 仍可用规则命中的字段）。 */
 async function fetchProfileFields(body) {
@@ -102,6 +113,11 @@ async function fetchRun(body) {
  *  命中同一 Promise·不重复 LLM。调用方 await 不变。 */
 export async function getFieldCard(layerId, fc, layerKind = 'point') {
   if (layerId && _fieldCardCache.has(layerId)) return _fieldCardCache.get(layerId);   // Promise·await 得值
+  // WS1 F1.6：localStorage 持久层命中（签名匹配）→ 包成 resolved Promise·与 Map 同形
+  if (layerId) {
+    const ls = _lsGetCard(layerId, _fieldSig(fc));
+    if (ls) { const _rp = Promise.resolve(ls); _fieldCardCache.set(layerId, _rp); return _rp; }
+  }
   const _p = (async () => {
     const profile = profileFields(fc);
     const cards = {};
@@ -128,6 +144,7 @@ export async function getFieldCard(layerId, fc, layerKind = 'point') {
         }
       }
     }
+    if (layerId) _lsSetCard(layerId, _fieldSig(fc), cards);   // WS1 F1.6：持久化（列名签名·下次直接命中 LS）
     return cards;
   })();
   if (layerId) _fieldCardCache.set(layerId, _p);   // 首次即存 Promise·并发命中同一（并发安全）

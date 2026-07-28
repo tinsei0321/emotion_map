@@ -130,6 +130,8 @@ BACKEND_ORIGIN = 'http://127.0.0.1:8000'
 class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
     """对每个响应强制 no-store，并对 index.html 注入 ?v 绕缓存；/api/* 反代后端。"""
 
+    protocol_version = 'HTTP/1.1'   # WS1 F1.4：HTTP/1.1 必需（1.0 浏览器缓冲到连接关闭·流式 flush 无效·前开发卡此）
+
     def end_headers(self):
         self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
         self.send_header('Pragma', 'no-cache')
@@ -189,24 +191,22 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         self.send_error(405, 'Method Not Allowed')
 
     def _proxy_api(self):
-        """同源 /api/* → 后端 :8000 透传（method/body/headers/响应全转发）。
-        浏览器只跟 :8080 说话，后端这一跳在服务端完成——绕开一切浏览器跨域拦截。"""
+        """同源 /api/* → 后端 :8000 透传。SSE（text/event-stream）分块流式转发（WS1 F1.4·渐进 token）；
+        其余缓冲转发。浏览器只跟 :8080 说话，后端这一跳在服务端完成——绕开浏览器跨域拦截。"""
         import urllib.request, urllib.error
         length = int(self.headers.get('Content-Length') or 0)
         body = self.rfile.read(length) if length else None
-        # 转发请求头：剔除 hop-by-hop 与会干扰后端的（host/accept-encoding 等）
+        # 转发请求头：剔除 hop-by-hop 与会干扰后端的（host/accept-encoding/gzip 等）
         drop = {'host', 'content-length', 'connection', 'transfer-encoding',
                 'accept-encoding', 'keep-alive', 'upgrade'}
         fwd = {k: v for k, v in self.headers.items() if k.lower() not in drop}
         req = urllib.request.Request(BACKEND_ORIGIN + self.path, data=body,
                                      method=self.command, headers=fwd)
         try:
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                status, rbody = resp.getcode(), resp.read()
-                rheaders = list(resp.getheaders())
-        except urllib.error.HTTPError as e:   # 后端 4xx/5xx 也要透传
-            status, rbody = e.code, e.read()
-            rheaders = list(e.headers.items())
+            resp = urllib.request.urlopen(req, timeout=60)   # 不用 with·SSE 分支边读边转（WS1 F1.5：60s）
+        except urllib.error.HTTPError as e:   # 后端 4xx/5xx 透传（缓冲）
+            self._send_buffered(e.code, list(e.headers.items()), e.read())
+            return
         except Exception as e:                # 后端连不上
             msg = f'[proxy] backend unreachable: {e}'.encode('utf-8')
             self.send_response(502)
@@ -215,6 +215,18 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(msg)
             return
+        try:
+            rheaders = list(resp.getheaders())
+            ct = next((v for k, v in rheaders if k.lower() == 'content-type'), '') or ''
+            if 'text/event-stream' in ct.lower():
+                self._send_streamed(resp.getcode(), rheaders, resp)   # SSE 分块流式（渐进 token）
+            else:
+                self._send_buffered(resp.getcode(), rheaders, resp.read())   # 其余缓冲
+        finally:
+            resp.close()
+
+    def _send_buffered(self, status, rheaders, rbody):
+        """非 SSE：缓冲整响应一次写（带 Content-Length）。"""
         self.send_response(status)
         ct_sent = False
         for k, v in rheaders:
@@ -228,6 +240,27 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Content-Length', str(len(rbody)))
         self.end_headers()
         self.wfile.write(rbody)
+
+    def _send_streamed(self, status, rheaders, resp):
+        """SSE 流式：分块转发（WS1 F1.4）。不设 Content-Length·Connection: close（浏览器读到 EOF）·
+        每块 wfile.flush() 强制渐进渲染（HTTP/1.1 下生效·1.0 无效）。"""
+        self.send_response(status)
+        for k, v in rheaders:
+            if k.lower() in ('content-type', 'content-disposition',
+                             'content-language', 'etag', 'last-modified'):
+                self.send_header(k, v)
+        self.send_header('Connection', 'close')   # 无 Content-Length → 关连接示 EOF（不用 chunked·更简）
+        self.end_headers()
+        self.close_connection = True              # HTTP/1.1 keep-alive 关闭·读完即断
+        try:
+            while True:
+                chunk = resp.read(4096)
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                self.wfile.flush()   # 关键：每块 flush·浏览器渐进渲染 token
+        except Exception:
+            pass   # 客户端断开等·静默
 
     def _test_reports_dir(self):
         """测试报告固定落盘目录：<repo>/tests/reports/（不存在则建）。"""
