@@ -421,13 +421,15 @@ function _needsDeliberate(diagnose) {
 function _composeDegradedConclusion(toolHistoryText) {
   const _reg = (typeof getArtifacts === 'function' ? getArtifacts() : []) || [];   // v3.1 P0：同上·getArtifacts() 返数组
   const _layers = _reg.filter((r) => r.tool && r.tool !== 'query_layers').map((r) => `{{show:${r.name}}}`).join('\n');
-  const _lastObs = (toolHistoryText || '').split('\n').filter((l) => /已生成|产出|单元|点|层/.test(l)).slice(-1)[0] || '';
+  const _rawObs = (toolHistoryText || '').split('\n').filter((l) => /已生成|产出|单元|点|层/.test(l)).slice(-1)[0] || '';
+  // Hotfix R2 S4：去「第N轮·动作: tool(params) →」原始前缀（治降级结论泄 density({...}) "代码块"·只留人读 observation）
+  const _lastObs = (_rawObs.replace(/^第\d+轮·动作:[^→]*→\s*/, '').trim()) || _rawObs || '地图已生成分析图层。';
   return [
     '## 分析图已生成',
     '',
-    _lastObs || '地图已生成分析图层。',
+    _lastObs,
     _layers ? `\n**已产出图层**（点击查看）：\n${_layers}` : '',
-    '\n详细结论文本生成超时·可点击上方图层按钮查看，或简化问题后重试（如指定更具体区域/时点）。',
+    '\n详细结论暂未生成·可点击上方图层查看结果，或稍候/简化问题重试。',
   ].filter(Boolean).join('\n');
 }
 

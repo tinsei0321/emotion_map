@@ -244,8 +244,13 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(rbody)
 
     def _send_streamed(self, status, rheaders, resp):
-        """SSE 流式：分块转发（WS1 F1.4）。不设 Content-Length·Connection: close（浏览器读到 EOF）·
-        每块 wfile.flush() 强制渐进渲染。Connection/close_connection 由 end_headers 统一设（避免重复头）。"""
+        """SSE 流式：分块转发（WS1 F1.4 + Hotfix R2 S1）。不设 Content-Length·Connection: close（浏览器读到 EOF）。
+        read1 绕 BufferedReader（实测 read(4096) 攒到 ≥4096B/EOF 才返·read1 逐 chunk 返）+ TCP_NODELAY 禁 Nagle。"""
+        try:
+            import socket as _sock
+            self.connection.setsockopt(_sock.IPPROTO_TCP, _sock.TCP_NODELAY, 1)   # 禁 Nagle·小包即发
+        except Exception:
+            pass
         self.send_response(status)
         for k, v in rheaders:
             if k.lower() in ('content-type', 'content-disposition',
@@ -254,11 +259,14 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         try:
             while True:
-                chunk = resp.read(4096)
+                try:
+                    chunk = resp.fp.read1(4096)   # 绕 BufferedReader·逐 chunk（实测：read 攒包·read1 流式）
+                except Exception:
+                    chunk = resp.read(4096)        # 兜底（resp.fp 非公开 API·个别环境不可用→回退缓冲读）
                 if not chunk:
                     break
                 self.wfile.write(chunk)
-                self.wfile.flush()   # 关键：每块 flush·浏览器渐进渲染 token
+                self.wfile.flush()   # 每块 flush·浏览器渐进渲染 token
         except Exception:
             pass   # 客户端断开等·静默
 

@@ -28,8 +28,10 @@ export async function streamChat(messages, context, onToken, onError, opts = {})
   if (opts.roundN) body.round_n = opts.roundN;
   if (opts.domainLens && opts.domainLens.length) body.domain_lens = opts.domainLens;
   if (opts.layerMeta) body.layer_meta = opts.layerMeta;   // CB-09 5.242：{has_point,has_polygon}→select_candidates 数据感知
-  // CB-06 P0-B：per-call timeout（45s·慢轮 abort → harness P0-A 降级·治 Flash 过度思考卡死·最坏等 45s 非数十秒）
-  const _timeout = 25000;   // WS1 F1.5：25s（finalStep 极瘦后实测 4-10s·25s 留余量；原 45s 与 30s 总预算矛盾·慢轮会吞整预算）
+  // Hotfix R2 S2：per-phase 超时。渐进 token 实现后等待不"卡"·超时只需防 mid-stream 切断 finalStep。
+  //   answer(finalStep)=45s（复杂结论需 25-35s·Flash 默认不叠 deliberate）/ agent_step=30s / 其余 25s。
+  //   WS1 F1.5 的 25s 一刀切对复杂 finalStep 过紧→降级（实测「500m 方格网」案例触发）。用户定 45s。
+  const _timeout = opts.phase === 'answer' ? 45000 : (opts.phase === 'agent_step' ? 30000 : 25000);
   const _ac = new AbortController();
   const _timer = setTimeout(() => _ac.abort(new Error(`LLM 单轮超时(${_timeout / 1000}s)`)), _timeout);
   if (signal) {
