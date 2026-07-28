@@ -528,9 +528,26 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   // 5. CB-09 D023 质量防线（L1 产物验证 + R1/R2/R3/R4/R7·代码·不调 LLM）取代旧 _verifyClaims+_reviseOnce
   const _qd = applyQualityDefense(draft, { obsOk: true, toolHistoryText, skipL1: false });
   draft = _qd.final;
+  // v2 D068：合并 FC plans[] rank=2+ 为追问胶囊（CPD 选项·复用现有胶囊渲染+runCapsule 执行）
+  const _planCapsules = _plansToCapsules(ctx.plans);
+  const _allCapsules = [...(_qd.capsules || []), ..._planCapsules];
   if (hooks.onFinalDone) hooks.onFinalDone(draft);
-  if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template', capsules: _qd.capsules || [] });
-  return { ok: true, rounds: 1, final: draft, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template', capsules: _qd.capsules || [] }, degraded: false, diagnose, exit: 'result', newLayerCount };
+  if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template', capsules: _allCapsules });
+  return { ok: true, rounds: 1, final: draft, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template', capsules: _allCapsules }, degraded: false, diagnose, exit: 'result', newLayerCount };
+}
+
+/** v2 D068 辅助：FC plans[] rank=2+ → 胶囊格式（复用 runCapsule 执行路径）。
+ *  plan {rank,label,tool,params,confidence} → capsule {label,level,skill,params}
+ *  level 映射：同工具=L1·跨工具=L2（runCapsule 据此决定是否 deliberate） */
+function _plansToCapsules(plans) {
+  if (!Array.isArray(plans)) return [];
+  const _executedTool = (plans.find((p) => p.rank === 1) || {}).tool;
+  return plans.filter((p) => p.rank >= 2 && p.tool && p.tool !== _executedTool).slice(0, 3).map((p) => ({
+    label: p.label || p.tool,
+    level: p.tool === _executedTool ? 'L1' : 'L2',
+    skill: p.tool,
+    params: p.params || {},
+  }));
 }
 
 /** CB-09 D020 追问胶囊执行路径（L1 直达 / L2 轻判·跳 diagnose Flash）：合成 synthDiagnose → 复用 runTemplatePath 全套出口+防线。
