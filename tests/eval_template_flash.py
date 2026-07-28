@@ -146,5 +146,62 @@ def run_eval():
     print('PASS — 可 ship single 路径' if rate >= 0.8 else 'NO-GO — single 路径暂不主导（保兜底）')
 
 
+def run_fc_param_eval():
+    """WS3 F3.4：FC 参数填充评测（治 eval 测不到「模板对·参数空」·CB 发现的盲区）。
+
+    喂 param-critical 问句给真 FC（chat_with_tools_fallback + contracts_to_tools_schema），
+    验 tool_call.arguments 必填槽是否填齐（buffer.center / compare.boundaries≥2 / overlay.layer_a,b）。
+    手动跑·需 API Key·花钱（同 run_eval）·非 CI。
+    """
+    try:
+        from ai_qa.llm import chat_with_tools_fallback
+        from ai_qa.tool_contracts import contracts_to_tools_schema, validate_tool_call
+    except Exception as e:
+        print(f'[SKIP] 依赖缺失：{e}'); return
+    import json as _json
+
+    tools = contracts_to_tools_schema()
+    # FC sys prompt（精简版·对齐 router.py fc_diagnose 的参数纪律 + few-shot）
+    sys_content = (
+        '你是情绪地图分析助手。根据用户问题选择一个工具并填写参数。\n'
+        '## 参数填写纪律\n'
+        '- 必填槽必须从问句抽出填入 tool_call·勿留空\n'
+        '## 参数提取示例\n'
+        '- 「以X为中心周边500米」→ buffer: center="X", radius_m=500\n'
+        '- 「A 与 B 的情绪对比」→ compare_regions: boundaries=["A","B"]（≥2·数组·从两个地名抽）\n'
+        '- 「A 与 B 的交集」→ overlay: layer_a="A", layer_b="B", how="intersection"\n'
+    )
+    # (问句, 期望 tool, 必填槽值合法性检查)
+    cases = [
+        ('以滨江公园为中心周边500米缓冲', 'buffer', lambda p: bool(p.get('center'))),
+        ('西陵区和伍家岗区的情绪对比', 'compare_regions',
+         lambda p: isinstance(p.get('boundaries'), list) and len(p.get('boundaries')) >= 2),
+        ('商业用地和居住用地的交集', 'overlay',
+         lambda p: bool(p.get('layer_a')) and bool(p.get('layer_b'))),
+    ]
+    hits, total = 0, 0
+    print('\n═══ FC 参数填充评测（必填槽是否填齐）═══')
+    for q, exp_tool, ok_check in cases:
+        total += 1
+        try:
+            msgs = [{'role': 'system', 'content': sys_content}, {'role': 'user', 'content': q}]
+            res = chat_with_tools_fallback(msgs, tools, tier='flash')
+            tc = (res.get('tool_calls') or [{}])[0]
+            fn = tc.get('function', {}) if tc else {}
+            name = fn.get('name', '')
+            args = _json.loads(fn.get('arguments', '{}') or '{}')
+            v = validate_tool_call(name, args)
+            filled = (name == exp_tool) and v['ok'] and ok_check(v['params'])
+            hits += int(filled)
+            miss = [] if v['ok'] else [f for f in v['fixes'] if '缺必填' in f]
+            print(f"  {'[OK] ' if filled else '[MISS]'} {q}  → tool={name} args={args} miss={miss}")
+        except Exception as e:
+            print(f"  [ERR] {q}  → {e}")
+    rate = hits / total if total else 0
+    print(f'\nFC 参数填充率：{hits}/{total} = {rate:.0%}')
+    print('═══ 目标 100%（必填槽必须从问句抽出填齐）═══')
+
+
 if __name__ == '__main__':
     run_eval()
+    run_fc_param_eval()
