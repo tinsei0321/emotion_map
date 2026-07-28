@@ -11,6 +11,16 @@
 
 ## 📅 2026-07-28（今日·**v2→v3 架构转型 + 修复**·commit+push）
 
+### ✅ EMC Hotfix R2（commit 4322504·重启后实测两问题·**待浏览器验证**）
+
+重启验证 3 WS 后报：①渐进 token 仍无 ②复杂问 finalStep 超时→降级结论泄 `density({...})`"代码块"。双源核实 DeepSeek 两 ROOTCAUSE 报告 + 我方实测。
+
+- **S1 SSE 真·渐进流式**：DeepSeek 诊断 urllib BufferedReader 缓冲——**实测复现**（`read(4096)` 攒包 vs `fp.read1(4096)` 逐 chunk）。[`serve.py _send_streamed`](frontend/serve.py) 改 `read1` + `TCP_NODELAY`。不采纳 DeepSeek A（绕代理+COR）/ C（httpx 重写）。
+- **S2 finalStep per-phase 超时**：[`api.js`](frontend/js/ai_qa/api.js#L32) `answer`=45s（用户定）/ `agent_step`=30s / 其余 25s。修正 WS1 F1.5 的 25s 一刀切（复杂 finalStep 需 25-35s）。**关键洞察**：「无渐进 token」是 finalStep 超时的副作用（降级走静态串非流式）。
+- **S4 降级结论清洗**：[`_composeDegradedConclusion`](frontend/js/ai_qa/harness.js#L424) 去「第N轮·动作: tool(params)→」前缀·治"代码块"泄漏。
+- **defer**：S3（context 瘦身·S2 已治超时）/ S5（2D/3D 视角——density mode 语义 2d=热力图/3d=网格柱·需 mode API 重构非 hotfix）。
+- **验证**：pytest 221 passed+3 skipped 零回归 + serve 编译/死锁无回归。**待浏览器验证**：重启 serve → ①简单问 token 逐个蹦（S1）②复杂问不超时+干净结论（S2+S4）。
+
 ### ✅ EMC v1.0 聚焦修复工程·3 WS（commit b2a24ab+943ced4+afa5db4·CB-08·**待浏览器验证**）
 
 双源核实（3 Explore agent + DeepSeek `DEEP_DIVE_2026-07-28` CB 反评价）·架构骨架 Smart/Dumb/Orchestrator 完好·**3 个实现层缺口·不推倒重来**。plan：`emc-v1-0-report-2026-07-28-01-llm-1-emc-inherited-swing.md`。
