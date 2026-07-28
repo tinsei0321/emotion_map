@@ -177,15 +177,21 @@ function ref(v) {
   }
   if (typeof v === 'string' && v) {
     const all = getLayers().filter((x) => x.fc && x.fc.features && x.fc.features.length);
-    let l = all.find((x) => x.name === v);
+    // 1. 精确匹配 layer id
+    let l = all.find((x) => x.id === v);
+    // 2. 精确匹配 name
+    if (!l) l = all.find((x) => x.name === v);
+    // 3. 唯一包含匹配 name
     if (!l) {
       const inc = all.filter((x) => x.name && x.name.includes(v));
-      if (inc.length === 1) l = inc[0];   // 唯一包含才匹配，避免歧义
+      if (inc.length === 1) l = inc[0];
     }
     if (l) {
-      if (_resultIdByStep.includes(l.id)) _consumedIds.add(l.id);   // 命名引用本轮 EMC 结果 = 中间产物被消费 → 收尾移除
+      if (_resultIdByStep.includes(l.id)) _consumedIds.add(l.id);
       return l.fc;
     }
+    // CB-05 ROOTCAUSE: 匹配失败返 null（非原值 v）→ 工具层提前拦截 + 列可用层·防无效引用传后端爆炸
+    return null;
   }
   return v;
 }
@@ -573,7 +579,7 @@ export async function buildContext() {
     .map(async (l) => {
       const cnt = l.fc.features.length;
       const fs = await _fieldSamples(l.fc, 12, l.id);   // DataEye（P3）：字段+类型+role+样本值（关键字段全值·治误判缺数据 2c）
-      return `${l.name}(${cnt}条,${_kindTag(l)}${_boundaryEnum(l)}${fs ? ',字段:' + fs : ''}${l.visible ? '' : ',隐藏'})`;
+      return `${l.name}(id:${l.id},${cnt}条,${_kindTag(l)}${_boundaryEnum(l)}${fs ? ',字段:' + fs : ''}${l.visible ? '' : ',隐藏'})`;
     }))).join('、');
   parts.push('已加载图层（眼睛开关不影响 EMC 可用·隐藏层仍可分析·标"隐藏"者为 hidden）：' + (loaded || '（无）'));
   // 数据内容摘要（5.223·系统全字段值域识别·Flash 知有什么/值域/缺什么·Layer Manifest 完整版）

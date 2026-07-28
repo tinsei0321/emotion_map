@@ -59,7 +59,10 @@ async def chat_route(req: ChatRequest):
             '若数据不支撑所选工具，换一个合适的工具或说明缺什么数据。\n\n'
             '## 参数填写纪律\n'
             '- where/pre_filter 的 field **必须用「数据上下文」中列出的实际字段名**（非训练数据假设的 MC/name 等）\n'
-            '- 先看「数据上下文」的「字段:xxx=type:role:sample」段·用其中列出的字段名\n\n'
+            '- layer 参数**必须用「数据上下文」中 id:xxx 标注的值**（如 yichang_l2_t3）·非拼凑层名\n\n'
+            '## 追问场景指引\n'
+            '- 追问「分析消极/积极/中性情绪」→ 直接用 density 切换 polarity（negative/positive/neutral）·不要先 filter_attr 再 density（多余步骤）\n'
+            '- 追问「换个极性看看」→ 同一工具换 polarity 参数即可·无需换工具\n\n'
             f'## 数据上下文\n{req.context or "（无数据上下文）"}\n'
         )
         messages = [{'role': 'system', 'content': sys_content}] + list(req.messages or [])

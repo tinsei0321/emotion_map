@@ -13,6 +13,35 @@ const MAX_ROUNDS_OTHER = 4;    // A 通用 / C 情绪=4（远紧于 16，配合 
 // v3 H6：前端 _validateFcParams 已删除——信赖后端 validate_tool_call（router fc_diagnose 调·D062）。
 // 后端在返回 tool_calls 前已校验 + 修正参数（enum 外→默认值替代·required 缺→补默认）·前端不重复。
 
+// CB-05 ROOTCAUSE：tool name → skill name 映射（同 stages.js·harness 内复用）
+const _TOOL_TO_SKILL = { zonal_stats: 'zonal', compare_regions: 'compare' };
+
+/** CB-05 ROOTCAUSE 方案 4：追问时从上轮 plans[] 匹配当前意图·跳 FC 复用正确参数。
+ *  匹配规则：问句含极性词（消极/积极/中性）→ 找 plans 中 polarity 匹配的 density/rank plan。
+ *  返匹配的 plan {tool, params} 或 null（无匹配 → 走正常 FC）。 */
+function _matchPlanToQuestion(question, plans) {
+  if (!question || !Array.isArray(plans)) return null;
+  const q = question.toLowerCase();
+  // 极性匹配
+  const _POL_MAP = [
+    { kw: ['消极', '负面', 'negative', '差'], polarity: 'negative' },
+    { kw: ['积极', '正面', 'positive', '好'], polarity: 'positive' },
+    { kw: ['中性', 'neutral', '客观'], polarity: 'neutral' },
+    { kw: ['综合', '总体', 'overall', '全部'], polarity: 'overall' },
+  ];
+  for (const pm of _POL_MAP) {
+    if (pm.kw.some((k) => q.includes(k))) {
+      // 找 plans 中 density/rank 且 polarity 匹配的
+      const hit = plans.find((p) =>
+        p && p.tool && /^(density|rank)$/i.test(p.tool) &&
+        p.params && (p.params.polarity === pm.polarity || p.params.analysis === pm.polarity)
+      );
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
+
 /** P0 降温：轻量 intent 预判——高置信通用/概念问跳 diagnose 直 finalStep（省整轮 diagnose LLM + 7字段卡）。
  *  规划思维 A 赛道"快速分流"：概念解释/方法咨询/日常问候→general 直答；含 geo 动词/地名→落 diagnose。
  *  返 'general'→短路；null→落原 diagnose（保守，宁落不误断）。 */
@@ -732,6 +761,24 @@ export async function orchestrate(ctx, hooks = {}) {
   // 【Smart·计划阶段】v2 function calling 诊断（5.243·D041）：单次 LLM + FC + 契约 Schema
   // 替代旧三阶段（select_candidates → FILL_CARD/PLAN → dispatch SSE）
   // FC 失败（网络/无 tool_calls）→ degraded·harness 降级走旧 SSE diagnose 或 while-loop
+
+  // CB-05 ROOTCAUSE 方案 4：追问时 plans[] 优先匹配（跳 FC·复用上轮正确参数·治层引用幻觉）
+  if (ctx.resume && ctx.priorTurn && Array.isArray(ctx.priorTurn.plans) && ctx.priorTurn.plans.length) {
+    const _matched = _matchPlanToQuestion(ctx.question, ctx.priorTurn.plans);
+    if (_matched) {
+      console.info('[plans] 追问匹配上轮 plan·跳 FC·直接执行:', _matched.tool, _matched.params);
+      const _synthDiag = {
+        template: _TOOL_TO_SKILL[_matched.tool] || _matched.tool,
+        params: _matched.params || {},
+        degraded: false, intent: 'emotion_analysis', _fc: true, _plansReuse: true,
+        domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层',
+        data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+        method: [(_matched.tool || '') + '()'],
+      };
+      return await runTemplatePath(ctx, hooks, _synthDiag);
+    }
+  }
+
   let diagnose = null;
   try {
     diagnose = await stages.fcDiagnoseStep(ctx, hooks);
