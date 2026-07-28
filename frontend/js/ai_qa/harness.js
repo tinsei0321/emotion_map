@@ -706,7 +706,7 @@ export async function orchestrate(ctx, hooks = {}) {
 
   // P0 降温：_quickIntent 轻量预判——高置信通用/概念问跳 diagnose 直 finalStep（省整轮 diagnose LLM + 7字段卡）
   if (!ctx.resume && _quickIntent(ctx.question) === 'general') {
-    ctx.context = '【intent=通用问答·快速预判】直接简洁作答，不要 4×5 归因、不要演示逻辑链、不要引导情绪场景。\n\n' + (ctx.context || '');
+    ctx.context = '【intent=通用问答·快速预判】直接简洁作答，不要 4×5 归因、不要演示逻辑链、不要引导情绪场景。\n\n## 情绪地图背景（概念问时参考·灵活改写勿照抄）\n随着"人民城市"理念的深入实践，城市建设正在从"见物"向"见人"转变。城市规划行业从"造城"到"营城"的理念升华，要求从"地上建城"到"城上建城、依城养城、以城兴城"。宜昌市委、市政府多次强调要关注城市的"温情治理"、"情绪价值"和"年轻范"，明确提出"打造精致温暖的现代化活力之城"、"激发城市年轻活力"等发展目标。\n\n情绪地图正是这一理念的技术实践——把居民在社交媒体、12345热线等平台表达的情感（开心、愤怒、抱怨、期盼等）精准定位到地理坐标，构建一个可展示、可交互的"城市心情"动态地图。它让人直观看到哪个区域居民幸福感高、哪里抱怨集中，并揭示情绪背后老百姓的"急难愁盼"（设施不足、环境不好、文化不显、治理不优），从而用数据替代直觉，为城市"规划、更新、运营、治理"四大领域提供"人本视角"的科学决策依据。\n\n城市情绪是城市中所有个体情绪状况的集合，是居民在工作、生活、娱乐等场景中内心需求的直接表征。情绪地图基于多源城市情绪数据（社交媒体、App数据）与时空信息（地理信息、建成环境数据）的叠加融合，构建一套反映城市情绪时空分布及其与建成环境关联的可视化分析工具。\n\n' + (ctx.context || '');
     const draft = await stages.finalStep(ctx, hooks, '');
     if (hooks.onFinalDone) hooks.onFinalDone(draft);
     if (hooks.onDefense) hooks.onDefense({ degraded: false, skipped: 'quick-general' });

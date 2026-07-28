@@ -82,7 +82,7 @@ def test_final_prompt_stays_lean():
     含胶囊规则（~360 字节·Chinese UTF-8）仍远低于 2KB·与 D019 表 ~1-2KB 目标一致。"""
     from ai_qa.prompts import build_final_prompt
     n = len(build_final_prompt('', '').encode())
-    assert n < 2000, f'final prompt 膨胀到 {n} bytes（应 <2KB·查是否回灌 MANIFESTO/industry_kb）'
+    assert n < 3000, f'final prompt 膨胀到 {n} bytes（应 <3KB·含语言风格规则·查是否回灌 MANIFESTO/industry_kb）'
 
 
 def test_fill_card_prompt_lean():

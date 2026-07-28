@@ -902,9 +902,9 @@ export const TOOLS = {
         range: params.range ? ref(params.range) : undefined, pre_filter: normPreFilter(params.pre_filter),
         top_n: params.top_n != null ? Number(params.top_n) : undefined, as: params.as });
       const rows = r.rows || [];
-      if (!rows.length) return { observation: `面域聚合（boundary=${params.boundary}）无结果` };
-      const _zL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: true }) : null;   // P1：合成红-绿聚合图层（activeAnalysis 可认→深读可工作）
-      return { observation: `面域聚合 ${rows.length} 单元（boundary=${params.boundary}，按 |${r.sortBy || 'polarity_index'}| 降序）：\n` + rows.map(_fmtRow).join('\n') + _renderNote(_zL), data: { rows, sort_by: r.sortBy, layerId: r.layerId } };
+      if (!rows.length) return { observation: `按行政区聚合后无结果（可能该范围无情绪点覆盖）` };
+      const _zL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: true }) : null;
+      return { observation: `区域情绪聚合完成，共 ${rows.length} 个单元，按极性排序：\n` + rows.map(_fmtRow).join('\n') + _renderNote(_zL), data: { rows, sort_by: r.sortBy, layerId: r.layerId } };
     } catch (e) { return _ERR('zonal_stats', e); }
   },
 
@@ -950,9 +950,9 @@ export const TOOLS = {
         layerRef: typeof params.layer === 'string' ? params.layer : undefined,
         range: params.range ? ref(params.range) : undefined, pre_filter: normPreFilter(params.pre_filter), as: params.as });
       const rows = r.rows || [];
-      if (!rows.length) return { observation: `排序（by=${by}）无结果` };
-      const _rk = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: true }) : null;   // A1：Top N 高亮层（解析不到 boundary 降级纯表格）
-      return { observation: `排序 Top${rows.length}（by=${by}）：\n` + rows.map(_fmtRow).join('\n') + (_rk ? `\n→ 已生成高亮层「${_rk.name}」（极性 choropleth·Top N 单元）` : '') + _renderNote(_rk), data: { rows, by, layerId: r.layerId } };
+      if (!rows.length) return { observation: `排序无结果` };
+      const _rk = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: true }) : null;
+      return { observation: `区域排序前 ${rows.length} 名：\n` + rows.map(_fmtRow).join('\n') + (_rk ? `\n已在地图上高亮显示前 ${rows.length} 名区域（极性着色）` : '') + _renderNote(_rk), data: { rows, by, layerId: r.layerId } };
     } catch (e) { return _ERR('rank', e); }
   },
 
@@ -971,7 +971,7 @@ export const TOOLS = {
         const p = f.properties || {};
         return '{' + Object.keys(p).slice(0, 5).map((k) => `${k}=${p[k]}`).join(', ') + '}';
       });
-      return { observation: `属性筛选命中 ${r.count} 个要素${r.truncated ? '（已截断）' : ''} → 已生成图层「${r.layerName}」${_fL ? '(' + feats.length + '点)' : ''}，示例：${sample.join(' | ') || '（无属性）'}` + _renderNote(_fL), data: { count: r.count, layerId: r.layerId } };
+      return { observation: `按属性筛选命中 ${r.count} 个要素${r.truncated ? '（数量较多已截断）' : ''}，已生成图层「${r.layerName}」${_fL ? '（' + feats.length + ' 个要素）' : ''}，包含：${sample.join('、') || '（无属性）'}` + _renderNote(_fL), data: { count: r.count, layerId: r.layerId } };
     } catch (e) { return _ERR('filter_attr', e); }
   },
 
@@ -987,7 +987,7 @@ export const TOOLS = {
       const feats = (r.fc && r.fc.features) || [];
       const L = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // 名=范围（如「西陵区」·模块 C6 沿用）
       const sample = feats.slice(0, 3).map((f) => { const p = f.properties || {}; return p.name || p.issue_label || '未命名'; });
-      return { observation: `裁剪命中 ${r.count} 个点要素${r.truncated ? '（已截断）' : ''}（range=${params.range}）→ 已生成点图层「${r.layerName}」${L ? '(' + feats.length + '点)' : ''}。注：clip 裁剪点层到范围·结果为点图层；要抽取范围面用 extract_feature。示例：${sample.join('、') || '（无）'}` + _renderNote(L), data: { count: r.count, layerId: r.layerId } };
+      return { observation: `已在指定范围内裁出 ${r.count} 个情绪点${r.truncated ? '（数量较多已截断）' : ''}，生成图层「${r.layerName}」${L ? '（' + feats.length + ' 个点）' : ''}。包含：${sample.join('、') || '（无）'}` + _renderNote(L), data: { count: r.count, layerId: r.layerId } };
     } catch (e) { return _ERR('clip', e); }
   },
   /** 从面边界按属性抽单要素为独立面图层（裁出某区/某单元），结果落地图。 */
@@ -1030,7 +1030,7 @@ export const TOOLS = {
       const feats = (r.fc && r.fc.features) || [];
       const labels = r.labels || [];
       const L = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // 名=要素名（如「西陵区·伍家岗区」/「商业服务业用地」·模块 C6 沿用）
-      return { observation: `属性抽取命中 ${r.count} 个面要素（layer=${params.layer}${params.where ? ', where=' + params.where : ''}）→ 已生成图层「${r.layerName}」${L ? '(' + feats.length + '面)' : ''}：${labels.slice(0, 5).join('、') || '（无）'}` + _renderNote(L), data: { count: r.count, layerId: r.layerId } };
+      return { observation: `已从面层中抽取出 ${r.count} 个要素，生成图层「${r.layerName}」${L ? '（' + feats.length + ' 个面）' : ''}：${labels.slice(0, 5).join('、') || '（无）'}` + _renderNote(L), data: { count: r.count, layerId: r.layerId } };
     } catch (e) { return _ERR('extract_feature', e); }
   },
 
@@ -1046,10 +1046,10 @@ export const TOOLS = {
       const seg = rows.map((row) => {
         const label = row[params.group_by] || row.name || '组';
         const share = row.share != null ? (Number(row.share) * 100).toFixed(1) + '%' : '?';
-        const area = row.area_km2 != null ? Number(row.area_km2).toFixed(1) + 'km²' : '?';
-        return `${label} ${share}(${area})`;
+        const area = row.area_km2 != null ? Number(row.area_km2).toFixed(1) + '平方公里' : '?';
+        return `${label} 占${share}（${area}）`;
       });
-      return { observation: `面积统计${total}：${seg.join('、') || '（无）'}` + (_as ? ` → 已生成着色层「${_as.name}」（面积/占比已入要素属性）` : '') + _renderNote(_as), data: { rows, layerId: r.layerId } };
+      return { observation: `面积统计${total}：${seg.join('、') || '（无）'}` + (_as ? `，已生成着色图层「${_as.name}」（面积和占比已标注到地图要素）` : '') + _renderNote(_as), data: { rows, layerId: r.layerId } };
     } catch (e) { return _ERR('area_stats', e); }
   },
 
@@ -1062,7 +1062,7 @@ export const TOOLS = {
       const feats = (r.fc && r.fc.features) || [];
       const total = r.totalAreaKm2 != null ? r.totalAreaKm2 : feats.reduce((a, f) => a + (Number((f.properties || {}).area_km2) || 0), 0);
       const _mL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // 名=边界（如「西陵区」·模块 C6 沿用）
-      return { observation: `合并得 ${r.count} 个面，总面积 ${total.toFixed(1)} km² → 已生成图层「${r.layerName}」${_mL ? '(' + feats.length + '面)' : ''}` + _renderNote(_mL), data: { count: r.count, layerId: r.layerId } };
+      return { observation: `合并后得到 ${r.count} 个面，总面积 ${total.toFixed(1)} 平方公里，已生成图层「${r.layerName}」${_mL ? '（' + feats.length + ' 个面）' : ''}` + _renderNote(_mL), data: { count: r.count, layerId: r.layerId } };
     } catch (e) { return _ERR('merge', e); }
   },
 
@@ -1082,7 +1082,7 @@ export const TOOLS = {
         pre_filter: normPreFilter(params.pre_filter), as: params.as });
       const _aggTxt = r.aggregated ? `，圈内 ${r.pointCount} 点·极性 ${Number(r.polarityIndex).toFixed(2)}` : '';
       const _bL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // 名=对象+半径（如「滨江公园·500m」·模块 C6 沿用；_ui 显式 kind:'emotion'·§4.3）
-      return { observation: `缓冲区 radius=${r.radiusM}m，得 ${r.featureCount} 个面（约 ${Number(r.areaKm2).toFixed(2)} km²）${_aggTxt} → 已生成图层「${r.layerName}」` + _renderNote(_bL), data: { radius_m: r.radiusM, layerId: r.layerId, aggregated: r.aggregated } };
+      return { observation: `已生成 ${r.radiusM} 米缓冲区，覆盖 ${r.featureCount} 个设施范围（约 ${Number(r.areaKm2).toFixed(2)} 平方公里）${_aggTxt}，生成图层「${r.layerName}」` + _renderNote(_bL), data: { radius_m: r.radiusM, layerId: r.layerId, aggregated: r.aggregated } };
     } catch (e) { return _ERR('buffer', e); }
   },
 
@@ -1097,7 +1097,7 @@ export const TOOLS = {
       const feats = (r.fc && r.fc.features) || [];
       const total = r.totalAreaKm2 != null ? r.totalAreaKm2 : feats.reduce((a, f) => a + (Number((f.properties || {}).area_km2) || 0), 0);
       const _oL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // 名=操作语义+两源（如「交·商业用地与西陵区」·模块 C6 沿用）
-      return { observation: `叠置(${r.how}) 得 ${r.count} 个面，总面积 ${total.toFixed(1)} km² → 已生成图层「${r.layerName}」${_oL ? '(' + feats.length + '面)' : ''}${r.message ? '（' + r.message + '）' : ''}` + _renderNote(_oL), data: { count: r.count, layerId: r.layerId } };
+      return { observation: `叠置分析完成，得到 ${r.count} 个面，总面积 ${total.toFixed(1)} 平方公里，已生成图层「${r.layerName}」${_oL ? '（' + feats.length + ' 个面）' : ''}${r.message ? '（' + r.message + '）' : ''}` + _renderNote(_oL), data: { count: r.count, layerId: r.layerId } };
     } catch (e) { return _ERR('overlay', e); }
   },
 
