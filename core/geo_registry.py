@@ -161,20 +161,22 @@ def resolve_boundary(boundary) -> gpd.GeoDataFrame:
             raise ValueError(f'边界 preset {boundary} 无 features')
         polys = gpd.GeoDataFrame.from_features(feats, crs='EPSG:4326')
         # 规范名称列（manifest nameField → name），供 zonal_stats 输出可读单元名
+        # CB-05 ROOTCAUSE 方案 B：改 rename→copy（原始列保留 + name 副本·治字段名断裂）
         nf = loaded.get('nameField')
         if nf and nf in polys.columns and 'name' not in polys.columns:
-            polys = polys.rename(columns={nf: 'name'})
+            polys['name'] = polys[nf]   # 副本（不删原始列·下游 MC/name 都能用）
         return polys
     if isinstance(boundary, dict):
         feats = boundary.get('features') if isinstance(boundary, dict) else None
         if not feats:
             raise ValueError('boundary GeoJSON 无 features')
         polys = gpd.GeoDataFrame.from_features(feats, crs='EPSG:4326')
-        # P1 send-in GeoJSON nameField 推断：find_boundary_name_column 找名称列→重命名 name（与 preset 路径一致）
+        # P1 send-in GeoJSON nameField 推断：find_boundary_name_column 找名称列→加 name 副本
+        # CB-05 ROOTCAUSE 方案 B：改 rename→copy（原始列如 MC 保留·_apply_attr_filter 仍能引用）
         if 'name' not in polys.columns:
             nf = find_boundary_name_column(polys.columns)
             if nf:
-                polys = polys.rename(columns={nf: 'name'})
+                polys['name'] = polys[nf]   # 副本（不删原始列·治字段名断裂）
         return polys
     raise TypeError(f'boundary 需为 preset_id(str) 或 GeoJSON(dict)，收到 {type(boundary)}')
 
