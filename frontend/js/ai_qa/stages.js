@@ -3,7 +3,7 @@
 //      / finalStep（草稿 markdown）/ deliberateStep（Pro 研判·执行前）。
 // ctx.model = 'pro' | 'flash'（思考深度开关，后端别名解析到 V4 真实 ID）。
 // CB-09 D022：删旧 reviewStep/reviseStep（LLM 审查+重写 5-15s·假阳性高）→ 质量防线移至 harness.applyQualityDefense（代码·不调 LLM·<20ms）。
-import { streamChat } from './api.js';
+import { streamChat, streamFcDiagnose } from './api.js';
 
 /** 入参别名规整：模型常把 invert 写成 inverse、as 写成 output_layer、radius_m 写成 radius，
  *  导致执行报错→空转→退化为叙述。此处统一规整为各工具的规范入参名，模型怎么写都能执行。
@@ -292,39 +292,21 @@ const _TOOL_TO_SKILL = { zonal_stats: 'zonal', compare_regions: 'compare' };
 
 export async function fcDiagnoseStep(ctx, hooks) {
   const messages = [...(ctx.history || []), { role: 'user', content: ctx.question }];
-  if (hooks.onReason) hooks.onReason('Function Calling 诊断中…', 0);
-  // 5a/5b：AbortController + 20s timeout（FC 非流式·治用户取消 + 挂起·CB-05 H11 注释更新）
+  if (hooks.onReason) hooks.onReason('诊断中…', 0);   // Hotfix R2 S7：触发 reason 区·FC reason 流式填充
+  // AbortController 用户取消联动；超时由 streamFcDiagnose 内部管（12s·含 reason 生成·略宽于旧 9s 非流式）
   const _ac = new AbortController();
-  const _timer = setTimeout(() => _ac.abort(new Error('FC 单轮超时(9s)')), 9000);   // WS1 F1.5：9s（FC 正常 2.7s·实测 3-6s·9s 留余量；原 20s 致降级链 70s+）
+  const _timer = setTimeout(() => _ac.abort(new Error('FC 单轮超时(12s)')), 12000);
   // 用户取消信号联动
   if (ctx.signal) {
     if (ctx.signal.aborted) _ac.abort();
     else ctx.signal.addEventListener('abort', () => _ac.abort(), { once: true });
   }
   try {
-    const resp = await fetch('/api/v1/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        phase: 'fc_diagnose',
-        messages,
-        context: ctx.context || '',
-      }),
-      signal: _ac.signal,   // 5a：用户可取消
-    });
-    if (!resp.ok) {
-      const errBody = await resp.text().catch(() => '');
-      console.warn('[FC] HTTP', resp.status, errBody.slice(0, 200));
-      return { degraded: true, _fc: true, _fcError: `HTTP ${resp.status}` };
-    }
-    const data = await resp.json();
-    // 5c：更新用量统计（FC 不走 streamChat·手动更新）
+    // Hotfix R2 S7：FC 流式——streamFcDiagnose 消费 SSE·hooks.onReason 渐进显示诊断思考（不再"卡住"）
+    const data = await streamFcDiagnose(messages, ctx.context || '', hooks.onReason, { signal: _ac.signal, timeout: 12000 });
+    // 5c：更新用量统计
     if (data.usage && typeof window !== 'undefined') {
       try { window._emcLastUsage = data.usage; } catch (_) { /* 观测·失败不阻塞 */ }
-    }
-    if (data.error) {
-      console.warn('[FC] error:', data.error);
-      return { degraded: true, _fc: true, _fcError: data.error };
     }
     const tc = data.tool_calls && data.tool_calls[0];
     if (!tc || !tc.function) {

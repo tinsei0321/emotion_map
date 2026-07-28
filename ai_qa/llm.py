@@ -193,6 +193,72 @@ class LLMClient:
         except Exception as e:
             raise LLMError(f'LLM function calling 异常: {e}') from e
 
+    def chat_with_tools_stream(self, messages: List[dict], tools: List[dict],
+                               tool_choice: str = 'auto', temperature: float = 0.4,
+                               max_tokens: int = 2000):
+        """DeepSeek V4 FC 流式（Hotfix R2 S7·诊断思考可见）。yield ('reason', tok) 渐进吐 reasoning_content；
+        末尾 yield ('done', {tool_calls, content, usage})——tool_call 由 delta 累积装配。
+        实测 V4 flash FC stream=True：17 reason delta（先）+ 11 tool_call delta（后）。"""
+        self._ensure_key()
+        url = f'{self.base_url}/chat/completions'
+        headers = {'Authorization': f'Bearer {self.api_key}', 'Content-Type': 'application/json'}
+        body = {'model': self.model, 'messages': messages, 'temperature': temperature,
+                'max_tokens': max_tokens, 'stream': True, 'stream_options': {'include_usage': True},
+                'tools': tools, 'tool_choice': tool_choice}
+        trace_log('MOD_LLM.F_005', f'chat_with_tools_stream tools={len(tools)} msgs={len(messages)}')
+        _tc_acc = {}   # index → {id,type,function:{name,arguments}}
+        _content = []
+        _usage = None
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                with client.stream('POST', url, headers=headers, json=body) as resp:
+                    if resp.status_code != 200:
+                        txt = resp.read().decode('utf-8', 'ignore')[:400]
+                        if resp.status_code == 401:
+                            raise LLMError(f'API Key 无效 (401)。检查 {DEFAULT_KEY_ENV}。', status_code=401)
+                        raise LLMError(f'LLM HTTP {resp.status_code}: {txt}', status_code=resp.status_code)
+                    for line in resp.iter_lines():
+                        if not line or not line.startswith('data:'):
+                            continue
+                        data = line[5:].strip()
+                        if data == '[DONE]':
+                            break
+                        try:
+                            obj = json.loads(data)
+                        except Exception:
+                            continue
+                        choice = (obj.get('choices') or [{}])[0]
+                        delta = choice.get('delta', {}) or {}
+                        rc = delta.get('reasoning_content')
+                        if rc:
+                            yield ('reason', rc)
+                        tcs = delta.get('tool_calls')
+                        if tcs:
+                            for tc in tcs:
+                                idx = tc.get('index', 0)
+                                slot = _tc_acc.setdefault(idx, {'id': '', 'type': 'function', 'function': {'name': '', 'arguments': ''}})
+                                if tc.get('id'):
+                                    slot['id'] = tc['id']
+                                fn = tc.get('function') or {}
+                                if fn.get('name'):
+                                    slot['function']['name'] += fn['name']
+                                if fn.get('arguments'):
+                                    slot['function']['arguments'] += fn['arguments']
+                        ct = delta.get('content')
+                        if ct:
+                            _content.append(ct)
+                        u = obj.get('usage')
+                        if u:
+                            _usage = u
+            tool_calls = [_tc_acc[i] for i in sorted(_tc_acc)] or None
+            yield ('done', {'tool_calls': tool_calls, 'content': ''.join(_content) or None, 'usage': _usage})
+        except httpx.HTTPError as e:
+            raise LLMError(f'LLM 网络错误: {e}') from e
+        except LLMError:
+            raise
+        except Exception as e:
+            raise LLMError(f'LLM FC stream 异常: {e}') from e
+
 
 register_track_id("MOD_LLM.F_001", "LLM chat/completions（流式 SSE，provider-agnostic，V4）")
 register_track_id("MOD_LLM.F_003", "LLM chat_with_tools（function calling，非流式，v2 改良混合·CB-05 CR1 修：从 F_002 改避碰撞）")
@@ -322,8 +388,37 @@ def chat_with_tools_fallback(messages, tools, tier: str = 'flash', **kwargs) -> 
     raise last_err or LLMError('FC 所有 provider 均失败')
 
 
+def chat_with_tools_stream_fallback(messages, tools, tier: str = 'flash', **kwargs):
+    """FC 流式 + provider fallback（Hotfix R2 S7）。yield ('reason', tok) 渐进 + 末 ('done', result)。
+    韧性：pre-stream 失败（未 yield）→ 换家重试；mid-stream 失败（已 yield reason）→ 抛出交上层降级
+    （换家会重复吐 reason + 混乱）。FC 短（2-3s）·pre-stream fallback 可接受。"""
+    providers = _resolve_providers(tier)
+    if not providers:
+        raise LLMError('无可用 LLM provider（FC 流式）。')
+    last_err = None
+    for prov in providers:
+        model = prov.model_flash if tier == 'flash' else prov.model_pro
+        cli = LLMClient(base_url=prov.base_url, model=model, api_key=prov.api_key)
+        gen = cli.chat_with_tools_stream(messages, tools, **kwargs)
+        committed = False
+        try:
+            for item in gen:
+                committed = True   # 已开始产出（至少一个 reason/done）→ 之后失败不换家
+                yield item
+            return   # 成功跑完 done
+        except LLMError as e:
+            last_err = e
+            if committed:
+                raise   # mid-stream 失败→交上层降级（已吐 reason·不重复）
+            trace_warn('MOD_LLM.D_004', f'FC stream pre-stream fallback provider={prov.name}: {e}')
+            continue   # pre-stream 失败→换家
+    raise last_err or LLMError('FC 流式所有 provider 均失败')
+
+
 register_track_id("MOD_LLM.F_002", "chat_with_fallback（retry+fallback 编排，主链路+审查共用）")
 register_track_id("MOD_LLM.F_004", "chat_with_tools_fallback（FC provider fallback·v3 C1·CB-05 CR1 新 ID 避碰撞）")
+register_track_id("MOD_LLM.F_005", "LLMClient.chat_with_tools_stream（FC 流式·诊断思考可见·Hotfix R2 S7）")
+register_track_id("MOD_LLM.F_006", "chat_with_tools_stream_fallback（FC 流式 provider 韧性·Hotfix R2 S7）")
 register_track_id("MOD_LLM.D_001", "LLM retry 触发（pre-stream 失败，退避后重拨）")
 register_track_id("MOD_LLM.D_002", "LLM fallback 切换 provider（重试耗尽或 4xx）")
 register_track_id("MOD_LLM.D_003", "LLM 流中途失败（不重试不换家，交上层降级）")

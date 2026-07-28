@@ -30,7 +30,7 @@ async def chat_route(req: ChatRequest):
     # ═══ v2/v3 function calling diagnose（5.243·D041·v3 C1/C2/C3 修复）═══
     # 非流式 JSON 响应——FC 2-3s 一次返完整 tool_calls + plans[]
     if req.phase == 'fc_diagnose':
-        from ai_qa.tool_contracts import contracts_to_tools_schema
+        from ai_qa.tool_contracts import contracts_to_tools_schema, validate_tool_call
         tools = contracts_to_tools_schema()
         _q = (req.messages or [{}])[-1].get('content', '') if req.messages else ''
         # v3 C2：system prompt 含「数据×工具兼容性」提示（让 LLM 避开数据不支撑的工具）
@@ -72,31 +72,39 @@ async def chat_route(req: ChatRequest):
             f'## 数据上下文\n{req.context or "（无数据上下文）"}\n'
         )
         messages = [{'role': 'system', 'content': sys_content}] + list(req.messages or [])
-        try:
-            # v3 C1 修复：走 provider fallback（DeepSeek→Ark→讯飞·非单点 LLMClient）
-            result = chat_with_tools_fallback(messages, tools, tier='flash')
-            # v3 H6 修复：后端调 validate_tool_call（D062·strict 不强制→代码兜底）·前端信赖后端不重复校验
-            from ai_qa.tool_contracts import validate_tool_call
-            tc = (result.get('tool_calls') or [{}])[0]
-            if tc and tc.get('function'):
-                import json as _json
-                _args = _json.loads(tc['function'].get('arguments', '{}'))
-                _v = validate_tool_call(tc['function']['name'], _args)
-                if _v['fixes']:
-                    tc['function']['arguments'] = _json.dumps(_v['params'], ensure_ascii=False)
-                    result.setdefault('_fc_fixes', _v['fixes'])   # 供前端日志
-            return JSONResponse({
-                'tool_calls': result.get('tool_calls'),
-                'plans': result.get('content'),
-                'usage': result.get('usage'),
-                'fixes': result.get('_fc_fixes', []),   # v3.1 BR2：传回参数修正日志（供前端可观测）
-            })
-        except LLMError as e:
-            return JSONResponse({'error': str(e), 'tool_calls': None, 'plans': None}, status_code=502)
-        except (KeyboardInterrupt, SystemExit):
-            raise   # CB-05 CR2：不吞系统退出信号
-        except Exception as e:
-            return JSONResponse({'error': f'FC 诊断失败: {e}', 'tool_calls': None, 'plans': None}, status_code=502)
+        # Hotfix R2 S7：FC 流式（SSE）——诊断思考渐进可见（yield reason → 前端 onReason 实时渲染）。
+        # 替代旧 JSONResponse（非流式·用户感"卡住"）。实测 V4 flash FC stream 吐 17 reason + 11 tool_call delta。
+        import json as _json
+        from ai_qa.llm import chat_with_tools_stream_fallback
+
+        def _fc_gen():
+            try:
+                for kind, tok in chat_with_tools_stream_fallback(messages, tools, tier='flash'):
+                    if kind == 'reason':
+                        yield f'data: {_json.dumps({"reason": tok}, ensure_ascii=False)}\n\n'   # 渐进思考
+                    elif kind == 'done':
+                        result = tok
+                        tc = (result.get('tool_calls') or [{}])[0]
+                        _fixes = []
+                        if tc and tc.get('function'):   # v3 H6：后端 validate_tool_call 兜底（D062）
+                            try:
+                                _args = _json.loads(tc['function'].get('arguments', '{}'))
+                                _v = validate_tool_call(tc['function']['name'], _args)
+                                if _v['fixes']:
+                                    tc['function']['arguments'] = _json.dumps(_v['params'], ensure_ascii=False)
+                                    _fixes = _v['fixes']
+                            except Exception:
+                                pass   # validate 失败不阻塞·tool_call 原样回
+                        yield f'data: {_json.dumps({"tool_calls": result.get("tool_calls"), "plans": result.get("content"), "usage": result.get("usage"), "fixes": _fixes}, ensure_ascii=False)}\n\n'
+                yield 'data: [DONE]\n\n'
+            except LLMError as e:
+                yield f'data: {_json.dumps({"error": str(e)}, ensure_ascii=False)}\n\n'
+            except (KeyboardInterrupt, SystemExit):
+                raise   # CB-05 CR2：不吞系统退出信号
+            except Exception as e:
+                yield f'data: {_json.dumps({"error": f"FC 诊断失败: {e}"}, ensure_ascii=False)}\n\n'
+
+        return StreamingResponse(_fc_gen(), media_type='text/event-stream')
 
     # ═══ 旧 SSE phases（diagnose/agent_step/answer/optimize）═══
     # CB-09 D022：删旧 review/revise 阶段（LLM 审查+重写）→ 前端 harness.applyQualityDefense 代码防线取代。

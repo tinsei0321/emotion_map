@@ -78,3 +78,45 @@ export async function streamChat(messages, context, onToken, onError, opts = {})
     clearTimeout(_timer);   // CB-06 P0-B：流式结束/出错/超时 都清 timer
   }
 }
+
+/** Hotfix R2 S7：FC 流式诊断——消费 /chat phase=fc_diagnose 的 SSE。
+ *  onReason 回调渐进显示诊断思考（reasoning_content）·末尾 resolve {tool_calls, plans, usage, fixes}。
+ *  替代旧 fcDiagnoseStep 的 fetch+json（非流式·用户感"卡住"）。 */
+export async function streamFcDiagnose(messages, context, onReason, opts = {}) {
+  const body = { phase: 'fc_diagnose', messages, context };
+  const _timeout = opts.timeout || 12000;   // 流式 FC（含 reason 生成）略宽于旧 9s 非流式
+  const _ac = new AbortController();
+  const _timer = setTimeout(() => _ac.abort(new Error(`FC 超时(${_timeout / 1000}s)`)), _timeout);
+  if (opts.signal) {
+    if (opts.signal.aborted) { clearTimeout(_timer); _ac.abort(opts.signal.reason); }
+    else opts.signal.addEventListener('abort', () => { clearTimeout(_timer); _ac.abort(opts.signal.reason); }, { once: true });
+  }
+  try {
+    const r = await fetch(`${BASE}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: _ac.signal });
+    if (!r.ok) { let d = `FC HTTP ${r.status}`; try { const j = await r.json(); d = j.detail || d; } catch (_) {} throw new Error(d); }
+    const reader = r.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    let result = null;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n\n')) >= 0) {
+        const chunk = buf.slice(0, i);
+        buf = buf.slice(i + 2);
+        const line = chunk.split('\n').find((l) => l.startsWith('data:'));
+        if (!line) continue;
+        const data = line.slice(5).trim();
+        if (data === '[DONE]') return result || {};
+        let obj;
+        try { obj = JSON.parse(data); } catch (_) { continue; }   // malformed·skip
+        if (obj.error) throw new Error(obj.error);
+        if (obj.reason && onReason) onReason(obj.reason.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ''), 0);   // 渐进诊断思考
+        if (obj.tool_calls !== undefined || obj.plans !== undefined || obj.usage !== undefined) result = obj;   // 最终结果
+      }
+    }
+    return result || {};
+  } finally { clearTimeout(_timer); }
+}
