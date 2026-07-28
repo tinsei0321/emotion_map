@@ -414,8 +414,6 @@ function _deriveDomainLens(question, fcContent) {
   }
   return hits.length ? hits : ['urban_renewal'];   // 默认 urban_renewal（情绪分析主场景）
 }
-  };
-}
 
 /** v2 plans[] 容错解析（D067）：JSON.parse + 字段校验·解析失败=空 plans·不崩溃。 */
 function _parsePlans(content) {
