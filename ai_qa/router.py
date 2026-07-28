@@ -77,6 +77,7 @@ async def chat_route(req: ChatRequest):
                 'tool_calls': result.get('tool_calls'),
                 'plans': result.get('content'),
                 'usage': result.get('usage'),
+                'fixes': result.get('_fc_fixes', []),   # v3.1 BR2：传回参数修正日志（供前端可观测）
             })
         except LLMError as e:
             return JSONResponse({'error': str(e), 'tool_calls': None, 'plans': None}, status_code=502)

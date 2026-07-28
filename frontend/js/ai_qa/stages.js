@@ -365,7 +365,7 @@ function _normalizeFcDiagnose(skillName, params, plans, toolName, question, laye
   const _EMOTION_TOOLS = new Set(['zonal_stats', 'rank', 'density', 'hotspot']);
   const intent = _EMOTION_TOOLS.has(toolName) ? 'emotion_analysis' : 'gis_operation';
   // v3 C2：执行前 data gate——工具需点层但无点层 → request_upload（非硬跑失败·治 5.242 回归）
-  const _NEEDS_POINT = /^(density|hotspot|rank|clip|buffer|nearest)$/.test(toolName);
+  const _NEEDS_POINT = /^(density|hotspot|rank|zonal_stats|clip|buffer|nearest)$/.test(toolName);   // v3.1 P1-1：补 zonal_stats（SCAN 发现·需点层聚合）
   const _noPoint = layerMeta && layerMeta.has_point === false;
   const _strategy = (_NEEDS_POINT && _noPoint) ? 'request_upload' : 'ready';
   // v3 C3：domain_lens A+B 混合
@@ -412,14 +412,16 @@ function _deriveDomainLens(question, fcContent) {
   for (const [domain, kws] of Object.entries(_DK)) {
     if (kws.some((kw) => question.includes(kw))) { hits.push(domain); break; }   // 取首个命中·最多 1 个
   }
-  return hits.length ? hits : ['urban_renewal'];   // 默认 urban_renewal（情绪分析主场景）
+  return hits.length ? hits : [];   // v3.1 P2-4：不硬填默认（空更诚实·下游处理空 domain_lens）
 }
 
 /** v2 plans[] 容错解析（D067）：JSON.parse + 字段校验·解析失败=空 plans·不崩溃。 */
 function _parsePlans(content) {
   if (!content) return [];
+  // v3.1 BR3：strip [domain_lens:xxx] 前缀（router system prompt 指令 LLM 在 content 开头产出·治 plans JSON 解析失败）
+  const _clean = String(content).replace(/\[domain_lens:[\w]+\]\s*/g, '').trim();
   try {
-    const parsed = JSON.parse(content);
+    const parsed = JSON.parse(_clean);
     const arr = Array.isArray(parsed) ? parsed : (parsed.plans || []);
     if (!Array.isArray(arr)) return [];
     return arr.filter((p) => p && typeof p.rank === 'number' && p.tool).map((p) => ({

@@ -4,7 +4,7 @@
 // 前置：DIAGNOSE 问题理解卡（认知层）→ 注入 ctx.context 导工具选型 + 结论颗粒度；硬缺口短路请求上传。
 // 降级：agent_step 解析失败不再裸显 raw，break loop 仍走 finalStep 出一次性 answer。
 import * as stages from './stages.js';
-import { TOOLS, setToolContext, formatRegistry, deriveAvailable, resetStepResults, resolveCoref } from './tools.js';
+import { TOOLS, setToolContext, formatRegistry, getArtifacts, deriveAvailable, resetStepResults, resolveCoref } from './tools.js';
 import { getLayers } from '../state.js';
 
 const MAX_ROUNDS_GIS = 6;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=6（保多目标完整性，如"西陵+伍家岗居住+商业"需多步）
@@ -236,7 +236,7 @@ function applyQualityDefense(draft, opts) {
   const fixes = [];
   let degrade = false;
   const _isNonEmpty = (s) => String(s).replace(/[#\s\-*`>]/g, '').length;
-  const reg = (typeof formatRegistry === 'function' ? formatRegistry() : []) || [];
+  const reg = (typeof getArtifacts === 'function' ? getArtifacts() : []) || [];   // v3.1 P0：formatRegistry() 返字符串·getArtifacts() 返数组（治 reg.filter 崩溃）
   const realLayers = reg.filter((r) => r.tool && r.tool !== 'query_layers').map((r) => r.name).filter(Boolean);
 
   // CB-09 D020 追问胶囊：先剥离 {{capsule:...}} 标记 → cleanDraft（下游 R1-R7 跑净文本）·capsules 待 R5/R6/R8 校验
@@ -391,7 +391,7 @@ function _needsDeliberate(diagnose) {
 
 /** CB-07 Layer 3：finalStep 超时/网络错的零 LLM 降级结论（基于 formatRegistry + toolHistory·治"图出但请求失败"矛盾）。 */
 function _composeDegradedConclusion(toolHistoryText) {
-  const _reg = (typeof formatRegistry === 'function' ? formatRegistry() : []) || [];
+  const _reg = (typeof getArtifacts === 'function' ? getArtifacts() : []) || [];   // v3.1 P0：同上·getArtifacts() 返数组
   const _layers = _reg.filter((r) => r.tool && r.tool !== 'query_layers').map((r) => `{{show:${r.name}}}`).join('\n');
   const _lastObs = (toolHistoryText || '').split('\n').filter((l) => /已生成|产出|单元|点|层/.test(l)).slice(-1)[0] || '';
   return [
