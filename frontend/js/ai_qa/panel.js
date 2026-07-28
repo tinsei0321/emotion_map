@@ -1084,7 +1084,7 @@ function appendAssistantShell(trace) {
   el.innerHTML = `<div class="chat-bubble">
     <div class="aiq-collapsed-stub" hidden><span class="aiq-collapse-chev">▸</span><span class="aiq-collapse-excerpt"></span></div>
     <div class="aiq-card aiq-card-diagnose" hidden></div>
-    <div class="aiq-reason ${isFlash ? 'is-flash' : ''}" ${hasReason ? '' : 'hidden'}><div class="aiq-reason-head"><span class="aiq-reason-title">${isFlash ? 'Flash · 直接作答' : 'Thinking…'}</span><span class="aiq-reason-meta"></span></div><div class="aiq-reason-body"></div></div>
+    <div class="aiq-reason" ${hasReason ? '' : 'hidden'}><div class="aiq-reason-head"><span class="aiq-reason-title">Thinking…</span><span class="aiq-reason-meta"></span></div><div class="aiq-reason-body"></div></div>
     <div class="aiq-steps" ${trace && trace.steps && trace.steps.length ? '' : 'hidden'}><div class="aiq-steps-head">工具调用（Agent Loop）</div></div>
     <div class="aiq-review" hidden><div class="aiq-review-head">审查</div><div class="aiq-review-body"></div></div>
     <div class="aiq-step aiq-step-final"><span class="aiq-step-tag">结论</span><div class="aiq-answer"><span class="aiq-answer-stream"></span><span class="chat-cursor" hidden>▍</span></div></div>
