@@ -128,7 +128,11 @@ def _norm_where(w):
         parts = [s.strip() for s in w.replace('|', '/').split('/') if s.strip()]
         if len(parts) < 3:
             raise ValueError(f'where 需 field/op/value（如 MC/eq/西陵区），收到: {w}')
-        return {'field': parts[0], 'op': parts[1], 'value': '/'.join(parts[2:])}
+        out = {'field': parts[0], 'op': parts[1], 'value': '/'.join(parts[2:])}
+        # Hotfix R3 M1：op='in' + value 含逗号 → 拆 list（支持 "MC/in/西陵区,伍家岗区" 多要素一次提取）
+        if out['op'] == 'in' and isinstance(out['value'], str) and ',' in out['value']:
+            out['value'] = [v.strip() for v in out['value'].split(',') if v.strip()]
+        return out
     raise ValueError(f'where 需 dict 或 "field/op/value" 字符串，收到 {type(w)}')
 
 
