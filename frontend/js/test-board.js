@@ -84,7 +84,7 @@ function _openSetupDialog(prefill) {
     + `<div class="tb-slider-row"><input type="range" id="tb-limit" min="0" max="100" step="5" value="${lim}"><span id="tb-limit-val" class="tb-limit-val">${lim}</span><span class="tb-limit-hint">（0=全部）</span></div></div>`;
   html += `<div class="tb-section"><div class="tb-section-label">超时</div>`
     + `<label><input type="number" id="tb-timeout" value="${prefill?.timeout||0}" min="0" style="width:50px"> 分钟 (0=不限)</label></div>`;
-  html += '<div class="tb-section"><button id="tb-dialog-start" class="tb-btn">开始测试</button></div>';
+  html += '<div class="tb-section"><button id="tb-dialog-start" class="tb-btn">开始测试</button> <button id="tb-dialog-dash" class="tb-btn tb-export" style="margin-left:8px">仪表盘</button></div>';
   dialog.innerHTML = html;
   overlay.appendChild(dialog);
   document.body.appendChild(overlay);
@@ -104,6 +104,7 @@ function _openSetupDialog(prefill) {
     overlay.remove();
     _startTests({ mode, cats: allCats ? [] : cats, limit, timeout });
   });
+  dialog.querySelector('#tb-dialog-dash').addEventListener('click', () => { overlay.remove(); _openDashboard(); });
 }
 
 // ── 抽屉 ──
@@ -130,6 +131,14 @@ function _showTab(name) {
   if (runPane) runPane.hidden = !isRun;
   if (dashPane) dashPane.hidden = isRun;
   if (!isRun) _renderDashboard();
+}
+
+function _openDashboard() {
+  // 不跑测试也能看仪表盘（配置弹窗「仪表盘」按钮 / 直接开抽屉 dash tab）
+  const drawer = document.getElementById('tb-drawer');
+  if (!drawer) return;
+  drawer.hidden = false;
+  _showTab('dash');
 }
 
 async function _renderDashboard() {
