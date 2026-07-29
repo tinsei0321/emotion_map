@@ -43,6 +43,7 @@ last_repro: 2026-07-29
 |------|------|------|
 | — | 待修复 | — |
 | 2026-07-29 | P0-4: harness.js 3 处 finalStep context 注入 newLayerCount 执行摘要（成功产出N层 / 未产出·禁编造） | 31e2a00 |
+| 2026-07-29 | P0-4 v2 治本：① tools.js 五工具观测诚实化（count=0 不说"已生成"）② harness.js 零图层跳过 LLM finalStep ③ 正则 {2,20}→{3,20} 防断词 | 8e5e76f |
 
 ---
 
