@@ -880,7 +880,7 @@ export async function orchestrate(ctx, hooks = {}) {
       const _result = await runTemplatePath(ctx, hooks, diagnose);
       // 代码自动扩展：检测多目标空间裁剪模式 → 生成剩余 overlay 步骤
       if (_result && _result.exit === 'result' && !_result.degraded && _result.newLayerCount > 0) {
-        const _expanded = _autoExpandOverlays(ctx, diagnose, _result);
+        const _expanded = _autoExpandOverlays(ctx, hooks, diagnose, _result);
         if (_expanded) return _expanded;
       }
       return _result;
@@ -1127,7 +1127,7 @@ export async function orchestrate(ctx, hooks = {}) {
 }
 
 /** CB-09 代码自动扩展：检测"X区内Y1+Y2+Y3"模式 → 生成 overlay 步骤。 */
-async function _autoExpandOverlays(ctx, diagnose, firstResult) {
+async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
   const q = ctx.question || '';
   const _LANDUSE = ['商业', '居住', '公园', '绿地', '工业', '广场', '办公', '教育', '医疗', '用地'];
   const _mentioned = _LANDUSE.filter((kw) => q.includes(kw));
