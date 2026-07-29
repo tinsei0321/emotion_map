@@ -3,6 +3,7 @@ id: B005
 title: '多步操作链 — 只做一半停下（部分新）'
 type: BUG
 severity: CRIT
+priority: P0
 status: open
 module: 工具调用
 source: 用户实测

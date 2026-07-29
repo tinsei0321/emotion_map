@@ -3,6 +3,7 @@ id: B004
 title: 'finalStep 假结论 — 筛选点图层"只说不做"（复现）'
 type: BUG
 severity: CRIT
+priority: P0
 status: open
 module: finalStep
 source: 用户实测

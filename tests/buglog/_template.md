@@ -18,6 +18,7 @@ id: B000
 title: 一句话标题（现象 + 触发点）
 type: BUG            # BUG | DEGRAD（降智/错答）| PERF | UI
 severity: HIGH        # CRIT | HIGH | MED | LOW
+priority: ''          # P0 | P1 | P2（CB 评估优先级·无则留空）
 status: open         # open | resolved
 module: 数据识别       # 数据识别 | 工具调用 | finalStep | FC诊断 | UI
 source: 用户实测      # 用户实测 | CB诊断 | 飞轮发现

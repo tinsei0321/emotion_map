@@ -3,6 +3,7 @@ id: B008
 title: '网格聚合 2D/3D 视角未解耦（新发现）'
 type: UI
 severity: MED
+priority: P2
 status: open
 module: UI
 source: 用户实测

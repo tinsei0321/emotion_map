@@ -3,6 +3,7 @@ id: B007
 title: '图层类型混乱 — 声称面层实际产出点层（部分新）'
 type: BUG
 severity: HIGH
+priority: P1
 status: open
 module: 工具调用
 source: 用户实测

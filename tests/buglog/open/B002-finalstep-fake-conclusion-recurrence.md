@@ -3,6 +3,7 @@ id: B002
 title: 'finalStep 假结论 — "只说不做/只做一半"（复现）'
 type: BUG
 severity: CRIT
+priority: P0
 status: open
 module: finalStep
 source: 用户实测
