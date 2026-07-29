@@ -110,12 +110,99 @@ function _openSetupDialog(prefill) {
 function _createDrawer() {
   const d = _el('div', 'tb-drawer'); d.hidden = true; d.id = 'tb-drawer';
   d.innerHTML = '<div class="tb-head"><span class="tb-title">测试飞轮</span><span id="tb-stats-text" class="tb-stats-inline">—</span><button class="tb-close">x</button></div>'
-    + '<div class="tb-toolbar"><button id="tb-action" class="tb-btn tb-stop" hidden>停止</button><button id="tb-report" class="tb-btn tb-export" hidden>存报告</button></div>'
-    + '<div class="tb-list" id="tb-list"></div>';
+    + '<div class="tb-tabs"><button class="tb-tab active" data-tab="run">运行</button><button class="tb-tab" data-tab="dash">仪表盘</button><button class="tb-tab-refresh" title="刷新仪表盘">[R]</button></div>'
+    + '<div class="tb-pane" id="tb-pane-run"><div class="tb-toolbar"><button id="tb-action" class="tb-btn tb-stop" hidden>停止</button><button id="tb-report" class="tb-btn tb-export" hidden>存报告</button></div><div class="tb-list" id="tb-list"></div></div>'
+    + '<div class="tb-pane tb-dashboard" id="tb-pane-dash" hidden></div>';
   document.body.appendChild(d);
   d.querySelector('.tb-close').addEventListener('click', () => d.hidden = true);
   d.querySelector('#tb-report').addEventListener('click', () => _saveReport('manual'));
+  d.querySelectorAll('.tb-tab').forEach(b => b.addEventListener('click', () => _showTab(b.dataset.tab)));
+  d.querySelector('.tb-tab-refresh').addEventListener('click', () => _renderDashboard());
   return d;
+}
+
+// ── 仪表盘 tab（P2·复用 EMC-SUM + buglog·复用既有色 #0F6E56/#D85A30·ASCII）──
+function _showTab(name) {
+  document.querySelectorAll('.tb-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  const isRun = name === 'run';
+  const runPane = document.getElementById('tb-pane-run');
+  const dashPane = document.getElementById('tb-pane-dash');
+  if (runPane) runPane.hidden = !isRun;
+  if (dashPane) dashPane.hidden = isRun;
+  if (!isRun) _renderDashboard();
+}
+
+async function _renderDashboard() {
+  const box = document.getElementById('tb-pane-dash');
+  if (!box) return;
+  box.innerHTML = '<div class="tb-dash-loading">加载中…</div>';
+  try {
+    const [reports, bug] = await Promise.all([
+      fetch('/_test/reports').then((r) => r.json()),
+      fetch('/_test/buglog').then((r) => r.json()),
+    ]);
+    _renderDashHTML(box, reports, bug);
+  } catch (e) {
+    box.innerHTML = '<div class="tb-dash-error">仪表盘数据加载失败（需走 serve.py，勿 file://）：' + (e && e.message || e) + '</div>';
+  }
+}
+
+const _SEV_TAG = { CRIT: '[CRIT]', HIGH: '[HIGH]', MED: '[MED]', LOW: '[LOW]' };
+const _TYPE_TAG = { BUG: '[BUG]', DEGRAD: '[DEGRAD]', PERF: '[PERF]', UI: '[UI]' };
+
+function _kpi(label, value, cls) {
+  return '<div class="tb-kpi ' + (cls || '') + '"><div class="tb-kpi-v">' + value + '</div><div class="tb-kpi-l">' + label + '</div></div>';
+}
+
+function _renderDashHTML(box, reports, bug) {
+  const latest = reports && reports[0];
+  const repN = reports ? reports.length : 0;
+  const openN = bug ? bug.open : 0;
+  let html = '<div class="tb-kpi-row">'
+    + _kpi('通过率', latest ? (latest.pct + '%') : '—', latest ? (latest.pct >= 80 ? 'tb-kpi-good' : 'tb-kpi-bad') : '')
+    + _kpi('p50 耗时', latest ? (latest.p50 + 's') : '—', '')
+    + _kpi('Bug 未解决', String(openN), openN ? 'tb-kpi-bad' : 'tb-kpi-good')
+    + _kpi('报告数', String(repN), '')
+    + '</div>';
+  // 最新报告
+  html += '<div class="tb-dash-section"><div class="tb-dash-h">最新报告</div>';
+  if (latest) {
+    html += '<div class="tb-dash-latest"><span class="tb-dash-name">' + latest.name + '</span>'
+      + '<span class="tb-dash-stat">' + latest.pass + '/' + latest.total + ' · ' + latest.pct + '% · p50 ' + latest.p50 + 's · ' + (latest.mode || '?') + '</span>';
+    if (latest.commit) html += '<span class="tb-dash-commit">build ' + latest.commit + '</span>';
+    html += '</div>';
+    if (latest.fails && latest.fails.length) html += '<div class="tb-dash-fails">失败：' + latest.fails.join(' · ') + '</div>';
+  } else {
+    html += '<div class="tb-dash-empty">暂无报告（跑一次飞轮即生成）</div>';
+  }
+  html += '</div>';
+  // 未解决清单
+  html += '<div class="tb-dash-section"><div class="tb-dash-h">未解决清单</div>';
+  if (bug && bug.openList && bug.openList.length) {
+    html += '<div class="tb-dash-list">';
+    for (const b of bug.openList) {
+      html += '<div class="tb-dash-item"><span class="tb-dash-id">' + b.id + '</span>'
+        + '<span class="tb-dash-tag">' + (_SEV_TAG[b.severity] || '') + ' ' + (_TYPE_TAG[b.type] || '') + '</span>'
+        + '<span class="tb-dash-title">' + (b.title || '') + '</span>'
+        + '<span class="tb-dash-mod">' + (b.module || '') + '</span></div>';
+    }
+    html += '</div>';
+  } else {
+    html += '<div class="tb-dash-empty">无未解决 bug</div>';
+  }
+  html += '</div>';
+  // 历史复发
+  if (bug && bug.recList && bug.recList.length) {
+    html += '<div class="tb-dash-section"><div class="tb-dash-h">历史复发（repro >= 2）</div><div class="tb-dash-list">';
+    for (const b of bug.recList) {
+      html += '<div class="tb-dash-item"><span class="tb-dash-id">' + b.id + '</span>'
+        + '<span class="tb-dash-repro">' + b.repro + '</span>'
+        + '<span class="tb-dash-title">' + (b.title || '') + '</span>'
+        + '<span class="tb-dash-mod">' + (b.module || '') + '</span></div>';
+    }
+    html += '</div></div>';
+  }
+  box.innerHTML = html;
 }
 
 // 主按钮状态机：停止 ↔ 重新开始（连贯多场景）
@@ -168,6 +255,7 @@ function _startTests(opts) {
   const fab = document.getElementById('tb-fab');
   fab.classList.add('tb-fab-running'); fab.textContent = '...';
   const drawer = document.getElementById('tb-drawer'); drawer.hidden = false;
+  _showTab('run');   // 启动测试切回运行 tab（避免停在仪表盘看不到运行列表）
   _setAction('stop');
   document.getElementById('tb-report').hidden = true;
   _populateList(cases);

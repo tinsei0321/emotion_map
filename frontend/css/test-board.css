@@ -97,3 +97,35 @@
 .tb-limit-val { font-weight: 700; color: var(--emc-accent, #D97757); min-width: 26px; text-align: center; font-size: 13px; }
 .tb-limit-hint { font-size: 10px; color: var(--geojson-color-text-tertiary, #707070); }
 .tb-restart { background: var(--geojson-color-gray-100, #2a2a2a); color: var(--emc-accent, #D97757); border: 1px solid var(--emc-accent, #D97757); }
+
+/* ═══ v5：飞轮仪表盘（tab·复用既有色 #0F6E56 通过 / #D85A30 失败·禁 emoji）═══ */
+.tb-tabs { display: flex; gap: 0; padding: 0 14px; border-bottom: 1px solid var(--emc-divider, rgba(255,255,255,0.08)); }
+.tb-tab { background: none; border: none; color: var(--geojson-color-text-tertiary, #707070); font-size: 12px; font-weight: 600; padding: 8px 12px; cursor: pointer; border-bottom: 2px solid transparent; }
+.tb-tab.active { color: var(--emc-accent, #D97757); border-bottom-color: var(--emc-accent, #D97757); }
+.tb-tab-refresh { background: none; border: none; color: var(--geojson-color-text-tertiary, #707070); font-size: 11px; padding: 8px 6px; cursor: pointer; margin-left: auto; }
+.tb-tab-refresh:hover { color: var(--emc-accent, #D97757); }
+.tb-pane { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.tb-pane[hidden] { display: none; }
+.tb-dashboard { overflow-y: auto; padding: 10px 14px; }
+.tb-dash-loading, .tb-dash-empty { font-size: 11px; color: var(--geojson-color-text-secondary, #999); padding: 8px 0; }
+.tb-dash-error { font-size: 11px; color: #D85A30; padding: 8px 0; line-height: 1.5; }
+.tb-kpi-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.tb-kpi { flex: 1; background: var(--geojson-color-gray-100, #2a2a2a); border-radius: 8px; padding: 8px 4px; text-align: center; }
+.tb-kpi-v { font-size: 17px; font-weight: 700; color: var(--geojson-color-text-primary, #ECECEC); line-height: 1.2; }
+.tb-kpi-l { font-size: 9px; color: var(--geojson-color-text-tertiary, #707070); margin-top: 3px; }
+.tb-kpi-good .tb-kpi-v { color: #0F6E56; }
+.tb-kpi-bad .tb-kpi-v { color: #D85A30; }
+.tb-dash-section { margin-bottom: 14px; }
+.tb-dash-h { font-size: 11px; font-weight: 700; color: var(--emc-accent, #D97757); margin-bottom: 5px; }
+.tb-dash-latest { font-size: 11px; display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.tb-dash-name { font-weight: 700; color: var(--geojson-color-text-primary, #ECECEC); }
+.tb-dash-stat { color: var(--geojson-color-text-secondary, #999); font-size: 10px; }
+.tb-dash-commit { font-size: 9px; color: var(--geojson-color-text-tertiary, #707070); }
+.tb-dash-fails { font-size: 10px; color: #D85A30; margin-top: 4px; word-break: break-all; line-height: 1.4; }
+.tb-dash-list { display: flex; flex-direction: column; gap: 0; }
+.tb-dash-item { display: flex; gap: 6px; align-items: baseline; font-size: 11px; padding: 4px 0; border-bottom: 1px solid rgba(128,128,128,0.06); }
+.tb-dash-id { font-weight: 700; color: var(--emc-accent, #D97757); min-width: 38px; font-size: 10px; }
+.tb-dash-tag { font-size: 9px; color: var(--geojson-color-text-tertiary, #707070); white-space: nowrap; }
+.tb-dash-title { flex: 1; color: var(--geojson-color-text-primary, #ECECEC); word-break: break-all; }
+.tb-dash-mod { font-size: 9px; color: var(--geojson-color-text-tertiary, #707070); white-space: nowrap; }
+.tb-dash-repro { font-size: 10px; font-weight: 700; color: #D85A30; min-width: 16px; text-align: center; }

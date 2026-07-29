@@ -144,6 +144,9 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         # /api/* → 反代后端（同源，消除浏览器跨域这一跳）
         if self.path.split('?')[0].startswith('/api/'):
             return self._proxy_api()
+        # /_test/reports | /_test/buglog → 飞轮仪表盘数据（dev-only·?test=1 抽屉读取）
+        if norm.startswith('/_test/reports') or norm.startswith('/_test/buglog'):
+            return self._serve_test_get(norm)
         # 拦截 index.html：注入 ?v=<mtime> 到本地 css/js 引用（绕浏览器缓存）
         norm = self.path.split('?')[0]
         if norm.endswith('index.html'):
@@ -325,6 +328,82 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(body)
         extra = f' +{json_name}' if json_name else ''
         sys.stderr.write(f'[serve] 测试报告已存: {rel}{extra}\n')
+
+    def _serve_test_get(self, norm):
+        """GET /_test/reports | /_test/buglog → 飞轮仪表盘 JSON（dev-only·?test=1）。"""
+        try:
+            if norm.startswith('/_test/reports'):
+                payload = self._test_reports_summary()
+            else:  # /_test/buglog
+                payload = self._test_buglog_summary()
+        except Exception as e:
+            payload = {'error': str(e)}
+        body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _test_reports_summary(self):
+        """扫描 tests/reports/report-*.json → 汇总列表（文件名降序·最新在前）。
+        pass%/p50/p95 由 cases 现算（.json meta 无·md RUN 头才有）；复用 EMC-SUM v1 schema。"""
+        d = self._test_reports_dir()
+        items = []
+        for fn in sorted(os.listdir(d), reverse=True):
+            if not (fn.startswith('report-') and fn.endswith('.json')):
+                continue
+            try:
+                with open(os.path.join(d, fn), 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+            except Exception:
+                continue
+            cases = data.get('cases') or []
+            meta = data.get('meta') or {}
+            total = len(cases)
+            passed = sum(1 for c in cases if c.get('pass'))
+            durs = sorted((c.get('durationSolo') or 0) for c in cases if c.get('durationSolo'))
+            def _pct(q):
+                if not durs:
+                    return 0
+                return round(durs[min(len(durs) - 1, int(q * len(durs)))] / 1000, 1)
+            parts = fn.split('-')
+            date = '-'.join(parts[1:4]) if len(parts) >= 4 else ''
+            items.append({
+                'name': fn[:-5], 'date': date, 'mode': meta.get('mode'),
+                'total': total, 'pass': passed,
+                'pct': round(passed / total * 100) if total else 0,
+                'p50': _pct(0.5), 'p95': _pct(0.95),
+                'commit': meta.get('commit'), 'startedAt': meta.get('startedAt'),
+                'fails': [c.get('id') for c in cases if not c.get('pass')][:12],
+            })
+        return items
+
+    def _test_buglog_summary(self):
+        """读 tests/buglog/ → 汇总（复用 _gen_index.load_entries 单一解析源·非另写解析）。"""
+        import sys as _sys
+        repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        bg = os.path.join(repo, 'tests', 'buglog')
+        if bg not in _sys.path:
+            _sys.path.insert(0, bg)
+        try:
+            import _gen_index as _bg
+            entries = _bg.load_entries()
+        except Exception:
+            entries = []
+        def _e(e):
+            return {'id': e.get('id'), 'title': e.get('title'), 'type': e.get('type'),
+                    'severity': e.get('severity'), 'status': e.get('_status'),
+                    'module': e.get('module'), 'repro': int(e.get('repro_count') or 0),
+                    'cb': e.get('cb'), 'case_ref': e.get('case_ref'), 'path': e.get('_path')}
+        open_list = [_e(e) for e in entries if e.get('_status') == 'open']
+        rec_list = sorted([_e(e) for e in entries if int(e.get('repro_count') or 0) >= 2],
+                          key=lambda x: -x['repro'])
+        return {
+            'total': len(entries), 'open': len(open_list),
+            'resolved': len(entries) - len(open_list),
+            'openList': open_list, 'recList': rec_list,
+        }
 
     def log_message(self, fmt, *args):
         sys.stderr.write(f'[serve] {self.address_string()} - {fmt % args}\n')
