@@ -197,10 +197,15 @@
 /* ── 思考链（Pro reasoning，跨轮累积，灰显可折叠）── 实时动态 ── */
 .aiq-reason { margin: 0 0 6px; padding: 6px 8px; border-left: 2px solid var(--geojson-color-gray-200, #e3e5e8); background: var(--geojson-color-gray-100, #f7f7f7); border-radius: 0 6px 6px 0; }
 .aiq-reason.is-done { cursor: pointer; }
-.aiq-reason-head { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 2px; }
+.aiq-reason-head { display: flex; align-items: center; gap: 6px; font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 2px; }
+.aiq-reason-title { flex-shrink: 0; }
+.aiq-reason-overflow { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--geojson-color-text-tertiary); font-weight: var(--geojson-typography-weight-normal); }   /* Feature 2：溢出末句/"（Ns）" */
+.aiq-reason-meta { flex-shrink: 0; font-variant-numeric: tabular-nums; }   /* Feature 2：读秒 Ns */
 .aiq-reason.is-done .aiq-reason-body { display: none; }
 .aiq-reason.is-done.is-open .aiq-reason-body { display: block; }
-.aiq-reason.is-done.is-open .aiq-reason-head::before { content: '▾ '; }
+.aiq-reason-head::before { content: '▾'; flex-shrink: 0; color: var(--geojson-color-text-tertiary); transition: transform 0.15s; }   /* Feature 2：三态 chevron·流式期展开▾ */
+.aiq-reason.is-done .aiq-reason-head::before { content: '▸'; }   /* 完成态默认折叠▸ */
+.aiq-reason.is-done.is-open .aiq-reason-head::before { content: '▾'; }   /* 展开▾ */
 .aiq-reason-body { font-size: var(--geojson-typography-size-xs); color: var(--geojson-color-text-secondary); line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
 
 /* ── 工具调用区（Agent Loop 每轮一个 toolcard；容器无框，卡自带框）── */
@@ -340,7 +345,10 @@
 .aiq-thinking-dock .aiq-dots i:nth-child(3) { animation-delay: 0.4s; }
 .aiq-phase-chips { display: flex; gap: 4px; margin-top: 4px; }
 .aiq-phase-chips span { font-size: var(--geojson-typography-size-2xs); padding: 1px 7px; border-radius: 999px; color: var(--geojson-color-text-tertiary); background: var(--geojson-color-gray-100, #eee); }
-.aiq-phase-chips span.active { color: #fff; background: var(--geojson-color-brand-primary, #4285F4); font-weight: var(--geojson-typography-weight-semibold); }
+.aiq-phase-chips span.active { color: #fff; font-weight: var(--geojson-typography-weight-semibold); }   /* Feature 3：背景色按阶段分（下行 per-phase）*/
+.aiq-phase-chips span[data-phase="理解"].active { background: #D97757; }   /* 暖橙·理解(FC 诊断) */
+.aiq-phase-chips span[data-phase="思考"].active { background: #4796E3; }   /* 深蓝·思考(工具执行) */
+.aiq-phase-chips span[data-phase="生成"].active { background: #2E8B57; }   /* 森绿·生成(finalStep·贴合 app 森绿主题) */
 .aiq-phase-chips span.done { color: var(--geojson-color-text-secondary, #666); background: var(--geojson-color-gray-200, #e0e0e0); }
 /* E2 进度透明（治 C9 延迟感知）：阶段计时 + 取消按钮（填充式无线框·胶囊设计语言·memory avoid-frames-fill-style/capsule-button-design-language）*/
 .aiq-thinking-elapsed { display: inline-block; margin-left: 6px; font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary, #999); font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -387,14 +395,24 @@
 .aiq-chart-wrap .aiq-chart { max-width: 100%; }
 .aiq-chart-bad { color: #FBBF24; font-size: 0.85em; background: rgba(251,191,36,0.08); padding: 0 4px; border-radius: 3px; }   /* 解析失败的原文，不崩 */
 
-/* ── 回到底部浮钮（用户上滑停跟时出现，sticky 贴消息区底右）── */
+/* ── 回到底部浮钮（用户上滑停跟时出现，sticky 贴消息区底右）── P0 抛光：森绿统一(--emc-accent)·放大·淡入·去橙边框 */
 .chat-back-btn {
-  position: sticky; bottom: 6px; align-self: flex-end; margin-top: 4px;
-  padding: 3px 10px; font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-brand-primary, #4285F4);
-  background: var(--geojson-color-surface-panel, #fff); border: 1px solid rgba(217, 119, 87, 0.4);
-  border-radius: 999px; cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: sticky; bottom: 8px; align-self: flex-end; margin-top: 6px;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 14px; font-size: var(--geojson-typography-size-xs);
+  font-weight: var(--geojson-typography-weight-semibold); color: #fff;
+  background: var(--emc-accent, #143a35); border: none; border-radius: 999px; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(20, 58, 53, 0.28);
+  animation: aiq-back-btn-in 0.18s ease-out;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
 }
-.chat-back-btn:hover { background: rgba(217, 119, 87, 0.08); }
+.chat-back-btn:hover {
+  background: #102b26;   /* 兜底（不支持 color-mix）；下行现代浏览器覆盖·按 accent 自适应加深 */
+  background: color-mix(in srgb, var(--emc-accent, #143a35) 82%, #000);
+  box-shadow: 0 6px 18px rgba(20, 58, 53, 0.38); transform: translateY(-1px);
+}
+.chat-back-btn:active { transform: translateY(0); }
+@keyframes aiq-back-btn-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ═══ Claude Code 交互语言对齐：Thinking 头 / 工具卡 / 复制 / 代码块 ═══ */
 
@@ -407,7 +425,7 @@
 .aiq-toolcard-head { display: flex; align-items: center; gap: 6px; padding: 5px 8px; cursor: pointer; user-select: none; }
 .aiq-toolcard-head:hover { background: var(--geojson-color-gray-100, #f5f5f5); }
 .aiq-toolcard-icon { flex-shrink: 0; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
-.aiq-toolcard-icon.run { color: var(--geojson-color-brand-primary, #4285F4); }
+.aiq-toolcard-icon.run { color: var(--geojson-color-brand-primary, #4285F4); animation: aiq-dot 1.2s infinite ease-in-out; }   /* Feature 2：运行态●蓝点脉动（Claude-Code 式节点）*/
 .aiq-toolcard-icon.ok { color: #4ADE80; }
 .aiq-toolcard-icon.fail { color: var(--geojson-color-danger, #d8552f); }
 .aiq-toolcard-name { font-size: var(--geojson-typography-size-xs); font-weight: var(--geojson-typography-weight-semibold); color: var(--geojson-color-text-primary); font-family: var(--geojson-typography-mono); }

@@ -693,14 +693,17 @@ function applyLongConvCollapse() {
   });
 }
 
-/** Thinking 头：答完显「Thought for Ns · Nk token」（折叠态可见）。trace 缺省=实时 _curTrace。 */
+/** Thinking 头：答完显「推理完成（Ns）· Nk token」（折叠态可见）。trace 缺省=实时 _curTrace。
+ *  Feature 2：与流式期动态头标签一致（正在推理…→推理完成）；耗时入 overflow、token 入 meta。 */
 function updateReasonMeta(shell, trace) {
-  if (!shell || !shell.reasonEl || shell.reasonEl.classList.contains('is-flash')) return;
+  if (!shell || !shell.reasonEl) return;
   const t = trace || _curTrace;
   const title = shell.reasonEl.querySelector('.aiq-reason-title');
   const meta = shell.reasonEl.querySelector('.aiq-reason-meta');
+  const ov = shell.reasonEl.querySelector('.aiq-reason-overflow');
   const secs = t && t.startedAt && t.doneAt ? Math.max(1, Math.round((t.doneAt - t.startedAt) / 1000)) : 0;
-  if (title) title.textContent = secs ? `Thought for ${secs}s` : 'Thinking…';
+  if (title) title.textContent = secs ? '推理完成' : 'Thinking…';
+  if (ov) ov.textContent = secs ? `（${secs}s）` : '';
   if (meta) {
     const cs = trace ? { total: 0 } : getCallStats();   // 仅 live 取实时 token；历史会话不存 token
     meta.textContent = cs.total ? `· ${_fmtTokens(cs.total)} token` : '';
@@ -888,7 +891,7 @@ function startThinking() {
   _t0 = Date.now(); _phaseTs = {};   // E2：总起始 + 阶段时间戳重置
   try { _layerBase = document.querySelectorAll('#layer-list .layer-row').length; } catch (_) { _layerBase = 0; }   // E2：图层基线（本轮新增 = 现 - 基线）
   const d = dockEl();
-  if (d) { d.hidden = false; const ab = d.querySelector('.aiq-abort-btn'); if (ab) ab.hidden = false; setPhase('诊断'); }
+  if (d) { d.hidden = false; const ab = d.querySelector('.aiq-abort-btn'); if (ab) ab.hidden = false; setPhase('理解'); }
   _startElapsedTimer();
   if (!_abortDelegation) {   // E2：取消按钮 delegation（dock 单例动态建·挂一次最稳）
     document.addEventListener('click', (e) => { const t = e.target; if (_streaming && _abortCtl && t && t.closest && t.closest('.aiq-abort-btn')) _abortCtl.abort(); });
@@ -911,7 +914,7 @@ function stopThinking() {
   const d = dockEl();
   if (d) { d.hidden = true; const ab = d.querySelector('.aiq-abort-btn'); if (ab) ab.hidden = true; }
 }
-const _PHASE_ORDER = ['诊断', '思考', '检索', '生成'];   // CB-05 A6：去'审查'（去 LLM 审查后无审查阶段·默认关）
+const _PHASE_ORDER = ['理解', '思考', '生成'];   // Feature 3：5 阶段(诊断/思考/检索/生成/审查)→3 阶段·映射 EMC 三模块（理解=FC诊断/思考=工具执行/生成=finalStep）
 /** 阶段进度 chip 点亮 + done 标记（E2 加阶段时间戳 + 已完成段填充）。 */
 function setPhase(chip) {
   const d = dockEl();
@@ -1084,7 +1087,7 @@ function appendAssistantShell(trace) {
   el.innerHTML = `<div class="chat-bubble">
     <div class="aiq-collapsed-stub" hidden><span class="aiq-collapse-chev">▸</span><span class="aiq-collapse-excerpt"></span></div>
     <div class="aiq-card aiq-card-diagnose" hidden></div>
-    <div class="aiq-reason" ${hasReason ? '' : 'hidden'}><div class="aiq-reason-head"><span class="aiq-reason-title">Thinking…</span><span class="aiq-reason-meta"></span></div><div class="aiq-reason-body"></div></div>
+    <div class="aiq-reason" ${hasReason ? '' : 'hidden'}><div class="aiq-reason-head"><span class="aiq-reason-title">Thinking…</span><span class="aiq-reason-overflow"></span><span class="aiq-reason-meta"></span></div><div class="aiq-reason-body"></div></div>
     <div class="aiq-steps" ${trace && trace.steps && trace.steps.length ? '' : 'hidden'}><div class="aiq-steps-head">工具调用（Agent Loop）</div></div>
     <div class="aiq-review" hidden><div class="aiq-review-head">审查</div><div class="aiq-review-body"></div></div>
     <div class="aiq-step aiq-step-final"><span class="aiq-step-tag">结论</span><div class="aiq-answer"><span class="aiq-answer-stream"></span><span class="chat-cursor" hidden>▍</span></div></div>
@@ -1176,7 +1179,7 @@ function renderToolCard(stepsEl, round, thought, action, observation) {
     card.className = 'aiq-toolcard is-open';
     card.dataset.round = round;
     card.innerHTML = `<div class="aiq-toolcard-head">
-        <span class="aiq-toolcard-icon run">⏳</span>
+        <span class="aiq-toolcard-icon run">●</span>
         <span class="aiq-toolcard-name">第 ${round} 步</span>
         <span class="aiq-toolcard-target"></span>
         <span class="aiq-toolcard-chev">▸</span>
@@ -1209,6 +1212,39 @@ function buildHooks(shell) {
   let streamRaf = 0;
   let reasonRaf = 0;
   const isFlash = _thinkMode === 'flash';
+  // Feature 2：reason 折叠块动态头（读秒 + 溢出末句·Claude-Code 式"正在推理···Ns"）。
+  let reasonTimer = 0;
+  let reasonStartTs = 0;
+  let reasonStarted = false;
+  function _startReasonTimer() {
+    if (reasonTimer || !shell.reasonEl) return;
+    reasonStartTs = Date.now();
+    reasonTimer = setInterval(() => {
+      if (!shell.reasonEl || shell.reasonEl.hidden) { if (reasonTimer) { clearInterval(reasonTimer); reasonTimer = 0; } return; }
+      const m = shell.reasonEl.querySelector('.aiq-reason-meta');
+      if (m) m.textContent = ((Date.now() - reasonStartTs) / 1000).toFixed(1) + 's';
+    }, 500);
+  }
+  function _stopReasonTimer(secs) {
+    if (reasonTimer) { clearInterval(reasonTimer); reasonTimer = 0; }
+    const m = shell.reasonEl && shell.reasonEl.querySelector('.aiq-reason-meta');
+    if (m) m.textContent = secs != null ? secs + 's' : '';
+  }
+  function _updateReasonOverflow(text) {
+    const ov = shell.reasonEl && shell.reasonEl.querySelector('.aiq-reason-overflow');
+    if (!ov) return;
+    const s = String(text || '').replace(/\s+/g, ' ').trim();
+    ov.textContent = s ? '· ' + s.slice(-28) : '';
+  }
+  /** Feature 2：reason 折叠块首发（首 token 或 onRoundStart 触发·幂等）——显块 + 头改"正在推理…" + 启动读秒。 */
+  function _ensureReasonStarted() {
+    if (reasonStarted || !shell.reasonEl) return;
+    reasonStarted = true;
+    shell.reasonEl.hidden = false;
+    const _t = shell.reasonEl.querySelector('.aiq-reason-title');
+    if (_t) _t.textContent = '正在推理…';
+    _startReasonTimer();
+  }
 
   function ensureSeg(round) {
     if (reasonSegs[round]) return;
@@ -1248,9 +1284,16 @@ function buildHooks(shell) {
     }
     flushReasonSegs();
     if (Object.keys(reasonSegs).length) {
+      const _secs = reasonStartTs ? ((Date.now() - reasonStartTs) / 1000).toFixed(1) : null;
+      _stopReasonTimer(_secs);   // Feature 2：停读秒·头改"推理完成（Ns）"·自动折叠
+      const _t = shell.reasonEl.querySelector('.aiq-reason-title');
+      if (_t) _t.textContent = '推理完成';
+      const _ov = shell.reasonEl.querySelector('.aiq-reason-overflow');
+      if (_ov) _ov.textContent = _secs ? `（${_secs}s）` : '';
       shell.reasonEl.classList.add('is-done');
-      reorganizeReason(shell);
+      reorganizeReason(shell);   // 主题目录（详略折叠·展开后按主题切·用户要的"折叠成块"）
     } else {
+      _stopReasonTimer();
       shell.reasonEl.hidden = true;
     }
   }
@@ -1266,13 +1309,13 @@ function buildHooks(shell) {
     },
     onRoundStart: (round) => {
       if (isFlash) return;
-      shell.reasonEl.hidden = false;
+      _ensureReasonStarted();
       ensureSeg(round);
     },
     onReason: (tok, round) => {
-      // Hotfix R2 S6：去 isFlash 门——Flash 默认下也渲染 reason（逐 token RAF drain），
-      // 否则 LLM 先产 ~20s reason（被丢弃不渲染）→ 用户感"卡住"+无渐进 token（answer 仅末尾迸一下）。
-      shell.reasonEl.hidden = false;
+      // Hotfix R2 S6：去 isFlash 门——Flash 默认下也渲染 reason（逐 token RAF drain）。
+      // Feature 2：首 token（经 _ensureReasonStarted 幂等）启动读秒 + 头显"正在推理…"。
+      _ensureReasonStarted();
       const r = round || 0;
       ensureSeg(r);
       reasonSegs[r] += tok;
@@ -1282,6 +1325,7 @@ function buildHooks(shell) {
         reasonRaf = 0;
         const body = shell.reasonBody.querySelector(`.aiq-reason-segment[data-round="${r}"] .aiq-reason-seg-body`);
         if (body) body.textContent = reasonSegs[r];
+        _updateReasonOverflow(reasonSegs[r]);   // Feature 2：溢出末句（"正在想什么"）
         flushReasonSegs();
         autoScroll();
       });
@@ -1328,7 +1372,7 @@ function buildHooks(shell) {
     onObservation: (obs, round) => {
       renderToolCard(shell.stepsEl, round, null, null, obs);
       if (_curTrace && _curTrace.steps.length) _curTrace.steps[_curTrace.steps.length - 1].observation = obs;
-      setPhase('检索');
+      setPhase('思考');   // Feature 3：工具结果属"思考"阶段（原"检索"并入思考·检索非独立步骤）
       const _lc = (() => { try { return document.querySelectorAll('#layer-list .layer-row').length - _layerBase; } catch (_) { return 0; } })();
       const _t = dockEl() && dockEl().querySelector('.aiq-thinking-text');   // E2：dock 显"已生成 N 层"（增量落图·图在长感知）
       if (_t) _t.textContent = _lc > 0 ? `已生成 ${_lc} 层·继续…` : '整合结果中…';
@@ -1683,7 +1727,7 @@ function mountChatChrome() {
     suggest.innerHTML = '<div class="aiq-thinking-dock" id="aiq-thinking-dock" hidden>'
       + '<div class="aiq-thinking-row"><span class="aiq-thinking-text">正在思考…</span><span class="aiq-dots"><i></i><i></i><i></i></span><span class="aiq-thinking-elapsed" hidden></span><button class="aiq-abort-btn" type="button" title="取消（Esc）" hidden>取消</button></div>'
       + '<div class="aiq-phase-chips">'
-      + ['诊断', '思考', '检索', '生成', '审查'].map((c) => `<span data-phase="${c}">${c}</span>`).join('')
+      + ['理解', '思考', '生成'].map((c) => `<span data-phase="${c}">${c}</span>`).join('')
       + '</div></div>'
       + '<div class="aiq-suggest" id="aiq-suggest" hidden></div>';   // 推荐追问胶囊（答案完毕后显，点击即发）
   }
