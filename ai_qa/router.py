@@ -45,6 +45,11 @@ async def chat_route(req: ChatRequest):
             '在回复文本中输出如下 JSON（不要用 markdown 代码块）：\n'
             '{"plans":[{"rank":1,"label":"工具中文描述","tool":"工具名","params":{...},"confidence":"high|medium|low","rationale":"选择理由"},...]}\n\n'
             'rank=1 是当前 tool_call 执行的工具；rank=2+ 是后续可做的分析建议。\n\n'
+            '**重要**：如果用户请求涉及多个步骤（如"剪裁出某区3类用地"=抽取边界+3次叠置+合并），**必须在 plans[] 中列出全部步骤**：\n'
+            '- rank=1 填第一步的工具和参数\n'
+            '- rank=2+ 填后续每一步（工具名+完整参数·引用第一步产出的图层名作为 layer_a）\n'
+            '- plans 至少包含 2 项（rank=1 + 至少 1 个后续步骤）\n'
+            '- 示例：用户说"裁剪西陵区商业+居住用地"→ plans: [{rank:1,tool:"extract_feature",params:{layer:"L001",where:"MC/in/西陵区",as:"西陵区范围"}}, {rank:2,tool:"overlay",params:{layer_a:"西陵区范围",layer_b:"L006",how:"intersection",as:"西陵区_商业"}}, {rank:3,tool:"overlay",params:{layer_a:"西陵区范围",layer_b:"L005",how:"intersection",as:"西陵区_居住"}}]\n\n'
             '## domain_lens\n'
             '在回复文本开头输出领域标签（选 0-2 个最匹配的）：\n'
             '[domain_lens:urban_planning] 或 [domain_lens:urban_renewal] 或 [domain_lens:urban_operation] 或 [domain_lens:urban_governance]\n'
@@ -106,8 +111,17 @@ async def chat_route(req: ChatRequest):
                                     tc['function']['arguments'] = _json.dumps(_v['params'], ensure_ascii=False)
                                     _fixes = _v['fixes']
                             except Exception:
-                                pass   # validate 失败不阻塞·tool_call 原样回
-                        yield f'data: {_json.dumps({"tool_calls": result.get("tool_calls"), "plans": result.get("content"), "usage": result.get("usage"), "fixes": _fixes}, ensure_ascii=False)}\n\n'
+                                pass   # validate 失败不阻塞·tool_calls 原样回
+                        # CB-09：如果 LLM 没输出 content（plans 为空），从 tool_calls 自建最小 plan
+                        _plans = result.get('content')
+                        if not _plans and tc and tc.get('function'):
+                            try:
+                                _name = tc['function']['name']
+                                _args = _json.loads(tc['function'].get('arguments', '{}'))
+                                _plans = _json.dumps({"plans": [{"rank": 1, "label": _name, "tool": _name, "params": _args, "confidence": "high", "rationale": "auto-from-tool-call"}]}, ensure_ascii=False)
+                            except Exception:
+                                _plans = result.get('content')
+                        yield f'data: {_json.dumps({"tool_calls": result.get("tool_calls"), "plans": _plans, "usage": result.get("usage"), "fixes": _fixes}, ensure_ascii=False)}\n\n'
                 yield 'data: [DONE]\n\n'
             except LLMError as e:
                 yield f'data: {_json.dumps({"error": str(e)}, ensure_ascii=False)}\n\n'
