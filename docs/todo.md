@@ -9,7 +9,21 @@
 
 ---
 
-## 📅 2026-07-28（今日·**v2→v3 架构转型 + 修复**·commit+push）
+## 📅 2026-07-29（今日·CB 飞轮 buglog 扩建）
+
+### ✅ CB 飞轮 buglog 扩建 P0/P1（commit c4f3cd6 · **用户手动 push**）
+
+用户让 DeepSeek 出 EMC 飞轮扩建方案（bug 采集 skill + 用例 log + 仪表盘 UI）→ 要求我按 CB 标准（agree/disagree/partial + 证据）反评价 6 方面 → 落地修正版 P0+P1。详见 [revision-log §5](revision-log.md#L226)。
+
+- **CB 反评价**（verify-before-accept）：扩建路径 **agree**；映射表/buglog/UI/skill **partial**——emoji 撞编码规范 1 / palette 把品牌橙 `#D97757` 当失败色撞设计语言 / 漏 `flywheel_audit.py` + EMC-SUM 结构化数据 / skill「自动触发」前提不成立 / §5.4「替换抽屉」与「不删」矛盾；客观评价=方向对·瘦身后合理。
+- **P0 落地**：`tests/buglog/` open/resolved + `_template.md`（ASCII 标签）+ B001 种子（CB-09 multi-extract·resolved·复现 4）+ `.claude/skills/bug-collector` 采集 skill（去自动触发·委托脚本刷索引）+ `tests/_index.md` 飞轮总入口。
+- **P1 落地**：`_gen_index.py` 确定性索引生成器（generate + `--check` CI·对标 validate_field_dict_sync·非 LLM 维护）→ 自动产 `_index.md`/`_trend.md`（recurring=派生属性非独立目录）。
+- **验证**：pytest 220 passed（1 既有 fail `test_final_prompt_stays_lean`·非本次范围）+ buglog `--check` 通过。
+- **defer**：P2 仪表盘（复用 `#0F6E56/#D85A30/#4285F4`·tab 非替换·下一检查点）/ P3 回归自动生成（需改 test-cases.js 数据流）。
+
+---
+
+## 📅 2026-07-28（**v2→v3 架构转型 + 修复**·commit+push）
 
 ### ✅ EMC Hotfix R3（multi-extract 死循环·commit 982a454·**待浏览器验证**）
 
