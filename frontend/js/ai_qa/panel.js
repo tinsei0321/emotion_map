@@ -1545,6 +1545,7 @@ async function send(text, capsule) {
     settled = true;
     // CB-09：自动消费 plans[] 剩余步骤（默认全自动）
     const _remaining = (ctx.plans || []).filter((p) => p.rank >= 2 && p.tool);
+    console.log('[auto-exec] ctx.plans:', JSON.stringify((ctx.plans || []).map((p) => ({ rank: p.rank, tool: p.tool, label: p.label }))));
     if (_remaining.length > 0 && _result && _result.exit !== 'ask') {
       console.log('[auto-exec] plans remaining:', _remaining.length, _remaining.map((p) => `${p.tool}(${p.rank})`).join(', '));
       const _autoResult = await executePlans(ctx, buildHooks(shell), _result.diagnose, ctx.plans);

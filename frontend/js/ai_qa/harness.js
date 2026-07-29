@@ -808,6 +808,10 @@ export async function orchestrate(ctx, hooks = {}) {
   // v2 D068：FC 产出的 plans[] 存入 ctx.plans·供 finalStep（追问胶囊）+ CPD（选项展示）共享
   if (diagnose.plans && diagnose.plans.length) {
     ctx.plans = diagnose.plans;
+    console.log('[harness] ctx.plans set:', diagnose.plans.length, 'plans:', JSON.stringify(diagnose.plans.map((p) => ({ rank: p.rank, tool: p.tool, label: p.label }))));
+  } else {
+    console.log('[harness] diagnose.plans empty or missing. diagnose keys:', Object.keys(diagnose).join(','));
+  }
   }
   // v3 H6：前端 _validateFcParams 已删——信赖后端 validate_tool_call（router fc_diagnose 已校验）。
   // D2（5.207）：method 确定性派生兜底——Flash 偶发输出 method；未输出时按 template 派生，
