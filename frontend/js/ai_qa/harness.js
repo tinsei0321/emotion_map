@@ -7,7 +7,7 @@ import * as stages from './stages.js';
 import { TOOLS, setToolContext, formatRegistry, getArtifacts, deriveAvailable, resetStepResults, resolveCoref } from './tools.js';
 import { getLayers } from '../state.js';
 
-const MAX_ROUNDS_GIS = 6;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=6（保多目标完整性，如"西陵+伍家岗居住+商业"需多步）
+const MAX_ROUNDS_GIS = 10;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=10（保多步完整性，如3次overlay需8轮：1查询+6执行+1answer）
 const MAX_ROUNDS_OTHER = 4;    // A 通用 / C 情绪=4（远紧于 16，配合 temp 0.4 降概率链 p^N）
 
 // v3 H6：前端 _validateFcParams 已删除——信赖后端 validate_tool_call（router fc_diagnose 调·D062）。
@@ -733,6 +733,7 @@ export async function orchestrate(ctx, hooks = {}) {
   let forcedContinues = 0;   // F3 完整性 gate 强制续做计数（max 1，防 agent 0 工具就 answer）
   let successObs = 0;        // 三态出口：成功观察数（非失败）
   let newLayerCount = 0;     // 三态出口：本轮新生成图层数（工具 data.layerId 计）
+  let hasRows = false;        // 三态出口：本轮分析型产出行数（zonal/rank 等·非图层）
   let narrations = 0;        // 叙述检测：模型只写说明没给动作的轮数（>1 视失败）
   let answered = false;      // 模型是否 deliberate `answer`（概念问等可零工具直答；_hardFail 不得覆盖它）
   let narratedAnswer = false; // 模型持续叙述（prose 作答，常见于概念问）——叙述≠失败，交 finalStep 出结论，不落 GAP
