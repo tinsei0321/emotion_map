@@ -37,8 +37,8 @@ async def chat_route(req: ChatRequest):
         # v3 C3：system prompt 含 domain_lens 产出指令（A+B 混合的 A 部·LLM 自主判领域）
         sys_content = (
             '你是情绪地图分析助手。根据用户请求选择最合适的工具。\n'
-            '- 多步骤请求（如裁剪多类用地）→ 先做第一步，后续步骤系统自动补全\n'
-            '- clip 仅用于点层！面层面裁剪用 overlay(intersection)\n'
+            '- 用户说"裁剪/剪裁"面层（用地、行政区等）→ 用 overlay(intersection)。clip 仅用于点数据，对面层返回空\n'
+            '- 多步骤请求（如裁剪多类用地）→ 先做第一步，系统自动补全后续\n'
             '- 参数用数据上下文中的实际字段名和图层 ID\n'
             f'## 数据上下文\n{req.context or "（无数据上下文）"}\n'
         )
