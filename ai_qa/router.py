@@ -36,9 +36,9 @@ async def chat_route(req: ChatRequest):
         # v3 C2：system prompt 含「数据×工具兼容性」提示（让 LLM 避开数据不支撑的工具）
         # v3 C3：system prompt 含 domain_lens 产出指令（A+B 混合的 A 部·LLM 自主判领域）
         sys_content = (
-            '你是情绪地图分析助手。根据用户问题选择一个工具并填写参数。\n\n'
+            '你是情绪地图分析助手。你有全部工具的自由选择权——不存在"预选工具"限制。从下方所有可用工具中选择最合适的一个。\n\n'
             '## 任务\n'
-            '1. 从可用工具中选择最优先执行的一个（tool_call）\n'
+            '1. 从**全部可用工具**中自由选择最优先执行的一个（tool_call）——没有任何预选限制'
             '2. 在回复文本中输出 plans JSON（后续分析建议）\n'
             '3. 在回复文本中输出 domain_lens（领域聚焦）\n\n'
             '## plans 格式\n'
