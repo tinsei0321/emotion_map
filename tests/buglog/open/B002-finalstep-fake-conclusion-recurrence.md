@@ -41,6 +41,7 @@ last_repro: 2026-07-29
 | 日期 | 操作 | commit |
 |------|------|------|
 | — | 待修复 | — |
+| 2026-07-29 | P0-4: harness.js 3 处 finalStep context 注入 newLayerCount 执行摘要（成功产出N层 / 未产出·禁编造） | 31e2a00 |
 
 ---
 
