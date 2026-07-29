@@ -11,6 +11,16 @@
 
 ## 📅 2026-07-29（今日·CB 飞轮 buglog 扩建）
 
+### ✅ buglog schema 统一 + CF-09 采集入库（commit abce549 · **用户手动 push**）
+
+双环境并行致 buglog schema 分叉（我 YAML/ASCII vs ZCode 表格/emoji）→ 仪表盘对 B002-B008 全盲。按用户定「统一 YAML」修。详见 [revision-log §5](revision-log.md#L226)。
+
+- **转换**：B002-B008 表格元数据 → YAML frontmatter（ASCII 枚举·emoji+诊断留 body·rootcause 规范·case_ref 映射 TC-21~27）。
+- **重生索引**：`_index`/`_trend` 现 8 条 ASCII（覆盖 ZCode emoji 版）；`_gen_index --check` 过。
+- **入库 ZCode**：emc_test_cases TC-21~27 + CB09-supplement 采集记录。
+- **验证**：`/_test/buglog` 返 8 条（open 7 + resolved 1 + recList 5）。
+- **教训**：双环境并行同子系统易 schema 分叉；skill 须锁死 frontmatter 契约。
+
 ### ✅ 飞轮扩建 P3 回归清单 + P2 hotfix（commit ed8fabf + 7354fb5/8c09e31 · **用户手动 push**）
 
 落地 DeepSeek 方案 P3「回归用例自动生成」+ 修 P2 两个 bug。**飞轮扩建 P0-P3 全完成**。详见 [revision-log §5](revision-log.md#L226)。
