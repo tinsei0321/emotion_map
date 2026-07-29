@@ -357,7 +357,7 @@ function _extractClaimedLayers(draft) {
   let m;
   const showRe = /\{\{show:([^}]+)\}\}/g;   // {{show:X}} 最明确（LLM 引用要显示的图层）
   while ((m = showRe.exec(draft)) !== null) names.add(m[1].trim());
-  const verbRe = /(?:生成|产出|得到|裁出|裁剪|新建|构建|输出)[：:]?\s*[`「\*]*([^\n\s`「」\*，。：:()（）\[\]]{2,20})[`」\*]*\s*(?:的)?(?:图层|层|面|点|网格|热度|分布|聚合)/g;
+  const verbRe = /(?:生成|产出|得到|裁出|裁剪|新建|构建|输出)[：:]?\s*[`「\*]*([^\n\s`「」\*，。：:()（）\[\]]{3,20})[`」\*]*\s*(?:的)?(?:图层|层|面|点|网格|热度|分布|聚合)/g;
   while ((m = verbRe.exec(draft)) !== null) names.add(m[1].trim());
   return [...names].filter((n) => n && n.length >= 2 && !/^(图层|面|点|网格|分布|热度|清单|列表|数据|结果|图层组|边界)$/.test(n));
 }
@@ -1026,6 +1026,19 @@ export async function orchestrate(ctx, hooks = {}) {
   // EXIT_RESULT：草稿结论（agent 决定 answer / 达上限 / 降级回退 都走这里）
   let draft = '';
   let _isPartialMissing = false;   // EXIT_PARTIAL：对账发现少量声称图层未实际生成（1-2 个），保 draft+标注后转 partial 出口
+
+  // CB-09 P0-4 治本（v2）：零图层+零分析行 → 跳过 LLM finalStep，直接用确定性诚实结论。
+  // 根因：v1 只在 context 加提示，LLM 仍会忽略。治本：不调 LLM——零产出时无内容需"总结"。
+  if (newLayerCount === 0 && !hasRows) {
+    const _honestText = composeGapCard(diagnose, failedObs)
+      + '\n\n---\n**诚实结论**：本轮未产出新图层。'
+      + '\n\n请尝试：① 换一种问法（更具体地指定范围和目标）② 确认所需数据已加载（点开 Layers 面板检查）③ 缩小分析范围后重试。';
+    if (hooks.onFinalDone) hooks.onFinalDone(_honestText);
+    if (hooks.onDefense) hooks.onDefense({ degraded: true, skipped: 'zero-output' });
+    _recordSkip('zero_output');
+    return { ok: true, rounds: round, final: _honestText, defense: { degraded: true, skipped: 'zero-output' }, degraded: true, diagnose, exit: 'gap', newLayerCount };
+  }
+
   // ④ 注入 registry 真值清单 + 执行结果摘要（finalStep 共用同 ctx.context）：
   //   CB-09 P0-4——LLM 须基于实际执行结果写结论，非基于 plan 推定（治 finalStep 假结论 B002/B004/B005）
   const _loopExecSummary = newLayerCount > 0

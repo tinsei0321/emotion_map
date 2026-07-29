@@ -1011,6 +1011,10 @@ export const TOOLS = {
         const p = f.properties || {};
         return '{' + Object.keys(p).slice(0, 5).map((k) => `${k}=${p[k]}`).join(', ') + '}';
       });
+      // CB-09 P0-4 v2·工具观测诚实化
+      if (r.count === 0) {
+        return { observation: `属性筛选完成，但无匹配要素，未生成新图层。`, data: { count: 0, layerId: null } };
+      }
       return { observation: `按属性筛选命中 ${r.count} 个要素${r.truncated ? '（数量较多已截断）' : ''}，已生成图层「${r.layerName}」${_fL ? '（' + feats.length + ' 个要素）' : ''}，包含：${sample.join('、') || '（无属性）'}` + _renderNote(_fL), data: { count: r.count, layerId: r.layerId } };
     } catch (e) { return _ERR('filter_attr', e); }
   },
@@ -1027,6 +1031,10 @@ export const TOOLS = {
       const feats = (r.fc && r.fc.features) || [];
       const L = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // 名=范围（如「西陵区」·模块 C6 沿用）
       const sample = feats.slice(0, 3).map((f) => { const p = f.properties || {}; return p.name || p.issue_label || '未命名'; });
+      // CB-09 P0-4 v2·工具观测诚实化：count=0 时不说"已生成图层"
+      if (r.count === 0) {
+        return { observation: `裁剪完成，但指定范围内无匹配点数据，未生成新图层。`, data: { count: 0, layerId: null } };
+      }
       return { observation: `已在指定范围内裁出 ${r.count} 个情绪点${r.truncated ? '（数量较多已截断）' : ''}，生成图层「${r.layerName}」${L ? '（' + feats.length + ' 个点）' : ''}。包含：${sample.join('、') || '（无）'}` + _renderNote(L), data: { count: r.count, layerId: r.layerId } };
     } catch (e) { return _ERR('clip', e); }
   },
@@ -1070,6 +1078,10 @@ export const TOOLS = {
       const feats = (r.fc && r.fc.features) || [];
       const labels = r.labels || [];
       const L = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // 名=要素名（如「西陵区·伍家岗区」/「商业服务业用地」·模块 C6 沿用）
+      // CB-09 P0-4 v2·工具观测诚实化：count=0 时不说"已生成图层"
+      if (r.count === 0) {
+        return { observation: `抽取完成，但面层中无匹配要素（where 条件可能过窄或字段名有误），未生成新图层。`, data: { count: 0, layerId: null } };
+      }
       return { observation: `已从面层中抽取出 ${r.count} 个要素，生成图层「${r.layerName}」${L ? '（' + feats.length + ' 个面）' : ''}：${labels.slice(0, 5).join('、') || '（无）'}` + _renderNote(L), data: { count: r.count, layerId: r.layerId } };
     } catch (e) { return _ERR('extract_feature', e); }
   },
@@ -1102,6 +1114,10 @@ export const TOOLS = {
       const feats = (r.fc && r.fc.features) || [];
       const total = r.totalAreaKm2 != null ? r.totalAreaKm2 : feats.reduce((a, f) => a + (Number((f.properties || {}).area_km2) || 0), 0);
       const _mL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // 名=边界（如「西陵区」·模块 C6 沿用）
+      // CB-09 P0-4 v2·工具观测诚实化
+      if (r.count === 0) {
+        return { observation: `合并完成，但无可合并要素，未生成新图层。`, data: { count: 0, layerId: null } };
+      }
       return { observation: `合并后得到 ${r.count} 个面，总面积 ${total.toFixed(1)} 平方公里，已生成图层「${r.layerName}」${_mL ? '（' + feats.length + ' 个面）' : ''}` + _renderNote(_mL), data: { count: r.count, layerId: r.layerId } };
     } catch (e) { return _ERR('merge', e); }
   },
@@ -1137,6 +1153,10 @@ export const TOOLS = {
       const feats = (r.fc && r.fc.features) || [];
       const total = r.totalAreaKm2 != null ? r.totalAreaKm2 : feats.reduce((a, f) => a + (Number((f.properties || {}).area_km2) || 0), 0);
       const _oL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // 名=操作语义+两源（如「交·商业用地与西陵区」·模块 C6 沿用）
+      // CB-09 P0-4 v2·工具观测诚实化：count=0 时不说"已生成图层"——从源头切断 LLM 误判
+      if (r.count === 0) {
+        return { observation: `叠置分析完成，但两图层无重叠区域（${_lab(params.layer_a)} ∩ ${_lab(params.layer_b)} = ∅），未生成新图层。`, data: { count: 0, layerId: null } };
+      }
       return { observation: `叠置分析完成，得到 ${r.count} 个面，总面积 ${total.toFixed(1)} 平方公里，已生成图层「${r.layerName}」${_oL ? '（' + feats.length + ' 个面）' : ''}${r.message ? '（' + r.message + '）' : ''}` + _renderNote(_oL), data: { count: r.count, layerId: r.layerId } };
     } catch (e) { return _ERR('overlay', e); }
   },
