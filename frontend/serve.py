@@ -144,11 +144,11 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         # /api/* → 反代后端（同源，消除浏览器跨域这一跳）
         if self.path.split('?')[0].startswith('/api/'):
             return self._proxy_api()
+        # 拦截 index.html：注入 ?v=<mtime> 到本地 css/js 引用（绕浏览器缓存）
+        norm = self.path.split('?')[0]
         # /_test/reports | /_test/buglog → 飞轮仪表盘数据（dev-only·?test=1 抽屉读取）
         if norm.startswith('/_test/reports') or norm.startswith('/_test/buglog'):
             return self._serve_test_get(norm)
-        # 拦截 index.html：注入 ?v=<mtime> 到本地 css/js 引用（绕浏览器缓存）
-        norm = self.path.split('?')[0]
         if norm.endswith('index.html'):
             fs = self.translate_path(norm)
             if os.path.isfile(fs):
