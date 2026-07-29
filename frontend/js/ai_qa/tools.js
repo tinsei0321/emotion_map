@@ -2,6 +2,7 @@
 // 还原单窗口后，tools 直调 map/state/panel（删跨窗口协议）。每个 tool 返回 {observation, data?}：
 //   observation = 给 LLM 看的摘要字符串（入 tool_history）；data = 结构化（前端可选用于渲染）。
 import { getLayers, getLayer, getSelectedLayer, addGroup, removeLayer, setLayerVisible } from '../state.js';
+import * as data_registry from '../data_registry.js';   // R3：registry 来源标注（治 C2）
 import { fitBoundsTo, renderLayer, reorderAllZ, removeLayerFromMap, getMap } from '../map.js';
 import { activateTab, setOverview } from '../panel.js';
 import { DOMAIN_LABEL, ELEMENT_LABEL } from '../popup.js';
@@ -584,6 +585,7 @@ export function deriveAvailable(question, layers) {
 
 /** buildContext：grounding 摘要（panel send + query_layers 共用）。 */
 export async function buildContext() {
+  const _SOURCE_TAG = { upload: '上传', preset: '预设', tool: '工具产物', draw: '绘制' };   // R3：registry 来源 → 中文 tag（治 C2「上传了哪些数据」答错）
   const layers = getLayers();
   const an = activeAnalysis();
   const parts = [];
@@ -596,9 +598,11 @@ export async function buildContext() {
     .map(async (l) => {
       const cnt = l.fc.features.length;
       const fs = await _fieldSamples(l.fc, 12, l.id);   // DataEye（P3）：字段+类型+role+样本值（关键字段全值·治误判缺数据 2c）
-      return `${l.name}(id:${l.id},${cnt}条,${_kindTag(l)}${_boundaryEnum(l)}${fs ? ',字段:' + fs : ''}${l.visible ? '' : ',隐藏'})`;
+      const _re = data_registry.getByLayerId(l.id);   // R3：查 registry 来源
+      const _src = _re ? (_SOURCE_TAG[_re.source] || '') : '';
+      return `${l.name}(id:${l.id},${cnt}条,${_kindTag(l)}${_src ? ',' + _src : ''}${_boundaryEnum(l)}${fs ? ',字段:' + fs : ''}${l.visible ? '' : ',隐藏'})`;
     }))).join('、');
-  parts.push('已加载图层（眼睛开关不影响 EMC 可用·隐藏层仍可分析·标"隐藏"者为 hidden）：' + (loaded || '（无）'));
+  parts.push('已加载图层（标 来源：上传/预设/工具产物/绘制·眼睛开关不影响 EMC 可用·隐藏层仍可分析）：' + (loaded || '（无）'));
   // 数据内容摘要（5.223·系统全字段值域识别·Flash 知有什么/值域/缺什么·Layer Manifest 完整版）
   const _ptLayers = layers.filter((l) => l.kind === 'point' && l.fc && l.fc.features && l.fc.features.length);   // CB-0528：去 visible·含 hidden（眼睛关仍摘要给 Flash）
   const _summ = [];
@@ -739,10 +743,11 @@ export const TOOLS = {
    *  防 round0 observation 列不可见层致 LLM 误调，被 resolvePointLayer 拒浪费一轮）。 */
   query_layers() {
     const an = activeAnalysis();
+    const _ST = { upload: '上传', preset: '预设', tool: '工具产物', draw: '绘制' };
     const loaded = getLayers()
-      .filter((l) => l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length)   // WS2 F2.4：去 visible·hidden 层也可用（对齐 buildContext/pickVisiblePointLayer·眼睛=显示控制非数据可用性）
-      .map((l) => `${l.name}(${l.fc.features.length}条,${_kindTag(l)}${l.visible ? '' : ',隐藏'})`).join('、');
-    return { observation: `已加载图层：${loaded || '（无）'}（眼睛开关不影响 EMC 可用·hidden 层仍可分析）\n当前分析层：${an ? an.name + '（' + an.fc.features.length + ' 单元）' : '暂无聚合层（zonal/rank 用 ensure_zone；面层可作 boundary）'}` };
+      .filter((l) => l.kind !== 'group' && l.fc && l.fc.features && l.fc.features.length)   // WS2 F2.4：去 visible·hidden 层也可用
+      .map((l) => { const _re = data_registry.getByLayerId(l.id); const _s = _re ? (_ST[_re.source] || '') : ''; return `${l.name}(${l.fc.features.length}条,${_kindTag(l)}${_s ? ',' + _s : ''}${l.visible ? '' : ',隐藏'})`; }).join('、');
+    return { observation: `已加载图层（标来源）：${loaded || '（无）'}（眼睛开关不影响 EMC 可用·hidden 层仍可分析）\n当前分析层：${an ? an.name + '（' + an.fc.features.length + ' 单元）' : '暂无聚合层（zonal/rank 用 ensure_zone；面层可作 boundary）'}` };
   },
 
   /** 按维度排序找区域（地图同步飞到）。 */

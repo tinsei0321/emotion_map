@@ -1,5 +1,6 @@
 // ═══ main.js — entry: wire map + sidebar + panel + toolbar + popup + import ═══
 import { initMap, setBasemap, setClickHandler, renderLayer, fitBoundsTo, reorderAllZ, getMap, setCompareMode, isCompareMode } from './map.js';
+import * as data_registry from './data_registry.js';   // R2：统一数据注册表（来源标注·治 C2）
 import { initPanel, activateTab, setOverview, setTable, activateOvTab, isOverallGrid } from './panel.js';
 import { initTipPopup } from './tip-popup.js';
 import { initToolbar, setActiveBasemap } from './toolbar.js';
@@ -173,6 +174,7 @@ async function runImport(files) {
             L.srcId = srcSig;
             L.contentId = contentSig;
             _newIds.push(L.id);
+            if (L.kind !== 'group') data_registry.register({ name: L.name, kind: L.kind, source: 'upload', fc: L.fc, layerId: L.id });   // R2：登记上传层（registry 标来源）
           }
           if (_newIds.length) {
             _srcIndex.set(srcSig, _newIds);

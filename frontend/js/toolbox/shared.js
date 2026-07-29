@@ -5,6 +5,7 @@
 // heatmap-tool.js:12 / buffer-tool.js:7 同），二者均 export function 提升声明，ES module
 // 循环下仅作运行时调用、不触 TDZ；严禁顶层 const 求值依赖 sidebar export。
 import { getLayers, getLayer, addLayer, removeLayer, selectLayer, enforceMutualExclusion, isRangeLayer } from '../state.js';
+import * as data_registry from '../data_registry.js';   // R2：统一数据注册表（tool 来源标注）
 import { renderLayer, fitBoundsTo, reorderAllZ, removeLayerFromMap } from '../map.js';
 import { renderLayerList, refreshLegend, showLayerManager } from '../sidebar.js';
 import { fcBBox } from '../import.js';
@@ -171,6 +172,7 @@ export function addToolboxLayer({ name, kind = 'polygon', fc, paint, parentId, f
   const L = addLayer({ name, kind, fc, paint: _paint, ...(parentId ? { parentId } : {}) });
   L.srcName = name;
   L.srcId = _sig;   // 工具产物层挂 srcId（与 main.js 导入层同语义·供 EMC grounding + 后续去重）
+  data_registry.register({ name, kind, source: 'tool', fc, layerId: L.id });   // R2：登记工具产物（registry 标来源）
   renderLayer(L);
   // A2 落图自检（渲染层标记·不触出口裁定承重）：bbox 越界（WGS84 合法域外）→ partial；
   // renderLayer addSource 失败（map.js 已标 _renderState=failed）→ 告警。observation 侧经 renderNote 消费。

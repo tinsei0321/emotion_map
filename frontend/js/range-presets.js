@@ -6,6 +6,7 @@
 import { fetchRangePresets, fetchRangePreset, uploadRangePreset } from './api.js';
 import { invalidateGeoCatalog } from './ai_qa/tools.js';   // 上传激活新预设后失效 AI 目录缓存 → 当轮 AI 可见
 import { addLayer, getLayers, removeLayer } from './state.js';
+import * as data_registry from './data_registry.js';   // R2：统一数据注册表（preset 来源标注）
 import { renderLayer, fitBoundsTo, reorderAllZ, removeLayerFromMap } from './map.js';
 import { renderLayerList, refreshLegend } from './sidebar.js';
 import { openGridDialog } from './grid-tool.js';
@@ -96,6 +97,7 @@ async function loadPresetRange(item) {
       },
     });
     L.srcName = name;
+    data_registry.register({ name, kind: 'polygon', source: 'preset', fc, layerId: L.id });   // R2：登记预设面域（registry 标来源）
     renderLayer(L);
     renderLayerList(); refreshLegend(); reorderAllZ();
     const bb = fcBBox(fc); if (bb) fitBoundsTo(bb);

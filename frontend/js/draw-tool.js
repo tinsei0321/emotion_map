@@ -8,6 +8,7 @@
 // ② 多边形三种完成——点起点顶点 / 双击 / 回车；③ closePolygon 剥临时点+首点闭合；
 // ④ 矩形 mousedown→drag 4 角→mouseup，Shift 锁正方形；⑤ e6 坐标精度。
 import { addLayer, setMode, getMode, isDrawActive } from './state.js';
+import * as data_registry from './data_registry.js';   // R2：统一数据注册表（draw 来源标注）
 import { renderLayer, fitBoundsTo, reorderAllZ } from './map.js';
 import { renderLayerList, refreshLegend, showLayerManager } from './sidebar.js';
 import { showRangePopup } from './popup.js';
@@ -123,6 +124,7 @@ function commit(geom, label, n) {
   const fc = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: geom, properties: { name: `绘制${label}` } }] };
   const paint = { color: DRAW_COLOR, fillOn: true, fillOpacity: 0.15, lineWidth: 2, lineStyle: 'solid', _ui: { tool: 'draw', mode: modeSnap, shape: label } };
   const L = addLayer({ name: `绘制${label} · ${n}顶点`, kind: 'polygon', fc, paint });
+  data_registry.register({ name: L.name, kind: 'polygon', source: 'draw', fc, layerId: L.id });   // R2：登记绘制层（registry 标来源）
   exitDraw();   // 清临时层 + mode NONE + 按钮 + 光标 + 提示
   renderLayer(L);
   const bb = fcBBox(fc); if (bb) fitBoundsTo(bb);
