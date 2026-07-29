@@ -1127,7 +1127,7 @@ export async function orchestrate(ctx, hooks = {}) {
 /** CB-09 D057 修订：LLM 输出多个 tool_calls → 确定性顺序执行·0 LLM 中间轮。 */
 async function runAllToolCalls(ctx, hooks, diagnose) {
   const tcs = diagnose._allToolCalls;
-  const toolHistory = []; let newLayerCount = 0;
+  const toolHistory = []; let newLayerCount = 0; const failedSteps = [];
   console.log('[runAllToolCalls] start:', tcs.length, tcs.map((t) => t.name).join(' → '));
   for (let i = 0; i < tcs.length; i++) {
     const tc = tcs[i];
@@ -1135,9 +1135,10 @@ async function runAllToolCalls(ctx, hooks, diagnose) {
     setToolContext({ tool: tc.name, round: i + 1 });
     let r = null;
     try { r = await TOOLS[tc.name](tc.params || {}); }
-    catch (e) { toolHistory.push(`第${i + 1}步: ${tc.name} → ${(e && e.message) || e}`); continue; }
+    catch (e) { toolHistory.push(`第${i + 1}步: ${tc.name} → 异常: ${(e && e.message) || e}`); failedSteps.push(i + 1); continue; }
     const obs = (r && r.observation) || '[ERR]';
     if (r && r.data && r.data.layerId) newLayerCount++;
+    else failedSteps.push(i + 1);   // 无图层产出 = 失败
     toolHistory.push(`第${i + 1}步: ${tc.name}(${JSON.stringify(tc.params || {}).slice(0, 80)}) → ${obs}`);
     if (hooks.onObservation) hooks.onObservation(obs, i + 1);
     document.dispatchEvent(new CustomEvent('tool:executed', { detail: { tool: tc.name, layerId: (r && r.data && r.data.layerId) || null, ok: !/\[ERR\]|失败/.test(obs), ts: Date.now() } }));
@@ -1150,7 +1151,8 @@ async function runAllToolCalls(ctx, hooks, diagnose) {
   }
   // finalStep
   if (hooks.onRound) hooks.onRound(tcs.length);
-  ctx.context = `【多步执行·已完成 ${tcs.length} 步】共产出 ${newLayerCount} 个新图层。\n【地图实际产出图层】${formatRegistry()}（严禁声称不在此列表的图层）\n\n` + (ctx.context || '');
+  const _failNote = failedSteps.length ? `⚠️ 第 ${failedSteps.join('、')} 步未产出图层。` : '';
+  ctx.context = `【多步执行·已完成 ${tcs.length} 步·成功 ${newLayerCount} 层${_failNote ? '·' + _failNote : ''}】\n【地图实际产出图层】${formatRegistry()}（严禁声称不在此列表的图层）\n\n` + (ctx.context || '');
   let draft;
   try { draft = await stages.finalStep(ctx, hooks, toolHistory.join('\n')); }
   catch (e) { draft = `## 执行完成\n\n已按计划执行 ${tcs.length} 个步骤，共产出 ${newLayerCount} 个图层。`; }
