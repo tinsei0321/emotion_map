@@ -1,7 +1,10 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：07月28日收工（**5.242 EMC 链路系统性修复·选型数据感知 + 9 bug·融合 DeepSeek 评估**）| 分支 `main` | **本次 commit+push**
+> 最后更新：07月28日（**CB 体系优化 + EMC v1.0 深度审查**）| 分支 `main` | **本次 commit+push**
+>
+> 🔗 **CB 入口**：`docs/catch-ball/_cb-index.md`
+> 🏠🏢 **换机卡片**：`docs/catch-ball/_handoff/HOME.md` + `OFFICE.md`
 
 ## 当前节点：9 模块验证暴露链路缺陷 → 系统性修复 → 待飞轮齐验
 

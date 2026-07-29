@@ -1,8 +1,28 @@
 # CB Journal（Catch-Ball 轨迹）
 
-> 我方（Claude Code）与第三方评价（`docs/catch-ball/SCAN_DeepSeek_01.md`，DeepSeek V4 Pro）的多轮 catch-ball 对话轨迹。
-> 按轮**倒序**（最新在顶·CB-NN 大→小·便于看最新进展；不覆写）。新轮次写在文件顶部（CB-01 之前）（区别于 session-handoff 的"覆写当前节点"）。每轮四节：① SCAN 摘要 ② 我方反评价 ③ 行动 ④ 状态/新发现。
-> 反评价标尺：agree=证据支持/我方漏掉；disagree=用错标尺/事实错误；partial=方向对细节偏。承重红线（tracker 编号连续/diagnose 永不动/四态）不接受简化。
+> 我方（Claude Code）与第三方评价（DeepSeek V4 Pro / GLM）的多轮 catch-ball 对话轨迹。
+> 按轮**倒序**（最新在顶·CB-NN 大→小·便于看最新进展；不覆写）。新轮次写在文件顶部。
+> 每轮四节：① SCAN 摘要 ② 我方反评价 ③ 行动 ④ 状态/新发现。
+
+---
+
+## CB-09 · 2026-07-28~29（v1.0 实测诊断·5 案例 + 7 根因）
+
+### ① SCAN 摘要
+[SCAN_DeepSeek_05](scan/05-deepseek.md)（DeepSeek V4 Pro·ZCode 主线程）：基于用户 5 个实测案例的深度诊断——裁剪西陵+伍家岗（request_upload·推理螺旋）、上传了哪些数据（答错·信息缺失）、裁剪西陵+伍家岗再测（假结论·无执行感知）、消极情绪追问（层引用幻觉）、500m 网格聚合（图层OK/结论超时）。**核心发现**：接地上下文缺两类语义标注（数据来源+可用引用），LLM 面对信息缺口进入推理螺旋。综合分 7.3/10（↓0.6 vs CB-08）。7 条 P0-P1 建议。
+
+### ② 我方反评价
+（待项目方填写）
+
+### ③ 行动
+（待项目方填写）
+
+### ④ 状态
+`open → 待反评价` —— SCAN 已产出，待项目方逐条 agree/disagree/partial。
+
+---
+
+## CB-08 · 2026-07-28（EMC v1.0 聚焦修复工程·双源核实）
 >
 > ---
 > **归档信息**：原始路径 `docs/cb-journal.md`，于 2026-07-19 移入 `docs/catch-ball/` 归档。

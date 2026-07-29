@@ -1,6 +1,10 @@
 # Emotion Map — Agent 协作规范
 
-> v2.1 | 9 Agent + 自动编排 + MCP 外挂 | 2026-06-17
+> v2.2 | 9 Agent + 自动编排 + MCP 外挂 + CB 闭环 | 2026-07-28
+>
+> 🔗 **CB 入口**：`docs/catch-ball/_cb-index.md` — ZCode/VS Code 双环境统一入口。启动时先读此文件了解 CB 全貌（当前轮次、最新报告、换机指引）。
+>
+> 🏠🏢 **换机交接**：`docs/catch-ball/_handoff/HOME.md` + `OFFICE.md` — 家/办公室各存当前进展，git 同步。
 >
 > ⚠️ **概念框架声明（CB-02 讨论1）**：本文件为 AI 行为约束参考 + 新人 onboarding，**不描述运行时 Agent spawn 机制**。实际任务由 Claude Code 主线程直接执行（用户全局「不派 subagent」铁律），SOP 分级指导执行深度而非触发独立 Agent。9 个 Agent 定义 = 角色卡片，非独立执行单元。**避免第三方基于本文件做运行时误判**（CB-01 曾据 AGENTS.md 理论 SOP 模型算调用次数，与实际"主线程直接干"不符）。
 

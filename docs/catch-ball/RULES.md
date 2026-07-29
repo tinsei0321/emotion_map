@@ -1,8 +1,9 @@
 # Catch-Ball 评估规则与工作指南
 
-> **版本**：1.0 | **生效日期**：2026-07-19
-> **适用对象**：第三方评估模型（ZCode + DeepSeek V4 Pro）
+> **版本**：2.0 | **生效日期**：2026-07-28
+> **适用对象**：第三方评估模型（ZCode + DeepSeek V4 Pro / VS Code + GLM + Claude Code）
 > **评估项目**：emotion_map — 城市情绪地图平台
+> **CB 统一入口**：`_cb-index.md` — 启动时先读此文件
 
 ---
 
@@ -85,7 +86,7 @@ CB-N 轮开始
     │   ├── 全面扫描项目当前状态
     │   ├── 六轴评分 + 趋势对比
     │   ├── 提出分级优化建议
-    │   └── 输出 SCAN_DeepSeek_{NN}.md
+    │   └── 输出 scan/{NN}-{model}.md
     │
     ├── ② Journal（项目方反评价）
     │   ├── 逐条评估 SCAN 建议（agree / disagree / partial）
@@ -123,32 +124,52 @@ CB-N 轮开始
 
 ## 四、文档编号规范
 
+> **CB 统一入口**：`docs/catch-ball/_cb-index.md` — 所有环境启动时先读此文件。
+
 ### 4.1 SCAN 文档
 ```
-docs/catch-ball/report/SCAN_DeepSeek_{NN}.md
+docs/catch-ball/scan/CB{NN}-{topic}_{env}-{model}_{YYYY-MM-DD}.md
 ```
-- 所有 SCAN 类评估报告统一放入 `docs/catch-ball/report/` 子文件夹
-- `{NN}` 为两位零填充序号（01, 02, 03, …）
-- 每轮一个文件，不覆写
-- 文件头包含归档元信息（轮次、日期、原始路径）
-- **同轮多模型**（同一轮喂多个大模型评测）：文件名追加模型短名 `-{model}`（如 `SCAN_DeepSeek_04-k3.md`、CPD 专轨 `SCAN_CPDPlan_01-gemini.md`）。同轮 {NN} 同、{model} 异，各存一份不混淆；{model} 用小写短名（deepseek / k3 / gemini / chatgpt / qwen / doubao / glm 等）。各模型报告独立反评价，journal 同一轮章内按模型分小节。
+- 所有 SCAN 类评估报告统一放入 `docs/catch-ball/scan/` 子文件夹
+- 命名格式：`CB{NN}-{主题}_{环境}-{模型}_{日期}.md`
+- 示例：`CB09-v1.0实测诊断_ZCode-DeepSeek_2026-07-28.md`
+- `{NN}` 为两位 CB 轮次号
+- `{topic}` 为简短中文主题描述
+- `{env}` 为评估环境（ZCode / VSCode）
+- `{model}` 为评估模型（DeepSeek / GLM / K3 / Gemini 等）
+- CPD 专轨评估放入 `docs/catch-ball/scan/cpd/`
 
-### 4.2 Catch-Ball Journal
+### 4.2 根因分析文档
+```
+docs/catch-ball/rootcause/{YYYY-MM-DD}-{slug}.md
+```
+
+### 4.3 综合审计文档
+```
+docs/catch-ball/audit/{YYYY-MM-DD}-{slug}.md
+```
+
+### 4.4 Catch-Ball Journal
 ```
 docs/catch-ball/cb-journal.md
 ```
-- 单文件，按轮**倒序**（最新在顶·CB-NN 大→小·便于看最新进展；不覆写；新轮次写在文件顶部 CB-01 之前）
+- 单文件，按轮**倒序**（最新在顶）
 - 内部章节命名：`## CB-01`、`## CB-02` …
 - 每轮四节：① SCAN 摘要 ② 我方反评价 ③ 行动 ④ 状态/新发现
 
-### 4.3 退役台账
+### 4.5 退役台账
 ```
 docs/catch-ball/retired.md
 ```
-- 单文件，按退役日期追加
-- 每条记录包含：文件路径、原职责、退役原因、可恢复性
 
-### 4.4 报告结构模板（每轮 SCAN）
+### 4.6 换机交接卡
+```
+docs/catch-ball/_handoff/HOME.md
+docs/catch-ball/_handoff/OFFICE.md
+```
+- git 同步，离开前更新 → commit+push
+
+### 4.7 报告结构模板（每轮 SCAN）
 
 ```
 # DeepSeek 深度扫描评估报告（第 N 轮）
