@@ -1,6 +1,6 @@
 # EMC Bug 修复工程日志
 
-> 自动生成（`py tests/buglog/_gen_index.py`）·勿手改 · 最后更新：2026-07-29 16:50
+> 自动生成（`py tests/buglog/_gen_index.py`）·勿手改 · 最后更新：2026-07-29 18:34
 > 条目 **11** · OPEN **10** · RESOLVED **1** · P0 阻塞 **3** · 修复已提交 **7**
 > 飞轮：27 用例 · 最近报告：report-2026-07-29-01-llm (56%·14/25)
 
@@ -26,7 +26,7 @@
 ### B002 · finalStep 假结论 — "只说不做/只做一半"（复现）
 
 - **严重度**：CRIT | **模块**：finalStep | **复现**：3×
-- **修复进度**：P0-4 v2 治本：① tools.js 五工具观测诚实化（count=0 不说"已生成"）② harness.js 零图层跳过 LLM finalStep ③ 正则 {2,20}→{3,20} 防断词 (8e5e76f)
+- **修复进度**：P0-4 v3 根治：① _autoExpandOverlays 代码自动扩展多步骤 ② D057 修订允许多 tool_calls ③ FC prompt 简化去旧诊断卡触发 ④ clip 描述加 ❌面层禁止 ⑤ extract_feature/overlay when 修正 (3a97e19)
 - **问句**：「剪裁出西陵区范围内的商业+居住+公园广场用地」
 - **同根因**：B004
 - **关联**：[entry](open/B002-finalstep-fake-conclusion-recurrence.md) · [rootcause](../../docs/catch-ball/rootcause/2026-07-28-hallucination-finalstep.md) · TC-21 · CB-09
@@ -115,6 +115,7 @@
 |------|--------|----------|:---:|
 | 2026-07-29 | 31e2a00 | P0-4: harness.js 3 处 finalStep context 注入 newLayerCount 执行摘要... | B002/B004/B005/B006 |
 | 2026-07-29 | 8e5e76f | P0-4 v2 治本：① tools.js 五工具观测诚实化（count=0 不说"已生成"）② harness.js ... | B002 |
+| 2026-07-29 | 3a97e19 | P0-4 v3 根治：① _autoExpandOverlays 代码自动扩展多步骤 ② D057 修订允许多 tool... | B002 |
 | 2026-07-29 | adef900 | ① 按钮迁至右上角 sticky（原右下）② 透明磨砂背景+细绿边框（原深色填充）③ 文本 '↓'（原'回到底部 ↓'） | B009/B010/B011 |
 | 07-28 | 1320e7c | M1 `_norm_where` 拆逗号（支持 `in` 多值列表） | B001/B001 |
 | 07-28 | f68f61c | M3 契约 `extract_feature` 去「单要素」误导（`when`=FC description·上游根因） | B001 |

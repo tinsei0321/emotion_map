@@ -5,7 +5,32 @@
 
 > 📦 周归档机制：按自然周（周一~周日）归档历史内容至 `todo-archive/`；本周（含）留本文件，历史周已移归档。
 > 📝 详版历史 = [revision-log §5](revision-log.md#L226)（永久审计底）·本文件只记当前 + 计划。
-> 📌 **架构版本**：v1（三阶段 5.231-5.242）→ **v2（单次 LLM + FC·5.243-5.245b·第三方实施）** → **v3（v2 做对·5.246-657c2e3·GLM 修复）** → 当前 **v3.1**（reg.filter 崩溃修复 + SCAN P1）。
+> 📌 **架构版本**：v1（三阶段 5.231-5.242）→ **v2（单次 LLM + FC·5.243-5.245b·第三方实施）** → **v3（v2 做对·5.246-657c2e3·GLM 修复）** → **v3.2**（CB-09 bug 修复·D057 修订·代码自动扩展·全自动多步执行）
+
+---
+
+## 📅 2026-07-29（今日·CB-09 "只说不做" 根治）
+
+### ✅ 「只说不做」根治（commit 3a97e19+ · **fix/emc-buglog 分支**）
+
+经过 ~20 轮迭代，最终方案：代码自动扩展 + 工具描述修正 + FC prompt 简化。
+
+**根因链**：
+1. LLM 词映射 "裁剪"→clip（错选工具）
+2. clip 裁面层返回空→假结论
+3. FC prompt 含旧诊断卡格式触发"预选工具"幻觉
+4. 单 tool_call 设计无法完成多步骤
+
+**修复（5 个维度）**：
+- 工具观测诚实化：5 工具 count=0 时报"未生成"（`tools.js`）
+- 零图层守卫：newLayerCount=0 跳过 LLM finalStep（`harness.js`）
+- _autoExpandOverlays：代码检测"X区Y1+Y2"模式自动生成 overlay（`harness.js`）
+- extract_feature/overlay/clip 契约修正：function description 明确区分点/面（`tool_contracts.py`）
+- FC prompt 简化：去旧诊断卡触发词 + 直接词映射"裁剪面层→overlay"（`router.py`）
+
+**架构变更**：D057 修订——LLM 可输出多个 tool_calls，orchestrator 顺序执行全部。新增 `runAllToolCalls` + `_autoExpandOverlays`。
+
+详见 [revision-log §5](revision-log.md#L226)。
 
 ---
 
