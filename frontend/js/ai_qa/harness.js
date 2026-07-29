@@ -1141,6 +1141,13 @@ export async function executePlans(ctx, hooks, diagnose, plans) {
     if (hooks.onObservation) hooks.onObservation(obs, i + 1);
     document.dispatchEvent(new CustomEvent('tool:executed', { detail: { tool: def.tool, layerId: (r && r.data && r.data.layerId) || null, ok: !/\[ERR\]|失败/.test(obs), ts: Date.now() } }));
   }
+  // CB-09 P0-4 v2：零图层守护——跳过 LLM finalStep，直接用诚实结论
+  if (newLayerCount === 0) {
+    const _honestText = `## 自动执行完成\n\n已按计划执行 ${remaining.length} 个步骤（${remaining.map((p) => p.tool).join(' → ')}），但**均未产出新图层**。\n\n可能原因：图层间无空间重叠，或参数引用的图层名/ID 未正确对应。请检查 Layers 面板确认数据已加载。`;
+    if (hooks.onFinalDone) hooks.onFinalDone(_honestText);
+    if (hooks.onDefense) hooks.onDefense({ degraded: true, skipped: 'auto-zero' });
+    return { ok: true, rounds: remaining.length, final: _honestText, defense: { degraded: true, skipped: 'auto-zero' }, degraded: true, diagnose, exit: 'result', newLayerCount: 0 };
+  }
   // 综合结论
   if (hooks.onRound) hooks.onRound(remaining.length);
   ctx.context = `【自动模式·已完成 ${remaining.length} 步】已执行: ${remaining.map((p) => p.tool).join(' → ')}。共产出 ${newLayerCount} 个新图层。\n【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层）\n\n` + (ctx.context || '');
