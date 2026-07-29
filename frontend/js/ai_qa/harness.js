@@ -808,10 +808,9 @@ export async function orchestrate(ctx, hooks = {}) {
   // v2 D068：FC 产出的 plans[] 存入 ctx.plans·供 finalStep（追问胶囊）+ CPD（选项展示）共享
   if (diagnose.plans && diagnose.plans.length) {
     ctx.plans = diagnose.plans;
-    console.log('[harness] ctx.plans set:', diagnose.plans.length, 'plans:', JSON.stringify(diagnose.plans.map((p) => ({ rank: p.rank, tool: p.tool, label: p.label }))));
+    console.log('[harness] plans set:', diagnose.plans.length, diagnose.plans.map((p) => p.tool + '/' + p.rank).join(','));
   } else {
-    console.log('[harness] diagnose.plans empty or missing. diagnose keys:', Object.keys(diagnose).join(','));
-  }
+    console.log('[harness] plans empty. dgKeys:', Object.keys(diagnose).join(','));
   }
   // v3 H6：前端 _validateFcParams 已删——信赖后端 validate_tool_call（router fc_diagnose 已校验）。
   // D2（5.207）：method 确定性派生兜底——Flash 偶发输出 method；未输出时按 template 派生，
@@ -1130,7 +1129,6 @@ export async function executePlans(ctx, hooks, diagnose, plans) {
   const remaining = (plans || []).filter((p) => p.rank >= 2 && p.tool);
   if (!remaining.length) return null;
   const toolHistory = []; let newLayerCount = 0;
-  console.log('[executePlans] start, steps:', remaining.length, remaining.map((p) => p.tool).join(' → '));
   for (let i = 0; i < remaining.length; i++) {
     const p = remaining[i];
     const def = stages.SKILL_DEFS[p.tool];
@@ -1142,7 +1140,6 @@ export async function executePlans(ctx, hooks, diagnose, plans) {
     catch (e) { toolHistory.push(`自动-第${i + 1}步: ${def.tool}(${JSON.stringify(p.params || {}).slice(0, 80)}) → 执行异常: ${(e && e.message) || e}`); continue; }
     const obs = (r && r.observation) || '[ERR] 无观察返回';
     if (r && r.data && r.data.layerId) newLayerCount++;
-    console.log(`[executePlans] step${i + 1} ${def.tool}: layerId=${r && r.data && r.data.layerId || 'null'} count=${(r && r.data && r.data.count) || 0} newTotal=${newLayerCount}`);
     toolHistory.push(`自动-第${i + 1}步: ${def.tool}(${JSON.stringify(p.params || {}).slice(0, 80)}) → ${obs}`);
     if (hooks.onObservation) hooks.onObservation(obs, i + 1);
     document.dispatchEvent(new CustomEvent('tool:executed', { detail: { tool: def.tool, layerId: (r && r.data && r.data.layerId) || null, ok: !/\[ERR\]|失败/.test(obs), ts: Date.now() } }));

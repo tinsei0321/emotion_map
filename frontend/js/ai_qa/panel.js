@@ -1544,20 +1544,16 @@ async function send(text, capsule) {
     const _result = await orchestrate(ctx, buildHooks(shell));
     settled = true;
     // CB-09：自动消费 plans[] 剩余步骤（默认全自动）
-    const _remaining = (ctx.plans || []).filter((p) => p.rank >= 2 && p.tool);
-    console.log('[auto-exec] ctx.plans:', JSON.stringify((ctx.plans || []).map((p) => ({ rank: p.rank, tool: p.tool, label: p.label }))));
-    if (_remaining.length > 0 && _result && _result.exit !== 'ask') {
-      console.log('[auto-exec] plans remaining:', _remaining.length, _remaining.map((p) => `${p.tool}(${p.rank})`).join(', '));
+    const _rem = (ctx.plans || []).filter((p) => p.rank >= 2 && p.tool);
+    console.log('[auto] plans total=' + (ctx.plans || []).length + ' remaining=' + _rem.length + ' exit=' + (_result && _result.exit));
+    if (_rem.length > 0 && _result && _result.exit !== 'ask') {
       const _autoResult = await executePlans(ctx, buildHooks(shell), _result.diagnose, ctx.plans);
       if (_autoResult) {
         _result.final = _autoResult.final;
-        _result.newLayerCount = (_result.newLayerCount || 0) + (_autoResult.newLayerCount || 0);
-        _result.rounds = (_result.rounds || 0) + (_autoResult.rounds || 0);
-        _result.exit = _autoResult.exit || _result.exit;
-        console.log('[auto-exec] done, newLayers:', _autoResult.newLayerCount);
+        _result.newLayerCount += _autoResult.newLayerCount || 0;
+        _result.rounds += _autoResult.rounds || 0;
+        _result.exit = 'result';
       }
-    } else {
-      console.log('[auto-exec] skip: remaining=', _remaining.length, 'exit=', _result && _result.exit);
     }
     if (_curTrace && _result) { _curTrace.exit = _result.exit || _curTrace.exit; _curTrace.newLayerCount = _result.newLayerCount; if (_result.defense) _curTrace.defense = _result.defense; }
     if (_result && _result.exit === 'ask') _consecutiveAsks++; else _consecutiveAsks = 0;   // P1 ask 连续计数（跨 orchestrate，≥2 触发下轮禁止）
