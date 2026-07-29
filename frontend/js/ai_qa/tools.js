@@ -160,6 +160,14 @@ document.addEventListener('layers:changed', () => {
     }
   }
 });
+// R2-full（registry 完整性兜底·CB-09）：layers:changed 时·未显式注册的层 → 自动注册 source='tool'。
+// 显式入口（upload/preset/draw/toolbox-tool）在 dispatch 前已注册→此跳过；覆盖 heatmap-tool/grid-tool/map.js 等直调 addLayer 路径·registry 即完整。
+document.addEventListener('layers:changed', () => {
+  for (const l of getLayers()) {
+    if (l.kind === 'group' || !l.fc || !l.fc.features || !l.fc.features.length) continue;
+    if (!data_registry.getByLayerId(l.id)) data_registry.register({ name: l.name, kind: l.kind, source: 'tool', fc: l.fc, layerId: l.id });
+  }
+});
 
 // geoFetch 已删（步 7·手册 §3.2：由 api.js geoPost 取代）；_LAYER_REF_KEYS 随迁——
 // $n/命名引用预解析在各委托层内联（ref() 保留：run_python inputs 与委托层同用）。
