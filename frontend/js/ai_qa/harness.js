@@ -522,7 +522,11 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   // 4. finalStep（Pro 写解题一句话 + 短结论 + {{show}}）
   if (hooks.onRound) hooks.onRound(1);
   const toolHistoryText = toolHistory.join('\n');
-  ctx.context = `【单技能路径·已执行 ${def.tool}】基于上述工具观察直接出结论，勿重选工具、勿重复执行、勿再调 geo 工具。\n【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层）\n\n` + (ctx.context || '');
+  // CB-09 P0-4：执行结果摘要注入 finalStep context——LLM 须基于实际执行结果写结论，非基于"计划已执行"推定
+  const _execSummary = newLayerCount > 0
+    ? `工具 ${def.tool} 执行成功，产出了 ${newLayerCount} 个新图层——请如实描述产出。`
+    : `工具 ${def.tool} 已调用但**未产出新图层**（范围与数据可能不重叠或无可匹配要素）——结论必须如实说明"未生成图层"，严禁编造图层名或数据量。`;
+  ctx.context = `【单技能路径·${_execSummary}】基于上述工具观察直接出结论，勿重选工具、勿重复执行、勿再调 geo 工具。\n【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层）\n\n` + (ctx.context || '');
   let draft;
   try {
     console.time('[emc-timing] finalStep');   // WS1 F1.7：finalStep 计时
@@ -620,7 +624,9 @@ async function runChainPath(ctx, hooks, diagnose, chain) {
   // finalStep + 对账（同 runTemplatePath :362-375）
   if (hooks.onRound) hooks.onRound(chain.steps.length);
   const toolHistoryText = toolHistory.join('\n');
-  ctx.context = `【多步链路径·已执行 ${chain.steps.map((s) => s.tool).join(' → ')}】基于上述工具观察直接出结论，勿重选工具、勿重复执行、勿再调 geo 工具。\n\n` + (ctx.context || '');
+  // CB-09 P0-4：多步链执行结果摘要——告知 LLM 实际完成了几步、产出多少图层
+  const _chainExecSummary = `多步链 ${chain.steps.map((s) => s.tool).join(' → ')} 已全部执行完成，共产出 ${newLayerCount} 个新图层——请如实描述每步产出。`;
+  ctx.context = `【多步链路径·${_chainExecSummary}】基于上述工具观察直接出结论，勿重选工具、勿重复执行、勿再调 geo 工具。\n【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层）\n\n` + (ctx.context || '');
   let draft;
   try {
     draft = await stages.finalStep(ctx, hooks, toolHistoryText);
@@ -1020,8 +1026,12 @@ export async function orchestrate(ctx, hooks = {}) {
   // EXIT_RESULT：草稿结论（agent 决定 answer / 达上限 / 降级回退 都走这里）
   let draft = '';
   let _isPartialMissing = false;   // EXIT_PARTIAL：对账发现少量声称图层未实际生成（1-2 个），保 draft+标注后转 partial 出口
-  // ④ 注入 registry 真值清单（finalStep 共用同 ctx.context）：模型 ground 在实际图层，禁编不在列表的层
-  ctx.context = '【地图实际产出图层】' + formatRegistry() + '（严禁声称生成不在此列表的图层；任务未完成改述"未生成/未产出"，不得编造图层名与数字）\n\n' + (ctx.context || '');
+  // ④ 注入 registry 真值清单 + 执行结果摘要（finalStep 共用同 ctx.context）：
+  //   CB-09 P0-4——LLM 须基于实际执行结果写结论，非基于 plan 推定（治 finalStep 假结论 B002/B004/B005）
+  const _loopExecSummary = newLayerCount > 0
+    ? `本轮共产出 ${newLayerCount} 个新图层——请如实描述产出。`
+    : `本轮**未产出任何新图层**——结论必须如实说明"未生成图层"，严禁编造图层名或声称已产出。`;
+  ctx.context = `【${_loopExecSummary}】【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层；任务未完成改述"未生成/未产出"，不得编造图层名与数字）\n\n` + (ctx.context || '');
   try {
     draft = await stages.finalStep(ctx, hooks, toolHistoryText);
   } catch (e) {
