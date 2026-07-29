@@ -1,5 +1,5 @@
 // ═══ panel.js — AI 问答 UI（底部滑出 · agent loop · 历史持久化 · 思考深度开关 · 动态状态）═══
-import { orchestrate, getTemplateStats } from './harness.js';
+import { orchestrate, executePlans, getTemplateStats } from './harness.js';
 import { buildContext, buildOptimizeContext, TOOLS, resetStepResults, resetCurrentResults, cleanupConsumedResults, getFig } from './tools.js';
 import { initCpdState, subscribe, getCurStepIdx, CPD_STEPS, relayoutFloats } from './cpd-state.js';
 import { initCpdGuide, recomputeGuidance, refreshGuidance, suppressGuidance } from './cpd-guide.js';   // CPD：引导引擎（依赖注入，零反向 import）
@@ -1543,6 +1543,16 @@ async function send(text, capsule) {
   try {
     const _result = await orchestrate(ctx, buildHooks(shell));
     settled = true;
+    // CB-09 自动模式：初始 tool_call 执行成功后，自动消费 plans[] 剩余步骤
+    if (_result && _result.exit === 'result' && !_result.degraded && isAutoExec() && ctx.plans && ctx.plans.length > 1) {
+      const _autoResult = await executePlans(ctx, buildHooks(shell), _result.diagnose, ctx.plans);
+      if (_autoResult) {
+        _result.final = _autoResult.final;
+        _result.newLayerCount += _autoResult.newLayerCount || 0;
+        _result.rounds += _autoResult.rounds || 0;
+        _result.exit = 'result';
+      }
+    }
     if (_curTrace && _result) { _curTrace.exit = _result.exit || _curTrace.exit; _curTrace.newLayerCount = _result.newLayerCount; if (_result.defense) _curTrace.defense = _result.defense; }
     if (_result && _result.exit === 'ask') _consecutiveAsks++; else _consecutiveAsks = 0;   // P1 ask 连续计数（跨 orchestrate，≥2 触发下轮禁止）
     // C：软缺口降级口径标注（fallback_annotated）
@@ -1609,6 +1619,39 @@ function wireModeSwitch() {
     seg.querySelectorAll('button').forEach((x) => x.classList.toggle('is-active', x.dataset.mode === _thinkMode));
   });
 }
+
+const EXEC_MODE_KEY = 'ai_qa_exec_mode';
+let _execMode = localStorage.getItem(EXEC_MODE_KEY) || 'manual';   // 'manual' | 'auto' | 'plan'
+
+/** 执行模式切换（手动/自动·下拉单按钮·CB-09）。 */
+function wireExecModeSwitch() {
+  const btn = document.getElementById('aiq-exec-btn');
+  const drop = document.getElementById('aiq-exec-drop');
+  const label = document.getElementById('aiq-exec-label');
+  if (!btn || !drop || !label) return;
+  // 初始态
+  const _sync = () => {
+    label.textContent = _execMode === 'auto' ? '自动' : '手动';
+    drop.querySelectorAll('button[data-exec]').forEach((b) => b.classList.toggle('is-active', b.dataset.exec === _execMode));
+  };
+  _sync();
+  // 按钮点击 → 切换下拉
+  btn.addEventListener('click', (e) => { e.stopPropagation(); drop.hidden = !drop.hidden; });
+  // 选项点击
+  drop.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-exec]');
+    if (!b || b.disabled) return;
+    _execMode = b.dataset.exec;
+    localStorage.setItem(EXEC_MODE_KEY, _execMode);
+    _sync();
+    drop.hidden = true;
+  });
+  // 外部点击关闭
+  document.addEventListener('click', () => { drop.hidden = true; });
+}
+
+/** 暴露给 harness：当前是否为自动执行模式。 */
+export function isAutoExec() { return _execMode === 'auto'; }
 
 /** 空态欢迎卡：无对话时显问候 + 能力清单 + 示例追问（点击即发）。有消息则移除。 */
 const WELCOME_PROMPTS = [
@@ -2045,6 +2088,7 @@ export function initChatPanel() {
 
   document.getElementById('chat-messages')?.addEventListener('click', onMsgClick);
   wireModeSwitch();
+  wireExecModeSwitch();   // CB-09：执行模式切换（手动/自动）
   // F5 启动：上轮当前会话归档进 _archive（可从历史记录翻看，不丢），主区从欢迎卡开场·用户定 2026-07-22
   if (_history.length) {
     _archive.unshift({ id: 's' + Date.now(), title: _titleOf(_history), history: [..._history], createdAt: Date.now() });

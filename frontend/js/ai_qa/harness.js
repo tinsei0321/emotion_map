@@ -6,6 +6,7 @@
 import * as stages from './stages.js';
 import { TOOLS, setToolContext, formatRegistry, getArtifacts, deriveAvailable, resetStepResults, resolveCoref } from './tools.js';
 import { getLayers } from '../state.js';
+import { isAutoExec } from './panel.js';   // CB-09：自动执行模式
 
 const MAX_ROUNDS_GIS = 10;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=10（保多步完整性，如3次overlay需8轮：1查询+6执行+1answer）
 const MAX_ROUNDS_OTHER = 4;    // A 通用 / C 情绪=4（远紧于 16，配合 temp 0.4 降概率链 p^N）
@@ -1117,4 +1118,38 @@ export async function orchestrate(ctx, hooks = {}) {
   const final = _fQd.final;
   if (hooks.onDefense) hooks.onDefense({ degraded: _fQd.degraded, fixes: _fQd.fixes, skipped: 'result', capsules: _fQd.capsules || [] });
   return { ok: true, rounds: round, final, defense: { degraded: _fQd.degraded, fixes: _fQd.fixes, skipped: 'result', capsules: _fQd.capsules || [] }, degraded, diagnose, exit: 'result', newLayerCount };
+}
+
+/** CB-09 自动模式：确定性遍历 plans[] 剩余步骤·顺序执行·复用 runTemplatePath。
+ *  ctx.plans 中 rank=1 已被初始 orchestrate 消费，此函数执行 rank=2+ 的全部剩余步骤。
+ *  每步成/败都记录；全部跑完后调一次 finalStep 出综合结论。 */
+export async function executePlans(ctx, hooks, diagnose, plans) {
+  const remaining = (plans || []).filter((p) => p.rank >= 2 && p.tool);
+  if (!remaining.length) return null;
+  const toolHistory = []; let newLayerCount = 0;
+  for (let i = 0; i < remaining.length; i++) {
+    const p = remaining[i];
+    const def = stages.SKILL_DEFS[p.tool];
+    if (!def || !def.tool) continue;
+    if (hooks.onRoundStart) hooks.onRoundStart(i + 1);
+    setToolContext({ tool: def.tool, round: i + 1 });
+    let r = null;
+    try { r = await TOOLS[def.tool](p.params || {}); }
+    catch (e) { toolHistory.push(`自动-第${i + 1}步: ${def.tool}(${JSON.stringify(p.params || {}).slice(0, 80)}) → 执行异常: ${(e && e.message) || e}`); continue; }
+    const obs = (r && r.observation) || '[ERR] 无观察返回';
+    if (r && r.data && r.data.layerId) newLayerCount++;
+    toolHistory.push(`自动-第${i + 1}步: ${def.tool}(${JSON.stringify(p.params || {}).slice(0, 80)}) → ${obs}`);
+    if (hooks.onObservation) hooks.onObservation(obs, i + 1);
+    document.dispatchEvent(new CustomEvent('tool:executed', { detail: { tool: def.tool, layerId: (r && r.data && r.data.layerId) || null, ok: !/\[ERR\]|失败/.test(obs), ts: Date.now() } }));
+  }
+  // 综合结论
+  if (hooks.onRound) hooks.onRound(remaining.length);
+  ctx.context = `【自动模式·已完成 ${remaining.length} 步】已执行: ${remaining.map((p) => p.tool).join(' → ')}。共产出 ${newLayerCount} 个新图层。\n【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层）\n\n` + (ctx.context || '');
+  let draft;
+  try { draft = await stages.finalStep(ctx, hooks, toolHistory.join('\n')); }
+  catch (e) { draft = `## 自动执行完成\n\n已按计划执行 ${remaining.length} 个步骤，共产出 ${newLayerCount} 个图层。详情见地图。`; }
+  const _qd = applyQualityDefense(draft, { obsOk: newLayerCount > 0, toolHistoryText: toolHistory.join('\n'), skipL1: false });
+  if (hooks.onFinalDone) hooks.onFinalDone(_qd.final);
+  if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'auto-exec', capsules: _qd.capsules || [] });
+  return { ok: true, rounds: remaining.length, final: _qd.final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'auto-exec' }, degraded: false, diagnose, exit: 'result', newLayerCount };
 }

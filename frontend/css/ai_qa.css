@@ -284,6 +284,18 @@
 .aiq-mode button.is-active { background: var(--emc-accent, #D97757); color: #fff; }
 .aiq-mode button svg { display: block; }   /* 大脑/闪电图标（v1.4）：去 inline 基线，居中 */
 
+/* ── 执行模式切换（手动/自动·Pro/Flash 胶囊右侧·CB-09）── */
+.aiq-exec-mode { position: relative; display: inline-flex; margin-left: 2px; }
+#aiq-exec-btn { display: inline-flex; align-items: center; gap: 3px; height: 28px; padding: 0 10px; font-size: 12px; border: 1px solid var(--geojson-color-border-default, #e3e5e8); border-radius: 999px; background: transparent; color: var(--geojson-color-text-secondary, #666); cursor: pointer; transition: background var(--geojson-transition), color var(--geojson-transition); white-space: nowrap; }
+#aiq-exec-btn:hover { background: var(--geojson-color-gray-100, #f0f0f0); }
+#aiq-exec-btn.is-active { background: var(--emc-accent, #D97757); color: #fff; }
+.aiq-exec-arrow { flex-shrink: 0; }
+.aiq-exec-drop { position: absolute; top: 100%; right: 0; margin-top: 4px; min-width: 150px; background: var(--geojson-color-surface-panel, #fff); border: 1px solid var(--geojson-color-border-default, #e3e5e8); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); z-index: 100; overflow: hidden; }
+.aiq-exec-drop button { display: block; width: 100%; padding: 7px 14px; font-size: 12px; text-align: left; border: none; background: transparent; color: var(--geojson-color-text-primary, #333); cursor: pointer; transition: background 0.1s; }
+.aiq-exec-drop button:hover { background: var(--geojson-color-gray-100, #f0f0f0); }
+.aiq-exec-drop button.is-active { color: var(--emc-accent, #D97757); font-weight: 600; }
+.aiq-exec-drop button:disabled { color: var(--geojson-color-text-tertiary, #bbb); cursor: not-allowed; }
+
 /* ── 审查状态区（七条 checklist ✓/△/✕ + 整体结论）── */
 .aiq-review { margin: 0 0 6px; padding: 6px 10px; border-left: 2px solid var(--geojson-color-gray-200, #e3e5e8); background: var(--geojson-color-gray-100, #f7f7f7); border-radius: 0 6px 6px 0; }
 .aiq-review-head { font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 4px; }
