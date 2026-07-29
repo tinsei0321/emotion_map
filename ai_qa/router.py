@@ -58,7 +58,7 @@ async def chat_route(req: ChatRequest):
             '## 工具×数据兼容性\n'
             '选工具前先看下方「数据上下文」——确认数据类型匹配：\n'
             '- density/hotspot/rank/zonal_stats/compare_regions 需**情绪点层**（含 polarity/score 字段）\n'
-            '- clip 需**点层 + 范围**（range）——**clip 仅用于裁剪点层**！面层面裁剪（如"某区内的某类用地"）必须用 overlay(how="intersection")，严禁用 clip 裁面层\n'
+            '- clip 需**点层 + 范围**（range）——**clip 仅用于裁剪点层**！面层面裁剪（如"某区内的某类用地"）必须用 overlay(how="intersection")，严禁用 clip 裁面层——clip 传面层会返回空结果，导致任务失败\n'
             '- extract_feature/overlay/merge/area_stats 需**面层**（polygon boundary）。overlay how="intersection" = 面∩面 = 空间裁剪面层的正确工具\n'
             '- buffer/nearest 需**点层 + 目标**（center/target）\n'
             '- **跨层合并多个面层**（如"合并商业+居住+公园三个图层"）：merge 只能处理单个图层内的要素·不能跨层合并。跨层合并用 overlay(how="union") 两两合并，或分别 overlay(intersection) 后 merge\n'

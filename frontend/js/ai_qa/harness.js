@@ -1151,8 +1151,8 @@ async function runAllToolCalls(ctx, hooks, diagnose) {
   }
   // finalStep
   if (hooks.onRound) hooks.onRound(tcs.length);
-  const _failNote = failedSteps.length ? `⚠️ 第 ${failedSteps.join('、')} 步未产出图层。` : '';
-  ctx.context = `【多步执行·已完成 ${tcs.length} 步·成功 ${newLayerCount} 层${_failNote ? '·' + _failNote : ''}】\n【地图实际产出图层】${formatRegistry()}（严禁声称不在此列表的图层）\n\n` + (ctx.context || '');
+  const _failNote = failedSteps.length ? `⚠️ 失败步骤: ${failedSteps.map((n) => `第${n}步(${tcs[n-1].name})`).join('、')}——这些步骤未产出图层，结论必须如实说明"未生成"，严禁声称成功。` : '';
+  ctx.context = _failNote + '\n【多步执行·已完成 ' + tcs.length + ' 步·成功 ' + newLayerCount + ' 层】\n【地图实际产出图层】' + formatRegistry() + '（严禁声称不在此列表的图层）\n\n' + (ctx.context || '');
   let draft;
   try { draft = await stages.finalStep(ctx, hooks, toolHistory.join('\n')); }
   catch (e) { draft = `## 执行完成\n\n已按计划执行 ${tcs.length} 个步骤，共产出 ${newLayerCount} 个图层。`; }

@@ -93,7 +93,7 @@ TOOL_CONTRACTS = [
     {
         'skill': 'clip', 'tool': 'clip', 'category': 'single', 'name_cn': '范围裁取（仅点层）',
         'voice': '我按范围裁出范围内的情绪点（仅限点数据）', 'triggers_str': '某区内的情绪点/某范围内的点/XX区内的点（clip 仅切点层！面层面裁剪如"某区内的商业用地"→用 overlay intersection）',
-        'when': '按几何裁剪点层：某行政区/某公园/某街道范围内的**点**（注意：仅点层！面层面用 overlay）',
+        'when': '❌ 仅点层！按几何裁剪**点层**：某行政区/某公园/某街道范围内的点数据。面层裁剪（如"某区内的商业用地"）必须用 overlay intersection，严禁使用本工具——传面层会返回空结果',
         'params_str': 'layer, range(preset_id | geojson), pre_filter?',
         'yields': '范围内的点子集（自动落地图）', 'contributes': '限定空间范围取点（"西陵区内的情绪点"），支撑中/微观落点',
         'scale': '中观/微观（范围内取**点**）', 'preconditions': 'range preset/geojson + **点层**（面层不支持）',
