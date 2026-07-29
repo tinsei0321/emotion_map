@@ -1126,6 +1126,7 @@ export async function executePlans(ctx, hooks, diagnose, plans) {
   const remaining = (plans || []).filter((p) => p.rank >= 2 && p.tool);
   if (!remaining.length) return null;
   const toolHistory = []; let newLayerCount = 0;
+  console.log('[executePlans] start, steps:', remaining.length, remaining.map((p) => p.tool).join(' → '));
   for (let i = 0; i < remaining.length; i++) {
     const p = remaining[i];
     const def = stages.SKILL_DEFS[p.tool];
@@ -1137,6 +1138,7 @@ export async function executePlans(ctx, hooks, diagnose, plans) {
     catch (e) { toolHistory.push(`自动-第${i + 1}步: ${def.tool}(${JSON.stringify(p.params || {}).slice(0, 80)}) → 执行异常: ${(e && e.message) || e}`); continue; }
     const obs = (r && r.observation) || '[ERR] 无观察返回';
     if (r && r.data && r.data.layerId) newLayerCount++;
+    console.log(`[executePlans] step${i + 1} ${def.tool}: layerId=${r && r.data && r.data.layerId || 'null'} count=${(r && r.data && r.data.count) || 0} newTotal=${newLayerCount}`);
     toolHistory.push(`自动-第${i + 1}步: ${def.tool}(${JSON.stringify(p.params || {}).slice(0, 80)}) → ${obs}`);
     if (hooks.onObservation) hooks.onObservation(obs, i + 1);
     document.dispatchEvent(new CustomEvent('tool:executed', { detail: { tool: def.tool, layerId: (r && r.data && r.data.layerId) || null, ok: !/\[ERR\]|失败/.test(obs), ts: Date.now() } }));
