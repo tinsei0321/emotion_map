@@ -1,5 +1,5 @@
 // ═══ panel.js — AI 问答 UI（底部滑出 · agent loop · 历史持久化 · 思考深度开关 · 动态状态）═══
-import { orchestrate, executePlans, getTemplateStats } from './harness.js';
+import { orchestrate, getTemplateStats } from './harness.js';
 import { buildContext, buildOptimizeContext, TOOLS, resetStepResults, resetCurrentResults, cleanupConsumedResults, getFig } from './tools.js';
 import { initCpdState, subscribe, getCurStepIdx, CPD_STEPS, relayoutFloats } from './cpd-state.js';
 import { initCpdGuide, recomputeGuidance, refreshGuidance, suppressGuidance } from './cpd-guide.js';   // CPD：引导引擎（依赖注入，零反向 import）
@@ -1543,18 +1543,6 @@ async function send(text, capsule) {
   try {
     const _result = await orchestrate(ctx, buildHooks(shell));
     settled = true;
-    // CB-09：自动消费 plans[] 剩余步骤（默认全自动）
-    const _rem = (ctx.plans || []).filter((p) => p.rank >= 2 && p.tool);
-    console.log('[auto] plans total=' + (ctx.plans || []).length + ' remaining=' + _rem.length + ' exit=' + (_result && _result.exit));
-    if (_rem.length > 0 && _result && _result.exit !== 'ask') {
-      const _autoResult = await executePlans(ctx, buildHooks(shell), _result.diagnose, ctx.plans);
-      if (_autoResult) {
-        _result.final = _autoResult.final;
-        _result.newLayerCount += _autoResult.newLayerCount || 0;
-        _result.rounds += _autoResult.rounds || 0;
-        _result.exit = 'result';
-      }
-    }
     if (_curTrace && _result) { _curTrace.exit = _result.exit || _curTrace.exit; _curTrace.newLayerCount = _result.newLayerCount; if (_result.defense) _curTrace.defense = _result.defense; }
     if (_result && _result.exit === 'ask') _consecutiveAsks++; else _consecutiveAsks = 0;   // P1 ask 连续计数（跨 orchestrate，≥2 触发下轮禁止）
     // C：软缺口降级口径标注（fallback_annotated）

@@ -808,9 +808,6 @@ export async function orchestrate(ctx, hooks = {}) {
   // v2 D068：FC 产出的 plans[] 存入 ctx.plans·供 finalStep（追问胶囊）+ CPD（选项展示）共享
   if (diagnose.plans && diagnose.plans.length) {
     ctx.plans = diagnose.plans;
-    console.log('[harness] plans set:', diagnose.plans.length, diagnose.plans.map((p) => p.tool + '/' + p.rank).join(','));
-  } else {
-    console.log('[harness] plans empty. dgKeys:', Object.keys(diagnose).join(','));
   }
   // v3 H6：前端 _validateFcParams 已删——信赖后端 validate_tool_call（router fc_diagnose 已校验）。
   // D2（5.207）：method 确定性派生兜底——Flash 偶发输出 method；未输出时按 template 派生，
@@ -875,7 +872,12 @@ export async function orchestrate(ctx, hooks = {}) {
     }
   }
 
-  // 【Dumb·执行阶段】P1 编排：single 技能走 runTemplatePath（0 agentStep LLM 轮·纯参数化执行，p^N→p²）；concept 已被上面 general 短路接走；multi/unknown 落 while-loop（ReAct 兜底）。
+  // 【Dumb·执行阶段】P1 编排：
+  // CB-09 D057 修订：若 LLM 输出了多个 tool_calls → runAllToolCalls 顺序执行全部·0 LLM 中间轮
+  if (!ctx.resume && !diagnose.degraded && diagnose._allToolCalls && diagnose._allToolCalls.length > 1) {
+    return await runAllToolCalls(ctx, hooks, diagnose);
+  }
+  // single 技能走 runTemplatePath（0 agentStep LLM 轮·纯参数化执行，p^N→p²）；concept 已被上面 general 短路接走；multi/unknown 落 while-loop（ReAct 兜底）。
   // ⑤④ 80% gate（self-protection）：_tplHitRateReady 冷启动放行保零回归；Flash 经 ≥10 次验证命中率<80%（系统性不可靠）时
   // 退 while-loop（更稳健：query-first + 多轮 + 对账），命中率≥80% 才主导 single 快路径。
   if (!ctx.resume && !diagnose.degraded && diagnose.template) {
@@ -1120,6 +1122,41 @@ export async function orchestrate(ctx, hooks = {}) {
   const final = _fQd.final;
   if (hooks.onDefense) hooks.onDefense({ degraded: _fQd.degraded, fixes: _fQd.fixes, skipped: 'result', capsules: _fQd.capsules || [] });
   return { ok: true, rounds: round, final, defense: { degraded: _fQd.degraded, fixes: _fQd.fixes, skipped: 'result', capsules: _fQd.capsules || [] }, degraded, diagnose, exit: 'result', newLayerCount };
+}
+
+/** CB-09 D057 修订：LLM 输出多个 tool_calls → 确定性顺序执行·0 LLM 中间轮。 */
+async function runAllToolCalls(ctx, hooks, diagnose) {
+  const tcs = diagnose._allToolCalls;
+  const toolHistory = []; let newLayerCount = 0;
+  console.log('[runAllToolCalls] start:', tcs.length, tcs.map((t) => t.name).join(' → '));
+  for (let i = 0; i < tcs.length; i++) {
+    const tc = tcs[i];
+    if (hooks.onRoundStart) hooks.onRoundStart(i + 1);
+    setToolContext({ tool: tc.name, round: i + 1 });
+    let r = null;
+    try { r = await TOOLS[tc.name](tc.params || {}); }
+    catch (e) { toolHistory.push(`第${i + 1}步: ${tc.name} → ${(e && e.message) || e}`); continue; }
+    const obs = (r && r.observation) || '[ERR]';
+    if (r && r.data && r.data.layerId) newLayerCount++;
+    toolHistory.push(`第${i + 1}步: ${tc.name}(${JSON.stringify(tc.params || {}).slice(0, 80)}) → ${obs}`);
+    if (hooks.onObservation) hooks.onObservation(obs, i + 1);
+    document.dispatchEvent(new CustomEvent('tool:executed', { detail: { tool: tc.name, layerId: (r && r.data && r.data.layerId) || null, ok: !/\[ERR\]|失败/.test(obs), ts: Date.now() } }));
+  }
+  // 零图层守护
+  if (newLayerCount === 0) {
+    const _t = `## 执行完成\n\n已按计划执行 ${tcs.length} 个步骤（${tcs.map((t) => t.name).join(' → ')}），但均未产出新图层。`;
+    if (hooks.onFinalDone) hooks.onFinalDone(_t);
+    return { ok: true, rounds: tcs.length, final: _t, defense: { degraded: true, skipped: 'multi-zero' }, degraded: true, diagnose, exit: 'result', newLayerCount: 0 };
+  }
+  // finalStep
+  if (hooks.onRound) hooks.onRound(tcs.length);
+  ctx.context = `【多步执行·已完成 ${tcs.length} 步】共产出 ${newLayerCount} 个新图层。\n【地图实际产出图层】${formatRegistry()}（严禁声称不在此列表的图层）\n\n` + (ctx.context || '');
+  let draft;
+  try { draft = await stages.finalStep(ctx, hooks, toolHistory.join('\n')); }
+  catch (e) { draft = `## 执行完成\n\n已按计划执行 ${tcs.length} 个步骤，共产出 ${newLayerCount} 个图层。`; }
+  const _qd = applyQualityDefense(draft, { obsOk: newLayerCount > 0, toolHistoryText: toolHistory.join('\n'), skipL1: false });
+  if (hooks.onFinalDone) hooks.onFinalDone(_qd.final);
+  return { ok: true, rounds: tcs.length, final: _qd.final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'multi-tool' }, degraded: false, diagnose, exit: 'result', newLayerCount };
 }
 
 /** CB-09 自动模式：确定性遍历 plans[] 剩余步骤·顺序执行·复用 runTemplatePath。

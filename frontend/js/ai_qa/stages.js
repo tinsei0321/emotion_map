@@ -323,16 +323,21 @@ export async function fcDiagnoseStep(ctx, hooks) {
     }
     // 解析 plans[]（content 字段·容错 D067）
     let plans = [];
-    console.log('[FC] raw plans type:', typeof data.plans, 'val:', JSON.stringify(data.plans).slice(0, 200));
-    if (data.plans) {
-      plans = _parsePlans(data.plans);
-      console.log('[FC] parsed plans count:', plans.length);
-    }
+    if (data.plans) { plans = _parsePlans(data.plans); }
     // ISSUE 1 修复：tool name → skill name 反映射
     const toolName = tc.function.name;
     const skillName = _TOOL_TO_SKILL[toolName] || toolName;
+    // CB-09 D057 修订：解析所有 tool_calls（不再只取[0]）供 orchestrator 顺序执行
+    const _allToolCalls = (data.tool_calls || []).map((t) => {
+      let _p = {};
+      try { _p = JSON.parse((t.function && t.function.arguments) || '{}'); } catch (_) {}
+      return { name: t.function && t.function.name, params: _p };
+    }).filter((t) => t.name);
+    console.log('[FC] all tool_calls:', _allToolCalls.map((t) => t.name).join(' → '));
     // v3 C2/C3 修复：补全为 normalizeCard 等价结构 + data gate + domain_lens A+B
-    return _normalizeFcDiagnose(skillName, params, plans, toolName, ctx.question, ctx.layerMeta, data.plans);
+    const diag = _normalizeFcDiagnose(skillName, params, plans, toolName, ctx.question, ctx.layerMeta, data.plans);
+    diag._allToolCalls = _allToolCalls;
+    return diag;
   } catch (e) {
     const aborted = e && e.name === 'AbortError';
     console.warn('[FC] 异常:', aborted ? '用户取消/超时' : String(e));
@@ -401,10 +406,8 @@ function _deriveDomainLens(question, fcContent) {
 
 /** v2 plans[] 容错解析（D067）：JSON.parse + 字段校验·解析失败=空 plans·不崩溃。 */
 function _parsePlans(content) {
-  if (!content) { console.log('[FC] _parsePlans: content null'); return []; }
+  if (!content) return [];
   const _clean = String(content).replace(/\[domain_lens:[\w]+\]\s*/g, '').trim();
-  console.log('[FC] _parsePlans raw:', String(content).slice(0, 400));
-  console.log('[FC] _parsePlans clean:', _clean.slice(0, 400));
   try {
     const parsed = JSON.parse(_clean);
     const arr = Array.isArray(parsed) ? parsed : (parsed.plans || []);
