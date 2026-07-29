@@ -1087,10 +1087,11 @@ function appendAssistantShell(trace) {
   el.innerHTML = `<div class="chat-bubble">
     <div class="aiq-collapsed-stub" hidden><span class="aiq-collapse-chev">▸</span><span class="aiq-collapse-excerpt"></span></div>
     <div class="aiq-card aiq-card-diagnose" hidden></div>
-    <div class="aiq-reason" ${hasReason ? '' : 'hidden'}><div class="aiq-reason-head"><span class="aiq-reason-title">Thinking…</span><span class="aiq-reason-overflow"></span><span class="aiq-reason-meta"></span></div><div class="aiq-reason-body"></div></div>
-    <div class="aiq-steps" ${trace && trace.steps && trace.steps.length ? '' : 'hidden'}><div class="aiq-steps-head">工具调用（Agent Loop）</div></div>
+    <div class="aiq-timeline">
+    <div class="aiq-reason" ${hasReason ? '' : 'hidden'}><div class="aiq-reason-head"><span class="aiq-reason-title">理解问题</span><span class="aiq-reason-overflow"></span><span class="aiq-reason-meta"></span><span class="aiq-reason-copy" hidden title="复制完整思考过程">复制</span></div><div class="aiq-reason-body"></div></div>
+    <div class="aiq-step aiq-step-final" hidden><span class="aiq-step-tag">结论</span><div class="aiq-answer"><span class="aiq-answer-stream"></span><span class="chat-cursor" hidden>▍</span></div></div>
+    </div>
     <div class="aiq-review" hidden><div class="aiq-review-head">审查</div><div class="aiq-review-body"></div></div>
-    <div class="aiq-step aiq-step-final"><span class="aiq-step-tag">结论</span><div class="aiq-answer"><span class="aiq-answer-stream"></span><span class="chat-cursor" hidden>▍</span></div></div>
     <div class="aiq-card aiq-card-caliber" hidden></div>
     <div class="aiq-answer-footer" hidden></div>
   </div>
@@ -1100,7 +1101,10 @@ function appendAssistantShell(trace) {
     diagnoseEl: el.querySelector('.aiq-card-diagnose'),
     reasonEl: el.querySelector('.aiq-reason'),
     reasonBody: el.querySelector('.aiq-reason-body'),
-    stepsEl: el.querySelector('.aiq-steps'),
+    reasonCopyEl: el.querySelector('.aiq-reason-copy'),
+    stepsEl: el.querySelector('.aiq-timeline'),   // Feature 2: 时间线容器（toolcard 直接挂此·竖线上成节点·原 .aiq-steps 包装已移除）
+    timelineEl: el.querySelector('.aiq-timeline'),
+    finalEl: el.querySelector('.aiq-step-final'),   // Feature 2: 生成节点（toolcard 在其前 insertBefore）
     reviewEl: el.querySelector('.aiq-review'),
     reviewBody: el.querySelector('.aiq-review-body'),
     answerEl: el.querySelector('.aiq-answer'),
@@ -1131,6 +1135,7 @@ function appendAssistantShell(trace) {
     renderReview(shell.reviewEl);   // CB-09 D024：defense 不显 UI（永隐）
     shell.answerEl.innerHTML = trace.final ? renderAnswer(trace.final, getValidRefNames()) : '<span class="chat-error">（未生成结论）</span>';
     enhanceCodeBlocks(shell.answerEl);
+    if (shell.finalEl && trace.final) { shell.finalEl.hidden = false; shell.finalEl.classList.add('is-done'); }   // Feature 2：历史答案节点显灰点
     // P1：ask_user 历史恢复——重建选项胶囊（onAskUser 存了 trace.ask，刷新/切会话后重渲染 + rebind 点击）
     if (trace.ask && trace.ask.type === 'ask_user') {
       const _opts = Array.isArray(trace.ask.options) ? trace.ask.options : [];
@@ -1176,10 +1181,9 @@ function renderToolCard(stepsEl, round, thought, action, observation) {
   let card = stepsEl.querySelector(`.aiq-toolcard[data-round="${round}"]`);
   if (!card) {
     card = document.createElement('div');
-    card.className = 'aiq-toolcard is-open';
+    card.className = 'aiq-toolcard is-open is-streaming';   // Feature 2: 初始=进行中（竖线上绿脉动节点）
     card.dataset.round = round;
     card.innerHTML = `<div class="aiq-toolcard-head">
-        <span class="aiq-toolcard-icon run">●</span>
         <span class="aiq-toolcard-name">第 ${round} 步</span>
         <span class="aiq-toolcard-target"></span>
         <span class="aiq-toolcard-chev">▸</span>
@@ -1189,7 +1193,8 @@ function renderToolCard(stepsEl, round, thought, action, observation) {
         <div class="aiq-toolcard-obs"></div>
       </div>`;
     card.querySelector('.aiq-toolcard-head').addEventListener('click', () => card.classList.toggle('is-open'));
-    stepsEl.appendChild(card);
+    const finalEl = stepsEl.querySelector('.aiq-step-final');   // Feature 2: toolcard 挂"生成"节点前（时间线顺序：理解→工具…→生成）
+    stepsEl.insertBefore(card, finalEl || null);
   }
   if (thought != null) card.querySelector('.aiq-toolcard-thought').textContent = thought || '';
   if (action) {
@@ -1199,9 +1204,9 @@ function renderToolCard(stepsEl, round, thought, action, observation) {
   if (observation != null) {
     card.querySelector('.aiq-toolcard-obs').textContent = observation || '';
     const fail = /失败|\[ERR\]|错误|未知工具/.test(observation);
-    const icon = card.querySelector('.aiq-toolcard-icon');
-    icon.textContent = fail ? '✕' : '✓';
-    icon.className = 'aiq-toolcard-icon ' + (fail ? 'fail' : 'ok');
+    card.classList.remove('is-streaming');   // Feature 2: 完成→灰点（失败→红点·CSS .is-fail）
+    card.classList.add('is-done');
+    card.classList.toggle('is-fail', fail);
     card.classList.remove('is-open');   // 结果到→折叠（Claude Code 自动折叠已完成调用）
   }
 }
@@ -1238,12 +1243,46 @@ function buildHooks(shell) {
   }
   /** Feature 2：reason 折叠块首发（首 token 或 onRoundStart 触发·幂等）——显块 + 头改"正在推理…" + 启动读秒。 */
   function _ensureReasonStarted() {
-    if (reasonStarted || !shell.reasonEl) return;
-    reasonStarted = true;
-    shell.reasonEl.hidden = false;
+    if (!shell.reasonEl) return;
+    if (!reasonStarted) { reasonStarted = true; shell.reasonEl.hidden = false; _startReasonTimer(); }
+    // Feature 2：每波推理激活节点（绿脉动·竖线上）——含 final-reason 复活（onDiagnose 后 finalStep 又推理）。
+    shell.reasonEl.classList.remove('is-done');
+    shell.reasonEl.classList.add('is-streaming');
     const _t = shell.reasonEl.querySelector('.aiq-reason-title');
     if (_t) _t.textContent = '正在推理…';
-    _startReasonTimer();
+  }
+  /** Feature 2：reason 节点标完成（灰点·折叠）——onDiagnose/onFinal 中间态。 */
+  function _markReasonDone() {
+    if (!shell.reasonEl) return;
+    shell.reasonEl.classList.remove('is-streaming');
+    shell.reasonEl.classList.add('is-done');
+    const _t = shell.reasonEl.querySelector('.aiq-reason-title');
+    if (_t) _t.textContent = '推理完成';
+    _wireReasonCopy();
+  }
+  /** Feature 2：生成节点激活/完成（绿脉动流式 / 灰完成）。 */
+  function _setFinalState(state) {
+    if (!shell.finalEl) return;
+    shell.finalEl.hidden = false;
+    shell.finalEl.classList.toggle('is-streaming', state === 'streaming');
+    shell.finalEl.classList.toggle('is-done', state === 'done');
+  }
+  /** Feature 2：合并所有轮 reason 为完整思考原文（复制用·非折叠简版·增补需求 1）。 */
+  function getFullReason() {
+    return Object.keys(reasonSegs).sort((a, b) => Number(a) - Number(b)).map((r) => reasonSegs[r]).join('\n\n');
+  }
+  let _reasonCopyWired = false;
+  /** Feature 2：复制思考过程按钮——done 态显·点复制完整原文（反馈"已复制"·复用代码块复制范式）。 */
+  function _wireReasonCopy() {
+    if (_reasonCopyWired || !shell.reasonCopyEl) return;
+    _reasonCopyWired = true;
+    shell.reasonCopyEl.hidden = false;
+    shell.reasonCopyEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      navigator.clipboard?.writeText(getFullReason());
+      shell.reasonCopyEl.textContent = '已复制';
+      setTimeout(() => { if (shell.reasonCopyEl) shell.reasonCopyEl.textContent = '复制'; }, 1200);
+    });
   }
 
   function ensureSeg(round) {
@@ -1291,6 +1330,7 @@ function buildHooks(shell) {
       const _ov = shell.reasonEl.querySelector('.aiq-reason-overflow');
       if (_ov) _ov.textContent = _secs ? `（${_secs}s）` : '';
       shell.reasonEl.classList.add('is-done');
+      _wireReasonCopy();   // Feature 2：复制思考按钮（done 态显）
       reorganizeReason(shell);   // 主题目录（详略折叠·展开后按主题切·用户要的"折叠成块"）
     } else {
       _stopReasonTimer();
@@ -1305,6 +1345,7 @@ function buildHooks(shell) {
       // 替代「抓 /chat 请求体」——diagnose 是后端响应产物，请求体（ChatRequest）本无此字段。
       document.dispatchEvent(new CustomEvent('diagnose:done', { detail: card }));
       renderDiagnoseCard(shell.diagnoseEl, card);
+      _markReasonDone();   // Feature 2：理解节点完成（灰·折叠）·FC 推理告一段落
       if (card && !card.degraded) setPhase('思考');
     },
     onRoundStart: (round) => {
@@ -1379,6 +1420,7 @@ function buildHooks(shell) {
       autoScroll();
     },
     onFinal: (tok) => {
+      if (!streamAcc) { _markReasonDone(); _setFinalState('streaming'); }   // Feature 2：首 token→理解节点完成 + 生成节点激活（绿脉动流式）
       setPhase('生成');
       streamAcc += tok;
       if (_curTrace) _curTrace.final = streamAcc;
@@ -1392,6 +1434,7 @@ function buildHooks(shell) {
       shell.answerEl.innerHTML = renderAnswer(text, getValidRefNames());
       enhanceCodeBlocks(shell.answerEl);
       finalizeReason();   // flush 最后一帧思考 + 整块 is-done + 主题目录重切
+      _setFinalState('done');   // Feature 2：生成节点完成（灰）
       if (_curTrace) _curTrace.final = text;
       shell._finalMd = text;   // 供页脚「复制回答」取最终 markdown
       // CB-09 D024：onFinalDone 即完成（defense 不显 UI·renderReview 永隐）；history 在 send 末尾统一持久化

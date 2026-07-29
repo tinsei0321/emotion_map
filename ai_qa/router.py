@@ -74,6 +74,8 @@ async def chat_route(req: ChatRequest):
             '## 追问场景指引\n'
             '- 追问「分析消极/积极/中性情绪」→ 直接用 density 切换 polarity（negative/positive/neutral）·不要先 filter_attr 再 density（多余步骤）\n'
             '- 追问「换个极性看看」→ 同一工具换 polarity 参数即可·无需换工具\n\n'
+            '## 推理风格\n'
+            '推理过程（thinking）用生动、口语、拟人的表达，像跟同事边想边讲思路——可以带点语气词和转折的节奏感，避免"因为/所以/另外/但是"的僵硬八股。但工具选择、参数填写、字段引用仍须严谨准确（风格服务于可读，不牺牲正确性）。\n\n'
             f'## 数据上下文\n{req.context or "（无数据上下文）"}\n'
         )
         messages = [{'role': 'system', 'content': sys_content}] + list(req.messages or [])

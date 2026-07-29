@@ -194,8 +194,33 @@
 .chat-action-btn { display: inline-flex; align-items: center; margin: 0 2px; padding: 1px 8px; font-size: var(--geojson-typography-size-xs, 12px); color: var(--geojson-color-brand-primary, #4285F4); background: rgba(217, 119, 87, 0.12); border: 1px solid var(--geojson-color-brand-primary, #4285F4); border-radius: 11px; cursor: pointer; vertical-align: middle; line-height: 1.6; }
 .chat-action-btn:hover { background: var(--geojson-color-brand-primary, #4285F4); color: #fff; }
 
-/* ── 思考链（Pro reasoning，跨轮累积，灰显可折叠）── 实时动态 ── */
-.aiq-reason { margin: 0 0 6px; padding: 6px 8px; border-left: 2px solid var(--geojson-color-gray-200, #e3e5e8); background: var(--geojson-color-gray-100, #f7f7f7); border-radius: 0 6px 6px 0; }
+/* ═══ Feature 2：Claude-Code 时间线（竖线 + 彩色节点·绿脉动流式/灰完成）═══ */
+.aiq-timeline { position: relative; padding-left: 20px; margin: 2px 0 6px; }
+.aiq-timeline::before { content:""; position:absolute; left:5px; top:10px; bottom:10px; width:2px; background:#E5E7EB; }   /* 竖线·贯穿 */
+.aiq-timeline > .aiq-reason,
+.aiq-timeline > .aiq-toolcard,
+.aiq-timeline > .aiq-step-final { position: relative; }
+/* 节点 dot（实心圆●·盖竖线上·白描边）·reason/toolcard 用 ::before·answer(.aiq-step-final) 用 ::after（其 ::before=顶强调带）*/
+.aiq-timeline > .aiq-reason::before,
+.aiq-timeline > .aiq-toolcard::before,
+.aiq-timeline > .aiq-step-final::after {
+  content:""; position:absolute; left:-15px; top:8px; width:12px; height:12px; border-radius:50%;
+  background:#9CA3AF; border:2px solid var(--geojson-color-surface-panel,#fff); z-index:2; box-sizing:content-box;
+}
+.aiq-timeline > .aiq-reason.is-streaming::before,
+.aiq-timeline > .aiq-toolcard.is-streaming::before,
+.aiq-timeline > .aiq-step-final.is-streaming::after { background:#10B981; animation: aiq-tl-pulse 1.1s infinite ease-in-out; }   /* 进行中=绿脉动 */
+.aiq-timeline > .aiq-toolcard.is-fail::before { background:#EF4444; }   /* 失败=红 */
+.aiq-timeline > .aiq-reason.is-done::before,
+.aiq-timeline > .aiq-toolcard.is-done::before,
+.aiq-timeline > .aiq-step-final.is-done::after { background:#9CA3AF; }   /* 完成=灰 */
+@keyframes aiq-tl-pulse { 0%,100%{ transform: scale(1); } 50%{ transform: scale(1.3); } }
+.aiq-timeline > .aiq-toolcard + .aiq-toolcard { margin-top: 6px; }
+.aiq-reason-copy { margin-left: auto; font-size: var(--geojson-typography-size-2xs); padding: 1px 8px; border-radius: 999px; color: var(--geojson-color-text-tertiary); background: transparent; border: none; cursor: pointer; flex-shrink: 0; }   /* Feature 2：复制思考按钮 */
+.aiq-reason-copy:hover { background: var(--geojson-color-gray-200, #e0e0e0); color: var(--emc-accent, #143a35); }
+
+/* ── 思考链（reason = 时间线"理解/思考"节点）── */
+.aiq-reason { margin: 0 0 8px; padding: 6px 8px; background: var(--geojson-color-gray-100, #f7f7f7); border-radius: 6px; }
 .aiq-reason.is-done { cursor: pointer; }
 .aiq-reason-head { display: flex; align-items: center; gap: 6px; font-size: var(--geojson-typography-size-2xs); color: var(--geojson-color-text-tertiary); font-weight: var(--geojson-typography-weight-semibold); margin-bottom: 2px; }
 .aiq-reason-title { flex-shrink: 0; }
@@ -235,6 +260,13 @@
 .aiq-step-final .aiq-answer { padding: 2px 14px 12px; }
 .aiq-step-tag { display: inline-block; font-size: var(--geojson-typography-size-2xs); font-weight: var(--geojson-typography-weight-semibold); color: var(--geojson-color-text-tertiary); margin-bottom: 2px; }
 .aiq-answer { min-height: 1em; }
+/* Feature 2 增补 3：纯问答排版——森绿标题/加粗 + 橙项目符号 + 行距（高级双色·renderAnswer marked 输出）*/
+.aiq-answer p { margin: 5px 0; line-height: 1.65; }
+.aiq-answer strong { color: var(--emc-accent, #143a35); font-weight: 700; }
+.aiq-answer h3, .aiq-answer h4 { color: var(--emc-accent, #143a35); font-size: 1.02em; margin: 10px 0 4px; font-weight: 700; }
+.aiq-answer ul, .aiq-answer ol { margin: 4px 0; padding-left: 20px; }
+.aiq-answer li { margin: 3px 0; line-height: 1.6; }
+.aiq-answer ul > li::marker { color: #D97757; }
 
 /* ── 动态思考指示器（轮换文案 + 跳动点，参考 Claude/ChatGPT）── */
 .aiq-thinking { display: flex; align-items: center; gap: 6px; margin: 4px 0; padding: 5px 10px; border-radius: 999px; background: rgba(217, 119, 87, 0.08); width: fit-content; }
