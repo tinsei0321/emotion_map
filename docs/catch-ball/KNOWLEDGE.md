@@ -38,6 +38,7 @@
 - **SSE 流式 HTTP/1.0 陷阱**（CB-08 F1.4）：serve.py 代理流式转发须 `protocol_version='HTTP/1.1'`（`SimpleHTTPRequestHandler` 默认 1.0·浏览器缓冲到连接关闭·`wfile.flush()` 无效）·前开发卡此。渐进 token 全链已就绪（后端 `httpx stream+yield` / 前端 `onFinal(tok)`）·唯一断点=代理 `resp.read()` 全缓冲；修法=SSE 分支分块 read+flush+`Connection: close`。
 - **工具选型 100%·填参才是路由瓶颈**（CB-08 F3.1）：v2 FC 下工具选择准确率 100%（DeepSeek 实测 12/12）·路由问题在**参数填充**（buffer.center / overlay.layer_a,b / compare.boundaries 缺）非选型。优化投参数提取 few-shot（FC sys prompt）·非选型逻辑；eval 须测参数（`run_fc_param_eval`）·不只 template 字段。
 - **字段字典前后端人工同步易漂移**（CB-08 F2.6）：`core/field_dictionary.py`（权威）↔ `frontend/js/field_dictionary.js`（镜像）原人工同步无 CI·曾 `.py` 有 `zone`/`.js` 缺。新 `tests/validate_field_dict_sync.py` CI 守护（role 集 + variant 集一致）·改字典须两侧同步。
+- **契约 `when` = FC 工具 description**（CB-09·承重）：[`contracts_to_tools_schema`](../../ai_qa/tool_contracts.py#L438) `description = c.get('when') or voice`——即 `TOOL_CONTRACTS` 每工具的 `when` 字段**直接成为 FC LLM 看到的工具说明**。故误导性契约文本（如 extract_feature 曾写"抽**单要素**"）会**直接误导 LLM**（比 sys prompt 更上游·LLM 先看工具描述）。判据：FC 推理死循环/错报"缺能力"时，**先查契约 `when`/`voice`/`failure_modes` 是否误导**，改契约描述优先于补 sys prompt。← CB-09（multi-extract 死循环首例）
 
 ## §3 SCAN 标尺纠正模式（SCAN 倾向 → 正确标尺）
 
@@ -75,6 +76,7 @@
 | CB-02 | 2026-07-19 | [SCAN_DeepSeek_02.md](SCAN_DeepSeek_02.md) | 7.6（持平） | CB-01 回顾核验（agree 4 通过 / disagree 3 成立）/ 新发现 requirements 僵尸依赖 + range_selector 路径大小写 + AGENTS.md 8→9 漂移 / 10 条新建议待 `/cb 02` 反评价 | `## CB-02`（②③ 待填） |
 | CB-04 | 2026-07-27 | [SCAN_EMCArch](report/SCAN_EMCArch_deepseek_2026-07-27.md) | 6.5（执行层 4↓） | EMC density/polarity 流水线契约整改：14 入口全审·13 agree/0 disagree/1 partial·plan 融合定稿（L1 双维度+R1+P1b+P1c / L2 tool_contracts 单一源 / L3 全扫）·契约分裂模式入 §2·最高纪律（复用参数面板） | `## CB-04` |
 | CB-08 | 2026-07-28 | [DEEP_DIVE](emc-arch-deepdive/DEEP_DIVE_2026-07-28.md) | —（修复轮·非评分） | EMC v1.0 聚焦修复 3 WS（耗时 Flash 默认+SSE 流式 / 识别 F2.0 polarity 元凶+字段 dict fuzzy+同步 CI / 路由 FC 参数 few-shot+eval 参数覆盖）·9 agree/1 disagree/5 partial·**据实 drop** F1.3（single 类别非 while-loop）+F2.1-3（C2 门已对·field-role 门重造假缺数据）+F3.2-3（前端已捕获·alias 撞名）·4 新 learning 入 §2 | `## CB-08` |
+| CB-09 | 2026-07-28 | [rootcause multi-extract](rootcause/2026-07-28-multi-extract-reasoning-spiral.md) | —（修复轮） | multi-extract 死循环（裁剪西陵+伍家岗）：M1 `_norm_where` 拆逗号(in list) + M2 FC sys prompt 多要素指引 + **M3 契约 extract_feature 去"单要素"误导**（我补 DeepSeek 漏报：契约 `when`=FC description·上游根因）·4 agree/1 partial/1 已存在/1 defer | `## CB-09` |
 
 ---
 

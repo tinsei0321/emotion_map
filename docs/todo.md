@@ -11,6 +11,16 @@
 
 ## 📅 2026-07-28（今日·**v2→v3 架构转型 + 修复**·commit+push）
 
+### ✅ EMC Hotfix R3（multi-extract 死循环·commit 982a454·**待浏览器验证**）
+
+用户上传面层 + 问「裁剪出西陵+伍家岗」→ FC 死循环→错报"需要数据"。DeepSeek rootcause + CB。
+
+- **CB 反评价**：DeepSeek 诊断准；方案2（_norm_where 拆逗号）agree；方案3（后端 in）**已存在**（核实）；方案5 defer；**我补漏报**——契约 `when`（=FC 工具 description）写"抽单要素"误导 LLM。
+- **M1** [`_norm_where`](api/geo_routes.py#L127)：op=in+逗号→拆 list（实测 `MC/in/西陵区,伍家岗区`→两区 list）。
+- **M2** [router FC sys prompt](ai_qa/router.py#L60)：加多要素提取段 + `where=in/A,B` few-shot。
+- **M3** [契约 extract_feature](ai_qa/tool_contracts.py#L171)：voice/when/failure_modes/where-hint 去"单要素"+加 `in/A,B`（改 LLM 可见描述）。
+- **验证**：`_norm_where` 实测 + pytest 221 passed。**待浏览器验证**：重启后端→上传面层→「裁剪出西陵+伍家岗」→一次出两区·不死循环。
+
 ### ✅ EMC 渐进 token 显示三连修 S6/S7/S8（commit 07b3736/8228fc9/3aaaaeb·**待浏览器验证**）
 
 用户验证：结论渐进 token 通了，但诊断思考仍"卡住"。要求 DeepSeek 式思考可见。

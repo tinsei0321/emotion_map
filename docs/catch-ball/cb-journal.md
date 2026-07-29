@@ -9,6 +9,33 @@
 
 ---
 
+## CB-09 · 2026-07-28（multi-extract 推理死循环·where=in/A,B）
+
+### ① SCAN 摘要
+DeepSeek [rootcause/2026-07-28-multi-extract-reasoning-spiral](rootcause/2026-07-28-multi-extract-reasoning-spiral.md)：用户上传面层 + 问「裁剪出西陵+伍家岗」→ FC 死循环（extract 单要素→merge/overlay 转圈）→ 错误结论"需要数据"。4 层根因 + 5 方案。
+
+### ② 反评价（verify-before-accept·读真码）
+| DeepSeek | 判定 | 核实 |
+|---|:---:|---|
+| 根因1 FC 单工具冲突 | partial | 真·但 in 多值单 call 可解 |
+| 根因2 推理螺旋 | agree | 症状 |
+| 根因3 sys prompt 缺指引 | **agree+extend** | **且契约 `when`（=FC description）写"抽单要素"误导**（DeepSeek 漏报）|
+| 方案2 _norm_where 拆逗号 | agree | 核实成立（value 不拆→isin 空）|
+| 方案3 后端 in 支持 | **已存在** | 核实 `_apply_attr_filter` op='in'→isin+自纠正·DeepSeek 没核实 |
+| 方案5 FC 多工具链 | defer | in 单 call 已解 |
+**CB-09: 4 agree / 1 partial / 1 已存在 / 1 defer + 1 我补漏（契约描述误导）**。
+
+### ③ 行动（commit 982a454）
+- **M1** [`_norm_where`](../../api/geo_routes.py#L127)：op=in+逗号→拆 list。
+- **M2** [router FC sys prompt](../../ai_qa/router.py#L60)：加多要素提取段 + few-shot。
+- **M3** [契约 extract_feature](../../ai_qa/tool_contracts.py#L171)：voice/when/failure_modes/where-hint 去"单要素"+加 `in/A,B`（改 LLM 可见 description）。
+
+### ④ 状态
+`done`（commit）—— `_norm_where` 实测通过 + pytest 221 passed。**待浏览器验证**：重启后端 → 上传面层 → 「裁剪出西陵+伍家岗」→ 一次 extract(where=in/...) 出两区。
+**新 learning 入 KNOWLEDGE**：契约 `when` = FC 工具 description（`contracts_to_tools_schema` desc=when）·误导性描述（"单要素"）是推理死循环的上游根因·**修契约描述优先于 sys prompt**（更上游·LLM 直接看到的工具说明）。
+
+---
+
 ## CB-08 · 2026-07-28（EMC v1.0 聚焦修复工程·双源核实）
 
 ### ① SCAN 摘要
