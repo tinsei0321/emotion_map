@@ -873,16 +873,18 @@ export async function orchestrate(ctx, hooks = {}) {
   }
 
   // 【Dumb·执行阶段】P1 编排：
-  // CB-09 D057 修订：若 LLM 输出了多个 tool_calls → runAllToolCalls 顺序执行全部·0 LLM 中间轮
-  if (!ctx.resume && !diagnose.degraded && diagnose._allToolCalls && diagnose._allToolCalls.length > 1) {
-    return await runAllToolCalls(ctx, hooks, diagnose);
-  }
-  // single 技能走 runTemplatePath（0 agentStep LLM 轮·纯参数化执行，p^N→p²）；concept 已被上面 general 短路接走；multi/unknown 落 while-loop（ReAct 兜底）。
-  // ⑤④ 80% gate（self-protection）：_tplHitRateReady 冷启动放行保零回归；Flash 经 ≥10 次验证命中率<80%（系统性不可靠）时
-  // 退 while-loop（更稳健：query-first + 多轮 + 对账），命中率≥80% 才主导 single 快路径。
+  // CB-09：单工具执行后，代码自动检测是否需要补全剩余步骤（不依赖 LLM 产出 plans）
   if (!ctx.resume && !diagnose.degraded && diagnose.template) {
     const _tdef = stages.SKILL_DEFS[diagnose.template];
-    if (_tdef && _tdef.category === 'single' && _tplHitRateReady()) return await runTemplatePath(ctx, hooks, diagnose);
+    if (_tdef && _tdef.category === 'single' && _tplHitRateReady()) {
+      const _result = await runTemplatePath(ctx, hooks, diagnose);
+      // 代码自动扩展：检测多目标空间裁剪模式 → 生成剩余 overlay 步骤
+      if (_result && _result.exit === 'result' && !_result.degraded && _result.newLayerCount > 0) {
+        const _expanded = _autoExpandOverlays(ctx, diagnose, _result);
+        if (_expanded) return _expanded;
+      }
+      return _result;
+    }
     if (diagnose.chain) return await runChainPath(ctx, hooks, diagnose, diagnose.chain);  // CB-09 D009+D012（5.237）Phase C: Pro 产复合链优先·不受 Flash hit-rate gate（Pro 非 Flash）
     if (diagnose.template === 'multi' && _tplHitRateReady()) {                     // E1（5.210）：Flash multi 固定链分流（治 C3 多步超时）
       const _chain = _deriveChainId(ctx.question, diagnose);
@@ -1122,6 +1124,32 @@ export async function orchestrate(ctx, hooks = {}) {
   const final = _fQd.final;
   if (hooks.onDefense) hooks.onDefense({ degraded: _fQd.degraded, fixes: _fQd.fixes, skipped: 'result', capsules: _fQd.capsules || [] });
   return { ok: true, rounds: round, final, defense: { degraded: _fQd.degraded, fixes: _fQd.fixes, skipped: 'result', capsules: _fQd.capsules || [] }, degraded, diagnose, exit: 'result', newLayerCount };
+}
+
+/** CB-09 代码自动扩展：检测"X区内Y1+Y2+Y3"模式 → 生成 overlay 步骤。 */
+async function _autoExpandOverlays(ctx, diagnose, firstResult) {
+  const q = ctx.question || '';
+  const _LANDUSE = ['商业', '居住', '公园', '绿地', '工业', '广场', '办公', '教育', '医疗', '用地'];
+  const _mentioned = _LANDUSE.filter((kw) => q.includes(kw));
+  if (_mentioned.length < 2) return null;
+  // 找已加载的匹配面层（排除第一步刚产出的边界层）
+  const _polyLayers = getLayers().filter((l) => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
+  const _firstLayerName = diagnose.params && (diagnose.params.as || diagnose.params.name || '');
+  const _matches = _polyLayers.filter((l) =>
+    _mentioned.some((kw) => l.name.includes(kw)) && l.name !== _firstLayerName
+  );
+  if (_matches.length < 1) return null;
+  // 找第一步产出的边界图层名
+  const _boundaryName = _firstLayerName || (_polyLayers.find((l) => l.name.includes('范围') || l.name.includes('边界') || l.name.includes('西陵')) || {}).name;
+  if (!_boundaryName) return null;
+  // 生成 overlay tool_calls
+  const _extraTCs = _matches.map((l) => ({
+    name: 'overlay',
+    params: { layer_a: _boundaryName, layer_b: l.id, how: 'intersection', as: l.name.replace(/\.(geo)?json/i, '').replace(/^用地_/, '') + '_' + _boundaryName }
+  }));
+  console.log('[autoExpand]', _mentioned.join('+'), '→', _extraTCs.length, 'overlays using boundary:', _boundaryName);
+  const _diag = { ...diagnose, _allToolCalls: _extraTCs };
+  return await runAllToolCalls(ctx, hooks, _diag);
 }
 
 /** CB-09 D057 修订：LLM 输出多个 tool_calls → 确定性顺序执行·0 LLM 中间轮。 */

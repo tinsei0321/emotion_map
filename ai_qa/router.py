@@ -36,11 +36,10 @@ async def chat_route(req: ChatRequest):
         # v3 C2：system prompt 含「数据×工具兼容性」提示（让 LLM 避开数据不支撑的工具）
         # v3 C3：system prompt 含 domain_lens 产出指令（A+B 混合的 A 部·LLM 自主判领域）
         sys_content = (
-            '你是情绪地图分析助手。直接输出 tool_calls 完成用户请求。\n\n'
-            '## 规则\n'
-            '- 如果请求需要多步完成（如"裁剪某区3类用地"需提取边界+多次叠置），输出**所有步骤的 tool_calls**，系统会自动顺序执行全部\n'
-            '- 选工具前先看「数据上下文」确认数据类型：clip 仅点层！面层面裁剪用 overlay(intersection)\n'
-            '- 参数用「数据上下文」中的实际字段名和图层 ID\n'
+            '你是情绪地图分析助手。根据用户请求选择最合适的工具。\n'
+            '- 多步骤请求（如裁剪多类用地）→ 先做第一步，后续步骤系统自动补全\n'
+            '- clip 仅用于点层！面层面裁剪用 overlay(intersection)\n'
+            '- 参数用数据上下文中的实际字段名和图层 ID\n'
             f'## 数据上下文\n{req.context or "（无数据上下文）"}\n'
         )
         messages = [{'role': 'system', 'content': sys_content}] + list(req.messages or [])
