@@ -11,6 +11,15 @@
 
 ## 📅 2026-07-29（今日·CB 飞轮 buglog 扩建）
 
+### ✅ 飞轮扩建 P3 回归清单 + P2 hotfix（commit ed8fabf + 7354fb5/8c09e31 · **用户手动 push**）
+
+落地 DeepSeek 方案 P3「回归用例自动生成」+ 修 P2 两个 bug。**飞轮扩建 P0-P3 全完成**。详见 [revision-log §5](revision-log.md#L226)。
+
+- **P2 hotfix**：7354fb5 修 serve.py `/_test/*` 路由 `norm` 未赋值先引用致全站崩（我 P2 引入）；8c09e31 配置弹窗加「仪表盘」按钮（不必跑测试即可看仪表盘）。
+- **P3**：`_gen_index.py render_regression` 从 resolved buglog 自动提取问句+预期 → `_regression.md`；serve 加 `regressionList`；仪表盘加「回归关注」节；skill 补说明。
+- **诚实边界**：自动生成回归清单 ✅；**不**自动执行（数据前提逐案 + 语义预期无法可靠转断言·虚假绿风险）；关联 case_ref 在常规跑已覆盖。
+- **验证**：`/_test/buglog` 返 regressionList（B001）+ `_regression.md` 解析正常。**待浏览器验证**：仪表盘「回归关注」节渲染。
+
 ### ✅ CB 飞轮 buglog 扩建 P2 仪表盘（commit 5f92a05 · **用户手动 push**）
 
 接 P0/P1，落地 DeepSeek 方案的「仪表盘 UI」（按 CB 反评价修正）。详见 [revision-log §5](revision-log.md#L226)。
