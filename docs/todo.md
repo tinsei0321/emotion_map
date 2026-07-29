@@ -11,6 +11,15 @@
 
 ## 📅 2026-07-29（今日·CB 飞轮 buglog 扩建）
 
+### ✅ CB 飞轮 buglog 扩建 P2 仪表盘（commit 5f92a05 · **用户手动 push**）
+
+接 P0/P1，落地 DeepSeek 方案的「仪表盘 UI」（按 CB 反评价修正）。详见 [revision-log §5](revision-log.md#L226)。
+
+- **数据源**：serve.py 加 `GET /_test/reports`（report-*.json 现算 pass%/p50/p95）+ `GET /_test/buglog`（复用 _gen_index.load_entries·单一解析源）。
+- **UI**：test-board.js 抽屉加「运行/仪表盘」tab（保运行 UI·治 §5.4 矛盾）+ 4 KPI + 最新报告 + 未解决清单 + 历史复发；css 复用既有色（#0F6E56/#D85A30/--emc-accent）非森绿·全 ASCII。
+- **验证**：serve.py 解析 + 数据函数实测 + JS 核查 + 优雅降级。**待浏览器验证**：`?test=1` → 仪表盘 tab。
+- **defer**：P3 回归自动生成（需改 test-cases.js 数据流）。
+
 ### ✅ CB 飞轮 buglog 扩建 P0/P1（commit c4f3cd6 · **用户手动 push**）
 
 用户让 DeepSeek 出 EMC 飞轮扩建方案（bug 采集 skill + 用例 log + 仪表盘 UI）→ 要求我按 CB 标准（agree/disagree/partial + 证据）反评价 6 方面 → 落地修正版 P0+P1。详见 [revision-log §5](revision-log.md#L226)。
