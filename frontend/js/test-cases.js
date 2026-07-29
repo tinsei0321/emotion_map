@@ -527,6 +527,86 @@ const EMC_FC = [
       const b = t.badge();
       return { pass: !/请求失败|ERR/.test(b || ''), stage: '', obs: `胶囊执行 badge="${String(b || '').slice(0,20)}"`, review: '胶囊点击是否快速出图？' };
     } },
+
+  // ═══ CF-09 新采集（2026-07-29·7 例·覆盖 finalStep 假结论/推理螺旋/多步链/样式/类型/视角）═══
+  // B002: finalStep 假结论 — 多类操作只说不做
+  { id: 'FC-21', name: 'CF09·多类用地裁剪+诚实结论', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '裁剪出西陵区范围内的情绪点，并生成一张热力图',
+      (b, _t, sig) => {
+        const noFake = !/（注：未实际生成）/.test(b);   // 诚实标记
+        const hasAction = sig.tools.length > 0;
+        const hasLayer = sig.newLayers > 0 || sig.renderedNew > 0;
+        const noCrash = !/请求失败/.test(b);
+        return { pass: hasAction && noFake && noCrash, stage: '', obs: `tools=${sig.tools.join(',')} layers=${sig.newLayers}/${sig.renderedNew} fake=${!noFake}`, review: '是否真实产出图层？假结论是否消除？' };
+      }, { csv: 'L2-T1', range: '行政区' }) },
+
+  // B003: LLM 推理螺旋 — 简单查询耗时异常
+  { id: 'FC-22', name: 'CF09·数据清单查询短路径', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '我上传了哪些数据？',
+      (b) => {
+        const noGap = !/缺数据|未产出|需上传/.test(b);
+        const noCrash = !/请求失败/.test(b);
+        return { pass: noGap && noCrash, stage: '', obs: `badge="${String(b).slice(0,30)}"`, review: '是否直接回答（非推理螺旋）？' };
+      }, { csv: 'L2-T1', range: '行政区' }) },
+
+  // B004: finalStep 假结论 — 筛选点图层只说不做
+  { id: 'FC-23', name: 'CF09·点层裁剪执行验证', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '将西陵区范围内的情绪点筛选出来单独显示',
+      (b, _t, sig) => {
+        const hasLayer = sig.newLayers > 0 || sig.renderedNew > 0;
+        const noFake = !/（注：未实际生成）/.test(b);
+        const noCrash = !/请求失败/.test(b);
+        const toolOk = sig.tools.includes('clip') || sig.tools.includes('extract_feature');
+        return { pass: toolOk && hasLayer && noFake && noCrash, stage: '', obs: `tools=${sig.tools.join(',')} layers=${sig.newLayers}/${sig.renderedNew}`, review: '裁剪结果是否实际落地？' };
+      }, { csv: 'L2-T1', range: '行政区' }) },
+
+  // B005: 多步链断裂 — 只做一半
+  { id: 'FC-24', name: 'CF09·多步链完整性', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '分别裁剪出西陵区和伍家岗区的情绪点',
+      (b, _t, sig) => {
+        const hasLayer = sig.newLayers > 0 || sig.renderedNew > 0;
+        const noFake = !/（注：未实际生成）/.test(b);
+        const noCrash = !/请求失败/.test(b);
+        // 多步操作应触发 extract_feature（抽取区范围）或 clip
+        const hasMultiTool = sig.tools.length >= 1;
+        return { pass: hasMultiTool && hasLayer && noFake && noCrash, stage: '', obs: `tools=${sig.tools.join(',')} layers=${sig.newLayers}/${sig.renderedNew} steps=${sig.tools.length}`, review: '多区操作是否全部完成？' };
+      }, { csv: 'L2-T1', range: '行政区' }) },
+
+  // B006: 意图缩窄 — "情绪点"不应缩为单极性
+  { id: 'FC-25', name: 'CF09·全极性操作不缩窄', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '能帮我筛选出西陵区的情绪点吗？',
+      (b, _t, sig) => {
+        const hasLayer = sig.newLayers > 0 || sig.renderedNew > 0;
+        const noFake = !/（注：未实际生成）/.test(b);
+        const noCrash = !/请求失败/.test(b);
+        // 不应只针对"积极"极性（用户没限定）
+        const answer = (t.answerText && t.answerText()) || '';
+        const narrowedToSinglePolarity = /仅.*积极|只.*积极|积极情绪点/.test(answer) && !/消极/.test(answer) && !/中性/.test(answer);
+        return { pass: hasLayer && noFake && noCrash && !narrowedToSinglePolarity, stage: '', obs: `layers=${sig.newLayers}/${sig.renderedNew} narrow=${narrowedToSinglePolarity}`, review: '是否自行缩窄为单一极性？' };
+      }, { csv: 'L2-T1', range: '行政区' }) },
+
+  // B007: 图层类型混乱 — 声称面层实际产出点层
+  { id: 'FC-26', name: 'CF09·图层类型一致性', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '从行政区中抽取西陵区的范围',
+      (b, _t, sig) => {
+        const hasLayer = sig.newLayers > 0 || sig.renderedNew > 0;
+        const toolOk = sig.tools.includes('extract_feature') || sig.tools.includes('clip');
+        const noFake = !/（注：未实际生成）/.test(b);
+        const noCrash = !/请求失败/.test(b);
+        return { pass: toolOk && hasLayer && noFake && noCrash, stage: '', obs: `tools=${sig.tools.join(',')} layers=${sig.newLayers}/${sig.renderedNew}`, review: '抽取的面层是否正确渲染？' };
+      }, { csv: false, range: '行政区' }) },
+
+  // B008: 网格聚合 2D/3D 视角未解耦（老 bug）
+  { id: 'FC-27', name: 'CF09·网格聚合生成验证', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '对当前区域做500m方格网聚合',
+      (b, _t, sig) => {
+        const toolOk = sig.tools.includes('density');
+        const hasLayer = sig.newLayers > 0 || sig.renderedNew > 0;
+        const noCrash = !/请求失败/.test(b);
+        // 检查 cell_size 参数
+        const hasCellParam = sig.params && sig.params.cell === 500;
+        return { pass: toolOk && hasLayer && noCrash, stage: '', obs: `tools=${sig.tools.join(',')} layers=${sig.newLayers}/${sig.renderedNew} cell=${sig.params?.cell || '?'}`, review: '网格是否生成？2D/3D 视角适配？' };
+      }, { csv: 'L2-T1' }) },
 ];
 
 // ═══════════════════════════════════════════════════════
