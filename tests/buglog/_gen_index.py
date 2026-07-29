@@ -23,6 +23,7 @@ BUGLOG = Path(__file__).resolve().parent
 STATE_DIRS = ("open", "resolved")
 INDEX = BUGLOG / "_index.md"
 TREND = BUGLOG / "_trend.md"
+REGRESSION = BUGLOG / "_regression.md"
 
 TYPE_TAG = {"BUG": "[BUG]", "DEGRAD": "[DEGRAD]", "PERF": "[PERF]", "UI": "[UI]"}
 SEV_TAG = {"CRIT": "[CRIT]", "HIGH": "[HIGH]", "MED": "[MED]", "LOW": "[LOW]"}
@@ -156,6 +157,59 @@ def render_trend(entries):
     return "\n".join(lines)
 
 
+def _parse_body_case(text):
+    """从条目 body「标准化用例」节提取问句 + 预期（① ② ③）。"""
+    m = re.search(r"\*\*问句\*\*[：:]\s*[「「\"]?(.*?)[」」\"]?\s*\n", text)
+    q = m.group(1).strip() if m else ""
+    exp = re.findall(r"[①②③④⑤⑥]\s*(.*)", text)
+    exp = " / ".join(x.strip() for x in exp[:4]) if exp else ""
+    return q, exp
+
+
+def render_regression(entries):
+    """已修复 bug → 回归清单（问句+预期+根因指针）。
+    诚实定位：这是「发版前手动复验清单」·非飞轮自动执行——
+    数据前提（加载哪个面层/字段）逐案不同，无法从语义描述自动装配执行；
+    关联飞轮用例（case_ref）在常规飞轮跑中已覆盖执行。"""
+    resolved = [e for e in entries if e.get("_status") == "resolved"]
+    head = [
+        "# 回归关注清单（resolved · 自动生成）",
+        "",
+        "> 自动生成（`py tests/buglog/_gen_index.py`）·勿手改。已修复 bug 的标准化用例 + 根因指针。",
+        "> 供发版前**手动复验**。非飞轮自动执行——数据前提逐案不同（如 B001 需带字段 MC 的面层），",
+        "> 无法从语义描述自动装配；关联飞轮用例（case_ref）在常规跑中已覆盖执行。",
+        "",
+    ]
+    if not resolved:
+        head += ["| ID | 标题 | 关联用例 | 模块 |", "|:-:|------|:-:|:-:|", "| — | 暂无已修复 bug | — | — |"]
+        return "\n".join(head)
+    # 读 body 取问句
+    rows = []
+    details = []
+    for e in resolved:
+        p = BUGLOG / e.get("_path", "")
+        q, exp = ("", "")
+        try:
+            q, exp = _parse_body_case(p.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+        rc = e.get("rootcause", "")
+        rc_link = f"[{rc.split('/')[-1]}](../../{rc})" if rc else "—"
+        rows.append(f"| {e.get('id','?')} | {e.get('title','')} | {e.get('case_ref') or '—'} | {e.get('module','?')} |")
+        details.append((e.get("id", "?"), q, exp, rc_link))
+    head += ["## 用例速查", "", "| ID | 标题 | 关联用例 | 模块 |", "|:-:|------|:-:|:-:|"] + rows
+    head += ["", "## 标准化用例（问句 + 预期，供手动复验）", ""]
+    for bid, q, exp, rc_link in details:
+        head.append(f"### {bid}")
+        if q:
+            head.append(f"- **问句**：「{q}」")
+        if exp:
+            head.append(f"- **预期**：{exp}")
+        head.append(f"- **根因**：{rc_link}")
+        head.append("")
+    return "\n".join(head)
+
+
 # ── 主入口 ──────────────────────────────────────────────────────────
 def _write(path, content):
     path.write_text(content, encoding="utf-8")
@@ -167,13 +221,14 @@ def main():
     if not check:
         _write(INDEX, render_index(entries))
         _write(TREND, render_trend(entries))
-        print(f"[OK] buglog index regenerated: {len(entries)} entries -> {INDEX.name} + {TREND.name}")
+        _write(REGRESSION, render_regression(entries))
+        print(f"[OK] buglog index regenerated: {len(entries)} entries -> {INDEX.name} + {TREND.name} + {REGRESSION.name}")
         print(f"[OK] next_id = {next_id(entries)}")
         return 0
 
     # --check：比对现存索引与应生成内容
     stale = []
-    for path, renderer in ((INDEX, render_index), (TREND, render_trend)):
+    for path, renderer in ((INDEX, render_index), (TREND, render_trend), (REGRESSION, render_regression)):
         if not path.exists():
             stale.append(f"{path.name} missing")
             continue

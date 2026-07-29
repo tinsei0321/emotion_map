@@ -211,6 +211,17 @@ function _renderDashHTML(box, reports, bug) {
     }
     html += '</div></div>';
   }
+  // 回归关注（已修复·发版前复验·P3）
+  if (bug && bug.regressionList && bug.regressionList.length) {
+    html += '<div class="tb-dash-section"><div class="tb-dash-h">回归关注（已修复 · 发版前复验）</div><div class="tb-dash-list">';
+    for (const b of bug.regressionList) {
+      html += '<div class="tb-dash-item"><span class="tb-dash-id">' + b.id + '</span>'
+        + '<span class="tb-dash-tag">[RESOLVED]</span>'
+        + '<span class="tb-dash-title">' + (b.title || '') + '</span>'
+        + '<span class="tb-dash-mod">' + (b.case_ref ? ('→ ' + b.case_ref) : '') + '</span></div>';
+    }
+    html += '</div></div>';
+  }
   box.innerHTML = html;
 }
 

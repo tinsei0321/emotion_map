@@ -399,10 +399,11 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         open_list = [_e(e) for e in entries if e.get('_status') == 'open']
         rec_list = sorted([_e(e) for e in entries if int(e.get('repro_count') or 0) >= 2],
                           key=lambda x: -x['repro'])
+        reg_list = [_e(e) for e in entries if e.get('_status') == 'resolved']
         return {
             'total': len(entries), 'open': len(open_list),
             'resolved': len(entries) - len(open_list),
-            'openList': open_list, 'recList': rec_list,
+            'openList': open_list, 'recList': rec_list, 'regressionList': reg_list,
         }
 
     def log_message(self, fmt, *args):
