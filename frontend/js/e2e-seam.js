@@ -52,7 +52,7 @@ window.__emcTest = {
         else if (pol === 'Very Negative' || pol === 'Negative') neg.push(f);
         else neu.push(f);
       }
-      const group = addGroup({ name: 'L2 · e2e', fc: pfc }); group.srcName = base;
+      const group = addGroup({ name: '测试数据 · 情绪点', fc: pfc }); group.srcName = base;
       const paint = { opacity: 0.8 };
       const fcOf = (a) => ({ type: 'FeatureCollection', features: a });
       if (pos.length) { const L = addLayer({ name: `积极·${base}`, kind: 'point', parentId: group.id, colorMode: 'l2-positive', fc: fcOf(pos), paint }); L.srcName = base; safe(() => renderLayer(L)); }
@@ -132,10 +132,15 @@ window.__emcTest = {
     return this.loadPoints({ type: 'FeatureCollection', features: feats });
   },
   async loadRange(name) {
+    const label = name.split('/').pop().replace('.geojson', '');
+    // 防重复：同名范围已加载则跳过（治飞轮每例重复 loadRange 堆叠行政区层·Bug2）
+    if (getLayers().some((l) => l.kind === 'polygon' && l.srcName === 'e2e_range' && l.name === label)) {
+      return { ok: true, count: 0, reused: true };
+    }
     const fc = await fetch('/DATA/boundaries/' + name).then((r) => r.json());
     const { polygons } = splitByGeometry(fc);
     if (polygons.features.length) {
-      const L = addLayer({ name: name.split('/').pop().replace('.geojson', ''), kind: 'polygon', fc: polygons, paint: { fillOn: false, lineWidth: 1.5, fillOpacity: 0.1 } });
+      const L = addLayer({ name: label, kind: 'polygon', fc: polygons, paint: { fillOn: false, lineWidth: 1.5, fillOpacity: 0.1 } });
       L.srcName = 'e2e_range';
       safe(() => renderLayer(L));
     }

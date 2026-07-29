@@ -1790,7 +1790,7 @@ function mountChatChrome() {
     btn.type = 'button';
     btn.className = 'chat-back-btn';
     btn.hidden = true;
-    btn.textContent = '回到底部 ↓';
+    btn.textContent = '↓';
     btn.addEventListener('click', () => { _userPinned = false; scrollBottom(); btn.hidden = true; });
     list.appendChild(btn);
   }

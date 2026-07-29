@@ -427,24 +427,25 @@
 .aiq-chart-wrap .aiq-chart { max-width: 100%; }
 .aiq-chart-bad { color: #FBBF24; font-size: 0.85em; background: rgba(251,191,36,0.08); padding: 0 4px; border-radius: 3px; }   /* 解析失败的原文，不崩 */
 
-/* ── 回到底部浮钮（用户上滑停跟时出现，sticky 贴消息区底右）── P0 抛光：森绿统一(--emc-accent)·放大·淡入·去橙边框 */
+/* ── 回到底部浮钮（用户上滑停跟时出现，贴消息区右上角·轻量低调）── */
 .chat-back-btn {
-  position: sticky; bottom: 8px; align-self: flex-end; margin-top: 6px;
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 6px 14px; font-size: var(--geojson-typography-size-xs);
-  font-weight: var(--geojson-typography-weight-semibold); color: #fff;
-  background: var(--emc-accent, #143a35); border: none; border-radius: 999px; cursor: pointer;
-  box-shadow: 0 4px 14px rgba(20, 58, 53, 0.28);
-  animation: aiq-back-btn-in 0.18s ease-out;
+  position: sticky; top: 8px; align-self: flex-end; margin-bottom: -36px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 12px; font-size: 0.75em;
+  font-weight: 500; color: var(--emc-accent, #143a35);
+  background: rgba(255,255,255,0.88); border: 1px solid color-mix(in srgb, var(--emc-accent, #143a35) 30%, transparent); border-radius: 999px; cursor: pointer;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+  animation: aiq-back-btn-in 0.15s ease-out;
   transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 .chat-back-btn:hover {
-  background: #102b26;   /* 兜底（不支持 color-mix）；下行现代浏览器覆盖·按 accent 自适应加深 */
-  background: color-mix(in srgb, var(--emc-accent, #143a35) 82%, #000);
-  box-shadow: 0 6px 18px rgba(20, 58, 53, 0.38); transform: translateY(-1px);
+  background: rgba(255,255,255,0.95);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.13); transform: translateY(-1px);
 }
 .chat-back-btn:active { transform: translateY(0); }
-@keyframes aiq-back-btn-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes aiq-back-btn-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ═══ Claude Code 交互语言对齐：Thinking 头 / 工具卡 / 复制 / 代码块 ═══ */
 
