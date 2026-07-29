@@ -112,7 +112,7 @@ TOOL_CONTRACTS = [
     {
         'skill': 'overlay', 'tool': 'overlay', 'category': 'single', 'name_cn': '叠置交叉',
         'voice': '我叠两个图层找复合问题区', 'triggers_str': '居住用地里情绪差的/两图交集',
-        'when': '叠置分析：交集/并集/差集（商业用地 ∩ 更新单元、规划范围 − 已更新）',
+        'when': '两个不同面层的空间运算：交集/并集/差集。**面层面裁剪的正解**——如"某区内的某类用地"=区面层 ∩ 用地面层，用 how="intersection"。与 extract_feature 的区别：overlay=两个不同图层的空间相交，extract_feature=同一图层内的属性过滤',
         'params_str': 'layer_a, layer_b, how(intersection|union|difference|symmetric)',
         'yields': '叠置结果面域', 'contributes': '跨图层交叉（用地 × 更新），识别复合问题区',
         'scale': '中观（跨图层面）', 'preconditions': '两图层面（layer_a/layer_b）',
@@ -169,7 +169,7 @@ TOOL_CONTRACTS = [
     {
         'skill': 'extract_feature', 'tool': 'extract_feature', 'category': 'single', 'name_cn': '要素抽取',
         'voice': '我从面边界按属性抽要素为独立面（裁出某区/某类用地·支持 in 多值一次抽多个如多行政区）', 'triggers_str': '抽某/裁出某/单独裁出/提取某',
-        'when': '从面边界按属性抽要素为独立面图层（把某区/某公园/某单元裁出来·支持 where="字段/in/值1,值2" 一次抽多个要素·如"裁出西陵+伍家岗"）',
+        'when': '从**单个面层内**按属性抽要素（同一图层内的 where 过滤·如"从行政区划中抽西陵区"·where="字段/in/值"一次多值）。⚠️ 仅用于同一图层内属性过滤！跨图层空间裁剪（如"西陵区内的商业用地"=两个不同图层∩）必须用 overlay intersection，严禁用本工具',
         'params_str': 'layer(preset_id|geojson), where(field/op/value·op∈eq|in·多值用 in/A,B；field 见 catalog name_field)',
         'yields': '面子集 GeoJSON（自动落地图）', 'contributes': '纯 GIS 操作出口：用户要"裁出西陵区""裁出西陵+伍家岗"等几何产物时用此·不走情绪归因',
         'scale': '宏观/中观（面要素）', 'preconditions': '面边界层（preset|上传面层）+ name_field（where field/op/value）',
