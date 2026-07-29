@@ -323,8 +323,10 @@ export async function fcDiagnoseStep(ctx, hooks) {
     }
     // 解析 plans[]（content 字段·容错 D067）
     let plans = [];
+    console.log('[FC] raw plans type:', typeof data.plans, 'val:', JSON.stringify(data.plans).slice(0, 200));
     if (data.plans) {
       plans = _parsePlans(data.plans);
+      console.log('[FC] parsed plans count:', plans.length);
     }
     // ISSUE 1 修复：tool name → skill name 反映射
     const toolName = tc.function.name;
@@ -399,9 +401,10 @@ function _deriveDomainLens(question, fcContent) {
 
 /** v2 plans[] 容错解析（D067）：JSON.parse + 字段校验·解析失败=空 plans·不崩溃。 */
 function _parsePlans(content) {
-  if (!content) return [];
-  // v3.1 BR3：strip [domain_lens:xxx] 前缀（router system prompt 指令 LLM 在 content 开头产出·治 plans JSON 解析失败）
+  if (!content) { console.log('[FC] _parsePlans: content null'); return []; }
   const _clean = String(content).replace(/\[domain_lens:[\w]+\]\s*/g, '').trim();
+  console.log('[FC] _parsePlans raw:', String(content).slice(0, 400));
+  console.log('[FC] _parsePlans clean:', _clean.slice(0, 400));
   try {
     const parsed = JSON.parse(_clean);
     const arr = Array.isArray(parsed) ? parsed : (parsed.plans || []);
