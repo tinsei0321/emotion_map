@@ -1,7 +1,7 @@
 // ═══ tools.js — Agent Loop 工具集（查询型 + 操作型，直调主窗口函数）═══
 // 还原单窗口后，tools 直调 map/state/panel（删跨窗口协议）。每个 tool 返回 {observation, data?}：
 //   observation = 给 LLM 看的摘要字符串（入 tool_history）；data = 结构化（前端可选用于渲染）。
-import { getLayers, getLayer, getSelectedLayer, addGroup, removeLayer, setLayerVisible } from '../state.js';
+import { getLayers, getLayer, getSelectedLayer, addGroup, removeLayer, setLayerVisible, _isAILayer } from '../state.js';
 import * as data_registry from '../data_registry.js';   // R3：registry 来源标注（治 C2）
 import { fitBoundsTo, renderLayer, reorderAllZ, removeLayerFromMap, getMap } from '../map.js';
 import { activateTab, setOverview } from '../panel.js';
@@ -326,7 +326,8 @@ function focusOnlyResults() {
     if (l.kind === 'group') continue;                  // 组容器无可见性
     const want = keep.has(l.id);
     if (want && !l.visible) { setLayerVisible(l.id, true); renderLayer(l); }
-    else if (!want && l.visible) { setLayerVisible(l.id, false); renderLayer(l); }
+    // 只隐藏 AI 产物层的非保留项——用户手动开的非 AI 层受保护，不被 AI 聚焦清除
+    else if (!want && l.visible && _isAILayer(l)) { setLayerVisible(l.id, false); renderLayer(l); }
   }
 }
 

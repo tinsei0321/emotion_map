@@ -1158,18 +1158,27 @@ function _patternRecover(ctx) {
     };
   }
 
-  // Pattern 2: "合并 A+B+C" → overlay(union) 链
+  // Pattern 2: "合并 A+B+C" → 查找实际 polygon 图层 ID → overlay(union) 链
   m = /合并\s*(.+)/.exec(q);
   if (m) {
     const _items = m[1].split(/[,，、和及与]+/).map(s => s.trim()).filter(Boolean);
     if (_items.length >= 2) {
-      return {
-        template: 'overlay', degraded: false, _fc: true, _patternRecover: true,
-        params: { layer_a: _items[0], layer_b: _items[1], how: 'union', as: 'merged_' + _items[0] + '_' + _items[1] },
-        method: ['overlay()'], intent: 'gis_operation',
-        data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
-        domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [],
-      };
+      // 查找实际匹配的 polygon 图层（避免传文本名导致 ref() 解析失败→while-loop 混乱）
+      const _polyLayers = getLayers().filter(l => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
+      const _matched = [];
+      for (const kw of _items) {
+        const found = _polyLayers.find(l => l.name.includes(kw) && !_matched.some(m => m.id === l.id));
+        if (found) _matched.push(found);
+      }
+      if (_matched.length >= 2) {
+        return {
+          template: 'overlay', degraded: false, _fc: true, _patternRecover: true,
+          params: { layer_a: _matched[0].id, layer_b: _matched[1].id, how: 'union', as: 'merged_' + _items[0] + '_' + _items[1] },
+          method: ['overlay()'], intent: 'gis_operation',
+          data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+          domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [],
+        };
+      }
     }
   }
 
@@ -1242,32 +1251,37 @@ async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
   // 找已加载的匹配面层（排除第一步刚产出的边界层）
   const _polyLayers = getLayers().filter((l) => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
   const _firstLayerName = diagnose.params && (diagnose.params.as || diagnose.params.name || '');
+  // 排除第一步已消费的输入层（避免合并模式重复处理同一源层）
+  const _firstInputIds = new Set();
+  if (diagnose.params && diagnose.params.layer_a) {
+    const _la = _polyLayers.find(l => l.id === diagnose.params.layer_a || l.name === diagnose.params.layer_a);
+    if (_la) _firstInputIds.add(_la.id);
+  }
+  if (diagnose.params && diagnose.params.layer_b) {
+    const _lb = _polyLayers.find(l => l.id === diagnose.params.layer_b || l.name === diagnose.params.layer_b);
+    if (_lb) _firstInputIds.add(_lb.id);
+  }
   const _matches = _polyLayers.filter((l) =>
-    _mentioned.some((kw) => l.name.includes(kw)) && l.name !== _firstLayerName
+    _mentioned.some((kw) => l.name.includes(kw)) && l.name !== _firstLayerName && !_firstInputIds.has(l.id)
   );
   if (_matches.length < 1) return null;
   // P1 修复：检测裁剪 vs 合并模式
   const _isMerge = /合并|union|拼合|叠加/.test(q) && !/裁剪|剪裁|区内/.test(q);
 
   if (_isMerge && _matches.length >= 1) {
-    // 合并模式：逐对合并（a 累积，b 下一个）
+    // 合并模式：从第一步产出开始，逐对合并剩余输入层
+    // _firstLayerName = 第一步的 as 名（第一步产出），非原始输入层
     const _extraTCs = [];
-    if (_matches.length === 1) {
-      // 单剩余层：与第一步产出合并（第一步已合并前 2 层 → 只剩 1 层待合并）
+    // 链起点 = 第一步产出（已合并前2层的结果），非原始 _matches[0]
+    let _chainAs = _firstLayerName || _matches[0].id;
+    for (let i = 0; i < _matches.length; i++) {
       _extraTCs.push({
         name: "overlay",
-        params: { layer_a: _firstLayerName || _matches[0].id, layer_b: _matches[0].id, how: "union", as: "merged_all_" + _matches[0].name.replace(/\.(geo)?json/i, "").replace(/^用地_/, "") }
+        params: { layer_a: _chainAs, layer_b: _matches[i].id, how: "union", as: "merged_" + _chainAs + "_" + _matches[i].name.replace(/\.(geo)?json/i, "").replace(/^用地_/, "") }
       });
-    } else {
-      for (let i = 1; i < _matches.length; i++) {
-        const _prevAs = i === 1 ? _matches[0].id : _extraTCs[_extraTCs.length - 1].params.as;
-        _extraTCs.push({
-          name: "overlay",
-          params: { layer_a: _prevAs, layer_b: _matches[i].id, how: "union", as: "merged_" + _matches.slice(0, i+1).map(m => m.name.replace(/\.(geo)?json/i, "").replace(/^用地_/, "")).join("_") }
-        });
-      }
+      _chainAs = _extraTCs[_extraTCs.length - 1].params.as;   // 下一步 a = 本步产出
     }
-    console.log("[autoExpand] merge:", _mentioned.join("+"), "→", _extraTCs.length, "union overlays");
+    console.log("[autoExpand] merge:", _mentioned.join("+"), "→", _extraTCs.length, "union overlays (chain from:", _firstLayerName || _matches[0].id, ")");
     const _diag = { ...diagnose, _allToolCalls: _extraTCs };
     return await runAllToolCalls(ctx, hooks, _diag);
   }
