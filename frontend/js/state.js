@@ -1062,10 +1062,3 @@ export function enforceMutualExclusion(onId) {
   }
   return hidden;
 }
-
-/** 判断图层是否属于 AI 产物组（EmotionMap Copilot）。 */
-export function _isAILayer(l) {
-  if (!l || !l.parentId) return false;
-  const p = getLayer(l.parentId);
-  return !!(p && p.kind === 'group' && p.name === 'EmotionMap Copilot');
-}

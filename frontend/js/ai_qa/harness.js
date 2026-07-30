@@ -4,7 +4,7 @@
 // 前置：DIAGNOSE 问题理解卡（认知层）→ 注入 ctx.context 导工具选型 + 结论颗粒度；硬缺口短路请求上传。
 // 降级：agent_step 解析失败不再裸显 raw，break loop 仍走 finalStep 出一次性 answer。
 import * as stages from './stages.js';
-import { TOOLS, setToolContext, formatRegistry, getArtifacts, deriveAvailable, resetStepResults, resetCurrentResults, resolveCoref } from './tools.js';
+import { TOOLS, setToolContext, formatRegistry, getArtifacts, deriveAvailable, resetStepResults, resolveCoref } from './tools.js';
 import { getLayers } from '../state.js';
 
 const MAX_ROUNDS_GIS = 10;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=10（保多步完整性，如3次overlay需8轮：1查询+6执行+1answer）
@@ -738,7 +738,7 @@ export async function orchestrate(ctx, hooks = {}) {
   let answered = false;      // 模型是否 deliberate `answer`（概念问等可零工具直答；_hardFail 不得覆盖它）
   let narratedAnswer = false; // 模型持续叙述（prose 作答，常见于概念问）——叙述≠失败，交 finalStep 出结论，不落 GAP
   const failedObs = [];      // 失败观察摘要（EXIT_GAP 卡展示「已尝试」用）
-  ctx.answerModel = ctx.model || 'flash';  // B1-2a：答案默认 flash（省 finalStep pro reasoner 串行·治超时#1）；复杂任务 diagnose 后升 pro（_needsDeliberate）
+  ctx.answerModel = 'flash';   // B1-2a：答案默认 flash（省 finalStep pro reasoner 串行·治超时#1）；复杂任务 diagnose 后升 pro（_needsDeliberate）
   const _deadline = Date.now() + 30000;   // WS1 F1.5：单问总预算 30s（while-loop 守卫·超时强制作答；原 75s 远超设计 6-11s 致用户感 60s+）
 
   // 多轮连续性：近 2-3 轮 trace 蒸馏注入 ctx.context 顶部（B2：5.51 单轮 priorTurn → 多轮滚动 turnHistory，意图收敛轨迹）
@@ -797,20 +797,14 @@ export async function orchestrate(ctx, hooks = {}) {
     diagnose = await stages.fcDiagnoseStep(ctx, hooks);
     console.timeEnd('[emc-timing] fcDiagnose');
   } catch (e) { diagnose = null; }
-  // P0 修复：FC 诊断失败 → 不入旧 SSE（旧预选工具常选错致彻底失败），直接 degrade 走 while-loop 兜底
+  // v2 FC 降级 fallback：FC 失败 → 退回旧 SSE diagnose（过渡期保留·D053）
   if (!diagnose || diagnose.degraded) {
-    console.warn('[FC] 诊断失败·不入旧 SSE', diagnose?._fcError || '');
-    diagnose = { degraded: true, _fcError: diagnose?._fcError || 'fc_failed' };
+    console.warn('[FC] 降级→旧 SSE diagnose', diagnose?._fcError || '');
+    try {
+      diagnose = await stages.diagnoseStep(ctx, hooks);
+    } catch (e) { diagnose = null; }
   }
-  // L1 模式恢复：FC 失败 → 尝试确定性模式匹配（纯代码·不调 LLM）→ 命中则构造 diagnose 直执行，未命中落 while-loop
-  if (diagnose.degraded) {
-    const _recovered = _patternRecover(ctx);
-    if (_recovered) {
-      diagnose = _recovered;
-      if (hooks.onObservation) hooks.onObservation('[模式恢复] FC 诊断失败 → 匹配已知模式 → 直执行', 0);
-      console.log('[patternRecover] matched template:', diagnose.template, 'params:', JSON.stringify(diagnose.params || {}).slice(0, 120));
-    }
-  }
+  diagnose = diagnose || { degraded: true };
   // v2 D068：FC 产出的 plans[] 存入 ctx.plans·供 finalStep（追问胶囊）+ CPD（选项展示）共享
   if (diagnose.plans && diagnose.plans.length) {
     ctx.plans = diagnose.plans;
@@ -879,11 +873,6 @@ export async function orchestrate(ctx, hooks = {}) {
   }
 
   // 【Dumb·执行阶段】P1 编排：
-  // D057：FC 返回多个 tool_calls → 直接批量执行（0 LLM 中间轮·治"只做一半"）
-  if (!diagnose.degraded && Array.isArray(diagnose._allToolCalls) && diagnose._allToolCalls.length > 1) {
-    const _diag = { ...diagnose };
-    return await runAllToolCalls(ctx, hooks, _diag);
-  }
   // CB-09：单工具执行后，代码自动检测是否需要补全剩余步骤（不依赖 LLM 产出 plans）
   if (!ctx.resume && !diagnose.degraded && diagnose.template) {
     const _tdef = stages.SKILL_DEFS[diagnose.template];
@@ -1137,166 +1126,6 @@ export async function orchestrate(ctx, hooks = {}) {
   return { ok: true, rounds: round, final, defense: { degraded: _fQd.degraded, fixes: _fQd.fixes, skipped: 'result', capsules: _fQd.capsules || [] }, degraded, diagnose, exit: 'result', newLayerCount };
 }
 
-/** L1 模式恢复（FC 安全网）：FC 诊断失败 → 确定性模式匹配 → 构造 diagnose card。
- *  纯代码，不调 LLM，<5ms。匹配不到 → 返回 null 不阻塞后续 L3 while-loop。
- *  覆盖已知高频模式：裁剪多类用地 / 合并多图层 / 对比两区 / 区域聚合 / 密度图 / 简单查找 / 数据清单。 */
-function _patternRecover(ctx) {
-  const q = ctx.question || '';
-  if (!q) return null;
-
-  // Pattern 1: "X区内/范围内 Y1+Y2+…用地" → extract_feature + overlay 链
-  // e.g. "剪裁出西陵区范围内的商业+居住+公园广场用地"
-  let m = /(?:裁剪|剪裁|裁出)(.{1,6})(?:区|市|县|街道|镇)(?:的)?(?:范围|区域|境内)?(?:内|里|中)?\S*(?:用地|图层)/.exec(q);
-  if (m) {
-    const _region = m[1].trim();
-    return {
-      template: 'extract_feature', degraded: false, _fc: true, _patternRecover: true,
-      params: { layer: '行政区', where: _region, as: _region + '_边界' },
-      method: ['extract_feature()', 'overlay()'], intent: 'gis_operation',
-      data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
-      domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [],
-    };
-  }
-
-  // Pattern 1b: "将X区内的Y1,Y2用地筛选/提取出来[并合并]" — 动词在后的语序
-  // e.g. "将西陵区范围内的商业、居住、公园广场用地筛选出来，并合并成一个面"
-  // ★ 动态查找实际图层 ID（不硬编码层名）→ 构建完整 _allToolCalls → runAllToolCalls 批量执行
-  {
-    const _landuseKWs = ['商业', '居住', '公园', '绿地', '工业', '广场', '办公', '教育', '医疗'];
-    const _mentionedLU = _landuseKWs.filter(kw => q.includes(kw));
-    const _hasGISVerb = /筛选出|提取出|选出|裁剪|剪裁|裁出|筛选|提取/.test(q);
-    const _rm = /(.{1,6})(?:区|市|县|街道|镇)/.exec(q);
-    if (_mentionedLU.length >= 2 && _hasGISVerb && _rm) {
-      const _region = _rm[1].trim();
-      const _polys = getLayers().filter(l => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
-      // 找边界层：名含区名 或 features 属性值含区名
-      const _boundary = _polys.find(l => {
-        if (l.name.includes(_region)) return true;
-        return (l.fc.features || []).some(f =>
-          Object.values(f.properties || {}).some(v => String(v).includes(_region)));
-      });
-      if (_boundary) {
-        // 找匹配的用地图层（去重，排除边界层自身）
-        const _matched = [];
-        for (const kw of _mentionedLU) {
-          const found = _polys.find(l =>
-            l.name.includes(kw) && l.id !== _boundary.id && !_matched.some(m => m.id === l.id));
-          if (found) _matched.push(found);
-        }
-        if (_matched.length >= 1) {
-          // 构建 overlay(intersection) 链
-          const _tcs = _matched.map(lu => ({
-            name: "overlay",
-            params: { layer_a: _boundary.id, layer_b: lu.id, how: "intersection",
-                      as: lu.name.replace(/\.(geo)?json/i, "").replace(/^用地_/, "") + "_" + _region }
-          }));
-          // 若含"合并"且 ≥2 个 → 追加 union 链
-          if (/合并/.test(q) && _tcs.length >= 2) {
-            let _chainAs = _tcs[0].params.as;
-            for (let i = 1; i < _tcs.length; i++) {
-              _tcs.push({
-                name: "overlay",
-                params: { layer_a: _chainAs, layer_b: _tcs[i].params.as, how: "union", as: "merged_final_" + i }
-              });
-              _chainAs = _tcs[_tcs.length - 1].params.as;
-            }
-          }
-          return {
-            template: 'overlay', degraded: false, _fc: true, _patternRecover: true,
-            params: {}, method: ['overlay()'], intent: 'gis_operation',
-            data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
-            domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [],
-            _allToolCalls: _tcs,   // 完整链 → runAllToolCalls 批量执行
-          };
-        }
-      }
-    }
-  }
-
-  // Pattern 2: "合并 A+B+C" → 查找实际 polygon 图层 ID → overlay(union) 链
-  m = /合并\s*(.+)/.exec(q);
-  if (m) {
-    const _items = m[1].split(/[,，、和及与]+/).map(s => s.trim()).filter(Boolean);
-    if (_items.length >= 2) {
-      // 查找实际匹配的 polygon 图层（避免传文本名导致 ref() 解析失败→while-loop 混乱）
-      const _polyLayers = getLayers().filter(l => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
-      const _matched = [];
-      for (const kw of _items) {
-        const found = _polyLayers.find(l => l.name.includes(kw) && !_matched.some(m => m.id === l.id));
-        if (found) _matched.push(found);
-      }
-      if (_matched.length >= 2) {
-        return {
-          template: 'overlay', degraded: false, _fc: true, _patternRecover: true,
-          params: { layer_a: _matched[0].id, layer_b: _matched[1].id, how: 'union', as: 'merged_' + _items[0] + '_' + _items[1] },
-          method: ['overlay()'], intent: 'gis_operation',
-          data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
-          domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [],
-        };
-      }
-    }
-  }
-
-  // Pattern 3: "对比/比较 X 和 Y 的情绪" → compare_regions
-  m = /(?:对比|比较)\s*(.{1,6})(?:区|市|县|街道|镇)\s*(?:和|与|、)\s*(.{1,6})(?:区|市|县|街道|镇)/.exec(q);
-  if (m) {
-    return {
-      template: 'compare', degraded: false, _fc: true, _patternRecover: true,
-      params: { boundaries: [m[1].trim() + '区', m[2].trim() + '区'] },
-      method: ['compare_regions()'], intent: 'emotion_analysis',
-      data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
-      domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '表格', plans: [],
-    };
-  }
-
-  // Pattern 4: "X区的情绪/极性/消极/积极" → zonal_stats
-  m = /^(.{1,6})(?:区|市|县|街道|镇)(?:的)?(?:情绪|极性|消极|积极|归因)/.exec(q);
-  if (m && !/[对比|和|与]/.test(q)) {
-    return {
-      template: 'zonal', degraded: false, _fc: true, _patternRecover: true,
-      params: { boundary: m[1].trim() + '区' },
-      method: ['zonal_stats()'], intent: 'emotion_analysis',
-      data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
-      domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '表格', plans: [],
-    };
-  }
-
-  // Pattern 5: "热力图/密度图/KDE/热点" → density
-  if (/热力(?:图|分布)|密度(?:图|分析)|聚集|热点分布|KDE/i.test(q)) {
-    return {
-      template: 'density', degraded: false, _fc: true, _patternRecover: true,
-      params: {},
-      method: ['density()'], intent: 'emotion_analysis',
-      data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
-      domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [],
-    };
-  }
-
-  // Pattern 6: "XX在哪里/位置" → extract_feature（简单查询）
-  m = /(.{1,10})(?:在哪里|在哪|位置|在哪儿)/.exec(q);
-  if (m && !/情绪|极性|归因|热力|密度/.test(q)) {
-    return {
-      template: 'extract_feature', degraded: false, _fc: true, _patternRecover: true,
-      params: { layer: '行政区', where: m[1].trim(), as: m[1].trim() + '_位置' },
-      method: ['extract_feature()'], intent: 'gis_operation',
-      data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
-      domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [],
-    };
-  }
-
-  // Pattern 7: "有哪些数据/上传了哪些/数据列表" → general 短路
-  if (/上传了哪些|有哪些数据|数据列表|已加载.*数据|数据.*清单/.test(q)) {
-    return {
-      template: 'concept', degraded: false, _fc: true, _patternRecover: true,
-      params: {}, method: [], intent: 'general',
-      data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
-      domain_lens: [], scale: 'macro', decision_type: '回答', outlet: '文本', plans: [],
-    };
-  }
-
-  return null;
-}
-
 /** CB-09 代码自动扩展：检测"X区内Y1+Y2+Y3"模式 → 生成 overlay 步骤。 */
 async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
   const q = ctx.question || '';
@@ -1306,75 +1135,25 @@ async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
   // 找已加载的匹配面层（排除第一步刚产出的边界层）
   const _polyLayers = getLayers().filter((l) => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
   const _firstLayerName = diagnose.params && (diagnose.params.as || diagnose.params.name || '');
-  // 排除第一步已消费的输入层（避免合并模式重复处理同一源层）
-  const _firstInputIds = new Set();
-  if (diagnose.params && diagnose.params.layer_a) {
-    const _la = _polyLayers.find(l => l.id === diagnose.params.layer_a || l.name === diagnose.params.layer_a);
-    if (_la) _firstInputIds.add(_la.id);
-  }
-  if (diagnose.params && diagnose.params.layer_b) {
-    const _lb = _polyLayers.find(l => l.id === diagnose.params.layer_b || l.name === diagnose.params.layer_b);
-    if (_lb) _firstInputIds.add(_lb.id);
-  }
   const _matches = _polyLayers.filter((l) =>
-    _mentioned.some((kw) => l.name.includes(kw)) && l.name !== _firstLayerName && !_firstInputIds.has(l.id)
+    _mentioned.some((kw) => l.name.includes(kw)) && l.name !== _firstLayerName
   );
   if (_matches.length < 1) return null;
-  // P1 修复：检测裁剪 vs 合并模式
-  const _isMerge = /合并|union|拼合|叠加/.test(q) && !/裁剪|剪裁|区内/.test(q);
-
-  if (_isMerge && _matches.length >= 1) {
-    // 合并模式：从第一步产出开始，逐对合并剩余输入层
-    // _firstLayerName = 第一步的 as 名（第一步产出），非原始输入层
-    const _extraTCs = [];
-    // 链起点 = 第一步产出（已合并前2层的结果），非原始 _matches[0]
-    let _chainAs = _firstLayerName || _matches[0].id;
-    for (let i = 0; i < _matches.length; i++) {
-      _extraTCs.push({
-        name: "overlay",
-        params: { layer_a: _chainAs, layer_b: _matches[i].id, how: "union", as: "merged_" + _chainAs + "_" + _matches[i].name.replace(/\.(geo)?json/i, "").replace(/^用地_/, "") }
-      });
-      _chainAs = _extraTCs[_extraTCs.length - 1].params.as;   // 下一步 a = 本步产出
-    }
-    console.log("[autoExpand] merge:", _mentioned.join("+"), "→", _extraTCs.length, "union overlays (chain from:", _firstLayerName || _matches[0].id, ")");
-    const _diag = { ...diagnose, _allToolCalls: _extraTCs };
-    return await runAllToolCalls(ctx, hooks, _diag);
-  }
-
-  // 裁剪模式：找边界图层
-  const _boundaryName = _firstLayerName || (_polyLayers.find((l) => l.name.includes("范围") || l.name.includes("边界") || l.name.includes("西陵")) || {}).name;
+  // 找第一步产出的边界图层名
+  const _boundaryName = _firstLayerName || (_polyLayers.find((l) => l.name.includes('范围') || l.name.includes('边界') || l.name.includes('西陵')) || {}).name;
   if (!_boundaryName) return null;
-  // ★ 找边界层对象：直接传 GeoJSON 给 overlay（非字符串 → ref() 直返，不触发消费逻辑）
-  // 否则第一个 overlay 会把边界层标"已消费"→消费清理移除→后续 overlay 全失败
-  const _boundaryLayer = _polyLayers.find(l => l.name === _boundaryName || (l.name && l.name.includes(_boundaryName)));
-  const _boundaryRef = _boundaryLayer ? _boundaryLayer.fc : _boundaryName;
+  // 生成 overlay tool_calls
   const _extraTCs = _matches.map((l) => ({
-    name: "overlay",
-    params: { layer_a: _boundaryRef, layer_b: l.id, how: "intersection", as: l.name.replace(/\.(geo)?json/i, "").replace(/^用地_/, "") + "_" + _boundaryName }
+    name: 'overlay',
+    params: { layer_a: _boundaryName, layer_b: l.id, how: 'intersection', as: l.name.replace(/\.(geo)?json/i, '').replace(/^用地_/, '') + '_' + _boundaryName }
   }));
-  // 裁剪后合并：query 含"合并"且产出 ≥2 个裁剪结果 → 追加 union overlay 合并所有结果
-  if (/合并/.test(q) && _extraTCs.length >= 2) {
-    const _mergeTCs = [];
-    let _chainAs = _extraTCs[0].params.as;
-    for (let i = 1; i < _extraTCs.length; i++) {
-      _mergeTCs.push({
-        name: "overlay",
-        params: { layer_a: _chainAs, layer_b: _extraTCs[i].params.as, how: "union", as: "merged_final_" + i }
-      });
-      _chainAs = _mergeTCs[_mergeTCs.length - 1].params.as;
-    }
-    _extraTCs.push(..._mergeTCs);
-    console.log("[autoExpand] clip-then-merge:", _mergeTCs.length, "union overlays appended");
-  }
-  console.log("[autoExpand]", _mentioned.join("+"), "→", _extraTCs.length, "overlays using boundary:", _boundaryName);
+  console.log('[autoExpand]', _mentioned.join('+'), '→', _extraTCs.length, 'overlays using boundary:', _boundaryName);
   const _diag = { ...diagnose, _allToolCalls: _extraTCs };
   return await runAllToolCalls(ctx, hooks, _diag);
 }
 
 /** CB-09 D057 修订：LLM 输出多个 tool_calls → 确定性顺序执行·0 LLM 中间轮。 */
 async function runAllToolCalls(ctx, hooks, diagnose) {
-  resetStepResults();        // 清 _stepResults/_resultIdByStep/_registry（防上轮残留致 ref() 误标消费）
-  resetCurrentResults();     // 清 _curResultIds/_consumedIds/_keepIds（防 focusOnlyResults 误隐藏）
   const tcs = diagnose._allToolCalls;
   const toolHistory = []; let newLayerCount = 0; const failedSteps = [];
   console.log('[runAllToolCalls] start:', tcs.length, tcs.map((t) => t.name).join(' → '));

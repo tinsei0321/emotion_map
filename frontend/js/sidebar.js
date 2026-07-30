@@ -1,5 +1,5 @@
 // ═══ sidebar.js — left panel: collapse/expand, drag, import trigger, layer manager ═══
-import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, layerDisplayColor, levelPointColor, freezeCategoryOrder, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, addLayer, getChildren, categoryOf, CATEGORY_LABEL, applyGroupOrder, reorderGroupSegment, isCollapsed, toggleCollapsed, isGroupFold, toggleGroupFold, getGroupOrder, enforceMutualExclusion, _isAILayer, CONFIDENCE_RAMP, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HOTNESS_RAMP } from './state.js';
+import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, layerDisplayColor, levelPointColor, freezeCategoryOrder, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, addLayer, getChildren, categoryOf, CATEGORY_LABEL, applyGroupOrder, reorderGroupSegment, isCollapsed, toggleCollapsed, isGroupFold, toggleGroupFold, getGroupOrder, enforceMutualExclusion, CONFIDENCE_RAMP, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HOTNESS_RAMP } from './state.js';
 import { renderLayer, removeLayerFromMap, reorderAllZ, restackZ, toggleGridViewMode, getGridViewMode, fitToLayer } from './map.js';
 import { toast } from './toast.js';
 import { openSettingsPopover, closeSettingsPopover, openSettingsLayerId, isOpen } from './settings.js';
@@ -607,7 +607,7 @@ function toggleEye(id) {
   if (!l) return;
   setLayerVisible(id, !l.visible);
   renderLayer(l);
-  if (l.visible && !_isAILayer(l)) _applyExclusiveOn(id);   // 开层 → 互斥 + Overview 追随（AI 层手动开关不互斥）
+  if (l.visible) _applyExclusiveOn(id);   // 开层 → 互斥 + Overview 追随
   renderLayerList();
   refreshLegend();   // legend syncs with visibility (hidden layer → legend hides)
   document.dispatchEvent(new CustomEvent('layers:changed'));   // 显隐 → popup/Overview 同步
