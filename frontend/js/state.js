@@ -1062,3 +1062,9 @@ export function enforceMutualExclusion(onId) {
   }
   return hidden;
 }
+
+export function _isAILayer(l) {
+  if (!l || !l.parentId) return false;
+  const p = getLayer(l.parentId);
+  return !!(p && p.kind === 'group' && p.name === 'EmotionMap Copilot');
+}
