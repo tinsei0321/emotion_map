@@ -1160,6 +1160,7 @@ function _patternRecover(ctx) {
 
   // Pattern 1b: "将X区内的Y1,Y2用地筛选/提取出来[并合并]" — 动词在后的语序
   // e.g. "将西陵区范围内的商业、居住、公园广场用地筛选出来，并合并成一个面"
+  // ★ 动态查找实际图层 ID（不硬编码层名）→ 构建完整 _allToolCalls → runAllToolCalls 批量执行
   {
     const _landuseKWs = ['商业', '居住', '公园', '绿地', '工业', '广场', '办公', '教育', '医疗'];
     const _mentionedLU = _landuseKWs.filter(kw => q.includes(kw));
@@ -1167,14 +1168,48 @@ function _patternRecover(ctx) {
     const _rm = /(.{1,6})(?:区|市|县|街道|镇)/.exec(q);
     if (_mentionedLU.length >= 2 && _hasGISVerb && _rm) {
       const _region = _rm[1].trim();
-      return {
-        template: 'extract_feature', degraded: false, _fc: true, _patternRecover: true,
-        params: { layer: '行政区', where: _region, as: _region + '_边界' },
-        method: ['extract_feature()', 'overlay()'], intent: 'gis_operation',
-        data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
-        domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [],
-        _wantsMerge: /合并/.test(q),   // 标记：裁剪后需最终合并
-      };
+      const _polys = getLayers().filter(l => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
+      // 找边界层：名含区名 或 features 属性值含区名
+      const _boundary = _polys.find(l => {
+        if (l.name.includes(_region)) return true;
+        return (l.fc.features || []).some(f =>
+          Object.values(f.properties || {}).some(v => String(v).includes(_region)));
+      });
+      if (_boundary) {
+        // 找匹配的用地图层（去重，排除边界层自身）
+        const _matched = [];
+        for (const kw of _mentionedLU) {
+          const found = _polys.find(l =>
+            l.name.includes(kw) && l.id !== _boundary.id && !_matched.some(m => m.id === l.id));
+          if (found) _matched.push(found);
+        }
+        if (_matched.length >= 1) {
+          // 构建 overlay(intersection) 链
+          const _tcs = _matched.map(lu => ({
+            name: "overlay",
+            params: { layer_a: _boundary.id, layer_b: lu.id, how: "intersection",
+                      as: lu.name.replace(/\.(geo)?json/i, "").replace(/^用地_/, "") + "_" + _region }
+          }));
+          // 若含"合并"且 ≥2 个 → 追加 union 链
+          if (/合并/.test(q) && _tcs.length >= 2) {
+            let _chainAs = _tcs[0].params.as;
+            for (let i = 1; i < _tcs.length; i++) {
+              _tcs.push({
+                name: "overlay",
+                params: { layer_a: _chainAs, layer_b: _tcs[i].params.as, how: "union", as: "merged_final_" + i }
+              });
+              _chainAs = _tcs[_tcs.length - 1].params.as;
+            }
+          }
+          return {
+            template: 'overlay', degraded: false, _fc: true, _patternRecover: true,
+            params: {}, method: ['overlay()'], intent: 'gis_operation',
+            data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+            domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [],
+            _allToolCalls: _tcs,   // 完整链 → runAllToolCalls 批量执行
+          };
+        }
+      }
     }
   }
 
