@@ -1037,32 +1037,25 @@ export function isEmotionPointLayer(l) {
   return c === 'l0' || c === 'l1' || c === 'l2';
 }
 /** 当 onId 设为可见时，按互斥规则隐藏冲突层。返回被隐藏的层 id 数组（调用方 renderLayer + 选中超链）。
- *  承重：不动 Range（isRangeLayer 跳过）、不动同 L2 group 兄弟（同源极性保留）。
- *  规则④（AI 隔离）：AI 层与用户层互不干涉——开 AI 层只关其他 AI 层，开用户层不碰 AI 层。 */
+ *  承重：不动 Range（isRangeLayer 跳过）、不动同 L2 group 兄弟（同源极性保留）。 */
 export function enforceMutualExclusion(onId) {
   const on = getLayer(onId);
   if (!on || !on.visible) return [];
   const onIsB = isToolAnalysisLayer(on);
-  const onIsAI = _isAILayer(on);
   if (!onIsB && !isEmotionPointLayer(on)) return [];   // Range/other → 不动
   const hidden = [];
   for (const l of getLayers()) {
     if (l.id === onId || l.kind === 'group' || !l.visible) continue;
     if (isRangeLayer(l)) continue;                      // Range 永不被动关（承重）
     let hide = false;
-    if (onIsAI) {
-      // 开 AI 层 → 只关其他 AI 层（不碰用户层）
-      hide = _isAILayer(l);
+    if (onIsB) {
+      // 开分析层 → 关其他分析层(B) + 所有点层(A)
+      hide = isToolAnalysisLayer(l) || isEmotionPointLayer(l);
     } else {
-      // 开用户层 → 关其他用户层 + 点层（不碰 AI 层）
-      if (_isAILayer(l)) continue;                      // AI 层受保护·不关
-      if (onIsB) {
-        hide = isToolAnalysisLayer(l) || isEmotionPointLayer(l);
-      } else {
-        hide = isToolAnalysisLayer(l);
-        if (!hide && isEmotionPointLayer(l)) {
-          hide = !(on.parentId && l.parentId && on.parentId === l.parentId);
-        }
+      // 开点层(A) → 关所有分析层(B)；点层内部：同 L2 group 兄弟保留，不同源关
+      hide = isToolAnalysisLayer(l);
+      if (!hide && isEmotionPointLayer(l)) {
+        hide = !(on.parentId && l.parentId && on.parentId === l.parentId);
       }
     }
     if (hide) { setLayerVisible(l.id, false); hidden.push(l.id); }

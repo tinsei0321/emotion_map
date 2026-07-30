@@ -1158,6 +1158,26 @@ function _patternRecover(ctx) {
     };
   }
 
+  // Pattern 1b: "将X区内的Y1,Y2用地筛选/提取出来[并合并]" — 动词在后的语序
+  // e.g. "将西陵区范围内的商业、居住、公园广场用地筛选出来，并合并成一个面"
+  {
+    const _landuseKWs = ['商业', '居住', '公园', '绿地', '工业', '广场', '办公', '教育', '医疗'];
+    const _mentionedLU = _landuseKWs.filter(kw => q.includes(kw));
+    const _hasGISVerb = /筛选出|提取出|选出|裁剪|剪裁|裁出|筛选|提取/.test(q);
+    const _rm = /(.{1,6})(?:区|市|县|街道|镇)/.exec(q);
+    if (_mentionedLU.length >= 2 && _hasGISVerb && _rm) {
+      const _region = _rm[1].trim();
+      return {
+        template: 'extract_feature', degraded: false, _fc: true, _patternRecover: true,
+        params: { layer: '行政区', where: _region, as: _region + '_边界' },
+        method: ['extract_feature()', 'overlay()'], intent: 'gis_operation',
+        data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+        domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [],
+        _wantsMerge: /合并/.test(q),   // 标记：裁剪后需最终合并
+      };
+    }
+  }
+
   // Pattern 2: "合并 A+B+C" → 查找实际 polygon 图层 ID → overlay(union) 链
   m = /合并\s*(.+)/.exec(q);
   if (m) {
@@ -1293,6 +1313,20 @@ async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
     name: "overlay",
     params: { layer_a: _boundaryName, layer_b: l.id, how: "intersection", as: l.name.replace(/\.(geo)?json/i, "").replace(/^用地_/, "") + "_" + _boundaryName }
   }));
+  // 裁剪后合并：query 含"合并"且产出 ≥2 个裁剪结果 → 追加 union overlay 合并所有结果
+  if (/合并/.test(q) && _extraTCs.length >= 2) {
+    const _mergeTCs = [];
+    let _chainAs = _extraTCs[0].params.as;
+    for (let i = 1; i < _extraTCs.length; i++) {
+      _mergeTCs.push({
+        name: "overlay",
+        params: { layer_a: _chainAs, layer_b: _extraTCs[i].params.as, how: "union", as: "merged_final_" + i }
+      });
+      _chainAs = _mergeTCs[_mergeTCs.length - 1].params.as;
+    }
+    _extraTCs.push(..._mergeTCs);
+    console.log("[autoExpand] clip-then-merge:", _mergeTCs.length, "union overlays appended");
+  }
   console.log("[autoExpand]", _mentioned.join("+"), "→", _extraTCs.length, "overlays using boundary:", _boundaryName);
   const _diag = { ...diagnose, _allToolCalls: _extraTCs };
   return await runAllToolCalls(ctx, hooks, _diag);
