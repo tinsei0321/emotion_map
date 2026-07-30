@@ -582,6 +582,18 @@ flowchart TD
 **承重不破**：`_attach_4x5_attrs` 规则归因零改动（L4 纯叠层 lazy）；diagnose prompt 不动（改的是 agent prompt 工具目录 + 新 prompt builder，Flash eval select_template 路由不受影响）；复用 chat_with_fallback/MOD_LLM；规则底常在保零回归。零回归（pytest 199 pass / 8 预存，ESM 绿）。
 **下步**：Phase Sim（大南门·二马路 L3+L4 数据，资讯库已就位 → buffer 科学化 + ABSA aspect + policy/project 种子 + standalone 生成器）→ A1 + Sim 展示闭环（deep_read_attribution 跑在 Sim 富归因数据上）。
 
+### 5.119 EMC 三轮修复：FC 退化阻断 + Pro 模式生效 + 合并扩展（07-30，Codex 接手·fix/emc-buglog）
+
+Codex 接手后根据 SESSION_2026-07-30.md 交接卡修复三个问题（均只改 `harness.js`）：
+
+- **P0 FC 退化阻断**（L800-806）：FC 诊断 no_tool_calls → 旧回退旧 SSE `diagnoseStep` → `select_candidates` 预选工具常选错（extract_feature 当 clip 用）→ 彻底失败。修复：FC 失败直接 `{degraded:true}` 不入旧 SSE，走 while-loop (ReAct agent loop) 兜底。
+- **P1 Pro 模式生效**（L741）：`ctx.answerModel` 硬编码 `'flash'` → 改为 `ctx.model || 'flash'`，用户选 Pro 结论走 Pro。FC 诊断保持永 Flash。
+- **P1 合并扩展**（L1142+）：`_autoExpandOverlays` 只识裁剪（intersection），不加合并（union）→ 新增 `/合并|union/` 检测+逐对合并链。裁剪模式保持 `how='intersection'`。
+
+**文件**：`frontend/js/ai_qa/harness.js` · **分支**：`fix/emc-buglog` · **待验证**：浏览器硬刷后测三条回归用例。
+
+
+
 ### 5.118 EMC 基建做厚（B1 wisdom + B2 多轮记忆）+ Sim-0 资讯收集落地（07-17，EMC 整体优化 Phase B）
 
 **用户意图**：07-17 主线 done 后定 EMC 整体优化路线——**B 基建做厚 → A1 L4 多维归因 → Sim 大南门·二马路 L3+L4 数据**（三阶段 master plan 经多轮 co-design 批准：含 Sim 详细 sub-plan + 资讯收集通用模式 + buffer 科学化）。本次执行 Phase B + 落 Sim-0 资讯库。

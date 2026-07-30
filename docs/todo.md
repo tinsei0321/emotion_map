@@ -9,6 +9,27 @@
 
 ---
 
+## 📅 2026-07-30（Codex 接手·三轮修复）
+
+### ✅ P0：FC 诊断失败阻断旧 SSE 回退（harness.js:800-806）
+- **根因**：FC 诊断偶发 no_tool_calls → 回退旧 SSE `diagnoseStep` → `select_candidates` 预选工具常选错（extract_feature 当 clip 用）→ 查询彻底失败
+- **修复**：FC 失败 → 直接 `{degraded:true}` 不入旧 SSE → 走 while-loop (ReAct agent loop) 兜底
+- **验证用例**：剪裁出西陵区范围内的商业+居住+公园广场用地
+
+### ✅ P1：Pro 模式生效（harness.js:741）
+- **根因**：`answerModel` 硬编码 `'flash'`，用户选 Pro 结论仍 Flash 质量
+- **修复**：`ctx.answerModel = ctx.model || 'flash'` — 跟用户选择
+- **FC 诊断保持永 Flash**（Pro 做工具选择会过度思考致失败）
+
+### ✅ P1：_autoExpandOverlays 支持合并模式（harness.js:1142+）
+- **根因**：`_autoExpandOverlays` 只检测"X区内Y1+Y2+…用地"裁剪模式，不处理"合并N类用地"
+- **修复**：检测 `/合并|union|拼合|叠加/` → `how='union'` 逐对合并；裁剪模式保持 `how='intersection'`
+- **验证用例**：合并商业、居住和公园广场用地
+
+### 🔄 待办
+- **浏览器验证**：Ctrl+Shift+R 硬刷 → 测以上三条用例
+- git commit（建议 message: `fix: P0 FC退化阻断 + P1 Pro生效 + P1 合并扩展`）
+
 ## 📅 2026-07-29（今日·CB-09 "只说不做" 根治）
 
 ### ✅ 「只说不做」根治（commit 3a97e19+ · **fix/emc-buglog 分支**）

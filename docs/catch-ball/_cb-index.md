@@ -1,7 +1,7 @@
 # CB Index — Catch-Ball 统一入口
 
-> **读我**：VS Code（Claude Code）和 ZCode（DeepSeek/GLM）启动时读此文件，了解 CB 全貌。
-> **维护**：每轮 CB 完成后更新。最后更新：2026-07-29。
+> **读我**：VS Code（Claude Code）和 ZCode（DeepSeek）启动时读此文件，了解 CB 全貌。
+> **维护**：每轮 CB 完成后更新。最后更新：2026-07-30。
 
 ---
 
@@ -9,22 +9,24 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-09**（用户实测诊断·5 案例 + 7 根因分析） |
-| **下一轮** | CB-10（待 P0 修复后触发验证） |
+| **当前 CB 轮次** | **CB-10**（EMC 修复工程·P0/P1 聚焦） |
+| **下一轮** | CB-11（待修复后验证） |
+| **当前环境** | **Claude Code + DeepSeek V4**（原 GLM 5.2 已退役） |
+| **当前分支** | `fix/emc-buglog` @ `7126f6d` |
 | **最新 SCAN** | `scan/CB09-v1.0实测诊断_ZCode-DeepSeek_2026-07-28.md` |
-| **最新根因分析** | `rootcause/2026-07-28-multi-extract-reasoning-spiral.md` |
-| **最新综合审计** | `audit/2026-07-28-comprehensive.md` |
-| **上次操作环境** | ZCode + DeepSeek V4 Pro |
-| **上次操作人** | DeepSeek（评估方） |
+| **最新 Handoff** | `_handoff/SESSION_2026-07-30.md` |
+| **接手文档** | `_handoff/DEEPSEEK_ONBOARDING_2026-07-30.md` |
+| **上次操作人** | tinsei0321 + DeepSeek |
 
 ## 快速开始
 
-### VS Code（Claude Code + GLM）
+### VS Code（Claude Code + DeepSeek）
 
 1. Hook 自动检测：`.claude/hooks/on_session_start.py` 启动时打印 CB 状态
 2. 手动：读本文件 → 按需进入对应目录
+3. 新接手：读 `_handoff/DEEPSEEK_ONBOARDING_2026-07-30.md`
 
-### ZCode（DeepSeek / GLM）
+### ZCode（DeepSeek）
 
 1. AGENTS.md 首段引导读本文件
 2. 读 `KNOWLEDGE.md` 了解红线和语境
@@ -40,11 +42,9 @@ docs/catch-ball/
 ├── cb-journal.md         CB 轨迹（按轮倒序·SCAN摘要+反评价+行动+状态）
 ├── retired.md            退役台账
 │
-├── scan/                 SCAN 评估报告（第三方评估产出）
-│   ├── 01-deepseek.md    CB-01
-│   ├── 02-deepseek.md    CB-02
-│   ├── 03-deepseek.md    CB-03
-│   ├── 04-glm-v3.md      CB-09（GLM v3 修复审计）
+├── scan/                 SCAN 评估报告
+│   ├── CB01~CB03         历史评估（DeepSeek）
+│   ├── CB09-*.md         CB-09 实测诊断 + GLMv3 修复审计
 │   └── cpd/              CPD 专轨评估
 │
 ├── rootcause/            根因分析报告
@@ -64,15 +64,17 @@ docs/catch-ball/
 │   ├── EVAL_*.md         历史评估报告
 │   └── ...
 │
-└── _handoff/             换机交接卡
+└── _handoff/             换机交接卡 + 接手文档
     ├── HOME.md            家里做了什么、待做什么
-    └── OFFICE.md          办公室做了什么、待做什么
+    ├── OFFICE.md          办公室做了什么、待做什么
+    ├── SESSION_2026-07-30.md     今日 Session 完整记录
+    └── DEEPSEEK_ONBOARDING_2026-07-30.md  Claude Code + DeepSeek 接手文档
 ```
 
 ## CB 流程
 
 ```
-SCAN 阶段（评估方：ZCode+DeepSeek 或 VS Code+GLM）
+SCAN 阶段（评估方：ZCode+DeepSeek 或 Claude Code+DeepSeek）
   ① 读本文件了解当前轮次
   ② 读 KNOWLEDGE.md 了解红线和语境
   ③ 产出 SCAN → docs/catch-ball/scan/NN-model.md
