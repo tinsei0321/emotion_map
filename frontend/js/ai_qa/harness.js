@@ -4,7 +4,7 @@
 // 前置：DIAGNOSE 问题理解卡（认知层）→ 注入 ctx.context 导工具选型 + 结论颗粒度；硬缺口短路请求上传。
 // 降级：agent_step 解析失败不再裸显 raw，break loop 仍走 finalStep 出一次性 answer。
 import * as stages from './stages.js';
-import { TOOLS, setToolContext, formatRegistry, getArtifacts, deriveAvailable, resetStepResults, resolveCoref } from './tools.js';
+import { TOOLS, setToolContext, formatRegistry, getArtifacts, deriveAvailable, resetStepResults, resetCurrentResults, resolveCoref } from './tools.js';
 import { getLayers } from '../state.js';
 
 const MAX_ROUNDS_GIS = 10;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=10（保多步完整性，如3次overlay需8轮：1查询+6执行+1answer）
@@ -1344,9 +1344,13 @@ async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
   // 裁剪模式：找边界图层
   const _boundaryName = _firstLayerName || (_polyLayers.find((l) => l.name.includes("范围") || l.name.includes("边界") || l.name.includes("西陵")) || {}).name;
   if (!_boundaryName) return null;
+  // ★ 找边界层对象：直接传 GeoJSON 给 overlay（非字符串 → ref() 直返，不触发消费逻辑）
+  // 否则第一个 overlay 会把边界层标"已消费"→消费清理移除→后续 overlay 全失败
+  const _boundaryLayer = _polyLayers.find(l => l.name === _boundaryName || (l.name && l.name.includes(_boundaryName)));
+  const _boundaryRef = _boundaryLayer ? _boundaryLayer.fc : _boundaryName;
   const _extraTCs = _matches.map((l) => ({
     name: "overlay",
-    params: { layer_a: _boundaryName, layer_b: l.id, how: "intersection", as: l.name.replace(/\.(geo)?json/i, "").replace(/^用地_/, "") + "_" + _boundaryName }
+    params: { layer_a: _boundaryRef, layer_b: l.id, how: "intersection", as: l.name.replace(/\.(geo)?json/i, "").replace(/^用地_/, "") + "_" + _boundaryName }
   }));
   // 裁剪后合并：query 含"合并"且产出 ≥2 个裁剪结果 → 追加 union overlay 合并所有结果
   if (/合并/.test(q) && _extraTCs.length >= 2) {
@@ -1369,6 +1373,8 @@ async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
 
 /** CB-09 D057 修订：LLM 输出多个 tool_calls → 确定性顺序执行·0 LLM 中间轮。 */
 async function runAllToolCalls(ctx, hooks, diagnose) {
+  resetStepResults();        // 清 _stepResults/_resultIdByStep/_registry（防上轮残留致 ref() 误标消费）
+  resetCurrentResults();     // 清 _curResultIds/_consumedIds/_keepIds（防 focusOnlyResults 误隐藏）
   const tcs = diagnose._allToolCalls;
   const toolHistory = []; let newLayerCount = 0; const failedSteps = [];
   console.log('[runAllToolCalls] start:', tcs.length, tcs.map((t) => t.name).join(' → '));
