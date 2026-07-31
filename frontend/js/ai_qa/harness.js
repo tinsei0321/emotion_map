@@ -738,7 +738,7 @@ export async function orchestrate(ctx, hooks = {}) {
   let answered = false;      // 模型是否 deliberate `answer`（概念问等可零工具直答；_hardFail 不得覆盖它）
   let narratedAnswer = false; // 模型持续叙述（prose 作答，常见于概念问）——叙述≠失败，交 finalStep 出结论，不落 GAP
   const failedObs = [];      // 失败观察摘要（EXIT_GAP 卡展示「已尝试」用）
-  ctx.answerModel = 'flash';   // B1-2a：答案默认 flash（省 finalStep pro reasoner 串行·治超时#1）；复杂任务 diagnose 后升 pro（_needsDeliberate）
+  ctx.answerModel = ctx.model || 'flash';  // B1-2a：答案跟随用户选择（Pro用Pro、Flash用Flash）；复杂任务 diagnose 后不降级
   const _deadline = Date.now() + 30000;   // WS1 F1.5：单问总预算 30s（while-loop 守卫·超时强制作答；原 75s 远超设计 6-11s 致用户感 60s+）
 
   // 多轮连续性：近 2-3 轮 trace 蒸馏注入 ctx.context 顶部（B2：5.51 单轮 priorTurn → 多轮滚动 turnHistory，意图收敛轨迹）
