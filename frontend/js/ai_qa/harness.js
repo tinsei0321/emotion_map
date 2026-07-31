@@ -1216,6 +1216,31 @@ function _deterministicRecover(ctx) {
     }
   }
 
+  // 模式C：合并现有图层 — "合并剪裁出的N类用地" / "合并A、B、C"
+  if (/合并/.test(q)) {
+    const _landuseKWs = ['商业', '居住', '公园', '绿地', '工业', '广场', '办公', '教育', '医疗'];
+    const _mergeMatches = _polys.filter(l => _landuseKWs.some(kw => l.name.includes(kw)));
+    if (_mergeMatches.length >= 2) {
+      const _tcs = [];
+      // 链式 overlay union：逐对合并
+      _tcs.push({
+        name: "overlay",
+        params: { layer_a: _mergeMatches[0].id, layer_b: _mergeMatches[1].id, how: "union", as: "merged_" + _mergeMatches[0].name.replace(/\.(geo)?json/i, "").replace(/^用地_/, "") + "_" + _mergeMatches[1].name.replace(/\.(geo)?json/i, "").replace(/^用地_/, "") }
+      });
+      for (let i = 2; i < _mergeMatches.length; i++) {
+        _tcs.push({
+          name: "overlay",
+          params: { layer_a: _tcs[_tcs.length - 1].params.as, layer_b: _mergeMatches[i].id, how: "union", as: "merged_final_" + i }
+        });
+      }
+      return { template: 'overlay', degraded: false, _fc: true, _recover: true,
+        params: {}, method: ['overlay()'], intent: 'gis_operation',
+        data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+        domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [],
+        _allToolCalls: _tcs };
+    }
+  }
+
   return null;
 }
 
