@@ -4,7 +4,7 @@
 // 前置：DIAGNOSE 问题理解卡（认知层）→ 注入 ctx.context 导工具选型 + 结论颗粒度；硬缺口短路请求上传。
 // 降级：agent_step 解析失败不再裸显 raw，break loop 仍走 finalStep 出一次性 answer。
 import * as stages from './stages.js';
-import { TOOLS, setToolContext, formatRegistry, getArtifacts, deriveAvailable, resetStepResults, resolveCoref } from './tools.js';
+import { TOOLS, setToolContext, formatRegistry, getArtifacts, deriveAvailable, resetStepResults, resetCurrentResults, resolveCoref } from './tools.js';
 import { getLayers } from '../state.js';
 
 const MAX_ROUNDS_GIS = 10;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=10（保多步完整性，如3次overlay需8轮：1查询+6执行+1answer）
@@ -792,6 +792,15 @@ export async function orchestrate(ctx, hooks = {}) {
     }
   }
 
+  // L0 数据门：先用代码检查数据是否满足提问的最小要求——缺数据直接告诉用户，不浪费 LLM 调用
+  const _dataGap = _dataGate(ctx.question, ctx.layerMeta);
+  if (_dataGap) {
+    const _gapText = buildRequestUploadText({ data_plan: { needed: [_dataGap], gap: [_dataGap], strategy: 'request_upload' } });
+    if (hooks.onFinalDone) hooks.onFinalDone(_gapText);
+    if (hooks.onDefense) hooks.onDefense({ degraded: false, skipped: 'data-gate' });
+    return { ok: true, rounds: 0, final: _gapText, defense: { degraded: false, skipped: 'data-gate' }, degraded: false, diagnose: { degraded: true, _dataGate: true }, exit: 'gap', newLayerCount: 0 };
+  }
+
   let diagnose = null;
   try {
     console.time('[emc-timing] fcDiagnose');   // WS1 F1.7：per-phase 计时（定位真实瓶颈）
@@ -802,6 +811,13 @@ export async function orchestrate(ctx, hooks = {}) {
   if (!diagnose || diagnose.degraded) {
     console.warn('[FC] 诊断失败·不入旧 SSE', diagnose?._fcError || '');
     diagnose = { degraded: true, _fcError: diagnose?._fcError || 'fc_failed' };
+    // L2 确定性恢复：FC 失败 → 尝试用关键词+数据状态构造 diagnose（不调 LLM）
+    const _recovered = _deterministicRecover(ctx);
+    if (_recovered) {
+      diagnose = _recovered;
+      if (hooks.onObservation) hooks.onObservation('[恢复] FC 失败 → 确定性匹配 → 直执行', 0);
+      console.log('[recover] matched:', diagnose.template, JSON.stringify(diagnose.params || {}).slice(0, 120));
+    }
   }
   // v2 D068：FC 产出的 plans[] 存入 ctx.plans·供 finalStep（追问胶囊）+ CPD（选项展示）共享
   if (diagnose.plans && diagnose.plans.length) {
@@ -871,6 +887,10 @@ export async function orchestrate(ctx, hooks = {}) {
   }
 
   // 【Dumb·执行阶段】P1 编排：
+  // D057：_allToolCalls 有多个条目 → 直接批量执行（0 LLM 中间轮·L2 恢复/FC 多工具共用）
+  if (!diagnose.degraded && Array.isArray(diagnose._allToolCalls) && diagnose._allToolCalls.length > 1) {
+    return await runAllToolCalls(ctx, hooks, { ...diagnose });
+  }
   // CB-09：单工具执行后，代码自动检测是否需要补全剩余步骤（不依赖 LLM 产出 plans）
   if (!ctx.resume && !diagnose.degraded && diagnose.template) {
     const _tdef = stages.SKILL_DEFS[diagnose.template];
@@ -1124,6 +1144,81 @@ export async function orchestrate(ctx, hooks = {}) {
   return { ok: true, rounds: round, final, defense: { degraded: _fQd.degraded, fixes: _fQd.fixes, skipped: 'result', capsules: _fQd.capsules || [] }, degraded, diagnose, exit: 'result', newLayerCount };
 }
 
+/** L0 数据门：提问需要什么类型的数据 → 比对已加载数据 → 缺什么直接告诉用户。
+ *  纯代码，不调 LLM，<1ms。只做"显然缺数据"的判断——不确定就放行。 */
+function _dataGate(question, layerMeta) {
+  const q = question || '';
+  const lm = layerMeta || {};
+  // 用地/面层查询 → 需要 polygon 面层（不只是行政区边界）
+  if (/用地|地块|土地/.test(q) && !lm.has_polygon) return '用地面层数据（如商业用地、居住用地等 Shapefile/GeoJSON）';
+  // 情绪点查询 → 需要 point 数据
+  if (/情绪点|点位/.test(q) && !lm.has_point) return '情绪点数据（含极性字段的点图层）';
+  return null;
+}
+
+/** L2 确定性恢复：FC 失败 → 用关键词 + 已加载数据状态构造 diagnose。
+ *  纯代码，不调 LLM，<10ms。只覆盖高置信度模式，不确定就返回 null。 */
+function _deterministicRecover(ctx) {
+  const q = ctx.question || '';
+  const _polys = getLayers().filter(l => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
+  if (!_polys.length) return null;
+  const _regionM = /(.{1,6})(?:区|市|县|街道|镇)/.exec(q);
+  const _region = _regionM ? _regionM[1].trim() : '';
+
+  // 模式A：有用地关键词 + 有区名 → extract_feature(区边界) + overlay 链
+  const _landuseKWs = ['商业', '居住', '公园', '绿地', '工业', '广场', '办公', '教育', '医疗'];
+  const _mentionedLU = _landuseKWs.filter(kw => q.includes(kw));
+  if (_mentionedLU.length >= 2 && _region) {
+    const _boundary = _polys.find(l =>
+      l.name.includes(_region) ||
+      (l.fc.features || []).some(f => Object.values(f.properties || {}).some(v => String(v).includes(_region))));
+    const _matched = [];
+    if (_boundary) {
+      for (const kw of _mentionedLU) {
+        const found = _polys.find(l => l.name.includes(kw) && l.id !== _boundary.id && !_matched.some(m => m.id === l.id));
+        if (found) _matched.push(found);
+      }
+    }
+    if (_matched.length >= 1) {
+      const _bRef = _boundary ? _boundary.fc : _region;
+      const _tcs = _matched.map(lu => ({
+        name: "overlay",
+        params: { layer_a: _bRef, layer_b: lu.id, how: "intersection",
+                  as: lu.name.replace(/\.(geo)?json/i, "").replace(/^用地_/, "") + "_" + _region }
+      }));
+      if (/合并/.test(q) && _tcs.length >= 2) {
+        let _chainAs = _tcs[0].params.as;
+        for (let i = 1; i < _tcs.length; i++) {
+          _tcs.push({ name: "overlay", params: { layer_a: _chainAs, layer_b: _tcs[i].params.as, how: "union", as: "merged_final_" + i } });
+          _chainAs = _tcs[_tcs.length - 1].params.as;
+        }
+      }
+      return { template: 'overlay', degraded: false, _fc: true, _recover: true,
+        params: {}, method: ['overlay()'], intent: 'gis_operation',
+        data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+        domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [],
+        _allToolCalls: _tcs };
+    }
+  }
+
+  // 模式B：有情绪点 + 有区名 + "分析/情绪/消极/积极" → zonal_stats
+  if (_region && /分析|情绪|消极|积极|归因/.test(q)) {
+    const _hasPoint = (ctx.layerMeta && ctx.layerMeta.has_point) ||
+      getLayers().some(l => l.kind === 'point' && l.fc && l.fc.features && l.fc.features.length);
+    if (_hasPoint) {
+      const _bLayer = _polys.find(l => l.name.includes(_region));
+      const _boundary = _bLayer ? _bLayer.name : (_region + '区');
+      return { template: 'zonal', degraded: false, _fc: true, _recover: true,
+        params: { boundary: _boundary, polarity: /消极|负面|negative/i.test(q) ? 'negative' : (/积极|正面|positive/i.test(q) ? 'positive' : 'overall') },
+        method: ['zonal_stats()'], intent: 'emotion_analysis',
+        data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+        domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '表格', plans: [] };
+    }
+  }
+
+  return null;
+}
+
 /** CB-09 代码自动扩展：检测"X区内Y1+Y2+Y3"模式 → 生成 overlay 步骤。 */
 async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
   const q = ctx.question || '';
@@ -1152,6 +1247,8 @@ async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
 
 /** CB-09 D057 修订：LLM 输出多个 tool_calls → 确定性顺序执行·0 LLM 中间轮。 */
 async function runAllToolCalls(ctx, hooks, diagnose) {
+  resetStepResults();        // 清 _stepResults/_resultIdByStep/_registry（防上轮残留致 ref() 误标消费）
+  resetCurrentResults();     // 清 _curResultIds/_consumedIds/_keepIds（防 focusOnlyResults 误隐藏）
   const tcs = diagnose._allToolCalls;
   const toolHistory = []; let newLayerCount = 0; const failedSteps = [];
   console.log('[runAllToolCalls] start:', tcs.length, tcs.map((t) => t.name).join(' → '));
