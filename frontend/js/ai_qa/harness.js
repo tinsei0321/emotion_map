@@ -539,8 +539,9 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   // 5. CB-09 D023 质量防线（L1 产物验证 + R1/R2/R3/R4/R7·代码·不调 LLM）取代旧 _verifyClaims+_reviseOnce
   const _qd = applyQualityDefense(draft, { obsOk: true, toolHistoryText, skipL1: false });
   draft = _qd.final;
-  // v2 D068：合并 FC plans[] rank=2+ 为追问胶囊（CPD 选项·复用现有胶囊渲染+runCapsule 执行）
-  const _planCapsules = _plansToCapsules(ctx.plans);
+  // v2 D068：plans[]→追问胶囊已禁用（打断自动执行流·后续 CPD 专题统一设计）
+  // const _planCapsules = _plansToCapsules(ctx.plans);
+  const _planCapsules = [];
   const _allCapsules = [...(_qd.capsules || []), ..._planCapsules];
   if (hooks.onFinalDone) hooks.onFinalDone(draft);
   if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template', capsules: _allCapsules });
