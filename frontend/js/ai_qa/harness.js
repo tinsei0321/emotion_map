@@ -1224,13 +1224,15 @@ async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
   const q = ctx.question || '';
   const _LANDUSE = ['商业', '居住', '公园', '绿地', '工业', '广场', '办公', '教育', '医疗', '用地'];
   const _mentioned = _LANDUSE.filter((kw) => q.includes(kw));
-  if (_mentioned.length < 2) return null;
+  // "多类用地" 通配：没有具体类型关键词 → 匹配所有已加载的用地面层
+  const _isWildcard = /多类|各类|所有|全部/.test(q) && _mentioned.length < 2;
+  if (_mentioned.length < 2 && !_isWildcard) return null;
   // 找已加载的匹配面层（排除第一步刚产出的边界层）
   const _polyLayers = getLayers().filter((l) => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
   const _firstLayerName = diagnose.params && (diagnose.params.as || diagnose.params.name || '');
-  const _matches = _polyLayers.filter((l) =>
-    _mentioned.some((kw) => l.name.includes(kw)) && l.name !== _firstLayerName
-  );
+  const _matches = _isWildcard
+    ? _polyLayers.filter((l) => _LANDUSE.some((kw) => kw !== '用地' && l.name.includes(kw)) && l.name !== _firstLayerName)
+    : _polyLayers.filter((l) => _mentioned.some((kw) => l.name.includes(kw)) && l.name !== _firstLayerName);
   if (_matches.length < 1) return null;
   // 找第一步产出的边界图层名
   const _boundaryName = _firstLayerName || (_polyLayers.find((l) => l.name.includes('范围') || l.name.includes('边界') || l.name.includes('西陵')) || {}).name;
