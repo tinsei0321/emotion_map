@@ -1235,10 +1235,13 @@ async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
   // 找第一步产出的边界图层名
   const _boundaryName = _firstLayerName || (_polyLayers.find((l) => l.name.includes('范围') || l.name.includes('边界') || l.name.includes('西陵')) || {}).name;
   if (!_boundaryName) return null;
+  // 找边界层对象：传 GeoJSON（非字符串 → ref() 直返，不触发消费）——否则首个 overlay 会把边界标"已消费"→移除→后续 overlay 全失败
+  const _boundaryLayer = _polyLayers.find(l => l.name === _boundaryName || (l.name && l.name.includes(_boundaryName)));
+  const _bRef = _boundaryLayer ? _boundaryLayer.fc : _boundaryName;
   // 生成 overlay tool_calls
   const _extraTCs = _matches.map((l) => ({
     name: 'overlay',
-    params: { layer_a: _boundaryName, layer_b: l.id, how: 'intersection', as: l.name.replace(/\.(geo)?json/i, '').replace(/^用地_/, '') + '_' + _boundaryName }
+    params: { layer_a: _bRef, layer_b: l.id, how: 'intersection', as: l.name.replace(/\.(geo)?json/i, '').replace(/^用地_/, '') + '_' + _boundaryName }
   }));
   console.log('[autoExpand]', _mentioned.join('+'), '→', _extraTCs.length, 'overlays using boundary:', _boundaryName);
   const _diag = { ...diagnose, _allToolCalls: _extraTCs };
