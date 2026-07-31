@@ -798,14 +798,11 @@ export async function orchestrate(ctx, hooks = {}) {
     diagnose = await stages.fcDiagnoseStep(ctx, hooks);
     console.timeEnd('[emc-timing] fcDiagnose');
   } catch (e) { diagnose = null; }
-  // v2 FC 降级 fallback：FC 失败 → 退回旧 SSE diagnose（过渡期保留·D053）
+  // P0：FC 诊断失败 → 不入旧 SSE（旧预选工具常选错·对面层数据必失败），直接走 while-loop 兜底
   if (!diagnose || diagnose.degraded) {
-    console.warn('[FC] 降级→旧 SSE diagnose', diagnose?._fcError || '');
-    try {
-      diagnose = await stages.diagnoseStep(ctx, hooks);
-    } catch (e) { diagnose = null; }
+    console.warn('[FC] 诊断失败·不入旧 SSE', diagnose?._fcError || '');
+    diagnose = { degraded: true, _fcError: diagnose?._fcError || 'fc_failed' };
   }
-  diagnose = diagnose || { degraded: true };
   // v2 D068：FC 产出的 plans[] 存入 ctx.plans·供 finalStep（追问胶囊）+ CPD（选项展示）共享
   if (diagnose.plans && diagnose.plans.length) {
     ctx.plans = diagnose.plans;
