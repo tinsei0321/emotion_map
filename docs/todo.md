@@ -11,6 +11,13 @@
 
 ## 📅 2026-08-02（CB-12 · 链路体检 + PRM 派生 + 尺度判定 + 触发入口统一 · G0-G6a）
 
+### ✅ G6b 联网搜索 + G6c 连问拆解 + G5 derive 增强（revision-log 5.249，commit 1362167+aaa8319 · **用户手动 push**）
+
+- **G6b 联网搜索**：`llm.search_chat`（DeepSeek Responses API web_search·服务端执行）+ `/aiqa/search` + SEARCH_KW + general 搜索分支（失败 fallback）·T1c「宜昌城市更新政策」32s PASS
+- **G6c 连问拆解**：`panel.send` 分句（≤2 句·逐句完整管线）·T8c「西陵区？伍家岗区呢」PASS
+- **G5 derive 增强**（B3 重测暴露）：zonal boundary 精确区要素 + cell_size 正则放宽 + 路由修正（周边→buffer·对比→compare）
+- **验证**：pytest 225 passed + 体检 20 例全 PASS（C2a 宏观无归因词·R10 生效）
+
 ### ✅ CB-12 链路体检套件 + PRM 参数派生 + 尺度判定（revision-log 5.248，commit f33ac52 · **用户手动 push**）
 
 用户关切升级「链路通畅 + 体验达预期」→ 讨论报告 + Codex/glm组 双回应 + 用户拍板 4 项（连问最简版排 G6c·scale 前移 G1·出口差异化三层合一·性能分档软目标）。落地 G0-G6a：

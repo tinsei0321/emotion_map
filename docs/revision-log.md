@@ -223,7 +223,12 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月02日）** · 本节按板块分组、组内倒序；最新工作 = **CB-12 链路体检 + PRM 参数派生 + 尺度判定（G0-G6a·commit f33ac52）**（本次，分支 `fix/emc-buglog`）。最近：
+> 📍 **最新动态（08月02日）** · 本节按板块分组、组内倒序；最新工作 = **G6b 联网搜索 + G6c 连问拆解 + G5 derive 增强（1362167+aaa8319）**（本次，分支 `fix/emc-buglog`）。最近：
+>
+> - **G6b 联网搜索（1362167）**（依据 2 纯问答·用户拍板 DeepSeek key）：`llm.search_chat`（DeepSeek **Responses API + web_search 工具**·服务端执行搜索+开页+综合·实测「宜昌城市更新政策」返回真实政策）→ `POST /aiqa/search` 端点 + `SEARCH_KW`（大问题/聚焦词·禁假大空需宜昌实据）+ general 短路搜索分支（失败 fallback 原 finalStep·不阻塞）+ 来源标注（[1]url·信息截至检索时）。**验证**：体检 T1c「宜昌市城市更新政策有哪些」32s PASS（真实搜索路径）。
+> - **G6c 连问拆解（1362167）**（依据 4·Codex 最简版 = glm组 自认最简版·趋同）：`panel.send` 分句（`splitQuestions`·按 ？/。/；/换行 切分·句数上限 2·代码确定性·不做 LLM 拆解）→ 逐句走完整管线（各自答案卡·R9/防线全继承·不新造执行管线）。**验证**：体检 T8c「西陵区情绪如何？伍家岗区呢」60.7s PASS。
+> - **G5 derive 增强（aaa8319）**（B3 重测暴露·API 慢时段 B3 不可信·体检套件作回归门）：① zonal boundary 派生升级——精确区要素 geojson（properties 匹配区名·聚合该区非整图层）② cell_size 正则放宽（「500m 标准方格」中间夹词）③ **路由修正**（高置信代码兜底：周边/附近 Nm 情绪→buffer·对比 A 与 B→compare + boundaries 两区要素·PRM-06/08 类路由错）。**验证**：体检 20 例全 PASS·C2a 宏观分布结论无归因词（R10 生效）·pytest 225 passed。
+>
 >
 > - **CB-12 链路体检套件 + PRM 参数派生 + 尺度判定 + 触发入口统一（G0-G6a·f33ac52）**（分支 `fix/emc-buglog`·主线程 + Codex/glm组 双回应 + 用户拍板）：用户关切升级为「链路通畅 + 体验达预期」（四类判断依据·不看正确度）→ 讨论报告 → Codex/glm组 双回应（8 共识 + 4 分歧收敛：B4 连问做最简版排 G6c·B2 scale 前移 G1·B1 出口差异化三层合一·B6 性能分档软目标）。**G0 体检基建**：新增 [`test_link_checkup.py`](tests/browser/test_link_checkup.py)——10 类问句 ×≥2 例四件套断言（产物到达 / R9 对账 / onFinalDone 无卡读秒 / 耗时软门槛）+ C2 用户示例①/②（宏观分布无归因词·中微观归因含单元名·采样信号）+ R9 防线单测（封死防线本身）·**18 例全 PASS**。**G1 PRM 参数派生 + scale 判定**：`deriveMissingParams`（boundary/cell_size/radius/polarity·代码可知确定性派生·三层策略）+ 去双处三字段硬编码（`stages.js:371` scale:'macro'/decision_type/outlet + `harness.js:890` 追问路径）+ `_deriveScale` 三源解析（FC content 标签 → 词法兜底 → 默认 macro 最后防线）+ FC prompt 加尺度判定段 + 内容断言防删（test_fc_sys_prompt_keeps_scale_and_domain_lens_instruction）·**PRM 重灾区修复前 PRM-01~10 全 fail → 体检 T2a/T2b/T3a/T6a 全 PASS**。**G2**：final prompt 排版段（加粗/列表/引用块）+ 契约强化（zonal boundary/buffer radius 单位）。**G3 触发入口统一**：`landuseTriggerOf` 成分判定单源（inline/autoExpand/recover 三通道共用·删 inline 前置正则·recover 模式 A/C 复用 buildLanduseCompletion）+ A3 B002 半成品割裂（deferFinal 扩展完成统一出结论）。**G6a 出口差异化闭环**（三层合一）：finalStep 尺度约束注入（宏观禁归因/中微观必落单元/微观必落点）+ R10 归因检测 / R11 泛化检测确定性软标注。**C3**：buglog 5 条移 resolved（B003/B005/B006/B007/B009·OPEN 3/RESOLVED 8）。**G6b/c 设计文档**：[EMC-G6新能力设计](docs/dev-notes/EMC-G6新能力设计_2026-08-01.md)（搜索限 general·连问最简版分句复用 orchestrate·排期最末）。**验证**：pytest 224 passed + ESM 语法 OK + 体检 18 例全 PASS（R9 单测 PASS）。
 >
