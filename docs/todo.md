@@ -37,7 +37,23 @@ Codex 验收报告（[CB10-两天攻坚验收](docs/catch-ball/scan/CB10-两天�
 - **INFO #5**：_POL_MAP overall 行并入 emc-patterns.POLARITY_KW
 - **条件 3**：domain_lens A 部损失记入待修表（非静默无损失）
 - **条件 4**：**B3 全量 LLM 回归跑完**（report-2026-08-01-02-llm）——**25 例 pass 13 / fail 12（52%）**·PASS 全在成果范式(RST-L01~05 产出图层)+Smart 交流(SMT)+UI 渲染(UI)；FAIL 集中在**参数正确性 PRM-01~10 全 fail**（zonal/buffer 边界没对上·PRM-06 走 extract 应 zonal）= 既有「填参路由瓶颈」（CB-08 已识别·非本次修复引入）+ CPD-L01/L02（既有 CPD 问题）·t_p50=19s t_p95=66s
-- **待续**：PRM 参数填充瓶颈（zonal/buffer 边界·CB-08 F3.1 范畴）+ B002 半成品 answer 重构 + B008/B006-B defer
+- **待续**：PRM 参数填充瓶颈（zonal/buffer 边界·CB-08 F3.1 范畴）+ B008/B006-B defer
+
+### ✅ 飞轮修复 + 族 A 主通道定型（commit 36e3084→26aa9b8）
+
+**飞轮 5 项修复**（Codex 飞轮审查 F-1~F-13）：
+- F-1 计划命中改按实际执行通道 planSteps（36e3084）
+- F-2 产物语义断言（productLayers 读口 + 消极热力图色板/overlay 交集 2 例·ed60804）
+- F-6 no-llm 9 失败建归属 `_deferred.md`（acdff5e）
+- F-4 `--tier smoke/regression/full` 三档拆分（5f2e39c）
+- F-8 `--collect` 失败→buglog 草稿（d164498）
+
+**族 A 主通道定型**（Codex 决策评审选 A·9 agree）：
+- a5eb3e1：runTemplatePath 内联扩展（治 B002 半成品 answer·全步完成→单次答案）·浏览器验证 43s 一次出 3 层
+- 26aa9b8 三件收尾：① 抽 buildLanduseCompletion（intersection+union·三处共用）② N/M 完成度判定共享出口 ③ 命中遥测 + 45s 单技能预算兜底
+- **主通道 A 定型**：LLM 多 call=机会通道 / 单 call+内联扩展=常态主通道 / recover=失败兜底·B 降级为模型换代后评估项
+
+**待用户自测**：serve + 硬刷 → B002「剪裁出西陵区范围内的商业+居住+公园广场用地」→ 应一次出 3 层完整结论（不再半成品）
 
 ### ✅ 两天攻坚（完成·commit 898998b + 7735cb8 + 392ecc1）
 
