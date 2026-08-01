@@ -5,7 +5,33 @@
 
 > 📦 周归档机制：按自然周（周一~周日）归档历史内容至 `todo-archive/`；本周（含）留本文件，历史周已移归档。
 > 📝 详版历史 = [revision-log §5](revision-log.md#L226)（永久审计底）·本文件只记当前 + 计划。
-> 📌 **架构版本**：v1（三阶段 5.231-5.242）→ **v2（单次 LLM + FC·5.243-5.245b·第三方实施）** → **v3（v2 做对·5.246-657c2e3·GLM 修复）** → **v3.1**（reg.filter 崩溃修复 + SCAN P1）→ **v3.2**（CB-09 bug 修复·D057 修订·代码自动扩展·全自动多步执行·fix/emc-buglog 分支 7 commit）
+> 📌 **架构版本**：v1（三阶段 5.231-5.242）→ **v2（单次 LLM + FC·5.243-5.245b·第三方实施）** → **v3（v2 做对·5.246-657c2e3·GLM 修复）** → **v3.1**（reg.filter 崩溃修复 + SCAN P1）→ **v3.2**（CB-09 bug 修复·D057 修订·代码自动扩展·全自动多步执行·fix/emc-buglog 分支 7 commit）→ **v3.5**（CB-10/CB-11 系列·merge 多图层 + 只说不做根治）
+
+---
+
+## 📅 2026-08-02（CB-11 · merge 多图层 + 「剪裁+合并」只说不做根治）
+
+### ✅ merge 多图层 concat（commit 9f84eac + bea7cbd·Codex+glm组 方案 A）
+
+**问题**：merge 工具不支持多图层（后端只有单 boundary）·LLM 猜 `layer_list` 被拒。
+**修复**：后端 `layers` concat（CRS 统一 + `_source_layer`）+ 契约 layers + one-of 校验 + alias 解析 + union 链退役。
+**用户实测「卡读秒」** → P1 inline `_tcs is not iterable` + P2 auto-merge 未调 `onFinalDone` 全修（bea7cbd）。
+
+### ✅ 「剪裁+合并」只说不做根治（commit eb42d39 + fc242c2·Codex+glm组 共识）
+
+**问题**：用户问「剪裁出西陵区…合并成一个图层」→ 实测执行只有 extract+merge（**无裁剪**）·结论却声称「执行裁取操作·严格落在西陵区边界内」——**只说不做复发**。
+**根因（Codex+glm组 一致）**：防线系统性盲区——L1/R1-R7/零图层守卫全验图层存在·**无一条验操作是否执行**。
+**修复**：
+- **R9 步骤描述对账**（applyQualityDefense 新防线）——结论操作动词（裁取/裁剪/叠置/缓冲/筛选/抽取）→ 对账 toolHistory 工具集·未执行标注「⚠️ 未在工具执行记录中」
+- **两阶段补全（A·用户拍板）**——`buildLanduseCompletion` 问句含「裁剪+合并」→ 先 3×overlay(intersection) 裁剪 → merge 裁剪产物（$n 引用）·不再互斥吞裁剪语义
+- **merge observation 加来源标注**（被合并图层名·finalStep 知是否已裁剪）
+- **fc242c2** hover 层存在性 guard（清理产物后轮廓层被删·旧 hover 报 lyr-Lxxx-line）
+
+**验证**：Playwright 复现——extract→3×overlay→merge 6 步·**面积 17.3km²（西陵区内·非全量 66.5）**✓ 先裁剪再合并真执行 + pytest 32 passed + **用户自测成功** ✓
+
+### 待续
+- B008/B006-B 样式契约（族 D）+ G5 遥测持久化 + 触发入口统一 + PRM 参数填充瓶颈
+- 已知小瑕疵：合并后偶发多 1 个 overlay（orchestrate 二次扩展·结果正确）+「未实际生成」措辞残留（LLM 措辞·非功能 bug）
 
 ---
 

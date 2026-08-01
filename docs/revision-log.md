@@ -223,7 +223,10 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月01日）** · 本节按板块分组、组内倒序；最新工作 = **CB-10 两天攻坚落地（B003/B005/B006/B007/P0-4/P1-1/右半段/词表集中·commit 898998b+7735cb8+392ecc1·定向浏览器验证 ✓）**（本次，分支 `fix/emc-buglog`）。最近：
+> 📍 **最新动态（08月02日）** · 本节按板块分组、组内倒序；最新工作 = **CB-11「剪裁+合并」只说不做根治（R9 防线 + 两阶段补全·Codex+glm组 共识·commit eb42d39+fc242c2·Playwright 验证 ✓）**（本次，分支 `fix/emc-buglog`）。最近：
+>
+> - **CB-11「剪裁+合并」只说不做根治（R9 步骤对账 + 两阶段补全·eb42d39+fc242c2）**（分支 `fix/emc-buglog`·主线程 + Codex/glm组 第三方）：用户问「剪裁出西陵区…合并成一个图层」→ Playwright 实测**执行只有 extract_feature→merge（无裁剪）·结论却声称「执行裁取操作·严格落在西陵区边界内」**——只说不做复发。**Codex + glm组 一致**：4 问题全成立·根因=**防线系统性盲区**（L1/R1-R7/零图层守卫全验图层存在·无一条验操作是否执行）。**修复**：R9 步骤描述对账（applyQualityDefense 结论操作动词→对账 toolHistory 工具集·未执行标注）+ 两阶段补全（buildLanduseCompletion 问句含「裁剪+合并」→ 先 3×overlay(intersection) 裁剪 → merge 裁剪产物 $n 引用·不再互斥吞裁剪语义）+ merge observation 加来源标注。**用户拍板**：路径 A（先裁剪再合并·架构契合：toolHistory 可审计·复用既有 intersection 链）+ R9 两阶段同时。**Playwright 验证**：extract→3×overlay→merge 6 步·面积 17.3km²（西陵区内·非全量 66.5）✓ + pytest 32 passed。**fc242c2**：hover 层存在性 guard（runAllToolCalls 清理中间产物后轮廓层被删·旧 hover 报 lyr-Lxxx-line·防噪音）。**用户自测成功** ✓。
+>
 >
 > - **CB-10 两天攻坚：EMC 修复落地 + 定向验证**（分支 `fix/emc-buglog`·commit 898998b+7735cb8+392ecc1·主线程）：**Day1 真实状态确认**（Playwright test_p0_repro）——B002 autoExpand 在但 overlay 不稳 + runTemplatePath 半成品 answer（体验割裂·记待修）；B005/B003 缺短路 → 诚实降级。**修复（浏览器验证 ✓）**：B003 `_quickIntent` 数据清单意图 → general 短路（12.7s 列 3 类）；B005 `_deterministicRecover` 模式 D + `_autoExpandOverlays` 扩单用地 + `_LANDUSE` 去泛词（9.7s 双区+overlay 一次成）；B006 `build_fc_sys_prompt` 抽函数 + 恢复 31e2a00 极性纪律 + 内容守卫（B006 实测全三极性不缩窄）；P0-4 FINAL_TEMPLATE 瘦身 + 人民城市条件注入（test_final_prompt_stays_lean 转绿）；P1-1 `_gen_index` frontmatter 优先 + B010/B011 移 resolved；右半段删 executePlans 死代码 + CPD-RESERVED + P0-3 完成度确定性追加；B007 `_checkGeomType` 类型 guard；词表集中 emc-patterns.js。**验证**：pytest 220 passed + B0 飞轮 36/45 无回归（fail 9 = 既有 CPD/UI）+ 定向 4 用例全过。**待续**：B3 全量 LLM 回归 + B002 半成品 answer 重构 + B008/B006-B defer。
 >
