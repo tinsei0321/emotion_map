@@ -29,9 +29,15 @@
 
 **验证**：Playwright 复现——extract→3×overlay→merge 6 步·**面积 17.3km²（西陵区内·非全量 66.5）**✓ 先裁剪再合并真执行 + pytest 32 passed + **用户自测成功** ✓
 
+### ✅ 待续项推进（commit 679191f + 40a518b + c788114）
+
+- **679191f**：修 clip-then-merge 偶发多 1 个 overlay——`runAllToolCalls` 结果补 `_inlineExpanded`·orchestrate 不再二次 autoExpand·Playwright 验证 5 步（extract→3×overlay→merge）
+- **40a518b**：G5 命中遥测 localStorage 持久化（`emc_completion_hits_v1`·跨会话·驱动渐进退役）
+- **c788114**：族 D 面层多类用地分段色——merge 产物含多类 DLMC → `landuseFillColorExpr` 数据驱动分段色（每类一色·严格按图例·不再主导色单色）
+
 ### 待续
-- B008/B006-B 样式契约（族 D）+ G5 遥测持久化 + 触发入口统一 + PRM 参数填充瓶颈
-- 已知小瑕疵：合并后偶发多 1 个 overlay（orchestrate 二次扩展·结果正确）+「未实际生成」措辞残留（LLM 措辞·非功能 bug）
+- 触发入口统一 + PRM 参数填充瓶颈 + CPD-L01/L02
+- 已知小瑕疵：「未实际生成」措辞残留（LLM 措辞·非功能 bug）
 
 ---
 

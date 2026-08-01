@@ -223,7 +223,10 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月02日）** · 本节按板块分组、组内倒序；最新工作 = **CB-11「剪裁+合并」只说不做根治（R9 防线 + 两阶段补全·Codex+glm组 共识·commit eb42d39+fc242c2·Playwright 验证 ✓）**（本次，分支 `fix/emc-buglog`）。最近：
+> 📍 **最新动态（08月02日）** · 本节按板块分组、组内倒序；最新工作 = **待续项推进（双 overlay 修复 + G5 遥测持久化 + 族 D 分段色·commit 679191f+40a518b+c788114）**（本次，分支 `fix/emc-buglog`）。最近：
+>
+> - **待续项推进（679191f+40a518b+c788114）**（分支 `fix/emc-buglog`·主线程）：**679191f** 修 clip-then-merge 偶发多 1 个 overlay（`runAllToolCalls` 结果补 `_inlineExpanded`·orchestrate 二次 autoExpand 双执行消除·Playwright 验证 5 步 extract→3×overlay→merge）·**40a518b** G5 命中遥测 localStorage 持久化（`emc_completion_hits_v1`·跨会话·驱动渐进退役）·**c788114** 族 D 面层多类用地分段色（merge 产物含多类 DLMC → `landuseFillColorExpr` 数据驱动分段色·每类一色·严格按图例·不再主导色单色）。pytest 223 passed。
+>
 >
 > - **CB-11「剪裁+合并」只说不做根治（R9 步骤对账 + 两阶段补全·eb42d39+fc242c2）**（分支 `fix/emc-buglog`·主线程 + Codex/glm组 第三方）：用户问「剪裁出西陵区…合并成一个图层」→ Playwright 实测**执行只有 extract_feature→merge（无裁剪）·结论却声称「执行裁取操作·严格落在西陵区边界内」**——只说不做复发。**Codex + glm组 一致**：4 问题全成立·根因=**防线系统性盲区**（L1/R1-R7/零图层守卫全验图层存在·无一条验操作是否执行）。**修复**：R9 步骤描述对账（applyQualityDefense 结论操作动词→对账 toolHistory 工具集·未执行标注）+ 两阶段补全（buildLanduseCompletion 问句含「裁剪+合并」→ 先 3×overlay(intersection) 裁剪 → merge 裁剪产物 $n 引用·不再互斥吞裁剪语义）+ merge observation 加来源标注。**用户拍板**：路径 A（先裁剪再合并·架构契合：toolHistory 可审计·复用既有 intersection 链）+ R9 两阶段同时。**Playwright 验证**：extract→3×overlay→merge 6 步·面积 17.3km²（西陵区内·非全量 66.5）✓ + pytest 32 passed。**fc242c2**：hover 层存在性 guard（runAllToolCalls 清理中间产物后轮廓层被删·旧 hover 报 lyr-Lxxx-line·防噪音）。**用户自测成功** ✓。
 >
