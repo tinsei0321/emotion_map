@@ -55,6 +55,22 @@ Codex 验收报告（[CB10-两天攻坚验收](docs/catch-ball/scan/CB10-两天�
 
 **待用户自测**：serve + 硬刷 → B002「剪裁出西陵区范围内的商业+居住+公园广场用地」→ 应一次出 3 层完整结论（不再半成品）
 
+### ✅ CB-11 glm组 加入 + 修复（commit 2c4483c + eb9ff5e）
+
+**glm组（ZCode + GLM 5.2）加入 CB 双阵营**（第三方评估·claude组 开发主）：RULES/_cb-index/KNOWLEDGE/cb-journal 更新。
+
+**glm组 CB-11 主通道验证**：主通道 A 方向正确·但发现 **G1/G2 union 链无限循环致命 bug**（buildLanduseCompletion + recover 模式 A·迭代 `_tcs` 同时 push → OOM）——**用户手动测试②「合并 3 类用地」直接命中**（2/6 步失败）。
+
+**修复（eb9ff5e）**：
+- **G1/G2**：union 链改固定上界 `_n`·不再无限循环
+- **关 C 键对比**（main.js 注释·保留 setCompareMode + 时间轴按钮不动）
+- **G3**：inline N/M 时序——扩展失败信息 finalStep 前注入 context
+- **P1-4**：N/M 提示列失败图层名
+- **P1-5（用户测试③·样式契约）**：clip 裁出情绪点继承源层 colorMode + 5 级极性图例 paint
+- **G4**：buildLanduseCompletion 去「西陵」硬编码·从问句提取区名
+
+**用户手动测试 4 用例**：① 剪裁 3 类用地成功（N/M 报 3/4·已修列图层名）；② 合并失败（=G1/G2·已修）；③ 情绪点样式不对（=族 D·已修样式继承）；④ 待自测
+
 ### ✅ 两天攻坚（完成·commit 898998b + 7735cb8 + 392ecc1）
 
 **Day1 真实状态确认**（Playwright test_p0_repro）：

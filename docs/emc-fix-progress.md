@@ -3,7 +3,7 @@
 > **一页看清** EMC 修复整体状态。**九模块实施进度矩阵（§一·监控主视图）** + 5 层分层明细（§二）+ 待修（§三）+ 时序（§四）。
 > **更新**：2026-08-01（**CB-10 闭环 + 两天攻坚落地**·Codex+GPT-5 全面审查综合 6.0 + 反评价 9 agree + Codex 二轮 7 修正 + 验收「有条件通过」·B003/B005/B006/B007/P0-4/P1-1/右半段/词表集中全落地；分支 fix/emc-buglog @ b2949e1·pytest 220 passed）
 > **承继**：本卡由 `emc-fix-backlog.md`（2026-07-24 快照）更名重写，聚焦"9 模块进度 + 分层 + 时序"。
-> **⚠️ 关键区分**：**v1（三阶段 5.231-5.242）已被 v2（单次 LLM + FC·5.243-5.245b 第三方）取代** → v3（GLM 修复 3C+4H·7858d5a）→ **v3.1（reg.filter 崩溃修复·657c2e3）** → **v3.2（CB-09 bug 修复·D057 修订·代码自动扩展·全自动多步执行）** → **v3.3（CB-10 两天攻坚·B003/B005/B006/B007/P0-4/P1-1/右半段/词表集中）** → **v3.4（飞轮修复 5 项 + 族 A 主通道 A 定型·当前）**。v1 diagnose 管线（select_candidates/FILL_CARD/PLAN/dispatch）代码保留过渡期·Phase 4 清理待 v3 稳定后。架构设计源 [SUMMARY v2](catch-ball/emc-arch-deepdive/SUMMARY.md)（61 决策 D041-D068）。**CB-10 全面审查发现**：B002/B005 根因=plans[] 管道未接通·B006 极性纪律被 prompt 重写静默删·test_final_prompt_stays_lean 回弹 3616B·buglog 状态双源——已覆盖（剩余见 §三待修）。
+> **⚠️ 关键区分**：**v1（三阶段 5.231-5.242）已被 v2（单次 LLM + FC·5.243-5.245b 第三方）取代** → v3（GLM 修复 3C+4H·7858d5a）→ **v3.1（reg.filter 崩溃修复·657c2e3）** → **v3.2（CB-09 bug 修复·D057 修订·代码自动扩展·全自动多步执行）** → **v3.3（CB-10 两天攻坚·B003/B005/B006/B007/P0-4/P1-1/右半段/词表集中）** → **v3.4（飞轮修复 5 项 + 族 A 主通道 A 定型）** → **v3.5（CB-11·glm组 加入 + G1/G2 union 无限循环修复 + 关 C 键 + 点层样式继承·当前）**。v1 diagnose 管线（select_candidates/FILL_CARD/PLAN/dispatch）代码保留过渡期·Phase 4 清理待 v3 稳定后。架构设计源 [SUMMARY v2](catch-ball/emc-arch-deepdive/SUMMARY.md)（61 决策 D041-D068）。**CB-10 全面审查发现**：B002/B005 根因=plans[] 管道未接通·B006 极性纪律被 prompt 重写静默删·test_final_prompt_stays_lean 回弹 3616B·buglog 状态双源——已覆盖（剩余见 §三待修）。
 
 ---
 
@@ -26,7 +26,7 @@
 
 **总计**：v1 设计定稿 9/9 ✅ · **v2 架构转型 ✅**（D041-D068·单次 LLM + FC）· v3 修复 ✅（3C+4H+reg.filter）· **当前 v3.3**（CB-10 两天攻坚）· pytest **220 passed** · 定向浏览器验证 FC 全链 ✓。
 
-**🎯 当前状态**：**v3.4**（CB-10 两天攻坚 + 飞轮修复 + 族 A 主通道定型）——B003/B005/B006/B007/P0-4/P1-1/右半段/词表集中 全修复 + 飞轮 5 项（F-1/F-2/F-4/F-6/F-8）+ **族 A 主通道 A 定型**（runTemplatePath 内联扩展治 B002 半成品 answer + buildLanduseCompletion 共享函数 + N/M 判定 + 命中遥测 + 45s 预算）·pytest 21 passed + 定向浏览器验证 ✓ + B3 回归（25 例 pass 13·PRM 参数瓶颈既有）。**剩余**：PRM 参数填充瓶颈（CB-08 F3.1）+ B008/B006-B 样式契约（族 D）+ CPD-L01/L02 + 9 失败归属（`_deferred.md`）。Phase 4 清理待 v3 稳定后。
+**🎯 当前状态**：**v3.5**（CB-11·glm组 加入 + 修复）——主通道 A 定型 + **G1/G2 union 无限循环修复**（glm组 致命发现·用户测试②根因）+ 关 C 键 + **点层样式继承**（clip 产物用固化 5 级极性图例·用户测试③）+ N/M 提示列图层名 + G3 inline N/M 时序 + G4 去西陵硬编码·pytest 21 passed。**剩余**：PRM 参数填充瓶颈（CB-08 F3.1）+ 面层产物完整样式契约（overlay/extract/merge·族 D 剩余）+ CPD-L01/L02 + G5 遥测持久化 + 触发入口统一 + 多步形态扩展。Phase 4 清理待 v3 稳定后。
 
 ---
 
