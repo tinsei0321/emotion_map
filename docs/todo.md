@@ -27,11 +27,24 @@
 - ⬜ emc-fix-progress.md 头 + §三待修
 - ⬜ revision-log §5 bullet
 
-### ⬜ 两天攻坚（执行 plan 中）
+### ✅ 两天攻坚（完成·commit 898998b + 7735cb8 + 392ecc1）
 
-- **Day1**：起 serve → Playwright 3 个 P0 复现（B002/B005/B003）→ 飞轮 B0/B3 基线 → 修 B005（扩 `_autoExpandOverlays` 单用地+双区）+ B007 类型 guard
-- **Day2**：删 executePlans + CPD-RESERVED + 词表集中 + 完成度守卫 → B006 极性纪律 prompt 恢复+四段守卫 → B003 数据清单短路 → P0-4/P1-1 → 飞轮复测 → 文档同步 + CB 环境更新（RULES/_cb-index）
-- 验证：pytest（含 test_final_prompt_stays_lean 转绿 + test_emc_template 四段断言 + buglog --check）
+**Day1 真实状态确认**（Playwright test_p0_repro）：
+- **B002**：`_autoExpandOverlays` 修复代码在且通常工作（触发 3 overlay）·但 overlay 执行不稳 + runTemplatePath 先渲染半成品答案再后台跑 overlay（体验割裂·记待修）
+- **B005**：双区+单用地时 autoExpand 不触发 + FC 不稳定 → 诚实降级「没跑通」
+- **B003**：缺数据清单短路 → FC no_tool_calls → 诚实降级
+
+**修复（全部浏览器验证 ✓）**：
+- **B003**：`_quickIntent` 加数据清单意图 → general 短路·12.7s 列「原始数据 3 类」
+- **B005**：`_deterministicRecover` 模式 D（单用地+双区）+ `_autoExpandOverlays` 扩单用地 + `_LANDUSE` 去「用地」泛词 → 9.7s 双区+overlay 一次成
+- **B006**：router.py 抽 `build_fc_sys_prompt` + 恢复 31e2a00 极性纪律（0073990 静默删·补回）+ 内容守卫 → B006 实测 LLM 不再缩窄极性（全三极性）
+- **P0-4**：FINAL_TEMPLATE 语言风格 7 并 3 + 人民城市条件注入 → test_final_prompt_stays_lean 转绿
+- **P1-1**：`_gen_index` 读 frontmatter status 优先 + B010/B011 移 resolved
+- **右半段**：删 executePlans 死代码 + ctx.plans/_plansToCapsules 标 CPD-RESERVED + P0-3 完成度确定性追加
+- **B007**：`_checkGeomType` 类型 guard（clip 需点/overlay+extract 需面）
+- **词表集中**：emc-patterns.js 收纳 LANDUSE_KW/DOMAIN_KW/POLARITY_KW/意图词
+
+**验证**：pytest **220 passed** 零回归 + B0 飞轮 **36/45 无回归**（fail 9 = 既有 CPD/UI 问题）+ 定向 test_p0_repro 4 用例全过。**待续**：B3 全量 LLM 回归（后台曾卡死·改定向）+ B002 半成品 answer 重构 + B008/B006-B 样式继承 defer。
 
 ---
 ## 📅 2026-07-29（今日·CB 飞轮 buglog 扩建）

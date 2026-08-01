@@ -26,7 +26,7 @@
 
 **总计**：v1 设计定稿 9/9 ✅ · **v2 架构转型 ✅**（D041-D068·单次 LLM + FC）· v3 修复 ✅（3C+4H+reg.filter）· **当前 v3.1**（657c2e3）· pytest **221 passed** · 待浏览器验证 FC 全链。
 
-**🎯 当前状态**：v2/v3 FC 架构已落地 + reg.filter 崩溃已修。**待浏览器验证**：重启 serve + 硬刷 → FC 出图 → applyQualityDefense 不崩 → 胶囊显示 → ~10s。Phase 4 清理（删 v1 ~500 行）待 v3 稳定后。
+**🎯 当前状态**：**v3.3**（CB-10 两天攻坚落地）——B003/B005/B006/B007/P0-4/P1-1/右半段/词表集中 全修复 + **定向浏览器验证 ✓**（test_p0_repro B002/B005/B003/B006 实测）+ pytest 220 passed + B0 飞轮 36/45 无回归。**剩余**：B002 半成品 answer 体验（记待修）+ B3 全量 LLM 回归待跑（B3 后台曾卡死·已改定向验证）。Phase 4 清理（删 v1 ~500 行）待 v3 稳定后。
 
 ---
 
@@ -82,14 +82,15 @@
 
 | 项 | 模块 | 说明 | 来源 |
 |----|:---:|------|------|
-| ⬜ **B002/B005 多步执行缺口** | 编排 | `_autoExpandOverlays` 需 ≥2 用地关键词（单用地+双区不触发）·FC 单 tool_call 无补全 | CB-10 |
-| ⬜ **B006 极性纪律丢失** | Prompt | 31e2a00 纪律段被 0073990/500d4b9 静默删·router.py:52-59 无·**无内容守卫** | CB-10 |
-| ⬜ **test_final_prompt_stays_lean 回弹** | Prompt | final prompt 3616B>3KB·静态模板超标 | CB-10 |
-| ⬜ **buglog 状态双源** | 测试 | `_gen_index.py:59` 目录派生忽略 frontmatter·B010/B011 计 OPEN | CB-10 |
-| ⬜ **B007 几何类型门** | 工具 | clip/extract/overlay 无类型一致性校验（guard 并 P0-1·契约强化留 P1） | CB-10 |
-| ⬜ **B003 数据清单短路** | 路由 | `_quickIntent` 无清单意图·仍走 FC 螺旋 | CB-10 |
-| ⬜ **executePlans 死代码** | 编排 | 全仓零调用·删·保 ctx.plans 作 CPD-RESERVED | CB-10 |
-| ⬜ **词表集中** | 编排 | `_LANDUSE`/`_DK`/`_POL_MAP` 散落 harness/stages·集中+边界+遥测 | CB-10 |
+| ✅ **B002/B005 多步执行缺口** | 编排 | `_autoExpandOverlays` 扩单用地 + `_deterministicRecover` 模式 D + `_LANDUSE` 去泛词·浏览器验证 ✓（898998b） | CB-10 |
+| ✅ **B006 极性纪律丢失** | Prompt | build_fc_sys_prompt 恢复 31e2a00 纪律段 + 内容守卫（898998b）·浏览器验证 B006 全极性 ✓ | CB-10 |
+| ✅ **test_final_prompt_stays_lean 回弹** | Prompt | 语言风格 7 并 3 + 人民城市条件注入 → 转绿（898998b） | CB-10 |
+| ✅ **buglog 状态双源** | 测试 | `_gen_index` 读 frontmatter status 优先 + B010/B011 移 resolved（898998b） | CB-10 |
+| ✅ **B007 几何类型门** | 工具 | `_checkGeomType` clip 需点/overlay+extract 需面·类型不匹配报错（7735cb8） | CB-10 |
+| ✅ **B003 数据清单短路** | 路由 | `_quickIntent` 清单意图 → general 短路·浏览器验证 ✓（898998b） | CB-10 |
+| ✅ **executePlans 死代码** | 编排 | 删·保 ctx.plans/_plansToCapsules 作 CPD-RESERVED（898998b） | CB-10 |
+| ✅ **词表集中** | 编排 | emc-patterns.js 收纳 LANDUSE_KW/DOMAIN_KW/POLARITY_KW/意图词（7735cb8） | CB-10 |
+| ⬜ **B002 半成品 answer** | 体验 | runTemplatePath 先渲染半成品答案再后台跑 autoExpand·结论诚实但割裂·待重构 | CB-10 |
 | ⬜ T4 胶囊矛盾 | — | 无 strategy 不显"齐全" + 值层面缺口回写 diagnose | backlog |
 | ⬜ T5 对比 C 键 | — | 批4 Swipe 入口收敛 + 无焦点提示 + 双屏标题 | backlog |
 | ⬜ T6 飞轮断言三件套 | — | 答案产出/落图/切题校验（非只信号） | backlog |
@@ -101,6 +102,8 @@
 
 | 版本 | 修复 | CB |
 |------|------|:--:|
+| **v3.3** | **CB-10 Day2 右半段 + B007 + 词表集中**（删 executePlans 死代码·CPD-RESERVED 标注·P0-3 完成度确定性追加·B007 _checkGeomType 类型 guard·emc-patterns.js 词表集中·7735cb8/392ecc1） | CB-10 |
+| **v3.2** | **CB-10 Day1 P0-P4 修复**（B003 数据清单短路·B005 单用地+双区+_LANDUSE 泛词·B006 极性纪律恢复+守卫·P0-4 final prompt 瘦身·P1-1 buglog 状态单源·898998b·pytest 220 passed·B0 36/45 无回归） | CB-10 |
 | **v3.1** | **reg.filter 崩溃修复 + SCAN P1 边界**（formatRegistry()→getArtifacts()·治 [请求失败]+胶囊消失+速度·SCAN P1: zonal_stats/parsePlans/fc_fixes/domain_lens） | v3 |
 | **v3** | **修复第三方 v2 的 3 CRITICAL + 4 HIGH**（C1 provider fallback / C2 data gate / C3 domain_lens / H2 range / H5 timeout / H6 校验统一） | v3 |
 | **5.245b** | stages.js 语法错误修复（多余 }·第三方） | v2 |
