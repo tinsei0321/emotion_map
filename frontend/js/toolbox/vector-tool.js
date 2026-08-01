@@ -3,7 +3,7 @@
 // 单一执行核 _execute 按 op 分派（§4.2）；UI dialog 与 5 个 ForAI 入口共用。
 // _ui.tool = 各操作名（§4.3），编辑分派全路由 openVectorDialog，按 _ui 参数回填操作卡。
 // extract 字段预校验（getFieldCard）属 LLM 恢复链，留 tools.js 委托层（§5.5），模块不做。
-import { getLayer } from '../state.js';
+import { getLayer, getLayers } from '../state.js';
 import { geoPost, defaultPaint, placeToolLayer,
   collectPointSources, collectBoundarySources, boundarySourceGeo } from './shared.js';
 import { renderColorPicker } from '../settings.js';
@@ -52,7 +52,18 @@ async function _opClip(params, ctx) {
   const name = params.as || (typeof params.range === 'string' ? params.range : (params.rangeLabel || '范围裁剪'));
   const ui = { tool: 'clip', sourceId: params.sourceId, sourceLabel: params.sourceLabel,
     rangeId: params.rangeId, rangeLabel: params.rangeLabel, pre_filter: params.pre_filter };
-  const L = placeToolLayer({ name, kind: 'point', fc: r.geojson, paint: { _ui: ui }, ...ctx });
+  // P1-5（CB-11 用户测试③·族 D）：样式继承——clip 裁出情绪点须继承源层 colorMode + 图例 paint（5 级极性·大小/颜色/线框/透明度）
+  //   严格用固化图例·不临时创造样式。源层 = params.sourceId（layer id）或 params.layer（id/name）。
+  let _inherit = null;
+  const _srcRef = params.sourceId || (typeof params.layer === 'string' ? params.layer : null);
+  if (_srcRef && getLayer) {
+    const _src = getLayer(_srcRef) || (getLayers && getLayers().find((l) => l.id === _srcRef || l.name === _srcRef));
+    if (_src && _src.kind === 'point' && typeof _src.colorMode === 'string' && (_src.colorMode.indexOf('l2-') === 0 || _src.colorMode === 'polarity')) {
+      _inherit = { colorMode: _src.colorMode, paint: _src.paint || {} };   // 继承源层极性样式
+    }
+  }
+  const _paint = _inherit ? { ...(_inherit.paint || {}), _ui: ui } : { _ui: ui };
+  const L = placeToolLayer({ name, kind: 'point', fc: r.geojson, colorMode: _inherit ? _inherit.colorMode : undefined, paint: _paint, ...ctx });
   return { layerId: L && L.id, layerName: name, featureCount: feats.length, fc: r.geojson,
     count: r.count, truncated: r.truncated };
 }

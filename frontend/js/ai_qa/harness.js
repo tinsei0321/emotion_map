@@ -535,25 +535,26 @@ async function runTemplatePath(ctx, hooks, diagnose) {
       _hitInline++;   // 族 A 收尾 #3：命中遥测
       const _tcs = _c.tcs;
       let _inlineFail = 0;
+      const _inlineFailNames = [];   // P1-4（用户测试①）：收集失败图层名（as）·N/M 提示列出具体是哪个
       const _inlineDeadline = Date.now() + 45000;   // 族 A 风险：单技能路径 45s 总预算兜底（防 4+ 步拖死）
       for (const _tc of _tcs) {
         if (Date.now() > _inlineDeadline) {   // 超预算：停止扩展·剩余记失败
           toolHistory.push(`扩展-${_tc.params.as}: 已达 45s 预算·跳过`);
-          _inlineFail++;
+          _inlineFail++; _inlineFailNames.push(_tc.params.as);
           continue;
         }
         let _r = null;
         try { _r = await TOOLS.overlay(_tc.params); }
-        catch (e) { toolHistory.push(`扩展-${_tc.params.as}: overlay 异常: ${(e && e.message) || e}`); _inlineFail++; continue; }
+        catch (e) { toolHistory.push(`扩展-${_tc.params.as}: overlay 异常: ${(e && e.message) || e}`); _inlineFail++; _inlineFailNames.push(_tc.params.as); continue; }
         const _obs = (_r && _r.observation) || '[ERR]';
         if (_r && _r.data && _r.data.layerId) newLayerCount++;
-        else _inlineFail++;
+        else { _inlineFail++; _inlineFailNames.push(_tc.params.as); }
         toolHistory.push(`扩展-${_tc.params.as}: overlay(${JSON.stringify(_tc.params).slice(0, 80)}) → ${_obs}`);
         if (hooks.onObservation) hooks.onObservation(_obs, 2);
       }
-      // 族 A 收尾 #2：N/M 完成度判定（inline 扩展路径也确定性追加·防部分失败被 LLM 措辞掩盖）
+      // 族 A 收尾 #2 + P1-4：N/M 完成度判定（inline 扩展路径也确定性追加·列失败图层名·防 LLM 措辞掩盖）
       if (_inlineFail > 0) {
-        _inlinePartialNote = `仅完成 ${_tcs.length - _inlineFail}/${_tcs.length} 个扩展步骤（${_inlineFail} 个未产出图层·未生成）`;
+        _inlinePartialNote = `仅完成 ${_tcs.length - _inlineFail}/${_tcs.length} 个扩展步骤（未产出图层：${_inlineFailNames.join('、')}·未生成）`;
       }
     }
   }
@@ -566,6 +567,10 @@ async function runTemplatePath(ctx, hooks, diagnose) {
     ? `工具 ${def.tool} 执行成功，产出了 ${newLayerCount} 个新图层——请如实描述产出。`
     : `工具 ${def.tool} 已调用但**未产出新图层**（范围与数据可能不重叠或无可匹配要素）——结论必须如实说明"未生成图层"，严禁编造图层名或数据量。`;
   ctx.context = `【单技能路径·${_execSummary}】基于上述工具观察直接出结论，勿重选工具、勿重复执行、勿再调 geo 工具。\n【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层）\n\n` + (ctx.context || '');
+  // G3 修复（glm组 CB-11）：inline 扩展部分失败信息在 finalStep 前注入 context——LLM 能据此调整措辞（防乐观结论与确定性追加矛盾）
+  if (_inlinePartialNote) {
+    ctx.context = `【扩展部分失败】${_inlinePartialNote}——结论必须如实说明哪些图层未生成，严禁声称全部成功。\n\n` + ctx.context;
+  }
   let draft;
   try {
     console.time('[emc-timing] finalStep');   // WS1 F1.7：finalStep 计时
@@ -1233,8 +1238,10 @@ function _deterministicRecover(ctx) {
                   as: lu.name.replace(/\.(geo)?json/i, "").replace(/^用地_/, "") + "_" + _region }
       }));
       if (/合并/.test(q) && _tcs.length >= 2) {
+        // G2 修复（glm组 CB-11）：固定上界 _n·否则迭代 _tcs 同时 push → 无限循环 OOM
+        const _n = _tcs.length;
         let _chainAs = _tcs[0].params.as;
-        for (let i = 1; i < _tcs.length; i++) {
+        for (let i = 1; i < _n; i++) {
           _tcs.push({ name: "overlay", params: { layer_a: _chainAs, layer_b: _tcs[i].params.as, how: "union", as: "merged_final_" + i } });
           _chainAs = _tcs[_tcs.length - 1].params.as;
         }
@@ -1335,8 +1342,10 @@ function buildLanduseCompletion(question, firstLayerName, opts = {}) {
     ? _polyLayers.filter((l) => LANDUSE_KW.some((kw) => l.name.includes(kw)) && l.name !== _firstLayerName)
     : _polyLayers.filter((l) => _mentioned.some((kw) => l.name.includes(kw)) && l.name !== _firstLayerName);
   if (_matches.length < 1) return null;
-  // 找边界层名：优先第一步产出（firstLayerName）·否则按范围/边界/区名兜底
-  const _boundaryName = _firstLayerName || (_polyLayers.find((l) => l.name.includes('范围') || l.name.includes('边界') || l.name.includes('西陵')) || {}).name;
+  // 找边界层名：优先第一步产出（firstLayerName）·否则按范围/边界/问句区名兜底
+  // G4 修复（glm组 CB-11）：去「西陵」硬编码·从问句提取区名 `/(.+?)(?:区|市|县)/`
+  const _regionFromQ = (q.match(/([一-龥]{1,4})(?:区|市|县)/) || [])[1] || '';
+  const _boundaryName = _firstLayerName || (_polyLayers.find((l) => l.name.includes('范围') || l.name.includes('边界') || (_regionFromQ && l.name.includes(_regionFromQ))) || {}).name;
   if (!_boundaryName) return null;
   // 传 GeoJSON（非字符串 → ref() 直返，不触发消费）——否则首个 overlay 会把边界标"已消费"→移除→后续 overlay 全失败
   const _boundaryLayer = _polyLayers.find(l => l.name === _boundaryName || (l.name && l.name.includes(_boundaryName)));
@@ -1348,9 +1357,11 @@ function buildLanduseCompletion(question, firstLayerName, opts = {}) {
     params: { layer_a: _bRef, layer_b: l.id, how: _how, as: l.name.replace(/\.(geo)?json/i, '').replace(/^用地_/, '') + '_' + _boundaryName }
   }));
   // union 模式：链式两两合并（复用 recover 模式 C 语义）
+  // G1 修复（glm组 CB-11）：固定上界 _n = 初始 tcs 数·否则迭代 _tcs 同时 push → i 追不上 length → 无限循环 OOM
   if (_wantUnion && _tcs.length >= 2) {
+    const _n = _tcs.length;
     let _chainAs = _tcs[0].params.as;
-    for (let i = 1; i < _tcs.length; i++) {
+    for (let i = 1; i < _n; i++) {
       _tcs.push({ name: 'overlay', params: { layer_a: _chainAs, layer_b: _tcs[i].params.as, how: 'union', as: 'merged_final_' + i } });
       _chainAs = _tcs[_tcs.length - 1].params.as;
     }

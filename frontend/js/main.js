@@ -319,12 +319,12 @@ function main() {
   initSearchBar();
   initTimeline();
   initTimeBar();
-  // 批4 Swipe：'c' 键快捷 toggle compare（time-bar tb-compare 按钮为主入口·T5 入口收敛·保留快捷键双入口）
-  document.addEventListener('keydown', (e) => {
-    if ((e.key === 'c' || e.key === 'C') && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) {
-      setCompareMode(!isCompareMode());
-    }
-  });
+  // 批4 Swipe：'c' 键快捷 toggle compare（CB-11 用户要求暂时关闭——待时间轴开发后再启用；time-bar tb-compare 按钮保留不动）
+  // document.addEventListener('keydown', (e) => {
+  //   if ((e.key === 'c' || e.key === 'C') && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) {
+  //     setCompareMode(!isCompareMode());
+  //   }
+  // });
   loadManifest().then(tagAllLayers).catch(() => {});   // 全局时间轴 manifest（就绪后给已导入层补打标）
   initDrawTool(map);
   initHeatmapLegend();

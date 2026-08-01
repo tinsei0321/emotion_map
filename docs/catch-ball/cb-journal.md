@@ -1,8 +1,40 @@
 # CB Journal（Catch-Ball 轨迹）
 
-> 我方（Claude Code）与第三方评价（DeepSeek V4 Pro / GLM）的多轮 catch-ball 对话轨迹。
+> 我方（claude组：Claude Code + DeepSeek/GLM 5.2）与第三方评价（Codex + glm组：ZCode + GLM 5.2）的多轮 catch-ball 对话轨迹。
 > 按轮**倒序**（最新在顶·CB-NN 大→小·便于看最新进展；不覆写）。新轮次写在文件顶部。
 > 每轮四节：① SCAN 摘要 ② 我方反评价 ③ 行动 ④ 状态/新发现。
+
+---
+
+## CB-11 · 2026-08-02（主通道验证·glm组 第三方）
+
+### ① SCAN 摘要
+[CB11-主通道验证_glm组_2026-08-02](scan/CB11-主通道验证_glm组_2026-08-02.md)（glm组·ZCode + GLM 5.2 首次加入·独立第三方）：主通道 A 方向正确·但 **G1/G2 union 链无限循环致命 bug**（`buildLanduseCompletion:1351` + `_deterministicRecover:1235`·迭代 `_tcs` 同时 push → JS heap OOM·Node.js 复现）——**用户测试②「合并 3 类用地」直接命中**（2/6 步失败）。G3 inline N/M 时序缺陷（finalStep 看不到扩展失败·LLM 写乐观结论）·G4 boundaryName 硬编码「西陵」·G5 遥测不持久化·触发入口不一致·多步形态覆盖窄。
+
+### ② 我方反评价（结合用户手动测试 4 用例·verify-before-accept）
+
+| glm组 | 判定 | 证据 |
+|---|:---:|---|
+| G1/G2 union 无限循环 | **agree** | 读码确认 `:1351 for(i=1;i<_tcs.length;i++) push`·**用户测试②命中**（合并→2/6 步失败）·必修 |
+| G3 inline N/M 时序缺陷 | **agree** | inline 路径 finalStep 前未注入扩展失败·LLM 可能写乐观结论（对比 runAllToolCalls 有 `_failNote`） |
+| G4 boundaryName 硬编码西陵 | **agree** | `_polyLayers.find(l=>l.name.includes('西陵'))`·非西陵区失效 |
+| G5 遥测不持久化 | **agree** | console 仅本会话·跨会话丢失·应仿 `_TPL_STATS_KEY` 写 localStorage |
+| 触发入口不一致 | **agree** | inline/autoExpand/recover 三套触发条件·同一问句成功/失败走不同扩展 |
+| 后端补全建议 | **partial** | 中期演进·记待修（contracts 元数据支撑） |
+| 多步形态覆盖窄 | **partial** | merge→clip/filter→density 记待修 |
+
+**用户手动测试（claude组 侧证据）**：① 剪裁 3 类用地成功但报「3/4 扩展」（N/M 口径把第 1 步 extract 算进分母 + 未列失败图层名）；② 合并 3 类用地失败（=G1/G2 union 循环）；③ 筛选情绪点样式不对（clip 产物无图例继承 = 族 D）。**新要求**：关 C 键对比（保留时间轴按钮）+ **EMC 产物不临时创造样式**（用固化图例）。
+
+**CB-11 反评价：7 agree / 2 partial / 0 disagree**
+
+### ③ 行动
+- P0：修 G1/G2 union 链无限循环 + 关 C 键
+- P1：G3 inline N/M 时序 + N/M 提示列图层名 + 点层样式继承（clip 用固化极性图例）+ G4 去西陵硬编码
+- P2：G5 遥测持久化 + 触发入口统一 + 多步形态扩展 + 后端补全
+- 验证：pytest + 复测 B002/合并/B006 + C 键无效
+
+### ④ 状态
+`open → 修复执行中` —— 用户手动测试已确认 G1/G2 根因·计划已批准（`claude-code-emotion-map-purring-ritchie.md`）。
 
 ---
 
