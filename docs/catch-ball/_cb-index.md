@@ -1,7 +1,7 @@
 # CB Index — Catch-Ball 统一入口
 
-> **读我**：Claude Code（开发主）+ Codex/DeepSeek（CB 辅助）启动时读此文件，了解 CB 全貌。
-> **维护**：每轮 CB 完成后更新。最后更新：2026-08-01（CB-10 角色更新：ZCode/GLM 退役）。
+> **读我**：claude组（Claude Code 开发主）+ Codex + glm组（ZCode + GLM 5.2）启动时读此文件，了解 CB 全貌。
+> **维护**：每轮 CB 完成后更新。最后更新：2026-08-01（CB-10·glm组 加入双阵营）。
 
 ---
 
@@ -9,29 +9,30 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-10**（EMC 修复工程·P0/P1 聚焦） |
-| **下一轮** | CB-11（待修复后验证） |
-| **当前环境** | **Claude Code（开发主）+ Codex/DeepSeek（CB 辅助）**（原 ZCode/GLM 已退役） |
-| **当前分支** | `fix/emc-buglog` @ `b2949e1` |
-| **最新 SCAN** | `scan/CB10-EMC全面审查_Codex-GPT5_2026-08-01.md` |
+| **当前 CB 轮次** | **CB-10**（EMC 修复工程·P0/P1 聚焦 + 族 A 主通道定型） |
+| **下一轮** | CB-11（glm组 加入后主通道验证） |
+| **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
+| **当前分支** | `fix/emc-buglog` @ `4930274` |
+| **最新 SCAN** | `scan/CB10-主通道决策评审_Codex-GPT5_2026-08-01.md` |
 | **最新反评价复核** | `scan/CB10-反评价二轮审核_Codex-GPT5_2026-08-01.md` |
 | **接手文档** | `_handoff/DEEPSEEK_ONBOARDING_2026-07-30.md` |
-| **上次操作人** | tinsei0321 + Claude Code + Codex/DeepSeek |
+| **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 
 ## 快速开始
 
-### Claude Code（开发主）
+### claude组（Claude Code·开发主）
 
 1. Hook 自动检测：`.claude/hooks/on_session_start.py` 启动时打印 CB 状态
 2. 手动：读本文件 → 按需进入对应目录
 3. 新接手：读 `_handoff/DEEPSEEK_ONBOARDING_2026-07-30.md`
 
-### Codex / DeepSeek（CB 辅助评估）
+### Codex / glm组（CB 辅助评估）
 
 1. 读本文件了解当前轮次 + 最新 SCAN
 2. 读 `KNOWLEDGE.md` 了解红线和语境
-3. 产出 SCAN → `scan/CB{NN}-{topic}_{env}-{model}_{YYYY-MM-DD}.md`
+3. 产出 SCAN → `scan/CB{NN}-{topic}_{env}-{model}_{YYYY-MM-DD}.md`（glm组 用 `CB{NN}-{topic}_glm组_{YYYY-MM-DD}.md`）
 4. 按需进入对应目录
+5. **glm组（ZCode + GLM 5.2）**：以第三方评估者身份加入·独立 SCAN/讨论·与 Codex 互补视角·非开发主
 
 ## 文件夹地图
 
@@ -75,14 +76,14 @@ docs/catch-ball/
 ## CB 流程
 
 ```
-SCAN 阶段（评估方：Codex+DeepSeek·CB 辅助·独立于开发主 Claude Code）
+SCAN 阶段（评估方：Codex 或 glm组·CB 辅助·独立于开发主 claude组）
   ① 读本文件了解当前轮次
   ② 读 KNOWLEDGE.md 了解红线和语境
-  ③ 产出 SCAN → docs/catch-ball/scan/NN-model.md
+  ③ 产出 SCAN → docs/catch-ball/scan/{NN}-{model}.md（glm组 用 {NN}-glm组.md）
   ④ 更新本文件「待反评价」
   ⑤ 更新 _handoff/{HOME|OFFICE}.md
 
-Journal 阶段（项目方：任一环境）
+Journal 阶段（项目方：claude组）
   ① 读本文件发现新 SCAN
   ② 逐条反评价（agree/disagree/partial）
   ③ 追加 cb-journal.md 对应轮次

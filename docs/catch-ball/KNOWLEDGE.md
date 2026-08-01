@@ -5,6 +5,8 @@
 > 版本随 CB 轮次演进（CB-03 前据 CB-01/02 经验复盘修订，同 [RULES.md](RULES.md)）。
 >
 > **记忆共享（通则）**：本文件登记于 [docs/context-map.md](../context-map.md) + AutoMemory `MEMORY.md`（`cb-knowledge-base` 指针），与项目 AutoMemory 双向链接（§1/§2 内嵌 `[[name]]` = AutoMemory 条目名）。不孤岛。
+>
+> **双阵营（2026-08-01）**：claude组（Claude Code + DeepSeek/GLM 5.2·开发主）+ Codex + glm组（ZCode + GLM 5.2·第三方评估）。本记忆库供三方面共享——红线 §1 对评估方同样生效。
 
 ---
 

@@ -1,7 +1,10 @@
 # Catch-Ball 评估规则与工作指南
 
-> **版本**：2.1 | **生效日期**：2026-07-28 | **更新**：2026-08-01（CB-10·角色更新）
-> **适用对象**：CB 辅助评估模型（Codex + DeepSeek V4 Pro/Flash·独立于开发主 Claude Code；原 ZCode/GLM 已退役）
+> **版本**：2.2 | **生效日期**：2026-07-28 | **更新**：2026-08-01（CB-10·glm组加入）
+> **适用对象**（双阵营）：
+> - **claude组（开发主）**：Claude Code + DeepSeek V4/GLM 5.2——开发、修复、测试、文档。
+> - **CB 辅助评估（第三方）**：Codex + GPT-5 · **glm组（ZCode + GLM 5.2）**——独立评估、SCAN、反评价审核。
+>   （原「ZCode/GLM 已退役」撤销——ZCode 以 glm组 身份回归；DeepSeek 同时是 claude组 的模型与辅助评估可选）
 > **评估项目**：emotion_map — 城市情绪地图平台
 > **CB 统一入口**：`_cb-index.md` — 启动时先读此文件
 
@@ -24,13 +27,15 @@
 - 建议按严重程度和影响面分级
 - 讨论点聚焦架构级话题，避免陷入细节争论
 
-### 1.4 双模型闭环
+### 1.4 双模型闭环（多评估方）
 ```
-SCAN（DeepSeek 评价）→ CB Journal（Claude Code 反评价 + 行动）
+SCAN（Codex / glm组 独立评价）→ CB Journal（claude组 反评价 + 行动）
     → 下一轮 SCAN（对比验证改进效果）→ 持续迭代
 ```
 - 每轮 SCAN 首章必须回顾上一轮建议的执行情况
 - 对比验证是闭环的核心价值——衡量建议是否落地产生了实际改善
+- **多评估方（2026-08-01 起）**：第三方评估可选 Codex（GPT-5）或 glm组（ZCode + GLM 5.2）·独立产出 SCAN·claude组 反评价
+- **glm组 定位**：ZCode + GLM 5.2 以**第三方评估者**身份加入（非开发主）·评估、SCAN、讨论、反评价审核·与 Codex 互补视角
 
 ---
 
@@ -137,6 +142,7 @@ docs/catch-ball/scan/CB{NN}-{topic}_{env}-{model}_{YYYY-MM-DD}.md
 - `{topic}` 为简短中文主题描述
 - `{env}` 为评估环境（ZCode / VSCode）
 - `{model}` 为评估模型（DeepSeek / GLM / K3 / Gemini 等）
+- **glm组 命名**：`CB{NN}-{topic}_glm组_{YYYY-MM-DD}.md`（如 `CB11-主通道验证_glm组_2026-08-02.md`）·评估方标注 `ZCode + GLM 5.2`
 - CPD 专轨评估放入 `docs/catch-ball/scan/cpd/`
 
 ### 4.2 根因分析文档
