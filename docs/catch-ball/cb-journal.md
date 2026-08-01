@@ -130,7 +130,25 @@
 
 **Auto-Check**：① 承重红线——无触碰（F 意见均改 test-board/audit/断言·不触 diagnose prompt/tracker/四态）✅ ② verify-before-accept——F-1/F-2/F-6/F-12 读码核实 ✅ ③ 无消费者→wontfix——F-7/F-9/F-13 低价值·partial 不盲修 ✅ ④ 已知模式——「评估偏工程标尺」未触发（本 SCAN 合理聚焦飞轮基建）✅
 
-**反评价（深入版）：15 agree / 3 partial / 2 已修·已核实 / 0 disagree** · 立即做 = F-1/F-2/F-6 · 本周 = F-4 三档 + F-8 · 族 A 主通道 = 架构决策待用户拍板
+**反评价（深入版）：15 agree / 3 partial / 2 已修·已核实 / 0 disagree**
+
+### ③·主通道决策评审反评价（Codex · 选 A 定型 + 3 收尾）
+
+> SCAN：[CB10-主通道决策评审](scan/CB10-主通道决策评审_Codex-GPT5_2026-08-01.md)。**选 A 定型**（Flash 单 tool_call 是模型现实·B 低概率高成本）+ 三层定位（LLM 多 call=机会通道 / 单 call+补全=常态主通道 / recover=失败兜底）+ 3 件收尾 + 演进路径。
+
+| Codex 意见 | 判定 | 行动 |
+|---|:---:|---|
+| 选 A 定型（B 降级为模型换代后评估项）| **agree** | 与项目方建议一致·B 不做当前投入 |
+| 三层定位（确定性补全=常态主通道·LLM 多 call=机会·recover=失败兜底）| **agree** | 架构定位采纳·文档记录 |
+| 正则补全必须保留（两层次·遥测驱动退役）| **agree** | 保留·加命中遥测 |
+| a5eb3e1 部分满足族 A·「统一」未达成（3 缺口：覆盖窄/无 union 分支/无 N/M 判定）| **agree** | **三件收尾做**（见下）|
+| 收尾 #1 抽共享补全函数 buildLanduseCompletion（intersection+union）·inline/autoExpand/recover 改调 | **agree** | 做：新 completion.js 或 harness 共享函数 |
+| 收尾 #2 N/M 完成度判定提升为共享出口（inline 路径也追加）| **agree** | 做 |
+| 收尾 #3 命中遥测（inline/autoExpand/recover 各自计数）| **agree** | 做：console 可查 |
+| 风险：单技能路径无总预算（B002 43s）→ 加 45-50s 兜底 | **agree** | 做：单技能路径加总预算 |
+| 风险：内联触发正则又一条内联正则 → 收尾 #1 一并移入共享 | **agree** | 做：并入共享函数 |
+
+**反评价：9 agree / 0 disagree** · 行动 = 三件收尾 + 45s 预算 + 遥测 · 完成后用户自测一次 · 立即做 = F-1/F-2/F-6 · 本周 = F-4 三档 + F-8 · 族 A 主通道 = 架构决策待用户拍板
 
 
 ### ① SCAN 摘要

@@ -11,6 +11,11 @@ import { CONCEPT_KW, INVENTORY_KW, GREETING_KW, GEO_VERB_KW, REGION_KW, POLARITY
 const MAX_ROUNDS_GIS = 10;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=10（保多步完整性，如3次overlay需8轮：1查询+6执行+1answer）
 const MAX_ROUNDS_OTHER = 4;    // A 通用 / C 情绪=4（远紧于 16，配合 temp 0.4 降概率链 p^N）
 
+// 族 A 收尾 #3：补全命中遥测（console 可查·驱动渐进退役：命中趋零 + LLM 多 call 覆盖才删对应规则）
+let _hitInline = 0;      // runTemplatePath 内联扩展命中
+let _hitAutoExpand = 0;  // _autoExpandOverlays 命中
+let _hitRecover = 0;     // _deterministicRecover 命中
+
 // v3 H6：前端 _validateFcParams 已删除——信赖后端 validate_tool_call（router fc_diagnose 调·D062）。
 // 后端在返回 tool_calls 前已校验 + 修正参数（enum 外→默认值替代·required 缺→补默认）·前端不重复。
 
@@ -468,6 +473,7 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   if (hooks.onRoundStart) hooks.onRoundStart(1);
   setToolContext({ tool: def.tool, round: 1 });
   let _inlineExpanded = false;   // 族 A（CB-10）：runTemplatePath 内联扩展标志（orchestrate 据此跳过二次 autoExpand）
+  let _inlinePartialNote = '';   // 族 A 收尾 #2：inline 扩展部分失败确定性声明（finalStep 后追加）
   let obs;
   let r = null;
   try {
@@ -522,30 +528,32 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   //     命中则先执行扩展 overlay 步骤（累积 toolHistory/newLayerCount），再统一出一次 finalStep（治半成品答案：全步完成→单次答案）。
   //     与 orchestrate 的 _autoExpandOverlays 互补：此处处理「单技能第 1 步 + 多目标」，orchestrate 处理纯 overlay 链。
   if (!failed && newLayerCount > 0 && def.tool === 'extract_feature' && /(?:区|市|县|街道|镇).*(?:用地|地块)|.*(?:用地|地块).*(?:区|市|县|街道|镇)/.test(ctx.question || '')) {
-    const _q = ctx.question || '';
-    const _mentioned = LANDUSE_KW.filter((kw) => _q.includes(kw));
-    const _isWildcard = /多类|各类|所有|全部/.test(_q) && _mentioned.length < 2;
-    if (_mentioned.length >= 1 && (_mentioned.length >= 2 || _isWildcard || /(范围内|内的|裁剪|裁剪出|筛选出|提取)/.test(_q))) {
-      const _polyLayers = getLayers().filter((l) => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
-      const _firstLayerName = (params && (params.as || params.name)) || '';
-      const _matches = _isWildcard
-        ? _polyLayers.filter((l) => LANDUSE_KW.some((kw) => l.name.includes(kw)) && l.name !== _firstLayerName)
-        : _polyLayers.filter((l) => _mentioned.some((kw) => l.name.includes(kw)) && l.name !== _firstLayerName);
-      if (_matches.length >= 1) {
-        const _boundaryName = _firstLayerName;
-        const _boundaryLayer = _polyLayers.find(l => l.name === _boundaryName || (l.name && l.name.includes(_boundaryName)));
-        const _bRef = _boundaryLayer ? _boundaryLayer.fc : _boundaryName;
-        for (const _l of _matches) {
-          _inlineExpanded = true;
-          const _tc = { name: 'overlay', params: { layer_a: _bRef, layer_b: _l.id, how: 'intersection', as: _l.name.replace(/\.(geo)?json/i, '').replace(/^用地_/, '') + '_' + _boundaryName } };
-          let _r = null;
-          try { _r = await TOOLS.overlay(_tc.params); }
-          catch (e) { toolHistory.push(`扩展-${_l.name}: overlay 异常: ${(e && e.message) || e}`); continue; }
-          const _obs = (_r && _r.observation) || '[ERR]';
-          if (_r && _r.data && _r.data.layerId) newLayerCount++;
-          toolHistory.push(`扩展-${_l.name}: overlay(${JSON.stringify(_tc.params).slice(0, 80)}) → ${_obs}`);
-          if (hooks.onObservation) hooks.onObservation(_obs, 2);
+    // 族 A 收尾 #1：改用共享 buildLanduseCompletion（统一匹配 + intersection/union）
+    const _c = buildLanduseCompletion(ctx.question || '', (params && (params.as || params.name)) || '', { mode: 'auto' });
+    if (_c) {
+      _inlineExpanded = true;
+      _hitInline++;   // 族 A 收尾 #3：命中遥测
+      const _tcs = _c.tcs;
+      let _inlineFail = 0;
+      const _inlineDeadline = Date.now() + 45000;   // 族 A 风险：单技能路径 45s 总预算兜底（防 4+ 步拖死）
+      for (const _tc of _tcs) {
+        if (Date.now() > _inlineDeadline) {   // 超预算：停止扩展·剩余记失败
+          toolHistory.push(`扩展-${_tc.params.as}: 已达 45s 预算·跳过`);
+          _inlineFail++;
+          continue;
         }
+        let _r = null;
+        try { _r = await TOOLS.overlay(_tc.params); }
+        catch (e) { toolHistory.push(`扩展-${_tc.params.as}: overlay 异常: ${(e && e.message) || e}`); _inlineFail++; continue; }
+        const _obs = (_r && _r.observation) || '[ERR]';
+        if (_r && _r.data && _r.data.layerId) newLayerCount++;
+        else _inlineFail++;
+        toolHistory.push(`扩展-${_tc.params.as}: overlay(${JSON.stringify(_tc.params).slice(0, 80)}) → ${_obs}`);
+        if (hooks.onObservation) hooks.onObservation(_obs, 2);
+      }
+      // 族 A 收尾 #2：N/M 完成度判定（inline 扩展路径也确定性追加·防部分失败被 LLM 措辞掩盖）
+      if (_inlineFail > 0) {
+        _inlinePartialNote = `仅完成 ${_tcs.length - _inlineFail}/${_tcs.length} 个扩展步骤（${_inlineFail} 个未产出图层·未生成）`;
       }
     }
   }
@@ -570,6 +578,8 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   // 5. CB-09 D023 质量防线（L1 产物验证 + R1/R2/R3/R4/R7·代码·不调 LLM）取代旧 _verifyClaims+_reviseOnce
   const _qd = applyQualityDefense(draft, { obsOk: true, toolHistoryText, skipL1: false });
   draft = _qd.final;
+  // 族 A 收尾 #2：inline 扩展部分失败确定性追加（不依赖 LLM 措辞·与 runAllToolCalls 的 N/M 一致）
+  if (_inlinePartialNote) draft += `\n\n> ⚠️ ${_inlinePartialNote}。`;
   // v2 D068：plans[]→追问胶囊已禁用（打断自动执行流·后续 CPD 专题统一设计）
   // const _planCapsules = _plansToCapsules(ctx.plans);
   const _planCapsules = [];
@@ -848,6 +858,7 @@ export async function orchestrate(ctx, hooks = {}) {
     const _recovered = _deterministicRecover(ctx);
     if (_recovered) {
       diagnose = _recovered;
+      _hitRecover++;   // 族 A 收尾 #3：命中遥测
       if (hooks.onObservation) hooks.onObservation('[恢复] FC 失败 → 确定性匹配 → 直执行', 0);
       console.log('[recover] matched:', diagnose.template, JSON.stringify(diagnose.params || {}).slice(0, 120));
     }
@@ -1307,36 +1318,54 @@ function _deterministicRecover(ctx) {
   return null;
 }
 
-/** CB-09 代码自动扩展：检测"X区内Y1+Y2+Y3"模式 → 生成 overlay 步骤。 */
-async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
-  const q = ctx.question || '';
-  // B005：去掉「用地」泛词——否则「商业用地」匹配成 ['商业','用地'] 2 词 → 误走多用地分支 + 「用地」匹配所有用地层名 → 误生成 3 overlay（词表集中 emc-patterns）
+/** CB-10 族 A 收尾 #1：共享用地补全构造器——统一 inline / _autoExpandOverlays / recover 的「匹配用地层 + 构造 overlay tool_calls」。
+ *  mode='intersection'（区内裁剪）/ 'union'（合并链·含 merge 关键词时）/ 'auto'（按问句含「合并」自动选）。
+ *  返回 { tcs, boundaryName, mentioned } 或 null（不匹配）。词表 LANDUSE_KW 集中 emc-patterns。 */
+function buildLanduseCompletion(question, firstLayerName, opts = {}) {
+  const q = question || '';
+  const mode = opts.mode || 'auto';
   const _mentioned = LANDUSE_KW.filter((kw) => q.includes(kw));
-  // "多类用地" 通配：没有具体类型关键词 → 匹配所有已加载的用地面层
   const _isWildcard = /多类|各类|所有|全部/.test(q) && _mentioned.length < 2;
   // B005：单用地 + 裁剪语义（"西陵区+伍家岗区范围内商业用地"）也扩展——须有区名/裁剪词防误触发
   if (_mentioned.length < 1) return null;
   if (_mentioned.length < 2 && !_isWildcard && !/(范围内|内的|裁剪|裁剪出|筛选出|提取)/.test(q)) return null;
-  // 找已加载的匹配面层（排除第一步刚产出的边界层）
   const _polyLayers = getLayers().filter((l) => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
-  const _firstLayerName = diagnose.params && (diagnose.params.as || diagnose.params.name || '');
+  const _firstLayerName = firstLayerName || '';
   const _matches = _isWildcard
     ? _polyLayers.filter((l) => LANDUSE_KW.some((kw) => l.name.includes(kw)) && l.name !== _firstLayerName)
     : _polyLayers.filter((l) => _mentioned.some((kw) => l.name.includes(kw)) && l.name !== _firstLayerName);
   if (_matches.length < 1) return null;
-  // 找第一步产出的边界图层名
+  // 找边界层名：优先第一步产出（firstLayerName）·否则按范围/边界/区名兜底
   const _boundaryName = _firstLayerName || (_polyLayers.find((l) => l.name.includes('范围') || l.name.includes('边界') || l.name.includes('西陵')) || {}).name;
   if (!_boundaryName) return null;
-  // 找边界层对象：传 GeoJSON（非字符串 → ref() 直返，不触发消费）——否则首个 overlay 会把边界标"已消费"→移除→后续 overlay 全失败
+  // 传 GeoJSON（非字符串 → ref() 直返，不触发消费）——否则首个 overlay 会把边界标"已消费"→移除→后续 overlay 全失败
   const _boundaryLayer = _polyLayers.find(l => l.name === _boundaryName || (l.name && l.name.includes(_boundaryName)));
   const _bRef = _boundaryLayer ? _boundaryLayer.fc : _boundaryName;
-  // 生成 overlay tool_calls
-  const _extraTCs = _matches.map((l) => ({
+  const _wantUnion = mode === 'union' || (mode === 'auto' && /合并/.test(q));
+  const _how = _wantUnion ? 'union' : 'intersection';
+  const _tcs = _matches.map((l) => ({
     name: 'overlay',
-    params: { layer_a: _bRef, layer_b: l.id, how: 'intersection', as: l.name.replace(/\.(geo)?json/i, '').replace(/^用地_/, '') + '_' + _boundaryName }
+    params: { layer_a: _bRef, layer_b: l.id, how: _how, as: l.name.replace(/\.(geo)?json/i, '').replace(/^用地_/, '') + '_' + _boundaryName }
   }));
-  console.log('[autoExpand]', _mentioned.join('+'), '→', _extraTCs.length, 'overlays using boundary:', _boundaryName);
-  const _diag = { ...diagnose, _allToolCalls: _extraTCs };
+  // union 模式：链式两两合并（复用 recover 模式 C 语义）
+  if (_wantUnion && _tcs.length >= 2) {
+    let _chainAs = _tcs[0].params.as;
+    for (let i = 1; i < _tcs.length; i++) {
+      _tcs.push({ name: 'overlay', params: { layer_a: _chainAs, layer_b: _tcs[i].params.as, how: 'union', as: 'merged_final_' + i } });
+      _chainAs = _tcs[_tcs.length - 1].params.as;
+    }
+  }
+  return { tcs: _tcs, boundaryName: _boundaryName, mentioned: _mentioned };
+}
+
+/** CB-09 代码自动扩展：检测"X区内Y1+Y2+Y3"模式 → 生成 overlay 步骤。 */
+async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
+  const _firstLayerName = diagnose.params && (diagnose.params.as || diagnose.params.name || '');
+  const _c = buildLanduseCompletion(ctx.question || '', _firstLayerName, { mode: 'auto' });
+  if (!_c) return null;
+  _hitAutoExpand++;   // 族 A 收尾 #3：命中遥测
+  console.log('[autoExpand]', _c.mentioned.join('+'), '→', _c.tcs.length, 'overlays using boundary:', _c.boundaryName, '| hits inline', _hitInline, 'autoExpand', _hitAutoExpand, 'recover', _hitRecover);
+  const _diag = { ...diagnose, _allToolCalls: _c.tcs };
   return await runAllToolCalls(ctx, hooks, _diag);
 }
 
