@@ -76,6 +76,32 @@
 
 **CB-10 ③：验收反评价——8 agree / 1 partial / 0 disagree**
 
+---
+
+### ③·飞轮机制审查反评价（Codex · F-1~F-13 + 7 问题族 · 逐条）
+
+> SCAN：[CB10-飞轮机制审查与EMC问题梳理](scan/CB10-飞轮机制审查与EMC问题梳理_Codex-GPT5_2026-08-01.md)。飞轮三层互补设计优秀；4 系统性弱点 + 7 问题族归并（A 多步管道唯一架构根因·B 意图/参数概率性·C 正则覆盖·D 样式契约·E 字段已收敛·F 测试基建·G 治理）。
+
+| Codex 意见 | 判定 | 处理 |
+|---|:---:|---|
+| F-1 计划命中指标语义漂移（method 派生 ≠ 计划） | **agree** | 记待修：按 `_allToolCalls.length` 实际执行通道统计 |
+| F-2 断言不覆盖产物正确性（B006-B/B008 测不出） | **agree** | 记待修：density/overlay/clip/merge 产物语义断言 |
+| F-3 llm 数据形态单一（无单层全量/无 polarity） | **agree** | 记待修：补 2 个数据形态用例 |
+| F-4 llm 全量回归不可日常跑 → 拆 smoke/regression/full 三档 | **agree** | 记待修：三档拆分 + B3 卡死根因修 |
+| F-5 llm 单次失败非回归 → 自动重测 1 次标 flaky | **agree** | 记待修 |
+| F-6 no-llm 9 个 CPD/UI 失败长期红无主 → 进 buglog 或 defer 清单 | **agree** | 记待修：9 例建归属 |
+| F-7 误杀/漏判投票无消费方 | **partial** | 方向对·低优先级·记待修（每月校准） |
+| F-8 失败→buglog 断链（无"记录"入口）→ --collect | **agree** | 记待修：`flywheel_audit.py --collect` + 按钮 |
+| F-9 仪表盘缺跨次趋势 | **partial** | 低优先级·记待修 |
+| F-10 UI 交互合格 | **agree** | 维持 |
+| **F-11 `--check` 时间戳脆弱** | **已修** | 742840d（`_strip_timestamp`）✓ 跨分钟验证 |
+| **F-12 `_regression.md` 只覆盖 B001** | **已核实自动解决** | B010/B011 移 resolved/ 后自动收录（render_regression 按 resolved 全量）✓ |
+| F-13 修复记录 commit 无祖先校验 | **partial** | 记待修：`--check` 加 commit 祖先校验 |
+| 族 A 多步主通道未定型 + B002 半成品 answer | **agree** | 已记待修（B002 半成品）+ 主通道定型待架构决策 |
+| 族 D 样式契约缺失 | **agree** | 已 defer（B006-B/B008）·记 P2 |
+
+**反评价：11 agree / 2 partial / 2 已修·已核实 / 0 disagree**
+
 
 ### ① SCAN 摘要
 [SCAN_DeepSeek_05](scan/05-deepseek.md)（DeepSeek V4 Pro·ZCode 主线程）：基于用户 5 个实测案例的深度诊断——裁剪西陵+伍家岗（request_upload·推理螺旋）、上传了哪些数据（答错·信息缺失）、裁剪西陵+伍家岗再测（假结论·无执行感知）、消极情绪追问（层引用幻觉）、500m 网格聚合（图层OK/结论超时）。**核心发现**：接地上下文缺两类语义标注（数据来源+可用引用），LLM 面对信息缺口进入推理螺旋。综合分 7.3/10（↓0.6 vs CB-08）。7 条 P0-P1 建议。
