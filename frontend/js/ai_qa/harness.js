@@ -288,6 +288,34 @@ function applyQualityDefense(draft, opts) {
     }
   }
 
+  // R9 步骤描述对账（CB-11 只说不做·Codex+glm组 防线结构性洞）：结论声称的操作动词 → 对账 toolHistory 实际工具集
+  //   未执行 → inline 标注「（注：实际未执行此操作）」。只查强措辞（执行了/已完成/做了/进行了 + 动词）·避免误判建议/概念。
+  if (_opts.toolHistoryText) {
+    const _execTools = new Set();
+    for (const line of String(_opts.toolHistoryText).split('\n')) {
+      const m = String(line).match(/动作:\s*([a-z_]+)\s*\(/i);
+      if (m) _execTools.add(m[1]);
+    }
+    // 操作动词 → 工具族映射（与 tool_contracts 工具名对齐）
+    const _ACTION_TO_TOOL = {
+      '裁取': ['clip', 'overlay'], '裁剪': ['clip', 'overlay'], '裁出': ['clip', 'overlay', 'extract_feature'],
+      '剪裁': ['clip', 'overlay', 'extract_feature'], '叠置': ['overlay'], '叠加': ['overlay'],
+      '缓冲': ['buffer'], '筛选': ['filter_attr'], '抽取': ['extract_feature'],
+    };
+    const _actionRe = /(?:执行了|已完成|做了|进行了|已执行)\s*(裁取|裁剪|裁出|剪裁|叠置|叠加|缓冲|筛选|抽取)/g;
+    const _unverified = [];
+    let _m;
+    while ((_m = _actionRe.exec(final)) !== null) {
+      const _act = _m[1];
+      const _tools = _ACTION_TO_TOOL[_act] || [];
+      if (_tools.length && !_tools.some((t) => _execTools.has(t))) _unverified.push(_act);
+    }
+    if (_unverified.length) {
+      final += `\n\n> ⚠️ 结论声称的「${[...new Set(_unverified)].join('、')}」未在工具执行记录中（实际未执行此操作·请以上方工具记录为准）。`;
+      fixes.push({ rule: 'R9', action: 'unverified-action', actions: [...new Set(_unverified)] });
+    }
+  }
+
   // R1 非空结论（硬拦截·去格式符后 <10 字符 → L3 降级·防 finalStep 空答）
   if (_isNonEmpty(final) < 10) { degrade = true; fixes.push({ rule: 'R1', action: 'empty-degrade' }); }
 
@@ -540,6 +568,11 @@ async function runTemplatePath(ctx, hooks, diagnose) {
         if (_mr && _mr.data && _mr.data.layerId) newLayerCount++;
         toolHistory.push(`合并 ${_c.mergeLayers.length} 图层: merge(${JSON.stringify(_c.mergeLayers).slice(0, 120)}) → ${_obs}`);
         if (hooks.onObservation) hooks.onObservation(_obs, 2);
+      } else if (_c.clipThenMerge) {
+        // CB-11 两阶段（A）：先裁剪再合并——完整 tcs（含 merge $n 引用）走 runAllToolCalls（处理 $n + 顺序 + finalStep）
+        _inlineExpanded = true;
+        const _diag2 = { ...diagnose, _allToolCalls: _c.tcs };
+        return await runAllToolCalls(ctx, hooks, _diag2);
       } else {
       const _tcs = _c.tcs;
       let _inlineFail = 0;
@@ -1347,7 +1380,21 @@ function buildLanduseCompletion(question, firstLayerName, opts = {}) {
   // 传 GeoJSON（非字符串 → ref() 直返，不触发消费）——否则首个 overlay 会把边界标"已消费"→移除→后续 overlay 全失败
   const _boundaryLayer = _polyLayers.find(l => l.name === _boundaryName || (l.name && l.name.includes(_boundaryName)));
   const _bRef = _boundaryLayer ? _boundaryLayer.fc : _boundaryName;
-  const _wantUnion = mode === 'union' || (mode === 'auto' && /合并/.test(q));
+  const _wantMerge = /合并/.test(q);
+  const _wantClip = /(裁剪|裁取|裁出|剪裁|范围内|内的)/.test(q);
+  // CB-11 两阶段（A·用户拍板）：问句同时含「裁剪」+「合并」→ 先 overlay(intersection) 逐个裁剪 → 再 merge 裁剪产物
+  //   根治「只说不做」：toolHistory 有真实裁剪步骤·finalStep 能如实描述·R9 对账通过（不再丢裁剪语义）
+  if (_wantMerge && _wantClip && _matches.length >= 2) {
+    const _clipAs = _matches.map((l) => l.name.replace(/\.(geo)?json/i, '').replace(/^用地_/, '') + '_' + _boundaryName);
+    const _clipTcs = _matches.map((l, i) => ({
+      name: 'overlay',
+      params: { layer_a: _bRef, layer_b: l.id, how: 'intersection', as: _clipAs[i] }
+    }));
+    // merge 引用裁剪产物（$n 引用 runAllToolCalls 的 _stepResults）
+    const _mergeTc = { name: 'merge', params: { layers: _clipAs.map((_, i) => `$${i + 1}`), as: _boundaryName + '_三用地合并' } };
+    return { tcs: [..._clipTcs, _mergeTc], clipThenMerge: true, boundaryName: _boundaryName, mentioned: _mentioned };
+  }
+  const _wantUnion = mode === 'union' || (mode === 'auto' && _wantMerge);
   const _how = _wantUnion ? 'union' : 'intersection';
   const _tcs = _matches.map((l) => ({
     name: 'overlay',
@@ -1384,6 +1431,12 @@ async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
     const _qd = applyQualityDefense(_draft, { obsOk: _newLayers > 0, toolHistoryText: _obs, skipL1: false });
     if (hooks.onFinalDone) hooks.onFinalDone(_qd.final);   // P2：渲染答案（否则用户看到「卡读秒」）
     return { ok: true, rounds: 1, final: _qd.final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'auto-merge' }, degraded: _qd.degraded, diagnose, exit: _newLayers ? 'result' : 'gap', newLayerCount: _newLayers };
+  }
+  // CB-11 两阶段（A）：先裁剪再合并——完整 tcs（含 merge $n 引用）走 runAllToolCalls
+  if (_c.clipThenMerge) {
+    console.log('[autoExpand-clip-merge]', _c.mentioned.join('+'), '→ 先裁剪再合并', _c.tcs.length, '步');
+    const _diag3 = { ...diagnose, _allToolCalls: _c.tcs };
+    return await runAllToolCalls(ctx, hooks, _diag3);
   }
   console.log('[autoExpand]', _c.mentioned.join('+'), '→', _c.tcs.length, 'overlays using boundary:', _c.boundaryName, '| hits inline', _hitInline, 'autoExpand', _hitAutoExpand, 'recover', _hitRecover);
   const _diag = { ...diagnose, _allToolCalls: _c.tcs };

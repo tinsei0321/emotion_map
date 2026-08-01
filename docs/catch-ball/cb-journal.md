@@ -52,6 +52,23 @@
 
 **CB-11 ③：merge 多图层修复——7 agree / 0 disagree · pytest 223 passed · 待用户自测**
 
+### ③·「剪裁+合并」只说不做反评价（Codex + glm组 · 防线结构性洞）
+
+> 用户问句「剪裁出西陵区范围…合并成一个图层」→ Playwright 实测：**执行只有 extract_feature→merge（无裁剪），结论却声称「执行裁取操作·严格落在西陵区边界内」**——只说不做复发。两组报告 [Codex](scan/CB11-剪裁合并结论撒谎_Codex-GPT5_2026-08-02.md) + [glm组](scan/CB11-clip-merge-hallucination_glm组_2026-08-02.md) 一致：**4 问题全成立·根因=防线系统性盲区（只验图层存在·不验操作是否执行）**。
+
+| 项 | 判定 |
+|---|:---:|
+| 问题 1 结论与执行不符（只说不做）| **agree**·最严重 |
+| 问题 2 buildLanduseCompletion 丢裁剪语义（`_wantUnion=/合并/` 互斥吞「裁剪」）| **agree**·执行层根因 |
+| 问题 3 防线无操作描述检测（结构性洞·L1/R1-R7/零图层守卫全失明）| **agree**·根治关键 |
+| 问题 4 observation 语义不足（merge 不含来源/是否裁剪）| **agree** |
+| 分歧 2 多次修复仍复发（防线只验存在性）| **agree** |
+| 分歧 3 R9 步骤描述对账（<5ms·确定性）| **agree** |
+| 分歧 4 执行路径 A vs B' | **用户拍板 A**（先裁剪再合并·架构契合：toolHistory 可审计·复用既有 intersection 链·B' 全量中间产物混淆）|
+| 分歧 5 优先级 | **用户拍板 R9+两阶段同时**（glm组·只修其一「只说不做」换变体复发）|
+
+**CB-11 ④：只说不做定稿——8 agree / 0 disagree · 修复 = R9 + 两阶段（A）+ merge observation 来源标注 · 待实施**
+
 ---
 
 ## CB-10 · 2026-08-01（EMC 全面审查·Codex+GPT-5 第三方）

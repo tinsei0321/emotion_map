@@ -1142,7 +1142,12 @@ export const TOOLS = {
         return { observation: `合并完成，但无可合并要素，未生成新图层。`, data: { count: 0, layerId: null } };
       }
       const _modeTxt = params.layers ? `合并 ${params.layers.length} 个图层` : '合并';
-      return { observation: `${_modeTxt}后得到 ${_r.count} 个要素，总面积 ${total.toFixed(1)} 平方公里，已生成图层「${_r.layerName}」${_mL ? '（' + feats.length + ' 个面）' : ''}${_r.message ? '（' + _r.message + '）' : ''}` + _renderNote(_mL), data: { count: _r.count, layerId: _r.layerId } };
+      // CB-11 问题 4：observation 列被合并图层名（若为 $n 引用则解析成裁剪产物名）+ _source_layer 范围来源·让 finalStep 知是否已裁剪
+      const _srcLayers = (params.layers || []).map((l, i) => {
+        const _nm = typeof l === 'string' ? l : (l && l.name) || `图层${i + 1}`;
+        return _nm;
+      }).join('、');
+      return { observation: `${_modeTxt}（来源：${_srcLayers}）后得到 ${_r.count} 个要素，总面积 ${total.toFixed(1)} 平方公里，已生成图层「${_r.layerName}」${_mL ? '（' + feats.length + ' 个面）' : ''}${_r.message ? '（' + _r.message + '）' : ''}` + _renderNote(_mL), data: { count: _r.count, layerId: _r.layerId } };
     } catch (e) { return _ERR('merge', e); }
   },
 
