@@ -467,6 +467,7 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   // 2. 执行工具（不调 agentStep；setToolContext 必调以写 registry provenance）
   if (hooks.onRoundStart) hooks.onRoundStart(1);
   setToolContext({ tool: def.tool, round: 1 });
+  let _inlineExpanded = false;   // 族 A（CB-10）：runTemplatePath 内联扩展标志（orchestrate 据此跳过二次 autoExpand）
   let obs;
   let r = null;
   try {
@@ -517,6 +518,38 @@ async function runTemplatePath(ctx, hooks, diagnose) {
     _recordSkip('tool_failed');   // ⑤④ execSkips 遥测
     return { ok: true, rounds: 1, final: gapText, defense: { degraded: true, skipped: 'template-tool-failed' }, degraded: true, diagnose, exit: 'gap', newLayerCount };
   }
+  // 4.5 族 A（CB-10）：多目标扩展前置——第 1 步成功后、finalStep 前，检测「多目标裁剪/合并」模式，
+  //     命中则先执行扩展 overlay 步骤（累积 toolHistory/newLayerCount），再统一出一次 finalStep（治半成品答案：全步完成→单次答案）。
+  //     与 orchestrate 的 _autoExpandOverlays 互补：此处处理「单技能第 1 步 + 多目标」，orchestrate 处理纯 overlay 链。
+  if (!failed && newLayerCount > 0 && def.tool === 'extract_feature' && /(?:区|市|县|街道|镇).*(?:用地|地块)|.*(?:用地|地块).*(?:区|市|县|街道|镇)/.test(ctx.question || '')) {
+    const _q = ctx.question || '';
+    const _mentioned = LANDUSE_KW.filter((kw) => _q.includes(kw));
+    const _isWildcard = /多类|各类|所有|全部/.test(_q) && _mentioned.length < 2;
+    if (_mentioned.length >= 1 && (_mentioned.length >= 2 || _isWildcard || /(范围内|内的|裁剪|裁剪出|筛选出|提取)/.test(_q))) {
+      const _polyLayers = getLayers().filter((l) => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
+      const _firstLayerName = (params && (params.as || params.name)) || '';
+      const _matches = _isWildcard
+        ? _polyLayers.filter((l) => LANDUSE_KW.some((kw) => l.name.includes(kw)) && l.name !== _firstLayerName)
+        : _polyLayers.filter((l) => _mentioned.some((kw) => l.name.includes(kw)) && l.name !== _firstLayerName);
+      if (_matches.length >= 1) {
+        const _boundaryName = _firstLayerName;
+        const _boundaryLayer = _polyLayers.find(l => l.name === _boundaryName || (l.name && l.name.includes(_boundaryName)));
+        const _bRef = _boundaryLayer ? _boundaryLayer.fc : _boundaryName;
+        for (const _l of _matches) {
+          _inlineExpanded = true;
+          const _tc = { name: 'overlay', params: { layer_a: _bRef, layer_b: _l.id, how: 'intersection', as: _l.name.replace(/\.(geo)?json/i, '').replace(/^用地_/, '') + '_' + _boundaryName } };
+          let _r = null;
+          try { _r = await TOOLS.overlay(_tc.params); }
+          catch (e) { toolHistory.push(`扩展-${_l.name}: overlay 异常: ${(e && e.message) || e}`); continue; }
+          const _obs = (_r && _r.observation) || '[ERR]';
+          if (_r && _r.data && _r.data.layerId) newLayerCount++;
+          toolHistory.push(`扩展-${_l.name}: overlay(${JSON.stringify(_tc.params).slice(0, 80)}) → ${_obs}`);
+          if (hooks.onObservation) hooks.onObservation(_obs, 2);
+        }
+      }
+    }
+  }
+
   // 4. finalStep（Pro 写解题一句话 + 短结论 + {{show}}）
   if (hooks.onRound) hooks.onRound(1);
   const toolHistoryText = toolHistory.join('\n');
@@ -543,7 +576,7 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   const _allCapsules = [...(_qd.capsules || []), ..._planCapsules];
   if (hooks.onFinalDone) hooks.onFinalDone(draft);
   if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template', capsules: _allCapsules });
-  return { ok: true, rounds: 1, final: draft, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template', capsules: _allCapsules }, degraded: false, diagnose, exit: 'result', newLayerCount };
+  return { ok: true, rounds: 1, final: draft, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template', capsules: _allCapsules }, degraded: false, diagnose, exit: 'result', newLayerCount, _inlineExpanded };
 }
 
 /** v2 D068 辅助：FC plans[] rank=2+ → 胶囊格式（复用 runCapsule 执行路径）。
@@ -897,6 +930,8 @@ export async function orchestrate(ctx, hooks = {}) {
     const _tdef = stages.SKILL_DEFS[diagnose.template];
     if (_tdef && _tdef.category === 'single' && _tplHitRateReady()) {
       const _result = await runTemplatePath(ctx, hooks, diagnose);
+      // 族 A（CB-10）：runTemplatePath 已内联扩展（_inlineExpanded）→ 跳过 orchestrate 二次扩展（防双执行）
+      if (_result && _result._inlineExpanded) return _result;
       // 代码自动扩展：检测多目标空间裁剪模式 → 生成剩余 overlay 步骤
       if (_result && _result.exit === 'result' && !_result.degraded && _result.newLayerCount > 0) {
         const _expanded = _autoExpandOverlays(ctx, hooks, diagnose, _result);
