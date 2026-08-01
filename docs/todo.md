@@ -27,6 +27,18 @@
 - ⬜ emc-fix-progress.md 头 + §三待修
 - ⬜ revision-log §5 bullet
 
+### ✅ Codex 验收「有条件通过」+ 4 项收尾修复（commit 742840d）
+
+Codex 验收报告（[CB10-两天攻坚验收](docs/catch-ball/scan/CB10-两天攻坚验收_Codex-GPT5_2026-08-01.md)）：**7 修正全落地·无回归·不撞红线·有条件通过**。我方反评价 8 agree/1 partial 落盘 cb-journal。修复 4 项收尾 + 6 问题：
+
+- **MED #1**：`_gen_index.py --check` 忽略「最后更新」时间戳行（逐字节比对过分钟必红·CI 恒红）→ 跨分钟验证通过
+- **LOW #2/#3**：emc-fix-progress 更新/总计行 → b2949e1/v3.3/220 + _cb-index hash 同步
+- **LOW #4**：test_final_prompt_stays_lean docstring <2KB → <3KB（口径统一）
+- **INFO #5**：_POL_MAP overall 行并入 emc-patterns.POLARITY_KW
+- **条件 3**：domain_lens A 部损失记入待修表（非静默无损失）
+- **条件 4**：**B3 全量 LLM 回归跑完**（report-2026-08-01-02-llm）——**25 例 pass 13 / fail 12（52%）**·PASS 全在成果范式(RST-L01~05 产出图层)+Smart 交流(SMT)+UI 渲染(UI)；FAIL 集中在**参数正确性 PRM-01~10 全 fail**（zonal/buffer 边界没对上·PRM-06 走 extract 应 zonal）= 既有「填参路由瓶颈」（CB-08 已识别·非本次修复引入）+ CPD-L01/L02（既有 CPD 问题）·t_p50=19s t_p95=66s
+- **待续**：PRM 参数填充瓶颈（zonal/buffer 边界·CB-08 F3.1 范畴）+ B002 半成品 answer 重构 + B008/B006-B defer
+
 ### ✅ 两天攻坚（完成·commit 898998b + 7735cb8 + 392ecc1）
 
 **Day1 真实状态确认**（Playwright test_p0_repro）：
