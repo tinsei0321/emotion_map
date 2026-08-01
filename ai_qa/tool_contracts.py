@@ -506,6 +506,11 @@ def validate_tool_call(tool_name, args):
     fixed = dict(args)
     fixes = []
 
+    # CB-11 P4（glm组）：merge alias 反向解析——layer_list/layers_list → layers（声明了但未解析·LLM 用别名被 one-of 拒）
+    if tool_name == 'merge':
+        for _alias in ('layer_list', 'layers_list'):
+            if _alias in fixed and 'layers' not in fixed:
+                fixed['layers'] = fixed.pop(_alias)
     # CB-11：merge one-of 特判——boundary 与 layers 至少一个（否则 LLM 只传 layers 仍被"缺 boundary"拒·问题原样复现）
     if tool_name == 'merge' and not fixed.get('boundary') and not fixed.get('layers'):
         return {'ok': False, 'params': fixed, 'fixes': ['缺必填参数: boundary 或 layers（合并需至少一个·多图层用 layers=[...]）']}

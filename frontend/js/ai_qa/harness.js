@@ -533,6 +533,14 @@ async function runTemplatePath(ctx, hooks, diagnose) {
     if (_c) {
       _inlineExpanded = true;
       _hitInline++;   // 族 A 收尾 #3：命中遥测
+      // CB-11 P1 修复：merge 意图（_c.mergeLayers·union 模式返回无 _tcs）→ 调 TOOLS.merge（防 _tcs is not iterable）
+      if (_c.mergeLayers && _c.mergeLayers.length >= 2) {
+        const _mr = await TOOLS.merge({ layers: _c.mergeLayers, as: 'merged_' + _c.boundaryName });
+        const _obs = (_mr && _mr.observation) || '[ERR] merge';
+        if (_mr && _mr.data && _mr.data.layerId) newLayerCount++;
+        toolHistory.push(`合并 ${_c.mergeLayers.length} 图层: merge(${JSON.stringify(_c.mergeLayers).slice(0, 120)}) → ${_obs}`);
+        if (hooks.onObservation) hooks.onObservation(_obs, 2);
+      } else {
       const _tcs = _c.tcs;
       let _inlineFail = 0;
       const _inlineFailNames = [];   // P1-4（用户测试①）：收集失败图层名（as）·N/M 提示列出具体是哪个
@@ -556,6 +564,7 @@ async function runTemplatePath(ctx, hooks, diagnose) {
       if (_inlineFail > 0) {
         _inlinePartialNote = `仅完成 ${_tcs.length - _inlineFail}/${_tcs.length} 个扩展步骤（未产出图层：${_inlineFailNames.join('、')}·未生成）`;
       }
+      }   // else（非 merge 意图）
     }
   }
 
@@ -1364,12 +1373,17 @@ async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
   if (_c.mergeLayers && _c.mergeLayers.length >= 2) {
     console.log('[autoExpand-merge]', _c.mentioned.join('+'), '→ merge layers', _c.mergeLayers.length, '| hits inline', _hitInline, 'autoExpand', _hitAutoExpand, 'recover', _hitRecover);
     const _mr = await TOOLS.merge({ layers: _c.mergeLayers, as: 'merged_' + _c.boundaryName });
-    const _diag = { ...diagnose, _allToolCalls: [{ name: 'merge', params: { layers: _c.mergeLayers, as: 'merged_' + _c.boundaryName } }] };
     const _obs = (_mr && _mr.observation) || '[ERR] merge';
+    const _newLayers = (_mr && _mr.data && _mr.data.layerId) ? 1 : 0;
     if (hooks.onObservation) hooks.onObservation(_obs, 1);
-    // merge 直接执行完成（非 tool_calls 链）——注入结果给 finalStep
-    ctx.context = `【多图层合并·已完成】${_obs}\n【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层）\n\n` + (ctx.context || '');
-    return { ok: true, rounds: 1, final: _obs, defense: { degraded: false, fixes: [], skipped: 'auto-merge' }, degraded: false, diagnose, exit: 'result', newLayerCount: (_mr && _mr.data && _mr.data.layerId) ? 1 : 0 };
+    // CB-11 P2/P3：merge 直接执行完成——但走 finalStep 出格式化结论（非 raw observation）+ 补 onFinalDone（唯一渲染入口·防「卡读秒」）
+    ctx.context = `【多图层合并·${_newLayers ? '已完成' : '未产出图层'}】${_obs}\n【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层）\n\n` + (ctx.context || '');
+    let _draft;
+    try { _draft = await stages.finalStep(ctx, hooks, `第1步: merge(layers=${JSON.stringify(_c.mergeLayers).slice(0, 120)}) → ${_obs}`); }
+    catch (e) { _draft = _obs; }
+    const _qd = applyQualityDefense(_draft, { obsOk: _newLayers > 0, toolHistoryText: _obs, skipL1: false });
+    if (hooks.onFinalDone) hooks.onFinalDone(_qd.final);   // P2：渲染答案（否则用户看到「卡读秒」）
+    return { ok: true, rounds: 1, final: _qd.final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'auto-merge' }, degraded: _qd.degraded, diagnose, exit: _newLayers ? 'result' : 'gap', newLayerCount: _newLayers };
   }
   console.log('[autoExpand]', _c.mentioned.join('+'), '→', _c.tcs.length, 'overlays using boundary:', _c.boundaryName, '| hits inline', _hitInline, 'autoExpand', _hitAutoExpand, 'recover', _hitRecover);
   const _diag = { ...diagnose, _allToolCalls: _c.tcs };

@@ -252,6 +252,9 @@ async def merge(req: MergeRequest):
         raise HTTPException(status_code=400, detail='merge 需 boundary 或 layers（二选一）')
     try:
         if req.layers:
+            # CB-11 P6（Codex）：layers 字符串→数组防御（LLM 单字符串 422）
+            if isinstance(req.layers, str):
+                req.layers = [req.layers]
             # 多图层 concat：逐项 resolve_boundary → CRS 统一 → pd.concat → _source_layer 标记 → 可选 dissolve
             gdfs = []
             for i, ly in enumerate(req.layers):
@@ -260,7 +263,11 @@ async def merge(req: MergeRequest):
                     g = g.set_crs('EPSG:4326')
                 g = g.to_crs('EPSG:4326')
                 g = g.copy()
-                g['_source_layer'] = str(i)   # glm组 补充：标记来源（追溯用）
+                # CB-11 P5（Codex）：_source_layer 携带原始引用（preset_id/层名/GeoJSON 摘要）·非序号（换序即变·无法回指）
+                if isinstance(ly, str):
+                    g['_source_layer'] = ly
+                else:
+                    g['_source_layer'] = f"geojson#{i}"
                 gdfs.append(g)
             polys = pd.concat(gdfs, ignore_index=True)
             if req.by:
