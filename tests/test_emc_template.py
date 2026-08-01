@@ -78,8 +78,7 @@ def test_final_prompt_includes_capsule_rule():
 
 
 def test_final_prompt_stays_lean():
-    """CB-09 D019 极瘦回归守门：final prompt 须 <2KB（防 MANIFESTO/industry_kb 回灌致 17KB+·prefill 20-35s 回潮）。
-    含胶囊规则（~360 字节·Chinese UTF-8）仍远低于 2KB·与 D019 表 ~1-2KB 目标一致。"""
+    """CB-09 D019 极瘦回归守门：final prompt 静态模板 <3KB（CB-10 P0-4 后实测 2641B·含语言风格规则·防 MANIFESTO/industry_kb 回灌致 17KB+·prefill 回潮）。"""
     from ai_qa.prompts import build_final_prompt
     n = len(build_final_prompt('', '').encode())
     assert n < 3000, f'final prompt 膨胀到 {n} bytes（应 <3KB·含语言风格规则·查是否回灌 MANIFESTO/industry_kb）'

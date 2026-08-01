@@ -22,6 +22,7 @@ export const POLARITY_KW = [
   { kw: ['消极', '负面', 'negative', '差'], polarity: 'negative' },
   { kw: ['积极', '正面', 'positive', '好'], polarity: 'positive' },
   { kw: ['中性', 'neutral', '客观'], polarity: 'neutral' },
+  { kw: ['综合', '总体', 'overall', '全部'], polarity: 'overall' },
 ];
 
 // _quickIntent 意图词（B003 数据清单短路 + 概念/日常）

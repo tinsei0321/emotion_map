@@ -531,6 +531,11 @@ def _write(path, content):
     path.write_text(content, encoding="utf-8")
 
 
+def _strip_timestamp(text):
+    """去「最后更新」时间戳行（--check 比对用——render_summary 每次重渲染分钟变化·逐字节比对必红）。"""
+    return "\n".join(l for l in text.splitlines() if "最后更新" not in l)
+
+
 def main():
     check = "--check" in sys.argv
     entries = load_entries()
@@ -543,13 +548,13 @@ def main():
         print(f"[OK] next_id = {next_id(entries)}")
         return 0
 
-    # --check：比对现存索引与应生成内容
+    # --check：比对现存索引与应生成内容（忽略「最后更新」时间戳行·CB-10 ③）
     stale = []
     for path, renderer in ((INDEX, render_index), (TREND, render_trend), (REGRESSION, render_regression), (SUMMARY, render_summary)):
         if not path.exists():
             stale.append(f"{path.name} missing")
             continue
-        if path.read_text(encoding="utf-8") != renderer(entries):
+        if _strip_timestamp(path.read_text(encoding="utf-8")) != _strip_timestamp(renderer(entries)):
             stale.append(f"{path.name} out of sync (run: py tests/buglog/_gen_index.py)")
     if stale:
         print("[ERR] buglog index stale:\n  " + "\n  ".join(stale))

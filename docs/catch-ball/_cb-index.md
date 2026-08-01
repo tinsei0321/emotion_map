@@ -12,7 +12,7 @@
 | **当前 CB 轮次** | **CB-10**（EMC 修复工程·P0/P1 聚焦） |
 | **下一轮** | CB-11（待修复后验证） |
 | **当前环境** | **Claude Code（开发主）+ Codex/DeepSeek（CB 辅助）**（原 ZCode/GLM 已退役） |
-| **当前分支** | `fix/emc-buglog` @ `a274362` |
+| **当前分支** | `fix/emc-buglog` @ `b2949e1` |
 | **最新 SCAN** | `scan/CB10-EMC全面审查_Codex-GPT5_2026-08-01.md` |
 | **最新反评价复核** | `scan/CB10-反评价二轮审核_Codex-GPT5_2026-08-01.md` |
 | **接手文档** | `_handoff/DEEPSEEK_ONBOARDING_2026-07-30.md` |

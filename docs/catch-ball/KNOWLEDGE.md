@@ -40,6 +40,7 @@
 - **字段字典前后端人工同步易漂移**（CB-08 F2.6）：`core/field_dictionary.py`（权威）↔ `frontend/js/field_dictionary.js`（镜像）原人工同步无 CI·曾 `.py` 有 `zone`/`.js` 缺。新 `tests/validate_field_dict_sync.py` CI 守护（role 集 + variant 集一致）·改字典须两侧同步。
 - **FC prompt 无内容守卫 → 静默删已验证段**（CB-10）：0073990「简化 FC prompt」一次删掉**四段**已验证内容（极性范围纪律 / plans 产出指令 / domain_lens 输出指令 / CB-09 M2 多要素提取段），全仓库无内容断言捕获。修法：① 抽 `build_fc_sys_prompt(context)` 小函数（router.py 内联 sys_content 抽出）② 内容断言 `'极性范围纪律' in p and '严禁自行缩窄' in p`（仿 `test_final_prompt_stays_lean` 模式）③ **prompt 改了就测行为**（浏览器复测 B006/TC-25·L01 本质）。「不要动 FC prompt」教训针对**重写**，revert 式还原（恢复已验证原文）风险等级不同。← CB-10
 - **CPD-RESERVED 是空骨架**（CB-10）：0073990 删除 plans 产出指令后，`ctx.plans` 只有后端自建 rank=1 单元素（router.py:96-105），rank=2+ 恒空。`_plansToCapsules` 纯函数 + `ctx.plans` 赋值保留 = **接口预留**，非活数据路径。CPD 复活时须**同步恢复 plans 产出指令**（FC prompt 段）否则仍是空骨架。避免下轮把「预留接口」报成「死代码」也避免把「空骨架」当「已实现」。← CB-10
+- **生成器 --check 逐字节比对遇时间戳脆弱**（CB-10）：`_gen_index.py render_summary` 头部「最后更新」时间戳每次重渲染变化 → `--check` 全文逐字节比对 → 过分钟必红·CI 守护实质失效。修法：--check 比对时**忽略时间戳行**（或时间戳仅生成不参与比对）。同类「生成器含当前时间」的 --check 都要留意。← CB-10 ③
 - **契约 `when` = FC 工具 description**（CB-09·承重）：[`contracts_to_tools_schema`](../../ai_qa/tool_contracts.py#L438) `description = c.get('when') or voice`——即 `TOOL_CONTRACTS` 每工具的 `when` 字段**直接成为 FC LLM 看到的工具说明**。故误导性契约文本（如 extract_feature 曾写"抽**单要素**"）会**直接误导 LLM**（比 sys prompt 更上游·LLM 先看工具描述）。判据：FC 推理死循环/错报"缺能力"时，**先查契约 `when`/`voice`/`failure_modes` 是否误导**，改契约描述优先于补 sys prompt。← CB-09（multi-extract 死循环首例）
 
 ## §3 SCAN 标尺纠正模式（SCAN 倾向 → 正确标尺）

@@ -23,11 +23,8 @@ const _TOOL_TO_SKILL = { zonal_stats: 'zonal', compare_regions: 'compare' };
 function _matchPlanToQuestion(question, plans) {
   if (!question || !Array.isArray(plans)) return null;
   const q = question.toLowerCase();
-  // 极性匹配（词表集中 emc-patterns.POLARITY_KW·CB-10 分歧2）
-  const _POL_MAP = [
-    ...POLARITY_KW,
-    { kw: ['综合', '总体', 'overall', '全部'], polarity: 'overall' },
-  ];
+  // 极性匹配（词表集中 emc-patterns.POLARITY_KW·CB-10 分歧2·含 overall）
+  const _POL_MAP = POLARITY_KW;
   for (const pm of _POL_MAP) {
     if (pm.kw.some((k) => q.includes(k))) {
       // 找 plans 中 density/rank 且 polarity 匹配的

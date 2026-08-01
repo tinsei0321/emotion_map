@@ -1,9 +1,9 @@
 # EMC 修复工程 · 总进度汇总卡
 
 > **一页看清** EMC 修复整体状态。**九模块实施进度矩阵（§一·监控主视图）** + 5 层分层明细（§二）+ 待修（§三）+ 时序（§四）。
-> **更新**：2026-08-01（**CB-10 闭环**·Codex+GPT-5 全面审查综合 6.0 + 反评价 9 agree/0 disagree/5 partial + Codex 二轮 7 修正全 accept·两天攻坚 plan 定稿；分支 fix/emc-buglog @ a274362·7 个 CB-09 bug 修复 commit）
+> **更新**：2026-08-01（**CB-10 闭环 + 两天攻坚落地**·Codex+GPT-5 全面审查综合 6.0 + 反评价 9 agree + Codex 二轮 7 修正 + 验收「有条件通过」·B003/B005/B006/B007/P0-4/P1-1/右半段/词表集中全落地；分支 fix/emc-buglog @ b2949e1·pytest 220 passed）
 > **承继**：本卡由 `emc-fix-backlog.md`（2026-07-24 快照）更名重写，聚焦"9 模块进度 + 分层 + 时序"。
-> **⚠️ 关键区分**：**v1（三阶段 5.231-5.242）已被 v2（单次 LLM + FC·5.243-5.245b 第三方）取代** → v3（GLM 修复 3C+4H·7858d5a）→ **v3.1（reg.filter 崩溃修复·657c2e3）** → **v3.2（CB-09 bug 修复·D057 修订·代码自动扩展·全自动多步执行·fix/emc-buglog 分支·当前）**。v1 diagnose 管线（select_candidates/FILL_CARD/PLAN/dispatch）代码保留过渡期·Phase 4 清理待 v3 稳定后。架构设计源 [SUMMARY v2](catch-ball/emc-arch-deepdive/SUMMARY.md)（61 决策 D041-D068）。**CB-10 全面审查发现**：B002/B005 根因=plans[] 管道未接通·B006 极性纪律被 prompt 重写静默删·test_final_prompt_stays_lean 回弹 3616B·buglog 状态双源——两天攻坚计划覆盖。
+> **⚠️ 关键区分**：**v1（三阶段 5.231-5.242）已被 v2（单次 LLM + FC·5.243-5.245b 第三方）取代** → v3（GLM 修复 3C+4H·7858d5a）→ **v3.1（reg.filter 崩溃修复·657c2e3）** → **v3.2（CB-09 bug 修复·D057 修订·代码自动扩展·全自动多步执行）** → **v3.3（CB-10 两天攻坚·B003/B005/B006/B007/P0-4/P1-1/右半段/词表集中·当前）**。v1 diagnose 管线（select_candidates/FILL_CARD/PLAN/dispatch）代码保留过渡期·Phase 4 清理待 v3 稳定后。架构设计源 [SUMMARY v2](catch-ball/emc-arch-deepdive/SUMMARY.md)（61 决策 D041-D068）。**CB-10 全面审查发现**：B002/B005 根因=plans[] 管道未接通·B006 极性纪律被 prompt 重写静默删·test_final_prompt_stays_lean 回弹 3616B·buglog 状态双源——两天攻坚已覆盖（剩余见 §三待修）。
 
 ---
 
@@ -24,7 +24,7 @@
 | 8 | **CPD 引擎** | P3 | D030-D034 | ✅ | **D030 ✅**（cpd-guide/state 客户端纯规则·5.224）+ **D031 ✅**（[runCapsule](../frontend/js/ai_qa/harness.js#L506) 胶囊点击跳 Flash 直执·5.234·实现 CPD「选项直执」核心）+ D032 turn-over 移除 ✅ + D033 完成态 ✅ + **D034 ✅（5.239）** `capsule_clicked` episode 埋点→Pro 排序偏好·honest：不另造重复对话框 |
 | 9 | **字段识别（0LLM）** | P2 | D063-D064 (v2) | ✅ v3 | **v2 简化 ✅（5.243）**：废弃 tools_hint/筛选·全注入 13 工具（7.4KB/2.7s）·0LLM 只做 grounding + 数据缺失检测 ·v1 `candidate_selector.py` 保留过渡期（Phase 4 清理待 v3 稳定后） |
 
-**总计**：v1 设计定稿 9/9 ✅ · **v2 架构转型 ✅**（D041-D068·单次 LLM + FC）· v3 修复 ✅（3C+4H+reg.filter）· **当前 v3.1**（657c2e3）· pytest **221 passed** · 待浏览器验证 FC 全链。
+**总计**：v1 设计定稿 9/9 ✅ · **v2 架构转型 ✅**（D041-D068·单次 LLM + FC）· v3 修复 ✅（3C+4H+reg.filter）· **当前 v3.3**（CB-10 两天攻坚）· pytest **220 passed** · 定向浏览器验证 FC 全链 ✓。
 
 **🎯 当前状态**：**v3.3**（CB-10 两天攻坚落地）——B003/B005/B006/B007/P0-4/P1-1/右半段/词表集中 全修复 + **定向浏览器验证 ✓**（test_p0_repro B002/B005/B003/B006 实测）+ pytest 220 passed + B0 飞轮 36/45 无回归。**剩余**：B002 半成品 answer 体验（记待修）+ B3 全量 LLM 回归待跑（B3 后台曾卡死·已改定向验证）。Phase 4 清理（删 v1 ~500 行）待 v3 稳定后。
 
@@ -90,6 +90,7 @@
 | ✅ **B003 数据清单短路** | 路由 | `_quickIntent` 清单意图 → general 短路·浏览器验证 ✓（898998b） | CB-10 |
 | ✅ **executePlans 死代码** | 编排 | 删·保 ctx.plans/_plansToCapsules 作 CPD-RESERVED（898998b） | CB-10 |
 | ✅ **词表集中** | 编排 | emc-patterns.js 收纳 LANDUSE_KW/DOMAIN_KW/POLARITY_KW/意图词（7735cb8） | CB-10 |
+| ⬜ **domain_lens A 部损失** | 路由 | FC prompt 无 domain_lens 输出指令 → `_deriveDomainLens` A 部（parse [domain_lens:xxx]）恒空·只剩 B 部关键词兜底·非关键词措辞返 [] → finalStep 无领域知识注入·恢复需 +~600B + L01 回归风险·记待修非静默无损失（Codex 验收条件 3） | CB-10 ③ |
 | ⬜ **B002 半成品 answer** | 体验 | runTemplatePath 先渲染半成品答案再后台跑 autoExpand·结论诚实但割裂·待重构 | CB-10 |
 | ⬜ T4 胶囊矛盾 | — | 无 strategy 不显"齐全" + 值层面缺口回写 diagnose | backlog |
 | ⬜ T5 对比 C 键 | — | 批4 Swipe 入口收敛 + 无焦点提示 + 双屏标题 | backlog |

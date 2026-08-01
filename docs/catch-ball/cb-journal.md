@@ -54,12 +54,27 @@
 
 ### ③ 行动
 - **两天攻坚 plan 定稿**：`C:\Users\Hi\.claude\plans\claude-code-emotion-map-purring-ritchie.md`（CB-10 反评价整合版）
-- Day1：起 serve → Playwright 3 个 P0 复现（B002/B005/B003）→ 飞轮 B0/B3 真实基线 → 修 B002/B005（B005 补 `_deterministicRecover` 模式 D 或扩 `_autoExpandOverlays` 单关键词+双区）
-- Day2：删 executePlans 死代码 + 保 ctx.plans/_plansToCapsules 作 CPD-RESERVED → 恢复 FC prompt 极性纪律+守卫 → B003 数据清单短路 → P0-3/P0-4/P1-1/P2-2 守卫 → 飞轮复测 → 文档同步 + CB 环境更新
-- **待 Codex 对反评价二轮评估** → 据其反馈微调 plan 后实施
+- **两天攻坚完成**（commit 898998b+7735cb8+392ecc1+b2949e1）：B003 数据清单短路 / B005 单用地+双区+_LANDUSE 泛词 / B006 极性纪律恢复+守卫 / P0-4 prompt 瘦身 / P1-1 buglog 状态单源 / 右半段（删 executePlans·CPD-RESERVED·P0-3 完成度守卫）/ B007 _checkGeomType 类型 guard / 词表集中 emc-patterns.js
+- **验证**：pytest 220 passed + B0 飞轮 36/45 无回归 + 定向 test_p0_repro 4 用例全过（B002/B005/B003/B006）
 
 ### ④ 状态
-`open → 反评价稿已落盘·待 Codex 二轮评估` —— 本反评价稿待第三方复核后定稿 plan 实施。
+`done → 两天攻坚完成·Codex 验收：有条件通过` —— Codex 验收报告（[CB10-两天攻坚验收](scan/CB10-两天攻坚验收_Codex-GPT5_2026-08-01.md)）7 修正全落地·4 项收尾条件（_gen_index --check 时间戳脆弱 / 文档口径 / domain_lens A 部损失入待修 / B3 全量回归）·我方反评价见下。
+
+### ③·验收反评价（Codex 两天攻坚验收 · 逐条 agree/partial）
+
+| Codex 验收项 | 判定 | 我方处理 |
+|---|:---:|---|
+| 7 修正全落地（B005/B007/完成度守卫/FC prompt/P0-4/词表集中/CPD-RESERVED）| **agree** | 属实·已核实 |
+| MED #1 `_gen_index --check` 时间戳脆弱（逐字节比对→过分钟必红·CI 失效）| **agree** | 修：--check 忽略时间戳行 |
+| LOW #2 emc-fix-progress 新旧混杂（更新行 a274362 / 总计行 v3.1·221）| **agree** | 统一 b2949e1/v3.3/220 |
+| LOW #3 _cb-index hash 仍 a274362 | **agree** | 同步 b2949e1 |
+| LOW #4 test docstring <2KB vs 断言 <3000 vs 实际 2641B | **agree** | docstring 改 <3KB |
+| INFO #5 _POL_MAP overall 行残留内联 | **agree** | 并入 POLARITY_KW |
+| INFO #6 部分失败 exit 仍 'result' | **partial** | 非红线·机制未破坏·与 EXIT_PARTIAL 对齐可选（本验收周期不强制）|
+| 分歧（只恢复极性纪律·不恢复 plans/domain_lens/多要素提取）判定成立 | **agree** | 判定成立·domain_lens A 部损失记待修（非静默无损失）|
+| 收尾条件 4 B3 全量 LLM 回归 | **agree** | 补跑 B3 更新报告（后台曾卡死·重试）|
+
+**CB-10 ③：验收反评价——8 agree / 1 partial / 0 disagree**
 
 
 ### ① SCAN 摘要
