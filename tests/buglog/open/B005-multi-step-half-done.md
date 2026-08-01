@@ -41,6 +41,7 @@ last_repro: 2026-07-29
 
 | 日期 | 操作 | commit |
 |------|------|------|
+| 2026-08-01 | CB-10 P0-1/分歧1：_deterministicRecover 模式 D（单用地+双区→extract where in 双区 + overlay）+ _autoExpandOverlays 扩单用地 + _LANDUSE 去「用地」泛词（防「商业用地」误匹配 3 overlay）→ 浏览器验证「西陵区+伍家岗区商业用地」一次双区+overlay 9.7s | 898998b |
 | 2026-07-29 | P0-4: harness.js runChainPath + while-loop exit 注入多步链执行结果摘要（全完成+产出数） | 31e2a00 |
 |------|------|------|
 | — | 待修复 | — |

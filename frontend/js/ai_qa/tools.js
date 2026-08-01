@@ -707,6 +707,20 @@ function resolvePointLayer(params) {
   const vl = pickVisiblePointLayer();
   return vl ? vl.fc : null;
 }
+/** CB-10 P0-1/B007：图层类型一致性 guard——clip 需点层、overlay/extract 需面层。
+ *  传错类型（面层走 clip / 点层走 overlay）→ observation 报「图层类型不匹配」·防止后端空结果/静默错配放大。 */
+function _checkGeomType(value, want, toolName) {
+  if (!value) return null;
+  let l = null;
+  if (typeof value === 'string') {
+    l = getLayers().find((x) => x.id === value) || getLayers().find((x) => x.name === value);
+  }
+  const geom = l ? l.kind : null;   // 已加载图层有 kind
+  if (l && geom && geom !== want) {
+    return `[ERR] ${toolName} 图层类型不匹配：目标「${l.name}」是${geom === 'point' ? '点层' : '面层'}·但 ${toolName} 需${want === 'point' ? '点层' : '面层'}（${want === 'point' ? '裁剪点数据' : '面层叠置/提取'}）。`;
+  }
+  return null;
+}
 function _ERR_NO_VISIBLE_PT() {
   return { observation: '[ERR] 无已加载的情绪点层——请先在 Layers 上传/加载情绪点数据（眼睛开关不影响 EMC 可用·hidden 层仍可分析）' };
 }
@@ -1022,6 +1036,9 @@ export const TOOLS = {
   /** 按几何裁剪（某区/某公园范围内的点），结果落地图为新点图层。 */
   async clip(params = {}) {
     if (!params.range) return { observation: '[ERR] clip 需 range（preset_id|geojson）' };
+    // CB-10 P0-1/B007：面层走 clip → 报「图层类型不匹配」（防止空结果 + 误导 LLM 以为是裁剪成功）
+    const _typeBad = _checkGeomType(params.layer, 'point', 'clip');
+    if (_typeBad) return { observation: _typeBad };
     const _layer = resolvePointLayer(params);
     if (!_layer) return _ERR_NO_VISIBLE_PT();
     try {
@@ -1041,6 +1058,9 @@ export const TOOLS = {
   /** 从面边界按属性抽单要素为独立面图层（裁出某区/某单元），结果落地图。 */
   async extract_feature(params = {}) {
     if (!params.layer) return { observation: '[ERR] extract_feature 需 layer（preset_id|geojson）' };
+    // CB-10 P0-1/B007：点层走 extract_feature → 报「图层类型不匹配」（从面层抽要素才用 extract）
+    const _typeBad = _checkGeomType(params.layer, 'polygon', 'extract_feature');
+    if (_typeBad) return { observation: _typeBad };
     // B（v1.6）：前置字段校验——getFieldCard 查 where.field 是否存在·不存在时自纠正（治 LLM 猜字段名降智）。
     const _where = params.where ? normPreFilter(params.where) : null;
     const _field = _where && _where.field;
@@ -1145,6 +1165,9 @@ export const TOOLS = {
   /** 叠置（交/并/差/对称差）。 */
   async overlay(params = {}) {
     if (!params.layer_a || !params.layer_b) return { observation: '[ERR] overlay 需 layer_a + layer_b' };
+    // CB-10 P0-1/B007：点层走 overlay → 报「图层类型不匹配」（防止后端空结果 + 误导）
+    const _typeBad = _checkGeomType(params.layer_a, 'polygon', 'overlay') || _checkGeomType(params.layer_b, 'polygon', 'overlay');
+    if (_typeBad) return { observation: _typeBad };
     try {
       const _lab = (x) => (typeof x === 'string' ? x : (x && x.name) || '图层');
       const r = await generateOverlayForAI({ layer_a: ref(params.layer_a), layer_b: ref(params.layer_b),

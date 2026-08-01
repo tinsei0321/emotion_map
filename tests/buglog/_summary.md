@@ -1,7 +1,7 @@
 # EMC Bug 修复工程日志
 
-> 自动生成（`py tests/buglog/_gen_index.py`）·勿手改 · 最后更新：2026-08-01 12:00
-> 条目 **11** · OPEN **8** · RESOLVED **3** · P0 阻塞 **3** · 修复已提交 **5**
+> 自动生成（`py tests/buglog/_gen_index.py`）·勿手改 · 最后更新：2026-08-01 12:06
+> 条目 **11** · OPEN **8** · RESOLVED **3** · P0 阻塞 **3** · 修复已提交 **6**
 > 飞轮：27 用例 · 最近报告：report-2026-08-01-01-no-llm (80%·36/45)
 
 ---
@@ -16,7 +16,7 @@
 | P0 阻塞 | 3（B002/B004/B005）|
 | P1 高优先 | 3（B003/B006/B007）|
 | P2 中优先 | 2（B008/B009）|
-| 修复已提交 | 5 |
+| 修复已提交 | 6 |
 | 飞轮用例 | 27 |
 | 最近飞轮报告 | report-2026-08-01-01-no-llm (80%·36/45) |
 
@@ -52,7 +52,7 @@
 ### B003 · LLM 推理螺旋 — 简单查询耗时异常（复现）
 
 - **严重度**：HIGH | **模块**：FC诊断 | **复现**：2×
-- **修复进度**：待修复
+- **修复进度**：CB-10 P1-2：_quickIntent 加「数据清单」意图（上传了哪些/有哪些数据/数据列表）→ general 短路·buildContext 来源标注直列清单·省 FC 螺旋 (898998b)
 - **问句**：「我上传了哪些数据？」
 - **同根因**：B005
 - **关联**：[entry](open/B003-llm-reasoning-spiral-simple-query.md) · [rootcause](../../docs/catch-ball/rootcause/2026-07-28-multi-extract-reasoning-spiral.md) · TC-22 · CB-09
@@ -101,6 +101,7 @@
 
 | 日期 | commit | 修复内容 | 关联 Bug |
 |------|--------|----------|:---:|
+| 2026-08-01 | 898998b | CB-10 P1-2：_quickIntent 加「数据清单」意图（上传了哪些/有哪些数据/数据列表）→ general... | B003/B005/B006 |
 | 2026-07-29 | 31e2a00 | P0-4: harness.js 3 处 finalStep context 注入 newLayerCount 执行摘要... | B002/B004/B005/B006 |
 | 2026-07-29 | 8e5e76f | P0-4 v2 治本：① tools.js 五工具观测诚实化（count=0 不说"已生成"）② harness.js ... | B002 |
 | 2026-07-29 | 3a97e19 | P0-4 v3 根治：① _autoExpandOverlays 代码自动扩展多步骤 ② D057 修订允许多 tool... | B002 |

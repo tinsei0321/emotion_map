@@ -6,6 +6,7 @@
 import * as stages from './stages.js';
 import { TOOLS, setToolContext, formatRegistry, getArtifacts, deriveAvailable, resetStepResults, resetCurrentResults, resolveCoref } from './tools.js';
 import { getLayers } from '../state.js';
+import { CONCEPT_KW, INVENTORY_KW, GREETING_KW, GEO_VERB_KW, REGION_KW, POLARITY_KW, LANDUSE_KW } from './emc-patterns.js';   // CB-10 分歧2 词表集中
 
 const MAX_ROUNDS_GIS = 10;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=10（保多步完整性，如3次overlay需8轮：1查询+6执行+1answer）
 const MAX_ROUNDS_OTHER = 4;    // A 通用 / C 情绪=4（远紧于 16，配合 temp 0.4 降概率链 p^N）
@@ -22,11 +23,9 @@ const _TOOL_TO_SKILL = { zonal_stats: 'zonal', compare_regions: 'compare' };
 function _matchPlanToQuestion(question, plans) {
   if (!question || !Array.isArray(plans)) return null;
   const q = question.toLowerCase();
-  // 极性匹配
+  // 极性匹配（词表集中 emc-patterns.POLARITY_KW·CB-10 分歧2）
   const _POL_MAP = [
-    { kw: ['消极', '负面', 'negative', '差'], polarity: 'negative' },
-    { kw: ['积极', '正面', 'positive', '好'], polarity: 'positive' },
-    { kw: ['中性', 'neutral', '客观'], polarity: 'neutral' },
+    ...POLARITY_KW,
     { kw: ['综合', '总体', 'overall', '全部'], polarity: 'overall' },
   ];
   for (const pm of _POL_MAP) {
@@ -48,16 +47,16 @@ function _matchPlanToQuestion(question, plans) {
 function _quickIntent(q) {
   if (!q) return null;
   const s = String(q);
-  // 概念/方法咨询词优先（即使含 geo 词，"什么是核密度分析"仍判 general 定义类，免漏断）
-  if (['什么是', '是什么', '含义', '意思', '解释', '区别', '定义', '为什么', '是指', '如何理解', '有哪些方法'].some(w => s.includes(w))) return 'general';
+  // 概念/方法咨询词优先（即使含 geo 词，"什么是核密度分析"仍判 general 定义类，免漏断）——词表集中 emc-patterns
+  if (CONCEPT_KW.some(w => s.includes(w))) return 'general';
   // B003：数据清单查询（"我上传了哪些数据"）→ general 短路（buildContext 已列「已加载图层·标来源」·finalStep 直列清单·省 FC 螺旋）
-  if (/上传了哪些|有哪些数据|数据列表|加载了什么|哪些文件|数据清单|有哪些图层|加载了哪些/.test(s)) return 'general';
+  if (INVENTORY_KW.some(w => s.includes(w))) return 'general';
   // geo 动词（请求做分析，非定义）→ 落 diagnose
-  if (['核密度', '密度分析', '热力', '热点', '裁出', '裁剪', '缓冲', '叠加', '叠置', '聚合', '网格', '排序', '最近邻', '可达性', '出图', '生成图'].some(v => s.includes(v))) return null;
+  if (GEO_VERB_KW.some(v => s.includes(v))) return null;
   // 宜昌地名（空间指代）→ 落 diagnose（可能 B/C）
-  if (['西陵', '伍家岗', '点军', '夷陵', '猇亭', '宜昌', '滨江', '奥体', '二马路', '大南门', 'cbd'].some(p => s.toLowerCase().includes(p.toLowerCase()))) return null;
+  if (REGION_KW.some(p => s.toLowerCase().includes(p.toLowerCase()))) return null;
   // 日常问候/闲聊 → general
-  if (['今天', '星期', '几点', '你好', '谢谢', '你是谁', '能做什么', '你能', '帮助'].some(w => s.includes(w))) return 'general';
+  if (GREETING_KW.some(w => s.includes(w))) return 'general';
   return null;   // 模糊 → 落 diagnose
 }
 const OBS_TRUNC = 200;      // observation 注入 history 截断长度
@@ -1171,8 +1170,7 @@ function _deterministicRecover(ctx) {
   const _region = _regionM ? _regionM[1].trim() : '';
 
   // 模式A：有用地关键词 + 有区名 → extract_feature(区边界) + overlay 链
-  const _landuseKWs = ['商业', '居住', '公园', '绿地', '工业', '广场', '办公', '教育', '医疗'];
-  const _mentionedLU = _landuseKWs.filter(kw => q.includes(kw));
+  const _mentionedLU = LANDUSE_KW.filter(kw => q.includes(kw));
   if (_mentionedLU.length >= 2 && _region) {
     const _boundary = _polys.find(l =>
       l.name.includes(_region) ||
@@ -1252,8 +1250,7 @@ function _deterministicRecover(ctx) {
 
   // 模式C：合并现有图层 — "合并剪裁出的N类用地" / "合并A、B、C"
   if (/合并/.test(q)) {
-    const _landuseKWs = ['商业', '居住', '公园', '绿地', '工业', '广场', '办公', '教育', '医疗'];
-    const _mergeMatches = _polys.filter(l => _landuseKWs.some(kw => l.name.includes(kw)));
+    const _mergeMatches = _polys.filter(l => LANDUSE_KW.some(kw => l.name.includes(kw)));
     if (_mergeMatches.length >= 2) {
       const _tcs = [];
       // 链式 overlay union：逐对合并
@@ -1281,9 +1278,8 @@ function _deterministicRecover(ctx) {
 /** CB-09 代码自动扩展：检测"X区内Y1+Y2+Y3"模式 → 生成 overlay 步骤。 */
 async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
   const q = ctx.question || '';
-  // B005：去掉「用地」泛词——否则「商业用地」匹配成 ['商业','用地'] 2 词 → 误走多用地分支 + 「用地」匹配所有用地层名 → 误生成 3 overlay
-  const _LANDUSE = ['商业', '居住', '公园', '绿地', '工业', '广场', '办公', '教育', '医疗'];
-  const _mentioned = _LANDUSE.filter((kw) => q.includes(kw));
+  // B005：去掉「用地」泛词——否则「商业用地」匹配成 ['商业','用地'] 2 词 → 误走多用地分支 + 「用地」匹配所有用地层名 → 误生成 3 overlay（词表集中 emc-patterns）
+  const _mentioned = LANDUSE_KW.filter((kw) => q.includes(kw));
   // "多类用地" 通配：没有具体类型关键词 → 匹配所有已加载的用地面层
   const _isWildcard = /多类|各类|所有|全部/.test(q) && _mentioned.length < 2;
   // B005：单用地 + 裁剪语义（"西陵区+伍家岗区范围内商业用地"）也扩展——须有区名/裁剪词防误触发
@@ -1293,7 +1289,7 @@ async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
   const _polyLayers = getLayers().filter((l) => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
   const _firstLayerName = diagnose.params && (diagnose.params.as || diagnose.params.name || '');
   const _matches = _isWildcard
-    ? _polyLayers.filter((l) => _LANDUSE.some((kw) => kw !== '用地' && l.name.includes(kw)) && l.name !== _firstLayerName)
+    ? _polyLayers.filter((l) => LANDUSE_KW.some((kw) => l.name.includes(kw)) && l.name !== _firstLayerName)
     : _polyLayers.filter((l) => _mentioned.some((kw) => l.name.includes(kw)) && l.name !== _firstLayerName);
   if (_matches.length < 1) return null;
   // 找第一步产出的边界图层名

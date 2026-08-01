@@ -39,6 +39,7 @@ last_repro: 2026-07-29
 
 | 日期 | 操作 | commit |
 |------|------|------|
+| 2026-08-01 | CB-10 P0-2：router.py 抽 build_fc_sys_prompt + 恢复 31e2a00「极性范围纪律」段（0073990 静默删·补回已验证原文）+ tests/test_emc_template 内容守卫（防再删） | 898998b |
 | — | 待修复 | — |
 | 2026-07-29 | P0-3（部分·治 A 意图缩窄）：router.py FC system prompt 加「极性范围纪律」——未限定极性→默认全极性·禁缩窄 | 31e2a00 |
 

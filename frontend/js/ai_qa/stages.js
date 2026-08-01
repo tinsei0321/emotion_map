@@ -4,6 +4,7 @@
 // ctx.model = 'pro' | 'flash'（思考深度开关，后端别名解析到 V4 真实 ID）。
 // CB-09 D022：删旧 reviewStep/reviseStep（LLM 审查+重写 5-15s·假阳性高）→ 质量防线移至 harness.applyQualityDefense（代码·不调 LLM·<20ms）。
 import { streamChat, streamFcDiagnose } from './api.js';
+import { DOMAIN_KW } from './emc-patterns.js';   // CB-10 分歧2 词表集中
 
 /** 入参别名规整：模型常把 invert 写成 inverse、as 写成 output_layer、radius_m 写成 radius，
  *  导致执行报错→空转→退化为叙述。此处统一规整为各工具的规范入参名，模型怎么写都能执行。
@@ -390,15 +391,9 @@ function _deriveDomainLens(question, fcContent) {
     const m = String(fcContent).match(/\[domain_lens:(urban_planning|urban_renewal|urban_operation|urban_governance)\]/);
     if (m) return [m[1]];
   }
-  // B：关键词推导兜底
-  const _DK = {
-    urban_planning: ['规划', '用地', '商业用地', '居住用地', '功能区', '土地'],
-    urban_renewal: ['更新', '老旧', '改造', '棚改', '小区', '归因', '情绪'],
-    urban_operation: ['运营', '商圈', '场馆', '奥体', '商业街', '演唱会'],
-    urban_governance: ['治理', '交通', '停车', '施工', '城管', '环境'],
-  };
+  // B：关键词推导兜底（词表集中 emc-patterns.DOMAIN_KW·CB-10 分歧2）
   const hits = [];
-  for (const [domain, kws] of Object.entries(_DK)) {
+  for (const [domain, kws] of Object.entries(DOMAIN_KW)) {
     if (kws.some((kw) => question.includes(kw))) { hits.push(domain); break; }   // 取首个命中·最多 1 个
   }
   return hits.length ? hits : [];   // v3.1 P2-4：不硬填默认（空更诚实·下游处理空 domain_lens）
