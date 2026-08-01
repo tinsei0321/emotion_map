@@ -99,6 +99,15 @@ window.__emcTest = {
   layerCount() { return document.querySelectorAll('#layer-list .layer-row').length; },
   layerNames() { return [...document.querySelectorAll('#layer-list .layer-name')].map((e) => e.textContent.trim()).filter(Boolean); },
   mapSources() { try { const m = getMap(); const s = m && m.getStyle() && m.getStyle().sources; return s ? Object.keys(s) : []; } catch (_) { return []; } },   // C: map 真渲染的 source（验图层不只是入 state）
+  /** F-2（CB-10 飞轮审查）：产物语义断言读口——返回最后 N 个产物图层（含 paint._ui/kind/feature 数）。
+   *  断言据此验证产物正确性（density 色板钩子 analysisKey/rampKey、overlay feature 数、clip point_count、merge 几何）。 */
+  productLayers(limit = 5) {
+    return getLayers().slice().filter((l) => l.kind !== 'group' && l.fc && l.fc.features).slice(-limit).map((l) => ({
+      name: l.name, kind: l.kind, srcName: l.srcName || '', fcCount: (l.fc.features || []).length,
+      paint: (l.paint && l.paint._ui) || null, rampKey: (l.paint && l.paint.rampKey) || null,
+      colorMode: l.colorMode || null,
+    }));
+  },
   async injectFixture(name) {
     const fc = await fetch(`/tests/browser/fixtures/${name}.geojson`).then((r) => r.json());
     return this.loadPoints(fc);

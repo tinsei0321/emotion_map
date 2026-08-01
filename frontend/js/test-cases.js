@@ -342,6 +342,30 @@ const RESULT_LLM = [
   { id: 'RST-L05', name: '通用问答无图层', run: async (t) => llmRun(t, '什么是情绪地图的 4×5 归因矩阵？', (b, tt) => { const a = tt.answerText(); return a && a.length > 10 ? { pass: true, obs: `badge="${b}" ans=${a.length}字`, review: '回答合理？' } : { pass: false, stage: 's4', obs: '回答太短' }; }, { csv: false }) },
 ].map((c) => ({ ...c, category: '成果范式', type: 'llm' }));
 
+// ═══ F-2（CB-10 飞轮审查）产物语义断言：不只"选对工具+落图"，验证产物正确性 ═══
+// 密度消极色板钩子（CB-04 已修·防回退「消极热力图出综合彩虹图」）+ overlay/clip feature 数。
+const PRODUCT_SEMANTIC = [
+  { id: 'PRD-S01', name: '产物:消极热力图用消极色板（非彩虹）', category: '产物语义', type: 'llm',
+    run: async (t) => llmRun(t, '帮我生成西陵区消极情绪的热力图',
+      (b, _t, sig) => {
+        if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's1', obs: `误GAP:"${b}"` };
+        const prods = (t.productLayers && t.productLayers(5)) || [];
+        const heat = prods.find((l) => l.kind === 'heatmap') || prods[prods.length - 1] || {};
+        // 消极热力图 → analysisKey=negative + 色板非 terrain（彩虹）
+        const ui = heat.paint || {};
+        const negOk = ui.analysisKey === 'negative' && heat.rampKey && heat.rampKey !== 'terrain';
+        return { pass: negOk, stage: negOk ? '' : 's2', obs: `analysis=${ui.analysisKey} ramp=${heat.rampKey} layers=${sig.newLayers}`, review: '消极热力图是否用消极色板（非综合彩虹）？' };
+      }, { range: '行政区', csv: 'L2-T1' }) },
+  { id: 'PRD-S02', name: '产物:overlay 交集产面层', category: '产物语义', type: 'llm',
+    run: async (t) => llmRun(t, '商业用地与居住用地的交集面',
+      (b, _t, sig) => {
+        if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's1', obs: `误GAP:"${b}"` };
+        const prods = (t.productLayers && t.productLayers(5)) || [];
+        const overlay = prods.find((l) => l.kind === 'polygon' && (l.paint && l.paint.tool === 'overlay')) || prods[prods.length - 1] || {};
+        return { pass: overlay.kind === 'polygon' && overlay.fcCount > 0, stage: overlay.fcCount ? '' : 's2', obs: `kind=${overlay.kind} feats=${overlay.fcCount}`, review: 'overlay 是否产交集面层（非空）？' };
+      }, { range: '行政区', csv: 'L2-T1' }) },
+].map((c) => ({ ...c, type: 'llm' }));
+
 // ═══════════════════════════════════════════════════════
 // F. FC 全链路（20 例·emc_test_cases.md → 可执行飞轮用例）
 //    覆盖 v2/v3 架构：FC 诊断→工具执行→finalStep→追问→诚实→语言
@@ -640,6 +664,7 @@ export const CASES = [
   ...RESULT_NO_LLM, ...RESULT_LLM,
   ...SMART_NO_LLM, ...SMART_LLM,
   ...EMC_FC,
+  ...PRODUCT_SEMANTIC,   // F-2 产物语义断言（CB-10 飞轮审查）
 ];
 
 export const CATEGORIES = ['CPD导游', 'UI渲染', '引擎谓词', '意图识别', '工具选择', '参数正确性', '成果范式', 'Smart交流', 'FC全链路'];
