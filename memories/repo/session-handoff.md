@@ -1,59 +1,69 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：07月28日（**CB 体系优化 + EMC v1.0 深度审查**）| 分支 `main` | **本次 commit+push**
+> 最后更新：08月02日（**CB-11 只说不做根治 + merge 多图层 + 待续项推进**）| 分支 `fix/emc-buglog` | **已 push**
 >
-> 🔗 **CB 入口**：`docs/catch-ball/_cb-index.md`
+> 🔗 **CB 入口**：`docs/catch-ball/_cb-index.md`（**双阵营：claude组 开发主 + Codex/glm组 评估**）
 > 🏠🏢 **换机卡片**：`docs/catch-ball/_handoff/HOME.md` + `OFFICE.md`
 
-## 当前节点：9 模块验证暴露链路缺陷 → 系统性修复 → 待飞轮齐验
+## 当前节点：CB-11 闭环 + merge 多图层 + 「剪裁+合并」只说不做根治 → 待续项
 
-今日（07-28）：用户验证 9 模块后报「剪裁西陵区」失败 + 「无变化」+ 「基本功能丧失」。经诊断 + DeepSeek 6-agent 代码评估（[EVAL_REPORT_unified_2026-07-28](../docs/catch-ball/emc-arch-deepdive/EVAL_REPORT_unified_2026-07-28.md)），定位**系统性根因**并修复。
+今日（08-02）：用户实测「剪裁+合并」类问题 → Codex + glm组 双评估 → 根治「只说不做」复发（R9 防线 + 两阶段补全）+ merge 多图层 concat + 待续项推进。**用户自测成功 ✓**。
 
-## 今日已 commit（5.241 + 5.242 · branch main · **已 push**）
+## 今日已 commit（fix/emc-buglog · **已 push**）
 
-- **0de8cbf** 5.242 **EMC 链路系统性修复（选型数据感知 + 9 bug·融合 DeepSeek 评估）**
-  - **根因**：`select_candidates(question, None)` context 硬 None → 0LLM 选型**数据盲**（不知用户加载点还是面）→ 剪裁面层误路由 clip（要点·硬失败）。`TOOL_GEOMETRY_REQUIRE['clip']` 误设 None（Phase A 漏设·应 'point'）。
-  - **修复 11 项**：S1 数据感知（layer_meta {has_point,has_polygon} 端到端接线）+ clip 几何表修正（None→'point'）+ stale multi 移除 + 剪裁歧义词（clip+extract→数据裁决）+ 空候选→request_upload + S3 clip 失败智能建议 extract + S4 ensure_zone + S5 F_008 碰撞 + S6 capsule intent 动态 + S7 正则统一 + S9 chain hasRows + S8 FILL_CARD 兜底。
-  - **实测**：剪裁+polygon→[extract_feature] / 剪裁+point→[clip,extract] / density+无点→[]→request_upload。
-- **7356d7a** 5.241 selector trigger 补「剪裁/裁剪」+ 诊断「无变化」根因（uvicorn 需重启）
+| commit | 内容 |
+|---|---|
+| `9f84eac` | **merge 多图层 concat**（Codex+glm 方案 A）：后端 `MergeRequest.layers` + concat（CRS 统一 + `_source_layer`）+ 契约 layers + one-of 校验 + union 链退役 |
+| `bea7cbd` | 验收修复 P1-P6（inline `_tcs is not iterable` / auto-merge 未调 `onFinalDone`「卡读秒」/ alias 解析 / `_source_layer` 语义 / layers 字符串防御） |
+| `eb42d39` | **「剪裁+合并」只说不做根治**（Codex+glm 共识）：R9 步骤描述对账（防线结构性洞）+ 两阶段补全（先裁剪再合并）+ merge observation 来源标注 |
+| `fc242c2` | hover 层存在性 guard（`lyr-Lxxx-line` 报错） |
+| `679191f` | clip-then-merge 偶发多 1 个 overlay（`runAllToolCalls` 补 `_inlineExpanded`·防双执行） |
+| `40a518b` | G5 命中遥测 localStorage 持久化（`emc_completion_hits_v1`·驱动渐进退役） |
+| `c788114` | 族 D 面层多类用地分段色（merge 产物按 DLMC 数据驱动·严格按图例） |
+| `c973576` | 文档同步（todo/revision-log） |
 
-## 新 EMC 架构全景（明日飞轮须覆盖的路径）
+## 关键架构（下会话须知道）
 
-| 路径 | 改造后 | 测试要点（飞轮·覆盖「数据×问句」组合） |
-|------|------|------|
-| **三阶段 diagnose** | 0LLM 规则选型（select_candidates·**数据感知**·has_point/has_polygon）→ Flash 极瘦填卡（1.85KB·<5s）→ Pro 复合计划 | 单候选问 + 有点→Flash / 无点→request_upload / 复合→Pro chain |
-| **追问胶囊** | 动态 L1 <2s / L2 Pro 确认 5-8s | 答案后追问区出胶囊·点击路由 |
-| **质量防线** | applyQualityDefense 全代码 <20ms | 谎报标注 / 矛盾降级 / R5 剔无效 |
-| **Pro 动态 chain** | 复合→Pro 产 chain→runChainPath（hasRows·分析型不误判） | 复合问→Pro plan→chain 执行 |
-| **数据感知路由** | 剪裁+polygon→extract / 剪裁+point→clip / density+无点→request_upload | **核心·飞轮必测**：同问句 + 不同数据 → 不同路由 |
+- **主通道 A 定型**：LLM 多 call=机会通道 / 单 call+内联扩展=常态主通道 / `_deterministicRecover`=失败兜底；B（prompt 促多 call）降级为模型换代后评估项
+- **「剪裁+合并」两阶段**：`buildLanduseCompletion` 问句含「裁剪+合并」→ 先 overlay(intersection)×N 裁剪 → merge 裁剪产物（`$n` 引用）·走 `runAllToolCalls`（处理 `$n`）
+- **R9 防线**：applyQualityDefense 结论操作动词 → 对账 toolHistory 工具集·未执行标注（防「只说不做」复发·结构性洞）
+- **merge 多图层**：`merge(layers=[...])` 后端 concat（保留 DLMC·无字段后缀）·overlay union 是空间并集勿代替
+- **词表集中**：`emc-patterns.js`（LANDUSE_KW/DOMAIN_KW/POLARITY_KW/意图词）
+- **样式契约**：点层 clip 继承源 colorMode（5 级极性图例）·面层用地 `landuseLayerPaint` 国标色 + 多类 `landuseFillColorExpr` 分段色
 
-详：[emc-fix-progress §一 9 模块矩阵](../docs/emc-fix-progress.md) + [revision-log §5](../docs/revision-log.md#L226)（5.242）+ [DeepSeek EVAL_REPORT](../docs/catch-ball/emc-arch-deepdive/EVAL_REPORT_unified_2026-07-28.md)（8 bug + 10 风险 + 15 优化建议·P0 已修·P1 部分修·P2 待续）。
+## 待续项（下会话从这继续）
 
-## 下会话：测试飞轮更新（用户主导·**开 plan**）
+- **触发入口统一**（glm组 P1）：`buildLanduseCompletion` 内置触发判断·调用方不再各自写正则（inline/autoExpand/recover 三套触发条件）
+- **PRM 参数填充瓶颈**（CB-08 F3.1）：zonal/buffer 边界参数·B3 飞轮 10 例 fail
+- **CPD-L01/L02**（既有 CPD 问题·defer 表 `_deferred.md`）
+- 已知小瑕疵：合并结论「未实际生成」措辞残留（LLM 措辞·非功能 bug）
+- 时间轴 `_time_manifest.json` 404（低风险·待时间轴开发补）
 
-- **用户将开 plan**：根据新架构更新飞轮机制 + 模拟测试内容。AI 进 plan mode 配合设计。
-- **飞轮核心**：覆盖「数据×问句」组合测（不只关键词）·DeepSeek 评估报告 §十一（缺失测试 7 项）可参考。
-- **DeepSeek P2 建议**（S10-S15·可选）：工具几何能力矩阵自动路由 / contracts 自动派生 / Flash hit-rate gate 阈值评估 / `_quickIntent` 质量防线 / while-loop finalStep 降级 / density 维度分歧追问。
-- **pytest 基线**：219 passed + 5 skipped（零回归·CI 可跑）。
+## 测试基建
 
-## 留用户验证 / 未决
+- pytest：**223 passed**
+- 飞轮：`py tests/browser/flywheel_audit.py --tier smoke`（每次 commit）/ `--tier full`（发版）
+- 浏览器复现脚本：`py tests/browser/test_p0_repro.py --case B002|B005|B003|B006` + 合并用例（手动 Playwright 内联）
+- **自测前必须重启 serve**（`start.bat`）·否则跑旧代码
 
-- **重启 serve + 硬刷**（5.242 新代码须重启 serve 才生效）→ 重测「剪裁西陵区」（只有面）→ 应走 extract_feature·不报"无点层"。
-- **明早办公室大讨论**（用户主持·议题未告知）。
-- **KDE 去 3D 连带**（备查）：命名 / 栏卡 / EMC generateTerrainForAI 仍 3D / Grid 3D 收口。
+## CB 状态
+- 当前 CB 轮次：CB-11（merge + 只说不做根治·已闭环）· 下一轮 CB-12（待修复后验证）
+- **双阵营**：claude组（Claude Code + DeepSeek/GLM 5.2·开发主）+ Codex + glm组（ZCode + GLM 5.2·评估）
+- 反评价轨迹：`docs/catch-ball/cb-journal.md`（CB-10/CB-11）
 
 ## 红线 / 纪律（下会话守）
 
-- **承重三不动**（改前先扩 eval·每次一处·不派 subagent）：diagnose prompt / harness orchestrate 主循环 / ChatRequest schema。
-- **新纪律**：选型须感知数据（`select_candidates(question, layer_meta)`·layer_meta 从 getLayers 推导 has_point/has_polygon）·**question-only 选型是架构债·已修**。
-- **承重 Python 改动后须重启 serve.py**（uvicorn 无 --reload）·commit 后显式提醒用户重启。
-- **最高纪律**：EMC 复用 Toolbox 参数面板·tool_contracts.py 单一源·禁 emoji。
+- **承重**：diagnose prompt / harness orchestrate 主循环 / ChatRequest schema（改前先扩 eval·每次一处）
+- **EMC 产物不临时创造样式**——有固化图例用图例·无则 defaultPaint（族 D 红线）
+- **不动 FC prompt**；代码禁 emoji；print 走 `_safe_print`
+- **改 Python 后重启 serve**（uvicorn 无 --reload）
+- commit 后不 push（用户手动 push·CLAUDE.md 例外时用户说 push）
 
 ## 恢复指引（新会话）
 
-1. `git log --oneline -5` 对账（0de8cbf 5.242 / 7356d7a 5.241 / 66f7b12 收工·docs）。
-2. 读 [DeepSeek EVAL_REPORT](../docs/catch-ball/emc-arch-deepdive/EVAL_REPORT_unified_2026-07-28.md)（8 bug + 10 风险·P0 已修·P1 部分修·P2 待续）。
-3. 读本卡「数据感知路由」+ todo 2026-07-28 段。
-4. 明日用户开题「测试飞轮」→ 进 plan mode 设计新飞轮（围绕三阶段 + 数据感知 + 胶囊 + 防线 + chain）。
-5. 启动：`start.bat`（serve.py 自起后端 :8000 + 前端 :8080）。**改 Python 后重启 serve**。
+1. `git log --oneline -8` 对账（最新 `c973576`）。
+2. 读本卡「关键架构」+「待续项」。
+3. 读 `docs/todo.md` 08-02 段 + `docs/revision-log.md` §5 最新。
+4. 启动：`start.bat`（serve.py 自起后端 :8000 + 前端 :8080）。
+5. 从「待续项」继续（建议先做触发入口统一·低风险）。
