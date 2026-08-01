@@ -35,6 +35,16 @@ BATCHES = {
     'B3': {'mode': 'llm', 'cats': ['参数正确性', '成果范式', 'Smart交流', 'CPD导游', 'UI渲染'], 'timeout_min': 120},
 }
 
+# F-4（CB-10 飞轮审查）：三档拆分——smoke（每次 commit）/ regression（每日或每 N commit）/ full（发版验收）。
+# smoke 选 no-llm 全量 + llm 关键 10 例（成果范式/Smart/产物语义·省时）；regression 加意图/工具精选；full = B1-B3。
+TIERS = {
+    'smoke': ['B0', 'B3-smoke'],
+    'regression': ['B0', 'B1', 'B2', 'B3'],
+    'full': ['B0', 'B1', 'B2', 'B3'],
+}
+# B3-smoke：llm 子集（成果范式+Smart+产物语义·~10 例·每次 commit 可跑）
+B3_SMOKE_CATS = ['成果范式', 'Smart交流', '产物语义']
+
 ROWS_JS = """() => [...document.querySelectorAll('.tb-row')].map(r => ({
   id: (r.querySelector('.tb-id')||{}).textContent || '',
   name: (r.querySelector('.tb-name')||{}).textContent || '',
@@ -150,14 +160,55 @@ def run_batch(batch):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--batch', required=True, choices=list(BATCHES.keys()) + ['all'])
+    ap.add_argument('--batch', choices=list(BATCHES.keys()) + ['all'], help='指定 batch（B0-B3/all）')
+    ap.add_argument('--tier', choices=['smoke', 'regression', 'full'], help='三档拆分（F-4）：smoke=每次commit / regression=每日 / full=发版验收')
     args = ap.parse_args()
-    batches = list(BATCHES.keys()) if args.batch == 'all' else [args.batch]
+    if args.tier:
+        # tier → batches（含 B3-smoke 子集：成果范式+Smart+产物语义）
+        batches = []
+        for b in TIERS[args.tier]:
+            if b == 'B3-smoke':
+                run_batch_smoke()
+                continue
+            batches.append(b)
+    elif args.batch:
+        batches = list(BATCHES.keys()) if args.batch == 'all' else [args.batch]
+    else:
+        ap.error('须给 --batch 或 --tier')
     for b in batches:
         try:
             run_batch(b)
         except Exception as e:
             print(f'[{b}] FATAL: {e}', flush=True)
+
+
+def run_batch_smoke():
+    """B3-smoke：llm 子集（成果范式+Smart+产物语义）·每次 commit 可跑（~10 例）。"""
+    cfg = {'mode': 'llm', 'cats': B3_SMOKE_CATS, 'timeout_min': 60}
+    os.makedirs(OUT, exist_ok=True)
+    before_reports = set(os.listdir(REPORTS)) if os.path.isdir(REPORTS) else set()
+    t0 = time.time()
+    with emc_session(open=False) as page:
+        open_emc(page, url=TEST_URL, wait_ms=2500)
+        page.wait_for_selector('#tb-fab', timeout=45000)
+        _configure_and_start(page, cfg['mode'], cfg['cats'])
+        print('[B3-smoke] started llm 子集（成果范式+Smart+产物语义）', flush=True)
+        finished = _wait_done(page, cfg['timeout_min'], 'B3-smoke')
+        page.wait_for_timeout(5000)
+        rows = page.evaluate(ROWS_JS)
+        fetchlog = page.evaluate(FETCH_JS)
+        local_storage = page.evaluate("() => Object.fromEntries(Object.entries(localStorage))")
+    elapsed = time.time() - t0
+    after_reports = set(os.listdir(REPORTS)) if os.path.isdir(REPORTS) else set()
+    new_reports = sorted(after_reports - before_reports)
+    passes = [r for r in rows if 'tb-pass' in r['cls']]
+    fails = [r for r in rows if 'tb-fail' in r['cls']]
+    print(f'\n═══ [B3-smoke] done finished={finished} elapsed={elapsed/60:.1f}min ═══')
+    print(f'  rows={len(rows)} pass={len(passes)} fail={len(fails)}')
+    print(f'  new_reports={new_reports}')
+    for f in fails:
+        print(f'    [ERR] {f["id"]} | {f["name"][:40]} | {f["summary"][:80]}')
+    return None
 
 
 if __name__ == '__main__':
