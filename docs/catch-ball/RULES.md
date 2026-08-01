@@ -1,7 +1,7 @@
 # Catch-Ball 评估规则与工作指南
 
-> **版本**：2.0 | **生效日期**：2026-07-28
-> **适用对象**：第三方评估模型（ZCode + DeepSeek V4 Pro / VS Code + GLM + Claude Code）
+> **版本**：2.1 | **生效日期**：2026-07-28 | **更新**：2026-08-01（CB-10·角色更新）
+> **适用对象**：CB 辅助评估模型（Codex + DeepSeek V4 Pro/Flash·独立于开发主 Claude Code；原 ZCode/GLM 已退役）
 > **评估项目**：emotion_map — 城市情绪地图平台
 > **CB 统一入口**：`_cb-index.md` — 启动时先读此文件
 

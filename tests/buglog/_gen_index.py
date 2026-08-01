@@ -56,7 +56,8 @@ def load_entries():
         for p in sorted(d.glob("B*.md")):
             fm = _parse_fm(p.read_text(encoding="utf-8"))
             if fm:
-                fm["_status"] = st
+                # CB-10 P1-1：frontmatter status 优先于目录（治 B010/B011 写 resolved 却在 open/ 被计 OPEN 的状态双源）
+                fm["_status"] = fm.get("status", "") if fm.get("status", "") in STATE_DIRS else st
                 fm["_path"] = f"{st}/{p.name}"
                 entries.append(fm)
     entries.sort(key=lambda e: e.get("id", ""))

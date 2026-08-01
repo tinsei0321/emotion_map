@@ -1,0 +1,485 @@
+{
+ "batch": "B0",
+ "cfg": {
+  "mode": "no-llm",
+  "cats": [],
+  "timeout_min": 40
+ },
+ "finished": true,
+ "elapsed_s": 65.2,
+ "ts": "2026-08-01 11:51:32",
+ "rows": [
+  {
+   "id": "CPD-01",
+   "name": "空态欢迎卡",
+   "cat": "CPD导游",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "is-collapsed + welcome"
+  },
+  {
+   "id": "CPD-02",
+   "name": "折叠态 placeholder 非空",
+   "cat": "CPD导游",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "向 EmotionMap Copilot 提问：了解\"情绪地"
+  },
+  {
+   "id": "CPD-03",
+   "name": "展开后 hint 不跳顶",
+   "cat": "CPD导游",
+   "type": "no-llm",
+   "cls": "tb-row tb-fail",
+   "stage": "[s4]",
+   "time": "0.9s",
+   "summary": "suppress bug"
+  },
+  {
+   "id": "CPD-04",
+   "name": "方向级联 emotion",
+   "cat": "CPD导游",
+   "type": "no-llm",
+   "cls": "tb-row tb-fail",
+   "stage": "[s2]",
+   "time": "0.6s",
+   "summary": "无细化"
+  },
+  {
+   "id": "CPD-05",
+   "name": "方向级联 gis",
+   "cat": "CPD导游",
+   "type": "no-llm",
+   "cls": "tb-row tb-fail",
+   "stage": "[s2]",
+   "time": "0.2s",
+   "summary": "无细化"
+  },
+  {
+   "id": "CPD-06",
+   "name": "方向级联 buffer",
+   "cat": "CPD导游",
+   "type": "no-llm",
+   "cls": "tb-row tb-fail",
+   "stage": "[s2]",
+   "time": "0.2s",
+   "summary": "无细化"
+  },
+  {
+   "id": "CPD-07",
+   "name": "方向级联 inspect",
+   "cat": "CPD导游",
+   "type": "no-llm",
+   "cls": "tb-row tb-fail",
+   "stage": "[s2]",
+   "time": "0.2s",
+   "summary": "无细化"
+  },
+  {
+   "id": "CPD-08",
+   "name": "点细化→填 input",
+   "cat": "CPD导游",
+   "type": "no-llm",
+   "cls": "tb-row tb-fail",
+   "stage": "[s2]",
+   "time": "",
+   "summary": "无细化"
+  },
+  {
+   "id": "CPD-09",
+   "name": "引导卡 vs 欢迎卡互斥",
+   "cat": "CPD导游",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "0.2s",
+   "summary": "互斥 OK"
+  },
+  {
+   "id": "CPD-10",
+   "name": "返回方向按钮",
+   "cat": "CPD导游",
+   "type": "no-llm",
+   "cls": "tb-row tb-fail",
+   "stage": "[s4]",
+   "time": "",
+   "summary": "无返回"
+  },
+  {
+   "id": "CPD-11",
+   "name": "进度点 5 个",
+   "cat": "CPD导游",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "[OK]"
+  },
+  {
+   "id": "CPD-12",
+   "name": "chip 行 3 个",
+   "cat": "CPD导游",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "[OK]"
+  },
+  {
+   "id": "UI-01",
+   "name": "Pro SVG 图标",
+   "cat": "UI渲染",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "[OK]"
+  },
+  {
+   "id": "UI-02",
+   "name": "Flash SVG 图标",
+   "cat": "UI渲染",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "[OK]"
+  },
+  {
+   "id": "UI-03",
+   "name": "Pro/Flash 切换",
+   "cat": "UI渲染",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "0.0s",
+   "summary": "[OK]"
+  },
+  {
+   "id": "UI-04",
+   "name": "主题切换按钮",
+   "cat": "UI渲染",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "[OK]"
+  },
+  {
+   "id": "UI-05",
+   "name": "历史按钮",
+   "cat": "UI渲染",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "[OK]"
+  },
+  {
+   "id": "UI-06",
+   "name": "新对话按钮",
+   "cat": "UI渲染",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "[OK]"
+  },
+  {
+   "id": "UI-07",
+   "name": "发送按钮",
+   "cat": "UI渲染",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "[OK]"
+  },
+  {
+   "id": "UI-08",
+   "name": "resize grip",
+   "cat": "UI渲染",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "[OK]"
+  },
+  {
+   "id": "UI-09",
+   "name": "折叠展开切换",
+   "cat": "UI渲染",
+   "type": "no-llm",
+   "cls": "tb-row tb-fail",
+   "stage": "[s4]",
+   "time": "0.5s",
+   "summary": "[s4]"
+  },
+  {
+   "id": "UI-10",
+   "name": "图层 chip 计数",
+   "cat": "UI渲染",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "=0"
+  },
+  {
+   "id": "UI-11",
+   "name": "CPD bar 折叠态隐藏",
+   "cat": "UI渲染",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "0.2s",
+   "summary": "[OK]"
+  },
+  {
+   "id": "UI-12",
+   "name": "提示条展开态显",
+   "cat": "UI渲染",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "0.3s",
+   "summary": "hidden=true"
+  },
+  {
+   "id": "PRED-01",
+   "name": "空态 hasImport=false",
+   "cat": "引擎谓词",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "[OK]"
+  },
+  {
+   "id": "PRED-02",
+   "name": "空态 hasRange=false",
+   "cat": "引擎谓词",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "[OK]"
+  },
+  {
+   "id": "PRED-03",
+   "name": "空态 visEmotion=false",
+   "cat": "引擎谓词",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "[OK]"
+  },
+  {
+   "id": "PRED-04",
+   "name": "空态 hasAnalysis=false",
+   "cat": "引擎谓词",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "[OK]"
+  },
+  {
+   "id": "PRED-05",
+   "name": "导入点层 hasImport=true",
+   "cat": "引擎谓词",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "0.5s",
+   "summary": "[OK]"
+  },
+  {
+   "id": "PRED-06",
+   "name": "情绪层 visEmotion=true",
+   "cat": "引擎谓词",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "[OK]"
+  },
+  {
+   "id": "PRED-07",
+   "name": "无情绪层 visEmotion=false（M2）",
+   "cat": "引擎谓词",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "0.8s",
+   "summary": "M2 回归 OK"
+  },
+  {
+   "id": "PRED-08",
+   "name": "导入范围 hasRange=true",
+   "cat": "引擎谓词",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "0.6s",
+   "summary": "[OK]"
+  },
+  {
+   "id": "PRED-09",
+   "name": "删层回空态 hasImport=false",
+   "cat": "引擎谓词",
+   "type": "no-llm",
+   "cls": "tb-row tb-fail",
+   "stage": "[s0]",
+   "time": "0.3s",
+   "summary": "[s0]"
+  },
+  {
+   "id": "PRED-10",
+   "name": "H1 不冻结（general 后响应）",
+   "cat": "引擎谓词",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "0.2s",
+   "summary": "H1 不冻结"
+  },
+  {
+   "id": "RST-01",
+   "name": "layer-list DOM",
+   "cat": "成果范式",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "[OK]"
+  },
+  {
+   "id": "RST-02",
+   "name": "#aiq-suggest",
+   "cat": "成果范式",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "[OK]"
+  },
+  {
+   "id": "RST-03",
+   "name": "#chat-suggest",
+   "cat": "成果范式",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "[OK]"
+  },
+  {
+   "id": "RST-04",
+   "name": "ctx-cap SVG",
+   "cat": "成果范式",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "[OK]"
+  },
+  {
+   "id": "RST-05",
+   "name": "legend",
+   "cat": "成果范式",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "[OK]"
+  },
+  {
+   "id": "SMT-01",
+   "name": "流式中断",
+   "cat": "Smart交流",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "1.0s",
+   "summary": "中断路径走通"
+  },
+  {
+   "id": "SMT-02",
+   "name": "新对话恢复",
+   "cat": "Smart交流",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "0.5s",
+   "summary": "恢复空态"
+  },
+  {
+   "id": "SMT-03",
+   "name": "历史视图切换",
+   "cat": "Smart交流",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "0.5s",
+   "summary": "[OK]"
+  },
+  {
+   "id": "SMT-04",
+   "name": "F5 恢复",
+   "cat": "Smart交流",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "F5 需手动验"
+  },
+  {
+   "id": "SMT-05",
+   "name": "滚动不跳顶",
+   "cat": "Smart交流",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "0.3s",
+   "summary": "scrollTop=0"
+  },
+  {
+   "id": "SMT-06",
+   "name": "欢迎卡胶囊",
+   "cat": "Smart交流",
+   "type": "no-llm",
+   "cls": "tb-row tb-pass",
+   "stage": "[OK]",
+   "time": "",
+   "summary": "[OK]"
+  }
+ ],
+ "stats": {
+  "total": 45,
+  "pass": 36,
+  "fail": 9,
+  "pending": 0
+ },
+ "chat_phases": {},
+ "chat_body_keys": null,
+ "chat_tpl_nonnull": 0,
+ "geo_calls": [],
+ "new_reports": [
+  "report-2026-08-01-01-no-llm.json",
+  "report-2026-08-01-01-no-llm.md"
+ ],
+ "local_storage": {
+  "emc_fieldcard_L002": "{\"sig\":\"polarity,score\",\"cards\":{\"polarity\":{\"role\":\"polarity\",\"dtype\":\"string\",\"samples\":[\"Positive\"],\"source\":\"rule\",\"confidence\":1},\"score\":{\"role\":\"score\",\"dtype\":\"number\",\"samples\":[\"0.7\"],\"source\":\"rule\",\"confidence\":1}}}",
+  "ai_qa_think_mode": "pro",
+  "emc_fieldcard_L003": "{\"sig\":\"name\",\"cards\":{\"name\":{\"role\":\"name\",\"dtype\":\"string\",\"samples\":[\"plain\"],\"source\":\"rule\",\"confidence\":1}}}",
+  "emc_fieldcard_L004": "{\"sig\":\"MC\",\"cards\":{\"MC\":{\"role\":\"boundary_name\",\"dtype\":\"string\",\"samples\":[\"龙泉\",\"猇亭区\",\"点军区\"],\"source\":\"rule\",\"confidence\":1}}}",
+  "ai_qa_history_v1": "[]",
+  "ai_qa_archive_v1": "[{\"id\":\"s1785556281386\",\"title\":\"测试中断\",\"history\":[{\"role\":\"user\",\"text\":\"测试中断\"}],\"createdAt\":1785556281386}]"
+ }
+}

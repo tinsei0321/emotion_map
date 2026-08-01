@@ -85,6 +85,18 @@ def test_final_prompt_stays_lean():
     assert n < 3000, f'final prompt 膨胀到 {n} bytes（应 <3KB·含语言风格规则·查是否回灌 MANIFESTO/industry_kb）'
 
 
+def test_fc_sys_prompt_keeps_polarity_discipline():
+    """CB-10 P2-2 守卫：FC prompt 极性范围纪律段在（防 0073990 式"简化"静默删除 B006 修复）。
+
+    plans/domain_lens/多要素提取指令不恢复不断言——已被 _allToolCalls/autoExpand/契约 when 取代。"""
+    from ai_qa.router import build_fc_sys_prompt
+    p = build_fc_sys_prompt('')
+    assert '极性范围纪律' in p, 'FC prompt 缺极性范围纪律段（B006 修复被删？）'
+    assert '严禁自行缩窄' in p, 'FC prompt 缺"严禁自行缩窄"纪律（B006 核心句）'
+    assert '全部三个极性' in p, 'FC prompt 缺"全部三个极性"默认（B006 核心）'
+    assert 'clip 仅用于点数据' in p, 'FC prompt 缺 clip 面层禁止规则（工具规则锚点）'
+
+
 def test_fill_card_prompt_lean():
     """CB-09 D006 Phase B 极瘦填卡守门：<3.5KB（1-4 候选·prefill <2s·diagnose <5s）。
     防 build_fill_card_prompt 回灌 MANIFESTO/全量 catalog 致 45.8KB 回潮。"""

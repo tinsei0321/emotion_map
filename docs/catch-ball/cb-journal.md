@@ -6,7 +6,61 @@
 
 ---
 
-## CB-09 · 2026-07-28~29（v1.0 实测诊断·5 案例 + 7 根因）
+## CB-10 · 2026-08-01（EMC 全面审查·Codex+GPT-5 第三方）
+
+### ① SCAN 摘要
+[CB10-EMC全面审查_Codex-GPT5_2026-08-01](scan/CB10-EMC全面审查_Codex-GPT5_2026-08-01.md)（Codex+GPT-5·只读审查·分支 fix/emc-buglog @ a274362）：
+- 综合分 **6.0**（架构 6.5/代码 6.5/测试 5.5/Harness 6.0/文档 4.5/调用 6.0/演示 5.5）
+- **架构级缺陷 4 条**：① plans[] 从未接通管道（executePlans 零调用·07d57c1 禁用·CPD 不读）② 编排器正变"领域推理器"（_LANDUSE/_DK/_POL_MAP 词表散落）③ FC prompt 无版本化守卫（两次重写静默丢极性纪律）④ 文档-代码双轨不同步（D057/finalStep/221 passed/分支 hash）
+- **P0 4 条**：接通 executePlans(方案A)/删 plans(方案B)、恢复极性纪律+守卫、计划完成度守卫、修 test_final_prompt_stays_lean
+- **P1 5 条**：buglog 状态单源、B003 短路、B007 几何类型门、B008 2D/3D 解耦、B006-B 样式继承
+- **P2 2 条**：文档同步、修复内容守卫清单
+- 实测：pytest 196 passed/20 failed/5 skipped/3 errors（20 failed = test_sandbox 隔离问题·非回归；真实未修回归 = test_final_prompt_stays_lean 3616B>3KB）
+
+### ② 我方反评价（verify-before-accept·读真码核实·待 Codex 对反评价二轮评估）
+
+| SCAN 建议 | 判定 | 证据/行动 | decline reason（若 disagree） |
+|---|:---:|---|---|
+| P0-1 接通 executePlans(方案A) / 删 plans[](方案B) | **partial** | 方向「计划→执行闭环」agree。方案A 不采：executePlans（harness.js:1320）是被 D057 修订 `_allToolCalls`→`runAllToolCalls` 取代的死代码，非 CPD 接口；方案B 不采：plans[] 是给 CPD 的预留接口（CPD 搁置≠删），删概念撞用户立场。B005 真缺口 = `_autoExpandOverlays` 需≥2 关键词（单用地不触发）+ FC 单 tool_call 无补全 → 走 `_allToolCalls` 覆盖缺口 + Day1 浏览器验证定位 | — |
+| P0-2 恢复 FC prompt 极性纪律 + 内容回归测试 | **agree** | 证据链强：31e2a00 有纪律段 → 0073990/500d4b9 静默删 → 当前 router.py:52-59 无。恢复已验证段（非重写）+ tests/test_emc_template.py 断言守卫防再删 | — |
+| P0-3 计划完成度守卫 | **partial** | 方向 agree。当前「计划」=`_allToolCalls` 数组非 plans[]（D057 修订后）；runAllToolCalls 已有 failedSteps 注入+零图层守卫，缺 finalStep 前显式「完成 N/M 步」判定 → 补 | — |
+| P0-4 修 test_final_prompt_stays_lean | **agree** | 真实未修回归（SCAN 实测 3616B>3KB·非沙箱误报）。先看 FINAL_TEMPLATE：无损瘦身则瘦身，否则放宽守卫+记 ADR | — |
+| P1-1 buglog 状态单源 | **agree** | `_gen_index.py:59` 从目录派生、忽略 frontmatter → B010/B011 frontmatter=resolved 却计 OPEN·真 bug → 读 frontmatter 优先 + B010/B011 移 resolved/ | — |
+| P1-2 B003 数据清单短路 | **agree** | 与既有方案一致：`_quickIntent` 加清单意图 → general 短路（buildContext 来源标注已就绪 tools.js:596） | — |
+| P1-3 B007 几何类型门 | **agree**（后置） | clip/extract/overlay 加类型一致性校验 + 契约强化（两天空隙·非 P0） | — |
+| P1-4 B008 2D/3D 解耦 | **partial** | MED·前端渲染·不在两天重点·记待修 | — |
+| P1-5 B006-B 样式继承 | **partial** | 方向 agree（symbology propagation·clip/extract/overlay 产物继承源层图例）·超两天范围·记待修 | — |
+| P2-1 文档同步 | **agree** | todo.md 按已提交重写 07-30 Codex 段 + 补 08-01；emc-fix-progress/_cb-index/SUMMARY/02-orchestrator D057 同步；CB 环境 ZCode→Claude Code+Codex/DeepSeek | — |
+| P2-2 修复内容守卫清单 | **agree** | 关键修复（诚实观测/多步扩展/极性纪律）做成可 grep/可断言·防 prompt 重写静默丢弃 | — |
+| 发现2 编排器泄漏智能 | **partial** | 泄漏真实（_LANDUSE/_DK 词表散落 harness/stages）→ **集中到一个模块 agree**；**完全消除确定性兜底 disagree**——07-30 P03 教训：依赖 LLM 单次行为不可靠（no_tool_calls 必现），确定性恢复是务实妥协，非"泄漏" | — |
+
+**Auto-Check 清单**：① 承重红线——无触碰（P0-2 恢复的是 FC sys prompt 纪律段，非 diagnose eval prompt·不撞「diagnose 永不动」）✅ ② verify-before-accept——P0-1/P0-2/P1-1 均读真码核实 ✅ ③ 无消费者→wontfix——P0-1 方案A(executePlans) 无活消费方·不盲修 ✅ ④ 已知模式——「eval≠runtime」SCAN 正确认识未套错 ✅
+
+**CB-10: 9 agree / 0 disagree / 5 partial**
+
+**第三方复核结论（Codex 二轮审核 · [CB10-反评价二轮审核](scan/CB10-反评价二轮审核_Codex-GPT5_2026-08-01.md)）**：反评价整体公允（事实核查到位）·7 条修正全 accept——
+
+| Codex 修正 | 判定 | 整合 |
+|---|:---:|---|
+| B005 修复通道：扩成功路径 `_autoExpandOverlays` 非 `_deterministicRecover` 模式 D（触发位置错）| accept | Day1 改 `_autoExpandOverlays` 放宽单用地+双区 |
+| B007 类型校验随 P0-1 同包（自动多步静默放大错配）| accept | B007 guard 并入 P0-1 同包·契约强化留 P1 |
+| 完成度守卫：结论层确定性追加「已完成 X/Y 步」代码行，非仅 context 注入 | accept | Day2 P0-3 代码层确定性追加 |
+| FC prompt 守卫覆盖四段（极性纪律/plans/domain_lens/多要素提取）+ `build_fc_sys_prompt` 抽函数 | accept | Day2 P2-2 四段断言 |
+| P0-4 先分解静态/动态，静态瘦身 ≤2KB，docstring/断言口径统一 | accept | Day2 P0-4 |
+| 分歧2：失败路径兜底保留 agree；成功路径泄漏 → 集中词表+边界（多 tool_call 优先 runAllToolCalls·auto-expand 注册表+命中遥测）| accept | Day2 词表集中+边界 |
+| CPD-RESERVED 是空骨架（plans 生产链已随 0073990 停供）→ 记 KNOWLEDGE | accept | Step 0 KNOWLEDGE 记录 |
+
+**CB-10 最终：9 agree / 0 disagree / 5 partial + Codex 二轮 7 修正全 accept**
+
+### ③ 行动
+- **两天攻坚 plan 定稿**：`C:\Users\Hi\.claude\plans\claude-code-emotion-map-purring-ritchie.md`（CB-10 反评价整合版）
+- Day1：起 serve → Playwright 3 个 P0 复现（B002/B005/B003）→ 飞轮 B0/B3 真实基线 → 修 B002/B005（B005 补 `_deterministicRecover` 模式 D 或扩 `_autoExpandOverlays` 单关键词+双区）
+- Day2：删 executePlans 死代码 + 保 ctx.plans/_plansToCapsules 作 CPD-RESERVED → 恢复 FC prompt 极性纪律+守卫 → B003 数据清单短路 → P0-3/P0-4/P1-1/P2-2 守卫 → 飞轮复测 → 文档同步 + CB 环境更新
+- **待 Codex 对反评价二轮评估** → 据其反馈微调 plan 后实施
+
+### ④ 状态
+`open → 反评价稿已落盘·待 Codex 二轮评估` —— 本反评价稿待第三方复核后定稿 plan 实施。
+
 
 ### ① SCAN 摘要
 [SCAN_DeepSeek_05](scan/05-deepseek.md)（DeepSeek V4 Pro·ZCode 主线程）：基于用户 5 个实测案例的深度诊断——裁剪西陵+伍家岗（request_upload·推理螺旋）、上传了哪些数据（答错·信息缺失）、裁剪西陵+伍家岗再测（假结论·无执行感知）、消极情绪追问（层引用幻觉）、500m 网格聚合（图层OK/结论超时）。**核心发现**：接地上下文缺两类语义标注（数据来源+可用引用），LLM 面对信息缺口进入推理螺旋。综合分 7.3/10（↓0.6 vs CB-08）。7 条 P0-P1 建议。

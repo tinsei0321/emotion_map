@@ -28,6 +28,17 @@ def _today_line() -> str:
     return f'当前现实日期：{d.year}年{d.month}月{d.day}日（{wk}）。\n'
 
 
+# CB-10 P0-4：人民城市理念改运行时条件注入（省静态 ~130B·防 D019 回弹 test_final_prompt_stays_lean）
+_PEOPLE_CITY_LINE = ('**"人民城市"理念**：问题涉及项目背景/定位/情绪地图定义/意义价值时，自然融入——'
+                     '"人民城市人民建，人民城市为人民"，情绪地图价值=听见市民心声、把人民情绪与诉求纳入'
+                     '城市体检与规划决策（补传统问卷采样局限）；融入贴题自然，勿生硬口号。\n')
+
+
+def _is_concept_question(context):
+    """概念/背景问（人民城市理念注入条件）：项目背景/定位/定义/意义价值。"""
+    return any(w in (context or '') for w in ('什么是', '意义', '价值', '理念', '城市体检', '项目背景', '定义', '情绪地图'))
+
+
 def _inject_tokens(prompt, context_tokens):
     """@关联对象 → 追加约束。"""
     if not context_tokens:
@@ -129,18 +140,13 @@ FINAL_TEMPLATE = """
 **追问胶囊**（末尾产 1-3 个·各占一行）：`{{capsule:标签|级别|技能|参数=值|...}}`。级别 `L1`=同工具换参（直达·换极性/排序）/`L2`=跨工具单步（轻判·叠置/缓冲）·禁 L3。技能 ∈ density/rank/buffer/clip/overlay/zonal/compare/extract_feature/area_stats/hotspot/nearest/filter_attr。参数=值 从本问结果派生。例：`{{capsule:切换消极热力图|L1|density|analysis=negative|polarity=N}}`。
 
 **语言风格**（严格遵守）：
-- **面向用户**：用户看到的是城市分析报告，不是技术日志。禁出现工具名（如 extract_feature/density/zonal_stats）、参数名（如 boundary/radius/polarity_index）、代码片段、英文术语。
-- **字段名必须中文化**：数据字段名（emotion_intensity/polarity/score/polarity_index/domain_top 等）在用户可见文本中**必须用中文**（情绪强度/极性/得分/极性指数/归因领域）。禁直出原始英文列名。
-- **用中文专业词**：工具名用中文（抽取/裁剪/聚合/排序/缓冲/叠置/筛选/合并/热力图/聚集分析/面积统计/区域对比），参数用中文（范围/半径/极性/边界/分组字段）。
-- **专业且生动**：在逻辑和用语保持专业、客观、理性的同时，表达偏向生动、自然、形象。用"这片区域居民情绪偏消极"而非"polarity_index=-0.45"；用"滨江带呈现明显的高热度聚集"而非"密度值偏高"；用"以情绪强度加权"而非"以 emotion_intensity 为权重"。
-- **禁箭头穿插**：不要在中文语句中穿插 → 等符号。用逗号或句号断句。
-- 简短（3-5 句）·通俗+专业词紧跟解释（极性=情绪正负）·勿追加"建议进一步分析"。
+- **面向用户**：城市分析报告非技术日志。禁工具名（extract_feature/density）、参数名（boundary/polarity_index）、代码片段、英文术语、→ 符号（用逗号/句号断句）。
+- **中文化**：字段名 emotion_intensity→情绪强度、polarity→极性、polarity_index→极性指数、domain_top→归因领域；工具名用中文（抽取/裁剪/聚合/排序/缓冲/叠置/筛选/合并/热力图/区域对比）。
+- **专业且生动**：专业客观理性 + 生动自然形象（"这片区域情绪偏消极"而非"polarity_index=-0.45"）；简短 3-5 句·通俗+专业词紧跟解释（极性=情绪正负）·勿追加"建议进一步分析"。
 
-**推理风格（thinking）**：推理过程用生动、口语、拟人的表达，像跟同事边想边讲思路，避免"因为/所以/另外/但是"的僵硬八股；结论正文仍守上述语言风格。
+**thinking 推理**：生动口语拟人，像跟同事边想边讲，避免"因为/所以/另外/但是"八股；正文仍守语言风格。
 
 **纯问答排版**（无工具操作、纯文字作答时·如"什么是情绪地图/项目意义/某概念"）：用**条目式**组织（`###` 小标题 + `-` 要点列表），关键术语/结论用 `**加粗**` 强调，信息分层（是什么→为什么→怎么用）；此时不受"3-5 句简短"约束。
-
-**"人民城市"理念**：问题涉及项目背景/定位/情绪地图定义/意义价值时，自然融入"人民城市"理念——"人民城市人民建，人民城市为人民"，情绪地图价值=听见市民心声、把人民情绪与诉求纳入城市体检与规划决策（补传统问卷采样局限）；融入贴题自然，勿生硬口号。
 
 【探索历史】（历轮工具观察）：
 {tool_history}
@@ -159,6 +165,9 @@ def build_final_prompt(context: str = '', tool_history: str = '', context_tokens
     # CB-09 D019 极瘦：去 MANIFESTO 前置（省 11.2KB）+ industry_kb_lens_appendix（省 0-20KB）·17KB→~0.9KB
     # 诚实/结构由前端 harness.applyQualityDefense 代码守（5.232·空答/谎报/矛盾/截断）·prompt 不再内嵌自查清单
     prompt = _today_line() + FINAL_TEMPLATE.format(tool_history=hist, context=ctx)
+    # CB-10 P0-4：人民城市理念仅概念问注入（省静态体积·防 D019 回弹）
+    if _is_concept_question(ctx):
+        prompt = _PEOPLE_CITY_LINE + prompt
     return _inject_tokens(prompt, context_tokens)
 
 

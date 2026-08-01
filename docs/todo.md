@@ -5,56 +5,35 @@
 
 > 📦 周归档机制：按自然周（周一~周日）归档历史内容至 `todo-archive/`；本周（含）留本文件，历史周已移归档。
 > 📝 详版历史 = [revision-log §5](revision-log.md#L226)（永久审计底）·本文件只记当前 + 计划。
-> 📌 **架构版本**：v1（三阶段 5.231-5.242）→ **v2（单次 LLM + FC·5.243-5.245b·第三方实施）** → **v3（v2 做对·5.246-657c2e3·GLM 修复）** → **v3.2**（CB-09 bug 修复·D057 修订·代码自动扩展·全自动多步执行）
+> 📌 **架构版本**：v1（三阶段 5.231-5.242）→ **v2（单次 LLM + FC·5.243-5.245b·第三方实施）** → **v3（v2 做对·5.246-657c2e3·GLM 修复）** → **v3.1**（reg.filter 崩溃修复 + SCAN P1）→ **v3.2**（CB-09 bug 修复·D057 修订·代码自动扩展·全自动多步执行·fix/emc-buglog 分支 7 commit）
 
 ---
 
-## 📅 2026-07-30（Codex 接手·三轮修复）
+## 📅 2026-08-01（今日·CB-10 闭环 + 两天攻坚启动）
 
-### ✅ P0：FC 诊断失败阻断旧 SSE 回退（harness.js:800-806）
-- **根因**：FC 诊断偶发 no_tool_calls → 回退旧 SSE `diagnoseStep` → `select_candidates` 预选工具常选错（extract_feature 当 clip 用）→ 查询彻底失败
-- **修复**：FC 失败 → 直接 `{degraded:true}` 不入旧 SSE → 走 while-loop (ReAct agent loop) 兜底
-- **验证用例**：剪裁出西陵区范围内的商业+居住+公园广场用地
+### 🔄 CB-10 闭环（SCAN → 反评价 → Codex 二轮审核 → plan 定稿）
 
-### ✅ P1：Pro 模式生效（harness.js:741）
-- **根因**：`answerModel` 硬编码 `'flash'`，用户选 Pro 结论仍 Flash 质量
-- **修复**：`ctx.answerModel = ctx.model || 'flash'` — 跟用户选择
-- **FC 诊断保持永 Flash**（Pro 做工具选择会过度思考致失败）
+- **CB-10 SCAN**（Codex+GPT-5·[CB10-EMC全面审查](docs/catch-ball/scan/CB10-EMC全面审查_Codex-GPT5_2026-08-01.md)）：综合 **6.0**·核心 = plans[] 管道未接通 / 编排器泄漏智能 / FC prompt 无守卫丢纪律 / 文档滞后 / test_final_prompt_stays_lean 回弹 / buglog 状态双源
+- **反评价落盘**（[cb-journal.md](docs/catch-ball/cb-journal.md) CB-10 ②）：**9 agree / 0 disagree / 5 partial**·Auto-Check 四项合规
+- **Codex 二轮审核**（[CB10-反评价二轮审核](docs/catch-ball/scan/CB10-反评价二轮审核_Codex-GPT5_2026-08-01.md)）：反评价整体公允·**7 条修正全 accept**（B005 扩 `_autoExpandOverlays` 成功路径 / B007 guard 并 P0-1 / 完成度守卫代码层追加 / 守卫四段 / P0-4 分解 / 词表集中+边界 / CPD-RESERVED 空骨架）
+- **两天攻坚 plan 定稿**：`C:\Users\Hi\.claude\plans\claude-code-emotion-map-purring-ritchie.md`
+- 用户拍板：① plans[] 留位给 CPD（预留接口）② 极性纪律走 prompt 恢复+守卫 ③ todo 按已提交重写 ④ 反评价稿落盘 CB 文件夹
 
-### ✅ P1：_autoExpandOverlays 支持合并模式（harness.js:1142+）
-- **根因**：`_autoExpandOverlays` 只检测"X区内Y1+Y2+…用地"裁剪模式，不处理"合并N类用地"
-- **修复**：检测 `/合并|union|拼合|叠加/` → `how='union'` 逐对合并；裁剪模式保持 `how='intersection'`
-- **验证用例**：合并商业、居住和公园广场用地
+### 🔄 Step 0 即时同步（cb-journal 已写·本次补齐三文档）
 
-### 🔄 待办
-- **浏览器验证**：Ctrl+Shift+R 硬刷 → 测以上三条用例
-- git commit（建议 message: `fix: P0 FC退化阻断 + P1 Pro生效 + P1 合并扩展`）
+- ✅ cb-journal CB-10 ② 补 Codex 复核结论（7 修正全 accept）
+- ✅ KNOWLEDGE 追加 2 条 learning（← CB-10：FC prompt 无守卫删四段·CPD-RESERVED 空骨架）
+- ✅ todo.md 当日段（本节）
+- ⬜ emc-fix-progress.md 头 + §三待修
+- ⬜ revision-log §5 bullet
 
-## 📅 2026-07-29（今日·CB-09 "只说不做" 根治）
+### ⬜ 两天攻坚（执行 plan 中）
 
-### ✅ 「只说不做」根治（commit 3a97e19+ · **fix/emc-buglog 分支**）
-
-经过 ~20 轮迭代，最终方案：代码自动扩展 + 工具描述修正 + FC prompt 简化。
-
-**根因链**：
-1. LLM 词映射 "裁剪"→clip（错选工具）
-2. clip 裁面层返回空→假结论
-3. FC prompt 含旧诊断卡格式触发"预选工具"幻觉
-4. 单 tool_call 设计无法完成多步骤
-
-**修复（5 个维度）**：
-- 工具观测诚实化：5 工具 count=0 时报"未生成"（`tools.js`）
-- 零图层守卫：newLayerCount=0 跳过 LLM finalStep（`harness.js`）
-- _autoExpandOverlays：代码检测"X区Y1+Y2"模式自动生成 overlay（`harness.js`）
-- extract_feature/overlay/clip 契约修正：function description 明确区分点/面（`tool_contracts.py`）
-- FC prompt 简化：去旧诊断卡触发词 + 直接词映射"裁剪面层→overlay"（`router.py`）
-
-**架构变更**：D057 修订——LLM 可输出多个 tool_calls，orchestrator 顺序执行全部。新增 `runAllToolCalls` + `_autoExpandOverlays`。
-
-详见 [revision-log §5](revision-log.md#L226)。
+- **Day1**：起 serve → Playwright 3 个 P0 复现（B002/B005/B003）→ 飞轮 B0/B3 基线 → 修 B005（扩 `_autoExpandOverlays` 单用地+双区）+ B007 类型 guard
+- **Day2**：删 executePlans + CPD-RESERVED + 词表集中 + 完成度守卫 → B006 极性纪律 prompt 恢复+四段守卫 → B003 数据清单短路 → P0-4/P1-1 → 飞轮复测 → 文档同步 + CB 环境更新（RULES/_cb-index）
+- 验证：pytest（含 test_final_prompt_stays_lean 转绿 + test_emc_template 四段断言 + buglog --check）
 
 ---
-
 ## 📅 2026-07-29（今日·CB 飞轮 buglog 扩建）
 
 ### ✅ buglog schema 统一 + CF-09 采集入库（commit abce549 · **用户手动 push**）

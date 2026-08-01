@@ -22,6 +22,26 @@ from ai_qa.prompts import (
 router = APIRouter()
 
 
+def build_fc_sys_prompt(context):
+    """FC 诊断 system prompt（单一构造·可测试断言·防 0073990 式"简化"再次静默删除）。
+
+    只含当前有效的纪律段：工具规则（契约 when 已上游承担）+ 极性范围纪律（B006·31e2a00 恢复）。
+    plans/domain_lens/多要素提取指令不再内嵌——已被 _allToolCalls/autoExpand/契约 when 取代，
+    恢复会回退旧诊断卡行为（0073990 删除原因）。← CB-10
+    """
+    return (
+        '你是情绪地图分析助手。根据用户请求选择最合适的工具。\n'
+        '- 用户说"裁剪/剪裁"面层（用地、行政区等）→ 用 overlay(intersection)。clip 仅用于点数据，对面层返回空\n'
+        '- 多步骤请求（如裁剪多类用地）→ 先做第一步，系统自动补全后续\n'
+        '- 参数用数据上下文中的实际字段名和图层 ID\n'
+        '## 极性范围纪律（CB-09 P0-3·治意图缩窄 B006）\n'
+        '- 用户说"情绪点"/"情绪分布"/"筛选情绪"等**未限定极性**的词 → 默认覆盖**全部三个极性**（积极+中性+消极）·**严禁自行缩窄**为单一极性（如"选数据最多的积极层先做"——这是错的，用户没有让你选）\n'
+        '- 用户明确说了"积极"/"消极"/"中性" → 严格按指定极性操作·不扩展\n'
+        '- 若三个极性是独立图层无法一次完成 → 先 merge 三个极性层再操作·或诚实告知用户并给出选项\n'
+        f'## 数据上下文\n{context or "（无数据上下文）"}\n'
+    )
+
+
 @router.post("/chat")
 async def chat_route(req: ChatRequest):
     """AI 问答 agent loop（diagnose/agent_step/answer/optimize 走 SSE 流式；fc_diagnose 走 JSON）。"""
@@ -35,13 +55,7 @@ async def chat_route(req: ChatRequest):
         _q = (req.messages or [{}])[-1].get('content', '') if req.messages else ''
         # v3 C2：system prompt 含「数据×工具兼容性」提示（让 LLM 避开数据不支撑的工具）
         # v3 C3：system prompt 含 domain_lens 产出指令（A+B 混合的 A 部·LLM 自主判领域）
-        sys_content = (
-            '你是情绪地图分析助手。根据用户请求选择最合适的工具。\n'
-            '- 用户说"裁剪/剪裁"面层（用地、行政区等）→ 用 overlay(intersection)。clip 仅用于点数据，对面层返回空\n'
-            '- 多步骤请求（如裁剪多类用地）→ 先做第一步，系统自动补全后续\n'
-            '- 参数用数据上下文中的实际字段名和图层 ID\n'
-            f'## 数据上下文\n{req.context or "（无数据上下文）"}\n'
-        )
+        sys_content = build_fc_sys_prompt(req.context)
         messages = [{'role': 'system', 'content': sys_content}] + list(req.messages or [])
         # Hotfix R2 S7：FC 流式（SSE）——诊断思考渐进可见（yield reason → 前端 onReason 实时渲染）。
         # 替代旧 JSONResponse（非流式·用户感"卡住"）。实测 V4 flash FC stream 吐 17 reason + 11 tool_call delta。

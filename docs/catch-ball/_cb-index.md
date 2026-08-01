@@ -1,7 +1,7 @@
 # CB Index — Catch-Ball 统一入口
 
-> **读我**：VS Code（Claude Code）和 ZCode（DeepSeek）启动时读此文件，了解 CB 全貌。
-> **维护**：每轮 CB 完成后更新。最后更新：2026-07-30。
+> **读我**：Claude Code（开发主）+ Codex/DeepSeek（CB 辅助）启动时读此文件，了解 CB 全貌。
+> **维护**：每轮 CB 完成后更新。最后更新：2026-08-01（CB-10 角色更新：ZCode/GLM 退役）。
 
 ---
 
@@ -11,26 +11,27 @@
 |------|:---:|
 | **当前 CB 轮次** | **CB-10**（EMC 修复工程·P0/P1 聚焦） |
 | **下一轮** | CB-11（待修复后验证） |
-| **当前环境** | **Claude Code + DeepSeek V4**（原 GLM 5.2 已退役） |
-| **当前分支** | `fix/emc-buglog` @ `7126f6d` |
-| **最新 SCAN** | `scan/CB09-v1.0实测诊断_ZCode-DeepSeek_2026-07-28.md` |
-| **最新 Handoff** | `_handoff/SESSION_2026-07-30.md` |
+| **当前环境** | **Claude Code（开发主）+ Codex/DeepSeek（CB 辅助）**（原 ZCode/GLM 已退役） |
+| **当前分支** | `fix/emc-buglog` @ `a274362` |
+| **最新 SCAN** | `scan/CB10-EMC全面审查_Codex-GPT5_2026-08-01.md` |
+| **最新反评价复核** | `scan/CB10-反评价二轮审核_Codex-GPT5_2026-08-01.md` |
 | **接手文档** | `_handoff/DEEPSEEK_ONBOARDING_2026-07-30.md` |
-| **上次操作人** | tinsei0321 + DeepSeek |
+| **上次操作人** | tinsei0321 + Claude Code + Codex/DeepSeek |
 
 ## 快速开始
 
-### VS Code（Claude Code + DeepSeek）
+### Claude Code（开发主）
 
 1. Hook 自动检测：`.claude/hooks/on_session_start.py` 启动时打印 CB 状态
 2. 手动：读本文件 → 按需进入对应目录
 3. 新接手：读 `_handoff/DEEPSEEK_ONBOARDING_2026-07-30.md`
 
-### ZCode（DeepSeek）
+### Codex / DeepSeek（CB 辅助评估）
 
-1. AGENTS.md 首段引导读本文件
+1. 读本文件了解当前轮次 + 最新 SCAN
 2. 读 `KNOWLEDGE.md` 了解红线和语境
-3. 按需进入对应目录
+3. 产出 SCAN → `scan/CB{NN}-{topic}_{env}-{model}_{YYYY-MM-DD}.md`
+4. 按需进入对应目录
 
 ## 文件夹地图
 
@@ -74,7 +75,7 @@ docs/catch-ball/
 ## CB 流程
 
 ```
-SCAN 阶段（评估方：ZCode+DeepSeek 或 Claude Code+DeepSeek）
+SCAN 阶段（评估方：Codex+DeepSeek·CB 辅助·独立于开发主 Claude Code）
   ① 读本文件了解当前轮次
   ② 读 KNOWLEDGE.md 了解红线和语境
   ③ 产出 SCAN → docs/catch-ball/scan/NN-model.md

@@ -50,6 +50,8 @@ function _quickIntent(q) {
   const s = String(q);
   // 概念/方法咨询词优先（即使含 geo 词，"什么是核密度分析"仍判 general 定义类，免漏断）
   if (['什么是', '是什么', '含义', '意思', '解释', '区别', '定义', '为什么', '是指', '如何理解', '有哪些方法'].some(w => s.includes(w))) return 'general';
+  // B003：数据清单查询（"我上传了哪些数据"）→ general 短路（buildContext 已列「已加载图层·标来源」·finalStep 直列清单·省 FC 螺旋）
+  if (/上传了哪些|有哪些数据|数据列表|加载了什么|哪些文件|数据清单|有哪些图层|加载了哪些/.test(s)) return 'general';
   // geo 动词（请求做分析，非定义）→ 落 diagnose
   if (['核密度', '密度分析', '热力', '热点', '裁出', '裁剪', '缓冲', '叠加', '叠置', '聚合', '网格', '排序', '最近邻', '可达性', '出图', '生成图'].some(v => s.includes(v))) return null;
   // 宜昌地名（空间指代）→ 落 diagnose（可能 B/C）
@@ -550,7 +552,9 @@ async function runTemplatePath(ctx, hooks, diagnose) {
 
 /** v2 D068 辅助：FC plans[] rank=2+ → 胶囊格式（复用 runCapsule 执行路径）。
  *  plan {rank,label,tool,params,confidence} → capsule {label,level,skill,params}
- *  level 映射：同工具=L1·跨工具=L2（runCapsule 据此决定是否 deliberate） */
+ *  level 映射：同工具=L1·跨工具=L2（runCapsule 据此决定是否 deliberate）
+ *  CPD-RESERVED（CB-10）：CPD 搁置·接口预留——plans 生产链已随 0073990 停供（ctx.plans 仅后端自建 rank=1）·
+ *  CPD 复活时须同步恢复 FC plans 产出指令。 */
 function _plansToCapsules(plans) {
   if (!Array.isArray(plans)) return [];
   const _executedTool = (plans.find((p) => p.rank === 1) || {}).tool;
@@ -820,6 +824,7 @@ export async function orchestrate(ctx, hooks = {}) {
     }
   }
   // v2 D068：FC 产出的 plans[] 存入 ctx.plans·供 finalStep（追问胶囊）+ CPD（选项展示）共享
+  // CPD-RESERVED（CB-10）：CPD 搁置·接口预留——plans 生产链已随 0073990 停供（ctx.plans 仅后端自建 rank=1）·CPD 复活时须恢复 FC plans 产出指令
   if (diagnose.plans && diagnose.plans.length) {
     ctx.plans = diagnose.plans;
   }
@@ -1201,6 +1206,35 @@ function _deterministicRecover(ctx) {
     }
   }
 
+  // 模式D（B005）：单用地 + 双区（"将西陵区+伍家岗区范围内商业用地筛选出来"）→ extract(where in 双区) + overlay(商业∩范围)
+  if (_mentionedLU.length === 1) {
+    const _regions = (q.match(/[一-龥]{1,6}(?:区|市|县|街道|镇)/g) || []).map(r => r.trim());
+    if (_regions.length >= 2) {
+      const _strip = (r) => r.replace(/[区市县街道镇]$/g, '');
+      // 找含任一区名的面层（行政区·properties 值含区名）
+      const _boundary = _polys.find(l => (l.fc.features || []).some(f => Object.values(f.properties || {}).some(v => _regions.some(r => String(v).includes(_strip(r))))));
+      if (_boundary) {
+        const _props = ((_boundary.fc.features || [])[0] || {}).properties || {};
+        const _nameField = Object.keys(_props).find(k => typeof _props[k] === 'string' && _regions.some(r => String(_props[k]).includes(_strip(r))));
+        if (_nameField) {
+          const _lu = _polys.find(l => l.name.includes(_mentionedLU[0]) && l.id !== _boundary.id);
+          if (_lu) {
+            const _rangeName = _regions.map(_strip).join('') + '范围';
+            const _tcs = [
+              { name: 'extract_feature', params: { layer: _boundary.id, where: _nameField + '/in/' + _regions.join(','), as: _rangeName, keep: true } },
+              { name: 'overlay', params: { layer_a: _rangeName, layer_b: _lu.id, how: 'intersection', as: _rangeName + '_' + _mentionedLU[0] } },
+            ];
+            return { template: 'overlay', degraded: false, _fc: true, _recover: true,
+              params: {}, method: ['extract_feature()', 'overlay()'], intent: 'gis_operation',
+              data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+              domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [],
+              _allToolCalls: _tcs };
+          }
+        }
+      }
+    }
+  }
+
   // 模式B：有情绪点 + 有区名 + "分析/情绪/消极/积极" → zonal_stats
   if (_region && /分析|情绪|消极|积极|归因/.test(q)) {
     const _hasPoint = (ctx.layerMeta && ctx.layerMeta.has_point) ||
@@ -1247,11 +1281,14 @@ function _deterministicRecover(ctx) {
 /** CB-09 代码自动扩展：检测"X区内Y1+Y2+Y3"模式 → 生成 overlay 步骤。 */
 async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
   const q = ctx.question || '';
-  const _LANDUSE = ['商业', '居住', '公园', '绿地', '工业', '广场', '办公', '教育', '医疗', '用地'];
+  // B005：去掉「用地」泛词——否则「商业用地」匹配成 ['商业','用地'] 2 词 → 误走多用地分支 + 「用地」匹配所有用地层名 → 误生成 3 overlay
+  const _LANDUSE = ['商业', '居住', '公园', '绿地', '工业', '广场', '办公', '教育', '医疗'];
   const _mentioned = _LANDUSE.filter((kw) => q.includes(kw));
   // "多类用地" 通配：没有具体类型关键词 → 匹配所有已加载的用地面层
   const _isWildcard = /多类|各类|所有|全部/.test(q) && _mentioned.length < 2;
-  if (_mentioned.length < 2 && !_isWildcard) return null;
+  // B005：单用地 + 裁剪语义（"西陵区+伍家岗区范围内商业用地"）也扩展——须有区名/裁剪词防误触发
+  if (_mentioned.length < 1) return null;
+  if (_mentioned.length < 2 && !_isWildcard && !/(范围内|内的|裁剪|裁剪出|筛选出|提取)/.test(q)) return null;
   // 找已加载的匹配面层（排除第一步刚产出的边界层）
   const _polyLayers = getLayers().filter((l) => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
   const _firstLayerName = diagnose.params && (diagnose.params.as || diagnose.params.name || '');
@@ -1310,47 +1347,15 @@ async function runAllToolCalls(ctx, hooks, diagnose) {
   try { draft = await stages.finalStep(ctx, hooks, toolHistory.join('\n')); }
   catch (e) { draft = `## 执行完成\n\n已按计划执行 ${tcs.length} 个步骤，共产出 ${newLayerCount} 个图层。`; }
   const _qd = applyQualityDefense(draft, { obsOk: newLayerCount > 0, toolHistoryText: toolHistory.join('\n'), skipL1: false });
-  if (hooks.onFinalDone) hooks.onFinalDone(_qd.final);
-  return { ok: true, rounds: tcs.length, final: _qd.final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'multi-tool' }, degraded: false, diagnose, exit: 'result', newLayerCount };
+  // CB-10 P0-3：完成度确定性追加（结论层·不依赖 LLM 措辞·与 R4 互补）——部分失败时显式声明 N/M
+  let _final = _qd.final;
+  if (failedSteps.length) {
+    const _miss = failedSteps.map((n) => `第${n}步(${tcs[n-1].name})`).join('、');
+    _final += `\n\n> ⚠️ 仅完成 ${tcs.length - failedSteps.length}/${tcs.length} 步（${_miss} 未产出图层·未生成）。`;
+  }
+  if (hooks.onFinalDone) hooks.onFinalDone(_final);
+  return { ok: true, rounds: tcs.length, final: _final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'multi-tool' }, degraded: _qd.degraded, diagnose, exit: 'result', newLayerCount };
 }
 
-/** CB-09 自动模式：确定性遍历 plans[] 剩余步骤·顺序执行·复用 runTemplatePath。
- *  ctx.plans 中 rank=1 已被初始 orchestrate 消费，此函数执行 rank=2+ 的全部剩余步骤。
- *  每步成/败都记录；全部跑完后调一次 finalStep 出综合结论。 */
-export async function executePlans(ctx, hooks, diagnose, plans) {
-  const remaining = (plans || []).filter((p) => p.rank >= 2 && p.tool);
-  if (!remaining.length) return null;
-  const toolHistory = []; let newLayerCount = 0;
-  for (let i = 0; i < remaining.length; i++) {
-    const p = remaining[i];
-    const def = stages.SKILL_DEFS[p.tool];
-    if (!def || !def.tool) continue;
-    if (hooks.onRoundStart) hooks.onRoundStart(i + 1);
-    setToolContext({ tool: def.tool, round: i + 1 });
-    let r = null;
-    try { r = await TOOLS[def.tool](p.params || {}); }
-    catch (e) { toolHistory.push(`自动-第${i + 1}步: ${def.tool}(${JSON.stringify(p.params || {}).slice(0, 80)}) → 执行异常: ${(e && e.message) || e}`); continue; }
-    const obs = (r && r.observation) || '[ERR] 无观察返回';
-    if (r && r.data && r.data.layerId) newLayerCount++;
-    toolHistory.push(`自动-第${i + 1}步: ${def.tool}(${JSON.stringify(p.params || {}).slice(0, 80)}) → ${obs}`);
-    if (hooks.onObservation) hooks.onObservation(obs, i + 1);
-    document.dispatchEvent(new CustomEvent('tool:executed', { detail: { tool: def.tool, layerId: (r && r.data && r.data.layerId) || null, ok: !/\[ERR\]|失败/.test(obs), ts: Date.now() } }));
-  }
-  // CB-09 P0-4 v2：零图层守护——跳过 LLM finalStep，直接用诚实结论
-  if (newLayerCount === 0) {
-    const _honestText = `## 自动执行完成\n\n已按计划执行 ${remaining.length} 个步骤（${remaining.map((p) => p.tool).join(' → ')}），但**均未产出新图层**。\n\n可能原因：图层间无空间重叠，或参数引用的图层名/ID 未正确对应。请检查 Layers 面板确认数据已加载。`;
-    if (hooks.onFinalDone) hooks.onFinalDone(_honestText);
-    if (hooks.onDefense) hooks.onDefense({ degraded: true, skipped: 'auto-zero' });
-    return { ok: true, rounds: remaining.length, final: _honestText, defense: { degraded: true, skipped: 'auto-zero' }, degraded: true, diagnose, exit: 'result', newLayerCount: 0 };
-  }
-  // 综合结论
-  if (hooks.onRound) hooks.onRound(remaining.length);
-  ctx.context = `【自动模式·已完成 ${remaining.length} 步】已执行: ${remaining.map((p) => p.tool).join(' → ')}。共产出 ${newLayerCount} 个新图层。\n【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层）\n\n` + (ctx.context || '');
-  let draft;
-  try { draft = await stages.finalStep(ctx, hooks, toolHistory.join('\n')); }
-  catch (e) { draft = `## 自动执行完成\n\n已按计划执行 ${remaining.length} 个步骤，共产出 ${newLayerCount} 个图层。详情见地图。`; }
-  const _qd = applyQualityDefense(draft, { obsOk: newLayerCount > 0, toolHistoryText: toolHistory.join('\n'), skipL1: false });
-  if (hooks.onFinalDone) hooks.onFinalDone(_qd.final);
-  if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'auto-exec', capsules: _qd.capsules || [] });
-  return { ok: true, rounds: remaining.length, final: _qd.final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'auto-exec' }, degraded: false, diagnose, exit: 'result', newLayerCount };
-}
+/** CB-10：executePlans 已删——被 D057 `_allToolCalls`→`runAllToolCalls` 取代的死代码（全仓零调用·非 CPD 接口）。
+ *  plans[] 保留作 CPD 预留接口（见 ctx.plans/_plansToCapsules·CPD-RESERVED·CPD 复活时须同步恢复 FC plans 产出指令）。 */

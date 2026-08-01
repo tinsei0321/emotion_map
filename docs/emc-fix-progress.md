@@ -1,9 +1,9 @@
 # EMC 修复工程 · 总进度汇总卡
 
 > **一页看清** EMC 修复整体状态。**九模块实施进度矩阵（§一·监控主视图）** + 5 层分层明细（§二）+ 待修（§三）+ 时序（§四）。
-> **更新**：2026-07-28（**渐进 token 显示三连修 S6/S7/S8**·commit 3aaaaeb·Flash 思考可见 + FC 流式诊断 + 去 is-flash 折叠·DeepSeek 式思考；前轮 Hotfix R2 SSE 流式+per-phase 超时+降级清洗·3 WS 聚焦修复耗时/识别/路由·pytest 221 passed）
+> **更新**：2026-08-01（**CB-10 闭环**·Codex+GPT-5 全面审查综合 6.0 + 反评价 9 agree/0 disagree/5 partial + Codex 二轮 7 修正全 accept·两天攻坚 plan 定稿；分支 fix/emc-buglog @ a274362·7 个 CB-09 bug 修复 commit）
 > **承继**：本卡由 `emc-fix-backlog.md`（2026-07-24 快照）更名重写，聚焦"9 模块进度 + 分层 + 时序"。
-> **⚠️ 关键区分**：**v1（三阶段 5.231-5.242）已被 v2（单次 LLM + FC·5.243-5.245b 第三方）取代** → v3（GLM 修复 3C+4H·7858d5a）→ **v3.1（reg.filter 崩溃修复·657c2e3·当前）**。v1 diagnose 管线（select_candidates/FILL_CARD/PLAN/dispatch）代码保留过渡期·Phase 4 清理待 v3 稳定后。架构设计源 [SUMMARY v2](catch-ball/emc-arch-deepdive/SUMMARY.md)（61 决策 D041-D068）。
+> **⚠️ 关键区分**：**v1（三阶段 5.231-5.242）已被 v2（单次 LLM + FC·5.243-5.245b 第三方）取代** → v3（GLM 修复 3C+4H·7858d5a）→ **v3.1（reg.filter 崩溃修复·657c2e3）** → **v3.2（CB-09 bug 修复·D057 修订·代码自动扩展·全自动多步执行·fix/emc-buglog 分支·当前）**。v1 diagnose 管线（select_candidates/FILL_CARD/PLAN/dispatch）代码保留过渡期·Phase 4 清理待 v3 稳定后。架构设计源 [SUMMARY v2](catch-ball/emc-arch-deepdive/SUMMARY.md)（61 决策 D041-D068）。**CB-10 全面审查发现**：B002/B005 根因=plans[] 管道未接通·B006 极性纪律被 prompt 重写静默删·test_final_prompt_stays_lean 回弹 3616B·buglog 状态双源——两天攻坚计划覆盖。
 
 ---
 
@@ -82,6 +82,14 @@
 
 | 项 | 模块 | 说明 | 来源 |
 |----|:---:|------|------|
+| ⬜ **B002/B005 多步执行缺口** | 编排 | `_autoExpandOverlays` 需 ≥2 用地关键词（单用地+双区不触发）·FC 单 tool_call 无补全 | CB-10 |
+| ⬜ **B006 极性纪律丢失** | Prompt | 31e2a00 纪律段被 0073990/500d4b9 静默删·router.py:52-59 无·**无内容守卫** | CB-10 |
+| ⬜ **test_final_prompt_stays_lean 回弹** | Prompt | final prompt 3616B>3KB·静态模板超标 | CB-10 |
+| ⬜ **buglog 状态双源** | 测试 | `_gen_index.py:59` 目录派生忽略 frontmatter·B010/B011 计 OPEN | CB-10 |
+| ⬜ **B007 几何类型门** | 工具 | clip/extract/overlay 无类型一致性校验（guard 并 P0-1·契约强化留 P1） | CB-10 |
+| ⬜ **B003 数据清单短路** | 路由 | `_quickIntent` 无清单意图·仍走 FC 螺旋 | CB-10 |
+| ⬜ **executePlans 死代码** | 编排 | 全仓零调用·删·保 ctx.plans 作 CPD-RESERVED | CB-10 |
+| ⬜ **词表集中** | 编排 | `_LANDUSE`/`_DK`/`_POL_MAP` 散落 harness/stages·集中+边界+遥测 | CB-10 |
 | ⬜ T4 胶囊矛盾 | — | 无 strategy 不显"齐全" + 值层面缺口回写 diagnose | backlog |
 | ⬜ T5 对比 C 键 | — | 批4 Swipe 入口收敛 + 无焦点提示 + 双屏标题 | backlog |
 | ⬜ T6 飞轮断言三件套 | — | 答案产出/落图/切题校验（非只信号） | backlog |
