@@ -572,7 +572,9 @@ async function runTemplatePath(ctx, hooks, diagnose) {
         // CB-11 两阶段（A）：先裁剪再合并——完整 tcs（含 merge $n 引用）走 runAllToolCalls（处理 $n + 顺序 + finalStep）
         _inlineExpanded = true;
         const _diag2 = { ...diagnose, _allToolCalls: _c.tcs };
-        return await runAllToolCalls(ctx, hooks, _diag2);
+        const _r2 = await runAllToolCalls(ctx, hooks, _diag2);
+        _r2._inlineExpanded = true;   // 补标志·防 orchestrate :992 误判未扩展→二次 autoExpand 双执行
+        return _r2;
       } else {
       const _tcs = _c.tcs;
       let _inlineFail = 0;
