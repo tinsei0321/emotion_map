@@ -1330,15 +1330,47 @@ function deriveMissingParams(diagnose, question, layers) {
   const q = String(question || '');
   const p = diagnose.params = (diagnose.params || {});
   const tool = ((diagnose.method || [''])[0] || '').replace('()', '');
-  // boundary derive：需 boundary/boundaries 槽的工具（zonal/compare/rank/area_stats）·区名→已加载面层
+  // G5 路由修正（B3 PRM 路由错·高置信模式）："周边/附近 Nm 情绪" → buffer（勿 zonal）·"对比 A 与 B" → compare（勿单区）
+  if (/(周边|附近|半径|缓冲|米内|公里内)/.test(q) && /情绪|点|分布/.test(q) && tool !== 'buffer' && !/(叠|合并|裁|筛选)/.test(q)) {
+    diagnose.template = 'buffer';
+    diagnose.method = ['buffer()'];
+  } else if (/(对比|比较|vs|与.*相?比)/i.test(q) && tool !== 'compare_regions') {
+    const _n = (q.match(/[一-龥]{2,6}(?:区|市|县|街道|镇)/g) || []);
+    if (_n.length >= 2) {
+      diagnose.template = 'compare'; diagnose.method = ['compare_regions()'];
+      // compare 需 boundaries（≥2 区要素）——按区名逐区提取要素填
+      const _bs = [];
+      for (const _rn of _n.slice(0, 2)) {
+        const _strip = _rn.replace(/[区市县街道镇]$/g, '');
+        const _d2 = deriveAvailable(_strip, layers);
+        if (!_d2) continue;
+        const _l2 = (layers || []).find((x) => x.name === _d2.layer);
+        const _f2 = (_l2 && _l2.fc && _l2.fc.features || []).find((f) => {
+          const v = f.properties && f.properties[_d2.field];
+          return v != null && String(v).includes(_d2.name);
+        });
+        if (_f2) _bs.push({ type: 'FeatureCollection', features: [_f2] });
+      }
+      if (_bs.length >= 2) p.boundaries = _bs;
+    }
+  }
+  // boundary derive：需 boundary/boundaries 槽的工具（zonal/compare/rank/area_stats）·区名→精确要素 geojson（聚合该区·非整图层）
   if ((tool === 'zonal_stats' || tool === 'compare_regions' || tool === 'rank' || tool === 'area_stats') &&
       !p.boundary && !p.boundaries) {
     const _d = deriveAvailable(q, layers);
-    if (_d) p.boundary = _d.layer;   // 已加载图层名（boundary 接受 preset_id|geojson|图层名）
+    if (_d) {
+      const _l = (layers || []).find((x) => x.name === _d.layer);
+      const _f = (_l && _l.fc && _l.fc.features || []).find((f) => {
+        const v = f.properties && f.properties[_d.field];
+        return v != null && String(v).includes(_d.name);
+      });
+      if (_f) p.boundary = { type: 'FeatureCollection', features: [_f] };   // 精确区要素 geojson（聚合该区）
+      else p.boundary = _d.layer;   // 兜底整图层（至少能跑）
+    }
   }
-  // cell_size derive：density 3D 网格 ·"Nm 方格/网格"
+  // cell_size derive：density 3D 网格 ·"Nm 方格/网格"（G5：中间可夹词·如"500m 标准方格"）
   if (tool === 'density' && !p.cell_size) {
-    const m = q.match(/(\d+(?:\.\d+)?)\s*(m|米|km|公里)\s*(方格|网格|聚合|栅格)/);
+    const m = q.match(/(\d+(?:\.\d+)?)\s*(m|米|km|公里)\s*.{0,6}?(方格|网格|聚合|栅格)/);
     if (m) p.cell_size = (m[2] === 'km' || m[2] === '公里') ? Math.round(Number(m[1]) * 1000) : Math.round(Number(m[1]));
   }
   // radius derive：buffer ·"周边 Nm/N公里"
