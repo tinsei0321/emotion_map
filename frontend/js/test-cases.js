@@ -45,12 +45,13 @@ async function llmRun(t, q, assert, opts = {}) {
     ])],
     template: _dg.template || null,
     method: _dg.method || null,   // D3: 计划工具序列（diagnose method·D2 派生）→ EMC-SUM ② 计划n
+    planSteps: _dg.planSteps || 0,   // F-1: 实际执行通道计划步数（_allToolCalls 多 call / autoExpand 链长）·替代 method 派生
     params: _extractParams(geo),
     newLayers: Math.max(0, t.layerNames().length - layersBefore),
     renderedNew: Math.max(0, ((t.mapSources && t.mapSources()) || []).length - srcBefore),   // C: 地图真渲染 source 差值
   };
   const r = assert(b, t, sig);
-  if (r && typeof r === 'object') { r.tools = sig.tools; r.template = sig.template; r.method = sig.method; r.params = sig.params; r.newLayers = sig.newLayers; r.renderedNew = sig.renderedNew; }
+  if (r && typeof r === 'object') { r.tools = sig.tools; r.template = sig.template; r.method = sig.method; r.params = sig.params; r.newLayers = sig.newLayers; r.renderedNew = sig.renderedNew; r.planSteps = sig.planSteps; }
   return r;
 }
 

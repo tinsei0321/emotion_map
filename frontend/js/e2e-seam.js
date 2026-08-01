@@ -68,7 +68,11 @@ window.__emcTest = {
   clearLog() { window._testFetchLog = []; window._testDiagnoseLog = []; window._testToolExecLog = []; },
   chatPhases() {
     // H1: template 来自 diagnose:done 事件累积（每问一句 diagnose 一次），替代抓请求体。
-    return (window._testDiagnoseLog || []).map((card) => ({ phase: 'diagnose', template: card && card.template, method: (card && card.method) || null }));   // D3: +method（D2 派生）供 EMC-SUM ② 计划n
+    // F-1（CB-10 飞轮审查）：+planSteps = 实际执行通道计划步数（_allToolCalls 多 call / autoExpand 链长）·替代 method 派生（FC 单工具下恒 1·漂移）
+    return (window._testDiagnoseLog || []).map((card) => ({
+      phase: 'diagnose', template: card && card.template, method: (card && card.method) || null,
+      planSteps: (card && Array.isArray(card._allToolCalls) && card._allToolCalls.length) || 0,
+    }));   // D3: +method（D2 派生）供 EMC-SUM ② 计划n
   },
   geoCalls() { return window._testFetchLog.filter((e) => /\/(geo|spatial)\//.test(e.url)); },   // 含 /spatial/（grid 等走此路径，否则漏抓）
   toolExecs() { return (window._testToolExecLog || []).slice(); },   // #2 tool:executed 事件（前端委托工具如 density·补 geoCalls 盲区）
