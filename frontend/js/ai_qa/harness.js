@@ -272,7 +272,7 @@ function _verifyClaims(draft) {
  *  R5/R6/R8（胶囊级·参数合法/工具可达/多样性）随轮次2 胶囊绑定工具集落地——当前追问胶囊是静态 {tag,text} prompt 串（panel.js _followUps）·无 tool+params 可校验。
  *  入参 opts: {toolHistoryText, obsOk, skipL1}——skipL1=true 跳过产物验证（while-loop 路径 _extractClaimedLayers 对账已标注 missing·防双重标注）。
  *  返 {final, degraded, fixes}——fixes 供 episode 自成长（D024·取代旧 review verdicts）。 */
-function applyQualityDefense(draft, opts) {
+export function applyQualityDefense(draft, opts) {
   const _opts = opts || {};
   let final = draft || '';
   const fixes = [];
@@ -354,6 +354,21 @@ function applyQualityDefense(draft, opts) {
   if (final.length > 800) {
     final = final.slice(0, 800) + '\n\n…（结论已截断·详见上方图层）';
     fixes.push({ rule: 'R7', action: 'truncate' });
+  }
+
+  // G6a（CB-12·出口差异化·glm组 执行层强制）：R10 归因检测 / R11 泛化检测——确定性软标注（不拦截·防「一竿子插到底」同构结论）
+  //   R10：宏观问（scale=macro）+ 结论含归因词（归因/4×5/要素×领域）→ 越界归因·标注提示
+  //   R11：中微观问（scale=meso|micro）+ 结论无具体单元/落点名 → 泛化·标注提示
+  if (_opts.question || _opts.scale) {
+    const _scale = _opts.scale || stages._deriveScale(String(_opts.question || ''), '');
+    if (_scale === 'macro' && /(归因|4×5|要素|领域)/.test(final) && !/宏观|分布|整体/.test(final.slice(0, 60))) {
+      final += `\n\n> ⚠️ 提示：本问为宏观分布尺度（粗粒度·不到归因）——如需要「哪里最差+原因」请用中微观分析（单元归因+排序）。`;
+      fixes.push({ rule: 'R10', action: 'macro-attribution-annotation' });
+    }
+    if ((_scale === 'meso' || _scale === 'micro') && !/(区|街道|社区|单元|公园|片区|广场|西陵|伍家岗|夷陵|点位|聚集区)/.test(final)) {
+      final += `\n\n> ⚠️ 提示：中微观结论建议落到具体单元/落点（如「西陵街道最差」）——当前结论偏泛。`;
+      fixes.push({ rule: 'R11', action: 'meso-micro-vague-annotation' });
+    }
   }
 
   // R5/R6/R8 追问胶囊校验（CB-09 D020·capsule 绑定工具集）：R5 schema 硬剔 / R6 可达性软标 / R8 多样性记 episode
@@ -474,7 +489,9 @@ function _composeDegradedConclusion(toolHistoryText) {
   ].filter(Boolean).join('\n');
 }
 
-async function runTemplatePath(ctx, hooks, diagnose) {
+async function runTemplatePath(ctx, hooks, diagnose, opts = {}) {
+  // A3（CB-12·B002 半成品割裂残余）：opts.deferFinal=true → 跳过首次 onFinalDone
+  //   （orchestrate 层将 autoExpand 的场景：runTemplatePath 不先渲染半成品·扩展完成统一出结论·治「先渲染后补」）
   const skill = diagnose.template;
   const def = stages.SKILL_DEFS[skill];
   const toolHistory = [];
@@ -565,7 +582,8 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   // 4.5 族 A（CB-10）：多目标扩展前置——第 1 步成功后、finalStep 前，检测「多目标裁剪/合并」模式，
   //     命中则先执行扩展 overlay 步骤（累积 toolHistory/newLayerCount），再统一出一次 finalStep（治半成品答案：全步完成→单次答案）。
   //     与 orchestrate 的 _autoExpandOverlays 互补：此处处理「单技能第 1 步 + 多目标」，orchestrate 处理纯 overlay 链。
-  if (!failed && newLayerCount > 0 && def.tool === 'extract_feature' && /(?:区|市|县|街道|镇).*(?:用地|地块)|.*(?:用地|地块).*(?:区|市|县|街道|镇)/.test(ctx.question || '')) {
+  //     G3（CB-12·glm组 G6 触发入口统一）：删前置正则——触发判定单源 buildLanduseCompletion（内置成分判定·不匹配则 _c=null 不扩展）
+  if (!failed && newLayerCount > 0 && def.tool === 'extract_feature') {
     // 族 A 收尾 #1：改用共享 buildLanduseCompletion（统一匹配 + intersection/union）
     const _c = buildLanduseCompletion(ctx.question || '', (params && (params.as || params.name)) || '', { mode: 'auto' });
     if (_c) {
@@ -621,7 +639,13 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   const _execSummary = newLayerCount > 0
     ? `工具 ${def.tool} 执行成功，产出了 ${newLayerCount} 个新图层——请如实描述产出。`
     : `工具 ${def.tool} 已调用但**未产出新图层**（范围与数据可能不重叠或无可匹配要素）——结论必须如实说明"未生成图层"，严禁编造图层名或数据量。`;
-  ctx.context = `【单技能路径·${_execSummary}】基于上述工具观察直接出结论，勿重选工具、勿重复执行、勿再调 geo 工具。\n【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层）\n\n` + (ctx.context || '');
+  // G6a（CB-12）：尺度+出口约束注入 finalStep——宏观禁归因·中微观必落单元·微观必落点（与 R10/R11 防线呼应）
+  const _outletLine = diagnose && diagnose.scale && diagnose.intent === 'emotion_analysis'
+    ? (diagnose.scale === 'macro' ? '本问为宏观分布尺度——结论聚焦空间分布特征（热点/密集区/覆盖）·不做归因。'
+        : diagnose.scale === 'meso' ? '本问为中微观尺度——结论须落到具体单元（如"西陵街道最差"）并给归因。'
+        : '本问为微观尺度——结论须落到具体落点（点位/公园/街段）。')
+    : '';
+  ctx.context = `【单技能路径·${_execSummary}】基于上述工具观察直接出结论，勿重选工具、勿重复执行、勿再调 geo 工具。\n【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层）\n${_outletLine ? '【尺度约束】' + _outletLine : ''}\n\n` + (ctx.context || '');
   // G3 修复（glm组 CB-11）：inline 扩展部分失败信息在 finalStep 前注入 context——LLM 能据此调整措辞（防乐观结论与确定性追加矛盾）
   if (_inlinePartialNote) {
     ctx.context = `【扩展部分失败】${_inlinePartialNote}——结论必须如实说明哪些图层未生成，严禁声称全部成功。\n\n` + ctx.context;
@@ -636,7 +660,7 @@ async function runTemplatePath(ctx, hooks, diagnose) {
     draft = _composeDegradedConclusion(toolHistoryText);   // CB-07 Layer 3：finalStep 超时/网络 → 零 LLM 降级结论（图已出·非"请求失败"矛盾）
   }
   // 5. CB-09 D023 质量防线（L1 产物验证 + R1/R2/R3/R4/R7·代码·不调 LLM）取代旧 _verifyClaims+_reviseOnce
-  const _qd = applyQualityDefense(draft, { obsOk: true, toolHistoryText, skipL1: false });
+  const _qd = applyQualityDefense(draft, { obsOk: true, toolHistoryText, skipL1: false, question: ctx.question });
   draft = _qd.final;
   // 族 A 收尾 #2：inline 扩展部分失败确定性追加（不依赖 LLM 措辞·与 runAllToolCalls 的 N/M 一致）
   if (_inlinePartialNote) draft += `\n\n> ⚠️ ${_inlinePartialNote}。`;
@@ -644,7 +668,7 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   // const _planCapsules = _plansToCapsules(ctx.plans);
   const _planCapsules = [];
   const _allCapsules = [...(_qd.capsules || []), ..._planCapsules];
-  if (hooks.onFinalDone) hooks.onFinalDone(draft);
+  if (hooks.onFinalDone && !opts.deferFinal) hooks.onFinalDone(draft);   // A3：deferFinal 时跳过首次渲染（扩展后统一出结论）
   if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template', capsules: _allCapsules });
   return { ok: true, rounds: 1, final: draft, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template', capsules: _allCapsules }, degraded: false, diagnose, exit: 'result', newLayerCount, _inlineExpanded };
 }
@@ -739,7 +763,7 @@ async function runChainPath(ctx, hooks, diagnose, chain) {
     draft = _composeDegradedConclusion(toolHistoryText);   // CB-07 Layer 3：finalStep 超时/网络 → 零 LLM 降级结论（图已出·非"请求失败"矛盾）
   }
   // CB-09 D023 质量防线（L1 + R 规则·代码·取代旧 _verifyClaims+_reviseOnce）
-  const _qd = applyQualityDefense(draft, { obsOk: true, toolHistoryText, skipL1: false });
+  const _qd = applyQualityDefense(draft, { obsOk: true, toolHistoryText, skipL1: false, question: ctx.question });
   draft = _qd.final;
   if (hooks.onFinalDone) hooks.onFinalDone(draft);
   if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'chain', capsules: _qd.capsules || [] });
@@ -887,7 +911,9 @@ export async function orchestrate(ctx, hooks = {}) {
         template: _TOOL_TO_SKILL[_matched.tool] || _matched.tool,
         params: _matched.params || {},
         degraded: false, intent: 'emotion_analysis', _fc: true, _plansReuse: true,
-        domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层',
+        // G1（glm组 修正 2）：去 scale:'macro' 硬编码——追问延续上轮尺度（priorTurn.diagnose.scale）·无则留默认
+        domain_lens: [], scale: (ctx.priorTurn && ctx.priorTurn.diagnose && ctx.priorTurn.diagnose.scale) || 'macro',
+        decision_type: '操作', outlet: '生成图层',
         data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
         method: [(_matched.tool || '') + '()'],
       };
@@ -951,6 +977,8 @@ export async function orchestrate(ctx, hooks = {}) {
       if (hooks.onObservation) hooks.onObservation(`[派生] 「${_deriv.name}」属已加载「${_deriv.layer}」(${_deriv.field}) 子要素 → clip/extract 可派生，strategy=ready`, 0);
     }
   }
+  // G1（CB-12）：参数补全层——FC/recover 路径共用·对缺失参数确定性派生（boundary/cell_size/radius/polarity）
+  if (!diagnose.degraded) deriveMissingParams(diagnose, ctx.question, getLayers());
   if (hooks.onDiagnose) hooks.onDiagnose(diagnose);
   if (!diagnose.degraded) {
     _recordTplResult(diagnose.template);   // ⑤④ Flash template 命中率遥测（'unknown'=miss，驱动 80% gate）
@@ -1001,13 +1029,19 @@ export async function orchestrate(ctx, hooks = {}) {
   if (!ctx.resume && !diagnose.degraded && diagnose.template) {
     const _tdef = stages.SKILL_DEFS[diagnose.template];
     if (_tdef && _tdef.category === 'single' && _tplHitRateReady()) {
-      const _result = await runTemplatePath(ctx, hooks, diagnose);
+      // A3（CB-12·B002 割裂残余）：将有 autoExpand 需求（且非 extract 首步——extract 已由 runTemplatePath 内联扩展处理）
+      // → deferFinal（runTemplatePath 不先渲染半成品·扩展完成统一出结论）
+      const _willExpand = !ctx.resume && _tdef.tool !== 'extract_feature' &&
+        buildLanduseCompletion(ctx.question || '', (diagnose.params && (diagnose.params.as || diagnose.params.name)) || '', { mode: 'auto' }) !== null;
+      const _result = await runTemplatePath(ctx, hooks, diagnose, { deferFinal: _willExpand });
       // 族 A（CB-10）：runTemplatePath 已内联扩展（_inlineExpanded）→ 跳过 orchestrate 二次扩展（防双执行）
       if (_result && _result._inlineExpanded) return _result;
       // 代码自动扩展：检测多目标空间裁剪模式 → 生成剩余 overlay 步骤
       if (_result && _result.exit === 'result' && !_result.degraded && _result.newLayerCount > 0) {
         const _expanded = _autoExpandOverlays(ctx, hooks, diagnose, _result);
         if (_expanded) return _expanded;
+        // A3 兜底：deferFinal 但扩展未触发 → 补渲染 runTemplatePath 结论（防丢答案）
+        if (_willExpand && hooks.onFinalDone && _result && _result.final) hooks.onFinalDone(_result.final);
       }
       return _result;
     }
@@ -1229,7 +1263,7 @@ export async function orchestrate(ctx, hooks = {}) {
     const _pIntent = diagnose && !diagnose.degraded ? (diagnose.intent || 'emotion_analysis') : 'emotion_analysis';
     if (_pIntent === 'gis_operation') {
       // CB-09 D023：_extractClaimedLayers 已标注 missing → skipL1:true 防双重；R2/R4/R7 仍跑
-      const _pQd = applyQualityDefense(draft, { obsOk: newLayerCount > 0, toolHistoryText, skipL1: true });
+      const _pQd = applyQualityDefense(draft, { obsOk: newLayerCount > 0, toolHistoryText, skipL1: true, question: ctx.question });
       draft = _pQd.final;
     }
     if (hooks.onDefense) hooks.onDefense({ degraded: true, skipped: 'partial' });
@@ -1239,14 +1273,14 @@ export async function orchestrate(ctx, hooks = {}) {
   // intent=纯GIS操作：质量防线（L1+R 规则·代码兜底·_extractClaimedLayers 已标注→skipL1:true）
   const _intent = diagnose && !diagnose.degraded ? (diagnose.intent || 'emotion_analysis') : 'emotion_analysis';
   if (_intent === 'gis_operation') {
-    const _gQd = applyQualityDefense(draft, { obsOk: successObs > 0 || newLayerCount > 0, toolHistoryText, skipL1: true });
+    const _gQd = applyQualityDefense(draft, { obsOk: successObs > 0 || newLayerCount > 0, toolHistoryText, skipL1: true, question: ctx.question });
     draft = _gQd.final;
     return { ok: true, rounds: round, final: draft, defense: { degraded: _gQd.degraded, fixes: _gQd.fixes, skipped: 'gis_operation', capsules: _gQd.capsules || [] }, degraded, diagnose, exit: 'result', newLayerCount };
   }
 
   // CB-09 D023 质量防线（删旧 R+R·reviewStep/REVIEW_ENABLED/_reviseOnce 全去）：L1+R1/R2/R3/R4/R7+L3 代码兜底
   // _extractClaimedLayers 对账（:864）已标注 missing → skipL1:true；R2/R3/R4/R7 仍跑
-  const _fQd = applyQualityDefense(draft, { obsOk: successObs > 0 || newLayerCount > 0, toolHistoryText, skipL1: true });
+  const _fQd = applyQualityDefense(draft, { obsOk: successObs > 0 || newLayerCount > 0, toolHistoryText, skipL1: true, question: ctx.question });
   const final = _fQd.final;
   if (hooks.onDefense) hooks.onDefense({ degraded: _fQd.degraded, fixes: _fQd.fixes, skipped: 'result', capsules: _fQd.capsules || [] });
   return { ok: true, rounds: round, final, defense: { degraded: _fQd.degraded, fixes: _fQd.fixes, skipped: 'result', capsules: _fQd.capsules || [] }, degraded, diagnose, exit: 'result', newLayerCount };
@@ -1264,6 +1298,40 @@ function _dataGate(question, layerMeta) {
   return null;
 }
 
+/** G1（CB-12·PRM 参数填充瓶颈）：参数补全层——FC 成功路径后对缺失参数确定性派生。
+ *  挂在 orchestrate diagnose 之后·成功与失败路径共用（recover 自带参数·derive 幂等无害）。
+ *  三层策略（Codex+glm组 共识）：L1 derive（代码可知 100%·boundary/cell_size/radius/polarity）·
+ *  L2 few-shot（prompt 教·center/boundaries 代码不可知）·L3 契约强化（tool_contracts when/hint）。
+ *  只补缺失槽（params 已有值不覆盖）。Smart/Dumb 铁律：代码可知不问 LLM。 */
+function deriveMissingParams(diagnose, question, layers) {
+  if (!diagnose || diagnose.degraded) return;
+  const q = String(question || '');
+  const p = diagnose.params = (diagnose.params || {});
+  const tool = ((diagnose.method || [''])[0] || '').replace('()', '');
+  // boundary derive：需 boundary/boundaries 槽的工具（zonal/compare/rank/area_stats）·区名→已加载面层
+  if ((tool === 'zonal_stats' || tool === 'compare_regions' || tool === 'rank' || tool === 'area_stats') &&
+      !p.boundary && !p.boundaries) {
+    const _d = deriveAvailable(q, layers);
+    if (_d) p.boundary = _d.layer;   // 已加载图层名（boundary 接受 preset_id|geojson|图层名）
+  }
+  // cell_size derive：density 3D 网格 ·"Nm 方格/网格"
+  if (tool === 'density' && !p.cell_size) {
+    const m = q.match(/(\d+(?:\.\d+)?)\s*(m|米|km|公里)\s*(方格|网格|聚合|栅格)/);
+    if (m) p.cell_size = (m[2] === 'km' || m[2] === '公里') ? Math.round(Number(m[1]) * 1000) : Math.round(Number(m[1]));
+  }
+  // radius derive：buffer ·"周边 Nm/N公里"
+  if (tool === 'buffer' && !p.radius_m && !p.radius) {
+    const m = q.match(/(?:周边|附近|半径|缓冲|以内)\s*(\d+(?:\.\d+)?)\s*(m|米|km|公里)/);
+    if (m) p.radius_m = (m[2] === 'km' || m[2] === '公里') ? Math.round(Number(m[1]) * 1000) : Math.round(Number(m[1]));
+  }
+  // polarity derive：情绪分析工具·问句极性词
+  if ((tool === 'density' || tool === 'zonal_stats' || tool === 'rank' || tool === 'hotspot') && !p.polarity) {
+    for (const _ent of POLARITY_KW) {
+      if (_ent.kw.some((k) => q.includes(k))) { p.polarity = _ent.polarity; break; }
+    }
+  }
+}
+
 /** L2 确定性恢复：FC 失败 → 用关键词 + 已加载数据状态构造 diagnose。
  *  纯代码，不调 LLM，<10ms。只覆盖高置信度模式，不确定就返回 null。 */
 function _deterministicRecover(ctx) {
@@ -1273,39 +1341,31 @@ function _deterministicRecover(ctx) {
   const _regionM = /(.{1,6})(?:区|市|县|街道|镇)/.exec(q);
   const _region = _regionM ? _regionM[1].trim() : '';
 
-  // 模式A：有用地关键词 + 有区名 → extract_feature(区边界) + overlay 链
-  const _mentionedLU = LANDUSE_KW.filter(kw => q.includes(kw));
+  // 模式A：有用地关键词 + 有区名 → 复用 buildLanduseCompletion 构造（G3 单源·去重复 overlay tcs 构造）
+  //     recover 只保留边界层查找（按 name/properties 含区名·比 buildLanduseCompletion 的 name 匹配更宽·保 B005 行为）·构造交共享构造器
+  const _mentionedLU = landuseTriggerOf(q).mentioned;
   if (_mentionedLU.length >= 2 && _region) {
     const _boundary = _polys.find(l =>
       l.name.includes(_region) ||
       (l.fc.features || []).some(f => Object.values(f.properties || {}).some(v => String(v).includes(_region))));
-    const _matched = [];
     if (_boundary) {
-      for (const kw of _mentionedLU) {
-        const found = _polys.find(l => l.name.includes(kw) && l.id !== _boundary.id && !_matched.some(m => m.id === l.id));
-        if (found) _matched.push(found);
+      const _c = buildLanduseCompletion(q, _boundary.name, { mode: 'auto' });
+      if (_c) {
+        if (_c.mergeLayers && _c.mergeLayers.length >= 2) {
+          return { template: 'merge', degraded: false, _fc: true, _recover: true,
+            params: { layers: _c.mergeLayers, as: 'merged_' + _region },
+            method: ['merge()'], intent: 'gis_operation',
+            data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+            domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [] };
+        }
+        if (_c.tcs && _c.tcs.length) {
+          return { template: 'overlay', degraded: false, _fc: true, _recover: true,
+            params: {}, method: ['overlay()'], intent: 'gis_operation',
+            data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+            domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [],
+            _allToolCalls: _c.tcs };
+        }
       }
-    }
-    if (_matched.length >= 1) {
-      // CB-11：合并意图（/合并/）→ 后端 concat（merge layers）·退役 overlay union 链（消 G2 高危 + 字段爆炸）
-      if (/合并/.test(q) && _matched.length >= 2) {
-        return { template: 'merge', degraded: false, _fc: true, _recover: true,
-          params: { layers: _matched.map((l) => l.id), as: 'merged_' + _region },
-          method: ['merge()'], intent: 'gis_operation',
-          data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
-          domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [] };
-      }
-      const _bRef = _boundary ? _boundary.fc : _region;
-      const _tcs = _matched.map(lu => ({
-        name: "overlay",
-        params: { layer_a: _bRef, layer_b: lu.id, how: "intersection",
-                  as: lu.name.replace(/\.(geo)?json/i, "").replace(/^用地_/, "") + "_" + _region }
-      }));
-      return { template: 'overlay', degraded: false, _fc: true, _recover: true,
-        params: {}, method: ['overlay()'], intent: 'gis_operation',
-        data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
-        domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [],
-        _allToolCalls: _tcs };
     }
   }
 
@@ -1353,13 +1413,12 @@ function _deterministicRecover(ctx) {
     }
   }
 
-  // 模式C：合并现有图层 — "合并剪裁出的N类用地" / "合并A、B、C"
-  if (/合并/.test(q)) {
-    const _mergeMatches = _polys.filter(l => LANDUSE_KW.some(kw => l.name.includes(kw)));
-    if (_mergeMatches.length >= 2) {
-      // CB-11：改调后端 concat（merge layers）·退役 overlay union 链（消 G2 高危 + 字段爆炸·glm组 实测）
+  // 模式C：合并现有图层 — "合并剪裁出的N类用地" / "合并A、B、C"（G3：复用 buildLanduseCompletion mergeLayers·单源）
+  if (landuseTriggerOf(q).hasMerge) {
+    const _c = buildLanduseCompletion(q, '', { mode: 'auto' });
+    if (_c && _c.mergeLayers && _c.mergeLayers.length >= 2) {
       return { template: 'merge', degraded: false, _fc: true, _recover: true,
-        params: { layers: _mergeMatches.map((l) => l.id), as: 'merged_' + _mergeMatches.map((l) => l.name.replace(/\.(geo)?json/i, "").replace(/^用地_/, "")).join('_') },
+        params: { layers: _c.mergeLayers, as: 'merged_' + _c.mergeLayers.map((id) => id).join('_').slice(0, 40) },
         method: ['merge()'], intent: 'gis_operation',
         data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
         domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [] };
@@ -1369,17 +1428,31 @@ function _deterministicRecover(ctx) {
   return null;
 }
 
+/** G3（CB-12·glm组 G6 触发入口统一）：用地意图成分判定——正则/词表单源。
+ *  三触发通道（inline/autoExpand/recover）共用本函数取成分·不再各自写正则。
+ *  返回 { mentioned, regionName, hasClip, hasMerge }。词表 LANDUSE_KW 集中 emc-patterns。 */
+function landuseTriggerOf(question) {
+  const q = question || '';
+  return {
+    mentioned: LANDUSE_KW.filter((kw) => q.includes(kw)),
+    regionName: (q.match(/([一-龥]{1,4})(?:区|市|县)/) || [])[1] || '',
+    hasClip: /(裁剪|裁取|裁出|剪裁|范围内|内的)/.test(q),
+    hasMerge: /合并/.test(q),
+  };
+}
+
 /** CB-10 族 A 收尾 #1：共享用地补全构造器——统一 inline / _autoExpandOverlays / recover 的「匹配用地层 + 构造 overlay tool_calls」。
  *  mode='intersection'（区内裁剪）/ 'union'（合并链·含 merge 关键词时）/ 'auto'（按问句含「合并」自动选）。
- *  返回 { tcs, boundaryName, mentioned } 或 null（不匹配）。词表 LANDUSE_KW 集中 emc-patterns。 */
+ *  返回 { tcs, boundaryName, mentioned } 或 null（不匹配）。词表 LANDUSE_KW 集中 emc-patterns。
+ *  G3：判定成分单源自 landuseTriggerOf（inline/autoExpand/recover 三通道不再各自写正则）。 */
 function buildLanduseCompletion(question, firstLayerName, opts = {}) {
   const q = question || '';
   const mode = opts.mode || 'auto';
-  const _mentioned = LANDUSE_KW.filter((kw) => q.includes(kw));
+  const { mentioned: _mentioned, regionName: _regionFromQ, hasClip: _wantClip, hasMerge: _wantMerge } = landuseTriggerOf(q);
   const _isWildcard = /多类|各类|所有|全部/.test(q) && _mentioned.length < 2;
   // B005：单用地 + 裁剪语义（"西陵区+伍家岗区范围内商业用地"）也扩展——须有区名/裁剪词防误触发
   if (_mentioned.length < 1) return null;
-  if (_mentioned.length < 2 && !_isWildcard && !/(范围内|内的|裁剪|裁剪出|筛选出|提取)/.test(q)) return null;
+  if (_mentioned.length < 2 && !_isWildcard && !_wantClip) return null;
   const _polyLayers = getLayers().filter((l) => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
   const _firstLayerName = firstLayerName || '';
   const _matches = _isWildcard
@@ -1387,15 +1460,12 @@ function buildLanduseCompletion(question, firstLayerName, opts = {}) {
     : _polyLayers.filter((l) => _mentioned.some((kw) => l.name.includes(kw)) && l.name !== _firstLayerName);
   if (_matches.length < 1) return null;
   // 找边界层名：优先第一步产出（firstLayerName）·否则按范围/边界/问句区名兜底
-  // G4 修复（glm组 CB-11）：去「西陵」硬编码·从问句提取区名 `/(.+?)(?:区|市|县)/`
-  const _regionFromQ = (q.match(/([一-龥]{1,4})(?:区|市|县)/) || [])[1] || '';
+  // G4 修复（glm组 CB-11）：去「西陵」硬编码·从问句提取区名（landuseTriggerOf.regionName 单源）
   const _boundaryName = _firstLayerName || (_polyLayers.find((l) => l.name.includes('范围') || l.name.includes('边界') || (_regionFromQ && l.name.includes(_regionFromQ))) || {}).name;
   if (!_boundaryName) return null;
   // 传 GeoJSON（非字符串 → ref() 直返，不触发消费）——否则首个 overlay 会把边界标"已消费"→移除→后续 overlay 全失败
   const _boundaryLayer = _polyLayers.find(l => l.name === _boundaryName || (l.name && l.name.includes(_boundaryName)));
   const _bRef = _boundaryLayer ? _boundaryLayer.fc : _boundaryName;
-  const _wantMerge = /合并/.test(q);
-  const _wantClip = /(裁剪|裁取|裁出|剪裁|范围内|内的)/.test(q);
   // CB-11 两阶段（A·用户拍板）：问句同时含「裁剪」+「合并」→ 先 overlay(intersection) 逐个裁剪 → 再 merge 裁剪产物
   //   根治「只说不做」：toolHistory 有真实裁剪步骤·finalStep 能如实描述·R9 对账通过（不再丢裁剪语义）
   if (_wantMerge && _wantClip && _matches.length >= 2) {
@@ -1443,7 +1513,7 @@ async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
     let _draft;
     try { _draft = await stages.finalStep(ctx, hooks, `第1步: merge(layers=${JSON.stringify(_c.mergeLayers).slice(0, 120)}) → ${_obs}`); }
     catch (e) { _draft = _obs; }
-    const _qd = applyQualityDefense(_draft, { obsOk: _newLayers > 0, toolHistoryText: _obs, skipL1: false });
+    const _qd = applyQualityDefense(_draft, { obsOk: _newLayers > 0, toolHistoryText: _obs, skipL1: false, question: ctx.question });
     if (hooks.onFinalDone) hooks.onFinalDone(_qd.final);   // P2：渲染答案（否则用户看到「卡读秒」）
     return { ok: true, rounds: 1, final: _qd.final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'auto-merge' }, degraded: _qd.degraded, diagnose, exit: _newLayers ? 'result' : 'gap', newLayerCount: _newLayers };
   }
@@ -1488,11 +1558,17 @@ async function runAllToolCalls(ctx, hooks, diagnose) {
   // finalStep
   if (hooks.onRound) hooks.onRound(tcs.length);
   const _failNote = failedSteps.length ? `⚠️ 失败步骤: ${failedSteps.map((n) => `第${n}步(${tcs[n-1].name})`).join('、')}——这些步骤未产出图层，结论必须如实说明"未生成"，严禁声称成功。` : '';
-  ctx.context = _failNote + '\n【多步执行·已完成 ' + tcs.length + ' 步·成功 ' + newLayerCount + ' 层】\n【地图实际产出图层】' + formatRegistry() + '（严禁声称不在此列表的图层）\n\n' + (ctx.context || '');
+  // G6a（CB-12）：尺度约束注入（多步链同守出口差异化·与 runTemplatePath 一致）
+  const _outletLine = diagnose && diagnose.scale && diagnose.intent === 'emotion_analysis'
+    ? (diagnose.scale === 'macro' ? '本问为宏观分布尺度——结论聚焦空间分布特征（热点/密集区/覆盖）·不做归因。'
+        : diagnose.scale === 'meso' ? '本问为中微观尺度——结论须落到具体单元（如"西陵街道最差"）并给归因。'
+        : '本问为微观尺度——结论须落到具体落点（点位/公园/街段）。')
+    : '';
+  ctx.context = _failNote + '\n【多步执行·已完成 ' + tcs.length + ' 步·成功 ' + newLayerCount + ' 层】\n【地图实际产出图层】' + formatRegistry() + '（严禁声称不在此列表的图层）' + (_outletLine ? '\n【尺度约束】' + _outletLine : '') + '\n\n' + (ctx.context || '');
   let draft;
   try { draft = await stages.finalStep(ctx, hooks, toolHistory.join('\n')); }
   catch (e) { draft = `## 执行完成\n\n已按计划执行 ${tcs.length} 个步骤，共产出 ${newLayerCount} 个图层。`; }
-  const _qd = applyQualityDefense(draft, { obsOk: newLayerCount > 0, toolHistoryText: toolHistory.join('\n'), skipL1: false });
+  const _qd = applyQualityDefense(draft, { obsOk: newLayerCount > 0, toolHistoryText: toolHistory.join('\n'), skipL1: false, question: ctx.question });
   // CB-10 P0-3：完成度确定性追加（结论层·不依赖 LLM 措辞·与 R4 互补）——部分失败时显式声明 N/M
   let _final = _qd.final;
   if (failedSteps.length) {

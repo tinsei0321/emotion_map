@@ -1,6 +1,6 @@
 # Bug Log 索引
 
-> 自动生成（`py tests/buglog/_gen_index.py`）·勿手改。条目总数 **11**·未解决 **8**。
+> 自动生成（`py tests/buglog/_gen_index.py`）·勿手改。条目总数 **11**·未解决 **3**。
 > recurring（历史复发 >=2）见 [_trend.md](_trend.md)。
 
 ## 概览
@@ -9,8 +9,8 @@
 
 | 值 | 数量 |
 |---|:-:|
-| [OPEN] | 8 |
-| [RESOLVED] | 3 |
+| [RESOLVED] | 8 |
+| [OPEN] | 3 |
 
 
 ### 按类型
@@ -49,12 +49,12 @@
 |:-:|------|:-:|:-:|:-:|:-:|:-:|------|
 | B001 | 多要素裁剪失败螺旋（extract_feature 字段重命名断裂 + 单工具限制 + FC 推理死循环） | [BUG] | [HIGH] | [RESOLVED] | 数据识别 | 4 | CB-09 TC-06 |
 | B002 | finalStep 假结论 — "只说不做/只做一半"（复现） | [BUG] | [CRIT] | [OPEN] | finalStep | 3 | CB-09 TC-21 |
-| B003 | LLM 推理螺旋 — 简单查询耗时异常（复现） | [PERF] | [HIGH] | [OPEN] | FC诊断 | 2 | CB-09 TC-22 |
+| B003 | LLM 推理螺旋 — 简单查询耗时异常（复现） | [PERF] | [HIGH] | [RESOLVED] | FC诊断 | 2 | CB-09 TC-22 |
 | B004 | finalStep 假结论 — 筛选点图层"只说不做"（复现） | [BUG] | [CRIT] | [OPEN] | finalStep | 2 | CB-09 TC-23 |
-| B005 | 多步操作链 — 只做一半停下（部分新） | [BUG] | [CRIT] | [OPEN] | 工具调用 | 1 | CB-09 TC-24 |
-| B006 | 意图理解偏差 + 图层样式不匹配（部分新） | [BUG] | [HIGH] | [OPEN] | FC诊断 | 1 | CB-09 TC-25 |
-| B007 | 图层类型混乱 — 声称面层实际产出点层（部分新） | [BUG] | [HIGH] | [OPEN] | 工具调用 | 1 | CB-09 TC-26 |
+| B005 | 多步操作链 — 只做一半停下（部分新） | [BUG] | [CRIT] | [RESOLVED] | 工具调用 | 1 | CB-09 TC-24 |
+| B006 | 意图理解偏差 + 图层样式不匹配（部分新） | [BUG] | [HIGH] | [RESOLVED] | FC诊断 | 1 | CB-09 TC-25 |
+| B007 | 图层类型混乱 — 声称面层实际产出点层（部分新） | [BUG] | [HIGH] | [RESOLVED] | 工具调用 | 1 | CB-09 TC-26 |
 | B008 | 网格聚合 2D/3D 视角未解耦（新发现） | [UI] | [MED] | [OPEN] | UI | 3 | CB-09 TC-27 |
-| B009 | 回到底部按钮位置+样式不当（太显眼·右下→右上） | [UI] | [LOW] | [OPEN] | UI | 1 | CB-09 |
+| B009 | 回到底部按钮位置+样式不当（太显眼·右下→右上） | [UI] | [LOW] | [RESOLVED] | UI | 1 | CB-09 |
 | B010 | 飞轮测试数据层命名混乱 — L2·e2e 不知所云 | [UI] | [LOW] | [RESOLVED] | UI | 1 | CB-09 |
 | B011 | 飞轮测试每例重复加载行政区 — 图层堆叠 | [BUG] | [MED] | [RESOLVED] | 工具调用 | 1 | CB-09 |

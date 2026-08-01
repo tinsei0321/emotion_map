@@ -4,7 +4,7 @@ title: 'LLM 推理螺旋 — 简单查询耗时异常（复现）'
 type: PERF
 severity: HIGH
 priority: P1
-status: open
+status: resolved
 module: FC诊断
 source: 用户实测
 cb: CB-09

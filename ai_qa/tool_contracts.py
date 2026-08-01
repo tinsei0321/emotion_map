@@ -75,7 +75,7 @@ TOOL_CONTRACTS = [
     {
         'skill': 'buffer', 'tool': 'buffer', 'category': 'single', 'name_cn': '缓冲影响圈',
         'voice': '我画设施影响范围并聚合圈内情绪', 'triggers_str': '周边/附近/范围内/地铁站X米',
-        'when': '缓冲区：某设施/POI 周边半径内的情绪（地铁站 500m、奥体 1km）',
+        'when': '缓冲区：某设施/POI 周边半径内的情绪（地铁站 500m、奥体 1km）。G2：radius_m 单位=米·问句"周边 Nm/N公里"→换算成米（1km=1000m）·含半径数字勿直接复制',
         'params_str': 'layer, center(POI | geojson), radius_m(默认 500·尺度表：社区/街道 250·行政区/片区 500·主城/全域 1000)',
         'yields': '缓冲面域 + 范围内聚合', 'contributes': '回答"某设施影响范围"，支撑设施评估/选址',
         'scale': '中观（设施影响圈）', 'preconditions': 'center POI/geojson',
@@ -131,7 +131,7 @@ TOOL_CONTRACTS = [
     {
         'skill': 'zonal', 'tool': 'zonal_stats', 'category': 'single', 'name_cn': '单元归因',
         'voice': '我按行政/规划单元聚合情绪并给 4×5 归因', 'triggers_str': '这几个街道/社区的归因/单元评价',
-        'when': '面域聚合统计：按更新单元/街道/社区把点聚合成单元指标（宏观/中观核心）',
+        'when': '面域聚合统计：按更新单元/街道/社区把点聚合成单元指标（宏观/中观核心）。G2：boundary 必须填已加载边界图层名/preset_id（如行政区/街道层·问句区名→已加载面层）',
         'params_str': 'layer, boundary(preset_id | geojson), metrics, top_n',
         'yields': '每单元 point_count/极性/4×5 归因 + 排序', 'contributes': '产出"哪个单元最差 + 归因"，宏观/中观结论的主干',
         'scale': '宏观/中观（单元聚合主干）', 'preconditions': 'boundary preset + 点层',

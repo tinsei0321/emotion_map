@@ -7,6 +7,7 @@ import { addLayer, addGroup, getLayers, removeLayer } from './state.js';
 import { splitByGeometry, detectColorMode, dsvRows } from './import.js';
 import { hasImport, hasRange, hasAnalysis, hasVisibleEmotionLayer } from './ai_qa/cpd-state.js';
 import { TOOLS, resetStepResults, resetCurrentResults } from './ai_qa/tools.js';   // 步 7 observation 快照基线（手册 v2.2·修订 6）：TOOLS 直调 + 状态重置
+import { applyQualityDefense } from './ai_qa/harness.js';   // G0 R9 单测：结论-工具对账防线确定性可测
 
 // v1.7 测试飞轮：fetch 拦截 — 抓 /chat + /geo 请求供分阶段断言（fail fast）。
 const _origFetch = window.fetch.bind(window);
@@ -163,6 +164,7 @@ window.__emcTest = {
   // ── 步 7 observation 快照基线（手册 v2.2·修订 6/E-③）：TOOLS 直调 + 状态重置 + 层读取 ──
   TOOLS,
   getLayers,
+  applyQualityDefense,   // G0 R9 单测：构造 toolHistory 无 clip + 结论声称已裁剪 → 断言「未在工具执行记录」标注出现
   resetToolState() { resetStepResults(); resetCurrentResults(); },
   /** 步 8：存量产物模拟（legacy 无 kind _ui 的编辑回填 color 判据测试）。 */
   addTestLayer(name, kind, fc, paint) {

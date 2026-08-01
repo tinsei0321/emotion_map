@@ -96,6 +96,18 @@ def test_fc_sys_prompt_keeps_polarity_discipline():
     assert 'clip 仅用于点数据' in p, 'FC prompt 缺 clip 面层禁止规则（工具规则锚点）'
 
 
+def test_fc_sys_prompt_keeps_scale_and_domain_lens_instruction():
+    """G1（CB-12·glm组 修正 3）：FC prompt 尺度判定段 + domain_lens 标签指令在（防 0073990 式"简化"静默删除）。
+    去三字段硬编码的前提 = FC prompt 教 LLM 产出 [scale:xxx]/[domain_lens:xxx] 标签（A 部解析源）。"""
+    from ai_qa.router import build_fc_sys_prompt
+    p = build_fc_sys_prompt('')
+    assert '尺度判定' in p, 'FC prompt 缺尺度判定段（G1 scale A 部源）'
+    assert 'macro' in p and 'meso' in p and 'micro' in p, 'FC prompt 尺度段缺 macro/meso/micro'
+    assert '[scale:' in p, 'FC prompt 缺 [scale:xxx] 标签指令'
+    assert '[domain_lens:' in p, 'FC prompt 缺 [domain_lens:xxx] 标签指令（domain_lens A 部源）'
+    assert '出口须随尺度差异化' in p, 'FC prompt 缺出口差异化纪律'
+
+
 def test_fill_card_prompt_lean():
     """CB-09 D006 Phase B 极瘦填卡守门：<3.5KB（1-4 候选·prefill <2s·diagnose <5s）。
     防 build_fill_card_prompt 回灌 MANIFESTO/全量 catalog 致 45.8KB 回潮。"""

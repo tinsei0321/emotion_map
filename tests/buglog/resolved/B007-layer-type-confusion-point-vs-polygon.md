@@ -4,7 +4,7 @@ title: '图层类型混乱 — 声称面层实际产出点层（部分新）'
 type: BUG
 severity: HIGH
 priority: P1
-status: open
+status: resolved
 module: 工具调用
 source: 用户实测
 cb: CB-09
@@ -38,7 +38,7 @@ last_repro: 2026-07-29
 
 | 日期 | 操作 | commit |
 |------|------|------|
-| — | 待修复 | — |
+| 2026-08-01 | CB-10 P1-3：_checkGeomType 几何类型门——clip 需点层/overlay+extract 需面层·类型不匹配报错拒绝 | 7735cb8 |
 
 ---
 

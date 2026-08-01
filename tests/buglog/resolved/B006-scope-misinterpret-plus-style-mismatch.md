@@ -4,7 +4,7 @@ title: '意图理解偏差 + 图层样式不匹配（部分新）'
 type: BUG
 severity: HIGH
 priority: P1
-status: open
+status: resolved
 module: FC诊断
 source: 用户实测
 cb: CB-09

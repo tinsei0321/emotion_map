@@ -348,9 +348,11 @@ export async function fcDiagnoseStep(ctx, hooks) {
   }
 }
 
-/** v3 C2/C3 修复：FC diagnose 补全为 normalizeCard 等价结构 + 数据 gate + domain_lens A+B。
+/** v3 C2/C3 + G1 修复：FC diagnose 补全为 normalizeCard 等价结构 + 数据 gate + domain_lens A+B + 尺度判定。
  *  C2：工具需点层但 ctx.layerMeta.has_point=false → strategy='request_upload'（治 5.242 回归）。
- *  C3：domain_lens A+B 混合（先 parse FC content 的 [domain_lens:xxx]·空则关键词推导兜底）。 */
+ *  C3：domain_lens A+B 混合（先 parse FC content 的 [domain_lens:xxx]·空则关键词推导兜底）。
+ *  G1（glm组 修正）：去三字段硬编码（scale:'macro'/decision_type:'操作'/outlet:'生成图层'）——"一竿子插到底"根因。
+ *      scale 从 FC content [scale:xxx] 解析（A 部·router build_fc_sys_prompt 已教）→ 词法兜底（B 部）→ 默认 macro 作最后防线。 */
 function _normalizeFcDiagnose(skillName, params, plans, toolName, question, layerMeta, fcContent) {
   const _EMOTION_TOOLS = new Set(['zonal_stats', 'rank', 'density', 'hotspot']);
   const intent = _EMOTION_TOOLS.has(toolName) ? 'emotion_analysis' : 'gis_operation';
@@ -360,6 +362,14 @@ function _normalizeFcDiagnose(skillName, params, plans, toolName, question, laye
   const _strategy = (_NEEDS_POINT && _noPoint) ? 'request_upload' : 'ready';
   // v3 C3：domain_lens A+B 混合
   const domain_lens = _deriveDomainLens(question || '', fcContent || '');
+  // G1：scale 三源解析（A 部标签 → B 部词法 → 默认 macro 最后防线）
+  const scale = _deriveScale(question || '', fcContent || '');
+  // G1：outlet 随 scale+intent 差异化（宏观=结构性分布结论·中微观=归因排序·微观=落点·GIS=生成图层）
+  const outlet = intent === 'emotion_analysis'
+    ? (scale === 'micro' ? '地图定位' : (scale === 'meso' ? '报告结论' : '结构性分布结论'))
+    : '生成图层';
+  // G1：decision_type 按意图派生（情绪分析→评价·纯 GIS→操作）
+  const decision_type = intent === 'emotion_analysis' ? '评价' : '操作';
   return {
     template: skillName,
     params,
@@ -368,9 +378,9 @@ function _normalizeFcDiagnose(skillName, params, plans, toolName, question, laye
     intent,
     _fc: true,
     domain_lens,                  // v3 C3：A+B 混合推导（非恒空 []）
-    scale: 'macro',
-    decision_type: '操作',
-    outlet: '生成图层',
+    scale,
+    decision_type,
+    outlet,
     data_plan: {
       needed: [],
       available: [],
@@ -379,6 +389,22 @@ function _normalizeFcDiagnose(skillName, params, plans, toolName, question, laye
     },
     method: [toolName + '()'],
   };
+}
+
+/** G1：尺度判定三源解析（A 部标签 → B 部词法 → 默认 macro 最后防线）。
+ *  A：parse FC content [scale:xxx]（router build_fc_sys_prompt 指令产·仿 domain_lens A 部模式）。
+ *  B：A 空 → 词法兜底（分布/整体/覆盖→macro；哪区最差/原因/归因→meso；街/点/小区→micro）。
+ *  兜底失败才落默认 macro（保留现状作为最后防线·与 glm组 论证一致·去硬编码最坏情况=与旧行为一致无回归）。 */
+export function _deriveScale(question, fcContent) {
+  if (fcContent) {
+    const m = String(fcContent).match(/\[scale:(macro|meso|micro)\]/);
+    if (m) return m[1];
+  }
+  const q = String(question || '');
+  if (/(分布|整体|全域|覆盖|大致|总体|哪些地方)/.test(q)) return 'macro';
+  if (/(哪.*最差|哪里.*最差|原因|为什么|归因|排序|哪个区域|哪几个区|对比|比较)/.test(q)) return 'meso';
+  if (/(这条街|这个点|这个小区|哪个点位|公园里|点位|附近哪)/.test(q)) return 'micro';
+  return 'macro';   // 最后防线（与旧硬编码一致·无回归）
 }
 
 /** v3 C3：domain_lens A+B 混合推导。

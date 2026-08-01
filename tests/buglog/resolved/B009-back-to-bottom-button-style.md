@@ -4,7 +4,7 @@ title: '回到底部按钮位置+样式不当（太显眼·右下→右上）'
 type: UI
 severity: LOW
 priority: P2
-status: open
+status: resolved
 module: UI
 source: 用户实测
 cb: CB-09
