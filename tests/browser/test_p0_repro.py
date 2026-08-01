@@ -23,6 +23,7 @@ CASES = [
     ('B002', '剪裁出西陵区范围内的商业+居住+公园广场用地'),
     ('B005', '将西陵区+伍家岗区范围内商业用地筛选出来'),
     ('B003', '我上传了哪些数据？'),
+    ('B006', '能帮我筛选出西陵区的情绪点吗'),
 ]
 
 SHOW_ERRORS = True
@@ -108,7 +109,7 @@ def main() -> int:
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
-    ap.add_argument('--case', default='all', choices=['B002', 'B005', 'B003', 'all'])
+    ap.add_argument('--case', default='all', choices=['B002', 'B005', 'B003', 'B006', 'all'])
     a = ap.parse_args()
     if a.case != 'all':
         CASES[:] = [c for c in CASES if c[0] == a.case]
