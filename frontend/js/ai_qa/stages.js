@@ -55,7 +55,7 @@ export const SKILL_DEFS = {
   compare:         { tool: 'compare_regions', category: 'single', required_slots: ['boundaries'],        optional_defaults: {} },
   extract_feature: { tool: 'extract_feature', category: 'single', required_slots: ['layer'],             optional_defaults: {} },
   area_stats:      { tool: 'area_stats',      category: 'single', required_slots: ['boundary'],          optional_defaults: {} },
-  merge:           { tool: 'merge',           category: 'single', required_slots: ['boundary'],          optional_defaults: {} },
+  merge:           { tool: 'merge',           category: 'single', required_slots: [],                     optional_defaults: {} },   // CB-11：boundary|layers 二选一（one-of·tools.js guard 校验）
   nearest:         { tool: 'nearest',         category: 'single', required_slots: ['target'],            optional_defaults: { k: 1 } },
   hotspot:         { tool: 'hotspot',         category: 'single', required_slots: [],                    optional_defaults: { value_col: 'score' } },
   filter_attr:     { tool: 'filter_attr',     category: 'single', required_slots: ['pre_filter'],        optional_defaults: {} },

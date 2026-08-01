@@ -7,6 +7,7 @@
 import os
 import sys
 
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
@@ -103,6 +104,51 @@ def test_merge_dissolves_all():
     assert d['count'] >= 1
     feat0 = d['geojson']['features'][0]
     assert 'area_km2' in feat0['properties']
+
+
+def test_merge_layers_concat():
+    """CB-11（Codex+glm组 方案 A）：merge(layers=[...]) 多图层 concat——保留各要素分类·无字段后缀·_source_layer 标记。"""
+    # 构造两个独立 GeoJSON 图层（不同用地分类）——resolve_boundary 支持 dict
+    g1 = {'type': 'FeatureCollection', 'features': [
+        {'type': 'Feature', 'properties': {'DLMC': '商业'}, 'geometry': {'type': 'Polygon', 'coordinates': [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]}}]}
+    g2 = {'type': 'FeatureCollection', 'features': [
+        {'type': 'Feature', 'properties': {'DLMC': '居住'}, 'geometry': {'type': 'Polygon', 'coordinates': [[[2, 0], [3, 0], [3, 1], [2, 1], [2, 0]]]}}]}
+    r = client.post('/api/v1/geo/merge', json={'layers': [g1, g2]})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d['count'] >= 2, f'concat 应保留 ≥2 要素（各自用地分类），count={d["count"]}'
+    feats = d['geojson']['features']
+    # 无字段后缀（concat 对齐·非 overlay 的 _1/_2）
+    props = feats[0]['properties']
+    assert not any('_1' in k or '_2' in k for k in props), f'concat 不应有字段后缀: {list(props.keys())}'
+    # 保留 DLMC 分类 + _source_layer 标记（glm组 补充）
+    dlmc_vals = {f['properties'].get('DLMC') for f in feats}
+    assert '商业' in dlmc_vals and '居住' in dlmc_vals, f'concat 应保留各要素 DLMC 分类: {dlmc_vals}'
+    assert any('_source_layer' in (f['properties'] or {}) for f in feats), 'concat 应有 _source_layer 标记'
+
+
+def test_merge_requires_boundary_or_layers():
+    """CB-11 one-of 校验：merge 无 boundary 也无 layers → 400（防 LLM 只传 layers 被拒）。"""
+    r = client.post('/api/v1/geo/merge', json={})
+    assert r.status_code == 400, f'空 merge 应 400，收到 {r.status_code}: {r.text}'
+
+
+def test_overlay_union_field_explosion_negative():
+    """CB-11 glm组 补充：overlay union 字段后缀爆炸（3→9→13 列）负向回归测试——锁定「merge 用 concat 不用 overlay」决策。
+    若未来有人把多图层合并改回 overlay union，本测试捕获字段膨胀。"""
+    import geopandas as gpd
+    from shapely.geometry import box
+    a = gpd.GeoDataFrame({'name': ['商业'], 'landuse': ['commercial'], 'area_km2': [2.5]},
+                         geometry=[box(0, 0, 1, 1)], crs='EPSG:4326')
+    b = gpd.GeoDataFrame({'name': ['居住'], 'landuse': ['residential'], 'area_km2': [3.2]},
+                         geometry=[box(1, 0, 2, 1)], crs='EPSG:4326')
+    res1 = gpd.overlay(a, b, how='union')
+    n_cols = len(res1.columns)
+    assert n_cols >= 4, f'overlay union 应有后缀列（name_1/name_2 等）·实际 {n_cols} 列'
+    # 对比：concat 不膨胀
+    combined = gpd.GeoDataFrame(pd.concat([a, b], ignore_index=True))
+    assert 'name' in combined.columns and 'landuse' in combined.columns, 'concat 应保留原字段名（无后缀）'
+    assert len(combined) == 2, 'concat 保留各要素'
 
 
 def test_rank_worst_via_boundary():

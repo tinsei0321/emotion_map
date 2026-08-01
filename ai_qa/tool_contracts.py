@@ -203,17 +203,19 @@ TOOL_CONTRACTS = [
     {
         'skill': 'merge', 'tool': 'merge', 'category': 'single', 'name_cn': '合并上卷',
         'voice': '我合并/dissolve 多面成片区或同类用地', 'triggers_str': '合并/合成/并成/dissolve/合成片区',
-        'when': '合并 / dissolve：把多个面域合成一个片区，或同类用地合并',
-        'params_str': 'layer, by(字段) | all',
-        'yields': '合并后的面域', 'contributes': '上卷到更大尺度（几街道→一片区），支撑宏观结构结论',
+        # CB-11（Codex+glm组 方案 A）：when 明写两模式——多图层 concat + 单层 dissolve·overlay union 是空间并集勿代替
+        'when': '合并 **多个独立图层** → `merge(layers=[id1,id2,...])`（concat·保留各要素分类字段如 DLMC·无字段后缀）；合并 **同一图层内**要素 → `merge(boundary, by)`（dissolve）。`overlay(how="union")` 是空间并集（求两块面的并集几何）·非图层拼接·同名字段会后缀冲突·**勿用 overlay 代替 merge**',
+        'params_str': 'layers(多图层) 或 boundary(单层), by(字段) | all',
+        'yields': '合并后的面域（多图层 concat 保留各要素分类·单层 dissolve 上卷）', 'contributes': '多图层合并 → 一个综合图层（保留 DLMC 分类）；上卷到更大尺度（几街道→一片区）',
         'scale': '宏观（上卷片区）', 'preconditions': '面边界层',
-        'failure_modes': '误用于取子集——要某子区用 extract/clip，非 merge',
+        'failure_modes': '误用于取子集——要某子区用 extract/clip，非 merge；多图层合并勿用 overlay union（字段后缀冲突）',
         'examples': None,
-        'required_slots': ['boundary'],
-        'planning_common': 'boundary=preset_id；by=字段|空=全部合并；产合并面图层自动落图（上卷到更大尺度）',
+        'required_slots': [],   # CB-11：boundary 或 layers 二选一（one-of·无法在 required_slots 表达·以 tools.js guard + validate 为准）
+        'planning_common': 'boundary=preset_id 或 layers=[多图层 id]（二选一·至少一个）；by=字段|空=不 dissolve；产合并面图层自动落图',
         'params': [
-            {'name': 'boundary', 'type': 'source', 'default': None, 'required': True, 'alias': ['zone', 'region'], 'hint': 'preset_id', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
-            {'name': 'by', 'type': 'str', 'default': None, 'required': False, 'alias': ['sort', 'sort_by', 'criteria'], 'hint': '字段|空=全部', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'boundary', 'type': 'source', 'default': None, 'required': False, 'alias': ['zone', 'region'], 'hint': 'preset_id（合并单图层·dissolve）', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'layers', 'type': 'list', 'default': None, 'required': False, 'alias': ['layer_list', 'layers_list'], 'hint': '多图层 id 数组（合并多个独立图层·concat·保留分类字段）', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'by', 'type': 'str', 'default': None, 'required': False, 'alias': ['sort', 'sort_by', 'criteria'], 'hint': '字段|空=不 dissolve', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
             {'name': 'as', 'type': 'str', 'default': None, 'required': False, 'alias': ['output', 'output_layer', 'layer_name', 'named', 'name'], 'hint': '图层名', 'panel_source': '通用 as'},
             {'name': 'keep', 'type': 'bool', 'default': None, 'required': False, 'alias': [], 'hint': '保留免清理', 'panel_source': '通用 keep'},
         ],
@@ -503,6 +505,10 @@ def validate_tool_call(tool_name, args):
     params_def = {p['name']: p for p in contract.get('params', [])}
     fixed = dict(args)
     fixes = []
+
+    # CB-11：merge one-of 特判——boundary 与 layers 至少一个（否则 LLM 只传 layers 仍被"缺 boundary"拒·问题原样复现）
+    if tool_name == 'merge' and not fixed.get('boundary') and not fixed.get('layers'):
+        return {'ok': False, 'params': fixed, 'fixes': ['缺必填参数: boundary 或 layers（合并需至少一个·多图层用 layers=[...]）']}
 
     for name, p in params_def.items():
         val = fixed.get(name)

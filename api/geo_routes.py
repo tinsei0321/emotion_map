@@ -237,25 +237,48 @@ async def extract_feature(req: ExtractFeatureRequest):
 
 # ════════════ 3. merge · 合并/dissolve ════════════
 class MergeRequest(BaseModel):
-    boundary: Optional[Any] = None   # preset_id | GeoJSON（要合并的面域）
-    by: Optional[str] = None          # 按字段 dissolve；空=全部 unary_union
+    boundary: Optional[Any] = None   # preset_id | GeoJSON（合并单图层·dissolve）
+    layers: Optional[list] = None   # CB-11：多图层合并（concat·保留各要素分类字段）·boundary 单层模式二选一·每项 preset_id|GeoJSON
+    by: Optional[str] = None          # 按字段 dissolve；空=全部 unary_union（单层）
 
 
 @geo_router.post('/geo/merge')
 async def merge(req: MergeRequest):
-    """合并/dissolve 面域：把多街道合成一片区，或同类用地合并。返回合并后面域 GeoJSON。"""
-    if req.boundary is None:
-        raise HTTPException(status_code=400, detail='merge 需 boundary(preset_id|geojson)')
+    """合并/dissolve 面域：把多街道合成一片区，或同类用地合并。返回合并后面域 GeoJSON。
+
+    CB-11（Codex+glm组 方案 A）：支持 layers 多图层 concat——合并多个独立图层（保留 DLMC 分类·
+    无字段后缀·区别于 overlay union 的空间并集）。boundary 单层路径完全保留（纯增量）。"""
+    if req.boundary is None and req.layers is None:
+        raise HTTPException(status_code=400, detail='merge 需 boundary 或 layers（二选一）')
     try:
-        polys = resolve_boundary(req.boundary)
-        if req.by:
-            if req.by not in polys.columns:
-                raise ValueError(f'dissolve 字段不存在: {req.by}')
-            merged = polys.dissolve(by=req.by, as_index=False)
+        if req.layers:
+            # 多图层 concat：逐项 resolve_boundary → CRS 统一 → pd.concat → _source_layer 标记 → 可选 dissolve
+            gdfs = []
+            for i, ly in enumerate(req.layers):
+                g = resolve_boundary(ly)
+                if not g.crs:
+                    g = g.set_crs('EPSG:4326')
+                g = g.to_crs('EPSG:4326')
+                g = g.copy()
+                g['_source_layer'] = str(i)   # glm组 补充：标记来源（追溯用）
+                gdfs.append(g)
+            polys = pd.concat(gdfs, ignore_index=True)
+            if req.by:
+                if req.by not in polys.columns:
+                    raise ValueError(f'dissolve 字段不存在: {req.by}')
+                merged = polys.dissolve(by=req.by, as_index=False)
+            else:
+                merged = polys   # concat 直接保留各要素（含 DLMC 分类）
         else:
-            merged = gpd.GeoDataFrame(
-                {'name': ['合并区']}, geometry=[polys.geometry.unary_union], crs=polys.crs
-            )
+            polys = resolve_boundary(req.boundary)
+            if req.by:
+                if req.by not in polys.columns:
+                    raise ValueError(f'dissolve 字段不存在: {req.by}')
+                merged = polys.dissolve(by=req.by, as_index=False)
+            else:
+                merged = gpd.GeoDataFrame(
+                    {'name': ['合并区']}, geometry=[polys.geometry.unary_union], crs=polys.crs
+                )
         # 算合并后面积
         merged_proj = merged.to_crs(_PROJECT_CRS)
         merged = merged.copy()

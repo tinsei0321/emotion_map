@@ -1231,21 +1231,20 @@ function _deterministicRecover(ctx) {
       }
     }
     if (_matched.length >= 1) {
+      // CB-11：合并意图（/合并/）→ 后端 concat（merge layers）·退役 overlay union 链（消 G2 高危 + 字段爆炸）
+      if (/合并/.test(q) && _matched.length >= 2) {
+        return { template: 'merge', degraded: false, _fc: true, _recover: true,
+          params: { layers: _matched.map((l) => l.id), as: 'merged_' + _region },
+          method: ['merge()'], intent: 'gis_operation',
+          data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+          domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [] };
+      }
       const _bRef = _boundary ? _boundary.fc : _region;
       const _tcs = _matched.map(lu => ({
         name: "overlay",
         params: { layer_a: _bRef, layer_b: lu.id, how: "intersection",
                   as: lu.name.replace(/\.(geo)?json/i, "").replace(/^用地_/, "") + "_" + _region }
       }));
-      if (/合并/.test(q) && _tcs.length >= 2) {
-        // G2 修复（glm组 CB-11）：固定上界 _n·否则迭代 _tcs 同时 push → 无限循环 OOM
-        const _n = _tcs.length;
-        let _chainAs = _tcs[0].params.as;
-        for (let i = 1; i < _n; i++) {
-          _tcs.push({ name: "overlay", params: { layer_a: _chainAs, layer_b: _tcs[i].params.as, how: "union", as: "merged_final_" + i } });
-          _chainAs = _tcs[_tcs.length - 1].params.as;
-        }
-      }
       return { template: 'overlay', degraded: false, _fc: true, _recover: true,
         params: {}, method: ['overlay()'], intent: 'gis_operation',
         data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
@@ -1302,23 +1301,12 @@ function _deterministicRecover(ctx) {
   if (/合并/.test(q)) {
     const _mergeMatches = _polys.filter(l => LANDUSE_KW.some(kw => l.name.includes(kw)));
     if (_mergeMatches.length >= 2) {
-      const _tcs = [];
-      // 链式 overlay union：逐对合并
-      _tcs.push({
-        name: "overlay",
-        params: { layer_a: _mergeMatches[0].id, layer_b: _mergeMatches[1].id, how: "union", as: "merged_" + _mergeMatches[0].name.replace(/\.(geo)?json/i, "").replace(/^用地_/, "") + "_" + _mergeMatches[1].name.replace(/\.(geo)?json/i, "").replace(/^用地_/, "") }
-      });
-      for (let i = 2; i < _mergeMatches.length; i++) {
-        _tcs.push({
-          name: "overlay",
-          params: { layer_a: _tcs[_tcs.length - 1].params.as, layer_b: _mergeMatches[i].id, how: "union", as: "merged_final_" + i }
-        });
-      }
-      return { template: 'overlay', degraded: false, _fc: true, _recover: true,
-        params: {}, method: ['overlay()'], intent: 'gis_operation',
+      // CB-11：改调后端 concat（merge layers）·退役 overlay union 链（消 G2 高危 + 字段爆炸·glm组 实测）
+      return { template: 'merge', degraded: false, _fc: true, _recover: true,
+        params: { layers: _mergeMatches.map((l) => l.id), as: 'merged_' + _mergeMatches.map((l) => l.name.replace(/\.(geo)?json/i, "").replace(/^用地_/, "")).join('_') },
+        method: ['merge()'], intent: 'gis_operation',
         data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
-        domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [],
-        _allToolCalls: _tcs };
+        domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [] };
     }
   }
 
@@ -1359,12 +1347,9 @@ function buildLanduseCompletion(question, firstLayerName, opts = {}) {
   // union 模式：链式两两合并（复用 recover 模式 C 语义）
   // G1 修复（glm组 CB-11）：固定上界 _n = 初始 tcs 数·否则迭代 _tcs 同时 push → i 追不上 length → 无限循环 OOM
   if (_wantUnion && _tcs.length >= 2) {
-    const _n = _tcs.length;
-    let _chainAs = _tcs[0].params.as;
-    for (let i = 1; i < _n; i++) {
-      _tcs.push({ name: 'overlay', params: { layer_a: _chainAs, layer_b: _tcs[i].params.as, how: 'union', as: 'merged_final_' + i } });
-      _chainAs = _tcs[_tcs.length - 1].params.as;
-    }
+    // CB-11：merge 意图（union）改调后端 concat——overlay union 链是空间并集·字段后缀爆炸（glm组 实测 3→9→13 列）·
+    //   且 G1/G2 高危。返回 mergeLayers（匹配面层 id）供 _autoExpandOverlays 调 tools.merge(layers=[...])
+    return { mergeLayers: _matches.map((l) => l.id), boundaryName: _boundaryName, mentioned: _mentioned };
   }
   return { tcs: _tcs, boundaryName: _boundaryName, mentioned: _mentioned };
 }
@@ -1375,6 +1360,17 @@ async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
   const _c = buildLanduseCompletion(ctx.question || '', _firstLayerName, { mode: 'auto' });
   if (!_c) return null;
   _hitAutoExpand++;   // 族 A 收尾 #3：命中遥测
+  // CB-11：merge 意图（union）→ 后端 concat（tools.merge layers）·退役 overlay union 链（消 G1/G2）
+  if (_c.mergeLayers && _c.mergeLayers.length >= 2) {
+    console.log('[autoExpand-merge]', _c.mentioned.join('+'), '→ merge layers', _c.mergeLayers.length, '| hits inline', _hitInline, 'autoExpand', _hitAutoExpand, 'recover', _hitRecover);
+    const _mr = await TOOLS.merge({ layers: _c.mergeLayers, as: 'merged_' + _c.boundaryName });
+    const _diag = { ...diagnose, _allToolCalls: [{ name: 'merge', params: { layers: _c.mergeLayers, as: 'merged_' + _c.boundaryName } }] };
+    const _obs = (_mr && _mr.observation) || '[ERR] merge';
+    if (hooks.onObservation) hooks.onObservation(_obs, 1);
+    // merge 直接执行完成（非 tool_calls 链）——注入结果给 finalStep
+    ctx.context = `【多图层合并·已完成】${_obs}\n【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层）\n\n` + (ctx.context || '');
+    return { ok: true, rounds: 1, final: _obs, defense: { degraded: false, fixes: [], skipped: 'auto-merge' }, degraded: false, diagnose, exit: 'result', newLayerCount: (_mr && _mr.data && _mr.data.layerId) ? 1 : 0 };
+  }
   console.log('[autoExpand]', _c.mentioned.join('+'), '→', _c.tcs.length, 'overlays using boundary:', _c.boundaryName, '| hits inline', _hitInline, 'autoExpand', _hitAutoExpand, 'recover', _hitRecover);
   const _diag = { ...diagnose, _allToolCalls: _c.tcs };
   return await runAllToolCalls(ctx, hooks, _diag);

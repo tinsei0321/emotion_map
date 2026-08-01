@@ -1127,18 +1127,22 @@ export const TOOLS = {
 
   /** 合并/dissolve。 */
   async merge(params = {}) {
-    if (!params.boundary) return { observation: '[ERR] merge 需 boundary' };
+    // CB-11：boundary（单层 dissolve）或 layers（多图层 concat）二选一
+    if (!params.boundary && !params.layers) return { observation: '[ERR] merge 需 boundary（单层）或 layers（多图层）二选一' };
     try {
-      const r = await generateMergeForAI({ boundary: ref(params.boundary), boundaryLabel: String(params.boundary),
+      const _r = await generateMergeForAI({
+        ...(params.boundary ? { boundary: ref(params.boundary), boundaryLabel: String(params.boundary) } : {}),
+        ...(params.layers ? { layers: (params.layers || []).map(ref) } : {}),
         by: params.by, as: params.as });
-      const feats = (r.fc && r.fc.features) || [];
-      const total = r.totalAreaKm2 != null ? r.totalAreaKm2 : feats.reduce((a, f) => a + (Number((f.properties || {}).area_km2) || 0), 0);
-      const _mL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // 名=边界（如「西陵区」·模块 C6 沿用）
+      const feats = (_r.fc && _r.fc.features) || [];
+      const total = _r.totalAreaKm2 != null ? _r.totalAreaKm2 : feats.reduce((a, f) => a + (Number((f.properties || {}).area_km2) || 0), 0);
+      const _mL = _r.layerId ? _adoptToolboxResult(_r.layerId, _r.fc, _r.layerName, { keep: !!params.keep }) : null;   // 名=边界（如「西陵区」·模块 C6 沿用）
       // CB-09 P0-4 v2·工具观测诚实化
-      if (r.count === 0) {
+      if (_r.count === 0) {
         return { observation: `合并完成，但无可合并要素，未生成新图层。`, data: { count: 0, layerId: null } };
       }
-      return { observation: `合并后得到 ${r.count} 个面，总面积 ${total.toFixed(1)} 平方公里，已生成图层「${r.layerName}」${_mL ? '（' + feats.length + ' 个面）' : ''}` + _renderNote(_mL), data: { count: r.count, layerId: r.layerId } };
+      const _modeTxt = params.layers ? `合并 ${params.layers.length} 个图层` : '合并';
+      return { observation: `${_modeTxt}后得到 ${_r.count} 个要素，总面积 ${total.toFixed(1)} 平方公里，已生成图层「${_r.layerName}」${_mL ? '（' + feats.length + ' 个面）' : ''}${_r.message ? '（' + _r.message + '）' : ''}` + _renderNote(_mL), data: { count: _r.count, layerId: _r.layerId } };
     } catch (e) { return _ERR('merge', e); }
   },
 

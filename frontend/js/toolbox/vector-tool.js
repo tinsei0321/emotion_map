@@ -84,7 +84,9 @@ async function _opExtract(params, ctx) {
 }
 
 async function _opMerge(params, ctx) {
-  const body = { boundary: params.boundary };
+  const body = {};
+  if (params.boundary) body.boundary = params.boundary;
+  if (params.layers) body.layers = params.layers;   // CB-11：多图层 concat
   if (params.by) body.by = params.by;
   const r = await (ctx.silent ? geoPost('merge', body) : trackGeneration(geoPost('merge', body)));
   const feats = (r.geojson && r.geojson.features) || [];
