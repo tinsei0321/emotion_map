@@ -9,6 +9,29 @@
 
 ---
 
+## 📅 2026-08-02（CB-12 · 链路体检 + PRM 派生 + 尺度判定 + 触发入口统一 · G0-G6a）
+
+### ✅ CB-12 链路体检套件 + PRM 参数派生 + 尺度判定（revision-log 5.248，commit f33ac52 · **用户手动 push**）
+
+用户关切升级「链路通畅 + 体验达预期」→ 讨论报告 + Codex/glm组 双回应 + 用户拍板 4 项（连问最简版排 G6c·scale 前移 G1·出口差异化三层合一·性能分档软目标）。落地 G0-G6a：
+
+- **G0 体检基建**：`test_link_checkup.py`（10 类问句四件套断言 + C2 示例①/② + R9 单测）·**18 例全 PASS**
+- **G1 PRM 派生 + scale 判定**：`deriveMissingParams` 四参数确定性派生 + 去双处三字段硬编码 + `_deriveScale` 三源解析 + FC prompt 尺度段 + 内容断言·PRM 重灾区全 PASS
+- **G2**：final prompt 排版段 + 契约强化
+- **G3 触发入口统一**：`landuseTriggerOf` 单源 + B002 deferFinal
+- **G6a 出口差异化**：finalStep 尺度约束 + R10/R11 防线
+- **C3**：buglog 5 条移 resolved（OPEN 3）
+- **G6b/c 设计文档**：搜索 + 连问（排期最末）
+
+**验证**：pytest 224 passed + 体检 18 例全 PASS（R9 单测 PASS）
+
+### 待续
+- G5 性能重测 B3（PRM 修好后 p95 回落验证）
+- G6b 搜索能力（设计已定·待 API 确认）
+- G6c 连问拆解最简版（设计已定·待实施）
+
+---
+
 ## 📅 2026-08-02（CB-11 · merge 多图层 + 「剪裁+合并」只说不做根治）
 
 ### ✅ merge 多图层 concat（commit 9f84eac + bea7cbd·Codex+glm组 方案 A）
