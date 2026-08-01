@@ -858,15 +858,18 @@ function bindRangeInteractions(layer, hitLid, outlineLid) {
   // 默认线宽 1px，hover 加粗 +1px（→2px）。live 读 layer.paint.lineWidth：settings 调线宽后 hover 同步（不依赖闭包旧值，承重⑩结构不变）。
   const baseW = () => (layer.paint && layer.paint.lineWidth) ?? 1;
   const hoverW = () => baseW() + 1;
+  // CB-11：hover 前检查 outlineLid 层存在——runAllToolCalls 清理中间产物（focusOnlyResults/_consumedIds）后
+  //   轮廓层被删·旧 hover 仍引用 → setPaintProperty 对不存在层报错（lyr-Lxxx-line）·加 guard 防噪音
+  const _layerExists = () => { try { return !!map.getLayer(outlineLid); } catch (_) { return false; } };
   map.on('mouseenter', hitLid, (e) => {
     map.getCanvas().classList.add('is-pointer');
-    try { map.setPaintProperty(outlineLid, 'line-width', hoverW()); } catch (_) {}
+    if (_layerExists()) { try { map.setPaintProperty(outlineLid, 'line-width', hoverW()); } catch (_) {} }
     showRangeTooltip(e.lngLat, layer.name);
   });
   map.on('mousemove', hitLid, (e) => { if (_tooltip) _tooltip.setLngLat(e.lngLat); });
   map.on('mouseleave', hitLid, () => {
     map.getCanvas().classList.remove('is-pointer');
-    try { map.setPaintProperty(outlineLid, 'line-width', baseW()); } catch (_) {}
+    if (_layerExists()) { try { map.setPaintProperty(outlineLid, 'line-width', baseW()); } catch (_) {} }
     hideRangeTooltip();
   });
 }
