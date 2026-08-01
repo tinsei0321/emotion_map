@@ -71,6 +71,19 @@ Codex 验收报告（[CB10-两天攻坚验收](docs/catch-ball/scan/CB10-两天�
 
 **用户手动测试 4 用例**：① 剪裁 3 类用地成功（N/M 报 3/4·已修列图层名）；② 合并失败（=G1/G2·已修）；③ 情绪点样式不对（=族 D·已修样式继承）；④ 待自测
 
+### ✅ CB-11 merge 多图层 concat 定稿修复（commit 9f84eac）
+
+**问题**：用户测试②「合并 3 个独立裁剪图层」持续失败——系统无「合并多个独立图层」能力（merge 只支持单 boundary）。
+
+**Codex + glm组 独立一致裁决方案 A**（后端 `merge(layers=[...])` concat·非 overlay union 空间并集）：
+- 后端 `MergeRequest.layers` + concat 分支（CRS 统一 + `_source_layer` 标记）
+- 契约 merge 加 layers（alias layer_list）+ when 两模式 + **one-of 校验**（boundary|layers 至少一个）
+- 前端 tools.merge/toolbox _opMerge/stages 支持 layers
+- buildLanduseCompletion/recover 模式 A/C 的 merge 意图改调后端 concat·**退役 overlay union 链**（消 G1/G2 + 字段爆炸·glm组 geopandas 实测 3→9→13 列）
+- 测试：concat 保留 DLMC + one-of 400 + overlay 字段爆炸负向·**pytest 223 passed**
+
+**待用户自测**：serve + 硬刷 → 「将剪裁出西陵区范围内的商业+居住+公园广场用地 合并成一个图层」→ 一次合并成 1 个图层含 3 要素·DLMC 分类保留
+
 ### ✅ 两天攻坚（完成·commit 898998b + 7735cb8 + 392ecc1）
 
 **Day1 真实状态确认**（Playwright test_p0_repro）：

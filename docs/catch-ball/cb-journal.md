@@ -36,6 +36,22 @@
 ### ④ 状态
 `open → 修复执行中` —— 用户手动测试已确认 G1/G2 根因·计划已批准（`claude-code-emotion-map-purring-ritchie.md`）。
 
+### ③·merge 多图层修复定稿反评价（Codex + glm组 方案 A · 9f84eac）
+
+> 问题报告 [CB11-merge-multi-layer](problem_report/CB11-merge-multi-layer_2026-08-02.md) → Codex + glm组 独立一致裁决方案 A（后端 `merge(layers=[...])` concat·非 overlay union 空间并集）。
+
+| 项 | 判定 | 落地 |
+|---|:---:|---|
+| 选 A（后端 layers concat）·双组独立一致 | **agree** | 9f84eac 落地 |
+| B（overlay union）字段冲突（glm组 geopandas 实测 3→9→13 列）| **agree** | 拒绝·保留 overlay 空间并集能力 |
+| 并入 merge 不建新工具 | **agree** | merge 加 layers 模式 |
+| one-of 校验最容易漏 | **agree** | validate_tool_call 特判 + stages required_slots=[] + tools guard |
+| `_source_layer` 标记列（glm组）| **agree** | 后端 concat 加 |
+| overlay 字段爆炸负向测试（glm组）| **agree** | test_overlay_union_field_explosion_negative |
+| union 链对 merge 语义退役 | **agree** | buildLanduseCompletion/recover 模式 A/C 改调 concat |
+
+**CB-11 ③：merge 多图层修复——7 agree / 0 disagree · pytest 223 passed · 待用户自测**
+
 ---
 
 ## CB-10 · 2026-08-01（EMC 全面审查·Codex+GPT-5 第三方）
