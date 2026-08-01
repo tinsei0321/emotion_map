@@ -36,6 +36,7 @@ CASES = [
     # T1 通用问答（快·短）
     ('T1a', '你们能做什么', 'conclusion', False, 15),
     ('T1b', '什么是城市体检', 'conclusion', False, 15),
+    ('T1c', '宜昌市城市更新政策有哪些', 'conclusion', False, 30),   # G6b 搜索路径（命中 SEARCH_KW「政策」→ 联网搜索）
     # T2 单工具情绪分析（PRM 重灾区）
     ('T2a', '各街道情绪归因', 'table', True, 30),
     ('T2b', '哪个区情绪最差', 'table', True, 30),
@@ -54,6 +55,8 @@ CASES = [
     ('T7a', '分析更新紧迫度最高的区域', 'conclusion', False, 15),
     # T8 追问/续作/指代（需上一问上下文·单独处理）
     ('T8a', '追问续作', 'conclusion', True, 60),
+    # T8c 连问拆解（G6c：一个输入多问→拆成独立问·各自答案）
+    ('T8c', '西陵区情绪如何？伍家岗区呢', 'conclusion', True, 90),
     # T9 复合多步
     ('T9a', '把商业用地筛出来并做情绪排序', 'table', True, 60),
     # T10 空态（不注入数据问空间问题·应 gap 非崩溃）

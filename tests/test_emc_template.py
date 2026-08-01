@@ -96,6 +96,25 @@ def test_fc_sys_prompt_keeps_polarity_discipline():
     assert 'clip 仅用于点数据' in p, 'FC prompt 缺 clip 面层禁止规则（工具规则锚点）'
 
 
+def test_search_endpoint_registered():
+    """G6b（CB-12）：/aiqa/search 端点注册 + search_chat 无 key 时抛 LLMError（防静默失败）。"""
+    from api.aiqa_routes import aiqa_router
+    paths = [r.path for r in aiqa_router.routes]
+    assert '/aiqa/search' in paths, '搜索端点未注册'
+    from ai_qa.llm import search_chat, LLMError
+    import os
+    _k = os.environ.pop('DEEPSEEK_API_KEY', None)
+    try:
+        try:
+            search_chat('测试')
+            assert False, '无 key 应抛 LLMError'
+        except LLMError:
+            pass
+    finally:
+        if _k:
+            os.environ['DEEPSEEK_API_KEY'] = _k
+
+
 def test_fc_sys_prompt_keeps_scale_and_domain_lens_instruction():
     """G1（CB-12·glm组 修正 3）：FC prompt 尺度判定段 + domain_lens 标签指令在（防 0073990 式"简化"静默删除）。
     去三字段硬编码的前提 = FC prompt 教 LLM 产出 [scale:xxx]/[domain_lens:xxx] 标签（A 部解析源）。"""

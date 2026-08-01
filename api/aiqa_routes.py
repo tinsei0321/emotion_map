@@ -12,12 +12,12 @@ L3=ai_qa/episode.py 写 DATA/ai_qa/episodes.jsonl（被 ai_qa/consolidate.py 周
 import json
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ai_qa.wisdom import wisdom_text, retrieve_wisdom
 from ai_qa.episode import log_episode
-from ai_qa.llm import LLMError, chat_with_fallback
+from ai_qa.llm import LLMError, chat_with_fallback, search_chat
 from ai_qa.prompts import build_field_infer_prompt, build_deep_attribution_prompt
 from core.field_dictionary import validate_llm_roles
 
@@ -48,7 +48,23 @@ class EpisodeIn(BaseModel):
     capsule_clicked: Optional[str] = None   # CB-09 D034：用户点击的胶囊 skill（Pro 排序自我成长偏好信号·5.239）
 
 
-@aiqa_router.post('/aiqa/episode')
+class SearchIn(BaseModel):
+    question: str = ''
+
+
+@aiqa_router.post('/aiqa/search')
+def post_search(body: SearchIn):
+    """G6b 联网搜索（纯问答大问题/聚焦问题·DeepSeek Responses API web_search）。
+
+    前端 general 短路命中 SEARCH_KW → 调本端点 → 返 {answer, sources}（answer=模型综合回答·sources=引用）。
+    失败抛 502（前端 try/catch fallback 原 finalStep·不阻塞回答）。
+    """
+    if not body.question.strip():
+        return {'answer': '', 'sources': []}
+    try:
+        return search_chat(body.question.strip())
+    except LLMError as e:
+        raise HTTPException(status_code=502, detail=str(e))
 def post_episode(ep: EpisodeIn):
     """记一条 L3 episode（append DATA/ai_qa/episodes.jsonl）。失败不抛（返回 ok=False）。"""
     saved = log_episode(

@@ -1493,9 +1493,28 @@ function _isResumeCue(q) {
   return !!s && /继续|接着|续做|补充|那个|上一个|把刚才/.test(s);
 }
 
+/** G6c（CB-12·依据 4 连问最简版）：分句——按句界标点切分（代码确定性·不做 LLM 拆解）。
+ *  >1 句 → 拆成独立问（句数上限 2·防拖死）；单句 → 原样（不分）。
+ *  逗号不分句（常在同一问内·如"分析西陵区，看看哪里最差"）。 */
+function splitQuestions(text) {
+  const t = String(text || '').trim();
+  if (!t) return [];
+  const parts = t.split(/[？?。！!；;\n]/).map((s) => s.trim()).filter(Boolean);
+  if (parts.length < 2) return [t];
+  return parts.slice(0, 2);   // 句数上限 2（防拖死·体验优先）
+}
+
 async function send(text, capsule) {
   const isCapsule = !!capsule;
   if (_streaming) return;
+  // G6c：非胶囊非续作 → 多问拆解——逐句走完整管线（各自答案卡·防线/管线全继承·不新造执行）
+  if (!isCapsule) {
+    const _qs = splitQuestions(text);
+    if (_qs.length > 1) {
+      for (const q of _qs) await send(q, null);
+      return;
+    }
+  }
   if (isCapsule) {   // CB-09 D020 胶囊点击：label 当用户消息 + ctx.capsule 路由 runCapsule（跳 diagnose Flash）
     text = (capsule && capsule.label) || '';
   } else {
