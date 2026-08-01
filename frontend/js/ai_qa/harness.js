@@ -11,10 +11,20 @@ import { CONCEPT_KW, INVENTORY_KW, GREETING_KW, GEO_VERB_KW, REGION_KW, POLARITY
 const MAX_ROUNDS_GIS = 10;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=10（保多步完整性，如3次overlay需8轮：1查询+6执行+1answer）
 const MAX_ROUNDS_OTHER = 4;    // A 通用 / C 情绪=4（远紧于 16，配合 temp 0.4 降概率链 p^N）
 
-// 族 A 收尾 #3：补全命中遥测（console 可查·驱动渐进退役：命中趋零 + LLM 多 call 覆盖才删对应规则）
-let _hitInline = 0;      // runTemplatePath 内联扩展命中
-let _hitAutoExpand = 0;  // _autoExpandOverlays 命中
-let _hitRecover = 0;     // _deterministicRecover 命中
+// 族 A 收尾 #3 + G5（glm组 CB-11）：补全命中遥测——localStorage 持久化（跨会话·console 可查·驱动渐进退役：命中趋零 + LLM 多 call 覆盖才删对应规则）
+const _HIT_KEY = 'emc_completion_hits_v1';
+function _loadHitTelemetry() {
+  let s;
+  try { s = JSON.parse(localStorage.getItem(_HIT_KEY) || '') || {}; } catch (_) { s = {}; }
+  return { inline: Number(s.inline) || 0, autoExpand: Number(s.autoExpand) || 0, recover: Number(s.recover) || 0 };
+}
+const _hitInit = _loadHitTelemetry();
+let _hitInline = _hitInit.inline;      // runTemplatePath 内联扩展命中
+let _hitAutoExpand = _hitInit.autoExpand;  // _autoExpandOverlays 命中
+let _hitRecover = _hitInit.recover;     // _deterministicRecover 命中
+function _saveHitTelemetry() {
+  try { localStorage.setItem(_HIT_KEY, JSON.stringify({ inline: _hitInline, autoExpand: _hitAutoExpand, recover: _hitRecover })); } catch (_) {}
+}
 
 // v3 H6：前端 _validateFcParams 已删除——信赖后端 validate_tool_call（router fc_diagnose 调·D062）。
 // 后端在返回 tool_calls 前已校验 + 修正参数（enum 外→默认值替代·required 缺→补默认）·前端不重复。
@@ -561,6 +571,7 @@ async function runTemplatePath(ctx, hooks, diagnose) {
     if (_c) {
       _inlineExpanded = true;
       _hitInline++;   // 族 A 收尾 #3：命中遥测
+      _saveHitTelemetry();   // G5：持久化
       // CB-11 P1 修复：merge 意图（_c.mergeLayers·union 模式返回无 _tcs）→ 调 TOOLS.merge（防 _tcs is not iterable）
       if (_c.mergeLayers && _c.mergeLayers.length >= 2) {
         const _mr = await TOOLS.merge({ layers: _c.mergeLayers, as: 'merged_' + _c.boundaryName });
@@ -908,6 +919,7 @@ export async function orchestrate(ctx, hooks = {}) {
     if (_recovered) {
       diagnose = _recovered;
       _hitRecover++;   // 族 A 收尾 #3：命中遥测
+      _saveHitTelemetry();   // G5：持久化
       if (hooks.onObservation) hooks.onObservation('[恢复] FC 失败 → 确定性匹配 → 直执行', 0);
       console.log('[recover] matched:', diagnose.template, JSON.stringify(diagnose.params || {}).slice(0, 120));
     }
@@ -1418,6 +1430,7 @@ async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
   const _c = buildLanduseCompletion(ctx.question || '', _firstLayerName, { mode: 'auto' });
   if (!_c) return null;
   _hitAutoExpand++;   // 族 A 收尾 #3：命中遥测
+  _saveHitTelemetry();   // G5：持久化
   // CB-11：merge 意图（union）→ 后端 concat（tools.merge layers）·退役 overlay union 链（消 G1/G2）
   if (_c.mergeLayers && _c.mergeLayers.length >= 2) {
     console.log('[autoExpand-merge]', _c.mentioned.join('+'), '→ merge layers', _c.mergeLayers.length, '| hits inline', _hitInline, 'autoExpand', _hitAutoExpand, 'recover', _hitRecover);
