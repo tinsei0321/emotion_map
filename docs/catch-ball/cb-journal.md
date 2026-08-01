@@ -102,6 +102,36 @@
 
 **反评价：11 agree / 2 partial / 2 已修·已核实 / 0 disagree**
 
+### ③·飞轮机制审查深入反评价（verify-before-accept · 逐条核实代码）
+
+> 方法：每条先 grep/read 核实 Codex 的代码级陈述（verify-before-accept），再判 agree/partial；agree 项给**具体行动方案**（非笼统"待修"）。已核实：F-1 属实（test-board.js:390-391 `_pl=method.length`）、F-2 属实（llmRun sig 只抓 tools/template/method/params/newLayers/renderedNew·不覆盖色板/几何/样式）、F-6 属实（no-llm 9 失败长期无主）、F-11 已修（742840d）、F-12 已核实自动收录。
+
+| Codex 意见 | 判定 | 具体行动 |
+|---|:---:|---|
+| F-1 计划命中指标漂移（method 派生≠计划） | **agree** | `test-board.js:390-391` 改按实际执行通道统计：`_allToolCalls.length`（LLM 多 call）或 autoExpand 链长·且「实产≥计划且无失败步」才命中·保留字段名 `计划命中` 防断下游 grep |
+| F-2 断言不覆盖产物正确性 | **agree** | 选 4 高频工具加语义断言：density 色板钩子（analysis=negative → 用消极色板非彩虹·CB-04 已修勿回退）/ overlay feature 数+字段 / clip 产物 point_count / merge 几何合并·断言写成 test-board 可判定的信号（暴露 `_ui`/paint）·非浏览器人工 |
+| F-3 llm 数据形态单一 | **agree** | e2e-seam 补 2 用例：单层全量点（无 polarity 拆分）+ 无 polarity 字段点（走 any-point 兜底·CB-08 F2.0 回归） |
+| F-4 三档拆分 smoke/regression/full | **agree（最高实操价值）** | `flywheel_audit.py` 加 `--tier`：smoke（no-llm 45 + llm 精选 10）/ regression（llm 意图+工具 30-40）/ full（B1-B3 发版）·**先修 B3 卡死根因**（`emc_helpers` 起 serve + 批处理超时——曾因 `\| tail` 缓冲误判卡死·实为输出缓冲非进程挂）·B3 用无缓冲重定向已跑通（25 例 11.1min·本日实证） |
+| F-5 llm 单次失败≠回归 → flaky 重测 | **agree** | test-board `[R]` 重跑加自动重试 1 次·仍失败计 fail·报告标 `flaky`（首过/二过）·防 Flash 概率性误报回归 |
+| F-6 no-llm 9 失败长期红无主 | **agree** | 9 例（CPD-03~08/10 + UI-09 + PRED-09）二选一：建 buglog 条目（标 rootcause）或进显式 defer 清单（原因+负责）·**已确认 CPD 类 = backlog T4/T5 范畴·UI-09/PRED-09 需定位** |
+| F-7 投票数据无消费方 | **partial** | 方向对·但「每月校准」无机制支撑（无定时器/无触发点）·先记待修·待 F-2 断言落地后一并看投票口径 |
+| F-8 失败→buglog 断链 → --collect | **agree** | `flywheel_audit.py --collect`（失败例自动产 buglog 草稿·人工确认入库·复用 bug-collector skill 标准化）·test-board 失败行加「记录」按钮走同流程 |
+| F-9 仪表盘缺跨次趋势 | **partial** | 方向对·但低优先（f_4 三档拆分更急·仪表盘趋势依赖多报告积累）·记待修 |
+| F-10 UI 交互合格 | **agree** | 维持 |
+| F-11 --check 时间戳脆弱 | **已修** | 742840d `_strip_timestamp`·跨分钟验证 ✓ |
+| F-12 _regression.md 只覆盖 B001 | **已核实自动解决** | B010/B011 移 resolved/ 后 render_regression 自动收录（实测 _regression.md 现 3 条）✓ |
+| F-13 修复记录 commit 无祖先校验 | **partial** | 可做但低价值（文档防漂移够用·--check 已守生成物）·记待修·非阻塞 |
+| 族 A 多步主通道未定型 | **agree** | **本轮最核心**：B002 半成品 answer 时序（全步骤完成→单次答案）记待修·主通道二选一定型（推荐 `_allToolCalls` 主通道 + FC prompt 促多 call·行为回归）·架构决策需用户拍板 |
+| 族 B 意图/参数概率性 | **agree** | 守卫已收敛（build_fc_sys_prompt+断言+guard）·长期 grounding 结构化·记 P2 |
+| 族 C 正则覆盖盲区 | **agree** | 已集中 emc-patterns.js + 命中遥测待加·随族 A 收敛 |
+| 族 D 样式契约 | **agree** | 已 defer（B006-B/B008）·computeStyle 扩展至全部产物·P2 |
+| 族 E 字段猜测 | **agree** | 已收敛（B001+CI）·低风险残留 |
+| 族 G 治理 | **agree** | 文档口径已修（742840d）·流程+CI 收敛 |
+
+**Auto-Check**：① 承重红线——无触碰（F 意见均改 test-board/audit/断言·不触 diagnose prompt/tracker/四态）✅ ② verify-before-accept——F-1/F-2/F-6/F-12 读码核实 ✅ ③ 无消费者→wontfix——F-7/F-9/F-13 低价值·partial 不盲修 ✅ ④ 已知模式——「评估偏工程标尺」未触发（本 SCAN 合理聚焦飞轮基建）✅
+
+**反评价（深入版）：15 agree / 3 partial / 2 已修·已核实 / 0 disagree** · 立即做 = F-1/F-2/F-6 · 本周 = F-4 三档 + F-8 · 族 A 主通道 = 架构决策待用户拍板
+
 
 ### ① SCAN 摘要
 [SCAN_DeepSeek_05](scan/05-deepseek.md)（DeepSeek V4 Pro·ZCode 主线程）：基于用户 5 个实测案例的深度诊断——裁剪西陵+伍家岗（request_upload·推理螺旋）、上传了哪些数据（答错·信息缺失）、裁剪西陵+伍家岗再测（假结论·无执行感知）、消极情绪追问（层引用幻觉）、500m 网格聚合（图层OK/结论超时）。**核心发现**：接地上下文缺两类语义标注（数据来源+可用引用），LLM 面对信息缺口进入推理螺旋。综合分 7.3/10（↓0.6 vs CB-08）。7 条 P0-P1 建议。
