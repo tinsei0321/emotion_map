@@ -162,7 +162,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--batch', choices=list(BATCHES.keys()) + ['all'], help='指定 batch（B0-B3/all）')
     ap.add_argument('--tier', choices=['smoke', 'regression', 'full'], help='三档拆分（F-4）：smoke=每次commit / regression=每日 / full=发版验收')
+    ap.add_argument('--collect', metavar='AUDIT_JSON', help='F-8：从 audit JSON 失败行生成 buglog 草稿（人工确认入库）')
     args = ap.parse_args()
+    if args.collect:
+        sys.exit(collect_buglog_drafts(args.collect))
     if args.tier:
         # tier → batches（含 B3-smoke 子集：成果范式+Smart+产物语义）
         batches = []
@@ -180,6 +183,68 @@ def main():
             run_batch(b)
         except Exception as e:
             print(f'[{b}] FATAL: {e}', flush=True)
+
+
+def collect_buglog_drafts(audit_json):
+    """F-8（CB-10 飞轮审查）：从 audit JSON 失败行生成 buglog 草稿（人工确认入库）。
+
+    草稿写到 tests/buglog/open/_drafts/（不直接入 open/·人工 review 后 move + 填根因）。
+    复用 bug-collector skill 的 frontmatter 契约（ASCII type/severity/module·YAML）。
+    """
+    import datetime as _dt
+    with open(audit_json, encoding='utf-8') as fh:
+        d = json.load(fh)
+    rows = d.get('rows', [])
+    fails = [r for r in rows if 'tb-fail' in r['cls'] or 'tb-pending' in r['cls']]
+    if not fails:
+        print(f'[OK] 无失败行（audit 共 {len(rows)} 行）——无需生成草稿')
+        return 0
+    drafts_dir = os.path.join(REPO, 'tests', 'buglog', 'open', '_drafts')
+    os.makedirs(drafts_dir, exist_ok=True)
+    today = _dt.date.today().isoformat()
+    made = 0
+    for r in fails:
+        fid = r.get('id') or 'UNKNOWN'
+        name = r.get('name') or fid
+        cat = r.get('cat') or '未知'
+        summ = (r.get('summary') or '').strip()
+        slug = fid.lower().replace('-', '-').replace(' ', '-') or 'bug'
+        path = os.path.join(drafts_dir, f'DRAFT-{slug}.md')
+        body = f"""---
+id: DRAFT
+title: '飞轮失败：{name}（{cat}）'
+type: BUG
+severity: MED
+priority: P1
+status: open
+module: 飞轮
+source: 飞轮采集
+cb: CB-10
+rootcause: ''
+case_ref: '{fid}'
+repro_count: 1
+last_repro: {today}
+---
+
+# DRAFT · 飞轮失败：{name}
+
+## 标准化用例（草稿·待人工补全）
+
+**问句**：（待人工填写）
+
+**数据前提**：（待人工填写）
+
+**失败表现**：{summ}
+
+---
+*本文件为 {audit_json} 自动生成草稿（flywheel_audit --collect）·人工确认后移入 buglog open/ 并填根因。*
+"""
+        with open(path, 'w', encoding='utf-8') as fh:
+            fh.write(body)
+        made += 1
+        print(f'  [草稿] {path}')
+    print(f'[OK] 生成 {made} 条 buglog 草稿 → {drafts_dir}（人工 review 后移入 open/）')
+    return 0
 
 
 def run_batch_smoke():
