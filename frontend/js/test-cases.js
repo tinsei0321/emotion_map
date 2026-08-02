@@ -308,7 +308,7 @@ const PARAM_DATA = [
   { q: '大南门·二马路滨江片区周边 1 公里范围内的情绪点分布', expectRadius: 1000, review: 'radius=1000m？' },
   { q: '西陵区范围内按面聚合情绪统计及 4×5 归因', expectBoundary: '西陵', review: 'boundary=西陵区？' },
   { q: '伍家岗区范围内按面聚合情绪统计及 4×5 归因', expectBoundary: '伍家', review: 'boundary=伍家岗区？' },
-  { q: '夷陵区范围内按面聚合情绪统计及 4×5 归因', expectBoundary: '夷陵', review: 'boundary=夷陵区？' },
+  { q: '小溪塔范围内按面聚合情绪统计及 4×5 归因', expectBoundary: '小溪塔', review: 'boundary=小溪塔？' },   // CB-12：PRM-07 改小溪塔（preset 含·原夷陵区不在 fixture·数据前提缺陷）
   { q: '对比西陵区与伍家岗区范围内情绪极性差异', expectBoundary: '西陵.*伍家', review: 'boundaries 含两区？' },
   { q: '从已载行政区中筛选出商业服务业用地的面', expectLayer: '商业', review: 'layer=商业？' },
   { q: '裁剪西陵区范围内的全部情绪点', expectRange: '西陵', review: 'range=西陵区？' },

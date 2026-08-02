@@ -1539,6 +1539,18 @@ function _deterministicRecover(ctx) {
       domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [] };
   }
 
+  // 模式G（CB-12 PRM-09）：筛选出某类用地 → extract_feature 兜底（FC 失败时确定性路由·仿模式 E/F）
+  //   PRM-09 实测 FC 失败（tpl=None）→ degraded → deriveMissingParams 跳过 → recover 无筛选模式 → ask_user 判 ERR
+  if (/筛选出|筛选某类|抽出.*用地/.test(q)) {
+    const _fLayer = _polys.find((l) => LANDUSE_KW.some((kw) => l.name.includes(kw)) || /用地|地块/.test(l.name));
+    if (_fLayer) {
+      return { template: 'extract_feature', degraded: false, _fc: true, _recover: true,
+        params: { layer: _fLayer.name }, method: ['extract_feature()'], intent: 'gis_operation',
+        data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+        domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [] };
+    }
+  }
+
   // 模式F（CB-12 P1'）：按面聚合/归因 + 区名 → zonal_stats 兜底（PRM-06·FC 失败时确定性路由·仿模式 E）
   if (/(聚合|归因|统计).{0,4}(情绪|极性)|按面聚合/.test(q)) {
     const _bLayer = _polys.find((l) => l.name.includes(_region) ||
