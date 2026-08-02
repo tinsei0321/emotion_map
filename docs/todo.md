@@ -11,6 +11,15 @@
 
 ## 📅 2026-08-02（CB-12 · 链路体检 + PRM 派生 + 尺度判定 + 触发入口统一 · G0-G6a）
 
+### ✅ CB-12 B3 根因定案闭环 + trace.log 业界级 + pro 停用（revision-log 5.251，commit 3bb2f76+f4f78e2+e7cb7b9 · **用户手动 push**）
+
+- **根因定案**（glm组 trace.log 铁证·推翻"API 慢"误判）：慢 = while-loop 多轮 × pro/旧模型（F_002=18·pro 37）·**非 API**（用户 key 正常）
+- **trace.log 业界级**：session 字段 + 轮转 + `tools/trace_query.py` + 文档 + CB 取证步骤 0
+- **while-loop 修复**：stripped 阈值回退 3→2 + 词边界守卫（Codex slice(1) bug 修 slice(2)）+ zonal 前置检查
+- **pro 停用**（flash 足够）：UI disabled + 强制 flash 三层守卫
+- **B3 08 重测 80%**（PRM 7/10·pro 0·F_002 8·session trace 验证）
+- **backlog**：MOD_PLACE 渲染风暴 + fallback 重试（Codex 观察）
+
 ### ✅ B3 大失败根治（revision-log 5.250，commit 7df8d75+8e67848 · **用户手动 push**）
 
 B3 重测大失败（4%·timeout 22/25·t_p50=93s）→ 两组根因核查共识 + P0 修复：

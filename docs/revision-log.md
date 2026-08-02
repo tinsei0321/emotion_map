@@ -223,7 +223,12 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月02日）** · 本节按板块分组、组内倒序；最新工作 = **B3 大失败根治（搜索素材注入 + KW 收紧 + 超时 + 脏检查·7df8d75）**（本次，分支 `fix/emc-buglog`）。最近：
+> 📍 **最新动态（08月02日）** · 本节按板块分组、组内倒序；最新工作 = **B3 根因定案闭环（while-loop 退化·trace 取证）→ 修复 → B3 恢复 80%**（3bb2f76+f4f78e2+e7cb7b9·本次，分支 `fix/emc-buglog`）。最近：
+>
+> - **CB-12 B3 根因定案 + trace.log 业界级 + while-loop 修复 + pro 停用（3bb2f76+f4f78e2+e7cb7b9）**：**根因定案**（glm组 trace.log 铁证·推翻 claude/Codex 的"API 慢/无 while-loop"定案）：B3 窗口 F_001=104（66 flash+**37 pro+1 reasoner**）·F_002（agentStep·while-loop）=**18**·F_003=56——慢 = **while-loop 多轮 × pro/旧模型**·非 API（用户 key 正常·探针 0.9s·用户质疑促成澄清）。**trace.log 业界级**（用户要求·学习 glm 习惯）：结构化 session 字段（EMOTION_TRACE_SESSION）+ 大小轮转（200MB·原子）·`tools/trace_query.py`（--stats/--id/--time/--session·根因分析第一动作）·`docs/trace-log-guide.md`·**CB RULES 1.2 加取证步骤 0**（trace stats 先行·F_002/F_003 非 F_001）+ KNOWLEDGE §3 沉淀。**while-loop 修复**：stripped 阈值 3→2 回退（2 字区名恢复·glm 发现）+ 词边界守卫（防"西陵路/公园/大道"·Codex 发现 slice(1) bug 修复 slice(2)）+ zonal 强制路由前置检查（derive 成功才强制）。**pro 停用**（用户：flash 足够）：UI disabled + _thinkMode 强制 flash + finalStep 守卫·pro 残留全扫无活路径。**验证**：两组验证通过（trace 工具 session 隔离实测·F_002 18→4）·**B3 08 重测 80% (20/25)·0 timeout·PRM 7/10（06 也 PASS·10 转 PASS）·session B3-verify-01 trace 证据：pro 0·F_002 8（残余 FC 失败入口·Codex 预判非归零）**。pytest 225。**backlog**：MOD_PLACE 渲染风暴（~94 次/秒·Codex 观察）+ MOD_LLM.F_002 fallback 79 次含 3 ERR。
+>
+>
+> - **CB-12 PRM 攻坚深水（a04a714）**：PRM-09 假阳性收窄·PRM-06 zonal 强制·PRM-10 多 call 重写 + clip range·PRM-08 双字段·PRM-07 后端日志。**（注：a04a714 的 stripped 阈值 3→2 实为退化源·已在本轮回退）**
 >
 > - **B3 大失败根治（7df8d75+8e67848）**（Codex/glm组 双核查·B3 实测 4%·timeout 22/25）：B3 重测（API 0.9s 良好）仍大失败——**n=25 pass=1（4%）·timeout=22·t_p50=93s**·22/25 全「回答超时 90s」·整批被拖死。**根因（两组独立核查·共识）**：① 搜索分支绕过 finalStep+applyQualityDefense（直接 onFinalDone 输出搜索原文·B3 断言全打乱）② SEARCH_KW 含「情绪地图」→ 概念问误触发搜索 ③ 搜索 90s timeout + 串行 → 批次拖死 ④ episode 404 = 1362167 已提交回归（误删装饰器·Codex 发现·工作树修复未提交）⑤ 搜索返回无 exit → badge 渲染异常（glm组 补）。**修复（P0·两组一致）**：① 搜索改**素材注入**——结果进 ctx.context·走 finalStep + applyQualityDefense（不 bypass·保排版/R1-R11）② SEARCH_KW 删「情绪地图/对比/介绍」+ 概念问实据词门（SEARCH_EVIDENCE_RE·"什么是情绪地图"本地答·"政策/现状"才搜）③ 前端 fetch AbortController 15s + 后端 search_chat timeout 90→30s 不 retry ④ 提交 episode 装饰器修复（8e67848）⑤ serve.py `_dirty_check`（git status 非空→[WARN]·用户诉求：每次开网页都最新代码·防演示用旧代码）。**验证**：episode 200 ✓ + 脏检查 WARN 单测 ✓ + pytest 225 + 体检 20 例全 PASS（T1c 搜索 27.3s·素材注入无 bypass）·**B3 重跑待 API 好时段**（应恢复到 ~13/25 基线）。
 >
