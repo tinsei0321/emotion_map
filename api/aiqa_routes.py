@@ -65,6 +65,9 @@ def post_search(body: SearchIn):
         return search_chat(body.question.strip())
     except LLMError as e:
         raise HTTPException(status_code=502, detail=str(e))
+
+
+@aiqa_router.post('/aiqa/episode')
 def post_episode(ep: EpisodeIn):
     """记一条 L3 episode（append DATA/ai_qa/episodes.jsonl）。失败不抛（返回 ok=False）。"""
     saved = log_episode(
