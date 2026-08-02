@@ -857,6 +857,12 @@ function deriveDiagnoseMethod(template, params) {
  * @returns {Promise<{ok, degraded?, rounds?, final?, defense?}>}
  */
 export async function orchestrate(ctx, hooks = {}) {
+  // CB-12 P1（glm）：B3 飞轮清 gate（?test=1 冷启动·防跨 session 累积 miss 干扰测试基线）
+  try {
+    if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('test') === '1' && localStorage.getItem(_TPL_STATS_KEY)) {
+      localStorage.removeItem(_TPL_STATS_KEY);
+    }
+  } catch (_) {}
   if (ctx && ctx.capsule) return runCapsule(ctx, hooks, ctx.capsule);   // CB-09 D020 胶囊点击跳 diagnose Flash·直达 runCapsule（L1 0 轮/L2 Pro 确认）
   // ══ 编排器·确定性裁定（Smart Agent/Dumb Tool 内核 · CLAUDE.md「AI·Copilot 开发内核」铁律3：不调 LLM、只接线）══
   // 流程：Smart·计划（diagnose 意图卡）→ 编排器分流（短路 / plan-once-execute / ReAct 兜底）→ Dumb·执行（SKILL/TOOLS 纯参数化）→ 三态出口代码裁定（result/gap/concept）。详见 docs/copilot-architecture.md。
@@ -969,17 +975,19 @@ export async function orchestrate(ctx, hooks = {}) {
     diagnose = await stages.fcDiagnoseStep(ctx, hooks);
     console.timeEnd('[emc-timing] fcDiagnose');
   } catch (e) { diagnose = null; }
-  // P0：FC 诊断失败 → 不入旧 SSE（旧预选工具常选错·对面层数据必失败），直接走 while-loop 兜底
-  if (!diagnose || diagnose.degraded) {
-    console.warn('[FC] 诊断失败·不入旧 SSE', diagnose?._fcError || '');
-    diagnose = { degraded: true, _fcError: diagnose?._fcError || 'fc_failed' };
-    // L2 确定性恢复：FC 失败 → 尝试用关键词+数据状态构造 diagnose（不调 LLM）
+  // P0：FC 诊断失败 或 成功但返 unknown/multi（CB-12·Codex+glm 定案）→ 确定性恢复兜底
+  //   glm 关键洞察：FC 成功返 unknown/multi 比 FC 失败更危险——FC 失败至少 recover 兜底·unknown/multi 则 recover 跳过（非 degraded）·直落 while-loop
+  //   扩展触发：degraded OR template∈{unknown,multi} 都试 recover（unknown/multi 单工具路径不满足·recover 给确定性出口）
+  if (!diagnose || diagnose.degraded || diagnose.template === 'unknown' || diagnose.template === 'multi') {
+    console.warn('[FC] 诊断失败或返 unknown/multi·不入旧 SSE', diagnose?._fcError || diagnose?.template || '');
+    if (!diagnose) diagnose = { degraded: true, _fcError: 'fc_failed' };
+    // L2 确定性恢复：FC 失败/unknown/multi → 尝试用关键词+数据状态构造 diagnose（不调 LLM）
     const _recovered = _deterministicRecover(ctx);
     if (_recovered) {
       diagnose = _recovered;
       _hitRecover++;   // 族 A 收尾 #3：命中遥测
       _saveHitTelemetry();   // G5：持久化
-      if (hooks.onObservation) hooks.onObservation('[恢复] FC 失败 → 确定性匹配 → 直执行', 0);
+      if (hooks.onObservation) hooks.onObservation(`[恢复] ${diagnose.template ? 'FC 返 ' + diagnose.template : 'FC 失败'} → 确定性匹配 → 直执行`, 0);
       console.log('[recover] matched:', diagnose.template, JSON.stringify(diagnose.params || {}).slice(0, 120));
     }
   }
@@ -1061,7 +1069,8 @@ export async function orchestrate(ctx, hooks = {}) {
   // CB-09：单工具执行后，代码自动检测是否需要补全剩余步骤（不依赖 LLM 产出 plans）
   if (!ctx.resume && !diagnose.degraded && diagnose.template) {
     const _tdef = stages.SKILL_DEFS[diagnose.template];
-    if (_tdef && _tdef.category === 'single' && _tplHitRateReady()) {
+    // CB-12 P1（glm）：gate per-template——unknown 才受 gate·其他 single 模板始终 fast path（防全局开关连锁·gate 恒 PASS 时 zero 影响）
+    if (_tdef && _tdef.category === 'single' && (diagnose.template !== 'unknown' || _tplHitRateReady())) {
       // A3（CB-12·B002 割裂残余）：将有 autoExpand 需求（且非 extract 首步——extract 已由 runTemplatePath 内联扩展处理）
       // → deferFinal（runTemplatePath 不先渲染半成品·扩展完成统一出结论）
       const _willExpand = !ctx.resume && _tdef.tool !== 'extract_feature' &&
@@ -1200,6 +1209,12 @@ export async function orchestrate(ctx, hooks = {}) {
     // CB-06 L2：生成类 + 工具产出图层 → toolHistory 追加完成信号（系统级·治 Flash 不知"任务完成"·DeepSeek）
     if (_IS_GEN && newLayerCount > 0) {
       toolHistory[toolHistory.length - 1] += '\n[系统] 已生成用户要求的分析图层。如无进一步操作需求，请直接 answer——勿再 query/verify 验证。';
+    }
+    // CB-12 P2（glm）：while-loop 确定性出口——产图层后立即 answer（不等多轮 ReAct·防"只做一半"/拖慢）
+    //   单步单工具问句（intent 明确·非多步链）已产出 → 强制 answer·不再续轮
+    if (newLayerCount > 0 && !diagnose.chain && !(step.action.params && step.action.params.keep)) {
+      toolHistory[toolHistory.length - 1] += '\n[系统] 已产出图层·直接 answer 总结（勿再续轮）。';
+      round = maxRounds + 1;   // 提前结束循环（等价 break·保留循环后 finalStep）
     }
     round++;
   }
@@ -1364,7 +1379,8 @@ function deriveMissingParams(diagnose, question, layers) {
         if (_f) p.range = { type: 'FeatureCollection', features: [_f] };
       }
     }
-  } else if (/筛选出|筛选某类|抽出.*用地/.test(q) && !diagnose.template) {
+  } else if (/筛选出|筛选某类|抽出.*用地/.test(q) && (!diagnose.template || diagnose.template === 'unknown' || diagnose.template === 'multi')) {
+    // CB-12（Codex）：筛选路由守卫放宽——FC 返 unknown/multi 也强制 extract（PRM-09 类·防直落 while-loop）
     diagnose.template = 'extract_feature'; diagnose.method = ['extract_feature()'];   // 筛选用地→extract
   } else if (/(聚合|归因|统计).{0,4}(情绪|极性)|按面聚合/.test(q) && tool !== 'zonal_stats') {
     // CB-12 P1' + 定稿（glm组）：聚合/归因+区名 → 强制 zonal_stats·**前置检查 derive 成功才强制**（boundary 能填·防强制 zonal + 无 boundary → gap/while-loop 退化）
