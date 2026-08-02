@@ -449,11 +449,29 @@ def _port_free(port):
         return False
 
 
+def _dirty_check(repo_root):
+    """CB-12（用户诉求·每次打开网页都应最新代码）：工作树脏检查——git status 非空 → [WARN] 显性提示。
+    洞：磁盘文件 ≠ 提交状态时（未提交改动），换机/拉取/演示机 = 旧代码。serve 每次起的是磁盘最新，
+    但若提交 ≠ 磁盘，演示/测试可能非最新提交状态——显性警告·不静默吞。"""
+    try:
+        r = subprocess.run(['git', 'status', '--porcelain'], cwd=repo_root,
+                           capture_output=True, text=True, timeout=5)
+        dirty = [l for l in r.stdout.splitlines() if l.strip()]
+        if dirty:
+            n = len(dirty)
+            sample = '、'.join(d.split()[1] if len(d.split()) > 1 else d for d in dirty[:3])
+            print(f'[WARN] 工作树有 {n} 个未提交改动（{sample}…）——演示/测试为磁盘最新，但非最新提交；'
+                  f'换机/拉取/演示机将用旧代码。建议先 git add+commit。')
+    except Exception:
+        pass   # git 不可用/非仓库 → 静默（不影响 serve）
+
+
 def _spawn_backend(repo_root, backend_port=8000):
     """启动 uvicorn 子进程并等 /health 就绪。每次启动**强制清 :port 重起**（不复用旧进程），
     保证后端是最新代码——避免复用旧后端（health 通但缺新路由如 /spatial/grid）导致 404。
     若需保留手动起的后端，用 `py frontend/serve.py 8080 --no-backend`。"""
     import urllib.request, time
+    _dirty_check(repo_root)   # CB-12：脏检查警告（未提交改动 → 显性提示·防演示用旧代码）
     _free_port(backend_port)   # 清 :port 所有残留（旧后端/死进程），保证起最新代码
 
     try:

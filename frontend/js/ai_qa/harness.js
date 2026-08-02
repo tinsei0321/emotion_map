@@ -6,7 +6,7 @@
 import * as stages from './stages.js';
 import { TOOLS, setToolContext, formatRegistry, getArtifacts, deriveAvailable, resetStepResults, resetCurrentResults, resolveCoref } from './tools.js';
 import { getLayers } from '../state.js';
-import { CONCEPT_KW, INVENTORY_KW, GREETING_KW, GEO_VERB_KW, REGION_KW, POLARITY_KW, LANDUSE_KW, SEARCH_KW } from './emc-patterns.js';   // CB-10 分歧2 词表集中 + G6b SEARCH_KW
+import { CONCEPT_KW, INVENTORY_KW, GREETING_KW, GEO_VERB_KW, REGION_KW, POLARITY_KW, LANDUSE_KW, SEARCH_KW, SEARCH_EVIDENCE_RE } from './emc-patterns.js';   // CB-10 分歧2 词表集中 + G6b SEARCH_KW/SEARCH_EVIDENCE_RE
 
 const MAX_ROUNDS_GIS = 10;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=10（保多步完整性，如3次overlay需8轮：1查询+6执行+1answer）
 const MAX_ROUNDS_OTHER = 4;    // A 通用 / C 情绪=4（远紧于 16，配合 temp 0.4 降概率链 p^N）
@@ -876,32 +876,38 @@ export async function orchestrate(ctx, hooks = {}) {
   // P0 降温：_quickIntent 轻量预判——高置信通用/概念问跳 diagnose 直 finalStep（省整轮 diagnose LLM + 7字段卡）
   if (!ctx.resume && _quickIntent(ctx.question) === 'general') {
     // G6b（CB-12·依据 2 纯问答·禁假大空需宜昌实据）：命中搜索词（大问题/聚焦问题）→ 联网搜索（DeepSeek Responses API web_search）
-    //   非数据清单问（清单本地直列更快）·失败 fallback 原 finalStep（不阻塞回答）
-    const _searchHit = SEARCH_KW.some((w) => ctx.question.includes(w)) && !INVENTORY_KW.some((w) => ctx.question.includes(w));
+    //   CB-12 B3 修复（Codex+glm组 共识）：**素材注入非旁路**——搜索结果进 ctx.context·走 finalStep + applyQualityDefense
+    //   （不直接 onFinalDone 输出·保排版/三句骨架/R1-R11 防线·B3 断言恢复适用）。非数据清单问·失败 fallback 正常 finalStep。
+    // CB-12 B3 修复：触发收紧——SEARCH_KW 命中 + 非数据清单 + **概念问须含实据词才搜**（"什么是情绪地图"无实据词→本地直答）
+    const _searchHit = SEARCH_KW.some((w) => ctx.question.includes(w)) && !INVENTORY_KW.some((w) => ctx.question.includes(w)) &&
+      (!CONCEPT_KW.some((w) => ctx.question.includes(w)) || SEARCH_EVIDENCE_RE.test(ctx.question));
     if (_searchHit) {
       try {
         if (hooks.onReason) hooks.onReason('联网搜索宜昌实据中…', 0);
+        const _ac = new AbortController();   // CB-12：前端 fetch 超时（防搜索 90s 拖死批次）
+        const _timer = setTimeout(() => _ac.abort(), 15000);
         const _res = await fetch('/api/v1/aiqa/search', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question: ctx.question }),
-        });
+          body: JSON.stringify({ question: ctx.question }), signal: _ac.signal,
+        }).finally(() => clearTimeout(_timer));
         const _data = await _res.json().catch(() => null);
         if (_data && _data.answer && _data.answer.trim()) {
-          let _draft = _data.answer.trim();
-          if (_data.sources && _data.sources.length) {
-            _draft += '\n\n> 信息来源：' + _data.sources.map((s, i) => `[${i + 1}] ${s}`).join(' · ') + '\n> （信息截至检索时·供参考）';
-          }
-          if (hooks.onFinalDone) hooks.onFinalDone(_draft);
-          if (hooks.onDefense) hooks.onDefense({ degraded: false, skipped: 'quick-search' });
-          return { ok: true, rounds: 0, final: _draft, defense: { degraded: false, skipped: 'quick-search' }, degraded: false, diagnose: { degraded: true, intent: 'general', quick: true, search: true } };
+          // 素材注入：搜索结果进 context·供 finalStep 结合 EMC 背景改写（勿照抄）·附来源
+          ctx.context = '【联网搜索素材（供参考·须结合下方情绪地图背景改写·勿照抄）】\n' + _data.answer.trim() +
+            (_data.sources && _data.sources.length ? '\n\n来源：' + _data.sources.map((s, i) => `[${i + 1}] ${s}`).join(' · ') : '') +
+            '\n\n' + (ctx.context || '');
+          ctx._searchUsed = true;
         }
-      } catch (_e) { /* 搜索失败 → fallback 原 finalStep */ }
+      } catch (_e) { /* 搜索失败 → 正常 finalStep（素材未注入）*/ }
     }
     ctx.context = '【intent=通用问答·快速预判】直接简洁作答，不要 4×5 归因、不要演示逻辑链、不要引导情绪场景。\n\n## 情绪地图背景（概念问时参考·灵活改写勿照抄）\n随着"人民城市"理念的深入实践，城市建设正在从"见物"向"见人"转变。城市规划行业从"造城"到"营城"的理念升华，要求从"地上建城"到"城上建城、依城养城、以城兴城"。宜昌市委、市政府多次强调要关注城市的"温情治理"、"情绪价值"和"年轻范"，明确提出"打造精致温暖的现代化活力之城"、"激发城市年轻活力"等发展目标。\n\n情绪地图正是这一理念的技术实践——把居民在社交媒体、12345热线等平台表达的情感（开心、愤怒、抱怨、期盼等）精准定位到地理坐标，构建一个可展示、可交互的"城市心情"动态地图。它让人直观看到哪个区域居民幸福感高、哪里抱怨集中，并揭示情绪背后老百姓的"急难愁盼"（设施不足、环境不好、文化不显、治理不优），从而用数据替代直觉，为城市"规划、更新、运营、治理"四大领域提供"人本视角"的科学决策依据。\n\n城市情绪是城市中所有个体情绪状况的集合，是居民在工作、生活、娱乐等场景中内心需求的直接表征。情绪地图基于多源城市情绪数据（社交媒体、App数据）与时空信息（地理信息、建成环境数据）的叠加融合，构建一套反映城市情绪时空分布及其与建成环境关联的可视化分析工具。\n\n' + (ctx.context || '');
     const draft = await stages.finalStep(ctx, hooks, '');
-    if (hooks.onFinalDone) hooks.onFinalDone(draft);
-    if (hooks.onDefense) hooks.onDefense({ degraded: false, skipped: 'quick-general' });
-    return { ok: true, rounds: 0, final: draft, defense: { degraded: false, skipped: 'quick-general' }, degraded: false, diagnose: { degraded: true, intent: 'general', quick: true } };
+    // CB-12：搜索素材注入后仍走防线（R1 非空/R7 截断/R10 尺度等·保质量·非 bypass）
+    const _qd = applyQualityDefense(draft, { obsOk: false, toolHistoryText: '', skipL1: true, question: ctx.question });
+    const _final = _qd.final;
+    if (hooks.onFinalDone) hooks.onFinalDone(_final);
+    if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: ctx._searchUsed ? 'quick-general-search' : 'quick-general', capsules: _qd.capsules });
+    return { ok: true, rounds: 0, final: _final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: ctx._searchUsed ? 'quick-general-search' : 'quick-general' }, degraded: false, diagnose: { degraded: true, intent: 'general', quick: true, search: !!ctx._searchUsed } };
   }
 
   // 指代解析（NL 预处理·5.212·几 ms·非 LLM）：检测"这边/刚才"→ grounding 显式标注聚焦对象·让 diagnose 不靠猜

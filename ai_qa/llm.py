@@ -421,12 +421,13 @@ register_track_id("MOD_LLM.F_005", "LLMClient.chat_with_tools_stream（FC 流式
 register_track_id("MOD_LLM.F_006", "chat_with_tools_stream_fallback（FC 流式 provider 韧性·Hotfix R2 S7）")
 
 
-def search_chat(question: str, max_tokens: int = 4000, timeout: float = 90.0) -> dict:
+def search_chat(question: str, max_tokens: int = 4000, timeout: float = 30.0) -> dict:
     """DeepSeek Responses API 联网搜索（G6b·纯问答大问题/聚焦问题）。
 
     走 https://api.deepseek.com/v1/responses + tools=[{type:'web_search'}]（服务端执行搜索+开页+综合）。
     返 {answer, sources}：answer=模型综合回答文本（output 里 type=message 的 output_text 拼接）；
     sources=web_search_call 的 open_page url 列表（供来源标注）。失败抛 LLMError。
+    CB-12 B3 修复：timeout 90→30s·不 retry（搜索是增强非核心·失败快速 fallback·防拖死批次）。
     """
     key = os.environ.get(DEFAULT_KEY_ENV, '')
     if not key:
@@ -441,7 +442,7 @@ def search_chat(question: str, max_tokens: int = 4000, timeout: float = 90.0) ->
     }
     trace_log('MOD_LLM.F_007', f'search_chat q={question[:60]}')
     last_err = None
-    for attempt in range(MAX_RETRIES):
+    for attempt in range(1):   # CB-12 B3 修复：搜索不重试（增强非核心·失败快速 fallback·防 90s×retry 拖死）
         try:
             with httpx.Client(timeout=timeout) as client:
                 r = client.post(url, headers=headers, json=body)
