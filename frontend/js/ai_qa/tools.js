@@ -596,23 +596,28 @@ export function deriveAvailable(question, layers) {
       }
     }
     const _allVals = [...new Set([...(b.values || []), ..._nameVals])];
+    // CB-12 统一词边界（Codex 方案·修 2 bug）：两循环都过词边界·分隔语义修正——
+    //   匹配 = 值后首字符 ∈ 分隔类（区/内/范围/的/标点/空白/结尾）·跳过 = ∈ 块词（路/山/公园/大道…）
+    const _sepRe = /^[\s，。；、的区内范围边界]$/;   // 分隔类（合法区域边界·含"范围"字面·"西陵范围内"应匹配）
+    const _blockRe = /^(路|山|街|公园|广场|大道|车站|码头|桥)/;   // 块词（误匹配·跳过）
+    const _validAfter = (val, qq) => {
+      const _idx = qq.indexOf(val);
+      if (_idx < 0) return false;
+      const _after = qq.slice(_idx + val.length, _idx + val.length + 2);
+      const _first = _after.slice(0, 1);
+      return _sepRe.test(_first) || !_blockRe.test(_after);   // 分隔符 → 匹配；块词 → 跳过；其他（如"范围内"首字"范"非块词）→ 匹配
+    };
     for (const nm of _allVals) {
       if (!nm) continue;
-      if (q.includes(nm)) return { name: nm, layer: l.name, field: b.field };   // 原始值精确优先
+      if (q.includes(nm) && _validAfter(nm, q)) return { name: nm, layer: l.name, field: b.field };   // 原始值精确优先（过词边界）
     }
     for (const nm of _allVals) {
       if (!nm) continue;
       const _qStrip = _strip(q), _nmStrip = _strip(nm);
       // CB-12 回退（glm组）：阈值 3→2（"西陵/伍家"2 字区名 stripped 匹配恢复·a04a714 改 3 致 2 字区名失效→while-loop 退化）
-      //   防"西陵路"误匹配：词边界检查（stripped 值后须是区/县/街道/镇/的/内/范围/。等分隔·非"路/山/公园"等）
-      if (_nmStrip && _nmStrip.length >= 2 && (_qStrip.includes(_nmStrip) || _nmStrip.includes(_qStrip))) {
-        // CB-12 修复（Codex）：词边界完整块词匹配——取 stripped 值后 1-2 字符（防"西陵路/山"1字 + "西陵公园/广场/大道"2字误匹配）
-        const _idx = q.indexOf(_nmStrip);
-        const _after = q.slice(_idx + _nmStrip.length, _idx + _nmStrip.length + 2);
-        const _bounded = /^(路|山|街|公园|广场|大道|车站|码头|桥)/.test(_after) || /^[\s，。；、的区内范围边界]$/.test(_after.slice(0, 1));
-        if (!_bounded) {
-          return { name: nm, layer: l.name, field: b.field };   // stripped 兜底（≥2 字·词边界防误匹配）
-        }
+      //   词边界用原始 q（非 _qStrip·防 _strip 剥"大道"的"道"致"大"单字漏拦块词）
+      if (_nmStrip && _nmStrip.length >= 2 && (_qStrip.includes(_nmStrip) || _nmStrip.includes(_qStrip)) && _validAfter(_nmStrip, q)) {
+        return { name: nm, layer: l.name, field: b.field };   // stripped 兜底（≥2 字·词边界防误匹配）
       }
     }
   }
