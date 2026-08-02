@@ -318,11 +318,12 @@ const PARAMS = PARAM_DATA.map((d, i) => ({
   category: '参数正确性', type: 'llm',
   run: async (t) => llmRun(t, d.q, (b, _tt, sig) => {
     if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's2', obs: `GAP: "${b}"` };
-    // CB-12 P1（glm组）：ask_user（中心缺·诚实追问）→ PASS（非 fail·诚实追问 ≠ 撒谎·center 需 geocode 不 derive）
-    //   badge=「等你选择」(panel.js:486·exit=ask)·且渲染 .aiq-ask-chip 选项——有选项胶囊 + 工具未执行 = 合法追问
+    // CB-12 P1 + P1'（Codex 假阳性修正）：ask_user → PASS 仅限需要澄清参数的用例（center 类·PRM-03/04）
+    //   PRM-09（筛选商业）FC 未选工具也触发 ask_user·但本问不需澄清（应 extract 执行）→ 非诚实追问·不 PASS
+    //   判据：仅 expectRadius（center 类）用例放行·且 askChips 真实存在
     const _askChips = (_tt && _tt.askChips && _tt.askChips()) || 0;
-    if ((/等你选择/.test(b) || _askChips > 0) && (!sig.tools || sig.tools.length === 0)) {
-      return { pass: true, obs: `合法 ask_user（诚实追问·center 类）·badge=${b.slice(0, 20)}`, review: '追问是否合理？' };
+    if (d.expectRadius != null && (_askChips > 0 || /等你选择/.test(b)) && (!sig.tools || sig.tools.length === 0)) {
+      return { pass: true, obs: `合法 ask_user（center 缺·诚实追问）·badge=${b.slice(0, 20)}`, review: '追问是否合理？' };
     }
     // H3: 真比对 sig.params 与 expect*（替代恒 pass）。cell/radius 数值 ±5% 容差；boundary 正则包含。
     const p = sig.params || {};

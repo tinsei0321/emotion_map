@@ -581,16 +581,30 @@ function _boundaryEnum(l) {
 export function deriveAvailable(question, layers) {
   const q = String(question || '');
   if (!q) return null;
-  // CB-12 P0-a（glm组 纠正）：模糊匹配——剥「区/市/县/街道」后缀后双向包含（问句"西陵"↔值"西陵区"·问句"西陵区"↔值"西陵"）
+  // CB-12 P0-a + P1'（glm组/Codex）：模糊匹配——剥「区/市/县/街道」后缀后双向包含（问句"西陵"↔值"西陵区"）
+  //   P1'：原始值精确优先（防"西陵路"误匹配"西陵区"·glm组 发现 2）·stripped 兜底
   const _strip = (s) => String(s || '').replace(/[区市县街道镇]$/g, '').trim();
   for (const l of layers || []) {
     const b = _boundaryNames(l);
     if (!b || !b.values || !b.values.length) continue;
-    for (const nm of b.values) {
+    // P1'（PRM-08）：双字段——_boundaryNames 只找 1 个字段（可能 MC 代码）·补扫 name/NAME 字段（中文名）
+    const _nameVals = [];
+    for (const f of (l.fc && l.fc.features || []).slice(0, 30)) {
+      const p = f.properties || {};
+      for (const k of ['name', 'NAME', '名称']) {
+        if (p[k] != null) _nameVals.push(String(p[k]));
+      }
+    }
+    const _allVals = [...new Set([...(b.values || []), ..._nameVals])];
+    for (const nm of _allVals) {
+      if (!nm) continue;
+      if (q.includes(nm)) return { name: nm, layer: l.name, field: b.field };   // 原始值精确优先
+    }
+    for (const nm of _allVals) {
       if (!nm) continue;
       const _qStrip = _strip(q), _nmStrip = _strip(nm);
-      if (_nmStrip && _nmStrip.length >= 2 && (_qStrip.includes(_nmStrip) || _nmStrip.includes(_qStrip))) {
-        return { name: nm, layer: l.name, field: b.field };
+      if (_nmStrip && _nmStrip.length >= 3 && (_qStrip.includes(_nmStrip) || _nmStrip.includes(_qStrip))) {
+        return { name: nm, layer: l.name, field: b.field };   // stripped 兜底（≥3 字·防"西陵路"误匹配）
       }
     }
   }

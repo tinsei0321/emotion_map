@@ -1346,10 +1346,40 @@ function deriveMissingParams(diagnose, question, layers) {
     diagnose.template = 'density'; diagnose.method = ['density()'];
     if (!p.mode) p.mode = '3d';   // 方格 = 3D 网格（非 2D 热力）
   } else if (/裁剪.*点|裁.*情绪点|裁.*全部.*点/.test(q) && tool !== 'clip') {
-    // CB-12 补丁：裁剪点→clip（不限 extract——PRM-10 FC 走了 merge·也强制 clip·裁点是点层操作非面层合并）
+    // CB-12 补丁 + P1'（Codex）：裁剪点→clip（不限 extract/merge——PRM-10 FC 走 merge·强制 clip·裁点是点层操作非面层合并）
     diagnose.template = 'clip'; diagnose.method = ['clip()'];
+    // P1'：多 call 通道——FC 输出 [extract_feature, merge] 时 runAllToolCalls 绕过单工具路由·此处重写 _allToolCalls 为 clip 单 call（防多 call 干扰）
+    if (Array.isArray(diagnose._allToolCalls) && diagnose._allToolCalls.length > 1) {
+      diagnose._allToolCalls = [{ name: 'clip', params: { as: (q.match(/([一-龥]{2,6})区/) || ['', '裁剪'])[1] + '情绪点' } }];
+    }
+    // P1'：clip range derive（区名→行政区层·仿 boundary derive·否则单工具路径卡"需 range"）
+    if (!p.range) {
+      const _d = deriveAvailable(q, layers);
+      if (_d) {
+        const _l = (layers || []).find((x) => x.name === _d.layer);
+        const _f = (_l && _l.fc && _l.fc.features || []).find((f) => {
+          const v = f.properties && f.properties[_d.field];
+          return v != null && String(v).includes(_d.name);
+        });
+        if (_f) p.range = { type: 'FeatureCollection', features: [_f] };
+      }
+    }
   } else if (/筛选出|筛选某类|抽出.*用地/.test(q) && !diagnose.template) {
     diagnose.template = 'extract_feature'; diagnose.method = ['extract_feature()'];   // 筛选用地→extract
+  } else if (/(聚合|归因|统计).{0,4}(情绪|极性)|按面聚合/.test(q) && tool !== 'zonal_stats') {
+    // CB-12 P1'（Codex）：聚合/归因+区名 → 强制 zonal_stats（PRM-06 方差根因·FC 概率选 extract·代码确定性纠正）
+    diagnose.template = 'zonal'; diagnose.method = ['zonal_stats()'];
+    if (!p.boundary && !p.boundaries) {
+      const _d = deriveAvailable(q, layers);
+      if (_d) {
+        const _l = (layers || []).find((x) => x.name === _d.layer);
+        const _f = (_l && _l.fc && _l.fc.features || []).find((f) => {
+          const v = f.properties && f.properties[_d.field];
+          return v != null && String(v).includes(_d.name);
+        });
+        if (_f) p.boundary = { type: 'FeatureCollection', features: [_f] };
+      }
+    }
   }
   // G5 路由修正（B3 PRM 路由错·高置信模式）："周边/附近 Nm 情绪" → buffer（勿 zonal）·"对比 A 与 B" → compare（勿单区）
   if (/(周边|附近|半径|缓冲|米内|公里内)/.test(q) && /情绪|点|分布/.test(q) && tool !== 'buffer' && !/(叠|合并|裁|筛选)/.test(q)) {
@@ -1506,6 +1536,18 @@ function _deterministicRecover(ctx) {
       params: _params, method: ['density()'], intent: 'emotion_analysis',
       data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
       domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [] };
+  }
+
+  // 模式F（CB-12 P1'）：按面聚合/归因 + 区名 → zonal_stats 兜底（PRM-06·FC 失败时确定性路由·仿模式 E）
+  if (/(聚合|归因|统计).{0,4}(情绪|极性)|按面聚合/.test(q)) {
+    const _bLayer = _polys.find((l) => l.name.includes(_region) ||
+      (l.fc.features || []).some((f) => Object.values(f.properties || {}).some((v) => String(v).includes(_region))));
+    if (_bLayer) {
+      return { template: 'zonal', degraded: false, _fc: true, _recover: true,
+        params: { boundary: _bLayer.name }, method: ['zonal_stats()'], intent: 'emotion_analysis',
+        data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+        domain_lens: [], scale: 'macro', decision_type: '评价', outlet: '报告结论', plans: [] };
+    }
   }
 
   // 模式C：合并现有图层 — "合并剪裁出的N类用地" / "合并A、B、C"（G3：复用 buildLanduseCompletion mergeLayers·单源）

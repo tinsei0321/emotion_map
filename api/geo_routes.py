@@ -350,6 +350,16 @@ async def zonal_stats(req: ZonalStatsRequest):
     try:
         pts = _prepare_points(req.layer, req.range, req.pre_filter)
         polys = resolve_boundary(req.boundary)
+        # CB-12 P1'（glm组）：zonal_stats 诊断日志（PRM-07 夷陵 0 层定位）——boundary geometry/点数/overlap
+        _poly_n = 0
+        try:
+            _poly_n = len(polys) if hasattr(polys, '__len__') else 0
+        except Exception:
+            _poly_n = -1
+        import logging as _lg
+        _lg.getLogger('uvicorn.error').warning(
+            f'[zonal] boundary={str(req.boundary)[:80]} polys={_poly_n} pts={len(pts)}'
+            f' crs_pts={getattr(pts.crs, "name", "?")} crs_poly={getattr(getattr(polys, "crs", None), "name", "?")}')
         agg_cols = req.agg_cols or (['score'] if 'score' in pts.columns else [])
         merged = aggregate_by_polygons(pts, polys, agg_cols=agg_cols,
                                        polygon_name_col='name')
