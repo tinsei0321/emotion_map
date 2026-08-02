@@ -29,7 +29,7 @@
 │  └─ memories/repo/.wip.md — PreCompact 压缩前机器快照（git/trace 锚点，gitignore）
 │
 ├─ 领域 · Catch-Ball（CB 双模型闭环；repo 内·跨环境同步）
-│  └─ docs/catch-ball/ — RULES（CB 规范）/ KNOWLEDGE（CB 记忆库·跨轮蒸馏）/ cb-journal（按轮轨迹）/ retired（退役台账）/ SCAN_DeepSeek_{NN}（第三方报告·只读）/ discuss/（跨组讨论输入·如 EMC体验评估讨论报告_2026-08-01）
+│  └─ docs/catch-ball/ — RULES（CB 规范）/ KNOWLEDGE（CB 记忆库·跨轮蒸馏）/ cb-journal（按轮轨迹）/ retired（退役台账）/ SCAN_DeepSeek_{NN}（第三方报告·只读）/ discuss/（跨组讨论输入·如 EMC体验评估讨论报告_2026-08-01）/ _handoff/（换机卡 HOME/OFFICE + CB恢复记忆卡_2026-08-03·Codex/glm 换环境恢复）
 │     · 触发：新 SCAN → on_session_start hook 一行提示 → /cb 命令编排反评价（主线程，不派 subagent）
 │     · 记忆共享：KNOWLEDGE 登记本图 + AutoMemory（cb-knowledge-base 指针），不孤岛（见「记忆共享通则」）
 │

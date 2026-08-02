@@ -33,10 +33,34 @@
 - **尺度出口差异化**：finalStep 尺度约束 + R10/R11 防线·general 跳过（skipScaleDefense）
 - **体检套件**：`py tests/browser/test_link_checkup.py`（20 例·四件套断言·回归门）·B3 留 API 好时段
 
+## 【上午公司环境】详细工作计划（08-03 · 用户定）
+
+### 1. 恢复记忆（Codex/glm 组·换环境丢失）
+- 发两组「恢复记忆」材料（身份/定位/CB 机制/trace 工具·见 `docs/catch-ball/_handoff/` 恢复记忆卡）
+- 让两组重读 RULES + KNOWLEDGE + trace-log-guide + 最新交接卡
+
+### 2. B3 全量重测（核心）
+```
+EMOTION_TRACE_SESSION=B3-verify-05 py tests/browser/flywheel_audit.py --batch B3
+py tools/trace_query.py --stats --session B3-verify-05   # 跑完附报告
+```
+- **预期**：PRM 10/10（08 测量 3abb503 + slice 200 4ea8b6d）·RST-L06 多步问（链修复 4ea8b6d+0407f78+6d2e609）·**分母 25→26**（RST-L06 新增）·pass 22-23/26（85-88%·Codex/glm 预期）
+- **F_002 ≤5**（while-loop 应低）·pro 0
+- 若 RST-L06 fail：查链触发（console `[seq-chain]` 日志·FC 方差·recover 链前置）
+
+### 3. 多步问验证（RST-L06 结果决定）
+- PASS → 多步问修复收敛·CB-12 闭环
+- FAIL → 按 Codex 调试方向：单例 5 次 + console 取证（[seq-chain]/[recover-trigger] 日志）→ 定位 FC 方差/链条件
+
+### 4. 收尾
+- B3 报告入库 + revision-log/todo 同步（sync-log）
+- 若 pass 稳定 85%+ → 发版候选·评估整体
+- backlog 择机：MOD_PLACE 渲染风暴 + fallback 重试
+
 ## 待续项（下会话从这继续）
 
-- **【上午公司环境】B3 全量重测**（用户定）：`EMOTION_TRACE_SESSION=B3-verify-05 py tests/browser/flywheel_audit.py --batch B3`·跑完 `trace_query --stats --session` 附报告·预期 PRM 10/10（08 测量 + slice 200）·RST-L06 多步问（链修复验证）·pass 88%→92%
-- **多步问修复待 B3 验证**：链前置 + clip_density 触发器放宽 + boundary derive（4ea8b6d+0407f78）·**代码级验证过·单例不稳定**（FC 方差）·RST-L06 断言守门·若 B3 仍 fail 查 _hasSeq 误触发/链条件
+- **【上午】B3 全量重测**（详见上节详细计划）
+- **多步问修复待 B3 验证**：链前置 + clip_density 触发器放宽 + boundary derive + recover 链前置（4ea8b6d+0407f78+6d2e609）·**代码级过·单例不稳定**（FC 方差·已加 recover 链前置治）·RST-L06 守门
 - **backlog**：MOD_PLACE 渲染风暴（~94 次/秒·Codex 观察·潜在性能）+ MOD_LLM.F_002 fallback 79 次含 3 ERR
 - **CPD-L01/L02**（CPD 导游·既有 backlog）
 - 时间轴 `_time_manifest.json` 404（低风险）
