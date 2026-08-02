@@ -11,6 +11,14 @@
 
 ## 📅 2026-08-02（CB-12 · 链路体检 + PRM 派生 + 尺度判定 + 触发入口统一 · G0-G6a）
 
+### ✅ CB-12 while-loop 根治 + B3 88% 历史最佳（revision-log 5.252，commit f6e415a+3abb503 · **用户手动 push**）
+
+- **根因定案**（glm gate 连锁被 localStorage 铁证推翻·Codex recover 缺口正确）：FC 成功返 unknown/multi → recover 跳过 → while-loop
+- **根治（f6e415a）**：recover 扩展触发 + 筛选守卫放宽 + gate per-template + B3 清 gate + while-loop 早停
+- **B3 88%（22/25）历史最佳**·PRM 9/10·p95 46s·9.8min·演进 4%→88%（22 倍）
+- **Codex 2 项已修（3abb503）**：early-stop 计划完成度 + PRM-08 测量伪影（多 boundary 收集）
+- **剩余**：PRM-08 断言修复后应 10/10（B3 全量留发版前）·MOD_PLACE 风暴 + fallback 重试（backlog）
+
 ### ✅ CB-12 B3 根因定案闭环 + trace.log 业界级 + pro 停用（revision-log 5.251，commit 3bb2f76+f4f78e2+e7cb7b9 · **用户手动 push**）
 
 - **根因定案**（glm组 trace.log 铁证·推翻"API 慢"误判）：慢 = while-loop 多轮 × pro/旧模型（F_002=18·pro 37）·**非 API**（用户 key 正常）

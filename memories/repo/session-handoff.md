@@ -1,14 +1,14 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：08月02日（**CB-12 闭环：体验评估 + B3 根因定案 + trace 工具 + while-loop 修复 + pro 停用**）| 分支 `fix/emc-buglog` | **已 push**
+> 最后更新：08月03日（**CB-12 闭环：B3 88% 历史最佳 + while-loop 根治 + trace 工具 + PRM 9/10**）| 分支 `fix/emc-buglog` | **已 push**
 >
 > 🔗 **CB 入口**：`docs/catch-ball/_cb-index.md`（**双阵营：claude组 开发主 + Codex/glm组 评估**）
 > 🏠🏢 **换机卡片**：`docs/catch-ball/_handoff/HOME.md` + `OFFICE.md`
 
-## 当前节点：CB-12 闭环 — 体验四类依据落地 + B3 根因定案（while-loop·trace 取证）+ trace.log 业界级 + pro 停用
+## 当前节点：CB-12 闭环 — while-loop 根治（recover 扩展）→ B3 88% 历史最佳
 
-今日（08-02）大跨轮：用户体验四类依据 → 讨论报告 → 双组回应 → G0-G6c 实施（体检套件/PRM 派生/尺度判定/搜索/连问/出口差异化）→ B3 大失败两轮定案（**glm组 trace.log 铁证推翻"API 慢"误判·真根因 = while-loop × pro/旧模型**）→ trace 工具 + 修复 + **B3 恢复 80%**。**用户质疑促成澄清**（key 正常·非 API 慢）。
+08-02→03 大跨轮：用户体验四类依据 → G0-G6c 实施 → B3 两轮定案（glm trace 铁证推翻"API 慢"·根因 = while-loop × pro/旧模型）→ trace 工具 + pro 停用 → while-loop 根治（**glm gate 连锁被 localStorage 铁证推翻·Codex recover 缺口正确**·recover 扩展触发）→ **B3 88%（22/25）历史最佳·PRM 9/10·p95 46s·9.8min**。**用户质疑促成澄清**（key 正常·非 API 慢）。
 
 ## 今日已 commit（fix/emc-buglog · **已 push**）
 
@@ -35,8 +35,8 @@
 
 ## 待续项（下会话从这继续）
 
-- **B3 残余 F_002=8**（FC 失败/unknown 模板入口·Codex 预判非归零）·可再查 `_tplHitRateReady` gate
-- **PRM-07/08/09**（夷陵后端 0 层·需 zonal_stats 日志定位 / compare 第二区·后端起 0 / 筛选 extract）——B3 08 仍 fail
+- **PRM-08 断言修复后 B3 全量重测**（发版前·~10min）——`_extractParams` 多 boundary 收集已修（3abb503）·应 PRM 10/10·B3 88%→90%+
+- **B3 全量重测带 session**：`EMOTION_TRACE_SESSION=B3-<批> py tests/browser/flywheel_audit.py --batch B3`·跑完 `trace_query --stats --session` 附报告
 - **backlog**：MOD_PLACE 渲染风暴（~94 次/秒·Codex 观察·潜在性能）+ MOD_LLM.F_002 fallback 79 次含 3 ERR
 - **CPD-L01/L02**（CPD 导游·既有 backlog）
 - 时间轴 `_time_manifest.json` 404（低风险）
