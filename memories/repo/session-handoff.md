@@ -35,8 +35,8 @@
 
 ## 待续项（下会话从这继续）
 
-- **PRM-08 断言修复后 B3 全量重测**（发版前·~10min）——`_extractParams` 多 boundary 收集已修（3abb503）·应 PRM 10/10·B3 88%→90%+
-- **B3 全量重测带 session**：`EMOTION_TRACE_SESSION=B3-<批> py tests/browser/flywheel_audit.py --batch B3`·跑完 `trace_query --stats --session` 附报告
+- **【上午公司环境】B3 全量重测**（用户定）：`EMOTION_TRACE_SESSION=B3-verify-05 py tests/browser/flywheel_audit.py --batch B3`·跑完 `trace_query --stats --session` 附报告·预期 PRM 10/10（08 测量 + slice 200）·RST-L06 多步问（链修复验证）·pass 88%→92%
+- **多步问修复待 B3 验证**：链前置 + clip_density 触发器放宽 + boundary derive（4ea8b6d+0407f78）·**代码级验证过·单例不稳定**（FC 方差）·RST-L06 断言守门·若 B3 仍 fail 查 _hasSeq 误触发/链条件
 - **backlog**：MOD_PLACE 渲染风暴（~94 次/秒·Codex 观察·潜在性能）+ MOD_LLM.F_002 fallback 79 次含 3 ERR
 - **CPD-L01/L02**（CPD 导游·既有 backlog）
 - 时间轴 `_time_manifest.json` 404（低风险）
