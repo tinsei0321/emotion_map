@@ -66,7 +66,12 @@ function _quickIntent(q) {
   // geo 动词（请求做分析，非定义）→ 落 diagnose
   if (GEO_VERB_KW.some(v => s.includes(v))) return null;
   // 宜昌地名（空间指代）→ 落 diagnose（可能 B/C）
-  if (REGION_KW.some(p => s.toLowerCase().includes(p.toLowerCase()))) return null;
+  // CB-12 问题2（Codex+glm组）：地名 + 实据词（政策/策略/案例等）→ **显式 general**（让搜索分支判·"宜昌市城市更新政策"应搜索）·
+  //   "宜昌西陵区情绪分布"无实据词 → 仍落 diagnose
+  if (REGION_KW.some(p => s.toLowerCase().includes(p.toLowerCase()))) {
+    if (SEARCH_EVIDENCE_RE.test(s)) return 'general';   // 实据问（宜昌+政策）→ 搜索分支
+    return null;                                         // 纯空间问 → 落 diagnose
+  }
   // 日常问候/闲聊 → general
   if (GREETING_KW.some(w => s.includes(w))) return 'general';
   return null;   // 模糊 → 落 diagnose
@@ -359,7 +364,7 @@ export function applyQualityDefense(draft, opts) {
   // G6a（CB-12·出口差异化·glm组 执行层强制）：R10 归因检测 / R11 泛化检测——确定性软标注（不拦截·防「一竿子插到底」同构结论）
   //   R10：宏观问（scale=macro）+ 结论含归因词（归因/4×5/要素×领域）→ 越界归因·标注提示
   //   R11：中微观问（scale=meso|micro）+ 结论无具体单元/落点名 → 泛化·标注提示
-  if (_opts.question || _opts.scale) {
+  if ((_opts.question || _opts.scale) && !_opts.skipScaleDefense) {   // CB-12 问题1（Codex）：general/概念答跳过尺度防线（R10/R11 仅对 emotion_analysis 生效）
     const _scale = _opts.scale || stages._deriveScale(String(_opts.question || ''), '');
     if (_scale === 'macro' && /(归因|4×5|要素|领域)/.test(final) && !/宏观|分布|整体/.test(final.slice(0, 60))) {
       final += `\n\n> ⚠️ 提示：本问为宏观分布尺度（粗粒度·不到归因）——如需要「哪里最差+原因」请用中微观分析（单元归因+排序）。`;
@@ -903,7 +908,7 @@ export async function orchestrate(ctx, hooks = {}) {
     ctx.context = '【intent=通用问答·快速预判】直接简洁作答，不要 4×5 归因、不要演示逻辑链、不要引导情绪场景。\n\n## 情绪地图背景（概念问时参考·灵活改写勿照抄）\n随着"人民城市"理念的深入实践，城市建设正在从"见物"向"见人"转变。城市规划行业从"造城"到"营城"的理念升华，要求从"地上建城"到"城上建城、依城养城、以城兴城"。宜昌市委、市政府多次强调要关注城市的"温情治理"、"情绪价值"和"年轻范"，明确提出"打造精致温暖的现代化活力之城"、"激发城市年轻活力"等发展目标。\n\n情绪地图正是这一理念的技术实践——把居民在社交媒体、12345热线等平台表达的情感（开心、愤怒、抱怨、期盼等）精准定位到地理坐标，构建一个可展示、可交互的"城市心情"动态地图。它让人直观看到哪个区域居民幸福感高、哪里抱怨集中，并揭示情绪背后老百姓的"急难愁盼"（设施不足、环境不好、文化不显、治理不优），从而用数据替代直觉，为城市"规划、更新、运营、治理"四大领域提供"人本视角"的科学决策依据。\n\n城市情绪是城市中所有个体情绪状况的集合，是居民在工作、生活、娱乐等场景中内心需求的直接表征。情绪地图基于多源城市情绪数据（社交媒体、App数据）与时空信息（地理信息、建成环境数据）的叠加融合，构建一套反映城市情绪时空分布及其与建成环境关联的可视化分析工具。\n\n' + (ctx.context || '');
     const draft = await stages.finalStep(ctx, hooks, '');
     // CB-12：搜索素材注入后仍走防线（R1 非空/R7 截断/R10 尺度等·保质量·非 bypass）
-    const _qd = applyQualityDefense(draft, { obsOk: false, toolHistoryText: '', skipL1: true, question: ctx.question });
+    const _qd = applyQualityDefense(draft, { obsOk: false, toolHistoryText: '', skipL1: true, question: ctx.question, skipScaleDefense: true });   // 问题1：general 概念答跳过 R10/R11（尺度防线仅对情绪分析）
     const _final = _qd.final;
     if (hooks.onFinalDone) hooks.onFinalDone(_final);
     if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: ctx._searchUsed ? 'quick-general-search' : 'quick-general', capsules: _qd.capsules });

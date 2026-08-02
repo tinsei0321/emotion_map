@@ -441,41 +441,38 @@ def search_chat(question: str, max_tokens: int = 4000, timeout: float = 30.0) ->
         'max_output_tokens': max_tokens,
     }
     trace_log('MOD_LLM.F_007', f'search_chat q={question[:60]}')
-    last_err = None
-    for attempt in range(1):   # CB-12 B3 修复：搜索不重试（增强非核心·失败快速 fallback·防 90s×retry 拖死）
-        try:
-            with httpx.Client(timeout=timeout) as client:
-                r = client.post(url, headers=headers, json=body)
-            if r.status_code != 200:
-                raise LLMError(f'搜索响应 {r.status_code}: {r.text[:300]}', status_code=r.status_code)
-            data = r.json()
-            answer_parts, sources = [], []
+    # CB-12 问题3（Codex）：搜索不重试·直调一次（增强非核心·失败快速 fallback·防拖死）
+    try:
+        with httpx.Client(timeout=timeout) as client:
+            r = client.post(url, headers=headers, json=body)
+        if r.status_code != 200:
+            raise LLMError(f'搜索响应 {r.status_code}: {r.text[:300]}', status_code=r.status_code)
+        data = r.json()
+        answer_parts, sources = [], []
+        for item in data.get('output', []):
+            it = item.get('type')
+            if it == 'message':
+                for c in item.get('content', []):
+                    if c.get('type') == 'output_text' and c.get('text'):
+                        answer_parts.append(c['text'])
+            elif it == 'web_search_call':
+                act = item.get('action') or {}
+                if act.get('type') == 'open_page' and act.get('url'):
+                    sources.append(act['url'])
+        answer = '\n'.join(answer_parts).strip()
+        if not answer:
+            # 截断/无文本 → 尝试 reasoning 摘要兜底
             for item in data.get('output', []):
-                it = item.get('type')
-                if it == 'message':
+                if item.get('type') == 'reasoning':
                     for c in item.get('content', []):
-                        if c.get('type') == 'output_text' and c.get('text'):
+                        if c.get('type') == 'reasoning_text' and c.get('text'):
                             answer_parts.append(c['text'])
-                elif it == 'web_search_call':
-                    act = item.get('action') or {}
-                    if act.get('type') == 'open_page' and act.get('url'):
-                        sources.append(act['url'])
-            answer = '\n'.join(answer_parts).strip()
-            if not answer:
-                # 截断/无文本 → 尝试 reasoning 摘要兜底
-                for item in data.get('output', []):
-                    if item.get('type') == 'reasoning':
-                        for c in item.get('content', []):
-                            if c.get('type') == 'reasoning_text' and c.get('text'):
-                                answer_parts.append(c['text'])
-                answer = '\n'.join(answer_parts).strip() or f'（搜索未返回文本·HTTP {r.status_code}）'
-            return {'answer': answer, 'sources': list(dict.fromkeys(sources))[:5]}
-        except LLMError:
-            raise
-        except Exception as e:
-            last_err = e
-            time.sleep(2 ** attempt)
-    raise LLMError(f'搜索调用失败: {last_err}')
+            answer = '\n'.join(answer_parts).strip() or f'（搜索未返回文本·HTTP {r.status_code}）'
+        return {'answer': answer, 'sources': list(dict.fromkeys(sources))[:5]}
+    except LLMError:
+        raise
+    except Exception as e:
+        raise LLMError(f'搜索调用失败: {e}')
 register_track_id("MOD_LLM.D_001", "LLM retry 触发（pre-stream 失败，退避后重拨）")
 register_track_id("MOD_LLM.D_002", "LLM fallback 切换 provider（重试耗尽或 4xx）")
 register_track_id("MOD_LLM.D_003", "LLM 流中途失败（不重试不换家，交上层降级）")
