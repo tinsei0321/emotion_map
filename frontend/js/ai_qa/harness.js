@@ -981,14 +981,25 @@ export async function orchestrate(ctx, hooks = {}) {
   if (!diagnose || diagnose.degraded || diagnose.template === 'unknown' || diagnose.template === 'multi') {
     console.warn('[FC] 诊断失败或返 unknown/multi·不入旧 SSE', diagnose?._fcError || diagnose?.template || '');
     if (!diagnose) diagnose = { degraded: true, _fcError: 'fc_failed' };
-    // L2 确定性恢复：FC 失败/unknown/multi → 尝试用关键词+数据状态构造 diagnose（不调 LLM）
-    const _recovered = _deterministicRecover(ctx);
-    if (_recovered) {
-      diagnose = _recovered;
-      _hitRecover++;   // 族 A 收尾 #3：命中遥测
-      _saveHitTelemetry();   // G5：持久化
-      if (hooks.onObservation) hooks.onObservation(`[恢复] ${diagnose.template ? 'FC 返 ' + diagnose.template : 'FC 失败'} → 确定性匹配 → 直执行`, 0);
-      console.log('[recover] matched:', diagnose.template, JSON.stringify(diagnose.params || {}).slice(0, 120));
+    // CB-12（glm 微调）：FC 失败/unknown/multi 但问句含顺序词（先<动作>再<目标>）→ 链命中则合成最小 diagnose 走链前置
+    //   （治 FC 方差：FC 概率返 unknown/multi → recover 不覆盖 clip+density 顺序模式 → while-loop 不稳定）
+    const _seqRe = /(?:先|然后|接着|随后|再)\s*.{0,10}(?:裁剪|筛选|裁出|提取|合并|叠置|缓冲|聚合|排序).{0,20}(?:再|然后|接着|随后).{0,10}(?:热力|密度|聚合|排序|裁剪|筛选)/;
+    if (_seqRe.test(ctx.question || '') && _deriveChainId(ctx.question || '', {})) {
+      diagnose = { template: 'clip', degraded: false, _fc: true, _seqChain: true,
+        params: {}, method: ['clip()'], intent: 'gis_operation',
+        data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+        domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [] };
+      console.log('[seq-chain] FC 失败但顺序词+链命中 → 合成 clip diagnose 走链前置');
+    } else {
+      // L2 确定性恢复：FC 失败/unknown/multi → 尝试用关键词+数据状态构造 diagnose（不调 LLM）
+      const _recovered = _deterministicRecover(ctx);
+      if (_recovered) {
+        diagnose = _recovered;
+        _hitRecover++;   // 族 A 收尾 #3：命中遥测
+        _saveHitTelemetry();   // G5：持久化
+        if (hooks.onObservation) hooks.onObservation(`[恢复] ${diagnose.template ? 'FC 返 ' + diagnose.template : 'FC 失败'} → 确定性匹配 → 直执行`, 0);
+        console.log('[recover] matched:', diagnose.template, JSON.stringify(diagnose.params || {}).slice(0, 120));
+      }
     }
   }
   // v2 D068：FC 产出的 plans[] 存入 ctx.plans·供 finalStep（追问胶囊）+ CPD（选项展示）共享
@@ -1068,9 +1079,12 @@ export async function orchestrate(ctx, hooks = {}) {
   }
   // CB-09：单工具执行后，代码自动检测是否需要补全剩余步骤（不依赖 LLM 产出 plans）
   if (!ctx.resume && !diagnose.degraded && diagnose.template) {
+    // CB-12（Codex 微调）：Pro chain（FC 自产链）优先级最高——移到顺序词链前置之前（FC 自产链最贴问句·防被通用链抢）
+    if (diagnose.chain) return await runChainPath(ctx, hooks, diagnose, diagnose.chain);
     // CB-12（Codex+glm 多步问）：顺序词链检查**前置**——单模板 + 顺序词（先…再/然后/接着 + 热力/密度等）且链命中 →
     //   直接 runChainPath（跳过单工具路径·治"先裁剪再热力图"FC 只出 clip·链死区：:1073 单工具 return 挡死 :1091 链检查）
-    const _hasSeq = /(?:先|然后|接着|随后|再).{0,15}(热力|密度|聚合|排序|裁剪|筛选)/.test(ctx.question || '');
+    // CB-12（Codex 微调）：_hasSeq 收紧——要求「先<动作>再<目标>」完整结构（"先看看热力图"仅先+热力共现不触发·防概念问误触发链）
+    const _hasSeq = /(?:先|然后|接着|随后|再)\s*.{0,10}(?:裁剪|筛选|裁出|提取|合并|叠置|缓冲|聚合|排序).{0,20}(?:再|然后|接着|随后).{0,10}(?:热力|密度|聚合|排序|裁剪|筛选)/.test(ctx.question || '');
     if (_hasSeq && _tplHitRateReady()) {
       const _chainPre = _deriveChainId(ctx.question, diagnose);
       if (_chainPre) {
@@ -1110,8 +1124,7 @@ export async function orchestrate(ctx, hooks = {}) {
       }
       return _result;
     }
-    if (diagnose.chain) return await runChainPath(ctx, hooks, diagnose, diagnose.chain);  // CB-09 D009+D012（5.237）Phase C: Pro 产复合链优先·不受 Flash hit-rate gate（Pro 非 Flash）
-    // CB-12（Codex）：链触发放宽——单模板 + 顺序词也查链（_hasSeq 已前置声明·此处分流 multi 或顺序词）
+    // CB-12（Codex 微调）：Pro chain 已前置（:1072）·此处仅分流 multi / 顺序词（_hasSeq 已前置声明）
     if ((diagnose.template === 'multi' || _hasSeq) && _tplHitRateReady()) {        // E1（5.210）+ CB-12：Flash multi 固定链分流 / 顺序词单模板也查链
       const _chain = _deriveChainId(ctx.question, diagnose);
       if (_chain) return await runChainPath(ctx, hooks, diagnose, _chain);          // 命中 → 0 LLM 轮确定性链（治 C3 + 多步问）
