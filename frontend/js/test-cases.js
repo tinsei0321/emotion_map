@@ -81,14 +81,19 @@ function _extractParams(geo) {
     }
     return String(v);
   };
+  // CB-12 PRM-08 测量修复（Codex）：compare 前端逐区复用 zonal_stats 单 boundary 调用·请求体无 boundaries 数组·
+  //   first-capture-wins 只捕第一区 → 断言找不到第二区。改：收集所有 zonal 调用的 boundary（append）→ p.boundaries 数组
+  const _boundarySeen = [];
   for (const e of geo) {
     const b = e.body || {};
-    if (p.boundary == null && b.boundary != null) p.boundary = _sum(b.boundary);
-    if (p.boundaries == null && b.boundaries != null) p.boundaries = _sum(b.boundaries);
+    if (b.boundary != null) _boundarySeen.push(_sum(b.boundary));
+    if (b.boundaries != null) _boundarySeen.push(...(Array.isArray(b.boundaries) ? b.boundaries.map((x) => _sum(x)) : [_sum(b.boundaries)]));
     if (b.cell_size != null && p.cell == null) p.cell = b.cell_size;
     if (b.radius_m != null && p.radius == null) p.radius = b.radius_m;
     if (p.center == null && b.center != null) p.center = _sum(b.center);
   }
+  p.boundary = _boundarySeen.length ? _boundarySeen[0] : undefined;
+  p.boundaries = _boundarySeen.length > 1 ? _boundarySeen.join('|') : undefined;   // 多区 → boundaries（断言可匹配全部区）
   return p;
 }
 

@@ -1210,11 +1210,15 @@ export async function orchestrate(ctx, hooks = {}) {
     if (_IS_GEN && newLayerCount > 0) {
       toolHistory[toolHistory.length - 1] += '\n[系统] 已生成用户要求的分析图层。如无进一步操作需求，请直接 answer——勿再 query/verify 验证。';
     }
-    // CB-12 P2（glm）：while-loop 确定性出口——产图层后立即 answer（不等多轮 ReAct·防"只做一半"/拖慢）
-    //   单步单工具问句（intent 明确·非多步链）已产出 → 强制 answer·不再续轮
+    // CB-12 P2（glm）+ 修（Codex）：while-loop 确定性出口——产图层后若**计划已执行完**则提前 answer（不等多轮 ReAct）
+    //   防"只做一半"：计划步数 > 已执行步数（如"先裁剪再热力图"第 1 步产层）→ 不早停·续轮完成计划
     if (newLayerCount > 0 && !diagnose.chain && !(step.action.params && step.action.params.keep)) {
-      toolHistory[toolHistory.length - 1] += '\n[系统] 已产出图层·直接 answer 总结（勿再续轮）。';
-      round = maxRounds + 1;   // 提前结束循环（等价 break·保留循环后 finalStep）
+      const _planned = _plannedGeoSteps(diagnose.method);
+      const _executed = _executedGeoSteps(toolHistory);
+      if (_planned <= _executed) {   // 计划已执行完 → 早停（防多步截断·Codex）
+        toolHistory[toolHistory.length - 1] += '\n[系统] 已产出图层·计划已完成·直接 answer 总结（勿再续轮）。';
+        round = maxRounds + 1;   // 提前结束循环（等价 break·保留循环后 finalStep）
+      }
     }
     round++;
   }
