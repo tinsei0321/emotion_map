@@ -606,7 +606,11 @@ export function deriveAvailable(question, layers) {
       // CB-12 回退（glm组）：阈值 3→2（"西陵/伍家"2 字区名 stripped 匹配恢复·a04a714 改 3 致 2 字区名失效→while-loop 退化）
       //   防"西陵路"误匹配：词边界检查（stripped 值后须是区/县/街道/镇/的/内/范围/。等分隔·非"路/山/公园"等）
       if (_nmStrip && _nmStrip.length >= 2 && (_qStrip.includes(_nmStrip) || _nmStrip.includes(_qStrip))) {
-        if (!/(路|山|公园|广场|大道|街)$/.test(q.slice(q.indexOf(_nmStrip) + _nmStrip.length, q.indexOf(_nmStrip) + _nmStrip.length + 1))) {
+        // CB-12 修复（Codex）：词边界完整块词匹配——取 stripped 值后 1-2 字符（防"西陵路/山"1字 + "西陵公园/广场/大道"2字误匹配）
+        const _idx = q.indexOf(_nmStrip);
+        const _after = q.slice(_idx + _nmStrip.length, _idx + _nmStrip.length + 2);
+        const _bounded = /^(路|山|街|公园|广场|大道|车站|码头|桥)/.test(_after) || /^[\s，。；、的区内范围边界]$/.test(_after.slice(0, 1));
+        if (!_bounded) {
           return { name: nm, layer: l.name, field: b.field };   // stripped 兜底（≥2 字·词边界防误匹配）
         }
       }
