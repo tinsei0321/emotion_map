@@ -21,6 +21,11 @@
 - 每个判断必须附带文件路径引用（尽可能到行号）
 - 评分必须有可追溯的具体发现支撑
 - 不依赖项目方的自我评价——独立核实
+- **trace 取证（CB-12·步骤 0·B3 教训固化）**：
+  - 根因分析/失败审查**第一动作 = 拉 trace.log 计数**（`py tools/trace_query.py --stats`）——数 `MOD_AIQA.F_002`（agentStep·while-loop 铁证）/ `F_003`（finalStep）/ `F_005`（FC）·**勿用 `F_001`**（LLM 公共出口·不区分 agentStep/finalStep）
+  - 各组跑测试**带 session**（`EMOTION_TRACE_SESSION=<组>-<批次>`）·报告附 `trace_query --stats --session <批号>` 证据
+  - 推断只作假设·trace 数据先行·定案须有 trace 计数支撑
+  - 用法见 [`docs/trace-log-guide.md`](../trace-log-guide.md)
 
 ### 1.3 建设性批评
 - 发现问题必须附带可操作的改进建议

@@ -58,6 +58,7 @@
 | 把 sim 数据/自采未贯通当风险 | L0 走购买、sim 充分 → 非风险 | ← CB-01 澄清（用户），CB-02 §0.2 认可 |
 | 用"官方指标完备性"质疑 4×5 归因 | 4×5 = 归因矩阵（多归属）非指标清单（互斥穷尽）→ 错标尺 | ← 项目设计哲学（CLAUDE.md），CB 通用 |
 | 把不同用途的 sim/工具脚本误判"功能重叠"→ 建议同退役 | 先查 docstring/原职责定用途；非真冗余不并退役（generate_test_data=L0 raw 全管线测试 vs sim_performance_data=L1/L2 demo） | ← CB-02 建议4 |
+| 根因分析凭代码推断/转述·不拉原始 trace.log（数 F_001 猜 while-loop / 猜 API 慢） | **trace 取证第一动作**：`trace_query --stats` 数 F_002（agentStep·while-loop 铁证）/F_003/F_005·勿用 F_001（公共出口）；trace.log 在仓库各组件直读·不依赖转述；推断只作假设 | ← CB-12 B3 大失败（claude/Codex 凭 F_001 推断错两次·glm组 读 trace 定案 while-loop） |
 
 ## §4 Decline 模式库（reason 类型 + 例）
 

@@ -270,6 +270,7 @@ Agent 在工作过程中自动记录的隐形知识：
 | MCP 视觉桥接 | `.claude/mcp_servers/vision_bridge_server.py` | 火山引擎 Ark Vision MCP Server — 让不支持图片的模型也能看图 |
 | **用地分类标准** | `ai_qa/landuse_codes_2023.py` | 国标用地用海分类（2023.11）权威源：24 一级/111 二级/40 三级 + 代码 + 查询函数。**读 .py 勿再读 PDF**；概览见 `docs/landuse-classification-2023.md` |
 | **行业知识库** | `ai_qa/industry_kb/` | 全项目行业知识基础设施：四领域（规划·设计/更新/运营/治理）权威源 + 项目聚焦 + 案例 + 情绪归因 + 4×5 矩阵多归属映射；概览 `docs/industry-knowledge-base.md`。设计哲学见上方「项目设计哲学」节 |
+| **trace.log 指南** | `docs/trace-log-guide.md` | 追踪日志使用（业界级）：核心 ID 速查（F_002 while-loop/F_003 final/F_005 FC）+ `tools/trace_query.py` 查询 + 各组协作规范（跑测试带 session·根因分析先 --stats） |
 
 ## 沟通方式
 

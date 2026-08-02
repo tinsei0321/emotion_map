@@ -603,8 +603,12 @@ export function deriveAvailable(question, layers) {
     for (const nm of _allVals) {
       if (!nm) continue;
       const _qStrip = _strip(q), _nmStrip = _strip(nm);
-      if (_nmStrip && _nmStrip.length >= 3 && (_qStrip.includes(_nmStrip) || _nmStrip.includes(_qStrip))) {
-        return { name: nm, layer: l.name, field: b.field };   // stripped 兜底（≥3 字·防"西陵路"误匹配）
+      // CB-12 回退（glm组）：阈值 3→2（"西陵/伍家"2 字区名 stripped 匹配恢复·a04a714 改 3 致 2 字区名失效→while-loop 退化）
+      //   防"西陵路"误匹配：词边界检查（stripped 值后须是区/县/街道/镇/的/内/范围/。等分隔·非"路/山/公园"等）
+      if (_nmStrip && _nmStrip.length >= 2 && (_qStrip.includes(_nmStrip) || _nmStrip.includes(_qStrip))) {
+        if (!/(路|山|公园|广场|大道|街)$/.test(q.slice(q.indexOf(_nmStrip) + _nmStrip.length, q.indexOf(_nmStrip) + _nmStrip.length + 1))) {
+          return { name: nm, layer: l.name, field: b.field };   // stripped 兜底（≥2 字·词边界防误匹配）
+        }
       }
     }
   }

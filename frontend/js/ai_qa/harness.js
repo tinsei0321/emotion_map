@@ -1367,19 +1367,20 @@ function deriveMissingParams(diagnose, question, layers) {
   } else if (/筛选出|筛选某类|抽出.*用地/.test(q) && !diagnose.template) {
     diagnose.template = 'extract_feature'; diagnose.method = ['extract_feature()'];   // 筛选用地→extract
   } else if (/(聚合|归因|统计).{0,4}(情绪|极性)|按面聚合/.test(q) && tool !== 'zonal_stats') {
-    // CB-12 P1'（Codex）：聚合/归因+区名 → 强制 zonal_stats（PRM-06 方差根因·FC 概率选 extract·代码确定性纠正）
-    diagnose.template = 'zonal'; diagnose.method = ['zonal_stats()'];
-    if (!p.boundary && !p.boundaries) {
-      const _d = deriveAvailable(q, layers);
-      if (_d) {
-        const _l = (layers || []).find((x) => x.name === _d.layer);
+    // CB-12 P1' + 定稿（glm组）：聚合/归因+区名 → 强制 zonal_stats·**前置检查 derive 成功才强制**（boundary 能填·防强制 zonal + 无 boundary → gap/while-loop 退化）
+    const _zonalD = deriveAvailable(q, layers);
+    if (_zonalD) {
+      diagnose.template = 'zonal'; diagnose.method = ['zonal_stats()'];
+      if (!p.boundary && !p.boundaries) {
+        const _l = (layers || []).find((x) => x.name === _zonalD.layer);
         const _f = (_l && _l.fc && _l.fc.features || []).find((f) => {
-          const v = f.properties && f.properties[_d.field];
-          return v != null && String(v).includes(_d.name);
+          const v = f.properties && f.properties[_zonalD.field];
+          return v != null && String(v).includes(_zonalD.name);
         });
         if (_f) p.boundary = { type: 'FeatureCollection', features: [_f] };
       }
     }
+    // boundary 不能 derive → 不强制改 template（保留 FC 原选·防强制 zonal + 无 boundary → gap/while-loop）
   }
   // G5 路由修正（B3 PRM 路由错·高置信模式）："周边/附近 Nm 情绪" → buffer（勿 zonal）·"对比 A 与 B" → compare（勿单区）
   if (/(周边|附近|半径|缓冲|米内|公里内)/.test(q) && /情绪|点|分布/.test(q) && tool !== 'buffer' && !/(叠|合并|裁|筛选)/.test(q)) {
