@@ -1068,6 +1068,29 @@ export async function orchestrate(ctx, hooks = {}) {
   }
   // CB-09：单工具执行后，代码自动检测是否需要补全剩余步骤（不依赖 LLM 产出 plans）
   if (!ctx.resume && !diagnose.degraded && diagnose.template) {
+    // CB-12（Codex+glm 多步问）：顺序词链检查**前置**——单模板 + 顺序词（先…再/然后/接着 + 热力/密度等）且链命中 →
+    //   直接 runChainPath（跳过单工具路径·治"先裁剪再热力图"FC 只出 clip·链死区：:1073 单工具 return 挡死 :1091 链检查）
+    const _hasSeq = /(?:先|然后|接着|随后|再).{0,15}(热力|密度|聚合|排序|裁剪|筛选)/.test(ctx.question || '');
+    if (_hasSeq && _tplHitRateReady()) {
+      const _chainPre = _deriveChainId(ctx.question, diagnose);
+      if (_chainPre) {
+        // 链前置：FC 返 clip 单模板·diagnose.params 无 boundary（链 {boundary} 占位符填不上→clip range='' 失败）→ 先 derive boundary
+        //   问句区名 → 行政区层要素 geojson（复用 deriveAvailable·仿 boundary derive 模式）
+        if (!diagnose.params) diagnose.params = {};
+        if (!diagnose.params.boundary && !diagnose.params.range) {
+          const _chainD = deriveAvailable(ctx.question || '', getLayers());
+          if (_chainD) {
+            const _cl = getLayers().find((x) => x.name === _chainD.layer);
+            const _cf = (_cl && _cl.fc && _cl.fc.features || []).find((f) => {
+              const v = f.properties && f.properties[_chainD.field];
+              return v != null && String(v).includes(_chainD.name);
+            });
+            if (_cf) diagnose.params.boundary = { type: 'FeatureCollection', features: [_cf] };
+          }
+        }
+        return await runChainPath(ctx, hooks, diagnose, _chainPre);
+      }
+    }
     const _tdef = stages.SKILL_DEFS[diagnose.template];
     // CB-12 P1（glm）：gate per-template——unknown 才受 gate·其他 single 模板始终 fast path（防全局开关连锁·gate 恒 PASS 时 zero 影响）
     if (_tdef && _tdef.category === 'single' && (diagnose.template !== 'unknown' || _tplHitRateReady())) {
@@ -1088,8 +1111,7 @@ export async function orchestrate(ctx, hooks = {}) {
       return _result;
     }
     if (diagnose.chain) return await runChainPath(ctx, hooks, diagnose, diagnose.chain);  // CB-09 D009+D012（5.237）Phase C: Pro 产复合链优先·不受 Flash hit-rate gate（Pro 非 Flash）
-    // CB-12（Codex）：链触发放宽——单模板 + 顺序词（先…再/然后/接着 + 热力/密度等）也查链（治"先裁剪再热力图"FC 只出 clip·链死区）
-    const _hasSeq = /(?:先|然后|接着|随后|再).{0,15}(热力|密度|聚合|排序|裁剪|筛选)/.test(ctx.question || '');
+    // CB-12（Codex）：链触发放宽——单模板 + 顺序词也查链（_hasSeq 已前置声明·此处分流 multi 或顺序词）
     if ((diagnose.template === 'multi' || _hasSeq) && _tplHitRateReady()) {        // E1（5.210）+ CB-12：Flash multi 固定链分流 / 顺序词单模板也查链
       const _chain = _deriveChainId(ctx.question, diagnose);
       if (_chain) return await runChainPath(ctx, hooks, diagnose, _chain);          // 命中 → 0 LLM 轮确定性链（治 C3 + 多步问）
