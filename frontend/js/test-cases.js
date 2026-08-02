@@ -310,7 +310,7 @@ const PARAM_DATA = [
   { q: '伍家岗区范围内按面聚合情绪统计及 4×5 归因', expectBoundary: '伍家', review: 'boundary=伍家岗区？' },
   { q: '小溪塔范围内按面聚合情绪统计及 4×5 归因', expectBoundary: '小溪塔', review: 'boundary=小溪塔？' },   // CB-12：PRM-07 改小溪塔（preset 含·原夷陵区不在 fixture·数据前提缺陷）
   { q: '对比西陵区与伍家岗区范围内情绪极性差异', expectBoundary: '西陵.*伍家', review: 'boundaries 含两区？' },
-  { q: '从已载行政区中筛选出商业服务业用地的面', expectLayer: '商业', review: 'layer=商业？' },
+  { q: '从已载行政区中筛选出西陵区', expectLayer: '西陵', review: 'layer=西陵？' },   // CB-12：PRM-09 改问句（原「商业服务业用地」需用地层·B3 setup 只加载行政区·数据前提缺陷·改行政区属性筛选）
   { q: '裁剪西陵区范围内的全部情绪点', expectRange: '西陵', review: 'range=西陵区？' },
 ];
 const PARAMS = PARAM_DATA.map((d, i) => ({

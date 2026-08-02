@@ -1379,6 +1379,10 @@ function deriveMissingParams(diagnose, question, layers) {
         });
         if (_f) p.boundary = { type: 'FeatureCollection', features: [_f] };
       }
+      // PRM-07：FC 多 call（extract+merge）绕过单工具路由 → 重写 _allToolCalls 为 zonal 单 call（同 PRM-10 模式）
+      if (Array.isArray(diagnose._allToolCalls) && diagnose._allToolCalls.length > 1) {
+        diagnose._allToolCalls = [{ name: 'zonal_stats', params: { boundary: p.boundary } }];
+      }
     }
     // boundary 不能 derive → 不强制改 template（保留 FC 原选·防强制 zonal + 无 boundary → gap/while-loop）
   }
