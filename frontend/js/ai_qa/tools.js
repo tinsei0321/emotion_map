@@ -581,11 +581,17 @@ function _boundaryEnum(l) {
 export function deriveAvailable(question, layers) {
   const q = String(question || '');
   if (!q) return null;
+  // CB-12 P0-a（glm组 纠正）：模糊匹配——剥「区/市/县/街道」后缀后双向包含（问句"西陵"↔值"西陵区"·问句"西陵区"↔值"西陵"）
+  const _strip = (s) => String(s || '').replace(/[区市县街道镇]$/g, '').trim();
   for (const l of layers || []) {
     const b = _boundaryNames(l);
     if (!b || !b.values || !b.values.length) continue;
     for (const nm of b.values) {
-      if (nm && q.includes(nm)) return { name: nm, layer: l.name, field: b.field };
+      if (!nm) continue;
+      const _qStrip = _strip(q), _nmStrip = _strip(nm);
+      if (_nmStrip && _nmStrip.length >= 2 && (_qStrip.includes(_nmStrip) || _nmStrip.includes(_qStrip))) {
+        return { name: nm, layer: l.name, field: b.field };
+      }
     }
   }
   return null;

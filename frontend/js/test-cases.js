@@ -318,6 +318,10 @@ const PARAMS = PARAM_DATA.map((d, i) => ({
   category: '参数正确性', type: 'llm',
   run: async (t) => llmRun(t, d.q, (b, _tt, sig) => {
     if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's2', obs: `GAP: "${b}"` };
+    // CB-12 P1（glm组）：ask_user（中心缺·诚实追问）→ PASS（非 fail·诚实追问 ≠ 撒谎·center 需 geocode 不 derive）
+    if (/追问|选项|哪个|补充|澄清/.test(b) && (!sig.tools || sig.tools.length === 0)) {
+      return { pass: true, obs: `合法 ask_user（诚实追问·center 类）·${b.slice(0, 30)}`, review: '追问是否合理？' };
+    }
     // H3: 真比对 sig.params 与 expect*（替代恒 pass）。cell/radius 数值 ±5% 容差；boundary 正则包含。
     const p = sig.params || {};
     const ck = [];

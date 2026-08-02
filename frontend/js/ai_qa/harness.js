@@ -1341,6 +1341,15 @@ function deriveMissingParams(diagnose, question, layers) {
   const q = String(question || '');
   const p = diagnose.params = (diagnose.params || {});
   const tool = ((diagnose.method || [''])[0] || '').replace('()', '');
+  // CB-12 P0-b（glm组）：3 条路由修正——方格/网格→density(3d)·裁剪点→clip·筛选用地→extract（仿 G5 周边→buffer 模式·确定性代码兜底）
+  if (/(方格|网格|标准格).{0,4}(聚合|分析)/.test(q) && !/(叠|合并|裁)/.test(q) && tool !== 'density') {
+    diagnose.template = 'density'; diagnose.method = ['density()'];
+    if (!p.mode) p.mode = '3d';   // 方格 = 3D 网格（非 2D 热力）
+  } else if (/裁剪.*点|裁.*情绪点|裁.*全部.*点/.test(q) && tool === 'extract_feature') {
+    diagnose.template = 'clip'; diagnose.method = ['clip()'];   // 裁剪点→clip（非 extract 面层操作）
+  } else if (/筛选出|筛选某类|抽出.*用地/.test(q) && !diagnose.template) {
+    diagnose.template = 'extract_feature'; diagnose.method = ['extract_feature()'];   // 筛选用地→extract
+  }
   // G5 路由修正（B3 PRM 路由错·高置信模式）："周边/附近 Nm 情绪" → buffer（勿 zonal）·"对比 A 与 B" → compare（勿单区）
   if (/(周边|附近|半径|缓冲|米内|公里内)/.test(q) && /情绪|点|分布/.test(q) && tool !== 'buffer' && !/(叠|合并|裁|筛选)/.test(q)) {
     diagnose.template = 'buffer';
@@ -1377,6 +1386,12 @@ function deriveMissingParams(diagnose, question, layers) {
       });
       if (_f) p.boundary = { type: 'FeatureCollection', features: [_f] };   // 精确区要素 geojson（聚合该区）
       else p.boundary = _d.layer;   // 兜底整图层（至少能跑）
+    } else {
+      // CB-12 P0-a（glm组）：boundary derive 失败诊断 observation——帮 LLM/user 知为何没填（防静默 GAP）
+      const _regions = (q.match(/[一-龥]{2,6}(?:区|市|县|街道|镇)/g) || []).slice(0, 2);
+      if (_regions.length && console && console.info) {
+        console.info(`[derive] 区名 ${_regions.join('、')} 未在已加载面层中找到匹配要素（可用边界层：${(layers || []).filter((x) => x.kind === 'polygon').map((x) => x.name).join('、') || '无'}）`);
+      }
     }
   }
   // cell_size derive：density 3D 网格 ·"Nm 方格/网格"（G5：中间可夹词·如"500m 标准方格"）

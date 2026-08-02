@@ -28,7 +28,7 @@ TOOL_CONTRACTS = [
     {
         'skill': 'density', 'tool': 'density', 'category': 'single', 'name_cn': '分布热度分析',
         'voice': '我用热力图(2D彩虹)/网格聚合(3D)看清情绪点分布热度', 'triggers_str': '哪里最集中/热点/聚集/分布/密度',
-        'when': '核密度(KDE)/热力图：用户说"核密度/密度分析/聚集强度/热力分布/密集/集聚/哪里最集中/热力图/情绪热度分布"时首选——产连续密度面（=热力聚合，非逐点 Gi*）',
+        'when': '核密度(KDE)/热力图：用户说"核密度/密度分析/聚集强度/热力分布/密集/集聚/哪里最集中/热力图/情绪热度分布"时首选——产连续密度面（=热力聚合，非逐点 Gi*）。CB-12 P2：方格/网格聚合（"500m 标准方格网格聚合"）→ 本工具 mode=3d（cell_size=边长·非 2D 热力）',
         'params_str': 'layer, polarity?(overall|positive|negative|neutral·默认overall·=极性筛点+着色), analysis?(terrain|positive|negative|neutral·色板主驱动·缺省由polarity推), mode?(2d|3d|terrain·默认2d), radius?(2D热力带宽·默认300), cell_size?(3D网格边长·默认600)（尺度表同buffer：社区250/区500/主城1000）, weightField?(加权·默认emotion_intensity), level?(L1|L2|L3|L4), range?, as?, keep?',
         'yields': '连续密度面——2D 彩虹热力图 / 3D 网格聚合 / 3D KDE 等值面地形（委托 Toolbox 标准色段·对称拉伸），自动落地图',
         'contributes': '"密度/密集/热力"类的标准出口=新热力图层（彩虹色带·最直观的分布可视化）；区别于 hotspot(逐点 Gi*·冷热点分类)与 zonal_stats(情绪网格聚合·归因排序)',
@@ -93,7 +93,7 @@ TOOL_CONTRACTS = [
     {
         'skill': 'clip', 'tool': 'clip', 'category': 'single', 'name_cn': '范围裁取（仅点层）',
         'voice': '我按范围裁出范围内的情绪点（仅限点数据）', 'triggers_str': '某区内的情绪点/某范围内的点/XX区内的点（clip 仅切点层！面层面裁剪如"某区内的商业用地"→用 overlay intersection）',
-        'when': '❌ 仅点层！按几何裁剪**点层**：某行政区/某公园/某街道范围内的点数据。面层裁剪（如"某区内的商业用地"）必须用 overlay intersection，严禁使用本工具——传面层会返回空结果',
+        'when': '❌ 仅点层！按几何裁剪**点层**：某行政区/某公园/某街道范围内的点数据。CB-12 P2："裁剪…情绪点/全部点"→ 本工具（勿用 extract_feature·那是面层属性过滤）。面层裁剪（如"某区内的商业用地"）必须用 overlay intersection，严禁使用本工具——传面层会返回空结果',
         'params_str': 'layer, range(preset_id | geojson), pre_filter?',
         'yields': '范围内的点子集（自动落地图）', 'contributes': '限定空间范围取点（"西陵区内的情绪点"），支撑中/微观落点',
         'scale': '中观/微观（范围内取**点**）', 'preconditions': 'range preset/geojson + **点层**（面层不支持）',
@@ -169,7 +169,7 @@ TOOL_CONTRACTS = [
     {
         'skill': 'extract_feature', 'tool': 'extract_feature', 'category': 'single', 'name_cn': '要素抽取',
         'voice': '我从面边界按属性抽要素为独立面（裁出某区/某类用地·支持 in 多值一次抽多个如多行政区）', 'triggers_str': '抽某/裁出某/单独裁出/提取某',
-        'when': '从**单个面层内**按属性抽要素（同一图层内的 where 过滤·如"从行政区划中抽西陵区"·where="字段/in/值"一次多值）。⚠️ 仅用于同一图层内属性过滤！跨图层空间裁剪（如"西陵区内的商业用地"=两个不同图层∩）必须用 overlay intersection，严禁用本工具',
+        'when': '从**单个面层内**按属性抽要素（同一图层内的 where 过滤·如"从行政区划中抽西陵区"·where="字段/in/值"一次多值）。CB-12 P2："筛选出/筛选某类用地"→ 本工具。⚠️ 仅用于同一图层内属性过滤！跨图层空间裁剪（如"西陵区内的商业用地"=两个不同图层∩）必须用 overlay intersection，严禁用本工具',
         'params_str': 'layer(preset_id|geojson), where(field/op/value·op∈eq|in·多值用 in/A,B；field 见 catalog name_field)',
         'yields': '面子集 GeoJSON（自动落地图）', 'contributes': '纯 GIS 操作出口：用户要"裁出西陵区""裁出西陵+伍家岗"等几何产物时用此·不走情绪归因',
         'scale': '宏观/中观（面要素）', 'preconditions': '面边界层（preset|上传面层）+ name_field（where field/op/value）',
