@@ -466,7 +466,7 @@ export async function finalStep(ctx, hooks, toolHistory) {
     (err) => { throw new Error(err); },
     {
       phase: 'answer', toolHistory, signal: ctx.signal,
-      model: ctx.answerModel || 'flash', domainLens: ctx.domainLens,
+      model: (ctx.answerModel === 'pro' ? 'flash' : (ctx.answerModel || 'flash')), domainLens: ctx.domainLens,   // CB-12：pro 停用·最终守卫强制 flash（防 answerModel 残留）
       onReason: (t) => { hooks.onReason && hooks.onReason(t, 0); },
     });
   return final;

@@ -24,6 +24,8 @@ let _archive = loadArchive();
 let _curTrace = null;
 let _consecutiveAsks = 0;   // P1 ask_user 跨 orchestrate 连续计数：≥2 时下轮注入"禁止再 ask_user"防博弈式无限追问（MAX_ROUNDS 对 ask 无效，因 ask 直接 return 不计 round）
 let _thinkMode = localStorage.getItem(MODE_KEY) || 'flash';   // WS1 F1.1：默认 flash（去 deliberate 串行·治超时）·复杂问题手动开 Pro | 'pro' | 'flash'
+// CB-12（用户拍板）：flash 足够·**强制 flash**——pro 停用（localStorage 有 pro 也强制回 flash·防残留）
+if (_thinkMode !== 'flash') { _thinkMode = 'flash'; localStorage.setItem(MODE_KEY, 'flash'); }
 let _thinkTimer = null;
 let _emcCollapsed = true;   // F5 默认折叠胶囊（不记忆上轮展开态·用户定 2026-07-22）
 let _userPinned = false;   // 用户上滑停跟；回到底部后恢复跟随
@@ -1623,7 +1625,7 @@ function wireModeSwitch() {
   seg.querySelectorAll('button').forEach((x) => x.classList.toggle('is-active', x.dataset.mode === _thinkMode));
   seg.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-mode]');
-    if (!b) return;
+    if (!b || b.disabled) return;   // CB-12：pro 停用（disabled·点击忽略·强制 flash）
     _thinkMode = b.dataset.mode;
     localStorage.setItem(MODE_KEY, _thinkMode);
     seg.querySelectorAll('button').forEach((x) => x.classList.toggle('is-active', x.dataset.mode === _thinkMode));
