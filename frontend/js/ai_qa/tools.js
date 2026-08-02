@@ -589,7 +589,7 @@ export function deriveAvailable(question, layers) {
     if (!b || !b.values || !b.values.length) continue;
     // P1'（PRM-08）：双字段——_boundaryNames 只找 1 个字段（可能 MC 代码）·补扫 name/NAME 字段（中文名）
     const _nameVals = [];
-    for (const f of (l.fc && l.fc.features || []).slice(0, 30)) {
+    for (const f of (l.fc && l.fc.features || []).slice(0, 200)) {   // CB-12（glm）：30→200·防大图层要素 >30 时双字段扫描漏区（PRM-08 "伍家岗" 执行侧）
       const p = f.properties || {};
       for (const k of ['name', 'NAME', '名称']) {
         if (p[k] != null) _nameVals.push(String(p[k]));

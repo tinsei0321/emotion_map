@@ -803,7 +803,7 @@ function _deriveChainId(question, diagnose) {
   return null;
 }
 
-const _GEO_TOOLS = ['extract_feature', 'overlay', 'clip', 'filter_attr', 'merge', 'buffer', 'zonal_stats', 'rank', 'area_stats', 'nearest', 'hotspot', 'ensure_zone'];   // CB-09 D015（5.242 补 ensure_zone·F3 完整性 gate 统计）
+const _GEO_TOOLS = ['extract_feature', 'overlay', 'clip', 'filter_attr', 'merge', 'buffer', 'zonal_stats', 'rank', 'area_stats', 'nearest', 'hotspot', 'ensure_zone', 'density'];   // CB-09 D015 + CB-12（glm）：补 density（前端委托但算 geo 步·F3 计划完成度统计正确性·多步问 clip→density 计划数）
 const _ANALYTICAL_TOOLS = new Set(['zonal_stats', 'compare_regions', 'rank', 'area_stats']);   // P0：表格型分析工具（返 rows·无 layerId）→ 成功判定认 rows 非空，不误判 GAP
 /** F3：诊断 method 里规划的 geo 工具步骤数。数组元素用 ' → ' 拼接后按 →/，/；/换行 分句，
  *  每句首个工具名计 1 步；**不**按 ASCII 逗号分（工具实参含逗号，如 ($1,land)）。 */
@@ -1088,9 +1088,11 @@ export async function orchestrate(ctx, hooks = {}) {
       return _result;
     }
     if (diagnose.chain) return await runChainPath(ctx, hooks, diagnose, diagnose.chain);  // CB-09 D009+D012（5.237）Phase C: Pro 产复合链优先·不受 Flash hit-rate gate（Pro 非 Flash）
-    if (diagnose.template === 'multi' && _tplHitRateReady()) {                     // E1（5.210）：Flash multi 固定链分流（治 C3 多步超时）
+    // CB-12（Codex）：链触发放宽——单模板 + 顺序词（先…再/然后/接着 + 热力/密度等）也查链（治"先裁剪再热力图"FC 只出 clip·链死区）
+    const _hasSeq = /(?:先|然后|接着|随后|再).{0,15}(热力|密度|聚合|排序|裁剪|筛选)/.test(ctx.question || '');
+    if ((diagnose.template === 'multi' || _hasSeq) && _tplHitRateReady()) {        // E1（5.210）+ CB-12：Flash multi 固定链分流 / 顺序词单模板也查链
       const _chain = _deriveChainId(ctx.question, diagnose);
-      if (_chain) return await runChainPath(ctx, hooks, diagnose, _chain);          // 命中 → 0 LLM 轮确定性链（治 C3）
+      if (_chain) return await runChainPath(ctx, hooks, diagnose, _chain);          // 命中 → 0 LLM 轮确定性链（治 C3 + 多步问）
     }                                                                              // 未命中落 while-loop（ReAct 兜底）
   }
 
@@ -1215,7 +1217,8 @@ export async function orchestrate(ctx, hooks = {}) {
     if (newLayerCount > 0 && !diagnose.chain && !(step.action.params && step.action.params.keep)) {
       const _planned = _plannedGeoSteps(diagnose.method);
       const _executed = _executedGeoSteps(toolHistory);
-      if (_planned <= _executed) {   // 计划已执行完 → 早停（防多步截断·Codex）
+      // Codex 边界修复：_planned > 0 守卫——degraded-FC 路径 method 空（planned=0）时 0<=1 仍截断多步·须计划非空才早停
+      if (_planned > 0 && _planned <= _executed) {   // 计划非空且已执行完 → 早停（防多步截断·Codex）
         toolHistory[toolHistory.length - 1] += '\n[系统] 已产出图层·计划已完成·直接 answer 总结（勿再续轮）。';
         round = maxRounds + 1;   // 提前结束循环（等价 break·保留循环后 finalStep）
       }

@@ -76,7 +76,8 @@ export const CHAIN_REGISTRY = [
       { tool: 'overlay', params: { layer_a: '$1', layer_b: '{land}' } },
     ] },
   { chain_id: 'clip_density', name: '范围密度',
-    triggers: [/范围.{0,4}密度/, /区.{0,4}(热力|密度分布|分布)/],
+    // CB-12（glm/Codex）：触发器放宽——加「裁剪…热力/密度」+「先/再/然后…热力/密度」顺序模式（原触发器间距 ≤4 字·不匹配"先裁剪…再生成热力图"）
+    triggers: [/范围.{0,4}密度/, /区.{0,4}(热力|密度分布|分布)/, /(?:裁|剪裁|裁剪).{0,20}(热力|密度|分布)/, /(?:先|然后|再|接着).{0,15}(热力|密度)/],
     steps: [
       { tool: 'clip', params: { range: '{boundary}' } },
       { tool: 'density', params: { layer: '$1' } },

@@ -362,6 +362,11 @@ const RESULT_LLM = [
   { id: 'RST-L03', name: 'clip 产点图层', run: async (t) => llmRun(t, '裁剪西陵区范围内的全部情绪点为独立图层', (b, _tt, sig) => ({ pass: true, obs: `badge="${b}" +${sig.newLayers}层`, review: '是否裁剪出点层？' }), { range: '行政区', csv: 'L2-T1' }) },
   { id: 'RST-L04', name: '网格产方格层（非热力）', run: async (t) => llmRun(t, '西陵区范围内做 1000m 标准方格网格聚合', (b, _tt, sig) => ({ pass: true, obs: `badge="${b}" tools=${sig.tools.join(',')} +${sig.newLayers}层`, review: '是否方格（非彩虹热力）？' }), { range: '行政区', csv: 'L2-T1' }) },
   { id: 'RST-L05', name: '通用问答无图层', run: async (t) => llmRun(t, '什么是情绪地图的 4×5 归因矩阵？', (b, tt) => { const a = tt.answerText(); return a && a.length > 10 ? { pass: true, obs: `badge="${b}" ans=${a.length}字`, review: '回答合理？' } : { pass: false, stage: 's4', obs: '回答太短' }; }, { csv: false }) },
+  // CB-12（glm/Codex）：多步问断言——「先裁剪再热力图」两步都执行（防"只做一半"变体复发·CHAIN_REGISTRY clip_density 守门）
+  { id: 'RST-L06', name: '多步 先裁剪再热力图', run: async (t) => llmRun(t, '先裁剪西陵区情绪点，再生成热力图', (b, _tt, sig) => {
+    const _ok = sig.tools.includes('clip') && sig.tools.includes('density');
+    return { pass: _ok, obs: `tools=${sig.tools.join(',')}`, review: '两步都执行了（clip+density）？' };
+  }, { range: '行政区', csv: 'L2-T1' }) },
 ].map((c) => ({ ...c, category: '成果范式', type: 'llm' }));
 
 // ═══ F-2（CB-10 飞轮审查）产物语义断言：不只"选对工具+落图"，验证产物正确性 ═══
