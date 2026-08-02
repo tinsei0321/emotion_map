@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月02日）** · 本节按板块分组、组内倒序；最新工作 = **G6b 联网搜索 + G6c 连问拆解 + G5 derive 增强（1362167+aaa8319）**（本次，分支 `fix/emc-buglog`）。最近：
+> 📍 **最新动态（08月02日）** · 本节按板块分组、组内倒序；最新工作 = **B3 大失败根治（搜索素材注入 + KW 收紧 + 超时 + 脏检查·7df8d75）**（本次，分支 `fix/emc-buglog`）。最近：
+>
+> - **B3 大失败根治（7df8d75+8e67848）**（Codex/glm组 双核查·B3 实测 4%·timeout 22/25）：B3 重测（API 0.9s 良好）仍大失败——**n=25 pass=1（4%）·timeout=22·t_p50=93s**·22/25 全「回答超时 90s」·整批被拖死。**根因（两组独立核查·共识）**：① 搜索分支绕过 finalStep+applyQualityDefense（直接 onFinalDone 输出搜索原文·B3 断言全打乱）② SEARCH_KW 含「情绪地图」→ 概念问误触发搜索 ③ 搜索 90s timeout + 串行 → 批次拖死 ④ episode 404 = 1362167 已提交回归（误删装饰器·Codex 发现·工作树修复未提交）⑤ 搜索返回无 exit → badge 渲染异常（glm组 补）。**修复（P0·两组一致）**：① 搜索改**素材注入**——结果进 ctx.context·走 finalStep + applyQualityDefense（不 bypass·保排版/R1-R11）② SEARCH_KW 删「情绪地图/对比/介绍」+ 概念问实据词门（SEARCH_EVIDENCE_RE·"什么是情绪地图"本地答·"政策/现状"才搜）③ 前端 fetch AbortController 15s + 后端 search_chat timeout 90→30s 不 retry ④ 提交 episode 装饰器修复（8e67848）⑤ serve.py `_dirty_check`（git status 非空→[WARN]·用户诉求：每次开网页都最新代码·防演示用旧代码）。**验证**：episode 200 ✓ + 脏检查 WARN 单测 ✓ + pytest 225 + 体检 20 例全 PASS（T1c 搜索 27.3s·素材注入无 bypass）·**B3 重跑待 API 好时段**（应恢复到 ~13/25 基线）。
 >
 > - **G6b 联网搜索（1362167）**（依据 2 纯问答·用户拍板 DeepSeek key）：`llm.search_chat`（DeepSeek **Responses API + web_search 工具**·服务端执行搜索+开页+综合·实测「宜昌城市更新政策」返回真实政策）→ `POST /aiqa/search` 端点 + `SEARCH_KW`（大问题/聚焦词·禁假大空需宜昌实据）+ general 短路搜索分支（失败 fallback 原 finalStep·不阻塞）+ 来源标注（[1]url·信息截至检索时）。**验证**：体检 T1c「宜昌市城市更新政策有哪些」32s PASS（真实搜索路径）。
 > - **G6c 连问拆解（1362167）**（依据 4·Codex 最简版 = glm组 自认最简版·趋同）：`panel.send` 分句（`splitQuestions`·按 ？/。/；/换行 切分·句数上限 2·代码确定性·不做 LLM 拆解）→ 逐句走完整管线（各自答案卡·R9/防线全继承·不新造执行管线）。**验证**：体检 T8c「西陵区情绪如何？伍家岗区呢」60.7s PASS。

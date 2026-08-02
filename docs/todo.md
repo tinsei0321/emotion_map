@@ -11,6 +11,15 @@
 
 ## 📅 2026-08-02（CB-12 · 链路体检 + PRM 派生 + 尺度判定 + 触发入口统一 · G0-G6a）
 
+### ✅ B3 大失败根治（revision-log 5.250，commit 7df8d75+8e67848 · **用户手动 push**）
+
+B3 重测大失败（4%·timeout 22/25·t_p50=93s）→ 两组根因核查共识 + P0 修复：
+- **搜索改素材注入**（不 bypass·走 finalStep + 防线）·SEARCH_KW 删「情绪地图/对比/介绍」+ 概念问实据门
+- **超时控制**（前端 AbortController 15s + 后端 90→30s 不 retry）
+- **episode 404 修复**（8e67848·1362167 误删装饰器·已提交回归）+ serve.py 脏检查（未提交改动→[WARN]·用户诉求：每次开网页都最新代码）
+- **验证**：episode 200 + 脏检查 WARN + pytest 225 + 体检 20/20（T1c 搜索 27.3s 无 bypass）
+- **待**：B3 重跑（API 好时段·应恢复到 ~13/25）
+
 ### ✅ G6b 联网搜索 + G6c 连问拆解 + G5 derive 增强（revision-log 5.249，commit 1362167+aaa8319 · **用户手动 push**）
 
 - **G6b 联网搜索**：`llm.search_chat`（DeepSeek Responses API web_search·服务端执行）+ `/aiqa/search` + SEARCH_KW + general 搜索分支（失败 fallback）·T1c「宜昌城市更新政策」32s PASS
