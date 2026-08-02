@@ -58,14 +58,24 @@ async function llmRun(t, q, assert, opts = {}) {
 function _extractParams(geo) {
   const p = {};
   // T3：参数对象序列化（治 boundary/center 为 GeoJSON 对象时显示 [object Object]·05·INT-005/006）
+  // CB-12 Codex 测量伪影修复：GeoJSON boundary 提取区名（features[0].properties 的 name 字段）——否则区名在 properties 内部·正则匹配不到·即使选对也 ERR
+  const _regionName = (fc) => {
+    const f = (fc && fc.features && fc.features[0]) || {};
+    const props = f.properties || {};
+    // 常见名称字段（行政区划 name/MC/NAME/区名）
+    for (const k of ['name', 'NAME', 'MC', '县区', '区', 'region']) {
+      if (props[k] != null) return String(props[k]);
+    }
+    return Object.values(props).find((v) => typeof v === 'string' && /区|县|市|街道/.test(v)) || '';
+  };
   const _sum = (v) => {
     if (v == null || v === '') return undefined;
     if (typeof v === 'string') return v;
     if (typeof v === 'number') return v;
     if (Array.isArray(v)) return `[${v.length}]`;
     if (typeof v === 'object') {
-      if (v.type === 'FeatureCollection' && v.features) return `GeoJSON{${v.features.length}}`;
-      if (v.type === 'Feature') return 'Feature';
+      if (v.type === 'FeatureCollection' && v.features) return `GeoJSON{${v.features.length}}#${_regionName(v)}`;
+      if (v.type === 'Feature') return `Feature#${_regionName({ features: [v] })}`;
       if (v.coordinates) return `${v.type || ''}{${Array.isArray(v.coordinates) ? v.coordinates.length : '?'}}`;
       return JSON.stringify(v).slice(0, 40);
     }
