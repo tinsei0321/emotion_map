@@ -1345,8 +1345,9 @@ function deriveMissingParams(diagnose, question, layers) {
   if (/(方格|网格|标准格).{0,4}(聚合|分析)/.test(q) && !/(叠|合并|裁)/.test(q) && tool !== 'density') {
     diagnose.template = 'density'; diagnose.method = ['density()'];
     if (!p.mode) p.mode = '3d';   // 方格 = 3D 网格（非 2D 热力）
-  } else if (/裁剪.*点|裁.*情绪点|裁.*全部.*点/.test(q) && tool === 'extract_feature') {
-    diagnose.template = 'clip'; diagnose.method = ['clip()'];   // 裁剪点→clip（非 extract 面层操作）
+  } else if (/裁剪.*点|裁.*情绪点|裁.*全部.*点/.test(q) && tool !== 'clip') {
+    // CB-12 补丁：裁剪点→clip（不限 extract——PRM-10 FC 走了 merge·也强制 clip·裁点是点层操作非面层合并）
+    diagnose.template = 'clip'; diagnose.method = ['clip()'];
   } else if (/筛选出|筛选某类|抽出.*用地/.test(q) && !diagnose.template) {
     diagnose.template = 'extract_feature'; diagnose.method = ['extract_feature()'];   // 筛选用地→extract
   }
@@ -1354,10 +1355,11 @@ function deriveMissingParams(diagnose, question, layers) {
   if (/(周边|附近|半径|缓冲|米内|公里内)/.test(q) && /情绪|点|分布/.test(q) && tool !== 'buffer' && !/(叠|合并|裁|筛选)/.test(q)) {
     diagnose.template = 'buffer';
     diagnose.method = ['buffer()'];
-  } else if (/(对比|比较|vs|与.*相?比)/i.test(q) && tool !== 'compare_regions') {
+  } else if (/(对比|比较|vs|与.*相?比)/i.test(q) && (tool !== 'compare_regions' || !p.boundaries)) {
+    // CB-12 补丁：FC 已选 compare 但无 boundaries 也补（PRM-08·FC 选 compare 但只填了 boundary 西陵·缺伍家岗）
+    if (tool !== 'compare_regions') { diagnose.template = 'compare'; diagnose.method = ['compare_regions()']; }
     const _n = (q.match(/[一-龥]{2,6}(?:区|市|县|街道|镇)/g) || []);
     if (_n.length >= 2) {
-      diagnose.template = 'compare'; diagnose.method = ['compare_regions()'];
       // compare 需 boundaries（≥2 区要素）——按区名逐区提取要素填
       const _bs = [];
       for (const _rn of _n.slice(0, 2)) {
