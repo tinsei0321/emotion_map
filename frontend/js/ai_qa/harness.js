@@ -1493,6 +1493,19 @@ function _deterministicRecover(ctx) {
     }
   }
 
+  // 模式E（CB-12 P0-b 补）：方格/网格聚合（"500m 标准方格网格聚合"·FC 失败时确定性路由 density 3D + cell_size）
+  //   PRM-01/02 实测 FC 无 tool（tpl=None）→ recover 兜底——补此模式防「方格问」落空
+  if (/(方格|网格|标准格).{0,4}(聚合|分析)/.test(q) && !/(叠|合并|裁)/.test(q)) {
+    const _m = q.match(/(\d+(?:\.\d+)?)\s*(m|米|km|公里)/);
+    const _cell = _m ? ((_m[2] === 'km' || _m[2] === '公里') ? Math.round(Number(_m[1]) * 1000) : Math.round(Number(_m[1]))) : undefined;
+    const _params = { mode: '3d' };
+    if (_cell) _params.cell_size = _cell;
+    return { template: 'density', degraded: false, _fc: true, _recover: true,
+      params: _params, method: ['density()'], intent: 'emotion_analysis',
+      data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+      domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [] };
+  }
+
   // 模式C：合并现有图层 — "合并剪裁出的N类用地" / "合并A、B、C"（G3：复用 buildLanduseCompletion mergeLayers·单源）
   if (landuseTriggerOf(q).hasMerge) {
     const _c = buildLanduseCompletion(q, '', { mode: 'auto' });

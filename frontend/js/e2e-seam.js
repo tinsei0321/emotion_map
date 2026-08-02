@@ -116,6 +116,7 @@ window.__emcTest = {
   clickHalo() { const a = document.querySelector('.emc-input-area'); if (a) a.click(); },
   clickDirection(dir) { const b = document.querySelector(`.cpd-guide-opt[data-dir="${dir}"]`); if (b) b.click(); },
   answerText() { const as = document.querySelectorAll('.aiq-answer'); return as.length ? as[as.length - 1].innerText.trim().slice(0, 300) : ''; },
+  askChips() { return document.querySelectorAll('.aiq-ask-chip').length; },   // CB-12 P1：ask_user 选项胶囊数（诚实追问判定）
   getMode() { const b = document.querySelector('#aiq-mode button.is-active'); return b ? b.dataset.mode : null; },
   setMode(m) { const b = document.querySelector(`#aiq-mode button[data-mode="${m}"]`); if (b) b.click(); },
   newChat() { document.getElementById('chat-new')?.click(); },
