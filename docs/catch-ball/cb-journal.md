@@ -62,8 +62,18 @@
   - ② 前端 outlet-card 渲染（仿 .cpd-guide-card·既有 token·纯模板函数·{{show:}} 复用 renderAnswer）
 - 按机制：等两组预检 SCAN 后实施
 
+### ③e 行动（Wave 0 完整链路实施·按两组预检）
+- **两组预检通过**（Codex agree + 关键缺口"无前端接线"·glm agree + 排除表镜像建议）·反评价采纳全部
+- **Wave 0 完整链路实施**（commit 38d3a0c·已 push）：
+  - `/aiqa/outlet_card` 端点（接收 diagnose+result+question→build_outlet_schema）
+  - harness result 态后条件调（_maybeBuildOutletCard·触发词+UI 语境排除·产物收集·失败静默）
+  - panel renderOutletCard 纯模板渲染（仿 cpd-guide-card·既有 token·7 要素·缺失灰·引用块·{{show:}} 复用）
+  - emc-patterns.js OUTLET_TRIGGER_KW + OUTLET_UI_EXCLUDE_KW（镜像含排除表·Codex/glm 建议）
+  - validate_outlet_trigger_sync.py 同步守卫（双份校验·2 passed）
+- **端到端验证**：/outlet_card → 需求分析卡（停车难/-0.32/夷陵广场·诚实标注）·JS import OK·pytest 242
+
 ### ④ 状态
-`Wave 0 剩余实施预告 → 待两组预检` —— Wave 0 三 bug 已修（f84b3ae）·Wave 0 剩余两项（触发词表镜像 + 前端渲染）方案已发 CB 预告·两组预检返回后实施。
+`Wave 0 完整链路完成 → 待两组实施后检查` —— 出口卡片"提示→出卡→渲染"闭环落地（触发词表/后端端点/前端接线/渲染）·S2 更新需求分析端到端可演示（待真实浏览器交互验证 + 大南门·二马路数据专题）。
 
 ---
 
