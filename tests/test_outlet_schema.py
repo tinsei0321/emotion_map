@@ -70,3 +70,29 @@ def test_build_outlet_schema_missing_field_degrade():
 def test_build_outlet_schema_no_hit():
     """未命中契约（outlet 空 + 无接口词）→ None（不出卡·只出普通分析）。"""
     assert build_outlet_schema(_diag(outlet=''), _result(), '生成热力图') is None
+
+
+# ── CB-16 Codex/glm 修复后补测（3 缺口）────────────────────
+def test_qualifier_field_parsed():
+    """CB-16 Codex：qualifier 后缀（降序/占比）应解析出主字段（防丢值）。"""
+    diag = {'scale': 'meso', 'domain_lens': ['urban_renewal'], 'outlet': '指标排序'}
+    card = build_outlet_schema(diag, {'polarity_index': -0.45, 'point_count': 5,
+                                      'features': [{'properties': {'domain_top': 'urban_renewal'}}]},
+                               '西陵区更新时序排序')
+    # renewal_sequence field_mapping 优先级排序 = 'polarity_index 降序' → 应取到 -0.45
+    any_neg = any('-0.45' in str(f.get('value')) for f in card['fields'].values())
+    assert any_neg, f'qualifier 后缀未解析出主字段（fields={card["fields"]}）'
+
+
+def test_update_layer_no_false_trigger():
+    """CB-16 Codex：UI 语境"更新图层"不应误触发行业卡。"""
+    oid = resolve_outlet_id({'scale': 'meso', 'domain_lens': ['urban_renewal'], 'outlet': '生成图层'},
+                            '帮我更新图层')
+    assert oid is None, f'"更新图层"应不触发（实际 {oid}）'
+
+
+def test_resolve_outlet_id_checkup():
+    """CB-16 glm：体检满意度问句 → checkup_satisfaction（domain=urban_governance 修复后）。"""
+    oid = resolve_outlet_id({'scale': 'macro', 'domain_lens': ['urban_governance'], 'outlet': '报告结论'},
+                            '城市体检满意度调查')
+    assert oid == 'checkup_satisfaction', f'体检满意度应命中 checkup_satisfaction（实际 {oid}）'

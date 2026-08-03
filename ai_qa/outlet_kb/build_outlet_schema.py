@@ -18,7 +18,10 @@ from . import OUTLET_CONTRACTS
 
 # 条件触发词表（EMC 侧接口词·与 emc-patterns.js 词表一致·用户定案方案 A）
 # 注意：此表是 EMC 理解逻辑（什么词触发出口）·放出向权威源；前端 emc-patterns.js 另有镜像
+# CB-16 Codex："更新"过宽（"帮我更新图层"误触发）——排除 UI 语境（更新图层/更新时间/刷新）
 TRIGGER_WORDS = ('更新', '体检', '需求', '满意度', '排序', '识别', '时序', '改造')
+# UI 语境词（命中则不算"更新"接口触发·防"更新图层/更新时间"误出卡）
+_UI_CONTEXT_WORDS = ('更新图层', '更新时间', '更新样式', '刷新', '重新加载')
 
 
 def resolve_outlet_id(diagnose: dict, question: str = '') -> str | None:
@@ -55,7 +58,11 @@ def resolve_outlet_id(diagnose: dict, question: str = '') -> str | None:
         # 触发条件（至少一个）：
         #   ① 问句接口词命中（契约名/标识含词·如"需求"→renewal_demand）
         #   ② outlet 提示命中（诊断卡判"建议清单/报告结论/指标排序"→ 对应行业接口）
-        q_hit = any(w in q and (w in oid or w in contract.get('name', '')) for w in TRIGGER_WORDS)
+        # CB-16 Codex：排除 UI 语境（"更新图层/更新时间"非行业接口词·不触发）
+        q_clean = q
+        for _ui in _UI_CONTEXT_WORDS:
+            q_clean = q_clean.replace(_ui, '')
+        q_hit = any(w in q_clean and (w in oid or w in contract.get('name', '')) for w in TRIGGER_WORDS)
         if q_hit:
             score += 3
         if oid in hinted:
@@ -120,8 +127,10 @@ def build_outlet_schema(diagnose: dict, result: dict, question: str = '') -> dic
         if '不能' in str(emc_expr):
             card['fields'][industry_field] = {'value': '（需客观数据·情绪地图不替代）', 'source': '边界'}
             continue
-        # 取主字段（第一个标识符）
-        main_field = str(emc_expr).split('+')[0].split('（')[0].split('/')[0].strip()
+        # 取主字段（第一个标识符·去尾部限定词如"降序/占比/排序/负数/正数/TOPn"）
+        # CB-16 Codex：qualifier 后缀解析失败致 renewal_sequence"优先级排序"丢值（实测 polarity_index 降序 → 暂无数据）
+        import re as _re
+        main_field = _re.split(r'\s*(?:降序|占比|排序|负数|正数|TOP\d+)', str(emc_expr))[0].split('+')[0].split('（')[0].split('/')[0].strip()
         if main_field and main_field not in ('图层', '评论'):
             val = _extract_emc_value(result, main_field)
             if val is not None:

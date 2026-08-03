@@ -10,7 +10,10 @@ place_name / topic_top / issue_label / attribution / suggestion
 """
 from __future__ import annotations
 
-DOMAIN = 'urban_checkup'
+# CB-16 glm：诊断卡 domain_lens 枚举只有 urban_planning/renewal/operation/governance
+# （stages.js:418）·'urban_checkup' 不在枚举 → 体检类契约永远不触发（S6 不可出卡）
+# → domain 改用 'urban_governance'（城市体检 ≈ 城市治理·最小改动·4 枚举中最接近）
+DOMAIN = 'urban_governance'
 
 # ── 出口契约 ──────────────────────────────────────────────────
 CONTRACTS = {
