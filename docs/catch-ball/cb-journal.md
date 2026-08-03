@@ -48,8 +48,16 @@
 - **数据模拟开专题**（用户定·暂缓）：后续专门模拟大南门·二马路片区范围及周边数据展示 EMC 出口
 - **Wave 0 剩余发起 CB**：条件触发词表（emc-patterns.js 镜像·方案 A）+ 前端卡片渲染（用既有 token）·请求落 `_handoff/CB16-Wave0剩余_2026-08-03.md`
 
+### ③c 行动（Wave 0 三 bug 修复·CB 反评价）
+- **两组 SCAN 发现 3 bug·全部核实 + 修复**（commit f84b3ae）：
+  - ① qualifier 后缀解析（Codex）：`polarity_index 降序` 丢值 → 解析去尾部限定词
+  - ② "更新"词过宽（Codex）："更新图层"误触发 → 排除 UI 语境
+  - ③ 体检契约 domain（glm P0）：`urban_checkup` 不在 domain_lens 枚举 → 改 `urban_governance`（S6 可触发）
+- 补 3 回归测试（qualifier/更新图层负测/体检契约命中）·10 passed·全量 pytest 242 passed
+- 测试口径修正：13 → 实际 7（Codex 核实·已补至 10）
+
 ### ④ 状态
-`Wave 0 实施中 → 待两组核验 + 预告检查` —— Wave 0 核心完成（S2 卡组装验证）·Wave 0 剩余（触发词表+前端渲染）已发 CB 预告·数据模拟开专题暂缓·两组 SCAN 返回后反评价 + 推进。
+`Wave 0 核心通过（三 bug 已修）→ 推进 Wave 0 剩余` —— Wave 0 核心有条件通过（修 3 bug 后转通过）·Wave 0 剩余（触发词表镜像 + 前端卡片渲染）待实施（按 CB 预告前置：先修触发词✓·加同步守卫·渲染纯模板）。
 
 ---
 
