@@ -59,6 +59,10 @@ def test_case_library_real():
             and c['benchmark'].get('更科学'), f'案例 {cid} 缺 benchmark 对标对表'
         assert c.get('indicator_link'), f'案例 {cid} 缺 indicator_link'
         assert c.get('source'), f'案例 {cid} 缺来源'
+        # 小结：四方面逻辑闭环（需求调研/片区评估/示范片区选择/事项紧迫性）
+        assert c.get('summary') and c['summary'].get('需求调研') and c['summary'].get('片区评估') \
+            and c['summary'].get('示范片区选择') and c['summary'].get('事项紧迫性') \
+            and c['summary'].get('闭环'), f'案例 {cid} 缺 summary 四方面闭环'
 
 
 def test_getters():
