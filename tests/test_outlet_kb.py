@@ -44,12 +44,20 @@ def test_metric_mappings():
 
 
 def test_case_library_real():
-    """案例库非空 + 每案例含真实数据（data 非空）+ 情绪地图对接（emc_map 非空）。"""
+    """案例库非空 + 每案例含三段式（survey 真实调研 / emc_angle 情绪地图对应 / benchmark 对标对表）+ 指标指向。"""
     assert len(CASE_LIBRARY) >= 4, '案例过少'
     for cid, c in CASE_LIBRARY.items():
-        assert c.get('data'), f'案例 {cid} 缺真实数据'
+        # 段 1：真实民意调研（怎么开展/数据/成效/难点短板）
+        assert c.get('survey') and c['survey'].get('调研方式') and c['survey'].get('数据'), \
+            f'案例 {cid} 缺 survey 真实调研（方式/数据）'
+        assert c['survey'].get('难点短板'), f'案例 {cid} 缺 survey 难点短板'
+        # 段 2：情绪地图对应（图/数/表/观点）
         assert c.get('emc_map') and c['emc_map'].get('图') and c['emc_map'].get('数'), \
             f'案例 {cid} 缺情绪地图对接（图/数）'
+        # 段 3：对标对表（更专业/全面/科学）
+        assert c.get('benchmark') and c['benchmark'].get('更专业') and c['benchmark'].get('更全面') \
+            and c['benchmark'].get('更科学'), f'案例 {cid} 缺 benchmark 对标对表'
+        assert c.get('indicator_link'), f'案例 {cid} 缺 indicator_link'
         assert c.get('source'), f'案例 {cid} 缺来源'
 
 
