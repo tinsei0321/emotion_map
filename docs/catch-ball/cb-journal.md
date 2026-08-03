@@ -43,8 +43,13 @@
 - **收敛方案**：Wave 0 = S2 打穿（build_outlet_schema + resolve_outlet_id + 条件触发 + 前端卡片）·Wave 1 = macro 出口（零 CB-15）·Wave 2 = CB-15 后 place_name 精确源·Wave 3 = 可感知计算器 + validate_outlet_fields CI
 - 待用户确认 Codex 3 问（S2 演示数据/条件触发词表/卡片渲染形态）
 
+### ③b 行动（Wave 0 实施 + 续）
+- **Wave 0 核心已实施**（commit 9a98785·已 push）：`build_outlet_schema.py`（resolve_outlet_id + build_outlet_schema·确定性组装·不调 LLM·字段降级·尺度分派·诚实标注）+ 测试 13 passed + 端到端 S2 卡验证（接口标识/问题类型/需求强度/需求位置/需求类型/数据基础/对接任务/局限）
+- **数据模拟开专题**（用户定·暂缓）：后续专门模拟大南门·二马路片区范围及周边数据展示 EMC 出口
+- **Wave 0 剩余发起 CB**：条件触发词表（emc-patterns.js 镜像·方案 A）+ 前端卡片渲染（用既有 token）·请求落 `_handoff/CB16-Wave0剩余_2026-08-03.md`
+
 ### ④ 状态
-`讨论收敛 → 待定稿执行` —— 两组独立一致（方向对/MVP=S2/不新增 LLM/验证闭环）·出口驱动开发方法论确立（新功能评审清单）·收敛方案 Wave 0-3 待用户确认后执行。
+`Wave 0 实施中 → 待两组核验 + 预告检查` —— Wave 0 核心完成（S2 卡组装验证）·Wave 0 剩余（触发词表+前端渲染）已发 CB 预告·数据模拟开专题暂缓·两组 SCAN 返回后反评价 + 推进。
 
 ---
 
