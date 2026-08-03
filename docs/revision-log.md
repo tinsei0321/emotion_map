@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月03日）** · 本节按板块分组、组内倒序；最新工作 = **B3-verify-05 全量重测 23/26 88.5% 历史最佳·多步问 RST-L06 收敛·CB-12 闭环**（B3-verify-05，分支 `fix/emc-buglog`）。最近：
+> 📍 **最新动态（08月03日）** · 本节按板块分组、组内倒序；最新工作 = **CB-13 反评价闭环：多步问最终收敛·CB-12→13 双闭环成立**（e052fe7·分支 `fix/emc-buglog`）。最近：
+>
+> - **CB-13 反评价闭环：多步问最终收敛·PRM-08/CPD 根因定案（e052fe7）**：Codex + glm组 对 B3-verify-05 出 SCAN——**多步问最终收敛（CB-12→13 闭环）✅·while-loop 根治/pro 停用守住 ✅·RST-L06 两轮连续 PASS**。**PRM-08 根因定案（两组一致）**：非路由退化/非测量层失效——FC 阶段工具选型偏离（compare→extract_feature·问句含「范围内」+extract_feature when 含「西陵+伍家岗」示例诱导·假设待证），compare 缺确定性路由兜底（CHAIN_REGISTRY 无 compare 链）→ 下轮 CB-14 修（仿 clip_density recover 模式·先取证）。**CPD-L01/L02 = 测试基建文件名过期（Codex 实锤·verify 通过）**：`test-cases.js:8` 引用 `xiling_wujia_*`（已改名 `yichang_*`）·loadCSV 404 静默返 `{ok:false}`·产品 CPD 引导逻辑正常 → 1 行修复。**上轮 3 注意点已落地**（_hasSeq 收紧·Pro chain 前置·recover 链前置·F_002=4 证明生效）。**反评价**：8 agree / 2 partial / 0 disagree。**learning 入库 KNOWLEDGE §3**（测量层≠执行层 / template 对但工具错查 FC 选型 / 预防性兜底看风险）。**backlog 修正**：MOD_LLM.F_002 79 次=调用数非 fallback 数（Codex）。**pytest 225**。
 >
 > - **CB-12 B3-verify-05 全量重测闭环（B3-verify-05）**：**B3 全量 26 例（含 RST-L06 新增）pass=23（88.5%）历史最佳**·RST-L06 多步问 PASS（tools=clip,density·1→2层）→ **多步问修复收敛·CB-12 闭环**·PRM 9/10（PRM-08 compare 链路仍 fail·tools=extract_feature 单工具·boundary[ERR]）·F_002=4（≤5 阈值·while-loop 早停生效）·pro 0·计划命中 16/20 步·p95 50s·11.2min·0 timeout·误杀/漏判 0。**预期 vs 实际**：pass 22-23/26（85-88%）✓ 达标上沿·PRM 10/10 预期未达（差 PRM-08）·分母 25→26 ✓（RST-L06 入列）。**残余（非阻塞）**：PRM-08（compare 路由退化·工具仅 extract_feature·疑 compare 链路）+ CPD-L01/02（引导态 hint 未推 range/analyze）·转 backlog。**验证**：report-2026-08-03-03-llm（26 例）+ audit-B3-090102 + trace_query --stats --session B3-verify-05（F_002=4·F_005=20·pro 0）。**下一步**：进入 CB-13（让 Codex/glm 组检查 PRM-08/CPD 残余 + 多步问修复确认）。
 >

@@ -18,15 +18,33 @@
 - PRM 9/10（PRM-08 fail·tools=extract_feature 单工具·boundary[ERR]·疑 compare 路由退化）
 - F_002=4（≤5 阈值·while-loop 早停生效）·pro 0·F_005=20
 
-### ② 我方反评价
+### ② 我方反评价（对 CB-13 SCAN · Codex + glm 两组）
 
-（待两组 SCAN 返回后补）
+**两组结论高度一致，且均已独立核验通过**。verify-before-accept：
+
+| SCAN 结论 | 判定 | 我方核实/证据 |
+|---|:---:|---|
+| **多步问最终收敛（CB-12→13 闭环）** | **agree** | RST-L06 两轮连续 PASS（tools=clip,density·1→2层）·F_002=4（≤5）·pro 0·三方证据（report+audit+trace）一致 |
+| **PRM-08 非路由退化·非测量层失效** | **agree** | `test-cases.js:317`（PRM-08 严查 expectBoundary）vs `:361`（RST-L02 只查产层）同句不同判·3abb503 只修测量端（`test-cases.js`）不修执行端·FC 选型偏离 compare→extract_feature 是根因 |
+| **CPD-L01/L02 = 测试基建文件名过期**（Codex）| **agree（实锤）** | `DATA/performance/` 仅 `yichang_*`·`xiling_wujia_*` 不存在·`test-cases.js:8` 引用过期文件名·loadCSV 404 静默返 `{ok:false}`·CPD 引导逻辑正常（`cpd-guide.js:59/66` 文案在）|
+| **glm CPD 时序/元数据待证** | **partial** | Codex 文件名实锤解释「导入失败」→ 时序假设可能 moot；但「loadCSV 后元数据是否与运行时一致」仍未证·留取证 |
+| **上轮 3 注意点已落地** | **agree** | Codex 核 `_hasSeq` 收紧（`harness.js:1087`）+ Pro chain 前置 + glm recover 链前置（`harness.js:984-992`）·F_002 低位证明生效 |
+| **F_002=4 是兜底生效结果·勿拆** | **agree** | glm 对（预防性兜底看防的风险是否仍在·FC 方差仍在）·保留 recover 链前置 |
+| **顺序词正则抽常量**（`_hasSeq` vs `_seqRe`）| **agree** | `harness.js:1087` 与 `:986` 字面相同分两处·改一处须同步·抽常量防分裂 |
+| **Pro chain 死路径** | **partial** | Pro 停用后 `:1072` 附近成死代码·清理低优先·防未来 Pro 复活误判 |
+| **MOD_LLM.F_002 backlog 建议重核** | **agree** | Codex 对（`chat_with_fallback` 入口日志·25 条全 attempt=0·非真实 fallback 数）·backlog 数字需修正 |
+
+**CB-13 反评价：8 agree / 2 partial / 0 disagree** · 两组独立结论 + 我方 verify-before-accept 全部成立。
 
 ### ③ 行动
-- 发起 CB-13 评估请求（已落 `_handoff/CB13-评估请求_2026-08-03.md`）·待两组检查 4 项（PRM-08 根因 / CPD-L01·L02 / RST-L06 上轮注意点复核 / while-loop·pro 独立核）
+
+- **PRM-08（高）**：compare 缺确定性路由兜底（CHAIN_REGISTRY 无 compare 链·FC 选型偏离时无兜底）→ 下轮 CB-14 修：仿 clip_density recover 模式，问句含 对比/比较/VS 且可派生 ≥2 区名时合成 compare + 确定性填 boundaries。**先取证**（glm 建议）：带 session 单跑 PRM-08 问句 5 次 + console/网络面板抓 FC tool_calls，确认「范围内」是否抢答触发点（假设 A/B 待证）。
+- **CPD-L01/L02（高·1 行）**：`test-cases.js:8` CSV 改走 `resolvePoints('L1-T1')` 或改存在文件名——**测试基建修复，非产品 bug**。建议 CPD-L03 恒真断言改硬断言。
+- **学习入库（KNOWLEDGE §3）**：① 修复测量端 ≠ 修复执行端（3abb503 教训）；② template 对但工具错 → 查 FC sys prompt 工具决策规则排序 + when/examples 诱导性，非查 select_template；③ 预防性兜底必要性看防的风险是否仍在。← CB-13
+- **backlog 修正**：MOD_LLM.F_002 fallback 79 次含 3 ERR → 重核为「调用数」非「fallback 数」（Codex）。
 
 ### ④ 状态
-`发起 → 待 Codex/glm 两组 SCAN` —— 两组返回后反评价 + 行动。
+`闭环达成 → CB-12→13 多步问收敛 · 残余 PRM-08/CPD 转 CB-14` —— 多步问修复最终收敛·CB-12 三项主成果守住·PRM-08（FC 选型兜底）+ CPD-L01/L02（测试基建）进下一轮。
 
 ---
 

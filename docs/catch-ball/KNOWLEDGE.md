@@ -59,6 +59,9 @@
 | 用"官方指标完备性"质疑 4×5 归因 | 4×5 = 归因矩阵（多归属）非指标清单（互斥穷尽）→ 错标尺 | ← 项目设计哲学（CLAUDE.md），CB 通用 |
 | 把不同用途的 sim/工具脚本误判"功能重叠"→ 建议同退役 | 先查 docstring/原职责定用途；非真冗余不并退役（generate_test_data=L0 raw 全管线测试 vs sim_performance_data=L1/L2 demo） | ← CB-02 建议4 |
 | 根因分析凭代码推断/转述·不拉原始 trace.log（数 F_001 猜 while-loop / 猜 API 慢） | **trace 取证第一动作**：`trace_query --stats` 数 F_002（agentStep·while-loop 铁证）/F_003/F_005·勿用 F_001（公共出口）；trace.log 在仓库各组件直读·不依赖转述；推断只作假设 | ← CB-12 B3 大失败（claude/Codex 凭 F_001 推断错两次·glm组 读 trace 定案 while-loop） |
+| 把「测量层修复」当「执行层修复」（断言端修复未生效 → 疑执行 bug） | **先分文件归属**：`test-cases.js`=测量端（断言参数收集）·`harness.js`/`prompts.py`=执行端（路由/工具选型）·测量修复只在其守的前提（执行正确）成立时有效·执行错则测量"失效"是表象 | ← CB-13（3abb503 多 boundary 收集仅测量端·PRM-08 实为 FC 选型偏离） |
+| template 路由对但工具错 → 归因 select_template | **先查 FC 阶段工具选型**：FC 独立做工具选择（看 sys prompt「工具选择决策」规则排序 + 各工具 when/examples 诱导性），**不消费 template 信号**——template 对但工具错时查 prompts.py 决策规则 + tool_contracts 各工具 when/examples | ← CB-13（PRM-08 compare→extract_feature·RST-L02 同句 PASS 对照） |
+| 预防性兜底结果好 → 建议拆除 | **看它防的风险是否仍在**（如 FC 方差），非看当前结果好坏；F_002 低位正是兜底生效的结果 | ← CB-13（recover 链前置 / seq-chain 合成 diagnose 勿拆） |
 
 ## §4 Decline 模式库（reason 类型 + 例）
 

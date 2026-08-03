@@ -9,7 +9,16 @@
 
 ---
 
-## 📅 2026-08-03（CB-12 闭环 · B3 全量重测 88.5% + 多步问收敛 · 办公室环境）
+## 📅 2026-08-03（CB-13 反评价闭环 · 多步问最终收敛 + PRM-08/CPD 根因定案）
+
+### ✅ CB-13 反评价闭环（revision-log 5.254，commit e052fe7 · **用户手动 push**）
+
+- **多步问最终收敛（CB-12→13 闭环）**：RST-L06 两轮连续 PASS·while-loop 根治（F_002=4）·pro 0 守住
+- **PRM-08 根因定案**（两组一致）：FC 选型偏离 compare→extract_feature·非路由退化/非测量层·compare 缺确定性路由兜底 → CB-14 修（先取证）
+- **CPD-L01/L02 = 测试基建文件名过期**（Codex 实锤）：`test-cases.js:8` 引用已改名的 `xiling_wujia_*`·1 行修复·产品引导逻辑正常
+- **上轮 3 注意点已落地**（_hasSeq 收紧·Pro chain 前置·recover 链前置）
+- **反评价**：8 agree / 2 partial / 0 disagree·learning 入库 KNOWLEDGE §3
+- **backlog 修正**：MOD_LLM.F_002 79 次=调用数非 fallback 数
 
 ### ✅ CB-12 B3-verify-05 全量重测闭环（revision-log 5.253，session B3-verify-05 · **用户手动 push**）
 
@@ -21,7 +30,8 @@
 
 ### 待续
 
-- PRM-08 compare 链路修复 + CPD-L01/02 引导态（backlog）
+- PRM-08 compare 确定性路由兜底（CB-14·先带 session 取证 FC 选型）
+- CPD-L01/L02 测试基建 1 行修复（CSV 改 resolvePoints('L1-T1')）+ CPD-L03 硬断言
 - 发版候选评估（B3 88.5% 达标上沿·整体评估）
 - MOD_PLACE 渲染风暴 + fallback 重试（backlog）
 
