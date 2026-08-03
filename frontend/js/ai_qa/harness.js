@@ -6,7 +6,7 @@
 import * as stages from './stages.js';
 import { TOOLS, setToolContext, formatRegistry, getArtifacts, deriveAvailable, resetStepResults, resetCurrentResults, resolveCoref } from './tools.js';
 import { getLayers, getLayer } from '../state.js';
-import { CONCEPT_KW, INVENTORY_KW, GREETING_KW, GEO_VERB_KW, REGION_KW, POLARITY_KW, LANDUSE_KW, SEARCH_KW, SEARCH_EVIDENCE_RE } from './emc-patterns.js';   // CB-10 分歧2 词表集中 + G6b SEARCH_KW/SEARCH_EVIDENCE_RE
+import { CONCEPT_KW, INVENTORY_KW, GREETING_KW, GEO_VERB_KW, REGION_KW, POLARITY_KW, LANDUSE_KW, SEARCH_KW, SEARCH_EVIDENCE_RE, OUTLET_TRIGGER_KW, OUTLET_UI_EXCLUDE_KW } from './emc-patterns.js';   // CB-10 分歧2 词表集中 + G6b SEARCH_KW/SEARCH_EVIDENCE_RE + CB-16 OUTLET 触发词（DRY·单一源 emc-patterns）
 
 const MAX_ROUNDS_GIS = 10;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=10（保多步完整性，如3次overlay需8轮：1查询+6执行+1answer）
 const MAX_ROUNDS_OTHER = 4;    // A 通用 / C 情绪=4（远紧于 16，配合 temp 0.4 降概率链 p^N）
@@ -1544,35 +1544,44 @@ async function _maybeBuildOutletCard(diagnose, ctx, newLayerCount) {
   _outletCard = null;
   const q = (ctx && ctx.question) || '';
   // 前置触发：问句含接口词（排除 UI 语境·与后端 _UI_CONTEXT_WORDS 同步）
-  const _uiExclude = ['更新图层', '更新时间', '更新样式', '刷新', '重新加载'];
+  const _uiExclude = OUTLET_UI_EXCLUDE_KW;   // CB-16 P3（glm/Codex）：import 自 emc-patterns（DRY·单一源）
   let _qClean = q;
   for (const _ui of _uiExclude) _qClean = _qClean.replaceAll(_ui, '');
-  const _trigger = ['更新', '体检', '需求', '满意度', '排序', '识别', '时序', '改造'];
+  const _trigger = OUTLET_TRIGGER_KW;        // CB-16 P3：import 自 emc-patterns（DRY·单一源）
   if (!_trigger.some((w) => _qClean.includes(w))) return null;
   if (newLayerCount <= 0) return null;   // 无产物不出卡
 
   // 收集分析产物（从已加载图层取·优先最近产物·对齐 _extract_emc_value 的 features 结构）
+  // CB-16 P3（glm）：补 point_count（从 features 总数·供 data_base.N 不降级）
   let result = null;
   try {
     const arts = getArtifacts() || [];
     if (arts.length) {
       const last = arts[arts.length - 1];
       const lyr = getLayer(last.id);
-      if (lyr && lyr.fc) result = { features: lyr.fc.features || [] };
+      if (lyr && lyr.fc) {
+        const feats = lyr.fc.features || [];
+        result = { features: feats, point_count: feats.length || 0 };
+      }
     }
   } catch (_) { /* 产物收集失败·result 空仍走端点（后端降级） */ }
   result = result || {};
 
   try {
+    // CB-16 P3（glm）：加 5s AbortController（仿 CB-12 搜索分支·防御性）
+    const _ac = new AbortController();
+    const _timer = setTimeout(() => _ac.abort(), 5000);
     const r = await fetch('/api/v1/aiqa/outlet_card', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question: q, diagnose: diagnose || {}, result }),
+      signal: _ac.signal,
     });
+    clearTimeout(_timer);
     const d = await r.json();
     _outletCard = (d && d.card) || null;
     return _outletCard;
   } catch (_) {
-    return null;   // 端点失败静默（不阻塞回答）
+    return null;   // 端点失败/超时静默（不阻塞回答）
   }
 }
 
