@@ -56,8 +56,14 @@
 - 补 3 回归测试（qualifier/更新图层负测/体检契约命中）·10 passed·全量 pytest 242 passed
 - 测试口径修正：13 → 实际 7（Codex 核实·已补至 10）
 
+### ③d 行动（Wave 0 剩余实施预告·CB 机制）
+- Wave 0 剩余两项实施方案已起草·发 CB 预告（`_handoff/CB16-Wave0剩余实施_2026-08-03.md`）：
+  - ① 条件触发词表镜像 emc-patterns.js（OUTLET_TRIGGER_KW·单一权威源在后端·同步守卫 validate_outlet_trigger_sync.py·仅 UI 提示不改控制流）
+  - ② 前端 outlet-card 渲染（仿 .cpd-guide-card·既有 token·纯模板函数·{{show:}} 复用 renderAnswer）
+- 按机制：等两组预检 SCAN 后实施
+
 ### ④ 状态
-`Wave 0 核心通过（三 bug 已修）→ 推进 Wave 0 剩余` —— Wave 0 核心有条件通过（修 3 bug 后转通过）·Wave 0 剩余（触发词表镜像 + 前端卡片渲染）待实施（按 CB 预告前置：先修触发词✓·加同步守卫·渲染纯模板）。
+`Wave 0 剩余实施预告 → 待两组预检` —— Wave 0 三 bug 已修（f84b3ae）·Wave 0 剩余两项（触发词表镜像 + 前端渲染）方案已发 CB 预告·两组预检返回后实施。
 
 ---
 
