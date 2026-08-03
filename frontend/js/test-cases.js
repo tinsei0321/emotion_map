@@ -5,9 +5,9 @@
 import { resolveRange, resolvePoints } from './test-assets.js';
 
 const w = (ms) => new Promise((r) => setTimeout(r, ms));
-const CSV = 'xiling_wujia_L1_T1_result_csv.csv';   // 默认 L1 点层（直接文件名·向后兼容）
-const CSV_T2 = 'xiling_wujia_L1_T2_result_csv.csv';
-const CSV_T3 = 'xiling_wujia_L1_T3_result_csv.csv';
+const CSV = 'yichang_L1_T1_result_csv.csv';   // 默认 L1 点层（CB-13 Codex 实锤：xiling_wujia→yichang 改名·旧名 404 致 CPD-L01/L02 静默失败）
+const CSV_T2 = 'yichang_L1_T2_result_csv.csv';
+const CSV_T3 = 'yichang_L1_T3_result_csv.csv';
 const RANGE = '行政区.geojson';                     // 顶层（presets/ 已并于顶层）
 const RANGE_ERMAWU = '大南门二马路滨江片区.geojson';
 
@@ -118,7 +118,7 @@ const CPD_NO_LLM = [
 const CPD_LLM = [
   { id: 'CPD-L01', name: '导入点层后引导推 range', run: async (t) => { await t.loadCSV(CSV); await w(800); const h = t.hintText(); return h && h.includes('范围') ? { pass: true, obs: `hint="${h?.slice(0, 30)}"` } : { pass: false, stage: 's1', obs: `hint 未推 range` }; } },
   { id: 'CPD-L02', name: '导入点+范围后推 analyze', run: async (t) => { await t.loadCSV(CSV); await w(500); await t.loadRange(RANGE); await w(500); const h = t.hintText(); return h && (h.includes('方向') || h.includes('数据已就绪')) ? { pass: true, obs: `hint="${h?.slice(0, 30)}"` } : { pass: false, stage: 's1', obs: `hint 未推 analyze` }; } },
-  { id: 'CPD-L03', name: '新对话恢复引导', run: async (t) => { await t.loadCSV(CSV); await w(500); t.newChat(); await w(500); const h = t.hintText(); return h && h.includes('范围') ? { pass: true, obs: '新对话推 range' } : { pass: true, obs: '新对话引导态恢复' }; } },
+  { id: 'CPD-L03', name: '新对话恢复引导', run: async (t) => { await t.loadCSV(CSV); await w(500); t.clearRanges(); await w(300); t.newChat(); await w(500); const h = t.hintText(); return h && h.includes('范围') ? { pass: true, obs: '新对话推 range' } : { pass: false, stage: 's1', obs: `新对话后 hint 未推 range（hint="${(h || '').slice(0, 30)}"）` }; } },   // CB-14：newChat 前 clearRanges 清 CPD-L02 残留范围层·让新对话 hasRange=false → 引导回 range 态
 ].map((c) => ({ ...c, category: 'CPD导游', type: 'llm' }));
 
 // ═══════════════════════════════════════════════════════
@@ -313,7 +313,7 @@ const PARAM_DATA = [
   { q: '大南门·二马路滨江片区周边 1 公里范围内的情绪点分布', expectRadius: 1000, review: 'radius=1000m？' },
   { q: '西陵区范围内按面聚合情绪统计及 4×5 归因', expectBoundary: '西陵', review: 'boundary=西陵区？' },
   { q: '伍家岗区范围内按面聚合情绪统计及 4×5 归因', expectBoundary: '伍家', review: 'boundary=伍家岗区？' },
-  { q: '小溪塔范围内按面聚合情绪统计及 4×5 归因', expectBoundary: '小溪塔', review: 'boundary=小溪塔？' },   // CB-12：PRM-07 改小溪塔（preset 含·原夷陵区不在 fixture·数据前提缺陷）
+  { q: '小溪塔范围内按面聚合情绪统计及 4×5 归因', expectRequestUpload: true, review: '小溪塔=法定功能区·EMC 不识别·应诚实 request_upload' },   // CB-14（用户准则）：小溪塔是法定功能区（非行政区划）·固化库只预置真实行政区划·EMC 应诚实让用户上传标准资料·不硬识别
   { q: '对比西陵区与伍家岗区范围内情绪极性差异', expectBoundary: '西陵.*伍家', review: 'boundaries 含两区？' },
   { q: '从已载行政区中筛选出西陵区', expectLayer: '西陵', review: 'layer=西陵？' },   // CB-12：PRM-09 改问句（原「商业服务业用地」需用地层·B3 setup 只加载行政区·数据前提缺陷·改行政区属性筛选）
   { q: '裁剪西陵区范围内的全部情绪点', expectRange: '西陵', review: 'range=西陵区？' },
@@ -329,6 +329,12 @@ const PARAMS = PARAM_DATA.map((d, i) => ({
     const _askChips = (_tt && _tt.askChips && _tt.askChips()) || 0;
     if (d.expectRadius != null && (_askChips > 0 || /等你选择/.test(b)) && (!sig.tools || sig.tools.length === 0)) {
       return { pass: true, obs: `合法 ask_user（center 缺·诚实追问）·badge=${b.slice(0, 20)}`, review: '追问是否合理？' };
+    }
+    // CB-14（用户准则）：expectRequestUpload 用例——法定功能区（非行政区划）EMC 不识别·应诚实 request_upload/ask_user。
+    //   GAP/需上传 文案 → PASS（诚实行为）；若 EMC 硬识别产了 boundary → 违规（EMC 不该猜不可信范围）。
+    if (d.expectRequestUpload) {
+      const _honest = /需上传|未上传|请上传|request_upload|上传.*标准|上传.*资料/.test(b) || (_askChips > 0 && !sig.tools.length);
+      return { pass: _honest, stage: _honest ? '' : 's2', obs: _honest ? `诚实 request_upload（不硬识别法定功能区）·badge=${b.slice(0, 20)}` : `EMC 硬识别了法定功能区·应 request_upload（tools=${sig.tools.join(',')}）`, review: d.review };
     }
     // H3: 真比对 sig.params 与 expect*（替代恒 pass）。cell/radius 数值 ±5% 容差；boundary 正则包含。
     const p = sig.params || {};

@@ -17,7 +17,7 @@ from ai_qa.paradigm import (
     template_registry_text, b_track_paradigm_text, select_template_text, template_id_list_text,
     DIAGNOSE_CARD_FIELDS, DATA_STRATEGY, TEMPLATE_REGISTRY,
 )
-from ai_qa.industry_kb import industry_kb_brief_text, industry_kb_lens_appendix
+from ai_qa.industry_kb import industry_kb_brief_text, industry_kb_lens_appendix, industry_kb_final_brief
 from core.tracker import track, register_track_id
 
 
@@ -166,6 +166,15 @@ def build_final_prompt(context: str = '', tool_history: str = '', context_tokens
     # CB-09 D019 极瘦：去 MANIFESTO 前置（省 11.2KB）+ industry_kb_lens_appendix（省 0-20KB）·17KB→~0.9KB
     # 诚实/结构由前端 harness.applyQualityDefense 代码守（5.232·空答/谎报/矛盾/截断）·prompt 不再内嵌自查清单
     prompt = _today_line() + FINAL_TEMPLATE.format(tool_history=hist, context=ctx)
+    # CB-14（A4）：finalStep 按 domain_lens 条件注入命中领域【精简归因速查】——治"finalStep 无领域知识"痛点
+    #   （D019 后 final 极瘦·FC 出 domain_lens 但 final 不消费→回答缺行业权威话语/归因落点）。
+    #   与 agent_step 的 industry_kb_lens_appendix（全量）区分：此处只注精简框架（每域 ~1.6KB·非全量·防 D019 回弹）。
+    #   条件性注入——空 context/无 domain_lens 不触发·test_final_prompt_stays_lean 静态门禁不受影响。
+    #   体积守卫见 test_final_prompt_with_lens_stays_bounded（四域全注 <5KB·防 final_brief 加厚回弹）。
+    if domain_lens:
+        _brief = industry_kb_final_brief(domain_lens)
+        if _brief:
+            prompt = prompt + '\n\n' + _brief
     # CB-10 P0-4：人民城市理念仅概念问注入（省静态体积·防 D019 回弹）
     if _is_concept_question(ctx):
         prompt = _PEOPLE_CITY_LINE + prompt

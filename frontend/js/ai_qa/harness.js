@@ -1468,26 +1468,43 @@ function deriveMissingParams(diagnose, question, layers) {
         });
         if (_f2) _bs.push({ type: 'FeatureCollection', features: [_f2] });
       }
-      if (_bs.length >= 2) p.boundaries = _bs;
+      if (_bs.length >= 2) {
+        p.boundaries = _bs;
+        // CB-14（PRM-08）：FC 多 call（extract_feature×2·双区各抽）会走 :1077 runAllToolCalls 批量执行·
+        //   绕过上面强制改的 compare → 对齐 clip/zonal 分支重写 _allToolCalls 为 compare 单 call（治"计划 compare 执行 extract"）
+        if (Array.isArray(diagnose._allToolCalls) && diagnose._allToolCalls.length > 1) {
+          diagnose._allToolCalls = [{ name: 'compare_regions', params: { boundaries: _bs } }];
+        }
+      }
     }
   }
   // boundary derive：需 boundary/boundaries 槽的工具（zonal/compare/rank/area_stats）·区名→精确要素 geojson（聚合该区·非整图层）
-  if ((tool === 'zonal_stats' || tool === 'compare_regions' || tool === 'rank' || tool === 'area_stats') &&
-      !p.boundary && !p.boundaries) {
-    const _d = deriveAvailable(q, layers);
-    if (_d) {
-      const _l = (layers || []).find((x) => x.name === _d.layer);
-      const _f = (_l && _l.fc && _l.fc.features || []).find((f) => {
-        const v = f.properties && f.properties[_d.field];
-        return v != null && String(v).includes(_d.name);
-      });
-      if (_f) p.boundary = { type: 'FeatureCollection', features: [_f] };   // 精确区要素 geojson（聚合该区）
-      else p.boundary = _d.layer;   // 兜底整图层（至少能跑）
-    } else {
-      // CB-12 P0-a（glm组）：boundary derive 失败诊断 observation——帮 LLM/user 知为何没填（防静默 GAP）
-      const _regions = (q.match(/[一-龥]{2,6}(?:区|市|县|街道|镇)/g) || []).slice(0, 2);
-      if (_regions.length && console && console.info) {
-        console.info(`[derive] 区名 ${_regions.join('、')} 未在已加载面层中找到匹配要素（可用边界层：${(layers || []).filter((x) => x.kind === 'polygon').map((x) => x.name).join('、') || '无'}）`);
+  // CB-14（PRM-07·用户准则）：FC 已选 zonal 但 boundary 可疑（多要素整层·如 GeoJSON{9}）也修复——
+  //   "只补缺失不覆盖"设计让 FC 的错 boundary 漏过。校验：boundary 特征数 >1（整层）→ 重新 derive 精确区要素。
+  if ((tool === 'zonal_stats' || tool === 'compare_regions' || tool === 'rank' || tool === 'area_stats')) {
+    const _boundarySuspect = (b) => {
+      if (!b) return false;
+      if (typeof b === 'string') return true;   // 字符串 = 兜底整图层名（不可靠）
+      const f = b.features;
+      return !Array.isArray(f) || f.length !== 1;   // 非精确单要素 → 可疑（整层/空）
+    };
+    const _needDerive = (!p.boundary && !p.boundaries) || _boundarySuspect(p.boundary);
+    if (_needDerive) {
+      const _d = deriveAvailable(q, layers);
+      if (_d) {
+        const _l = (layers || []).find((x) => x.name === _d.layer);
+        const _f = (_l && _l.fc && _l.fc.features || []).find((f) => {
+          const v = f.properties && f.properties[_d.field];
+          return v != null && String(v).includes(_d.name);
+        });
+        if (_f) p.boundary = { type: 'FeatureCollection', features: [_f] };   // 精确区要素 geojson（聚合该区）
+        else if (typeof p.boundary === 'string') p.boundary = _d.layer;   // 兜底整图层（至少能跑·仅当原值也是字符串时）
+      } else {
+        // CB-12 P0-a（glm组）：boundary derive 失败诊断 observation——帮 LLM/user 知为何没填（防静默 GAP）
+        const _regions = (q.match(/[一-龥]{2,6}(?:区|市|县|街道|镇)/g) || []).slice(0, 2);
+        if (_regions.length && console && console.info) {
+          console.info(`[derive] 区名 ${_regions.join('、')} 未在已加载面层中找到匹配要素（可用边界层：${(layers || []).filter((x) => x.kind === 'polygon').map((x) => x.name).join('、') || '无'}）`);
+        }
       }
     }
   }

@@ -120,6 +120,16 @@ window.__emcTest = {
   getMode() { const b = document.querySelector('#aiq-mode button.is-active'); return b ? b.dataset.mode : null; },
   setMode(m) { const b = document.querySelector(`#aiq-mode button[data-mode="${m}"]`); if (b) b.click(); },
   newChat() { document.getElementById('chat-new')?.click(); },
+  clearRanges() {
+    // CB-14（CPD-L03）：清残留范围层（e2e_range polygon·跨用例污染）——让新对话后 hasRange=false → 引导回 range 态。
+    //   loadPoints 故意保留 polygon（部分用例先加载范围再加载点）·故 CPD 顺序用例需显式清。
+    for (const l of getLayers().slice()) {
+      if (l.srcName === 'e2e_range' || (l.kind === 'polygon' && l.paint && l.paint._ui && l.paint._ui.tool)) {
+        try { removeLayerFromMap(l.id); } catch (_) {} removeLayer(l.id);
+      }
+    }
+    document.dispatchEvent(new CustomEvent('layers:changed'));
+  },
   async loadCSV(path) {
     // T1 修（2026-07-24）：① pool processed→performance ② 复用产品 dsvRows 解引号（治 text 含逗号致列错位/丢行）
     //   ③ polarity 精确列名（^polarity$·非 polarity_hint 子串）+ 保留原始五档值交 loadPoints→detectColorMode 拆分（治 :119 二档塌缩 Very→Neutral）

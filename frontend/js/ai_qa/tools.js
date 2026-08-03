@@ -1,4 +1,11 @@
 // ═══ tools.js — Agent Loop 工具集（查询型 + 操作型，直调主窗口函数）═══
+// ═══ 范围来源注册机制（CB-14·用户准则）═══
+// 范围参数必须锚定「明确来源」，不做自由语义猜测。来源机制可增补（非固定枚举）：
+//  ① 用户绘制（地图手绘 polygon）  ② 临时上传范围（含需剪裁）  ③ 固化库范围（预设面域·可剪裁）  ④ 未来可增补
+// 固化库行政区划（admin_district preset）只识别【真实行政区划】——法定功能区（小溪塔/龙泉/东部产业新区/
+// 生物产业园等）不在白名单 → 锚定失败 → 诚实 request_upload（EMC 不硬识别不可信的范围）。
+// RANGE_SOURCES 为可扩展注册表：新增来源类型 = 追加条目 + 判定函数（见 _RANGE_SOURCE_OF）。
+const FIXED_ADMIN_DISTRICTS = ['西陵区', '伍家岗区', '猇亭区', '点军区'];   // 固化库真实行政区划（宜昌·可增补·法定功能区不预置）
 // 还原单窗口后，tools 直调 map/state/panel（删跨窗口协议）。每个 tool 返回 {observation, data?}：
 //   observation = 给 LLM 看的摘要字符串（入 tool_history）；data = 结构化（前端可选用于渲染）。
 import { getLayers, getLayer, getSelectedLayer, addGroup, removeLayer, setLayerVisible, _isAILayer } from '../state.js';
@@ -607,12 +614,20 @@ export function deriveAvailable(question, layers) {
       const _first = _after.slice(0, 1);
       return _sepRe.test(_first) || !_blockRe.test(_after);   // 分隔符 → 匹配；块词 → 跳过；其他（如"范围内"首字"范"非块词）→ 匹配
     };
+    // CB-14（用户准则）：固化库行政区划只识别真实行政区划——层来源 preset + 层名含"行政区" → 值必须在 FIXED_ADMIN_DISTRICTS
+    //   白名单；法定功能区（小溪塔/龙泉等）不在白名单 → 跳过（不识别→诚实 request_upload·EMC 不硬猜不可信范围）。
+    //   用户上传层（upload）不受白名单限制（用户主动提供的范围皆可信）。
+    const _reg = data_registry.getByLayerId(l.id);
+    const _isFixedAdmin = _reg && _reg.source === 'preset' && /行政区/.test(l.name || '');
+    const _inAdminWhitelist = (nm) => { if (!_isFixedAdmin) return true; return FIXED_ADMIN_DISTRICTS.some((d) => nm === d || nm.includes(d) || d.includes(nm)); };
     for (const nm of _allVals) {
       if (!nm) continue;
+      if (!_inAdminWhitelist(nm)) continue;   // 固化库行政区划白名单过滤（法定功能区跳过）
       if (q.includes(nm) && _validAfter(nm, q)) return { name: nm, layer: l.name, field: b.field };   // 原始值精确优先（过词边界）
     }
     for (const nm of _allVals) {
       if (!nm) continue;
+      if (!_inAdminWhitelist(nm)) continue;   // 固化库行政区划白名单过滤（法定功能区跳过）
       const _qStrip = _strip(q), _nmStrip = _strip(nm);
       // CB-12 回退（glm组）：阈值 3→2（"西陵/伍家"2 字区名 stripped 匹配恢复·a04a714 改 3 致 2 字区名失效→while-loop 退化）
       //   词边界用原始 q（非 _qStrip·防 _strip 剥"大道"的"道"致"大"单字漏拦块词）
