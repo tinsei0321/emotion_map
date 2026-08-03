@@ -23,6 +23,10 @@
 ├─ 叶 · 专项参考（渐进披露，按需）
 │  └─ docs/ — brand-visual / copywriting-style / api-conventions / mcp-strategy / ai-qa-design /
 │            industry-knowledge-base / landuse-classification-2023 / harness-engineering-baseline（六要素）
+│     · 出口抽象层（立项根本目标）：docs/catch-ball/discuss/EMC-出口抽象层架构讨论_2026-08-03.md（专业+通俗）
+│       —— 三铁律 / 软指标可信性缺口 / 出口卡片 / 案例深挖（官方资料·可量化/可感知/可评价三类）
+│     · 出向知识库（出口卡片组装数据源）：ai_qa/outlet_kb/ — 7 契约 + 21 指标映射（官方三类）+ 5 案例
+│       + summary 四方面闭环·测试守卫（登记：CLAUDE.md「出口抽象层」节 + AutoMemory outlet_kb 指针）
 │
 ├─ 快照 · 跨会话桥（手动触发）
 │  ├─ memories/repo/session-handoff.md — 单节点当前态 + 复制即用 prompt（说"交接"才覆写）
