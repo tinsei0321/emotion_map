@@ -5,7 +5,7 @@
 // 降级：agent_step 解析失败不再裸显 raw，break loop 仍走 finalStep 出一次性 answer。
 import * as stages from './stages.js';
 import { TOOLS, setToolContext, formatRegistry, getArtifacts, deriveAvailable, resetStepResults, resetCurrentResults, resolveCoref } from './tools.js';
-import { getLayers } from '../state.js';
+import { getLayers, getLayer } from '../state.js';
 import { CONCEPT_KW, INVENTORY_KW, GREETING_KW, GEO_VERB_KW, REGION_KW, POLARITY_KW, LANDUSE_KW, SEARCH_KW, SEARCH_EVIDENCE_RE } from './emc-patterns.js';   // CB-10 分歧2 词表集中 + G6b SEARCH_KW/SEARCH_EVIDENCE_RE
 
 const MAX_ROUNDS_GIS = 10;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=10（保多步完整性，如3次overlay需8轮：1查询+6执行+1answer）
@@ -1347,6 +1347,15 @@ export async function orchestrate(ctx, hooks = {}) {
   }
   if (hooks.onFinalDone) hooks.onFinalDone(draft);
 
+  // CB-16 Wave 0：出口卡片确定性组装（结果范式 agent·第三段·result 态后·纯增量）
+  //   finalStep 后条件调用 /outlet_card（问句含接口词才出卡·不碰承重路径/四态裁定）
+  //   卡 JSON 挂 _outletCard·panel 在 result 态消费渲染（仿 .cpd-guide-card·纯模板）
+  try {
+    _maybeBuildOutletCard(diagnose, ctx, newLayerCount).then((card) => {
+      if (card && hooks.onOutletCard) hooks.onOutletCard(card);
+    }).catch(() => { /* 出口卡失败不阻塞主链路·静默 */ });
+  } catch (_) { /* 同上 */ }
+
   // EXIT_PARTIAL 裁定（体验>正确性·四态出口第四态）：仅对账少量 missing（_isPartialMissing）= 真"做成一部分"。
   //   软缺口 strategy=fallback_annotated 用替代数据仍可完整作答 → 走正常质量防线 + EXIT_RESULT，不属此态。
   if (_isPartialMissing) {
@@ -1523,6 +1532,47 @@ function deriveMissingParams(diagnose, question, layers) {
     for (const _ent of POLARITY_KW) {
       if (_ent.kw.some((k) => q.includes(k))) { p.polarity = _ent.polarity; break; }
     }
+  }
+}
+
+/** CB-16 Wave 0：出口卡片条件组装（结果范式 agent·第三段）。
+ *  问句含接口词（OUTLET_TRIGGER_KW 镜像）→ POST /aiqa/outlet_card 组装卡。
+ *  异步·不阻塞主链路·失败静默。result 从已加载产物图层取（polarity_index/features）。
+ *  触发判定与后端 build_outlet_schema 的 resolve_outlet_id 一致（单一权威源在后端）。 */
+let _outletCard = null;
+async function _maybeBuildOutletCard(diagnose, ctx, newLayerCount) {
+  _outletCard = null;
+  const q = (ctx && ctx.question) || '';
+  // 前置触发：问句含接口词（排除 UI 语境·与后端 _UI_CONTEXT_WORDS 同步）
+  const _uiExclude = ['更新图层', '更新时间', '更新样式', '刷新', '重新加载'];
+  let _qClean = q;
+  for (const _ui of _uiExclude) _qClean = _qClean.replaceAll(_ui, '');
+  const _trigger = ['更新', '体检', '需求', '满意度', '排序', '识别', '时序', '改造'];
+  if (!_trigger.some((w) => _qClean.includes(w))) return null;
+  if (newLayerCount <= 0) return null;   // 无产物不出卡
+
+  // 收集分析产物（从已加载图层取·优先最近产物·对齐 _extract_emc_value 的 features 结构）
+  let result = null;
+  try {
+    const arts = getArtifacts() || [];
+    if (arts.length) {
+      const last = arts[arts.length - 1];
+      const lyr = getLayer(last.id);
+      if (lyr && lyr.fc) result = { features: lyr.fc.features || [] };
+    }
+  } catch (_) { /* 产物收集失败·result 空仍走端点（后端降级） */ }
+  result = result || {};
+
+  try {
+    const r = await fetch('/api/v1/aiqa/outlet_card', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q, diagnose: diagnose || {}, result }),
+    });
+    const d = await r.json();
+    _outletCard = (d && d.card) || null;
+    return _outletCard;
+  } catch (_) {
+    return null;   // 端点失败静默（不阻塞回答）
   }
 }
 

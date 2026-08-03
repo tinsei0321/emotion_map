@@ -274,6 +274,54 @@ function _renderGuideCard(spec) {
   if (back) back.addEventListener('click', () => { _curDirection = null; _renderGuidanceContent(); });
   _guidanceCardShown = true;
 }
+
+/** CB-16 Wave 0：出口卡片渲染（结果范式 agent·第三段·确定性 JSON → 纯模板）。
+ *  仿 .cpd-guide-card·用既有 token（--geojson-color-* / --emc-accent）·不新造样式。
+ *  7 要素：接口标识/数据基础/定量定性/地理定位/对接建议/局限标注。
+ *  数据全来自后端 build_outlet_schema JSON·前端不计算不补字段·字段缺失显示"暂无数据"灰。
+ *  {{show:图层}} 走 renderAnswer ref 解析（复用·不另造联动）。 */
+function renderOutletCard(card) {
+  const list = document.getElementById('chat-messages');
+  if (!list || !card) return;
+  const old = list.querySelector('.outlet-card');
+  if (old) old.remove();   // 新一轮覆盖旧卡
+  const el = document.createElement('div');
+  el.className = 'outlet-card';
+
+  const esc = escapeHtml;
+  const fieldsHtml = Object.entries(card.fields || {}).map(([k, v]) => {
+    const val = (v && v.value != null) ? String(v.value) : '暂无数据';
+    const gray = (val === '暂无数据') ? ' class="outlet-muted"' : '';
+    return `<div class="outlet-field"><span class="outlet-field-key">${esc(k)}</span><span${gray}>${esc(val)}</span></div>`;
+  }).join('');
+
+  const limits = (card.limitations || []).map((l) => `> ${esc(l)}`).join('\n');
+  const task = (card.task_link || []).map((t) => esc(t)).join('、');
+  const base = (card.data_base && card.data_base.N != null)
+    ? `N=${card.data_base.N} 条评论${card.data_base.note ? `（${esc(card.data_base.note)}）` : ''}` : '';
+
+  // 卡片头（接口标识）+ 字段 + 对接建议 + 局限（引用块·与 CB-12 降级格式一致）
+  el.innerHTML = `<div class="cpd-guide-card-head">`
+    + `<div class="cpd-guide-card-title">${esc(card.name || '行业出口卡片')}</div></div>`
+    + `<div class="outlet-card-body">`
+    + `<div class="outlet-interface">${esc(card.interface || '')}</div>`
+    + (base ? `<div class="outlet-base">${base}</div>` : '')
+    + fieldsHtml
+    + (task ? `<div class="outlet-task"><span class="outlet-field-key">对接任务</span>${task}</div>` : '')
+    + (limits ? `<div class="outlet-limits">${limits}</div>` : '')
+    + `<div class="outlet-source">${esc(card.source || '确定性组装')}</div>`
+    + `</div>`;
+
+  // {{show:图层}} 联动复用 renderAnswer 的 ref 解析（按钮可点·聚焦图层）
+  const refs = el.querySelectorAll('.outlet-interface, .outlet-field');
+  refs.forEach((n) => {
+    if (n.textContent.includes('{{show:')) {
+      const md = n.textContent.replace(/\{\{show:([^}]+)\}\}/g, (_, name) => `{{show:${name}}}`);
+      n.innerHTML = renderAnswer(md, getValidRefNames());
+    }
+  });
+  list.appendChild(el);
+}
 /** 清引导焦点卡片。 */
 function _clearGuideCard() {
   const card = document.querySelector('.cpd-guide-card');
@@ -1441,6 +1489,12 @@ function buildHooks(shell) {
       if (_curTrace) _curTrace.final = text;
       shell._finalMd = text;   // 供页脚「复制回答」取最终 markdown
       // CB-09 D024：onFinalDone 即完成（defense 不显 UI·renderReview 永隐）；history 在 send 末尾统一持久化
+    },
+    // CB-16 Wave 0：出口卡片（结果范式 agent·第三段）·确定性 JSON → 纯模板渲染（仿 .cpd-guide-card·既有 token）
+    onOutletCard: (card) => {
+      if (!card) return;
+      if (_curTrace) _curTrace.outlet_card = card;
+      try { renderOutletCard(card); } catch (_) { /* 渲染失败不阻塞 */ }
     },
     // CB-09 D024：质量防线结果（取代旧 onReview）·供 episode 自成长·不显 UI（renderReview 永隐）
     onDefense: (defense) => {

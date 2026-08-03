@@ -77,6 +77,27 @@ def post_episode(ep: EpisodeIn):
     return {'ok': saved}
 
 
+class OutletCardIn(BaseModel):
+    """CB-16 Wave 0：出口卡片组装入参（前端 result 态后 POST）。"""
+    question: str = ''
+    diagnose: Optional[Dict[str, Any]] = None   # scale/domain_lens/outlet
+    result: Optional[Dict[str, Any]] = None     # 分析产物（polarity_index/features 等）
+    tool_history: Optional[str] = ''
+
+
+@aiqa_router.post('/aiqa/outlet_card')
+def post_outlet_card(body: OutletCardIn):
+    """CB-16 Wave 0：确定性组装出口卡片（结果范式 agent·第三段）。
+
+    前端 harness result 态后条件调用（问句含接口词·不碰承重路径）。
+    返回 {card: {...}} 或 {card: None}（未命中契约不出卡）。
+    确定性·不调 LLM·字段缺失降级·不编造。
+    """
+    from ai_qa.outlet_kb.build_outlet_schema import build_outlet_schema
+    card = build_outlet_schema(body.diagnose or {}, body.result or {}, body.question)
+    return {'card': card}
+
+
 class ProfileFieldsIn(BaseModel):
     # P2 字段语义推断：fields = 规则字典 miss 的 {field: {dtype, samples, stats}}
     fields: Dict[str, Dict[str, Any]] = {}

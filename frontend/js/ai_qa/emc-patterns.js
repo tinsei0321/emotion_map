@@ -42,3 +42,9 @@ export const SEARCH_EVIDENCE_RE = /政策|策略|方案|案例|新闻|趋势|实
 
 // 宜昌地名（_quickIntent → 落 diagnose·可能 B/C）
 export const REGION_KW = ['西陵', '伍家岗', '点军', '夷陵', '猇亭', '宜昌', '滨江', '奥体', '二马路', '大南门', 'cbd'];
+
+// CB-16 Wave 0：出口卡片触发词表（镜像 ai_qa/outlet_kb/build_outlet_schema.py TRIGGER_WORDS·
+// 单一权威源在后端·仅 UI 提示不改控制流·触发判定收敛在后端）
+export const OUTLET_TRIGGER_KW = ['更新', '体检', '需求', '满意度', '排序', '识别', '时序', '改造'];
+// CB-16 Codex/glm：UI 语境排除表（与后端 _UI_CONTEXT_WORDS 同步·防"更新图层"提示与后端行为不一致）
+export const OUTLET_UI_EXCLUDE_KW = ['更新图层', '更新时间', '更新样式', '刷新', '重新加载'];

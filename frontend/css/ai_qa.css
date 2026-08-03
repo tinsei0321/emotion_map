@@ -769,3 +769,32 @@
 .cpd-guide-back { align-self: flex-start; font-size: 12px; color: var(--geojson-color-text-tertiary, #707070); cursor: pointer; padding: 2px 0; background: none; border: none; }
 .cpd-guide-back:hover { color: var(--emc-accent); }
 [data-theme="light"] .cpd-guide-card { box-shadow: 0 3px 12px rgba(20,58,53,0.10); }   /* Light 阴影更柔 */
+
+/* CB-16 Wave 0：出口卡片（结果范式 agent·第三段）·仿 .cpd-guide-card·独立组件非子类·既有 token */
+.outlet-card {
+  margin: 8px 2px 12px;
+  padding: 14px 14px 12px;
+  background: var(--geojson-color-gray-100, #2a2a2a);
+  border-radius: 12px;
+  border-top: 3px solid var(--emc-accent);                 /* 同 cpd-guide-card：accent 顶条 */
+  box-shadow: 0 4px 18px rgba(0,0,0,0.22);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.outlet-card-head { display: flex; align-items: center; gap: 8px; }
+.outlet-card-title { font-size: 15px; font-weight: 700; color: var(--geojson-color-text-primary, #ECECEC); }
+.outlet-card-body { display: flex; flex-direction: column; gap: 7px; }
+.outlet-interface { font-size: 12px; color: var(--emc-accent); font-weight: 600; }
+.outlet-base { font-size: 11.5px; color: var(--geojson-color-text-tertiary, #707070); }
+.outlet-field {
+  display: flex; justify-content: space-between; gap: 12px;
+  font-size: 12.5px; line-height: 1.4;
+  padding: 4px 0; border-bottom: 1px solid var(--emc-divider, rgba(255,255,255,0.06));
+}
+.outlet-field-key { color: var(--geojson-color-text-secondary, #999); flex-shrink: 0; }
+.outlet-field span:last-child { color: var(--geojson-color-text-primary, #ECECEC); text-align: right; }
+.outlet-field .outlet-muted { color: var(--geojson-color-text-tertiary, #707070); }   /* 字段缺失灰色（与后端降级一致）*/
+.outlet-task { font-size: 12px; color: var(--geojson-color-text-secondary, #999); }
+.outlet-limits { font-size: 11px; color: var(--geojson-color-text-tertiary, #707070); }
+.outlet-limits blockquote { margin: 2px 0; padding-left: 8px; border-left: 2px solid var(--emc-divider); }
+.outlet-source { font-size: 10.5px; color: var(--geojson-color-text-tertiary, #707070); opacity: 0.7; }
+[data-theme="light"] .outlet-card { box-shadow: 0 3px 12px rgba(20,58,53,0.10); }
