@@ -6,6 +6,105 @@
 
 ---
 
+## CB-15 · 2026-08-03（数据认知体系重构 · 发起）
+
+### ① SCAN 摘要
+
+**本轮由 claude组 发起**（非第三方 SCAN）：用户今日确立两个核心定性，重新定义 EMC 数据认知边界与标准出口——① 范围=矢量表达不关键·地点认知（拓扑）是关键·范围锚定三来源+诚实 request_upload ② 归因↔地点联动=中微观标准出口·标准分析结论（格子/热点）与地点信息联动·归因指向具体地点。需求报告：[EMC-数据认知体系重构需求](discuss/EMC-数据认知体系重构需求_2026-08-03.md)（含四阶段讨论演进脉络 + 现状调研 + 6 讨论焦点）。请求：[CB15-数据认知-评估请求](_handoff/CB15-数据认知-评估请求_2026-08-03.md)。
+
+**现状调研关键**：
+- 已有：范围三来源部分落地·网格级归因（domain_top/element_top/place_name）·POI 引擎（1270+157+7·rapidfuzz 分档）·逆地理编码（高德 regeo 已接·地址/区/街道）·L1/L2 点带地点标注
+- 缺失：POI 进问答管线（LLM 不可见）·格↔POI 空间查询·评论↔POI 运行时关联·地点级归因聚合·批量逆地理·范围↔位置拓扑枚举
+- 孤岛：DATA/POI/yichang_pois.geojson（3220 条）无消费方·amap_poi_centralcity 缺失·buffer 中文 POI 名失败
+
+### ② 我方反评价（对 CB-15 两组 SCAN · 讨论稿·非定稿）
+
+**五点共识两组独立一致，全部 agree**（verify-before-accept 通过）：
+
+| 讨论点 | 判定 | 证据 |
+|---|:---:|---|
+| 架构分层（后端空间查询 + 前端联动工具） | **agree** | 空间计算（sjoin/逆地理）在后端（geopandas/4546）·联动呈现在前端·同构 zonal/compare 模式 |
+| 触发双层（默认轻量 place_name + 按需重查） | **agree** | 全量清单 token/配额爆·对齐悬停试探/点击锁定·place_name 已有 |
+| 3220 接入 + 最近 POI 反查 | **agree** | 复用 reverse·text 抽取确定性差弃用·模拟标注 schema 复用 |
+| 配额节流（本地优先 + 上限 + 持久缓存） | **agree** | glm 补 lru_cache 坐标级去重·跨会话无效→持久化缓存 |
+| 承重零触碰（只增不改 + 契约三处同步） | **agree** | 不触 diagnose/harness/ChatRequest·place_layer 数据扩展非接口变更 |
+
+**关键发现（glm 独有·已核实）**：
+- **place_name 依赖 sim 期标注**（`spatial_analysis.py:585-597` 只读 spatial_hotspot/area_seed·不碰 POI）→ 真实数据恒空→下钻链第一步断。**verify 属实·Codex 遗漏**。修正：P0 双源融合（sjoin POI 优先·fallback 标注）。
+
+**分歧待收敛**：centralcity 缺失（Codex: 本地重生成 vs glm: regeo 兜底）·AI 工具 lookup_place 是否 P0（glm 倾向 P1）。
+
+### ②b 出口抽象层并入（glm 课题·立项关键）
+
+**用户提交 [EMC-出口抽象层架构讨论](discuss/EMC-出口抽象层架构讨论_2026-08-03.md)**（glm 课题·立项成败关键）——承接 CB-15，定义「分析完成后」的出口范式。
+
+**核心命题**：EMC 的"出口" = 分析结果 → **行业接口格式化对接**（成果范式 agent·第三段）。底层逻辑三铁律：**EMC 找市场接口（非市场找 EMC）** / **三段式线性（意图→结果→成果范式·禁一竿子插到底）** / **定性+定量+地理信息按尺度分类**。
+
+**关键缺口（已核实）**：出向链路 = 0（全仓库无 IndustryAdapter/OutletAdapter）·`DOMAIN_OUTLETS`（paradigm.py:70）纯 dict 无序列化/导出·诊断卡 `outlet`（:462）7 值枚举引导词非契约。**立项风险点**。
+
+**已完整**：行业接口清单（八项任务/体检四维度/8大领域/三级体系·政策底座附 C 全文）+ 4×5 归因↔体检指标↔更新任务映射 + 六大演示场景（S2 更新需求分析最有力）+ 六大讨论焦点。
+
+**与 CB-15 协同**：CB-15（分析过程中·格↔POI 联动）**先行** → 出口抽象层（分析完成后·成果范式）依赖其产出（micro 落点清单需 CB-15 的归因↔地点联动填"地理定位"要素）。两者前后承接构成完整链路。
+
+### ③ 行动
+- 深读两组 SCAN + verify-before-accept（place_name 依赖核实）
+- 评估落库：需求报告追加 CB-15 评估节（五点共识 + 致命发现 + 优先级 + 6 讨论焦点）
+- 研读出口抽象层报告 + 核实 DOMAIN_OUTLETS/outlet 缺实现 + 出向链路=0
+- **发起三方讨论**（出口抽象层 × CB-15 数据认知·协同收敛）
+
+### ④ 状态
+`讨论中 → 三方讨论收敛` —— CB-15 五点共识已立 + 出口抽象层并入（立项关键）·两者协同：CB-15 先行 → 出口抽象层依赖其产出·六讨论焦点 + 出口六焦点待三方收敛。
+
+---
+
+## CB-14 · 2026-08-03（RAG 定稿 + 修复检查 · 发起）
+
+### ① SCAN 摘要
+
+**双线**：① RAG 研究定稿（用户新设想·多方讨论）：两组 SCAN（[glm](scan/CB14-RAG-glm组_2026-08-03.md) + [Codex](scan/CB14-RAG评估_Codex-GPT5_2026-08-03.md)）一致——**现在不建 RAG·改做 RAG-lite（A4 选择性注入）**。关键：A4 是 D019 主动裁剪（非容量约束）·industry_kb 渲染仅 19.7KB·DeepSeek 无 embedding 端点·Py3.14 向量库风险。
+② 收敛 CB-13 残余 + 推进 P1（A4）：claude组 完成 3 处修复（CPD 测试基建 / PRM-08 compare 兜底 / A4 选择性注入）→ 发两组检查。请求：[CB14-检查请求](_handoff/CB14-检查请求_2026-08-03.md)。
+
+### ② 我方反评价（对 RAG 定稿）
+
+| SCAN 结论 | 判定 | 证据 |
+|---|:---:|---|
+| 现在不建 RAG（glm+Codex 独立一致） | **agree** | 知识超限不存在·A4=工程裁剪·embedding 硬阻塞 |
+| A4 选择性注入 = 正确解法 | **agree** | EMC 已有 domain_lens 检索键·轻 10 倍·零依赖 |
+| 分阶段（P1 注入→P2 做厚→P3 真 RAG 触发式） | **agree** | ROI 不成立·知识成长后再评估 |
+
+### ③ 行动
+- 收敛① CPD 测试基建（test-cases.js CSV→yichang + L03 硬断言）
+- 收敛② PRM-08 compare 兜底（harness.js `_allToolCalls` 重写对齐 clip/zonal）
+- P1 A4 选择性注入 finalStep（industry_kb_final_brief + build_final_prompt + 守卫测试）
+- 发 CB-14 检查请求给两组（3 项改动检查）
+
+### ②b 我方反评价（对 CB-14 修复检查 SCAN · Codex + glm 两组）
+
+**3 处修复两组一致判定"正确可提交"**。verify-before-accept 全部成立：
+
+| 改动 | 判定 | 我方核实/证据 |
+|---|:---:|---|
+| CPD 测试基建（CSV→yichang + L03 硬断言） | **agree** | 文件实存·loadCSV await 无竞态·L03 硬断言是新对话引导态的诚实探针 |
+| PRM-08 compare `_allToolCalls` 重写 | **agree** | `:1033` deriveMissingParams 先于 `:1077` runAllToolCalls·重写必然生效·区名<2 与误改边界安全·三分支 if/else if 互斥 |
+| A4 选择性注入方向 | **agree** | 链路闭环（harness→stages→api→router→prompts）·静态门禁不破·正治 A4 痛点 |
+| **A4 体积口径**（Codex：每域 1.6KB 非宣称 0.6KB）| **agree（修正）** | 我宣称"每域 ~0.6KB"不实·实测 1.6KB·须修注释/文档口径 |
+| **A4 注入条件过宽**（glm 改进点①）| **partial** | Codex 判断"自然门控已存在·保留观察"更稳——硬加 decision_type 门有漏注风险·采纳「观察哨」方案·但同意纯 GIS 操作无谓回弹是真实场景 |
+| **静态门禁盲区**（glm 改进点②）| **agree** | `test_final_prompt_stays_lean` 传 `('','')` domain_lens=None 不触发注入·条件注入路径无体积守卫·须补 |
+| 复合问句次级 call 丢弃 | **agree（已知限制）** | 与 clip/zonal 既有模式一致·不单列修复 |
+
+**CB-14 ②b 反评价：5 agree / 1 partial / 0 disagree** · 两组代码级判定 + 我方 verify 全成立。
+
+### ③b 行动（修复检查后的收尾）
+- **采纳 glm 改进点②**：补条件注入体积守卫测试（四域全注 <5KB·防 final_brief 加厚回弹）
+- **采纳 Codex 口径修正**：A4 注释/文档"每域 ~0.6KB"→"~1.6KB"
+- **注入条件**：保留现门控（domain_lens 非空）+ 观察哨（B3-verify-06 延迟/答案风格）·不硬加 decision_type（防漏注）
+- 等 B3-verify-06 落盘补 CPD/PRM-08 实测复核
+
+### ④ 状态
+`修复检查闭环 → 待 B3-verify-06 实测复核` —— RAG 定稿已达成；3 处修复两组判定正确可提交；A4 体积口径修正 + 补体积守卫测试；B3-verify-06 运行中。
+
+---
+
 ## CB-13 · 2026-08-03（B3-verify-05 实测 88.5% + 代码修复检查 · 发起）
 
 ### ① SCAN 摘要
