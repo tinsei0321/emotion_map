@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月03日）** · 本节按板块分组、组内倒序；最新工作 = **while-loop 根治（recover 扩展）+ B3 88% 历史最佳·CB-12 闭环**（f6e415a+3abb503·本次，分支 `fix/emc-buglog`）。最近：
+> 📍 **最新动态（08月03日）** · 本节按板块分组、组内倒序；最新工作 = **B3-verify-05 全量重测 23/26 88.5% 历史最佳·多步问 RST-L06 收敛·CB-12 闭环**（B3-verify-05，分支 `fix/emc-buglog`）。最近：
+>
+> - **CB-12 B3-verify-05 全量重测闭环（B3-verify-05）**：**B3 全量 26 例（含 RST-L06 新增）pass=23（88.5%）历史最佳**·RST-L06 多步问 PASS（tools=clip,density·1→2层）→ **多步问修复收敛·CB-12 闭环**·PRM 9/10（PRM-08 compare 链路仍 fail·tools=extract_feature 单工具·boundary[ERR]）·F_002=4（≤5 阈值·while-loop 早停生效）·pro 0·计划命中 16/20 步·p95 50s·11.2min·0 timeout·误杀/漏判 0。**预期 vs 实际**：pass 22-23/26（85-88%）✓ 达标上沿·PRM 10/10 预期未达（差 PRM-08）·分母 25→26 ✓（RST-L06 入列）。**残余（非阻塞）**：PRM-08（compare 路由退化·工具仅 extract_feature·疑 compare 链路）+ CPD-L01/02（引导态 hint 未推 range/analyze）·转 backlog。**验证**：report-2026-08-03-03-llm（26 例）+ audit-B3-090102 + trace_query --stats --session B3-verify-05（F_002=4·F_005=20·pro 0）。**下一步**：进入 CB-13（让 Codex/glm 组检查 PRM-08/CPD 残余 + 多步问修复确认）。
 >
 > - **CB-12 while-loop 根治 + B3 88% 历史最佳（f6e415a+3abb503）**：B3-verify-03 回潮（40%）→ 两组定案（glm gate 连锁被 localStorage 铁证推翻·**Codex recover 缺口正确**——FC 成功返 unknown/multi → 单工具路径不满足 → recover 跳过（非 degraded）→ while-loop·glm 洞察：FC 成功返 unknown 比失败更危险）。**根治（f6e415a）**：P0 recover 扩展触发（degraded OR unknown/multi 都走 recover）+ 筛选路由守卫放宽 + gate per-template（unknown 才受 gate·防全局连锁）+ B3 飞轮清 gate（?test=1 冷启动）+ while-loop 早停。**B3 88%（22/25）历史最佳**·PRM 9/10（07 小溪塔/09 筛选转 PASS）·p95 46s（-33%）·9.8min（-73%）·F_002 每 case 1 轮·无假阳性·演进 4%→88%（22 倍）。**Codex 有条件通过 → 2 项已修（3abb503）**：early-stop 计划完成度（`_plannedGeoSteps <= _executedGeoSteps`·防多步截断）+ PRM-08 测量伪影（compare 逐区 zonal 单 boundary·`_extractParams` 收集多 boundary）。**验证**：PRM-08 2 次 zonal 两区 ✓·多步问计划内完成 ✓·pytest 225。**剩余**：PRM-08 断言修复后应 10/10（B3 全量留发版前）；MOD_PLACE 渲染风暴 + fallback 重试（Codex backlog）。
 >

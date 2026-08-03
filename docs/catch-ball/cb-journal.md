@@ -6,6 +6,30 @@
 
 ---
 
+## CB-13 · 2026-08-03（B3-verify-05 实测 88.5% + 代码修复检查 · 发起）
+
+### ① SCAN 摘要
+
+**本轮由 claude组 发起**（非第三方 SCAN）：B3-verify-05 全量重测结果已出（**23/26 88.5% 历史最佳·RST-L06 多步问收敛**），发 Codex/glm 两组检查代码修复情况。评估请求：[CB13-评估请求](_handoff/CB13-评估请求_2026-08-03.md)。
+
+**B3-verify-05 实测**（`report-2026-08-03-03-llm` + `audit-B3-090102` + trace `--session B3-verify-05`）：
+- 总 pass **23/26 (88.5%)**·0 timeout·误杀/漏判 0·计划命中 16/20 步
+- **RST-L06 PASS**（tools=clip,density·1→2层）→ **多步问修复收敛·CB-12 闭环**
+- PRM 9/10（PRM-08 fail·tools=extract_feature 单工具·boundary[ERR]·疑 compare 路由退化）
+- F_002=4（≤5 阈值·while-loop 早停生效）·pro 0·F_005=20
+
+### ② 我方反评价
+
+（待两组 SCAN 返回后补）
+
+### ③ 行动
+- 发起 CB-13 评估请求（已落 `_handoff/CB13-评估请求_2026-08-03.md`）·待两组检查 4 项（PRM-08 根因 / CPD-L01·L02 / RST-L06 上轮注意点复核 / while-loop·pro 独立核）
+
+### ④ 状态
+`发起 → 待 Codex/glm 两组 SCAN` —— 两组返回后反评价 + 行动。
+
+---
+
 ## CB-11 · 2026-08-02（主通道验证·glm组 第三方）
 
 ### ① SCAN 摘要

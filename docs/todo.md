@@ -9,6 +9,24 @@
 
 ---
 
+## 📅 2026-08-03（CB-12 闭环 · B3 全量重测 88.5% + 多步问收敛 · 办公室环境）
+
+### ✅ CB-12 B3-verify-05 全量重测闭环（revision-log 5.253，session B3-verify-05 · **用户手动 push**）
+
+- **B3 全量 26 例（含 RST-L06 新增）pass=23（88.5%）历史最佳**·RST-L06 多步问 PASS（tools=clip,density）→ **多步问修复收敛·CB-12 闭环**
+- **PRM 9/10**（PRM-08 compare 链路 fail·tools=extract_feature 单工具·boundary[ERR]）·**F_002=4**（≤5 阈值·while-loop 早停生效）·**pro 0**·计划命中 16/20 步
+- 0 timeout·误杀/漏判 0·p95 50s·11.2min
+- **残余（非阻塞）**：PRM-08（compare 路由退化）+ CPD-L01/02（引导态 hint 未推）·转 backlog
+- **下一步**：进入 CB-13（让 Codex/glm 组检查 PRM-08/CPD 残余 + 多步问修复确认）
+
+### 待续
+
+- PRM-08 compare 链路修复 + CPD-L01/02 引导态（backlog）
+- 发版候选评估（B3 88.5% 达标上沿·整体评估）
+- MOD_PLACE 渲染风暴 + fallback 重试（backlog）
+
+---
+
 ## 📅 2026-08-02（CB-12 · 链路体检 + PRM 派生 + 尺度判定 + 触发入口统一 · G0-G6a）
 
 ### ✅ CB-12 while-loop 根治 + B3 88% 历史最佳（revision-log 5.252，commit f6e415a+3abb503 · **用户手动 push**）
