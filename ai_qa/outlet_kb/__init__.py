@@ -17,10 +17,13 @@
 """
 from . import urban_renewal_outlets, urban_checkup_outlets, case_library
 
-# 出口契约注册表（outlet_id → 契约定义）
+# 出口契约注册表（outlet_id → 契约定义·补 domain 字段=来源模块 DOMAIN）
 OUTLET_CONTRACTS = {}
-OUTLET_CONTRACTS.update(urban_renewal_outlets.CONTRACTS)
-OUTLET_CONTRACTS.update(urban_checkup_outlets.CONTRACTS)
+for _mod, _domain in ((urban_renewal_outlets, urban_renewal_outlets.DOMAIN),
+                      (urban_checkup_outlets, urban_checkup_outlets.DOMAIN)):
+    for _oid, _c in _mod.CONTRACTS.items():
+        _c.setdefault('domain', _domain)
+        OUTLET_CONTRACTS[_oid] = _c
 
 # 指标库（行业官方指标 → 情绪地图字段映射）
 METRIC_MAPPINGS = {}
