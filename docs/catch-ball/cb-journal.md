@@ -340,6 +340,15 @@
 - **检查发起**：`_handoff/CB16-WordFix检查_2026-08-04.md`（7 问）
 - **未推**（c53aa99·先验后推）·待两组检查 SCAN → 反评价 → 通过后 push
 
+### ③w5b 反评价（glm + Codex 检查 SCAN·两组通过·可推·glm 补充 eval 修正）
+- **Codex**（`scan/CB16-WordFix检查_Codex-GPT5_2026-08-04.md`）：通过·无 P0/P1·P2×5（footer 措辞残留 / eval 注释精确化 / 单次采样复采 / FC boundary 白名单 backlog / e2e-seam 断言）
+- **glm组**（`scan/CB16-WordFix检查_glm组_2026-08-04.md`）：通过·P2×1（e2e-seam 措辞断言）
+- **glm 补充**（`scan/CB16-WordFix补充_glm组_2026-08-04.md`）：**eval 实测 31/37=84%（非 claude组 声称 92%）**——「西陵区的商业用地」标尺改 clip 后 Flash 概率性返 overlay（面∩面解读）·新引入 clip↔overlay 歧义 MISS。**84% 仍 GO**（>80%）。建议标尺接受 clip 或 overlay。
+- **反评价采纳**：① eval 标尺 tuple 双接受（`西陵区的商业用地` → ('clip','overlay')·治概率性歧义）② e2e-seam 措辞断言补（test_gap_wording.py·3 场景·e2e-seam 暴露 composeGapCard·待前台 serve 环境验证）③ footer 措辞残留 / FC boundary 白名单 → backlog
+- **验证**：pytest 277 passed·ESM-OK·eval 84% GO（glm 实测）
+- **已推**（c53aa99 + 78db0e3·两组通过解锁·远端 0/0 同步）
+- **backlog**：footer「未生成图层」措辞条件化 · eval 注释精确化 + 发版前复采 · FC boundary 白名单校验 · PRM-07 preset fixture · RST-L06 复跑验证 · 措辞断言测试前台 serve 验证
+
 ---
 
 ### ① SCAN 摘要
