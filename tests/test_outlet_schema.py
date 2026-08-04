@@ -276,6 +276,19 @@ def test_wave3_multi_card_compat_single():
     assert cards[0]['outlet_id'] == card['outlet_id']
 
 
+def test_wave3_renewal_no_perceptible_gate():
+    """③w2b（Codex/glm P1）：renewal 卡（urban_renewal·非体检域）不挂 perceptible_metrics（domain 门控）。
+
+    可感知体检指标只挂体检域（urban_governance）卡·更新类卡不混挂（跨领域信息补充非预期）。
+    """
+    diag = {'scale': 'meso', 'domain_lens': ['urban_renewal'], 'outlet': '建议清单'}
+    result = {'rows': [{'place_name': '大南门', 'issue_label': '停车难', 'polarity_index': -0.32,
+                        'domain_top': 'urban_renewal', 'element_top': '设施', 'point_count': 900}]}
+    card = build_outlet_schema_single(diag, result, '大南门片区更新需求')
+    assert card is not None and card['outlet_id'] == 'renewal_demand'
+    assert 'perceptible_metrics' not in card, f'renewal 卡不应挂可感知指标（{card.get("perceptible_metrics")}）'
+
+
 # ── Wave 3：可感知计算器（compute_perceptible_metrics·2a 极性类）──
 def test_wave3_compute_perceptible_metrics():
     """Wave 3（glm组 2a）：可感知指标计算——极性类（含 polarity_index）出值·关键词命中标注·缺失诚实。"""

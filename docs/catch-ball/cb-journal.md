@@ -281,6 +281,26 @@
 - **预检 7 问**（给两组）：全局优化范围合理？发版快照对？时间轴同源派生思路/数据红线？backlog 优先级？测试方案？承重零触碰？范围边界？
 - 待两组 SCAN → 反评价 → 实施
 
+### ③w2b 反评价（glm + Codex 预检 SCAN·两组通过·用户拍板）
+- **Codex**（`scan/CB16-GlobalOptimize预检_Codex-GPT5_2026-08-04.md`）：草案可行·无 P0。**P1 修正×3**：① L4 标 🔄 非 ✅（出口卡 limitation「L4 深度归因待接入」同步·守「预留当已实现→偏高 8 折」标尺）② global-time-axis/batch4 **已实现**（time-bar/time-source/timeline 三件套 + mapB 在仓）·标「已实现+待修/待polish」非「设计稿」③ CPD-L03 断言落点定位实际执行处（test-board/test_cpd_predicates·非 test-cases.js·'changyi' 已零引用）。**P1 建议×2**：validate 同步含 extract_feature/merge 全字段（params/yields/contributes）·时间轴候选 1 直接做（含 L1/L2 模板差异特判）。**P2**：Streamlit 死段保留退役声明+MOD_APP 引用·ADR 轻量补录·快照产物存档。
+- **glm组**（`scan/CB16-GlobalOptimize预检_glm组_2026-08-04.md`）：通过·**validate_skill_params 当前 FAIL**（1 failed·7 工具 when/params/yields/contributes contracts vs paradigm drift·P1 优先·CB-12/16 改 contracts 未同步 paradigm）。时间轴候选 1 建议 **glob 扫文件非模板拼接**（L1 T1 双扩展名 `_csv.csv.geojson`·L2 `_L2_` infix·无法统一模板）。候选 2 不碰数据红线（描述符 JSON·非数据文件）。push 冲突需用户拍板。发版快照含 `trace_query --stats`。
+- **用户拍板**：① 时间轴**后置专题**（不成熟·开专题再议）→ 子项 3 从本次**剥离**·不实施同源派生/解封·但 global-time-axis/batch4 记忆标注修正照做 ② push 冲突权威源 = **commit+push 组合**（push-not-redline）③ 发版 = 先全局优化+快照（非冲达标）
+- **plan 重写**（时间轴剥离·3 子项）：①全局优化 ②发版快照 ③backlog 收尾（validate 全字段 + renewal 门控 + CPD-L03 落点定位）
+- 待实施 → ③w3 检查 → 通过后 push
+
+### ③w3 行动（全局优化 + backlog 收尾 实施 + B3 快照 + 检查发起·先验后推）
+- **实施**（据 ③w2b 反评价·Codex P1×3 + glm 注意项·时间轴剥离用户拍板）：
+  - `paradigm.py` `_sync_geo_catalog_guard_fields`：导入时对齐 GEO_TOOL_CATALOG 4 guard 字段 ← contracts（validate drift 修复·**4 passed**）
+  - `build_outlet_schema.py`：renewal 卡 perceptible_metrics domain 门控（仅 urban_governance）·+测试
+  - CLAUDE.md 当前开发状态 5 行（L3✅·L4🔄·空间✅·UI✅·L0→L1 补 sim）
+  - todo 周归档（07-27~08-02·302 行）+ 删重复节 + decisions ADR-017~019 + 记忆 GC（删 push 记忆·标 time-axis/batch4）
+  - **pytest 277 passed**（+renewal 门控）零回归
+- **B3 快照**（`EMOTION_TRACE_SESSION=B3-snapshot-0804`·9.6min）：**26 例 pass=22 fail=4（84.6%·低于基线 88.5%）**·**RST-L06 回归**（多步「先裁剪再热力图」·tools= 空·旧 PASS）·PRM-03/04 buffer radius[ERR]·PRM-07 zonal 边界（已知 backlog）
+- **RST-L06 根因假设**：paradigm density.when 同步成 contracts（加「方格/网格聚合→mode=3d」）为唯一 LLM 可见差异·疑影响「热力图」路由·**待两组 SCAN 独立判断 + 实证**
+- **检查发起**：`_handoff/CB16-GlobalOptimize检查_2026-08-04.md`（7 问·含 RST-L06 回归根因）
+- **未推**（先验后推）·**tracklog 待补**（trace_query B3-snapshot-0804·分类器不可用阻塞）
+- 待两组检查 SCAN → 反评价 → 通过后 push
+
 ---
 
 ### ① SCAN 摘要

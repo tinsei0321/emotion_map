@@ -220,11 +220,11 @@ emotion_map/
 - ✅ Agent 协作体系（v2.0，8 Agent 自动编排）
 - ✅ Claude Code Harness（CLAUDE.md + Hooks + Skills + Subagents）
 - ✅ MCP 能力层（7 服务 2026-06-17 实测，智谱优先，`docs/mcp-strategy.md`）
-- 🔄 L0→L1 完整管线待验证（需 DeepSeek API Key 已配置）
-- ⬜ L3（LLM 语义增强）接口已预留，待接入
-- ⬜ L4（多维归因）框架已预留，待实现
-- ⬜ 空间分析引擎 MVP（缓冲区 + 行政单元聚合）
-- ⬜ UI 设计优化（布局、色彩、交互）
+- 🔄 L0→L1 完整管线待验证（需 DeepSeek API Key 已配置·L0 走购买·sim 当下充分）
+- ✅ L3（LLM 语义增强）已实现（`SCRIPT/multimodal_analysis.py` v1.0·Vision/OCR/Audio 可插拔 + `SCRIPT/sim_ermawu_l3l4.py` 产 L3 语义字段）
+- 🔄 L4（多维归因）规则底已实现（`_attach_4x5_attrs` 规则查表 + ermawu L3L4 ABSA 数据·全量深度归因待扩·见出口卡 limitation）
+- ✅ 空间分析引擎 MVP（`core/spatial_analysis.py` + `core/buffer_analysis.py`·缓冲/行政单元聚合/网格聚合/区域对比）
+- ✅ UI 设计优化（Design Token 双主题 + EMC UI 重设计 + 导航架构重塑）
 
 ## 注意事项
 
@@ -288,7 +288,7 @@ Agent 在工作过程中自动记录的隐形知识：
 | API 约定 | `docs/api-conventions.md` | Key 管理、重试、返回格式 |
 | 架构设计 | `docs/architecture.md` | 系统架构说明 |
 | 架构规范 | `docs/architecture-pattern.md` | 七层架构、路由、代码组织 |
-| 决策记录 | `docs/decisions.md` | 12 个架构决策（ADR，含 ADR-012 前端迁移） |
+| 决策记录 | `docs/decisions.md` | 19 个架构决策（ADR，含 ADR-012 前端迁移 / ADR-017~019 退役·FC 转型·出口抽象层） |
 | 开发日志 | `docs/todo.md` | 每日任务 + 踩坑记录 |
 | Agent 规范 | `AGENTS.md` | Agent 协作、SOP、完成定义 |
 | Skills 索引 | `.claude/SKILLS_INDEX.md` | 项目相关 Skill 精选 |

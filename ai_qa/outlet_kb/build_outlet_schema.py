@@ -264,7 +264,9 @@ def _build_card(oid: str, diagnose: dict, result: dict, question: str = '') -> d
     card['limitations'].append('归因 = 规则查表（DEMO·L4 深度归因待接入）')
 
     # Wave 3（glm组）：可感知体检指标（2a 极性类·B 类条件等式后置）
-    card['perceptible_metrics'] = compute_perceptible_metrics(result)
+    # ③w2b（Codex/glm P1）：仅体检域（urban_governance）挂可感知指标——更新类卡不混挂体检指标（跨领域信息补充非预期）
+    if (contract.get('domain') or '') == 'urban_governance':
+        card['perceptible_metrics'] = compute_perceptible_metrics(result)
 
     return card
 

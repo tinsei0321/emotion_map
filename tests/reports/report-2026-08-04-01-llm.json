@@ -1,0 +1,572 @@
+{
+ "meta": {
+  "schema": "EMC-SUM",
+  "version": "v1",
+  "mode": "llm",
+  "cats": [
+   "CPD导游",
+   "UI渲染",
+   "参数正确性",
+   "成果范式",
+   "Smart交流"
+  ],
+  "total": 26,
+  "startedAt": 1785848439155,
+  "commit": "dc88f35",
+  "savedAt": "2026-08-04T21:09:45"
+ },
+ "cases": [
+  {
+   "id": "CPD-L01",
+   "name": "导入点层后引导推 range",
+   "category": "CPD导游",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": null,
+   "newLayers": 0,
+   "durationSolo": 1178,
+   "userVote": null,
+   "obs": "hint=\"聚焦一片城区——上传范围文件，或在地图框选\"",
+   "review": ""
+  },
+  {
+   "id": "CPD-L02",
+   "name": "导入点+范围后推 analyze",
+   "category": "CPD导游",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": null,
+   "newLayers": 0,
+   "durationSolo": 1730,
+   "userVote": null,
+   "obs": "hint=\"数据已就绪——选一个分析方向\"",
+   "review": ""
+  },
+  {
+   "id": "CPD-L03",
+   "name": "新对话恢复引导",
+   "category": "CPD导游",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": null,
+   "newLayers": 0,
+   "durationSolo": 1974,
+   "userVote": null,
+   "obs": "新对话推 range",
+   "review": ""
+  },
+  {
+   "id": "UI-L01",
+   "name": "exit-badge 渲染（分析型）",
+   "category": "UI渲染",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "zonal",
+   "method": [
+    "zonal_stats()"
+   ],
+   "tools": [
+    "zonal_stats",
+    "zonal"
+   ],
+   "params": {
+    "boundary": "GeoJSON{1}#西陵区"
+   },
+   "newLayers": 1,
+   "durationSolo": 53010,
+   "userVote": null,
+   "obs": "badge=\"分析完成\"",
+   "review": "badge 是否准确？"
+  },
+  {
+   "id": "UI-L02",
+   "name": "exit-badge 渲染（通用型）",
+   "category": "UI渲染",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 7065,
+   "userVote": null,
+   "obs": "badge=\"分析完成\"",
+   "review": "通用 badge 准确？"
+  },
+  {
+   "id": "UI-L03",
+   "name": "回答含 markdown 排版",
+   "category": "UI渲染",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 7445,
+   "userVote": null,
+   "obs": "badge=\"分析完成\" md=false",
+   "review": "排版是否美观？"
+  },
+  {
+   "id": "PRM-01",
+   "name": "参数:西陵区范围内做 500m 标准方",
+   "category": "参数正确性",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "density",
+   "method": [
+    "density()"
+   ],
+   "tools": [
+    "grid",
+    "density"
+   ],
+   "params": {
+    "cell": 500
+   },
+   "newLayers": 1,
+   "durationSolo": 35405,
+   "userVote": null,
+   "obs": "cell[OK]",
+   "review": "cell_size=500m？"
+  },
+  {
+   "id": "PRM-02",
+   "name": "参数:西陵区范围内做 2000m 标准",
+   "category": "参数正确性",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "density",
+   "method": [
+    "density()"
+   ],
+   "tools": [
+    "grid",
+    "density"
+   ],
+   "params": {
+    "cell": 2000
+   },
+   "newLayers": 1,
+   "durationSolo": 30342,
+   "userVote": null,
+   "obs": "cell[OK]",
+   "review": "cell_size=2000m？"
+  },
+  {
+   "id": "PRM-03",
+   "name": "参数:大南门·二马路滨江片区周边 30",
+   "category": "参数正确性",
+   "type": "llm",
+   "pass": false,
+   "stage": "s2",
+   "template": "buffer",
+   "method": [
+    "buffer()"
+   ],
+   "tools": [
+    "lookup_place"
+   ],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 11249,
+   "userVote": null,
+   "obs": "radius[ERR]",
+   "review": "radius=300m？"
+  },
+  {
+   "id": "PRM-04",
+   "name": "参数:大南门·二马路滨江片区周边 1 ",
+   "category": "参数正确性",
+   "type": "llm",
+   "pass": false,
+   "stage": "s2",
+   "template": "buffer",
+   "method": [
+    "buffer()"
+   ],
+   "tools": [
+    "buffer"
+   ],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 6984,
+   "userVote": null,
+   "obs": "radius[ERR]",
+   "review": "radius=1000m？"
+  },
+  {
+   "id": "PRM-05",
+   "name": "参数:西陵区范围内按面聚合情绪统计及 ",
+   "category": "参数正确性",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "zonal",
+   "method": [
+    "zonal_stats()"
+   ],
+   "tools": [
+    "zonal_stats",
+    "zonal"
+   ],
+   "params": {
+    "boundary": "GeoJSON{1}#西陵区"
+   },
+   "newLayers": 1,
+   "durationSolo": 40524,
+   "userVote": null,
+   "obs": "boundary[OK]",
+   "review": "boundary=西陵区？"
+  },
+  {
+   "id": "PRM-06",
+   "name": "参数:伍家岗区范围内按面聚合情绪统计及",
+   "category": "参数正确性",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "zonal",
+   "method": [
+    "zonal_stats()"
+   ],
+   "tools": [
+    "zonal_stats",
+    "zonal"
+   ],
+   "params": {
+    "boundary": "GeoJSON{1}#伍家岗区"
+   },
+   "newLayers": 1,
+   "durationSolo": 25183,
+   "userVote": null,
+   "obs": "boundary[OK]",
+   "review": "boundary=伍家岗区？"
+  },
+  {
+   "id": "PRM-07",
+   "name": "参数:小溪塔范围内按面聚合情绪统计及 ",
+   "category": "参数正确性",
+   "type": "llm",
+   "pass": false,
+   "stage": "s2",
+   "template": "zonal",
+   "method": [
+    "zonal_stats()"
+   ],
+   "tools": [
+    "zonal_stats",
+    "zonal"
+   ],
+   "params": {
+    "boundary": "GeoJSON{1}#小溪塔"
+   },
+   "newLayers": 1,
+   "durationSolo": 17818,
+   "userVote": null,
+   "obs": "EMC 硬识别了法定功能区·应 request_upload（tools=zonal_stats,zonal）",
+   "review": "小溪塔=法定功能区·EMC 不识别·应诚实 request_upload"
+  },
+  {
+   "id": "PRM-08",
+   "name": "参数:对比西陵区与伍家岗区范围内情绪极",
+   "category": "参数正确性",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "compare",
+   "method": [
+    "compare_regions()"
+   ],
+   "tools": [
+    "zonal_stats",
+    "compare"
+   ],
+   "params": {
+    "boundary": "GeoJSON{1}#西陵区",
+    "boundaries": "GeoJSON{1}#西陵区|GeoJSON{1}#伍家岗区"
+   },
+   "newLayers": 1,
+   "durationSolo": 20540,
+   "userVote": null,
+   "obs": "boundary[OK]",
+   "review": "boundaries 含两区？"
+  },
+  {
+   "id": "PRM-09",
+   "name": "参数:从已载行政区中筛选出西陵区",
+   "category": "参数正确性",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "extract_feature",
+   "method": [
+    "extract_feature()"
+   ],
+   "tools": [
+    "extract_feature"
+   ],
+   "params": {},
+   "newLayers": 1,
+   "durationSolo": 9025,
+   "userVote": null,
+   "obs": "layer(tool)[OK]",
+   "review": "layer=西陵？"
+  },
+  {
+   "id": "PRM-10",
+   "name": "参数:裁剪西陵区范围内的全部情绪点",
+   "category": "参数正确性",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "clip",
+   "method": [
+    "clip()"
+   ],
+   "tools": [
+    "clip"
+   ],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 9508,
+   "userVote": null,
+   "obs": "range(tool)[OK]",
+   "review": "range=西陵区？"
+  },
+  {
+   "id": "RST-L01",
+   "name": "zonal 产聚合图层",
+   "category": "成果范式",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "zonal",
+   "method": [
+    "zonal_stats()"
+   ],
+   "tools": [
+    "zonal_stats",
+    "zonal"
+   ],
+   "params": {
+    "boundary": "GeoJSON{1}#西陵区"
+   },
+   "newLayers": 1,
+   "durationSolo": 22449,
+   "userVote": null,
+   "obs": "badge=\"分析完成\" +1层",
+   "review": "是否产聚合层+着色？"
+  },
+  {
+   "id": "RST-L02",
+   "name": "compare 产对比图层",
+   "category": "成果范式",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "compare",
+   "method": [
+    "compare_regions()"
+   ],
+   "tools": [
+    "zonal_stats",
+    "compare"
+   ],
+   "params": {
+    "boundary": "GeoJSON{1}#西陵区",
+    "boundaries": "GeoJSON{1}#西陵区|GeoJSON{1}#伍家岗区"
+   },
+   "newLayers": 1,
+   "durationSolo": 23740,
+   "userVote": null,
+   "obs": "badge=\"分析完成\" +1层",
+   "review": "是否产对比层？"
+  },
+  {
+   "id": "RST-L03",
+   "name": "clip 产点图层",
+   "category": "成果范式",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "clip",
+   "method": [
+    "clip()"
+   ],
+   "tools": [
+    "clip"
+   ],
+   "params": {},
+   "newLayers": 1,
+   "durationSolo": 18432,
+   "userVote": null,
+   "obs": "badge=\"分析完成\" +1层",
+   "review": "是否裁剪出点层？"
+  },
+  {
+   "id": "RST-L04",
+   "name": "网格产方格层（非热力）",
+   "category": "成果范式",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "density",
+   "method": [
+    "density()"
+   ],
+   "tools": [
+    "grid",
+    "density"
+   ],
+   "params": {
+    "cell": 1000
+   },
+   "newLayers": 1,
+   "durationSolo": 31804,
+   "userVote": null,
+   "obs": "badge=\"分析完成\" tools=grid,density +1层",
+   "review": "是否方格（非彩虹热力）？"
+  },
+  {
+   "id": "RST-L05",
+   "name": "通用问答无图层",
+   "category": "成果范式",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 7605,
+   "userVote": null,
+   "obs": "badge=\"分析完成\" ans=300字",
+   "review": "回答合理？"
+  },
+  {
+   "id": "RST-L06",
+   "name": "多步 先裁剪再热力图",
+   "category": "成果范式",
+   "type": "llm",
+   "pass": false,
+   "stage": "",
+   "template": "clip",
+   "method": [
+    "clip()"
+   ],
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 11283,
+   "userVote": null,
+   "obs": "tools=",
+   "review": "两步都执行了（clip+density）？"
+  },
+  {
+   "id": "SMT-L01",
+   "name": "缺参提问（无范围名）",
+   "category": "Smart交流",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 22217,
+   "userVote": null,
+   "obs": "ask 7 选项",
+   "review": "问题是否精准？"
+  },
+  {
+   "id": "SMT-L02",
+   "name": "字段校验（坏字段）",
+   "category": "Smart交流",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "extract_feature",
+   "method": [
+    "extract_feature()"
+   ],
+   "tools": [
+    "extract_feature"
+   ],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 32644,
+   "userVote": null,
+   "obs": "badge=\"分析完成\"",
+   "review": "字段错是否 Smart 恢复？"
+  },
+  {
+   "id": "SMT-L03",
+   "name": "换问法（不存在区）",
+   "category": "Smart交流",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "zonal",
+   "method": [
+    "zonal_stats()"
+   ],
+   "tools": [
+    "zonal_stats",
+    "zonal"
+   ],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 31089,
+   "userVote": null,
+   "obs": "badge=\"分析完成\"",
+   "review": "是否引导换问法？"
+  },
+  {
+   "id": "SMT-L04",
+   "name": "多轮续作",
+   "category": "Smart交流",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "zonal",
+   "method": [
+    "zonal_stats()"
+   ],
+   "tools": [
+    "zonal_stats",
+    "zonal"
+   ],
+   "params": {
+    "boundary": "GeoJSON{1}#西陵区"
+   },
+   "newLayers": 1,
+   "durationSolo": 44782,
+   "userVote": null,
+   "obs": "第2轮 badge=\"分析完成\"",
+   "review": "多轮续作正常？"
+  }
+ ]
+}

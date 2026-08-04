@@ -321,6 +321,29 @@ GEO_TOOL_CATALOG = [
 ]
 
 
+def _sync_geo_catalog_guard_fields():
+    """③w2b（Codex P1/glm）：GEO_TOOL_CATALOG 的 when/params/yields/contributes 对齐 tool_contracts 单一真相源。
+
+    contracts 是权威（CB-04 单一源）·paradigm 是镜像。validate_skill_params 严格相等守护漂移。
+    这里在导入时用 derive_geo_catalog() 派生值对齐 4 个 guard 字段（scale/preconditions/failure_modes/examples
+    保留手写·不在 guard 范围）。不手动逐字复制（防终端编码误差）。
+    """
+    try:
+        from .tool_contracts import derive_geo_catalog
+        _derived = {d['name']: d for d in derive_geo_catalog()}
+        for _t in GEO_TOOL_CATALOG:
+            _d = _derived.get(_t['name'])
+            if _d:
+                for _k in ('when', 'params', 'yields', 'contributes'):
+                    if _k in _d:
+                        _t[_k] = _d[_k]
+    except Exception:
+        pass   # contracts 不可用时不阻塞（paradigm 仍手写可用）
+
+
+_sync_geo_catalog_guard_fields()
+
+
 def geo_tool_catalog_text() -> str:
     lines = []
     for t in GEO_TOOL_CATALOG:
