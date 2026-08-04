@@ -130,3 +130,77 @@ def test_build_outlet_schema_ermawu_real_aggregate():
     assert '停车难' in vals.get('问题类型', ''), f'问题类型未取到 issue_label（{vals}）'
     assert '大南门' in vals.get('需求位置', ''), f'需求位置未取到 place_name（{vals}）'
     assert not any(v == '暂无数据' for v in vals.values()), f'真实聚合产物不应有缺失降级（{vals}）'
+
+
+# ── CB-16 Wave 1（macro 出口）：rows 产物 + checkup_dimension scale 限定 ──
+def test_wave1_macro_rows_result():
+    """Wave 1：macro 分析（zonal/rank）rows 产物 → renewal_object_identify 出卡 + 字段取到值。
+
+    macro 权威产物形态 = rows 数组（含 issue_label/polarity_index/domain_top）·_extract_emc_value
+    统一收 rows/features 两类（claude组 ①）·不再"暂无数据"。
+    """
+    diag = {'scale': 'macro', 'domain_lens': ['urban_renewal'], 'outlet': '生成图层'}
+    result = {'rows': [
+        {'name': '西陵区', 'polarity_index': -0.42, 'domain_top': 'urban_renewal',
+         'element_top': '环境', 'issue_label': '老旧破败', 'point_count': 300},
+        {'name': '伍家岗区', 'polarity_index': -0.21, 'domain_top': 'urban_renewal',
+         'element_top': '设施', 'issue_label': '停车难', 'point_count': 200},
+    ]}
+    card = build_outlet_schema(diag, result, '宜昌城区哪些区域更新优先')
+    assert card is not None
+    assert card['outlet_id'] == 'renewal_object_identify', f'macro 应命中更新对象识别（{card["outlet_id"]}）'
+    # 更新对象 ← issue_label（rows[0] Top-1）+ 空间聚集强度 ← polarity_index
+    vals = {k: str(f.get('value')) for k, f in card['fields'].items()}
+    assert '老旧破败' in vals.get('更新对象（疑似）', ''), f'更新对象未取到 rows issue_label（{vals}）'
+    assert any('-0.42' in v for v in vals.values()), f'空间聚集强度未取到 rows polarity_index（{vals}）'
+    assert not any(v == '暂无数据' for v in vals.values()), f'rows 产物不应缺失降级（{vals}）'
+    # data_base：rows 型 → N=区域单元数（非评论数）·total_points 总评论数
+    assert card['data_base']['N'] == 2, f'data_base.N 应为区域单元数（{card["data_base"]}）'
+    assert card['data_base']['total_points'] == 500, f'total_points 应=sum(point_count)（{card["data_base"]}）'
+    assert '区域单元' in card['data_base']['note'], f'note 应标注单元数（{card["data_base"]["note"]}）'
+
+
+def test_wave1_checkup_dimension_scale_limited():
+    """Wave 1 + Codex P1：checkup_dimension 槽位 scale 限定——macro 问句只填城区维度·其余"需对应尺度分析"。
+
+    防四维度×单尺度语义错位（macro 值不再误入住房/小区/街区槽·比"暂无数据"更糟）。
+    """
+    diag = {'scale': 'macro', 'domain_lens': ['urban_governance'], 'outlet': '报告结论'}
+    result = {'rows': [{'name': '宜昌城区', 'polarity_index': 0.15, 'domain_top': 'urban_governance',
+                        'element_top': '环境', 'issue_label': '绿量不足', 'point_count': 1000}]}
+    card = build_outlet_schema(diag, result, '中心城区城市体检评估')
+    assert card is not None
+    assert card['outlet_id'] == 'checkup_dimension', f'体检应命中 checkup_dimension（{card["outlet_id"]}）'
+    # 城区维度（scale=macro）→ 填真实值
+    assert '0.15' in str(card['fields'].get('城区维度', {}).get('value')), \
+        f'城区维度应取 polarity_index（{card["fields"]}）'
+    # 住房（micro）/小区（meso）/街区（meso）→ "需对应尺度分析"（不填城区值）
+    for _dim in ('住房维度', '小区维度', '街区维度'):
+        assert '需对应尺度分析' in str(card['fields'].get(_dim, {}).get('value', '')), \
+            f'{_dim} 应标需对应尺度分析（{card["fields"]}）'
+
+
+def test_wave1_checkup_dimension_meso_scale():
+    """Wave 1：checkup_dimension meso 问句 → 小区/街区维度填值·城区/住房标尺度限定。"""
+    diag = {'scale': 'meso', 'domain_lens': ['urban_governance'], 'outlet': '报告结论'}
+    result = {'rows': [{'name': '西陵街道', 'polarity_index': -0.3, 'domain_top': 'urban_governance',
+                        'element_top': '设施', 'issue_label': '停车难', 'point_count': 500}]}
+    card = build_outlet_schema(diag, result, '西陵街道小区体检评估')
+    assert card is not None
+    # 小区维度 field_mapping = 'domain_top/element_top + polarity_index [scale=meso]'→ 主字段取首（domain_top·+ 只取首字段）
+    assert '小区维度' in card['fields'] and 'urban_governance' in str(card['fields']['小区维度']['value']), \
+        f'小区维度应取 domain_top（首字段·{card["fields"]}）'
+    assert '需对应尺度分析' in str(card['fields'].get('城区维度', {}).get('value', '')), \
+        f'城区维度（macro）应标需对应尺度分析（{card["fields"]}）'
+    assert '需对应尺度分析' in str(card['fields'].get('住房维度', {}).get('value', '')), \
+        f'住房维度（micro）应标需对应尺度分析（{card["fields"]}）'
+
+
+def test_wave1_empty_rows_no_card():
+    """Wave 1：空 rows（分析失败）→ 不出卡（防空卡·与前端 newLayerCount 门一致）。"""
+    diag = {'scale': 'macro', 'domain_lens': ['urban_renewal'], 'outlet': '生成图层'}
+    # 空 rows → _extract_emc_value 无 Top-1 → 字段全降级·但卡仍组装（无 P0）
+    card = build_outlet_schema(diag, {'rows': []}, '宜昌城区更新优先')
+    assert card is not None
+    assert all(str(f.get('value')) != '' for f in card['fields'].values()), \
+        f'空 rows 字段应降级非空（{card["fields"]}）'

@@ -123,8 +123,19 @@
 - **验证**：新测试 3 场景全过（多要素完整 / 失控截断无空标题 / {{show:}} 完整）+ 括号配对 +2/+2 + pytest 249 passed 零回归
 - **待用户 F5 复验**（补修后重问大南门需求分析）
 
+### ③l 行动（Wave 1 macro 出口实施 · 两组预检反评价 + 落地）
+- **两组预检 SCAN 到**（`CB16-Wave1-macro出口-预检_Codex-GPT5` + `CB16-Wave1-macro出口-claude组`）·反评价：
+  - **两组一致**：草案可行·三层断裂修复路径成立·无 P0
+  - **Codex P1（采纳）**：checkup_dimension 四维度×单尺度语义错位（macro 值入 micro/meso 槽）→ 槽位 `[scale=xxx]` 限定（仅填匹配 diagnose.scale·其余"需对应尺度分析"）
+  - **claude组 P1×3（采纳）**：① `_extract_emc_value` 升级为**后端统一收 rows/features**（单入口规整·防前后端漂移）③ DOMAIN_KW 补「**城市体检**」长词（防健康体检/体检中心误触）⑤ `data_base` 加 rows 分支（N=单元数·note 区分·total_points 总评论数）
+  - **P2（采纳）**：`rows.length>0` 守卫·`+` 只取首字段（place_name 留 Wave 2）·stages.js 无需改（已 import DOMAIN_KW 自动生效）
+  - **rows 可达性（claude组 风险·确认属实）**：`_maybeBuildOutletCard` 在 finalStep 后调用·工具局部 r 已出作用域 → 模块级 `_lastToolRows` 缓存（3 处工具调用点捕获）
+- **落地 7 处**：`build_outlet_schema.py`（rows 分支 + scale 限定 + data_base rows）·`harness.js`（_lastToolRows 缓存×3 + 产物收集优先 rows + 门放宽 + 测试钩子）·`emc-patterns.js`（DOMAIN_KW 补城市体检）·`urban_checkup_outlets.py`（四维度真实字段 + [scale]）·`e2e-seam.js`（setOutletRows/buildOutletCardForTest）·单测 4 新增 + `test_outlet_macro.py` E2E
+- **验证**：pytest 253 passed（+4 新增·零回归）·括号配对平衡×3 · E2E 两场景全过（rows 门放宽出卡 + 字段非空 + scale 限定·outlet_card 端点 200）
+- **待用户浏览器复验**（macro 问句真出卡）
+
 ### ④ 状态
-`R7 截断修复 → 两组检查通过 + P0 补修完成` —— 两组 agree 主体·claude组 发现 `.` 误切列表标题 P0（采纳方案 A 修复）+ Codex 断句符/悬空编号硬化 + 文案微调 + 边界测试全落地·验证全过。待：用户 F5 复验 + 时间轴 manifest 后置。
+`Wave 1 macro 出口 → 两组预检通过 + 实施完成` —— 两组 agree·Codex P1（scale 限定）+ claude组 P1×3（统一收产物/城市体检长词/data_base 语义）全落地·rows 可达性缓存解决·验证全过（253 passed + E2E）。待：用户浏览器复验 + Wave 2（CB-15 前置·后置）。
 
 ---
 

@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月04日）** · 本节按板块分组、组内倒序；最新工作 = **CB-16 R7 补修：两组检查发现 P0（`.` 误切列表标题）→ 方案 A 修复**（a42fb1a·分支 `fix/emc-buglog`）。最近：
+> 📍 **最新动态（08月04日）** · 本节按板块分组、组内倒序；最新工作 = **CB-16 Wave 1（macro 出口）实施完成：两组预检反评价 + 7 处落地**（分支 `fix/emc-buglog`）。最近：
+>
+> - **CB-16 Wave 1 macro 出口（两组预检反评价 + 实施）**：macro 问句（更新对象识别 renewal_object_identify + 体检四维度 checkup_dimension）出口链路从断裂到打通。**结构性缺口**：macro 分析（zonal/rank）权威产物是 `rows` 数组·而 `_maybeBuildOutletCard` 只收图层 fc（`newLayerCount<=0` 直接 return）+ `_extract_emc_value` 不识别 `{rows}` → 三层断裂（不出卡/出空卡）。**两组预检**：Codex P1（checkup_dimension 四维度×单尺度语义错位→`[scale=xxx]` 槽位限定）+ claude组 P1×3（① `_extract_emc_value` 统一收 rows/features 单入口·防前后端漂移 ③ DOMAIN_KW 补「城市体检」长词·防健康体检误触 ⑤ `data_base` rows 分支·N=单元数·total_points 总评论数）+ rows 可达性风险（`_maybeBuildOutletCard` finalStep 后调·工具局部 rows 出作用域→模块级 `_lastToolRows` 缓存×3 捕获）。**落地 7 处**：`build_outlet_schema.py`（rows 分支 + scale 限定 + data_base）·`harness.js`（缓存 + 门放宽「rows 或 newLayerCount>0」+ 测试钩子）·`emc-patterns.js`（DOMAIN_KW）·`urban_checkup_outlets.py`（四维度真实字段 + [scale]）·`e2e-seam.js`（setOutletRows/buildOutletCardForTest·seam 直测不赌博 LLM 路由）。**验证**：pytest 253 passed（+4 新增）·括号配对平衡×3 · E2E 两场景全过（rows 门放宽出卡 + 字段非空 + scale 限定·outlet_card 200）。**待**：用户浏览器复验 + Wave 2（CB-15 前置·后置）。**§0 拓扑 N/A**。
 >
 > - **CB-16 R7 补修（a42fb1a·两组检查反评价）**：R7 修复发实施后检查 → 两组 SCAN：**Codex 通过 + 3 低优**（补 ！？断句符·悬空编号行剥除·文案简化）·**claude组 P0 发现**：`lastIndexOf('.')` 把 markdown 列表标题「**4.**」句点当切点·结论第 N 点落 1500 边界时**精确复现原 bug**（场景 4 实测·Python 复刻·根因 = `.` 误切·初版修复没堵住）。**反评价**：agree 两组主体（阈值 1500 合理·R2 后移无副作用·文案场景化对路）·**采纳 claude组 方案 A（去 `.` 切句符）+ Codex 断句符 `！？` + 悬空编号行剥除（`/\n\d+\.\s*$/`）+ claude组 文案微调（"已精简"→"已截断保留要点"·硬切非精简）+ 补边界测试**。**新增** `tests/browser/test_r7_truncation.py`（e2e-seam 暴露的 applyQualityDefense 直测真实 JS 逻辑·非 Python 复刻·3 场景：多要素完整 / 失控截断无空标题 / {{show:}} 完整）。**验证**：新测试全过 + 括号配对 +2/+2 + pytest 249 passed 零回归。**待**：用户 F5 复验。**§0 拓扑 N/A**。
 >

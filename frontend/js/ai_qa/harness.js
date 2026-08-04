@@ -556,6 +556,7 @@ async function runTemplatePath(ctx, hooks, diagnose, opts = {}) {
     console.timeEnd('[emc-timing] tool:' + def.tool);
     obs = (r && r.observation) || '[ERR] 工具无观察返回';
     if (r && r.data && r.data.layerId) newLayerCount = 1;
+    if (r && r.data && Array.isArray(r.data.rows) && r.data.rows.length) _lastToolRows = r.data.rows;   // Wave 1：缓存 macro rows
   } catch (e) {
     obs = `[ERR] ${def.tool} 异常：${(e && e.message) || e}`;
   }
@@ -753,6 +754,7 @@ async function runChainPath(ctx, hooks, diagnose, chain) {
     const obs = (r && r.observation) || '[ERR] 工具无观察返回';
     if (/\[ERR\]|失败|错误/.test(obs)) { failedObs.push(`${step.tool}: ${obs.slice(0, 80)}`); break; }   // 步失败中断
     if (r && r.data && r.data.layerId) newLayerCount++;
+    if (r && r.data && Array.isArray(r.data.rows) && r.data.rows.length) _lastToolRows = r.data.rows;   // Wave 1：缓存 macro rows
     if (r && r.data && Array.isArray(r.data.rows) && r.data.rows.length) hasRows = true;
     toolHistory.push(`第${i + 1}轮·动作: ${step.tool}(${JSON.stringify(params).slice(0, 120)}) → ${obs}`);
     if (hooks.onObservation) hooks.onObservation(obs, i + 1);
@@ -1554,6 +1556,13 @@ function deriveMissingParams(diagnose, question, layers) {
  *  异步·不阻塞主链路·失败静默。result 从已加载产物图层取（polarity_index/features）。
  *  触发判定与后端 build_outlet_schema 的 resolve_outlet_id 一致（单一权威源在后端）。 */
 let _outletCard = null;
+let _lastToolRows = null;   // CB-16 Wave 1：最近工具返回的 rows 缓存（macro 分析权威产物·zonal/rank 表）
+//   _maybeBuildOutletCard 在 finalStep 后调用·工具局部 r 已出作用域 → 模块级缓存供出口卡取 macro rows 产物
+// CB-16 Wave 1 测试钩子（e2e-seam 直测·不赌博 LLM 路由）：设 rows 缓存 + 直调出口卡组装
+export function _setLastToolRowsForTest(rows) { _lastToolRows = rows; }
+export async function _buildOutletCardForTest(diagnose, ctx, newLayerCount) {
+  return _maybeBuildOutletCard(diagnose, ctx, newLayerCount);
+}
 async function _maybeBuildOutletCard(diagnose, ctx, newLayerCount) {
   _outletCard = null;
   const q = (ctx && ctx.question) || '';
@@ -1563,19 +1572,27 @@ async function _maybeBuildOutletCard(diagnose, ctx, newLayerCount) {
   for (const _ui of _uiExclude) _qClean = _qClean.replaceAll(_ui, '');
   const _trigger = OUTLET_TRIGGER_KW;        // CB-16 P3：import 自 emc-patterns（DRY·单一源）
   if (!_trigger.some((w) => _qClean.includes(w))) return null;
-  if (newLayerCount <= 0) return null;   // 无产物不出卡
+  // CB-16 Wave 1：门放宽——「有 rows（macro 权威产物·zonal/rank 表）或 newLayerCount>0」才出卡
+  //   （旧 newLayerCount<=0 直接 return 吞掉 rows 型 macro 产物·治"不出卡"）
+  const _hasRows = !!(Array.isArray(_lastToolRows) && _lastToolRows.length);
+  if (!_hasRows && newLayerCount <= 0) return null;   // 无产物不出卡（空 rows 也不出·防空卡）
 
-  // 收集分析产物（从已加载图层取·优先最近产物·对齐 _extract_emc_value 的 features 结构）
-  // CB-16 P3（glm）：补 point_count（从 features 总数·供 data_base.N 不降级）
+  // 收集分析产物（优先最近工具 rows·macro 权威·后端 _extract_emc_value 已统一收 rows/features）
+  //   rows 型：直传 {rows}（后端 data_base 分支标 N=单元数·total_points 总评论数）
+  //   图层型：取最近产物 fc.features（现有逻辑保底·point_count=features 数）
   let result = null;
   try {
-    const arts = getArtifacts() || [];
-    if (arts.length) {
-      const last = arts[arts.length - 1];
-      const lyr = getLayer(last.id);
-      if (lyr && lyr.fc) {
-        const feats = lyr.fc.features || [];
-        result = { features: feats, point_count: feats.length || 0 };
+    if (_hasRows) {
+      result = { rows: _lastToolRows };
+    } else {
+      const arts = getArtifacts() || [];
+      if (arts.length) {
+        const last = arts[arts.length - 1];
+        const lyr = getLayer(last.id);
+        if (lyr && lyr.fc) {
+          const feats = lyr.fc.features || [];
+          result = { features: feats, point_count: feats.length || 0 };
+        }
       }
     }
   } catch (_) { /* 产物收集失败·result 空仍走端点（后端降级） */ }
@@ -1848,6 +1865,7 @@ async function runAllToolCalls(ctx, hooks, diagnose) {
     catch (e) { toolHistory.push(`第${i + 1}步: ${tc.name} → 异常: ${(e && e.message) || e}`); failedSteps.push(i + 1); continue; }
     const obs = (r && r.observation) || '[ERR]';
     if (r && r.data && r.data.layerId) newLayerCount++;
+    if (r && r.data && Array.isArray(r.data.rows) && r.data.rows.length) _lastToolRows = r.data.rows;   // Wave 1：缓存 macro rows
     else failedSteps.push(i + 1);   // 无图层产出 = 失败
     toolHistory.push(`第${i + 1}步: ${tc.name}(${JSON.stringify(tc.params || {}).slice(0, 80)}) → ${obs}`);
     if (hooks.onObservation) hooks.onObservation(obs, i + 1);

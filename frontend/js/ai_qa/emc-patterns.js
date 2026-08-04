@@ -14,7 +14,7 @@ export const DOMAIN_KW = {
   urban_planning: ['规划', '用地', '商业用地', '居住用地', '功能区', '土地'],
   urban_renewal: ['更新', '老旧', '改造', '棚改', '小区', '归因', '情绪'],
   urban_operation: ['运营', '商圈', '场馆', '奥体', '商业街', '演唱会'],
-  urban_governance: ['治理', '交通', '停车', '施工', '城管', '环境'],
+  urban_governance: ['治理', '交通', '停车', '施工', '城管', '环境', '城市体检'],   // CB-16 Wave 1：补「城市体检」长词（防"健康体检/体检中心"误触）
 };
 
 // 极性词映射（_matchPlanToQuestion·追问时匹配极性 plan）

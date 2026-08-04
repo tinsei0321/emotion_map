@@ -36,10 +36,12 @@ CONTRACTS = {
         'industry_interface': '城市体检·住房/小区/街区/城区四维度（61 项基础指标）',
         'scales': ['micro', 'meso', 'macro'],
         'field_mapping': {
-            '住房维度': 'micro 网格/POI 归因（建筑/居住情绪）',
-            '小区维度': 'meso 社区单元 zonal（设施/服务/环境）',
-            '街区维度': 'meso 街道单元 zonal（功能/活力/风貌）',
-            '城区维度': 'macro 行政区/片区面（整体发展质量）',
+            # CB-16 Wave 1（两组预检）：prose → 真实聚合字段（∈_EMC_FIELDS 白名单）
+            #   [scale=xxx] 限定：仅填匹配 diagnose.scale 的维度·其余"需对应尺度分析"（Codex P1·防 macro 值入 micro/meso 槽）
+            '住房维度': 'issue_label + place_name [scale=micro]',
+            '小区维度': 'domain_top/element_top + polarity_index [scale=meso]',
+            '街区维度': 'issue_label + polarity_index [scale=meso]',
+            '城区维度': 'polarity_index + domain_top [scale=macro]',
         },
         'can': '四维度情绪画像（主观感受维度）·对齐体检四层级',
         'cannot': '不能测客观达标（绿地率/设施数量/结构安全）',
