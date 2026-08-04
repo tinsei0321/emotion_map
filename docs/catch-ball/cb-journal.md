@@ -301,6 +301,12 @@
 - **未推**（先验后推）·**tracklog 待补**（trace_query B3-snapshot-0804·分类器不可用阻塞）
 - 待两组检查 SCAN → 反评价 → 通过后 push
 
+### ③w3b 反评价（glm + Codex 实施后检查 SCAN·两组通过·可推）
+- **Codex**（`scan/CB16-GlobalOptimize检查_Codex-GPT5_2026-08-04.md`）：实施通过·无 P0/P1·可推。**RST-L06 根因修正**：claude组 的 paradigm 假设不成立——实时 FC 路径（router.py fc_diagnose）只用 build_fc_sys_prompt + contracts_to_tools_schema·**不消费 paradigm**·geo_tool_catalog_text 仅进 build_diagnose_prompt（eval/fallback）。回归 = LLM 方差（16 份历史 audit：RST-L06 08-03×3 PASS/本次 FAIL·PRM 同型翻转·spread 13→25）。**建议保留 paradigm 同步** + P1 验证（eval 回归 + RST-L06 复跑 ×3）。修正声明：CPD-L03 落点 frontend/js/test-cases.js:17（非无此文件）。
+- **glm组**（`scan/CB16-GlobalOptimize检查_glm组_2026-08-04.md`）：通过·**disagree claude组 假设**——RST-L06 根因 = **clip range 未 derive**（chain pre-check boundary derive 缺陷）→ validateParams fail → ask_user → tools=[] 无执行。证据：FC 正确选 clip（template=clip）·density.when 不影响 FC 选 clip·CB-12 P2 后缀（方格/网格）对问句无关。density.when 同步应保留（消除漂移·CI 红线）。**验证方向**：`deriveAvailable('先裁剪西陵区情绪点，再生成热力图', getLayers())` 是否 null。
+- **反评价**：两组通过·可推。**保留 paradigm 同步**（消除漂移·正确方向）·实施 3 项正确（validate 4 passed + renewal 门控 + 全局优化）·PRM-03/04/07 = 既有 backlog·**RST-L06 = 独立 backlog**（clip range derive·非本次引入·修法 = 排查 chain boundary derive·Codex 建议复跑 ×3 实证）
+- **待**：eval 回归（P1 验证·同步改附录文本）+ RST-L06 复跑 ×3 → 通过后 push
+
 ---
 
 ### ① SCAN 摘要
