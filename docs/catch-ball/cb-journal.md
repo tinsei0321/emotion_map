@@ -375,6 +375,13 @@
 - **检查发起**：`_handoff/CB16-Backlog收尾检查_2026-08-04.md`（7 问·含影响面核查）
 - **未推**（23efe74·先验后推）·待两组检查 SCAN → 反评价 → 通过后 push
 
+### ③w7b 反评价（glm + Codex 检查 SCAN·两组通过·可推）
+- **Codex**（`scan/CB16-Backlog收尾检查_Codex-GPT5_2026-08-04.md`）：通过·无 P0/P1·P2×4（陈旧注释同步 / **fixture 静态守卫建议** / FC 编造 boundary 残余 / eval 发版前复采）
+- **glm组**（`scan/CB16-Backlog收尾检查_glm组_2026-08-04.md`）：通过·4 项全正确·**无破坏性依赖**（全仓 admin_district 引用扫描：deriveAvailable 白名单/CHAIN_REGISTRY/_boundaryEnum/district-stats/geo_registry 均无破坏）·PRM-07 根治实证（test-cases.js expectRequestUpload·fixture 无小溪塔后自然达成）
+- **反评价采纳**：**fixture 静态守卫**（两组一致建议·防回潮）——test_range_selector_presets.py 加 `test_admin_district_fixture_mc_in_whitelist`（preset 行政区 MC ⊆ FIXED_ADMIN_DISTRICTS·utf-8-sig 保 BOM）·**pytest 278 passed**（+1）
+- **P2 留 backlog**：陈旧注释同步（district-stats 头部「8 组团」/panel.js×4）·FC 编造 boundary 残余 · eval 发版前复采 · RST-L06 复跑（待前台 serve）
+- **已推**（23efe74 + 守卫测试·两组通过解锁）
+
 ---
 
 ### ① SCAN 摘要
