@@ -271,11 +271,17 @@
 - **验证**：pytest 31 + **276 passed 零回归**（+2 边界测试）·两组通过 → **可 push**
 
 ### ④ 状态
-`Wave 3 → 实施完成 → 实施后检查发起（先验后推）` —— 两组预检反评价已落地·检查请求已发（待 SCAN 反评价·通过后 push）。待：两组检查 + 用户 push + Wave 3 余（2b 条件等式·可选）。
+`CB-16 全闭环（Wave 0-3 + ③z 余留 2b/P2）· 已推 0a0d103 + 7d8a258` —— Wave 0-3 出口抽象层 + ③z 余留全部闭环。进入新阶段：**全局优化 + 发版快照 + 时间轴重规划（③w2 预检发起）**。
+
+### ③w2 行动（全局优化 + 发版快照 + 时间轴重规划 预检发起·先讨论再实施）
+- 用户定「①更新过时文件 + 归档陈旧 + 全局优化 ②发版候选评估 + 收尾技术债」→ 出 plan 进 CB（`_handoff/CB16-GlobalOptimize预检_2026-08-04.md`）
+- **三路探索完成**：过时文档（CLAUDE.md 5 行过时·emc-fix-progress 自相矛盾·todo 周归档缺 07-27~08-02·spec/arch Streamlit 死段·decisions 停 ADR-016·记忆 GC）· 发版评估（B3 23/26·PRM 硬门槛·无成文检查清单）· 时间轴 manifest 404（根因=数据 R100 迁移到 performance·手写 manifest 未落新位置·**数据没丢只缺描述符**）
+- **用户决策**：发版评估**先做全局优化+快照**（非冲达标）·时间轴**重新规划·更优解**（同源派生 manifest 治本·候选 1 geo_registry 同源 + fallback API·候选 2 落手写 manifest 快速解封）
+- **草案 4 子项**：①全局优化（CLAUDE.md 5 行 + 周归档 + emc-fix-progress + Streamlit 死段 + decisions 补档 + 记忆 GC）②发版快照（B3 现状 23/26 + link_checkup + pytest·不修 PRM）③时间轴同源派生 manifest（治本·时间轴与问答共享注册表）④backlog 收尾（7 工具 drift + renewal domain 门控 + CPD-L03 断言）
+- **预检 7 问**（给两组）：全局优化范围合理？发版快照对？时间轴同源派生思路/数据红线？backlog 优先级？测试方案？承重零触碰？范围边界？
+- 待两组 SCAN → 反评价 → 实施
 
 ---
-
-## CB-15 · 2026-08-03（数据认知体系重构 · 发起）
 
 ### ① SCAN 摘要
 
