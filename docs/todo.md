@@ -87,8 +87,8 @@ R7 修复发实施后检查 → 两组 SCAN：**claude组 P0 发现** `lastIndex
 ### 待续
 - **浏览器 EMC 真实问答肉眼验证**（问"大南门·二马路片区更新需求分析"→ 应出诊断卡 + 分析执行 + 出口需求分析卡·LLM 选层/路由走真实链路）
 - **时间轴 manifest（_time_manifest.json）**（用户定·与需求分析是两件事·后置）
-- Wave 1 macro 出口 / Wave 2 place_name 精确源 / Wave 3 可感知计算器（交接卡后续）
-- CB-16 Wave 0 完成检查（两组 SCAN 待反评价·③f 发起）
+- **③z 余留 2b + P2 预检已发**（`_handoff/CB16-Wave3预检2b-P2_2026-08-04.md`·待两组补充 SCAN → 反评价 → 实施：计算器 2b B 类条件等式 + checkup_satisfaction prose→字段）
+- Wave 3 检查 SCAN 处理（0862f09 已发·待反评价）
 
 ---
 

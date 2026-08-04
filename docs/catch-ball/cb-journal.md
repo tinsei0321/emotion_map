@@ -234,6 +234,12 @@
 - **未推**（1daffc6·先验后推：两组通过后 push）
 - 待两组检查 SCAN → 反评价
 
+### ③z 行动（Wave 3 余留 2b + P2 预检发起·先讨论再实施）
+- 家庭环境续作·用户定「plan 也进 CB」→ 对齐 ③w 模板发起两组预检（`_handoff/CB16-Wave3预检2b-P2_2026-08-04.md`）
+- **草案 2 子项**：① 可感知计算器 **2b**（B 类条件等式 6 项·`_parse_emc_expr` 拆 `+` + 条件/值识别·element_top 缺失→暂无数据/不匹配→跳过/匹配→取值+关键词标注·复用 `_extract_emc_value`·2a 不动）② checkup_satisfaction **P2**（field_mapping prose→真实字段·`'满意度（4 尺度）':'polarity_index'`·`'8 领域情绪值':'domain_top/element_top + polarity_index'`·均 ∈ _EMC_FIELDS 白名单·对齐 checkup_dimension）
+- **预检 7 问**（给两组）：2b 表达式解析/计算语义·P2 契约语义与 checkup_dimension 信息重复？·CI 提取兼容·范围边界·测试方案·承重零触碰
+- 待两组补充预检 SCAN → 反评价 → 实施
+
 ### ④ 状态
 `Wave 3 → 实施完成 → 实施后检查发起（先验后推）` —— 两组预检反评价已落地·检查请求已发（待 SCAN 反评价·通过后 push）。待：两组检查 + 用户 push + Wave 3 余（2b 条件等式·可选）。
 

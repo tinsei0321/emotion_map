@@ -1,12 +1,12 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：08月04日（**Wave 3 实施后检查发起：多卡 + validate_outlet_fields CI + 可感知计算器 2a·先验后推**）| 分支 `fix/emc-buglog` | **0862f09 待推（其余已 push·与远端同步）**
+> 最后更新：08月04日（**Wave 3 余留 2b + P2 预检已发·家庭环境续作·与远端 0/0 同步**）| 分支 `fix/emc-buglog` | **已与 `origin/fix/emc-buglog` 0/0 同步（0862f09 + 1500e5b 均已在远端·无需推）**
 >
 > 🔗 **CB 入口**：`docs/catch-ball/_cb-index.md`（**双阵营：claude组 开发主 + Codex/glm组 评估**）
 > 🏠🏢 **换机卡片**：`docs/catch-ball/_handoff/HOME.md` + `OFFICE.md`
 
-## 当前节点：CB-16 出口抽象层 Wave 0-3 全链路完成（Wave 3 检查发起·待两组 SCAN → push）
+## 当前节点：CB-16 出口抽象层 Wave 0-3 全闭环·Wave 3 检查已发 + 余留 2b/P2 预检再发
 
 08-04 大跨轮（CB-16 出口深化·Wave 0→1→2→3 全闭环）：
 - **Wave 0 出口卡片完整链路**（已闭环·CB 两轮检查通过）：build_outlet_schema 确定性组装器 + /outlet_card 端点 + harness 接线 + panel 渲染 + 触发词表同步守卫
@@ -15,13 +15,15 @@
 - **Wave 1 macro 出口**（已闭环·两组检查 P1/P2 补修）：rows 产物链路打通（_lastToolRows 缓存 + 门放宽 + _extract_emc_value 统一收 rows/features + checkup_dimension scale 限定 + DOMAIN_KW 城市体检）
 - **Wave 2 / CB-15 P0 数据认知**（已闭环·两组检查 P1/P2 补修）：3220 POI 接入（_read_pois_geojson + _dedup_pois·all_pois=4342）+ place_name 双源融合（_attach_poi_attrs grid/polygon 双模式 + place_name_source）+ poi_names + /grid/pois 端点 + cell_id
 - **CB-15 P1 地点进问答管线**（已闭环·两组检查 P2×4 补修）：buffer 中文 POI fallback（search_place）+ lookup_place 工具（契约三处同步 + track F_013）+ 归因落点模板（+ 合成 + 修文案）
-- **Wave 3 出口深化**（实施完成·**检查发起待两组 SCAN**）：多卡支持（resolve_outlet_ids + cards + build_outlet_schema_single 兼容）+ validate_outlet_fields CI + 可感知计算器 2a（B 类条件等式 2b 后置）
+- **Wave 3 出口深化**（实施完成·**检查已发 0862f09 待两组 SCAN**）：多卡支持（resolve_outlet_ids + cards + build_outlet_schema_single 兼容）+ validate_outlet_fields CI + 可感知计算器 2a（B 类条件等式 2b 后置）
+- **③z 余留 2b + P2 预检已发**（`_handoff/CB16-Wave3预检2b-P2_2026-08-04.md`）：可感知计算器 2b（B 类条件等式 6 项·_parse_emc_expr）+ checkup_satisfaction P2（prose→真实字段）
 
-## 今日 commit（fix/emc-buglog·**0862f09 待推·其余已 push**）
+## 今日 commit（fix/emc-buglog·**已与远端 0/0 同步·无需推**）
 
 | commit | 内容 |
 |---|---|
-| `0862f09` | **Wave 3 实施后检查发起（待推）** |
+| `1500e5b` | 进度更新 + 交接卡覆写（Wave 3 检查发起·待换环境续作） |
+| `0862f09` | **Wave 3 实施后检查发起（已推）** |
 | `1daffc6` | **Wave 3 多卡 + validate CI + 可感知计算器 2a** |
 | `0c9ba95` | Wave 3 预检发起 |
 | `04a6487` | CB-15 P1 补修（P2×4） |
@@ -50,16 +52,15 @@
 
 ## 【下一步】（用户定·换环境后续作）
 
-1. **等两组 Wave 3 实施后检查 SCAN**（已发 0862f09）→ 反评价 → **用户 push 0862f09**
-2. **Wave 3 余**：可感知计算器 2b（B 类条件等式 6 项·element_top=环境 等·需表达式解析器）
-3. **补 1 处（P2）**：checkup_satisfaction field_mapping 也 prose→真实字段（S6 满意度卡防空卡）
-4. **backlog**：validate_skill_params 7 工具 drift（paradigm when 同步）·MOD_PLACE 渲染风暴 + MOD_LLM.F_002 fallback 重核 + CPD-L01/L02 + 时间轴 manifest 404
+1. **等两组 Wave 3 实施后检查 SCAN**（已发 0862f09）→ 反评价 → push（已与远端同步·届时只需本地 push）
+2. **Wave 3 余留 2b + P2 补充预检已发**（③z·`_handoff/CB16-Wave3预检2b-P2_2026-08-04.md`）→ 等两组补充 SCAN → 反评价 → 实施（计算器 2b + checkup_satisfaction P2）
+3. **backlog**：validate_skill_params 7 工具 drift（paradigm when 同步）·MOD_PLACE 渲染风暴 + MOD_LLM.F_002 fallback 重核 + CPD-L01/L02 + 时间轴 manifest 404
 
 ## 待续项（下会话从这继续）
 
-- **【核心】Wave 3 检查 SCAN 处理**（两组已发·待反评价 → push 0862f09）
-- **可感知计算器 2b**（B 类条件等式·glm 分步后置）
-- **checkup_satisfaction** prose→字段（P2）
+- **【核心】Wave 3 检查 SCAN 处理**（两组已发·待反评价）+ **③z 补充预检 SCAN**（2b/P2 草案·待反评价）
+- **可感知计算器 2b**（B 类条件等式·草案已发两组预检）
+- **checkup_satisfaction** prose→字段（P2·草案已发）
 - **backlog**：7 工具 drift · MOD_PLACE 渲染风暴 · MOD_LLM.F_002 · CPD-L01/L02 · 时间轴 manifest
 - 发版候选评估（B3 96.2% 达标上沿）
 - **待用户浏览器复验**：macro 问句出卡 + buffer 中文名 + lookup_place 地点清单 + 多卡渲染
@@ -74,9 +75,9 @@
 - **自测前必须重启 serve**（`start.bat`）·否则跑旧代码
 
 ## CB 状态
-- 当前 CB 轮次：**CB-16 出口深化（Wave 0-3 全闭环·Wave 3 检查进行中）**·之前 CB-12/13/14/15 已闭环
+- 当前 CB 轮次：**CB-16 出口深化（Wave 0-3 全闭环·Wave 3 检查进行中 + ③z 余留 2b/P2 预检待反评价）**·之前 CB-12/13/14/15 已闭环
 - **双阵营**：claude组（开发主）+ Codex + glm组（评估·trace 取证功臣）
-- 反评价轨迹：`docs/catch-ball/cb-journal.md`（③a-③y）
+- 反评价轨迹：`docs/catch-ball/cb-journal.md`（③a-③z）
 - 恢复卡：`docs/catch-ball/_handoff/CB恢复记忆卡_2026-08-03.md`（两组换环境用）
 
 ## 红线 / 纪律（下会话守）
@@ -90,9 +91,9 @@
 
 ## 恢复指引（新会话·换环境后）
 
-1. `git log --oneline -8` 对账（最新 `0862f09`·待 push·其余与远端同步）。
+1. `git log --oneline -8` 对账（最新 `1500e5b`·已与 `origin/fix/emc-buglog` 0/0 同步·无需推）。
 2. 读本卡「关键架构」+「待续项」。
 3. 读 `docs/todo.md` 08-04 段 + `docs/revision-log.md` §5 最新。
 4. 读 CLAUDE.md「出口抽象层」顶层纲领节（最底层逻辑·指导开发）。
 5. 启动：`start.bat`（serve.py 自起后端 :8000 + 前端 :8080）。
-6. 从「待续项」继续（核心 = Wave 3 检查 SCAN 处理 + 可感知计算器 2b）。
+6. 从「待续项」继续（核心 = Wave 3 检查 SCAN 处理 + ③z 余留 2b/P2 预检反评价）。
