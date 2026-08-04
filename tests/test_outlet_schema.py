@@ -96,3 +96,37 @@ def test_resolve_outlet_id_checkup():
     oid = resolve_outlet_id({'scale': 'macro', 'domain_lens': ['urban_governance'], 'outlet': '报告结论'},
                             '城市体检满意度调查')
     assert oid == 'checkup_satisfaction', f'体检满意度应命中 checkup_satisfaction（实际 {oid}）'
+
+
+# ── CB-16 大南门数据专题：真实 ermawu 聚合产物出卡 ────────────
+def test_build_outlet_schema_ermawu_real_aggregate():
+    """真实 ermawu L3L4 聚合产物（zonal 输出结构）+ 大南门问句 → 需求分析卡（需求强度有值）。
+
+    模拟 tools.js zonal_stats 对 ermawu 富归因层的聚合输出（issue_label/domain_top/element_top 等）。
+    验证确定性组装从聚合产物取字段（非"暂无数据"）+ 命中 renewal_demand。
+    """
+    diag = {'scale': 'meso', 'domain_lens': ['urban_renewal'], 'outlet': '建议清单'}
+    # 真实 zonal 聚合产物（属性即 ermawu 富归因列聚合出的规范输出）
+    result = {
+        'polarity_index': -0.32,
+        'point_count': 900,
+        'features': [{'properties': {
+            'place_name': '大南门·二马路滨江片区',
+            'domain_top': 'urban_renewal',
+            'element_top': '设施',
+            'issue_label': '停车难',
+        }}],
+    }
+    card = build_outlet_schema(diag, result, '大南门·二马路片区更新需求分析')
+    assert card is not None
+    assert card['outlet_id'] == 'renewal_demand', f'应命中 renewal_demand（实际 {card["outlet_id"]}）'
+    assert card['interface'].startswith('片区策划')        # 行业接口标识
+    assert card['task_link']                              # 对接建议
+    assert card['can'] and card['cannot']                 # 能/不能双栏
+    assert card['data_base']['N'] == 900                  # 数据基础
+    # 需求强度 ← polarity_index（field_mapping）+ 问题类型 ← issue_label + 需求位置 ← place_name
+    vals = {k: str(f.get('value')) for k, f in card['fields'].items()}
+    assert any('-0.32' in v for v in vals.values()), f'需求强度未取到 polarity_index（{vals}）'
+    assert '停车难' in vals.get('问题类型', ''), f'问题类型未取到 issue_label（{vals}）'
+    assert '大南门' in vals.get('需求位置', ''), f'需求位置未取到 place_name（{vals}）'
+    assert not any(v == '暂无数据' for v in vals.values()), f'真实聚合产物不应有缺失降级（{vals}）'

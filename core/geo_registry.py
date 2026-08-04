@@ -33,6 +33,11 @@ _POINT_LAYERS = {
     'yichang_l1_t1': ('yichang_L1_T1_result_csv.csv', '宜昌 L1 · T1（全域治理点·初）', 'L1'),
     'yichang_l1_t2': ('yichang_L1_T2_result_csv.csv', '宜昌 L1 · T2（全域治理点·中）', 'L1'),
     'yichang_l1_t3': ('yichang_L1_T3_result_csv.csv', '宜昌 L1 · T3（全域治理点·末）', 'L1'),
+    # 大南门·二马路历史街区 L3+L4（ABSA 富归因·CB-16 数据专题接入·坐标经 backfill_ermawu_coords 补齐）
+    # 注：level='L3L4' 数据层零 level 检查（resolve_points/get_layer_points 只读 CSV+lon/lat）·仅 R5 胶囊防线（UI 追问）不含
+    'ermawu_l3l4_t1': ('ermawu_l3l4_T1_result_csv.csv', '大南门·二马路 L3L4 · T1（历史街区·开街扰扰）', 'L3L4'),
+    'ermawu_l3l4_t2': ('ermawu_l3l4_T2_result_csv.csv', '大南门·二马路 L3L4 · T2（历史街区·暑假打卡）', 'L3L4'),
+    'ermawu_l3l4_t3': ('ermawu_l3l4_T3_result_csv.csv', '大南门·二马路 L3L4 · T3（历史街区·文旅爆满）', 'L3L4'),
 }
 
 

@@ -83,8 +83,21 @@
 - **用户定**：时间轴 manifest（_time_manifest.json）与需求分析是两件事·后置（本次不做）
 - 待两组预检 SCAN → 反评价 → 实施
 
+### ③h 行动（大南门数据专题实施 · 两组预检通过后落地）
+- **两组预检通过**（Codex「通过 + 1 必补项」· claude组「全过 + 4 追加建议」）·反评价采纳全部：
+  - **Codex 必补项**：边界登记只改 manifest 不够——`list_presets` 用 `os.path.join(_PRESETS_DIR, file)` 判 available·须**复制文件进 `DATA/boundaries/presets/`**（已落实·复制不移动）
+  - **claude组 建议**：backfill 按 id_e 匹配 + 断言（实测 T1/T2/T3 序完全一致·700/800/900）+ 保 utf-8-sig BOM + 坐标列加末尾 + 生成器修复 TODO 注释（已全落实）
+- **实施完成**（本 commit·验证全过）：
+  - `SCRIPT/backfill_ermawu_coords.py`：一次性补丁·T1/T2/T3 共 2400 行补 lon/lat（id_e 断言·幂等·备份·保 BOM·生成器 TODO 注释）
+  - `core/geo_registry.py`：`_POINT_LAYERS` 末尾追加 `ermawu_l3l4_t{1,2,3}`（level='L3L4'·富归因列原样保留）
+  - `DATA/boundaries/presets/manifest.json`：「城市更新单元」组加 `damanmen_area` + **复制 geojson 进 presets/**（name 属性"绘制多边形"→片区名·P1 优化顺手做）
+  - `tests/test_geo_registry.py` 新建（4 例：注册/900 行/坐标域/富归因列/load_preset available）+ `tests/test_outlet_schema.py` +1（真实 ermawu 聚合产物出卡）
+- **端到端验证**（真实端点·memory「verify-real-endpoint」）：/geo/catalog 暴露 3 ermawu 层 + damanmen 边界可用 → /geo/zonal_stats(ermawu_l3l4_t3 × damanmen_area) 返回 578 点·polarity_index 0.73·domain_top=urban_operation·文化 → /aiqa/outlet_card 命中 **renewal_demand 需求分析卡**（接口=片区策划·需求强度 0.73·问题类型=停车难·数据基础 N=578·诚实标注 place_name 粗略）
+- **pytest 249 passed（+7 新测·零回归）**
+- **观察**：真实 zonal 行无 place_name 字段（需求位置缺失降级·诚实不编造·符合设计·CB-15 后 place_name 精确源升级）；level='L3L4' 对 density 工具枚举/R5 胶囊防线影响为知晓点（本轮不走 density·非阻塞·SCAN 记一笔）
+
 ### ④ 状态
-`Wave 0 完整链路 → 待两组实施后检查 + 大南门数据专题待两组预检` —— 出口卡片闭环落地（端点/接线/渲染/词表/守卫）·S2 端到端可演示（待浏览器交互验证）·大南门·二马路数据专题预告已发（待预检后实施）。
+`大南门数据专题 → 已实施闭环（预检通过 → 实施 → 验证 249 passed）` —— 大南门·二马路数据已接入 EMC 出口链路：/geo/catalog 可发现·/geo/zonal_stats 可聚合·/outlet_card 可出需求分析卡。Wave 0 端到端演示数据场景打穿。待：浏览器 EMC 真实问答肉眼验证（LLM 选层/路由）+ 时间轴 manifest 后置。
 
 ---
 
