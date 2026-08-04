@@ -4,7 +4,7 @@
 """
 import pytest
 
-from ai_qa.outlet_kb.build_outlet_schema import resolve_outlet_id, build_outlet_schema
+from ai_qa.outlet_kb.build_outlet_schema import resolve_outlet_id, build_outlet_schema, build_outlet_schema_single
 
 
 def _diag(scale='meso', domain_lens=('urban_renewal',), outlet='建议清单'):
@@ -41,7 +41,7 @@ def test_resolve_outlet_id_scale_mismatch():
 
 def test_build_outlet_schema_7_elements():
     """S2 问句 → 需求分析卡（7 要素：接口标识/数据基础/定量/定性/地理定位/对接建议/局限）。"""
-    card = build_outlet_schema(_diag(), _result(), '西陵区老旧小区更新需求分析')
+    card = build_outlet_schema_single(_diag(), _result(), '西陵区老旧小区更新需求分析')
     assert card is not None
     assert card['interface'].startswith('片区策划')     # 接口标识
     assert card['task_link']                            # 对接建议
@@ -53,7 +53,7 @@ def test_build_outlet_schema_7_elements():
 
 def test_build_outlet_schema_field_mapping():
     """field_mapping 确定性取值（polarity_index → 需求强度）。"""
-    card = build_outlet_schema(_diag(), _result(polarity=-0.3), '西陵区更新需求分析')
+    card = build_outlet_schema_single(_diag(), _result(polarity=-0.3), '西陵区更新需求分析')
     # 需求强度 ← polarity_index（field_mapping 里有 polarity_index 表达）
     any_neg = any('-0.3' in str(f.get('value')) for f in card['fields'].values())
     assert any_neg, f'需求强度未取到 polarity_index（fields={card["fields"]}）'
@@ -61,7 +61,7 @@ def test_build_outlet_schema_field_mapping():
 
 def test_build_outlet_schema_missing_field_degrade():
     """字段缺失 → 降级"暂无数据"（不编造）。"""
-    card = build_outlet_schema(_diag(), {'point_count': 0}, '西陵区更新需求分析')
+    card = build_outlet_schema_single(_diag(), {'point_count': 0}, '西陵区更新需求分析')
     # 无 features/字段 → 各字段降级
     for f in card['fields'].values():
         assert f['value'] is not None, '字段缺失应降级非 None'
@@ -69,14 +69,14 @@ def test_build_outlet_schema_missing_field_degrade():
 
 def test_build_outlet_schema_no_hit():
     """未命中契约（outlet 空 + 无接口词）→ None（不出卡·只出普通分析）。"""
-    assert build_outlet_schema(_diag(outlet=''), _result(), '生成热力图') is None
+    assert build_outlet_schema_single(_diag(outlet=''), _result(), '生成热力图') is None
 
 
 # ── CB-16 Codex/glm 修复后补测（3 缺口）────────────────────
 def test_qualifier_field_parsed():
     """CB-16 Codex：qualifier 后缀（降序/占比）应解析出主字段（防丢值）。"""
     diag = {'scale': 'meso', 'domain_lens': ['urban_renewal'], 'outlet': '指标排序'}
-    card = build_outlet_schema(diag, {'polarity_index': -0.45, 'point_count': 5,
+    card = build_outlet_schema_single(diag, {'polarity_index': -0.45, 'point_count': 5,
                                       'features': [{'properties': {'domain_top': 'urban_renewal'}}]},
                                '西陵区更新时序排序')
     # renewal_sequence field_mapping 优先级排序 = 'polarity_index 降序' → 应取到 -0.45
@@ -117,7 +117,7 @@ def test_build_outlet_schema_ermawu_real_aggregate():
             'issue_label': '停车难',
         }}],
     }
-    card = build_outlet_schema(diag, result, '大南门·二马路片区更新需求分析')
+    card = build_outlet_schema_single(diag, result, '大南门·二马路片区更新需求分析')
     assert card is not None
     assert card['outlet_id'] == 'renewal_demand', f'应命中 renewal_demand（实际 {card["outlet_id"]}）'
     assert card['interface'].startswith('片区策划')        # 行业接口标识
@@ -146,7 +146,7 @@ def test_wave1_macro_rows_result():
         {'name': '伍家岗区', 'polarity_index': -0.21, 'domain_top': 'urban_renewal',
          'element_top': '设施', 'issue_label': '停车难', 'point_count': 200},
     ]}
-    card = build_outlet_schema(diag, result, '宜昌城区哪些区域更新优先')
+    card = build_outlet_schema_single(diag, result, '宜昌城区哪些区域更新优先')
     assert card is not None
     assert card['outlet_id'] == 'renewal_object_identify', f'macro 应命中更新对象识别（{card["outlet_id"]}）'
     # 更新对象 ← issue_label（rows[0] Top-1）+ 空间聚集强度 ← polarity_index
@@ -168,7 +168,7 @@ def test_wave1_checkup_dimension_scale_limited():
     diag = {'scale': 'macro', 'domain_lens': ['urban_governance'], 'outlet': '报告结论'}
     result = {'rows': [{'name': '宜昌城区', 'polarity_index': 0.15, 'domain_top': 'urban_governance',
                         'element_top': '环境', 'issue_label': '绿量不足', 'point_count': 1000}]}
-    card = build_outlet_schema(diag, result, '中心城区城市体检评估')
+    card = build_outlet_schema_single(diag, result, '中心城区城市体检评估')
     assert card is not None
     assert card['outlet_id'] == 'checkup_dimension', f'体检应命中 checkup_dimension（{card["outlet_id"]}）'
     # 城区维度（scale=macro）→ 填真实值
@@ -185,7 +185,7 @@ def test_wave1_checkup_dimension_meso_scale():
     diag = {'scale': 'meso', 'domain_lens': ['urban_governance'], 'outlet': '报告结论'}
     result = {'rows': [{'name': '西陵街道', 'polarity_index': -0.3, 'domain_top': 'urban_governance',
                         'element_top': '设施', 'issue_label': '停车难', 'point_count': 500}]}
-    card = build_outlet_schema(diag, result, '西陵街道小区体检评估')
+    card = build_outlet_schema_single(diag, result, '西陵街道小区体检评估')
     assert card is not None
     # 小区维度 field_mapping = 'domain_top/element_top + polarity_index [scale=meso]'→ 主字段取首（domain_top·+ 只取首字段）
     assert '小区维度' in card['fields'] and 'urban_governance' in str(card['fields']['小区维度']['value']), \
@@ -204,7 +204,7 @@ def test_wave1_empty_rows_degrades():
     """
     diag = {'scale': 'macro', 'domain_lens': ['urban_renewal'], 'outlet': '生成图层'}
     # 空 rows → _extract_emc_value 无 Top-1 → 字段全降级·但卡仍组装（后端容错·前端门拦截）
-    card = build_outlet_schema(diag, {'rows': []}, '宜昌城区更新优先')
+    card = build_outlet_schema_single(diag, {'rows': []}, '宜昌城区更新优先')
     assert card is not None
     assert all(str(f.get('value')) != '' for f in card['fields'].values()), \
         f'空 rows 字段应降级非空（{card["fields"]}）'
@@ -222,7 +222,7 @@ def test_wave_p1_composite_field_mapping():
                   'polarity_index': -0.32, 'point_count': 900}],
     }
     # 手动构造：用带 + 组合的 field_mapping（renewal_demand 需求位置 = 'place_name + 网格/POI'）
-    card = build_outlet_schema(diag, result, '大南门·二马路片区更新需求分析')
+    card = build_outlet_schema_single(diag, result, '大南门·二马路片区更新需求分析')
     assert card is not None
     vals = {k: str(f.get('value')) for k, f in card['fields'].items()}
     assert '大南门' in vals.get('需求位置', ''), f'需求位置应含 place_name（组合合成·{vals}）'
@@ -237,7 +237,7 @@ def test_wave_p1_poi_fields_exposed():
                   'poi_names': '滨江公园、二马路老巷 等3处', 'issue_label': '停车难',
                   'polarity_index': -0.32, 'point_count': 900}],
     }
-    card = build_outlet_schema(diag, result, '大南门更新需求分析')
+    card = build_outlet_schema_single(diag, result, '大南门更新需求分析')
     assert card is not None
     # 需求位置 ← place_name（组合内）+ 若 field_mapping 消费 poi_names 则出现
     vals = {k: str(f.get('value')) for k, f in card['fields'].items()}
@@ -247,3 +247,51 @@ def test_wave_p1_poi_fields_exposed():
     assert 'CB-15 后升级 POI 双源' not in lims, f'陈旧文案应移除（{lims}）'
     assert '双源融合' in lims, f'应标双源融合（{lims}）'
     assert 'place_name_source' in lims, f'应标 place_name_source 置信度（{lims}）'
+
+
+# ── Wave 3：多卡支持（跨 domain 多卡·同 domain 最高分·兼容单卡）──
+def test_wave3_multi_card_cross_domain():
+    """Wave 3（glm组）：跨 domain 多契约命中 → 多张卡（domain_lens 含 renewal + governance）。"""
+    diag = {'scale': 'meso', 'domain_lens': ['urban_renewal', 'urban_governance'], 'outlet': '建议清单'}
+    result = {'rows': [{'place_name': '大南门', 'issue_label': '停车难', 'polarity_index': -0.32,
+                        'domain_top': 'urban_renewal', 'element_top': '设施', 'point_count': 900}]}
+    cards = build_outlet_schema(diag, result, '大南门片区更新需求与体检满意度')
+    assert isinstance(cards, list) and cards, f'应出多卡（{cards}）'
+    oids = [c['outlet_id'] for c in cards]
+    assert 'renewal_demand' in oids, f'应含 renewal_demand（{oids}）'
+    # 同 domain 最高分（renewal 只一张·不冗余）
+    renewal = [c for c in cards if c['outlet_id'].startswith('renewal_')]
+    assert len(renewal) == 1, f'同 domain renewal 应只一张（{oids}）'
+
+
+def test_wave3_multi_card_compat_single():
+    """Wave 3：build_outlet_schema_single 兼容（单 domain → 单卡·等价旧）。"""
+    diag = {'scale': 'meso', 'domain_lens': ['urban_renewal'], 'outlet': '建议清单'}
+    result = {'rows': [{'place_name': '大南门', 'issue_label': '停车难', 'polarity_index': -0.32,
+                        'domain_top': 'urban_renewal', 'element_top': '设施', 'point_count': 900}]}
+    card = build_outlet_schema_single(diag, result, '大南门片区更新需求')
+    assert card is not None and card['outlet_id'] == 'renewal_demand'
+    # 多卡版本首卡 = 单卡
+    cards = build_outlet_schema(diag, result, '大南门片区更新需求')
+    assert cards[0]['outlet_id'] == card['outlet_id']
+
+
+# ── Wave 3：可感知计算器（compute_perceptible_metrics·2a 极性类）──
+def test_wave3_compute_perceptible_metrics():
+    """Wave 3（glm组 2a）：可感知指标计算——极性类（含 polarity_index）出值·关键词命中标注·缺失诚实。"""
+    from ai_qa.outlet_kb.build_outlet_schema import compute_perceptible_metrics
+    result = {'rows': [{'polarity_index': -0.32, 'topic_top': '停车难',
+                        'issue_label': '停车难', 'element_top': '设施'}]}
+    metrics = compute_perceptible_metrics(result)
+    assert metrics, f'应算可感知指标（{metrics}）'
+    # 极性类指标都有值（含停车泊位缺口·宜居宜业等）
+    vals = {m['metric']: m['value'] for m in metrics}
+    assert '-0.32' in str(vals.get('停车泊位缺口（居民感知）', '')), f'停车指标应取 polarity_index（{vals}）'
+    assert '-0.32' in str(vals.get('宜居宜业宜游感知', '')), f'宜居指标应取 polarity_index（{vals}）'
+    # 关键词命中标注（停车泊位缺口：停车难 命中）
+    kw = {m['metric']: m['source'] for m in metrics}
+    assert '命中' in kw.get('停车泊位缺口（居民感知）', ''), f'停车指标应标关键词命中（{kw}）'
+    # 缺失诚实
+    metrics_empty = compute_perceptible_metrics({'rows': [{'issue_label': '停车难'}]})
+    empty_vals = {m['metric']: m['value'] for m in metrics_empty}
+    assert any(v == '暂无数据' for v in empty_vals.values()), f'缺失应降级暂无数据（{empty_vals}）'

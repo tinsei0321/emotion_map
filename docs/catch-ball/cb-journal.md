@@ -218,8 +218,18 @@
 - **预检 7 问**（给两组）：B sjoin 方案/性能/新列策略·可感知计算器表达式解析/计算语义/落点·validate CI 判定合理/放 tests 还是运行时·多卡兼容既有？·范围边界·测试方案·承重零触碰
 - **待两组 SCAN** → 反评价 → 实施
 
+### ③x 行动（Wave 3 实施 · 两组预检反评价）
+- **两组预检 SCAN 到**（`CB16-Wave3-预检_Codex-GPT5` + `CB16-Wave3-glm组`）·反评价：
+  - **两组一致**：草案方向可行·无 P0
+  - **glm组 P1（采纳）**：可感知计算器分两步——2a 极性类（A 类 2 + C 类简单 2·P1 立即做）+ 2b 条件等式（B 类 6 项·需表达式解析器·P2）·多卡同 domain 只出最高分一张（防冗余）
+  - **Codex P1（采纳）**：emc_field 表达式解析器 compute + validate 共享（validate_outlet_fields 用正则收 ASCII 字段·跳过中文说明段）·多卡兼容迁移（cards + card=cards[0]）
+  - **两组一致（采纳）**：B 评论↔POI 继续后置（非出口深化核心·grid_pois + poi_names 已够）
+- **落地**：`build_outlet_schema.py`（resolve_outlet_ids 多契约·同 domain 去重 + build_outlet_schema 返 cards + build_outlet_schema_single 兼容 + compute_perceptible_metrics 2a）·`api/aiqa_routes.py`（/outlet_card 返 {cards, card}）·`harness.js` + `panel.js`（多卡渲染·兼容单卡）·`tests/validate_outlet_fields.py`（死字段 fail/缺消费 warn）
+- **验证**：pytest 269 passed（+3 新增）·端点多卡（renewal_demand + checkup_satisfaction 2 卡·card[0] 兼容·perceptible_metrics 有值）
+- **待两组实施后检查**（用户定 CB 机制·先验后推）
+
 ### ④ 状态
-`Wave 3 → 计划定稿 + 预检发起（CB 机制）` —— CB-15 P0/P1 已闭环（可 push·待用户）+ Wave 3 四子项探索完成（可感知计算器 / validate_outlet_fields CI / 多卡 / B 评论↔POI）·预检已发（待两组 SCAN 反评价）。待：两组预检 → 反评价 → 实施 → 实施后检查 → push。
+`Wave 3 → 两组预检反评价 + 实施完成（待两组检查·先验后推）` —— 多卡 + validate_outlet_fields CI + 可感知 2a 计算器落地·B 评论↔POI 再后置·验证全过（269 passed + 端点多卡）。待：两组实施后检查 → 反评价 → 用户 push + Wave 3 余（2b 条件等式·可选）。
 
 ---
 

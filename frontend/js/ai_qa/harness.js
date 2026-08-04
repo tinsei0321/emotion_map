@@ -1613,7 +1613,8 @@ async function _maybeBuildOutletCard(diagnose, ctx, newLayerCount) {
     });
     clearTimeout(_timer);
     const d = await r.json();
-    _outletCard = (d && d.card) || null;
+    // Wave 3 多卡：cards 优先（数组）·回退 card（兼容 Wave 0-2 旧端点）
+    _outletCard = (d && (d.cards || (d.card ? [d.card] : null))) || null;
     return _outletCard;
   } catch (_) {
     return null;   // 端点失败/超时静默（不阻塞回答）

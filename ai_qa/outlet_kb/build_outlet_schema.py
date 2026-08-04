@@ -75,6 +75,54 @@ def resolve_outlet_id(diagnose: dict, question: str = '') -> str | None:
     return best
 
 
+def resolve_outlet_ids(diagnose: dict, question: str = '') -> list[str]:
+    """多卡（Wave 3·glm组 P1）：多契约命中 → 按 score 降序的 oid 列表（跨 domain 多卡）。
+
+    同 domain 只取最高分一张（防同 domain 多卡信息冗余·glm 预检 P1）。保留 resolve_outlet_id
+    （返首个·兼容旧调用）。问句无接口词 + 诊断卡非行业类 → []（不出卡）。
+    """
+    if not diagnose:
+        return []
+    q = question or ''
+    domain_lens = diagnose.get('domain_lens') or []
+    scale = diagnose.get('scale') or ''
+    outlet = diagnose.get('outlet') or ''
+    OUTLET_HINT = {
+        '指标排序': ('renewal_sequence', 'checkup_satisfaction'),
+        '报告结论': ('checkup_satisfaction', 'renewal_demand'),
+        '建议清单': ('renewal_demand', 'renewal_content'),
+        '生成图层': ('renewal_object_identify', 'checkup_dimension'),
+    }
+    hinted = OUTLET_HINT.get(outlet, ())
+    scored = []
+    for oid, contract in OUTLET_CONTRACTS.items():
+        if contract.get('domain') not in domain_lens:
+            continue
+        if scale and scale not in contract.get('scales', []):
+            continue
+        q_clean = q
+        for _ui in _UI_CONTEXT_WORDS:
+            q_clean = q_clean.replace(_ui, '')
+        q_hit = any(w in q_clean and (w in oid or w in contract.get('name', '')) for w in TRIGGER_WORDS)
+        score = 0
+        if q_hit:
+            score += 3
+        if oid in hinted:
+            score += 2
+        if score > 0:
+            scored.append((oid, contract.get('domain'), score))
+    # 按 score 降序·同 domain 只取最高分（防冗余）
+    scored.sort(key=lambda x: -x[2])
+    seen_domains = set()
+    out = []
+    for oid, dom, sc in scored:
+        if dom in seen_domains:
+            continue
+        seen_domains.add(dom)
+        out.append(oid)
+    return out
+
+
 def _extract_emc_value(result: dict, emc_field: str):
     """从分析结果取字段值（统一收 rows/features/统计 dict 三类·Top-1）。
 
@@ -104,14 +152,8 @@ def _extract_emc_value(result: dict, emc_field: str):
     return None
 
 
-def build_outlet_schema(diagnose: dict, result: dict, question: str = '') -> dict | None:
-    """组装出口卡片（结构化 JSON·7 要素）。确定性·不调 LLM·不编造。
-
-    返回 None = 未命中出口契约（不出卡·只出普通分析结果）。
-    """
-    oid = resolve_outlet_id(diagnose, question)
-    if not oid:
-        return None
+def _build_card(oid: str, diagnose: dict, result: dict, question: str = '') -> dict | None:
+    """组装单张出口卡片（7 要素·确定性）。返回 None = 尺度分派不匹配。"""
     contract = OUTLET_CONTRACTS.get(oid)
     if not contract:
         return None
@@ -184,4 +226,67 @@ def build_outlet_schema(diagnose: dict, result: dict, question: str = '') -> dic
     card['limitations'].append('place_name = 格内最近 POI（CB-15 P0 双源融合·place_name_source 标置信度）')
     card['limitations'].append('归因 = 规则查表（DEMO·L4 深度归因待接入）')
 
+    # Wave 3（glm组）：可感知体检指标（2a 极性类·B 类条件等式后置）
+    card['perceptible_metrics'] = compute_perceptible_metrics(result)
+
     return card
+
+
+def compute_perceptible_metrics(result: dict) -> list[dict]:
+    """可感知体检指标计算（Wave 3·glm组 2a 极性类·确定性·不调 LLM）。
+
+    对 METRIC_MAPPINGS 可感知指标：emc_field 含 polarity_index 的（A 类极性直取 + C 类关键词+极性）→
+    从 result 取 polarity_index 值 + 关键词命中标注。B 类条件等式（element_top=环境 等 6 项）后置 2b。
+    缺失 → '暂无数据'（诚实·不编造）。
+    """
+    try:
+        from .urban_checkup_outlets import METRIC_MAPPINGS
+    except Exception:
+        METRIC_MAPPINGS = {}
+    out = []
+    for metric_name, m in METRIC_MAPPINGS.items():
+        expr = str(m.get('emc_field') or '')
+        if 'polarity_index' not in expr:
+            continue   # 2a 只算极性类（含 polarity_index）
+        val = _extract_emc_value(result, 'polarity_index')
+        if val is None:
+            out.append({'metric': metric_name, 'value': '暂无数据',
+                        'source': '缺失·不编造', 'industry': m.get('industry', '')})
+            continue
+        # 关键词命中标注（emc_field 的（关键词）提示）
+        kw_hit = ''
+        for _part in expr.split('+'):
+            _pm = __import__('re').search(r'（([^）]+)）', _part)
+            if _pm:
+                _kws = _pm.group(1).split('/')
+                _topic = _extract_emc_value(result, 'topic_top')
+                _issue = _extract_emc_value(result, 'issue_label')
+                for _kw in _kws:
+                    if (_topic and _kw in str(_topic)) or (_issue and _kw in str(_issue)):
+                        kw_hit = f'命中：{_kw}'
+                        break
+            if kw_hit:
+                break
+        out.append({'metric': metric_name, 'value': val, 'source': 'polarity_index（确定性）' + (f'·{kw_hit}' if kw_hit else ''),
+                    'industry': m.get('industry', '')})
+    return out
+
+
+def build_outlet_schema(diagnose: dict, result: dict, question: str = '') -> list[dict]:
+    """组装出口卡片（Wave 3·glm组 多卡）：多契约命中 → cards 列表（跨 domain 多卡·同 domain 最高分）。
+
+    确定性·不调 LLM·不编造。返回 [] = 未命中出口契约（不出卡）。
+    """
+    oids = resolve_outlet_ids(diagnose, question)
+    cards = []
+    for oid in oids:
+        c = _build_card(oid, diagnose, result, question)
+        if c is not None:
+            cards.append(c)
+    return cards
+
+
+def build_outlet_schema_single(diagnose: dict, result: dict, question: str = '') -> dict | None:
+    """兼容旧调用（Wave 0/1/2）：返首卡或 None（多卡时取第一张·等价旧单卡）。"""
+    cards = build_outlet_schema(diagnose, result, question)
+    return cards[0] if cards else None

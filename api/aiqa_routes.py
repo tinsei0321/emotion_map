@@ -87,15 +87,15 @@ class OutletCardIn(BaseModel):
 
 @aiqa_router.post('/aiqa/outlet_card')
 def post_outlet_card(body: OutletCardIn):
-    """CB-16 Wave 0：确定性组装出口卡片（结果范式 agent·第三段）。
+    """CB-16 Wave 0：确定性组装出口卡片（结果范式 agent·第三段·Wave 3 多卡）。
 
     前端 harness result 态后条件调用（问句含接口词·不碰承重路径）。
-    返回 {card: {...}} 或 {card: None}（未命中契约不出卡）。
+    返回 {cards: [...], card: cards[0]}（cards 多卡·card 兼容旧前端·未命中 []/None）。
     确定性·不调 LLM·字段缺失降级·不编造。
     """
     from ai_qa.outlet_kb.build_outlet_schema import build_outlet_schema
-    card = build_outlet_schema(body.diagnose or {}, body.result or {}, body.question)
-    return {'card': card}
+    cards = build_outlet_schema(body.diagnose or {}, body.result or {}, body.question)
+    return {'cards': cards, 'card': cards[0] if cards else None}
 
 
 class ProfileFieldsIn(BaseModel):

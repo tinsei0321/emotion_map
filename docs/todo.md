@@ -9,7 +9,17 @@
 
 ---
 
-## 📅 2026-08-04（CB-16 大南门数据专题 · 数据接入 EMC 出口链路闭环 + R7 截断修复 + Wave 1/2 出口 + CB-15 P0/P1 数据认知）
+## 📅 2026-08-04（CB-16 大南门数据专题 · 数据接入 EMC 出口链路闭环 + R7 截断修复 + Wave 1/2/3 出口 + CB-15 P0/P1 数据认知）
+
+### ✅ Wave 3 · 两组预检反评价 + 实施完成（待两组检查·先验后推）
+
+- **范围**：出口深化最后一块（多卡 + validate_outlet_fields CI + 可感知计算器 2a·B 评论↔POI 再后置）
+- **两组预检反评价**：草案可行·无 P0（glm 计算器分步 2a/2b·多卡同 domain 去重·Codex 表达式共享）
+- **多卡落地**：resolve_outlet_ids（跨 domain 多卡·同 domain 最高分）+ build_outlet_schema 返 cards + build_outlet_schema_single 兼容 + /outlet_card 返 {cards, card} + 前端多卡渲染
+- **validate_outlet_fields CI 落地**：tests/validate_outlet_fields.py（正则提取消费字段→死字段 fail/缺消费 warn·2 passed）
+- **可感知计算器 2a 落地**：compute_perceptible_metrics（极性类·关键词命中标注·缺失诚实·B 类条件等式后置 2b）
+- **验证**：pytest 269 passed（+3）·端点多卡（renewal_demand + checkup_satisfaction·card[0] 兼容·perceptible_metrics 有值）
+- **待**：两组实施后检查 → 反评价 → push + Wave 3 余（2b 条件等式·可选）
 
 ### ✅ CB-15 P1 · 实施后检查通过 + P2 补修（**可 push**·先验后推）
 

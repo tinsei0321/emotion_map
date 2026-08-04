@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月04日）** · 本节按板块分组、组内倒序；最新工作 = **CB-16 CB-15 P1 实施后检查通过 + P2 补修（两组 SCAN·先验后推）**（分支 `fix/emc-buglog`）。最近：
+> 📍 **最新动态（08月04日）** · 本节按板块分组、组内倒序；最新工作 = **CB-16 Wave 3 实施完成：两组预检反评价 + 多卡/validate CI/可感知计算器**（分支 `fix/emc-buglog`）。最近：
+>
+> - **CB-16 Wave 3（两组预检反评价 + 实施）**：出口抽象层深化最后一块。**两组预检**：草案可行·无 P0。**多卡（glm组 P1 采纳）**：resolve_outlet_ids 多契约命中（跨 domain 各一张·同 domain 只取最高分防冗余）+ build_outlet_schema 返 cards + build_outlet_schema_single 兼容旧调用 + /outlet_card 返 {cards, card: cards[0]} + 前端 harness/panel 多卡渲染。**validate_outlet_fields CI（Codex 采纳）**：tests/validate_outlet_fields.py——正则提取 CONTRACTS field_mapping + METRIC_MAPPINGS emc_field 消费字段（ASCII 标识符·跳过中文说明段）→ 对比产物白名单 → 死字段 fail/缺消费 warn。**可感知计算器 2a（glm组 P1 采纳·分步）**：compute_perceptible_metrics——emc_field 含 polarity_index 的极性类（A 类 2 + C 类 2）取 polarity_index + 关键词命中标注 + 缺失诚实·B 类条件等式（element_top=环境 等 6 项）后置 2b。**B 评论↔POI 再后置**（两组一致·非出口深化核心）。**验证**：pytest 269 passed（+3 新增）+ 端点多卡（renewal_demand + checkup_satisfaction 2 卡·card[0] 兼容·perceptible_metrics 有值）。**待**：两组实施后检查 + push。**§0 拓扑 N/A**。
 >
 > - **CB-16 CB-15 P1 检查反评价 + P2 补修（两组 SCAN·先验后推）**：P1 发实施后检查 → 两组 SCAN：**通过·可推**（A buffer 中文 fallback + C lookup_place 契约 + D 组合合成/:179 文案全正确·单测 34 passed·buffer 中文名 200/400 实测·density.when drift 既有性独立回测确认非本次引入）。**P2×4（采纳）**：① lookup_place triggers 去「附近」（与 buffer 重叠·"附近/周边"留 buffer）② 组合合成 source 只列非空 parts ③ docstring :13 旧文案修 ④ required_slots=['q']→[] 对齐 SKILL_DEFS（lng/lat 直查合法）。**backlog（Codex 扩）**：validate_skill_params drift 是 7 工具（density/buffer/clip/overlay/zonal_stats/extract_feature/merge）paradigm when 同步·非仅 density。**验证**：pytest 266 passed 零回归·测试补断言（lookup 触发词不含附近）。**可 push**（先验后推·两组已验）。**§0 拓扑 N/A**。
 >

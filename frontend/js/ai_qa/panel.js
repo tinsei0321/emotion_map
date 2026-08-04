@@ -1490,11 +1490,13 @@ function buildHooks(shell) {
       shell._finalMd = text;   // 供页脚「复制回答」取最终 markdown
       // CB-09 D024：onFinalDone 即完成（defense 不显 UI·renderReview 永隐）；history 在 send 末尾统一持久化
     },
-    // CB-16 Wave 0：出口卡片（结果范式 agent·第三段）·确定性 JSON → 纯模板渲染（仿 .cpd-guide-card·既有 token）
-    onOutletCard: (card) => {
-      if (!card) return;
-      if (_curTrace) _curTrace.outlet_card = card;
-      try { renderOutletCard(card); } catch (_) { /* 渲染失败不阻塞 */ }
+    // CB-16 Wave 0/3：出口卡片（结果范式 agent·第三段）·确定性 JSON → 纯模板渲染（Wave 3 多卡循环）
+    onOutletCard: (cards) => {
+      if (!cards) return;
+      const list = Array.isArray(cards) ? cards : [cards];   // 兼容单卡（旧端点 d.card）
+      if (!list.length) return;
+      if (_curTrace) _curTrace.outlet_card = list;
+      for (const c of list) { try { renderOutletCard(c); } catch (_) { /* 渲染失败不阻塞 */ } }
     },
     // CB-09 D024：质量防线结果（取代旧 onReview）·供 episode 自成长·不显 UI（renderReview 永隐）
     onDefense: (defense) => {
