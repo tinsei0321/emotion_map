@@ -228,8 +228,14 @@
 - **验证**：pytest 269 passed（+3 新增）·端点多卡（renewal_demand + checkup_satisfaction 2 卡·card[0] 兼容·perceptible_metrics 有值）
 - **待两组实施后检查**（用户定 CB 机制·先验后推）
 
+### ③y 行动（Wave 3 实施后检查发起·先验后推）
+- 用户定「实施后检查（两组核验）」→ 发起检查请求（`_handoff/CB16-Wave3完成检查_2026-08-04.md`）：5 环节核验（① resolve_outlet_ids 多契约 + 计算器 ② /outlet_card {cards,card} ③ 前端多卡渲染 ④ validate_outlet_fields CI ⑤ 测试）+ 端到端验证（单测 + 端点多卡）
+- **预检 7 问**（给两组）：resolve_outlet_ids 多契约/同 domain 去重/兼容·多卡破坏既有单卡？·计算器 2a 正确 + 2b 边界·validate CI 误报？·测试边界（同 domain 多契约/关键词未命中/空 result）·承重零触碰·density.when drift 既有不阻塞？
+- **未推**（1daffc6·先验后推：两组通过后 push）
+- 待两组检查 SCAN → 反评价
+
 ### ④ 状态
-`Wave 3 → 两组预检反评价 + 实施完成（待两组检查·先验后推）` —— 多卡 + validate_outlet_fields CI + 可感知 2a 计算器落地·B 评论↔POI 再后置·验证全过（269 passed + 端点多卡）。待：两组实施后检查 → 反评价 → 用户 push + Wave 3 余（2b 条件等式·可选）。
+`Wave 3 → 实施完成 → 实施后检查发起（先验后推）` —— 两组预检反评价已落地·检查请求已发（待 SCAN 反评价·通过后 push）。待：两组检查 + 用户 push + Wave 3 余（2b 条件等式·可选）。
 
 ---
 
