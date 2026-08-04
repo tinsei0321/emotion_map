@@ -349,6 +349,12 @@
 - **已推**（c53aa99 + 78db0e3·两组通过解锁·远端 0/0 同步）
 - **backlog**：footer「未生成图层」措辞条件化 · eval 注释精确化 + 发版前复采 · FC boundary 白名单校验 · PRM-07 preset fixture · RST-L06 复跑验证 · 措辞断言测试前台 serve 验证
 
+### ③w6 行动（发版 backlog 收尾 预检发起·用户定打包·先讨论再实施）
+- 用户定「发版 backlog 收尾」→ ③w5b 遗留 5 项打包进 CB（`_handoff/CB16-Backlog收尾预检_2026-08-04.md`）
+- **草案 5 小项**：① footer「未生成图层」措辞条件化（failedObs=0 改「未完成分析」）② FC 直供 boundary 白名单校验（deriveMissingParams 拒绝法定功能区）③ PRM-07 preset fixture 清理（9→4 要素·改数据需用户确认·红线）④ RST-L06 复跑验证 hardening ⑤ eval 注释精确化 + 发版前复采
+- **预检 7 问**（给两组）：footer 条件化 / FC boundary 校验误伤 / fixture 红线 / RST-L06 复跑方法 / eval 复采时机 / 范围优先级 / 承重零触碰
+- 待两组 SCAN → 反评价 → 实施
+
 ---
 
 ### ① SCAN 摘要
