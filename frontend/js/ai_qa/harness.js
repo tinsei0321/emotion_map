@@ -334,13 +334,6 @@ export function applyQualityDefense(draft, opts) {
   // R1 非空结论（硬拦截·去格式符后 <10 字符 → L3 降级·防 finalStep 空答）
   if (_isNonEmpty(final) < 10) { degrade = true; fixes.push({ rule: 'R1', action: 'empty-degrade' }); }
 
-  // R2 图层按钮存在（obs OK + 有产出层 + draft 无 {{show:}} → 自动追加·代码补·治"图出但结论没按钮"）
-  if (_opts.obsOk && realLayers.length && !/\{\{show:/.test(final)) {
-    const btns = realLayers.map((n) => `{{show:${n}}}`).join('\n');
-    final += `\n\n**已产出图层**（点击查看）：\n${btns}`;
-    fixes.push({ rule: 'R2', action: 'append-buttons' });
-  }
-
   // R3 参数一致性（标记·不拦截）：draft 引用数值 vs toolHistory observation 的 cell_size/radius·差异记 fixes
   if (_opts.toolHistoryText) {
     const _draftNums = String(final).match(/\d{2,5}\s*(?:米|m)\b/g) || [];
@@ -355,10 +348,25 @@ export function applyQualityDefense(draft, opts) {
   if (_opts.obsOk && /请求失败|未成功生成|生成失败|未能生成/.test(final)) { degrade = true; fixes.push({ rule: 'R4', action: 'ok-says-fail' }); }
   if (_opts.obsOk === false && /已生成|已产出|生成了|已创建/.test(final)) { degrade = true; fixes.push({ rule: 'R4', action: 'err-says-ok' }); }
 
-  // R7 结论三句骨架（>800 字 → 截断·代码兜底·prompt 已约束 brevity·此为真失控拦截）
-  if (final.length > 800) {
-    final = final.slice(0, 800) + '\n\n…（结论已截断·详见上方图层）';
+  // R7 结论长度防线（>1500 字 → 截断·代码兜底·prompt 已约束 brevity·此为真失控拦截）
+  // CB-16 用户定：多要素结论（问题类型/需求强度/需求位置/对接建议·编号 4+ 点）超 800 字正常
+  //   → 阈值 800→1500（实测结论 p95≈1000·留余量·1500 只拦真失控长文）
+  //   切点结构回切（句号/换行·不切在 markdown 列表项标题后·治「**4.**」空标题）
+  if (final.length > 1500) {
+    const _cut = Math.max(final.lastIndexOf('。', 1500), final.lastIndexOf('；', 1500),
+                          final.lastIndexOf('\n', 1500), final.lastIndexOf('.', 1500));
+    const _hasLayers = realLayers.length > 0;
+    const _note = _hasLayers ? '\n\n…（结论已截断·详见上方图层与数据）' : '\n\n…（结论较长已精简·详见上方分析）';
+    final = (_cut > 750 ? final.slice(0, _cut + 1) : final.slice(0, 1500)) + _note;
     fixes.push({ rule: 'R7', action: 'truncate' });
+  }
+
+  // R2 图层按钮存在（obs OK + 有产出层 + draft 无 {{show:}} → 自动追加·代码补·治"图出但结论没按钮"）
+  // CB-16：移 R7 截断之后——长结论时按钮不被 R7 切掉（图层主出口防失效）
+  if (_opts.obsOk && realLayers.length && !/\{\{show:/.test(final)) {
+    const btns = realLayers.map((n) => `{{show:${n}}}`).join('\n');
+    final += `\n\n**已产出图层**（点击查看）：\n${btns}`;
+    fixes.push({ rule: 'R2', action: 'append-buttons' });
   }
 
   // G6a（CB-12·出口差异化·glm组 执行层强制）：R10 归因检测 / R11 泛化检测——确定性软标注（不拦截·防「一竿子插到底」同构结论）
