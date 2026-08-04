@@ -150,8 +150,14 @@
 - **验证**：括号平衡·pytest 253 passed 零回归·E2E 两场景全过
 - **待用户 push**（先验后推·两组通过后推）
 
+### ③o 行动（Wave 2 / CB-15 实施预检发起）
+- 用户定「进入 Wave 2 / CB-15·保持 CB 机制」→ 读 CB-15 讨论稿（五点共识 + glm 致命发现已核实）+ 现状探索（place_name 只读标注·place_layer 已读 3220 POI·reverse_geocode 已接）→ 发起 Wave 2 预检（`_handoff/CB16-Wave2-CB15预检_2026-08-04.md`）
+- **草案 5 处**：① place_name 双源融合（sjoin POI 优先·fallback 标注·保旧 sim 兼容）② 聚合输出 poi_names（top-N 清单）③ `/grid/pois` 端点（选中格按需）④ 3220 接入（复用 place_layer）⑤ 承重零触碰（place_layer/geocode 只增不改·新工具契约三处同步）
+- **预检 7 问**（给两组）：双源融合方案 + sjoin 性能 / poi_names 输出 top-N 防配额爆 / grid/pois 端点结构 + LLM 用法 / 3220 接入够不够 / place_name 改动回归风险 + 旧 sim 兼容 / 测试方案 / 边界（只做 P0·P1/P2 后置）
+- **待两组 SCAN** → 反评价 → 实施
+
 ### ④ 状态
-`Wave 1 macro 出口 → 实施后检查通过 + P1/P2 补修完成` —— 两组通过·glm组 P1（runAllToolCalls rows 处理）+ Codex P1（跨轮重置）+ P2×2（while-loop 捕获/测试改名）全落地·验证全过。**可 push**（先验后推·两组已验）+ 用户浏览器复验 + Wave 2（CB-15 前置·后置）。
+`Wave 2 / CB-15 数据认知 → 预检发起（CB 机制）` —— Wave 1 已闭环（push）+ CB-15 讨论稿共识已立·P0 落地预检已发（待两组 SCAN 反评价）。范围：place_name 双源融合 + poi_names + /grid/pois + 3220 接入（下钻链最小闭环）。
 
 ---
 
