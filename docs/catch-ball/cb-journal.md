@@ -212,8 +212,14 @@
 - **验证**：pytest 266 passed 零回归·测试补断言（lookup 触发词不含附近）
 - **待用户 push**（先验后推·两组已验·通过）
 
+### ③w 行动（Wave 3 预检发起）
+- 用户定「继续 Wave 3·进 cb」→ 探索确认现状（可感知 10 项指标库完整·build_outlet_schema 只返单契约·validate_outlet_trigger_sync AST 解析模式可参考·B 评论↔POI 后置待做）→ 定稿 Wave 3 计划 + 发起预检（`_handoff/CB16-Wave3预检_2026-08-04.md`）
+- **草案 4 子项**：① B 评论↔POI 批量（attach_nearest_poi sjoin_nearest·新列禁覆盖 area_seed）② 可感知 10 项计算器（compute_perceptible_metrics·emc_field 表达式→指标值）③ validate_outlet_fields CI（AST 解析消费字段→死字段/缺消费）④ 多卡支持（多契约命中→cards 列表）
+- **预检 7 问**（给两组）：B sjoin 方案/性能/新列策略·可感知计算器表达式解析/计算语义/落点·validate CI 判定合理/放 tests 还是运行时·多卡兼容既有？·范围边界·测试方案·承重零触碰
+- **待两组 SCAN** → 反评价 → 实施
+
 ### ④ 状态
-`CB-15 P1 → 实施后检查通过 + P2 补修完成` —— 两组通过·P2×4（触发词去附近/source 非空/docstring/required_slots 对齐）+ 7 工具 drift backlog 全落地·验证全过（266 passed）。**可 push**（先验后推·两组已验）+ Wave 3（B 评论↔POI 批量 + 可感知计算器 + validate_outlet_fields CI）。
+`Wave 3 → 计划定稿 + 预检发起（CB 机制）` —— CB-15 P0/P1 已闭环（可 push·待用户）+ Wave 3 四子项探索完成（可感知计算器 / validate_outlet_fields CI / 多卡 / B 评论↔POI）·预检已发（待两组 SCAN 反评价）。待：两组预检 → 反评价 → 实施 → 实施后检查 → push。
 
 ---
 
