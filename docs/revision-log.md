@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月04日）** · 本节按板块分组、组内倒序；最新工作 = **CB-16 Wave 2 / CB-15 数据认知 P0 实施完成：两组预检反评价 + 下钻链最小闭环**（分支 `fix/emc-buglog`）。最近：
+> 📍 **最新动态（08月04日）** · 本节按板块分组、组内倒序；最新工作 = **CB-16 Wave 2 / CB-15 实施后检查通过 + P1/P2 补修（两组 SCAN·先验后推）**（分支 `fix/emc-buglog`）。最近：
+>
+> - **CB-16 Wave 2 检查反评价 + 补修（两组 SCAN·先验后推）**：Wave 2 P0 发实施后检查 → 两组 SCAN：**主体通过**（4 环节核心正确·3220 接入 4310·双模式 place_name·source 链完整·端点确定性·53 单测全过）。**glm组 P1（采纳·两组实锤）**：`_dedup_pois` 同名异址连锁店误删——`_seen` 先锁 name·第二条同名直接判重·坐标容差成死代码 → 去 `_seen`·改 name+坐标容差联合判定（O(n²)·n=4310·_load 一次）。**Codex P2（采纳）**：create_square_grid 未输出 cell_id 列 → 补确定性 cell_id（grid_{size}_{row}_{col}·4546）。**glm组 P2（采纳）**：补测试边界（去重连锁店 / grid place_name_source=poi_sjoin / cell_id 列）。**验证**：all_pois=4342（修复后恢复 32 条误删连锁店·预期）·pytest 261 passed 零回归（+3 新增）。**可 push**（先验后推·两组已验）。**§0 拓扑 N/A**。
 >
 > - **CB-16 Wave 2 / CB-15 P0（两组预检反评价 + 实施）**：下钻链最小闭环五件套（place_name 双源融合 + poi_names + /grid/pois + 3220 接入 + 去重）。**两组一致 P0 实锤**：place_layer 未读 3220（读的是 SCRIPT/poi_data/amap_poi_wgs84.json 1270·非 DATA/POI/3220 FC）+ 3220 字段错配（坐标在 geometry·无 lng/lat/baidu/domain）→ 加 `_read_pois_geojson` 适配层 + _load 合并 + `_dedup_pois`（name+coord 容差·保先序 1270 优先）。**P1 采纳**：place_name 语义分层（polygon 保留边界名·grid POI 优先·最近质心 POI）+ place_name_source 可追溯 + sjoin 列名冲突修复（poi/poly 双 name → poly_ 前缀）。**落地**：`place_layer.py`（_read_pois_geojson + _load 合并 3220 + _dedup_pois）·`spatial_analysis.py`（_attach_poi_attrs grid/polygon 双模式 + place_name_source + 两处接入）·`api/geo_routes.py`（/grid/pois 端点·cell_id/质心双收·确定性）。**验证**：3220 接入 all_pois=4310（去重 187）·reverse 覆盖扩大 · /grid/pois 端点 200（centroid count=32 CBD·cell_id 一致）· pytest 258 passed 零回归（+5 新增·test_geocode limit 适配 3220 扩容）。**待**：两组实施后检查 + 用户 push + P1（lookup_place/归因落点模板）。**§0 拓扑 N/A**。
 >

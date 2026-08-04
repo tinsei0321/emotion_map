@@ -326,22 +326,23 @@ class PlaceLayer:
     def _dedup_pois(pois):
         """3220 vs 1270 去重（CB-16 Wave 2·同源 poi_id 重叠）：name 归一化 + coord 容差（~30m）。
 
-        保先序（1270 优先·带 baidu_level/zone 归属）·3220 补未覆盖。name 含空格/括号归一后相等
-        或坐标 < 30m → 视为重复·去后序。
+        保先序（1270 优先·带 baidu_level/zone 归属）·3220 补未覆盖。**同名且坐标<30m 才视为重复**
+        （CB-16 Wave 2 检查·glm组/Codex P1 修复：去掉 `_seen` name 快检——旧版同名第二条直接判重·
+        连锁店/分店（名同址异）被误删·坐标容差成死代码）。
+        O(n²) 线性扫描（n=4310·_load 只跑一次·毫秒级可接受）。
         """
-        _seen = set()
         out = []
         for _p in pois:
             _nm = _p.get('name', '').replace(' ', '').replace('（', '(').replace('）', ')')
-            _dup = _nm in _seen
+            _dup = False
+            # 坐标容差优先：同名 + 坐标<30m 才算重复（同 POI 微偏移）·名同址异是两条（连锁店）
+            for _q in out:
+                _qm = _q.get('name', '').replace(' ', '').replace('（', '(').replace('）', ')')
+                if _qm == _nm and abs(_q.get('lng', 0) - _p.get('lng', 0)) < 0.0003 \
+                        and abs(_q.get('lat', 0) - _p.get('lat', 0)) < 0.0003:
+                    _dup = True
+                    break
             if not _dup:
-                # 坐标容差：同名同址（<30m）才算重复（同 POI 微偏移）·名同址异是两条（连锁店）
-                for _q in out:
-                    if _q.get('name', '').replace(' ', '') == _nm and abs(_q.get('lng', 0) - _p.get('lng', 0)) < 0.0003 and abs(_q.get('lat', 0) - _p.get('lat', 0)) < 0.0003:
-                        _dup = True
-                        break
-            if not _dup:
-                _seen.add(_nm)
                 out.append(_p)
         return out
 

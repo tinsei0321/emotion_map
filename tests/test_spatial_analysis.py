@@ -261,3 +261,46 @@ def test_aggregate_poi_attrs_polygon():
     merged = aggregate_by_polygons(pts, poly, agg_cols=['score'], polygon_name_col='name')
     assert 'poi_names' in merged.columns or 'place_name_source' in merged.columns, \
         f'聚合应含 POI 属性列（{list(merged.columns)}）'
+
+
+def test_dedup_pois_chain_stores():
+    """Wave 2 检查（glm组/Codex P1）：去重连锁店（同名异址）不被误删·同址去重。
+
+    CB-16 Wave 2 检查 bug：旧 _seen name 快检短路·同名第二条直接判重 → 远址连锁店误删。
+    修复：name + 坐标容差 <30m 联合判定·名同址异是两条。
+    """
+    from core.place_layer import PlaceLayer
+    pois = [
+        {'name': '万达广场', 'lng': 111.29, 'lat': 30.70},            # 店1
+        {'name': '万达广场', 'lng': 111.35, 'lat': 30.75},            # 店2 远址·应保留
+        {'name': '万达广场', 'lng': 111.2901, 'lat': 30.7001},        # 店1 微偏移·应去重（<30m）
+        {'name': '710生活小区', 'lng': 111.28, 'lat': 30.69},         # 独立·保留
+    ]
+    out = PlaceLayer._dedup_pois(pois)
+    names = [p['name'] for p in out]
+    assert names.count('万达广场') == 2, f'连锁店（名同址异）应保留 2 条·实际 {names}'
+    assert '710生活小区' in names
+    assert len(out) == 3, f'预期 3 条（万达×2 + 710）·实际 {len(out)}'
+
+
+def test_create_square_grid_cell_id():
+    """Wave 2 检查（Codex P2）：create_square_grid 输出 cell_id 列（确定性 grid_{size}_{row}_{col}）。"""
+    grid = create_square_grid(_synth_points(100), cell_size=200, unit='m')
+    assert 'cell_id' in grid.columns, f'应输出 cell_id（{list(grid.columns)}）'
+    for cid in grid['cell_id'].dropna().head(3):
+        parts = cid.split('_')
+        assert len(parts) == 4 and parts[0] == 'grid' and parts[1] == '200', \
+            f'cell_id 应 grid_200_{"{row}"}_{"{col}"}（{cid}）'
+
+
+def test_grid_place_name_source_poi():
+    """Wave 2 检查（glm组 P2）：grid 模式 place_name_source == poi_sjoin（POI 覆盖）。"""
+    # 西陵区中心（POI 密集·CBD）小格 → 应命中 POI
+    pts = gpd.GeoDataFrame(
+        {'geometry': [Point(111.286, 30.708)], 'score': [0.5], 'polarity': ['Neutral']}, crs='EPSG:4326')
+    grid = create_square_grid(pts, cell_size=200, unit='m')
+    row = grid.iloc[0]
+    assert row.get('place_name_source') == 'poi_sjoin', \
+        f'grid 中心应 place_name_source=poi_sjoin（实际 {row.get("place_name_source")}）'
+    assert row.get('place_name'), f'grid 中心应 place_name 非空（{row.get("place_name")}）'
+    assert row.get('poi_names'), f'grid 中心应 poi_names 非空（{row.get("poi_names")}）'

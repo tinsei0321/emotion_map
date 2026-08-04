@@ -171,8 +171,17 @@
 - **未推**（623e293·先验后推：两组通过后 push）
 - 待两组检查 SCAN → 反评价
 
+### ③r 行动（Wave 2 检查反评价 + 补修 · 两组 SCAN 处理）
+- **两组检查 SCAN 到**（`CB16-Wave2完成-检查_Codex-GPT5` + `CB16-Wave2完成-glm组`）·反评价：
+  - **两组一致**：Wave 2 P0 主体通过（4 环节核心正确·3220 接入 4310·双模式 place_name·source 链完整·端点确定性·53 单测全过）
+  - **glm组 P1（采纳·两组实锤）**：`_dedup_pois` 同名异址连锁店误删——`_seen` 先锁 name·第二条同名直接判重·坐标容差成死代码 → 去 `_seen`·改 name+坐标容差联合判定（O(n²)·n=4310·_load 一次）
+  - **Codex P2（采纳）**：create_square_grid 未输出 cell_id 列 → 补确定性 cell_id（grid_{size}_{row}_{col}·4546）
+  - **glm组 P2（采纳）**：补测试边界（去重连锁店 / grid place_name_source=poi_sjoin / cell_id 列）
+- **验证**：all_pois=4342（修复后恢复 32 条误删连锁店·预期）·pytest 261 passed 零回归（+3 新增）
+- **待用户 push**（先验后推·两组已验·通过）
+
 ### ④ 状态
-`Wave 2 / CB-15 P0 → 实施完成 → 实施后检查发起（先验后推）` —— 两组预检反评价已落地·检查请求已发（待 SCAN 反评价·通过后 push 2 commit）。待：两组检查 + 用户 push + P1（lookup_place/归因落点模板）。
+`Wave 2 / CB-15 P0 → 实施后检查通过 + P1/P2 补修完成` —— 两组通过·glm组 P1（去重连锁店误删）+ Codex P2（cell_id 输出列）+ 测试边界全落地·验证全过（261 passed + all_pois 4342）。**可 push**（先验后推·两组已验）+ P1（lookup_place/归因落点模板）。
 
 ---
 

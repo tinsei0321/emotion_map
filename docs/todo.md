@@ -11,13 +11,13 @@
 
 ## 📅 2026-08-04（CB-16 大南门数据专题 · 数据接入 EMC 出口链路闭环 + R7 截断修复 + Wave 1/2 出口 + CB-15 数据认知）
 
-### 🔄 Wave 2 / CB-15 数据认知 P0 · 实施完成（待两组检查·先验后推）
+### ✅ Wave 2 / CB-15 数据认知 P0 · 实施后检查通过 + P1/P2 补修（**可 push**·先验后推）
 
 - **范围**：下钻链最小闭环（place_name 双源融合 + poi_names + /grid/pois + 3220 接入 + 去重）
 - **两组预检反评价**：P0 实锤 place_layer 未读 3220（1270≠3220·FC 字段错配）→ _read_pois_geojson 适配层 + _load 合并 + _dedup_pois·P1 语义分层（polygon 保留边界名·grid POI 优先·最近质心）+ place_name_source
-- **落地**：place_layer.py（3220 接入·all_pois=4310）·spatial_analysis.py（_attach_poi_attrs + source + sjoin 列名冲突修复）·api/geo_routes.py（/grid/pois·cell_id/质心双收）
-- **验证**：3220 all_pois=4310（去重 187）·reverse 覆盖·grid/pois 200（centroid count=32 CBD·cell_id 一致）·**pytest 258 passed 零回归**（+5 新增）
-- **待**：两组实施后检查 → 反评价 → push · P1（lookup_place/归因落点模板）
+- **两组检查反评价**：主体通过 + **glm组 P1**（_dedup_pois 连锁店误删·_seen 先锁 name → name+坐标容差联合判定）+ **Codex P2**（create_square_grid 输出 cell_id 列）+ **测试边界 3 新增**
+- **验证**：all_pois=4342（恢复 32 误删连锁店）·grid/pois 200（count=32 CBD）·**pytest 261 passed 零回归**（+3 新增）
+- **✅ 可 push**（两组已验）· **待用户 push** · P1（lookup_place/归因落点模板）
 
 ### ✅ Wave 1（macro 出口）· 实施后检查通过 + P1/P2 补修（**可 push**·先验后推）
 

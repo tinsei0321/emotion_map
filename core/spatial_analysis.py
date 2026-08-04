@@ -813,6 +813,12 @@ def create_square_grid(
     # 合并统计回方格（inner：仅保留有点的格）→ 回 WGS84
     result = cells_gdf.merge(stats, left_index=True, right_index=True, how='inner')
     result = gpd.GeoDataFrame(result, geometry='geometry', crs=target_crs)
+    # CB-16 Wave 2 检查（Codex P2）：cell_id 确定性格 id（grid_{cell_size}_{row}_{col}·4546 米制）
+    #   /grid/pois 端点双收（cell_id 或质心）·前端点击格自带 cell_id 直接查（免自算）
+    _b = result.geometry.bounds
+    _row = np.floor(_b['miny'] / cs).astype(int)
+    _col = np.floor(_b['minx'] / cs).astype(int)
+    result['cell_id'] = 'grid_' + str(int(cs)) + '_' + _row.astype(str) + '_' + _col.astype(str)
     return result.to_crs('EPSG:4326')
 
 
