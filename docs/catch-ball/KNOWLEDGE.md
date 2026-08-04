@@ -90,6 +90,14 @@
 
 ---
 
+## §7 评估协作规则（CB-16 ③z 确立·2026-08-04）
+
+> 评估方（Codex / glm组）与开发主（claude组）**同一本地工作区**协作。跨轮共识，勿再违反。
+
+1. **评估方不 git pull / 不 git push**——只读本地文件即可（工作区与 claude组 同步，claude组 负责 git 操作）。请求文档第一步统一写「读本地文件·无需 git pull/push」。
+2. **claude组 先验后推**：发起/预检文档（草案）可 push（供评估方读 + 跨环境同步）；**实施代码须两组检查通过后才 push**（先验后推·`先讨论再实施`）。
+3. 请求文档模板：`docs/catch-ball/_handoff/CB{NN}-{topic}预检*.md`（第一步读本地文件·第二步草案·第三步预检 N 问·第四步产 SCAN）。
+
 ## §6 Auto-Check 清单（/cb step 5 加载·数据驱动，CB-03 建议2）
 
 每次 counter-evaluation 必须执行（可追加，不删除）：

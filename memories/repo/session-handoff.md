@@ -84,7 +84,7 @@
 
 - **承重**：diagnose prompt / harness orchestrate 主循环 / ChatRequest schema / **`@track()` 签名 / `_TRACKING_REGISTRY` 格式**（改前先扩 eval·每次一处）
 - **出口抽象层**：不新增 LLM 阶段（撞 D019）·outlet 契约走 tool_contracts 单一源·能/不能双栏诚实·确定性组装（compute_perceptible 不调 LLM）
-- **CB 机制**：每轮工作进 CB（实施前预告 + 实施后检查·两组 SCAN 反评价）·prompt 用代码块包裹（可点击复制）
+- **CB 机制**：每轮工作进 CB（实施前预检 + 实施后检查·两组 SCAN 反评价·先讨论再实施·先验后推）·评估方（Codex/glm）同一本地工作区只读·不 git pull/push（claude组 负责 git）·prompt 用代码块包裹（可点击复制）·草案也进 CB（不只修复）
 - **trace 取证**：根因分析先 `trace_query --stats`·推断只作假设
 - **EMC 产物不临时创造样式**；不动 FC prompt；代码禁 emoji；print 走 `_safe_print`
 - **改 Python 后重启 serve**；commit 后 push（网络不稳时待恢复）
