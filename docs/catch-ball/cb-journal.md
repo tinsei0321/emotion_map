@@ -198,8 +198,14 @@
 - **已知**：test_validate_skill_params density.when drift 为**既有**（HEAD 版同 fail·非本次引入·backlog）
 - **待两组实施后检查**（用户定 CB 机制·先验后推）
 
+### ③u 行动（CB-15 P1 实施后检查发起·先验后推）
+- 用户定「发起 P1 实施后检查」→ 发起检查请求（`_handoff/CB16-CB15-P1完成检查_2026-08-04.md`）：4 环节核验（① buffer fallback ② + 合成 + 文案 ③ lookup_place 契约三处同步 ④ 测试）+ 端到端验证（buffer 中文名 200 / lookup_place 契约 / 浏览器奥体中心 + 滨江公园）
+- **预检 7 问**（给两组）：buffer fallback 边界/preset 优先·+ 合成破坏既有用例？·lookup_place 契约同步完整 + 触发词避周边有效？·:179 文案正确？·测试边界（多命中 top-1/坐标直查）？·承重零触碰？·density.when drift 既有不阻塞？
+- **未推**（61567d6·先验后推：两组通过后 push）
+- 待两组检查 SCAN → 反评价
+
 ### ④ 状态
-`CB-15 P1 → 两组预检反评价 + 实施完成（待两组检查·先验后推）` —— A buffer 中文 POI + C lookup_place + D 落点模板落地·B 后置 Wave 3·验证全过（266 passed）。待：两组实施后检查 → 反评价 → 用户 push + Wave 3（B 评论↔POI + 可感知计算器）。
+`CB-15 P1 → 实施完成 → 实施后检查发起（先验后推）` —— 两组预检反评价已落地·检查请求已发（待 SCAN 反评价·通过后 push）。待：两组检查 + 用户 push + Wave 3（B 评论↔POI 批量 + 可感知计算器 + validate_outlet_fields CI）。
 
 ---
 
