@@ -134,8 +134,14 @@
 - **验证**：pytest 253 passed（+4 新增·零回归）·括号配对平衡×3 · E2E 两场景全过（rows 门放宽出卡 + 字段非空 + scale 限定·outlet_card 端点 200）
 - **待用户浏览器复验**（macro 问句真出卡）
 
+### ③m 行动（Wave 1 实施后检查发起·先验后推）
+- 用户定「进 cb·先验后推」→ 发起 Wave 1 实施后检查（`_handoff/CB16-Wave1完成检查_2026-08-04.md`）：5 环节核验（① _extract_emc_value 统一收 ② _lastToolRows 缓存×3 + 门放宽 ③ DOMAIN_KW 城市体检 ④ checkup_dimension scale 限定 ⑤ data_base rows + 测试）+ 端到端验证（单测 15+6+2 + E2E 两场景 + 浏览器）
+- **预检 7 问**（给两组）：统一收正确性（有无破坏 features 用例）·缓存×3 覆盖全部工具路径？·门放宽副作用？·scale 限定正确性？·data_base 语义？·城市体检长词触发正确性？·测试覆盖够？
+- **未推**（97cf232 + 9ea1290·先验后推：两组通过后用户 push）
+- 待两组检查 SCAN → 反评价
+
 ### ④ 状态
-`Wave 1 macro 出口 → 两组预检通过 + 实施完成` —— 两组 agree·Codex P1（scale 限定）+ claude组 P1×3（统一收产物/城市体检长词/data_base 语义）全落地·rows 可达性缓存解决·验证全过（253 passed + E2E）。待：用户浏览器复验 + Wave 2（CB-15 前置·后置）。
+`Wave 1 macro 出口 → 实施完成 → 实施后检查发起（先验后推）` —— 两组预检反评价已落地·检查请求已发（待 SCAN 反评价·通过后 push 2 commit）。待：两组检查 + 用户 push + 浏览器复验 + Wave 2（CB-15 前置·后置）。
 
 ---
 
