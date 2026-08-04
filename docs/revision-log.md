@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月04日）** · 本节按板块分组、组内倒序；最新工作 = **CB-16 大南门数据专题实施完成：数据接入 EMC 出口链路（预检通过→实施→验证 249 passed）**（c792c5d·分支 `fix/emc-buglog`）。最近：
+> 📍 **最新动态（08月04日）** · 本节按板块分组、组内倒序；最新工作 = **CB-16 R7 结论截断修复（用户实测·阈值 1500 + 结构回切）**（0aff59e·分支 `fix/emc-buglog`）。最近：
+>
+> - **CB-16 R7 结论截断修复（0aff59e）**：用户浏览器实测「大南门·二马路片区更新需求分析」发现结尾「**4.**\n…（结论已截断）」——问"未完成"。**根因**：R7 防线（harness.js applyQualityDefense）`>800 字 → slice(0,800)` 字符级硬切——阈值过低（用户定：多要素结论超 800 正常·实测结论 p95≈1000）+ 切点不感知 markdown（恰切「**4.**」标题后）+ 连带 R2 `{{show:}}` 按钮被切（图层主出口失效）+ 文案误导。**修复**（纯 harness.js·不碰承重）：阈值 **800→1500**（用户定）·切点**结构回切**（lastIndexOf 句号/换行·下限 750·治空标题）·**R2 移 R7 后**（按钮保留）·文案场景化（有/无图层区分）。**验证**：括号配对完整（+7/+7）·Playwright 页面零 console 错误·pytest 249 passed 零回归。**待**：用户 F5 复验。**§0 拓扑 N/A**。
 >
 > - **CB-16 大南门数据专题实施完成（c792c5d）**：交接卡【下一步】核心待续项打穿——**大南门·二马路数据接入 EMC 出口链路**（Wave 0 端到端演示数据场景）。两组预检通过（Codex 必补项：边界文件须复制进 presets/·已落实；claude组 建议：backfill id_e 断言/保 BOM/列加末尾/生成器 TODO 全落实）。**实施**：① `SCRIPT/backfill_ermawu_coords.py` 一次性补丁——T1/T2/T3 共 2400 行补 lon/lat（id_e 断言·幂等·备份·保 BOM·生成器修复 TODO）② `core/geo_registry.py` `_POINT_LAYERS` 末尾追加 `ermawu_l3l4_t{1,2,3}`（level='L3L4'·富归因列 aspect/policy/project/matrix_multi/blind_spot 原样保留）③ `DATA/boundaries/presets/manifest.json`「城市更新单元」组加 `damanmen_area` + 复制 geojson 进 presets/（name"绘制多边形"→片区名）④ 测试 `tests/test_geo_registry.py` 新建 4 例 + `test_outlet_schema.py` +1 真实聚合出卡。**端到端验证**（真实端点）：/geo/catalog 暴露 3 ermawu 层 + damanmen 边界 → /geo/zonal_stats(ermawu_l3l4_t3 × damanmen_area) 578 点·polarity_index 0.73·domain_top=urban_operation·文化 → /aiqa/outlet_card 命中 **renewal_demand 需求分析卡**（需求强度 0.73·问题类型=停车难·数据基础 N=578·诚实标注）。**pytest 249 passed（+7·零回归）**。**观察**：真实 zonal 行无 place_name（需求位置缺失降级·诚实不编造·CB-15 后精确源升级）；level='L3L4' 对 density 枚举/R5 胶囊为知晓点（本轮不走·非阻塞）。**待**：浏览器 EMC 真实问答肉眼验证 + 时间轴 manifest 后置。**§0 拓扑 N/A**（改现有件·无新模块）。
 >
