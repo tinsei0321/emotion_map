@@ -180,8 +180,14 @@
 - **验证**：all_pois=4342（修复后恢复 32 条误删连锁店·预期）·pytest 261 passed 零回归（+3 新增）
 - **待用户 push**（先验后推·两组已验·通过）
 
+### ③s 行动（CB-15 P1 预检发起）
+- 用户定「出 P1 计划·走 CB 流程·执行」→ 探索确认四子项现状与缺口（buffer 中文 POI 根因 resolve_boundary 只认 preset/GeoJSON·评论↔POI 逐点 O(n·4310) 需 sjoin_nearest·search/reverse 端点已有但无 AI 工具·field_mapping 只读 place_name + 陈旧文案）→ 定稿 P1 计划 + 发起预检（`_handoff/CB16-CB15-P1预检_2026-08-04.md`）
+- **草案 4 子项**：A buffer 中文 POI（后端 fallback search_place）·B 评论↔POI 批量 sjoin_nearest · C lookup_place AI 工具（契约三处同步 + track ID）·D 归因落点模板（place_name+poi_names+issue_label 合成 + 修陈旧文案）
+- **预检 7 问**（给两组）：A 后端 fallback vs 前端 search 方案 + 边界·B sjoin_nearest 性能 + 落列污染·C 纯前端 vs 契约条目 + 触发词·D 落点模板破坏既有用例？·范围边界 P1 必要性·测试方案·承重零触碰
+- **待两组 SCAN** → 反评价 → 实施
+
 ### ④ 状态
-`Wave 2 / CB-15 P0 → 实施后检查通过 + P1/P2 补修完成` —— 两组通过·glm组 P1（去重连锁店误删）+ Codex P2（cell_id 输出列）+ 测试边界全落地·验证全过（261 passed + all_pois 4342）。**可 push**（先验后推·两组已验）+ P1（lookup_place/归因落点模板）。
+`CB-15 P1 → 计划定稿 + 预检发起（CB 机制）` —— Wave 2 P0 已闭环（可 push·待用户）+ P1 四子项探索完成（buffer 中文 POI / 评论↔POI / lookup_place / 归因落点模板）·预检已发（待两组 SCAN 反评价）。待：两组预检 → 反评价 → 实施 → 实施后检查 → push。
 
 ---
 
