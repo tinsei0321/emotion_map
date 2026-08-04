@@ -165,8 +165,14 @@
 - **验证**：3220 接入 all_pois=4310（去重 187）·reverse 覆盖扩大 · /grid/pois 端点 200（centroid count=32 CBD·cell_id 确定性一致）· pytest 258 passed 零回归
 - **待两组实施后检查**（用户定 CB 机制·先验后推）
 
+### ③q 行动（Wave 2 实施后检查发起·先验后推）
+- 用户定「实施后检查（两组核验）」→ 发起 Wave 2 实施后检查（`_handoff/CB16-Wave2完成检查_2026-08-04.md`）：4 环节核验（① _read_pois_geojson 适配层 + _dedup_pois ② _attach_poi_attrs 双模式 + sjoin 列名冲突修复 + place_name_source ③ /grid/pois 端点契约 ④ 测试）+ 端到端验证（3220 count=4310 + grid_pois 200 count=32 + 聚合 poi_names）
+- **预检 7 问**（给两组）：适配层字段映射遗漏？·去重连锁店不误删？·双模式/sjoin 冲突修复完整？·place_name_source 兜底链？·端点契约 + LLM 用法？·测试边界（空 POI 格/grid 覆盖/去重极端）？·承重零触碰？
+- **未推**（623e293·先验后推：两组通过后 push）
+- 待两组检查 SCAN → 反评价
+
 ### ④ 状态
-`Wave 2 / CB-15 P0 → 实施完成（待两组检查·先验后推）` —— 两组预检反评价全采纳·P0 五件套落地（3220 接入/place_name 双源/poi_names/grid/pois/去重）·验证全过（258 passed + 端点 200）。待：两组检查 SCAN + 反评价 + 用户 push + P1（lookup_place/归因落点模板）。
+`Wave 2 / CB-15 P0 → 实施完成 → 实施后检查发起（先验后推）` —— 两组预检反评价已落地·检查请求已发（待 SCAN 反评价·通过后 push 2 commit）。待：两组检查 + 用户 push + P1（lookup_place/归因落点模板）。
 
 ---
 
