@@ -7,14 +7,11 @@ import { fetchRangePreset } from './api.js';
 
 // 8 组团 → preset MC（polygon 来源）。高新区·生物产业园 = 生物产业园 + 龙泉绿心 合并。
 const _TUAN_MAP = {
+  // ③w6b（用户拍板）：preset 行政区 fixture 清 4 真实区划（FIXED_ADMIN_DISTRICTS·西陵/伍家岗/猇亭/点军）·法定功能区（小溪塔/龙泉/生物产业园/白洋）不再预置 → 8 组团收敛 4
   '西陵': ['西陵区'],
   '伍家岗': ['伍家岗区'],
-  '点军': ['点军区'],
-  '小溪塔': ['小溪塔'],
-  '高新区·生物产业园': ['生物产业园', '龙泉绿心'],
-  '龙泉': ['龙泉'],
   '猇亭': ['猇亭区'],
-  '白洋·顾家店': ['白洋'],
+  '点军': ['点军区'],
 };
 const _TUAN_ORDER = Object.keys(_TUAN_MAP);
 const _MC_TO_TUAN = {};

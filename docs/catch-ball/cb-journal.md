@@ -355,6 +355,16 @@
 - **预检 7 问**（给两组）：footer 条件化 / FC boundary 校验误伤 / fixture 红线 / RST-L06 复跑方法 / eval 复采时机 / 范围优先级 / 承重零触碰
 - 待两组 SCAN → 反评价 → 实施
 
+### ③w6b 反评价（glm + Codex 预检 SCAN·草案可行·无 P0·用户拍板 fixture）
+- **Codex**（`scan/CB16-Backlog收尾预检_Codex-GPT5_2026-08-04.md`）·P1 修正×3：
+  - **RST-L06 fallback（③w5 已实施）对真实 preset 无效**：行政区.geojson 仅 MC 字段（manifest nameField=MC）·fallback 硬编码 name/NAME/name_field **永不命中·死代码** → 修 fallback 用 MC
+  - **item 3 fixture 9→4 有破坏性依赖**：district-stats.js `_TUAN_MAP` 按 9 MC 组 8 组团·清 4 坏 4 → 需同步改或不动
+  - **item 2 需来源识别**：FC 裸 geojson 无 source·无法判 preset vs upload·误伤风险
+- **glm组**（`scan/CB16-Backlog收尾预检_glm组_2026-08-04.md`）：通过·footer 条件化 + eval 注释低风险直接做·FC boundary 白名单**暂缓**（无 source 信息误伤·fixture 清理更直接）·fixture 清理**治本但需用户确认**
+- **用户拍板**：**fixture 清理 + 同步 district-stats**（治本·法定功能区不再可被 FC 直供）
+- **反评价采纳**：① footer 条件化（failedObs>0 才「未生成图层」）② FC boundary 白名单**暂缓**（fixture 清理后不需要）③ fixture 清理 + district-stats 同步 ④ RST-L06 fallback 改 MC（Codex P1 死代码修复）+ 复跑 ⑤ eval 注释精确化 + 发版前复采
+- 待实施 → ③w7 检查 → 通过后 push
+
 ---
 
 ### ① SCAN 摘要

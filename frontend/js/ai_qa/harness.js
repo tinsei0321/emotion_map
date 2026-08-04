@@ -234,10 +234,12 @@ function composeGapCard(diagnose, failedObs) {
   }
   const fails = (failedObs || []).filter(Boolean).slice(0, 4);
   const failTxt = fails.length ? '\n\n**已尝试但未成功**：\n' + fails.map((f) => '- ' + _esc(f)).join('\n') : '';
+  // ③w6b（Codex/glm）：footer「未生成图层」条件化——failedObs>0（试过工具）才说「未生成图层」·零工具尝试改「未完成分析」
+  const _footerLayer = (failedObs && failedObs.length > 0) ? '或未生成图层' : '';
   const guide = '\n\n**下一步建议**：\n'
     + '- 上传所需矢量数据（Shapefile / GeoJSON，EPSG:4326 或注明坐标系），在范围选择加载后重提此问；\n'
     + '- 或换一种问法 / 缩小范围（指定某区、某类用地、某时点）后重试。\n\n'
-    + '> 在没有可靠数据或未生成图层前，我不会凭空编造结论。补充后我将继续完成分析。';
+    + '> 在没有可靠数据' + _footerLayer + '前，我不会凭空编造结论。补充后我将继续完成分析。';
   return head + failTxt + guide;
 }
 
@@ -1134,7 +1136,8 @@ export async function orchestrate(ctx, hooks = {}) {
               const _dm = ctx.question.match(/(.+?)(?:区|市|县)/);
               const _pname = _dm ? _dm[1] : '';
               const _pf = _presetLayer.fc.features.find((f) => {
-                const v = f.properties && (f.properties.name || f.properties.NAME || f.properties.name_field);
+                // ③w6b（Codex P1）：行政区 preset 要素仅 MC 字段（manifest nameField=MC）·name/NAME/name_field 恒缺 → 永不命中（死代码）·补 MC
+                const v = f.properties && (f.properties.name || f.properties.NAME || f.properties.name_field || f.properties.MC);
                 return v != null && String(v).includes(_pname);
               });
               if (_pf) _boundary = { type: 'FeatureCollection', features: [_pf] };
