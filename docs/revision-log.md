@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月04日）** · 本节按板块分组、组内倒序；最新工作 = **CB-16 大南门数据专题实施预告：数据接入 EMC 出口链路（待两组预检）**（1008e96·分支 `fix/emc-buglog`）。最近：
+> 📍 **最新动态（08月04日）** · 本节按板块分组、组内倒序；最新工作 = **CB-16 大南门数据专题实施完成：数据接入 EMC 出口链路（预检通过→实施→验证 249 passed）**（c792c5d·分支 `fix/emc-buglog`）。最近：
+>
+> - **CB-16 大南门数据专题实施完成（c792c5d）**：交接卡【下一步】核心待续项打穿——**大南门·二马路数据接入 EMC 出口链路**（Wave 0 端到端演示数据场景）。两组预检通过（Codex 必补项：边界文件须复制进 presets/·已落实；claude组 建议：backfill id_e 断言/保 BOM/列加末尾/生成器 TODO 全落实）。**实施**：① `SCRIPT/backfill_ermawu_coords.py` 一次性补丁——T1/T2/T3 共 2400 行补 lon/lat（id_e 断言·幂等·备份·保 BOM·生成器修复 TODO）② `core/geo_registry.py` `_POINT_LAYERS` 末尾追加 `ermawu_l3l4_t{1,2,3}`（level='L3L4'·富归因列 aspect/policy/project/matrix_multi/blind_spot 原样保留）③ `DATA/boundaries/presets/manifest.json`「城市更新单元」组加 `damanmen_area` + 复制 geojson 进 presets/（name"绘制多边形"→片区名）④ 测试 `tests/test_geo_registry.py` 新建 4 例 + `test_outlet_schema.py` +1 真实聚合出卡。**端到端验证**（真实端点）：/geo/catalog 暴露 3 ermawu 层 + damanmen 边界 → /geo/zonal_stats(ermawu_l3l4_t3 × damanmen_area) 578 点·polarity_index 0.73·domain_top=urban_operation·文化 → /aiqa/outlet_card 命中 **renewal_demand 需求分析卡**（需求强度 0.73·问题类型=停车难·数据基础 N=578·诚实标注）。**pytest 249 passed（+7·零回归）**。**观察**：真实 zonal 行无 place_name（需求位置缺失降级·诚实不编造·CB-15 后精确源升级）；level='L3L4' 对 density 枚举/R5 胶囊为知晓点（本轮不走·非阻塞）。**待**：浏览器 EMC 真实问答肉眼验证 + 时间轴 manifest 后置。**§0 拓扑 N/A**（改现有件·无新模块）。
 >
 > - **CB-16 大南门数据专题实施预告（1008e96）**：交接卡【下一步】核心待续项推进——**大南门·二马路数据接入 EMC 出口链路**（数据接入·非新契约/非新 LLM 阶段·不碰承重路径）。探索发现 3 缺口：① ermawu CSV 无 lon/lat（坐标只在 geojson·`get_layer_points` 读 CSV 要 lon/lat）② ermawu 三层未注册 `geo_registry._POINT_LAYERS`（问答 resolve_points 无法加载）③ 大南门边界不在 range presets manifest（/geo/catalog boundaries 不可见·LLM 无法按"大南门"抽取分析）。**实施方案**（发两组预检）：CSV 补坐标列（一次性 backfill 脚本·不动生成器不重新模拟）+ 注册点层（`ermawu_l3l4_t{1,2,3}`·level='L3L4'）+ 边界登记（presets manifest·nameField=name）+ 回归测试 + 端到端出卡（POST /outlet_card + 浏览器问答）。**用户定**：时间轴 manifest（_time_manifest.json）与需求分析是两件事·后置（本次不做）。请求落 `_handoff/CB16-大南门数据专题实施_2026-08-04.md`。**§0 拓扑 N/A**（改 geo_registry/manifest 现有件·无新模块）。
 >

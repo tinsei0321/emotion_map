@@ -9,6 +9,27 @@
 
 ---
 
+## 📅 2026-08-04（CB-16 大南门数据专题 · 数据接入 EMC 出口链路闭环）
+
+### ✅ 大南门·二马路数据接入 EMC 出口链路（commit c792c5d·**待用户 push**）
+
+交接卡【下一步】核心待续项打穿——Wave 0 端到端演示数据场景。两组预检通过（Codex 必补项 + claude组 建议全纳入）→ 实施 → 验证 249 passed。
+
+- **backfill**：`SCRIPT/backfill_ermawu_coords.py`（一次性·id_e 断言·保 BOM·备份·生成器修复 TODO）→ T1/T2/T3 共 2400 行补 lon/lat
+- **注册点层**：`core/geo_registry.py` 追加 `ermawu_l3l4_t{1,2,3}`（level='L3L4'·富归因列原样保留）
+- **边界登记**：`DATA/boundaries/presets/manifest.json` 加 `damanmen_area` + **复制 geojson 进 presets/**（Codex 必补项·name 属性改为片区名）
+- **测试**：`tests/test_geo_registry.py` 新建 4 例 + `test_outlet_schema.py` +1 真实聚合出卡
+- **端到端验证**：/geo/catalog 暴露 3 ermawu 层 + damanmen 边界 → /geo/zonal_stats 578 点（polarity_index 0.73·文化）→ /outlet_card 命中 **renewal_demand 需求分析卡**（需求强度 0.73·停车难·N=578）
+- **pytest 249 passed（+7·零回归）**
+
+### 待续
+- **浏览器 EMC 真实问答肉眼验证**（问"大南门·二马路片区更新需求分析"→ 应出诊断卡 + 分析执行 + 出口需求分析卡·LLM 选层/路由走真实链路）
+- **时间轴 manifest（_time_manifest.json）**（用户定·与需求分析是两件事·后置）
+- Wave 1 macro 出口 / Wave 2 place_name 精确源 / Wave 3 可感知计算器（交接卡后续）
+- CB-16 Wave 0 完成检查（两组 SCAN 待反评价·③f 发起）
+
+---
+
 ## 📅 2026-08-03（CB-13 反评价闭环 · 多步问最终收敛 + PRM-08/CPD 根因定案）
 
 ### ✅ CB-13 反评价闭环（revision-log 5.254，commit e052fe7 · **用户手动 push**）
