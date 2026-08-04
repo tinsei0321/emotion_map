@@ -307,6 +307,13 @@
 - **反评价**：两组通过·可推。**保留 paradigm 同步**（消除漂移·正确方向）·实施 3 项正确（validate 4 passed + renewal 门控 + 全局优化）·PRM-03/04/07 = 既有 backlog·**RST-L06 = 独立 backlog**（clip range derive·非本次引入·修法 = 排查 chain boundary derive·Codex 建议复跑 ×3 实证）
 - **待**：eval 回归（P1 验证·同步改附录文本）+ RST-L06 复跑 ×3 → 通过后 push
 
+### ③w4 行动（无法回答措辞修复 预检发起·先讨论再实施）
+- 用户实测「EMC 无法回答时结论统一'无法生成图层'·但问题可能与图层无关」→ 出 plan 进 CB（`_handoff/CB16-WordFix预检_2026-08-04.md`）
+- **根因定位**：`harness.js:1310` gap 出口 `newLayerCount === 0 && !hasRows` 只看产出不看问题性质·composeGapCard :227 默认「没能生成可用的图层」·全仓无「无法回答」措辞·failedObs（:897·工具失败时 push）是客观判据
+- **草案**：failedObs.length>0（在试图层）→ 现有图层措辞；=0（零工具尝试）→ 新「当前无法直接回答」措辞·exit:'gap' 结构不动·不动 quickIntent/answered
+- **预检 6 问**（给两组）：failedObs 判据可靠？新措辞得体？结构保留对吗？测试方案？范围边界？承重零触碰？
+- 待两组 SCAN → 反评价 → 实施
+
 ---
 
 ### ① SCAN 摘要
