@@ -11,16 +11,18 @@
 
 ## 📅 2026-08-04（CB-16 大南门数据专题 · 数据接入 EMC 出口链路闭环 + R7 截断修复 + Wave 1/2/3 出口 + CB-15 P0/P1 数据认知）
 
-### 🔄 Wave 3 · 实施完成 + 检查请求已发（待两组 SCAN·先验后推）
+### ✅ Wave 3 + ③z 余留 2b/P2 · 全闭环（两组检查通过·已推）
 
-- **范围**：出口深化最后一块（多卡 + validate_outlet_fields CI + 可感知计算器 2a·B 评论↔POI 再后置）
-- **两组预检反评价**：草案可行·无 P0（glm 计算器分步 2a/2b·多卡同 domain 去重·Codex 表达式共享）
+- **范围**：出口深化最后一块（多卡 + validate_outlet_fields CI + 可感知计算器 2a + **③z 余留 2b + P2**）
 - **多卡落地**：resolve_outlet_ids（跨 domain 多卡·同 domain 最高分）+ build_outlet_schema 返 cards + build_outlet_schema_single 兼容 + /outlet_card 返 {cards, card} + 前端多卡渲染
-- **validate_outlet_fields CI 落地**：tests/validate_outlet_fields.py（正则提取消费字段→死字段 fail/缺消费 warn·2 passed）
-- **可感知计算器 2a 落地**：compute_perceptible_metrics（极性类·关键词命中标注·缺失诚实·B 类条件等式后置 2b）
-- **验证**：pytest 269 passed（+3）·端点多卡（renewal_demand + checkup_satisfaction·card[0] 兼容·perceptible_metrics 有值）
-- **检查请求已发**（0862f09·Wave 3 实施后检查·待两组 SCAN）· **可 push**（0862f09 待推）
-- **后续**：Wave 3 余（2b 条件等式·可选）· Wave 0-3 出口抽象层完整
+- **validate_outlet_fields CI 落地**：tests/validate_outlet_fields.py（正则提取消费字段→死字段 fail/缺消费 warn）
+- **③z 2b 落地**（两组预检 P1×3 全采纳）：`_parse_emc_expr`（拆 `+`·**多值 `/` 拆列表**·含 polarity→2a）+ compute_perceptible_metrics 2a/2b（**生态宜居明示留 2a**·2b 仅可感知·条件不匹配→跳过·**关键词未命中→跳过**·source 对齐）+ `_kw_hit` 共用
+- **③z P2 落地**：checkup_satisfaction prose→真实字段（满意度 polarity_index·8 领域 element_top/domain_top **element_top 优先**·不满意项不动）
+- **panel.js 渲染 perceptible_metrics**（可感知指标小节·Codex P2 并入）+ .outlet-metrics CSS（③z3b P2-1）
+- **③z3b 检查两组通过**（无 P0/P1）·采纳 P2-1/3（CSS + 边界测试·+2）·P2-2（`==`）不采纳
+- **验证**：pytest 276 passed（+9）零回归·真端点（cards 2 张 + B 类条件命中出值·source 标条件+命中）
+- **已推**（0a0d103·先验后推解锁·远端 0/0 同步）
+- **后续**：backlog（7 工具 drift·MOD_PLACE 渲染风暴·MOD_LLM.F_002·CPD-L01/L02·时间轴 manifest·renewal 卡 domain 门控）
 
 ### ✅ CB-15 P1 · 实施后检查通过 + P2 补修（**可 push**·先验后推）
 
@@ -85,10 +87,9 @@ R7 修复发实施后检查 → 两组 SCAN：**claude组 P0 发现** `lastIndex
 - **pytest 249 passed（+7·零回归）**
 
 ### 待续
-- **浏览器 EMC 真实问答肉眼验证**（问"大南门·二马路片区更新需求分析"→ 应出诊断卡 + 分析执行 + 出口需求分析卡·LLM 选层/路由走真实链路）
+- **浏览器 EMC 真实问答肉眼验证**（问"大南门·二马路片区更新需求分析"→ 应出诊断卡 + 分析执行 + 出口需求分析卡·LLM 选层/路由走真实链路 + **perceptible_metrics 可感知指标小节**）
 - **时间轴 manifest（_time_manifest.json）**（用户定·与需求分析是两件事·后置）
-- **③z 余留 2b + P2 预检已发**（`_handoff/CB16-Wave3预检2b-P2_2026-08-04.md`·待两组补充 SCAN → 反评价 → 实施：计算器 2b B 类条件等式 + checkup_satisfaction prose→字段）
-- Wave 3 检查 SCAN 处理（0862f09 已发·待反评价）
+- **backlog**：validate_skill_params 7 工具 drift（paradigm when 同步）· MOD_PLACE 渲染风暴 + MOD_LLM.F_002 fallback 重核 + CPD-L01/L02 + 时间轴 manifest 404 · renewal 卡 perceptible_metrics domain 门控（③z3 已知）
 
 ---
 
