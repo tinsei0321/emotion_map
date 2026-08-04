@@ -300,6 +300,16 @@ function renderOutletCard(card) {
   const base = (card.data_base && card.data_base.N != null)
     ? `N=${card.data_base.N} 条评论${card.data_base.note ? `（${esc(card.data_base.note)}）` : ''}` : '';
 
+  // 可感知体检指标（compute_perceptible_metrics·2a/2b·③z2 Codex P2 并入：UI 可见性）
+  const metricsHtml = (card.perceptible_metrics || []).map((mt) => {
+    const gray = (mt.value === '暂无数据') ? ' class="outlet-muted"' : '';
+    return `<div class="outlet-field"><span class="outlet-field-key">${esc(mt.metric)}</span>`
+      + `<span${gray} title="${esc(mt.source || '')}">${esc(mt.value)}</span></div>`;
+  }).join('');
+  const metricsBlock = metricsHtml
+    ? `<div class="outlet-metrics"><div class="outlet-metrics-title">可感知体检指标</div>${metricsHtml}</div>`
+    : '';
+
   // 卡片头（接口标识）+ 字段 + 对接建议 + 局限（引用块·与 CB-12 降级格式一致）
   el.innerHTML = `<div class="cpd-guide-card-head">`
     + `<div class="cpd-guide-card-title">${esc(card.name || '行业出口卡片')}</div></div>`
@@ -307,6 +317,7 @@ function renderOutletCard(card) {
     + `<div class="outlet-interface">${esc(card.interface || '')}</div>`
     + (base ? `<div class="outlet-base">${base}</div>` : '')
     + fieldsHtml
+    + metricsBlock
     + (task ? `<div class="outlet-task"><span class="outlet-field-key">对接任务</span>${task}</div>` : '')
     + (limits ? `<div class="outlet-limits">${limits}</div>` : '')
     + `<div class="outlet-source">${esc(card.source || '确定性组装')}</div>`

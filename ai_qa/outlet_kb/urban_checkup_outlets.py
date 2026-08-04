@@ -22,9 +22,11 @@ CONTRACTS = {
         'industry_interface': '城市体检·社会满意度调查（4 尺度问卷·住房/小区/街区/城区）',
         'scales': ['macro', 'meso', 'micro'],
         'field_mapping': {
-            '满意度（4 尺度）': '评论情绪 → 自动满意率',   # 替代问卷
-            '8 领域情绪值': '4×5 归因 → 领域情绪',        # 生态宜居等
-            '不满意项定位': 'issue_label + place_name',   # 老旧小区/停车等
+            # CB-16 ③z2 P2（Codex/glm）：prose → 真实字段（防空卡）·对齐 Wave 1 checkup_dimension
+            #   '/' = 优先取前者（_build_card split('/')[0]）·element_top 优先（中文要素·贴近"8 领域"语义）
+            '满意度（4 尺度）': 'polarity_index',                # 评论情绪 → 自动满意率（极性=满意度代理·非问卷率）
+            '8 领域情绪值': 'element_top/domain_top + polarity_index',   # 4×5 归因 → 领域情绪
+            '不满意项定位': 'issue_label + place_name',         # 老旧小区/停车等
         },
         'can': '海量评论全量聚合 → 自动满意率（替代/补充小样本问卷）·空间精准',
         'cannot': '不能测"知晓率/使用率/行为"（需结构化问卷）',

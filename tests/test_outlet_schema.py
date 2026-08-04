@@ -295,3 +295,97 @@ def test_wave3_compute_perceptible_metrics():
     metrics_empty = compute_perceptible_metrics({'rows': [{'issue_label': '停车难'}]})
     empty_vals = {m['metric']: m['value'] for m in metrics_empty}
     assert any(v == '暂无数据' for v in empty_vals.values()), f'缺失应降级暂无数据（{empty_vals}）'
+
+
+# ── ③z2 可感知计算器 2b（B 类条件等式·Codex/glm 反评价采纳）──
+def test_wave3_2b_conditional_match():
+    """③z2 2b：条件匹配（element_top=环境 + 关键词命中）→ B 类指标出值 + source 标条件/命中。"""
+    from ai_qa.outlet_kb.build_outlet_schema import compute_perceptible_metrics
+    result = {'rows': [{'element_top': '环境', 'topic_top': '公园散步',
+                        'issue_label': '绿地不足', 'polarity_index': -0.3}]}
+    metrics = compute_perceptible_metrics(result)
+    by_name = {m['metric']: m for m in metrics}
+    # 公园绿地步行可达性感知（B 类·条件=环境 + 值=topic_top + 关键词公园/绿地/散步）
+    park = by_name.get('公园绿地步行可达性感知')
+    assert park is not None, f'B 类应出值（{list(by_name)}）'
+    assert '公园散步' in str(park['value']), f'应取 topic_top（{park}）'
+    assert '条件' in park['source'] and '命中' in park['source'], f'source 应标条件+命中（{park["source"]}）'
+
+
+def test_wave3_2b_conditional_mismatch_skipped():
+    """③z2 2b：条件不匹配（element_top=设施·指标条件=环境）→ 跳过（不适用·不占卡面）。"""
+    from ai_qa.outlet_kb.build_outlet_schema import compute_perceptible_metrics
+    result = {'rows': [{'element_top': '设施', 'topic_top': '停车难',
+                        'issue_label': '停车难', 'polarity_index': -0.3}]}
+    metrics = compute_perceptible_metrics(result)
+    names = {m['metric'] for m in metrics}
+    assert '公园绿地步行可达性感知' not in names, f'条件不匹配应跳过（{names}）'
+
+
+def test_wave3_2b_conditional_missing_elem():
+    """③z2 2b：element_top 缺失 → B 类暂无数据（诚实·不编造）。"""
+    from ai_qa.outlet_kb.build_outlet_schema import compute_perceptible_metrics
+    result = {'rows': [{'topic_top': '公园散步', 'polarity_index': -0.3}]}
+    metrics = compute_perceptible_metrics(result)
+    by_name = {m['metric']: m for m in metrics}
+    park = by_name.get('公园绿地步行可达性感知')
+    assert park is not None and park['value'] == '暂无数据', f'条件缺失应暂无数据（{park}）'
+
+
+def test_wave3_2b_multi_value_condition():
+    """③z2 2b（glm）：多值条件 element_top=设施/环境（老旧街区改造）→ 匹配其一即出值。"""
+    from ai_qa.outlet_kb.build_outlet_schema import compute_perceptible_metrics
+    # element_top=环境 命中 设施/环境 条件（老旧街区改造·关键词 老旧/破旧）
+    result = {'rows': [{'element_top': '环境', 'topic_top': '老旧破旧',
+                        'issue_label': '老旧破败', 'polarity_index': -0.3}]}
+    metrics = compute_perceptible_metrics(result)
+    by_name = {m['metric']: m for m in metrics}
+    renew = by_name.get('老旧街区改造需求感知')
+    assert renew is not None, f'多值条件应匹配（{list(by_name)}）'
+    assert '老旧破旧' in str(renew['value']) or '老旧破败' in str(renew['value']), f'应取 issue_label/topic_top（{renew}）'
+
+
+def test_wave3_2b_keyword_miss_skipped():
+    """③z2 2b（Codex P1②）：条件匹配 + value_field 有值但关键词未命中 → 跳过（防跨类误标）。"""
+    from ai_qa.outlet_kb.build_outlet_schema import compute_perceptible_metrics
+    # element_top=环境 匹配 公园绿地·但 topic_top=停车难·issue_label=停车（关键词 公园/绿地/散步 未命中）
+    result = {'rows': [{'element_top': '环境', 'topic_top': '停车难',
+                        'issue_label': '停车', 'polarity_index': -0.3}]}
+    metrics = compute_perceptible_metrics(result)
+    names = {m['metric'] for m in metrics}
+    assert '公园绿地步行可达性感知' not in names, f'关键词未命中应跳过（{names}）'
+
+
+def test_wave3_2b_ekon_shifted():
+    """③z2 2b（Codex P1①）：生态宜居（element_top=环境 + polarity_index·可量化）走 2a 极性类·条件不参与判定。
+
+    明示采纳「留 2a + docstring 注明」：生态宜居含 polarity_index → 2a 出极性值（其 element_top 条件为提示·不参与判定）。
+    """
+    from ai_qa.outlet_kb.build_outlet_schema import compute_perceptible_metrics
+    result = {'rows': [{'element_top': '环境', 'polarity_index': -0.3,
+                        'topic_top': '绿地不足', 'issue_label': '绿地不足'}]}
+    metrics = compute_perceptible_metrics(result)
+    by_name = {m['metric']: m for m in metrics}
+    ekon = by_name.get('生态宜居')
+    assert ekon is not None, f'生态宜居（2a 极性类·含 polarity）应出值（{list(by_name)}）'
+    assert '-0.3' in str(ekon['value']), f'生态宜居应取 polarity_index（{ekon}）'
+
+
+def test_wave3_p2_satisfaction_real_fields():
+    """③z2 P2：checkup_satisfaction field_mapping prose→真实字段（满意度/8领域出值·非恒暂无数据）。"""
+    from ai_qa.outlet_kb.build_outlet_schema import build_outlet_schema
+    diag = {'scale': 'macro', 'domain_lens': ['urban_governance'], 'outlet': '报告结论'}
+    result = {'rows': [{'polarity_index': 0.15, 'element_top': '环境', 'domain_top': 'urban_governance',
+                        'issue_label': '绿量不足', 'place_name': '滨江', 'point_count': 1000}]}
+    cards = build_outlet_schema(diag, result, '城市体检满意度调查')
+    assert cards, f'应出卡（{cards}）'
+    sat = [c for c in cards if c['outlet_id'] == 'checkup_satisfaction']
+    assert sat, f'应命中满意度卡（{[c["outlet_id"] for c in cards]}）'
+    fields = sat[0]['fields']
+    # 满意度（4 尺度）← polarity_index
+    assert '0.15' in str(fields.get('满意度（4 尺度）', {}).get('value', '')), f'满意度应取 polarity_index（{fields}）'
+    # 8 领域情绪值 ← element_top/domain_top（/ 取首 element_top·中文）+ polarity_index
+    assert '环境' in str(fields.get('8 领域情绪值', {}).get('value', '')), f'8领域应取 element_top（首字段·{fields}）'
+    # 不满意项定位 ← issue_label + place_name
+    assert '绿量不足' in str(fields.get('不满意项定位', {}).get('value', '')) and '滨江' in str(fields.get('不满意项定位', {}).get('value', '')), \
+        f'不满意项定位应合成 issue_label+place_name（{fields}）'

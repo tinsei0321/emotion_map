@@ -152,6 +152,43 @@ def _extract_emc_value(result: dict, emc_field: str):
     return None
 
 
+def _parse_emc_expr(expr: str) -> dict | None:
+    """解析 METRIC_MAPPINGS emc_field 表达式（确定性·纯函数·不调 LLM）。
+
+    支持三类：
+    - 极性类（含 polarity_index）：`polarity_index` / `topic_top（…）+ polarity_index` → {'polarity': True}
+    - 条件等式（B 类）：`element_top=环境 + topic_top（公园/绿地/散步）` → {
+        'condition_field': 'element_top', 'condition_values': ['环境'],
+        'value_field': 'topic_top', 'keywords': ['公园', '绿地', '散步']}
+    - 无条件无极性（（客观…）/满意度情绪值）→ None（不适用）
+
+    `/` 语义两处（与 _build_card 的取首不同）：
+    - 条件值 `element_top=设施/环境` → 拆多值列表 ['设施', '环境']（或 语义·匹配其一即算）
+    - 关键词 `（公园/绿地/散步）` → 拆多关键词列表（任一命中即标注）
+    """
+    import re
+    if not expr:
+        return None
+    if 'polarity_index' in expr:
+        return {'polarity': True}
+    # 条件等式：形如 'element_top=X[/Y] + 值字段（kw1/kw2）'
+    _cm = re.search(r'([a-z_][a-z0-9_]*)=([^+]+)', expr)
+    if not _cm:
+        return None   # 无条件无极性（（客观…）/满意度情绪值）→ 不适用
+    condition_field = _cm.group(1)
+    condition_values = [v.strip() for v in _cm.group(2).split('/') if v.strip()]
+    # 值部分：' + ' 之后的 '字段（关键词）'·取第一个 ASCII 字段
+    _val_part = expr.split('+', 1)[1] if '+' in expr else ''
+    _fm = re.search(r'([a-z_][a-z0-9_]*)', _val_part)
+    value_field = _fm.group(1) if _fm else None
+    _km = re.search(r'（([^）]+)）', _val_part)
+    keywords = _km.group(1).split('/') if _km else []
+    if not value_field:
+        return None
+    return {'condition_field': condition_field, 'condition_values': condition_values,
+            'value_field': value_field, 'keywords': keywords}
+
+
 def _build_card(oid: str, diagnose: dict, result: dict, question: str = '') -> dict | None:
     """组装单张出口卡片（7 要素·确定性）。返回 None = 尺度分派不匹配。"""
     contract = OUTLET_CONTRACTS.get(oid)
@@ -233,11 +270,14 @@ def _build_card(oid: str, diagnose: dict, result: dict, question: str = '') -> d
 
 
 def compute_perceptible_metrics(result: dict) -> list[dict]:
-    """可感知体检指标计算（Wave 3·glm组 2a 极性类·确定性·不调 LLM）。
+    """可感知体检指标计算（Wave 3·glm组 2a + 2b·确定性·不调 LLM）。
 
-    对 METRIC_MAPPINGS 可感知指标：emc_field 含 polarity_index 的（A 类极性直取 + C 类关键词+极性）→
-    从 result 取 polarity_index 值 + 关键词命中标注。B 类条件等式（element_top=环境 等 6 项）后置 2b。
-    缺失 → '暂无数据'（诚实·不编造）。
+    对 METRIC_MAPPINGS 可感知指标分两类：
+    - 2a 极性类（emc_field 含 polarity_index）：A 类极性直取 + C 类关键词+极性 → polarity_index 值 + 关键词命中标注
+      （**含生态宜居**：其 expr = `element_top=环境 + polarity_index`·条件为提示·2a 不参与判定——Codex P1① 明示采纳）
+    - 2b 条件等式（emc_field 形如 `element_top=环境 + topic_top（公园/绿地/散步）`·**可感知**）：条件匹配才出值
+      （生态宜居等可量化组条件等式**不参与 2b**——仅可感知 industry 进 2b·Codex P1①）
+    缺失 → '暂无数据'·条件不匹配/关键词未命中 → 跳过（不适用·不占卡面·Codex P1②）。
     """
     try:
         from .urban_checkup_outlets import METRIC_MAPPINGS
@@ -246,30 +286,66 @@ def compute_perceptible_metrics(result: dict) -> list[dict]:
     out = []
     for metric_name, m in METRIC_MAPPINGS.items():
         expr = str(m.get('emc_field') or '')
-        if 'polarity_index' not in expr:
-            continue   # 2a 只算极性类（含 polarity_index）
-        val = _extract_emc_value(result, 'polarity_index')
-        if val is None:
-            out.append({'metric': metric_name, 'value': '暂无数据',
-                        'source': '缺失·不编造', 'industry': m.get('industry', '')})
+        _parsed = _parse_emc_expr(expr)
+        if _parsed is None:
+            continue   # 无条件无极性（（客观…）/满意度情绪值）→ 不适用
+        _industry = m.get('industry', '')
+        if _parsed.get('polarity'):
+            # ── 2a 极性类（含 polarity_index）──
+            val = _extract_emc_value(result, 'polarity_index')
+            if val is None:
+                out.append({'metric': metric_name, 'value': '暂无数据',
+                            'source': '缺失·不编造', 'industry': _industry})
+                continue
+            kw_hit = _kw_hit(expr, result)
+            out.append({'metric': metric_name, 'value': val,
+                        'source': 'polarity_index（确定性）' + (f'·{kw_hit}' if kw_hit else ''),
+                        'industry': _industry})
             continue
-        # 关键词命中标注（emc_field 的（关键词）提示）
+        # ── 2b 条件等式（可感知·如公园绿地可达性）──
+        if '可感知' not in _industry:
+            continue   # 生态宜居等可量化组条件等式不参与 2b（Codex P1①）
+        _elem = _extract_emc_value(result, _parsed['condition_field'])
+        if _elem is None:
+            out.append({'metric': metric_name, 'value': '暂无数据',
+                        'source': '缺失·不编造', 'industry': _industry})
+            continue
+        _matched = [v for v in _parsed['condition_values'] if v in str(_elem)]
+        if not _matched:
+            continue   # 条件不匹配（该指标对当前要素不适用·不占卡面）
+        _val = _extract_emc_value(result, _parsed['value_field'])
+        if _val is None:
+            out.append({'metric': metric_name, 'value': '暂无数据',
+                        'source': '缺失·不编造', 'industry': _industry})
+            continue
+        # 关键词命中标注（未命中 → 跳过·防"停车"被标到"养老托育"名下·Codex P1②）
         kw_hit = ''
-        for _part in expr.split('+'):
-            _pm = __import__('re').search(r'（([^）]+)）', _part)
-            if _pm:
-                _kws = _pm.group(1).split('/')
-                _topic = _extract_emc_value(result, 'topic_top')
-                _issue = _extract_emc_value(result, 'issue_label')
-                for _kw in _kws:
-                    if (_topic and _kw in str(_topic)) or (_issue and _kw in str(_issue)):
-                        kw_hit = f'命中：{_kw}'
-                        break
-            if kw_hit:
+        _topic = _extract_emc_value(result, 'topic_top')
+        _issue = _extract_emc_value(result, 'issue_label')
+        for _kw in _parsed['keywords']:
+            if (_topic and _kw in str(_topic)) or (_issue and _kw in str(_issue)):
+                kw_hit = f'命中：{_kw}'
                 break
-        out.append({'metric': metric_name, 'value': val, 'source': 'polarity_index（确定性）' + (f'·{kw_hit}' if kw_hit else ''),
-                    'industry': m.get('industry', '')})
+        if not kw_hit:
+            continue
+        out.append({'metric': metric_name, 'value': _val,
+                    'source': f"{_parsed['value_field']}（确定性）·条件：{_parsed['condition_field']}={_matched[0]}·{kw_hit}",
+                    'industry': _industry})
     return out
+
+
+def _kw_hit(expr: str, result: dict) -> str:
+    """关键词命中标注（2a 共用）：emc_field 的（关键词）提示 → topic_top/issue_label 匹配。"""
+    _topic = _extract_emc_value(result, 'topic_top')
+    _issue = _extract_emc_value(result, 'issue_label')
+    for _part in expr.split('+'):
+        import re
+        _pm = re.search(r'（([^）]+)）', _part)
+        if _pm:
+            for _kw in _pm.group(1).split('/'):
+                if (_topic and _kw in str(_topic)) or (_issue and _kw in str(_issue)):
+                    return f'命中：{_kw}'
+    return ''
 
 
 def build_outlet_schema(diagnose: dict, result: dict, question: str = '') -> list[dict]:

@@ -251,6 +251,16 @@
 - **登记**：`_handoff/CB16-Wave3预检2b-P2_2026-08-04.md` 第一步改「读本地文件·无需 git pull/push」·KNOWLEDGE §7（评估方不 git）
 - 待实施（2b + P2 + panel 渲染）→ 实施后检查 → 通过后 push
 
+### ③z3 行动（Wave 3 余留 2b + P2 实施 + 实施后检查发起·先验后推）
+- **实施**（据 ③z2 反评价·Codex P1×3 + glm 注意项×2 全采纳）：
+  - `build_outlet_schema.py`：`_parse_emc_expr`（拆 `+` + 条件/值识别·**多值 `/` 拆列表**·含 polarity→2a）+ `compute_perceptible_metrics` 分 2a/2b（生态宜居**明示留 2a**·2b 仅可感知·条件不匹配→跳过·关键词未命中→跳过·source 对齐）+ `_kw_hit` 抽共用
+  - `urban_checkup_outlets.py`：checkup_satisfaction field_mapping prose→真实字段（`'满意度（4 尺度）':'polarity_index'`·`'8 领域情绪值':'element_top/domain_top + polarity_index'` element_top 优先·`'不满意项定位'` 不动）
+  - `panel.js` renderOutletCard：新增 perceptible_metrics 渲染（可感知体检指标小节）
+  - `tests/test_outlet_schema.py` +7（2b 命中/不匹配/缺失/多值/关键词未命中→跳过/生态宜居 2a·P2 满意度字段）
+- **验证**：pytest 29 + **274 passed 零回归**·panel.js ESM 语法 OK·**真端点**（POST /aiqa/outlet_card）：cards 2 张 + checkup_satisfaction 字段出真实值（满意度←polarity_index·8领域←element_top·不满意定位←issue_label+place_name）+ 2b B 类「公园绿地步行可达性感知」条件命中出值（source 标条件+命中）
+- **检查发起**：`_handoff/CB16-Wave3完成检查2b-P2_2026-08-04.md`（7 问·含已知 renewal 卡无条件调用·暂缓 backlog）
+- **未推**（先验后推：两组检查通过后 push）·待两组检查 SCAN → 反评价
+
 ### ④ 状态
 `Wave 3 → 实施完成 → 实施后检查发起（先验后推）` —— 两组预检反评价已落地·检查请求已发（待 SCAN 反评价·通过后 push）。待：两组检查 + 用户 push + Wave 3 余（2b 条件等式·可选）。
 
