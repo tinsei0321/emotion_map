@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月04日）** · 本节按板块分组、组内倒序；最新工作 = **CB-16 Wave 3 实施完成：两组预检反评价 + 多卡/validate CI/可感知计算器**（分支 `fix/emc-buglog`）。最近：
+> 📍 **最新动态（08月04日）** · 本节按板块分组、组内倒序；最新工作 = **CB-16 Wave 3 实施后检查发起：多卡/validate CI/可感知计算器·先验后推**（分支 `fix/emc-buglog`·0862f09 待推）。最近：
+>
+> - **CB-16 Wave 3 检查发起（0862f09·先验后推）**：Wave 3 实施完成（多卡 + validate_outlet_fields CI + 可感知计算器 2a）→ 发实施后检查（两组核验 5 环节 + 端到端）·**待两组 SCAN 反评价 → 通过后 push**。用户换环境（交接卡已更新）。
 >
 > - **CB-16 Wave 3（两组预检反评价 + 实施）**：出口抽象层深化最后一块。**两组预检**：草案可行·无 P0。**多卡（glm组 P1 采纳）**：resolve_outlet_ids 多契约命中（跨 domain 各一张·同 domain 只取最高分防冗余）+ build_outlet_schema 返 cards + build_outlet_schema_single 兼容旧调用 + /outlet_card 返 {cards, card: cards[0]} + 前端 harness/panel 多卡渲染。**validate_outlet_fields CI（Codex 采纳）**：tests/validate_outlet_fields.py——正则提取 CONTRACTS field_mapping + METRIC_MAPPINGS emc_field 消费字段（ASCII 标识符·跳过中文说明段）→ 对比产物白名单 → 死字段 fail/缺消费 warn。**可感知计算器 2a（glm组 P1 采纳·分步）**：compute_perceptible_metrics——emc_field 含 polarity_index 的极性类（A 类 2 + C 类 2）取 polarity_index + 关键词命中标注 + 缺失诚实·B 类条件等式（element_top=环境 等 6 项）后置 2b。**B 评论↔POI 再后置**（两组一致·非出口深化核心）。**验证**：pytest 269 passed（+3 新增）+ 端点多卡（renewal_demand + checkup_satisfaction 2 卡·card[0] 兼容·perceptible_metrics 有值）。**待**：两组实施后检查 + push。**§0 拓扑 N/A**。
 >

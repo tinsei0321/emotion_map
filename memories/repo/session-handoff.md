@@ -1,111 +1,98 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：08月04日（**Wave 1（macro 出口）实施完成：两组预检反评价 + 7 处落地·rows 产物链路打通**）| 分支 `fix/emc-buglog` | **待 push（今晨起 ~12 commit 未推）**
+> 最后更新：08月04日（**Wave 3 实施后检查发起：多卡 + validate_outlet_fields CI + 可感知计算器 2a·先验后推**）| 分支 `fix/emc-buglog` | **0862f09 待推（其余已 push·与远端同步）**
 >
 > 🔗 **CB 入口**：`docs/catch-ball/_cb-index.md`（**双阵营：claude组 开发主 + Codex/glm组 评估**）
 > 🏠🏢 **换机卡片**：`docs/catch-ball/_handoff/HOME.md` + `OFFICE.md`
 
-## 当前节点：Wave 1（macro 出口）实施完成（Wave 0 完整链路 + R7 修复 + 大南门数据接入已闭环）
+## 当前节点：CB-16 出口抽象层 Wave 0-3 全链路完成（Wave 3 检查发起·待两组 SCAN → push）
 
-08-03→04 大跨轮（CB-12/13/14/15 已闭环·CB-16 出口深化收敛）：
-- **出口抽象层定稿**：EMC 找市场·三段式（意图→结果→**成果范式 agent**）·软指标可信性缺口 = 立项切入点·官方三类指标（可量化 ~55-65% / 可感知 ~15-20% / 可评价 ~15-25%·合计 30-45% 涉及市民感受）
-- **outlet_kb 出向知识库**：7 契约 + 21 指标映射（官方三类）+ 5 案例 + summary 四方面闭环 + 测试守卫
-- **Wave 0 出口卡片完整链路（从 0 到 1·核心成果）**：
-  - `build_outlet_schema.py`（确定性组装器：resolve_outlet_id + 7 要素组装·不调 LLM·字段缺失降级·尺度分派·诚实标注）
-  - `/api/v1/aiqa/outlet_card` 端点（接收 diagnose+result+question → 卡 JSON）
-  - harness result 态后条件调（_maybeBuildOutletCard·触发词+UI 语境排除·产物收集·5s 超时·失败静默）
-  - panel `renderOutletCard` 纯模板渲染（仿 .cpd-guide-card·既有 token·缺失灰·引用块·{{show:}} 复用）+ `.outlet-card` CSS
-  - emc-patterns.js OUTLET_TRIGGER_KW + OUTLET_UI_EXCLUDE_KW（镜像·DRY import）·validate_outlet_trigger_sync.py 同步守卫（双份）
-  - **端到端验证**：问"西陵区老旧小区更新需求分析"→ 需求分析卡（停车难/-0.32/夷陵广场·诚实标注）
-  - **CB 两轮检查通过**（实施后检查：Codex+glm 全通过·3 P3 已修：词表 import/point_count/超时）
-- **出口驱动开发方法论**（用户定）：基于出口反推定制分析方法/计划/执行工具/图例样式/出图文本范式·新功能评审清单非全量门禁
+08-04 大跨轮（CB-16 出口深化·Wave 0→1→2→3 全闭环）：
+- **Wave 0 出口卡片完整链路**（已闭环·CB 两轮检查通过）：build_outlet_schema 确定性组装器 + /outlet_card 端点 + harness 接线 + panel 渲染 + 触发词表同步守卫
+- **R7 截断修复**（已闭环·用户实测 bug）：阈值 800→1500 + 结构回切 + R2 按钮保留 + 去 '.' 切句符 + 悬空编号剥除（两组检查 P0 补修）
+- **大南门·二马路数据接入**（已闭环）：ermawu L3L4 三层注册 + CSV 补坐标 + 边界登记 + R7 截断修复
+- **Wave 1 macro 出口**（已闭环·两组检查 P1/P2 补修）：rows 产物链路打通（_lastToolRows 缓存 + 门放宽 + _extract_emc_value 统一收 rows/features + checkup_dimension scale 限定 + DOMAIN_KW 城市体检）
+- **Wave 2 / CB-15 P0 数据认知**（已闭环·两组检查 P1/P2 补修）：3220 POI 接入（_read_pois_geojson + _dedup_pois·all_pois=4342）+ place_name 双源融合（_attach_poi_attrs grid/polygon 双模式 + place_name_source）+ poi_names + /grid/pois 端点 + cell_id
+- **CB-15 P1 地点进问答管线**（已闭环·两组检查 P2×4 补修）：buffer 中文 POI fallback（search_place）+ lookup_place 工具（契约三处同步 + track F_013）+ 归因落点模板（+ 合成 + 修文案）
+- **Wave 3 出口深化**（实施完成·**检查发起待两组 SCAN**）：多卡支持（resolve_outlet_ids + cards + build_outlet_schema_single 兼容）+ validate_outlet_fields CI + 可感知计算器 2a（B 类条件等式 2b 后置）
 
-## 今日已 commit（fix/emc-buglog · **已 push·与远端同步**）
+## 今日 commit（fix/emc-buglog·**0862f09 待推·其余已 push**）
 
 | commit | 内容 |
 |---|---|
-| `5dfac4b` | Wave 0 三 P3 修复（词表 import/point_count/超时）+ 检查 SCAN 入库 |
-| `e0503b9` | Wave 0 实施后检查发起（5 环节核验）|
-| `bd3ccce` | Wave 0 完整链路完成登记 |
-| `38d3a0c` | **Wave 0 出口卡片完整链路**（端点/接线/渲染/词表/守卫）|
-| `25bf898` | Wave 0 剩余实施预告（CB 机制）|
-| `4369df2` | Wave 0 三 bug 修复反评价登记 |
-| `f84b3ae` | Wave 0 三 bug 修复（qualifier/更新词/体检 domain）+ 回归测试 |
-| `21e5f8f` | Wave 0 剩余实施检查发起 |
-| `9a98785` | **Wave 0 出口卡片确定性组装器**（build_outlet_schema）+ CB-16 反评价 |
-| `c7c7f4b` | CB-16 出口深化讨论发起（含出口驱动开发逻辑链）|
-| `0822b49` | 官方三类指标进指标库 + 上下文树登记 |
-| `e1c1446` | 指标体系官方三类表达（可量化/可感知/可评价）+ 全量罗列 + 规建营 + 三大体系 |
-| `27f176f` | **出口抽象层入 CLAUDE.md 顶层纲领** + 交接卡 |
-| `1c634ee` `e3701a7` | 官方原文引用 + A→D 承上启下 + 措辞修正 |
-| `bb2019d` | 软指标官方表述 + 全部主观指标罗列 + 地方特色关系 |
-| `a821274` | A 部分 61 项指标三类分列 + 占比统计 |
-| `530a50e` | 深化传统体检做法论证 + 官方链接 |
-| `d80a289` | 案例加体检工作方式背景 |
-| `22dd2b9` | 案例小结四方面闭环 |
-| `b4df098` | 案例深挖 v3 三段式 |
-| `2c3ca52` | 案例深挖 v2 指向指标体系 |
-| `c434d6e` | 宜昌望洲岗改示范成效 |
-| `51fa836` | 出口报告 EMC→情绪地图·EMC + 案例深挖 |
-| `63493b2` | **outlet_kb 出向知识库**（7 契约+21 指标+5 案例）|
-| `c981371` | CB-13/14/15 讨论入库 |
-| `aa077c8` | **B3-verify-07 25/26 历史最佳**（范围三来源 + 归因联动基础）|
+| `0862f09` | **Wave 3 实施后检查发起（待推）** |
+| `1daffc6` | **Wave 3 多卡 + validate CI + 可感知计算器 2a** |
+| `0c9ba95` | Wave 3 预检发起 |
+| `04a6487` | CB-15 P1 补修（P2×4） |
+| `c3e1c9d` | CB-15 P1 检查发起 |
+| `61567d6` | **CB-15 P1 地点进问答管线** |
+| `5d3ccc9` | CB-15 P1 预检发起 |
+| `ad18f59` | Wave 2 补修（去重连锁店 + cell_id） |
+| `49e0e71` | Wave 2 检查发起 |
+| `623e293` | **Wave 2 / CB-15 P0 下钻链最小闭环** |
+| `386a23d` | Wave 2 预检发起 |
+| `9f40e55` | Wave 1 补修（runAllToolCalls rows + 跨轮重置） |
+| `0c7a783` | Wave 1 检查发起 |
+| `9ea1290` | 交接卡更新 |
+| `97cf232` | **Wave 1 macro 出口** |
+| ... | Wave 0/R7/大南门接入（已 push） |
 
 ## 关键架构（下会话须知道）
 
 - **出口抽象层三铁律**（CLAUDE.md 顶层纲领）：EMC 找市场接口 / 三段式线性（意图→结果→成果范式 agent·**第三段已实现**）/ 定性+定量+地理按尺度
-- **软指标可信性缺口**（立项切入点）：官方三类（可量化/可感知/可评价）·合计 30-45% 涉及市民感受·情绪地图 = 填补可靠软指标层（全量评论流）
-- **三大指标体系**：国家十五五（10 项·统领）/ 住建部（4 维度 61 项·规建营·重点）/ 自然资源部（110 项·了解）
-- **Wave 0 出口卡片链路**（已完成）：build_outlet_schema → /outlet_card 端点 → harness 接线 → outlet-card 渲染 → 同步守卫
-- **outlet_kb**（`ai_qa/outlet_kb/`）：7 契约 + 21 指标映射（官方三类）+ 5 案例 + build_outlet_schema.py·确定性组装·测试守卫（pytest 242 passed）
-- **出口驱动开发方法论**：基于出口反推定制分析/计划/工具/图例/范式·新功能评审清单（Codex CI 守卫 validate_outlet_fields 待 Wave 3）
-- **B3 修复**（已闭环）：范围三来源 + FIXED_ADMIN_DISTRICTS + derive 鲁棒性 + CPD + PRM-08（pytest 242）
-- **trace 取证纪律**：根因分析先 `trace_query --stats`（F_002/F_003 非 F_001）·跑测试带 session
+- **软指标可信性缺口**（立项切入点）：官方三类（可量化/可感知/可评价）·合计 30-45% 涉及市民感受·情绪地图 = 填补可靠软指标层
+- **outlet_kb**（`ai_qa/outlet_kb/`）：7 契约 + 21 指标映射（官方三类）+ 5 案例 + build_outlet_schema.py（确定性组装·不调 LLM）
+- **Wave 0-3 全链路**（已完成）：build_outlet_schema（多卡 cards + 单卡兼容 + 可感知计算器）→ /outlet_card（{cards, card}）→ harness 接线 → panel 多卡渲染 → 触发词同步守卫 + validate_outlet_fields CI
+- **CB-15 数据认知**（已完成）：3220 POI 接入（all_pois=4342）+ place_name 双源（poi_sjoin/top_places + place_name_source）+ /grid/pois + lookup_place + buffer 中文 fallback
+- **B3 修复**（已闭环）：范围三来源 + FIXED_ADMIN_DISTRICTS + derive 鲁棒性 + CPD + PRM-08
+- **trace 取证纪律**：根因分析先 `trace_query --stats`·跑测试带 session
 
-## 【下一步】（用户定：Wave 1 先行已完成）
+## 【下一步】（用户定·换环境后续作）
 
-1. **Wave 2 / CB-15**（数据认知·前置落地）：格↔POI sjoin + place_name 双源 + /grid/pois 端点——出口卡「需求位置」从粗略版（格内代表地名）升级到精确 POI（用户之前问的「出口×地点联动」精确版）
-2. **Wave 3**：可感知 10 项计算器（compute_perceptible_metrics）+ validate_outlet_fields CI + 多卡支持
-3. **补 1 处**：checkup_satisfaction field_mapping 也 prose→真实字段（P2·否则 S6 满意度卡同出空卡）
+1. **等两组 Wave 3 实施后检查 SCAN**（已发 0862f09）→ 反评价 → **用户 push 0862f09**
+2. **Wave 3 余**：可感知计算器 2b（B 类条件等式 6 项·element_top=环境 等·需表达式解析器）
+3. **补 1 处（P2）**：checkup_satisfaction field_mapping 也 prose→真实字段（S6 满意度卡防空卡）
+4. **backlog**：validate_skill_params 7 工具 drift（paradigm when 同步）·MOD_PLACE 渲染风暴 + MOD_LLM.F_002 fallback 重核 + CPD-L01/L02 + 时间轴 manifest 404
 
 ## 待续项（下会话从这继续）
 
-- **【核心】Wave 2 / CB-15**：格↔POI sjoin + place_name 双源 + /grid/pois（CB-15 讨论稿共识已立·落地未做）
-- **Wave 3**：可感知计算器 + validate_outlet_fields CI + 多卡
+- **【核心】Wave 3 检查 SCAN 处理**（两组已发·待反评价 → push 0862f09）
+- **可感知计算器 2b**（B 类条件等式·glm 分步后置）
 - **checkup_satisfaction** prose→字段（P2）
-- **backlog**：MOD_PLACE 渲染风暴 + MOD_LLM.F_002 fallback 重核 + CPD-L01/L02 测试基建 + 时间轴 manifest 404
+- **backlog**：7 工具 drift · MOD_PLACE 渲染风暴 · MOD_LLM.F_002 · CPD-L01/L02 · 时间轴 manifest
 - 发版候选评估（B3 96.2% 达标上沿）
-- **待用户浏览器复验**：Wave 1 macro 问句真出卡（更新对象识别/体检四维度）+ R7 截断修复 + push 全部 commit
+- **待用户浏览器复验**：macro 问句出卡 + buffer 中文名 + lookup_place 地点清单 + 多卡渲染
 
 ## 测试基建
 
-- pytest：**242 passed**（+outlet_schema 10 + trigger_sync 2）
+- pytest：**269 passed**（+Wave 3 多卡/计算器/validate + CB-15 P1 + Wave 2 + Wave 1 全部）
+- 新增守卫：`py -m pytest tests/validate_outlet_fields.py`（死字段 fail/缺消费 warn）+ `validate_outlet_trigger_sync.py`（触发词同步）
 - 飞轮：`py tests/browser/flywheel_audit.py --batch B3`（带 `EMOTION_TRACE_SESSION=B3-<批>`）
 - 体检：`py tests/browser/test_link_checkup.py`（20 例·回归门）
 - 根因分析：`py tools/trace_query.py --stats/--id/--time/--session`（第一动作）
 - **自测前必须重启 serve**（`start.bat`）·否则跑旧代码
 
 ## CB 状态
-- 当前 CB 轮次：**CB-16 出口深化（Wave 0 闭环）**·之前 CB-12/13/14/15 已闭环
+- 当前 CB 轮次：**CB-16 出口深化（Wave 0-3 全闭环·Wave 3 检查进行中）**·之前 CB-12/13/14/15 已闭环
 - **双阵营**：claude组（开发主）+ Codex + glm组（评估·trace 取证功臣）
-- 反评价轨迹：`docs/catch-ball/cb-journal.md`
+- 反评价轨迹：`docs/catch-ball/cb-journal.md`（③a-③y）
 - 恢复卡：`docs/catch-ball/_handoff/CB恢复记忆卡_2026-08-03.md`（两组换环境用）
 
 ## 红线 / 纪律（下会话守）
 
 - **承重**：diagnose prompt / harness orchestrate 主循环 / ChatRequest schema / **`@track()` 签名 / `_TRACKING_REGISTRY` 格式**（改前先扩 eval·每次一处）
-- **出口抽象层**：不新增 LLM 阶段（撞 D019）·outlet 契约走 tool_contracts 单一源·能/不能双栏诚实
-- **CB 机制**：每轮工作进 CB（实施前预告 + 实施后检查·两组 SCAN 反评价）
+- **出口抽象层**：不新增 LLM 阶段（撞 D019）·outlet 契约走 tool_contracts 单一源·能/不能双栏诚实·确定性组装（compute_perceptible 不调 LLM）
+- **CB 机制**：每轮工作进 CB（实施前预告 + 实施后检查·两组 SCAN 反评价）·prompt 用代码块包裹（可点击复制）
 - **trace 取证**：根因分析先 `trace_query --stats`·推断只作假设
 - **EMC 产物不临时创造样式**；不动 FC prompt；代码禁 emoji；print 走 `_safe_print`
 - **改 Python 后重启 serve**；commit 后 push（网络不稳时待恢复）
 
-## 恢复指引（新会话·公司）
+## 恢复指引（新会话·换环境后）
 
-1. `git log --oneline -8` 对账（最新 `5dfac4b`·与远端同步）。
+1. `git log --oneline -8` 对账（最新 `0862f09`·待 push·其余与远端同步）。
 2. 读本卡「关键架构」+「待续项」。
-3. 读 `docs/todo.md` 08-03/04 段 + `docs/revision-log.md` §5 最新。
+3. 读 `docs/todo.md` 08-04 段 + `docs/revision-log.md` §5 最新。
 4. 读 CLAUDE.md「出口抽象层」顶层纲领节（最底层逻辑·指导开发）。
 5. 启动：`start.bat`（serve.py 自起后端 :8000 + 前端 :8080）。
-6. 从「待续项」继续（核心 = 大南门·二马路数据模拟专题 + Wave 1 macro 出口）。
+6. 从「待续项」继续（核心 = Wave 3 检查 SCAN 处理 + 可感知计算器 2b）。
