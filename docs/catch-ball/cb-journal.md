@@ -261,6 +261,15 @@
 - **检查发起**：`_handoff/CB16-Wave3完成检查2b-P2_2026-08-04.md`（7 问·含已知 renewal 卡无条件调用·暂缓 backlog）
 - **未推**（先验后推：两组检查通过后 push）·待两组检查 SCAN → 反评价
 
+### ③z3b 反评价（glm + Codex 实施后检查 SCAN·两组均通过·可推）
+- **Codex**（`scan/CB16-Wave3完成2b-P2_Codex-GPT5_2026-08-04.md`）：**通过·无 P0/P1·可推**·2a 实为 5 项（A2+C2+生态宜居·renewal 模块不在 METRIC_MAPPINGS·修正声明）
+- **glm组**（`scan/CB16-Wave3完成2b-P2_glm组_2026-08-04.md`）：**通过·全部正确落地**·_parse_emc_expr 多值 `/` 拆列表✅·2a/2b 分支✅·P2 防空卡✅·端到端 2 场景✅·274 passed✅
+- **两组一致观察**：`.outlet-metrics` CSS 缺失（Codex P2-1 / glm P3）→ **采纳补 CSS**（本次引入·真实视觉缺口）
+- **Codex P2-3 采纳**：补 value_field 缺失→暂无数据 + `_parse_emc_expr` 纯函数边界测试（空串/无+/keywords 空/无条件）
+- **Codex P2-2 不采纳**：条件匹配 substring→`==`（可选优化·受控词表低风险·保持现状）
+- **已知 backlog 确认**：renewal 卡带 perceptible_metrics（`_build_card:230` 无条件·domain 门控暂缓）
+- **验证**：pytest 31 + **276 passed 零回归**（+2 边界测试）·两组通过 → **可 push**
+
 ### ④ 状态
 `Wave 3 → 实施完成 → 实施后检查发起（先验后推）` —— 两组预检反评价已落地·检查请求已发（待 SCAN 反评价·通过后 push）。待：两组检查 + 用户 push + Wave 3 余（2b 条件等式·可选）。
 
