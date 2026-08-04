@@ -793,6 +793,8 @@
 .outlet-field-key { color: var(--geojson-color-text-secondary, #999); flex-shrink: 0; }
 .outlet-field span:last-child { color: var(--geojson-color-text-primary, #ECECEC); text-align: right; }
 .outlet-field .outlet-muted { color: var(--geojson-color-text-tertiary, #707070); }   /* 字段缺失灰色（与后端降级一致）*/
+.outlet-metrics { margin-top: 6px; }   /* 可感知体检指标小节（③z3 Codex P2-1 / glm P3·补 CSS）*/
+.outlet-metrics-title { font-size: 12px; font-weight: 600; color: var(--emc-accent); margin-bottom: 4px; }
 .outlet-task { font-size: 12px; color: var(--geojson-color-text-secondary, #999); }
 .outlet-limits { font-size: 11px; color: var(--geojson-color-text-tertiary, #707070); }
 .outlet-limits blockquote { margin: 2px 0; padding-left: 8px; border-left: 2px solid var(--emc-divider); }

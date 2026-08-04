@@ -389,3 +389,30 @@ def test_wave3_p2_satisfaction_real_fields():
     # 不满意项定位 ← issue_label + place_name
     assert '绿量不足' in str(fields.get('不满意项定位', {}).get('value', '')) and '滨江' in str(fields.get('不满意项定位', {}).get('value', '')), \
         f'不满意项定位应合成 issue_label+place_name（{fields}）'
+
+
+# ── ③z3 Codex P2-3：value_field 缺失 + _parse_emc_expr 纯函数边界 ──
+def test_wave3_2b_value_field_missing():
+    """③z3 P2-3（Codex）：条件匹配 + value_field 缺失 → 暂无数据（诚实·不编造）。"""
+    from ai_qa.outlet_kb.build_outlet_schema import compute_perceptible_metrics
+    # element_top=环境 匹配 公园绿地·但 value_field（topic_top）缺失 → 暂无数据
+    result = {'rows': [{'element_top': '环境', 'polarity_index': -0.3}]}
+    metrics = compute_perceptible_metrics(result)
+    by_name = {m['metric']: m for m in metrics}
+    park = by_name.get('公园绿地步行可达性感知')
+    assert park is not None and park['value'] == '暂无数据', f'value_field 缺失应暂无数据（{park}）'
+
+
+def test_wave3_parse_emc_expr_boundary():
+    """③z3 P2-3（Codex）：_parse_emc_expr 纯函数边界（空串/无+/keywords 空/无条件无极性）。"""
+    from ai_qa.outlet_kb.build_outlet_schema import _parse_emc_expr
+    assert _parse_emc_expr('') is None, '空串应 None'
+    assert _parse_emc_expr('（客观·情绪地图补使用感受）') is None, '无字段无极性应 None'
+    assert _parse_emc_expr('polarity_index') == {'polarity': True}, '纯 polarity 应极性类'
+    # 条件等式（含多值 + 关键词）
+    p = _parse_emc_expr('element_top=设施/环境 + issue_label（老旧/破旧）')
+    assert p is not None
+    assert p['condition_field'] == 'element_top' and p['condition_values'] == ['设施', '环境'], f'多值条件拆列表（{p}）'
+    assert p['value_field'] == 'issue_label' and p['keywords'] == ['老旧', '破旧'], f'值字段+关键词（{p}）'
+    # 无条件有值字段（异常形态）→ None（无 condition 无法判定）
+    assert _parse_emc_expr('topic_top（公园）') is None, '无条件有值字段应 None'
