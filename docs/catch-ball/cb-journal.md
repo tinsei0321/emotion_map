@@ -365,6 +365,16 @@
 - **反评价采纳**：① footer 条件化（failedObs>0 才「未生成图层」）② FC boundary 白名单**暂缓**（fixture 清理后不需要）③ fixture 清理 + district-stats 同步 ④ RST-L06 fallback 改 MC（Codex P1 死代码修复）+ 复跑 ⑤ eval 注释精确化 + 发版前复采
 - 待实施 → ③w7 检查 → 通过后 push
 
+### ③w7 行动（发版 backlog 收尾 实施 + 检查发起·先验后推）
+- **实施**（据 ③w6b 反评价·Codex P1 + 用户拍板 fixture）：
+  - 项1 footer 条件化：`_footerLayer = failedObs>0 ? '或未生成图层' : ''`（glm 建议实现·零工具尝试无「图层」）
+  - 项3 fixture 清理：preset 行政区 geojson 9→**4 要素**（FIXED_ADMIN_DISTRICTS·备份 .bak9·保 BOM）+ district-stats `_TUAN_MAP` 8→**4 组团**（用户拍板治本·PRM-07 根治）
+  - 项4 RST-L06 fallback 改 **MC 字段**（Codex P1 死代码修复·行政区 preset 仅 MC·name/NAME/name_field 恒缺）·复跑待前台 serve 环境
+  - 项5 eval 注释精确化（复合问可返 multi·标尺对齐多数）
+- **验证**：pytest 277 passed 零回归·ESM-OK（harness + district-stats）
+- **检查发起**：`_handoff/CB16-Backlog收尾检查_2026-08-04.md`（7 问·含影响面核查）
+- **未推**（23efe74·先验后推）·待两组检查 SCAN → 反评价 → 通过后 push
+
 ---
 
 ### ① SCAN 摘要
