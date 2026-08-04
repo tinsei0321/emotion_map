@@ -223,9 +223,15 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月04日）** · 本节按板块分组、组内倒序；最新工作 = **CB-16 ③z 余留 2b + P2 全闭环：可感知计算器条件等式 + checkup_satisfaction 真实字段 + panel 渲染**（分支 `fix/emc-buglog`·已推·远端 0/0 同步）。最近：
+> 📍 **最新动态（08月04日深夜）** · 本节按板块分组、组内倒序；最新工作 = **CB-16 ③w6/③w7 发版 backlog 收尾全闭环：footer 条件化 + preset 行政区清 4 + district-stats 8→4 组团 + RST-L06 MC 修复 + eval 注释 + fixture 静态守卫**（分支 `fix/emc-buglog`·已推 0bb55df·远端 0/0 同步）。最近：
 >
-> - **CB-16 ③z 余留 2b + P2 全闭环（两组检查通过·已推 0a0d103）**：Wave 3 余留两项落地。**2b 可感知计算器 B 类条件等式 7 项**（Codex/glm 反评价 P1×3 全采纳）：新增 `_parse_emc_expr`（拆 `+` + 条件/值识别·**多值 `/` 拆列表**·含 polarity → 2a）+ `compute_perceptible_metrics` 分 2a/2b（**生态宜居明示留 2a**·2b 仅可感知 industry 进·条件不匹配→跳过·**关键词未命中→跳过**防跨类误标·source 对齐 2a）+ `_kw_hit` 抽共用。**P2 checkup_satisfaction**：prose→真实字段（满意度 `polarity_index`·8 领域 `element_top/domain_top + polarity_index` **element_top 优先**·不满意项不动）。**panel.js 渲染 perceptible_metrics**（Codex P2 并入·可感知指标小节）。**③z3b 检查两组通过**（无 P0/P1）·采纳 P2-1（.outlet-metrics CSS 补齐）+ P2-3（value_field 缺失/解析边界测试）·P2-2（`==`）不采纳。**验证**：pytest 276 passed（+9 新增）零回归·真端点（cards 2 张 + B 类「公园绿地步行可达性感知」条件命中出值·source 标条件+命中）。**已推**（先验后推·两组通过解锁）。**§0 拓扑 N/A**。
+> - **CB-16 ③w7 发版 backlog 收尾全闭环（两组检查通过·已推 0bb55df）**：③w6b 实施 4 项——**footer 条件化**（composeGapCard `_footerLayer = failedObs>0 ? '或未生成图层' : ''`·零工具尝试无「图层」）+ **preset 行政区清 4 要素**（FIXED_ADMIN_DISTRICTS·备份 .bak9·保 BOM·用户拍板·PRM-07 根治）+ **district-stats 8→4 组团**（_TUAN_MAP 收敛）+ **RST-L06 fallback 补 MC 字段**（Codex P1 死代码修复·行政区 preset 仅 MC·name/NAME 恒缺）+ **eval 注释精确化**（复合问可返 multi·标尺对齐多数）。**③w7b 检查两组通过**·采纳 fixture 静态守卫（test_range_selector_presets `test_admin_district_fixture_mc_in_whitelist`·preset MC ⊆ 白名单防回潮·utf-8-sig 保 BOM）。**验证**：pytest 278 passed（+1）·ESM-OK。**已推**。**§0 拓扑 N/A**。
+>
+> - **CB-16 ③w4/③w5 措辞修复 + 发版遗留（两组通过·已推 78db0e3 + 2130a49）**：用户实测「EMC 无法回答时结论统一'无法生成图层'·但问题可能跟图层无关」→ 措辞修复。**gap 出口 failedObs 判据**（`newLayerCount===0 && !hasRows` 时·failedObs>0 在试图层→图层措辞·=0 零工具尝试→composeGapCard 区分 degraded「无法理解」/非 degraded「暂无法回答」·无「图层」）。**eval 标尺纠错**（glm：select_template 单工具不返 multi·76% 是标尺错非路由退化）·multi→实际单工具 + tuple 双接受（`西陵区的商业用地` clip/overlay）·**eval 84% GO**（glm 补充纠正 claude组 92% 声称）。**RST-L06 preset fallback**（chain pre-check 区名条件 + feature 级）+ **buffer stale-tool 门控**（radius/cell_size 改判 diagnose.template·Codex P1）。**e2e-seam 措辞断言**（test_gap_wording.py·待前台 serve）。**已推**。**§0 拓扑 N/A**。
+>
+> - **CB-16 ③w2/③w3 全局优化 + 发版快照（两组通过·已推 dc88f35~969778f + ff7b125）**：全局优化（CLAUDE.md 当前开发状态 5 行·L3✅/L4🔄/空间✅/UI✅·todo 周归档 07-27~08-02·ADR-017~019·记忆 GC）+ backlog 收尾（validate_skill_params drift 修复 paradigm `_sync_geo_catalog_guard_fields` + renewal 门控）。**发版快照**：B3 26 例 pass=22（84.6%·方差区间）·link_checkup 20/20 PASS·eval 76% NO-GO（标尺错·③w5 修）·RST-L06 回归（根因 clip range derive·③w4 修）。**已推**。**§0 拓扑 N/A**。
+>
+> - **CB-16 ③z 余留 2b + P2 全闭环（两组检查通过·已推 0a0d103）**：Wave 3 余留两项落地。**2b 可感知计算器 B 类条件等式 7 项**（Codex/glm 反评价 P1×3 全采纳）：`_parse_emc_expr`（多值 `/` 拆列表·含 polarity → 2a）+ `compute_perceptible_metrics` 分 2a/2b（生态宜居留 2a·关键词未命中→跳过）。**P2 checkup_satisfaction**：prose→真实字段（element_top 优先）。**panel.js 渲染 perceptible_metrics**。**③z3b 检查两组通过**。**验证**：pytest 276 passed。**已推**。**§0 拓扑 N/A**。
 >
 > - **CB-16 Wave 3 检查发起（0862f09·③z3b 已反评价通过·全闭环）**：Wave 3 实施完成（多卡 + validate_outlet_fields CI + 可感知计算器 2a）→ 发实施后检查（两组核验 5 环节 + 端到端）→ **③z3b 两组 SCAN 通过**·全闭环。
 >
