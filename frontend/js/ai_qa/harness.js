@@ -223,6 +223,12 @@ function composeGapCard(diagnose, failedObs) {
     head = '## 还差关键数据——补齐后我就能严谨作答\n\n'
       + (needed ? `本问需要 **${needed}** 才能给出可靠结论。` : '当前情绪地图数据尚不足以完成此分析。')
       + (gap ? `\n\n**缺失**：${gap}。` : '');
+  } else if (failedObs && failedObs.length === 0) {
+    // ③w4（用户实测）：零工具失败尝试 → 问题可能非图层类·不涉及图层叙事（没试过不说"试了"）
+    //   区分两子情况（glm ③w4b 建议）：诊断失败（无法理解）vs 诊断成功但执行未开始（暂无法回答）
+    head = (diagnose && diagnose.degraded)
+      ? '## 我没能理解这个问题的分析需求\n\n这个问题可能超出了情绪地图当前的分析能力范围。'
+      : '## 这个问题我暂时无法直接回答\n\n可能需要补充数据或换一种问法。';
   } else {
     head = '## 这次没跑通——我没能生成可用的图层\n\n我试了几个操作，但都没能产出可用的图层或结论。咱们换个思路：';
   }
@@ -1111,14 +1117,30 @@ export async function orchestrate(ctx, hooks = {}) {
         if (!diagnose.params) diagnose.params = {};
         if (!diagnose.params.boundary && !diagnose.params.range) {
           const _chainD = deriveAvailable(ctx.question || '', getLayers());
+          let _boundary = null;
           if (_chainD) {
             const _cl = getLayers().find((x) => x.name === _chainD.layer);
             const _cf = (_cl && _cl.fc && _cl.fc.features || []).find((f) => {
               const v = f.properties && f.properties[_chainD.field];
               return v != null && String(v).includes(_chainD.name);
             });
-            if (_cf) diagnose.params.boundary = { type: 'FeatureCollection', features: [_cf] };
+            if (_cf) _boundary = { type: 'FeatureCollection', features: [_cf] };
           }
+          // ③w4b（Codex P1⑤ + glm）：deriveAvailable 无匹配但问句含区名（"…区/市/县"）→ fallback 到行政区 preset
+          //   取**单要素**（仿 :1453-1460 boundary derive 模式）·非整集合当 boundary·无区名不猜（用户没指定范围·链不出走单工具/ask_user）
+          if (!_boundary && /(.+?)(?:区|市|县)/.test(ctx.question || '')) {
+            const _presetLayer = getLayers().find((x) => x.name === '行政区' || /行政区/.test(x.name || ''));
+            if (_presetLayer && _presetLayer.fc && _presetLayer.fc.features) {
+              const _dm = ctx.question.match(/(.+?)(?:区|市|县)/);
+              const _pname = _dm ? _dm[1] : '';
+              const _pf = _presetLayer.fc.features.find((f) => {
+                const v = f.properties && (f.properties.name || f.properties.NAME || f.properties.name_field);
+                return v != null && String(v).includes(_pname);
+              });
+              if (_pf) _boundary = { type: 'FeatureCollection', features: [_pf] };
+            }
+          }
+          if (_boundary) diagnose.params.boundary = _boundary;
         }
         return await runChainPath(ctx, hooks, diagnose, _chainPre);
       }
@@ -1307,10 +1329,14 @@ export async function orchestrate(ctx, hooks = {}) {
 
   // CB-09 P0-4 治本（v2）：零图层+零分析行 → 跳过 LLM finalStep，直接用确定性诚实结论。
   // 根因：v1 只在 context 加提示，LLM 仍会忽略。治本：不调 LLM——零产出时无内容需"总结"。
+  // ③w4（用户实测）：问题可能与图层无关——failedObs=0（零工具失败尝试）时不说"未产出新图层"（假话·没试过）
   if (newLayerCount === 0 && !hasRows) {
-    const _honestText = composeGapCard(diagnose, failedObs)
-      + '\n\n---\n**诚实结论**：本轮未产出新图层。'
-      + '\n\n请尝试：① 换一种问法（更具体地指定范围和目标）② 确认所需数据已加载（点开 Layers 面板检查）③ 缩小分析范围后重试。';
+    const _triedTools = failedObs.length > 0;   // 确实尝试过工具（failedObs 仅工具失败时 push·:753/755/1261）
+    const _honestText = _triedTools
+      ? composeGapCard(diagnose, failedObs)
+          + '\n\n---\n**诚实结论**：本轮未产出新图层。'
+          + '\n\n请尝试：① 换一种问法（更具体地指定范围和目标）② 确认所需数据已加载（点开 Layers 面板检查）③ 缩小分析范围后重试。'
+      : composeGapCard(diagnose, failedObs);   // 零工具尝试 → 非图层叙事（composeGapCard 内按 failedObs 分支措辞）
     if (hooks.onFinalDone) hooks.onFinalDone(_honestText);
     if (hooks.onDefense) hooks.onDefense({ degraded: true, skipped: 'zero-output' });
     _recordSkip('zero_output');
@@ -1538,12 +1564,13 @@ function deriveMissingParams(diagnose, question, layers) {
     }
   }
   // cell_size derive：density 3D 网格 ·"Nm 方格/网格"（G5：中间可夹词·如"500m 标准方格"）
-  if (tool === 'density' && !p.cell_size) {
+  // ③w4b（Codex P1）：门控改判 diagnose.template——G5 reroute（:1457 方格→density）更新 template 而局部 tool 变量是旧值
+  if ((tool === 'density' || diagnose.template === 'density') && !p.cell_size) {
     const m = q.match(/(\d+(?:\.\d+)?)\s*(m|米|km|公里)\s*.{0,6}?(方格|网格|聚合|栅格)/);
     if (m) p.cell_size = (m[2] === 'km' || m[2] === '公里') ? Math.round(Number(m[1]) * 1000) : Math.round(Number(m[1]));
   }
-  // radius derive：buffer ·"周边 Nm/N公里"
-  if (tool === 'buffer' && !p.radius_m && !p.radius) {
+  // radius derive：buffer ·"周边 Nm/N公里"（③w4b Codex P1：门控改判 template·治 G5 lookup_place→buffer reroute 后旧 tool 跳过）
+  if ((tool === 'buffer' || diagnose.template === 'buffer') && !p.radius_m && !p.radius) {
     const m = q.match(/(?:周边|附近|半径|缓冲|以内)\s*(\d+(?:\.\d+)?)\s*(m|米|km|公里)/);
     if (m) p.radius_m = (m[2] === 'km' || m[2] === '公里') ? Math.round(Number(m[1]) * 1000) : Math.round(Number(m[1]));
   }

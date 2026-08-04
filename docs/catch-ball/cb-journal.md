@@ -314,6 +314,21 @@
 - **预检 12 问**（给两组）：措辞 failedObs 判据 + eval 歧义路由 + RST-L06 硬化 + PRM 范围 + 测试方案 + 综合优先级
 - 待两组 SCAN → 反评价 → 实施
 
+### ③w4b 反评价（glm + Codex 综合预检 SCAN·两组通过·无 P0）
+- **glm组**（`scan/CB16-WordFix预检_glm组_2026-08-04.md`）：
+  - 措辞 failedObs=0 判据可靠（仅 loop 内 push）·建议区分 degraded（无法理解）vs ask_user（暂无法回答）两子情况
+  - **eval 根因纠正**：select_template 单工具选择器不返回 multi·eval 期望 multi = 标尺错 → 改标尺（multi→clip/density·76%→84%）非改路由·不碰 v1 eval-anchor
+  - RST-L06 硬化方向对·fallback 加区名条件（有区名才 fallback·无区名不猜）
+  - PRM-03/04 center ask_user 正确行为·改断言非代码 · PRM-07 改 fixture
+- **Codex**（`scan/CB16-WordFix预检_Codex-GPT5_2026-08-04.md`）·P1 修正×5：
+  - **PRM-03/04 真根因 = stale tool 门控**：`const tool` :1430 早捕获·G5 reroute lookup_place→buffer 后 :1546 `tool==='buffer'` 用旧值跳过·radius 正则派生已存在 → 修 reroute 后重读 tool
+  - **PRM-07 = FIXED_ADMIN_DISTRICTS 白名单门控**（preset 实测含 9 法定功能区·模型硬识别有数据来源·CB-14 红线）·**弃 lookup fallback**
+  - RST-L06 根因未实证（两种机制一致·需 per-test trace）·fallback 须 feature 级提取（仿 :1453-1460）
+  - eval 先取证全 miss 列表（37 条 9 MISS·草案只列 2·E1 两例是覆盖偏好非缺陷）
+  - 措辞须两处分支（composeGapCard 默认 :227 + gap 出口追加行 :1313 无条件硬编码）
+- **反评价采纳**：措辞两处分支 + failedObs 判据·eval 改标尺（先取证）·RST-L06 硬化（feature 级 + 区名条件·根因待取证）·PRM-03/04 stale-tool 门控·PRM-07 白名单门控（弃 fallback）
+- 待实施（②a 措辞 + ②b eval/RST-L06/PRM）→ ③w5 检查 → 通过后 push
+
 ---
 
 ### ① SCAN 摘要
