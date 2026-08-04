@@ -140,8 +140,18 @@
 - **未推**（97cf232 + 9ea1290·先验后推：两组通过后用户 push）
 - 待两组检查 SCAN → 反评价
 
+### ③n 行动（Wave 1 检查反评价 + 补修 · 两组 SCAN 处理）
+- **两组检查 SCAN 到**（`CB16-Wave1完成-检查_Codex-GPT5` + `CB16-Wave1完成-glm组`）·反评价：
+  - **两组一致**：Wave 1 主体通过（5 环节正确·单测 23 passed·单步 macro 端到端通路确认）
+  - **glm组 P1（采纳）**：`runAllToolCalls` rows 处理缺陷——:1868-1869 `else` 挂在 rows 缓存 if 上（rows 型无 layerId → 成功误判失败）+ :1875 守护漏 hasRows → 多步 macro 链降级 → 改三独立 if + 守护加 hasRows + failedSteps 排除 rows 成功步
+  - **Codex P1（采纳）**：`_lastToolRows` 跨轮不重置 → orchestrate 入口重置 `_lastToolRows = null`（防 turn1 zonal rows 附 turn2 出口卡）
+  - **Codex P2（采纳）**：while-loop 兜底路径（:1249）补 rows 捕获（对齐其他 3 路径）
+  - **Codex P2（采纳）**：`test_wave1_empty_rows_no_card` 名实不符 → 改名 `test_wave1_empty_rows_degrades` + docstring 说明前后端分工
+- **验证**：括号平衡·pytest 253 passed 零回归·E2E 两场景全过
+- **待用户 push**（先验后推·两组通过后推）
+
 ### ④ 状态
-`Wave 1 macro 出口 → 实施完成 → 实施后检查发起（先验后推）` —— 两组预检反评价已落地·检查请求已发（待 SCAN 反评价·通过后 push 2 commit）。待：两组检查 + 用户 push + 浏览器复验 + Wave 2（CB-15 前置·后置）。
+`Wave 1 macro 出口 → 实施后检查通过 + P1/P2 补修完成` —— 两组通过·glm组 P1（runAllToolCalls rows 处理）+ Codex P1（跨轮重置）+ P2×2（while-loop 捕获/测试改名）全落地·验证全过。**可 push**（先验后推·两组已验）+ 用户浏览器复验 + Wave 2（CB-15 前置·后置）。
 
 ---
 

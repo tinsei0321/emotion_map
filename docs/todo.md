@@ -11,13 +11,13 @@
 
 ## 📅 2026-08-04（CB-16 大南门数据专题 · 数据接入 EMC 出口链路闭环 + R7 截断修复 + Wave 1 预检）
 
-### ✅ Wave 1（macro 出口）· 两组预检反评价 + 实施完成（待用户 push）
+### ✅ Wave 1（macro 出口）· 实施后检查通过 + P1/P2 补修（**可 push**·先验后推）
 
 - **范围**：renewal_object_identify（更新对象识别·macro）+ checkup_dimension（体检四维度·含 macro）
 - **两组预检**：Codex P1（checkup_dimension 四维度×单尺度语义错位→`[scale=xxx]` 槽位限定）+ claude组 P1×3（① `_extract_emc_value` 统一收 rows/features 单入口 ③ DOMAIN_KW 补「城市体检」长词 ⑤ data_base rows 分支·N=单元数）+ rows 可达性缓存（`_lastToolRows`×3）
-- **落地 7 处**：build_outlet_schema.py（rows 分支 + scale 限定 + data_base）·harness.js（缓存 + 门放宽 + 测试钩子）·emc-patterns.js（DOMAIN_KW）·urban_checkup_outlets.py（四维度真实字段 + [scale]）·e2e-seam.js（setOutletRows/buildOutletCardForTest）
-- **测试**：pytest 253 passed（+4 新增）·括号配对平衡×3 · test_outlet_macro.py E2E 两场景全过（rows 门放宽出卡 + 字段非空 + scale 限定）
-- **待用户浏览器复验**（macro 问句真出卡）· **Wave 2（CB-15 前置·后置）**
+- **两组检查反评价**：主体通过（5 环节正确·单测 23 passed）+ **glm组 P1**（runAllToolCalls rows 处理·else 误判 + 守护漏 hasRows→三独立 if + hasRows 放行）+ **Codex P1**（跨轮重置 `_lastToolRows = null`）+ P2×2（while-loop rows 捕获 / 测试改名）
+- **测试**：pytest 253 passed · 括号平衡 · test_outlet_macro.py E2E 两场景全过
+- **✅ 可 push**（两组已验·先验后推）· **待用户 push + 浏览器复验** · **Wave 2（CB-15 前置·后置）**
 
 ### ⏸️ CB-15 数据认知（Wave 2 前置·用户定后置·Wave 1 先行）
 

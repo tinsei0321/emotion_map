@@ -873,6 +873,8 @@ function deriveDiagnoseMethod(template, params) {
  * @returns {Promise<{ok, degraded?, rounds?, final?, defense?}>}
  */
 export async function orchestrate(ctx, hooks = {}) {
+  // CB-16 Wave 1 检查（Codex P1）：跨轮重置 rows 缓存——防 turn1 zonal rows 附 turn2 出口卡（陈旧数据）
+  _lastToolRows = null;
   // CB-12 P1（glm）：B3 飞轮清 gate（?test=1 冷启动·防跨 session 累积 miss 干扰测试基线）
   try {
     if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('test') === '1' && localStorage.getItem(_TPL_STATS_KEY)) {
@@ -1247,6 +1249,8 @@ export async function orchestrate(ctx, hooks = {}) {
         const r = await fn(step.action.params || {});
         obs = (r && r.observation) || '（无观察）';
         if (r && r.data && r.data.layerId) newLayerCount++;   // 三态出口：产图层计 +1
+        // Wave 1 检查（Codex P2）：while-loop 兜底路径补 rows 捕获（对齐其他 3 路径）
+        if (r && r.data && Array.isArray(r.data.rows) && r.data.rows.length) _lastToolRows = r.data.rows;
       } catch (e) {
         obs = '工具执行失败：' + (e && e.message ? e.message : e);
       }
@@ -1854,7 +1858,7 @@ async function runAllToolCalls(ctx, hooks, diagnose) {
   resetStepResults();        // 清 _stepResults/_resultIdByStep/_registry（防上轮残留致 ref() 误标消费）
   resetCurrentResults();     // 清 _curResultIds/_consumedIds/_keepIds（防 focusOnlyResults 误隐藏）
   const tcs = diagnose._allToolCalls;
-  const toolHistory = []; let newLayerCount = 0; const failedSteps = [];
+  const toolHistory = []; let newLayerCount = 0; const failedSteps = []; let hasRows = false;   // Wave 1 检查（glm组 P1）：rows 型步成功判定
   console.log('[runAllToolCalls] start:', tcs.length, tcs.map((t) => t.name).join(' → '));
   for (let i = 0; i < tcs.length; i++) {
     const tc = tcs[i];
@@ -1865,14 +1869,17 @@ async function runAllToolCalls(ctx, hooks, diagnose) {
     catch (e) { toolHistory.push(`第${i + 1}步: ${tc.name} → 异常: ${(e && e.message) || e}`); failedSteps.push(i + 1); continue; }
     const obs = (r && r.observation) || '[ERR]';
     if (r && r.data && r.data.layerId) newLayerCount++;
+    // CB-16 Wave 1 检查（glm组 P1）：三独立 if 去 else——rows 型工具（zonal/rank）成功无 layerId
+    //   → 旧 else 误判失败（成功步进 failedSteps）+ :1875 守护漏 hasRows → 多步 macro 链降级
     if (r && r.data && Array.isArray(r.data.rows) && r.data.rows.length) _lastToolRows = r.data.rows;   // Wave 1：缓存 macro rows
-    else failedSteps.push(i + 1);   // 无图层产出 = 失败
+    if (r && r.data && Array.isArray(r.data.rows) && r.data.rows.length) hasRows = true;
+    else if (!(r && r.data && r.data.layerId)) failedSteps.push(i + 1);   // 仅真无产出（无图层无 rows）才失败
     toolHistory.push(`第${i + 1}步: ${tc.name}(${JSON.stringify(tc.params || {}).slice(0, 80)}) → ${obs}`);
     if (hooks.onObservation) hooks.onObservation(obs, i + 1);
     document.dispatchEvent(new CustomEvent('tool:executed', { detail: { tool: tc.name, layerId: (r && r.data && r.data.layerId) || null, ok: !/\[ERR\]|失败/.test(obs), ts: Date.now() } }));
   }
-  // 零图层守护
-  if (newLayerCount === 0) {
+  // 零图层守护（Wave 1 检查·glm组 P1：rows 型 macro 分析无 layerId 但成功→ hasRows 放行·防误降级）
+  if (newLayerCount === 0 && !hasRows) {
     const _t = `## 执行完成\n\n已按计划执行 ${tcs.length} 个步骤（${tcs.map((t) => t.name).join(' → ')}），但均未产出新图层。`;
     if (hooks.onFinalDone) hooks.onFinalDone(_t);
     return { ok: true, rounds: tcs.length, final: _t, defense: { degraded: true, skipped: 'multi-zero' }, degraded: true, diagnose, exit: 'result', newLayerCount: 0 };

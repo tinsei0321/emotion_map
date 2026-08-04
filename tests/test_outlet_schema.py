@@ -196,10 +196,14 @@ def test_wave1_checkup_dimension_meso_scale():
         f'住房维度（micro）应标需对应尺度分析（{card["fields"]}）'
 
 
-def test_wave1_empty_rows_no_card():
-    """Wave 1：空 rows（分析失败）→ 不出卡（防空卡·与前端 newLayerCount 门一致）。"""
+def test_wave1_empty_rows_degrades():
+    """Wave 1：空 rows（分析失败）→ 后端容错组装·字段降级非空（前端门拦截不出卡·分工）。
+
+    前端 _maybeBuildOutletCard 的 `_hasRows`（空 rows false）+ newLayerCount<=0 → return null（不出卡）。
+    后端 build_outlet_schema 空 rows → _extract_emc_value 无 Top-1 → 字段全降级（诚实·不编造）。
+    """
     diag = {'scale': 'macro', 'domain_lens': ['urban_renewal'], 'outlet': '生成图层'}
-    # 空 rows → _extract_emc_value 无 Top-1 → 字段全降级·但卡仍组装（无 P0）
+    # 空 rows → _extract_emc_value 无 Top-1 → 字段全降级·但卡仍组装（后端容错·前端门拦截）
     card = build_outlet_schema(diag, {'rows': []}, '宜昌城区更新优先')
     assert card is not None
     assert all(str(f.get('value')) != '' for f in card['fields'].values()), \

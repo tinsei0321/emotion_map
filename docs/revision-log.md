@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月04日）** · 本节按板块分组、组内倒序；最新工作 = **CB-16 Wave 1（macro 出口）实施完成：两组预检反评价 + 7 处落地**（分支 `fix/emc-buglog`）。最近：
+> 📍 **最新动态（08月04日）** · 本节按板块分组、组内倒序；最新工作 = **CB-16 Wave 1（macro 出口）实施后检查通过 + P1/P2 补修（两组 SCAN·先验后推）**（分支 `fix/emc-buglog`）。最近：
+>
+> - **CB-16 Wave 1 检查反评价 + 补修（两组 SCAN·先验后推）**：Wave 1 发实施后检查 → 两组 SCAN：**主体通过**（5 环节正确·单测 23 passed·单步 macro 端到端通路确认）。**glm组 P1（采纳）**：`runAllToolCalls` rows 处理缺陷——`:1868-1869` `else` 挂在 rows 缓存 if 上（rows 型无 layerId → 成功误判失败）+ `:1875` 守护漏 hasRows → 多步 macro 链降级 → 改**三独立 if** + 守护加 hasRows + failedSteps 排除 rows 成功步。**Codex P1（采纳）**：`_lastToolRows` 跨轮不重置 → orchestrate 入口重置 `_lastToolRows = null`（防 turn1 zonal rows 附 turn2 出口卡）。**Codex P2×2（采纳）**：while-loop 兜底路径补 rows 捕获（对齐 3 路径）·`test_wave1_empty_rows_no_card` 改名 `_degrades`（名实相符·前后端分工）。**验证**：括号平衡·pytest 253 passed 零回归·E2E 两场景全过。**可 push**（先验后推·两组已验）。**§0 拓扑 N/A**。
 >
 > - **CB-16 Wave 1 macro 出口（两组预检反评价 + 实施）**：macro 问句（更新对象识别 renewal_object_identify + 体检四维度 checkup_dimension）出口链路从断裂到打通。**结构性缺口**：macro 分析（zonal/rank）权威产物是 `rows` 数组·而 `_maybeBuildOutletCard` 只收图层 fc（`newLayerCount<=0` 直接 return）+ `_extract_emc_value` 不识别 `{rows}` → 三层断裂（不出卡/出空卡）。**两组预检**：Codex P1（checkup_dimension 四维度×单尺度语义错位→`[scale=xxx]` 槽位限定）+ claude组 P1×3（① `_extract_emc_value` 统一收 rows/features 单入口·防前后端漂移 ③ DOMAIN_KW 补「城市体检」长词·防健康体检误触 ⑤ `data_base` rows 分支·N=单元数·total_points 总评论数）+ rows 可达性风险（`_maybeBuildOutletCard` finalStep 后调·工具局部 rows 出作用域→模块级 `_lastToolRows` 缓存×3 捕获）。**落地 7 处**：`build_outlet_schema.py`（rows 分支 + scale 限定 + data_base）·`harness.js`（缓存 + 门放宽「rows 或 newLayerCount>0」+ 测试钩子）·`emc-patterns.js`（DOMAIN_KW）·`urban_checkup_outlets.py`（四维度真实字段 + [scale]）·`e2e-seam.js`（setOutletRows/buildOutletCardForTest·seam 直测不赌博 LLM 路由）。**验证**：pytest 253 passed（+4 新增）·括号配对平衡×3 · E2E 两场景全过（rows 门放宽出卡 + 字段非空 + scale 限定·outlet_card 200）。**待**：用户浏览器复验 + Wave 2（CB-15 前置·后置）。**§0 拓扑 N/A**。
 >
