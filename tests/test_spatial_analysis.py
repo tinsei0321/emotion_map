@@ -189,3 +189,75 @@ def test_grid_endpoint_bad_type():
         'grid_type': 'triangle',
     })
     assert r.status_code == 400
+
+
+# ═══════ CB-16 Wave 2 / CB-15 数据认知（P0·下钻链最小闭环）═══════
+
+def _client():
+    from fastapi.testclient import TestClient
+    from api.main import app
+    return TestClient(app)
+
+
+def test_place_layer_3220_integrated():
+    """P0·3220 POI 接入：place_layer.all_pois 含 3220（合并后 ~4310·去重）·reverse 覆盖扩大。
+
+    CB-16 Wave 2 两组 P0 阻塞修正：place_layer 原只读 SCRIPT/poi_data 四文件（1270+7）·
+    不读 DATA/POI/yichang_pois_wgs84.geojson（3220 FC·geometry 坐标）→ 加 _read_pois_geojson 适配层。
+    """
+    from core.place_layer import get_place_layer
+    pl = get_place_layer()
+    assert pl is not None
+    assert len(pl.yichang_pois) == 3220, f'yichang_pois 应 3220（实际 {len(pl.yichang_pois)}）'
+    # 合并后 all_pois = 1270 + 7 + 3220 - 去重（1270/3220 同源 poi_id 重叠）
+    assert len(pl.all_pois) >= 3000, f'all_pois 应 ≥3000（含 3220 接入·实际 {len(pl.all_pois)}）'
+    # 3220 字段映射（geometry→lng/lat·category→baidu_level1）
+    yp = pl.yichang_pois[0]
+    assert abs(yp['lng']) > 100, f'3220 lng 应从 geometry 提取（实际 {yp["lng"]}）'
+    assert isinstance(yp.get('baidu_level1'), str)
+    # reverse 覆盖扩大（西陵区中心·poi_count > 0）
+    r = pl.reverse(111.286, 30.708)
+    assert (r.get('poi_count') or 0) > 0, f'reverse 应命中 POI（poi_count={r.get("poi_count")}）'
+
+
+def test_grid_pois_endpoint_centroid():
+    """③·grid_pois 端点（质心坐标 + cell_size）→ 格内 POI 清单。"""
+    c = _client()
+    r = c.post('/api/v1/geo/grid_pois', json={'cell_lng': 111.286, 'cell_lat': 30.708, 'cell_size': 200})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body['success'] is True
+    assert body['cell_id'] and body['cell_id'].startswith('grid_200_'), f'cell_id 确定性（{body["cell_id"]}）'
+    assert isinstance(body['pois'], list) and body['count'] == len(body['pois'])
+    if body['pois']:
+        p = body['pois'][0]
+        for k in ('name', 'category', 'lng', 'lat'):
+            assert k in p, f'POI 缺字段 {k}（{p}）'
+
+
+def test_grid_pois_endpoint_cell_id():
+    """③·grid_pois 端点（cell_id 复用·确定性一致）。"""
+    c = _client()
+    r1 = c.post('/api/v1/geo/grid_pois', json={'cell_lng': 111.286, 'cell_lat': 30.708, 'cell_size': 200})
+    cid = r1.json()['cell_id']
+    r2 = c.post('/api/v1/geo/grid_pois', json={'cell_id': cid})
+    assert r2.status_code == 200, r2.text
+    assert r2.json()['count'] == r1.json()['count'], 'cell_id 路径应复用同一格·POI 数一致'
+
+
+def test_grid_pois_endpoint_requires_param():
+    """③·grid_pois 缺参数 → 400。"""
+    c = _client()
+    r = c.post('/api/v1/geo/grid_pois', json={})
+    assert r.status_code == 400
+
+
+def test_aggregate_poi_attrs_polygon():
+    """①·aggregate_by_polygons 产物含 poi_names/poi_count（polygon 模式·POI top_places 增强）。"""
+    # 宜昌附近合成点 + 单面覆盖
+    pts = _synth_points(60)
+    poly = gpd.GeoDataFrame(
+        {'name': ['测试区']}, geometry=[box(111.20, 30.65, 111.30, 30.75)], crs='EPSG:4326')
+    merged = aggregate_by_polygons(pts, poly, agg_cols=['score'], polygon_name_col='name')
+    assert 'poi_names' in merged.columns or 'place_name_source' in merged.columns, \
+        f'聚合应含 POI 属性列（{list(merged.columns)}）'

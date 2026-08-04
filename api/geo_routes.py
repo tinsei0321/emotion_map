@@ -14,6 +14,7 @@ AI 问答内由模型经 ReAct 自动选用的 GIS 原子操作（用户铁律�
 挂载：api/main.py `app.include_router(geo_router, prefix='/api/v1')` → 总路径 /api/v1/geo/*。
 """
 import json
+import math
 from typing import Any, Optional, Union
 
 import geopandas as gpd
@@ -26,6 +27,7 @@ from core.geo_registry import (
 )
 from core.spatial_analysis import aggregate_by_polygons, hot_spot_analysis
 from core.field_dictionary import resolve_field_alias, resolve_role   # P1 字段语义层·alias 解析
+from shapely.geometry import Point as _Point, box as _box   # CB-16 Wave 2：grid_pois 格几何重建
 
 geo_router = APIRouter()
 
@@ -395,6 +397,80 @@ class RankRequest(_GeoBase):
     boundary: Optional[Any] = None    # 给定则先 zonal 聚合再排；空则需 layer 为已聚合 geojson
     by: Optional[str] = None          # worst|best|domain:X|element:X（默认 worst）
     top_n: int = 5
+
+
+# ════════════ 6.5 grid_pois · 格内 POI 清单（CB-16 Wave 2 / CB-15 P0）════════════
+class GridPoisRequest(_GeoBase):
+    """格内 POI 详查（下钻链最小闭环·按需重查·对齐悬停试探/点击锁定双层范式）。
+
+    cell_id 或质心坐标（cell_lng/cell_lat + cell_size）二选一——cell_id 解析失败时质心兜底。
+    返回格内 POI 清单（名称/类别/domain/element/坐标）+ 与格的距离。
+    """
+    cell_id: Optional[str] = None             # 确定性格 id（grid_{cell_size}_{row}_{col}·可选）
+    cell_lng: Optional[float] = None          # 质心坐标 WGS84·与 cell_lat + cell_size 重建格
+    cell_lat: Optional[float] = None
+    cell_size: Optional[float] = None         # 格边长（米·重建格几何用）
+
+
+@geo_router.post('/geo/grid_pois')
+async def grid_pois(req: GridPoisRequest):
+    """返回格内 POI 清单（place_layer.all_pois·含 CB-16 Wave 2 接入的 3220·共 4310 条）。
+
+    cell_id（grid_{size}_{row}_{col}·4546 米制）或质心坐标 + cell_size 重建格几何 → sjoin 格内 POI。
+    """
+    if req.cell_id is None and (req.cell_lng is None or req.cell_lat is None or req.cell_size is None):
+        raise HTTPException(status_code=400, detail='grid_pois 需 cell_id 或 (cell_lng,cell_lat,cell_size)')
+    try:
+        from core.place_layer import get_place_layer
+        _pl = get_place_layer() if get_place_layer else None
+        _pois = _pl.all_pois if _pl else []
+        if not _pois:
+            return {'success': True, 'cell_id': req.cell_id, 'pois': [], 'count': 0, 'message': 'POI 未加载'}
+
+        # 解析格几何（cell_id 优先·质心坐标兜底）→ 统一 EPSG:4546 米制
+        _crs = _PROJECT_CRS
+        if req.cell_id:
+            # grid_{cell_size}_{row}_{col}（4546 米制 origin）
+            _parts = req.cell_id.split('_')
+            if len(_parts) == 4 and _parts[0] == 'grid':
+                _size = float(_parts[1]); _row = float(_parts[2]); _col = float(_parts[3])
+                _ox, _oy = _col * _size, _row * _size
+                _cell = gpd.GeoDataFrame(geometry=[_box(_ox, _oy, _ox + _size, _oy + _size)], crs=_crs)
+                _cell_4326 = _cell.to_crs('EPSG:4326').geometry.iloc[0]
+            else:
+                raise HTTPException(status_code=400, detail=f'cell_id 格式错误: {req.cell_id}（期望 grid_{"{size}"}_{"{row}"}_{"{col}"}）')
+        else:
+            # 质心 + cell_size → 4546 建格（格原点 = floor(质心/cs)*cs·行/列号回算）
+            _cell_size = float(req.cell_size)
+            _src = gpd.GeoDataFrame(geometry=[_Point(req.cell_lng, req.cell_lat)], crs='EPSG:4326')
+            _p = _src.to_crs(_crs).geometry.iloc[0]
+            _row = int(math.floor(_p.y / _cell_size))
+            _col = int(math.floor(_p.x / _cell_size))
+            _ox, _oy = _col * _cell_size, _row * _cell_size
+            _cell = gpd.GeoDataFrame(geometry=[_box(_ox, _oy, _ox + _cell_size, _oy + _cell_size)], crs=_crs)
+            _cell_4326 = _cell.to_crs('EPSG:4326').geometry.iloc[0]
+
+        # POI 点（WGS84）→ sjoin 格内（iterrows 保留 shapely geometry·to_dict 会丢 geometry 类型）
+        _poi_gdf = gpd.GeoDataFrame(
+            _pois, geometry=[_Point(_p.get('lng', 0), _p.get('lat', 0)) for _p in _pois], crs='EPSG:4326')
+        _in = _poi_gdf[_poi_gdf.intersects(_cell_4326)]
+        _out = []
+        for _idx, _r in _in.iterrows():
+            _out.append({
+                'name': str(_r.get('name', '')),
+                'category': str(_r.get('baidu_level1', _r.get('category', ''))),
+                'domain': str(_r.get('domain', '')),
+                'element': str(_r.get('element', '')),
+                'lng': round(float(_r.geometry.x), 6),
+                'lat': round(float(_r.geometry.y), 6),
+            })
+        _cell_id = req.cell_id or f'grid_{int(_cell_size)}_{int(_row)}_{int(_col)}'
+        return {'success': True, 'cell_id': _cell_id, 'pois': _out, 'count': len(_out),
+                'message': f'格内 {len(_out)} 处 POI（含 3220 接入）'}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f'grid_pois 失败: {e}')
 
 
 @geo_router.post('/geo/rank')

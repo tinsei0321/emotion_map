@@ -286,6 +286,8 @@ def aggregate_by_polygons(
     _attach_4x5_attrs(joined, grouped, agg_stats)
     # category/timestamp 热度属性（⑤③，与 create_square_grid 同源 helper）
     _attach_popularity_attrs(joined, grouped, agg_stats)
+    # CB-16 Wave 2（CB-15 P0）：面×POI sjoin（polygon 模式·保留边界名·POI 作 top_places 增强）
+    _attach_poi_attrs(polygons_gdf, agg_stats, mode='polygon')
 
     # 合并回面域 GeoDataFrame
     result = polygons_gdf.copy()
@@ -584,6 +586,7 @@ def _attach_4x5_attrs(joined, grouped, stats):
             stats[f'n_elem_{_e}'] = grouped[_elm_col].apply(lambda x: int((x == _e).sum())).astype(int)
     # place_name：格内代表地名（点侧 spatial_hotspot 多数；空则 area_seed 多数兜底）。
     # 供单极性 Overview 关键词「地点 Top5」（item 5）—— 让"地点-4×5-判断"三点一致有具体地名。
+    # CB-16 Wave 2：place_name_source 标注兜底链（poi_sjoin / poi_top_places / spatial_hotspot / area_seed / empty·可追溯）
     if 'spatial_hotspot' in joined.columns or 'area_seed' in joined.columns:
         def _place_mode(g):
             for fld in ('spatial_hotspot', 'area_seed'):
@@ -595,6 +598,17 @@ def _attach_4x5_attrs(joined, grouped, stats):
                             return str(m.iloc[0])
             return ''
         stats['place_name'] = grouped.apply(_place_mode)
+        # source 兜底：标注非空时标 hotspot/area_seed（精确到字段）·空标 empty（POI 覆盖后由 _attach_poi_attrs 改写为 poi_sjoin/poi_top_places）
+        def _place_src(g):
+            for fld in ('spatial_hotspot', 'area_seed'):
+                if fld in g.columns:
+                    vals = g[fld][g[fld].astype(str) != '']
+                    if not vals.empty:
+                        m = vals.mode()
+                        if not m.empty:
+                            return fld
+            return ''
+        stats['place_name_source'] = grouped.apply(_place_src).where(stats['place_name'].astype(str) != '', 'empty')
     # topic_top：格内主题词众数（供前端关键词按 topic 聚合 + 地点聚集；空值不计）。
     if _topic_col is not None:
         stats['topic_top'] = grouped[_topic_col].agg(
@@ -605,6 +619,72 @@ def _attach_4x5_attrs(joined, grouped, stats):
         stats['issue_label'] = _attrs.apply(lambda _d: _d['issue_label'])
         stats['attribution'] = _attrs.apply(lambda _d: _d['attribution'])
         stats['suggestion'] = _attrs.apply(lambda _d: _d['suggestion'])
+
+
+def _attach_poi_attrs(polygons_gdf, stats, mode='polygon'):
+    """格/面 × POI sjoin（CB-16 Wave 2·CB-15 P0·下钻链最小闭环）。
+
+    polygons_gdf: 聚合面/格几何（index 与 stats.index 对齐——index_right 对应其行位置）。
+    stats: 聚合统计（_attach_4x5_attrs 已写 place_name 标注兜底·本函数按 mode 覆盖/增强）。
+    mode:
+      'grid'    —— create_square_grid（网格级·POI 优先）：place_name = 格内最近质心 POI·fallback 标注可追溯（place_name_source）
+      'polygon' —— aggregate_by_polygons（保留边界名语义）：place_name 不动（边界名）·POI 作 top_places 增强（poi_names/poi_count）
+
+    产出（写 stats）：poi_names（逗号 top-5 + 等N处·防全量清单配额爆）·poi_count（格内 POI 数）·
+    place_name_source（poi_sjoin / poi_top_places / 标注兜底）·grid 模式覆盖 place_name。
+    POI 源 = place_layer.all_pois（CB-16 Wave 2 已含 3220·4310 条）。失败静默（聚合层不因 POI 崩）。
+    """
+    _pois = []
+    try:
+        from core.place_layer import get_place_layer
+        _pl = get_place_layer() if get_place_layer else None
+        _pois = _pl.all_pois if _pl else []
+    except Exception:
+        _pois = []
+    if not _pois or not isinstance(polygons_gdf, gpd.GeoDataFrame) or polygons_gdf.empty or stats is None or stats.empty:
+        return
+    try:
+        _poi_gdf = gpd.GeoDataFrame(
+            _pois, geometry=[Point(_p.get('lng', 0), _p.get('lat', 0)) for _p in _pois], crs='EPSG:4326')
+        _poly = polygons_gdf
+        if _poly.crs is None or _poly.crs.to_epsg() != 4326:
+            try:
+                _poly = _poly.to_crs('EPSG:4326')
+            except Exception:
+                pass
+        _poly_flat = _poly.reset_index(drop=True)   # 位置 index（0..n-1）与 stats.index（index_right）对齐
+        # 避免 sjoin 列名冲突（poly 的 name 与 poi 的 name 撞 → 加 name_left/right 后缀）：poly 非 geometry 列加 poly_ 前缀
+        _poly_flat = _poly_flat.rename(columns={
+            _c: f'poly_{_c}' for _c in _poly_flat.columns if _c != 'geometry'})
+        _j = gpd.sjoin(_poi_gdf, _poly_flat, how='inner', predicate='within')
+        if _j.empty:
+            return
+        for _gid, _grp in _j.groupby('index_right'):
+            if _gid not in stats.index:
+                continue
+            _recs = _grp.to_dict('records')
+            _names = []
+            for _r in _recs:
+                _nm = str(_r.get('name', '') or '').strip()
+                if _nm and _nm not in _names:
+                    _names.append(_nm)
+            if not _names:
+                continue
+            _top = _names[:5]
+            _extra = len(_names) - 5
+            stats.loc[_gid, 'poi_names'] = '、'.join(_top) + (f' 等{_extra}处' if _extra > 0 else '')
+            stats.loc[_gid, 'poi_count'] = len(_names)
+            if mode == 'grid':
+                # 网格级：place_name = 最近质心 POI（几何确定性 > 类别众数·glm 建议）
+                _cen = _poly.geometry.iloc[_gid].centroid if _gid < len(_poly) else None
+                if _cen is not None:
+                    _best = min(_recs, key=lambda _r: _r['geometry'].distance(_cen))
+                    stats.loc[_gid, 'place_name'] = str(_best.get('name', ''))
+                    stats.loc[_gid, 'place_name_source'] = 'poi_sjoin'
+            else:
+                stats.loc[_gid, 'place_name_source'] = 'poi_top_places'
+    except Exception:
+        return
 
 
 def _attach_popularity_attrs(joined, grouped, stats):
@@ -727,6 +807,8 @@ def create_square_grid(
     _attach_4x5_attrs(joined, grouped, stats)
     # category/timestamp 热度属性（⑤③，共享 helper）
     _attach_popularity_attrs(joined, grouped, stats)
+    # CB-16 Wave 2（CB-15 P0）：格×POI sjoin（grid 模式·POI 优先·place_name=最近质心 POI）
+    _attach_poi_attrs(cells_gdf, stats, mode='grid')
 
     # 合并统计回方格（inner：仅保留有点的格）→ 回 WGS84
     result = cells_gdf.merge(stats, left_index=True, right_index=True, how='inner')

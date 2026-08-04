@@ -142,6 +142,9 @@ _SEED_POI_PATH = os.path.join(_ROOT, 'SCRIPT', 'poi_data', 'yichang_poi_wgs84.js
 _AMAP_POI_PATH = os.path.join(_ROOT, 'SCRIPT', 'poi_data', 'amap_poi_wgs84.json')                       # 核心：1270 真实高德（西陵伍家）
 _AMAP_POI_CC_PATH = os.path.join(_ROOT, 'SCRIPT', 'poi_data', 'amap_poi_centralcity_wgs84.json')        # 中心城区外围：sim（AMAP_KEY 缺失 fallback；到位后换真实高德）
 _LANDMARK_POI_PATH = os.path.join(_ROOT, 'SCRIPT', 'poi_data', 'landmarks_wgs84.json')                  # 手标关键地标（高德未覆盖江南；search+sim 单一真源）
+# CB-16 Wave 2（CB-15 P0）：3220 高德 POI（DATA/POI/yichang_pois_wgs84.geojson·GeoJSON FeatureCollection）
+#   与 SCRIPT/poi_data/amap_poi_wgs84.json（1270）同源 poi_id·作下钻链地点清单补充（中心城区外围覆盖）
+_YICHANG_POIS_GEOJSON = os.path.join(_ROOT, 'DATA', 'POI', 'yichang_pois_wgs84.geojson')
 _MAIN_BOUNDARY = os.path.join(_ROOT, 'DATA', 'boundaries', '西陵伍家核心主城.geojson')
 _WATER_POLY_PATH = os.path.join(_ROOT, 'DATA', 'boundaries', '现状水系.geojson')
 
@@ -224,11 +227,14 @@ class PlaceLayer:
             pk = json.load(f)
         self.place_kw = pk.get('zones', {})
 
-        # POI（核心真实高德 + 中心城区外围 sim + 手标关键地标，合并为搜索/锚点宇宙）
+        # POI（核心真实高德 + 中心城区外围 sim + 手标关键地标 + 3220 高德 FC，合并为搜索/锚点宇宙）
         self.seed_pois = self._read_pois(_SEED_POI_PATH)
         self.amap_pois = self._read_pois(_AMAP_POI_PATH) + self._read_pois(_AMAP_POI_CC_PATH)
         self.landmark_pois = self._read_pois(_LANDMARK_POI_PATH)
-        self.all_pois = self.amap_pois + self.landmark_pois   # 搜索/导出宇宙 = amap + 手标地标（seed 退命名不参与，坐标粗糙）
+        # CB-16 Wave 2（CB-15 P0）：3220 高德 POI 接入（GeoJSON FC 适配层·两组 P0 阻塞修正）
+        self.yichang_pois = self._read_pois_geojson(_YICHANG_POIS_GEOJSON)
+        self.all_pois = self.amap_pois + self.landmark_pois + self.yichang_pois   # 搜索/导出宇宙 = amap + 地标 + 3220
+        self.all_pois = self._dedup_pois(self.all_pois)   # 3220 vs 1270 同源 poi_id·name+coord 容差去重
 
         # 预计算每条 POI 的拼音（连写 + 首字母），供 forward 拼音模糊匹配
         for _p in self.all_pois:
@@ -279,6 +285,64 @@ class PlaceLayer:
                 'radius_m': p.get('radius_m', 200),
                 'source': p.get('source', 'seed' if 'yichang' in path else ('landmark' if 'landmark' in path else 'amap')),
             })
+        return out
+
+    @staticmethod
+    def _read_pois_geojson(path):
+        """读 GeoJSON FeatureCollection POI（CB-16 Wave 2·3220 格式：geometry+properties）→ place_layer POI dict。
+
+        3220 高德 POI 字段错配（坐标在 geometry·无 baidu_level1/2/domain/element）——适配：
+        geometry.coordinates → lng/lat · category → baidu_level1 · keyword → baidu_level2 ·
+        district → area（zone 后缀匹配用）· domain/element 空（待 L4/规则补·limitations 标注）。
+        """
+        if not os.path.exists(path):
+            return []
+        with open(path, 'r', encoding='utf-8') as f:
+            gj = json.load(f)
+        out = []
+        for feat in gj.get('features', []) if isinstance(gj, dict) else gj:
+            geom = feat.get('geometry') or {}
+            if geom.get('type') != 'Point':
+                continue
+            coords = geom.get('coordinates') or []
+            if len(coords) < 2:
+                continue
+            p = feat.get('properties') or {}
+            out.append({
+                'name': p.get('name', ''),
+                'lng': float(coords[0]),
+                'lat': float(coords[1]),
+                'area': p.get('district', ''),
+                'baidu_level1': p.get('category', ''),
+                'baidu_level2': p.get('keyword', ''),
+                'domain': '',
+                'element': '',
+                'radius_m': 200,
+                'source': 'yichang_pois_geojson',
+            })
+        return out
+
+    @staticmethod
+    def _dedup_pois(pois):
+        """3220 vs 1270 去重（CB-16 Wave 2·同源 poi_id 重叠）：name 归一化 + coord 容差（~30m）。
+
+        保先序（1270 优先·带 baidu_level/zone 归属）·3220 补未覆盖。name 含空格/括号归一后相等
+        或坐标 < 30m → 视为重复·去后序。
+        """
+        _seen = set()
+        out = []
+        for _p in pois:
+            _nm = _p.get('name', '').replace(' ', '').replace('（', '(').replace('）', ')')
+            _dup = _nm in _seen
+            if not _dup:
+                # 坐标容差：同名同址（<30m）才算重复（同 POI 微偏移）·名同址异是两条（连锁店）
+                for _q in out:
+                    if _q.get('name', '').replace(' ', '') == _nm and abs(_q.get('lng', 0) - _p.get('lng', 0)) < 0.0003 and abs(_q.get('lat', 0) - _p.get('lat', 0)) < 0.0003:
+                        _dup = True
+                        break
+            if not _dup:
+                _seen.add(_nm)
+                out.append(_p)
         return out
 
     def _build_zone_boundaries(self):

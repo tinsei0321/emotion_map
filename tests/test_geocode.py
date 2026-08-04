@@ -292,10 +292,9 @@ class TestOfflineDegradation:
         """min_fuzzy_score=35 应 >= default(=55) 的结果数。"""
         from core.place_layer import get_place_layer
         pl = get_place_layer()
-        # limit 留足余量（200）：语料扩容后 '东站' default≈46 / relaxed≈56，
-        # 原 limit=30 会把两者都截到 30 → 断言误败。此处取全量不截断比较。
-        hits_default = pl.forward('东站', 200)
-        hits_relaxed = pl.forward('东站', 200, min_fuzzy_score=35)
+        # CB-16 Wave 2：3220 POI 接入后语料 1277→4310·limit 提至 1000 让 default 不触顶（保 relaxed>default 区分）
+        hits_default = pl.forward('东站', 1000)
+        hits_relaxed = pl.forward('东站', 1000, min_fuzzy_score=35)
         assert len(hits_relaxed) > len(hits_default), \
             'relaxed(35)={} 应 > default(55)={}'.format(
                 len(hits_relaxed), len(hits_default))
@@ -304,7 +303,7 @@ class TestOfflineDegradation:
         """松弛后应有 score < 55 的命中（证明阈值真被降低了）。"""
         from core.place_layer import get_place_layer
         pl = get_place_layer()
-        hits = pl.forward('东站', 200, min_fuzzy_score=35)
+        hits = pl.forward('东站', 1000, min_fuzzy_score=35)
         low_scores = [h for h in hits if h['score'] < 55]
         assert len(low_scores) > 0, \
             '松弛阈值应产生 score<55 的命中，实际 {} 条'.format(len(hits))

@@ -156,8 +156,17 @@
 - **预检 7 问**（给两组）：双源融合方案 + sjoin 性能 / poi_names 输出 top-N 防配额爆 / grid/pois 端点结构 + LLM 用法 / 3220 接入够不够 / place_name 改动回归风险 + 旧 sim 兼容 / 测试方案 / 边界（只做 P0·P1/P2 后置）
 - **待两组 SCAN** → 反评价 → 实施
 
+### ③p 行动（Wave 2 / CB-15 P0 实施 · 两组预检反评价）
+- **两组预检 SCAN 到**（`CB16-Wave2-CB15-预检_Codex-GPT5` + `CB16-Wave2-CB15-glm组`）·反评价：
+  - **两组一致 P0（采纳·实锤）**：place_layer **未读 3220**（读的是 SCRIPT/poi_data/amap_poi_wgs84.json 1270·非 DATA/POI/3220）+ 3220 字段错配（坐标在 geometry·无 lng/lat/baidu/domain）→ 加 `_read_pois_geojson` 适配层 + _load 合并
+  - **P1（采纳）**：place_name 语义分层（polygon 保留边界名·grid POI 优先·取最近质心 POI）+ place_name_source 字段（可追溯）+ 改前跑现有测试 + sjoin 列名冲突修复（poi/poly 双 name → poly_ 前缀）
+  - **P2（采纳）**：poi_names 逗号 top-5 + 等N处·poi_count·3220 vs 1270 去重（name+coord 容差·保先序）
+- **落地**：`place_layer.py`（_read_pois_geojson + _load 合并 + _dedup_pois）·`spatial_analysis.py`（_attach_poi_attrs + place_name_source + 两处接入）·`api/geo_routes.py`（/grid/pois 端点·cell_id/质心双收）·测试 5 新增 + test_geocode limit 适配（3220 扩容 1277→4310·200 上限触顶）
+- **验证**：3220 接入 all_pois=4310（去重 187）·reverse 覆盖扩大 · /grid/pois 端点 200（centroid count=32 CBD·cell_id 确定性一致）· pytest 258 passed 零回归
+- **待两组实施后检查**（用户定 CB 机制·先验后推）
+
 ### ④ 状态
-`Wave 2 / CB-15 数据认知 → 预检发起（CB 机制）` —— Wave 1 已闭环（push）+ CB-15 讨论稿共识已立·P0 落地预检已发（待两组 SCAN 反评价）。范围：place_name 双源融合 + poi_names + /grid/pois + 3220 接入（下钻链最小闭环）。
+`Wave 2 / CB-15 P0 → 实施完成（待两组检查·先验后推）` —— 两组预检反评价全采纳·P0 五件套落地（3220 接入/place_name 双源/poi_names/grid/pois/去重）·验证全过（258 passed + 端点 200）。待：两组检查 SCAN + 反评价 + 用户 push + P1（lookup_place/归因落点模板）。
 
 ---
 
