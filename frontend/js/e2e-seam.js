@@ -7,7 +7,7 @@ import { addLayer, addGroup, getLayers, removeLayer } from './state.js';
 import { splitByGeometry, detectColorMode, dsvRows } from './import.js';
 import { hasImport, hasRange, hasAnalysis, hasVisibleEmotionLayer } from './ai_qa/cpd-state.js';
 import { TOOLS, resetStepResults, resetCurrentResults } from './ai_qa/tools.js';   // 步 7 observation 快照基线（手册 v2.2·修订 6）：TOOLS 直调 + 状态重置
-import { applyQualityDefense, _setLastToolRowsForTest, _buildOutletCardForTest } from './ai_qa/harness.js';   // G0 R9 单测 + Wave 1 出口卡直测
+import { applyQualityDefense, _setLastToolRowsForTest, _buildOutletCardForTest, composeGapCard } from './ai_qa/harness.js';   // G0 R9 单测 + Wave 1 出口卡直测 + ③w5 措辞断言
 
 // v1.7 测试飞轮：fetch 拦截 — 抓 /chat + /geo 请求供分阶段断言（fail fast）。
 const _origFetch = window.fetch.bind(window);
@@ -176,6 +176,7 @@ window.__emcTest = {
   TOOLS,
   getLayers,
   applyQualityDefense,   // G0 R9 单测：构造 toolHistory 无 clip + 结论声称已裁剪 → 断言「未在工具执行记录」标注出现
+  composeGapCard,        // ③w5（Codex/glm P2）：措辞断言——零工具尝试（failedObs=0）不含「图层」字眼·防回归
   // CB-16 Wave 1 出口卡直测：设 rows 缓存（模拟 macro zonal/rank 产物）+ 直调 _maybeBuildOutletCard（门放宽·newLayerCount=0 也出卡）
   setOutletRows(rows) { _setLastToolRowsForTest(rows); return true; },
   async buildOutletCardForTest(diagnose, ctx, newLayerCount) { return _buildOutletCardForTest(diagnose, ctx, newLayerCount); },

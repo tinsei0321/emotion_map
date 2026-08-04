@@ -329,6 +329,17 @@
 - **反评价采纳**：措辞两处分支 + failedObs 判据·eval 改标尺（先取证）·RST-L06 硬化（feature 级 + 区名条件·根因待取证）·PRM-03/04 stale-tool 门控·PRM-07 白名单门控（弃 fallback）
 - 待实施（②a 措辞 + ②b eval/RST-L06/PRM）→ ③w5 检查 → 通过后 push
 
+### ③w5 行动（②a 措辞 + ②b 发版遗留 实施 + 检查发起·先验后推）
+- **实施**（据 ③w4b 反评价·glm 标尺纠错 + Codex P1×5 全采纳）：
+  - ②a 措辞：harness.js gap 出口 failedObs 判据 + composeGapCard 区分 degraded（无法理解）/ask_user（暂无法回答）·「图层」字眼不再出现在零工具尝试
+  - ②b-1 eval 标尺：multi→实际单工具（clip/density）·**重跑 34/37=92%（76%→92%·GO 超 80% gate）**·MISS 3 既有歧义
+  - ②b-2 RST-L06：chain pre-check preset fallback（feature 级 + 区名条件·无区名不猜）
+  - ②b-3 buffer：radius/cell_size 门控改判 diagnose.template（治 stale-tool）
+  - ②b-4 PRM-07：白名单已在 deriveAvailable·数据 fixture 问题留 backlog
+- **验证**：pytest 277 passed 零回归·ESM-OK·eval 92% GO
+- **检查发起**：`_handoff/CB16-WordFix检查_2026-08-04.md`（7 问）
+- **未推**（c53aa99·先验后推）·待两组检查 SCAN → 反评价 → 通过后 push
+
 ---
 
 ### ① SCAN 摘要
