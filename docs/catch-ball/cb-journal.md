@@ -238,7 +238,18 @@
 - 家庭环境续作·用户定「plan 也进 CB」→ 对齐 ③w 模板发起两组预检（`_handoff/CB16-Wave3预检2b-P2_2026-08-04.md`）
 - **草案 2 子项**：① 可感知计算器 **2b**（B 类条件等式 6 项·`_parse_emc_expr` 拆 `+` + 条件/值识别·element_top 缺失→暂无数据/不匹配→跳过/匹配→取值+关键词标注·复用 `_extract_emc_value`·2a 不动）② checkup_satisfaction **P2**（field_mapping prose→真实字段·`'满意度（4 尺度）':'polarity_index'`·`'8 领域情绪值':'domain_top/element_top + polarity_index'`·均 ∈ _EMC_FIELDS 白名单·对齐 checkup_dimension）
 - **预检 7 问**（给两组）：2b 表达式解析/计算语义·P2 契约语义与 checkup_dimension 信息重复？·CI 提取兼容·范围边界·测试方案·承重零触碰
-- 待两组补充预检 SCAN → 反评价 → 实施
+- **待两组补充预检 SCAN → 反评价 → 实施**
+
+### ③z2 反评价（glm + Codex 补充预检 SCAN·两组均通过·无 P0）
+- **glm组**（`scan/CB16-Wave3补充预检_glm组_2026-08-04.md`）：B 类**恰好 7 项**（claude组 写 6-7）·`_parse_emc_expr` 需处理**多值条件 `/`**（`element_top=设施/环境` 拆列表·非取首·与 `_build_card` 取首语义不同·两处注释明确）·2b source 对齐 2a 格式
+- **Codex**（`scan/CB16-Wave3补充预检_Codex-GPT5_2026-08-04.md`）·**P1×3 全 agree（verify 通过）**：
+  ① **生态宜居 2a/2b 边界**：2a `if 'polarity_index' in expr` 把生态宜居（`element_top=环境 + polarity_index`）当极性类·忽略条件 → 采纳「移 2b 做条件评估」（条件型按条件判定·更合语义）
+  ② **关键词未命中→跳过**：草案只定义命中+标注·未定义未命中 → 采纳「条件匹配 + value_field 有值但关键词未命中→跳过」（防 `停车` 标到 `养老托育` 名下）
+  ③ **`8 领域情绪值` `/` 字段序**：`_build_card` `split('/')[0]` 取首确认（实测 `urban_governance、0.15` 英文枚举）→ 采纳「`element_top/domain_top` 中文要素优先」+ 注释两处 `/` 语义差异
+- **Codex P2 采纳**：panel.js 不渲染 perceptible_metrics（2a 已交付 UI 不可见·并入本批补渲染）·source 标注统一（并入）
+- **Codex P2 暂缓**：renewal 卡体检指标 domain 门控（既有行为非本次引入·2b 放大但非阻塞·backlog）
+- **登记**：`_handoff/CB16-Wave3预检2b-P2_2026-08-04.md` 第一步改「读本地文件·无需 git pull/push」·KNOWLEDGE §7（评估方不 git）
+- 待实施（2b + P2 + panel 渲染）→ 实施后检查 → 通过后 push
 
 ### ④ 状态
 `Wave 3 → 实施完成 → 实施后检查发起（先验后推）` —— 两组预检反评价已落地·检查请求已发（待 SCAN 反评价·通过后 push）。待：两组检查 + 用户 push + Wave 3 余（2b 条件等式·可选）。
