@@ -186,8 +186,20 @@
 - **预检 7 问**（给两组）：A 后端 fallback vs 前端 search 方案 + 边界·B sjoin_nearest 性能 + 落列污染·C 纯前端 vs 契约条目 + 触发词·D 落点模板破坏既有用例？·范围边界 P1 必要性·测试方案·承重零触碰
 - **待两组 SCAN** → 反评价 → 实施
 
+### ③t 行动（CB-15 P1 实施 · 两组预检反评价）
+- **两组预检 SCAN 到**（`CB16-CB15-P1-预检_Codex-GPT5` + `CB16-CB15-P1-glm组`）·反评价：
+  - **两组一致**：P1 四子项方向全部对路·无 P0 阻塞
+  - **A 采纳（两组）**：buffer 后端 fallback search_place（AI/前端共用一处）·边界（preset 优先·top-1·无命中诚实 400·WGS84·只对 str center）
+  - **B 后置（glm组 P2 建议·采纳）**：评论↔POI 批量 sjoin_nearest 后置 Wave 3（非问答阻塞·grid_pois + poi_names 已够）
+  - **C 采纳（两组）**：lookup_place 契约后端 + 前端执行混合·触发词**避开"周边"**（与 buffer 冲突·用"在哪/叫什么/附近/坐标"）·契约三处同步 + track ID
+  - **D 采纳（两组）**：落点组合模板（扩 `+` 多字段合成）+ 暴露 poi_names/place_name_source + 修 :179 陈旧文案
+- **落地**：`geo_routes.py`（buffer fallback）·`build_outlet_schema.py`（+ 合成 + 文案修）·`tool_contracts.py` + `paradigm.py` + `tools.js` + `stages.js` + `emc-patterns.js` + `candidate_selector.py`（lookup_place 契约三处同步 + track ID F_013）
+- **验证**：pytest 266 passed（+8 新增·buffer 中文名 200 / 无命中 400 mock / lookup_place 契约 / 落点合成 / poi 字段）·括号平衡×3
+- **已知**：test_validate_skill_params density.when drift 为**既有**（HEAD 版同 fail·非本次引入·backlog）
+- **待两组实施后检查**（用户定 CB 机制·先验后推）
+
 ### ④ 状态
-`CB-15 P1 → 计划定稿 + 预检发起（CB 机制）` —— Wave 2 P0 已闭环（可 push·待用户）+ P1 四子项探索完成（buffer 中文 POI / 评论↔POI / lookup_place / 归因落点模板）·预检已发（待两组 SCAN 反评价）。待：两组预检 → 反评价 → 实施 → 实施后检查 → push。
+`CB-15 P1 → 两组预检反评价 + 实施完成（待两组检查·先验后推）` —— A buffer 中文 POI + C lookup_place + D 落点模板落地·B 后置 Wave 3·验证全过（266 passed）。待：两组实施后检查 → 反评价 → 用户 push + Wave 3（B 评论↔POI + 可感知计算器）。
 
 ---
 

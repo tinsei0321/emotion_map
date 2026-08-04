@@ -1258,6 +1258,30 @@ export const TOOLS = {
     } catch (e) { return _ERR('nearest', e); }
   },
 
+  /** 查地点（CB-15 P1·C）：中文名/POI 名 → search 坐标 → reverse 近邻。治 LLM 不可见地点。查询型·无图层副作用。 */
+  async lookup_place(params = {}) {
+    if (!params.q && (params.lng == null || params.lat == null)) return { observation: '[ERR] lookup_place 需 q（地名/POI 名）或坐标(lng,lat)' };
+    try {
+      let _pt = null;
+      if (params.lng != null && params.lat != null) {
+        _pt = { lng: Number(params.lng), lat: Number(params.lat), name: '坐标' };
+      } else {
+        const _s = await fetch(`/api/v1/place/search?q=${encodeURIComponent(String(params.q))}&limit=3`).then((r) => r.json());
+        const _hits = (_s && _s.hits) || [];
+        if (!_hits.length) return { observation: `未找到地点「${params.q}」（本地 4310 POI + 高德均未命中·请换名或指定坐标）` };
+        _pt = _hits[0];
+      }
+      const _rev = await fetch(`/api/v1/reverse-geocode?lng=${_pt.lng}&lat=${_pt.lat}`).then((r) => r.json());
+      const _near = ((_rev && _rev.nearest_pois) || []).slice(0, 5);
+      const _nearTxt = _near.length ? _near.map((n) => `${n.name}${n.dist_m != null ? '(' + Math.round(n.dist_m) + 'm)' : ''}`).join('、') : '无';
+      const rows = [{
+        name: _pt.name, lng: Number(_pt.lng).toFixed(5), lat: Number(_pt.lat).toFixed(5),
+        category: _pt.category || _pt.baidu_level1 || '', nearest: _nearTxt,
+      }];
+      return { observation: `地点「${_pt.name}」@(${Number(_pt.lng).toFixed(5)}, ${Number(_pt.lat).toFixed(5)})，近邻：${_nearTxt}`, data: { rows } };
+    } catch (e) { return _ERR('lookup_place', e); }
+  },
+
   /** Gi* 热点识别 → 落图层（hot/cold/ns 点，离散色：hot=负面聚集=红 / cold=正面聚集=绿 / ns=灰）。 */
   async hotspot(params = {}) {
     const _layer = resolvePointLayer(params);

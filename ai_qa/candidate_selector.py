@@ -267,6 +267,7 @@ def _grounding(field_roles, has_point, has_polygon):
 
 # ════════════ 追踪 ID 注册（MOD_AIQA 扩展）═══════════
 register_track_id("MOD_AIQA.F_012", "select_candidates（0LLM 候选工具选择·模块九 D035-D038·Phase A 纯规则·5.242 context 接回）")
+register_track_id("MOD_AIQA.F_013", "lookup_place 工具契约（CB-15 P1·查地点：q 或坐标 → search + reverse 近邻）")
 
 
 if __name__ == '__main__':

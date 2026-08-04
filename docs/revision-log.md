@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月04日）** · 本节按板块分组、组内倒序；最新工作 = **CB-16 Wave 2 / CB-15 实施后检查通过 + P1/P2 补修（两组 SCAN·先验后推）**（分支 `fix/emc-buglog`）。最近：
+> 📍 **最新动态（08月04日）** · 本节按板块分组、组内倒序；最新工作 = **CB-16 CB-15 P1 实施完成：两组预检反评价 + 地点进问答管线**（分支 `fix/emc-buglog`）。最近：
+>
+> - **CB-16 CB-15 P1（两组预检反评价 + 实施）**：P1 = 让地点真正进 EMC 问答管线（治 LLM 不可见地点）。**两组预检**：四子项方向全对路·无 P0。**A（采纳）**：buffer 后端 fallback search_place——`/geo/buffer` resolve_boundary 失败（只认 preset/GeoJSON·中文名"奥体中心"失败）→ search_place 取坐标（preset 优先·top-1·无命中诚实 400·WGS84·只对 str center）。**C（采纳）**：lookup_place 工具（契约后端 + 前端执行混合）——TOOL_CONTRACTS + paradigm + tools.js + SKILL_DEFS + GEO_VERB_KW（触发**避开"周边"**·与 buffer 冲突·用"在哪/叫什么/附近/坐标"）+ track ID F_013。**D（采纳）**：归因落点模板——_extract_emc_value 扩 `+` 多字段合成（place_name + issue_label）+ 暴露 poi_names/place_name_source + 修 :179 陈旧文案（"CB-15 后升级 POI 双源"→"P0 双源融合·place_name_source 标置信度"）。**B 后置 Wave 3**（glm组 P2·评论↔POI 批量 sjoin_nearest 非问答阻塞）。**验证**：pytest 266 passed（+8 新增·buffer 中文名 200 / 无命中 400 mock / lookup_place 契约 / 落点合成）+ 括号平衡×3。**已知**：test_validate_skill_params density.when drift 为**既有**（HEAD 版同 fail·非本次引入·backlog）。**待**：两组实施后检查 + push + Wave 3。**§0 拓扑 N/A**。
 >
 > - **CB-16 Wave 2 检查反评价 + 补修（两组 SCAN·先验后推）**：Wave 2 P0 发实施后检查 → 两组 SCAN：**主体通过**（4 环节核心正确·3220 接入 4310·双模式 place_name·source 链完整·端点确定性·53 单测全过）。**glm组 P1（采纳·两组实锤）**：`_dedup_pois` 同名异址连锁店误删——`_seen` 先锁 name·第二条同名直接判重·坐标容差成死代码 → 去 `_seen`·改 name+坐标容差联合判定（O(n²)·n=4310·_load 一次）。**Codex P2（采纳）**：create_square_grid 未输出 cell_id 列 → 补确定性 cell_id（grid_{size}_{row}_{col}·4546）。**glm组 P2（采纳）**：补测试边界（去重连锁店 / grid place_name_source=poi_sjoin / cell_id 列）。**验证**：all_pois=4342（修复后恢复 32 条误删连锁店·预期）·pytest 261 passed 零回归（+3 新增）。**可 push**（先验后推·两组已验）。**§0 拓扑 N/A**。
 >

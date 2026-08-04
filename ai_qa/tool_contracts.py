@@ -238,6 +238,25 @@ TOOL_CONTRACTS = [
         ],
     },
     {
+        # CB-15 P1（C）：lookup_place——治 LLM 不可见地点（问"滨江公园有什么/奥体中心在哪"）
+        #   glm组 预检：触发词避开"周边"（与 buffer 冲突·buffer 更具体带半径）·用"地点/在哪/叫什么/附近/坐标"
+        'skill': 'lookup_place', 'tool': 'lookup_place', 'category': 'single', 'name_cn': '查地点',
+        'voice': '我查某地点/POI 的位置与周边（search 中文名→坐标→reverse 近邻）', 'triggers_str': '地点/在哪/叫什么/附近/坐标',
+        'when': '查地点：用户问某地名/POI 在哪、附近有什么、坐标——治 LLM 不可见地点（place_layer 4310 POI 宇宙）',
+        'params_str': 'q(中文名/POI 名), lng?, lat?（坐标直查·q 与坐标二选一）',
+        'yields': '地点命中（名称/坐标/类别）+ 周边近邻 top-5（reverse）', 'contributes': '让地点进 AI 问答管线——LLM 可知"滨江公园/奥体中心"位置与周边',
+        'scale': '微观（POI 落点）', 'preconditions': 'q 或 (lng,lat)',
+        'failure_modes': '与 buffer 混（"周边"触发 buffer·本工具用"在哪/叫什么"）；q 无命中诚实报错（禁编造坐标）',
+        'examples': '正:滨江公园有什么 / 正:奥体中心在哪 / 误:奥体中心周边500m(→buffer)',
+        'required_slots': ['q'],
+        'planning_common': 'q=中文名/POI 名 → search_place 命中坐标 → reverse 近邻；或 lng/lat 直查 reverse。查询型·无图层副作用',
+        'params': [
+            {'name': 'q', 'type': 'str', 'default': None, 'required': False, 'alias': ['query', 'name', 'place'], 'hint': '中文名/POI 名（与坐标二选一）', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'lng', 'type': 'float', 'default': None, 'required': False, 'alias': ['lon', 'x'], 'hint': '坐标直查（WGS84）', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'lat', 'type': 'float', 'default': None, 'required': False, 'alias': ['y'], 'hint': '坐标直查（WGS84）', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+        ],
+    },
+    {
         'skill': 'hotspot', 'tool': 'hotspot', 'category': 'single', 'name_cn': '聚集识别(Gi*)',
         'voice': '我用 Gi* 识别负面/正面情绪显著聚集的冷热点', 'triggers_str': '聚集/热点/冷热/显著聚集/聚集区',
         'when': 'Gi* 热点：负面/正面情绪在空间上显著聚集的冷热点',

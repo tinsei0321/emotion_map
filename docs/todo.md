@@ -9,7 +9,18 @@
 
 ---
 
-## 📅 2026-08-04（CB-16 大南门数据专题 · 数据接入 EMC 出口链路闭环 + R7 截断修复 + Wave 1/2 出口 + CB-15 数据认知）
+## 📅 2026-08-04（CB-16 大南门数据专题 · 数据接入 EMC 出口链路闭环 + R7 截断修复 + Wave 1/2 出口 + CB-15 P0/P1 数据认知）
+
+### ✅ CB-15 P1 · 两组预检反评价 + 实施完成（待两组检查·先验后推）
+
+- **范围**：让地点进 EMC 问答管线（A buffer 中文 POI + C lookup_place + D 归因落点模板·B 评论↔POI 后置 Wave 3）
+- **两组预检反评价**：四子项方向全对路·无 P0
+- **A 落地**：`/geo/buffer` fallback search_place（preset 优先·top-1·无命中诚实 400·WGS84·只对 str center）
+- **C 落地**：lookup_place 契约后端 + 前端执行混合（TOOL_CONTRACTS + paradigm + tools.js + SKILL_DEFS + GEO_VERB_KW 避开"周边" + track ID F_013）
+- **D 落地**：_extract_emc_value 扩 `+` 多字段合成 + 暴露 poi_names/place_name_source + 修 :179 陈旧文案
+- **验证**：pytest 266 passed（+8 新增）·括号平衡×3
+- **已知**：test_validate_skill_params density.when drift 为既有（HEAD 同 fail·backlog）
+- **待**：两组实施后检查 → 反评价 → push + Wave 3
 
 ### ✅ Wave 2 / CB-15 数据认知 P0 · 实施后检查通过 + P1/P2 补修（**可 push**·先验后推）
 

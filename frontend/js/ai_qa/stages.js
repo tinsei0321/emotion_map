@@ -49,6 +49,7 @@ export const SKILL_DEFS = {
   // resolvePointLayer 的 visible 过滤，致"只传 L1·T1 却跑 L2"（5.92 Track 1 核心保证漏）。改走可见点层选源（同 density）。
   rank:     { tool: 'rank',        category: 'single',   required_slots: [],                     optional_defaults: { by: 'worst', top_n: 5 } },
   buffer:   { tool: 'buffer',      category: 'single',   required_slots: ['center'],              optional_defaults: { radius_m: 500, agg_cols: ['score'] } },
+  lookup_place: { tool: 'lookup_place', category: 'single', required_slots: [],                    optional_defaults: {} },   // CB-15 P1：查地点（q 或坐标）
   clip:     { tool: 'clip',        category: 'single',   required_slots: ['range'],               optional_defaults: {} },
   overlay:  { tool: 'overlay',     category: 'single',   required_slots: ['layer_a', 'layer_b'],  optional_defaults: { how: 'intersection' } },
   zonal:           { tool: 'zonal_stats',     category: 'single', required_slots: ['boundary'],          optional_defaults: { agg_cols: ['score'] } },

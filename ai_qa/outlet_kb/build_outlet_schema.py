@@ -146,14 +146,16 @@ def build_outlet_schema(diagnose: dict, result: dict, question: str = '') -> dic
         if '不能' in str(emc_expr):
             card['fields'][industry_field] = {'value': '（需客观数据·情绪地图不替代）', 'source': '边界'}
             continue
-        # 取主字段（第一个标识符·去尾部限定词如"降序/占比/排序/负数/正数/TOPn" + scale 标记）
-        # CB-16 Codex：qualifier 后缀解析失败致 renewal_sequence"优先级排序"丢值（实测 polarity_index 降序 → 暂无数据）
-        main_field = _re.sub(r'\[scale=[a-z]+\]', '', str(emc_expr))
-        main_field = _re.split(r'\s*(?:降序|占比|排序|负数|正数|TOP\d+)', main_field)[0].split('+')[0].split('（')[0].split('/')[0].strip()
-        if main_field and main_field not in ('图层', '评论'):
-            val = _extract_emc_value(result, main_field)
-            if val is not None:
-                card['fields'][industry_field] = {'value': val, 'source': f'{main_field}（确定性）'}
+        # 取字段（支持 "字段A + 字段B" 组合·CB-15 P1 glm组/Codex：扩 + 号合成——逐字段取值·非空 join·治落点组合）
+        #   去尾部限定词（降序/占比/排序/负数/正数/TOPn）+ scale 标记；每个 + 分隔的字段独立取·空值跳过
+        _expr_clean = _re.sub(r'\[scale=[a-z]+\]', '', str(emc_expr))
+        _field_parts = [_re.split(r'\s*(?:降序|占比|排序|负数|正数|TOP\d+)', p)[0].split('（')[0].split('/')[0].strip()
+                        for p in _expr_clean.split('+')]
+        _field_parts = [p for p in _field_parts if p and p not in ('图层', '评论')]
+        if _field_parts:
+            _vals = [str(_extract_emc_value(result, p)) for p in _field_parts if _extract_emc_value(result, p) is not None]
+            if _vals:
+                card['fields'][industry_field] = {'value': '、'.join(_vals), 'source': '、'.join(f'{p}（确定性）' for p in _field_parts)}
             else:
                 card['fields'][industry_field] = {'value': '暂无数据', 'source': '缺失·不编造'}
         else:
@@ -175,8 +177,8 @@ def build_outlet_schema(diagnose: dict, result: dict, question: str = '') -> dic
             card['data_base']['N'] = n
             card['data_base']['note'] = 'L2 聚合·时间窗待定'
 
-    # 诚实标注（place_name 粗略·规则归因）
-    card['limitations'].append('place_name = 格内代表地名（粗略·CB-15 后升级 POI 双源）')
+    # 诚实标注（place_name 双源融合·CB-15 P1 修陈旧文案）
+    card['limitations'].append('place_name = 格内最近 POI（CB-15 P0 双源融合·place_name_source 标置信度）')
     card['limitations'].append('归因 = 规则查表（DEMO·L4 深度归因待接入）')
 
     return card

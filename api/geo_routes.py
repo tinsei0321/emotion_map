@@ -535,6 +535,21 @@ async def buffer(req: BufferRequest):
    （point_count/polarity_index/domain_top/...，消除 buffer→zonal 断点）。省略 layer → 逐字节同原（向后兼容）。"""
     try:
         center = resolve_boundary(req.center)
+    except (FileNotFoundError, ValueError):
+        # CB-15 P1（A）：str center 非 preset → 尝试中文名 search_place 取坐标（AI/前端共用一处）
+        #   边界：只对 str center（GeoJSON dict 已是坐标）·top-1 命中·无命中诚实 400（禁编造坐标）·search_place 返回 WGS84
+        if isinstance(req.center, str) and req.center.strip():
+            from core.geocode import search_place
+            _hits = search_place(req.center.strip(), limit=1)
+            if not _hits:
+                raise HTTPException(status_code=400,
+                                    detail=f'center 无法解析：{req.center}（非 preset_id/GeoJSON/POI 名·请改用已加载范围或上传）')
+            _h = _hits[0]
+            center = gpd.GeoDataFrame({'name': [_h['name']]},
+                                      geometry=[_Point(_h['lng'], _h['lat'])], crs='EPSG:4326')
+        else:
+            raise
+    try:
         proj = center.to_crs(_PROJECT_CRS)
         buf = proj.geometry.buffer(float(req.radius_m))
         names = center['name'].tolist() if 'name' in center.columns else ['缓冲区'] * len(center)

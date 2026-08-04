@@ -177,3 +177,37 @@ def test_zonal_stats_pre_filter_combines():
     if rows:
         # 过滤后只剩 renewal 域，domain_top 应为 renewal（或空）
         assert all(rw.get('domain_top') in ('urban_renewal', '', None) for rw in rows)
+
+
+# ═══════ CB-15 P1：buffer 中文 POI（A）+ lookup_place 契约（C）═══════
+
+def test_buffer_chinese_poi_fallback():
+    """CB-15 P1（A）：buffer 中文 POI 名 → search_place fallback 出缓冲（治"奥体中心"失败）。"""
+    r = client.post('/api/v1/geo/buffer', json={'center': '万达广场', 'radius_m': 500})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body['success'] is True
+    assert body['geojson']['type'] == 'FeatureCollection'
+    feats = body['geojson']['features']
+    assert len(feats) >= 1, '应出缓冲面'
+    assert 'area_km2' in feats[0]['properties'], '应含面积'
+
+
+def test_buffer_chinese_poi_no_hit_honest(monkeypatch):
+    """CB-15 P1（A）：search 无命中 → 诚实 400（禁编造坐标·mock 保证无命中确定性）。"""
+    import core.geocode as _gc
+    monkeypatch.setattr(_gc, 'search_place', lambda q, limit=10: [])   # mock 无命中（端点 from core.geocode import 取属性当前值）
+    r = client.post('/api/v1/geo/buffer', json={'center': 'xx', 'radius_m': 500})
+    assert r.status_code == 400, r.text
+    assert '无法解析' in r.json()['detail'], f'应诚实报错（{r.text[:80]}）'
+
+
+def test_lookup_place_tool_contract():
+    """CB-15 P1（C）：lookup_place 契约已注册（TOOL_CONTRACTS 派生含 lookup_place·触发避开周边）。"""
+    from ai_qa.tool_contracts import TOOL_CONTRACTS
+    names = [c['skill'] for c in TOOL_CONTRACTS]
+    assert 'lookup_place' in names, f'TOOL_CONTRACTS 应含 lookup_place（{names}）'
+    entry = next(c for c in TOOL_CONTRACTS if c['skill'] == 'lookup_place')
+    assert entry['tool'] == 'lookup_place'
+    assert '在哪' in entry['triggers_str'], f'触发词应含"在哪"（{entry["triggers_str"]}）'
+    assert '周边' not in entry['triggers_str'], f'触发词应避开"周边"（留 buffer·{entry["triggers_str"]}）'

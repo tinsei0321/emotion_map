@@ -208,3 +208,42 @@ def test_wave1_empty_rows_degrades():
     assert card is not None
     assert all(str(f.get('value')) != '' for f in card['fields'].values()), \
         f'空 rows 字段应降级非空（{card["fields"]}）'
+
+
+# ── CB-15 P1（D）：归因落点模板（+ 组合合成 + poi_names/place_name_source 暴露）──
+def test_wave_p1_composite_field_mapping():
+    """CB-15 P1（D）：field_mapping 组合表达式（字段A + 字段B）→ 多字段合成取值（非首字段单取）。
+
+    扩 _extract_emc_value 支持 + 合成：place_name + issue_label 逐字段取·非空 join·治"需求位置"落点组合。
+    """
+    diag = {'scale': 'meso', 'domain_lens': ['urban_renewal'], 'outlet': '建议清单'}
+    result = {
+        'rows': [{'place_name': '大南门·二马路滨江片区', 'issue_label': '停车难',
+                  'polarity_index': -0.32, 'point_count': 900}],
+    }
+    # 手动构造：用带 + 组合的 field_mapping（renewal_demand 需求位置 = 'place_name + 网格/POI'）
+    card = build_outlet_schema(diag, result, '大南门·二马路片区更新需求分析')
+    assert card is not None
+    vals = {k: str(f.get('value')) for k, f in card['fields'].items()}
+    assert '大南门' in vals.get('需求位置', ''), f'需求位置应含 place_name（组合合成·{vals}）'
+    assert '停车难' in vals.get('问题类型', ''), f'问题类型应含 issue_label（{vals}）'
+
+
+def test_wave_p1_poi_fields_exposed():
+    """CB-15 P1（D）：聚合产物 poi_names/place_name_source 暴露给出口卡（地点清单 + 置信度来源）。"""
+    diag = {'scale': 'meso', 'domain_lens': ['urban_renewal'], 'outlet': '建议清单'}
+    result = {
+        'rows': [{'place_name': '大南门', 'place_name_source': 'poi_sjoin',
+                  'poi_names': '滨江公园、二马路老巷 等3处', 'issue_label': '停车难',
+                  'polarity_index': -0.32, 'point_count': 900}],
+    }
+    card = build_outlet_schema(diag, result, '大南门更新需求分析')
+    assert card is not None
+    # 需求位置 ← place_name（组合内）+ 若 field_mapping 消费 poi_names 则出现
+    vals = {k: str(f.get('value')) for k, f in card['fields'].items()}
+    assert '大南门' in vals.get('需求位置', ''), f'需求位置应含 place_name（{vals}）'
+    # limitations 不再陈旧（P0 已双源）
+    lims = ' '.join(card['limitations'])
+    assert 'CB-15 后升级 POI 双源' not in lims, f'陈旧文案应移除（{lims}）'
+    assert '双源融合' in lims, f'应标双源融合（{lims}）'
+    assert 'place_name_source' in lims, f'应标 place_name_source 置信度（{lims}）'
