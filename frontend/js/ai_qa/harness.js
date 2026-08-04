@@ -353,11 +353,17 @@ export function applyQualityDefense(draft, opts) {
   //   → 阈值 800→1500（实测结论 p95≈1000·留余量·1500 只拦真失控长文）
   //   切点结构回切（句号/换行·不切在 markdown 列表项标题后·治「**4.**」空标题）
   if (final.length > 1500) {
+    // 断句符：。；\n！？——【不用 '.'】CB-16 检查（claude组 场景4 实测）：lastIndexOf('.') 会把 markdown
+    //   列表标题「**4.**」的句点当句末 → 切在标题后复现空标题（原 bug 根因之一）。中文结论英文句点罕见·去掉净收益。
     const _cut = Math.max(final.lastIndexOf('。', 1500), final.lastIndexOf('；', 1500),
-                          final.lastIndexOf('\n', 1500), final.lastIndexOf('.', 1500));
+                          final.lastIndexOf('\n', 1500), final.lastIndexOf('！', 1500),
+                          final.lastIndexOf('？', 1500));
+    // Codex 硬化：切点后若残留悬空列表编号行（如 \n4.）→ 剥除（防窄窗空标题）
+    let _trunc = _cut > 750 ? final.slice(0, _cut + 1) : final.slice(0, 1500);
+    _trunc = _trunc.replace(/\n\d+\.\s*$/, '');
     const _hasLayers = realLayers.length > 0;
-    const _note = _hasLayers ? '\n\n…（结论已截断·详见上方图层与数据）' : '\n\n…（结论较长已精简·详见上方分析）';
-    final = (_cut > 750 ? final.slice(0, _cut + 1) : final.slice(0, 1500)) + _note;
+    const _note = _hasLayers ? '\n\n…（结论已截断·详见上方图层与数据）' : '\n\n…（结论较长·已截断保留要点）';
+    final = _trunc + _note;
     fixes.push({ rule: 'R7', action: 'truncate' });
   }
 
