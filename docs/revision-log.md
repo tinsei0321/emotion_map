@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月04日）** · 本节按板块分组、组内倒序；最新工作 = **CB-16 CB-15 P1 实施完成：两组预检反评价 + 地点进问答管线**（分支 `fix/emc-buglog`）。最近：
+> 📍 **最新动态（08月04日）** · 本节按板块分组、组内倒序；最新工作 = **CB-16 CB-15 P1 实施后检查通过 + P2 补修（两组 SCAN·先验后推）**（分支 `fix/emc-buglog`）。最近：
+>
+> - **CB-16 CB-15 P1 检查反评价 + P2 补修（两组 SCAN·先验后推）**：P1 发实施后检查 → 两组 SCAN：**通过·可推**（A buffer 中文 fallback + C lookup_place 契约 + D 组合合成/:179 文案全正确·单测 34 passed·buffer 中文名 200/400 实测·density.when drift 既有性独立回测确认非本次引入）。**P2×4（采纳）**：① lookup_place triggers 去「附近」（与 buffer 重叠·"附近/周边"留 buffer）② 组合合成 source 只列非空 parts ③ docstring :13 旧文案修 ④ required_slots=['q']→[] 对齐 SKILL_DEFS（lng/lat 直查合法）。**backlog（Codex 扩）**：validate_skill_params drift 是 7 工具（density/buffer/clip/overlay/zonal_stats/extract_feature/merge）paradigm when 同步·非仅 density。**验证**：pytest 266 passed 零回归·测试补断言（lookup 触发词不含附近）。**可 push**（先验后推·两组已验）。**§0 拓扑 N/A**。
 >
 > - **CB-16 CB-15 P1（两组预检反评价 + 实施）**：P1 = 让地点真正进 EMC 问答管线（治 LLM 不可见地点）。**两组预检**：四子项方向全对路·无 P0。**A（采纳）**：buffer 后端 fallback search_place——`/geo/buffer` resolve_boundary 失败（只认 preset/GeoJSON·中文名"奥体中心"失败）→ search_place 取坐标（preset 优先·top-1·无命中诚实 400·WGS84·只对 str center）。**C（采纳）**：lookup_place 工具（契约后端 + 前端执行混合）——TOOL_CONTRACTS + paradigm + tools.js + SKILL_DEFS + GEO_VERB_KW（触发**避开"周边"**·与 buffer 冲突·用"在哪/叫什么/附近/坐标"）+ track ID F_013。**D（采纳）**：归因落点模板——_extract_emc_value 扩 `+` 多字段合成（place_name + issue_label）+ 暴露 poi_names/place_name_source + 修 :179 陈旧文案（"CB-15 后升级 POI 双源"→"P0 双源融合·place_name_source 标置信度"）。**B 后置 Wave 3**（glm组 P2·评论↔POI 批量 sjoin_nearest 非问答阻塞）。**验证**：pytest 266 passed（+8 新增·buffer 中文名 200 / 无命中 400 mock / lookup_place 契约 / 落点合成）+ 括号平衡×3。**已知**：test_validate_skill_params density.when drift 为**既有**（HEAD 版同 fail·非本次引入·backlog）。**待**：两组实施后检查 + push + Wave 3。**§0 拓扑 N/A**。
 >

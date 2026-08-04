@@ -211,3 +211,4 @@ def test_lookup_place_tool_contract():
     assert entry['tool'] == 'lookup_place'
     assert '在哪' in entry['triggers_str'], f'触发词应含"在哪"（{entry["triggers_str"]}）'
     assert '周边' not in entry['triggers_str'], f'触发词应避开"周边"（留 buffer·{entry["triggers_str"]}）'
+    assert '附近' not in entry['triggers_str'], f'触发词应避开"附近"（留 buffer·{entry["triggers_str"]}）'

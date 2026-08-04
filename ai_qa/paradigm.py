@@ -294,7 +294,7 @@ GEO_TOOL_CATALOG = [
         'contributes': '让地点进 AI 问答管线——LLM 可知"滨江公园/奥体中心"位置与周边',
         'scale': '微观（POI 落点）',
         'preconditions': 'q 或 (lng,lat)',
-        'failure_modes': '与 buffer 混（"周边"触发 buffer·本工具用"在哪/叫什么"）；q 无命中诚实报错（禁编造坐标）',
+        'failure_modes': '与 buffer 混（"周边/附近"触发 buffer·本工具用"在哪/叫什么/坐标"）；q 无命中诚实报错（禁编造坐标）',
     },
     {
         'name': 'hotspot',

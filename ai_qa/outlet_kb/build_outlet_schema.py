@@ -10,7 +10,7 @@
 - 不新增 LLM 阶段（撞 D019 红线·确定性比 LLM 编造更可信）
 - 字段缺失降级（填"暂无数据"·不编造·glm 建议）
 - 尺度分派（contract.scales 匹配·不匹配不出卡）
-- place_name 诚实标注（"格内代表地名·粗略·CB-15 后升级"）
+- place_name 诚实标注（CB-15 P0 双源融合·place_name_source 标置信度）
 """
 from __future__ import annotations
 
@@ -153,9 +153,12 @@ def build_outlet_schema(diagnose: dict, result: dict, question: str = '') -> dic
                         for p in _expr_clean.split('+')]
         _field_parts = [p for p in _field_parts if p and p not in ('图层', '评论')]
         if _field_parts:
-            _vals = [str(_extract_emc_value(result, p)) for p in _field_parts if _extract_emc_value(result, p) is not None]
-            if _vals:
-                card['fields'][industry_field] = {'value': '、'.join(_vals), 'source': '、'.join(f'{p}（确定性）' for p in _field_parts)}
+            # 逐字段取·非空 join（P2·Codex/glm）：source 只列实际提取字段（非空 parts）·value 同
+            _extracted = [(p, _extract_emc_value(result, p)) for p in _field_parts]
+            _nonempty = [(p, v) for p, v in _extracted if v is not None]
+            if _nonempty:
+                card['fields'][industry_field] = {'value': '、'.join(str(v) for _, v in _nonempty),
+                                                  'source': '、'.join(f'{p}（确定性）' for p, _ in _nonempty)}
             else:
                 card['fields'][industry_field] = {'value': '暂无数据', 'source': '缺失·不编造'}
         else:

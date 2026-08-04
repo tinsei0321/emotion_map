@@ -204,8 +204,16 @@
 - **未推**（61567d6·先验后推：两组通过后 push）
 - 待两组检查 SCAN → 反评价
 
+### ③v 行动（CB-15 P1 检查反评价 + P2 补修 · 两组 SCAN 处理）
+- **两组检查 SCAN 到**（`CB16-CB15-P1完成-检查_Codex-GPT5` + `CB16-CB15-P1完成-glm组`）·反评价：
+  - **两组一致**：CB-15 P1 通过·可推（A buffer 中文 fallback + C lookup_place 契约 + D 组合合成/:179 文案全正确·单测 34 passed·buffer 中文名 200/400 实测·density.when drift 既有性独立回测确认非本次引入）
+  - **P2 全采纳**（低成本·随 P1 修顺手清理）：① lookup_place triggers 去「附近」（与 buffer 重叠·"附近/周边"留 buffer）② 组合合成 source 只列非空 parts ③ docstring :13 旧文案修 ④ required_slots=['q']→[] 对齐 SKILL_DEFS（lng/lat 直查合法）
+  - **backlog（Codex 扩）**：validate_skill_params drift 是 7 工具（density/buffer/clip/overlay/zonal_stats/extract_feature/merge）paradigm when 同步·非仅 density
+- **验证**：pytest 266 passed 零回归·测试补断言（lookup 触发词不含附近）
+- **待用户 push**（先验后推·两组已验·通过）
+
 ### ④ 状态
-`CB-15 P1 → 实施完成 → 实施后检查发起（先验后推）` —— 两组预检反评价已落地·检查请求已发（待 SCAN 反评价·通过后 push）。待：两组检查 + 用户 push + Wave 3（B 评论↔POI 批量 + 可感知计算器 + validate_outlet_fields CI）。
+`CB-15 P1 → 实施后检查通过 + P2 补修完成` —— 两组通过·P2×4（触发词去附近/source 非空/docstring/required_slots 对齐）+ 7 工具 drift backlog 全落地·验证全过（266 passed）。**可 push**（先验后推·两组已验）+ Wave 3（B 评论↔POI 批量 + 可感知计算器 + validate_outlet_fields CI）。
 
 ---
 
