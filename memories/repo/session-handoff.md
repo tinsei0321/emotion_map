@@ -1,12 +1,12 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：08月04日凌晨（**Wave 0 出口卡片完整链路完成：结果范式 agent 第三段从 0 到 1·经 CB 两轮检查通过**）| 分支 `fix/emc-buglog` | **已 push（与远端同步）**
+> 最后更新：08月04日（**Wave 1（macro 出口）实施完成：两组预检反评价 + 7 处落地·rows 产物链路打通**）| 分支 `fix/emc-buglog` | **待 push（今晨起 ~12 commit 未推）**
 >
 > 🔗 **CB 入口**：`docs/catch-ball/_cb-index.md`（**双阵营：claude组 开发主 + Codex/glm组 评估**）
 > 🏠🏢 **换机卡片**：`docs/catch-ball/_handoff/HOME.md` + `OFFICE.md`
 
-## 当前节点：Wave 0 出口卡片完整链路完成（结果范式 agent·第三段·CB-16 闭环）
+## 当前节点：Wave 1（macro 出口）实施完成（Wave 0 完整链路 + R7 修复 + 大南门数据接入已闭环）
 
 08-03→04 大跨轮（CB-12/13/14/15 已闭环·CB-16 出口深化收敛）：
 - **出口抽象层定稿**：EMC 找市场·三段式（意图→结果→**成果范式 agent**）·软指标可信性缺口 = 立项切入点·官方三类指标（可量化 ~55-65% / 可感知 ~15-20% / 可评价 ~15-25%·合计 30-45% 涉及市民感受）
@@ -63,20 +63,20 @@
 - **B3 修复**（已闭环）：范围三来源 + FIXED_ADMIN_DISTRICTS + derive 鲁棒性 + CPD + PRM-08（pytest 242）
 - **trace 取证纪律**：根因分析先 `trace_query --stats`（F_002/F_003 非 F_001）·跑测试带 session
 
-## 【下一步】今天上午到公司继续（用户定）
+## 【下一步】（用户定：Wave 1 先行已完成）
 
-1. **大南门·二马路片区数据模拟专题**（用户预告·开专题）：专门模拟一组数据（大南门·二马路片区范围以及周边）展示 EMC"出口"——Wave 0 端到端演示的核心数据场景
-2. **Wave 1**（macro 出口）：更新对象识别/体检维度（零 CB-15 依赖·可先行）
-3. **Wave 2**：CB-15 完成后 place_name 精确源（schema 接口不变）
-4. **Wave 3**：可感知 10 项计算器（compute_perceptible_metrics）+ validate_outlet_fields CI + 多卡支持
+1. **Wave 2 / CB-15**（数据认知·前置落地）：格↔POI sjoin + place_name 双源 + /grid/pois 端点——出口卡「需求位置」从粗略版（格内代表地名）升级到精确 POI（用户之前问的「出口×地点联动」精确版）
+2. **Wave 3**：可感知 10 项计算器（compute_perceptible_metrics）+ validate_outlet_fields CI + 多卡支持
+3. **补 1 处**：checkup_satisfaction field_mapping 也 prose→真实字段（P2·否则 S6 满意度卡同出空卡）
 
 ## 待续项（下会话从这继续）
 
-- **【核心】大南门·二马路数据模拟专题**（开专题·展示 EMC 出口）
-- **Wave 1-3**（macro 出口 → place_name 精确源 → 可感知计算器 + CI 守卫）
-- **CB-15 数据认知**（先行）：格↔POI sjoin + place_name 双源 + /grid/pois 端点
+- **【核心】Wave 2 / CB-15**：格↔POI sjoin + place_name 双源 + /grid/pois（CB-15 讨论稿共识已立·落地未做）
+- **Wave 3**：可感知计算器 + validate_outlet_fields CI + 多卡
+- **checkup_satisfaction** prose→字段（P2）
 - **backlog**：MOD_PLACE 渲染风暴 + MOD_LLM.F_002 fallback 重核 + CPD-L01/L02 测试基建 + 时间轴 manifest 404
 - 发版候选评估（B3 96.2% 达标上沿）
+- **待用户浏览器复验**：Wave 1 macro 问句真出卡（更新对象识别/体检四维度）+ R7 截断修复 + push 全部 commit
 
 ## 测试基建
 
