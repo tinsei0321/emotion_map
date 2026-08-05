@@ -14,7 +14,7 @@ from api.schemas import (
     AnalysisRequest, AnalysisResponse, PolarityStats,
     HealthResponse, DataListResponse, GovernanceRequest,
     BufferRequest, ExportRequest,
-    SpatialAggregateRequest, SpatialGridRequest, SpatialTerrainRequest,
+    SpatialAggregateRequest, SpatialGridRequest, SpatialTerrainRequest, SpatialDemRequest,
     RangePresetGroup, RangePresetUploadRequest,
     PlaceHit, PlaceSearchResponse, GeocodeResult, ReverseGeocodeResult,
 )
@@ -346,6 +346,49 @@ async def terrain_route(req: SpatialTerrainRequest):
         'feature_count': n,
         'message': f'已生成 {pol_label}情绪地形 · {n} 层等值面',
     }
+
+
+@router.post("/spatial/dem")
+async def dem_route(req: SpatialDemRequest):
+    """情绪地形 DEM - KDE 栅格 → Mapbox terrarium RGB（setTerrain 连续曲面·P1.5）。
+
+    替代 fill-extrusion 等值线环（千层饼非连续曲面）——DEM 是连续三角网地形源，
+    setTerrain 由 MapLibre 渲染。返回 PNG bytes + bounds(4326)·前端作 raster-dem source。
+    """
+    import geopandas as gpd
+    from core.spatial_analysis import create_terrain_dem
+
+    feats = (req.geojson or {}).get('features') if isinstance(req.geojson, dict) else None
+    if not feats:
+        raise HTTPException(status_code=400, detail="geojson 需为非空点 GeoJSON")
+    if req.polarity not in ('overall', 'positive', 'negative', 'neutral'):
+        raise HTTPException(status_code=400, detail="polarity 必须 overall | positive | negative | neutral")
+
+    try:
+        pts = gpd.GeoDataFrame.from_features(feats, crs='EPSG:4326')
+        dem = create_terrain_dem(
+            pts, polarity=req.polarity, bandwidth_m=req.bandwidth_m,
+            cell_m=req.cell_m, height_scale=req.height_scale,
+        )
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail=f"依赖缺失: {e}（需 pip install matplotlib）")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"DEM 生成失败: {e}")
+
+    from urllib.parse import quote
+    import json
+    fname = f'emotion_terrain_dem_{req.polarity}.png'
+    return Response(
+        content=dem['png'], media_type='image/png',
+        headers={
+            'Content-Disposition': f"attachment; filename*=UTF-8''{quote(fname)}",
+            'X-DEM-Bounds': json.dumps(dem['bounds']),        # WGS84 [w,s,e,n]（前端 raster-dem source）
+            'X-DEM-Size': f"{dem['width']}x{dem['height']}",  # 像素宽x高
+            'X-DEM-HeightScale': str(dem['height_scale']),
+        },
+    )
 
 
 @router.post("/export")

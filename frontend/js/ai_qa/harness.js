@@ -7,6 +7,7 @@ import * as stages from './stages.js';
 import { TOOLS, setToolContext, formatRegistry, getArtifacts, deriveAvailable, resetStepResults, resetCurrentResults, resolveCoref } from './tools.js';
 import { getLayers, getLayer } from '../state.js';
 import { CONCEPT_KW, INVENTORY_KW, GREETING_KW, GEO_VERB_KW, REGION_KW, POLARITY_KW, LANDUSE_KW, SEARCH_KW, SEARCH_EVIDENCE_RE, OUTLET_TRIGGER_KW, OUTLET_UI_EXCLUDE_KW } from './emc-patterns.js';   // CB-10 分歧2 词表集中 + G6b SEARCH_KW/SEARCH_EVIDENCE_RE + CB-16 OUTLET 触发词（DRY·单一源 emc-patterns）
+import { buildResultStruct } from './result-struct.js';   // 出口三段式 P0：结果结构化（观点/4要点·确定性组装·结论段不解析 draft markdown）
 
 const MAX_ROUNDS_GIS = 10;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=10（保多步完整性，如3次overlay需8轮：1查询+6执行+1answer）
 const MAX_ROUNDS_OTHER = 4;    // A 通用 / C 情绪=4（远紧于 16，配合 temp 0.4 降概率链 p^N）
@@ -675,7 +676,9 @@ async function runTemplatePath(ctx, hooks, diagnose, opts = {}) {
         : diagnose.scale === 'meso' ? '本问为中微观尺度——结论须落到具体单元（如"西陵街道最差"）并给归因。'
         : '本问为微观尺度——结论须落到具体落点（点位/公园/街段）。')
     : '';
-  ctx.context = `【单技能路径·${_execSummary}】基于上述工具观察直接出结论，勿重选工具、勿重复执行、勿再调 geo 工具。\n【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层）\n${_outletLine ? '【尺度约束】' + _outletLine : ''}\n\n` + (ctx.context || '');
+  // 出口三段式 P0：观点先行兜底注入（双保险——软扩 prompt 指令为主·此处兜底防长 tool_history 淡忘）
+  const _insightLine = '【观点先行】首句须给基于用户提问的明确观点（观点≠结论·不重复）。';
+  ctx.context = `【单技能路径·${_execSummary}】基于上述工具观察直接出结论，勿重选工具、勿重复执行、勿再调 geo 工具。\n【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层）\n${_outletLine ? '【尺度约束】' + _outletLine : ''}\n${_insightLine}\n\n` + (ctx.context || '');
   // G3 修复（glm组 CB-11）：inline 扩展部分失败信息在 finalStep 前注入 context——LLM 能据此调整措辞（防乐观结论与确定性追加矛盾）
   if (_inlinePartialNote) {
     ctx.context = `【扩展部分失败】${_inlinePartialNote}——结论必须如实说明哪些图层未生成，严禁声称全部成功。\n\n` + ctx.context;
@@ -698,9 +701,25 @@ async function runTemplatePath(ctx, hooks, diagnose, opts = {}) {
   // const _planCapsules = _plansToCapsules(ctx.plans);
   const _planCapsules = [];
   const _allCapsules = [...(_qd.capsules || []), ..._planCapsules];
+  // 出口三段式 P0：结果结构化（观点/4要点·确定性组装）——onResultStruct 先于 onFinalDone 派发（panel 存起·onFinalDone 统一渲染·失败不阻塞主链路）
+  _dispatchResultStruct(ctx, hooks, { draft, diagnose, toolHistory, toolHistoryText });
   if (hooks.onFinalDone && !opts.deferFinal) hooks.onFinalDone(draft);   // A3：deferFinal 时跳过首次渲染（扩展后统一出结论）
   if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template', capsules: _allCapsules });
   return { ok: true, rounds: 1, final: draft, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template', capsules: _allCapsules }, degraded: false, diagnose, exit: 'result', newLayerCount, _inlineExpanded };
+}
+
+/** 出口三段式 P0：结果结构化共享派发（B1 审计补丁·runTemplatePath/runChainPath/runAllToolCalls 三路径统一用）。
+ *  先于 onFinalDone 派发（panel 存起·onFinalDone 统一渲染）·失败不阻塞主链路。 */
+function _dispatchResultStruct(ctx, hooks, { draft, diagnose, toolHistory, toolHistoryText }) {
+  if (!hooks.onResultStruct) return;
+  try {
+    hooks.onResultStruct(buildResultStruct({
+      question: ctx.question, diagnose, toolHistory,
+      toolHistoryText: toolHistoryText || (toolHistory || []).join('\n'),
+      registryText: formatRegistry(), draft, scale: diagnose && diagnose.scale,
+      rows: _lastToolRows,   // W1 审计（P0）：结论段学术化取最近工具 rows（macro 权威产物·含 polarity_index 等）
+    }));
+  } catch (_) { /* 结构化失败不阻塞 */ }
 }
 
 /** v2 D068 辅助：FC plans[] rank=2+ → 胶囊格式（复用 runCapsule 执行路径）。
@@ -796,6 +815,8 @@ async function runChainPath(ctx, hooks, diagnose, chain) {
   // CB-09 D023 质量防线（L1 + R 规则·代码·取代旧 _verifyClaims+_reviseOnce）
   const _qd = applyQualityDefense(draft, { obsOk: true, toolHistoryText, skipL1: false, question: ctx.question });
   draft = _qd.final;
+  // 出口三段式 P0：B1 审计补丁——chain 路径补 onResultStruct 派发（多步链也出观点卡/4 要点卡）
+  _dispatchResultStruct(ctx, hooks, { draft, diagnose, toolHistory, toolHistoryText });
   if (hooks.onFinalDone) hooks.onFinalDone(draft);
   if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'chain', capsules: _qd.capsules || [] });
   return { ok: true, rounds: chain.steps.length, final: draft, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'chain', capsules: _qd.capsules || [] }, degraded: false, diagnose, exit: 'result', newLayerCount };
@@ -1937,6 +1958,8 @@ async function runAllToolCalls(ctx, hooks, diagnose) {
     const _miss = failedSteps.map((n) => `第${n}步(${tcs[n-1].name})`).join('、');
     _final += `\n\n> ⚠️ 仅完成 ${tcs.length - failedSteps.length}/${tcs.length} 步（${_miss} 未产出图层·未生成）。`;
   }
+  // 出口三段式 P0：B1 审计补丁——multi-tool 路径补 onResultStruct 派发（多工具也出观点卡/4 要点卡）
+  _dispatchResultStruct(ctx, hooks, { draft: _final, diagnose, toolHistory, toolHistoryText: toolHistory.join('\n') });
   if (hooks.onFinalDone) hooks.onFinalDone(_final);
   return { ok: true, rounds: tcs.length, final: _final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'multi-tool' }, degraded: _qd.degraded, diagnose, exit: 'result', newLayerCount };
 }

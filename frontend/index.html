@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.css" />
   <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js"></script>
 
-  <!-- deck.gl（热点图：ScreengridLayer + MapboxOverlay 叠 MapLibre；standalone UMD，全局 deck） -->
+  <!-- deck.gl（废弃：ScreengridLayer 热点图·本仓实测在 MapLibre+MapboxOverlay 不渲染·CDN 保留待清理·勿再用于 3D 渲染） -->
   <script src="https://unpkg.com/deck.gl@9.1.0/dist.min.js"></script>
   <script src="https://unpkg.com/@deck.gl/aggregation-layers@9.1.0/dist.min.js"></script>
   <script src="https://unpkg.com/@deck.gl/mapbox@9.1.0/dist.min.js"></script>
@@ -660,7 +660,7 @@
             <div id="grid-dialog" class="app-dialog hm-dialog">
               <div class="dialog-body">
 
-                <!-- ① 分析类型（组卡片：聚合域=标准网格+指定单元；热点 Gi*；Moran's I） -->
+                <!-- ① 分析类型（组卡片：聚合域=标准网格+指定单元；显著聚集 Gi*；Moran's I） -->
                 <div class="hm-group">
                   <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">分析类型</span></div>
                   <div class="hm-analysis" id="grid-analysis"><!-- 类型卡 by JS（组卡片纵向，组内横向） --></div>
@@ -1169,7 +1169,7 @@
         <div class="info-section-title">未来展望</div>
         <div class="info-roadmap">
           <div class="rm-item"><span class="rm-dot"></span><b>L3 语义增强</b> — DeepSeek 细粒度情感（ sarcasm / irony / aspect-based）</div>
-          <div class="rm-item"><span class="rm-dot"></span><b>L4 多维归因</b> — Gi* 热点 / Moran's I 空间自相关 / H3 网格聚合</div>
+          <div class="rm-item"><span class="rm-dot"></span><b>L4 多维归因</b> — Gi* 显著聚集 / Moran's I 空间自相关 / H3 网格聚合</div>
           <div class="rm-item"><span class="rm-dot"></span><b>实时流</b> — Kafka + Flink 实时情绪流接入</div>
           <div class="rm-item"><span class="rm-dot"></span><b>多城市</b> — 武汉 / 襄阳 / 宜昌 都市圈扩展</div>
           <div class="rm-item"><span class="rm-dot"></span><b>暗色主题</b> — 数据展示场景适配</div>

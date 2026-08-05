@@ -18,7 +18,7 @@ _KNOWN_SLOTS = {'layer', 'range', 'boundary', 'center', 'radius_m', 'by', 'top_n
                 'layer_a', 'layer_b', 'target', 'k', 'value_col', 'agg_cols', 'pre_filter',
                 'bandwidth_m', 'cell_size_m',
                 'mode', 'radius', 'weightField', 'cell_size', 'polarity', 'level',
-                'boundaries'}   # density 委托 Toolbox 的入参名；boundaries = compare_regions 多区入参
+                'boundaries', 'threshold', 'soft_threshold'}   # density 委托 Toolbox 的入参名；boundaries = compare_regions 多区入参；threshold/soft_threshold = hotspot 软分级（P1）
 
 
 def test_registry_structure():
@@ -78,10 +78,26 @@ def test_final_prompt_includes_capsule_rule():
 
 
 def test_final_prompt_stays_lean():
-    """CB-09 D019 极瘦回归守门：final prompt 静态模板 <3KB（CB-10 P0-4 后实测 2641B·含语言风格规则·防 MANIFESTO/industry_kb 回灌致 17KB+·prefill 回潮）。"""
+    """CB-09 D019 极瘦回归守门：final prompt 静态模板 <3KB（CB-10 P0-4 后实测 2641B·含语言风格规则·防 MANIFESTO/industry_kb 回灌致 17KB+·prefill 回潮）。
+    出口三段式 P0 观点先行软扩后 2957B < 3000B（实测基线 ~2833B——超 Codex 引用的 2641B 历史快照 192B·CB-14 final_brief 后现状·观点先行 +124B）。
+    ⚠️ 模板体积已近硬门禁（余量 ~43B）：**P1 起冻结 FINAL_TEMPLATE 加字**——结论段学术化/观点细化一律走前端确定性聚合（result-struct.js）或 ctx 注入，不再加模板。"""
     from ai_qa.prompts import build_final_prompt
     n = len(build_final_prompt('', '').encode())
-    assert n < 3000, f'final prompt 膨胀到 {n} bytes（应 <3KB·含语言风格规则·查是否回灌 MANIFESTO/industry_kb）'
+    assert n < 3000, f'final prompt 膨胀到 {n} bytes（应 <3KB·含语言风格规则·查是否回灌 MANIFESTO/industry_kb·模板已冻结加字）'
+
+
+def test_final_prompt_has_insight_first():
+    """出口三段式 P0（CB 第三轮 glm/Codex 共识）：FINAL_TEMPLATE 须含"观点先行"正式指令。
+
+    D5 修正依据：观点=核心价值（用户"观点即干货"）→ 须正式模板指令（LLM 必读）·
+    非 ctx 附加提示（遵守度弱·落在【当前数据】段被当数据摘要）。防静默删除（承重模板一次一处）。"""
+    from ai_qa.prompts import build_final_prompt
+    p = build_final_prompt('', '')
+    assert '观点先行' in p, 'final prompt 缺"观点先行"指令（出口三段式 P0 核心·D5）'
+    assert '观点≠结论' in p, 'final prompt 缺"观点≠结论"区分说明（防观点/结论混写）'
+    assert '**观点：**' in p, 'final prompt 缺观点 markdown 约定（前端观点卡提取锚点）'
+    # S2 审计（Codex）：观点先行须在三句骨架前（防指令被移到模板底部弱化）
+    assert p.index('观点先行') < p.index('三句骨架'), '观点先行指令须在"三句骨架"之前（防被移底弱化·D5 位置守门）'
 
 
 def test_fc_sys_prompt_keeps_polarity_discipline():

@@ -304,3 +304,52 @@ def test_grid_place_name_source_poi():
         f'grid 中心应 place_name_source=poi_sjoin（实际 {row.get("place_name_source")}）'
     assert row.get('place_name'), f'grid 中心应 place_name 非空（{row.get("place_name")}）'
     assert row.get('poi_names'), f'grid 中心应 poi_names 非空（{row.get("poi_names")}）'
+
+
+# ── P1 软分级（热点图·glm/Codex P1 修正评估）：Gi* 五档 + threshold 参数化 + hotspot_tier ──
+def test_classify_hotspot_five_tiers():
+    """P1 软分级五档：hot/tend_hot/ns/tend_cold/cold（对称·阈值 1.96 + 软 1.0）。"""
+    from core.spatial_analysis import _classify_hotspot
+    assert _classify_hotspot(2.5) == 'hot', '|Z|>1.96 应 hot'
+    assert _classify_hotspot(1.5) == 'tend_hot', '1.0<Z<=1.96 应 tend_hot'
+    assert _classify_hotspot(0.5) == 'ns', '|Z|<=1.0 应 ns'
+    assert _classify_hotspot(-1.5) == 'tend_cold', '-1.96<=Z<-1.0 应 tend_cold'
+    assert _classify_hotspot(-2.5) == 'cold', 'Z<-1.96 应 cold'
+
+
+def test_classify_hotspot_threshold_param():
+    """P1 threshold 参数化：可传自定义阈值（如 90% 档 1.65）。"""
+    from core.spatial_analysis import _classify_hotspot
+    assert _classify_hotspot(1.8, threshold=1.65) == 'hot', '自定义 threshold 1.65·1.8 应 hot'
+    assert _classify_hotspot(1.2, threshold=1.65, soft_threshold=1.0) == 'tend_hot', '1.0<1.2<=1.65 应 tend_hot'
+
+
+def test_hotspot_tier_field_present():
+    """P1 hotspot_tier 字段：hot_spot_analysis 输出含五档 tier（与 hotspot 同值）。"""
+    from core.spatial_analysis import hot_spot_analysis
+    import geopandas as gpd
+    from shapely.geometry import Point
+    # 合成强聚集数据（A/B 实测：EMC score 弱信号全 ns——此处构造 3 簇极值让 z 可显著）
+    pts = []
+    for _ in range(30):
+        pts.append(Point(111.28, 30.68))
+        pts.append(Point(111.29, 30.69))
+        pts.append(Point(111.40, 30.72))
+        pts.append(Point(111.41, 30.73))
+    import random
+    random.seed(7)
+    scores = []
+    for i in range(120):
+        # 前 2 簇给低 score（负面·invert 后高值聚集）·后 2 簇给高 score（正面）
+        scores.append(0.05 if i < 60 else 0.95)
+    gdf = gpd.GeoDataFrame({'score': scores}, geometry=pts, crs='EPSG:4326')
+    try:
+        res = hot_spot_analysis(gdf, value_col='score', invert=True)
+        assert 'hotspot' in res.columns, '应含 hotspot 列'
+        assert 'hotspot_tier' in res.columns, '应含 hotspot_tier 列（P1 软分级）'
+        assert set(res['hotspot'].unique()).issubset({'hot', 'tend_hot', 'ns', 'tend_cold', 'cold'}), 'hotspot 应为五档之一'
+    except Exception as e:
+        # 依赖缺失（esda/libpysal）→ 跳过（不在 CI 硬依赖）
+        if 'PySAL' in str(e) or 'esda' in str(e) or 'libpysal' in str(e):
+            pytest.skip(f'PySAL 未装: {e}')
+        raise

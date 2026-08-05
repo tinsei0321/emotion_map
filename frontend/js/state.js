@@ -104,7 +104,7 @@ export function rampColorAt(stops, val) {
 
 // ── L1 热度值（hotness）= 情绪强度 × 置信度，3 段动态分位色板 ──
 // 置信度 = L1 治理阶段 LLM 判断的数据相关性置信度（l1_confidence，0~1，可收集可复现）。
-// 热度值语义 = 该数据点作为"情绪热点"的可信强度（情绪浓且与城规相关）。
+// 热度值语义 = 该数据点作为"情绪热度"的可信强度（情绪浓且与城规相关）。
 export const HOTNESS_RAMP = ['#FFD9A0', '#FF9800', '#E65100'];   // 浅橙 → 橙 → 深橙红（低→高）
 
 /** 热度值 = emotion_intensity × l1_confidence（clamp 0~1）。

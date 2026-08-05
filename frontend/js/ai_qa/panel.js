@@ -22,6 +22,7 @@ let _abortCtl = null;
 let _history = loadHistory();
 let _archive = loadArchive();
 let _curTrace = null;
+let _pendingStruct = null;   // 出口三段式 P0：结果结构化暂存（harness onResultStruct → onFinalDone 统一渲染观点卡/4要点卡）
 let _consecutiveAsks = 0;   // P1 ask_user 跨 orchestrate 连续计数：≥2 时下轮注入"禁止再 ask_user"防博弈式无限追问（MAX_ROUNDS 对 ask 无效，因 ask 直接 return 不计 round）
 let _thinkMode = localStorage.getItem(MODE_KEY) || 'flash';   // WS1 F1.1：默认 flash（去 deliberate 串行·治超时）·复杂问题手动开 Pro | 'pro' | 'flash'
 // CB-12（用户拍板）：flash 足够·**强制 flash**——pro 停用（localStorage 有 pro 也强制回 flash·防残留）
@@ -275,6 +276,20 @@ function _renderGuideCard(spec) {
   _guidanceCardShown = true;
 }
 
+/** 出口三段式 P0：4 要点信息卡（方法/数据/结果/结论·确定性聚合·紧凑·仿 outlet-card token）。 */
+function _pointsCardHtml(points) {
+  if (!points) return '';
+  const rows = [
+    ['分析方法', points.method], ['使用数据', points.data],
+    ['分析结果', points.result], ['分析结论', points.conclusion],
+  ].filter(([, v]) => v && String(v).trim() && String(v) !== '暂无数据')
+    .map(([k, v]) => `<div class="emc-points-row"><span class="emc-points-key">${escapeHtml(k)}</span>`
+      + `<span class="emc-points-val">${escapeHtml(String(v))}</span></div>`)
+    .join('');
+  if (!rows) return '';
+  return '<div class="emc-points-card"><div class="emc-card-head">分析支撑（4 要点）</div>' + rows + '</div>';
+}
+
 /** CB-16 Wave 0：出口卡片渲染（结果范式 agent·第三段·确定性 JSON → 纯模板）。
  *  仿 .cpd-guide-card·用既有 token（--geojson-color-* / --emc-accent）·不新造样式。
  *  7 要素：接口标识/数据基础/定量定性/地理定位/对接建议/局限标注。
@@ -321,7 +336,9 @@ function renderOutletCard(card) {
     + (task ? `<div class="outlet-task"><span class="outlet-field-key">对接任务</span>${task}</div>` : '')
     + (limits ? `<div class="outlet-limits">${limits}</div>` : '')
     + `<div class="outlet-source">${esc(card.source || '确定性组装')}</div>`
-    + `</div>`;
+    + `</div>`
+    // P1-4（glm P1P2 评估 W3）：CSV 一键入库按钮（前端本地生成·防功能空转）
+    + `<button type="button" class="outlet-export-btn" title="导出 CSV（一键入库）">导出 CSV</button>`;
 
   // {{show:图层}} 联动复用 renderAnswer 的 ref 解析（按钮可点·聚焦图层）
   const refs = el.querySelectorAll('.outlet-interface, .outlet-field');
@@ -331,7 +348,36 @@ function renderOutletCard(card) {
       n.innerHTML = renderAnswer(md, getValidRefNames());
     }
   });
+  // P1-4（glm P1P2 评估 W3）：CSV 一键入库（前端本地生成·Card JSON → CSV Blob 下载）
+  const _btn = el.querySelector('.outlet-export-btn');
+  if (_btn) _btn.addEventListener('click', () => _exportOutletCardCsv(card));
   list.appendChild(el);
+}
+
+/** P1-4：出口卡片 → CSV 本地下载（确定性·前端生成·UTF-8 BOM·Excel 兼容·对齐后端 export_outlet_card_csv 字段）。 */
+function _exportOutletCardCsv(card) {
+  try {
+    const esc = escapeHtml;
+    const flat = Object.entries(card.fields || {}).map(([k, v]) =>
+      [k, (v && typeof v === 'object') ? (v.value ?? '') : v]);
+    const rows = [
+      ['outlet_id', card.outlet_id || ''], ['name', card.name || ''], ['scale', card.scale || ''],
+      ['interface', card.interface || ''], ...flat,
+      ['data_base_N', card.data_base?.N ?? ''], ['data_base_note', card.data_base?.note ?? ''],
+      ['task_link', (card.task_link || []).join('、')],
+      ['limitations', (card.limitations || []).join('；')],
+      ['geo_label', card.geo_label || ''], ['source', card.source || ''],
+    ];
+    const csv = '﻿' + rows.map(([k, v]) => `${k},${String(v ?? '').replace(/"/g, '""')}`).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${(card.name || 'outlet_card').replace(/[\\/:*?"<>|]/g, '_')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    URL.revokeObjectURL(a.href);
+    a.remove();
+  } catch (_) { /* 导出失败不阻塞 */ }
 }
 /** 清引导焦点卡片。 */
 function _clearGuideCard() {
@@ -1488,12 +1534,31 @@ function buildHooks(shell) {
       if (_curTrace) _curTrace.final = streamAcc;
       if (!streamRaf) streamRaf = requestAnimationFrame(drainStream);
     },
+    // 出口三段式 P0：结果结构化（harness 确定性组装·先于 onFinalDone 派发·onFinalDone 统一渲染）
+    onResultStruct: (struct) => {
+      _pendingStruct = struct || null;
+    },
     onFinalDone: (text) => {
       cancelStream();
       streamAcc = text || '';
       stopThinking();
       updateContextCapacity(getLastUsage());
-      shell.answerEl.innerHTML = renderAnswer(text, getValidRefNames());
+      // 出口三段式 P0：观点卡置顶 + 4 要点卡底部（确定性提取·无观点不显卡·提取失败不阻塞正文）
+      let _answerText = text || '';
+      let _insightHtml = '';
+      let _pointsHtml = '';
+      try {
+        const _s = _pendingStruct;
+        if (_s && _s.insight) {
+          _insightHtml = '<div class="emc-insight-card"><div class="emc-card-head">观点</div>'
+            + `<div class="emc-insight-text">${escapeHtml(_s.insight)}</div></div>`;
+          // 移除观点引用块防正文重复（整块捕获·与 result-struct 提取正则对齐·防多行引用残留）
+          _answerText = _answerText.replace(/^>\s*\*\*观点：\*\*\s*[\s\S]*?(?=\n\n|\n\s*[^>]|$)/m, '');
+        }
+        if (_s && _s.points) _pointsHtml = _pointsCardHtml(_s.points);
+      } catch (_) { /* 提取失败不阻塞正文 */ }
+      _pendingStruct = null;
+      shell.answerEl.innerHTML = _insightHtml + renderAnswer(_answerText, getValidRefNames()) + _pointsHtml;
       enhanceCodeBlocks(shell.answerEl);
       finalizeReason();   // flush 最后一帧思考 + 整块 is-done + 主题目录重切
       _setFinalState('done');   // Feature 2：生成节点完成（灰）
@@ -1576,6 +1641,7 @@ function splitQuestions(text) {
 async function send(text, capsule) {
   const isCapsule = !!capsule;
   if (_streaming) return;
+  _pendingStruct = null;   // 出口三段式 P0：send 起始重置（S1 审计·防中断后跨轮残留旧观点卡）
   // G6c：非胶囊非续作 → 多问拆解——逐句走完整管线（各自答案卡·防线/管线全继承·不新造执行）
   if (!isCapsule) {
     const _qs = splitQuestions(text);

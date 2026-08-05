@@ -1452,7 +1452,7 @@ function tier3(layer, lv) {
 
 /** Placeholder for spatial-analysis conclusions (hotspot / Moran / grid) — filled when Analysis wiring lands. */
 function spatialPlaceholder() {
-  return `<div class="ov-tier-sub muted">空间分析（热点 Gi* · Moran's I · 网格聚合）待 Analysis 接线</div>`;
+  return `<div class="ov-tier-sub muted">空间分析（显著聚集 Gi* · Moran's I · 网格聚合）待 Analysis 接线</div>`;
 }
 
 // ── helpers ──
@@ -1511,7 +1511,7 @@ const _COL_LABEL = {
   keywords: '关键词', primary_emotion: '主情绪', domain: '领域', element: '要素',
   like_count: '点赞', comment_count: '评论数', tags: '标签',
   area_seed: '锚点', area_tag: '区域标签', zone: '聚合域', narrative_zone: '叙事区',
-  spatial_hotspot: '空间热点', spatial_type: '空间类型', location_mentioned: '提及地点',
+  spatial_hotspot: '代表地点', spatial_type: '空间类型', location_mentioned: '提及地点',
   relevance: '相关性', relevance_category: '相关类目', scope: '范围', url: '链接',
   category: '类别', target_type: '目标类型', target_detail: '目标详情',
   // 网格 / 分析层（cell schema）

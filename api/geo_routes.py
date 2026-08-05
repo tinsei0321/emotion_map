@@ -652,17 +652,22 @@ async def nearest(req: NearestRequest):
 class HotspotRequest(_GeoBase):
     value_col: str = 'score'
     invert: bool = True               # True=负面为热（score 低为热）
+    # P1 软分级透传（W2 审计）：threshold/soft_threshold——默认 1.96/1.0（前端可不传）
+    threshold: float = 1.96
+    soft_threshold: float = 1.0
 
 
 @geo_router.post('/geo/hotspot')
 async def hotspot(req: HotspotRequest):
-    """Gi* 热点分析：识别情绪冷热点空间聚类。返回点 + Gi_Z/hotspot 分类（截断）。"""
+    """Gi* 热点分析：识别情绪冷热点空间聚类。返回点 + Gi_Z/hotspot 五档分类（截断）。"""
     try:
         pts = _prepare_points(req.layer, req.range, req.pre_filter)
         if req.value_col not in pts.columns:
             raise ValueError(f'value_col {req.value_col} 不存在（可用 {list(pts.columns)[:20]}…）')
         pts = pts[pts.geometry.geom_type == 'Point'].copy()
-        res = hot_spot_analysis(pts, value_col=req.value_col, invert=req.invert)
+        # P1 软分级（W2 审计）：透传 threshold/soft_threshold（五档·诚实标倾向聚集）
+        res = hot_spot_analysis(pts, value_col=req.value_col, invert=req.invert,
+                                threshold=req.threshold, soft_threshold=req.soft_threshold)
         fc = _to_geojson(res)
     except (KeyError, FileNotFoundError, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -672,4 +677,6 @@ async def hotspot(req: HotspotRequest):
         raise HTTPException(status_code=500, detail=f'hotspot 失败: {e}')
     return {'success': True, 'geojson': fc, 'count': fc['_total'],
             'truncated': fc['_truncated'],
-            'legend': {'hot': '显著热点', 'cold': '显著冷点', 'ns': '不显著'}}
+            # W3 审计：legend 五档（显著 95%/倾向 84% 对称·诚实标注非"显著热点"）
+            'legend': {'hot': '显著聚集(95%)', 'tend_hot': '倾向聚集(84%)', 'ns': '不显著',
+                       'tend_cold': '倾向冷区(84%)', 'cold': '显著冷区(95%)'}}

@@ -8,10 +8,10 @@ import {
   getHeatmapForSource, setHeatmapForSource, removeHeatmapSource,
   deriveTimeTag,
 } from './state.js';
-import { renderLayer, removeLayerFromMap, setView3D, fitBoundsTo, reorderAllZ } from './map.js';
+import { renderLayer, removeLayerFromMap, setView3D, fitBoundsTo, reorderAllZ, setTerrainDEM } from './map.js';
 import { renderLayerList, refreshLegend, showLayerManager } from './sidebar.js';
 import { fcBBox } from './import.js';
-import { runTerrain } from './api.js';
+import { runTerrain, runDem } from './api.js';
 import { trackGeneration } from './geocode-loader.js';   // 地形生成接入放大镜外环（青→橙）
 import { toast } from './toast.js';
 import { openParamPanel, closeParamPanel } from './param-panel.js';
@@ -919,6 +919,42 @@ export async function generateTerrainForAI(opts = {}) {
   document.dispatchEvent(new CustomEvent('layers:changed'));   // 工具生成不自动弹 Overview/Table
   if (!p.silent) toast.success(`已生成 ${polCN}情绪地形 · ${fc.features.length} 层等值面 · ${nPts} 点`);
   return { layerId: L.id, layerName, featureCount: fc.features.length, level: 'L2', polarity: terrainPol, fc };
+}
+
+/** P1.5 情绪地形 DEM（setTerrain 连续曲面·热点图定稿 D3·替代 fill-extrusion 千层饼）。
+ *  后端 runDem → /spatial/dem（KDE→terrarium RGB）→ map.js setTerrainDEM（连续三角网·draping 隔离）。
+ *  与 generateTerrainForAI（等值线环保留 2D/旧路径）区分——本函数产真连续曲面。
+ *  opts: {source, polarity, bandwidth_m, cell_m, height_scale, exaggeration, silent}。
+ *  返回 {ok, bounds, note}（DEM 是地形源·非图层·不产 layerId）。 */
+export async function generateTerrain3DForAI(opts = {}) {
+  const p = { cell_m: 60, height_scale: 500, exaggeration: 12, silent: true, ...opts };
+  const sources = collectSources();
+  if (!sources.length) throw new Error('无可用情绪点图层（先在 Layers 加载/上传）');
+  let src = p.source ? sources.find((s) => s.sourceKey === p.source || s.value === p.source) : null;
+  if (!src) src = sources.find((s) => s.level === 'L2') || sources[0];
+  if (src.level !== 'L2') throw new Error('情绪地形 DEM 仅支持 L2 数据');
+  const polarity = _normalizePolarity(p.polarity);
+  const resolved = resolveSource(sources, 'L2', _POL_LETTER[polarity]);
+  if (!resolved || !resolved.fc || !resolved.fc.features.length) throw new Error('所选源无 L2 点数据');
+  const fc0 = resolved.fc;
+  const nPts = fc0.features.length;
+  if (nPts < 30) throw new Error('点数过少（<30），无法生成地形');
+  const bandwidth = p.bandwidth_m || (nPts < 1000 ? 350 : nPts < 5000 ? 250 : 180);
+  // runDem 返回 blob + bounds（header 解析）·生成临时 URL
+  const res = await trackGeneration(runDem({ geojson: fc0, polarity, bandwidth_m: bandwidth, cell_m: p.cell_m, height_scale: p.height_scale }));
+  if (!res || !res.blob) throw new Error('后端返回异常');
+  const url = URL.createObjectURL(res.blob);
+  // map.js setTerrainDEM（draping 隔离·不常驻+互斥·glm P1.5）
+  const ok = setTerrainDEM(true, { url, bounds: res.bounds, exaggeration: p.exaggeration });
+  if (!ok) throw new Error('setTerrain 初始化失败（DEM 加载或渲染异常）');
+  const polCN = TERRAIN_POL_CN[polarity] || '综合';
+  if (!p.silent) toast.success(`已生成 ${polCN}情绪地形 DEM · 连续曲面（${nPts} 点）·可拖动调节地势`);
+  return { ok: true, bounds: res.bounds, note: `KDE DEM（bandwidth=${bandwidth}m）·连续三角网曲面·非等值线环`, url };
+}
+
+/** 关闭情绪地形 DEM（setTerrainDEM(false)·恢复 2D/网格）。 */
+export function closeTerrain3D() {
+  setTerrainDEM(false);
 }
 
 /** 初始化弹窗事件（仅一次） */

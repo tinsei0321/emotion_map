@@ -14,7 +14,7 @@ import { fitBoundsTo, renderLayer, reorderAllZ, removeLayerFromMap, getMap } fro
 import { activateTab, setOverview } from '../panel.js';
 import { DOMAIN_LABEL, ELEMENT_LABEL } from '../popup.js';
 import { generateGridForAI } from '../grid-tool.js';   // density/ensure_zone 委托（piToNorm 已随迁 toolbox 模块·步 7 prune）
-import { generateHeatmapForAI, generateTerrainForAI } from '../heatmap-tool.js';   // 工作机制重构：density 委托 Toolbox（2D 彩虹/3D 地形，不自造）
+import { generateHeatmapForAI, generateTerrainForAI, generateTerrain3DForAI } from '../heatmap-tool.js';   // 工作机制重构：density 委托 Toolbox（2D 彩虹/3D 地形·P1.5 切 setTerrain 连续曲面）
 // ── 步 7 emc-delegate：12 GIS 工具委托 Toolbox 统一工具集层（手册 v2.2 §6 步 7；模块名 = 手册 §1 架构）──
 import { generateBufferForAI } from '../buffer-tool.js';   // buffer 委托固定 kind:'emotion'（§5.7/D3）
 import { generateZonalForAI, generateCompareForAI } from '../toolbox/zonal-tool.js';
@@ -1291,7 +1291,7 @@ export const TOOLS = {
         invert: params.invert !== false, range: params.range ? ref(params.range) : undefined,
         pre_filter: normPreFilter(params.pre_filter), as: params.as });
       const tally = r.tally || {};
-      const _CLS_CN = { hot: '显著热点(负面聚集)', cold: '显著冷点(正面聚集)', ns: '不显著' };
+      const _CLS_CN = { hot: '显著聚集(95%)', tend_hot: '倾向聚集(84%)', ns: '不显著', tend_cold: '倾向冷区(84%)', cold: '显著冷区(95%)' };
       const dist = Object.keys(tally).length ? Object.entries(tally).map(([k, v]) => `${_CLS_CN[k] || k}:${v}`).join('、') : `${r.featureCount}要素`;
       const _hL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // class→极性重映射由模块完成（_CLS_POL 随迁·§5.6）
       return { observation: `热点分析：${dist}${r.truncated ? '（已截断）' : ''}（hot=红/cold=绿/ns=灰）→ 已生成图层「${r.layerName}」${_hL ? '(' + r.featureCount + '点)' : ''}` + _renderNote(_hL), data: { count: r.count, tally, layerId: r.layerId } };
@@ -1311,7 +1311,9 @@ export const TOOLS = {
     try {
       let r;
       if (_mode === 'terrain') {
-        r = await generateTerrainForAI({ source: _srcKey, polarity: params.polarity, silent: true });   // 3D KDE 等值面（仅 L2）
+        // 热点图 P1.5（B1 审计修复）：EMC density mode=terrain 切 generateTerrain3DForAI（setTerrain 连续曲面）·
+        //   替代旧 generateTerrainForAI（fill-extrusion 千层饼·retired.md 已登记退役）
+        r = await generateTerrain3DForAI({ source: _srcKey, polarity: params.polarity, silent: true });   // 3D KDE DEM 连续曲面（仅 L2）
       } else if (_mode === '3d') {
         r = await generateGridForAI({
           analysis: 'square', cellSize: _clampM(Number(params.cell_size) || _scaleRadius(params.range) || 600),   // A3 尺度表

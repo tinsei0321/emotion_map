@@ -429,3 +429,102 @@ def test_wave3_parse_emc_expr_boundary():
     assert p['value_field'] == 'issue_label' and p['keywords'] == ['老旧', '破旧'], f'值字段+关键词（{p}）'
     # 无条件有值字段（异常形态）→ None（无 condition 无法判定）
     assert _parse_emc_expr('topic_top（公园）') is None, '无条件有值字段应 None'
+
+
+# ── P1（出口三段式·P1P2 评估采纳）：需求强度分级 + 复合优先级 + 口径标注 + geo_label ──
+def test_p1_demand_intensity_grading():
+    """P1-1（glm B1 + Codex W1）：需求强度四档——值域双轨归一 + 积极区"无显著需求"。"""
+    from ai_qa.outlet_kb.build_outlet_schema import grade_demand_intensity
+    # L2 路径（值域 -2~2·归一化）：-2 → 高 / -1 → 中 / -0.3 → 中 / 0 → 低 / 0.4 → 无
+    assert grade_demand_intensity(-2.0, 'L2')[0] == '高', 'L2 -2 应高'
+    assert grade_demand_intensity(-1.0, 'L2')[0] == '中', 'L2 -1 应中（归一后 -0.5 以下才高·保留非常消极粒度）'
+    assert grade_demand_intensity(-0.3, 'L2')[0] == '中', 'L2 -0.3 应中'
+    assert grade_demand_intensity(0.0, 'L2')[0] == '低', 'L2 0 应低（中性附近）'
+    assert grade_demand_intensity(0.4, 'L2')[0] == '无显著需求', 'L2 0.4 应无显著需求（积极）'
+    # L1 路径（-1~1 直接用）：-1 → 高 / -0.3 → 中 / 0 → 低 / 0.4 → 无
+    assert grade_demand_intensity(-1.0, 'L1')[0] == '高', 'L1 -1 应高'
+    assert grade_demand_intensity(-0.3, 'L1')[0] == '中', 'L1 -0.3 应中'
+    assert grade_demand_intensity(0.4, 'L1')[0] == '无显著需求', 'L1 0.4 应无显著需求'
+    # 缺失 → 暂无数据
+    assert grade_demand_intensity(None)[0] == '暂无数据', '缺失应暂无数据'
+
+
+def test_p1_priority_score():
+    """P1-2（Codex W2 + glm S1）：复合优先级——p95 归一 + 缺省不参与 + 主题契合 0/0.5/1。"""
+    from ai_qa.outlet_kb.build_outlet_schema import priority_score
+    # 强度主导：极性越负分越高
+    high = priority_score({'polarity_index': -1.0, 'point_count': 100, 'domain_top': 'x', 'element_top': 'y'}, rows_max_pc=200)
+    low = priority_score({'polarity_index': -0.1, 'point_count': 100, 'domain_top': 'x', 'element_top': 'y'}, rows_max_pc=200)
+    assert high > low, f'强度应主导（high={high} low={low}）'
+    # 覆盖度：point_count 高加分（p95 归一）
+    more = priority_score({'polarity_index': -0.5, 'point_count': 190, 'domain_top': 'x', 'element_top': 'y'}, rows_max_pc=200)
+    fewer = priority_score({'polarity_index': -0.5, 'point_count': 10, 'domain_top': 'x', 'element_top': 'y'}, rows_max_pc=200)
+    assert more > fewer, f'覆盖度应加分（more={more} fewer={fewer}）'
+    # 缺 point_count：不参与加权（其余归一·不反超实值行）
+    missing = priority_score({'polarity_index': -0.5, 'domain_top': 'x', 'element_top': 'y'}, rows_max_pc=200)
+    assert 0 <= missing <= 1, f'缺失覆盖度应合法（{missing}）'
+    # 主题契合：都有 > 仅一者 > 全空
+    both = priority_score({'polarity_index': -0.5, 'point_count': 100, 'domain_top': 'x', 'element_top': 'y'}, rows_max_pc=200)
+    one = priority_score({'polarity_index': -0.5, 'point_count': 100, 'domain_top': 'x'}, rows_max_pc=200)
+    none = priority_score({'polarity_index': -0.5, 'point_count': 100}, rows_max_pc=200)
+    assert both > one > none, f'主题契合应 0/0.5/1（both={both} one={one} none={none}）'
+    # 无主题意图（topic_intent=False）→ 主题项不参与（权重转强度）
+    no_topic = priority_score({'polarity_index': -0.5, 'point_count': 100}, rows_max_pc=200, topic_intent=False)
+    assert 0 <= no_topic <= 1, f'无主题意图应合法（{no_topic}）'
+
+
+def test_p1_renewal_demand_intensity_in_card():
+    """P1-1 接入：renewal_demand 卡补"需求强度等级"（四档·值+阈值说明）。"""
+    diag = {'scale': 'meso', 'domain_lens': ['urban_renewal'], 'outlet': '建议清单'}
+    result = {'rows': [{'place_name': '大南门', 'issue_label': '停车难', 'polarity_index': -1.2,
+                        'domain_top': 'urban_renewal', 'element_top': '设施', 'point_count': 900}]}
+    card = build_outlet_schema_single(diag, result, '大南门更新需求分析')
+    assert card is not None
+    grade = card['fields'].get('需求强度等级', {}).get('value')
+    assert grade == '高', f'L2 -1.2 应高（{card["fields"]}）'
+
+
+def test_p1_renewal_sequence_priority_in_card():
+    """P1-2 接入：renewal_sequence 卡补"优先级排序"（复合规则·Top1）。"""
+    diag = {'scale': 'meso', 'domain_lens': ['urban_renewal'], 'outlet': '指标排序'}
+    result = {'rows': [
+        {'name': '西陵区', 'polarity_index': -1.5, 'point_count': 500, 'domain_top': 'urban_renewal', 'element_top': '设施'},
+        {'name': '伍家岗区', 'polarity_index': -0.3, 'point_count': 300, 'domain_top': 'urban_renewal', 'element_top': '环境'},
+    ]}
+    card = build_outlet_schema_single(diag, result, '宜昌城区更新时序排序')
+    assert card is not None
+    assert card['outlet_id'] == 'renewal_sequence', f'应命中 renewal_sequence（{card["outlet_id"]}）'
+    prio = card['fields'].get('优先级排序', {}).get('value', '')
+    assert '西陵区' in prio, f'优先级应取 Top1（西陵·极性最强·{card["fields"]}）'
+
+
+def test_p1_geo_label_scale():
+    """P2（glm S4）：出口卡 geo_label——按尺度标注（宏观=面域/中观=单元/微观=落点）。"""
+    diag = {'scale': 'macro', 'domain_lens': ['urban_renewal'], 'outlet': '生成图层'}
+    result = {'rows': [{'name': '西陵区', 'polarity_index': -0.42, 'domain_top': 'urban_renewal',
+                        'element_top': '环境', 'issue_label': '老旧破败', 'point_count': 300}]}
+    card = build_outlet_schema_single(diag, result, '宜昌城区更新优先')
+    assert card is not None
+    assert card['geo_label'].startswith('宏观·面域'), f'macro geo_label 应标宏观·面域（{card["geo_label"]}）'
+    # meso → 中观·单元
+    diag2 = {'scale': 'meso', 'domain_lens': ['urban_renewal'], 'outlet': '建议清单'}
+    card2 = build_outlet_schema_single(diag2, {'rows': [{'place_name': '大南门', 'polarity_index': -0.3,
+                                                         'issue_label': '停车难', 'point_count': 900}]}, '大南门更新需求')
+    assert card2['geo_label'].startswith('中观·单元'), f'meso geo_label 应标中观·单元（{card2["geo_label"]}）'
+
+
+def test_p1_limitations_case_benchmark_note():
+    """P1-3（Codex/glm）：出口卡 limitations 统一追加"案例对标=参照非基准"卡级声明。"""
+    diag = {'scale': 'meso', 'domain_lens': ['urban_renewal'], 'outlet': '建议清单'}
+    card = build_outlet_schema_single(diag, {'rows': [{'place_name': '大南门', 'polarity_index': -0.3,
+                                                       'issue_label': '停车难', 'point_count': 900}]}, '大南门更新需求')
+    lims = ' '.join(card['limitations'])
+    assert '行业案例为对标参照' in lims, f'limitations 应含案例对标声明（{lims}）'
+
+
+def test_p1_measure_note_in_cases():
+    """P1-3：case_library 四案例均含 measure_note（口径标注·Codex 评估）。"""
+    from ai_qa.outlet_kb.case_library import CASES
+    for cid, case in CASES.items():
+        assert case.get('measure_note'), f'案例 {cid} 缺 measure_note（口径标注）'
+        assert case.get('source'), f'案例 {cid} 缺 source（已核实出处）'

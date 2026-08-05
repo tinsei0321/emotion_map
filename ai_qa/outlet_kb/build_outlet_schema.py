@@ -23,6 +23,86 @@ TRIGGER_WORDS = ('更新', '体检', '需求', '满意度', '排序', '识别', 
 # UI 语境词（命中则不算"更新"接口触发·防"更新图层/更新时间"误出卡）
 _UI_CONTEXT_WORDS = ('更新图层', '更新时间', '更新样式', '刷新', '重新加载')
 
+# ── P1（出口三段式）：需求强度分级 + 复合优先级（确定性·不调 LLM）─────────
+# polarity_index 值域双轨（glm P1P2 评估 B1）：L1 路径 -1~1（core/spatial_analysis.py:267）/
+#   L2 路径 -2~2（:277-282）——分级前须归一化（L2 的 -2~2 → -1~1）·阈值统一用归一化后值
+#   阈值与 frontend/js/state.js:329-338 valenceOf（±0.15/±1）对齐·防两处再漂移
+_DEMAND_LEVELS = ('高', '中', '低', '无显著需求')
+
+
+def grade_demand_intensity(polarity_index, level: str = 'L2'):
+    """需求强度分级（P1-1·确定性）。四档：高/中/低/无显著需求。
+
+    polarity_index 值域双轨归一（glm P1P2 B1）：
+      L2 路径 -2~2 → 归一化 -1~1（/2）再分级·L1 路径 -1~1 直接用。
+    阈值（归一化后·对齐 valenceOf）：
+      高：pi<=-0.5（非常消极·需求强烈）｜中：-0.5<pi<=-0.15（消极·有需求）
+      低：-0.15<pi<=0.15（中性附近）｜无显著需求：pi>0.15（积极·无负面需求）
+    """
+    if polarity_index is None:
+        return ('暂无数据', 'polarity_index 缺失')
+    pi = float(polarity_index)
+    if level == 'L2':
+        pi = max(-1.0, min(1.0, pi / 2.0))   # -2~2 → -1~1 归一化（保留"非常消极/消极"粒度）
+    if pi < -0.5:
+        return ('高', '极性 <-0.5（非常消极）·需求强烈')
+    if pi <= -0.15:
+        return ('中', '极性 -0.5~-0.15（消极）·有需求')
+    if pi <= 0.15:
+        return ('低', '极性 -0.15~0.15（中性附近）·无明显需求')
+    return ('无显著需求', '极性 >0.15（积极）·无负面需求')
+
+
+# 复合优先级权重（P1-2·启发式初值·待真实数据回归校准——glm P1P2 S1 诚实标注）
+PRIORITY_WEIGHTS = {'intensity': 0.5, 'coverage': 0.3, 'topic': 0.2}
+
+
+def priority_score(row: dict, rows_max_pc=None, topic_intent: bool = True) -> float:
+    """更新时序复合优先级（P1-2·确定性·升级"polarity 降序"单一规则）。
+
+    priority = 强度项×0.5 + 覆盖度项×0.3 + 主题契合项×0.2
+      - 强度项：负向极性映射（归一化后 -1~1 → 0~1·越负越高）
+      - 覆盖度项：point_count / rows_max_pc（**p95 替代全域 max**·Codex P1P2 修正·防离群格支配）
+        ·缺省（无 point_count 或 rows_max_pc）→ 不参与加权（其余权重归一·Codex 修正·防缺失反超实值）
+      - 主题契合项：domain_top+element_top 都有=1 / 仅一者=0.5 / 全空=0（Codex 修正·空不加分）
+        ·问句无主题意图（topic_intent=False）→ 该项不参与（权重转强度·glm P1P2 S2）
+    """
+    import math
+    # 强度项（负向极性映射·-1~1 → 0~1）
+    pi = row.get('polarity_index') or row.get('score_mean') or 0
+    try:
+        pi = float(pi)
+    except (TypeError, ValueError):
+        pi = 0.0
+    intensity = max(0.0, min(1.0, -pi))   # 越负 → 越接近 1（需求越强）
+
+    # 覆盖度项（p95 归一·缺省不参与加权）
+    coverage = None
+    pc = row.get('point_count')
+    if pc is not None and rows_max_pc:
+        try:
+            pc = float(pc)
+            if pc > 0 and rows_max_pc > 0:
+                coverage = min(1.0, pc / rows_max_pc)
+        except (TypeError, ValueError):
+            coverage = None
+
+    # 主题契合项（0/0.5/1·问句无主题意图不参与）
+    topic = None
+    if topic_intent:
+        has_d = bool(row.get('domain_top') or row.get('domain'))
+        has_e = bool(row.get('element_top') or row.get('element'))
+        topic = 1.0 if (has_d and has_e) else (0.5 if (has_d or has_e) else 0.0)
+
+    # 加权求和（缺失项不参与·权重归一化）
+    items = [('intensity', intensity)]
+    if coverage is not None:
+        items.append(('coverage', coverage))
+    if topic is not None:
+        items.append(('topic', topic))
+    w_sum = sum(PRIORITY_WEIGHTS[k] for k, _ in items) or 1.0
+    return sum(PRIORITY_WEIGHTS[k] * v for k, v in items) / w_sum
+
 
 def resolve_outlet_id(diagnose: dict, question: str = '') -> str | None:
     """诊断卡（outlet+domain_lens+scale）+ 问句接口词 → OUTLET_CONTRACTS key。
@@ -243,6 +323,33 @@ def _build_card(oid: str, diagnose: dict, result: dict, question: str = '') -> d
         else:
             card['fields'][industry_field] = {'value': emc_expr, 'source': '产物表达'}
 
+    # ── P1（出口三段式）：需求强度分级 + 复合优先级（确定性·Codex/glm P1P2 评估采纳）─────────
+    if oid == 'renewal_demand' or oid in OUTLET_CONTRACTS and OUTLET_CONTRACTS[oid].get('name', '') == '更新需求摸排':
+        # P1-1 需求强度等级（值域双轨归一·四档·glm B1 + Codex W1 修正）
+        _pi_raw = _extract_emc_value(result, 'polarity_index')
+        if _pi_raw is not None:
+            _grade, _grade_note = grade_demand_intensity(_pi_raw, level=scale and 'L2' or 'L1')
+            card['fields']['需求强度等级'] = {'value': _grade, 'source': f'极性 {_pi_raw}（{_grade_note}·确定性分级）'}
+    if oid == 'renewal_sequence' or oid in OUTLET_CONTRACTS and OUTLET_CONTRACTS[oid].get('name', '') == '更新时序排序':
+        # P1-2 复合优先级（p95 归一·缺省不参与·主题契合 0/0.5/1·Codex P1P2 修正）
+        _rows = (result or {}).get('rows') or []
+        if isinstance(_rows, list) and _rows:
+            import math as _m
+            _pcs = [float(r.get('point_count') or 0) for r in _rows if isinstance(r, dict) and r.get('point_count') is not None]
+            if _pcs:
+                _sorted_pc = sorted(_pcs)
+                _p95 = _sorted_pc[int(_m.ceil(0.95 * len(_sorted_pc))) - 1] or 1.0
+            else:
+                _p95 = None
+            _scored = [(r, priority_score(r, rows_max_pc=_p95)) for r in _rows if isinstance(r, dict)]
+            _scored.sort(key=lambda x: -x[1])
+            if _scored:
+                _top_r, _top_s = _scored[0]
+                _top_name = _top_r.get('place_name') or _top_r.get('name') or '关注区域'
+                _top_pi = _top_r.get('polarity_index')
+                card['fields']['优先级排序'] = {'value': f'{_top_name}（优先级 {_top_s:.2f}）',
+                                                'source': f'复合规则（强度×{PRIORITY_WEIGHTS["intensity"]}·覆盖×{PRIORITY_WEIGHTS["coverage"]}·主题×{PRIORITY_WEIGHTS["topic"]}·确定性）'}
+
     # 数据基础（点计数·若有）
     # CB-16 Wave 1（claude组 ⑤）：rows 型（macro 分析）——N=区域单元数·note 区分·total_points 标总评论数（禁混用）
     if isinstance(result, dict) and isinstance(result.get('rows'), list) and result['rows']:
@@ -262,6 +369,11 @@ def _build_card(oid: str, diagnose: dict, result: dict, question: str = '') -> d
     # 诚实标注（place_name 双源融合·CB-15 P1 修陈旧文案）
     card['limitations'].append('place_name = 格内最近 POI（CB-15 P0 双源融合·place_name_source 标置信度）')
     card['limitations'].append('归因 = 规则查表（DEMO·L4 深度归因待接入）')
+    # P1（Codex/glm P1P2 评估）：出口卡卡级声明——行业案例为对标参照非评分基准（防"对标上海 93.60 分"误当情绪地图产出）
+    card['limitations'].append('行业案例为对标参照·非评分基准·数值口径以当地官方发布为准')
+    # P2（glm P1P2 S4）：地理定位尺度标注（宏观=面域/中观=单元/微观=POI·让用户一眼看懂地点尺度）
+    _scale_cn = {'macro': '宏观·面域', 'meso': '中观·单元', 'micro': '微观·落点'}.get(scale, '')
+    card['geo_label'] = (_scale_cn + ('：' + (card['fields'].get('需求位置', {}).get('value') or '') if card['fields'].get('需求位置') else '')) if _scale_cn else ''
 
     # Wave 3（glm组）：可感知体检指标（2a 极性类·B 类条件等式后置）
     # ③w2b（Codex/glm P1）：仅体检域（urban_governance）挂可感知指标——更新类卡不混挂体检指标（跨领域信息补充非预期）

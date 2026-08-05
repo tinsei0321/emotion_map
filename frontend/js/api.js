@@ -102,6 +102,31 @@ export async function runTerrain(payload) {
   return r.json();
 }
 
+export async function runDem(payload) {
+  // P1.5：情绪地形 DEM（KDE→terrarium RGB·setTerrain 连续曲面）→ { blob, bounds, width, height }
+  // payload: { geojson, polarity, bandwidth_m, cell_m, height_scale } → PNG blob
+  const r = await fetch(`${BASE}/spatial/dem`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) {
+    let detail = `DEM 生成失败: ${r.status}`;
+    try { const j = await r.json(); detail = j.detail || detail; } catch (_) {}
+    throw new Error(detail);
+  }
+  const blob = await r.blob();
+  // bounds/size 从响应 header 解析（后端 X-DEM-* · WGS84 [w,s,e,n]·前端 raster-dem source 需要）
+  let bounds = null, size = null, heightScale = null;
+  try { bounds = JSON.parse(r.headers.get('X-DEM-Bounds') || 'null'); } catch (_) {}
+  try {
+    const _s = (r.headers.get('X-DEM-Size') || '').split('x');
+    size = _s.length === 2 ? { width: Number(_s[0]), height: Number(_s[1]) } : null;
+  } catch (_) {}
+  heightScale = Number(r.headers.get('X-DEM-HeightScale')) || null;
+  return { blob, bounds, size, heightScale };
+}
+
 // ── GIS 工具骨干（/api/v1/geo/* · EMC 委托层与 toolbox 模块共用）──
 /** POST /api/v1/geo/{path} → JSON；失败抛 Error(detail)。
  *  自 ai_qa/tools.js geoFetch 泛化——不含 $n/图层名 ref 预处理（调用方负责先把引用解析成 GeoJSON/名称）。 */

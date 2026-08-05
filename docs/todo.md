@@ -26,7 +26,70 @@
 
 - **用户意图**：① 分析结论「出口」重整理成**新三段式**（替换旧三段式）——第一段=明确观点（基于用户提问·LLM 核心价值）；第二段=4 要点（分析方法/使用数据/分析结果/**分析结论**——观点≠结论：观点=转化解答提问·结论=图数表描述性论述）；第三段=行业接口对标对表→一键入库参数（城市体检/更新·更新需求调研场景·参考国内指标案例）② 工具管线优化（调用/协作线性并行/地点联动）③ 所有工具出口联动地点信息（宏观面域/中微观用地地点·三段式插入环节由成果范式 agent 思考）——目标=出口**既稳定又灵活**
 - **已完成**：现状基线实查（四态出口契约·finalStep 极瘦 D019·outlet_kb 7 契约 21 指标映射确定性组装·CB-15 地点联动）→ **讨论发起文档** `情绪地图_出口三段式与工具管线_讨论发起_2026-08-05.md`（5 焦点 F1 映射/F2 观点vs结论/F3 接口参数/F4 地点尺度/F5 管线优先级 + 附 A 发组 prompt）
-- **待续**：发两组 prompt → 回收回应 → 反评价收敛 → 用户拍板 → **列入 backlog（热点图重做完成后执行）**
+- **第一轮两组回应已回收**（`情绪地图_出口三段式与工具管线回应_{glm组|Codex-GPT5}_2026-08-05.md`）：两组共识 = A+C 先行 B 后置·落地=前端呈现层+后端确定性聚合·观点段素材现成（提问在 finalStep messages）·地点插入三处力度不同·第三段缺口=业务细化；分歧 = 观点段落点（glm 软扩 vs Codex 零改动+ctx 注入）
+- **用户拍板**：Q1 第三段=条件段（意图 agent 判断·未涉归因不入库）· Q2 结论段=确定性为主+LLM 润色可选 · Q3 A+C 先行 B 后置 · **Q4 反馈"观点先行=核心价值（干货）"** → claude组 修正 = **采纳 glm 软扩**（观点段 FINAL_TEMPLATE 正式指令·LLM 必读·先扩 eval 门禁再动）·否 Codex 零改动（ctx 附加提示遵守度弱=价值打折）
+- **已完成**：定稿计划（D1-D5 + P0/P1/P2/P3 范围 + 验证）→ **定稿评估发起文档** `情绪地图_出口三段式_定稿评估发起_2026-08-05.md`（定稿计划全文 + 6 焦点 + 附 A 评估 prompt）
+- **两组定稿评估已回收**（`情绪地图_出口三段式_定稿评估回应_{glm组|Codex-GPT5}_2026-08-05.md`）：**"有条件执行"**——Codex 阻断 R1（行为 eval 扩）/R2（观点提取兜底契约）+ 警告 W1（基线 2641B 过时）+ W4（条件段不交 LLM）；glm 阻断 B1（风格定调）/B2（结论段独立聚合·不解析 markdown）+ W1（双保险）/W2（结果结构化改动量被低估）
+- **用户拍板"定稿执行"→ P0 已实施**：行为 eval 扩（test_final_prompt_has_insight_first 三锚点）+ 体积门禁 <3000B/≤2980B（**实测基线 2833B·非 2641B·观点指令 124B→2957B**）+ FINAL_TEMPLATE 观点先行软扩 + harness ctx 双保险 + onResultStruct hook + 新 result-struct.js（结论段独立聚合·观点三档兜底）+ panel 观点卡/4 要点卡 + CSS · **pytest 283 passed 零回归**（+1 新断言）
+- **已完成**：**P0 实施审计发起** `情绪地图_出口三段式P0_实施审计发起_2026-08-05.md`（改动清单 + 6 审计焦点 + 附 A 审计 prompt）
+- **两组 P0 审计已回收**（`情绪地图_出口三段式P0_实施审计回应_{glm组|Codex-GPT5}_2026-08-05.md`）：**P0 通过 + 阻断项 B1 + 警告 W1-W3 + 建议项** → **claude组 已全部修复**——B1（runChainPath/runAllToolCalls 补 onResultStruct·抽 _dispatchResultStruct 共享 helper）+ W1（结论段改从 rows 聚合·学术句式·Top 数值+地名+归因）+ W2（体积预算放宽·仅 <3000B·模板冻结加字）+ W3（首段首句兜底删·无标记不显卡）+ 建议项（整块捕获/_pendingStruct send 重置/三锚点位置断言）·**pytest 283 passed + test_emc_template 24 passed + 括号全平衡**
+- **用户定**：P0 暂不验（记录·完成后一起验证）→ **推进 P1/P2**
+- **已完成**：P1/P2 执行计划 → **P1/P2 计划评估发起** `情绪地图_出口三段式P1P2_计划评估发起_2026-08-05.md`（6 焦点）
+- **两组 P1/P2 计划评估已回收**（`情绪地图_出口三段式P1P2_计划评估回应_{glm组|Codex-GPT5}_2026-08-05.md`）：**可执行 + 修正**——glm 阻断 B1（**polarity_index 值域双轨** L1 -1~1/L2 -2~2·分级须归一化）+ W1（"低"档含积极语义）+ W2（覆盖度归一定义）+ W3（CSV 前端入口）；Codex 修正（四档高/中/低/无显著需求·p95 归一+缺省不参与+主题 0/0.5/1·CSV 显式脱敏+outlet_id/name/scale 列·宁夏 5 张映射+8 张边界·limitations 卡级声明·前端导出按钮）
+- **✅ P1/P2 已执行完成**（按评估修正）：
+  - **P1-1** `grade_demand_intensity(pi, level)`——L2 值域归一（-2~2→-1~1·glm B1）+ 四档（< -0.5 高 / ≤-0.15 中 / ≤0.15 低 / >0.15 无显著需求·Codex W1）·边界 < 修正
+  - **P1-2** `priority_score(row)`——p95 归一（Codex W2·防离群格）+ 缺省不参与加权（防缺失反超实值）+ 主题契合 0/0.5/1 + `PRIORITY_WEIGHTS` 常量（启发式初值标注）
+  - **P1-3** case_library 四案例 `measure_note`（感知维度非官方评分）+ 出口卡 limitations 卡级声明（"行业案例为对标参照·非评分基准"·双层）
+  - **P1-4** `export_outlet_card_csv`（显式脱敏+outlet_id/name/scale 列+BOM）+ **前端导出按钮**（panel.js·glm W3 防空转）+ CSS
+  - **P2** 出口卡 `geo_label`（宏观·面域/中观·单元/微观·落点·glm S4）
+  - **验证**：pytest **290 passed**（+7 零回归）· validate_outlet_fields 2 passed · CSV 真跑（BOM/列✓）
+- **待验收（用户定·完成后一起验证）**：见「整体验收清单」节
+- **已完成**：todo 验收清单 + revision-log §5 归档（P0/P1/P2）
+- **已完成**：**P3 工具管线计划** `情绪地图_工具管线P3_计划评估发起_2026-08-05.md`（P3-1 依赖图 DAG 判定纯函数·不交 LLM / P3-2 并行执行 Promise.all 同层·PARALLEL_ENABLED 开关 / P3-3 编排器稳定性红线 SOP·先扩 eval 一次一处 / P3-4 地点联动工具出口统一 place_name·5 焦点 + 附 A prompt）
+- **两组 P3 计划评估已回收**（`情绪地图_工具管线P3_计划评估回应_{glm组|Codex-GPT5}_2026-08-05.md`）：**两组高度共识 = P3-2 并行执行后置/砍掉**——🔴 `$n` 引用机制依赖严格顺序（tools.js _stepResults 按产出序 push·并行破坏索引确定性·Codex B1 + glm B1 一致）+ 并行收益不足（multi 触发场景多有 $n 依赖·真正可并行极少·Codex B2/glm B2）+ 成本严重低估（3 天→Codex 4-5/glm 5-9 天）；**P3-1 依赖图 + P3-4 地点联动保留**（零红线·可做）；**排期后置到热点图专题之后**（两组一致·避免 harness 撞车）
+- **claude组 反评价收敛**：采纳两组共识——**P3 整体后置**到热点图专题完成后（P3-1 依赖图 + P3-4 地点联动保留·P3-2 并行暂不做·待 EMC 规模化）；P3-2 若未来做须先解 `$n` 索引重构（index-based）+ 共享状态隔离（_lastToolRows 确定性选取）·PARALLEL_ENABLED 默认关
+- **待续**：回到主线 = **热点图重做专题**
+- **用户拍板（P-1~P-4 全按建议）**：P-1 3D=a setTerrain / P-2 2D/3D 不统一 / P-3 B（P0 命名+A/B 前置）/ P-4 随 P1.5 合并开·**强调工具间解耦不互相干扰**
+- **✅ P0 命名定标完成**（8 处）：hotspot-tool 图层名「显著聚集点(Gi*)」· grid-tool 占位卡/组卡「显著聚集(Gi*)」· panel.js spatial_hotspot→「代表地点」+ Overview 文案 · test-cases.js 语料 · index.html 注释 · spec.md 字段/调试描述
+- **✅ P0-前置 Gi\* A/B 验证完成（重大发现）**：真实 L2 数据（xiling_wujia·2500 点）**逐点/500m 网格/200m 网格 Gi\* 全部无显著热点（全 ns）**——Gi_Z 全在 ±1.07~1.26。**实测根因**：score std 仅 0.377（方差小）+ KNN 邻居 50m~2.5km（尺度漂移·glm 第一轮 B2 证实）+ 阈值 1.96 严。**网格化平滑 Z 但未变全 ns → 输入粒度修正（原 P1 核心）不足以让 Gi\* 出热点**（"效果不对"实锤）
+- **两组 P1 修正评估已回收**（`情绪热点图_P1修正回应_{glm组|Codex-GPT5}_2026-08-05.md`）：**根因加深 = score 是 U 形多峰离散分布（5 级极性分类副产物·glm 主因）·与 Gi\* 连续正态假设不匹配**（Codex：局部邻域偏差小=弱信号·降阈值必失败 max\|Z\|1.26<1.65）；**方案收敛 = A 软分级主推（五档·诚实标倾向聚集）·弃 B（逐点无 polarity_index 原生列）·距离带 P2·长期评估 KDE/DBSCAN 替代 Gi\***
+- **✅ 热点图 P0/P1/P1.5 已全部实施完成**（工具间解耦）：
+  - **P0 命名定标**（8 处）：Gi\*→「显著聚集点(Gi\*)」· spatial_hotspot→「代表地点」·「热力图」统一
+  - **P0 前置 A/B**：全 ns 实锤（U 形离散分布·glm 主因）→ 驱动 P1 修正
+  - **P1 软分级**：`_classify_hotspot` 五档（hot/tend_hot/ns/tend_cold/cold·threshold 参数化）+ `hotspot_tier` 字段 + 前端 `colorMode='hotspot'` 显著性符号层（弃 `_CLS_POL` 极性色·单色系+大小分档·与 KDE 解耦）
+  - **P1.5 setTerrain 3D**：`create_terrain_dem`（F_009·KDE→terrarium RGB·bounds 转 WGS84）+ `/spatial/dem` 端点（header 返 bounds/size）+ `runDem` + map.js `setTerrainDEM`（**draping 隔离**：不常驻+与 3D 网格柱互斥+sky 层）+ `generateTerrain3DForAI`/`closeTerrain3D` + retired.md 渲染路径退役登记（fill-extrusion 3D → setTerrain 连续曲面·2D 等值线保留）
+  - **验证**：pytest **293 passed**（+3 零回归）· DEM 解码验证（高度 0~500·峰 500m·bounds WGS84 正确）· 括号全平衡
+- **待整体验收**（todo「整体验收清单」·用户定完成后一起验证）· **热点图执行进 CB 审计**（两组·下一步）
+- **两组热点图实施审计已回收**（`情绪热点图_实施审计回应_{glm组|Codex-GPT5}_2026-08-05.md`）：**P0+P1 可验收**（命名定标 8 处 + 软分级五档参数化·默认 soft=1.0 解全 ns 显示）· **P1.5 有 B1 阻断**（setTerrain 无用户入口 + EMC 委托未切·与 retired.md 矛盾）
+- **✅ 审计修复全部完成**：**B1**（tools.js EMC 委托切 generateTerrain3DForAI·setTerrain 连续曲面）· **W1**（map.js 符号层改纯橙系·弃红蓝双色·与 KDE 解耦）· **W2+W3**（/geo/hotspot 透传 threshold/soft_threshold + legend 五档显著 95%/倾向 84%）· **W6**（tool_contracts/paradigm/stages SKILL_DEFS/validate SKILL_DEFS_DEFAULTS/_KNOWN_SLOTS 契约层五档同步）· **建议级**（index.html:14/1172·state.js:107 注释清理·map.js 注释澄清）
+- **验证**：pytest **293 passed** + validate_skill_params/test_emc_template **28 passed** + 括号全平衡
+- **待整体验收**（todo「整体验收清单」·出口三段式 P0-P2 + 热点图 P0/P1/P1.5 一起·用户浏览器验收）
+
+---
+
+## 📋 整体验收清单（出口三段式 · 用户定"完成后一起验证"）
+
+> 启动方式：`py frontend/serve.py 8080` 打开 → 浏览器肉眼验收（默认链路·无需 Playwright 除非异步/控制流）。
+
+### P0 验收（观点先行 + 三段式骨架）
+- [ ] **观点卡置顶**：问 EMC 一个情绪分析问（如"西陵区哪些区域情绪最差？"）→ 回答顶部出现"观点"强调卡（干货·答"所以呢"）·正文无重复观点行
+- [ ] **4 要点卡底部**：回答底部出现"分析支撑（4 要点）"卡——方法/数据/结果/结论四栏（结论含"数据显示 X 区极性指数…"学术句式）
+- [ ] **三路径都出卡**：单技能问（默认）+ 多步链问（"裁剪出西陵区情绪点再叠置"·runChainPath）+ 多工具问（multi·runAllToolCalls）——观点卡/4 要点卡都应出现（B1 补丁验证）
+- [ ] **无观点不显卡**：若 LLM 未写 `> **观点：**` 标记 → 无观点卡（保守·不取动作描述当观点·W3）
+- [ ] **无 console 错**：浏览器 F12 无 JS 报错（Codex W4 浏览器最小验收）
+
+### P1 验收（第三段指标细化 + CSV 入库）
+- [ ] **需求强度等级**：出口卡出现"需求强度等级"（高/中/低/无显著需求·四档）——问"西陵区更新需求分析"·若极性偏负应显示"高/中"
+- [ ] **复合优先级**：问"更新时序排序"→ 出口卡"优先级排序"为 Top1 区域 + 复合规则（非单一极性降序）
+- [ ] **CSV 导出按钮**：出口卡上"导出 CSV"按钮 → 点击下载 CSV（Excel 可开·UTF-8 BOM·含 outlet_id/name/scale 列·脱敏无敏感字段）
+- [ ] **案例口径标注**：出口卡 limitations 含"行业案例为对标参照·非评分基准"
+- [ ] **地点 scale 标注**：出口卡出现"宏观·面域/中观·单元/微观·落点"（geo_label·随问句尺度）
+
+### P2 验收（地点联动）
+- [ ] **结论段带地点**：4 要点卡结论含地点（宏观=面域名/中观=单元名/微观=POI·按尺度）
+
+### 热点图重做验收（另一专题·P-1~P-4 待拍板）
+- [ ] 3D 地形 = MapLibre setTerrain 连续曲面（非 fill-extrusion 千层饼）· Gi\* 网格化 · 命名定标（D1-D7·待拍板后）
 
 ---
 

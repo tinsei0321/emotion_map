@@ -112,7 +112,7 @@ L0 (原始爬取) → L1 (数据治理) → L2 (情绪分析) → L3 (语义增�
 | 27 | `urban_value` | str | 城市治理价值（high / medium / low） |
 | 28 | `l1_confidence` | float | L1 LLM 分类置信度 0~1 |
 | 29 | `has_location` | bool | 文本是否包含地点信息 |
-| 30 | `spatial_hotspot` | str | 空间热点类型（生成器注入） |
+| 30 | `spatial_hotspot` | str | 代表地点（POI 名·生成器注入） |
 | 31 | `spatial_type` | str | 空间分布类型（生成器注入） |
 
 > **变更记录 (2026-06-15)**：L1 从 spec 原定 20 列修正为 26 列。新增 6 个 LLM 分类字段（location_mentioned, relevance, relevance_category, primary_emotion, emotion_intensity, urban_value, l1_confidence, has_location）+ 2 个空间字段（spatial_hotspot, spatial_type）；移除 `in_scope` 和 `_kw_pass`（已不再使用）。
@@ -436,7 +436,7 @@ _PROJECT_ROOT/
 |------|------|
 | `SCRIPT/test_scripts.py` | 逐条分析测试（小规模） |
 | `SCRIPT/test_scripts_2.py` | 向量化分析测试（大规模） |
-| `SCRIPT/test_scripts_heatmap.py` | 热点图独立调试 |
+| `SCRIPT/test_scripts_heatmap.py` | 热力图独立调试 |
 | `SCRIPT/generate_test_data.py` | 测试数据生成 |
 | `SCRIPT/generate_l1_mock.py` | L1 Mock 数据生成 |
 | `check_data_quality.py` | 数据质量检测 |

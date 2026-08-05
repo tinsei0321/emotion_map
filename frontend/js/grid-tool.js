@@ -1,6 +1,6 @@
 // ═══ grid-tool.js — Grid 空间聚合工具（标准网格 + 指定单元） ═══
 // 三步导航：①分析类型（组卡片）②数据选择+网格参数 ③显示样式。
-// 分析类型：聚合域组(标准网格 square + 指定单元 zonal)；热点 Gi* / Moran's I 占位(dev)。
+// 分析类型：聚合域组(标准网格 square + 指定单元 zonal)；显著聚集 Gi* / Moran's I 占位(dev)。
 // 数据联动：L1(无极性,舆论热度 grid-warm) / L2(有极性,综合 terrain-9 / 积极 green-3 / 消极 red-3 / 中性 blue-3)。
 // 极性在②网格参数（仅 L2），③色板随极性自动（只读预览）。
 // G 按钮打开（editLayerId）→ 回填参数 + 原地更新（layer id 稳定，镜像 B「继续编辑」）。
@@ -24,12 +24,12 @@ const DEFAULT_ANALYSIS = 'square';
 const ANALYSIS_TYPES = {
   square:  { label: '标准网格', group: 'aggregate', desc: '固定方格单元（50/200/400/1000m）空间聚合。' },
   zonal:   { label: '指定单元', group: 'aggregate', desc: '按行政区划/更新单元/控规/用地等面域聚合。' },
-  hotspot: { label: '热点 Gi*', group: 'hotspot', dev: true, desc: 'Getis-Ord Gi* 热点分析（开发中）。' },
+  hotspot: { label: '显著聚集(Gi*)', group: 'hotspot', dev: true, desc: 'Getis-Ord Gi* 显著聚集检验（开发中）。' },
   moran:   { label: "Moran's I", group: 'moran', dev: true, desc: "Moran's I 空间自相关（开发中）。" },
 };
 const ANALYSIS_GROUPS = [
   { key: 'aggregate', label: '聚合域（2D/3D）', order: ['square', 'zonal'] },
-  { key: 'hotspot',   label: '热点 Gi*',        order: ['hotspot'] },
+  { key: 'hotspot',   label: '显著聚集(Gi*)',   order: ['hotspot'] },
   { key: 'moran',     label: "Moran's I",        order: ['moran'] },
 ];
 

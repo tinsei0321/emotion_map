@@ -33,6 +33,8 @@ def hot_spot_analysis(
     gdf: gpd.GeoDataFrame,
     value_col: str = 'score',
     invert: bool = True,
+    threshold: float = 1.96,
+    soft_threshold: float = 1.0,
 ) -> gpd.GeoDataFrame:
     """
     Getis-Ord Gi* 热点分析 — 识别情绪冷热点空间聚类。
@@ -42,6 +44,8 @@ def hot_spot_analysis(
         value_col: 要分析的数值列（如 'score' 情绪得分）
         invert: True=负面情绪为"热点"（score 越低越热），
                 False=正面情绪为"热点"
+        threshold: 显著阈值（默认 1.96·p<0.05）
+        soft_threshold: 软分级阈值（默认 1.0·~84% 置信·P1 修正·诚实标"倾向聚集"）
 
     返回:
         含 Gi* Z-score 和 P-value 列的 GeoDataFrame
@@ -90,7 +94,9 @@ def hot_spot_analysis(
     gdf = gdf.copy()
     gdf['Gi_Z'] = gi.Zs
     gdf['Gi_P'] = gi.p_sim
-    gdf['hotspot'] = gdf['Gi_Z'].apply(_classify_hotspot)
+    gdf['hotspot'] = gdf['Gi_Z'].apply(_classify_hotspot, threshold=threshold, soft_threshold=soft_threshold)
+    # P1 软分级（glm/Codex P1 修正评估）：hotspot_tier 五档（hot/tend_hot/ns/tend_cold/cold）·诚实标倾向聚集（~84%）
+    gdf['hotspot_tier'] = gdf['hotspot']
 
     with TrackContext("MOD_SPATIAL.D_002",
                       n_hot=int((gdf['hotspot'] == 'hot').sum()),
@@ -101,12 +107,25 @@ def hot_spot_analysis(
     return gdf
 
 
-def _classify_hotspot(z_score: float) -> str:
-    """将 Gi* Z-score 分类为 hot/cold/ns。"""
-    if z_score > 1.96:
+def _classify_hotspot(z_score: float, threshold: float = 1.96,
+                      soft_threshold: float = 1.0) -> str:
+    """将 Gi* Z-score 分类（P1 修正·软分级五档·glm/Codex P1 修正评估共识）。
+
+    EMC score 是 5 级极性映射的 U 形离散分布·Gi* 连续正态假设不匹配·全 ns 实锤
+    （A/B 实测 max|Z|~1.26·1.96 阈值无输出）。软分级救急—— |Z|>soft_threshold 标
+    "倾向聚集"（~84% 置信·诚实标注非显著）·演示图面有张力（聚焦关注区·演示逻辑链）。
+
+    档位：hot(显著·|Z|>threshold) / tend_hot(倾向·soft<Z<=threshold) /
+          ns(不显著) / tend_cold / cold（对称）。
+    """
+    if z_score > threshold:
         return 'hot'
-    elif z_score < -1.96:
+    if z_score > soft_threshold:
+        return 'tend_hot'
+    if z_score < -threshold:
         return 'cold'
+    if z_score < -soft_threshold:
+        return 'tend_cold'
     return 'ns'
 
 
@@ -1040,6 +1059,103 @@ def create_terrain_mesh(
     return out.to_crs('EPSG:4326')
 
 
+# ═══════════════════════════════════════════════════════════
+# P1.5 情绪地形 DEM（setTerrain 连续曲面·热点图定稿 D3·Mapbox terrarium RGB）
+# ═══════════════════════════════════════════════════════════
+
+@track("MOD_SPATIAL.F_009", track_args=False)
+def create_terrain_dem(
+    points_gdf: gpd.GeoDataFrame,
+    polarity: str = 'overall',
+    bandwidth_m: float = 250.0,
+    cell_m: float = 60.0,
+    height_scale: float = 500.0,
+    target_crs: str = 'EPSG:4546',
+) -> dict:
+    """情绪地形 DEM —— KDE 密度栅格 → Mapbox terrarium RGB 编码（setTerrain 连续曲面·P1.5）。
+
+    替代 fill-extrusion 等值线环（千层饼非连续曲面·用户反馈"看不出地势"）：
+      点 → 投影 → 加权 histogram2d → 高斯卷积(KDE) → 归一化高度(0~height_scale 米)
+      → terrarium 编码 (height = (R*256 + G + B/256) - 32768) → RGB PNG + bounds(4326)。
+
+    独立于 create_terrain_mesh（F_007·等值线环保留给 2D/旧路径）·不碰承重。
+    setTerrain 全局地形→前端 draping 隔离（不常驻+互斥·glm P1.5 强调）。
+
+    返回: {png: bytes, bounds: [w,s,e,n](4326), width, height, height_scale, note}
+    """
+    import io
+    pts = points_gdf.copy()
+    if pts.crs is None:
+        pts = pts.set_crs('EPSG:4326')
+    if polarity in ('positive', 'negative', 'neutral') and 'polarity' in pts.columns:
+        polmap = {
+            'positive': ['Very Positive', 'Positive'],
+            'negative': ['Very Negative', 'Negative'],
+            'neutral': ['Neutral'],
+        }
+        pts = pts[pts['polarity'].isin(polmap[polarity])].copy()
+    if len(pts) < 3:
+        raise ValueError(f'DEM 分析需要至少 3 个点（极性={polarity} 过滤后剩 {len(pts)}）')
+
+    for _c in ('emotion_intensity', 'score'):
+        if _c in pts.columns:
+            pts[_c] = pd.to_numeric(pts[_c], errors='coerce')
+    if 'emotion_intensity' in pts.columns:
+        ei = pts['emotion_intensity'].fillna(0.5)
+        ei = np.where(ei > 1, ei / 5.0, ei)
+        pts['_w'] = np.clip(ei, 0.05, 1.0)
+    else:
+        pts['_w'] = 1.0
+
+    pts = pts.to_crs(target_crs)
+    xs = pts.geometry.x.values
+    ys = pts.geometry.y.values
+    w = pts['_w'].values.astype(float)
+
+    xmin, ymin, xmax, ymax = (float(v) for v in pts.total_bounds)
+    pad = bandwidth_m
+    xmin -= pad; ymin -= pad; xmax += pad; ymax += pad
+    nx = max(24, int(np.ceil((xmax - xmin) / cell_m)))
+    ny = max(24, int(np.ceil((ymax - ymin) / cell_m)))
+
+    with TrackContext("MOD_SPATIAL.D_004", n_points=len(pts), grid=f'{nx}x{ny}',
+                      bandwidth_m=bandwidth_m, polarity=polarity):
+        H, _, _ = np.histogram2d(xs, ys, bins=[nx, ny],
+                                 range=[[xmin, xmax], [ymin, ymax]], weights=w)
+        sigma_cell = bandwidth_m / cell_m
+        Hs = np.clip(_convolve_separable(H, sigma_cell), 0.0, None)
+        if not np.any(Hs > 0):
+            raise ValueError('DEM KDE 曲面全零（点过稀疏或带宽过小）')
+
+        # 归一化高度（0~1 → 0~height_scale 米）·p95 拉伸保峰形（防离群格压扁）
+        nz = Hs[Hs > 0]
+        p95 = float(np.quantile(nz, 0.95)) or 1.0
+        elev = np.clip(Hs / p95, 0.0, 1.0) * height_scale   # (ny, nx)·米
+        # terrarium 编码：height = (R*256 + G + B/256) - 32768 → 编码 R/G/B
+        h = elev + 32768.0   # 0~65535（覆盖 -32768~32768m）
+        h = np.clip(h, 0, 65535)
+        h_int = np.floor(h).astype(np.int64)   # 先算整数再拆通道（防 uint8 溢出）
+        R = np.clip(h_int // 256, 0, 255).astype(np.uint8)
+        G = np.clip(h_int % 256, 0, 255).astype(np.uint8)
+        B = np.clip(np.floor((h - h_int) * 256), 0, 255).astype(np.uint8)
+        rgb = np.stack([R, G, B], axis=-1)   # (ny, nx, 3)
+
+        # 输出 PNG（matplotlib imsave·requirements 已含）
+        from matplotlib import pyplot as plt
+        buf = io.BytesIO()
+        plt.imsave(buf, rgb, format='png')
+        png = buf.getvalue()
+
+    # bounds → WGS84（DEM source 需 4326·pyproj Transformer 米制→经纬度）
+    from pyproj import Transformer
+    _t = Transformer.from_crs(target_crs, 'EPSG:4326', always_xy=True)
+    _w, _s = _t.transform(xmin, ymin)
+    _e, _n = _t.transform(xmax, ymax)
+    wgs_bounds = [_w, _s, _e, _n]
+    return {'png': png, 'bounds': wgs_bounds, 'width': nx, 'height': ny,
+            'height_scale': height_scale, 'note': f'KDE DEM（bandwidth={bandwidth_m}m·cell={cell_m}m）'}
+
+
 # ── 追踪 ID 注册表 ──
 register_track_id("MOD_SPATIAL.F_001", "Getis-Ord Gi* 热点分析")
 register_track_id("MOD_SPATIAL.F_002", "Moran's I 空间自相关检验")
@@ -1047,6 +1163,7 @@ register_track_id("MOD_SPATIAL.F_003", "行政单元聚合统计")
 register_track_id("MOD_SPATIAL.F_004", "H3 六边形网格聚合")
 register_track_id("MOD_SPATIAL.F_006", "固定方格网格聚合(标准网格)")
 register_track_id("MOD_SPATIAL.F_007", "情绪地形 KDE 等值面 mesh")
+register_track_id("MOD_SPATIAL.F_009", "情绪地形 DEM（KDE→terrarium RGB·setTerrain 连续曲面）")
 register_track_id("MOD_SPATIAL.F_008", "⑤③ membership 分组聚合（点带 zone role 直接 groupby，非 sjoin）")
 register_track_id("MOD_SPATIAL.D_001", "热点分析：自适应空间权重矩阵构建")
 register_track_id("MOD_SPATIAL.D_002", "热点分析：分类结果统计（hot/cold/ns）")

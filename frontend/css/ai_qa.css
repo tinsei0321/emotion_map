@@ -797,6 +797,43 @@
 .outlet-metrics-title { font-size: 12px; font-weight: 600; color: var(--emc-accent); margin-bottom: 4px; }
 .outlet-task { font-size: 12px; color: var(--geojson-color-text-secondary, #999); }
 .outlet-limits { font-size: 11px; color: var(--geojson-color-text-tertiary, #707070); }
+
+/* 出口三段式 P0：观点强调卡（置顶·干货醒目）+ 4 要点支撑卡（底部·紧凑）·仿 outlet-card token 不新造 */
+.emc-insight-card {
+  margin: 2px 2px 10px;
+  padding: 12px 14px 10px;
+  background: var(--geojson-color-gray-100, #2a2a2a);
+  border-radius: 12px;
+  border-left: 3px solid var(--emc-accent);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.18);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.emc-card-head { font-size: 12px; font-weight: 700; color: var(--emc-accent); letter-spacing: 0.5px; }
+.emc-insight-text { font-size: 14.5px; line-height: 1.55; color: var(--geojson-color-text-primary, #ECECEC); font-weight: 600; }
+.emc-points-card {
+  margin: 10px 2px 2px;
+  padding: 10px 14px 8px;
+  background: var(--geojson-color-gray-100, #2a2a2a);
+  border-radius: 10px;
+  border-top: 2px solid var(--emc-divider, rgba(255,255,255,0.10));
+  display: flex; flex-direction: column; gap: 6px;
+}
+.emc-points-row {
+  display: flex; gap: 10px; font-size: 12px; line-height: 1.45;
+  padding: 3px 0; border-bottom: 1px solid var(--emc-divider, rgba(255,255,255,0.06));
+}
+.emc-points-row:last-child { border-bottom: none; }
+.emc-points-key { color: var(--geojson-color-text-secondary, #999); flex-shrink: 0; min-width: 56px; }
+.emc-points-val { color: var(--geojson-color-text-primary, #ECECEC); }
+[data-theme="light"] .emc-insight-card, [data-theme="light"] .emc-points-card { box-shadow: 0 3px 10px rgba(20,58,53,0.08); }
+/* P1-4（glm P1P2 W3）：出口卡 CSV 一键入库按钮（紧凑胶囊·仿 capsule 语言） */
+.outlet-export-btn {
+  margin-top: 8px; padding: 5px 12px; align-self: flex-start;
+  border: none; border-radius: 14px; cursor: pointer;
+  background: var(--emc-accent, #D97757); color: #fff;
+  font-size: 12px; font-weight: 600;
+}
+.outlet-export-btn:hover { filter: brightness(1.1); }
 .outlet-limits blockquote { margin: 2px 0; padding-left: 8px; border-left: 2px solid var(--emc-divider); }
 .outlet-source { font-size: 10.5px; color: var(--geojson-color-text-tertiary, #707070); opacity: 0.7; }
 [data-theme="light"] .outlet-card { box-shadow: 0 3px 12px rgba(20,58,53,0.10); }

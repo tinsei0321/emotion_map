@@ -58,7 +58,7 @@ export const SKILL_DEFS = {
   area_stats:      { tool: 'area_stats',      category: 'single', required_slots: ['boundary'],          optional_defaults: {} },
   merge:           { tool: 'merge',           category: 'single', required_slots: [],                     optional_defaults: {} },   // CB-11：boundary|layers 二选一（one-of·tools.js guard 校验）
   nearest:         { tool: 'nearest',         category: 'single', required_slots: ['target'],            optional_defaults: { k: 1 } },
-  hotspot:         { tool: 'hotspot',         category: 'single', required_slots: [],                    optional_defaults: { value_col: 'score' } },
+  hotspot:         { tool: 'hotspot',         category: 'single', required_slots: [],                    optional_defaults: { value_col: 'score', threshold: 1.96, soft_threshold: 1.0 } },
   filter_attr:     { tool: 'filter_attr',     category: 'single', required_slots: ['pre_filter'],        optional_defaults: {} },
   multi:    { tool: null,          category: 'multi',    required_slots: [],                     optional_defaults: {} },
   unknown:  { tool: null,          category: 'unknown',  required_slots: [],                     optional_defaults: {} },

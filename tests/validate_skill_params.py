@@ -36,7 +36,7 @@ SKILL_DEFS_DEFAULTS = {
     'area_stats': {},
     'merge': {},
     'nearest': {'k': 1},
-    'hotspot': {'value_col': 'score'},
+    'hotspot': {'value_col': 'score', 'threshold': 1.96, 'soft_threshold': 1.0},   # P1 软分级透传（W6 审计）
     'filter_attr': {},
 }
 
