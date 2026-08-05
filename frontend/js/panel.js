@@ -970,10 +970,10 @@ function _singlePolBody(feats, ui) {
     <div class="ov-tier-sub">关键词 Top10<span class="info-i" data-tip="该极性高频城市关键词（左 1/3：词+次数）及其代表性地点 Top5（右 2/3）。点击词 → 定位最强聚集。">i</span></div>${_singlePolKeywordsHtml(feats, pol)}`;
 }
 
-// ── L1 数据总览（治理产出率 + 中心城区/8 组团 分布）──
+// ── L1 数据总览（治理产出率 + 中心城区/4 组团 分布）──
 // L0 评论 → L1 情绪点（一条评论+地理等属性 = 一个情绪点）。产出率按 T ∈ {0.10,0.11,0.12}（治理产出渐升）。
 // 中心城区计数：用 L1 数据自带 area_tag 字段（core/central_outer=中心城区，outside_cc=外）→ 零 PIP、瞬时、随数据公式化重算。
-// 8 组团分布：射线法 PIP（heavy → 缓存到 layer._tuanCls 仅算一次 + bbox 预筛）。
+// 4 组团分布：射线法 PIP（heavy → 缓存到 layer._tuanCls 仅算一次 + bbox 预筛）。
 const _L1_RATE = { T1: 0.10, T2: 0.11, T3: 0.12 };
 const _L1_RATE_DEFAULT = 0.11;
 function _l1RateOf(layer) {
@@ -1000,7 +1000,7 @@ function _l1GridBody(feats, ui, layer) {
     <div class="ov-matrix-sep"></div>${_matrixHtml(cell, false)}`;
 }
 
-/** L1 点层（热度分布）数据总览占位 HTML（双段总结 + 紫饼图 + 8 组团横条；异步填充）。 */
+/** L1 点层（热度分布）数据总览占位 HTML（双段总结 + 紫饼图 + 4 组团横条；异步填充）。 */
 function _l1PointDataOverviewHtml(layer) {
   return `<div class="ov-tier-sub">数据总览${_unit('个点')}<span class="info-i" data-tip="L0 评论经治理产出 L1 情绪点（一条评论+地理等属性=一个情绪点）；产出率按时间点 T 在 10~12% 间（治理产出渐升）。中心城区计数用 L1 数据 area_tag 字段（core/central_outer）。数字随载入的 L1 数据公式化重算。">i</span></div>
     <div id="ov-l1-data" class="ov-l1-data"><div class="ov-placeholder muted">分布计算中…</div></div>`;
@@ -1039,7 +1039,7 @@ function _tuanTierColor(n, min, max) {
   return n >= min + step * 2 ? _L1_TUAN_TIERS[0] : n >= min + step ? _L1_TUAN_TIERS[1] : _L1_TUAN_TIERS[2];
 }
 
-/** 8 组团横条 HTML（与 4 维度数据条同款、压缩高度/字号）。counts={组团:n}, order=[组团...]. */
+/** 4 组团横条 HTML（与 4 维度数据条同款、压缩高度/字号）。counts={组团:n}, order=[组团...]. */
 function _tuanBarsHtml(counts, order) {
   const entries = order.map((t) => [t, counts[t] || 0]).filter((x) => x[1] > 0);
   if (!entries.length) return `<div class="ov-placeholder muted">组团分布无落点</div>`;
@@ -1050,7 +1050,7 @@ function _tuanBarsHtml(counts, order) {
       <span class="ov-dbar-track"><span class="ov-dbar-fill" style="width:${(n / max) * 100}%;background:${_tuanTierColor(n, min, max)}">${n}</span></span></div>`).join('');
 }
 
-/** 异步填充 L1 点层数据总览（area_tag 计数 + per-组团 PIP 缓存 + 紫饼图 + 8 组团横条）。setOverview 渲染后调。 */
+/** 异步填充 L1 点层数据总览（area_tag 计数 + per-组团 PIP 缓存 + 紫饼图 + 4 组团横条）。setOverview 渲染后调。 */
 async function _fillL1DataOverview(layer) {
   const el = document.getElementById('ov-l1-data');
   if (!el) return;
@@ -1068,7 +1068,7 @@ async function _fillL1DataOverview(layer) {
     [{ label: '中心城区范围', color: _L1_PURPLE.cc, n: ccCount },
      { label: '中心城区以外', color: _L1_PURPLE.out, n: l1 - ccCount }],
     l1);
-  // 8 组团横条：per-组团 PIP（缓存到 layer._tuanCls 仅算一次，防卡顿；仅对中心城区点分类）
+  // 4 组团横条：per-组团 PIP（缓存到 layer._tuanCls 仅算一次，防卡顿；仅对中心城区点分类）
   let tuanHtml;
   const ccPoints = feats.filter((f) => _CC_AREA_TAGS.has((f.properties || {}).area_tag));
   if (!ccPoints.length) {
@@ -1082,7 +1082,7 @@ async function _fillL1DataOverview(layer) {
     `${summary}
      <div class="ov-l1-pies">
        <div class="ov-l1-pie"><div class="ov-l1-pie-cap">宜昌全域 · 情绪点分布</div>${pie1 || '<div class="ov-placeholder muted">无数据</div>'}</div>
-       <div class="ov-l1-pie"><div class="ov-l1-pie-cap">中心城区内 · 8 组团</div>${tuanHtml}</div>
+       <div class="ov-l1-pie"><div class="ov-l1-pie-cap">中心城区内 · 4 组团</div>${tuanHtml}</div>
      </div>`;
 }
 
@@ -1393,7 +1393,7 @@ function tier3(layer, lv) {
   } else if (lv === 'L0') {
     body = `<div class="ov-placeholder">需先治理（L0→L1）后展示分析结论</div>${spatialPlaceholder()}`;
   } else if (lv === 'L1') {
-    // 数据总览（迁移自 L1 网格：双段总结 + 紫饼图 + 8 组团横条，异步填充）+ 热度值分布
+    // 数据总览（迁移自 L1 网格：双段总结 + 紫饼图 + 4 组团横条，异步填充）+ 热度值分布
     const dataOverview = _l1PointDataOverviewHtml(layer);
     // 热度值分布（3 段，按 hotness buckets）—— 与 popup/图例/弹窗色板同步
     const buckets = (layer.paint && layer.paint.hotnessBuckets) || hotnessBuckets(layer.fc.features);

@@ -9,6 +9,56 @@
 
 ---
 
+## 📅 2026-08-05（情绪热点图重做专题 + 发版就绪度回归待续）
+
+### 🔄 情绪热点图重做 ·「热力 vs 热点」专题（今日任务）
+
+- **现状（代码实查）**：三轨语义错位——情绪地形（KDE 热力面 `/spatial/terrain`·create_terrain_mesh）+ 情绪热点（逐点 Gi\* `/geo/hotspot`·KNN k=8）+ 热力图（heatmap-tool 委托 terrain 同款）。用户诉求"舆情热度·高程/地势感" = KDE 热力面（业界正名）；现「情绪热点(Gi\*)」是显著性检验，且逐点输入噪声大 + hot/cold→极性色是自造语义。
+- **第一轮已完成**：概念基座 + 业界做法核实 → 专题文档 `情绪热点图_热力vs热点_专题讨论_2026-08-05.md`（4 焦点 + 附 A 发组 prompt）
+- **第一轮两组回应已回收**：glm组（partial 定位/KNN 尺度漂移修正/invert 链成立/命名表）+ Codex（grid_pois 修正/5 个"热点"语义/dormant deck.gl/spatial_hotspot 字段/无测试护栏/多维归因占位）——两组合点 = KDE 主图 + Gi\* 网格化 + 视觉去极性色 + 命名定标先行
+- **用户新增焦点**：热点图（Gi\*）= 2D 即可；热力图 2D+3D vs 2D 需讨论（含 3D 形式）；当前 3D 地形效果差（非连续曲面·无地势感）
+- **已完成**：3D 效果差根因（contourpy 等值线环 7 层 → fill-extrusion 逐环固定高度 = 梯田/千层饼非曲面）+ 业界正解调研（MapLibre setTerrain+raster-dem 三角网地形 / deck.gl TerrainLayer / fill-extrusion 改造）→ **第二轮文档** `情绪热点图_第二轮_claude组反评价与3D焦点_2026-08-05.md`（反评价 + 焦点 5 + 附 B 第二轮 prompt）
+- **第二轮两组回应已回收**（`情绪热点图_第二轮回应_{glm组|Codex-GPT5}_2026-08-05.md`）：**3D 形式两组全选 a（MapLibre setTerrain+RGB DEM）**——弃 b（deck.gl 本仓踩坑前科）与 c（fill-extrusion=伪曲面）；glm 深化 = setTerrain **全局 draping 风险需 PoC 隔离**（不常驻+互斥+exaggeration+sky）+ A/B 验证升格 P1 前置 + P0 3D 入口与 P1 合并；Codex = 500m 默认+降档护栏+统一三处粒度 + sky/compare/DEM 测试补 6 项
+- **已完成**：**定稿执行计划** `情绪热点图_定稿执行计划_2026-08-05.md`（D1-D7 决策 + P0/P1/P1.5/P2 范围 + 闸门 + 待拍板 4 点）——**待用户拍板**
+- **待续**：用户拍板（P-1 3D=a 确认 · P-2 2D/3D 共源 · P-3 今天执行范围 · P-4 3D 入口时机）→ 执行（P0 命名定标 + Gi\* A/B 前置 → P1 网格化 → P1.5 setTerrain）
+
+### 🔄 后续任务规划 · 出口三段式 + 工具管线（热点图完成后排期 · 本次纯讨论零代码）
+
+- **用户意图**：① 分析结论「出口」重整理成**新三段式**（替换旧三段式）——第一段=明确观点（基于用户提问·LLM 核心价值）；第二段=4 要点（分析方法/使用数据/分析结果/**分析结论**——观点≠结论：观点=转化解答提问·结论=图数表描述性论述）；第三段=行业接口对标对表→一键入库参数（城市体检/更新·更新需求调研场景·参考国内指标案例）② 工具管线优化（调用/协作线性并行/地点联动）③ 所有工具出口联动地点信息（宏观面域/中微观用地地点·三段式插入环节由成果范式 agent 思考）——目标=出口**既稳定又灵活**
+- **已完成**：现状基线实查（四态出口契约·finalStep 极瘦 D019·outlet_kb 7 契约 21 指标映射确定性组装·CB-15 地点联动）→ **讨论发起文档** `情绪地图_出口三段式与工具管线_讨论发起_2026-08-05.md`（5 焦点 F1 映射/F2 观点vs结论/F3 接口参数/F4 地点尺度/F5 管线优先级 + 附 A 发组 prompt）
+- **待续**：发两组 prompt → 回收回应 → 反评价收敛 → 用户拍板 → **列入 backlog（热点图重做完成后执行）**
+
+---
+
+## 📅 2026-08-05（续作 · 发版就绪度回归 + backlog 清理·e2e-seam 解封）
+
+> 公司环境续作（交接卡 7aaa1e4）。用户拍板顺序：**先修 backlog → 修完进 CB 审计回归**。
+
+### ✅ 先修（backlog 已知项全闭环）
+
+- **陈旧注释同步**（Codex ③w7 P2·直接改）：district-stats.js 头部「8 组团」→「4 组团」（含 ③w6b 说明）+ panel.js×7（注释 + **UI 文案「中心城区内 · 4 组团」**）+ panel.css×2
+- **MOD_PLACE 渲染风暴·根因修正 + 修**：trace 取证 1595/1602 次 F_002 外层=forward（search_place 链路）·**非地图渲染风暴**（Codex 假设修正）——是 EMC/测试高频地理查询重复全量扫 4310 POI。**修**：forward/reverse 加结果缓存（存副本返副本防污染·超上限清空·纯性能·行为不变）+ test_geocode.py 新增 2 守卫（防污染/一致性）
+- **MOD_LLM.F_002 重核**：2476 次调用 attempt≥1 仅 349（14%）·86% 首次成功——**确认调用数非 fallback 数**（Codex 修正成立）·无 while-loop 风暴
+- **FC boundary 残余评估**：白名单已落地（tools.js:617-630 deriveAvailable preset 过滤）·未命中走后端诚实报错（PRM-07 弃 fallback）·用户上传层设计不受限——**保持现状·不进修改**
+- **e2e-seam 解封（重要发现·阻断所有 browser 测试）**：harness.js `composeGapCard` 漏 `export`（③w4b c53aa99 起）→ e2e-seam import 链崩 → `__emcTest` 永不注入 → link_checkup/gap_wording/flywheel 全超时。**加 export 修复**（纯暴露）·08-04「20/20」是修复前记录·本次真实验证
+
+### ✅ CB 审计回归（发版就绪度）
+
+- pytest **282 passed**（+2 缓存守卫·零回归）
+- link_checkup **20/20 PASS**（R9 单测 + fixture 注入 4 行政区 + C2 采样信号 OK·耗时软门槛超时不判失败）
+- 措辞断言 **test_gap_wording.py 3 场景 PASS**（③w5 措辞修复前台验证）
+- **eval 复采 ×4**：76/73/78/84%——MISS 主因 = **Flash 间歇空流**（API 层 len=0·实测同问重测正常）·加**空流重试 1 次**治测量污染（73-78%→**84% PASS**·与 08-04 持平）·剩余 MISS=2 空流 + 4 已知歧义（rank→zonal/overlay→clip/hotspot→density）·FC 参数 3/3=100%
+- **B3 快照重跑 ×3**（`EMOTION_TRACE_SESSION=B3-snapshot-0805` + B3-RSTL06-2/3）·**84.6% / 88.5% / 88.5%**（22/23/23 pass·~10-12min）·fail 全在「参数正确性」PRM（已知 backlog：PRM-03/04 buffer radius 解析·PRM-07 法定功能区白名单执行侧缺口=Codex ③w7「FC boundary 残余」P2）·PRM-01 cell 已修复（500m OK）·**成果范式/Smart/CPD/UI 全 OK**（并发改动影响·需重验）
+- **RST-L06 三连 PASS**（tools=clip,density·1→2 层·③w4/③w6b 修复实证）·**用户提示并发任务改成果范式/agent 出口 → RST-L06 结果标注并发改动后需重验**
+
+### 待续（本次未收）
+
+- 时间轴专题（manifest 404·用户定后置）
+- **并发任务**（成果范式/agent 出口改动·用户提示）·完成后相关测试（RST-L06/B3 成果范式类）需重验
+- PRM backlog（buffer radius·法定功能区白名单执行侧·Codex ③w7「FC boundary 残余」）待 CB 讨论（承重走预检）
+
+---
+
 ## 📅 2026-08-04（CB-16 全链路闭环 + 发版准备：Wave 0-3 + ③z 余留 + ③w2~③w7 全局优化/措辞修复/发版收尾）
 
 ### ✅ ③w4~③w7 措辞修复 + 发版 backlog 收尾 · 全闭环（两组通过·已推 0bb55df）

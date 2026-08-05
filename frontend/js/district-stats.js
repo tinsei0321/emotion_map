@@ -1,11 +1,11 @@
-// ═══ district-stats.js — L1 数据总览：中心城区「8 组团」分布（point-in-polygon）═══
+// ═══ district-stats.js — L1 数据总览：中心城区「4 组团」分布（point-in-polygon）═══
 // 拉取「行政区」preset（DATA/boundaries/presets/行政区.geojson，经 /api/v1/range/preset），
-// 对 L1 源点做射线法 point-in-polygon 分类 → 8 组团分布（横条图用）。
-// 组团名严格按用户定义（绝不能错：名与范围对应）；9 preset MC → 8 组团（生物产业园+龙泉绿心 合并为「高新区·生物产业园」）。
+// 对 L1 源点做射线法 point-in-polygon 分类 → 4 组团分布（横条图用）。
+// 组团名严格按用户定义（绝不能错：名与范围对应）；③w6b 收敛：仅预置 4 真实行政区（西陵/伍家岗/猇亭/点军）。
 // 中心城区内外计数不经此模块（用 L1 数据自带 area_tag 字段，零 PIP）—— per-组团 才需 PIP（结果缓存到 layer._tuanCls）。
 import { fetchRangePreset } from './api.js';
 
-// 8 组团 → preset MC（polygon 来源）。高新区·生物产业园 = 生物产业园 + 龙泉绿心 合并。
+// 4 组团 → preset MC（polygon 来源）。每个组团 = 对应行政区的 MC。
 const _TUAN_MAP = {
   // ③w6b（用户拍板）：preset 行政区 fixture 清 4 真实区划（FIXED_ADMIN_DISTRICTS·西陵/伍家岗/猇亭/点军）·法定功能区（小溪塔/龙泉/生物产业园/白洋）不再预置 → 8 组团收敛 4
   '西陵': ['西陵区'],

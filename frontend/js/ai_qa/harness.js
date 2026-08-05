@@ -209,8 +209,10 @@ function _esc(s) {   // 转义 HTML + 反引号（防 marked 把动态值 needed
 
 /** EXIT_GAP 缺数据/做不成卡（确定性组装，不走 LLM——杜绝"模型又口头讲一遍"）。
  *  触发：intent∈{B,C} 且零成功观察+零新图层（含全失败/全叙述/解析塌）。
- *  内容：缺什么/为何/已尝试但失败的/引导上传或换问法。绝不编造、绝不纯计划文。 */
-function composeGapCard(diagnose, failedObs) {
+ *  内容：缺什么/为何/已尝试但失败的/引导上传或换问法。绝不编造、绝不纯计划文。
+ *  export 修正（08-05）：③w5 措辞断言经 e2e-seam import 本函数，但漏 export 前缀 → import 链崩、
+ *  __emcTest 不注入、全部 browser 测试超时。加 export 解封（纯暴露·无行为变化）。 */
+export function composeGapCard(diagnose, failedObs) {
   const dp = (diagnose && diagnose.data_plan) || {};
   const needed = _esc((dp.needed || []).filter(Boolean).join('、'));
   const gap = _esc((dp.gap || []).filter(Boolean).join('、'));

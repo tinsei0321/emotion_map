@@ -134,6 +134,17 @@ def run_eval():
                     chunks.append(tok)
             raw = ''.join(chunks)
             got = _parse_template(raw)
+            # 08-05 实测：Flash 流式**间歇空流**（raw 空 len=0·API/网络层随机·重测同问正常）。
+            # 单次采样被空流污染 → 假阴性（问句本可正确路由）。空则重试 1 次排除（治测量污染·非放宽标尺）。
+            if not got:
+                retry = []
+                try:
+                    for tok in cli.chat(msgs, stream=True, temperature=0.4):
+                        if isinstance(tok, str):
+                            retry.append(tok)
+                    got = _parse_template(''.join(retry))
+                except Exception:
+                    pass
             # ③w5b（glm 补充）：期望支持 tuple（多值接受）——"西陵区的商业用地" clip/overlay 双合理（面∩面解读）·治 Flash 概率性歧义 MISS
             ok = got == expected if isinstance(expected, str) else got in (expected or ())
             hits += int(ok)

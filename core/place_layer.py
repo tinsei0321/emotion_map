@@ -20,6 +20,7 @@ zone 词表唯一来源：本模块。模拟器/corpus/check_spatial/搜索 全�
 不各自重定义（避免冲突，见 REFACTOR_PLAN Conflict 1/2/3）。
 ═══════════════════════════════════════════════════════════
 """
+import copy
 import json
 import math
 import os
@@ -467,6 +468,10 @@ class PlaceLayer:
         if not query or len(query.strip()) < 1:
             return []
         q = query.strip()
+        _key = (q, limit, min_fuzzy_score)
+        _hit = _FWD_CACHE.get(_key)
+        if _hit is not None:
+            return [dict(h) for h in _hit]
         _threshold = min_fuzzy_score if min_fuzzy_score is not None else 55
         scored = []   # (score, p)
         for p in self.all_pois:
@@ -500,6 +505,9 @@ class PlaceLayer:
                 'source': 'local',
                 'data_source': p.get('source') or 'seed',   # 审计：amap 库 / seed 手标
             })
+        if len(_FWD_CACHE) >= _CACHE_MAX:
+            _FWD_CACHE.clear()
+        _FWD_CACHE[_key] = [dict(h) for h in hits]   # 存副本（防调用方修改污染缓存）
         return hits
 
     @track("MOD_PLACE.F_005")
@@ -510,6 +518,10 @@ class PlaceLayer:
         - poi_count：NEAR_RADIUS_M(500m) 半径内 POI 总数（popup「等N处」近邻语境）。
         - nearest_poi：nearest_pois[0]，兼容旧字段。
         """
+        _key = (round(float(lng), 6), round(float(lat), 6))
+        _hit = _REV_CACHE.get(_key)
+        if _hit is not None:
+            return copy.deepcopy(_hit)   # 含 nearest_pois 嵌套 list·深拷贝防污染
         zid = self.classify_point(lng, lat)
         scored = []
         near_cnt = 0
@@ -522,13 +534,26 @@ class PlaceLayer:
         near = [{'name': p['name'], 'dist_m': round(d),
                  'category': p.get('baidu_level1', '') or p.get('baidu_level2', '')}
                 for d, p in scored[:5] if p.get('name')]
-        return {
+        out = {
             'zone_id': zid,
             'zone_name': self.zone_by_id.get(zid, {}).get('name_zh', '通用市区'),
             'nearest_poi': near[0] if near else None,
             'nearest_pois': near,
             'poi_count': near_cnt,
         }
+        if len(_REV_CACHE) >= _CACHE_MAX:
+            _REV_CACHE.clear()
+        _REV_CACHE[_key] = copy.deepcopy(out)
+        return out
+
+
+# ── forward/reverse 结果缓存（MOD_PLACE 渲染风暴 backlog·纯性能优化·行为不变）──
+# 触发背景：EMC/测试高频地理查询（lookup_place/search_place）重复全量扫 4310 POI + 逐条
+# resolve_zone → F_002/F_003 计数风暴级（B3 36min ~20 万次·实为查询量大非渲染）。
+# POI 宇宙加载后静态 → 结果可安全缓存；存副本返副本防共享引用污染；超上限整体清空（查询窗口小）。
+_FWD_CACHE = {}    # (query, limit, min_fuzzy) -> [hit dict...]
+_REV_CACHE = {}    # (lng, lat) -> place dict
+_CACHE_MAX = 1024
 
 
 # ── 单例 ──

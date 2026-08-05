@@ -153,7 +153,7 @@
 /* L1 网格：4 维度条 与 矩阵块 之间灰色横线分隔 */
 .ov-matrix-sep { border-top: 1px solid var(--geojson-color-gray-200, #e6e6e6); margin: 5px 0 4px; }
 
-/* ── L1 数据总览（L1·热度分布点层）：双段总结 + 紫饼图 + 8 组团横条 ──
+/* ── L1 数据总览（L1·热度分布点层）：双段总结 + 紫饼图 + 4 组团横条 ──
    设计：字体层级（总结正文 12 / 饼图图例 12 / caption 10），字号偏小不突兀；紫色系与单极性矩阵同源统一。 */
 .ov-l1-summary { font-size: 12px; color: var(--geojson-color-text-secondary); line-height: 1.55; margin: 0 0 3px; }
 .ov-l1-summary b { color: var(--geojson-color-brand-primary, #4285F4); font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -163,7 +163,7 @@
 .ov-l1-pie-cap { font-size: 10px; color: var(--geojson-color-text-tertiary, #999); font-weight: 600; margin: 0 0 3px; text-align: center; letter-spacing: .3px; }
 .ov-l1-pie .ov-pie svg { width: 187px; height: 187px; }   /* 与 L2 综合饼图同尺寸，统一设计语言 */
 .ov-l1-pie .ov-pie-legend { font-size: 12px; }
-/* 8 组团横条：复用 .ov-dbar，压缩高度/字号（与 4 维度条同款但更紧凑） */
+/* 4 组团横条：复用 .ov-dbar，压缩高度/字号（与 4 维度条同款但更紧凑） */
 .ov-dbar-tuan { gap: 5px; }
 .ov-dbar-tuan .ov-dbar-label { font-size: 11px; min-width: 64px; font-weight: 600; }
 .ov-dbar-tuan .ov-dbar-track { height: 16px; }
