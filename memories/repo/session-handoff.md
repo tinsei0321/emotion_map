@@ -1,7 +1,7 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：08月05日深夜（**出口三段式 P0-P2 + 热点图 P0/P1/P1.5 全流程·CB 计划→执行→审计→修正闭环**）| 分支 `fix/emc-buglog` | **本地 commit `0916e8c`(已 push) + `83a1ac9`(进度文档·待 push·网络故障)**
+> 最后更新：08月05日深夜（**出口三段式 P0-P2 + 热点图 P0/P1/P1.5 全流程·CB 计划→执行→审计→修正闭环**）| 分支 `fix/emc-buglog` | **本地 commit `0916e8c` + `83a1ac9` + `baa23e0` + `0b18012` 全部已 push**（与远程同步·`git status` 干净·08-06 复核）
 >
 > 🔗 **CB 入口**：`docs/catch-ball/_cb-index.md`（**双阵营：claude组 开发主 + Codex/glm组 评估**）
 > 🏠🏢 **换机卡片**：`docs/catch-ball/_handoff/HOME.md` + `OFFICE.md`
