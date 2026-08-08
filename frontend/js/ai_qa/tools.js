@@ -1000,7 +1000,16 @@ export const TOOLS = {
     if (!params.boundary) return { observation: '[ERR] zonal_stats 需 boundary（preset_id）' };
     const _layer = resolvePointLayer(params);
     if (!_layer) return _ERR_NO_VISIBLE_PT();
-    const boundary = await resolveBoundaryInput(params.boundary);   // 中文地名(西陵区)→GeoJSON；preset_id 直通（§3.3① 委托层预解析，模块不碰中文名）
+    let boundary;
+    try {
+      boundary = await resolveBoundaryInput(params.boundary);   // 中文地名(西陵区)→GeoJSON；preset_id 直通（§3.3① 委托层预解析，模块不碰中文名）
+    } catch (e) {
+      // PRM-07（CB-19）：法定功能区黑名单拒识 → 诚实 request_upload 文案（非 ERR·flywheel test-cases:339 判 PASS）
+      if (String(e.message || e).includes('法定功能区')) {
+        return { observation: `需上传标准边界资料：${e.message}` };
+      }
+      return _ERR('zonal_stats', e);
+    }
     try {
       const r = await generateZonalForAI({ layer: ref(_layer), boundary: ref(boundary), boundaryLabel: String(params.boundary),
         range: params.range ? ref(params.range) : undefined, pre_filter: normPreFilter(params.pre_filter),
@@ -1024,7 +1033,15 @@ export const TOOLS = {
     const pf = normPreFilter(params.pre_filter);
     const boundaries = [];
     for (const b of bs.slice(0, 4)) {
-      boundaries.push({ label: b, geo: await resolveBoundaryInput(b) });   // 中文名(西陵区)→GeoJSON；preset_id 直通（§3.3① 委托层预解析）
+      try {
+        boundaries.push({ label: b, geo: await resolveBoundaryInput(b) });   // 中文名(西陵区)→GeoJSON；preset_id 直通（§3.3① 委托层预解析）
+      } catch (e) {
+        // PRM-07（CB-19）：法定功能区黑名单拒识 → 诚实 request_upload（非 ERR）
+        if (String(e.message || e).includes('法定功能区')) {
+          return { observation: `需上传标准边界资料：${e.message}` };
+        }
+        throw e;
+      }
     }
     try {
       const r = await generateCompareForAI({ layer: ref(_layer), boundaries, pre_filter: pf, as: params.as });
