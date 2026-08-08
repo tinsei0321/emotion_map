@@ -6,6 +6,60 @@
 
 ---
 
+## CB-18 · 2026-08-08（整体验收 · 用户新工作方式：验收交两组走 CB）
+
+### ① SCAN 摘要
+
+**本轮由 claude组 发起**（用户 2026-08-08 明确「每次完成后验收工作让另两组完成·进 CB」）→ claude组 将 todo「整体验收清单」转两组**证据驱动验收**（代码核验 + 可跑测试 + e2e-seam 直测 + 浏览器可选）→ 落 [整体验收_实施检查发起](discuss/整体验收_实施检查发起_2026-08-08.md)（P0-1~5/P1-1~5/P2-1/H-1~4 + 审计修正核验 + 5 焦点）。
+
+**Codex**（[验收回应](discuss/整体验收_验收回应_Codex-GPT5_2026-08-08.md)）：**有条件通过**——13 项代码核验通过·0 阻断·承重红线零违反；发现 **2 处需修复（W-1 tools.js 红绿语义残留·低危；W-2 threshold/soft_threshold 契约-运行时漂移·警告级）** + **3 处需补证（P1-3 CSV 无单测·H-1 DEM 无解码单测·P0-2/3/4+P2-1 无 JS 直测）** + W-3 legend 五档口径存疑（地图图例层无渲染·EMC 工具卡文本图例）·观感类（干货/地势感/无露底/console）标「可选用户复核」。环境无 Python·测试证据复用 claude 基线 + 静态核验。
+
+**glm组**（[验收回应](discuss/整体验收_验收回应_glm组_2026-08-08.md)）：**通过**——15 项全部有代码证据·12 项充分通过 + 3 项标用户观感（P0-5/H-2/P0-1）·pytest 291 + validate 34 全绿零回归·承重红线零违反。**未发现 Codex 的 W-1/W-2**（Tools.js 红绿残留 + threshold 转发缺口）·W2「热点旧义」判定通用语义不阻塞·建议直接进发版回归。
+
+### ② 我方反评价（verify-before-accept · 关键争议实核）
+
+**独立实核证据**（Codex 发现 → 本组复验）：
+- **W-1 属实**：`frontend/js/ai_qa/tools.js:1285` docstring + `:1297` observation 仍写「hot=红/cold=绿/ns=灰」·与 W1 纯橙系渲染（`map.js:604-611`）矛盾·违反 H-3 无旧义残留判据 → **需修复（纯文案 1 行·回归前合入）**
+- **W-2 属实**：`frontend/js/toolbox/hotspot-tool.js:11-14` 请求体仅 layer/value_col/invert/range/pre_filter·**无 threshold/soft_threshold**；`tools.js` hotspot handler 亦不转发 → **LLM 指定阈值被静默丢弃·契约（tool_contracts.py:274-275 "EMC-only·AI 执行"）与运行时漂移** → **需决策：转发补齐（约 4 行）vs 契约降级标注（默认值定稿）**
+- **S-1/S-2/S-3 补证缺口属实**：`export_outlet_card_csv`（tests/ 零引用）· `create_terrain_dem`/terrarium（tests/ 零引用·08-05 DEM 解码为一次性手工验证）· `result-struct.js`（无任何 JS 侧测试）→ **需补单测（纯测试不动行为·可随回归一并验证）**
+- **pytest 291 vs 293**：08-08 已实测 291 passed + 5 skipped·glm 291 正确·非回归（CB-17 已核实）
+- **`.outlet-metrics` CSS**：ai_qa.css 已存在（CB-17 已核实 401371b 修过）→ glm 本轮 W2 系重复 CB-17 旧信息
+
+**逐项判定**：
+
+| 焦点 | 判定 | 收敛 |
+|---|---|---|
+| 1 验收清单完整性 | **agree**（Codex +2 补充·glm 全覆盖） | 采纳 P0-1 判据补「正文无重复观点行」+ H-2 补 W6 契约层五档证据路径·观感类（P0-1/P0-5/H-1/H-4）统一标「可选用户复核」 |
+| 2 证据充分性 | **partial·采纳 Codex 更严** | S-1 CSV 单测 + S-2 DEM 解码单测 + S-3 e2e-seam result-struct 直测（三路径出卡/无观点不显卡/结论带地点·仿 test_r7_truncation）+ S-4 geo_label micro 分支·补证后验收全通过 |
+| 3 验收方式转型 | **agree**（两组一致·风险可控） | 机制层（代码/测试）+ 观感层（用户复核）双层标注·避免两组证据驱动替代用户观感 |
+| 4 回归衔接 | **agree**（两组一致） | W-1/W-2 修复**须在回归前**（避免回归跑旧文本/旧参数路径）；S-1~4 纯测试随回归验证；三路径浏览器抽验并入回归共用一次；flywheel 注释 25→26 |
+| 5 补充异议 | **Codex 更全** | 采纳 W-1/W-2/W-3 + S-1~6；**glm 未发现 W-1/W-2**（Codex 验收深度更严·两组互补成立）；pytest 291 口径已核实 |
+
+**反评价收敛**：**采纳 Codex 条件通过**（更严）+ glm 观感标注——验收判定 = 「有条件通过 → 修 W-1/W-2 + 补 S-1~4 → 验收全通过 → 进发版回归」。
+
+**无承重红线异议**：两组均确认四态出口 / finalStep D019 / diagnose 未动·FINAL_TEMPLATE 2891B<3000B 守门。
+
+### ③ 行动（验收修复 + 补证 · 回归前合入）
+
+```
+W-1 tools.js:1285/:1297 红/绿文案 → 纯橙系描述（1 行·零逻辑）
+W-2 threshold/soft_threshold 转发缺口 → 决策：转发补齐（推荐·约 4 行）vs 契约降级标注
+W-3 legend 五档口径 → 定：EMC 工具卡文本图例（地图图例补 UI 后置·非发版阻塞）
+S-1 tests/test_export.py 补 export_outlet_card_csv 单测（BOM/列/脱敏/三元组）
+S-2 tests/test_spatial_analysis.py 补 terrarium 解码单测（0~500/bounds 4326/尺寸）
+S-3 tests/browser/test_result_struct.py e2e-seam 直测（三路径出卡/无观点不显卡/结论带地点）
+S-4 tests/test_outlet_schema.py 补 geo_label micro 分支
+以上修复+补证完成后 → 整体验收全通过 → P1 发版就绪度回归（fail 集判据 {PRM-03/04/07}）
+```
+
+### ④ 状态/新发现
+
+- **CB-18 闭环**：整体验收**有条件通过**·修 W-1/W-2 + 补 S-1~4 后全通过·进发版回归
+- **新 learning 候选**：验收交两组后，**两组验收深度差异显著**（Codex 发现 W-1/W-2·glm 未发现）——验收结论应**并集采纳**（任何一组发现都需实核），不能取"两组都通过"即过；claude组 须对争议点 verify-before-accept 实核（本例 3 处全部复验确认）
+- **下轮 SCAN 关注**：S-1~4 补证落地 · 发版回归 B3 成果范式类 · 三路径观点卡浏览器抽验
+
+---
+
 ## CB-17 · 2026-08-08（进度同步 + 下一步安排 · 三组收敛定稿）
 
 ### ① SCAN 摘要

@@ -36,8 +36,16 @@ P3（后置）P3-2 并行（降挂起）· KDE/DBSCAN 替代（发版后专题·
 
 ### 🔄 下一步（P0 主线 · 用户新工作方式：验收交两组走 CB）
 
-- [ ] **整体验收**（**两组 CB 验收**·`整体验收_实施检查发起_2026-08-08.md`）：出口三段式（观点卡置顶/4 要点卡/三路径都出卡/需求强度等级/CSV 导出/geo_label）+ 热点图（五档橙系/legend 五档/setTerrain 连续曲面/网格柱互斥/无露底）·验收方式 = 代码核验 + 可跑测试 + e2e-seam 直测 + 浏览器可选·纯观感类标「可选用户复核」
-- [ ] **发版就绪度回归**（P1·验收通过后）：pytest 全量 + validate + link_checkup + eval 复采 + B3 三连（fail 集判据）+ RST-L06 + 三路径观点卡抽验 + flywheel 注释对齐
+- [ ] **整体验收**（**两组 CB 验收**·`整体验收_实施检查发起_2026-08-08.md`）——**有条件通过**（Codex 更严 + glm 通过）：14 项代码核验通过·0 阻断·承重红线零违反。**待修 W-1/W-2 + 补 S-1~4 后全通过**：
+  - **W-1**：tools.js:1285/:1297 红/绿文案残留 → 纯橙系描述（1 行·零逻辑·回归前合入）
+  - **W-2**：threshold/soft_threshold 契约-运行时漂移（hotspot-tool.js:11-14 + tools.js hotspot 不转发）→ 转发补齐（推荐）vs 契约降级标注
+  - **W-3**：legend 五档口径 → 定「EMC 工具卡文本图例」（地图图例补 UI 后置）
+  - **S-1**：补 export_outlet_card_csv 单测（BOM/列/脱敏/三元组·tests/test_export.py）
+  - **S-2**：补 terrarium 解码单测（0~500/bounds 4326/尺寸·tests/test_spatial_analysis.py）
+  - **S-3**：e2e-seam result-struct 直测（三路径出卡/无观点不显卡/结论带地点·tests/browser/test_result_struct.py）
+  - **S-4**：补 geo_label micro 分支单测（tests/test_outlet_schema.py）
+  - 观感类（P0-1/P0-5/H-1/H-4·干货/地势感/无露底/console）标「可选用户复核」
+- [ ] **发版就绪度回归**（P1·W-1/W-2 修复后）：pytest 全量 + validate + link_checkup + eval 复采 + B3 三连（fail 集判据 {PRM-03/04/07}）+ RST-L06 + 三路径观点卡浏览器抽验 + flywheel 注释对齐（25→26）
 - [ ] **PRM backlog CB 预检**（P1·仅预检）：B3 取证 → PRM-03/04 修复覆盖核实 → PRM-07 执行侧方案收敛
 - [ ] **P3-4 地点联动 + P3-1 依赖图**（P2·回归后）
 - [ ] **P3 文档债**：HOME/OFFICE 交接卡同步 + flywheel 注释 + _cb-index
