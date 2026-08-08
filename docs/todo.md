@@ -34,10 +34,10 @@ P3（文档）HOME/OFFICE 交接卡同步 + _cb-index 状态更新 + revision-lo
 P3（后置）P3-2 并行（降挂起）· KDE/DBSCAN 替代（发版后专题·先定产品定义）· 时间轴 manifest · 前端 JS 单测补课
 ```
 
-### 🔄 下一步（P0 主线）
+### 🔄 下一步（P0 主线 · 用户新工作方式：验收交两组走 CB）
 
-- [ ] **整体验收**（用户浏览器·todo「整体验收清单」）：出口三段式（观点卡置顶/4 要点卡/三路径都出卡/需求强度等级/CSV 导出/geo_label）+ 热点图（五档橙系/legend 五档/setTerrain 连续曲面/网格柱互斥/无露底）+ 记 3 观感（观点卡干货感/热点五档可读性/setTerrain 地势感）
-- [ ] **发版就绪度回归**（P1·验收后）：pytest 全量 + validate + link_checkup + eval 复采 + B3 三连（fail 集判据）+ RST-L06 + 三路径观点卡抽验 + flywheel 注释对齐
+- [ ] **整体验收**（**两组 CB 验收**·`整体验收_实施检查发起_2026-08-08.md`）：出口三段式（观点卡置顶/4 要点卡/三路径都出卡/需求强度等级/CSV 导出/geo_label）+ 热点图（五档橙系/legend 五档/setTerrain 连续曲面/网格柱互斥/无露底）·验收方式 = 代码核验 + 可跑测试 + e2e-seam 直测 + 浏览器可选·纯观感类标「可选用户复核」
+- [ ] **发版就绪度回归**（P1·验收通过后）：pytest 全量 + validate + link_checkup + eval 复采 + B3 三连（fail 集判据）+ RST-L06 + 三路径观点卡抽验 + flywheel 注释对齐
 - [ ] **PRM backlog CB 预检**（P1·仅预检）：B3 取证 → PRM-03/04 修复覆盖核实 → PRM-07 执行侧方案收敛
 - [ ] **P3-4 地点联动 + P3-1 依赖图**（P2·回归后）
 - [ ] **P3 文档债**：HOME/OFFICE 交接卡同步 + flywheel 注释 + _cb-index
