@@ -92,6 +92,59 @@ glm 复验通过 → push d5a5625（先验后推·glm 单组依据 + 用户指�
 
 ---
 
+## CB-19 · 2026-08-08（深读修复协助 · 两组详读 · 反评价收敛）
+
+### ① SCAN 摘要
+
+claude 修复 PRM-03/04（083b78d）+ 实施 P3-4（9680dcc）后，发 [深读修复协助](discuss/深读修复协助_发起_2026-08-08.md)（6 项：PRM-03/04 复验 + PRM-05 深挖 + PRM-07 方案 + P3-4 复验 + Codex 补验 + glm 回归复核）→ 两组详读。
+
+**Codex**（[回应](discuss/深读修复协助_回应_Codex-GPT5_2026-08-08.md)）：PRM-03/04 **通过**（G5 重写链完整推演·仅 2 建议级缝隙：chain 残余 + 复合问句保护）；**PRM-05 真因修正**（`_validAfter` 正则逐字符验证不失败·真因 = FC 空参方差 + deriveAvailable 层依赖 + 测量端判据不一致）→ 方案 a 测量端对齐 PRM-04 + b derive 可观测 + c 契约强化；**PRM-07 残余属实**·推荐 **B'（前端 handler 校验 + 后端 dict 兜底）**·建议进发版候选前实施；P3-4 **有条件通过**（W-A 文案矛盾 + W-B poi_names 排序·建议级）；W-2 全链闭合 / S-3 充分 / 三路径合理；glm 回归数据修正**与 audit 完全一致**·PRM-05 补入判据合理；**关键补充：B3 三连跑在 9680dcc/083b78d 之前·回归绿未覆盖这两个 commit → push 后补 B3 快照**。
+
+**glm组**（[回应](discuss/深读修复协助_回应_glm组_2026-08-08.md)）：PRM-03/04 **通过**（Python 正则模拟 `_validAfter` 13 组全 pass·非根因·无副作用）；**PRM-05 真因 = deriveAvailable 层加载竞态**（admin_district 层异步加载未完成）→ 方案 A 仿 chain pre-check preset fallback；**PRM-07 方案 A（后端 dict 黑名单 `_ADMIN_BLOCKLIST` 5 个法定功能区名）**·风险低；P3-4 通过；W-2/S-3/三路径通过；glm 回归数据修正准确。
+
+### ② 我方反评价（verify-before-accept · 共识 + 分歧收敛）
+
+**共识（两组独立）**：
+- **PRM-03/04 修复通过**（G5 重写完备·center 缺 ask_user 正确）
+- **PRM-05 真因 ≠ `_validAfter` 词边界**（两组独立推演/模拟证明正则对问句始终匹配）→ **修正我发起文档的错误归因**·真因 = FC 方差 + deriveAvailable 层依赖/加载竞态
+- **PRM-07 残余属实**·方案收敛（Codex B' + glm A 可合并）
+- **P3-4 通过**（Codex W-A/W-B 建议级）
+- **W-2 闭合 / S-3 充分 / 三路径合理**（Codex 补验挂起解除）
+- **glm 回归数据修正准确**·PRM-05 补入判据合理
+- **Codex 关键补充**：B3 三连跑在 9680dcc/083b78d 之前·回归绿未覆盖 → **push 后补 B3 快照**
+
+**分歧收敛**：
+- **PRM-05 方案**：Codex a+c（测量端对齐 + 契约强化·治表象+减源头）vs glm A（deriveAvailable fallback·防御加载竞态）→ **合并三层**：glm fallback（防御·治加载竞态）+ Codex 测量端判据对齐（消误报）+ 契约强化（减 FC 空参）·互补不冲突
+- **PRM-07 方案**：Codex B'（前端 handler 校验 + 后端兜底）vs glm A（纯后端黑名单）→ **合并**：前端 handler 校验（FC 直传拒绝·语义最准）+ 后端 `_ADMIN_BLOCKLIST` 黑名单兜底（防御·不误伤上传层）
+
+**采纳修复清单**：
+```
+PRM-05：① deriveAvailable null + 问句含区名 → fallback 行政区 preset 单要素（glm·仿 chain pre-check :1131-1141）
+        ② test-cases.js PRM-05 缺 boundary → 合法 ask_user 判 PASS（Codex·对齐 PRM-04）
+        ③ tool_contracts zonal when/examples 强化「boundary 必带」（Codex·非 prompt 重写）
+PRM-07：① 前端 tools.js zonal/compare/rank handler 校验 FC 直传 boundary name 命中法定功能区词表 → 拒绝 request_upload（Codex B'）
+        ② 后端 geo_registry.py dict 分支加 _ADMIN_BLOCKLIST 黑名单校验（glm A·5 个法定功能区名·不误伤上传层）
+P3-4 建议级：W-A 文案矛盾修 + W-B poi_names 排序（后置）
+push 后：补 B3 快照（Codex·判据 {PRM-03/04/05/07}·覆盖 9680dcc/083b78d）
+```
+
+**承重红线确认**：全部建议未触碰四态出口 / finalStep D019 / diagnose prompt（契约文案 ≠ diagnose prompt·非重写）/ 追踪编号 / 「EMC 不硬猜」（PRM-07 修复正是强化）。
+
+### ③ 行动
+
+- 实施 PRM-05（三层：fallback + 测量端对齐 + 契约强化）
+- 实施 PRM-07（合并：前端 handler 校验 + 后端黑名单兜底）
+- P3-4 W-A/W-B 建议级（后置）
+- push 已验项（083b78d + 9680dcc）→ 补 B3 快照 → 发版候选
+
+### ④ 状态/新发现
+
+- **CB-19 反评价收敛完成**：PRM-03/04 通过·PRM-05/07 修复方案定稿（合并两组）
+- **新 learning**：发起文档归因错误（PRM-05 词边界）被两组独立纠正——**归因须先静态推演/模拟验证再下结论**（两组都用 Python 模拟证明正则不失败）；Codex 补验挂起解除（W-2/S-3/三路径全过）
+- **B3 快照补跑**：Codex 指出回归绿未覆盖 P3-4/PRM 修复 commit·push 后需补
+
+---
+
 ## CB-17 · 2026-08-08（进度同步 + 下一步安排 · 三组收敛定稿）
 
 ### ① SCAN 摘要
