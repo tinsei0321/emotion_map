@@ -252,7 +252,9 @@ const _fmtPi = (v) => (v !== '' && v != null && !isNaN(v) ? Number(v).toFixed(2)
 const _fmtRow = (row) => {
   const dom = DOMAIN_LABEL[row.domain_top] || row.domain_top || '?';
   const elm = ELEMENT_LABEL[row.element_top] || row.element_top || '?';
-  return `  - ${row.name || '未命名'}：极性 ${_fmtPi(row.polarity_index)}，${row.point_count || 0}点，${dom}×${elm}，问题=${row.issue_label || '—'}`;
+  // P3-4（CB-19）：place_name 优先——rank-on-grid（无 name）也能锚到 POI 落点（工具出口统一·LLM grounding）
+  const loc = row.place_name || row.name || '未命名';
+  return `  - ${loc}：极性 ${_fmtPi(row.polarity_index)}，${row.point_count || 0}点，${dom}×${elm}，问题=${row.issue_label || '—'}`;
 };
 
 

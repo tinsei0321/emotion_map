@@ -323,6 +323,25 @@ def _build_card(oid: str, diagnose: dict, result: dict, question: str = '') -> d
         else:
             card['fields'][industry_field] = {'value': emc_expr, 'source': '产物表达'}
 
+    # ── P3-4（CB-19）：微观落点精确化——micro 尺度时需求位置按 place_name_source + poi_names 升级 ──
+    #   治 Gap C（polygon/rank-on-boundary 下 place_name 仍是边界名/粗略众数·非 POI 落点）。
+    #   复用 _extract_emc_value（Top-1 row）·不新建字段·诚实标注 source。确定性·不调 LLM。
+    if scale == 'micro' and '需求位置' in card['fields']:
+        _src = _extract_emc_value(result, 'place_name_source')
+        _pois = _extract_emc_value(result, 'poi_names')
+        _loc = card['fields']['需求位置']
+        if _src == 'poi_sjoin':
+            # 已精确（place_name=格内最近 POI）·仅 source 补注
+            _loc['source'] = 'place_name（精确·poi_sjoin·格内最近 POI）'
+        elif _pois:
+            # polygon/rank-on-boundary：place_name=边界名·升级为首个 POI（精确落点）
+            _first_poi = str(_pois).split('、')[0].strip()
+            _loc['value'] = _first_poi if _first_poi else _loc.get('value', '')
+            _loc['source'] = 'place_name（POI 落点·poi_names 首个·精确）' + (f'｜面域代表名兜底 {_loc.get("value", "")}' if _loc.get('value') else '')
+        else:
+            # 无 POI 落点·诚实标粗略
+            _loc['source'] = 'place_name（粗略·无 POI 落点·' + (str(_src or 'source 缺失') + '）')
+
     # ── P1（出口三段式）：需求强度分级 + 复合优先级（确定性·Codex/glm P1P2 评估采纳）─────────
     if oid == 'renewal_demand' or oid in OUTLET_CONTRACTS and OUTLET_CONTRACTS[oid].get('name', '') == '更新需求摸排':
         # P1-1 需求强度等级（值域双轨归一·四档·glm B1 + Codex W1 修正）
@@ -366,8 +385,17 @@ def _build_card(oid: str, diagnose: dict, result: dict, question: str = '') -> d
             card['data_base']['N'] = n
             card['data_base']['note'] = 'L2 聚合·时间窗待定'
 
-    # 诚实标注（place_name 双源融合·CB-15 P1 修陈旧文案）
-    card['limitations'].append('place_name = 格内最近 POI（CB-15 P0 双源融合·place_name_source 标置信度）')
+    # 诚实标注（place_name 双源融合·CB-15 P1 修陈旧文案·P3-4 动态按 source·治 Gap A 硬编码误标）
+    #   poi_sjoin → 精确（格内最近 POI）·poi_top_places → 面域代表名 + POI 增强·spatial_hotspot/area_seed → 粗略兜底·缺失 → 未定位
+    _loc_src = _extract_emc_value(result, 'place_name_source')
+    if _loc_src == 'poi_sjoin':
+        card['limitations'].append('地点 = 格内最近 POI（精确·place_name_source=poi_sjoin·CB-15 双源融合）')
+    elif _loc_src == 'poi_top_places':
+        card['limitations'].append('地点 = 面域代表名（POI 增强·place_name_source=poi_top_places·双源融合）')
+    elif _loc_src in ('spatial_hotspot', 'area_seed'):
+        card['limitations'].append(f'地点 = 标注兜底（粗略·place_name_source={_loc_src}·无 POI 落点）')
+    else:
+        card['limitations'].append('地点 = 未定位（place_name_source 缺失·不编造）')
     card['limitations'].append('归因 = 规则查表（DEMO·L4 深度归因待接入）')
     # P1（Codex/glm P1P2 评估）：出口卡卡级声明——行业案例为对标参照非评分基准（防"对标上海 93.60 分"误当情绪地图产出）
     card['limitations'].append('行业案例为对标参照·非评分基准·数值口径以当地官方发布为准')

@@ -372,9 +372,12 @@ async def zonal_stats(req: ZonalStatsRequest):
             ascending=False, kind='stable')
         if req.top_n:
             merged = merged.head(int(req.top_n))
-        # 属性表输出（轻量；含 name/极性/4×5/issue）—— AI 友好的"单元排行"
+        # 属性表输出（轻量；含 name/极性/4×5/issue/地点）—— AI 友好的"单元排行"
+        # P3-4（CB-19）：加 place_name/place_name_source/poi_names/poi_count——后端已算好却被裁剪掉
+        #   → rows 带地点 → harness _lastToolRows → 出口卡需求位置 + 结论段 + 地图图层自动受益（Gap B 核心杠杆）
         prop_cols = ['name', 'point_count', 'polarity_index', 'score_mean',
-                     'domain_top', 'element_top', 'issue_label', 'attribution', 'suggestion']
+                     'domain_top', 'element_top', 'issue_label', 'attribution', 'suggestion',
+                     'place_name', 'place_name_source', 'poi_names', 'poi_count']
         # [CB-1] 原为 discover-then-refetch：遍历 rows.columns 找 n_dom_*/n_elem_* 想补，
         # 但 _props_df 只返请求列 → 永不含 n_dom_ → 循环空转、二次 _props_df 冗余。
         # 清为单次调用（零行为变化）。补充虽从未生效，但深挖确认**无活消费方**：
@@ -511,8 +514,10 @@ async def rank(req: RankRequest):
         else:
             gdf = gdf.sort_values('polarity_index', ascending=ascending, kind='stable')
         gdf = gdf.head(int(req.top_n))
+        # P3-4（CB-19）：加地点字段（同 zonal）——rank rows 也带 place_name/place_name_source/poi_names/poi_count
         prop_cols = ['name', 'point_count', 'polarity_index', 'score_mean',
-                     'domain_top', 'element_top', 'issue_label']
+                     'domain_top', 'element_top', 'issue_label',
+                     'place_name', 'place_name_source', 'poi_names', 'poi_count']
         _props = _props_df(gdf, prop_cols)
         rows = _props.where(pd.notna(_props), '').to_dict('records')
     except (KeyError, FileNotFoundError, ValueError) as e:
