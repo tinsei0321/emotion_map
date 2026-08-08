@@ -9,12 +9,12 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-18**（整体验收·**全闭环通过**·下一步 = P1 发版就绪度回归） |
-| **上一轮** | CB-17（进度同步 + 下一步安排·三组收敛定稿） |
+| **当前 CB 轮次** | **CB-19**（PRM backlog 预检·仅预检不实施·待两组回应） |
+| **上一轮** | CB-18（整体验收·全闭环通过·验收交两组走 CB） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
-| **当前分支** | `fix/emc-buglog` @ `58c8590` |
-| **最新讨论** | `discuss/整体验收_修复验证回应_glm组_2026-08-08.md`（CB-18b·glm 复验通过·Codex 缺席标注） |
-| **最新进展** | 整体验收**全闭环通过**：W-1/W-2 修复 + S-1~4 补证·glm 复验通过·push（pytest 297）·进 P1 发版回归（fail 集判据 {PRM-03/04/07}）·Codex 补验挂起 |
+| **当前分支** | `fix/emc-buglog` @ `9fcd811` |
+| **最新讨论** | `discuss/PRM_backlog预检_2026-08-08.md`（CB-19·PRM-03/04 已修待 B3 实证 + PRM-07 dict 直通方案收敛） |
+| **最新进展** | P1 发版回归：claude 部分全过（pytest 297/eval 81%/三路径 PASS）·glm 分担 link_checkup/B3/RST-L06 未回·PRM 预检已发起（方案 A/B/C 待两组收敛） |
 | **接手文档** | `memories/repo/session-handoff.md`（08-05 交接卡·P3 文档债待同步 HOME/OFFICE）+ `_handoff/HOME.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 

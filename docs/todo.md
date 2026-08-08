@@ -50,15 +50,11 @@ P3（后置）P3-2 并行（降挂起）· KDE/DBSCAN 替代（发版后专题·
 
 ### 🔄 下一步（P1 主线 · 发版就绪度回归）
 
-- [ ] **发版就绪度回归**（验收通过后）：pytest 全量 297 + validate + link_checkup 20/20 + eval 复采（带 session）+ B3 三连（fail 集判据 {PRM-03/04/07}）+ RST-L06 三连 + 三路径观点卡浏览器抽验 + flywheel 注释对齐（25→26）
-- [ ] **PRM backlog CB 预检**（P1·仅预检）：B3 取证 → PRM-03/04 修复覆盖核实 → PRM-07 执行侧方案收敛
+- [ ] **发版就绪度回归**：pytest 297 + validate 34（done·claude）+ eval 复采 81% PASS（done）+ 三路径观点卡抽验 PASS（done）+ link_checkup 20/20（**glm 分担·未回**）+ B3 三连（fail 集判据 {PRM-03/04/07}·**glm 分担·未回**）+ RST-L06 三连（**glm 分担·未回**）
+- [ ] **PRM backlog CB 预检**（P1·仅预检）：**已发起**（`PRM_backlog预检_2026-08-08.md`·CB-19）——PRM-03/04 修复链完整（③w4b·待 B3 实证 trace 取证）·PRM-07 dict 直通残余（resolve_boundary:174-185·str 已堵·方案 A/B/C 待两组收敛）→ 回归通过后实施
 - [ ] **P3-4 地点联动 + P3-1 依赖图**（P2·回归后）
 - [ ] **P3 文档债**：HOME/OFFICE 交接卡同步 + flywheel 注释 + _cb-index
 - [ ] **Codex 补验**（恢复后）：W-2 全链 + S-3 边界 + 三路径 DOM 断言前置评估
-- [ ] **发版就绪度回归**（P1·W-1/W-2 修复后）：pytest 全量 + validate + link_checkup + eval 复采 + B3 三连（fail 集判据 {PRM-03/04/07}）+ RST-L06 + 三路径观点卡浏览器抽验 + flywheel 注释对齐（25→26）
-- [ ] **PRM backlog CB 预检**（P1·仅预检）：B3 取证 → PRM-03/04 修复覆盖核实 → PRM-07 执行侧方案收敛
-- [ ] **P3-4 地点联动 + P3-1 依赖图**（P2·回归后）
-- [ ] **P3 文档债**：HOME/OFFICE 交接卡同步 + flywheel 注释 + _cb-index
 
 ---
 
