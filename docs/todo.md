@@ -36,14 +36,16 @@ P3（后置）P3-2 并行（降挂起）· KDE/DBSCAN 替代（发版后专题·
 
 ### 🔄 下一步（P0 主线 · 用户新工作方式：验收交两组走 CB）
 
-- [ ] **整体验收**（**两组 CB 验收**·`整体验收_实施检查发起_2026-08-08.md`）——**有条件通过**（Codex 更严 + glm 通过）：14 项代码核验通过·0 阻断·承重红线零违反。**待修 W-1/W-2 + 补 S-1~4 后全通过**：
-  - **W-1**：tools.js:1285/:1297 红/绿文案残留 → 纯橙系描述（1 行·零逻辑·回归前合入）
-  - **W-2**：threshold/soft_threshold 契约-运行时漂移（hotspot-tool.js:11-14 + tools.js hotspot 不转发）→ 转发补齐（推荐）vs 契约降级标注
+- [ ] **整体验收**（**两组 CB 验收**·`整体验收_实施检查发起_2026-08-08.md`）——**有条件通过 → 修复/补证已完成（commit `d5a5625`·未 push）·待两组复验**：
+  - ✅ **W-1**：tools.js hotspot docstring/observation 红/绿文案 → 纯橙系五档（零逻辑·纯文案）
+  - ✅ **W-2**：threshold/soft_threshold 转发补齐（hotspot-tool.js `_execute` body + tools.js hotspot 透传·默认 1.96/1.0 不破坏）
   - **W-3**：legend 五档口径 → 定「EMC 工具卡文本图例」（地图图例补 UI 后置）
-  - **S-1**：补 export_outlet_card_csv 单测（BOM/列/脱敏/三元组·tests/test_export.py）
-  - **S-2**：补 terrarium 解码单测（0~500/bounds 4326/尺寸·tests/test_spatial_analysis.py）
-  - **S-3**：e2e-seam result-struct 直测（三路径出卡/无观点不显卡/结论带地点·tests/browser/test_result_struct.py）
-  - **S-4**：补 geo_label micro 分支单测（tests/test_outlet_schema.py）
+  - ✅ **S-1**：`tests/test_export.py` 新建 4 例（BOM/列/脱敏/空卡）
+  - ✅ **S-2**：`tests/test_spatial_analysis.py` +2（terrarium 解码 0~500/bounds/尺寸 + 极性过滤 ValueError）
+  - ✅ **S-3**：`tests/browser/test_result_struct.py` 新建 + e2e-seam 暴露 buildResultStruct（观点/无观点/4 要点/结论带地点/scale 三档/无地名降级·P0-3 DOM 断言留回归期浏览器抽验 S-5）
+  - ✅ **S-4**：`tests/test_outlet_schema.py` 补 geo_label micro + unknown→None
+  - **验证**：pytest **297 passed + 5 skipped**（+6 新增·零回归）· S-3 e2e-seam PASS · ESM 语法 OK
+  - **待两组复验**（`整体验收_修复验证发起_2026-08-08.md`）→ 通过后 push + 进发版回归
   - 观感类（P0-1/P0-5/H-1/H-4·干货/地势感/无露底/console）标「可选用户复核」
 - [ ] **发版就绪度回归**（P1·W-1/W-2 修复后）：pytest 全量 + validate + link_checkup + eval 复采 + B3 三连（fail 集判据 {PRM-03/04/07}）+ RST-L06 + 三路径观点卡浏览器抽验 + flywheel 注释对齐（25→26）
 - [ ] **PRM backlog CB 预检**（P1·仅预检）：B3 取证 → PRM-03/04 修复覆盖核实 → PRM-07 执行侧方案收敛
