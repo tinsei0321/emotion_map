@@ -249,6 +249,16 @@ const _ERR = (name, e) => ({ observation: '[ERR] ' + name + ' 失败：' + ((e &
 // DENSITY_RAMP 已退场（Phase 2）：density 委托主 Toolbox generateHeatmapForAI/generateGridForAI/generateTerrainForAI，
 // 套用 HEATMAP_RAMPS 固定色段，不再自造 KDE 色带。原 const 已删（端点 /api/v1/geo/density 后端保留 + 标 deprecated）。
 const _fmtPi = (v) => (v !== '' && v != null && !isNaN(v) ? Number(v).toFixed(2) : '?');
+// P2-2（CB-19c·Codex 建议）：boundaryLabel 从 dict 提取 features[0].properties.name（治 String(dict) → "[object Object]"·LLM 转述不可读·PRM-07 偶发 fail 方差源）
+const _boundaryLabel = (b) => {
+  if (b == null) return undefined;
+  if (typeof b === 'string') return b;
+  if (typeof b === 'object' && Array.isArray(b.features) && b.features.length) {
+    const p = b.features[0].properties || {};
+    return String(p.name || p.MC || p.NAME || '').trim() || undefined;
+  }
+  return String(b);
+};
 const _fmtRow = (row) => {
   const dom = DOMAIN_LABEL[row.domain_top] || row.domain_top || '?';
   const elm = ELEMENT_LABEL[row.element_top] || row.element_top || '?';
@@ -1011,7 +1021,7 @@ export const TOOLS = {
       return _ERR('zonal_stats', e);
     }
     try {
-      const r = await generateZonalForAI({ layer: ref(_layer), boundary: ref(boundary), boundaryLabel: String(params.boundary),
+      const r = await generateZonalForAI({ layer: ref(_layer), boundary: ref(boundary), boundaryLabel: _boundaryLabel(params.boundary),
         range: params.range ? ref(params.range) : undefined, pre_filter: normPreFilter(params.pre_filter),
         top_n: params.top_n != null ? Number(params.top_n) : undefined, as: params.as });
       const rows = r.rows || [];
@@ -1067,7 +1077,7 @@ export const TOOLS = {
     try {
       const r = await generateRankForAI({ layer: ref(_layer), by, top_n: Number(params.top_n) || 5,
         boundary: params.boundary ? ref(params.boundary) : undefined,
-        boundaryLabel: params.boundary ? String(params.boundary) : undefined,
+        boundaryLabel: params.boundary ? _boundaryLabel(params.boundary) : undefined,
         layerRef: typeof params.layer === 'string' ? params.layer : undefined,
         range: params.range ? ref(params.range) : undefined, pre_filter: normPreFilter(params.pre_filter), as: params.as });
       const rows = r.rows || [];
@@ -1177,7 +1187,7 @@ export const TOOLS = {
   async area_stats(params = {}) {
     if (!params.boundary) return { observation: '[ERR] area_stats 需 boundary' };
     try {
-      const r = await generateAreaStatsForAI({ boundary: ref(params.boundary), boundaryLabel: String(params.boundary),
+      const r = await generateAreaStatsForAI({ boundary: ref(params.boundary), boundaryLabel: _boundaryLabel(params.boundary),
         group_by: params.group_by, as: params.as });
       const rows = r.rows || [];
       const _as = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: true }) : null;   // A1：choropleth 着色面层（解析不到 boundary 降级纯表格）
@@ -1198,7 +1208,7 @@ export const TOOLS = {
     if (!params.boundary && !params.layers) return { observation: '[ERR] merge 需 boundary（单层）或 layers（多图层）二选一' };
     try {
       const _r = await generateMergeForAI({
-        ...(params.boundary ? { boundary: ref(params.boundary), boundaryLabel: String(params.boundary) } : {}),
+        ...(params.boundary ? { boundary: ref(params.boundary), boundaryLabel: _boundaryLabel(params.boundary) } : {}),
         ...(params.layers ? { layers: (params.layers || []).map(ref) } : {}),
         by: params.by, as: params.as });
       const feats = (_r.fc && _r.fc.features) || [];
