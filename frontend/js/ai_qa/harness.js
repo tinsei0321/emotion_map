@@ -1526,9 +1526,14 @@ function deriveMissingParams(diagnose, question, layers) {
     // boundary 不能 derive → 不强制改 template（保留 FC 原选·防强制 zonal + 无 boundary → gap/while-loop）
   }
   // G5 路由修正（B3 PRM 路由错·高置信模式）："周边/附近 Nm 情绪" → buffer（勿 zonal）·"对比 A 与 B" → compare（勿单区）
-  if (/(周边|附近|半径|缓冲|米内|公里内)/.test(q) && /情绪|点|分布/.test(q) && tool !== 'buffer' && !/(叠|合并|裁|筛选)/.test(q)) {
+  // PRM-03/04（08-08 真根因）：LLM 可能把「周边 Nm 情绪」路由成 merge/lookup_place 多工具 → 走 runAllToolCalls 绕过本修正
+  //   → 此处同时重写 _allToolCalls 为 buffer 单 call（对齐 PRM-07/10/08 多 call 重写模式·防多工具错路由）
+  if (/(周边|附近|半径|缓冲|米内|公里内)/.test(q) && /情绪|点|分布/.test(q) && tool !== 'buffer' && !/(叠|裁|筛选)/.test(q)) {
     diagnose.template = 'buffer';
     diagnose.method = ['buffer()'];
+    if (Array.isArray(diagnose._allToolCalls) && diagnose._allToolCalls.length > 1) {
+      diagnose._allToolCalls = [{ name: 'buffer', params: {} }];   // 多工具错路由 → 强制 buffer 单 call（radius/center 由 derive 补）
+    }
   } else if (/(对比|比较|vs|与.*相?比)/i.test(q) && (tool !== 'compare_regions' ||
       !Array.isArray(p.boundaries) || p.boundaries.length < 2)) {
     // CB-12 补丁 + PRM-08（Codex/glm）：FC 已选 compare 但 boundaries 不足 2 个也补满
