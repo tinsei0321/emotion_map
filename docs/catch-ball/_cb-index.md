@@ -9,12 +9,12 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-18**（整体验收·**有条件通过 → 修复/补证已完成·待两组复验**） |
+| **当前 CB 轮次** | **CB-18**（整体验收·**全闭环通过**·下一步 = P1 发版就绪度回归） |
 | **上一轮** | CB-17（进度同步 + 下一步安排·三组收敛定稿） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
-| **当前分支** | `fix/emc-buglog` @ `d5a5625`（修复 commit·未 push·先验后推） |
-| **最新讨论** | `discuss/整体验收_修复验证发起_2026-08-08.md`（CB-18 补·两组复验 W-1/W-2/S-1~4） |
-| **最新进展** | W-1 红/绿文案→纯橙系 + W-2 threshold 转发补齐 + S-1~4 补证（pytest 297·S-3 e2e-seam PASS）·待两组复验通过后 push → 进发版回归 |
+| **当前分支** | `fix/emc-buglog` @ `58c8590` |
+| **最新讨论** | `discuss/整体验收_修复验证回应_glm组_2026-08-08.md`（CB-18b·glm 复验通过·Codex 缺席标注） |
+| **最新进展** | 整体验收**全闭环通过**：W-1/W-2 修复 + S-1~4 补证·glm 复验通过·push（pytest 297）·进 P1 发版回归（fail 集判据 {PRM-03/04/07}）·Codex 补验挂起 |
 | **接手文档** | `memories/repo/session-handoff.md`（08-05 交接卡·P3 文档债待同步 HOME/OFFICE）+ `_handoff/HOME.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 

@@ -34,19 +34,27 @@ P3（文档）HOME/OFFICE 交接卡同步 + _cb-index 状态更新 + revision-lo
 P3（后置）P3-2 并行（降挂起）· KDE/DBSCAN 替代（发版后专题·先定产品定义）· 时间轴 manifest · 前端 JS 单测补课
 ```
 
-### 🔄 下一步（P0 主线 · 用户新工作方式：验收交两组走 CB）
+### ✅ 整体验收通过（CB-18 全闭环 · 用户新工作方式：验收交两组走 CB）
 
-- [ ] **整体验收**（**两组 CB 验收**·`整体验收_实施检查发起_2026-08-08.md`）——**有条件通过 → 修复/补证已完成（commit `d5a5625`·未 push）·待两组复验**：
+- **两组 CB 验收**（`整体验收_实施检查发起_2026-08-08.md`）：**有条件通过**（Codex 更严 + glm 通过）→ 修 W-1/W-2 + 补 S-1~4（commit `d5a5625`）→ **glm 复验通过**（`整体验收_修复验证回应_glm组_2026-08-08.md`·W-1 零残留/W-2 链闭合/S-1~4 充分·pytest 297 零回归）→ **push + 整体验收通过**
   - ✅ **W-1**：tools.js hotspot docstring/observation 红/绿文案 → 纯橙系五档（零逻辑·纯文案）
   - ✅ **W-2**：threshold/soft_threshold 转发补齐（hotspot-tool.js `_execute` body + tools.js hotspot 透传·默认 1.96/1.0 不破坏）
   - **W-3**：legend 五档口径 → 定「EMC 工具卡文本图例」（地图图例补 UI 后置）
   - ✅ **S-1**：`tests/test_export.py` 新建 4 例（BOM/列/脱敏/空卡）
   - ✅ **S-2**：`tests/test_spatial_analysis.py` +2（terrarium 解码 0~500/bounds/尺寸 + 极性过滤 ValueError）
-  - ✅ **S-3**：`tests/browser/test_result_struct.py` 新建 + e2e-seam 暴露 buildResultStruct（观点/无观点/4 要点/结论带地点/scale 三档/无地名降级·P0-3 DOM 断言留回归期浏览器抽验 S-5）
+  - ✅ **S-3**：`tests/browser/test_result_struct.py` 新建 + e2e-seam 暴露 buildResultStruct（观点/无观点/4 要点/结论带地点/scale 三档/无地名降级·P0-3 DOM 断言留回归期浏览器抽验）
   - ✅ **S-4**：`tests/test_outlet_schema.py` 补 geo_label micro + unknown→None
   - **验证**：pytest **297 passed + 5 skipped**（+6 新增·零回归）· S-3 e2e-seam PASS · ESM 语法 OK
-  - **待两组复验**（`整体验收_修复验证发起_2026-08-08.md`）→ 通过后 push + 进发版回归
+  - **Codex 缺席标注**：glm 单组复验通过（用户指示「先只看 glm组」）·Codex 恢复后补验（W-2 全链 + S-3 边界 + DOM 断言前置评估）
   - 观感类（P0-1/P0-5/H-1/H-4·干货/地势感/无露底/console）标「可选用户复核」
+
+### 🔄 下一步（P1 主线 · 发版就绪度回归）
+
+- [ ] **发版就绪度回归**（验收通过后）：pytest 全量 297 + validate + link_checkup 20/20 + eval 复采（带 session）+ B3 三连（fail 集判据 {PRM-03/04/07}）+ RST-L06 三连 + 三路径观点卡浏览器抽验 + flywheel 注释对齐（25→26）
+- [ ] **PRM backlog CB 预检**（P1·仅预检）：B3 取证 → PRM-03/04 修复覆盖核实 → PRM-07 执行侧方案收敛
+- [ ] **P3-4 地点联动 + P3-1 依赖图**（P2·回归后）
+- [ ] **P3 文档债**：HOME/OFFICE 交接卡同步 + flywheel 注释 + _cb-index
+- [ ] **Codex 补验**（恢复后）：W-2 全链 + S-3 边界 + 三路径 DOM 断言前置评估
 - [ ] **发版就绪度回归**（P1·W-1/W-2 修复后）：pytest 全量 + validate + link_checkup + eval 复采 + B3 三连（fail 集判据 {PRM-03/04/07}）+ RST-L06 + 三路径观点卡浏览器抽验 + flywheel 注释对齐（25→26）
 - [ ] **PRM backlog CB 预检**（P1·仅预检）：B3 取证 → PRM-03/04 修复覆盖核实 → PRM-07 执行侧方案收敛
 - [ ] **P3-4 地点联动 + P3-1 依赖图**（P2·回归后）
