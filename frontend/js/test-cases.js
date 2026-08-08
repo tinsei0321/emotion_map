@@ -323,12 +323,15 @@ const PARAMS = PARAM_DATA.map((d, i) => ({
   category: '参数正确性', type: 'llm',
   run: async (t) => llmRun(t, d.q, (b, _tt, sig) => {
     if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's2', obs: `GAP: "${b}"` };
-    // CB-12 P1 + P1'（Codex 假阳性修正）：ask_user → PASS 仅限需要澄清参数的用例（center 类·PRM-03/04）
+    // CB-12 P1 + P1'（Codex 假阳性修正）：ask_user → PASS 仅限需要澄清参数的用例（center/boundary 类·PRM-03/04/05）
     //   PRM-09（筛选商业）FC 未选工具也触发 ask_user·但本问不需澄清（应 extract 执行）→ 非诚实追问·不 PASS
-    //   判据：仅 expectRadius（center 类）用例放行·且 askChips 真实存在
+    //   PRM-05（08-08 深读·Codex）：boundary 缺的合法 ask_user 也 PASS（对齐 PRM-04 模式·非误报）——zonal boundary 是必填槽·诚实追问非 ERR
+    //   判据：expectRadius（center 类）或 expectBoundary（boundary 类）用例放行·且 askChips 真实存在
     const _askChips = (_tt && _tt.askChips && _tt.askChips()) || 0;
-    if (d.expectRadius != null && (_askChips > 0 || /等你选择/.test(b)) && (!sig.tools || sig.tools.length === 0)) {
-      return { pass: true, obs: `合法 ask_user（center 缺·诚实追问）·badge=${b.slice(0, 20)}`, review: '追问是否合理？' };
+    const _needAsk = d.expectRadius != null || d.expectBoundary != null;
+    if (_needAsk && (_askChips > 0 || /等你选择/.test(b)) && (!sig.tools || sig.tools.length === 0)) {
+      const _miss = d.expectRadius != null ? 'center' : 'boundary';
+      return { pass: true, obs: `合法 ask_user（${_miss} 缺·诚实追问）·badge=${b.slice(0, 20)}`, review: '追问是否合理？' };
     }
     // CB-14（用户准则）：expectRequestUpload 用例——法定功能区（非行政区划）EMC 不识别·应诚实 request_upload/ask_user。
     //   GAP/需上传 文案 → PASS（诚实行为）；若 EMC 硬识别产了 boundary → 违规（EMC 不该猜不可信范围）。

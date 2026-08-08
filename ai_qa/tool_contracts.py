@@ -136,7 +136,7 @@ TOOL_CONTRACTS = [
         'yields': '每单元 point_count/极性/4×5 归因 + 排序', 'contributes': '产出"哪个单元最差 + 归因"，宏观/中观结论的主干',
         'scale': '宏观/中观（单元聚合主干）', 'preconditions': 'boundary preset + 点层',
         'failure_modes': '误用于单点定位——micro 落点用 rank/hotspot；误用于纯面积结构（→area_stats）',
-        'examples': '正:各街道情绪归因 / 正:更新单元排序 / 误:这个公园哪个点最差(→rank micro)',
+        'examples': '正:各街道情绪归因 / 正:更新单元排序 / 误:这个公园哪个点最差(→rank micro) / PRM-05:问句区名（如西陵区）→ boundary 必须填该区已加载要素 GeoJSON（勿空参）',
         'required_slots': ['boundary'],
         'planning_common': 'boundary=preset_id（街道/社区/更新单元）；点层走可见层选源（不硬默认）；C 赛道情绪主干',
         'params': [

@@ -1507,7 +1507,21 @@ function deriveMissingParams(diagnose, question, layers) {
     diagnose.template = 'extract_feature'; diagnose.method = ['extract_feature()'];   // 筛选用地→extract
   } else if (/(聚合|归因|统计).{0,4}(情绪|极性)|按面聚合/.test(q) && tool !== 'zonal_stats') {
     // CB-12 P1' + 定稿（glm组）：聚合/归因+区名 → 强制 zonal_stats·**前置检查 derive 成功才强制**（boundary 能填·防强制 zonal + 无 boundary → gap/while-loop 退化）
-    const _zonalD = deriveAvailable(q, layers);
+    // PRM-05（08-08 深读·glm 方案）：deriveAvailable 偶发 null（层加载竞态/FC 方差）→ fallback 行政区 preset 单要素（仿 chain pre-check :1154-1160）
+    let _zonalD = deriveAvailable(q, layers);
+    if (!_zonalD && !p.boundary && !p.boundaries && /(.+?)(?:区|市|县)/.test(q)) {
+      // deriveAvailable 失败但问句含区名 → fallback 行政区 preset（治层加载竞态导致的偶发 null·非硬猜·行政区是固化库）
+      const _presetLayer = (layers || []).find((x) => x.name === '行政区' || /行政区/.test(x.name || ''));
+      if (_presetLayer && _presetLayer.fc && _presetLayer.fc.features) {
+        const _dm = q.match(/(.+?)(?:区|市|县)/);
+        const _pname = _dm ? _dm[1] : '';
+        const _pf = _presetLayer.fc.features.find((f) => {
+          const v = f.properties && (f.properties.name || f.properties.MC || f.properties.NAME);
+          return v != null && String(v).includes(_pname);
+        });
+        if (_pf) _zonalD = { name: _pname + '区', layer: _presetLayer.name, field: 'MC' };
+      }
+    }
     if (_zonalD) {
       diagnose.template = 'zonal'; diagnose.method = ['zonal_stats()'];
       if (!p.boundary && !p.boundaries) {
