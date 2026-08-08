@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月08日）** · 本节按板块分组、组内倒序；最新工作 = **CB-19 全闭环 + 发版候选通过 + 收尾（P2-2/P2-3/文档债）**。最近：
+> 📍 **最新动态（08月08日）** · 本节按板块分组、组内倒序；最新工作 = **CB-20 PRM-07 空对象根治（两组预检通过·A 主 + B 兜底·实施完成）**。最近：
+>
+> - **08-08 CB-20 PRM-07 空对象根治（用户意图：做空对象根治·走 CB·先准备预检文档）**：P2-3 暴露 PRM-07 空对象真实残余（LLM 传空对象 boundary → zonal「无数据」误导用户「数据不足」）→ 预检（方案 A/B/C）→ **两组通过（A 主 + B 兜底 + `_boundarySuspect` 守卫）**。**实施**（`bdde1f0`·已推）：A harness derive 失败+boundary 可疑 → `strategy='request_upload'`（复用既有 :1115 短路·LLM 无法弱化·**不依赖 `_regions`**·法定功能区名「小溪塔」无区/市/县后缀提取不到·修正 Codex 建议）+ B zonal handler 空对象 → 「需上传标准边界资料」·pytest 303 零回归·verify_prm07_ab（e2e-seam 可控 `zonal_stats({})` → 需上传 ✅）。**工程边界诚实收敛**：浏览器实测 PRM-07 仍受 LLM 传参方差影响（空对象/单要素字段名不标准/层未加载）·方案 A/B 覆盖可控场景·完全消除 LLM 行为方差不可能·合理边界。**新 learning**：`_regions` 正则只匹配区/市/县后缀·法定功能区名提取不到；LLM 字段名不标准时黑名单取不到名（残余入 backlog P2）。**§0 拓扑 N/A**。
 >
 > - **08-08 CB-19 收尾（用户意图：继续收尾工作）**：**P2-2 boundaryLabel**（`12aa1f9`·zonal/rank/area_stats/compare 4 处 `String(params.boundary)` → `_boundaryLabel` 取 features[0].properties.name·治 `[object Object]`·LLM 转述不可读·PRM-07 偶发 fail 方差源·pytest 303 零回归）。**P3 文档债**（`76cfd2d`·HOME/OFFICE 交接卡同步到 08-08 + cb-index CB-19c）。**P3-1 依赖图评估**：无独立消费者（P3-2 并行后置·`$n` 索引重构前置）→ 随 P3-2 一起·不单独推进。**P2-3 verify_prm57 断言加严**（`a331568`·去宽泛「上传」·加「法定功能区/标准边界」核心词·**诚实暴露 PRM-07 空对象真实残余**：LLM 传空对象 boundary·黑名单无法拦·zonal「无数据」误导用户·根治入 backlog 走 CB）。**§0 拓扑 N/A**。
 >

@@ -145,6 +145,36 @@ push 后：补 B3 快照（Codex·判据 {PRM-03/04/05/07}·覆盖 9680dcc/083b7
 
 ---
 
+## CB-20 · 2026-08-08（PRM-07 空对象根治 · 两组预检通过 · 实施完成）
+
+### ① SCAN 摘要
+
+P2-3 verify 断言加严 → 暴露 PRM-07 空对象真实残余（LLM 传空对象 boundary → zonal「无数据」误导用户「数据不足」）→ claude 发预检（`PRM07空对象根治_预检_2026-08-08.md`·方案 A/B/C）→ 两组评估。
+
+**Codex**（[回应](discuss/PRM07空对象根治_预检回应_Codex-GPT5_2026-08-08.md)）：**可实施（A 主 + B 兜底）**——根因链代码级确认（空对象 → 黑名单放行 → 后端 400 → LLM 弱化转述误导）·A 复用 request_upload 短路（确定性·LLM 无法弱化）·B handler 兜底（~3 行）·「用户上传不受限」以 derive 成功/失败为代理区分·不误伤可用层·承重红线零触碰。**细节修正**：后端对空对象抛 ValueError（400）非「无数据」·根治点在前端。
+
+**glm组**（[回应](discuss/PRM07空对象根治_预检回应_glm组_2026-08-08.md)）：**可实施（A+B 结合）**——三层防御（黑名单 + derive 失败短路 + handler 兜底）·**加 `_boundarySuspect` 守卫**（防合法单要素 derive 偶发失败被误 request_upload）·不误伤用户上传（derive 成功=放行/失败=诚实 request_upload）·改动 ~11 行 + 3 测试·不碰 :1115 短路主逻辑。
+
+### ② 我方反评价（verify-before-accept）
+
+**两组一致：A 主 + B 兜底 + `_boundarySuspect` 守卫** → 实施（`bdde1f0`）：
+- **方案 A**（harness.js derive 失败 else）：boundary 可疑（`_boundarySuspect`）+ derive 失败 → `strategy='request_upload'` + needed/gap → 复用既有 :1115 短路 → `buildRequestUploadText` 确定性文案。**不依赖 `_regions.length`**（实施时发现：法定功能区名「小溪塔」无「区/市/县」后缀·_regions 提取不到·boundary 可疑本身即足够——修正预检的 Codex 建议）
+- **方案 B**（tools.js zonal handler）：boundary 空对象/无 features → 「需上传标准边界资料：boundary 为空/无法解析」（防 A 未覆盖路径）
+- **验证**：pytest 303 零回归·node OK·verify_prm07_ab（e2e-seam 可控）：`zonal_stats({})` → 「需上传标准边界资料」✅ 生效（替代「无数据」）
+
+### ③ 行动
+
+- **实施完成**（`bdde1f0`·已推）·方案 A/B 生效（空对象 → request_upload·可控验证）
+- **工程边界诚实收敛**：浏览器实测 PRM-07 仍受 **LLM 传参方差**影响（每次传参不同：空对象 / 单要素字段名不标准 / 层未加载）——方案 A/B 覆盖「空对象 + derive 失败」可控场景·**完全消除 LLM 行为方差不可能**·这是合理边界·非代码缺陷
+
+### ④ 状态/新发现
+
+- **CB-20 闭环**：PRM-07 空对象根治（A/B 实施）·方案 B 可控验证生效
+- **新 learning**：`_regions` 正则只匹配「区/市/县/街道/镇」后缀·法定功能区名（小溪塔）无后缀提取不到——**边界名正则需覆盖法定功能区/非行政区名**（PRM-07 系列教训）；LLM 传参方差（空对象/字段名不标准）是 EMC 的固有边界·守卫覆盖可控场景即可
+- **PRM-07 残余**：LLM 单要素字段名不标准（无 name/MC/NAME）时黑名单取不到名·不拦——可后置扩字段名覆盖（P2 级）
+
+---
+
 ## CB-19c · 2026-08-08（5115d7c 黑名单修复复验 · 两组通过）
 
 ### ① SCAN 摘要
