@@ -65,10 +65,12 @@ function _index() {
 const _ADMIN_BLOCKLIST = ['小溪塔', '龙泉', '白洋', '生物产业园', '东部产业新区', '绿心'];   // 法定功能区黑名单（与 KNOWLEDGE §2 一致·可增补）
 
 function _rejectNonAdminBoundary(b) {
-  // 仅拦 GeoJSON dict（LLM 直传）·不拦 preset_id str / 用户上传（用户主动提供的范围可信）
+  // 仅拦「单要素 GeoJSON dict」——LLM 直传的特征（如 {features:[小溪塔]}）。
+  // 不拦：preset_id str / 用户上传 / 从已加载面层解析的多要素层（Codex T7 阻断：行政区层首要素「龙泉」命中黑名单·
+  //   合法 extract/链操作被误拦——多要素=图层解析·可信·放行）。
   if (b == null || typeof b !== 'object') return null;
   const feats = b.features;
-  if (!Array.isArray(feats) || !feats.length) return null;
+  if (!Array.isArray(feats) || feats.length !== 1) return null;   // 仅单要素（LLM 直传特征）·多要素（图层）放行
   const p = feats[0].properties || {};
   const nm = String(p.name || p.MC || p.NAME || '').trim();
   if (!nm) return null;

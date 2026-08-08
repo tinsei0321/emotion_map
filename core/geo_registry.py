@@ -190,7 +190,9 @@ def resolve_boundary(boundary) -> gpd.GeoDataFrame:
         if _name_col is None:
             _nf = find_boundary_name_column(polys.columns)
             _name_col = _nf if _nf else None
-        if _name_col is not None:
+        # Codex T7 阻断修复：仅拦「单要素」dict（LLM 直传特征·如 {features:[小溪塔]}）——
+        #   多要素（从已加载面层/索引解析的整层·如行政区层 9 要素含龙泉）是合法图层操作·放行。
+        if _name_col is not None and len(polys) == 1:
             for _nm in polys[_name_col].astype(str):
                 _hit = next((d for d in _ADMIN_BLOCKLIST if d in _nm or _nm in d), None)
                 if _hit:
