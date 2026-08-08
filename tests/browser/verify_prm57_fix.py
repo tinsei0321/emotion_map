@@ -8,7 +8,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib
 from emc_helpers import emc_session, inject_points, send_prompt, wait_answer_done
 
 _QS = [
-    ('PRM-07', '小溪塔范围内按面聚合情绪统计及 4×5 归因', lambda a: ('需上传' in a or '上传' in a or '不硬猜' in a or '标准' in a)),
+    # P2-3（CB-19c·Codex 建议）：断言加严——拒识核心语义词（法定功能区/标准边界/不硬猜）·去宽泛「上传」（LLM 弱化转述「已上传」也匹配·误判通过）
+    ('PRM-07', '小溪塔范围内按面聚合情绪统计及 4×5 归因', lambda a: ('法定功能区' in a or '标准边界' in a or '不硬猜' in a or '标准资料' in a)),
     ('PRM-05', '西陵区范围内按面聚合情绪统计及 4×5 归因', lambda a: ('聚合' in a or 'zonal' in a or '完成' in a)),
 ]
 
