@@ -9,7 +9,7 @@
 
 ## 〇、预检摘要（claude组 代码核验·待两组确认）
 
-### PRM-03/04 · buffer radius 解析 —— **已修（③w4b）·待 B3 实证**
+### PRM-03/04 · buffer radius 解析 —— **真根因确认（多工具绕过 G5）·修复方案待 CB**
 
 | 环节 | 现状 | 证据 |
 |---|---|---|
@@ -19,7 +19,12 @@
 | 消费 | tools.js buffer 用 `radius_m`（缺省按对象尺度推断） | `tools.js:1212` |
 | 测量端 | test-cases.js:92 已把 `radius_m` → `p.radius`（±5% 容差断言） | `test-cases.js:92,343` |
 
-**结论**：修复链完整（③w4b c53aa99 已落地）。**但 08-05 B3 三连仍 fail** → 可能 (a) B3 场景未触发（ask_user 合法路径·center 缺）或 (b) 断言口径仍有 gap。**须真跑 B3 实证**（Codex 预检建议·trace 取证先行）。
+**真根因（08-08 B3 实证 + 浏览器复现确认）**：修复链完整·但 **B3 fail 的根因不是 radius derive 而是路由**——
+- **浏览器复现「大南门·二马路滨江片区周边 300 米范围内的情绪点分布」**：一次路由成 `merge([L002,L003])`（合并 2 地块）→ 完全没走 buffer；另一次路由成 buffer + center 缺失 → ask_user（合法）。
+- **根因**：LLM 的 FC 输出多工具（如 `[lookup_place, merge]`）时，orchestrate 直接走 `runAllToolCalls`（harness.js:1126 `_allToolCalls.length > 1`）→ **绕过 deriveMissingParams 里的 G5 路由修正**（:1529）→ 「周边 Nm 情绪」被错路由成 merge/lookup_place。
+- **补充**：G5 修正条件 `!/(叠|合并|裁|筛选)/.test(q)` 排除「合并」——但问句本身无「合并」词·是 LLM 错路由·不应被该条件排除。
+
+**修复方案（待 CB·承重 harness）**：在 orchestrate 分流前（:1126 runAllToolCalls 之前）加确定性路由修正——问句含「周边/附近/半径 Nm + 情绪/点/分布」且无「对比」→ 强制 buffer（无论 FC 单/多工具）。**先扩 eval（「周边 Nm 情绪→buffer」路由断言）+ 两组预检**（承重红线区·一次一处）。
 
 ### PRM-07 · 法定功能区白名单执行侧 —— **确认残余（dict 直通）**
 
