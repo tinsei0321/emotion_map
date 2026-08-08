@@ -1282,19 +1282,20 @@ export const TOOLS = {
     } catch (e) { return _ERR('lookup_place', e); }
   },
 
-  /** Gi* 热点识别 → 落图层（hot/cold/ns 点，离散色：hot=负面聚集=红 / cold=正面聚集=绿 / ns=灰）。 */
+  /** Gi* 热点识别 → 落图层（hot/tend_hot/ns/tend_cold/cold 五档·纯橙系显著性符号层·弃极性色·与 KDE 解耦）。 */
   async hotspot(params = {}) {
     const _layer = resolvePointLayer(params);
     if (!_layer) return _ERR_NO_VISIBLE_PT();
     try {
       const r = await generateHotspotForAI({ layer: ref(_layer), value_col: params.value_col || 'score',
         invert: params.invert !== false, range: params.range ? ref(params.range) : undefined,
-        pre_filter: normPreFilter(params.pre_filter), as: params.as });
+        pre_filter: normPreFilter(params.pre_filter), as: params.as,
+        threshold: params.threshold, soft_threshold: params.soft_threshold });
       const tally = r.tally || {};
       const _CLS_CN = { hot: '显著聚集(95%)', tend_hot: '倾向聚集(84%)', ns: '不显著', tend_cold: '倾向冷区(84%)', cold: '显著冷区(95%)' };
       const dist = Object.keys(tally).length ? Object.entries(tally).map(([k, v]) => `${_CLS_CN[k] || k}:${v}`).join('、') : `${r.featureCount}要素`;
       const _hL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // class→极性重映射由模块完成（_CLS_POL 随迁·§5.6）
-      return { observation: `热点分析：${dist}${r.truncated ? '（已截断）' : ''}（hot=红/cold=绿/ns=灰）→ 已生成图层「${r.layerName}」${_hL ? '(' + r.featureCount + '点)' : ''}` + _renderNote(_hL), data: { count: r.count, tally, layerId: r.layerId } };
+      return { observation: `热点分析：${dist}${r.truncated ? '（已截断）' : ''}（纯橙系显著性五档·hot/tend_hot 深橙·ns 灰·tend_cold/cold 浅橙·弃红绿极性色）→ 已生成图层「${r.layerName}」${_hL ? '(' + r.featureCount + '点)' : ''}` + _renderNote(_hL), data: { count: r.count, tally, layerId: r.layerId } };
     } catch (e) { return _ERR('hotspot', e); }
   },
 

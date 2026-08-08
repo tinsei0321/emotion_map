@@ -511,6 +511,16 @@ def test_p1_geo_label_scale():
     card2 = build_outlet_schema_single(diag2, {'rows': [{'place_name': '大南门', 'polarity_index': -0.3,
                                                          'issue_label': '停车难', 'point_count': 900}]}, '大南门更新需求')
     assert card2['geo_label'].startswith('中观·单元'), f'meso geo_label 应标中观·单元（{card2["geo_label"]}）'
+    # micro → 微观·落点（CB-18 S-4 补证·else 兜底分支）
+    diag3 = {'scale': 'micro', 'domain_lens': ['urban_renewal'], 'outlet': '建议清单'}
+    card3 = build_outlet_schema_single(diag3, {'rows': [{'place_name': 'CBD', 'polarity_index': -0.5,
+                                                         'issue_label': '配套不足', 'point_count': 60}]}, 'CBD 落点分析')
+    assert card3['geo_label'].startswith('微观·落点'), f'micro geo_label 应标微观·落点（{card3["geo_label"]}）'
+    # 未知 scale → 不构建卡（诚实降级·不确定尺度不硬出行业卡）
+    diag4 = {'scale': 'unknown', 'domain_lens': ['urban_renewal'], 'outlet': '建议清单'}
+    card4 = build_outlet_schema_single(diag4, {'rows': [{'place_name': 'X', 'polarity_index': -0.1,
+                                                         'issue_label': 'Y', 'point_count': 10}]}, 'X')
+    assert card4 is None, f'未知 scale 应不出卡（诚实降级·card4={card4}）'
 
 
 def test_p1_limitations_case_benchmark_note():
