@@ -1605,6 +1605,16 @@ function deriveMissingParams(diagnose, question, layers) {
         if (_regions.length && console && console.info) {
           console.info(`[derive] 区名 ${_regions.join('、')} 未在已加载面层中找到匹配要素（可用边界层：${(layers || []).filter((x) => x.kind === 'polygon').map((x) => x.name).join('、') || '无'}）`);
         }
+        // CB-20（两组预检·A 主）：boundary 可疑（空/多要素/字符串·_boundarySuspect）+ derive 失败 → 诚实 request_upload
+        //   治「传空对象给 zonal → 后端 400 → LLM 弱化转述『数据不足』误导用户」（PRM-07 空对象场景）
+        //   守卫 _boundarySuspect：合法单要素（derive 偶发失败）不触发·防误伤（glm 补充）
+        //   不依赖 _regions：法定功能区名（小溪塔）无「区/市/县」后缀·_regions 提取不到·boundary 可疑本身即足够
+        if (_boundarySuspect(p.boundary)) {
+          diagnose.data_plan = diagnose.data_plan || {};
+          diagnose.data_plan.strategy = 'request_upload';
+          diagnose.data_plan.needed = ['标准边界资料（行政区划/更新单元 Shapefile/GeoJSON·EPSG:4326）'];
+          diagnose.data_plan.gap = ['该区边界为法定功能区/非预置范围·EMC 不硬猜不可信范围（CB-14）·无法解析边界'];
+        }
       }
     }
   }

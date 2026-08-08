@@ -1008,6 +1008,10 @@ export const TOOLS = {
   /** 宏/中观结论主干：按边界聚合点层，得每单元极性/点数/4×5 归因+排序。 */
   async zonal_stats(params = {}) {
     if (!params.boundary) return { observation: '[ERR] zonal_stats 需 boundary（preset_id）' };
+    // CB-20（两组预检·B 兜底）：boundary 空对象/无 features → 诚实 request_upload（治 A 未覆盖路径·LLM 忠实文案素材）
+    if (typeof params.boundary === 'object' && params.boundary !== null && !(Array.isArray(params.boundary.features) && params.boundary.features.length)) {
+      return { observation: '需上传标准边界资料：boundary 为空/无法解析（EMC 不硬猜不可信范围·CB-14）' };
+    }
     const _layer = resolvePointLayer(params);
     if (!_layer) return _ERR_NO_VISIBLE_PT();
     let boundary;
