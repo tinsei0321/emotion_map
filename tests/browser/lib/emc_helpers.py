@@ -6,6 +6,7 @@ import contextlib
 import json
 import os
 import subprocess
+import sys
 import time
 import urllib.request
 
@@ -36,7 +37,8 @@ def emc_session(port: int = 8080, headless: bool = True, open: bool = True, back
     （不用 with_server.py：该包装下 main.js 模体加载时序异常）。新用例复用本上下文，勿各自重抄。
     backend_port：CB-19 三组并发——serve.py 后端端口可覆盖（默认 8000·多组并发传不同值防撞）。
     """
-    serve = subprocess.Popen(['py', 'frontend/serve.py', str(port), '--backend-port', str(backend_port)], cwd=REPO)
+    # sys.executable（当前解释器全路径）——后台 shell PATH 无 py 简写时也可靠（CB-19 三组并发·后台跑 B3 教训）
+    serve = subprocess.Popen([sys.executable, 'frontend/serve.py', str(port), '--backend-port', str(backend_port)], cwd=REPO)
     try:
         if not _wait_health(port):
             raise RuntimeError(f'serve.py 后端未就绪（port {port}，查 DEEPSEEK_API_KEY / uvicorn 启动）')
