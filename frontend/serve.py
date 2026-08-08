@@ -124,7 +124,8 @@ def _inject_header_version(html, short):
 # 后端 origin（uvicorn :8000）—— /api 反向代理的目标。
 # 前端同源 fetch /api/* → serve.py 透传此后端，消除浏览器跨域这一跳
 #（修 export "Failed to fetch"：浏览器只跟 :8080 说话，:8000 这跳在服务端完成）。
-BACKEND_ORIGIN = 'http://127.0.0.1:8000'
+# CB-19 发版回归（三组并发）：--backend-port 可覆盖（防多组 serve 撞 8000·各自后端独立）。
+BACKEND_ORIGIN = 'http://127.0.0.1:8000'   # 默认 8000·--backend-port 动态覆盖
 
 
 class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
@@ -519,6 +520,13 @@ def main():
     args = sys.argv[1:]
     port = int(args[0]) if args and args[0].isdigit() else 8080
     no_backend = '--no-backend' in args
+    # CB-19 发版回归（三组并发）：--backend-port 覆盖后端端口（默认 8000·防多组 serve 撞后端）
+    backend_port = 8000
+    for _i, _a in enumerate(args):
+        if _a == '--backend-port' and _i + 1 < len(args):
+            backend_port = int(args[_i + 1])
+    global BACKEND_ORIGIN
+    BACKEND_ORIGIN = f'http://127.0.0.1:{backend_port}'
     # --open=both|main|test|none：serve 就绪后自动开浏览器（start.bat 用 both；直接 py serve 默认 none 不开）
     open_what = 'none'
     for _a in args:
@@ -528,7 +536,7 @@ def main():
             open_what = 'both'
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # frontend/ 的上一层 = repo root
     _free_port(port)   # 清掉同端口的僵尸 serve，避免返回旧版
-    backend_proc = None if no_backend else _spawn_backend(repo_root)
+    backend_proc = None if no_backend else _spawn_backend(repo_root, backend_port=backend_port)
     with ReuseTCPServer(('', port), NoCacheHandler) as httpd:
         if open_what != 'none':
             _open_browser(open_what, port)   # socket 已 listen → 后台线程延迟开浏览器
