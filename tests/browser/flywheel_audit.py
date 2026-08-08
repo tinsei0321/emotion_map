@@ -4,7 +4,7 @@
   py tests/browser/flywheel_audit.py --batch B0     # no-llm 全量 45 例（0 DeepSeek）
   py tests/browser/flywheel_audit.py --batch B1     # llm 意图识别 100 例
   py tests/browser/flywheel_audit.py --batch B2     # llm 工具选择 100 例
-  py tests/browser/flywheel_audit.py --batch B3     # llm 参数/成果/Smart/CPD/UI 25 例
+  py tests/browser/flywheel_audit.py --batch B3     # llm 参数/成果/Smart/CPD/UI 26 例（含 RST-L06·08-08 对齐注释）
   py tests/browser/flywheel_audit.py --batch all    # B0→B3 顺序全跑
 
 采集（三路，绕开 test-board.js 模块闭包 _results 不可达的限制）：
