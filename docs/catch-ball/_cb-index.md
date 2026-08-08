@@ -9,13 +9,13 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-17**（进度同步 + 下一步安排·claude组 发起·待两组回应） |
+| **当前 CB 轮次** | **CB-17**（进度同步 + 下一步安排·**三组收敛定稿**·下一步主线 = 整体验收） |
 | **上一轮** | CB-16（出口深化 Wave 0-3 + ③w2~③w7 全闭环） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
-| **当前分支** | `fix/emc-buglog` @ `cf5ef04`（08-06 复核·工作区干净·与 origin 同步） |
-| **最新讨论发起** | `discuss/进度同步与下一步安排_讨论发起_2026-08-08.md`（CB-17·附 A 两组 prompt） |
-| **最新进展** | 08-05 两专题 CB 全闭环（出口三段式 P0-P2 + 热点图 P0/P1/P1.5）·待整体验收 |
-| **接手文档** | `memories/repo/session-handoff.md`（08-05 交接卡）+ `_handoff/HOME.md` |
+| **当前分支** | `fix/emc-buglog` @ `ce850a3`（CB-17 发起 commit） |
+| **最新讨论** | `discuss/进度同步与下一步安排_讨论发起_2026-08-08.md` + `_回应_{Codex 或 glm组}_2026-08-08.md`（CB-17 三组闭环） |
+| **最新进展** | 下一步定稿：整体验收 → 发版回归 → PRM 预检 + P3-4 地点联动 → 后置项（cb-journal CB-17 章节） |
+| **接手文档** | `memories/repo/session-handoff.md`（08-05 交接卡·P3 文档债待同步 HOME/OFFICE）+ `_handoff/HOME.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 
 ## 快速开始

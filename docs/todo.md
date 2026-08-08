@@ -9,6 +9,41 @@
 
 ---
 
+## 📅 2026-08-08（CB-17 进度同步 + 下一步安排定稿 · 用户暂停 2 天后回归）
+
+### ✅ CB-17 闭环（三组进度同步 + 下一步安排收敛）
+
+- **背景**：用户 08-06~08-07 暂停回归 → 要求回顾 + 三组同步下一步。claude组 核实基线（git `cf5ef04` 同步·08-05 两专题 CB 全闭环·验证基线）→ 落 [讨论发起](docs/catch-ball/discuss/进度同步与下一步安排_讨论发起_2026-08-08.md)（7 债 + 5 焦点 + 附 A prompt·commit `ce850a3` 已 push）
+- **两组回应已回收**（`docs/catch-ball/discuss/进度同步与下一步安排_回应_{Codex-GPT5|glm组}_2026-08-08.md`）：
+  - **Codex**：快照事实核验全通过（代码 grep 逐项佐证）·补 B3 fail 集合快照判据（fail 集 == {PRM-03/04/07}·新增即阻断）+ 三路径观点卡浏览器抽验（B1 补丁只被 pytest 未被 B3 覆盖）·PRM-07 **partial（P2→P1·仅预检不实施·执行侧残余实测）**·补债 HOME/OFFICE 交接卡过期/flywheel 注释 25→26/回归判据缺 fail 快照/前端 JS 单测补课
+  - **glm组**：pytest 独立跑 **291 passed + 5 skipped**（vs claude 声称 293·差异 2 待核实）·补回归范围 validate_outlet_fields/validate_skill_params/test_hotspot·**P3-4 地点联动优先于 P3-1**（出口闭环最后一块·微观落点粗略→精确）·PRM **agree 不排入**（03/04 center ask_user 正确·07 已根治）·补债 .outlet-metrics CSS 缺失
+- **claude组 反评价（verify-before-accept · 关键争议核实）**：
+  - pytest 实测 **291 passed + 5 skipped**（35.47s 全绿）→ **glm 的 291 正确**·「293」为旧口径（差异 2·非回归·发版回归对齐口径）
+  - `.outlet-metrics` **已存在于 ai_qa.css**（Grep 证实·401371b ③z3b P2-1 已修）→ **glm 补债为过时信息·disagree**
+  - **PRM-07 执行侧残余属实**（tools.js:617-622 白名单只对 `source==='preset' && /行政区/` 生效·FC 直供非 preset 边界绕过）→ **Codex 对·glm「已根治」仅覆盖数据侧**
+  - flywheel_audit.py:7 注释 25 vs 26 属实
+- **下一步安排定稿**（cb-journal CB-17 章节）：
+
+```
+P0（用户·当前）整体验收：todo「整体验收清单」浏览器肉眼验证 + 记 3 观感（观点卡干货感/热点五档可读性/setTerrain 地势感）
+P1（发版门）发版就绪度回归：pytest 全量（291 passed + 5 skipped 基线）+ validate（含 outlet_fields/skill_params）+ link_checkup 20/20 + eval 复采（带 session）+ B3 三连（判据 = fail 集 == {PRM-03/04/07}）+ RST-L06 三连 + 三路径观点卡浏览器抽验 + flywheel 注释对齐（25→26）
+P1（预检）PRM backlog CB 预检（仅预检不实施）：B3 取证确认 fail 集合 → PRM-03/04 stale-tool 修复覆盖核实（center ask_user 正确·非改代码）→ PRM-07 执行侧两候选收敛（白名单补齐 vs request_upload 强化）→ 回归通过后实施
+P2（回归后）P3-4 地点联动（出口闭环·微观落点粗略→精确）：复用 geo_label·先盘点消费方·分开 commit 先验后推
+P2（回归后）P3-1 依赖图（零红线）：DAG 纯函数·不交 LLM·与 P3-4 分开 commit
+P3（文档）HOME/OFFICE 交接卡同步 + _cb-index 状态更新 + revision-log 归档
+P3（后置）P3-2 并行（降挂起）· KDE/DBSCAN 替代（发版后专题·先定产品定义）· 时间轴 manifest · 前端 JS 单测补课
+```
+
+### 🔄 下一步（P0 主线）
+
+- [ ] **整体验收**（用户浏览器·todo「整体验收清单」）：出口三段式（观点卡置顶/4 要点卡/三路径都出卡/需求强度等级/CSV 导出/geo_label）+ 热点图（五档橙系/legend 五档/setTerrain 连续曲面/网格柱互斥/无露底）+ 记 3 观感（观点卡干货感/热点五档可读性/setTerrain 地势感）
+- [ ] **发版就绪度回归**（P1·验收后）：pytest 全量 + validate + link_checkup + eval 复采 + B3 三连（fail 集判据）+ RST-L06 + 三路径观点卡抽验 + flywheel 注释对齐
+- [ ] **PRM backlog CB 预检**（P1·仅预检）：B3 取证 → PRM-03/04 修复覆盖核实 → PRM-07 执行侧方案收敛
+- [ ] **P3-4 地点联动 + P3-1 依赖图**（P2·回归后）
+- [ ] **P3 文档债**：HOME/OFFICE 交接卡同步 + flywheel 注释 + _cb-index
+
+---
+
 ## 📅 2026-08-05（情绪热点图重做专题 + 发版就绪度回归待续）
 
 ### 🔄 情绪热点图重做 ·「热力 vs 热点」专题（今日任务）

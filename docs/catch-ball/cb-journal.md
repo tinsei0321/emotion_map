@@ -6,6 +6,56 @@
 
 ---
 
+## CB-17 · 2026-08-08（进度同步 + 下一步安排 · 三组收敛定稿）
+
+### ① SCAN 摘要
+
+**本轮由 claude组 发起**（用户 08-06~08-07 暂停后回归·要求回顾 + 三组同步下一步）：claude组 先核实状态基线（git `cf5ef04` 同步·08-05 两专题 CB 全闭环·pytest/validate/link_checkup/eval/B3/RST-L06 基线）→ 落 [进度同步与下一步安排_讨论发起](discuss/进度同步与下一步安排_讨论发起_2026-08-08.md)（7 债 + 5 焦点 + 附 A prompt）→ 两组回应。
+
+**Codex**（[回应](discuss/进度同步与下一步安排_回应_Codex-GPT5_2026-08-08.md)）：快照事实核验全通过（代码 grep 逐项佐证）·焦点 1 agree + 补 B3 fail 集合快照判据（fail id 集 == {PRM-03/04/07}·任何新增 fail 即阻断）+ 三路径观点卡浏览器抽验（B1 补丁只被 pytest 未被 B3 覆盖）；焦点 2 agree（P3-1/P3-4 回归后启动·分开 commit·P3-2 降挂起）；焦点 3 **partial（P2→P1·仅预检不实施·先 B3 取证）**；焦点 4 agree 发版后专题 + 关键提醒「热点 = 空间密集 + 极性同质双条件」；补债 #8 HOME/OFFICE 交接卡过期 · #9 flywheel 注释 25→26 · #10 回归判据缺 fail 快照 · #11 前端 JS 单测补课。
+
+**glm组**（[回应](discuss/进度同步与下一步安排_回应_glm组_2026-08-08.md)）：快照基本准确（pytest 独立跑 **291 passed + 5 skipped** vs claude 声称 293·差 2 待核实；FINAL_TEMPLATE 2891B vs 2957B 口径；validate 34 vs 28 口径）·焦点 1 agree + 范围补 validate_outlet_fields/validate_skill_params/test_hotspot；焦点 2 **partial（P3-4 优先于 P3-1·出口闭环最后一块·微观落点粗略→精确）**；焦点 3 **agree 不排入（PRM-03/04 center ask_user 正确·PRM-07 已根治）**；焦点 4 agree 发版后专题；补债 #8 .outlet-metrics CSS 缺失。
+
+### ② 我方反评价（verify-before-accept · 关键争议核实）
+
+**独立核实证据**：
+- pytest 实测 **291 passed + 5 skipped**（35.47s 全绿）→ **glm 的 291 正确**·08-05「293」为旧口径（差异 2 条·非回归·待发版回归对齐口径）
+- `.outlet-metrics` **已存在于 `frontend/css/ai_qa.css`**（Grep 证实·401371b ③z3b P2-1 已修）→ **glm 补债 #8 为过时信息**（CB-16 Wave 3 旧报告）
+- **PRM-07 执行侧残余属实**（`frontend/js/ai_qa/tools.js:617-622`：白名单 `_isFixedAdmin` 只对 `source==='preset' && /行政区/.test(name)` 生效·FC 直供非 preset 单要素边界**绕过**）→ **Codex 对·glm「已根治」仅覆盖数据侧**（fixture 9→4 清理 + deriveAvailable）·执行侧缺口 = 08-04 已记「Codex ③w7 FC boundary 残余 P2」未解
+- flywheel_audit.py:7 注释「25 例」 vs 实际 26（RST-L06 新增后未同步）→ **Codex 属实**
+
+**逐焦点判定**：
+
+| 焦点 | 判定 | 收敛 |
+|---|---|---|
+| 1 回归时机/范围 | **agree** 顺序（先验收→再回归·回归成本避免翻倍）·范围**合并两组补充** | B3 fail 集合快照判据（Codex）+ 三路径观点卡浏览器抽验（Codex）+ validate_outlet_fields/validate_skill_params/test_hotspot（glm）+ pytest 全量 + eval 带 session + flywheel 注释对齐 |
+| 2 P3 排期 | **partial·采纳 glm P3-4 优先** | P3-4 地点联动（出口闭环·北极星）优先于 P3-1 依赖图；P3-4 复用 geo_label 防第三套地点字段（Codex 提醒·防「字段字典漂移」同类坑）；P3-2 并行**维持后置·降挂起**（两组一致·`$n` 索引重构前置） |
+| 3 PRM 排期 | **采纳 Codex（P1 预检·不实施）·否 glm（不排入）** | PRM-07 执行侧残余实测属实·非「已根治」→ 须预检；PRM-03/04 **采纳 glm 洞察**（center ask_user 是正确行为·预检重点是修复生效/断言口径·非改代码）·实施放回归通过后 |
+| 4 长期算法 | **agree** 发版后专题 | + 采纳 Codex「热点 = 空间密集 + 极性同质 双条件」产品定义（先定义再选型·DBSCAN 聚空间位置非 score 分布） |
+| 5 补充异议 | 快照核验通过·**disagree glm 债 #8** | pytest 291 为实（旧 293 口径）·采纳 Codex #8/9/10/11 + glm validate 范围补充·**glm #8 .outlet-metrics CSS 已存在 → disagree（事实错误/过时）** |
+
+**无承重红线异议**：全部建议在四态出口 / finalStep D019 / diagnose 永不动 / 追踪编号 红线之外。
+
+### ③ 行动（下一步安排定稿 · 写入 todo 08-08 段）
+
+```
+P0（用户·当前）整体验收：todo「整体验收清单」浏览器肉眼验证 + 记 3 观感（观点卡干货感/热点五档可读性/setTerrain 地势感）
+P1（发版门）发版就绪度回归：pytest 全量（291 passed + 5 skipped 基线）+ validate（28+ 含 outlet_fields/skill_params）+ link_checkup 20/20 + eval 复采（带 session）+ B3 三连（判据 = fail 集 == {PRM-03/04/07}·不新增即过）+ RST-L06 三连 + 三路径观点卡浏览器抽验 + flywheel 注释对齐（25→26）
+P1（预检）PRM backlog CB 预检（仅预检不实施）：B3 取证确认 fail 集合 → PRM-03/04 stale-tool 修复覆盖核实（center ask_user 正确·非改代码）→ PRM-07 执行侧两候选收敛（白名单补齐 vs request_upload 强化）→ 回归通过后实施
+P2（回归后）P3-4 地点联动（出口闭环·微观落点粗略→精确）：复用 geo_label·先盘点消费方·分开 commit 先验后推
+P2（回归后）P3-1 依赖图（零红线）：DAG 纯函数·不交 LLM·与 P3-4 分开 commit
+P3（文档）HOME/OFFICE 交接卡同步 + _cb-index 状态更新 + revision-log 归档
+P3（后置）P3-2 并行（降挂起·待 EMC 规模化 + $n 索引重构）· KDE/DBSCAN 替代（发版后专题·先定产品定义）· 时间轴 manifest · 前端 JS 单测补课（下轮 SCAN 关注）
+```
+
+### ④ 状态/新发现
+
+- **CB-17 闭环**：三组进度同步完成 · 下一步安排定稿（整体验收 → 发版回归 → PRM 预检 + P3-4 地点联动 → 后置项）
+- **新 learning 候选**（PRM-07 分歧教训）：评估方「已根治」判定须覆盖**执行侧**（不只数据侧/deriveAvailable）——白名单/门控类修复要追全消费路径（本例 FC 直供边界绕过 preset 白名单）
+- **下轮 SCAN 关注**（两组建议合并）：前端 JS 单测补课（result-struct/setTerrainDEM/hotspot legend e2e-seam 直测）· PRM fail 集合收敛轨迹（{PRM-03/04/07}→0）· 三路径观点卡稳定性 · 整体验收后用户观感（SCAN 第七轴采集）
+
+---
+
 ## CB-16 · 2026-08-03（出口深化讨论 · 发起）
 
 ### ① SCAN 摘要

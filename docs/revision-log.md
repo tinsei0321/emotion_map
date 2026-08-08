@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月05日）** · 本节按板块分组、组内倒序；最新工作 = **出口三段式专题（P0 观点先行 + P1 指标细化 + P2 地点 scale·CB 全流程）+ 续作发版就绪度回归**（分支 `fix/emc-buglog`·未推·待 commit）。最近：
+> 📍 **最新动态（08月08日）** · 本节按板块分组、组内倒序；最新工作 = **CB-17 进度同步 + 下一步安排定稿**（用户 08-06~08-07 暂停后回归·三组收敛·已推 `ce850a3`）。最近：
+>
+> - **08-08 CB-17 进度同步 + 下一步安排（用户意图：暂停 2 天后回归·回顾进度 + 三组同步下一步）**：claude组 先核实状态基线（git `cf5ef04` 同步·08-05 两专题 CB 全闭环·验证基线）→ 落 [讨论发起](catch-ball/discuss/进度同步与下一步安排_讨论发起_2026-08-08.md)（7 债 + 5 焦点 + 附 A prompt·`ce850a3` 已 push）→ **两组回应 + claude组 反评价收敛**：① pytest 实测 **291 passed + 5 skipped**（glm 核实·旧「293」口径差异 2·非回归）② PRM-07 **执行侧残余实测属实**（tools.js:617-622 白名单只对 preset+行政区·FC 直供边界绕过·Codex 对）③ `.outlet-metrics` CSS 已存在（glm 补债为过时·disagree）④ **下一步定稿**：整体验收（P0·用户）→ 发版就绪度回归（P1·B3 fail 集判据 {PRM-03/04/07} + 三路径观点卡抽验 + validate 范围补）→ PRM backlog CB 预检（P1·仅预检）→ P3-4 地点联动（优先·出口闭环）+ P3-1 依赖图（P2）→ 后置项（P3-2 并行降挂起 / KDE-DBSCAN 发版后专题·先定"热点=空间密集+极性同质"产品定义 / 时间轴 / 前端 JS 单测补课 / HOME-OFFICE 交接卡同步）。**§0 拓扑 N/A**（无新模块）。
 >
 > - **08-05 热点图重做 · P0/P1/P1.5（用户意图：情绪热点图重做·热力/热点定标·3D 连续曲面·CB 全流程）**：**P0 命名定标**（8 处：Gi\*→「显著聚集点」· spatial_hotspot→「代表地点」·「热力图」统一）。**P0 前置 Gi\* A/B 验证**（真实 L2 数据 2500 点）：**全 ns 实锤**——逐点/500m/200m 网格 Gi\* 全部无显著热点（Gi_Z 全在 ±1.07~1.26）·**根因 = score 是 5 级极性映射的 U 形多峰离散分布·与 Gi\* 连续正态假设不匹配**（glm 主因·网格化平滑 Z 但非解药）。**P1 软分级**（两组 P1 修正评估·弃 B 换 polarity_index/距离带 P2/长期 KDE/DBSCAN 重审）：`_classify_hotspot` 五档（hot/tend_hot/ns/tend_cold/cold·threshold 参数化默认 1.96/soft 1.0）+ `hotspot_tier` + 前端 `colorMode='hotspot'` 显著性符号层（弃 `_CLS_POL` 极性色·与 KDE 解耦）。**P1.5 setTerrain 连续曲面**（替代 fill-extrusion 千层饼）：`create_terrain_dem`（F_009·KDE→terrarium RGB·bounds WGS84）+ `/spatial/dem` 端点 + map.js `setTerrainDEM`（**draping 隔离**：不常驻+与 3D 网格柱互斥+sky 层）+ `generateTerrain3DForAI` + retired.md 退役登记（2D 等值线保留）。**实施审计（两组）**：P0+P1 可验收·P1.5 有 B1 阻断（setTerrain 无入口+EMC 未切）→ **修复**：B1（tools.js EMC 委托切 generateTerrain3DForAI）+ W1（符号层纯橙系）+ W2/W3（/geo/hotspot 透传 threshold + legend 五档）+ W6（tool_contracts/paradigm/stages 契约五档同步）+ 注释清理。**验证**：pytest **293 passed**·validate **28 passed**·DEM 解码 0~500m·括号全平衡。**待整体验收**。**§0 拓扑 N/A**。
 >
