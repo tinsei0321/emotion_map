@@ -9,12 +9,12 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-19**（P3-4 地点联动·实施完成·待两组复验） |
+| **当前 CB 轮次** | **CB-19**（PRM-03/04 修复 + P3-4 地点联动·均待两组复验） |
 | **上一轮** | CB-18（整体验收·全闭环通过·验收交两组走 CB） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
-| **当前分支** | `fix/emc-buglog` @ `9680dcc`（P3-4 实施·未 push·先验后推） |
-| **最新讨论** | `discuss/P3-4地点联动_复验发起_2026-08-08.md`（CB-19 补·两组复验 P3-4 + glm 回归事实修正） |
-| **最新进展** | **P1 发版回归绿**（glm：link_checkup 20/20 + B3 Run1/2 23/26 + RST-L06 PASS·Run3 API 慢排除·已入库 6c4bae5）·P3-4 地点联动实施完成（pytest 301）·待两组复验 → push → 发版候选 |
+| **当前分支** | `fix/emc-buglog` @ `083b78d`（PRM-03/04 修复·未 push·先验后推） |
+| **最新讨论** | `discuss/PRM修复_复验发起_2026-08-08.md` + `discuss/P3-4地点联动_复验发起_2026-08-08.md`（两组复验·先验后推） |
+| **最新进展** | **P1 发版回归绿**（glm Run1/2 双 88%·数据核对修正 95123fd）·**PRM-03/04 根治**（多工具错路由→buffer 重写·3 次问均 buffer·083b78d）+ **P3-4 地点联动**（prop_cols/buildZonalFc/动态标注·pytest 301）·待两组复验 → push → 发版候选 |
 | **接手文档** | `memories/repo/session-handoff.md`（08-05 交接卡·P3 文档债待同步 HOME/OFFICE）+ `_handoff/HOME.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 

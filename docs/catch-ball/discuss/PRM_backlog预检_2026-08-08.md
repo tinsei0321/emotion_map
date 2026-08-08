@@ -24,7 +24,7 @@
 - **根因**：LLM 的 FC 输出多工具（如 `[lookup_place, merge]`）时，orchestrate 直接走 `runAllToolCalls`（harness.js:1126 `_allToolCalls.length > 1`）→ **绕过 deriveMissingParams 里的 G5 路由修正**（:1529）→ 「周边 Nm 情绪」被错路由成 merge/lookup_place。
 - **补充**：G5 修正条件 `!/(叠|合并|裁|筛选)/.test(q)` 排除「合并」——但问句本身无「合并」词·是 LLM 错路由·不应被该条件排除。
 
-**修复方案（待 CB·承重 harness）**：在 orchestrate 分流前（:1126 runAllToolCalls 之前）加确定性路由修正——问句含「周边/附近/半径 Nm + 情绪/点/分布」且无「对比」→ 强制 buffer（无论 FC 单/多工具）。**先扩 eval（「周边 Nm 情绪→buffer」路由断言）+ 两组预检**（承重红线区·一次一处）。
+**✅ 已修复（08-08·commit `083b78d`·未 push）**：G5 路由修正（harness.js:1529）加 `_allToolCalls` 重写——问句命中「周边 Nm 情绪」且 `_allToolCalls.length > 1` → 重写为 buffer 单 call（对齐 PRM-07/10/08 多 call 重写模式）+ 去掉 `/(合并)/` 排除（问句无「合并」词时不该被排除）。**验证**：浏览器复现「大南门·二马路滨江片区周边 300 米」3 次问**全部 buffer/ask_user·绝不 merge**（修复前错路由 merge）+ `verify_prm03_fix.py` 守卫 + pytest 301 零回归。**待两组复验后 push**。
 
 ### PRM-07 · 法定功能区白名单执行侧 —— **确认残余（dict 直通）**
 
