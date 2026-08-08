@@ -9,12 +9,12 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-19b**（发版回归全面测试·三组完成·**发版候选通过**） |
+| **当前 CB 轮次** | **CB-19c**（5115d7c 黑名单修复复验·两组通过·**发版候选确认**） |
 | **上一轮** | CB-18（整体验收·全闭环通过·验收交两组走 CB） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
-| **当前分支** | `fix/emc-buglog` @ `5115d7c`（黑名单误伤修复·与 origin 同步） |
-| **最新讨论** | `discuss/发版回归全面测试_结果_{claude 组或 glm 组或 Codex}_2026-08-08.md`（三组结果·汇总收敛） |
-| **最新进展** | **发版候选通过**：claude B3 24/26（92%）+ glm 条件绿 + Codex T6/T8 PASS·Codex T7 阻断（黑名单误伤龙泉）已修复 5115d7c·复测 PASS·fail 集判据 {PRM-03/04} 达成·剩余 fail 均已知/方差 |
+| **当前分支** | `fix/emc-buglog` @ `12aa1f9`（P2-2 boundaryLabel·与 origin 同步） |
+| **最新讨论** | `discuss/5115d7c黑名单修复_复验回应_{Codex 或 glm组}_2026-08-08.md`（两组通过·P2 建议入 backlog） |
+| **最新进展** | **CB-19 全闭环·发版候选通过（两组确认）**：B3 24/26（92%）·黑名单误伤已修（5115d7c·复验通过）·P2-2 boundaryLabel 已修（12aa1f9）·剩余 fail 均已知/方差 |
 | **接手文档** | `memories/repo/session-handoff.md`（08-05 交接卡·P3 文档债待同步 HOME/OFFICE）+ `_handoff/HOME.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 
