@@ -145,6 +145,38 @@ push 后：补 B3 快照（Codex·判据 {PRM-03/04/05/07}·覆盖 9680dcc/083b7
 
 ---
 
+## CB-19c · 2026-08-08（5115d7c 黑名单修复复验 · 两组通过）
+
+### ① SCAN 摘要
+
+claude 修复 Codex T7 阻断（`5115d7c`·黑名单只拦单要素）后发复验（`5115d7c黑名单修复_复验发起_2026-08-08.md`·用户要求落正式文档+推送）→ 两组评估。
+
+**Codex**（[回应](discuss/5115d7c黑名单修复_复验回应_Codex-GPT5_2026-08-08.md)）：**可接受**——T7 多步链执行成功（浏览器实测 exit=0·「两步操作已全部完成·抽取西陵区」）+ 小溪塔单要素仍拒识（verify_prm57 PASS）+ 前后端一致 + 零回归。**P2 建议**：① 多要素全黑名单增强（堵漏拦·~5 行）② **zonal handler `boundaryLabel: String(params.boundary)` 改取 `features[0].properties.name`**（治 `[object Object]`·正是 claude B3 里 PRM-07 偶发 fail 的方差源·改善 LLM 转述忠实度）③ verify_prm57 PRM-07 断言加严（防 LLM 弱化转述误判）。
+
+**glm组**（[回应](discuss/5115d7c黑名单修复_复验回应_glm组_2026-08-08.md)）：**通过**——前后端 `length!==1`/`len!=1` 条件正确·T7 多要素放行 + 小溪塔单要素拒识（Python 6 场景模拟前后端各 6 例全 OK）·**漏拦风险低**（LLM 构造多要素法定功能区极罕见 + deriveAvailable 白名单 + preset fixture 三重保险）·pytest 303 零回归。
+
+### ② 我方反评价（verify-before-accept）
+
+- **两组一致通过**：5115d7c 修复正确·T7 阻断解除·发版候选通过判定维持
+- **采纳 Codex P2 建议（记入 backlog·非阻断）**：
+  - P2-1 多要素全黑名单增强（`feats.every` 全命中才拦·~5 行+单测）——堵漏拦·ROI 低但堵住（glm 判 P3·Codex 判 P2·取中 P2）
+  - P2-2 **`boundaryLabel` 取 features[0].properties.name**（治 `[object Object]`·**改善 LLM 转述忠实度·治 PRM-07 偶发 fail 方差源**）——**本修复高价值·值得做**
+  - P2-3 verify_prm57 PRM-07 断言加严（加「法定功能区」关键词·防 LLM 弱化转述误判）
+- **用户指示**：下轮分派两组任务时带「优化流程」prompt（cb-must-materialize-docs 已记）
+
+### ③ 行动
+
+- 5115d7c 复验通过·CB-19c 闭环
+- P2 建议记入 backlog（P2-2 boundaryLabel 高价值·建议近期做）
+- 下轮分派带优化流程 prompt
+
+### ④ 状态/新发现
+
+- **CB-19 全部闭环**：整体验收 → 修复 → 深读 → 发版回归全面测试 → 黑名单修复复验 → **发版候选通过（两组确认）**
+- **新 learning**：`String(boundary)` 对 dict 产 `[object Object]`·LLM 转述不可读 → 治 PRM-07 偶发 fail 的方差（Codex 发现·P2-2）
+
+---
+
 ## CB-19b · 2026-08-08（发版回归全面测试 · 三组汇总收敛 · 发版候选）
 
 ### ① SCAN 摘要

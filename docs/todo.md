@@ -70,11 +70,18 @@ P3（后置）P3-2 并行（降挂起）· KDE/DBSCAN 替代（发版后专题·
 - **基建修复 4 commit**（三组并发必需）：端口隔离 3dc0a1c + 后台 PATH fdc1c1d + serve 断连 76b16eb + PRM-07 文案 2f9965f
 - **发版候选判定：通过**（T7 阻断已修·fail 集判据达成·剩余 fail 均已知/方差）
 
+### ✅ CB-19c 5115d7c 黑名单修复复验通过（两组确认）
+
+- **Codex + glm 均通过**：T7 多步链阻断解除（执行成功）+ 小溪塔单要素仍拒识 + 前后端一致 + pytest 303 零回归·漏拦风险低（三重保险）
+- **采纳 Codex P2 建议入 backlog**：P2-1 多要素全黑名单增强 · **P2-2 boundaryLabel 取 features[0].properties.name（治 `[object Object]`·治 PRM-07 偶发 fail 方差源·高价值）** · P2-3 verify_prm57 断言加严
+- **CB-19 全部闭环**：整体验收 → 修复 → 深读 → 发版回归全面测试 → 黑名单复验 → **发版候选通过（两组确认）**
+
 ### 🔄 下一步（发版后）
 
+- [ ] **P2-2 boundaryLabel 取 features[0].properties.name**（高价值·治 `[object Object]`·近期做）
 - [ ] **P3-1 依赖图**（P2·发版后）
 - [ ] **P3 文档债**：HOME/OFFICE 交接卡同步 + flywheel 注释 + _cb-index
-- [ ] **后置**：PRM-07 空对象场景（LLM 方差）· RST-L06 Flash 方差 · KDE/DBSCAN 替代 Gi* · 时间轴 manifest
+- [ ] **后置**：P2-1 多要素全黑名单 · P2-3 verify 断言加严 · PRM-07 空对象场景 · RST-L06 Flash 方差 · KDE/DBSCAN 替代 Gi* · 时间轴 manifest
 
 ---
 
