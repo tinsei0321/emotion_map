@@ -76,12 +76,18 @@ P3（后置）P3-2 并行（降挂起）· KDE/DBSCAN 替代（发版后专题·
 - **采纳 Codex P2 建议入 backlog**：P2-1 多要素全黑名单增强 · **P2-2 boundaryLabel 取 features[0].properties.name（治 `[object Object]`·治 PRM-07 偶发 fail 方差源·高价值）** · P2-3 verify_prm57 断言加严
 - **CB-19 全部闭环**：整体验收 → 修复 → 深读 → 发版回归全面测试 → 黑名单复验 → **发版候选通过（两组确认）**
 
-### 🔄 下一步（发版后）
+### ✅ 收尾完成（P2-2 + P2-3 + 文档债）
 
-- [ ] **P2-2 boundaryLabel 取 features[0].properties.name**（高价值·治 `[object Object]`·近期做）
-- [ ] **P3-1 依赖图**（P2·发版后）
-- [ ] **P3 文档债**：HOME/OFFICE 交接卡同步 + flywheel 注释 + _cb-index
-- [ ] **后置**：P2-1 多要素全黑名单 · P2-3 verify 断言加严 · PRM-07 空对象场景 · RST-L06 Flash 方差 · KDE/DBSCAN 替代 Gi* · 时间轴 manifest
+- **P2-2 boundaryLabel 取 features[0].properties.name**（`12aa1f9`·治 `[object Object]`·LLM 转述不可读·zonal/rank/area_stats/compare 4 处）
+- **P3 文档债**（`76cfd2d`）：HOME/OFFICE 交接卡同步到 08-08 + cb-index 到 CB-19c
+- **P3-1 依赖图评估**：无独立消费者（并行未实施）→ 随 P3-2 一起·不单独推进
+- **P2-3 verify_prm57 断言加严**（`a331568`·去宽泛「上传」·加「法定功能区/标准边界」·诚实暴露 PRM-07 空对象真实残余）
+
+### 🔄 下一步（后置项）
+
+- [ ] **PRM-07 空对象根治**（P2-3 暴露：LLM 传空对象 boundary·黑名单无法拦·zonal「无数据」误导用户·需走 CB·触「用户上传层不受限」权衡）
+- [ ] **P2-1 多要素全黑名单增强** · **P2-3 后续** · RST-L06 Flash 方差 · KDE/DBSCAN 替代 Gi* · 时间轴 manifest
+- [ ] **P3-2 并行 + P3-1 依赖图**（`$n` 索引重构前置·规模后启动）
 
 ---
 
