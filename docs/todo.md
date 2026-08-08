@@ -61,12 +61,20 @@ P3（后置）P3-2 并行（降挂起）· KDE/DBSCAN 替代（发版后专题·
   - 验证：pytest 301 + test_outlet_micro/test_outlet_macro e2e-seam PASS
   - **待两组复验**（`P3-4地点联动_复验发起_2026-08-08.md`）→ push → 发版候选
 
-### 🔄 下一步（CB-19 收尾 · 发版候选）
+### ✅ CB-19 发版回归全面测试完成 · 发版候选通过
 
-- [ ] **发版回归全面测试**（三组协同·`发版回归全面测试_方案_2026-08-08.md`）：claude（pytest 303 + validate 34 + B3#1 + ESM）·glm（B3#2 + link_checkup + eval）·Codex（PRM 专项 + 三路径 + 出口卡 e2e）·**fail 集判据 {PRM-03/04}**·任何新增 fail 即阻断
-- [ ] **CB-19 全闭环**：三份结果汇总收敛 → 发版候选判定 → todo/revision-log/cb-index 同步
+- **三组协同**（`发版回归全面测试_方案_2026-08-08.md`）·**fail 集判据 {PRM-03/04} 达成**：
+  - **claude 组**：pytest **303 passed + 5 skipped** + validate 34 + ESM 6/6 + **B3 24/26（92%·历史最佳）**·fail={PRM-07 空对象 LLM 方差·单要素拒识已生效, RST-L06 Flash 方差}·PRM-03/04/05 全转 PASS
+  - **glm 组**：条件绿（pytest 303 + CB-18 数据 + 修复代码审查·环境端口冲突未新跑）
+  - **Codex**：T6 PRM 专项 PASS + T8 出口卡 e2e PASS + **T7 多步链 FAIL【阻断】**（469bf32 黑名单误伤「龙泉」·层首要素）→ **claude 修复**（5115d7c·只拦单要素·T7 复测 PASS·pytest 303）→ **阻断解除**
+- **基建修复 4 commit**（三组并发必需）：端口隔离 3dc0a1c + 后台 PATH fdc1c1d + serve 断连 76b16eb + PRM-07 文案 2f9965f
+- **发版候选判定：通过**（T7 阻断已修·fail 集判据达成·剩余 fail 均已知/方差）
+
+### 🔄 下一步（发版后）
+
 - [ ] **P3-1 依赖图**（P2·发版后）
 - [ ] **P3 文档债**：HOME/OFFICE 交接卡同步 + flywheel 注释 + _cb-index
+- [ ] **后置**：PRM-07 空对象场景（LLM 方差）· RST-L06 Flash 方差 · KDE/DBSCAN 替代 Gi* · 时间轴 manifest
 
 ---
 

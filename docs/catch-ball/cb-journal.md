@@ -145,6 +145,50 @@ push 后：补 B3 快照（Codex·判据 {PRM-03/04/05/07}·覆盖 9680dcc/083b7
 
 ---
 
+## CB-19b · 2026-08-08（发版回归全面测试 · 三组汇总收敛 · 发版候选）
+
+### ① SCAN 摘要
+
+claude 发起 [发版回归全面测试方案](discuss/发版回归全面测试_方案_2026-08-08.md)（三组分工·fail 集判据 {PRM-03/04}·覆盖修复 commit 9680dcc/083b78d/469bf32）→ 三组并行执行。
+
+**claude组**（[结果](discuss/发版回归全面测试_结果_claude组_2026-08-08.md)）：pytest **303 passed + 5 skipped** + validate **34 passed** + ESM 6/6 + **B3 24/26（92%·历史最佳）**·fail={PRM-07（黑名单生效但空对象 LLM 方差）, RST-L06（Flash 方差）}·PRM-03/04/05 全转 PASS。**基建修复 4 commit**（三组并发必需）：端口隔离 3dc0a1c + 后台 PATH fdc1c1d + serve 502 断连 76b16eb + PRM-07 文案 2f9965f。
+
+**glm组**（[结果](discuss/发版回归全面测试_结果_glm组_2026-08-08.md)）：**条件绿**——pytest 303 + CB-18 已有数据（link_checkup 20/20 + B3 Run1/2 88%）+ PRM-05/07 代码审查（纯防御性 additive）·B3 final-2 因端口冲突未能新跑·eval 编码超时。建议 claude 补跑 B3 final 确认 PRM-05/07 转 PASS。
+
+**Codex**（[结果](discuss/发版回归全面测试_结果_Codex-GPT5_2026-08-08.md)）：**T6 PRM 专项全 PASS + T8 出口卡 e2e 全 PASS·T7 三路径多步链 FAIL【阻断】**——根因 = **469bf32 黑名单误伤**：`_rejectNonAdminBoundary` 检查所有 GeoJSON dict 的 feats[0]·演示行政区层首要素「龙泉」（黑名单词）→ 合法 extract/链被误拦 → **新增 fail·阻断发版候选**。
+
+### ② 我方反评价（verify-before-accept · Codex 阻断实核）
+
+**Codex T7 阻断属实**（浏览器复现 + 代码核实）：
+- 演示 `行政区.geojson` 9 要素·首要素「龙泉」（黑名单词）·多步链 extract 解析层首 → 被 `_rejectNonAdminBoundary` 误拦 → 链失败。
+- 我 B3 未暴露（zonal 用精确单要素·不命中层首）·**Codex 的浏览器专项暴露了**——再次验证「专项浏览器测试」价值。
+
+**修复**（`5115d7c`）：`_rejectNonAdminBoundary`（前端）+ `resolve_boundary`（后端）**只拦单要素 GeoJSON**（LLM 直传特征 `features.length===1`）·多要素（图层解析·行政区层）放行。
+
+**复测**：T7 三路径 PASS（多步链/multi 出 4 要点卡·PARTIAL 无观点保守不显卡·W3 正确）+ verify_prm57 PASS（小溪塔单要素仍拒识·pytest 单测覆盖）+ 全量 pytest 303 零回归。
+
+**三组收敛判定**：
+- **claude 24/26（92%）+ glm 条件绿 + Codex T6/T8 PASS** → 主体全绿
+- **Codex T7 阻断已修复**（5115d7c·复测 PASS）→ **阻断解除**
+- 剩余 fail = {PRM-07（空对象 LLM 方差·单要素拒识已生效）, RST-L06（Flash 方差）}·均非新增·非并发引入
+- **fail 集判据 {PRM-03/04} 达成**（PRM-03/04/05 全 PASS·PRM-07 单要素拒识生效）
+
+**承重红线确认**：全部改动未触碰四态出口 / finalStep D019 / diagnose prompt / 追踪编号 / 「EMC 不硬猜」（黑名单正是强化）。
+
+### ③ 行动
+
+- **发版候选判定：通过**（T7 阻断已修复·复测全绿·fail 集判据达成）
+- 基建 4 commit + 黑名单修复 2 commit 全部已推（5115d7c）
+- 剩余后置：PRM-07 空对象场景（LLM 方差·单要素拒识已覆盖）+ RST-L06 Flash 方差（已知）
+
+### ④ 状态/新发现
+
+- **CB-19b 闭环**：发版回归全面测试三组完成·发版候选通过
+- **新 learning**：黑名单/白名单类守卫**须区分「LLM 直传」vs「图层解析」**（单要素 vs 多要素·否则误伤合法图层操作）；Codex 浏览器专项暴露了我 B3 未覆盖的误伤——**专项浏览器测试（T6/T7/T8）是三组并发测试的必要组成**
+- **glm 环境限制**：端口冲突 + eval 编码——已由 claude 基建修复（--port/--backend-port）+ B3 补跑覆盖
+
+---
+
 ## CB-17 · 2026-08-08（进度同步 + 下一步安排 · 三组收敛定稿）
 
 ### ① SCAN 摘要

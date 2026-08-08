@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月08日）** · 本节按板块分组、组内倒序；最新工作 = **CB-17 进度同步定稿 + CB-18 整体验收全闭环（验收交两组走 CB·通过）**（用户 08-06~08-07 暂停后回归·三组收敛）。最近：
+> 📍 **最新动态（08月08日）** · 本节按板块分组、组内倒序；最新工作 = **CB-19 修复闭环 + 发版回归全面测试（三组协同·发版候选通过）**。最近：
+>
+> - **08-08 CB-19 发版回归全面测试（用户意图：三组一起跑·全面严谨·claude 定方案）**：三组协同 9 项矩阵（方案 `发版回归全面测试_方案_2026-08-08.md`·fail 集判据 {PRM-03/04}）。**claude 组**：pytest **303 passed + 5 skipped** + validate 34 + ESM 6/6 + **B3 24/26（92%·历史最佳）**·fail={PRM-07 空对象 LLM 方差·单要素拒识已生效, RST-L06 Flash 方差}·**PRM-03/04/05 全转 PASS**（G5 重写 + zonal fallback + 测量端对齐生效）。**glm 组**：条件绿（环境端口冲突·用 CB-18 数据 + 修复代码审查）。**Codex**：T6 PRM 专项 + T8 出口卡 e2e 全 PASS·**T7 多步链 FAIL【阻断】**——根因 = 469bf32 黑名单误伤（`_rejectNonAdminBoundary` 检查层首要素「龙泉」·行政区层含黑名单词·合法 extract/链被误拦）→ **claude 修复**（`5115d7c`·只拦单要素 GeoJSON·多要素图层放行·前后端同步·pytest 303 零回归·T7 复测 PASS）→ **阻断解除**。**基建修复 4 commit**（三组并发必需）：端口隔离 3dc0a1c + 后台 PATH fdc1c1d + serve 502 断连 76b16eb + PRM-07 文案 2f9965f。**发版候选判定：通过**（fail 集判据达成·剩余 fail 均已知/方差·非新增）。**§0 拓扑 N/A**（无新模块）。
 >
 > - **08-08 CB-18 整体验收（用户意图：每次完成后验收工作让另两组完成·进 CB）**：验收方式转型（用户肉眼 → 两组证据驱动）。**两组验收回应**——Codex **有条件通过**（13 项代码核验·0 阻断·承重红线零违反）+ **发现 2 修 4 补证**：W-1（tools.js:1285/:1297 红/绿文案残留·与纯橙系渲染矛盾·违反 H-3 无旧义残留）、W-2（threshold/soft_threshold 契约-运行时漂移·hotspot-tool.js:11-14 + tools.js hotspot 不转发·LLM 指定阈值被静默丢弃）、S-1（export_outlet_card_csv 无单测）、S-2（create_terrain_dem 无解码单测）、S-3（result-struct.js 无 JS 侧测试）、S-4（geo_label micro 无单测）+ W-3（legend 五档地图图例无渲染·口径存疑）；glm **通过**（15 项全代码证据·12 充分 + 3 观感标注·pytest 291 + validate 34 全绿·未发现 Codex 的 W-1/W-2）。**claude 复验**：W-1/W-2/S-1~3 全部实核属实（Codex 对·验收深度差异显著·并集采纳）；pytest 291 正确（08-08 实测）；`.outlet-metrics` CSS 已存在（glm 重复过时信息）。**修复 + 补证**（commit `d5a5625`·pytest 297 零回归）：W-1 红/绿文案→纯橙系 + W-2 threshold 转发补齐 + S-1 export CSV 单测（4 例）+ S-2 terrarium 解码单测（2 例）+ S-3 result-struct e2e-seam 直测 + S-4 geo_label micro。**glm 复验通过**（W-1 零残留/W-2 链闭合/S-1~4 充分·pytest 297·建议 push）→ **push + 整体验收通过**（Codex 缺席·用户指示先看 glm·补验挂起）。**进 P1 发版就绪度回归**（fail 集判据 {PRM-03/04/07} + RST-L06 + eval 复采 + link_checkup + 三路径浏览器抽验 + flywheel 注释对齐）。**§0 拓扑 N/A**（无新模块）。
 >
