@@ -9,12 +9,12 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-19c**（5115d7c 黑名单修复复验·两组通过·**发版候选确认**） |
-| **上一轮** | CB-18（整体验收·全闭环通过·验收交两组走 CB） |
+| **当前 CB 轮次** | **CB-20**（PRM-07 空对象根治预检·待两组回应） |
+| **上一轮** | CB-19（全闭环·发版候选通过·含 CB-19c 黑名单复验） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
-| **当前分支** | `fix/emc-buglog` @ `12aa1f9`（P2-2 boundaryLabel·与 origin 同步） |
-| **最新讨论** | `discuss/5115d7c黑名单修复_复验回应_{Codex 或 glm组}_2026-08-08.md`（两组通过·P2 建议入 backlog） |
-| **最新进展** | **CB-19 全闭环·发版候选通过（两组确认）**：B3 24/26（92%）·黑名单误伤已修（5115d7c·复验通过）·P2-2 boundaryLabel 已修（12aa1f9）·剩余 fail 均已知/方差 |
+| **当前分支** | `fix/emc-buglog` @ `39a040a`（与 origin 同步） |
+| **最新讨论** | `discuss/PRM07空对象根治_预检_2026-08-08.md`（CB-20·boundary 空对象 → request_upload·方案 A/B/C 待两组收敛） |
+| **最新进展** | **CB-19 全闭环·发版候选通过**（P2-2/P2-3/文档债已收尾）·**CB-20 启动**：P2-3 暴露 PRM-07 空对象真实残余（LLM 传空对象→zonal「无数据」误导用户）·根治方案预检已发起 |
 | **接手文档** | `memories/repo/session-handoff.md`（08-05 交接卡·P3 文档债待同步 HOME/OFFICE）+ `_handoff/HOME.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 
