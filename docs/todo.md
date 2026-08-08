@@ -61,13 +61,12 @@ P3（后置）P3-2 并行（降挂起）· KDE/DBSCAN 替代（发版后专题·
   - 验证：pytest 301 + test_outlet_micro/test_outlet_macro e2e-seam PASS
   - **待两组复验**（`P3-4地点联动_复验发起_2026-08-08.md`）→ push → 发版候选
 
-### 🔄 下一步
+### 🔄 下一步（CB-19 收尾 · 发版候选）
 
-- [ ] **P3-4 两组复验**（待回应）→ push 9680dcc → 发版候选
-- [ ] **PRM-07 dict 直通方案收敛**（CB-19·A/B/C 待两组）+ **PRM-03/04 已修待 B3 实证**（回归已证 fail 集 ⊆ 已知）
-- [ ] **P3-1 依赖图**（P2·回归后）
+- [ ] **发版回归全面测试**（三组协同·`发版回归全面测试_方案_2026-08-08.md`）：claude（pytest 303 + validate 34 + B3#1 + ESM）·glm（B3#2 + link_checkup + eval）·Codex（PRM 专项 + 三路径 + 出口卡 e2e）·**fail 集判据 {PRM-03/04}**·任何新增 fail 即阻断
+- [ ] **CB-19 全闭环**：三份结果汇总收敛 → 发版候选判定 → todo/revision-log/cb-index 同步
+- [ ] **P3-1 依赖图**（P2·发版后）
 - [ ] **P3 文档债**：HOME/OFFICE 交接卡同步 + flywheel 注释 + _cb-index
-- [ ] **Codex 补验**（恢复后）：W-2 全链 + S-3 边界 + 三路径 DOM 断言前置评估
 
 ---
 
