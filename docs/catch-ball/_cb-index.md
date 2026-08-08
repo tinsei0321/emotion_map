@@ -1,7 +1,7 @@
 # CB Index — Catch-Ball 统一入口
 
 > **读我**：claude组（Claude Code 开发主）+ Codex + glm组（ZCode + GLM 5.2）启动时读此文件，了解 CB 全貌。
-> **维护**：每轮 CB 完成后更新。最后更新：2026-08-01（CB-10·glm组 加入双阵营）。
+> **维护**：每轮 CB 完成后更新。最后更新：2026-08-08（CB-17·进度同步 + 下一步安排）。
 
 ---
 
@@ -9,13 +9,13 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-10**（EMC 修复工程·P0/P1 聚焦 + 族 A 主通道定型） |
-| **下一轮** | CB-11（glm组 加入后主通道验证） |
+| **当前 CB 轮次** | **CB-17**（进度同步 + 下一步安排·claude组 发起·待两组回应） |
+| **上一轮** | CB-16（出口深化 Wave 0-3 + ③w2~③w7 全闭环） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
-| **当前分支** | `fix/emc-buglog` @ `4930274` |
-| **最新 SCAN** | `scan/CB10-主通道决策评审_Codex-GPT5_2026-08-01.md` |
-| **最新反评价复核** | `scan/CB10-反评价二轮审核_Codex-GPT5_2026-08-01.md` |
-| **接手文档** | `_handoff/DEEPSEEK_ONBOARDING_2026-07-30.md` |
+| **当前分支** | `fix/emc-buglog` @ `cf5ef04`（08-06 复核·工作区干净·与 origin 同步） |
+| **最新讨论发起** | `discuss/进度同步与下一步安排_讨论发起_2026-08-08.md`（CB-17·附 A 两组 prompt） |
+| **最新进展** | 08-05 两专题 CB 全闭环（出口三段式 P0-P2 + 热点图 P0/P1/P1.5）·待整体验收 |
+| **接手文档** | `memories/repo/session-handoff.md`（08-05 交接卡）+ `_handoff/HOME.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 
 ## 快速开始
