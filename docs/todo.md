@@ -48,11 +48,24 @@ P3（后置）P3-2 并行（降挂起）· KDE/DBSCAN 替代（发版后专题·
   - **Codex 缺席标注**：glm 单组复验通过（用户指示「先只看 glm组」）·Codex 恢复后补验（W-2 全链 + S-3 边界 + DOM 断言前置评估）
   - 观感类（P0-1/P0-5/H-1/H-4·干货/地势感/无露底/console）标「可选用户复核」
 
-### 🔄 下一步（P1 主线 · 发版就绪度回归）
+### ✅ P1 发版回归绿 + P3-4 地点联动实施完成
 
-- [ ] **发版就绪度回归**：pytest 297 + validate 34（done·claude）+ eval 复采 81% PASS（done）+ 三路径观点卡抽验 PASS（done）+ link_checkup 20/20（**glm 分担·未回**）+ B3 三连（fail 集判据 {PRM-03/04/07}·**glm 分担·未回**）+ RST-L06 三连（**glm 分担·未回**）
-- [ ] **PRM backlog CB 预检**（P1·仅预检）：**已发起**（`PRM_backlog预检_2026-08-08.md`·CB-19）——PRM-03/04 修复链完整（③w4b·待 B3 实证 trace 取证）·PRM-07 dict 直通残余（resolve_boundary:174-185·str 已堵·方案 A/B/C 待两组收敛）→ 回归通过后实施
-- [ ] **P3-4 地点联动 + P3-1 依赖图**（P2·回归后）
+- **发版就绪度回归（绿）**：pytest 301（done·claude）+ validate 34 + eval 81% PASS + 三路径观点卡 PASS + **glm 分担全回**——link_checkup **20/20** + B3 **Run1/2 均 23/26（88%）**（fail ⊆ {PRM-03/04/05/07} 已知 backlog·RST-L06 PASS·成果范式 6/6）+ Run3 API 慢时段（21 timeout·trace 排除）·**回归绿·可进发版候选**
+  - **事实修正**：glm 报告「Run2=5/26」计数有误·实际 Run2=23/26（88%）·仅 Run3 API 慢
+  - **PRM-05 补入 fail 集判据**：{PRM-03/04/05/07}（boundary derive 方差·CB-12 起持续·非并发引入）
+- **P3-4 地点联动实施完成**（commit `9680dcc`·未 push·先验后推）：
+  - P3-4-1 zonal/rank prop_cols 放行 place_name/place_name_source/poi_names/poi_count（Gap B 核心杠杆）
+  - P3-4-2 buildZonalFc 焊地点字段透传
+  - P3-4-3 出口卡动态 limitations（按 source 诚实标注）+ micro 需求位置 POI 升级
+  - P3-4-4 _fmtRow place_name 优先
+  - 验证：pytest 301 + test_outlet_micro/test_outlet_macro e2e-seam PASS
+  - **待两组复验**（`P3-4地点联动_复验发起_2026-08-08.md`）→ push → 发版候选
+
+### 🔄 下一步
+
+- [ ] **P3-4 两组复验**（待回应）→ push 9680dcc → 发版候选
+- [ ] **PRM-07 dict 直通方案收敛**（CB-19·A/B/C 待两组）+ **PRM-03/04 已修待 B3 实证**（回归已证 fail 集 ⊆ 已知）
+- [ ] **P3-1 依赖图**（P2·回归后）
 - [ ] **P3 文档债**：HOME/OFFICE 交接卡同步 + flywheel 注释 + _cb-index
 - [ ] **Codex 补验**（恢复后）：W-2 全链 + S-3 边界 + 三路径 DOM 断言前置评估
 
