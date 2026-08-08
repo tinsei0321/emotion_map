@@ -215,11 +215,14 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
             return
         except Exception as e:                # 后端连不上
             msg = f'[proxy] backend unreachable: {e}'.encode('utf-8')
-            self.send_response(502)
-            self.send_header('Content-Type', 'text/plain; charset=utf-8')
-            self.send_header('Content-Length', str(len(msg)))
-            self.end_headers()
-            self.wfile.write(msg)
+            try:
+                self.send_response(502)
+                self.send_header('Content-Type', 'text/plain; charset=utf-8')
+                self.send_header('Content-Length', str(len(msg)))
+                self.end_headers()
+                self.wfile.write(msg)
+            except Exception:                 # 浏览器已断连·写响应崩（CB-19 B3 教训：连接中断致 serve 线程崩·静默吞）
+                pass
             return
         try:
             rheaders = list(resp.getheaders())
