@@ -9,12 +9,12 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-22**（L2 出向任务·**反评价收敛 + 架构定稿**·拆 A 出口卡引用/B 知识库查询·RAG 承接 CB-22c） |
-| **上一轮** | CB-21b（知识库构建·主体完成·L0+L1·305 passed）→ CB-20（全闭环） |
+| **当前 CB 轮次** | **CB-22b/22c 讨论发起**（知识库查询 B 路径 + RAG 向量化·承接 CB-22 架构定稿·待两组评估） |
+| **上一轮** | CB-22（L2 出向·反评价收敛+架构定稿）→ CB-21b（知识库构建·L0+L1）→ CB-20 |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
 | **当前分支** | `fix/emc-buglog`（与 origin 同步） |
-| **最新讨论** | `discuss/CB22-L2出口任务_反评价收敛_架构定稿_2026-08-09.md`（CB-22·三层消费链·A/B 路径拆分·体检-更新契约） |
-| **最新进展** | **CB-21b 知识库主体完成**·**CB-22 收敛定稿**：出口链路已通（CB-16）·真缺口=不引用知识库→A 路径（出口卡 kb_reference）+ B 路径（知识库查询·CB-22b）·RAG 承接 CB-22c |
+| **最新讨论** | `discuss/CB22b-知识库查询_讨论发起_2026-08-09.md` + `discuss/CB22c-RAG向量化_讨论发起_2026-08-09.md`（B 路径 query_knowledge_base + RAG 向量化） |
+| **最新进展** | **CB-22 架构定稿**（三层消费链·A/B 拆分）·**CB-22b/22c 启动**：知识库查询（L1.5 事实卡 + general 短路）+ RAG（embedding 选型 + 向量库·EMC 底层数据库） |
 | **接手文档** | `memories/repo/session-handoff.md`（08-05 卡·已过时·历史背景）+ `_handoff/HOME.md` + `OFFICE.md`（08-08 权威快照）+ `_handoff/CB恢复记忆prompt_2026-08-09.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 
