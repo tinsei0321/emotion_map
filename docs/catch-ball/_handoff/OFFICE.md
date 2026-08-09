@@ -16,8 +16,22 @@
 
 - [ ] `git pull`（拉取今日全部 push）
 - [ ] 读 HOME.md + 本卡 + cb-index（CB-20 最新）
-- [ ] **测试三组并行新规**（08-09 定）：测试任务改三组（claude组/codex组/glm组）并行分布式执行·claude组 拆解分配·持续提 CB 机制优化意见。**先发 `_handoff/CB环境自检prompt_三组并行_2026-08-09.md` 给两组自检环境**（收结论再分配任务）
-- [ ] 决定下一步：后置项（PRM-07 字段名覆盖 P2 / P2-1 多要素黑名单 / RST-L06 方差 / KDE-DBSCAN / 时间轴 / P3-2 并行）或用户新需求
+- [ ] **测试三组并行新规**（08-09 定）：测试任务改三组（claude组/codex组/glm组）并行分布式执行·claude组 拆解分配·持续提 CB 机制优化意见。
+- [ ] **两组环境自检已收**（08-09）：glm 7/7 OK 全能力·Codex 5 OK + 2 WARN（SessionStart hook 已补 `.codex/hooks.json`·多模态 Key 缺失→Codex 不承接多模态/OCR）。分配时按承接能力矩阵（下段）针对分配。
+
+## 三组承接能力矩阵（08-09 自检评估后定）
+
+| 测试类型 | claude组 | codex组 | glm组 |
+|---|---|---|---|
+| pytest 全量/单测回归 | ✅ 主责 | ✅ | ✅（41 passed 实测） |
+| B3 飞轮/e2e 浏览器 | ✅ 主责 | ✅（Playwright 1.60 已验） | ✅（chromium 可启动） |
+| trace 取证/根因定案 | ✅ | ✅（trace_query 可跑） | ✅ **强项**（trace.log 直读） |
+| 静态核验（代码级 file:line） | ✅ | ✅ 强项 | ✅ |
+| 多模态/OCR（讯飞/火山 Key） | ✅（Key 全） | ❌（Key 缺·不承接） | ⚠️ 需确认 |
+| MCP 视觉（vision-bridge） | ✅ | ⚠️（配置就绪未实测） | ⚠️ 需确认 |
+
+- **session 标签纪律**（glm 实测采）：`EMOTION_TRACE_SESSION` **仅 B3/e2e 浏览器用例带**（产 trace）；pytest 单测/静态核验不产 trace·**无需带**。分配任务时标注测试类型。
+- **端口隔离**：三组并发 B3 必用 `--port/--backend-port` 隔离 + `sys.executable`（8080/8000 已被 claude 占）。
 
 ## 关键文件速查
 

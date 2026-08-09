@@ -98,6 +98,8 @@
 2. **claude组 先验后推**：发起/预检文档（草案）可 push（供评估方读 + 跨环境同步）；**实施代码须两组检查通过后才 push**（先验后推·`先讨论再实施`）。
 3. 请求文档模板：`docs/catch-ball/_handoff/CB{NN}-{topic}预检*.md`（第一步读本地文件·第二步草案·第三步预检 N 问·第四步产 SCAN）。
 4. **测试任务三组并行（2026-08-09 新规）**：测试负载重、单靠人眼测难以为继 → **claude组 拆解测试任务、针对性分配三组（claude组/Codex/glm组）同时进行**；claude组 分发前先确认各组平台 Harness 环境就绪（Python/Playwright/API Key/trace/端口隔离·三组并发 B3 需 `--port/--backend-port` 隔离 + sys.executable）；claude组 持续提出 CB 机制优化意见（工作坊式先进性/流畅性/科学性）。[[cb-distributed-testing]]
+   - **三组环境就绪（08-09 自检）**：glm组 7/7 OK 全能力；Codex 5 OK + 2 WARN（SessionStart hook 已补 `.codex/hooks.json`·多模态 Key 缺失 → 多模态/OCR 类用例 Codex 不承接·claude组/glm 承接）。报告：`discuss/CB环境自检_回应_Codex-GPT5_2026-08-09.md` + `_handoff/CB环境自检_glm组_2026-08-09.md`
+   - **session 标签纪律（glm 实测·08-09 采）**：`EMOTION_TRACE_SESSION` **仅 B3/e2e 浏览器用例需要带**（走真实问答链路 FC→工具→finalStep·产 trace）；**pytest 单测/静态核验不产 trace·无需带**（glm 实测带 session 跑单测·trace 查询返 0 行）——分配任务时标注测试类型决定是否带标签。
 
 ## §6 Auto-Check 清单（/cb step 5 加载·数据驱动，CB-03 建议2）
 
