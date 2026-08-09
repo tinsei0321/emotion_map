@@ -9,12 +9,12 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-22b/22c 讨论发起**（知识库查询 B 路径 + RAG 向量化·承接 CB-22 架构定稿·待两组评估） |
-| **上一轮** | CB-22（L2 出向·反评价收敛+架构定稿）→ CB-21b（知识库构建·L0+L1）→ CB-20 |
+| **当前 CB 轮次** | **CB-22b/22c 反评价收敛定稿**（B 路径先行 + RAG Phase 0 阻塞验证·待执行） |
+| **上一轮** | CB-22（L2 出向·架构定稿）→ CB-21b（知识库构建·L0+L1）→ CB-20 |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
 | **当前分支** | `fix/emc-buglog`（与 origin 同步） |
-| **最新讨论** | `discuss/CB22b-知识库查询_讨论发起_2026-08-09.md` + `discuss/CB22c-RAG向量化_讨论发起_2026-08-09.md`（B 路径 query_knowledge_base + RAG 向量化） |
-| **最新进展** | **CB-22 架构定稿**（三层消费链·A/B 拆分）·**CB-22b/22c 启动**：知识库查询（L1.5 事实卡 + general 短路）+ RAG（embedding 选型 + 向量库·EMC 底层数据库） |
+| **最新讨论** | `discuss/CB22b-22c_反评价收敛_定稿_2026-08-09.md`（B 路径 6 类事实卡/三层查询 + RAG 火山 multimodal=图片纠正/Phase 0） |
+| **最新进展** | **CB-22 架构定稿**·**CB-22b/22c 定稿**：B 路径不依赖 embedding 先行·RAG Phase 0 需配 key（实际阻塞）·glm 纠正火山 multimodal=图片非文本 |
 | **接手文档** | `memories/repo/session-handoff.md`（08-05 卡·已过时·历史背景）+ `_handoff/HOME.md` + `OFFICE.md`（08-08 权威快照）+ `_handoff/CB恢复记忆prompt_2026-08-09.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 
