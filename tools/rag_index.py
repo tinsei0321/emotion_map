@@ -42,8 +42,29 @@ def _tag(ok, msg):
     print(f'[{"OK" if ok else "ERR"}] {msg}')
 
 
+# 数据维度关键词推断（对齐四维度：住房/小区/社区/街区/城区 + 城中村专项·原则：结论颗粒度=数据来源维度）
+_DIM_KEYWORDS = {
+    '住房': ['住宅', '危旧房', '房屋', '楼栋', '栋', '住房', '建筑'],
+    '小区': ['小区', '物业', '停车', '充电', '学位', '托育', '养老', '运动场'],
+    '社区': ['社区', '党群', '街道'],
+    '街区': ['街区', '街道', '道路', '步行道', '乱停'],
+    '城区': ['城区', '城市', '总体规划', '综合', '整体', '宏观'],
+    '城中村': ['城中村', '汉宜村', '改造'],
+}
+
+
+def _infer_dim(text):
+    """从文本推断数据维度（关键词加权·返回最可能维度）。"""
+    score = {}
+    for dim, kws in _DIM_KEYWORDS.items():
+        score[dim] = sum(1 for kw in kws if kw in text)
+    if not any(score.values()):
+        return '社区'  # 默认社区（调研最小单元）
+    return max(score, key=score.get)
+
+
 def _load_notes():
-    """读 L0 提炼笔记（按小节切分·段落级向量）。"""
+    """读 L0 提炼笔记（按小节切分·段落级向量·标注数据维度）。"""
     chunks = []
     if not NOTES_DIR.exists():
         return chunks
@@ -64,22 +85,25 @@ def _load_notes():
                 'text': p[:2000],
                 'source': f'docs/urban-renewal-plan/{md.relative_to(NOTES_DIR).as_posix()}#{i}',
                 'type': 'note',
+                'dim': _infer_dim(p),  # 数据维度标注
             })
     return chunks
 
 
 def _load_cases():
-    """读 case_library（案例块·survey+emc+benchmark 一条）。"""
+    """读 case_library（案例块·只取方法论 point·不引他城数据·标注为方法论参考）。"""
     try:
         sys.path.insert(0, str(REPO))
         from ai_qa.outlet_kb.case_library import CASES
         chunks = []
         for key, c in CASES.items():
-            text = f"{c.get('city','')}·{c.get('project','')}：{c.get('point','')}"
+            # 案例 = 方法论参考（做法/路径/机制）·不引用他城具体数据（原则 2·防张冠李戴）
+            text = f"{c.get('city','')}·{c.get('project','')}：{c.get('point','')}（方法论参考·做法/路径/机制·不引用他城具体数值）"
             chunks.append({
                 'text': text[:2000],
                 'source': f'ai_qa/outlet_kb/case_library.py#{key}',
                 'type': 'case',
+                'dim': '方法论',  # 案例 = 方法论参考·非数据维度
             })
         return chunks
     except Exception as e:
@@ -117,17 +141,20 @@ def build_index():
     vectors = _embed_texts(model, texts)
     _tag(True, f'编码完成·维度 {vectors.shape[1]}')
 
-    # 元数据（含 embed_hash）
+    # 元数据（含 embed_hash + 数据维度 + build_time）
     import hashlib
+    import time
     metas = []
     for c, vec in zip(all_chunks, vectors):
         h = hashlib.sha256(c['text'].encode('utf-8')).hexdigest()
         metas.append({
             'source': c['source'],
             'type': c['type'],
+            'data_dim': c.get('dim', '社区'),  # 数据维度（住房/小区/社区/街区/城区/城中村/方法论）
             'content_hash': h,
             'embedding_model': MODEL_NAME,
             'dim': int(vectors.shape[1]),
+            'build_time': time.strftime('%Y-%m-%d %H:%M'),
         })
 
     # 原子写（防崩溃不一致·np.save 自动加 .npy·临时名用 .npy 结尾）
@@ -143,7 +170,7 @@ def build_index():
 
 
 def load_index():
-    """加载索引（向量 + 元数据）。"""
+    """加载索引（向量 + 元数据·校验一致性）。"""
     import numpy as np
     if not VECTORS.exists() or not META.exists():
         return None, []
@@ -153,20 +180,35 @@ def load_index():
         for line in f:
             if line.strip():
                 metas.append(json.loads(line))
+    # 一致性校验（防写半崩溃·vectors/meta 行数不匹配 → 提示 --rebuild）
+    if len(vectors) != len(metas):
+        _tag(False, f'索引不一致（向量 {len(vectors)} vs 元数据 {len(metas)}）·请跑 --rebuild')
+        return None, []
     return vectors, metas
+
+
+# 模块级模型单例（lru_cache·防每次 search 冷加载 16-23s）
+_model_cache = None
+
+
+def _get_model():
+    global _model_cache
+    if _model_cache is None:
+        from sentence_transformers import SentenceTransformer
+        _model_cache = SentenceTransformer(MODEL_NAME)
+    return _model_cache
 
 
 @track('MOD_AIQA.F_015', track_args=False)
 def search(query, k=5):
-    """检索 Top-K（余弦相似度·返回片段 + 来源）。"""
+    """检索 Top-K（余弦相似度·返回片段 + 来源·含数据维度）。"""
     import numpy as np
-    from sentence_transformers import SentenceTransformer
 
     vectors, metas = load_index()
     if vectors is None or len(metas) == 0:
         return {'ok': False, 'error': '检索暂不可用（索引未构建·跑 py tools/rag_index.py --build）'}
 
-    model = SentenceTransformer(MODEL_NAME)
+    model = _get_model()
     qvec = _embed_texts(model, [query])[0]
     scores = vectors @ qvec
     top_idx = np.argsort(scores)[::-1][:k]
@@ -174,8 +216,9 @@ def search(query, k=5):
     for i in top_idx:
         results.append({
             'score': float(scores[i]),
-            'source': metas[i]['source'],
-            'type': metas[i]['type'],
+            'source': metas[i].get('source', ''),
+            'type': metas[i].get('type', ''),
+            'data_dim': metas[i].get('data_dim', '社区'),  # 数据维度（住房/小区/社区/街区/城区/城中村/方法论）
         })
     return {'ok': True, 'results': results, 'count': len(results)}
 
@@ -210,7 +253,7 @@ def main():
         else:
             _tag(True, f'Top-{r["count"]} 检索结果:')
             for i, res in enumerate(r['results'], 1):
-                print(f'  {i}. [{res["score"]:.3f}] {res["source"]} ({res["type"]})')
+                print(f'  {i}. [{res["score"]:.3f}] {res["source"]} ({res["type"]}·维度={res.get("data_dim", "?")})')
     elif args.stats:
         stats()
     else:
