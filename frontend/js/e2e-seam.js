@@ -193,7 +193,9 @@ window.__emcTest = {
   buildResultStruct,
   /** CB-22 RAG：_quickIntent 短路判定直测口（rag_query/general/null·保守双条件）。 */
   quickIntent(q) { return _quickIntent(q); },
-  /** CB-22 三层架构 P0-5/P2-3：知识问答合流组装直测口（短路 + diagnose knowledge_qa 双入口·统一 _assembleKnowledgeQA）。 */
+  /** CB-22 三层架构 P0-5/P2-3：知识问答合流组装直测口（短路 + diagnose knowledge_qa 双入口·统一 _assembleKnowledgeQA）。
+   *  injectOnly=true → 只组装注入 ctx.context·不调 finalStep（确定性·去 LLM 依赖·Codex 复验挑战·消 flaky）。
+   */
   async assembleKnowledgeQA(q, opts) {
     const ctx = { question: q, context: '', signal: null, history: [] };
     const hooks = {};

@@ -91,18 +91,29 @@ def test_quickintent_no_false_trigger():
 
 
 def test_knowledge_qa_routing_assembles():
-    """P2-3 知识问答合流路由（e2e-seam 直测·不依赖真实 LLM）：_assembleKnowledgeQA 注入素材 + 强标记。
+    """P2-3 知识问答合流组装（e2e-seam 直测·injectOnly 确定性·去 LLM 依赖·Codex 复验挑战消 flaky）。
 
-    短路（rag_query）与 diagnose（intent=knowledge_qa）双入口合流同一组装——断言注入含素材内容（text）+
-    强标记（严禁图层）+ 出处锚定指令（P3-2·逐数字标来源）。
+    injectOnly=true → _assembleKnowledgeQA 只组装注入 ctx.context·不调 finalStep LLM——
+    断言**真实组装逻辑**（素材+强标记+四指令）·确定性·无模型加载竞态（冷加载走 R3 兜底不再是 flaky 源）。
     """
     with emc_session() as page:
         r = page.evaluate(
-            "(q) => window.__emcTest.assembleKnowledgeQA(q, { _quick: false }).then(res => ({ final: res.final, skipped: res.defense && res.defense.skipped }))",
+            "(q) => window.__emcTest.assembleKnowledgeQA(q, { _quick: false, injectOnly: true }).then(res => ({ final: res.final, skipped: res.skipped }))",
             '宜昌有哪些更新项目')
-        # 检索成功路径（索引已建）→ 走 finalStep LLM 综合（skipped=diagnose-knowledge-qa 或 quick-rag）
-        assert r and r.get('skipped') in ('diagnose-knowledge-qa', 'quick-rag'), f'知识问答未走合流组装: {r}'
-        # 强标记/出处锚定指令在 prompt 内（assemble 内部 ctx.context 注入·final 为 LLM 产物·此处验 skipped 即可·内容断言见素材层）
+        # 合流组装路径（injectOnly 返回 skipped·不走 finalStep）
+        assert r and r.get('skipped') == 'diagnose-knowledge-qa', f'知识问答未走合流组装: {r}'
+        inj = r.get('final') or ''
+        # 强标记（防 FINAL_TEMPLATE 图层导向·glm W1）
+        assert '本次为知识问答·严禁图层' in inj, '注入缺强标记（严禁图层·glm W1）'
+        # 只基于素材（Codex 补1）
+        assert '只基于上述素材作答' in inj, '注入缺「只基于素材」（Codex 补1）'
+        # 综合全部 Top-N（glm W2）
+        assert '综合全部 Top-' in inj, '注入缺「综合全部 Top-N」（glm W2）'
+        # 逐数字锚定 [来源] + 可读名称（P3-2 + A 来源可读性）
+        assert '紧跟 [来源] 锚点' in inj, '注入缺「逐数字锚定 [来源]」（P3-2）'
+        assert '可读名称' in inj and '内部代号' in inj, '注入缺「可读名称·禁内部代号」（A 来源可读性）'
+        # 禁图层（第二根因防）
+        assert '不要生成分析图层' in inj, '注入缺「禁生成图层」'
 
 
 def test_rag_gold_set_regression():

@@ -89,6 +89,16 @@ export async function _assembleKnowledgeQA(ctx, hooks, opts = {}) {
   let _ragResults = null;
   let _ragCount = 0;
   let _ragMaxScore = 0;
+  // P2-3 复验（Codex 挑战·消 flaky）：injectOnly 测试口**跳过真实检索/模型加载**·用固定桩素材（纯测组装逻辑·确定性）
+  if (opts.injectOnly) {
+    _ragOk = true;
+    _ragResults = [
+      { score: 0.85, source: 'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-P01', type: 'fact', data_dim: '片区', text: '2025-2027 更新典型片区和机制建设项目 55 个·总投资 51.33 亿元：典型片区类 43 个 44.93 亿 / 机制建设类 12 个 6.39 亿' },
+      { score: 0.82, source: 'docs/urban-renewal-plan/_笔记/codex_0819_260713_2026-08-09.md#43', type: 'note', data_dim: '城区', text: '指标数据：2025-2027 宜昌拟实施城市更新典型片区和机制建设项目 55 个·总投资 51.33 亿元（笔记原文）' },
+    ];
+    _ragCount = 2;
+    _ragMaxScore = 0.85;
+  } else {
   try {
     if (hooks.onReason) hooks.onReason('知识库检索中…', 0);
     const _ac = new AbortController();
@@ -104,8 +114,9 @@ export async function _assembleKnowledgeQA(ctx, hooks, opts = {}) {
       _ragCount = _data.count;
       _ragMaxScore = Math.max(..._ragResults.map((r) => r.score || 0));
     }
-    // _data.ok===false（索引未构建）·非超时——落入 _ragOk=false → R3 兜底
-  } catch (_e) { /* 超时/网络失败 → _ragOk=false → R3 兜底 */ }
+      // _data.ok===false（索引未构建）·非超时——落入 _ragOk=false → R3 兜底
+    } catch (_e) { /* 超时/网络失败 → _ragOk=false → R3 兜底 */ }
+  }
   // R3：注入失败（超时/索引缺失）→ EXIT_CONCEPT 确定性兜底（禁走 finalStep LLM 编·防情绪分析式幻觉）
   if (!_ragOk) {
     const _gap = `## 知识库检索未就绪\n\n`
@@ -145,6 +156,11 @@ export async function _assembleKnowledgeQA(ctx, hooks, opts = {}) {
     '4. **不要生成分析图层 / {{show:图层}} / 4×5 归因 / 演示逻辑链**。\n' +
     '（数据维度随各条素材 data_dim 标注·结论不超过该维度·不引用他城具体数值）\n' + _dimNote + '\n\n' +
     (ctx.context || '');
+  // P2-3 复验（Codex 挑战·消 flaky）：injectOnly → 只返回组装后的注入内容（ctx.context）·不调 finalStep LLM——
+  //   确定性测试口（断言素材+强标记+四指令·不经真实 LLM/模型加载·防冷加载竞态）
+  if (opts.injectOnly) {
+    return { ok: true, rounds: 0, final: ctx.context, skipped: opts._quick ? 'quick-rag' : 'diagnose-knowledge-qa', injected: ctx.context, degraded: false, diagnose: { degraded: true, intent: 'general', quick: !!opts._quick, rag: true, low_relevant: _lowRelevant } };
+  }
   const draft = await stages.finalStep(ctx, hooks, '');
   const _qd = applyQualityDefense(draft, { obsOk: false, toolHistoryText: '', skipL1: true, question: ctx.question, skipScaleDefense: true });
   const _final = _qd.final;
