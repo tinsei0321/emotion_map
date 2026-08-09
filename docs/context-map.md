@@ -23,13 +23,17 @@
 ├─ 叶 · 专项参考（渐进披露，按需）
 │  └─ docs/ — brand-visual / copywriting-style / api-conventions / mcp-strategy / ai-qa-design /
 │            industry-knowledge-base / landuse-classification-2023 / harness-engineering-baseline（六要素）
+│     · 出口抽象层（立项根本目标）：docs/catch-ball/discuss/EMC-出口抽象层架构讨论_2026-08-03.md（专业+通俗）
+│       —— 三铁律 / 软指标可信性缺口 / 出口卡片 / 案例深挖（官方资料·可量化/可感知/可评价三类）
+│     · 出向知识库（出口卡片组装数据源）：ai_qa/outlet_kb/ — 7 契约 + 21 指标映射（官方三类）+ 5 案例
+│       + summary 四方面闭环·测试守卫（登记：CLAUDE.md「出口抽象层」节 + AutoMemory outlet_kb 指针）
 │
 ├─ 快照 · 跨会话桥（手动触发）
 │  ├─ memories/repo/session-handoff.md — 单节点当前态 + 复制即用 prompt（说"交接"才覆写）
 │  └─ memories/repo/.wip.md — PreCompact 压缩前机器快照（git/trace 锚点，gitignore）
 │
 ├─ 领域 · Catch-Ball（CB 双模型闭环；repo 内·跨环境同步）
-│  └─ docs/catch-ball/ — RULES（CB 规范）/ KNOWLEDGE（CB 记忆库·跨轮蒸馏）/ cb-journal（按轮轨迹）/ retired（退役台账）/ SCAN_DeepSeek_{NN}（第三方报告·只读）
+│  └─ docs/catch-ball/ — RULES（CB 规范）/ KNOWLEDGE（CB 记忆库·跨轮蒸馏）/ cb-journal（按轮轨迹）/ retired（退役台账）/ SCAN_DeepSeek_{NN}（第三方报告·只读）/ discuss/（跨组讨论输入·如 EMC体验评估讨论报告_2026-08-01）/ _handoff/（换机卡 HOME/OFFICE + CB恢复记忆卡_2026-08-03·Codex/glm 换环境恢复 + glm组记忆_RAG环境补链_2026-08-09·glm组 侧 RAG 补链 learning 镜像 KNOWLEDGE §2）
 │     · 触发：新 SCAN → on_session_start hook 一行提示 → /cb 命令编排反评价（主线程，不派 subagent）
 │     · 记忆共享：KNOWLEDGE 登记本图 + AutoMemory（cb-knowledge-base 指针），不孤岛（见「记忆共享通则」）
 │

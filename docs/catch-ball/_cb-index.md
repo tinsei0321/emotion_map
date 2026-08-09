@@ -1,7 +1,7 @@
 # CB Index — Catch-Ball 统一入口
 
-> **读我**：VS Code（Claude Code）和 ZCode（DeepSeek/GLM）启动时读此文件，了解 CB 全貌。
-> **维护**：每轮 CB 完成后更新。最后更新：2026-07-29。
+> **读我**：claude组（Claude Code 开发主）+ Codex + glm组（ZCode + GLM 5.2）启动时读此文件，了解 CB 全貌。
+> **维护**：每轮 CB 完成后更新。最后更新：2026-08-09（CB-20 全闭环·发版候选通过·办公室桌面版 codex 恢复 prompt 落盘）。
 
 ---
 
@@ -9,26 +9,30 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-09**（用户实测诊断·5 案例 + 7 根因分析） |
-| **下一轮** | CB-10（待 P0 修复后触发验证） |
-| **最新 SCAN** | `scan/CB09-v1.0实测诊断_ZCode-DeepSeek_2026-07-28.md` |
-| **最新根因分析** | `rootcause/2026-07-28-multi-extract-reasoning-spiral.md` |
-| **最新综合审计** | `audit/2026-07-28-comprehensive.md` |
-| **上次操作环境** | ZCode + DeepSeek V4 Pro |
-| **上次操作人** | DeepSeek（评估方） |
+| **当前 CB 轮次** | **CB-22 · EMC 三层架构优化讨论**（用户主导·NL 意图判断归 LLM·三通道路由·意图判断归位·待两组讨论） |
+| **上一轮** | CB-22 纯问答定位失败根因诊断（4 层链两组 agree·词序变体击穿短路 + diagnose 无问答通道） |
+| **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
+| **当前分支** | `fix/emc-buglog`（未 push·架构讨论中） |
+| **最新讨论** | `discuss/CB22-EMC三层架构优化_讨论发起_2026-08-09.md`（三层架构：数据层三库/实施层 Smart·Dumb/表达层三段式·三通道路由：知识问答/GIS/情绪·6 焦点·待两组讨论） |
+| **最新进展** | 用户主导**架构优化**（NL 意图判断必须 LLM·意图判断在计划执行前·EMC 三层架构·类比 AI 平台三合一）→ claude 现状对照取证（意图判断 agent 骨架完整·唯一缺口 = intent 枚举无 knowledge_qa·概念库待建·Q&A 非工具）→ 讨论发起（6 焦点：三通道路由/三层对齐/概念库/Q&A 归位/意图判断强化/防回归）·**待两组讨论回收** |
+| **接手文档** | `memories/repo/session-handoff.md`（08-05 卡·已过时·历史背景）+ `_handoff/HOME.md` + `OFFICE.md`（08-08 权威快照）+ `_handoff/CB恢复记忆prompt_2026-08-09.md` |
+| **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 
 ## 快速开始
 
-### VS Code（Claude Code + GLM）
+### claude组（Claude Code·开发主）
 
 1. Hook 自动检测：`.claude/hooks/on_session_start.py` 启动时打印 CB 状态
 2. 手动：读本文件 → 按需进入对应目录
+3. 新接手：读 `_handoff/DEEPSEEK_ONBOARDING_2026-07-30.md`
 
-### ZCode（DeepSeek / GLM）
+### Codex / glm组（CB 辅助评估）
 
-1. AGENTS.md 首段引导读本文件
+1. 读本文件了解当前轮次 + 最新 SCAN
 2. 读 `KNOWLEDGE.md` 了解红线和语境
-3. 按需进入对应目录
+3. 产出 SCAN → `scan/CB{NN}-{topic}_{env}-{model}_{YYYY-MM-DD}.md`（glm组 用 `CB{NN}-{topic}_glm组_{YYYY-MM-DD}.md`）
+4. 按需进入对应目录
+5. **glm组（ZCode + GLM 5.2）**：以第三方评估者身份加入·独立 SCAN/讨论·与 Codex 互补视角·非开发主
 
 ## 文件夹地图
 
@@ -40,11 +44,9 @@ docs/catch-ball/
 ├── cb-journal.md         CB 轨迹（按轮倒序·SCAN摘要+反评价+行动+状态）
 ├── retired.md            退役台账
 │
-├── scan/                 SCAN 评估报告（第三方评估产出）
-│   ├── 01-deepseek.md    CB-01
-│   ├── 02-deepseek.md    CB-02
-│   ├── 03-deepseek.md    CB-03
-│   ├── 04-glm-v3.md      CB-09（GLM v3 修复审计）
+├── scan/                 SCAN 评估报告
+│   ├── CB01~CB03         历史评估（DeepSeek）
+│   ├── CB09-*.md         CB-09 实测诊断 + GLMv3 修复审计
 │   └── cpd/              CPD 专轨评估
 │
 ├── rootcause/            根因分析报告
@@ -64,22 +66,24 @@ docs/catch-ball/
 │   ├── EVAL_*.md         历史评估报告
 │   └── ...
 │
-└── _handoff/             换机交接卡
+└── _handoff/             换机交接卡 + 接手文档
     ├── HOME.md            家里做了什么、待做什么
-    └── OFFICE.md          办公室做了什么、待做什么
+    ├── OFFICE.md          办公室做了什么、待做什么
+    ├── SESSION_2026-07-30.md     今日 Session 完整记录
+    └── DEEPSEEK_ONBOARDING_2026-07-30.md  Claude Code + DeepSeek 接手文档
 ```
 
 ## CB 流程
 
 ```
-SCAN 阶段（评估方：ZCode+DeepSeek 或 VS Code+GLM）
+SCAN 阶段（评估方：Codex 或 glm组·CB 辅助·独立于开发主 claude组）
   ① 读本文件了解当前轮次
   ② 读 KNOWLEDGE.md 了解红线和语境
-  ③ 产出 SCAN → docs/catch-ball/scan/NN-model.md
+  ③ 产出 SCAN → docs/catch-ball/scan/{NN}-{model}.md（glm组 用 {NN}-glm组.md）
   ④ 更新本文件「待反评价」
   ⑤ 更新 _handoff/{HOME|OFFICE}.md
 
-Journal 阶段（项目方：任一环境）
+Journal 阶段（项目方：claude组）
   ① 读本文件发现新 SCAN
   ② 逐条反评价（agree/disagree/partial）
   ③ 追加 cb-journal.md 对应轮次

@@ -98,6 +98,15 @@ class SpatialTerrainRequest(BaseModel):
     levels: int = Field(default=7, ge=3, le=15, description="等值面层数")
 
 
+class SpatialDemRequest(BaseModel):
+    """情绪地形 DEM - KDE 栅格 → Mapbox terrarium RGB（setTerrain 连续曲面·P1.5）。"""
+    geojson: dict = Field(..., description="情绪点 GeoJSON FeatureCollection (WGS84)")
+    polarity: str = Field(default="overall", description="overall | positive | negative | neutral")
+    bandwidth_m: float = Field(default=250, gt=0, description="KDE 高斯带宽（米），控制曲面平滑度")
+    cell_m: float = Field(default=60, gt=0, description="KDE 栅格边长（米），越小越细越慢")
+    height_scale: float = Field(default=500, gt=0, description="DEM 高度标度（米），越大山势越陡")
+
+
 class RangePresetItem(BaseModel):
     """预设范围条目（一个按钮 = 一个矢量文件）。"""
     id: str = Field(..., description="预设 id（前端 loadPresetRange 用）")

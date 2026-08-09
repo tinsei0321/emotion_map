@@ -7,6 +7,8 @@ import { addLayer, addGroup, getLayers, removeLayer } from './state.js';
 import { splitByGeometry, detectColorMode, dsvRows } from './import.js';
 import { hasImport, hasRange, hasAnalysis, hasVisibleEmotionLayer } from './ai_qa/cpd-state.js';
 import { TOOLS, resetStepResults, resetCurrentResults } from './ai_qa/tools.js';   // 步 7 observation 快照基线（手册 v2.2·修订 6）：TOOLS 直调 + 状态重置
+import { applyQualityDefense, _setLastToolRowsForTest, _buildOutletCardForTest, composeGapCard, _quickIntent, _assembleKnowledgeQA } from './ai_qa/harness.js';   // G0 R9 单测 + Wave 1 出口卡直测 + ③w5 措辞断言 + CB-22 RAG 短路判定 + P0-5 合流直测
+import { buildResultStruct } from './ai_qa/result-struct.js';   // CB-18 S-3：出口三段式结果结构化纯函数直测（P0-2/3/4 + P2-1·不解析 markdown·确定性组装）
 
 // v1.7 测试飞轮：fetch 拦截 — 抓 /chat + /geo 请求供分阶段断言（fail fast）。
 const _origFetch = window.fetch.bind(window);
@@ -52,7 +54,7 @@ window.__emcTest = {
         else if (pol === 'Very Negative' || pol === 'Negative') neg.push(f);
         else neu.push(f);
       }
-      const group = addGroup({ name: 'L2 · e2e', fc: pfc }); group.srcName = base;
+      const group = addGroup({ name: '测试数据 · 情绪点', fc: pfc }); group.srcName = base;
       const paint = { opacity: 0.8 };
       const fcOf = (a) => ({ type: 'FeatureCollection', features: a });
       if (pos.length) { const L = addLayer({ name: `积极·${base}`, kind: 'point', parentId: group.id, colorMode: 'l2-positive', fc: fcOf(pos), paint }); L.srcName = base; safe(() => renderLayer(L)); }
@@ -68,7 +70,11 @@ window.__emcTest = {
   clearLog() { window._testFetchLog = []; window._testDiagnoseLog = []; window._testToolExecLog = []; },
   chatPhases() {
     // H1: template 来自 diagnose:done 事件累积（每问一句 diagnose 一次），替代抓请求体。
-    return (window._testDiagnoseLog || []).map((card) => ({ phase: 'diagnose', template: card && card.template, method: (card && card.method) || null }));   // D3: +method（D2 派生）供 EMC-SUM ② 计划n
+    // F-1（CB-10 飞轮审查）：+planSteps = 实际执行通道计划步数（_allToolCalls 多 call / autoExpand 链长）·替代 method 派生（FC 单工具下恒 1·漂移）
+    return (window._testDiagnoseLog || []).map((card) => ({
+      phase: 'diagnose', template: card && card.template, method: (card && card.method) || null,
+      planSteps: (card && Array.isArray(card._allToolCalls) && card._allToolCalls.length) || 0,
+    }));   // D3: +method（D2 派生）供 EMC-SUM ② 计划n
   },
   geoCalls() { return window._testFetchLog.filter((e) => /\/(geo|spatial)\//.test(e.url)); },   // 含 /spatial/（grid 等走此路径，否则漏抓）
   toolExecs() { return (window._testToolExecLog || []).slice(); },   // #2 tool:executed 事件（前端委托工具如 density·补 geoCalls 盲区）
@@ -95,6 +101,15 @@ window.__emcTest = {
   layerCount() { return document.querySelectorAll('#layer-list .layer-row').length; },
   layerNames() { return [...document.querySelectorAll('#layer-list .layer-name')].map((e) => e.textContent.trim()).filter(Boolean); },
   mapSources() { try { const m = getMap(); const s = m && m.getStyle() && m.getStyle().sources; return s ? Object.keys(s) : []; } catch (_) { return []; } },   // C: map 真渲染的 source（验图层不只是入 state）
+  /** F-2（CB-10 飞轮审查）：产物语义断言读口——返回最后 N 个产物图层（含 paint._ui/kind/feature 数）。
+   *  断言据此验证产物正确性（density 色板钩子 analysisKey/rampKey、overlay feature 数、clip point_count、merge 几何）。 */
+  productLayers(limit = 5) {
+    return getLayers().slice().filter((l) => l.kind !== 'group' && l.fc && l.fc.features).slice(-limit).map((l) => ({
+      name: l.name, kind: l.kind, srcName: l.srcName || '', fcCount: (l.fc.features || []).length,
+      paint: (l.paint && l.paint._ui) || null, rampKey: (l.paint && l.paint.rampKey) || null,
+      colorMode: l.colorMode || null,
+    }));
+  },
   async injectFixture(name) {
     const fc = await fetch(`/tests/browser/fixtures/${name}.geojson`).then((r) => r.json());
     return this.loadPoints(fc);
@@ -102,9 +117,20 @@ window.__emcTest = {
   clickHalo() { const a = document.querySelector('.emc-input-area'); if (a) a.click(); },
   clickDirection(dir) { const b = document.querySelector(`.cpd-guide-opt[data-dir="${dir}"]`); if (b) b.click(); },
   answerText() { const as = document.querySelectorAll('.aiq-answer'); return as.length ? as[as.length - 1].innerText.trim().slice(0, 300) : ''; },
+  askChips() { return document.querySelectorAll('.aiq-ask-chip').length; },   // CB-12 P1：ask_user 选项胶囊数（诚实追问判定）
   getMode() { const b = document.querySelector('#aiq-mode button.is-active'); return b ? b.dataset.mode : null; },
   setMode(m) { const b = document.querySelector(`#aiq-mode button[data-mode="${m}"]`); if (b) b.click(); },
   newChat() { document.getElementById('chat-new')?.click(); },
+  clearRanges() {
+    // CB-14（CPD-L03）：清残留范围层（e2e_range polygon·跨用例污染）——让新对话后 hasRange=false → 引导回 range 态。
+    //   loadPoints 故意保留 polygon（部分用例先加载范围再加载点）·故 CPD 顺序用例需显式清。
+    for (const l of getLayers().slice()) {
+      if (l.srcName === 'e2e_range' || (l.kind === 'polygon' && l.paint && l.paint._ui && l.paint._ui.tool)) {
+        try { removeLayerFromMap(l.id); } catch (_) {} removeLayer(l.id);
+      }
+    }
+    document.dispatchEvent(new CustomEvent('layers:changed'));
+  },
   async loadCSV(path) {
     // T1 修（2026-07-24）：① pool processed→performance ② 复用产品 dsvRows 解引号（治 text 含逗号致列错位/丢行）
     //   ③ polarity 精确列名（^polarity$·非 polarity_hint 子串）+ 保留原始五档值交 loadPoints→detectColorMode 拆分（治 :119 二档塌缩 Very→Neutral）
@@ -132,10 +158,15 @@ window.__emcTest = {
     return this.loadPoints({ type: 'FeatureCollection', features: feats });
   },
   async loadRange(name) {
+    const label = name.split('/').pop().replace('.geojson', '');
+    // 防重复：同名范围已加载则跳过（治飞轮每例重复 loadRange 堆叠行政区层·Bug2）
+    if (getLayers().some((l) => l.kind === 'polygon' && l.srcName === 'e2e_range' && l.name === label)) {
+      return { ok: true, count: 0, reused: true };
+    }
     const fc = await fetch('/DATA/boundaries/' + name).then((r) => r.json());
     const { polygons } = splitByGeometry(fc);
     if (polygons.features.length) {
-      const L = addLayer({ name: name.split('/').pop().replace('.geojson', ''), kind: 'polygon', fc: polygons, paint: { fillOn: false, lineWidth: 1.5, fillOpacity: 0.1 } });
+      const L = addLayer({ name: label, kind: 'polygon', fc: polygons, paint: { fillOn: false, lineWidth: 1.5, fillOpacity: 0.1 } });
       L.srcName = 'e2e_range';
       safe(() => renderLayer(L));
     }
@@ -145,6 +176,11 @@ window.__emcTest = {
   // ── 步 7 observation 快照基线（手册 v2.2·修订 6/E-③）：TOOLS 直调 + 状态重置 + 层读取 ──
   TOOLS,
   getLayers,
+  applyQualityDefense,   // G0 R9 单测：构造 toolHistory 无 clip + 结论声称已裁剪 → 断言「未在工具执行记录」标注出现
+  composeGapCard,        // ③w5（Codex/glm P2）：措辞断言——零工具尝试（failedObs=0）不含「图层」字眼·防回归
+  // CB-16 Wave 1 出口卡直测：设 rows 缓存（模拟 macro zonal/rank 产物）+ 直调 _maybeBuildOutletCard（门放宽·newLayerCount=0 也出卡）
+  setOutletRows(rows) { _setLastToolRowsForTest(rows); return true; },
+  async buildOutletCardForTest(diagnose, ctx, newLayerCount) { return _buildOutletCardForTest(diagnose, ctx, newLayerCount); },
   resetToolState() { resetStepResults(); resetCurrentResults(); },
   /** 步 8：存量产物模拟（legacy 无 kind _ui 的编辑回填 color 判据测试）。 */
   addTestLayer(name, kind, fc, paint) {
@@ -152,6 +188,18 @@ window.__emcTest = {
     safe(() => renderLayer(L));
     document.dispatchEvent(new CustomEvent('layers:changed'));
     return L.id;
+  },
+  /** CB-18 S-3：出口三段式结果结构化纯函数直测口（P0-2/3/4 + P2-1·确定性组装·不解析 markdown）。 */
+  buildResultStruct,
+  /** CB-22 RAG：_quickIntent 短路判定直测口（rag_query/general/null·保守双条件）。 */
+  quickIntent(q) { return _quickIntent(q); },
+  /** CB-22 三层架构 P0-5/P2-3：知识问答合流组装直测口（短路 + diagnose knowledge_qa 双入口·统一 _assembleKnowledgeQA）。
+   *  injectOnly=true → 只组装注入 ctx.context·不调 finalStep（确定性·去 LLM 依赖·Codex 复验挑战·消 flaky）。
+   */
+  async assembleKnowledgeQA(q, opts) {
+    const ctx = { question: q, context: '', signal: null, history: [] };
+    const hooks = {};
+    return _assembleKnowledgeQA(ctx, hooks, opts || {});
   },
 };
 

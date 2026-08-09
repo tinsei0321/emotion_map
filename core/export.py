@@ -197,6 +197,52 @@ def _shp_zip_bytes(gdf, base):
 
 
 @track("MOD_EXPORT.F_005", track_args=False)
+def export_outlet_card_csv(card: dict, filename='outlet_card') -> tuple:
+    """出口卡片 → CSV 字节流（P1-4·出口三段式"一键入库"·确定性）。
+
+    字段（Codex P1P2 修正）：outlet_id / name / scale / interface / fields（平铺）/
+    data_base / task_link / limitations / geo_label / export_time。
+    显式脱敏（复用 SENSITIVE_FIELDS·Codex W3·防字段扩展带入敏感列）。
+    UTF-8 BOM（Excel 兼容·对齐 _csv_bytes）。返回 (bytes, filename.csv, media_type)。
+    """
+    import io, csv, datetime
+    c = card or {}
+    # 平铺 fields（行业表单项 = 值）
+    flat = {}
+    for k, v in (c.get('fields') or {}).items():
+        if isinstance(v, dict):
+            flat[f'field_{k}'] = v.get('value', '')
+        else:
+            flat[f'field_{k}'] = v
+    db = c.get('data_base') or {}
+    row = {
+        'outlet_id': c.get('outlet_id', ''),
+        'name': c.get('name', ''),
+        'scale': c.get('scale', ''),
+        'interface': c.get('interface', ''),
+        **flat,
+        'data_base_N': db.get('N', ''),
+        'data_base_note': db.get('note', ''),
+        'data_base_total_points': db.get('total_points', ''),
+        'task_link': '、'.join(c.get('task_link') or []),
+        'limitations': '；'.join(c.get('limitations') or []),
+        'geo_label': c.get('geo_label', ''),
+        'source': c.get('source', ''),
+        'export_time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+    }
+    # 显式脱敏（Codex W3·复用 SENSITIVE_FIELDS）
+    _drop = [k for k in row if str(k).lower() in SENSITIVE_FIELDS or str(row[k]).lower() in SENSITIVE_FIELDS]
+    for _d in _drop:
+        row.pop(_d, None)
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, fieldnames=list(row.keys()))
+    w.writeheader()
+    w.writerow(row)
+    data = '﻿' + buf.getvalue()   # UTF-8 BOM（Excel 兼容）
+    return data.encode('utf-8'), f'{_safe_name(filename)}.csv', 'text/csv; charset=utf-8'
+
+
+@track("MOD_EXPORT.F_005", track_args=False)
 def export_layer(geojson_fc, fmt='geojson', crs='wgs84', geom_csv='wkt', desensitize=True, filename='export'):
     """GeoJSON FeatureCollection → 指定格式字节流（供 API 下载）。
 

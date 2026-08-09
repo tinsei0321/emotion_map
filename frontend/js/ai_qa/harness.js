@@ -4,11 +4,28 @@
 // 前置：DIAGNOSE 问题理解卡（认知层）→ 注入 ctx.context 导工具选型 + 结论颗粒度；硬缺口短路请求上传。
 // 降级：agent_step 解析失败不再裸显 raw，break loop 仍走 finalStep 出一次性 answer。
 import * as stages from './stages.js';
-import { TOOLS, setToolContext, formatRegistry, getArtifacts, deriveAvailable, resetStepResults, resolveCoref } from './tools.js';
-import { getLayers } from '../state.js';
+import { TOOLS, setToolContext, formatRegistry, getArtifacts, deriveAvailable, resetStepResults, resetCurrentResults, resolveCoref } from './tools.js';
+import { getLayers, getLayer } from '../state.js';
+import { CONCEPT_KW, INVENTORY_KW, GREETING_KW, GEO_VERB_KW, REGION_KW, POLARITY_KW, LANDUSE_KW, SEARCH_KW, SEARCH_EVIDENCE_RE, OUTLET_TRIGGER_KW, OUTLET_UI_EXCLUDE_KW, RAG_QUERY_KW, RAG_KNOWLEDGE_RE } from './emc-patterns.js';   // CB-10 分歧2 词表集中 + G6b SEARCH_KW/SEARCH_EVIDENCE_RE + CB-16 OUTLET 触发词 + CB-22 RAG 触发词（DRY·单一源 emc-patterns）
+import { buildResultStruct } from './result-struct.js';   // 出口三段式 P0：结果结构化（观点/4要点·确定性组装·结论段不解析 draft markdown）
 
-const MAX_ROUNDS_GIS = 6;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=6（保多目标完整性，如"西陵+伍家岗居住+商业"需多步）
+const MAX_ROUNDS_GIS = 10;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=10（保多步完整性，如3次overlay需8轮：1查询+6执行+1answer）
 const MAX_ROUNDS_OTHER = 4;    // A 通用 / C 情绪=4（远紧于 16，配合 temp 0.4 降概率链 p^N）
+
+// 族 A 收尾 #3 + G5（glm组 CB-11）：补全命中遥测——localStorage 持久化（跨会话·console 可查·驱动渐进退役：命中趋零 + LLM 多 call 覆盖才删对应规则）
+const _HIT_KEY = 'emc_completion_hits_v1';
+function _loadHitTelemetry() {
+  let s;
+  try { s = JSON.parse(localStorage.getItem(_HIT_KEY) || '') || {}; } catch (_) { s = {}; }
+  return { inline: Number(s.inline) || 0, autoExpand: Number(s.autoExpand) || 0, recover: Number(s.recover) || 0 };
+}
+const _hitInit = _loadHitTelemetry();
+let _hitInline = _hitInit.inline;      // runTemplatePath 内联扩展命中
+let _hitAutoExpand = _hitInit.autoExpand;  // _autoExpandOverlays 命中
+let _hitRecover = _hitInit.recover;     // _deterministicRecover 命中
+function _saveHitTelemetry() {
+  try { localStorage.setItem(_HIT_KEY, JSON.stringify({ inline: _hitInline, autoExpand: _hitAutoExpand, recover: _hitRecover })); } catch (_) {}
+}
 
 // v3 H6：前端 _validateFcParams 已删除——信赖后端 validate_tool_call（router fc_diagnose 调·D062）。
 // 后端在返回 tool_calls 前已校验 + 修正参数（enum 外→默认值替代·required 缺→补默认）·前端不重复。
@@ -22,13 +39,8 @@ const _TOOL_TO_SKILL = { zonal_stats: 'zonal', compare_regions: 'compare' };
 function _matchPlanToQuestion(question, plans) {
   if (!question || !Array.isArray(plans)) return null;
   const q = question.toLowerCase();
-  // 极性匹配
-  const _POL_MAP = [
-    { kw: ['消极', '负面', 'negative', '差'], polarity: 'negative' },
-    { kw: ['积极', '正面', 'positive', '好'], polarity: 'positive' },
-    { kw: ['中性', 'neutral', '客观'], polarity: 'neutral' },
-    { kw: ['综合', '总体', 'overall', '全部'], polarity: 'overall' },
-  ];
+  // 极性匹配（词表集中 emc-patterns.POLARITY_KW·CB-10 分歧2·含 overall）
+  const _POL_MAP = POLARITY_KW;
   for (const pm of _POL_MAP) {
     if (pm.kw.some((k) => q.includes(k))) {
       // 找 plans 中 density/rank 且 polarity 匹配的
@@ -45,19 +57,118 @@ function _matchPlanToQuestion(question, plans) {
 /** P0 降温：轻量 intent 预判——高置信通用/概念问跳 diagnose 直 finalStep（省整轮 diagnose LLM + 7字段卡）。
  *  规划思维 A 赛道"快速分流"：概念解释/方法咨询/日常问候→general 直答；含 geo 动词/地名→落 diagnose。
  *  返 'general'→短路；null→落原 diagnose（保守，宁落不误断）。 */
-function _quickIntent(q) {
+export function _quickIntent(q) {   // CB-22 e2e：export 解封（同 composeGapCard 先例·纯暴露无行为变化）
   if (!q) return null;
   const s = String(q);
-  // 概念/方法咨询词优先（即使含 geo 词，"什么是核密度分析"仍判 general 定义类，免漏断）
-  if (['什么是', '是什么', '含义', '意思', '解释', '区别', '定义', '为什么', '是指', '如何理解', '有哪些方法'].some(w => s.includes(w))) return 'general';
+  // 概念/方法咨询词优先（即使含 geo 词，"什么是核密度分析"仍判 general 定义类，免漏断）——词表集中 emc-patterns
+  if (CONCEPT_KW.some(w => s.includes(w))) return 'general';
+  // B003：数据清单查询（"我上传了哪些数据"）→ general 短路（buildContext 已列「已加载图层·标来源」·finalStep 直列清单·省 FC 螺旋）
+  if (INVENTORY_KW.some(w => s.includes(w))) return 'general';
   // geo 动词（请求做分析，非定义）→ 落 diagnose
-  if (['核密度', '密度分析', '热力', '热点', '裁出', '裁剪', '缓冲', '叠加', '叠置', '聚合', '网格', '排序', '最近邻', '可达性', '出图', '生成图'].some(v => s.includes(v))) return null;
+  if (GEO_VERB_KW.some(v => s.includes(v))) return null;
+  // CB-22 RAG：开放语义/结构化知识检索（哪些项目/体检问题/如何参考等）→ 'rag_query' 短路
+  //   保守双条件：RAG_QUERY_KW 命中 + 知识词（RAG_KNOWLEDGE_RE）·宁落不误断
+  if (RAG_QUERY_KW.some(w => s.includes(w)) && RAG_KNOWLEDGE_RE.test(s)) return 'rag_query';
   // 宜昌地名（空间指代）→ 落 diagnose（可能 B/C）
-  if (['西陵', '伍家岗', '点军', '夷陵', '猇亭', '宜昌', '滨江', '奥体', '二马路', '大南门', 'cbd'].some(p => s.toLowerCase().includes(p.toLowerCase()))) return null;
+  // CB-12 问题2（Codex+glm组）：地名 + 实据词（政策/策略/案例等）→ **显式 general**（让搜索分支判·"宜昌市城市更新政策"应搜索）·
+  //   "宜昌西陵区情绪分布"无实据词 → 仍落 diagnose
+  if (REGION_KW.some(p => s.toLowerCase().includes(p.toLowerCase()))) {
+    if (SEARCH_EVIDENCE_RE.test(s)) return 'general';   // 实据问（宜昌+政策）→ 搜索分支
+    return null;                                         // 纯空间问 → 落 diagnose
+  }
   // 日常问候/闲聊 → general
-  if (['今天', '星期', '几点', '你好', '谢谢', '你是谁', '能做什么', '你能', '帮助'].some(w => s.includes(w))) return 'general';
+  if (GREETING_KW.some(w => s.includes(w))) return 'general';
   return null;   // 模糊 → 落 diagnose
 }
+
+// CB-22 三层架构 P0-5：知识问答统一组装（短路加速器 + diagnose intent=knowledge_qa **合流**·双入口同注入同 finalStep·防行为分叉）。
+// data_plan 三态（glm 挑战 1·执行定稿）：ready=Top-K 非空+score≥0.5 / fallback_annotated=非空+<0.5（标注相关性低）/
+//   request_upload=空（EXIT_GAP·知识库无覆盖）。阈值 0.5 起步·按黄金集 score 校准。
+export async function _assembleKnowledgeQA(ctx, hooks, opts = {}) {
+  let _ragOk = false;
+  let _ragResults = null;
+  let _ragCount = 0;
+  let _ragMaxScore = 0;
+  // P2-3 复验（Codex 挑战·消 flaky）：injectOnly 测试口**跳过真实检索/模型加载**·用固定桩素材（纯测组装逻辑·确定性）
+  if (opts.injectOnly) {
+    _ragOk = true;
+    _ragResults = [
+      { score: 0.85, source: 'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-P01', type: 'fact', data_dim: '片区', text: '2025-2027 拟实施城市更新项目 55 个·总投资 51.33 亿元：污水厂网一体示范区 16 个 / 葛洲坝片区 12 个 / 其他项目 12 个（前 4 组合计 43 个）' },
+      { score: 0.82, source: 'docs/urban-renewal-plan/_笔记/codex_0819_260713_2026-08-09.md#43', type: 'note', data_dim: '城区', text: '指标数据：2025-2027 宜昌拟实施城市更新项目 55 个·总投资 51.33 亿元（笔记原文）' },
+    ];
+    _ragCount = 2;
+    _ragMaxScore = 0.85;
+  } else {
+  try {
+    if (hooks.onReason) hooks.onReason('知识库检索中…', 0);
+    const _ac = new AbortController();
+    const _timer = setTimeout(() => _ac.abort(), 30000);   // R4：15s→30s（容冷加载·预热窗口）
+    const _res = await fetch('/api/v1/aiqa/rag_search', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: ctx.question, k: 5 }), signal: _ac.signal,
+    }).finally(() => clearTimeout(_timer));
+    const _data = await _res.json().catch(() => null);
+    if (_data && _data.ok && _data.results && _data.results.length) {
+      _ragOk = true;
+      _ragResults = _data.results;
+      _ragCount = _data.count;
+      _ragMaxScore = Math.max(..._ragResults.map((r) => r.score || 0));
+    }
+      // _data.ok===false（索引未构建）·非超时——落入 _ragOk=false → R3 兜底
+    } catch (_e) { /* 超时/网络失败 → _ragOk=false → R3 兜底 */ }
+  }
+  // R3：注入失败（超时/索引缺失）→ EXIT_CONCEPT 确定性兜底（禁走 finalStep LLM 编·防情绪分析式幻觉）
+  if (!_ragOk) {
+    const _gap = `## 知识库检索未就绪\n\n`
+      + `本次提问「${ctx.question}」需引用知识库（城市更新项目库/体检指标）·`
+      + `但知识库检索暂未就绪（模型加载中/索引未构建）。\n\n`
+      + `**建议**：稍后重试（模型预热完成后）·或换问"宜昌情绪分布"等分析类问题。`;
+    if (hooks.onFinalDone) hooks.onFinalDone(_gap);
+    if (hooks.onDefense) hooks.onDefense({ degraded: true, fixes: [], skipped: 'rag-timeout-exit-concept', capsules: [] });
+    return { ok: true, rounds: 0, final: _gap, degraded: true, defense: { degraded: true, fixes: [], skipped: 'rag-timeout-exit-concept' }, diagnose: { degraded: true, intent: 'general', quick: !!opts._quick, rag: false } };
+  }
+  // data_plan 三态（glm 挑战 1）：score < 0.5 低相关 → 注入但标注"相关性低·仅供参考"（fallback_annotated）
+  const _lowRelevant = _ragMaxScore < 0.5;
+  const _dimNote = _lowRelevant
+    ? '\n\n【相关性提示】以下素材与提问相关性较低（最高分 <0.5）·仅供参考·若需更准请换问或上传更全资料。'
+    : '';
+  // ★ CB-22 分类→范式映射（用户修正：知识问答需 LLM 综合素材·非零 LLM）：
+  //   RAG 检索出相关文件 → 注入 ctx.context 作为素材 → finalStep LLM 综合总结 + 引用来源
+  //   注入「知识问答排版」指令（禁图层/禁 4×5·条目式引用·防被分析模板带偏）
+  // CB-22 三支柱修正（两组对齐收敛·Codex 补1 + glm W1/W2 + claude 承重发现）：
+  //   ① 素材注入片段全文（text·此前仅文件名·LLM 无内容可综合·三支柱①空转）
+  //   ② 头部强标记（glm W1·防 FINAL_TEMPLATE 图层导向覆盖弱指令）
+  //   ③ 只基于素材作答·素材外标注"知识库未收录"（Codex 补1·防预训练知识补细节）
+  //   ④ 综合全部 Top-K·禁只引 Top-1（glm W2·保"全面"）
+  //   ⑤ P3-2 逐数字锚定 [来源]·禁自创拆分（CB-22 三层架构·43/12 出处修复）
+  //   ★ 动态注入预算 ≤8KB（Codex 复验挑战：Top-5 × 1000B + 指令 ≈ 5.5KB·守卫在 validate_paradigm_map）
+  const _lines = _ragResults.map((r, i) => {
+    const _src = String(r.source || '').split('/').pop().split('#')[0];
+    const _txt = r.text ? r.text.trim().slice(0, 1000) : '（片段缺失·需 py tools/rag_index.py --rebuild 重建索引）';
+    return `${i + 1}. [${r.score.toFixed(2)}·${r.data_dim || '社区'}维度] ${_src}\n    ${_txt}`;
+  });
+  ctx.context = '【本次为知识问答·严禁图层/分析模板】\n\n' +
+    '【知识库检索素材（RAG·Top-' + _ragCount + '·供 LLM 综合回答）】\n' + _lines.join('\n') +
+    '\n\n【知识问答排版】\n' +
+    '1. **只基于上述素材作答**·素材未覆盖的信息标注"知识库未收录"·禁止以预训练知识补充细节；\n' +
+    '2. **综合全部 Top-' + _ragCount + ' 素材·归纳共性与差异**·条目式组织·关键内容标注来源·禁止只引部分或只引 Top-1；\n' +
+    '3. **每个具体数字/名词（项目数/片区数/投资额/概念定义）必须紧跟 [来源] 锚点·禁止自行拆分/合并/编造数字**·来源须用**可读名称**（完整文件名如《宜昌市中心城区城市更新专项规划260713（阶段性成果 PDF 版）》或归纳提炼的简短标题）·**不得用内部代号**（如 00-03/260713 版）·**格式统一为〔来源：可读名称〕**（中文方括号·如〔来源：《宜昌市中心城区城市更新专项规划260713》〕）·**禁止从数字/素材推断或归纳分类术语或概念解释**（如素材"43+12"不得推断"片区类/机制类"·素材未明确表述的分类/解释/归纳一律不得输出·如需概括须标注"以下为回答者概括·非源文档用语"）；\n' +
+    '4. **不要生成分析图层 / {{show:图层}} / 4×5 归因 / 演示逻辑链**。\n' +
+    '（数据维度随各条素材 data_dim 标注·结论不超过该维度·不引用他城具体数值）\n' + _dimNote + '\n\n' +
+    (ctx.context || '');
+  // P2-3 复验（Codex 挑战·消 flaky）：injectOnly → 只返回组装后的注入内容（ctx.context）·不调 finalStep LLM——
+  //   确定性测试口（断言素材+强标记+四指令·不经真实 LLM/模型加载·防冷加载竞态）
+  if (opts.injectOnly) {
+    return { ok: true, rounds: 0, final: ctx.context, skipped: opts._quick ? 'quick-rag' : 'diagnose-knowledge-qa', injected: ctx.context, degraded: false, diagnose: { degraded: true, intent: 'general', quick: !!opts._quick, rag: true, low_relevant: _lowRelevant } };
+  }
+  const draft = await stages.finalStep(ctx, hooks, '');
+  const _qd = applyQualityDefense(draft, { obsOk: false, toolHistoryText: '', skipL1: true, question: ctx.question, skipScaleDefense: true });
+  const _final = _qd.final;
+  if (hooks.onFinalDone) hooks.onFinalDone(_final);
+  if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: opts._quick ? 'quick-rag' : 'diagnose-knowledge-qa', capsules: _qd.capsules });
+  return { ok: true, rounds: 0, final: _final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: opts._quick ? 'quick-rag' : 'diagnose-knowledge-qa' }, degraded: false, diagnose: { degraded: true, intent: 'general', quick: !!opts._quick, rag: true, low_relevant: _lowRelevant } };
+}
+
 const OBS_TRUNC = 200;      // observation 注入 history 截断长度
 const PARAMS_TRUNC = 80;    // action params 摘要截断长度
 
@@ -191,8 +302,10 @@ function _esc(s) {   // 转义 HTML + 反引号（防 marked 把动态值 needed
 
 /** EXIT_GAP 缺数据/做不成卡（确定性组装，不走 LLM——杜绝"模型又口头讲一遍"）。
  *  触发：intent∈{B,C} 且零成功观察+零新图层（含全失败/全叙述/解析塌）。
- *  内容：缺什么/为何/已尝试但失败的/引导上传或换问法。绝不编造、绝不纯计划文。 */
-function composeGapCard(diagnose, failedObs) {
+ *  内容：缺什么/为何/已尝试但失败的/引导上传或换问法。绝不编造、绝不纯计划文。
+ *  export 修正（08-05）：③w5 措辞断言经 e2e-seam import 本函数，但漏 export 前缀 → import 链崩、
+ *  __emcTest 不注入、全部 browser 测试超时。加 export 解封（纯暴露·无行为变化）。 */
+export function composeGapCard(diagnose, failedObs) {
   const dp = (diagnose && diagnose.data_plan) || {};
   const needed = _esc((dp.needed || []).filter(Boolean).join('、'));
   const gap = _esc((dp.gap || []).filter(Boolean).join('、'));
@@ -205,15 +318,23 @@ function composeGapCard(diagnose, failedObs) {
     head = '## 还差关键数据——补齐后我就能严谨作答\n\n'
       + (needed ? `本问需要 **${needed}** 才能给出可靠结论。` : '当前情绪地图数据尚不足以完成此分析。')
       + (gap ? `\n\n**缺失**：${gap}。` : '');
+  } else if (failedObs && failedObs.length === 0) {
+    // ③w4（用户实测）：零工具失败尝试 → 问题可能非图层类·不涉及图层叙事（没试过不说"试了"）
+    //   区分两子情况（glm ③w4b 建议）：诊断失败（无法理解）vs 诊断成功但执行未开始（暂无法回答）
+    head = (diagnose && diagnose.degraded)
+      ? '## 我没能理解这个问题的分析需求\n\n这个问题可能超出了情绪地图当前的分析能力范围。'
+      : '## 这个问题我暂时无法直接回答\n\n可能需要补充数据或换一种问法。';
   } else {
     head = '## 这次没跑通——我没能生成可用的图层\n\n我试了几个操作，但都没能产出可用的图层或结论。咱们换个思路：';
   }
   const fails = (failedObs || []).filter(Boolean).slice(0, 4);
   const failTxt = fails.length ? '\n\n**已尝试但未成功**：\n' + fails.map((f) => '- ' + _esc(f)).join('\n') : '';
+  // ③w6b（Codex/glm）：footer「未生成图层」条件化——failedObs>0（试过工具）才说「未生成图层」·零工具尝试改「未完成分析」
+  const _footerLayer = (failedObs && failedObs.length > 0) ? '或未生成图层' : '';
   const guide = '\n\n**下一步建议**：\n'
     + '- 上传所需矢量数据（Shapefile / GeoJSON，EPSG:4326 或注明坐标系），在范围选择加载后重提此问；\n'
     + '- 或换一种问法 / 缩小范围（指定某区、某类用地、某时点）后重试。\n\n'
-    + '> 在没有可靠数据或未生成图层前，我不会凭空编造结论。补充后我将继续完成分析。';
+    + '> 在没有可靠数据' + _footerLayer + '前，我不会凭空编造结论。补充后我将继续完成分析。';
   return head + failTxt + guide;
 }
 
@@ -259,7 +380,7 @@ function _verifyClaims(draft) {
  *  R5/R6/R8（胶囊级·参数合法/工具可达/多样性）随轮次2 胶囊绑定工具集落地——当前追问胶囊是静态 {tag,text} prompt 串（panel.js _followUps）·无 tool+params 可校验。
  *  入参 opts: {toolHistoryText, obsOk, skipL1}——skipL1=true 跳过产物验证（while-loop 路径 _extractClaimedLayers 对账已标注 missing·防双重标注）。
  *  返 {final, degraded, fixes}——fixes 供 episode 自成长（D024·取代旧 review verdicts）。 */
-function applyQualityDefense(draft, opts) {
+export function applyQualityDefense(draft, opts) {
   const _opts = opts || {};
   let final = draft || '';
   const fixes = [];
@@ -285,15 +406,36 @@ function applyQualityDefense(draft, opts) {
     }
   }
 
+  // R9 步骤描述对账（CB-11 只说不做·Codex+glm组 防线结构性洞）：结论声称的操作动词 → 对账 toolHistory 实际工具集
+  //   未执行 → inline 标注「（注：实际未执行此操作）」。只查强措辞（执行了/已完成/做了/进行了 + 动词）·避免误判建议/概念。
+  if (_opts.toolHistoryText) {
+    const _execTools = new Set();
+    for (const line of String(_opts.toolHistoryText).split('\n')) {
+      const m = String(line).match(/动作:\s*([a-z_]+)\s*\(/i);
+      if (m) _execTools.add(m[1]);
+    }
+    // 操作动词 → 工具族映射（与 tool_contracts 工具名对齐）
+    const _ACTION_TO_TOOL = {
+      '裁取': ['clip', 'overlay'], '裁剪': ['clip', 'overlay'], '裁出': ['clip', 'overlay', 'extract_feature'],
+      '剪裁': ['clip', 'overlay', 'extract_feature'], '叠置': ['overlay'], '叠加': ['overlay'],
+      '缓冲': ['buffer'], '筛选': ['filter_attr'], '抽取': ['extract_feature'],
+    };
+    const _actionRe = /(?:执行了|已完成|做了|进行了|已执行)\s*(裁取|裁剪|裁出|剪裁|叠置|叠加|缓冲|筛选|抽取)/g;
+    const _unverified = [];
+    let _m;
+    while ((_m = _actionRe.exec(final)) !== null) {
+      const _act = _m[1];
+      const _tools = _ACTION_TO_TOOL[_act] || [];
+      if (_tools.length && !_tools.some((t) => _execTools.has(t))) _unverified.push(_act);
+    }
+    if (_unverified.length) {
+      final += `\n\n> ⚠️ 结论声称的「${[...new Set(_unverified)].join('、')}」未在工具执行记录中（实际未执行此操作·请以上方工具记录为准）。`;
+      fixes.push({ rule: 'R9', action: 'unverified-action', actions: [...new Set(_unverified)] });
+    }
+  }
+
   // R1 非空结论（硬拦截·去格式符后 <10 字符 → L3 降级·防 finalStep 空答）
   if (_isNonEmpty(final) < 10) { degrade = true; fixes.push({ rule: 'R1', action: 'empty-degrade' }); }
-
-  // R2 图层按钮存在（obs OK + 有产出层 + draft 无 {{show:}} → 自动追加·代码补·治"图出但结论没按钮"）
-  if (_opts.obsOk && realLayers.length && !/\{\{show:/.test(final)) {
-    const btns = realLayers.map((n) => `{{show:${n}}}`).join('\n');
-    final += `\n\n**已产出图层**（点击查看）：\n${btns}`;
-    fixes.push({ rule: 'R2', action: 'append-buttons' });
-  }
 
   // R3 参数一致性（标记·不拦截）：draft 引用数值 vs toolHistory observation 的 cell_size/radius·差异记 fixes
   if (_opts.toolHistoryText) {
@@ -309,10 +451,46 @@ function applyQualityDefense(draft, opts) {
   if (_opts.obsOk && /请求失败|未成功生成|生成失败|未能生成/.test(final)) { degrade = true; fixes.push({ rule: 'R4', action: 'ok-says-fail' }); }
   if (_opts.obsOk === false && /已生成|已产出|生成了|已创建/.test(final)) { degrade = true; fixes.push({ rule: 'R4', action: 'err-says-ok' }); }
 
-  // R7 结论三句骨架（>800 字 → 截断·代码兜底·prompt 已约束 brevity·此为真失控拦截）
-  if (final.length > 800) {
-    final = final.slice(0, 800) + '\n\n…（结论已截断·详见上方图层）';
+  // R7 结论长度防线（>1500 字 → 截断·代码兜底·prompt 已约束 brevity·此为真失控拦截）
+  // CB-16 用户定：多要素结论（问题类型/需求强度/需求位置/对接建议·编号 4+ 点）超 800 字正常
+  //   → 阈值 800→1500（实测结论 p95≈1000·留余量·1500 只拦真失控长文）
+  //   切点结构回切（句号/换行·不切在 markdown 列表项标题后·治「**4.**」空标题）
+  if (final.length > 1500) {
+    // 断句符：。；\n！？——【不用 '.'】CB-16 检查（claude组 场景4 实测）：lastIndexOf('.') 会把 markdown
+    //   列表标题「**4.**」的句点当句末 → 切在标题后复现空标题（原 bug 根因之一）。中文结论英文句点罕见·去掉净收益。
+    const _cut = Math.max(final.lastIndexOf('。', 1500), final.lastIndexOf('；', 1500),
+                          final.lastIndexOf('\n', 1500), final.lastIndexOf('！', 1500),
+                          final.lastIndexOf('？', 1500));
+    // Codex 硬化：切点后若残留悬空列表编号行（如 \n4.）→ 剥除（防窄窗空标题）
+    let _trunc = _cut > 750 ? final.slice(0, _cut + 1) : final.slice(0, 1500);
+    _trunc = _trunc.replace(/\n\d+\.\s*$/, '');
+    const _hasLayers = realLayers.length > 0;
+    const _note = _hasLayers ? '\n\n…（结论已截断·详见上方图层与数据）' : '\n\n…（结论较长·已截断保留要点）';
+    final = _trunc + _note;
     fixes.push({ rule: 'R7', action: 'truncate' });
+  }
+
+  // R2 图层按钮存在（obs OK + 有产出层 + draft 无 {{show:}} → 自动追加·代码补·治"图出但结论没按钮"）
+  // CB-16：移 R7 截断之后——长结论时按钮不被 R7 切掉（图层主出口防失效）
+  if (_opts.obsOk && realLayers.length && !/\{\{show:/.test(final)) {
+    const btns = realLayers.map((n) => `{{show:${n}}}`).join('\n');
+    final += `\n\n**已产出图层**（点击查看）：\n${btns}`;
+    fixes.push({ rule: 'R2', action: 'append-buttons' });
+  }
+
+  // G6a（CB-12·出口差异化·glm组 执行层强制）：R10 归因检测 / R11 泛化检测——确定性软标注（不拦截·防「一竿子插到底」同构结论）
+  //   R10：宏观问（scale=macro）+ 结论含归因词（归因/4×5/要素×领域）→ 越界归因·标注提示
+  //   R11：中微观问（scale=meso|micro）+ 结论无具体单元/落点名 → 泛化·标注提示
+  if ((_opts.question || _opts.scale) && !_opts.skipScaleDefense) {   // CB-12 问题1（Codex）：general/概念答跳过尺度防线（R10/R11 仅对 emotion_analysis 生效）
+    const _scale = _opts.scale || stages._deriveScale(String(_opts.question || ''), '');
+    if (_scale === 'macro' && /(归因|4×5|要素|领域)/.test(final) && !/宏观|分布|整体/.test(final.slice(0, 60))) {
+      final += `\n\n> ⚠️ 提示：本问为宏观分布尺度（粗粒度·不到归因）——如需要「哪里最差+原因」请用中微观分析（单元归因+排序）。`;
+      fixes.push({ rule: 'R10', action: 'macro-attribution-annotation' });
+    }
+    if ((_scale === 'meso' || _scale === 'micro') && !/(区|街道|社区|单元|公园|片区|广场|西陵|伍家岗|夷陵|点位|聚集区)/.test(final)) {
+      final += `\n\n> ⚠️ 提示：中微观结论建议落到具体单元/落点（如「西陵街道最差」）——当前结论偏泛。`;
+      fixes.push({ rule: 'R11', action: 'meso-micro-vague-annotation' });
+    }
   }
 
   // R5/R6/R8 追问胶囊校验（CB-09 D020·capsule 绑定工具集）：R5 schema 硬剔 / R6 可达性软标 / R8 多样性记 episode
@@ -357,7 +535,7 @@ function _extractClaimedLayers(draft) {
   let m;
   const showRe = /\{\{show:([^}]+)\}\}/g;   // {{show:X}} 最明确（LLM 引用要显示的图层）
   while ((m = showRe.exec(draft)) !== null) names.add(m[1].trim());
-  const verbRe = /(?:生成|产出|得到|裁出|裁剪|新建|构建|输出)[：:]?\s*[`「\*]*([^\n\s`「」\*，。：:()（）\[\]]{2,20})[`」\*]*\s*(?:的)?(?:图层|层|面|点|网格|热度|分布|聚合)/g;
+  const verbRe = /(?:生成|产出|得到|裁出|裁剪|新建|构建|输出)[：:]?\s*[`「\*]*([^\n\s`「」\*，。：:()（）\[\]]{3,20})[`」\*]*\s*(?:的)?(?:图层|层|面|点|网格|热度|分布|聚合)/g;
   while ((m = verbRe.exec(draft)) !== null) names.add(m[1].trim());
   return [...names].filter((n) => n && n.length >= 2 && !/^(图层|面|点|网格|分布|热度|清单|列表|数据|结果|图层组|边界)$/.test(n));
 }
@@ -433,7 +611,9 @@ function _composeDegradedConclusion(toolHistoryText) {
   ].filter(Boolean).join('\n');
 }
 
-async function runTemplatePath(ctx, hooks, diagnose) {
+async function runTemplatePath(ctx, hooks, diagnose, opts = {}) {
+  // A3（CB-12·B002 半成品割裂残余）：opts.deferFinal=true → 跳过首次 onFinalDone
+  //   （orchestrate 层将 autoExpand 的场景：runTemplatePath 不先渲染半成品·扩展完成统一出结论·治「先渲染后补」）
   const skill = diagnose.template;
   const def = stages.SKILL_DEFS[skill];
   const toolHistory = [];
@@ -469,6 +649,8 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   // 2. 执行工具（不调 agentStep；setToolContext 必调以写 registry provenance）
   if (hooks.onRoundStart) hooks.onRoundStart(1);
   setToolContext({ tool: def.tool, round: 1 });
+  let _inlineExpanded = false;   // 族 A（CB-10）：runTemplatePath 内联扩展标志（orchestrate 据此跳过二次 autoExpand）
+  let _inlinePartialNote = '';   // 族 A 收尾 #2：inline 扩展部分失败确定性声明（finalStep 后追加）
   let obs;
   let r = null;
   try {
@@ -477,6 +659,7 @@ async function runTemplatePath(ctx, hooks, diagnose) {
     console.timeEnd('[emc-timing] tool:' + def.tool);
     obs = (r && r.observation) || '[ERR] 工具无观察返回';
     if (r && r.data && r.data.layerId) newLayerCount = 1;
+    if (r && r.data && Array.isArray(r.data.rows) && r.data.rows.length) _lastToolRows = r.data.rows;   // Wave 1：缓存 macro rows
   } catch (e) {
     obs = `[ERR] ${def.tool} 异常：${(e && e.message) || e}`;
   }
@@ -492,6 +675,22 @@ async function runTemplatePath(ctx, hooks, diagnose) {
   const recoverable = /字段不存在|可用:|缺.*槽|无可见点|无可见情绪点|未找到|无结果|无匹配/.test(obs);   // 可恢复：字段错/缺参/无数据（换字段/提问可解）
   const analytical = _ANALYTICAL_TOOLS.has(def.tool);
   const hasRows = !!(analytical && r && r.data && Array.isArray(r.data.rows) && r.data.rows.length > 0);
+  // CB-22d P0-0-3：generate_point_layer 零图层 → 诚实文字出口（不进 ask_user·Codex A-1 陷阱修复）
+  //   全未命中时 r.data.unmatched 非空·observation 已诚实列出未匹配坐标·带 toolHistory 走 finalStep 文字作答。
+  if (def.tool === 'generate_point_layer' && newLayerCount === 0 && r && r.data && Array.isArray(r.data.unmatched) && r.data.unmatched.length) {
+    // CB-22d P0-2 B1：全未命中 → 零 LLM 确定性文字出口（用户想法 2·像人放弃·不纠结不无限思考）。
+    //   之前调 finalStep LLM → 45s 超时无兜底 → UI 卡死（「停半途」根因）。改为直接确定性文字·计时必然收尾。
+    toolHistory.push(`generate_point_layer(${JSON.stringify(params).slice(0, 80)}) → ${(obs || '').slice(0, 120)}`);
+    if (hooks.onReason) hooks.onReason('地点匹配未命中·直接文字诚实作答（不纠结）', 0);
+    const _unmatchedTxt = (r.data.unmatched || []).join('、');
+    const _final = `已将上一轮提到的项目/片区名尝试匹配到地图坐标，**未能成功**（均未匹配到坐标·未生成图层·未编造位置）。\n\n`
+      + `**未匹配的项目/片区**（${(r.data.unmatched || []).length} 个）：${_unmatchedTxt}\n\n`
+      + `> 原因：这些多为**片区/聚合类名称**（如「葛洲坝片区」「污水厂网一体示范区」）或项目名无具体地点描述·知识库暂无对应坐标。聚合类名称（含多个项目·无单一坐标）不强匹配单个地点。\n\n`
+      + `**如何继续**：若您有这些项目的坐标（经纬度）或范围面文件，上传后我可立即生成标记图层；或换问更具体的地名（如「葛洲坝」「二马路」）。`;
+    if (hooks.onFinalDone) hooks.onFinalDone(_final);
+    if (hooks.onDefense) hooks.onDefense({ degraded: false, skipped: 'generate-point-layer-no-hit' });
+    return { ok: true, rounds: 1, final: _final, defense: { degraded: false, skipped: 'generate-point-layer-no-hit' }, diagnose, exit: 'answered', newLayerCount };
+  }
   if (failed || (newLayerCount === 0 && !hasRows)) {
     // P2（Smart·v1.5）：空结果(!failed) 或 可恢复失败(recoverable·字段错/缺参/无数据) → ask_user 提问（反馈失败原因+引导），
     //   不直接 GAP 放弃。守 Smart Agent「失败时交流、不猜不放弃」；硬 ERR（网络/异常·非提问可解）仍走 GAP。
@@ -519,10 +718,79 @@ async function runTemplatePath(ctx, hooks, diagnose) {
     _recordSkip('tool_failed');   // ⑤④ execSkips 遥测
     return { ok: true, rounds: 1, final: gapText, defense: { degraded: true, skipped: 'template-tool-failed' }, degraded: true, diagnose, exit: 'gap', newLayerCount };
   }
+  // 4.5 族 A（CB-10）：多目标扩展前置——第 1 步成功后、finalStep 前，检测「多目标裁剪/合并」模式，
+  //     命中则先执行扩展 overlay 步骤（累积 toolHistory/newLayerCount），再统一出一次 finalStep（治半成品答案：全步完成→单次答案）。
+  //     与 orchestrate 的 _autoExpandOverlays 互补：此处处理「单技能第 1 步 + 多目标」，orchestrate 处理纯 overlay 链。
+  //     G3（CB-12·glm组 G6 触发入口统一）：删前置正则——触发判定单源 buildLanduseCompletion（内置成分判定·不匹配则 _c=null 不扩展）
+  if (!failed && newLayerCount > 0 && def.tool === 'extract_feature') {
+    // 族 A 收尾 #1：改用共享 buildLanduseCompletion（统一匹配 + intersection/union）
+    const _c = buildLanduseCompletion(ctx.question || '', (params && (params.as || params.name)) || '', { mode: 'auto' });
+    if (_c) {
+      _inlineExpanded = true;
+      _hitInline++;   // 族 A 收尾 #3：命中遥测
+      _saveHitTelemetry();   // G5：持久化
+      // CB-11 P1 修复：merge 意图（_c.mergeLayers·union 模式返回无 _tcs）→ 调 TOOLS.merge（防 _tcs is not iterable）
+      if (_c.mergeLayers && _c.mergeLayers.length >= 2) {
+        const _mr = await TOOLS.merge({ layers: _c.mergeLayers, as: 'merged_' + _c.boundaryName });
+        const _obs = (_mr && _mr.observation) || '[ERR] merge';
+        if (_mr && _mr.data && _mr.data.layerId) newLayerCount++;
+        toolHistory.push(`合并 ${_c.mergeLayers.length} 图层: merge(${JSON.stringify(_c.mergeLayers).slice(0, 120)}) → ${_obs}`);
+        if (hooks.onObservation) hooks.onObservation(_obs, 2);
+      } else if (_c.clipThenMerge) {
+        // CB-11 两阶段（A）：先裁剪再合并——完整 tcs（含 merge $n 引用）走 runAllToolCalls（处理 $n + 顺序 + finalStep）
+        _inlineExpanded = true;
+        const _diag2 = { ...diagnose, _allToolCalls: _c.tcs };
+        const _r2 = await runAllToolCalls(ctx, hooks, _diag2);
+        _r2._inlineExpanded = true;   // 补标志·防 orchestrate :992 误判未扩展→二次 autoExpand 双执行
+        return _r2;
+      } else {
+      const _tcs = _c.tcs;
+      let _inlineFail = 0;
+      const _inlineFailNames = [];   // P1-4（用户测试①）：收集失败图层名（as）·N/M 提示列出具体是哪个
+      const _inlineDeadline = Date.now() + 45000;   // 族 A 风险：单技能路径 45s 总预算兜底（防 4+ 步拖死）
+      for (const _tc of _tcs) {
+        if (Date.now() > _inlineDeadline) {   // 超预算：停止扩展·剩余记失败
+          toolHistory.push(`扩展-${_tc.params.as}: 已达 45s 预算·跳过`);
+          _inlineFail++; _inlineFailNames.push(_tc.params.as);
+          continue;
+        }
+        let _r = null;
+        try { _r = await TOOLS.overlay(_tc.params); }
+        catch (e) { toolHistory.push(`扩展-${_tc.params.as}: overlay 异常: ${(e && e.message) || e}`); _inlineFail++; _inlineFailNames.push(_tc.params.as); continue; }
+        const _obs = (_r && _r.observation) || '[ERR]';
+        if (_r && _r.data && _r.data.layerId) newLayerCount++;
+        else { _inlineFail++; _inlineFailNames.push(_tc.params.as); }
+        toolHistory.push(`扩展-${_tc.params.as}: overlay(${JSON.stringify(_tc.params).slice(0, 80)}) → ${_obs}`);
+        if (hooks.onObservation) hooks.onObservation(_obs, 2);
+      }
+      // 族 A 收尾 #2 + P1-4：N/M 完成度判定（inline 扩展路径也确定性追加·列失败图层名·防 LLM 措辞掩盖）
+      if (_inlineFail > 0) {
+        _inlinePartialNote = `仅完成 ${_tcs.length - _inlineFail}/${_tcs.length} 个扩展步骤（未产出图层：${_inlineFailNames.join('、')}·未生成）`;
+      }
+      }   // else（非 merge 意图）
+    }
+  }
+
   // 4. finalStep（Pro 写解题一句话 + 短结论 + {{show}}）
   if (hooks.onRound) hooks.onRound(1);
   const toolHistoryText = toolHistory.join('\n');
-  ctx.context = `【单技能路径·已执行 ${def.tool}】基于上述工具观察直接出结论，勿重选工具、勿重复执行、勿再调 geo 工具。\n【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层）\n\n` + (ctx.context || '');
+  // CB-09 P0-4：执行结果摘要注入 finalStep context——LLM 须基于实际执行结果写结论，非基于"计划已执行"推定
+  const _execSummary = newLayerCount > 0
+    ? `工具 ${def.tool} 执行成功，产出了 ${newLayerCount} 个新图层——请如实描述产出。`
+    : `工具 ${def.tool} 已调用但**未产出新图层**（范围与数据可能不重叠或无可匹配要素）——结论必须如实说明"未生成图层"，严禁编造图层名或数据量。`;
+  // G6a（CB-12）：尺度+出口约束注入 finalStep——宏观禁归因·中微观必落单元·微观必落点（与 R10/R11 防线呼应）
+  const _outletLine = diagnose && diagnose.scale && diagnose.intent === 'emotion_analysis'
+    ? (diagnose.scale === 'macro' ? '本问为宏观分布尺度——结论聚焦空间分布特征（热点/密集区/覆盖）·不做归因。'
+        : diagnose.scale === 'meso' ? '本问为中微观尺度——结论须落到具体单元（如"西陵街道最差"）并给归因。'
+        : '本问为微观尺度——结论须落到具体落点（点位/公园/街段）。')
+    : '';
+  // 出口三段式 P0：观点先行兜底注入（双保险——软扩 prompt 指令为主·此处兜底防长 tool_history 淡忘）
+  const _insightLine = '【观点先行】首句须给基于用户提问的明确观点（观点≠结论·不重复）。';
+  ctx.context = `【单技能路径·${_execSummary}】基于上述工具观察直接出结论，勿重选工具、勿重复执行、勿再调 geo 工具。\n【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层）\n${_outletLine ? '【尺度约束】' + _outletLine : ''}\n${_insightLine}\n\n` + (ctx.context || '');
+  // G3 修复（glm组 CB-11）：inline 扩展部分失败信息在 finalStep 前注入 context——LLM 能据此调整措辞（防乐观结论与确定性追加矛盾）
+  if (_inlinePartialNote) {
+    ctx.context = `【扩展部分失败】${_inlinePartialNote}——结论必须如实说明哪些图层未生成，严禁声称全部成功。\n\n` + ctx.context;
+  }
   let draft;
   try {
     console.time('[emc-timing] finalStep');   // WS1 F1.7：finalStep 计时
@@ -533,19 +801,40 @@ async function runTemplatePath(ctx, hooks, diagnose) {
     draft = _composeDegradedConclusion(toolHistoryText);   // CB-07 Layer 3：finalStep 超时/网络 → 零 LLM 降级结论（图已出·非"请求失败"矛盾）
   }
   // 5. CB-09 D023 质量防线（L1 产物验证 + R1/R2/R3/R4/R7·代码·不调 LLM）取代旧 _verifyClaims+_reviseOnce
-  const _qd = applyQualityDefense(draft, { obsOk: true, toolHistoryText, skipL1: false });
+  const _qd = applyQualityDefense(draft, { obsOk: true, toolHistoryText, skipL1: false, question: ctx.question });
   draft = _qd.final;
-  // v2 D068：合并 FC plans[] rank=2+ 为追问胶囊（CPD 选项·复用现有胶囊渲染+runCapsule 执行）
-  const _planCapsules = _plansToCapsules(ctx.plans);
+  // 族 A 收尾 #2：inline 扩展部分失败确定性追加（不依赖 LLM 措辞·与 runAllToolCalls 的 N/M 一致）
+  if (_inlinePartialNote) draft += `\n\n> ⚠️ ${_inlinePartialNote}。`;
+  // v2 D068：plans[]→追问胶囊已禁用（打断自动执行流·后续 CPD 专题统一设计）
+  // const _planCapsules = _plansToCapsules(ctx.plans);
+  const _planCapsules = [];
   const _allCapsules = [...(_qd.capsules || []), ..._planCapsules];
-  if (hooks.onFinalDone) hooks.onFinalDone(draft);
+  // 出口三段式 P0：结果结构化（观点/4要点·确定性组装）——onResultStruct 先于 onFinalDone 派发（panel 存起·onFinalDone 统一渲染·失败不阻塞主链路）
+  _dispatchResultStruct(ctx, hooks, { draft, diagnose, toolHistory, toolHistoryText });
+  if (hooks.onFinalDone && !opts.deferFinal) hooks.onFinalDone(draft);   // A3：deferFinal 时跳过首次渲染（扩展后统一出结论）
   if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template', capsules: _allCapsules });
-  return { ok: true, rounds: 1, final: draft, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template', capsules: _allCapsules }, degraded: false, diagnose, exit: 'result', newLayerCount };
+  return { ok: true, rounds: 1, final: draft, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'single-template', capsules: _allCapsules }, degraded: false, diagnose, exit: 'result', newLayerCount, _inlineExpanded };
+}
+
+/** 出口三段式 P0：结果结构化共享派发（B1 审计补丁·runTemplatePath/runChainPath/runAllToolCalls 三路径统一用）。
+ *  先于 onFinalDone 派发（panel 存起·onFinalDone 统一渲染）·失败不阻塞主链路。 */
+function _dispatchResultStruct(ctx, hooks, { draft, diagnose, toolHistory, toolHistoryText }) {
+  if (!hooks.onResultStruct) return;
+  try {
+    hooks.onResultStruct(buildResultStruct({
+      question: ctx.question, diagnose, toolHistory,
+      toolHistoryText: toolHistoryText || (toolHistory || []).join('\n'),
+      registryText: formatRegistry(), draft, scale: diagnose && diagnose.scale,
+      rows: _lastToolRows,   // W1 审计（P0）：结论段学术化取最近工具 rows（macro 权威产物·含 polarity_index 等）
+    }));
+  } catch (_) { /* 结构化失败不阻塞 */ }
 }
 
 /** v2 D068 辅助：FC plans[] rank=2+ → 胶囊格式（复用 runCapsule 执行路径）。
  *  plan {rank,label,tool,params,confidence} → capsule {label,level,skill,params}
- *  level 映射：同工具=L1·跨工具=L2（runCapsule 据此决定是否 deliberate） */
+ *  level 映射：同工具=L1·跨工具=L2（runCapsule 据此决定是否 deliberate）
+ *  CPD-RESERVED（CB-10）：CPD 搁置·接口预留——plans 生产链已随 0073990 停供（ctx.plans 仅后端自建 rank=1）·
+ *  CPD 复活时须同步恢复 FC plans 产出指令。 */
 function _plansToCapsules(plans) {
   if (!Array.isArray(plans)) return [];
   const _executedTool = (plans.find((p) => p.rank === 1) || {}).tool;
@@ -602,6 +891,7 @@ async function runChainPath(ctx, hooks, diagnose, chain) {
     const obs = (r && r.observation) || '[ERR] 工具无观察返回';
     if (/\[ERR\]|失败|错误/.test(obs)) { failedObs.push(`${step.tool}: ${obs.slice(0, 80)}`); break; }   // 步失败中断
     if (r && r.data && r.data.layerId) newLayerCount++;
+    if (r && r.data && Array.isArray(r.data.rows) && r.data.rows.length) _lastToolRows = r.data.rows;   // Wave 1：缓存 macro rows
     if (r && r.data && Array.isArray(r.data.rows) && r.data.rows.length) hasRows = true;
     toolHistory.push(`第${i + 1}轮·动作: ${step.tool}(${JSON.stringify(params).slice(0, 120)}) → ${obs}`);
     if (hooks.onObservation) hooks.onObservation(obs, i + 1);
@@ -620,7 +910,9 @@ async function runChainPath(ctx, hooks, diagnose, chain) {
   // finalStep + 对账（同 runTemplatePath :362-375）
   if (hooks.onRound) hooks.onRound(chain.steps.length);
   const toolHistoryText = toolHistory.join('\n');
-  ctx.context = `【多步链路径·已执行 ${chain.steps.map((s) => s.tool).join(' → ')}】基于上述工具观察直接出结论，勿重选工具、勿重复执行、勿再调 geo 工具。\n\n` + (ctx.context || '');
+  // CB-09 P0-4：多步链执行结果摘要——告知 LLM 实际完成了几步、产出多少图层
+  const _chainExecSummary = `多步链 ${chain.steps.map((s) => s.tool).join(' → ')} 已全部执行完成，共产出 ${newLayerCount} 个新图层——请如实描述每步产出。`;
+  ctx.context = `【多步链路径·${_chainExecSummary}】基于上述工具观察直接出结论，勿重选工具、勿重复执行、勿再调 geo 工具。\n【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层）\n\n` + (ctx.context || '');
   let draft;
   try {
     draft = await stages.finalStep(ctx, hooks, toolHistoryText);
@@ -629,8 +921,10 @@ async function runChainPath(ctx, hooks, diagnose, chain) {
     draft = _composeDegradedConclusion(toolHistoryText);   // CB-07 Layer 3：finalStep 超时/网络 → 零 LLM 降级结论（图已出·非"请求失败"矛盾）
   }
   // CB-09 D023 质量防线（L1 + R 规则·代码·取代旧 _verifyClaims+_reviseOnce）
-  const _qd = applyQualityDefense(draft, { obsOk: true, toolHistoryText, skipL1: false });
+  const _qd = applyQualityDefense(draft, { obsOk: true, toolHistoryText, skipL1: false, question: ctx.question });
   draft = _qd.final;
+  // 出口三段式 P0：B1 审计补丁——chain 路径补 onResultStruct 派发（多步链也出观点卡/4 要点卡）
+  _dispatchResultStruct(ctx, hooks, { draft, diagnose, toolHistory, toolHistoryText });
   if (hooks.onFinalDone) hooks.onFinalDone(draft);
   if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'chain', capsules: _qd.capsules || [] });
   return { ok: true, rounds: chain.steps.length, final: draft, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'chain', capsules: _qd.capsules || [] }, degraded: false, diagnose, exit: 'result', newLayerCount };
@@ -664,7 +958,7 @@ function _deriveChainId(question, diagnose) {
   return null;
 }
 
-const _GEO_TOOLS = ['extract_feature', 'overlay', 'clip', 'filter_attr', 'merge', 'buffer', 'zonal_stats', 'rank', 'area_stats', 'nearest', 'hotspot', 'ensure_zone'];   // CB-09 D015（5.242 补 ensure_zone·F3 完整性 gate 统计）
+const _GEO_TOOLS = ['extract_feature', 'overlay', 'clip', 'filter_attr', 'merge', 'buffer', 'zonal_stats', 'rank', 'area_stats', 'nearest', 'hotspot', 'ensure_zone', 'density'];   // CB-09 D015 + CB-12（glm）：补 density（前端委托但算 geo 步·F3 计划完成度统计正确性·多步问 clip→density 计划数）
 const _ANALYTICAL_TOOLS = new Set(['zonal_stats', 'compare_regions', 'rank', 'area_stats']);   // P0：表格型分析工具（返 rows·无 layerId）→ 成功判定认 rows 非空，不误判 GAP
 /** F3：诊断 method 里规划的 geo 工具步骤数。数组元素用 ' → ' 拼接后按 →/，/；/换行 分句，
  *  每句首个工具名计 1 步；**不**按 ASCII 逗号分（工具实参含逗号，如 ($1,land)）。 */
@@ -718,6 +1012,14 @@ function deriveDiagnoseMethod(template, params) {
  * @returns {Promise<{ok, degraded?, rounds?, final?, defense?}>}
  */
 export async function orchestrate(ctx, hooks = {}) {
+  // CB-16 Wave 1 检查（Codex P1）：跨轮重置 rows 缓存——防 turn1 zonal rows 附 turn2 出口卡（陈旧数据）
+  _lastToolRows = null;
+  // CB-12 P1（glm）：B3 飞轮清 gate（?test=1 冷启动·防跨 session 累积 miss 干扰测试基线）
+  try {
+    if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('test') === '1' && localStorage.getItem(_TPL_STATS_KEY)) {
+      localStorage.removeItem(_TPL_STATS_KEY);
+    }
+  } catch (_) {}
   if (ctx && ctx.capsule) return runCapsule(ctx, hooks, ctx.capsule);   // CB-09 D020 胶囊点击跳 diagnose Flash·直达 runCapsule（L1 0 轮/L2 Pro 确认）
   // ══ 编排器·确定性裁定（Smart Agent/Dumb Tool 内核 · CLAUDE.md「AI·Copilot 开发内核」铁律3：不调 LLM、只接线）══
   // 流程：Smart·计划（diagnose 意图卡）→ 编排器分流（短路 / plan-once-execute / ReAct 兜底）→ Dumb·执行（SKILL/TOOLS 纯参数化）→ 三态出口代码裁定（result/gap/concept）。详见 docs/copilot-architecture.md。
@@ -727,11 +1029,12 @@ export async function orchestrate(ctx, hooks = {}) {
   let forcedContinues = 0;   // F3 完整性 gate 强制续做计数（max 1，防 agent 0 工具就 answer）
   let successObs = 0;        // 三态出口：成功观察数（非失败）
   let newLayerCount = 0;     // 三态出口：本轮新生成图层数（工具 data.layerId 计）
+  let hasRows = false;        // 三态出口：本轮分析型产出行数（zonal/rank 等·非图层）
   let narrations = 0;        // 叙述检测：模型只写说明没给动作的轮数（>1 视失败）
   let answered = false;      // 模型是否 deliberate `answer`（概念问等可零工具直答；_hardFail 不得覆盖它）
   let narratedAnswer = false; // 模型持续叙述（prose 作答，常见于概念问）——叙述≠失败，交 finalStep 出结论，不落 GAP
   const failedObs = [];      // 失败观察摘要（EXIT_GAP 卡展示「已尝试」用）
-  ctx.answerModel = 'flash';   // B1-2a：答案默认 flash（省 finalStep pro reasoner 串行·治超时#1）；复杂任务 diagnose 后升 pro（_needsDeliberate）
+  ctx.answerModel = ctx.model || 'flash';  // B1-2a：答案跟随用户选择（Pro用Pro、Flash用Flash）；复杂任务 diagnose 后不降级
   const _deadline = Date.now() + 30000;   // WS1 F1.5：单问总预算 30s（while-loop 守卫·超时强制作答；原 75s 远超设计 6-11s 致用户感 60s+）
 
   // 多轮连续性：近 2-3 轮 trace 蒸馏注入 ctx.context 顶部（B2：5.51 单轮 priorTurn → 多轮滚动 turnHistory，意图收敛轨迹）
@@ -740,11 +1043,47 @@ export async function orchestrate(ctx, hooks = {}) {
 
   // P0 降温：_quickIntent 轻量预判——高置信通用/概念问跳 diagnose 直 finalStep（省整轮 diagnose LLM + 7字段卡）
   if (!ctx.resume && _quickIntent(ctx.question) === 'general') {
+    // G6b（CB-12·依据 2 纯问答·禁假大空需宜昌实据）：命中搜索词（大问题/聚焦问题）→ 联网搜索（DeepSeek Responses API web_search）
+    //   CB-12 B3 修复（Codex+glm组 共识）：**素材注入非旁路**——搜索结果进 ctx.context·走 finalStep + applyQualityDefense
+    //   （不直接 onFinalDone 输出·保排版/三句骨架/R1-R11 防线·B3 断言恢复适用）。非数据清单问·失败 fallback 正常 finalStep。
+    // CB-12 B3 修复：触发收紧——SEARCH_KW 命中 + 非数据清单 + **概念问须含实据词才搜**（"什么是情绪地图"无实据词→本地直答）
+    const _searchHit = SEARCH_KW.some((w) => ctx.question.includes(w)) && !INVENTORY_KW.some((w) => ctx.question.includes(w)) &&
+      (!CONCEPT_KW.some((w) => ctx.question.includes(w)) || SEARCH_EVIDENCE_RE.test(ctx.question));
+    if (_searchHit) {
+      try {
+        if (hooks.onReason) hooks.onReason('联网搜索宜昌实据中…', 0);
+        const _ac = new AbortController();   // CB-12：前端 fetch 超时（防搜索 90s 拖死批次）
+        const _timer = setTimeout(() => _ac.abort(), 15000);
+        const _res = await fetch('/api/v1/aiqa/search', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: ctx.question }), signal: _ac.signal,
+        }).finally(() => clearTimeout(_timer));
+        const _data = await _res.json().catch(() => null);
+        if (_data && _data.answer && _data.answer.trim()) {
+          // 素材注入：搜索结果进 context·供 finalStep 结合 EMC 背景改写（勿照抄）·附来源
+          ctx.context = '【联网搜索素材（供参考·须结合下方情绪地图背景改写·勿照抄）】\n' + _data.answer.trim() +
+            (_data.sources && _data.sources.length ? '\n\n来源：' + _data.sources.map((s, i) => `[${i + 1}] ${s}`).join(' · ') : '') +
+            '\n\n' + (ctx.context || '');
+          ctx._searchUsed = true;
+        }
+      } catch (_e) { /* 搜索失败 → 正常 finalStep（素材未注入）*/ }
+    }
     ctx.context = '【intent=通用问答·快速预判】直接简洁作答，不要 4×5 归因、不要演示逻辑链、不要引导情绪场景。\n\n## 情绪地图背景（概念问时参考·灵活改写勿照抄）\n随着"人民城市"理念的深入实践，城市建设正在从"见物"向"见人"转变。城市规划行业从"造城"到"营城"的理念升华，要求从"地上建城"到"城上建城、依城养城、以城兴城"。宜昌市委、市政府多次强调要关注城市的"温情治理"、"情绪价值"和"年轻范"，明确提出"打造精致温暖的现代化活力之城"、"激发城市年轻活力"等发展目标。\n\n情绪地图正是这一理念的技术实践——把居民在社交媒体、12345热线等平台表达的情感（开心、愤怒、抱怨、期盼等）精准定位到地理坐标，构建一个可展示、可交互的"城市心情"动态地图。它让人直观看到哪个区域居民幸福感高、哪里抱怨集中，并揭示情绪背后老百姓的"急难愁盼"（设施不足、环境不好、文化不显、治理不优），从而用数据替代直觉，为城市"规划、更新、运营、治理"四大领域提供"人本视角"的科学决策依据。\n\n城市情绪是城市中所有个体情绪状况的集合，是居民在工作、生活、娱乐等场景中内心需求的直接表征。情绪地图基于多源城市情绪数据（社交媒体、App数据）与时空信息（地理信息、建成环境数据）的叠加融合，构建一套反映城市情绪时空分布及其与建成环境关联的可视化分析工具。\n\n' + (ctx.context || '');
     const draft = await stages.finalStep(ctx, hooks, '');
-    if (hooks.onFinalDone) hooks.onFinalDone(draft);
-    if (hooks.onDefense) hooks.onDefense({ degraded: false, skipped: 'quick-general' });
-    return { ok: true, rounds: 0, final: draft, defense: { degraded: false, skipped: 'quick-general' }, degraded: false, diagnose: { degraded: true, intent: 'general', quick: true } };
+    // CB-12：搜索素材注入后仍走防线（R1 非空/R7 截断/R10 尺度等·保质量·非 bypass）
+    const _qd = applyQualityDefense(draft, { obsOk: false, toolHistoryText: '', skipL1: true, question: ctx.question, skipScaleDefense: true });   // 问题1：general 概念答跳过 R10/R11（尺度防线仅对情绪分析）
+    const _final = _qd.final;
+    if (hooks.onFinalDone) hooks.onFinalDone(_final);
+    if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: ctx._searchUsed ? 'quick-general-search' : 'quick-general', capsules: _qd.capsules });
+    return { ok: true, rounds: 0, final: _final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: ctx._searchUsed ? 'quick-general-search' : 'quick-general' }, degraded: false, diagnose: { degraded: true, intent: 'general', quick: true, search: !!ctx._searchUsed } };
+  }
+
+  // CB-22 RAG：知识问答检索短路（"宜昌有哪些更新项目"等→ rag_search 注入 finalStep）
+  //   与 general 短路差异：调 /aiqa/rag_search 取 Top-K 结果 + 维度标注·注入 ctx.context → finalStep（含来源·防越维）
+  //   R2/R3/R4（EMC 修复·2026-08-09）：① 超时 15s→30s（容冷加载预热窗口）② 失败/索引缺失 → EXIT_CONCEPT 确定性兜底（禁 LLM 编·防情绪分析式幻觉）③ catch 诚实声明
+  //   P0-5（三层架构·2026-08-09）：短路（加速器）+ diagnose（intent=knowledge_qa）**合流**——统一走 _assembleKnowledgeQA（双入口同注入同 finalStep·防行为分叉·Codex V2）
+  if (!ctx.resume && _quickIntent(ctx.question) === 'rag_query') {
+    return await _assembleKnowledgeQA(ctx, hooks, { _quick: true });
   }
 
   // 指代解析（NL 预处理·5.212·几 ms·非 LLM）：检测"这边/刚才"→ grounding 显式标注聚焦对象·让 diagnose 不靠猜
@@ -776,12 +1115,36 @@ export async function orchestrate(ctx, hooks = {}) {
         template: _TOOL_TO_SKILL[_matched.tool] || _matched.tool,
         params: _matched.params || {},
         degraded: false, intent: 'emotion_analysis', _fc: true, _plansReuse: true,
-        domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层',
+        // G1（glm组 修正 2）：去 scale:'macro' 硬编码——追问延续上轮尺度（priorTurn.diagnose.scale）·无则留默认
+        domain_lens: [], scale: (ctx.priorTurn && ctx.priorTurn.diagnose && ctx.priorTurn.diagnose.scale) || 'macro',
+        decision_type: '操作', outlet: '生成图层',
         data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
         method: [(_matched.tool || '') + '()'],
       };
       return await runTemplatePath(ctx, hooks, _synthDiag);
     }
+  }
+
+  // L0 数据门：先用代码检查数据是否满足提问的最小要求——缺数据直接告诉用户，不浪费 LLM 调用
+  // CB-22d P0-0-2：_dataGate 豁免——「上轮 knowledge_qa + 标记/地图」跳过（防「标记…点位/地块」误拦·新工具不依赖已有图层）
+  const _markupCue = (ctx.priorTurn && ctx.priorTurn.intent === 'knowledge_qa' && /标记|标到地图|在地图上|点位|把.*标/.test(ctx.question || '')) || /标记到地图|标到地图|在地图上标/.test(ctx.question || '');
+  const _dataGap = _markupCue ? null : _dataGate(ctx.question, ctx.layerMeta);
+  if (_dataGap) {
+    const _gapText = buildRequestUploadText({ data_plan: { needed: [_dataGap], gap: [_dataGap], strategy: 'request_upload' } });
+    if (hooks.onFinalDone) hooks.onFinalDone(_gapText);
+    if (hooks.onDefense) hooks.onDefense({ degraded: false, skipped: 'data-gate' });
+    return { ok: true, rounds: 0, final: _gapText, defense: { degraded: false, skipped: 'data-gate' }, degraded: false, diagnose: { degraded: true, _dataGate: true }, exit: 'gap', newLayerCount: 0 };
+  }
+
+  // CB-22d P0-0-1：路由使能（FC 前置）——「上轮 knowledge_qa + 标记/地图」→ 无条件注入上下文提示
+  //   引导 FC 选 generate_point_layer + 从上轮回答提取项目/地点名入 names[]。不翻转 resume·不进续作分支·走正常 FC。
+  //   glm B.1 修正：resume 恒 false（用户句无续作词）·故不依赖 resume 布尔·在 FC 前直接检测注入。
+  if (_markupCue && !ctx.resume) {
+    const _prevFinal = (ctx.priorTurn && ctx.priorTurn.final_excerpt) ? ctx.priorTurn.final_excerpt : '';
+    ctx.context = '【标记到地图】用户要把上一轮知识问答中的项目/地点标记到地图。'
+      + '请选择 generate_point_layer 工具，并从上一轮回答中提取项目/片区名填入 names[] 参数'
+      + (_prevFinal ? `（上一轮回答原文片段：${_prevFinal.slice(0, 400)}）` : '（上一轮回答未回灌·尽量从对话历史提取项目名）')
+      + '。未匹配到坐标的地点会诚实文字列出·绝不编造坐标。\n\n' + (ctx.context || '');
   }
 
   let diagnose = null;
@@ -790,15 +1153,35 @@ export async function orchestrate(ctx, hooks = {}) {
     diagnose = await stages.fcDiagnoseStep(ctx, hooks);
     console.timeEnd('[emc-timing] fcDiagnose');
   } catch (e) { diagnose = null; }
-  // v2 FC 降级 fallback：FC 失败 → 退回旧 SSE diagnose（过渡期保留·D053）
-  if (!diagnose || diagnose.degraded) {
-    console.warn('[FC] 降级→旧 SSE diagnose', diagnose?._fcError || '');
-    try {
-      diagnose = await stages.diagnoseStep(ctx, hooks);
-    } catch (e) { diagnose = null; }
+  // P0：FC 诊断失败 或 成功但返 unknown/multi（CB-12·Codex+glm 定案）→ 确定性恢复兜底
+  //   glm 关键洞察：FC 成功返 unknown/multi 比 FC 失败更危险——FC 失败至少 recover 兜底·unknown/multi 则 recover 跳过（非 degraded）·直落 while-loop
+  //   扩展触发：degraded OR template∈{unknown,multi} 都试 recover（unknown/multi 单工具路径不满足·recover 给确定性出口）
+  if (!diagnose || diagnose.degraded || diagnose.template === 'unknown' || diagnose.template === 'multi') {
+    console.warn('[FC] 诊断失败或返 unknown/multi·不入旧 SSE', diagnose?._fcError || diagnose?.template || '');
+    if (!diagnose) diagnose = { degraded: true, _fcError: 'fc_failed' };
+    // CB-12（glm 微调）：FC 失败/unknown/multi 但问句含顺序词（先<动作>再<目标>）→ 链命中则合成最小 diagnose 走链前置
+    //   （治 FC 方差：FC 概率返 unknown/multi → recover 不覆盖 clip+density 顺序模式 → while-loop 不稳定）
+    const _seqRe = /(?:先|然后|接着|随后|再)\s*.{0,10}(?:裁剪|筛选|裁出|提取|合并|叠置|缓冲|聚合|排序).{0,20}(?:再|然后|接着|随后).{0,10}(?:热力|密度|聚合|排序|裁剪|筛选)/;
+    if (_seqRe.test(ctx.question || '') && _deriveChainId(ctx.question || '', {})) {
+      diagnose = { template: 'clip', degraded: false, _fc: true, _seqChain: true,
+        params: {}, method: ['clip()'], intent: 'gis_operation',
+        data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+        domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [] };
+      console.log('[seq-chain] FC 失败但顺序词+链命中 → 合成 clip diagnose 走链前置');
+    } else {
+      // L2 确定性恢复：FC 失败/unknown/multi → 尝试用关键词+数据状态构造 diagnose（不调 LLM）
+      const _recovered = _deterministicRecover(ctx);
+      if (_recovered) {
+        diagnose = _recovered;
+        _hitRecover++;   // 族 A 收尾 #3：命中遥测
+        _saveHitTelemetry();   // G5：持久化
+        if (hooks.onObservation) hooks.onObservation(`[恢复] ${diagnose.template ? 'FC 返 ' + diagnose.template : 'FC 失败'} → 确定性匹配 → 直执行`, 0);
+        console.log('[recover] matched:', diagnose.template, JSON.stringify(diagnose.params || {}).slice(0, 120));
+      }
+    }
   }
-  diagnose = diagnose || { degraded: true };
   // v2 D068：FC 产出的 plans[] 存入 ctx.plans·供 finalStep（追问胶囊）+ CPD（选项展示）共享
+  // CPD-RESERVED（CB-10）：CPD 搁置·接口预留——plans 生产链已随 0073990 停供（ctx.plans 仅后端自建 rank=1）·CPD 复活时须恢复 FC plans 产出指令
   if (diagnose.plans && diagnose.plans.length) {
     ctx.plans = diagnose.plans;
   }
@@ -824,6 +1207,8 @@ export async function orchestrate(ctx, hooks = {}) {
       if (hooks.onObservation) hooks.onObservation(`[派生] 「${_deriv.name}」属已加载「${_deriv.layer}」(${_deriv.field}) 子要素 → clip/extract 可派生，strategy=ready`, 0);
     }
   }
+  // G1（CB-12）：参数补全层——FC/recover 路径共用·对缺失参数确定性派生（boundary/cell_size/radius/polarity）
+  if (!diagnose.degraded) deriveMissingParams(diagnose, ctx.question, getLayers());
   if (hooks.onDiagnose) hooks.onDiagnose(diagnose);
   if (!diagnose.degraded) {
     _recordTplResult(diagnose.template);   // ⑤④ Flash template 命中率遥测（'unknown'=miss，驱动 80% gate）
@@ -845,6 +1230,11 @@ export async function orchestrate(ctx, hooks = {}) {
         ctx.context = '【intent=纯GIS操作】用 geo 工具（extract_feature/clip/filter_attr/overlay/merge/buffer）完成操作，出口=新图层（自动落地图）。\n\n' + (ctx.context || '');
       }
     } else {
+      // CB-22 三层架构 P0-5：diagnose LLM 判 intent=knowledge_qa → 合流 _assembleKnowledgeQA（知识问答通道·意图判断归位）
+      if (intent === 'knowledge_qa') {
+        ctx.context = '【intent=知识问答】本次经意图判断 agent 判定为知识问答——检索知识库素材 → LLM 综合作答（非分析·勿出图层）。\n\n' + (ctx.context || '');
+        return await _assembleKnowledgeQA(ctx, hooks, { _quick: false });
+      }
       if (intent === 'general') {
         ctx.context = '【intent=通用问答】直接简洁作答即可，不要 4×5 归因、不要演示逻辑链、不要引导情绪场景。\n\n' + (ctx.context || '');
         const draft = await stages.finalStep(ctx, hooks, '');
@@ -865,16 +1255,79 @@ export async function orchestrate(ctx, hooks = {}) {
     }
   }
 
-  // 【Dumb·执行阶段】P1 编排：single 技能走 runTemplatePath（0 agentStep LLM 轮·纯参数化执行，p^N→p²）；concept 已被上面 general 短路接走；multi/unknown 落 while-loop（ReAct 兜底）。
-  // ⑤④ 80% gate（self-protection）：_tplHitRateReady 冷启动放行保零回归；Flash 经 ≥10 次验证命中率<80%（系统性不可靠）时
-  // 退 while-loop（更稳健：query-first + 多轮 + 对账），命中率≥80% 才主导 single 快路径。
+  // 【Dumb·执行阶段】P1 编排：
+  // D057：_allToolCalls 有多个条目 → 直接批量执行（0 LLM 中间轮·L2 恢复/FC 多工具共用）
+  if (!diagnose.degraded && Array.isArray(diagnose._allToolCalls) && diagnose._allToolCalls.length > 1) {
+    return await runAllToolCalls(ctx, hooks, { ...diagnose });
+  }
+  // CB-09：单工具执行后，代码自动检测是否需要补全剩余步骤（不依赖 LLM 产出 plans）
   if (!ctx.resume && !diagnose.degraded && diagnose.template) {
+    // CB-12（Codex 微调）：Pro chain（FC 自产链）优先级最高——移到顺序词链前置之前（FC 自产链最贴问句·防被通用链抢）
+    if (diagnose.chain) return await runChainPath(ctx, hooks, diagnose, diagnose.chain);
+    // CB-12（Codex+glm 多步问）：顺序词链检查**前置**——单模板 + 顺序词（先…再/然后/接着 + 热力/密度等）且链命中 →
+    //   直接 runChainPath（跳过单工具路径·治"先裁剪再热力图"FC 只出 clip·链死区：:1073 单工具 return 挡死 :1091 链检查）
+    // CB-12（Codex 微调）：_hasSeq 收紧——要求「先<动作>再<目标>」完整结构（"先看看热力图"仅先+热力共现不触发·防概念问误触发链）
+    const _hasSeq = /(?:先|然后|接着|随后|再)\s*.{0,10}(?:裁剪|筛选|裁出|提取|合并|叠置|缓冲|聚合|排序).{0,20}(?:再|然后|接着|随后).{0,10}(?:热力|密度|聚合|排序|裁剪|筛选)/.test(ctx.question || '');
+    if (_hasSeq && _tplHitRateReady()) {
+      const _chainPre = _deriveChainId(ctx.question, diagnose);
+      if (_chainPre) {
+        // 链前置：FC 返 clip 单模板·diagnose.params 无 boundary（链 {boundary} 占位符填不上→clip range='' 失败）→ 先 derive boundary
+        //   问句区名 → 行政区层要素 geojson（复用 deriveAvailable·仿 boundary derive 模式）
+        if (!diagnose.params) diagnose.params = {};
+        if (!diagnose.params.boundary && !diagnose.params.range) {
+          const _chainD = deriveAvailable(ctx.question || '', getLayers());
+          let _boundary = null;
+          if (_chainD) {
+            const _cl = getLayers().find((x) => x.name === _chainD.layer);
+            const _cf = (_cl && _cl.fc && _cl.fc.features || []).find((f) => {
+              const v = f.properties && f.properties[_chainD.field];
+              return v != null && String(v).includes(_chainD.name);
+            });
+            if (_cf) _boundary = { type: 'FeatureCollection', features: [_cf] };
+          }
+          // ③w4b（Codex P1⑤ + glm）：deriveAvailable 无匹配但问句含区名（"…区/市/县"）→ fallback 到行政区 preset
+          //   取**单要素**（仿 :1453-1460 boundary derive 模式）·非整集合当 boundary·无区名不猜（用户没指定范围·链不出走单工具/ask_user）
+          if (!_boundary && /(.+?)(?:区|市|县)/.test(ctx.question || '')) {
+            const _presetLayer = getLayers().find((x) => x.name === '行政区' || /行政区/.test(x.name || ''));
+            if (_presetLayer && _presetLayer.fc && _presetLayer.fc.features) {
+              const _dm = ctx.question.match(/(.+?)(?:区|市|县)/);
+              const _pname = _dm ? _dm[1] : '';
+              const _pf = _presetLayer.fc.features.find((f) => {
+                // ③w6b（Codex P1）：行政区 preset 要素仅 MC 字段（manifest nameField=MC）·name/NAME/name_field 恒缺 → 永不命中（死代码）·补 MC
+                const v = f.properties && (f.properties.name || f.properties.NAME || f.properties.name_field || f.properties.MC);
+                return v != null && String(v).includes(_pname);
+              });
+              if (_pf) _boundary = { type: 'FeatureCollection', features: [_pf] };
+            }
+          }
+          if (_boundary) diagnose.params.boundary = _boundary;
+        }
+        return await runChainPath(ctx, hooks, diagnose, _chainPre);
+      }
+    }
     const _tdef = stages.SKILL_DEFS[diagnose.template];
-    if (_tdef && _tdef.category === 'single' && _tplHitRateReady()) return await runTemplatePath(ctx, hooks, diagnose);
-    if (diagnose.chain) return await runChainPath(ctx, hooks, diagnose, diagnose.chain);  // CB-09 D009+D012（5.237）Phase C: Pro 产复合链优先·不受 Flash hit-rate gate（Pro 非 Flash）
-    if (diagnose.template === 'multi' && _tplHitRateReady()) {                     // E1（5.210）：Flash multi 固定链分流（治 C3 多步超时）
+    // CB-12 P1（glm）：gate per-template——unknown 才受 gate·其他 single 模板始终 fast path（防全局开关连锁·gate 恒 PASS 时 zero 影响）
+    if (_tdef && _tdef.category === 'single' && (diagnose.template !== 'unknown' || _tplHitRateReady())) {
+      // A3（CB-12·B002 割裂残余）：将有 autoExpand 需求（且非 extract 首步——extract 已由 runTemplatePath 内联扩展处理）
+      // → deferFinal（runTemplatePath 不先渲染半成品·扩展完成统一出结论）
+      const _willExpand = !ctx.resume && _tdef.tool !== 'extract_feature' &&
+        buildLanduseCompletion(ctx.question || '', (diagnose.params && (diagnose.params.as || diagnose.params.name)) || '', { mode: 'auto' }) !== null;
+      const _result = await runTemplatePath(ctx, hooks, diagnose, { deferFinal: _willExpand });
+      // 族 A（CB-10）：runTemplatePath 已内联扩展（_inlineExpanded）→ 跳过 orchestrate 二次扩展（防双执行）
+      if (_result && _result._inlineExpanded) return _result;
+      // 代码自动扩展：检测多目标空间裁剪模式 → 生成剩余 overlay 步骤
+      if (_result && _result.exit === 'result' && !_result.degraded && _result.newLayerCount > 0) {
+        const _expanded = _autoExpandOverlays(ctx, hooks, diagnose, _result);
+        if (_expanded) return _expanded;
+        // A3 兜底：deferFinal 但扩展未触发 → 补渲染 runTemplatePath 结论（防丢答案）
+        if (_willExpand && hooks.onFinalDone && _result && _result.final) hooks.onFinalDone(_result.final);
+      }
+      return _result;
+    }
+    // CB-12（Codex 微调）：Pro chain 已前置（:1072）·此处仅分流 multi / 顺序词（_hasSeq 已前置声明）
+    if ((diagnose.template === 'multi' || _hasSeq) && _tplHitRateReady()) {        // E1（5.210）+ CB-12：Flash multi 固定链分流 / 顺序词单模板也查链
       const _chain = _deriveChainId(ctx.question, diagnose);
-      if (_chain) return await runChainPath(ctx, hooks, diagnose, _chain);          // 命中 → 0 LLM 轮确定性链（治 C3）
+      if (_chain) return await runChainPath(ctx, hooks, diagnose, _chain);          // 命中 → 0 LLM 轮确定性链（治 C3 + 多步问）
     }                                                                              // 未命中落 while-loop（ReAct 兜底）
   }
 
@@ -978,6 +1431,8 @@ export async function orchestrate(ctx, hooks = {}) {
         const r = await fn(step.action.params || {});
         obs = (r && r.observation) || '（无观察）';
         if (r && r.data && r.data.layerId) newLayerCount++;   // 三态出口：产图层计 +1
+        // Wave 1 检查（Codex P2）：while-loop 兜底路径补 rows 捕获（对齐其他 3 路径）
+        if (r && r.data && Array.isArray(r.data.rows) && r.data.rows.length) _lastToolRows = r.data.rows;
       } catch (e) {
         obs = '工具执行失败：' + (e && e.message ? e.message : e);
       }
@@ -993,6 +1448,17 @@ export async function orchestrate(ctx, hooks = {}) {
     // CB-06 L2：生成类 + 工具产出图层 → toolHistory 追加完成信号（系统级·治 Flash 不知"任务完成"·DeepSeek）
     if (_IS_GEN && newLayerCount > 0) {
       toolHistory[toolHistory.length - 1] += '\n[系统] 已生成用户要求的分析图层。如无进一步操作需求，请直接 answer——勿再 query/verify 验证。';
+    }
+    // CB-12 P2（glm）+ 修（Codex）：while-loop 确定性出口——产图层后若**计划已执行完**则提前 answer（不等多轮 ReAct）
+    //   防"只做一半"：计划步数 > 已执行步数（如"先裁剪再热力图"第 1 步产层）→ 不早停·续轮完成计划
+    if (newLayerCount > 0 && !diagnose.chain && !(step.action.params && step.action.params.keep)) {
+      const _planned = _plannedGeoSteps(diagnose.method);
+      const _executed = _executedGeoSteps(toolHistory);
+      // Codex 边界修复：_planned > 0 守卫——degraded-FC 路径 method 空（planned=0）时 0<=1 仍截断多步·须计划非空才早停
+      if (_planned > 0 && _planned <= _executed) {   // 计划非空且已执行完 → 早停（防多步截断·Codex）
+        toolHistory[toolHistory.length - 1] += '\n[系统] 已产出图层·计划已完成·直接 answer 总结（勿再续轮）。';
+        round = maxRounds + 1;   // 提前结束循环（等价 break·保留循环后 finalStep）
+      }
     }
     round++;
   }
@@ -1020,8 +1486,29 @@ export async function orchestrate(ctx, hooks = {}) {
   // EXIT_RESULT：草稿结论（agent 决定 answer / 达上限 / 降级回退 都走这里）
   let draft = '';
   let _isPartialMissing = false;   // EXIT_PARTIAL：对账发现少量声称图层未实际生成（1-2 个），保 draft+标注后转 partial 出口
-  // ④ 注入 registry 真值清单（finalStep 共用同 ctx.context）：模型 ground 在实际图层，禁编不在列表的层
-  ctx.context = '【地图实际产出图层】' + formatRegistry() + '（严禁声称生成不在此列表的图层；任务未完成改述"未生成/未产出"，不得编造图层名与数字）\n\n' + (ctx.context || '');
+
+  // CB-09 P0-4 治本（v2）：零图层+零分析行 → 跳过 LLM finalStep，直接用确定性诚实结论。
+  // 根因：v1 只在 context 加提示，LLM 仍会忽略。治本：不调 LLM——零产出时无内容需"总结"。
+  // ③w4（用户实测）：问题可能与图层无关——failedObs=0（零工具失败尝试）时不说"未产出新图层"（假话·没试过）
+  if (newLayerCount === 0 && !hasRows) {
+    const _triedTools = failedObs.length > 0;   // 确实尝试过工具（failedObs 仅工具失败时 push·:753/755/1261）
+    const _honestText = _triedTools
+      ? composeGapCard(diagnose, failedObs)
+          + '\n\n---\n**诚实结论**：本轮未产出新图层。'
+          + '\n\n请尝试：① 换一种问法（更具体地指定范围和目标）② 确认所需数据已加载（点开 Layers 面板检查）③ 缩小分析范围后重试。'
+      : composeGapCard(diagnose, failedObs);   // 零工具尝试 → 非图层叙事（composeGapCard 内按 failedObs 分支措辞）
+    if (hooks.onFinalDone) hooks.onFinalDone(_honestText);
+    if (hooks.onDefense) hooks.onDefense({ degraded: true, skipped: 'zero-output' });
+    _recordSkip('zero_output');
+    return { ok: true, rounds: round, final: _honestText, defense: { degraded: true, skipped: 'zero-output' }, degraded: true, diagnose, exit: 'gap', newLayerCount };
+  }
+
+  // ④ 注入 registry 真值清单 + 执行结果摘要（finalStep 共用同 ctx.context）：
+  //   CB-09 P0-4——LLM 须基于实际执行结果写结论，非基于 plan 推定（治 finalStep 假结论 B002/B004/B005）
+  const _loopExecSummary = newLayerCount > 0
+    ? `本轮共产出 ${newLayerCount} 个新图层——请如实描述产出。`
+    : `本轮**未产出任何新图层**——结论必须如实说明"未生成图层"，严禁编造图层名或声称已产出。`;
+  ctx.context = `【${_loopExecSummary}】【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层；任务未完成改述"未生成/未产出"，不得编造图层名与数字）\n\n` + (ctx.context || '');
   try {
     draft = await stages.finalStep(ctx, hooks, toolHistoryText);
   } catch (e) {
@@ -1066,13 +1553,22 @@ export async function orchestrate(ctx, hooks = {}) {
   }
   if (hooks.onFinalDone) hooks.onFinalDone(draft);
 
+  // CB-16 Wave 0：出口卡片确定性组装（结果范式 agent·第三段·result 态后·纯增量）
+  //   finalStep 后条件调用 /outlet_card（问句含接口词才出卡·不碰承重路径/四态裁定）
+  //   卡 JSON 挂 _outletCard·panel 在 result 态消费渲染（仿 .cpd-guide-card·纯模板）
+  try {
+    _maybeBuildOutletCard(diagnose, ctx, newLayerCount).then((card) => {
+      if (card && hooks.onOutletCard) hooks.onOutletCard(card);
+    }).catch(() => { /* 出口卡失败不阻塞主链路·静默 */ });
+  } catch (_) { /* 同上 */ }
+
   // EXIT_PARTIAL 裁定（体验>正确性·四态出口第四态）：仅对账少量 missing（_isPartialMissing）= 真"做成一部分"。
   //   软缺口 strategy=fallback_annotated 用替代数据仍可完整作答 → 走正常质量防线 + EXIT_RESULT，不属此态。
   if (_isPartialMissing) {
     const _pIntent = diagnose && !diagnose.degraded ? (diagnose.intent || 'emotion_analysis') : 'emotion_analysis';
     if (_pIntent === 'gis_operation') {
       // CB-09 D023：_extractClaimedLayers 已标注 missing → skipL1:true 防双重；R2/R4/R7 仍跑
-      const _pQd = applyQualityDefense(draft, { obsOk: newLayerCount > 0, toolHistoryText, skipL1: true });
+      const _pQd = applyQualityDefense(draft, { obsOk: newLayerCount > 0, toolHistoryText, skipL1: true, question: ctx.question });
       draft = _pQd.final;
     }
     if (hooks.onDefense) hooks.onDefense({ degraded: true, skipped: 'partial' });
@@ -1082,15 +1578,561 @@ export async function orchestrate(ctx, hooks = {}) {
   // intent=纯GIS操作：质量防线（L1+R 规则·代码兜底·_extractClaimedLayers 已标注→skipL1:true）
   const _intent = diagnose && !diagnose.degraded ? (diagnose.intent || 'emotion_analysis') : 'emotion_analysis';
   if (_intent === 'gis_operation') {
-    const _gQd = applyQualityDefense(draft, { obsOk: successObs > 0 || newLayerCount > 0, toolHistoryText, skipL1: true });
+    const _gQd = applyQualityDefense(draft, { obsOk: successObs > 0 || newLayerCount > 0, toolHistoryText, skipL1: true, question: ctx.question });
     draft = _gQd.final;
     return { ok: true, rounds: round, final: draft, defense: { degraded: _gQd.degraded, fixes: _gQd.fixes, skipped: 'gis_operation', capsules: _gQd.capsules || [] }, degraded, diagnose, exit: 'result', newLayerCount };
   }
 
   // CB-09 D023 质量防线（删旧 R+R·reviewStep/REVIEW_ENABLED/_reviseOnce 全去）：L1+R1/R2/R3/R4/R7+L3 代码兜底
   // _extractClaimedLayers 对账（:864）已标注 missing → skipL1:true；R2/R3/R4/R7 仍跑
-  const _fQd = applyQualityDefense(draft, { obsOk: successObs > 0 || newLayerCount > 0, toolHistoryText, skipL1: true });
+  const _fQd = applyQualityDefense(draft, { obsOk: successObs > 0 || newLayerCount > 0, toolHistoryText, skipL1: true, question: ctx.question });
   const final = _fQd.final;
   if (hooks.onDefense) hooks.onDefense({ degraded: _fQd.degraded, fixes: _fQd.fixes, skipped: 'result', capsules: _fQd.capsules || [] });
   return { ok: true, rounds: round, final, defense: { degraded: _fQd.degraded, fixes: _fQd.fixes, skipped: 'result', capsules: _fQd.capsules || [] }, degraded, diagnose, exit: 'result', newLayerCount };
 }
+
+/** L0 数据门：提问需要什么类型的数据 → 比对已加载数据 → 缺什么直接告诉用户。
+ *  纯代码，不调 LLM，<1ms。只做"显然缺数据"的判断——不确定就放行。 */
+function _dataGate(question, layerMeta) {
+  const q = question || '';
+  const lm = layerMeta || {};
+  // 用地/面层查询 → 需要 polygon 面层（不只是行政区边界）
+  if (/用地|地块|土地/.test(q) && !lm.has_polygon) return '用地面层数据（如商业用地、居住用地等 Shapefile/GeoJSON）';
+  // 情绪点查询 → 需要 point 数据
+  if (/情绪点|点位/.test(q) && !lm.has_point) return '情绪点数据（含极性字段的点图层）';
+  return null;
+}
+
+/** G1（CB-12·PRM 参数填充瓶颈）：参数补全层——FC 成功路径后对缺失参数确定性派生。
+ *  挂在 orchestrate diagnose 之后·成功与失败路径共用（recover 自带参数·derive 幂等无害）。
+ *  三层策略（Codex+glm组 共识）：L1 derive（代码可知 100%·boundary/cell_size/radius/polarity）·
+ *  L2 few-shot（prompt 教·center/boundaries 代码不可知）·L3 契约强化（tool_contracts when/hint）。
+ *  只补缺失槽（params 已有值不覆盖）。Smart/Dumb 铁律：代码可知不问 LLM。 */
+function deriveMissingParams(diagnose, question, layers) {
+  if (!diagnose || diagnose.degraded) return;
+  const q = String(question || '');
+  const p = diagnose.params = (diagnose.params || {});
+  const tool = ((diagnose.method || [''])[0] || '').replace('()', '');
+  // CB-12 P0-b（glm组）：3 条路由修正——方格/网格→density(3d)·裁剪点→clip·筛选用地→extract（仿 G5 周边→buffer 模式·确定性代码兜底）
+  if (/(方格|网格|标准格).{0,4}(聚合|分析)/.test(q) && !/(叠|合并|裁)/.test(q) && tool !== 'density') {
+    diagnose.template = 'density'; diagnose.method = ['density()'];
+    if (!p.mode) p.mode = '3d';   // 方格 = 3D 网格（非 2D 热力）
+  } else if (/裁剪.*点|裁.*情绪点|裁.*全部.*点/.test(q) && tool !== 'clip') {
+    // CB-12 补丁 + P1'（Codex）：裁剪点→clip（不限 extract/merge——PRM-10 FC 走 merge·强制 clip·裁点是点层操作非面层合并）
+    diagnose.template = 'clip'; diagnose.method = ['clip()'];
+    // P1'：多 call 通道——FC 输出 [extract_feature, merge] 时 runAllToolCalls 绕过单工具路由·此处重写 _allToolCalls 为 clip 单 call（防多 call 干扰）
+    if (Array.isArray(diagnose._allToolCalls) && diagnose._allToolCalls.length > 1) {
+      diagnose._allToolCalls = [{ name: 'clip', params: { as: (q.match(/([一-龥]{2,6})区/) || ['', '裁剪'])[1] + '情绪点' } }];
+    }
+    // P1'：clip range derive（区名→行政区层·仿 boundary derive·否则单工具路径卡"需 range"）
+    if (!p.range) {
+      const _d = deriveAvailable(q, layers);
+      if (_d) {
+        const _l = (layers || []).find((x) => x.name === _d.layer);
+        const _f = (_l && _l.fc && _l.fc.features || []).find((f) => {
+          const v = f.properties && f.properties[_d.field];
+          return v != null && String(v).includes(_d.name);
+        });
+        if (_f) p.range = { type: 'FeatureCollection', features: [_f] };
+      }
+    }
+  } else if (/筛选出|筛选某类|抽出.*用地/.test(q) && (!diagnose.template || diagnose.template === 'unknown' || diagnose.template === 'multi')) {
+    // CB-12（Codex）：筛选路由守卫放宽——FC 返 unknown/multi 也强制 extract（PRM-09 类·防直落 while-loop）
+    diagnose.template = 'extract_feature'; diagnose.method = ['extract_feature()'];   // 筛选用地→extract
+  } else if (/(聚合|归因|统计).{0,4}(情绪|极性)|按面聚合/.test(q) && tool !== 'zonal_stats') {
+    // CB-12 P1' + 定稿（glm组）：聚合/归因+区名 → 强制 zonal_stats·**前置检查 derive 成功才强制**（boundary 能填·防强制 zonal + 无 boundary → gap/while-loop 退化）
+    // PRM-05（08-08 深读·glm 方案）：deriveAvailable 偶发 null（层加载竞态/FC 方差）→ fallback 行政区 preset 单要素（仿 chain pre-check :1154-1160）
+    let _zonalD = deriveAvailable(q, layers);
+    if (!_zonalD && !p.boundary && !p.boundaries && /(.+?)(?:区|市|县)/.test(q)) {
+      // deriveAvailable 失败但问句含区名 → fallback 行政区 preset（治层加载竞态导致的偶发 null·非硬猜·行政区是固化库）
+      const _presetLayer = (layers || []).find((x) => x.name === '行政区' || /行政区/.test(x.name || ''));
+      if (_presetLayer && _presetLayer.fc && _presetLayer.fc.features) {
+        const _dm = q.match(/(.+?)(?:区|市|县)/);
+        const _pname = _dm ? _dm[1] : '';
+        const _pf = _presetLayer.fc.features.find((f) => {
+          const v = f.properties && (f.properties.name || f.properties.MC || f.properties.NAME);
+          return v != null && String(v).includes(_pname);
+        });
+        if (_pf) _zonalD = { name: _pname + '区', layer: _presetLayer.name, field: 'MC' };
+      }
+    }
+    if (_zonalD) {
+      diagnose.template = 'zonal'; diagnose.method = ['zonal_stats()'];
+      if (!p.boundary && !p.boundaries) {
+        const _l = (layers || []).find((x) => x.name === _zonalD.layer);
+        const _f = (_l && _l.fc && _l.fc.features || []).find((f) => {
+          const v = f.properties && f.properties[_zonalD.field];
+          return v != null && String(v).includes(_zonalD.name);
+        });
+        if (_f) p.boundary = { type: 'FeatureCollection', features: [_f] };
+      }
+      // PRM-07：FC 多 call（extract+merge）绕过单工具路由 → 重写 _allToolCalls 为 zonal 单 call（同 PRM-10 模式）
+      if (Array.isArray(diagnose._allToolCalls) && diagnose._allToolCalls.length > 1) {
+        diagnose._allToolCalls = [{ name: 'zonal_stats', params: { boundary: p.boundary } }];
+      }
+    }
+    // boundary 不能 derive → 不强制改 template（保留 FC 原选·防强制 zonal + 无 boundary → gap/while-loop）
+  }
+  // G5 路由修正（B3 PRM 路由错·高置信模式）："周边/附近 Nm 情绪" → buffer（勿 zonal）·"对比 A 与 B" → compare（勿单区）
+  // PRM-03/04（08-08 真根因）：LLM 可能把「周边 Nm 情绪」路由成 merge/lookup_place 多工具 → 走 runAllToolCalls 绕过本修正
+  //   → 此处同时重写 _allToolCalls 为 buffer 单 call（对齐 PRM-07/10/08 多 call 重写模式·防多工具错路由）
+  if (/(周边|附近|半径|缓冲|米内|公里内)/.test(q) && /情绪|点|分布/.test(q) && tool !== 'buffer' && !/(叠|裁|筛选)/.test(q)) {
+    diagnose.template = 'buffer';
+    diagnose.method = ['buffer()'];
+    if (Array.isArray(diagnose._allToolCalls) && diagnose._allToolCalls.length > 1) {
+      diagnose._allToolCalls = [{ name: 'buffer', params: {} }];   // 多工具错路由 → 强制 buffer 单 call（radius/center 由 derive 补）
+    }
+  } else if (/(对比|比较|vs|与.*相?比)/i.test(q) && (tool !== 'compare_regions' ||
+      !Array.isArray(p.boundaries) || p.boundaries.length < 2)) {
+    // CB-12 补丁 + PRM-08（Codex/glm）：FC 已选 compare 但 boundaries 不足 2 个也补满
+    //   （FC 可能只填 1 个 boundaries·条件放宽到 <2 也补·防第二区缺失）
+    if (tool !== 'compare_regions') { diagnose.template = 'compare'; diagnose.method = ['compare_regions()']; }
+    const _n = (q.match(/[一-龥]{2,6}(?:区|市|县|街道|镇)/g) || []);
+    if (_n.length >= 2) {
+      // compare 需 boundaries（≥2 区要素）——按区名逐区提取要素填
+      const _bs = Array.isArray(p.boundaries) ? [...p.boundaries] : [];   // 保留 FC 已填的
+      for (const _rn of _n.slice(0, 2)) {
+        const _strip = _rn.replace(/[区市县街道镇]$/g, '');
+        const _d2 = deriveAvailable(_strip, layers);
+        if (!_d2) continue;
+        const _l2 = (layers || []).find((x) => x.name === _d2.layer);
+        const _f2 = (_l2 && _l2.fc && _l2.fc.features || []).find((f) => {
+          const v = f.properties && f.properties[_d2.field];
+          return v != null && String(v).includes(_d2.name);
+        });
+        if (_f2) _bs.push({ type: 'FeatureCollection', features: [_f2] });
+      }
+      if (_bs.length >= 2) {
+        p.boundaries = _bs;
+        // CB-14（PRM-08）：FC 多 call（extract_feature×2·双区各抽）会走 :1077 runAllToolCalls 批量执行·
+        //   绕过上面强制改的 compare → 对齐 clip/zonal 分支重写 _allToolCalls 为 compare 单 call（治"计划 compare 执行 extract"）
+        if (Array.isArray(diagnose._allToolCalls) && diagnose._allToolCalls.length > 1) {
+          diagnose._allToolCalls = [{ name: 'compare_regions', params: { boundaries: _bs } }];
+        }
+      }
+    }
+  }
+  // boundary derive：需 boundary/boundaries 槽的工具（zonal/compare/rank/area_stats）·区名→精确要素 geojson（聚合该区·非整图层）
+  // CB-14（PRM-07·用户准则）：FC 已选 zonal 但 boundary 可疑（多要素整层·如 GeoJSON{9}）也修复——
+  //   "只补缺失不覆盖"设计让 FC 的错 boundary 漏过。校验：boundary 特征数 >1（整层）→ 重新 derive 精确区要素。
+  if ((tool === 'zonal_stats' || tool === 'compare_regions' || tool === 'rank' || tool === 'area_stats')) {
+    const _boundarySuspect = (b) => {
+      if (!b) return false;
+      if (typeof b === 'string') return true;   // 字符串 = 兜底整图层名（不可靠）
+      const f = b.features;
+      return !Array.isArray(f) || f.length !== 1;   // 非精确单要素 → 可疑（整层/空）
+    };
+    const _needDerive = (!p.boundary && !p.boundaries) || _boundarySuspect(p.boundary);
+    if (_needDerive) {
+      const _d = deriveAvailable(q, layers);
+      if (_d) {
+        const _l = (layers || []).find((x) => x.name === _d.layer);
+        const _f = (_l && _l.fc && _l.fc.features || []).find((f) => {
+          const v = f.properties && f.properties[_d.field];
+          return v != null && String(v).includes(_d.name);
+        });
+        if (_f) p.boundary = { type: 'FeatureCollection', features: [_f] };   // 精确区要素 geojson（聚合该区）
+        else if (typeof p.boundary === 'string') p.boundary = _d.layer;   // 兜底整图层（至少能跑·仅当原值也是字符串时）
+      } else {
+        // CB-12 P0-a（glm组）：boundary derive 失败诊断 observation——帮 LLM/user 知为何没填（防静默 GAP）
+        const _regions = (q.match(/[一-龥]{2,6}(?:区|市|县|街道|镇)/g) || []).slice(0, 2);
+        if (_regions.length && console && console.info) {
+          console.info(`[derive] 区名 ${_regions.join('、')} 未在已加载面层中找到匹配要素（可用边界层：${(layers || []).filter((x) => x.kind === 'polygon').map((x) => x.name).join('、') || '无'}）`);
+        }
+        // CB-20（两组预检·A 主）：boundary 可疑（空/多要素/字符串·_boundarySuspect）+ derive 失败 → 诚实 request_upload
+        //   治「传空对象给 zonal → 后端 400 → LLM 弱化转述『数据不足』误导用户」（PRM-07 空对象场景）
+        //   守卫 _boundarySuspect：合法单要素（derive 偶发失败）不触发·防误伤（glm 补充）
+        //   不依赖 _regions：法定功能区名（小溪塔）无「区/市/县」后缀·_regions 提取不到·boundary 可疑本身即足够
+        if (_boundarySuspect(p.boundary)) {
+          diagnose.data_plan = diagnose.data_plan || {};
+          diagnose.data_plan.strategy = 'request_upload';
+          diagnose.data_plan.needed = ['标准边界资料（行政区划/更新单元 Shapefile/GeoJSON·EPSG:4326）'];
+          diagnose.data_plan.gap = ['该区边界为法定功能区/非预置范围·EMC 不硬猜不可信范围（CB-14）·无法解析边界'];
+        }
+      }
+    }
+  }
+  // cell_size derive：density 3D 网格 ·"Nm 方格/网格"（G5：中间可夹词·如"500m 标准方格"）
+  // ③w4b（Codex P1）：门控改判 diagnose.template——G5 reroute（:1457 方格→density）更新 template 而局部 tool 变量是旧值
+  if ((tool === 'density' || diagnose.template === 'density') && !p.cell_size) {
+    const m = q.match(/(\d+(?:\.\d+)?)\s*(m|米|km|公里)\s*.{0,6}?(方格|网格|聚合|栅格)/);
+    if (m) p.cell_size = (m[2] === 'km' || m[2] === '公里') ? Math.round(Number(m[1]) * 1000) : Math.round(Number(m[1]));
+  }
+  // radius derive：buffer ·"周边 Nm/N公里"（③w4b Codex P1：门控改判 template·治 G5 lookup_place→buffer reroute 后旧 tool 跳过）
+  if ((tool === 'buffer' || diagnose.template === 'buffer') && !p.radius_m && !p.radius) {
+    const m = q.match(/(?:周边|附近|半径|缓冲|以内)\s*(\d+(?:\.\d+)?)\s*(m|米|km|公里)/);
+    if (m) p.radius_m = (m[2] === 'km' || m[2] === '公里') ? Math.round(Number(m[1]) * 1000) : Math.round(Number(m[1]));
+  }
+  // polarity derive：情绪分析工具·问句极性词
+  if ((tool === 'density' || tool === 'zonal_stats' || tool === 'rank' || tool === 'hotspot') && !p.polarity) {
+    for (const _ent of POLARITY_KW) {
+      if (_ent.kw.some((k) => q.includes(k))) { p.polarity = _ent.polarity; break; }
+    }
+  }
+}
+
+/** CB-16 Wave 0：出口卡片条件组装（结果范式 agent·第三段）。
+ *  问句含接口词（OUTLET_TRIGGER_KW 镜像）→ POST /aiqa/outlet_card 组装卡。
+ *  异步·不阻塞主链路·失败静默。result 从已加载产物图层取（polarity_index/features）。
+ *  触发判定与后端 build_outlet_schema 的 resolve_outlet_id 一致（单一权威源在后端）。 */
+let _outletCard = null;
+let _lastToolRows = null;   // CB-16 Wave 1：最近工具返回的 rows 缓存（macro 分析权威产物·zonal/rank 表）
+//   _maybeBuildOutletCard 在 finalStep 后调用·工具局部 r 已出作用域 → 模块级缓存供出口卡取 macro rows 产物
+// CB-16 Wave 1 测试钩子（e2e-seam 直测·不赌博 LLM 路由）：设 rows 缓存 + 直调出口卡组装
+export function _setLastToolRowsForTest(rows) { _lastToolRows = rows; }
+export async function _buildOutletCardForTest(diagnose, ctx, newLayerCount) {
+  return _maybeBuildOutletCard(diagnose, ctx, newLayerCount);
+}
+async function _maybeBuildOutletCard(diagnose, ctx, newLayerCount) {
+  _outletCard = null;
+  const q = (ctx && ctx.question) || '';
+  // 前置触发：问句含接口词（排除 UI 语境·与后端 _UI_CONTEXT_WORDS 同步）
+  const _uiExclude = OUTLET_UI_EXCLUDE_KW;   // CB-16 P3（glm/Codex）：import 自 emc-patterns（DRY·单一源）
+  let _qClean = q;
+  for (const _ui of _uiExclude) _qClean = _qClean.replaceAll(_ui, '');
+  const _trigger = OUTLET_TRIGGER_KW;        // CB-16 P3：import 自 emc-patterns（DRY·单一源）
+  if (!_trigger.some((w) => _qClean.includes(w))) return null;
+  // CB-16 Wave 1：门放宽——「有 rows（macro 权威产物·zonal/rank 表）或 newLayerCount>0」才出卡
+  //   （旧 newLayerCount<=0 直接 return 吞掉 rows 型 macro 产物·治"不出卡"）
+  const _hasRows = !!(Array.isArray(_lastToolRows) && _lastToolRows.length);
+  if (!_hasRows && newLayerCount <= 0) return null;   // 无产物不出卡（空 rows 也不出·防空卡）
+
+  // 收集分析产物（优先最近工具 rows·macro 权威·后端 _extract_emc_value 已统一收 rows/features）
+  //   rows 型：直传 {rows}（后端 data_base 分支标 N=单元数·total_points 总评论数）
+  //   图层型：取最近产物 fc.features（现有逻辑保底·point_count=features 数）
+  let result = null;
+  try {
+    if (_hasRows) {
+      result = { rows: _lastToolRows };
+    } else {
+      const arts = getArtifacts() || [];
+      if (arts.length) {
+        const last = arts[arts.length - 1];
+        const lyr = getLayer(last.id);
+        if (lyr && lyr.fc) {
+          const feats = lyr.fc.features || [];
+          result = { features: feats, point_count: feats.length || 0 };
+        }
+      }
+    }
+  } catch (_) { /* 产物收集失败·result 空仍走端点（后端降级） */ }
+  result = result || {};
+
+  try {
+    // CB-16 P3（glm）：加 5s AbortController（仿 CB-12 搜索分支·防御性）
+    const _ac = new AbortController();
+    const _timer = setTimeout(() => _ac.abort(), 5000);
+    const r = await fetch('/api/v1/aiqa/outlet_card', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q, diagnose: diagnose || {}, result }),
+      signal: _ac.signal,
+    });
+    clearTimeout(_timer);
+    const d = await r.json();
+    // Wave 3 多卡：cards 优先（数组）·回退 card（兼容 Wave 0-2 旧端点）
+    _outletCard = (d && (d.cards || (d.card ? [d.card] : null))) || null;
+    return _outletCard;
+  } catch (_) {
+    return null;   // 端点失败/超时静默（不阻塞回答）
+  }
+}
+
+/** L2 确定性恢复：FC 失败 → 用关键词 + 已加载数据状态构造 diagnose。
+ *  纯代码，不调 LLM，<10ms。只覆盖高置信度模式，不确定就返回 null。 */
+function _deterministicRecover(ctx) {
+  const q = ctx.question || '';
+  // CB-22d P0-0-5：标记/地图 + 上轮 knowledge_qa → 确定性兜底 generate_point_layer（glm A.2·双保险防 FC 方差）。
+  //   绕开 _polys.length 前置守卫——本场景无图层（知识问答后追问）·但确定性语义明确（上轮项目名→标到地图）。
+  if ((ctx.priorTurn && ctx.priorTurn.intent === 'knowledge_qa' && /标记|标到地图|在地图上|把.*标/.test(q)) || /标记到地图|标到地图|在地图上标/.test(q)) {
+    return { template: 'generate_point_layer', degraded: false, _fc: true, _recover: 'markup-to-map',
+      params: { names: undefined }, method: ['generate_point_layer()'], intent: 'gis_operation',
+      data_plan: { needed: [], available: [], gap: [], strategy: 'ready' } };
+  }
+  const _polys = getLayers().filter(l => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
+  if (!_polys.length) return null;
+  const _regionM = /(.{1,6})(?:区|市|县|街道|镇)/.exec(q);
+  const _region = _regionM ? _regionM[1].trim() : '';
+
+  // 模式A：有用地关键词 + 有区名 → 复用 buildLanduseCompletion 构造（G3 单源·去重复 overlay tcs 构造）
+  //     recover 只保留边界层查找（按 name/properties 含区名·比 buildLanduseCompletion 的 name 匹配更宽·保 B005 行为）·构造交共享构造器
+  const _mentionedLU = landuseTriggerOf(q).mentioned;
+  if (_mentionedLU.length >= 2 && _region) {
+    const _boundary = _polys.find(l =>
+      l.name.includes(_region) ||
+      (l.fc.features || []).some(f => Object.values(f.properties || {}).some(v => String(v).includes(_region))));
+    if (_boundary) {
+      const _c = buildLanduseCompletion(q, _boundary.name, { mode: 'auto' });
+      if (_c) {
+        if (_c.mergeLayers && _c.mergeLayers.length >= 2) {
+          return { template: 'merge', degraded: false, _fc: true, _recover: true,
+            params: { layers: _c.mergeLayers, as: 'merged_' + _region },
+            method: ['merge()'], intent: 'gis_operation',
+            data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+            domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [] };
+        }
+        if (_c.tcs && _c.tcs.length) {
+          return { template: 'overlay', degraded: false, _fc: true, _recover: true,
+            params: {}, method: ['overlay()'], intent: 'gis_operation',
+            data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+            domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [],
+            _allToolCalls: _c.tcs };
+        }
+      }
+    }
+  }
+
+  // 模式D（B005）：单用地 + 双区（"将西陵区+伍家岗区范围内商业用地筛选出来"）→ extract(where in 双区) + overlay(商业∩范围)
+  if (_mentionedLU.length === 1) {
+    const _regions = (q.match(/[一-龥]{1,6}(?:区|市|县|街道|镇)/g) || []).map(r => r.trim());
+    if (_regions.length >= 2) {
+      const _strip = (r) => r.replace(/[区市县街道镇]$/g, '');
+      // 找含任一区名的面层（行政区·properties 值含区名）
+      const _boundary = _polys.find(l => (l.fc.features || []).some(f => Object.values(f.properties || {}).some(v => _regions.some(r => String(v).includes(_strip(r))))));
+      if (_boundary) {
+        const _props = ((_boundary.fc.features || [])[0] || {}).properties || {};
+        const _nameField = Object.keys(_props).find(k => typeof _props[k] === 'string' && _regions.some(r => String(_props[k]).includes(_strip(r))));
+        if (_nameField) {
+          const _lu = _polys.find(l => l.name.includes(_mentionedLU[0]) && l.id !== _boundary.id);
+          if (_lu) {
+            const _rangeName = _regions.map(_strip).join('') + '范围';
+            const _tcs = [
+              { name: 'extract_feature', params: { layer: _boundary.id, where: _nameField + '/in/' + _regions.join(','), as: _rangeName, keep: true } },
+              { name: 'overlay', params: { layer_a: _rangeName, layer_b: _lu.id, how: 'intersection', as: _rangeName + '_' + _mentionedLU[0] } },
+            ];
+            return { template: 'overlay', degraded: false, _fc: true, _recover: true,
+              params: {}, method: ['extract_feature()', 'overlay()'], intent: 'gis_operation',
+              data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+              domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [],
+              _allToolCalls: _tcs };
+          }
+        }
+      }
+    }
+  }
+
+  // 模式B：有情绪点 + 有区名 + "分析/情绪/消极/积极" → zonal_stats
+  if (_region && /分析|情绪|消极|积极|归因/.test(q)) {
+    const _hasPoint = (ctx.layerMeta && ctx.layerMeta.has_point) ||
+      getLayers().some(l => l.kind === 'point' && l.fc && l.fc.features && l.fc.features.length);
+    if (_hasPoint) {
+      const _bLayer = _polys.find(l => l.name.includes(_region));
+      const _boundary = _bLayer ? _bLayer.name : (_region + '区');
+      return { template: 'zonal', degraded: false, _fc: true, _recover: true,
+        params: { boundary: _boundary, polarity: /消极|负面|negative/i.test(q) ? 'negative' : (/积极|正面|positive/i.test(q) ? 'positive' : 'overall') },
+        method: ['zonal_stats()'], intent: 'emotion_analysis',
+        data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+        domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '表格', plans: [] };
+    }
+  }
+
+  // 模式E（CB-12 P0-b 补）：方格/网格聚合（"500m 标准方格网格聚合"·FC 失败时确定性路由 density 3D + cell_size）
+  //   PRM-01/02 实测 FC 无 tool（tpl=None）→ recover 兜底——补此模式防「方格问」落空
+  if (/(方格|网格|标准格).{0,4}(聚合|分析)/.test(q) && !/(叠|合并|裁)/.test(q)) {
+    const _m = q.match(/(\d+(?:\.\d+)?)\s*(m|米|km|公里)/);
+    const _cell = _m ? ((_m[2] === 'km' || _m[2] === '公里') ? Math.round(Number(_m[1]) * 1000) : Math.round(Number(_m[1]))) : undefined;
+    const _params = { mode: '3d' };
+    if (_cell) _params.cell_size = _cell;
+    return { template: 'density', degraded: false, _fc: true, _recover: true,
+      params: _params, method: ['density()'], intent: 'emotion_analysis',
+      data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+      domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [] };
+  }
+
+  // 模式G（CB-12 PRM-09）：筛选出某类用地 → extract_feature 兜底（FC 失败时确定性路由·仿模式 E/F）
+  //   PRM-09 实测 FC 失败（tpl=None）→ degraded → deriveMissingParams 跳过 → recover 无筛选模式 → ask_user 判 ERR
+  if (/筛选出|筛选某类|抽出.*用地/.test(q)) {
+    const _fLayer = _polys.find((l) => LANDUSE_KW.some((kw) => l.name.includes(kw)) || /用地|地块/.test(l.name));
+    if (_fLayer) {
+      return { template: 'extract_feature', degraded: false, _fc: true, _recover: true,
+        params: { layer: _fLayer.name }, method: ['extract_feature()'], intent: 'gis_operation',
+        data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+        domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [] };
+    }
+  }
+
+  // 模式F（CB-12 P1'）：按面聚合/归因 + 区名 → zonal_stats 兜底（PRM-06·FC 失败时确定性路由·仿模式 E）
+  if (/(聚合|归因|统计).{0,4}(情绪|极性)|按面聚合/.test(q)) {
+    const _bLayer = _polys.find((l) => l.name.includes(_region) ||
+      (l.fc.features || []).some((f) => Object.values(f.properties || {}).some((v) => String(v).includes(_region))));
+    if (_bLayer) {
+      return { template: 'zonal', degraded: false, _fc: true, _recover: true,
+        params: { boundary: _bLayer.name }, method: ['zonal_stats()'], intent: 'emotion_analysis',
+        data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+        domain_lens: [], scale: 'macro', decision_type: '评价', outlet: '报告结论', plans: [] };
+    }
+  }
+
+  // 模式C：合并现有图层 — "合并剪裁出的N类用地" / "合并A、B、C"（G3：复用 buildLanduseCompletion mergeLayers·单源）
+  if (landuseTriggerOf(q).hasMerge) {
+    const _c = buildLanduseCompletion(q, '', { mode: 'auto' });
+    if (_c && _c.mergeLayers && _c.mergeLayers.length >= 2) {
+      return { template: 'merge', degraded: false, _fc: true, _recover: true,
+        params: { layers: _c.mergeLayers, as: 'merged_' + _c.mergeLayers.map((id) => id).join('_').slice(0, 40) },
+        method: ['merge()'], intent: 'gis_operation',
+        data_plan: { needed: [], available: [], gap: [], strategy: 'ready' },
+        domain_lens: [], scale: 'macro', decision_type: '操作', outlet: '生成图层', plans: [] };
+    }
+  }
+
+  return null;
+}
+
+/** G3（CB-12·glm组 G6 触发入口统一）：用地意图成分判定——正则/词表单源。
+ *  三触发通道（inline/autoExpand/recover）共用本函数取成分·不再各自写正则。
+ *  返回 { mentioned, regionName, hasClip, hasMerge }。词表 LANDUSE_KW 集中 emc-patterns。 */
+function landuseTriggerOf(question) {
+  const q = question || '';
+  return {
+    mentioned: LANDUSE_KW.filter((kw) => q.includes(kw)),
+    regionName: (q.match(/([一-龥]{1,4})(?:区|市|县)/) || [])[1] || '',
+    hasClip: /(裁剪|裁取|裁出|剪裁|范围内|内的)/.test(q),
+    hasMerge: /合并/.test(q),
+  };
+}
+
+/** CB-10 族 A 收尾 #1：共享用地补全构造器——统一 inline / _autoExpandOverlays / recover 的「匹配用地层 + 构造 overlay tool_calls」。
+ *  mode='intersection'（区内裁剪）/ 'union'（合并链·含 merge 关键词时）/ 'auto'（按问句含「合并」自动选）。
+ *  返回 { tcs, boundaryName, mentioned } 或 null（不匹配）。词表 LANDUSE_KW 集中 emc-patterns。
+ *  G3：判定成分单源自 landuseTriggerOf（inline/autoExpand/recover 三通道不再各自写正则）。 */
+function buildLanduseCompletion(question, firstLayerName, opts = {}) {
+  const q = question || '';
+  const mode = opts.mode || 'auto';
+  const { mentioned: _mentioned, regionName: _regionFromQ, hasClip: _wantClip, hasMerge: _wantMerge } = landuseTriggerOf(q);
+  const _isWildcard = /多类|各类|所有|全部/.test(q) && _mentioned.length < 2;
+  // B005：单用地 + 裁剪语义（"西陵区+伍家岗区范围内商业用地"）也扩展——须有区名/裁剪词防误触发
+  if (_mentioned.length < 1) return null;
+  if (_mentioned.length < 2 && !_isWildcard && !_wantClip) return null;
+  const _polyLayers = getLayers().filter((l) => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
+  const _firstLayerName = firstLayerName || '';
+  const _matches = _isWildcard
+    ? _polyLayers.filter((l) => LANDUSE_KW.some((kw) => l.name.includes(kw)) && l.name !== _firstLayerName)
+    : _polyLayers.filter((l) => _mentioned.some((kw) => l.name.includes(kw)) && l.name !== _firstLayerName);
+  if (_matches.length < 1) return null;
+  // 找边界层名：优先第一步产出（firstLayerName）·否则按范围/边界/问句区名兜底
+  // G4 修复（glm组 CB-11）：去「西陵」硬编码·从问句提取区名（landuseTriggerOf.regionName 单源）
+  const _boundaryName = _firstLayerName || (_polyLayers.find((l) => l.name.includes('范围') || l.name.includes('边界') || (_regionFromQ && l.name.includes(_regionFromQ))) || {}).name;
+  if (!_boundaryName) return null;
+  // 传 GeoJSON（非字符串 → ref() 直返，不触发消费）——否则首个 overlay 会把边界标"已消费"→移除→后续 overlay 全失败
+  const _boundaryLayer = _polyLayers.find(l => l.name === _boundaryName || (l.name && l.name.includes(_boundaryName)));
+  const _bRef = _boundaryLayer ? _boundaryLayer.fc : _boundaryName;
+  // CB-11 两阶段（A·用户拍板）：问句同时含「裁剪」+「合并」→ 先 overlay(intersection) 逐个裁剪 → 再 merge 裁剪产物
+  //   根治「只说不做」：toolHistory 有真实裁剪步骤·finalStep 能如实描述·R9 对账通过（不再丢裁剪语义）
+  if (_wantMerge && _wantClip && _matches.length >= 2) {
+    const _clipAs = _matches.map((l) => l.name.replace(/\.(geo)?json/i, '').replace(/^用地_/, '') + '_' + _boundaryName);
+    const _clipTcs = _matches.map((l, i) => ({
+      name: 'overlay',
+      params: { layer_a: _bRef, layer_b: l.id, how: 'intersection', as: _clipAs[i] }
+    }));
+    // merge 引用裁剪产物（$n 引用 runAllToolCalls 的 _stepResults）
+    const _mergeTc = { name: 'merge', params: { layers: _clipAs.map((_, i) => `$${i + 1}`), as: _boundaryName + '_三用地合并' } };
+    return { tcs: [..._clipTcs, _mergeTc], clipThenMerge: true, boundaryName: _boundaryName, mentioned: _mentioned };
+  }
+  const _wantUnion = mode === 'union' || (mode === 'auto' && _wantMerge);
+  const _how = _wantUnion ? 'union' : 'intersection';
+  const _tcs = _matches.map((l) => ({
+    name: 'overlay',
+    params: { layer_a: _bRef, layer_b: l.id, how: _how, as: l.name.replace(/\.(geo)?json/i, '').replace(/^用地_/, '') + '_' + _boundaryName }
+  }));
+  // union 模式：链式两两合并（复用 recover 模式 C 语义）
+  // G1 修复（glm组 CB-11）：固定上界 _n = 初始 tcs 数·否则迭代 _tcs 同时 push → i 追不上 length → 无限循环 OOM
+  if (_wantUnion && _tcs.length >= 2) {
+    // CB-11：merge 意图（union）改调后端 concat——overlay union 链是空间并集·字段后缀爆炸（glm组 实测 3→9→13 列）·
+    //   且 G1/G2 高危。返回 mergeLayers（匹配面层 id）供 _autoExpandOverlays 调 tools.merge(layers=[...])
+    return { mergeLayers: _matches.map((l) => l.id), boundaryName: _boundaryName, mentioned: _mentioned };
+  }
+  return { tcs: _tcs, boundaryName: _boundaryName, mentioned: _mentioned };
+}
+
+/** CB-09 代码自动扩展：检测"X区内Y1+Y2+Y3"模式 → 生成 overlay 步骤。 */
+async function _autoExpandOverlays(ctx, hooks, diagnose, firstResult) {
+  const _firstLayerName = diagnose.params && (diagnose.params.as || diagnose.params.name || '');
+  const _c = buildLanduseCompletion(ctx.question || '', _firstLayerName, { mode: 'auto' });
+  if (!_c) return null;
+  _hitAutoExpand++;   // 族 A 收尾 #3：命中遥测
+  _saveHitTelemetry();   // G5：持久化
+  // CB-11：merge 意图（union）→ 后端 concat（tools.merge layers）·退役 overlay union 链（消 G1/G2）
+  if (_c.mergeLayers && _c.mergeLayers.length >= 2) {
+    console.log('[autoExpand-merge]', _c.mentioned.join('+'), '→ merge layers', _c.mergeLayers.length, '| hits inline', _hitInline, 'autoExpand', _hitAutoExpand, 'recover', _hitRecover);
+    const _mr = await TOOLS.merge({ layers: _c.mergeLayers, as: 'merged_' + _c.boundaryName });
+    const _obs = (_mr && _mr.observation) || '[ERR] merge';
+    const _newLayers = (_mr && _mr.data && _mr.data.layerId) ? 1 : 0;
+    if (hooks.onObservation) hooks.onObservation(_obs, 1);
+    // CB-11 P2/P3：merge 直接执行完成——但走 finalStep 出格式化结论（非 raw observation）+ 补 onFinalDone（唯一渲染入口·防「卡读秒」）
+    ctx.context = `【多图层合并·${_newLayers ? '已完成' : '未产出图层'}】${_obs}\n【地图实际产出图层】${formatRegistry()}（严禁声称生成不在此列表的图层）\n\n` + (ctx.context || '');
+    let _draft;
+    try { _draft = await stages.finalStep(ctx, hooks, `第1步: merge(layers=${JSON.stringify(_c.mergeLayers).slice(0, 120)}) → ${_obs}`); }
+    catch (e) { _draft = _obs; }
+    const _qd = applyQualityDefense(_draft, { obsOk: _newLayers > 0, toolHistoryText: _obs, skipL1: false, question: ctx.question });
+    if (hooks.onFinalDone) hooks.onFinalDone(_qd.final);   // P2：渲染答案（否则用户看到「卡读秒」）
+    return { ok: true, rounds: 1, final: _qd.final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'auto-merge' }, degraded: _qd.degraded, diagnose, exit: _newLayers ? 'result' : 'gap', newLayerCount: _newLayers };
+  }
+  // CB-11 两阶段（A）：先裁剪再合并——完整 tcs（含 merge $n 引用）走 runAllToolCalls
+  if (_c.clipThenMerge) {
+    console.log('[autoExpand-clip-merge]', _c.mentioned.join('+'), '→ 先裁剪再合并', _c.tcs.length, '步');
+    const _diag3 = { ...diagnose, _allToolCalls: _c.tcs };
+    return await runAllToolCalls(ctx, hooks, _diag3);
+  }
+  console.log('[autoExpand]', _c.mentioned.join('+'), '→', _c.tcs.length, 'overlays using boundary:', _c.boundaryName, '| hits inline', _hitInline, 'autoExpand', _hitAutoExpand, 'recover', _hitRecover);
+  const _diag = { ...diagnose, _allToolCalls: _c.tcs };
+  return await runAllToolCalls(ctx, hooks, _diag);
+}
+
+/** CB-09 D057 修订：LLM 输出多个 tool_calls → 确定性顺序执行·0 LLM 中间轮。 */
+async function runAllToolCalls(ctx, hooks, diagnose) {
+  resetStepResults();        // 清 _stepResults/_resultIdByStep/_registry（防上轮残留致 ref() 误标消费）
+  resetCurrentResults();     // 清 _curResultIds/_consumedIds/_keepIds（防 focusOnlyResults 误隐藏）
+  const tcs = diagnose._allToolCalls;
+  const toolHistory = []; let newLayerCount = 0; const failedSteps = []; let hasRows = false;   // Wave 1 检查（glm组 P1）：rows 型步成功判定
+  console.log('[runAllToolCalls] start:', tcs.length, tcs.map((t) => t.name).join(' → '));
+  for (let i = 0; i < tcs.length; i++) {
+    const tc = tcs[i];
+    if (hooks.onRoundStart) hooks.onRoundStart(i + 1);
+    setToolContext({ tool: tc.name, round: i + 1 });
+    let r = null;
+    try { r = await TOOLS[tc.name](tc.params || {}); }
+    catch (e) { toolHistory.push(`第${i + 1}步: ${tc.name} → 异常: ${(e && e.message) || e}`); failedSteps.push(i + 1); continue; }
+    const obs = (r && r.observation) || '[ERR]';
+    if (r && r.data && r.data.layerId) newLayerCount++;
+    // CB-16 Wave 1 检查（glm组 P1）：三独立 if 去 else——rows 型工具（zonal/rank）成功无 layerId
+    //   → 旧 else 误判失败（成功步进 failedSteps）+ :1875 守护漏 hasRows → 多步 macro 链降级
+    if (r && r.data && Array.isArray(r.data.rows) && r.data.rows.length) _lastToolRows = r.data.rows;   // Wave 1：缓存 macro rows
+    if (r && r.data && Array.isArray(r.data.rows) && r.data.rows.length) hasRows = true;
+    else if (!(r && r.data && r.data.layerId)) failedSteps.push(i + 1);   // 仅真无产出（无图层无 rows）才失败
+    toolHistory.push(`第${i + 1}步: ${tc.name}(${JSON.stringify(tc.params || {}).slice(0, 80)}) → ${obs}`);
+    if (hooks.onObservation) hooks.onObservation(obs, i + 1);
+    document.dispatchEvent(new CustomEvent('tool:executed', { detail: { tool: tc.name, layerId: (r && r.data && r.data.layerId) || null, ok: !/\[ERR\]|失败/.test(obs), ts: Date.now() } }));
+  }
+  // 零图层守护（Wave 1 检查·glm组 P1：rows 型 macro 分析无 layerId 但成功→ hasRows 放行·防误降级）
+  if (newLayerCount === 0 && !hasRows) {
+    const _t = `## 执行完成\n\n已按计划执行 ${tcs.length} 个步骤（${tcs.map((t) => t.name).join(' → ')}），但均未产出新图层。`;
+    if (hooks.onFinalDone) hooks.onFinalDone(_t);
+    return { ok: true, rounds: tcs.length, final: _t, defense: { degraded: true, skipped: 'multi-zero' }, degraded: true, diagnose, exit: 'result', newLayerCount: 0 };
+  }
+  // finalStep
+  if (hooks.onRound) hooks.onRound(tcs.length);
+  const _failNote = failedSteps.length ? `⚠️ 失败步骤: ${failedSteps.map((n) => `第${n}步(${tcs[n-1].name})`).join('、')}——这些步骤未产出图层，结论必须如实说明"未生成"，严禁声称成功。` : '';
+  // G6a（CB-12）：尺度约束注入（多步链同守出口差异化·与 runTemplatePath 一致）
+  const _outletLine = diagnose && diagnose.scale && diagnose.intent === 'emotion_analysis'
+    ? (diagnose.scale === 'macro' ? '本问为宏观分布尺度——结论聚焦空间分布特征（热点/密集区/覆盖）·不做归因。'
+        : diagnose.scale === 'meso' ? '本问为中微观尺度——结论须落到具体单元（如"西陵街道最差"）并给归因。'
+        : '本问为微观尺度——结论须落到具体落点（点位/公园/街段）。')
+    : '';
+  ctx.context = _failNote + '\n【多步执行·已完成 ' + tcs.length + ' 步·成功 ' + newLayerCount + ' 层】\n【地图实际产出图层】' + formatRegistry() + '（严禁声称不在此列表的图层）' + (_outletLine ? '\n【尺度约束】' + _outletLine : '') + '\n\n' + (ctx.context || '');
+  let draft;
+  try { draft = await stages.finalStep(ctx, hooks, toolHistory.join('\n')); }
+  catch (e) { draft = `## 执行完成\n\n已按计划执行 ${tcs.length} 个步骤，共产出 ${newLayerCount} 个图层。`; }
+  const _qd = applyQualityDefense(draft, { obsOk: newLayerCount > 0, toolHistoryText: toolHistory.join('\n'), skipL1: false, question: ctx.question });
+  // CB-10 P0-3：完成度确定性追加（结论层·不依赖 LLM 措辞·与 R4 互补）——部分失败时显式声明 N/M
+  let _final = _qd.final;
+  if (failedSteps.length) {
+    const _miss = failedSteps.map((n) => `第${n}步(${tcs[n-1].name})`).join('、');
+    _final += `\n\n> ⚠️ 仅完成 ${tcs.length - failedSteps.length}/${tcs.length} 步（${_miss} 未产出图层·未生成）。`;
+  }
+  // 出口三段式 P0：B1 审计补丁——multi-tool 路径补 onResultStruct 派发（多工具也出观点卡/4 要点卡）
+  _dispatchResultStruct(ctx, hooks, { draft: _final, diagnose, toolHistory, toolHistoryText: toolHistory.join('\n') });
+  if (hooks.onFinalDone) hooks.onFinalDone(_final);
+  return { ok: true, rounds: tcs.length, final: _final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'multi-tool' }, degraded: _qd.degraded, diagnose, exit: 'result', newLayerCount };
+}
+
+/** CB-10：executePlans 已删——被 D057 `_allToolCalls`→`runAllToolCalls` 取代的死代码（全仓零调用·非 CPD 接口）。
+ *  plans[] 保留作 CPD 预留接口（见 ctx.plans/_plansToCapsules·CPD-RESERVED·CPD 复活时须同步恢复 FC plans 产出指令）。 */

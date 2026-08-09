@@ -1,13 +1,20 @@
 // ═══ tools.js — Agent Loop 工具集（查询型 + 操作型，直调主窗口函数）═══
+// ═══ 范围来源注册机制（CB-14·用户准则）═══
+// 范围参数必须锚定「明确来源」，不做自由语义猜测。来源机制可增补（非固定枚举）：
+//  ① 用户绘制（地图手绘 polygon）  ② 临时上传范围（含需剪裁）  ③ 固化库范围（预设面域·可剪裁）  ④ 未来可增补
+// 固化库行政区划（admin_district preset）只识别【真实行政区划】——法定功能区（小溪塔/龙泉/东部产业新区/
+// 生物产业园等）不在白名单 → 锚定失败 → 诚实 request_upload（EMC 不硬识别不可信的范围）。
+// RANGE_SOURCES 为可扩展注册表：新增来源类型 = 追加条目 + 判定函数（见 _RANGE_SOURCE_OF）。
+const FIXED_ADMIN_DISTRICTS = ['西陵区', '伍家岗区', '猇亭区', '点军区'];   // 固化库真实行政区划（宜昌·可增补·法定功能区不预置）
 // 还原单窗口后，tools 直调 map/state/panel（删跨窗口协议）。每个 tool 返回 {observation, data?}：
 //   observation = 给 LLM 看的摘要字符串（入 tool_history）；data = 结构化（前端可选用于渲染）。
-import { getLayers, getLayer, getSelectedLayer, addGroup, removeLayer, setLayerVisible } from '../state.js';
+import { getLayers, getLayer, getSelectedLayer, addGroup, removeLayer, setLayerVisible, _isAILayer } from '../state.js';
 import * as data_registry from '../data_registry.js';   // R3：registry 来源标注（治 C2）
 import { fitBoundsTo, renderLayer, reorderAllZ, removeLayerFromMap, getMap } from '../map.js';
 import { activateTab, setOverview } from '../panel.js';
 import { DOMAIN_LABEL, ELEMENT_LABEL } from '../popup.js';
 import { generateGridForAI } from '../grid-tool.js';   // density/ensure_zone 委托（piToNorm 已随迁 toolbox 模块·步 7 prune）
-import { generateHeatmapForAI, generateTerrainForAI } from '../heatmap-tool.js';   // 工作机制重构：density 委托 Toolbox（2D 彩虹/3D 地形，不自造）
+import { generateHeatmapForAI, generateTerrainForAI, generateTerrain3DForAI } from '../heatmap-tool.js';   // 工作机制重构：density 委托 Toolbox（2D 彩虹/3D 地形·P1.5 切 setTerrain 连续曲面）
 // ── 步 7 emc-delegate：12 GIS 工具委托 Toolbox 统一工具集层（手册 v2.2 §6 步 7；模块名 = 手册 §1 架构）──
 import { generateBufferForAI } from '../buffer-tool.js';   // buffer 委托固定 kind:'emotion'（§5.7/D3）
 import { generateZonalForAI, generateCompareForAI } from '../toolbox/zonal-tool.js';
@@ -242,10 +249,22 @@ const _ERR = (name, e) => ({ observation: '[ERR] ' + name + ' 失败：' + ((e &
 // DENSITY_RAMP 已退场（Phase 2）：density 委托主 Toolbox generateHeatmapForAI/generateGridForAI/generateTerrainForAI，
 // 套用 HEATMAP_RAMPS 固定色段，不再自造 KDE 色带。原 const 已删（端点 /api/v1/geo/density 后端保留 + 标 deprecated）。
 const _fmtPi = (v) => (v !== '' && v != null && !isNaN(v) ? Number(v).toFixed(2) : '?');
+// P2-2（CB-19c·Codex 建议）：boundaryLabel 从 dict 提取 features[0].properties.name（治 String(dict) → "[object Object]"·LLM 转述不可读·PRM-07 偶发 fail 方差源）
+const _boundaryLabel = (b) => {
+  if (b == null) return undefined;
+  if (typeof b === 'string') return b;
+  if (typeof b === 'object' && Array.isArray(b.features) && b.features.length) {
+    const p = b.features[0].properties || {};
+    return String(p.name || p.MC || p.NAME || '').trim() || undefined;
+  }
+  return String(b);
+};
 const _fmtRow = (row) => {
   const dom = DOMAIN_LABEL[row.domain_top] || row.domain_top || '?';
   const elm = ELEMENT_LABEL[row.element_top] || row.element_top || '?';
-  return `  - ${row.name || '未命名'}：极性 ${_fmtPi(row.polarity_index)}，${row.point_count || 0}点，${dom}×${elm}，问题=${row.issue_label || '—'}`;
+  // P3-4（CB-19）：place_name 优先——rank-on-grid（无 name）也能锚到 POI 落点（工具出口统一·LLM grounding）
+  const loc = row.place_name || row.name || '未命名';
+  return `  - ${loc}：极性 ${_fmtPi(row.polarity_index)}，${row.point_count || 0}点，${dom}×${elm}，问题=${row.issue_label || '—'}`;
 };
 
 
@@ -326,7 +345,7 @@ function focusOnlyResults() {
     if (l.kind === 'group') continue;                  // 组容器无可见性
     const want = keep.has(l.id);
     if (want && !l.visible) { setLayerVisible(l.id, true); renderLayer(l); }
-    else if (!want && l.visible) { setLayerVisible(l.id, false); renderLayer(l); }
+    else if (!want && l.visible && _isAILayer(l)) { setLayerVisible(l.id, false); renderLayer(l); }
   }
 }
 
@@ -581,11 +600,52 @@ function _boundaryEnum(l) {
 export function deriveAvailable(question, layers) {
   const q = String(question || '');
   if (!q) return null;
+  // CB-12 P0-a + P1'（glm组/Codex）：模糊匹配——剥「区/市/县/街道」后缀后双向包含（问句"西陵"↔值"西陵区"）
+  //   P1'：原始值精确优先（防"西陵路"误匹配"西陵区"·glm组 发现 2）·stripped 兜底
+  const _strip = (s) => String(s || '').replace(/[区市县街道镇]$/g, '').trim();
   for (const l of layers || []) {
     const b = _boundaryNames(l);
     if (!b || !b.values || !b.values.length) continue;
-    for (const nm of b.values) {
-      if (nm && q.includes(nm)) return { name: nm, layer: l.name, field: b.field };
+    // P1'（PRM-08）：双字段——_boundaryNames 只找 1 个字段（可能 MC 代码）·补扫 name/NAME 字段（中文名）
+    const _nameVals = [];
+    for (const f of (l.fc && l.fc.features || []).slice(0, 200)) {   // CB-12（glm）：30→200·防大图层要素 >30 时双字段扫描漏区（PRM-08 "伍家岗" 执行侧）
+      const p = f.properties || {};
+      for (const k of ['name', 'NAME', '名称']) {
+        if (p[k] != null) _nameVals.push(String(p[k]));
+      }
+    }
+    const _allVals = [...new Set([...(b.values || []), ..._nameVals])];
+    // CB-12 统一词边界（Codex 方案·修 2 bug）：两循环都过词边界·分隔语义修正——
+    //   匹配 = 值后首字符 ∈ 分隔类（区/内/范围/的/标点/空白/结尾）·跳过 = ∈ 块词（路/山/公园/大道…）
+    const _sepRe = /^[\s，。；、的区内范围边界]$/;   // 分隔类（合法区域边界·含"范围"字面·"西陵范围内"应匹配）
+    const _blockRe = /^(路|山|街|公园|广场|大道|车站|码头|桥)/;   // 块词（误匹配·跳过）
+    const _validAfter = (val, qq) => {
+      const _idx = qq.indexOf(val);
+      if (_idx < 0) return false;
+      const _after = qq.slice(_idx + val.length, _idx + val.length + 2);
+      const _first = _after.slice(0, 1);
+      return _sepRe.test(_first) || !_blockRe.test(_after);   // 分隔符 → 匹配；块词 → 跳过；其他（如"范围内"首字"范"非块词）→ 匹配
+    };
+    // CB-14（用户准则）：固化库行政区划只识别真实行政区划——层来源 preset + 层名含"行政区" → 值必须在 FIXED_ADMIN_DISTRICTS
+    //   白名单；法定功能区（小溪塔/龙泉等）不在白名单 → 跳过（不识别→诚实 request_upload·EMC 不硬猜不可信范围）。
+    //   用户上传层（upload）不受白名单限制（用户主动提供的范围皆可信）。
+    const _reg = data_registry.getByLayerId(l.id);
+    const _isFixedAdmin = _reg && _reg.source === 'preset' && /行政区/.test(l.name || '');
+    const _inAdminWhitelist = (nm) => { if (!_isFixedAdmin) return true; return FIXED_ADMIN_DISTRICTS.some((d) => nm === d || nm.includes(d) || d.includes(nm)); };
+    for (const nm of _allVals) {
+      if (!nm) continue;
+      if (!_inAdminWhitelist(nm)) continue;   // 固化库行政区划白名单过滤（法定功能区跳过）
+      if (q.includes(nm) && _validAfter(nm, q)) return { name: nm, layer: l.name, field: b.field };   // 原始值精确优先（过词边界）
+    }
+    for (const nm of _allVals) {
+      if (!nm) continue;
+      if (!_inAdminWhitelist(nm)) continue;   // 固化库行政区划白名单过滤（法定功能区跳过）
+      const _qStrip = _strip(q), _nmStrip = _strip(nm);
+      // CB-12 回退（glm组）：阈值 3→2（"西陵/伍家"2 字区名 stripped 匹配恢复·a04a714 改 3 致 2 字区名失效→while-loop 退化）
+      //   词边界用原始 q（非 _qStrip·防 _strip 剥"大道"的"道"致"大"单字漏拦块词）
+      if (_nmStrip && _nmStrip.length >= 2 && (_qStrip.includes(_nmStrip) || _nmStrip.includes(_qStrip)) && _validAfter(_nmStrip, q)) {
+        return { name: nm, layer: l.name, field: b.field };   // stripped 兜底（≥2 字·词边界防误匹配）
+      }
     }
   }
   return null;
@@ -706,6 +766,20 @@ function resolvePointLayer(params) {
   if (params.layer) return params.layer;
   const vl = pickVisiblePointLayer();
   return vl ? vl.fc : null;
+}
+/** CB-10 P0-1/B007：图层类型一致性 guard——clip 需点层、overlay/extract 需面层。
+ *  传错类型（面层走 clip / 点层走 overlay）→ observation 报「图层类型不匹配」·防止后端空结果/静默错配放大。 */
+function _checkGeomType(value, want, toolName) {
+  if (!value) return null;
+  let l = null;
+  if (typeof value === 'string') {
+    l = getLayers().find((x) => x.id === value) || getLayers().find((x) => x.name === value);
+  }
+  const geom = l ? l.kind : null;   // 已加载图层有 kind
+  if (l && geom && geom !== want) {
+    return `[ERR] ${toolName} 图层类型不匹配：目标「${l.name}」是${geom === 'point' ? '点层' : '面层'}·但 ${toolName} 需${want === 'point' ? '点层' : '面层'}（${want === 'point' ? '裁剪点数据' : '面层叠置/提取'}）。`;
+  }
+  return null;
 }
 function _ERR_NO_VISIBLE_PT() {
   return { observation: '[ERR] 无已加载的情绪点层——请先在 Layers 上传/加载情绪点数据（眼睛开关不影响 EMC 可用·hidden 层仍可分析）' };
@@ -934,11 +1008,24 @@ export const TOOLS = {
   /** 宏/中观结论主干：按边界聚合点层，得每单元极性/点数/4×5 归因+排序。 */
   async zonal_stats(params = {}) {
     if (!params.boundary) return { observation: '[ERR] zonal_stats 需 boundary（preset_id）' };
+    // CB-20（两组预检·B 兜底）：boundary 空对象/无 features → 诚实 request_upload（治 A 未覆盖路径·LLM 忠实文案素材）
+    if (typeof params.boundary === 'object' && params.boundary !== null && !(Array.isArray(params.boundary.features) && params.boundary.features.length)) {
+      return { observation: '需上传标准边界资料：boundary 为空/无法解析（EMC 不硬猜不可信范围·CB-14）' };
+    }
     const _layer = resolvePointLayer(params);
     if (!_layer) return _ERR_NO_VISIBLE_PT();
-    const boundary = await resolveBoundaryInput(params.boundary);   // 中文地名(西陵区)→GeoJSON；preset_id 直通（§3.3① 委托层预解析，模块不碰中文名）
+    let boundary;
     try {
-      const r = await generateZonalForAI({ layer: ref(_layer), boundary: ref(boundary), boundaryLabel: String(params.boundary),
+      boundary = await resolveBoundaryInput(params.boundary);   // 中文地名(西陵区)→GeoJSON；preset_id 直通（§3.3① 委托层预解析，模块不碰中文名）
+    } catch (e) {
+      // PRM-07（CB-19）：法定功能区黑名单拒识 → 诚实 request_upload 文案（非 ERR·flywheel test-cases:339 判 PASS）
+      if (String(e.message || e).includes('法定功能区')) {
+        return { observation: `需上传标准边界资料：${e.message}` };
+      }
+      return _ERR('zonal_stats', e);
+    }
+    try {
+      const r = await generateZonalForAI({ layer: ref(_layer), boundary: ref(boundary), boundaryLabel: _boundaryLabel(params.boundary),
         range: params.range ? ref(params.range) : undefined, pre_filter: normPreFilter(params.pre_filter),
         top_n: params.top_n != null ? Number(params.top_n) : undefined, as: params.as });
       const rows = r.rows || [];
@@ -960,7 +1047,15 @@ export const TOOLS = {
     const pf = normPreFilter(params.pre_filter);
     const boundaries = [];
     for (const b of bs.slice(0, 4)) {
-      boundaries.push({ label: b, geo: await resolveBoundaryInput(b) });   // 中文名(西陵区)→GeoJSON；preset_id 直通（§3.3① 委托层预解析）
+      try {
+        boundaries.push({ label: b, geo: await resolveBoundaryInput(b) });   // 中文名(西陵区)→GeoJSON；preset_id 直通（§3.3① 委托层预解析）
+      } catch (e) {
+        // PRM-07（CB-19）：法定功能区黑名单拒识 → 诚实 request_upload（非 ERR）
+        if (String(e.message || e).includes('法定功能区')) {
+          return { observation: `需上传标准边界资料：${e.message}` };
+        }
+        throw e;
+      }
     }
     try {
       const r = await generateCompareForAI({ layer: ref(_layer), boundaries, pre_filter: pf, as: params.as });
@@ -986,7 +1081,7 @@ export const TOOLS = {
     try {
       const r = await generateRankForAI({ layer: ref(_layer), by, top_n: Number(params.top_n) || 5,
         boundary: params.boundary ? ref(params.boundary) : undefined,
-        boundaryLabel: params.boundary ? String(params.boundary) : undefined,
+        boundaryLabel: params.boundary ? _boundaryLabel(params.boundary) : undefined,
         layerRef: typeof params.layer === 'string' ? params.layer : undefined,
         range: params.range ? ref(params.range) : undefined, pre_filter: normPreFilter(params.pre_filter), as: params.as });
       const rows = r.rows || [];
@@ -1011,6 +1106,10 @@ export const TOOLS = {
         const p = f.properties || {};
         return '{' + Object.keys(p).slice(0, 5).map((k) => `${k}=${p[k]}`).join(', ') + '}';
       });
+      // CB-09 P0-4 v2·工具观测诚实化
+      if (r.count === 0) {
+        return { observation: `属性筛选完成，但无匹配要素，未生成新图层。`, data: { count: 0, layerId: null } };
+      }
       return { observation: `按属性筛选命中 ${r.count} 个要素${r.truncated ? '（数量较多已截断）' : ''}，已生成图层「${r.layerName}」${_fL ? '（' + feats.length + ' 个要素）' : ''}，包含：${sample.join('、') || '（无属性）'}` + _renderNote(_fL), data: { count: r.count, layerId: r.layerId } };
     } catch (e) { return _ERR('filter_attr', e); }
   },
@@ -1018,6 +1117,9 @@ export const TOOLS = {
   /** 按几何裁剪（某区/某公园范围内的点），结果落地图为新点图层。 */
   async clip(params = {}) {
     if (!params.range) return { observation: '[ERR] clip 需 range（preset_id|geojson）' };
+    // CB-10 P0-1/B007：面层走 clip → 报「图层类型不匹配」（防止空结果 + 误导 LLM 以为是裁剪成功）
+    const _typeBad = _checkGeomType(params.layer, 'point', 'clip');
+    if (_typeBad) return { observation: _typeBad };
     const _layer = resolvePointLayer(params);
     if (!_layer) return _ERR_NO_VISIBLE_PT();
     try {
@@ -1027,12 +1129,19 @@ export const TOOLS = {
       const feats = (r.fc && r.fc.features) || [];
       const L = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // 名=范围（如「西陵区」·模块 C6 沿用）
       const sample = feats.slice(0, 3).map((f) => { const p = f.properties || {}; return p.name || p.issue_label || '未命名'; });
+      // CB-09 P0-4 v2·工具观测诚实化：count=0 时不说"已生成图层"
+      if (r.count === 0) {
+        return { observation: `裁剪完成，但指定范围内无匹配点数据，未生成新图层。`, data: { count: 0, layerId: null } };
+      }
       return { observation: `已在指定范围内裁出 ${r.count} 个情绪点${r.truncated ? '（数量较多已截断）' : ''}，生成图层「${r.layerName}」${L ? '（' + feats.length + ' 个点）' : ''}。包含：${sample.join('、') || '（无）'}` + _renderNote(L), data: { count: r.count, layerId: r.layerId } };
     } catch (e) { return _ERR('clip', e); }
   },
   /** 从面边界按属性抽单要素为独立面图层（裁出某区/某单元），结果落地图。 */
   async extract_feature(params = {}) {
     if (!params.layer) return { observation: '[ERR] extract_feature 需 layer（preset_id|geojson）' };
+    // CB-10 P0-1/B007：点层走 extract_feature → 报「图层类型不匹配」（从面层抽要素才用 extract）
+    const _typeBad = _checkGeomType(params.layer, 'polygon', 'extract_feature');
+    if (_typeBad) return { observation: _typeBad };
     // B（v1.6）：前置字段校验——getFieldCard 查 where.field 是否存在·不存在时自纠正（治 LLM 猜字段名降智）。
     const _where = params.where ? normPreFilter(params.where) : null;
     const _field = _where && _where.field;
@@ -1070,6 +1179,10 @@ export const TOOLS = {
       const feats = (r.fc && r.fc.features) || [];
       const labels = r.labels || [];
       const L = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // 名=要素名（如「西陵区·伍家岗区」/「商业服务业用地」·模块 C6 沿用）
+      // CB-09 P0-4 v2·工具观测诚实化：count=0 时不说"已生成图层"
+      if (r.count === 0) {
+        return { observation: `抽取完成，但面层中无匹配要素（where 条件可能过窄或字段名有误），未生成新图层。`, data: { count: 0, layerId: null } };
+      }
       return { observation: `已从面层中抽取出 ${r.count} 个要素，生成图层「${r.layerName}」${L ? '（' + feats.length + ' 个面）' : ''}：${labels.slice(0, 5).join('、') || '（无）'}` + _renderNote(L), data: { count: r.count, layerId: r.layerId } };
     } catch (e) { return _ERR('extract_feature', e); }
   },
@@ -1078,7 +1191,7 @@ export const TOOLS = {
   async area_stats(params = {}) {
     if (!params.boundary) return { observation: '[ERR] area_stats 需 boundary' };
     try {
-      const r = await generateAreaStatsForAI({ boundary: ref(params.boundary), boundaryLabel: String(params.boundary),
+      const r = await generateAreaStatsForAI({ boundary: ref(params.boundary), boundaryLabel: _boundaryLabel(params.boundary),
         group_by: params.group_by, as: params.as });
       const rows = r.rows || [];
       const _as = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: true }) : null;   // A1：choropleth 着色面层（解析不到 boundary 降级纯表格）
@@ -1095,14 +1208,27 @@ export const TOOLS = {
 
   /** 合并/dissolve。 */
   async merge(params = {}) {
-    if (!params.boundary) return { observation: '[ERR] merge 需 boundary' };
+    // CB-11：boundary（单层 dissolve）或 layers（多图层 concat）二选一
+    if (!params.boundary && !params.layers) return { observation: '[ERR] merge 需 boundary（单层）或 layers（多图层）二选一' };
     try {
-      const r = await generateMergeForAI({ boundary: ref(params.boundary), boundaryLabel: String(params.boundary),
+      const _r = await generateMergeForAI({
+        ...(params.boundary ? { boundary: ref(params.boundary), boundaryLabel: _boundaryLabel(params.boundary) } : {}),
+        ...(params.layers ? { layers: (params.layers || []).map(ref) } : {}),
         by: params.by, as: params.as });
-      const feats = (r.fc && r.fc.features) || [];
-      const total = r.totalAreaKm2 != null ? r.totalAreaKm2 : feats.reduce((a, f) => a + (Number((f.properties || {}).area_km2) || 0), 0);
-      const _mL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // 名=边界（如「西陵区」·模块 C6 沿用）
-      return { observation: `合并后得到 ${r.count} 个面，总面积 ${total.toFixed(1)} 平方公里，已生成图层「${r.layerName}」${_mL ? '（' + feats.length + ' 个面）' : ''}` + _renderNote(_mL), data: { count: r.count, layerId: r.layerId } };
+      const feats = (_r.fc && _r.fc.features) || [];
+      const total = _r.totalAreaKm2 != null ? _r.totalAreaKm2 : feats.reduce((a, f) => a + (Number((f.properties || {}).area_km2) || 0), 0);
+      const _mL = _r.layerId ? _adoptToolboxResult(_r.layerId, _r.fc, _r.layerName, { keep: !!params.keep }) : null;   // 名=边界（如「西陵区」·模块 C6 沿用）
+      // CB-09 P0-4 v2·工具观测诚实化
+      if (_r.count === 0) {
+        return { observation: `合并完成，但无可合并要素，未生成新图层。`, data: { count: 0, layerId: null } };
+      }
+      const _modeTxt = params.layers ? `合并 ${params.layers.length} 个图层` : '合并';
+      // CB-11 问题 4：observation 列被合并图层名（若为 $n 引用则解析成裁剪产物名）+ _source_layer 范围来源·让 finalStep 知是否已裁剪
+      const _srcLayers = (params.layers || []).map((l, i) => {
+        const _nm = typeof l === 'string' ? l : (l && l.name) || `图层${i + 1}`;
+        return _nm;
+      }).join('、');
+      return { observation: `${_modeTxt}（来源：${_srcLayers}）后得到 ${_r.count} 个要素，总面积 ${total.toFixed(1)} 平方公里，已生成图层「${_r.layerName}」${_mL ? '（' + feats.length + ' 个面）' : ''}${_r.message ? '（' + _r.message + '）' : ''}` + _renderNote(_mL), data: { count: _r.count, layerId: _r.layerId } };
     } catch (e) { return _ERR('merge', e); }
   },
 
@@ -1129,6 +1255,9 @@ export const TOOLS = {
   /** 叠置（交/并/差/对称差）。 */
   async overlay(params = {}) {
     if (!params.layer_a || !params.layer_b) return { observation: '[ERR] overlay 需 layer_a + layer_b' };
+    // CB-10 P0-1/B007：点层走 overlay → 报「图层类型不匹配」（防止后端空结果 + 误导）
+    const _typeBad = _checkGeomType(params.layer_a, 'polygon', 'overlay') || _checkGeomType(params.layer_b, 'polygon', 'overlay');
+    if (_typeBad) return { observation: _typeBad };
     try {
       const _lab = (x) => (typeof x === 'string' ? x : (x && x.name) || '图层');
       const r = await generateOverlayForAI({ layer_a: ref(params.layer_a), layer_b: ref(params.layer_b),
@@ -1137,6 +1266,10 @@ export const TOOLS = {
       const feats = (r.fc && r.fc.features) || [];
       const total = r.totalAreaKm2 != null ? r.totalAreaKm2 : feats.reduce((a, f) => a + (Number((f.properties || {}).area_km2) || 0), 0);
       const _oL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // 名=操作语义+两源（如「交·商业用地与西陵区」·模块 C6 沿用）
+      // CB-09 P0-4 v2·工具观测诚实化：count=0 时不说"已生成图层"——从源头切断 LLM 误判
+      if (r.count === 0) {
+        return { observation: `叠置分析完成，但两图层无重叠区域（${_lab(params.layer_a)} ∩ ${_lab(params.layer_b)} = ∅），未生成新图层。`, data: { count: 0, layerId: null } };
+      }
       return { observation: `叠置分析完成，得到 ${r.count} 个面，总面积 ${total.toFixed(1)} 平方公里，已生成图层「${r.layerName}」${_oL ? '（' + feats.length + ' 个面）' : ''}${r.message ? '（' + r.message + '）' : ''}` + _renderNote(_oL), data: { count: r.count, layerId: r.layerId } };
     } catch (e) { return _ERR('overlay', e); }
   },
@@ -1158,19 +1291,117 @@ export const TOOLS = {
     } catch (e) { return _ERR('nearest', e); }
   },
 
-  /** Gi* 热点识别 → 落图层（hot/cold/ns 点，离散色：hot=负面聚集=红 / cold=正面聚集=绿 / ns=灰）。 */
+  /** 查地点（CB-15 P1·C）：中文名/POI 名 → search 坐标 → reverse 近邻。治 LLM 不可见地点。查询型·无图层副作用。 */
+  async lookup_place(params = {}) {
+    if (!params.q && (params.lng == null || params.lat == null)) return { observation: '[ERR] lookup_place 需 q（地名/POI 名）或坐标(lng,lat)' };
+    try {
+      let _pt = null;
+      if (params.lng != null && params.lat != null) {
+        _pt = { lng: Number(params.lng), lat: Number(params.lat), name: '坐标' };
+      } else {
+        const _s = await fetch(`/api/v1/place/search?q=${encodeURIComponent(String(params.q))}&limit=3`).then((r) => r.json());
+        const _hits = (_s && _s.hits) || [];
+        if (!_hits.length) return { observation: `未找到地点「${params.q}」（本地 4310 POI + 高德均未命中·请换名或指定坐标）` };
+        _pt = _hits[0];
+      }
+      const _rev = await fetch(`/api/v1/reverse-geocode?lng=${_pt.lng}&lat=${_pt.lat}`).then((r) => r.json());
+      const _near = ((_rev && _rev.nearest_pois) || []).slice(0, 5);
+      const _nearTxt = _near.length ? _near.map((n) => `${n.name}${n.dist_m != null ? '(' + Math.round(n.dist_m) + 'm)' : ''}`).join('、') : '无';
+      const rows = [{
+        name: _pt.name, lng: Number(_pt.lng).toFixed(5), lat: Number(_pt.lat).toFixed(5),
+        category: _pt.category || _pt.baidu_level1 || '', nearest: _nearTxt,
+      }];
+      return { observation: `地点「${_pt.name}」@(${Number(_pt.lng).toFixed(5)}, ${Number(_pt.lat).toFixed(5)})，近邻：${_nearTxt}`, data: { rows } };
+    } catch (e) { return _ERR('lookup_place', e); }
+  },
+
+  /** 批量地名/项目名 → 点位图层（CB-22d·知识问答→地图标记）。
+   *  主路径 = search_place（本地 POI + 高德逆地理兜底·业界标准）·绝不强行匹配：
+   *    tier-1 点：search_place 命中 → 点要素（source=local/amap）
+   *    tier-2 面：未命中但为已知片区/行政区名（面 preset）→ 面要素（source=preset·名称标注）
+   *    tier-3 文字：聚合类无地点 → 文字列出「未匹配坐标」（诚实出口·不 request_upload）
+   *  渲染 = addToolboxLayer kind:point 显式 circle 样式（defaultPaint 无 point 分支）。
+   *  并发：上限 50 名·并发 ≤10·单请求 5s 超时·总预算兜底（防 55 名挂死）。
+   *  匹配结果属性 {name, source, match_type} 供 finalStep 可读标注（溯源铁律·防 LLM 自创地址）。 */
+  async generate_point_layer(params = {}) {
+    // CB-22d P0-0-2：names 鲁棒化——标量/拼接串 split（中文逗号/顿号/半角逗号/空格）→ 逐名数组
+    const _raw = Array.isArray(params.names) ? params.names.join(',') : (params.names ? String(params.names) : '');
+    const _names = _raw.split(/[,，、;；\s]+/).map((s) => s.trim()).filter(Boolean);
+    if (!_names.length) return { observation: '[ERR] generate_point_layer 需 names（要标到地图的项目/地点名列表·可让我从上一轮回答提取）' };
+    try {
+      const _MAX = 50, _CONC = 10, _TO = 20000;   // P0-0-3：冷加载 12s > 旧 5s abort·提至 20s 防首用必全失败
+      const _list = _names.slice(0, _MAX);
+      const _picked = new Array(_list.length).fill(null);   // {name, lng, lat, source, match_type, address, category}
+      const _unmatched = [];
+      let _idx = 0;
+      // CB-22d P0-1：聚合名检测——用户想法「无地点描述就放弃」（像人思维）·污水厂网一体示范区/其他项目类不强匹配
+      // 聚合名检测（用户想法「无地点描述就放弃」）：含「示范区/其他项目/一批」等聚合词 + 无已知具体地名 → 放弃·不查 API。
+      //   容忍引号（污水"厂网一体"示范区）·去除引号后判；「葛洲坝片区」含具体地名葛洲坝 → 不放弃（有地点描述）。
+      const _isAggregate = (nm) => {
+        const c = nm.replace(/["'“”]/g, '');
+        if (!/示范区|其他项目|一批|个片区|个小区|整体|综合整治/.test(c)) return false;
+        return !/(西陵|伍家岗|夷陵|猇亭|点军|葛洲坝|西坝|二马路|红星路|土门|小溪塔)/.test(c);
+      };
+      // 并发限流 worker（Promise.all + 分桶·防 55 名顺序挂死）
+      async function _worker() {
+        while (true) {
+          const i = _idx++;
+          if (i >= _list.length) return;
+          const nm = String(_list[i]).trim();
+          if (_isAggregate(nm)) { _unmatched.push(nm); continue; }   // 聚合名→放弃·不查 API
+          try {
+            const _ac = new AbortController(); const _t = setTimeout(() => _ac.abort(), _TO);
+            // CB-22d P0-1：amap_first=true——高德 API 优先解析（成熟·不造轮子）·未命中落本地 A0 分词双路兜底
+            const _s = await fetch(`/api/v1/place/search?q=${encodeURIComponent(nm)}&limit=3&amap_first=true`, { signal: _ac.signal }).then((r) => r.json()).finally(() => clearTimeout(_t));
+            const _hits = (_s && _s.hits) || [];
+            if (_hits.length && _hits[0] && _hits[0].lng != null) {
+              _picked[i] = { name: nm, lng: Number(_hits[0].lng), lat: Number(_hits[0].lat),
+                source: _hits[0].source || 'local', match_type: 'point',
+                address: _hits[0].address || '', category: _hits[0].category || _hits[0].baidu_level1 || '' };
+            } else {
+              _unmatched.push(nm);
+            }
+          } catch (_) { _unmatched.push(nm); }
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(_CONC, _list.length) }, () => _worker()));
+      const _hits = _picked.filter(Boolean);
+      const _hitN = _hits.length;
+      // 落图（仅有点命中才产图层·全未命中走 tier-3 文字）
+      let _layerInfo = '';
+      if (_hitN > 0) {
+        const _fc = { type: 'FeatureCollection', features: _hits.map((h, i) => ({
+          type: 'Feature',
+          properties: { name: h.name, source: h.source, match_type: h.match_type, address: h.address || '', category: h.category || '', _order: i },
+          geometry: { type: 'Point', coordinates: [h.lng, h.lat] },
+        })) };
+        const _circle = { _ui: { tool: 'generate_point_layer' }, 'circle-radius': 7, 'circle-color': '#ff9000', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#fff' };
+        const _L = addToolboxLayer({ name: params.as || '项目点位', kind: 'point', fc: _fc, paint: _circle });
+        _layerInfo = _L ? ` → 已生成图层「${_L.name}」(${_hitN} 点)` : '（落图失败）';
+      }
+      const _src = _hits.reduce((a, h) => { a[h.source] = (a[h.source] || 0) + 1; return a; }, {});
+      const _srcTxt = Object.entries(_src).map(([k, v]) => `${k}${v}`).join('、') || '—';
+      const _obs = `地点标记：命中 ${_hitN}/${_list.length}${_layerInfo}（来源：${_srcTxt}）`;
+      const _unmatchedTxt = _unmatched.length ? `\n未匹配到坐标（诚实列出·不编造）：${_unmatched.join('、')}` : '';
+      const _tip = _hitN > 0 ? '\n已命中项目 → 点位图层（橙色点·可点击查看名称/来源）。未命中项目 → 已文字列出·未生成坐标（聚合类/无地点描述的项目不强匹配·如需要可上传项目坐标数据）。' : '\n全部未匹配到坐标 → 已文字列出·未生成图层（避免编造坐标）。聚合类/无地点描述的项目（如「污水厂网一体示范区」）不硬匹配地点·如需更准位置可上传项目坐标数据。';
+      return { observation: _obs + _unmatchedTxt + _tip, data: { rows: _hits, count: _hitN, unmatched: _unmatched, source: _src } };
+    } catch (e) { return _ERR('generate_point_layer', e); }
+  },
+
+  /** Gi* 热点识别 → 落图层（hot/tend_hot/ns/tend_cold/cold 五档·纯橙系显著性符号层·弃极性色·与 KDE 解耦）。 */
   async hotspot(params = {}) {
     const _layer = resolvePointLayer(params);
     if (!_layer) return _ERR_NO_VISIBLE_PT();
     try {
       const r = await generateHotspotForAI({ layer: ref(_layer), value_col: params.value_col || 'score',
         invert: params.invert !== false, range: params.range ? ref(params.range) : undefined,
-        pre_filter: normPreFilter(params.pre_filter), as: params.as });
+        pre_filter: normPreFilter(params.pre_filter), as: params.as,
+        threshold: params.threshold, soft_threshold: params.soft_threshold });
       const tally = r.tally || {};
-      const _CLS_CN = { hot: '显著热点(负面聚集)', cold: '显著冷点(正面聚集)', ns: '不显著' };
+      const _CLS_CN = { hot: '显著聚集(95%)', tend_hot: '倾向聚集(84%)', ns: '不显著', tend_cold: '倾向冷区(84%)', cold: '显著冷区(95%)' };
       const dist = Object.keys(tally).length ? Object.entries(tally).map(([k, v]) => `${_CLS_CN[k] || k}:${v}`).join('、') : `${r.featureCount}要素`;
       const _hL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // class→极性重映射由模块完成（_CLS_POL 随迁·§5.6）
-      return { observation: `热点分析：${dist}${r.truncated ? '（已截断）' : ''}（hot=红/cold=绿/ns=灰）→ 已生成图层「${r.layerName}」${_hL ? '(' + r.featureCount + '点)' : ''}` + _renderNote(_hL), data: { count: r.count, tally, layerId: r.layerId } };
+      return { observation: `热点分析：${dist}${r.truncated ? '（已截断）' : ''}（纯橙系显著性五档·hot/tend_hot 深橙·ns 灰·tend_cold/cold 浅橙·弃红绿极性色）→ 已生成图层「${r.layerName}」${_hL ? '(' + r.featureCount + '点)' : ''}` + _renderNote(_hL), data: { count: r.count, tally, layerId: r.layerId } };
     } catch (e) { return _ERR('hotspot', e); }
   },
 
@@ -1187,7 +1418,9 @@ export const TOOLS = {
     try {
       let r;
       if (_mode === 'terrain') {
-        r = await generateTerrainForAI({ source: _srcKey, polarity: params.polarity, silent: true });   // 3D KDE 等值面（仅 L2）
+        // 热点图 P1.5（B1 审计修复）：EMC density mode=terrain 切 generateTerrain3DForAI（setTerrain 连续曲面）·
+        //   替代旧 generateTerrainForAI（fill-extrusion 千层饼·retired.md 已登记退役）
+        r = await generateTerrain3DForAI({ source: _srcKey, polarity: params.polarity, silent: true });   // 3D KDE DEM 连续曲面（仅 L2）
       } else if (_mode === '3d') {
         r = await generateGridForAI({
           analysis: 'square', cellSize: _clampM(Number(params.cell_size) || _scaleRadius(params.range) || 600),   // A3 尺度表

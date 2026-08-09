@@ -28,7 +28,7 @@ TOOL_CONTRACTS = [
     {
         'skill': 'density', 'tool': 'density', 'category': 'single', 'name_cn': '分布热度分析',
         'voice': '我用热力图(2D彩虹)/网格聚合(3D)看清情绪点分布热度', 'triggers_str': '哪里最集中/热点/聚集/分布/密度',
-        'when': '核密度(KDE)/热力图：用户说"核密度/密度分析/聚集强度/热力分布/密集/集聚/哪里最集中/热力图/情绪热度分布"时首选——产连续密度面（=热力聚合，非逐点 Gi*）',
+        'when': '核密度(KDE)/热力图：用户说"核密度/密度分析/聚集强度/热力分布/密集/集聚/哪里最集中/热力图/情绪热度分布"时首选——产连续密度面（=热力聚合，非逐点 Gi*）。CB-12 P2：方格/网格聚合（"500m 标准方格网格聚合"）→ 本工具 mode=3d（cell_size=边长·非 2D 热力）',
         'params_str': 'layer, polarity?(overall|positive|negative|neutral·默认overall·=极性筛点+着色), analysis?(terrain|positive|negative|neutral·色板主驱动·缺省由polarity推), mode?(2d|3d|terrain·默认2d), radius?(2D热力带宽·默认300), cell_size?(3D网格边长·默认600)（尺度表同buffer：社区250/区500/主城1000）, weightField?(加权·默认emotion_intensity), level?(L1|L2|L3|L4), range?, as?, keep?',
         'yields': '连续密度面——2D 彩虹热力图 / 3D 网格聚合 / 3D KDE 等值面地形（委托 Toolbox 标准色段·对称拉伸），自动落地图',
         'contributes': '"密度/密集/热力"类的标准出口=新热力图层（彩虹色带·最直观的分布可视化）；区别于 hotspot(逐点 Gi*·冷热点分类)与 zonal_stats(情绪网格聚合·归因排序)',
@@ -75,7 +75,7 @@ TOOL_CONTRACTS = [
     {
         'skill': 'buffer', 'tool': 'buffer', 'category': 'single', 'name_cn': '缓冲影响圈',
         'voice': '我画设施影响范围并聚合圈内情绪', 'triggers_str': '周边/附近/范围内/地铁站X米',
-        'when': '缓冲区：某设施/POI 周边半径内的情绪（地铁站 500m、奥体 1km）',
+        'when': '缓冲区：某设施/POI 周边半径内的情绪（地铁站 500m、奥体 1km）。G2：radius_m 单位=米·问句"周边 Nm/N公里"→换算成米（1km=1000m）·含半径数字勿直接复制',
         'params_str': 'layer, center(POI | geojson), radius_m(默认 500·尺度表：社区/街道 250·行政区/片区 500·主城/全域 1000)',
         'yields': '缓冲面域 + 范围内聚合', 'contributes': '回答"某设施影响范围"，支撑设施评估/选址',
         'scale': '中观（设施影响圈）', 'preconditions': 'center POI/geojson',
@@ -91,12 +91,12 @@ TOOL_CONTRACTS = [
         ],
     },
     {
-        'skill': 'clip', 'tool': 'clip', 'category': 'single', 'name_cn': '范围裁取',
-        'voice': '我按范围（某区/公园/单元边界）裁出范围内的目标', 'triggers_str': '某区的/某范围内的/XX区内的/范围内的（"某区内的YY"优先 clip 取范围内目标，而非 overlay）',
-        'when': '按几何裁剪：某行政区/某公园/某街道范围内的点',
+        'skill': 'clip', 'tool': 'clip', 'category': 'single', 'name_cn': '范围裁取（仅点层）',
+        'voice': '我按范围裁出范围内的情绪点（仅限点数据）', 'triggers_str': '某区内的情绪点/某范围内的点/XX区内的点（clip 仅切点层！面层面裁剪如"某区内的商业用地"→用 overlay intersection）',
+        'when': '❌ 仅点层！按几何裁剪**点层**：某行政区/某公园/某街道范围内的点数据。CB-12 P2："裁剪…情绪点/全部点"→ 本工具（勿用 extract_feature·那是面层属性过滤）。面层裁剪（如"某区内的商业用地"）必须用 overlay intersection，严禁使用本工具——传面层会返回空结果',
         'params_str': 'layer, range(preset_id | geojson), pre_filter?',
         'yields': '范围内的点子集（自动落地图）', 'contributes': '限定空间范围取点（"西陵区内的情绪点"），支撑中/微观落点',
-        'scale': '中观/微观（范围内取**点**）', 'preconditions': 'range preset/geojson + 点层',
+        'scale': '中观/微观（范围内取**点**）', 'preconditions': 'range preset/geojson + **点层**（面层不支持）',
         'failure_modes': '误用于面∩面——clip 只切点，面层会报错；面∩面/面∪面用 overlay',
         'examples': '正:西陵区的情绪点 / 正:公园范围内的点 / 误:商业∩居住用地(→overlay)',
         'required_slots': ['range'],
@@ -112,7 +112,7 @@ TOOL_CONTRACTS = [
     {
         'skill': 'overlay', 'tool': 'overlay', 'category': 'single', 'name_cn': '叠置交叉',
         'voice': '我叠两个图层找复合问题区', 'triggers_str': '居住用地里情绪差的/两图交集',
-        'when': '叠置分析：交集/并集/差集（商业用地 ∩ 更新单元、规划范围 − 已更新）',
+        'when': '两个不同面层的空间运算：交集/并集/差集。**面层面裁剪的正解**——如"某区内的某类用地"=区面层 ∩ 用地面层，用 how="intersection"。与 extract_feature 的区别：overlay=两个不同图层的空间相交，extract_feature=同一图层内的属性过滤',
         'params_str': 'layer_a, layer_b, how(intersection|union|difference|symmetric)',
         'yields': '叠置结果面域', 'contributes': '跨图层交叉（用地 × 更新），识别复合问题区',
         'scale': '中观（跨图层面）', 'preconditions': '两图层面（layer_a/layer_b）',
@@ -131,12 +131,12 @@ TOOL_CONTRACTS = [
     {
         'skill': 'zonal', 'tool': 'zonal_stats', 'category': 'single', 'name_cn': '单元归因',
         'voice': '我按行政/规划单元聚合情绪并给 4×5 归因', 'triggers_str': '这几个街道/社区的归因/单元评价',
-        'when': '面域聚合统计：按更新单元/街道/社区把点聚合成单元指标（宏观/中观核心）',
+        'when': '面域聚合统计：按更新单元/街道/社区把点聚合成单元指标（宏观/中观核心）。G2：boundary 必须填已加载边界图层名/preset_id（如行政区/街道层·问句区名→已加载面层）',
         'params_str': 'layer, boundary(preset_id | geojson), metrics, top_n',
         'yields': '每单元 point_count/极性/4×5 归因 + 排序', 'contributes': '产出"哪个单元最差 + 归因"，宏观/中观结论的主干',
         'scale': '宏观/中观（单元聚合主干）', 'preconditions': 'boundary preset + 点层',
         'failure_modes': '误用于单点定位——micro 落点用 rank/hotspot；误用于纯面积结构（→area_stats）',
-        'examples': '正:各街道情绪归因 / 正:更新单元排序 / 误:这个公园哪个点最差(→rank micro)',
+        'examples': '正:各街道情绪归因 / 正:更新单元排序 / 误:这个公园哪个点最差(→rank micro) / PRM-05:问句区名（如西陵区）→ boundary 必须填该区已加载要素 GeoJSON（勿空参）',
         'required_slots': ['boundary'],
         'planning_common': 'boundary=preset_id（街道/社区/更新单元）；点层走可见层选源（不硬默认）；C 赛道情绪主干',
         'params': [
@@ -169,7 +169,7 @@ TOOL_CONTRACTS = [
     {
         'skill': 'extract_feature', 'tool': 'extract_feature', 'category': 'single', 'name_cn': '要素抽取',
         'voice': '我从面边界按属性抽要素为独立面（裁出某区/某类用地·支持 in 多值一次抽多个如多行政区）', 'triggers_str': '抽某/裁出某/单独裁出/提取某',
-        'when': '从面边界按属性抽要素为独立面图层（把某区/某公园/某单元裁出来·支持 where="字段/in/值1,值2" 一次抽多个要素·如"裁出西陵+伍家岗"）',
+        'when': '从**单个面层内**按属性抽要素（同一图层内的 where 过滤·如"从行政区划中抽西陵区"·where="字段/in/值"一次多值）。CB-12 P2："筛选出/筛选某类用地"→ 本工具。⚠️ 仅用于同一图层内属性过滤！跨图层空间裁剪（如"西陵区内的商业用地"=两个不同图层∩）必须用 overlay intersection，严禁用本工具',
         'params_str': 'layer(preset_id|geojson), where(field/op/value·op∈eq|in·多值用 in/A,B；field 见 catalog name_field)',
         'yields': '面子集 GeoJSON（自动落地图）', 'contributes': '纯 GIS 操作出口：用户要"裁出西陵区""裁出西陵+伍家岗"等几何产物时用此·不走情绪归因',
         'scale': '宏观/中观（面要素）', 'preconditions': '面边界层（preset|上传面层）+ name_field（where field/op/value）',
@@ -203,17 +203,19 @@ TOOL_CONTRACTS = [
     {
         'skill': 'merge', 'tool': 'merge', 'category': 'single', 'name_cn': '合并上卷',
         'voice': '我合并/dissolve 多面成片区或同类用地', 'triggers_str': '合并/合成/并成/dissolve/合成片区',
-        'when': '合并 / dissolve：把多个面域合成一个片区，或同类用地合并',
-        'params_str': 'layer, by(字段) | all',
-        'yields': '合并后的面域', 'contributes': '上卷到更大尺度（几街道→一片区），支撑宏观结构结论',
+        # CB-11（Codex+glm组 方案 A）：when 明写两模式——多图层 concat + 单层 dissolve·overlay union 是空间并集勿代替
+        'when': '合并 **多个独立图层** → `merge(layers=[id1,id2,...])`（concat·保留各要素分类字段如 DLMC·无字段后缀）；合并 **同一图层内**要素 → `merge(boundary, by)`（dissolve）。`overlay(how="union")` 是空间并集（求两块面的并集几何）·非图层拼接·同名字段会后缀冲突·**勿用 overlay 代替 merge**',
+        'params_str': 'layers(多图层) 或 boundary(单层), by(字段) | all',
+        'yields': '合并后的面域（多图层 concat 保留各要素分类·单层 dissolve 上卷）', 'contributes': '多图层合并 → 一个综合图层（保留 DLMC 分类）；上卷到更大尺度（几街道→一片区）',
         'scale': '宏观（上卷片区）', 'preconditions': '面边界层',
-        'failure_modes': '误用于取子集——要某子区用 extract/clip，非 merge',
+        'failure_modes': '误用于取子集——要某子区用 extract/clip，非 merge；多图层合并勿用 overlay union（字段后缀冲突）',
         'examples': None,
-        'required_slots': ['boundary'],
-        'planning_common': 'boundary=preset_id；by=字段|空=全部合并；产合并面图层自动落图（上卷到更大尺度）',
+        'required_slots': [],   # CB-11：boundary 或 layers 二选一（one-of·无法在 required_slots 表达·以 tools.js guard + validate 为准）
+        'planning_common': 'boundary=preset_id 或 layers=[多图层 id]（二选一·至少一个）；by=字段|空=不 dissolve；产合并面图层自动落图',
         'params': [
-            {'name': 'boundary', 'type': 'source', 'default': None, 'required': True, 'alias': ['zone', 'region'], 'hint': 'preset_id', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
-            {'name': 'by', 'type': 'str', 'default': None, 'required': False, 'alias': ['sort', 'sort_by', 'criteria'], 'hint': '字段|空=全部', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'boundary', 'type': 'source', 'default': None, 'required': False, 'alias': ['zone', 'region'], 'hint': 'preset_id（合并单图层·dissolve）', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'layers', 'type': 'list', 'default': None, 'required': False, 'alias': ['layer_list', 'layers_list'], 'hint': '多图层 id 数组（合并多个独立图层·concat·保留分类字段）', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'by', 'type': 'str', 'default': None, 'required': False, 'alias': ['sort', 'sort_by', 'criteria'], 'hint': '字段|空=不 dissolve', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
             {'name': 'as', 'type': 'str', 'default': None, 'required': False, 'alias': ['output', 'output_layer', 'layer_name', 'named', 'name'], 'hint': '图层名', 'panel_source': '通用 as'},
             {'name': 'keep', 'type': 'bool', 'default': None, 'required': False, 'alias': [], 'hint': '保留免清理', 'panel_source': '通用 keep'},
         ],
@@ -236,23 +238,65 @@ TOOL_CONTRACTS = [
         ],
     },
     {
-        'skill': 'hotspot', 'tool': 'hotspot', 'category': 'single', 'name_cn': '聚集识别(Gi*)',
-        'voice': '我用 Gi* 识别负面/正面情绪显著聚集的冷热点', 'triggers_str': '聚集/热点/冷热/显著聚集/聚集区',
-        'when': 'Gi* 热点：负面/正面情绪在空间上显著聚集的冷热点',
-        'params_str': 'layer, value_col(score), invert(负面为热)',
-        'yields': '每点 Gi* Z-score + hot/cold 分类', 'contributes': '识别"聚集在哪"，支撑预警/排查类出口',
+        # CB-15 P1（C）：lookup_place——治 LLM 不可见地点（问"滨江公园有什么/奥体中心在哪"）
+        #   glm组/Codex 检查：触发词避开"周边/附近"（与 buffer 冲突·buffer 更具体带半径）·用"地点/在哪/叫什么/坐标/搜地点"
+        'skill': 'lookup_place', 'tool': 'lookup_place', 'category': 'single', 'name_cn': '查地点',
+        'voice': '我查某地点/POI 的位置与周边（search 中文名→坐标→reverse 近邻）', 'triggers_str': '地点/在哪/叫什么/坐标/搜地点',
+        'when': '查地点：用户问某地名/POI 在哪、附近有什么、坐标——治 LLM 不可见地点（place_layer 4310 POI 宇宙）',
+        'params_str': 'q(中文名/POI 名), lng?, lat?（坐标直查·q 与坐标二选一）',
+        'yields': '地点命中（名称/坐标/类别）+ 周边近邻 top-5（reverse）', 'contributes': '让地点进 AI 问答管线——LLM 可知"滨江公园/奥体中心"位置与周边',
+        'scale': '微观（POI 落点）', 'preconditions': 'q 或 (lng,lat)',
+        'failure_modes': '与 buffer 混（"周边"触发 buffer·本工具用"在哪/叫什么"）；q 无命中诚实报错（禁编造坐标）',
+        'examples': '正:滨江公园有什么 / 正:奥体中心在哪 / 误:奥体中心周边500m(→buffer)',
+        'required_slots': [],   # P2（Codex）：q 或坐标(lng,lat) 二选一·对齐 SKILL_DEFS=[]
+        'planning_common': 'q=中文名/POI 名 → search_place 命中坐标 → reverse 近邻；或 lng/lat 直查 reverse。查询型·无图层副作用',
+        'params': [
+            {'name': 'q', 'type': 'str', 'default': None, 'required': False, 'alias': ['query', 'name', 'place'], 'hint': '中文名/POI 名（与坐标二选一）', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'lng', 'type': 'float', 'default': None, 'required': False, 'alias': ['lon', 'x'], 'hint': '坐标直查（WGS84）', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'lat', 'type': 'float', 'default': None, 'required': False, 'alias': ['y'], 'hint': '坐标直查（WGS84）', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+        ],
+    },
+    {
+        'skill': 'hotspot', 'tool': 'hotspot', 'category': 'single', 'name_cn': '显著聚集识别(Gi*)',
+        'voice': '我用 Gi* 识别负面/正面情绪显著聚集区', 'triggers_str': '聚集/热点/冷热/显著聚集/聚集区',
+        'when': 'Gi* 显著聚集：负面/正面情绪在空间上显著聚集的区域（软分级五档·显著/倾向）',
+        'params_str': 'layer, value_col(score), invert(负面为热), threshold, soft_threshold',
+        'yields': '每点 Gi* Z-score + 五档分类（hot/tend_hot/ns/tend_cold/cold·90/95/99% 置信）',
+        'contributes': '识别"显著聚集在哪"（含倾向档），支撑预警/排查类出口',
         'scale': '微观（Gi* 逐点聚集）', 'preconditions': '点层 + value_col',
-        'failure_modes': '与 density 混——hotspot=逐点 Gi* 冷热点分类（每点 hot/cold/ns）；要连续密度面/热力图用 density',
-        'examples': '正:显著负面聚集区 / 正:冷热点识别 / 误:情绪热度连续分布(→density)',
+        'failure_modes': '与 density 混——hotspot=逐点 Gi* 显著聚集分类（每点五档）；要连续密度面/热力图用 density',
+        'examples': '正:显著负面聚集区 / 正:显著聚集识别 / 误:情绪热度连续分布(→density)',
         'required_slots': [],
-        'planning_common': '点层走可见层选源（不硬默认）；value_col=score（invert 由工具默认：负面为热）；产 hot/cold/ns 点图层',
+        'planning_common': '点层走可见层选源（不硬默认）；value_col=score（invert 默认负面为热）；产五档显著聚集点图层（soft_threshold=1.0 倾向档·诚实标84%置信）',
         'params': [
             {'name': 'value_col', 'type': 'str', 'default': 'score', 'required': False, 'alias': ['value', 'column', 'field_name'], 'hint': '计量列', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
             {'name': 'invert', 'type': 'bool', 'default': None, 'required': False, 'alias': ['inverse'], 'hint': 'true=负面为热', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'threshold', 'type': 'float', 'default': 1.96, 'required': False, 'alias': [], 'hint': '显著阈值（默认 1.96·95%）', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'soft_threshold', 'type': 'float', 'default': 1.0, 'required': False, 'alias': [], 'hint': '倾向阈值（默认 1.0·~84%）', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
             {'name': 'layer', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '默认 L2', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
             {'name': 'range', 'type': 'source', 'default': None, 'required': False, 'alias': [], 'hint': '可选', 'panel_source': '通用 range'},
             {'name': 'as', 'type': 'str', 'default': None, 'required': False, 'alias': ['output', 'output_layer', 'layer_name', 'named', 'name'], 'hint': '图层名', 'panel_source': '通用 as'},
             {'name': 'keep', 'type': 'bool', 'default': None, 'required': False, 'alias': [], 'hint': '保留免清理', 'panel_source': '通用 keep'},
+        ],
+    },
+    {
+        # CB-22d（2026-08-10）：知识问答 → 地图标记。批量地名/项目名 → 点位图层。
+        #   glm B.2 关键：FC 走契约 `when` 诱导（非 prompts 铁律）——when 须显式含「标记/地图/项目名→点位」触发词。
+        #   主路径 = search_place（本地 POI + 高德逆地理·业界标准）·绝不强行匹配（模糊→诚实降级）。
+        'skill': 'generate_point_layer', 'tool': 'generate_point_layer', 'category': 'single', 'name_cn': '批量地名标点',
+        'voice': '我把一批项目/地点名标记到地图上，生成点位图层', 'triggers_str': '标记/标到地图/在地图上/点位/位置/把项目标出来',
+        'when': '把文字答案/项目名/地点名标记到地图·生成点位图层（如"能在地图上标记出这些项目的位置吗"）——仅当问句要求把名称/项目/地点标到地图时选此技能；其余 GIS 操作仍选原技能',
+        'params_str': 'names(项目/地点名数组·从上一轮回答提取), as?(图层名)',
+        'yields': '点位图层（橙色点·name/source/match_type 属性）+ observation 命中 n/N + 未命中列表',
+        'contributes': '打通「知识问答→地图标记」——上轮项目名列表 → 点位图层（演示逻辑链·图面张力→引导点击）',
+        'scale': '微观（POI 落点）/ 中观（面化回退）', 'preconditions': 'names 非空（缺则提示从上一轮回答提取）',
+        'failure_modes': '与 lookup_place 混——lookup_place=单点查询无图层·本工具=批量 names→点位图层；names 缺失→提示从上一轮提取；未命中诚实列出（禁编造坐标）',
+        'examples': '正:能在地图上标记出这些项目的位置吗 / 正:把刚才的项目标到地图 / 误:奥体中心在哪(→lookup_place)',
+        'required_slots': ['names'],
+        'planning_common': 'names=上轮知识问答回答中的项目/地点名列表（LLM 从上一轮 final 提取）；逐名 search_place（本地 POI + 高德逆地理）→ 命中合成 point fc → addToolboxLayer（kind:point·显式 circle 样式）；未命中 → 文字诚实列出（不 request_upload）',
+        'params': [
+            {'name': 'names', 'type': 'array', 'default': None, 'required': True, 'alias': ['items', 'places', 'projects', 'name_list'], 'hint': '要标到地图的项目/地点名列表（可从上一轮回答提取）', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'as', 'type': 'str', 'default': None, 'required': False, 'alias': ['output', 'output_layer', 'layer_name', 'named', 'name'], 'hint': '图层名', 'panel_source': '通用 as'},
         ],
     },
     {
@@ -503,6 +547,15 @@ def validate_tool_call(tool_name, args):
     params_def = {p['name']: p for p in contract.get('params', [])}
     fixed = dict(args)
     fixes = []
+
+    # CB-11 P4（glm组）：merge alias 反向解析——layer_list/layers_list → layers（声明了但未解析·LLM 用别名被 one-of 拒）
+    if tool_name == 'merge':
+        for _alias in ('layer_list', 'layers_list'):
+            if _alias in fixed and 'layers' not in fixed:
+                fixed['layers'] = fixed.pop(_alias)
+    # CB-11：merge one-of 特判——boundary 与 layers 至少一个（否则 LLM 只传 layers 仍被"缺 boundary"拒·问题原样复现）
+    if tool_name == 'merge' and not fixed.get('boundary') and not fixed.get('layers'):
+        return {'ok': False, 'params': fixed, 'fixes': ['缺必填参数: boundary 或 layers（合并需至少一个·多图层用 layers=[...]）']}
 
     for name, p in params_def.items():
         val = fixed.get(name)

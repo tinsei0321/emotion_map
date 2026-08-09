@@ -427,24 +427,25 @@
 .aiq-chart-wrap .aiq-chart { max-width: 100%; }
 .aiq-chart-bad { color: #FBBF24; font-size: 0.85em; background: rgba(251,191,36,0.08); padding: 0 4px; border-radius: 3px; }   /* 解析失败的原文，不崩 */
 
-/* ── 回到底部浮钮（用户上滑停跟时出现，sticky 贴消息区底右）── P0 抛光：森绿统一(--emc-accent)·放大·淡入·去橙边框 */
+/* ── 回到底部浮钮（用户上滑停跟时出现，贴消息区右上角·轻量低调）── */
 .chat-back-btn {
-  position: sticky; bottom: 8px; align-self: flex-end; margin-top: 6px;
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 6px 14px; font-size: var(--geojson-typography-size-xs);
-  font-weight: var(--geojson-typography-weight-semibold); color: #fff;
-  background: var(--emc-accent, #143a35); border: none; border-radius: 999px; cursor: pointer;
-  box-shadow: 0 4px 14px rgba(20, 58, 53, 0.28);
-  animation: aiq-back-btn-in 0.18s ease-out;
+  position: sticky; top: 8px; align-self: flex-end; margin-bottom: -36px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 12px; font-size: 0.75em;
+  font-weight: 500; color: var(--emc-accent, #143a35);
+  background: rgba(255,255,255,0.88); border: 1px solid color-mix(in srgb, var(--emc-accent, #143a35) 30%, transparent); border-radius: 999px; cursor: pointer;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+  animation: aiq-back-btn-in 0.15s ease-out;
   transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 .chat-back-btn:hover {
-  background: #102b26;   /* 兜底（不支持 color-mix）；下行现代浏览器覆盖·按 accent 自适应加深 */
-  background: color-mix(in srgb, var(--emc-accent, #143a35) 82%, #000);
-  box-shadow: 0 6px 18px rgba(20, 58, 53, 0.38); transform: translateY(-1px);
+  background: rgba(255,255,255,0.95);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.13); transform: translateY(-1px);
 }
 .chat-back-btn:active { transform: translateY(0); }
-@keyframes aiq-back-btn-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes aiq-back-btn-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ═══ Claude Code 交互语言对齐：Thinking 头 / 工具卡 / 复制 / 代码块 ═══ */
 
@@ -768,3 +769,73 @@
 .cpd-guide-back { align-self: flex-start; font-size: 12px; color: var(--geojson-color-text-tertiary, #707070); cursor: pointer; padding: 2px 0; background: none; border: none; }
 .cpd-guide-back:hover { color: var(--emc-accent); }
 [data-theme="light"] .cpd-guide-card { box-shadow: 0 3px 12px rgba(20,58,53,0.10); }   /* Light 阴影更柔 */
+
+/* CB-16 Wave 0：出口卡片（结果范式 agent·第三段）·仿 .cpd-guide-card·独立组件非子类·既有 token */
+.outlet-card {
+  margin: 8px 2px 12px;
+  padding: 14px 14px 12px;
+  background: var(--geojson-color-gray-100, #2a2a2a);
+  border-radius: 12px;
+  border-top: 3px solid var(--emc-accent);                 /* 同 cpd-guide-card：accent 顶条 */
+  box-shadow: 0 4px 18px rgba(0,0,0,0.22);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.outlet-card-head { display: flex; align-items: center; gap: 8px; }
+.outlet-card-title { font-size: 15px; font-weight: 700; color: var(--geojson-color-text-primary, #ECECEC); }
+.outlet-card-body { display: flex; flex-direction: column; gap: 7px; }
+.outlet-interface { font-size: 12px; color: var(--emc-accent); font-weight: 600; }
+.outlet-base { font-size: 11.5px; color: var(--geojson-color-text-tertiary, #707070); }
+.outlet-field {
+  display: flex; justify-content: space-between; gap: 12px;
+  font-size: 12.5px; line-height: 1.4;
+  padding: 4px 0; border-bottom: 1px solid var(--emc-divider, rgba(255,255,255,0.06));
+}
+.outlet-field-key { color: var(--geojson-color-text-secondary, #999); flex-shrink: 0; }
+.outlet-field span:last-child { color: var(--geojson-color-text-primary, #ECECEC); text-align: right; }
+.outlet-field .outlet-muted { color: var(--geojson-color-text-tertiary, #707070); }   /* 字段缺失灰色（与后端降级一致）*/
+.outlet-metrics { margin-top: 6px; }   /* 可感知体检指标小节（③z3 Codex P2-1 / glm P3·补 CSS）*/
+.outlet-metrics-title { font-size: 12px; font-weight: 600; color: var(--emc-accent); margin-bottom: 4px; }
+.outlet-task { font-size: 12px; color: var(--geojson-color-text-secondary, #999); }
+.outlet-limits { font-size: 11px; color: var(--geojson-color-text-tertiary, #707070); }
+
+/* 出口三段式 P0：观点强调卡（置顶·干货醒目）+ 4 要点支撑卡（底部·紧凑）·仿 outlet-card token 不新造 */
+.emc-insight-card {
+  margin: 2px 2px 10px;
+  padding: 12px 14px 10px;
+  background: var(--geojson-color-gray-100, #2a2a2a);
+  border-radius: 12px;
+  border-left: 3px solid var(--emc-accent);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.18);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.emc-card-head { font-size: 12px; font-weight: 700; color: var(--emc-accent); letter-spacing: 0.5px; }
+.emc-insight-text { font-size: 14.5px; line-height: 1.55; color: var(--geojson-color-text-primary, #ECECEC); font-weight: 600; }
+.emc-points-card {
+  margin: 10px 2px 2px;
+  padding: 10px 14px 8px;
+  background: var(--geojson-color-gray-100, #2a2a2a);
+  border-radius: 10px;
+  border-top: 2px solid var(--emc-divider, rgba(255,255,255,0.10));
+  display: flex; flex-direction: column; gap: 6px;
+}
+.emc-points-row {
+  display: flex; gap: 10px; font-size: 12px; line-height: 1.45;
+  padding: 3px 0; border-bottom: 1px solid var(--emc-divider, rgba(255,255,255,0.06));
+}
+.emc-points-row:last-child { border-bottom: none; }
+.emc-points-key { color: var(--geojson-color-text-secondary, #999); flex-shrink: 0; min-width: 56px; }
+.emc-points-val { color: var(--geojson-color-text-primary, #ECECEC); }
+[data-theme="light"] .emc-insight-card, [data-theme="light"] .emc-points-card { box-shadow: 0 3px 10px rgba(20,58,53,0.08); }
+/* P1-4（glm P1P2 W3）：出口卡 CSV 一键入库按钮（紧凑胶囊·仿 capsule 语言） */
+.outlet-export-btn {
+  margin-top: 8px; padding: 5px 12px; align-self: flex-start;
+  border: none; border-radius: 14px; cursor: pointer;
+  background: var(--emc-accent, #D97757); color: #fff;
+  font-size: 12px; font-weight: 600;
+}
+.outlet-export-btn:hover { filter: brightness(1.1); }
+.outlet-limits blockquote { margin: 2px 0; padding-left: 8px; border-left: 2px solid var(--emc-divider); }
+.outlet-source { font-size: 10.5px; color: var(--geojson-color-text-tertiary, #707070); opacity: 0.7; }
+[data-theme="light"] .outlet-card { box-shadow: 0 3px 12px rgba(20,58,53,0.10); }
+/* CB-22 素材术语/来源排版：回答内来源标注弱化（小号+浅灰·随文不换行·与 .outlet-source 同参数统一排版） */
+.answer-source { font-size: 0.85em; color: var(--geojson-color-text-tertiary, #707070); font-weight: normal; opacity: 0.7; }

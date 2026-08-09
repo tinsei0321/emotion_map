@@ -12,12 +12,15 @@ L3=ai_qa/episode.py 写 DATA/ai_qa/episodes.jsonl（被 ai_qa/consolidate.py 周
 import json
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from core.tracker import track, register_track_id
 from ai_qa.wisdom import wisdom_text, retrieve_wisdom
 from ai_qa.episode import log_episode
-from ai_qa.llm import LLMError, chat_with_fallback
+from ai_qa.llm import LLMError, chat_with_fallback, search_chat
+
+register_track_id('MOD_AIQA.F_017', 'post_rag_search（RAG 知识检索端点·开放语义·返回 Top-K + dim_counts）')
 from ai_qa.prompts import build_field_infer_prompt, build_deep_attribution_prompt
 from core.field_dictionary import validate_llm_roles
 
@@ -48,6 +51,25 @@ class EpisodeIn(BaseModel):
     capsule_clicked: Optional[str] = None   # CB-09 D034：用户点击的胶囊 skill（Pro 排序自我成长偏好信号·5.239）
 
 
+class SearchIn(BaseModel):
+    question: str = ''
+
+
+@aiqa_router.post('/aiqa/search')
+def post_search(body: SearchIn):
+    """G6b 联网搜索（纯问答大问题/聚焦问题·DeepSeek Responses API web_search）。
+
+    前端 general 短路命中 SEARCH_KW → 调本端点 → 返 {answer, sources}（answer=模型综合回答·sources=引用）。
+    失败抛 502（前端 try/catch fallback 原 finalStep·不阻塞回答）。
+    """
+    if not body.question.strip():
+        return {'answer': '', 'sources': []}
+    try:
+        return search_chat(body.question.strip())
+    except LLMError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
 @aiqa_router.post('/aiqa/episode')
 def post_episode(ep: EpisodeIn):
     """记一条 L3 episode（append DATA/ai_qa/episodes.jsonl）。失败不抛（返回 ok=False）。"""
@@ -56,6 +78,55 @@ def post_episode(ep: EpisodeIn):
         defense=ep.defense, ok=ep.ok, extra=ep.extra, capsule_clicked=ep.capsule_clicked,
     )
     return {'ok': saved}
+
+
+class OutletCardIn(BaseModel):
+    """CB-16 Wave 0：出口卡片组装入参（前端 result 态后 POST）。"""
+    question: str = ''
+    diagnose: Optional[Dict[str, Any]] = None   # scale/domain_lens/outlet
+    result: Optional[Dict[str, Any]] = None     # 分析产物（polarity_index/features 等）
+    tool_history: Optional[str] = ''
+
+
+@aiqa_router.post('/aiqa/outlet_card')
+def post_outlet_card(body: OutletCardIn):
+    """CB-16 Wave 0：确定性组装出口卡片（结果范式 agent·第三段·Wave 3 多卡）。
+
+    前端 harness result 态后条件调用（问句含接口词·不碰承重路径）。
+    返回 {cards: [...], card: cards[0]}（cards 多卡·card 兼容旧前端·未命中 []/None）。
+    确定性·不调 LLM·字段缺失降级·不编造。
+    """
+    from ai_qa.outlet_kb.build_outlet_schema import build_outlet_schema
+    cards = build_outlet_schema(body.diagnose or {}, body.result or {}, body.question)
+    return {'cards': cards, 'card': cards[0] if cards else None}
+
+
+class RagSearchIn(BaseModel):
+    """CB-22 RAG 接入：知识检索入参（开放语义·B 路径未命中降级）。"""
+    query: str
+    k: int = 5
+
+
+@track('MOD_AIQA.F_017', track_args=False)
+@aiqa_router.post('/aiqa/rag_search')
+def post_rag_search(body: RagSearchIn):
+    """CB-22 RAG：知识检索（开放语义/跨文档综合·返回 Top-K + 维度分布）。
+
+    触发：harness _quickIntent 'rag_query' 短路（开放语义词）·B 路径（CB-22b）未命中时降级。
+    返回 {ok, results:[{score, source, type, data_dim, text}], count, dim_counts}。
+    text=片段全文（CB-22 三支柱修正·供 finalStep LLM 综合·老索引无 text 为空串）。
+    确定性（向量检索非 LLM）·索引未构建返 ok:False 非 500（前端静默）。
+    """
+    from tools.rag_index import search
+    r = search(body.query, body.k)
+    if not r.get('ok'):
+        return {'ok': False, 'error': r.get('error', '索引未构建·跑 py tools/rag_index.py --build')}
+    # dim_counts：Top-K 维度分布（finalStep 维度声明直接引用·颗粒度原则）
+    dim_counts = {}
+    for res in r['results']:
+        d = res.get('data_dim', '社区')
+        dim_counts[d] = dim_counts.get(d, 0) + 1
+    return {'ok': True, 'results': r['results'], 'count': r['count'], 'dim_counts': dim_counts}
 
 
 class ProfileFieldsIn(BaseModel):

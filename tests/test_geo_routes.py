@@ -7,6 +7,7 @@
 import os
 import sys
 
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
@@ -58,6 +59,9 @@ def test_zonal_stats_returns_sorted_units_with_attribution():
     row = d['rows'][0]
     for k in ('name', 'polarity_index', 'point_count', 'domain_top'):
         assert k in row
+    # P3-4（CB-19）：地点字段应进 rows（Gap B 核心杠杆——出口卡/结论段/图层受益）。值兼容空串（无地点不编造）
+    for k in ('place_name', 'place_name_source', 'poi_names', 'poi_count'):
+        assert k in row, f'zonal rows 应含地点字段 {k}（P3-4·Gap B）'
     # |pi| 应降序（张力大的在前）
     pis = [abs(rw['polarity_index']) for rw in d['rows'] if rw.get('polarity_index') is not None]
     assert pis == sorted(pis, reverse=True)
@@ -105,6 +109,51 @@ def test_merge_dissolves_all():
     assert 'area_km2' in feat0['properties']
 
 
+def test_merge_layers_concat():
+    """CB-11（Codex+glm组 方案 A）：merge(layers=[...]) 多图层 concat——保留各要素分类·无字段后缀·_source_layer 标记。"""
+    # 构造两个独立 GeoJSON 图层（不同用地分类）——resolve_boundary 支持 dict
+    g1 = {'type': 'FeatureCollection', 'features': [
+        {'type': 'Feature', 'properties': {'DLMC': '商业'}, 'geometry': {'type': 'Polygon', 'coordinates': [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]}}]}
+    g2 = {'type': 'FeatureCollection', 'features': [
+        {'type': 'Feature', 'properties': {'DLMC': '居住'}, 'geometry': {'type': 'Polygon', 'coordinates': [[[2, 0], [3, 0], [3, 1], [2, 1], [2, 0]]]}}]}
+    r = client.post('/api/v1/geo/merge', json={'layers': [g1, g2]})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d['count'] >= 2, f'concat 应保留 ≥2 要素（各自用地分类），count={d["count"]}'
+    feats = d['geojson']['features']
+    # 无字段后缀（concat 对齐·非 overlay 的 _1/_2）
+    props = feats[0]['properties']
+    assert not any('_1' in k or '_2' in k for k in props), f'concat 不应有字段后缀: {list(props.keys())}'
+    # 保留 DLMC 分类 + _source_layer 标记（glm组 补充）
+    dlmc_vals = {f['properties'].get('DLMC') for f in feats}
+    assert '商业' in dlmc_vals and '居住' in dlmc_vals, f'concat 应保留各要素 DLMC 分类: {dlmc_vals}'
+    assert any('_source_layer' in (f['properties'] or {}) for f in feats), 'concat 应有 _source_layer 标记'
+
+
+def test_merge_requires_boundary_or_layers():
+    """CB-11 one-of 校验：merge 无 boundary 也无 layers → 400（防 LLM 只传 layers 被拒）。"""
+    r = client.post('/api/v1/geo/merge', json={})
+    assert r.status_code == 400, f'空 merge 应 400，收到 {r.status_code}: {r.text}'
+
+
+def test_overlay_union_field_explosion_negative():
+    """CB-11 glm组 补充：overlay union 字段后缀爆炸（3→9→13 列）负向回归测试——锁定「merge 用 concat 不用 overlay」决策。
+    若未来有人把多图层合并改回 overlay union，本测试捕获字段膨胀。"""
+    import geopandas as gpd
+    from shapely.geometry import box
+    a = gpd.GeoDataFrame({'name': ['商业'], 'landuse': ['commercial'], 'area_km2': [2.5]},
+                         geometry=[box(0, 0, 1, 1)], crs='EPSG:4326')
+    b = gpd.GeoDataFrame({'name': ['居住'], 'landuse': ['residential'], 'area_km2': [3.2]},
+                         geometry=[box(1, 0, 2, 1)], crs='EPSG:4326')
+    res1 = gpd.overlay(a, b, how='union')
+    n_cols = len(res1.columns)
+    assert n_cols >= 4, f'overlay union 应有后缀列（name_1/name_2 等）·实际 {n_cols} 列'
+    # 对比：concat 不膨胀
+    combined = gpd.GeoDataFrame(pd.concat([a, b], ignore_index=True))
+    assert 'name' in combined.columns and 'landuse' in combined.columns, 'concat 应保留原字段名（无后缀）'
+    assert len(combined) == 2, 'concat 保留各要素'
+
+
 def test_rank_worst_via_boundary():
     if not _boundary_available('admin_district'):
         pytest.skip('admin_district preset 不可用')
@@ -115,6 +164,10 @@ def test_rank_worst_via_boundary():
     assert len(rows) <= 3
     pis = [rw['polarity_index'] for rw in rows if rw.get('polarity_index') is not None]
     assert pis == sorted(pis)                # worst=最负在前（升序）
+    # P3-4（CB-19）：rank rows 也应含地点字段（同 zonal）
+    if rows:
+        for k in ('place_name', 'place_name_source', 'poi_names', 'poi_count'):
+            assert k in rows[0], f'rank rows 应含地点字段 {k}（P3-4·Gap B）'
 
 
 def test_zonal_stats_pre_filter_combines():
@@ -131,3 +184,38 @@ def test_zonal_stats_pre_filter_combines():
     if rows:
         # 过滤后只剩 renewal 域，domain_top 应为 renewal（或空）
         assert all(rw.get('domain_top') in ('urban_renewal', '', None) for rw in rows)
+
+
+# ═══════ CB-15 P1：buffer 中文 POI（A）+ lookup_place 契约（C）═══════
+
+def test_buffer_chinese_poi_fallback():
+    """CB-15 P1（A）：buffer 中文 POI 名 → search_place fallback 出缓冲（治"奥体中心"失败）。"""
+    r = client.post('/api/v1/geo/buffer', json={'center': '万达广场', 'radius_m': 500})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body['success'] is True
+    assert body['geojson']['type'] == 'FeatureCollection'
+    feats = body['geojson']['features']
+    assert len(feats) >= 1, '应出缓冲面'
+    assert 'area_km2' in feats[0]['properties'], '应含面积'
+
+
+def test_buffer_chinese_poi_no_hit_honest(monkeypatch):
+    """CB-15 P1（A）：search 无命中 → 诚实 400（禁编造坐标·mock 保证无命中确定性）。"""
+    import core.geocode as _gc
+    monkeypatch.setattr(_gc, 'search_place', lambda q, limit=10: [])   # mock 无命中（端点 from core.geocode import 取属性当前值）
+    r = client.post('/api/v1/geo/buffer', json={'center': 'xx', 'radius_m': 500})
+    assert r.status_code == 400, r.text
+    assert '无法解析' in r.json()['detail'], f'应诚实报错（{r.text[:80]}）'
+
+
+def test_lookup_place_tool_contract():
+    """CB-15 P1（C）：lookup_place 契约已注册（TOOL_CONTRACTS 派生含 lookup_place·触发避开周边）。"""
+    from ai_qa.tool_contracts import TOOL_CONTRACTS
+    names = [c['skill'] for c in TOOL_CONTRACTS]
+    assert 'lookup_place' in names, f'TOOL_CONTRACTS 应含 lookup_place（{names}）'
+    entry = next(c for c in TOOL_CONTRACTS if c['skill'] == 'lookup_place')
+    assert entry['tool'] == 'lookup_place'
+    assert '在哪' in entry['triggers_str'], f'触发词应含"在哪"（{entry["triggers_str"]}）'
+    assert '周边' not in entry['triggers_str'], f'触发词应避开"周边"（留 buffer·{entry["triggers_str"]}）'
+    assert '附近' not in entry['triggers_str'], f'触发词应避开"附近"（留 buffer·{entry["triggers_str"]}）'

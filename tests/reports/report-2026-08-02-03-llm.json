@@ -1,0 +1,511 @@
+{
+ "meta": {
+  "schema": "EMC-SUM",
+  "version": "v1",
+  "mode": "llm",
+  "cats": [
+   "CPD导游",
+   "UI渲染",
+   "参数正确性",
+   "成果范式",
+   "Smart交流"
+  ],
+  "total": 25,
+  "startedAt": 1785661595809,
+  "commit": "bb9625b",
+  "savedAt": "2026-08-02T17:17:14"
+ },
+ "cases": [
+  {
+   "id": "CPD-L01",
+   "name": "导入点层后引导推 range",
+   "category": "CPD导游",
+   "type": "llm",
+   "pass": false,
+   "stage": "s1",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": null,
+   "newLayers": 0,
+   "durationSolo": 815,
+   "userVote": null,
+   "obs": "hint 未推 range",
+   "review": ""
+  },
+  {
+   "id": "CPD-L02",
+   "name": "导入点+范围后推 analyze",
+   "category": "CPD导游",
+   "type": "llm",
+   "pass": false,
+   "stage": "s1",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": null,
+   "newLayers": 0,
+   "durationSolo": 1361,
+   "userVote": null,
+   "obs": "hint 未推 analyze",
+   "review": ""
+  },
+  {
+   "id": "CPD-L03",
+   "name": "新对话恢复引导",
+   "category": "CPD导游",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": null,
+   "newLayers": 0,
+   "durationSolo": 1324,
+   "userVote": null,
+   "obs": "新对话引导态恢复",
+   "review": ""
+  },
+  {
+   "id": "UI-L01",
+   "name": "exit-badge 渲染（分析型）",
+   "category": "UI渲染",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "zonal",
+   "method": [
+    "zonal_stats()"
+   ],
+   "tools": [
+    "zonal_stats",
+    "zonal"
+   ],
+   "params": {
+    "boundary": "GeoJSON{1}"
+   },
+   "newLayers": 1,
+   "durationSolo": 57402,
+   "userVote": null,
+   "obs": "badge=\"分析完成\"",
+   "review": "badge 是否准确？"
+  },
+  {
+   "id": "UI-L02",
+   "name": "exit-badge 渲染（通用型）",
+   "category": "UI渲染",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 12106,
+   "userVote": null,
+   "obs": "badge=\"分析完成\"",
+   "review": "通用 badge 准确？"
+  },
+  {
+   "id": "UI-L03",
+   "name": "回答含 markdown 排版",
+   "category": "UI渲染",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 29936,
+   "userVote": null,
+   "obs": "badge=\"分析完成\" md=true",
+   "review": "排版是否美观？"
+  },
+  {
+   "id": "PRM-01",
+   "name": "参数:西陵区范围内做 500m 标准方",
+   "category": "参数正确性",
+   "type": "llm",
+   "pass": false,
+   "stage": "s2",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 37209,
+   "userVote": null,
+   "obs": "cell[ERR]",
+   "review": "cell_size=500m？"
+  },
+  {
+   "id": "PRM-02",
+   "name": "参数:西陵区范围内做 2000m 标准",
+   "category": "参数正确性",
+   "type": "llm",
+   "pass": false,
+   "stage": "s2",
+   "template": "extract_feature",
+   "method": [
+    "extract_feature()"
+   ],
+   "tools": [
+    "extract_feature"
+   ],
+   "params": {},
+   "newLayers": 1,
+   "durationSolo": 21579,
+   "userVote": null,
+   "obs": "cell[ERR]",
+   "review": "cell_size=2000m？"
+  },
+  {
+   "id": "PRM-03",
+   "name": "参数:大南门·二马路滨江片区周边 30",
+   "category": "参数正确性",
+   "type": "llm",
+   "pass": false,
+   "stage": "s2",
+   "template": "buffer",
+   "method": [
+    "buffer()"
+   ],
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 13786,
+   "userVote": null,
+   "obs": "radius[ERR]",
+   "review": "radius=300m？"
+  },
+  {
+   "id": "PRM-04",
+   "name": "参数:大南门·二马路滨江片区周边 1 ",
+   "category": "参数正确性",
+   "type": "llm",
+   "pass": false,
+   "stage": "s2",
+   "template": "buffer",
+   "method": [
+    "buffer()"
+   ],
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 16271,
+   "userVote": null,
+   "obs": "radius[ERR]",
+   "review": "radius=1000m？"
+  },
+  {
+   "id": "PRM-05",
+   "name": "参数:西陵区范围内按面聚合情绪统计及 ",
+   "category": "参数正确性",
+   "type": "llm",
+   "pass": false,
+   "stage": "s2",
+   "template": "zonal",
+   "method": [
+    "zonal_stats()"
+   ],
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 44007,
+   "userVote": null,
+   "obs": "boundary[ERR]",
+   "review": "boundary=西陵区？"
+  },
+  {
+   "id": "PRM-06",
+   "name": "参数:伍家岗区范围内按面聚合情绪统计及",
+   "category": "参数正确性",
+   "type": "llm",
+   "pass": false,
+   "stage": "s2",
+   "template": "zonal",
+   "method": [
+    "zonal_stats()"
+   ],
+   "tools": [
+    "zonal_stats",
+    "zonal"
+   ],
+   "params": {
+    "boundary": "GeoJSON{1}"
+   },
+   "newLayers": 1,
+   "durationSolo": 23494,
+   "userVote": null,
+   "obs": "boundary[ERR]",
+   "review": "boundary=伍家岗区？"
+  },
+  {
+   "id": "PRM-07",
+   "name": "参数:夷陵区范围内按面聚合情绪统计及 ",
+   "category": "参数正确性",
+   "type": "llm",
+   "pass": false,
+   "stage": "s2",
+   "template": "zonal",
+   "method": [
+    "zonal_stats()"
+   ],
+   "tools": [
+    "zonal_stats",
+    "zonal"
+   ],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 14299,
+   "userVote": null,
+   "obs": "boundary[ERR]",
+   "review": "boundary=夷陵区？"
+  },
+  {
+   "id": "PRM-08",
+   "name": "参数:对比西陵区与伍家岗区范围内情绪极",
+   "category": "参数正确性",
+   "type": "llm",
+   "pass": false,
+   "stage": "s2",
+   "template": "compare",
+   "method": [
+    "compare_regions()"
+   ],
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 13468,
+   "userVote": null,
+   "obs": "boundary[ERR]",
+   "review": "boundaries 含两区？"
+  },
+  {
+   "id": "PRM-09",
+   "name": "参数:从已载行政区中筛选出商业服务业用",
+   "category": "参数正确性",
+   "type": "llm",
+   "pass": false,
+   "stage": "s2",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 37762,
+   "userVote": null,
+   "obs": "layer(tool)[ERR]",
+   "review": "layer=商业？"
+  },
+  {
+   "id": "PRM-10",
+   "name": "参数:裁剪西陵区范围内的全部情绪点",
+   "category": "参数正确性",
+   "type": "llm",
+   "pass": false,
+   "stage": "s2",
+   "template": "merge",
+   "method": [
+    "merge()"
+   ],
+   "tools": [
+    "merge",
+    "extract_feature"
+   ],
+   "params": {},
+   "newLayers": 2,
+   "durationSolo": 20479,
+   "userVote": null,
+   "obs": "range(tool)[ERR]",
+   "review": "range=西陵区？"
+  },
+  {
+   "id": "RST-L01",
+   "name": "zonal 产聚合图层",
+   "category": "成果范式",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "zonal",
+   "method": [
+    "zonal_stats()"
+   ],
+   "tools": [
+    "zonal_stats",
+    "zonal"
+   ],
+   "params": {
+    "boundary": "GeoJSON{1}"
+   },
+   "newLayers": 1,
+   "durationSolo": 35562,
+   "userVote": null,
+   "obs": "badge=\"分析完成\" +1层",
+   "review": "是否产聚合层+着色？"
+  },
+  {
+   "id": "RST-L02",
+   "name": "compare 产对比图层",
+   "category": "成果范式",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "compare",
+   "method": [
+    "compare_regions()"
+   ],
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 13759,
+   "userVote": null,
+   "obs": "badge=\"分析完成\" +0层",
+   "review": "是否产对比层？"
+  },
+  {
+   "id": "RST-L03",
+   "name": "clip 产点图层",
+   "category": "成果范式",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "extract_feature",
+   "method": [
+    "extract_feature()"
+   ],
+   "tools": [
+    "extract_feature",
+    "merge"
+   ],
+   "params": {},
+   "newLayers": 2,
+   "durationSolo": 23468,
+   "userVote": null,
+   "obs": "badge=\"分析完成\" +2层",
+   "review": "是否裁剪出点层？"
+  },
+  {
+   "id": "RST-L04",
+   "name": "网格产方格层（非热力）",
+   "category": "成果范式",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 43740,
+   "userVote": null,
+   "obs": "badge=\"分析完成\" tools= +0层",
+   "review": "是否方格（非彩虹热力）？"
+  },
+  {
+   "id": "RST-L05",
+   "name": "通用问答无图层",
+   "category": "成果范式",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 13118,
+   "userVote": null,
+   "obs": "badge=\"分析完成\" ans=300字",
+   "review": "回答合理？"
+  },
+  {
+   "id": "SMT-L01",
+   "name": "缺参提问（无范围名）",
+   "category": "Smart交流",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 55963,
+   "userVote": null,
+   "obs": "ask 13 选项",
+   "review": "问题是否精准？"
+  },
+  {
+   "id": "SMT-L02",
+   "name": "字段校验（坏字段）",
+   "category": "Smart交流",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "extract_feature",
+   "method": [
+    "extract_feature()"
+   ],
+   "tools": [
+    "extract_feature"
+   ],
+   "params": {},
+   "newLayers": 1,
+   "durationSolo": 13965,
+   "userVote": null,
+   "obs": "badge=\"分析完成\"",
+   "review": "字段错是否 Smart 恢复？"
+  },
+  {
+   "id": "SMT-L03",
+   "name": "换问法（不存在区）",
+   "category": "Smart交流",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "zonal",
+   "method": [
+    "zonal_stats()"
+   ],
+   "tools": [
+    "zonal_stats",
+    "zonal"
+   ],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 5558,
+   "userVote": null,
+   "obs": "badge=\"分析完成\"",
+   "review": "是否引导换问法？"
+  },
+  {
+   "id": "SMT-L04",
+   "name": "多轮续作",
+   "category": "Smart交流",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "zonal",
+   "method": [
+    "zonal_stats()"
+   ],
+   "tools": [
+    "zonal_stats",
+    "zonal"
+   ],
+   "params": {
+    "boundary": "GeoJSON{1}"
+   },
+   "newLayers": 1,
+   "durationSolo": 67568,
+   "userVote": null,
+   "obs": "第2轮 badge=\"分析完成\"",
+   "review": "多轮续作正常？"
+  }
+ ]
+}

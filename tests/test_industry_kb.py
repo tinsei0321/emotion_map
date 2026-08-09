@@ -140,14 +140,33 @@ def test_lens_appendix_gating():
     assert ap3.count('【城市更新') == 1
 
 
-def test_build_final_prompt_no_lens_appendix():
-    """CB-09 D019 极瘦：build_final_prompt 不再注 industry_kb_lens_appendix（省 0-20KB·17KB→1.25KB·prefill <1s）。
-    domain_lens 无论传什么·finalStep prompt 都不含权威语境附录（质量守卫移至前端 harness.applyQualityDefense）。
-    （agent_step prompt 仍注 lens 附录·不在本测范围。）"""
+def test_final_prompt_with_lens_stays_bounded():
+    """CB-14（glm 改进点②）：A4 条件注入后体积仍可控——四域传入只注前 2 域·<8KB（防 industry_kb_final_brief
+    加厚回弹绕过 test_final_prompt_stays_lean 静态门禁盲区——该门禁传 domain_lens=None 不触发注入）。
+    industry_kb_final_brief 限前 2 域（Codex 建议·防 4 域全注 ~7KB 失控）。"""
     from ai_qa.prompts import build_final_prompt
-    for lens in (['urban_renewal'], ['urban_planning', 'urban_governance'], ['general'], None):
-        p = build_final_prompt(context='x', domain_lens=lens)
-        assert '聚焦领域权威语境' not in p, f'finalStep 仍注 lens appendix（domain_lens={lens}）·违反 D019 极瘦'
+    from ai_qa.industry_kb import industry_kb_final_brief
+    # 限 2 域：4 域传入只渲染前 2 域（体积可控）
+    b = industry_kb_final_brief(['urban_planning', 'urban_renewal', 'urban_operation', 'urban_governance'])
+    assert '城市更新' in b and '城市运营' not in b, '限 2 域未生效（应只含前 2 域）'
+    assert len(b.encode()) < 6000, f'限 2 域后 final_brief 仍 {len(b.encode())}B'
+    p = build_final_prompt('x', domain_lens=['urban_planning', 'urban_renewal', 'urban_operation', 'urban_governance'])
+    n = len(p.encode())
+    assert n < 8000, f'A4 注入后 final 膨胀到 {n}B（限 2 域应 <8KB·防 final_brief 加厚回弹）'
+
+
+def test_build_final_prompt_lens_injects_brief_only():
+    """CB-14（A4）：finalStep 按 domain_lens 条件注入【精简归因速查】——治"finalStep 无领域知识"。
+    domain_lens 命中 → 含归因速查 + 领域名·且不含全量权威语境附录标题（'聚焦领域权威语境'·D019 极瘦仍在）。
+    None / 'general' / 空 → 不注入（保持极瘦·静态模板 <3KB 门禁不被回灌破）。"""
+    from ai_qa.prompts import build_final_prompt
+    p = build_final_prompt(context='x', domain_lens=['urban_renewal'])
+    assert '归因速查' in p, 'finalStep 未注精简归因速查（A4 未治）'
+    assert '城市更新' in p, 'finalStep 未含命中领域名'
+    assert '聚焦领域权威语境' not in p, 'finalStep 注了全量权威语境附录（违反 D019 极瘦）'
+    for lens in (None, ['general'], []):
+        p2 = build_final_prompt(context='x', domain_lens=lens)
+        assert '归因速查' not in p2, f'未命中领域仍注入（domain_lens={lens}）'
 
 
 if __name__ == '__main__':

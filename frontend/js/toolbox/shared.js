@@ -9,7 +9,7 @@ import * as data_registry from '../data_registry.js';   // R2：统一数据注�
 import { renderLayer, fitBoundsTo, reorderAllZ, removeLayerFromMap } from '../map.js';
 import { renderLayerList, refreshLegend, showLayerManager } from '../sidebar.js';
 import { fcBBox } from '../import.js';
-import { landuseLayerPaint } from '../landuse_colors.js';
+import { landuseLayerPaint, landuseFillColorExpr, dominantDLMC } from '../landuse_colors.js';
 import { fetchRangePresets, fetchRangePreset } from '../api.js';
 import { piToNorm, polarityStops } from '../grid-tool.js';
 
@@ -62,6 +62,11 @@ export function buildZonalFc(rows, boundary) {
         point_count: row ? (row.point_count || 0) : 0,
         domain_top: row ? row.domain_top : null, element_top: row ? row.element_top : null,
         issue_label: row ? row.issue_label : null,
+        // P3-4（CB-19）：地点字段透传——rows 带 place_name 则合成 feature 携带（popup/outlet 图层/深读可用）
+        place_name: row ? (row.place_name || null) : null,
+        place_name_source: row ? (row.place_name_source || null) : null,
+        poi_names: row ? (row.poi_names || null) : null,
+        poi_count: row ? (row.poi_count || null) : null,
       },
     });
   }
@@ -156,7 +161,19 @@ export function clampM(v) { return Math.min(5000, Math.max(50, Math.round(v))); 
  *  addLayer/renderLayer + 落图自检 _renderState + renderLayerList/refreshLegend/reorderAllZ + 缩放 + layers:changed。
  *  不含 EMC 簿记（_ui.tool 注入/registry/$n/keep/consumed/focusOnlyResults——由 tools.js addResultLayer 叠加）。
  *  parentId 可选（addResultLayer 传 _aiGroup().id）；fit=false 时本层不缩放（调用方自行并集缩放）。 */
-export function addToolboxLayer({ name, kind = 'polygon', fc, paint, parentId, fit = true }) {
+/** 族 D：多类用地检测——DLMC 字段有 ≥2 个不同值（如 merge 产物·3 类用地）→ 用数据驱动分段色（每类一色·严格按图例）。 */
+function _multiLanduse(fc) {
+  if (!fc || !fc.features || !fc.features.length) return false;
+  const _dlmc = new Set();
+  for (const f of fc.features) {
+    const v = (f.properties || {}).DLMC;
+    if (v != null && v !== '') _dlmc.add(String(v));
+    if (_dlmc.size >= 2) return true;
+  }
+  return false;
+}
+
+export function addToolboxLayer({ name, kind = 'polygon', fc, paint, colorMode, parentId, fit = true }) {
   if (!fc || !fc.features || !fc.features.length) return null;
   const _sig = toolContentSig(fc);   // B srcId：异名同内容也去重（治仅按 name 去重漏洞·用户#3）
   for (const l of getLayers()) {
@@ -164,12 +181,18 @@ export function addToolboxLayer({ name, kind = 'polygon', fc, paint, parentId, f
   }
   // 用地层自动附制图规范标准色（任何工具产物：extract/clip/filter/overlay/merge/buffer…）。
   // kind=polygon 且检测为用地（有 DLMC 或层名含用地关键词）→ 标准色覆盖默认 paint 的 color/fillOpacity。
+  // 族 D（CB-11 用户要求「严格按图例」）：多类用地（DLMC 多样·如 merge 产物）→ 按 DLMC 数据驱动分段色（每类不同色·离散）
   let _paint = paint;
   if (kind === 'polygon') {
     const _lu = landuseLayerPaint(fc, name);
-    if (_lu) _paint = { ...(paint || {}), ..._lu };
+    if (_lu) {
+      _paint = { ...(paint || {}), ..._lu };
+      if (_multiLanduse(fc)) {
+        _paint = { ..._paint, fillColor: landuseFillColorExpr('DLMC') };   // 数据驱动：每要素按 DLMC 落规范色
+      }
+    }
   }
-  const L = addLayer({ name, kind, fc, paint: _paint, ...(parentId ? { parentId } : {}) });
+  const L = addLayer({ name, kind, fc, paint: _paint, colorMode, ...(parentId ? { parentId } : {}) });
   L.srcName = name;
   L.srcId = _sig;   // 工具产物层挂 srcId（与 main.js 导入层同语义·供 EMC grounding + 后续去重）
   data_registry.register({ name, kind, source: 'tool', fc, layerId: L.id });   // R2：登记工具产物（registry 标来源）
@@ -191,7 +214,7 @@ export function addToolboxLayer({ name, kind = 'polygon', fc, paint, parentId, f
 /** 工具产物落位（手册 §4.2 骨架配套·新建或原地更新）：addToolboxLayer 通用落图 + 同类互斥 + 可选选中。
  *  editLayerId 命中且同 _ui.tool → 原地更新（layer id 稳定·镜像「继续编辑」）；否则新建。
  *  silent=false（UI 路径）时 selectLayer + showLayerManager + layer:selected 超链。 */
-export function placeToolLayer({ name, kind = 'polygon', fc, paint, editLayerId = '', silent = true }) {
+export function placeToolLayer({ name, kind = 'polygon', fc, paint, colorMode, editLayerId = '', silent = true }) {
   if (!fc || !fc.features || !fc.features.length) return null;   // 空结果守卫（镜像 addResultLayer :474·0 命中 filter/clip/overlay 不崩）
   const editingLayer = editLayerId ? getLayer(editLayerId) : null;
   const tool = paint && paint._ui && paint._ui.tool;
@@ -209,7 +232,7 @@ export function placeToolLayer({ name, kind = 'polygon', fc, paint, editLayerId 
     const bb = fcBBox(fc); if (bb) fitBoundsTo(bb);
     return editingLayer;
   }
-  const L = addToolboxLayer({ name, kind, fc, paint });
+  const L = addToolboxLayer({ name, kind, fc, paint, colorMode });
   for (const hid of enforceMutualExclusion(L.id)) { const hl = getLayer(hid); if (hl) renderLayer(hl); }
   if (!silent) {
     selectLayer(L.id);

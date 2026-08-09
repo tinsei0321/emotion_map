@@ -88,6 +88,8 @@ class DecisionTracker:
         self._indent = 0             # 调用栈缩进
         self._call_stack: list = []  # 当前调用链
         self._stats: Dict[str, int] = {}  # 每 ID 调用次数统计
+        # CB-12 trace 优化（业界结构化/关联）：session_id 贯穿（env 可覆盖·测试/批跑传固定 session 供各组件过滤）
+        self.session_id = os.environ.get('EMOTION_TRACE_SESSION') or f'sess-{os.getpid()}-{int(time.time())}'
 
     # ── 公共 API ──
 
@@ -125,6 +127,9 @@ class DecisionTracker:
             parts.append(f"| {elapsed_ms:.1f}ms")
         if detail:
             parts.append(f"| {detail}")
+        # CB-12 trace 优化（业界结构化/关联）：session/case 字段追加——兼容旧行（split('|') 后新字段在末尾）·
+        #   各组跑测试带 EMOTION_TRACE_SESSION 可精确过滤自己的批次
+        parts.append(f"| session={self.session_id}")
 
         line = f"{indent}{' '.join(parts)}"
         self._emit(line)
@@ -172,6 +177,19 @@ class DecisionTracker:
             try:
                 _lf = Path(TRACKING_LOG_FILE)
                 _lf.parent.mkdir(parents=True, exist_ok=True)
+                # CB-12 trace 优化（业界轮转·RotatingFileHandler 模式）：>MAX 大小 → 原子轮转（保留 backupCount 份·防无限增长）
+                _max = int(os.environ.get('EMOTION_TRACE_MAX_BYTES', '209715200'))   # 默认 200MB
+                _backup = int(os.environ.get('EMOTION_TRACE_BACKUP', '3'))
+                try:
+                    if _lf.exists() and _lf.stat().st_size > _max:
+                        with self._lock:
+                            for i in range(_backup, 0, -1):   # .3→.2→.1（旧档降级）
+                                _src = _lf.with_name(f'{_lf.name}.{i - 1}') if i > 1 else _lf
+                                _dst = _lf.with_name(f'{_lf.name}.{i}')
+                                if _src.exists():
+                                    os.replace(str(_src), str(_dst))
+                except Exception:
+                    pass   # 轮转失败不阻塞（静默）
                 with open(_lf, 'a', encoding='utf-8') as f:
                     f.write(line + '\n')
             except Exception:

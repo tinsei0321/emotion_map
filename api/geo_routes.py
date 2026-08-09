@@ -14,6 +14,7 @@ AI 问答内由模型经 ReAct 自动选用的 GIS 原子操作（用户铁律�
 挂载：api/main.py `app.include_router(geo_router, prefix='/api/v1')` → 总路径 /api/v1/geo/*。
 """
 import json
+import math
 from typing import Any, Optional, Union
 
 import geopandas as gpd
@@ -26,6 +27,7 @@ from core.geo_registry import (
 )
 from core.spatial_analysis import aggregate_by_polygons, hot_spot_analysis
 from core.field_dictionary import resolve_field_alias, resolve_role   # P1 字段语义层·alias 解析
+from shapely.geometry import Point as _Point, box as _box   # CB-16 Wave 2：grid_pois 格几何重建
 
 geo_router = APIRouter()
 
@@ -237,25 +239,55 @@ async def extract_feature(req: ExtractFeatureRequest):
 
 # ════════════ 3. merge · 合并/dissolve ════════════
 class MergeRequest(BaseModel):
-    boundary: Optional[Any] = None   # preset_id | GeoJSON（要合并的面域）
-    by: Optional[str] = None          # 按字段 dissolve；空=全部 unary_union
+    boundary: Optional[Any] = None   # preset_id | GeoJSON（合并单图层·dissolve）
+    layers: Optional[list] = None   # CB-11：多图层合并（concat·保留各要素分类字段）·boundary 单层模式二选一·每项 preset_id|GeoJSON
+    by: Optional[str] = None          # 按字段 dissolve；空=全部 unary_union（单层）
 
 
 @geo_router.post('/geo/merge')
 async def merge(req: MergeRequest):
-    """合并/dissolve 面域：把多街道合成一片区，或同类用地合并。返回合并后面域 GeoJSON。"""
-    if req.boundary is None:
-        raise HTTPException(status_code=400, detail='merge 需 boundary(preset_id|geojson)')
+    """合并/dissolve 面域：把多街道合成一片区，或同类用地合并。返回合并后面域 GeoJSON。
+
+    CB-11（Codex+glm组 方案 A）：支持 layers 多图层 concat——合并多个独立图层（保留 DLMC 分类·
+    无字段后缀·区别于 overlay union 的空间并集）。boundary 单层路径完全保留（纯增量）。"""
+    if req.boundary is None and req.layers is None:
+        raise HTTPException(status_code=400, detail='merge 需 boundary 或 layers（二选一）')
     try:
-        polys = resolve_boundary(req.boundary)
-        if req.by:
-            if req.by not in polys.columns:
-                raise ValueError(f'dissolve 字段不存在: {req.by}')
-            merged = polys.dissolve(by=req.by, as_index=False)
+        if req.layers:
+            # CB-11 P6（Codex）：layers 字符串→数组防御（LLM 单字符串 422）
+            if isinstance(req.layers, str):
+                req.layers = [req.layers]
+            # 多图层 concat：逐项 resolve_boundary → CRS 统一 → pd.concat → _source_layer 标记 → 可选 dissolve
+            gdfs = []
+            for i, ly in enumerate(req.layers):
+                g = resolve_boundary(ly)
+                if not g.crs:
+                    g = g.set_crs('EPSG:4326')
+                g = g.to_crs('EPSG:4326')
+                g = g.copy()
+                # CB-11 P5（Codex）：_source_layer 携带原始引用（preset_id/层名/GeoJSON 摘要）·非序号（换序即变·无法回指）
+                if isinstance(ly, str):
+                    g['_source_layer'] = ly
+                else:
+                    g['_source_layer'] = f"geojson#{i}"
+                gdfs.append(g)
+            polys = pd.concat(gdfs, ignore_index=True)
+            if req.by:
+                if req.by not in polys.columns:
+                    raise ValueError(f'dissolve 字段不存在: {req.by}')
+                merged = polys.dissolve(by=req.by, as_index=False)
+            else:
+                merged = polys   # concat 直接保留各要素（含 DLMC 分类）
         else:
-            merged = gpd.GeoDataFrame(
-                {'name': ['合并区']}, geometry=[polys.geometry.unary_union], crs=polys.crs
-            )
+            polys = resolve_boundary(req.boundary)
+            if req.by:
+                if req.by not in polys.columns:
+                    raise ValueError(f'dissolve 字段不存在: {req.by}')
+                merged = polys.dissolve(by=req.by, as_index=False)
+            else:
+                merged = gpd.GeoDataFrame(
+                    {'name': ['合并区']}, geometry=[polys.geometry.unary_union], crs=polys.crs
+                )
         # 算合并后面积
         merged_proj = merged.to_crs(_PROJECT_CRS)
         merged = merged.copy()
@@ -320,6 +352,16 @@ async def zonal_stats(req: ZonalStatsRequest):
     try:
         pts = _prepare_points(req.layer, req.range, req.pre_filter)
         polys = resolve_boundary(req.boundary)
+        # CB-12 P1'（glm组）：zonal_stats 诊断日志（PRM-07 夷陵 0 层定位）——boundary geometry/点数/overlap
+        _poly_n = 0
+        try:
+            _poly_n = len(polys) if hasattr(polys, '__len__') else 0
+        except Exception:
+            _poly_n = -1
+        import logging as _lg
+        _lg.getLogger('uvicorn.error').warning(
+            f'[zonal] boundary={str(req.boundary)[:80]} polys={_poly_n} pts={len(pts)}'
+            f' crs_pts={getattr(pts.crs, "name", "?")} crs_poly={getattr(getattr(polys, "crs", None), "name", "?")}')
         agg_cols = req.agg_cols or (['score'] if 'score' in pts.columns else [])
         merged = aggregate_by_polygons(pts, polys, agg_cols=agg_cols,
                                        polygon_name_col='name')
@@ -330,9 +372,12 @@ async def zonal_stats(req: ZonalStatsRequest):
             ascending=False, kind='stable')
         if req.top_n:
             merged = merged.head(int(req.top_n))
-        # 属性表输出（轻量；含 name/极性/4×5/issue）—— AI 友好的"单元排行"
+        # 属性表输出（轻量；含 name/极性/4×5/issue/地点）—— AI 友好的"单元排行"
+        # P3-4（CB-19）：加 place_name/place_name_source/poi_names/poi_count——后端已算好却被裁剪掉
+        #   → rows 带地点 → harness _lastToolRows → 出口卡需求位置 + 结论段 + 地图图层自动受益（Gap B 核心杠杆）
         prop_cols = ['name', 'point_count', 'polarity_index', 'score_mean',
-                     'domain_top', 'element_top', 'issue_label', 'attribution', 'suggestion']
+                     'domain_top', 'element_top', 'issue_label', 'attribution', 'suggestion',
+                     'place_name', 'place_name_source', 'poi_names', 'poi_count']
         # [CB-1] 原为 discover-then-refetch：遍历 rows.columns 找 n_dom_*/n_elem_* 想补，
         # 但 _props_df 只返请求列 → 永不含 n_dom_ → 循环空转、二次 _props_df 冗余。
         # 清为单次调用（零行为变化）。补充虽从未生效，但深挖确认**无活消费方**：
@@ -355,6 +400,80 @@ class RankRequest(_GeoBase):
     boundary: Optional[Any] = None    # 给定则先 zonal 聚合再排；空则需 layer 为已聚合 geojson
     by: Optional[str] = None          # worst|best|domain:X|element:X（默认 worst）
     top_n: int = 5
+
+
+# ════════════ 6.5 grid_pois · 格内 POI 清单（CB-16 Wave 2 / CB-15 P0）════════════
+class GridPoisRequest(_GeoBase):
+    """格内 POI 详查（下钻链最小闭环·按需重查·对齐悬停试探/点击锁定双层范式）。
+
+    cell_id 或质心坐标（cell_lng/cell_lat + cell_size）二选一——cell_id 解析失败时质心兜底。
+    返回格内 POI 清单（名称/类别/domain/element/坐标）+ 与格的距离。
+    """
+    cell_id: Optional[str] = None             # 确定性格 id（grid_{cell_size}_{row}_{col}·可选）
+    cell_lng: Optional[float] = None          # 质心坐标 WGS84·与 cell_lat + cell_size 重建格
+    cell_lat: Optional[float] = None
+    cell_size: Optional[float] = None         # 格边长（米·重建格几何用）
+
+
+@geo_router.post('/geo/grid_pois')
+async def grid_pois(req: GridPoisRequest):
+    """返回格内 POI 清单（place_layer.all_pois·含 CB-16 Wave 2 接入的 3220·共 4310 条）。
+
+    cell_id（grid_{size}_{row}_{col}·4546 米制）或质心坐标 + cell_size 重建格几何 → sjoin 格内 POI。
+    """
+    if req.cell_id is None and (req.cell_lng is None or req.cell_lat is None or req.cell_size is None):
+        raise HTTPException(status_code=400, detail='grid_pois 需 cell_id 或 (cell_lng,cell_lat,cell_size)')
+    try:
+        from core.place_layer import get_place_layer
+        _pl = get_place_layer() if get_place_layer else None
+        _pois = _pl.all_pois if _pl else []
+        if not _pois:
+            return {'success': True, 'cell_id': req.cell_id, 'pois': [], 'count': 0, 'message': 'POI 未加载'}
+
+        # 解析格几何（cell_id 优先·质心坐标兜底）→ 统一 EPSG:4546 米制
+        _crs = _PROJECT_CRS
+        if req.cell_id:
+            # grid_{cell_size}_{row}_{col}（4546 米制 origin）
+            _parts = req.cell_id.split('_')
+            if len(_parts) == 4 and _parts[0] == 'grid':
+                _size = float(_parts[1]); _row = float(_parts[2]); _col = float(_parts[3])
+                _ox, _oy = _col * _size, _row * _size
+                _cell = gpd.GeoDataFrame(geometry=[_box(_ox, _oy, _ox + _size, _oy + _size)], crs=_crs)
+                _cell_4326 = _cell.to_crs('EPSG:4326').geometry.iloc[0]
+            else:
+                raise HTTPException(status_code=400, detail=f'cell_id 格式错误: {req.cell_id}（期望 grid_{"{size}"}_{"{row}"}_{"{col}"}）')
+        else:
+            # 质心 + cell_size → 4546 建格（格原点 = floor(质心/cs)*cs·行/列号回算）
+            _cell_size = float(req.cell_size)
+            _src = gpd.GeoDataFrame(geometry=[_Point(req.cell_lng, req.cell_lat)], crs='EPSG:4326')
+            _p = _src.to_crs(_crs).geometry.iloc[0]
+            _row = int(math.floor(_p.y / _cell_size))
+            _col = int(math.floor(_p.x / _cell_size))
+            _ox, _oy = _col * _cell_size, _row * _cell_size
+            _cell = gpd.GeoDataFrame(geometry=[_box(_ox, _oy, _ox + _cell_size, _oy + _cell_size)], crs=_crs)
+            _cell_4326 = _cell.to_crs('EPSG:4326').geometry.iloc[0]
+
+        # POI 点（WGS84）→ sjoin 格内（iterrows 保留 shapely geometry·to_dict 会丢 geometry 类型）
+        _poi_gdf = gpd.GeoDataFrame(
+            _pois, geometry=[_Point(_p.get('lng', 0), _p.get('lat', 0)) for _p in _pois], crs='EPSG:4326')
+        _in = _poi_gdf[_poi_gdf.intersects(_cell_4326)]
+        _out = []
+        for _idx, _r in _in.iterrows():
+            _out.append({
+                'name': str(_r.get('name', '')),
+                'category': str(_r.get('baidu_level1', _r.get('category', ''))),
+                'domain': str(_r.get('domain', '')),
+                'element': str(_r.get('element', '')),
+                'lng': round(float(_r.geometry.x), 6),
+                'lat': round(float(_r.geometry.y), 6),
+            })
+        _cell_id = req.cell_id or f'grid_{int(_cell_size)}_{int(_row)}_{int(_col)}'
+        return {'success': True, 'cell_id': _cell_id, 'pois': _out, 'count': len(_out),
+                'message': f'格内 {len(_out)} 处 POI（含 3220 接入）'}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f'grid_pois 失败: {e}')
 
 
 @geo_router.post('/geo/rank')
@@ -395,8 +514,10 @@ async def rank(req: RankRequest):
         else:
             gdf = gdf.sort_values('polarity_index', ascending=ascending, kind='stable')
         gdf = gdf.head(int(req.top_n))
+        # P3-4（CB-19）：加地点字段（同 zonal）——rank rows 也带 place_name/place_name_source/poi_names/poi_count
         prop_cols = ['name', 'point_count', 'polarity_index', 'score_mean',
-                     'domain_top', 'element_top', 'issue_label']
+                     'domain_top', 'element_top', 'issue_label',
+                     'place_name', 'place_name_source', 'poi_names', 'poi_count']
         _props = _props_df(gdf, prop_cols)
         rows = _props.where(pd.notna(_props), '').to_dict('records')
     except (KeyError, FileNotFoundError, ValueError) as e:
@@ -419,6 +540,21 @@ async def buffer(req: BufferRequest):
    （point_count/polarity_index/domain_top/...，消除 buffer→zonal 断点）。省略 layer → 逐字节同原（向后兼容）。"""
     try:
         center = resolve_boundary(req.center)
+    except (FileNotFoundError, ValueError):
+        # CB-15 P1（A）：str center 非 preset → 尝试中文名 search_place 取坐标（AI/前端共用一处）
+        #   边界：只对 str center（GeoJSON dict 已是坐标）·top-1 命中·无命中诚实 400（禁编造坐标）·search_place 返回 WGS84
+        if isinstance(req.center, str) and req.center.strip():
+            from core.geocode import search_place
+            _hits = search_place(req.center.strip(), limit=1)
+            if not _hits:
+                raise HTTPException(status_code=400,
+                                    detail=f'center 无法解析：{req.center}（非 preset_id/GeoJSON/POI 名·请改用已加载范围或上传）')
+            _h = _hits[0]
+            center = gpd.GeoDataFrame({'name': [_h['name']]},
+                                      geometry=[_Point(_h['lng'], _h['lat'])], crs='EPSG:4326')
+        else:
+            raise
+    try:
         proj = center.to_crs(_PROJECT_CRS)
         buf = proj.geometry.buffer(float(req.radius_m))
         names = center['name'].tolist() if 'name' in center.columns else ['缓冲区'] * len(center)
@@ -521,17 +657,22 @@ async def nearest(req: NearestRequest):
 class HotspotRequest(_GeoBase):
     value_col: str = 'score'
     invert: bool = True               # True=负面为热（score 低为热）
+    # P1 软分级透传（W2 审计）：threshold/soft_threshold——默认 1.96/1.0（前端可不传）
+    threshold: float = 1.96
+    soft_threshold: float = 1.0
 
 
 @geo_router.post('/geo/hotspot')
 async def hotspot(req: HotspotRequest):
-    """Gi* 热点分析：识别情绪冷热点空间聚类。返回点 + Gi_Z/hotspot 分类（截断）。"""
+    """Gi* 热点分析：识别情绪冷热点空间聚类。返回点 + Gi_Z/hotspot 五档分类（截断）。"""
     try:
         pts = _prepare_points(req.layer, req.range, req.pre_filter)
         if req.value_col not in pts.columns:
             raise ValueError(f'value_col {req.value_col} 不存在（可用 {list(pts.columns)[:20]}…）')
         pts = pts[pts.geometry.geom_type == 'Point'].copy()
-        res = hot_spot_analysis(pts, value_col=req.value_col, invert=req.invert)
+        # P1 软分级（W2 审计）：透传 threshold/soft_threshold（五档·诚实标倾向聚集）
+        res = hot_spot_analysis(pts, value_col=req.value_col, invert=req.invert,
+                                threshold=req.threshold, soft_threshold=req.soft_threshold)
         fc = _to_geojson(res)
     except (KeyError, FileNotFoundError, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -541,4 +682,6 @@ async def hotspot(req: HotspotRequest):
         raise HTTPException(status_code=500, detail=f'hotspot 失败: {e}')
     return {'success': True, 'geojson': fc, 'count': fc['_total'],
             'truncated': fc['_truncated'],
-            'legend': {'hot': '显著热点', 'cold': '显著冷点', 'ns': '不显著'}}
+            # W3 审计：legend 五档（显著 95%/倾向 84% 对称·诚实标注非"显著热点"）
+            'legend': {'hot': '显著聚集(95%)', 'tend_hot': '倾向聚集(84%)', 'ns': '不显著',
+                       'tend_cold': '倾向冷区(84%)', 'cold': '显著冷区(95%)'}}

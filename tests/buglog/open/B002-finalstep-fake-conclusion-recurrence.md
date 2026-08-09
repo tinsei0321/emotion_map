@@ -3,6 +3,7 @@ id: B002
 title: 'finalStep 假结论 — "只说不做/只做一半"（复现）'
 type: BUG
 severity: CRIT
+priority: P0
 status: open
 module: finalStep
 source: 用户实测
@@ -41,6 +42,9 @@ last_repro: 2026-07-29
 | 日期 | 操作 | commit |
 |------|------|------|
 | — | 待修复 | — |
+| 2026-07-29 | P0-4: harness.js 3 处 finalStep context 注入 newLayerCount 执行摘要（成功产出N层 / 未产出·禁编造） | 31e2a00 |
+| 2026-07-29 | P0-4 v2 治本：① tools.js 五工具观测诚实化（count=0 不说"已生成"）② harness.js 零图层跳过 LLM finalStep ③ 正则 {2,20}→{3,20} 防断词 | 8e5e76f |
+| 2026-07-29 | P0-4 v3 根治：① _autoExpandOverlays 代码自动扩展多步骤 ② D057 修订允许多 tool_calls ③ FC prompt 简化去旧诊断卡触发 ④ clip 描述加 ❌面层禁止 ⑤ extract_feature/overlay when 修正 | 3a97e19 |
 
 ---
 

@@ -33,19 +33,19 @@ SCALE_PARADIGM = [
         'paradigm': '产出单元聚合图层 + 单元级结论：哪个单元最差/最好 + 归因（domain×element）+ 单元针对性建议',
         'forbidden': '不混到单点、也不泛到整城',
         'typical_q': '"这几个街道里哪个最需更新？""某社区的 4×5 归因偏哪一格？"',
-        'city_checkup_level': '街区/小区（社区）',
+        'city_checkup_level': '街区/小区（社区为行政调研单元·小区为居住单元·社区⊃小区+零散住房+城中村）',
         'method_templates': ['zonal_stats(street/renewal_unit)→4×5归因', 'buffer(15min生活圈)'],
     },
     {
         'scale': 'micro',
         'name': '微观',
         'geo_objects': '街 / 小区 / 公园 / POI / 网格（10⁻²–1 km²）',
-        'method': '50–100m 精细网格聚合 + 热点聚集（Gi*）+ 具体落点',
+        'method': '50–100m 精细网格聚合 + 显著聚集识别（Gi*）+ 具体落点',
         'paradigm': '产出精细网格/热点图层 + 落点结论：哪个具体网格 / 聚集区 / POI + 精确定位（可飞到地图）',
         'forbidden': '禁止泛泛而谈（用宏观结论答微观问）',
         'typical_q': '"这个公园里哪里情绪最差？""这条街上哪个点位被吐槽最多？"',
         'city_checkup_level': '住房/小区',
-        'method_templates': ['hotspot(Gi*冷热点)', 'nearest(设施锚定)', '精细网格 50-100m'],
+        'method_templates': ['hotspot(Gi*显著聚集)', 'nearest(设施锚定)', '精细网格 50-100m'],
     },
 ]
 
@@ -129,7 +129,7 @@ B_TRACK_PARADIGM = [
     {'archetype': '密度分布', 'stage': 'Analyze', 'voice': '我用核密度看聚集强度连续分布',
      'triggers': ['核密度', '密度分析', '聚集强度', '热力分布', '热力图', '热力', '密度', '集中', '情绪热度', '网格', '方格', '方格网', '聚合域', '空间聚合'],   # CB-06 L0：补网格/方格→"方格网"路由 density（避 while-loop·联动 harness mode='3d' 兜底）
      'template': 'density'},
-    {'archetype': '聚集识别', 'stage': 'Analyze', 'voice': '我用 Gi* 识别显著冷热点聚集',
+    {'archetype': '聚集识别', 'stage': 'Analyze', 'voice': '我用 Gi* 识别显著聚集区域',
      'triggers': ['聚集区', '热点', '冷热', '显著聚集'],   # CB-05 H3：'聚集'→'聚集区'（避 density '聚集强度' substring 歧义）
      'template': 'hotspot'},
     {'archetype': '叠置交叉', 'stage': 'Transform', 'voice': '我叠两个图层找复合关系区',
@@ -286,15 +286,38 @@ GEO_TOOL_CATALOG = [
         'failure_modes': '误用于面范围——要设施周边范围用 buffer，要区内点用 clip；"离X最近"是单一邻近关系，勿选 multi',
     },
     {
+        # CB-15 P1（C）：lookup_place——与 tool_contracts 派生一致（validate_skill_params 比对）
+        'name': 'lookup_place',
+        'when': '查地点：用户问某地名/POI 在哪、附近有什么、坐标——治 LLM 不可见地点（place_layer 4310 POI 宇宙）',
+        'params': 'q(中文名/POI 名), lng?, lat?（坐标直查·q 与坐标二选一）',
+        'yields': '地点命中（名称/坐标/类别）+ 周边近邻 top-5（reverse）',
+        'contributes': '让地点进 AI 问答管线——LLM 可知"滨江公园/奥体中心"位置与周边',
+        'scale': '微观（POI 落点）',
+        'preconditions': 'q 或 (lng,lat)',
+        'failure_modes': '与 buffer 混（"周边/附近"触发 buffer·本工具用"在哪/叫什么/坐标"）；q 无命中诚实报错（禁编造坐标）',
+    },
+    {
+        # CB-22d（2026-08-10）：知识问答 → 地图标记。批量地名/项目名 → 点位图层。
+        'name': 'generate_point_layer',
+        'when': '把文字答案/项目名/地点名标记到地图·生成点位图层（如"能在地图上标记出这些项目的位置吗"）——仅当问句要求把名称/项目/地点标到地图时选此技能；其余 GIS 操作仍选原技能',
+        'params': 'names(项目/地点名数组·从上一轮回答提取), as?(图层名)',
+        'yields': '点位图层（橙色点·name/source/match_type 属性）+ observation 命中 n/N + 未命中列表',
+        'contributes': '打通「知识问答→地图标记」——上轮项目名列表 → 点位图层（演示逻辑链·图面张力→引导点击）',
+        'scale': '微观（POI 落点）/ 中观（面化回退）',
+        'preconditions': 'names 非空（缺则提示从上一轮回答提取）',
+        'failure_modes': '与 lookup_place 混——lookup_place=单点查询无图层·本工具=批量 names→点位图层；names 缺失→提示从上一轮提取；未命中诚实列出（禁编造坐标）',
+        'examples': '正:能在地图上标记出这些项目的位置吗 / 正:把刚才的项目标到地图 / 误:奥体中心在哪(→lookup_place)',
+    },
+    {
         'name': 'hotspot',
-        'when': 'Gi* 热点：负面/正面情绪在空间上显著聚集的冷热点',
-        'params': 'layer, value_col(score), invert(负面为热)',
-        'yields': '每点 Gi* Z-score + hot/cold 分类',
-        'contributes': '识别"聚集在哪"，支撑预警/排查类出口',
+        'when': 'Gi* 显著聚集：负面/正面情绪在空间上显著聚集的区域（软分级五档·显著/倾向）',
+        'params': 'layer, value_col(score), invert(负面为热), threshold, soft_threshold',
+        'yields': '每点 Gi* Z-score + 五档分类（hot/tend_hot/ns/tend_cold/cold·90/95/99% 置信）',
+        'contributes': '识别"显著聚集在哪"（含倾向档），支撑预警/排查类出口',
         'scale': '微观（Gi* 逐点聚集）',
         'preconditions': '点层 + value_col',
-        'failure_modes': '与 density 混——hotspot=逐点 Gi* 冷热点分类（每点 hot/cold/ns）；要连续密度面/热力图用 density',
-        'examples': '正:显著负面聚集区 / 正:冷热点识别 / 误:情绪热度连续分布(→density)',
+        'failure_modes': '与 density 混——hotspot=逐点 Gi* 显著聚集分类（每点五档）；要连续密度面/热力图用 density',
+        'examples': '正:显著负面聚集区 / 正:显著聚集识别 / 误:情绪热度连续分布(→density)',
     },
     {
         'name': 'density',
@@ -308,6 +331,29 @@ GEO_TOOL_CATALOG = [
         'examples': '正:核密度分析 / 正:哪里最集中 / 误:显著冷热点分类(→hotspot)',
     },
 ]
+
+
+def _sync_geo_catalog_guard_fields():
+    """③w2b（Codex P1/glm）：GEO_TOOL_CATALOG 的 when/params/yields/contributes 对齐 tool_contracts 单一真相源。
+
+    contracts 是权威（CB-04 单一源）·paradigm 是镜像。validate_skill_params 严格相等守护漂移。
+    这里在导入时用 derive_geo_catalog() 派生值对齐 4 个 guard 字段（scale/preconditions/failure_modes/examples
+    保留手写·不在 guard 范围）。不手动逐字复制（防终端编码误差）。
+    """
+    try:
+        from .tool_contracts import derive_geo_catalog
+        _derived = {d['name']: d for d in derive_geo_catalog()}
+        for _t in GEO_TOOL_CATALOG:
+            _d = _derived.get(_t['name'])
+            if _d:
+                for _k in ('when', 'params', 'yields', 'contributes'):
+                    if _k in _d:
+                        _t[_k] = _d[_k]
+    except Exception:
+        pass   # contracts 不可用时不阻塞（paradigm 仍手写可用）
+
+
+_sync_geo_catalog_guard_fields()
 
 
 def geo_tool_catalog_text() -> str:
@@ -390,11 +436,16 @@ TEMPLATE_REGISTRY = [
      'tool': 'nearest', 'required_slots': ['target'],
      'optional_defaults': {'k': 1},
      'planning_common': 'target=preset_id|geojson（设施/POI）；点层走可见层选源（不硬默认）；k=近邻数'},
-    {'skill': 'hotspot', 'name': '聚集识别(Gi*)', 'category': 'single',
-     'voice': '我用 Gi* 识别负面/正面情绪显著聚集的冷热点', 'triggers': '聚集/热点/冷热/显著聚集/聚集区',
+    {'skill': 'hotspot', 'name': '显著聚集识别(Gi*)', 'category': 'single',
+     'voice': '我用 Gi* 识别负面/正面情绪显著聚集区', 'triggers': '聚集/热点/冷热/显著聚集/聚集区',
      'tool': 'hotspot', 'required_slots': [],
-     'optional_defaults': {'value_col': 'score'},
-     'planning_common': '点层走可见层选源（不硬默认）；value_col=score（invert 由工具默认：负面为热）；产 hot/cold/ns 点图层'},
+     'optional_defaults': {'value_col': 'score', 'threshold': 1.96, 'soft_threshold': 1.0},
+     'planning_common': '点层走可见层选源（不硬默认）；value_col=score（invert 默认负面为热）；产五档显著聚集点图层（soft_threshold=1.0 倾向档·诚实标84%置信）'},
+    {'skill': 'generate_point_layer', 'name': '批量地名标点', 'category': 'single',
+     'voice': '我把一批项目/地点名标记到地图上，生成点位图层', 'triggers': '标记/标到地图/在地图上/点位/位置/把项目标出来',
+     'tool': 'generate_point_layer', 'required_slots': ['names'],
+     'optional_defaults': {},
+     'planning_common': 'names=上轮知识问答回答中的项目/地点名列表（LLM 从上一轮 final 提取）；逐名 search_place（本地 POI + 高德逆地理）→ 命中合成 point fc → addToolboxLayer（kind:point·显式 circle 样式）；未命中 → 文字诚实列出（不 request_upload）'},
     {'skill': 'filter_attr', 'name': '属性筛选', 'category': 'single',
      'voice': '我按字段属性筛子集（用地/极性/domain/element/时点）', 'triggers': '按字段/用地类/属性筛选/筛选某类/只看',
      'tool': 'filter_attr', 'required_slots': ['pre_filter'],

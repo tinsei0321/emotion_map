@@ -30,6 +30,12 @@
         "label": "更新单元",
         "file": "更新单元.geojson",
         "nameField": "编号"
+      },
+      {
+        "id": "damanmen_area",
+        "label": "大南门·二马路滨江片区",
+        "file": "大南门二马路滨江片区.geojson",
+        "nameField": "name"
       }
     ]
   },

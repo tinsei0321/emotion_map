@@ -1,0 +1,27 @@
+INFO:     Started server process [55924]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+[WARN] MOD_GEOCODE: AMAP_KEY missing, amap fallback disabled (local-only)
+INFO:     127.0.0.1:52676 - "GET /api/v1/health HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "GET /frontend/css/search-bar.css?v=1783269691 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/css/ai_qa.css?v=1786170535 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/css/compare.css?v=1784632121 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/css/time-bar.css?v=1784632121 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/main.js?v=1785585208 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/e2e-seam.js HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/map.js?v=1786170536 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/data_registry.js?v=1785549826 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/panel.js?v=1786170536 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/tip-popup.js?v=1783257096 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/toolbar.js?v=1784292967 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/sidebar.js?v=1785550287 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/popup.js?v=1783097742 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/state.js?v=1786170536 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/import.js?v=1784957084 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/dialog.js?v=1783525460 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/landuse_colors.js?v=1784292967 HTTP/1.1" 200 -
+[B3] FATAL: Page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/frontend/index.html?test=1
+Call log:
+  - navigating to "http://localhost:8080/frontend/index.html?test=1", waiting until "commit"
+

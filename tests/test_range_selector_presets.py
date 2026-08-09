@@ -94,3 +94,23 @@ def test_ingest_split_dissolves_and_updates_manifest(ingest, tmp_path, monkeypat
     m = json.loads(manifest_path.read_text(encoding='utf-8'))
     ids = {it['id'] for it in m[0]['items']}
     assert {'land_commercial', 'land_park'} <= ids
+
+
+# ── ③w7（Codex/glm P2）：行政区 preset fixture 静态守卫——MC 全集 ⊆ FIXED_ADMIN_DISTRICTS（防法定功能区回潮）──
+def test_admin_district_fixture_mc_in_whitelist():
+    """preset 行政区 geojson 的 MC 全集必须 ⊆ FIXED_ADMIN_DISTRICTS（真实行政区划白名单）。
+
+    ③w6 用户拍板清理（9→4 法定功能区删除）·此守卫防未来数据更新时法定功能区重新混入。
+    """
+    # 直接读 preset 文件（白名单镜像 tools.js FIXED_ADMIN_DISTRICTS·避免 import 前端 JS）
+    preset_path = os.path.join(_ROOT, 'DATA', 'boundaries', 'presets', '行政区.geojson')
+    if not os.path.isfile(preset_path):
+        pytest.skip('行政区 preset 未随仓分发（本地数据）')
+    d = json.load(open(preset_path, encoding='utf-8-sig'))   # 保 BOM（EF BB BF）·utf-8-sig 解码
+    mcs = [f.get('properties', {}).get('MC') for f in d.get('features', [])]
+    assert mcs, f'行政区 preset 应为非空要素集（{mcs}）'
+    # 白名单镜像（与 frontend/js/ai_qa/tools.js FIXED_ADMIN_DISTRICTS 一致·避免 import JS）
+    whitelist = ['西陵区', '伍家岗区', '猇亭区', '点军区']
+    bad = [m for m in mcs if m not in whitelist]
+    assert not bad, f'行政区 preset 含法定功能区（不在 FIXED_ADMIN_DISTRICTS 白名单）：{bad}——应删除或纳入白名单'
+    assert len(mcs) == len(whitelist), f'行政区 preset 应为 {len(whitelist)} 个真实区划（现 {len(mcs)}：{mcs}）'

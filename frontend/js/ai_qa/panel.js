@@ -22,8 +22,11 @@ let _abortCtl = null;
 let _history = loadHistory();
 let _archive = loadArchive();
 let _curTrace = null;
+let _pendingStruct = null;   // 出口三段式 P0：结果结构化暂存（harness onResultStruct → onFinalDone 统一渲染观点卡/4要点卡）
 let _consecutiveAsks = 0;   // P1 ask_user 跨 orchestrate 连续计数：≥2 时下轮注入"禁止再 ask_user"防博弈式无限追问（MAX_ROUNDS 对 ask 无效，因 ask 直接 return 不计 round）
 let _thinkMode = localStorage.getItem(MODE_KEY) || 'flash';   // WS1 F1.1：默认 flash（去 deliberate 串行·治超时）·复杂问题手动开 Pro | 'pro' | 'flash'
+// CB-12（用户拍板）：flash 足够·**强制 flash**——pro 停用（localStorage 有 pro 也强制回 flash·防残留）
+if (_thinkMode !== 'flash') { _thinkMode = 'flash'; localStorage.setItem(MODE_KEY, 'flash'); }
 let _thinkTimer = null;
 let _emcCollapsed = true;   // F5 默认折叠胶囊（不记忆上轮展开态·用户定 2026-07-22）
 let _userPinned = false;   // 用户上滑停跟；回到底部后恢复跟随
@@ -272,6 +275,110 @@ function _renderGuideCard(spec) {
   if (back) back.addEventListener('click', () => { _curDirection = null; _renderGuidanceContent(); });
   _guidanceCardShown = true;
 }
+
+/** 出口三段式 P0：4 要点信息卡（方法/数据/结果/结论·确定性聚合·紧凑·仿 outlet-card token）。 */
+function _pointsCardHtml(points) {
+  if (!points) return '';
+  const rows = [
+    ['分析方法', points.method], ['使用数据', points.data],
+    ['分析结果', points.result], ['分析结论', points.conclusion],
+  ].filter(([, v]) => v && String(v).trim() && String(v) !== '暂无数据')
+    .map(([k, v]) => `<div class="emc-points-row"><span class="emc-points-key">${escapeHtml(k)}</span>`
+      + `<span class="emc-points-val">${escapeHtml(String(v))}</span></div>`)
+    .join('');
+  if (!rows) return '';
+  return '<div class="emc-points-card"><div class="emc-card-head">分析支撑（4 要点）</div>' + rows + '</div>';
+}
+
+/** CB-16 Wave 0：出口卡片渲染（结果范式 agent·第三段·确定性 JSON → 纯模板）。
+ *  仿 .cpd-guide-card·用既有 token（--geojson-color-* / --emc-accent）·不新造样式。
+ *  7 要素：接口标识/数据基础/定量定性/地理定位/对接建议/局限标注。
+ *  数据全来自后端 build_outlet_schema JSON·前端不计算不补字段·字段缺失显示"暂无数据"灰。
+ *  {{show:图层}} 走 renderAnswer ref 解析（复用·不另造联动）。 */
+function renderOutletCard(card) {
+  const list = document.getElementById('chat-messages');
+  if (!list || !card) return;
+  const old = list.querySelector('.outlet-card');
+  if (old) old.remove();   // 新一轮覆盖旧卡
+  const el = document.createElement('div');
+  el.className = 'outlet-card';
+
+  const esc = escapeHtml;
+  const fieldsHtml = Object.entries(card.fields || {}).map(([k, v]) => {
+    const val = (v && v.value != null) ? String(v.value) : '暂无数据';
+    const gray = (val === '暂无数据') ? ' class="outlet-muted"' : '';
+    return `<div class="outlet-field"><span class="outlet-field-key">${esc(k)}</span><span${gray}>${esc(val)}</span></div>`;
+  }).join('');
+
+  const limits = (card.limitations || []).map((l) => `> ${esc(l)}`).join('\n');
+  const task = (card.task_link || []).map((t) => esc(t)).join('、');
+  const base = (card.data_base && card.data_base.N != null)
+    ? `N=${card.data_base.N} 条评论${card.data_base.note ? `（${esc(card.data_base.note)}）` : ''}` : '';
+
+  // 可感知体检指标（compute_perceptible_metrics·2a/2b·③z2 Codex P2 并入：UI 可见性）
+  const metricsHtml = (card.perceptible_metrics || []).map((mt) => {
+    const gray = (mt.value === '暂无数据') ? ' class="outlet-muted"' : '';
+    return `<div class="outlet-field"><span class="outlet-field-key">${esc(mt.metric)}</span>`
+      + `<span${gray} title="${esc(mt.source || '')}">${esc(mt.value)}</span></div>`;
+  }).join('');
+  const metricsBlock = metricsHtml
+    ? `<div class="outlet-metrics"><div class="outlet-metrics-title">可感知体检指标</div>${metricsHtml}</div>`
+    : '';
+
+  // 卡片头（接口标识）+ 字段 + 对接建议 + 局限（引用块·与 CB-12 降级格式一致）
+  el.innerHTML = `<div class="cpd-guide-card-head">`
+    + `<div class="cpd-guide-card-title">${esc(card.name || '行业出口卡片')}</div></div>`
+    + `<div class="outlet-card-body">`
+    + `<div class="outlet-interface">${esc(card.interface || '')}</div>`
+    + (base ? `<div class="outlet-base">${base}</div>` : '')
+    + fieldsHtml
+    + metricsBlock
+    + (task ? `<div class="outlet-task"><span class="outlet-field-key">对接任务</span>${task}</div>` : '')
+    + (limits ? `<div class="outlet-limits">${limits}</div>` : '')
+    + `<div class="outlet-source">${esc(card.source || '确定性组装')}</div>`
+    + `</div>`
+    // P1-4（glm P1P2 评估 W3）：CSV 一键入库按钮（前端本地生成·防功能空转）
+    + `<button type="button" class="outlet-export-btn" title="导出 CSV（一键入库）">导出 CSV</button>`;
+
+  // {{show:图层}} 联动复用 renderAnswer 的 ref 解析（按钮可点·聚焦图层）
+  const refs = el.querySelectorAll('.outlet-interface, .outlet-field');
+  refs.forEach((n) => {
+    if (n.textContent.includes('{{show:')) {
+      const md = n.textContent.replace(/\{\{show:([^}]+)\}\}/g, (_, name) => `{{show:${name}}}`);
+      n.innerHTML = renderAnswer(md, getValidRefNames());
+    }
+  });
+  // P1-4（glm P1P2 评估 W3）：CSV 一键入库（前端本地生成·Card JSON → CSV Blob 下载）
+  const _btn = el.querySelector('.outlet-export-btn');
+  if (_btn) _btn.addEventListener('click', () => _exportOutletCardCsv(card));
+  list.appendChild(el);
+}
+
+/** P1-4：出口卡片 → CSV 本地下载（确定性·前端生成·UTF-8 BOM·Excel 兼容·对齐后端 export_outlet_card_csv 字段）。 */
+function _exportOutletCardCsv(card) {
+  try {
+    const esc = escapeHtml;
+    const flat = Object.entries(card.fields || {}).map(([k, v]) =>
+      [k, (v && typeof v === 'object') ? (v.value ?? '') : v]);
+    const rows = [
+      ['outlet_id', card.outlet_id || ''], ['name', card.name || ''], ['scale', card.scale || ''],
+      ['interface', card.interface || ''], ...flat,
+      ['data_base_N', card.data_base?.N ?? ''], ['data_base_note', card.data_base?.note ?? ''],
+      ['task_link', (card.task_link || []).join('、')],
+      ['limitations', (card.limitations || []).join('；')],
+      ['geo_label', card.geo_label || ''], ['source', card.source || ''],
+    ];
+    const csv = '﻿' + rows.map(([k, v]) => `${k},${String(v ?? '').replace(/"/g, '""')}`).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${(card.name || 'outlet_card').replace(/[\\/:*?"<>|]/g, '_')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    URL.revokeObjectURL(a.href);
+    a.remove();
+  } catch (_) { /* 导出失败不阻塞 */ }
+}
 /** 清引导焦点卡片。 */
 function _clearGuideCard() {
   const card = document.querySelector('.cpd-guide-card');
@@ -442,6 +549,10 @@ function renderAnswer(text, validNames) {
   // CB-05 删除符号根治 Layer 1：strip markdown 删除线（~~text~~ → text·治根因A·不可绕过·不靠 Flash 守 prompt）
   text = String(text).replace(/~~([\s\S]+?)~~/g, '$1').replace(/~~/g, '');
   let html = window.marked ? window.marked.parse(text) : `<p>${escapeHtml(text).replace(/\n/g, '<br>')}</p>`;
+  // CB-22 素材术语/来源排版：来源标注弱化（小号浅灰·随文不换行）——主：〔来源：...〕（LLM 约定格式·注入指令已约定）；
+  //   兜底：自由格式（来源：...）/（来源：...）（LLM 不守约定时·glm 方案 B 主 + A 兜底）
+  html = html.replace(/〔来源：([^\〕]+)〕/g, '<span class="answer-source">〔来源：$1〕</span>')
+             .replace(/（来源：([^）]+)）/g, '<span class="answer-source">（来源：$1）</span>');
   html = html.replace(/\[ref:([^\]]+)\]/g, (_, name) => {
     const valid = !validNames || validNames.has(name);
     const cls = valid ? 'cite-chip' : 'cite-chip cite-chip-invalid';
@@ -559,7 +670,8 @@ function stampDone(shell) {
     const secs = _curTrace && _curTrace.startedAt ? Math.max(1, Math.round((_curTrace.doneAt - _curTrace.startedAt) / 1000)) : 0;
     const cs = getCallStats();
     const ts = getTemplateStats();   // ⑤④ Flash template 累积命中率（跨会话，驱动 80% gate）
-    const _tplMeta = ts.samples > 0 ? ` · Flash 模板 ${ts.hits}/${ts.samples}(${Math.round(ts.rate * 100)}%)` : '';
+    const _modelLabel = _thinkMode === 'pro' ? 'Pro' : 'Flash';
+    const _tplMeta = ts.samples > 0 ? ` · ${_modelLabel} 模板 ${ts.hits}/${ts.samples}(${Math.round(ts.rate * 100)}%)` : '';
     const _skipSum = ts.skips ? (ts.skips.missing_slot + ts.skips.tool_failed) : 0;   // ⑤④ execSkips（另一轴，不污染 gate）
     const _skipMeta = _skipSum > 0 ? ` · skip ${_skipSum}` : '';
     _renderFooter(shell, `回答完毕 · 用时 ${secs}s · 用量 ${_fmtTokens(cs.total)} token / ${cs.calls} 次${_tplMeta}${_skipMeta} · 情绪地图 v1.0 · ${formatTs(_curTrace && _curTrace.doneAt)}`, shell._finalMd || (_curTrace && _curTrace.final), _exitBadge(_curTrace));
@@ -1426,18 +1538,45 @@ function buildHooks(shell) {
       if (_curTrace) _curTrace.final = streamAcc;
       if (!streamRaf) streamRaf = requestAnimationFrame(drainStream);
     },
+    // 出口三段式 P0：结果结构化（harness 确定性组装·先于 onFinalDone 派发·onFinalDone 统一渲染）
+    onResultStruct: (struct) => {
+      _pendingStruct = struct || null;
+    },
     onFinalDone: (text) => {
       cancelStream();
       streamAcc = text || '';
       stopThinking();
       updateContextCapacity(getLastUsage());
-      shell.answerEl.innerHTML = renderAnswer(text, getValidRefNames());
+      // 出口三段式 P0：观点卡置顶 + 4 要点卡底部（确定性提取·无观点不显卡·提取失败不阻塞正文）
+      let _answerText = text || '';
+      let _insightHtml = '';
+      let _pointsHtml = '';
+      try {
+        const _s = _pendingStruct;
+        if (_s && _s.insight) {
+          _insightHtml = '<div class="emc-insight-card"><div class="emc-card-head">观点</div>'
+            + `<div class="emc-insight-text">${escapeHtml(_s.insight)}</div></div>`;
+          // 移除观点引用块防正文重复（整块捕获·与 result-struct 提取正则对齐·防多行引用残留）
+          _answerText = _answerText.replace(/^>\s*\*\*观点：\*\*\s*[\s\S]*?(?=\n\n|\n\s*[^>]|$)/m, '');
+        }
+        if (_s && _s.points) _pointsHtml = _pointsCardHtml(_s.points);
+      } catch (_) { /* 提取失败不阻塞正文 */ }
+      _pendingStruct = null;
+      shell.answerEl.innerHTML = _insightHtml + renderAnswer(_answerText, getValidRefNames()) + _pointsHtml;
       enhanceCodeBlocks(shell.answerEl);
       finalizeReason();   // flush 最后一帧思考 + 整块 is-done + 主题目录重切
       _setFinalState('done');   // Feature 2：生成节点完成（灰）
       if (_curTrace) _curTrace.final = text;
       shell._finalMd = text;   // 供页脚「复制回答」取最终 markdown
       // CB-09 D024：onFinalDone 即完成（defense 不显 UI·renderReview 永隐）；history 在 send 末尾统一持久化
+    },
+    // CB-16 Wave 0/3：出口卡片（结果范式 agent·第三段）·确定性 JSON → 纯模板渲染（Wave 3 多卡循环）
+    onOutletCard: (cards) => {
+      if (!cards) return;
+      const list = Array.isArray(cards) ? cards : [cards];   // 兼容单卡（旧端点 d.card）
+      if (!list.length) return;
+      if (_curTrace) _curTrace.outlet_card = list;
+      for (const c of list) { try { renderOutletCard(c); } catch (_) { /* 渲染失败不阻塞 */ } }
     },
     // CB-09 D024：质量防线结果（取代旧 onReview）·供 episode 自成长·不显 UI（renderReview 永隐）
     onDefense: (defense) => {
@@ -1468,7 +1607,11 @@ function _distillTurn(h) {
     return `${a.name || '?'}${a.params ? '(' + JSON.stringify(a.params).slice(0, 50) + ')' : ''}`;
   }).join('；');
   const gap = ((t.caliber && t.caliber.length) ? t.caliber : (dp.gap || [])).join('、');
-  return { intent: dg.intent || '', method, done: done || '（无工具调用）', gap: gap || '', strategy: dp.strategy || '' };
+  // CB-22d P0-0-4：quick-rag 轮知识问答标记——diagnose.rag=true（_assembleKnowledgeQA 返回）→ intent 归 knowledge_qa
+  //   （quick-rag 不调 diagnose·_distillTurn 原 intent='general'·导致下轮 priorTurn.intent 非 knowledge_qa·P0-2 路由条件失效）
+  const _intent = (dg.rag && !dg.intent) ? 'knowledge_qa' : (dg.intent || '');
+  // CB-22d P0-0-1：final_excerpt——上轮回答片段供下轮「标记到地图」提取项目名（LLM 看不到 final 原文的修复·glm F.1）
+  return { intent: _intent, method, done: done || '（无工具调用）', gap: gap || '', strategy: dp.strategy || '', final_excerpt: (t.final || '').slice(0, 400) };
 }
 
 /** 收集最近 maxN 轮 assistant trace → oldest-first 列表（B2 多轮滚动记忆）。
@@ -1492,9 +1635,29 @@ function _isResumeCue(q) {
   return !!s && /继续|接着|续做|补充|那个|上一个|把刚才/.test(s);
 }
 
+/** G6c（CB-12·依据 4 连问最简版）：分句——按句界标点切分（代码确定性·不做 LLM 拆解）。
+ *  >1 句 → 拆成独立问（句数上限 2·防拖死）；单句 → 原样（不分）。
+ *  逗号不分句（常在同一问内·如"分析西陵区，看看哪里最差"）。 */
+function splitQuestions(text) {
+  const t = String(text || '').trim();
+  if (!t) return [];
+  const parts = t.split(/[？?。！!；;\n]/).map((s) => s.trim()).filter(Boolean);
+  if (parts.length < 2) return [t];
+  return parts.slice(0, 2);   // 句数上限 2（防拖死·体验优先）
+}
+
 async function send(text, capsule) {
   const isCapsule = !!capsule;
   if (_streaming) return;
+  _pendingStruct = null;   // 出口三段式 P0：send 起始重置（S1 审计·防中断后跨轮残留旧观点卡）
+  // G6c：非胶囊非续作 → 多问拆解——逐句走完整管线（各自答案卡·防线/管线全继承·不新造执行）
+  if (!isCapsule) {
+    const _qs = splitQuestions(text);
+    if (_qs.length > 1) {
+      for (const q of _qs) await send(q, null);
+      return;
+    }
+  }
   if (isCapsule) {   // CB-09 D020 胶囊点击：label 当用户消息 + ctx.capsule 路由 runCapsule（跳 diagnose Flash）
     text = (capsule && capsule.label) || '';
   } else {
@@ -1544,6 +1707,9 @@ async function send(text, capsule) {
     const _result = await orchestrate(ctx, buildHooks(shell));
     settled = true;
     if (_curTrace && _result) { _curTrace.exit = _result.exit || _curTrace.exit; _curTrace.newLayerCount = _result.newLayerCount; if (_result.defense) _curTrace.defense = _result.defense; }
+    // CB-22d P0-0-4：quick-rag 轮知识问答标记——orchestrate 返回的 diagnose 含 rag:true（_assembleKnowledgeQA）
+    //   写回 _curTrace.diagnose（onDiagnose 仅 diagnose 路径触发·quick-rag 不调·防下轮 priorTurn.intent='' 死代码）
+    if (_curTrace && _result && _result.diagnose && _result.diagnose.rag && !_curTrace.diagnose) { _curTrace.diagnose = _result.diagnose; }
     if (_result && _result.exit === 'ask') _consecutiveAsks++; else _consecutiveAsks = 0;   // P1 ask 连续计数（跨 orchestrate，≥2 触发下轮禁止）
     // C：软缺口降级口径标注（fallback_annotated）
     const strat = _curTrace && _curTrace.diagnose && _curTrace.diagnose.data_plan && _curTrace.diagnose.data_plan.strategy;
@@ -1603,7 +1769,7 @@ function wireModeSwitch() {
   seg.querySelectorAll('button').forEach((x) => x.classList.toggle('is-active', x.dataset.mode === _thinkMode));
   seg.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-mode]');
-    if (!b) return;
+    if (!b || b.disabled) return;   // CB-12：pro 停用（disabled·点击忽略·强制 flash）
     _thinkMode = b.dataset.mode;
     localStorage.setItem(MODE_KEY, _thinkMode);
     seg.querySelectorAll('button').forEach((x) => x.classList.toggle('is-active', x.dataset.mode === _thinkMode));
@@ -1790,7 +1956,7 @@ function mountChatChrome() {
     btn.type = 'button';
     btn.className = 'chat-back-btn';
     btn.hidden = true;
-    btn.textContent = '回到底部 ↓';
+    btn.textContent = '↓';
     btn.addEventListener('click', () => { _userPinned = false; scrollBottom(); btn.hidden = true; });
     list.appendChild(btn);
   }

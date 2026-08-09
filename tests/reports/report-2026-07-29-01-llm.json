@@ -1,0 +1,510 @@
+{
+ "meta": {
+  "schema": "EMC-SUM",
+  "version": "v1",
+  "mode": "llm",
+  "cats": [
+   "FC全链路"
+  ],
+  "total": 25,
+  "startedAt": 1785312331447,
+  "commit": "26f5e42",
+  "savedAt": "2026-07-29T16:23:57"
+ },
+ "cases": [
+  {
+   "id": "FC-01",
+   "name": "生成综合热力图",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "density",
+   "method": [
+    "density()"
+   ],
+   "tools": [
+    "density"
+   ],
+   "params": {},
+   "newLayers": 1,
+   "durationSolo": 19760,
+   "userVote": null,
+   "obs": "tools=density layers=1/0",
+   "review": "综合热力图是否正常生成？"
+  },
+  {
+   "id": "FC-02",
+   "name": "切换消极热力图（追问）",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": false,
+   "stage": "",
+   "template": "zonal",
+   "method": [
+    "zonal"
+   ],
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 50949,
+   "userVote": null,
+   "obs": "tools= layers=0/0",
+   "review": "追问应直接 density(negative)·非 filter_attr"
+  },
+  {
+   "id": "FC-03",
+   "name": "区域排序",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": false,
+   "stage": "s1",
+   "template": "zonal",
+   "method": [
+    "zonal"
+   ],
+   "tools": [
+    "zonal_stats",
+    "zonal"
+   ],
+   "params": {
+    "boundary": "GeoJSON{9}"
+   },
+   "newLayers": 1,
+   "durationSolo": 64047,
+   "userVote": null,
+   "obs": "tools=zonal_stats,zonal",
+   "review": "rank 被选中？"
+  },
+  {
+   "id": "FC-04",
+   "name": "区域归因",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "zonal",
+   "method": [
+    "zonal_stats()"
+   ],
+   "tools": [
+    "zonal_stats",
+    "zonal"
+   ],
+   "params": {
+    "boundary": "GeoJSON{9}"
+   },
+   "newLayers": 1,
+   "durationSolo": 21836,
+   "userVote": null,
+   "obs": "tools=zonal_stats,zonal",
+   "review": "zonal 被选中？"
+  },
+  {
+   "id": "FC-05",
+   "name": "区域对比",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": false,
+   "stage": "s1",
+   "template": "compare",
+   "method": [
+    "compare"
+   ],
+   "tools": [
+    "zonal_stats",
+    "compare"
+   ],
+   "params": {
+    "boundary": "GeoJSON{1}"
+   },
+   "newLayers": 1,
+   "durationSolo": 34965,
+   "userVote": null,
+   "obs": "tools=zonal_stats,compare",
+   "review": "compare 被选中？"
+  },
+  {
+   "id": "FC-06",
+   "name": "抽取面层要素",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "extract_feature",
+   "method": [
+    "extract_feature()"
+   ],
+   "tools": [
+    "extract_feature"
+   ],
+   "params": {},
+   "newLayers": 1,
+   "durationSolo": 9401,
+   "userVote": null,
+   "obs": "tools=extract_feature badge=\"已生成 1 个图层\" layers=1",
+   "review": "字段自纠正 MC→name 是否生效？"
+  },
+  {
+   "id": "FC-07",
+   "name": "概念问短路",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 10569,
+   "userVote": null,
+   "obs": "概念问直答 badge=\"已生成 1 个图层\"",
+   "review": "回答是否生动专业？"
+  },
+  {
+   "id": "FC-08",
+   "name": "缓冲分析",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": false,
+   "stage": "s1",
+   "template": "buffer",
+   "method": [
+    "buffer"
+   ],
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 13987,
+   "userVote": null,
+   "obs": "tools= layers=0",
+   "review": "buffer radius=500？"
+  },
+  {
+   "id": "FC-09",
+   "name": "叠置分析",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": false,
+   "stage": "s1",
+   "template": "overlay",
+   "method": [
+    "overlay"
+   ],
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 16750,
+   "userVote": null,
+   "obs": "tools=",
+   "review": "overlay how=intersection？"
+  },
+  {
+   "id": "FC-10",
+   "name": "裁剪点层",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": false,
+   "stage": "",
+   "template": "clip",
+   "method": [
+    "clip"
+   ],
+   "tools": [
+    "clip"
+   ],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 31955,
+   "userVote": null,
+   "obs": "tools=clip layers=0",
+   "review": "clip 裁点成功？"
+  },
+  {
+   "id": "FC-11",
+   "name": "切换积极热力图",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "density",
+   "method": [
+    "density()"
+   ],
+   "tools": [
+    "density"
+   ],
+   "params": {},
+   "newLayers": 1,
+   "durationSolo": 31795,
+   "userVote": null,
+   "obs": "tools=density layers=1",
+   "review": "积极热力图？"
+  },
+  {
+   "id": "FC-12",
+   "name": "无点数据时拒绝",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": false,
+   "stage": "s1",
+   "template": "density",
+   "method": [
+    "density()"
+   ],
+   "tools": [
+    "density"
+   ],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 12222,
+   "userVote": null,
+   "obs": "badge=\"已生成 1 个图层\"",
+   "review": "是否优雅提示而非硬报错？"
+  },
+  {
+   "id": "FC-13",
+   "name": "失败后智能建议",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 44933,
+   "userVote": null,
+   "obs": "badge=\"已生成 1 个图层\" suggest=false",
+   "review": "失败后是否建议 extract_feature？"
+  },
+  {
+   "id": "FC-14",
+   "name": "qualityDefense 不崩",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "density",
+   "method": [
+    "density()"
+   ],
+   "tools": [
+    "density"
+   ],
+   "params": {},
+   "newLayers": 1,
+   "durationSolo": 23250,
+   "userVote": null,
+   "obs": "crash=false layers=1",
+   "review": "quality defense 正常运行？"
+  },
+  {
+   "id": "FC-15",
+   "name": "FC 失败降级",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "merge",
+   "method": [
+    "merge()"
+   ],
+   "tools": [
+    "merge"
+   ],
+   "params": {
+    "boundary": "GeoJSON{5310}"
+   },
+   "newLayers": 1,
+   "durationSolo": 17679,
+   "userVote": null,
+   "obs": "badge=\"已生成 1 个图层\"",
+   "review": "FC 失败优雅降级？"
+  },
+  {
+   "id": "FC-16",
+   "name": "禁英文术语",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "density",
+   "method": [
+    "density"
+   ],
+   "tools": [
+    "density"
+   ],
+   "params": {},
+   "newLayers": 1,
+   "durationSolo": 30663,
+   "userVote": null,
+   "obs": "全中文",
+   "review": "结论是否含英文工具名/字段名？"
+  },
+  {
+   "id": "FC-17",
+   "name": "禁箭头符号",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 51056,
+   "userVote": null,
+   "obs": "无箭头",
+   "review": "结论是否含 → 符号？"
+  },
+  {
+   "id": "FC-18",
+   "name": "生动专业表达",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": false,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 11054,
+   "userVote": null,
+   "obs": "len=300 bg=false",
+   "review": "回答是否含背景词汇且生动？"
+  },
+  {
+   "id": "FC-19",
+   "name": "多轮复合追问",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "rank",
+   "method": [
+    "rank"
+   ],
+   "tools": [
+    "rank"
+   ],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 57148,
+   "userVote": null,
+   "obs": "R3 tools=rank",
+   "review": "多轮链每轮不失败？"
+  },
+  {
+   "id": "FC-20",
+   "name": "胶囊点击执行",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": null,
+   "newLayers": 0,
+   "durationSolo": 21501,
+   "userVote": null,
+   "obs": "无胶囊（finalStep 未产·plans 常空·可接受）",
+   "review": "追问胶囊是否出现？"
+  },
+  {
+   "id": "FC-21",
+   "name": "CF09·多类用地裁剪+诚实结论",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": false,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 52987,
+   "userVote": null,
+   "obs": "tools= layers=0/0 fake=false",
+   "review": "是否真实产出图层？假结论是否消除？"
+  },
+  {
+   "id": "FC-22",
+   "name": "CF09·数据清单查询短路径",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "concept",
+   "method": [],
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 26750,
+   "userVote": null,
+   "obs": "badge=\"已生成 1 个图层\"",
+   "review": "是否直接回答（非推理螺旋）？"
+  },
+  {
+   "id": "FC-23",
+   "name": "CF09·点层裁剪执行验证",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": false,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 48815,
+   "userVote": null,
+   "obs": "tools= layers=0/0",
+   "review": "裁剪结果是否实际落地？"
+  },
+  {
+   "id": "FC-24",
+   "name": "CF09·多步链完整性",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": false,
+   "stage": "",
+   "template": null,
+   "method": null,
+   "tools": [],
+   "params": {},
+   "newLayers": 0,
+   "durationSolo": 48194,
+   "userVote": null,
+   "obs": "tools= layers=0/0 steps=0",
+   "review": "多区操作是否全部完成？"
+  },
+  {
+   "id": "FC-25",
+   "name": "CF09·全极性操作不缩窄",
+   "category": "FC全链路",
+   "type": "llm",
+   "pass": true,
+   "stage": "",
+   "template": "extract_feature",
+   "method": [
+    "extract_feature()"
+   ],
+   "tools": [
+    "extract_feature"
+   ],
+   "params": {},
+   "newLayers": 1,
+   "durationSolo": 19923,
+   "userVote": null,
+   "obs": "layers=1/0 narrow=false",
+   "review": "是否自行缩窄为单一极性？"
+  }
+ ]
+}

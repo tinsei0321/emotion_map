@@ -1,59 +1,94 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：07月28日（**CB 体系优化 + EMC v1.0 深度审查**）| 分支 `main` | **本次 commit+push**
+> 最后更新：08月05日深夜（**出口三段式 P0-P2 + 热点图 P0/P1/P1.5 全流程·CB 计划→执行→审计→修正闭环**）| 分支 `fix/emc-buglog` | **本地 commit `0916e8c` + `83a1ac9` + `baa23e0` + `0b18012` 全部已 push**（与远程同步·`git status` 干净·08-06 复核）
 >
-> 🔗 **CB 入口**：`docs/catch-ball/_cb-index.md`
+> 🔗 **CB 入口**：`docs/catch-ball/_cb-index.md`（**双阵营：claude组 开发主 + Codex/glm组 评估**）
 > 🏠🏢 **换机卡片**：`docs/catch-ball/_handoff/HOME.md` + `OFFICE.md`
 
-## 当前节点：9 模块验证暴露链路缺陷 → 系统性修复 → 待飞轮齐验
+## 当前节点：出口三段式 P0-P2 + 热点图 P0/P1/P1.5 全流程（已实施·待整体验收）
 
-今日（07-28）：用户验证 9 模块后报「剪裁西陵区」失败 + 「无变化」+ 「基本功能丧失」。经诊断 + DeepSeek 6-agent 代码评估（[EVAL_REPORT_unified_2026-07-28](../docs/catch-ball/emc-arch-deepdive/EVAL_REPORT_unified_2026-07-28.md)），定位**系统性根因**并修复。
+08-05 大跨轮（两专题·CB 全流程）：
 
-## 今日已 commit（5.241 + 5.242 · branch main · **已 push**）
+### 出口三段式（用户意图：出口=观点先行干货→4 要点→行业接口参数·既稳定又灵活）
+- **P0 观点先行**（已闭环）：FINAL_TEMPLATE 软扩（`> **观点：**` 引用块·观点≠结论·**2957B<3000B 门禁**）+ `result-struct.js`（结论段独立聚合·不解析 draft markdown·观点三档兜底）+ panel 观点卡/4 要点卡 + ctx 双保险 + `_dispatchResultStruct` 三路径补接（B1）
+- **P1 指标细化**（已闭环）：`grade_demand_intensity` 四档（高/中/低/无显著需求·L2 值域归一）+ `priority_score` 复合优先级（p95/缺省不参与/主题 0.5/1）+ case_library measure_note×4 + `export_outlet_card_csv`（脱敏）+ 前端导出按钮 + geo_label
+- **P2 地点 scale**（已闭环）：geo_label（宏观·面域/中观·单元/微观·落点）
+- 两组评估/审计修正全采纳（值域双轨·结论段独立聚合·体积预算·观点卡兜底等）
 
-- **0de8cbf** 5.242 **EMC 链路系统性修复（选型数据感知 + 9 bug·融合 DeepSeek 评估）**
-  - **根因**：`select_candidates(question, None)` context 硬 None → 0LLM 选型**数据盲**（不知用户加载点还是面）→ 剪裁面层误路由 clip（要点·硬失败）。`TOOL_GEOMETRY_REQUIRE['clip']` 误设 None（Phase A 漏设·应 'point'）。
-  - **修复 11 项**：S1 数据感知（layer_meta {has_point,has_polygon} 端到端接线）+ clip 几何表修正（None→'point'）+ stale multi 移除 + 剪裁歧义词（clip+extract→数据裁决）+ 空候选→request_upload + S3 clip 失败智能建议 extract + S4 ensure_zone + S5 F_008 碰撞 + S6 capsule intent 动态 + S7 正则统一 + S9 chain hasRows + S8 FILL_CARD 兜底。
-  - **实测**：剪裁+polygon→[extract_feature] / 剪裁+point→[clip,extract] / density+无点→[]→request_upload。
-- **7356d7a** 5.241 selector trigger 补「剪裁/裁剪」+ 诊断「无变化」根因（uvicorn 需重启）
+### 热点图重做（用户意图：情绪热点图重做·热力/热点定标·3D 连续曲面·工具间解耦）
+- **P0 命名定标**（已闭环·8 处）：Gi\*→「显著聚集点(Gi\*)」· `spatial_hotspot`→「代表地点」·「热力图」统一
+- **P0 前置 A/B 验证**（重大发现）：真实 L2 数据 2500 点·**逐点/500m/200m 网格 Gi\* 全部全 ns 无热点**（Gi_Z 全在 ±1.07~1.26）·**根因 = score 是 5 级极性映射的 U 形多峰离散分布·与 Gi\* 连续正态假设不匹配**（glm 主因·网格化平滑 Z 但非解药）
+- **P1 软分级五档**（已闭环）：`_classify_hotspot`（hot/tend_hot/ns/tend_cold/cold·threshold 参数化默认 1.96/soft 1.0）+ `hotspot_tier` + 前端 `colorMode='hotspot'` 显著性符号层（弃 `_CLS_POL` 极性色·**纯橙系**·与 KDE 解耦）
+- **P1.5 setTerrain 连续曲面**（已闭环）：`create_terrain_dem`（**F_009**·KDE→terrarium RGB·bounds WGS84）+ `/spatial/dem` 端点 + map.js `setTerrainDEM`（**draping 隔离**：不常驻+与 3D 网格柱互斥+sky 层）+ `generateTerrain3DForAI`（EMC 委托已切）+ retired.md 退役登记（fill-extrusion 3D→setTerrain·2D 等值线保留）
+- 实施审计（两组）：P0+P1 可验收·P1.5 有 B1 阻断（setTerrain 无入口+EMC 未切）→ **修复全完成**（B1 委托切换/W1 橙系/W2 threshold 透传/W3 legend 五档/W6 契约层同步/建议级注释清理）
 
-## 新 EMC 架构全景（明日飞轮须覆盖的路径）
+## 今日 commit（fix/emc-buglog）
 
-| 路径 | 改造后 | 测试要点（飞轮·覆盖「数据×问句」组合） |
-|------|------|------|
-| **三阶段 diagnose** | 0LLM 规则选型（select_candidates·**数据感知**·has_point/has_polygon）→ Flash 极瘦填卡（1.85KB·<5s）→ Pro 复合计划 | 单候选问 + 有点→Flash / 无点→request_upload / 复合→Pro chain |
-| **追问胶囊** | 动态 L1 <2s / L2 Pro 确认 5-8s | 答案后追问区出胶囊·点击路由 |
-| **质量防线** | applyQualityDefense 全代码 <20ms | 谎报标注 / 矛盾降级 / R5 剔无效 |
-| **Pro 动态 chain** | 复合→Pro 产 chain→runChainPath（hasRows·分析型不误判） | 复合问→Pro plan→chain 执行 |
-| **数据感知路由** | 剪裁+polygon→extract / 剪裁+point→clip / density+无点→request_upload | **核心·飞轮必测**：同问句 + 不同数据 → 不同路由 |
+| commit | 内容 | push |
+|---|---|---|
+| `83a1ac9` | 进度文档（todo/emc-fix-progress/revision-log·v3.6） | ⚠️ **待 push**（网络故障·重试超时/Connection reset）|
+| `0916e8c` | **出口三段式 P0-P2 + 热点图 P0/P1/P1.5 全流程**（69 文件·8007 增·pytest 293 passed + validate 28 passed） | ✅ 已 push |
 
-详：[emc-fix-progress §一 9 模块矩阵](../docs/emc-fix-progress.md) + [revision-log §5](../docs/revision-log.md#L226)（5.242）+ [DeepSeek EVAL_REPORT](../docs/catch-ball/emc-arch-deepdive/EVAL_REPORT_unified_2026-07-28.md)（8 bug + 10 风险 + 15 优化建议·P0 已修·P1 部分修·P2 待续）。
+> ⚠️ `83a1ac9` 未 push——网络访问 github 持续失败（`Connection reset`/443 端口超时）。恢复后手动 `git push`。
 
-## 下会话：测试飞轮更新（用户主导·**开 plan**）
+## 关键架构（下会话须知道）
 
-- **用户将开 plan**：根据新架构更新飞轮机制 + 模拟测试内容。AI 进 plan mode 配合设计。
-- **飞轮核心**：覆盖「数据×问句」组合测（不只关键词）·DeepSeek 评估报告 §十一（缺失测试 7 项）可参考。
-- **DeepSeek P2 建议**（S10-S15·可选）：工具几何能力矩阵自动路由 / contracts 自动派生 / Flash hit-rate gate 阈值评估 / `_quickIntent` 质量防线 / while-loop finalStep 降级 / density 维度分歧追问。
-- **pytest 基线**：219 passed + 5 skipped（零回归·CI 可跑）。
+- **出口三段式**（新定稿）：第一段=明确观点（`> **观点：**`·LLM 核心价值·答"所以呢"）→ 第二段=4 要点（方法/数据/结果/结论·确定性组装）→ 第三段=行业接口参数（**条件段**·意图 agent 判断·未涉归因不入库）·观点≠结论（观点=转化答提问·结论=图数表描述性论述）
+- **热点图定稿**（新定稿）：KDE 热力面=主图（用户"舆情热度地势"）· Gi\* =「显著聚集点」显著性检验（**软分级五档·诚实标 84% 倾向**）· 3D = setTerrain 连续曲面（非 fill-extrusion 千层饼·draping 隔离）
+- **Gi\* A/B 结论**：EMC score 是 U 形离散分布·**Gi\* 连续假设不匹配**→ 长期评估 KDE/DBSCAN 替代（热点图 P2/P3 议题·本轮不换）
+- **出口抽象层**（旧纲领仍生效）：EMC 找市场接口 / 三段式线性 / 定性+定量+地理按尺度
+- **outlet_kb**（`ai_qa/outlet_kb/`）：7 契约 + 21 指标映射 + build_outlet_schema（确定性组装）+ 可感知计算器 2a/2b + **P1 新增需求强度分级/复合优先级**
+- **CB-15 数据认知**（已完成）：3220 POI + place_name 双源 + /grid/pois + lookup_place
+- **trace 取证纪律**：根因分析先 `trace_query --stats`·跑测试带 session
 
-## 留用户验证 / 未决
+## 【下一步】（用户定·换环境后续作）
 
-- **重启 serve + 硬刷**（5.242 新代码须重启 serve 才生效）→ 重测「剪裁西陵区」（只有面）→ 应走 extract_feature·不报"无点层"。
-- **明早办公室大讨论**（用户主持·议题未告知）。
-- **KDE 去 3D 连带**（备查）：命名 / 栏卡 / EMC generateTerrainForAI 仍 3D / Grid 3D 收口。
+1. **整体验收**（todo「整体验收清单」）：出口三段式（观点卡置顶/4 要点卡/三路径都出卡/需求强度等级/CSV 导出/geo_label）+ 热点图（显著聚集五档橙系/legend 五档/setTerrain 连续曲面/网格柱互斥/无露底）——用户浏览器验收
+2. **`83a1ac9` push**（网络恢复后·进度文档）
+3. **P3 工具管线**（后置·红线区）：依赖图 + 并行执行——两组共识「P3-2 并行后置」（`$n` 索引重构前置·tools.js `_stepResults` 按产出序 push 破坏并行索引）+ 地点联动（P3-4 低风险可做）
+
+## 待续项（下会话从这继续）
+
+- **【核心】整体验收**（todo「整体验收清单」·用户浏览器验收·出口三段式 + 热点图）
+- **`83a1ac9` push**（网络恢复）
+- **P3 工具管线**（后置·`$n` 索引重构前置）
+- **长期 KDE/DBSCAN 替代 Gi\***（热点图 P2/P3 评估）
+- **发版就绪度回归**（此前遗留：B3 重跑 + link_checkup + eval 复采 + RST-L06·并发改动后需重验）
+
+## 测试基建
+
+- pytest：**293 passed**（+出口三段式分级/优先级/geo_label + 热点图软分级五档·零回归）
+- validate：**28 passed**（test_emc_template + validate_skill_params·含 hotspot 五档契约同步）
+- DEM 解码验证：create_terrain_dem terrarium 高度 0~500·峰 500m·bounds WGS84 正确
+- 前端语法：node 不可用 → python 括号平衡（全部改动 OK）
+- 措辞断言：`py tests/browser/test_gap_wording.py`（3 场景）
+- 飞轮：`py tests/browser/flywheel_audit.py --batch B3`（带 `EMOTION_TRACE_SESSION=B3-<批>`）
+- 体检：`py tests/browser/test_link_checkup.py`（20 例·回归门）
+- 根因分析：`py tools/trace_query.py --stats/--id/--time/--session`（第一动作）
+- **自测前必须重启 serve**（`start.bat`）·否则跑旧代码
+
+## CB 状态
+- 当前：**两专题 CB 全闭环**（出口三段式 P0-P2 + 热点图 P0/P1/P1.5·计划+实施各过两组评估/审计·反评价收敛）·CB-16 及之前已闭环
+- **双阵营**：claude组（开发主）+ Codex + glm组（评估）
+- 反评价轨迹：`docs/catch-ball/cb-journal.md` + `docs/catch-ball/discuss/`（今日 30+ 讨论文档）
+- **CB 工作流提醒**：每阶段主动标注「已过 CB→继续推进」vs「需发两组 prompt」（用户会忘本轮是否过 CB）
 
 ## 红线 / 纪律（下会话守）
 
-- **承重三不动**（改前先扩 eval·每次一处·不派 subagent）：diagnose prompt / harness orchestrate 主循环 / ChatRequest schema。
-- **新纪律**：选型须感知数据（`select_candidates(question, layer_meta)`·layer_meta 从 getLayers 推导 has_point/has_polygon）·**question-only 选型是架构债·已修**。
-- **承重 Python 改动后须重启 serve.py**（uvicorn 无 --reload）·commit 后显式提醒用户重启。
-- **最高纪律**：EMC 复用 Toolbox 参数面板·tool_contracts.py 单一源·禁 emoji。
+- **承重**：diagnose prompt / harness orchestrate 主循环 / ChatRequest schema / **`@track()` 签名 / `_TRACKING_REGISTRY` 格式**（改前先扩 eval·每次一处）·finalStep D019 极瘦（`<3000B`·余量 ~43B·**P1 起冻结模板加字**·学术化走前端）
+- **出口抽象层**：不新增 LLM 阶段（撞 D019）·outlet 契约走 tool_contracts 单一源·能/不能双栏诚实·确定性组装
+- **CB 机制**：每轮工作进 CB（计划+实施都进·两组评估/审计·先讨论再实施·先验后推）·评估方只读不 git（claude组 负责 git）·prompt 用代码块包裹·**plan/草案也进 CB**
+- **数据红线**：改 DATA 需备份 + 用户确认
+- **trace 取证**：根因分析先 `trace_query --stats`·推断只作假设
+- **EMC 产物不临时创造样式**；不动 FC prompt；代码禁 emoji；print 走 `_safe_print`
+- **改 Python 后重启 serve**；commit 后 push（commit+push 组合·push 非红线）
 
-## 恢复指引（新会话）
+## 恢复指引（新会话·换环境后）
 
-1. `git log --oneline -5` 对账（0de8cbf 5.242 / 7356d7a 5.241 / 66f7b12 收工·docs）。
-2. 读 [DeepSeek EVAL_REPORT](../docs/catch-ball/emc-arch-deepdive/EVAL_REPORT_unified_2026-07-28.md)（8 bug + 10 风险·P0 已修·P1 部分修·P2 待续）。
-3. 读本卡「数据感知路由」+ todo 2026-07-28 段。
-4. 明日用户开题「测试飞轮」→ 进 plan mode 设计新飞轮（围绕三阶段 + 数据感知 + 胶囊 + 防线 + chain）。
-5. 启动：`start.bat`（serve.py 自起后端 :8000 + 前端 :8080）。**改 Python 后重启 serve**。
+1. `git pull`（fix/emc-buglog·若 `83a1ac9` 已 push 则同步最新）。
+2. 读本卡「关键架构」+「待续项」。
+3. 读 `docs/todo.md` 08-05 段 + `docs/revision-log.md` §5 最新（含出口三段式 + 热点图条目）。
+4. 读 CLAUDE.md「出口抽象层」顶层纲领节 + 「演示逻辑链」北极星。
+5. 启动：`start.bat`（serve.py 自起后端 :8000 + 前端 :8080）。
+6. 从「待续项」继续（核心 = **整体验收**：todo「整体验收清单」）。

@@ -22,6 +22,34 @@ from ai_qa.prompts import (
 router = APIRouter()
 
 
+def build_fc_sys_prompt(context):
+    """FC 诊断 system prompt（单一构造·可测试断言·防 0073990 式"简化"再次静默删除）。
+
+    只含当前有效的纪律段：工具规则（契约 when 已上游承担）+ 极性范围纪律（B006·31e2a00 恢复）。
+    plans/domain_lens/多要素提取指令不再内嵌——已被 _allToolCalls/autoExpand/契约 when 取代，
+    恢复会回退旧诊断卡行为（0073990 删除原因）。← CB-10
+    """
+    return (
+        '你是情绪地图分析助手。根据用户请求选择最合适的工具。\n'
+        '- 用户说"裁剪/剪裁"面层（用地、行政区等）→ 用 overlay(intersection)。clip 仅用于点数据，对面层返回空\n'
+        '- 多步骤请求（如裁剪多类用地）→ 先做第一步，系统自动补全后续\n'
+        '- 参数用数据上下文中的实际字段名和图层 ID\n'
+        '## 尺度判定（G1·填入诊断卡 scale 字段·防"一竿子插到底"同构结论）\n'
+        '- 用户问"分布情况/整体趋势/大致哪里/覆盖"→ macro（宏观分布·粗粒度·不到归因）\n'
+        '- 用户问"哪里最差/哪个区域/为什么/原因/归因/排序"→ meso（中微观·细粒度·要归因）\n'
+        '- 用户问"这条街/这个点/这个小区/哪个点位/公园里"→ micro（微观落点）\n'
+        '- 出口须随尺度差异化：宏观=结构性分布结论（禁归因词）·中微观=单元归因+排序·微观=落点定位。纯 GIS 操作不判 scale\n'
+        '## 诊断卡标签（填入 content·系统解析 A 部）\n'
+        '- 输出 [domain_lens:urban_planning|urban_renewal|urban_operation|urban_governance]（可多·判定问题领域）\n'
+        '- 输出 [scale:macro|meso|micro]（情绪分析时按上方尺度判定）\n'
+        '## 极性范围纪律（CB-09 P0-3·治意图缩窄 B006）\n'
+        '- 用户说"情绪点"/"情绪分布"/"筛选情绪"等**未限定极性**的词 → 默认覆盖**全部三个极性**（积极+中性+消极）·**严禁自行缩窄**为单一极性（如"选数据最多的积极层先做"——这是错的，用户没有让你选）\n'
+        '- 用户明确说了"积极"/"消极"/"中性" → 严格按指定极性操作·不扩展\n'
+        '- 若三个极性是独立图层无法一次完成 → 先 merge 三个极性层再操作·或诚实告知用户并给出选项\n'
+        f'## 数据上下文\n{context or "（无数据上下文）"}\n'
+    )
+
+
 @router.post("/chat")
 async def chat_route(req: ChatRequest):
     """AI 问答 agent loop（diagnose/agent_step/answer/optimize 走 SSE 流式；fc_diagnose 走 JSON）。"""
@@ -35,49 +63,7 @@ async def chat_route(req: ChatRequest):
         _q = (req.messages or [{}])[-1].get('content', '') if req.messages else ''
         # v3 C2：system prompt 含「数据×工具兼容性」提示（让 LLM 避开数据不支撑的工具）
         # v3 C3：system prompt 含 domain_lens 产出指令（A+B 混合的 A 部·LLM 自主判领域）
-        sys_content = (
-            '你是情绪地图分析助手。根据用户问题选择一个工具并填写参数。\n\n'
-            '## 任务\n'
-            '1. 从可用工具中选择最优先执行的一个（tool_call）\n'
-            '2. 在回复文本中输出 plans JSON（后续分析建议）\n'
-            '3. 在回复文本中输出 domain_lens（领域聚焦）\n\n'
-            '## plans 格式\n'
-            '在回复文本中输出如下 JSON（不要用 markdown 代码块）：\n'
-            '{"plans":[{"rank":1,"label":"工具中文描述","tool":"工具名","params":{...},"confidence":"high|medium|low","rationale":"选择理由"},...]}\n\n'
-            'rank=1 是当前 tool_call 执行的工具；rank=2+ 是后续可做的分析建议。\n\n'
-            '## domain_lens\n'
-            '在回复文本开头输出领域标签（选 0-2 个最匹配的）：\n'
-            '[domain_lens:urban_planning] 或 [domain_lens:urban_renewal] 或 [domain_lens:urban_operation] 或 [domain_lens:urban_governance]\n'
-            '判断依据：规划/用地→planning·更新/老旧/改造→renewal·运营/商圈/场馆→operation·治理/交通/停车→governance\n'
-            '情绪分析类（极性/归因/排序）默认 urban_renewal。无明确领域则不输出。\n\n'
-            '## 工具×数据兼容性\n'
-            '选工具前先看下方「数据上下文」——确认数据类型匹配：\n'
-            '- density/hotspot/rank/zonal_stats/compare_regions 需**情绪点层**（含 polarity/score 字段）\n'
-            '- clip 需**点层 + 范围**（range）\n'
-            '- extract_feature/overlay/merge/area_stats 需**面层**（polygon boundary）\n'
-            '- buffer/nearest 需**点层 + 目标**（center/target）\n'
-            '若数据不支撑所选工具，换一个合适的工具或说明缺什么数据。\n\n'
-            '## 参数填写纪律\n'
-            '- where/pre_filter 的 field **必须用「数据上下文」中列出的实际字段名**（非训练数据假设的 MC/name 等）\n'
-            '- layer 参数**必须用「数据上下文」中 id:xxx 标注的值**（如 yichang_l2_t3）·非拼凑层名\n'
-            '- **必填槽必须从问句抽出填入 tool_call·勿留空**（留空会被拦下追问·拖慢且打断分析）\n'
-            '- **信息不足时直接说明缺什么/列出「数据上下文」所见·勿反复推理猜测**（会耗尽 token 致错误结论·如把已上传数据说成"没上传"）\n\n'
-            '## 多要素提取（Hotfix R3·治"裁剪西陵+伍家岗"死循环）\n'
-            '从面层提取多个要素（如"西陵区+伍家岗区""A 和 B"）：**用 where="字段/in/值1,值2" 一次提取**（in 操作符 + 逗号分隔多值）。\n'
-            '示例：where="MC/in/西陵区,伍家岗区" → 一次抽出两区。**勿纠结"extract 只能单要素→要 extract×2+merge"**——in 多值一次搞定·勿进多步链死循环。\n\n'
-            '## 参数提取示例（WS3 F3.1·治 buffer/overlay/compare 缺必填槽）\n'
-            '- 「以X为中心周边500米」「X 附近 Y 米」→ buffer: center="X"(地名/POI), radius_m=Y\n'
-            '- 「A 与 B 的情绪对比」「比较 A 和 B」→ compare_regions: boundaries=["A","B"]（≥2 个·必须数组·从问句两个地名抽·勿填单数 boundary）\n'
-            '- 「A 与 B 的交集」「A ∩ B」→ overlay: layer_a="A", layer_b="B", how="intersection"\n'
-            '- 「某区内某类用地」→ extract_feature: layer=区面层(preset_id), where={field/op/value}\n'
-            '- 「裁剪/提取 A 和 B」「裁出西陵+伍家岗」→ extract_feature: layer=面层, where="name字段/in/A,B"（多要素用 in·勿拆多步链）\n\n'
-            '## 追问场景指引\n'
-            '- 追问「分析消极/积极/中性情绪」→ 直接用 density 切换 polarity（negative/positive/neutral）·不要先 filter_attr 再 density（多余步骤）\n'
-            '- 追问「换个极性看看」→ 同一工具换 polarity 参数即可·无需换工具\n\n'
-            '## 推理风格\n'
-            '推理过程（thinking）用生动、口语、拟人的表达，像跟同事边想边讲思路——可以带点语气词和转折的节奏感，避免"因为/所以/另外/但是"的僵硬八股。但工具选择、参数填写、字段引用仍须严谨准确（风格服务于可读，不牺牲正确性）。\n\n'
-            f'## 数据上下文\n{req.context or "（无数据上下文）"}\n'
-        )
+        sys_content = build_fc_sys_prompt(req.context)
         messages = [{'role': 'system', 'content': sys_content}] + list(req.messages or [])
         # Hotfix R2 S7：FC 流式（SSE）——诊断思考渐进可见（yield reason → 前端 onReason 实时渲染）。
         # 替代旧 JSONResponse（非流式·用户感"卡住"）。实测 V4 flash FC stream 吐 17 reason + 11 tool_call delta。
@@ -101,8 +87,17 @@ async def chat_route(req: ChatRequest):
                                     tc['function']['arguments'] = _json.dumps(_v['params'], ensure_ascii=False)
                                     _fixes = _v['fixes']
                             except Exception:
-                                pass   # validate 失败不阻塞·tool_call 原样回
-                        yield f'data: {_json.dumps({"tool_calls": result.get("tool_calls"), "plans": result.get("content"), "usage": result.get("usage"), "fixes": _fixes}, ensure_ascii=False)}\n\n'
+                                pass   # validate 失败不阻塞·tool_calls 原样回
+                        # CB-09：如果 LLM 没输出 content（plans 为空），从 tool_calls 自建最小 plan
+                        _plans = result.get('content')
+                        if not _plans and tc and tc.get('function'):
+                            try:
+                                _name = tc['function']['name']
+                                _args = _json.loads(tc['function'].get('arguments', '{}'))
+                                _plans = _json.dumps({"plans": [{"rank": 1, "label": _name, "tool": _name, "params": _args, "confidence": "high", "rationale": "auto-from-tool-call"}]}, ensure_ascii=False)
+                            except Exception:
+                                _plans = result.get('content')
+                        yield f'data: {_json.dumps({"tool_calls": result.get("tool_calls"), "plans": _plans, "usage": result.get("usage"), "fixes": _fixes}, ensure_ascii=False)}\n\n'
                 yield 'data: [DONE]\n\n'
             except LLMError as e:
                 yield f'data: {_json.dumps({"error": str(e)}, ensure_ascii=False)}\n\n'

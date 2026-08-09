@@ -4,6 +4,7 @@
 // ctx.model = 'pro' | 'flash'（思考深度开关，后端别名解析到 V4 真实 ID）。
 // CB-09 D022：删旧 reviewStep/reviseStep（LLM 审查+重写 5-15s·假阳性高）→ 质量防线移至 harness.applyQualityDefense（代码·不调 LLM·<20ms）。
 import { streamChat, streamFcDiagnose } from './api.js';
+import { DOMAIN_KW } from './emc-patterns.js';   // CB-10 分歧2 词表集中
 
 /** 入参别名规整：模型常把 invert 写成 inverse、as 写成 output_layer、radius_m 写成 radius，
  *  导致执行报错→空转→退化为叙述。此处统一规整为各工具的规范入参名，模型怎么写都能执行。
@@ -48,15 +49,17 @@ export const SKILL_DEFS = {
   // resolvePointLayer 的 visible 过滤，致"只传 L1·T1 却跑 L2"（5.92 Track 1 核心保证漏）。改走可见点层选源（同 density）。
   rank:     { tool: 'rank',        category: 'single',   required_slots: [],                     optional_defaults: { by: 'worst', top_n: 5 } },
   buffer:   { tool: 'buffer',      category: 'single',   required_slots: ['center'],              optional_defaults: { radius_m: 500, agg_cols: ['score'] } },
+  lookup_place: { tool: 'lookup_place', category: 'single', required_slots: [],                    optional_defaults: {} },   // CB-15 P1：查地点（q 或坐标）
+  generate_point_layer: { tool: 'generate_point_layer', category: 'single', required_slots: ['names'], optional_defaults: {} },   // CB-22d：批量地名→点位图层（names 必填）
   clip:     { tool: 'clip',        category: 'single',   required_slots: ['range'],               optional_defaults: {} },
   overlay:  { tool: 'overlay',     category: 'single',   required_slots: ['layer_a', 'layer_b'],  optional_defaults: { how: 'intersection' } },
   zonal:           { tool: 'zonal_stats',     category: 'single', required_slots: ['boundary'],          optional_defaults: { agg_cols: ['score'] } },
   compare:         { tool: 'compare_regions', category: 'single', required_slots: ['boundaries'],        optional_defaults: {} },
   extract_feature: { tool: 'extract_feature', category: 'single', required_slots: ['layer'],             optional_defaults: {} },
   area_stats:      { tool: 'area_stats',      category: 'single', required_slots: ['boundary'],          optional_defaults: {} },
-  merge:           { tool: 'merge',           category: 'single', required_slots: ['boundary'],          optional_defaults: {} },
+  merge:           { tool: 'merge',           category: 'single', required_slots: [],                     optional_defaults: {} },   // CB-11：boundary|layers 二选一（one-of·tools.js guard 校验）
   nearest:         { tool: 'nearest',         category: 'single', required_slots: ['target'],            optional_defaults: { k: 1 } },
-  hotspot:         { tool: 'hotspot',         category: 'single', required_slots: [],                    optional_defaults: { value_col: 'score' } },
+  hotspot:         { tool: 'hotspot',         category: 'single', required_slots: [],                    optional_defaults: { value_col: 'score', threshold: 1.96, soft_threshold: 1.0 } },
   filter_attr:     { tool: 'filter_attr',     category: 'single', required_slots: ['pre_filter'],        optional_defaults: {} },
   multi:    { tool: null,          category: 'multi',    required_slots: [],                     optional_defaults: {} },
   unknown:  { tool: null,          category: 'unknown',  required_slots: [],                     optional_defaults: {} },
@@ -75,7 +78,8 @@ export const CHAIN_REGISTRY = [
       { tool: 'overlay', params: { layer_a: '$1', layer_b: '{land}' } },
     ] },
   { chain_id: 'clip_density', name: '范围密度',
-    triggers: [/范围.{0,4}密度/, /区.{0,4}(热力|密度分布|分布)/],
+    // CB-12（glm/Codex）：触发器放宽——加「裁剪…热力/密度」+「先/再/然后…热力/密度」顺序模式（原触发器间距 ≤4 字·不匹配"先裁剪…再生成热力图"）
+    triggers: [/范围.{0,4}密度/, /区.{0,4}(热力|密度分布|分布)/, /(?:裁|剪裁|裁剪).{0,20}(热力|密度|分布)/, /(?:先|然后|再|接着).{0,15}(热力|密度)/],
     steps: [
       { tool: 'clip', params: { range: '{boundary}' } },
       { tool: 'density', params: { layer: '$1' } },
@@ -323,14 +327,21 @@ export async function fcDiagnoseStep(ctx, hooks) {
     }
     // 解析 plans[]（content 字段·容错 D067）
     let plans = [];
-    if (data.plans) {
-      plans = _parsePlans(data.plans);
-    }
+    if (data.plans) { plans = _parsePlans(data.plans); }
     // ISSUE 1 修复：tool name → skill name 反映射
     const toolName = tc.function.name;
     const skillName = _TOOL_TO_SKILL[toolName] || toolName;
+    // CB-09 D057 修订：解析所有 tool_calls（不再只取[0]）供 orchestrator 顺序执行
+    const _allToolCalls = (data.tool_calls || []).map((t) => {
+      let _p = {};
+      try { _p = JSON.parse((t.function && t.function.arguments) || '{}'); } catch (_) {}
+      return { name: t.function && t.function.name, params: _p };
+    }).filter((t) => t.name);
+    console.log('[FC] all tool_calls:', _allToolCalls.map((t) => t.name).join(' → '));
     // v3 C2/C3 修复：补全为 normalizeCard 等价结构 + data gate + domain_lens A+B
-    return _normalizeFcDiagnose(skillName, params, plans, toolName, ctx.question, ctx.layerMeta, data.plans);
+    const diag = _normalizeFcDiagnose(skillName, params, plans, toolName, ctx.question, ctx.layerMeta, data.plans);
+    diag._allToolCalls = _allToolCalls;
+    return diag;
   } catch (e) {
     const aborted = e && e.name === 'AbortError';
     console.warn('[FC] 异常:', aborted ? '用户取消/超时' : String(e));
@@ -340,9 +351,11 @@ export async function fcDiagnoseStep(ctx, hooks) {
   }
 }
 
-/** v3 C2/C3 修复：FC diagnose 补全为 normalizeCard 等价结构 + 数据 gate + domain_lens A+B。
+/** v3 C2/C3 + G1 修复：FC diagnose 补全为 normalizeCard 等价结构 + 数据 gate + domain_lens A+B + 尺度判定。
  *  C2：工具需点层但 ctx.layerMeta.has_point=false → strategy='request_upload'（治 5.242 回归）。
- *  C3：domain_lens A+B 混合（先 parse FC content 的 [domain_lens:xxx]·空则关键词推导兜底）。 */
+ *  C3：domain_lens A+B 混合（先 parse FC content 的 [domain_lens:xxx]·空则关键词推导兜底）。
+ *  G1（glm组 修正）：去三字段硬编码（scale:'macro'/decision_type:'操作'/outlet:'生成图层'）——"一竿子插到底"根因。
+ *      scale 从 FC content [scale:xxx] 解析（A 部·router build_fc_sys_prompt 已教）→ 词法兜底（B 部）→ 默认 macro 作最后防线。 */
 function _normalizeFcDiagnose(skillName, params, plans, toolName, question, layerMeta, fcContent) {
   const _EMOTION_TOOLS = new Set(['zonal_stats', 'rank', 'density', 'hotspot']);
   const intent = _EMOTION_TOOLS.has(toolName) ? 'emotion_analysis' : 'gis_operation';
@@ -352,6 +365,14 @@ function _normalizeFcDiagnose(skillName, params, plans, toolName, question, laye
   const _strategy = (_NEEDS_POINT && _noPoint) ? 'request_upload' : 'ready';
   // v3 C3：domain_lens A+B 混合
   const domain_lens = _deriveDomainLens(question || '', fcContent || '');
+  // G1：scale 三源解析（A 部标签 → B 部词法 → 默认 macro 最后防线）
+  const scale = _deriveScale(question || '', fcContent || '');
+  // G1：outlet 随 scale+intent 差异化（宏观=结构性分布结论·中微观=归因排序·微观=落点·GIS=生成图层）
+  const outlet = intent === 'emotion_analysis'
+    ? (scale === 'micro' ? '地图定位' : (scale === 'meso' ? '报告结论' : '结构性分布结论'))
+    : '生成图层';
+  // G1：decision_type 按意图派生（情绪分析→评价·纯 GIS→操作）
+  const decision_type = intent === 'emotion_analysis' ? '评价' : '操作';
   return {
     template: skillName,
     params,
@@ -360,9 +381,9 @@ function _normalizeFcDiagnose(skillName, params, plans, toolName, question, laye
     intent,
     _fc: true,
     domain_lens,                  // v3 C3：A+B 混合推导（非恒空 []）
-    scale: 'macro',
-    decision_type: '操作',
-    outlet: '生成图层',
+    scale,
+    decision_type,
+    outlet,
     data_plan: {
       needed: [],
       available: [],
@@ -371,6 +392,22 @@ function _normalizeFcDiagnose(skillName, params, plans, toolName, question, laye
     },
     method: [toolName + '()'],
   };
+}
+
+/** G1：尺度判定三源解析（A 部标签 → B 部词法 → 默认 macro 最后防线）。
+ *  A：parse FC content [scale:xxx]（router build_fc_sys_prompt 指令产·仿 domain_lens A 部模式）。
+ *  B：A 空 → 词法兜底（分布/整体/覆盖→macro；哪区最差/原因/归因→meso；街/点/小区→micro）。
+ *  兜底失败才落默认 macro（保留现状作为最后防线·与 glm组 论证一致·去硬编码最坏情况=与旧行为一致无回归）。 */
+export function _deriveScale(question, fcContent) {
+  if (fcContent) {
+    const m = String(fcContent).match(/\[scale:(macro|meso|micro)\]/);
+    if (m) return m[1];
+  }
+  const q = String(question || '');
+  if (/(分布|整体|全域|覆盖|大致|总体|哪些地方)/.test(q)) return 'macro';
+  if (/(哪.*最差|哪里.*最差|原因|为什么|归因|排序|哪个区域|哪几个区|对比|比较)/.test(q)) return 'meso';
+  if (/(这条街|这个点|这个小区|哪个点位|公园里|点位|附近哪)/.test(q)) return 'micro';
+  return 'macro';   // 最后防线（与旧硬编码一致·无回归）
 }
 
 /** v3 C3：domain_lens A+B 混合推导。
@@ -383,15 +420,9 @@ function _deriveDomainLens(question, fcContent) {
     const m = String(fcContent).match(/\[domain_lens:(urban_planning|urban_renewal|urban_operation|urban_governance)\]/);
     if (m) return [m[1]];
   }
-  // B：关键词推导兜底
-  const _DK = {
-    urban_planning: ['规划', '用地', '商业用地', '居住用地', '功能区', '土地'],
-    urban_renewal: ['更新', '老旧', '改造', '棚改', '小区', '归因', '情绪'],
-    urban_operation: ['运营', '商圈', '场馆', '奥体', '商业街', '演唱会'],
-    urban_governance: ['治理', '交通', '停车', '施工', '城管', '环境'],
-  };
+  // B：关键词推导兜底（词表集中 emc-patterns.DOMAIN_KW·CB-10 分歧2）
   const hits = [];
-  for (const [domain, kws] of Object.entries(_DK)) {
+  for (const [domain, kws] of Object.entries(DOMAIN_KW)) {
     if (kws.some((kw) => question.includes(kw))) { hits.push(domain); break; }   // 取首个命中·最多 1 个
   }
   return hits.length ? hits : [];   // v3.1 P2-4：不硬填默认（空更诚实·下游处理空 domain_lens）
@@ -400,7 +431,6 @@ function _deriveDomainLens(question, fcContent) {
 /** v2 plans[] 容错解析（D067）：JSON.parse + 字段校验·解析失败=空 plans·不崩溃。 */
 function _parsePlans(content) {
   if (!content) return [];
-  // v3.1 BR3：strip [domain_lens:xxx] 前缀（router system prompt 指令 LLM 在 content 开头产出·治 plans JSON 解析失败）
   const _clean = String(content).replace(/\[domain_lens:[\w]+\]\s*/g, '').trim();
   try {
     const parsed = JSON.parse(_clean);
@@ -439,7 +469,7 @@ export async function finalStep(ctx, hooks, toolHistory) {
     (err) => { throw new Error(err); },
     {
       phase: 'answer', toolHistory, signal: ctx.signal,
-      model: ctx.answerModel || 'flash', domainLens: ctx.domainLens,
+      model: (ctx.answerModel === 'pro' ? 'flash' : (ctx.answerModel || 'flash')), domainLens: ctx.domainLens,   // CB-12：pro 停用·最终守卫强制 flash（防 answerModel 残留）
       onReason: (t) => { hooks.onReason && hooks.onReason(t, 0); },
     });
   return final;

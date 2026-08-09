@@ -33,6 +33,11 @@ _POINT_LAYERS = {
     'yichang_l1_t1': ('yichang_L1_T1_result_csv.csv', '宜昌 L1 · T1（全域治理点·初）', 'L1'),
     'yichang_l1_t2': ('yichang_L1_T2_result_csv.csv', '宜昌 L1 · T2（全域治理点·中）', 'L1'),
     'yichang_l1_t3': ('yichang_L1_T3_result_csv.csv', '宜昌 L1 · T3（全域治理点·末）', 'L1'),
+    # 大南门·二马路历史街区 L3+L4（ABSA 富归因·CB-16 数据专题接入·坐标经 backfill_ermawu_coords 补齐）
+    # 注：level='L3L4' 数据层零 level 检查（resolve_points/get_layer_points 只读 CSV+lon/lat）·仅 R5 胶囊防线（UI 追问）不含
+    'ermawu_l3l4_t1': ('ermawu_l3l4_T1_result_csv.csv', '大南门·二马路 L3L4 · T1（历史街区·开街扰扰）', 'L3L4'),
+    'ermawu_l3l4_t2': ('ermawu_l3l4_T2_result_csv.csv', '大南门·二马路 L3L4 · T2（历史街区·暑假打卡）', 'L3L4'),
+    'ermawu_l3l4_t3': ('ermawu_l3l4_T3_result_csv.csv', '大南门·二马路 L3L4 · T3（历史街区·文旅爆满）', 'L3L4'),
 }
 
 
@@ -177,6 +182,21 @@ def resolve_boundary(boundary) -> gpd.GeoDataFrame:
             nf = find_boundary_name_column(polys.columns)
             if nf:
                 polys['name'] = polys[nf]   # 副本（不删原始列·治字段名断裂）
+        # PRM-07（08-08 深读·glm A）：法定功能区黑名单兜底——dict 直供 boundary 若要素名命中
+        #   法定功能区（非真实行政区划）→ 拒绝（诚实 request_upload·CB-14「EMC 不硬猜」）。
+        #   用黑名单而非白名单：用户上传层可含任意合法地名·白名单会误拦（用户上传层不受限设计）。
+        _ADMIN_BLOCKLIST = {'小溪塔', '龙泉', '白洋', '生物产业园', '东部产业新区', '绿心'}
+        _name_col = 'name' if 'name' in polys.columns else None
+        if _name_col is None:
+            _nf = find_boundary_name_column(polys.columns)
+            _name_col = _nf if _nf else None
+        # Codex T7 阻断修复：仅拦「单要素」dict（LLM 直传特征·如 {features:[小溪塔]}）——
+        #   多要素（从已加载面层/索引解析的整层·如行政区层 9 要素含龙泉）是合法图层操作·放行。
+        if _name_col is not None and len(polys) == 1:
+            for _nm in polys[_name_col].astype(str):
+                _hit = next((d for d in _ADMIN_BLOCKLIST if d in _nm or _nm in d), None)
+                if _hit:
+                    raise ValueError(f'边界要素「{_nm}」为法定功能区·非真实行政区划·EMC 不硬猜不可信范围（CB-14）·请上传标准边界资料')
         return polys
     raise TypeError(f'boundary 需为 preset_id(str) 或 GeoJSON(dict)，收到 {type(boundary)}')
 

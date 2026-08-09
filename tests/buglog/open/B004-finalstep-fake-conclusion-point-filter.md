@@ -3,6 +3,7 @@ id: B004
 title: 'finalStep 假结论 — 筛选点图层"只说不做"（复现）'
 type: BUG
 severity: CRIT
+priority: P0
 status: open
 module: finalStep
 source: 用户实测
@@ -38,6 +39,7 @@ last_repro: 2026-07-29
 | 日期 | 操作 | commit |
 |------|------|------|
 | — | 待修复 | — |
+| 2026-07-29 | P0-4: 同 B002——harness.js finalStep context 注入执行结果（成功/失败/产出数） | 31e2a00 |
 
 ---
 

@@ -1,0 +1,14 @@
+INFO:     Started server process [32640]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+[WARN] MOD_GEOCODE: AMAP_KEY missing, amap fallback disabled (local-only)
+INFO:     127.0.0.1:60255 - "GET /api/v1/health HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "GET /frontend/js/ai_qa/stages.js?v=1786170535 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/toolbox/nearest-tool.js?v=1785062949 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/toolbox/hotspot-tool.js?v=1786173500 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/ai_qa/boundary-resolve.js?v=1786182997 HTTP/1.1" 200 -
+[B3] FATAL: Page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/frontend/index.html?test=1
+Call log:
+  - navigating to "http://localhost:8080/frontend/index.html?test=1", waiting until "commit"
+

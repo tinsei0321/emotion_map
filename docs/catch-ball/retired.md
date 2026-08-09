@@ -8,6 +8,24 @@
 
 ---
 
+## 2026-08-05（热点图 P1.5 · 3D 渲染路径退役——fill-extrusion 等值线环 → setTerrain 连续曲面）
+
+| 项 | 原职责 | 退役原因 | 替代 |
+|----|--------|----------|------|
+| `create_terrain_mesh`（F_007·等值线环 mesh）3D 用途 | 7 层 contourpy 等值线环 → fill-extrusion 分层曲面 | **千层饼非连续曲面**（用户反馈"看不出地势"）·glm/Codex P1.5 共识 | `create_terrain_dem`（F_009·KDE→terrarium RGB）+ map.js `setTerrainDEM`（连续三角网·draping 隔离）|
+| `generateTerrainForAI`（heatmap-tool）3D fill-extrusion 路径 | EMC density mode=terrain 3D 渲染 | 同上·非连续曲面 | `generateTerrain3DForAI`（DEM→setTerrain·连续曲面）|
+
+**保留**（非退役·仍有用途）：
+- `create_terrain_mesh` / `generateTerrainForAI` **2D 等值线用途保留**（2D 轮廓/叠图仍可用）
+- `/spatial/terrain` 端点保留（2D 兼容）
+- KDE 栅格计算不退役（成 DEM 源头·F_009 复用同一 KDE 逻辑）
+
+**3D 出口约定**（draping 隔离·glm P1.5 强调）：setTerrainDEM 不常驻（显式 3D 地形才开·退出 setTerrain(null)）+ 与 3D 网格柱互斥（terrain 开启隐藏 fill-extrusion 柱）+ 平面底图 + KDE DEM 唯一 terrain source + sky 层防露底。
+
+**来源**：热点图定稿 D3（MapLibre setTerrain 连续三角网）· P1.5 实施（两组 P1.5 评估全选 a）。
+
+---
+
 ## 2026-07-18（CB-01 · apps 退役遗留僵尸清理）
 
 | 文件 | 原职责 | 退役原因 | 可恢复 |

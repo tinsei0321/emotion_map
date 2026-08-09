@@ -320,6 +320,57 @@ export function setView3D(on) {
   map.easeTo({ pitch: on ? PITCH_3D : 0, bearing: 0, duration: VIEW_EASE_MS });
 }
 
+// ── P1.5 情绪地形 DEM（setTerrain 连续曲面·热点图定稿 D3）──
+// setTerrain 是**全局地形**（drape 所有 2D 图层）→ **draping 隔离**（glm P1.5 强调）：
+//   ① 不常驻——仅显式 3D 地形模式开启，退出 setTerrain(null)
+//   ② 与 3D 网格柱互斥（terrain 开启时隐藏 fill-extrusion 柱·避免漂浮/穿模）
+//   ③ setTerrain 是全局地形——天地图 raster 底图会被 drape 到曲面（P1.5 评估认同的"卫星影像铺在情绪曲面=张力增强"·非 bug）
+//   sky 层补地平线防露底（revision-log 06-30 先例）
+let _terrainOn = false;
+let _terrainUrl = null;
+let _terrainBounds = null;
+export function isTerrainOn() { return _terrainOn; }
+export function setTerrainDEM(on, { url, bounds, exaggeration = 12 } = {}) {
+  if (!map) return false;
+  _terrainOn = !!on;
+  if (on && url) {
+    _terrainUrl = url; _terrainBounds = bounds || null;
+    // ① DEM source（raster-dem·terrarium 编码·后端 /spatial/dem）
+    const _sid = 'emc-terrain-dem';
+    try {
+      if (map.getSource(_sid)) map.removeSource(_sid);
+      map.addSource(_sid, {
+        type: 'raster-dem', encoding: 'terrarium',
+        tiles: [url], tileSize: 256,
+        ...(bounds ? { bounds } : {}), maxzoom: 14,
+      });
+      map.setTerrain({ source: _sid, exaggeration });
+    } catch (e) { console.warn('[setTerrainDEM] addSource/setTerrain 失败:', e); return false; }
+    // ② 与 3D 网格柱互斥（隐藏 fill-extrusion 柱层·防漂浮/穿模）
+    for (const l of getLayers()) {
+      if (l.kind === 'polygon' && l.paint && l.paint._ui && (l.paint._ui.tool === 'grid' || l.paint._ui.mode === '3d')) {
+        setLayerVisible(l.id, false); renderLayer(l);
+      }
+    }
+    // ③ sky 层（防地平线露容器底·先例 revision-log 06-30）
+    try {
+      if (!map.getLayer('emc-sky')) map.addLayer({ id: 'emc-sky', type: 'sky', paint: { 'sky-type': 'atmosphere', 'sky-atmosphere-color': 'rgba(135,181,205,0.4)' } });
+    } catch (_) { /* sky 非核心·失败忽略 */ }
+    map.easeTo({ pitch: 60, duration: VIEW_EASE_MS });
+    return true;
+  }
+  // 关闭：移除 terrain + sky·恢复图层可见
+  try { map.setTerrain(null); } catch (_) {}
+  try { if (map.getLayer('emc-sky')) map.removeLayer('emc-sky'); } catch (_) {}
+  for (const l of getLayers()) {
+    if (l.kind === 'polygon' && l.paint && l.paint._ui && (l.paint._ui.tool === 'grid' || l.paint._ui.mode === '3d')) {
+      setLayerVisible(l.id, true); renderLayer(l);
+    }
+  }
+  _terrainUrl = null; _terrainBounds = null;
+  return false;
+}
+
 /** grid 层数据签名：同源 2D/3D（同 analysis/level/source/cellSize/polarity/polygonLayer）共享 → 配对，免重复生成、免切换累积。 */
 function gridSig(p) {
   const u = p && p._ui;
@@ -550,6 +601,15 @@ function addPointPaint(layer, sid, lid) {
     colorExpr = ['step', ['get', 'hotness'], HOTNESS_RAMP[0],
       buckets[0], HOTNESS_RAMP[1], buckets[1], HOTNESS_RAMP[2]];
     strokeW = 0; opacity = p.opacity ?? 0.75;
+  } else if (layer.colorMode === 'hotspot') {
+    // P1 修正 + W1 审计（glm/Codex）：Gi* 显著性符号层——**纯橙系** + 大小/描边分档。
+    // hot/tend_hot 橙（深/浅）· ns 灰 · tend_cold/cold 与 hot 同橙系（深浅倒置）——
+    // 弃红/蓝双色（与 KDE 绿=正红=负语义冲突·Codex W1）；单色系只表达"显著/倾向"强弱。
+    colorExpr = ['match', ['get', 'hotspot_tier'],
+      'hot', '#e8590c', 'tend_hot', '#ff922b', 'tend_cold', '#ffd8a8', 'cold', '#fd7e14', '#adb5bd'];
+    radius = ['match', ['get', 'hotspot_tier'], 'hot', 11, 'cold', 11, 'tend_hot', 8, 'tend_cold', 8, 4];
+    strokeW = ['match', ['get', 'hotspot_tier'], 'hot', 2, 'cold', 2, 0];
+    opacity = p.opacity ?? 0.85;
   } else if (layer.colorMode === 'l2-positive') {
     colorExpr = ['match', ['get', 'polarity'], 'Very Positive', L2_POSITIVE['Very Positive'], 'Positive', L2_POSITIVE['Positive'], L2_POSITIVE['Positive']];
     strokeW = 0; opacity = p.opacity ?? 0.18;
@@ -858,15 +918,18 @@ function bindRangeInteractions(layer, hitLid, outlineLid) {
   // 默认线宽 1px，hover 加粗 +1px（→2px）。live 读 layer.paint.lineWidth：settings 调线宽后 hover 同步（不依赖闭包旧值，承重⑩结构不变）。
   const baseW = () => (layer.paint && layer.paint.lineWidth) ?? 1;
   const hoverW = () => baseW() + 1;
+  // CB-11：hover 前检查 outlineLid 层存在——runAllToolCalls 清理中间产物（focusOnlyResults/_consumedIds）后
+  //   轮廓层被删·旧 hover 仍引用 → setPaintProperty 对不存在层报错（lyr-Lxxx-line）·加 guard 防噪音
+  const _layerExists = () => { try { return !!map.getLayer(outlineLid); } catch (_) { return false; } };
   map.on('mouseenter', hitLid, (e) => {
     map.getCanvas().classList.add('is-pointer');
-    try { map.setPaintProperty(outlineLid, 'line-width', hoverW()); } catch (_) {}
+    if (_layerExists()) { try { map.setPaintProperty(outlineLid, 'line-width', hoverW()); } catch (_) {} }
     showRangeTooltip(e.lngLat, layer.name);
   });
   map.on('mousemove', hitLid, (e) => { if (_tooltip) _tooltip.setLngLat(e.lngLat); });
   map.on('mouseleave', hitLid, () => {
     map.getCanvas().classList.remove('is-pointer');
-    try { map.setPaintProperty(outlineLid, 'line-width', baseW()); } catch (_) {}
+    if (_layerExists()) { try { map.setPaintProperty(outlineLid, 'line-width', baseW()); } catch (_) {} }
     hideRangeTooltip();
   });
 }

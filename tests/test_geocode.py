@@ -292,10 +292,9 @@ class TestOfflineDegradation:
         """min_fuzzy_score=35 应 >= default(=55) 的结果数。"""
         from core.place_layer import get_place_layer
         pl = get_place_layer()
-        # limit 留足余量（200）：语料扩容后 '东站' default≈46 / relaxed≈56，
-        # 原 limit=30 会把两者都截到 30 → 断言误败。此处取全量不截断比较。
-        hits_default = pl.forward('东站', 200)
-        hits_relaxed = pl.forward('东站', 200, min_fuzzy_score=35)
+        # CB-16 Wave 2：3220 POI 接入后语料 1277→4310·limit 提至 1000 让 default 不触顶（保 relaxed>default 区分）
+        hits_default = pl.forward('东站', 1000)
+        hits_relaxed = pl.forward('东站', 1000, min_fuzzy_score=35)
         assert len(hits_relaxed) > len(hits_default), \
             'relaxed(35)={} 应 > default(55)={}'.format(
                 len(hits_relaxed), len(hits_default))
@@ -304,7 +303,7 @@ class TestOfflineDegradation:
         """松弛后应有 score < 55 的命中（证明阈值真被降低了）。"""
         from core.place_layer import get_place_layer
         pl = get_place_layer()
-        hits = pl.forward('东站', 200, min_fuzzy_score=35)
+        hits = pl.forward('东站', 1000, min_fuzzy_score=35)
         low_scores = [h for h in hits if h['score'] < 55]
         assert len(low_scores) > 0, \
             '松弛阈值应产生 score<55 的命中，实际 {} 条'.format(len(hits))
@@ -326,3 +325,36 @@ class TestOfflineDegradation:
         assert len(hits) > 0
         assert all(h['score'] >= 55 for h in hits), \
             '默认阈值应为 55，不应有低分命中'
+
+
+# ── forward/reverse 结果缓存（MOD_PLACE 渲染风暴 backlog·纯性能优化·行为不变）──
+
+class TestPlaceQueryCache:
+    """同 query/坐标二次调用命中缓存（省重复全量扫 4310 POI）；返回副本防污染。"""
+
+    def test_forward_cached_and_immutable(self):
+        from core.place_layer import get_place_layer, _FWD_CACHE
+        pl = get_place_layer()
+        q, lim = '万达', 5
+        r1 = pl.forward(q, lim)
+        assert len(r1) > 0, '前置：万达应有本地命中'
+        assert (q, lim, None) in _FWD_CACHE, '首次调用应写入缓存'
+        r2 = pl.forward(q, lim)
+        assert r1 == r2, '缓存命中结果应与首次一致'
+        # 防污染：修改返回对象不影响缓存内副本
+        r1[0]['zone_id'] = 'MUTATED'
+        r3 = pl.forward(q, lim)
+        assert r3 == r2 and r3[0]['zone_id'] != 'MUTATED', \
+            '返回副本应防共享引用污染'
+
+    def test_reverse_cached_and_immutable(self):
+        from core.place_layer import get_place_layer, _REV_CACHE
+        pl = get_place_layer()
+        lng, lat = 111.29, 30.69
+        v1 = pl.reverse(lng, lat)
+        assert (round(lng, 6), round(lat, 6)) in _REV_CACHE, '首次应写入缓存'
+        v2 = pl.reverse(lng, lat)
+        assert v1 == v2, '缓存命中结果应一致'
+        v1['zone_id'] = 'MUTATED'
+        v3 = pl.reverse(lng, lat)
+        assert v3['zone_id'] != 'MUTATED', '返回深拷贝应防污染'

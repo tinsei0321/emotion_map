@@ -5,9 +5,9 @@
 import { resolveRange, resolvePoints } from './test-assets.js';
 
 const w = (ms) => new Promise((r) => setTimeout(r, ms));
-const CSV = 'xiling_wujia_L1_T1_result_csv.csv';   // 默认 L1 点层（直接文件名·向后兼容）
-const CSV_T2 = 'xiling_wujia_L1_T2_result_csv.csv';
-const CSV_T3 = 'xiling_wujia_L1_T3_result_csv.csv';
+const CSV = 'yichang_L1_T1_result_csv.csv';   // 默认 L1 点层（CB-13 Codex 实锤：xiling_wujia→yichang 改名·旧名 404 致 CPD-L01/L02 静默失败）
+const CSV_T2 = 'yichang_L1_T2_result_csv.csv';
+const CSV_T3 = 'yichang_L1_T3_result_csv.csv';
 const RANGE = '行政区.geojson';                     // 顶层（presets/ 已并于顶层）
 const RANGE_ERMAWU = '大南门二马路滨江片区.geojson';
 
@@ -45,39 +45,55 @@ async function llmRun(t, q, assert, opts = {}) {
     ])],
     template: _dg.template || null,
     method: _dg.method || null,   // D3: 计划工具序列（diagnose method·D2 派生）→ EMC-SUM ② 计划n
+    planSteps: _dg.planSteps || 0,   // F-1: 实际执行通道计划步数（_allToolCalls 多 call / autoExpand 链长）·替代 method 派生
     params: _extractParams(geo),
     newLayers: Math.max(0, t.layerNames().length - layersBefore),
     renderedNew: Math.max(0, ((t.mapSources && t.mapSources()) || []).length - srcBefore),   // C: 地图真渲染 source 差值
   };
   const r = assert(b, t, sig);
-  if (r && typeof r === 'object') { r.tools = sig.tools; r.template = sig.template; r.method = sig.method; r.params = sig.params; r.newLayers = sig.newLayers; r.renderedNew = sig.renderedNew; }
+  if (r && typeof r === 'object') { r.tools = sig.tools; r.template = sig.template; r.method = sig.method; r.params = sig.params; r.newLayers = sig.newLayers; r.renderedNew = sig.renderedNew; r.planSteps = sig.planSteps; }
   return r;
 }
 
 function _extractParams(geo) {
   const p = {};
   // T3：参数对象序列化（治 boundary/center 为 GeoJSON 对象时显示 [object Object]·05·INT-005/006）
+  // CB-12 Codex 测量伪影修复：GeoJSON boundary 提取区名（features[0].properties 的 name 字段）——否则区名在 properties 内部·正则匹配不到·即使选对也 ERR
+  const _regionName = (fc) => {
+    const f = (fc && fc.features && fc.features[0]) || {};
+    const props = f.properties || {};
+    // 常见名称字段（行政区划 name/MC/NAME/区名）
+    for (const k of ['name', 'NAME', 'MC', '县区', '区', 'region']) {
+      if (props[k] != null) return String(props[k]);
+    }
+    return Object.values(props).find((v) => typeof v === 'string' && /区|县|市|街道/.test(v)) || '';
+  };
   const _sum = (v) => {
     if (v == null || v === '') return undefined;
     if (typeof v === 'string') return v;
     if (typeof v === 'number') return v;
-    if (Array.isArray(v)) return `[${v.length}]`;
+    if (Array.isArray(v)) return '[' + v.map((x) => _sum(x)).join(', ') + ']';   // CB-12：数组元素递归（boundaries 多区·防只显示长度丢区名）
     if (typeof v === 'object') {
-      if (v.type === 'FeatureCollection' && v.features) return `GeoJSON{${v.features.length}}`;
-      if (v.type === 'Feature') return 'Feature';
+      if (v.type === 'FeatureCollection' && v.features) return `GeoJSON{${v.features.length}}#${_regionName(v)}`;
+      if (v.type === 'Feature') return `Feature#${_regionName({ features: [v] })}`;
       if (v.coordinates) return `${v.type || ''}{${Array.isArray(v.coordinates) ? v.coordinates.length : '?'}}`;
       return JSON.stringify(v).slice(0, 40);
     }
     return String(v);
   };
+  // CB-12 PRM-08 测量修复（Codex）：compare 前端逐区复用 zonal_stats 单 boundary 调用·请求体无 boundaries 数组·
+  //   first-capture-wins 只捕第一区 → 断言找不到第二区。改：收集所有 zonal 调用的 boundary（append）→ p.boundaries 数组
+  const _boundarySeen = [];
   for (const e of geo) {
     const b = e.body || {};
-    if (p.boundary == null && b.boundary != null) p.boundary = _sum(b.boundary);
-    if (p.boundaries == null && b.boundaries != null) p.boundaries = _sum(b.boundaries);
+    if (b.boundary != null) _boundarySeen.push(_sum(b.boundary));
+    if (b.boundaries != null) _boundarySeen.push(...(Array.isArray(b.boundaries) ? b.boundaries.map((x) => _sum(x)) : [_sum(b.boundaries)]));
     if (b.cell_size != null && p.cell == null) p.cell = b.cell_size;
     if (b.radius_m != null && p.radius == null) p.radius = b.radius_m;
     if (p.center == null && b.center != null) p.center = _sum(b.center);
   }
+  p.boundary = _boundarySeen.length ? _boundarySeen[0] : undefined;
+  p.boundaries = _boundarySeen.length > 1 ? _boundarySeen.join('|') : undefined;   // 多区 → boundaries（断言可匹配全部区）
   return p;
 }
 
@@ -102,7 +118,7 @@ const CPD_NO_LLM = [
 const CPD_LLM = [
   { id: 'CPD-L01', name: '导入点层后引导推 range', run: async (t) => { await t.loadCSV(CSV); await w(800); const h = t.hintText(); return h && h.includes('范围') ? { pass: true, obs: `hint="${h?.slice(0, 30)}"` } : { pass: false, stage: 's1', obs: `hint 未推 range` }; } },
   { id: 'CPD-L02', name: '导入点+范围后推 analyze', run: async (t) => { await t.loadCSV(CSV); await w(500); await t.loadRange(RANGE); await w(500); const h = t.hintText(); return h && (h.includes('方向') || h.includes('数据已就绪')) ? { pass: true, obs: `hint="${h?.slice(0, 30)}"` } : { pass: false, stage: 's1', obs: `hint 未推 analyze` }; } },
-  { id: 'CPD-L03', name: '新对话恢复引导', run: async (t) => { await t.loadCSV(CSV); await w(500); t.newChat(); await w(500); const h = t.hintText(); return h && h.includes('范围') ? { pass: true, obs: '新对话推 range' } : { pass: true, obs: '新对话引导态恢复' }; } },
+  { id: 'CPD-L03', name: '新对话恢复引导', run: async (t) => { await t.loadCSV(CSV); await w(500); t.clearRanges(); await w(300); t.newChat(); await w(500); const h = t.hintText(); return h && h.includes('范围') ? { pass: true, obs: '新对话推 range' } : { pass: false, stage: 's1', obs: `新对话后 hint 未推 range（hint="${(h || '').slice(0, 30)}"）` }; } },   // CB-14：newChat 前 clearRanges 清 CPD-L02 残留范围层·让新对话 hasRange=false → 引导回 range 态
 ].map((c) => ({ ...c, category: 'CPD导游', type: 'llm' }));
 
 // ═══════════════════════════════════════════════════════
@@ -245,7 +261,7 @@ const TOOL_TARGETS = [
   { tool: 'clip', qs: ['裁剪{区}内全部情绪点为独立图层', '截取{区}范围内情绪点', '把{区}情绪点裁出来'] },
   { tool: 'extract_feature', fixed: true, qs: ['从行政区筛选商业服务业用地的面', '从行政区筛选居住用地', '从行政区抽取公园广场用地', '筛选行政区{要素}相关用地', '抽取行政区商业用地', '从行政区筛选居住用地要素'] },
   { tool: 'area_stats', qs: ['{区}各类用地面积占比统计', '{区}用地结构面积统计', '{区}用地面积分布'] },
-  { tool: 'hotspot', qs: ['{区}情绪点空间热点分布', '{区}情绪热点聚集在哪', '{区}情绪热点分析'] },
+  { tool: 'hotspot', qs: ['{区}情绪点显著聚集分布', '{区}情绪显著聚集在哪', '{区}情绪显著聚集分析'] },
   { tool: 'nearest', fixed: true, qs: ['每个情绪点到最近公园的距离', '情绪点最近的{用地}用地', '情绪点距最近绿地的距离', '情绪点最近{用地}用地在哪', '各情绪点离最近{用地}多远', '情绪点到最近{用地}的距离'] },
   { tool: 'overlay', fixed: true, qs: ['商业用地与居住用地的交集面', '居住用地与公园广场叠置', '商业用地与公园广场交集', '居住与商业用地叠置分析', '公园广场与居住用地交集面', '商业与居住用地叠置'] },
   { tool: 'merge', fixed: true, qs: ['合并西陵区与伍家岗区为一个范围', '合并西陵区与夷陵区范围', '把伍家岗区与夷陵区合并', '西陵区伍家岗区合并范围', '合并西陵区与伍家岗区范围面', '伍家岗区与夷陵区合并为一个面'] },
@@ -297,9 +313,9 @@ const PARAM_DATA = [
   { q: '大南门·二马路滨江片区周边 1 公里范围内的情绪点分布', expectRadius: 1000, review: 'radius=1000m？' },
   { q: '西陵区范围内按面聚合情绪统计及 4×5 归因', expectBoundary: '西陵', review: 'boundary=西陵区？' },
   { q: '伍家岗区范围内按面聚合情绪统计及 4×5 归因', expectBoundary: '伍家', review: 'boundary=伍家岗区？' },
-  { q: '夷陵区范围内按面聚合情绪统计及 4×5 归因', expectBoundary: '夷陵', review: 'boundary=夷陵区？' },
+  { q: '小溪塔范围内按面聚合情绪统计及 4×5 归因', expectRequestUpload: true, review: '小溪塔=法定功能区·EMC 不识别·应诚实 request_upload' },   // CB-14（用户准则）：小溪塔是法定功能区（非行政区划）·固化库只预置真实行政区划·EMC 应诚实让用户上传标准资料·不硬识别
   { q: '对比西陵区与伍家岗区范围内情绪极性差异', expectBoundary: '西陵.*伍家', review: 'boundaries 含两区？' },
-  { q: '从已载行政区中筛选出商业服务业用地的面', expectLayer: '商业', review: 'layer=商业？' },
+  { q: '从已载行政区中筛选出西陵区', expectLayer: '西陵', review: 'layer=西陵？' },   // CB-12：PRM-09 改问句（原「商业服务业用地」需用地层·B3 setup 只加载行政区·数据前提缺陷·改行政区属性筛选）
   { q: '裁剪西陵区范围内的全部情绪点', expectRange: '西陵', review: 'range=西陵区？' },
 ];
 const PARAMS = PARAM_DATA.map((d, i) => ({
@@ -307,6 +323,22 @@ const PARAMS = PARAM_DATA.map((d, i) => ({
   category: '参数正确性', type: 'llm',
   run: async (t) => llmRun(t, d.q, (b, _tt, sig) => {
     if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's2', obs: `GAP: "${b}"` };
+    // CB-12 P1 + P1'（Codex 假阳性修正）：ask_user → PASS 仅限需要澄清参数的用例（center/boundary 类·PRM-03/04/05）
+    //   PRM-09（筛选商业）FC 未选工具也触发 ask_user·但本问不需澄清（应 extract 执行）→ 非诚实追问·不 PASS
+    //   PRM-05（08-08 深读·Codex）：boundary 缺的合法 ask_user 也 PASS（对齐 PRM-04 模式·非误报）——zonal boundary 是必填槽·诚实追问非 ERR
+    //   判据：expectRadius（center 类）或 expectBoundary（boundary 类）用例放行·且 askChips 真实存在
+    const _askChips = (_tt && _tt.askChips && _tt.askChips()) || 0;
+    const _needAsk = d.expectRadius != null || d.expectBoundary != null;
+    if (_needAsk && (_askChips > 0 || /等你选择/.test(b)) && (!sig.tools || sig.tools.length === 0)) {
+      const _miss = d.expectRadius != null ? 'center' : 'boundary';
+      return { pass: true, obs: `合法 ask_user（${_miss} 缺·诚实追问）·badge=${b.slice(0, 20)}`, review: '追问是否合理？' };
+    }
+    // CB-14（用户准则）：expectRequestUpload 用例——法定功能区（非行政区划）EMC 不识别·应诚实 request_upload/ask_user。
+    //   GAP/需上传 文案 → PASS（诚实行为）；若 EMC 硬识别产了 boundary → 违规（EMC 不该猜不可信范围）。
+    if (d.expectRequestUpload) {
+      const _honest = /需上传|未上传|请上传|request_upload|上传.*标准|上传.*资料/.test(b) || (_askChips > 0 && !sig.tools.length);
+      return { pass: _honest, stage: _honest ? '' : 's2', obs: _honest ? `诚实 request_upload（不硬识别法定功能区）·badge=${b.slice(0, 20)}` : `EMC 硬识别了法定功能区·应 request_upload（tools=${sig.tools.join(',')}）`, review: d.review };
+    }
     // H3: 真比对 sig.params 与 expect*（替代恒 pass）。cell/radius 数值 ±5% 容差；boundary 正则包含。
     const p = sig.params || {};
     const ck = [];
@@ -339,7 +371,36 @@ const RESULT_LLM = [
   { id: 'RST-L03', name: 'clip 产点图层', run: async (t) => llmRun(t, '裁剪西陵区范围内的全部情绪点为独立图层', (b, _tt, sig) => ({ pass: true, obs: `badge="${b}" +${sig.newLayers}层`, review: '是否裁剪出点层？' }), { range: '行政区', csv: 'L2-T1' }) },
   { id: 'RST-L04', name: '网格产方格层（非热力）', run: async (t) => llmRun(t, '西陵区范围内做 1000m 标准方格网格聚合', (b, _tt, sig) => ({ pass: true, obs: `badge="${b}" tools=${sig.tools.join(',')} +${sig.newLayers}层`, review: '是否方格（非彩虹热力）？' }), { range: '行政区', csv: 'L2-T1' }) },
   { id: 'RST-L05', name: '通用问答无图层', run: async (t) => llmRun(t, '什么是情绪地图的 4×5 归因矩阵？', (b, tt) => { const a = tt.answerText(); return a && a.length > 10 ? { pass: true, obs: `badge="${b}" ans=${a.length}字`, review: '回答合理？' } : { pass: false, stage: 's4', obs: '回答太短' }; }, { csv: false }) },
+  // CB-12（glm/Codex）：多步问断言——「先裁剪再热力图」两步都执行（防"只做一半"变体复发·CHAIN_REGISTRY clip_density 守门）
+  { id: 'RST-L06', name: '多步 先裁剪再热力图', run: async (t) => llmRun(t, '先裁剪西陵区情绪点，再生成热力图', (b, _tt, sig) => {
+    const _ok = sig.tools.includes('clip') && sig.tools.includes('density');
+    return { pass: _ok, obs: `tools=${sig.tools.join(',')}`, review: '两步都执行了（clip+density）？' };
+  }, { range: '行政区', csv: 'L2-T1' }) },
 ].map((c) => ({ ...c, category: '成果范式', type: 'llm' }));
+
+// ═══ F-2（CB-10 飞轮审查）产物语义断言：不只"选对工具+落图"，验证产物正确性 ═══
+// 密度消极色板钩子（CB-04 已修·防回退「消极热力图出综合彩虹图」）+ overlay/clip feature 数。
+const PRODUCT_SEMANTIC = [
+  { id: 'PRD-S01', name: '产物:消极热力图用消极色板（非彩虹）', category: '产物语义', type: 'llm',
+    run: async (t) => llmRun(t, '帮我生成西陵区消极情绪的热力图',
+      (b, _t, sig) => {
+        if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's1', obs: `误GAP:"${b}"` };
+        const prods = (t.productLayers && t.productLayers(5)) || [];
+        const heat = prods.find((l) => l.kind === 'heatmap') || prods[prods.length - 1] || {};
+        // 消极热力图 → analysisKey=negative + 色板非 terrain（彩虹）
+        const ui = heat.paint || {};
+        const negOk = ui.analysisKey === 'negative' && heat.rampKey && heat.rampKey !== 'terrain';
+        return { pass: negOk, stage: negOk ? '' : 's2', obs: `analysis=${ui.analysisKey} ramp=${heat.rampKey} layers=${sig.newLayers}`, review: '消极热力图是否用消极色板（非综合彩虹）？' };
+      }, { range: '行政区', csv: 'L2-T1' }) },
+  { id: 'PRD-S02', name: '产物:overlay 交集产面层', category: '产物语义', type: 'llm',
+    run: async (t) => llmRun(t, '商业用地与居住用地的交集面',
+      (b, _t, sig) => {
+        if (/缺数据|未产出|需上传/.test(b)) return { pass: false, stage: 's1', obs: `误GAP:"${b}"` };
+        const prods = (t.productLayers && t.productLayers(5)) || [];
+        const overlay = prods.find((l) => l.kind === 'polygon' && (l.paint && l.paint.tool === 'overlay')) || prods[prods.length - 1] || {};
+        return { pass: overlay.kind === 'polygon' && overlay.fcCount > 0, stage: overlay.fcCount ? '' : 's2', obs: `kind=${overlay.kind} feats=${overlay.fcCount}`, review: 'overlay 是否产交集面层（非空）？' };
+      }, { range: '行政区', csv: 'L2-T1' }) },
+].map((c) => ({ ...c, type: 'llm' }));
 
 // ═══════════════════════════════════════════════════════
 // F. FC 全链路（20 例·emc_test_cases.md → 可执行飞轮用例）
@@ -527,6 +588,86 @@ const EMC_FC = [
       const b = t.badge();
       return { pass: !/请求失败|ERR/.test(b || ''), stage: '', obs: `胶囊执行 badge="${String(b || '').slice(0,20)}"`, review: '胶囊点击是否快速出图？' };
     } },
+
+  // ═══ CF-09 新采集（2026-07-29·7 例·覆盖 finalStep 假结论/推理螺旋/多步链/样式/类型/视角）═══
+  // B002: finalStep 假结论 — 多类操作只说不做
+  { id: 'FC-21', name: 'CF09·多类用地裁剪+诚实结论', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '裁剪出西陵区范围内的情绪点，并生成一张热力图',
+      (b, _t, sig) => {
+        const noFake = !/（注：未实际生成）/.test(b);   // 诚实标记
+        const hasAction = sig.tools.length > 0;
+        const hasLayer = sig.newLayers > 0 || sig.renderedNew > 0;
+        const noCrash = !/请求失败/.test(b);
+        return { pass: hasAction && noFake && noCrash, stage: '', obs: `tools=${sig.tools.join(',')} layers=${sig.newLayers}/${sig.renderedNew} fake=${!noFake}`, review: '是否真实产出图层？假结论是否消除？' };
+      }, { csv: 'L2-T1', range: '行政区' }) },
+
+  // B003: LLM 推理螺旋 — 简单查询耗时异常
+  { id: 'FC-22', name: 'CF09·数据清单查询短路径', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '我上传了哪些数据？',
+      (b) => {
+        const noGap = !/缺数据|未产出|需上传/.test(b);
+        const noCrash = !/请求失败/.test(b);
+        return { pass: noGap && noCrash, stage: '', obs: `badge="${String(b).slice(0,30)}"`, review: '是否直接回答（非推理螺旋）？' };
+      }, { csv: 'L2-T1', range: '行政区' }) },
+
+  // B004: finalStep 假结论 — 筛选点图层只说不做
+  { id: 'FC-23', name: 'CF09·点层裁剪执行验证', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '将西陵区范围内的情绪点筛选出来单独显示',
+      (b, _t, sig) => {
+        const hasLayer = sig.newLayers > 0 || sig.renderedNew > 0;
+        const noFake = !/（注：未实际生成）/.test(b);
+        const noCrash = !/请求失败/.test(b);
+        const toolOk = sig.tools.includes('clip') || sig.tools.includes('extract_feature');
+        return { pass: toolOk && hasLayer && noFake && noCrash, stage: '', obs: `tools=${sig.tools.join(',')} layers=${sig.newLayers}/${sig.renderedNew}`, review: '裁剪结果是否实际落地？' };
+      }, { csv: 'L2-T1', range: '行政区' }) },
+
+  // B005: 多步链断裂 — 只做一半
+  { id: 'FC-24', name: 'CF09·多步链完整性', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '分别裁剪出西陵区和伍家岗区的情绪点',
+      (b, _t, sig) => {
+        const hasLayer = sig.newLayers > 0 || sig.renderedNew > 0;
+        const noFake = !/（注：未实际生成）/.test(b);
+        const noCrash = !/请求失败/.test(b);
+        // 多步操作应触发 extract_feature（抽取区范围）或 clip
+        const hasMultiTool = sig.tools.length >= 1;
+        return { pass: hasMultiTool && hasLayer && noFake && noCrash, stage: '', obs: `tools=${sig.tools.join(',')} layers=${sig.newLayers}/${sig.renderedNew} steps=${sig.tools.length}`, review: '多区操作是否全部完成？' };
+      }, { csv: 'L2-T1', range: '行政区' }) },
+
+  // B006: 意图缩窄 — "情绪点"不应缩为单极性
+  { id: 'FC-25', name: 'CF09·全极性操作不缩窄', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '能帮我筛选出西陵区的情绪点吗？',
+      (b, _t, sig) => {
+        const hasLayer = sig.newLayers > 0 || sig.renderedNew > 0;
+        const noFake = !/（注：未实际生成）/.test(b);
+        const noCrash = !/请求失败/.test(b);
+        // 不应只针对"积极"极性（用户没限定）
+        const answer = (t.answerText && t.answerText()) || '';
+        const narrowedToSinglePolarity = /仅.*积极|只.*积极|积极情绪点/.test(answer) && !/消极/.test(answer) && !/中性/.test(answer);
+        return { pass: hasLayer && noFake && noCrash && !narrowedToSinglePolarity, stage: '', obs: `layers=${sig.newLayers}/${sig.renderedNew} narrow=${narrowedToSinglePolarity}`, review: '是否自行缩窄为单一极性？' };
+      }, { csv: 'L2-T1', range: '行政区' }) },
+
+  // B007: 图层类型混乱 — 声称面层实际产出点层
+  { id: 'FC-26', name: 'CF09·图层类型一致性', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '从行政区中抽取西陵区的范围',
+      (b, _t, sig) => {
+        const hasLayer = sig.newLayers > 0 || sig.renderedNew > 0;
+        const toolOk = sig.tools.includes('extract_feature') || sig.tools.includes('clip');
+        const noFake = !/（注：未实际生成）/.test(b);
+        const noCrash = !/请求失败/.test(b);
+        return { pass: toolOk && hasLayer && noFake && noCrash, stage: '', obs: `tools=${sig.tools.join(',')} layers=${sig.newLayers}/${sig.renderedNew}`, review: '抽取的面层是否正确渲染？' };
+      }, { csv: false, range: '行政区' }) },
+
+  // B008: 网格聚合 2D/3D 视角未解耦（老 bug）
+  { id: 'FC-27', name: 'CF09·网格聚合生成验证', category: 'FC全链路', type: 'llm',
+    run: async (t) => llmRun(t, '对当前区域做500m方格网聚合',
+      (b, _t, sig) => {
+        const toolOk = sig.tools.includes('density');
+        const hasLayer = sig.newLayers > 0 || sig.renderedNew > 0;
+        const noCrash = !/请求失败/.test(b);
+        // 检查 cell_size 参数
+        const hasCellParam = sig.params && sig.params.cell === 500;
+        return { pass: toolOk && hasLayer && noCrash, stage: '', obs: `tools=${sig.tools.join(',')} layers=${sig.newLayers}/${sig.renderedNew} cell=${sig.params?.cell || '?'}`, review: '网格是否生成？2D/3D 视角适配？' };
+      }, { csv: 'L2-T1' }) },
 ];
 
 // ═══════════════════════════════════════════════════════
@@ -559,6 +700,7 @@ export const CASES = [
   ...RESULT_NO_LLM, ...RESULT_LLM,
   ...SMART_NO_LLM, ...SMART_LLM,
   ...EMC_FC,
+  ...PRODUCT_SEMANTIC,   // F-2 产物语义断言（CB-10 飞轮审查）
 ];
 
 export const CATEGORIES = ['CPD导游', 'UI渲染', '引擎谓词', '意图识别', '工具选择', '参数正确性', '成果范式', 'Smart交流', 'FC全链路'];

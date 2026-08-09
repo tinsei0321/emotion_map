@@ -12,13 +12,13 @@ _CATEGORIES = {'concept', 'single', 'multi', 'unknown'}
 # 注：compare_regions 是前端复合工具（复用 zonal_stats 逐区聚合，无独立 geo 端点，守委托 Toolbox 红线）
 _SINGLE_TOOLS = {'density', 'rank', 'buffer', 'clip', 'overlay', 'zonal_stats',
                  'nearest', 'hotspot', 'area_stats', 'merge', 'extract_feature', 'filter_attr',
-                 'compare_regions'}
+                 'compare_regions', 'generate_point_layer'}   # CB-22d：批量地名标点（knowledge_qa→地图标记）
 # required_slots / optional_defaults 键应是工具能接受的入参名（防拼写漂移）
 _KNOWN_SLOTS = {'layer', 'range', 'boundary', 'center', 'radius_m', 'by', 'top_n', 'how',
                 'layer_a', 'layer_b', 'target', 'k', 'value_col', 'agg_cols', 'pre_filter',
                 'bandwidth_m', 'cell_size_m',
                 'mode', 'radius', 'weightField', 'cell_size', 'polarity', 'level',
-                'boundaries'}   # density 委托 Toolbox 的入参名；boundaries = compare_regions 多区入参
+                'boundaries', 'threshold', 'soft_threshold', 'names', 'as'}   # density 委托 Toolbox 的入参名；boundaries = compare_regions 多区入参；threshold/soft_threshold = hotspot 软分级（P1）；names/as = generate_point_layer（CB-22d）
 
 
 def test_registry_structure():
@@ -55,6 +55,30 @@ def test_diagnose_prompt_includes_registry():
         assert s['skill'] in p, f'diagnose prompt 缺技能: {s["skill"]}'
 
 
+def test_diagnose_intent_has_knowledge_qa():
+    """CB-22 三层架构：diagnose intent 枚举含 knowledge_qa（知识问答通道·意图判断归位）。
+
+    豁免前提（P0-3 先扩 eval）：diagnose 加类增量·不改不删现有三值——本断言守护枚举存在·
+    test_diagnose_existing_three_intents_unchanged 守护现有三值判据未删。
+    """
+    from ai_qa.prompts import build_diagnose_prompt
+    p = build_diagnose_prompt('')
+    assert 'knowledge_qa' in p, 'diagnose intent 枚举缺 knowledge_qa（知识问答通道断）'
+    # 判据段须含对比句（有哪些=知识问答·什么是=general·防 Flash 混淆·Codex V1）
+    assert '有哪些' in p and '什么是' in p, 'knowledge_qa 判据段缺对比句（有哪些 vs 什么是）'
+
+
+def test_diagnose_existing_three_intents_unchanged():
+    """CB-22 三层架构（豁免条件 3）：现有三值判据文本未删（增量不改存量·防重构删类）。"""
+    from ai_qa.prompts import build_diagnose_prompt
+    p = build_diagnose_prompt('')
+    assert 'general=通用问答' in p or 'general' in p, 'general 判据被删（增量豁免·不得删现有）'
+    assert 'gis_operation' in p, 'gis_operation 判据被删'
+    assert 'emotion_analysis' in p, 'emotion_analysis 判据被删'
+    # 多轮续作例外：分析中穿插知识问 → 判 knowledge_qa（非续作 emotion·Codex V1/glm F1）
+    assert 'knowledge_qa' in p and '续作' in p, '多轮续作例外段缺失'
+
+
 def test_required_slots_known():
     for s in TEMPLATE_REGISTRY:
         for slot in s['required_slots']:
@@ -78,11 +102,69 @@ def test_final_prompt_includes_capsule_rule():
 
 
 def test_final_prompt_stays_lean():
-    """CB-09 D019 极瘦回归守门：final prompt 须 <2KB（防 MANIFESTO/industry_kb 回灌致 17KB+·prefill 20-35s 回潮）。
-    含胶囊规则（~360 字节·Chinese UTF-8）仍远低于 2KB·与 D019 表 ~1-2KB 目标一致。"""
+    """CB-09 D019 极瘦回归守门：final prompt 静态模板 <3KB（CB-10 P0-4 后实测 2641B·含语言风格规则·防 MANIFESTO/industry_kb 回灌致 17KB+·prefill 回潮）。
+    出口三段式 P0 观点先行软扩后 2957B < 3000B（实测基线 ~2833B——超 Codex 引用的 2641B 历史快照 192B·CB-14 final_brief 后现状·观点先行 +124B）。
+    ⚠️ 模板体积已近硬门禁（余量 ~43B）：**P1 起冻结 FINAL_TEMPLATE 加字**——结论段学术化/观点细化一律走前端确定性聚合（result-struct.js）或 ctx 注入，不再加模板。"""
     from ai_qa.prompts import build_final_prompt
     n = len(build_final_prompt('', '').encode())
-    assert n < 3000, f'final prompt 膨胀到 {n} bytes（应 <3KB·含语言风格规则·查是否回灌 MANIFESTO/industry_kb）'
+    assert n < 3000, f'final prompt 膨胀到 {n} bytes（应 <3KB·含语言风格规则·查是否回灌 MANIFESTO/industry_kb·模板已冻结加字）'
+
+
+def test_final_prompt_has_insight_first():
+    """出口三段式 P0（CB 第三轮 glm/Codex 共识）：FINAL_TEMPLATE 须含"观点先行"正式指令。
+
+    D5 修正依据：观点=核心价值（用户"观点即干货"）→ 须正式模板指令（LLM 必读）·
+    非 ctx 附加提示（遵守度弱·落在【当前数据】段被当数据摘要）。防静默删除（承重模板一次一处）。"""
+    from ai_qa.prompts import build_final_prompt
+    p = build_final_prompt('', '')
+    assert '观点先行' in p, 'final prompt 缺"观点先行"指令（出口三段式 P0 核心·D5）'
+    assert '观点≠结论' in p, 'final prompt 缺"观点≠结论"区分说明（防观点/结论混写）'
+    assert '**观点：**' in p, 'final prompt 缺观点 markdown 约定（前端观点卡提取锚点）'
+    # S2 审计（Codex）：观点先行须在三句骨架前（防指令被移到模板底部弱化）
+    assert p.index('观点先行') < p.index('三句骨架'), '观点先行指令须在"三句骨架"之前（防被移底弱化·D5 位置守门）'
+
+
+def test_fc_sys_prompt_keeps_polarity_discipline():
+    """CB-10 P2-2 守卫：FC prompt 极性范围纪律段在（防 0073990 式"简化"静默删除 B006 修复）。
+
+    plans/domain_lens/多要素提取指令不恢复不断言——已被 _allToolCalls/autoExpand/契约 when 取代。"""
+    from ai_qa.router import build_fc_sys_prompt
+    p = build_fc_sys_prompt('')
+    assert '极性范围纪律' in p, 'FC prompt 缺极性范围纪律段（B006 修复被删？）'
+    assert '严禁自行缩窄' in p, 'FC prompt 缺"严禁自行缩窄"纪律（B006 核心句）'
+    assert '全部三个极性' in p, 'FC prompt 缺"全部三个极性"默认（B006 核心）'
+    assert 'clip 仅用于点数据' in p, 'FC prompt 缺 clip 面层禁止规则（工具规则锚点）'
+
+
+def test_search_endpoint_registered():
+    """G6b（CB-12）：/aiqa/search 端点注册 + search_chat 无 key 时抛 LLMError（防静默失败）。"""
+    from api.aiqa_routes import aiqa_router
+    paths = [r.path for r in aiqa_router.routes]
+    assert '/aiqa/search' in paths, '搜索端点未注册'
+    from ai_qa.llm import search_chat, LLMError
+    import os
+    _k = os.environ.pop('DEEPSEEK_API_KEY', None)
+    try:
+        try:
+            search_chat('测试')
+            assert False, '无 key 应抛 LLMError'
+        except LLMError:
+            pass
+    finally:
+        if _k:
+            os.environ['DEEPSEEK_API_KEY'] = _k
+
+
+def test_fc_sys_prompt_keeps_scale_and_domain_lens_instruction():
+    """G1（CB-12·glm组 修正 3）：FC prompt 尺度判定段 + domain_lens 标签指令在（防 0073990 式"简化"静默删除）。
+    去三字段硬编码的前提 = FC prompt 教 LLM 产出 [scale:xxx]/[domain_lens:xxx] 标签（A 部解析源）。"""
+    from ai_qa.router import build_fc_sys_prompt
+    p = build_fc_sys_prompt('')
+    assert '尺度判定' in p, 'FC prompt 缺尺度判定段（G1 scale A 部源）'
+    assert 'macro' in p and 'meso' in p and 'micro' in p, 'FC prompt 尺度段缺 macro/meso/micro'
+    assert '[scale:' in p, 'FC prompt 缺 [scale:xxx] 标签指令'
+    assert '[domain_lens:' in p, 'FC prompt 缺 [domain_lens:xxx] 标签指令（domain_lens A 部源）'
+    assert '出口须随尺度差异化' in p, 'FC prompt 缺出口差异化纪律'
 
 
 def test_fill_card_prompt_lean():

@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.css" />
   <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js"></script>
 
-  <!-- deck.gl（热点图：ScreengridLayer + MapboxOverlay 叠 MapLibre；standalone UMD，全局 deck） -->
+  <!-- deck.gl（废弃：ScreengridLayer 热点图·本仓实测在 MapLibre+MapboxOverlay 不渲染·CDN 保留待清理·勿再用于 3D 渲染） -->
   <script src="https://unpkg.com/deck.gl@9.1.0/dist.min.js"></script>
   <script src="https://unpkg.com/@deck.gl/aggregation-layers@9.1.0/dist.min.js"></script>
   <script src="https://unpkg.com/@deck.gl/mapbox@9.1.0/dist.min.js"></script>
@@ -232,7 +232,7 @@
               </svg>
               <button class="emc-affix" id="emc-affix-add" type="button" title="附加当前选中图层/范围作上下文">+</button>
               <div class="aiq-mode" id="aiq-mode">
-                <button type="button" data-mode="pro" title="Pro · 旗舰推理（深度思考，慢）" aria-label="Pro 模式（大脑·深度思考）"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17 5.5a3.5 3.5 0 0 1 3.5 3.5"/></svg></button>
+                <button type="button" data-mode="pro" title="Pro · 已停用（flash 足够·暂用 flash）" aria-label="Pro 模式（已停用）" disabled><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17 5.5a3.5 3.5 0 0 1 3.5 3.5"/></svg></button>
                 <button type="button" data-mode="flash" title="Flash · 快速经济（无深度思考）" aria-label="Flash 模式（闪电·快速）"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></button>
               </div>
             </div>
@@ -660,7 +660,7 @@
             <div id="grid-dialog" class="app-dialog hm-dialog">
               <div class="dialog-body">
 
-                <!-- ① 分析类型（组卡片：聚合域=标准网格+指定单元；热点 Gi*；Moran's I） -->
+                <!-- ① 分析类型（组卡片：聚合域=标准网格+指定单元；显著聚集 Gi*；Moran's I） -->
                 <div class="hm-group">
                   <div class="hm-group-title"><span class="hm-step-no">1</span><span class="hm-step-label">分析类型</span></div>
                   <div class="hm-analysis" id="grid-analysis"><!-- 类型卡 by JS（组卡片纵向，组内横向） --></div>
@@ -1169,7 +1169,7 @@
         <div class="info-section-title">未来展望</div>
         <div class="info-roadmap">
           <div class="rm-item"><span class="rm-dot"></span><b>L3 语义增强</b> — DeepSeek 细粒度情感（ sarcasm / irony / aspect-based）</div>
-          <div class="rm-item"><span class="rm-dot"></span><b>L4 多维归因</b> — Gi* 热点 / Moran's I 空间自相关 / H3 网格聚合</div>
+          <div class="rm-item"><span class="rm-dot"></span><b>L4 多维归因</b> — Gi* 显著聚集 / Moran's I 空间自相关 / H3 网格聚合</div>
           <div class="rm-item"><span class="rm-dot"></span><b>实时流</b> — Kafka + Flink 实时情绪流接入</div>
           <div class="rm-item"><span class="rm-dot"></span><b>多城市</b> — 武汉 / 襄阳 / 宜昌 都市圈扩展</div>
           <div class="rm-item"><span class="rm-dot"></span><b>暗色主题</b> — 数据展示场景适配</div>

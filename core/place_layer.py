@@ -20,6 +20,7 @@ zone 词表唯一来源：本模块。模拟器/corpus/check_spatial/搜索 全�
 不各自重定义（避免冲突，见 REFACTOR_PLAN Conflict 1/2/3）。
 ═══════════════════════════════════════════════════════════
 """
+import copy
 import json
 import math
 import os
@@ -103,6 +104,61 @@ def _pr(q, s):
     return difflib.SequenceMatcher(None, q, s or '').ratio() * 100
 
 
+# ── CB-22d A0：核心地名提取（地点模糊搜索·业界做法·不造轮子）────────────
+# 用户实测点破：片区名（葛洲坝片区/西坝片区）匹配差·核心地名（葛洲坝/西坝）匹配好。
+# 业界（高德专利 CN104679801A）：LLM 判意图 + 分词识别核心实体 + 成熟 API 解析·客户端只做确定性修正。
+# 本函数 = jieba 分词 → 剔除规划/行政/修饰后缀 → 返回核心地名候选（不剥实体后缀·防达门船厂/三峡青年城误伤）。
+# 仅作 forward 双路匹配的辅助·不改 _match_score 分层逻辑。
+
+# 规划/行政/聚合类后缀（仅这些可安全剔除·不含 船厂/城/厂/街 等实体后缀）
+_ZONE_SUFFIXES = ('历史文化街区', '示范区', '老城片区', '工业园区', '产业园', '片区', '街区', '老城', '工业园', '园区', '社区', '街道', '新区', '板块', '组团', '项目', '改造区')
+# 聚合/概念类词（jieba 分词后全为此类 → 判定无核心地名·归 unmatched）
+_AGGREGATE_WORDS = {'示范', '一体', '片区', '街区', '板块', '组团', '其他', '一批', '项目', '综合', '整体'}
+
+try:
+    import jieba
+    _HAVE_JIEBA = True
+except Exception:
+    _HAVE_JIEBA = False
+
+
+def _core_entities(q):
+    """jieba 分词 → 剔除规划/修饰后缀 → 核心地名候选列表（长度降序·防「葛洲坝」被拆成「葛洲/坝」）。
+
+    返回 [] 表示无核心地名（聚合/概念名·归 unmatched）。纯函数·不调 LLM。
+    """
+    if not q:
+        return []
+    if _HAVE_JIEBA:
+        words = [w for w in jieba.lcut(q) if w.strip()]
+    else:
+        # 无 jieba 回退：仅剥单个规划后缀（保守·不拆词）
+        words = [q]
+        for suf in _ZONE_SUFFIXES:
+            if q.endswith(suf):
+                words = [q[:len(q) - len(suf)]]
+                break
+    # 剔除后缀词 + 聚合词 + 单字 + 标点
+    candidates = []
+    for w in words:
+        ws = w.strip().strip('，,、。;；—-_')
+        if not ws or len(ws) < 2:
+            continue
+        if ws in _AGGREGATE_WORDS:
+            continue
+        if any(ws.endswith(s) for s in _ZONE_SUFFIXES):
+            ws = ws[:len(ws) - max(len(s) for s in _ZONE_SUFFIXES if ws.endswith(s))]
+            if len(ws) < 2:
+                continue
+        candidates.append(ws)
+    # 若 jieba 把「葛洲坝」拆成「葛洲/坝」·用最长候选（子串回补）·防过度拆分
+    if candidates:
+        best = max(candidates, key=len)
+        if len(best) >= 2:
+            return [best]
+    return candidates
+
+
 def _match_score(q, name, p):
     """分层打分（业界做法：exact > prefix > pinyin-exact > substring > fuzzy）。
 
@@ -142,6 +198,9 @@ _SEED_POI_PATH = os.path.join(_ROOT, 'SCRIPT', 'poi_data', 'yichang_poi_wgs84.js
 _AMAP_POI_PATH = os.path.join(_ROOT, 'SCRIPT', 'poi_data', 'amap_poi_wgs84.json')                       # 核心：1270 真实高德（西陵伍家）
 _AMAP_POI_CC_PATH = os.path.join(_ROOT, 'SCRIPT', 'poi_data', 'amap_poi_centralcity_wgs84.json')        # 中心城区外围：sim（AMAP_KEY 缺失 fallback；到位后换真实高德）
 _LANDMARK_POI_PATH = os.path.join(_ROOT, 'SCRIPT', 'poi_data', 'landmarks_wgs84.json')                  # 手标关键地标（高德未覆盖江南；search+sim 单一真源）
+# CB-16 Wave 2（CB-15 P0）：3220 高德 POI（DATA/POI/yichang_pois_wgs84.geojson·GeoJSON FeatureCollection）
+#   与 SCRIPT/poi_data/amap_poi_wgs84.json（1270）同源 poi_id·作下钻链地点清单补充（中心城区外围覆盖）
+_YICHANG_POIS_GEOJSON = os.path.join(_ROOT, 'DATA', 'POI', 'yichang_pois_wgs84.geojson')
 _MAIN_BOUNDARY = os.path.join(_ROOT, 'DATA', 'boundaries', '西陵伍家核心主城.geojson')
 _WATER_POLY_PATH = os.path.join(_ROOT, 'DATA', 'boundaries', '现状水系.geojson')
 
@@ -224,11 +283,14 @@ class PlaceLayer:
             pk = json.load(f)
         self.place_kw = pk.get('zones', {})
 
-        # POI（核心真实高德 + 中心城区外围 sim + 手标关键地标，合并为搜索/锚点宇宙）
+        # POI（核心真实高德 + 中心城区外围 sim + 手标关键地标 + 3220 高德 FC，合并为搜索/锚点宇宙）
         self.seed_pois = self._read_pois(_SEED_POI_PATH)
         self.amap_pois = self._read_pois(_AMAP_POI_PATH) + self._read_pois(_AMAP_POI_CC_PATH)
         self.landmark_pois = self._read_pois(_LANDMARK_POI_PATH)
-        self.all_pois = self.amap_pois + self.landmark_pois   # 搜索/导出宇宙 = amap + 手标地标（seed 退命名不参与，坐标粗糙）
+        # CB-16 Wave 2（CB-15 P0）：3220 高德 POI 接入（GeoJSON FC 适配层·两组 P0 阻塞修正）
+        self.yichang_pois = self._read_pois_geojson(_YICHANG_POIS_GEOJSON)
+        self.all_pois = self.amap_pois + self.landmark_pois + self.yichang_pois   # 搜索/导出宇宙 = amap + 地标 + 3220
+        self.all_pois = self._dedup_pois(self.all_pois)   # 3220 vs 1270 同源 poi_id·name+coord 容差去重
 
         # 预计算每条 POI 的拼音（连写 + 首字母），供 forward 拼音模糊匹配
         for _p in self.all_pois:
@@ -279,6 +341,65 @@ class PlaceLayer:
                 'radius_m': p.get('radius_m', 200),
                 'source': p.get('source', 'seed' if 'yichang' in path else ('landmark' if 'landmark' in path else 'amap')),
             })
+        return out
+
+    @staticmethod
+    def _read_pois_geojson(path):
+        """读 GeoJSON FeatureCollection POI（CB-16 Wave 2·3220 格式：geometry+properties）→ place_layer POI dict。
+
+        3220 高德 POI 字段错配（坐标在 geometry·无 baidu_level1/2/domain/element）——适配：
+        geometry.coordinates → lng/lat · category → baidu_level1 · keyword → baidu_level2 ·
+        district → area（zone 后缀匹配用）· domain/element 空（待 L4/规则补·limitations 标注）。
+        """
+        if not os.path.exists(path):
+            return []
+        with open(path, 'r', encoding='utf-8') as f:
+            gj = json.load(f)
+        out = []
+        for feat in gj.get('features', []) if isinstance(gj, dict) else gj:
+            geom = feat.get('geometry') or {}
+            if geom.get('type') != 'Point':
+                continue
+            coords = geom.get('coordinates') or []
+            if len(coords) < 2:
+                continue
+            p = feat.get('properties') or {}
+            out.append({
+                'name': p.get('name', ''),
+                'lng': float(coords[0]),
+                'lat': float(coords[1]),
+                'area': p.get('district', ''),
+                'baidu_level1': p.get('category', ''),
+                'baidu_level2': p.get('keyword', ''),
+                'domain': '',
+                'element': '',
+                'radius_m': 200,
+                'source': 'yichang_pois_geojson',
+            })
+        return out
+
+    @staticmethod
+    def _dedup_pois(pois):
+        """3220 vs 1270 去重（CB-16 Wave 2·同源 poi_id 重叠）：name 归一化 + coord 容差（~30m）。
+
+        保先序（1270 优先·带 baidu_level/zone 归属）·3220 补未覆盖。**同名且坐标<30m 才视为重复**
+        （CB-16 Wave 2 检查·glm组/Codex P1 修复：去掉 `_seen` name 快检——旧版同名第二条直接判重·
+        连锁店/分店（名同址异）被误删·坐标容差成死代码）。
+        O(n²) 线性扫描（n=4310·_load 只跑一次·毫秒级可接受）。
+        """
+        out = []
+        for _p in pois:
+            _nm = _p.get('name', '').replace(' ', '').replace('（', '(').replace('）', ')')
+            _dup = False
+            # 坐标容差优先：同名 + 坐标<30m 才算重复（同 POI 微偏移）·名同址异是两条（连锁店）
+            for _q in out:
+                _qm = _q.get('name', '').replace(' ', '').replace('（', '(').replace('）', ')')
+                if _qm == _nm and abs(_q.get('lng', 0) - _p.get('lng', 0)) < 0.0003 \
+                        and abs(_q.get('lat', 0) - _p.get('lat', 0)) < 0.0003:
+                    _dup = True
+                    break
+            if not _dup:
+                out.append(_p)
         return out
 
     def _build_zone_boundaries(self):
@@ -402,8 +523,15 @@ class PlaceLayer:
         if not query or len(query.strip()) < 1:
             return []
         q = query.strip()
+        _key = (q, limit, min_fuzzy_score)
+        _hit = _FWD_CACHE.get(_key)
+        if _hit is not None:
+            return [dict(h) for h in _hit]
         _threshold = min_fuzzy_score if min_fuzzy_score is not None else 55
         scored = []   # (score, p)
+        # CB-22d A0：核心地名双路匹配——完整串走原 _match_score（防误伤）+ 核心实体走 substring（兜底）·取高分。
+        #   复用 _match_score 分层（exact>prefix>substring>fuzzy）·不重写算法·仅加分词前置。
+        _cores = _core_entities(q)
         for p in self.all_pois:
             name = p['name'] or ''
             if not name:
@@ -411,6 +539,13 @@ class PlaceLayer:
             if p.get('_in_water'):
                 continue
             tier, s = _match_score(q, name, p)
+            # 核心实体双路：jieba 分出「葛洲坝」→ substring 匹配「葛洲坝中心菜市场」180+
+            if _cores:
+                for c in _cores:
+                    ct, cs = _match_score(c, name, p)
+                    if ct == 'exact' or ct == 'prefix' or ct == 'substring':
+                        if cs > s:
+                            s = cs; tier = ct
             if tier is None and s < _threshold:
                 continue
             scored.append((s, p))
@@ -435,6 +570,9 @@ class PlaceLayer:
                 'source': 'local',
                 'data_source': p.get('source') or 'seed',   # 审计：amap 库 / seed 手标
             })
+        if len(_FWD_CACHE) >= _CACHE_MAX:
+            _FWD_CACHE.clear()
+        _FWD_CACHE[_key] = [dict(h) for h in hits]   # 存副本（防调用方修改污染缓存）
         return hits
 
     @track("MOD_PLACE.F_005")
@@ -445,6 +583,10 @@ class PlaceLayer:
         - poi_count：NEAR_RADIUS_M(500m) 半径内 POI 总数（popup「等N处」近邻语境）。
         - nearest_poi：nearest_pois[0]，兼容旧字段。
         """
+        _key = (round(float(lng), 6), round(float(lat), 6))
+        _hit = _REV_CACHE.get(_key)
+        if _hit is not None:
+            return copy.deepcopy(_hit)   # 含 nearest_pois 嵌套 list·深拷贝防污染
         zid = self.classify_point(lng, lat)
         scored = []
         near_cnt = 0
@@ -457,13 +599,26 @@ class PlaceLayer:
         near = [{'name': p['name'], 'dist_m': round(d),
                  'category': p.get('baidu_level1', '') or p.get('baidu_level2', '')}
                 for d, p in scored[:5] if p.get('name')]
-        return {
+        out = {
             'zone_id': zid,
             'zone_name': self.zone_by_id.get(zid, {}).get('name_zh', '通用市区'),
             'nearest_poi': near[0] if near else None,
             'nearest_pois': near,
             'poi_count': near_cnt,
         }
+        if len(_REV_CACHE) >= _CACHE_MAX:
+            _REV_CACHE.clear()
+        _REV_CACHE[_key] = copy.deepcopy(out)
+        return out
+
+
+# ── forward/reverse 结果缓存（MOD_PLACE 渲染风暴 backlog·纯性能优化·行为不变）──
+# 触发背景：EMC/测试高频地理查询（lookup_place/search_place）重复全量扫 4310 POI + 逐条
+# resolve_zone → F_002/F_003 计数风暴级（B3 36min ~20 万次·实为查询量大非渲染）。
+# POI 宇宙加载后静态 → 结果可安全缓存；存副本返副本防共享引用污染；超上限整体清空（查询窗口小）。
+_FWD_CACHE = {}    # (query, limit, min_fuzzy) -> [hit dict...]
+_REV_CACHE = {}    # (lng, lat) -> place dict
+_CACHE_MAX = 1024
 
 
 # ── 单例 ──

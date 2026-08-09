@@ -1,0 +1,4 @@
+# RAG embedding 依赖（CB-22c Phase 0·按需安装：pip install -r requirements-rag.txt）
+# 版本锁定：Py3.14 wheel 已实测兼容（2026-08-09）
+sentence-transformers==5.7.0
+torch==2.13.0+cpu

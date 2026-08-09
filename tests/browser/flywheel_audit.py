@@ -4,7 +4,7 @@
   py tests/browser/flywheel_audit.py --batch B0     # no-llm 全量 45 例（0 DeepSeek）
   py tests/browser/flywheel_audit.py --batch B1     # llm 意图识别 100 例
   py tests/browser/flywheel_audit.py --batch B2     # llm 工具选择 100 例
-  py tests/browser/flywheel_audit.py --batch B3     # llm 参数/成果/Smart/CPD/UI 25 例
+  py tests/browser/flywheel_audit.py --batch B3     # llm 参数/成果/Smart/CPD/UI 26 例（含 RST-L06·08-08 对齐注释）
   py tests/browser/flywheel_audit.py --batch all    # B0→B3 顺序全跑
 
 采集（三路，绕开 test-board.js 模块闭包 _results 不可达的限制）：
@@ -26,7 +26,7 @@ from lib.emc_helpers import emc_session, open_emc   # noqa: E402
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 REPORTS = os.path.join(REPO, 'tests', 'reports')
 OUT = os.path.join(REPO, 'tests', 'browser', 'out')
-TEST_URL = 'http://localhost:8080/frontend/index.html?test=1'
+TEST_URL = 'http://localhost:8080/frontend/index.html?test=1'   # 默认 8080·--port 可覆盖（三组并发用不同端口防撞）
 
 BATCHES = {
     'B0': {'mode': 'no-llm', 'cats': [], 'timeout_min': 40},
@@ -34,6 +34,16 @@ BATCHES = {
     'B2': {'mode': 'llm', 'cats': ['工具选择'], 'timeout_min': 200},
     'B3': {'mode': 'llm', 'cats': ['参数正确性', '成果范式', 'Smart交流', 'CPD导游', 'UI渲染'], 'timeout_min': 120},
 }
+
+# F-4（CB-10 飞轮审查）：三档拆分——smoke（每次 commit）/ regression（每日或每 N commit）/ full（发版验收）。
+# smoke 选 no-llm 全量 + llm 关键 10 例（成果范式/Smart/产物语义·省时）；regression 加意图/工具精选；full = B1-B3。
+TIERS = {
+    'smoke': ['B0', 'B3-smoke'],
+    'regression': ['B0', 'B1', 'B2', 'B3'],
+    'full': ['B0', 'B1', 'B2', 'B3'],
+}
+# B3-smoke：llm 子集（成果范式+Smart+产物语义·~10 例·每次 commit 可跑）
+B3_SMOKE_CATS = ['成果范式', 'Smart交流', '产物语义']
 
 ROWS_JS = """() => [...document.querySelectorAll('.tb-row')].map(r => ({
   id: (r.querySelector('.tb-id')||{}).textContent || '',
@@ -89,13 +99,14 @@ def _wait_done(page, timeout_min, tag):
     return False
 
 
-def run_batch(batch):
+def run_batch(batch, port=8080, backend_port=8000):
     cfg = BATCHES[batch]
     os.makedirs(OUT, exist_ok=True)
     before_reports = set(os.listdir(REPORTS)) if os.path.isdir(REPORTS) else set()
     t0 = time.time()
-    with emc_session(open=False) as page:
-        open_emc(page, url=TEST_URL, wait_ms=2500)
+    test_url = f'http://localhost:{port}/frontend/index.html?test=1'   # --port 覆盖（三组并发防端口撞·CB-19 发版回归）
+    with emc_session(port=port, open=False, backend_port=backend_port) as page:
+        open_emc(page, url=test_url, wait_ms=2500)
         page.wait_for_selector('#tb-fab', timeout=45000)
         _configure_and_start(page, cfg['mode'], cfg['cats'])
         print(f'[{batch}] started mode={cfg["mode"]} cats={cfg["cats"] or "ALL"}', flush=True)
@@ -150,14 +161,123 @@ def run_batch(batch):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--batch', required=True, choices=list(BATCHES.keys()) + ['all'])
+    ap.add_argument('--batch', choices=list(BATCHES.keys()) + ['all'], help='指定 batch（B0-B3/all）')
+    ap.add_argument('--tier', choices=['smoke', 'regression', 'full'], help='三档拆分（F-4）：smoke=每次commit / regression=每日 / full=发版验收')
+    ap.add_argument('--collect', metavar='AUDIT_JSON', help='F-8：从 audit JSON 失败行生成 buglog 草稿（人工确认入库）')
+    ap.add_argument('--port', type=int, default=8080, help='serve 端口（默认 8080·三组并发用不同端口防撞·CB-19 发版回归）')
+    ap.add_argument('--backend-port', type=int, default=8000, help='serve 后端端口（默认 8000·三组并发传不同值防撞·CB-19）')
     args = ap.parse_args()
-    batches = list(BATCHES.keys()) if args.batch == 'all' else [args.batch]
+    if args.collect:
+        sys.exit(collect_buglog_drafts(args.collect))
+    if args.tier:
+        # tier → batches（含 B3-smoke 子集：成果范式+Smart+产物语义）
+        batches = []
+        for b in TIERS[args.tier]:
+            if b == 'B3-smoke':
+                run_batch_smoke(port=args.port, backend_port=args.backend_port)
+                continue
+            batches.append(b)
+    elif args.batch:
+        batches = list(BATCHES.keys()) if args.batch == 'all' else [args.batch]
+    else:
+        ap.error('须给 --batch 或 --tier')
     for b in batches:
         try:
-            run_batch(b)
+            run_batch(b, port=args.port, backend_port=args.backend_port)
         except Exception as e:
             print(f'[{b}] FATAL: {e}', flush=True)
+
+
+def collect_buglog_drafts(audit_json):
+    """F-8（CB-10 飞轮审查）：从 audit JSON 失败行生成 buglog 草稿（人工确认入库）。
+
+    草稿写到 tests/buglog/open/_drafts/（不直接入 open/·人工 review 后 move + 填根因）。
+    复用 bug-collector skill 的 frontmatter 契约（ASCII type/severity/module·YAML）。
+    """
+    import datetime as _dt
+    with open(audit_json, encoding='utf-8') as fh:
+        d = json.load(fh)
+    rows = d.get('rows', [])
+    fails = [r for r in rows if 'tb-fail' in r['cls'] or 'tb-pending' in r['cls']]
+    if not fails:
+        print(f'[OK] 无失败行（audit 共 {len(rows)} 行）——无需生成草稿')
+        return 0
+    drafts_dir = os.path.join(REPO, 'tests', 'buglog', 'open', '_drafts')
+    os.makedirs(drafts_dir, exist_ok=True)
+    today = _dt.date.today().isoformat()
+    made = 0
+    for r in fails:
+        fid = r.get('id') or 'UNKNOWN'
+        name = r.get('name') or fid
+        cat = r.get('cat') or '未知'
+        summ = (r.get('summary') or '').strip()
+        slug = fid.lower().replace('-', '-').replace(' ', '-') or 'bug'
+        path = os.path.join(drafts_dir, f'DRAFT-{slug}.md')
+        body = f"""---
+id: DRAFT
+title: '飞轮失败：{name}（{cat}）'
+type: BUG
+severity: MED
+priority: P1
+status: open
+module: 飞轮
+source: 飞轮采集
+cb: CB-10
+rootcause: ''
+case_ref: '{fid}'
+repro_count: 1
+last_repro: {today}
+---
+
+# DRAFT · 飞轮失败：{name}
+
+## 标准化用例（草稿·待人工补全）
+
+**问句**：（待人工填写）
+
+**数据前提**：（待人工填写）
+
+**失败表现**：{summ}
+
+---
+*本文件为 {audit_json} 自动生成草稿（flywheel_audit --collect）·人工确认后移入 buglog open/ 并填根因。*
+"""
+        with open(path, 'w', encoding='utf-8') as fh:
+            fh.write(body)
+        made += 1
+        print(f'  [草稿] {path}')
+    print(f'[OK] 生成 {made} 条 buglog 草稿 → {drafts_dir}（人工 review 后移入 open/）')
+    return 0
+
+
+def run_batch_smoke(port=8080, backend_port=8000):
+    """B3-smoke：llm 子集（成果范式+Smart+产物语义）·每次 commit 可跑（~10 例）。"""
+    cfg = {'mode': 'llm', 'cats': B3_SMOKE_CATS, 'timeout_min': 60}
+    os.makedirs(OUT, exist_ok=True)
+    before_reports = set(os.listdir(REPORTS)) if os.path.isdir(REPORTS) else set()
+    t0 = time.time()
+    test_url = f'http://localhost:{port}/frontend/index.html?test=1'
+    with emc_session(port=port, open=False, backend_port=backend_port) as page:
+        open_emc(page, url=test_url, wait_ms=2500)
+        page.wait_for_selector('#tb-fab', timeout=45000)
+        _configure_and_start(page, cfg['mode'], cfg['cats'])
+        print('[B3-smoke] started llm 子集（成果范式+Smart+产物语义）', flush=True)
+        finished = _wait_done(page, cfg['timeout_min'], 'B3-smoke')
+        page.wait_for_timeout(5000)
+        rows = page.evaluate(ROWS_JS)
+        fetchlog = page.evaluate(FETCH_JS)
+        local_storage = page.evaluate("() => Object.fromEntries(Object.entries(localStorage))")
+    elapsed = time.time() - t0
+    after_reports = set(os.listdir(REPORTS)) if os.path.isdir(REPORTS) else set()
+    new_reports = sorted(after_reports - before_reports)
+    passes = [r for r in rows if 'tb-pass' in r['cls']]
+    fails = [r for r in rows if 'tb-fail' in r['cls']]
+    print(f'\n═══ [B3-smoke] done finished={finished} elapsed={elapsed/60:.1f}min ═══')
+    print(f'  rows={len(rows)} pass={len(passes)} fail={len(fails)}')
+    print(f'  new_reports={new_reports}')
+    for f in fails:
+        print(f'    [ERR] {f["id"]} | {f["name"][:40]} | {f["summary"][:80]}')
+    return None
 
 
 if __name__ == '__main__':

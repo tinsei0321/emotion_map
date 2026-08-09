@@ -17,7 +17,7 @@ from ai_qa.paradigm import (
     template_registry_text, b_track_paradigm_text, select_template_text, template_id_list_text,
     DIAGNOSE_CARD_FIELDS, DATA_STRATEGY, TEMPLATE_REGISTRY,
 )
-from ai_qa.industry_kb import industry_kb_brief_text, industry_kb_lens_appendix
+from ai_qa.industry_kb import industry_kb_brief_text, industry_kb_lens_appendix, industry_kb_final_brief
 from core.tracker import track, register_track_id
 
 
@@ -26,6 +26,17 @@ def _today_line() -> str:
     d = _dt.date.today()
     wk = '周一 周二 周三 周四 周五 周六 周日'.split()[d.weekday()]
     return f'当前现实日期：{d.year}年{d.month}月{d.day}日（{wk}）。\n'
+
+
+# CB-10 P0-4：人民城市理念改运行时条件注入（省静态 ~130B·防 D019 回弹 test_final_prompt_stays_lean）
+_PEOPLE_CITY_LINE = ('**"人民城市"理念**：问题涉及项目背景/定位/情绪地图定义/意义价值时，自然融入——'
+                     '"人民城市人民建，人民城市为人民"，情绪地图价值=听见市民心声、把人民情绪与诉求纳入'
+                     '城市体检与规划决策（补传统问卷采样局限）；融入贴题自然，勿生硬口号。\n')
+
+
+def _is_concept_question(context):
+    """概念/背景问（人民城市理念注入条件）：项目背景/定位/定义/意义价值。"""
+    return any(w in (context or '') for w in ('什么是', '意义', '价值', '理念', '城市体检', '项目背景', '定义', '情绪地图'))
 
 
 def _inject_tokens(prompt, context_tokens):
@@ -118,29 +129,27 @@ FINAL_TEMPLATE = """
 ═══ 最终结论 ═══
 基于【探索历史】+【当前数据】给最终结论。
 
+**观点先行**：首句 `> **观点：**` 给观点（答"所以呢"）·再述骨架。**观点≠结论**·不重复。
+
 **三句骨架**（必守）：① 动作（做了什么）② 产出（发现什么·**引用真实数值/地名**）③ 交互（`{{show:图层名}}` 按钮引导）。**图层是主出口**——分析类必产图层·零图层系统降级·严禁只给文字。
 
 **诚实**：失败/未生成就说失败（"尝试 X 未成功"/"数据不足"）·**禁编造图层名/数字**（地图状态用户可见·谎报失信）。
 
 **格式**：可读 markdown·禁工具 JSON·禁删除线。
+**排版**（G2·突出关键·禁纯段落堆砌）：结论/关键数值/地名用 `**加粗**`·多个发现用 `-` 列表·局限/口径用 `> 引用块`·要点可用 `###` 小标题。
 
 **内联模板**（独占一行·渲染成按钮/图）：`{{show:图层}}` 显示 · `{{focus:区域}}` 飞到 · `{{inspect:区域}}` 深读 · 数据≥3 项比较/排序/趋势出图 `{{chart:TYPE|title=|x=标签|y=数值}}`。
 
 **追问胶囊**（末尾产 1-3 个·各占一行）：`{{capsule:标签|级别|技能|参数=值|...}}`。级别 `L1`=同工具换参（直达·换极性/排序）/`L2`=跨工具单步（轻判·叠置/缓冲）·禁 L3。技能 ∈ density/rank/buffer/clip/overlay/zonal/compare/extract_feature/area_stats/hotspot/nearest/filter_attr。参数=值 从本问结果派生。例：`{{capsule:切换消极热力图|L1|density|analysis=negative|polarity=N}}`。
 
 **语言风格**（严格遵守）：
-- **面向用户**：用户看到的是城市分析报告，不是技术日志。禁出现工具名（如 extract_feature/density/zonal_stats）、参数名（如 boundary/radius/polarity_index）、代码片段、英文术语。
-- **字段名必须中文化**：数据字段名（emotion_intensity/polarity/score/polarity_index/domain_top 等）在用户可见文本中**必须用中文**（情绪强度/极性/得分/极性指数/归因领域）。禁直出原始英文列名。
-- **用中文专业词**：工具名用中文（抽取/裁剪/聚合/排序/缓冲/叠置/筛选/合并/热力图/聚集分析/面积统计/区域对比），参数用中文（范围/半径/极性/边界/分组字段）。
-- **专业且生动**：在逻辑和用语保持专业、客观、理性的同时，表达偏向生动、自然、形象。用"这片区域居民情绪偏消极"而非"polarity_index=-0.45"；用"滨江带呈现明显的高热度聚集"而非"密度值偏高"；用"以情绪强度加权"而非"以 emotion_intensity 为权重"。
-- **禁箭头穿插**：不要在中文语句中穿插 → 等符号。用逗号或句号断句。
-- 简短（3-5 句）·通俗+专业词紧跟解释（极性=情绪正负）·勿追加"建议进一步分析"。
+- **面向用户**：城市分析报告非技术日志。禁工具名（extract_feature/density）、参数名（boundary/polarity_index）、代码片段、英文术语、→ 符号（用逗号/句号断句）。
+- **中文化**：字段名 emotion_intensity→情绪强度、polarity→极性、polarity_index→极性指数、domain_top→归因领域；工具名用中文（抽取/裁剪/聚合/排序/缓冲/叠置/筛选/合并/热力图/区域对比）。
+- **专业且生动**：专业客观理性 + 生动自然形象（"这片区域情绪偏消极"而非"polarity_index=-0.45"）；简短 3-5 句·通俗+专业词紧跟解释（极性=情绪正负）·勿追加"建议进一步分析"。
 
-**推理风格（thinking）**：推理过程用生动、口语、拟人的表达，像跟同事边想边讲思路，避免"因为/所以/另外/但是"的僵硬八股；结论正文仍守上述语言风格。
+**thinking 推理**：生动口语拟人，像跟同事边想边讲，避免"因为/所以/另外/但是"八股；正文仍守语言风格。
 
 **纯问答排版**（无工具操作、纯文字作答时·如"什么是情绪地图/项目意义/某概念"）：用**条目式**组织（`###` 小标题 + `-` 要点列表），关键术语/结论用 `**加粗**` 强调，信息分层（是什么→为什么→怎么用）；此时不受"3-5 句简短"约束。
-
-**"人民城市"理念**：问题涉及项目背景/定位/情绪地图定义/意义价值时，自然融入"人民城市"理念——"人民城市人民建，人民城市为人民"，情绪地图价值=听见市民心声、把人民情绪与诉求纳入城市体检与规划决策（补传统问卷采样局限）；融入贴题自然，勿生硬口号。
 
 【探索历史】（历轮工具观察）：
 {tool_history}
@@ -159,6 +168,18 @@ def build_final_prompt(context: str = '', tool_history: str = '', context_tokens
     # CB-09 D019 极瘦：去 MANIFESTO 前置（省 11.2KB）+ industry_kb_lens_appendix（省 0-20KB）·17KB→~0.9KB
     # 诚实/结构由前端 harness.applyQualityDefense 代码守（5.232·空答/谎报/矛盾/截断）·prompt 不再内嵌自查清单
     prompt = _today_line() + FINAL_TEMPLATE.format(tool_history=hist, context=ctx)
+    # CB-14（A4）：finalStep 按 domain_lens 条件注入命中领域【精简归因速查】——治"finalStep 无领域知识"痛点
+    #   （D019 后 final 极瘦·FC 出 domain_lens 但 final 不消费→回答缺行业权威话语/归因落点）。
+    #   与 agent_step 的 industry_kb_lens_appendix（全量）区分：此处只注精简框架（每域 ~1.6KB·非全量·防 D019 回弹）。
+    #   条件性注入——空 context/无 domain_lens 不触发·test_final_prompt_stays_lean 静态门禁不受影响。
+    #   体积守卫见 test_final_prompt_with_lens_stays_bounded（四域全注 <5KB·防 final_brief 加厚回弹）。
+    if domain_lens:
+        _brief = industry_kb_final_brief(domain_lens)
+        if _brief:
+            prompt = prompt + '\n\n' + _brief
+    # CB-10 P0-4：人民城市理念仅概念问注入（省静态体积·防 D019 回弹）
+    if _is_concept_question(ctx):
+        prompt = _PEOPLE_CITY_LINE + prompt
     return _inject_tokens(prompt, context_tokens)
 
 
@@ -176,7 +197,7 @@ DIAGNOSE_TEMPLATE = """
 
 输出**严格 JSON 对象**（仅 JSON，禁 markdown 代码块 / 前后解释），结构如下（8 字段必填，intent 置顶）：
 {{
-  "intent": "general" | "gis_operation" | "emotion_analysis",
+  "intent": "general" | "gis_operation" | "emotion_analysis" | "knowledge_qa",
   "domain_lens": ["urban_planning" | "urban_renewal" | "urban_operation" | "urban_governance" | "general", ...],
   "scale": "macro" | "meso" | "micro",
   "decision_type": "评价" | "选址" | "排查" | "对比" | "监测" | "定义" | "操作" | "通用问答",
@@ -195,8 +216,15 @@ DIAGNOSE_TEMPLATE = """
 - general=通用问答/常识/寒暄/纯概念（今天星期几、什么是等时圈）→ domain_lens=["general"]，**template 必填 "concept"**，不进情绪分析。**包含"就已有图层/上一轮结果的概念追问"**——用户问"差别/区别/为什么/解释/含义/是什么/对比"且针对**已生成的图层/结果**（不要求新操作），即使含"核密度/用地/极性"等关键词，也判 general（**template=concept**，概念解释交后续阶段作答，本阶段只出卡）。例：「生成的 4 个核密度图层有什么差别」「为什么 X 区比 Y 区差」「这些图层是什么意思」→ general（concept）。
 - gis_operation=纯 GIS/数据操作（裁剪/抽取某区/缓冲/叠置/合并/字段筛选/上传数据处理/核密度density）→ outlet="生成图层"，**template 选 clip/overlay/buffer/density/rank/zonal 等对应技能 id**（见【技能目录】），出口是新图层而非归因报告。**注意：「核密度/密度分析/聚集强度/热力分布」属此类（template="density"）仅当用户「新请求做」分析；若用户是「问已有」密度图层的问题（见上一条），判 general（template=concept）勿短路进操作。**
 - emotion_analysis=情绪评价/排序/归因/预警（7 场景）→ 走原 domain_lens/scale/decision_type 体系。
+- **knowledge_qa=知识问答/数据清单（CB-22 三层架构·2026-08-09 用户豁免加类）**→ 要检索知识库（RAG·事实卡/笔记/政策/案例/概念卡）作答·非分析非概念。**判据对比句**（防 Flash 混淆·新增类勿稀释三值注意力）：
+  - **"有哪些/多少/什么项目/体检指标/政策/案例/清单/库"**（数据/事实/清单类·含地名+领域词如"宜昌市城市更新的项目有哪些"）→ **knowledge_qa**（template 可空·后续走知识问答范式检索+LLM 综合）。
+  - **"什么是/为什么/解释/含义/差别/概念"**（定义解释类）→ **general**（template=concept·概念模板直答·不检索）。
+  - **"情绪/分布/排序/归因"**（分析类·如"哪些片区情绪最差"）→ **emotion_analysis**（即使含"哪些"+领域词·勿误判 knowledge_qa）。
+  - 例：「宜昌市城市更新的项目有哪些？」「城市更新体检问题有哪些」→ knowledge_qa；「什么是更新单元」→ general（concept）。
+- 边界提示：**含地名+领域词+数据/清单意图 = 强信号 knowledge_qa**；只有定义解释意图（什么是/为什么）才是 general——两者成对出现时以意图为准（要检索 vs 要解释）。
 
 **多轮续作（最高优先级，覆盖上文 intent 判定）**：若上文含【上一轮上下文】块，且用户本轮在追问/续做（问句含"继续/接着/补充/我上传了X/那个/把刚才"等，或承接上一轮未完成任务），则：
+- **例外（CB-22 三层架构）**：分析中**穿插知识问**（如 zonal 后问"葛洲坝有哪些项目"）→ **判 knowledge_qa**（非续作 emotion_analysis）——问句是"数据清单/知识检索"意图时**显式高于续作承接**。
 - intent **取上一轮 intent**（多为 gis_operation / emotion_analysis，**勿判 general**）；
 - method **承接上一轮 method 从断点续做**——上轮【缺口】数据若本轮已就位（如用户上传了），继续执行原 method 剩余步骤，产出最终结果；
 - data_plan 按当前数据**重判**（已补齐的缺口不再算缺失；strategy 多从 request_upload 升为 ready）；

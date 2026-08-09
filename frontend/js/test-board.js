@@ -36,8 +36,8 @@ function _summary(r) {
   if (r.template) tBits.push(_TPL_CN[r.template] || r.template);
   for (const t of tools) if (t !== r.template) tBits.push(_TPL_CN[t] || t);
   const line1 = `①工具：${tools.length ? `触发${tools.length}个(${tBits.slice(0, 4).join('·')})` : (r.template ? `选${_TPL_CN[r.template] || r.template}` : '未触发')}`;
-  // ②图层（D3：计划步数→实际层数 + 参数摘要·计划来自 diagnose method）
-  const _plan = Array.isArray(r.method) ? r.method.length : 0;
+  // ②图层（F-1：计划步数=实际执行通道 planSteps（_allToolCalls 多 call / autoExpand 链长）·替代 method 派生·method FC 单工具恒 1 漂移）
+  const _plan = Number(r.planSteps) || (Array.isArray(r.method) ? r.method.length : 0);
   const p = r.params || {};
   const pBits = [];
   if (p.boundary) pBits.push(`区=${p.boundary}`); else if (p.boundaries) pBits.push(`区=${p.boundaries}`);
@@ -387,7 +387,7 @@ function _buildMarkdown() {
     if (r.pass === false && r.userVote === 'ok') falseKill++;    // 误杀：系统判败但用户认可
     if (r.pass === true && r.userVote === 'bad') missFail++;     // 漏判：系统判过但用户否定
     if (r.durationSolo) durs.push(r.durationSolo);
-    const _pl = Array.isArray(r.method) ? r.method.length : 0;   // D3: 计划步数（diagnose method）
+    const _pl = Number(r.planSteps) || (Array.isArray(r.method) ? r.method.length : 0);   // F-1: 计划步数（实际执行通道 planSteps·回退 method）
     if (_pl > 0) { planned += _pl; if ((r.newLayers || 0) >= _pl) planHit++; }
   }
   durs.sort((a, b) => a - b);
@@ -404,7 +404,7 @@ function _buildMarkdown() {
     const judge = (r.userVote === 'ok' && !r.pass) ? '误杀' : (r.userVote === 'bad' && r.pass) ? '漏判' : (r.pass ? 'ok' : 'err');
     const user = r.userVote ? (r.userVote === 'ok' ? 'OK' : 'BAD') : '—';
     const tmpl = r.template || '?';                 // 键永在·值缺失填 ?（H1 修通前 template=? 即观测盲区信号）
-    const _pl = Array.isArray(r.method) ? r.method.length : 0;   // D3: 计划步数（diagnose method）
+    const _pl = Number(r.planSteps) || (Array.isArray(r.method) ? r.method.length : 0);   // F-1: 计划步数（实际执行通道 planSteps·回退 method）
     const planStr = _pl ? `${_pl}→${r.newLayers || 0}层` : `?→${r.newLayers || 0}层`;
     const tools = Array.isArray(r.tools) && r.tools.length ? r.tools.join('+') : '?';
     const pp = [];

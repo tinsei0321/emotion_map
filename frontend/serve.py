@@ -124,7 +124,8 @@ def _inject_header_version(html, short):
 # 后端 origin（uvicorn :8000）—— /api 反向代理的目标。
 # 前端同源 fetch /api/* → serve.py 透传此后端，消除浏览器跨域这一跳
 #（修 export "Failed to fetch"：浏览器只跟 :8080 说话，:8000 这跳在服务端完成）。
-BACKEND_ORIGIN = 'http://127.0.0.1:8000'
+# CB-19 发版回归（三组并发）：--backend-port 可覆盖（防多组 serve 撞 8000·各自后端独立）。
+BACKEND_ORIGIN = 'http://127.0.0.1:8000'   # 默认 8000·--backend-port 动态覆盖
 
 
 class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
@@ -214,11 +215,14 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
             return
         except Exception as e:                # 后端连不上
             msg = f'[proxy] backend unreachable: {e}'.encode('utf-8')
-            self.send_response(502)
-            self.send_header('Content-Type', 'text/plain; charset=utf-8')
-            self.send_header('Content-Length', str(len(msg)))
-            self.end_headers()
-            self.wfile.write(msg)
+            try:
+                self.send_response(502)
+                self.send_header('Content-Type', 'text/plain; charset=utf-8')
+                self.send_header('Content-Length', str(len(msg)))
+                self.end_headers()
+                self.wfile.write(msg)
+            except Exception:                 # 浏览器已断连·写响应崩（CB-19 B3 教训：连接中断致 serve 线程崩·静默吞）
+                pass
             return
         try:
             rheaders = list(resp.getheaders())
@@ -449,11 +453,29 @@ def _port_free(port):
         return False
 
 
+def _dirty_check(repo_root):
+    """CB-12（用户诉求·每次打开网页都应最新代码）：工作树脏检查——git status 非空 → [WARN] 显性提示。
+    洞：磁盘文件 ≠ 提交状态时（未提交改动），换机/拉取/演示机 = 旧代码。serve 每次起的是磁盘最新，
+    但若提交 ≠ 磁盘，演示/测试可能非最新提交状态——显性警告·不静默吞。"""
+    try:
+        r = subprocess.run(['git', 'status', '--porcelain'], cwd=repo_root,
+                           capture_output=True, text=True, timeout=5)
+        dirty = [l for l in r.stdout.splitlines() if l.strip()]
+        if dirty:
+            n = len(dirty)
+            sample = '、'.join(d.split()[1] if len(d.split()) > 1 else d for d in dirty[:3])
+            print(f'[WARN] 工作树有 {n} 个未提交改动（{sample}…）——演示/测试为磁盘最新，但非最新提交；'
+                  f'换机/拉取/演示机将用旧代码。建议先 git add+commit。')
+    except Exception:
+        pass   # git 不可用/非仓库 → 静默（不影响 serve）
+
+
 def _spawn_backend(repo_root, backend_port=8000):
     """启动 uvicorn 子进程并等 /health 就绪。每次启动**强制清 :port 重起**（不复用旧进程），
     保证后端是最新代码——避免复用旧后端（health 通但缺新路由如 /spatial/grid）导致 404。
     若需保留手动起的后端，用 `py frontend/serve.py 8080 --no-backend`。"""
     import urllib.request, time
+    _dirty_check(repo_root)   # CB-12：脏检查警告（未提交改动 → 显性提示·防演示用旧代码）
     _free_port(backend_port)   # 清 :port 所有残留（旧后端/死进程），保证起最新代码
 
     try:
@@ -501,6 +523,13 @@ def main():
     args = sys.argv[1:]
     port = int(args[0]) if args and args[0].isdigit() else 8080
     no_backend = '--no-backend' in args
+    # CB-19 发版回归（三组并发）：--backend-port 覆盖后端端口（默认 8000·防多组 serve 撞后端）
+    backend_port = 8000
+    for _i, _a in enumerate(args):
+        if _a == '--backend-port' and _i + 1 < len(args):
+            backend_port = int(args[_i + 1])
+    global BACKEND_ORIGIN
+    BACKEND_ORIGIN = f'http://127.0.0.1:{backend_port}'
     # --open=both|main|test|none：serve 就绪后自动开浏览器（start.bat 用 both；直接 py serve 默认 none 不开）
     open_what = 'none'
     for _a in args:
@@ -510,7 +539,7 @@ def main():
             open_what = 'both'
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # frontend/ 的上一层 = repo root
     _free_port(port)   # 清掉同端口的僵尸 serve，避免返回旧版
-    backend_proc = None if no_backend else _spawn_backend(repo_root)
+    backend_proc = None if no_backend else _spawn_backend(repo_root, backend_port=backend_port)
     with ReuseTCPServer(('', port), NoCacheHandler) as httpd:
         if open_what != 'none':
             _open_browser(open_what, port)   # socket 已 listen → 后台线程延迟开浏览器

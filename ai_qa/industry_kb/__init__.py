@@ -106,6 +106,43 @@ def industry_kb_lens_appendix(domain_lens):
             + body)
 
 
+def industry_kb_final_brief(domain_lens):
+    """按 diagnose 的 domain_lens 渲染命中领域【精简归因速查】（finalStep 条件注入·治 A4 "finalStep 无领域知识"）。
+
+    每域 ~1.6-2.4KB（CB-14 Codex 实测：政策方向 2 带 gist + 术语 4 带解释 + 底线 2 + 项目类型 5 + 情绪归因焦点 + 4×5 主归属）。
+    与 industry_kb_lens_appendix（全量·agent_step 用）区分：finalStep 只注精简版（保 D019 极瘦精神·
+    test_final_prompt_stays_lean 静态模板 <3KB 门禁不被回灌破——注入是条件性的，空 context 无 lens 不触发）。
+    **限前 2 域**（CB-14 Codex 建议）：domain_lens 实际 1-2 域为主·4 域全注 ~7KB 失控·finalStep 只需最相关领域。
+    空（无命中域）返回 ''（调用方据此跳过拼接）。"""
+    if not domain_lens:
+        return ''
+    seen = []
+    for dk in domain_lens:
+        if dk and dk in INDUSTRY_DOMAINS and dk not in seen:
+            seen.append(dk)
+    if not seen:
+        return ''
+    seen = seen[:2]   # CB-14：限前 2 域（防 4 域全注 ~7KB 失控·保精简）
+    blocks = []
+    for dk in seen:
+        mod = INDUSTRY_DOMAINS[dk]
+        lines = [f'【{mod.NAME} · 归因速查】主管：{mod.AUTHORITY}']
+        lines.append('政策方向：' + '；'.join(f"{d['policy']}（{d['gist']}）" for d in mod.TOP_DESIGN[:2]))
+        terms = '、'.join(f"{k}（{v}）" for k, v in list(mod.KEY_TERMS.items())[:4])
+        lines.append(f'官方术语：{terms}')
+        mb = getattr(mod, 'METRICS_BASELINE', [])[:2]
+        if mb:
+            lines.append('底线指标：' + '；'.join(mb))
+        lines.append('项目类型：' + '、'.join(mod.PROJECT_TYPES[:5]))
+        lines.append(f'情绪归因焦点：{mod.EMOTION_FOCUS}')
+        mp = [f"{e}({r})" for dom, e, r in get_matrix_mapping(dk) if r == '主']
+        if mp:
+            lines.append('4×5 主归属：' + '、'.join(mp))
+        blocks.append('\n'.join(lines))
+    return ('\n\n═══════════ 附录 · 领域归因速查（按 diagnose domain_lens 注入·政策→情绪→项目）═══════════\n'
+            + '\n\n'.join(blocks))
+
+
 def industry_kb_brief_text():
     """四领域官方术语 + 项目类型速查（精简，注入 diagnose prompt 让 Flash 用官方话语 + 指向具体项目）。
     增量（vs DOMAIN_OUTLETS framework）：KEY_TERMS 精确术语表 + PROJECT_TYPES 项目落点（呼应"政策→情绪→项目"闭环）。
@@ -131,6 +168,6 @@ def all_matrix_mappings():
 __all__ = [
     'INDUSTRY_DOMAINS', 'DOMAIN_KEYS', 'ELEMENTS', 'ROLES',
     'get_matrix_mapping', 'industry_kb_text', 'industry_kb_brief_text', 'industry_kb_lens_appendix',
-    'all_matrix_mappings',
+    'industry_kb_final_brief', 'all_matrix_mappings',
     'urban_planning', 'urban_renewal', 'urban_operation', 'urban_governance',
 ]

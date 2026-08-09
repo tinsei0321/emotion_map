@@ -1,0 +1,670 @@
+INFO:     Started server process [1788]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:52037 - "GET /api/v1/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52046 - "GET /api/v1/health HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "GET /api/v1/health HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/index.html?test=1 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/css/tokens.css?v=1784859706 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/css/layout.css?v=1784859706 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/css/toolbar.css?v=1782966410 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/css/sidebar.css?v=1785111573 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/css/panel.css?v=1783653099 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/css/popup.css?v=1782966410 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/css/dialog.css?v=1783567667 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/css/legend.css?v=1783065519 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/css/map-controls.css?v=1784859706 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/css/toast.css?v=1782966410 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/css/settings.css?v=1783038550 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/css/param-panel.css?v=1785111573 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/css/search-bar.css?v=1783044371 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/css/ai_qa.css?v=1785387324 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/css/time-bar.css?v=1784519773 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/css/compare.css?v=1784612405 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/main.js?v=1785716971 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/css/test-board.css?v=1785306462 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/e2e-seam.js HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/map.js?v=1785716971 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/data_registry.js?v=1785294042 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/panel.js?v=1783594446 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/tip-popup.js?v=1783297096 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/toolbar.js?v=1784266460 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/sidebar.js?v=1785401765 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/popup.js?v=1783297096 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/state.js?v=1785401758 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/import.js?v=1784881605 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/dialog.js?v=1783567667 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/landuse_colors.js?v=1783906425 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/heatmap-tool.js?v=1785120637 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/buffer-tool.js?v=1785111573 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/grid-tool.js?v=1783469866 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/toolbox/zonal-tool.js?v=1785111573 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/toolbox/area-stats-tool.js?v=1785111573 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/toolbox/rank-tool.js?v=1785111573 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/toolbox/vector-tool.js?v=1785716971 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/toolbox/shared.js?v=1785716971 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/range-presets.js?v=1785294232 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/ai_qa/panel.js?v=1785716971 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/param-panel.js?v=1785111573 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/draw-tool.js?v=1785294261 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/heatmap-legend.js?v=1782966410 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/search-bar.js?v=1783044335 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/timeline.js?v=1784611973 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/time-source.js?v=1785111573 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/time-bar.js?v=1785111573 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/toast.js?v=1782036418 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/api.js?v=1785111573 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/ai_qa/cpd-state.js?v=1784859706 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/ai_qa/tools.js?v=1785716971 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/ai_qa/harness.js?v=1785716971 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/map-controls.js?v=1784859706 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/district-stats.js?v=1783297096 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/geocode-loader.js?v=1783038550 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/settings.js?v=1783038550 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/field_dictionary.js?v=1785246856 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/ai_qa/cpd-guide.js?v=1784859706 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/ai_qa/api.js?v=1785387366 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/ai_qa/stages.js?v=1785716971 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/toolbox/nearest-tool.js?v=1785111573 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/toolbox/hotspot-tool.js?v=1785111573 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/ai_qa/boundary-resolve.js?v=1784430928 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/ai_qa/emc-patterns.js?v=1785716971 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/test-board.js HTTP/1.1" 200 -
+[TRACE] 08:50:09 | MOD_RANGE.F_013 | [enter] | session=B3-verify-05
+[TRACE] 08:50:09 | MOD_RANGE.F_013 | [exit] | 0.6ms | session=B3-verify-05
+INFO:     127.0.0.1:57473 - "GET /api/v1/range/presets HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "GET /api/v1/range/presets HTTP/1.1" 200 -
+[serve] 127.0.0.1 - code 404, message File not found
+[serve] 127.0.0.1 - "GET /DATA/performance/_time_manifest.json HTTP/1.1" 404 -
+INFO:     127.0.0.1:52837 - "GET /api/v1/health HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "GET /api/v1/health HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/test-cases.js?v=1785716971 HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /frontend/js/test-assets.js?v=1785111573 HTTP/1.1" 200 -
+[B3] started mode=llm cats=['参数正确性', '成果范式', 'Smart交流', 'CPD导游', 'UI渲染']
+  [B3] 08:50:12 0/26 | [OK]0 [ERR]0
+[serve] 127.0.0.1 - code 404, message File not found
+[serve] 127.0.0.1 - "GET /DATA/performance/xiling_wujia_L1_T1_result_csv.csv HTTP/1.1" 404 -
+[serve] 127.0.0.1 - code 404, message File not found
+[serve] 127.0.0.1 - "GET /DATA/performance/xiling_wujia_L1_T1_result_csv.csv HTTP/1.1" 404 -
+[serve] 127.0.0.1 - "GET /DATA/boundaries/%E8%A1%8C%E6%94%BF%E5%8C%BA.geojson HTTP/1.1" 200 -
+[serve] 127.0.0.1 - code 404, message File not found
+[serve] 127.0.0.1 - "GET /DATA/performance/xiling_wujia_L1_T1_result_csv.csv HTTP/1.1" 404 -
+[serve] 127.0.0.1 - "GET /DATA/performance/yichang_L2_T1_L2_result_csv.csv HTTP/1.1" 200 -
+INFO:     127.0.0.1:55994 - "GET /api/v1/aiqa/wisdom HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "GET /api/v1/aiqa/wisdom HTTP/1.1" 200 -
+INFO:     127.0.0.1:63216 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:50:20 | MOD_LLM.F_005 | chat_with_tools_stream tools=13 msgs=2 | session=B3-verify-05
+[TRACE] 08:50:32 | MOD_RANGE.F_013 | [enter] | session=B3-verify-05
+[TRACE] 08:50:32 | MOD_RANGE.F_013 | [exit] | 0.3ms | session=B3-verify-05
+INFO:     127.0.0.1:62854 - "GET /api/v1/range/presets HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "GET /api/v1/range/presets HTTP/1.1" 200 -
+[TRACE] 08:50:32 | MOD_RANGE.F_014 | [enter] | in: 'admin_district' | session=B3-verify-05
+[TRACE] 08:50:33 | MOD_RANGE.F_014 | [exit] | 491.8ms | session=B3-verify-05
+INFO:     127.0.0.1:56110 - "GET /api/v1/range/preset?id=admin_district HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "GET /api/v1/range/preset?id=admin_district HTTP/1.1" 200 -
+[TRACE] 08:50:33 | MOD_RANGE.F_014 | [enter] | in: 'admin_community' | session=B3-verify-05
+  [B3] 08:50:42 3/26 | [OK]1 [ERR]2
+[TRACE] 08:50:42 | MOD_RANGE.F_014 | [exit] | 9134.3ms | session=B3-verify-05
+INFO:     127.0.0.1:55001 - "GET /api/v1/range/preset?id=admin_community HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "GET /api/v1/range/preset?id=admin_community HTTP/1.1" 200 -
+WARNING:  [zonal] boundary={'type': 'FeatureCollection', 'features': [{'type': 'Feature', 'geometry': {'typ polys=1 pts=16933 crs_pts=WGS 84 crs_poly=WGS 84
+[TRACE] 08:50:50 | MOD_SPATIAL.F_003 | [enter] | session=B3-verify-05
+  [TRACE] 08:50:50 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:50:50 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+  [TRACE] 08:50:50 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:50:50 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+  [TRACE] 08:50:50 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:50:50 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+  [TRACE] 08:50:50 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:50:50 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+  [TRACE] 08:50:50 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:50:50 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+  [TRACE] 08:50:50 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:50:50 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+[TRACE] 08:50:50 | MOD_SPATIAL.F_003 | [exit] | 62.3ms | session=B3-verify-05
+INFO:     127.0.0.1:50612 - "POST /api/v1/geo/zonal_stats HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/geo/zonal_stats HTTP/1.1" 200 -
+[TRACE] 08:50:50 | MOD_AIQA.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:50:50 | MOD_AIQA.F_003 | [exit] | 0.6ms | session=B3-verify-05
+INFO:     127.0.0.1:52487 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:50:50 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:50:50 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=2 reason=True json=False | session=B3-verify-05
+  [B3] 08:51:12 3/26 | [OK]1 [ERR]2
+INFO:     127.0.0.1:55206 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[TRACE] 08:51:22 | MOD_AIQA.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:51:22 | MOD_AIQA.F_003 | [exit] | 0.1ms | session=B3-verify-05
+INFO:     127.0.0.1:57245 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:51:22 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:51:22 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=4 reason=True json=False | session=B3-verify-05
+INFO:     127.0.0.1:55841 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /DATA/performance/yichang_L2_T1_L2_result_csv.csv HTTP/1.1" 200 -
+[TRACE] 08:51:34 | MOD_AIQA.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:51:34 | MOD_AIQA.F_003 | [exit] | 0.0ms | session=B3-verify-05
+INFO:     127.0.0.1:64198 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:51:34 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:51:34 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=6 reason=True json=False | session=B3-verify-05
+  [B3] 08:51:42 5/26 | [OK]3 [ERR]2
+INFO:     127.0.0.1:63989 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /DATA/performance/yichang_L2_T1_L2_result_csv.csv HTTP/1.1" 200 -
+INFO:     127.0.0.1:51999 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:51:50 | MOD_LLM.F_005 | chat_with_tools_stream tools=13 msgs=8 | session=B3-verify-05
+[TRACE] 08:52:03 | MOD_SPATIAL.F_006 | [enter] | session=B3-verify-05
+  [TRACE] 08:52:03 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:52:03 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+  [TRACE] 08:52:03 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:52:03 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+  [TRACE] 08:52:03 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:52:03 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+  [TRACE] 08:52:03 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:52:03 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+  [TRACE] 08:52:04 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:52:04 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+  [TRACE] 08:52:04 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:52:04 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+  [TRACE] 08:52:04 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:52:04 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+  [TRACE] 08:52:06 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:52:06 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+  [TRACE] 08:52:06 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:52:06 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+[TRACE] 08:52:06 | MOD_SPATIAL.F_006 | [exit] | 3115.8ms | session=B3-verify-05
+INFO:     127.0.0.1:61554 - "POST /api/v1/spatial/grid HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/spatial/grid HTTP/1.1" 200 -
+[TRACE] 08:52:07 | MOD_AIQA.F_006 | [enter] | session=B3-verify-05
+[TRACE] 08:52:07 | MOD_AIQA.F_006 | [exit] | 0.2ms | session=B3-verify-05
+[TRACE] 08:52:07 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:52:07 | MOD_LLM.F_001 | chat stream=False model=deepseek-v4-flash msgs=2 reason=False json=True | session=B3-verify-05
+  [B3] 08:52:13 6/26 | [OK]4 [ERR]2
+[TRACE] 08:52:15 | MOD_FIELD.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:52:15 | MOD_FIELD.F_003 | [exit] | 0.0ms | session=B3-verify-05
+INFO:     127.0.0.1:60627 - "POST /api/v1/aiqa/profile_fields HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/profile_fields HTTP/1.1" 200 -
+[TRACE] 08:52:15 | MOD_AIQA.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:52:15 | MOD_AIQA.F_003 | [exit] | 0.0ms | session=B3-verify-05
+INFO:     127.0.0.1:63985 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:52:15 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:52:15 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=8 reason=True json=False | session=B3-verify-05
+INFO:     127.0.0.1:64017 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /DATA/performance/yichang_L2_T1_L2_result_csv.csv HTTP/1.1" 200 -
+INFO:     127.0.0.1:64332 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:52:26 | MOD_LLM.F_005 | chat_with_tools_stream tools=13 msgs=10 | session=B3-verify-05
+[TRACE] 08:52:38 | MOD_SPATIAL.F_006 | [enter] | session=B3-verify-05
+  [TRACE] 08:52:38 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:52:38 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+  [TRACE] 08:52:38 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:52:38 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+  [TRACE] 08:52:38 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:52:38 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+  [TRACE] 08:52:38 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:52:38 | MOD_FIELD.F_001 | [exit] | 0.1ms | session=B3-verify-05
+  [TRACE] 08:52:38 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:52:38 | MOD_FIELD.F_001 | [exit] | 0.1ms | session=B3-verify-05
+  [TRACE] 08:52:38 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:52:38 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+  [TRACE] 08:52:38 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:52:38 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+  [TRACE] 08:52:39 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:52:39 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+  [TRACE] 08:52:39 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:52:39 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+[TRACE] 08:52:39 | MOD_SPATIAL.F_006 | [exit] | 650.4ms | session=B3-verify-05
+INFO:     127.0.0.1:56122 - "POST /api/v1/spatial/grid HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/spatial/grid HTTP/1.1" 200 -
+[TRACE] 08:52:39 | MOD_AIQA.F_006 | [enter] | session=B3-verify-05
+[TRACE] 08:52:39 | MOD_AIQA.F_006 | [exit] | 0.3ms | session=B3-verify-05
+[TRACE] 08:52:39 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:52:39 | MOD_LLM.F_001 | chat stream=False model=deepseek-v4-flash msgs=2 reason=False json=True | session=B3-verify-05
+  [B3] 08:52:43 7/26 | [OK]5 [ERR]2
+[TRACE] 08:52:48 | MOD_FIELD.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:52:48 | MOD_FIELD.F_003 | [exit] | 0.0ms | session=B3-verify-05
+INFO:     127.0.0.1:52336 - "POST /api/v1/aiqa/profile_fields HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/profile_fields HTTP/1.1" 200 -
+[TRACE] 08:52:48 | MOD_AIQA.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:52:48 | MOD_AIQA.F_003 | [exit] | 0.0ms | session=B3-verify-05
+INFO:     127.0.0.1:63453 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[TRACE] 08:52:48 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:52:48 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=10 reason=True json=False | session=B3-verify-05
+INFO:     127.0.0.1:63482 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /DATA/performance/yichang_L2_T1_L2_result_csv.csv HTTP/1.1" 200 -
+INFO:     127.0.0.1:59261 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:52:57 | MOD_LLM.F_005 | chat_with_tools_stream tools=13 msgs=12 | session=B3-verify-05
+INFO:     127.0.0.1:50658 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /DATA/performance/yichang_L2_T1_L2_result_csv.csv HTTP/1.1" 200 -
+INFO:     127.0.0.1:53253 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[TRACE] 08:53:12 | MOD_LLM.F_005 | chat_with_tools_stream tools=13 msgs=12 | session=B3-verify-05
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+  [B3] 08:53:13 9/26 | [OK]7 [ERR]2
+[TRACE] 08:53:24 | MOD_AIQA.F_002 | [enter] | session=B3-verify-05
+[TRACE] 08:53:24 | MOD_AIQA.F_002 | [exit] | 0.1ms | session=B3-verify-05
+INFO:     127.0.0.1:64418 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:53:24 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:53:24 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=12 reason=True json=False | session=B3-verify-05
+  [B3] 08:53:43 9/26 | [OK]7 [ERR]2
+INFO:     127.0.0.1:57919 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /DATA/performance/yichang_L2_T1_L2_result_csv.csv HTTP/1.1" 200 -
+INFO:     127.0.0.1:53451 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:53:57 | MOD_LLM.F_005 | chat_with_tools_stream tools=13 msgs=12 | session=B3-verify-05
+WARNING:  [zonal] boundary={'type': 'FeatureCollection', 'features': [{'type': 'Feature', 'geometry': {'typ polys=1 pts=16933 crs_pts=WGS 84 crs_poly=WGS 84
+[TRACE] 08:54:09 | MOD_SPATIAL.F_003 | [enter] | session=B3-verify-05
+  [TRACE] 08:54:09 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:54:09 | MOD_FIELD.F_001 | [exit] | 0.1ms | session=B3-verify-05
+  [TRACE] 08:54:09 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:54:09 | MOD_FIELD.F_001 | [exit] | 0.1ms | session=B3-verify-05
+  [TRACE] 08:54:09 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:54:09 | MOD_FIELD.F_001 | [exit] | 0.1ms | session=B3-verify-05
+  [TRACE] 08:54:09 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:54:09 | MOD_FIELD.F_001 | [exit] | 0.4ms | session=B3-verify-05
+  [TRACE] 08:54:09 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:54:09 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=B3-verify-05
+  [TRACE] 08:54:09 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:54:09 | MOD_FIELD.F_001 | [exit] | 0.4ms | session=B3-verify-05
+[TRACE] 08:54:09 | MOD_SPATIAL.F_003 | [exit] | 97.4ms | session=B3-verify-05
+INFO:     127.0.0.1:53122 - "POST /api/v1/geo/zonal_stats HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/geo/zonal_stats HTTP/1.1" 200 -
+[TRACE] 08:54:10 | MOD_AIQA.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:54:10 | MOD_AIQA.F_003 | [exit] | 0.2ms | session=B3-verify-05
+INFO:     127.0.0.1:58751 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:54:10 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:54:10 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=12 reason=True json=False | session=B3-verify-05
+  [B3] 08:54:13 10/26 | [OK]8 [ERR]2
+INFO:     127.0.0.1:53063 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /DATA/performance/yichang_L2_T1_L2_result_csv.csv HTTP/1.1" 200 -
+INFO:     127.0.0.1:52817 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:54:36 | MOD_LLM.F_005 | chat_with_tools_stream tools=13 msgs=12 | session=B3-verify-05
+  [B3] 08:54:43 11/26 | [OK]9 [ERR]2
+[TRACE] 08:54:47 | MOD_FIELD.F_002 | [enter] | session=B3-verify-05
+[TRACE] 08:54:47 | MOD_FIELD.F_002 | [exit] | 0.2ms | session=B3-verify-05
+WARNING:  [zonal] boundary={'type': 'FeatureCollection', 'features': [{'id': '7', 'type': 'Feature', 'prope polys=1 pts=9 crs_pts=WGS 84 crs_poly=WGS 84
+[TRACE] 08:54:47 | MOD_SPATIAL.F_003 | [enter] | session=B3-verify-05
+  [TRACE] 08:54:47 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:54:47 | MOD_FIELD.F_001 | [exit] | 0.5ms | session=B3-verify-05
+  [TRACE] 08:54:47 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:54:47 | MOD_FIELD.F_001 | [exit] | 0.6ms | session=B3-verify-05
+  [TRACE] 08:54:47 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:54:47 | MOD_FIELD.F_001 | [exit] | 0.6ms | session=B3-verify-05
+  [TRACE] 08:54:47 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:54:47 | MOD_FIELD.F_001 | [exit] | 0.6ms | session=B3-verify-05
+  [TRACE] 08:54:47 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:54:47 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=B3-verify-05
+  [TRACE] 08:54:47 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:54:47 | MOD_FIELD.F_001 | [exit] | 0.5ms | session=B3-verify-05
+[TRACE] 08:54:47 | MOD_SPATIAL.F_003 | [exit] | 39.7ms | session=B3-verify-05
+INFO:     127.0.0.1:51701 - "POST /api/v1/geo/zonal_stats HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/geo/zonal_stats HTTP/1.1" 200 -
+[TRACE] 08:54:47 | MOD_AIQA.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:54:47 | MOD_AIQA.F_003 | [exit] | 0.0ms | session=B3-verify-05
+INFO:     127.0.0.1:62099 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:54:47 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:54:47 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=12 reason=True json=False | session=B3-verify-05
+INFO:     127.0.0.1:52342 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /DATA/performance/yichang_L2_T1_L2_result_csv.csv HTTP/1.1" 200 -
+INFO:     127.0.0.1:62345 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:55:02 | MOD_LLM.F_005 | chat_with_tools_stream tools=13 msgs=12 | session=B3-verify-05
+[TRACE] 08:55:10 | MOD_FIELD.F_002 | [enter] | session=B3-verify-05
+[TRACE] 08:55:10 | MOD_FIELD.F_002 | [exit] | 0.1ms | session=B3-verify-05
+WARNING:  [zonal] boundary={'type': 'FeatureCollection', 'features': [{'id': '3', 'type': 'Feature', 'prope polys=1 pts=9 crs_pts=WGS 84 crs_poly=WGS 84
+[TRACE] 08:55:10 | MOD_SPATIAL.F_003 | [enter] | session=B3-verify-05
+  [TRACE] 08:55:10 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:55:10 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=B3-verify-05
+  [TRACE] 08:55:10 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:55:10 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=B3-verify-05
+  [TRACE] 08:55:10 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:55:10 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=B3-verify-05
+  [TRACE] 08:55:10 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:55:10 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=B3-verify-05
+  [TRACE] 08:55:10 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:55:10 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=B3-verify-05
+  [TRACE] 08:55:10 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:55:10 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=B3-verify-05
+[TRACE] 08:55:10 | MOD_SPATIAL.F_003 | [exit] | 44.3ms | session=B3-verify-05
+INFO:     127.0.0.1:60720 - "POST /api/v1/geo/zonal_stats HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/geo/zonal_stats HTTP/1.1" 200 -
+[TRACE] 08:55:10 | MOD_AIQA.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:55:10 | MOD_AIQA.F_003 | [exit] | 0.0ms | session=B3-verify-05
+INFO:     127.0.0.1:58599 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[TRACE] 08:55:10 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:55:10 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=12 reason=True json=False | session=B3-verify-05
+  [B3] 08:55:13 12/26 | [OK]10 [ERR]2
+  [B3] 08:55:43 12/26 | [OK]10 [ERR]2
+INFO:     127.0.0.1:50063 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /DATA/performance/yichang_L2_T1_L2_result_csv.csv HTTP/1.1" 200 -
+INFO:     127.0.0.1:62670 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:55:50 | MOD_LLM.F_005 | chat_with_tools_stream tools=13 msgs=12 | session=B3-verify-05
+[TRACE] 08:55:56 | MOD_FIELD.F_002 | [enter] | session=B3-verify-05
+[TRACE] 08:55:56 | MOD_FIELD.F_002 | [exit] | 0.3ms | session=B3-verify-05
+[TRACE] 08:55:56 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+[TRACE] 08:55:56 | MOD_FIELD.F_001 | [exit] | 0.1ms | session=B3-verify-05
+INFO:     127.0.0.1:55119 - "POST /api/v1/geo/extract_feature HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/geo/extract_feature HTTP/1.1" 200 -
+[TRACE] 08:55:57 | MOD_FIELD.F_002 | [enter] | session=B3-verify-05
+[TRACE] 08:55:57 | MOD_FIELD.F_002 | [exit] | 0.4ms | session=B3-verify-05
+[TRACE] 08:55:57 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+[TRACE] 08:55:57 | MOD_FIELD.F_001 | [exit] | 0.1ms | session=B3-verify-05
+INFO:     127.0.0.1:51726 - "POST /api/v1/geo/extract_feature HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/geo/extract_feature HTTP/1.1" 200 -
+[TRACE] 08:55:57 | MOD_AIQA.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:55:57 | MOD_AIQA.F_003 | [exit] | 0.0ms | session=B3-verify-05
+INFO:     127.0.0.1:64492 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:55:57 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:55:57 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=12 reason=True json=False | session=B3-verify-05
+  [B3] 08:56:13 13/26 | [OK]11 [ERR]2
+INFO:     127.0.0.1:57636 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /DATA/performance/yichang_L2_T1_L2_result_csv.csv HTTP/1.1" 200 -
+INFO:     127.0.0.1:56797 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:56:27 | MOD_LLM.F_005 | chat_with_tools_stream tools=13 msgs=12 | session=B3-verify-05
+[TRACE] 08:56:31 | MOD_FIELD.F_002 | [enter] | session=B3-verify-05
+[TRACE] 08:56:31 | MOD_FIELD.F_002 | [exit] | 0.2ms | session=B3-verify-05
+[TRACE] 08:56:31 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+[TRACE] 08:56:31 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+INFO:     127.0.0.1:57171 - "POST /api/v1/geo/extract_feature HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/geo/extract_feature HTTP/1.1" 200 -
+[TRACE] 08:56:31 | MOD_AIQA.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:56:31 | MOD_AIQA.F_003 | [exit] | 0.1ms | session=B3-verify-05
+INFO:     127.0.0.1:59219 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:56:31 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:56:31 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=12 reason=True json=False | session=B3-verify-05
+INFO:     127.0.0.1:55186 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /DATA/performance/yichang_L2_T1_L2_result_csv.csv HTTP/1.1" 200 -
+INFO:     127.0.0.1:57282 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:56:43 | MOD_LLM.F_005 | chat_with_tools_stream tools=13 msgs=12 | session=B3-verify-05
+  [B3] 08:56:43 15/26 | [OK]12 [ERR]3
+[TRACE] 08:56:51 | MOD_FIELD.F_002 | [enter] | session=B3-verify-05
+[TRACE] 08:56:51 | MOD_FIELD.F_002 | [exit] | 0.2ms | session=B3-verify-05
+INFO:     127.0.0.1:57290 - "POST /api/v1/geo/clip HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/geo/clip HTTP/1.1" 200 -
+[TRACE] 08:56:51 | MOD_AIQA.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:56:51 | MOD_AIQA.F_003 | [exit] | 0.1ms | session=B3-verify-05
+INFO:     127.0.0.1:54219 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:56:51 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:56:51 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=12 reason=True json=False | session=B3-verify-05
+INFO:     127.0.0.1:52415 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /DATA/performance/yichang_L2_T1_L2_result_csv.csv HTTP/1.1" 200 -
+INFO:     127.0.0.1:61287 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:56:59 | MOD_LLM.F_005 | chat_with_tools_stream tools=13 msgs=12 | session=B3-verify-05
+WARNING:  [zonal] boundary={'type': 'FeatureCollection', 'features': [{'type': 'Feature', 'geometry': {'typ polys=1 pts=16933 crs_pts=WGS 84 crs_poly=WGS 84
+[TRACE] 08:57:06 | MOD_SPATIAL.F_003 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:06 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:06 | MOD_FIELD.F_001 | [exit] | 0.1ms | session=B3-verify-05
+  [TRACE] 08:57:06 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:06 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+  [TRACE] 08:57:06 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:06 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+  [TRACE] 08:57:06 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:06 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+  [TRACE] 08:57:06 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:06 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+  [TRACE] 08:57:06 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:06 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+[TRACE] 08:57:06 | MOD_SPATIAL.F_003 | [exit] | 79.7ms | session=B3-verify-05
+INFO:     127.0.0.1:63076 - "POST /api/v1/geo/zonal_stats HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/geo/zonal_stats HTTP/1.1" 200 -
+[TRACE] 08:57:06 | MOD_AIQA.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:57:06 | MOD_AIQA.F_003 | [exit] | 0.1ms | session=B3-verify-05
+INFO:     127.0.0.1:58637 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:57:06 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:57:06 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=12 reason=True json=False | session=B3-verify-05
+  [B3] 08:57:14 16/26 | [OK]13 [ERR]3
+INFO:     127.0.0.1:64338 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /DATA/performance/yichang_L2_T1_L2_result_csv.csv HTTP/1.1" 200 -
+INFO:     127.0.0.1:62108 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:57:20 | MOD_LLM.F_005 | chat_with_tools_stream tools=13 msgs=12 | session=B3-verify-05
+[TRACE] 08:57:29 | MOD_FIELD.F_002 | [enter] | session=B3-verify-05
+[TRACE] 08:57:29 | MOD_FIELD.F_002 | [exit] | 0.2ms | session=B3-verify-05
+WARNING:  [zonal] boundary={'type': 'FeatureCollection', 'features': [{'id': '5', 'type': 'Feature', 'prope polys=1 pts=9 crs_pts=WGS 84 crs_poly=WGS 84
+[TRACE] 08:57:29 | MOD_SPATIAL.F_003 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:29 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:29 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=B3-verify-05
+  [TRACE] 08:57:29 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:29 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=B3-verify-05
+  [TRACE] 08:57:29 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:29 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=B3-verify-05
+  [TRACE] 08:57:29 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:29 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=B3-verify-05
+  [TRACE] 08:57:29 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:29 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=B3-verify-05
+  [TRACE] 08:57:29 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:29 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=B3-verify-05
+[TRACE] 08:57:29 | MOD_SPATIAL.F_003 | [exit] | 17.8ms | session=B3-verify-05
+INFO:     127.0.0.1:56468 - "POST /api/v1/geo/zonal_stats HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/geo/zonal_stats HTTP/1.1" 200 -
+[TRACE] 08:57:30 | MOD_FIELD.F_002 | [enter] | session=B3-verify-05
+[TRACE] 08:57:30 | MOD_FIELD.F_002 | [exit] | 0.1ms | session=B3-verify-05
+WARNING:  [zonal] boundary={'type': 'FeatureCollection', 'features': [{'id': '7', 'type': 'Feature', 'prope polys=1 pts=9 crs_pts=WGS 84 crs_poly=WGS 84
+[TRACE] 08:57:30 | MOD_SPATIAL.F_003 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:30 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:30 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=B3-verify-05
+  [TRACE] 08:57:30 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:30 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=B3-verify-05
+  [TRACE] 08:57:30 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:30 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=B3-verify-05
+  [TRACE] 08:57:30 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:30 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=B3-verify-05
+  [TRACE] 08:57:30 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:30 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=B3-verify-05
+  [TRACE] 08:57:30 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:57:30 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=B3-verify-05
+[TRACE] 08:57:30 | MOD_SPATIAL.F_003 | [exit] | 20.7ms | session=B3-verify-05
+INFO:     127.0.0.1:61556 - "POST /api/v1/geo/zonal_stats HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/geo/zonal_stats HTTP/1.1" 200 -
+[TRACE] 08:57:30 | MOD_AIQA.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:57:30 | MOD_AIQA.F_003 | [exit] | 0.1ms | session=B3-verify-05
+INFO:     127.0.0.1:65031 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:57:30 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:57:30 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=12 reason=True json=False | session=B3-verify-05
+INFO:     127.0.0.1:63006 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /DATA/performance/yichang_L2_T1_L2_result_csv.csv HTTP/1.1" 200 -
+INFO:     127.0.0.1:56951 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:57:43 | MOD_LLM.F_005 | chat_with_tools_stream tools=13 msgs=12 | session=B3-verify-05
+  [B3] 08:57:44 18/26 | [OK]15 [ERR]3
+[TRACE] 08:57:49 | MOD_FIELD.F_002 | [enter] | session=B3-verify-05
+[TRACE] 08:57:49 | MOD_FIELD.F_002 | [exit] | 0.1ms | session=B3-verify-05
+INFO:     127.0.0.1:55190 - "POST /api/v1/geo/clip HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/geo/clip HTTP/1.1" 200 -
+[TRACE] 08:57:49 | MOD_AIQA.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:57:49 | MOD_AIQA.F_003 | [exit] | 0.1ms | session=B3-verify-05
+INFO:     127.0.0.1:61524 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:57:49 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:57:49 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=12 reason=True json=False | session=B3-verify-05
+INFO:     127.0.0.1:59317 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /DATA/performance/yichang_L2_T1_L2_result_csv.csv HTTP/1.1" 200 -
+INFO:     127.0.0.1:63588 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:58:03 | MOD_LLM.F_005 | chat_with_tools_stream tools=13 msgs=12 | session=B3-verify-05
+[TRACE] 08:58:10 | MOD_SPATIAL.F_006 | [enter] | session=B3-verify-05
+  [TRACE] 08:58:10 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:58:10 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+  [TRACE] 08:58:10 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:58:10 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+  [TRACE] 08:58:10 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:58:10 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+  [TRACE] 08:58:10 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:58:10 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+  [TRACE] 08:58:11 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:58:11 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+  [TRACE] 08:58:11 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:58:11 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+  [TRACE] 08:58:11 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:58:11 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+  [TRACE] 08:58:11 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:58:11 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+  [TRACE] 08:58:11 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 08:58:11 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+[TRACE] 08:58:11 | MOD_SPATIAL.F_006 | [exit] | 1359.5ms | session=B3-verify-05
+INFO:     127.0.0.1:59769 - "POST /api/v1/spatial/grid HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/spatial/grid HTTP/1.1" 200 -
+[TRACE] 08:58:12 | MOD_AIQA.F_006 | [enter] | session=B3-verify-05
+[TRACE] 08:58:12 | MOD_AIQA.F_006 | [exit] | 0.2ms | session=B3-verify-05
+[TRACE] 08:58:12 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:58:12 | MOD_LLM.F_001 | chat stream=False model=deepseek-v4-flash msgs=2 reason=False json=True | session=B3-verify-05
+  [B3] 08:58:14 19/26 | [OK]16 [ERR]3
+[TRACE] 08:58:20 | MOD_FIELD.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:58:20 | MOD_FIELD.F_003 | [exit] | 0.0ms | session=B3-verify-05
+INFO:     127.0.0.1:65029 - "POST /api/v1/aiqa/profile_fields HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/profile_fields HTTP/1.1" 200 -
+[TRACE] 08:58:20 | MOD_AIQA.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:58:20 | MOD_AIQA.F_003 | [exit] | 0.0ms | session=B3-verify-05
+INFO:     127.0.0.1:61667 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:58:20 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:58:20 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=12 reason=True json=False | session=B3-verify-05
+INFO:     127.0.0.1:63831 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[TRACE] 08:58:28 | MOD_AIQA.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:58:28 | MOD_AIQA.F_003 | [exit] | 0.1ms | session=B3-verify-05
+INFO:     127.0.0.1:59620 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:58:28 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:58:28 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=12 reason=True json=False | session=B3-verify-05
+INFO:     127.0.0.1:50499 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /DATA/performance/yichang_L2_T1_L2_result_csv.csv HTTP/1.1" 200 -
+INFO:     127.0.0.1:57519 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:58:39 | MOD_LLM.F_005 | chat_with_tools_stream tools=13 msgs=12 | session=B3-verify-05
+  [B3] 08:58:44 21/26 | [OK]18 [ERR]3
+[TRACE] 08:58:52 | MOD_FIELD.F_002 | [enter] | session=B3-verify-05
+[TRACE] 08:58:52 | MOD_FIELD.F_002 | [exit] | 0.1ms | session=B3-verify-05
+INFO:     127.0.0.1:56584 - "POST /api/v1/geo/clip HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/geo/clip HTTP/1.1" 200 -
+[TRACE] 08:58:52 | MOD_AIQA.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:58:52 | MOD_AIQA.F_003 | [exit] | 0.2ms | session=B3-verify-05
+INFO:     127.0.0.1:58817 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:58:52 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:58:52 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=12 reason=True json=False | session=B3-verify-05
+INFO:     127.0.0.1:53091 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+INFO:     127.0.0.1:60302 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:59:01 | MOD_LLM.F_005 | chat_with_tools_stream tools=13 msgs=12 | session=B3-verify-05
+[TRACE] 08:59:11 | MOD_AIQA.F_002 | [enter] | session=B3-verify-05
+[TRACE] 08:59:11 | MOD_AIQA.F_002 | [exit] | 0.1ms | session=B3-verify-05
+INFO:     127.0.0.1:49191 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:59:11 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:59:11 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=12 reason=True json=False | session=B3-verify-05
+  [B3] 08:59:14 22/26 | [OK]19 [ERR]3
+INFO:     127.0.0.1:63965 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+INFO:     127.0.0.1:53674 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:59:32 | MOD_LLM.F_005 | chat_with_tools_stream tools=13 msgs=12 | session=B3-verify-05
+[TRACE] 08:59:42 | MOD_FIELD.F_002 | [enter] | session=B3-verify-05
+[TRACE] 08:59:42 | MOD_FIELD.F_002 | [exit] | 0.1ms | session=B3-verify-05
+[TRACE] 08:59:42 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+[TRACE] 08:59:42 | MOD_FIELD.F_001 | [exit] | 0.1ms | session=B3-verify-05
+INFO:     127.0.0.1:52292 - "POST /api/v1/geo/extract_feature HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/geo/extract_feature HTTP/1.1" 200 -
+[TRACE] 08:59:43 | MOD_AIQA.F_003 | [enter] | session=B3-verify-05
+[TRACE] 08:59:43 | MOD_AIQA.F_003 | [exit] | 0.0ms | session=B3-verify-05
+INFO:     127.0.0.1:61685 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:59:43 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 08:59:43 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=12 reason=True json=False | session=B3-verify-05
+  [B3] 08:59:44 23/26 | [OK]20 [ERR]3
+INFO:     127.0.0.1:56028 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+INFO:     127.0.0.1:53985 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 08:59:55 | MOD_LLM.F_005 | chat_with_tools_stream tools=13 msgs=12 | session=B3-verify-05
+INFO:     127.0.0.1:63234 - "POST /api/v1/geo/zonal_stats HTTP/1.1" 400 Bad Request
+[serve] 127.0.0.1 - "POST /api/v1/geo/zonal_stats HTTP/1.1" 400 -
+INFO:     127.0.0.1:53275 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[TRACE] 09:00:04 | MOD_AIQA.F_003 | [enter] | session=B3-verify-05
+[TRACE] 09:00:04 | MOD_AIQA.F_003 | [exit] | 0.0ms | session=B3-verify-05
+INFO:     127.0.0.1:59359 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 09:00:04 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 09:00:04 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=12 reason=True json=False | session=B3-verify-05
+INFO:     127.0.0.1:61555 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "GET /DATA/performance/yichang_L2_T1_L2_result_csv.csv HTTP/1.1" 200 -
+INFO:     127.0.0.1:61241 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 09:00:12 | MOD_LLM.F_005 | chat_with_tools_stream tools=13 msgs=12 | session=B3-verify-05
+  [B3] 09:00:15 25/26 | [OK]22 [ERR]3
+WARNING:  [zonal] boundary={'type': 'FeatureCollection', 'features': [{'type': 'Feature', 'geometry': {'typ polys=1 pts=16933 crs_pts=WGS 84 crs_poly=WGS 84
+[TRACE] 09:00:25 | MOD_SPATIAL.F_003 | [enter] | session=B3-verify-05
+  [TRACE] 09:00:25 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 09:00:25 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+  [TRACE] 09:00:25 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 09:00:25 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+  [TRACE] 09:00:25 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 09:00:25 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=B3-verify-05
+  [TRACE] 09:00:25 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 09:00:25 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+  [TRACE] 09:00:25 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 09:00:25 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+  [TRACE] 09:00:25 | MOD_FIELD.F_001 | [enter] | session=B3-verify-05
+  [TRACE] 09:00:25 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=B3-verify-05
+[TRACE] 09:00:25 | MOD_SPATIAL.F_003 | [exit] | 33.7ms | session=B3-verify-05
+INFO:     127.0.0.1:53293 - "POST /api/v1/geo/zonal_stats HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/geo/zonal_stats HTTP/1.1" 200 -
+[TRACE] 09:00:25 | MOD_AIQA.F_003 | [enter] | session=B3-verify-05
+[TRACE] 09:00:25 | MOD_AIQA.F_003 | [exit] | 0.1ms | session=B3-verify-05
+INFO:     127.0.0.1:50994 - "POST /api/v1/chat HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/chat HTTP/1.1" 200 -
+[TRACE] 09:00:25 | MOD_LLM.F_002 | chat provider=deepseek model=deepseek-v4-flash tier=flash attempt=0 | session=B3-verify-05
+[TRACE] 09:00:25 | MOD_LLM.F_001 | chat stream=True model=deepseek-v4-flash msgs=12 reason=True json=False | session=B3-verify-05
+  [B3] 09:00:45 25/26 | [OK]22 [ERR]3
+INFO:     127.0.0.1:52080 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 OK
+[serve] 127.0.0.1 - "POST /api/v1/aiqa/episode HTTP/1.1" 200 -
+[serve] 127.0.0.1 - "POST /_test/report HTTP/1.1" 200 -
+[serve] 测试报告已存: tests/reports/report-2026-08-03-03-llm.md +report-2026-08-03-03-llm.json
+
+═══ [B3] done finished=True elapsed=11.2min ═══
+  rows=26 pass=23 fail=3 pending=0
+    CPD导游: [OK]1 [ERR]2
+    UI渲染: [OK]3 [ERR]0
+    参数正确性: [OK]9 [ERR]1
+    成果范式: [OK]6 [ERR]0
+    Smart交流: [OK]4 [ERR]0
+  chat_phases={} bodyKeys=None tpl_nonnull=0
+  geo_calls=1 4xx/5xx=0 new_reports=['report-2026-08-03-03-llm.json', 'report-2026-08-03-03-llm.md']
+  out: D:\Github\emotion_map\tests\browser\out\audit-B3-090102.json

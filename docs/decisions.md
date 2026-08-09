@@ -472,6 +472,42 @@ v1.0 的 11 Agent 手动编排模式存在三个问题：
 
 ---
 
+### ADR-017 | 2026-07-18 | Streamlit 层整层退役（apps/ + launch.py）
+
+**状态**：✅ 已采纳
+
+**背景**：Streamlit（`apps/` :8501）是迁移期遗留，与全屏交互地图 + AI 问答（EMC）能力冲突。
+
+**决策**：整层退役 `apps/` Streamlit + `launch.py`，前端完全由 `frontend/`（MapLibre GL JS）接管；启动统一 `py frontend/serve.py 8080`（serve.py 自起后端 :8000 + `/api` 反代）。`MOD_APP` 模块表引用保留（AGENTS.md 历史）。
+
+**后果**：入口唯一化（`run_analysis_task()` 单一分析逻辑）；Streamlit 规格仅存 spec.md 历史记录（退役声明覆盖）。
+
+---
+
+### ADR-018 | 2026-08-03 | EMC 架构转型：v1 三阶段 → v2/v3 单次 LLM + Function Calling
+
+**状态**：✅ 已采纳（CB-12/13 闭环）
+
+**背景**：EMC v1 三阶段（select_candidates/FILL_CARD/PLAN/dispatch）诊断管线慢且不稳；评测模板命中率不足。
+
+**决策**：v2 转型单次 LLM + function calling（`fcDiagnoseStep` + `contracts_to_tools_schema`），v3 修复 provider fallback / data gate / domain_lens；废弃 v1 三阶段管线（代码保留过渡期）。出口抽象层 = 结果范式 agent（第三段·build_outlet_schema 确定性组装·不调 LLM·撞 D019 红线）。
+
+**后果**：Flash 模板命中率 85%+ 达标解锁 single-path；诊断 prompt 为 eval 红线（永不动）；每轮 CB 检查走「先验后推」。
+
+---
+
+### ADR-019 | 2026-08-03 | 出口抽象层：EMC 找市场接口（结果范式 agent·第三段）
+
+**状态**：✅ 已采纳（CB-16 Wave 0-3 全闭环）
+
+**背景**：出向链路 = 0（无 IndustryAdapter）·行业接口（体检/更新）无对接——立项风险点。
+
+**决策**：三铁律（EMC 找市场接口 / 三段式线性 / 定性+定量+地理按尺度）·outlet_kb 出向知识库（契约 + 指标映射 + 案例）+ `build_outlet_schema` 确定性组装（不调 LLM）+ /outlet_card 端点 + 多卡支持 + 可感知计算器 2a/2b + validate_outlet_fields CI。双轨架构（主观情绪 + 客观官方体检 overlay）差异化护城河。
+
+**后果**：CB-16 出口抽象层全闭环（Wave 0-3 + ③z）·填补官方体检「软指标可信性缺口」·行业表单项 → EMC 字段一一对应。
+
+---
+
 ## 🔖 ADR 索引
 
 | 编号 | 日期 | 标题 | 状态 |
@@ -492,3 +528,6 @@ v1.0 的 11 Agent 手动编排模式存在三个问题：
 | ADR-014 | 2026-06-17 | 闭环补强：harness×agent×MCP×skill 开环→闭环 | ✅ |
 | ADR-015 | 2026-06-27 | 产品架构升级为三页架构（数据库→控制台→实时地图） | ✅ |
 | ADR-016 | 2026-06-27 | 前端导航架构定型：Martin 编辑器范式（三区左栏 + 悬浮参数栏） | ✅ |
+| ADR-017 | 2026-07-18 | Streamlit 层整层退役（apps/ + launch.py） | ✅ |
+| ADR-018 | 2026-08-03 | EMC v2/v3 单次 LLM + Function Calling 转型 | ✅ |
+| ADR-019 | 2026-08-03 | 出口抽象层：EMC 找市场接口（结果范式 agent） | ✅ |

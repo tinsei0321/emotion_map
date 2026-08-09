@@ -1,12 +1,1205 @@
 # CB Journal（Catch-Ball 轨迹）
 
-> 我方（Claude Code）与第三方评价（DeepSeek V4 Pro / GLM）的多轮 catch-ball 对话轨迹。
+> 我方（claude组：Claude Code + DeepSeek/GLM 5.2）与第三方评价（Codex + glm组：ZCode + GLM 5.2）的多轮 catch-ball 对话轨迹。
 > 按轮**倒序**（最新在顶·CB-NN 大→小·便于看最新进展；不覆写）。新轮次写在文件顶部。
 > 每轮四节：① SCAN 摘要 ② 我方反评价 ③ 行动 ④ 状态/新发现。
 
 ---
 
-## CB-09 · 2026-07-28~29（v1.0 实测诊断·5 案例 + 7 根因）
+## CB-22d · 2026-08-10（地图标记实测失败根治 · 用户两想法 + 两组修正根因 + 路径跑通）
+
+### ① 用户实测失败 → 三证合一
+
+generate_point_layer 实施后两组复验「通过」，但用户浏览器实测失败：追问「能在地图上标记吗」→ 全未匹配 → 停半途（计时不结束）。三证合一：trace（FC 选对工具 + search_place 片区名 0 命中 + LLM 挂起）+ 用户提供 EMC 思考内容（while-loop 反复权衡·不终止铁证）+ 两组复验预判（Codex tier-2 面化未实现/无甄别·glm 片区名落文字）。
+
+### ② 用户两想法（北极星）
+
+1. **地点模糊搜索需 LLM 参与**（非纯算法硬匹配·业界做法 = LLM 判意图 + 成熟 API + 本地兜底）
+2. **无法识别地点就放弃**（像人思维·不能 while-loop 无限思考）
+
+### ③ 两组根因讨论（修正 claude 根因 + 补 3 层）
+
+- **Codex**：挂起 = finalStep 单调用挂起（非 while-loop 重试·trace 无 F_002）·新增根因 C（names 拼接串被当单名）+ D（冷加载 12.4s > 5s 超时）+ 依赖（rapidfuzz/pypinyin 未装·claude「已装」不实）·B1 唯一对症
+- **glm**：挂起 = agentStep streamChat 无单轮超时 + 模型 reasoning 不收敛（deadline 守卫够不着）·数据缺口 = 匹配入口未分词（POI 库有数据·完整 q 无 substring 命中）·补 agentStep 单轮超时 30s·先验高德 API
+- **claude 验证**：两组主张全属实（rapidfuzz 未装·高德解析片区名·核心实体 250 高置信·污水厂误导命中）
+
+### ④ 用户确认 + 实施（commit ace4f8f·路径跑通）
+
+用户确认：① 聚合名无地点就放弃（理所当然）② agentStep 30s 可接受但须流式 token 输出 ③ 解析顺序同意。**准确度后续完善·今天先跑通路径**。
+
+实施：
+- **P0-0**：names split（拼接串→逐名）+ 冷加载 20s + 装 rapidfuzz/pypinyin
+- **P0-1**：高德 API 优先（amap_first·成熟 API·防误伤）+ A0 jieba 分词双路（place_layer 核心实体提取·复用 _match_score）+ 聚合名放弃（_isAggregate·引号容忍）
+- **P0-2**：B1 零命中零 LLM 确定性出口（不调 finalStep·像人放弃·根治挂起）·agentStep 已有 30s 超时 + 流式 token 确认
+- **测试**：validate_generate_point_layer 9 断言（含 B1 零 LLM 防回归）+ **307 passed 零回归** + 路径跑通（8/9 名有输出·污水厂网示范区正确放弃）
+
+### ⑤ 状态
+
+- **已 push**：`ace4f8f`（6 文件 150 行）
+- **待**：用户浏览器复测（真实数据·看标记 + 计时收尾 <30s）→ 两组复验
+- **后续（准确度）**：GIS 甄别增强（A1）·tier-2 面化（A2）·项目库坐标（A3）·高德限流回退
+
+## CB-22d · 2026-08-10（知识问答 → 地图标记 · 反评价收敛定稿 · 两组 7 项缺陷全核实 · 修正版 plan）
+
+### ① 综合 plan 进 CB 详细评估（两组回应）
+
+claude组 综合反评价定稿 plan → 进 CB 请两组详细评估可行性（6 焦点 A-F）。
+
+### ② 两组详细评估 → 7 项缺陷全属实（claude组 代码核实）
+
+**glm 3 项实质缺陷（全属实）**：
+- **B.1 `ctx.resume` 恒 false**（panel.js:1696 = _resumingAsk || _isResumeCue(text)·用户句无续作词 + 上轮非 ask 出口 → false）→ P0-2 路由使能进不去分支
+- **B.2 FC 走契约 when 不走 prompts 铁律**（router.py:25 build_fc_sys_prompt 不含「选择要点·铁律」·grep 零命中）→ P0-3 诱导重心错位
+- **F.1 names[] 无来源**（panel.js:1601 _distillTurn 只返 intent/method/done/gap/strategy·不含 final 文本）→ FC 看不到项目名
+
+**Codex 4 项接线点（全属实）**：
+- **A-1 runTemplatePath 零图层 → ask_user 陷阱**（诚实 observation 无 [ERR] + newLayerCount=0 + 不在 _ANALYTICAL_TOOLS → 必然 ask_user·与「全未命中→诚实文字」冲突）
+- **A-2 _dataGate 误拦「点位/地块」变体**（harness.js:1573 正则·前置 request_upload）
+- **A-3 面化不能复用 FIXED_ADMIN_DISTRICTS 白名单**（葛洲坝不在白名单会被拒）
+- **A-4 _SLOT_HINT 缺 names 条目**
+
+**两组交叉印证**：都独立发现「P0-2 resume 条件」问题（Codex「不覆盖主复现句 + quick-rag 轮 priorTurn.intent 空值」≈ glm「resume 恒 false」）→ 铁证。
+
+**glm 最高价值判断**：若不修正直接实施，「工具实现了却从不被触发」= 修复层面重演用户说的「计划与执行脱节」——成立。
+
+### ③ 修正版定稿 plan（反评价收敛）
+
+**P0-0 前置接线**：路由使能重构（FC diagnose 前置检测 priorTurn=knowledge_qa+标记词 → 无条件注入上下文提示 + 上轮 final 片段·不翻转 resume）+ _dataGate 豁免 + runTemplatePath 零图层诚实出口特判 + quick-rag 轮知识问答标记。
+**P0-1 工具层**：generate_point_layer（显式 circle 样式·并发上限 50/并发≤10/5s 超时·match_type 属性·三级面化回退自建 containment 匹配不复用白名单·_SLOT_HINT.names·_deterministicRecover 兜底）。
+**P0-2 路由**：诱导重心移到契约 `when`（FC 主路径）+ build_fc_sys_prompt 可选提示 + prompts 铁律保留不作主依赖。
+**P0-3 契约+镜像+豁免**：KNOWLEDGE §1 登记 diagnose 增量豁免 3 条件·附 3 处变更清单·静态断言守现有技能 id。
+**P0-4 测试**：FC 选型正例（命门断言）+ FC 选错兜底 + 零图层诚实出口 + _dataGate 变体负例 + knowledge_qa 误判样本 + 面化回退 stub + B3 用例 + 黄金集回归 + eval 复采 + 用户验收（tier-2=行政区级面+标注）。
+**P1**：附件5 项目库坐标（AMAP geocode·WGS84·不入 RAG 索引·版本口径标注）。
+**克制清单增补**：FC 契约名 generate_point_layer 下划线·前端 TOOLS 同步·防 CB-04 契约分裂。
+
+### ④ 状态
+
+- **已落**：[反评价收敛定稿](discuss/CB22d-知识问答到地图标记_反评价收敛定稿_2026-08-10.md)·commit `200f928` 已 push
+- **待用户确认**：① 验收口径（tier-2 行政区级面+标注是否可接受）② 实施时机（修正版 plan 是否进入实施）
+- **待实施**：P0-0→P0-4 按序 + 实施验证阶段家环境复跑追问补 trace
+
+## CB-22d · 2026-08-10（知识问答 → 地图标记 · 两组回应回收 + 综合 plan 反评价 + 进 CB 详细评估）
+
+### ① 场景与用户判断
+
+用户问「宜昌市城市更新项目有哪些？」→ 知识问答文字回答（符合预期）；追问「能在地图上标记出这些项目的位置吗？」→ EMC 无法完成（报需上传数据）。用户两轮判断：**判断一** 官方 DeepSeek 能「项目→地点→答案」EMC 不能·缺失在哪；**判断二（根因修正）** 官方至少走了「判断→计划→执行」完整链路（尽管靠幻觉）·**EMC 是「计划与执行脱节」**——这才是根因。用户要求客观理解·说错必指·三组保持客观立场。
+
+### ② claude组 根因修正（用户判断深化）
+
+**认可核心**：根因 = **Smart/Dumb 能力接口断裂**——LLM 能计划「项目→地点→图层」·但意图枚举无此值 + FC 14 工具无 names→点图层 + 编排器无路由 → 计划与执行脱节 → C2 request_upload。官方不脱节（同模型·幻觉兜底）；EMC 拆开须补承接。
+
+**修正两处**：①「EMC 没通过意图判断」不准确——diagnose 必做意图判断·问题是**判断目标集无此值**（prompts.py:200 四值）；②「官方真匹配地点」不准确——官方是**幻觉**（预训练猜测·无真实地理数据）·EMC 铁律拒幻觉不能复刻。
+
+### ③ 两组回应（glm + Codex）
+
+**glm**（agree 主轴 + 补充）：工具层封闭更彻底（FC 14 工具·run_python 不在 FC 暴露 + 被铁律拦 harness.js:1397）；主张**独立新意图 `layer_from_knowledge`**（不在 knowledge_qa 内开图层分支·守 CB-22 铁律）；不动 `_isResumeCue` 正则；B 为本/A 为门/C 为增强；验收可测化 5 条 + B3/黄金集/eval 复采。
+
+**Codex**（agree 主轴 + 分歧 + 挑战）：「C2 request_upload 是果不是因」·真缺口=无 names→点图层工具；**主张归 gis_operation + 新技能·不新增 intent 枚举**（PARADIGM_MAP/静态断言/四态出口全不动）；面化数据现实（街道/更新单元 geojson 缺失·葛洲坝退西陵区面）；挑战 A（勿扩 resume 正则·防跳过 knowledge_qa 合流）；挑战 2（defaultPaint 无 point 分支/55 名并发/未命中来源标注）。
+
+### ④ claude组 反评价裁决
+
+**采纳 Codex 方案（归 gis_operation + 新技能·不新增 intent）+ 采纳 glm 内核（独立于 knowledge_qa·不动 resume 正则）**。取证：intent 是 LLM 从枚举字符串输出（prompts.py:200）·选择要点铁律硬编码技能（prompts.py:267）·技能目录由 tool_contracts 派生——归 gis_operation 改动面最小；不新增 intent 规避 4 值注意力稀释 + PARADIGM_MAP 变更风险。Codex 挑战 A/2 全采纳。
+
+### ⑤ 定稿 plan（进 CB 详细评估）
+
+**P0-1 工具层**：`generate_point_layer({names,as})`——逐名 search_place → point fc → addToolboxLayer（显式 circle 样式）·并发 Promise.all+限流·observation 命中/未命中列表·**三级面化回退**（点→面→文字·绝不 request_upload）·SKILL_DEFS 镜像。
+**P0-2 路由使能**：resume+priorTurn=knowledge_qa+标记词 → 上下文提示选新技能（不翻转 resume 布尔）·`_NEEDS_POINT` 不含新工具 C2 天然豁免。
+**P0-3 契约+镜像+豁免**：tool_contracts 新增 + paradigm/prompts 增量 + validate_skill_params 同步 + KNOWLEDGE §1 登记 diagnose 增量豁免 3 条件。
+**P0-4 测试验收**：工具单测（stub search_place 三态）+ 路由负例 + 静态断言 + B3 用例 + 黄金集回归 + eval 复采 + 用户验收。
+**P1**：附件5 项目库坐标抽取 → 项目点位源 → 优先命中。
+
+**克制清单**：不改 knowledge_qa 成功路径/禁图层注入·不新增 intent·不动 PARADIGM_MAP/四态/finalStep D019·不越维（55 聚合不冒充 55 点位）·未命中不编造坐标·不动 resume 正则。
+
+### ⑥ 状态
+
+- **已落**：[综合plan反评价](discuss/CB22d-知识问答到地图标记_综合plan反评价_2026-08-10.md)（根因修正 + 两组反评价 + 定稿 plan + 6 焦点）·commit `f94d3cd` 已 push
+- **待**：两组**详细评估**（6 焦点 A-F·可行性/有效性/红线/用户诉求/数据增强/异议）→ 落 `CB22d-..._综合plan评估_{组}_2026-08-10.md` → claude组 收敛 → 实施
+- **未决**：trace 闭环（claude组 家环境复跑追问补 trace_query）·面化数据缺口（街道/更新单元 geojson 缺失）·Codex 未补评焦点 5（官方对比）
+
+## CB-22 · 2026-08-09（三支柱 + 产品定位对齐 · 两组回收全 agree · 实施修正含承重发现）
+
+### ① 两组对齐回应（6 焦点全 agree·零分歧）
+
+**Codex**（[回应](discuss/CB22-三支柱对齐_Codex-GPT5_2026-08-09.md)）：三支柱认可 + **每支柱质量下限**（检索命中率/正确路由+兜底/只归纳不新增事实）·**交叉挑战 3 条**（认领上轮无挑战·**"零 LLM"边界显式限定**（仅失败兜底·成功路径必须 LLM 综合·防以 R3 先例回潮）·**"指令治本"是幻觉**（素材质量差时架构/LLM 空转·三支柱联动））·补 3（只基于素材·PARADIGM_MAP 显式化+单测·零 LLM 仅失败兜底）·指令硬约束 ≤3 条·验收补 V2 准确性断言/V3 稳定性断言（要点一致非逐字）/V5 素材质量（Recall@5 ≥80%）
+
+**glm组**（[回应](discuss/CB22-三支柱对齐_glm组_2026-08-09.md)）：**诚实承认零 LLM 错误**（从 R3 到第二根因到分类→范式一贯坚持·被用户验证否定·过度防幻觉·忽视 LLM 综合是三支柱之三·原则升级 = trace 取证 + 产品意图对齐）·唯一仍成立 = **R3 RAG 不可用 EXIT_CONCEPT 兜底**（"无素材禁 LLM 编"对·"有素材禁 LLM 综合"错）·补 4 点（禁编/禁臆测·引用来源·**综合全部 Top-K 非只 Top-1**·禁图层/4×5/情绪分析式）·验收补 3 断言（LLM 综合非拼列表=核心·引用来源·涵盖 ≥3 条）·对 claude 挑战（收敛选 B 策误·建议三支柱检查机制·收敛标"砍了哪个支柱"）·风险 W1（指令 vs FINAL_TEMPLATE 冲突·强标记）/W2（只引 Top-1）
+
+### ② 我方反评价（verify-before-accept · 承重发现）
+
+**全部采纳**：6 焦点两组全 agree·实施点收敛 = 指令补强（强标记/只基于素材/综合 Top-N）+ PARADIGM_MAP 显式化 + KNOWLEDGE 蒸馏 + 验收 V1-V5。
+
+**⚠️ 承重发现（两组未检出）**：`tools/rag_index.py` 索引 meta **不存 text**（只存 source/type/data_dim/hash）·`search()` 返回无片段 → harness 注入 finalStep 的"素材"**仅文件名列表**·LLM 无内容可综合（三支柱①空转·验收 V2 结构性不可过）。两组报告核对了"注入素材走 finalStep"的代码路径·未核对素材**内容**是否随索引持久化。
+
+### ③ 行动（实施修正 5 项）
+
+| # | 改动 | 验证 |
+|---|---|---|
+| A | 索引 meta 存 text（`rag_index.py:178` `c['text'][:2000]`）+ search 透传（:258）+ 端点契约补 text（`aiqa_routes.py:116`）+ **harness 注入片段全文 + 四指令**（`harness.js:1013-1028`·强标记/只基于素材/综合 Top-N/禁图层·finalStep LLM 综合保留） | 索引重建 225 条·text 已入库 |
+| B | PARADIGM_MAP 注释修正（`emc-patterns.js:56`·"确定性组装·零 LLM"→"知识问答·LLM 综合"·注释曾与回滚后实现矛盾） | — |
+| C | **新单测 `tests/validate_paradigm_map.py`**（5 断言：覆盖完整性/范式值合法/rag_query→knowledge_qa/harness 分支含 finalStep 零 LLM 防回归/注释语义） | **5/5 PASS** |
+| D | KNOWLEDGE 蒸馏 3 条（§2 三支柱 2 子条：**零 LLM 边界**仅失败兜底 + **LLM 综合边界**不新增事实·含素材内容持久化注记 + §7 **规则 5**：组间交叉挑战 + 三支柱检查入收敛清单·砍支柱=一票否决） | — |
+| E | 端点测试补 text 断言（`test_rag_emc_e2e.py:38`·承重发现机器化·防素材回退文件名） | PASS |
+
+**验证**：黄金集 **5/5**（召回 10/10·越维·案例）·PARADIGM_MAP 单测 5/5 · **pytest 305 passed + 3 skipped 零回归**（基线 303 +2 新断言口径）
+
+### ④ 状态/新发现
+
+- **红线零违反**：FINAL_TEMPLATE（D019）零改动·diagnose prompt 零改动·四态出口未动·注入仅 ctx.context 动态（无静态模板改动）
+- **待两组复验**（[复验发起](discuss/CB22-三支柱对齐_实施摘要_2026-08-09.md) + [_handoff/CB22-三支柱对齐_复验发起_2026-08-09.md](_handoff/CB22-三支柱对齐_复验发起_2026-08-09.md)）→ 通过后 push
+- **未决**：B 路径（CB-22b·query_knowledge_base 确定性查询·RAG_QUERY_KW 临时结构化词待迁移）·素材质量指标 Recall@5 机制待建 · 稳定性断言（同问 3 次）用户实测验收
+
+## CB-22b · 2026-08-09（实施复验反评价收敛 · 两组深度复验 · 定稿）
+
+### ① 两组深度复验（用户要求：深度/详细/全面·复验+修复后用户手动检查）
+
+**Codex**（[复验回应](discuss/CB22-三支柱对齐_实施复验回应_Codex-GPT5_2026-08-09.md)）：**实施到位·无回归·可交付**——命令出证据（search 含 text ✅·validate 5/5 ✅·e2e 5/5 ✅·含上轮 e2e 编码修复确认）+ F1-F5 全 agree + 边界 B1/B4 confirmed·B2/B3/B5 建议级 + **2 挑战**（① 注入体积 5.5KB 超 <3000B 预算·无守卫→二选一（降 500B/条 或 明确预算+守卫测试）② finalStep 断言弱化 `"finalStep" in seg` 字符串包含→改精确调用点）+ 对 glm 视角建议（Recall@5 机制 B 路径后建）
+
+**glm**（[复验回应](discuss/CB22-三支柱对齐_实施复验回应_glm组_2026-08-09.md)）：**实施到位可交付**——命令出证据（search 含 text ✅·validate 5/5 ✅·**e2e 4/5（1 Playwright 失败·须定性）**）+ F1-F5 全 agree + B1/B2/B3/B4 confirmed·**B5 指令优先级 ⚠️ 风险标注**（ctx.context 强标记在后 vs FINAL_TEMPLATE 图层导向在前·LLM 可能混读·须用户实测）+ 挑战 2（e2e 失败定性 + B5 强标记够吗）+ 自我挑战（B5 是预防性标注非已证实）+ 用户检查依据 3 看点（复测/准确性/全面性）
+
+### ② 我方反评价（先评估·再定稿修复）
+
+| # | 问题 | 评估 | 处置 |
+|---|---|---|---|
+| P0 | glm e2e test_quickintent_rag_trigger 1 failed | **环境问题非回归**——claude 复跑 PASSED（11.28s）·整组 e2e 5/5 全绿（58.6s）·本次改动未触碰 `_quickIntent`（仅注入块）·glm 侧为 Playwright/端口环境（三组并发已知） | ✅ 定性完成 |
+| P1 | finalStep 断言弱化（Codex 挑战 2） | **采纳**·精确调用点更强防回归 | ✅ 已修 |
+| P2 | 注入体积 5.5KB 超预算无守卫（Codex 挑战 1） | **采纳方案②**·素材质量优先不降 500B·明确 ≤8KB 预算 + 守卫测试 | ✅ 已修 |
+| W | B5 指令优先级（两组一致） | **不预改**（FINAL_TEMPLATE 红线 D019）·强标记已是最优非侵入·两组均标用户实测核心看点·若实测仍图层导向→回 CB 升级机制 | 👉 用户检查 |
+
+### ③ 行动（P1+P2 修复）
+
+- **P1** `validate_paradigm_map.py::test_rag_query_branch_uses_finalstep`：`"finalStep" in seg` → `"await stages.finalStep(ctx, hooks, '')" in seg`（精确调用点）
+- **P2** 新增 `test_rag_injection_volume_budget`（体积守卫：snippet ≤1000B/条 + Top-K k≤5 + 指令行数 1~6）+ harness.js 注入块注释补预算标注（★ ≤8KB）
+- **验证**：validate **6 passed**·e2e **5/5**（含 glm 失败用例 PASSED）·**pytest 305 零回归**（validate_* 轨不进全量·pytest.ini `python_files=test_*.py` 项目惯例·验证门禁单独跑）
+
+### ④ 状态/新发现
+
+- **定稿**：[反评价收敛定稿](discuss/CB22-三支柱对齐_反评价收敛_定稿_2026-08-09.md)（含用户手动检查清单 ①知识问答主路径/B5 ②准确性 ③全面性 ④稳定性 ⑤边界负例）
+- **下一步**：push → **用户手动检查**（检查清单见定稿文档附）→ B 路径（CB-22b）
+
+---
+
+## CB-18 · 2026-08-08（整体验收 · 用户新工作方式：验收交两组走 CB）
+
+### ① SCAN 摘要
+
+**本轮由 claude组 发起**（用户 2026-08-08 明确「每次完成后验收工作让另两组完成·进 CB」）→ claude组 将 todo「整体验收清单」转两组**证据驱动验收**（代码核验 + 可跑测试 + e2e-seam 直测 + 浏览器可选）→ 落 [整体验收_实施检查发起](discuss/整体验收_实施检查发起_2026-08-08.md)（P0-1~5/P1-1~5/P2-1/H-1~4 + 审计修正核验 + 5 焦点）。
+
+**Codex**（[验收回应](discuss/整体验收_验收回应_Codex-GPT5_2026-08-08.md)）：**有条件通过**——13 项代码核验通过·0 阻断·承重红线零违反；发现 **2 处需修复（W-1 tools.js 红绿语义残留·低危；W-2 threshold/soft_threshold 契约-运行时漂移·警告级）** + **3 处需补证（P1-3 CSV 无单测·H-1 DEM 无解码单测·P0-2/3/4+P2-1 无 JS 直测）** + W-3 legend 五档口径存疑（地图图例层无渲染·EMC 工具卡文本图例）·观感类（干货/地势感/无露底/console）标「可选用户复核」。环境无 Python·测试证据复用 claude 基线 + 静态核验。
+
+**glm组**（[验收回应](discuss/整体验收_验收回应_glm组_2026-08-08.md)）：**通过**——15 项全部有代码证据·12 项充分通过 + 3 项标用户观感（P0-5/H-2/P0-1）·pytest 291 + validate 34 全绿零回归·承重红线零违反。**未发现 Codex 的 W-1/W-2**（Tools.js 红绿残留 + threshold 转发缺口）·W2「热点旧义」判定通用语义不阻塞·建议直接进发版回归。
+
+### ② 我方反评价（verify-before-accept · 关键争议实核）
+
+**独立实核证据**（Codex 发现 → 本组复验）：
+- **W-1 属实**：`frontend/js/ai_qa/tools.js:1285` docstring + `:1297` observation 仍写「hot=红/cold=绿/ns=灰」·与 W1 纯橙系渲染（`map.js:604-611`）矛盾·违反 H-3 无旧义残留判据 → **需修复（纯文案 1 行·回归前合入）**
+- **W-2 属实**：`frontend/js/toolbox/hotspot-tool.js:11-14` 请求体仅 layer/value_col/invert/range/pre_filter·**无 threshold/soft_threshold**；`tools.js` hotspot handler 亦不转发 → **LLM 指定阈值被静默丢弃·契约（tool_contracts.py:274-275 "EMC-only·AI 执行"）与运行时漂移** → **需决策：转发补齐（约 4 行）vs 契约降级标注（默认值定稿）**
+- **S-1/S-2/S-3 补证缺口属实**：`export_outlet_card_csv`（tests/ 零引用）· `create_terrain_dem`/terrarium（tests/ 零引用·08-05 DEM 解码为一次性手工验证）· `result-struct.js`（无任何 JS 侧测试）→ **需补单测（纯测试不动行为·可随回归一并验证）**
+- **pytest 291 vs 293**：08-08 已实测 291 passed + 5 skipped·glm 291 正确·非回归（CB-17 已核实）
+- **`.outlet-metrics` CSS**：ai_qa.css 已存在（CB-17 已核实 401371b 修过）→ glm 本轮 W2 系重复 CB-17 旧信息
+
+**逐项判定**：
+
+| 焦点 | 判定 | 收敛 |
+|---|---|---|
+| 1 验收清单完整性 | **agree**（Codex +2 补充·glm 全覆盖） | 采纳 P0-1 判据补「正文无重复观点行」+ H-2 补 W6 契约层五档证据路径·观感类（P0-1/P0-5/H-1/H-4）统一标「可选用户复核」 |
+| 2 证据充分性 | **partial·采纳 Codex 更严** | S-1 CSV 单测 + S-2 DEM 解码单测 + S-3 e2e-seam result-struct 直测（三路径出卡/无观点不显卡/结论带地点·仿 test_r7_truncation）+ S-4 geo_label micro 分支·补证后验收全通过 |
+| 3 验收方式转型 | **agree**（两组一致·风险可控） | 机制层（代码/测试）+ 观感层（用户复核）双层标注·避免两组证据驱动替代用户观感 |
+| 4 回归衔接 | **agree**（两组一致） | W-1/W-2 修复**须在回归前**（避免回归跑旧文本/旧参数路径）；S-1~4 纯测试随回归验证；三路径浏览器抽验并入回归共用一次；flywheel 注释 25→26 |
+| 5 补充异议 | **Codex 更全** | 采纳 W-1/W-2/W-3 + S-1~6；**glm 未发现 W-1/W-2**（Codex 验收深度更严·两组互补成立）；pytest 291 口径已核实 |
+
+**反评价收敛**：**采纳 Codex 条件通过**（更严）+ glm 观感标注——验收判定 = 「有条件通过 → 修 W-1/W-2 + 补 S-1~4 → 验收全通过 → 进发版回归」。
+
+**无承重红线异议**：两组均确认四态出口 / finalStep D019 / diagnose 未动·FINAL_TEMPLATE 2891B<3000B 守门。
+
+### ③ 行动（验收修复 + 补证 · 回归前合入）
+
+```
+W-1 tools.js:1285/:1297 红/绿文案 → 纯橙系描述（1 行·零逻辑）
+W-2 threshold/soft_threshold 转发缺口 → 决策：转发补齐（推荐·约 4 行）vs 契约降级标注
+W-3 legend 五档口径 → 定：EMC 工具卡文本图例（地图图例补 UI 后置·非发版阻塞）
+S-1 tests/test_export.py 补 export_outlet_card_csv 单测（BOM/列/脱敏/三元组）
+S-2 tests/test_spatial_analysis.py 补 terrarium 解码单测（0~500/bounds 4326/尺寸）
+S-3 tests/browser/test_result_struct.py e2e-seam 直测（三路径出卡/无观点不显卡/结论带地点）
+S-4 tests/test_outlet_schema.py 补 geo_label micro 分支
+以上修复+补证完成后 → 整体验收全通过 → P1 发版就绪度回归（fail 集判据 {PRM-03/04/07}）
+```
+
+### ④ 状态/新发现
+
+- **CB-18 闭环**：整体验收**有条件通过**·修 W-1/W-2 + 补 S-1~4 后全通过·进发版回归
+- **新 learning 候选**：验收交两组后，**两组验收深度差异显著**（Codex 发现 W-1/W-2·glm 未发现）——验收结论应**并集采纳**（任何一组发现都需实核），不能取"两组都通过"即过；claude组 须对争议点 verify-before-accept 实核（本例 3 处全部复验确认）
+- **下轮 SCAN 关注**：S-1~4 补证落地 · 发版回归 B3 成果范式类 · 三路径观点卡浏览器抽验
+
+---
+
+## CB-18b · 2026-08-08（验收修复验证 · glm组 通过·Codex 缺席标注）
+
+### ① SCAN 摘要
+
+CB-18 验收**有条件通过** → claude组 修 W-1/W-2 + 补 S-1~4（commit `d5a5625`·未 push·先验后推）→ 发 [整体验收_修复验证发起](discuss/整体验收_修复验证发起_2026-08-08.md)（5 焦点）→ 两组复验。
+
+**glm组**（[修复验证回应](discuss/整体验收_修复验证回应_glm组_2026-08-08.md)）：**通过·建议 push**——W-1 红/绿文案**零残留**（全仓 grep 零旧义·choropleth 红绿为面着色语义不混淆）+ W-2 转发链**闭合**（tools.js:1293 → hotspot-tool.js:15-16 → /geo/hotspot → 后端默认 1.96/1.0）+ S-1~4 **充分**（13 新测试·glm 独立跑 43 passed）+ P0-3 DOM 断言留回归期**可接受**（纯函数直测 + 接线核验·panel 确定性渲染）+ pytest **297 passed 零回归**·承重零违反。
+
+**Codex**：**缺席**（用户告知「codex组暂时有点问题」·本轮未出复验）。
+
+### ② 我方反评价
+
+- **采纳 glm 通过**（用户指示「先只看 glm组」→ 以 glm 复验为 push 依据·Codex 补验后置）
+- **Codex 补验标注**（诚实·不因缺席跳过）：Codex 上次验收更严（发现 glm 遗漏的 W-1/W-2）→ 等 Codex 恢复后补一轮复验，聚焦：① W-2 转发链是否还有别处缺口（tool_contracts 契约 vs 运行时全链）② S-3 result-struct 直测边界 ③ 三路径 DOM 断言是否需前置。
+- **无承重红线异议**。
+
+### ③ 行动
+
+```
+glm 复验通过 → push d5a5625（先验后推·glm 单组依据 + 用户指示）
+→ 整体验收全通过（观感类标可选用户复核）
+→ 进 P1 发版就绪度回归（fail 集判据 {PRM-03/04/07} + RST-L06 + eval 复采 + link_checkup + 三路径浏览器抽验 + flywheel 注释对齐）
+→ Codex 恢复后补复验（W-2 全链 + S-3 边界 + DOM 断言前置评估）
+```
+
+### ④ 状态/新发现
+
+- **CB-18 全闭环**（glm 通过 + Codex 补验挂起）·整体验收通过·进发版回归
+- **新 learning 候选**：单组复验通过可作为 push 依据（用户定）·但 Codex 补验挂起需显式追踪（防双阵营机制降级为单阵营）
+
+---
+
+## CB-19 · 2026-08-08（深读修复协助 · 两组详读 · 反评价收敛）
+
+### ① SCAN 摘要
+
+claude 修复 PRM-03/04（083b78d）+ 实施 P3-4（9680dcc）后，发 [深读修复协助](discuss/深读修复协助_发起_2026-08-08.md)（6 项：PRM-03/04 复验 + PRM-05 深挖 + PRM-07 方案 + P3-4 复验 + Codex 补验 + glm 回归复核）→ 两组详读。
+
+**Codex**（[回应](discuss/深读修复协助_回应_Codex-GPT5_2026-08-08.md)）：PRM-03/04 **通过**（G5 重写链完整推演·仅 2 建议级缝隙：chain 残余 + 复合问句保护）；**PRM-05 真因修正**（`_validAfter` 正则逐字符验证不失败·真因 = FC 空参方差 + deriveAvailable 层依赖 + 测量端判据不一致）→ 方案 a 测量端对齐 PRM-04 + b derive 可观测 + c 契约强化；**PRM-07 残余属实**·推荐 **B'（前端 handler 校验 + 后端 dict 兜底）**·建议进发版候选前实施；P3-4 **有条件通过**（W-A 文案矛盾 + W-B poi_names 排序·建议级）；W-2 全链闭合 / S-3 充分 / 三路径合理；glm 回归数据修正**与 audit 完全一致**·PRM-05 补入判据合理；**关键补充：B3 三连跑在 9680dcc/083b78d 之前·回归绿未覆盖这两个 commit → push 后补 B3 快照**。
+
+**glm组**（[回应](discuss/深读修复协助_回应_glm组_2026-08-08.md)）：PRM-03/04 **通过**（Python 正则模拟 `_validAfter` 13 组全 pass·非根因·无副作用）；**PRM-05 真因 = deriveAvailable 层加载竞态**（admin_district 层异步加载未完成）→ 方案 A 仿 chain pre-check preset fallback；**PRM-07 方案 A（后端 dict 黑名单 `_ADMIN_BLOCKLIST` 5 个法定功能区名）**·风险低；P3-4 通过；W-2/S-3/三路径通过；glm 回归数据修正准确。
+
+### ② 我方反评价（verify-before-accept · 共识 + 分歧收敛）
+
+**共识（两组独立）**：
+- **PRM-03/04 修复通过**（G5 重写完备·center 缺 ask_user 正确）
+- **PRM-05 真因 ≠ `_validAfter` 词边界**（两组独立推演/模拟证明正则对问句始终匹配）→ **修正我发起文档的错误归因**·真因 = FC 方差 + deriveAvailable 层依赖/加载竞态
+- **PRM-07 残余属实**·方案收敛（Codex B' + glm A 可合并）
+- **P3-4 通过**（Codex W-A/W-B 建议级）
+- **W-2 闭合 / S-3 充分 / 三路径合理**（Codex 补验挂起解除）
+- **glm 回归数据修正准确**·PRM-05 补入判据合理
+- **Codex 关键补充**：B3 三连跑在 9680dcc/083b78d 之前·回归绿未覆盖 → **push 后补 B3 快照**
+
+**分歧收敛**：
+- **PRM-05 方案**：Codex a+c（测量端对齐 + 契约强化·治表象+减源头）vs glm A（deriveAvailable fallback·防御加载竞态）→ **合并三层**：glm fallback（防御·治加载竞态）+ Codex 测量端判据对齐（消误报）+ 契约强化（减 FC 空参）·互补不冲突
+- **PRM-07 方案**：Codex B'（前端 handler 校验 + 后端兜底）vs glm A（纯后端黑名单）→ **合并**：前端 handler 校验（FC 直传拒绝·语义最准）+ 后端 `_ADMIN_BLOCKLIST` 黑名单兜底（防御·不误伤上传层）
+
+**采纳修复清单**：
+```
+PRM-05：① deriveAvailable null + 问句含区名 → fallback 行政区 preset 单要素（glm·仿 chain pre-check :1131-1141）
+        ② test-cases.js PRM-05 缺 boundary → 合法 ask_user 判 PASS（Codex·对齐 PRM-04）
+        ③ tool_contracts zonal when/examples 强化「boundary 必带」（Codex·非 prompt 重写）
+PRM-07：① 前端 tools.js zonal/compare/rank handler 校验 FC 直传 boundary name 命中法定功能区词表 → 拒绝 request_upload（Codex B'）
+        ② 后端 geo_registry.py dict 分支加 _ADMIN_BLOCKLIST 黑名单校验（glm A·5 个法定功能区名·不误伤上传层）
+P3-4 建议级：W-A 文案矛盾修 + W-B poi_names 排序（后置）
+push 后：补 B3 快照（Codex·判据 {PRM-03/04/05/07}·覆盖 9680dcc/083b78d）
+```
+
+**承重红线确认**：全部建议未触碰四态出口 / finalStep D019 / diagnose prompt（契约文案 ≠ diagnose prompt·非重写）/ 追踪编号 / 「EMC 不硬猜」（PRM-07 修复正是强化）。
+
+### ③ 行动
+
+- 实施 PRM-05（三层：fallback + 测量端对齐 + 契约强化）
+- 实施 PRM-07（合并：前端 handler 校验 + 后端黑名单兜底）
+- P3-4 W-A/W-B 建议级（后置）
+- push 已验项（083b78d + 9680dcc）→ 补 B3 快照 → 发版候选
+
+### ④ 状态/新发现
+
+- **CB-19 反评价收敛完成**：PRM-03/04 通过·PRM-05/07 修复方案定稿（合并两组）
+- **新 learning**：发起文档归因错误（PRM-05 词边界）被两组独立纠正——**归因须先静态推演/模拟验证再下结论**（两组都用 Python 模拟证明正则不失败）；Codex 补验挂起解除（W-2/S-3/三路径全过）
+- **B3 快照补跑**：Codex 指出回归绿未覆盖 P3-4/PRM 修复 commit·push 后需补
+
+---
+
+## CB-20 · 2026-08-08（PRM-07 空对象根治 · 两组预检通过 · 实施完成）
+
+### ① SCAN 摘要
+
+P2-3 verify 断言加严 → 暴露 PRM-07 空对象真实残余（LLM 传空对象 boundary → zonal「无数据」误导用户「数据不足」）→ claude 发预检（`PRM07空对象根治_预检_2026-08-08.md`·方案 A/B/C）→ 两组评估。
+
+**Codex**（[回应](discuss/PRM07空对象根治_预检回应_Codex-GPT5_2026-08-08.md)）：**可实施（A 主 + B 兜底）**——根因链代码级确认（空对象 → 黑名单放行 → 后端 400 → LLM 弱化转述误导）·A 复用 request_upload 短路（确定性·LLM 无法弱化）·B handler 兜底（~3 行）·「用户上传不受限」以 derive 成功/失败为代理区分·不误伤可用层·承重红线零触碰。**细节修正**：后端对空对象抛 ValueError（400）非「无数据」·根治点在前端。
+
+**glm组**（[回应](discuss/PRM07空对象根治_预检回应_glm组_2026-08-08.md)）：**可实施（A+B 结合）**——三层防御（黑名单 + derive 失败短路 + handler 兜底）·**加 `_boundarySuspect` 守卫**（防合法单要素 derive 偶发失败被误 request_upload）·不误伤用户上传（derive 成功=放行/失败=诚实 request_upload）·改动 ~11 行 + 3 测试·不碰 :1115 短路主逻辑。
+
+### ② 我方反评价（verify-before-accept）
+
+**两组一致：A 主 + B 兜底 + `_boundarySuspect` 守卫** → 实施（`bdde1f0`）：
+- **方案 A**（harness.js derive 失败 else）：boundary 可疑（`_boundarySuspect`）+ derive 失败 → `strategy='request_upload'` + needed/gap → 复用既有 :1115 短路 → `buildRequestUploadText` 确定性文案。**不依赖 `_regions.length`**（实施时发现：法定功能区名「小溪塔」无「区/市/县」后缀·_regions 提取不到·boundary 可疑本身即足够——修正预检的 Codex 建议）
+- **方案 B**（tools.js zonal handler）：boundary 空对象/无 features → 「需上传标准边界资料：boundary 为空/无法解析」（防 A 未覆盖路径）
+- **验证**：pytest 303 零回归·node OK·verify_prm07_ab（e2e-seam 可控）：`zonal_stats({})` → 「需上传标准边界资料」✅ 生效（替代「无数据」）
+
+### ③ 行动
+
+- **实施完成**（`bdde1f0`·已推）·方案 A/B 生效（空对象 → request_upload·可控验证）
+- **工程边界诚实收敛**：浏览器实测 PRM-07 仍受 **LLM 传参方差**影响（每次传参不同：空对象 / 单要素字段名不标准 / 层未加载）——方案 A/B 覆盖「空对象 + derive 失败」可控场景·**完全消除 LLM 行为方差不可能**·这是合理边界·非代码缺陷
+
+### ④ 状态/新发现
+
+- **CB-20 闭环**：PRM-07 空对象根治（A/B 实施）·方案 B 可控验证生效
+- **新 learning**：`_regions` 正则只匹配「区/市/县/街道/镇」后缀·法定功能区名（小溪塔）无后缀提取不到——**边界名正则需覆盖法定功能区/非行政区名**（PRM-07 系列教训）；LLM 传参方差（空对象/字段名不标准）是 EMC 的固有边界·守卫覆盖可控场景即可
+- **PRM-07 残余**：LLM 单要素字段名不标准（无 name/MC/NAME）时黑名单取不到名·不拦——可后置扩字段名覆盖（P2 级）
+
+---
+
+## CB-19c · 2026-08-08（5115d7c 黑名单修复复验 · 两组通过）
+
+### ① SCAN 摘要
+
+claude 修复 Codex T7 阻断（`5115d7c`·黑名单只拦单要素）后发复验（`5115d7c黑名单修复_复验发起_2026-08-08.md`·用户要求落正式文档+推送）→ 两组评估。
+
+**Codex**（[回应](discuss/5115d7c黑名单修复_复验回应_Codex-GPT5_2026-08-08.md)）：**可接受**——T7 多步链执行成功（浏览器实测 exit=0·「两步操作已全部完成·抽取西陵区」）+ 小溪塔单要素仍拒识（verify_prm57 PASS）+ 前后端一致 + 零回归。**P2 建议**：① 多要素全黑名单增强（堵漏拦·~5 行）② **zonal handler `boundaryLabel: String(params.boundary)` 改取 `features[0].properties.name`**（治 `[object Object]`·正是 claude B3 里 PRM-07 偶发 fail 的方差源·改善 LLM 转述忠实度）③ verify_prm57 PRM-07 断言加严（防 LLM 弱化转述误判）。
+
+**glm组**（[回应](discuss/5115d7c黑名单修复_复验回应_glm组_2026-08-08.md)）：**通过**——前后端 `length!==1`/`len!=1` 条件正确·T7 多要素放行 + 小溪塔单要素拒识（Python 6 场景模拟前后端各 6 例全 OK）·**漏拦风险低**（LLM 构造多要素法定功能区极罕见 + deriveAvailable 白名单 + preset fixture 三重保险）·pytest 303 零回归。
+
+### ② 我方反评价（verify-before-accept）
+
+- **两组一致通过**：5115d7c 修复正确·T7 阻断解除·发版候选通过判定维持
+- **采纳 Codex P2 建议（记入 backlog·非阻断）**：
+  - P2-1 多要素全黑名单增强（`feats.every` 全命中才拦·~5 行+单测）——堵漏拦·ROI 低但堵住（glm 判 P3·Codex 判 P2·取中 P2）
+  - P2-2 **`boundaryLabel` 取 features[0].properties.name**（治 `[object Object]`·**改善 LLM 转述忠实度·治 PRM-07 偶发 fail 方差源**）——**本修复高价值·值得做**
+  - P2-3 verify_prm57 PRM-07 断言加严（加「法定功能区」关键词·防 LLM 弱化转述误判）
+- **用户指示**：下轮分派两组任务时带「优化流程」prompt（cb-must-materialize-docs 已记）
+
+### ③ 行动
+
+- 5115d7c 复验通过·CB-19c 闭环
+- P2 建议记入 backlog（P2-2 boundaryLabel 高价值·建议近期做）
+- 下轮分派带优化流程 prompt
+
+### ④ 状态/新发现
+
+- **CB-19 全部闭环**：整体验收 → 修复 → 深读 → 发版回归全面测试 → 黑名单修复复验 → **发版候选通过（两组确认）**
+- **新 learning**：`String(boundary)` 对 dict 产 `[object Object]`·LLM 转述不可读 → 治 PRM-07 偶发 fail 的方差（Codex 发现·P2-2）
+
+---
+
+## CB-19b · 2026-08-08（发版回归全面测试 · 三组汇总收敛 · 发版候选）
+
+### ① SCAN 摘要
+
+claude 发起 [发版回归全面测试方案](discuss/发版回归全面测试_方案_2026-08-08.md)（三组分工·fail 集判据 {PRM-03/04}·覆盖修复 commit 9680dcc/083b78d/469bf32）→ 三组并行执行。
+
+**claude组**（[结果](discuss/发版回归全面测试_结果_claude组_2026-08-08.md)）：pytest **303 passed + 5 skipped** + validate **34 passed** + ESM 6/6 + **B3 24/26（92%·历史最佳）**·fail={PRM-07（黑名单生效但空对象 LLM 方差）, RST-L06（Flash 方差）}·PRM-03/04/05 全转 PASS。**基建修复 4 commit**（三组并发必需）：端口隔离 3dc0a1c + 后台 PATH fdc1c1d + serve 502 断连 76b16eb + PRM-07 文案 2f9965f。
+
+**glm组**（[结果](discuss/发版回归全面测试_结果_glm组_2026-08-08.md)）：**条件绿**——pytest 303 + CB-18 已有数据（link_checkup 20/20 + B3 Run1/2 88%）+ PRM-05/07 代码审查（纯防御性 additive）·B3 final-2 因端口冲突未能新跑·eval 编码超时。建议 claude 补跑 B3 final 确认 PRM-05/07 转 PASS。
+
+**Codex**（[结果](discuss/发版回归全面测试_结果_Codex-GPT5_2026-08-08.md)）：**T6 PRM 专项全 PASS + T8 出口卡 e2e 全 PASS·T7 三路径多步链 FAIL【阻断】**——根因 = **469bf32 黑名单误伤**：`_rejectNonAdminBoundary` 检查所有 GeoJSON dict 的 feats[0]·演示行政区层首要素「龙泉」（黑名单词）→ 合法 extract/链被误拦 → **新增 fail·阻断发版候选**。
+
+### ② 我方反评价（verify-before-accept · Codex 阻断实核）
+
+**Codex T7 阻断属实**（浏览器复现 + 代码核实）：
+- 演示 `行政区.geojson` 9 要素·首要素「龙泉」（黑名单词）·多步链 extract 解析层首 → 被 `_rejectNonAdminBoundary` 误拦 → 链失败。
+- 我 B3 未暴露（zonal 用精确单要素·不命中层首）·**Codex 的浏览器专项暴露了**——再次验证「专项浏览器测试」价值。
+
+**修复**（`5115d7c`）：`_rejectNonAdminBoundary`（前端）+ `resolve_boundary`（后端）**只拦单要素 GeoJSON**（LLM 直传特征 `features.length===1`）·多要素（图层解析·行政区层）放行。
+
+**复测**：T7 三路径 PASS（多步链/multi 出 4 要点卡·PARTIAL 无观点保守不显卡·W3 正确）+ verify_prm57 PASS（小溪塔单要素仍拒识·pytest 单测覆盖）+ 全量 pytest 303 零回归。
+
+**三组收敛判定**：
+- **claude 24/26（92%）+ glm 条件绿 + Codex T6/T8 PASS** → 主体全绿
+- **Codex T7 阻断已修复**（5115d7c·复测 PASS）→ **阻断解除**
+- 剩余 fail = {PRM-07（空对象 LLM 方差·单要素拒识已生效）, RST-L06（Flash 方差）}·均非新增·非并发引入
+- **fail 集判据 {PRM-03/04} 达成**（PRM-03/04/05 全 PASS·PRM-07 单要素拒识生效）
+
+**承重红线确认**：全部改动未触碰四态出口 / finalStep D019 / diagnose prompt / 追踪编号 / 「EMC 不硬猜」（黑名单正是强化）。
+
+### ③ 行动
+
+- **发版候选判定：通过**（T7 阻断已修复·复测全绿·fail 集判据达成）
+- 基建 4 commit + 黑名单修复 2 commit 全部已推（5115d7c）
+- 剩余后置：PRM-07 空对象场景（LLM 方差·单要素拒识已覆盖）+ RST-L06 Flash 方差（已知）
+
+### ④ 状态/新发现
+
+- **CB-19b 闭环**：发版回归全面测试三组完成·发版候选通过
+- **新 learning**：黑名单/白名单类守卫**须区分「LLM 直传」vs「图层解析」**（单要素 vs 多要素·否则误伤合法图层操作）；Codex 浏览器专项暴露了我 B3 未覆盖的误伤——**专项浏览器测试（T6/T7/T8）是三组并发测试的必要组成**
+- **glm 环境限制**：端口冲突 + eval 编码——已由 claude 基建修复（--port/--backend-port）+ B3 补跑覆盖
+
+---
+
+## CB-17 · 2026-08-08（进度同步 + 下一步安排 · 三组收敛定稿）
+
+### ① SCAN 摘要
+
+**本轮由 claude组 发起**（用户 08-06~08-07 暂停后回归·要求回顾 + 三组同步下一步）：claude组 先核实状态基线（git `cf5ef04` 同步·08-05 两专题 CB 全闭环·pytest/validate/link_checkup/eval/B3/RST-L06 基线）→ 落 [进度同步与下一步安排_讨论发起](discuss/进度同步与下一步安排_讨论发起_2026-08-08.md)（7 债 + 5 焦点 + 附 A prompt）→ 两组回应。
+
+**Codex**（[回应](discuss/进度同步与下一步安排_回应_Codex-GPT5_2026-08-08.md)）：快照事实核验全通过（代码 grep 逐项佐证）·焦点 1 agree + 补 B3 fail 集合快照判据（fail id 集 == {PRM-03/04/07}·任何新增 fail 即阻断）+ 三路径观点卡浏览器抽验（B1 补丁只被 pytest 未被 B3 覆盖）；焦点 2 agree（P3-1/P3-4 回归后启动·分开 commit·P3-2 降挂起）；焦点 3 **partial（P2→P1·仅预检不实施·先 B3 取证）**；焦点 4 agree 发版后专题 + 关键提醒「热点 = 空间密集 + 极性同质双条件」；补债 #8 HOME/OFFICE 交接卡过期 · #9 flywheel 注释 25→26 · #10 回归判据缺 fail 快照 · #11 前端 JS 单测补课。
+
+**glm组**（[回应](discuss/进度同步与下一步安排_回应_glm组_2026-08-08.md)）：快照基本准确（pytest 独立跑 **291 passed + 5 skipped** vs claude 声称 293·差 2 待核实；FINAL_TEMPLATE 2891B vs 2957B 口径；validate 34 vs 28 口径）·焦点 1 agree + 范围补 validate_outlet_fields/validate_skill_params/test_hotspot；焦点 2 **partial（P3-4 优先于 P3-1·出口闭环最后一块·微观落点粗略→精确）**；焦点 3 **agree 不排入（PRM-03/04 center ask_user 正确·PRM-07 已根治）**；焦点 4 agree 发版后专题；补债 #8 .outlet-metrics CSS 缺失。
+
+### ② 我方反评价（verify-before-accept · 关键争议核实）
+
+**独立核实证据**：
+- pytest 实测 **291 passed + 5 skipped**（35.47s 全绿）→ **glm 的 291 正确**·08-05「293」为旧口径（差异 2 条·非回归·待发版回归对齐口径）
+- `.outlet-metrics` **已存在于 `frontend/css/ai_qa.css`**（Grep 证实·401371b ③z3b P2-1 已修）→ **glm 补债 #8 为过时信息**（CB-16 Wave 3 旧报告）
+- **PRM-07 执行侧残余属实**（`frontend/js/ai_qa/tools.js:617-622`：白名单 `_isFixedAdmin` 只对 `source==='preset' && /行政区/.test(name)` 生效·FC 直供非 preset 单要素边界**绕过**）→ **Codex 对·glm「已根治」仅覆盖数据侧**（fixture 9→4 清理 + deriveAvailable）·执行侧缺口 = 08-04 已记「Codex ③w7 FC boundary 残余 P2」未解
+- flywheel_audit.py:7 注释「25 例」 vs 实际 26（RST-L06 新增后未同步）→ **Codex 属实**
+
+**逐焦点判定**：
+
+| 焦点 | 判定 | 收敛 |
+|---|---|---|
+| 1 回归时机/范围 | **agree** 顺序（先验收→再回归·回归成本避免翻倍）·范围**合并两组补充** | B3 fail 集合快照判据（Codex）+ 三路径观点卡浏览器抽验（Codex）+ validate_outlet_fields/validate_skill_params/test_hotspot（glm）+ pytest 全量 + eval 带 session + flywheel 注释对齐 |
+| 2 P3 排期 | **partial·采纳 glm P3-4 优先** | P3-4 地点联动（出口闭环·北极星）优先于 P3-1 依赖图；P3-4 复用 geo_label 防第三套地点字段（Codex 提醒·防「字段字典漂移」同类坑）；P3-2 并行**维持后置·降挂起**（两组一致·`$n` 索引重构前置） |
+| 3 PRM 排期 | **采纳 Codex（P1 预检·不实施）·否 glm（不排入）** | PRM-07 执行侧残余实测属实·非「已根治」→ 须预检；PRM-03/04 **采纳 glm 洞察**（center ask_user 是正确行为·预检重点是修复生效/断言口径·非改代码）·实施放回归通过后 |
+| 4 长期算法 | **agree** 发版后专题 | + 采纳 Codex「热点 = 空间密集 + 极性同质 双条件」产品定义（先定义再选型·DBSCAN 聚空间位置非 score 分布） |
+| 5 补充异议 | 快照核验通过·**disagree glm 债 #8** | pytest 291 为实（旧 293 口径）·采纳 Codex #8/9/10/11 + glm validate 范围补充·**glm #8 .outlet-metrics CSS 已存在 → disagree（事实错误/过时）** |
+
+**无承重红线异议**：全部建议在四态出口 / finalStep D019 / diagnose 永不动 / 追踪编号 红线之外。
+
+### ③ 行动（下一步安排定稿 · 写入 todo 08-08 段）
+
+```
+P0（用户·当前）整体验收：todo「整体验收清单」浏览器肉眼验证 + 记 3 观感（观点卡干货感/热点五档可读性/setTerrain 地势感）
+P1（发版门）发版就绪度回归：pytest 全量（291 passed + 5 skipped 基线）+ validate（28+ 含 outlet_fields/skill_params）+ link_checkup 20/20 + eval 复采（带 session）+ B3 三连（判据 = fail 集 == {PRM-03/04/07}·不新增即过）+ RST-L06 三连 + 三路径观点卡浏览器抽验 + flywheel 注释对齐（25→26）
+P1（预检）PRM backlog CB 预检（仅预检不实施）：B3 取证确认 fail 集合 → PRM-03/04 stale-tool 修复覆盖核实（center ask_user 正确·非改代码）→ PRM-07 执行侧两候选收敛（白名单补齐 vs request_upload 强化）→ 回归通过后实施
+P2（回归后）P3-4 地点联动（出口闭环·微观落点粗略→精确）：复用 geo_label·先盘点消费方·分开 commit 先验后推
+P2（回归后）P3-1 依赖图（零红线）：DAG 纯函数·不交 LLM·与 P3-4 分开 commit
+P3（文档）HOME/OFFICE 交接卡同步 + _cb-index 状态更新 + revision-log 归档
+P3（后置）P3-2 并行（降挂起·待 EMC 规模化 + $n 索引重构）· KDE/DBSCAN 替代（发版后专题·先定产品定义）· 时间轴 manifest · 前端 JS 单测补课（下轮 SCAN 关注）
+```
+
+### ④ 状态/新发现
+
+- **CB-17 闭环**：三组进度同步完成 · 下一步安排定稿（整体验收 → 发版回归 → PRM 预检 + P3-4 地点联动 → 后置项）
+- **新 learning 候选**（PRM-07 分歧教训）：评估方「已根治」判定须覆盖**执行侧**（不只数据侧/deriveAvailable）——白名单/门控类修复要追全消费路径（本例 FC 直供边界绕过 preset 白名单）
+- **下轮 SCAN 关注**（两组建议合并）：前端 JS 单测补课（result-struct/setTerrainDEM/hotspot legend e2e-seam 直测）· PRM fail 集合收敛轨迹（{PRM-03/04/07}→0）· 三路径观点卡稳定性 · 整体验收后用户观感（SCAN 第七轴采集）
+
+---
+
+## CB-16 · 2026-08-03（出口深化讨论 · 发起）
+
+### ① SCAN 摘要
+
+**本轮由 claude组 发起**（非第三方 SCAN）：基于最新版出口抽象层报告（含官方三类指标·软指标可信性缺口·出口卡片·案例深挖 v3·outlet_kb），发 Codex/glm 两组深读报告、聚焦 EMC"出口"、参与讨论。请求：[CB16-出口深化讨论](_handoff/CB16-出口深化讨论_2026-08-03.md)。
+
+**核心内容**：
+- 三大指标体系：国家十五五（10 项·统领）/ 住建部（4 维度 61 项·规建营·重点）/ 自然资源部（110 项·了解）
+- 官方三类指标（建科〔2023〕75号）：可量化 ~55-65% / 可感知 ~15-20% / 可评价 ~15-25%·合计 30-45% 涉及市民感受
+- 软指标可信性缺口 = 情绪地图要填的（全量评论流）
+- 出口卡片体系（4×5 ↔ 体检指标 ↔ 更新任务·能/不能双栏）
+- outlet_kb（7 契约 + 21 指标映射 + 5 案例·确定性组装）
+
+**6 焦点**：A 结果范式 agent 架构（后端确定性组装 vs LLM）· B outlet_kb 接入（可感知 10 项逐项对应）· C 与 CB-15 数据认知协同（CB-15 先行）· D MVP 范围（S2 打穿）· E 承重与风险（D019 红线）· **F 出口驱动开发逻辑链（用户定·重点）**：基于出口反推定制分析方法/计划/执行工具/图例样式/出图文本范式——出口抽象层从"结果对接层"升级为"开发方法论"。
+
+### ② 我方反评价（对 CB-16 两组 SCAN）
+
+**两组独立一致·全部 agree**（verify-before-accept 通过）：
+
+| 讨论点 | 判定 | 证据 |
+|---|:---:|---|
+| 出口方向正确（铁律 A·EMC 找市场）| **agree** | 立项成败关键·Codex+glm 独立一致 |
+| outlet_kb 扎实（7 契约+21 指标+5 案例）| **agree** | field_mapping 引用真实 EMC 字段（`core/spatial_analysis.py` 聚合产物·非纸上谈兵）|
+| MVP 只打穿 S2（更新需求分析）| **agree** | 一个场景全链路验证 > 三场景半成品·S2 meso 路径 zonal_stats 已稳定 |
+| 不新增 LLM 阶段 | **agree** | 后端确定性组装 + 前端 markdown 渲染·不撞 D019·确定性比 LLM 编造更可信 |
+| 出口驱动开发需验证闭环 | **agree** | 不能只是理念·要 6 步可执行流程（定义→反推→验证可产出→可组装→可渲染→可对接）·作为新功能评审清单非全量门禁 |
+
+**关键独立洞察（两组互补）**：
+- **Codex**：缺口 = 三层接线（装配 build_outlet_schema + 触发条件判定 + 前端渲染）非字段缺失——聚合产物已含 place_name/topic_top 等 7 要素输入·比报告"出向=0"更聚焦；**place_name 已存在·S2 可先行**（点侧众数·诚实标注·CB-15 是精度升级非解锁前置）；**出口驱动 CI 守卫**（validate_outlet_fields.py 防"分析了很多行业用不上"）；**修正"Codex 立场被预记"**（通俗版表述需改）
+- **glm**：**出口驱动验证闭环 6 步**（可执行流程）+ **新功能评审清单非全量门禁**（基础设施不被阻塞）+ outlet_card 字段缺失降级（填"暂无数据"不编造）
+
+### ③ 行动
+- 深读两组 SCAN + verify-before-accept（聚合产物字段/outlet_kb 代码核验）
+- 反评价落 plan（共识 + 独立洞察 + 收敛方案 Wave 0-3）
+- **收敛方案**：Wave 0 = S2 打穿（build_outlet_schema + resolve_outlet_id + 条件触发 + 前端卡片）·Wave 1 = macro 出口（零 CB-15）·Wave 2 = CB-15 后 place_name 精确源·Wave 3 = 可感知计算器 + validate_outlet_fields CI
+- 待用户确认 Codex 3 问（S2 演示数据/条件触发词表/卡片渲染形态）
+
+### ③b 行动（Wave 0 实施 + 续）
+- **Wave 0 核心已实施**（commit 9a98785·已 push）：`build_outlet_schema.py`（resolve_outlet_id + build_outlet_schema·确定性组装·不调 LLM·字段降级·尺度分派·诚实标注）+ 测试 13 passed + 端到端 S2 卡验证（接口标识/问题类型/需求强度/需求位置/需求类型/数据基础/对接任务/局限）
+- **数据模拟开专题**（用户定·暂缓）：后续专门模拟大南门·二马路片区范围及周边数据展示 EMC 出口
+- **Wave 0 剩余发起 CB**：条件触发词表（emc-patterns.js 镜像·方案 A）+ 前端卡片渲染（用既有 token）·请求落 `_handoff/CB16-Wave0剩余_2026-08-03.md`
+
+### ③c 行动（Wave 0 三 bug 修复·CB 反评价）
+- **两组 SCAN 发现 3 bug·全部核实 + 修复**（commit f84b3ae）：
+  - ① qualifier 后缀解析（Codex）：`polarity_index 降序` 丢值 → 解析去尾部限定词
+  - ② "更新"词过宽（Codex）："更新图层"误触发 → 排除 UI 语境
+  - ③ 体检契约 domain（glm P0）：`urban_checkup` 不在 domain_lens 枚举 → 改 `urban_governance`（S6 可触发）
+- 补 3 回归测试（qualifier/更新图层负测/体检契约命中）·10 passed·全量 pytest 242 passed
+- 测试口径修正：13 → 实际 7（Codex 核实·已补至 10）
+
+### ③d 行动（Wave 0 剩余实施预告·CB 机制）
+- Wave 0 剩余两项实施方案已起草·发 CB 预告（`_handoff/CB16-Wave0剩余实施_2026-08-03.md`）：
+  - ① 条件触发词表镜像 emc-patterns.js（OUTLET_TRIGGER_KW·单一权威源在后端·同步守卫 validate_outlet_trigger_sync.py·仅 UI 提示不改控制流）
+  - ② 前端 outlet-card 渲染（仿 .cpd-guide-card·既有 token·纯模板函数·{{show:}} 复用 renderAnswer）
+- 按机制：等两组预检 SCAN 后实施
+
+### ③e 行动（Wave 0 完整链路实施·按两组预检）
+- **两组预检通过**（Codex agree + 关键缺口"无前端接线"·glm agree + 排除表镜像建议）·反评价采纳全部
+- **Wave 0 完整链路实施**（commit 38d3a0c·已 push）：
+  - `/aiqa/outlet_card` 端点（接收 diagnose+result+question→build_outlet_schema）
+  - harness result 态后条件调（_maybeBuildOutletCard·触发词+UI 语境排除·产物收集·失败静默）
+  - panel renderOutletCard 纯模板渲染（仿 cpd-guide-card·既有 token·7 要素·缺失灰·引用块·{{show:}} 复用）
+  - emc-patterns.js OUTLET_TRIGGER_KW + OUTLET_UI_EXCLUDE_KW（镜像含排除表·Codex/glm 建议）
+  - validate_outlet_trigger_sync.py 同步守卫（双份校验·2 passed）
+- **端到端验证**：/outlet_card → 需求分析卡（停车难/-0.32/夷陵广场·诚实标注）·JS import OK·pytest 242
+
+### ③f 行动（Wave 0 实施后检查发起）
+- Wave 0 完整链路已实施（38d3a0c+bd3ccce）·发实施后检查 CB 请求（`_handoff/CB16-Wave0完成检查_2026-08-04.md`）：5 环节核验（端点/接线/渲染/词表/守卫）+ 端到端验证（复现命令 + 浏览器出卡）
+- 待两组检查 SCAN → 反评价
+
+### ③g 行动（大南门数据专题实施预告发起）
+- **交接卡【下一步】核心待续项推进**：大南门·二马路数据接入 EMC 出口链路（数据接入·非新契约/非新 LLM 阶段）
+- 探索发现 3 缺口：① ermawu CSV 无 lon/lat（坐标只在 geojson）② ermawu 三层未注册 `geo_registry._POINT_LAYERS`（问答无法加载）③ 大南门边界不在 range presets manifest（/geo/catalog 不可见）
+- 发实施前预告（`_handoff/CB16-大南门数据专题实施_2026-08-04.md`）：CSV 补坐标列（一次性 backfill·不动生成器）+ 注册点层（level='L3L4'）+ 边界登记 + 回归测试 + 端到端出卡
+- **用户定**：时间轴 manifest（_time_manifest.json）与需求分析是两件事·后置（本次不做）
+- 待两组预检 SCAN → 反评价 → 实施
+
+### ③h 行动（大南门数据专题实施 · 两组预检通过后落地）
+- **两组预检通过**（Codex「通过 + 1 必补项」· claude组「全过 + 4 追加建议」）·反评价采纳全部：
+  - **Codex 必补项**：边界登记只改 manifest 不够——`list_presets` 用 `os.path.join(_PRESETS_DIR, file)` 判 available·须**复制文件进 `DATA/boundaries/presets/`**（已落实·复制不移动）
+  - **claude组 建议**：backfill 按 id_e 匹配 + 断言（实测 T1/T2/T3 序完全一致·700/800/900）+ 保 utf-8-sig BOM + 坐标列加末尾 + 生成器修复 TODO 注释（已全落实）
+- **实施完成**（本 commit·验证全过）：
+  - `SCRIPT/backfill_ermawu_coords.py`：一次性补丁·T1/T2/T3 共 2400 行补 lon/lat（id_e 断言·幂等·备份·保 BOM·生成器 TODO 注释）
+  - `core/geo_registry.py`：`_POINT_LAYERS` 末尾追加 `ermawu_l3l4_t{1,2,3}`（level='L3L4'·富归因列原样保留）
+  - `DATA/boundaries/presets/manifest.json`：「城市更新单元」组加 `damanmen_area` + **复制 geojson 进 presets/**（name 属性"绘制多边形"→片区名·P1 优化顺手做）
+  - `tests/test_geo_registry.py` 新建（4 例：注册/900 行/坐标域/富归因列/load_preset available）+ `tests/test_outlet_schema.py` +1（真实 ermawu 聚合产物出卡）
+- **端到端验证**（真实端点·memory「verify-real-endpoint」）：/geo/catalog 暴露 3 ermawu 层 + damanmen 边界可用 → /geo/zonal_stats(ermawu_l3l4_t3 × damanmen_area) 返回 578 点·polarity_index 0.73·domain_top=urban_operation·文化 → /aiqa/outlet_card 命中 **renewal_demand 需求分析卡**（接口=片区策划·需求强度 0.73·问题类型=停车难·数据基础 N=578·诚实标注 place_name 粗略）
+- **pytest 249 passed（+7 新测·零回归）**
+- **观察**：真实 zonal 行无 place_name 字段（需求位置缺失降级·诚实不编造·符合设计·CB-15 后 place_name 精确源升级）；level='L3L4' 对 density 工具枚举/R5 胶囊防线影响为知晓点（本轮不走 density·非阻塞·SCAN 记一笔）
+
+### ③i 行动（R7 结论截断修复 · 用户实测发现 + 用户定阈值策略）
+- **用户浏览器实测**「大南门·二马路片区更新需求分析」：结论基本可用·但结尾出现「**4.**\n…（结论已截断·详见上方图层）」——问"未完成是什么原因"
+- **根因定案**：R7 截断防线（harness.js applyQualityDefense）`final.length > 800 → slice(0,800)` 字符级硬切——① 阈值 800 过低（用户定：多要素结论超 800 正常·实测 audit 结论 p95≈1000）② 切点不感知 markdown 结构·恰切在「**4.**」标题后 → 空标题 ③ 连带 bug：R2 `{{show:}}` 图层按钮在 R7 前追加·长结论时被切掉（图层主出口失效）④ 文案固定「详见上方图层」·无图层时误导
+- **修复**（纯 harness.js·不碰承重）：
+  - R7 阈值 **800 → 1500**（用户定·只拦真失控长文·p95≈1000 留余量）
+  - **切点结构回切**：`lastIndexOf('。'/'；'/'\n'/'.', 1500)` 切到自然断句边界·下限 750 兜底·不再出现「**4.**」空标题
+  - **R2 移 R7 后**：长结论时图层按钮不被切（图层主出口防失效）
+  - **文案场景化**：有图层「详见上方图层与数据」/ 无图层「结论较长已精简·详见上方分析」
+- **验证**：括号配对完整（+7/+7 成对·注释差异为既有）+ Playwright 页面加载零 console 错误（harness.js import 链语法 OK）+ **pytest 249 passed 零回归**
+- **待用户 F5 复验**：重问「大南门·二马路片区更新需求分析」→ 应不再出现「**4.**」空标题
+
+### ③j 行动（R7 截断修复实施后检查发起）
+- R7 修复已完成（0aff59e + 49e4122）·发实施后检查 CB 请求（`_handoff/CB16-R7截断修复检查_2026-08-04.md`）：4 环节核验（阈值 1500 / 结构回切 / R2 移后 / 文案场景化）+ 端到端验证（用户场景 1100 字完整通过 + >1500 字截断在句末 + 产图层按钮保留）
+- **预检 5 问**（给两组）：阈值合理性（含按结论类型动态调之问）·断句符覆盖（！？遗漏？）·R2 移后副作用·文案准确性·**截断后 {{show:}} 按钮是否真保留 + 残句边界**
+- 待两组检查 SCAN → 反评价
+
+### ③k 行动（R7 检查反评价 + 补修 · 两组 SCAN 处理）
+- **两组检查 SCAN 到**（`CB16-R7截断修复-检查_Codex-GPT5` + `CB16-R7截断修复-claude组`）·反评价：
+  - **agree（两组一致）**：阈值 1500 合理（用户实测 ~1100 字完整通过·不建议动态化）·R2 后移无副作用（realLayers 顶部算·R10/R11/R5/R6/R8 不依赖 {{show:}}）·文案场景化对路
+  - **claude组 P0 发现（采纳）**：`lastIndexOf('.')` 会把 markdown 列表标题「**4.**」句点当切点·结论第 N 点落 1500 边界时**精确复现原 bug**（场景 4 实测·根因 = `.` 误切·我初版修复没堵住）→ 方案 A 去 `.` 切句符
+  - **Codex 低优（采纳）**：断句符补 `！？` + 悬空列表编号行剥除（`/\n\d+\.\s*$/` 硬化）
+  - **claude组 文案微调（采纳）**：「结论较长已精简」→「结论较长·已截断保留要点」（精简暗示主动提炼·实为硬切）
+  - **claude组 补测试（采纳）**：新增 `tests/browser/test_r7_truncation.py`（e2e-seam 暴露的 applyQualityDefense 直测真实 JS 逻辑·非 Python 复刻）
+- **补修完成**（harness.js R7 段）：去 `.` 切句符·加 `！？`·悬空编号行剥除·文案微调
+- **验证**：新测试 3 场景全过（多要素完整 / 失控截断无空标题 / {{show:}} 完整）+ 括号配对 +2/+2 + pytest 249 passed 零回归
+- **待用户 F5 复验**（补修后重问大南门需求分析）
+
+### ③l 行动（Wave 1 macro 出口实施 · 两组预检反评价 + 落地）
+- **两组预检 SCAN 到**（`CB16-Wave1-macro出口-预检_Codex-GPT5` + `CB16-Wave1-macro出口-claude组`）·反评价：
+  - **两组一致**：草案可行·三层断裂修复路径成立·无 P0
+  - **Codex P1（采纳）**：checkup_dimension 四维度×单尺度语义错位（macro 值入 micro/meso 槽）→ 槽位 `[scale=xxx]` 限定（仅填匹配 diagnose.scale·其余"需对应尺度分析"）
+  - **claude组 P1×3（采纳）**：① `_extract_emc_value` 升级为**后端统一收 rows/features**（单入口规整·防前后端漂移）③ DOMAIN_KW 补「**城市体检**」长词（防健康体检/体检中心误触）⑤ `data_base` 加 rows 分支（N=单元数·note 区分·total_points 总评论数）
+  - **P2（采纳）**：`rows.length>0` 守卫·`+` 只取首字段（place_name 留 Wave 2）·stages.js 无需改（已 import DOMAIN_KW 自动生效）
+  - **rows 可达性（claude组 风险·确认属实）**：`_maybeBuildOutletCard` 在 finalStep 后调用·工具局部 r 已出作用域 → 模块级 `_lastToolRows` 缓存（3 处工具调用点捕获）
+- **落地 7 处**：`build_outlet_schema.py`（rows 分支 + scale 限定 + data_base rows）·`harness.js`（_lastToolRows 缓存×3 + 产物收集优先 rows + 门放宽 + 测试钩子）·`emc-patterns.js`（DOMAIN_KW 补城市体检）·`urban_checkup_outlets.py`（四维度真实字段 + [scale]）·`e2e-seam.js`（setOutletRows/buildOutletCardForTest）·单测 4 新增 + `test_outlet_macro.py` E2E
+- **验证**：pytest 253 passed（+4 新增·零回归）·括号配对平衡×3 · E2E 两场景全过（rows 门放宽出卡 + 字段非空 + scale 限定·outlet_card 端点 200）
+- **待用户浏览器复验**（macro 问句真出卡）
+
+### ③m 行动（Wave 1 实施后检查发起·先验后推）
+- 用户定「进 cb·先验后推」→ 发起 Wave 1 实施后检查（`_handoff/CB16-Wave1完成检查_2026-08-04.md`）：5 环节核验（① _extract_emc_value 统一收 ② _lastToolRows 缓存×3 + 门放宽 ③ DOMAIN_KW 城市体检 ④ checkup_dimension scale 限定 ⑤ data_base rows + 测试）+ 端到端验证（单测 15+6+2 + E2E 两场景 + 浏览器）
+- **预检 7 问**（给两组）：统一收正确性（有无破坏 features 用例）·缓存×3 覆盖全部工具路径？·门放宽副作用？·scale 限定正确性？·data_base 语义？·城市体检长词触发正确性？·测试覆盖够？
+- **未推**（97cf232 + 9ea1290·先验后推：两组通过后用户 push）
+- 待两组检查 SCAN → 反评价
+
+### ③n 行动（Wave 1 检查反评价 + 补修 · 两组 SCAN 处理）
+- **两组检查 SCAN 到**（`CB16-Wave1完成-检查_Codex-GPT5` + `CB16-Wave1完成-glm组`）·反评价：
+  - **两组一致**：Wave 1 主体通过（5 环节正确·单测 23 passed·单步 macro 端到端通路确认）
+  - **glm组 P1（采纳）**：`runAllToolCalls` rows 处理缺陷——:1868-1869 `else` 挂在 rows 缓存 if 上（rows 型无 layerId → 成功误判失败）+ :1875 守护漏 hasRows → 多步 macro 链降级 → 改三独立 if + 守护加 hasRows + failedSteps 排除 rows 成功步
+  - **Codex P1（采纳）**：`_lastToolRows` 跨轮不重置 → orchestrate 入口重置 `_lastToolRows = null`（防 turn1 zonal rows 附 turn2 出口卡）
+  - **Codex P2（采纳）**：while-loop 兜底路径（:1249）补 rows 捕获（对齐其他 3 路径）
+  - **Codex P2（采纳）**：`test_wave1_empty_rows_no_card` 名实不符 → 改名 `test_wave1_empty_rows_degrades` + docstring 说明前后端分工
+- **验证**：括号平衡·pytest 253 passed 零回归·E2E 两场景全过
+- **待用户 push**（先验后推·两组通过后推）
+
+### ③o 行动（Wave 2 / CB-15 实施预检发起）
+- 用户定「进入 Wave 2 / CB-15·保持 CB 机制」→ 读 CB-15 讨论稿（五点共识 + glm 致命发现已核实）+ 现状探索（place_name 只读标注·place_layer 已读 3220 POI·reverse_geocode 已接）→ 发起 Wave 2 预检（`_handoff/CB16-Wave2-CB15预检_2026-08-04.md`）
+- **草案 5 处**：① place_name 双源融合（sjoin POI 优先·fallback 标注·保旧 sim 兼容）② 聚合输出 poi_names（top-N 清单）③ `/grid/pois` 端点（选中格按需）④ 3220 接入（复用 place_layer）⑤ 承重零触碰（place_layer/geocode 只增不改·新工具契约三处同步）
+- **预检 7 问**（给两组）：双源融合方案 + sjoin 性能 / poi_names 输出 top-N 防配额爆 / grid/pois 端点结构 + LLM 用法 / 3220 接入够不够 / place_name 改动回归风险 + 旧 sim 兼容 / 测试方案 / 边界（只做 P0·P1/P2 后置）
+- **待两组 SCAN** → 反评价 → 实施
+
+### ③p 行动（Wave 2 / CB-15 P0 实施 · 两组预检反评价）
+- **两组预检 SCAN 到**（`CB16-Wave2-CB15-预检_Codex-GPT5` + `CB16-Wave2-CB15-glm组`）·反评价：
+  - **两组一致 P0（采纳·实锤）**：place_layer **未读 3220**（读的是 SCRIPT/poi_data/amap_poi_wgs84.json 1270·非 DATA/POI/3220）+ 3220 字段错配（坐标在 geometry·无 lng/lat/baidu/domain）→ 加 `_read_pois_geojson` 适配层 + _load 合并
+  - **P1（采纳）**：place_name 语义分层（polygon 保留边界名·grid POI 优先·取最近质心 POI）+ place_name_source 字段（可追溯）+ 改前跑现有测试 + sjoin 列名冲突修复（poi/poly 双 name → poly_ 前缀）
+  - **P2（采纳）**：poi_names 逗号 top-5 + 等N处·poi_count·3220 vs 1270 去重（name+coord 容差·保先序）
+- **落地**：`place_layer.py`（_read_pois_geojson + _load 合并 + _dedup_pois）·`spatial_analysis.py`（_attach_poi_attrs + place_name_source + 两处接入）·`api/geo_routes.py`（/grid/pois 端点·cell_id/质心双收）·测试 5 新增 + test_geocode limit 适配（3220 扩容 1277→4310·200 上限触顶）
+- **验证**：3220 接入 all_pois=4310（去重 187）·reverse 覆盖扩大 · /grid/pois 端点 200（centroid count=32 CBD·cell_id 确定性一致）· pytest 258 passed 零回归
+- **待两组实施后检查**（用户定 CB 机制·先验后推）
+
+### ③q 行动（Wave 2 实施后检查发起·先验后推）
+- 用户定「实施后检查（两组核验）」→ 发起 Wave 2 实施后检查（`_handoff/CB16-Wave2完成检查_2026-08-04.md`）：4 环节核验（① _read_pois_geojson 适配层 + _dedup_pois ② _attach_poi_attrs 双模式 + sjoin 列名冲突修复 + place_name_source ③ /grid/pois 端点契约 ④ 测试）+ 端到端验证（3220 count=4310 + grid_pois 200 count=32 + 聚合 poi_names）
+- **预检 7 问**（给两组）：适配层字段映射遗漏？·去重连锁店不误删？·双模式/sjoin 冲突修复完整？·place_name_source 兜底链？·端点契约 + LLM 用法？·测试边界（空 POI 格/grid 覆盖/去重极端）？·承重零触碰？
+- **未推**（623e293·先验后推：两组通过后 push）
+- 待两组检查 SCAN → 反评价
+
+### ③r 行动（Wave 2 检查反评价 + 补修 · 两组 SCAN 处理）
+- **两组检查 SCAN 到**（`CB16-Wave2完成-检查_Codex-GPT5` + `CB16-Wave2完成-glm组`）·反评价：
+  - **两组一致**：Wave 2 P0 主体通过（4 环节核心正确·3220 接入 4310·双模式 place_name·source 链完整·端点确定性·53 单测全过）
+  - **glm组 P1（采纳·两组实锤）**：`_dedup_pois` 同名异址连锁店误删——`_seen` 先锁 name·第二条同名直接判重·坐标容差成死代码 → 去 `_seen`·改 name+坐标容差联合判定（O(n²)·n=4310·_load 一次）
+  - **Codex P2（采纳）**：create_square_grid 未输出 cell_id 列 → 补确定性 cell_id（grid_{size}_{row}_{col}·4546）
+  - **glm组 P2（采纳）**：补测试边界（去重连锁店 / grid place_name_source=poi_sjoin / cell_id 列）
+- **验证**：all_pois=4342（修复后恢复 32 条误删连锁店·预期）·pytest 261 passed 零回归（+3 新增）
+- **待用户 push**（先验后推·两组已验·通过）
+
+### ③s 行动（CB-15 P1 预检发起）
+- 用户定「出 P1 计划·走 CB 流程·执行」→ 探索确认四子项现状与缺口（buffer 中文 POI 根因 resolve_boundary 只认 preset/GeoJSON·评论↔POI 逐点 O(n·4310) 需 sjoin_nearest·search/reverse 端点已有但无 AI 工具·field_mapping 只读 place_name + 陈旧文案）→ 定稿 P1 计划 + 发起预检（`_handoff/CB16-CB15-P1预检_2026-08-04.md`）
+- **草案 4 子项**：A buffer 中文 POI（后端 fallback search_place）·B 评论↔POI 批量 sjoin_nearest · C lookup_place AI 工具（契约三处同步 + track ID）·D 归因落点模板（place_name+poi_names+issue_label 合成 + 修陈旧文案）
+- **预检 7 问**（给两组）：A 后端 fallback vs 前端 search 方案 + 边界·B sjoin_nearest 性能 + 落列污染·C 纯前端 vs 契约条目 + 触发词·D 落点模板破坏既有用例？·范围边界 P1 必要性·测试方案·承重零触碰
+- **待两组 SCAN** → 反评价 → 实施
+
+### ③t 行动（CB-15 P1 实施 · 两组预检反评价）
+- **两组预检 SCAN 到**（`CB16-CB15-P1-预检_Codex-GPT5` + `CB16-CB15-P1-glm组`）·反评价：
+  - **两组一致**：P1 四子项方向全部对路·无 P0 阻塞
+  - **A 采纳（两组）**：buffer 后端 fallback search_place（AI/前端共用一处）·边界（preset 优先·top-1·无命中诚实 400·WGS84·只对 str center）
+  - **B 后置（glm组 P2 建议·采纳）**：评论↔POI 批量 sjoin_nearest 后置 Wave 3（非问答阻塞·grid_pois + poi_names 已够）
+  - **C 采纳（两组）**：lookup_place 契约后端 + 前端执行混合·触发词**避开"周边"**（与 buffer 冲突·用"在哪/叫什么/附近/坐标"）·契约三处同步 + track ID
+  - **D 采纳（两组）**：落点组合模板（扩 `+` 多字段合成）+ 暴露 poi_names/place_name_source + 修 :179 陈旧文案
+- **落地**：`geo_routes.py`（buffer fallback）·`build_outlet_schema.py`（+ 合成 + 文案修）·`tool_contracts.py` + `paradigm.py` + `tools.js` + `stages.js` + `emc-patterns.js` + `candidate_selector.py`（lookup_place 契约三处同步 + track ID F_013）
+- **验证**：pytest 266 passed（+8 新增·buffer 中文名 200 / 无命中 400 mock / lookup_place 契约 / 落点合成 / poi 字段）·括号平衡×3
+- **已知**：test_validate_skill_params density.when drift 为**既有**（HEAD 版同 fail·非本次引入·backlog）
+- **待两组实施后检查**（用户定 CB 机制·先验后推）
+
+### ③u 行动（CB-15 P1 实施后检查发起·先验后推）
+- 用户定「发起 P1 实施后检查」→ 发起检查请求（`_handoff/CB16-CB15-P1完成检查_2026-08-04.md`）：4 环节核验（① buffer fallback ② + 合成 + 文案 ③ lookup_place 契约三处同步 ④ 测试）+ 端到端验证（buffer 中文名 200 / lookup_place 契约 / 浏览器奥体中心 + 滨江公园）
+- **预检 7 问**（给两组）：buffer fallback 边界/preset 优先·+ 合成破坏既有用例？·lookup_place 契约同步完整 + 触发词避周边有效？·:179 文案正确？·测试边界（多命中 top-1/坐标直查）？·承重零触碰？·density.when drift 既有不阻塞？
+- **未推**（61567d6·先验后推：两组通过后 push）
+- 待两组检查 SCAN → 反评价
+
+### ③v 行动（CB-15 P1 检查反评价 + P2 补修 · 两组 SCAN 处理）
+- **两组检查 SCAN 到**（`CB16-CB15-P1完成-检查_Codex-GPT5` + `CB16-CB15-P1完成-glm组`）·反评价：
+  - **两组一致**：CB-15 P1 通过·可推（A buffer 中文 fallback + C lookup_place 契约 + D 组合合成/:179 文案全正确·单测 34 passed·buffer 中文名 200/400 实测·density.when drift 既有性独立回测确认非本次引入）
+  - **P2 全采纳**（低成本·随 P1 修顺手清理）：① lookup_place triggers 去「附近」（与 buffer 重叠·"附近/周边"留 buffer）② 组合合成 source 只列非空 parts ③ docstring :13 旧文案修 ④ required_slots=['q']→[] 对齐 SKILL_DEFS（lng/lat 直查合法）
+  - **backlog（Codex 扩）**：validate_skill_params drift 是 7 工具（density/buffer/clip/overlay/zonal_stats/extract_feature/merge）paradigm when 同步·非仅 density
+- **验证**：pytest 266 passed 零回归·测试补断言（lookup 触发词不含附近）
+- **待用户 push**（先验后推·两组已验·通过）
+
+### ③w 行动（Wave 3 预检发起）
+- 用户定「继续 Wave 3·进 cb」→ 探索确认现状（可感知 10 项指标库完整·build_outlet_schema 只返单契约·validate_outlet_trigger_sync AST 解析模式可参考·B 评论↔POI 后置待做）→ 定稿 Wave 3 计划 + 发起预检（`_handoff/CB16-Wave3预检_2026-08-04.md`）
+- **草案 4 子项**：① B 评论↔POI 批量（attach_nearest_poi sjoin_nearest·新列禁覆盖 area_seed）② 可感知 10 项计算器（compute_perceptible_metrics·emc_field 表达式→指标值）③ validate_outlet_fields CI（AST 解析消费字段→死字段/缺消费）④ 多卡支持（多契约命中→cards 列表）
+- **预检 7 问**（给两组）：B sjoin 方案/性能/新列策略·可感知计算器表达式解析/计算语义/落点·validate CI 判定合理/放 tests 还是运行时·多卡兼容既有？·范围边界·测试方案·承重零触碰
+- **待两组 SCAN** → 反评价 → 实施
+
+### ③x 行动（Wave 3 实施 · 两组预检反评价）
+- **两组预检 SCAN 到**（`CB16-Wave3-预检_Codex-GPT5` + `CB16-Wave3-glm组`）·反评价：
+  - **两组一致**：草案方向可行·无 P0
+  - **glm组 P1（采纳）**：可感知计算器分两步——2a 极性类（A 类 2 + C 类简单 2·P1 立即做）+ 2b 条件等式（B 类 6 项·需表达式解析器·P2）·多卡同 domain 只出最高分一张（防冗余）
+  - **Codex P1（采纳）**：emc_field 表达式解析器 compute + validate 共享（validate_outlet_fields 用正则收 ASCII 字段·跳过中文说明段）·多卡兼容迁移（cards + card=cards[0]）
+  - **两组一致（采纳）**：B 评论↔POI 继续后置（非出口深化核心·grid_pois + poi_names 已够）
+- **落地**：`build_outlet_schema.py`（resolve_outlet_ids 多契约·同 domain 去重 + build_outlet_schema 返 cards + build_outlet_schema_single 兼容 + compute_perceptible_metrics 2a）·`api/aiqa_routes.py`（/outlet_card 返 {cards, card}）·`harness.js` + `panel.js`（多卡渲染·兼容单卡）·`tests/validate_outlet_fields.py`（死字段 fail/缺消费 warn）
+- **验证**：pytest 269 passed（+3 新增）·端点多卡（renewal_demand + checkup_satisfaction 2 卡·card[0] 兼容·perceptible_metrics 有值）
+- **待两组实施后检查**（用户定 CB 机制·先验后推）
+
+### ③y 行动（Wave 3 实施后检查发起·先验后推）
+- 用户定「实施后检查（两组核验）」→ 发起检查请求（`_handoff/CB16-Wave3完成检查_2026-08-04.md`）：5 环节核验（① resolve_outlet_ids 多契约 + 计算器 ② /outlet_card {cards,card} ③ 前端多卡渲染 ④ validate_outlet_fields CI ⑤ 测试）+ 端到端验证（单测 + 端点多卡）
+- **预检 7 问**（给两组）：resolve_outlet_ids 多契约/同 domain 去重/兼容·多卡破坏既有单卡？·计算器 2a 正确 + 2b 边界·validate CI 误报？·测试边界（同 domain 多契约/关键词未命中/空 result）·承重零触碰·density.when drift 既有不阻塞？
+- **未推**（1daffc6·先验后推：两组通过后 push）
+- 待两组检查 SCAN → 反评价
+
+### ③z 行动（Wave 3 余留 2b + P2 预检发起·先讨论再实施）
+- 家庭环境续作·用户定「plan 也进 CB」→ 对齐 ③w 模板发起两组预检（`_handoff/CB16-Wave3预检2b-P2_2026-08-04.md`）
+- **草案 2 子项**：① 可感知计算器 **2b**（B 类条件等式 6 项·`_parse_emc_expr` 拆 `+` + 条件/值识别·element_top 缺失→暂无数据/不匹配→跳过/匹配→取值+关键词标注·复用 `_extract_emc_value`·2a 不动）② checkup_satisfaction **P2**（field_mapping prose→真实字段·`'满意度（4 尺度）':'polarity_index'`·`'8 领域情绪值':'domain_top/element_top + polarity_index'`·均 ∈ _EMC_FIELDS 白名单·对齐 checkup_dimension）
+- **预检 7 问**（给两组）：2b 表达式解析/计算语义·P2 契约语义与 checkup_dimension 信息重复？·CI 提取兼容·范围边界·测试方案·承重零触碰
+- **待两组补充预检 SCAN → 反评价 → 实施**
+
+### ③z2 反评价（glm + Codex 补充预检 SCAN·两组均通过·无 P0）
+- **glm组**（`scan/CB16-Wave3补充预检_glm组_2026-08-04.md`）：B 类**恰好 7 项**（claude组 写 6-7）·`_parse_emc_expr` 需处理**多值条件 `/`**（`element_top=设施/环境` 拆列表·非取首·与 `_build_card` 取首语义不同·两处注释明确）·2b source 对齐 2a 格式
+- **Codex**（`scan/CB16-Wave3补充预检_Codex-GPT5_2026-08-04.md`）·**P1×3 全 agree（verify 通过）**：
+  ① **生态宜居 2a/2b 边界**：2a `if 'polarity_index' in expr` 把生态宜居（`element_top=环境 + polarity_index`）当极性类·忽略条件 → 采纳「移 2b 做条件评估」（条件型按条件判定·更合语义）
+  ② **关键词未命中→跳过**：草案只定义命中+标注·未定义未命中 → 采纳「条件匹配 + value_field 有值但关键词未命中→跳过」（防 `停车` 标到 `养老托育` 名下）
+  ③ **`8 领域情绪值` `/` 字段序**：`_build_card` `split('/')[0]` 取首确认（实测 `urban_governance、0.15` 英文枚举）→ 采纳「`element_top/domain_top` 中文要素优先」+ 注释两处 `/` 语义差异
+- **Codex P2 采纳**：panel.js 不渲染 perceptible_metrics（2a 已交付 UI 不可见·并入本批补渲染）·source 标注统一（并入）
+- **Codex P2 暂缓**：renewal 卡体检指标 domain 门控（既有行为非本次引入·2b 放大但非阻塞·backlog）
+- **登记**：`_handoff/CB16-Wave3预检2b-P2_2026-08-04.md` 第一步改「读本地文件·无需 git pull/push」·KNOWLEDGE §7（评估方不 git）
+- 待实施（2b + P2 + panel 渲染）→ 实施后检查 → 通过后 push
+
+### ③z3 行动（Wave 3 余留 2b + P2 实施 + 实施后检查发起·先验后推）
+- **实施**（据 ③z2 反评价·Codex P1×3 + glm 注意项×2 全采纳）：
+  - `build_outlet_schema.py`：`_parse_emc_expr`（拆 `+` + 条件/值识别·**多值 `/` 拆列表**·含 polarity→2a）+ `compute_perceptible_metrics` 分 2a/2b（生态宜居**明示留 2a**·2b 仅可感知·条件不匹配→跳过·关键词未命中→跳过·source 对齐）+ `_kw_hit` 抽共用
+  - `urban_checkup_outlets.py`：checkup_satisfaction field_mapping prose→真实字段（`'满意度（4 尺度）':'polarity_index'`·`'8 领域情绪值':'element_top/domain_top + polarity_index'` element_top 优先·`'不满意项定位'` 不动）
+  - `panel.js` renderOutletCard：新增 perceptible_metrics 渲染（可感知体检指标小节）
+  - `tests/test_outlet_schema.py` +7（2b 命中/不匹配/缺失/多值/关键词未命中→跳过/生态宜居 2a·P2 满意度字段）
+- **验证**：pytest 29 + **274 passed 零回归**·panel.js ESM 语法 OK·**真端点**（POST /aiqa/outlet_card）：cards 2 张 + checkup_satisfaction 字段出真实值（满意度←polarity_index·8领域←element_top·不满意定位←issue_label+place_name）+ 2b B 类「公园绿地步行可达性感知」条件命中出值（source 标条件+命中）
+- **检查发起**：`_handoff/CB16-Wave3完成检查2b-P2_2026-08-04.md`（7 问·含已知 renewal 卡无条件调用·暂缓 backlog）
+- **未推**（先验后推：两组检查通过后 push）·待两组检查 SCAN → 反评价
+
+### ③z3b 反评价（glm + Codex 实施后检查 SCAN·两组均通过·可推）
+- **Codex**（`scan/CB16-Wave3完成2b-P2_Codex-GPT5_2026-08-04.md`）：**通过·无 P0/P1·可推**·2a 实为 5 项（A2+C2+生态宜居·renewal 模块不在 METRIC_MAPPINGS·修正声明）
+- **glm组**（`scan/CB16-Wave3完成2b-P2_glm组_2026-08-04.md`）：**通过·全部正确落地**·_parse_emc_expr 多值 `/` 拆列表✅·2a/2b 分支✅·P2 防空卡✅·端到端 2 场景✅·274 passed✅
+- **两组一致观察**：`.outlet-metrics` CSS 缺失（Codex P2-1 / glm P3）→ **采纳补 CSS**（本次引入·真实视觉缺口）
+- **Codex P2-3 采纳**：补 value_field 缺失→暂无数据 + `_parse_emc_expr` 纯函数边界测试（空串/无+/keywords 空/无条件）
+- **Codex P2-2 不采纳**：条件匹配 substring→`==`（可选优化·受控词表低风险·保持现状）
+- **已知 backlog 确认**：renewal 卡带 perceptible_metrics（`_build_card:230` 无条件·domain 门控暂缓）
+- **验证**：pytest 31 + **276 passed 零回归**（+2 边界测试）·两组通过 → **可 push**
+
+### ④ 状态
+`CB-16 全闭环（Wave 0-3 + ③z 余留 2b/P2）· 已推 0a0d103 + 7d8a258` —— Wave 0-3 出口抽象层 + ③z 余留全部闭环。进入新阶段：**全局优化 + 发版快照 + 时间轴重规划（③w2 预检发起）**。
+
+### ③w2 行动（全局优化 + 发版快照 + 时间轴重规划 预检发起·先讨论再实施）
+- 用户定「①更新过时文件 + 归档陈旧 + 全局优化 ②发版候选评估 + 收尾技术债」→ 出 plan 进 CB（`_handoff/CB16-GlobalOptimize预检_2026-08-04.md`）
+- **三路探索完成**：过时文档（CLAUDE.md 5 行过时·emc-fix-progress 自相矛盾·todo 周归档缺 07-27~08-02·spec/arch Streamlit 死段·decisions 停 ADR-016·记忆 GC）· 发版评估（B3 23/26·PRM 硬门槛·无成文检查清单）· 时间轴 manifest 404（根因=数据 R100 迁移到 performance·手写 manifest 未落新位置·**数据没丢只缺描述符**）
+- **用户决策**：发版评估**先做全局优化+快照**（非冲达标）·时间轴**重新规划·更优解**（同源派生 manifest 治本·候选 1 geo_registry 同源 + fallback API·候选 2 落手写 manifest 快速解封）
+- **草案 4 子项**：①全局优化（CLAUDE.md 5 行 + 周归档 + emc-fix-progress + Streamlit 死段 + decisions 补档 + 记忆 GC）②发版快照（B3 现状 23/26 + link_checkup + pytest·不修 PRM）③时间轴同源派生 manifest（治本·时间轴与问答共享注册表）④backlog 收尾（7 工具 drift + renewal domain 门控 + CPD-L03 断言）
+- **预检 7 问**（给两组）：全局优化范围合理？发版快照对？时间轴同源派生思路/数据红线？backlog 优先级？测试方案？承重零触碰？范围边界？
+- 待两组 SCAN → 反评价 → 实施
+
+### ③w2b 反评价（glm + Codex 预检 SCAN·两组通过·用户拍板）
+- **Codex**（`scan/CB16-GlobalOptimize预检_Codex-GPT5_2026-08-04.md`）：草案可行·无 P0。**P1 修正×3**：① L4 标 🔄 非 ✅（出口卡 limitation「L4 深度归因待接入」同步·守「预留当已实现→偏高 8 折」标尺）② global-time-axis/batch4 **已实现**（time-bar/time-source/timeline 三件套 + mapB 在仓）·标「已实现+待修/待polish」非「设计稿」③ CPD-L03 断言落点定位实际执行处（test-board/test_cpd_predicates·非 test-cases.js·'changyi' 已零引用）。**P1 建议×2**：validate 同步含 extract_feature/merge 全字段（params/yields/contributes）·时间轴候选 1 直接做（含 L1/L2 模板差异特判）。**P2**：Streamlit 死段保留退役声明+MOD_APP 引用·ADR 轻量补录·快照产物存档。
+- **glm组**（`scan/CB16-GlobalOptimize预检_glm组_2026-08-04.md`）：通过·**validate_skill_params 当前 FAIL**（1 failed·7 工具 when/params/yields/contributes contracts vs paradigm drift·P1 优先·CB-12/16 改 contracts 未同步 paradigm）。时间轴候选 1 建议 **glob 扫文件非模板拼接**（L1 T1 双扩展名 `_csv.csv.geojson`·L2 `_L2_` infix·无法统一模板）。候选 2 不碰数据红线（描述符 JSON·非数据文件）。push 冲突需用户拍板。发版快照含 `trace_query --stats`。
+- **用户拍板**：① 时间轴**后置专题**（不成熟·开专题再议）→ 子项 3 从本次**剥离**·不实施同源派生/解封·但 global-time-axis/batch4 记忆标注修正照做 ② push 冲突权威源 = **commit+push 组合**（push-not-redline）③ 发版 = 先全局优化+快照（非冲达标）
+- **plan 重写**（时间轴剥离·3 子项）：①全局优化 ②发版快照 ③backlog 收尾（validate 全字段 + renewal 门控 + CPD-L03 落点定位）
+- 待实施 → ③w3 检查 → 通过后 push
+
+### ③w3 行动（全局优化 + backlog 收尾 实施 + B3 快照 + 检查发起·先验后推）
+- **实施**（据 ③w2b 反评价·Codex P1×3 + glm 注意项·时间轴剥离用户拍板）：
+  - `paradigm.py` `_sync_geo_catalog_guard_fields`：导入时对齐 GEO_TOOL_CATALOG 4 guard 字段 ← contracts（validate drift 修复·**4 passed**）
+  - `build_outlet_schema.py`：renewal 卡 perceptible_metrics domain 门控（仅 urban_governance）·+测试
+  - CLAUDE.md 当前开发状态 5 行（L3✅·L4🔄·空间✅·UI✅·L0→L1 补 sim）
+  - todo 周归档（07-27~08-02·302 行）+ 删重复节 + decisions ADR-017~019 + 记忆 GC（删 push 记忆·标 time-axis/batch4）
+  - **pytest 277 passed**（+renewal 门控）零回归
+- **B3 快照**（`EMOTION_TRACE_SESSION=B3-snapshot-0804`·9.6min）：**26 例 pass=22 fail=4（84.6%·低于基线 88.5%）**·**RST-L06 回归**（多步「先裁剪再热力图」·tools= 空·旧 PASS）·PRM-03/04 buffer radius[ERR]·PRM-07 zonal 边界（已知 backlog）
+- **RST-L06 根因假设**：paradigm density.when 同步成 contracts（加「方格/网格聚合→mode=3d」）为唯一 LLM 可见差异·疑影响「热力图」路由·**待两组 SCAN 独立判断 + 实证**
+- **检查发起**：`_handoff/CB16-GlobalOptimize检查_2026-08-04.md`（7 问·含 RST-L06 回归根因）
+- **未推**（先验后推）·**tracklog 待补**（trace_query B3-snapshot-0804·分类器不可用阻塞）
+- 待两组检查 SCAN → 反评价 → 通过后 push
+
+### ③w3b 反评价（glm + Codex 实施后检查 SCAN·两组通过·可推）
+- **Codex**（`scan/CB16-GlobalOptimize检查_Codex-GPT5_2026-08-04.md`）：实施通过·无 P0/P1·可推。**RST-L06 根因修正**：claude组 的 paradigm 假设不成立——实时 FC 路径（router.py fc_diagnose）只用 build_fc_sys_prompt + contracts_to_tools_schema·**不消费 paradigm**·geo_tool_catalog_text 仅进 build_diagnose_prompt（eval/fallback）。回归 = LLM 方差（16 份历史 audit：RST-L06 08-03×3 PASS/本次 FAIL·PRM 同型翻转·spread 13→25）。**建议保留 paradigm 同步** + P1 验证（eval 回归 + RST-L06 复跑 ×3）。修正声明：CPD-L03 落点 frontend/js/test-cases.js:17（非无此文件）。
+- **glm组**（`scan/CB16-GlobalOptimize检查_glm组_2026-08-04.md`）：通过·**disagree claude组 假设**——RST-L06 根因 = **clip range 未 derive**（chain pre-check boundary derive 缺陷）→ validateParams fail → ask_user → tools=[] 无执行。证据：FC 正确选 clip（template=clip）·density.when 不影响 FC 选 clip·CB-12 P2 后缀（方格/网格）对问句无关。density.when 同步应保留（消除漂移·CI 红线）。**验证方向**：`deriveAvailable('先裁剪西陵区情绪点，再生成热力图', getLayers())` 是否 null。
+- **反评价**：两组通过·可推。**保留 paradigm 同步**（消除漂移·正确方向）·实施 3 项正确（validate 4 passed + renewal 门控 + 全局优化）·PRM-03/04/07 = 既有 backlog·**RST-L06 = 独立 backlog**（clip range derive·非本次引入·修法 = 排查 chain boundary derive·Codex 建议复跑 ×3 实证）
+- **待**：eval 回归（P1 验证·同步改附录文本）+ RST-L06 复跑 ×3 → 通过后 push
+
+### ③w4 行动（措辞修复 + 发版遗留问题 综合预检发起·用户定一并打包）
+- 用户实测「EMC 无法回答时结论统一'无法生成图层'·但问题可能与图层无关」→ 出 plan 进 CB·用户再定**把发版遗留问题一并打包定 plan**（`_handoff/CB16-WordFix预检_2026-08-04.md`）
+- **① 措辞修复**（根因：harness.js:1310 gap 只看产出不看问题性质·composeGapCard :227 默认「没能生成可用的图层」·无「无法回答」措辞）：草案 = failedObs.length>0（在试图层）→ 现有图层措辞；=0（零工具尝试）→ 新「当前无法直接回答」措辞·exit:'gap' 结构不动
+- **② 发版遗留问题打包**（用户定）：eval 76% NO-GO（歧义路由 multi 治·MISS 2 = 商业用地/范围内密度）+ RST-L06（chain boundary derive fallback 到 presets/行政区）+ PRM-03/04（buffer radius 解析）+ PRM-07（zonal 非 preset fallback）
+- **预检 12 问**（给两组）：措辞 failedObs 判据 + eval 歧义路由 + RST-L06 硬化 + PRM 范围 + 测试方案 + 综合优先级
+- 待两组 SCAN → 反评价 → 实施
+
+### ③w4b 反评价（glm + Codex 综合预检 SCAN·两组通过·无 P0）
+- **glm组**（`scan/CB16-WordFix预检_glm组_2026-08-04.md`）：
+  - 措辞 failedObs=0 判据可靠（仅 loop 内 push）·建议区分 degraded（无法理解）vs ask_user（暂无法回答）两子情况
+  - **eval 根因纠正**：select_template 单工具选择器不返回 multi·eval 期望 multi = 标尺错 → 改标尺（multi→clip/density·76%→84%）非改路由·不碰 v1 eval-anchor
+  - RST-L06 硬化方向对·fallback 加区名条件（有区名才 fallback·无区名不猜）
+  - PRM-03/04 center ask_user 正确行为·改断言非代码 · PRM-07 改 fixture
+- **Codex**（`scan/CB16-WordFix预检_Codex-GPT5_2026-08-04.md`）·P1 修正×5：
+  - **PRM-03/04 真根因 = stale tool 门控**：`const tool` :1430 早捕获·G5 reroute lookup_place→buffer 后 :1546 `tool==='buffer'` 用旧值跳过·radius 正则派生已存在 → 修 reroute 后重读 tool
+  - **PRM-07 = FIXED_ADMIN_DISTRICTS 白名单门控**（preset 实测含 9 法定功能区·模型硬识别有数据来源·CB-14 红线）·**弃 lookup fallback**
+  - RST-L06 根因未实证（两种机制一致·需 per-test trace）·fallback 须 feature 级提取（仿 :1453-1460）
+  - eval 先取证全 miss 列表（37 条 9 MISS·草案只列 2·E1 两例是覆盖偏好非缺陷）
+  - 措辞须两处分支（composeGapCard 默认 :227 + gap 出口追加行 :1313 无条件硬编码）
+- **反评价采纳**：措辞两处分支 + failedObs 判据·eval 改标尺（先取证）·RST-L06 硬化（feature 级 + 区名条件·根因待取证）·PRM-03/04 stale-tool 门控·PRM-07 白名单门控（弃 fallback）
+- 待实施（②a 措辞 + ②b eval/RST-L06/PRM）→ ③w5 检查 → 通过后 push
+
+### ③w5 行动（②a 措辞 + ②b 发版遗留 实施 + 检查发起·先验后推）
+- **实施**（据 ③w4b 反评价·glm 标尺纠错 + Codex P1×5 全采纳）：
+  - ②a 措辞：harness.js gap 出口 failedObs 判据 + composeGapCard 区分 degraded（无法理解）/ask_user（暂无法回答）·「图层」字眼不再出现在零工具尝试
+  - ②b-1 eval 标尺：multi→实际单工具（clip/density）·**重跑 34/37=92%（76%→92%·GO 超 80% gate）**·MISS 3 既有歧义
+  - ②b-2 RST-L06：chain pre-check preset fallback（feature 级 + 区名条件·无区名不猜）
+  - ②b-3 buffer：radius/cell_size 门控改判 diagnose.template（治 stale-tool）
+  - ②b-4 PRM-07：白名单已在 deriveAvailable·数据 fixture 问题留 backlog
+- **验证**：pytest 277 passed 零回归·ESM-OK·eval 92% GO
+- **检查发起**：`_handoff/CB16-WordFix检查_2026-08-04.md`（7 问）
+- **未推**（c53aa99·先验后推）·待两组检查 SCAN → 反评价 → 通过后 push
+
+### ③w5b 反评价（glm + Codex 检查 SCAN·两组通过·可推·glm 补充 eval 修正）
+- **Codex**（`scan/CB16-WordFix检查_Codex-GPT5_2026-08-04.md`）：通过·无 P0/P1·P2×5（footer 措辞残留 / eval 注释精确化 / 单次采样复采 / FC boundary 白名单 backlog / e2e-seam 断言）
+- **glm组**（`scan/CB16-WordFix检查_glm组_2026-08-04.md`）：通过·P2×1（e2e-seam 措辞断言）
+- **glm 补充**（`scan/CB16-WordFix补充_glm组_2026-08-04.md`）：**eval 实测 31/37=84%（非 claude组 声称 92%）**——「西陵区的商业用地」标尺改 clip 后 Flash 概率性返 overlay（面∩面解读）·新引入 clip↔overlay 歧义 MISS。**84% 仍 GO**（>80%）。建议标尺接受 clip 或 overlay。
+- **反评价采纳**：① eval 标尺 tuple 双接受（`西陵区的商业用地` → ('clip','overlay')·治概率性歧义）② e2e-seam 措辞断言补（test_gap_wording.py·3 场景·e2e-seam 暴露 composeGapCard·待前台 serve 环境验证）③ footer 措辞残留 / FC boundary 白名单 → backlog
+- **验证**：pytest 277 passed·ESM-OK·eval 84% GO（glm 实测）
+- **已推**（c53aa99 + 78db0e3·两组通过解锁·远端 0/0 同步）
+- **backlog**：footer「未生成图层」措辞条件化 · eval 注释精确化 + 发版前复采 · FC boundary 白名单校验 · PRM-07 preset fixture · RST-L06 复跑验证 · 措辞断言测试前台 serve 验证
+
+### ③w6 行动（发版 backlog 收尾 预检发起·用户定打包·先讨论再实施）
+- 用户定「发版 backlog 收尾」→ ③w5b 遗留 5 项打包进 CB（`_handoff/CB16-Backlog收尾预检_2026-08-04.md`）
+- **草案 5 小项**：① footer「未生成图层」措辞条件化（failedObs=0 改「未完成分析」）② FC 直供 boundary 白名单校验（deriveMissingParams 拒绝法定功能区）③ PRM-07 preset fixture 清理（9→4 要素·改数据需用户确认·红线）④ RST-L06 复跑验证 hardening ⑤ eval 注释精确化 + 发版前复采
+- **预检 7 问**（给两组）：footer 条件化 / FC boundary 校验误伤 / fixture 红线 / RST-L06 复跑方法 / eval 复采时机 / 范围优先级 / 承重零触碰
+- 待两组 SCAN → 反评价 → 实施
+
+### ③w6b 反评价（glm + Codex 预检 SCAN·草案可行·无 P0·用户拍板 fixture）
+- **Codex**（`scan/CB16-Backlog收尾预检_Codex-GPT5_2026-08-04.md`）·P1 修正×3：
+  - **RST-L06 fallback（③w5 已实施）对真实 preset 无效**：行政区.geojson 仅 MC 字段（manifest nameField=MC）·fallback 硬编码 name/NAME/name_field **永不命中·死代码** → 修 fallback 用 MC
+  - **item 3 fixture 9→4 有破坏性依赖**：district-stats.js `_TUAN_MAP` 按 9 MC 组 8 组团·清 4 坏 4 → 需同步改或不动
+  - **item 2 需来源识别**：FC 裸 geojson 无 source·无法判 preset vs upload·误伤风险
+- **glm组**（`scan/CB16-Backlog收尾预检_glm组_2026-08-04.md`）：通过·footer 条件化 + eval 注释低风险直接做·FC boundary 白名单**暂缓**（无 source 信息误伤·fixture 清理更直接）·fixture 清理**治本但需用户确认**
+- **用户拍板**：**fixture 清理 + 同步 district-stats**（治本·法定功能区不再可被 FC 直供）
+- **反评价采纳**：① footer 条件化（failedObs>0 才「未生成图层」）② FC boundary 白名单**暂缓**（fixture 清理后不需要）③ fixture 清理 + district-stats 同步 ④ RST-L06 fallback 改 MC（Codex P1 死代码修复）+ 复跑 ⑤ eval 注释精确化 + 发版前复采
+- 待实施 → ③w7 检查 → 通过后 push
+
+### ③w7 行动（发版 backlog 收尾 实施 + 检查发起·先验后推）
+- **实施**（据 ③w6b 反评价·Codex P1 + 用户拍板 fixture）：
+  - 项1 footer 条件化：`_footerLayer = failedObs>0 ? '或未生成图层' : ''`（glm 建议实现·零工具尝试无「图层」）
+  - 项3 fixture 清理：preset 行政区 geojson 9→**4 要素**（FIXED_ADMIN_DISTRICTS·备份 .bak9·保 BOM）+ district-stats `_TUAN_MAP` 8→**4 组团**（用户拍板治本·PRM-07 根治）
+  - 项4 RST-L06 fallback 改 **MC 字段**（Codex P1 死代码修复·行政区 preset 仅 MC·name/NAME/name_field 恒缺）·复跑待前台 serve 环境
+  - 项5 eval 注释精确化（复合问可返 multi·标尺对齐多数）
+- **验证**：pytest 277 passed 零回归·ESM-OK（harness + district-stats）
+- **检查发起**：`_handoff/CB16-Backlog收尾检查_2026-08-04.md`（7 问·含影响面核查）
+- **未推**（23efe74·先验后推）·待两组检查 SCAN → 反评价 → 通过后 push
+
+### ③w7b 反评价（glm + Codex 检查 SCAN·两组通过·可推）
+- **Codex**（`scan/CB16-Backlog收尾检查_Codex-GPT5_2026-08-04.md`）：通过·无 P0/P1·P2×4（陈旧注释同步 / **fixture 静态守卫建议** / FC 编造 boundary 残余 / eval 发版前复采）
+- **glm组**（`scan/CB16-Backlog收尾检查_glm组_2026-08-04.md`）：通过·4 项全正确·**无破坏性依赖**（全仓 admin_district 引用扫描：deriveAvailable 白名单/CHAIN_REGISTRY/_boundaryEnum/district-stats/geo_registry 均无破坏）·PRM-07 根治实证（test-cases.js expectRequestUpload·fixture 无小溪塔后自然达成）
+- **反评价采纳**：**fixture 静态守卫**（两组一致建议·防回潮）——test_range_selector_presets.py 加 `test_admin_district_fixture_mc_in_whitelist`（preset 行政区 MC ⊆ FIXED_ADMIN_DISTRICTS·utf-8-sig 保 BOM）·**pytest 278 passed**（+1）
+- **P2 留 backlog**：陈旧注释同步（district-stats 头部「8 组团」/panel.js×4）·FC 编造 boundary 残余 · eval 发版前复采 · RST-L06 复跑（待前台 serve）
+- **已推**（23efe74 + 守卫测试·两组通过解锁）
+
+---
+
+### ① SCAN 摘要
+
+**本轮由 claude组 发起**（非第三方 SCAN）：用户今日确立两个核心定性，重新定义 EMC 数据认知边界与标准出口——① 范围=矢量表达不关键·地点认知（拓扑）是关键·范围锚定三来源+诚实 request_upload ② 归因↔地点联动=中微观标准出口·标准分析结论（格子/热点）与地点信息联动·归因指向具体地点。需求报告：[EMC-数据认知体系重构需求](discuss/EMC-数据认知体系重构需求_2026-08-03.md)（含四阶段讨论演进脉络 + 现状调研 + 6 讨论焦点）。请求：[CB15-数据认知-评估请求](_handoff/CB15-数据认知-评估请求_2026-08-03.md)。
+
+**现状调研关键**：
+- 已有：范围三来源部分落地·网格级归因（domain_top/element_top/place_name）·POI 引擎（1270+157+7·rapidfuzz 分档）·逆地理编码（高德 regeo 已接·地址/区/街道）·L1/L2 点带地点标注
+- 缺失：POI 进问答管线（LLM 不可见）·格↔POI 空间查询·评论↔POI 运行时关联·地点级归因聚合·批量逆地理·范围↔位置拓扑枚举
+- 孤岛：DATA/POI/yichang_pois.geojson（3220 条）无消费方·amap_poi_centralcity 缺失·buffer 中文 POI 名失败
+
+### ② 我方反评价（对 CB-15 两组 SCAN · 讨论稿·非定稿）
+
+**五点共识两组独立一致，全部 agree**（verify-before-accept 通过）：
+
+| 讨论点 | 判定 | 证据 |
+|---|:---:|---|
+| 架构分层（后端空间查询 + 前端联动工具） | **agree** | 空间计算（sjoin/逆地理）在后端（geopandas/4546）·联动呈现在前端·同构 zonal/compare 模式 |
+| 触发双层（默认轻量 place_name + 按需重查） | **agree** | 全量清单 token/配额爆·对齐悬停试探/点击锁定·place_name 已有 |
+| 3220 接入 + 最近 POI 反查 | **agree** | 复用 reverse·text 抽取确定性差弃用·模拟标注 schema 复用 |
+| 配额节流（本地优先 + 上限 + 持久缓存） | **agree** | glm 补 lru_cache 坐标级去重·跨会话无效→持久化缓存 |
+| 承重零触碰（只增不改 + 契约三处同步） | **agree** | 不触 diagnose/harness/ChatRequest·place_layer 数据扩展非接口变更 |
+
+**关键发现（glm 独有·已核实）**：
+- **place_name 依赖 sim 期标注**（`spatial_analysis.py:585-597` 只读 spatial_hotspot/area_seed·不碰 POI）→ 真实数据恒空→下钻链第一步断。**verify 属实·Codex 遗漏**。修正：P0 双源融合（sjoin POI 优先·fallback 标注）。
+
+**分歧待收敛**：centralcity 缺失（Codex: 本地重生成 vs glm: regeo 兜底）·AI 工具 lookup_place 是否 P0（glm 倾向 P1）。
+
+### ②b 出口抽象层并入（glm 课题·立项关键）
+
+**用户提交 [EMC-出口抽象层架构讨论](discuss/EMC-出口抽象层架构讨论_2026-08-03.md)**（glm 课题·立项成败关键）——承接 CB-15，定义「分析完成后」的出口范式。
+
+**核心命题**：EMC 的"出口" = 分析结果 → **行业接口格式化对接**（成果范式 agent·第三段）。底层逻辑三铁律：**EMC 找市场接口（非市场找 EMC）** / **三段式线性（意图→结果→成果范式·禁一竿子插到底）** / **定性+定量+地理信息按尺度分类**。
+
+**关键缺口（已核实）**：出向链路 = 0（全仓库无 IndustryAdapter/OutletAdapter）·`DOMAIN_OUTLETS`（paradigm.py:70）纯 dict 无序列化/导出·诊断卡 `outlet`（:462）7 值枚举引导词非契约。**立项风险点**。
+
+**已完整**：行业接口清单（八项任务/体检四维度/8大领域/三级体系·政策底座附 C 全文）+ 4×5 归因↔体检指标↔更新任务映射 + 六大演示场景（S2 更新需求分析最有力）+ 六大讨论焦点。
+
+**与 CB-15 协同**：CB-15（分析过程中·格↔POI 联动）**先行** → 出口抽象层（分析完成后·成果范式）依赖其产出（micro 落点清单需 CB-15 的归因↔地点联动填"地理定位"要素）。两者前后承接构成完整链路。
+
+### ③ 行动
+- 深读两组 SCAN + verify-before-accept（place_name 依赖核实）
+- 评估落库：需求报告追加 CB-15 评估节（五点共识 + 致命发现 + 优先级 + 6 讨论焦点）
+- 研读出口抽象层报告 + 核实 DOMAIN_OUTLETS/outlet 缺实现 + 出向链路=0
+- **发起三方讨论**（出口抽象层 × CB-15 数据认知·协同收敛）
+- **出口卡片对标对表**（用户要求·搜索国内案例）：宁夏 3表6图 / 片区 13表13图 / 满意度问卷 4 尺度 / 完整社区 6 目标 20 项 → 梳理「行业要求 × EMC 产出一一对应」→ 更新专业版 5.4/5.5/5.6 + 焦点7 + 通俗版四补充（双主线·能/不能双栏·三典型场景）
+
+### ④ 状态
+`讨论中 → 三方讨论收敛` —— CB-15 五点共识已立 + 出口抽象层并入（立项关键）+ 出口卡片对标对表落地（结构化为"顶层→板块→指标→核心指标"·能/不能双栏·聚焦不夸大）+ 报告 EMC→情绪地图·EMC（首用全称·后简称·案例深挖湖北/上海/广州/南京真实数据）+ **outlet_kb 出向知识库已建**（7 契约 + 8 指标 + 5 案例 + 测试 6 passed·pytest 234）+ **出口修正工程讨论发起**（结果范式 agent 架构/outlet_id 映射/outlet_kb 接入/CB-15 协同/MVP）·两者协同：CB-15 先行 → 出口抽象层依赖其产出·待三方收敛。
+
+---
+
+## CB-14 · 2026-08-03（RAG 定稿 + 修复检查 · 发起）
+
+### ① SCAN 摘要
+
+**双线**：① RAG 研究定稿（用户新设想·多方讨论）：两组 SCAN（[glm](scan/CB14-RAG-glm组_2026-08-03.md) + [Codex](scan/CB14-RAG评估_Codex-GPT5_2026-08-03.md)）一致——**现在不建 RAG·改做 RAG-lite（A4 选择性注入）**。关键：A4 是 D019 主动裁剪（非容量约束）·industry_kb 渲染仅 19.7KB·DeepSeek 无 embedding 端点·Py3.14 向量库风险。
+② 收敛 CB-13 残余 + 推进 P1（A4）：claude组 完成 3 处修复（CPD 测试基建 / PRM-08 compare 兜底 / A4 选择性注入）→ 发两组检查。请求：[CB14-检查请求](_handoff/CB14-检查请求_2026-08-03.md)。
+
+### ② 我方反评价（对 RAG 定稿）
+
+| SCAN 结论 | 判定 | 证据 |
+|---|:---:|---|
+| 现在不建 RAG（glm+Codex 独立一致） | **agree** | 知识超限不存在·A4=工程裁剪·embedding 硬阻塞 |
+| A4 选择性注入 = 正确解法 | **agree** | EMC 已有 domain_lens 检索键·轻 10 倍·零依赖 |
+| 分阶段（P1 注入→P2 做厚→P3 真 RAG 触发式） | **agree** | ROI 不成立·知识成长后再评估 |
+
+### ③ 行动
+- 收敛① CPD 测试基建（test-cases.js CSV→yichang + L03 硬断言）
+- 收敛② PRM-08 compare 兜底（harness.js `_allToolCalls` 重写对齐 clip/zonal）
+- P1 A4 选择性注入 finalStep（industry_kb_final_brief + build_final_prompt + 守卫测试）
+- 发 CB-14 检查请求给两组（3 项改动检查）
+
+### ②b 我方反评价（对 CB-14 修复检查 SCAN · Codex + glm 两组）
+
+**3 处修复两组一致判定"正确可提交"**。verify-before-accept 全部成立：
+
+| 改动 | 判定 | 我方核实/证据 |
+|---|:---:|---|
+| CPD 测试基建（CSV→yichang + L03 硬断言） | **agree** | 文件实存·loadCSV await 无竞态·L03 硬断言是新对话引导态的诚实探针 |
+| PRM-08 compare `_allToolCalls` 重写 | **agree** | `:1033` deriveMissingParams 先于 `:1077` runAllToolCalls·重写必然生效·区名<2 与误改边界安全·三分支 if/else if 互斥 |
+| A4 选择性注入方向 | **agree** | 链路闭环（harness→stages→api→router→prompts）·静态门禁不破·正治 A4 痛点 |
+| **A4 体积口径**（Codex：每域 1.6KB 非宣称 0.6KB）| **agree（修正）** | 我宣称"每域 ~0.6KB"不实·实测 1.6KB·须修注释/文档口径 |
+| **A4 注入条件过宽**（glm 改进点①）| **partial** | Codex 判断"自然门控已存在·保留观察"更稳——硬加 decision_type 门有漏注风险·采纳「观察哨」方案·但同意纯 GIS 操作无谓回弹是真实场景 |
+| **静态门禁盲区**（glm 改进点②）| **agree** | `test_final_prompt_stays_lean` 传 `('','')` domain_lens=None 不触发注入·条件注入路径无体积守卫·须补 |
+| 复合问句次级 call 丢弃 | **agree（已知限制）** | 与 clip/zonal 既有模式一致·不单列修复 |
+
+**CB-14 ②b 反评价：5 agree / 1 partial / 0 disagree** · 两组代码级判定 + 我方 verify 全成立。
+
+### ③b 行动（修复检查后的收尾）
+- **采纳 glm 改进点②**：补条件注入体积守卫测试（四域全注 <5KB·防 final_brief 加厚回弹）
+- **采纳 Codex 口径修正**：A4 注释/文档"每域 ~0.6KB"→"~1.6KB"
+- **注入条件**：保留现门控（domain_lens 非空）+ 观察哨（B3-verify-06 延迟/答案风格）·不硬加 decision_type（防漏注）
+- 等 B3-verify-06 落盘补 CPD/PRM-08 实测复核
+
+### ④ 状态
+`修复检查闭环 → 待 B3-verify-06 实测复核` —— RAG 定稿已达成；3 处修复两组判定正确可提交；A4 体积口径修正 + 补体积守卫测试；B3-verify-06 运行中。
+
+---
+
+## CB-13 · 2026-08-03（B3-verify-05 实测 88.5% + 代码修复检查 · 发起）
+
+### ① SCAN 摘要
+
+**本轮由 claude组 发起**（非第三方 SCAN）：B3-verify-05 全量重测结果已出（**23/26 88.5% 历史最佳·RST-L06 多步问收敛**），发 Codex/glm 两组检查代码修复情况。评估请求：[CB13-评估请求](_handoff/CB13-评估请求_2026-08-03.md)。
+
+**B3-verify-05 实测**（`report-2026-08-03-03-llm` + `audit-B3-090102` + trace `--session B3-verify-05`）：
+- 总 pass **23/26 (88.5%)**·0 timeout·误杀/漏判 0·计划命中 16/20 步
+- **RST-L06 PASS**（tools=clip,density·1→2层）→ **多步问修复收敛·CB-12 闭环**
+- PRM 9/10（PRM-08 fail·tools=extract_feature 单工具·boundary[ERR]·疑 compare 路由退化）
+- F_002=4（≤5 阈值·while-loop 早停生效）·pro 0·F_005=20
+
+### ② 我方反评价（对 CB-13 SCAN · Codex + glm 两组）
+
+**两组结论高度一致，且均已独立核验通过**。verify-before-accept：
+
+| SCAN 结论 | 判定 | 我方核实/证据 |
+|---|:---:|---|
+| **多步问最终收敛（CB-12→13 闭环）** | **agree** | RST-L06 两轮连续 PASS（tools=clip,density·1→2层）·F_002=4（≤5）·pro 0·三方证据（report+audit+trace）一致 |
+| **PRM-08 非路由退化·非测量层失效** | **agree** | `test-cases.js:317`（PRM-08 严查 expectBoundary）vs `:361`（RST-L02 只查产层）同句不同判·3abb503 只修测量端（`test-cases.js`）不修执行端·FC 选型偏离 compare→extract_feature 是根因 |
+| **CPD-L01/L02 = 测试基建文件名过期**（Codex）| **agree（实锤）** | `DATA/performance/` 仅 `yichang_*`·`xiling_wujia_*` 不存在·`test-cases.js:8` 引用过期文件名·loadCSV 404 静默返 `{ok:false}`·CPD 引导逻辑正常（`cpd-guide.js:59/66` 文案在）|
+| **glm CPD 时序/元数据待证** | **partial** | Codex 文件名实锤解释「导入失败」→ 时序假设可能 moot；但「loadCSV 后元数据是否与运行时一致」仍未证·留取证 |
+| **上轮 3 注意点已落地** | **agree** | Codex 核 `_hasSeq` 收紧（`harness.js:1087`）+ Pro chain 前置 + glm recover 链前置（`harness.js:984-992`）·F_002 低位证明生效 |
+| **F_002=4 是兜底生效结果·勿拆** | **agree** | glm 对（预防性兜底看防的风险是否仍在·FC 方差仍在）·保留 recover 链前置 |
+| **顺序词正则抽常量**（`_hasSeq` vs `_seqRe`）| **agree** | `harness.js:1087` 与 `:986` 字面相同分两处·改一处须同步·抽常量防分裂 |
+| **Pro chain 死路径** | **partial** | Pro 停用后 `:1072` 附近成死代码·清理低优先·防未来 Pro 复活误判 |
+| **MOD_LLM.F_002 backlog 建议重核** | **agree** | Codex 对（`chat_with_fallback` 入口日志·25 条全 attempt=0·非真实 fallback 数）·backlog 数字需修正 |
+
+**CB-13 反评价：8 agree / 2 partial / 0 disagree** · 两组独立结论 + 我方 verify-before-accept 全部成立。
+
+### ③ 行动
+
+- **PRM-08（高）**：compare 缺确定性路由兜底（CHAIN_REGISTRY 无 compare 链·FC 选型偏离时无兜底）→ 下轮 CB-14 修：仿 clip_density recover 模式，问句含 对比/比较/VS 且可派生 ≥2 区名时合成 compare + 确定性填 boundaries。**先取证**（glm 建议）：带 session 单跑 PRM-08 问句 5 次 + console/网络面板抓 FC tool_calls，确认「范围内」是否抢答触发点（假设 A/B 待证）。
+- **CPD-L01/L02（高·1 行）**：`test-cases.js:8` CSV 改走 `resolvePoints('L1-T1')` 或改存在文件名——**测试基建修复，非产品 bug**。建议 CPD-L03 恒真断言改硬断言。
+- **学习入库（KNOWLEDGE §3）**：① 修复测量端 ≠ 修复执行端（3abb503 教训）；② template 对但工具错 → 查 FC sys prompt 工具决策规则排序 + when/examples 诱导性，非查 select_template；③ 预防性兜底必要性看防的风险是否仍在。← CB-13
+- **backlog 修正**：MOD_LLM.F_002 fallback 79 次含 3 ERR → 重核为「调用数」非「fallback 数」（Codex）。
+
+### ④ 状态
+`闭环达成 → CB-12→13 多步问收敛 · 残余 PRM-08/CPD 转 CB-14` —— 多步问修复最终收敛·CB-12 三项主成果守住·PRM-08（FC 选型兜底）+ CPD-L01/L02（测试基建）进下一轮。
+
+---
+
+## CB-11 · 2026-08-02（主通道验证·glm组 第三方）
+
+### ① SCAN 摘要
+[CB11-主通道验证_glm组_2026-08-02](scan/CB11-主通道验证_glm组_2026-08-02.md)（glm组·ZCode + GLM 5.2 首次加入·独立第三方）：主通道 A 方向正确·但 **G1/G2 union 链无限循环致命 bug**（`buildLanduseCompletion:1351` + `_deterministicRecover:1235`·迭代 `_tcs` 同时 push → JS heap OOM·Node.js 复现）——**用户测试②「合并 3 类用地」直接命中**（2/6 步失败）。G3 inline N/M 时序缺陷（finalStep 看不到扩展失败·LLM 写乐观结论）·G4 boundaryName 硬编码「西陵」·G5 遥测不持久化·触发入口不一致·多步形态覆盖窄。
+
+### ② 我方反评价（结合用户手动测试 4 用例·verify-before-accept）
+
+| glm组 | 判定 | 证据 |
+|---|:---:|---|
+| G1/G2 union 无限循环 | **agree** | 读码确认 `:1351 for(i=1;i<_tcs.length;i++) push`·**用户测试②命中**（合并→2/6 步失败）·必修 |
+| G3 inline N/M 时序缺陷 | **agree** | inline 路径 finalStep 前未注入扩展失败·LLM 可能写乐观结论（对比 runAllToolCalls 有 `_failNote`） |
+| G4 boundaryName 硬编码西陵 | **agree** | `_polyLayers.find(l=>l.name.includes('西陵'))`·非西陵区失效 |
+| G5 遥测不持久化 | **agree** | console 仅本会话·跨会话丢失·应仿 `_TPL_STATS_KEY` 写 localStorage |
+| 触发入口不一致 | **agree** | inline/autoExpand/recover 三套触发条件·同一问句成功/失败走不同扩展 |
+| 后端补全建议 | **partial** | 中期演进·记待修（contracts 元数据支撑） |
+| 多步形态覆盖窄 | **partial** | merge→clip/filter→density 记待修 |
+
+**用户手动测试（claude组 侧证据）**：① 剪裁 3 类用地成功但报「3/4 扩展」（N/M 口径把第 1 步 extract 算进分母 + 未列失败图层名）；② 合并 3 类用地失败（=G1/G2 union 循环）；③ 筛选情绪点样式不对（clip 产物无图例继承 = 族 D）。**新要求**：关 C 键对比（保留时间轴按钮）+ **EMC 产物不临时创造样式**（用固化图例）。
+
+**CB-11 反评价：7 agree / 2 partial / 0 disagree**
+
+### ③ 行动
+- P0：修 G1/G2 union 链无限循环 + 关 C 键
+- P1：G3 inline N/M 时序 + N/M 提示列图层名 + 点层样式继承（clip 用固化极性图例）+ G4 去西陵硬编码
+- P2：G5 遥测持久化 + 触发入口统一 + 多步形态扩展 + 后端补全
+- 验证：pytest + 复测 B002/合并/B006 + C 键无效
+
+### ④ 状态
+`open → 修复执行中` —— 用户手动测试已确认 G1/G2 根因·计划已批准（`claude-code-emotion-map-purring-ritchie.md`）。
+
+### ③·merge 多图层修复定稿反评价（Codex + glm组 方案 A · 9f84eac）
+
+> 问题报告 [CB11-merge-multi-layer](problem_report/CB11-merge-multi-layer_2026-08-02.md) → Codex + glm组 独立一致裁决方案 A（后端 `merge(layers=[...])` concat·非 overlay union 空间并集）。
+
+| 项 | 判定 | 落地 |
+|---|:---:|---|
+| 选 A（后端 layers concat）·双组独立一致 | **agree** | 9f84eac 落地 |
+| B（overlay union）字段冲突（glm组 geopandas 实测 3→9→13 列）| **agree** | 拒绝·保留 overlay 空间并集能力 |
+| 并入 merge 不建新工具 | **agree** | merge 加 layers 模式 |
+| one-of 校验最容易漏 | **agree** | validate_tool_call 特判 + stages required_slots=[] + tools guard |
+| `_source_layer` 标记列（glm组）| **agree** | 后端 concat 加 |
+| overlay 字段爆炸负向测试（glm组）| **agree** | test_overlay_union_field_explosion_negative |
+| union 链对 merge 语义退役 | **agree** | buildLanduseCompletion/recover 模式 A/C 改调 concat |
+
+**CB-11 ③：merge 多图层修复——7 agree / 0 disagree · pytest 223 passed · 待用户自测**
+
+### ③·「剪裁+合并」只说不做反评价（Codex + glm组 · 防线结构性洞）
+
+> 用户问句「剪裁出西陵区范围…合并成一个图层」→ Playwright 实测：**执行只有 extract_feature→merge（无裁剪），结论却声称「执行裁取操作·严格落在西陵区边界内」**——只说不做复发。两组报告 [Codex](scan/CB11-剪裁合并结论撒谎_Codex-GPT5_2026-08-02.md) + [glm组](scan/CB11-clip-merge-hallucination_glm组_2026-08-02.md) 一致：**4 问题全成立·根因=防线系统性盲区（只验图层存在·不验操作是否执行）**。
+
+| 项 | 判定 |
+|---|:---:|
+| 问题 1 结论与执行不符（只说不做）| **agree**·最严重 |
+| 问题 2 buildLanduseCompletion 丢裁剪语义（`_wantUnion=/合并/` 互斥吞「裁剪」）| **agree**·执行层根因 |
+| 问题 3 防线无操作描述检测（结构性洞·L1/R1-R7/零图层守卫全失明）| **agree**·根治关键 |
+| 问题 4 observation 语义不足（merge 不含来源/是否裁剪）| **agree** |
+| 分歧 2 多次修复仍复发（防线只验存在性）| **agree** |
+| 分歧 3 R9 步骤描述对账（<5ms·确定性）| **agree** |
+| 分歧 4 执行路径 A vs B' | **用户拍板 A**（先裁剪再合并·架构契合：toolHistory 可审计·复用既有 intersection 链·B' 全量中间产物混淆）|
+| 分歧 5 优先级 | **用户拍板 R9+两阶段同时**（glm组·只修其一「只说不做」换变体复发）|
+
+**CB-11 ④：只说不做定稿——8 agree / 0 disagree · 修复 = R9 + 两阶段（A）+ merge observation 来源标注 · 待实施**
+
+---
+
+## CB-10 · 2026-08-01（EMC 全面审查·Codex+GPT-5 第三方）
+
+### ① SCAN 摘要
+[CB10-EMC全面审查_Codex-GPT5_2026-08-01](scan/CB10-EMC全面审查_Codex-GPT5_2026-08-01.md)（Codex+GPT-5·只读审查·分支 fix/emc-buglog @ a274362）：
+- 综合分 **6.0**（架构 6.5/代码 6.5/测试 5.5/Harness 6.0/文档 4.5/调用 6.0/演示 5.5）
+- **架构级缺陷 4 条**：① plans[] 从未接通管道（executePlans 零调用·07d57c1 禁用·CPD 不读）② 编排器正变"领域推理器"（_LANDUSE/_DK/_POL_MAP 词表散落）③ FC prompt 无版本化守卫（两次重写静默丢极性纪律）④ 文档-代码双轨不同步（D057/finalStep/221 passed/分支 hash）
+- **P0 4 条**：接通 executePlans(方案A)/删 plans(方案B)、恢复极性纪律+守卫、计划完成度守卫、修 test_final_prompt_stays_lean
+- **P1 5 条**：buglog 状态单源、B003 短路、B007 几何类型门、B008 2D/3D 解耦、B006-B 样式继承
+- **P2 2 条**：文档同步、修复内容守卫清单
+- 实测：pytest 196 passed/20 failed/5 skipped/3 errors（20 failed = test_sandbox 隔离问题·非回归；真实未修回归 = test_final_prompt_stays_lean 3616B>3KB）
+
+### ② 我方反评价（verify-before-accept·读真码核实·待 Codex 对反评价二轮评估）
+
+| SCAN 建议 | 判定 | 证据/行动 | decline reason（若 disagree） |
+|---|:---:|---|---|
+| P0-1 接通 executePlans(方案A) / 删 plans[](方案B) | **partial** | 方向「计划→执行闭环」agree。方案A 不采：executePlans（harness.js:1320）是被 D057 修订 `_allToolCalls`→`runAllToolCalls` 取代的死代码，非 CPD 接口；方案B 不采：plans[] 是给 CPD 的预留接口（CPD 搁置≠删），删概念撞用户立场。B005 真缺口 = `_autoExpandOverlays` 需≥2 关键词（单用地不触发）+ FC 单 tool_call 无补全 → 走 `_allToolCalls` 覆盖缺口 + Day1 浏览器验证定位 | — |
+| P0-2 恢复 FC prompt 极性纪律 + 内容回归测试 | **agree** | 证据链强：31e2a00 有纪律段 → 0073990/500d4b9 静默删 → 当前 router.py:52-59 无。恢复已验证段（非重写）+ tests/test_emc_template.py 断言守卫防再删 | — |
+| P0-3 计划完成度守卫 | **partial** | 方向 agree。当前「计划」=`_allToolCalls` 数组非 plans[]（D057 修订后）；runAllToolCalls 已有 failedSteps 注入+零图层守卫，缺 finalStep 前显式「完成 N/M 步」判定 → 补 | — |
+| P0-4 修 test_final_prompt_stays_lean | **agree** | 真实未修回归（SCAN 实测 3616B>3KB·非沙箱误报）。先看 FINAL_TEMPLATE：无损瘦身则瘦身，否则放宽守卫+记 ADR | — |
+| P1-1 buglog 状态单源 | **agree** | `_gen_index.py:59` 从目录派生、忽略 frontmatter → B010/B011 frontmatter=resolved 却计 OPEN·真 bug → 读 frontmatter 优先 + B010/B011 移 resolved/ | — |
+| P1-2 B003 数据清单短路 | **agree** | 与既有方案一致：`_quickIntent` 加清单意图 → general 短路（buildContext 来源标注已就绪 tools.js:596） | — |
+| P1-3 B007 几何类型门 | **agree**（后置） | clip/extract/overlay 加类型一致性校验 + 契约强化（两天空隙·非 P0） | — |
+| P1-4 B008 2D/3D 解耦 | **partial** | MED·前端渲染·不在两天重点·记待修 | — |
+| P1-5 B006-B 样式继承 | **partial** | 方向 agree（symbology propagation·clip/extract/overlay 产物继承源层图例）·超两天范围·记待修 | — |
+| P2-1 文档同步 | **agree** | todo.md 按已提交重写 07-30 Codex 段 + 补 08-01；emc-fix-progress/_cb-index/SUMMARY/02-orchestrator D057 同步；CB 环境 ZCode→Claude Code+Codex/DeepSeek | — |
+| P2-2 修复内容守卫清单 | **agree** | 关键修复（诚实观测/多步扩展/极性纪律）做成可 grep/可断言·防 prompt 重写静默丢弃 | — |
+| 发现2 编排器泄漏智能 | **partial** | 泄漏真实（_LANDUSE/_DK 词表散落 harness/stages）→ **集中到一个模块 agree**；**完全消除确定性兜底 disagree**——07-30 P03 教训：依赖 LLM 单次行为不可靠（no_tool_calls 必现），确定性恢复是务实妥协，非"泄漏" | — |
+
+**Auto-Check 清单**：① 承重红线——无触碰（P0-2 恢复的是 FC sys prompt 纪律段，非 diagnose eval prompt·不撞「diagnose 永不动」）✅ ② verify-before-accept——P0-1/P0-2/P1-1 均读真码核实 ✅ ③ 无消费者→wontfix——P0-1 方案A(executePlans) 无活消费方·不盲修 ✅ ④ 已知模式——「eval≠runtime」SCAN 正确认识未套错 ✅
+
+**CB-10: 9 agree / 0 disagree / 5 partial**
+
+**第三方复核结论（Codex 二轮审核 · [CB10-反评价二轮审核](scan/CB10-反评价二轮审核_Codex-GPT5_2026-08-01.md)）**：反评价整体公允（事实核查到位）·7 条修正全 accept——
+
+| Codex 修正 | 判定 | 整合 |
+|---|:---:|---|
+| B005 修复通道：扩成功路径 `_autoExpandOverlays` 非 `_deterministicRecover` 模式 D（触发位置错）| accept | Day1 改 `_autoExpandOverlays` 放宽单用地+双区 |
+| B007 类型校验随 P0-1 同包（自动多步静默放大错配）| accept | B007 guard 并入 P0-1 同包·契约强化留 P1 |
+| 完成度守卫：结论层确定性追加「已完成 X/Y 步」代码行，非仅 context 注入 | accept | Day2 P0-3 代码层确定性追加 |
+| FC prompt 守卫覆盖四段（极性纪律/plans/domain_lens/多要素提取）+ `build_fc_sys_prompt` 抽函数 | accept | Day2 P2-2 四段断言 |
+| P0-4 先分解静态/动态，静态瘦身 ≤2KB，docstring/断言口径统一 | accept | Day2 P0-4 |
+| 分歧2：失败路径兜底保留 agree；成功路径泄漏 → 集中词表+边界（多 tool_call 优先 runAllToolCalls·auto-expand 注册表+命中遥测）| accept | Day2 词表集中+边界 |
+| CPD-RESERVED 是空骨架（plans 生产链已随 0073990 停供）→ 记 KNOWLEDGE | accept | Step 0 KNOWLEDGE 记录 |
+
+**CB-10 最终：9 agree / 0 disagree / 5 partial + Codex 二轮 7 修正全 accept**
+
+### ③ 行动
+- **两天攻坚 plan 定稿**：`C:\Users\Hi\.claude\plans\claude-code-emotion-map-purring-ritchie.md`（CB-10 反评价整合版）
+- **两天攻坚完成**（commit 898998b+7735cb8+392ecc1+b2949e1）：B003 数据清单短路 / B005 单用地+双区+_LANDUSE 泛词 / B006 极性纪律恢复+守卫 / P0-4 prompt 瘦身 / P1-1 buglog 状态单源 / 右半段（删 executePlans·CPD-RESERVED·P0-3 完成度守卫）/ B007 _checkGeomType 类型 guard / 词表集中 emc-patterns.js
+- **验证**：pytest 220 passed + B0 飞轮 36/45 无回归 + 定向 test_p0_repro 4 用例全过（B002/B005/B003/B006）
+
+### ④ 状态
+`done → 两天攻坚完成·Codex 验收：有条件通过` —— Codex 验收报告（[CB10-两天攻坚验收](scan/CB10-两天攻坚验收_Codex-GPT5_2026-08-01.md)）7 修正全落地·4 项收尾条件（_gen_index --check 时间戳脆弱 / 文档口径 / domain_lens A 部损失入待修 / B3 全量回归）·我方反评价见下。
+
+### ③·验收反评价（Codex 两天攻坚验收 · 逐条 agree/partial）
+
+| Codex 验收项 | 判定 | 我方处理 |
+|---|:---:|---|
+| 7 修正全落地（B005/B007/完成度守卫/FC prompt/P0-4/词表集中/CPD-RESERVED）| **agree** | 属实·已核实 |
+| MED #1 `_gen_index --check` 时间戳脆弱（逐字节比对→过分钟必红·CI 失效）| **agree** | 修：--check 忽略时间戳行 |
+| LOW #2 emc-fix-progress 新旧混杂（更新行 a274362 / 总计行 v3.1·221）| **agree** | 统一 b2949e1/v3.3/220 |
+| LOW #3 _cb-index hash 仍 a274362 | **agree** | 同步 b2949e1 |
+| LOW #4 test docstring <2KB vs 断言 <3000 vs 实际 2641B | **agree** | docstring 改 <3KB |
+| INFO #5 _POL_MAP overall 行残留内联 | **agree** | 并入 POLARITY_KW |
+| INFO #6 部分失败 exit 仍 'result' | **partial** | 非红线·机制未破坏·与 EXIT_PARTIAL 对齐可选（本验收周期不强制）|
+| 分歧（只恢复极性纪律·不恢复 plans/domain_lens/多要素提取）判定成立 | **agree** | 判定成立·domain_lens A 部损失记待修（非静默无损失）|
+| 收尾条件 4 B3 全量 LLM 回归 | **agree** | 补跑 B3 更新报告（后台曾卡死·重试）|
+
+**CB-10 ③：验收反评价——8 agree / 1 partial / 0 disagree**
+
+---
+
+### ③·飞轮机制审查反评价（Codex · F-1~F-13 + 7 问题族 · 逐条）
+
+> SCAN：[CB10-飞轮机制审查与EMC问题梳理](scan/CB10-飞轮机制审查与EMC问题梳理_Codex-GPT5_2026-08-01.md)。飞轮三层互补设计优秀；4 系统性弱点 + 7 问题族归并（A 多步管道唯一架构根因·B 意图/参数概率性·C 正则覆盖·D 样式契约·E 字段已收敛·F 测试基建·G 治理）。
+
+| Codex 意见 | 判定 | 处理 |
+|---|:---:|---|
+| F-1 计划命中指标语义漂移（method 派生 ≠ 计划） | **agree** | 记待修：按 `_allToolCalls.length` 实际执行通道统计 |
+| F-2 断言不覆盖产物正确性（B006-B/B008 测不出） | **agree** | 记待修：density/overlay/clip/merge 产物语义断言 |
+| F-3 llm 数据形态单一（无单层全量/无 polarity） | **agree** | 记待修：补 2 个数据形态用例 |
+| F-4 llm 全量回归不可日常跑 → 拆 smoke/regression/full 三档 | **agree** | 记待修：三档拆分 + B3 卡死根因修 |
+| F-5 llm 单次失败非回归 → 自动重测 1 次标 flaky | **agree** | 记待修 |
+| F-6 no-llm 9 个 CPD/UI 失败长期红无主 → 进 buglog 或 defer 清单 | **agree** | 记待修：9 例建归属 |
+| F-7 误杀/漏判投票无消费方 | **partial** | 方向对·低优先级·记待修（每月校准） |
+| F-8 失败→buglog 断链（无"记录"入口）→ --collect | **agree** | 记待修：`flywheel_audit.py --collect` + 按钮 |
+| F-9 仪表盘缺跨次趋势 | **partial** | 低优先级·记待修 |
+| F-10 UI 交互合格 | **agree** | 维持 |
+| **F-11 `--check` 时间戳脆弱** | **已修** | 742840d（`_strip_timestamp`）✓ 跨分钟验证 |
+| **F-12 `_regression.md` 只覆盖 B001** | **已核实自动解决** | B010/B011 移 resolved/ 后自动收录（render_regression 按 resolved 全量）✓ |
+| F-13 修复记录 commit 无祖先校验 | **partial** | 记待修：`--check` 加 commit 祖先校验 |
+| 族 A 多步主通道未定型 + B002 半成品 answer | **agree** | 已记待修（B002 半成品）+ 主通道定型待架构决策 |
+| 族 D 样式契约缺失 | **agree** | 已 defer（B006-B/B008）·记 P2 |
+
+**反评价：11 agree / 2 partial / 2 已修·已核实 / 0 disagree**
+
+### ③·飞轮机制审查深入反评价（verify-before-accept · 逐条核实代码）
+
+> 方法：每条先 grep/read 核实 Codex 的代码级陈述（verify-before-accept），再判 agree/partial；agree 项给**具体行动方案**（非笼统"待修"）。已核实：F-1 属实（test-board.js:390-391 `_pl=method.length`）、F-2 属实（llmRun sig 只抓 tools/template/method/params/newLayers/renderedNew·不覆盖色板/几何/样式）、F-6 属实（no-llm 9 失败长期无主）、F-11 已修（742840d）、F-12 已核实自动收录。
+
+| Codex 意见 | 判定 | 具体行动 |
+|---|:---:|---|
+| F-1 计划命中指标漂移（method 派生≠计划） | **agree** | `test-board.js:390-391` 改按实际执行通道统计：`_allToolCalls.length`（LLM 多 call）或 autoExpand 链长·且「实产≥计划且无失败步」才命中·保留字段名 `计划命中` 防断下游 grep |
+| F-2 断言不覆盖产物正确性 | **agree** | 选 4 高频工具加语义断言：density 色板钩子（analysis=negative → 用消极色板非彩虹·CB-04 已修勿回退）/ overlay feature 数+字段 / clip 产物 point_count / merge 几何合并·断言写成 test-board 可判定的信号（暴露 `_ui`/paint）·非浏览器人工 |
+| F-3 llm 数据形态单一 | **agree** | e2e-seam 补 2 用例：单层全量点（无 polarity 拆分）+ 无 polarity 字段点（走 any-point 兜底·CB-08 F2.0 回归） |
+| F-4 三档拆分 smoke/regression/full | **agree（最高实操价值）** | `flywheel_audit.py` 加 `--tier`：smoke（no-llm 45 + llm 精选 10）/ regression（llm 意图+工具 30-40）/ full（B1-B3 发版）·**先修 B3 卡死根因**（`emc_helpers` 起 serve + 批处理超时——曾因 `\| tail` 缓冲误判卡死·实为输出缓冲非进程挂）·B3 用无缓冲重定向已跑通（25 例 11.1min·本日实证） |
+| F-5 llm 单次失败≠回归 → flaky 重测 | **agree** | test-board `[R]` 重跑加自动重试 1 次·仍失败计 fail·报告标 `flaky`（首过/二过）·防 Flash 概率性误报回归 |
+| F-6 no-llm 9 失败长期红无主 | **agree** | 9 例（CPD-03~08/10 + UI-09 + PRED-09）二选一：建 buglog 条目（标 rootcause）或进显式 defer 清单（原因+负责）·**已确认 CPD 类 = backlog T4/T5 范畴·UI-09/PRED-09 需定位** |
+| F-7 投票数据无消费方 | **partial** | 方向对·但「每月校准」无机制支撑（无定时器/无触发点）·先记待修·待 F-2 断言落地后一并看投票口径 |
+| F-8 失败→buglog 断链 → --collect | **agree** | `flywheel_audit.py --collect`（失败例自动产 buglog 草稿·人工确认入库·复用 bug-collector skill 标准化）·test-board 失败行加「记录」按钮走同流程 |
+| F-9 仪表盘缺跨次趋势 | **partial** | 方向对·但低优先（f_4 三档拆分更急·仪表盘趋势依赖多报告积累）·记待修 |
+| F-10 UI 交互合格 | **agree** | 维持 |
+| F-11 --check 时间戳脆弱 | **已修** | 742840d `_strip_timestamp`·跨分钟验证 ✓ |
+| F-12 _regression.md 只覆盖 B001 | **已核实自动解决** | B010/B011 移 resolved/ 后 render_regression 自动收录（实测 _regression.md 现 3 条）✓ |
+| F-13 修复记录 commit 无祖先校验 | **partial** | 可做但低价值（文档防漂移够用·--check 已守生成物）·记待修·非阻塞 |
+| 族 A 多步主通道未定型 | **agree** | **本轮最核心**：B002 半成品 answer 时序（全步骤完成→单次答案）记待修·主通道二选一定型（推荐 `_allToolCalls` 主通道 + FC prompt 促多 call·行为回归）·架构决策需用户拍板 |
+| 族 B 意图/参数概率性 | **agree** | 守卫已收敛（build_fc_sys_prompt+断言+guard）·长期 grounding 结构化·记 P2 |
+| 族 C 正则覆盖盲区 | **agree** | 已集中 emc-patterns.js + 命中遥测待加·随族 A 收敛 |
+| 族 D 样式契约 | **agree** | 已 defer（B006-B/B008）·computeStyle 扩展至全部产物·P2 |
+| 族 E 字段猜测 | **agree** | 已收敛（B001+CI）·低风险残留 |
+| 族 G 治理 | **agree** | 文档口径已修（742840d）·流程+CI 收敛 |
+
+**Auto-Check**：① 承重红线——无触碰（F 意见均改 test-board/audit/断言·不触 diagnose prompt/tracker/四态）✅ ② verify-before-accept——F-1/F-2/F-6/F-12 读码核实 ✅ ③ 无消费者→wontfix——F-7/F-9/F-13 低价值·partial 不盲修 ✅ ④ 已知模式——「评估偏工程标尺」未触发（本 SCAN 合理聚焦飞轮基建）✅
+
+**反评价（深入版）：15 agree / 3 partial / 2 已修·已核实 / 0 disagree**
+
+### ③·主通道决策评审反评价（Codex · 选 A 定型 + 3 收尾）
+
+> SCAN：[CB10-主通道决策评审](scan/CB10-主通道决策评审_Codex-GPT5_2026-08-01.md)。**选 A 定型**（Flash 单 tool_call 是模型现实·B 低概率高成本）+ 三层定位（LLM 多 call=机会通道 / 单 call+补全=常态主通道 / recover=失败兜底）+ 3 件收尾 + 演进路径。
+
+| Codex 意见 | 判定 | 行动 |
+|---|:---:|---|
+| 选 A 定型（B 降级为模型换代后评估项）| **agree** | 与项目方建议一致·B 不做当前投入 |
+| 三层定位（确定性补全=常态主通道·LLM 多 call=机会·recover=失败兜底）| **agree** | 架构定位采纳·文档记录 |
+| 正则补全必须保留（两层次·遥测驱动退役）| **agree** | 保留·加命中遥测 |
+| a5eb3e1 部分满足族 A·「统一」未达成（3 缺口：覆盖窄/无 union 分支/无 N/M 判定）| **agree** | **三件收尾做**（见下）|
+| 收尾 #1 抽共享补全函数 buildLanduseCompletion（intersection+union）·inline/autoExpand/recover 改调 | **agree** | 做：新 completion.js 或 harness 共享函数 |
+| 收尾 #2 N/M 完成度判定提升为共享出口（inline 路径也追加）| **agree** | 做 |
+| 收尾 #3 命中遥测（inline/autoExpand/recover 各自计数）| **agree** | 做：console 可查 |
+| 风险：单技能路径无总预算（B002 43s）→ 加 45-50s 兜底 | **agree** | 做：单技能路径加总预算 |
+| 风险：内联触发正则又一条内联正则 → 收尾 #1 一并移入共享 | **agree** | 做：并入共享函数 |
+
+**反评价：9 agree / 0 disagree** · 行动 = 三件收尾 + 45s 预算 + 遥测 · 完成后用户自测一次 · 立即做 = F-1/F-2/F-6 · 本周 = F-4 三档 + F-8 · 族 A 主通道 = 架构决策待用户拍板
+
 
 ### ① SCAN 摘要
 [SCAN_DeepSeek_05](scan/05-deepseek.md)（DeepSeek V4 Pro·ZCode 主线程）：基于用户 5 个实测案例的深度诊断——裁剪西陵+伍家岗（request_upload·推理螺旋）、上传了哪些数据（答错·信息缺失）、裁剪西陵+伍家岗再测（假结论·无执行感知）、消极情绪追问（层引用幻觉）、500m 网格聚合（图层OK/结论超时）。**核心发现**：接地上下文缺两类语义标注（数据来源+可用引用），LLM 面对信息缺口进入推理螺旋。综合分 7.3/10（↓0.6 vs CB-08）。7 条 P0-P1 建议。

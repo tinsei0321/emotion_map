@@ -419,6 +419,60 @@ register_track_id("MOD_LLM.F_002", "chat_with_fallback（retry+fallback 编排�
 register_track_id("MOD_LLM.F_004", "chat_with_tools_fallback（FC provider fallback·v3 C1·CB-05 CR1 新 ID 避碰撞）")
 register_track_id("MOD_LLM.F_005", "LLMClient.chat_with_tools_stream（FC 流式·诊断思考可见·Hotfix R2 S7）")
 register_track_id("MOD_LLM.F_006", "chat_with_tools_stream_fallback（FC 流式 provider 韧性·Hotfix R2 S7）")
+
+
+def search_chat(question: str, max_tokens: int = 4000, timeout: float = 30.0) -> dict:
+    """DeepSeek Responses API 联网搜索（G6b·纯问答大问题/聚焦问题）。
+
+    走 https://api.deepseek.com/v1/responses + tools=[{type:'web_search'}]（服务端执行搜索+开页+综合）。
+    返 {answer, sources}：answer=模型综合回答文本（output 里 type=message 的 output_text 拼接）；
+    sources=web_search_call 的 open_page url 列表（供来源标注）。失败抛 LLMError。
+    CB-12 B3 修复：timeout 90→30s·不 retry（搜索是增强非核心·失败快速 fallback·防拖死批次）。
+    """
+    key = os.environ.get(DEFAULT_KEY_ENV, '')
+    if not key:
+        raise LLMError(f'未配置 LLM API Key（{DEFAULT_KEY_ENV}）——搜索需联网，先配 .env')
+    url = 'https://api.deepseek.com/v1/responses'
+    headers = {'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'}
+    body = {
+        'model': MODEL_FLASH,   # Responses API web_search 目前仅 flash（pro 8 月初支持）
+        'input': [{'role': 'user', 'content': question}],
+        'tools': [{'type': 'web_search'}],
+        'max_output_tokens': max_tokens,
+    }
+    trace_log('MOD_LLM.F_007', f'search_chat q={question[:60]}')
+    # CB-12 问题3（Codex）：搜索不重试·直调一次（增强非核心·失败快速 fallback·防拖死）
+    try:
+        with httpx.Client(timeout=timeout) as client:
+            r = client.post(url, headers=headers, json=body)
+        if r.status_code != 200:
+            raise LLMError(f'搜索响应 {r.status_code}: {r.text[:300]}', status_code=r.status_code)
+        data = r.json()
+        answer_parts, sources = [], []
+        for item in data.get('output', []):
+            it = item.get('type')
+            if it == 'message':
+                for c in item.get('content', []):
+                    if c.get('type') == 'output_text' and c.get('text'):
+                        answer_parts.append(c['text'])
+            elif it == 'web_search_call':
+                act = item.get('action') or {}
+                if act.get('type') == 'open_page' and act.get('url'):
+                    sources.append(act['url'])
+        answer = '\n'.join(answer_parts).strip()
+        if not answer:
+            # 截断/无文本 → 尝试 reasoning 摘要兜底
+            for item in data.get('output', []):
+                if item.get('type') == 'reasoning':
+                    for c in item.get('content', []):
+                        if c.get('type') == 'reasoning_text' and c.get('text'):
+                            answer_parts.append(c['text'])
+            answer = '\n'.join(answer_parts).strip() or f'（搜索未返回文本·HTTP {r.status_code}）'
+        return {'answer': answer, 'sources': list(dict.fromkeys(sources))[:5]}
+    except LLMError:
+        raise
+    except Exception as e:
+        raise LLMError(f'搜索调用失败: {e}')
 register_track_id("MOD_LLM.D_001", "LLM retry 触发（pre-stream 失败，退避后重拨）")
 register_track_id("MOD_LLM.D_002", "LLM fallback 切换 provider（重试耗尽或 4xx）")
 register_track_id("MOD_LLM.D_003", "LLM 流中途失败（不重试不换家，交上层降级）")

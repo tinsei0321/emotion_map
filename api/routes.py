@@ -14,7 +14,7 @@ from api.schemas import (
     AnalysisRequest, AnalysisResponse, PolarityStats,
     HealthResponse, DataListResponse, GovernanceRequest,
     BufferRequest, ExportRequest,
-    SpatialAggregateRequest, SpatialGridRequest, SpatialTerrainRequest,
+    SpatialAggregateRequest, SpatialGridRequest, SpatialTerrainRequest, SpatialDemRequest,
     RangePresetGroup, RangePresetUploadRequest,
     PlaceHit, PlaceSearchResponse, GeocodeResult, ReverseGeocodeResult,
 )
@@ -348,6 +348,49 @@ async def terrain_route(req: SpatialTerrainRequest):
     }
 
 
+@router.post("/spatial/dem")
+async def dem_route(req: SpatialDemRequest):
+    """情绪地形 DEM - KDE 栅格 → Mapbox terrarium RGB（setTerrain 连续曲面·P1.5）。
+
+    替代 fill-extrusion 等值线环（千层饼非连续曲面）——DEM 是连续三角网地形源，
+    setTerrain 由 MapLibre 渲染。返回 PNG bytes + bounds(4326)·前端作 raster-dem source。
+    """
+    import geopandas as gpd
+    from core.spatial_analysis import create_terrain_dem
+
+    feats = (req.geojson or {}).get('features') if isinstance(req.geojson, dict) else None
+    if not feats:
+        raise HTTPException(status_code=400, detail="geojson 需为非空点 GeoJSON")
+    if req.polarity not in ('overall', 'positive', 'negative', 'neutral'):
+        raise HTTPException(status_code=400, detail="polarity 必须 overall | positive | negative | neutral")
+
+    try:
+        pts = gpd.GeoDataFrame.from_features(feats, crs='EPSG:4326')
+        dem = create_terrain_dem(
+            pts, polarity=req.polarity, bandwidth_m=req.bandwidth_m,
+            cell_m=req.cell_m, height_scale=req.height_scale,
+        )
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail=f"依赖缺失: {e}（需 pip install matplotlib）")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"DEM 生成失败: {e}")
+
+    from urllib.parse import quote
+    import json
+    fname = f'emotion_terrain_dem_{req.polarity}.png'
+    return Response(
+        content=dem['png'], media_type='image/png',
+        headers={
+            'Content-Disposition': f"attachment; filename*=UTF-8''{quote(fname)}",
+            'X-DEM-Bounds': json.dumps(dem['bounds']),        # WGS84 [w,s,e,n]（前端 raster-dem source）
+            'X-DEM-Size': f"{dem['width']}x{dem['height']}",  # 像素宽x高
+            'X-DEM-HeightScale': str(dem['height_scale']),
+        },
+    )
+
+
 @router.post("/export")
 async def export_route(req: ExportRequest):
     """图层导出：GeoJSON FeatureCollection → geojson / csv / shp(.zip) 下载流。
@@ -398,10 +441,15 @@ async def export_route(req: ExportRequest):
 async def place_search_route(
     q: str = Query(..., min_length=1, description="搜索关键词（地名/POI/类别）"),
     limit: int = Query(10, ge=1, le=30, description="返回条数上限"),
+    amap_first: bool = Query(False, description="高德优先（CB-22d：先高德解析片区名·未命中再本地·防本地 fuzzy 误伤）"),
 ):
-    """地点搜索：本地 1270 POI 即时（rapidfuzz）+ 高德 place/text 兜底。坐标 WGS84。"""
+    """地点搜索：本地 1270 POI 即时（rapidfuzz）+ 高德 place/text 兜底。坐标 WGS84。
+
+    amap_first=true（CB-22d）：先高德 place/text 解析（成熟 API·片区名可解析·不造轮子）·
+    命中才用·未命中落 search_place 本地兜底。防「伍家岗工业园→伍家菜市场」类本地 fuzzy 误伤。
+    """
     try:
-        hits = search_place(q, limit)
+        hits = search_place(q, limit, amap_first=amap_first)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"地点搜索失败: {e}")
     local_n = sum(1 for h in hits if h.get('source') == 'local')
