@@ -9,12 +9,12 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-22 · 分类→回答范式映射讨论**（架构级·EMC 机制完善·5 分类→范式映射待两组设计） |
-| **上一轮** | CB-22 EMC 测试失败修复（R1-R4·超时/预热/兜底）+ 第二根因（模板错位）→ 机制缺陷升级为架构议题 |
+| **当前 CB 轮次** | **CB-22 · 分类→回答范式映射反评价收敛定稿**（5 分类映射·rag_query 确定性组装根治·FINAL_TEMPLATE 不动·PARADIGM_MAP·开始实施） |
+| **上一轮** | CB-22 分类→范式讨论（两组·架构级）→ EMC 测试失败修复（R1-R4）+ 第二根因（模板错位） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
 | **当前分支** | `fix/emc-buglog`（与 origin 同步） |
-| **最新讨论** | `discuss/CB22-分类到回答范式映射_讨论发起_2026-08-09.md`（5 分类→范式·rag_query 确定性组装·knowledge_query 关系） |
-| **最新进展** | **EMC 测试失败两轮**（RAG 冷加载超时→修复 R1-R4·模板错位→第二根因）·**机制缺陷定案**：分类正确但回答全走 finalStep 图层导向·「分类→范式」映射缺失·进 CB 架构设计 |
+| **最新讨论** | `discuss/CB22-分类到范式_反评价收敛_定稿_2026-08-09.md`（5 分类→范式·rag_query 确定性组装·general 风险标注·PARADIGM_MAP） |
+| **最新进展** | **机制缺陷定案**（分类正确但回答全走 finalStep 图层导向·映射缺失）·**分类→范式映射定稿**：分析→finalStep 图层·知识→确定性组装（零 LLM）·FINAL_TEMPLATE 不动·开始实施 + B 路径（CB-22b） |
 | **接手文档** | `memories/repo/session-handoff.md`（08-05 卡·已过时·历史背景）+ `_handoff/HOME.md` + `OFFICE.md`（08-08 权威快照）+ `_handoff/CB恢复记忆prompt_2026-08-09.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 
