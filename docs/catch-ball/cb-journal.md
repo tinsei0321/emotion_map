@@ -6,6 +6,44 @@
 
 ---
 
+## CB-22d · 2026-08-10（知识问答 → 地图标记 · 两组回应回收 + 综合 plan 反评价 + 进 CB 详细评估）
+
+### ① 场景与用户判断
+
+用户问「宜昌市城市更新项目有哪些？」→ 知识问答文字回答（符合预期）；追问「能在地图上标记出这些项目的位置吗？」→ EMC 无法完成（报需上传数据）。用户两轮判断：**判断一** 官方 DeepSeek 能「项目→地点→答案」EMC 不能·缺失在哪；**判断二（根因修正）** 官方至少走了「判断→计划→执行」完整链路（尽管靠幻觉）·**EMC 是「计划与执行脱节」**——这才是根因。用户要求客观理解·说错必指·三组保持客观立场。
+
+### ② claude组 根因修正（用户判断深化）
+
+**认可核心**：根因 = **Smart/Dumb 能力接口断裂**——LLM 能计划「项目→地点→图层」·但意图枚举无此值 + FC 14 工具无 names→点图层 + 编排器无路由 → 计划与执行脱节 → C2 request_upload。官方不脱节（同模型·幻觉兜底）；EMC 拆开须补承接。
+
+**修正两处**：①「EMC 没通过意图判断」不准确——diagnose 必做意图判断·问题是**判断目标集无此值**（prompts.py:200 四值）；②「官方真匹配地点」不准确——官方是**幻觉**（预训练猜测·无真实地理数据）·EMC 铁律拒幻觉不能复刻。
+
+### ③ 两组回应（glm + Codex）
+
+**glm**（agree 主轴 + 补充）：工具层封闭更彻底（FC 14 工具·run_python 不在 FC 暴露 + 被铁律拦 harness.js:1397）；主张**独立新意图 `layer_from_knowledge`**（不在 knowledge_qa 内开图层分支·守 CB-22 铁律）；不动 `_isResumeCue` 正则；B 为本/A 为门/C 为增强；验收可测化 5 条 + B3/黄金集/eval 复采。
+
+**Codex**（agree 主轴 + 分歧 + 挑战）：「C2 request_upload 是果不是因」·真缺口=无 names→点图层工具；**主张归 gis_operation + 新技能·不新增 intent 枚举**（PARADIGM_MAP/静态断言/四态出口全不动）；面化数据现实（街道/更新单元 geojson 缺失·葛洲坝退西陵区面）；挑战 A（勿扩 resume 正则·防跳过 knowledge_qa 合流）；挑战 2（defaultPaint 无 point 分支/55 名并发/未命中来源标注）。
+
+### ④ claude组 反评价裁决
+
+**采纳 Codex 方案（归 gis_operation + 新技能·不新增 intent）+ 采纳 glm 内核（独立于 knowledge_qa·不动 resume 正则）**。取证：intent 是 LLM 从枚举字符串输出（prompts.py:200）·选择要点铁律硬编码技能（prompts.py:267）·技能目录由 tool_contracts 派生——归 gis_operation 改动面最小；不新增 intent 规避 4 值注意力稀释 + PARADIGM_MAP 变更风险。Codex 挑战 A/2 全采纳。
+
+### ⑤ 定稿 plan（进 CB 详细评估）
+
+**P0-1 工具层**：`generate_point_layer({names,as})`——逐名 search_place → point fc → addToolboxLayer（显式 circle 样式）·并发 Promise.all+限流·observation 命中/未命中列表·**三级面化回退**（点→面→文字·绝不 request_upload）·SKILL_DEFS 镜像。
+**P0-2 路由使能**：resume+priorTurn=knowledge_qa+标记词 → 上下文提示选新技能（不翻转 resume 布尔）·`_NEEDS_POINT` 不含新工具 C2 天然豁免。
+**P0-3 契约+镜像+豁免**：tool_contracts 新增 + paradigm/prompts 增量 + validate_skill_params 同步 + KNOWLEDGE §1 登记 diagnose 增量豁免 3 条件。
+**P0-4 测试验收**：工具单测（stub search_place 三态）+ 路由负例 + 静态断言 + B3 用例 + 黄金集回归 + eval 复采 + 用户验收。
+**P1**：附件5 项目库坐标抽取 → 项目点位源 → 优先命中。
+
+**克制清单**：不改 knowledge_qa 成功路径/禁图层注入·不新增 intent·不动 PARADIGM_MAP/四态/finalStep D019·不越维（55 聚合不冒充 55 点位）·未命中不编造坐标·不动 resume 正则。
+
+### ⑥ 状态
+
+- **已落**：[综合plan反评价](discuss/CB22d-知识问答到地图标记_综合plan反评价_2026-08-10.md)（根因修正 + 两组反评价 + 定稿 plan + 6 焦点）·commit `f94d3cd` 已 push
+- **待**：两组**详细评估**（6 焦点 A-F·可行性/有效性/红线/用户诉求/数据增强/异议）→ 落 `CB22d-..._综合plan评估_{组}_2026-08-10.md` → claude组 收敛 → 实施
+- **未决**：trace 闭环（claude组 家环境复跑追问补 trace_query）·面化数据缺口（街道/更新单元 geojson 缺失）·Codex 未补评焦点 5（官方对比）
+
 ## CB-22 · 2026-08-09（三支柱 + 产品定位对齐 · 两组回收全 agree · 实施修正含承重发现）
 
 ### ① 两组对齐回应（6 焦点全 agree·零分歧）

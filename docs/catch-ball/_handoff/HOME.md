@@ -1,13 +1,18 @@
 # 家里 · 工作交接卡
 
-> **位置**：家 | **最后更新**：2026-08-09 | **操作人**：claude组（Claude Code）
+> **位置**：家 | **最后更新**：2026-08-10 | **操作人**：claude组（Claude Code）
 > **同步**：git push 后办公室可见。到办公室后读 `OFFICE.md`（公司 08-09 收工卡·最新）。
 
-## 当前状态（08-09 · pull 公司全链后）
+## 当前状态（08-10 · CB-22d 讨论中）
 
-- **分支**：`fix/emc-buglog` @ `56cd67b`（与 origin 同步·工作区干净·`434a604..56cd67b` fast-forward）
-- **公司 08-09 全链已同步**（OFFICE 卡）：CB-21b 城市更新知识库 + CB-22 RAG/三支柱/三层架构/术语去硬造/杜绝概念创造·pytest 307 + validate 9 + e2e 7
-- **进度同步 + 环境检查已发两组**：`docs/catch-ball/discuss/进度同步与环境检查_讨论发起_2026-08-09.md`
+- **分支**：`fix/emc-buglog` @ `f94d3cd`（与 origin 同步·工作区干净）
+- **CB-22d 知识问答→地图标记**（进行中·等两组详细评估）：
+  - 场景：问项目→文字回答 OK；追问「能在地图上标记吗」→ EMC 无法完成
+  - 根因（用户判断深化）：Smart/Dumb 接口断裂（计划→执行脱节）·非地点精度
+  - 两组回应已回收（glm + Codex）→ 反评价裁决（采纳 Codex 归 gis_operation + glm 内核）
+  - 定稿 plan：`generate_point_layer` 工具 + 三级面化回退 + 路由使能 + 契约豁免
+  - 落 [综合plan反评价](docs/catch-ball/discuss/CB22d-知识问答到地图标记_综合plan反评价_2026-08-10.md)（6 焦点请两组详细评估）·cb-journal CB-22d 段已记
+- **待**：两组 `综合plan评估_{组}_2026-08-10.md` → claude组 收敛 → 实施
 - **接手文档**：`OFFICE.md`（公司 08-09 权威卡）+ `DEEPSEEK_ONBOARDING_2026-07-30.md`（历史）
 
 ## ✅ 家环境 RAG 补链完成（08-09 晚·用户要求补齐环境）
