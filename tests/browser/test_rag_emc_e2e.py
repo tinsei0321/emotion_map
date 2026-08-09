@@ -38,6 +38,10 @@ def test_rag_search_endpoint():
     for res in data['results']:
         assert 'data_dim' in res  # 每条约含维度标注
         assert 'source' in res
+        # CB-22 三支柱修正（承重发现机器化）：素材须含片段全文（LLM 综合依赖内容·
+        #   此前仅文件名致三支柱①空转）·老索引无 text → 重建后必非空
+        assert 'text' in res, f'素材缺 text 字段（需 py tools/rag_index.py --rebuild 重建索引）: {res["source"]}'
+        assert res.get('text', '').strip(), f'素材 text 为空（重建索引后不应为空）: {res["source"]}'
 
 
 def test_rag_search_fallback_when_no_index():

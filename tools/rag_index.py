@@ -172,6 +172,10 @@ def build_index():
             'type': c['type'],
             'data_dim': c.get('dim', '社区'),  # 数据维度（住房/小区/社区/街区/城区/城中村/方法论）
             'content_hash': h,
+            # CB-22 三支柱修正（两组对齐后承重发现）：素材内容必须随索引持久化——
+            #   此前只存 hash·search 返回无 text·注入 finalStep 的"素材"仅文件名列表·
+            #   LLM 无内容可综合（三支柱①空转·验收 V2 结构性不可过）→ 存片段全文供 LLM 综合
+            'text': c['text'][:2000],
             'embedding_model': MODEL_NAME,
             'dim': int(vectors.shape[1]),
             'build_time': time.strftime('%Y-%m-%d %H:%M'),
@@ -253,6 +257,8 @@ def search(query, k=5):
             'source': metas[i].get('source', ''),
             'type': metas[i].get('type', ''),
             'data_dim': metas[i].get('data_dim', '社区'),  # 数据维度（住房/小区/社区/街区/城区/城中村/方法论）
+            # CB-22 三支柱修正：透传片段全文（老索引无 text → 空串·前端标注"片段缺失·请重建索引"）
+            'text': metas[i].get('text', ''),
         })
     return {'ok': True, 'results': results, 'count': len(results)}
 

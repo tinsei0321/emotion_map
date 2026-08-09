@@ -53,12 +53,13 @@ export const RAG_QUERY_KW = [
 export const RAG_KNOWLEDGE_RE = /项目|指标|体检|案例|政策|片区|问题|做法|机制/;
 
 // CB-22 分类→回答范式映射（显式契约·防"分类正确但范式错位"）。
-// text_qa=纯文字直答（finalStep 纯问答）· knowledge_qa=确定性组装（零 LLM·禁 finalStep）· layer=finalStep 图层（分析）
+// text_qa=纯文字直答（finalStep 纯问答）· knowledge_qa=知识问答（检索素材 → finalStep LLM 综合+引用来源·
+//   CB-22 用户修正·成功路径必须 LLM 综合·零 LLM 仅限失败兜底 R3 EXIT_CONCEPT）· layer=finalStep 图层（分析）
 export const PARADIGM_MAP = {
   'general': 'text_qa',
   'search': 'text_qa',            // general 子路径（CB-12 联网素材注入）
-  'rag_query': 'knowledge_qa',    // 确定性组装（根治模板错位）
-  'knowledge_query': 'knowledge_qa', // B 路径（CB-22b·确定性查询）
+  'rag_query': 'knowledge_qa',    // RAG 检索 → LLM 综合素材（修正后·非零 LLM）
+  'knowledge_query': 'knowledge_qa', // B 路径（CB-22b·确定性查询·建后收紧）
   'gis_operation': 'layer',
   'emotion_analysis': 'layer',
 };

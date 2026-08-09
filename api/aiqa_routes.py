@@ -113,7 +113,8 @@ def post_rag_search(body: RagSearchIn):
     """CB-22 RAG：知识检索（开放语义/跨文档综合·返回 Top-K + 维度分布）。
 
     触发：harness _quickIntent 'rag_query' 短路（开放语义词）·B 路径（CB-22b）未命中时降级。
-    返回 {ok, results:[{score, source, type, data_dim}], count, dim_counts}。
+    返回 {ok, results:[{score, source, type, data_dim, text}], count, dim_counts}。
+    text=片段全文（CB-22 三支柱修正·供 finalStep LLM 综合·老索引无 text 为空串）。
     确定性（向量检索非 LLM）·索引未构建返 ok:False 非 500（前端静默）。
     """
     from tools.rag_index import search

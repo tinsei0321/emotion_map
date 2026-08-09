@@ -1010,13 +1010,23 @@ export async function orchestrate(ctx, hooks = {}) {
     // ★ CB-22 分类→范式映射（用户修正：知识问答需 LLM 综合素材·非零 LLM）：
     //   RAG 检索出相关文件 → 注入 ctx.context 作为素材 → finalStep LLM 综合总结 + 引用来源
     //   注入「知识问答排版」指令（禁图层/禁 4×5·条目式引用·防被分析模板带偏）
+    // CB-22 三支柱修正（两组对齐收敛·Codex 补1 + glm W1/W2 + claude 承重发现）：
+    //   ① 素材注入片段全文（text·此前仅文件名·LLM 无内容可综合·三支柱①空转）
+    //   ② 头部强标记（glm W1·防 FINAL_TEMPLATE 图层导向覆盖弱指令）
+    //   ③ 只基于素材作答·素材外标注"知识库未收录"（Codex 补1·防预训练知识补细节）
+    //   ④ 综合全部 Top-K·禁只引 Top-1（glm W2·保"全面"）
     const _lines = _ragResults.map((r, i) => {
       const _src = String(r.source || '').split('/').pop().split('#')[0];
-      return `${i + 1}. [${r.score.toFixed(2)}·${r.data_dim || '社区'}维度] ${_src}（来源：${r.source}）`;
+      const _txt = r.text ? r.text.trim().slice(0, 1000) : '（片段缺失·需 py tools/rag_index.py --rebuild 重建索引）';
+      return `${i + 1}. [${r.score.toFixed(2)}·${r.data_dim || '社区'}维度] ${_src}\n    ${_txt}`;
     });
-    ctx.context = '【知识库检索素材（RAG·Top-' + _ragCount + '·供 LLM 综合回答）】\n' + _lines.join('\n') +
-      '\n\n【知识问答排版】基于上述素材综合回答·条目式组织·关键内容引用素材并标注来源·' +
-      '结论不超过数据维度（data_dim）标注·不引用他城具体数值·**不要生成分析图层/{{show:图层}}/4×5 归因/演示逻辑链**。\n\n' +
+    ctx.context = '【本次为知识问答·严禁图层/分析模板】\n\n' +
+      '【知识库检索素材（RAG·Top-' + _ragCount + '·供 LLM 综合回答）】\n' + _lines.join('\n') +
+      '\n\n【知识问答排版】\n' +
+      '1. **只基于上述素材作答**·素材未覆盖的信息标注"知识库未收录"·禁止以预训练知识补充细节；\n' +
+      '2. **综合全部 Top-' + _ragCount + ' 素材·归纳共性与差异**·条目式组织·关键内容标注来源·禁止只引部分或只引 Top-1；\n' +
+      '3. **不要生成分析图层 / {{show:图层}} / 4×5 归因 / 演示逻辑链**。\n' +
+      '（数据维度随各条素材 data_dim 标注·结论不超过该维度·不引用他城具体数值）\n\n' +
       (ctx.context || '');
     const draft = await stages.finalStep(ctx, hooks, '');
     const _qd = applyQualityDefense(draft, { obsOk: false, toolHistoryText: '', skipL1: true, question: ctx.question, skipScaleDefense: true });

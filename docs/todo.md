@@ -25,6 +25,19 @@
 - **状态**：进 CB（L2 任务讨论发起）→ 两组评估 → 定稿执行
 - **CB 支撑**：后续开发参考本知识库·尤其是 EMC"出口"
 
+### 🔄 CB-22 三支柱对齐实施（两组回收全 agree → 实施修正 → 待两组复验）
+
+- **两组对齐回应已回收**（`CB22-三支柱对齐_{Codex-GPT5|glm组}_2026-08-09.md`）：6 焦点全 agree·glm 诚实承认零 LLM 错误（过度防幻觉·忽视 LLM 综合是三支柱之三·原则升级 = trace + 产品意图对齐）·Codex 挑战 3 条（认领无挑战·零 LLM 边界显式限定·指令治本是幻觉）
+- **⚠️ 承重发现（两组未检出）**：rag 索引 meta **不存 text**·注入 finalStep 的"素材"仅文件名·LLM 无内容可综合（三支柱①空转·验收 V2 结构性不可过）
+- **实施修正 5 项**（黄金集 5/5 + pytest 305 零回归）：
+  - A 素材内容注入：`rag_index.py` meta 存 text + search 透传 + `harness.js` 注入片段全文 + 四指令（强标记/只基于素材/综合 Top-N/禁图层·finalStep LLM 综合保留）
+  - B PARADIGM_MAP 注释修正（"确定性组装·零 LLM"→"知识问答·LLM 综合"·注释曾与实现矛盾）
+  - C **新单测** `tests/validate_paradigm_map.py`（5 断言·含零 LLM 防回归机器化）
+  - D KNOWLEDGE 蒸馏 3 条（零 LLM 边界/LLM 综合边界/§7 规则 5 交叉挑战）
+  - E 端点测试补 text 断言（防素材回退文件名）
+- **状态**：待两组复验（[实施摘要](docs/catch-ball/discuss/CB22-三支柱对齐_实施摘要_2026-08-09.md) + [_handoff 复验发起](docs/catch-ball/_handoff/CB22-三支柱对齐_复验发起_2026-08-09.md)）→ 通过后 push
+- **待续**：B 路径（CB-22b·query_knowledge_base 确定性查询·RAG_QUERY_KW 临时结构化词待迁移）·Recall@5 素材质量机制待建
+
 ### ✅ RAG 建设（本周重点·已完成主体）
 
 - **背景**：用户问"宜昌有哪些更新项目"→ 暴露 EMC 只注入不检索·需 RAG（向量化 L0/outlet_kb）
