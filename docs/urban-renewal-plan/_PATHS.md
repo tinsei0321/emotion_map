@@ -8,17 +8,17 @@
 ## 一、URENEWAL_ROOT 定义
 
 ```markdown
-# 办公室（当前）
+# 办公室
 URENEWAL_ROOT = G:\OneDrive\2026\15_城市更新专项规划研究
 
-# 家庭（回家后配置）
-URENEWAL_ROOT = ?:\OneDrive\2026\15_城市更新专项规划研究   ← 待填（见下方回家步骤）
+# 家庭（2026-08-09 已配置）
+URENEWAL_ROOT = C:\Users\Hi\OneDrive\2026\15_城市更新专项规划研究
 ```
 
 ## 二、回家步骤（4 步）
 
 1. **git pull**——拉取办公室侧 L0 笔记 + _INDEX 更新
-2. **配置 URENEWAL_ROOT**——确认家里 G 盘挂载盘符（可能不是 G:），改本表顶部 + README
+2. **配置 URENEWAL_ROOT**——确认家庭 OneDrive 挂载路径（可能非 G:），改本表顶部 + README
 3. **跑校验命令**（PowerShell）：
 
 ```powershell
@@ -28,6 +28,8 @@ Test-Path "$env:URENEWAL_ROOT"   # 应返回 True
 ```
 
 4. **检查大文件同步**（OneDrive 按需下载易缺）：
+
+> ✅ **家庭已配置（2026-08-09）**：`URENEWAL_ROOT = C:\Users\Hi\OneDrive\2026\15_城市更新专项规划研究`（文件数 878 ≈ 875·已实测可访问）。若 OneDrive 结构后续变动，同步更新本表顶部 + README。
    - `1 宜昌市城市体检/1_城市体检报告/1-文本/0820-2 宜昌市葛洲坝城市更新片区体检报告.docx`（125MB）
    - `2 宜昌市城市更新/夷陵区城市更新12.5.pptx`（698MB）· `0414八大片区城市更新（合）.pptx`（387MB）
    - `2/宜昌市中心城区城市更新专项规划_阶段性成果/260713.pptx`（464MB）
@@ -45,10 +47,10 @@ G 盘 900+ 文件多为 OneDrive **云端占位**（不占本地）。批量读�
 
 ## 四、盘符映射表
 
-| 环境 | G 盘挂载 | URENEWAL_ROOT |
+| 环境 | 挂载 | URENEWAL_ROOT |
 |---|---|---|
 | 办公室 | `G:\` | `G:\OneDrive\2026\15_城市更新专项规划研究` |
-| 家庭 | <待填> | `<盘符>:\OneDrive\2026\15_城市更新专项规划研究` |
+| 家庭 | `C:\Users\Hi\` | `C:\Users\Hi\OneDrive\2026\15_城市更新专项规划研究` |
 
 > 若家里 OneDrive 路径不含 "2026" 或结构不同，更新后同步改 `_INDEX.md` 全部 `{URENEWAL_ROOT}` 引用。
 

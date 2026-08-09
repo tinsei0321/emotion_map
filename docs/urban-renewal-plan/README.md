@@ -1,7 +1,7 @@
 # 城市更新专项规划 · 权威资料库（L0）
 
 > **用途**：宜昌市城区《城市更新专项规划》研究任务资料集 + EMC 知识库 L0 原始资料层。
-> **原始资料**：`G:\OneDrive\2026\15_城市更新专项规划研究\`（真实权威·约 875 文件·用户收集）
+> **原始资料**：`{URENEWAL_ROOT}`（办公室 `G:\` / 家庭 `C:\Users\Hi\`·详见 `_PATHS.md`；真实权威·约 875 文件·用户收集）
 > **本目录**：EMC 仓内 L0 索引 + 提炼笔记层（引用 G 盘原文·不复制原始文件）
 > **创建**：2026-08-09 | **维护**：claude组（Claude Code）| **登记**：docs/context-map.md
 
@@ -30,12 +30,12 @@ docs/urban-renewal-plan/
 
 ## 二、双环境配置（重要·回家前必读）
 
-原始资料在 `G:\OneDrive\2026\15_城市更新专项规划研究\`（OneDrive 同步·办公室/家庭双环境）。
+原始资料在 `{URENEWAL_ROOT}`（OneDrive 同步·办公室 `G:\` / 家庭 `C:\Users\Hi\`·**双环境均已配置**）。
 **详细配置见 `_PATHS.md`**。核心提醒：
 
 1. **回家前**：确认核心目录（`1 宜昌市城市体检/1-文本+3-附件` / `0/部委文件` / `3案例/杭州` / `2/专项规划阶段性成果`）在 OneDrive 设为「**始终保留在此设备**」——避免批量读取触发按需下载失败。
 2. **路径占位**：本目录引用 G 盘一律用 `{URENEWAL_ROOT}`（README/`_PATHS.md` 顶部一行替换），不硬编码 `G:\` 绝对路径。
-3. **回家后 4 步**：git pull → 配置 `URENEWAL_ROOT` → 跑 `_PATHS.md` 校验命令 → 对照检查大文件（0820-2 125MB / PPTX 666MB）是否同步。
+3. **回家后 4 步**：git pull → 配置 `URENEWAL_ROOT`（家庭已填 `C:\Users\Hi\`）→ 跑 `_PATHS.md` 校验命令（家庭文件数 878 ≈ 875 已实测）→ 对照检查大文件（0820-2 125MB / PPTX 666MB）是否同步。
 
 ## 三、打包提取（给 zcode「城市更新专项规划」独立项目）
 
@@ -43,7 +43,7 @@ zcode 侧项目文件夹在别处（与情绪地图无关）。提取方式二�
 
 ```powershell
 # 方式 A：整目录复制（含索引+提炼+原文副本）
-Copy-Item -Recurse "d:\Github\emotion_map\docs\urban-renewal-plan" "G:\OneDrive\2026\15_城市更新专项规划研究\_EMC资料集"
+Copy-Item -Recurse "d:\Github\emotion_map\docs\urban-renewal-plan" "{URENEWAL_ROOT}\_EMC资料集"
 
 # 方式 B：压缩打包
 Compress-Archive -Path "d:\Github\emotion_map\docs\urban-renewal-plan\*" -DestinationPath "d:\Github\emotion_map\docs\urban-renewal-plan.zip"
