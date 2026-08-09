@@ -36,7 +36,10 @@
 - **进度同步 + 环境检查发两组**：`discuss/进度同步与环境检查_讨论发起_2026-08-09.md`（3 焦点 + 附 A prompt）·HOME 卡更新
 - **RAG 补链完成**（用户要求补齐环境）：torch `2.13.0+cpu`（阿里云镜像·PyPI 无 +cpu 标签）+ BGE 模型 + 索引 235 条 + 检索冒烟通过
 - **三组进入状态通知**：`_handoff/三组进入状态通知_RAG补链完成_2026-08-09.md`（push @ `a3fadcf`）
-- [ ] 等两组回应 + 就绪确认 → /cb 反评价收敛 → 发 RAG 遗留任务分配
+- **双环境路径补齐**：`_PATHS.md` + `README.md` 家庭 `C:\Users\Hi\OneDrive\...`（878 文件实测·push @ `aa05543`）
+- **AMAP_KEY 恢复**：历史会话找回 `7294b86...` → .env 补回 + 高德 API `status=1` 有效
+- **三组记忆完善**：KNOWLEDGE §2 沉淀 2 条 + AutoMemory `rag-chain-bringup` + `_handoff/三组记忆完善prompt_2026-08-09.md`（push @ `a967253`）
+- [ ] 等两组回应 + 记忆同步确认 → /cb 反评价收敛 → 发 RAG 遗留任务分配
 
 ### 🔴 遗留 RAG 工作（明天继续推进·重要）
 

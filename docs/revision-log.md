@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月09日 · 今晚家环境）** · 本节按板块分组、组内倒序；最新工作 = **家环境 RAG 补链完成（torch 阿里云镜像 + BGE + 索引 235 条 + 检索冒烟）· 三组进入状态通知已发**。最近：
+> 📍 **最新动态（08月09日 · 今晚家环境）** · 本节按板块分组、组内倒序；最新工作 = **家环境 RAG 补链 + 双环境路径 + AMAP_KEY 恢复 + 三组记忆完善（KNOWLEDGE §2 沉淀 + prompt 发两组）**。最近：
+>
+> - **08-09 三组记忆完善 + 双环境路径 + AMAP_KEY 恢复（用户意图：补全家庭环境·完善其他两组记忆·给 prompt）**：① **RAG 补链完成**（承接上轮·torch 阿里云镜像 + BGE + 索引 235 条·检索冒烟 fact 可命中）；② **双环境路径补齐**：`_PATHS.md` + `README.md` 家庭 `URENEWAL_ROOT = C:\Users\Hi\OneDrive\2026\15_城市更新专项规划研究`（家庭实测 878 文件 ≈ 875·commit `aa05543`）；③ **AMAP_KEY 恢复**：用户称「记得给过高德 key」→ 历史会话 grep 找回 `7294b86...16`（曾写入 .env:3）→ 补回 `.env` + 实测高德 API `status=1` 有效（`C:\Users\Hi\.claude\projects\...\*.jsonl` 可找既有 key·防重复申请）；④ **记忆完善**：KNOWLEDGE.md §2 沉淀 2 条 learning（RAG 链纯 git 内数据源不依赖 OneDrive / RAG 补链三步含 torch+cpualiyun 坑 / AMAP_KEY 历史找回）+ AutoMemory `rag-chain-bringup` + MEMORY.md 索引 + 落 [三组记忆完善prompt](catch-ball/_handoff/三组记忆完善prompt_2026-08-09.md) 发两组（同步记忆 + 确认路径 + 附 A prompt）→ push @ `a967253`。**§0 拓扑 N/A**。
 >
 > - **08-09 家环境 RAG 补链 + 三组进入状态通知（用户意图：先把环境补齐·给 prompt 通知另外两组进入状态）**：环境检查发现的 RAG 缺项补齐——**依赖**：`torch==2.13.0+cpu` **PyPI 默认源无 `+cpu` 标签版**（报「No matching distribution」）→ 改 PyTorch CPU index `download.pytorch.org` 又 15 分钟无响应（国内访问慢）→ **阿里云镜像 `mirrors.aliyun.com/pytorch-wheels/cpu` 直装 wheel 成功**（124MB·cp314 实测兼容·回填 OFFICE「换环境提醒」源）；**BGE 模型**：`BAAI/bge-small-zh-v1.5` 经 HF 镜像自动下载（脚本内置 `HF_ENDPOINT`·`~/.cache/huggingface`）；**索引**：`py tools/rag_index.py --build` 重建 **235 条**（事实 36 + 笔记 185 + case 5 + 概念卡 9·维度 512·原子写）；**检索冒烟**：`--query "葛洲坝有哪些更新项目"` → Top-5 含 fact URP-P02/P01（0.752/0.704）+ note（**fact 已可命中**·对比 OFFICE 记录「Top-5 全 note」已改善）。落 [三组进入状态通知](catch-ball/_handoff/三组进入状态通知_RAG补链完成_2026-08-09.md)（claude 家环境状态表 + 两组动作：pull → 核对自家 RAG 链 → 待命 + 附 A prompt）→ HOME 卡更新（RAG 已补链·仍缺 AMAP_KEY）→ push @ `a3fadcf`。**待**：两组就绪确认 → claude组 /cb 反评价收敛 → 发 RAG 遗留任务分配（B 路径/混合检索/全仓扫描/Recall@5/P0-6 复审/L2 出向）。**§0 拓扑 N/A**。
 >
