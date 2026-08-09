@@ -81,20 +81,6 @@ export function _quickIntent(q) {   // CB-22 e2e：export 解封（同 composeGa
   return null;   // 模糊 → 落 diagnose
 }
 
-/**
- * CB-22 分类→范式映射：rag_query 确定性组装（零 LLM·禁 finalStep·根治模板错位）。
- * 条目式事实卡 + 来源 + 维度声明·颗粒度原则（结论不越维·不引他城数据）。
- */
-export function _assembleRagResults(results, count) {   // CB-22 e2e：export 解封（同 _quickIntent 先例·纯暴露无行为变化）
-  const _lines = (results || []).map((r, i) => {
-    const _src = String(r.source || '').split('/').pop().split('#')[0];
-    return `${i + 1}. **${_src}**（${r.data_dim || '社区'}维度·[来源](${r.source})）`;
-  });
-  return `## 知识库检索结果（Top-${count || _lines.length}）\n\n`
-    + _lines.join('\n')
-    + `\n\n> **数据维度声明**：以上结论不超过检索数据的维度标注·未引用他城具体数值。\n`
-    + `> **建议**：如需更详细分析·可问"xx 片区情绪分布"等分析类问题。`;
-}
 const OBS_TRUNC = 200;      // observation 注入 history 截断长度
 const PARAMS_TRUNC = 80;    // action params 摘要截断长度
 
@@ -1021,12 +1007,23 @@ export async function orchestrate(ctx, hooks = {}) {
       if (hooks.onDefense) hooks.onDefense({ degraded: true, fixes: [], skipped: 'rag-timeout-exit-concept', capsules: [] });
       return { ok: true, rounds: 0, final: _gap, degraded: true, defense: { degraded: true, fixes: [], skipped: 'rag-timeout-exit-concept' }, diagnose: { degraded: true, intent: 'general', quick: true, rag: false } };
     }
-    // ★ CB-22 分类→范式映射：rag_query = 确定性组装（零 LLM·禁 finalStep·根治模板错位）
-    //   条目式事实卡 + 来源 + 维度声明（glm B 方向·Codex PARADIGM_MAP 落地）
-    const _final = _assembleRagResults(_ragResults, _ragCount);
+    // ★ CB-22 分类→范式映射（用户修正：知识问答需 LLM 综合素材·非零 LLM）：
+    //   RAG 检索出相关文件 → 注入 ctx.context 作为素材 → finalStep LLM 综合总结 + 引用来源
+    //   注入「知识问答排版」指令（禁图层/禁 4×5·条目式引用·防被分析模板带偏）
+    const _lines = _ragResults.map((r, i) => {
+      const _src = String(r.source || '').split('/').pop().split('#')[0];
+      return `${i + 1}. [${r.score.toFixed(2)}·${r.data_dim || '社区'}维度] ${_src}（来源：${r.source}）`;
+    });
+    ctx.context = '【知识库检索素材（RAG·Top-' + _ragCount + '·供 LLM 综合回答）】\n' + _lines.join('\n') +
+      '\n\n【知识问答排版】基于上述素材综合回答·条目式组织·关键内容引用素材并标注来源·' +
+      '结论不超过数据维度（data_dim）标注·不引用他城具体数值·**不要生成分析图层/{{show:图层}}/4×5 归因/演示逻辑链**。\n\n' +
+      (ctx.context || '');
+    const draft = await stages.finalStep(ctx, hooks, '');
+    const _qd = applyQualityDefense(draft, { obsOk: false, toolHistoryText: '', skipL1: true, question: ctx.question, skipScaleDefense: true });
+    const _final = _qd.final;
     if (hooks.onFinalDone) hooks.onFinalDone(_final);
-    if (hooks.onDefense) hooks.onDefense({ degraded: false, fixes: [], skipped: 'rag-direct-assemble', capsules: [] });
-    return { ok: true, rounds: 0, final: _final, degraded: false, defense: { degraded: false, fixes: [], skipped: 'rag-direct-assemble' }, diagnose: { degraded: true, intent: 'general', quick: true, rag: true } };
+    if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'quick-rag', capsules: _qd.capsules });
+    return { ok: true, rounds: 0, final: _final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'quick-rag' }, degraded: false, diagnose: { degraded: true, intent: 'general', quick: true, rag: true } };
   }
 
   // 指代解析（NL 预处理·5.212·几 ms·非 LLM）：检测"这边/刚才"→ grounding 显式标注聚焦对象·让 diagnose 不靠猜
