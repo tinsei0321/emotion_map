@@ -1,0 +1,10 @@
+[mcp_servers.playwright]
+command = "npx"
+args = [
+    "-y",
+    "@playwright/mcp",
+]
+
+[mcp_servers.vision-bridge]
+command = "python"
+args = [".claude/mcp_servers/vision_bridge_server.py"]

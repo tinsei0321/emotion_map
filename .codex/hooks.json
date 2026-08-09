@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py 'd:\\Github\\emotion_map\\.codex\\hooks\\on_pre_edit_lint.py'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py 'd:\\Github\\emotion_map\\.codex\\hooks\\on_post_edit.py'"
+          }
+        ]
+      }
+    ]
+  }
+}
