@@ -52,3 +52,25 @@
 - **`_regions` 正则只匹配区/市/县后缀**·法定功能区名提取不到（CB-20）
 - **LLM 传参方差是 EMC 固有边界**·守卫覆盖可控场景即可（CB-20）
 - **B3 后台跑需 `--port/--backend-port` 隔离 + sys.executable**（三组并发·基建 4 commit）
+
+## 今日完成（08-09 下午 · 城市更新知识库 + RAG + 机制完善）
+
+**城市更新专项规划知识库构建（CB-21b）**：L0 资料库（`docs/urban-renewal-plan/`·875 文件提炼）+ L1 知识库做厚（`urban_renewal.py`·305 passed）·三组协同（claude GIS/专项·codex 政策/指标·glm OCR/识图）·总览报告 + 完成度清单。
+
+**EMC+RAG 落地（CB-22 系列）**：本地 BGE embedding（Py3.14 装好·HF 镜像）·事实卡 35 条（L1.5）·索引 225 条·rag_search 端点 + harness 短路·黄金集 3 类 100%·e2e 5/5。
+
+**关键经验教训（跨轮蒸馏·已沉淀 CLAUDE.md 铁律6 + KNOWLEDGE.md）**：
+- **三支柱**：纯回答稳定性 = 本地知识库完备度 + EMC 架构（分类→范式映射）+ LLM 归纳总结能力·**缺一不可**
+- **零 LLM 教训**：RAG 检索出文件必须 LLM 综合总结（非零 LLM 拼列表）·曾砍 LLM 支柱被用户验证否定
+- **分类→范式映射**：问题分类必须映射对应回答范式（分析→图层·知识→LLM 综合·概念→纯文字）·禁一模板扛所有
+- **产品定位**：EMC+RAG = 本地化聚焦专业知识蒸馏（区别于网络搜索/其他 AI）
+- **结论颗粒度 = 数据来源维度**（城区⊃街区⊃社区⊃小区+零散住房+城中村·社区≠小区）
+
+## ⚠️ 换环境提醒（重要）
+
+**当前 git 分支 `fix/emc-buglog` 有较多未 push commit（网络动荡·后台重试中）**。换环境（家/公司）前：
+1. `git pull`（拉取最新·含知识库/RAG/机制完善）
+2. **本地 RAG 依赖**：`pip install -r requirements-rag.txt`（sentence-transformers + torch·Py3.14）+ 首次下载 BGE 模型需 HF 镜像（`HF_ENDPOINT=https://hf-mirror.com`）
+3. **数据索引**：`py tools/rag_index.py --build`（重建 225 条向量索引·本地·不入 git）
+4. **G 盘资料库**：`G:\OneDrive\2026\15_城市更新专项规划研究\` 需 OneDrive 同步（体检/GIS/政策原始资料）
+5. 读 KNOWLEDGE.md 三支柱/颗粒度蒸馏条目 + CLAUDE.md 铁律6（新原则·指引开发）
