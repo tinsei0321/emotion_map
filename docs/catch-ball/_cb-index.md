@@ -9,13 +9,13 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-20 已闭环**（PRM-07 空对象根治·A request_upload 短路 + B zonal handler 兜底·两组预检通过） |
-| **上一轮** | CB-19（全闭环·发版候选通过·含 CB-19c 黑名单复验） |
+| **当前 CB 轮次** | **CB-21**（城市更新专项规划研究资料集 + EMC 知识库接入·方案草案·待两组讨论） |
+| **上一轮** | CB-20（PRM-07 空对象根治·全闭环·发版候选通过） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
-| **当前分支** | `fix/emc-buglog` @ `533eae6b`（与 origin 同步·工作区干净·含 08-09 办公室 `.codex/` 配置提交） |
-| **最新讨论** | `discuss/PRM07空对象根治_*2026-08-08.md`（CB-20·空对象→request_upload·方案 A/B 收敛）+ `发版回归全面测试_结果_*2026-08-08.md`（B3 24/26 92% 历史最佳） |
-| **最新进展** | **CB-17~20 全闭环·发版候选通过**（fail 集判据 {PRM-03/04} 达成）·剩余 fail = {PRM-07 空对象 LLM 方差·RST-L06 Flash 方差} 均已知/方差 |
-| **接手文档** | `memories/repo/session-handoff.md`（08-05 卡·已过时·历史背景）+ `_handoff/HOME.md` + `OFFICE.md`（08-08 权威快照）+ `_handoff/CB恢复记忆prompt_2026-08-09.md`（codex 桌面版恢复 prompt） |
+| **当前分支** | `fix/emc-buglog`（与 origin 同步） |
+| **最新讨论** | `discuss/CB21-城市更新专项规划资料集_讨论发起_2026-08-09.md`（CB-21·研究资料集方案·用户要求两组加入讨论） |
+| **最新进展** | **CB-17~20 全闭环·发版候选通过**·**CB-21 启动**：城市更新专项规划研究资料集（政策/指标/案例/新闻·防张冠李戴·含杭州案例·沉淀 EMC 知识库·可打包给 zcode） |
+| **接手文档** | `memories/repo/session-handoff.md`（08-05 卡·已过时·历史背景）+ `_handoff/HOME.md` + `OFFICE.md`（08-08 权威快照）+ `_handoff/CB恢复记忆prompt_2026-08-09.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 
 ## 快速开始
