@@ -1015,6 +1015,7 @@ export async function orchestrate(ctx, hooks = {}) {
     //   ② 头部强标记（glm W1·防 FINAL_TEMPLATE 图层导向覆盖弱指令）
     //   ③ 只基于素材作答·素材外标注"知识库未收录"（Codex 补1·防预训练知识补细节）
     //   ④ 综合全部 Top-K·禁只引 Top-1（glm W2·保"全面"）
+    //   ★ 动态注入预算 ≤8KB（Codex 复验挑战：Top-5 × 1000B + 指令 ≈ 5.5KB·守卫在 validate_paradigm_map）
     const _lines = _ragResults.map((r, i) => {
       const _src = String(r.source || '').split('/').pop().split('#')[0];
       const _txt = r.text ? r.text.trim().slice(0, 1000) : '（片段缺失·需 py tools/rag_index.py --rebuild 重建索引）';

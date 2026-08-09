@@ -57,10 +57,31 @@ def test_rag_query_maps_to_knowledge_qa():
 
 
 def test_rag_query_branch_uses_finalstep():
-    """零 LLM 防回归：harness rag_query 分支必须调用 finalStep LLM 综合（用户验证否定零 LLM）。"""
+    """零 LLM 防回归：harness rag_query 分支必须调用 finalStep LLM 综合（用户验证否定零 LLM）。
+
+    Codex 复验挑战（CB-22 对齐轮）：字符串包含断言弱化——删调用留注释/变量名仍可误过·
+    改精确调用点 `await stages.finalStep(`（低成本·更强防回归）。
+    """
     text = _JS_HARNESS.read_text(encoding="utf-8")
     seg = text.split("_quickIntent(ctx.question) === 'rag_query'")[1].split("_quickIntent(ctx.question)")[0]
-    assert "finalStep" in seg, "rag_query 分支无 finalStep LLM 综合（零 LLM 回归·砍第三支柱）"
+    assert "await stages.finalStep(ctx, hooks, '')" in seg, (
+        "rag_query 分支无 finalStep LLM 综合调用（零 LLM 回归·砍第三支柱）"
+    )
+
+
+def test_rag_injection_volume_budget():
+    """注入体积预算守卫（Codex 复验挑战·防注入膨胀撑爆 context）。
+
+    动态注入预算 ≤8KB（素材 Top-5 × 1000B + 指令 ~500B ≈ 5.5KB）：
+    ① snippet 上限锁 slice(0, 1000)/条 ② 指令常量行数有界 ③ Top-K 请求 k≤5。
+    """
+    text = _JS_HARNESS.read_text(encoding="utf-8")
+    seg = text.split("_quickIntent(ctx.question) === 'rag_query'")[1].split("_quickIntent(ctx.question)")[0]
+    assert "slice(0, 1000)" in seg, "rag 注入 snippet 上限被改（须 ≤1000B/条·体积预算守卫）"
+    assert "k: 5" in seg, "rag Top-K 请求被改（须 ≤5 条·体积预算守卫）"
+    instr_lines = [l for l in seg.splitlines()
+                   if "【知识问答排版】" in l or l.strip().startswith(("1. **", "2. **", "3. **"))]
+    assert 1 <= len(instr_lines) <= 6, f"知识问答指令行数异常（防注入无限膨胀）: {len(instr_lines)}"
 
 
 def test_knowledge_qa_contract_comment():

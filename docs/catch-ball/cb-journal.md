@@ -38,6 +38,34 @@
 - **待两组复验**（[复验发起](discuss/CB22-三支柱对齐_实施摘要_2026-08-09.md) + [_handoff/CB22-三支柱对齐_复验发起_2026-08-09.md](_handoff/CB22-三支柱对齐_复验发起_2026-08-09.md)）→ 通过后 push
 - **未决**：B 路径（CB-22b·query_knowledge_base 确定性查询·RAG_QUERY_KW 临时结构化词待迁移）·素材质量指标 Recall@5 机制待建 · 稳定性断言（同问 3 次）用户实测验收
 
+## CB-22b · 2026-08-09（实施复验反评价收敛 · 两组深度复验 · 定稿）
+
+### ① 两组深度复验（用户要求：深度/详细/全面·复验+修复后用户手动检查）
+
+**Codex**（[复验回应](discuss/CB22-三支柱对齐_实施复验回应_Codex-GPT5_2026-08-09.md)）：**实施到位·无回归·可交付**——命令出证据（search 含 text ✅·validate 5/5 ✅·e2e 5/5 ✅·含上轮 e2e 编码修复确认）+ F1-F5 全 agree + 边界 B1/B4 confirmed·B2/B3/B5 建议级 + **2 挑战**（① 注入体积 5.5KB 超 <3000B 预算·无守卫→二选一（降 500B/条 或 明确预算+守卫测试）② finalStep 断言弱化 `"finalStep" in seg` 字符串包含→改精确调用点）+ 对 glm 视角建议（Recall@5 机制 B 路径后建）
+
+**glm**（[复验回应](discuss/CB22-三支柱对齐_实施复验回应_glm组_2026-08-09.md)）：**实施到位可交付**——命令出证据（search 含 text ✅·validate 5/5 ✅·**e2e 4/5（1 Playwright 失败·须定性）**）+ F1-F5 全 agree + B1/B2/B3/B4 confirmed·**B5 指令优先级 ⚠️ 风险标注**（ctx.context 强标记在后 vs FINAL_TEMPLATE 图层导向在前·LLM 可能混读·须用户实测）+ 挑战 2（e2e 失败定性 + B5 强标记够吗）+ 自我挑战（B5 是预防性标注非已证实）+ 用户检查依据 3 看点（复测/准确性/全面性）
+
+### ② 我方反评价（先评估·再定稿修复）
+
+| # | 问题 | 评估 | 处置 |
+|---|---|---|---|
+| P0 | glm e2e test_quickintent_rag_trigger 1 failed | **环境问题非回归**——claude 复跑 PASSED（11.28s）·整组 e2e 5/5 全绿（58.6s）·本次改动未触碰 `_quickIntent`（仅注入块）·glm 侧为 Playwright/端口环境（三组并发已知） | ✅ 定性完成 |
+| P1 | finalStep 断言弱化（Codex 挑战 2） | **采纳**·精确调用点更强防回归 | ✅ 已修 |
+| P2 | 注入体积 5.5KB 超预算无守卫（Codex 挑战 1） | **采纳方案②**·素材质量优先不降 500B·明确 ≤8KB 预算 + 守卫测试 | ✅ 已修 |
+| W | B5 指令优先级（两组一致） | **不预改**（FINAL_TEMPLATE 红线 D019）·强标记已是最优非侵入·两组均标用户实测核心看点·若实测仍图层导向→回 CB 升级机制 | 👉 用户检查 |
+
+### ③ 行动（P1+P2 修复）
+
+- **P1** `validate_paradigm_map.py::test_rag_query_branch_uses_finalstep`：`"finalStep" in seg` → `"await stages.finalStep(ctx, hooks, '')" in seg`（精确调用点）
+- **P2** 新增 `test_rag_injection_volume_budget`（体积守卫：snippet ≤1000B/条 + Top-K k≤5 + 指令行数 1~6）+ harness.js 注入块注释补预算标注（★ ≤8KB）
+- **验证**：validate **6 passed**·e2e **5/5**（含 glm 失败用例 PASSED）·**pytest 305 零回归**（validate_* 轨不进全量·pytest.ini `python_files=test_*.py` 项目惯例·验证门禁单独跑）
+
+### ④ 状态/新发现
+
+- **定稿**：[反评价收敛定稿](discuss/CB22-三支柱对齐_反评价收敛_定稿_2026-08-09.md)（含用户手动检查清单 ①知识问答主路径/B5 ②准确性 ③全面性 ④稳定性 ⑤边界负例）
+- **下一步**：push → **用户手动检查**（检查清单见定稿文档附）→ B 路径（CB-22b）
+
 ---
 
 ## CB-18 · 2026-08-08（整体验收 · 用户新工作方式：验收交两组走 CB）

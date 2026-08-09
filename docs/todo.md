@@ -35,8 +35,13 @@
   - C **新单测** `tests/validate_paradigm_map.py`（5 断言·含零 LLM 防回归机器化）
   - D KNOWLEDGE 蒸馏 3 条（零 LLM 边界/LLM 综合边界/§7 规则 5 交叉挑战）
   - E 端点测试补 text 断言（防素材回退文件名）
-- **状态**：待两组复验（[实施摘要](docs/catch-ball/discuss/CB22-三支柱对齐_实施摘要_2026-08-09.md) + [_handoff 复验发起](docs/catch-ball/_handoff/CB22-三支柱对齐_复验发起_2026-08-09.md)）→ 通过后 push
-- **待续**：B 路径（CB-22b·query_knowledge_base 确定性查询·RAG_QUERY_KW 临时结构化词待迁移）·Recall@5 素材质量机制待建
+- **两组复验已回收 + 反评价收敛定稿**（[复验回应 ×2](docs/catch-ball/discuss/) + [反评价收敛定稿](docs/catch-ball/discuss/CB22-三支柱对齐_反评价收敛_定稿_2026-08-09.md)）：
+  - **P0 定性**：glm e2e 失败 = 环境非回归（claude 复跑 PASSED·整组 5/5 全绿）
+  - **P1 已修**：finalStep 断言精确化（`await stages.finalStep(ctx, hooks, '')` 精确调用点·Codex 挑战 2）
+  - **P2 已修**：注入体积守卫新测试（snippet ≤1000B + k≤5 + 指令行数有界·预算 ≤8KB 文档化·Codex 挑战 1）
+  - **B5 留用户实测**：指令优先级（ctx.context 强标记 vs FINAL_TEMPLATE 图层导向·两组标核心看点）
+- **状态**：定稿可推 → **用户手动检查**（清单见定稿文档附：①知识问答主路径 ②准确性 ③全面性 ④稳定性 ⑤边界负例）
+- **待续**：push 后 B 路径（CB-22b·query_knowledge_base 确定性查询·RAG_QUERY_KW 临时结构化词待迁移）·Recall@5 素材质量机制待建
 
 ### ✅ RAG 建设（本周重点·已完成主体）
 
