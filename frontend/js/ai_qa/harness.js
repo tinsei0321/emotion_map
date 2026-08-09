@@ -675,6 +675,16 @@ async function runTemplatePath(ctx, hooks, diagnose, opts = {}) {
   const recoverable = /字段不存在|可用:|缺.*槽|无可见点|无可见情绪点|未找到|无结果|无匹配/.test(obs);   // 可恢复：字段错/缺参/无数据（换字段/提问可解）
   const analytical = _ANALYTICAL_TOOLS.has(def.tool);
   const hasRows = !!(analytical && r && r.data && Array.isArray(r.data.rows) && r.data.rows.length > 0);
+  // CB-22d P0-0-3：generate_point_layer 零图层 → 诚实文字出口（不进 ask_user·Codex A-1 陷阱修复）
+  //   全未命中时 r.data.unmatched 非空·observation 已诚实列出未匹配坐标·带 toolHistory 走 finalStep 文字作答。
+  if (def.tool === 'generate_point_layer' && newLayerCount === 0 && r && r.data && Array.isArray(r.data.unmatched) && r.data.unmatched.length) {
+    toolHistory.push(`generate_point_layer(${JSON.stringify(params).slice(0, 80)}) → ${(obs || '').slice(0, 120)}`);
+    if (hooks.onReason) hooks.onReason('地点匹配未命中·以文字诚实作答', 0);
+    const _final = await stages.finalStep(ctx, hooks, toolHistory.join('\n'));
+    if (hooks.onFinalDone) hooks.onFinalDone(_final);
+    if (hooks.onDefense) hooks.onDefense({ degraded: false, skipped: 'generate-point-layer-no-hit' });
+    return { ok: true, rounds: 1, final: _final, defense: { degraded: false, skipped: 'generate-point-layer-no-hit' }, diagnose, exit: 'answered', newLayerCount };
+  }
   if (failed || (newLayerCount === 0 && !hasRows)) {
     // P2（Smart·v1.5）：空结果(!failed) 或 可恢复失败(recoverable·字段错/缺参/无数据) → ask_user 提问（反馈失败原因+引导），
     //   不直接 GAP 放弃。守 Smart Agent「失败时交流、不猜不放弃」；硬 ERR（网络/异常·非提问可解）仍走 GAP。
@@ -1110,12 +1120,25 @@ export async function orchestrate(ctx, hooks = {}) {
   }
 
   // L0 数据门：先用代码检查数据是否满足提问的最小要求——缺数据直接告诉用户，不浪费 LLM 调用
-  const _dataGap = _dataGate(ctx.question, ctx.layerMeta);
+  // CB-22d P0-0-2：_dataGate 豁免——「上轮 knowledge_qa + 标记/地图」跳过（防「标记…点位/地块」误拦·新工具不依赖已有图层）
+  const _markupCue = (ctx.priorTurn && ctx.priorTurn.intent === 'knowledge_qa' && /标记|标到地图|在地图上|点位|把.*标/.test(ctx.question || '')) || /标记到地图|标到地图|在地图上标/.test(ctx.question || '');
+  const _dataGap = _markupCue ? null : _dataGate(ctx.question, ctx.layerMeta);
   if (_dataGap) {
     const _gapText = buildRequestUploadText({ data_plan: { needed: [_dataGap], gap: [_dataGap], strategy: 'request_upload' } });
     if (hooks.onFinalDone) hooks.onFinalDone(_gapText);
     if (hooks.onDefense) hooks.onDefense({ degraded: false, skipped: 'data-gate' });
     return { ok: true, rounds: 0, final: _gapText, defense: { degraded: false, skipped: 'data-gate' }, degraded: false, diagnose: { degraded: true, _dataGate: true }, exit: 'gap', newLayerCount: 0 };
+  }
+
+  // CB-22d P0-0-1：路由使能（FC 前置）——「上轮 knowledge_qa + 标记/地图」→ 无条件注入上下文提示
+  //   引导 FC 选 generate_point_layer + 从上轮回答提取项目/地点名入 names[]。不翻转 resume·不进续作分支·走正常 FC。
+  //   glm B.1 修正：resume 恒 false（用户句无续作词）·故不依赖 resume 布尔·在 FC 前直接检测注入。
+  if (_markupCue && !ctx.resume) {
+    const _prevFinal = (ctx.priorTurn && ctx.priorTurn.final_excerpt) ? ctx.priorTurn.final_excerpt : '';
+    ctx.context = '【标记到地图】用户要把上一轮知识问答中的项目/地点标记到地图。'
+      + '请选择 generate_point_layer 工具，并从上一轮回答中提取项目/片区名填入 names[] 参数'
+      + (_prevFinal ? `（上一轮回答原文片段：${_prevFinal.slice(0, 400)}）` : '（上一轮回答未回灌·尽量从对话历史提取项目名）')
+      + '。未匹配到坐标的地点会诚实文字列出·绝不编造坐标。\n\n' + (ctx.context || '');
   }
 
   let diagnose = null;
@@ -1812,6 +1835,13 @@ async function _maybeBuildOutletCard(diagnose, ctx, newLayerCount) {
  *  纯代码，不调 LLM，<10ms。只覆盖高置信度模式，不确定就返回 null。 */
 function _deterministicRecover(ctx) {
   const q = ctx.question || '';
+  // CB-22d P0-0-5：标记/地图 + 上轮 knowledge_qa → 确定性兜底 generate_point_layer（glm A.2·双保险防 FC 方差）。
+  //   绕开 _polys.length 前置守卫——本场景无图层（知识问答后追问）·但确定性语义明确（上轮项目名→标到地图）。
+  if ((ctx.priorTurn && ctx.priorTurn.intent === 'knowledge_qa' && /标记|标到地图|在地图上|把.*标/.test(q)) || /标记到地图|标到地图|在地图上标/.test(q)) {
+    return { template: 'generate_point_layer', degraded: false, _fc: true, _recover: 'markup-to-map',
+      params: { names: undefined }, method: ['generate_point_layer()'], intent: 'gis_operation',
+      data_plan: { needed: [], available: [], gap: [], strategy: 'ready' } };
+  }
   const _polys = getLayers().filter(l => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
   if (!_polys.length) return null;
   const _regionM = /(.{1,6})(?:区|市|县|街道|镇)/.exec(q);

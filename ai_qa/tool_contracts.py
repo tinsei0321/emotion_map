@@ -280,6 +280,26 @@ TOOL_CONTRACTS = [
         ],
     },
     {
+        # CB-22d（2026-08-10）：知识问答 → 地图标记。批量地名/项目名 → 点位图层。
+        #   glm B.2 关键：FC 走契约 `when` 诱导（非 prompts 铁律）——when 须显式含「标记/地图/项目名→点位」触发词。
+        #   主路径 = search_place（本地 POI + 高德逆地理·业界标准）·绝不强行匹配（模糊→诚实降级）。
+        'skill': 'generate_point_layer', 'tool': 'generate_point_layer', 'category': 'single', 'name_cn': '批量地名标点',
+        'voice': '我把一批项目/地点名标记到地图上，生成点位图层', 'triggers_str': '标记/标到地图/在地图上/点位/位置/把项目标出来',
+        'when': '把文字答案/项目名/地点名标记到地图·生成点位图层（如"能在地图上标记出这些项目的位置吗"）——仅当问句要求把名称/项目/地点标到地图时选此技能；其余 GIS 操作仍选原技能',
+        'params_str': 'names(项目/地点名数组·从上一轮回答提取), as?(图层名)',
+        'yields': '点位图层（橙色点·name/source/match_type 属性）+ observation 命中 n/N + 未命中列表',
+        'contributes': '打通「知识问答→地图标记」——上轮项目名列表 → 点位图层（演示逻辑链·图面张力→引导点击）',
+        'scale': '微观（POI 落点）/ 中观（面化回退）', 'preconditions': 'names 非空（缺则提示从上一轮回答提取）',
+        'failure_modes': '与 lookup_place 混——lookup_place=单点查询无图层·本工具=批量 names→点位图层；names 缺失→提示从上一轮提取；未命中诚实列出（禁编造坐标）',
+        'examples': '正:能在地图上标记出这些项目的位置吗 / 正:把刚才的项目标到地图 / 误:奥体中心在哪(→lookup_place)',
+        'required_slots': ['names'],
+        'planning_common': 'names=上轮知识问答回答中的项目/地点名列表（LLM 从上一轮 final 提取）；逐名 search_place（本地 POI + 高德逆地理）→ 命中合成 point fc → addToolboxLayer（kind:point·显式 circle 样式）；未命中 → 文字诚实列出（不 request_upload）',
+        'params': [
+            {'name': 'names', 'type': 'array', 'default': None, 'required': True, 'alias': ['items', 'places', 'projects', 'name_list'], 'hint': '要标到地图的项目/地点名列表（可从上一轮回答提取）', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'as', 'type': 'str', 'default': None, 'required': False, 'alias': ['output', 'output_layer', 'layer_name', 'named', 'name'], 'hint': '图层名', 'panel_source': '通用 as'},
+        ],
+    },
+    {
         'skill': 'filter_attr', 'tool': 'filter_attr', 'category': 'single', 'name_cn': '属性筛选',
         'voice': '我按字段属性筛子集（用地/极性/domain/element/时点）', 'triggers_str': '按字段/用地类/属性筛选/筛选某类/只看',
         'when': '按属性筛选：用地类型 / 极性 / domain / element / 时点',

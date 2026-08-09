@@ -18,7 +18,7 @@
 | 红线 | 来源 | 说明 |
 |------|------|------|
 | 决策追踪编号连续不跳号 | CLAUDE.md rule 10 / RULES §3.3 | 新 ID 经 `register_track_id` 连续分配；"取消编号连续/简化追踪"建议→拒 |
-| diagnose prompt 永不动 | RULES §3.3 / [[emc-eval-empty-context-vs-runtime]] | Flash eval 路由依赖 diagnose prompt 完整性；分层/裁剪建议→撞红线。**2026-08-09 用户豁免**：diagnose intent 枚举加 `knowledge_qa`（增量不改不删现有三值·CB-22 三层架构·NL 意图判断归 LLM）——豁免 3 条件：① 增量加类 ② eval 复采通过（含模板命中 gate 0.6）③ 静态断言守现有判据文本·**不通过回滚** |
+| diagnose prompt 永不动 | RULES §3.3 / [[emc-eval-empty-context-vs-runtime]] | Flash eval 路由依赖 diagnose prompt 完整性；分层/裁剪建议→撞红线。**2026-08-09 用户豁免**：diagnose intent 枚举加 `knowledge_qa`（增量不改不删现有三值·CB-22 三层架构·NL 意图判断归 LLM）——豁免 3 条件：① 增量加类 ② eval 复采通过（含模板命中 gate 0.6）③ 静态断言守现有判据文本·**不通过回滚**。**2026-08-10 第二次豁免（CB-22d）**：选择要点铁律 + TEMPLATE_REGISTRY + GEO_TOOL_CATALOG 增量加 `generate_point_layer` 技能条目（批量地名标点·知识问答→地图标记·增量不加值不改现有·FC 主路径走契约 when 不依赖铁律）——豁免 3 条件：① 增量加技能条目 ② eval 复采通过 ③ 静态断言守现有技能 id（`test_emc_template.py` 全在 + 新增 `validate_generate_point_layer.py`）·**不通过回滚** |
 | 四态出口契约（success/gap/partial/answered） | RULES §3.3 / [[emc-tri-state-exit-contract]] | harness 代码强制终态；简化/合并出口→拒 |
 | L0 走购买途径·sim 充分非风险 | RULES §3.3 / [[l0-acquisition-purchase-strategy]] | 勿把 sim/自采未贯通当风险（曾被我+SCAN 误判） |
 | EMC 委托主 Toolbox 不自造 geo 端点 | [[emc-delegates-to-toolbox]] | density 等分析调 generateHeatmap/Grid/TerrainForAI，不自造 |

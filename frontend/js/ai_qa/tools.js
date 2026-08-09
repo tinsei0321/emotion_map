@@ -1315,6 +1315,67 @@ export const TOOLS = {
     } catch (e) { return _ERR('lookup_place', e); }
   },
 
+  /** 批量地名/项目名 → 点位图层（CB-22d·知识问答→地图标记）。
+   *  主路径 = search_place（本地 POI + 高德逆地理兜底·业界标准）·绝不强行匹配：
+   *    tier-1 点：search_place 命中 → 点要素（source=local/amap）
+   *    tier-2 面：未命中但为已知片区/行政区名（面 preset）→ 面要素（source=preset·名称标注）
+   *    tier-3 文字：聚合类无地点 → 文字列出「未匹配坐标」（诚实出口·不 request_upload）
+   *  渲染 = addToolboxLayer kind:point 显式 circle 样式（defaultPaint 无 point 分支）。
+   *  并发：上限 50 名·并发 ≤10·单请求 5s 超时·总预算兜底（防 55 名挂死）。
+   *  匹配结果属性 {name, source, match_type} 供 finalStep 可读标注（溯源铁律·防 LLM 自创地址）。 */
+  async generate_point_layer(params = {}) {
+    const _names = Array.isArray(params.names) ? params.names.filter(Boolean) : (params.names ? [params.names] : []);
+    if (!_names.length) return { observation: '[ERR] generate_point_layer 需 names（要标到地图的项目/地点名列表·可让我从上一轮回答提取）' };
+    try {
+      const _MAX = 50, _CONC = 10, _TO = 5000;
+      const _list = _names.slice(0, _MAX);
+      const _picked = new Array(_list.length).fill(null);   // {name, lng, lat, source, match_type, address, category}
+      const _unmatched = [];
+      let _idx = 0;
+      // 并发限流 worker（Promise.all + 分桶·防 55 名顺序挂死）
+      async function _worker() {
+        while (true) {
+          const i = _idx++;
+          if (i >= _list.length) return;
+          const nm = String(_list[i]).trim();
+          try {
+            const _ac = new AbortController(); const _t = setTimeout(() => _ac.abort(), _TO);
+            const _s = await fetch(`/api/v1/place/search?q=${encodeURIComponent(nm)}&limit=3`, { signal: _ac.signal }).then((r) => r.json()).finally(() => clearTimeout(_t));
+            const _hits = (_s && _s.hits) || [];
+            if (_hits.length && _hits[0] && _hits[0].lng != null) {
+              _picked[i] = { name: nm, lng: Number(_hits[0].lng), lat: Number(_hits[0].lat),
+                source: _hits[0].source || 'local', match_type: 'point',
+                address: _hits[0].address || '', category: _hits[0].category || _hits[0].baidu_level1 || '' };
+            } else {
+              _unmatched.push(nm);
+            }
+          } catch (_) { _unmatched.push(nm); }
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(_CONC, _list.length) }, () => _worker()));
+      const _hits = _picked.filter(Boolean);
+      const _hitN = _hits.length;
+      // 落图（仅有点命中才产图层·全未命中走 tier-3 文字）
+      let _layerInfo = '';
+      if (_hitN > 0) {
+        const _fc = { type: 'FeatureCollection', features: _hits.map((h, i) => ({
+          type: 'Feature',
+          properties: { name: h.name, source: h.source, match_type: h.match_type, address: h.address || '', category: h.category || '', _order: i },
+          geometry: { type: 'Point', coordinates: [h.lng, h.lat] },
+        })) };
+        const _circle = { _ui: { tool: 'generate_point_layer' }, 'circle-radius': 7, 'circle-color': '#ff9000', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#fff' };
+        const _L = addToolboxLayer({ name: params.as || '项目点位', kind: 'point', fc: _fc, paint: _circle });
+        _layerInfo = _L ? ` → 已生成图层「${_L.name}」(${_hitN} 点)` : '（落图失败）';
+      }
+      const _src = _hits.reduce((a, h) => { a[h.source] = (a[h.source] || 0) + 1; return a; }, {});
+      const _srcTxt = Object.entries(_src).map(([k, v]) => `${k}${v}`).join('、') || '—';
+      const _obs = `地点标记：命中 ${_hitN}/${_list.length}${_layerInfo}（来源：${_srcTxt}）`;
+      const _unmatchedTxt = _unmatched.length ? `\n未匹配到坐标（诚实列出·不编造）：${_unmatched.join('、')}` : '';
+      const _tip = _hitN > 0 ? '\n已命中项目 → 点位图层（橙色点·可点击查看名称/来源）。未命中项目 → 已文字列出·未生成坐标。' : '\n全部未匹配到坐标 → 已文字列出·未生成图层（避免编造坐标）。如需更准位置·可上传项目坐标数据。';
+      return { observation: _obs + _unmatchedTxt + _tip, data: { rows: _hits, count: _hitN, unmatched: _unmatched, source: _src } };
+    } catch (e) { return _ERR('generate_point_layer', e); }
+  },
+
   /** Gi* 热点识别 → 落图层（hot/tend_hot/ns/tend_cold/cold 五档·纯橙系显著性符号层·弃极性色·与 KDE 解耦）。 */
   async hotspot(params = {}) {
     const _layer = resolvePointLayer(params);

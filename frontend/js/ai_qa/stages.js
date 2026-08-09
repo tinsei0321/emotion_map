@@ -50,6 +50,7 @@ export const SKILL_DEFS = {
   rank:     { tool: 'rank',        category: 'single',   required_slots: [],                     optional_defaults: { by: 'worst', top_n: 5 } },
   buffer:   { tool: 'buffer',      category: 'single',   required_slots: ['center'],              optional_defaults: { radius_m: 500, agg_cols: ['score'] } },
   lookup_place: { tool: 'lookup_place', category: 'single', required_slots: [],                    optional_defaults: {} },   // CB-15 P1：查地点（q 或坐标）
+  generate_point_layer: { tool: 'generate_point_layer', category: 'single', required_slots: ['names'], optional_defaults: {} },   // CB-22d：批量地名→点位图层（names 必填）
   clip:     { tool: 'clip',        category: 'single',   required_slots: ['range'],               optional_defaults: {} },
   overlay:  { tool: 'overlay',     category: 'single',   required_slots: ['layer_a', 'layer_b'],  optional_defaults: { how: 'intersection' } },
   zonal:           { tool: 'zonal_stats',     category: 'single', required_slots: ['boundary'],          optional_defaults: { agg_cols: ['score'] } },

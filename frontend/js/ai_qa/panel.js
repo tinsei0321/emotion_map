@@ -1607,7 +1607,11 @@ function _distillTurn(h) {
     return `${a.name || '?'}${a.params ? '(' + JSON.stringify(a.params).slice(0, 50) + ')' : ''}`;
   }).join('；');
   const gap = ((t.caliber && t.caliber.length) ? t.caliber : (dp.gap || [])).join('、');
-  return { intent: dg.intent || '', method, done: done || '（无工具调用）', gap: gap || '', strategy: dp.strategy || '' };
+  // CB-22d P0-0-4：quick-rag 轮知识问答标记——diagnose.rag=true（_assembleKnowledgeQA 返回）→ intent 归 knowledge_qa
+  //   （quick-rag 不调 diagnose·_distillTurn 原 intent='general'·导致下轮 priorTurn.intent 非 knowledge_qa·P0-2 路由条件失效）
+  const _intent = (dg.rag && !dg.intent) ? 'knowledge_qa' : (dg.intent || '');
+  // CB-22d P0-0-1：final_excerpt——上轮回答片段供下轮「标记到地图」提取项目名（LLM 看不到 final 原文的修复·glm F.1）
+  return { intent: _intent, method, done: done || '（无工具调用）', gap: gap || '', strategy: dp.strategy || '', final_excerpt: (t.final || '').slice(0, 400) };
 }
 
 /** 收集最近 maxN 轮 assistant trace → oldest-first 列表（B2 多轮滚动记忆）。
@@ -1703,6 +1707,9 @@ async function send(text, capsule) {
     const _result = await orchestrate(ctx, buildHooks(shell));
     settled = true;
     if (_curTrace && _result) { _curTrace.exit = _result.exit || _curTrace.exit; _curTrace.newLayerCount = _result.newLayerCount; if (_result.defense) _curTrace.defense = _result.defense; }
+    // CB-22d P0-0-4：quick-rag 轮知识问答标记——orchestrate 返回的 diagnose 含 rag:true（_assembleKnowledgeQA）
+    //   写回 _curTrace.diagnose（onDiagnose 仅 diagnose 路径触发·quick-rag 不调·防下轮 priorTurn.intent='' 死代码）
+    if (_curTrace && _result && _result.diagnose && _result.diagnose.rag && !_curTrace.diagnose) { _curTrace.diagnose = _result.diagnose; }
     if (_result && _result.exit === 'ask') _consecutiveAsks++; else _consecutiveAsks = 0;   // P1 ask 连续计数（跨 orchestrate，≥2 触发下轮禁止）
     // C：软缺口降级口径标注（fallback_annotated）
     const strat = _curTrace && _curTrace.diagnose && _curTrace.diagnose.data_plan && _curTrace.diagnose.data_plan.strategy;
