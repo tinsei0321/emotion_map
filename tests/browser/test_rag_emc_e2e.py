@@ -81,9 +81,11 @@ def test_quickintent_no_false_trigger():
 def test_rag_gold_set_regression():
     """黄金集回归：接入后召回/越维/案例 3 类仍 100%（防接入退化）。"""
     import subprocess
+    # Codex 验证：跨环境编码缺陷——text=True 未指定 encoding·GBK locale 读 UTF-8 输出 → UnicodeDecodeError
     r = subprocess.run([sys.executable, '-X', 'utf8', 'tools/rag_eval.py', '--k', '5'],
-                       capture_output=True, text=True, cwd=os.path.join(os.path.dirname(__file__), '..', '..'))
-    out = r.stdout
+                       capture_output=True, text=True, encoding='utf-8', errors='replace',
+                       cwd=os.path.join(os.path.dirname(__file__), '..', '..'))
+    out = r.stdout or ''
     assert '正确召回: 10/10' in out, f'召回退化: {out}'
     assert '越维降级: 通过' in out, f'越维退化: {out}'
     assert '案例不引数据: 通过' in out, f'案例退化: {out}'
