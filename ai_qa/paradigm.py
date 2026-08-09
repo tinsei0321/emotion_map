@@ -33,7 +33,7 @@ SCALE_PARADIGM = [
         'paradigm': '产出单元聚合图层 + 单元级结论：哪个单元最差/最好 + 归因（domain×element）+ 单元针对性建议',
         'forbidden': '不混到单点、也不泛到整城',
         'typical_q': '"这几个街道里哪个最需更新？""某社区的 4×5 归因偏哪一格？"',
-        'city_checkup_level': '街区/小区（社区）',
+        'city_checkup_level': '街区/小区（社区为行政调研单元·小区为居住单元·社区⊃小区+零散住房+城中村）',
         'method_templates': ['zonal_stats(street/renewal_unit)→4×5归因', 'buffer(15min生活圈)'],
     },
     {
