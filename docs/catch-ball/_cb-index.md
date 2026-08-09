@@ -9,12 +9,12 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-22b/22c 反评价收敛定稿**（B 路径先行 + RAG Phase 0 阻塞验证·待执行） |
-| **上一轮** | CB-22（L2 出向·架构定稿）→ CB-21b（知识库构建·L0+L1）→ CB-20 |
+| **当前 CB 轮次** | **CB-22c · RAG Phase 0 验证结论**（本地 BGE embedding 已跑通·向量化确定可实现·待两组评估） |
+| **上一轮** | CB-22b/22c（反评价收敛定稿）→ CB-22（L2 出向·架构定稿）→ CB-21b（知识库构建） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
 | **当前分支** | `fix/emc-buglog`（与 origin 同步） |
-| **最新讨论** | `discuss/CB22b-22c_反评价收敛_定稿_2026-08-09.md`（B 路径 6 类事实卡/三层查询 + RAG 火山 multimodal=图片纠正/Phase 0） |
-| **最新进展** | **CB-22 架构定稿**·**CB-22b/22c 定稿**：B 路径不依赖 embedding 先行·RAG Phase 0 需配 key（实际阻塞）·glm 纠正火山 multimodal=图片非文本 |
+| **最新讨论** | `discuss/CB22c-RAG_Phase0_验证结论_2026-08-09.md`（本地 BGE 512 维跑通·语义 0.728 正确·HF 镜像解决下载） |
+| **最新进展** | **CB-22 架构定稿**·**CB-22b/22c 定稿**·**RAG Phase 0 验证通过**：本地 BGE embedding 完整跑通（Py3.14 安装成功·HF 镜像下载·512 维·语义检索正确）·向量化确定可实现·智谱配额不可用（本地兜底） |
 | **接手文档** | `memories/repo/session-handoff.md`（08-05 卡·已过时·历史背景）+ `_handoff/HOME.md` + `OFFICE.md`（08-08 权威快照）+ `_handoff/CB恢复记忆prompt_2026-08-09.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 
