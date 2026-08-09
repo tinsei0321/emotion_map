@@ -9,12 +9,12 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-22 · 颗粒度深度评估反评价收敛定稿**（补 point 方法论/先建事实卡/cannot 维度化/黄金集刚性·开始执行） |
-| **上一轮** | CB-22c（RAG Phase 1·有条件通过）→ CB-22b/22c（定稿）→ CB-22（L2 架构） |
+| **当前 CB 轮次** | **CB-22 · RAG 接入 EMC 反评价收敛定稿**（端点 + harness 短路 + finalStep 注入·黄金集回归 100%·开始实施） |
+| **上一轮** | CB-22 颗粒度深度评估（收敛定稿）→ CB-22c（RAG Phase 1）→ CB-22（L2 架构） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
 | **当前分支** | `fix/emc-buglog`（与 origin 同步） |
-| **最新讨论** | `discuss/CB22-颗粒度深度评估_反评价收敛_定稿_2026-08-09.md`（5 裁决全 agree·双组认错·黄金集越维/案例刚性 100%） |
-| **最新进展** | **颗粒度原则 + 社区≠小区已定稿**（paradigm.py 活代码 + KNOWLEDGE 蒸馏）·**深度评估收敛**：补 point 方法论 + 建事实卡（含 dimension）+ cannot 维度化 + 黄金集刚性·RAG 按原则落地 |
+| **最新讨论** | `discuss/CB22-RAG接入EMC_反评价收敛_定稿_2026-08-09.md`（F_017 端点/dim_counts/截断≤200字/B 后补收窄） |
+| **最新进展** | **RAG 核心完成**（事实卡 35·索引 225·黄金集 100%·cannot 维度化）·**接入 EMC 定稿**：/aiqa/rag_search + harness 'rag_query' 短路 + finalStep <3000B·B 路径后补收窄 |
 | **接手文档** | `memories/repo/session-handoff.md`（08-05 卡·已过时·历史背景）+ `_handoff/HOME.md` + `OFFICE.md`（08-08 权威快照）+ `_handoff/CB恢复记忆prompt_2026-08-09.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 
