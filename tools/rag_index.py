@@ -1,0 +1,213 @@
+"""RAG 向量索引构建/查询工具（CB-22c Phase 1·本地 BGE embedding + numpy 暴力检索）。
+
+用途：把 L0 知识库（docs/urban-renewal-plan/ 提炼笔记 + L1.5 事实卡 + case_library）向量化，
+供 EMC 问答 rag_search 检索引用。业界主流 RAG 路线·本地 BGE 离线免费·不依赖外部 API 配额。
+
+用法：
+  py tools/rag_index.py --build          # 构建索引（向量化 L0 + 事实卡 + case·原子写）
+  py tools/rag_index.py --query "葛洲坝有哪些更新项目"   # 检索 Top-K（试运行）
+  py tools/rag_index.py --rebuild        # 全量重建（换模型/损坏）
+  py tools/rag_index.py --stats          # 索引统计（向量数/维度/来源分布）
+
+纯函数·ASCII 标记（[OK]/[ERR]·禁 emoji）·不调 LLM。
+track：MOD_AIQA.F_014（build_rag_index）/ F_015（rag_search）
+"""
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+# HF 镜像（国内网络·不覆盖用户显式配置）
+os.environ.setdefault('HF_ENDPOINT', 'https://hf-mirror.com')
+
+REPO = Path(__file__).resolve().parents[1]
+RAG_DIR = REPO / 'data' / 'rag_index'
+VECTORS = RAG_DIR / 'vectors.npy'
+META = RAG_DIR / 'meta.jsonl'
+MODEL_NAME = 'BAAI/bge-small-zh-v1.5'
+
+# 知识库来源
+NOTES_DIR = REPO / 'docs' / 'urban-renewal-plan'
+INDEX_FILE = NOTES_DIR / '_INDEX.md'
+
+
+def _tag(ok, msg):
+    print(f'[{"OK" if ok else "ERR"}] {msg}')
+
+
+def _load_notes():
+    """读 L0 提炼笔记（按小节切分·段落级向量）。"""
+    chunks = []
+    if not NOTES_DIR.exists():
+        return chunks
+    for md in sorted(NOTES_DIR.rglob('*.md')):
+        # 跳过索引/README/模板
+        if md.name.startswith('_') or 'README' in md.name or '模板' in md.name:
+            continue
+        text = md.read_text(encoding='utf-8', errors='ignore')
+        # 按 ## 小节切分（~200-500 字/段）
+        parts = []
+        for block in text.split('\n## '):
+            if block.strip():
+                parts.append(block.strip())
+        for i, p in enumerate(parts):
+            if len(p) < 20:
+                continue
+            chunks.append({
+                'text': p[:2000],
+                'source': f'docs/urban-renewal-plan/{md.relative_to(NOTES_DIR).as_posix()}#{i}',
+                'type': 'note',
+            })
+    return chunks
+
+
+def _load_cases():
+    """读 case_library（案例块·survey+emc+benchmark 一条）。"""
+    try:
+        sys.path.insert(0, str(REPO))
+        from ai_qa.outlet_kb.case_library import CASES
+        chunks = []
+        for key, c in CASES.items():
+            text = f"{c.get('city','')}·{c.get('project','')}：{c.get('point','')}"
+            chunks.append({
+                'text': text[:2000],
+                'source': f'ai_qa/outlet_kb/case_library.py#{key}',
+                'type': 'case',
+            })
+        return chunks
+    except Exception as e:
+        _tag(False, f'case_library 读取失败: {str(e)[:60]}')
+        return []
+
+
+def _embed_texts(model, texts):
+    """统一编码（query/passage 一致处理·bge-v1.5 支持 instruction）。"""
+    return model.encode(texts, normalize_embeddings=True)
+
+
+def build_index():
+    """构建向量索引（原子写 + embed_hash）。"""
+    import numpy as np
+    from sentence_transformers import SentenceTransformer
+
+    RAG_DIR.mkdir(parents=True, exist_ok=True)
+    _tag(True, f'加载模型 {MODEL_NAME}（首次下载 ~40s·需 HF 镜像）...')
+    model = SentenceTransformer(MODEL_NAME)
+
+    # 收集向量化对象
+    notes = _load_notes()
+    cases = _load_cases()
+    all_chunks = notes + cases
+    _tag(True, f'向量化对象: 笔记段落 {len(notes)} + 案例 {len(cases)} = {len(all_chunks)}')
+
+    if not all_chunks:
+        _tag(False, '无向量化对象')
+        return
+
+    texts = [c['text'] for c in all_chunks]
+    _tag(True, f'编码 {len(texts)} 条...')
+    vectors = _embed_texts(model, texts)
+    _tag(True, f'编码完成·维度 {vectors.shape[1]}')
+
+    # 元数据（含 embed_hash）
+    import hashlib
+    metas = []
+    for c, vec in zip(all_chunks, vectors):
+        h = hashlib.sha256(c['text'].encode('utf-8')).hexdigest()
+        metas.append({
+            'source': c['source'],
+            'type': c['type'],
+            'content_hash': h,
+            'embedding_model': MODEL_NAME,
+            'dim': int(vectors.shape[1]),
+        })
+
+    # 原子写（防崩溃不一致·np.save 自动加 .npy·临时名用 .npy 结尾）
+    tmp_v = RAG_DIR / 'vectors.tmp.npy'
+    tmp_m = RAG_DIR / 'meta.jsonl.tmp'
+    np.save(str(tmp_v), vectors.astype('float32'))
+    with open(tmp_m, 'w', encoding='utf-8') as f:
+        for m in metas:
+            f.write(json.dumps(m, ensure_ascii=False) + '\n')
+    os.replace(str(tmp_v), str(VECTORS))
+    os.replace(str(tmp_m), str(META))
+    _tag(True, f'索引已写: {VECTORS} ({len(metas)} 条·原子写)')
+
+
+def load_index():
+    """加载索引（向量 + 元数据）。"""
+    import numpy as np
+    if not VECTORS.exists() or not META.exists():
+        return None, []
+    vectors = np.load(str(VECTORS))
+    metas = []
+    with open(META, encoding='utf-8') as f:
+        for line in f:
+            if line.strip():
+                metas.append(json.loads(line))
+    return vectors, metas
+
+
+def search(query, k=5):
+    """检索 Top-K（余弦相似度·返回片段 + 来源）。"""
+    import numpy as np
+    from sentence_transformers import SentenceTransformer
+
+    vectors, metas = load_index()
+    if vectors is None or len(metas) == 0:
+        return {'ok': False, 'error': '检索暂不可用（索引未构建·跑 py tools/rag_index.py --build）'}
+
+    model = SentenceTransformer(MODEL_NAME)
+    qvec = _embed_texts(model, [query])[0]
+    scores = vectors @ qvec
+    top_idx = np.argsort(scores)[::-1][:k]
+    results = []
+    for i in top_idx:
+        results.append({
+            'score': float(scores[i]),
+            'source': metas[i]['source'],
+            'type': metas[i]['type'],
+        })
+    return {'ok': True, 'results': results, 'count': len(results)}
+
+
+def stats():
+    """索引统计。"""
+    vectors, metas = load_index()
+    if vectors is None:
+        _tag(False, '索引未构建（跑 --build）')
+        return
+    types = {}
+    for m in metas:
+        types[m['type']] = types.get(m['type'], 0) + 1
+    _tag(True, f'向量数 {len(metas)}·维度 {vectors.shape[1]}·类型 {types}')
+
+
+def main():
+    ap = argparse.ArgumentParser(description='RAG 向量索引工具')
+    ap.add_argument('--build', action='store_true', help='构建索引')
+    ap.add_argument('--rebuild', action='store_true', help='全量重建')
+    ap.add_argument('--query', type=str, help='检索 Top-K')
+    ap.add_argument('--stats', action='store_true', help='索引统计')
+    ap.add_argument('--k', type=int, default=5, help='Top-K')
+    args = ap.parse_args()
+
+    if args.build or args.rebuild:
+        build_index()
+    elif args.query:
+        r = search(args.query, args.k)
+        if not r['ok']:
+            _tag(False, r['error'])
+        else:
+            _tag(True, f'Top-{r["count"]} 检索结果:')
+            for i, res in enumerate(r['results'], 1):
+                print(f'  {i}. [{res["score"]:.3f}] {res["source"]} ({res["type"]})')
+    elif args.stats:
+        stats()
+    else:
+        ap.print_help()
+
+
+if __name__ == '__main__':
+    main()
