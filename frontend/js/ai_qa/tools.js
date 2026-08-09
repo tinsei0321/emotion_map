@@ -1324,23 +1324,35 @@ export const TOOLS = {
    *  并发：上限 50 名·并发 ≤10·单请求 5s 超时·总预算兜底（防 55 名挂死）。
    *  匹配结果属性 {name, source, match_type} 供 finalStep 可读标注（溯源铁律·防 LLM 自创地址）。 */
   async generate_point_layer(params = {}) {
-    const _names = Array.isArray(params.names) ? params.names.filter(Boolean) : (params.names ? [params.names] : []);
+    // CB-22d P0-0-2：names 鲁棒化——标量/拼接串 split（中文逗号/顿号/半角逗号/空格）→ 逐名数组
+    const _raw = Array.isArray(params.names) ? params.names.join(',') : (params.names ? String(params.names) : '');
+    const _names = _raw.split(/[,，、;；\s]+/).map((s) => s.trim()).filter(Boolean);
     if (!_names.length) return { observation: '[ERR] generate_point_layer 需 names（要标到地图的项目/地点名列表·可让我从上一轮回答提取）' };
     try {
-      const _MAX = 50, _CONC = 10, _TO = 5000;
+      const _MAX = 50, _CONC = 10, _TO = 20000;   // P0-0-3：冷加载 12s > 旧 5s abort·提至 20s 防首用必全失败
       const _list = _names.slice(0, _MAX);
       const _picked = new Array(_list.length).fill(null);   // {name, lng, lat, source, match_type, address, category}
       const _unmatched = [];
       let _idx = 0;
+      // CB-22d P0-1：聚合名检测——用户想法「无地点描述就放弃」（像人思维）·污水厂网一体示范区/其他项目类不强匹配
+      // 聚合名检测（用户想法「无地点描述就放弃」）：含「示范区/其他项目/一批」等聚合词 + 无已知具体地名 → 放弃·不查 API。
+      //   容忍引号（污水"厂网一体"示范区）·去除引号后判；「葛洲坝片区」含具体地名葛洲坝 → 不放弃（有地点描述）。
+      const _isAggregate = (nm) => {
+        const c = nm.replace(/["'“”]/g, '');
+        if (!/示范区|其他项目|一批|个片区|个小区|整体|综合整治/.test(c)) return false;
+        return !/(西陵|伍家岗|夷陵|猇亭|点军|葛洲坝|西坝|二马路|红星路|土门|小溪塔)/.test(c);
+      };
       // 并发限流 worker（Promise.all + 分桶·防 55 名顺序挂死）
       async function _worker() {
         while (true) {
           const i = _idx++;
           if (i >= _list.length) return;
           const nm = String(_list[i]).trim();
+          if (_isAggregate(nm)) { _unmatched.push(nm); continue; }   // 聚合名→放弃·不查 API
           try {
             const _ac = new AbortController(); const _t = setTimeout(() => _ac.abort(), _TO);
-            const _s = await fetch(`/api/v1/place/search?q=${encodeURIComponent(nm)}&limit=3`, { signal: _ac.signal }).then((r) => r.json()).finally(() => clearTimeout(_t));
+            // CB-22d P0-1：amap_first=true——高德 API 优先解析（成熟·不造轮子）·未命中落本地 A0 分词双路兜底
+            const _s = await fetch(`/api/v1/place/search?q=${encodeURIComponent(nm)}&limit=3&amap_first=true`, { signal: _ac.signal }).then((r) => r.json()).finally(() => clearTimeout(_t));
             const _hits = (_s && _s.hits) || [];
             if (_hits.length && _hits[0] && _hits[0].lng != null) {
               _picked[i] = { name: nm, lng: Number(_hits[0].lng), lat: Number(_hits[0].lat),
@@ -1371,7 +1383,7 @@ export const TOOLS = {
       const _srcTxt = Object.entries(_src).map(([k, v]) => `${k}${v}`).join('、') || '—';
       const _obs = `地点标记：命中 ${_hitN}/${_list.length}${_layerInfo}（来源：${_srcTxt}）`;
       const _unmatchedTxt = _unmatched.length ? `\n未匹配到坐标（诚实列出·不编造）：${_unmatched.join('、')}` : '';
-      const _tip = _hitN > 0 ? '\n已命中项目 → 点位图层（橙色点·可点击查看名称/来源）。未命中项目 → 已文字列出·未生成坐标。' : '\n全部未匹配到坐标 → 已文字列出·未生成图层（避免编造坐标）。如需更准位置·可上传项目坐标数据。';
+      const _tip = _hitN > 0 ? '\n已命中项目 → 点位图层（橙色点·可点击查看名称/来源）。未命中项目 → 已文字列出·未生成坐标（聚合类/无地点描述的项目不强匹配·如需要可上传项目坐标数据）。' : '\n全部未匹配到坐标 → 已文字列出·未生成图层（避免编造坐标）。聚合类/无地点描述的项目（如「污水厂网一体示范区」）不硬匹配地点·如需更准位置可上传项目坐标数据。';
       return { observation: _obs + _unmatchedTxt + _tip, data: { rows: _hits, count: _hitN, unmatched: _unmatched, source: _src } };
     } catch (e) { return _ERR('generate_point_layer', e); }
   },

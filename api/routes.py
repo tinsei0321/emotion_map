@@ -441,10 +441,15 @@ async def export_route(req: ExportRequest):
 async def place_search_route(
     q: str = Query(..., min_length=1, description="搜索关键词（地名/POI/类别）"),
     limit: int = Query(10, ge=1, le=30, description="返回条数上限"),
+    amap_first: bool = Query(False, description="高德优先（CB-22d：先高德解析片区名·未命中再本地·防本地 fuzzy 误伤）"),
 ):
-    """地点搜索：本地 1270 POI 即时（rapidfuzz）+ 高德 place/text 兜底。坐标 WGS84。"""
+    """地点搜索：本地 1270 POI 即时（rapidfuzz）+ 高德 place/text 兜底。坐标 WGS84。
+
+    amap_first=true（CB-22d）：先高德 place/text 解析（成熟 API·片区名可解析·不造轮子）·
+    命中才用·未命中落 search_place 本地兜底。防「伍家岗工业园→伍家菜市场」类本地 fuzzy 误伤。
+    """
     try:
-        hits = search_place(q, limit)
+        hits = search_place(q, limit, amap_first=amap_first)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"地点搜索失败: {e}")
     local_n = sum(1 for h in hits if h.get('source') == 'local')

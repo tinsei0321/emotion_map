@@ -64,11 +64,15 @@ def test_skill_defs_mirror():
 
 
 def test_tools_impl_exists():
-    """前端 tools.js 有 generate_point_layer 实现（async + addToolboxLayer 落图 + 未命中诚实）。"""
+    """前端 tools.js 有 generate_point_layer 实现（async + addToolboxLayer 落图 + 未命中诚实 + 聚合名放弃 + names split）。"""
     js = _read('frontend/js/ai_qa/tools.js')
+    body = js.split('async generate_point_layer')[1][:6000]
     assert 'async generate_point_layer' in js, 'tools.js 缺 generate_point_layer 实现'
-    assert 'addToolboxLayer' in js.split('async generate_point_layer')[1][:3000], '实现未用 addToolboxLayer 落图'
-    assert 'unmatched' in js.split('async generate_point_layer')[1][:4000], '实现缺未命中诚实列表'
+    assert 'addToolboxLayer' in body, '实现未用 addToolboxLayer 落图'
+    assert 'unmatched' in body, '实现缺未命中诚实列表'
+    assert '_isAggregate' in body, '实现缺聚合名检测（用户想法·无地点就放弃）'
+    assert '.split(/[,，、;；' in body, '实现缺 names split（拼接串→逐名·Codex 根因 C）'
+    assert 'amap_first=true' in body, '实现缺高德优先（成熟 API·不造轮子）'
 
 
 def test_harness_routing_wired():
@@ -77,6 +81,20 @@ def test_harness_routing_wired():
     assert '_markupCue' in js, 'harness 缺 _markupCue 路由注入（P0-0-1/2）'
     assert 'generate-point-layer-no-hit' in js, 'harness 缺 runTemplatePath 零图层诚实出口（P0-0-3）'
     assert "template: 'generate_point_layer'" in js, 'harness 缺 _deterministicRecover 兜底（P0-0-5）'
+
+
+def test_no_hit_zero_llm_exit():
+    """B1（用户想法 2）：全未命中 → 零 LLM 确定性文字出口（不调 finalStep·像人放弃·防挂起）。
+    若零命中仍调 stages.finalStep → 单调用挂起/超时无兜底 → UI 卡死（「停半途」根因）。"""
+    js = _read('frontend/js/ai_qa/harness.js')
+    # 定位 generate_point_layer 零命中特判块：从 def.tool 条件到 exit:'answered' 的 return
+    start = js.find("def.tool === 'generate_point_layer'")
+    assert start >= 0, '找不到 generate_point_layer 特判'
+    # 特判块 = 到第一个 onDefense 之后（含 return）
+    block = js[start:js.find('exit: \'answered\'', start) + 20]
+    assert 'stages.finalStep' not in block, 'B1 未生效：零命中仍调 finalStep LLM（会挂起）'
+    assert 'onFinalDone' in block, 'B1 缺 onFinalDone（计时必须收尾）'
+    assert "exit: 'answered'" in block, 'B1 出口应为 answered（诚实文字）'
 
 
 def test_panel_prior_turn_wired():

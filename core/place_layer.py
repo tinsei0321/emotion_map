@@ -104,6 +104,61 @@ def _pr(q, s):
     return difflib.SequenceMatcher(None, q, s or '').ratio() * 100
 
 
+# ── CB-22d A0：核心地名提取（地点模糊搜索·业界做法·不造轮子）────────────
+# 用户实测点破：片区名（葛洲坝片区/西坝片区）匹配差·核心地名（葛洲坝/西坝）匹配好。
+# 业界（高德专利 CN104679801A）：LLM 判意图 + 分词识别核心实体 + 成熟 API 解析·客户端只做确定性修正。
+# 本函数 = jieba 分词 → 剔除规划/行政/修饰后缀 → 返回核心地名候选（不剥实体后缀·防达门船厂/三峡青年城误伤）。
+# 仅作 forward 双路匹配的辅助·不改 _match_score 分层逻辑。
+
+# 规划/行政/聚合类后缀（仅这些可安全剔除·不含 船厂/城/厂/街 等实体后缀）
+_ZONE_SUFFIXES = ('历史文化街区', '示范区', '老城片区', '工业园区', '产业园', '片区', '街区', '老城', '工业园', '园区', '社区', '街道', '新区', '板块', '组团', '项目', '改造区')
+# 聚合/概念类词（jieba 分词后全为此类 → 判定无核心地名·归 unmatched）
+_AGGREGATE_WORDS = {'示范', '一体', '片区', '街区', '板块', '组团', '其他', '一批', '项目', '综合', '整体'}
+
+try:
+    import jieba
+    _HAVE_JIEBA = True
+except Exception:
+    _HAVE_JIEBA = False
+
+
+def _core_entities(q):
+    """jieba 分词 → 剔除规划/修饰后缀 → 核心地名候选列表（长度降序·防「葛洲坝」被拆成「葛洲/坝」）。
+
+    返回 [] 表示无核心地名（聚合/概念名·归 unmatched）。纯函数·不调 LLM。
+    """
+    if not q:
+        return []
+    if _HAVE_JIEBA:
+        words = [w for w in jieba.lcut(q) if w.strip()]
+    else:
+        # 无 jieba 回退：仅剥单个规划后缀（保守·不拆词）
+        words = [q]
+        for suf in _ZONE_SUFFIXES:
+            if q.endswith(suf):
+                words = [q[:len(q) - len(suf)]]
+                break
+    # 剔除后缀词 + 聚合词 + 单字 + 标点
+    candidates = []
+    for w in words:
+        ws = w.strip().strip('，,、。;；—-_')
+        if not ws or len(ws) < 2:
+            continue
+        if ws in _AGGREGATE_WORDS:
+            continue
+        if any(ws.endswith(s) for s in _ZONE_SUFFIXES):
+            ws = ws[:len(ws) - max(len(s) for s in _ZONE_SUFFIXES if ws.endswith(s))]
+            if len(ws) < 2:
+                continue
+        candidates.append(ws)
+    # 若 jieba 把「葛洲坝」拆成「葛洲/坝」·用最长候选（子串回补）·防过度拆分
+    if candidates:
+        best = max(candidates, key=len)
+        if len(best) >= 2:
+            return [best]
+    return candidates
+
+
 def _match_score(q, name, p):
     """分层打分（业界做法：exact > prefix > pinyin-exact > substring > fuzzy）。
 
@@ -474,6 +529,9 @@ class PlaceLayer:
             return [dict(h) for h in _hit]
         _threshold = min_fuzzy_score if min_fuzzy_score is not None else 55
         scored = []   # (score, p)
+        # CB-22d A0：核心地名双路匹配——完整串走原 _match_score（防误伤）+ 核心实体走 substring（兜底）·取高分。
+        #   复用 _match_score 分层（exact>prefix>substring>fuzzy）·不重写算法·仅加分词前置。
+        _cores = _core_entities(q)
         for p in self.all_pois:
             name = p['name'] or ''
             if not name:
@@ -481,6 +539,13 @@ class PlaceLayer:
             if p.get('_in_water'):
                 continue
             tier, s = _match_score(q, name, p)
+            # 核心实体双路：jieba 分出「葛洲坝」→ substring 匹配「葛洲坝中心菜市场」180+
+            if _cores:
+                for c in _cores:
+                    ct, cs = _match_score(c, name, p)
+                    if ct == 'exact' or ct == 'prefix' or ct == 'substring':
+                        if cs > s:
+                            s = cs; tier = ct
             if tier is None and s < _threshold:
                 continue
             scored.append((s, p))

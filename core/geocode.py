@@ -185,22 +185,53 @@ def _gcj_loc_to_wgs(loc_str):
 # ── 公开接口 ──
 
 @track("MOD_GEOCODE.F_001")
-def search_place(query, limit=10):
+def search_place(query, limit=10, amap_first=False):
     """关键词 → POI 命中列表。本地 place_layer.forward 主 + 高德 place/text 兜底。
 
     返回 [{name, lng, lat, category, zone_id, zone_name, address, score, source}]，
     坐标一律 WGS84；source='local'(含 zone) | 'amap'(含 address)。
+
+    amap_first=True（CB-22d）：高德 place/text 优先（成熟 API·片区名可解析·不造轮子）·
+    命中才用·未命中落本地（含 A0 分词双路）。防本地 fuzzy 误伤（伍家岗工业园→伍家菜市场）。
     """
     if not query or not query.strip():
         return []
     q = query.strip()
     pl = get_place_layer() if get_place_layer else None
     is_offline = not _amap_enabled()
+
+    if amap_first and not is_offline:
+        # 高德优先：先 place/text 解析（片区名/聚合名高德更能正确解析）
+        data = _amap_request('place/text', {
+            'keywords': q, 'city': AMAP_CITY, 'citylimit': 'true',
+            'offset': max(limit, 20), 'page': 1, 'extensions': 'base',
+        })
+        amap_hits = []
+        for poi in ((data or {}).get('pois')) or []:
+            wgs = _gcj_loc_to_wgs(poi.get('location'))  # 红线 #2
+            if not wgs:
+                continue
+            amap_hits.append({
+                'name': poi.get('name', '') or '',
+                'lng': wgs[0], 'lat': wgs[1],
+                'category': (poi.get('type') or '').split(';')[0],
+                'zone_id': '', 'zone_name': '',
+                'address': poi.get('address', '') or '',
+                'score': 0.0,
+                'source': 'amap',
+                'data_source': 'amap-api',   # 审计：高德 place/text API 解析（成熟 API·不造轮子）
+            })
+            if len(amap_hits) >= limit:
+                break
+        # 高德命中（非误导）才用——若全为「污水厂」类聚合名误导·交调用方判定·这里先返回高德结果
+        if amap_hits:
+            return amap_hits
+
     min_fuzzy = _OFFLINE_FUZZY_SCORE if is_offline else None
     local_hits = pl.forward(q, limit, min_fuzzy_score=min_fuzzy) if pl else []
 
     with TrackContext("MOD_GEOCODE.D_001", local_n=len(local_hits), amap_on=_amap_enabled(),
-                      offline_relax=is_offline):
+                      offline_relax=is_offline, amap_first=amap_first):
         if len(local_hits) >= _LOCAL_MIN_HITS or is_offline:
             return local_hits[:limit]
 

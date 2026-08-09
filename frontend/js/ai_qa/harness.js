@@ -678,9 +678,15 @@ async function runTemplatePath(ctx, hooks, diagnose, opts = {}) {
   // CB-22d P0-0-3：generate_point_layer 零图层 → 诚实文字出口（不进 ask_user·Codex A-1 陷阱修复）
   //   全未命中时 r.data.unmatched 非空·observation 已诚实列出未匹配坐标·带 toolHistory 走 finalStep 文字作答。
   if (def.tool === 'generate_point_layer' && newLayerCount === 0 && r && r.data && Array.isArray(r.data.unmatched) && r.data.unmatched.length) {
+    // CB-22d P0-2 B1：全未命中 → 零 LLM 确定性文字出口（用户想法 2·像人放弃·不纠结不无限思考）。
+    //   之前调 finalStep LLM → 45s 超时无兜底 → UI 卡死（「停半途」根因）。改为直接确定性文字·计时必然收尾。
     toolHistory.push(`generate_point_layer(${JSON.stringify(params).slice(0, 80)}) → ${(obs || '').slice(0, 120)}`);
-    if (hooks.onReason) hooks.onReason('地点匹配未命中·以文字诚实作答', 0);
-    const _final = await stages.finalStep(ctx, hooks, toolHistory.join('\n'));
+    if (hooks.onReason) hooks.onReason('地点匹配未命中·直接文字诚实作答（不纠结）', 0);
+    const _unmatchedTxt = (r.data.unmatched || []).join('、');
+    const _final = `已将上一轮提到的项目/片区名尝试匹配到地图坐标，**未能成功**（均未匹配到坐标·未生成图层·未编造位置）。\n\n`
+      + `**未匹配的项目/片区**（${(r.data.unmatched || []).length} 个）：${_unmatchedTxt}\n\n`
+      + `> 原因：这些多为**片区/聚合类名称**（如「葛洲坝片区」「污水厂网一体示范区」）或项目名无具体地点描述·知识库暂无对应坐标。聚合类名称（含多个项目·无单一坐标）不强匹配单个地点。\n\n`
+      + `**如何继续**：若您有这些项目的坐标（经纬度）或范围面文件，上传后我可立即生成标记图层；或换问更具体的地名（如「葛洲坝」「二马路」）。`;
     if (hooks.onFinalDone) hooks.onFinalDone(_final);
     if (hooks.onDefense) hooks.onDefense({ degraded: false, skipped: 'generate-point-layer-no-hit' });
     return { ok: true, rounds: 1, final: _final, defense: { degraded: false, skipped: 'generate-point-layer-no-hit' }, diagnose, exit: 'answered', newLayerCount };
