@@ -18,6 +18,12 @@ import os
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from core.tracker import track, register_track_id
+
+register_track_id('MOD_AIQA.F_014', 'build_rag_index（RAG 向量索引构建·本地 BGE·原子写·embed_hash）')
+register_track_id('MOD_AIQA.F_015', 'rag_search（RAG 向量检索·余弦 Top-K·返回片段+来源）')
+
 # HF 镜像（国内网络·不覆盖用户显式配置）
 os.environ.setdefault('HF_ENDPOINT', 'https://hf-mirror.com')
 
@@ -86,6 +92,7 @@ def _embed_texts(model, texts):
     return model.encode(texts, normalize_embeddings=True)
 
 
+@track('MOD_AIQA.F_014', track_args=False)
 def build_index():
     """构建向量索引（原子写 + embed_hash）。"""
     import numpy as np
@@ -149,6 +156,7 @@ def load_index():
     return vectors, metas
 
 
+@track('MOD_AIQA.F_015', track_args=False)
 def search(query, k=5):
     """检索 Top-K（余弦相似度·返回片段 + 来源）。"""
     import numpy as np
