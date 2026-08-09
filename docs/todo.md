@@ -9,6 +9,98 @@
 
 ---
 
+## 📅 2026-08-08（CB-17 进度同步 + 下一步安排定稿 · 用户暂停 2 天后回归）
+
+### ✅ CB-17 闭环（三组进度同步 + 下一步安排收敛）
+
+- **背景**：用户 08-06~08-07 暂停回归 → 要求回顾 + 三组同步下一步。claude组 核实基线（git `cf5ef04` 同步·08-05 两专题 CB 全闭环·验证基线）→ 落 [讨论发起](docs/catch-ball/discuss/进度同步与下一步安排_讨论发起_2026-08-08.md)（7 债 + 5 焦点 + 附 A prompt·commit `ce850a3` 已 push）
+- **两组回应已回收**（`docs/catch-ball/discuss/进度同步与下一步安排_回应_{Codex-GPT5|glm组}_2026-08-08.md`）：
+  - **Codex**：快照事实核验全通过（代码 grep 逐项佐证）·补 B3 fail 集合快照判据（fail 集 == {PRM-03/04/07}·新增即阻断）+ 三路径观点卡浏览器抽验（B1 补丁只被 pytest 未被 B3 覆盖）·PRM-07 **partial（P2→P1·仅预检不实施·执行侧残余实测）**·补债 HOME/OFFICE 交接卡过期/flywheel 注释 25→26/回归判据缺 fail 快照/前端 JS 单测补课
+  - **glm组**：pytest 独立跑 **291 passed + 5 skipped**（vs claude 声称 293·差异 2 待核实）·补回归范围 validate_outlet_fields/validate_skill_params/test_hotspot·**P3-4 地点联动优先于 P3-1**（出口闭环最后一块·微观落点粗略→精确）·PRM **agree 不排入**（03/04 center ask_user 正确·07 已根治）·补债 .outlet-metrics CSS 缺失
+- **claude组 反评价（verify-before-accept · 关键争议核实）**：
+  - pytest 实测 **291 passed + 5 skipped**（35.47s 全绿）→ **glm 的 291 正确**·「293」为旧口径（差异 2·非回归·发版回归对齐口径）
+  - `.outlet-metrics` **已存在于 ai_qa.css**（Grep 证实·401371b ③z3b P2-1 已修）→ **glm 补债为过时信息·disagree**
+  - **PRM-07 执行侧残余属实**（tools.js:617-622 白名单只对 `source==='preset' && /行政区/` 生效·FC 直供非 preset 边界绕过）→ **Codex 对·glm「已根治」仅覆盖数据侧**
+  - flywheel_audit.py:7 注释 25 vs 26 属实
+- **下一步安排定稿**（cb-journal CB-17 章节）：
+
+```
+P0（用户·当前）整体验收：todo「整体验收清单」浏览器肉眼验证 + 记 3 观感（观点卡干货感/热点五档可读性/setTerrain 地势感）
+P1（发版门）发版就绪度回归：pytest 全量（291 passed + 5 skipped 基线）+ validate（含 outlet_fields/skill_params）+ link_checkup 20/20 + eval 复采（带 session）+ B3 三连（判据 = fail 集 == {PRM-03/04/07}）+ RST-L06 三连 + 三路径观点卡浏览器抽验 + flywheel 注释对齐（25→26）
+P1（预检）PRM backlog CB 预检（仅预检不实施）：B3 取证确认 fail 集合 → PRM-03/04 stale-tool 修复覆盖核实（center ask_user 正确·非改代码）→ PRM-07 执行侧两候选收敛（白名单补齐 vs request_upload 强化）→ 回归通过后实施
+P2（回归后）P3-4 地点联动（出口闭环·微观落点粗略→精确）：复用 geo_label·先盘点消费方·分开 commit 先验后推
+P2（回归后）P3-1 依赖图（零红线）：DAG 纯函数·不交 LLM·与 P3-4 分开 commit
+P3（文档）HOME/OFFICE 交接卡同步 + _cb-index 状态更新 + revision-log 归档
+P3（后置）P3-2 并行（降挂起）· KDE/DBSCAN 替代（发版后专题·先定产品定义）· 时间轴 manifest · 前端 JS 单测补课
+```
+
+### ✅ 整体验收通过（CB-18 全闭环 · 用户新工作方式：验收交两组走 CB）
+
+- **两组 CB 验收**（`整体验收_实施检查发起_2026-08-08.md`）：**有条件通过**（Codex 更严 + glm 通过）→ 修 W-1/W-2 + 补 S-1~4（commit `d5a5625`）→ **glm 复验通过**（`整体验收_修复验证回应_glm组_2026-08-08.md`·W-1 零残留/W-2 链闭合/S-1~4 充分·pytest 297 零回归）→ **push + 整体验收通过**
+  - ✅ **W-1**：tools.js hotspot docstring/observation 红/绿文案 → 纯橙系五档（零逻辑·纯文案）
+  - ✅ **W-2**：threshold/soft_threshold 转发补齐（hotspot-tool.js `_execute` body + tools.js hotspot 透传·默认 1.96/1.0 不破坏）
+  - **W-3**：legend 五档口径 → 定「EMC 工具卡文本图例」（地图图例补 UI 后置）
+  - ✅ **S-1**：`tests/test_export.py` 新建 4 例（BOM/列/脱敏/空卡）
+  - ✅ **S-2**：`tests/test_spatial_analysis.py` +2（terrarium 解码 0~500/bounds/尺寸 + 极性过滤 ValueError）
+  - ✅ **S-3**：`tests/browser/test_result_struct.py` 新建 + e2e-seam 暴露 buildResultStruct（观点/无观点/4 要点/结论带地点/scale 三档/无地名降级·P0-3 DOM 断言留回归期浏览器抽验）
+  - ✅ **S-4**：`tests/test_outlet_schema.py` 补 geo_label micro + unknown→None
+  - **验证**：pytest **297 passed + 5 skipped**（+6 新增·零回归）· S-3 e2e-seam PASS · ESM 语法 OK
+  - **Codex 缺席标注**：glm 单组复验通过（用户指示「先只看 glm组」）·Codex 恢复后补验（W-2 全链 + S-3 边界 + DOM 断言前置评估）
+  - 观感类（P0-1/P0-5/H-1/H-4·干货/地势感/无露底/console）标「可选用户复核」
+
+### ✅ P1 发版回归绿 + P3-4 地点联动实施完成
+
+- **发版就绪度回归（绿）**：pytest 301（done·claude）+ validate 34 + eval 81% PASS + 三路径观点卡 PASS + **glm 分担全回**——link_checkup **20/20** + B3 **Run1/2 均 23/26（88%）**（fail ⊆ {PRM-03/04/05/07} 已知 backlog·RST-L06 PASS·成果范式 6/6）+ Run3 API 慢时段（21 timeout·trace 排除）·**回归绿·可进发版候选**
+  - **事实修正**：glm 报告「Run2=5/26」计数有误·实际 Run2=23/26（88%）·仅 Run3 API 慢
+  - **PRM-05 补入 fail 集判据**：{PRM-03/04/05/07}（boundary derive 方差·CB-12 起持续·非并发引入）
+- **P3-4 地点联动实施完成**（commit `9680dcc`·未 push·先验后推）：
+  - P3-4-1 zonal/rank prop_cols 放行 place_name/place_name_source/poi_names/poi_count（Gap B 核心杠杆）
+  - P3-4-2 buildZonalFc 焊地点字段透传
+  - P3-4-3 出口卡动态 limitations（按 source 诚实标注）+ micro 需求位置 POI 升级
+  - P3-4-4 _fmtRow place_name 优先
+  - 验证：pytest 301 + test_outlet_micro/test_outlet_macro e2e-seam PASS
+  - **待两组复验**（`P3-4地点联动_复验发起_2026-08-08.md`）→ push → 发版候选
+
+### ✅ CB-19 发版回归全面测试完成 · 发版候选通过
+
+- **三组协同**（`发版回归全面测试_方案_2026-08-08.md`）·**fail 集判据 {PRM-03/04} 达成**：
+  - **claude 组**：pytest **303 passed + 5 skipped** + validate 34 + ESM 6/6 + **B3 24/26（92%·历史最佳）**·fail={PRM-07 空对象 LLM 方差·单要素拒识已生效, RST-L06 Flash 方差}·PRM-03/04/05 全转 PASS
+  - **glm 组**：条件绿（pytest 303 + CB-18 数据 + 修复代码审查·环境端口冲突未新跑）
+  - **Codex**：T6 PRM 专项 PASS + T8 出口卡 e2e PASS + **T7 多步链 FAIL【阻断】**（469bf32 黑名单误伤「龙泉」·层首要素）→ **claude 修复**（5115d7c·只拦单要素·T7 复测 PASS·pytest 303）→ **阻断解除**
+- **基建修复 4 commit**（三组并发必需）：端口隔离 3dc0a1c + 后台 PATH fdc1c1d + serve 断连 76b16eb + PRM-07 文案 2f9965f
+- **发版候选判定：通过**（T7 阻断已修·fail 集判据达成·剩余 fail 均已知/方差）
+
+### ✅ CB-19c 5115d7c 黑名单修复复验通过（两组确认）
+
+- **Codex + glm 均通过**：T7 多步链阻断解除（执行成功）+ 小溪塔单要素仍拒识 + 前后端一致 + pytest 303 零回归·漏拦风险低（三重保险）
+- **采纳 Codex P2 建议入 backlog**：P2-1 多要素全黑名单增强 · **P2-2 boundaryLabel 取 features[0].properties.name（治 `[object Object]`·治 PRM-07 偶发 fail 方差源·高价值）** · P2-3 verify_prm57 断言加严
+- **CB-19 全部闭环**：整体验收 → 修复 → 深读 → 发版回归全面测试 → 黑名单复验 → **发版候选通过（两组确认）**
+
+### ✅ 收尾完成（P2-2 + P2-3 + 文档债）
+
+- **P2-2 boundaryLabel 取 features[0].properties.name**（`12aa1f9`·治 `[object Object]`·LLM 转述不可读·zonal/rank/area_stats/compare 4 处）
+- **P3 文档债**（`76cfd2d`）：HOME/OFFICE 交接卡同步到 08-08 + cb-index 到 CB-19c
+- **P3-1 依赖图评估**：无独立消费者（并行未实施）→ 随 P3-2 一起·不单独推进
+- **P2-3 verify_prm57 断言加严**（`a331568`·去宽泛「上传」·加「法定功能区/标准边界」·诚实暴露 PRM-07 空对象真实残余）
+
+### ✅ CB-20 PRM-07 空对象根治完成（两组预检通过·实施 bdde1f0）
+
+- **方案 A 主 + B 兜底**（`bdde1f0`·已推）：A harness derive 失败+boundary 可疑 → `strategy='request_upload'`（复用既有短路·LLM 无法弱化·不依赖 `_regions`·法定功能区无后缀）+ B zonal handler 空对象 → 「需上传标准边界资料」
+- **验证**：pytest 303 零回归 · verify_prm07_ab（e2e-seam 可控）：`zonal_stats({})` → 需上传 ✅ 生效（替代「无数据」）
+- **工程边界诚实收敛**：浏览器实测 PRM-07 仍受 **LLM 传参方差**影响（空对象/单要素字段名不标准/层未加载）·方案 A/B 覆盖可控场景·完全消除 LLM 行为方差不可能·合理边界
+- **新 learning**：`_regions` 正则只匹配区/市/县后缀·法定功能区名提取不到；LLM 字段名不标准时黑名单取不到名
+
+### 🔄 下一步（后置项 · 明日公司电脑续）
+
+- [ ] `git pull`（拉取今日全部 push @ `903632e`）+ 读 OFFICE/HOME 交接卡
+- [ ] **PRM-07 残余**：LLM 单要素字段名不标准（无 name/MC/NAME）→ 黑名单扩字段名覆盖（P2 级）
+- [ ] **P2-1 多要素全黑名单增强** · RST-L06 Flash 方差 · KDE/DBSCAN 替代 Gi* · 时间轴 manifest
+- [ ] **P3-2 并行 + P3-1 依赖图**（`$n` 索引重构前置·规模后启动）
+
+> 📦 08-08 收工：CB-17~CB-20 全闭环 · 发版候选通过 · 交接卡 OFFICE.md 已更新 · 全部已 push @ `903632e`
+
+---
+
 ## 📅 2026-08-05（情绪热点图重做专题 + 发版就绪度回归待续）
 
 ### 🔄 情绪热点图重做 ·「热力 vs 热点」专题（今日任务）

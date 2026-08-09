@@ -57,8 +57,33 @@ function _index() {
  *  - 命中 preset_id → 原样 str（走后端 load_preset）。
  *  - 命中面域 preset 内 feature 名 → 单 feature GeoJSON dict（含 properties.name）。
  *  - 未命中 → 原样交后端（保留报错可观测性，不静默吞）。
- *  模块级缓存：首次 compare 付拉取成本，之后命中内存索引。 */
+ *  模块级缓存：首次 compare 付拉取成本，之后命中内存索引。
+ *
+ *  PRM-07（08-08 深读·Codex B'）：法定功能区（非真实行政区划）拒识——LLM 直传
+ *  GeoJSON boundary 命中黑名单（小溪塔/龙泉等·CB-16 preset 清理的法定功能区）→ 抛错
+ *  诚实 request_upload（对齐 CB-14「EMC 不硬猜」·防 dict 直通绕过 FIXED_ADMIN_DISTRICTS）。 */
+const _ADMIN_BLOCKLIST = ['小溪塔', '龙泉', '白洋', '生物产业园', '东部产业新区', '绿心'];   // 法定功能区黑名单（与 KNOWLEDGE §2 一致·可增补）
+
+function _rejectNonAdminBoundary(b) {
+  // 仅拦「单要素 GeoJSON dict」——LLM 直传的特征（如 {features:[小溪塔]}）。
+  // 不拦：preset_id str / 用户上传 / 从已加载面层解析的多要素层（Codex T7 阻断：行政区层首要素「龙泉」命中黑名单·
+  //   合法 extract/链操作被误拦——多要素=图层解析·可信·放行）。
+  if (b == null || typeof b !== 'object') return null;
+  const feats = b.features;
+  if (!Array.isArray(feats) || feats.length !== 1) return null;   // 仅单要素（LLM 直传特征）·多要素（图层）放行
+  const p = feats[0].properties || {};
+  const nm = String(p.name || p.MC || p.NAME || '').trim();
+  if (!nm) return null;
+  const hit = _ADMIN_BLOCKLIST.find((d) => nm.includes(d) || d.includes(nm));
+  if (hit) {
+    return new Error(`「${nm}」为法定功能区·非真实行政区划·EMC 不硬猜不可信范围（CB-14）·请上传标准边界资料（Shapefile/GeoJSON）`);
+  }
+  return null;
+}
+
 export async function resolveBoundaryInput(b) {
+  const _rej = _rejectNonAdminBoundary(b);
+  if (_rej) throw _rej;   // 法定功能区拒识（诚实 request_upload·不静默直通）
   if (b == null || typeof b !== 'string') return b;
   let idx;
   try { idx = await _index(); } catch (_) { return b; }   // 索引建失败→原样（不阻断主链）

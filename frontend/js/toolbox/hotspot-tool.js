@@ -7,11 +7,13 @@
 // 无 dialog/init/tool-row——仅 generateHotspotForAI 程序化入口（§4.1 契约）。
 import { geoPost, placeToolLayer } from './shared.js';
 
-/** params：{ layer(fc|注册名), value_col='score', invert=true, range?, pre_filter?, as? } */
+/** params：{ layer(fc|注册名), value_col='score', invert=true, range?, pre_filter?, threshold?, soft_threshold?, as? } */
 async function _execute(params, { editLayerId = '', silent = true } = {}) {
   const body = { layer: params.layer, value_col: params.value_col || 'score', invert: params.invert !== false };
   if (params.range) body.range = params.range;
   if (params.pre_filter) body.pre_filter = params.pre_filter;
+  if (params.threshold != null) body.threshold = params.threshold;           // W2 审计：转发显著性阈值（契约承诺参数化·补齐运行时缺口）
+  if (params.soft_threshold != null) body.soft_threshold = params.soft_threshold;
   const r = await geoPost('hotspot', body);
   const feats = (r.geojson && r.geojson.features) || [];
   // P1 修正：不再映射 polarity（去极性色）·保留 hotspot_tier 五档原值（map.js 显著性符号层消费）

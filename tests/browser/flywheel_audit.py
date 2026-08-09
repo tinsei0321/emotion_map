@@ -4,7 +4,7 @@
   py tests/browser/flywheel_audit.py --batch B0     # no-llm 全量 45 例（0 DeepSeek）
   py tests/browser/flywheel_audit.py --batch B1     # llm 意图识别 100 例
   py tests/browser/flywheel_audit.py --batch B2     # llm 工具选择 100 例
-  py tests/browser/flywheel_audit.py --batch B3     # llm 参数/成果/Smart/CPD/UI 25 例
+  py tests/browser/flywheel_audit.py --batch B3     # llm 参数/成果/Smart/CPD/UI 26 例（含 RST-L06·08-08 对齐注释）
   py tests/browser/flywheel_audit.py --batch all    # B0→B3 顺序全跑
 
 采集（三路，绕开 test-board.js 模块闭包 _results 不可达的限制）：
@@ -26,7 +26,7 @@ from lib.emc_helpers import emc_session, open_emc   # noqa: E402
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 REPORTS = os.path.join(REPO, 'tests', 'reports')
 OUT = os.path.join(REPO, 'tests', 'browser', 'out')
-TEST_URL = 'http://localhost:8080/frontend/index.html?test=1'
+TEST_URL = 'http://localhost:8080/frontend/index.html?test=1'   # 默认 8080·--port 可覆盖（三组并发用不同端口防撞）
 
 BATCHES = {
     'B0': {'mode': 'no-llm', 'cats': [], 'timeout_min': 40},
@@ -99,13 +99,14 @@ def _wait_done(page, timeout_min, tag):
     return False
 
 
-def run_batch(batch):
+def run_batch(batch, port=8080, backend_port=8000):
     cfg = BATCHES[batch]
     os.makedirs(OUT, exist_ok=True)
     before_reports = set(os.listdir(REPORTS)) if os.path.isdir(REPORTS) else set()
     t0 = time.time()
-    with emc_session(open=False) as page:
-        open_emc(page, url=TEST_URL, wait_ms=2500)
+    test_url = f'http://localhost:{port}/frontend/index.html?test=1'   # --port 覆盖（三组并发防端口撞·CB-19 发版回归）
+    with emc_session(port=port, open=False, backend_port=backend_port) as page:
+        open_emc(page, url=test_url, wait_ms=2500)
         page.wait_for_selector('#tb-fab', timeout=45000)
         _configure_and_start(page, cfg['mode'], cfg['cats'])
         print(f'[{batch}] started mode={cfg["mode"]} cats={cfg["cats"] or "ALL"}', flush=True)
@@ -163,6 +164,8 @@ def main():
     ap.add_argument('--batch', choices=list(BATCHES.keys()) + ['all'], help='指定 batch（B0-B3/all）')
     ap.add_argument('--tier', choices=['smoke', 'regression', 'full'], help='三档拆分（F-4）：smoke=每次commit / regression=每日 / full=发版验收')
     ap.add_argument('--collect', metavar='AUDIT_JSON', help='F-8：从 audit JSON 失败行生成 buglog 草稿（人工确认入库）')
+    ap.add_argument('--port', type=int, default=8080, help='serve 端口（默认 8080·三组并发用不同端口防撞·CB-19 发版回归）')
+    ap.add_argument('--backend-port', type=int, default=8000, help='serve 后端端口（默认 8000·三组并发传不同值防撞·CB-19）')
     args = ap.parse_args()
     if args.collect:
         sys.exit(collect_buglog_drafts(args.collect))
@@ -171,7 +174,7 @@ def main():
         batches = []
         for b in TIERS[args.tier]:
             if b == 'B3-smoke':
-                run_batch_smoke()
+                run_batch_smoke(port=args.port, backend_port=args.backend_port)
                 continue
             batches.append(b)
     elif args.batch:
@@ -180,7 +183,7 @@ def main():
         ap.error('须给 --batch 或 --tier')
     for b in batches:
         try:
-            run_batch(b)
+            run_batch(b, port=args.port, backend_port=args.backend_port)
         except Exception as e:
             print(f'[{b}] FATAL: {e}', flush=True)
 
@@ -247,14 +250,15 @@ last_repro: {today}
     return 0
 
 
-def run_batch_smoke():
+def run_batch_smoke(port=8080, backend_port=8000):
     """B3-smoke：llm 子集（成果范式+Smart+产物语义）·每次 commit 可跑（~10 例）。"""
     cfg = {'mode': 'llm', 'cats': B3_SMOKE_CATS, 'timeout_min': 60}
     os.makedirs(OUT, exist_ok=True)
     before_reports = set(os.listdir(REPORTS)) if os.path.isdir(REPORTS) else set()
     t0 = time.time()
-    with emc_session(open=False) as page:
-        open_emc(page, url=TEST_URL, wait_ms=2500)
+    test_url = f'http://localhost:{port}/frontend/index.html?test=1'
+    with emc_session(port=port, open=False, backend_port=backend_port) as page:
+        open_emc(page, url=test_url, wait_ms=2500)
         page.wait_for_selector('#tb-fab', timeout=45000)
         _configure_and_start(page, cfg['mode'], cfg['cats'])
         print('[B3-smoke] started llm 子集（成果范式+Smart+产物语义）', flush=True)

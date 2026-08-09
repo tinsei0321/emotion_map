@@ -249,10 +249,22 @@ const _ERR = (name, e) => ({ observation: '[ERR] ' + name + ' 失败：' + ((e &
 // DENSITY_RAMP 已退场（Phase 2）：density 委托主 Toolbox generateHeatmapForAI/generateGridForAI/generateTerrainForAI，
 // 套用 HEATMAP_RAMPS 固定色段，不再自造 KDE 色带。原 const 已删（端点 /api/v1/geo/density 后端保留 + 标 deprecated）。
 const _fmtPi = (v) => (v !== '' && v != null && !isNaN(v) ? Number(v).toFixed(2) : '?');
+// P2-2（CB-19c·Codex 建议）：boundaryLabel 从 dict 提取 features[0].properties.name（治 String(dict) → "[object Object]"·LLM 转述不可读·PRM-07 偶发 fail 方差源）
+const _boundaryLabel = (b) => {
+  if (b == null) return undefined;
+  if (typeof b === 'string') return b;
+  if (typeof b === 'object' && Array.isArray(b.features) && b.features.length) {
+    const p = b.features[0].properties || {};
+    return String(p.name || p.MC || p.NAME || '').trim() || undefined;
+  }
+  return String(b);
+};
 const _fmtRow = (row) => {
   const dom = DOMAIN_LABEL[row.domain_top] || row.domain_top || '?';
   const elm = ELEMENT_LABEL[row.element_top] || row.element_top || '?';
-  return `  - ${row.name || '未命名'}：极性 ${_fmtPi(row.polarity_index)}，${row.point_count || 0}点，${dom}×${elm}，问题=${row.issue_label || '—'}`;
+  // P3-4（CB-19）：place_name 优先——rank-on-grid（无 name）也能锚到 POI 落点（工具出口统一·LLM grounding）
+  const loc = row.place_name || row.name || '未命名';
+  return `  - ${loc}：极性 ${_fmtPi(row.polarity_index)}，${row.point_count || 0}点，${dom}×${elm}，问题=${row.issue_label || '—'}`;
 };
 
 
@@ -996,11 +1008,24 @@ export const TOOLS = {
   /** 宏/中观结论主干：按边界聚合点层，得每单元极性/点数/4×5 归因+排序。 */
   async zonal_stats(params = {}) {
     if (!params.boundary) return { observation: '[ERR] zonal_stats 需 boundary（preset_id）' };
+    // CB-20（两组预检·B 兜底）：boundary 空对象/无 features → 诚实 request_upload（治 A 未覆盖路径·LLM 忠实文案素材）
+    if (typeof params.boundary === 'object' && params.boundary !== null && !(Array.isArray(params.boundary.features) && params.boundary.features.length)) {
+      return { observation: '需上传标准边界资料：boundary 为空/无法解析（EMC 不硬猜不可信范围·CB-14）' };
+    }
     const _layer = resolvePointLayer(params);
     if (!_layer) return _ERR_NO_VISIBLE_PT();
-    const boundary = await resolveBoundaryInput(params.boundary);   // 中文地名(西陵区)→GeoJSON；preset_id 直通（§3.3① 委托层预解析，模块不碰中文名）
+    let boundary;
     try {
-      const r = await generateZonalForAI({ layer: ref(_layer), boundary: ref(boundary), boundaryLabel: String(params.boundary),
+      boundary = await resolveBoundaryInput(params.boundary);   // 中文地名(西陵区)→GeoJSON；preset_id 直通（§3.3① 委托层预解析，模块不碰中文名）
+    } catch (e) {
+      // PRM-07（CB-19）：法定功能区黑名单拒识 → 诚实 request_upload 文案（非 ERR·flywheel test-cases:339 判 PASS）
+      if (String(e.message || e).includes('法定功能区')) {
+        return { observation: `需上传标准边界资料：${e.message}` };
+      }
+      return _ERR('zonal_stats', e);
+    }
+    try {
+      const r = await generateZonalForAI({ layer: ref(_layer), boundary: ref(boundary), boundaryLabel: _boundaryLabel(params.boundary),
         range: params.range ? ref(params.range) : undefined, pre_filter: normPreFilter(params.pre_filter),
         top_n: params.top_n != null ? Number(params.top_n) : undefined, as: params.as });
       const rows = r.rows || [];
@@ -1022,7 +1047,15 @@ export const TOOLS = {
     const pf = normPreFilter(params.pre_filter);
     const boundaries = [];
     for (const b of bs.slice(0, 4)) {
-      boundaries.push({ label: b, geo: await resolveBoundaryInput(b) });   // 中文名(西陵区)→GeoJSON；preset_id 直通（§3.3① 委托层预解析）
+      try {
+        boundaries.push({ label: b, geo: await resolveBoundaryInput(b) });   // 中文名(西陵区)→GeoJSON；preset_id 直通（§3.3① 委托层预解析）
+      } catch (e) {
+        // PRM-07（CB-19）：法定功能区黑名单拒识 → 诚实 request_upload（非 ERR）
+        if (String(e.message || e).includes('法定功能区')) {
+          return { observation: `需上传标准边界资料：${e.message}` };
+        }
+        throw e;
+      }
     }
     try {
       const r = await generateCompareForAI({ layer: ref(_layer), boundaries, pre_filter: pf, as: params.as });
@@ -1048,7 +1081,7 @@ export const TOOLS = {
     try {
       const r = await generateRankForAI({ layer: ref(_layer), by, top_n: Number(params.top_n) || 5,
         boundary: params.boundary ? ref(params.boundary) : undefined,
-        boundaryLabel: params.boundary ? String(params.boundary) : undefined,
+        boundaryLabel: params.boundary ? _boundaryLabel(params.boundary) : undefined,
         layerRef: typeof params.layer === 'string' ? params.layer : undefined,
         range: params.range ? ref(params.range) : undefined, pre_filter: normPreFilter(params.pre_filter), as: params.as });
       const rows = r.rows || [];
@@ -1158,7 +1191,7 @@ export const TOOLS = {
   async area_stats(params = {}) {
     if (!params.boundary) return { observation: '[ERR] area_stats 需 boundary' };
     try {
-      const r = await generateAreaStatsForAI({ boundary: ref(params.boundary), boundaryLabel: String(params.boundary),
+      const r = await generateAreaStatsForAI({ boundary: ref(params.boundary), boundaryLabel: _boundaryLabel(params.boundary),
         group_by: params.group_by, as: params.as });
       const rows = r.rows || [];
       const _as = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: true }) : null;   // A1：choropleth 着色面层（解析不到 boundary 降级纯表格）
@@ -1179,7 +1212,7 @@ export const TOOLS = {
     if (!params.boundary && !params.layers) return { observation: '[ERR] merge 需 boundary（单层）或 layers（多图层）二选一' };
     try {
       const _r = await generateMergeForAI({
-        ...(params.boundary ? { boundary: ref(params.boundary), boundaryLabel: String(params.boundary) } : {}),
+        ...(params.boundary ? { boundary: ref(params.boundary), boundaryLabel: _boundaryLabel(params.boundary) } : {}),
         ...(params.layers ? { layers: (params.layers || []).map(ref) } : {}),
         by: params.by, as: params.as });
       const feats = (_r.fc && _r.fc.features) || [];
@@ -1282,19 +1315,20 @@ export const TOOLS = {
     } catch (e) { return _ERR('lookup_place', e); }
   },
 
-  /** Gi* 热点识别 → 落图层（hot/cold/ns 点，离散色：hot=负面聚集=红 / cold=正面聚集=绿 / ns=灰）。 */
+  /** Gi* 热点识别 → 落图层（hot/tend_hot/ns/tend_cold/cold 五档·纯橙系显著性符号层·弃极性色·与 KDE 解耦）。 */
   async hotspot(params = {}) {
     const _layer = resolvePointLayer(params);
     if (!_layer) return _ERR_NO_VISIBLE_PT();
     try {
       const r = await generateHotspotForAI({ layer: ref(_layer), value_col: params.value_col || 'score',
         invert: params.invert !== false, range: params.range ? ref(params.range) : undefined,
-        pre_filter: normPreFilter(params.pre_filter), as: params.as });
+        pre_filter: normPreFilter(params.pre_filter), as: params.as,
+        threshold: params.threshold, soft_threshold: params.soft_threshold });
       const tally = r.tally || {};
       const _CLS_CN = { hot: '显著聚集(95%)', tend_hot: '倾向聚集(84%)', ns: '不显著', tend_cold: '倾向冷区(84%)', cold: '显著冷区(95%)' };
       const dist = Object.keys(tally).length ? Object.entries(tally).map(([k, v]) => `${_CLS_CN[k] || k}:${v}`).join('、') : `${r.featureCount}要素`;
       const _hL = r.layerId ? _adoptToolboxResult(r.layerId, r.fc, r.layerName, { keep: !!params.keep }) : null;   // class→极性重映射由模块完成（_CLS_POL 随迁·§5.6）
-      return { observation: `热点分析：${dist}${r.truncated ? '（已截断）' : ''}（hot=红/cold=绿/ns=灰）→ 已生成图层「${r.layerName}」${_hL ? '(' + r.featureCount + '点)' : ''}` + _renderNote(_hL), data: { count: r.count, tally, layerId: r.layerId } };
+      return { observation: `热点分析：${dist}${r.truncated ? '（已截断）' : ''}（纯橙系显著性五档·hot/tend_hot 深橙·ns 灰·tend_cold/cold 浅橙·弃红绿极性色）→ 已生成图层「${r.layerName}」${_hL ? '(' + r.featureCount + '点)' : ''}` + _renderNote(_hL), data: { count: r.count, tally, layerId: r.layerId } };
     } catch (e) { return _ERR('hotspot', e); }
   },
 

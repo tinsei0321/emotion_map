@@ -6,6 +6,301 @@
 
 ---
 
+## CB-18 · 2026-08-08（整体验收 · 用户新工作方式：验收交两组走 CB）
+
+### ① SCAN 摘要
+
+**本轮由 claude组 发起**（用户 2026-08-08 明确「每次完成后验收工作让另两组完成·进 CB」）→ claude组 将 todo「整体验收清单」转两组**证据驱动验收**（代码核验 + 可跑测试 + e2e-seam 直测 + 浏览器可选）→ 落 [整体验收_实施检查发起](discuss/整体验收_实施检查发起_2026-08-08.md)（P0-1~5/P1-1~5/P2-1/H-1~4 + 审计修正核验 + 5 焦点）。
+
+**Codex**（[验收回应](discuss/整体验收_验收回应_Codex-GPT5_2026-08-08.md)）：**有条件通过**——13 项代码核验通过·0 阻断·承重红线零违反；发现 **2 处需修复（W-1 tools.js 红绿语义残留·低危；W-2 threshold/soft_threshold 契约-运行时漂移·警告级）** + **3 处需补证（P1-3 CSV 无单测·H-1 DEM 无解码单测·P0-2/3/4+P2-1 无 JS 直测）** + W-3 legend 五档口径存疑（地图图例层无渲染·EMC 工具卡文本图例）·观感类（干货/地势感/无露底/console）标「可选用户复核」。环境无 Python·测试证据复用 claude 基线 + 静态核验。
+
+**glm组**（[验收回应](discuss/整体验收_验收回应_glm组_2026-08-08.md)）：**通过**——15 项全部有代码证据·12 项充分通过 + 3 项标用户观感（P0-5/H-2/P0-1）·pytest 291 + validate 34 全绿零回归·承重红线零违反。**未发现 Codex 的 W-1/W-2**（Tools.js 红绿残留 + threshold 转发缺口）·W2「热点旧义」判定通用语义不阻塞·建议直接进发版回归。
+
+### ② 我方反评价（verify-before-accept · 关键争议实核）
+
+**独立实核证据**（Codex 发现 → 本组复验）：
+- **W-1 属实**：`frontend/js/ai_qa/tools.js:1285` docstring + `:1297` observation 仍写「hot=红/cold=绿/ns=灰」·与 W1 纯橙系渲染（`map.js:604-611`）矛盾·违反 H-3 无旧义残留判据 → **需修复（纯文案 1 行·回归前合入）**
+- **W-2 属实**：`frontend/js/toolbox/hotspot-tool.js:11-14` 请求体仅 layer/value_col/invert/range/pre_filter·**无 threshold/soft_threshold**；`tools.js` hotspot handler 亦不转发 → **LLM 指定阈值被静默丢弃·契约（tool_contracts.py:274-275 "EMC-only·AI 执行"）与运行时漂移** → **需决策：转发补齐（约 4 行）vs 契约降级标注（默认值定稿）**
+- **S-1/S-2/S-3 补证缺口属实**：`export_outlet_card_csv`（tests/ 零引用）· `create_terrain_dem`/terrarium（tests/ 零引用·08-05 DEM 解码为一次性手工验证）· `result-struct.js`（无任何 JS 侧测试）→ **需补单测（纯测试不动行为·可随回归一并验证）**
+- **pytest 291 vs 293**：08-08 已实测 291 passed + 5 skipped·glm 291 正确·非回归（CB-17 已核实）
+- **`.outlet-metrics` CSS**：ai_qa.css 已存在（CB-17 已核实 401371b 修过）→ glm 本轮 W2 系重复 CB-17 旧信息
+
+**逐项判定**：
+
+| 焦点 | 判定 | 收敛 |
+|---|---|---|
+| 1 验收清单完整性 | **agree**（Codex +2 补充·glm 全覆盖） | 采纳 P0-1 判据补「正文无重复观点行」+ H-2 补 W6 契约层五档证据路径·观感类（P0-1/P0-5/H-1/H-4）统一标「可选用户复核」 |
+| 2 证据充分性 | **partial·采纳 Codex 更严** | S-1 CSV 单测 + S-2 DEM 解码单测 + S-3 e2e-seam result-struct 直测（三路径出卡/无观点不显卡/结论带地点·仿 test_r7_truncation）+ S-4 geo_label micro 分支·补证后验收全通过 |
+| 3 验收方式转型 | **agree**（两组一致·风险可控） | 机制层（代码/测试）+ 观感层（用户复核）双层标注·避免两组证据驱动替代用户观感 |
+| 4 回归衔接 | **agree**（两组一致） | W-1/W-2 修复**须在回归前**（避免回归跑旧文本/旧参数路径）；S-1~4 纯测试随回归验证；三路径浏览器抽验并入回归共用一次；flywheel 注释 25→26 |
+| 5 补充异议 | **Codex 更全** | 采纳 W-1/W-2/W-3 + S-1~6；**glm 未发现 W-1/W-2**（Codex 验收深度更严·两组互补成立）；pytest 291 口径已核实 |
+
+**反评价收敛**：**采纳 Codex 条件通过**（更严）+ glm 观感标注——验收判定 = 「有条件通过 → 修 W-1/W-2 + 补 S-1~4 → 验收全通过 → 进发版回归」。
+
+**无承重红线异议**：两组均确认四态出口 / finalStep D019 / diagnose 未动·FINAL_TEMPLATE 2891B<3000B 守门。
+
+### ③ 行动（验收修复 + 补证 · 回归前合入）
+
+```
+W-1 tools.js:1285/:1297 红/绿文案 → 纯橙系描述（1 行·零逻辑）
+W-2 threshold/soft_threshold 转发缺口 → 决策：转发补齐（推荐·约 4 行）vs 契约降级标注
+W-3 legend 五档口径 → 定：EMC 工具卡文本图例（地图图例补 UI 后置·非发版阻塞）
+S-1 tests/test_export.py 补 export_outlet_card_csv 单测（BOM/列/脱敏/三元组）
+S-2 tests/test_spatial_analysis.py 补 terrarium 解码单测（0~500/bounds 4326/尺寸）
+S-3 tests/browser/test_result_struct.py e2e-seam 直测（三路径出卡/无观点不显卡/结论带地点）
+S-4 tests/test_outlet_schema.py 补 geo_label micro 分支
+以上修复+补证完成后 → 整体验收全通过 → P1 发版就绪度回归（fail 集判据 {PRM-03/04/07}）
+```
+
+### ④ 状态/新发现
+
+- **CB-18 闭环**：整体验收**有条件通过**·修 W-1/W-2 + 补 S-1~4 后全通过·进发版回归
+- **新 learning 候选**：验收交两组后，**两组验收深度差异显著**（Codex 发现 W-1/W-2·glm 未发现）——验收结论应**并集采纳**（任何一组发现都需实核），不能取"两组都通过"即过；claude组 须对争议点 verify-before-accept 实核（本例 3 处全部复验确认）
+- **下轮 SCAN 关注**：S-1~4 补证落地 · 发版回归 B3 成果范式类 · 三路径观点卡浏览器抽验
+
+---
+
+## CB-18b · 2026-08-08（验收修复验证 · glm组 通过·Codex 缺席标注）
+
+### ① SCAN 摘要
+
+CB-18 验收**有条件通过** → claude组 修 W-1/W-2 + 补 S-1~4（commit `d5a5625`·未 push·先验后推）→ 发 [整体验收_修复验证发起](discuss/整体验收_修复验证发起_2026-08-08.md)（5 焦点）→ 两组复验。
+
+**glm组**（[修复验证回应](discuss/整体验收_修复验证回应_glm组_2026-08-08.md)）：**通过·建议 push**——W-1 红/绿文案**零残留**（全仓 grep 零旧义·choropleth 红绿为面着色语义不混淆）+ W-2 转发链**闭合**（tools.js:1293 → hotspot-tool.js:15-16 → /geo/hotspot → 后端默认 1.96/1.0）+ S-1~4 **充分**（13 新测试·glm 独立跑 43 passed）+ P0-3 DOM 断言留回归期**可接受**（纯函数直测 + 接线核验·panel 确定性渲染）+ pytest **297 passed 零回归**·承重零违反。
+
+**Codex**：**缺席**（用户告知「codex组暂时有点问题」·本轮未出复验）。
+
+### ② 我方反评价
+
+- **采纳 glm 通过**（用户指示「先只看 glm组」→ 以 glm 复验为 push 依据·Codex 补验后置）
+- **Codex 补验标注**（诚实·不因缺席跳过）：Codex 上次验收更严（发现 glm 遗漏的 W-1/W-2）→ 等 Codex 恢复后补一轮复验，聚焦：① W-2 转发链是否还有别处缺口（tool_contracts 契约 vs 运行时全链）② S-3 result-struct 直测边界 ③ 三路径 DOM 断言是否需前置。
+- **无承重红线异议**。
+
+### ③ 行动
+
+```
+glm 复验通过 → push d5a5625（先验后推·glm 单组依据 + 用户指示）
+→ 整体验收全通过（观感类标可选用户复核）
+→ 进 P1 发版就绪度回归（fail 集判据 {PRM-03/04/07} + RST-L06 + eval 复采 + link_checkup + 三路径浏览器抽验 + flywheel 注释对齐）
+→ Codex 恢复后补复验（W-2 全链 + S-3 边界 + DOM 断言前置评估）
+```
+
+### ④ 状态/新发现
+
+- **CB-18 全闭环**（glm 通过 + Codex 补验挂起）·整体验收通过·进发版回归
+- **新 learning 候选**：单组复验通过可作为 push 依据（用户定）·但 Codex 补验挂起需显式追踪（防双阵营机制降级为单阵营）
+
+---
+
+## CB-19 · 2026-08-08（深读修复协助 · 两组详读 · 反评价收敛）
+
+### ① SCAN 摘要
+
+claude 修复 PRM-03/04（083b78d）+ 实施 P3-4（9680dcc）后，发 [深读修复协助](discuss/深读修复协助_发起_2026-08-08.md)（6 项：PRM-03/04 复验 + PRM-05 深挖 + PRM-07 方案 + P3-4 复验 + Codex 补验 + glm 回归复核）→ 两组详读。
+
+**Codex**（[回应](discuss/深读修复协助_回应_Codex-GPT5_2026-08-08.md)）：PRM-03/04 **通过**（G5 重写链完整推演·仅 2 建议级缝隙：chain 残余 + 复合问句保护）；**PRM-05 真因修正**（`_validAfter` 正则逐字符验证不失败·真因 = FC 空参方差 + deriveAvailable 层依赖 + 测量端判据不一致）→ 方案 a 测量端对齐 PRM-04 + b derive 可观测 + c 契约强化；**PRM-07 残余属实**·推荐 **B'（前端 handler 校验 + 后端 dict 兜底）**·建议进发版候选前实施；P3-4 **有条件通过**（W-A 文案矛盾 + W-B poi_names 排序·建议级）；W-2 全链闭合 / S-3 充分 / 三路径合理；glm 回归数据修正**与 audit 完全一致**·PRM-05 补入判据合理；**关键补充：B3 三连跑在 9680dcc/083b78d 之前·回归绿未覆盖这两个 commit → push 后补 B3 快照**。
+
+**glm组**（[回应](discuss/深读修复协助_回应_glm组_2026-08-08.md)）：PRM-03/04 **通过**（Python 正则模拟 `_validAfter` 13 组全 pass·非根因·无副作用）；**PRM-05 真因 = deriveAvailable 层加载竞态**（admin_district 层异步加载未完成）→ 方案 A 仿 chain pre-check preset fallback；**PRM-07 方案 A（后端 dict 黑名单 `_ADMIN_BLOCKLIST` 5 个法定功能区名）**·风险低；P3-4 通过；W-2/S-3/三路径通过；glm 回归数据修正准确。
+
+### ② 我方反评价（verify-before-accept · 共识 + 分歧收敛）
+
+**共识（两组独立）**：
+- **PRM-03/04 修复通过**（G5 重写完备·center 缺 ask_user 正确）
+- **PRM-05 真因 ≠ `_validAfter` 词边界**（两组独立推演/模拟证明正则对问句始终匹配）→ **修正我发起文档的错误归因**·真因 = FC 方差 + deriveAvailable 层依赖/加载竞态
+- **PRM-07 残余属实**·方案收敛（Codex B' + glm A 可合并）
+- **P3-4 通过**（Codex W-A/W-B 建议级）
+- **W-2 闭合 / S-3 充分 / 三路径合理**（Codex 补验挂起解除）
+- **glm 回归数据修正准确**·PRM-05 补入判据合理
+- **Codex 关键补充**：B3 三连跑在 9680dcc/083b78d 之前·回归绿未覆盖 → **push 后补 B3 快照**
+
+**分歧收敛**：
+- **PRM-05 方案**：Codex a+c（测量端对齐 + 契约强化·治表象+减源头）vs glm A（deriveAvailable fallback·防御加载竞态）→ **合并三层**：glm fallback（防御·治加载竞态）+ Codex 测量端判据对齐（消误报）+ 契约强化（减 FC 空参）·互补不冲突
+- **PRM-07 方案**：Codex B'（前端 handler 校验 + 后端兜底）vs glm A（纯后端黑名单）→ **合并**：前端 handler 校验（FC 直传拒绝·语义最准）+ 后端 `_ADMIN_BLOCKLIST` 黑名单兜底（防御·不误伤上传层）
+
+**采纳修复清单**：
+```
+PRM-05：① deriveAvailable null + 问句含区名 → fallback 行政区 preset 单要素（glm·仿 chain pre-check :1131-1141）
+        ② test-cases.js PRM-05 缺 boundary → 合法 ask_user 判 PASS（Codex·对齐 PRM-04）
+        ③ tool_contracts zonal when/examples 强化「boundary 必带」（Codex·非 prompt 重写）
+PRM-07：① 前端 tools.js zonal/compare/rank handler 校验 FC 直传 boundary name 命中法定功能区词表 → 拒绝 request_upload（Codex B'）
+        ② 后端 geo_registry.py dict 分支加 _ADMIN_BLOCKLIST 黑名单校验（glm A·5 个法定功能区名·不误伤上传层）
+P3-4 建议级：W-A 文案矛盾修 + W-B poi_names 排序（后置）
+push 后：补 B3 快照（Codex·判据 {PRM-03/04/05/07}·覆盖 9680dcc/083b78d）
+```
+
+**承重红线确认**：全部建议未触碰四态出口 / finalStep D019 / diagnose prompt（契约文案 ≠ diagnose prompt·非重写）/ 追踪编号 / 「EMC 不硬猜」（PRM-07 修复正是强化）。
+
+### ③ 行动
+
+- 实施 PRM-05（三层：fallback + 测量端对齐 + 契约强化）
+- 实施 PRM-07（合并：前端 handler 校验 + 后端黑名单兜底）
+- P3-4 W-A/W-B 建议级（后置）
+- push 已验项（083b78d + 9680dcc）→ 补 B3 快照 → 发版候选
+
+### ④ 状态/新发现
+
+- **CB-19 反评价收敛完成**：PRM-03/04 通过·PRM-05/07 修复方案定稿（合并两组）
+- **新 learning**：发起文档归因错误（PRM-05 词边界）被两组独立纠正——**归因须先静态推演/模拟验证再下结论**（两组都用 Python 模拟证明正则不失败）；Codex 补验挂起解除（W-2/S-3/三路径全过）
+- **B3 快照补跑**：Codex 指出回归绿未覆盖 P3-4/PRM 修复 commit·push 后需补
+
+---
+
+## CB-20 · 2026-08-08（PRM-07 空对象根治 · 两组预检通过 · 实施完成）
+
+### ① SCAN 摘要
+
+P2-3 verify 断言加严 → 暴露 PRM-07 空对象真实残余（LLM 传空对象 boundary → zonal「无数据」误导用户「数据不足」）→ claude 发预检（`PRM07空对象根治_预检_2026-08-08.md`·方案 A/B/C）→ 两组评估。
+
+**Codex**（[回应](discuss/PRM07空对象根治_预检回应_Codex-GPT5_2026-08-08.md)）：**可实施（A 主 + B 兜底）**——根因链代码级确认（空对象 → 黑名单放行 → 后端 400 → LLM 弱化转述误导）·A 复用 request_upload 短路（确定性·LLM 无法弱化）·B handler 兜底（~3 行）·「用户上传不受限」以 derive 成功/失败为代理区分·不误伤可用层·承重红线零触碰。**细节修正**：后端对空对象抛 ValueError（400）非「无数据」·根治点在前端。
+
+**glm组**（[回应](discuss/PRM07空对象根治_预检回应_glm组_2026-08-08.md)）：**可实施（A+B 结合）**——三层防御（黑名单 + derive 失败短路 + handler 兜底）·**加 `_boundarySuspect` 守卫**（防合法单要素 derive 偶发失败被误 request_upload）·不误伤用户上传（derive 成功=放行/失败=诚实 request_upload）·改动 ~11 行 + 3 测试·不碰 :1115 短路主逻辑。
+
+### ② 我方反评价（verify-before-accept）
+
+**两组一致：A 主 + B 兜底 + `_boundarySuspect` 守卫** → 实施（`bdde1f0`）：
+- **方案 A**（harness.js derive 失败 else）：boundary 可疑（`_boundarySuspect`）+ derive 失败 → `strategy='request_upload'` + needed/gap → 复用既有 :1115 短路 → `buildRequestUploadText` 确定性文案。**不依赖 `_regions.length`**（实施时发现：法定功能区名「小溪塔」无「区/市/县」后缀·_regions 提取不到·boundary 可疑本身即足够——修正预检的 Codex 建议）
+- **方案 B**（tools.js zonal handler）：boundary 空对象/无 features → 「需上传标准边界资料：boundary 为空/无法解析」（防 A 未覆盖路径）
+- **验证**：pytest 303 零回归·node OK·verify_prm07_ab（e2e-seam 可控）：`zonal_stats({})` → 「需上传标准边界资料」✅ 生效（替代「无数据」）
+
+### ③ 行动
+
+- **实施完成**（`bdde1f0`·已推）·方案 A/B 生效（空对象 → request_upload·可控验证）
+- **工程边界诚实收敛**：浏览器实测 PRM-07 仍受 **LLM 传参方差**影响（每次传参不同：空对象 / 单要素字段名不标准 / 层未加载）——方案 A/B 覆盖「空对象 + derive 失败」可控场景·**完全消除 LLM 行为方差不可能**·这是合理边界·非代码缺陷
+
+### ④ 状态/新发现
+
+- **CB-20 闭环**：PRM-07 空对象根治（A/B 实施）·方案 B 可控验证生效
+- **新 learning**：`_regions` 正则只匹配「区/市/县/街道/镇」后缀·法定功能区名（小溪塔）无后缀提取不到——**边界名正则需覆盖法定功能区/非行政区名**（PRM-07 系列教训）；LLM 传参方差（空对象/字段名不标准）是 EMC 的固有边界·守卫覆盖可控场景即可
+- **PRM-07 残余**：LLM 单要素字段名不标准（无 name/MC/NAME）时黑名单取不到名·不拦——可后置扩字段名覆盖（P2 级）
+
+---
+
+## CB-19c · 2026-08-08（5115d7c 黑名单修复复验 · 两组通过）
+
+### ① SCAN 摘要
+
+claude 修复 Codex T7 阻断（`5115d7c`·黑名单只拦单要素）后发复验（`5115d7c黑名单修复_复验发起_2026-08-08.md`·用户要求落正式文档+推送）→ 两组评估。
+
+**Codex**（[回应](discuss/5115d7c黑名单修复_复验回应_Codex-GPT5_2026-08-08.md)）：**可接受**——T7 多步链执行成功（浏览器实测 exit=0·「两步操作已全部完成·抽取西陵区」）+ 小溪塔单要素仍拒识（verify_prm57 PASS）+ 前后端一致 + 零回归。**P2 建议**：① 多要素全黑名单增强（堵漏拦·~5 行）② **zonal handler `boundaryLabel: String(params.boundary)` 改取 `features[0].properties.name`**（治 `[object Object]`·正是 claude B3 里 PRM-07 偶发 fail 的方差源·改善 LLM 转述忠实度）③ verify_prm57 PRM-07 断言加严（防 LLM 弱化转述误判）。
+
+**glm组**（[回应](discuss/5115d7c黑名单修复_复验回应_glm组_2026-08-08.md)）：**通过**——前后端 `length!==1`/`len!=1` 条件正确·T7 多要素放行 + 小溪塔单要素拒识（Python 6 场景模拟前后端各 6 例全 OK）·**漏拦风险低**（LLM 构造多要素法定功能区极罕见 + deriveAvailable 白名单 + preset fixture 三重保险）·pytest 303 零回归。
+
+### ② 我方反评价（verify-before-accept）
+
+- **两组一致通过**：5115d7c 修复正确·T7 阻断解除·发版候选通过判定维持
+- **采纳 Codex P2 建议（记入 backlog·非阻断）**：
+  - P2-1 多要素全黑名单增强（`feats.every` 全命中才拦·~5 行+单测）——堵漏拦·ROI 低但堵住（glm 判 P3·Codex 判 P2·取中 P2）
+  - P2-2 **`boundaryLabel` 取 features[0].properties.name**（治 `[object Object]`·**改善 LLM 转述忠实度·治 PRM-07 偶发 fail 方差源**）——**本修复高价值·值得做**
+  - P2-3 verify_prm57 PRM-07 断言加严（加「法定功能区」关键词·防 LLM 弱化转述误判）
+- **用户指示**：下轮分派两组任务时带「优化流程」prompt（cb-must-materialize-docs 已记）
+
+### ③ 行动
+
+- 5115d7c 复验通过·CB-19c 闭环
+- P2 建议记入 backlog（P2-2 boundaryLabel 高价值·建议近期做）
+- 下轮分派带优化流程 prompt
+
+### ④ 状态/新发现
+
+- **CB-19 全部闭环**：整体验收 → 修复 → 深读 → 发版回归全面测试 → 黑名单修复复验 → **发版候选通过（两组确认）**
+- **新 learning**：`String(boundary)` 对 dict 产 `[object Object]`·LLM 转述不可读 → 治 PRM-07 偶发 fail 的方差（Codex 发现·P2-2）
+
+---
+
+## CB-19b · 2026-08-08（发版回归全面测试 · 三组汇总收敛 · 发版候选）
+
+### ① SCAN 摘要
+
+claude 发起 [发版回归全面测试方案](discuss/发版回归全面测试_方案_2026-08-08.md)（三组分工·fail 集判据 {PRM-03/04}·覆盖修复 commit 9680dcc/083b78d/469bf32）→ 三组并行执行。
+
+**claude组**（[结果](discuss/发版回归全面测试_结果_claude组_2026-08-08.md)）：pytest **303 passed + 5 skipped** + validate **34 passed** + ESM 6/6 + **B3 24/26（92%·历史最佳）**·fail={PRM-07（黑名单生效但空对象 LLM 方差）, RST-L06（Flash 方差）}·PRM-03/04/05 全转 PASS。**基建修复 4 commit**（三组并发必需）：端口隔离 3dc0a1c + 后台 PATH fdc1c1d + serve 502 断连 76b16eb + PRM-07 文案 2f9965f。
+
+**glm组**（[结果](discuss/发版回归全面测试_结果_glm组_2026-08-08.md)）：**条件绿**——pytest 303 + CB-18 已有数据（link_checkup 20/20 + B3 Run1/2 88%）+ PRM-05/07 代码审查（纯防御性 additive）·B3 final-2 因端口冲突未能新跑·eval 编码超时。建议 claude 补跑 B3 final 确认 PRM-05/07 转 PASS。
+
+**Codex**（[结果](discuss/发版回归全面测试_结果_Codex-GPT5_2026-08-08.md)）：**T6 PRM 专项全 PASS + T8 出口卡 e2e 全 PASS·T7 三路径多步链 FAIL【阻断】**——根因 = **469bf32 黑名单误伤**：`_rejectNonAdminBoundary` 检查所有 GeoJSON dict 的 feats[0]·演示行政区层首要素「龙泉」（黑名单词）→ 合法 extract/链被误拦 → **新增 fail·阻断发版候选**。
+
+### ② 我方反评价（verify-before-accept · Codex 阻断实核）
+
+**Codex T7 阻断属实**（浏览器复现 + 代码核实）：
+- 演示 `行政区.geojson` 9 要素·首要素「龙泉」（黑名单词）·多步链 extract 解析层首 → 被 `_rejectNonAdminBoundary` 误拦 → 链失败。
+- 我 B3 未暴露（zonal 用精确单要素·不命中层首）·**Codex 的浏览器专项暴露了**——再次验证「专项浏览器测试」价值。
+
+**修复**（`5115d7c`）：`_rejectNonAdminBoundary`（前端）+ `resolve_boundary`（后端）**只拦单要素 GeoJSON**（LLM 直传特征 `features.length===1`）·多要素（图层解析·行政区层）放行。
+
+**复测**：T7 三路径 PASS（多步链/multi 出 4 要点卡·PARTIAL 无观点保守不显卡·W3 正确）+ verify_prm57 PASS（小溪塔单要素仍拒识·pytest 单测覆盖）+ 全量 pytest 303 零回归。
+
+**三组收敛判定**：
+- **claude 24/26（92%）+ glm 条件绿 + Codex T6/T8 PASS** → 主体全绿
+- **Codex T7 阻断已修复**（5115d7c·复测 PASS）→ **阻断解除**
+- 剩余 fail = {PRM-07（空对象 LLM 方差·单要素拒识已生效）, RST-L06（Flash 方差）}·均非新增·非并发引入
+- **fail 集判据 {PRM-03/04} 达成**（PRM-03/04/05 全 PASS·PRM-07 单要素拒识生效）
+
+**承重红线确认**：全部改动未触碰四态出口 / finalStep D019 / diagnose prompt / 追踪编号 / 「EMC 不硬猜」（黑名单正是强化）。
+
+### ③ 行动
+
+- **发版候选判定：通过**（T7 阻断已修复·复测全绿·fail 集判据达成）
+- 基建 4 commit + 黑名单修复 2 commit 全部已推（5115d7c）
+- 剩余后置：PRM-07 空对象场景（LLM 方差·单要素拒识已覆盖）+ RST-L06 Flash 方差（已知）
+
+### ④ 状态/新发现
+
+- **CB-19b 闭环**：发版回归全面测试三组完成·发版候选通过
+- **新 learning**：黑名单/白名单类守卫**须区分「LLM 直传」vs「图层解析」**（单要素 vs 多要素·否则误伤合法图层操作）；Codex 浏览器专项暴露了我 B3 未覆盖的误伤——**专项浏览器测试（T6/T7/T8）是三组并发测试的必要组成**
+- **glm 环境限制**：端口冲突 + eval 编码——已由 claude 基建修复（--port/--backend-port）+ B3 补跑覆盖
+
+---
+
+## CB-17 · 2026-08-08（进度同步 + 下一步安排 · 三组收敛定稿）
+
+### ① SCAN 摘要
+
+**本轮由 claude组 发起**（用户 08-06~08-07 暂停后回归·要求回顾 + 三组同步下一步）：claude组 先核实状态基线（git `cf5ef04` 同步·08-05 两专题 CB 全闭环·pytest/validate/link_checkup/eval/B3/RST-L06 基线）→ 落 [进度同步与下一步安排_讨论发起](discuss/进度同步与下一步安排_讨论发起_2026-08-08.md)（7 债 + 5 焦点 + 附 A prompt）→ 两组回应。
+
+**Codex**（[回应](discuss/进度同步与下一步安排_回应_Codex-GPT5_2026-08-08.md)）：快照事实核验全通过（代码 grep 逐项佐证）·焦点 1 agree + 补 B3 fail 集合快照判据（fail id 集 == {PRM-03/04/07}·任何新增 fail 即阻断）+ 三路径观点卡浏览器抽验（B1 补丁只被 pytest 未被 B3 覆盖）；焦点 2 agree（P3-1/P3-4 回归后启动·分开 commit·P3-2 降挂起）；焦点 3 **partial（P2→P1·仅预检不实施·先 B3 取证）**；焦点 4 agree 发版后专题 + 关键提醒「热点 = 空间密集 + 极性同质双条件」；补债 #8 HOME/OFFICE 交接卡过期 · #9 flywheel 注释 25→26 · #10 回归判据缺 fail 快照 · #11 前端 JS 单测补课。
+
+**glm组**（[回应](discuss/进度同步与下一步安排_回应_glm组_2026-08-08.md)）：快照基本准确（pytest 独立跑 **291 passed + 5 skipped** vs claude 声称 293·差 2 待核实；FINAL_TEMPLATE 2891B vs 2957B 口径；validate 34 vs 28 口径）·焦点 1 agree + 范围补 validate_outlet_fields/validate_skill_params/test_hotspot；焦点 2 **partial（P3-4 优先于 P3-1·出口闭环最后一块·微观落点粗略→精确）**；焦点 3 **agree 不排入（PRM-03/04 center ask_user 正确·PRM-07 已根治）**；焦点 4 agree 发版后专题；补债 #8 .outlet-metrics CSS 缺失。
+
+### ② 我方反评价（verify-before-accept · 关键争议核实）
+
+**独立核实证据**：
+- pytest 实测 **291 passed + 5 skipped**（35.47s 全绿）→ **glm 的 291 正确**·08-05「293」为旧口径（差异 2 条·非回归·待发版回归对齐口径）
+- `.outlet-metrics` **已存在于 `frontend/css/ai_qa.css`**（Grep 证实·401371b ③z3b P2-1 已修）→ **glm 补债 #8 为过时信息**（CB-16 Wave 3 旧报告）
+- **PRM-07 执行侧残余属实**（`frontend/js/ai_qa/tools.js:617-622`：白名单 `_isFixedAdmin` 只对 `source==='preset' && /行政区/.test(name)` 生效·FC 直供非 preset 单要素边界**绕过**）→ **Codex 对·glm「已根治」仅覆盖数据侧**（fixture 9→4 清理 + deriveAvailable）·执行侧缺口 = 08-04 已记「Codex ③w7 FC boundary 残余 P2」未解
+- flywheel_audit.py:7 注释「25 例」 vs 实际 26（RST-L06 新增后未同步）→ **Codex 属实**
+
+**逐焦点判定**：
+
+| 焦点 | 判定 | 收敛 |
+|---|---|---|
+| 1 回归时机/范围 | **agree** 顺序（先验收→再回归·回归成本避免翻倍）·范围**合并两组补充** | B3 fail 集合快照判据（Codex）+ 三路径观点卡浏览器抽验（Codex）+ validate_outlet_fields/validate_skill_params/test_hotspot（glm）+ pytest 全量 + eval 带 session + flywheel 注释对齐 |
+| 2 P3 排期 | **partial·采纳 glm P3-4 优先** | P3-4 地点联动（出口闭环·北极星）优先于 P3-1 依赖图；P3-4 复用 geo_label 防第三套地点字段（Codex 提醒·防「字段字典漂移」同类坑）；P3-2 并行**维持后置·降挂起**（两组一致·`$n` 索引重构前置） |
+| 3 PRM 排期 | **采纳 Codex（P1 预检·不实施）·否 glm（不排入）** | PRM-07 执行侧残余实测属实·非「已根治」→ 须预检；PRM-03/04 **采纳 glm 洞察**（center ask_user 是正确行为·预检重点是修复生效/断言口径·非改代码）·实施放回归通过后 |
+| 4 长期算法 | **agree** 发版后专题 | + 采纳 Codex「热点 = 空间密集 + 极性同质 双条件」产品定义（先定义再选型·DBSCAN 聚空间位置非 score 分布） |
+| 5 补充异议 | 快照核验通过·**disagree glm 债 #8** | pytest 291 为实（旧 293 口径）·采纳 Codex #8/9/10/11 + glm validate 范围补充·**glm #8 .outlet-metrics CSS 已存在 → disagree（事实错误/过时）** |
+
+**无承重红线异议**：全部建议在四态出口 / finalStep D019 / diagnose 永不动 / 追踪编号 红线之外。
+
+### ③ 行动（下一步安排定稿 · 写入 todo 08-08 段）
+
+```
+P0（用户·当前）整体验收：todo「整体验收清单」浏览器肉眼验证 + 记 3 观感（观点卡干货感/热点五档可读性/setTerrain 地势感）
+P1（发版门）发版就绪度回归：pytest 全量（291 passed + 5 skipped 基线）+ validate（28+ 含 outlet_fields/skill_params）+ link_checkup 20/20 + eval 复采（带 session）+ B3 三连（判据 = fail 集 == {PRM-03/04/07}·不新增即过）+ RST-L06 三连 + 三路径观点卡浏览器抽验 + flywheel 注释对齐（25→26）
+P1（预检）PRM backlog CB 预检（仅预检不实施）：B3 取证确认 fail 集合 → PRM-03/04 stale-tool 修复覆盖核实（center ask_user 正确·非改代码）→ PRM-07 执行侧两候选收敛（白名单补齐 vs request_upload 强化）→ 回归通过后实施
+P2（回归后）P3-4 地点联动（出口闭环·微观落点粗略→精确）：复用 geo_label·先盘点消费方·分开 commit 先验后推
+P2（回归后）P3-1 依赖图（零红线）：DAG 纯函数·不交 LLM·与 P3-4 分开 commit
+P3（文档）HOME/OFFICE 交接卡同步 + _cb-index 状态更新 + revision-log 归档
+P3（后置）P3-2 并行（降挂起·待 EMC 规模化 + $n 索引重构）· KDE/DBSCAN 替代（发版后专题·先定产品定义）· 时间轴 manifest · 前端 JS 单测补课（下轮 SCAN 关注）
+```
+
+### ④ 状态/新发现
+
+- **CB-17 闭环**：三组进度同步完成 · 下一步安排定稿（整体验收 → 发版回归 → PRM 预检 + P3-4 地点联动 → 后置项）
+- **新 learning 候选**（PRM-07 分歧教训）：评估方「已根治」判定须覆盖**执行侧**（不只数据侧/deriveAvailable）——白名单/门控类修复要追全消费路径（本例 FC 直供边界绕过 preset 白名单）
+- **下轮 SCAN 关注**（两组建议合并）：前端 JS 单测补课（result-struct/setTerrainDEM/hotspot legend e2e-seam 直测）· PRM fail 集合收敛轨迹（{PRM-03/04/07}→0）· 三路径观点卡稳定性 · 整体验收后用户观感（SCAN 第七轴采集）
+
+---
+
 ## CB-16 · 2026-08-03（出口深化讨论 · 发起）
 
 ### ① SCAN 摘要

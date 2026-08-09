@@ -25,25 +25,34 @@ def main() -> int:
         page.wait_for_function("() => !!(window.__emcTest && __emcTest.buildOutletCardForTest)", timeout=45000)
 
         # ── 场景 1：macro rows 产物 → renewal_object_identify 出卡（newLayerCount=0·门放宽）──
+        # P3-4（CB-19）：rows 带 place_name/place_name_source（prop_cols 放行）→ 出口卡可读到地点（Gap B 端到端链路）
         rows = [
-            {'name': '西陵区', 'polarity_index': -0.42, 'domain_top': 'urban_renewal',
+            {'name': '西陵区', 'place_name': '滨江公园', 'place_name_source': 'poi_sjoin',
+             'polarity_index': -0.42, 'domain_top': 'urban_renewal',
              'element_top': '环境', 'issue_label': '老旧破败', 'point_count': 300},
-            {'name': '伍家岗区', 'polarity_index': -0.21, 'domain_top': 'urban_renewal',
+            {'name': '伍家岗区', 'place_name': '万达广场', 'place_name_source': 'poi_sjoin',
+             'polarity_index': -0.21, 'domain_top': 'urban_renewal',
              'element_top': '设施', 'issue_label': '停车难', 'point_count': 200},
         ]
         page.evaluate("(r) => __emcTest.setOutletRows(r)", rows)
         card1 = page.evaluate("""() => __emcTest.buildOutletCardForTest(
           { scale: 'macro', domain_lens: ['urban_renewal'], outlet: '生成图层' },
           { question: '宜昌城区哪些区域更新优先' }, 0)""")
-        assert card1 and card1.get('outlet_id') == 'renewal_object_identify', \
-            f'场景1 应命中 renewal_object_identify（newLayerCount=0 也出卡·门放宽）·实际 {card1 and card1.get("outlet_id")}'
-        vals1 = {k: str(f.get('value')) for k, f in (card1.get('fields') or {}).items()}
+        assert card1 and isinstance(card1, list) and card1[0], \
+            f'场景1 应命中 renewal_object_identify（newLayerCount=0 也出卡·门放宽）·实际 {card1}'
+        c1 = card1[0]   # Wave 3 多卡：cards 数组首卡
+        assert c1.get('outlet_id') == 'renewal_object_identify', \
+            f'场景1 应命中 renewal_object_identify（实际 {c1.get("outlet_id")}）'
+        vals1 = {k: str(f.get('value')) for k, f in (c1.get('fields') or {}).items()}
         assert '老旧破败' in vals1.get('更新对象（疑似）', ''), \
             f'场景1 更新对象应取 rows issue_label（{vals1}）'
         assert any(v != '暂无数据' for v in vals1.values()), f'场景1 字段不应全降级（{vals1}）'
-        assert card1['data_base']['N'] == 2 and card1['data_base']['total_points'] == 500, \
-            f'场景1 data_base 应为单元数+总评论数（{card1["data_base"]}）'
-        print(f'[OK] 场景1 macro rows → renewal_object_identify 出卡（newLayerCount=0·门放宽）+ 字段非空 + data_base 单元数')
+        assert c1['data_base']['N'] == 2 and c1['data_base']['total_points'] == 500, \
+            f'场景1 data_base 应为单元数+总评论数（{c1["data_base"]}）'
+        # P3-4：limitations 读 place_name_source（poi_sjoin → 精确标注·Gap A 端到端）
+        lims1 = ' '.join(c1['limitations'])
+        assert '精确' in lims1, f'场景1 limitations 应标 poi_sjoin 精确（{lims1}）'
+        print(f'[OK] 场景1 macro rows → renewal_object_identify 出卡（newLayerCount=0·门放宽）+ 字段非空 + data_base 单元数 + 地点标注精确')
 
         # ── 场景 2：checkup_dimension scale 限定（macro 问句 → 城区维度填值·其余需对应尺度）──
         rows2 = [{'name': '宜昌城区', 'polarity_index': 0.15, 'domain_top': 'urban_governance',
@@ -52,9 +61,12 @@ def main() -> int:
         card2 = page.evaluate("""() => __emcTest.buildOutletCardForTest(
           { scale: 'macro', domain_lens: ['urban_governance'], outlet: '报告结论' },
           { question: '中心城区城市体检评估' }, 0)""")
-        assert card2 and card2.get('outlet_id') == 'checkup_dimension', \
-            f'场景2 应命中 checkup_dimension（实际 {card2 and card2.get("outlet_id")}）'
-        vals2 = {k: str(f.get('value')) for k, f in (card2.get('fields') or {}).items()}
+        assert card2 and isinstance(card2, list) and card2[0], \
+            f'场景2 应命中 checkup_dimension（实际 {card2}）'
+        c2 = card2[0]
+        assert c2.get('outlet_id') == 'checkup_dimension', \
+            f'场景2 应命中 checkup_dimension（实际 {c2.get("outlet_id")}）'
+        vals2 = {k: str(f.get('value')) for k, f in (c2.get('fields') or {}).items()}
         assert '0.15' in vals2.get('城区维度', ''), f'场景2 城区维度应取 polarity_index（{vals2}）'
         assert '需对应尺度分析' in vals2.get('住房维度', ''), f'场景2 住房维度应标需对应尺度分析（{vals2}）'
         print('[OK] 场景2 checkup_dimension scale 限定：城区填值·住房/小区/街区需对应尺度')

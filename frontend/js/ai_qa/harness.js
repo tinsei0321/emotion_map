@@ -1507,7 +1507,21 @@ function deriveMissingParams(diagnose, question, layers) {
     diagnose.template = 'extract_feature'; diagnose.method = ['extract_feature()'];   // 筛选用地→extract
   } else if (/(聚合|归因|统计).{0,4}(情绪|极性)|按面聚合/.test(q) && tool !== 'zonal_stats') {
     // CB-12 P1' + 定稿（glm组）：聚合/归因+区名 → 强制 zonal_stats·**前置检查 derive 成功才强制**（boundary 能填·防强制 zonal + 无 boundary → gap/while-loop 退化）
-    const _zonalD = deriveAvailable(q, layers);
+    // PRM-05（08-08 深读·glm 方案）：deriveAvailable 偶发 null（层加载竞态/FC 方差）→ fallback 行政区 preset 单要素（仿 chain pre-check :1154-1160）
+    let _zonalD = deriveAvailable(q, layers);
+    if (!_zonalD && !p.boundary && !p.boundaries && /(.+?)(?:区|市|县)/.test(q)) {
+      // deriveAvailable 失败但问句含区名 → fallback 行政区 preset（治层加载竞态导致的偶发 null·非硬猜·行政区是固化库）
+      const _presetLayer = (layers || []).find((x) => x.name === '行政区' || /行政区/.test(x.name || ''));
+      if (_presetLayer && _presetLayer.fc && _presetLayer.fc.features) {
+        const _dm = q.match(/(.+?)(?:区|市|县)/);
+        const _pname = _dm ? _dm[1] : '';
+        const _pf = _presetLayer.fc.features.find((f) => {
+          const v = f.properties && (f.properties.name || f.properties.MC || f.properties.NAME);
+          return v != null && String(v).includes(_pname);
+        });
+        if (_pf) _zonalD = { name: _pname + '区', layer: _presetLayer.name, field: 'MC' };
+      }
+    }
     if (_zonalD) {
       diagnose.template = 'zonal'; diagnose.method = ['zonal_stats()'];
       if (!p.boundary && !p.boundaries) {
@@ -1526,9 +1540,14 @@ function deriveMissingParams(diagnose, question, layers) {
     // boundary 不能 derive → 不强制改 template（保留 FC 原选·防强制 zonal + 无 boundary → gap/while-loop）
   }
   // G5 路由修正（B3 PRM 路由错·高置信模式）："周边/附近 Nm 情绪" → buffer（勿 zonal）·"对比 A 与 B" → compare（勿单区）
-  if (/(周边|附近|半径|缓冲|米内|公里内)/.test(q) && /情绪|点|分布/.test(q) && tool !== 'buffer' && !/(叠|合并|裁|筛选)/.test(q)) {
+  // PRM-03/04（08-08 真根因）：LLM 可能把「周边 Nm 情绪」路由成 merge/lookup_place 多工具 → 走 runAllToolCalls 绕过本修正
+  //   → 此处同时重写 _allToolCalls 为 buffer 单 call（对齐 PRM-07/10/08 多 call 重写模式·防多工具错路由）
+  if (/(周边|附近|半径|缓冲|米内|公里内)/.test(q) && /情绪|点|分布/.test(q) && tool !== 'buffer' && !/(叠|裁|筛选)/.test(q)) {
     diagnose.template = 'buffer';
     diagnose.method = ['buffer()'];
+    if (Array.isArray(diagnose._allToolCalls) && diagnose._allToolCalls.length > 1) {
+      diagnose._allToolCalls = [{ name: 'buffer', params: {} }];   // 多工具错路由 → 强制 buffer 单 call（radius/center 由 derive 补）
+    }
   } else if (/(对比|比较|vs|与.*相?比)/i.test(q) && (tool !== 'compare_regions' ||
       !Array.isArray(p.boundaries) || p.boundaries.length < 2)) {
     // CB-12 补丁 + PRM-08（Codex/glm）：FC 已选 compare 但 boundaries 不足 2 个也补满
@@ -1585,6 +1604,16 @@ function deriveMissingParams(diagnose, question, layers) {
         const _regions = (q.match(/[一-龥]{2,6}(?:区|市|县|街道|镇)/g) || []).slice(0, 2);
         if (_regions.length && console && console.info) {
           console.info(`[derive] 区名 ${_regions.join('、')} 未在已加载面层中找到匹配要素（可用边界层：${(layers || []).filter((x) => x.kind === 'polygon').map((x) => x.name).join('、') || '无'}）`);
+        }
+        // CB-20（两组预检·A 主）：boundary 可疑（空/多要素/字符串·_boundarySuspect）+ derive 失败 → 诚实 request_upload
+        //   治「传空对象给 zonal → 后端 400 → LLM 弱化转述『数据不足』误导用户」（PRM-07 空对象场景）
+        //   守卫 _boundarySuspect：合法单要素（derive 偶发失败）不触发·防误伤（glm 补充）
+        //   不依赖 _regions：法定功能区名（小溪塔）无「区/市/县」后缀·_regions 提取不到·boundary 可疑本身即足够
+        if (_boundarySuspect(p.boundary)) {
+          diagnose.data_plan = diagnose.data_plan || {};
+          diagnose.data_plan.strategy = 'request_upload';
+          diagnose.data_plan.needed = ['标准边界资料（行政区划/更新单元 Shapefile/GeoJSON·EPSG:4326）'];
+          diagnose.data_plan.gap = ['该区边界为法定功能区/非预置范围·EMC 不硬猜不可信范围（CB-14）·无法解析边界'];
         }
       }
     }

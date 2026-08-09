@@ -1,20 +1,39 @@
 # 办公室 · 工作交接卡
 
-> **位置**：办公室 | **最后更新**：待同步 | **操作人**：—
-> **同步**：git push 后家里可见。到家后读 `HOME.md`。
+> **位置**：办公室 | **最后更新**：2026-08-08（今日收工） | **操作人**：claude组（Claude Code）
+> **同步**：git push 已完成。明天到公司 git pull 后读本卡 + HOME.md。
 
-## 本次做了什么
+## 今日完成（08-08 · CB-17~CB-20 全闭环）
 
-（到办公室后填写）
+**CB-17**：进度同步 + 下一步安排定稿（用户暂停 2 天后回归·三组收敛）
+**CB-18**：整体验收（验收交两组走 CB·W-1/W-2 修复 + S-1~4 补证）
+**CB-19**：修复全闭环——P3-4 地点联动（prop_cols 放行 place_name + buildZonalFc 透传 + 出口卡动态标注）+ PRM-03/04/05/07 根治（G5 多工具重写 + zonal fallback + 黑名单单要素拒识）+ 深读修复协助（两组详读）+ 发版回归全面测试（三组协同·B3 24/26 92% 历史最佳）+ 黑名单误伤修复（5115d7c·Codex T7 阻断）+ P2-2 boundaryLabel（治 `[object Object]`）+ P2-3 verify 断言加严
+**CB-20**：PRM-07 空对象根治（方案 A request_upload 短路 + B handler 兜底·两组预检通过）
 
-## 待家里做
+**最终状态**：发版候选通过（两组确认）·fail 集判据 {PRM-03/04} 达成·全部修复已推·工作区干净·与 origin 同步 @ `903632e`
 
-（到办公室后填写）
+## 明天待做（公司电脑）
+
+- [ ] `git pull`（拉取今日全部 push）
+- [ ] 读 HOME.md + 本卡 + cb-index（CB-20 最新）
+- [ ] 决定下一步：后置项（PRM-07 字段名覆盖 P2 / P2-1 多要素黑名单 / RST-L06 方差 / KDE-DBSCAN / 时间轴 / P3-2 并行）或用户新需求
 
 ## 关键文件速查
 
 | 看什么 | 路径 |
 |------|------|
-| CB 全貌 | `docs/catch-ball/_cb-index.md` |
-| CB 规则 | `docs/catch-ball/RULES.md` |
-| 家里最新进展 | `docs/catch-ball/_handoff/HOME.md` |
+| CB 入口 | `docs/catch-ball/_cb-index.md` |
+| CB 轨迹 | `docs/catch-ball/cb-journal.md`（CB-17~20 最新） |
+| 发版回归结果 | `docs/catch-ball/discuss/发版回归全面测试_结果_*2026-08-08.md` |
+| PRM-07 根治 | `docs/catch-ball/discuss/PRM07空对象根治_*2026-08-08.md` |
+| todo 日志 | `docs/todo.md` |
+| revision-log | `docs/revision-log.md` |
+| 记忆索引 | `~/.claude/projects/d--Github-emotion-map/memory/MEMORY.md` |
+
+## 关键 learning（今日·防踩坑）
+
+- **两组介入须先落文档 + push**（cb-must-materialize-docs·用户指示）
+- **黑名单/守卫须区分 LLM 直传 vs 图层解析**（单要素 vs 多要素·5115d7c 教训）
+- **`_regions` 正则只匹配区/市/县后缀**·法定功能区名提取不到（CB-20）
+- **LLM 传参方差是 EMC 固有边界**·守卫覆盖可控场景即可（CB-20）
+- **B3 后台跑需 `--port/--backend-port` 隔离 + sys.executable**（三组并发·基建 4 commit）

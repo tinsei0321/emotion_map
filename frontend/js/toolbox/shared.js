@@ -62,6 +62,11 @@ export function buildZonalFc(rows, boundary) {
         point_count: row ? (row.point_count || 0) : 0,
         domain_top: row ? row.domain_top : null, element_top: row ? row.element_top : null,
         issue_label: row ? row.issue_label : null,
+        // P3-4（CB-19）：地点字段透传——rows 带 place_name 则合成 feature 携带（popup/outlet 图层/深读可用）
+        place_name: row ? (row.place_name || null) : null,
+        place_name_source: row ? (row.place_name_source || null) : null,
+        poi_names: row ? (row.poi_names || null) : null,
+        poi_count: row ? (row.poi_count || null) : null,
       },
     });
   }

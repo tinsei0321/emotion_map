@@ -1,7 +1,7 @@
 # CB Index — Catch-Ball 统一入口
 
 > **读我**：claude组（Claude Code 开发主）+ Codex + glm组（ZCode + GLM 5.2）启动时读此文件，了解 CB 全貌。
-> **维护**：每轮 CB 完成后更新。最后更新：2026-08-01（CB-10·glm组 加入双阵营）。
+> **维护**：每轮 CB 完成后更新。最后更新：2026-08-08（CB-17·进度同步 + 下一步安排）。
 
 ---
 
@@ -9,13 +9,13 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-10**（EMC 修复工程·P0/P1 聚焦 + 族 A 主通道定型） |
-| **下一轮** | CB-11（glm组 加入后主通道验证） |
+| **当前 CB 轮次** | **CB-20**（PRM-07 空对象根治预检·待两组回应） |
+| **上一轮** | CB-19（全闭环·发版候选通过·含 CB-19c 黑名单复验） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
-| **当前分支** | `fix/emc-buglog` @ `4930274` |
-| **最新 SCAN** | `scan/CB10-主通道决策评审_Codex-GPT5_2026-08-01.md` |
-| **最新反评价复核** | `scan/CB10-反评价二轮审核_Codex-GPT5_2026-08-01.md` |
-| **接手文档** | `_handoff/DEEPSEEK_ONBOARDING_2026-07-30.md` |
+| **当前分支** | `fix/emc-buglog` @ `39a040a`（与 origin 同步） |
+| **最新讨论** | `discuss/PRM07空对象根治_预检_2026-08-08.md`（CB-20·boundary 空对象 → request_upload·方案 A/B/C 待两组收敛） |
+| **最新进展** | **CB-19 全闭环·发版候选通过**（P2-2/P2-3/文档债已收尾）·**CB-20 启动**：P2-3 暴露 PRM-07 空对象真实残余（LLM 传空对象→zonal「无数据」误导用户）·根治方案预检已发起 |
+| **接手文档** | `memories/repo/session-handoff.md`（08-05 交接卡·P3 文档债待同步 HOME/OFFICE）+ `_handoff/HOME.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 
 ## 快速开始

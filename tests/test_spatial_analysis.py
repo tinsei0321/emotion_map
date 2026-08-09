@@ -15,7 +15,7 @@ from shapely.geometry import Point, box
 
 from core.spatial_analysis import (
     create_square_grid, create_hex_grid, aggregate_by_polygons,
-    aggregate_by_boundary_id,
+    aggregate_by_boundary_id, create_terrain_dem,
 )
 
 
@@ -353,3 +353,56 @@ def test_hotspot_tier_field_present():
         if 'PySAL' in str(e) or 'esda' in str(e) or 'libpysal' in str(e):
             pytest.skip(f'PySAL 未装: {e}')
         raise
+
+
+# ═══ create_terrain_dem · terrarium 解码（CB-18 S-2 补证）═══
+
+def test_create_terrain_dem_terrarium_decode():
+    """KDE→terrarium RGB 解码回高度（0~height_scale）·bounds WGS84·尺寸>0（CB-18 S-2）。
+
+    验证 P1.5 setTerrain 连续曲面的后端编码正确性——setTerrain 依赖 terrarium 约定
+    (height = (R*256 + G + B/256) - 32768)。一次性手工验证（08-05）转自动化守卫。
+    """
+    # 复用合成数据（宜昌附近 WGS84·带 score）
+    gdf = _synth_points(n=150, seed=3)
+    try:
+        res = create_terrain_dem(gdf, polarity='overall', bandwidth_m=200.0,
+                                 cell_m=60.0, height_scale=500.0)
+    except ImportError as e:
+        pytest.skip(f'依赖缺失: {e}')
+    # 返回结构
+    assert 'png' in res and 'bounds' in res and 'width' in res and 'height' in res
+    assert res['height_scale'] == 500.0
+    assert res['width'] >= 24 and res['height'] >= 24, 'DEM 网格尺寸应≥24（最小栅格约束）'
+    # bounds 应为 WGS84（4326·w<s<e<n·与输入同量级经纬度）
+    w, s, e, n = res['bounds']
+    assert w < e and s < n, f'bounds 应 w<e, s<n（{res["bounds"]}）'
+    assert 100 <= w <= 130 and 20 <= s <= 50, f'bounds 应为 WGS84 经纬度量级（{res["bounds"]}）'
+    # PNG 解码 → terrarium RGB → 回高度（0~500m·非零）
+    # matplotlib imsave 输出：PIL (width,height) = (ny, nx)（rgb 数组 (ny,nx,3)·高在前）
+    import io
+    from PIL import Image
+    img = Image.open(io.BytesIO(res['png'])).convert('RGB')
+    assert img.size == (res['height'], res['width']), f'PNG 尺寸应等于网格（{img.size} vs hxw={(res["height"], res["width"])}）'
+    px = img.load()
+    hs = []
+    # PIL 像素索引 px[x, y]：x∈[0,width)·y∈[0,height)；matplotlib 输出 width=ny·height=nx
+    for y in range(0, img.size[1], max(1, img.size[1] // 8)):
+        for x in range(0, img.size[0], max(1, img.size[0] // 8)):
+            r, g, b = px[x, y]
+            h = (r * 256 + g + b / 256) - 32768
+            hs.append(h)
+    assert any(h > 0 for h in hs), 'DEM 应存在非零高度（KDE 密度面非全平）'
+    assert all(h <= 500.0 + 1e-6 for h in hs), f'高度应 ≤ height_scale=500（max={max(hs):.1f}）'
+
+
+def test_create_terrain_dem_polarity_filter():
+    """polarity 过滤后点不足 → ValueError（诚实报错·不空跑）。"""
+    gdf = _synth_points(n=5, seed=9)
+    # 强制极性列全为 'Positive'·过滤 negative 后剩 0 点
+    gdf['polarity'] = ['Positive'] * 5
+    try:
+        with pytest.raises(ValueError):
+            create_terrain_dem(gdf, polarity='negative')
+    except ImportError as e:
+        pytest.skip(f'依赖缺失: {e}')

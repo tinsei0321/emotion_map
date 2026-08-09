@@ -59,6 +59,9 @@ def test_zonal_stats_returns_sorted_units_with_attribution():
     row = d['rows'][0]
     for k in ('name', 'polarity_index', 'point_count', 'domain_top'):
         assert k in row
+    # P3-4（CB-19）：地点字段应进 rows（Gap B 核心杠杆——出口卡/结论段/图层受益）。值兼容空串（无地点不编造）
+    for k in ('place_name', 'place_name_source', 'poi_names', 'poi_count'):
+        assert k in row, f'zonal rows 应含地点字段 {k}（P3-4·Gap B）'
     # |pi| 应降序（张力大的在前）
     pis = [abs(rw['polarity_index']) for rw in d['rows'] if rw.get('polarity_index') is not None]
     assert pis == sorted(pis, reverse=True)
@@ -161,6 +164,10 @@ def test_rank_worst_via_boundary():
     assert len(rows) <= 3
     pis = [rw['polarity_index'] for rw in rows if rw.get('polarity_index') is not None]
     assert pis == sorted(pis)                # worst=最负在前（升序）
+    # P3-4（CB-19）：rank rows 也应含地点字段（同 zonal）
+    if rows:
+        for k in ('place_name', 'place_name_source', 'poi_names', 'poi_count'):
+            assert k in rows[0], f'rank rows 应含地点字段 {k}（P3-4·Gap B）'
 
 
 def test_zonal_stats_pre_filter_combines():

@@ -511,6 +511,16 @@ def test_p1_geo_label_scale():
     card2 = build_outlet_schema_single(diag2, {'rows': [{'place_name': '大南门', 'polarity_index': -0.3,
                                                          'issue_label': '停车难', 'point_count': 900}]}, '大南门更新需求')
     assert card2['geo_label'].startswith('中观·单元'), f'meso geo_label 应标中观·单元（{card2["geo_label"]}）'
+    # micro → 微观·落点（CB-18 S-4 补证·else 兜底分支）
+    diag3 = {'scale': 'micro', 'domain_lens': ['urban_renewal'], 'outlet': '建议清单'}
+    card3 = build_outlet_schema_single(diag3, {'rows': [{'place_name': 'CBD', 'polarity_index': -0.5,
+                                                         'issue_label': '配套不足', 'point_count': 60}]}, 'CBD 落点分析')
+    assert card3['geo_label'].startswith('微观·落点'), f'micro geo_label 应标微观·落点（{card3["geo_label"]}）'
+    # 未知 scale → 不构建卡（诚实降级·不确定尺度不硬出行业卡）
+    diag4 = {'scale': 'unknown', 'domain_lens': ['urban_renewal'], 'outlet': '建议清单'}
+    card4 = build_outlet_schema_single(diag4, {'rows': [{'place_name': 'X', 'polarity_index': -0.1,
+                                                         'issue_label': 'Y', 'point_count': 10}]}, 'X')
+    assert card4 is None, f'未知 scale 应不出卡（诚实降级·card4={card4}）'
 
 
 def test_p1_limitations_case_benchmark_note():
@@ -528,3 +538,63 @@ def test_p1_measure_note_in_cases():
     for cid, case in CASES.items():
         assert case.get('measure_note'), f'案例 {cid} 缺 measure_note（口径标注）'
         assert case.get('source'), f'案例 {cid} 缺 source（已核实出处）'
+
+
+# ═══ P3-4（CB-19）：动态 limitations + 微观落点精确化 ═══
+
+def test_p3_4_dynamic_limitations_source():
+    """P3-4 Gap A：limitations 按 place_name_source 动态标注（不硬编码"格内最近 POI"）。"""
+    cases = [
+        # (source, 应含子串·且不应含)
+        ('poi_sjoin', '精确', '粗略'),
+        ('poi_top_places', '面域代表名', '格内最近 POI'),
+        ('spatial_hotspot', '粗略', '精确'),
+        ('area_seed', '粗略', '精确'),
+        (None, '未定位', '格内最近 POI'),
+    ]
+    for src, _must, _not in cases:
+        diag = {'scale': 'meso', 'domain_lens': ['urban_renewal'], 'outlet': '建议清单'}
+        row = {'place_name': '大南门', 'polarity_index': -0.3, 'issue_label': '停车难', 'point_count': 900}
+        if src:
+            row['place_name_source'] = src
+        card = build_outlet_schema_single(diag, {'rows': [row]}, '大南门更新需求')
+        lims = ' '.join(card['limitations'])
+        assert _must in lims, f'source={src} limitations 应含 {_must}（{lims}）'
+        assert _not not in lims, f'source={src} limitations 不应含 {_not}（{lims}）'
+
+
+def test_p3_4_micro_poi_sjoin_already_precise():
+    """P3-4：micro + poi_sjoin（已精确·格内最近 POI）→ 需求位置不变·source 标精确。"""
+    diag = {'scale': 'micro', 'domain_lens': ['urban_renewal'], 'outlet': '建议清单'}
+    result = {'rows': [{'place_name': '万达广场', 'place_name_source': 'poi_sjoin',
+                        'poi_names': '万达广场、沃尔玛 等2处', 'polarity_index': -0.5,
+                        'issue_label': '配套不足', 'point_count': 60}]}
+    card = build_outlet_schema_single(diag, result, '万达广场落点分析')
+    loc = card['fields']['需求位置']
+    assert '万达广场' in loc['value'], f'poi_sjoin 需求位置应保持 POI 名（{loc}）'
+    assert '精确' in loc['source'], f'poi_sjoin source 应标精确（{loc}）'
+    assert card['geo_label'].startswith('微观·落点'), f'geo_label 应微观·落点（{card["geo_label"]}）'
+
+
+def test_p3_4_micro_polygon_upgrade_to_poi():
+    """P3-4 Gap C：micro + poi_top_places（place_name=边界名·有 poi_names）→ 需求位置升级为首个 POI。"""
+    diag = {'scale': 'micro', 'domain_lens': ['urban_renewal'], 'outlet': '建议清单'}
+    result = {'rows': [{'place_name': '大南门·二马路滨江片区', 'place_name_source': 'poi_top_places',
+                        'poi_names': '滨江公园、二马路老巷 等3处', 'polarity_index': -0.32,
+                        'issue_label': '停车难', 'point_count': 900}]}
+    card = build_outlet_schema_single(diag, result, '大南门更新需求分析')
+    loc = card['fields']['需求位置']
+    assert '滨江公园' in loc['value'], f'micro+poi_top_places 需求位置应升级为首个 POI（{loc}）'
+    assert 'POI 落点' in loc['source'], f'source 应标 POI 落点升级（{loc}）'
+    assert card['geo_label'].startswith('微观·落点'), f'geo_label 应微观·落点（{card["geo_label"]}）'
+
+
+def test_p3_4_micro_no_poi_honest():
+    """P3-4：micro + 无 poi_names → 需求位置不动·source 标粗略（诚实不编造）。"""
+    diag = {'scale': 'micro', 'domain_lens': ['urban_renewal'], 'outlet': '建议清单'}
+    result = {'rows': [{'place_name': '西陵区', 'place_name_source': 'spatial_hotspot',
+                        'polarity_index': -0.4, 'issue_label': '老旧', 'point_count': 30}]}
+    card = build_outlet_schema_single(diag, result, '西陵区落点分析')
+    loc = card['fields']['需求位置']
+    assert '西陵区' in loc['value'], f'无 poi_names 需求位置应保持（{loc}）'
+    assert '粗略' in loc['source'], f'无 poi_names source 应标粗略（{loc}）'

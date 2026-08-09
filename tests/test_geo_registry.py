@@ -4,7 +4,7 @@
 """
 import pytest
 
-from core.geo_registry import resolve_points, list_point_layers, clear_cache
+from core.geo_registry import resolve_points, list_point_layers, clear_cache, resolve_boundary
 from core.range_selector import load_preset
 
 
@@ -58,3 +58,31 @@ def test_damanmen_preset_available():
     assert p is not None, 'damanmen_area 未登记 manifest'
     assert p['available'], 'damanmen_area 应 available（文件须在 DATA/boundaries/presets/）'
     assert p.get('nameField') == 'name'
+
+
+# ── PRM-07（08-08 深读·glm A）：resolve_boundary dict 法定功能区黑名单兜底 ──
+
+def _blocked_boundary(name):
+    """构造单要素 GeoJSON boundary（属性名 MC=name·仿 LLM 直传）。"""
+    return {
+        'type': 'FeatureCollection',
+        'features': [{
+            'type': 'Feature',
+            'properties': {'MC': name},
+            'geometry': {'type': 'Polygon', 'coordinates': [[[111.28, 30.68], [111.29, 30.68], [111.29, 30.69], [111.28, 30.69], [111.28, 30.68]]]},
+        }],
+    }
+
+
+def test_resolve_boundary_dict_blocked_functional_zone():
+    """dict 直供法定功能区（小溪塔）→ 拒绝（诚实 request_upload·CB-14 不硬猜）。"""
+    with pytest.raises(ValueError, match='法定功能区'):
+        resolve_boundary(_blocked_boundary('小溪塔'))
+
+
+def test_resolve_boundary_dict_allows_user_upload():
+    """dict 直供用户上传合法地名（非黑名单）→ 放行（用户上传层不受限）。"""
+    gj = _blocked_boundary('用户自定义片区A')
+    gdf = resolve_boundary(gj)
+    assert gdf is not None and len(gdf) == 1
+    assert 'name' in gdf.columns or 'MC' in gdf.columns
