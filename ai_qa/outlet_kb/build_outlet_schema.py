@@ -14,6 +14,14 @@
 """
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from core.tracker import track, register_track_id
+
+register_track_id('MOD_AIQA.F_016', '_render_dimension_cannot（颗粒度原则·按数据源维度渲染不能越维声明）')
+
 from . import OUTLET_CONTRACTS
 
 # 条件触发词表（EMC 侧接口词·与 emc-patterns.js 词表一致·用户定案方案 A）
@@ -269,6 +277,22 @@ def _parse_emc_expr(expr: str) -> dict | None:
             'value_field': value_field, 'keywords': keywords}
 
 
+# 数据维度更细映射（颗粒度原则：结论细粒度=数据来源维度·不臆造越维·CB-22 深度评估）
+_DIM_FINER = {
+    '城区': '街区', '街区': '社区', '社区': '小区/栋',
+    '小区': '栋', '住房': '栋', '片区': '社区/小区', '城中村专项': '栋',
+}
+
+
+@track('MOD_AIQA.F_016', track_args=False)
+def _render_dimension_cannot(data_dim: str) -> str:
+    """按数据源维度渲染 cannot 声明（"本数据源为 X 维度·无法到 Y"）。返回空 = 维度足够（可答）。"""
+    target = _DIM_FINER.get(data_dim, '')
+    if not target:
+        return ''
+    return f'本数据源为 {data_dim} 维度·结论不超过该维度·无法精确到 {target}'
+
+
 def _build_card(oid: str, diagnose: dict, result: dict, question: str = '') -> dict | None:
     """组装单张出口卡片（7 要素·确定性）。返回 None = 尺度分派不匹配。"""
     contract = OUTLET_CONTRACTS.get(oid)
@@ -291,6 +315,14 @@ def _build_card(oid: str, diagnose: dict, result: dict, question: str = '') -> d
         'limitations': [contract.get('boundary', '')],         # 局限标注
         'source': '确定性组装（build_outlet_schema·非 LLM）',
     }
+
+    # 颗粒度原则（CB-22 深度评估）：结论细粒度=数据来源维度·按 scale 映射维度·不越维
+    #   macro=城区·meso=街区/社区·micro=住房/小区（对齐 paradigm.py SCALE_PARADIGM）
+    _scale_dim = {'macro': '城区', 'meso': '街区/社区', 'micro': '住房/小区'}.get(scale, '')
+    if _scale_dim:
+        _dim_cannot = _render_dimension_cannot(_scale_dim)
+        if _dim_cannot:
+            card['limitations'].append(_dim_cannot)
 
     # field_mapping：行业表单项 ← 情绪地图字段（确定性取值·缺失降级）
     # CB-16 Wave 1（Codex P1）：槽位 scale 限定——emc_expr 含 [scale=xxx] 时仅填匹配 diagnose.scale 的维度·其余"需对应尺度分析"
