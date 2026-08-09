@@ -3,6 +3,18 @@
 > **位置**：家 | **最后更新**：2026-08-10 | **操作人**：claude组（Claude Code）
 > **同步**：git push 后办公室可见。到办公室后读 `OFFICE.md`（公司 08-09 收工卡·最新）。
 
+## 当前状态（08-10 · CB-22d 路径跑通）
+
+- **分支**：`fix/emc-buglog` @ `ace4f8f`（与 origin 同步）
+- **CB-22d 地图标记实测失败根治**（路径跑通·用户确认准确度后续完善）：
+  - 三证合一根因（trace + 用户思考内容 + 两组复验）+ 用户两想法（LLM 参与模糊搜索 / 放弃不可识别·像人思维）
+  - 两组修正 claude 根因（挂起=finalStep 单调用/agentStep 无超时·names 拼接串·冷加载·依赖缺失）
+  - **已实施**（commit ace4f8f）：names split + 冷加载20s + rapidfuzz/pypinyin 装 + 高德API优先(amap_first) + A0 jieba 分词双路 + 聚合名放弃(_isAggregate) + B1 零命中零LLM出口（根治挂起）
+  - **307 passed 零回归**·路径跑通 8/9 名有输出·污水厂网示范区正确放弃
+- **待**：用户浏览器复测（真实数据·看标记 + 计时收尾 <30s）→ 两组复验
+- **后续（准确度）**：GIS 甄别增强(A1)·tier-2 面化(A2)·项目库坐标(A3)·高德限流回退
+- **接手文档**：`OFFICE.md`（公司 08-09 权威卡）+ `DEEPSEEK_ONBOARDING_2026-07-30.md`（历史）
+
 ## 当前状态（08-10 · CB-22d 收敛定稿）
 
 - **分支**：`fix/emc-buglog` @ `200f928`（与 origin 同步·工作区干净）

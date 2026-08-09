@@ -6,6 +6,39 @@
 
 ---
 
+## CB-22d · 2026-08-10（地图标记实测失败根治 · 用户两想法 + 两组修正根因 + 路径跑通）
+
+### ① 用户实测失败 → 三证合一
+
+generate_point_layer 实施后两组复验「通过」，但用户浏览器实测失败：追问「能在地图上标记吗」→ 全未匹配 → 停半途（计时不结束）。三证合一：trace（FC 选对工具 + search_place 片区名 0 命中 + LLM 挂起）+ 用户提供 EMC 思考内容（while-loop 反复权衡·不终止铁证）+ 两组复验预判（Codex tier-2 面化未实现/无甄别·glm 片区名落文字）。
+
+### ② 用户两想法（北极星）
+
+1. **地点模糊搜索需 LLM 参与**（非纯算法硬匹配·业界做法 = LLM 判意图 + 成熟 API + 本地兜底）
+2. **无法识别地点就放弃**（像人思维·不能 while-loop 无限思考）
+
+### ③ 两组根因讨论（修正 claude 根因 + 补 3 层）
+
+- **Codex**：挂起 = finalStep 单调用挂起（非 while-loop 重试·trace 无 F_002）·新增根因 C（names 拼接串被当单名）+ D（冷加载 12.4s > 5s 超时）+ 依赖（rapidfuzz/pypinyin 未装·claude「已装」不实）·B1 唯一对症
+- **glm**：挂起 = agentStep streamChat 无单轮超时 + 模型 reasoning 不收敛（deadline 守卫够不着）·数据缺口 = 匹配入口未分词（POI 库有数据·完整 q 无 substring 命中）·补 agentStep 单轮超时 30s·先验高德 API
+- **claude 验证**：两组主张全属实（rapidfuzz 未装·高德解析片区名·核心实体 250 高置信·污水厂误导命中）
+
+### ④ 用户确认 + 实施（commit ace4f8f·路径跑通）
+
+用户确认：① 聚合名无地点就放弃（理所当然）② agentStep 30s 可接受但须流式 token 输出 ③ 解析顺序同意。**准确度后续完善·今天先跑通路径**。
+
+实施：
+- **P0-0**：names split（拼接串→逐名）+ 冷加载 20s + 装 rapidfuzz/pypinyin
+- **P0-1**：高德 API 优先（amap_first·成熟 API·防误伤）+ A0 jieba 分词双路（place_layer 核心实体提取·复用 _match_score）+ 聚合名放弃（_isAggregate·引号容忍）
+- **P0-2**：B1 零命中零 LLM 确定性出口（不调 finalStep·像人放弃·根治挂起）·agentStep 已有 30s 超时 + 流式 token 确认
+- **测试**：validate_generate_point_layer 9 断言（含 B1 零 LLM 防回归）+ **307 passed 零回归** + 路径跑通（8/9 名有输出·污水厂网示范区正确放弃）
+
+### ⑤ 状态
+
+- **已 push**：`ace4f8f`（6 文件 150 行）
+- **待**：用户浏览器复测（真实数据·看标记 + 计时收尾 <30s）→ 两组复验
+- **后续（准确度）**：GIS 甄别增强（A1）·tier-2 面化（A2）·项目库坐标（A3）·高德限流回退
+
 ## CB-22d · 2026-08-10（知识问答 → 地图标记 · 反评价收敛定稿 · 两组 7 项缺陷全核实 · 修正版 plan）
 
 ### ① 综合 plan 进 CB 详细评估（两组回应）
