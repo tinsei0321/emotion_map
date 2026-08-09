@@ -9,12 +9,12 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-22 · 分类→回答范式映射反评价收敛定稿**（5 分类映射·rag_query 确定性组装根治·FINAL_TEMPLATE 不动·PARADIGM_MAP·开始实施） |
-| **上一轮** | CB-22 分类→范式讨论（两组·架构级）→ EMC 测试失败修复（R1-R4）+ 第二根因（模板错位） |
+| **当前 CB 轮次** | **CB-22 · 三支柱 + 产品定位对齐讨论**（知识问答修正·零 LLM 回滚·三支柱原则·交叉挑战·待两组对齐） |
+| **上一轮** | CB-22 分类→范式映射（定稿实施）→ 用户验证否定零 LLM → 修正（恢复 LLM 综合素材） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
 | **当前分支** | `fix/emc-buglog`（与 origin 同步） |
-| **最新讨论** | `discuss/CB22-分类到范式_反评价收敛_定稿_2026-08-09.md`（5 分类→范式·rag_query 确定性组装·general 风险标注·PARADIGM_MAP） |
-| **最新进展** | **机制缺陷定案**（分类正确但回答全走 finalStep 图层导向·映射缺失）·**分类→范式映射定稿**：分析→finalStep 图层·知识→确定性组装（零 LLM）·FINAL_TEMPLATE 不动·开始实施 + B 路径（CB-22b） |
+| **最新讨论** | `discuss/CB22-三支柱对齐_讨论发起_2026-08-09.md`（三支柱：知识库+架构+LLM·产品定位：本地化聚焦蒸馏·零 LLM 复盘） |
+| **最新进展** | **零 LLM 失误回滚**（用户验证否定·恢复 rag_query LLM 综合素材·e2e 5/5）·**三支柱 + 产品定位沉淀 KNOWLEDGE.md**·进 CB 三组对齐 + 交叉挑战 |
 | **接手文档** | `memories/repo/session-handoff.md`（08-05 卡·已过时·历史背景）+ `_handoff/HOME.md` + `OFFICE.md`（08-08 权威快照）+ `_handoff/CB恢复记忆prompt_2026-08-09.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 
