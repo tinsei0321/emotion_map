@@ -15,9 +15,12 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from core.tracker import track, register_track_id
 from ai_qa.wisdom import wisdom_text, retrieve_wisdom
 from ai_qa.episode import log_episode
 from ai_qa.llm import LLMError, chat_with_fallback, search_chat
+
+register_track_id('MOD_AIQA.F_017', 'post_rag_search（RAG 知识检索端点·开放语义·返回 Top-K + dim_counts）')
 from ai_qa.prompts import build_field_infer_prompt, build_deep_attribution_prompt
 from core.field_dictionary import validate_llm_roles
 
@@ -96,6 +99,33 @@ def post_outlet_card(body: OutletCardIn):
     from ai_qa.outlet_kb.build_outlet_schema import build_outlet_schema
     cards = build_outlet_schema(body.diagnose or {}, body.result or {}, body.question)
     return {'cards': cards, 'card': cards[0] if cards else None}
+
+
+class RagSearchIn(BaseModel):
+    """CB-22 RAG 接入：知识检索入参（开放语义·B 路径未命中降级）。"""
+    query: str
+    k: int = 5
+
+
+@track('MOD_AIQA.F_017', track_args=False)
+@aiqa_router.post('/aiqa/rag_search')
+def post_rag_search(body: RagSearchIn):
+    """CB-22 RAG：知识检索（开放语义/跨文档综合·返回 Top-K + 维度分布）。
+
+    触发：harness _quickIntent 'rag_query' 短路（开放语义词）·B 路径（CB-22b）未命中时降级。
+    返回 {ok, results:[{score, source, type, data_dim}], count, dim_counts}。
+    确定性（向量检索非 LLM）·索引未构建返 ok:False 非 500（前端静默）。
+    """
+    from tools.rag_index import search
+    r = search(body.query, body.k)
+    if not r.get('ok'):
+        return {'ok': False, 'error': r.get('error', '索引未构建·跑 py tools/rag_index.py --build')}
+    # dim_counts：Top-K 维度分布（finalStep 维度声明直接引用·颗粒度原则）
+    dim_counts = {}
+    for res in r['results']:
+        d = res.get('data_dim', '社区')
+        dim_counts[d] = dim_counts.get(d, 0) + 1
+    return {'ok': True, 'results': r['results'], 'count': r['count'], 'dim_counts': dim_counts}
 
 
 class ProfileFieldsIn(BaseModel):

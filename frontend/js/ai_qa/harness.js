@@ -6,7 +6,7 @@
 import * as stages from './stages.js';
 import { TOOLS, setToolContext, formatRegistry, getArtifacts, deriveAvailable, resetStepResults, resetCurrentResults, resolveCoref } from './tools.js';
 import { getLayers, getLayer } from '../state.js';
-import { CONCEPT_KW, INVENTORY_KW, GREETING_KW, GEO_VERB_KW, REGION_KW, POLARITY_KW, LANDUSE_KW, SEARCH_KW, SEARCH_EVIDENCE_RE, OUTLET_TRIGGER_KW, OUTLET_UI_EXCLUDE_KW } from './emc-patterns.js';   // CB-10 分歧2 词表集中 + G6b SEARCH_KW/SEARCH_EVIDENCE_RE + CB-16 OUTLET 触发词（DRY·单一源 emc-patterns）
+import { CONCEPT_KW, INVENTORY_KW, GREETING_KW, GEO_VERB_KW, REGION_KW, POLARITY_KW, LANDUSE_KW, SEARCH_KW, SEARCH_EVIDENCE_RE, OUTLET_TRIGGER_KW, OUTLET_UI_EXCLUDE_KW, RAG_QUERY_KW, RAG_KNOWLEDGE_RE } from './emc-patterns.js';   // CB-10 分歧2 词表集中 + G6b SEARCH_KW/SEARCH_EVIDENCE_RE + CB-16 OUTLET 触发词 + CB-22 RAG 触发词（DRY·单一源 emc-patterns）
 import { buildResultStruct } from './result-struct.js';   // 出口三段式 P0：结果结构化（观点/4要点·确定性组装·结论段不解析 draft markdown）
 
 const MAX_ROUNDS_GIS = 10;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=10（保多步完整性，如3次overlay需8轮：1查询+6执行+1answer）
@@ -66,6 +66,9 @@ function _quickIntent(q) {
   if (INVENTORY_KW.some(w => s.includes(w))) return 'general';
   // geo 动词（请求做分析，非定义）→ 落 diagnose
   if (GEO_VERB_KW.some(v => s.includes(v))) return null;
+  // CB-22 RAG：开放语义/结构化知识检索（哪些项目/体检问题/如何参考等）→ 'rag_query' 短路
+  //   保守双条件：RAG_QUERY_KW 命中 + 知识词（RAG_KNOWLEDGE_RE）·宁落不误断
+  if (RAG_QUERY_KW.some(w => s.includes(w)) && RAG_KNOWLEDGE_RE.test(s)) return 'rag_query';
   // 宜昌地名（空间指代）→ 落 diagnose（可能 B/C）
   // CB-12 问题2（Codex+glm组）：地名 + 实据词（政策/策略/案例等）→ **显式 general**（让搜索分支判·"宜昌市城市更新政策"应搜索）·
   //   "宜昌西陵区情绪分布"无实据词 → 仍落 diagnose
@@ -968,6 +971,37 @@ export async function orchestrate(ctx, hooks = {}) {
     if (hooks.onFinalDone) hooks.onFinalDone(_final);
     if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: ctx._searchUsed ? 'quick-general-search' : 'quick-general', capsules: _qd.capsules });
     return { ok: true, rounds: 0, final: _final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: ctx._searchUsed ? 'quick-general-search' : 'quick-general' }, degraded: false, diagnose: { degraded: true, intent: 'general', quick: true, search: !!ctx._searchUsed } };
+  }
+
+  // CB-22 RAG：开放语义知识检索短路（"宜昌有哪些更新项目"/"如何参考"等→ rag_search 注入 finalStep）
+  //   与 general 短路差异：调 /aiqa/rag_search 取 Top-K 结果 + 维度标注·注入 ctx.context → finalStep（含来源·防越维）
+  if (!ctx.resume && _quickIntent(ctx.question) === 'rag_query') {
+    try {
+      if (hooks.onReason) hooks.onReason('知识库检索中…', 0);
+      const _ac = new AbortController();
+      const _timer = setTimeout(() => _ac.abort(), 15000);
+      const _res = await fetch('/api/v1/aiqa/rag_search', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: ctx.question, k: 5 }), signal: _ac.signal,
+      }).finally(() => clearTimeout(_timer));
+      const _data = await _res.json().catch(() => null);
+      if (_data && _data.ok && _data.results && _data.results.length) {
+        // 检索结果注入（Top-5·每条 ≤200 字·含维度标注·防越维约束）
+        const _lines = _data.results.map((r, i) => {
+          const _src = String(r.source || '').split('/').pop().split('#')[0];
+          return `${i + 1}. [${r.score.toFixed(2)}·${r.data_dim || '社区'}维度] ${_src}（来源：${r.source}）`;
+        });
+        ctx.context = '【知识库检索（RAG·Top-' + _data.count + '·数据维度标注）】\n' + _lines.join('\n') +
+          '\n\n【检索纪律】回答须引用上述检索结果·结论不超过数据维度（data_dim）标注·不得引用他城具体数值·来源标注。\n\n' +
+          (ctx.context || '');
+      }
+    } catch (_e) { /* RAG 失败 → 正常 finalStep（未注入）*/ }
+    const draft = await stages.finalStep(ctx, hooks, '');
+    const _qd = applyQualityDefense(draft, { obsOk: false, toolHistoryText: '', skipL1: true, question: ctx.question, skipScaleDefense: true });
+    const _final = _qd.final;
+    if (hooks.onFinalDone) hooks.onFinalDone(_final);
+    if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'quick-rag', capsules: _qd.capsules });
+    return { ok: true, rounds: 0, final: _final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'quick-rag' }, degraded: false, diagnose: { degraded: true, intent: 'general', quick: true, rag: true } };
   }
 
   // 指代解析（NL 预处理·5.212·几 ms·非 LLM）：检测"这边/刚才"→ grounding 显式标注聚焦对象·让 diagnose 不靠猜
