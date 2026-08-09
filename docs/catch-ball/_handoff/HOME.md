@@ -3,16 +3,16 @@
 > **位置**：家 | **最后更新**：2026-08-10 | **操作人**：claude组（Claude Code）
 > **同步**：git push 后办公室可见。到办公室后读 `OFFICE.md`（公司 08-09 收工卡·最新）。
 
-## 当前状态（08-10 · CB-22d 讨论中）
+## 当前状态（08-10 · CB-22d 收敛定稿）
 
-- **分支**：`fix/emc-buglog` @ `f94d3cd`（与 origin 同步·工作区干净）
-- **CB-22d 知识问答→地图标记**（进行中·等两组详细评估）：
+- **分支**：`fix/emc-buglog` @ `200f928`（与 origin 同步·工作区干净）
+- **CB-22d 知识问答→地图标记**（反评价收敛定稿·待用户确认后实施）：
   - 场景：问项目→文字回答 OK；追问「能在地图上标记吗」→ EMC 无法完成
   - 根因（用户判断深化）：Smart/Dumb 接口断裂（计划→执行脱节）·非地点精度
-  - 两组回应已回收（glm + Codex）→ 反评价裁决（采纳 Codex 归 gis_operation + glm 内核）
-  - 定稿 plan：`generate_point_layer` 工具 + 三级面化回退 + 路由使能 + 契约豁免
-  - 落 [综合plan反评价](docs/catch-ball/discuss/CB22d-知识问答到地图标记_综合plan反评价_2026-08-10.md)（6 焦点请两组详细评估）·cb-journal CB-22d 段已记
-- **待**：两组 `综合plan评估_{组}_2026-08-10.md` → claude组 收敛 → 实施
+  - 两组详细评估 → **7 项缺陷全核实**（resume 恒 false / FC 走契约 when / priorTurn 无 final / runTemplatePath ask_user / _dataGate 误拦 / 面化白名单 / SLOT_HINT）
+  - 修正版 plan：[反评价收敛定稿](docs/catch-ball/discuss/CB22d-知识问答到地图标记_反评价收敛定稿_2026-08-10.md)（P0-0 前置接线 + P0-1 工具 + P0-2 FC 路由 + P0-3 豁免 + P0-4 测试 + P1 数据增强）
+  - **glm 最高价值判断**：不修则「工具实现了却从不被触发」= 修复层面重演用户说的「计划与执行脱节」
+- **待**：用户确认 ① 验收口径（tier-2 行政区级面+标注可接受？）② 实施时机 → 实施（claude 开发 + 两组复验）
 - **接手文档**：`OFFICE.md`（公司 08-09 权威卡）+ `DEEPSEEK_ONBOARDING_2026-07-30.md`（历史）
 
 ## ✅ 家环境 RAG 补链完成（08-09 晚·用户要求补齐环境）

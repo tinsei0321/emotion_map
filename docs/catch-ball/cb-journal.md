@@ -6,6 +6,45 @@
 
 ---
 
+## CB-22d · 2026-08-10（知识问答 → 地图标记 · 反评价收敛定稿 · 两组 7 项缺陷全核实 · 修正版 plan）
+
+### ① 综合 plan 进 CB 详细评估（两组回应）
+
+claude组 综合反评价定稿 plan → 进 CB 请两组详细评估可行性（6 焦点 A-F）。
+
+### ② 两组详细评估 → 7 项缺陷全属实（claude组 代码核实）
+
+**glm 3 项实质缺陷（全属实）**：
+- **B.1 `ctx.resume` 恒 false**（panel.js:1696 = _resumingAsk || _isResumeCue(text)·用户句无续作词 + 上轮非 ask 出口 → false）→ P0-2 路由使能进不去分支
+- **B.2 FC 走契约 when 不走 prompts 铁律**（router.py:25 build_fc_sys_prompt 不含「选择要点·铁律」·grep 零命中）→ P0-3 诱导重心错位
+- **F.1 names[] 无来源**（panel.js:1601 _distillTurn 只返 intent/method/done/gap/strategy·不含 final 文本）→ FC 看不到项目名
+
+**Codex 4 项接线点（全属实）**：
+- **A-1 runTemplatePath 零图层 → ask_user 陷阱**（诚实 observation 无 [ERR] + newLayerCount=0 + 不在 _ANALYTICAL_TOOLS → 必然 ask_user·与「全未命中→诚实文字」冲突）
+- **A-2 _dataGate 误拦「点位/地块」变体**（harness.js:1573 正则·前置 request_upload）
+- **A-3 面化不能复用 FIXED_ADMIN_DISTRICTS 白名单**（葛洲坝不在白名单会被拒）
+- **A-4 _SLOT_HINT 缺 names 条目**
+
+**两组交叉印证**：都独立发现「P0-2 resume 条件」问题（Codex「不覆盖主复现句 + quick-rag 轮 priorTurn.intent 空值」≈ glm「resume 恒 false」）→ 铁证。
+
+**glm 最高价值判断**：若不修正直接实施，「工具实现了却从不被触发」= 修复层面重演用户说的「计划与执行脱节」——成立。
+
+### ③ 修正版定稿 plan（反评价收敛）
+
+**P0-0 前置接线**：路由使能重构（FC diagnose 前置检测 priorTurn=knowledge_qa+标记词 → 无条件注入上下文提示 + 上轮 final 片段·不翻转 resume）+ _dataGate 豁免 + runTemplatePath 零图层诚实出口特判 + quick-rag 轮知识问答标记。
+**P0-1 工具层**：generate_point_layer（显式 circle 样式·并发上限 50/并发≤10/5s 超时·match_type 属性·三级面化回退自建 containment 匹配不复用白名单·_SLOT_HINT.names·_deterministicRecover 兜底）。
+**P0-2 路由**：诱导重心移到契约 `when`（FC 主路径）+ build_fc_sys_prompt 可选提示 + prompts 铁律保留不作主依赖。
+**P0-3 契约+镜像+豁免**：KNOWLEDGE §1 登记 diagnose 增量豁免 3 条件·附 3 处变更清单·静态断言守现有技能 id。
+**P0-4 测试**：FC 选型正例（命门断言）+ FC 选错兜底 + 零图层诚实出口 + _dataGate 变体负例 + knowledge_qa 误判样本 + 面化回退 stub + B3 用例 + 黄金集回归 + eval 复采 + 用户验收（tier-2=行政区级面+标注）。
+**P1**：附件5 项目库坐标（AMAP geocode·WGS84·不入 RAG 索引·版本口径标注）。
+**克制清单增补**：FC 契约名 generate_point_layer 下划线·前端 TOOLS 同步·防 CB-04 契约分裂。
+
+### ④ 状态
+
+- **已落**：[反评价收敛定稿](discuss/CB22d-知识问答到地图标记_反评价收敛定稿_2026-08-10.md)·commit `200f928` 已 push
+- **待用户确认**：① 验收口径（tier-2 行政区级面+标注是否可接受）② 实施时机（修正版 plan 是否进入实施）
+- **待实施**：P0-0→P0-4 按序 + 实施验证阶段家环境复跑追问补 trace
+
 ## CB-22d · 2026-08-10（知识问答 → 地图标记 · 两组回应回收 + 综合 plan 反评价 + 进 CB 详细评估）
 
 ### ① 场景与用户判断
