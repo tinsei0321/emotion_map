@@ -9,12 +9,12 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-22c · RAG Phase 1 执行**（两组评估通过·开始向量化 L0 + rag_search + 接入） |
-| **上一轮** | CB-22c Phase 0（本地 BGE 验证通过）→ CB-22b/22c（定稿）→ CB-22（L2 架构） |
+| **当前 CB 轮次** | **CB-22 · 颗粒度深度评估反评价收敛定稿**（补 point 方法论/先建事实卡/cannot 维度化/黄金集刚性·开始执行） |
+| **上一轮** | CB-22c（RAG Phase 1·有条件通过）→ CB-22b/22c（定稿）→ CB-22（L2 架构） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
 | **当前分支** | `fix/emc-buglog`（与 origin 同步） |
-| **最新讨论** | `discuss/CB22c-RAG_Phase1_执行定稿_2026-08-09.md`（requirements 版本锁/numpy 原子写/黄金集 Recall/HF 固化/<3000B） |
-| **最新进展** | **CB-22 架构定稿**·**RAG Phase 0 通过**（本地 BGE 跑通·两组确认）·**Phase 1 启动**：向量化 L0 知识库 + rag_search + B 先 RAG 后 + 召回率黄金集 |
+| **最新讨论** | `discuss/CB22-颗粒度深度评估_反评价收敛_定稿_2026-08-09.md`（5 裁决全 agree·双组认错·黄金集越维/案例刚性 100%） |
+| **最新进展** | **颗粒度原则 + 社区≠小区已定稿**（paradigm.py 活代码 + KNOWLEDGE 蒸馏）·**深度评估收敛**：补 point 方法论 + 建事实卡（含 dimension）+ cannot 维度化 + 黄金集刚性·RAG 按原则落地 |
 | **接手文档** | `memories/repo/session-handoff.md`（08-05 卡·已过时·历史背景）+ `_handoff/HOME.md` + `OFFICE.md`（08-08 权威快照）+ `_handoff/CB恢复记忆prompt_2026-08-09.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 
