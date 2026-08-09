@@ -1,7 +1,18 @@
 # 办公室 · 工作交接卡
 
 > **位置**：办公室 | **最后更新**：2026-08-10（家凌晨收工·早上到公司续做·同日） | **操作人**：claude组（Claude Code）
-> **同步**：家 08-10 凌晨收工已 push（`037af19`）·**到公司 git pull 即可看到全部进度**。
+> **同步**：家 08-10 凌晨收工已 push（`b77daef`·**已合并 main**）·**到公司 `git pull` 即可看到全部进度**。
+
+## ⚠️ 分支合并（重要·到公司先处理）
+
+**fix/emc-buglog 已合并进 main（`b77daef`）·分支已删**。当前唯一分支 = main。
+
+**到公司 3 步**：
+1. `git checkout main` + `git pull`（拉 main 最新 `b77daef`）
+2. `git fetch --prune origin`（**删本地过时的 `origin/fix/emc-buglog` 引用**）
+3. 确认 `git branch` 只剩 main·后续开发在 main（CLAUDE.md「直接提交 main 不开分支」恢复）
+
+**另两组同步**：Codex/glm 只读本地不 git·claude 已 push main·**它们读本地 main 即最新**——提醒它们引用 `docs/catch-ball/discuss/CB22d-*` 最新文档·勿用 fix 分支路径。
 
 ## 今日（08-10）待做（公司续做·CB-22d 后续 + RAG 遗留）
 
@@ -31,7 +42,7 @@
 
 ## 公司环境准备（08-10 到岗）
 
-1. `git pull`（拉家 08-10 进度·`6431465`）
+1. `git checkout main` + `git pull`（拉家 08-10 进度·`b77daef`）+ `git fetch --prune origin`
 2. **装 RAG 依赖**（若未装）：`pip install -r requirements-rag.txt`（torch +cpu 需阿里云镜像 `mirrors.aliyun.com/pytorch-wheels/cpu`）·BGE 模型 HF 镜像·`py tools/rag_index.py --build`
 3. **rapidfuzz/pypinyin/jieba**（CB-22d A0 依赖·家已装·公司若缺补 `pip install rapidfuzz pypinyin`）
 4. **G 盘资料库**：`G:\OneDrive\2026\15_城市更新专项规划研究\`（GIS 数据 + 附件5 项目库在 `1 宜昌市城市体检/3-附件/`）

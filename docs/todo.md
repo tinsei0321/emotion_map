@@ -9,7 +9,15 @@
 
 ---
 
-## 📅 2026-08-10（CB-22d 地图标记路径跑通闭环 · 收工）
+## 📅 2026-08-10（CB-22d 地图标记路径跑通闭环 · 收工 · 分支合并 main）
+
+### ✅ 分支合并：fix/emc-buglog → main（收敛·删分支·保持干净）
+
+- **合并**：`fix/emc-buglog`（368 提交·含 CB-22d 全链）→ `main` · merge commit `b77daef`（保留全部历史 + 本地 main 的 `81784f0` mcp 配置）
+- **推送**：`git push origin main`（`76124d6..b77daef`）
+- **删分支**：本地 `git branch -d fix/emc-buglog` + 远程 `git push origin --delete fix/emc-buglog`
+- **当前**：唯一分支 `main`（本地 = 远程 origin/main = `b77daef`）·工作区干净
+- **⚠️ 双环境提醒**：**公司/家里 git pull 后需更新分支引用**——`git fetch --prune origin`（删本地过时 `origin/fix/emc-buglog`）·**另两组（Codex/glm）只读本地不 git**·claude 已 push main·它们读本地 main 即最新（勿再引用 fix 分支路径）
 
 ### ✅ CB-22d 知识问答→地图标记·路径跑通闭环（用户实测成功·两组复验通过）
 
@@ -20,7 +28,9 @@
 - **验证**：307 passed 零回归·validate 9 断言·路径跑通 8/9·两组复验均通过·用户实测「基本成功生成正确图层」
 - **后续（非阻断）**：见下方「公司待办」
 
-### 🔴 公司待办（08-10 上午·OFFICE 卡）
+### 🔴 公司待办（08-10 上午·OFFICE 卡·**当前在 main 分支**）
+
+> ⚠️ **到公司先 `git pull`（拉 main 最新）+ `git fetch --prune origin`**（删本地过时 fix 分支引用）·当前开发在 **main**·不再用 fix/emc-buglog。
 
 - [ ] **CB-22d 后续项**：
   - [ ] 准确度完善：`_core_entities` 多实体返全候选（红星路-二马路→[红星路,二马路]）+ 宜昌地名自定义词典（jieba.load_userdict·防专名被拆）·「老城中心」泛词入挡词表·amap 置信标注「高德解析·大致位置」

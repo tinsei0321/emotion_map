@@ -4,6 +4,14 @@
 > 按轮**倒序**（最新在顶·CB-NN 大→小·便于看最新进展；不覆写）。新轮次写在文件顶部。
 > 每轮四节：① SCAN 摘要 ② 我方反评价 ③ 行动 ④ 状态/新发现。
 
+## 收尾 · 2026-08-10（分支合并 fix/emc-buglog → main）
+
+- **合并**：fix/emc-buglog（368 提交·含 CB-22d 全链）→ main · merge commit `b77daef`（保留全部历史 + 本地 main 的 `81784f0` mcp 配置）
+- **推送**：`git push origin main`（`76124d6..b77daef`）
+- **删分支**：本地 + 远程 fix/emc-buglog 已删
+- **当前**：唯一分支 main（本地 = 远程 = `b77daef`）·工作区干净
+- **双环境两组提醒**：到岗 `git pull` + `git fetch --prune origin`（删 fix 引用）·后续开发在 main·另两组（Codex/glm）只读本地读 main 即最新
+
 ---
 
 ## CB-22d · 2026-08-10（地图标记实测失败根治 · 用户两想法 + 两组修正根因 + 路径跑通）

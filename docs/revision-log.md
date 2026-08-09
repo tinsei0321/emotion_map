@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月10日 · 家环境收工）** · 本节按板块分组、组内倒序；最新工作 = **CB-22d 地图标记路径跑通闭环（实测失败根治·用户两想法·两组复验通过·用户实测成功）**。最近：
+> 📍 **最新动态（08月10日 · 家环境收工·分支合并 main）** · 本节按板块分组、组内倒序；最新工作 = **fix/emc-buglog 合并入 main（368 提交收敛·分支已删·唯一 main）+ CB-22d 地图标记路径跑通闭环**。最近：
+>
+> - **08-10 分支合并 fix/emc-buglog → main（用户意图：合并分支·收敛进 main·删分支·保持干净·更新进度提醒双环境两组同步）**：merge commit `b77daef`（保留 368 提交全部历史 + 本地 main 的 `81784f0` mcp 配置）→ `git push origin main`（`76124d6..b77daef`）→ 删本地 + 远程 fix/emc-buglog → **唯一分支 main·工作区干净**。**双环境提醒**：公司/家里到岗 `git pull` + `git fetch --prune origin`（删过时 fix 分支引用）·后续开发在 main（CLAUDE.md「直接提交 main 不开分支」恢复）；另两组（Codex/glm）只读本地不 git·claude 已 push main·它们读本地 main 即最新。更新 todo/交接卡（HOME/OFFICE）/revision-log。**§0 拓扑 N/A**。
 >
 > - **08-10 CB-22d 知识问答→地图标记·路径跑通闭环（用户意图：追问「能在地图上标记项目位置吗」须能出图层·不挂起·准确度后续完善先跑通路径）**：generate_point_layer 首版实施 → 用户实测失败（全未匹配 + 停半途 7 分钟）→ **三证合一根因**（trace FC 选对工具但 search_place 片区名 0 命中 + 用户思考内容 while-loop 铁证 + 两组复验预判 tier-2 缺失）→ **用户两想法**（① 地点模糊搜索须 LLM 参与·非纯算法硬匹配·业界=意图分层+分词+加权·高德专利 CN104679801A ② 无法识别地点就放弃·像人思维·不能 while-loop 无限思考）→ **两组根因讨论修正 claude 根因 + 补 3 层**（Codex：挂起=finalStep 单调用·names 拼接串·冷加载 12.4s>5s·rapidfuzz/pypinyin 未装；glm：挂起=agentStep streamChat 单轮无超时·数据缺口=匹配入口未分词·补单轮超时 30s·先验高德 API）→ **反评价收敛定稿**（P0-0 前提 + P0-1 数据层 + P0-2 决策层）→ **用户确认实施**（聚合名放弃·agentStep 30s 可接受但须流式 token·准确度后续完善）→ **实施 commit `ace4f8f`**：names split（拼接串→逐名·修 Codex 根因 C）+ 冷加载 20s（修根因 D）+ 装 rapidfuzz/pypinyin（difflib 退役）+ 高德 API 优先（amap_first·成熟 API·防伍家菜市场误伤）+ A0 jieba 分词双路（place_layer `_core_entities`·复用 `_match_score` 分层·不造轮子）+ 聚合名放弃（`_isAggregate`·污水厂网一体示范区/其他项目不强匹配·用户想法 2）+ **B1 零命中零 LLM 确定性出口**（不调 finalStep·像人放弃·根治 6.5 分钟挂起·`test_no_hit_zero_llm_exit` 结构性防回归）→ **验证**：pytest 307 passed + 3 skipped 零回归·validate_generate_point_layer 9 断言·路径跑通 8/9 名有输出 → **两组复验均判定通过**（Codex：B1 根治挂起+8/9 输出；glm：端到端实证 4/4 高德命中+**自我修正上轮 agentStep 超时误判**·挂起源实为 finalStep·B1 才是根治）→ **用户实测「基本成功生成正确图层」** → **CB-22d 路径跑通闭环**。**后续（非阻断）**：准确度完善（`_core_entities` 多实体/专名拆分·老城中心误导·amap 置信标注）+ finalStep 失败兜底（`_composeDegradedConclusion`·部分命中场景）+ A1 GIS 甄别/tier-2 面化/A3 项目库坐标（P1）+ B3 飞轮用例。**§0 拓扑 N/A**。
 >
