@@ -1,0 +1,10 @@
+INFO:     Started server process [52948]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+[WARN] MOD_GEOCODE: AMAP_KEY missing, amap fallback disabled (local-only)
+INFO:     127.0.0.1:59084 - "GET /api/v1/health HTTP/1.1" 200 OK
+[B3] FATAL: Page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/frontend/index.html?test=1
+Call log:
+  - navigating to "http://localhost:8080/frontend/index.html?test=1", waiting until "commit"
+
