@@ -219,6 +219,20 @@ def _get_model():
     return _model_cache
 
 
+def warmup():
+    """serve 启动预热 RAG 模型（CB-22 EMC 修复 R1·消除首检冷加载 18.6s）。
+
+    复用 _get_model 单例（首次调用触发加载 + 缓存）·幂等（已缓存直接返回）。
+    失败不抛（调用方异步线程·降级为首次检索冷加载兜底）。
+    不加新 @track ID（与 F_014/F_015 同族·Codex 建议避免占号）。
+    """
+    try:
+        _get_model()
+        _tag(True, 'RAG 模型预热完成')
+    except Exception as e:
+        _tag(False, f'RAG 预热失败（非阻塞·首检冷加载兜底）: {str(e)[:60]}')
+
+
 @track('MOD_AIQA.F_015', track_args=False)
 def search(query, k=5):
     """检索 Top-K（余弦相似度·返回片段 + 来源·含数据维度）。"""

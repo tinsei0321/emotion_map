@@ -66,6 +66,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.on_event('startup')
+async def _startup_rag_warmup():
+    """CB-22 EMC 修复 R1：后台异步预热 RAG 模型（消除首检冷加载 18.6s）。
+
+    daemon 线程·不阻塞 API 启动·失败降级（首检冷加载兜底·R2/R3 诚实降级）。
+    """
+    import threading
+
+    def _warmup():
+        try:
+            from tools.rag_index import warmup
+            warmup()
+        except Exception as _e:
+            import sys
+            print(f'[WARN] RAG 预热启动失败（非阻塞）: {str(_e)[:60]}', file=sys.stderr)
+
+    threading.Thread(target=_warmup, daemon=True).start()
+
 app.include_router(api_router, prefix="/api/v1")
 
 # AI 问答子系统（独立 router，挂同 prefix；/chat 总路径 /api/v1/chat）。

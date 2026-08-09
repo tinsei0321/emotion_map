@@ -975,11 +975,13 @@ export async function orchestrate(ctx, hooks = {}) {
 
   // CB-22 RAG：开放语义知识检索短路（"宜昌有哪些更新项目"/"如何参考"等→ rag_search 注入 finalStep）
   //   与 general 短路差异：调 /aiqa/rag_search 取 Top-K 结果 + 维度标注·注入 ctx.context → finalStep（含来源·防越维）
+  //   R2/R3/R4（EMC 修复·2026-08-09）：① 超时 15s→30s（容冷加载预热窗口）② 失败/索引缺失 → EXIT_CONCEPT 确定性兜底（禁 LLM 编·防情绪分析式幻觉）③ catch 诚实声明
   if (!ctx.resume && _quickIntent(ctx.question) === 'rag_query') {
+    let _ragOk = false;
     try {
       if (hooks.onReason) hooks.onReason('知识库检索中…', 0);
       const _ac = new AbortController();
-      const _timer = setTimeout(() => _ac.abort(), 15000);
+      const _timer = setTimeout(() => _ac.abort(), 30000);   // R4：15s→30s（容冷加载·预热窗口）
       const _res = await fetch('/api/v1/aiqa/rag_search', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: ctx.question, k: 5 }), signal: _ac.signal,
@@ -994,8 +996,20 @@ export async function orchestrate(ctx, hooks = {}) {
         ctx.context = '【知识库检索（RAG·Top-' + _data.count + '·数据维度标注）】\n' + _lines.join('\n') +
           '\n\n【检索纪律】回答须引用上述检索结果·结论不超过数据维度（data_dim）标注·不得引用他城具体数值·来源标注。\n\n' +
           (ctx.context || '');
+        _ragOk = true;
       }
-    } catch (_e) { /* RAG 失败 → 正常 finalStep（未注入）*/ }
+      // _data.ok===false（索引未构建）·非超时——落入 _ragOk=false → R3 兜底
+    } catch (_e) { /* 超时/网络失败 → _ragOk=false → R3 兜底 */ }
+    // R3：注入失败（超时/索引缺失）→ EXIT_CONCEPT 确定性兜底（禁走 finalStep LLM 编·防情绪分析式幻觉）
+    if (!_ragOk) {
+      const _gap = `## 知识库检索未就绪\n\n`
+        + `本次提问「${ctx.question}」需引用知识库（城市更新项目库/体检指标）·`
+        + `但知识库检索暂未就绪（模型加载中/索引未构建）。\n\n`
+        + `**建议**：稍后重试（模型预热完成后）·或换问"宜昌情绪分布"等分析类问题。`;
+      if (hooks.onFinalDone) hooks.onFinalDone(_gap);
+      if (hooks.onDefense) hooks.onDefense({ degraded: true, fixes: [], skipped: 'rag-timeout-exit-concept', capsules: [] });
+      return { ok: true, rounds: 0, final: _gap, degraded: true, defense: { degraded: true, fixes: [], skipped: 'rag-timeout-exit-concept' }, diagnose: { degraded: true, intent: 'general', quick: true, rag: false } };
+    }
     const draft = await stages.finalStep(ctx, hooks, '');
     const _qd = applyQualityDefense(draft, { obsOk: false, toolHistoryText: '', skipL1: true, question: ctx.question, skipScaleDefense: true });
     const _final = _qd.final;
