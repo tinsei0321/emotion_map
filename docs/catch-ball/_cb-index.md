@@ -9,12 +9,12 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-22 · RAG 接入 EMC 验证收敛·交付完成**（9 项成果全属实·Codex 编码缺陷已修·待进 B 路径 CB-22b） |
-| **上一轮** | CB-22 RAG 接入（实施完成）→ 颗粒度深度评估 → CB-22c（RAG Phase 1）→ CB-22（L2） |
+| **当前 CB 轮次** | **CB-22b · B 路径实施计划**（query_knowledge_base·确定性结构化查询·收窄 RAG·待两组确认） |
+| **上一轮** | CB-22 RAG 接入 EMC（验证收敛·交付完成）→ 颗粒度深度评估 → CB-22c（RAG Phase 1） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
 | **当前分支** | `fix/emc-buglog`（与 origin 同步） |
-| **最新讨论** | `discuss/CB22-RAG验证_反评价收敛_定稿_2026-08-09.md`（两组一致可交付·黄金集 100%/e2e 5/5·编码缺陷已修） |
-| **最新进展** | **RAG 接入 EMC 交付完成**（事实卡/索引/黄金集/cannot/端点/短路/注入/e2e）·**下一步进 B 路径**（CB-22b·query_knowledge_base·收窄 RAG 触发词） |
+| **最新讨论** | `discuss/CB22b-B路径_实施计划_2026-08-09.md`（三层分级/F_018 端点/knowledge_query 短路/收窄 RAG/黄金集补） |
+| **最新进展** | **RAG 接入 EMC 交付完成**·**CB-22b 启动**：B 路径 query_knowledge_base（确定性·结构化查询转 B）·RAG 收窄（只保留开放语义）·黄金集补充 |
 | **接手文档** | `memories/repo/session-handoff.md`（08-05 卡·已过时·历史背景）+ `_handoff/HOME.md` + `OFFICE.md`（08-08 权威快照）+ `_handoff/CB恢复记忆prompt_2026-08-09.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 
