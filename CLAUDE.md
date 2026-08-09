@@ -204,6 +204,7 @@ emotion_map/
 10. **追踪 ID 必注册** — 所有 ID 经各模块 `register_track_id()` 调用登记（运行时填充 `core/tracker.py` 的 `_TRACKING_REGISTRY`），编号连续不跳号
 11. **图像粘贴自动识别** — 用户粘贴图片后，自动查找 `%LOCALAPPDATA%\Temp\ScreenShot_*.png` 中最新的文件，调用 `mcp__zai-mcp-server__analyze_image`（智谱，主）识图；智谱不可用退 `mcp__vision-bridge__analyze_image`（火山引擎）。不需要等待用户明确说"看图"
 12. **MCP 同类择优选智谱** — 同功能 MCP 优先智谱（Z.AI/BigModel），连不上再退备选：视觉=`zai-mcp-server`（主）→`vision-bridge`（火山引擎，备）；联网搜索=`web-search-prime`；读网页=`web-reader`；读开源仓=`zread`。完整路由见 `docs/mcp-strategy.md`。**注**：智谱栈由用户全局（`~/.claude`）托管、跨项目可用；项目 `.mcp.json` 只列项目专属 server（playwright/vision-bridge），勿重复塞智谱栈（错层）
+13. **禁非专业概念创造（CB-22 用户「记住」·2026-08-09）** — 分类术语/归纳标签须**源文档可溯**：源文档有正式分类 → 沿用；无 → 直接罗列事实（数字+片区名）不造分类名（如「典型片区类/机制建设类」是提炼者归纳的非正式标签·不入素材）。**LLM 综合禁从数字/素材推断分类或概念解释**（如素材"43+12"不得推断"片区类/机制类"·素材未明确表述的分类/解释/归纳不得输出·如需概括须标注"以下为回答者概括·非源文档用语"）。**提炼笔记同样适用**（L0 笔记段落也是向量化素材）。详见 KNOWLEDGE §2 术语纪律三分
 
 **Bug 定位流程**：`[TRACE] 日志 → 决策 ID → 代码跳转（O(1)）`
 

@@ -112,3 +112,32 @@ def test_rag_search_hits_concept():
     assert r.get('ok'), f'检索失败: {r.get("error")}'
     types = [x['type'] for x in r['results']]
     assert 'concept' in types, f'「什么是情绪地图」未命中概念卡: {types}'
+
+
+# CB-22 杜绝概念创造（两组评估·Codex 漏改发现 + glm 全仓建议）：硬造分类黑名单·全仓素材扫描防残留
+_HARDCODED_TERMS = ['典型片区类', '机制建设类']   # 确认硬造（提炼者归纳·源文档无正式分类）·未来新增须人工注册（防误拦官方词）
+
+
+def test_no_hardcoded_terms_in_materials():
+    """① 素材清洁断言：全部向量化素材（fact + note + concept）无硬造分类（防 fact/note 任一残留）。
+
+    全仓语义（Codex）：用户「杜绝」是全仓·非只运行时素材——扫 _load_notes/_load_facts/_load_concepts
+    （索引实际加载的全部·含总览报告不在索引但 note 段落覆盖）。
+    """
+    import tools.rag_index as ri
+    chunks = ri._load_facts() + ri._load_notes() + ri._load_concepts()
+    assert chunks, '素材加载为空（索引构建异常）'
+    for t in _HARDCODED_TERMS:
+        hits = [c['source'] for c in chunks if t in c['text']]
+        assert not hits, f'素材仍含硬造分类「{t}」（杜绝概念创造·CB-22）: {hits}'
+
+
+def test_retrieval_injection_clean():
+    """① 素材清洁断言（用户复测路径）：rag_search('宜昌有哪些更新项目') 注入素材无硬造分类。"""
+    from tools.rag_index import search
+    r = search('宜昌有哪些更新项目', 5)
+    assert r.get('ok'), f'检索失败: {r.get("error")}'
+    for x in r['results']:
+        txt = x.get('text', '')
+        for t in _HARDCODED_TERMS:
+            assert t not in txt, f'检索注入素材仍含硬造分类「{t}」（用户复测会看到）: {x["source"]}'

@@ -116,6 +116,22 @@ def test_knowledge_qa_routing_assembles():
         assert '不要生成分析图层' in inj, '注入缺「禁生成图层」'
 
 
+def test_concept_cleanliness_negative():
+    """③ 黄金集概念清洁负例（CB-22 杜绝概念创造·glm 焦点 2）：素材干净后 LLM 综合仍禁自创分类/解释。
+
+    注入素材（injectOnly 桩·URP-P01 罗列式）含「55 个/污水 16/葛洲坝 12/其他 12·前 4 组合计 43」——
+    断言注入指令含「禁推断分类/解释」（glm 指令 3 扩展·防 LLM 从数字推断"片区类/机制类"）。
+    """
+    with emc_session() as page:
+        r = page.evaluate(
+            "(q) => window.__emcTest.assembleKnowledgeQA(q, { _quick: false, injectOnly: true }).then(res => ({ final: res.final }))",
+            '宜昌有哪些更新项目')
+        inj = r.get('final') or ''
+        # 指令 3 扩展：禁从数字推断分类/解释（glm 核心根因·「机制建设类→侧重制度保障」是自创解释）
+        assert '禁止从数字/素材推断或归纳分类术语或概念解释' in inj, '注入指令缺「禁推断分类/解释」（glm 焦点 2·防 LLM 自创概念）'
+        assert '非源文档用语' in inj, '注入指令缺「回答者概括·非源文档用语」标注要求'
+
+
 def test_rag_gold_set_regression():
     """黄金集回归：接入后召回/越维/案例 3 类仍 100%（防接入退化）。"""
     import subprocess
