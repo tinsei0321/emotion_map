@@ -7,7 +7,7 @@ import { addLayer, addGroup, getLayers, removeLayer } from './state.js';
 import { splitByGeometry, detectColorMode, dsvRows } from './import.js';
 import { hasImport, hasRange, hasAnalysis, hasVisibleEmotionLayer } from './ai_qa/cpd-state.js';
 import { TOOLS, resetStepResults, resetCurrentResults } from './ai_qa/tools.js';   // 步 7 observation 快照基线（手册 v2.2·修订 6）：TOOLS 直调 + 状态重置
-import { applyQualityDefense, _setLastToolRowsForTest, _buildOutletCardForTest, composeGapCard } from './ai_qa/harness.js';   // G0 R9 单测 + Wave 1 出口卡直测 + ③w5 措辞断言
+import { applyQualityDefense, _setLastToolRowsForTest, _buildOutletCardForTest, composeGapCard, _quickIntent } from './ai_qa/harness.js';   // G0 R9 单测 + Wave 1 出口卡直测 + ③w5 措辞断言 + CB-22 RAG 短路判定
 import { buildResultStruct } from './ai_qa/result-struct.js';   // CB-18 S-3：出口三段式结果结构化纯函数直测（P0-2/3/4 + P2-1·不解析 markdown·确定性组装）
 
 // v1.7 测试飞轮：fetch 拦截 — 抓 /chat + /geo 请求供分阶段断言（fail fast）。
@@ -191,6 +191,8 @@ window.__emcTest = {
   },
   /** CB-18 S-3：出口三段式结果结构化纯函数直测口（P0-2/3/4 + P2-1·确定性组装·不解析 markdown）。 */
   buildResultStruct,
+  /** CB-22 RAG：_quickIntent 短路判定直测口（rag_query/general/null·保守双条件）。 */
+  quickIntent(q) { return _quickIntent(q); },
 };
 
 // CPD G1 谓词暴露（用例 10·A1 谓词真值测试）：把死信号/谓词盲区（M2 无情绪层撒谎）从评审发现变测试发现。

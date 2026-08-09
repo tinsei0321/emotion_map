@@ -57,7 +57,7 @@ function _matchPlanToQuestion(question, plans) {
 /** P0 降温：轻量 intent 预判——高置信通用/概念问跳 diagnose 直 finalStep（省整轮 diagnose LLM + 7字段卡）。
  *  规划思维 A 赛道"快速分流"：概念解释/方法咨询/日常问候→general 直答；含 geo 动词/地名→落 diagnose。
  *  返 'general'→短路；null→落原 diagnose（保守，宁落不误断）。 */
-function _quickIntent(q) {
+export function _quickIntent(q) {   // CB-22 e2e：export 解封（同 composeGapCard 先例·纯暴露无行为变化）
   if (!q) return null;
   const s = String(q);
   // 概念/方法咨询词优先（即使含 geo 词，"什么是核密度分析"仍判 general 定义类，免漏断）——词表集中 emc-patterns
