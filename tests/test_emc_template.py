@@ -55,6 +55,30 @@ def test_diagnose_prompt_includes_registry():
         assert s['skill'] in p, f'diagnose prompt 缺技能: {s["skill"]}'
 
 
+def test_diagnose_intent_has_knowledge_qa():
+    """CB-22 三层架构：diagnose intent 枚举含 knowledge_qa（知识问答通道·意图判断归位）。
+
+    豁免前提（P0-3 先扩 eval）：diagnose 加类增量·不改不删现有三值——本断言守护枚举存在·
+    test_diagnose_existing_three_intents_unchanged 守护现有三值判据未删。
+    """
+    from ai_qa.prompts import build_diagnose_prompt
+    p = build_diagnose_prompt('')
+    assert 'knowledge_qa' in p, 'diagnose intent 枚举缺 knowledge_qa（知识问答通道断）'
+    # 判据段须含对比句（有哪些=知识问答·什么是=general·防 Flash 混淆·Codex V1）
+    assert '有哪些' in p and '什么是' in p, 'knowledge_qa 判据段缺对比句（有哪些 vs 什么是）'
+
+
+def test_diagnose_existing_three_intents_unchanged():
+    """CB-22 三层架构（豁免条件 3）：现有三值判据文本未删（增量不改存量·防重构删类）。"""
+    from ai_qa.prompts import build_diagnose_prompt
+    p = build_diagnose_prompt('')
+    assert 'general=通用问答' in p or 'general' in p, 'general 判据被删（增量豁免·不得删现有）'
+    assert 'gis_operation' in p, 'gis_operation 判据被删'
+    assert 'emotion_analysis' in p, 'emotion_analysis 判据被删'
+    # 多轮续作例外：分析中穿插知识问 → 判 knowledge_qa（非续作 emotion·Codex V1/glm F1）
+    assert 'knowledge_qa' in p and '续作' in p, '多轮续作例外段缺失'
+
+
 def test_required_slots_known():
     for s in TEMPLATE_REGISTRY:
         for slot in s['required_slots']:

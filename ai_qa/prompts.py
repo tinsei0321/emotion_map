@@ -197,7 +197,7 @@ DIAGNOSE_TEMPLATE = """
 
 输出**严格 JSON 对象**（仅 JSON，禁 markdown 代码块 / 前后解释），结构如下（8 字段必填，intent 置顶）：
 {{
-  "intent": "general" | "gis_operation" | "emotion_analysis",
+  "intent": "general" | "gis_operation" | "emotion_analysis" | "knowledge_qa",
   "domain_lens": ["urban_planning" | "urban_renewal" | "urban_operation" | "urban_governance" | "general", ...],
   "scale": "macro" | "meso" | "micro",
   "decision_type": "评价" | "选址" | "排查" | "对比" | "监测" | "定义" | "操作" | "通用问答",
@@ -216,8 +216,15 @@ DIAGNOSE_TEMPLATE = """
 - general=通用问答/常识/寒暄/纯概念（今天星期几、什么是等时圈）→ domain_lens=["general"]，**template 必填 "concept"**，不进情绪分析。**包含"就已有图层/上一轮结果的概念追问"**——用户问"差别/区别/为什么/解释/含义/是什么/对比"且针对**已生成的图层/结果**（不要求新操作），即使含"核密度/用地/极性"等关键词，也判 general（**template=concept**，概念解释交后续阶段作答，本阶段只出卡）。例：「生成的 4 个核密度图层有什么差别」「为什么 X 区比 Y 区差」「这些图层是什么意思」→ general（concept）。
 - gis_operation=纯 GIS/数据操作（裁剪/抽取某区/缓冲/叠置/合并/字段筛选/上传数据处理/核密度density）→ outlet="生成图层"，**template 选 clip/overlay/buffer/density/rank/zonal 等对应技能 id**（见【技能目录】），出口是新图层而非归因报告。**注意：「核密度/密度分析/聚集强度/热力分布」属此类（template="density"）仅当用户「新请求做」分析；若用户是「问已有」密度图层的问题（见上一条），判 general（template=concept）勿短路进操作。**
 - emotion_analysis=情绪评价/排序/归因/预警（7 场景）→ 走原 domain_lens/scale/decision_type 体系。
+- **knowledge_qa=知识问答/数据清单（CB-22 三层架构·2026-08-09 用户豁免加类）**→ 要检索知识库（RAG·事实卡/笔记/政策/案例/概念卡）作答·非分析非概念。**判据对比句**（防 Flash 混淆·新增类勿稀释三值注意力）：
+  - **"有哪些/多少/什么项目/体检指标/政策/案例/清单/库"**（数据/事实/清单类·含地名+领域词如"宜昌市城市更新的项目有哪些"）→ **knowledge_qa**（template 可空·后续走知识问答范式检索+LLM 综合）。
+  - **"什么是/为什么/解释/含义/差别/概念"**（定义解释类）→ **general**（template=concept·概念模板直答·不检索）。
+  - **"情绪/分布/排序/归因"**（分析类·如"哪些片区情绪最差"）→ **emotion_analysis**（即使含"哪些"+领域词·勿误判 knowledge_qa）。
+  - 例：「宜昌市城市更新的项目有哪些？」「城市更新体检问题有哪些」→ knowledge_qa；「什么是更新单元」→ general（concept）。
+- 边界提示：**含地名+领域词+数据/清单意图 = 强信号 knowledge_qa**；只有定义解释意图（什么是/为什么）才是 general——两者成对出现时以意图为准（要检索 vs 要解释）。
 
 **多轮续作（最高优先级，覆盖上文 intent 判定）**：若上文含【上一轮上下文】块，且用户本轮在追问/续做（问句含"继续/接着/补充/我上传了X/那个/把刚才"等，或承接上一轮未完成任务），则：
+- **例外（CB-22 三层架构）**：分析中**穿插知识问**（如 zonal 后问"葛洲坝有哪些项目"）→ **判 knowledge_qa**（非续作 emotion_analysis）——问句是"数据清单/知识检索"意图时**显式高于续作承接**。
 - intent **取上一轮 intent**（多为 gis_operation / emotion_analysis，**勿判 general**）；
 - method **承接上一轮 method 从断点续做**——上轮【缺口】数据若本轮已就位（如用户上传了），继续执行原 method 剩余步骤，产出最终结果；
 - data_plan 按当前数据**重判**（已补齐的缺口不再算缺失；strategy 多从 request_upload 升为 ready）；

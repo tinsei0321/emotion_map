@@ -74,13 +74,14 @@ def test_rag_injection_volume_budget():
 
     动态注入预算 ≤8KB（素材 Top-5 × 1000B + 指令 ~500B ≈ 5.5KB）：
     ① snippet 上限锁 slice(0, 1000)/条 ② 指令常量行数有界 ③ Top-K 请求 k≤5。
+    P0-5（三层架构）：_assembleKnowledgeQA 抽公共函数（短路+diagnose 合流）·守卫定位在函数体。
     """
     text = _JS_HARNESS.read_text(encoding="utf-8")
-    seg = text.split("_quickIntent(ctx.question) === 'rag_query'")[1].split("_quickIntent(ctx.question)")[0]
+    seg = text.split("async function _assembleKnowledgeQA")[1].split("const OBS_TRUNC")[0]
     assert "slice(0, 1000)" in seg, "rag 注入 snippet 上限被改（须 ≤1000B/条·体积预算守卫）"
     assert "k: 5" in seg, "rag Top-K 请求被改（须 ≤5 条·体积预算守卫）"
     instr_lines = [l for l in seg.splitlines()
-                   if "【知识问答排版】" in l or l.strip().startswith(("1. **", "2. **", "3. **"))]
+                   if "【知识问答排版】" in l or l.strip().startswith(("1. **", "2. **", "3. **", "4. **"))]
     assert 1 <= len(instr_lines) <= 6, f"知识问答指令行数异常（防注入无限膨胀）: {len(instr_lines)}"
 
 

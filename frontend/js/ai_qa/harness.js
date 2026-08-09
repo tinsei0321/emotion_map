@@ -81,6 +81,78 @@ export function _quickIntent(q) {   // CB-22 e2e：export 解封（同 composeGa
   return null;   // 模糊 → 落 diagnose
 }
 
+// CB-22 三层架构 P0-5：知识问答统一组装（短路加速器 + diagnose intent=knowledge_qa **合流**·双入口同注入同 finalStep·防行为分叉）。
+// data_plan 三态（glm 挑战 1·执行定稿）：ready=Top-K 非空+score≥0.5 / fallback_annotated=非空+<0.5（标注相关性低）/
+//   request_upload=空（EXIT_GAP·知识库无覆盖）。阈值 0.5 起步·按黄金集 score 校准。
+export async function _assembleKnowledgeQA(ctx, hooks, opts = {}) {
+  let _ragOk = false;
+  let _ragResults = null;
+  let _ragCount = 0;
+  let _ragMaxScore = 0;
+  try {
+    if (hooks.onReason) hooks.onReason('知识库检索中…', 0);
+    const _ac = new AbortController();
+    const _timer = setTimeout(() => _ac.abort(), 30000);   // R4：15s→30s（容冷加载·预热窗口）
+    const _res = await fetch('/api/v1/aiqa/rag_search', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: ctx.question, k: 5 }), signal: _ac.signal,
+    }).finally(() => clearTimeout(_timer));
+    const _data = await _res.json().catch(() => null);
+    if (_data && _data.ok && _data.results && _data.results.length) {
+      _ragOk = true;
+      _ragResults = _data.results;
+      _ragCount = _data.count;
+      _ragMaxScore = Math.max(..._ragResults.map((r) => r.score || 0));
+    }
+    // _data.ok===false（索引未构建）·非超时——落入 _ragOk=false → R3 兜底
+  } catch (_e) { /* 超时/网络失败 → _ragOk=false → R3 兜底 */ }
+  // R3：注入失败（超时/索引缺失）→ EXIT_CONCEPT 确定性兜底（禁走 finalStep LLM 编·防情绪分析式幻觉）
+  if (!_ragOk) {
+    const _gap = `## 知识库检索未就绪\n\n`
+      + `本次提问「${ctx.question}」需引用知识库（城市更新项目库/体检指标）·`
+      + `但知识库检索暂未就绪（模型加载中/索引未构建）。\n\n`
+      + `**建议**：稍后重试（模型预热完成后）·或换问"宜昌情绪分布"等分析类问题。`;
+    if (hooks.onFinalDone) hooks.onFinalDone(_gap);
+    if (hooks.onDefense) hooks.onDefense({ degraded: true, fixes: [], skipped: 'rag-timeout-exit-concept', capsules: [] });
+    return { ok: true, rounds: 0, final: _gap, degraded: true, defense: { degraded: true, fixes: [], skipped: 'rag-timeout-exit-concept' }, diagnose: { degraded: true, intent: 'general', quick: !!opts._quick, rag: false } };
+  }
+  // data_plan 三态（glm 挑战 1）：score < 0.5 低相关 → 注入但标注"相关性低·仅供参考"（fallback_annotated）
+  const _lowRelevant = _ragMaxScore < 0.5;
+  const _dimNote = _lowRelevant
+    ? '\n\n【相关性提示】以下素材与提问相关性较低（最高分 <0.5）·仅供参考·若需更准请换问或上传更全资料。'
+    : '';
+  // ★ CB-22 分类→范式映射（用户修正：知识问答需 LLM 综合素材·非零 LLM）：
+  //   RAG 检索出相关文件 → 注入 ctx.context 作为素材 → finalStep LLM 综合总结 + 引用来源
+  //   注入「知识问答排版」指令（禁图层/禁 4×5·条目式引用·防被分析模板带偏）
+  // CB-22 三支柱修正（两组对齐收敛·Codex 补1 + glm W1/W2 + claude 承重发现）：
+  //   ① 素材注入片段全文（text·此前仅文件名·LLM 无内容可综合·三支柱①空转）
+  //   ② 头部强标记（glm W1·防 FINAL_TEMPLATE 图层导向覆盖弱指令）
+  //   ③ 只基于素材作答·素材外标注"知识库未收录"（Codex 补1·防预训练知识补细节）
+  //   ④ 综合全部 Top-K·禁只引 Top-1（glm W2·保"全面"）
+  //   ⑤ P3-2 逐数字锚定 [来源]·禁自创拆分（CB-22 三层架构·43/12 出处修复）
+  //   ★ 动态注入预算 ≤8KB（Codex 复验挑战：Top-5 × 1000B + 指令 ≈ 5.5KB·守卫在 validate_paradigm_map）
+  const _lines = _ragResults.map((r, i) => {
+    const _src = String(r.source || '').split('/').pop().split('#')[0];
+    const _txt = r.text ? r.text.trim().slice(0, 1000) : '（片段缺失·需 py tools/rag_index.py --rebuild 重建索引）';
+    return `${i + 1}. [${r.score.toFixed(2)}·${r.data_dim || '社区'}维度] ${_src}\n    ${_txt}`;
+  });
+  ctx.context = '【本次为知识问答·严禁图层/分析模板】\n\n' +
+    '【知识库检索素材（RAG·Top-' + _ragCount + '·供 LLM 综合回答）】\n' + _lines.join('\n') +
+    '\n\n【知识问答排版】\n' +
+    '1. **只基于上述素材作答**·素材未覆盖的信息标注"知识库未收录"·禁止以预训练知识补充细节；\n' +
+    '2. **综合全部 Top-' + _ragCount + ' 素材·归纳共性与差异**·条目式组织·关键内容标注来源·禁止只引部分或只引 Top-1；\n' +
+    '3. **每个具体数字/名词（项目数/片区数/投资额/概念定义）必须紧跟 [来源] 锚点·禁止自行拆分/合并/编造数字**；\n' +
+    '4. **不要生成分析图层 / {{show:图层}} / 4×5 归因 / 演示逻辑链**。\n' +
+    '（数据维度随各条素材 data_dim 标注·结论不超过该维度·不引用他城具体数值）\n' + _dimNote + '\n\n' +
+    (ctx.context || '');
+  const draft = await stages.finalStep(ctx, hooks, '');
+  const _qd = applyQualityDefense(draft, { obsOk: false, toolHistoryText: '', skipL1: true, question: ctx.question, skipScaleDefense: true });
+  const _final = _qd.final;
+  if (hooks.onFinalDone) hooks.onFinalDone(_final);
+  if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: opts._quick ? 'quick-rag' : 'diagnose-knowledge-qa', capsules: _qd.capsules });
+  return { ok: true, rounds: 0, final: _final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: opts._quick ? 'quick-rag' : 'diagnose-knowledge-qa' }, degraded: false, diagnose: { degraded: true, intent: 'general', quick: !!opts._quick, rag: true, low_relevant: _lowRelevant } };
+}
+
 const OBS_TRUNC = 200;      // observation 注入 history 截断长度
 const PARAMS_TRUNC = 80;    // action params 摘要截断长度
 
@@ -974,67 +1046,12 @@ export async function orchestrate(ctx, hooks = {}) {
     return { ok: true, rounds: 0, final: _final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: ctx._searchUsed ? 'quick-general-search' : 'quick-general' }, degraded: false, diagnose: { degraded: true, intent: 'general', quick: true, search: !!ctx._searchUsed } };
   }
 
-  // CB-22 RAG：开放语义知识检索短路（"宜昌有哪些更新项目"/"如何参考"等→ rag_search 注入 finalStep）
+  // CB-22 RAG：知识问答检索短路（"宜昌有哪些更新项目"等→ rag_search 注入 finalStep）
   //   与 general 短路差异：调 /aiqa/rag_search 取 Top-K 结果 + 维度标注·注入 ctx.context → finalStep（含来源·防越维）
   //   R2/R3/R4（EMC 修复·2026-08-09）：① 超时 15s→30s（容冷加载预热窗口）② 失败/索引缺失 → EXIT_CONCEPT 确定性兜底（禁 LLM 编·防情绪分析式幻觉）③ catch 诚实声明
+  //   P0-5（三层架构·2026-08-09）：短路（加速器）+ diagnose（intent=knowledge_qa）**合流**——统一走 _assembleKnowledgeQA（双入口同注入同 finalStep·防行为分叉·Codex V2）
   if (!ctx.resume && _quickIntent(ctx.question) === 'rag_query') {
-    let _ragOk = false;
-    let _ragResults = null;
-    let _ragCount = 0;
-    try {
-      if (hooks.onReason) hooks.onReason('知识库检索中…', 0);
-      const _ac = new AbortController();
-      const _timer = setTimeout(() => _ac.abort(), 30000);   // R4：15s→30s（容冷加载·预热窗口）
-      const _res = await fetch('/api/v1/aiqa/rag_search', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: ctx.question, k: 5 }), signal: _ac.signal,
-      }).finally(() => clearTimeout(_timer));
-      const _data = await _res.json().catch(() => null);
-      if (_data && _data.ok && _data.results && _data.results.length) {
-        _ragOk = true;
-        _ragResults = _data.results;
-        _ragCount = _data.count;
-      }
-      // _data.ok===false（索引未构建）·非超时——落入 _ragOk=false → R3 兜底
-    } catch (_e) { /* 超时/网络失败 → _ragOk=false → R3 兜底 */ }
-    // R3：注入失败（超时/索引缺失）→ EXIT_CONCEPT 确定性兜底（禁走 finalStep LLM 编·防情绪分析式幻觉）
-    if (!_ragOk) {
-      const _gap = `## 知识库检索未就绪\n\n`
-        + `本次提问「${ctx.question}」需引用知识库（城市更新项目库/体检指标）·`
-        + `但知识库检索暂未就绪（模型加载中/索引未构建）。\n\n`
-        + `**建议**：稍后重试（模型预热完成后）·或换问"宜昌情绪分布"等分析类问题。`;
-      if (hooks.onFinalDone) hooks.onFinalDone(_gap);
-      if (hooks.onDefense) hooks.onDefense({ degraded: true, fixes: [], skipped: 'rag-timeout-exit-concept', capsules: [] });
-      return { ok: true, rounds: 0, final: _gap, degraded: true, defense: { degraded: true, fixes: [], skipped: 'rag-timeout-exit-concept' }, diagnose: { degraded: true, intent: 'general', quick: true, rag: false } };
-    }
-    // ★ CB-22 分类→范式映射（用户修正：知识问答需 LLM 综合素材·非零 LLM）：
-    //   RAG 检索出相关文件 → 注入 ctx.context 作为素材 → finalStep LLM 综合总结 + 引用来源
-    //   注入「知识问答排版」指令（禁图层/禁 4×5·条目式引用·防被分析模板带偏）
-    // CB-22 三支柱修正（两组对齐收敛·Codex 补1 + glm W1/W2 + claude 承重发现）：
-    //   ① 素材注入片段全文（text·此前仅文件名·LLM 无内容可综合·三支柱①空转）
-    //   ② 头部强标记（glm W1·防 FINAL_TEMPLATE 图层导向覆盖弱指令）
-    //   ③ 只基于素材作答·素材外标注"知识库未收录"（Codex 补1·防预训练知识补细节）
-    //   ④ 综合全部 Top-K·禁只引 Top-1（glm W2·保"全面"）
-    //   ★ 动态注入预算 ≤8KB（Codex 复验挑战：Top-5 × 1000B + 指令 ≈ 5.5KB·守卫在 validate_paradigm_map）
-    const _lines = _ragResults.map((r, i) => {
-      const _src = String(r.source || '').split('/').pop().split('#')[0];
-      const _txt = r.text ? r.text.trim().slice(0, 1000) : '（片段缺失·需 py tools/rag_index.py --rebuild 重建索引）';
-      return `${i + 1}. [${r.score.toFixed(2)}·${r.data_dim || '社区'}维度] ${_src}\n    ${_txt}`;
-    });
-    ctx.context = '【本次为知识问答·严禁图层/分析模板】\n\n' +
-      '【知识库检索素材（RAG·Top-' + _ragCount + '·供 LLM 综合回答）】\n' + _lines.join('\n') +
-      '\n\n【知识问答排版】\n' +
-      '1. **只基于上述素材作答**·素材未覆盖的信息标注"知识库未收录"·禁止以预训练知识补充细节；\n' +
-      '2. **综合全部 Top-' + _ragCount + ' 素材·归纳共性与差异**·条目式组织·关键内容标注来源·禁止只引部分或只引 Top-1；\n' +
-      '3. **不要生成分析图层 / {{show:图层}} / 4×5 归因 / 演示逻辑链**。\n' +
-      '（数据维度随各条素材 data_dim 标注·结论不超过该维度·不引用他城具体数值）\n\n' +
-      (ctx.context || '');
-    const draft = await stages.finalStep(ctx, hooks, '');
-    const _qd = applyQualityDefense(draft, { obsOk: false, toolHistoryText: '', skipL1: true, question: ctx.question, skipScaleDefense: true });
-    const _final = _qd.final;
-    if (hooks.onFinalDone) hooks.onFinalDone(_final);
-    if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'quick-rag', capsules: _qd.capsules });
-    return { ok: true, rounds: 0, final: _final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: 'quick-rag' }, degraded: false, diagnose: { degraded: true, intent: 'general', quick: true, rag: true } };
+    return await _assembleKnowledgeQA(ctx, hooks, { _quick: true });
   }
 
   // 指代解析（NL 预处理·5.212·几 ms·非 LLM）：检测"这边/刚才"→ grounding 显式标注聚焦对象·让 diagnose 不靠猜
@@ -1168,6 +1185,11 @@ export async function orchestrate(ctx, hooks = {}) {
         ctx.context = '【intent=纯GIS操作】用 geo 工具（extract_feature/clip/filter_attr/overlay/merge/buffer）完成操作，出口=新图层（自动落地图）。\n\n' + (ctx.context || '');
       }
     } else {
+      // CB-22 三层架构 P0-5：diagnose LLM 判 intent=knowledge_qa → 合流 _assembleKnowledgeQA（知识问答通道·意图判断归位）
+      if (intent === 'knowledge_qa') {
+        ctx.context = '【intent=知识问答】本次经意图判断 agent 判定为知识问答——检索知识库素材 → LLM 综合作答（非分析·勿出图层）。\n\n' + (ctx.context || '');
+        return await _assembleKnowledgeQA(ctx, hooks, { _quick: false });
+      }
       if (intent === 'general') {
         ctx.context = '【intent=通用问答】直接简洁作答即可，不要 4×5 归因、不要演示逻辑链、不要引导情绪场景。\n\n' + (ctx.context || '');
         const draft = await stages.finalStep(ctx, hooks, '');

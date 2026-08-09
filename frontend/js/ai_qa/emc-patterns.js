@@ -40,13 +40,12 @@ export const SEARCH_KW = ['理念', '定位', '政策', '策略', '作用', '应
 // 实据词判定（概念问 + 实据词 → 搜索；概念问 + 无实据词 → 本地直答）
 export const SEARCH_EVIDENCE_RE = /政策|策略|方案|案例|新闻|趋势|实施|应用场景|做法|作用/;   // CB-12 弱实据词删（最新/现状/情况·空间问高频·防「西陵区最新的情绪分布」误进搜索）
 
-// CB-22 RAG：开放语义知识检索触发（哪些/如何/为什么+跨文档综合·B 路径未命中降级）
-// ★ 临时承担 B 路径结构化词（CB-22b query_knowledge_base 建后删除下列·转 KNOWLEDGE_QUERY_KW·RAG 只保留开放语义）
-// TODO(CB-22b): B 路径建后·删"有哪些项目/体检问题/体检指标/更新项目"等临时结构化词
+// CB-22 RAG 触发（三层架构 P0-4 降级加速器·2026-08-09）：
+//   加速器词表最小化（宁漏不误·Codex V2）——只保留**高置信精确命中**直通（省 diagnose FC 调用）·
+//   词序变体/模糊问句**全落 diagnose 由 LLM 判**（NL 意图判断归 LLM·用户拍板·非判断主体）。
+// ★ TODO(CB-22b): B 路径建后·删"有哪些项目/体检问题/体检指标/更新项目"等临时结构化词
 export const RAG_QUERY_KW = [
-  // 开放语义（RAG 本职·开放语义/跨文档综合）
-  '哪些城市', '哪些案例', '哪些项目适合', '如何参考', '做法', '机制', '路径',
-  // ★ 临时承担 B 路径结构化（CB-22b 建后移除）
+  // 高置信精确命中（加速器直通·仅这些词才直通·其余落 diagnose）
   '有哪些项目', '体检问题', '体检指标', '更新项目', '项目库', '问题清单',
 ];
 // 知识词判定（开放语义 + 知识词 → rag_query 短路；无知识词不触发·宁落不误断）
@@ -58,7 +57,8 @@ export const RAG_KNOWLEDGE_RE = /项目|指标|体检|案例|政策|片区|问�
 export const PARADIGM_MAP = {
   'general': 'text_qa',
   'search': 'text_qa',            // general 子路径（CB-12 联网素材注入）
-  'rag_query': 'knowledge_qa',    // RAG 检索 → LLM 综合素材（修正后·非零 LLM）
+  'rag_query': 'knowledge_qa',    // 加速器直通（RAG 检索 → LLM 综合素材）
+  'knowledge_qa': 'knowledge_qa', // diagnose LLM 判出（三层架构 P0-5 合流·与短路同范式）
   'knowledge_query': 'knowledge_qa', // B 路径（CB-22b·确定性查询·建后收紧）
   'gis_operation': 'layer',
   'emotion_analysis': 'layer',

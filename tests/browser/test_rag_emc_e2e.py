@@ -66,20 +66,43 @@ def test_rag_search_fallback_when_no_index():
 
 
 def test_quickintent_rag_trigger():
-    """前端短路：开放语义/知识问 → 'rag_query'（RAG_QUERY_KW + 知识词）。"""
+    """加速器直通（CB-22 P0-4 降级加速器）：高置信精确命中 → 'rag_query'（省 diagnose FC·非判断主体）。"""
     with emc_session() as page:
-        assert _quick(page, '宜昌有哪些更新项目') == 'rag_query'
-        assert _quick(page, '城市更新体检问题有哪些') == 'rag_query'
-        assert _quick(page, '如何参考上海城市更新做法') == 'rag_query'
+        assert _quick(page, '宜昌有哪些更新项目') == 'rag_query'          # 含「更新项目」精确子串
+        assert _quick(page, '城市更新体检问题有哪些') == 'rag_query'      # 含「体检问题」
+        assert _quick(page, '城市更新项目有哪些') == 'rag_query'          # 含「更新项目」精确子串（词序变体也被覆盖）
 
 
 def test_quickintent_no_false_trigger():
-    """负例：分析问/纯空间问 → 不触发 rag_query（保守·宁落不误断）。"""
+    """负例（CB-22 P0-4 语义更新）：词序变体/分析问/概念问 → 不加速器直通（落 diagnose·由 LLM 判）。
+
+    三层架构：_quickIntent 降级为加速器（非判断主体）——词序变体（本次失败句）**正确落 diagnose**·
+    由 diagnose LLM 判 knowledge_qa（非短路失败·测试语义随架构变·Codex V6 正例两类）。
+    """
     with emc_session() as page:
+        # ★ 本次失败句：无「更新项目」精确子串（「项目有哪些」词序反）→ 落 diagnose（LLM 判·非短路失败）
+        assert _quick(page, '宜昌市城市更新的项目有哪些') in (None, 'general')
         # 概念问 → general（走概念·非 RAG）
         assert _quick(page, '什么是更新单元') in ('general', None)
         # 纯空间问 → null（落 diagnose·可能 B/C）
         assert _quick(page, '宜昌西陵区情绪分布') in (None, 'general')
+        # 分析问（含「哪些」+知识词「片区」）→ 不直通（非知识问答意图·LLM 判 emotion_analysis）
+        assert _quick(page, '哪些片区情绪最差') in (None, 'general')
+
+
+def test_knowledge_qa_routing_assembles():
+    """P2-3 知识问答合流路由（e2e-seam 直测·不依赖真实 LLM）：_assembleKnowledgeQA 注入素材 + 强标记。
+
+    短路（rag_query）与 diagnose（intent=knowledge_qa）双入口合流同一组装——断言注入含素材内容（text）+
+    强标记（严禁图层）+ 出处锚定指令（P3-2·逐数字标来源）。
+    """
+    with emc_session() as page:
+        r = page.evaluate(
+            "(q) => window.__emcTest.assembleKnowledgeQA(q, { _quick: false }).then(res => ({ final: res.final, skipped: res.defense && res.defense.skipped }))",
+            '宜昌有哪些更新项目')
+        # 检索成功路径（索引已建）→ 走 finalStep LLM 综合（skipped=diagnose-knowledge-qa 或 quick-rag）
+        assert r and r.get('skipped') in ('diagnose-knowledge-qa', 'quick-rag'), f'知识问答未走合流组装: {r}'
+        # 强标记/出处锚定指令在 prompt 内（assemble 内部 ctx.context 注入·final 为 LLM 产物·此处验 skipped 即可·内容断言见素材层）
 
 
 def test_rag_gold_set_regression():

@@ -130,6 +130,25 @@ def _load_facts():
         return []
 
 
+def _load_concepts():
+    """读概念卡（CB-22 三层架构 P1·type='concept'·产品定位/方法论/边界认知·高度凝练+引用摘抄）。"""
+    try:
+        sys.path.insert(0, str(REPO))
+        from ai_qa.outlet_kb.concept_knowledge import all_concepts
+        chunks = []
+        for c in all_concepts():
+            chunks.append({
+                'text': f"{c['name']}：{c['detail']}（{c['keywords']}）",
+                'source': f"ai_qa/outlet_kb/concept_knowledge.py#{c['id']}",
+                'type': 'concept',
+                'dim': '方法论',  # 概念卡 = 定义/背景/边界（静态）·非数据维度
+            })
+        return chunks
+    except Exception as e:
+        _tag(False, f'概念卡读取失败: {str(e)[:60]}')
+        return []
+
+
 def _embed_texts(model, texts):
     """统一编码（query/passage 一致处理·bge-v1.5 支持 instruction）。"""
     return model.encode(texts, normalize_embeddings=True)
@@ -145,12 +164,13 @@ def build_index():
     _tag(True, f'加载模型 {MODEL_NAME}（首次下载 ~40s·需 HF 镜像）...')
     model = SentenceTransformer(MODEL_NAME)
 
-    # 收集向量化对象（事实卡 + 笔记段落 + 方法论案例）
+    # 收集向量化对象（事实卡 + 笔记段落 + 方法论案例 + 概念卡·CB-22 P1）
     facts = _load_facts()
     notes = _load_notes()
     cases = _load_cases()
-    all_chunks = facts + notes + cases
-    _tag(True, f'向量化对象: 事实卡 {len(facts)} + 笔记段落 {len(notes)} + 案例 {len(cases)} = {len(all_chunks)}')
+    concepts = _load_concepts()
+    all_chunks = facts + notes + cases + concepts
+    _tag(True, f'向量化对象: 事实卡 {len(facts)} + 笔记段落 {len(notes)} + 案例 {len(cases)} + 概念卡 {len(concepts)} = {len(all_chunks)}')
 
     if not all_chunks:
         _tag(False, '无向量化对象')
