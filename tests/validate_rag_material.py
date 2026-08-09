@@ -17,10 +17,10 @@ _CONCEPTS = Path(__file__).resolve().parent.parent / "ai_qa" / "outlet_kb" / "co
 
 
 def test_urp_p01_has_correct_55_composition():
-    """P3-3 素材语义：URP-P01 detail 含 55 准确构成（典型片区类 43 + 机制建设类 12·源自笔记 :43）。
+    """P3-3 素材语义：URP-P01 detail 含 55 准确构成（罗列 5 项·无硬造分类·CB-22 素材术语纪律）。
 
-    事实核查（CB-22）：「典型片区类/机制建设类」有真实出处（笔记 codex_0819:43 提炼自 00-03 最新版）·
-    「43」= 典型片区类项目数（44.93 亿）·**非**「43 个完整社区」（那是 00-02 老版 2030 目标·已拆到 URP-P11）。
+    用户实测（CB-22）：「典型片区类/机制建设类」是非正式工作稿用语·判定不要·**不硬造分类**——
+    detail 直接罗列 5 项（污水 16/葛洲坝 12/夷陵 12/红星路-二马路 3/其他项目 12）·「前 4 组合计 43 个」事实描述非分类名。
     """
     import importlib.util
     spec = importlib.util.spec_from_file_location("urban_renewal_knowledge", _URP)
@@ -28,12 +28,19 @@ def test_urp_p01_has_correct_55_composition():
     spec.loader.exec_module(mod)
     p01 = next(f for f in mod.PROJECTS if f['id'] == 'URP-P01')
     detail = p01['detail']
-    # 55 准确构成（源自笔记 :43·非 LLM 自创）
-    assert '典型片区类 43 个' in detail, f'URP-P01 缺「典型片区类 43 个」准确构成（43=典型片区类项目数）: {detail}'
-    assert '机制建设类 12 个' in detail, f'URP-P01 缺「机制建设类 12 个」: {detail}'
-    assert '污水"厂网一体"示范区 16 个' in detail, 'URP-P01 缺 4 子类拆分（污水厂网一体 16）'
-    # 防张冠李戴：不得含「43 个完整社区」错口径（那是 00-02 老版·已拆到 URP-P11）
+    # 55 准确构成（罗列 5 项·数字自明）
+    assert '污水"厂网一体"示范区 16 个' in detail, 'URP-P01 缺罗列（污水厂网一体 16）'
+    assert '葛洲坝片区 12 个' in detail, 'URP-P01 缺罗列（葛洲坝 12）'
+    assert '夷陵三峡移民老城片区 12 个' in detail, 'URP-P01 缺罗列（夷陵 12）'
+    assert '红星路-二马路历史文化街区 3 个' in detail, 'URP-P01 缺罗列（红星路-二马路 3）'
+    assert '其他项目 12 个' in detail, 'URP-P01 缺罗列（其他项目 12·排除描述非分类名）'
+    assert '前 4 组合计 43 个' in detail, 'URP-P01 缺「前 4 组合计 43 个」事实描述'
+    # 素材术语纪律（CB-22 用户实测）：不得含硬造分类标签
+    assert '典型片区类' not in detail, f'URP-P01 仍含硬造分类「典型片区类」（用户判定不要·素材术语纪律）: {detail}'
+    assert '机制建设类' not in detail, f'URP-P01 仍含硬造分类「机制建设类」（用户判定不要·素材术语纪律）: {detail}'
     assert '43 个完整社区' not in detail, f'URP-P01 仍含「43 个完整社区」错口径（版本混用·应拆到 URP-P11）: {detail}'
+    # name 同步去非正式词（Codex 细节 1）
+    assert '典型片区' not in p01['name'] and '机制' not in p01['name'], f'URP-P01 name 仍含非正式词: {p01["name"]}'
 
 
 def test_urp_p01_has_readable_source():
@@ -77,12 +84,12 @@ def test_concept_knowledge_three_categories():
 
 
 def test_rag_search_hits_urp_p01():
-    """P3-3 检索命中：rag_search('典型片区类 55 个项目') 命中 URP-P01（55 构成·防素材缺漏）。"""
+    """P3-3 检索命中：rag_search('宜昌城市更新项目 55 个') 命中 URP-P01（55 构成·防素材缺漏）。"""
     from tools.rag_index import search
-    r = search('宜昌城市更新典型片区类和机制建设项目 55 个', 5)
+    r = search('宜昌城市更新项目 55 个', 5)
     assert r.get('ok'), f'检索失败: {r.get("error")}'
     sources = [x['source'] for x in r['results']]
-    assert any('URP-P01' in s for s in sources), f'「典型片区类 55 个」未命中 URP-P01: {sources}'
+    assert any('URP-P01' in s for s in sources), f'「宜昌城市更新项目 55 个」未命中 URP-P01: {sources}'
 
 
 def test_rag_search_hits_urp_p11_not_p01():

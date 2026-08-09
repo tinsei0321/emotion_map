@@ -549,6 +549,10 @@ function renderAnswer(text, validNames) {
   // CB-05 删除符号根治 Layer 1：strip markdown 删除线（~~text~~ → text·治根因A·不可绕过·不靠 Flash 守 prompt）
   text = String(text).replace(/~~([\s\S]+?)~~/g, '$1').replace(/~~/g, '');
   let html = window.marked ? window.marked.parse(text) : `<p>${escapeHtml(text).replace(/\n/g, '<br>')}</p>`;
+  // CB-22 素材术语/来源排版：来源标注弱化（小号浅灰·随文不换行）——主：〔来源：...〕（LLM 约定格式·注入指令已约定）；
+  //   兜底：自由格式（来源：...）/（来源：...）（LLM 不守约定时·glm 方案 B 主 + A 兜底）
+  html = html.replace(/〔来源：([^\〕]+)〕/g, '<span class="answer-source">〔来源：$1〕</span>')
+             .replace(/（来源：([^）]+)）/g, '<span class="answer-source">（来源：$1）</span>');
   html = html.replace(/\[ref:([^\]]+)\]/g, (_, name) => {
     const valid = !validNames || validNames.has(name);
     const cls = valid ? 'cite-chip' : 'cite-chip cite-chip-invalid';

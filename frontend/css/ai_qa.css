@@ -837,3 +837,5 @@
 .outlet-limits blockquote { margin: 2px 0; padding-left: 8px; border-left: 2px solid var(--emc-divider); }
 .outlet-source { font-size: 10.5px; color: var(--geojson-color-text-tertiary, #707070); opacity: 0.7; }
 [data-theme="light"] .outlet-card { box-shadow: 0 3px 12px rgba(20,58,53,0.10); }
+/* CB-22 素材术语/来源排版：回答内来源标注弱化（小号+浅灰·随文不换行·与 .outlet-source 同参数统一排版） */
+.answer-source { font-size: 0.85em; color: var(--geojson-color-text-tertiary, #707070); font-weight: normal; opacity: 0.7; }
