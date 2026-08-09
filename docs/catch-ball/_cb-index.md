@@ -9,12 +9,12 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-22c · RAG Phase 0 验证结论**（本地 BGE embedding 已跑通·向量化确定可实现·待两组评估） |
-| **上一轮** | CB-22b/22c（反评价收敛定稿）→ CB-22（L2 出向·架构定稿）→ CB-21b（知识库构建） |
+| **当前 CB 轮次** | **CB-22c · RAG Phase 1 执行**（两组评估通过·开始向量化 L0 + rag_search + 接入） |
+| **上一轮** | CB-22c Phase 0（本地 BGE 验证通过）→ CB-22b/22c（定稿）→ CB-22（L2 架构） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
 | **当前分支** | `fix/emc-buglog`（与 origin 同步） |
-| **最新讨论** | `discuss/CB22c-RAG_Phase0_验证结论_2026-08-09.md`（本地 BGE 512 维跑通·语义 0.728 正确·HF 镜像解决下载） |
-| **最新进展** | **CB-22 架构定稿**·**CB-22b/22c 定稿**·**RAG Phase 0 验证通过**：本地 BGE embedding 完整跑通（Py3.14 安装成功·HF 镜像下载·512 维·语义检索正确）·向量化确定可实现·智谱配额不可用（本地兜底） |
+| **最新讨论** | `discuss/CB22c-RAG_Phase1_执行定稿_2026-08-09.md`（requirements 版本锁/numpy 原子写/黄金集 Recall/HF 固化/<3000B） |
+| **最新进展** | **CB-22 架构定稿**·**RAG Phase 0 通过**（本地 BGE 跑通·两组确认）·**Phase 1 启动**：向量化 L0 知识库 + rag_search + B 先 RAG 后 + 召回率黄金集 |
 | **接手文档** | `memories/repo/session-handoff.md`（08-05 卡·已过时·历史背景）+ `_handoff/HOME.md` + `OFFICE.md`（08-08 权威快照）+ `_handoff/CB恢复记忆prompt_2026-08-09.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 
