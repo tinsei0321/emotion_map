@@ -111,6 +111,25 @@ def _load_cases():
         return []
 
 
+def _load_facts():
+    """读 L1.5 事实卡（urban_renewal_knowledge.py·7 类·逐条一向量·含 dimension）。"""
+    try:
+        sys.path.insert(0, str(REPO))
+        from ai_qa.outlet_kb.urban_renewal_knowledge import all_facts
+        chunks = []
+        for f in all_facts():
+            chunks.append({
+                'text': f"{f['city']}·{f['region']}·{f['name']}：{f['detail']}（{f['keywords']}）",
+                'source': f"ai_qa/outlet_kb/urban_renewal_knowledge.py#{f['id']}",
+                'type': 'fact',
+                'dim': f.get('dimension', '社区'),  # 数据维度（事实卡已标注）
+            })
+        return chunks
+    except Exception as e:
+        _tag(False, f'事实卡读取失败: {str(e)[:60]}')
+        return []
+
+
 def _embed_texts(model, texts):
     """统一编码（query/passage 一致处理·bge-v1.5 支持 instruction）。"""
     return model.encode(texts, normalize_embeddings=True)
@@ -126,11 +145,12 @@ def build_index():
     _tag(True, f'加载模型 {MODEL_NAME}（首次下载 ~40s·需 HF 镜像）...')
     model = SentenceTransformer(MODEL_NAME)
 
-    # 收集向量化对象
+    # 收集向量化对象（事实卡 + 笔记段落 + 方法论案例）
+    facts = _load_facts()
     notes = _load_notes()
     cases = _load_cases()
-    all_chunks = notes + cases
-    _tag(True, f'向量化对象: 笔记段落 {len(notes)} + 案例 {len(cases)} = {len(all_chunks)}')
+    all_chunks = facts + notes + cases
+    _tag(True, f'向量化对象: 事实卡 {len(facts)} + 笔记段落 {len(notes)} + 案例 {len(cases)} = {len(all_chunks)}')
 
     if not all_chunks:
         _tag(False, '无向量化对象')
