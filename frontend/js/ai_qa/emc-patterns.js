@@ -52,6 +52,17 @@ export const RAG_QUERY_KW = [
 // 知识词判定（开放语义 + 知识词 → rag_query 短路；无知识词不触发·宁落不误断）
 export const RAG_KNOWLEDGE_RE = /项目|指标|体检|案例|政策|片区|问题|做法|机制/;
 
+// CB-22 分类→回答范式映射（显式契约·防"分类正确但范式错位"）。
+// text_qa=纯文字直答（finalStep 纯问答）· knowledge_qa=确定性组装（零 LLM·禁 finalStep）· layer=finalStep 图层（分析）
+export const PARADIGM_MAP = {
+  'general': 'text_qa',
+  'search': 'text_qa',            // general 子路径（CB-12 联网素材注入）
+  'rag_query': 'knowledge_qa',    // 确定性组装（根治模板错位）
+  'knowledge_query': 'knowledge_qa', // B 路径（CB-22b·确定性查询）
+  'gis_operation': 'layer',
+  'emotion_analysis': 'layer',
+};
+
 // 宜昌地名（_quickIntent → 落 diagnose·可能 B/C）
 export const REGION_KW = ['西陵', '伍家岗', '点军', '夷陵', '猇亭', '宜昌', '滨江', '奥体', '二马路', '大南门', 'cbd'];
 

@@ -78,6 +78,19 @@ def test_quickintent_no_false_trigger():
         assert _quick(page, '宜昌西陵区情绪分布') in (None, 'general')
 
 
+def test_assemble_rag_results():
+    """分类→范式映射：rag_query 确定性组装（条目式+来源+维度·零 LLM·无图层导向）。"""
+    with emc_session() as page:
+        out = page.evaluate("() => window.__emcTest.assembleRagResults([{source: 'x/y.md#1', data_dim: '片区', score: 0.8}], 1)")
+        # 条目式 + 来源 + 维度声明·无"分析图已生成"/无图层
+        assert '知识库检索结果' in out
+        assert '片区维度' in out
+        assert '来源' in out
+        assert '数据维度声明' in out
+        assert '分析图' not in out      # 无图层导向（负例·根治模板错位）
+        assert '{{show' not in out      # 无图层按钮
+
+
 def test_rag_gold_set_regression():
     """黄金集回归：接入后召回/越维/案例 3 类仍 100%（防接入退化）。"""
     import subprocess
