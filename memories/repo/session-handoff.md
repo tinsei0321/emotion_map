@@ -1,7 +1,7 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：08月10日凌晨（**CB-22d 地图标记路径跑通闭环 + 分支合并 fix/emc-buglog → main**）| 分支 `main` @ `7eee7c3`（与远程同步·工作区干净）
+> 最后更新：08月10日 上午（office 环境同步·网络暂断）| 分支 `main` @ `0c9b10fb`（与 origin/main 跟踪一致·工作区干净·fix/emc-buglog 本地已删·仅剩 main）
 >
 > 🔗 **CB 入口**：`docs/catch-ball/_cb-index.md`（**双阵营：claude组 开发主 + Codex/glm组 评估**）
 > 🏠🏢 **换机卡片**：`docs/catch-ball/_handoff/HOME.md`（家）+ `OFFICE.md`（公司·08-10 续做）
@@ -41,12 +41,13 @@
 - **fix/emc-buglog（368 提交）→ main** · merge commit `b77daef`（保留全部历史 + 本地 main `81784f0`）
 - 推 origin main（`76124d6..b77daef`）· 删本地 + 远程 fix 分支
 - **当前唯一分支 = main**（`7eee7c3`）· 工作区干净
-- **到公司**：`git checkout main` + `git pull` + `git fetch --prune origin`（删过时 fix 引用）· 后续开发在 main
+- **到公司（08-10 已执行）**：`git checkout main` ✓ · `git pull`（网络暂断·待复）· `git fetch --prune origin`（本地 fix 已删·仅剩 main）· 后续开发在 main
 
 ## 今日 commit（main）
 
 | commit | 内容 | push |
 |---|---|---|
+| `0c9b10fb` | 覆写会话交接卡 08-05 → 08-10（CB-22d 闭环 + 分支合并 main + 公司 08-10 续做） | ✅ |
 | `7eee7c3` | 分支合并进度同步（todo/交接卡/revision-log/cb-journal） | ✅ |
 | `b77daef` | merge fix/emc-buglog → main（368 提交·含 CB-22d 全链） | ✅ |
 | `ace4f8f` | CB-22d 地图标记路径跑通根治（names split/冷加载/高德优先/A0 分词/聚合名放弃/B1 零 LLM） | ✅（在 fix 分支·已并入 main） |
