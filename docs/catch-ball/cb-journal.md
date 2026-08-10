@@ -36,8 +36,13 @@
 
 ### ④ 状态
 
-- **已过 CB→继续推进**：收敛定稿完成·plan 明确·**用户指令「两组展开详细讨论再定稿」→ 已发定稿 plan 详细讨论**（`discuss/CB22f-..._定稿plan详细讨论发起_2026-08-10.md`·6 实施级焦点 A-F）
-- **待**：两组详细讨论回应 → claude 最终定稿 → 实施阶段 0~5（P2→P1→P3→A→B→D）·pytest 339 零回归+validate+桩测·用户浏览器实测动作链 demo
+- **已过 CB→继续推进**：收敛定稿完成·plan 明确·**用户指令「两组展开详细讨论再定稿」→ 已发定稿 plan 详细讨论**（`discuss/CB22f-..._定稿plan详细讨论发起_2026-08-10.md`·6 实施级焦点 A-F）→ **两组详细回应已回收 + claude 最终定稿**（见下）
+- **最终定稿（2026-08-10 · 吸收两组全部修正）**：
+  - **Codex 2 处实施级修正（已核实）**：① `exclude_categories` 默认保持 `('concept',)` 不动（扩 ('concept','knowledge') 会把 knowledge_qa 从 FC schema 排除·方案 B 失效——tool_contracts.py:456/501 核实）② `derive_template_registry` 加 `category=='knowledge'` 过滤（否则 knowledge_qa 进 TEMPLATE_REGISTRY → 技能目录进 diagnose prompt 文本·撞「diagnose prompt 永不动」红线——:366-381 无过滤核实）
+  - **glm 修正（已核实）**：③ query_knowledge_base track ID 改 **F_016 起**（非 F_018——MOD_AIQA 现有最大 F_015·跳号违反红线）④ `stages.js:316-318` 空 tool_calls 处理显式列改动点（方案 A 兜底路径·否则易漏只改 _normalizeFcDiagnose）⑤ 索引重建 meta 验证进验收（防透传写了但索引没重建）
+  - **6 焦点最终收敛**：A 1 步下限+demo 2 步（两次独立追问）+「标记→分析」语义边界显式标注（标记层≠情绪 L2 层）+L2 预载 / B 伪工具守卫 5 断言+方案 A 保留+SKILL_DEFS 显式豁免+三处同步精确 / C 实体清单级 `{geo≤5, attrs:[字段名]}`+region 匹配时机后移+note source 仅兜底+三条件守卫 / D _followupCue 替换 _markupCue（:1130）+数据门豁免仅 markup+_quickIntent 先行豁免+recover 扩 3 类 / E 阶段0=P2+P1（同阶段·P1 在 B 前）→P3→A→B→D / F 桩测 6 组+索引重建验证+trace 强制+三组分工
+- **执行顺序最终定稿**：阶段0（P2+P1）→ 阶段1（P3）→ 阶段2（A 路由）→ 阶段3（B 识别衔接）→ 阶段4（D RAG 后置）
+- **待**：实施阶段 0~4 · pytest 339 零回归+validate+桩测+索引重建验证 · 用户浏览器实测动作链 demo（1 步链）
 
 ---
 
