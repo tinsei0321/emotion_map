@@ -39,12 +39,16 @@ export async function streamChat(messages, context, onToken, onError, opts = {})
     else signal.addEventListener('abort', () => { clearTimeout(_timer); _ac.abort(signal.reason); }, { once: true });
   }
   try {
-    const r = await fetch(`${BASE}/chat`, {
+    // CB-22i P1（glm）：fetch 总超时——abort 在 fetch pending（等响应头·serve 反代挂死未返 200）时
+    //   依赖浏览器/服务端配合·TCP FIN 处理延迟可致 reject 迟到（用户读秒 5 分半根因）·Promise.race 强制超时。
+    const _fetchPromise = fetch(`${BASE}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
       signal: _ac.signal,
     });
+    const _raceTimeout = new Promise((_, _rej) => setTimeout(() => _rej(new Error(`请求总超时(${_timeout / 1000}s)`)), _timeout + 5000));
+    const r = await Promise.race([_fetchPromise, _raceTimeout]);
     if (!r.ok) {
       let detail = `问答失败: ${r.status}`;
       try { const j = await r.json(); detail = j.detail || detail; } catch (_) {}

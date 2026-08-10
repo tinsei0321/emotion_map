@@ -264,6 +264,12 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
                              'content-language', 'etag', 'last-modified'):
                 self.send_header(k, v)
         self.end_headers()
+        # CB-22i P0（glm）：反代总超时——后端 uvicorn 挂死（DeepSeek 首 chunk 前挂）时·read1 永久阻塞
+        #   会拖死 serve 单线程（后续请求排队）·Timer 到时强制 close resp 中断阻塞·返 502 → 前端降级。
+        #   50s 比前端 45s abort 略宽（前端降级先行·serve 线程随后释放·不拖死后续请求）。
+        import threading as _th
+        _proxy_timer = _th.Timer(50.0, lambda: resp.close())
+        _proxy_timer.start()
         try:
             while True:
                 try:
@@ -276,6 +282,8 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.flush()   # 每块 flush·浏览器渐进渲染 token
         except Exception:
             pass   # 客户端断开等·静默
+        finally:
+            _proxy_timer.cancel()   # 正常完成·取消 Timer
 
     def _test_reports_dir(self):
         """测试报告固定落盘目录：<repo>/tests/reports/（不存在则建）。"""

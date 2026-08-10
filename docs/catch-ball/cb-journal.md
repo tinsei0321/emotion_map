@@ -23,8 +23,18 @@ CB-22g + CB-22h 三次修复后·用户实测「追问后一直卡住」·三次
 
 ### ④ 状态
 
-- **需发两组 prompt**：`discuss/CB22i-追问持续卡住_三组根因讨论发起_2026-08-10.md` 附 A（6 焦点·含三组各自 Playwright 复现）
-- **待**：两组回应（含复现结果）→ claude 反评价收敛 → 定稿
+- **两组回应已回收 + 反评价收敛 + 定稿修复已实施**（见下）
+- **反评价收敛（glm 承重根因·Codex 同判·已核实）**：
+  - **deadline 被动检查失效**：llm.py:367-369 deadline 检查在 `for chunk in cli.chat()` 循环体内——**生成器阻塞在 `__next__()`（首 chunk 前挂死）时循环体不可达·deadline 永不触发**（Python 实测铁证 + trace 17:29 有 D_004 vs 18:09 无 D_004）
+  - **Playwright 桩测盲区**：`page.route` 前端层拦截·绕过了 serve 反代 + uvicorn 真实阻塞·测的不是真实场景（"通过"但用户仍卡）
+  - **浏览器缓存排除**：serve 返回新 JS（含 `_composeKnowledgeDegraded`·Codex/glm 都核实）·缓存非根因
+  - **serve 反代同款挂死**：`urlopen(timeout=60)` 心跳陷阱 + 单线程阻塞·后端挂死拖死 serve
+  - **前端 abort edge case**：fetch pending（等响应头·serve 挂死未返 200）时 abort 依赖 TCP FIN 处理·延迟 reject
+- **定稿修复（已实施）**：
+  - P0-1 `LLMClient.chat` stream 分支加 **Timer 强制 resp.close**（总预算主动中断·`_total_ttl` 传参·防首 chunk 前挂死永久阻塞）
+  - P0-2 `serve.py` `_send_streamed` 加 **Timer 强制 close**（反代 50s 总超时·防 serve 单线程拖死）
+  - P1-1 `api.js` streamChat fetch 加 **Promise.race 总超时**（45s+5s·防 abort 在 pending fetch 延迟）
+- **验证**：Timer 主动中断实测（本地挂死 server→1.2s 抛 LLMError）+ 316 passed 零回归 + 前端挂起 46s 降级收尾
 
 ---
 

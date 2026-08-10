@@ -105,30 +105,47 @@ class LLMClient:
                             if resp.status_code == 401:
                                 raise LLMError(f'API Key 无效 (401)。检查 {DEFAULT_KEY_ENV}。', status_code=401)
                             raise LLMError(f'LLM HTTP {resp.status_code}: {body_txt}', status_code=resp.status_code)
-                        for line in resp.iter_lines():
-                            if not line or not line.startswith('data:'):
-                                continue
-                            data = line[5:].strip()
-                            if data == '[DONE]':
-                                break
+                        # CB-22i P0（glm 承重根因·Codex 同判）：总预算主动中断——
+                        #   deadline 被动检查（chat_with_fallback 循环体内）在「首 chunk 前挂死」时不可达
+                        #   （for chunk in cli.chat() 阻塞在 __next__()·循环体不执行·trace 18:09 无 D_004 铁证）。
+                        #   Timer 到时强制 resp.close()→iter_lines() 抛 StreamClosed→LLMError→SSE error→前端降级。
+                        #   TTL 传参（chat_with_fallback 已算 _ttl·此处默认 60 兜底·防 connect/首 chunk 无限等）。
+                        import threading as _th
+                        _ttl_here = float(self._total_ttl) if getattr(self, '_total_ttl', None) else 60.0
+                        def _force_close():
                             try:
-                                obj = json.loads(data)
-                            except json.JSONDecodeError:
-                                continue
-                            delta = (obj.get('choices') or [{}])[0].get('delta', {})
-                            reason = delta.get('reasoning_content')   # V4 Pro 思考链
-                            content = delta.get('content')
-                            if with_reason:
-                                if reason:
-                                    yield ('reason', reason)
-                                if content:
-                                    yield ('content', content)
-                            else:
-                                if content:
-                                    yield content
-                            usage = obj.get('usage')   # 流式末尾 chunk 含 usage（prompt/completion/total_tokens）
-                            if usage and with_reason:
-                                yield ('usage', usage)
+                                resp.close()   # 强制中断 iter_lines 阻塞（首 chunk 前挂死也能释放）
+                            except Exception:
+                                pass
+                        _force_timer = _th.Timer(_ttl_here, _force_close)
+                        _force_timer.start()
+                        try:
+                            for line in resp.iter_lines():
+                                if not line or not line.startswith('data:'):
+                                    continue
+                                data = line[5:].strip()
+                                if data == '[DONE]':
+                                    break
+                                try:
+                                    obj = json.loads(data)
+                                except json.JSONDecodeError:
+                                    continue
+                                delta = (obj.get('choices') or [{}])[0].get('delta', {})
+                                reason = delta.get('reasoning_content')   # V4 Pro 思考链
+                                content = delta.get('content')
+                                if with_reason:
+                                    if reason:
+                                        yield ('reason', reason)
+                                    if content:
+                                        yield ('content', content)
+                                else:
+                                    if content:
+                                        yield content
+                                usage = obj.get('usage')   # 流式末尾 chunk 含 usage（prompt/completion/total_tokens）
+                                if usage and with_reason:
+                                    yield ('usage', usage)
+                        finally:
+                            _force_timer.cancel()   # 正常完成/break·取消 Timer（防误杀后续流）
             else:
                 with httpx.Client(timeout=self.timeout) as client:
                     resp = client.post(url, headers=headers, json={**body, 'stream': False})
@@ -358,6 +375,7 @@ def chat_with_fallback(messages, tier: str = 'pro', **chat_kwargs) -> Iterator:
             break
         model = prov.model_pro if tier == 'pro' else prov.model_flash
         cli = LLMClient(base_url=prov.base_url, model=model, api_key=prov.api_key)
+        cli._total_ttl = _ttl   # CB-22i P0：总预算传给 chat 流分支·Timer 主动中断用
         for attempt in range(MAX_RETRIES):
             if time.monotonic() > _total_deadline:
                 break
