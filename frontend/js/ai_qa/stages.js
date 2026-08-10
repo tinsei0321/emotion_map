@@ -319,7 +319,7 @@ export async function fcDiagnoseStep(ctx, hooks) {
       //   复用 [scale:]/[domain_lens:] A-part 解析模式（下方同款）。否则维持 degraded。
       if (data.content && /\[intent:\s*knowledge_qa\]/.test(data.content || '')) {
         return { degraded: false, _fc: true, template: 'knowledge_qa', intent: 'knowledge_qa',
-                 scale: _deriveScale(question || '', data.content || ''), params: {}, _fcTag: 'content-knowledge' };
+                 scale: _deriveScale(ctx.question || '', data.content || ''), params: {}, _fcTag: 'content-knowledge' }; // CB-22g: question 未定义→ctx.question
       }
       console.warn('[FC] 无 tool_calls');
       return { degraded: true, _fc: true, _fcError: 'no_tool_calls' };

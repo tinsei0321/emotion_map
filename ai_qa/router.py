@@ -10,6 +10,7 @@ SSE 帧：{"token": tok}=正文 / {"reason": tok}=思考链 / {"error": ...} / [
 v2（5.243）：fc_diagnose phase → function calling 非流式 JSON 响应（替代旧 diagnose SSE）。
 """
 import json
+import time
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 
@@ -18,6 +19,12 @@ from ai_qa.prompts import (
     build_agent_prompt, build_final_prompt, build_diagnose_prompt, build_optimize_prompt,
     build_diagnose_prompt_dispatch,
 )
+from core.tracker import get_tracker, register_track_id
+
+# CB-22g F_019：FC 路由可观测性——@track 装饰器不适用 SSE 生成器（wrapper 对 generator 只在调用层
+# enter/exit·body 迭代执行时不 track），改 _fc_gen 内手动 enter/exit/error 埋点（tool_calls/tool_name/
+# _fcError 落 trace·FC 失败从此可定位——CB-22g 盲区：FC 此前在 trace 中完全不可见）。
+register_track_id('MOD_AIQA.F_019', 'fc_diagnose（FC 路由 SSE 生成器·tool_calls/tool_name/_fcError 可观测·CB-22g 手动埋点）')
 
 router = APIRouter()
 
@@ -76,6 +83,11 @@ async def chat_route(req: ChatRequest):
         from ai_qa.llm import chat_with_tools_stream_fallback
 
         def _fc_gen():
+            # CB-22g F_019：FC 路由埋点（@track 不适用生成器·手动 enter/exit/error·tool_calls/_fcError 落 trace）
+            _tr = get_tracker()
+            _tr.enter('MOD_AIQA.F_019', input_info=(_q or '')[:60])
+            _t0 = time.time()
+            _tc_name = ''
             try:
                 for kind, tok in chat_with_tools_stream_fallback(messages, tools, tier='flash'):
                     if kind == 'reason':
@@ -85,6 +97,7 @@ async def chat_route(req: ChatRequest):
                         tc = (result.get('tool_calls') or [{}])[0]
                         _fixes = []
                         if tc and tc.get('function'):   # v3 H6：后端 validate_tool_call 兜底（D062）
+                            _tc_name = tc['function'].get('name', '')   # CB-22g F_019：记 tool_name 供 trace
                             try:
                                 _args = _json.loads(tc['function'].get('arguments', '{}'))
                                 _v = validate_tool_call(tc['function']['name'], _args)
@@ -104,11 +117,17 @@ async def chat_route(req: ChatRequest):
                                 _plans = result.get('content')
                         yield f'data: {_json.dumps({"tool_calls": result.get("tool_calls"), "plans": _plans, "usage": result.get("usage"), "fixes": _fixes}, ensure_ascii=False)}\n\n'
                 yield 'data: [DONE]\n\n'
+                _tr.exit('MOD_AIQA.F_019', output_info=f'ok tool={_tc_name or "none"}', elapsed_ms=(time.time() - _t0) * 1000)
             except LLMError as e:
+                _tr.error('MOD_AIQA.F_019', '_fcError=LLMError', e)
+                _tr.exit('MOD_AIQA.F_019', output_info='_fcError=LLMError', elapsed_ms=(time.time() - _t0) * 1000)
                 yield f'data: {_json.dumps({"error": str(e)}, ensure_ascii=False)}\n\n'
             except (KeyboardInterrupt, SystemExit):
+                _tr.exit('MOD_AIQA.F_019', output_info='interrupted', elapsed_ms=(time.time() - _t0) * 1000)
                 raise   # CB-05 CR2：不吞系统退出信号
             except Exception as e:
+                _tr.error('MOD_AIQA.F_019', '_fcError=FC诊断失败', e)
+                _tr.exit('MOD_AIQA.F_019', output_info='_fcError=exception', elapsed_ms=(time.time() - _t0) * 1000)
                 yield f'data: {_json.dumps({"error": f"FC 诊断失败: {e}"}, ensure_ascii=False)}\n\n'
 
         return StreamingResponse(_fc_gen(), media_type='text/event-stream')

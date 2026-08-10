@@ -10,7 +10,7 @@
 
 CB-22f 5 阶段实施完成（315 passed 零回归）→ 用户浏览器实测「知识问答后追问」→ **追问无法完成** → 开 CB 查根因。
 
-### ② trace 取证（sess-22008·15:58:26 用户实测）
+### ② trace 取证（sess-22008·发起时·⚠ 被 ⑤ 证实为 pytest 会话误判·非用户实测）
 
 | ID | 次数 | 语义 | 判定 |
 |---|---|---|---|
@@ -28,8 +28,32 @@ FC 秒回失败 → 降级旧 SSE → select_template 判 track=A concept → �
 
 ### ④ 状态
 
-- **需发两组 prompt**：`discuss/CB22g-追问无法完成_根因讨论发起_2026-08-10.md` 附 A（5 焦点·FC 秒回失败根因/降级 concept/F_016 冲突/F_015=0/验收）
-- **待**：两组回应 → claude 反评价收敛 → 定稿修复（含 F_016 改号）
+- 已发两组 → glm + Codex 回应已回收 → claude 反评价收敛完成（见 ⑤）
+- 定稿：`discuss/CB22g-追问无法完成_反评价收敛定稿_2026-08-10.md`
+
+### ⑤ 反评价收敛（两组回应到·主线程核实事实）
+
+**核心：Codex 戳穿 claude 上轮 trace 取证误判**——sess-22008 是 pytest 会话（25 秒·含 lon_gcj02/nonexistent/EmptyDataError fixture）非用户实测；F_005 = `build_diagnose_prompt`（prompts.py:247/625·字符串构造器）非 FC；FC 端点（router.py:65-114）无 @track → FC 在 trace 不可见。glm 沿「FC 秒回」前提的分析证据链失效。
+
+**逐焦点定稿（采 Codex 主线·核实全部成立）**：
+
+| 焦点 | 定稿 | 依据 |
+|---|---|---|
+| 1 FC 秒回 | **采 Codex disagree**：取证前提错·FC 缺埋点不可观测 | sess=pytest·F_005≠FC·FC 无 @track |
+| 2 旧 SSE 降级 concept | **采 Codex**：旧路径死路径·不做 glm 的补 knowledge | diagnoseStep 零生产调用方·select_template 无生产调用 |
+| 3 F_016 冲突 | **F_018**（两组合一）+ 防复发守卫测试 | F_014-017 已占·F_018 空位 |
+| 4 F_015=0 | **采 Codex**：pytest 正常·端点链代码正确·重采真会话 | quick-rag→F_017→F_015 链路正确 |
+| 5 验收 | **采 Codex**：会话固定 + FC 埋点前置 + live 冒烟 | 直击本轮会话误判根因 |
+
+**glm 独立贡献**（不依赖被推翻前提）：stages.js:322 `question`→`ctx.question`（方案 A 兜底 ReferenceError·真实 bug·顺手修）。
+
+**坐实的 4 件事**：① F_016→F_018；② FC 缺埋点；③ knowledge_qa 零参 schema 是 FC 失败头号嫌疑（须 live）；④ 旧 SSE 死路径。
+
+**连带行动项**：宜昌 2025 体检资料整合进 RAG（用户「连带本次一起修复」）——数据层·与代码根因正交并行·md 移入 00-宜昌专项/ + 16 条 fact + 重建索引。
+
+**修复 plan**：P0 代码（F_018 + validate_track_ids 守卫 + FC 埋点 F_019 + stages.js:322 bug）+ P0 数据（体检整合）立即可做；P1 需用户 live 冒烟 + 重采真会话定位 FC 根因。
+
+**状态**：收敛完成 → P0 执行中。
 
 ---
 

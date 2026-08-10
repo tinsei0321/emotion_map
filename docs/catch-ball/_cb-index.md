@@ -1,7 +1,7 @@
 # CB Index — Catch-Ball 统一入口
 
 > **读我**：claude组（Claude Code 开发主）+ Codex + glm组（ZCode + GLM 5.2）启动时读此文件，了解 CB 全貌。
-> **维护**：每轮 CB 完成后更新。最后更新：2026-08-10（CB-22e/22f 反评价收敛定稿·CB-22f 实施进行中·今天任务）。
+> **维护**：每轮 CB 完成后更新。最后更新：2026-08-10（CB-22g 反评价收敛完成·Codex 戳穿 trace 取证误判·采 Codex 主线·P0 执行中·连带体检整合进 RAG）。
 
 ---
 
@@ -9,12 +9,12 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-22g · 追问无法完成·根因讨论**（CB-22f 实施后用户实测失败·trace 取证双根因：FC 秒回失败降级旧 SSE concept + F_016 编号冲突·5 焦点·待两组验证） |
+| **当前 CB 轮次** | **CB-22g · 反评价收敛完成**（Codex 戳穿 trace 取证误判：sess-22008 是 pytest·F_005≠FC·FC 缺埋点；采 Codex 主线·连带体检整合进 RAG）·P0 执行中 |
 | **上一轮** | CB-22f 纯问答→空间动作链路由打通（5 阶段实施完成·315 passed·**用户实测追问失败→CB-22g**） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
 | **当前分支** | `main`（CB-22d 已并入·fix/emc-buglog 已删） |
-| **最新讨论** | `discuss/CB22g-追问无法完成_根因讨论发起_2026-08-10.md`（trace 证据 sess-22008 + 5 根因 + 5 焦点·待两组验证） |
-| **最新进展** | CB-22f 5 阶段实施完成（315 passed）→ 用户实测「知识问答后追问」无法完成 → trace 取证：FC（F_005）0.2ms 秒回失败×10→降级旧 SSE→select_template 判 concept + F_016 编号冲突（撞 build_outlet_schema·glm 漏 outlet_kb/）+ 知识问答未走 rag_search（F_015=0）→ **CB-22g 发起·待两组验证** |
+| **最新讨论** | `discuss/CB22g-追问无法完成_反评价收敛定稿_2026-08-10.md`（glm+Codex 回应→claude 主线程核实收敛·采 Codex 主线）+ 两组回应稿 |
+| **最新进展** | CB-22g 收敛：claude 上轮 trace 取证误判（sess=pytest·F_005≠FC·FC 无埋点）→ 坐实 F_016 冲突→F_018 + FC 缺埋点 + knowledge_qa 零参 schema 嫌疑 + 旧 SSE 死路径（不做 glm 补 knowledge）→ P0 代码修复（F_018 / validate_track_ids 守卫 / FC 埋点 F_019 / stages.js:322 bug）+ 连带体检整合（md+16fact+重建）·P1 待用户 live 冒烟 + 重采真会话定位 FC 根因 |
 | **接手文档** | `memories/repo/session-handoff.md`（08-05 卡·已过时·历史背景）+ `_handoff/HOME.md` + `OFFICE.md`（08-08 权威快照）+ `_handoff/CB恢复记忆prompt_2026-08-09.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 

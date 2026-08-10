@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月10日 · CB-22f 5 阶段实施完成·315 passed 零回归）** · 本节按板块分组、组内倒序；最新工作 = **CB-22f 纯问答→空间动作链路由打通 实施完成（阶段0~4 全落地）**。最近：
+> 📍 **最新动态（08月10日 · CB-22g 反评价收敛定稿 + P0 实施 + 2025体检整合入RAG·315 passed 零回归）** · 本节按板块分组、组内倒序；最新工作 = **CB-22g「追问无法完成」反评价收敛定稿 + P0 四批实施 + 宜昌2025年度城市体检资料整合入RAG（16 fact 补强空间落位）**。最近：
+>
+> - **08-10 CB-22g 追问无法完成·反评价收敛定稿 + P0 实施 + 2025体检整合入RAG（用户意图：CB-22f 实施后用户实测追问仍失败·两组反评价已出·「连带本次体检整合一起修复·先进 CB」）**：**两组反评价收敛**（采纳 Codex 主线·诚实记录 claude 上轮 trace 取证错误：sess-22008 实为 pytest 非用户会话·F_005=build_diagnose_prompt≠FC）→ **坐实 4 根因**：① F_016 编号冲突（query_knowledge_base 撞 build_outlet_schema._render_dimension_cannot·glm/claude 两轮扫描漏 ai_qa/outlet_kb/ 子目录）② FC 端点缺埋点（trace 完全不可见·盲区）③ knowledge_qa 零参 schema 可疑 ④ 旧 SSE diagnose 死路径。**P0 四批全落地**：批1 F_018 重编号（query_knowledge_base `@track` F_016→F_018·解冲突）+ stages.js:322 `question→ctx.question`（fcDiagnoseStep ReferenceError·glm 发现）；批2 新增 `tests/validate_track_ids.py` **ast 全仓去重守卫**（正则版误判自身 docstring·改 ast 只认语法树装饰器节点·15 装饰器零 DUP·防复发）；批3 体检整合（md 移入 `docs/urban-renewal-plan/00-宜昌专项/03-07_`·`_load_notes` 自动切段 + **16 条 fact 补空间落位** I09-I16/C05-C07/P09/P10/P12/M04/M05·现有 36→52·P01/P11 顺手修 pre-existing detail>80 字 schema 违例·索引重建·6 组检索全命中新 fact）；批4 FC 埋点 **F_019**（router.py `_fc_gen` 手动 enter/exit/error·`@track` 不适用生成器·tool_calls/tool_name/_fcError 落 trace·FC 从此可观测）→ **全量 315 passed + 3 skipped 零回归**（基线 315）·validate_track_ids 2 + validate_knowledge_route 5 + validate_rag_material 9 全过。**§0 拓扑 N/A**。
 >
 > - **08-10 CB-22f 实施完成（用户意图：今天打通纯问答→空间动作链路由·EMC 精髓护城河）**：阶段0（CB-22e P2+P1·降级结论选行+准确度四件套）+ 阶段1（P3·B3 用例注入+桩测四场景 N/M 断链修复验证）+ 阶段2（A 路由·knowledge 伪工具+三分支+方案 A 兜底+FC 纪律+validate_knowledge_route 5 断言）+ 阶段3（B 识别衔接·fact meta 透传重建 235 条+ctx.extracted 实体清单级+priorTurn 回灌+_followupCue 分类器 8 场景 PASS+recover 扩 analyze/compare）+ 阶段4（D·query_knowledge_base F_016+fact 加权×1.2）→ **5 阶段全落地·315 passed + 3 skipped 零回归·serve 重启验证新代码加载**。**§0 拓扑 N/A**。
 >

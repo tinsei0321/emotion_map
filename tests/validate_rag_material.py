@@ -28,13 +28,13 @@ def test_urp_p01_has_correct_55_composition():
     spec.loader.exec_module(mod)
     p01 = next(f for f in mod.PROJECTS if f['id'] == 'URP-P01')
     detail = p01['detail']
-    # 55 准确构成（罗列 5 项·数字自明）
-    assert '污水"厂网一体"示范区 16 个' in detail, 'URP-P01 缺罗列（污水厂网一体 16）'
-    assert '葛洲坝片区 12 个' in detail, 'URP-P01 缺罗列（葛洲坝 12）'
-    assert '夷陵三峡移民老城片区 12 个' in detail, 'URP-P01 缺罗列（夷陵 12）'
-    assert '红星路-二马路历史文化街区 3 个' in detail, 'URP-P01 缺罗列（红星路-二马路 3）'
-    assert '其他项目 12 个' in detail, 'URP-P01 缺罗列（其他项目 12·排除描述非分类名）'
-    assert '前 4 组合计 43 个' in detail, 'URP-P01 缺「前 4 组合计 43 个」事实描述'
+    # 55 准确构成（罗列 5 项·数字自明·CB-22g detail 精简到 ≤80 字·断言字样同步紧凑格式）
+    assert '污水厂网一体16个' in detail, 'URP-P01 缺罗列（污水厂网一体 16）'
+    assert '葛洲坝12个' in detail, 'URP-P01 缺罗列（葛洲坝 12）'
+    assert '夷陵12个' in detail, 'URP-P01 缺罗列（夷陵 12）'
+    assert '红星路3个' in detail, 'URP-P01 缺罗列（红星路 3）'
+    assert '其他12个' in detail, 'URP-P01 缺罗列（其他 12·排除描述非分类名）'
+    assert '43个' in detail and '44.93亿' in detail, 'URP-P01 缺「前 4 组 43 个·44.93 亿」事实描述'
     # 素材术语纪律（CB-22 用户实测）：不得含硬造分类标签
     assert '典型片区类' not in detail, f'URP-P01 仍含硬造分类「典型片区类」（用户判定不要·素材术语纪律）: {detail}'
     assert '机制建设类' not in detail, f'URP-P01 仍含硬造分类「机制建设类」（用户判定不要·素材术语纪律）: {detail}'
@@ -65,7 +65,7 @@ def test_urp_p11_old_version_separated():
     ids = [f['id'] for f in mod.PROJECTS]
     assert 'URP-P11' in ids, '缺 URP-P11（00-02 老版·43 完整社区）'
     p11 = next(f for f in mod.PROJECTS if f['id'] == 'URP-P11')
-    assert '43 个完整社区' in p11['detail'], 'URP-P11 缺「43 个完整社区」（00-02 老版口径）'
+    assert '43完整社区' in p11['detail'], 'URP-P11 缺「43 完整社区」（00-02 老版口径·CB-22g detail 精简紧凑格式）'
     assert '0610' in p11['source'], 'URP-P11 来源须标 00-02 老版（0610·防混算）'
 
 

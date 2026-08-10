@@ -11,6 +11,18 @@
 
 ## 📅 2026-08-10（CB-22d 地图标记路径跑通闭环 · 收工 · 分支合并 main）
 
+### ✅ CB-22g 追问无法完成·反评价收敛定稿 + P0 实施 + 2025体检整合入RAG（收尾·待 push）
+
+- **背景**：CB-22f 5 阶段实施后用户实测追问仍失败 → 上轮两组评估已出 → 用户「连带本次体检整合一起修复·先进 CB」
+- **两组反评价收敛**（采纳 Codex 主线）：诚实记录 claude 上轮 trace 取证错误（sess-22008 实为 pytest 非 user session·F_005=build_diagnose_prompt≠FC）→ **坐实 4 根因**：① F_016 编号冲突 ② FC 端点缺埋点（trace 盲区）③ knowledge_qa 零参 schema 可疑 ④ 旧 SSE diagnose 死路径
+- **P0 四批全落地**：
+  - [x] 批1 编号冲突 + stages bug：query_knowledge_base `@track F_016→F_018`（解 build_outlet_schema 冲突）+ stages.js:322 `question→ctx.question`（fcDiagnoseStep ReferenceError·glm 发现）
+  - [x] 批2 track_ids 全仓守卫：新增 `tests/validate_track_ids.py`（ast 解析·只认语法树装饰器节点·正则版误判自身 docstring 已废·15 装饰器零 DUP·防复发）
+  - [x] 批3 体检整合：md 移入 `00-宜昌专项/03-07_` + **16 fact 补空间落位**（I09-I16/C05-C07/P09/P10/P12/M04/M05·36→52）+ P01/P11 顺手修 detail>80 字违例 + 索引重建 + 6 组检索全命中
+  - [x] 批4 FC 埋点 F_019：router.py `_fc_gen` 手动 enter/exit/error（`@track` 不适用生成器·tool_calls/tool_name/_fcError 落 trace·FC 从此可观测）
+- **验证**：**315 passed + 3 skipped 零回归**（基线 315）·validate_track_ids 2 + validate_knowledge_route 5 + validate_rag_material 9 全过·schema 自校验 detail≤80 字
+- [ ] **待 push**（用户手动）+ **P1 待用户**（knowledge_qa 零参 schema 浏览器冒烟 + 重采真 session 取证）+ **P2 独立**（F_009 DEM error / F_005 KeyError lon_gcj02）
+
 ### ✅ 分支合并：fix/emc-buglog → main（收敛·删分支·保持干净）
 
 - **合并**：`fix/emc-buglog`（368 提交·含 CB-22d 全链）→ `main` · merge commit `b77daef`（保留全部历史 + 本地 main 的 `81784f0` mcp 配置）
