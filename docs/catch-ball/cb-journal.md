@@ -4,6 +4,33 @@
 > 按轮**倒序**（最新在顶·CB-NN 大→小·便于看最新进展；不覆写）。新轮次写在文件顶部。
 > 每轮四节：① SCAN 摘要 ② 我方反评价 ③ 行动 ④ 状态/新发现。
 
+## CB-22h · 2026-08-10（追问读秒卡住 · 三组根因讨论发起 · 真实用户会话取证）
+
+### ① 承接
+
+CB-22g 修复（`d1d50e6b`·F_018/F_019/stages.js:322/体检 RAG 整合）→ **用户浏览器实测仍「追问读秒卡住」** → 用户指示：详细展开根因·进 CB 三组一起查。
+
+### ② 真实会话取证（sess-34620 = uvicorn PID 34620·17:13 修复后实测）
+
+- **上轮教训已避**：先核 PID——sess-34620 的 34620 = uvicorn 进程 PID（wmic 确认）→ 真实用户会话（非 pytest）
+- **trace 时间线**：17:13:29 rag_search（15.9s·BGE 冷加载）→ 17:13:45 finalStep flash LLM 开始 → **无 exit·挂起 5 分半** → 17:19:11 pro 重试仍卡
+- **全 trace 17:00 后 LLM 错误**：`all providers exhausted: 401` + `net` + `mid-stream failure`（交替·网络不稳）
+- **API 直测正常**：GET models 200 / POST 非流式+流式 200 / 直连 uvicorn agent_step 正常——**间歇性**（时通时断）
+- **office 网络不稳历史**：curl github 128KB 断流·git fetch Connection reset
+
+### ③ 根因链（待三组验证）
+
+finalStep LLM 流式（DeepSeek）→ office 网络间歇性不稳 → 流式挂起/401/net → 前端 45s abort（读秒）→ **后端 uvicorn LLM 无服务端超时·仍挂（单线程阻塞）** → 用户看读秒卡住 + 资源不释放。
+
+分层：R1 直接=office 网络对 api.deepseek.com 不稳（环境）·R2 放大=后端 LLM 无服务端超时（代码）·R3 次因=rag_search BGE 冷加载 15.9s 同步阻塞·R4 疑点=前端 abort 后降级链路是否生效（用户没看到降级结论）。
+
+### ④ 状态
+
+- **需发两组 prompt**：`discuss/CB22h-追问读秒卡住_三组根因讨论发起_2026-08-10.md` 附 A（6 焦点·含三组各自 curl 实测网络）
+- **待**：两组回应（含网络实测证据）→ claude 反评价收敛 → 定稿修复（服务端超时+前端降级+预热）
+
+---
+
 ## CB-22g · 2026-08-10（追问无法完成 · 根因讨论发起 · 用户实测失败）
 
 ### ① 场景

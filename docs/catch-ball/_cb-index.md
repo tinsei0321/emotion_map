@@ -9,12 +9,12 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-22g · 反评价收敛完成**（Codex 戳穿 trace 取证误判：sess-22008 是 pytest·F_005≠FC·FC 缺埋点；采 Codex 主线·连带体检整合进 RAG）·P0 执行中 |
-| **上一轮** | CB-22f 纯问答→空间动作链路由打通（5 阶段实施完成·315 passed·**用户实测追问失败→CB-22g**） |
+| **当前 CB 轮次** | **CB-22h · 追问读秒卡住·三组根因讨论**（CB-22g 修复后用户实测仍卡·真实会话 sess-34620 取证：finalStep LLM 挂起 5 分半·office 网络不稳 + 后端无服务端超时·6 焦点待三组验证） |
+| **上一轮** | CB-22g 追问无法完成（反评价收敛定稿·采 Codex 主线·F_018/F_019/stages.js:322/体检 RAG 整合·**用户实测仍卡→CB-22h**） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
-| **当前分支** | `main`（CB-22d 已并入·fix/emc-buglog 已删） |
-| **最新讨论** | `discuss/CB22g-追问无法完成_反评价收敛定稿_2026-08-10.md`（glm+Codex 回应→claude 主线程核实收敛·采 Codex 主线）+ 两组回应稿 |
-| **最新进展** | CB-22g 收敛：claude 上轮 trace 取证误判（sess=pytest·F_005≠FC·FC 无埋点）→ 坐实 F_016 冲突→F_018 + FC 缺埋点 + knowledge_qa 零参 schema 嫌疑 + 旧 SSE 死路径（不做 glm 补 knowledge）→ P0 代码修复（F_018 / validate_track_ids 守卫 / FC 埋点 F_019 / stages.js:322 bug）+ 连带体检整合（md+16fact+重建）·P1 待用户 live 冒烟 + 重采真会话定位 FC 根因 |
+| **当前分支** | `main`（CB-22d 已并入·fix/emc-buglog 已删·ahead 11 未 push） |
+| **最新讨论** | `discuss/CB22h-追问读秒卡住_三组根因讨论发起_2026-08-10.md`（真实会话 sess-34620 证据 + 6 焦点·含三组各自 curl 实测网络） |
+| **最新进展** | CB-22g 修复（d1d50e6b·F_018/F_019/体检 RAG 36→52）→ 用户实测仍「读秒卡住」→ **真实会话取证**（sess-34620=uvicorn PID·17:13:45 flash LLM 无 exit 挂 5 分半 + 全 trace 401/net/mid-stream 交替 + API 直测 200·间歇性 + office 网络不稳历史）→ **CB-22h 发起·待三组验证** |
 | **接手文档** | `memories/repo/session-handoff.md`（08-05 卡·已过时·历史背景）+ `_handoff/HOME.md` + `OFFICE.md`（08-08 权威快照）+ `_handoff/CB恢复记忆prompt_2026-08-09.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 
