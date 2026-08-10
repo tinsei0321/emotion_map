@@ -1357,7 +1357,8 @@ export const TOOLS = {
             if (_hits.length && _hits[0] && _hits[0].lng != null) {
               _picked[i] = { name: nm, lng: Number(_hits[0].lng), lat: Number(_hits[0].lat),
                 source: _hits[0].source || 'local', match_type: 'point',
-                address: _hits[0].address || '', category: _hits[0].category || _hits[0].baidu_level1 || '' };
+                address: _hits[0].address || '', category: _hits[0].category || _hits[0].baidu_level1 || '',
+                note: _hits[0].note || '' };   // CB-22e P1.4：amap 命中透传「高德 POI·近似位置」（置信标注）
             } else {
               _unmatched.push(nm);
             }
@@ -1372,7 +1373,7 @@ export const TOOLS = {
       if (_hitN > 0) {
         const _fc = { type: 'FeatureCollection', features: _hits.map((h, i) => ({
           type: 'Feature',
-          properties: { name: h.name, source: h.source, match_type: h.match_type, address: h.address || '', category: h.category || '', _order: i },
+          properties: { name: h.name, source: h.source, match_type: h.match_type, address: h.address || '', category: h.category || '', note: h.note || '', _order: i },
           geometry: { type: 'Point', coordinates: [h.lng, h.lat] },
         })) };
         const _circle = { _ui: { tool: 'generate_point_layer' }, 'circle-radius': 7, 'circle-color': '#ff9000', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#fff' };
@@ -1381,7 +1382,9 @@ export const TOOLS = {
       }
       const _src = _hits.reduce((a, h) => { a[h.source] = (a[h.source] || 0) + 1; return a; }, {});
       const _srcTxt = Object.entries(_src).map(([k, v]) => `${k}${v}`).join('、') || '—';
-      const _obs = `地点标记：命中 ${_hitN}/${_list.length}${_layerInfo}（来源：${_srcTxt}）`;
+      // CB-22e P1.4：来源行 amap 标注——若存在 amap 命中·追加一次括号说明（防 LLM 自创精度·finalStep 如实表述）
+      const _amapNote = _src.amap ? '（amap 为高德解析·近似位置）' : '';
+      const _obs = `地点标记：命中 ${_hitN}/${_list.length}${_layerInfo}（来源：${_srcTxt}${_amapNote}）`;
       const _unmatchedTxt = _unmatched.length ? `\n未匹配到坐标（诚实列出·不编造）：${_unmatched.join('、')}` : '';
       const _tip = _hitN > 0 ? '\n已命中项目 → 点位图层（橙色点·可点击查看名称/来源）。未命中项目 → 已文字列出·未生成坐标（聚合类/无地点描述的项目不强匹配·如需要可上传项目坐标数据）。' : '\n全部未匹配到坐标 → 已文字列出·未生成图层（避免编造坐标）。聚合类/无地点描述的项目（如「污水厂网一体示范区」）不硬匹配地点·如需更准位置可上传项目坐标数据。';
       return { observation: _obs + _unmatchedTxt + _tip, data: { rows: _hits, count: _hitN, unmatched: _unmatched, source: _src } };

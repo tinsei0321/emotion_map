@@ -88,6 +88,7 @@ export function showPopup(feature, colors, colorMode) {
   if (p.baidu_level1) rows.push(['类别', p.baidu_level1 + (p.baidu_level2 ? ' / ' + p.baidu_level2 : '')]);
   if (p.area) rows.push(['片区', p.area]);
   if (p.source) rows.push(['数据源', p.source]);
+  if (p.note) rows.push(['精度', p.note]);   // CB-22e P1.4：amap 命中置信标注「高德 POI·近似位置」（popup 展示）
   if (p.in_water === true || p.in_water === 'true') rows.push(['落水', '是']);
   const c = feature.geometry && feature.geometry.coordinates;
   const isPoint = !!(c && !Array.isArray(c[0]));

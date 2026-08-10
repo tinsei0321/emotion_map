@@ -599,7 +599,12 @@ function _needsDeliberate(diagnose) {
 function _composeDegradedConclusion(toolHistoryText) {
   const _reg = (typeof getArtifacts === 'function' ? getArtifacts() : []) || [];   // v3.1 P0：同上·getArtifacts() 返数组
   const _layers = _reg.filter((r) => r.tool && r.tool !== 'query_layers').map((r) => `{{show:${r.name}}}`).join('\n');
-  const _rawObs = (toolHistoryText || '').split('\n').filter((l) => /已生成|产出|单元|点|层/.test(l)).slice(-1)[0] || '';
+  const _obsLines = (toolHistoryText || '').split('\n').filter((l) => /已生成|产出|单元|点|层/.test(l));
+  // CB-22e P2：观察行优先规则——任一行匹配「命中 N/M」取首个该行（generate_point_layer 的 observation 三行里
+  //   tip 行含「点/图层」必是最后匹配行·「命中 N/M」行永远被 slice(-1) 丢弃·部分命中降级结论不表述 N/M）。
+  //   仅影响含命中计数的工具 observation·其余工具零行为变化。
+  const _hitLine = _obsLines.find((l) => /命中\s*\d+\s*\/\s*\d+/.test(l));
+  const _rawObs = _hitLine || _obsLines[_obsLines.length - 1] || '';
   // Hotfix R2 S4：去「第N轮·动作: tool(params) →」原始前缀（治降级结论泄 density({...}) "代码块"·只留人读 observation）
   const _lastObs = (_rawObs.replace(/^第\d+轮·动作:[^→]*→\s*/, '').trim()) || _rawObs || '地图已生成分析图层。';
   return [

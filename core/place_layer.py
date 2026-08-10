@@ -113,7 +113,11 @@ def _pr(q, s):
 # 规划/行政/聚合类后缀（仅这些可安全剔除·不含 船厂/城/厂/街 等实体后缀）
 _ZONE_SUFFIXES = ('历史文化街区', '示范区', '老城片区', '工业园区', '产业园', '片区', '街区', '老城', '工业园', '园区', '社区', '街道', '新区', '板块', '组团', '项目', '改造区')
 # 聚合/概念类词（jieba 分词后全为此类 → 判定无核心地名·归 unmatched）
-_AGGREGATE_WORDS = {'示范', '一体', '片区', '街区', '板块', '组团', '其他', '一批', '项目', '综合', '整体'}
+# CB-22e P1.3：加「中心」——「老城中心」jieba 拆 [老城,中心]·「老城」被后缀剥·「中心」2字存活成候选 →
+#   substring 全库扫「中心」→ 误导命中「中心人民医院」（实测）。挡「中心」治本（Codex 根因修正）。
+_AGGREGATE_WORDS = {'示范', '一体', '片区', '街区', '板块', '组团', '其他', '一批', '项目', '综合', '整体', '中心'}
+# CB-22e P1.3：整名泛词（jieba 会拆成多词·逐词检查拦不住）——分词前整名拦截·归 unmatched（glm 建议·防拆后失命中）
+_WHOLE_AGGREGATES = {'老城中心', '中心城区', '核心区域'}
 
 try:
     import jieba
@@ -121,22 +125,52 @@ try:
 except Exception:
     _HAVE_JIEBA = False
 
+# CB-22e P1.2：独立 jieba.Tokenizer() 实例（防全局 load_userdict 污染同进程 L2 情绪关键词分词——
+#   api/routes.py import run_analysis_task（emotion_analysis_v1）与 geo_routes.py import place_layer 同 uvicorn 进程；
+#   jieba.analyse 走默认实例不受影响·独立实例只服务本模块搜索路径）。词典懒加载 + 文件存在性守卫。
+_JIEBA_TOK = None
+
+
+def _get_jieba_tokenizer():
+    """懒加载独立 Tokenizer + 宜昌专名词典（存在性守卫·文件缺失不抛异常）。"""
+    global _JIEBA_TOK
+    if not _HAVE_JIEBA:
+        return None
+    if _JIEBA_TOK is None:
+        _tok = jieba.Tokenizer()
+        if os.path.exists(_PLACE_DICT_PATH):
+            try:
+                _tok.load_userdict(_PLACE_DICT_PATH)
+            except Exception:
+                safe_print('[WARN] place_layer: 加载 yichang_places.txt 失败·用默认词典')
+        _JIEBA_TOK = _tok
+    return _JIEBA_TOK
+
 
 def _core_entities(q):
     """jieba 分词 → 剔除规划/修饰后缀 → 核心地名候选列表（长度降序·防「葛洲坝」被拆成「葛洲/坝」）。
 
     返回 [] 表示无核心地名（聚合/概念名·归 unmatched）。纯函数·不调 LLM。
+
+    CB-22e P1.1：返候选表（≤3·子串去重·长度降序）——「红星路-二马路」→ [红星路, 二马路]（防丢二马路）。
+    CB-22e P1.3：整名拦截（_WHOLE_AGGREGATES·jieba 会拆成多词·逐词检查拦不住）→ 归 unmatched。
     """
     if not q:
         return []
-    if _HAVE_JIEBA:
-        words = [w for w in jieba.lcut(q) if w.strip()]
+    qs = q.strip().strip('，,、。;；—-_')
+    if qs in _WHOLE_AGGREGATES:
+        return []
+    _tok = _get_jieba_tokenizer()
+    if _tok is not None:
+        words = [w for w in _tok.lcut(qs) if w.strip()]
+    elif _HAVE_JIEBA:
+        words = [w for w in jieba.lcut(qs) if w.strip()]
     else:
         # 无 jieba 回退：仅剥单个规划后缀（保守·不拆词）
-        words = [q]
+        words = [qs]
         for suf in _ZONE_SUFFIXES:
-            if q.endswith(suf):
-                words = [q[:len(q) - len(suf)]]
+            if qs.endswith(suf):
+                words = [qs[:len(qs) - len(suf)]]
                 break
     # 剔除后缀词 + 聚合词 + 单字 + 标点
     candidates = []
@@ -151,12 +185,13 @@ def _core_entities(q):
             if len(ws) < 2:
                 continue
         candidates.append(ws)
-    # 若 jieba 把「葛洲坝」拆成「葛洲/坝」·用最长候选（子串回补）·防过度拆分
-    if candidates:
-        best = max(candidates, key=len)
-        if len(best) >= 2:
-            return [best]
-    return candidates
+    # CB-22e P1.1：子串关系去重（A⊂B 删 A 留 B·防同一实体双候选重复匹配）+ 长度降序 + 候选 ≤3
+    candidates = sorted(set(candidates), key=len, reverse=True)
+    deduped = []
+    for c in candidates:
+        if not any(c in d for d in deduped):
+            deduped.append(c)
+    return deduped[:3]
 
 
 def _match_score(q, name, p):
@@ -192,6 +227,7 @@ def _match_score(q, name, p):
 
 # ── 路径常量（相对项目根，不硬编码绝对路径） ──
 _PLACE_DIR = os.path.join(_ROOT, 'DATA', 'place')
+_PLACE_DICT_PATH = os.path.join(_PLACE_DIR, 'yichang_places.txt')   # CB-22e P1.2：宜昌专名词典（jieba 独立实例用）
 _ZONE_TYPE_PATH = os.path.join(_PLACE_DIR, 'zone_typology.json')
 _PLACE_KW_PATH = os.path.join(_PLACE_DIR, 'place_keywords.json')
 _SEED_POI_PATH = os.path.join(_ROOT, 'SCRIPT', 'poi_data', 'yichang_poi_wgs84.json')
@@ -540,10 +576,12 @@ class PlaceLayer:
                 continue
             tier, s = _match_score(q, name, p)
             # 核心实体双路：jieba 分出「葛洲坝」→ substring 匹配「葛洲坝中心菜市场」180+
+            # CB-22e P1.1（glm 边界）：多候选 substring 要求 len≥3——防「中心」类 2 字短词全库泛匹配；
+            #   exact/prefix 不受限（真实地名精确/前缀命中合理）。
             if _cores:
                 for c in _cores:
                     ct, cs = _match_score(c, name, p)
-                    if ct == 'exact' or ct == 'prefix' or ct == 'substring':
+                    if ct in ('exact', 'prefix') or (ct == 'substring' and len(c) >= 3):
                         if cs > s:
                             s = cs; tier = ct
             if tier is None and s < _threshold:

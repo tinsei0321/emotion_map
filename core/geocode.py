@@ -220,6 +220,11 @@ def search_place(query, limit=10, amap_first=False):
                 'score': 0.0,
                 'source': 'amap',
                 'data_source': 'amap-api',   # 审计：高德 place/text API 解析（成熟 API·不造轮子）
+                # CB-22e P1.4：amap 命中置信标注——高德 place/text 解析无 relevance 字段·score 恒 0；
+                #   且 GCJ-02→WGS84 转换（红线 #2）有 50-500m 量级不确定度。标「高德 POI·近似位置」
+                #   防用户误读高精度（按 data_source 区分·local 命中不标——精确匹配无此语义）。
+                'confidence': 'low',
+                'note': '高德 POI·近似位置',
             })
             if len(amap_hits) >= limit:
                 break
@@ -260,6 +265,9 @@ def search_place(query, limit=10, amap_first=False):
             'score': 0.0,
             'source': 'amap',
             'data_source': 'amap-api',   # 审计：高德 place/text API 补全（非本地库）
+            # CB-22e P1.4：同首段——高德解析置信标注「高德 POI·近似位置」
+            'confidence': 'low',
+            'note': '高德 POI·近似位置',
         })
         if len(local_hits) + len(amap_hits) >= limit:
             break

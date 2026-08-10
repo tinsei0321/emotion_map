@@ -358,3 +358,44 @@ class TestPlaceQueryCache:
         v1['zone_id'] = 'MUTATED'
         v3 = pl.reverse(lng, lat)
         assert v3['zone_id'] != 'MUTATED', '返回深拷贝应防污染'
+
+
+# ── CB-22e P1 纯函数测试（锁新行为防回归） ──────────────────────────
+
+class TestCoreEntitiesP1:
+    """CB-22e P1.1/1.3：_core_entities 多实体候选表 + 整名拦截 + 挡词。"""
+
+    def test_multi_entity_full_candidates(self):
+        from core.place_layer import _core_entities
+        # 多实体「红星路-二马路」→ 双候选（防丢二马路）
+        got = _core_entities('红星路-二马路')
+        assert '红星路' in got and '二马路' in got, f'多实体应返全候选: {got}'
+
+    def test_whole_aggregate_blocked(self):
+        from core.place_layer import _core_entities
+        # 整名泛词分词前拦截 → 归 unmatched
+        assert _core_entities('老城中心') == [], '老城中心应整名拦截'
+        assert _core_entities('中心城区') == [], '中心城区应整名拦截'
+
+    def test_center_token_blocked(self):
+        from core.place_layer import _core_entities
+        # 「中心」入 _AGGREGATE_WORDS——2 字泛词不存活候选
+        got = _core_entities('中心人民医院')
+        assert '中心' not in got, f'「中心」应被挡: {got}'
+
+    def test_place_dict_loaded(self):
+        from core.place_layer import _get_jieba_tokenizer
+        # 宜昌专名词典加载（三峡青年城不被拆）
+        tok = _get_jieba_tokenizer()
+        assert tok is not None
+        words = [w for w in tok.lcut('三峡青年城') if w.strip()]
+        assert '三峡青年城' in words, f'词典应保整词: {words}'
+
+    def test_candidates_cap_and_dedup(self):
+        from core.place_layer import _core_entities
+        # 候选 ≤3 + 子串去重（长候选覆盖短候选）
+        got = _core_entities('伍家岗区万达广场片区')
+        assert len(got) <= 3, f'候选应≤3: {got}'
+        # 若长候选存在·短候选应被子串去重剔除
+        for c in got:
+            assert not any(c in d for d in got if d != c), f'子串重复候选应去重: {got}'
