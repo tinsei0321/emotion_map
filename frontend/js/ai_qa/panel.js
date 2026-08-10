@@ -1613,7 +1613,10 @@ function _distillTurn(h) {
   // CB-22d P0-0-1：final_excerpt——上轮回答片段供下轮「标记到地图」提取项目名（LLM 看不到 final 原文的修复·glm F.1）
   // CB-22f D3：extracted 回灌——上轮知识问答的结构化地理/归因实体（追问衔接消费·≤2KB 守卫防上下文膨胀·glm/Codex）
   const _ext = (dg.extracted && dg.extracted.geo && dg.extracted.geo.length) ? dg.extracted : null;
-  return { intent: _intent, method, done: done || '（无工具调用）', gap: gap || '', strategy: dp.strategy || '', final_excerpt: (t.final || '').slice(0, 400), extracted: _ext ? JSON.parse(JSON.stringify(_ext)).slice(0, 5) : null };
+  // CB-22i 修：extracted 是 {geo,attrs} 对象·`JSON.parse(...).slice` 报错（追问标记崩溃根因）·
+  //   限制 = geo 数组截 ≤5（对象不能 .slice）·深拷贝防共享引用污染
+  const _extLimited = _ext ? { geo: JSON.parse(JSON.stringify(_ext.geo || [])).slice(0, 5), attrs: (_ext.attrs || []).slice(0, 8) } : null;
+  return { intent: _intent, method, done: done || '（无工具调用）', gap: gap || '', strategy: dp.strategy || '', final_excerpt: (t.final || '').slice(0, 400), extracted: _extLimited };
 }
 
 /** 收集最近 maxN 轮 assistant trace → oldest-first 列表（B2 多轮滚动记忆）。
