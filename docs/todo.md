@@ -55,9 +55,11 @@
   - [x] 阶段3 B 识别+衔接：fact meta 透传重建（region/topic/year/keywords 验证）+ ctx.extracted 实体清单级 + priorTurn 回灌 + _followupCue 分类器（8 场景 PASS）+ recover 扩 analyze/compare
   - [x] 阶段4 D RAG 收尾：query_knowledge_base（**F_016**）+ fact 加权×1.2（3 测试）
   - [x] 验证：**315 passed + 3 skipped 零回归**·serve 重启新代码加载验证
-- [x] **CB-22h 追问读秒卡住·三组根因收敛 + 4 处修复**（真实会话 sess-34620 取证 + glm 承重根因 `_assembleKnowledgeQA` 无降级兜底 → P0-1 catch 降级 / P0-2 总 deadline / P0-3 httpx 分段 / P1 预热同步 → 316 passed·serve 预热 OK）
-- [ ] **CB-22h 用户浏览器实测**（知识问答→追问：正常 <30s 出结论·网络挂起 <50s 出降级非无限读秒·三组并行端口隔离）
-- [ ] **CB-22f 用户浏览器实测**（动作链 demo 1 步链：知识问答→标记·B3 飞轮实跑留后）
+- [x] **CB-22h 追问读秒卡住·三组根因收敛 + 修复**（glm 承重根因 `_assembleKnowledgeQA` 无降级兜底 → P0-1 catch 降级 / P0-2 总 deadline / P0-3 httpx 分段 / P1 预热同步）
+- [x] **CB-22i 追问标记崩溃根因定位修复**（Playwright 抓 console 定位 `PAGEERROR: JSON.parse(...).slice is not a function`（panel.js _distillTurn extracted 回灌对象 .slice）→ 修对象属性限制·**完整链路实测通过**：首问 11s + 追问标记 7s 出「宜昌城市更新项目点位」图层·0 挂起·PAGEERROR 消失·commit a27c0e2e）
+- [x] **CB-22i Timer 主动中断修正**（Timer 移 `client.stream()` __enter__ 前·覆盖等响应头阻塞·本地挂死 server 1.0s 中断验证 + serve 反代 50s 超时 + 前端 Promise.race）
+- [ ] **CB-22i 用户浏览器实测**（强刷 Ctrl+Shift+R 后完整链路：首问→追问标记出图层·若仍异常抓 console PAGEERROR 发我）
+- [ ] **CB-22f B3 飞轮实跑**（留后验证）· **CB-22f 动作链 2 步 demo**（标记→分析·Phase2 多步·预载 L2）
 - [ ] **A1 GIS 甄别 / tier-2 面化 / A3 项目库坐标**（G 盘 GIS 重活·**单独轮**）
 - [ ] RAG 遗留（OFFICE 卡）：B 路径 query_knowledge_base · 混合检索 · 全仓 [中文]+类 扫描 · Recall@5 · P0-6 复审
 

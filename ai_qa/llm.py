@@ -98,28 +98,36 @@ class LLMClient:
         trace_log('MOD_LLM.F_001', f'chat stream={stream} model={self.model} msgs={len(messages)} reason={with_reason} json={json_mode}')
         try:
             if stream:
-                with httpx.Client(timeout=self.timeout) as client:
-                    with client.stream('POST', url, headers=headers, json=body) as resp:
-                        if resp.status_code != 200:
-                            body_txt = resp.read().decode('utf-8', 'ignore')[:400]
-                            if resp.status_code == 401:
-                                raise LLMError(f'API Key 无效 (401)。检查 {DEFAULT_KEY_ENV}。', status_code=401)
-                            raise LLMError(f'LLM HTTP {resp.status_code}: {body_txt}', status_code=resp.status_code)
-                        # CB-22i P0（glm 承重根因·Codex 同判）：总预算主动中断——
-                        #   deadline 被动检查（chat_with_fallback 循环体内）在「首 chunk 前挂死」时不可达
-                        #   （for chunk in cli.chat() 阻塞在 __next__()·循环体不执行·trace 18:09 无 D_004 铁证）。
-                        #   Timer 到时强制 resp.close()→iter_lines() 抛 StreamClosed→LLMError→SSE error→前端降级。
-                        #   TTL 传参（chat_with_fallback 已算 _ttl·此处默认 60 兜底·防 connect/首 chunk 无限等）。
-                        import threading as _th
-                        _ttl_here = float(self._total_ttl) if getattr(self, '_total_ttl', None) else 60.0
-                        def _force_close():
-                            try:
-                                resp.close()   # 强制中断 iter_lines 阻塞（首 chunk 前挂死也能释放）
-                            except Exception:
-                                pass
-                        _force_timer = _th.Timer(_ttl_here, _force_close)
-                        _force_timer.start()
-                        try:
+                # CB-22i P0 修正（第二轮洞）：Timer 必须在 `client.stream()` __enter__ **之前**启动——
+                #   网络半开/DeepSeek 后端不返 200 时·`client.stream()` 的 __enter__ 会阻塞在等响应头·
+                #   此前 Timer 在 with 之后启动·__enter__ 阻塞时 Timer 未启动（18:31 挂 2 分钟无 D_004 铁证）。
+                #   用容器持有 resp·Timer 到时 close（未拿到 resp 则 client.close 中止连接）。
+                import threading as _th
+                _ttl_here = float(self._total_ttl) if getattr(self, '_total_ttl', None) else 60.0
+                _resp_box = {}
+                def _force_close():
+                    try:
+                        _r = _resp_box.get('resp')
+                        if _r is not None:
+                            _r.close()
+                        else:
+                            _c = _resp_box.get('client')
+                            if _c is not None:
+                                _c.close()   # 未拿到 resp·关 client 中止请求
+                    except Exception:
+                        pass
+                _force_timer = _th.Timer(_ttl_here, _force_close)
+                _force_timer.start()
+                try:
+                    with httpx.Client(timeout=self.timeout) as client:
+                        _resp_box['client'] = client
+                        with client.stream('POST', url, headers=headers, json=body) as resp:
+                            _resp_box['resp'] = resp
+                            if resp.status_code != 200:
+                                body_txt = resp.read().decode('utf-8', 'ignore')[:400]
+                                if resp.status_code == 401:
+                                    raise LLMError(f'API Key 无效 (401)。检查 {DEFAULT_KEY_ENV}。', status_code=401)
+                                raise LLMError(f'LLM HTTP {resp.status_code}: {body_txt}', status_code=resp.status_code)
                             for line in resp.iter_lines():
                                 if not line or not line.startswith('data:'):
                                     continue
@@ -144,8 +152,8 @@ class LLMClient:
                                 usage = obj.get('usage')   # 流式末尾 chunk 含 usage（prompt/completion/total_tokens）
                                 if usage and with_reason:
                                     yield ('usage', usage)
-                        finally:
-                            _force_timer.cancel()   # 正常完成/break·取消 Timer（防误杀后续流）
+                finally:
+                    _force_timer.cancel()   # 正常完成/break/异常·取消 Timer（防误杀后续流）
             else:
                 with httpx.Client(timeout=self.timeout) as client:
                     resp = client.post(url, headers=headers, json={**body, 'stream': False})

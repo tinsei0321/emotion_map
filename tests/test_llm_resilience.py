@@ -152,3 +152,5 @@ def test_total_deadline_triggers(monkeypatch):
             pass
     assert '总超时' in str(ei.value) or 'deadline' in str(ei.value) or '流式总超时' in str(ei.value), \
         f'deadline 超时抛 LLMError（{ei.value}）'
+
+
