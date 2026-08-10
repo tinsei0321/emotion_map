@@ -9,12 +9,12 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-22h · 追问读秒卡住·三组根因收敛 + 修复已实施**（glm 承重根因 `_assembleKnowledgeQA` 无降级兜底 + httpx 心跳陷阱 → 4 处修复已落地·待用户浏览器实测） |
-| **上一轮** | CB-22g 追问无法完成（反评价收敛定稿·采 Codex 主线·F_018/F_019/stages.js:322/体检 RAG 整合·**用户实测仍卡→CB-22h**） |
+| **当前 CB 轮次** | **CB-22i · 追问持续卡住·三组根因讨论**（三次修复无效·Playwright 验证通过但用户实测仍卡·矛盾聚焦「首问 vs 追问真实卡点 + 前端降级 edge case + 浏览器缓存」·6 焦点待三组） |
+| **上一轮** | CB-22h 追问读秒卡住（glm 承重根因 `_assembleKnowledgeQA` 无降级兜底→4 处修复·Playwright 验证通过·**用户实测仍卡→CB-22i**） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
 | **当前分支** | `main`（CB-22d 已并入·fix/emc-buglog 已删·ahead 多 commit 未 push） |
-| **最新讨论** | `discuss/CB22h-追问读秒卡住_三组根因讨论发起_2026-08-10.md` + 两组回应（Codex/glm·含网络实测）· **claude 收敛定稿在 cb-journal CB-22h 段** |
-| **最新进展** | **已过 CB→修复已实施**：glm 承重根因（`_assembleKnowledgeQA` finalStep 裸 await 无 catch·CB-22f 回归）+ Codex（httpx 心跳重置·缺总 deadline）→ 4 处修复（P0-1 catch 降级 _composeKnowledgeDegraded / P0-2 chat_with_fallback 总 deadline flash60·pro90 / P0-3 httpx 分段 / P1 BGE 预热同步阻塞）→ **316 passed 零回归·serve 预热 [OK]** → **待用户浏览器实测**（正常 <30s·网络挂起 <50s 降级） |
+| **最新讨论** | `discuss/CB22i-追问持续卡住_三组根因讨论发起_2026-08-10.md`（完整证据链 + 核心矛盾 + 6 焦点·含三组各自 Playwright 复现） |
+| **最新进展** | 三次修复（CB-22g+22h·都针对首问 finalStep）→ Playwright 验证通过（正常 10s·挂起 45s 降级）→ **用户实测仍卡 + 未见降级** → 真实 trace 五次 finalStep 全挂起（全首问·未到追问）→ **矛盾：同机同 serve·Playwright 正常 vs 用户挂起** → **CB-22i 发起·待三组各自 Playwright 复现 + 判断** |
 | **接手文档** | `memories/repo/session-handoff.md`（08-05 卡·已过时·历史背景）+ `_handoff/HOME.md` + `OFFICE.md`（08-08 权威快照）+ `_handoff/CB恢复记忆prompt_2026-08-09.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 
