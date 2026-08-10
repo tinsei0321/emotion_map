@@ -26,8 +26,18 @@ finalStep LLM 流式（DeepSeek）→ office 网络间歇性不稳 → 流式挂
 
 ### ④ 状态
 
-- **需发两组 prompt**：`discuss/CB22h-追问读秒卡住_三组根因讨论发起_2026-08-10.md` 附 A（6 焦点·含三组各自 curl 实测网络）
-- **待**：两组回应（含网络实测证据）→ claude 反评价收敛 → 定稿修复（服务端超时+前端降级+预热）
+- **两组回应已回收**（Codex + glm·含各自 curl 网络实测）+ **claude 反评价收敛 + 定稿修复已实施**（见下）
+- **反评价收敛**：
+  - **glm 承重根因（核实属实）**：`_assembleKnowledgeQA` finalStep（harness.js:214）**裸 await 无 try/catch**——对比 runTemplatePath:850 有 catch→`_composeDegradedConclusion`·知识问答路径漏降级兜底（CB-22f 回归）。DeepSeek 挂起→前端 45s abort→finalStep throw→无 catch→裸抛→UI 读秒不停（sess-34620 挂 5.5 分钟铁证）
+  - **Codex 补**：httpx timeout=60s 已设（非"无超时"）·但 stream 模式是「每两 chunk 间」·心跳重置失效·缺墙钟总 deadline
+  - **glm 修正**：前端 abort 生效（45s）·降级无出口根因 = 知识问答路径无 catch（非 abort 没触发）
+  - **网络实测**：claude office 200 / Codex 10/10 200 / glm 401（governor）——**三环境不同·印证"网络间歇/环境差异"**（非 DeepSeek 全局故障）
+- **定稿修复（4 处·已实施）**：
+  - P0-1 `_assembleKnowledgeQA` 加 try/catch → `_composeKnowledgeDegraded`（知识问答专属降级·列素材要点·skipped='rag-finalstep-degraded'）
+  - P0-2 `chat_with_fallback` 加墙钟总 deadline（flash 60s/pro 90s·每 chunk 检查·超时 LLMError→SSE error·MOD_LLM.D_004 埋点）
+  - P0-3 httpx timeout 显式 `httpx.Timeout(connect=15/read=60/write=30/pool=15)`（防 connect 无限等）
+  - P1 BGE 预热 daemon→同步阻塞（api/main.py·uvicorn 等加载完·消首问 15.9s 竞态）
+- **验证**：316 passed + 3 skipped 零回归（+1 deadline 测试）·serve 重启 `[OK] RAG 模型预热完成` + 前端 200
 
 ---
 

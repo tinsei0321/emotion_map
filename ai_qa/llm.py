@@ -55,10 +55,15 @@ class LLMClient:
     """OpenAI 兼容 chat/completions 客户端（DeepSeek V4 / 任意兼容服务）。"""
 
     def __init__(self, base_url: Optional[str] = None, model: Optional[str] = None,
-                 api_key: Optional[str] = None, timeout: float = 60.0):
+                 api_key: Optional[str] = None,
+                 timeout=None):   # CB-22h P0-3：默认显式 httpx.Timeout（connect/read/write/pool 分段·防 connect 无限等）
         self.base_url = (base_url or DEFAULT_BASE_URL).rstrip('/')
         self.model = _resolve_model(model) if model else _resolve_model(os.environ.get(MODEL_ENV))   # CB-05 H1：model 显式传时不读 env 覆盖（保 provider 级配置）
         self.api_key = api_key or os.environ.get(DEFAULT_KEY_ENV, '')
+        # CB-22h P0-3：None → 显式分段超时（connect 15s/read 60s/write 30s/pool 15s）——
+        #   默认 60 单值在 stream 模式是「每两 chunk 间」·connect 阶段可能无限等（无 connect 专用超时）
+        if timeout is None:
+            timeout = httpx.Timeout(connect=15.0, read=60.0, write=30.0, pool=15.0)
         self.timeout = timeout
 
     def _ensure_key(self):
@@ -340,14 +345,28 @@ def chat_with_fallback(messages, tier: str = 'pro', **chat_kwargs) -> Iterator:
             f'在项目根 .env 加 "{DEFAULT_KEY_ENV}=sk-..."（api/main.py 启动自动加载）。'
         )
     last_err = None
+    # CB-22h P0-2（Codex/glm 共识）：总预算 deadline（墙钟）——httpx read timeout=60s 是「每两 chunk 间」·
+    #   DeepSeek 间歇心跳/空 chunk 会重置 read timeout·导致流式挂起无异常（trace 挂 5.5 分钟铁证）。
+    #   每 chunk 前检查总 deadline·超时抛 LLMError → 现有 SSE error 帧 + 前端降级接管（释放 zombie 线程）。
+    #   flash 60s / pro 90s（比前端 45s abort 略宽·保证前端降级先行·后端线程随后释放）。
+    _ttl = 90.0 if tier == 'pro' else 60.0
+    _total_deadline = time.monotonic() + _ttl
     for prov in providers:
+        if time.monotonic() > _total_deadline:
+            trace_error('MOD_LLM.D_004', f'chat total deadline {_ttl:.0f}s exceeded·强制降级')
+            last_err = LLMError('LLM 流式总超时({:.0f}s)'.format(_ttl))   # 保文案·防外层抛"所有 provider 失败"误导
+            break
         model = prov.model_pro if tier == 'pro' else prov.model_flash
         cli = LLMClient(base_url=prov.base_url, model=model, api_key=prov.api_key)
         for attempt in range(MAX_RETRIES):
+            if time.monotonic() > _total_deadline:
+                break
             started = False
             try:
                 trace_log('MOD_LLM.F_002', f'chat provider={prov.name} model={model} tier={tier} attempt={attempt}')
                 for chunk in cli.chat(messages, **chat_kwargs):
+                    if time.monotonic() > _total_deadline:
+                        raise LLMError('LLM 流式总超时({:.0f}s)'.format(_ttl))   # 墙钟超时·强制降级
                     started = True   # 首 chunk 已出 → 此后失败不重试不换家
                     yield chunk
                 return   # 成功走完，结束整个 wrapper

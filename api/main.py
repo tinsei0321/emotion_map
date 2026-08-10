@@ -69,21 +69,19 @@ app.add_middleware(
 
 @app.on_event('startup')
 async def _startup_rag_warmup():
-    """CB-22 EMC 修复 R1：后台异步预热 RAG 模型（消除首检冷加载 18.6s）。
+    """CB-22 EMC 修复 R1：预热 RAG 模型（消除首检冷加载 18.6s）。
 
-    daemon 线程·不阻塞 API 启动·失败降级（首检冷加载兜底·R2/R3 诚实降级）。
+    CB-22h P1（glm 方案 A）：daemon thread → **同步阻塞启动**——uvicorn 等 BGE 加载完再接请求，
+    消首问竞态（此前 daemon 未跑完用户已问·rag_search 内同步加载 15.9s 阻塞事件循环·sess-34620 铁证）。
+    启动慢 ~15s 换首问稳定·失败降级（首检冷加载兜底·R2/R3 诚实降级）。
     """
-    import threading
-
-    def _warmup():
-        try:
-            from tools.rag_index import warmup
-            warmup()
-        except Exception as _e:
-            import sys
-            print(f'[WARN] RAG 预热启动失败（非阻塞）: {str(_e)[:60]}', file=sys.stderr)
-
-    threading.Thread(target=_warmup, daemon=True).start()
+    import sys
+    try:
+        from tools.rag_index import warmup
+        warmup()
+        print('[OK] RAG 模型预热完成', file=sys.stderr)
+    except Exception as _e:
+        print(f'[WARN] RAG 预热启动失败（非阻塞）: {str(_e)[:60]}', file=sys.stderr)
 
 app.include_router(api_router, prefix="/api/v1")
 

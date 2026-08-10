@@ -128,3 +128,27 @@ def test_resolve_providers_multi(monkeypatch):
     monkeypatch.setenv('IFLYTEK_API_KEY', 'iflytek-x')
     names = [p.name for p in _resolve_providers('pro')]
     assert names == ['deepseek', 'ark', 'iflytek']
+
+
+def test_total_deadline_triggers(monkeypatch):
+    """CB-22h P0-2：总预算 deadline——流式挂起（无异常但超时）→ 抛 LLMError（防 zombie 线程）。
+    mock time.monotonic 逐步推进·每 chunk 后超 deadline → chat_with_fallback 内部 raise。"""
+    monkeypatch.setattr(llm, '_resolve_providers', lambda tier='pro': [_prov('A')])
+    _fake_behaviors[:] = [_gen(('content', 'chunk1'), ('content', 'chunk2'))]
+
+    # 第一次 monotonic 返回真实值（算 deadline）·之后每次 + 100s（立即超 deadline）
+    real = llm.time.monotonic
+    calls = {'n': 0}
+    def _fake_monotonic():
+        calls['n'] += 1
+        if calls['n'] == 1:
+            return real()
+        return real() + 100.0   # 超 60s deadline
+    monkeypatch.setattr(llm.time, 'monotonic', _fake_monotonic)
+
+    gen = chat_with_fallback([{'role': 'user', 'content': 'q'}], tier='flash')
+    with pytest.raises(LLMError) as ei:
+        for chunk in gen:
+            pass
+    assert '总超时' in str(ei.value) or 'deadline' in str(ei.value) or '流式总超时' in str(ei.value), \
+        f'deadline 超时抛 LLMError（{ei.value}）'

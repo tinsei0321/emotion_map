@@ -9,12 +9,12 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-22h · 追问读秒卡住·三组根因讨论**（CB-22g 修复后用户实测仍卡·真实会话 sess-34620 取证：finalStep LLM 挂起 5 分半·office 网络不稳 + 后端无服务端超时·6 焦点待三组验证） |
+| **当前 CB 轮次** | **CB-22h · 追问读秒卡住·三组根因收敛 + 修复已实施**（glm 承重根因 `_assembleKnowledgeQA` 无降级兜底 + httpx 心跳陷阱 → 4 处修复已落地·待用户浏览器实测） |
 | **上一轮** | CB-22g 追问无法完成（反评价收敛定稿·采 Codex 主线·F_018/F_019/stages.js:322/体检 RAG 整合·**用户实测仍卡→CB-22h**） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
-| **当前分支** | `main`（CB-22d 已并入·fix/emc-buglog 已删·ahead 11 未 push） |
-| **最新讨论** | `discuss/CB22h-追问读秒卡住_三组根因讨论发起_2026-08-10.md`（真实会话 sess-34620 证据 + 6 焦点·含三组各自 curl 实测网络） |
-| **最新进展** | CB-22g 修复（d1d50e6b·F_018/F_019/体检 RAG 36→52）→ 用户实测仍「读秒卡住」→ **真实会话取证**（sess-34620=uvicorn PID·17:13:45 flash LLM 无 exit 挂 5 分半 + 全 trace 401/net/mid-stream 交替 + API 直测 200·间歇性 + office 网络不稳历史）→ **CB-22h 发起·待三组验证** |
+| **当前分支** | `main`（CB-22d 已并入·fix/emc-buglog 已删·ahead 多 commit 未 push） |
+| **最新讨论** | `discuss/CB22h-追问读秒卡住_三组根因讨论发起_2026-08-10.md` + 两组回应（Codex/glm·含网络实测）· **claude 收敛定稿在 cb-journal CB-22h 段** |
+| **最新进展** | **已过 CB→修复已实施**：glm 承重根因（`_assembleKnowledgeQA` finalStep 裸 await 无 catch·CB-22f 回归）+ Codex（httpx 心跳重置·缺总 deadline）→ 4 处修复（P0-1 catch 降级 _composeKnowledgeDegraded / P0-2 chat_with_fallback 总 deadline flash60·pro90 / P0-3 httpx 分段 / P1 BGE 预热同步阻塞）→ **316 passed 零回归·serve 预热 [OK]** → **待用户浏览器实测**（正常 <30s·网络挂起 <50s 降级） |
 | **接手文档** | `memories/repo/session-handoff.md`（08-05 卡·已过时·历史背景）+ `_handoff/HOME.md` + `OFFICE.md`（08-08 权威快照）+ `_handoff/CB恢复记忆prompt_2026-08-09.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 

@@ -103,6 +103,19 @@ export function _quickIntent(q) {   // CB-22 e2e：export 解封（同 composeGa
 // CB-22 三层架构 P0-5：知识问答统一组装（短路加速器 + diagnose intent=knowledge_qa **合流**·双入口同注入同 finalStep·防行为分叉）。
 // data_plan 三态（glm 挑战 1·执行定稿）：ready=Top-K 非空+score≥0.5 / fallback_annotated=非空+<0.5（标注相关性低）/
 //   request_upload=空（EXIT_GAP·知识库无覆盖）。阈值 0.5 起步·按黄金集 score 校准。
+/** CB-22h P0-1（glm）：知识问答 finalStep 失败降级——列素材要点（零 LLM 兜底·保三支柱①不空转·非"分析图已生成"误导）。
+ *  有素材 → 列检索到的 Top-5 要点；无素材 → 诚实"已检索但综合失败"。 */
+function _composeKnowledgeDegraded(ctx, ragResults, ragOk) {
+  const _q = (ctx && ctx.question) || '';
+  if (!ragOk || !ragResults || !ragResults.length) {
+    return `## 知识库综合失败\n\n本次提问「${_q}」已检索知识库·但综合总结时网络异常（模型服务间歇不稳）。\n\n**建议**：稍后重试·或换问更具体的问题。`;
+  }
+  const _lines = ragResults.slice(0, 5).map((r, i) =>
+    `${i + 1}. [${(r.score || 0).toFixed(2)}·${r.data_dim || '社区'}] ${String(r.source || '').split('/').pop().split('#')[0]}\n    ${r.text ? String(r.text).slice(0, 200) : '（片段缺失）'}`
+  ).join('\n');
+  return `## 知识库综合失败·以下为检索到的素材要点\n\n本次提问「${_q}」已检索到 ${ragResults.length} 条素材·但综合总结时网络异常。素材要点如下供参考：\n\n${_lines}\n\n**建议**：稍后重试获取完整综合结论。`;
+}
+
 /** CB-22f D3（识别层·Codex 富矿 + glm 规则优先）：RAG 结果 → ctx.extracted 实体清单级组装。
  *   {geo:[{name,dim}]≤5·去重, attrs:[字段名·仅 fact]}——零 LLM 确定性组装（对齐 Dumb 中间）。
  *   fact → region 透传（结构化真值·提取不匹配·消费端 place_layer 甄别）；
@@ -211,7 +224,18 @@ export async function _assembleKnowledgeQA(ctx, hooks, opts = {}) {
   if (opts.injectOnly) {
     return { ok: true, rounds: 0, final: ctx.context, skipped: opts._quick ? 'quick-rag' : 'diagnose-knowledge-qa', injected: ctx.context, degraded: false, diagnose: { degraded: true, intent: 'general', quick: !!opts._quick, rag: true, low_relevant: _lowRelevant, extracted: ctx.extracted } };
   }
-  const draft = await stages.finalStep(ctx, hooks, '');
+  // CB-22h P0-1（glm 承重根因·CB-22f 回归）：知识问答 finalStep 加 try/catch 降级兜底——
+  //   对比 runTemplatePath:850 有 catch→_composeDegradedConclusion·_assembleKnowledgeQA 此前裸 await 漏降级。
+  //   DeepSeek 流式挂起→前端 45s abort→finalStep throw→此处 catch→知识问答专属降级（列素材要点·非"分析图已生成"误导）。
+  //   否则异常裸抛→Promise 链断裂→onFinalDone 永不触发→UI 读秒不停（用户实测 5 分半）。
+  let draft;
+  try {
+    draft = await stages.finalStep(ctx, hooks, '');
+  } catch (e) {
+    if (ctx.signal && ctx.signal.aborted) throw e;   // 用户取消 → 传播（同 runTemplatePath 语义）
+    draft = _composeKnowledgeDegraded(ctx, _ragResults, _ragOk);
+    if (hooks.onDefense) hooks.onDefense({ degraded: true, fixes: [], skipped: 'rag-finalstep-degraded', capsules: [] });
+  }
   const _qd = applyQualityDefense(draft, { obsOk: false, toolHistoryText: '', skipL1: true, question: ctx.question, skipScaleDefense: true });
   const _final = _qd.final;
   if (hooks.onFinalDone) hooks.onFinalDone(_final);

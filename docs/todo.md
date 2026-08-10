@@ -55,7 +55,9 @@
   - [x] 阶段3 B 识别+衔接：fact meta 透传重建（region/topic/year/keywords 验证）+ ctx.extracted 实体清单级 + priorTurn 回灌 + _followupCue 分类器（8 场景 PASS）+ recover 扩 analyze/compare
   - [x] 阶段4 D RAG 收尾：query_knowledge_base（**F_016**）+ fact 加权×1.2（3 测试）
   - [x] 验证：**315 passed + 3 skipped 零回归**·serve 重启新代码加载验证
-- [ ] **CB-22f 用户浏览器实测**（下一步·动作链 demo 1 步链：知识问答→标记）：桩测已验逻辑·用户体验须浏览器实测（护城河演示·三组并行分配）
+- [x] **CB-22h 追问读秒卡住·三组根因收敛 + 4 处修复**（真实会话 sess-34620 取证 + glm 承重根因 `_assembleKnowledgeQA` 无降级兜底 → P0-1 catch 降级 / P0-2 总 deadline / P0-3 httpx 分段 / P1 预热同步 → 316 passed·serve 预热 OK）
+- [ ] **CB-22h 用户浏览器实测**（知识问答→追问：正常 <30s 出结论·网络挂起 <50s 出降级非无限读秒·三组并行端口隔离）
+- [ ] **CB-22f 用户浏览器实测**（动作链 demo 1 步链：知识问答→标记·B3 飞轮实跑留后）
 - [ ] **A1 GIS 甄别 / tier-2 面化 / A3 项目库坐标**（G 盘 GIS 重活·**单独轮**）
 - [ ] RAG 遗留（OFFICE 卡）：B 路径 query_knowledge_base · 混合检索 · 全仓 [中文]+类 扫描 · Recall@5 · P0-6 复审
 
