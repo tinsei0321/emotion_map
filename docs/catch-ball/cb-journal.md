@@ -4,6 +4,30 @@
 > 按轮**倒序**（最新在顶·CB-NN 大→小·便于看最新进展；不覆写）。新轮次写在文件顶部。
 > 每轮四节：① SCAN 摘要 ② 我方反评价 ③ 行动 ④ 状态/新发现。
 
+## CB-22e · 2026-08-10（地图标记准确度与防护 · 讨论发起 · 待两组回应）
+
+### ① 承接
+
+CB-22d 闭环并入 main（`b77daef`）→ 用户定「**准确度后续完善**」+ OFFICE 卡待做项。用户指令：先完成 CB-22d 后续 P1~P3（**B3 飞轮先注入不验证**·留后验证）·进 CB·定稿后执行。
+
+### ② P1~P3 plan（claude 初判）
+
+- **P1 准确度四件套**（纯代码·低风险）：① `_core_entities` 多实体返全候选（红星路-二马路→[红星路,二马路]·现只返最长）② jieba 宜昌地名自定义词典（`DATA/place/yichang_places.txt`·防三峡青年城→[青年城]）③ 「老城中心」泛词入聚合挡词表（实测误导命中中心人民医院）④ amap 命中置信标注「高德解析·大致位置」（score 恒 0 无置信档）
+- **P2 finalStep 兜底（前提修正）**：取证发现兜底链路**已存在**（api.js:34 45s abort → harness.js:801 catch → `_composeDegradedConclusion`·CB-07 Layer 3）。OFFICE 卡 P0-2-3「加兜底」前提已变——真实缺口 = **部分命中路径未实测验证 + 降级结论对部分命中是否准确表述 N/M**。P2 改法候选：a) 部分命中路径行为级测试 + 手测（低风险首选）b) 若降级表述不足 → 增强 `_composeDegradedConclusion` 输入
+- **P3 B3 飞轮用例注入不验证**：`flywheel_audit.py` 加 B3 + `tests/` 行为级 stub（全未命中→B1·部分命中→落图·injectOnly 确定性·参考 test_knowledge_qa_routing_assembles）
+- **不做**：A1 GIS 甄别 / tier-2 面化 / A3 项目库坐标（G 盘 GIS 重活·单独轮）+ RAG 遗留（另一子系统）
+
+### ③ 发起（6 焦点·待两组独立取证回应）
+
+焦点：① **P2 前提修正**（兜底已存在·还是存在未被 catch 的挂起路径？）② P1.1 多实体返全候选边界（上限/门限/false positive）③ P1.2 jieba 词典全局污染 ④ P1.3 老城中心归类（AGGREGATE vs SUFFIX·是否可定位区域）⑤ P1.4 amap 标注落点+文案 ⑥ P3 注入不验证+验收口径。
+
+### ④ 状态
+
+- **需发两组 prompt**：`discuss/CB22e-地图标记准确度与防护_讨论发起_2026-08-10.md` 附 A（6 焦点·代码块包裹·供复制）
+- **待**：两组回应（`discuss/CB22e-..._回应_{Codex-GPT5|glm组}_2026-08-10.md`）→ claude 反评价收敛 → 定稿实施 P1~P3
+
+---
+
 ## 收尾 · 2026-08-10（分支合并 fix/emc-buglog → main）
 
 - **合并**：fix/emc-buglog（368 提交·含 CB-22d 全链）→ main · merge commit `b77daef`（保留全部历史 + 本地 main 的 `81784f0` mcp 配置）

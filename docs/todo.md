@@ -32,11 +32,12 @@
 
 > ⚠️ **到公司先 `git pull`（拉 main 最新）+ `git fetch --prune origin`**（删本地过时 fix 分支引用）·当前开发在 **main**·不再用 fix/emc-buglog。
 
-- [ ] **CB-22d 后续项**：
-  - [ ] 准确度完善：`_core_entities` 多实体返全候选（红星路-二马路→[红星路,二马路]）+ 宜昌地名自定义词典（jieba.load_userdict·防专名被拆）·「老城中心」泛词入挡词表·amap 置信标注「高德解析·大致位置」
-  - [ ] **finalStep 失败兜底**（P0-2-3）：复用 `_composeDegradedConclusion`·治部分命中场景 finalStep 45s 超时卡顿·兑现「任何情况必收尾」
-  - [ ] A1 GIS 甄别增强（停车泊位缺口.小区名/危旧房.住宅名真实坐标）·tier-2 面化（葛洲坝→西陵区面+标注）·A3 项目库坐标（附件5 docx）
-  - [ ] B3 飞轮用例（知识问答→追问标记→断言标记+<30s）·行为级测试（stub 全未命中→B1 出口·stub 部分命中→落图）
+- [x] **分支同步**（office 08-10 上午）：本地 fix/emc-buglog 已删·仅剩 main·交接卡漂移修正 commit `52040f10`（未 push·网络暂断）
+- [ ] **CB-22e 地图标记准确度与防护**（CB-22d 后续·已进 CB 讨论发起·6 焦点·待两组回应）：
+  - [ ] P1 准确度四件套：`_core_entities` 多实体返全候选 + jieba 宜昌词典（yichang_places.txt）+「老城中心」泛词入挡词表 + amap 置信标注「高德解析·大致位置」
+  - [ ] P2 finalStep 兜底**验证**（前提修正：兜底链路已存在·非加兜底——api.js 45s abort→harness catch→_composeDegradedConclusion）
+  - [ ] P3 B3 飞轮用例**注入不验证**（flywheel_audit B3 + tests 行为级 stub：全未命中→B1·部分命中→落图）
+  - [ ] A1 GIS 甄别 / tier-2 面化 / A3 项目库坐标（G 盘 GIS 重活·**单独轮**）
 - [ ] RAG 遗留（OFFICE 卡）：B 路径 query_knowledge_base · 混合检索 · 全仓 [中文]+类 扫描 · Recall@5 · P0-6 复审
 
 ## 📅 2026-08-09（城市更新专项规划知识库构建 CB-21b · L2 任务 + RAG 计划）
