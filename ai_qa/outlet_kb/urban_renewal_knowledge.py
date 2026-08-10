@@ -11,6 +11,15 @@
 """
 from __future__ import annotations
 
+# CB-22f D5（B 路径收尾）：追踪埋点——query_knowledge_base 是公开函数（MOD_AIQA.F_016·编号连续 F_015 rag_search 后）
+try:
+    from core.tracker import track
+except Exception:  # 独立调试兜底
+    def track(*a, **k):
+        def deco(f):
+            return f
+        return deco
+
 # ── 更新项目（PROJECTS）──────────────────────────────────────────
 PROJECTS = [
     {'id': 'URP-P01', 'city': '宜昌', 'region': '中心城区', 'topic': 'project',
@@ -192,6 +201,45 @@ METRICS_SYSTEM = [
 def all_facts():
     """全部事实卡（供 query_knowledge_base / rag_index 检索）。"""
     return (PROJECTS + INDICATORS + CHECKUP_ISSUES + PANELS + CASES + POLICIES + METRICS_SYSTEM)
+
+
+@track("MOD_AIQA.F_016", track_args=False)
+def query_knowledge_base(query='', city='宜昌', topic=None, keyword=None, limit=5):
+    """B 路径：确定性查询事实卡（关键词精确 WHERE·非向量·CB-22f D5 收尾）。
+
+    场景：精确数字类问（"55 个分别是什么"/"葛洲坝几个项目"）——向量模糊时·确定性兜底。
+    匹配链：① 关键词命中 fact 的 keywords/region/name/topic ② 再按 topic 过滤 ③ Top-N 兜底。
+    返回与 RAG 结果同构（可混合注入 finalStep 素材）：[{id,name,detail,dimension,year,source,region,topic}]。
+    """
+    if not query and not keyword and not topic:
+        return []
+    facts = all_facts()
+    if city:
+        facts = [f for f in facts if f.get('city') == city or city in str(f.get('city', ''))]
+    scored = []
+    for f in facts:
+        s = 0
+        hay = ' '.join([str(f.get(k, '')) for k in ('keywords', 'region', 'name', 'topic', 'detail')])
+        for kw in (keyword or '').split():
+            if kw and kw in hay:
+                s += 1
+        if query:
+            # query 清洗：去疑问词/量词 → fact 的 keywords/region 是否作为子串出现在 query 中（中文无空格·整串反查）
+            #   「葛洲坝片区几个项目」→ 反查 fact keywords 含「葛洲坝」→ 命中（比正查稳·防滑窗噪音）
+            _qclean = query.replace('有哪些', '').replace('是什么', '').replace('多少', '').replace('几个', '').replace('多少', '').strip()
+            for _kw in (str(f.get('keywords', '')).split() + [str(f.get('region', ''))]):
+                if len(_kw) >= 2 and _kw in _qclean:
+                    s += 1
+        if topic and topic == f.get('topic'):
+            s += 2
+        if s > 0:
+            scored.append((s, f))
+    scored.sort(key=lambda x: -x[0])
+    return [{
+        'id': f['id'], 'name': f['name'], 'detail': f['detail'], 'dimension': f.get('dimension', ''),
+        'year': f.get('year', ''), 'source': f.get('source', ''), 'region': f.get('region', ''),
+        'topic': f.get('topic', ''), 'keywords': f.get('keywords', ''),
+    } for _s, f in scored[:limit]]
 
 
 if __name__ == '__main__':

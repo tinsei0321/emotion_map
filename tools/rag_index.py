@@ -282,6 +282,11 @@ def search(query, k=5):
     model = _get_model()
     qvec = _embed_texts(model, [query])[0]
     scores = vectors @ qvec
+    # CB-22f D5（glm/Codex 共识·P1）：混合检索 fact 加权 ×1.2——fact 短文本向量信号弱·加权提升命中率·
+    #   可观测参数（黄金集 Recall@5 跟踪·不拍死·Codex「系数作观测起步」）。
+    for i, m in enumerate(metas):
+        if m.get('type') == 'fact':
+            scores[i] = float(scores[i]) * 1.2
     top_idx = np.argsort(scores)[::-1][:k]
     results = []
     for i in top_idx:

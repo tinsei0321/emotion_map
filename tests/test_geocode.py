@@ -399,3 +399,23 @@ class TestCoreEntitiesP1:
         # 若长候选存在·短候选应被子串去重剔除
         for c in got:
             assert not any(c in d for d in got if d != c), f'子串重复候选应去重: {got}'
+
+
+# ── CB-22f D5（B 路径）query_knowledge_base 测试 ─────────────────────
+
+class TestQueryKnowledgeBase:
+    """CB-22f D5：确定性查询事实卡（关键词精确 WHERE·数字类兜底）。"""
+
+    def test_query_gezhouba_hits(self):
+        from ai_qa.outlet_kb.urban_renewal_knowledge import query_knowledge_base
+        r = query_knowledge_base('葛洲坝片区几个项目', city='宜昌')
+        assert any(x['id'] == 'URP-P02' for x in r), f'葛洲坝应精确命中 URP-P02: {[x["id"] for x in r]}'
+
+    def test_topic_filter(self):
+        from ai_qa.outlet_kb.urban_renewal_knowledge import query_knowledge_base
+        r = query_knowledge_base('', city='宜昌', topic='project')
+        assert r and all(x['topic'] == 'project' for x in r), 'topic 过滤应只返 project'
+
+    def test_empty_query_returns_empty(self):
+        from ai_qa.outlet_kb.urban_renewal_knowledge import query_knowledge_base
+        assert query_knowledge_base() == [], '空查询应返空'
