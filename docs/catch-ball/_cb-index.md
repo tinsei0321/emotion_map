@@ -9,12 +9,12 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-22f · 纯问答 → 空间动作链路由打通**（用户北极星：纯问答不是终点·空间落图追问是 EMC 精髓·**反评价收敛定稿·实施进行中·今天任务**） |
-| **上一轮** | CB-22e 地图标记准确度与防护（两组收敛定稿·P1~P3 已并入 CB-22f 实施·顺序 P2→P1→P3） |
+| **当前 CB 轮次** | **CB-22g · 追问无法完成·根因讨论**（CB-22f 实施后用户实测失败·trace 取证双根因：FC 秒回失败降级旧 SSE concept + F_016 编号冲突·5 焦点·待两组验证） |
+| **上一轮** | CB-22f 纯问答→空间动作链路由打通（5 阶段实施完成·315 passed·**用户实测追问失败→CB-22g**） |
 | **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
 | **当前分支** | `main`（CB-22d 已并入·fix/emc-buglog 已删） |
-| **最新讨论** | `discuss/CB22f-纯问答到空间动作链路由打通_讨论发起_2026-08-10.md`（北极星 + 5 断链 + plan + 8 焦点）· 回应 ×2 已回收（Codex/glm）· **claude 收敛定稿在 cb-journal CB-22f 段** |
-| **最新进展** | **已过 CB→实施中**：8 焦点收敛（4 agree 吸收两组修正：动作链先 1 步/双条件守卫/规则提取优先/伪工具契约）· 定稿 plan 5 阶段（P2→P1→P3→A 路由→B 识别衔接→D RAG 后置）· **待实施 + 浏览器实测动作链 demo** |
+| **最新讨论** | `discuss/CB22g-追问无法完成_根因讨论发起_2026-08-10.md`（trace 证据 sess-22008 + 5 根因 + 5 焦点·待两组验证） |
+| **最新进展** | CB-22f 5 阶段实施完成（315 passed）→ 用户实测「知识问答后追问」无法完成 → trace 取证：FC（F_005）0.2ms 秒回失败×10→降级旧 SSE→select_template 判 concept + F_016 编号冲突（撞 build_outlet_schema·glm 漏 outlet_kb/）+ 知识问答未走 rag_search（F_015=0）→ **CB-22g 发起·待两组验证** |
 | **接手文档** | `memories/repo/session-handoff.md`（08-05 卡·已过时·历史背景）+ `_handoff/HOME.md` + `OFFICE.md`（08-08 权威快照）+ `_handoff/CB恢复记忆prompt_2026-08-09.md` |
 | **上次操作人** | tinsei0321 + claude组 + Codex + glm组 |
 

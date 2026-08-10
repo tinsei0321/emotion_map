@@ -4,6 +4,35 @@
 > 按轮**倒序**（最新在顶·CB-NN 大→小·便于看最新进展；不覆写）。新轮次写在文件顶部。
 > 每轮四节：① SCAN 摘要 ② 我方反评价 ③ 行动 ④ 状态/新发现。
 
+## CB-22g · 2026-08-10（追问无法完成 · 根因讨论发起 · 用户实测失败）
+
+### ① 场景
+
+CB-22f 5 阶段实施完成（315 passed 零回归）→ 用户浏览器实测「知识问答后追问」→ **追问无法完成** → 开 CB 查根因。
+
+### ② trace 取证（sess-22008·15:58:26 用户实测）
+
+| ID | 次数 | 语义 | 判定 |
+|---|---|---|---|
+| F_005 FC | 10·**0.2ms 秒回** | FC 路由 | **秒回失败**（无 LLM 调用·本地失败） |
+| F_001 select_template | 50 同秒 | 旧 SSE diagnose | 降级旧路径·out 多样（concept/compare/zonal/unknown） |
+| F_003 finalStep | 16 | — | 反复调用 |
+| F_016 query_knowledge_base | 68 | — | **编号冲突**（撞 build_outlet_schema._render_dimension_cannot·glm 漏 outlet_kb/） |
+| F_015 rag_search | **0** | 知识问答检索 | **未走向量检索** |
+| F_009 DEM | [ERR] | 分析 | negative 过滤后剩 0 点 |
+| F_005 TRANSFORM | [ERR] | 坐标 | KeyError lon_gcj02 |
+
+### ③ 根因链（待两组验证）
+
+FC 秒回失败 → 降级旧 SSE → select_template 判 track=A concept → 追问当概念问答无法完成 + F_016 编号冲突（我引入·违反红线）+ 知识问答未走 rag_search（F_015=0）。
+
+### ④ 状态
+
+- **需发两组 prompt**：`discuss/CB22g-追问无法完成_根因讨论发起_2026-08-10.md` 附 A（5 焦点·FC 秒回失败根因/降级 concept/F_016 冲突/F_015=0/验收）
+- **待**：两组回应 → claude 反评价收敛 → 定稿修复（含 F_016 改号）
+
+---
+
 ## CB-22f · 2026-08-10（纯问答→空间动作链路由打通 · 反评价收敛 · 定稿 plan · 今天任务）
 
 ### ① SCAN 摘要（两组回应已回收）
