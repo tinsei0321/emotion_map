@@ -33,11 +33,18 @@
 > ⚠️ **到公司先 `git pull`（拉 main 最新）+ `git fetch --prune origin`**（删本地过时 fix 分支引用）·当前开发在 **main**·不再用 fix/emc-buglog。
 
 - [x] **分支同步**（office 08-10 上午）：本地 fix/emc-buglog 已删·仅剩 main·交接卡漂移修正 commit `52040f10`（未 push·网络暂断）
-- [ ] **CB-22e 地图标记准确度与防护**（CB-22d 后续·已进 CB 讨论发起·6 焦点·待两组回应）：
-  - [ ] P1 准确度四件套：`_core_entities` 多实体返全候选 + jieba 宜昌词典（yichang_places.txt）+「老城中心」泛词入挡词表 + amap 置信标注「高德解析·大致位置」
-  - [ ] P2 finalStep 兜底**验证**（前提修正：兜底链路已存在·非加兜底——api.js 45s abort→harness catch→_composeDegradedConclusion）
-  - [ ] P3 B3 飞轮用例**注入不验证**（flywheel_audit B3 + tests 行为级 stub：全未命中→B1·部分命中→落图）
-  - [ ] A1 GIS 甄别 / tier-2 面化 / A3 项目库坐标（G 盘 GIS 重活·**单独轮**）
+- [x] **环境恢复 + 分支同步**（office 08-10）：目录残缺→fetch origin（`0fdd64c`）→checkout main→删 fix 分支→唯一 main 与远端对齐·工作区干净
+- [x] **CB-22e 地图标记准确度与防护·反评价收敛定稿**（两组回收·P2 前提修正实锤 N/M 断链 + P1 四件套定稿 + P3 落点修正·**并入 CB-22f 实施**）
+- [x] **CB-22f 纯问答→空间动作链路由打通·反评价收敛定稿**（8 焦点 4 agree+4 partial·北极星+5 断链·定稿 plan 5 阶段·**实施中·今天任务**）
+- [ ] **CB-22f 实施**（今天任务·已过 CB→继续推进）：
+  - [ ] 阶段0 CB-22e P2：`_composeDegradedConclusion` 观察行优先规则（/命中\s*\d+\/\d+/ 取首个·否则 slice(-1)）
+  - [ ] 阶段1 CB-22e P1 四件套：_core_entities 候选表≤3+len≥3·_AGGREGATE_WORDS 加「中心」·_WHOLE_AGGREGATES 整名拦截·独立 jieba.Tokenizer+新建 yichang_places.txt·amap 按 data_source 标注「高德 POI·近似位置」
+  - [ ] 阶段2 CB-22e P3：test-cases.js B3 用例 + tests/browser 桩测三连（B1/部分命中/超时降级）
+  - [ ] 阶段3 A 路由打通（D1/D2）：FC prompt 加 knowledge 契约（伪工具 B）+ _normalizeFcDiagnose 三分支 + 双条件守卫
+  - [ ] 阶段4 B 识别+衔接（D3/D4）：rag_index meta 透传 fact 结构化字段 → ctx.extracted → priorTurn 回灌 → _followupCue 分类器 + recover 扩展
+  - [ ] 阶段5 D RAG 收尾（后置）：query_knowledge_base + fact 加权×1.2
+  - [ ] 验证：pytest 339 零回归 + validate 9/9 + validate_paradigm_map 5/5 + 桩测全绿 + 用户浏览器实测动作链 demo
+- [ ] **A1 GIS 甄别 / tier-2 面化 / A3 项目库坐标**（G 盘 GIS 重活·**单独轮**）
 - [ ] RAG 遗留（OFFICE 卡）：B 路径 query_knowledge_base · 混合检索 · 全仓 [中文]+类 扫描 · Recall@5 · P0-6 复审
 
 ## 📅 2026-08-09（城市更新专项规划知识库构建 CB-21b · L2 任务 + RAG 计划）

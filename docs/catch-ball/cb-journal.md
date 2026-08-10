@@ -4,7 +4,44 @@
 > 按轮**倒序**（最新在顶·CB-NN 大→小·便于看最新进展；不覆写）。新轮次写在文件顶部。
 > 每轮四节：① SCAN 摘要 ② 我方反评价 ③ 行动 ④ 状态/新发现。
 
-## CB-22e · 2026-08-10（地图标记准确度与防护 · 讨论发起 · 待两组回应）
+## CB-22f · 2026-08-10（纯问答→空间动作链路由打通 · 反评价收敛 · 定稿 plan · 今天任务）
+
+### ① SCAN 摘要（两组回应已回收）
+
+用户北极星：**纯问答不是终点·是空间动作链起点**（文本地理/归因信息识别+消费·追问衔接工具·plan+execute 完整动作链·护城河）。claude 取证 5 断链（D1 路由硬编码/D2 FC 无 knowledge 契约/D3 识别层缺失/D4 衔接单入口/D5 B 路径未实现）→ 两组独立核实全属实 → 8 焦点 4 agree+4 partial 收敛。
+
+### ② 反评价（8 焦点 · verify-before-accept 已核实）
+
+| 焦点 | Codex | glm | claude 收敛 |
+|---|---|---|---|
+| 1 北极星对齐 | agree+边界+2步下限 | agree+边界+先1步 | **agree**·护城河定位·动作链 6 类（标记/分析/归因/对比/裁剪→衔接·概念/政策→纯文本）+衔接双条件（空间意图词 AND 可消费实体）·**采纳 glm 先 1 步**（Phase1 本轮 1 步衔接·Phase2 多步链） |
+| 2 D1/D2 路由打通 | agree 断链+伪工具方案B+不扩词表 | partial+双条件守卫+三分支 | **agree**·FC prompt 增量加 knowledge 契约（伪工具 B·category='knowledge'·when=None 不进 GEO_TOOL_CATALOG）·_normalizeFcDiagnose 三分支（核实 :361 二元硬编码属实）·双条件守卫（知识词 AND 无 GEO_VERB_KW AND 无情绪词）·**不扩 RAG_QUERY_KW**（Codex 有据：词表最小化设计意图·B 路径落地后迁移） |
+| 3 D3 识别层 | agree+fact 结构化字段富矿 | partial+规则提取优先 | **agree 合并**·rag_index meta 透传 fact 结构化字段（region/topic/year/keywords·零 LLM 组装·一次索引重建）·note/case source 溯源兜底·**不依赖 LLM 答案文本反提取**（确定性·对齐 Dumb 中间） |
+| 4 D4 衔接层通用化 | agree+_followupCue 分类器 | agree+双条件+三角色 | **agree**·_markupCue→_followupCue 纯函数分类器（markup/analyze/attribute/compare/extract·词表集中 emc-patterns.js）+双条件守卫（priorTurn.intent=knowledge_qa AND 词表命中·防非问答上下文误衔接）+三角色分工（_quickIntent 首轮/_followupCue 追问/_deterministicRecover 兜底·recover 同步扩展） |
+| 5 动作链编排 | agree 复用 runAllToolCalls | partial 先1步 | **agree 复用 runAllToolCalls/族 A 不建新链**·**采纳 glm 先 1 步**（1 步通=路由打通=本轮目标·多步是 Phase2）·N/M 诚实·B1 泛化为任意工具零产出出口 |
+| 6 CB-22e 并入 | agree P2先行 | agree P1先行 | **agree 并入**·执行顺序定稿：P2（最小 1 行）→P1（四件套·A/B 地基）→P3（桩测回归网）→A（路由主干）→B（识别衔接·依赖 A+P1）→D（RAG 后置） |
+| 7 RAG 收尾 | partial 后置+接口 | agree 后置+接口 | **agree 后置**·query_knowledge_base 关键词评分+fact 全字段卡·fact 加权×1.2 观测起步·与 D3 同次索引重建一并做 |
+| 8 验收口径 | agree 桩测三组+e2e+回归 | agree 三层验收 | **agree**·桩测（路由桩/分类器桩/识别层桩/动作链桩/CB-22e 三连）+e2e 一条链浏览器实测+pytest 339+validate 9/9+validate_paradigm_map 5/5 |
+
+**红线核对**：diagnose prompt 不动（知识契约走 build_fc_sys_prompt 增量·validate_paradigm_map 守护）·harness orchestrate 主循环不动（_followupCue/契约映射在现有分支内）·finalStep D019 不碰（ctx.extracted 是 ctx 属性）·@track() 签名不碰（query_knowledge_base→MOD_AIQA.F_018 起·编号连续）·不造轮子（复用 rag_search/_assembleKnowledgeQA/runAllToolCalls/_deterministicRecover/place_layer 匹配）。
+
+### ③ 行动（定稿 plan · 今天任务）
+
+- **阶段 0 · CB-22e P2**：`_composeDegradedConclusion`（harness.js:602）观察行优先规则——任一行匹配 `/命中\s*\d+\/\d+/` 取首个该行·否则维持 slice(-1)
+- **阶段 1 · CB-22e P1 四件套**（地基）：_core_entities 返候选表（≤3·子串去重·长度降序）+substring len≥3+_AGGREGATE_WORDS 加「中心」（评估人民/青年）+_WHOLE_AGGREGATES 整名拦截（老城中心/中心城区/核心区域）+独立 jieba.Tokenizer()+新建 DATA/place/yichang_places.txt（专名 20-50 条·zone area_subtags 派生）+amap 命中 confidence/note（按 data_source 区分·「高德 POI·近似位置」）→ tools 透传→popup 精度行→observation 说明
+- **阶段 2 · CB-22e P3**：test-cases.js 加 B3 用例（category='成果范式'·flywheel 无需改）+ tests/browser/ 桩测三连（B1/部分命中/超时降级）
+- **阶段 3 · A 路由打通**（D1/D2 主干）：FC prompt 加 knowledge 契约（伪工具 B）+_normalizeFcDiagnose 三分支+双条件守卫+fcDiagnoseStep 空 tool_calls 处理
+- **阶段 4 · B 识别+衔接**（D3/D4 精髓）：rag_index meta 透传 fact 结构化字段→_assembleKnowledgeQA 组装 ctx.extracted→panel _distillTurn 回灌 priorTurn（≤2KB 守卫）→_followupCue 分类器+recover 扩展+FC 引导注入
+- **阶段 5 · D RAG 收尾**（后置）：query_knowledge_base+fact 加权×1.2
+
+### ④ 状态
+
+- **已过 CB→继续推进**：收敛定稿完成·plan 明确·待实施（今天任务）
+- **待**：实施阶段 0~2（CB-22e P1~P3）+ 阶段 3~4（A/B·主干）·pytest 339 零回归+validate+桩测·用户浏览器实测动作链 demo
+
+---
+
+## CB-22e · 2026-08-10（地图标记准确度与防护 · 讨论发起 · 已收敛并入 CB-22f）
 
 ### ① 承接
 
@@ -23,8 +60,8 @@ CB-22d 闭环并入 main（`b77daef`）→ 用户定「**准确度后续完善**
 
 ### ④ 状态
 
-- **需发两组 prompt**：`discuss/CB22e-地图标记准确度与防护_讨论发起_2026-08-10.md` 附 A（6 焦点·代码块包裹·供复制）
-- **待**：两组回应（`discuss/CB22e-..._回应_{Codex-GPT5|glm组}_2026-08-10.md`）→ claude 反评价收敛 → 定稿实施 P1~P3
+- **两组回应已回收**（`CB22e-..._回应_{Codex-GPT5|glm组}_2026-08-10.md`）·claude 反评价收敛见上方「CB-22f」段焦点 6 + 阶段 0~2
+- **CB-22e 已收敛并入 CB-22f**（同一日任务·同一文件区）：P2 兜底断链实锤（降级结论 N/M 表述）+ P1 四件套定稿（候选≤3+len≥3·独立 Tokenizer+词典·_WHOLE_AGGREGATES 整名拦截·amap 按 data_source 标注「高德 POI·近似位置」）+ P3 落点修正（test-cases.js 非 flywheel_audit.py）+ 执行顺序 P2→P1→P3 先行
 
 ---
 
