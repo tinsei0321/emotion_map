@@ -35,14 +35,15 @@
 - [x] **分支同步**（office 08-10 上午）：本地 fix/emc-buglog 已删·仅剩 main·交接卡漂移修正 commit `52040f10`（未 push·网络暂断）
 - [x] **环境恢复 + 分支同步**（office 08-10）：目录残缺→fetch origin（`0fdd64c`）→checkout main→删 fix 分支→唯一 main 与远端对齐·工作区干净
 - [x] **CB-22e 地图标记准确度与防护·反评价收敛定稿**（两组回收·P2 前提修正实锤 N/M 断链 + P1 四件套定稿 + P3 落点修正·**并入 CB-22f 实施**）
-- [x] **CB-22f 纯问答→空间动作链路由打通·反评价收敛 + 详细讨论最终定稿**（8 焦点 4 agree+4 partial·两组详细回应回收·**Codex 2 修正**（exclude_categories 默认不动/derive_template_registry 加过滤）+ **glm 3 修正**（F_016/stages.js:316-318/索引重建验证）已核实·**最终定稿 5 阶段·实施中·今天任务**）
-- [ ] **CB-22f 实施**（今天任务·已过 CB→继续推进）：
-  - [ ] 阶段0 CB-22e P2+P1：`_composeDegradedConclusion` 观察行优先规则 + _core_entities 候选表≤3+len≥3·「中心」入挡词·_WHOLE_AGGREGATES 整名拦截·独立 Tokenizer+新建 yichang_places.txt·amap 按 data_source 标注「高德 POI·近似位置」
-  - [ ] 阶段1 CB-22e P3：test-cases.js B3 用例 + tests/browser 桩测三连（B1/部分命中/超时降级）
-  - [ ] 阶段2 A 路由打通（D1/D2）：TOOL_CONTRACTS 加 knowledge 伪工具（when=None）·exclude_categories 默认不动·derive_template_registry 加 knowledge 过滤·_normalizeFcDiagnose 三分支·stages.js:316-318 空 tool_calls 方案 A 兜底·build_fc_sys_prompt 增量纪律·SKILL_DEFS 豁免·validate_knowledge_route.py 5 断言
-  - [ ] 阶段3 B 识别+衔接（D3/D4）：rag_index meta 透传 fact 字段（region/topic/year/keywords·重建一次）→ ctx.extracted（实体清单级 geo≤5+attrs 字段名）→ priorTurn 回灌（≤2KB）→ _followupCue 替换 _markupCue（三条件+_quickIntent 先行豁免）→ recover 扩 3 类
-  - [ ] 阶段4 D RAG 收尾（后置）：query_knowledge_base（**F_016**）+ fact 加权×1.2
-  - [ ] 验证：pytest 339 零回归 + validate 9/9 + validate_paradigm_map 5/5 + 桩测 6 组 + **索引重建 meta 验证** + trace 取证 + 用户浏览器实测 demo 1 步链
+- [x] **CB-22f 纯问答→空间动作链路由打通·反评价收敛 + 详细讨论最终定稿**（8 焦点 4 agree+4 partial·两组详细回应回收·**Codex 2 修正** + **glm 3 修正** 已核实·**最终定稿 5 阶段**）
+- [x] **CB-22f 实施完成**（今天任务·已过 CB→实施完毕）：
+  - [x] 阶段0 CB-22e P2+P1：降级结论选行 + 准确度四件套（_core_entities 候选表/中心挡词/_WHOLE_AGGREGATES/独立 Tokenizer+yichang_places.txt/amap 标注）
+  - [x] 阶段1 CB-22e P3：test-cases B3 用例（RST-L07）+ 桩测四场景（N/M 断链修复验证）
+  - [x] 阶段2 A 路由打通：knowledge 伪工具 + 三分支 + 方案 A 兜底 + FC 纪律 + validate_knowledge_route 5 断言
+  - [x] 阶段3 B 识别+衔接：fact meta 透传重建（region/topic/year/keywords 验证）+ ctx.extracted 实体清单级 + priorTurn 回灌 + _followupCue 分类器（8 场景 PASS）+ recover 扩 analyze/compare
+  - [x] 阶段4 D RAG 收尾：query_knowledge_base（**F_016**）+ fact 加权×1.2（3 测试）
+  - [x] 验证：**315 passed + 3 skipped 零回归**·serve 重启新代码加载验证
+- [ ] **CB-22f 用户浏览器实测**（下一步·动作链 demo 1 步链：知识问答→标记）：桩测已验逻辑·用户体验须浏览器实测（护城河演示·三组并行分配）
 - [ ] **A1 GIS 甄别 / tier-2 面化 / A3 项目库坐标**（G 盘 GIS 重活·**单独轮**）
 - [ ] RAG 遗留（OFFICE 卡）：B 路径 query_knowledge_base · 混合检索 · 全仓 [中文]+类 扫描 · Recall@5 · P0-6 复审
 

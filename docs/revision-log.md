@@ -223,7 +223,9 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月10日 · office 环境恢复 + CB-22e/22f 反评价收敛定稿·CB-22f 实施中）** · 本节按板块分组、组内倒序；最新工作 = **CB-22e/22f 收敛定稿（8 焦点 4 agree+4 partial 吸收两组修正）+ CB-22f 纯问答→空间动作链路由打通 实施开始（今天任务）**。最近：
+> 📍 **最新动态（08月10日 · CB-22f 5 阶段实施完成·315 passed 零回归）** · 本节按板块分组、组内倒序；最新工作 = **CB-22f 纯问答→空间动作链路由打通 实施完成（阶段0~4 全落地）**。最近：
+>
+> - **08-10 CB-22f 实施完成（用户意图：今天打通纯问答→空间动作链路由·EMC 精髓护城河）**：阶段0（CB-22e P2+P1·降级结论选行+准确度四件套）+ 阶段1（P3·B3 用例注入+桩测四场景 N/M 断链修复验证）+ 阶段2（A 路由·knowledge 伪工具+三分支+方案 A 兜底+FC 纪律+validate_knowledge_route 5 断言）+ 阶段3（B 识别衔接·fact meta 透传重建 235 条+ctx.extracted 实体清单级+priorTurn 回灌+_followupCue 分类器 8 场景 PASS+recover 扩 analyze/compare）+ 阶段4（D·query_knowledge_base F_016+fact 加权×1.2）→ **5 阶段全落地·315 passed + 3 skipped 零回归·serve 重启验证新代码加载**。**§0 拓扑 N/A**。
 >
 > - **08-10 环境恢复（用户意图：重装系统+VSCode 后同步到合并分支最新·删已合并分支·保持干净）**：目录残缺（仅根目录配置文件+中断 clone 残留 tmp_pack）→ 备份（`.env` 保全）→ fetch origin（`0fdd64c`）→ checkout main → `git branch -d fix/emc-buglog`（已验证并入 origin/main 无独有提交）+ `git fetch --prune origin` → **唯一 main·工作区干净·与远端对齐**。**§0 拓扑 N/A**。
 > - **08-10 CB-22e 地图标记准确度与防护·反评价收敛定稿（用户意图：准确度后续完善·P1~P3 先注入飞轮留后验证·进 CB 定稿执行）**：两组回应回收（Codex/glm）→ **P2 前提修正实锤**（兜底链路已存在 api.js:45s abort→harness catch→`_composeDegradedConclusion`·**Codex 实锤降级结论 N/M 断链**：`slice(-1)` 取末行·tip 行必命中「点/图层」·「命中 N/M」行被丢）→ **P1 四件套定稿**（`_core_entities` 候选表 ≤3+substring len≥3·`_AGGREGATE_WORDS` 加「中心」·`_WHOLE_AGGREGATES` 整名拦截老城中心/中心城区/核心区域·独立 `jieba.Tokenizer()`+新建 `DATA/place/yichang_places.txt` 专名 20-50 条·amap 按 data_source 标注「高德 POI·近似位置」→tools 透传→popup 精度行→observation 说明）→ **P3 落点修正**（test-cases.js 加 B3 用例·非 flywheel_audit.py）+ 桩测三连。**执行顺序 P2→P1→P3**（并入 CB-22f）。**§0 拓扑 N/A**。

@@ -42,7 +42,8 @@
   - **glm 修正（已核实）**：③ query_knowledge_base track ID 改 **F_016 起**（非 F_018——MOD_AIQA 现有最大 F_015·跳号违反红线）④ `stages.js:316-318` 空 tool_calls 处理显式列改动点（方案 A 兜底路径·否则易漏只改 _normalizeFcDiagnose）⑤ 索引重建 meta 验证进验收（防透传写了但索引没重建）
   - **6 焦点最终收敛**：A 1 步下限+demo 2 步（两次独立追问）+「标记→分析」语义边界显式标注（标记层≠情绪 L2 层）+L2 预载 / B 伪工具守卫 5 断言+方案 A 保留+SKILL_DEFS 显式豁免+三处同步精确 / C 实体清单级 `{geo≤5, attrs:[字段名]}`+region 匹配时机后移+note source 仅兜底+三条件守卫 / D _followupCue 替换 _markupCue（:1130）+数据门豁免仅 markup+_quickIntent 先行豁免+recover 扩 3 类 / E 阶段0=P2+P1（同阶段·P1 在 B 前）→P3→A→B→D / F 桩测 6 组+索引重建验证+trace 强制+三组分工
 - **执行顺序最终定稿**：阶段0（P2+P1）→ 阶段1（P3）→ 阶段2（A 路由）→ 阶段3（B 识别衔接）→ 阶段4（D RAG 后置）
-- **待**：实施阶段 0~4 · pytest 339 零回归+validate+桩测+索引重建验证 · 用户浏览器实测动作链 demo（1 步链）
+- **实施完成（5 阶段全落地·315 passed 零回归）**：阶段0（降级选行+四件套）·阶段1（B3+桩测四场景 N/M 修复验证）·阶段2（伪工具+三分支+方案A+validate 5 断言）·阶段3（fact meta 透传重建+ctx.extracted+priorTurn 回灌+_followupCue 8 场景 PASS+recover 扩展）·阶段4（query_knowledge_base F_016+fact 加权）
+- **待**：用户浏览器实测动作链 demo（1 步链：知识问答→标记·桩测已验逻辑·护城河演示）+ B3 飞轮实跑（留后验证）
 
 ---
 
