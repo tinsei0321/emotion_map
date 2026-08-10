@@ -376,6 +376,22 @@ const RESULT_LLM = [
     const _ok = sig.tools.includes('clip') && sig.tools.includes('density');
     return { pass: _ok, obs: `tools=${sig.tools.join(',')}`, review: '两步都执行了（clip+density）？' };
   }, { range: '行政区', csv: 'L2-T1' }) },
+  // CB-22f 阶段1（B3 用例·注入不验证留后跑）：知识问答 → 追问标记 → 断言 generate_point_layer 触发 + 落图 + 0 挂起
+  //   （Codex 落点修正：成果范式 category·flywheel_audit.py 无需改·type llm 自动进 B3）
+  { id: 'RST-L07', name: '知识问答→追问标记（B3 动作链）', run: async (t) => {
+    const r1 = await llmRun(t, '宜昌市有哪些城市更新项目？', (b, tt) => {
+      const a = tt.answerText() || '';
+      const _ok = !/缺数据|需上传|未生成|无法/.test(b) && a.length > 10 && /项目|片区|葛洲坝|红星路/.test(a);
+      return { pass: _ok, obs: `badge="${b}" ans=${a.length}字`, review: '知识问答答出项目/片区？' };
+    }, { csv: false, timeout: 30000 });
+    if (!r1.pass) return r1;
+    const r2 = await llmRun(t, '能在地图上标记出这些项目的位置吗？', (b, _tt, sig) => {
+      const _tools = sig.tools || [];
+      const _ok = _tools.includes('generate_point_layer') && sig.newLayers >= 1 && !/未成功|缺数据|需上传/.test(b);
+      return { pass: _ok, obs: `badge="${b}" tools=${_tools.join(',')} +${sig.newLayers}层`, review: '追问标记→generate_point_layer 出图层（0 挂起）？' };
+    }, { timeout: 30000 });
+    return r2;
+  } },
 ].map((c) => ({ ...c, category: '成果范式', type: 'llm' }));
 
 // ═══ F-2（CB-10 飞轮审查）产物语义断言：不只"选对工具+落图"，验证产物正确性 ═══

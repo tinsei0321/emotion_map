@@ -596,7 +596,7 @@ function _needsDeliberate(diagnose) {
 }
 
 /** CB-07 Layer 3：finalStep 超时/网络错的零 LLM 降级结论（基于 formatRegistry + toolHistory·治"图出但请求失败"矛盾）。 */
-function _composeDegradedConclusion(toolHistoryText) {
+export function _composeDegradedConclusion(toolHistoryText) {
   const _reg = (typeof getArtifacts === 'function' ? getArtifacts() : []) || [];   // v3.1 P0：同上·getArtifacts() 返数组
   const _layers = _reg.filter((r) => r.tool && r.tool !== 'query_layers').map((r) => `{{show:${r.name}}}`).join('\n');
   const _obsLines = (toolHistoryText || '').split('\n').filter((l) => /已生成|产出|单元|点|层/.test(l));
