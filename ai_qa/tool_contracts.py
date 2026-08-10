@@ -333,6 +333,18 @@ TOOL_CONTRACTS = [
         'required_slots': [], 'planning_common': 'MAX_ROUNDS cap 4，受约束 ReAct（进 while-loop）',
         'params': [],
     },
+    {
+        # CB-22f A（D1/D2 路由打通）：knowledge_qa 伪工具——承载「纯问答意图」（FC 必须选工具·无工具意图用伪工具承载·Codex 方案 B）。
+        #   when=None 保证不进 GEO_TOOL_CATALOG（derive_geo_catalog 只收有 when 的）·category='knowledge' 不进 TEMPLATE_REGISTRY
+        #   （derive_template_registry 加过滤·防技能目录进 diagnose prompt 文本·撞「diagnose prompt 永不动」红线）。
+        #   exclude_categories 默认保持 ('concept',) 不动——扩 ('concept','knowledge') 会把 knowledge_qa 从 FC schema 排除·方案 B 失效。
+        #   FC 返 tool_name=knowledge_qa → _normalizeFcDiagnose 三分支 → intent=knowledge_qa → harness 合流 _assembleKnowledgeQA。
+        'skill': 'knowledge_qa', 'tool': 'knowledge_qa', 'category': 'knowledge', 'name_cn': '知识问答',
+        'voice': '我检索本地知识库回答政策/指标/项目类纯问答，不产图层', 'triggers_str': '有哪些/是什么/多少/政策/指标/体检/项目',
+        'when': None,  # 无 GIS catalog 项·不进 GEO_TOOL_CATALOG（守护断言 validate_knowledge_route）
+        'required_slots': [], 'planning_common': '纯问答：RAG 检索本地知识库 → LLM 综合 + 引用来源（不走空间分析·不产图层）',
+        'params': [],
+    },
 ]
 
 
@@ -365,9 +377,14 @@ def _derive_defaults(params):
 
 def derive_template_registry():
     """派生 TEMPLATE_REGISTRY（全部技能·保 voice/triggers/planning_common/optional_defaults 等价）。
-    注：optional_defaults 从 params 结构化派生（CB-04 单一源），与旧手写 dict 等价。"""
+    注：optional_defaults 从 params 结构化派生（CB-04 单一源），与旧手写 dict 等价。
+    CB-22f A（Codex 修正 2）：过滤 category='knowledge'——knowledge_qa 伪工具不进 TEMPLATE_REGISTRY →
+    技能目录/模板列表不进 diagnose prompt 文本（撞「diagnose prompt 永不动」红线·CB-22d 先例）。
+    concept 保留（它是真实模板·走 general 短路）。"""
     out = []
     for c in TOOL_CONTRACTS:
+        if c.get('category') == 'knowledge':
+            continue
         item = {
             'skill': c['skill'], 'name': c['name_cn'], 'category': c['category'],
             'voice': c['voice'], 'triggers': c.get('triggers_str', ''),

@@ -314,6 +314,13 @@ export async function fcDiagnoseStep(ctx, hooks) {
     }
     const tc = data.tool_calls && data.tool_calls[0];
     if (!tc || !tc.function) {
+      // CB-22f A（glm 实施级·方案 A 兜底）：FC 空 tool_calls 但 content 含 [intent:knowledge_qa] →
+      //   返非 degraded 的 knowledge diagnose（纯问答意图·部分 FC 模型可能拒调工具·低成本双保险）。
+      //   复用 [scale:]/[domain_lens:] A-part 解析模式（下方同款）。否则维持 degraded。
+      if (data.content && /\[intent:\s*knowledge_qa\]/.test(data.content || '')) {
+        return { degraded: false, _fc: true, template: 'knowledge_qa', intent: 'knowledge_qa',
+                 scale: _deriveScale(question || '', data.content || ''), params: {}, _fcTag: 'content-knowledge' };
+      }
       console.warn('[FC] 无 tool_calls');
       return { degraded: true, _fc: true, _fcError: 'no_tool_calls' };
     }
@@ -358,7 +365,10 @@ export async function fcDiagnoseStep(ctx, hooks) {
  *      scale 从 FC content [scale:xxx] 解析（A 部·router build_fc_sys_prompt 已教）→ 词法兜底（B 部）→ 默认 macro 作最后防线。 */
 function _normalizeFcDiagnose(skillName, params, plans, toolName, question, layerMeta, fcContent) {
   const _EMOTION_TOOLS = new Set(['zonal_stats', 'rank', 'density', 'hotspot']);
-  const intent = _EMOTION_TOOLS.has(toolName) ? 'emotion_analysis' : 'gis_operation';
+  // CB-22f A（D1/D2 路由打通）：三分支——情绪分析 / knowledge_qa（伪工具承载纯问答意图·Codex 方案 B）/
+  //   GIS 操作。修「二元硬编码永不产 knowledge_qa → harness.js 合流分支不可达」断链（变体纯问答落 GIS→GAP）。
+  const intent = _EMOTION_TOOLS.has(toolName) ? 'emotion_analysis'
+    : toolName === 'knowledge_qa' ? 'knowledge_qa' : 'gis_operation';
   // v3 C2：执行前 data gate——工具需点层但无点层 → request_upload（非硬跑失败·治 5.242 回归）
   const _NEEDS_POINT = /^(density|hotspot|rank|zonal_stats|clip|buffer|nearest)$/.test(toolName);   // v3.1 P1-1：补 zonal_stats（SCAN 发现·需点层聚合）
   const _noPoint = layerMeta && layerMeta.has_point === false;
