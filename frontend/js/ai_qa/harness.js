@@ -6,7 +6,7 @@
 import * as stages from './stages.js';
 import { TOOLS, setToolContext, formatRegistry, getArtifacts, deriveAvailable, resetStepResults, resetCurrentResults, resolveCoref } from './tools.js';
 import { getLayers, getLayer } from '../state.js';
-import { CONCEPT_KW, INVENTORY_KW, GREETING_KW, GEO_VERB_KW, REGION_KW, POLARITY_KW, LANDUSE_KW, SEARCH_KW, SEARCH_EVIDENCE_RE, OUTLET_TRIGGER_KW, OUTLET_UI_EXCLUDE_KW, RAG_QUERY_KW, RAG_KNOWLEDGE_RE } from './emc-patterns.js';   // CB-10 分歧2 词表集中 + G6b SEARCH_KW/SEARCH_EVIDENCE_RE + CB-16 OUTLET 触发词 + CB-22 RAG 触发词（DRY·单一源 emc-patterns）
+import { CONCEPT_KW, INVENTORY_KW, GREETING_KW, GEO_VERB_KW, REGION_KW, POLARITY_KW, LANDUSE_KW, SEARCH_KW, SEARCH_EVIDENCE_RE, OUTLET_TRIGGER_KW, OUTLET_UI_EXCLUDE_KW, RAG_QUERY_KW, RAG_KNOWLEDGE_RE, ACTION_CHAIN_KW } from './emc-patterns.js';   // CB-10 分歧2 词表集中 + G6b SEARCH_KW/SEARCH_EVIDENCE_RE + CB-16 OUTLET 触发词 + CB-22 RAG 触发词 + CB-22f 衔接词表（DRY·单一源 emc-patterns）
 import { buildResultStruct } from './result-struct.js';   // 出口三段式 P0：结果结构化（观点/4要点·确定性组装·结论段不解析 draft markdown）
 
 const MAX_ROUNDS_GIS = 10;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=10（保多步完整性，如3次overlay需8轮：1查询+6执行+1answer）
@@ -57,6 +57,25 @@ function _matchPlanToQuestion(question, plans) {
 /** P0 降温：轻量 intent 预判——高置信通用/概念问跳 diagnose 直 finalStep（省整轮 diagnose LLM + 7字段卡）。
  *  规划思维 A 赛道"快速分流"：概念解释/方法咨询/日常问候→general 直答；含 geo 动词/地名→落 diagnose。
  *  返 'general'→短路；null→落原 diagnose（保守，宁落不误断）。 */
+/** CB-22f D4（衔接层通用化·glm 双条件 + Codex 分类器）：追问衔接分类器（纯函数·词表 ACTION_CHAIN_KW 单一源）。
+ *  返回 'markup'|'analyze'|'compare'|'attribute'|'extract'|null。
+ *  双条件守卫（glm）：① priorTurn.intent==='knowledge_qa'（上轮知识问答）② 词表命中；
+ *  analyze/compare/attribute/extract 类再加第三条件 priorTurn.extracted 存在（防空 geo 硬衔接·glm W1）。
+ *  markup 保留无条件第二正则（「标记到地图」历史行为·CB-22d 存量·无 extracted 也能标）。
+ *  首问（无 priorTurn）天然不触发（`!ctx.priorTurn` 返回 null·glm 代码级守卫）。
+ */
+export function _followupCue(ctx) {
+  if (!ctx || !ctx.priorTurn || ctx.priorTurn.intent !== 'knowledge_qa') return null;
+  const q = ctx.question || '';
+  const _hasGeo = !!(ctx.priorTurn.extracted && Array.isArray(ctx.priorTurn.extracted.geo) && ctx.priorTurn.extracted.geo.length);
+  for (const [type, res] of Object.entries(ACTION_CHAIN_KW)) {
+    if (!res.some((re) => re.test(q))) continue;
+    if (type === 'markup') return type;   // markup 不依赖 extracted（标记无数据依赖）
+    return _hasGeo ? type : null;         // analyze/compare/attribute/extract 需 extracted.geo 非空
+  }
+  return null;
+}
+
 export function _quickIntent(q) {   // CB-22 e2e：export 解封（同 composeGapCard 先例·纯暴露无行为变化）
   if (!q) return null;
   const s = String(q);
@@ -84,6 +103,31 @@ export function _quickIntent(q) {   // CB-22 e2e：export 解封（同 composeGa
 // CB-22 三层架构 P0-5：知识问答统一组装（短路加速器 + diagnose intent=knowledge_qa **合流**·双入口同注入同 finalStep·防行为分叉）。
 // data_plan 三态（glm 挑战 1·执行定稿）：ready=Top-K 非空+score≥0.5 / fallback_annotated=非空+<0.5（标注相关性低）/
 //   request_upload=空（EXIT_GAP·知识库无覆盖）。阈值 0.5 起步·按黄金集 score 校准。
+/** CB-22f D3（识别层·Codex 富矿 + glm 规则优先）：RAG 结果 → ctx.extracted 实体清单级组装。
+ *   {geo:[{name,dim}]≤5·去重, attrs:[字段名·仅 fact]}——零 LLM 确定性组装（对齐 Dumb 中间）。
+ *   fact → region 透传（结构化真值·提取不匹配·消费端 place_layer 甄别）；
+ *   note/case → geo 留空（source 文件名溯源不可靠·glm 修正·防 codex_0819 当地名）；
+ *   attrs 只列字段名清单（topic/year/keywords·字段值在 ctx.context 素材·衔接层不消费值·防过度工程）。 */
+export function _buildExtracted(ragResults) {
+  const geo = [];
+  const seen = new Set();
+  const attrs = [];
+  for (const r of (ragResults || [])) {
+    if (r.type === 'fact') {
+      const reg = String(r.region || '').trim();
+      if (reg && !seen.has(reg)) {
+        seen.add(reg);
+        geo.push({ name: reg, dim: r.data_dim || '社区' });
+        if (geo.length >= 5) break;   // ≤5 实体·防上下文膨胀
+      }
+      for (const f of ['topic', 'year', 'keywords']) {
+        if (r[f] && !attrs.includes(f)) attrs.push(f);
+      }
+    }
+  }
+  return { geo, attrs };
+}
+
 export async function _assembleKnowledgeQA(ctx, hooks, opts = {}) {
   let _ragOk = false;
   let _ragResults = null;
@@ -156,17 +200,23 @@ export async function _assembleKnowledgeQA(ctx, hooks, opts = {}) {
     '4. **不要生成分析图层 / {{show:图层}} / 4×5 归因 / 演示逻辑链**。\n' +
     '（数据维度随各条素材 data_dim 标注·结论不超过该维度·不引用他城具体数值）\n' + _dimNote + '\n\n' +
     (ctx.context || '');
+  // CB-22f D3（识别层·Codex 富矿 + glm 规则优先）：从 RAG 结果确定性组装 ctx.extracted——
+  //   实体清单级 {geo:[{name,dim}]≤5, attrs:[字段名]}（防过度工程·衔接层只需实体·字段值在 ctx.context 素材里）。
+  //   fact 轮次 → region 透传（结构化真值·提取=透传·匹配后移到消费端 place_layer）；note/case → geo 留空（诚实）。
+  //   零 LLM（对齐 Dumb 中间）·追问时 _followupCue 消费。
+  ctx.extracted = _buildExtracted(_ragResults);
+
   // P2-3 复验（Codex 挑战·消 flaky）：injectOnly → 只返回组装后的注入内容（ctx.context）·不调 finalStep LLM——
   //   确定性测试口（断言素材+强标记+四指令·不经真实 LLM/模型加载·防冷加载竞态）
   if (opts.injectOnly) {
-    return { ok: true, rounds: 0, final: ctx.context, skipped: opts._quick ? 'quick-rag' : 'diagnose-knowledge-qa', injected: ctx.context, degraded: false, diagnose: { degraded: true, intent: 'general', quick: !!opts._quick, rag: true, low_relevant: _lowRelevant } };
+    return { ok: true, rounds: 0, final: ctx.context, skipped: opts._quick ? 'quick-rag' : 'diagnose-knowledge-qa', injected: ctx.context, degraded: false, diagnose: { degraded: true, intent: 'general', quick: !!opts._quick, rag: true, low_relevant: _lowRelevant, extracted: ctx.extracted } };
   }
   const draft = await stages.finalStep(ctx, hooks, '');
   const _qd = applyQualityDefense(draft, { obsOk: false, toolHistoryText: '', skipL1: true, question: ctx.question, skipScaleDefense: true });
   const _final = _qd.final;
   if (hooks.onFinalDone) hooks.onFinalDone(_final);
   if (hooks.onDefense) hooks.onDefense({ degraded: _qd.degraded, fixes: _qd.fixes, skipped: opts._quick ? 'quick-rag' : 'diagnose-knowledge-qa', capsules: _qd.capsules });
-  return { ok: true, rounds: 0, final: _final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: opts._quick ? 'quick-rag' : 'diagnose-knowledge-qa' }, degraded: false, diagnose: { degraded: true, intent: 'general', quick: !!opts._quick, rag: true, low_relevant: _lowRelevant } };
+  return { ok: true, rounds: 0, final: _final, defense: { degraded: _qd.degraded, fixes: _qd.fixes, skipped: opts._quick ? 'quick-rag' : 'diagnose-knowledge-qa' }, degraded: false, diagnose: { degraded: true, intent: 'general', quick: !!opts._quick, rag: true, low_relevant: _lowRelevant, extracted: ctx.extracted } };
 }
 
 const OBS_TRUNC = 200;      // observation 注入 history 截断长度
@@ -1132,7 +1182,11 @@ export async function orchestrate(ctx, hooks = {}) {
 
   // L0 数据门：先用代码检查数据是否满足提问的最小要求——缺数据直接告诉用户，不浪费 LLM 调用
   // CB-22d P0-0-2：_dataGate 豁免——「上轮 knowledge_qa + 标记/地图」跳过（防「标记…点位/地块」误拦·新工具不依赖已有图层）
-  const _markupCue = (ctx.priorTurn && ctx.priorTurn.intent === 'knowledge_qa' && /标记|标到地图|在地图上|点位|把.*标/.test(ctx.question || '')) || /标记到地图|标到地图|在地图上标/.test(ctx.question || '');
+  // CB-22f D4（衔接层通用化·glm/Codex）：_markupCue → _followupCue 分类器——上轮 knowledge_qa + 追问含衔接词 →
+  //   衔接工具（markup/analyze/compare/attribute/extract·词表 ACTION_CHAIN_KW 单一源）。
+  //   双条件守卫：priorTurn.intent=knowledge_qa AND 词表命中；analyze/compare/attribute 类再加 priorTurn.extracted 存在（防空 geo 硬衔接）。
+  const _followup = _followupCue(ctx);
+  const _markupCue = _followup === 'markup' || /标记到地图|标到地图|在地图上标/.test(ctx.question || '');
   const _dataGap = _markupCue ? null : _dataGate(ctx.question, ctx.layerMeta);
   if (_dataGap) {
     const _gapText = buildRequestUploadText({ data_plan: { needed: [_dataGap], gap: [_dataGap], strategy: 'request_upload' } });
@@ -1144,12 +1198,27 @@ export async function orchestrate(ctx, hooks = {}) {
   // CB-22d P0-0-1：路由使能（FC 前置）——「上轮 knowledge_qa + 标记/地图」→ 无条件注入上下文提示
   //   引导 FC 选 generate_point_layer + 从上轮回答提取项目/地点名入 names[]。不翻转 resume·不进续作分支·走正常 FC。
   //   glm B.1 修正：resume 恒 false（用户句无续作词）·故不依赖 resume 布尔·在 FC 前直接检测注入。
-  if (_markupCue && !ctx.resume) {
+  // CB-22f D4（衔接层通用化）：_followupCue 五类通用引导注入——标记沿用 markup 原文案·分析/对比/归因/裁剪
+  //   注入上轮 extracted 实体清单引导 FC 选对应工具（Codex「FC 正常时 followup 只做 context 引导注入」）。
+  if ((_markupCue || _followup) && !ctx.resume) {
     const _prevFinal = (ctx.priorTurn && ctx.priorTurn.final_excerpt) ? ctx.priorTurn.final_excerpt : '';
-    ctx.context = '【标记到地图】用户要把上一轮知识问答中的项目/地点标记到地图。'
-      + '请选择 generate_point_layer 工具，并从上一轮回答中提取项目/片区名填入 names[] 参数'
-      + (_prevFinal ? `（上一轮回答原文片段：${_prevFinal.slice(0, 400)}）` : '（上一轮回答未回灌·尽量从对话历史提取项目名）')
-      + '。未匹配到坐标的地点会诚实文字列出·绝不编造坐标。\n\n' + (ctx.context || '');
+    const _extGeo = (ctx.priorTurn && ctx.priorTurn.extracted && ctx.priorTurn.extracted.geo) || [];
+    const _geoList = _extGeo.map((g) => g.name).filter(Boolean).slice(0, 5).join('、');
+    if (_markupCue) {
+      ctx.context = '【标记到地图】用户要把上一轮知识问答中的项目/地点标记到地图。'
+        + '请选择 generate_point_layer 工具，并从上一轮回答中提取项目/片区名填入 names[] 参数'
+        + (_prevFinal ? `（上一轮回答原文片段：${_prevFinal.slice(0, 400)}）` : '（上一轮回答未回灌·尽量从对话历史提取项目名）')
+        + '。未匹配到坐标的地点会诚实文字列出·绝不编造坐标。\n\n' + (ctx.context || '');
+    } else if (_followup) {
+      const _toolHint = _followup === 'analyze' ? 'density/zonal_stats（分析上轮片区情绪分布/归因）'
+        : _followup === 'compare' ? 'compare_regions（对比上轮实体）'
+        : _followup === 'attribute' ? 'zonal_stats（4×5 归因）'
+        : _followup === 'extract' ? 'clip/buffer（范围裁剪/缓冲）' : '';
+      ctx.context = `【追问衔接·${_followup}】用户要对上一轮知识问答提到的实体做空间操作。`
+        + `请选择 ${_toolHint} 工具，用上一轮提取的实体作为参数`
+        + (_geoList ? `（上轮实体：${_geoList}）` : '')
+        + '。无对应数据时诚实提示·绝不编造结果。\n\n' + (ctx.context || '');
+    }
   }
 
   let diagnose = null;
@@ -1852,6 +1921,26 @@ function _deterministicRecover(ctx) {
     return { template: 'generate_point_layer', degraded: false, _fc: true, _recover: 'markup-to-map',
       params: { names: undefined }, method: ['generate_point_layer()'], intent: 'gis_operation',
       data_plan: { needed: [], available: [], gap: [], strategy: 'ready' } };
+  }
+  // CB-22f D4（glm·recover 扩展 3 类高置信）：analyze（+extracted.geo 非空）→ density/zonal·
+  //   compare（+≥2 区名）→ compare_regions。构造后仍走 _dataGate 数据门（L2 未载 → request_upload·诚实）。
+  //   触发条件不变（仅 FC 失败/unknown/multi 时被调）·与 _followupCue（FC 前引导注入）互补不冲突。
+  const _priorGeo = (ctx.priorTurn && ctx.priorTurn.extracted && ctx.priorTurn.extracted.geo) || [];
+  if (_priorGeo.length && /分析|密度|分布|热力|聚集|集中|归因|最差|最好/.test(q)) {
+    const _names = _priorGeo.slice(0, 2).map((g) => g.name).filter(Boolean);
+    if (_names.length) {
+      return { template: 'density', degraded: false, _fc: true, _recover: 'knowledge-analyze',
+        params: { names: _names }, method: ['density(names=' + _names.join(',') + ')'], intent: 'emotion_analysis',
+        data_plan: { needed: ['point'], available: [], gap: [], strategy: 'ready' } };
+    }
+  }
+  if (_priorGeo.length >= 2 && /对比|比较|和.*比/.test(q)) {
+    const _regions = _priorGeo.slice(0, 2).map((g) => g.name).filter(Boolean);
+    if (_regions.length >= 2) {
+      return { template: 'compare', degraded: false, _fc: true, _recover: 'knowledge-compare',
+        params: { boundaries: _regions }, method: ['compare_regions(' + _regions.join(',') + ')'], intent: 'emotion_analysis',
+        data_plan: { needed: ['point'], available: [], gap: [], strategy: 'ready' } };
+    }
   }
   const _polys = getLayers().filter(l => l.kind === 'polygon' && l.fc && l.fc.features && l.fc.features.length);
   if (!_polys.length) return null;

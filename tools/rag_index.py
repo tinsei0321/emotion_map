@@ -123,6 +123,13 @@ def _load_facts():
                 'source': f"ai_qa/outlet_kb/urban_renewal_knowledge.py#{f['id']}",
                 'type': 'fact',
                 'dim': f.get('dimension', '社区'),  # 数据维度（事实卡已标注）
+                # CB-22f D3（Codex 富矿）：透传 fact 结构化字段——识别层零 LLM 组装 ctx.extracted 用
+                #   （region=地理实体·topic/year/keywords=归因字段·检索辅助 + 动作链衔接）。
+                #   注：向量化时拍平进 text 的字段在此保留结构化副本（search 透传 meta）。
+                'region': f.get('region', ''),
+                'topic': f.get('topic', ''),
+                'year': f.get('year', ''),
+                'keywords': f.get('keywords', ''),
             })
         return chunks
     except Exception as e:
@@ -199,6 +206,12 @@ def build_index():
             'embedding_model': MODEL_NAME,
             'dim': int(vectors.shape[1]),
             'build_time': time.strftime('%Y-%m-%d %H:%M'),
+            # CB-22f D3（Codex 富矿）：fact 结构化字段透传（region/topic/year/keywords）——
+            #   识别层零 LLM 组装 ctx.extracted 用·仅 type=fact 有值·note/case/concept 空串
+            'region': c.get('region', ''),
+            'topic': c.get('topic', ''),
+            'year': c.get('year', ''),
+            'keywords': c.get('keywords', ''),
         })
 
     # 原子写（防崩溃不一致·np.save 自动加 .npy·临时名用 .npy 结尾）
@@ -279,6 +292,11 @@ def search(query, k=5):
             'data_dim': metas[i].get('data_dim', '社区'),  # 数据维度（住房/小区/社区/街区/城区/城中村/方法论）
             # CB-22 三支柱修正：透传片段全文（老索引无 text → 空串·前端标注"片段缺失·请重建索引"）
             'text': metas[i].get('text', ''),
+            # CB-22f D3：fact 结构化字段透传（识别层零 LLM 组装 ctx.extracted 用·仅 type=fact 有值）
+            'region': metas[i].get('region', ''),
+            'topic': metas[i].get('topic', ''),
+            'year': metas[i].get('year', ''),
+            'keywords': metas[i].get('keywords', ''),
         })
     return {'ok': True, 'results': results, 'count': len(results)}
 

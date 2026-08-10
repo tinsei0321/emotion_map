@@ -67,6 +67,17 @@ export const PARADIGM_MAP = {
 // 宜昌地名（_quickIntent → 落 diagnose·可能 B/C）
 export const REGION_KW = ['西陵', '伍家岗', '点军', '夷陵', '猇亭', '宜昌', '滨江', '奥体', '二马路', '大南门', 'cbd'];
 
+// CB-22f D4（衔接层通用化·glm 词表集中）：追问衔接词表——上轮 knowledge_qa 后·追问含这些词 → _followupCue 分类器
+//   标记→generate_point_layer（CB-22d 存量）·分析→density/zonal·对比→compare·归因→zonal(4×5)·裁剪→clip/buffer。
+//   词表纯前端集中（可单测）·与 _quickIntent（首轮）/_deterministicRecover（兜底）三角色互补不冲突。
+export const ACTION_CHAIN_KW = {
+  markup:    [/标记/, /标到地图/, /在地图上/, /点位/, /把.*标/, /标一下/, /标出/],
+  analyze:   [/分析/, /密度/, /分布/, /热力/, /聚集/, /集中/, /哪里最/],
+  compare:   [/对比/, /比较/, /\bvs\b/i, /和.*比/],
+  attribute: [/归因/, /为什么/, /4×5/, /要素/, /最差/, /最好/, /排序/, /哪片/],
+  extract:   [/裁出/, /裁剪/, /周边/, /附近.*米/, /范围内/],
+};
+
 // CB-16 Wave 0：出口卡片触发词表（镜像 ai_qa/outlet_kb/build_outlet_schema.py TRIGGER_WORDS·
 // 单一权威源在后端·仅 UI 提示不改控制流·触发判定收敛在后端）
 export const OUTLET_TRIGGER_KW = ['更新', '体检', '需求', '满意度', '排序', '识别', '时序', '改造'];
