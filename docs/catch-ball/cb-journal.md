@@ -23,7 +23,13 @@ CB-22g + CB-22h 三次修复后·用户实测「追问后一直卡住」·三次
 
 ### ④ 状态
 
-- **两组回应已回收 + 反评价收敛 + 定稿修复已实施**（见下）
+- **追问标记崩溃根因已定位并修复（关键）**：Playwright 抓 console 定位 `PAGEERROR: JSON.parse(...).slice is not a function`（panel.js:1616 `_distillTurn` extracted 回灌）——extracted 是 `{geo,attrs}` 对象·`.slice(0,5)` 报错·追问消费 priorTurn.extracted 时链路崩（用户「追问标记没反应」直接根因）。修 = 对象属性限制（geo≤5·attrs≤8·深拷贝）→ **完整链路实测通过（首问 11s + 追问标记 7s 出「宜昌城市更新项目点位」图层·0 挂起·PAGEERROR 消失）** commit a27c0e2e
+- **另**：Timer 主动中断修正（Timer 移 `client.stream()` __enter__ 前·覆盖等响应头阻塞·本地挂死 server 1.0s 中断验证）
+- **待**：用户浏览器强刷实测（完整链路·首问+追问标记应流畅出图层）
+
+---
+
+## CB-22h · 2026-08-10（追问读秒卡住 · 三组根因讨论发起 · 真实用户会话取证）
 - **反评价收敛（glm 承重根因·Codex 同判·已核实）**：
   - **deadline 被动检查失效**：llm.py:367-369 deadline 检查在 `for chunk in cli.chat()` 循环体内——**生成器阻塞在 `__next__()`（首 chunk 前挂死）时循环体不可达·deadline 永不触发**（Python 实测铁证 + trace 17:29 有 D_004 vs 18:09 无 D_004）
   - **Playwright 桩测盲区**：`page.route` 前端层拦截·绕过了 serve 反代 + uvicorn 真实阻塞·测的不是真实场景（"通过"但用户仍卡）
