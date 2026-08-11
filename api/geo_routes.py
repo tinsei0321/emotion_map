@@ -392,6 +392,10 @@ async def zonal_stats(req: ZonalStatsRequest):
         prop_cols = ['name', 'point_count', 'polarity_index', 'score_mean',
                      'domain_top', 'element_top', 'issue_label', 'attribution', 'suggestion',
                      'place_name', 'place_name_source', 'poi_names', 'poi_count']
+        # CB-23 审计 P1-1（Codex）：agg_cols 非空时动态补 {c}_sum——排序用了 sum 但输出拿不到总量·
+        #   阶段 3' 统计表/观点卡（harness _lastToolRows → 出口卡）需总量数值
+        if agg_cols:
+            prop_cols += [f'{c}_sum' for c in agg_cols if f'{c}_sum' in merged.columns]
         # [CB-1] 原为 discover-then-refetch：遍历 rows.columns 找 n_dom_*/n_elem_* 想补，
         # 但 _props_df 只返请求列 → 永不含 n_dom_ → 循环空转、二次 _props_df 冗余。
         # 清为单次调用（零行为变化）。补充虽从未生效，但深挖确认**无活消费方**：

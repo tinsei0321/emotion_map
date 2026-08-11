@@ -95,6 +95,14 @@ def hot_spot_analysis(
             f'热点分析 value_col="{value_col}" 为常数权重（std=0）——Gi* 需真实变化数值·'
             f'常数权重会致 Gi_Z 静默 NaN·请带缺口/强度权重或改用密度表达'
         )
+    # CB-23 审计 P1-2（Codex）：NaN≤50% 残留会传播到 Gi_Z 静默 ns——dropna 行 + 记录丢弃数（防静默退化）
+    _n_before = len(gdf)
+    gdf = gdf.dropna(subset=[value_col])
+    if len(gdf) < _n_before:
+        import logging as _lg
+        _lg.getLogger('uvicorn.error').warning(
+            f'[hotspot] value_col="{value_col}" 含 NaN·dropna {_n_before - len(gdf)} 行（防 Gi_Z 静默 ns）'
+        )
 
     # 计算 Gi*
     values = gdf[value_col].values.astype(float)
