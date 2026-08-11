@@ -89,7 +89,7 @@
    - 导出 `{name}_L1_result_csv.csv`（体检轨）+ 注册 geo_registry；L2 当前旁路。
 2. **L1_COLUMNS 适配口径**：不把 `indicator/dimension/region` 强塞进全表；checkup 数据用「公共列（id_e/scope/lon/lat/source）+ checkup 专属列」子集。若产品要求全表兼容再扩 L1_COLUMNS 三列并全管线适配（改动面大，非本任务必需）。
 3. **空间化**：
-   - 面层（住房 8 类 + 250 危旧房 + 50 年建筑）→ 栋级面保留 + **质心化点层**（供 hotspot 逐点 Gi*）；zonal 聚合用**指标数值字段**（如停车缺口数/隐患栋数按行政区/街道聚合）而非情绪字段——验证 `core/spatial_analysis.py` zonal_stats 非情绪分支（:360 有预留）。
+   - 面层（住房 8 类 + 250 危旧房 + 50 年建筑）→ 栋级面保留 + **质心化点层**（供 hotspot 逐点 Gi*）；zonal 聚合用**指标数值字段**（如停车缺口数/隐患栋数按行政区/街办聚合）而非情绪字段——验证 `core/spatial_analysis.py` zonal_stats 非情绪分支（:360 有预留）。
    - 点层 11 类 → 直接注册 `core/geo_registry.py` `_POINT_LAYERS`（或新增 checkup 分组）+ `DATA/performance/`。
    - 覆盖率面层（中学/公园/菜市场）→ `DATA/boundaries/presets/` + `manifest.json` 注册（nameField 用 `DLMC/XZQMC`·按 `字段说明` 只保留有效字段）。
    - `generate_point_layer`（批量地名标点）不适用于已有坐标的面层/点层——它是项目库等无坐标文本的标点工具；面层/点层走注册直读。
@@ -186,7 +186,7 @@
 - 15 条 CHK fact 机械转换（≤80 字）→ `urban_renewal_knowledge.py`；摘要落 `00-宜昌专项/` + `_INDEX.md`；`rag_index --rebuild`（258 → ~280+）→ 冒烟；outlet_kb 增客观轨契约 + 两板块映射 + 满意度契约诚实边界；守铁律 11 + 编号 F_020 起。
 
 **阶段 3' · 两板块分析**
-- 安全韧性底线：结构/燃气/围护/楼道/管线 5 类面层 + 250 危旧房 + 50 年建筑 + 消防覆盖 → zonal（行政区/街道）+ hotspot（质心）+ 统计表 + 观点（关注区定位 + 排序）。
+- 安全韧性底线：结构/燃气/围护/楼道/管线 5 类面层 + 250 危旧房 + 50 年建筑 + 消防覆盖 → zonal（行政区/街办）+ hotspot（质心）+ 统计表 + 观点（关注区定位 + 排序）。
 - 民生基础需求：停车/学位/充电桩/托育/幼儿园/养老 + 中学/公园/菜市场覆盖 → 同上。
 - 观点 = 宏观诊断信号（演示逻辑链四环：张力图面 → 引导点击 → 交互分析 → 定位关注区+主题倾向+排序），禁精确归因。
 
