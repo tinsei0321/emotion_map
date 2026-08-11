@@ -243,7 +243,8 @@ def main():
     t2['polarity'] = pol[0]
     t2['score'] = pol[1]
     t2['polarity_score_5'] = t2['polarity'].map({'Very Negative': 1, 'Negative': 2, 'Neutral': 3, 'Positive': 4, 'Very Positive': 5})
-    t2['emotion_intensity'] = df['诉求内容'].apply(lambda c: 0.7 if '强烈' in str(c) or '严重' in str(c) else 0.5)
+    # Codex P1-5：emotion_intensity 原为二元常量(0.5/0.7·信息量近零)→ 改名 is_intense_flag(0/1·诚实标注标志位非连续强度)
+    t2['is_intense_flag'] = df['诉求内容'].apply(lambda c: 1 if ('强烈' in str(c) or '严重' in str(c) or '紧急' in str(c)) else 0)
     # 4×5 归因
     m45 = df.apply(lambda r: map_4x5(str(r['大类']), str(r['中类'])), axis=1, result_type='expand')
     t2['domain'] = m45[0]
