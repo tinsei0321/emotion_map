@@ -89,11 +89,21 @@ _PLACE_RE = re.compile(r'[^\s，。；、]{2,30}(?:小区|路|街|大道|巷|桥
 _PREFIXED = re.compile(r'(?:湖北省宜昌市)?[一-龥]{2,4}(?:区|市)[一-龥]{2,20}(?:小区|路|街|大道|巷|桥|广场|公园|市场|社区|苑|村|镇|路口|站|店|楼)')
 
 
+# Codex P1：PII 全局正则（extract_place/extract_event 共用·车牌字母开头·人名去师傅职业误报）
+_NAME_PII = re.compile(r'[一-龥]{1,4}(先生|女士|同志)|[一-龥]{1,4}(师傅)(?=的车|在|把)')
+# 车牌正则：省字（鄂/京等）开头 + 字母 + 5 位·排除「的DH2024」办件编号（前字「的/反映的」非省字）
+# 车牌正则：容忍空格（鄂E ICT77·原始含空格）·省字+字母+5位·排除办件编号（DH2024 无省字）
+_CAR_PII = re.compile(r'[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤青藏川宁琼使领]\s?[A-Z]\s?[A-Z0-9]{5}')
+
+
 def extract_place(content):
     """从诉求内容提取完整地名（返回首个具体地名·非泛词）。"""
     if pd.isna(content):
         return ''
     c = str(content)
+    # Codex P1：提取前先清 PII（人名/车牌·防「12月30日姚女士在出行365」被抓进地点）
+    c = _NAME_PII.sub('', c)
+    c = _CAR_PII.sub('', c)
     # 优先带区/市前缀的完整地名（最细粒度·可对坐标）
     m = _PREFIXED.search(c)
     if m:
@@ -169,13 +179,16 @@ _TIME_RESID = re.compile(r'(?:早上|上午|中午|下午|晚上|凌晨)?\d{1,2}
 
 
 def extract_event(core):
-    """抽取事件主干：去流程/口语/时间残留·去空白·截断 80 字。"""
+    """抽取事件主干：去流程/口语/时间/PII·去空白·截断 80 字。"""
     if pd.isna(core):
         return ''
     t = str(core)
     t = _FLOW_RE.sub('', t)
     t = _SPEECH_RE.sub('', t)
     t = _TIME_RESID.sub('', t)
+    # Codex P1：PII 过滤——车牌（鄂EF88S5·字母开头）·人名（罗先生/某女士·师傅职业保留）·脱敏红线
+    t = _CAR_PII.sub('', t)
+    t = _NAME_PII.sub('', t)
     t = re.sub(r'[，。；、\s]+$', '', t)
     t = re.sub(r'\s+', '', t).strip('，。；、 ')
     return t[:80] if t else ''
