@@ -9,6 +9,25 @@
 
 ---
 
+## 📅 2026-08-11（紧急任务定稿·城市体检两板块分析·阶段 0' 对接层落地）
+
+### ✅ 阶段 0' 对接层（读定稿+交接卡+Codex 评估 → 全交付）
+
+- [x] 读 `emc-rag-emc-wise-lark.md`（定稿五阶段·Codex 7 修正+6 决策全采纳）+ 交接卡 + Codex 评估 + zcode 中转站 manifest v1.1.0 实读
+- [x] **`DATA/exchange/` 对接层四件套**：README（三分法）+ manifest.json（引用清单 19 层 + copy + derived）+ schema_inventory.md + PII_EXCEPTIONS.md + 口径对齐.md
+- [x] **PII 实读**：`building_50year_1.geojson` 380 要素 `yslxr/yslxrdh` 字段全存在（值空格）→ 只引用不复制·派生层剥离；`存在问1` 照片 URL 不入库；验收扫描零残留 ✓
+- [x] **口径漂移确认**：manifest「20 项」vs 实表 18 行 → 以实表 18 项为权威
+- [x] **追踪模块 ID 决策**（D5）：新增 `MOD_CHECKUP`（`SCRIPT/checkup_ingest.py`·F_001 起）·AGENTS.md 登记
+- [x] 副本落位：03-08 摘要 → `00-宜昌专项/03-08...md` + `_INDEX.md` 00-08；`_PATHS.md` 扩展第三环境 `D:\OneDrive`；context-map + AutoMemory 登记
+- [x] revision-log §5 + todo 08-11 段同步
+
+### ⬜ 下一步（阶段 1'）
+
+- [ ] checkup 直通适配器 `SCRIPT/checkup_ingest.py`（WGS84 透传·无 LLM 漏斗·L2 旁路·L1 导出 + geo_registry 注册 + 面层 preset + 质心点层·坐标透传单测·MOD_CHECKUP F_001 起）
+- [ ] 风险前置验证：zonal 对「指标数值字段」聚合 + 面层质心化后 hotspot 可用性（防阶段 3 返工）
+
+---
+
 ## 📅 2026-08-10（CB-22d 地图标记路径跑通闭环 · 收工 · 分支合并 main）
 
 ### ✅ CB-22g 追问无法完成·反评价收敛定稿 + P0 实施 + 2025体检整合入RAG（收尾·待 push）

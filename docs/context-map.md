@@ -23,6 +23,9 @@
 ├─ 叶 · 专项参考（渐进披露，按需）
 │  └─ docs/ — brand-visual / copywriting-style / api-conventions / mcp-strategy / ai-qa-design /
 │            industry-knowledge-base / landuse-classification-2023 / harness-engineering-baseline（六要素）
+│     · 城市体检对接层（阶段 0'·2026-08-11）：DATA/exchange/ — README（三分法）+ manifest.json（引用清单）+ schema_inventory.md + PII_EXCEPTIONS.md + 口径对齐.md
+│       —— 上游 zcode 中转站 {URENEWAL_ROOT}/1 宜昌市城市体检/EMC数据中转站（manifest v1.1.0·只引用不复制·PII 例外 building_50year_1）
+│       —— 后续：阶段 1' checkup_ingest.py（MOD_CHECKUP·F_001 起）+ geo_registry 注册 + 阶段 2' RAG 消费 04_互通优化
 │     · 出口抽象层（立项根本目标）：docs/catch-ball/discuss/EMC-出口抽象层架构讨论_2026-08-03.md（专业+通俗）
 │       —— 三铁律 / 软指标可信性缺口 / 出口卡片 / 案例深挖（官方资料·可量化/可感知/可评价三类）
 │     · 出向知识库（出口卡片组装数据源）：ai_qa/outlet_kb/ — 7 契约 + 21 指标映射（官方三类）+ 5 案例

@@ -180,6 +180,7 @@ Agent 启动时根据下表选择性阅读知识源：
 | ✅ | `MOD_GEOCODE` | `core/geocode.py` |
 | ✅ | `MOD_LLM` | `ai_qa/llm.py` |
 | ✅ | `MOD_AIQA` | `ai_qa/paradigm.py` + `ai_qa/prompts.py`（select_template 路由 + 5 build_*_prompt；manifesto.py 纯常量） |
+| 🔧 | `MOD_CHECKUP` | `SCRIPT/checkup_ingest.py`（体检数据直通适配器·阶段 1' 规划·2026-08-11 定稿 D5 决策·F_001 起） |
 | ✅ | `MOD_SPATIAL` | `core/spatial_analysis.py` + `core/buffer_analysis.py` |
 | ✅ | `MOD_FIELD` | `core/field_dictionary.py` |
 | ❌ retired | `MOD_APP` | ~~`apps/`~~ 2026-07-18 整层退役（`frontend/` 接管） |
