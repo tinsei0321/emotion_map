@@ -223,7 +223,11 @@ flowchart TD
 
 > 每条格式：`日期 · commit · 用户意图（精炼） → 落地 · 文件`
 
-> 📍 **最新动态（08月11日 · 紧急任务定稿·城市体检两板块分析·阶段 0' 对接层落地）** · 本节按板块分组、组内倒序；最新工作 = **读定稿+交接卡+Codex 评估 → 阶段 0' 对接层全交付（三分法/PII 例外/口径对齐/MOD_CHECKUP）**。最近：
+> 📍 **最新动态（08月11日 · 城市体检两板块·阶段1'+2'完成 + 空间落位口径铁律全局落盘）** · 本节按板块分组、组内倒序；最新工作 = **后端小扩展+fact 转换+RAG 优化（3 P1 审计修正）+ zcode 思路对齐（空间落位铁律入 CLAUDE.md/plan/记忆）**。最近：
+>
+> - **08-11 空间落位口径铁律·全局修改（用户意图：zcode 分工思路对齐·"片区=结论非输入"全局生效）**：读 zcode 分工 prompt（5 点逻辑 + 2 疑问）→ 对齐落盘 `discuss/CB23-zcode思路对齐_落盘` → **全局修改**：① CLAUDE.md 项目设计哲学加第 7 条铁律（体检落位=4 维度控件对象·片区=结论推导·叙事链问题→片区→项目·12345 热线=主观轨真实数据）② plan 轨道 B 覆盖矩阵改「指标×4维度控件×有缺」（输入）+ 片区聚集推导（输出）两段 ③ 新增主观轨落图（12345 514 处→面/点层 + 双轨对照双高=最急难愁盼）④ D1 图面方案定稿倾向=网格聚合（先控件后片区·闸门 G 决）⑤ 记忆 `checkup-spatial-location-caliber`。**回应 zcode 2 疑问**：聚集趋势=四维（类型主导/空间梯度/问题-项目传导/轻重缓急排序）；情绪地图价值=12345 真实市民声音落图（非模拟情绪得分）。
+>
+> - **08-11 阶段 1'+2' 实施 + Codex 审计（用户意图：先完成不等待 zcode 的内容·每轮让 codex 审计）**：后端小扩展 A1/A3/A4/A5/A7（grid agg_cols/hotspot 守卫/聚合 _sum/sort_by/manifest 修·320 passed）+ 阶段 2' fact 转换（15 CHK→CHECKUP_FACTS·all_facts 52→67）+ RAG 优化（outlet_kb 客观轨契约 + 摘要落位 + 重建 258→295·冒烟命中）→ **Codex 审计回收**：3 P1 修正（zonal 响应补 _sum / A3 NaN dropna / checkup_two_panels 移出 CONTRACTS→PANEL_MAPPING）+ 4 P2 采纳 + 1 待决（3' 图面方案）·零 disagree。
 >
 > - **08-11 紧急任务阶段 0' 对接层落地（用户意图：读定稿+交接卡+Codex 评估→从阶段 0' 对接层开始）**：读 `emc-rag-emc-wise-lark.md`（定稿五阶段·Codex 7 修正+6 决策全采纳）+ 交接卡 + Codex 评估 + zcode 中转站（manifest v1.1.0）实读 → **阶段 0' 全交付**：① **`DATA/exchange/` 对接层四件套**——README（三分法：文本/小文件副本 + 空间大文件只引用 + 派生层脱敏入库·不建五层）+ manifest.json（引用清单 19 层 + copy 清单 + derived 规划 + 校验状态）+ schema_inventory.md（图层/CSV 字段映射·dbf 截断中文↔完整含义）+ PII_EXCEPTIONS.md + 口径对齐.md；② **PII 实读**：`building_50year_1.geojson` 380 要素 `yslxr/yslxrdh` 字段全存在（值空格·无真实内容）→ 只引用不复制·派生层剥离 5 字段；8 面层+11 点层 `存在问1`（照片 URL）不入库；验收扫描 `grep yslxr|yslxrdh|存在问1` **零残留** ✓；③ **口径漂移确认**：manifest 声称 20 项 vs 实表 18 行 → 以实表 18 项为权威；④ **追踪模块 ID 决策**（Codex D5）：新增 **`MOD_CHECKUP`**（`SCRIPT/checkup_ingest.py`·F_001 起·AGENTS.md 模块表已登记·规划 F_020 不占用）；⑤ **副本落位**：03-08 摘要 → `00-宜昌专项/03-08...md`（RAG 消费路径）+ `_INDEX.md` 登记 00-08；⑥ `_PATHS.md` 扩展第三环境 `URENEWAL_ROOT = D:\OneDrive\2026\15_城市更新专项规划研究`；⑦ 登记 `docs/context-map.md` + AutoMemory `checkup-exchange-layer`（不孤岛）。**验证**：manifest JSON 合法 + PII 扫描零残留。**下一步**：阶段 1' checkup 直通适配器（WGS84 透传·无 LLM·L2 旁路·F_001 起）。**§0 拓扑 N/A**。
 >

@@ -11,6 +11,14 @@
 
 ## 📅 2026-08-11（紧急任务定稿·城市体检两板块分析·阶段 0' 对接层落地）
 
+### ✅ 阶段 1'+2' 完成 + 空间落位铁律全局修改（后续补充）
+
+- [x] **阶段 1' 后端小扩展 A1/A3/A4/A5/A7**（b8828c54）：grid agg_cols / hotspot 常数+NaN 守卫 / 聚合 _sum / zonal sort_by / presets manifest 修·320 passed
+- [x] **阶段 2' RAG**（595a6369）：15 CHK fact→CHECKUP_FACTS（all_facts 52→67）+ outlet_kb 客观轨契约 + RAG摘要落 00-09 + 索引重建 258→295·冒烟命中
+- [x] **Codex 审计回收**（3 P1 修正）：zonal 响应补 _sum / A3 NaN dropna / checkup_two_panels→PANEL_MAPPING·零 disagree
+- [x] **zcode 思路对齐·全局修改**：空间落位口径铁律入 CLAUDE.md（4维度控件对象=输入·片区=结论推导）+ plan 覆盖矩阵两段化 + 主观轨落图（12345 514处·双轨对照）+ D1 图面=网格聚合倾向
+- [x] 回应 zcode 2 疑问：聚集趋势四维 / 情绪地图价值=12345 真实声音落图
+
 ### ✅ 阶段 0' 对接层（读定稿+交接卡+Codex 评估 → 全交付）
 
 - [x] 读 `emc-rag-emc-wise-lark.md`（定稿五阶段·Codex 7 修正+6 决策全采纳）+ 交接卡 + Codex 评估 + zcode 中转站 manifest v1.1.0 实读
