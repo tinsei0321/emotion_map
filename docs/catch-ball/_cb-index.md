@@ -9,12 +9,12 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-23 · 紧急任务两板块·阶段 1' 风险前置验证**（zonal 指标数值聚合 ✅ + 面层质心化 hotspot ⚠️ + 街道边界缺失 ⚠️·4 焦点待两组评估） |
+| **当前 CB 轮次** | **CB-23 · 阶段 1' 风险前置验证 → 反评价收敛定稿**（Codex 回收 8 项全采纳·待实施 A1-A8·zcode 街道查源待发） |
 | **上一轮** | CB-22i 追问标记崩溃根因修复（.slice bug·完整链路实测通过·commit a27c0e2e） |
-| **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **zcode组（ZCode + GLM 5.2·评估·2026-08-11 由 glm组 更名）** |
-| **当前分支** | `main`（b4cb7a9d 阶段 0' 对接层已提交·待 push） |
-| **最新讨论** | `discuss/CB23-两板块风险前置验证_讨论发起_2026-08-11.md`（真实体检数据实测证据 + 4 焦点） |
-| **最新进展** | 阶段 0' 对接层落地（DATA/exchange 三分法/PII 例外/MOD_CHECKUP/口径对齐）→ **风险前置三验证**：① zonal `agg_cols=['停车泊']`→`停车泊_mean` ✅ 零改动 ② hotspot 常数权重=1→Gi_Z NaN 静默退化·稀疏点层显著性弱（126 点全 ns）⚠️ ③ `admin_street` 街道边界缺失·社区层全省 1682 非宜昌 61 ⚠️ → **CB-23 发起·待两组评估 4 焦点** |
+| **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **zcode组（ZCode + GLM 5.2·评估·2026-08-11 由 glm组 更名·本次任务分工）** |
+| **当前分支** | `main`（阶段 0' b4cb7a9d + CB-23 4fd10ccd + 更名 031a869b·待 push） |
+| **最新讨论** | `discuss/CB23-两板块风险前置验证_反评价收敛定稿_2026-08-11.md`（8 项采纳清单定稿阶段 1' 设计） |
+| **最新进展** | 风险前置三验证（zonal ✅ / hotspot ⚠️ 两坑 / 街道缺失 ⚠️）→ **Codex 回收核验成立**（F1 partial/F2 partial/F3 agree/F4 agree+补·8 项全采纳）→ **反评价收敛定稿**：D1 加权密度主图（grid weight_field F_010）/ D1c Gi* 降辅助 / D2 街道 P0 zcode 查源 / D3 权重规范+常数守卫 F_011 / D4 补 `{col}_sum`+sort_by F_012 / D5 manifest 漂移修 → **阶段 1' 落地清单 A1-A8** → 下一步：发 zcode 查源 prompt + 后端小扩展 |
 | **接手文档** | `memories/repo/session-handoff.md` + `docs/catch-ball/cb-journal.md`（CB-23 轨迹）+ `_handoff/HOME.md` + `OFFICE.md` |
 | **上次操作人** | tinsei0321 + claude组（+ Codex/glm 评估中） |
 
