@@ -38,6 +38,9 @@ _POINT_LAYERS = {
     'ermawu_l3l4_t1': ('ermawu_l3l4_T1_result_csv.csv', '大南门·二马路 L3L4 · T1（历史街区·开街扰扰）', 'L3L4'),
     'ermawu_l3l4_t2': ('ermawu_l3l4_T2_result_csv.csv', '大南门·二马路 L3L4 · T2（历史街区·暑假打卡）', 'L3L4'),
     'ermawu_l3l4_t3': ('ermawu_l3l4_T3_result_csv.csv', '大南门·二马路 L3L4 · T3（历史街区·文旅爆满）', 'L3L4'),
+    # CB-23 checkup 主观轨：12345 治理版（2024·57265 行·geocode 回填 32% 坐标·中心城区+县市）
+    # 注：checkup_* 层隔离（Codex G6 whitelist·sim 层零引用）·level='CHECKUP' 零 level 检查·极性负偏平台特性（观点以强度为主）
+    'checkup_12345_2024': ('checkup_12345_2024.csv', '12345 投诉 2024（主观轨·体检医生·中心城区+县市）', 'CHECKUP'),
 }
 
 
