@@ -338,7 +338,8 @@ async def area_stats(req: AreaStatsRequest):
 class ZonalStatsRequest(_GeoBase):
     boundary: Any = None              # preset_id | GeoJSON（聚合面域，必填）
     agg_cols: Optional[list] = None   # 聚合数值列（默认 ['score']）
-    top_n: Optional[int] = None       # 只返回前 N（按 |polarity_index| 降序）；空=全返
+    top_n: Optional[int] = None       # 只返回前 N（按排序列降序）；空=全返
+    sort_by: Optional[str] = None     # CB-23 A5：显式排序列（如 停车泊_sum/停车泊_mean）·空则 fallback 链
 
 
 @geo_router.post('/geo/zonal_stats')
@@ -365,8 +366,21 @@ async def zonal_stats(req: ZonalStatsRequest):
         agg_cols = req.agg_cols or (['score'] if 'score' in pts.columns else [])
         merged = aggregate_by_polygons(pts, polys, agg_cols=agg_cols,
                                        polygon_name_col='name')
-        # 排序：按 |polarity_index| 降序（张力大的在前）；无则按 point_count
-        sort_col = 'polarity_index' if 'polarity_index' in merged.columns else 'point_count'
+        # CB-23 A5 排序 fallback 链：显式 sort_by → polarity_index(情绪轨) → 首 agg_col 聚合列(总量 sum) → point_count
+        #   体检轨无 polarity_index → 退化按 point_count 会恒西陵第一（点数多）·改按 agg_col sum（总量口径·对齐 CHK-I05）
+        if req.sort_by and req.sort_by in merged.columns:
+            sort_col = req.sort_by
+            _sort_semantic = 'sum' if sort_col.endswith('_sum') else ('mean' if sort_col.endswith('_mean') else 'attr')
+        elif 'polarity_index' in merged.columns:
+            sort_col = 'polarity_index'
+            _sort_semantic = 'polarity'
+        elif agg_cols:
+            _cand = [f'{c}_sum' for c in agg_cols if f'{c}_sum' in merged.columns]
+            sort_col = _cand[0] if _cand else 'point_count'
+            _sort_semantic = 'sum' if _cand else 'count'
+        else:
+            sort_col = 'point_count'
+            _sort_semantic = 'count'
         merged = merged.sort_values(
             by=sort_col, key=lambda s: s.abs() if sort_col == 'polarity_index' else s,
             ascending=False, kind='stable')
@@ -392,7 +406,8 @@ async def zonal_stats(req: ZonalStatsRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f'zonal_stats 失败: {e}')
     return {'success': True, 'count': len(rows), 'rows': rows,
-            'sort_by': sort_col, 'message': f'已聚合 {len(rows)} 个单元（按 |{sort_col}| 降序）'}
+            'sort_by': sort_col, 'sort_semantic': _sort_semantic,
+            'message': f'已聚合 {len(rows)} 个单元（按 {sort_col} 降序·{_sort_semantic} 口径）'}
 
 
 # ════════════ 6. rank · 排序找 Top N ════════════

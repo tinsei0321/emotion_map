@@ -15,7 +15,7 @@ from shapely.geometry import Point, box
 
 from core.spatial_analysis import (
     create_square_grid, create_hex_grid, aggregate_by_polygons,
-    aggregate_by_boundary_id, create_terrain_dem,
+    aggregate_by_boundary_id, create_terrain_dem, hot_spot_analysis,
 )
 
 
@@ -406,3 +406,48 @@ def test_create_terrain_dem_polarity_filter():
             create_terrain_dem(gdf, polarity='negative')
     except ImportError as e:
         pytest.skip(f'依赖缺失: {e}')
+
+
+# ═══ CB-23 后端小扩展（A1/A3/A4）═══
+
+def _synth_with_numeric(n=60, seed=5):
+    """合成点 + 中文数值列（模拟体检截断列·如 停车泊）。"""
+    gdf = _synth_points(n, seed)
+    import random as _r
+    _r.seed(seed)
+    gdf['停车泊'] = [_r.randint(4, 2600) for _ in range(n)]
+    return gdf
+
+
+def test_aggregate_by_polygons_agg_sum():
+    """A4：agg_cols 显式中文列 → 输出 {col}_sum（总量口径·非仅 _mean/_std）。"""
+    pts = _synth_with_numeric(60)
+    polys = gpd.GeoDataFrame.from_features(_two_polys_fc(), crs='EPSG:4326')
+    merged = aggregate_by_polygons(pts, polys, agg_cols=['停车泊'])
+    assert '停车泊_sum' in merged.columns
+    assert '停车泊_mean' in merged.columns
+    assert merged['停车泊_sum'].sum() == pts['停车泊'].sum(), '各面 sum 之和应等于点层总量'
+
+
+def test_create_square_grid_agg_cols():
+    """A1：create_square_grid agg_cols 中文列 → 输出 {col}_sum/_mean（体检轨直接传列名）。"""
+    grid = create_square_grid(_synth_with_numeric(60), cell_size=400, agg_cols=['停车泊'])
+    assert '停车泊_sum' in grid.columns
+    assert '停车泊_mean' in grid.columns
+    assert grid['停车泊_sum'].sum() > 0
+
+
+def test_hotspot_constant_weight_guard():
+    """A3：常数权重（std=0）→ 显式 ValueError（防 Gi_Z 静默 NaN 退化）。"""
+    gdf = _synth_points(40)
+    gdf['ones'] = 1.0
+    with pytest.raises(ValueError, match='常数权重'):
+        hot_spot_analysis(gdf, value_col='ones', invert=False)
+
+
+def test_hotspot_nan_guard():
+    """A3：value NaN 占比过高 → 显式 ValueError（权重缺失·无法做 Gi*）。"""
+    gdf = _synth_points(40)
+    gdf['w'] = [None] * 30 + [1.0] * 10
+    with pytest.raises(ValueError, match='NaN 占比'):
+        hot_spot_analysis(gdf, value_col='w', invert=False)

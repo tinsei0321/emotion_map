@@ -12,7 +12,9 @@
         "id": "admin_street",
         "label": "街道",
         "file": "街道.geojson",
-        "nameField": "街道"
+        "nameField": "街道",
+        "missing": true,
+        "note": "CB-23 漂移修：磁盘无 街道.geojson·待 zcode 查源/高德补源后移除标记"
       },
       {
         "id": "admin_community",
@@ -29,7 +31,9 @@
         "id": "renewal_unit",
         "label": "更新单元",
         "file": "更新单元.geojson",
-        "nameField": "编号"
+        "nameField": "编号",
+        "missing": true,
+        "note": "CB-23 漂移修：磁盘无 更新单元.geojson·待 zcode 查组团/片区面层后移除标记"
       },
       {
         "id": "damanmen_area",

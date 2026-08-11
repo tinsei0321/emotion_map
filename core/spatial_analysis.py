@@ -81,6 +81,21 @@ def hot_spot_analysis(
         from libpysal.weights import KNN
         w = KNN.from_array(coords, k=k)
 
+    # CB-23 A3：常数/缺失权重守卫——value 无变化（std=0）或 NaN 占比过高 → 显式报错
+    #   （G_Local 对常数序列方差=0 → z=(stat-exp)/sqrt(var)=0/0=NaN → hotspot 静默全 ns 退化）
+    _vals = pd.to_numeric(gdf[value_col], errors='coerce')
+    _nan_ratio = float(_vals.isna().mean())
+    if _nan_ratio > 0.5:
+        raise ValueError(
+            f'热点分析 value_col="{value_col}" NaN 占比过高（{_nan_ratio:.0%}）——权重缺失·无法做 Gi*·'
+            f'请带真实数值权重（缺口数/强度）或改用加权密度表达'
+        )
+    if _vals.dropna().std() == 0:
+        raise ValueError(
+            f'热点分析 value_col="{value_col}" 为常数权重（std=0）——Gi* 需真实变化数值·'
+            f'常数权重会致 Gi_Z 静默 NaN·请带缺口/强度权重或改用密度表达'
+        )
+
     # 计算 Gi*
     values = gdf[value_col].values.astype(float)
 
@@ -266,6 +281,8 @@ def aggregate_by_polygons(
         if _c in joined.columns:
             agg_stats[f'{_role}_mean'] = grouped[_c].mean().round(3)
             agg_stats[f'{_role}_std'] = grouped[_c].std().round(3)
+            # CB-23 A4：补 {col}_sum（总量口径）——mean 会颠倒总量（西陵 mean162.8<伍家309.9·但总量 ~17580>~5580）·排序/报告用 sum
+            agg_stats[f'{_role}_sum'] = grouped[_c].sum()
 
     # 极性统计：5 级英文（L2）/ 3 级小写（L1，polarity_hint 经 registry 重命名）自适应。
     # 列名按 role 解析（支持上传层中文别名 情绪/sentiment/情感倾向），输出仍用规范名 polarity_index/n_*。
@@ -746,6 +763,7 @@ def create_square_grid(
     cell_size: float = 200.0,
     unit: str = 'm',
     target_crs: str = 'EPSG:4546',
+    agg_cols: Optional[list] = None,
 ) -> gpd.GeoDataFrame:
     """
     固定方格网格聚合（标准网格）—— 按指定边长方格统计情绪指标。
@@ -755,6 +773,8 @@ def create_square_grid(
         cell_size: 方格边长（按 unit）；常用 50/200/400/1000
         unit: 'm' | 'km'（'km' 时 cell_size ×1000）
         target_crs: 量度投影 CRS（宜昌标准 EPSG:4546，CM 111E，米制，保证 cell_size 精确）
+        agg_cols: 额外显式数值列（CB-23 A1·体检轨中文截断列如 停车泊/小学学）→ 输出 {col}_sum/_mean；
+                  对齐 aggregate_by_polygons 的 agg_cols 模式·不依赖 role 解析（体检列名非 score/polarity 语义）
 
     返回:
         含聚合统计的方格 GeoDataFrame（EPSG:4326，仅含有点落入的格），列：
@@ -807,6 +827,16 @@ def create_square_grid(
     # L1 舆论热度辅助字段（置信度/强度均值，供前端算"密度×置信度"热度）+ score 均值
     for _c, _out in _sq_num:
         stats[_out] = grouped[_c].mean().round(3)
+
+    # CB-23 A1：显式 agg_cols（体检轨中文截断列·如 停车泊/小学学）→ 输出 {col}_sum/_mean
+    #   对齐 aggregate_by_polygons 模式（agg_cols 直接传列名·不依赖 role）·缺口规模排序用 sum（总量口径）
+    if agg_cols:
+        with TrackContext("MOD_SPATIAL.D_005", agg_cols=agg_cols):
+            for _c in agg_cols:
+                if _c in joined.columns:
+                    joined[_c] = pd.to_numeric(joined[_c], errors='coerce')
+                    stats[f'{_c}_sum'] = grouped[_c].sum()
+                    stats[f'{_c}_mean'] = grouped[_c].mean().round(3)
 
     # 五级极性统计 + 综合情绪指数（列名按 role 解析支持中文别名 情绪；公式同 aggregate_by_polygons）
     _pol_col = resolve_field_alias('polarity', joined.columns)
@@ -1168,3 +1198,4 @@ register_track_id("MOD_SPATIAL.F_008", "⑤③ membership 分组聚合（点带 
 register_track_id("MOD_SPATIAL.D_001", "热点分析：自适应空间权重矩阵构建")
 register_track_id("MOD_SPATIAL.D_002", "热点分析：分类结果统计（hot/cold/ns）")
 register_track_id("MOD_SPATIAL.D_003", "地形：KDE 曲面 + 等值面提取参数")
+register_track_id("MOD_SPATIAL.D_005", "CB-23 A1：方格网格显式 agg_cols 聚合（体检中文截断列→{col}_sum/_mean）")
