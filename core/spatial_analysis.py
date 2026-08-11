@@ -4,7 +4,7 @@
 基于 PySAL 和 GeoPandas，提供城市治理视角的空间统计方法：
   - Getis-Ord Gi* 热点分析: 识别情绪冷热点空间聚类
   - Moran's I 空间自相关: 检测情绪是否在空间上显著聚集
-  - 行政单元聚合: 按街道/社区/格网统计情绪指标
+  - 行政单元聚合: 按街办/社区/格网统计情绪指标
 
 使用方式:
     from core.spatial_analysis import (
@@ -245,7 +245,7 @@ def aggregate_by_polygons(
 
     参数:
         points_gdf: 情绪点 GeoDataFrame（需含 score/polarity 列）
-        polygons_gdf: 面域 GeoDataFrame（如街道/社区/更新单元边界）
+        polygons_gdf: 面域 GeoDataFrame（如街办/社区/更新单元边界）
         agg_cols: 要统计的数值列，默认 ['score']
         polygon_name_col: 面域名称列（输出中保留）
 
@@ -371,7 +371,7 @@ def aggregate_by_boundary_id(
 
     与 aggregate_by_polygons 的区别：后者 sjoin 点×面（within）；本函数假定点已带 membership
     列（role `zone`：zone/area_tag/area_seed/片区/街区/所属区/归属），直接 groupby，**无需面层**。
-    适用：L2 点带 area_tag/zone、或点预归属到单元/街道的场景。
+    适用：L2 点带 area_tag/zone、或点预归属到单元/街办的场景。
 
     参数:
         points_gdf: 情绪点 GeoDataFrame（需含 zone role 列 + score/polarity）

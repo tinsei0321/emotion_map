@@ -6,7 +6,7 @@
 职责：
   search_place(query, limit)   关键词 → POI 命中（本地 forward 主 + 高德 place/text 兜底）
   geocode_address(address)     地址 → 坐标 WGS84（高德 geo 正向）
-  reverse_geocode(lng, lat)    坐标 WGS84 → {zone, nearest_poi, 街道}（本地 reverse 主 + 高德 regeo 兜底）
+  reverse_geocode(lng, lat)    坐标 WGS84 → {zone, nearest_poi, 街办}}（本地 reverse 主 + 高德 regeo 兜底）
   _amap_request(endpoint, p)   统一高德请求：注入 key + 重试 + 强制 CRS
 
 本地优先保证搜索↔情绪点对应 + 断网可用；高德补全覆盖本地未命中的地址/新 POI。
@@ -82,7 +82,7 @@ MAX_RETRIES = 3
 RETRY_DELAY_BASE = 2          # 指数退避基数（秒），镜像 relevance_filter
 REQUEST_TIMEOUT = 20          # 单次请求超时（秒）
 _LOCAL_MIN_HITS = 3           # 本地命中 ≥ 此数 → 不调高德
-_REVERSE_DIST_M = 500         # 最近 POI 超此距离 → 高德 regeo 补街道
+_REVERSE_DIST_M = 500         # 最近 POI 超此距离 → 高德 regeo 补街办
 _OFFLINE_FUZZY_SCORE = 35    # P2 离线退化：AMAP 不可用时模糊阈值从 55 降至 35
 
 
@@ -304,7 +304,7 @@ def reverse_geocode(lng, lat):
     formatted_address, district, township, street, source}。
 
     本地 place_layer.reverse 主（瞬时，给 zone + 最近 POI + 近邻 top-5/计数）；amap 可用时 always
-    regeo(extensions=all) 补街道地址 + 行政区划（区/街道/路）。红线 #2：送高德的
+    regeo(extensions=all) 补街办地址 + 行政区划（区/街办/路）。红线 #2：送高德的
     坐标先 WGS84→GCJ-02。_amap_fetch 的 lru_cache 摊销重复坐标延迟。
     """
     pl = get_place_layer() if get_place_layer else None

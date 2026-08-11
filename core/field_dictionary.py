@@ -101,7 +101,7 @@ FIELD_ROLE_DICT = {
     # —— 面层/边界字段 ——
     'boundary_name': {
         # 边界层特有名称字段（不含通用 name、不含 DLMC——DLMC 归 land_use_class）
-        'variants': ['MC', '街道', '社区', '编号', '区域名称', '县名', '市名', 'Layer', 'LAYER',
+        'variants': ['MC', '街办', '社区', '编号', '区域名称', '县名', '市名', 'Layer', 'LAYER',
                      'FID_规划', 'FID', '行政区', '行政区名称', '单元名', '单元编号'],
         'dtype_hint': 'string',
         'description': '面层/边界的名称字段（抽取/筛选某区某单元用）',
@@ -268,7 +268,7 @@ def is_internal_field(field):
 def find_boundary_name_column(columns):
     """面层/边界 nameField 推断：按优先级找名称列，返回列名或 None。
 
-    优先级：boundary_name role（MC/街道/社区/...）→ name role（name/名称/...）
+    优先级：boundary_name role（MC/街办/社区/...）→ name role（name/名称/...）
     → land_use_class role（DLMC/地类名称——用地层名称）。
     用于 resolve_boundary 的 send-in GeoJSON 路径（preset 路径仍优先读 manifest nameField）。
     """

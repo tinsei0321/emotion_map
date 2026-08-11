@@ -5,7 +5,7 @@ lazy-load + 内存缓存（GeoDataFrame），按稳定 id 引用——避免大�
 
 数据资产：
 - 点层：L1（治理点）/ L2（情绪点，含 score+polarity）× T1/T2/T3，读 DATA/performance/
-- 边界 preset：行政区/街道/社区/更新单元/用地，复用 core/range_selector 的 manifest 机制
+- 边界 preset：行政区/街办/社区/更新单元/用地，复用 core/range_selector 的 manifest 机制
 - CRS 统一 EPSG:4326（地图渲染基准；面积/缓冲在 spatial_analysis 内投影 EPSG:4546）
 
 用户临时上传层不走注册表（保留 send-in 模式，由调用方直接传 GeoJSON）。
