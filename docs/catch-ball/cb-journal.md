@@ -4,7 +4,17 @@
 > 按轮**倒序**（最新在顶·CB-NN 大→小·便于看最新进展；不覆写）。新轮次写在文件顶部。
 > 每轮四节：① SCAN 摘要 ② 我方反评价 ③ 行动 ④ 状态/新发现。
 
-## CB-23 · 2026-08-11（紧急任务两板块分析 · 阶段 1' 风险前置验证发起 → Codex 回收 → 反评价收敛定稿）
+## CB-23 · 2026-08-11（阶段1'+2' 实施审计回收 · P1 修正落地）
+
+### ⑥ Codex 审计回收（阶段 1' 后端小扩展 + 阶段 2' RAG）
+
+Codex 审计实施合格·无 P0·**3 P1 + 4 P2 + 1 待决**·零 disagree：
+- **P1-1 zonal_stats 响应补 `{c}_sum`**（prop_cols 静态不含·阶段 3' 统计表无总量数据源）→ 已实施
+- **P1-2 A3 NaN 残留 dropna+日志**（NaN≤50% 残留传播 Gi_Z 静默 ns）→ 已实施
+- **P1-3 checkup_two_panels 空卡**（静态数值清单被体检问句选中渲染空卡）→ 移出 CONTRACTS → PANEL_MAPPING + year/source
+- P2-4 F_010 语义文档化（weight_field 未实施）·P2-6 year/source 已落地·P2-5/7 延闸门 G
+- **待决 D1**：阶段 3' 图面方案 = 网格聚合（已就绪·sum 总量）vs 加权密度（需补 F_010 weight_field）→ 闸门 G 图数表样式定稿时决
+- 验证：320 passed 零回归·PANEL_MAPPING 语法合法·CONTRACTS 3 契约无空卡
 
 ### ⑤ 反评价收敛（Codex 回应回收）
 
