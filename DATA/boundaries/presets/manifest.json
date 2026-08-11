@@ -65,5 +65,24 @@
         "nameField": "DLMC"
       }
     ]
+  },
+  {
+    "group": "checkup 项目（点/线·CB-23 项目端）",
+    "items": [
+      {
+        "id": "checkup_project_point",
+        "label": "城市更新重点项目（点）",
+        "file": "checkup_project_project_point.geojson",
+        "nameField": "XMMC",
+        "note": "gdb 导出·WGS84·183 项目(185点要素)·字段 XMMC/XZQ/TZE/MJ"
+      },
+      {
+        "id": "checkup_project_line",
+        "label": "城市更新重点项目（线）",
+        "file": "checkup_project_project_line.geojson",
+        "nameField": "XMMC",
+        "note": "gdb 导出·WGS84·102 线要素·字段 XMMC/XZQ/TZE/MJ"
+      }
+    ]
   }
 ]
