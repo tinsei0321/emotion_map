@@ -190,7 +190,9 @@ def main():
     # 6) 区域清洗
     out['区域'] = df['区域'].astype(str).str.strip()
     out['区域_清洗'] = out['区域'].map(REGION_CODE).fillna(out['区域'])
-    out['region_scope'] = out['区域_清洗'].apply(lambda r: '中心城区' if r in CENTRAL else '县市')
+    # CB-23 审计 P2-2（Codex）：高新区东山园区地理上属中心城区功能组团·但含白洋镇等外围——单列「高新区」防漏计也防误算
+    out['region_scope'] = out['区域_清洗'].apply(
+        lambda r: '中心城区' if r in CENTRAL else ('高新区' if r == '高新区' else '县市'))
     # 7) 大类/中类/小类整合
     out['大类_归'] = df['大类']
     out['中类_归'] = df['中类']
