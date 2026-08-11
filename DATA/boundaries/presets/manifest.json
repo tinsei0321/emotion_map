@@ -22,6 +22,13 @@
         "nameField": "NAME",
         "reference_only": true,
         "note": "CB-23 官方 1682 村社区·94MB 只引用（中转站 02_空间数据集/行政区划_官方/）·不入 git·如需要可精简入"
+      },
+      {
+        "id": "admin_county",
+        "label": "县区（官方·14）",
+        "file": "admin_county_official.geojson",
+        "nameField": "MC",
+        "note": "CB-23 官方市域县级行政区划·14县区·EPSG:4525→WGS84"
       }
     ]
   },
