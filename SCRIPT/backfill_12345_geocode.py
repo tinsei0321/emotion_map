@@ -44,9 +44,11 @@ def main():
             filled += 1
         else:
             df.at[i, 'geocode_status'] = 'miss'
-    # region 兜底（place_source=region·用 REGION:区）
+    # region 兜底（place_source=region·用 REGION:区·修复 2026-08-11：原判断 lon=='' 对 float 空串失效）
     for i, r in df.iterrows():
-        if r['place_source'] == 'region' and r['lon'] == '' or (pd.isna(r['lon']) if hasattr(r['lon'], '__iter__') else not r['lon']):
+        lon_v = df.at[i, 'lon']
+        empty = (pd.isna(lon_v)) or (isinstance(lon_v, str) and lon_v.strip() == '') or (not lon_v)
+        if r['place_source'] == 'region' and empty:
             reg = r['region']
             key = f"REGION:{reg}"
             if key in loc:
