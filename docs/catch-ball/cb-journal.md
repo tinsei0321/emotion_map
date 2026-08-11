@@ -4,7 +4,18 @@
 > 按轮**倒序**（最新在顶·CB-NN 大→小·便于看最新进展；不覆写）。新轮次写在文件顶部。
 > 每轮四节：① SCAN 摘要 ② 我方反评价 ③ 行动 ④ 状态/新发现。
 
-## CB-23 · 2026-08-11（12345 原始数据治理方案 → 待 codex 审计）
+## CB-23 · 2026-08-11（12345 治理实施完成 → 实施审计邀请）
+
+### ⑧ 治理实施 + 审计邀请
+
+**实施完成**（方案已 codex 审计 4 P1 + 8 P2 → 实施）：57265 行两份文件落 `06_主观数据治理/`：
+- `12345_治理清洗版.csv`（8 条要求·地点三级推断+source/confidence·区域清洗）
+- `12345_情绪地图中转版.csv`（19 列 EMC 消费·polarity 5级/score 0~1 分档/domain-element/topic/place/lon-lat/region_scope/emotion_aspect）
+- `12345_4x5映射.json`（42 中类→domain/element 全覆盖）+ `12345_治理方法论.md`（含模拟数据黄金样本）+ `SCRIPT/govern_12345_raw.py`
+**实施质量**：地点推断 88% 内容完整地名·high 68%（可坐标）·情绪分布 Very Negative 15030/Negative 33115/Neutral 7579/Positive 1504/Very Positive 37（平台偏负）·4×5 governance 50%/renewal 30%·region_scope 中心城区 37035/县市 20230·抽样 20 条 19 合理。
+**待 codex 审计**：地点推断精度（P2-6 200 条是否需补）·情绪映射·4×5·EMC 消费链路·PII·region_scope·模拟黄金样本。
+
+### ⑦ 数据突破 + 方案设计
 
 ### ⑦ 数据突破 + 方案设计
 
