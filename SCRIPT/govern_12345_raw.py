@@ -111,6 +111,8 @@ def extract_place(content):
 _PREFIX_STRIP = re.compile(r'^(?:我是|上到|反映|位于|来电|接到|本人|关于|咨询|进入|旁边|在|于|因|反映人|来电人|诉求人|居住在|住在|靠近|围绕|经过|途径|走到|到|去|在附近|住在)')
 _MENPAI = re.compile(r'\d+号(?:院|楼|房)?')
 _LOUDONG = re.compile(r'\d+[号楼栋]')
+# Codex P0-2：地点中缀清理（「我要投诉伍家岗」「我反映夷陵大桥」·非锚^·用中缀匹配）
+_MIDFIX = re.compile(r'(?:我要投诉|我反映|反映|投诉|举报|来电反映|电话反映|反映人|诉求人)')
 
 
 def clean_place(place, conf):
@@ -118,8 +120,9 @@ def clean_place(place, conf):
     if not place:
         return place, conf
     p = str(place)
-    # ① 剥口语前缀（锚定地名起点）
+    # ① 剥口语前缀（锚定地名起点）+ 中缀（Codex P0-2：我要投诉/我反映）
     p = _PREFIX_STRIP.sub('', p).strip()
+    p = _MIDFIX.sub('', p).strip()
     # ② 门牌降级：西陵区二马路55号 → 西陵区二马路
     p = _MENPAI.sub('', p).strip('，。、 ')
     # ③ 楼栋降级：龙盘湖世纪山水九号楼 → 龙盘湖世纪山水
@@ -153,6 +156,29 @@ def infer_place(row):
     return '', 'empty', ''
 
 
+# ── 内容结构化（CB-23 治理质量·用户发现清洗不彻底·2026-08-11）──
+# 去流程信息/口语/时间残留·抽事件主干·三段「事件时间;地点;事件主干」
+# Codex P0-2 改进：正则缺陷修复——`请马上`→去「请马上+处理」·`我是.*?居民`→去居民整句·时间残留去「多」
+_FLOW_RE = re.compile(r'（.*?）|于\d{1,2}[:：]?\d{2}.*?转接|转接.*?工作人员|交办至.*?处理|热线\d+'
+                      r'|受理|工作人员|三方通话|12345|请处理|请帮忙|请及时|请马上处理|请马上|请尽快|麻烦处理|投诉热线|反映人|来电人')
+_SPEECH_RE = re.compile(r'我是[^，。；]{0,20}?居民|我是[^，。；]{0,20}?业主|我住在[^，。；]{0,10}|居住在[^，。；]{0,10}'
+                        r'|本人|我们这|我们这栋|我于\d{1,2}月\d{1,2}日')
+_TIME_RESID = re.compile(r'[中午晚上下午凌晨]?\d{1,2}[点时]半?多?|上午\d{1,2}点|中午\d{1,2}点|下午\d{1,2}点|晚上\d{1,2}点|\d{1,2}[:：]\d{2}')
+
+
+def extract_event(core):
+    """抽取事件主干：去流程/口语/时间残留·去空白·截断 80 字。"""
+    if pd.isna(core):
+        return ''
+    t = str(core)
+    t = _FLOW_RE.sub('', t)
+    t = _SPEECH_RE.sub('', t)
+    t = _TIME_RESID.sub('', t)
+    t = re.sub(r'[，。；、\s]+$', '', t)
+    t = re.sub(r'\s+', '', t).strip('，。；、 ')
+    return t[:80] if t else ''
+
+
 def simplify_title(row):
     """标题简化：参考大类/中类/小类。"""
     medium = str(row.get('中类', '')) or ''
@@ -160,10 +186,12 @@ def simplify_title(row):
     title = str(row.get('诉求标题', '')) or ''
     # 用中类/小类做简洁描述（去「问题/噪声」冗余）
     if small:
-        return small
+        return re.sub(r'[投诉反映举报咨询求助表扬问题]$', '', small)
     if medium:
-        return medium
-    return title[:20]
+        return re.sub(r'[投诉反映举报咨询求助表扬问题]$', '', medium)
+    # Codex P0-2：回退标题去「投诉/反映/举报」后缀
+    t = re.sub(r'(投诉|反映|举报|咨询|求助|表扬)$', '', title).strip()
+    return t[:20] if t else title[:20]
 
 
 def main():
@@ -178,15 +206,15 @@ def main():
     out['诉求类型_归'] = df['诉求类型'].map(TYPE_RULE).fillna('其它')
     # 3) 标题简化
     out['诉求标题_简'] = df.apply(simplify_title, axis=1)
-    # 4) 内容结构化（时间+地点+事件+态度）
-    out['诉求内容_构'] = df.apply(
-        lambda r: f"{str(r['事件上报时间'])[:10]};{extract_place(str(r.get('诉求内容','')))};{str(r.get('诉求内容',''))[:120]}", axis=1)
-    # 5) 事发地 + 地点推断
+    # 5) 事发地 + 地点推断（先算·content_构 用其干净地点值·Codex P2-7）
     out['事发地'] = df['事发地']
     place_info = df.apply(infer_place, axis=1, result_type='expand')
     out['地点推断'] = place_info[0]
     out['place_source'] = place_info[1]
     out['place_confidence'] = place_info[2]
+    # 4) 内容结构化（Codex P0-2/P2-7：事件主干抽取·地点段用 clean 后推断值·三段「事件时间;地点;事件主干」）
+    out['诉求内容_构'] = df.apply(
+        lambda r: f"{str(r['事件上报时间'])[:10]};{out['地点推断'].iloc[r.name]};{extract_event(str(r.get('诉求内容','')))}", axis=1)
     # 6) 区域清洗
     out['区域'] = df['区域'].astype(str).str.strip()
     out['区域_清洗'] = out['区域'].map(REGION_CODE).fillna(out['区域'])

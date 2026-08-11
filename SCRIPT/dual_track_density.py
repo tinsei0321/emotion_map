@@ -85,11 +85,14 @@ def main():
     # ── 3. 双轨叠加 → 双高区（两轨均 >p75·500m buffer）──
     obj_high = g_obj[g_obj["point_count"] >= g_obj["point_count"].quantile(0.75)].copy()
     subj_high = g_subj[g_subj["point_count"] >= g_subj["point_count"].quantile(0.75)].copy()
+    # Codex P0-1 修复：buffer 必须投影 4546 米（4326 度 buffer(500)=500度覆盖全域·双高格 1768 无意义）
     obj_high.geometry = obj_high.geometry.to_crs("EPSG:4546").centroid.to_crs("EPSG:4326")
     subj_high.geometry = subj_high.geometry.to_crs("EPSG:4546").centroid.to_crs("EPSG:4326")
-    subj_buf = gpd.GeoDataFrame(subj_high, geometry=subj_high.geometry.buffer(500))
+    subj_buf = gpd.GeoDataFrame(subj_high, geometry=subj_high.geometry.to_crs("EPSG:4546").buffer(500).to_crs("EPSG:4326"))
     dual = gpd.sjoin(obj_high, subj_buf, how="inner", predicate="intersects")
-    print(f"[双轨] 体检高格 {len(obj_high)}·12345 高格 {len(subj_high)}·双高格 {len(dual)}")
+    # 去重（同一 obj 格可能命中多 subj 格·只算一次）
+    dual = dual.drop_duplicates(subset="cell_id_left") if "cell_id_left" in dual.columns else dual
+    print(f"[双轨] 体检高格 {len(obj_high)}·12345 高格 {len(subj_high)}·双高格(去重) {len(dual)}")
 
     # ── 4. 项目聚拢量化（183 项目 → 落双高区比例）──
     from core.range_selector import load_preset
