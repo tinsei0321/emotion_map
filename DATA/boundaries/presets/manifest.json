@@ -10,17 +10,18 @@
       },
       {
         "id": "admin_street",
-        "label": "街道",
-        "file": "街道.geojson",
-        "nameField": "街道",
-        "missing": true,
-        "note": "CB-23 漂移修：磁盘无 街道.geojson·待 zcode 查源/高德补源后移除标记"
+        "label": "街道（官方·SSX聚合）",
+        "file": "admin_street_official.geojson",
+        "nameField": "SSX",
+        "note": "CB-23 官方数据：村社区行政界限 SSX 聚合 113 街道（中心城区 25 含 16 街办·2026-08-11）"
       },
       {
         "id": "admin_community",
-        "label": "社区",
-        "file": "社区.geojson",
-        "nameField": "社区"
+        "label": "社区（官方·大文件引用）",
+        "file": "admin_community_official.geojson",
+        "nameField": "NAME",
+        "reference_only": true,
+        "note": "CB-23 官方 1682 村社区·94MB 只引用（中转站 02_空间数据集/行政区划_官方/）·不入 git·如需要可精简入"
       }
     ]
   },
