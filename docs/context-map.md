@@ -24,7 +24,7 @@
 │  └─ docs/ — brand-visual / copywriting-style / api-conventions / mcp-strategy / ai-qa-design /
 │            industry-knowledge-base / landuse-classification-2023 / harness-engineering-baseline（六要素）
 │     · 城市体检对接层（阶段 0'·2026-08-11）：DATA/exchange/ — README（三分法）+ manifest.json（引用清单）+ schema_inventory.md + PII_EXCEPTIONS.md + 口径对齐.md
-│       —— 上游 zcode 中转站 {URENEWAL_ROOT}/1 宜昌市城市体检/EMC数据中转站（manifest v1.6.0·只引用不复制·PII 例外 building_50year_1）
+│       —— 上游 zcode 中转站 {URENEWAL_ROOT}/1 宜昌市城市体检/EMC数据中转站（manifest v1.4.6·只引用不复制·PII 例外 building_50year_1）
 │       —— 后续：阶段 1' checkup_ingest.py（MOD_CHECKUP·F_001 起）+ geo_registry 注册 + 阶段 2' RAG 消费 04_互通优化
 │     · 宜昌基础地理信息数据（未来消费的底层数据·2026-08-11 建立·官方准确）：
 │       —— 官方行政边界：`02_空间数据集/行政区划_官方/`（市域县级 14 县区 + 村社区 1682 + SSX 聚合 113 街办含 16 街办口径·WGS84·源自用户提供 shp）
