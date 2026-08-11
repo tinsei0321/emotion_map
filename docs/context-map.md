@@ -24,8 +24,13 @@
 │  └─ docs/ — brand-visual / copywriting-style / api-conventions / mcp-strategy / ai-qa-design /
 │            industry-knowledge-base / landuse-classification-2023 / harness-engineering-baseline（六要素）
 │     · 城市体检对接层（阶段 0'·2026-08-11）：DATA/exchange/ — README（三分法）+ manifest.json（引用清单）+ schema_inventory.md + PII_EXCEPTIONS.md + 口径对齐.md
-│       —— 上游 zcode 中转站 {URENEWAL_ROOT}/1 宜昌市城市体检/EMC数据中转站（manifest v1.1.0·只引用不复制·PII 例外 building_50year_1）
+│       —— 上游 zcode 中转站 {URENEWAL_ROOT}/1 宜昌市城市体检/EMC数据中转站（manifest v1.6.0·只引用不复制·PII 例外 building_50year_1）
 │       —— 后续：阶段 1' checkup_ingest.py（MOD_CHECKUP·F_001 起）+ geo_registry 注册 + 阶段 2' RAG 消费 04_互通优化
+│     · 宜昌基础地理信息数据（未来消费的底层数据·2026-08-11 建立·官方准确）：
+│       —— 官方行政边界：`02_空间数据集/行政区划_官方/`（市域县级 14 县区 + 村社区 1682 + SSX 聚合 113 街办含 16 街办口径·WGS84·源自用户提供 shp）
+│       —— presets 注册：admin_street（113 街办）/ admin_community（1682·94MB reference_only 只引用）/ admin_county（14 县区）
+│       —— 消费链路：geo_registry/range_selector → zonal/密度/落图（12345/体检/项目均可用街办 zonal）
+│       —— 关联：街办≠道路（SSX 行政级）·16 街办口径对齐表（CB23-16街办口径对齐表）·街道→街办术语统一
 │     · 出口抽象层（立项根本目标）：docs/catch-ball/discuss/EMC-出口抽象层架构讨论_2026-08-03.md（专业+通俗）
 │       —— 三铁律 / 软指标可信性缺口 / 出口卡片 / 案例深挖（官方资料·可量化/可感知/可评价三类）
 │     · 出向知识库（出口卡片组装数据源）：ai_qa/outlet_kb/ — 7 契约 + 21 指标映射（官方三类）+ 5 案例
