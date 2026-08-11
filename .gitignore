@@ -51,3 +51,6 @@ node_modules/
 signup_page.yml
 package.json
 package-lock.json
+
+# 0819 PDF 提取的分布图位图（不入库·本地分析用·PDF 源在 OneDrive）
+docs/urban-renewal-plan/_raw/
