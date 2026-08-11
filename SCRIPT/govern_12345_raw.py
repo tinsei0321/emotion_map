@@ -43,7 +43,8 @@ TYPE_RULE = {
 # ── 情绪 5 级映射（结合诉求类型 + 内容关键词·对齐 EMC L2 枚举）──
 # score 按 _score_to_polarity 分档：Very Negative=0.1/Negative=0.3/Neutral=0.5/Positive=0.7/Very Positive=0.9
 NEG_HARD = ['强烈', '严重', '紧急', '尽快', '马上', '危险', '扰民严重', '无法', '投诉强烈']
-POS_SOFT = ['建议', '期盼', '希望', '期待', '表扬', '点赞', '感谢', '满意']
+# Codex P2-5：去「建议」自指（建议类标题/内容必含「建议」→ 全升 Positive 偏离默认 Neutral 意图）·语气词=真正正面
+POS_SOFT = ['期盼', '希望', '期待', '点赞', '感谢', '满意']
 
 
 def map_polarity(type_, title='', content=''):
@@ -104,6 +105,31 @@ def extract_place(content):
     return ''
 
 
+
+
+# ── 地点清洗（Codex 审计 P1：去口语前缀 + 门牌/楼栋降级）──
+_PREFIX_STRIP = re.compile(r'^(?:我是|上到|反映|位于|来电|接到|本人|关于|咨询|进入|旁边|在|于|因|反映人|来电人|诉求人|居住在|住在|靠近|围绕|经过|途径|走到|到|去|在附近|住在)')
+_MENPAI = re.compile(r'\d+号(?:院|楼|房)?')
+_LOUDONG = re.compile(r'\d+[号楼栋]')
+
+
+def clean_place(place, conf):
+    """地点清洗：剥离口语前缀 + 门牌/楼栋降级到小区/道路/街办级·重算 confidence。"""
+    if not place:
+        return place, conf
+    p = str(place)
+    # ① 剥口语前缀（锚定地名起点）
+    p = _PREFIX_STRIP.sub('', p).strip()
+    # ② 门牌降级：西陵区二马路55号 → 西陵区二马路
+    p = _MENPAI.sub('', p).strip('，。、 ')
+    # ③ 楼栋降级：龙盘湖世纪山水九号楼 → 龙盘湖世纪山水
+    p = _LOUDONG.sub('', p).strip('，。、 ')
+    # ④ 空后重算 conf
+    if not p:
+        return '', ''
+    return p, conf
+
+
 def infer_place(row):
     """地点三级推断：内容地点词 → 主办部门街办 → 区域。返回 (place, source, conf)。"""
     content = str(row.get('诉求内容', '')) or ''
@@ -113,7 +139,10 @@ def infer_place(row):
     phit = extract_place(content)
     if phit:
         conf = 'high' if re.match(r'.*(?:区|市)', phit) else 'medium'
-        return phit, 'content', conf
+        phit_c, conf_c = clean_place(phit, conf)
+        if phit_c:
+            return phit_c, 'content', conf_c
+        return '', 'empty', ''
     # ② 主办部门街办（西陵区云集街办）
     m2 = re.search(r'([\u4e00-\u9fa5]{2,4}(?:区|市)[\u4e00-\u9fa5]{2,6}(?:街办|街道|镇))', office)
     if m2:
@@ -200,7 +229,11 @@ def main():
     t2['region_scope'] = out['region_scope']
     t2['lon'] = ''
     t2['lat'] = ''
-    t2['emotion_aspect'] = df['诉求类型'].map(TYPE_RULE).fillna('其它')
+    # Codex P2-6：emotion_aspect 补「期盼」——建议类内容含 期盼/希望/期待 → 期盼（_followupCue/_keywordRank 层消费·不造 5 级）
+    _aspect = df['诉求类型'].map(TYPE_RULE).fillna('其它')
+    _qiwang = df.apply(lambda r: ('建议' == _aspect.iloc[r.name] and any(
+        k in str(r['诉求内容']) for k in ('期盼', '希望', '期待'))), axis=1)
+    t2['emotion_aspect'] = _aspect.mask(_qiwang, '期盼')
     t2['source'] = '2024年12345投诉数据_raw'
     t2.to_csv(os.path.join(OUT, '12345_情绪地图中转版.csv'), index=False, encoding='utf-8-sig')
     print(f"[OK] 情绪地图中转版 {len(t2)} 行·落 {OUT}")
