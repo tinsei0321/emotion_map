@@ -1,6 +1,6 @@
 # CB Journal（Catch-Ball 轨迹）
 
-> 我方（claude组：Claude Code + DeepSeek/GLM 5.2）与第三方评价（Codex + glm组：ZCode + GLM 5.2）的多轮 catch-ball 对话轨迹。
+> 我方（claude组：Claude Code + DeepSeek/GLM 5.2）与第三方评价（Codex + zcode组：ZCode + GLM 5.2·2026-08-11 由 glm组 更名）的多轮 catch-ball 对话轨迹。
 > 按轮**倒序**（最新在顶·CB-NN 大→小·便于看最新进展；不覆写）。新轮次写在文件顶部。
 > 每轮四节：① SCAN 摘要 ② 我方反评价 ③ 行动 ④ 状态/新发现。
 

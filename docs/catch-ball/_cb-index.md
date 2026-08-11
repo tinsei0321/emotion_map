@@ -1,6 +1,6 @@
 # CB Index — Catch-Ball 统一入口
 
-> **读我**：claude组（Claude Code 开发主）+ Codex + glm组（ZCode + GLM 5.2）启动时读此文件，了解 CB 全貌。
+> **读我**：claude组（Claude Code 开发主）+ Codex + zcode组（ZCode + GLM 5.2·2026-08-11 由 glm组 正式更名）启动时读此文件，了解 CB 全貌。
 > **维护**：每轮 CB 完成后更新。最后更新：2026-08-11（CB-23 两板块风险前置验证发起·阶段 1' 前·紧急任务）。
 
 ---
@@ -11,7 +11,7 @@
 |------|:---:|
 | **当前 CB 轮次** | **CB-23 · 紧急任务两板块·阶段 1' 风险前置验证**（zonal 指标数值聚合 ✅ + 面层质心化 hotspot ⚠️ + 街道边界缺失 ⚠️·4 焦点待两组评估） |
 | **上一轮** | CB-22i 追问标记崩溃根因修复（.slice bug·完整链路实测通过·commit a27c0e2e） |
-| **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **glm组（ZCode + GLM 5.2·评估）** |
+| **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **zcode组（ZCode + GLM 5.2·评估·2026-08-11 由 glm组 更名）** |
 | **当前分支** | `main`（b4cb7a9d 阶段 0' 对接层已提交·待 push） |
 | **最新讨论** | `discuss/CB23-两板块风险前置验证_讨论发起_2026-08-11.md`（真实体检数据实测证据 + 4 焦点） |
 | **最新进展** | 阶段 0' 对接层落地（DATA/exchange 三分法/PII 例外/MOD_CHECKUP/口径对齐）→ **风险前置三验证**：① zonal `agg_cols=['停车泊']`→`停车泊_mean` ✅ 零改动 ② hotspot 常数权重=1→Gi_Z NaN 静默退化·稀疏点层显著性弱（126 点全 ns）⚠️ ③ `admin_street` 街道边界缺失·社区层全省 1682 非宜昌 61 ⚠️ → **CB-23 发起·待两组评估 4 焦点** |
