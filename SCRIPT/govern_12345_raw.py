@@ -267,6 +267,14 @@ def main():
     t2['source'] = '2024年12345投诉数据_raw'
     t2.to_csv(os.path.join(OUT, '12345_情绪地图中转版.csv'), index=False, encoding='utf-8-sig')
     print(f"[OK] 情绪地图中转版 {len(t2)} 行·落 {OUT}")
+    # CB-23 流程缺口修复：治理重跑会清空 geocode 回填的 lon/lat → 末尾自动回填（防丢坐标）
+    try:
+        import subprocess
+        _b = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backfill_12345_geocode.py')],
+                            capture_output=True, text=True, timeout=120)
+        print(_b.stdout.strip().split('\n')[-1] if _b.stdout else '[OK] 自动回填 geocode')
+    except Exception as e:
+        print(f"[WARN] 自动回填 geocode 失败（可手动跑 backfill_12345_geocode.py）: {e}")
 
 
 if __name__ == '__main__':
