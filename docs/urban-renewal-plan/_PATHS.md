@@ -1,6 +1,6 @@
-# 三环境路径配置表（办公室 / 家庭 / 本机开发）
+# 环境路径配置表（办公室 / 家庭）
 
-> **用途**：G 盘原始资料在办公室/家庭/本机开发三环境引用路径管理。
+> **用途**：原始资料（城市更新/城市体检专题）在各环境引用路径管理。
 > **核心**：用 `{URENEWAL_ROOT}` 占位（本表顶部定义），任何文档引用 G 盘一律占位符 + 相对路径，禁硬编码盘符绝对路径。
 
 ---
@@ -8,14 +8,11 @@
 ## 一、URENEWAL_ROOT 定义
 
 ```markdown
-# 办公室
-URENEWAL_ROOT = G:\OneDrive\2026\15_城市更新专项规划研究
+# 办公室（2026-08-11 更新：D:\ 替代 G:\）
+URENEWAL_ROOT = D:\OneDrive\2026\15_城市更新专项规划研究
 
 # 家庭（2026-08-09 已配置）
 URENEWAL_ROOT = C:\Users\Hi\OneDrive\2026\15_城市更新专项规划研究
-
-# 本机·开发环境（2026-08-11 已配置·当前机器）
-URENEWAL_ROOT = D:\OneDrive\2026\15_城市更新专项规划研究
 ```
 
 ## 二、回家步骤（4 步）
@@ -25,7 +22,7 @@ URENEWAL_ROOT = D:\OneDrive\2026\15_城市更新专项规划研究
 3. **跑校验命令**（PowerShell）：
 
 ```powershell
-# 校验 G 盘资料库可访问
+# 校验资料库可访问
 Test-Path "$env:URENEWAL_ROOT"   # 应返回 True
 (Get-ChildItem "$env:URENEWAL_ROOT" -Recurse -File).Count   # 应 ≈ 875
 ```
@@ -39,7 +36,7 @@ Test-Path "$env:URENEWAL_ROOT"   # 应返回 True
 
 ## 三、OneDrive 物化提醒（重要）
 
-G 盘 900+ 文件多为 OneDrive **云端占位**（不占本地）。批量读取会触发按需下载（失败则文件为空/0 字节）。
+资料库 900+ 文件多为 OneDrive **云端占位**（不占本地）。批量读取会触发按需下载（失败则文件为空/0 字节）。
 **回家前**确认以下核心目录「**始终保留在此设备**」（右键 → 始终保留在此设备）：
 
 - `0 城市更新_城市体检上位资料/部委文件/` + `政策文件/`（docx 文本）
@@ -52,11 +49,10 @@ G 盘 900+ 文件多为 OneDrive **云端占位**（不占本地）。批量读�
 
 | 环境 | 挂载 | URENEWAL_ROOT |
 |---|---|---|
-| 办公室 | `G:\` | `G:\OneDrive\2026\15_城市更新专项规划研究` |
+| 办公室 | `D:\OneDrive\` | `D:\OneDrive\2026\15_城市更新专项规划研究` |
 | 家庭 | `C:\Users\Hi\` | `C:\Users\Hi\OneDrive\2026\15_城市更新专项规划研究` |
-| 本机·开发（当前） | `D:\OneDrive\` | `D:\OneDrive\2026\15_城市更新专项规划研究` |
 
-> 若家里 OneDrive 路径不含 "2026" 或结构不同，更新后同步改 `_INDEX.md` 全部 `{URENEWAL_ROOT}` 引用。
+> 办公室与家庭 OneDrive 路径若结构不同，更新后同步改 `_INDEX.md` 全部 `{URENEWAL_ROOT}` 引用。
 
 ## 五、提交纪律
 
