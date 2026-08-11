@@ -17,6 +17,9 @@ import pandas as pd
 
 sys.stdout.reconfigure(encoding='utf-8')
 
+# CB-23 P1-2：cross_region 标记需 core.range_selector·加项目根到 sys.path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 ZX = r"D:/OneDrive/2026/15_城市更新专项规划研究/1 宜昌市城市体检/EMC数据中转站/06_主观数据治理"
 RAW_CSV = os.path.join(ZX, '12345_情绪地图中转版.csv')
 CACHE = os.path.join(ZX, '12345_geocode_cache.json')
@@ -25,6 +28,9 @@ CACHE = os.path.join(ZX, '12345_geocode_cache.json')
 def main():
     cache = json.load(open(CACHE, encoding='utf-8'))
     df = pd.read_csv(RAW_CSV, encoding='utf-8-sig')
+    # CB-23 P1-2（Codex）：cross_region 列——region 与坐标不一致（中心城区行坐标落在中心城区 4 区面外）·不参与中心城区密度面·保留区域统计
+    if 'cross_region' not in df.columns:
+        df['cross_region'] = 0
     # 坐标索引：place_name → (lon,lat)·REGION:区 → 区质心
     loc = {}
     for k, v in cache.items():
@@ -72,9 +78,26 @@ def main():
                 df.at[i, 'lat'] = loc[str(r['place_name'])][1]
                 df.at[i, 'geocode_status'] = 'region'
                 filled += 1
+    # CB-23 P1-2（Codex）：cross_region 标记——中心城区行坐标落在官方中心城区 4 区面外 → 标 1（密度面剔除·区域统计保留）
+    try:
+        import geopandas as gpd
+        from core.range_selector import load_preset
+        _county = load_preset('admin_county')['geojson']
+        _polys = gpd.GeoDataFrame.from_features(_county['features'], crs='EPSG:4326')
+        _central_faces = _polys[_polys['MC'].isin(['西陵区', '伍家岗区', '点军区', '猇亭区'])].geometry.unary_union
+        _cen = df[(df['region_scope'] == '中心城区') & (df['lon'].notna())].copy()
+        if len(_cen):
+            _pts = gpd.GeoDataFrame(_cen, geometry=gpd.points_from_xy(_cen['lon'], _cen['lat']), crs='EPSG:4326')
+            _inside = _pts.geometry.within(_central_faces)
+            _cross_idx = _cen[~_inside].index
+            df.loc[_cross_idx, 'cross_region'] = 1
+    except Exception as _e:
+        print(f"[WARN] cross_region 标记失败: {_e}")
     df.to_csv(RAW_CSV, index=False, encoding='utf-8-sig')
     print(f"[OK] 回填 {filled}/{len(df)} 行 lon/lat·落 {RAW_CSV}")
     print("geocode_status 分布:", df['geocode_status'].value_counts().to_dict())
+    if 'cross_region' in df.columns:
+        print("cross_region 分布:", df['cross_region'].value_counts().to_dict())
 
 
 if __name__ == '__main__':
