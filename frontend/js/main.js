@@ -119,13 +119,15 @@ async function runImport(files) {
           // E3 srcId 去重：同文件重复上传 → 复用（不堆叠）；异名同内容 → 关联提示
           const contentSig = toolContentSig(fc);
           const srcSig = `${base}|${contentSig}`;
-          const _existSame = _srcIndex.get(srcSig);
+          // CB-23 2026-08-12：索引查询校验层存活——层被删除后索引残留致"删掉重载提示已加载过"（层已删·选中失败）
+          const alive = (ids) => (ids || []).filter((id) => getLayers().some((l) => l.id === id));
+          const _existSame = alive(_srcIndex.get(srcSig));
           if (_existSame && _existSame.length) {
             selectLayer(_existSame[0]);
             toast.info(`${base} 已加载过，已为你选中（不再重复添加）`);
             continue;
           }
-          const _existContent = _contentIndex.get(contentSig);
+          const _existContent = alive(_contentIndex.get(contentSig));
           if (_existContent && _existContent.length) {
             const _dup = getLayers().find((l) => l.id === _existContent[0]);
             if (_dup) toast.info(`${base} 与已加载的「${_dup.name}」内容相同，已关联`);
