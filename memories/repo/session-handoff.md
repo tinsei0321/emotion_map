@@ -75,7 +75,7 @@
 
 ## 红线 / 纪律（下会话守）
 
-- **承重**：diagnose prompt / harness orchestrate 主循环 / ChatRequest schema / `@track()` 签名 / `_TRACKING_REGISTRY` 格式 / finalStep D019 极瘦 / **CLAUDE.md 铁律 7（片区=结论·分析不预设片区）**
+- **承重**：diagnose prompt / harness orchestrate 主循环 / ChatRequest schema / `@track()` 签名 / `_TRACKING_REGISTRY` 格式 / finalStep D019 极瘦 / **CLAUDE.md 铁律 7（片区=结论·分析不预设片区）** / **两板块=结论（2026-08-12 用户明确·与铁律 7 同构）：两板块+片区=分析后总结的结论性内容·分析过程不出现（双轨密度/EMC 不消费 board·不按板块过滤）·分类对标=治理标注+结论组织框架·三层各归其位**
 - **数据源**：中转站真实数据·sim 禁入·gdb 只读（用户明确·勿动）
 - **不造轮子**：复用 create_square_grid/aggregate_by_polygons/hot_spot_analysis/geo_registry/rag_index
 - **追踪编号连续**：新增公开函数 `register_track_id`·先 grep 全仓取最大 +1
