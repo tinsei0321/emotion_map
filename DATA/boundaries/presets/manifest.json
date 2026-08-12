@@ -197,10 +197,10 @@
    },
    {
     "id": "checkup_cfg_community",
-    "label": "体检配置-社区（193·拼合·聚合口径）",
+    "label": "体检配置-社区（174·去村·聚合边界）",
     "file": "checkup_配置_社区.geojson",
     "nameField": "SQMC",
-    "note": "配置数据库社区·两板块占比分析新聚合单位（替代街办 SSX·用户明确）"
+    "note": "配置数据库社区 2025+2026 拼合·去 19 村·城市社区 174·聚合口径（zonal 边界）"
    },
    {
     "id": "checkup_cfg_community_bld",
@@ -215,6 +215,13 @@
     "file": "checkup_配置_楼栋.geojson",
     "nameField": "LDMC",
     "note": "配置数据库楼栋·26k 要素·加载较慢·控件对象可对楼栋"
+   },
+   {
+    "id": "checkup_cfg_community174",
+    "label": "体检-社区174（去村·聚合用）",
+    "file": "checkup_配置_社区174.geojson",
+    "nameField": "社区",
+    "note": "聚合边界 174 城市社区（去 19 村·zonal/面积统计用）"
    }
   ]
  }
