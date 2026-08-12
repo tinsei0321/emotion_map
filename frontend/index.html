@@ -7,14 +7,14 @@
 
   <!-- Design tokens (single source, generated from design/tokens.json `geojson` section) -->
   <link rel="stylesheet" href="css/tokens.css" />
-  <!-- MapLibre GL JS (CDN; if blocked, vendor locally under assets/) -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.css" />
-  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.2.0/dist/maplibre-gl.js"></script>
+  <!-- MapLibre GL JS（2026-08-12 本地化 vendor·CDN jsdelivr 不通致页面白屏·npmmirror 源） -->
+  <link rel="stylesheet" href="vendor/maplibre-gl.css" />
+  <script src="vendor/maplibre-gl.js"></script>
 
-  <!-- deck.gl（废弃：ScreengridLayer 热点图·本仓实测在 MapLibre+MapboxOverlay 不渲染·CDN 保留待清理·勿再用于 3D 渲染） -->
-  <script src="https://unpkg.com/deck.gl@9.1.0/dist.min.js"></script>
-  <script src="https://unpkg.com/@deck.gl/aggregation-layers@9.1.0/dist.min.js"></script>
-  <script src="https://unpkg.com/@deck.gl/mapbox@9.1.0/dist.min.js"></script>
+  <!-- deck.gl（本地化 vendor·npmmirror 源·废弃注释保留：ScreengridLayer 热点图在 MapLibre+MapboxOverlay 不渲染·勿用于 3D） -->
+  <script src="vendor/deck.gl.min.js"></script>
+  <script src="vendor/deck-aggregation-layers.min.js"></script>
+  <script src="vendor/deck-mapbox.min.js"></script>
 
   <!-- App styles -->
   <link rel="stylesheet" href="css/layout.css" />
@@ -1198,19 +1198,18 @@
 
   <!-- EMC（EmotionMap Copilot）已迁入 #left-panel 下半区 #emc-panel（见 #app-main 内）；旧底部抽屉/触发钮已移除 -->
 
-  <!-- marked：AI 回答 markdown 渲染（CDN 单脚本；不可用时前端退纯文本） -->
-  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <!-- marked：AI 回答 markdown 渲染（2026-08-12 本地化 vendor·npmmirror 源） -->
+  <script src="vendor/marked-12.min.js"></script>
 
-  <!-- Chart.js：EMC 答案内图表（{{chart:TYPE|...}} → canvas）。不可用时 _renderCharts 静默退文本 -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <!-- Chart.js：EMC 答案内图表（{{chart:TYPE|...}} → canvas）。本地化 vendor -->
+  <script src="vendor/chart-4.min.js"></script>
 
-  <!-- Parser libs (UMD globals; used on-demand by import.js). jsdelivr works in CN.
-       If a CDN becomes unreachable, vendor these under frontend/vendor/ and point here. -->
-  <script src="https://cdn.jsdelivr.net/npm/csv2geojson@5.1.2/csv2geojson.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/shpjs@4.0.4/dist/shp.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/proj4@2.11.0/dist/proj4.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+  <!-- Parser libs (UMD globals; used on-demand by import.js). 2026-08-12 全部本地化 vendor（CDN 不通） -->
+  <script src="vendor/csv2geojson.min.js"></script>
+  <script src="vendor/shpjs.min.js"></script>
+  <script src="vendor/proj4.min.js"></script>
+  <script src="vendor/fflate.min.js"></script>
+  <script src="vendor/topojson-client.min.js"></script>
   <!-- KML/GPX（@tmcw/togeojson）、CSV WKT 列（wellknown）、编码折线（@mapbox/polyline）
        均无可靠 UMD 构建，由 import.js 走 esm.sh 动态 ESM import（按需）。 -->
 
