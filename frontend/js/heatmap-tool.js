@@ -463,8 +463,8 @@ function constrainPolarityOptions(dlg, level, analysis) {
   else if (analysis === 'negative') locked = 'N';
   else if (analysis === 'neutral') locked = 'O';
   else if (tier === 'overall') {
-    // 总体（地形/占位）：始终综合，不可选（2D 彩虹不区分极性）
-    locked = 'ALL';
+    // 总体（地形/占位）：L2 锁综合（2D 彩虹不区分极性）；L1（12345 投诉点·CB-23）允许极性可选（橙色 L1 ramp·点集过滤）
+    locked = level === 'L2' ? 'ALL' : null;
   }
 
   if (locked) {
