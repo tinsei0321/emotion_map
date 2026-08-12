@@ -473,8 +473,8 @@ function constrainPolarityOptions(dlg, level, analysis) {
     sel.disabled = true;   // 锁死（值固定，不可切换）
     return;
   }
-  // 类型细分但未命中 locked（理论上不出现）：非 L2 仅综合
-  if (level !== 'L2') { allOff('ALL'); sel.value = 'ALL'; sel.disabled = false; return; }
+  // CB-23 2026-08-12：非 L2（L1 12345 投诉点等）也允许极性可选——点集过滤在生成处（橙色 L1 ramp 不变·深浅表达强度）
+  if (level !== 'L2') { allOn(); sel.disabled = false; return; }
   allOn();
   sel.disabled = false;
 }
@@ -719,7 +719,13 @@ function generateHeatmap(btn) {
   }
 
   const beforeN = (resolved.fc && resolved.fc.features ? resolved.fc.features.length : 0);
-  const fc = filterFc(resolved.fc, selectedTypes, intensityMin);
+  let fc = filterFc(resolved.fc, selectedTypes, intensityMin);
+  // CB-23 2026-08-12：非 L2 极性过滤（L1 12345 投诉点·橙色 L1 ramp 不变·仅点集过滤·P/N/O/NO）
+  if (level !== 'L2' && polarity && polarity !== 'ALL') {
+    const keep = { P: ['Positive', 'Very Positive'], N: ['Negative', 'Very Negative'], O: ['Neutral'],
+                   NO: ['Neutral', 'Negative', 'Very Negative'] }[polarity];
+    if (keep) fc = { ...fc, features: fc.features.filter((f) => keep.includes((f.properties || {}).polarity)) };
+  }
   // 调试日志：让用户在 DevTools 看到实际过滤效果（小类→落图）
   // eslint-disable-next-line no-console
   console.info('[HeatMap] filter', {
