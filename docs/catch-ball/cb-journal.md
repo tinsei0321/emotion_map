@@ -4,6 +4,29 @@
 > 按轮**倒序**（最新在顶·CB-NN 大→小·便于看最新进展；不覆写）。新轮次写在文件顶部。
 > 每轮四节：① SCAN 摘要 ② 我方反评价 ③ 行动 ④ 状态/新发现。
 
+## CB-23 · 2026-08-12（两批前端改动评估：12345 L1 强度分析 + range 组放开钉底）
+
+### ① 背景
+
+用户转人工分析工作流·按需求连续改两批（用户明确「每次修改要进 CB」纪律·本批补 CB）。
+
+### ② 两组评估
+
+- **Codex**：批1（12345 L1 强度分析）4 项核验通过（preferConfidence 仅 l1 标记层·L2 零误伤·L1/L2 路径三层隔离·NO 选项 L2 锁 ALL 禁用·l1_confidence 复制列可接受）·**批2 发现 P1：applyGroupOrder 的 PINNED 仍含 range（state.js:960）——拖动被拉回·放开钉底未真正生效**（三处保底矛盾：299 注释/387 sidebar 写放开·960 PINNED 未改）
+- **zcode**：批1 3 要点全过 + 1 确认项（l1_confidence 是否在 preset GeoJSON——已被 Playwright 验证覆盖：L1 加载成功=confidence 命中）·**批2 独立发现同一 P1**（PINNED 可能重置）
+
+### ③ 行动
+
+- [x] **P1 修复**：state.js PINNED `['range','ai']` → `['ai']`（三处保底一致：reorderGroupSegment/sidebar/PINNED 全只钉 ai）·语法通过
+- [x] 批1 全链路验证（Playwright）：L1 单层加载 · hm-level L1 默认 · hm-subset 5 项可选（含 NO）· 橙色 L1 ramp
+- [x] 补 commit 遗漏文档（讨论/评估/交付系列）
+
+### ④ 状态
+
+`closed`——P1 修复 + 批1 验证闭环·用户可实测 range 拖拽（拖「范围边界」组卡到分析层上方·边界压图）。**纪律：每次修改进 CB（已记）**。
+
+---
+
 ## CB-23 · 2026-08-12（分析图层工具对齐修复 · 用户人工验证反馈 + 两组评估）
 
 ### ① 用户反馈与根因
