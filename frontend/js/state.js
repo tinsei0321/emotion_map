@@ -957,8 +957,8 @@ export function applyGroupOrder() {
       return _layerPolarityRank(la) - _layerPolarityRank(lb);     // 综合<积极<中性<消极 末键
     });
   }
-  // 钉底：range 恒在 ai（AI 工作区）之上，二者为最末两组（用户要求「恒定」；与 renderLayerList 显示钉底一致）。
-  const PINNED = ['range', 'ai'];
+  // 钉底：仅 ai（AI 工作区）恒最末；range 可拖（CB-23 2026-08-12：用户需范围边界压分析图上面·Codex P1：PINNED 曾含 range 致拖动被 applyGroupOrder 拉回）
+  const PINNED = ['ai'];
   const desired = [];
   const used = new Set();
   for (const cat of _groupOrder) {
