@@ -227,10 +227,13 @@ function populateSources(srcs, level) {
   const opts = [];
   for (const s of pool) {
     // 无时间标签（12345/体检等非 T1-T3 数据·CB-23 2026-08-12）→ 统一「综合」·否则按时间分组
+    // Codex P1 修：seen 去重键 = 时间|源标识（多无时间源各自可选·label 加源名区分）
     const t = deriveTimeTag(s.fc) || '综合';
-    if (seen.has(t)) continue;
-    seen.add(t);
-    opts.push(`<option value="${s.value}">${TIME_LABEL[t] || t}</option>`);
+    const key = `${t}|${s.value}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const label = t === '综合' ? `综合·${s.srcName || s.label}` : (TIME_LABEL[t] || t);
+    opts.push(`<option value="${s.value}">${label}</option>`);
   }
   sel.innerHTML = opts.length ? opts.join('')
     : `<option value="" disabled>（${level || '该层级'}无情绪点数据，先导入 ${level || 'L1/L2'} 数据）</option>`;
