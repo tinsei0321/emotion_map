@@ -4,6 +4,32 @@
 > 按轮**倒序**（最新在顶·CB-NN 大→小·便于看最新进展；不覆写）。新轮次写在文件顶部。
 > 每轮四节：① SCAN 摘要 ② 我方反评价 ③ 行动 ④ 状态/新发现。
 
+## CB-23 · 2026-08-12（分析图层工具对齐修复 · 用户人工验证反馈 + 两组评估）
+
+### ① 用户反馈与根因
+
+**用户人工验证**：生成的图层几乎全不可用——要素数据错乱（点/线/面与按钮不对齐）+ 分析内容不理想 → **后续分析用户人工做**·我备数据+对齐要素按钮+对齐热力图/grid（用户主要工具）。
+**根因 3 处**：① range-presets.js 硬编码 `kind:'polygon'`（点层被当面·渲染错乱·collectSources 过滤不进工具）② grid-tool populateSources 按 deriveTimeTag 过滤（12345 无 time_label → 空）③ 图层属性缺工具列（无 score/emotion_intensity 权重·控件层丢原始属性）。
+**修复**：① 几何分流 + detectColorMode 极性拆分（l2-* 三子层 + group·与 main.js 导入同结构·灰点参考层）② 无时间归「综合」③ 4 层重导出（补 score/emotion_intensity/_value + 保留标准地/存在问原始属性）。
+
+### ② 两组评估
+
+- **Codex**：修复达标·1 项 **P1**（grid 多无时间源 seen 去重只留第一个·需 `${t}|${s.value}` 键 + label 源名）+ 2 项 P2（heatmap 单源·zonal 源列表）·结构一致 ✓ detectColorMode 副作用合理 ✓
+- **zcode**：3 agree + 1 partial（buffer-tool 需确认·已确认无遗漏：BUFFERABLE 全几何不依赖情绪层）·2 验证项（buffer 数据源 ✓·双无时间源场景）
+
+### ③ 行动
+
+- [x] P1 修复（seen 键=时间|源标识·label 加源名）·Playwright 验证 label「综合·范围·12345投诉点」✓
+- [x] buffer-tool 确认（BUFFERABLE·全几何·无遗漏）
+- [x] Playwright 双源验证：12345 三子层 ✓ + 小区控件灰点参考层 ✓（needsAnalysis 不进工具=设计意图）
+- [x] 用户验证路径：Range 加载 12345 → Toolbox 热力图（L2·emotion_intensity 权重）·网格（综合）——聚集分析直接可用
+
+### ④ 状态
+
+`closed`——P1 修复 + 验证完成·主工具（热力图/grid）对齐 preset 点层·用户可人工分析。P2 观察（heatmap 多同 level 源单源·zonal 控件层缺口聚合）记录待后续。
+
+---
+
 ## CB-23 · 2026-08-12（前端依赖全本地化 · 紧急修复 + 两组评估）
 
 ### ① 故障与修复
