@@ -187,6 +187,34 @@
     "file": "checkup_qty_民生_物业街面.geojson",
     "nameField": "指标",
     "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）"
+   },
+   {
+    "id": "checkup_cfg_street",
+    "label": "体检配置-街办（22·拼合）",
+    "file": "checkup_配置_街道.geojson",
+    "nameField": "JDMC",
+    "note": "配置数据库 2025+2026 拼合·全覆盖"
+   },
+   {
+    "id": "checkup_cfg_community",
+    "label": "体检配置-社区（193·拼合·聚合口径）",
+    "file": "checkup_配置_社区.geojson",
+    "nameField": "SQMC",
+    "note": "配置数据库社区·两板块占比分析新聚合单位（替代街办 SSX·用户明确）"
+   },
+   {
+    "id": "checkup_cfg_community_bld",
+    "label": "体检配置-小区（1562）",
+    "file": "checkup_配置_小区.geojson",
+    "nameField": "XQMC",
+    "note": "配置数据库小区"
+   },
+   {
+    "id": "checkup_cfg_building",
+    "label": "体检配置-楼栋（26426·大文件）",
+    "file": "checkup_配置_楼栋.geojson",
+    "nameField": "LDMC",
+    "note": "配置数据库楼栋·26k 要素·加载较慢·控件对象可对楼栋"
    }
   ]
  }
