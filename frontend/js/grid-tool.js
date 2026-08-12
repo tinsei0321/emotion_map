@@ -213,46 +213,26 @@ function renderAnalysisCards(dlg) {
   }).join('');
 }
 
-function populateSources(srcs, level) {
-  const sel = document.getElementById('grid-source');
-  if (!sel) return;
-  // 时间下拉（需求1/7）：去庞杂 layer 名 → 干净的 T1/T2/T3。
-  // L2 优先 group（综合）；L1 无 group → 用该 level 全部单点层（修 L1 下拉空 bug）。
-  // 极性不在此选（数据源含各极性）；极性由 #grid-polarity 选 → 渲染 _grid_n_* 字段。
-  const TIME_LABEL = {
-    T1: 'T1 · 春节·二马路开街', T2: 'T2 · 暑假·年轻人涌入', T3: 'T3 · 五一·大南门文旅',
-  };
-  const pool0 = level ? srcs.filter((s) => s.level === level) : srcs;
-  const groups = pool0.filter((s) => String(s.value).startsWith('group:'));
-  const pool = groups.length ? groups : pool0;   // 有 group 用 group（L2 综合），否则用全部（L1 单点层）
-  const seen = new Set();
-  const opts = [];
-  for (const s of pool) {
-    // 无时间标签（12345/体检等非 T1-T3 数据·CB-23 2026-08-12）→ 统一「综合」·否则按时间分组
-    // Codex P1 修：seen 去重键 = 时间|源标识（多无时间源各自可选·label 加源名区分）
-    const t = deriveTimeTag(s.fc) || '综合';
-    const key = `${t}|${s.value}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const label = t === '综合' ? `综合·${s.srcName || s.label}` : (TIME_LABEL[t] || t);
-    opts.push(`<option value="${s.value}">${label}</option>`);
-  }
-  sel.innerHTML = opts.length ? opts.join('')
-    : `<option value="" disabled>（${level || '该层级'}无情绪点数据，先导入 ${level || 'L1/L2'} 数据）</option>`;
+/** 从源 value（layer:xxx/group:xxx）推导层级（CB-23：②数据选择直接列源·level 隐含）。 */
+function levelOfSource(val) {
+  if (!val) return 'L0';
+  if (String(val).startsWith('group:')) return 'L2';
+  const l = getLayer(String(val).replace('layer:', ''));
+  const cm = l && l.colorMode;
+  if (cm === 'confidence') return 'L1';
+  if (cm === 'l2-positive' || cm === 'l2-negative' || cm === 'l2-neutral' || cm === 'polarity') return 'L2';
+  return 'L0';
 }
 
-function constrainLevelOptions(srcs) {
+/** ②数据选择：直接列 Layers 全部点数据源（L0~Ln·label 带层级前缀）·不再按层级/时间分组（CB-23 用户需求）。 */
+function populateDataSelect(srcs) {
   const sel = document.getElementById('grid-level');
   if (!sel) return;
-  const present = new Set(srcs.map((s) => s.level));
-  const FIXED = ['L0', 'L1', 'L2', 'L3', 'L4'];   // L0 加入（CB-23：量化点层等无情绪列数据可 grid）
-  let firstAvailable = null;
-  sel.innerHTML = FIXED.map((lv) => {
-    const has = present.has(lv);
-    if (has && !firstAvailable) firstAvailable = lv;
-    return `<option value="${lv}" ${has ? '' : 'disabled'}>${lv}${has ? '' : '（无数据）'}</option>`;
-  }).join('');
-  sel.value = firstAvailable || 'L1';
+  const cur = sel.value;
+  sel.innerHTML = srcs.length
+    ? srcs.map((s) => `<option value="${s.value}">${s.level} · ${s.label}</option>`).join('')
+    : `<option value="" disabled>（无点数据·请先加载点层）</option>`;
+  if (cur && [...sel.options].some((o) => o.value === cur)) sel.value = cur;
 }
 
 function populatePolygonLayers() {
@@ -328,10 +308,11 @@ function applyParams(dlg, p) {
 }
 
 function readParams(dlg) {
+  const selVal = dlg.querySelector('#grid-level').value;
   return {
     analysis: selectedAnalysis(dlg),
-    level: dlg.querySelector('#grid-level').value,
-    source: dlg.querySelector('#grid-source').value,
+    level: levelOfSource(selVal),   // ②数据选择（源）→ 推导层级（CB-23）
+    source: selVal,
     cellSize: Number(dlg.querySelector('#grid-cell-num').value) || DEFAULTS.cellSize,
     polygonLayer: dlg.querySelector('#grid-polygon-layer').value,
     nameCol: dlg.querySelector('#grid-name-col').value,
@@ -353,18 +334,17 @@ export function openGridDialog(layerId, preset = null) {
   }
   renderAnalysisCards(dlg);
   const srcs = collectSources();
-  constrainLevelOptions(srcs);          // 设 L1-L4 选项 + firstAvailable 默认选中
+  populateDataSelect(srcs);             // ②数据选择：直接列全部点数据源（L0~Ln·CB-23）
   populatePolygonLayers();
-  if (seed && seed.level) dlg.querySelector('#grid-level').value = seed.level;   // 编辑态 level
+  if (seed && seed.source) dlg.querySelector('#grid-level').value = seed.source;   // 编辑态源
   // 预设范围（Range tab 按钮）：analysis 走 preset（默认 zonal）；否则 seed 或 DEFAULTS
   const params = seed || (preset ? { ...DEFAULTS, analysis: preset.analysis || 'zonal' } : DEFAULTS);
   applyParams(dlg, params);   // 回填 analysis/cell/polarity/mode/extrusion（含卡片选中态）
-  populateSources(srcs, dlg.querySelector('#grid-level').value);   // 点层按当前 level 过滤（联动递进）
 
   // 编辑态：回填点层 / 面域层（触发 name_col 填充）
   if (seed) {
-    if (seed.source && dlg.querySelector(`#grid-source option[value="${seed.source}"]`))
-      dlg.querySelector('#grid-source').value = seed.source;
+    if (seed.source && dlg.querySelector(`#grid-level option[value="${seed.source}"]`))
+      dlg.querySelector('#grid-level').value = seed.source;
     if (seed.polygonLayer && dlg.querySelector(`#grid-polygon-layer option[value="${seed.polygonLayer}"]`)) {
       dlg.querySelector('#grid-polygon-layer').value = seed.polygonLayer;
       const poly = getLayer(seed.polygonLayer);
@@ -585,9 +565,8 @@ export function initGridTool() {
     constrainParams(dlg);
   });
 
-  // ② 数据层级 → 联动递进：level 变 → 点层重新按 level 过滤 + 重置选中 → 切极性/参数/色板
+  // ② 数据选择 → 联动：换源 → 重置极性/参数/色板（CB-23：level 由源推导·不再按层级过滤）
   dlg.querySelector('#grid-level').addEventListener('change', () => {
-    populateSources(collectSources(), dlg.querySelector('#grid-level').value);
     constrainParams(dlg);
   });
 
