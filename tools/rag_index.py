@@ -252,7 +252,9 @@ def _get_model():
     global _model_cache
     if _model_cache is None:
         from sentence_transformers import SentenceTransformer
-        _model_cache = SentenceTransformer(MODEL_NAME)
+        # local_files_only=True：模型已缓存（~/.cache/huggingface/hub·92M）·禁联网检查——
+        # 否则启动时 HEAD hf-mirror.com 超时重试 5 次（~30-60s+·2026-08-12 实测）·网络不通则启动卡死
+        _model_cache = SentenceTransformer(MODEL_NAME, local_files_only=True)
     return _model_cache
 
 
