@@ -494,8 +494,9 @@ def _spawn_backend(repo_root, backend_port=8000):
     except Exception as e:
         print(f'[WARN] 后端启动失败（{e}）；前端照常，网格/缓冲/分析不可用')
         return None
-    print(f'[OK] backend uvicorn 启动中（:{backend_port}, PID {proc.pid}），等待就绪…')
-    for _ in range(60):   # ≤30s（冷启动 + geopandas 首次 import 可能慢）
+    print(f'[OK] backend uvicorn 启动中（:{backend_port}, PID {proc.pid}）…')
+    print('[WAIT] BGE RAG 模型预热中（本地嵌入模型加载·约 10-20s·同步阻塞是有意设计——启动慢换首问稳定·完成后打印 [OK] RAG 模型预热完成）…')
+    for _ in range(90):   # ≤45s（冷启动 + geopandas 首次 import + BGE 同步预热 10-20s 均可能）
         if proc.poll() is not None:
             print('[WARN] backend 进程已退出（查上方 uvicorn 输出：依赖/语法/import 错）')
             return None

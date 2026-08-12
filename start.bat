@@ -29,6 +29,8 @@ echo      Stop: press Ctrl+C in this window (stops frontend + backend)
 echo      After code edits: hard-reload browser (Ctrl+Shift+R),
 echo             check the build stamp time (bottom-right) updated.
 echo.
+echo [WAIT] 预计 20-30s 就绪（含 BGE RAG 模型同步预热~15s：启动慢是有意设计·换首问稳定）
+echo.
 echo ------------------------------------------------------------
 py frontend/serve.py 8080 --open=both
 
