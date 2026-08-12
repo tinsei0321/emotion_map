@@ -122,7 +122,8 @@
     "label": "12345投诉点（中心城区·high+medium）",
     "file": "checkup_12345_中心城区.geojson",
     "nameField": "topic",
-    "note": "3' B2 主观轨·2024 12345 中心城区 9421 点（属性 board/topic/issue_label/polarity）"
+    "note": "3' B2 主观轨·2024 12345 中心城区 9421 点（属性 board/topic/issue_label/polarity）·L1 强度分析（橙色图例·极性可选过滤）",
+    "l1": true
    },
    {
     "id": "checkup_dual_high",

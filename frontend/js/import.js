@@ -623,12 +623,14 @@ function toMultiPolygonFeature(f) {
 // Three modes: 'polarity' (L2, 5-color) | 'confidence' (L1, orange ramp) |
 // 'needsAnalysis' (grey). Decided by which columns the data carries, so L1
 // (l1_confidence, no polarity) and L2 (polarity) both color correctly.
-export function detectColorMode(pointFC) {
+export function detectColorMode(pointFC, opts = {}) {
   if (!pointFC.features.length) return { fc: pointFC, colorMode: 'polarity', needsAnalysis: false };
   const sample = pointFC.features[0].properties || {};
   // P1: 用 findKeyByRole 按角色找列（替代 pickKey+FIELD_SYNONYMS，收敛到 field_dictionary）
   // ⑤② 拆 role：score（情绪得分）与 confidence（数据置信度）分离——不再混找一个，免 conflates。
-  const polKey = findKeyByRole(sample, 'polarity');
+  // CB-23 2026-08-12：opts.preferConfidence —— 12345 等投诉点虽有 polarity 5 级但分析用 L1 强度逻辑
+  //   （基本为消极投诉·深浅/高矮表达强度·非极性分色·用户明确）→ 强制走 confidence 分支·polarity 属性保留作可选过滤
+  const polKey = opts.preferConfidence ? null : findKeyByRole(sample, 'polarity');
   const scoreKey = findKeyByRole(sample, 'score');        // 情绪得分（score/得分/评分）
   const confKey = findKeyByRole(sample, 'confidence');    // 数据置信度（l1_confidence/l2_confidence/置信度）
 

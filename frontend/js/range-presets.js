@@ -86,9 +86,10 @@ async function loadPresetRange(item) {
       if (l.name === name) { removeLayer(l.id); removeLayerFromMap(l.id); }
     }
     // CB-23 2026-08-12：按几何类型分流——点层走 detectColorMode（对齐热力图/grid 数据源）·线层面照旧·不再硬编码 polygon
+    // l1 标记（manifest·如 12345 投诉点）：强制 L1 强度逻辑（橙色图例·深浅/高矮·polarity 保留作可选过滤·用户明确）
     const firstGeom = fc.features[0] && fc.features[0].geometry && fc.features[0].geometry.type;
     if (firstGeom === 'Point') {
-      const { fc: pfc, colorMode, needsAnalysis } = detectColorMode(fc);
+      const { fc: pfc, colorMode, needsAnalysis } = detectColorMode(fc, item.l1 ? { preferConfidence: true } : {});
       let regId = null;
       if (colorMode === 'polarity') {
         // L2 极性 → 拆 积极/中性/消极 三子层 + group（与 main.js 导入同结构·collectSources 认 l2-* 进工具）
