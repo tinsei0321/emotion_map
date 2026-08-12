@@ -114,6 +114,7 @@ class RangePresetItem(BaseModel):
     file: str = Field(..., description="DATA/boundaries/presets/ 下的文件名")
     nameField: Optional[str] = Field(default=None, description="名称字段（grid-tool name_col 默认）")
     available: bool = Field(default=False, description="文件是否已上传")
+    l1: Optional[bool] = Field(default=None, description="L1 强度分析标记（12345 投诉点·橙色图例·polarity 保留可选过滤·CB-23 2026-08-12）")
 
 
 class RangePresetGroup(BaseModel):
