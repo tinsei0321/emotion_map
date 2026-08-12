@@ -516,9 +516,9 @@ async function generateGrid() {
       if (fc.features.length > 2000) toast.info(`已生成 ${fc.features.length} 个格，数量较多；3D 渲染可能偏慢`, 4500);
       preprocessGrid(fc);   // _grid_*（极性归一化，MapLibre 着色）+ _grid_h/_grid_h_pos…（offset+sqrt 高度）
       filterPolarityZero(fc, p.level, p.polarity);   // L2 极性网格去该极性点数=0 的格（不渲染空格）
-      const style = gridStyle(p.level, p.polarity);
+      const style = gridStyle(p.level, p.polarity, p.palette, p.reverse);
       paint = { fillOn: true, _ui: { tool: 'grid', analysis: 'square', level: p.level, source: p.source,
-                                     cellSize: p.cellSize, polarity: p.polarity, mode: p.mode, heightField: (p.level === 'L2' && POLARITY_HF[p.polarity]) ? POLARITY_HF[p.polarity] : '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity },
+                                     cellSize: p.cellSize, polarity: p.polarity, mode: p.mode, heightField: (p.level === 'L2' && POLARITY_HF[p.polarity]) ? POLARITY_HF[p.polarity] : '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity, palette: p.palette || '', reverse: !!p.reverse },
                 gridField: style.field, gridStops: style.stops, fillOpacity: p.extrusionOpacity };   // 显式 fillOpacity 绕开 addLayer 默认 0.3（修 2D 首次透明）
     } else {
       // zonal：后端精确面域聚合 + MapLibre 渲染（deck.gl GridLayer 是方格聚合，不适合固定面域 zonal）
@@ -534,10 +534,10 @@ async function generateGrid() {
       const hasPolarity = preprocessGrid(fc);
       filterPolarityZero(fc, p.level, p.polarity);   // L2 极性网格去该极性点数=0 的格（不渲染空格）
       if (!hasPolarity && p.level === 'L2') toast.info('该点层缺少极性字段，按分数比例近似降级', 4500);
-      const style = gridStyle(p.level, p.polarity);
+      const style = gridStyle(p.level, p.polarity, p.palette, p.reverse);
       paint = { fillOn: true, _ui: { tool: 'grid', analysis: 'zonal', level: p.level, source: p.source,
                                      polygonLayer: p.polygonLayer, nameCol: p.nameCol,
-                                     polarity: p.polarity, mode: p.mode, heightField: (p.level === 'L2' && POLARITY_HF[p.polarity]) ? POLARITY_HF[p.polarity] : '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity },
+                                     polarity: p.polarity, mode: p.mode, heightField: (p.level === 'L2' && POLARITY_HF[p.polarity]) ? POLARITY_HF[p.polarity] : '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity, palette: p.palette || '', reverse: !!p.reverse },
                 gridField: style.field, gridStops: style.stops, fillOpacity: p.extrusionOpacity };   // 显式 fillOpacity 绕开 addLayer 默认 0.3（修 2D 首次透明）
     }
 
