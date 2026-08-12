@@ -131,6 +131,62 @@
     "file": "checkup_双高区.geojson",
     "nameField": "双高区",
     "note": "3' B4 双轨密度叠加·两轨均高格（p75·1km·500m buffer）·2025体检×2024 12345·不消费 board"
+   },
+   {
+    "id": "qty_安全_住房",
+    "label": "量化-安全-住房(结构/围护)（496点）",
+    "file": "checkup_qty_安全_住房.geojson",
+    "nameField": "指标",
+    "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）"
+   },
+   {
+    "id": "qty_安全_安全消防",
+    "label": "量化-安全-安全消防(楼道)（240点）",
+    "file": "checkup_qty_安全_安全消防.geojson",
+    "nameField": "指标",
+    "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）"
+   },
+   {
+    "id": "qty_安全_市政管网",
+    "label": "量化-安全-市政管网(燃气/管线)（192点）",
+    "file": "checkup_qty_安全_市政管网.geojson",
+    "nameField": "指标",
+    "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）"
+   },
+   {
+    "id": "qty_民生_交通设施",
+    "label": "量化-民生-交通设施(步行道)（24点）",
+    "file": "checkup_qty_民生_交通设施.geojson",
+    "nameField": "指标",
+    "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）"
+   },
+   {
+    "id": "qty_民生_住房",
+    "label": "量化-民生-住房(非成套/适老化)（70点）",
+    "file": "checkup_qty_民生_住房.geojson",
+    "nameField": "指标",
+    "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）"
+   },
+   {
+    "id": "qty_民生_停车设施",
+    "label": "量化-民生-停车设施(3项)（274点）",
+    "file": "checkup_qty_民生_停车设施.geojson",
+    "nameField": "指标",
+    "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）"
+   },
+   {
+    "id": "qty_民生_公服设施",
+    "label": "量化-民生-公服设施(8项)（1068点）",
+    "file": "checkup_qty_民生_公服设施.geojson",
+    "nameField": "指标",
+    "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）"
+   },
+   {
+    "id": "qty_民生_物业街面",
+    "label": "量化-民生-物业街面(2项)（278点）",
+    "file": "checkup_qty_民生_物业街面.geojson",
+    "nameField": "指标",
+    "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）"
    }
   ]
  }
