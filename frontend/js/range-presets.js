@@ -5,7 +5,8 @@
 // 用户上传的矢量按 manifest.file 名落到 DATA/boundaries/presets/（规范化 .geojson 存储）。
 import { fetchRangePresets, fetchRangePreset, uploadRangePreset } from './api.js';
 import { invalidateGeoCatalog } from './ai_qa/tools.js';   // 上传激活新预设后失效 AI 目录缓存 → 当轮 AI 可见
-import { addLayer, getLayers, removeLayer } from './state.js';
+import { addLayer, addGroup, getLayers, removeLayer } from './state.js';
+import { detectColorMode } from './import.js';   // 点层 preset：按列判极性/置信度 → 对齐热力图/grid 数据源（CB-23 2026-08-12）
 import * as data_registry from './data_registry.js';   // R2：统一数据注册表（preset 来源标注）
 import { renderLayer, fitBoundsTo, reorderAllZ, removeLayerFromMap } from './map.js';
 import { renderLayerList, refreshLegend } from './sidebar.js';
@@ -83,6 +84,55 @@ async function loadPresetRange(item) {
     // 替换语义：点"+"重传后不堆叠——移除同名旧预设层再新建（分析层独立不受影响）
     for (const l of getLayers()) {
       if (l.name === name) { removeLayer(l.id); removeLayerFromMap(l.id); }
+    }
+    // CB-23 2026-08-12：按几何类型分流——点层走 detectColorMode（对齐热力图/grid 数据源）·线层面照旧·不再硬编码 polygon
+    const firstGeom = fc.features[0] && fc.features[0].geometry && fc.features[0].geometry.type;
+    if (firstGeom === 'Point') {
+      const { fc: pfc, colorMode, needsAnalysis } = detectColorMode(fc);
+      let regId = null;
+      if (colorMode === 'polarity') {
+        // L2 极性 → 拆 积极/中性/消极 三子层 + group（与 main.js 导入同结构·collectSources 认 l2-* 进工具）
+        const pos = [], neu = [], neg = [];
+        for (const f of pfc.features) {
+          const pol = f.properties && f.properties.polarity;
+          if (pol === 'Very Positive' || pol === 'Positive') pos.push(f);
+          else if (pol === 'Very Negative' || pol === 'Negative') neg.push(f);
+          else neu.push(f);
+        }
+        const group = addGroup({ name, fc: pfc });
+        group.srcName = name;
+        regId = group.id;
+        const paint = { opacity: 0.80 };
+        const fcOf = (arr) => ({ type: 'FeatureCollection', features: arr });
+        const mk = (sub, mode) => {
+          if (!sub.length) return;
+          const tag = mode === 'l2-positive' ? '积极' : mode === 'l2-negative' ? '消极' : '中性';
+          const L = addLayer({ name: `${tag}·${item.label}`, kind: 'point', parentId: group.id, colorMode: mode, fc: fcOf(sub), paint });
+          L.srcName = name; renderLayer(L);
+        };
+        mk(pos, 'l2-positive'); mk(neu, 'l2-neutral'); mk(neg, 'l2-negative');
+      } else {
+        // confidence（orange ramp·进工具）或 needsAnalysis（灰点参考层）
+        const paint = needsAnalysis ? { color: '#4a4a4a', opacity: 0.80, radius: 4 } : undefined;
+        const L = addLayer({ name, kind: 'point', fc: pfc, needsAnalysis, colorMode, paint });
+        L.srcName = name; renderLayer(L);
+        regId = L.id;
+      }
+      data_registry.register({ name, kind: 'point', source: 'preset', fc, layerId: regId });
+      renderLayerList(); refreshLegend(); reorderAllZ();
+      const bb = fcBBox(fc); if (bb) fitBoundsTo(bb);
+      toast.success(`已载入「${item.label}」点层（${fc.features.length} 点）`);
+      return;
+    }
+    if (firstGeom === 'LineString' || firstGeom === 'MultiLineString') {
+      const L = addLayer({ name, kind: 'line', fc });
+      L.srcName = name;
+      data_registry.register({ name, kind: 'line', source: 'preset', fc, layerId: L.id });
+      renderLayer(L);
+      renderLayerList(); refreshLegend(); reorderAllZ();
+      const bb = fcBBox(fc); if (bb) fitBoundsTo(bb);
+      toast.success(`已载入「${item.label}」线层（${fc.features.length} 要素）`);
+      return;
     }
     // 用地预设(land_*) = 制图规范附录B 标准色（优先读要素 DLMC 落色，label 回退；fillOpacity 0.6 让规范色清晰可辨，否则 addLayer 默认 0.15 几乎看不见）。
     const _isLand = item.id.startsWith('land_');

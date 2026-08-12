@@ -226,8 +226,9 @@ function populateSources(srcs, level) {
   const seen = new Set();
   const opts = [];
   for (const s of pool) {
-    const t = deriveTimeTag(s.fc);
-    if (!t || seen.has(t)) continue;
+    // 无时间标签（12345/体检等非 T1-T3 数据·CB-23 2026-08-12）→ 统一「综合」·否则按时间分组
+    const t = deriveTimeTag(s.fc) || '综合';
+    if (seen.has(t)) continue;
     seen.add(t);
     opts.push(`<option value="${s.value}">${TIME_LABEL[t] || t}</option>`);
   }
