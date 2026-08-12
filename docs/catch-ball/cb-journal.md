@@ -4,6 +4,25 @@
 > 按轮**倒序**（最新在顶·CB-NN 大→小·便于看最新进展；不覆写）。新轮次写在文件顶部。
 > 每轮四节：① SCAN 摘要 ② 我方反评价 ③ 行动 ④ 状态/新发现。
 
+## CB-23 · 2026-08-12（前端依赖全本地化 · 紧急修复 + 两组评估）
+
+### ① 故障与修复
+
+**故障**：网络全面断（jsdelivr/unpkg/cartocdn/GitHub/hf 全 000）→ index.html head 同步 CDN 脚本（maplibre-gl/deck.gl）加载超时 → **页面白屏进不去**（serve 正常·curl 200·浏览器 60s domcontentloaded 不到）·伴随底图"浅色无注记"（CARTO positron）打不开 + 启动慢（BGE 联网检查 hf-mirror 超时重试）。
+**修复 3 连**：① BGE `local_files_only=True`（离线加载·启动卡死→7.3s）② 底图"浅色无注记"→天地图 `tianditu-vec-nolabel`（国内源）③ **13 依赖从 npmmirror（国内·通）下载 → frontend/vendor/ 本地化**（maplibre 5.2.0/deck 9.1.0/marked 12.0.2/chart 4.4.4/csv2geojson/shpjs/proj4/fflate/topojson-client·index.html 全部改引本地·零 CDN 残留）。
+
+### ② 两组评估
+
+- **Codex**：4 项全通过（版本一致·UMD 全局名匹配·零 CDN 残留·天地图正确）·无 P0/P1·2 项 P2（esm.sh 按需降级标注·marked/cartocdn 残留可选清理）
+- **zcode**：3 通过 + 1 partial（esm.sh 未本地化·边缘功能）·3 个小动作（验证 shpjs/fflate/topojson 全局名·删旧 marked.min.js·esm.sh 记技术债）
+- **claude 实测复核**：8/8 全局名 OK（**shpjs UMD 全局名=`shp`**·两组都查错名 `shpjs` 虚惊）·**marked.min.js 保留**（topology.html 在用·zcode 建议删基于未查 topology）
+
+### ③ 状态
+
+`closed`——修复达标（白屏/慢启动/底图三问题全解决）·两组评估无 P0/P1·Playwright 实测页面打开+地图渲染正常。**已知技术债**：esm.sh 按需导入（KML/GPX/WKT 上传·非核心·断网降级提示）·可后补 vendor 化。
+
+---
+
 ## CB-23 · 2026-08-12（终验轮双通过 + 体检问题清单分析框架三组讨论发起）
 
 ### ① 终验（最后一轮三组复核·3' 门票）
