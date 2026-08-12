@@ -384,10 +384,9 @@ export function renderLayerList() {
     buckets.get(cat).push(l);
   }
 
-  // 钉底：range 恒在 ai（AI 工作区）之上，二者显示在最末（与 state.applyGroupOrder 的 _layers 钉底一致）。
+  // ai 恒钉最末；range 可拖（CB-23 2026-08-12：用户需范围边界压分析图上面·放开钉底·与 state.reorderGroupSegment 一致）
   const _rawOrder = getGroupOrder();
-  const _catOrder = _rawOrder.filter((c) => c !== 'range' && c !== 'ai');
-  if (_rawOrder.includes('range')) _catOrder.push('range');
+  const _catOrder = _rawOrder.filter((c) => c !== 'ai');
   if (_rawOrder.includes('ai')) _catOrder.push('ai');
   let html = '';
   for (const cat of _catOrder) {

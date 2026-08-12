@@ -296,7 +296,7 @@ let _seq = 0;
 export const CATEGORY_LABEL = { heatmap: '热力图', l2: 'L2 · 情绪地图 DATA', l1: 'L1 · 城市情绪 DATA', l0: 'L0 · 原始', range: '范围边界', buffer: '缓冲分析', grid: '网格聚合', terrain: '情绪地形', ai: 'EmotionMap Copilot', other: '其他' };
 // 默认图层组序（上→下 = 地图顶层→底层）：L 数据 → 核密度 → 空间聚合(grid/terrain) → Buffer → Range → 其他。
 // 用户可拖拽 group 卡覆写（reorderGroupSegment 改本数组）；组内按 timeRank(T1<T2<T3) + typeRank(热度<综合<极性) 稳定排序。
-// range 与 ai（AI 工作区）恒钉最末（range 在 ai 上）—— applyGroupOrder / renderLayerList 双重保底。
+// ai（AI 工作区）恒钉最末；range 可拖（CB-23 2026-08-12：用户需范围边界压分析图上面·放开钉底）—— applyGroupOrder / renderLayerList 双重保底。
 let _groupOrder = ['l0', 'l1', 'l2', 'heatmap', 'grid', 'terrain', 'buffer', 'other', 'range', 'ai'];
 const _groupCollapse = new Set();                                    // collapsed category set
 const _groupFold = new Set();                                        // folded real-group set（真 L2 组单独折叠，按 group id；区别于 category 级 _groupCollapse）
@@ -986,7 +986,7 @@ export function applyGroupOrder() {
  *  then apply to _layers. */
 export function reorderGroupSegment(fromCat, toCat, before) {
   if (!fromCat || fromCat === toCat) return;
-  if (fromCat === 'range' || fromCat === 'ai') return;   // 钉底组不可拖动（恒在最末）
+  if (fromCat === 'ai') return;   // ai 工作区恒钉最末；range 可拖（用户需求：范围边界要能压分析图上面·CB-23 2026-08-12）
   const order = _groupOrder.filter((c) => c !== fromCat);
   let idx = order.indexOf(toCat);
   if (idx < 0) idx = order.length;
