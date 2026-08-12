@@ -230,12 +230,14 @@ function collectSources() {
           sourceKey: `group:${l.id}`, group: l, childByPolarity,
         });
       }
-    } else if (l.kind === 'point' && l.fc && l.fc.features.length &&
-               (l.colorMode === 'l2-positive' || l.colorMode === 'l2-negative' || l.colorMode === 'l2-neutral' ||
-                l.colorMode === 'confidence')) {
+    } else if (l.kind === 'point' && l.fc && l.fc.features.length) {
+      // CB-23 2026-08-12：所有点数据可分析（L0~Ln）——量化点层（needsAnalysis 灰点·无情绪列）也进数据源
+      const lv = l.colorMode === 'confidence' ? 'L1'
+        : (l.colorMode === 'l2-positive' || l.colorMode === 'l2-negative' || l.colorMode === 'l2-neutral' || l.colorMode === 'polarity') ? 'L2'
+        : 'L0';
       sources.push({
         value: `layer:${l.id}`, label: l.name,
-        level: l.colorMode === 'confidence' ? 'L1' : 'L2',
+        level: lv,
         fc: l.fc, sourceKey: `layer:${l.id}`,
       });
     }
@@ -490,7 +492,7 @@ function constrainLevelOptions(dlg, sources, analysis) {
   // 全局逻辑：各选择栏联动，无对应字段的层级 disabled。
   const tier = ANALYSIS_PRESETS[analysis]?.tier;
   const onlyL2 = tier === 'segment';
-  const FIXED = ['L1', 'L2', 'L3', 'L4'];
+  const FIXED = ['L0', 'L1', 'L2', 'L3', 'L4'];   // L0 加入（CB-23：量化点层等无情绪列数据可分析）
   const cur = sel.value;
   let firstAvailable = null;
   sel.innerHTML = FIXED.map((lv) => {

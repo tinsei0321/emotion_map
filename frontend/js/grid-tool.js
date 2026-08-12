@@ -90,12 +90,14 @@ function collectSources() {
         value: `group:${l.id}`, label: l.name, level: 'L2', srcName: l.srcName || l.name,
         fc: { type: 'FeatureCollection', features: merged },
       });
-    } else if (l.kind === 'point' && l.fc && l.fc.features.length &&
-               (l.colorMode === 'l2-positive' || l.colorMode === 'l2-negative' || l.colorMode === 'l2-neutral' ||
-                l.colorMode === 'confidence')) {
+    } else if (l.kind === 'point' && l.fc && l.fc.features.length) {
+      // CB-23 2026-08-12：所有点数据可 grid（L0~Ln）——量化点层（needsAnalysis 灰点·无情绪列）也进数据源
+      const lv = l.colorMode === 'confidence' ? 'L1'
+        : (l.colorMode === 'l2-positive' || l.colorMode === 'l2-negative' || l.colorMode === 'l2-neutral' || l.colorMode === 'polarity') ? 'L2'
+        : 'L0';
       sources.push({
         value: `layer:${l.id}`, label: l.name, srcName: l.srcName || l.name,
-        level: l.colorMode === 'confidence' ? 'L1' : 'L2', fc: l.fc,
+        level: lv, fc: l.fc,
       });
     }
   }
@@ -243,7 +245,7 @@ function constrainLevelOptions(srcs) {
   const sel = document.getElementById('grid-level');
   if (!sel) return;
   const present = new Set(srcs.map((s) => s.level));
-  const FIXED = ['L1', 'L2', 'L3', 'L4'];
+  const FIXED = ['L0', 'L1', 'L2', 'L3', 'L4'];   // L0 加入（CB-23：量化点层等无情绪列数据可 grid）
   let firstAvailable = null;
   sel.innerHTML = FIXED.map((lv) => {
     const has = present.has(lv);
