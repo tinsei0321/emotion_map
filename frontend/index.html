@@ -710,7 +710,11 @@
                 <div class="hm-group">
                   <div class="hm-group-title"><span class="hm-step-no">3</span><span class="hm-step-label">显示样式</span></div>
                   <div class="hm-section">
-                    <div class="hm-label">色板 <span class="hm-info" data-tip="色板随数据层级/极性自动选定：L1 舆论热度=橙黄→暗红（高值金黄）；L2 综合=红蓝绿发散；L2 积极/消极/中性=单色深浅（高值深色）。2D/3D 色板一致。">i</span></div>
+                    <div class="hm-label">色板 <span class="hm-info" data-tip="可选手选色板（默认随数据层级/极性自动）。反向=高值深色/低值浅色（默认高值浅黄低值深红·用户觉得怪可反向）。2D/3D 一致。">i</span></div>
+                    <div class="hm-palette-row" style="display:flex;gap:6px;align-items:center">
+                      <select class="sec-select" id="grid-palette" style="flex:1"></select>
+                      <button type="button" class="buf-cap" id="grid-reverse" data-reverse="0" title="颜色反向（高值↔低值）">⇅ 反向</button>
+                    </div>
                     <div class="hm-style-list" id="grid-ramp-preview"><!-- 只读色带预览 by JS --></div>
                   </div>
                   <div class="hm-section">
@@ -1188,6 +1192,7 @@
   <!-- tip-popup：网格/柱体/地形环 悬停浮动卡（position:fixed，自适应方位，统一悬停设计语言） -->
   <div id="tip-popup" hidden>
     <div class="tp-row tp-loc" id="tp-loc"></div>
+    <div class="tp-row tp-community" id="tp-community" hidden></div>
     <div class="tp-row tp-valence" id="tp-valence" hidden></div>
     <div class="tp-row tp-metric" id="tp-metric"></div>
     <div class="tp-row tp-size" id="tp-size"></div>

@@ -68,12 +68,23 @@ function normStops(rampKey) {
 }
 
 /** 层级 + 极性 → {field, stops, rampKey, name}。 */
-function gridStyle(level, polarity) {
+/** CB-23 2026-08-12：色板可选手选（palette）+ 反向（reverse·高值深色/低值浅色·用户觉得默认「高浅黄低深红」怪）。 */
+function gridStyle(level, polarity, palette, reverse) {
+  let rampKey, field, name;
   if (level !== 'L2') {
-    return { field: '_grid_h', stops: normStops(L1_RAMP), rampKey: L1_RAMP, name: '舆论热度·点数（暗红→金黄）' };
+    rampKey = palette || L1_RAMP; field = '_grid_h';
+    name = rampKey === L1_RAMP ? '舆论热度·点数（暗红→金黄）' : rampKey;
+  } else {
+    rampKey = palette || POLARITY_RAMP[polarity] || 'terrain-9';
+    field = POLARITY_FIELD[polarity] || '_grid_norm';
+    name = POLARITY_NAME[polarity] || rampKey;
   }
-  const rampKey = POLARITY_RAMP[polarity] || 'terrain-9';
-  return { field: POLARITY_FIELD[polarity] || '_grid_norm', stops: normStops(rampKey), rampKey, name: POLARITY_NAME[polarity] };
+  let stops = normStops(rampKey);
+  if (reverse) {                       // 颜色序列反转（d 保持升序·高值↔低值色对调）
+    const colors = stops.map(([, c]) => c).reverse();
+    stops = stops.map(([d], i) => [d, colors[i]]);
+  }
+  return { field, stops, rampKey, name, reverse };
 }
 
 // ── 数据源收集（点层：L2 group 合并极性子层 + L1/L2 单点层） ──
@@ -261,12 +272,19 @@ function populateNameCols(fc) {
 function renderRampPreview(dlg, level, polarity) {
   const wrap = dlg.querySelector('#grid-ramp-preview');
   if (!wrap) return;
-  const style = gridStyle(level, polarity);
+  // CB-23：色板下拉（首次填充·可选集）+ 反向状态
+  const sel = dlg.querySelector('#grid-palette');
+  if (sel && !sel.options.length) {
+    const KEYS = ['grid-warm', 'terrain-9', 'green-3', 'red-3', 'blue-3', 'diverging-rg', 'rainbow', 'orange-6'];
+    sel.innerHTML = '<option value="">自动（随层级/极性）</option>'
+      + KEYS.filter((k) => HEATMAP_RAMPS[k]).map((k) => `<option value="${k}">${k}</option>`).join('');
+  }
+  const palette = sel ? sel.value : '';
+  const reverse = dlg.querySelector('#grid-reverse')?.dataset.reverse === '1';
+  const style = gridStyle(level, polarity, palette || undefined, reverse);
   const ramp = HEATMAP_RAMPS[style.rampKey];
   const segs = ramp ? rampDisplaySegs(style.rampKey, ramp) : style.stops.map(([, c]) => c);
-  const segHtml = segs.map((c) => `<span class="hm-style-seg" style="background:${c}"></span>`).join('');
-  // .hm-style-preview = 只读色板预览容器（CSS：flex row + .hm-style-bar flex:1/height:18px + .hm-style-seg height:100%）
-  // 纯色带，不显示文字名（与 heatmap 色带一致：heatmap .hm-style-name 也是 display:none）
+  const segHtml = (reverse ? [...segs].reverse() : segs).map((c) => `<span class="hm-style-seg" style="background:${c}"></span>`).join('');
   wrap.innerHTML = `<div class="hm-style-preview"><span class="hm-style-bar">${segHtml}</span></div>`;
 }
 
@@ -320,6 +338,8 @@ function readParams(dlg) {
     mode: dlg.querySelector('#grid-mode .buf-cap.is-sel')?.dataset.mode || DEFAULTS.mode,
     maxHeight: Number(dlg.querySelector('#grid-extrusion-scale').value),
     extrusionOpacity: Number(dlg.querySelector('#grid-extrusion-opacity')?.value ?? 1),
+    palette: dlg.querySelector('#grid-palette')?.value || '',   // 色板手选（空=自动）
+    reverse: dlg.querySelector('#grid-reverse')?.dataset.reverse === '1',   // 颜色反向
   };
 }
 
@@ -405,7 +425,7 @@ export async function generateGridForAI(opts = {}) {
     if (fc.features.length > 2000 && !p.silent) toast.info(`已生成 ${fc.features.length} 个格，数量较多；3D 渲染可能偏慢`, 4500);
     preprocessGrid(fc);
     filterPolarityZero(fc, level, p.polarity);
-    const style = gridStyle(level, p.polarity);
+    const style = gridStyle(level, p.polarity, p.palette, p.reverse);
     paint = { fillOn: true, _ui: { tool: 'grid', analysis: 'square', level, source: p.source || src.value,
                                    cellSize: p.cellSize, polarity: p.polarity, mode: p.mode, heightField: (level === 'L2' && POLARITY_HF[p.polarity]) ? POLARITY_HF[p.polarity] : '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity },
               gridField: style.field, gridStops: style.stops, fillOpacity: p.extrusionOpacity };
@@ -420,7 +440,7 @@ export async function generateGridForAI(opts = {}) {
     const hasPolarity = preprocessGrid(fc);
     filterPolarityZero(fc, level, p.polarity);
     if (!hasPolarity && level === 'L2' && !p.silent) toast.info('该点层缺少极性字段，按分数比例近似降级', 4500);
-    const style = gridStyle(level, p.polarity);
+    const style = gridStyle(level, p.polarity, p.palette, p.reverse);
     paint = { fillOn: true, _ui: { tool: 'grid', analysis: 'zonal', level, source: p.source || src.value,
                                    polygonLayer: poly.id, nameCol: p.nameCol,
                                    polarity: p.polarity, mode: p.mode, heightField: (level === 'L2' && POLARITY_HF[p.polarity]) ? POLARITY_HF[p.polarity] : '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity },
@@ -568,6 +588,16 @@ export function initGridTool() {
   // ② 数据选择 → 联动：换源 → 重置极性/参数/色板（CB-23：level 由源推导·不再按层级过滤）
   dlg.querySelector('#grid-level').addEventListener('change', () => {
     constrainParams(dlg);
+  });
+  // 色板手选 / 反向 → 刷新预览（CB-23 2026-08-12）
+  dlg.querySelector('#grid-palette')?.addEventListener('change', () => {
+    renderRampPreview(dlg, dlg.querySelector('#grid-level').value ? levelOfSource(dlg.querySelector('#grid-level').value) : 'L0', 'overall');
+  });
+  dlg.querySelector('#grid-reverse')?.addEventListener('click', () => {
+    const b = dlg.querySelector('#grid-reverse');
+    b.dataset.reverse = b.dataset.reverse === '1' ? '0' : '1';
+    b.classList.toggle('is-sel', b.dataset.reverse === '1');
+    renderRampPreview(dlg, dlg.querySelector('#grid-level').value ? levelOfSource(dlg.querySelector('#grid-level').value) : 'L0', 'overall');
   });
 
   // 方格边长：输入 ↔ 滑块 ↔ preset

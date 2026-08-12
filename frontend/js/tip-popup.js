@@ -342,6 +342,52 @@ function showEl() {
   if (node) node.hidden = false;
 }
 
+// ── CB-23 2026-08-12：tip 社区字段（配置库社区 193·质心空间查询·用户需求：街办与地点之间加社区）──
+let _commFc = null;
+let _commPromise = null;
+function loadCommunities() {
+  if (_commFc) return Promise.resolve(_commFc);
+  if (!_commPromise) {
+    _commPromise = fetch('/api/v1/range/preset?id=checkup_cfg_community')
+      .then((r) => r.json())
+      .then((d) => { _commFc = (d && d.geojson) || null; return _commFc; })
+      .catch(() => { _commFc = null; _commPromise = null; return null; });
+  }
+  return _commPromise;
+}
+function pointInPolygon(lng, lat, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+    if (((yi > lat) !== (yj > lat)) && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+function fillCommunity(lng, lat) {
+  const elC = document.getElementById('tp-community');
+  if (!elC) return;
+  loadCommunities().then((fc) => {
+    const node = el();
+    if (!node || node.hidden) return;                      // 已隐藏/已切格 → 不回填
+    if (!fc || !fc.features || !fc.features.length) { elC.hidden = true; return; }
+    for (const f of fc.features) {
+      const g = f.geometry;
+      if (!g) continue;
+      const polys = g.type === 'Polygon' ? [g.coordinates] : (g.type === 'MultiPolygon' ? g.coordinates : []);
+      for (const poly of polys) {
+        if (!poly || !poly.length) continue;
+        if (pointInPolygon(lng, lat, poly[0])) {
+          const name = (f.properties && (f.properties.SQMC || f.properties.name)) || '';
+          elC.hidden = !name;
+          elC.innerHTML = name ? `<i class="tp-vk">社区</i><b class="tp-vv">${name}</b>` : '';
+          return;
+        }
+      }
+    }
+    elC.hidden = true;
+  });
+}
+
 /** 4 行：地点(异步,纯文本) / 极性判断(cell 有 polarity_index 时,同步) / 口径(同步,HTML) / 边长(同步,HTML) */
 function fillContent(feat, ui) {
   const p = (feat.properties || {});
@@ -373,8 +419,12 @@ function fillContent(feat, ui) {
     return;
   }
 
+  // CB-23 2026-08-12：社区字段（配置库社区 193·质心空间查询·用户需求：tip 街办与地点之间加社区）
+  const c0 = centroidOf(feat);
+  if (c0) fillCommunity(c0[0], c0[1]);
+
   // 地点：按质心 key 去重——同格只发一次 reverseGeocode（cache/inflight），切格才发新
-  const c = centroidOf(feat);
+  const c = c0;
   const key = c ? `${c[0].toFixed(5)},${c[1].toFixed(5)}` : null;
   if (key === _lastCellKey) return;        // 同格：地点已填/在填，不重发
   _lastCellKey = key;
