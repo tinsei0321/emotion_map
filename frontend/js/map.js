@@ -27,6 +27,7 @@ export const BASEMAPS = {
   'tianditu-img':         _tiandituStyle([{ id: 'img', T: 'img_w' }, { id: 'cia', T: 'cia_w' }]),   // 影像 + 注记
   'tianditu-vec':         _tiandituStyle([{ id: 'vec', T: 'vec_w' }, { id: 'cva', T: 'cva_w' }]),   // 矢量 + 注记
   'tianditu-img-nolabel': _tiandituStyle([{ id: 'img', T: 'img_w' }]),                              // 影像（无注记，干净卫星）
+  'tianditu-vec-nolabel': _tiandituStyle([{ id: 'vec', T: 'vec_w' }]),                              // 矢量（无注记，浅色底——CARTO positron 国内替代·2026-08-12 cartocdn 不通）
 };
 export const DEFAULT_BASEMAP = 'tianditu-img-nolabel';   // 初始底图：天地图影像（无注记，干净卫星）
 const YICHANG = { center: [111.286, 30.708], zoom: 12 };
@@ -74,7 +75,7 @@ let _currentBasemap = DEFAULT_BASEMAP;   // 当前底图 key（setBasemap 同步
 //  setLayoutProperty 显隐（零 setStyle 操作）。dark-matter 自带 opaque background + 路网/区块纹理 =
 //  真"暗色（无注记）"观感（非纯黑遮罩）。数据层在 dm 之上保持亮。dm 层 vector 瓦片首显加载、后缓存。
 const DM_BASEMAP_KEY = 'dark-matter';
-const _BASEMAP_BG = { 'dark-matter': '#0e0e0e', 'positron': '#ffffff', 'voyager': '#f4f1ea', 'tianditu-img': '#a6c8e0', 'tianditu-vec': '#e8eef4', 'tianditu-img-nolabel': '#a6c8e0' };
+const _BASEMAP_BG = { 'dark-matter': '#0e0e0e', 'positron': '#ffffff', 'voyager': '#f4f1ea', 'tianditu-img': '#a6c8e0', 'tianditu-vec': '#e8eef4', 'tianditu-img-nolabel': '#a6c8e0', 'tianditu-vec-nolabel': '#e8eef4' };
 let _dark3DOn = false;                    // 当前是否处暗色 3D 态（pitch>1）
 let _dmLoaded = false;                    // dark-matter 图层是否已预载
 const _dmLayerIds = [];                   // 预载的 dm 图层 id 列表（显隐用）
