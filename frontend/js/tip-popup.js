@@ -363,28 +363,35 @@ function pointInPolygon(lng, lat, ring) {
   }
   return inside;
 }
+const _commCache = new Map();   // 质心 key → 社区名（含未命中 null·Codex P2：防每 hover 遍历 193 面）
 function fillCommunity(lng, lat) {
   const elC = document.getElementById('tp-community');
   if (!elC) return;
-  loadCommunities().then((fc) => {
+  const key = `${lng.toFixed(5)},${lat.toFixed(5)}`;
+  const render = (name) => {
     const node = el();
     if (!node || node.hidden) return;                      // 已隐藏/已切格 → 不回填
-    if (!fc || !fc.features || !fc.features.length) { elC.hidden = true; return; }
-    for (const f of fc.features) {
-      const g = f.geometry;
-      if (!g) continue;
-      const polys = g.type === 'Polygon' ? [g.coordinates] : (g.type === 'MultiPolygon' ? g.coordinates : []);
-      for (const poly of polys) {
-        if (!poly || !poly.length) continue;
-        if (pointInPolygon(lng, lat, poly[0])) {
-          const name = (f.properties && (f.properties.SQMC || f.properties.name)) || '';
-          elC.hidden = !name;
-          elC.innerHTML = name ? `<i class="tp-vk">社区</i><b class="tp-vv">${name}</b>` : '';
-          return;
+    elC.hidden = !name;
+    elC.innerHTML = name ? `<i class="tp-vk">社区</i><b class="tp-vv">${name}</b>` : '';
+  };
+  if (_commCache.has(key)) { render(_commCache.get(key)); return; }
+  loadCommunities().then((fc) => {
+    let name = null;
+    if (fc && fc.features) {
+      for (const f of fc.features) {
+        const g = f.geometry;
+        if (!g) continue;
+        const polys = g.type === 'Polygon' ? [g.coordinates] : (g.type === 'MultiPolygon' ? g.coordinates : []);
+        for (const poly of polys) {
+          if (!poly || !poly.length) continue;
+          if (pointInPolygon(lng, lat, poly[0])) { name = (f.properties && (f.properties.SQMC || f.properties.name)) || null; break; }
         }
+        if (name) break;
       }
     }
-    elC.hidden = true;
+    _commCache.set(key, name);
+    if (_commCache.size > 500) _commCache.delete(_commCache.keys().next().value);
+    render(name);
   });
 }
 

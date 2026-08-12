@@ -304,7 +304,8 @@ function _applyPolarityView(layer, pol) {
   if (!g || !layer || !layer.paint || !layer.paint._ui) return;
   layer.paint.gridField = g.field;
   layer.paint._ui.heightField = g.field;   // 柱体高度同源切到该极性（颜色+高度一致，深色=高柱）
-  const st = polarityStops(pol);
+  // CB-23：深读切极性保持用户手选色板/反向（Codex P1·曾回默认橙色）
+  const st = polarityStops(pol, layer.paint._ui.palette, layer.paint._ui.reverse);
   if (st && st.length) layer.paint.gridStops = st;
   layer.paint._polarityFilter = ['>', ['get', g.nField], 0];
   renderLayer(layer);

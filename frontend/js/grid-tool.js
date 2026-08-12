@@ -53,10 +53,17 @@ export const POLARITY_GRID = {
   negative: { field: '_grid_h_neg', nField: '_grid_n_neg', ramp: 'red-3' },
   neutral:  { field: '_grid_h_neu', nField: '_grid_n_neu', ramp: 'blue-3' },
 };
-/** 极性 → normStops（去 density 0 首段 + 归一化 0~1；与生成管线 gridStyle 同源）。供极性深读 paint 切换。 */
-export function polarityStops(pol) {
-  const rampKey = POLARITY_RAMP[pol];
-  return rampKey ? normStops(rampKey) : null;
+/** 极性 → normStops（去 density 0 首段 + 归一化 0~1；与生成管线 gridStyle 同源）。供极性深读 paint 切换。
+ *  CB-23 2026-08-12：palette/reverse 参数——深读切极性时保持用户手选色板/反向（Codex P1·曾回默认橙色）。 */
+export function polarityStops(pol, palette, reverse) {
+  const rampKey = palette || POLARITY_RAMP[pol];
+  if (!rampKey) return null;
+  let stops = normStops(rampKey);
+  if (reverse) {
+    const colors = stops.map(([, c]) => c).reverse();
+    stops = stops.map(([d], i) => [d, colors[i]]);
+  }
+  return stops;
 }
 
 /** HEATMAP_RAMPS[key].stops 去 density 0 透明首段，归一化到 0~1（方格 fill 不能透明）。 */
@@ -427,7 +434,8 @@ export async function generateGridForAI(opts = {}) {
     filterPolarityZero(fc, level, p.polarity);
     const style = gridStyle(level, p.polarity, p.palette, p.reverse);
     paint = { fillOn: true, _ui: { tool: 'grid', analysis: 'square', level, source: p.source || src.value,
-                                   cellSize: p.cellSize, polarity: p.polarity, mode: p.mode, heightField: (level === 'L2' && POLARITY_HF[p.polarity]) ? POLARITY_HF[p.polarity] : '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity },
+                                   cellSize: p.cellSize, polarity: p.polarity, mode: p.mode, heightField: (level === 'L2' && POLARITY_HF[p.polarity]) ? POLARITY_HF[p.polarity] : '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity,
+                                   palette: p.palette || '', reverse: !!p.reverse },
               gridField: style.field, gridStops: style.stops, fillOpacity: p.extrusionOpacity };
   } else {
     const poly = getLayer(p.polygonLayer) || collectPolygonLayers()[0];   // AI 传或自动选首个 Range 面域
@@ -443,7 +451,8 @@ export async function generateGridForAI(opts = {}) {
     const style = gridStyle(level, p.polarity, p.palette, p.reverse);
     paint = { fillOn: true, _ui: { tool: 'grid', analysis: 'zonal', level, source: p.source || src.value,
                                    polygonLayer: poly.id, nameCol: p.nameCol,
-                                   polarity: p.polarity, mode: p.mode, heightField: (level === 'L2' && POLARITY_HF[p.polarity]) ? POLARITY_HF[p.polarity] : '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity },
+                                   polarity: p.polarity, mode: p.mode, heightField: (level === 'L2' && POLARITY_HF[p.polarity]) ? POLARITY_HF[p.polarity] : '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity,
+                                   palette: p.palette || '', reverse: !!p.reverse },
               gridField: style.field, gridStops: style.stops, fillOpacity: p.extrusionOpacity };
   }
 
