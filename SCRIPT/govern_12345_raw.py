@@ -83,6 +83,25 @@ def map_4x5(major, medium):
     return UNMAPPED
 
 
+# ── 分类对标映射（CB-23 v2：42 中类→task_8/project_type/board 主表 + 小类级覆盖）──
+# v2 判据：安全=生命财产（堡坎/消防通道/桥梁/设施）/民生=急难愁盼（供水供气服务/道路通行）/其他=附加·跨界=危房改造/老旧小区改造→城市更新
+with open(os.path.join(OUT, '12345_分类映射.json'), encoding='utf-8') as f:
+    _CLS = json.load(f)
+MEDIUM_CLS = _CLS['medium_mapping']
+SMALL_OVERRIDE = _CLS['small_overrides']
+
+
+def classify_row(medium, small):
+    """中类主表 + 小类覆盖 → (task_8, project_type, board)。小类映射列 = project_type 结果值。"""
+    t8, pt, board = MEDIUM_CLS.get(medium, ['其他', '其他', '其他'])
+    ov = SMALL_OVERRIDE.get(medium, {}).get(small)
+    if ov:
+        t8 = ov[0] or t8
+        pt = ov[1] or pt
+        board = ov[2] or board
+    return t8, pt, board, pt
+
+
 # ── 地点提取（内容·完整地名·79% 覆盖）──
 # 匹配完整地名（「滨江公园」「夷陵区新坪村」「西陵区二马路55号」「吾悦广场」·非泛词）
 _PLACE_RE = re.compile(r'[^\s，。；、]{2,30}(?:小区|路|街|大道|巷|桥|广场|公园|市场|社区|苑|村|镇|路口|站|店|楼|医院|学校)')
@@ -240,6 +259,12 @@ def main():
     out['大类_归'] = df['大类']
     out['中类_归'] = df['中类']
     out['小类_归'] = df['小类']
+    # 7b) 分类对标 4 列（CB-23 v2：task_8 八大任务/project_type 12 项目类型/board 板块/小类映射）
+    _cls4 = df.apply(lambda r: classify_row(str(r['中类']), str(r['小类'])), axis=1, result_type='expand')
+    out['task_8'] = _cls4[0]
+    out['project_type'] = _cls4[1]
+    out['board'] = _cls4[2]
+    out['小类映射'] = _cls4[3]
     # 8) 主办部门 + 评价结果
     out['主办部门'] = df['主办部门']
     out['评价结果'] = df['评价结果']
@@ -264,9 +289,13 @@ def main():
     m45 = df.apply(lambda r: map_4x5(str(r['大类']), str(r['中类'])), axis=1, result_type='expand')
     t2['domain'] = m45[0]
     t2['element'] = m45[1]
-    # topic/issue_label
+    # topic/issue_label + 分类对标 4 列（CB-23 v2·与治理清洗版同源）
     t2['topic'] = df['中类']
     t2['issue_label'] = df['小类']
+    t2['task_8'] = _cls4[0]
+    t2['project_type'] = _cls4[1]
+    t2['board'] = _cls4[2]
+    t2['小类映射'] = _cls4[3]
     # place + region_scope
     t2['place_name'] = out['地点推断']
     t2['place_source'] = out['place_source']
