@@ -1039,6 +1039,8 @@ export function isEmotionPointLayer(l) {
 /** 当 onId 设为可见时，按互斥规则隐藏冲突层。返回被隐藏的层 id 数组（调用方 renderLayer + 选中超链）。
  *  承重：不动 Range（isRangeLayer 跳过）、不动同 L2 group 兄弟（同源极性保留）。 */
 export function enforceMutualExclusion(onId) {
+  // 暂时关闭所有图层的显示互斥（2026-08-13 用户要求）：所有图层可同时显示，互斥逻辑后续再优化。
+  return [];
   const on = getLayer(onId);
   if (!on || !on.visible) return [];
   const onIsB = isToolAnalysisLayer(on);
