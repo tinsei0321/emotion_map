@@ -82,9 +82,12 @@ for r in rows:
         r["分层"] = "其余"
     r["低置信"] = "低置信" if r["楼栋"] < 20 else ""
 
-shuang = sorted([r for r in rows if r["分层"] == "双高"], key=lambda r: -r["任务量"])
-dangao = sorted([r for r in rows if r["分层"] in ("问题指标高", "诉求声量高")], key=lambda r: -r["任务量"])
-top = shuang + dangao[:15]
+shuang = sorted([r for r in rows if r["分层"] == "双高"], key=lambda r: -r["客观"])
+ke = sorted([r for r in rows if r["分层"] == "问题指标高"], key=lambda r: -r["客观"])
+zh = sorted([r for r in rows if r["分层"] == "诉求声量高"], key=lambda r: -r["主观"])
+top = shuang + ke[:8] + zh[:7]
+
+LABELS = {"双高": "双高", "问题指标高": "客观隐患高·诉求未暴露", "诉求声量高": "主观诉求高·体检未印证"}
 
 # ---- 写 Excel ----
 wb = Workbook()
@@ -112,7 +115,7 @@ for i, r in enumerate(top, start=3):
     ws.cell(row=i, column=7, value=round(r["热线民生密度"], 1))
     ws.cell(row=i, column=8, value=int(r["客观"]))
     ws.cell(row=i, column=9, value=int(r["主观"]))
-    ws.cell(row=i, column=10, value=r["分层"])
+    ws.cell(row=i, column=10, value=LABELS[r["分层"]])
     ws.cell(row=i, column=11, value=r["低置信"])
 
 last = 2 + len(top)
@@ -150,6 +153,14 @@ for col, w in widths.items():
 ws.row_dimensions[1].height = 20
 ws.row_dimensions[2].height = 18
 
+# 表尾说明
+note1 = last + 2
+note2 = last + 3
+ws.cell(row=note1, column=1, value="排序：双高 → 客观隐患高（按体检点降序）→ 主观诉求高（按诉求件数降序）；密度仅作资格与旁证，不作排序键。")
+ws.cell(row=note1, column=1).font = Font(italic=True, color="808080")
+ws.cell(row=note2, column=1, value="脚注：体检高 = 客观隐患优先整治；诉求高 = 主观诉求集中须回应。两者都是行动对象、同属高优先，只是处置逻辑不同：一处隐患、一应诉求。")
+ws.cell(row=note2, column=1).font = Font(italic=True, color="808080")
+
 out = BASE / "page7小结" / "page7_分组汇总_2026-08-14.xlsx"
 wb.save(out)
 
@@ -169,6 +180,6 @@ def set_solid_bars(path):
 set_solid_bars(out)
 
 print("已写出:", out)
-print("双高:", len(shuang), " 单轨高:", len(dangao))
+print("双高:", len(shuang), " 客观隐患高:", len(ke), " 主观诉求高:", len(zh))
 for i, r in enumerate(top, 1):
-    print(f"{i:2d} [{r['分层']}] {r['社区']:<8} 楼栋{int(r['楼栋']):>3} 任务量{int(r['任务量']):>4}")
+    print(f"{i:2d} [{LABELS[r['分层']]}] {r['社区']:<8} 楼栋{int(r['楼栋']):>3} 体检点{int(r['客观']):>3} 诉求件{int(r['主观']):>3}")
