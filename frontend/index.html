@@ -1008,16 +1008,17 @@
 
   <!-- Legend + popup 已移入 #map（右下/右上，随 #map 跟随左右栏） -->
 
-  <!-- ═══ Basemap popover (4 天地图 variants) ═══ -->
+  <!-- ═══ Basemap popover（4 天地图 + 3 Esri；Esri 国内不可达自适应回退天地图·CB-31）═══ -->
   <div id="basemap-popover" class="popover" hidden>
     <div class="popover-title">底图 / Basemap</div>
     <div class="basemap-grid">
-      <button class="bm-cell is-active" data-basemap="tianditu-vec-nolabel"><span class="bm-swatch bm-light"></span>浅色（无注记·天地图）</button>
-      <button class="bm-cell" data-basemap="dark-matter"><span class="bm-swatch bm-dark"></span>暗色（无注记）</button>
-      <button class="bm-cell" data-basemap="voyager"><span class="bm-swatch bm-voyager"></span>Voyager（无注记）</button>
-      <button class="bm-cell" data-basemap="tianditu-img"><span class="bm-swatch bm-sat"></span>影像（天地图）</button>
-      <button class="bm-cell" data-basemap="tianditu-img-nolabel"><span class="bm-swatch bm-sat"></span>影像（天地图·无注记）</button>
-      <button class="bm-cell" data-basemap="tianditu-vec"><span class="bm-swatch bm-vec"></span>常规（天地图·带注记）</button>
+      <button class="bm-cell" data-basemap="positron"><span class="bm-swatch bm-gray"></span>浅灰素图（Esri）</button>
+      <button class="bm-cell" data-basemap="tianditu-vec-nolabel"><span class="bm-swatch bm-light"></span>浅色（无注记·天地图）</button>
+      <button class="bm-cell" data-basemap="dark-matter"><span class="bm-swatch bm-dark"></span>暗色（无注记·Esri）</button>
+      <button class="bm-cell" data-basemap="voyager"><span class="bm-swatch bm-voyager"></span>彩色地形（Esri）</button>
+      <button class="bm-cell" data-basemap="tianditu-vec"><span class="bm-swatch bm-vec"></span>常规（带注记·天地图）</button>
+      <button class="bm-cell" data-basemap="tianditu-img"><span class="bm-swatch bm-sat"></span>影像（带注记·天地图）</button>
+      <button class="bm-cell is-active" data-basemap="tianditu-img-nolabel"><span class="bm-swatch bm-sat"></span>影像（无注记·天地图）</button>
     </div>
   </div>
 

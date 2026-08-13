@@ -50,14 +50,23 @@ export function initToolbar({ onTool, onImport, onExport, onBasemap } = {}) {
       'width=1400,height=900,menubar=no,toolbar=no,location=no,status=no,resizable=yes');
   });
 
-  // ── Basemap popover cells ──
+  // ── Basemap popover cells（CB-31：不乐观设 is-active，由 basemap:switched 事件统一同步——含不可达回退 DEFAULT 的激活态回滚）──
   document.querySelectorAll('.bm-cell').forEach((cell) => {
     cell.addEventListener('click', () => {
-      document.querySelectorAll('.bm-cell').forEach((c) => c.classList.remove('is-active'));
-      cell.classList.add('is-active');
       if (onBasemap) onBasemap(cell.dataset.basemap);
       document.getElementById('basemap-popover').hidden = true;
     });
+  });
+  // 探活结果标灰（is-blocked 非 disabled 属性→仍可点重试探活）+ 切换/回退同步激活态（单一权威源）
+  document.addEventListener('basemap:health', (e) => {
+    const { key, health } = e.detail || {};
+    document.querySelectorAll(`.bm-cell[data-basemap="${key}"]`).forEach((c) => {
+      c.classList.toggle('is-blocked', health === 'blocked');
+      c.title = health === 'blocked' ? '当前网络不可达，点击重试' : '';
+    });
+  });
+  document.addEventListener('basemap:switched', (e) => {
+    if (e.detail) setActiveBasemap(e.detail.key);
   });
   // close popover on outside click
   document.addEventListener('click', (e) => {

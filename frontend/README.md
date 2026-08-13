@@ -53,7 +53,7 @@ http://127.0.0.1:8080/frontend/index.html
 ```
 http://127.0.0.1:8080/frontend/index.html?test=1
 ```
-看到 **深蓝标题栏「宜昌市情绪地图 v1.0」+ 工具栏 + 浅色矢量底图（CARTO Positron）**，就成了。
+看到 **深蓝标题栏「宜昌市情绪地图 v1.0」+ 工具栏 + 天地图影像底图（无注记·默认）**，就成了。
 
 **停止服务器**：回到那个终端，按 `Ctrl + C`。
 
@@ -69,21 +69,18 @@ http://127.0.0.1:8080/frontend/index.html?test=1
 
 ---
 
-## 三、为什么必须从「项目根」启动
+## 三、为什么从「项目根」启动
 
-前端底图引用的是相对路径 `../apps/static/tianditu_*.json`。
-- 从**项目根**起服务器 → `../apps/static/` 指向真实文件 ✅
-- 从 `frontend/` 里起服务器 → 路径越界，底图 **404**（地图灰屏）❌
+底图已改为**内联 style**（直接写在 `js/map.js` 的 `BASEMAPS`，不再读外部 JSON）→ 不依赖任何相对路径文件，从哪个目录起都不会底图 404。
 
-所以第 1 步一定要确认终端在 `d:/Github/emotion_map`，不是在 `frontend/`。
+但仍推荐从项目根起：`serve.py` 位于 `frontend/`，命令 `py frontend/serve.py 8080` 需在根目录执行；根目录 `start.bat` 一键启动也假设在根。
 
 ---
 
 ## 四、常见问题
 
 - **"Address already in use"（端口被占）**：换个端口，`py -m http.server 8081`，浏览器地址也改成 `8081`。
-- **地图灰屏 / 底图瓦片不出**：检查 `apps/static/` 下有没有 `tianditu_img_nolabel.json` 等 4 个底图 JSON。
-  这几个文件**被 gitignore（含 key）不会随 git 同步**，换机器要手动补，见 `memories/repo/session-handoff.md`「到公司第一步」。
+- **地图灰屏 / 底图瓦片不出**：底图已是内联 style（`js/map.js`，无外部 JSON 依赖，换机器无需补文件）。默认走**天地图**（国家版图·WGS84·国内稳定可达）；Esri 浅灰/暗灰/彩色三档为占位补源，**国内普通网络常被封**，切到时自动探活，不可达自动回退天地图并弹 toast 提示（永不灰屏，对应按钮会标灰、可点击重试）。
 - **页面全白**：浏览器按 **F12** → Console 看红字报错，多半是某个 JS 路径或语法问题。
 - **终端敲 `python` 报 "exit 49"**：本机要用 `py`，不要用 `python`。
 

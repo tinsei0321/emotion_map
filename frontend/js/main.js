@@ -1,5 +1,5 @@
 // ═══ main.js — entry: wire map + sidebar + panel + toolbar + popup + import ═══
-import { initMap, setBasemap, setClickHandler, renderLayer, fitBoundsTo, reorderAllZ, getMap, setCompareMode, isCompareMode } from './map.js';
+import { initMap, setBasemap, setClickHandler, renderLayer, fitBoundsTo, reorderAllZ, getMap, setCompareMode, isCompareMode, DEFAULT_BASEMAP, probeAllBasemaps } from './map.js';
 import * as data_registry from './data_registry.js';   // R2：统一数据注册表（来源标注·治 C2）
 import { initPanel, activateTab, setOverview, setTable, activateOvTab, isOverallGrid } from './panel.js';
 import { initTipPopup } from './tip-popup.js';
@@ -343,7 +343,9 @@ function main() {
     onExport: (opts) => doExport(opts),
     onBasemap: (key) => setBasemap(key),
   });
-  setActiveBasemap('positron');
+  setActiveBasemap(DEFAULT_BASEMAP);
+  // 启动异步探活全源（不阻塞首屏；Esri 国内不可达→按钮标灰，切时自动回退天地图·CB-31 自适应）
+  probeAllBasemaps();
 
   // Layer delete/clear → refresh list + legend + overview.
   document.addEventListener('layers:changed', () => {

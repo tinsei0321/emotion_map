@@ -101,11 +101,15 @@
   border-radius: var(--geojson-radius-xs);
   border: 1px solid var(--geojson-color-border-default);
 }
-.bm-sat     { background: linear-gradient(135deg, #2d3a2e, #4a5d3a); }
-.bm-vec     { background: linear-gradient(135deg, #eef3f0, #dfe7e2); }
-.bm-dark    { background: linear-gradient(135deg, #1a1a2e, #0d1117); }
-.bm-light   { background: linear-gradient(135deg, #f5f5f5, #d4d4d4); }
-.bm-voyager { background: linear-gradient(135deg, #c8e6c9, #b3e5fc); }
+.bm-sat     { background: linear-gradient(135deg, #2d3a2e, #4a5d3a); }   /* 影像（深绿卫星） */
+.bm-vec     { background: linear-gradient(135deg, #eef3ee, #d6e3dc); }   /* 天地图矢量带注记（暖白绿） */
+.bm-dark    { background: linear-gradient(135deg, #3a3a3a, #1f1f1f); }   /* Esri Dark Gray（中性暗灰） */
+.bm-light   { background: linear-gradient(135deg, #f7f9fb, #e3ecf2); }   /* 天地图矢量无注记（冷白） */
+.bm-gray    { background: linear-gradient(135deg, #e6e6e6, #cccccc); }   /* Esri Light Gray（中性浅灰） */
+.bm-voyager { background: linear-gradient(135deg, #e6dcc4, #b8cfa0); }   /* Esri World Topo（地形棕绿） */
+/* CB-31 自适应：探活不可达的底图按钮标灰（仍可点重试，非永久禁用） */
+.bm-cell.is-blocked { opacity: 0.5; }
+.bm-cell.is-blocked .bm-swatch { filter: grayscale(1); }
 
 /* ── Import confirm dialog (single / bundle / multi-group) ── */
 .app-dialog .dialog-body { display: flex; flex-direction: column; gap: var(--geojson-spacing-3); }
