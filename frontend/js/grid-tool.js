@@ -7,7 +7,7 @@
 // 后端：square→/spatial/grid(square, EPSG:4546 snap-to-grid)；zonal→/spatial/aggregate(点→面域)。
 // 注：polarity_index 值域 -2~+2。_grid_norm 用对称拉伸 0.5+sign(pi)×min(1,|pi|/p95)×0.5（p95=|pi|95分位），
 // 铺满 terrain-9 深红/深绿（线性 (pi+2)/4 只到中段=无张力根因）；与 terrain 后端 _norm 同公式保配色一致。
-import { getLayers, addLayer, getLayer, selectLayer, setLayerVisible, isRangeLayer, enforceMutualExclusion, HEATMAP_RAMPS, rampDisplaySegs, deriveTimeTag } from './state.js';
+import { getLayers, addLayer, getLayer, selectLayer, setLayerVisible, isRangeLayer, enforceMutualExclusion, HEATMAP_RAMPS, rampDisplaySegs, deriveTimeTag, GRID_PALETTE_GROUPS } from './state.js';
 import { renderLayer, fitBoundsTo, reorderAllZ, removeLayerFromMap, setView3D } from './map.js';
 import { renderLayerList, refreshLegend, showLayerManager } from './sidebar.js';
 import { fcBBox } from './import.js';
@@ -276,23 +276,66 @@ function populateNameCols(fc) {
   sel.innerHTML = '<option value="">（不显示名称）</option>' + cols.map((c) => `<option value="${c}">${c}</option>`).join('');
 }
 
+// ── 色板下拉（CB-32 2026-08-13·渐变条选项·无文字·分单色/多色/发散三组）──
+function _closeRampMenu() {
+  document.querySelectorAll('.hm-ramp-menu').forEach((m) => { m.hidden = true; });
+  document.querySelectorAll('.hm-ramp-trigger').forEach((t) => t.setAttribute('aria-expanded', 'false'));
+}
+function _toggleRampMenu() {
+  const menu = document.querySelector('#grid-palette-menu');
+  if (!menu) return;
+  const willOpen = menu.hidden;
+  menu.hidden = !willOpen;
+  document.querySelector('#grid-palette-trigger')?.setAttribute('aria-expanded', String(willOpen));
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.hm-ramp-select')) _closeRampMenu();
+});
+
 function renderRampPreview(dlg, level, polarity) {
   const wrap = dlg.querySelector('#grid-ramp-preview');
-  if (!wrap) return;
-  // CB-23：色板下拉（首次填充·可选集）+ 反向状态
   const sel = dlg.querySelector('#grid-palette');
-  if (sel && !sel.options.length) {
-    const KEYS = ['grid-warm', 'terrain-9', 'green-3', 'red-3', 'blue-3', 'diverging-rg', 'rainbow', 'orange-6'];
-    sel.innerHTML = '<option value="">自动（随层级/极性）</option>'
-      + KEYS.filter((k) => HEATMAP_RAMPS[k]).map((k) => `<option value="${k}">${k}</option>`).join('');
+  const menu = dlg.querySelector('#grid-palette-menu');
+  const current = dlg.querySelector('#grid-palette-current');
+  const trigger = dlg.querySelector('#grid-palette-trigger');
+
+  // 首次填充下拉（渐变条·无文字·分组；「自动」为模式非颜色，保留短标签）
+  if (menu && !menu.dataset.ready) {
+    menu.dataset.ready = '1';
+    let html = '<button type="button" class="hm-ramp-item is-auto" data-value="" title="自动（随层级/极性）" role="option"><span class="hm-ramp-item-name">自动</span></button>';
+    for (const g of GRID_PALETTE_GROUPS) {
+      html += `<div class="hm-ramp-group-label">${g.label}</div>`;
+      for (const k of g.keys) {
+        const ramp = HEATMAP_RAMPS[k];
+        if (!ramp) continue;
+        const segs = rampDisplaySegs(k, ramp);
+        html += `<button type="button" class="hm-ramp-item" data-value="${k}" title="${ramp.name}" role="option"><span class="hm-ramp-item-bar" style="background:linear-gradient(90deg, ${segs.join(',')})"></span></button>`;
+      }
+    }
+    menu.innerHTML = html;
+    menu.querySelectorAll('.hm-ramp-item').forEach((b) => {
+      b.addEventListener('click', () => {
+        sel.dataset.value = b.dataset.value;
+        _closeRampMenu();
+        renderRampPreview(dlg, level, selectedPolarity(dlg));
+      });
+    });
+    trigger?.addEventListener('click', _toggleRampMenu);
   }
-  const palette = sel ? sel.value : '';
+
+  const palette = sel ? (sel.dataset.value || '') : '';
   const reverse = dlg.querySelector('#grid-reverse')?.dataset.reverse === '1';
   const style = gridStyle(level, polarity, palette || undefined, reverse);
   const ramp = HEATMAP_RAMPS[style.rampKey];
   const segs = ramp ? rampDisplaySegs(style.rampKey, ramp) : style.stops.map(([, c]) => c);
-  const segHtml = (reverse ? [...segs].reverse() : segs).map((c) => `<span class="hm-style-seg" style="background:${c}"></span>`).join('');
-  wrap.innerHTML = `<div class="hm-style-preview"><span class="hm-style-bar">${segHtml}</span></div>`;
+  const dispSegs = reverse ? [...segs].reverse() : segs;
+
+  if (current) current.style.background = `linear-gradient(90deg, ${dispSegs.join(',')})`;
+  if (wrap) {
+    const segHtml = dispSegs.map((c) => `<span class="hm-style-seg" style="background:${c}"></span>`).join('');
+    wrap.innerHTML = `<div class="hm-style-preview"><span class="hm-style-bar">${segHtml}</span></div>`;
+  }
+  if (menu) menu.querySelectorAll('.hm-ramp-item').forEach((b) => b.classList.toggle('is-sel', b.dataset.value === palette));
 }
 
 /** 随 analysis + level 切 square/zonal/polarity 显隐 + 色板预览。 */
@@ -345,7 +388,7 @@ function readParams(dlg) {
     mode: dlg.querySelector('#grid-mode .buf-cap.is-sel')?.dataset.mode || DEFAULTS.mode,
     maxHeight: Number(dlg.querySelector('#grid-extrusion-scale').value),
     extrusionOpacity: Number(dlg.querySelector('#grid-extrusion-opacity')?.value ?? 1),
-    palette: dlg.querySelector('#grid-palette')?.value || '',   // 色板手选（空=自动）
+    palette: dlg.querySelector('#grid-palette')?.dataset.value || '',   // 色板手选（空=自动）
     reverse: dlg.querySelector('#grid-reverse')?.dataset.reverse === '1',   // 颜色反向
   };
 }
@@ -598,10 +641,7 @@ export function initGridTool() {
   dlg.querySelector('#grid-level').addEventListener('change', () => {
     constrainParams(dlg);
   });
-  // 色板手选 / 反向 → 刷新预览（CB-23 2026-08-12）
-  dlg.querySelector('#grid-palette')?.addEventListener('change', () => {
-    renderRampPreview(dlg, dlg.querySelector('#grid-level').value ? levelOfSource(dlg.querySelector('#grid-level').value) : 'L0', 'overall');
-  });
+  // 色板手选已在 renderRampPreview 内绑到渐变条下拉（CB-32 2026-08-13），此处不再绑 change。
   dlg.querySelector('#grid-reverse')?.addEventListener('click', () => {
     const b = dlg.querySelector('#grid-reverse');
     b.dataset.reverse = b.dataset.reverse === '1' ? '0' : '1';

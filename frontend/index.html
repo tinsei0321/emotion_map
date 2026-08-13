@@ -712,7 +712,13 @@
                   <div class="hm-section">
                     <div class="hm-label">色板 <span class="hm-info" data-tip="可选手选色板（默认随数据层级/极性自动）。反向=高值深色/低值浅色（默认高值浅黄低值深红·用户觉得怪可反向）。2D/3D 一致。">i</span></div>
                     <div class="hm-palette-row" style="display:flex;gap:6px;align-items:center">
-                      <select class="sec-select" id="grid-palette" style="flex:1"></select>
+                      <div class="hm-ramp-select" id="grid-palette" style="flex:1">
+                        <button type="button" class="hm-ramp-trigger" id="grid-palette-trigger" aria-haspopup="listbox" aria-expanded="false">
+                          <span class="hm-ramp-current" id="grid-palette-current"></span>
+                          <span class="hm-ramp-caret" aria-hidden="true"></span>
+                        </button>
+                        <div class="hm-ramp-menu" id="grid-palette-menu" role="listbox" hidden></div>
+                      </div>
                       <button type="button" class="buf-cap" id="grid-reverse" data-reverse="0" title="颜色反向（高值↔低值）">⇅ 反向</button>
                     </div>
                     <div class="hm-style-list" id="grid-ramp-preview"><!-- 只读色带预览 by JS --></div>

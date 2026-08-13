@@ -539,7 +539,39 @@ export const HEATMAP_RAMPS = {
   'green-3':  { name: '积极（绿）', stops: gradientStops(TERRAIN_GREEN, 6) },   // 6 段（中间过渡多，张力）；极性网格颜色=_grid_h_pos 该极性点数
   'red-3':    { name: '消极（红）', stops: gradientStops(TERRAIN_RED, 6) },     // 6 段；颜色=_grid_h_neg
   'blue-3':   { name: '中性（蓝）', stops: gradientStops(TERRAIN_BLUE, 6) },    // 6 段；颜色=_grid_h_neu
+
+  // ── 网格色板扩展（CB-32 2026-08-13·用户：色板太少且有重复·参考业界 ColorBrewer/matplotlib 多加单色系/多色系/发散）──
+  // 顺序：density 低→高 = 浅→深（sequential）；发散型低→高 = 负→正（两端深色）。
+  'blues':    { name: '蓝', stops: gradientStops(['#eff3ff', '#bdd7e7', '#6baed6', '#3182bd', '#08519c'], 7) },
+  'indigo':   { name: '靛蓝', stops: gradientStops(['#eef2ff', '#c7d2fe', '#818cf8', '#4f46e5', '#312e81'], 7) },
+  'cyans':    { name: '青', stops: gradientStops(['#e0f7fa', '#b2ebf2', '#4dd0e1', '#00acc1', '#006064'], 7) },
+  'teals':    { name: '青绿', stops: gradientStops(['#e0f2f1', '#b2dfdb', '#4db6ac', '#00897b', '#004d40'], 7) },
+  'greens':   { name: '绿', stops: gradientStops(['#edf8e9', '#bae4b3', '#74c476', '#31a354', '#006d2c'], 7) },
+  'yellows':  { name: '黄', stops: gradientStops(['#fffde7', '#fff59d', '#ffeb3b', '#f9a825', '#f57f17'], 7) },
+  'oranges':  { name: '橙', stops: gradientStops(['#fff3e0', '#ffe0b2', '#ffb74d', '#fb8c00', '#e65100'], 7) },
+  'reds':     { name: '红', stops: gradientStops(['#fee5d9', '#fcae91', '#fb6a4a', '#de2d26', '#a50f15'], 7) },
+  'pinks':    { name: '粉', stops: gradientStops(['#fce4ec', '#f8bbd0', '#f06292', '#d81b60', '#880e4f'], 7) },
+  'purples':  { name: '紫', stops: gradientStops(['#f3e5f5', '#e1bee7', '#ba68c8', '#8e24aa', '#4a148c'], 7) },
+  'browns':   { name: '咖啡', stops: gradientStops(['#f3e5d8', '#d7b899', '#b6895a', '#8a5a2e', '#5c3a1a'], 7) },
+  'greys':    { name: '灰', stops: gradientStops(['#f7f7f7', '#cccccc', '#969696', '#636363', '#252525'], 7) },
+  'viridis':  { name: 'Viridis', stops: gradientStops(['#440154', '#414487', '#2a788e', '#22a884', '#7ad151', '#fde725'], 8) },
+  'magma':    { name: 'Magma', stops: gradientStops(['#000004', '#3b0f70', '#8c2981', '#de4968', '#fe9f6d', '#fcfdbf'], 8) },
+  'plasma':   { name: 'Plasma', stops: gradientStops(['#0d0887', '#6a00a8', '#b12a90', '#e16462', '#fca636', '#f0f921'], 8) },
+  'ylorrd':   { name: '黄橙红', stops: gradientStops(['#ffffcc', '#ffeda0', '#fed976', '#feb24c', '#fd8d3c', '#fc4e2a', '#e31a1c'], 7) },
+  'ylgnbu':   { name: '黄绿蓝', stops: gradientStops(['#ffffd9', '#c7e9b4', '#7fcdbb', '#41b6c4', '#1d91c0', '#225ea8'], 7) },
+  'bugn':     { name: '蓝绿', stops: gradientStops(['#f7fcfd', '#ccece6', '#99d8c9', '#66c2a4', '#41ae76', '#238b45'], 7) },
+  'spectral': { name: '光谱', stops: gradientStops(['#d53e4f', '#f46d43', '#fdae61', '#fee08b', '#ffffbf', '#e6f598', '#abdda4', '#66c2a5', '#3288bd'], 9) },
+  'rdylbu':   { name: '红黄蓝', stops: gradientStops(['#d73027', '#f46d43', '#fdae61', '#fee090', '#ffffbf', '#e0f3f8', '#abd9e9', '#74add1', '#4575b4'], 9) },
+  'rdylgn':   { name: '红黄绿', stops: gradientStops(['#d73027', '#f46d43', '#fdae61', '#fee08b', '#ffffbf', '#d9ef8b', '#a6d96a', '#66bd63', '#1a9850'], 9) },
 };
+
+// 网格「显示样式·色板」手选下拉分组（CB-32 2026-08-13·色板扩展·分单色/多色/发散三类）。
+// 名称只作 title 提示，下拉里直接显示渐变条（不再用文字选项）。
+export const GRID_PALETTE_GROUPS = [
+  { label: '单色系', keys: ['blues', 'indigo', 'cyans', 'teals', 'greens', 'yellows', 'oranges', 'reds', 'pinks', 'purples', 'browns', 'greys'] },
+  { label: '多色系', keys: ['viridis', 'magma', 'plasma', 'ylorrd', 'ylgnbu', 'bugn', 'grid-warm', 'rainbow'] },
+  { label: '发散系', keys: ['spectral', 'rdylbu', 'rdylgn', 'diverging-rg', 'terrain-9'] },
+];
 
 // sorted keys for UI iteration（类型细分渐变 + 总体情况红蓝绿地形 + 网格 3 段）
 export const HEATMAP_RAMP_KEYS = ['rainbow', 'positive', 'negative', 'neutral', 'anxiety', 'mono', 'diverging-rg', 'grid-warm', 'classify-7', 'terrain-9', 'green-3', 'red-3', 'blue-3'];

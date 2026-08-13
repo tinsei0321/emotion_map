@@ -333,6 +333,74 @@
   border-radius: 2px;
   border: 1px solid var(--geojson-color-gray-200);
 }
+/* ── 色板下拉（CB-32 2026-08-13·渐变条选项·无文字·单色/多色/发散分组）── */
+.hm-ramp-select { position: relative; }
+.hm-ramp-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 30px;
+  padding: 4px 7px;
+  background: var(--geojson-color-surface-page, #fff);
+  border: 1px solid var(--geojson-color-gray-300, #d4d4d4);
+  border-radius: var(--geojson-radius-sm, 6px);
+  cursor: pointer;
+}
+.hm-ramp-trigger:hover { border-color: var(--geojson-color-brand-primary); }
+.hm-ramp-current { flex: 1; height: 14px; border-radius: 3px; background: #ccc; }
+.hm-ramp-caret {
+  flex: 0 0 auto;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--geojson-color-text-secondary, #666);
+}
+.hm-ramp-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  max-height: 264px;
+  overflow: auto;
+  padding: 6px;
+  background: var(--geojson-color-surface-page, #fff);
+  border: 1px solid var(--geojson-color-gray-300, #d4d4d4);
+  border-radius: var(--geojson-radius-sm, 6px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+.hm-ramp-group-label {
+  padding: 7px 4px 3px;
+  font-size: 11px;
+  color: var(--geojson-color-text-tertiary, #999);
+}
+.hm-ramp-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin: 1px 0;
+  padding: 3px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.hm-ramp-item:hover { background: var(--geojson-color-gray-100, #f5f5f5); }
+.hm-ramp-item.is-sel {
+  border-color: var(--geojson-color-brand-primary);
+  background: color-mix(in srgb, var(--geojson-color-brand-primary) 10%, transparent);
+}
+.hm-ramp-item-bar {
+  display: block;
+  flex: 1;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid var(--geojson-color-gray-200, #e5e5e5);
+}
+.hm-ramp-item-name { font-size: 12px; padding: 0 6px; color: var(--geojson-color-text-secondary, #666); }
+.hm-ramp-item.is-auto .hm-ramp-item-name { flex: 1; text-align: left; }
 .hm-zoom-range {
   display: grid;
   grid-template-columns: auto 1fr auto;
