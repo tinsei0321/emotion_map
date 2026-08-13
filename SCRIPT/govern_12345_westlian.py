@@ -18,9 +18,6 @@ RANGE_SRC = os.path.join(ANALYSIS, "西陵伍家_合并范围.geojson")
 PTS_SRC = os.path.join(SUBJ, "12345_有坐标点.geojson")
 COMM174 = os.path.join(ROOT, "DATA", "boundaries", "presets", "checkup_配置_社区174.geojson")
 
-RANGE_OUT = os.path.join(ANALYSIS, "12345_西陵+伍家岗.geojson")
-
-
 def load_gj(path):
     with open(path, encoding="utf-8") as f:
         return json.load(f)
@@ -37,12 +34,6 @@ def main():
     polys = [shape(f["geometry"]) for f in rng["features"]]
     # 合并为单一多边形（西陵+伍家）
     union = unary_union(polys)
-    union_feat = [{
-        "type": "Feature",
-        "properties": {"名称": "西陵+伍家岗", "MC": "西陵区+伍家岗区"},
-        "geometry": json.loads(json.dumps(union.__geo_interface__)),
-    }]
-    save_gj(RANGE_OUT, union_feat)
 
     pts = load_gj(PTS_SRC)
     feats = pts["features"]

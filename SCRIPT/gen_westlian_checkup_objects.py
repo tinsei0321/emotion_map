@@ -9,7 +9,7 @@ from shapely.ops import unary_union
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PRESETS = os.path.join(ROOT, "DATA", "boundaries", "presets")
 COMM = os.path.join(PRESETS, "checkup_配置_社区.geojson")
-XLWJ = os.path.join(ROOT, "DATA", "analysis", "12345_西陵+伍家岗.geojson")
+XLWJ = os.path.join(ROOT, "DATA", "analysis", "西陵伍家_合并范围.geojson")
 OUT = os.path.join(PRESETS, "体检对象_西陵+伍家岗.geojson")
 
 
