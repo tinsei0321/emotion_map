@@ -222,6 +222,13 @@
     "file": "checkup_配置_社区174.geojson",
     "nameField": "社区",
     "note": "聚合边界 174 城市社区（去 19 村·zonal/面积统计用）"
+   },
+   {
+    "id": "checkup_cfg_community_xlwj",
+    "label": "体检对象-西陵+伍家岗（130社区）",
+    "file": "体检对象_西陵+伍家岗.geojson",
+    "nameField": "社区",
+    "note": "174 城市社区中属于西陵+伍家岗的部分（体检 2025 已调研范围）"
    }
   ]
  }
