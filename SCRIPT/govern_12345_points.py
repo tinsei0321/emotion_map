@@ -98,24 +98,29 @@ def main():
 
     print(f"[OK] ok 点 {len(ok)}：命中社区 {n_city} / 命中村 {n_vill} / 范围外 {n_out}")
 
-    feats = []
-    for _, r in has.iterrows():
-        props = {
-            "办件编号": r["办件编号"], "事件": r["事件"], "类9": r["类9"],
-            "方面": r["方面"], "geocode_status": r["geocode_status"],
-            "board": r["board"], "project_type": r["project_type"],
-            "社区": r["社区"], "村": r["村"],
-        }
-        feats.append({
-            "type": "Feature",
-            "geometry": {"type": "Point", "coordinates": [float(r["lon"]), float(r["lat"])]},
-            "properties": props,
-        })
-    gj = {"type": "FeatureCollection", "features": feats}
-    out_gj = os.path.join(OUT, "12345_有坐标点.geojson")
-    with open(out_gj, "w", encoding="utf-8") as f:
-        json.dump(gj, f, ensure_ascii=False)
-    print(f"[OK] 点数据 -> {out_gj} ({len(feats)} 点)")
+    def _dump(sub, name):
+        feats = []
+        for _, r in sub.iterrows():
+            props = {
+                "办件编号": r["办件编号"], "事件": r["事件"], "类9": r["类9"],
+                "方面": r["方面"], "geocode_status": r["geocode_status"],
+                "board": r["board"], "project_type": r["project_type"],
+                "社区": r["社区"], "村": r["村"],
+            }
+            feats.append({
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [float(r["lon"]), float(r["lat"])]},
+                "properties": props,
+            })
+        gj = {"type": "FeatureCollection", "features": feats}
+        out_gj = os.path.join(OUT, name)
+        with open(out_gj, "w", encoding="utf-8") as f:
+            json.dump(gj, f, ensure_ascii=False)
+        print(f"[OK] {name} ({len(feats)} 点)")
+
+    _dump(has, "12345_有坐标点.geojson")
+    _dump(has[has["方面"] == "安全韧性"], "12345_安全韧性_有坐标点.geojson")
+    _dump(has[has["方面"] == "民生基础"], "12345_民生基础_有坐标点.geojson")
 
     city_ok = has[(has["geocode_status"] == "ok") & has["社区"].notna()]
     city_mat = pd.crosstab(city_ok["社区"], city_ok["类9"])
