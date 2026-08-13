@@ -119,8 +119,17 @@ def main():
         print(f"[OK] {name} ({len(feats)} 点)")
 
     _dump(has, "12345_有坐标点.geojson")
-    _dump(has[has["方面"] == "安全韧性"], "12345_安全韧性_有坐标点.geojson")
-    _dump(has[has["方面"] == "民生基础"], "12345_民生基础_有坐标点.geojson")
+    for asp in ("安全韧性", "民生基础"):
+        sub = has[has["方面"] == asp]
+        _dump(sub, f"12345_{asp}_有坐标点.geojson")
+        # ok 点按社区/村拆分
+        _dump(sub[(sub["geocode_status"] == "ok") & sub["社区"].notna()],
+              f"12345_{asp}_社区点.geojson")
+        _dump(sub[(sub["geocode_status"] == "ok") & sub["村"].notna()],
+              f"12345_{asp}_村点.geojson")
+        # region 区级点
+        _dump(sub[sub["geocode_status"] == "region"],
+              f"12345_{asp}_区级点.geojson")
 
     city_ok = has[(has["geocode_status"] == "ok") & has["社区"].notna()]
     city_mat = pd.crosstab(city_ok["社区"], city_ok["类9"])
