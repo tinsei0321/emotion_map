@@ -84,15 +84,23 @@ def main():
     n_city = n_vill = n_out = 0
     for i, lon, lat in zip(idx, ok_lon, ok_lat):
         pt = Point(lon, lat)
-        hit_city = comm_tree.query(pt)
-        if len(hit_city) > 0:
-            has.at[i, "社区"] = comm_n[hit_city[0]]
-            n_city += 1
+        # CB-33 修复：STRtree.query 只做 bbox 命中，须精确 contains/covers 判定（否则相邻社区 bbox 重叠致错标）。
+        matched = False
+        for gi in comm_tree.query(pt):
+            if comm_g[gi].contains(pt) or comm_g[gi].covers(pt):
+                has.at[i, "社区"] = comm_n[gi]
+                n_city += 1
+                matched = True
+                break
+        if matched:
             continue
-        hit_vill = vill_tree.query(pt)
-        if len(hit_vill) > 0:
-            has.at[i, "村"] = vill_n[hit_vill[0]]
-            n_vill += 1
+        for gi in vill_tree.query(pt):
+            if vill_g[gi].contains(pt) or vill_g[gi].covers(pt):
+                has.at[i, "村"] = vill_n[gi]
+                n_vill += 1
+                matched = True
+                break
+        if matched:
             continue
         n_out += 1
 
