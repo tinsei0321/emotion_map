@@ -93,6 +93,30 @@
 - 范围：只做 PPT 用数据表（图数据源/文件索引等不做）；md 里每张表（含详表/口径注释）全量同步进 Excel
 - 工作流：claude组 完成 page md → 通知 Codex 追加对应 sheet → Codex 落盘后 claude组 验收 + commit（**注：角色变更后 commit 由 Codex 执行**）
 
+## 隐规则清单（承接自 claude 组 AutoMemory · 主开发必守·防重复问用户）
+
+> claude 组历轮沉淀的反馈/习惯，存在 `~/.claude/projects/d--Github-emotion-map/memory/*.md`（约 90+ 条）。以下为**当前主线（图数表出图）直接相关**的关键隐规则，Codex 主开发必须承接，不再让用户重复。
+
+### 图数表出图（当前主线·最关键）
+
+- **风险主题命名**（`risk-theme-naming`）：类型命名一律用「XX 安全」后缀——page2/3=房屋/管网/消防安全，page4=管网/出行/消防/环境安全；**禁用设施清单式旧名**（市政管网/交通设施/安全消防/环境治理·堡坎山体）。数据层字段（project_type/board）不改，仅表述层用新名（同"方面/board 别名注"模式）。
+- **每页重构 = 重构 + 数据审计**（`page-rebuild-with-data-audit`）：写完 page md 必须对账（点文件 geojson 点数 / 社区矩阵 csv / 77项体检值 / 问题清单分布），不一致以实测为准修正 + 口径注标双口径。
+- **结构化输出四层**（同条 1b·结构化 ≠ 句式固定）：主体每类问题按 ①概况（件数/占比/涉及社区数）②问题内容（"主要为……等问题"式举例）③集中区域（社区+行政村合并列）④详细数字全部放表格（主体不堆数字）。
+- **覆盖用户 PPT 内容**（同条）：用户定稿的类名/具体说明是最高权威，md/Excel 不得用自拟命名替代，只能在用户内容基础上加详。
+
+### 沟通 / 交付物
+
+- **沟通风格**（`communication-style-framework-items-synthesis`）：技术交流用「逻辑框架 + 条目化要点 + 总结/归纳」；禁"一句话版/口诀/TL;DR/汇报体"和长篇大论。
+- **专业词+通俗解释**（`pro-term-plus-plain-meaning`）：每个专业词后面紧跟通俗解释「专业词(=解释)」；聊天和交付物都遵守。
+- **交付物全中文**（`chinese-all-deliverables`）：plan/报告/文档用中文，仅代码/路径/标识符英文。
+
+### Git / 文档同步
+
+- **commit + push（2026-08-13 用户最新指令·覆盖 claude 旧"只 commit 不 push"）**：每次完成任务 Codex 自己 commit + push；push 失败即网络不好，**不反复重试**，告知用户即可（用户手动 push）。
+- **todo + revision-log 同步**（`todo-revision-log-sync` + `maintain-revision-log`）：每完成一件事同步 todo + revision-log，**最新内容顶部可见**（todo 按日段倒序），禁底部追加；每次 commit 后追加 revision-log 一行。
+
+> **承接机制**：Codex 主开发做任何图数表出图/沟通/交付/git 决策前，先查本节 + 读 `~/.claude/projects/d--Github-emotion-map/memory/` 对应条目；新规则由用户/评估方反馈后，同步补进本节。
+
 ## 测试基建
 
 - pytest：**320 passed + 3 skipped 零回归**
