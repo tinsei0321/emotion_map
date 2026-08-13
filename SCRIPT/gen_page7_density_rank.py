@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
-"""page7 密度+分层 排名：生成 TOP20 统计表（Excel·四维数据条）。"""
+"""page7 汇总表：六列 + 两横条上下并列 + 任务量分层排序。"""
 import csv, pathlib, sys
 from collections import Counter
 sys.stdout.reconfigure(encoding="utf-8")
 
 from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment, Border, Side
-from openpyxl.formatting.rule import DataBarRule
+from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+from openpyxl.cell.rich_text import CellRichText, TextBlock
+from openpyxl.cell.text import InlineFont
+from openpyxl.styles.colors import Color
 
 BASE = pathlib.Path("DATA/analysis")
 
@@ -42,18 +44,16 @@ for c, d in denom_map.items():
     tj_min = num(mins_map[c]["总点数"]) if c in mins_map else 0.0
     r_safe = sum(num(r123_map[c][k]) for k in SAFE_COLS) if c in r123_map else 0.0
     r_min = sum(num(r123_map[c][k]) for k in MIN_COLS) if c in r123_map else 0.0
+    obj = tj_safe + tj_min
+    sub = r_safe + r_min
     rows.append(dict(
-        社区=c, 楼栋=bldg,
+        社区=c, 楼栋=bldg, resi=num(d["resi_km2"]),
         体检安全=tj_safe, 体检民生=tj_min,
         热线安全=r_safe, 热线民生=r_min,
-        体检安全密度=tj_safe / bldg * 100,
-        体检民生密度=tj_min / bldg * 100,
-        热线安全密度=r_safe / bldg * 100,
-        热线民生密度=r_min / bldg * 100,
-        客观=tj_safe + tj_min,
-        主观=r_safe + r_min,
-        客观密度=(tj_safe + tj_min) / bldg * 100,
-        主观密度=(r_safe + r_min) / bldg * 100,
+        客观=obj, 主观=sub, 任务量=obj + sub,
+        体检安全密度=tj_safe / bldg * 100, 体检民生密度=tj_min / bldg * 100,
+        热线安全密度=r_safe / bldg * 100, 热线民生密度=r_min / bldg * 100,
+        客观密度=obj / bldg * 100, 主观密度=sub / bldg * 100,
     ))
 
 active = [r for r in rows if r["客观"] > 0 or r["主观"] > 0]
@@ -83,76 +83,104 @@ for r in rows:
         r["分层"] = "其余"
     r["低置信"] = "低置信" if r["楼栋"] < 20 else ""
 
-shuang = sorted([r for r in rows if r["分层"] == "双高"], key=lambda r: -r["主观密度"])
-ke = sorted([r for r in rows if r["分层"] == "客观高"], key=lambda r: -r["客观密度"])
-zh = sorted([r for r in rows if r["分层"] == "主观高"], key=lambda r: -r["主观密度"])
-top = shuang + ke[:8] + zh[:7]
-if len(top) > 20:
-    top = top[:20]
+shuang = sorted([r for r in rows if r["分层"] == "双高"], key=lambda r: -r["任务量"])
+dangao = sorted([r for r in rows if r["分层"] in ("客观高", "主观高")], key=lambda r: -r["任务量"])
+top = shuang + dangao[:15]
 
-global_max = max(max(r["体检安全密度"], r["体检民生密度"], r["热线安全密度"], r["热线民生密度"]) for r in top)
+tj_max = max(max(r["体检安全密度"], r["体检民生密度"]) for r in active)
+rx_max = max(max(r["热线安全密度"], r["热线民生密度"]) for r in active)
+
+def bar_len(d, mx):
+    if d <= 0:
+        return 0
+    return max(1, round(d / mx * 12))
+
+DEEP_BLUE = "FF1F4E79"
+LIGHT_BLUE = "FF4472C4"
+DEEP_ORANGE = "FFC55A11"
+LIGHT_ORANGE = "FFED7D31"
+RED = "FFC00000"
+GRAY = "FF808080"
+
+def bar_line(label, density, count, color, mx):
+    n = bar_len(density, mx)
+    bar = "█" * n if n else "—"
+    return TextBlock(InlineFont(color=Color(rgb=color)), f"{label} {bar} {int(count)}")
+
+def two_bar_cell(sl, sd, sc, scolor, ml, md, mc, mcolor, mx):
+    return CellRichText(
+        bar_line(sl, sd, sc, scolor, mx),
+        TextBlock(InlineFont(), "\n"),
+        bar_line(ml, md, mc, mcolor, mx),
+    )
+
+def assess_cell(r):
+    if r["分层"] == "双高":
+        label, color = "双高", RED
+        star = " ★"
+    elif r["分层"] == "客观高":
+        label, color = "客观高", DEEP_BLUE
+        star = ""
+    else:
+        label, color = "主观高", DEEP_ORANGE
+        star = ""
+    note = " 低置信" if r["低置信"] else ""
+    return CellRichText(
+        TextBlock(InlineFont(color=Color(rgb=color), b=True, sz=12), label + star),
+        TextBlock(InlineFont(color=Color(rgb=GRAY), sz=9), f"客观{int(r['客观密度'])}/百栋 主观{int(r['主观密度'])}/百栋{note}"),
+    )
 
 # ---- 写 Excel ----
 wb = Workbook()
 ws = wb.active
-ws.title = "分层TOP20"
+ws.title = "page7汇总"
 
-header = ["序", "社区", "楼栋",
-          "体检安全\n(每百栋)", "体检民生\n(每百栋)",
-          "热线安全\n(每百栋)", "热线民生\n(每百栋)",
-          "体检隐患\n(点)", "热线诉求\n(件)", "分层", "备注"]
+header = ["社区", "楼栋数", "面积\n(km²·仅参考)", "可量化指标\n(体检·点)", "可感知指标\n(12345·件)", "综合评估"]
 ws.append(header)
 
-for i, r in enumerate(top, 1):
+for r in top:
     ws.append([
-        i, r["社区"], int(r["楼栋"]),
-        round(r["体检安全密度"], 1), round(r["体检民生密度"], 1),
-        round(r["热线安全密度"], 1), round(r["热线民生密度"], 1),
-        int(r["客观"]), int(r["主观"]), r["分层"], r["低置信"],
+        r["社区"],
+        int(r["楼栋"]),
+        round(r["resi"], 2),
+        two_bar_cell("安全", r["体检安全密度"], r["体检安全"], DEEP_BLUE,
+                     "民生", r["体检民生密度"], r["体检民生"], LIGHT_BLUE, tj_max),
+        two_bar_cell("安全", r["热线安全密度"], r["热线安全"], DEEP_ORANGE,
+                     "民生", r["热线民生密度"], r["热线民生"], LIGHT_ORANGE, rx_max),
+        assess_cell(r),
     ])
-
-n = len(top)
-last = n + 1  # 数据从第2行到第 n+1 行
-# 体检(客观)蓝条 · 热线(主观)橙条 · 统一刻度 0..global_max
-ws.conditional_formatting.add(
-    f"D2:E{last}",
-    DataBarRule(start_type="num", start_value=0, end_type="num", end_value=round(global_max, 1),
-                color="4472C4", showValue=True),
-)
-ws.conditional_formatting.add(
-    f"F2:G{last}",
-    DataBarRule(start_type="num", start_value=0, end_type="num", end_value=round(global_max, 1),
-                color="ED7D31", showValue=True),
-)
-
-# 双高四维副表（原始件数·供 4 根柱子图）
-ws2 = wb.create_sheet("双高四维")
-ws2.append(["社区", "体检安全(点)", "体检民生(点)", "热线安全(件)", "热线民生(件)", "楼栋"])
-for r in shuang:
-    ws2.append([r["社区"], int(r["体检安全"]), int(r["体检民生"]), int(r["热线安全"]), int(r["热线民生"]), int(r["楼栋"])])
 
 thin = Side(style="thin", color="D9D9D9")
 border = Border(left=thin, right=thin, top=thin, bottom=thin)
-bold = Font(bold=True)
+bold = Font(bold=True, color="FFFFFF")
+header_fill = PatternFill("solid", fgColor="404040")
 center = Alignment(horizontal="center", vertical="center", wrap_text=True)
-for sheet in (ws, ws2):
-    for row in sheet.iter_rows():
-        for cell in row:
-            cell.border = border
-            cell.alignment = center
-    for cell in sheet[1]:
-        cell.font = bold
-    for col in sheet.columns:
-        letter = col[0].column_letter
-        w = max(len(str(c.value).replace("\n", "")) for c in col if c.value is not None) + 3
-        sheet.column_dimensions[letter].width = min(max(w, 8), 18)
 
-# 图例说明行（放在表格下方）
-note_row = last + 2
-ws.cell(row=note_row, column=1, value="图例：蓝色数据条 = 体检（客观·每百栋）；橙色数据条 = 热线（主观·每百栋）；两色同刻度，可横向并排比较。")
+for row in ws.iter_rows(min_row=1, max_row=1 + len(top)):
+    for cell in row:
+        cell.border = border
+        cell.alignment = center
+for cell in ws[1]:
+    cell.font = bold
+    cell.fill = header_fill
+
+widths = {"A": 14, "B": 8, "C": 9, "D": 22, "E": 22, "F": 22}
+for col, w in widths.items():
+    ws.column_dimensions[col].width = w
+for i in range(2, 2 + len(top)):
+    ws.row_dimensions[i].height = 42
+ws.row_dimensions[1].height = 34
+
+note_row = len(top) + 3
+ws.cell(row=note_row, column=1, value="图例：条长 = 每百栋密度（体检列满格≈130点/百栋、热线列满格≈654件/百栋）；条旁数字 = 原始件数/点数。")
 ws.cell(row=note_row, column=1).font = Font(italic=True, color="808080")
+ws.cell(row=note_row + 1, column=1, value="颜色：体检=蓝系（安全深蓝·民生浅蓝）、热线=橙系（安全深橙·民生浅橙）；综合评估标签 双高=红、客观高=蓝、主观高=橙。")
+ws.cell(row=note_row + 1, column=1).font = Font(italic=True, color="808080")
 
-out = BASE / "page7小结" / "page7_分层TOP20_2026-08-14.xlsx"
+out = BASE / "page7小结" / "page7_汇总表_2026-08-14.xlsx"
 wb.save(out)
 print("已写出:", out)
-print("双高数:", len(shuang), " 客观高数:", len(ke), " 主观高数:", len(zh))
+print("双高数:", len(shuang), " 单轨高数:", len(dangao))
+print("排序结果:")
+for i, r in enumerate(top, 1):
+    print(f"{i:2d} [{r['分层']}] {r['社区']:<8} 楼栋{int(r['楼栋']):>3} 任务量{int(r['任务量']):>4} 客观{int(r['客观']):>4}({int(r['客观密度']):>3}/百栋) 主观{int(r['主观']):>4}({int(r['主观密度']):>3}/百栋)")
