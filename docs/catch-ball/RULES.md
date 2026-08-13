@@ -244,6 +244,18 @@ docs/catch-ball/_handoff/OFFICE.md
 | ✅ 读取文件 | 项目全局 | 任何源码、配置、文档、数据文件均可读取 |
 | ✅ 运行只读命令 | 项目全局 | git show/log/diff, find, ls, wc 等无副作用命令 |
 
+### 5.1.1 评估意见落文件义务（2026-08-13 起·强制）
+- **每次讨论/评估的意见必须落盘为 .md 文件**（`docs/catch-ball/discuss/` 或 `docs/catch-ball/scan/`），**禁止只回聊天文字**——不落文件 = 无法交流（claude组 靠读盘获取评估意见）
+- 命名：`CB{NN}-{主题}_评估_{组名}-{YYYY-MM-DD}.md`（讨论类）·`CB{NN}-{主题}_scan_{env}-{model}_{YYYY-MM-DD}.md`（SCAN 类）
+- 落文件 ≠ git 操作：评估方只写磁盘文件，commit 仍由 claude组 唯一执行
+
+### 5.1.2 Excel 制作分工（2026-08-13 起·用户定）
+- **PPT 表格 Excel 任务一律由 Codex 组负责**（claude组 三版对比后用户选定 Codex 版为正式版）
+- 落盘位置（权限例外·仅此一文件）：`DATA/analysis/图数表出图_PPT表格汇总.xlsx`——**每个 sheet 对应一个 page**（sheet 名 = pageN）·page 下各表纵向排列、表间空 2 行
+- 排版要求：简单、专业——表头加粗 + 细边框 + 列宽自适应 + 同值列合并单元格；**禁止颜色填充**
+- 范围：只做 PPT 要用到的数据表（图数据源/文件索引等工作用表不做）
+- claude组 职责：page md 完成后通知 Codex 补对应 sheet；Codex 落盘后 claude组 验收并 commit
+
 ### 5.2 禁止操作
 | 操作 | 说明 |
 |------|------|

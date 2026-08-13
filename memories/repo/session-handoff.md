@@ -88,7 +88,7 @@
 - **数据源**：中转站真实数据·sim 禁入·gdb 只读（用户明确·勿动）
 - **不造轮子**：复用 create_square_grid/aggregate_by_polygons/hot_spot_analysis/geo_registry/rag_index
 - **追踪编号连续**：新增公开函数 `register_track_id`·先 grep 全仓取最大 +1
-- **CB 机制**：每轮进 CB·评估方只读不 git·prompt 用代码块包裹·**prompt 发给谁由用户提示（非两组一起发）**
+- **CB 机制**：每轮进 CB·**评估方权限口径 = 只读项目数据与代码 + 禁 git + 评估意见必须落盘 `docs/catch-ball/discuss/`（或 scan/）**（RULES §5.1.1·2026-08-13 起强制·禁只回聊天文字）·prompt 用代码块包裹·**prompt 发给谁由用户提示（非两组一起发）**
 - **街道≠道路**（街道=行政单元·admin_street 非路网线）·**术语统一「街办」**
 - 代码禁 emoji·print 走 `_safe_print`
 

@@ -119,7 +119,7 @@
 
 > 评估方（Codex / glm组）与开发主（claude组）**同一本地工作区**协作。跨轮共识，勿再违反。
 
-1. **评估方不 git pull / 不 git push**——只读本地文件即可（工作区与 claude组 同步，claude组 负责 git 操作）。请求文档第一步统一写「读本地文件·无需 git pull/push」。
+1. **评估方不 git pull / 不 git push**——只读项目数据与代码即可（工作区与 claude组 同步，claude组 负责 git 操作）；**评估意见必须落盘 `docs/catch-ball/discuss/`（讨论类）或 `scan/`（SCAN 类）·禁只回聊天文字**（RULES §5.1.1·2026-08-13 起强制）。请求文档第一步统一写「只读项目数据与代码·禁 git·评估意见落盘 docs/catch-ball/discuss/ 或 scan/」。
 2. **claude组 先验后推**：发起/预检文档（草案）可 push（供评估方读 + 跨环境同步）；**实施代码须两组检查通过后才 push**（先验后推·`先讨论再实施`）。
 3. 请求文档模板：`docs/catch-ball/_handoff/CB{NN}-{topic}预检*.md`（第一步读本地文件·第二步草案·第三步预检 N 问·第四步产 SCAN）。
 4. **测试任务三组并行（2026-08-09 新规）**：测试负载重、单靠人眼测难以为继 → **claude组 拆解测试任务、针对性分配三组（claude组/Codex/glm组）同时进行**；claude组 分发前先确认各组平台 Harness 环境就绪（Python/Playwright/API Key/trace/端口隔离·三组并发 B3 需 `--port/--backend-port` 隔离 + sys.executable）；claude组 持续提出 CB 机制优化意见（工作坊式先进性/流畅性/科学性）。[[cb-distributed-testing]]
