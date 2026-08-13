@@ -2,6 +2,7 @@
 import { emotionColors, token, POLARITY_ORDER, getLayers, addLayer, setLayerVisible, reorderLayers, enforceMutualExclusion, CONFIDENCE_RAMP, confidenceColor, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS, HOTNESS_RAMP, computeHotness, hotnessBuckets } from './state.js';
 import { initControls } from './map-controls.js';
 import { bindTipPopup } from './tip-popup.js';
+import { toast } from './toast.js';
 
 // 天地图 Key（非敏感，前端可公开；同 core/config.py TIANDITU_KEY）—— 浏览器端权限类型（验 Referer）。
 // 修复底图 404：原引 ../apps/static/tianditu_*.json（随 apps/ Phase 2 退役被删、且从未入 git）→ 404 →
@@ -18,11 +19,22 @@ function _tiandituStyle(specs) {
   }
   return { version: 8, sources, layers };
 }
+// Esri Living Atlas raster 底图（ArcGIS REST·{z}/{y}/{x}·WGS84·免key）。
+// CB-31 实测：国内普通网络常被 GFW 双层封锁（DNS 污染→Facebook IP + IP/SNI 封）→ probeBasemap 自适应，
+// 不可达自动回退天地图（永不灰屏）；office/代理环境可达时享受浅灰/暗灰/彩色。
+const _esriStyle = (url, maxzoom = 16) => ({
+  version: 8,
+  sources: { 'esri': { type: 'raster', tiles: [url], tileSize: 256, maxzoom } },
+  layers: [{ id: 'esri', type: 'raster', source: 'esri' }],
+});
+const _ESRI_LIGHT = 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+const _ESRI_DARK  = 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+const _ESRI_TOPO  = 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
 export const BASEMAPS = {
-  // CARTO GL 矢量素图（kepler/MVP 同款，无注记，CDN 矢量瓦片，细节丰富+缩放清晰+快）
-  'positron':    'https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json',
-  'dark-matter': 'https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json',
-  'voyager':     'https://basemaps.cartocdn.com/gl/voyager-nolabels-gl-style/style.json',
+  // Esri（国内不可达自适应回退天地图；positron/dark-matter/voyager 替代失效的 CARTO cartocdn）
+  'positron':    _esriStyle(_ESRI_LIGHT),           // 浅灰素图 → 回退 tianditu-vec-nolabel（浅色系）
+  'dark-matter': _esriStyle(_ESRI_DARK, 16),        // 暗灰底图（3D 暗态·dm 层同源）→ 不可达降级纯深色背景
+  'voyager':     _esriStyle(_ESRI_TOPO, 17),        // 彩色地形 → 回退 tianditu-vec（带注记）
   // 天地图（影像/矢量 raster 瓦片，内联 style 对象；浏览器端 key 验 Referer，CDN 子域 t0-t3 负载均衡）
   'tianditu-img':         _tiandituStyle([{ id: 'img', T: 'img_w' }, { id: 'cia', T: 'cia_w' }]),   // 影像 + 注记
   'tianditu-vec':         _tiandituStyle([{ id: 'vec', T: 'vec_w' }, { id: 'cva', T: 'cva_w' }]),   // 矢量 + 注记
@@ -75,10 +87,58 @@ let _currentBasemap = DEFAULT_BASEMAP;   // 当前底图 key（setBasemap 同步
 //  setLayoutProperty 显隐（零 setStyle 操作）。dark-matter 自带 opaque background + 路网/区块纹理 =
 //  真"暗色（无注记）"观感（非纯黑遮罩）。数据层在 dm 之上保持亮。dm 层 vector 瓦片首显加载、后缓存。
 const DM_BASEMAP_KEY = 'dark-matter';
-const _BASEMAP_BG = { 'dark-matter': '#0e0e0e', 'positron': '#ffffff', 'voyager': '#f4f1ea', 'tianditu-img': '#a6c8e0', 'tianditu-vec': '#e8eef4', 'tianditu-img-nolabel': '#a6c8e0', 'tianditu-vec-nolabel': '#e8eef4' };
+const _BASEMAP_BG = { 'positron': '#f5f5f5', 'dark-matter': '#2b2b2b', 'voyager': '#f2efe9', 'tianditu-img': '#a6c8e0', 'tianditu-vec': '#e8eef4', 'tianditu-img-nolabel': '#a6c8e0', 'tianditu-vec-nolabel': '#e8eef4' };
 let _dark3DOn = false;                    // 当前是否处暗色 3D 态（pitch>1）
 let _dmLoaded = false;                    // dark-matter 图层是否已预载
 const _dmLayerIds = [];                   // 预载的 dm 图层 id 列表（显隐用）
+
+// ═══ 底图自适应（CB-31）：探活 + 健康缓存 + 不可达回退（Esri 国内常被封→自动回退天地图，永不灰屏）═══
+const _basemapHealth = {};   // {key:'ok'|'blocked'} 探活结果缓存
+const _PROBE_TIMEOUT = 6000;
+const _PROBE_ZXY = { z: 4, x: 6, y: 10 };   // 探测瓦片坐标（z=4 全球合法瓦片·三源都存在）
+
+/** Image 加载探活（不走 fetch CORS → 天地图 Referer 校验不误判为不可达）。
+ *  onload/onerror（有网络响应）= 可达；仅 timeout（如 6s 无响应）= 不可达。 */
+function _probeUrl(url) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    let done = false;
+    const timer = setTimeout(() => { if (!done) { done = true; resolve(false); } }, _PROBE_TIMEOUT);
+    img.onload = () => { if (!done) { done = true; clearTimeout(timer); resolve(true); } };
+    img.onerror = () => { if (!done) { done = true; clearTimeout(timer); resolve(true); } };
+    img.src = url;
+  });
+}
+
+/** 取底图首张探测瓦片 URL（内联 style 取首个 raster source tile 模板填 zxy；外链 style JSON 无法探→默认 ok）。 */
+function _probeTileUrl(key) {
+  const bm = BASEMAPS[key];
+  if (!bm || typeof bm === 'string') return null;
+  const src = Object.values(bm.sources || {})[0];
+  if (!src || !src.tiles || !src.tiles[0]) return null;
+  return src.tiles[0]
+    .replace('{z}', _PROBE_ZXY.z).replace('{x}', _PROBE_ZXY.x).replace('{y}', _PROBE_ZXY.y);
+}
+
+/** 探活单个底图源（缓存结果 + 派发 basemap:health 事件供 UI 标灰）。返回 'ok'|'blocked'。 */
+export async function probeBasemap(key) {
+  const url = _probeTileUrl(key);
+  if (!url) { _basemapHealth[key] = 'ok'; return 'ok'; }
+  const ok = await _probeUrl(url);
+  _basemapHealth[key] = ok ? 'ok' : 'blocked';
+  document.dispatchEvent(new CustomEvent('basemap:health', { detail: { key, health: _basemapHealth[key] } }));
+  return _basemapHealth[key];
+}
+
+/** 启动异步探活全源（不阻塞首屏，DEFAULT 天地图先加载）；逐源 onUpdate 通知 UI 标灰。 */
+export async function probeAllBasemaps(onUpdate) {
+  await Promise.all(Object.keys(BASEMAPS).map(async (k) => {
+    await probeBasemap(k);
+    if (onUpdate) onUpdate(k, _basemapHealth[k]);
+  }));
+}
+
+export function getBasemapHealth(key) { return _basemapHealth[key] || 'unknown'; }
 
 export function initMap(container = 'map') {
   map = new maplibregl.Map({
@@ -250,8 +310,15 @@ if (typeof document !== 'undefined') {
   document.addEventListener('layers:changed', () => { if (_compareOn && _mapB) _mirrorLayersToMapB(); });
 }
 
-export function setBasemap(key) {
+export async function setBasemap(key) {
   if (!map || !BASEMAPS[key]) return;
+  // 自适应（CB-31）：blocked 源点切时重探一次（防网络波动误判）；仍不可达 → 回退 DEFAULT + toast，永不灰屏。
+  if (_basemapHealth[key] === 'blocked') {
+    if ((await probeBasemap(key)) === 'blocked') {
+      toast.info('该底图当前网络不可达，已切换天地图');
+      key = DEFAULT_BASEMAP;
+    }
+  }
   _currentBasemap = key;
   // #map 容器背景随底图（3D 高 pitch/宽 FOV 视口上沿露容器背景；暗底图配白底=刺眼白条）。
   // 3D 暗色态(_dark3DOn)强制深色背景；否则与底图同色。
@@ -267,30 +334,29 @@ export function setBasemap(key) {
       return { ...next, sources: { ...(next.sources || {}), ...carrySources }, layers: [...(next.layers || []), ...carryLayers] };
     },
   });
+  document.dispatchEvent(new CustomEvent('basemap:switched', { detail: { key } }));
 }
 
-/** 预载 dark-matter 真实矢量图层（fetch style JSON → addSource/addLayer，dm- 前缀避冲突；插在首个数据层前）。
- *  各 addLayer 包 try/catch（跳过依赖 sprite 的符号层等）；visibility 初值 none（2D 不显）。style.load 调一次。 */
+/** 预载暗底图层（Esri Dark Gray raster，dm- 前缀避冲突，插在首个数据层前；visibility none，2D 不显）。
+ *  自适应（CB-31）：Esri Dark Gray 国内常不可达 → 先探活；不可达则不加载 dm 层，_applyDark3D 仅设深色背景（3D 暗态不灰屏）。
+ *  style.load 调一次（_dmLoaded 防重）。 */
 async function _loadDarkMatter() {
   if (_dmLoaded || !map) return;
+  _dmLoaded = true;   // 标记已处理（无论成败，不重跑整轮）
+  const health = _basemapHealth[DM_BASEMAP_KEY] || await probeBasemap(DM_BASEMAP_KEY);
+  if (health === 'blocked') {                // Esri 不可达 → dm 层空，3D 仅深色背景兜底
+    if (_dark3DOn) _applyDark3D(true);
+    return;
+  }
   try {
-    const r = await fetch(BASEMAPS[DM_BASEMAP_KEY]);
-    if (!r.ok) return;
-    const style = await r.json();
-    for (const [sid, spec] of Object.entries(style.sources || {})) {
-      const id = 'dm-' + sid;
-      if (!map.getSource(id)) { try { map.addSource(id, spec); } catch (e) { /* source 冲突跳过 */ } }
-    }
+    const sid = 'dm-esri-dark';              // dm- 前缀（transformStyle 携带逻辑零改）
+    if (!map.getSource(sid)) map.addSource(sid, { type: 'raster', tiles: [_ESRI_DARK], tileSize: 256, maxzoom: 16 });
     const firstData = (map.getStyle().layers || []).find((l) => l.id.startsWith('lyr-') || l.id.startsWith('emotion-'));
     const beforeId = firstData ? firstData.id : undefined;
-    for (const layer of style.layers || []) {
-      const id = 'dm-' + layer.id;
-      if (map.getLayer(id)) continue;
-      const def = { ...layer, id, layout: { ...(layer.layout || {}), visibility: 'none' } };
-      if (layer.source) def.source = 'dm-' + layer.source;
-      try { map.addLayer(def, beforeId); _dmLayerIds.push(id); } catch (e) { /* 跳过依赖 sprite 的层 */ }
+    if (!map.getLayer(sid)) {
+      map.addLayer({ id: sid, type: 'raster', source: sid, layout: { visibility: 'none' } }, beforeId);
+      _dmLayerIds.push(sid);
     }
-    _dmLoaded = true;
     if (_dark3DOn) _applyDark3D(true);   // 预载完成时若已在 3D 态，立即显
   } catch (e) { console.warn('[map] dark-matter 预载失败', e); }
 }
