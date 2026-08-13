@@ -1,69 +1,36 @@
-# 办公室 · 工作交接卡
+# 办公室 · 工作交接卡（2026-08-13 深夜收工·回家续做）
 
-> **位置**：办公室 | **最后更新**：2026-08-10（家凌晨收工·早上到公司续做·同日） | **操作人**：claude组（Claude Code）
-> **同步**：家 08-10 凌晨收工已 push（`b77daef`·**已合并 main**）·**到公司 `git pull` 即可看到全部进度**。
+> **位置**：办公室 | **最后更新**：2026-08-13 深夜 | **操作人**：Codex（主开发）
+> **主快照**：`memories/repo/session-handoff.md`（本卡只记办公室收工要点 + 回家续做指引）
 
-## ⚠️ 分支合并（重要·到公司先处理）
+## ⚠️ 环境变更（重要）
 
-**fix/emc-buglog 已合并进 main（`b77daef`）·分支已删**。当前唯一分支 = main。
+- 办公室资料库路径已改：`G:\` → **`D:\OneDrive\2026\15_城市更新专项规划研究`**（曾用户提示「办公室路径改成 D 盘，家庭环境不变」）
+- 项目仓库：`D:\Github\emotion_map`（不变）
+- **push 连不上 github.com**：本地领先 origin/main **94 commit**，未 push。回家先确认网络，能连上先 `git push`；连不上就用本地 main 继续。
 
-**到公司 3 步**：
-1. `git checkout main` + `git pull`（拉 main 最新 `b77daef`）
-2. `git fetch --prune origin`（**删本地过时的 `origin/fix/emc-buglog` 引用**）
-3. 确认 `git branch` 只剩 main·后续开发在 main（CLAUDE.md「直接提交 main 不开分支」恢复）
+## 办公室收工状态（08-13 全天·Codex 主开发）
 
-**另两组同步**：Codex/glm 只读本地不 git·claude 已 push main·**它们读本地 main 即最新**——提醒它们引用 `docs/catch-ball/discuss/CB22d-*` 最新文档·勿用 fix 分支路径。
+- **PPT 7 页**：page1-6 已定稿；page4/6 的 12345 已「命中体检对象=西陵+伍家岗」+ 去村（图斑安全 1,757 / 民生 9,559）
+- **sjoin 根因修复**：12345 社区/村归属从 bbox 命中改精确点在面内，修复 3,840 点错标
+- **范围图层**：`12345_西陵+伍家岗`=118 社区（有12345落点）·`体检对象_西陵+伍家岗`=130 社区（Range 已注册）
+- **page7**：强度评价方法论已评审（CB33-强度评价_评审_Codex），等 zcode 落地 Gi* 热点 + 低置信 + 独证标记
+- **民生矩阵 P0 已修**：物业街面 278 点入矩阵（106 社区/755）
 
-## 今日（08-10）待做（公司续做·CB-22d 后续 + RAG 遗留）
+## 回家续做（下一步）
 
-### CB-22d 地图标记·后续项（准确度 + 防护·家已完成路径跑通）
-
-> **背景**：家 08-10 已闭环 CB-22d 路径跑通（追问「能在地图上标记项目位置吗」→ 出图层 + 未命中诚实文字 + 不挂起·用户实测成功·两组复验通过·commit `ace4f8f`）。**本卡列的是「准确度后续完善」+「防护补全」**。
-
-- [ ] **准确度完善**（用户明确「准确度后续完善」·家未做）：
-  - [ ] `_core_entities` 多实体返全候选（红星路-二马路→[红星路,二马路]·防丢二马路）
-  - [ ] jieba 自定义词典（`jieba.load_userdict`·加宜昌地名：葛洲坝/三峡/二马路/大南门·防专名被拆：三峡青年城→[青年城]）
-  - [ ] 「老城中心」泛词入 `_AGGREGATE_WORDS` / `_ZONE_SUFFIXES`（实测误导命中「中心人民医院」）
-  - [ ] amap 命中置信标注「高德解析·大致位置」（source='amap' score 恒 0·无置信档·防用户误读高精度）
-- [ ] **finalStep 失败兜底**（P0-2-3·Codex/glm 建议）：复用 `_composeDegradedConclusion`·治「部分命中→finalStep 45s 超时」卡顿·兑现「任何情况必收尾」
-- [ ] **A1 GIS 甄别增强**：generate_point_layer 优先查 GIS 体检图层要素（停车泊位缺口.小区名/危旧房.住宅名·真实坐标·最高置信）——家已取证（`{URENEWAL_ROOT}/3_gis数据` 2 GDB 31 图层·pyogrio 可读）
-- [ ] **tier-2 面化**：片区名未命中 POI → 行政区/街道面 + 名称标注（葛洲坝→西陵区面）
-- [ ] **A3 项目库坐标**（P1）：附件5 docx → geocode → 项目点位源（聚合名「污水厂网一体示范区」最终解）
-- [ ] **B3 飞轮用例**：知识问答→追问标记→断言标记+<30s+0 挂起·行为级测试（stub 全未命中→B1 出口·stub 部分命中→落图）
-
-### RAG 遗留（08-09 OFFICE 卡·未完成）
-
-- [ ] **B 路径（CB-22b·query_knowledge_base 确定性查询）**——RAG_QUERY_KW 临时结构化词待迁移
-- [ ] **混合检索**（P1）：fact 加权或 Top-5 保底 ≥1 fact·降 note 占比
-- [ ] **全仓 `[中文]+类` 扫描 + 逐条核实源文档**
-- [ ] **Recall@5 素材质量机制**（黄金集 Recall≥80%）
-- [ ] **P0-6 分通道 tier 复审**（暂缓·路径跑顺后勿忘）
-- [ ] **L2 出向任务**（outlet_kb 接入运行时·进 CB 讨论）
-
-## 公司环境准备（08-10 到岗）
-
-1. `git checkout main` + `git pull`（拉家 08-10 进度·`b77daef`）+ `git fetch --prune origin`
-2. **装 RAG 依赖**（若未装）：`pip install -r requirements-rag.txt`（torch +cpu 需阿里云镜像 `mirrors.aliyun.com/pytorch-wheels/cpu`）·BGE 模型 HF 镜像·`py tools/rag_index.py --build`
-3. **rapidfuzz/pypinyin/jieba**（CB-22d A0 依赖·家已装·公司若缺补 `pip install rapidfuzz pypinyin`）
-4. **G 盘资料库**：`G:\OneDrive\2026\15_城市更新专项规划研究\`（GIS 数据 + 附件5 项目库在 `1 宜昌市城市体检/3-附件/`）
+1. `git pull`（先确认网络）+ 读 `memories/repo/session-handoff.md`
+2. 等 zcode 落地强度评价（Gi* / 低置信 / 独证标记 / 绝对量基准榜）
+3. page7 汇总 md + Excel page7 sheet（强度榜 + 绝对量 + 双高三口径并呈）
+4. 4' 分析报告
 
 ## 关键文件速查
 
 | 看什么 | 路径 |
-|------|------|
-| CB 入口 | `docs/catch-ball/_cb-index.md` |
-| CB 轨迹 | `docs/catch-ball/cb-journal.md`（CB-22d 最新·路径跑通闭环） |
-| CB-22d 定稿 | `docs/catch-ball/discuss/CB22d-地图标记失败_反评价收敛定稿_2026-08-10.md` |
-| CB-22d 实施 | `docs/catch-ball/discuss/CB22d-地图标记路径跑通_实施复验发起_2026-08-10.md` |
-| 地点信息源 | `docs/catch-ball/discuss/CB22d-地点信息源与实现路径管线_2026-08-10.md` |
-| 家里进度 | `docs/catch-ball/_handoff/HOME.md` |
-| todo 日志 | `docs/todo.md`（08-10 收工段） |
-| revision-log | `docs/revision-log.md`（08-10 最新） |
-
-## 关键 learning（家 08-10·防踩坑）
-
-- **地点模糊搜索 = LLM 判意图 + 成熟 API（高德优先）+ 本地 jieba 兜底**（不造轮子·高德专利 CN104679801A：意图分层 + 分词 + 加权·非机械剥后缀）
-- **聚合名/无地点描述 → 放弃**（像人思维·不能 while-loop 无限思考）——污水厂网一体示范区/其他项目归 unmatched
-- **挂起根治 = 零命中零 LLM 确定性出口**（B1·不调 finalStep）·agentStep 30s 超时已有（api.js:34）·流式 token 输出已有（用户能看到思考）
-- **names 拼接串要 split**（逗号/顿号/分号/空格）·冷加载 > 前端超时要放宽（5s→20s）
-- **真实数据端到端实测**胜过静态复验（两组静态「通过」没拦住用户实测失败·教训）
+|---|---|
+| 主交接卡 | `memories/repo/session-handoff.md` |
+| CB 入口 | `docs/catch-ball/_cb-index.md`（当前 CB-33） |
+| page4/6 汇总 | `DATA/analysis/汇总/page{4,6}_*_分析汇总_2026-08-13.md`（v6 去村） |
+| 强度评价评审 | `docs/catch-ball/discuss/CB33-强度评价_评审_Codex-2026-08-13.md` |
+| 正式 Excel | `DATA/analysis/图数表出图_PPT表格汇总.xlsx` |
+| 12345 点数据 | `DATA/analysis/12345_{安全韧性|民生基础}_西陵伍家点.geojson`（去村） |
