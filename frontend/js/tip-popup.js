@@ -384,7 +384,11 @@ function fillCommunity(lng, lat) {
         const polys = g.type === 'Polygon' ? [g.coordinates] : (g.type === 'MultiPolygon' ? g.coordinates : []);
         for (const poly of polys) {
           if (!poly || !poly.length) continue;
-          if (pointInPolygon(lng, lat, poly[0])) { name = (f.properties && (f.properties.SQMC || f.properties.name)) || null; break; }
+          if (pointInPolygon(lng, lat, poly[0])) {
+            const pp = f.properties || {};
+            name = pp.SQMC || pp.name || pp['社区'] || pp.MC || null;
+            break;
+          }
         }
         if (name) break;
       }
