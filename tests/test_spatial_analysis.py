@@ -112,6 +112,40 @@ def test_aggregate_by_polygons_smoke():
     assert 'name' in merged.columns
 
 
+def test_aggregate_by_polygons_membership_avoids_region_misassign():
+    """⑤④：点层自带与面 name 同名的 membership 列时按值匹配，region 质心点不被空间误配。"""
+    # 两个社区面：A 覆盖左侧，B 覆盖右侧
+    polys = gpd.GeoDataFrame(
+        {'社区': ['A社区', 'B社区']},
+        geometry=[box(111.20, 30.65, 111.25, 30.75),
+                  box(111.25, 30.65, 111.30, 30.75)],
+        crs='EPSG:4326',
+    )
+    # 正常社区点：A 社区 3 个，B 社区 2 个（membership 与几何一致）
+    pts = gpd.GeoDataFrame(
+        {'社区': ['A社区'] * 3 + ['B社区'] * 2,
+         'geometry': [Point(111.22, 30.70), Point(111.23, 30.71), Point(111.24, 30.69),
+                      Point(111.26, 30.70), Point(111.28, 30.72)]},
+        crs='EPSG:4326',
+    )
+    # 区级质心点：membership 为空，但几何恰落在 A 社区面内，应被剔除而非计入 A 社区
+    region_pts = gpd.GeoDataFrame(
+        {'社区': [None] * 4,
+         'geometry': [Point(111.22, 30.70)] * 4},
+        crs='EPSG:4326',
+    )
+    all_pts = gpd.GeoDataFrame(
+        {'社区': list(pts['社区']) + [None] * 4,
+         'geometry': list(pts.geometry) + list(region_pts.geometry)},
+        crs='EPSG:4326',
+    )
+    merged = aggregate_by_polygons(all_pts, polys, polygon_name_col='社区')
+    counts = dict(zip(merged['name'], merged['point_count'].astype(int)))
+    assert counts['A社区'] == 3
+    assert counts['B社区'] == 2
+    assert int(merged['point_count'].sum()) == 5
+
+
 # ═══ aggregate_by_boundary_id（⑤③ membership 分组·非 sjoin）════
 
 def test_aggregate_by_boundary_id_smoke():

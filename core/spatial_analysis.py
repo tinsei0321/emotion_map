@@ -21,7 +21,7 @@ from shapely.geometry import Point, Polygon, box
 from typing import Optional, Tuple
 
 from core.tracker import track, TrackContext, register_track_id
-from core.field_dictionary import resolve_field_alias
+from core.field_dictionary import resolve_field_alias, find_boundary_name_column
 
 
 # ═══════════════════════════════════════════════════════════
@@ -268,9 +268,23 @@ def aggregate_by_polygons(
     else:
         _num = [(c, c) for c in agg_cols if c in points_gdf.columns]   # legacy：用户显式传列名，输出 {col}_mean
 
-    # 空间连接
-    joined = gpd.sjoin(points_gdf, polygons_gdf, how='inner',
-                       predicate='within')
+    # 空间连接：点层若自带与面 name 同名的 membership 列（如「社区」），
+    # 优先按值匹配聚合——避免区级质心点（geocode_status=region）被几何 sjoin
+    # 误配到质心所在社区，导致艾家嘴/夷陵路等被虚高（CB-23 主开发修复）。
+    _poly_name = polygon_name_col or find_boundary_name_column(polygons_gdf.columns)
+    _membership_col = _poly_name if (_poly_name and _poly_name in points_gdf.columns) else None
+
+    if _membership_col and polygons_gdf[_membership_col].astype(str).str.strip().is_unique:
+        _poly_names = polygons_gdf[_membership_col].astype(str).str.strip()
+        _name_to_idx = {v: i for i, v in _poly_names.items()}
+        joined = points_gdf.copy()
+        joined['_membership'] = joined[_membership_col].astype(str).str.strip()
+        joined = joined[joined['_membership'].isin(_name_to_idx)]
+        joined['index_right'] = joined['_membership'].map(_name_to_idx)
+        joined = joined.drop(columns=['_membership'])
+        joined = gpd.GeoDataFrame(joined, geometry='geometry', crs=points_gdf.crs)
+    else:
+        joined = gpd.sjoin(points_gdf, polygons_gdf, how='inner', predicate='within')
 
     if len(joined) == 0:
         raise ValueError('空间连接结果为空——点不在任何面域内，请检查坐标系是否一致')
@@ -353,9 +367,10 @@ def aggregate_by_polygons(
         else:
             merged[col] = merged[col].fillna('')
 
-    # polygon_name_col 落地为规范 name 字段（popup/Table/AI digest 读稳定字段；原为 dead param）
-    if polygon_name_col and polygon_name_col in merged.columns:
-        merged['name'] = merged[polygon_name_col]
+    # polygon_name_col（或自动推断的边界名称列）落地为规范 name 字段
+    # （popup/Table/AI digest 读稳定字段；原为 dead param）
+    if _poly_name and _poly_name in merged.columns:
+        merged['name'] = merged[_poly_name]
     elif 'name' not in merged.columns:
         merged['name'] = [f'区域_{i + 1}' for i in range(len(merged))]
 
