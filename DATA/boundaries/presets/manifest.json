@@ -229,6 +229,27 @@
     "file": "体检对象_西陵+伍家岗.geojson",
     "nameField": "社区",
     "note": "174 城市社区中属于西陵+伍家岗的部分（体检 2025 已调研范围）"
+   },
+   {
+    "id": "page7_dual_high",
+    "label": "page7-双高社区（5）",
+    "file": "page7_双高社区面.geojson",
+    "nameField": "社区",
+    "note": "page7 三类社区·双高（体检高+诉求高）5社区·剪裁自130社区面"
+   },
+   {
+    "id": "page7_obj_high",
+    "label": "page7-问题指标高社区（8）",
+    "file": "page7_问题指标高社区面.geojson",
+    "nameField": "社区",
+    "note": "page7 三类社区·问题指标高（体检高·诉求未暴露）8社区·剪裁自130社区面"
+   },
+   {
+    "id": "page7_sub_high",
+    "label": "page7-诉求呼声高社区（7）",
+    "file": "page7_诉求呼声高社区面.geojson",
+    "nameField": "社区",
+    "note": "page7 三类社区·诉求呼声高（诉求高·体检未印证）7社区·剪裁自130社区面"
    }
   ]
  }
