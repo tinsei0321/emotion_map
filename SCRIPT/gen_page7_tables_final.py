@@ -154,15 +154,15 @@ def build_compare(ws):
                 first_data_row = r
             r += 1
     last_data_row = r - 1
-    # 保留原表填充条样式：条件格式 DataBar（体检蓝 / 诉求橙，0-700 同刻度，实心无渐变）
+    # 填充条：条件格式 DataBar（体检蓝 / 诉求橙），分轨刻度（体检 0~150 点/百栋、诉求 0~726 件/百栋）——避免体检条被诉求大值压扁
     ws.conditional_formatting.add(
         f"D{first_data_row}:D{last_data_row}",
-        DataBarRule(start_type="num", start_value=0, end_type="num", end_value=700,
+        DataBarRule(start_type="num", start_value=0, end_type="num", end_value=150,
                     color="1F4E79", showValue=True),
     )
     ws.conditional_formatting.add(
         f"E{first_data_row}:E{last_data_row}",
-        DataBarRule(start_type="num", start_value=0, end_type="num", end_value=700,
+        DataBarRule(start_type="num", start_value=0, end_type="num", end_value=726,
                     color="C55A11", showValue=True),
     )
     for i, w in enumerate([5, 14, 7, 13, 13, 18], 1):
