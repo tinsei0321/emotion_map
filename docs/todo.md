@@ -26,6 +26,14 @@
 
 > 🏢 **收工（08-14 深夜·家 → 早上去公司）**：CB-35 三组评估已齐、收敛。公司到岗 `git fetch origin && git checkout codex/dsh-onboarding && git pull` 看 CB-35 产出；page7 表数据已审计零偏差、可直接用于汇报。
 
+### ✅ 双机同步体系 + 工作区清理（08-14 晚·家·claude）
+
+- [x] **双机同步工具链**（公司连不上 GitHub → 硬盘 bare 中转 + 家机 GitHub 枢纽）：`tools/sync_guard.py`（status/leave/arrive 三模式·盘符漂移自修·幂等自补 SessionStart hook）+ 根目录 `sync-leave.bat`/`sync-arrive.bat`（双击即推/拉）+ `docs/dual-machine-sync.md`（规则 + 公司首次初始化步骤）+ SessionStart hook（每次 Claude 会话开场注入同步状态）
+- [x] **工作区清理**（用户要求·图片/PDF 反复出现根因 = untracked + 整目录拷贝回流）：删除 docs 根 12 个散落图片/PDF + `.gitignore` 加 `docs/*.png|jpg|pdf` 与 `tests/browser/out/` 防回流
+- [x] 未跟踪文件全量分组入库（CB32-35 评估文档 + page7 分析脚本/产出 + CB33 审计 tmp 脚本）+ `codex/dsh-onboarding` ff 归位 main + 双分支 push
+
+> 🏠 **明天公司到岗（08-15）**：① 插硬盘按 `docs/dual-machine-sync.md` 第三节首次初始化（`git init --bare <盘>:/git-sync/emotion_map.git` + `git remote add syncdisk` + `git push syncdisk --all`）② 之后离开前双击 `sync-leave.bat`、到岗双击 `sync-arrive.bat` 即可。
+
 ---
 
 ## 📅 2026-08-13（图数表出图 · 线二口径 83.3% 定稿 · 角色变更 Codex 主开发）

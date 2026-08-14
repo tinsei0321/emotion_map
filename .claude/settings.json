@@ -58,6 +58,9 @@
     "SessionStart": [
       {
         "command": "python .claude/hooks/on_session_start.py"
+      },
+      {
+        "command": "python tools/sync_guard.py --mode status"
       }
     ],
     "SessionEnd": [

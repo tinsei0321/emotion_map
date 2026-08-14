@@ -54,3 +54,11 @@ package-lock.json
 
 # 0819 PDF 提取的分布图位图（不入库·本地分析用·PDF 源在 OneDrive）
 docs/urban-renewal-plan/_raw/
+
+# 散落参考图/PDF（docs 根目录·本地参考用不入库；防整目录拷贝回流反复出现在 git status·2026-08-14 用户清理）
+docs/*.png
+docs/*.jpg
+docs/*.pdf
+
+# 浏览器测试截图产物（Playwright 输出·可重跑再生·不入库）
+tests/browser/out/
