@@ -6,6 +6,7 @@
 import os
 
 import openpyxl
+from openpyxl.comments import Comment
 from openpyxl.formatting.rule import DataBarRule
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
@@ -177,6 +178,8 @@ def main():
     build_classify(ws2)
     ws3 = wb.create_sheet("3体检诉求对比")
     build_compare(ws3)
+    # 内部注（不对外·你我看即可）：作图实际社区面数 = 体检对象西陵+伍家岗全集（约130），统计底数 120（体检报告），明面统一按 120、图表对应。
+    ws3["A1"].comment = Comment("内部注（不对外）：作图实际社区面数=体检对象西陵+伍家岗全集(约130面)，统计底数=120(体检报告)；明面统一按120、图表对应。", "Codex")
     wb.save(OUT)
     _solid_databars(OUT)
     print("[OK]", os.path.basename(OUT))
