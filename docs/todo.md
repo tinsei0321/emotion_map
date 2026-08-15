@@ -25,9 +25,9 @@
 - [x] **体积体检**：648MB（>500MB 提醒线 / <1GB 禁推线，可迁）；最大单文件 83MB `社区.geojson` < 100MB 拒收线；顺手清 268MB 中断 push 残留 tmp_pack（garbage 归零）
 - [x] **全量推送**：2 分支 + 1 标签 → Gitee 校验一致（`codex/dsh-onboarding = ff1f7e26`、`main = 4f6fac71`）；upstream 已指向 origin(Gitee)
 - [x] **双远端策略落地**：`origin` = Gitee（日常同步·office 可达）；`github` = GitHub（home 侧备份镜像，改名保留）；`hub` = 盘仓（HUB 备份层不变）
-- [x] **MCP 换绑**：项目 `.mcp.json` 新增 `gitee`（官方 `mcp-gitee` v1.0.1·env `GITEE_TOKEN`）+ `github` 停用（disabled=true 留配置备查）
-- [ ] **office 明日换绑**：Arrive.bat 快进 `ff1f7e26+` → `git remote set-url origin https://gitee.com/tinsei0321/emotion_map.git`（office 首推需私人令牌当密码）→ Leave.bat
-- [ ] **用户侧账号操作**（指引已交付）：vscode GitHub 登出、Gitee 私人令牌设 `GITEE_TOKEN` 环境变量、Codex/ZCode 确认走 git 凭据（无独立 GitHub 绑定）
+- [x] **MCP 换绑**：项目 `.mcp.json` 新增 `gitee`（官方 `mcp-gitee` v1.0.1·继承系统 env `GITEE_ACCESS_TOKEN`·`${VAR}` 中转映射实测不展开已弃用）+ `github` 停用（disabled=true 留配置备查）
+- [ ] **office 明日换绑**：Arrive.bat 快进到最新 → `git remote set-url origin https://gitee.com/tinsei0321/emotion_map.git`（office 首推需私人令牌当密码）→ `memory-sync.bat pull` 恢复记忆 → Leave.bat
+- [x] **用户侧账号操作**（2026-08-15 完成）：vscode GitHub 登出 ✓、私人令牌 setx `GITEE_TOKEN`+`GITEE_ACCESS_TOKEN`（后者 = mcp-gitee 实际变量名·server 纯继承启动实测通过，`/mcp` 内对 gitee 批准/重连即连）✓、Codex/ZCode 查明无独立 GitHub 绑定零动作 ✓
 
 ### ✅ C 盘对话 context / AI 记忆双机同步（三层记忆保护伞）
 
