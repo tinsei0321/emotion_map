@@ -9,7 +9,26 @@
 
 ---
 
-## 📅 2026-08-14（CB-35 page7 排序评估 + 数据审计 · claude组 · 收工换公司）
+## 📅 2026-08-15（双环境首次合流 · DEV-SYNC-HUB 接入 · Gitee 迁移 · claude·家）
+
+### ✅ 双环境合流（office 25 提交 ↔ home 1 提交 · 零丢失）
+
+- [x] **机制弄清 + 接入**：office 端部署的 `E:\DEV-SYNC-HUB`（Leave/Arrive/Status/Rescue 四入口 + 盘仓唯一真相源 + 四层兜底）；home 端 registry 登记完成（`LAPTOP-HB0DA58R` + 项目路径）
+- [x] **昨日 home 自建同步工程退役**（`89ce0f2b`）：sync_guard.py / 双 bat / 规则文档 / SessionStart hook / _tmp 补丁全删，被 HUB + Gitee 方案取代；保留 .gitignore 防回流
+- [x] **合流 office 领先 25 提交**（`3be6398c`）：CB36/37 + page7 三表/三类社区数据 + zonal 修复；零冲突（todo/revision-log 不同区域自动合并；CB 文档/脚本双侧同内容 add/add 自动消解）
+- [x] **ec9c70e 悬空救援**：账本 13:28:15 记录的 office 真实末梢未落盘头（HUB 增量打包验证测试所致）→ 临时 ref 取回合流 → 事后清理；保证明日 office Arrive 纯快进
+- [x] **三方一致** `87c31bdd`：本地 = 盘仓（Leave.bat 全分支+bundle+账本）= GitHub；main 维持 `4f6fac71` 未动
+- [x] **同步报告**：`docs/sync-reports/2026-08-15_双环境合流同步报告.md`（机制解读/两侧清单/异常处置/勘误 08-14 记录）
+
+### 🔄 Gitee 迁移（进行中）
+
+- [ ] 用户建仓（私有 emotion_map）→ origin 改指 Gitee、GitHub 降级 home 备份镜像
+- [ ] office 明日换绑：Arrive.bat → origin 指向 Gitee
+- [ ] 各平台（vscode/claude code/codex/zcode）GitHub 注销 + Gitee 绑定指引
+
+---
+
+
 
 ### ✅ CB-35 page7 排序（claude组·第三方独立评估·只读·经用户授权 git 写）
 
@@ -30,7 +49,7 @@
 
 - [x] **双机同步工具链**（公司连不上 GitHub → 硬盘 bare 中转 + 家机 GitHub 枢纽）：`tools/sync_guard.py`（status/leave/arrive 三模式·盘符漂移自修·幂等自补 SessionStart hook）+ 根目录 `sync-leave.bat`/`sync-arrive.bat`（双击即推/拉）+ `docs/dual-machine-sync.md`（规则 + 公司首次初始化步骤）+ SessionStart hook（每次 Claude 会话开场注入同步状态）
 - [x] **工作区清理**（用户要求·图片/PDF 反复出现根因 = untracked + 整目录拷贝回流）：删除 docs 根 12 个散落图片/PDF + `.gitignore` 加 `docs/*.png|jpg|pdf` 与 `tests/browser/out/` 防回流
-- [x] 未跟踪文件全量分组入库（CB32-35 评估文档 + page7 分析脚本/产出 + CB33 审计 tmp 脚本）+ `codex/dsh-onboarding` ff 归位 main + 双分支 push
+- [x] 未跟踪文件入库 + push（当晚模型服务故障，实际为 bat 兜底单 checkpoint `d324b501`·**未**分组、**未**归位 main——勘误见 08-15 同步报告§五）
 
 > 🏠 **明天公司到岗（08-15）**：① 插硬盘按 `docs/dual-machine-sync.md` 第三节首次初始化（`git init --bare <盘>:/git-sync/emotion_map.git` + `git remote add syncdisk` + `git push syncdisk --all`）② 之后离开前双击 `sync-leave.bat`、到岗双击 `sync-arrive.bat` 即可。
 
