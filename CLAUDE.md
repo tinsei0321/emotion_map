@@ -255,7 +255,7 @@ Agent 在工作过程中自动记录的隐形知识：
 - 不会全量注入上下文——只读 `memory.md` 索引，遇到具体问题才读对应子文件
 - 可随时说"忘掉 XXX"来删除错误记忆
 - **主动写入**：用户给出明确反馈/偏好、或踩到非显然的坑 → 当场写一条 Auto Memory 并更新 `MEMORY.md` 索引（不只是后台记录）。记忆目录：`~/.claude/projects/<proj>/memory/`
-- **跨机同步（2026-08-15 起）**：AutoMemory 经 repo `memories/auto/` 蒸馏镜像双机同步——下班双击 `memory-sync.bat`（镜像+commit+push Gitee）；到岗拉取后 `py tools/memory_sync.py pull` 恢复到本机 `memory/`。全量对话 context 走 DEV-SYNC-HUB 硬盘 `Memory.bat` 分侧快照（跨机衔接 = 会话开场读 `E:\DEV-SYNC-HUB\memory\<对端>\claude\` 最近会话尾部 + 对端 MEMORY.md）。
+- **跨机同步（2026-08-15 起·一键两入口）**：日常只双击盘专区两个聚合入口——`E:\DEV-SYNC-HUB\一键离开.bat`（盘仓 Leave + 六工具记忆快照 + 蒸馏层镜像推送）与 `E:\DEV-SYNC-HUB\一键到达.bat`（盘仓快进 + Gitee 拉取 + 记忆合并恢复 `memory_sync.py restore`·只补新不删）。AutoMemory 经 repo `memories/auto/` 蒸馏镜像双机同步；全量对话 context 走盘 `Memory.bat` 分侧快照（跨机衔接 = 会话开场读 `E:\DEV-SYNC-HUB\memory\<对端>\claude\` 最近会话尾部 + 对端 MEMORY.md）；`pull` 模式仅迁移/灾难用（/MIR 覆盖），日常禁跑。
 
 > CLAUDE.md = 第一优先级、全量注入的**明规则**；Auto Memory = 第二优先级、按需注入的**隐规则**。
 

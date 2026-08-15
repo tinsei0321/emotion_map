@@ -36,7 +36,8 @@
 - [x] **安全问题修正**：office 原配置漏排密钥——`codex/auth.json`（OAuth 令牌）/`zcode\v2\credentials.json`/`certs\zcode-network-ca.key+.pem` 已落盘两侧快照 → registry 排除表补齐 + 盘上 8 个凭据副本删除（源机器文件未动）
 - [x] **Gitee 蒸馏层**（末日保险）：`tools/memory_sync.py` + `memory-sync.bat`（双击镜像 AutoMemory → repo `memories/auto/` + commit + 双远端 push）；首推 `3ad8b08d` 89 文件 1767 行；全量 context 明确不上云（密钥明文+GB 体积+jsonl 无合并意义）
 - [x] **登记**：context-map 记忆共享通则（「AutoMemory 机本地已知局限」关闭）+ CLAUDE.md 第二层跨机同步注 + `memories/README.md`
-- [ ] **明日 office**：Arrive.bat → `memory-sync.bat` 首跑 pull（repo 里已有脚本）→ 日常 = Leave.bat + Memory.bat + memory-sync.bat
+- [x] **一键聚合**（用户反馈 3 bat 太繁琐）：盘专区新增 `一键离开.bat`（Leave+Memory+蒸馏层+origin 兜底）与 `一键到达.bat`（Arrive+Gitee pull+`memory_sync.py restore` 合并式恢复·只补新不删本地）；`memory_sync.py` 补 restore 模式（/E+/XO·与 pull 的 /MIR 区分：restore=日常、pull=迁移专用）；原 Leave/Arrive/Memory 三入口保留不动（office 部署物·可单用）
+- [ ] **明日 office**：`一键到达.bat` → `git remote set-url origin https://gitee.com/tinsei0321/emotion_map.git`（首推令牌当密码）→ 之后日常 = 一键离开/一键到达 两个入口
 
 ---
 

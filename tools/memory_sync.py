@@ -7,7 +7,8 @@
 
 用法:
   py tools/memory_sync.py push        # memory/ -> memories/auto/ + commit + push (gitee+github)
-  py tools/memory_sync.py pull        # memories/auto/ -> memory/（恢复/迁移·带确认）
+  py tools/memory_sync.py pull        # memories/auto/ -> memory/（迁移/灾难恢复·/MIR 覆盖·带确认）
+  py tools/memory_sync.py restore     # memories/auto/ -> memory/（日常到达·合并式·只补新不删本地）
   py tools/memory_sync.py push --dry  # 只列镜像清单不落盘
 """
 
@@ -30,9 +31,11 @@ def _safe_print(text):
         sys.stdout.buffer.flush()
 
 
-def _robocopy(src, dst, dry=False):
-    cmd = ["robocopy", str(src), str(dst), "/MIR", "/R:1", "/W:1",
-           "/NFL", "/NDL", "/NP"]
+def _robocopy(src, dst, dry=False, mirror=True):
+    cmd = ["robocopy", str(src), str(dst), "/MIR" if mirror else "/E",
+           "/R:1", "/W:1", "/NFL", "/NDL", "/NP"]
+    if not mirror:
+        cmd.append("/XO")  # 目标侧更新的文件跳过 -> 本地新记忆不被覆盖
     if dry:
         cmd.append("/L")
     r = subprocess.run(cmd, capture_output=True, text=True)
@@ -88,12 +91,24 @@ def pull():
     _safe_print("[OK] 恢复完成 memories/auto/ -> memory/ (robocopy=%d)" % code)
 
 
+def restore():
+    """日常到达：合并式恢复（只补本地缺失/较旧的文件，绝不删除本地）"""
+    if not DST.is_dir() or not any(DST.iterdir()):
+        _safe_print("[ERR] repo 内无 memories/auto/ 快照")
+        sys.exit(1)
+    SRC.parent.mkdir(parents=True, exist_ok=True)
+    code = _robocopy(DST, SRC, mirror=False)
+    _safe_print("[OK] 合并恢复完成 memories/auto/ -> memory/（未删除本地文件·robocopy=%d）" % code)
+
+
 if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else "push"
     if mode == "push":
         push(dry="--dry" in sys.argv)
     elif mode == "pull":
         pull()
+    elif mode == "restore":
+        restore()
     else:
         _safe_print("[ERR] 未知模式: %s （push | pull）" % mode)
         sys.exit(1)
