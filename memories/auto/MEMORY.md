@@ -1,0 +1,67 @@
+# Memory Index
+
+- [RAG chain bringup](rag-chain-bringup.md) — 换环境补 RAG 链三步（torch+cpualiyun镜像/BGE HF镜像/--build）·数据源纯git内不依赖OneDrive·AMAP_KEY从历史会话找回（2026-08-09）
+- [Dual-machine disk sync](dual-machine-disk-sync.md) — DEV-SYNC-HUB硬盘专区(E:)四bat：Leave离盘/Arrive到岗快进/Status/Rescue；home离盘多推远端；origin→Gitee·GitHub降级备份；home旧工具链已删（2026-08-15）
+- [CB must materialize docs](cb-must-materialize-docs.md) — 两组介入前须先落成正式复验文档+push，不只给转发文本（2026-08-08）
+- [Acceptance through CB](acceptance-through-cb.md) — 每次功能完成后验收交另两组走 CB，不默认用户肉眼为主验收（2026-08-08）
+- [Auto update progress docs](auto-update-progress-docs.md) — 用户说「更新进度」→ 自动同步 todo/emc-fix-progress/revision-log 三文档
+- [Plan requires CB preflight](plan-requires-cb-preflight.md) — 每次 plan/草案也要进完整 CB 流程（预检→SCAN→反评价→实施→检查→通过后 push）；发起文档可 push·实施代码先验后推
+- [Frontend default = LIGHT theme](frontend-default-light-theme.md) — chrome white, never dark (EXCEPT EMC `#emc-panel` = dark Claude-Code style #1f1f1f+#D97757); don't trust analyze_image for chrome colors
+- [No routine Playwright verification](no-routine-playwright-verify.md) — implement UI edits, let the user verify visually; reserve Playwright for risky changes
+- [Chinese for all deliverables](chinese-all-deliverables.md) — plans/reports/docs in Chinese too, not just chat; English only for code/paths/identifiers
+- [Maintain revision-log](maintain-revision-log.md) — after every commit append a row to docs/revision-log.md; professionalize user intent
+- [Professionalize user wording](professionalize-user-wording.md) — when replying, gently pair non-professional phrasing with the professional term
+- [KDE load-bearing logic](kde-loadbearing-logic.md) — cascade-exclude + exclusive-hide are load-bearing; do not break
+- [Token-saving workstyle](token-saving-workstyle.md) — split sessions, use subagents, avoid full-file reads; protect quality
+- [Context coherence discipline](context-coherence-discipline.md) — 上下文连贯四纪律（除草/压缩前快照/漂移自检/单写者）；7机制=上下文树，缺的是园丁层；/garden+阈值提醒+PreCompact hook 已落地
+- [Session handoff protocol](session-handoff.md) — proactively prompt new-session at task boundaries; give prompt+note+steps+recap
+- [Tool layer convention](tool-layer-convention.md) — tool-generated layers → own group card + 要素按钮 opens that tool's dialog (mirror H: seed-restore + in-place edit)
+- [Capsule button language](capsule-button-design-language.md) — 无线框+阴影+选中蓝+悬停灰+紧凑；选项胶囊(线型/色板/分析类型)复用
+- [避免线框·填充式](avoid-frames-fill-style.md) — 全局避免 border 线框；胶囊/徽章用字体+背景填充保形，勿亮高饱和色配线框（exit-badge 首例）
+- [flex 撑满 scrollHeight 失真](flex-stretch-scrollheight-distortion.md) — flex:1 撑满时内容<可见区→scrollHeight=clientHeight，自适应缩不回；量自然高须临时 flex:0 0 auto+height:auto 量 offsetHeight
+- [No handoff on routine commit](no-handoff-on-routine-commit.md) — 平时 commit 只更 revision-log；交接卡只在说"交接"时覆写
+- [Todo + revision-log sync](todo-revision-log-sync.md) — 每完成一件事同步 todo+revision-log，**最新内容必须在文件顶部可见**（todo 按日段倒序、revision-log §5 顶「最新动态」指针），禁止底部追加
+- [Select cascade progressive](select-cascade-progressive.md) — 数据选择联动递进：选层级后下游只显示该层级数据，不混层
+- [Ramp discrete segments](ramp-discrete-segments.md) — 色带一律离散分段(.hm-style-seg)，禁止 linear-gradient 连续渐变
+- [Verify real endpoint](verify-real-endpoint.md) — 验证测实际业务端点(POST+数据)，不只 health/加载；复用旧进程警惕路由缺失
+- [deck.gl GridLayer extruded 不渲染](deck-gl-gridlayer-extruded-broken.md) — 3D 方柱在 MapLibre+MapboxOverlay 不渲染，3D 改用 ColumnLayer(圆柱，kepler 级)
+- [站在巨人肩膀上](stand-on-giants-shoulders.md) — 优先业界成熟库(deck.gl/kepler/turf)，别造轮子；主动提醒用户
+- [Grid 独占 vs 视图配对](generate-grid-exclusive-vs-viewmode.md) — generateGrid 新建清场(关全量层) 与 setViewMode 视图按钮配对(2D↔3D) 两场景独立，勿耦合
+- [聚合必须 numeric coerce](spatial-aggregation-numeric-coerce.md) — groupby mean 前 to_numeric(coerce)；外部 str 化崩 500，合成 float 测不出，验证须打真 POST 端点
+- [情绪地形 mesh 渲染](terrain-mesh-rendering.md) — L2 3D = KDE 等值面(matplotlib contourpy)→fill-extrusion 分层；高度 _level、颜色 _norm(综合)/_level(极性)；勿回退 deck.gl
+- [3D 高度 + 柱体高度算法 + 极性网格语义](extrusion-height-maxheight.md) — 拉伸控件读 _ui.maxHeight；heightOf 低位线性(1→50m/2→100m)+pc≥3 offset；L2 极性颜色高度=该极性点数；maxHeight 默认2000/上限4000；filterPolarityZero 去0点格
+- [网格色板+3D光照参数](grid-palette-tuning.md) — grid-warm renorm 红段收窄[0/0.15/0.30/0.50/0.78/1.0]=8B0000…FFDF00；green/red/blue-3 6段；FOV55+东北光[1.5,45,60]intensity.5；#map背景随底图防3D上沿白条
+- [工具生成不弹 Overview](tool-no-auto-overview.md) — grid/heatmap/buffer/terrain 生成只 selectLayer+layers:changed，不 dispatch layer:selected（Overview 留给点行）
+- [演示逻辑链=全局纲领](emotion-map-logic-chain.md) — 张力→点击→分析→识别问题；数据为表现力、演示为有用性；已入 CLAUDE.md 最高优先级
+- [对称拉伸张力根因](symmetric-norm-stretch.md) — _grid_norm/_norm = 0.5+sign(pi)·min(1,|pi|/p95)·0.5；grid 前端+terrain 后端须同步
+- [confidence 用局部密度](confidence-local-density.md) — amap POI weight 恒1.0 无梯度；l1_confidence 空间自相关用局部点密度分位 dens_norm
+- [4×5 归因聚合层](grid-4x5-attribution.md) — POI 已预映射 domain/element 直接读；归因规则表在聚合层(DEMO,L3/L4 删)；三层极性保弧
+- [tip-popup 统一悬停设计语言](tip-popup-unified-hover-design-language.md) — 聚合单元悬停=浮动卡(自适应方位+灵动跳动)；未来 point/range hover 迁移到此，别造 dark tooltip
+- [设计语言一致性铁律](design-language-consistency-iron-rule.md) — 同按钮/feature 跨场景必须一致交互；改一处先 grep 同类统一，默认同步别只补被报的
+- [UI 显隐互斥主动查](ui-visibility-mutex-proactive-check.md) — 同区域多组件（欢迎卡/引导胶囊/追问）须互斥；改一个 grep 同区域其他+建标志位协调+验三态切换，勿待用户报冲突
+- [JS 中文变量名陷阱](js-chinese-identifier-trap.md) — `let口径`(无空格)被吞成单标识符，node --check 查不出、运行时 ReferenceError；变量名一律英文
+- [MapLibre query 数组序列化](maplibre-query-array-stringify.md) — queryRenderedFeatures 的 properties 数组/对象会被序列化成字符串；读数组 property 必 Array.isArray 校验或从 geometry 现算
+- [视野-数据-结论 同步性](view-data-conclusion-sync.md) — Overview=互动指挥台；hover 试探/click 锁定 sticky；饼图/矩阵/关键词→地图橙色#ff9000 同步高亮（tip-popup highlightCellSet）
+- [EMC 三态出口契约](emc-tri-state-exit-contract.md) — 回答策略=harness 代码强制终态(做成/缺数据/纯问答)；格式漂移→parseAgentStep 归一+修复非裸输；密度出口=真KDE raster(/geo/density)+hotspot落图层；onDegraded 永不裸输
+- [分析型工具成功标准](analytical-tools-success-criteria.md) — zonal/compare/rank/area_stats 返 rows 不产图层；成功=rows非空(非 newLayerCount)；曾误判 GAP 致"数据齐全却喊缺数据"(5.189 修)
+- [专业词+通俗解释](pro-term-plus-plain-meaning.md) — 用户是初学者，专业词须紧跟通俗解释「专业词(=解释)」；交付物也遵守不只聊天；技术词英文+中文大白话/类比
+- [国标用地分类权威源](landuse-codes-2023.md) — 24一级/111二级/40三级+代码 固化在 ai_qa/landuse_codes_2023.py；读 .py 勿再读 PDF；EMC 预设是子集
+- [sandbox eval wrapper 上下文还原](sandbox-eval-wrapper-context-restore.md) — 劫持 eval/exec 须补 globals/locals=真正调用帧（仅调用者用默认时），全禁误伤库；compile 单独 guard
+- [node --check 对 ESM 不可靠](node-check-esm-unreliable.md) — .js 默认 CommonJS 不报 ESM 语法错（括号等）；前端 JS 须 .mjs 副本或 --input-type=module 查；别信 node --check x.js 假绿
+- [EMC 委托主 Toolbox 不自造](emc-delegates-to-toolbox.md) — density 等分析调 generateHeatmap/Grid/TerrainForAI（套固定色段+2D/3D），勿自造 geo 端点；只用 Layers 可见层（registry 禁用）；run_python 收口（ctx.allowCodeViz 才放行）
+- [项目顶层设计哲学](project-design-philosophy.md) — 4×5=归因矩阵(非指标清单)+多归属+政策→情绪→项目闭环+补盲区+知识库可成长；全项目生效不只 EMC；勿用官方指标完备性质疑 4×5(错标尺)；已入 CLAUDE.md
+- [EMC eval 空 context vs 运行时](emc-eval-empty-context-vs-runtime.md) — eval_template_flash 用 build_diagnose_prompt('') 空 context，不模拟已加载层；有层时路由可能与 95% eval 分歧（C6：居住用地里→zonal 非 overlay）；验路由须带 grounding 手搓或 browser，别只信空 context eval
+- [EMC domain_lens threading](emc-domain-lens-threading.md) — diagnose 卡字段(domain_lens等)被前端压扁进 ctx.context 丢结构；下游结构化用须显式回传 ChatRequest+threading(④5.108范式)，别正则抠；diagnose prompt 永不动(保eval)
+- [aggregate 列名 aliasing 静默零](emc-aggregate-column-alias-silent-zero.md) — aggregate 硬编码列名 gate(if 'polarity' in cols)遇中文别名静默跳过→polarity_index静默零/domain_top空；加 stat 须 resolve_field_alias 读实际列+输出规范名(⑤②5.109/⑤③5.110范式)
+- [EMC compare 区域对比技能](emc-compare-skill.md) — compare 复用 zonal_stats 不造端点(守委托)；select_template C 路由 decision_type=对比→compare(优先 rank/zonal)；boundaries≤4 区；_driftRe 拓宽任意围栏→revise；compare 路由 eval 测不出靠 browser(C6)
+- [EMC L4 lazy enrichment](emc-l4-lazy-enrichment.md) — L4 多维归因=规则底 _attach_4x5_attrs 不动 + lazy LLM 按需(否决 eager)；/aiqa/deep_attribution + build_deep_attribution_prompt(MOD_AIQA.F_007)；低置信<0.5/LLM断→回退规则底；diagnose 不动保eval；event 给瞬时盲区
+- [Sim 资讯收集+buffer 方法论](sim-research-buffer-methodology.md) — 新片区 sim：Sim-0 web-search 采真实资讯→DATA/sim/research/<area>.md(通用 Phase 0，从想象→实测)+buffer 100-400m tapered(人发帖溢出 boundary 线)；范例 ermawu standalone(ermawu_l3l4_config+sim_ermawu_l3l4 MOD_PERF.F_013)
+- [force-graph UMD 大写+new](force-graph-umd-uppercase-new.md) — vasturiano force-graph 全局名 ForceGraph(大写F非小写)+需 new ForceGraph(el)(无 new 静默不渲染 canvas 无报错)+CDN // 协议相对在 http 页降级被 jsdelivr 拒→vendor 本地；Obsidian graph 同款引擎，拓扑图用
+- [L0 购买策略](l0-acquisition-purchase-strategy.md) — L0 未来走购买途径非自采；sim 当下充分非风险；勿把 sim/自采未贯通当短板（曾被我+SCAN 误判）；唯一真短板=前端测试薄
+- [CB 记忆库指针](cb-knowledge-base.md) — 指向 docs/catch-ball/KNOWLEDGE.md（跨轮蒸馏：承重合并/SCAN 标尺纠正/decline 模式）；/cb 命令载入；登记 context-map，不孤岛
+- [沟通风格：框架+条目+总结](communication-style-framework-items-synthesis.md) — 技术交流用「逻辑框架+条目化要点+总结/归纳」；禁"一句话版/口诀/汇报体"与长篇大论
+- [拓扑图同步纪律](topo-sync-discipline.md) — 新子系统 → 加 revision-log §0 分支 + topo_scanner 语义边（auto-in-topology），防拓扑图漂移
+- [全局时间轴架构](global-time-axis.md) — time 一等公民(manifest 驱动)；time-bar(UI)+timeline(headless 引擎)+time-source(数据) 三分；applyTime silent=gridBound() 避 Overview 抢刷；阶段 lerp/点层边界换源
+- [批4 Swipe 卷帘架构](batch4-swipe-compare.md) — 时间对比双 map(mapA+mapB)+manual sync+clip divider+grid-only mirror+A/B 分片；cycle 约束(time-bar 编排)；治前vs治后 grid 演变
+- [EMC 复用 Toolbox 参数面板](emc-reuse-toolbox-panel.md) — ForAI=dialog 镜像·不造新色板/参数·缺失提醒开发者补·CB-04 H1（致"消极热力图出综合彩虹图"）
+- [双环境 schema 分叉](dual-env-schema-divergence.md) — ZCode+VSCode 并行编辑同子系统会格式分叉（buglog YAML vs 表格）；新子系统须在 skill 锁死 schema 契约，跨环境遵循
