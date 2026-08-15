@@ -26,8 +26,17 @@
 - [x] **全量推送**：2 分支 + 1 标签 → Gitee 校验一致（`codex/dsh-onboarding = ff1f7e26`、`main = 4f6fac71`）；upstream 已指向 origin(Gitee)
 - [x] **双远端策略落地**：`origin` = Gitee（日常同步·office 可达）；`github` = GitHub（home 侧备份镜像，改名保留）；`hub` = 盘仓（HUB 备份层不变）
 - [x] **MCP 换绑**：项目 `.mcp.json` 新增 `gitee`（官方 `mcp-gitee` v1.0.1·env `GITEE_TOKEN`）+ `github` 停用（disabled=true 留配置备查）
-- [ ] **office 明日换绑**：Arrive.bat 快进 `ff1f7e26` → `git remote set-url origin https://gitee.com/tinsei0321/emotion_map.git`（office 首推需私人令牌当密码）→ Leave.bat
+- [ ] **office 明日换绑**：Arrive.bat 快进 `ff1f7e26+` → `git remote set-url origin https://gitee.com/tinsei0321/emotion_map.git`（office 首推需私人令牌当密码）→ Leave.bat
 - [ ] **用户侧账号操作**（指引已交付）：vscode GitHub 登出、Gitee 私人令牌设 `GITEE_TOKEN` 环境变量、Codex/ZCode 确认走 git 凭据（无独立 GitHub 绑定）
+
+### ✅ C 盘对话 context / AI 记忆双机同步（三层记忆保护伞）
+
+- [x] **机制启用**：DEV-SYNC-HUB 内置 `Memory.bat`（office 已部署·home 从未跑过=缺口）→ home 首推完成：6 工具 ~1.3GB 入 `memory\home\`（claude 267M / claude-global 4.5M / codex 385M / zcode 623M / vscode 5.5M / dsh 34M），账本 `MEMORY-push` 行落
+- [x] **盲区一修补**：registry 补 `claude-global` 条目（全局 `~/.claude\CLAUDE.md`/skills/plans/settings 原不在同步范围）
+- [x] **安全问题修正**：office 原配置漏排密钥——`codex/auth.json`（OAuth 令牌）/`zcode\v2\credentials.json`/`certs\zcode-network-ca.key+.pem` 已落盘两侧快照 → registry 排除表补齐 + 盘上 8 个凭据副本删除（源机器文件未动）
+- [x] **Gitee 蒸馏层**（末日保险）：`tools/memory_sync.py` + `memory-sync.bat`（双击镜像 AutoMemory → repo `memories/auto/` + commit + 双远端 push）；首推 `3ad8b08d` 89 文件 1767 行；全量 context 明确不上云（密钥明文+GB 体积+jsonl 无合并意义）
+- [x] **登记**：context-map 记忆共享通则（「AutoMemory 机本地已知局限」关闭）+ CLAUDE.md 第二层跨机同步注 + `memories/README.md`
+- [ ] **明日 office**：Arrive.bat → `memory-sync.bat` 首跑 pull（repo 里已有脚本）→ 日常 = Leave.bat + Memory.bat + memory-sync.bat
 
 ---
 

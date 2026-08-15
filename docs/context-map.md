@@ -67,7 +67,7 @@
 3. **单一权威源 + 指针**：不重复（一处定义、他处指针）。
 4. **不孤岛**：任何记忆文件至少被本图 + 一个索引（MEMORY.md / CLAUDE.md）指向。
 
-**跨环境**：repo 内文件（docs/ / memories/repo/）git 同步、两机都见；`~/.claude` AutoMemory 机本地（各机各自维护指针条目，已知局限）。
+**跨环境**：repo 内文件（docs/ / memories/repo/）git 同步、两机都见；`~/.claude` AutoMemory 经 **`memories/auto/` 蒸馏层镜像**跨机（`memory-sync.bat` 双击镜像 → Gitee；`py tools/memory_sync.py pull` 恢复）——原「机本地已知局限」已于 2026-08-15 关闭。全量对话 context 另走 DEV-SYNC-HUB 硬盘 `Memory.bat` 分侧快照（`E:\DEV-SYNC-HUB\memory\<office|home>\<工具>\`，跨机衔接 = AI 会话开场读对端目录）。
 
 **首例**：CB KNOWLEDGE.md（`docs/catch-ball/`）— 登记本图 + AutoMemory `cb-knowledge-base` 指针 + 与 6 条 AutoMemory 双链（`[[emc-tri-state-exit-contract]]` / `[[l0-acquisition-purchase-strategy]]` / `[[emc-delegates-to-toolbox]]` / `[[emc-aggregate-column-alias-silent-zero]]` / `[[emc-eval-empty-context-vs-runtime]]` / `[[project-design-philosophy]]`）。
 
