@@ -8,6 +8,18 @@
       ],
       "description": "Playwright 浏览器自动化 — 截图、测试、页面交互"
     },
+    "gitee": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-gitee"
+      ],
+      "env": {
+        "GITEE_ACCESS_TOKEN": "${GITEE_TOKEN}"
+      },
+      "description": "Gitee Issues/PRs 操作（官方 mcp-gitee）— 需 Gitee 私人令牌（env GITEE_TOKEN）",
+      "disabled": false
+    },
     "github": {
       "command": "npx",
       "args": [
@@ -17,8 +29,8 @@
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PAT}"
       },
-      "description": "GitHub Issues/PRs 操作 — 需 Personal Access Token",
-      "disabled": false
+      "description": "GitHub Issues/PRs 操作 — 已停用（origin 迁 Gitee·2026-08-15·仅留配置备查）",
+      "disabled": true
     },
     "vision-bridge": {
       "command": "python",
