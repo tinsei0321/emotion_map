@@ -32,6 +32,15 @@
 - [ ] **coord-bar 状态栏（待另开会话）**：右下角 bottom:28px（legend-stack 60px 与 attribution 之间的空档）·mousemove→WGS84 经纬度 + zoom + 高程。**技术要点**：高程源 AWS Terrarium `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png`（无 key 无配额·中国境内 SRTM~30m）；客户端采样（fetch PNG→离屏 canvas 读像素→瓦片 LRU 缓存 ~40·采样级 clamp z8-13）·**不挂 setTerrain**（不碰 08-05 DEM draping 承重）；**解码公式 `(R*256 + G + B/256) - 32768`（用户原案 B×256 是笔误·B 为 ÷256 细粒度项）**；office fetch 失败静默显 '—' 不 toast；3D pitch 下 e.lngLat 仍有效
 - [ ] 验收：home 肉眼看影像清晰度/拼接色差 + 状态栏跟随；office 确认灰显回退 + 高程 '—' 降级
 
+### ⬜ 初始载入界面「地球」动态展示（另开会话实施·2026-08-16 zcode 评估·**plan 已落盘待拍板·零实施**）
+
+> 用户需求：初始页改为缓慢自转的地球 + 深邃太空背景（Google Earth 载入观感）；纹理跟随默认底图（①影像→真实地球 ②地图→maplibre.org 式地板版地球）；点「复位」按钮 flyTo 宜昌进主界面。**可行性结论：能实现**——vendored MapLibre **v5.2.0** 原生支持 globe 投影（零新依赖），天地图影像瓦片直接作纹理（office 网络也可用），`YICHANG` 常量现成（map.js:45）。
+> **完整方案：`docs/globe-intro-plan.md`**（新会话先读它——架构/风险/工作量/验收/决策点全在内）。
+
+- [x] 可行性评估 + 实施预案落盘（zcode·2026-08-16）：单 map 实例 + 载入态状态机（globe 自转 → 复位 flyTo 宜昌 → 落地切回 mercator 保零回归）；估算 1-1.5 天开发 + 0.5 天审查测试；关键承重项=测试基建须加 `?intro=0` 跳过参数（防飞轮用例红一片）
+- [ ] **待用户拍板 D1-D5**（见 plan 第七节）：载入态侧栏隐藏 vs 虚化 / 复位按钮是否常驻主界面 / 星空基础版 vs 增强 / 飞入 ~3s vs ~1.5s / 是否加项目标题开场
+- [ ] 拍板后：立独立 CB 轮次 → Codex 出实施计划 → 严格 SOP（控制流+多文件）实施；涉及 `frontend/js/globe-intro.js`（新·~200 行）+ map.js/main.js/index.html/css 小改
+
 ---
 
 ## 📅 2026-08-15（双环境首次合流 · DEV-SYNC-HUB 接入 · Gitee 迁移 · claude·家）
