@@ -10,6 +10,7 @@
 用法：
     py frontend/serve.py          # 默认 :8080
     py frontend/serve.py 8080
+    py frontend/serve.py 8080 --host=0.0.0.0   # explicit LAN access (default 127.0.0.1 only)
 
 启动后访问 http://localhost:8080/frontend/index.html
 （务必走 serve，勿用 file:// —— 自动注入只在 serve 时生效）
@@ -127,6 +128,21 @@ def _inject_header_version(html, short):
 # CB-19 发版回归（三组并发）：--backend-port 可覆盖（防多组 serve 撞 8000·各自后端独立）。
 BACKEND_ORIGIN = 'http://127.0.0.1:8000'   # 默认 8000·--backend-port 动态覆盖
 
+# ---------------------------------------------------------------------------
+# CB38 P0-3 (Codex audit 2026-08-16): serve path whitelist + loopback-only bind.
+# SimpleHTTPRequestHandler used to serve the whole repo root and bind '' (all
+# interfaces) -- anyone on the LAN could GET /.env and read real keys.
+# Now: static serving is whitelist-only (403 otherwise); default bind is
+# 127.0.0.1, LAN access requires explicit --host=0.0.0.0.
+# ---------------------------------------------------------------------------
+_SERVE_ALLOWED_PREFIXES = (
+    '/frontend/',           # main app + css/js/vendor/assets + topology.html
+    '/api/',                # reverse proxy to backend (never touches disk)
+    '/_test/',              # dev-only flywheel dashboard (?test=1 drawer)
+    '/DATA/performance/',   # data pool read directly by frontend (panel.js etc.)
+    '/DATA/boundaries/',    # boundary geojson (e2e-seam / range presets)
+)
+
 
 class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
     """对每个响应强制 no-store，并对 index.html 注入 ?v 绕缓存；/api/* 反代后端。"""
@@ -147,6 +163,15 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
             return self._proxy_api()
         # 拦截 index.html：注入 ?v=<mtime> 到本地 css/js 引用（绕浏览器缓存）
         norm = self.path.split('?')[0]
+        # CB38 P0-3: root -> redirect to main UI; outside whitelist -> 403
+        if norm in ('/', ''):
+            self.send_response(302)
+            self.send_header('Location', '/frontend/index.html')
+            self.end_headers()
+            return
+        if not norm.startswith(_SERVE_ALLOWED_PREFIXES):
+            self.send_error(403, 'Forbidden: path outside serve whitelist')
+            return
         # /_test/reports | /_test/buglog → 飞轮仪表盘数据（dev-only·?test=1 抽屉读取）
         if norm.startswith('/_test/reports') or norm.startswith('/_test/buglog'):
             return self._serve_test_get(norm)
@@ -546,13 +571,20 @@ def main():
             open_what = _a.split('=', 1)[1]
         elif _a == '--open':
             open_what = 'both'
+    # CB38 P0-3: default bind 127.0.0.1 (was '' = all interfaces); LAN needs explicit --host=
+    host = '127.0.0.1'
+    for _a in args:
+        if _a.startswith('--host='):
+            host = _a.split('=', 1)[1]
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # frontend/ 的上一层 = repo root
     _free_port(port)   # 清掉同端口的僵尸 serve，避免返回旧版
     backend_proc = None if no_backend else _spawn_backend(repo_root, backend_port=backend_port)
-    with ReuseTCPServer(('', port), NoCacheHandler) as httpd:
+    with ReuseTCPServer((host, port), NoCacheHandler) as httpd:
         if open_what != 'none':
             _open_browser(open_what, port)   # socket 已 listen → 后台线程延迟开浏览器
-        print(f'[OK] frontend serve on http://localhost:{port} (no-cache + ?v auto-inject)')
+        if host not in ('127.0.0.1', 'localhost'):
+            print(f'[WARN] bind {host}: visible on LAN (whitelist limits readable paths; switch back to 127.0.0.1 after demo)')
+        print(f'[OK] frontend serve on http://{host}:{port} (no-cache + ?v auto-inject + path whitelist)')
         print('     访问 http://localhost:{}/frontend/index.html'.format(port))
         print('     Ctrl+C 停止' + ('（同时停后端）' if backend_proc else ''))
         try:

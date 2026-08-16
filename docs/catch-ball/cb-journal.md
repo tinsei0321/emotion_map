@@ -10,11 +10,13 @@
 - **F1-F5 定稿**：单库+domain 三域封顶（checkup/renewal/base）+ 存量 214 note 分域回溯债；geojson/xlsx/csv 原始数据禁入 RAG + 静态检查 + 图层卡片桥接；口径防线=注册表+复核 pass+头部口径块+作废数字清单+**禁从 discuss 取数**；办件编号 RAG 层丢弃；两板块=结论标注（新红线）。
 - **分歧裁定**：page7 中间产物**归档不删**（采 zcode 弃删）；render_page7_bivariate.py **退役不转正**（采 dsh 弃 Codex）；B002/B004 **升 P0**（采 dsh）；T1~T3 **分轴并存禁同轴混挂**（采 zcode）。
 - **E1 根因实锤**（发起方于评估期间完成）：B012=格心归属（tip-popup.js:433 centroidOf 非指针位置·五组样本全相邻·400m 跨界格模拟复现）；B013 新立=range tooltip 显图层名（map.js:1004·zcode 候选核实）。Codex 三嫌疑②③→N5/F4。
+- **Codex 补充全局审计**（同日·discuss/CB38-EMC全局系统审计_Codex）：五方向审计（3 P0 + 19 P1 + 20 P2 + 8 正面确认）→ claude组反评价全采纳（2 机制修正 + 1 盲区补全 + D1-D9 全裁定·`8c25e61f`）→ 与数据沉淀定稿合并为 **CB-39 双线**（数据线三阶段 + 工程线 P0/P1）；D9 key 项已执行（serve 白名单 + 环回绑定·claude组实弹复核五探针过）·AMAP geocode 30001 记 P2 观察随轮换解决。
 
 ### ③ 行动
 
 - [x] B012 buglog 建条目 + 审计脚本 `_tmp_audit_b012_community_tip.py`（`e0a01186`）
 - [x] 收敛定稿落盘（本文件同目录）+ E5 登记债清偿（journal 补 CB-29~37 简记 + _cb-index 更新·DoD 化自此固定）
+- [x] 审计报告 + Codex D9 三项处置落盘入库（serve 白名单/环回绑定 + verify_keys + KEY_ROTATION·claude组实弹复核五探针过）
 - [ ] Codex 出 CB-39 实施计划（下周排期 D1-D5 见定稿第五节）
 
 ### ④ 状态
