@@ -28,9 +28,10 @@ def test_full_pipeline_no_key_explicit_error(monkeypatch):
     assert r.get('csv_path', '') == ''   # 未产出错标文件
 
 
-def test_full_pipeline_phase_label_honest(monkeypatch):
+def test_full_pipeline_phase_label_honest(monkeypatch, tmp_path):
     """断言②：管道实际跑到 L3 → 导出/结果层标签 = 'L3'（≠ 硬编码 'L4'）。"""
     import SCRIPT.emotion_analysis_v1 as M
+    monkeypatch.setattr(M, 'PROCESSED_DIR', str(tmp_path))   # CB-39 A线吸收（claude组 P2）：隔离 makedirs 副作用（勿建空 DATA/processed）
     df = pd.DataFrame({
         'comments': ['a', 'b'],
         'polarity': ['Neutral', 'Positive'],

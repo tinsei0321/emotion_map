@@ -26,7 +26,7 @@ export const FIELD_ROLES = {
   geometry_lon: { variants: ['lon', 'lng', 'longitude', '经度', 'lng_'], dtypeHint: 'number', description: '经度' },
   geometry_lat: { variants: ['lat', 'latitude', '纬度', 'lat_'], dtypeHint: 'number', description: '纬度' },
   // —— 面层/边界字段 ——
-  boundary_name: { variants: ['MC', '街办', '社区', '编号', '区域名称', '县名', '市名', 'Layer', 'LAYER', 'FID_规划', 'FID', '行政区', '行政区名称', '单元名', '单元编号'], dtypeHint: 'string', description: '面层/边界的名称字段' },   // CB-39 P0-2：'街道'→'街办'（py 权威同步·CB-23 街办术语统一）
+  boundary_name: { variants: ['MC', '街办', '街道', '社区', '编号', '区域名称', '县名', '市名', 'Layer', 'LAYER', 'FID_规划', 'FID', '行政区', '行政区名称', '单元名', '单元编号'], dtypeHint: 'string', description: '面层/边界的名称字段' },   // CB-39 A线吸收：识别超集（街办+街道并存·表述层统一街办·与 py 权威逐字同步）
   boundary_id: { variants: ['id', 'ID', 'fid', 'FID', 'code', '代码', 'OBJECTID', 'objectid'], dtypeHint: 'string', description: '面层/边界唯一标识' },
   zone: { variants: ['zone', 'area_tag', 'area_seed', '片区', '街区', '所属区', '归属'], dtypeHint: 'string', description: '点所属面域/片区标识（membership·供 aggregate_by_boundary_id groupby）' },
   land_use_class: { variants: ['DLMC', 'dlmc', 'DLMC_NAME', '地类名称', '地类编码', '用地类型', '用地代码', 'landuse', 'land_use'], dtypeHint: 'categorical', description: '用地类型分类（值域见 landuse_codes_2023.py）' },
