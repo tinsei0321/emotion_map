@@ -1,5 +1,7 @@
 # Memory Index
 
+- [Prompt delivery = codeblock](prompt-delivery-codeblock.md) — 转发 prompt 一律单个代码块包裹（一键复制），不用裸 markdown/分隔线（2026-08-16）
+- [Discuss before acting](discuss-before-acting.md) — 先讨论清楚再开工，用户 2026-08-16 定为长期纪律；方案先过用户/CB 再实施
 - [RAG chain bringup](rag-chain-bringup.md) — 换环境补 RAG 链三步（torch+cpualiyun镜像/BGE HF镜像/--build）·数据源纯git内不依赖OneDrive·AMAP_KEY从历史会话找回（2026-08-09）
 - [Dual-machine disk sync](dual-machine-disk-sync.md) — DEV-SYNC-HUB硬盘专区(E:)四bat：Leave离盘/Arrive到岗快进/Status/Rescue；home离盘多推远端；origin→Gitee·GitHub降级备份；home旧工具链已删（2026-08-15）
 - [CB must materialize docs](cb-must-materialize-docs.md) — 两组介入前须先落成正式复验文档+push，不只给转发文本（2026-08-08）
