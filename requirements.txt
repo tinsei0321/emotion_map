@@ -57,5 +57,10 @@ pypinyin>=0.50.0
 # ── 多模态分析（2026-06-16 新增）──
 # requests 已在数据采集中声明，多模态 API 调用共用
 # Pillow>=10.0.0     # 图片预处理（OCR 需要时启用）
-# websocket-client   # 讯飞 OCR/ASR WebSocket 连接（接入 OCR/AudioAnalyzer 时启用）
+# websocket-client   # 讯飞 OCR/ASR WebSocket 连接（接入 OCR/Audio 时启用）
 ijson>=3.2        # 流式读大三调用地 GeoJSON（ingest_landuse_preset.py；不装则回退 json.load）
+
+# ── Excel 读写（CB-40 补登记·2026-08-16）──
+# openpyxl：实装未登记的依赖漂移补正——3 个先例脚本已用（gen_tidian_mapping_xlsx.py /
+# update_page46_excel_westlian.py / CB-35 审计），G1 行业表格式导出（xlsx 路线）复用。
+openpyxl==3.1.5
