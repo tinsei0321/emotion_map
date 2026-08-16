@@ -1,7 +1,7 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：08月16日 深夜（CB-39 双线实施·P0 线+A 线完成·收工）| 分支 `codex/dsh-onboarding`（已 push·最新 `2317785d`·origin 已切 Gitee）
+> 最后更新：08月16日 深夜（CB-40 收敛定稿 + Codex 收尾三提交 + **分支已合并 main 并删除**·zcode 经用户授权执行）| 分支 `main`（codex/dsh-onboarding 已 ff 合并删除·2026-08-16·开发回归主干直提）
 >
 > CB 入口：`docs/catch-ball/_cb-index.md`
 > 角色（08-16 起）：**Codex = 主开发（唯一 git 写者）**·claude组 = 第三方评估+收敛方·zcode组 = 评估。**dsh组 已退出（08-16·用户通知）**。
@@ -84,7 +84,7 @@
 
 ## 恢复指引（新会话）
 
-1. `git pull origin codex/dsh-onboarding`（origin=Gitee）·`git log -8` 对账（末位应见 `2317785d` A5）
+1. `git checkout main && git pull`（origin=Gitee·**codex/dsh-onboarding 分支已合并删除·2026-08-16**·CB-39 B/C 线在 main 继续）·`git log -8` 对账
 2. 读 `docs/catch-ball/_cb-index.md` + 本卡 + `discuss/CB39-实施计划_Codex-2026-08-16.md`（v3.1·唯一现行计划）
 3. 数据链路：`DATA/analysis/_总账.md`（100 行总账）+ `DATA/README.md`（池规则）+ `docs/catch-ball/retired.md`（page7 归档）
 4. 从「下一步」继续（B1 起步）；若用户要先验证 A 线，出 prompt 给 claude组（P0 线同款）
