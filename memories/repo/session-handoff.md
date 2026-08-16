@@ -1,11 +1,19 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：08月16日 深夜（CB-40 收敛定稿 + Codex 收尾三提交 + **分支已合并 main 并删除**·zcode 经用户授权执行）| 分支 `main`（codex/dsh-onboarding 已 ff 合并删除·2026-08-16·开发回归主干直提）
+> 最后更新：08月17日 早（**并行专题线新增**：EMC×dsh 合体讨论 R0-R3 于分支 `EMC_harness_dsh` 收工·zcode·家·纯文档零实施·已推三远端；main/CB-39 主线状态不变·见下）| 主线分支 `main`
 >
 > CB 入口：`docs/catch-ball/_cb-index.md`
-> 角色（08-16 起）：**Codex = 主开发（唯一 git 写者）**·claude组 = 第三方评估+收敛方·zcode组 = 评估。**dsh组 已退出（08-16·用户通知）**。
+> 角色（08-16 起）：**Codex = 主开发（唯一 git 写者）**·claude组 = 第三方评估+收敛方·zcode组 = 评估。**dsh组 已退出（08-16·用户通知）→ 08-16 晚经用户重邀回归 dsh 专题讨论（仅该专题）**。
 > 换机卡片：`docs/catch-ball/_handoff/HOME.md`（家）+ `OFFICE.md`（公司）
+
+---
+
+## 并行专题线：EMC×dsh 合体讨论（分支 `EMC_harness_dsh`·08-16 晚~08-17 早·zcode·零实施）
+
+- **接手必读**：`docs/catch-ball/discuss/EMC-dsh整体合体_讨论过程台账.md`（R0-R3 全记录）+ `EMC-聪明路径_入口端灵活性_讨论稿_zcode-2026-08-17.md`（真痛点对症稿·**R3 纠偏后本专题重心**）。
+- 状态：① A/B 线四决策点三组一致待用户拍板（否决整体寄生A/工具级寄生B·MCP/G10）；② **聪明路径线（真痛点=EMC 入口聪明度不足）四机制 M4→M2→M1→M3 + 决策点 E1-E3 待拍板**——M2 参数接地走 schema 侧不走 prompt 侧（红线兼容关键）。
+- 纪律：该专题 zcode 只回收+落盘零执行；分支未合并 main；office 续法 = `git fetch && git checkout EMC_harness_dsh`。
 
 ---
 
