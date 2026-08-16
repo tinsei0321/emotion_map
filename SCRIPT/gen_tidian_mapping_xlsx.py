@@ -7,7 +7,7 @@ import openpyxl
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, "DATA", "analysis", "体检点数据类型来源对应_2026-08-14.xlsx")
+OUT = os.path.join(ROOT, "DATA", "analysis", "77项量化", "体检点数据类型来源对应_2026-08-14.xlsx")   # CB-39 A3：族内归位
 
 HDR_FILL = PatternFill("solid", fgColor="404040")
 HDR_FONT = Font(bold=True, color="FFFFFF")

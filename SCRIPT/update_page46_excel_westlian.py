@@ -6,7 +6,7 @@ import openpyxl
 from openpyxl.styles import Font
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-XLSX = os.path.join(ROOT, "DATA", "analysis", "图数表出图_PPT表格汇总.xlsx")
+XLSX = os.path.join(ROOT, "DATA", "analysis", "汇总", "图数表出图_PPT表格汇总.xlsx")   # CB-39 A3：族内归位
 W = 9
 
 

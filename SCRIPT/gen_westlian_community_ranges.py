@@ -12,7 +12,7 @@ PRESETS = os.path.join(ROOT, "DATA", "boundaries", "presets")
 ANALYSIS = os.path.join(ROOT, "DATA", "analysis")
 COMM174 = os.path.join(PRESETS, "checkup_配置_社区.geojson")
 MAT_12345 = os.path.join(ANALYSIS, "12345主观", "12345_社区x9类_西陵伍家.csv")
-OUT_12345 = os.path.join(ANALYSIS, "12345_西陵+伍家岗.geojson")
+OUT_12345 = os.path.join(ANALYSIS, "12345主观", "12345_西陵+伍家岗.geojson")   # CB-39 A3：族内归位
 OBJ_XLWJ = os.path.join(PRESETS, "体检对象_西陵+伍家岗.geojson")
 
 

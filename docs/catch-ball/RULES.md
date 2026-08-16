@@ -251,7 +251,7 @@ docs/catch-ball/_handoff/OFFICE.md
 
 ### 5.1.2 Excel 制作分工（2026-08-13 起·用户定）
 - **PPT 表格 Excel 任务一律由 Codex 组负责**（claude组 三版对比后用户选定 Codex 版为正式版）
-- 落盘位置（权限例外·仅此一文件）：`DATA/analysis/图数表出图_PPT表格汇总.xlsx`——**每个 sheet 对应一个 page**（sheet 名 = pageN）·page 下各表纵向排列、表间空 2 行
+- 落盘位置（权限例外·仅此一文件）：`DATA/analysis/汇总/图数表出图_PPT表格汇总.xlsx`（CB-39 A3 归位）——**每个 sheet 对应一个 page**（sheet 名 = pageN）·page 下各表纵向排列、表间空 2 行
 - 排版要求：简单、专业——表头加粗 + 细边框 + 列宽自适应 + 同值列合并单元格；**禁止颜色填充**
 - 范围：只做 PPT 要用到的数据表（图数据源/文件索引等工作用表不做）
 - claude组 职责：page md 完成后通知 Codex 补对应 sheet；Codex 落盘后 claude组 验收并 commit

@@ -32,5 +32,5 @@
 | CB 入口 | `docs/catch-ball/_cb-index.md`（当前 CB-33） |
 | page4/6 汇总 | `DATA/analysis/汇总/page{4,6}_*_分析汇总_2026-08-13.md`（v6 去村） |
 | 强度评价评审 | `docs/catch-ball/discuss/CB33-强度评价_评审_Codex-2026-08-13.md` |
-| 正式 Excel | `DATA/analysis/图数表出图_PPT表格汇总.xlsx` |
-| 12345 点数据 | `DATA/analysis/12345_{安全韧性|民生基础}_西陵伍家点.geojson`（去村） |
+| 正式 Excel | `DATA/analysis/汇总/图数表出图_PPT表格汇总.xlsx`（CB-39 A3 归位） |
+| 12345 点数据 | `DATA/analysis/12345主观/12345_{安全韧性|民生基础}_西陵伍家点.geojson`（去村·CB-39 A3 归位） |
