@@ -24,6 +24,14 @@
 - [x] **E5 登记债清偿 + DoD 化**：cb-journal 补 CB-29~37 简记 + _cb-index 更新到 CB-38 + 每轮收敛必更固定条目
 - [ ] **下一步：Codex 出 CB-39 实施计划**（下周排期 D1-D5·B002/B004 P0 前移·manifest 再生成须用户授权）
 
+### ⬜ 地图底图增强（另开会话实施·2026-08-16 用户定·本会话只收口）
+
+> 用户需求：①新增 Esri 高清影像底图 ②地图右下角坐标/缩放/高程状态栏。home 先做看效果·office 探活自动灰显回退天地图（CB-31 框架现成）。
+
+- [x] **esri-imagery 底图档已注册**（2026-08-16 收口）：`map.js` `_ESRI_IMAGERY`（World_Imagery·`{z}/{y}/{x}` 顺序·maxzoom 18）+ BASEMAPS + `_BASEMAP_BG['#23303c']` + index.html swatch 按钮 + dialog.css `.bm-esriimg`——**home 可直接选档验效果**（cb31 探活/灰显/回退 tianditu-img-nolabel 全自动）
+- [ ] **coord-bar 状态栏（待另开会话）**：右下角 bottom:28px（legend-stack 60px 与 attribution 之间的空档）·mousemove→WGS84 经纬度 + zoom + 高程。**技术要点**：高程源 AWS Terrarium `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png`（无 key 无配额·中国境内 SRTM~30m）；客户端采样（fetch PNG→离屏 canvas 读像素→瓦片 LRU 缓存 ~40·采样级 clamp z8-13）·**不挂 setTerrain**（不碰 08-05 DEM draping 承重）；**解码公式 `(R*256 + G + B/256) - 32768`（用户原案 B×256 是笔误·B 为 ÷256 细粒度项）**；office fetch 失败静默显 '—' 不 toast；3D pitch 下 e.lngLat 仍有效
+- [ ] 验收：home 肉眼看影像清晰度/拼接色差 + 状态栏跟随；office 确认灰显回退 + 高程 '—' 降级
+
 ---
 
 ## 📅 2026-08-15（双环境首次合流 · DEV-SYNC-HUB 接入 · Gitee 迁移 · claude·家）

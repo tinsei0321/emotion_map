@@ -30,11 +30,13 @@ const _esriStyle = (url, maxzoom = 16) => ({
 const _ESRI_LIGHT = 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
 const _ESRI_DARK  = 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
 const _ESRI_TOPO  = 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
+const _ESRI_IMAGERY = 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 export const BASEMAPS = {
   // Esri（国内不可达自适应回退天地图；positron/dark-matter/voyager 替代失效的 CARTO cartocdn）
   'positron':    _esriStyle(_ESRI_LIGHT),           // 浅灰素图 → 回退 tianditu-vec-nolabel（浅色系）
   'dark-matter': _esriStyle(_ESRI_DARK, 16),        // 暗灰底图（3D 暗态·dm 层同源）→ 不可达降级纯深色背景
   'voyager':     _esriStyle(_ESRI_TOPO, 17),        // 彩色地形 → 回退 tianditu-vec（带注记）
+  'esri-imagery': _esriStyle(_ESRI_IMAGERY, 18),    // 高清影像（Maxar 亚米级拼接·色差正常·日期不受控）→ 回退 tianditu-img-nolabel（同影像系）
   // 天地图（影像/矢量 raster 瓦片，内联 style 对象；浏览器端 key 验 Referer，CDN 子域 t0-t3 负载均衡）
   'tianditu-img':         _tiandituStyle([{ id: 'img', T: 'img_w' }, { id: 'cia', T: 'cia_w' }]),   // 影像 + 注记
   'tianditu-vec':         _tiandituStyle([{ id: 'vec', T: 'vec_w' }, { id: 'cva', T: 'cva_w' }]),   // 矢量 + 注记
@@ -87,7 +89,7 @@ let _currentBasemap = DEFAULT_BASEMAP;   // 当前底图 key（setBasemap 同步
 //  setLayoutProperty 显隐（零 setStyle 操作）。dark-matter 自带 opaque background + 路网/区块纹理 =
 //  真"暗色（无注记）"观感（非纯黑遮罩）。数据层在 dm 之上保持亮。dm 层 vector 瓦片首显加载、后缓存。
 const DM_BASEMAP_KEY = 'dark-matter';
-const _BASEMAP_BG = { 'positron': '#f5f5f5', 'dark-matter': '#2b2b2b', 'voyager': '#f2efe9', 'tianditu-img': '#a6c8e0', 'tianditu-vec': '#e8eef4', 'tianditu-img-nolabel': '#a6c8e0', 'tianditu-vec-nolabel': '#e8eef4' };
+const _BASEMAP_BG = { 'positron': '#f5f5f5', 'dark-matter': '#2b2b2b', 'voyager': '#f2efe9', 'esri-imagery': '#23303c', 'tianditu-img': '#a6c8e0', 'tianditu-vec': '#e8eef4', 'tianditu-img-nolabel': '#a6c8e0', 'tianditu-vec-nolabel': '#e8eef4' };
 let _dark3DOn = false;                    // 当前是否处暗色 3D 态（pitch>1）
 let _dmLoaded = false;                    // dark-matter 图层是否已预载
 const _dmLayerIds = [];                   // 预载的 dm 图层 id 列表（显隐用）

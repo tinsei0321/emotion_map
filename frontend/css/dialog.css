@@ -102,6 +102,7 @@
   border: 1px solid var(--geojson-color-border-default);
 }
 .bm-sat     { background: linear-gradient(135deg, #2d3a2e, #4a5d3a); }   /* 影像（深绿卫星） */
+.bm-esriimg { background: linear-gradient(135deg, #1d2b1e, #3a4d33 55%, #7a6a4f); }   /* Esri 高清影像（深绿+土褐·Maxar 拼接感） */
 .bm-vec     { background: linear-gradient(135deg, #eef3ee, #d6e3dc); }   /* 天地图矢量带注记（暖白绿） */
 .bm-dark    { background: linear-gradient(135deg, #3a3a3a, #1f1f1f); }   /* Esri Dark Gray（中性暗灰） */
 .bm-light   { background: linear-gradient(135deg, #f7f9fb, #e3ecf2); }   /* 天地图矢量无注记（冷白） */
