@@ -9,14 +9,14 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-23 · 12345 原始数据治理方案**（57265 行·情绪5级对齐L2·地点三级推断·06_主观数据治理·待 codex 审计） |
-| **上一轮** | CB-23 阶段1'+2' 实施审计回收（3 P1 修正落地） |
-| **当前环境** | **claude组（Claude Code + DeepSeek/GLM 5.2·开发主）** + **Codex** + **zcode组（ZCode + GLM 5.2·评估·2026-08-11 由 glm组 更名·本次任务分工）** |
-| **当前分支** | `main`（阶段0'/1'/2' + 全局修改已提交·待 push） |
-| **最新讨论** | `discuss/CB23-12345治理方案设计_2026-08-11.md`（两份输出 schema·情绪5级对齐）+ `CB23-中转站层级评估`（06_主观数据治理） |
-| **最新进展** | 用户提供 2024 年 12345 原始数据（57265 行·主观轨最真实源）→ 探查（事发地85%空·78%含地点词·街办4205行）→ **方案设计对齐用户 4 点**（情绪5级对齐L2枚举不造期盼级·地点三级推断·中转站层级评估建议06_主观数据治理·进CB发codex）→ 待 codex 审计 |
-| **接手文档** | `memories/repo/session-handoff.md` + `docs/catch-ball/cb-journal.md`（CB-23 轨迹）+ `_handoff/HOME.md` + `OFFICE.md` |
-| **上次操作人** | tinsei0321 + claude组（+ Codex/glm 评估中） |
+| **当前 CB 轮次** | **CB-38 · 主线回归与数据沉淀**（三组评估齐·收敛定稿落盘 2026-08-16·零实施·**待 Codex 出 CB-39 实施计划**） |
+| **上一轮** | CB-37 page7 社区问题一览图 + checkup-point 管线（公司侧·08-15 合流）；CB-24~37 简记见 cb-journal 顶部补账 |
+| **当前环境** | **Codex（主开发·唯一 git 写者·08-13 起）** + **claude组（第三方独立评估·接替原 Codex 评估岗）** + **zcode组（评估）** + **dsh组（deepseek harness·评估·08-14 新成员·CB-38 首次全程）** |
+| **当前分支** | `codex/dsh-onboarding`（已推 Gitee origin） |
+| **最新讨论** | `discuss/CB38-主线回归与数据沉淀_收敛定稿_2026-08-16.md`（实施计划唯一输入）+ 三组评估 ×3 同目录 |
+| **最新进展** | 紧急任务（城市体检 PPT page1-7）收官 → 主线回归 RAG+EMC：F1-F5 数据沉淀定稿（单库+domain 三域·归档不删·蒸馏源纪律）+ EMC bug 清单 E1-E15/N1-N7（E1=B012 格心归属+B013 range tooltip 均已定位）+ 任务③时间轴（真实时间点·分轴并存）下周开工 |
+| **接手文档** | `memories/repo/session-handoff.md` + `docs/catch-ball/cb-journal.md`（CB-38 + CB-29~37 补账）+ `_handoff/HOME.md` + `OFFICE.md` |
+| **上次操作人** | tinsei0321 + claude组（三组评估：Codex/zcode/dsh） |
 
 ## 快速开始
 
