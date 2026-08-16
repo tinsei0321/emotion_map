@@ -42,6 +42,7 @@ class AnalysisResponse(BaseModel):
     message: str = ""
     polarity_stats: PolarityStats = Field(default_factory=PolarityStats)
     score_mean: float = 0.0
+    phase: str = Field(default="", description="实际执行层级 L2/L3（诚实标签·CB-39 P0-1·非声称层级）")
 
 
 class HealthResponse(BaseModel):

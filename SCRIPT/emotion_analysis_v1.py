@@ -64,7 +64,7 @@ from core.config import (
 )
 from core.data_loader import load_emotion_data
 from core.export import export_to_csv, export_to_geojson
-from core.tracker import track, TrackContext, trace_log, trace_error, register_track_id
+from core.tracker import track, TrackContext, trace_log, trace_warn, trace_error, register_track_id
 from core.utils import safe_print
 from SCRIPT.emotion_lexicon import classify_emotion_type, calc_emotion_intensity, analyze_emotion
 
@@ -1015,7 +1015,7 @@ def create_analyzer(engine: str = 'snownlp', **kwargs) -> AnalyzerBase:
             f'  snownlp     → L2 基础情绪分析（离线，免费）\n'
             f'  deepseek-l2 → L2 精确情绪分析（DeepSeek API，约0.001元/条）\n'
             f'  llm         → L3 语义增强分析\n'
-            f'  corpus      → L4 多维归因分析'
+            f'  corpus      → L4 多维归因分析（未接入：_call_api 占位 NotImplementedError·CB-39 P0-1 标注）'
         )
 
     # 只传目标引擎接受的参数，避免 TypeError
@@ -1091,6 +1091,15 @@ def run_analysis_task(
     try:
         # 1. 运行管道
         if full_pipeline:
+            # CB-39 P0-1（诚实度·claude组 修正机制）：全管道 key 空时显式报错——
+            # 此前行为=静默跳过 L3/L4 仍把产物错标 L4；现拒绝静默降级（要跑请传 key 或设环境变量）。
+            _eff_key = l3_api_key or l4_api_key or api_key or os.environ.get('DEEPSEEK_API_KEY', '')
+            if not _eff_key:
+                result['message'] = (
+                    '全管道需 L3/L4 API key：传 api_key/l3_api_key/l4_api_key 或设 DEEPSEEK_API_KEY 环境变量。'
+                    '已拒绝静默降级（此前：跳过 L3/L4 仍错标 L4）——CB-39 P0-1 诚实度修复'
+                )
+                return result
             df = run_full_pipeline(
                 file_path,
                 l3_api_key=l3_api_key,
@@ -1126,7 +1135,10 @@ def run_analysis_task(
 
         # 2. 导出（文件名含阶段标识）
         os.makedirs(PROCESSED_DIR, exist_ok=True)
-        paths = export_results(df, output_name, phase=engine.phase if not full_pipeline else 'L4')
+        # CB-39 P0-1：层标签=真实计算层级——full_pipeline 从 df.attrs 读实际执行到哪级（L2/L3），
+        # 不再硬编码 'L4'（单引擎路径 engine.phase 本就真实）。
+        phase_label = engine.phase if not full_pipeline else str((getattr(df, 'attrs', None) or {}).get('phase') or 'L2')
+        paths = export_results(df, output_name, phase=phase_label)
         csv_path = paths['csv_path']
         geojson_path = paths['geojson_path']
 
@@ -1149,6 +1161,7 @@ def run_analysis_task(
             'message': f'分析完成！共 {total} 条数据',
             'polarity_stats': polarity_stats,
             'score_mean': round(float(df['score'].mean()), 2),
+            'phase': phase_label,   # CB-39 P0-1：实际执行层级（诚实标签·供 API/UI 展示）
         })
 
     except Exception as e:
@@ -1340,6 +1353,7 @@ def run_full_pipeline(file_path: str,
     df = run_pipeline(file_path, engine_l2, phase='L2', progress_callback=progress_callback)
     if df is None:
         return None
+    df.attrs['phase'] = 'L2'   # CB-39 P0-1：诚实标签锚点（后续实际增强到哪级就升到哪级）
 
     # 确定可用文本列（text 优先，L1 脱敏后 comments 已被清空）
     text_col = 'text' if 'text' in df.columns else ('comments' if 'comments' in df.columns else None)
@@ -1368,6 +1382,7 @@ def run_full_pipeline(file_path: str,
                     r.confidence for r in l3_results
                 ]
             safe_print(f'   L3 增强 {len(neg_texts)} 条负面文本')
+            df.attrs['phase'] = 'L3'   # 实际执行了 L3 增强（无负面文本则停留 L2）
         else:
             safe_print('   无负面文本，跳过 L3')
 
@@ -1404,31 +1419,11 @@ def run_full_pipeline(file_path: str,
 
     # L4（对需干预的文本进行归因）
     if l4_api_key:
+        # CB-39 P0-1（D1 短期 c）：L4 引擎未接入（CorpusAnalyzer._call_api = NotImplementedError 占位）——
+        # 显式跳过并保持诚实标签（不崩溃、不假跑、不升 L4 标签）。中期路线见 CB-39 P2-1（规则底转正）。
         safe_print('\n── L4 多维归因分析 ──')
-        engine_l4 = create_analyzer('corpus', api_key=l4_api_key,
-                                     corpus_path=l4_corpus_path)
-        actionable_mask = df['polarity'].isin(['Negative', 'Very Negative'])
-        actionable_texts = df.loc[actionable_mask, text_col].tolist() if text_col else []
-        if actionable_texts:
-            with TrackContext("MOD_ANA.D_004", n_texts=len(actionable_texts)):
-                l4_results = engine_l4.analyze_batch(actionable_texts, progress_callback=progress_callback)
-                df.loc[actionable_mask, 'attributions'] = [
-                    json.dumps(r.attributions, ensure_ascii=False)
-                    if r.attributions else ''
-                    for r in l4_results
-                ]
-                df.loc[actionable_mask, 'suggestions'] = [
-                    json.dumps(r.suggestions, ensure_ascii=False)
-                    if r.suggestions else ''
-                    for r in l4_results
-                ]
-                # 写入 L4 置信度
-                df.loc[actionable_mask, 'l4_confidence'] = [
-                    r.confidence for r in l4_results
-                ]
-            safe_print(f'   L4 归因 {len(actionable_texts)} 条需干预文本')
-        else:
-            safe_print('   无需归因文本，跳过 L4')
+        safe_print('   [WARN] L4 未接入（API 通道占位）——跳过 L4·产物按实际执行层级标注（不标 L4）')
+        trace_warn('MOD_ANA.D_004', 'L4 not implemented (stub) - skipped, phase label kept at actual level')
 
     return df
 

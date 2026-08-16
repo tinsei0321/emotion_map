@@ -118,6 +118,8 @@ async def run_analysis(req: AnalysisRequest):
         engine_type=req.engine_type,
         output_name=output_name,
         api_key=req.api_key,
+        l3_api_key=req.api_key,   # CB-39 P0-1：schema api_key 驱动 L3（此前漏传→恒空→L3 恒静默跳过）
+        l4_api_key=req.api_key,   # 同上；L4 未接入→管道内显式跳过并按实际层级标注
         enable_keywords=req.enable_keywords,
         full_pipeline=req.full_pipeline,
         multimodal=req.multimodal,
@@ -132,6 +134,7 @@ async def run_analysis(req: AnalysisRequest):
         n_points=result['n_points'],
         csv_path=result['csv_path'],
         geojson_path=result.get('geojson_path', ''),
+        phase=result.get('phase', ''),   # 实际执行层级（诚实标签）
         message=result['message'],
         polarity_stats=PolarityStats(
             very_positive=stats.get('Very Positive', 0),

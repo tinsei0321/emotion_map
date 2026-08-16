@@ -8,8 +8,10 @@ Scrapy 全局设置 — emotion_map 数据采集系统
 BOT_NAME = 'emotion_map_scraper'
 
 # ── 模块路径 ──
-SPIDER_MODULES = ['spiders']
-NEWSPIDER_MODULE = 'spiders'
+# CB-39 P0-1（D1）：spider 骨架已移 experimental/（未贯通·不入主线加载）——
+# L0 获取走购买/中转站途径（CLAUDE.md 数据红线·勿把 sim/自采未贯通当风险）。
+SPIDER_MODULES = []
+NEWSPIDER_MODULE = 'experimental'
 
 # ── 遵守 robots.txt ──
 # 设为 False：小红书/大众点评等平台的 robots.txt 通常会禁止搜索页
