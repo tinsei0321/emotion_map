@@ -8,9 +8,15 @@ TIANDITU_KEY = '4d4dc85287c003c8a18d5520b8920796'
 
 # ── 数据路径（绝对路径，跨平台一致）──
 import os as _os
-_PROJECT_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+PROJECT_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+_PROJECT_ROOT = PROJECT_ROOT   # 向后兼容别名
 RAW_DIR = _os.path.join(_PROJECT_ROOT, 'DATA', 'raw')
-PROCESSED_DIR = _os.path.join(_PROJECT_ROOT, 'DATA', 'processed')
+PROCESSED_DIR = _os.path.join(_PROJECT_ROOT, 'DATA', 'exports')
+# CB-39 A2/D2 数据池归一（单源收敛）：
+#   - 旧 DATA/processed 已手工迁为 performance（07-24）且空目录已删——常量不再指向死路径；
+#   - performance = 演示池（sim 演进最终版·E16 后仅剩 sim·禁入真实数据）；
+#   - exports = 新分析导出唯一落点（运行产物·可重算·不入 git）——与演示池/真实归集根（DATA/analysis）三分离。
+#   入库规则详见 DATA/README.md。
 PERFORMANCE_DIR = _os.path.join(_PROJECT_ROOT, 'DATA', 'performance')   # 演示用最终版 L1/L2（百度锚定，sim_performance_data 产出）
 
 # ── 边界文件路径（规划范围 Shapefile）──
@@ -19,7 +25,8 @@ BOUNDARY_SHP = _os.path.join(_PROJECT_ROOT, 'DATA', 'boundaries', '规划范围'
 # ── 文件夹选项 ──
 FOLDER_OPTIONS = {
     '[DATA] raw（原始数据）': RAW_DIR,
-    '[DATA] processed（处理结果）': PROCESSED_DIR,
+    '[DATA] exports（分析导出·运行产物）': PROCESSED_DIR,
+    '[DATA] performance（演示池·sim 最终版）': PERFORMANCE_DIR,
 }
 
 # ── 情绪极性阈值（五级制，为城市更新/治理/运营优化）──

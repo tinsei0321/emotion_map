@@ -1454,7 +1454,7 @@ if __name__ == '__main__':
     safe_print(f'引擎: {engine.name} v{engine.version} [{engine.phase}]')
     safe_print(f'能力: {json.dumps(engine.get_capabilities(), ensure_ascii=False)}')
 
-    df = run_pipeline('data/raw/test_0609_1.csv', engine)
+    df = run_pipeline('DATA/raw/test_0609_1.csv', engine)   # CB-39 A2：大小写统一（Windows 宽容·Linux 严格）
     if df is not None and not df.empty:
         export_results(df, 'emotion_analysis_output')
         safe_print('\n[OK] 全流程完成！')

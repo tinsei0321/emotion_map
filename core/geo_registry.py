@@ -17,7 +17,7 @@ from typing import Optional
 import geopandas as gpd
 import pandas as pd
 
-from core.config import PERFORMANCE_DIR
+from core.config import PERFORMANCE_DIR, PROJECT_ROOT
 from core.range_selector import list_presets, load_preset, _PRESETS_DIR
 from core.field_dictionary import resolve_role, find_boundary_name_column   # P1 字段语义层
 
@@ -40,8 +40,16 @@ _POINT_LAYERS = {
     'ermawu_l3l4_t3': ('ermawu_l3l4_T3_result_csv.csv', '大南门·二马路 L3L4 · T3（历史街区·文旅爆满）', 'L3L4'),
     # CB-23 checkup 主观轨：12345 治理版（2024·57265 行·geocode 回填 32% 坐标·中心城区+县市）
     # 注：checkup_* 层隔离（Codex G6 whitelist·sim 层零引用）·level='CHECKUP' 零 level 检查·极性负偏平台特性（观点以强度为主）
-    'checkup_12345_2024': ('checkup_12345_2024.csv', '12345 投诉 2024（主观轨·体检医生·中心城区+县市）', 'CHECKUP'),
+    # CB-39 A2/E16：真实数据迁出演示池 → DATA/analysis/12345主观/（第 4 元素=repo 相对子目录·缺省走 PERFORMANCE_DIR）
+    'checkup_12345_2024': ('checkup_12345_2024.csv', '12345 投诉 2024（主观轨·体检医生·中心城区+县市）', 'CHECKUP', 'DATA/analysis/12345主观'),
 }
+
+
+def _layer_path(entry) -> str:
+    """注册条目 → 文件绝对路径（CB-39 A2：可选第 4 元素=repo 相对子目录·缺省 PERFORMANCE_DIR 向后兼容）。"""
+    fname = entry[0]
+    sub = entry[3] if len(entry) > 3 else ''
+    return os.path.join(PROJECT_ROOT, sub, fname) if sub else os.path.join(PERFORMANCE_DIR, fname)
 
 
 _FIELD_CACHE: dict = {}   # fname → {fields, samples, dtypes, field_cards}（catalog 暴露给 AI，避免瞎猜列名/取值/role）
@@ -56,7 +64,8 @@ def _point_layer_overview(fname: str) -> dict:
     供 catalog 暴露字段名 + 取值样例 + 类型 + 语义角色。"""
     if fname in _FIELD_CACHE:
         return _FIELD_CACHE[fname]
-    path = os.path.join(PERFORMANCE_DIR, fname)
+    # CB-39 A2：fname 可能是完整路径（含子目录层）——目录存在则直接用，否则按 PERFORMANCE_DIR 兼容旧调
+    path = fname if os.path.isfile(fname) else os.path.join(PERFORMANCE_DIR, fname)
     ov = {'fields': [], 'samples': {}, 'dtypes': {}, 'field_cards': {}}
     if os.path.isfile(path):
         try:
@@ -80,9 +89,11 @@ def _point_layer_overview(fname: str) -> dict:
 def list_point_layers() -> list:
     """列出可用的点层（标注 available + 字段/样例/类型/CRS）。L2 优先（含 score/polarity）。"""
     out = []
-    for lid, (fname, label, level) in _POINT_LAYERS.items():
-        available = os.path.isfile(os.path.join(PERFORMANCE_DIR, fname))
-        ov = _point_layer_overview(fname) if available else {'fields': [], 'samples': {}, 'dtypes': {}, 'field_cards': {}}
+    for lid, entry in _POINT_LAYERS.items():   # CB-39 A2：条目可带第 4 元素（子目录）·不再定长解包
+        fname, label, level = entry[0], entry[1], entry[2]
+        path = _layer_path(_POINT_LAYERS[lid])
+        available = os.path.isfile(path)
+        ov = _point_layer_overview(path) if available else {'fields': [], 'samples': {}, 'dtypes': {}, 'field_cards': {}}
         out.append({
             'id': lid,
             'label': label,
@@ -122,8 +133,7 @@ def get_layer_points(layer_id: str) -> gpd.GeoDataFrame:
         return _CACHE[layer_id]
     if layer_id not in _POINT_LAYERS:
         raise KeyError(f'未知点层 id: {layer_id}（可用：{list(_POINT_LAYERS)}）')
-    fname, _, _ = _POINT_LAYERS[layer_id]
-    path = os.path.join(PERFORMANCE_DIR, fname)
+    path = _layer_path(_POINT_LAYERS[layer_id])
     if not os.path.isfile(path):
         raise FileNotFoundError(f'点层文件缺失: {path}')
 

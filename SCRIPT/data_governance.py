@@ -52,7 +52,7 @@ from SCRIPT.emotion_analysis_v1 import run_analysis_task
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW_DIR = os.path.join(PROJECT_ROOT, 'DATA', 'raw')
-PROCESSED_DIR = os.path.join(PROJECT_ROOT, 'DATA', 'processed')
+from core.config import PROCESSED_DIR   # CB-39 A2/D2：单源收敛（旧本地定义指向已删的 DATA/processed·双源漂移根治）
 BOUNDARY_DIR = os.path.join(PROJECT_ROOT, 'DATA', 'boundaries', '规划范围')
 
 # 默认路径（可通过 CLI 参数覆盖）

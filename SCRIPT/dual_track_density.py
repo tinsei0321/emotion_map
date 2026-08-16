@@ -75,7 +75,8 @@ def main():
     print(f"[体检] 1km 网格 {len(g_obj)}·point_count 范围 {g_obj['point_count'].min()}-{g_obj['point_count'].max()}")
 
     # ── 2. 主观轨·12345 密度 ──
-    t = pd.read_csv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "DATA", "performance", "checkup_12345_2024.csv"), encoding="utf-8-sig")
+    # CB-39 A2/E16：真实数据已迁 DATA/analysis/12345主观/（performance=演示池·禁入真实数据）
+    t = pd.read_csv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "DATA", "analysis", "12345主观", "checkup_12345_2024.csv"), encoding="utf-8-sig")
     sub = t[(t["region_scope"] == "中心城区") & (t["place_confidence"].isin(["high", "medium"]))].dropna(subset=["lon", "lat"])
     g45 = gpd.GeoDataFrame(sub, geometry=gpd.points_from_xy(sub.lon, sub.lat), crs="EPSG:4326")
     print(f"[12345] 中心城区 high+medium: {len(g45)}")

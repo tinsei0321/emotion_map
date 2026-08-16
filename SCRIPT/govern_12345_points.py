@@ -10,7 +10,7 @@ from shapely.strtree import STRtree
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CLEAN = r"D:\OneDrive\2026\15_城市更新专项规划研究\1 宜昌市城市体检\EMC数据中转站\06_主观数据治理\12345_治理清洗版.csv"
-CHECKUP = os.path.join(ROOT, "DATA", "performance", "checkup_12345_2024.csv")
+CHECKUP = os.path.join(ROOT, "DATA", "analysis", "12345主观", "checkup_12345_2024.csv")   # CB-39 A2/E16：迁出演示池
 COMM = os.path.join(ROOT, "DATA", "boundaries", "presets", "checkup_配置_社区174.geojson")
 VILL = os.path.join(ROOT, "DATA", "analysis", "18村_面范围.geojson")
 OUT = os.path.join(ROOT, "DATA", "analysis", "12345主观")

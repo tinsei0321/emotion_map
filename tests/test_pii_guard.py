@@ -6,12 +6,16 @@ PII guard（闭环补强 Wave3）— 扫描导出的分析结果 CSV，禁止含
 放测试里能自然进 CI + /verify，在导出泄露 PII 时第一时间 fail。
 """
 import csv
+import os
+import sys
 from pathlib import Path
 
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-PROCESSED_DIR = PROJECT_ROOT / "DATA" / "processed"
+sys.path.insert(0, str(PROJECT_ROOT))
+from core.config import PROCESSED_DIR as _CFG_PROCESSED_DIR   # CB-39 A2/D2：随 config 单源（DATA/exports·旧 DATA/processed 已删）
+PROCESSED_DIR = Path(_CFG_PROCESSED_DIR)
 
 # 禁止出现在结果 CSV 列名中的 PII 字段（小写匹配）
 _FORBIDDEN_COLUMNS = {
@@ -33,9 +37,9 @@ _RESULT_CSVS = _find_result_csvs()
 
 
 def test_processed_dir_exists_or_skip():
-    """DATA/processed 不存在时，PII 扫描无对象——记录但不 fail。"""
+    """导出目录（config PROCESSED_DIR）不存在时，PII 扫描无对象——记录但不 fail。"""
     if not PROCESSED_DIR.exists():
-        pytest.skip("DATA/processed not present yet (no pipeline output to scan)")
+        pytest.skip(f"{PROCESSED_DIR.name} not present yet (no pipeline output to scan)")
     # 目录存在但无结果 CSV 也算通过（尚未导出）
 
 

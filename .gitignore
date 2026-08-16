@@ -17,6 +17,8 @@ DATA/raw/landuse/
 .claude/settings.local.json
 # RAG 向量索引（本地构建·可 py tools/rag_index.py --rebuild 重建·不入库）
 data/rag_index/
+# CB-39 A2/D2：新分析导出=运行产物（可重算·不入库；演示最终版有意入库时放 DATA/performance/）
+DATA/exports/
 design/tokens.py
 design/tokens.css
 .claude/.last-session
