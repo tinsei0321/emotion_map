@@ -43,6 +43,15 @@
 - [ ] **待用户拍板 D1-D5**（见 plan 第七节）：载入态侧栏隐藏 vs 虚化 / 复位按钮是否常驻主界面 / 星空基础版 vs 增强 / 飞入 ~3s vs ~1.5s / 是否加项目标题开场
 - [ ] 拍板后：立独立 CB 轮次 → Codex 出实施计划 → 严格 SOP（控制流+多文件）实施；涉及 `frontend/js/globe-intro.js`（新·~200 行）+ map.js/main.js/index.html/css 小改
 
+### ⬜ EMC harness 架构借鉴 dsh 专题（另开会话深入讨论·2026-08-16 zcode 底稿已落盘·**零实施**）
+
+> 用户想法：「让 EMC 依托 harness+LLM+plugin 运作、模仿 dsh（https://github.com/deepseek-ai/deepseek-harness）重构，是否更智能灵活」。zcode 在线研读 dsh 四份核心文档后梳理的**核心结论**：EMC 已是该形式（Smart/Dumb/编排器内核=harness.js+19 契约工具+双 LLM 端），「重构为该形式」前提不成立；真正有价值=**三点定向借鉴**（G6 session log 可重放 / G7 守卫管线化 / G8 契约全自动派生）+ 条件性 G9（CPD 复活借 delegated turn）；明确反对换 Cordis 框架/开放 agent loop 替换确定性编排/推翻重写（B001/B003 病史背书）。
+> **专题底稿：`docs/catch-ball/discuss/EMC-harness架构借鉴dsh_专题底稿_zcode-2026-08-16.md`**（新会话先读它——dsh 四支柱研读摘要/EMC 对照表/借鉴清单/反对项/五议题议程/D1-D3 决策点全在内）。
+
+- [x] dsh 研读 + 对照梳理 + 专题底稿落盘（zcode·2026-08-16）
+- [ ] **专题会话深入讨论**（用户另开会话）：按底稿第七节五议题推进（session log 设计 / 守卫管线 / 契约派生 / CPD delegated turn / G6-G9 与 CB-40 G1-G5 合并排序）；红线=diagnose prompt 永不动·编排器确定性·零实施
+- [ ] 讨论收敛后：G6-G9 入 CB-40 缺口清单或独立 CB 轮 → 用户拍板 → Codex 出实施计划
+
 ---
 
 ## 📅 2026-08-15（双环境首次合流 · DEV-SYNC-HUB 接入 · Gitee 迁移 · claude·家）
