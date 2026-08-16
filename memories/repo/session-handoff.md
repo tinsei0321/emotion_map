@@ -1,120 +1,96 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：08月14日 深夜（家·收工→早上去公司·CB-35 page7 排序评估+数据审计完成·三组收敛）| 分支 `codex/dsh-onboarding`（已 push·CB-35 产出 `f315217c`+`62abba45`）
+> 最后更新：08月16日 深夜（CB-39 双线实施·P0 线+A 线完成·收工）| 分支 `codex/dsh-onboarding`（已 push·最新 `2317785d`·origin 已切 Gitee）
 >
-> 🔗 **CB 入口**：`docs/catch-ball/_cb-index.md`
-> 🎭 **角色（2026-08-13 起）**：**claude组 = 第三方独立评估（接替原 Codex 评估岗）·Codex = 主开发（唯一 git 写者）**·zcode组 = 评估方不变。claude组 职责：只读本地·意见落盘 `docs/catch-ball/discuss/CB*-*_评估_Claude-YYYY-MM-DD.md`（格式：〇一句话结论/一总评/二逐焦点/三P0-P3）。**注：08-14 本次会话用户明确要求 `commit push`，claude组 经授权破例 git 写，产出推到 `codex/dsh-onboarding` 分支——角色定位不变，git 写仅本次授权**。
-> 🏠🏢 **换机卡片**：`docs/catch-ball/_handoff/HOME.md`（家）+ `OFFICE.md`（公司）
+> CB 入口：`docs/catch-ball/_cb-index.md`
+> 角色（08-16 起）：**Codex = 主开发（唯一 git 写者）**·claude组 = 第三方评估+收敛方·zcode组 = 评估。**dsh组 已退出（08-16·用户通知）**。
+> 换机卡片：`docs/catch-ball/_handoff/HOME.md`（家）+ `OFFICE.md`（公司）
 
 ---
 
-## 当前节点：CB-35 page7 排序评估+数据审计完成（三组收敛·待 Codex 定坑位口径 + 定稿）
+## 当前节点：CB-39 双线实施 · P0 线（已验证）+ A 线（A1-A5）完成 · 待 B 线治理
 
-### 本会话新增（08-14 · claude组 · CB-35 page7 排序）
+### 08-16 全天脉络（CB-38 收官 → CB-39 开工）
 
-> 背景：page7 汇总表已按「体检优先」重排（双高→客观隐患高→主观诉求高·层内按本源绝对量·删任务量混加键）。本会话 claude组 给排序方案第三视角 + 审计重排后数据正确性。
+1. **CB-38 收敛**（两条输入线）：数据沉淀收敛定稿（三组评估·4 裁定·第八节补遗 E16）+ EMC 全局系统审计（另一 Codex 会话产出·claude组 反评价 D1-D9 全裁定）→ **合并为 CB-39 双线实施计划 v3.1**（`discuss/CB39-实施计划_Codex-2026-08-16.md`·24 批·两组反评价 18 处修订全落）。
+2. **P0 线实施完成 + claude组 验证「有条件通过·零打回」**（`CB39-P0线验证_Claude-2026-08-16.md`·3 吸收项已落 `a112dccb`）：
+   - P0-2 守卫通电：9 个 `validate_*` 进 pytest 收集 + **15 个 ID 原号补注册**（审计 4 + MOD_PERF 11·动态循环改字面量）+ SKILL_DEFS 真身解析（**当场抓出 compare 漂移**·contracts=权威）+ 新闸门「使用 ID ⊆ 注册表」+ 3 存量红全修零 xfail
+   - P0-1 诚实度：phase 真实标签（`df.attrs`·不再硬编码 L4）+ key 空显式报错拒静默降级 + L4 stub 显式跳过标注 + L0 四 spider 隔离 `SCRAPER/experimental/` + routes key 打通 L3/L4 + `test_pipeline_honesty.py` 三断言
+   - P0-0：KNOWLEDGE 密钥条款（只输出 key 名）已落；**key 轮换用户暂缓**
+3. **A 线（阶段0 回收归集）A1-A5 完成**：
+   - A2/E16：performance 六件真实数据迁出演示池（checkup_12345_2024 → `DATA/analysis/12345主观/`·57,265 行完整）+ geo_registry 子目录字段向后兼容 + D2 数据池归一（PROCESSED_DIR→`DATA/exports` 单源·data_governance 双源根治·空 DATA/processed 删）+ `DATA/README.md` 池规则
+   - A3：根 5 散件族内归位（根目录仅剩 7 空间底座）+ cb33 临时脚本×4 按 E6 退役
+   - A4：page7 九件归档 `_retired/`（改名保史）+ E10 双变量主图退役 + README 版本口径链
+   - A5：**《紧急任务数据总账》`DATA/analysis/_总账.md` 100 行**（族/来源 commit/去留/口径/去向）+ 可复跑生成器 `SCRIPT/_ops_gen_ledger_cb39.py`
+4. **里程碑**：`DATA/performance/` 只剩 sim——时间轴专题轮分轴物理前提备好（D3 已冻结·用户定调另开专题轮）。
+5. **基线演变**：321+3 → **366+3**（P0-2 守卫 +42 / P0-1 断言 +3 / pii 目录副作用治愈后为干净基线）。门禁钉死 `py -m pytest`（禁裸 python=3.13 缺 matplotlib）。
 
-- **CB-35 排序优先级评估**（`discuss/CB35-page7排序优先级_评估_Claude-2026-08-14.md`）：
-  - 采候选 A；层内用「本源绝对量」极简两键——**体检层族（双高+客观高）= 体检点降序、主观诉求高 = 诉求件降序**；密度（原始/EB）一律只作并列列不做排序键
-  - 核心裁定：**「客观优先 = 层序（体检层整体压在诉求层前）≠ 层内某社区必须第一」**——反驳 zcode「金安岭必须密度第一否则打脸客观优先」过度推论（金安岭按量排体检层#3·总序约#8·仍 TOP10·仍标客观隐患高·原则无损）
-  - 四条独立理由支持绝对量（dsh 只讲"好讲解"，补承重级）：客观优先=层序澄清 / 绝对量零隐含参数（密度引入分母基底选择·"不加权重"应延伸到"不加参数"）/ 答辩可验证 / 资格已由 EB 密度把关层内不必再量
-  - 独立发现：**镇境山跨页不一致**（`render_page7_bivariate.py:86` 红五角星 vs 旧表落榜）→ 换键后 82 点回榜（体检层#4），跨页重新对齐
-  - 港务防误读：两件套（行内绝对量标注 + 双价值一句话脚注），不设独立正榜
-- **CB-35 排序数据审计**（`discuss/CB35-page7排序数据审计_评估_Claude-2026-08-14.md` + 可复现脚本 `SCRIPT/_tmp_audit_cb35_page7.py`）：
-  - **20 社区楼栋/体检点/诉求件/四列密度 vs 三源矩阵零偏差（20/20 OK）**·密度↔点数↔源全自洽·分层标签 20/20 一致·三段排序严格降序·红五角星4社区全在客观高层·港务诉求第3(417)/体检17·沉默比属实（深圳15.3×/金安4.2×/西峡2.6×）·无楼栋<20低置信社区
-  - 澄清分层机制：**阈值 28.57/146.67 定资格（双高全样本恰5个·强证据）+ 层内 TOP-N 截断（客观高超阈值27个取8·主观高超阈值26个取7·凑满20）**
-  - 两处存疑 P1（非阻塞·需 Codex 交代防答辩）：① 阈值精确统计算法（≈12345覆盖116社区密度p75·实测27.73/153.76非精确吻合）② 体检点=安全+民生两视角合计含多归属（两矩阵都有"住房"维度）需表注
-  - **口径确认**：体检点 = 安全矩阵总点+民生矩阵总点；诉求件 = 12345九类（安全4+民生5·剔「其他」）；密度统一每百栋（体检+诉求同base）
-- **commit push**（`codex/dsh-onboarding`·经用户授权）：`f315217c`（评估+审计+脚本 454行）+ `62abba45`（revision-log §5）
+### 本日 commit（均已 push）
 
-### CB-35 三组收敛结论（已齐·可定稿）
-
-- **排序结构 = 候选 A**（双高→客观高→主观高）—— 三组共识无异议
-- **层内键**：claude/dsh = 绝对量（体检点/诉求件）；zcode = 密度。**claude 裁定绝对量**（反驳 zcode 过度推论 + 零参数理由），密度做并列列
-- **港务防误读**：三组一致不设独立正榜，用标注+脚注
-- **数据**：claude 程序化审计零偏差，表可信、可直接汇报
+`713e1ad9` P0-2+P0-0 → `7b2c3ead` P0-1 → `9ceff715` CB 归档 → `a112dccb` 吸收修正 → `a5449175` A2 → `209de0a4` A3 → `b9e9e3de` A4 → `2317785d` A5
 
 ---
 
-## 【下一步】（待 Codex 主开发）
+## 【下一步】（CB-39 续·按 v3.1 计划）
 
-1. **Codex 公布分层坑位口径**：阈值 28.57/146.67 精确统计算法（分位插值/子集）+ 坑位 5/8/7 分配逻辑 → 写进 page7 md（防答辩"为什么是28.57"）
-2. **page7 定稿**：md + Excel 主表按三组收敛方案（候选A + 绝对量层内键 + 多归属口径表注 + 分层机制补TOP-N截断 + 港务防误读两件套）
-3. **4' 分析报告**（图/数/表/观点 + 口径对照 + 缺口清单 + 出口卡对接）
+1. **B 线治理**：B1 presets 补注册+usage 铁律7 机械化（12345 点层/page7 点版/18村面/底座 group）→ B2 同名三对四证据对账（挂起区见总账）→ B3 口径注册表+`tools/check_caliber.py` 复核门（MOD_AIQA.F_020 起取号）→ B4 PII/sim/铁律7 全量复检
+2. **C 线沉淀**：C1 domain 三域+存量 214 回溯（3prime 四件标 superseded）→ C2 体检 fact 增量（CHK 续编）→ C3 图层卡 26+ → C4 E14 白名单硬实现 → C5 rebuild+E12 指纹+**E15 黄金问题（用户 gate·候选见计划附B）**
+3. **并行 bug 线**：D1 B002/B004 白名单裁定（v1 收窄版：图层名+observation 格式）·D2 B012+B013 同场修（B013 条目未建）·D4 E2 纯色底图+GeoQ spike
+4. **工程线插空**：P1-2b gen_agents_table（机械/人工分区）·P1-3 双入口/Threading+api.js 适配·P1-4 可见性·P1-6 README 重写；**P1-5（3.14）位置固定 R1 前**
+5. **挂起项**：key 轮换（用户暂缓）·E7 office 机 Gitee 换绑（origin 已切 gitee·到岗 set-url 即可）·时间轴专题轮（D3 冻结）
 
 ---
 
 ## 关键架构（下会话须知道·承重）
 
-- **城市体检两板块**（当前主线）：安全韧性底线（结构42/围护454/楼道240/燃气6/管线186 + 250危旧房 + 50年建筑 + 消防20.59%）·民生基础需求（停车2.99万/学位6603/托育34/幼儿园11/养老2 + 中学/公园/菜市场覆盖）
-- **双轨架构**：客观轨（体检·02空间层）+ 主观轨（12345·checkup_12345_2024层）→ 双轨密度叠加 → 双高区 → 项目聚拢 → 片区统筹
-- **分类对标重构定稿**（唯一执行依据 `discuss/CB23-12345分类对标重构_收敛定稿_v2_2026-08-12.md`）：12项目类型·映射最小单位=中类·board 4值（安全17/民生29/其他30/整治1）·落结构=全表加4列。**12345 侧**：民生49,192(85.9%)/安全8,046(14.0%)/其他27
-- **体检对象全量口径**：22街办 / 174城市社区（去村19）/ 1562小区 / 26426楼栋。**去村·命中体检对象=西陵+伍家岗**；区级点按区级口径不参与社区精确归集
-- **空间落位口径铁律7**：体检数据第一性落位=4维度控件对象（城区/街区/小区/住房），**片区=结论**由问题聚集推导，禁把片区当输入
-- **演示逻辑链**（最高优先级）：张力图面→引导点击→交互分析→定位关注区+主题倾向+排序优先级（宏观诊断信号·非精确识别）
-- **出口抽象层三铁律**：①EMC找市场接口 ②三段式线性 ③定性+定量+地理按尺度
-- **数据源红线**：中转站真实数据·sim禁入·gdb只读
+- **CB-39 双线**：数据线（回收 A✅→治理 B→沉淀 C→归档 R1）+ 工程线（P0✅→P1）+ bug 线 D 并行；唯一现行计划 `discuss/CB39-实施计划_Codex-2026-08-16.md`（v3.1）
+- **数据池三分**（`DATA/README.md` 单源）：`analysis/`=真实归集根（100 件·总账为准）·`performance/`=演示池（仅 sim·真实禁入）·`exports/`=运行导出（不入 git）；boundaries/presets=图层注册；exchange=G 盘溯源
+- **双轨架构**：客观轨（体检）+ 主观轨（12345·checkup_12345_2024 层·已迁 analysis/12345主观/）→ 双高区 → 项目聚拢
+- **空间落位口径铁律7**：4 维度控件对象=第一性落位；片区=结论禁作输入；结论层（合并范围/聚合174/18村/page7 三组）标 `usage: analysis_output`
+- **城市体检 vs 城市更新分域**（08-16 用户铁律）：体检=找问题/需求数据·更新=规建营项目数据；RAG domain 三域封顶（checkup/renewal/base）
+- **出口抽象层三铁律** + **演示逻辑链**（CLAUDE.md·不变）
+- **守卫已通电**：pytest 收集 9 个 validate_*；新闸门=使用 ID ⊆ 注册表；SKILL_DEFS 真身解析（改 stages.js 会被守卫抓）
 
-## page7 当前数据状态（审计已验·08-14）
+## 隐规则清单（主开发必守·完整在 AutoMemory）
 
-- page7 汇总表 20 社区·双高5 + 客观高8 + 主观高7
-- 双高5：营盘路/宝联/汕头路/胜利四路/胜利二路
-- 客观高8（体检点降序）：深圳路107/西峡91/金安岭84/镇境山82/幸福路65/新隆康路62/果园路51/桥北37
-- 主观高7（诉求件降序）：朝阳路594/万达501/港务417/建设372/岳湾路225/大学路222/伍临路221
-- 红五角星（体检独证）：西峡/深圳路/金安岭/镇境山（全在客观高层·跨页对齐已修）
-- **数据零偏差·可汇报**（详见 `discuss/CB35-page7排序数据审计_评估_Claude-2026-08-14.md`）
-
-## 隐规则清单（承接 claude组 AutoMemory · 主开发必守）
-
-> 完整在 `~/.claude/projects/d--Github-emotion-map/memory/*.md`（90+条）。当前主线关键：
-
-- **风险主题命名**（`risk-theme-naming`）：类型命名一律「XX安全」后缀；禁设施清单式旧名。数据层字段不改·仅表述层
-- **每页重构=重构+数据审计**（`page-rebuild-with-data-audit`）：写完 page md 必对账（geojson点数/社区矩阵csv/77项体检值/问题清单分布）·不一致以实测为准
-- **排行表一律 top10**：列满前10·不足列全部·**0值行不列**（只列实际有数据的）
-- **「以及」分隔社区与村**：仅用于分隔城市社区与行政村两类；纯城市社区口径不用「以及」
-- **沟通风格**（`communication-style-framework-items-synthesis`）：逻辑框架+条目化要点+总结；禁"一句话版/口诀/汇报体"
-- **专业词+通俗解释**（`pro-term-plus-plain-meaning`）：专业词后紧跟「(=解释)」；聊天和交付物都遵守
-- **交付物全中文**（`chinese-all-deliverables`）：plan/报告/文档中文·仅代码/路径/标识符英文
-- **实事求是纪律**（用户08-13强调·最高）：不附和用户·不为满足字面要求硬做明知是错的事·遇冲突主动指出事实（曾犯：说top10就硬塞0值村凑数）
+- 实事求是纪律（最高）：不附和·不为字面要求硬做错事
+- 风险主题命名「XX安全」后缀·数据层字段不改；每页重构=重构+数据审计；排行 top10·0 值不列；「以及」仅分隔社区与村；专业词+通俗解释；交付物全中文；沟通=框架+条目+总结
 
 ## 测试基建
 
-- pytest：**320 passed + 3 skipped 零回归**
-- **CB-35 审计复现**：`py SCRIPT/_tmp_audit_cb35_page7.py`（读 xlsx+三源矩阵·逐项对账·一键复验）
-- 12345 治理重跑：`py SCRIPT/govern_12345_raw.py`（含自动回填 geocode）
-- 双轨密度：`py SCRIPT/dual_track_density.py`
-- 自测前必须重启 serve（`py frontend/serve.py 8080`）·否则跑旧代码
+- pytest：**366 passed + 3 skipped 零回归**（阶段基线·P1-5 后重录）；门禁 `py -m pytest tests/ -q`
+- 总账复跑：`py SCRIPT/_ops_gen_ledger_cb39.py`（R1 终对账用）
+- 12345 治理重跑：`py SCRIPT/govern_12345_raw.py`；双轨密度：`py SCRIPT/dual_track_density.py`（路径已同步新落位）
+- 自测前必须重启 serve（`py frontend/serve.py 8080`·默认 127.0.0.1·局域网需 `--host=0.0.0.0`）
 
 ## CB 状态
 
-- 当前：**CB-35 page7 排序优先级**（三组评估已齐·收敛·待 Codex 定坑位口径+定稿）
-- CB-33 命中体检对象（page4/6 去村·sjoin修复）+ 社区强度评价 ✅；CB-34 page7 表格结构视觉 ✅
-- 双阵营：claude组（第三方评估）+ Codex（主开发）+ zcode组（评估·glm组更名）
-- **CB 工作流**：评估方只读+禁git+意见落盘 discuss/；prompt 发给谁由用户提示
+- 当前：**CB-39 双线实施中**（P0 线验证通过 + A 线完成·待 B 线；A 线未送验证·可直进 B 或先送 claude组）
+- CB-38 已收官（数据沉淀定稿 + EMC 审计 D1-D9 裁定·均并入 CB-39）
+- 双阵营：claude组（评估+收敛）+ Codex（主开发）+ zcode组（评估）；dsh 退出
+- CB 工作流：评估方只读+禁 git+落盘 discuss/；每轮收敛必更新 _cb-index+cb-journal（DoD 化）
 
 ## 红线 / 纪律（下会话守）
 
-- **承重**：diagnose prompt / harness orchestrate 主循环 / ChatRequest schema / `@track()` 签名 / `_TRACKING_REGISTRY` 格式 / **铁律7（片区=结论）** / **两板块=结论（分析过程不出现·不按板块过滤）**
-- **数据源**：中转站真实数据·sim禁入·gdb只读
-- **不造轮子**：复用 create_square_grid/aggregate_by_polygons/hot_spot_analysis/geo_registry/rag_index
-- **追踪编号连续**：新增公开函数 `register_track_id`·先 grep 全仓取最大+1
-- **街道≠道路**（街道=行政单元）·术语统一「街办」
-- 代码禁 emoji·print 走 `_safe_print`
+- **承重**：diagnose prompt / harness orchestrate 主循环 / ChatRequest schema / `@track()` 签名 / 铁律7 / 两板块=结论 / **时间轴 manifest 生成须用户授权**（D3 专题轮）
+- **数据源**：中转站真实数据·sim 禁入·gdb 只读；**蒸馏源纪律**：只认 analysis 最终产物与已成文 md·禁 discuss 取数
+- **追踪编号连续**：新增 `register_track_id`·MOD_AIQA.F 从 F_020 起（现最大 19）；空洞不造空号（F_004/F_007 均已登记说明）
+- 不造轮子：复用 create_square_grid/aggregate_by_polygons/geo_registry/rag_index
+- 街道≠道路（街道=行政单元）·术语统一「街办」（识别字典=超集两者并存）
+- 代码禁 emoji·print 走 `_safe_print`·**密钥只输出 key 名**
 
 ---
 
-## 🏢 恢复指引（新会话·公司到岗）
+## 恢复指引（新会话）
 
-1. **公司 git 对齐**：`git fetch origin && git checkout codex/dsh-onboarding && git pull`（CB-35 产出在此分支·`f315217c`+`62abba45`）；读交接卡前先 `git log -5` 对账防漂移
-2. 读 `docs/catch-ball/_cb-index.md`（当前 **CB-35**）+ `docs/todo.md` 08-14 段（顶部）+ 本卡
-3. 读 CLAUDE.md「出口抽象层」+「演示逻辑链」+「空间落位口径铁律7」
-4. 数据链路：`DATA/analysis/`（page7小结/·安全韧性/·民生基础/·12345主观/·77项量化/）·审计脚本 `SCRIPT/_tmp_audit_cb35_page7.py`
-5. 从「下一步」继续（Codex 定坑位口径 → page7 定稿 → 4' 分析报告）
+1. `git pull origin codex/dsh-onboarding`（origin=Gitee）·`git log -8` 对账（末位应见 `2317785d` A5）
+2. 读 `docs/catch-ball/_cb-index.md` + 本卡 + `discuss/CB39-实施计划_Codex-2026-08-16.md`（v3.1·唯一现行计划）
+3. 数据链路：`DATA/analysis/_总账.md`（100 行总账）+ `DATA/README.md`（池规则）+ `docs/catch-ball/retired.md`（page7 归档）
+4. 从「下一步」继续（B1 起步）；若用户要先验证 A 线，出 prompt 给 claude组（P0 线同款）
 
-## 🏠→🏢 换机提醒（2026-08-14 · 家→公司）
+## 换机提醒（08-16）
 
-- **公司路径** `D:\OneDrive\2026\15_城市更新专项规划研究`（EMC数据中转站在此·12345治理清洗版/checkup_12345_2024层）·家里路径 `C:\Users\Hi\OneDrive\...` 同结构
-- 公司到岗先 `git fetch` 确认分支（codex/dsh-onboarding 有 CB-35）；若要并 main 由 Codex 决定
-- page7 汇总表 `DATA/analysis/page7小结/page7_分组汇总_2026-08-14.xlsx` 已重排+审计零偏差·可直接用于汇报
-- 关键依赖 openpyxl 已装（审计脚本读 xlsx 用）
+- **origin 已切 Gitee**（`gitee.com/tinsei0321/emotion_map`·08-16）+ github 备轨 + `E:/DEV-SYNC-HUB` 本地枢纽；office 机到岗 `git remote set-url origin` 同步切（E7·首推令牌当密码）
+- 中转站路径：公司 `D:\OneDrive\2026\15_城市更新专项规划研究`·家 `C:\Users\Hi\OneDrive\...` 同结构
+- AMAP 新 key 创建时记得勾选 geocode/geo 服务（存量 key 该接口 infocode=30001）
