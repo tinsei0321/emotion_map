@@ -1,7 +1,7 @@
 # CB Index — Catch-Ball 统一入口
 
 > **读我**：claude组（Claude Code 开发主）+ Codex + zcode组（ZCode + GLM 5.2·2026-08-11 由 glm组 正式更名）启动时读此文件，了解 CB 全貌。
-> **维护**：每轮 CB 完成后更新。最后更新：2026-08-16 深夜（CB-39 开工：P0 线验证通过 + A 线 A1-A5 完成·收工待 B 线）。
+> **维护**：每轮 CB 完成后更新。最后更新：2026-08-16 深夜（**CB-40 EMC 现状与目标差距·已收敛定稿**；CB-39 实施中：P0+A 线✅·待 B 线）。
 
 ---
 
@@ -9,14 +9,14 @@
 
 | 项目 | 状态 |
 |------|:---:|
-| **当前 CB 轮次** | **CB-39 · 双线实施**（数据线：P0 工程线✅验证通过 + A 线 A1-A5✅ → **待 B 线治理**；基线 366+3；唯一现行计划 `discuss/CB39-实施计划_Codex-2026-08-16.md` v3.1） |
+| **当前 CB 轮次** | **CB-39 · 双线实施**（数据线：P0 工程线✅验证通过 + A 线 A1-A5✅ → **待 B 线治理**；基线 366+3；唯一现行计划 `discuss/CB39-实施计划_Codex-2026-08-16.md` v3.1）‖ **CB-40 · EMC 现状与目标差距·已收敛**（`discuss/CB40-EMC现状与目标差距_收敛定稿_2026-08-16.md`·CB-39 后排期依据：G1>G5>G2·`docs/goal-status.md` 每轮必更） |
 | **上一轮** | CB-38 主线回归与数据沉淀（收敛定稿 + EMC 全局审计 D1-D9 裁定·双输入线并入 CB-39）；CB-24~37 简记见 cb-journal 顶部补账 |
 | **当前环境** | **Codex（主开发·唯一 git 写者·08-13 起）** + **claude组（第三方独立评估+收敛）** + **zcode组（评估）**（**dsh组 已退出·08-16**） |
 | **当前分支** | `codex/dsh-onboarding`（已推 Gitee origin） |
-| **最新讨论** | `discuss/CB38-主线回归与数据沉淀_收敛定稿_2026-08-16.md`（实施计划唯一输入）+ 三组评估 ×3 同目录 |
+| **最新讨论** | `discuss/CB40-EMC现状与目标差距_收敛定稿_2026-08-16.md`（发起/评估×2/回应/定稿五件套同目录）+ dsh 专题底稿 `EMC-harness架构借鉴dsh_专题底稿_zcode-2026-08-16.md`（待专题会话·G6-G9 候选） |
 | **最新进展** | CB-39 已开工：P0-2 守卫通电（9 validate_*·15 ID 补注册·SKILL_DEFS 真身解析）+ P0-1 诚实度（phase 真实标签·key 空显式报错·L0 隔离）+ A 线回收归集（E16 六件迁出演示池·数据池三分·page7 归档·**总账 100 行**）；performance 只剩 sim=时间轴专题轮分轴前提；下一批 B 线治理 |
 | **接手文档** | `memories/repo/session-handoff.md` + `docs/catch-ball/cb-journal.md`（CB-38 + CB-29~37 补账）+ `_handoff/HOME.md` + `OFFICE.md` |
-| **上次操作人** | tinsei0321 + claude组（三组评估：Codex/zcode/dsh） |
+| **上次操作人** | tinsei0321 + zcode组（CB-40 发起/回应/收敛·经用户授权）+ claude组/Codex（CB-40 评估） |
 
 ## 快速开始
 
