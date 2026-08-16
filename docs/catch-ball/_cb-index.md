@@ -12,8 +12,8 @@
 | **当前 CB 轮次** | **CB-39 · 双线实施**（数据线：P0 工程线✅验证通过 + A 线 A1-A5✅ → **待 B 线治理**；基线 366+3；唯一现行计划 `discuss/CB39-实施计划_Codex-2026-08-16.md` v3.1）‖ **CB-40 · EMC 现状与目标差距·已收敛**（`discuss/CB40-EMC现状与目标差距_收敛定稿_2026-08-16.md`·CB-39 后排期依据：G1>G5>G2·`docs/goal-status.md` 每轮必更） |
 | **上一轮** | CB-38 主线回归与数据沉淀（收敛定稿 + EMC 全局审计 D1-D9 裁定·双输入线并入 CB-39）；CB-24~37 简记见 cb-journal 顶部补账 |
 | **当前环境** | **Codex（主开发·唯一 git 写者·08-13 起）** + **claude组（第三方独立评估+收敛）** + **zcode组（评估）**（**dsh组 已退出·08-16**） |
-| **当前分支** | `main`（**codex/dsh-onboarding 已 ff 合并并删除·2026-08-16**·CB-39 B/C 线在 main 继续·开发回归主干直提惯例） |
-| **最新讨论** | `discuss/CB40-EMC现状与目标差距_收敛定稿_2026-08-16.md`（发起/评估×2/回应/定稿五件套同目录）+ dsh 专题底稿 `EMC-harness架构借鉴dsh_专题底稿_zcode-2026-08-16.md`（待专题会话·G6-G9 候选） |
+| **当前分支** | `EMC_harness_dsh`（**dsh 专题讨论分支·2026-08-16 开**·承载整体合体三组讨论；main 上 CB-39 B/C 线继续） |
+| **最新讨论** | `discuss/CB40-EMC现状与目标差距_收敛定稿_2026-08-16.md`（发起/评估×2/回应/定稿五件套同目录）+ dsh 专题双稿（底稿 `EMC-harness架构借鉴dsh_专题底稿_zcode-2026-08-16.md`·五议题 G6-G9 待专题会话；**新增** `EMC-dsh整体合体_寄生式嵌入_评估与讨论发起_zcode-2026-08-16.md`·用户「整体寄生」大胆设想评估：反对方案A 整体寄生/支持方案B 工具级寄生·已邀 dsh组+claude组+Codex 三组联合讨论·dsh组 需回归） |
 | **最新进展** | CB-39 已开工：P0-2 守卫通电（9 validate_*·15 ID 补注册·SKILL_DEFS 真身解析）+ P0-1 诚实度（phase 真实标签·key 空显式报错·L0 隔离）+ A 线回收归集（E16 六件迁出演示池·数据池三分·page7 归档·**总账 100 行**）；performance 只剩 sim=时间轴专题轮分轴前提；下一批 B 线治理 |
 | **接手文档** | `memories/repo/session-handoff.md` + `docs/catch-ball/cb-journal.md`（CB-38 + CB-29~37 补账）+ `_handoff/HOME.md` + `OFFICE.md` |
 | **上次操作人** | tinsei0321 + zcode组（CB-40 发起/回应/收敛·经用户授权）+ claude组/Codex（CB-40 评估） |
