@@ -10,3 +10,4 @@
 | B008 | 网格聚合 2D/3D 视角未解耦（新发现） | [3](open/B008-grid-aggregation-view-decoupling.md) | UI | [OPEN] | 2026-07-29 | — |
 | B003 | LLM 推理螺旋 — 简单查询耗时异常（复现） | [2](resolved/B003-llm-reasoning-spiral-simple-query.md) | FC诊断 | [RESOLVED] | 2026-07-29 | [2026-07-28-multi-extract-reasoning-spiral.md](../../docs/catch-ball/rootcause/2026-07-28-multi-extract-reasoning-spiral.md) |
 | B004 | finalStep 假结论 — 筛选点图层"只说不做"（复现） | [2](open/B004-finalstep-fake-conclusion-point-filter.md) | finalStep | [OPEN] | 2026-07-29 | [2026-07-28-hallucination-finalstep.md](../../docs/catch-ball/rootcause/2026-07-28-hallucination-finalstep.md) |
+| B012 | 网格/地形悬停社区行张冠李戴——按格中心单点归属而非指针位置，跨界格显示邻居社区 | [2](open/B012-community-tip-wrong-attribution.md) | UI | [OPEN] | 2026-08-16 | — |
