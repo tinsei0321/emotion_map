@@ -16,29 +16,63 @@
 #   可能破坏 Flash eval。务实版用"真相(contracts)+镜像(paradigm/SKILL_DEFS)+守护(validate)"达防分裂目的，
 #   不触 eval 红线。加参数时改 contracts（真相）+ 同步镜像，validate 报漂移。
 
-import sys, os
+import sys, os, json, re
+from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from ai_qa.tool_contracts import derive_geo_catalog, derive_template_registry, panel_missing, TOOL_CONTRACTS
 import ai_qa.paradigm as P
 
-# 前端 SKILL_DEFS.optional_defaults 静态镜像（从 frontend/js/ai_qa/stages.js 读到的当前状态·JS 无法 import）
-# 改 stages.js SKILL_DEFS 后须同步此处（validate 守护·漂移报红）
-SKILL_DEFS_DEFAULTS = {
-    'density': {'mode': '2d', 'radius': 300, 'weightField': 'emotion_intensity', 'cell_size': 600, 'polarity': 'overall'},
-    'rank': {'by': 'worst', 'top_n': 5},
-    'buffer': {'radius_m': 500, 'agg_cols': ['score']},
-    'clip': {},
-    'overlay': {'how': 'intersection'},
-    'zonal': {'agg_cols': ['score']},
-    'compare': {'agg_cols': ['score', 'polarity_index']},
-    'extract_feature': {},
-    'area_stats': {},
-    'merge': {},
-    'nearest': {'k': 1},
-    'hotspot': {'value_col': 'score', 'threshold': 1.96, 'soft_threshold': 1.0},   # P1 软分级透传（W6 审计）
-    'filter_attr': {},
-}
+# CB-39 P0-2（D4 裁定 b）：手抄镜像 → stages.js 真身解析（铁律 11 单一源·漂移自动报红）。
+# 首战果：compare optional_defaults 漂移（contracts=agg_cols 两列·stages.js 曾为 {}·被手抄镜像掩盖）。
+_STAGES_JS = Path(__file__).resolve().parent.parent / 'frontend' / 'js' / 'ai_qa' / 'stages.js'
+
+
+def _strip_js_comments(text):
+    """去 // 行注释（字符串字面量内的 // 不动·状态机跟踪引号与转义）。"""
+    out, i, n, q = [], 0, len(text), None
+    while i < n:
+        c = text[i]
+        if q:
+            out.append(c)
+            if c == '\\' and i + 1 < n:
+                out.append(text[i + 1]); i += 2; continue
+            if c == q:
+                q = None
+            i += 1; continue
+        if c in ('"', "'"):
+            q = c; out.append(c); i += 1; continue
+        if c == '/' and i + 1 < n and text[i + 1] == '/':
+            while i < n and text[i] != '\n':
+                i += 1
+            continue
+        out.append(c); i += 1
+    return ''.join(out)
+
+
+def _load_skill_defs():
+    """解析 stages.js `export const SKILL_DEFS = {...}` 真身 → dict（19 技能全量）。"""
+    text = _strip_js_comments(_STAGES_JS.read_text(encoding='utf-8'))
+    m = re.search(r'export const SKILL_DEFS\s*=\s*\{', text)
+    assert m, 'stages.js 未找到 SKILL_DEFS 导出'
+    depth, end, start = 0, None, m.end() - 1
+    for i in range(start, len(text)):
+        if text[i] == '{':
+            depth += 1
+        elif text[i] == '}':
+            depth -= 1
+            if depth == 0:
+                end = i; break
+    assert end is not None, 'SKILL_DEFS 花括号不配对（stages.js 语法异常？）'
+    block = text[start:end + 1]
+    block = re.sub(r"(?<=[{,\n])\s*([A-Za-z_$][\w$]*)\s*:", lambda mm: '"' + mm.group(1) + '":', block)
+    block = block.replace("'", '"')
+    block = re.sub(r",\s*([}\]])", r"\1", block)
+    return json.loads(block)
+
+
+SKILL_DEFS_JS = _load_skill_defs()
+SKILL_DEFS_DEFAULTS = {k: v.get('optional_defaults', {}) for k, v in SKILL_DEFS_JS.items()}
 
 
 def _contracts_defaults(skill):

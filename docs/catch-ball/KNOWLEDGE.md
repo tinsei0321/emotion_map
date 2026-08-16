@@ -23,6 +23,7 @@
 | L0 走购买途径·sim 充分非风险 | RULES §3.3 / [[l0-acquisition-purchase-strategy]] | 勿把 sim/自采未贯通当风险（曾被我+SCAN 误判） |
 | EMC 委托主 Toolbox 不自造 geo 端点 | [[emc-delegates-to-toolbox]] | density 等分析调 generateHeatmap/Grid/TerrainForAI，不自造 |
 | aggregate 别名静默零（resolve_field_alias） | [[emc-aggregate-column-alias-silent-zero]] | 中文别名列聚合须按 role 解析实际列，否则 polarity_index 静默零 |
+| 密钥只输出 key 名（禁贴值） | CB-39 D9 | CB/审计/交接文档禁出现 key 值（子代理会话明文+归档扩散风险）；验证走 `tools/verify_keys.py`（不回显值·退出码可接 CI）；疑似泄露即轮换（SOP：`tools/KEY_ROTATION.md`）并只述名 |
 
 ## §2 项目语境卡片（SCAN 不知的）
 

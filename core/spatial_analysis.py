@@ -1222,3 +1222,5 @@ register_track_id("MOD_SPATIAL.D_001", "热点分析：自适应空间权重矩�
 register_track_id("MOD_SPATIAL.D_002", "热点分析：分类结果统计（hot/cold/ns）")
 register_track_id("MOD_SPATIAL.D_003", "地形：KDE 曲面 + 等值面提取参数")
 register_track_id("MOD_SPATIAL.D_005", "CB-23 A1：方格网格显式 agg_cols 聚合（体检中文截断列→{col}_sum/_mean）")
+# CB-39 P0-2（原号补注册·TrackContext 使用见 :1174 情绪地形 KDE·历史跳号补账）
+register_track_id("MOD_SPATIAL.D_004", "情绪地形：KDE 直方图网格化 + 可分离卷积平滑参数")

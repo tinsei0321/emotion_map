@@ -464,6 +464,8 @@ register_track_id("MOD_LLM.F_002", "chat_with_fallback（retry+fallback 编排�
 register_track_id("MOD_LLM.F_004", "chat_with_tools_fallback（FC provider fallback·v3 C1·CB-05 CR1 新 ID 避碰撞）")
 register_track_id("MOD_LLM.F_005", "LLMClient.chat_with_tools_stream（FC 流式·诊断思考可见·Hotfix R2 S7）")
 register_track_id("MOD_LLM.F_006", "chat_with_tools_stream_fallback（FC 流式 provider 韧性·Hotfix R2 S7）")
+# CB-39 P0-2（原号补注册·使用见 :488 search_chat·此前漏注册致 trace 断链）
+register_track_id("MOD_LLM.F_007", "search_chat（增强 web_search 单发不重试·失败快速 fallback·CB-12 问题3）")
 
 
 def search_chat(question: str, max_tokens: int = 4000, timeout: float = 30.0) -> dict:
@@ -521,3 +523,5 @@ def search_chat(question: str, max_tokens: int = 4000, timeout: float = 30.0) ->
 register_track_id("MOD_LLM.D_001", "LLM retry 触发（pre-stream 失败，退避后重拨）")
 register_track_id("MOD_LLM.D_002", "LLM fallback 切换 provider（重试耗尽或 4xx）")
 register_track_id("MOD_LLM.D_003", "LLM 流中途失败（不重试不换家，交上层降级）")
+# CB-39 P0-2（原号补注册·使用见 :381 总预算超时 + :458 FC pre-stream 换家·两处共用决策点）
+register_track_id("MOD_LLM.D_004", "chat 总预算超时强制降级 + FC 流式 pre-stream 失败换家")

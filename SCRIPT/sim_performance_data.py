@@ -710,20 +710,19 @@ def main():
 
 
 # ── 追踪 ID 注册 ──
-for _id, _desc in [
-    ("MOD_PERF.F_001", "加载百度热力点 + 文本池 + POI"),
-    ("MOD_PERF.F_002", "坐标转换 WGS84->4546"),
-    ("MOD_PERF.F_003", "注入字段（4×5 双层 + 极性 + 文本）"),
-    ("MOD_PERF.F_004", "导出 L1 CSV + GeoJSON"),
-    ("MOD_PERF.F_005", "主流程 3 快照循环"),
-    ("MOD_PERF.F_006", "加载边界 cc/core/unit"),
-    ("MOD_PERF.F_008", "jieba keywords + 季节话题"),
-    ("MOD_PERF.F_009", "4×5 + 区域倾斜自检"),
-    ("MOD_PERF.F_010", "百度去聚合散点（Poisson + jitter）"),
-    ("MOD_PERF.F_011", "重点叙事区锚点迁移"),
-    ("MOD_PERF.F_012", "L1∩中心城区 -> L2"),
-]:
-    register_track_id(_id, _desc)
+# CB-39 P0-2：循环注册改字面量直调（与全仓其他模块风格统一·静态扫描/AGENTS 表自动生成可见）。
+# F_007 = 历史空洞（全仓零使用·ID 不重分配·同 MOD_AIQA.F_004 惯例）。
+register_track_id("MOD_PERF.F_001", "加载百度热力点 + 文本池 + POI")
+register_track_id("MOD_PERF.F_002", "坐标转换 WGS84->4546")
+register_track_id("MOD_PERF.F_003", "注入字段（4×5 双层 + 极性 + 文本）")
+register_track_id("MOD_PERF.F_004", "导出 L1 CSV + GeoJSON")
+register_track_id("MOD_PERF.F_005", "主流程 3 快照循环")
+register_track_id("MOD_PERF.F_006", "加载边界 cc/core/unit")
+register_track_id("MOD_PERF.F_008", "jieba keywords + 季节话题")
+register_track_id("MOD_PERF.F_009", "4×5 + 区域倾斜自检")
+register_track_id("MOD_PERF.F_010", "百度去聚合散点（Poisson + jitter）")
+register_track_id("MOD_PERF.F_011", "重点叙事区锚点迁移")
+register_track_id("MOD_PERF.F_012", "L1∩中心城区 -> L2")
 
 if __name__ == '__main__':
     main()

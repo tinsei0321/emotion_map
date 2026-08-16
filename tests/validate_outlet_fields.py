@@ -25,6 +25,11 @@ _EMC_FIELDS = {
 # 动态前缀字段（n_dom_*/n_elem_*/n_* 极性计数·前缀级消费合法）
 _DYN_PREFIXES = ('n_dom_', 'n_elem_', 'n_')
 
+# CB-39 P0-2：客观轨契约（CB-23 阶段2' checkup_objective）的 field_mapping 值是**产出形态声明**
+# （统计表/图/指标数值/空间落位——交付物形态·非情绪聚合字段），非死字段。显式放行并注明，
+# 防守卫把形态描述误判为引用不存在的聚合字段（守卫语义=情绪轨 emc_field 引用校验）。
+_FORM_FIELDS = {'stat_table', 'chart_type', 'indicator_value', 'region'}
+
 
 def _extract_contract_fields():
     """提取 OUTLET_CONTRACTS field_mapping 引用的字段（ASCII 标识符·去 qualifier/说明/scale）。"""
@@ -33,6 +38,7 @@ def _extract_contract_fields():
     for contract in OUTLET_CONTRACTS.values():
         for expr in (contract.get('field_mapping') or {}).values():
             _e = re.sub(r'\[scale=[a-z]+\]', '', str(expr))   # 剥 scale 限定（micro/meso/macro 非字段）
+            _e = re.sub(r'（[^）]*）', '', _e)                  # 剥全角括号注释（CB-39 P0-2：'zonal 聚合·{col}_sum' 等说明性 token 不作字段收）
             for m in re.findall(r'[a-z_][a-z0-9_]*', _e):
                 if m not in ('图层', '评论', '不能测'):
                     consumed.add(m)
@@ -57,6 +63,8 @@ def _extract_metric_fields():
 def _is_valid(field):
     """字段合法：白名单内 或 动态前缀匹配（n_dom_* 等）。"""
     if field in _EMC_FIELDS:
+        return True
+    if field in _FORM_FIELDS:
         return True
     return any(field.startswith(p) for p in _DYN_PREFIXES)
 

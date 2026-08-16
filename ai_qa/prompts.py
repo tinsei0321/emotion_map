@@ -622,6 +622,7 @@ def build_optimize_prompt(context: str = '', user_input: str = '') -> str:
 register_track_id("MOD_AIQA.F_002", "build_agent_prompt（ReAct agent loop 每轮 prompt）")
 register_track_id("MOD_AIQA.F_003", "build_final_prompt（最终结论 prompt）")
 # CB-09 D022：F_004（build_revise_prompt）已随 revise 阶段退役——ID 不重分配（保历史·新函数续 F_009+）。
+# CB-39 P0-2 复核：全仓零使用处确认（历史空洞=已登记退役·非漏注册）。
 register_track_id("MOD_AIQA.F_005", "build_diagnose_prompt（承重 eval-anchor：6 字段问题理解卡，永不动内容）")
 register_track_id("MOD_AIQA.F_006", "build_field_infer_prompt（P2 字段语义推断）")
 register_track_id("MOD_AIQA.F_007", "build_deep_attribution_prompt（L4 深度归因·政策→情绪→项目闭环，lazy enrichment）")

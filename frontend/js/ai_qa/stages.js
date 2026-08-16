@@ -54,7 +54,7 @@ export const SKILL_DEFS = {
   clip:     { tool: 'clip',        category: 'single',   required_slots: ['range'],               optional_defaults: {} },
   overlay:  { tool: 'overlay',     category: 'single',   required_slots: ['layer_a', 'layer_b'],  optional_defaults: { how: 'intersection' } },
   zonal:           { tool: 'zonal_stats',     category: 'single', required_slots: ['boundary'],          optional_defaults: { agg_cols: ['score'] } },
-  compare:         { tool: 'compare_regions', category: 'single', required_slots: ['boundaries'],        optional_defaults: {} },
+  compare:         { tool: 'compare_regions', category: 'single', required_slots: ['boundaries'],        optional_defaults: { agg_cols: ['score', 'polarity_index'] } },   // CB-39 P0-2：真身解析守卫抓出漂移（contracts=权威·此前手抄镜像掩盖）
   extract_feature: { tool: 'extract_feature', category: 'single', required_slots: ['layer'],             optional_defaults: {} },
   area_stats:      { tool: 'area_stats',      category: 'single', required_slots: ['boundary'],          optional_defaults: {} },
   merge:           { tool: 'merge',           category: 'single', required_slots: [],                     optional_defaults: {} },   // CB-11：boundary|layers 二选一（one-of·tools.js guard 校验）

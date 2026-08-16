@@ -95,6 +95,71 @@ def test_track_scan_not_empty():
     )
 
 
+# ── CB-39 P0-2：使用 ID ⊆ 注册表（铁律 10 常驻闸门·治「4 个使用中未注册 ID」类断链）──
+_ANY_ID_RE = re.compile(r'^MOD_[A-Z]+\.[FD]_\d{3}$')
+_USE_FUNCS = {"trace_log", "trace_warn", "trace_error", "TrackContext"}
+
+
+def _iter_module_trees():
+    for py in REPO_ROOT.rglob("*.py"):
+        if any(part in _SKIP_PARTS for part in py.parts):
+            continue
+        try:
+            tree = ast.parse(py.read_text(encoding="utf-8"), filename=str(py))
+        except (OSError, UnicodeDecodeError, SyntaxError):
+            continue
+        yield str(py.relative_to(REPO_ROOT)).replace("\\", "/"), tree
+
+
+def _first_str_arg(node):
+    for arg in node.args:
+        if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+            return arg.value
+    return None
+
+
+def _collect_registered():
+    """全仓 register_track_id("MOD_X.Y_NNN") 字面量调用 → set（静态扫描=运行时注册集）。"""
+    registered = set()
+    for rel, tree in _iter_module_trees():
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and _decorator_name(node.func) == "register_track_id":
+                tid = _first_str_arg(node)
+                if tid and _ANY_ID_RE.match(tid):
+                    registered.add(tid)
+    return registered
+
+
+def _collect_used_ids():
+    """@track 装饰器 + trace_*/TrackContext 首参字面量 → {tid: [loc,...]}。"""
+    used = {}
+    for rel, tree in _iter_module_trees():
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                for deco in getattr(node, "decorator_list", []) or []:
+                    if isinstance(deco, ast.Call) and _decorator_name(deco.func) == "track":
+                        tid = _first_str_arg(deco)
+                        if tid and _ANY_ID_RE.match(tid):
+                            used.setdefault(tid, []).append(f"{rel}:{deco.lineno}")
+            elif isinstance(node, ast.Call):
+                if _decorator_name(node.func) in _USE_FUNCS:
+                    tid = _first_str_arg(node)
+                    if tid and _ANY_ID_RE.match(tid):
+                        used.setdefault(tid, []).append(f"{rel}:{node.lineno}")
+    return used
+
+
+def test_used_track_ids_are_registered():
+    """使用中追踪 ID（@track/trace_*/TrackContext）必须已 register_track_id（铁律 10·CB-39 P0-2）。"""
+    registered = _collect_registered()
+    used = _collect_used_ids()
+    missing = {tid: locs for tid, locs in used.items() if tid not in registered}
+    assert not missing, (
+        "使用中追踪 ID 未注册（register_track_id）——debug 工作流断链（铁律 10）：\n"
+        + "\n".join(f"  {tid}: {', '.join(locs)}" for tid, locs in sorted(missing.items()))
+    )
+
+
 if __name__ == "__main__":
     # 手动跑：py tests/validate_track_ids.py —— 打印当前 @track 分布画像
     hits = _collect_track_decorators()

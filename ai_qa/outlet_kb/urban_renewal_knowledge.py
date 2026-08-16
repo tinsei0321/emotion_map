@@ -13,12 +13,17 @@ from __future__ import annotations
 
 # CB-22f D5（B 路径收尾）：追踪埋点——query_knowledge_base 是公开函数（MOD_AIQA.F_018·CB-22g 修正：F_016 撞 build_outlet_schema._render_dimension_cannot·改 F_018 连续）
 try:
-    from core.tracker import track
+    from core.tracker import track, register_track_id
 except Exception:  # 独立调试兜底
     def track(*a, **k):
         def deco(f):
             return f
         return deco
+    def register_track_id(*a, **k):
+        pass
+
+# CB-39 P0-2（原号补注册·@track 使用见 :270·CB-22g 定号 F_018 但漏 register）
+register_track_id("MOD_AIQA.F_018", "query_knowledge_base（B 路径确定性事实卡查询·CB-22f D5）")
 
 # ── 更新项目（PROJECTS）──────────────────────────────────────────
 PROJECTS = [
