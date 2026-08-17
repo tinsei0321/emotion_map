@@ -37,8 +37,8 @@ def main():
         for _, r in df.iterrows():
             ck26[norm(r["社区"])] += int(r["总点数"])
 
-    # ── 主观轨：12345 诉求件（九类·剔其他·不变）──
-    hot = pd.read_csv(os.path.join(ROOT, "DATA/analysis/12345主观/12345_社区x9类_西陵伍家.csv"))
+    # ── 主观轨：12345 诉求件（九类·ok 精确点·174 全覆盖扩域版 2026-08-17）──
+    hot = pd.read_csv(os.path.join(ROOT, "DATA/analysis/12345主观/12345_社区x9类_全覆盖.csv"))
     hot["k"] = hot["社区"].apply(norm)
     hk = hot.set_index("k")
     cls = [c for c in hk.columns if c not in ("其他", "社区", "k") and hk[c].dtype.kind in "iuf"]
@@ -63,7 +63,7 @@ def main():
     ap_vals = df["诉求件_12345"].dropna()
     p81_s = np.percentile(ap_vals, 81)
     print(f"客观绝对值 p81@174全域 = {p81_c:.2f} 点")
-    print(f"主观绝对值 p81@{len(ap_vals)}有数据域 = {p81_s:.2f} 件")
+    print(f"主观绝对值 p81@{len(ap_vals)}有数据域（174扩域版矩阵）= {p81_s:.2f} 件")
 
     df["客观过线"] = df["体检点_全覆盖"] >= p81_c
     df["主观过线"] = df["诉求件_12345"].notna() & (df["诉求件_12345"] >= p81_s)
