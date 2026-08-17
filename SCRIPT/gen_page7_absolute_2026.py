@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""page7 口径变更：绝对值（弃"每百栋"密度）·全域统一口径（用户定·2026-08-17）。
-- 客观轨 = 体检问题点绝对值（全覆盖 = 2025西陵伍家 + 2026新区补充·174社区全域）
-- 主观轨 = 12345 诉求件绝对值（九类剔其他·不变·仅西陵伍家118社区有数据·实事求是无数据不参与主观阈值）
-- 三类分色：客观 p81@174全域 · 主观 p81@118有数据域 · 双高=两线都过
-- 深浅分档：单轨高内分位3档（分位数法·CB-37 建议沿用）
-输出：DATA/analysis/page7小结/page7_绝对值口径_全域_2026-08-17.csv + 控制台报告
+"""page7 口径 v3（用户定·2026-08-17 二次调整）：取消双高·只看客观高/主观高两张表。
+- 客观线 = 体检问题点 ≥15 个（逻辑：安全3类+民生5类合计 15 个问题以上）
+- 主观线 = 全年诉求 ≥50 件（逻辑：2024 年 50 件 ≈ 平均每周至少 1 件）
+- 结果目标：客观表 / 主观表 / 两表重叠（落图叠加可见）≈10 社区
+- 深浅档：客观 15~29 浅 / 30~59 中 / ≥60 深；主观 50~99 浅(每周约1件) / 100~199 中(每周约2件) / ≥200 深(每2天至少1件)
+输出：DATA/analysis/page7小结/page7_绝对值口径_全域_2026-08-17.csv（覆盖·结构改为两表口径）
 """
 import os
 import sys
@@ -12,11 +12,13 @@ import io
 from collections import defaultdict
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-import numpy as np
 import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_P7 = os.path.join(ROOT, "DATA", "analysis", "page7小结")
+
+C_LINE = 15   # 客观线：体检问题点 ≥15 个
+S_LINE = 50   # 主观线：全年诉求 ≥50 件（≈每周 1 件）
 
 
 def norm(s):
@@ -24,7 +26,7 @@ def norm(s):
 
 
 def main():
-    # ── 客观轨：体检点绝对值（2025 部分 + 2026 增量 → 全覆盖）──
+    # ── 客观轨：体检点绝对值（全覆盖）──
     old_s = pd.read_csv(os.path.join(ROOT, "DATA/analysis/安全韧性/安全韧性_社区3类矩阵.csv"))
     old_l = pd.read_csv(os.path.join(ROOT, "DATA/analysis/民生基础/民生_社区5类矩阵.csv"))
     inc_s = pd.read_csv(os.path.join(ROOT, "DATA/analysis/安全韧性/安全韧性_社区3类矩阵_2026增量.csv"))
@@ -37,7 +39,7 @@ def main():
         for _, r in df.iterrows():
             ck26[norm(r["社区"])] += int(r["总点数"])
 
-    # ── 主观轨：12345 诉求件（九类·ok 精确点·174 全覆盖扩域版 2026-08-17）──
+    # ── 主观轨：12345 诉求件（九类·ok 精确点·174 扩域版矩阵）──
     hot = pd.read_csv(os.path.join(ROOT, "DATA/analysis/12345主观/12345_社区x9类_全覆盖.csv"))
     hot["k"] = hot["社区"].apply(norm)
     hk = hot.set_index("k")
@@ -54,59 +56,48 @@ def main():
             "社区": c, "楼栋数": int(b) if pd.notna(b) and b > 0 else None,
             "体检点_2025": ck25.get(c, 0), "体检点_2026新增": ck26.get(c, 0),
             "体检点_全覆盖": ck25.get(c, 0) + ck26.get(c, 0),
-            "诉求件_12345": ap.get(c),  # 无数据=None（新区·实事求是）
+            "诉求件_12345": ap.get(c),  # 无数据=None（实事求是）
         })
     df = pd.DataFrame(rows)
 
-    # ── 阈值：客观 p81@174全域 · 主观 p81@118有数据域 ──
-    p81_c = np.percentile(df["体检点_全覆盖"], 81)
-    ap_vals = df["诉求件_12345"].dropna()
-    p81_s = np.percentile(ap_vals, 81)
-    print(f"客观绝对值 p81@174全域 = {p81_c:.2f} 点")
-    print(f"主观绝对值 p81@{len(ap_vals)}有数据域（174扩域版矩阵）= {p81_s:.2f} 件")
+    # ── 两表筛选（取消双高·各自过线即入表）──
+    df["客观高"] = df["体检点_全覆盖"] >= C_LINE
+    df["主观高"] = df["诉求件_12345"].notna() & (df["诉求件_12345"] >= S_LINE)
+    df["两表重叠"] = df["客观高"] & df["主观高"]
 
-    df["客观过线"] = df["体检点_全覆盖"] >= p81_c
-    df["主观过线"] = df["诉求件_12345"].notna() & (df["诉求件_12345"] >= p81_s)
-    df["三类"] = "其他"
-    df.loc[df["客观过线"] & df["主观过线"], "三类"] = "双高"
-    df.loc[df["客观过线"] & ~df["主观过线"], "三类"] = "客观高"
-    df.loc[~df["客观过线"] & df["主观过线"], "三类"] = "主观高"
+    # ── 深浅档（整数档·叙事：每周件数）──
+    def c_tier(v):
+        if v >= 60:
+            return "深（≥60）"
+        return "中（30~59）" if v >= 30 else "浅（15~29）"
 
-    # ── 深浅分档：单轨高内分位3档（浅/中/深）──
-    for cls_name, val_col, tier_col in [("客观高", "体检点_全覆盖", "客观档"),
-                                         ("主观高", "诉求件_12345", "主观档")]:
-        sub = df[df["三类"] == cls_name]
-        if len(sub) == 0:
-            continue
-        q33, q67 = sub[val_col].quantile([1 / 3, 2 / 3])
-        df.loc[df["三类"] == cls_name, tier_col] = df.loc[df["三类"] == cls_name, val_col].apply(
-            lambda v: "深" if v >= q67 else ("中" if v >= q33 else "浅"))
-        print(f"{cls_name} 分档阈值: 浅<{q33:.1f}≤中<{q67:.1f}≤深")
+    def s_tier(v):
+        if v >= 200:
+            return "深（≥200·每2天至少1件）"
+        return "中（100~199·每周约2件）" if v >= 100 else "浅（50~99·每周约1件）"
 
-    cnt = df["三类"].value_counts().to_dict()
-    print(f"\n三类计数: {cnt}  高社区合计 = {cnt.get('双高',0)+cnt.get('客观高',0)+cnt.get('主观高',0)}")
+    df.loc[df["客观高"], "客观档"] = df.loc[df["客观高"], "体检点_全覆盖"].apply(c_tier)
+    df.loc[df["主观高"], "主观档"] = df.loc[df["主观高"], "诉求件_12345"].apply(s_tier)
 
-    cols_show = ["社区", "楼栋数", "体检点_2025", "体检点_2026新增", "体检点_全覆盖", "诉求件_12345"]
-    print("\n--- 双高（绝对值两线都过·全列）---")
-    print(df[df["三类"] == "双高"].sort_values("体检点_全覆盖", ascending=False)[cols_show].to_string(index=False))
-    print("\n--- 客观高 TOP15（体检点绝对值降序）---")
-    print(df[df["三类"] == "客观高"].sort_values("体检点_全覆盖", ascending=False).head(15)[cols_show + ["客观档"]].to_string(index=False))
-    print("\n--- 主观高 TOP15（诉求件绝对值降序）---")
-    print(df[df["三类"] == "主观高"].sort_values("诉求件_12345", ascending=False).head(15)[cols_show + ["主观档"]].to_string(index=False))
+    n_c, n_s, n_o = int(df["客观高"].sum()), int(df["主观高"].sum()), int(df["两表重叠"].sum())
+    print(f"客观线 ≥{C_LINE} 个问题点 → 客观表 {n_c} 社区")
+    print(f"主观线 ≥{S_LINE} 件（每周约 1 件）→ 主观表 {n_s} 社区")
+    print(f"两表重叠（落图叠加可见）：{n_o} 社区")
+    print(f"\n客观档分布: {df[df['客观高']]['客观档'].value_counts().to_dict()}")
+    print(f"主观档分布: {df[df['主观高']]['主观档'].value_counts().to_dict()}")
+
+    cols = ["社区", "楼栋数", "体检点_2025", "体检点_2026新增", "体检点_全覆盖", "诉求件_12345",
+            "客观高", "主观高", "两表重叠", "客观档", "主观档"]
+    print("\n--- 客观表 TOP15（体检点降序）---")
+    print(df[df["客观高"]].sort_values("体检点_全覆盖", ascending=False).head(15)[cols[:6] + ["客观档"]].to_string(index=False))
+    print("\n--- 主观表 TOP15（诉求件降序）---")
+    print(df[df["主观高"]].sort_values("诉求件_12345", ascending=False).head(15)[["社区", "诉求件_12345", "体检点_全覆盖", "主观档"]].to_string(index=False))
+    print("\n--- 两表重叠（10 目标）---")
+    ov = df[df["两表重叠"]].sort_values("体检点_全覆盖", ascending=False)
+    print(ov[["社区", "体检点_全覆盖", "诉求件_12345"]].to_string(index=False))
 
     df.to_csv(os.path.join(OUT_P7, "page7_绝对值口径_全域_2026-08-17.csv"), index=False, encoding="utf-8-sig")
-    print(f"\n[OK] 全表已写: page7_绝对值口径_全域_2026-08-17.csv ({len(df)} 社区)")
-
-    # ── 步行道双数据（千米总量 + 处数精准到社区）──
-    print("\n--- 步行道：处数（精准到社区·2025+2026+合计）---")
-    wl = pd.read_csv(os.path.join(ROOT, "DATA/analysis/民生基础/民生_社区5类矩阵.csv"))[["社区", "交通设施"]].rename(columns={"交通设施": "2025处"})
-    wl26 = inc_l[["社区", "交通设施"]].rename(columns={"交通设施": "2026新增处"})
-    m = wl.merge(wl26, on="社区", how="outer").fillna(0)
-    m["合计处"] = m["2025处"] + m["2026新增处"]
-    m = m[m["合计处"] > 0].sort_values("合计处", ascending=False)
-    print(m.to_string(index=False))
-    print(f"处数合计: {int(m['合计处'].sum())}（2025 {int(m['2025处'].sum())} + 2026 {int(m['2026新增处'].sum())}）")
-    print("千米总量: 仅 2025 报告值 2.09 千米（西陵伍家）·2026 无长度值（11 处不占千米）——按真实数据如实呈现")
+    print(f"\n[OK] 全表已写（两表口径·覆盖旧版）: page7_绝对值口径_全域_2026-08-17.csv ({len(df)} 社区)")
 
 
 if __name__ == "__main__":
