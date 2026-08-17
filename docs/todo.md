@@ -13,6 +13,12 @@
 
 > 用户设想「情绪地图整体寄生进 dsh」→ 四轮讨论后纠偏：真痛点 = EMC 入口聪明度不足。全部落盘 `discuss/EMC-dsh整体合体_讨论过程台账.md`（R0-R3）。
 
+### ✅ RAG 知识库同步体检 2026 补充（revision-log 5.253，commit `74e5a2e2` · **用户手动 push**）
+
+- 新建 03-10 蒸馏笔记（8 节·geojson/csv 禁入 RAG·只入知识）+ 口径优先级声明（压制 3prime 旧口径笔记）
+- 索引重建 363 条（21.6s）；踩坑：build 未带 local_files_only 联网卡死 → HF_HUB_OFFLINE=1 解决
+- 验证：特征查询命中 #1（0.737）；宽泛查询 fact ×1.2 加权属既有设计
+
 ### ✅ PPT 表格 Excel 同步（revision-log 5.252，commit `e7b169c5` · **用户手动 push**）
 
 - `图数表出图_PPT表格汇总.xlsx` page1-6 全 sheet 重写（全覆盖+12345 扩域口径·表型保持）
