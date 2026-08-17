@@ -23,12 +23,20 @@ def load(name):
 
 
 def main():
+    # (2025类文件, [2026类文件], 输出名) —— 逐类合并（分析图直接加载）+ 两方面合并 + 总合并
     pairs = [
+        ("安全_住房", ["2026_安全_住房"], "安全_住房_全覆盖"),
+        ("安全_安全消防", ["2026_安全_安全消防"], "安全_安全消防_全覆盖"),
+        ("安全_市政管网", ["2026_安全_市政管网"], "安全_市政管网_全覆盖"),
+        ("民生_住房", ["2026_民生_住房"], "民生_住房_全覆盖"),
+        ("民生_公服设施_问题类", ["2026_民生_公服设施"], "民生_公服设施_全覆盖"),
+        ("民生_停车设施", ["2026_民生_停车设施"], "民生_停车设施_全覆盖"),
+        ("民生_交通设施", ["2026_民生_交通设施"], "民生_交通设施_全覆盖"),
+        ("民生_物业街面", ["2026_民生_物业街面"], "民生_物业街面_全覆盖"),
         ("安全_合并", ["2026_安全_住房", "2026_安全_安全消防", "2026_安全_市政管网"], "安全_合并_全覆盖"),
         ("民生_合并", ["2026_民生_住房", "2026_民生_公服设施", "2026_民生_停车设施",
                     "2026_民生_交通设施", "2026_民生_物业街面"], "民生_合并_全覆盖"),
     ]
-    all_feats = []
     for old, news, out in pairs:
         f25 = load(old)
         f26 = []
@@ -39,11 +47,12 @@ def main():
         for x in f26:
             x["properties"].setdefault("来源", "2026补充")
         feats = f25 + f26
-        all_feats.extend(feats)
         with open(os.path.join(Q77, f"checkup_qty_{out}.geojson"), "w", encoding="utf-8") as f:
             json.dump({"type": "FeatureCollection", "features": feats}, f, ensure_ascii=False)
         n26 = sum(1 for x in feats if x["properties"].get("来源") == "2026补充")
         print(f"[OK] {out}: {len(feats)} 点 = 2025 {len(feats) - n26} + 2026 {n26}")
+    # 总合并 = 两方面合并文件拼接（防跨对重复读盘双计）
+    all_feats = load("安全_合并_全覆盖") + load("民生_合并_全覆盖")
     with open(os.path.join(Q77, "checkup_qty_合并_全覆盖.geojson"), "w", encoding="utf-8") as f:
         json.dump({"type": "FeatureCollection", "features": all_feats}, f, ensure_ascii=False)
     print(f"[OK] 合并_全覆盖: {len(all_feats)} 点")
