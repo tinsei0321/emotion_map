@@ -917,6 +917,50 @@ export function categoryOf(l) {
   return 'other';
 }
 
+// ── 图层卡组归属（Layers 卡组策略 v2·CB-42）：解绑强制绑定，默认归集保留 ──
+// 模型：渲染卡组归属 = parentId（真组成员·渲染于组卡内） > l._cardCat（手动覆写·'loose'=顶层游离行） > categoryOf（默认自动归集）。
+// 新层无覆写 → 默认归集不变；拖拽出组/跨卡组 = 写覆写（可再拖回或拖进真组清除）；层级排序与地图 z 序恒随 _layers 序。
+/** 渲染卡组 key：真组成员 'group:<gid>'；覆写卡 = 覆写值；默认 = categoryOf。 */
+export function cardOfLayer(l) {
+  if (!l) return 'other';
+  if (l.parentId) return 'group:' + l.parentId;
+  return l._cardCat || categoryOf(l);
+}
+/** 手动指派图层卡组（拖拽出组/跨卡组/游离）。card = category 字符串 | 'loose' | null(还原默认)。
+ *  自动脱组（若有 parentId）+ 空真组自动清除（Copilot 工作区组除外·常驻）；与默认卡相同时清覆写保持「无覆写」洁净态。 */
+export function assignLayerCard(id, card) {
+  const l = _layers.get(id);
+  if (!l || l.kind === 'group') return false;
+  if (l.parentId) {
+    const p = _layers.get(l.parentId);
+    if (p && p.children) p.children = p.children.filter((c) => c !== id);
+    l.parentId = null;
+    if (p && p.kind === 'group' && (!p.children || !p.children.length)
+        && p.name !== 'EmotionMap Copilot') {
+      _layers.delete(p.id);   // 空真组自动清除（成员已全部离组·无级联风险）
+    }
+  }
+  if (card == null || card === categoryOf(l)) l._cardCat = undefined;
+  else l._cardCat = card;
+  return true;
+}
+/** 拖入真组（L2 极性组 / Copilot 工作区）：parentId 挂接 + children 定位插入（beforeChildId=null 末位）。清卡组覆写。 */
+export function moveLayerIntoGroup(id, groupId, beforeChildId = null) {
+  const l = _layers.get(id), g = _layers.get(groupId);
+  if (!l || !g || g.kind !== 'group' || l.kind === 'group' || id === groupId) return false;
+  if (l.parentId && l.parentId !== groupId) {
+    const op = _layers.get(l.parentId);
+    if (op && op.children) op.children = op.children.filter((c) => c !== id);
+  }
+  l.parentId = groupId;
+  l._cardCat = undefined;
+  g.children = g.children.filter((c) => c !== id);
+  const at = beforeChildId != null ? g.children.indexOf(beforeChildId) : -1;
+  if (at >= 0) g.children.splice(at, 0, id);
+  else g.children.push(id);
+  return true;
+}
+
 export function getGroupOrder() { return _groupOrder.slice(); }
 /** 标记某 category 为「手动 within-category 重排过」——applyGroupOrder 不再重排其组内顺序（保留用户拖拽）。 */
 export function freezeCategoryOrder(cat) { if (cat) _frozenCats.add(cat); }
@@ -967,15 +1011,19 @@ function _layerPolarityRank(l) {
 
 /** Normalize _layers order to match _groupOrder（组内 levelRank × timeRank × polarityRank 稳定排序；children 留 parent 后）。
  *  Idempotent — 返回 false 表示已就序（调用方可跳过 z-sync，但 renderLayerList 现无条件 restackZ）。
- *  _frozenCats 中的 category 跳过组内排序（保留用户手动拖拽序），仅遵守 category 间 _groupOrder。 */
+ *  _frozenCats 中的 category 跳过组内排序（保留用户手动拖拽序），仅遵守 category 间 _groupOrder。
+ *  卡组策略 v2（CB-42）：分桶按 cardOfLayer 语义（_cardCat 覆写层随其目标卡组段排序）；
+ *  'loose' 游离层不参与分桶——按原索引回插（保住用户在卡组之间拖出的锚定位置）。 */
 export function applyGroupOrder() {
   const keys = Array.from(_layers.keys());
-  // 按类别分桶；桶内稳定排序 (levelRank, timeRank, polarityRank)——L 主、T 次、极性末。
-  // L2 group 与其 children 同 level/timeRank → 稳定排序保连续。
+  // 按卡组分桶（覆写感知）；桶内稳定排序 (levelRank, timeRank, polarityRank)——L 主、T 次、极性末。
+  // L2 group 与其 children 同 level/timeRank → 稳定排序保连续。loose 游离层旁路（原位保留）。
+  const looseKeys = [];
   const byCat = {};
   for (const k of keys) {
     const l = _layers.get(k);
-    const c = categoryOf(l);
+    if (!l.parentId && l._cardCat === 'loose') { looseKeys.push(k); continue; }
+    const c = l._cardCat && l._cardCat !== 'loose' ? l._cardCat : categoryOf(l);
     (byCat[c] = byCat[c] || []).push(k);
   }
   for (const c of Object.keys(byCat)) {
@@ -1005,10 +1053,20 @@ export function applyGroupOrder() {
   for (const cat of PINNED) {                             // 钉底组最后输出：range 在 ai 前
     for (const k of (byCat[cat] || [])) { desired.push(k); used.add(k); }
   }
-  const same = desired.length === keys.length && desired.every((k, i) => k === keys[i]);
+  // loose 游离层槽位重建：遍历原序——loose 占住自己的槽（位置钉死），普通项按 desired 序流入其余槽。
+  // （逐项按原索引 splice 会在多项 loose 时互相错位；槽位遍历是唯一稳定重构）
+  const out = [];
+  let di = 0;
+  for (const k of keys) {
+    const l = _layers.get(k);
+    if (!l.parentId && l._cardCat === 'loose') { out.push(k); continue; }
+    if (di < desired.length) out.push(desired[di++]);
+  }
+  while (di < desired.length) out.push(desired[di++]);   // 长度守恒兜底
+  const same = out.length === keys.length && out.every((k, i) => k === keys[i]);
   if (same) return false;
   const nxt = new Map();
-  for (const k of desired) nxt.set(k, _layers.get(k));
+  for (const k of out) nxt.set(k, _layers.get(k));
   _layers.clear();
   for (const [k, v] of nxt) _layers.set(k, v);
   return true;

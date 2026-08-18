@@ -1,5 +1,5 @@
 // ═══ sidebar.js — left panel: collapse/expand, drag, import trigger, layer manager ═══
-import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, layerDisplayColor, levelPointColor, freezeCategoryOrder, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, addLayer, getChildren, categoryOf, CATEGORY_LABEL, applyGroupOrder, reorderGroupSegment, isCollapsed, toggleCollapsed, isGroupFold, toggleGroupFold, getGroupOrder, enforceMutualExclusion, _isAILayer, CONFIDENCE_RAMP, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HOTNESS_RAMP } from './state.js';
+import { token, getLayers, getLayer, setLayerVisible, removeLayer, layerLevel, layerDisplayColor, levelPointColor, freezeCategoryOrder, selectLayer, getSelectedLayerId, getSelectedLayer, reorderLayers, addLayer, getChildren, categoryOf, cardOfLayer, assignLayerCard, moveLayerIntoGroup, CATEGORY_LABEL, applyGroupOrder, reorderGroupSegment, isCollapsed, toggleCollapsed, isGroupFold, toggleGroupFold, getGroupOrder, enforceMutualExclusion, _isAILayer, CONFIDENCE_RAMP, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HOTNESS_RAMP } from './state.js';
 import { renderLayer, removeLayerFromMap, reorderAllZ, restackZ, toggleGridViewMode, getGridViewMode, fitToLayer } from './map.js';
 import { toast } from './toast.js';
 import { openSettingsPopover, closeSettingsPopover, openSettingsLayerId, isOpen } from './settings.js';
@@ -326,14 +326,17 @@ function subGroupRowHtml(subId, label, members, folded) {
   </div>`;
 }
 
-/** A single layer row (standalone or indented child; both draggable within their category). */
+/** A single layer row (standalone or indented child; both draggable within their category).
+ *  cat='loose'（CB-42 卡组策略）= 顶层游离行：拖出卡组独立的图层，is-loose 样式区分。 */
 function layerRowHtml(l, openId, selId, isChild, cat) {
   const kindEl = (l.kind === 'point' || l.kind === 'polygon' || l.kind === 'heatmap')
     ? `<button class="layer-kind${openId === l.id ? ' is-active' : ''}" data-feat="${l.id}" title="要素设置">${KIND_LABEL[l.kind]}</button>`
     : `<span class="layer-kind is-disabled" title="线暂未开放设置">${KIND_LABEL[l.kind] || '层'}</span>`;
   const sel = selId === l.id ? ' is-selected' : '';
   const childCls = isChild ? ' is-child' : '';
-  return `<div class="layer-row${sel}${childCls}${l.visible ? '' : ' is-off'}" data-id="${l.id}" data-cat="${cat}" draggable="true">
+  const looseCls = cat === 'loose' ? ' is-loose' : '';
+  const tip = cat === 'loose' ? '独立图层 · 拖入任意卡组可归组' : '拖拽排序 · 可拖入其他卡组或拖出独立';
+  return `<div class="layer-row${sel}${childCls}${looseCls}${l.visible ? '' : ' is-off'}" data-id="${l.id}" data-cat="${cat}" draggable="true" title="${tip}">
     <button class="layer-eye" data-eye="${l.id}" title="${l.visible ? '隐藏' : '显示'}">${l.visible ? eyeOpen : eyeOff}</button>
     ${kindEl}
     ${hintChip(l)}
@@ -358,6 +361,8 @@ export function renderLayerList() {
   const selId = getSelectedLayerId();
   const byId = new Map(all.map((l) => [l.id, l]));
   const top = all.filter((l) => !l.parentId);   // groups + standalone layers
+  // CB-42 卡组策略：顶层分桶按 cardOfLayer（_cardCat 覆写感知·跨卡组迁移层随目标卡渲染）；
+  // 'loose' 游离层不分桶——按 _layers 锚定位置渲染于卡组之间（拖到哪就在哪）。
   // 配对去重：同 gridSig 的 2D/3D 合并显示一条（不论可见性——避免眼睛关闭后 2D/3D 都隐藏却分裂两条）。
   // 每组选一个代表（可见优先；都隐藏取最后一个=最近切 mode），其余 skipIds 跳过。
   const _grids = all.filter((l) => l.kind === 'polygon' && l.paint && l.paint._ui && l.paint._ui.tool === 'grid');
@@ -377,13 +382,35 @@ export function renderLayerList() {
     for (const g of arr) if (g !== rep) skipIds.add(g.id);
   }
 
-  // bucket top-level items by category (preserve _layers order within each bucket)
+  // bucket top-level items by card（preserve _layers order within each bucket；loose 旁路）
   const buckets = new Map();
   for (const l of top) {
-    const cat = categoryOf(l);
+    if (l._cardCat === 'loose') continue;
+    const cat = cardOfLayer(l);
     if (!buckets.has(cat)) buckets.set(cat, []);
     buckets.get(cat).push(l);
   }
+
+  // loose 游离行锚定：每层找 _layers 序中下一个「非游离顶层项」所属卡（真组='group:<gid>'·虚拟卡=cat），
+  // 渲染于该卡之前；其后再无顶层项 → 渲染于列表末（所有卡之后）。
+  const looseBefore = new Map();   // 卡 key → [layer]
+  const looseTail = [];
+  for (let i = 0; i < all.length; i++) {
+    const l = all[i];
+    if (l.parentId || l._cardCat !== 'loose') continue;
+    let anchor = null;
+    for (let j = i + 1; j < all.length; j++) {
+      const nl = all[j];
+      if (!nl.parentId && nl._cardCat !== 'loose') { anchor = cardOfLayer(nl); break; }
+    }
+    if (anchor) { if (!looseBefore.has(anchor)) looseBefore.set(anchor, []); looseBefore.get(anchor).push(l); }
+    else looseTail.push(l);
+  }
+  const looseRows = (key) => {
+    const arr = looseBefore.get(key);
+    if (!arr || !arr.length) return '';
+    return arr.map((l) => skipIds.has(l.id) ? '' : layerRowHtml(l, openId, selId, false, 'loose')).join('');
+  };
 
   // ai 恒钉最末；range 可拖（CB-23 2026-08-12：用户需范围边界压分析图上面·放开钉底·与 state.reorderGroupSegment 一致）
   const _rawOrder = getGroupOrder();
@@ -392,6 +419,7 @@ export function renderLayerList() {
   let html = '';
   for (const cat of _catOrder) {
     const items = buckets.get(cat);
+    html += looseRows(cat);   // CB-42：锚定于本虚拟卡之前的游离行（卡即使空也要先出游离行）
     if (!items || !items.length) continue;
     const collapsed = isCollapsed(cat);
     if (cat === 'l2' || cat === 'ai') {
@@ -401,6 +429,7 @@ export function renderLayerList() {
       for (const g of groups) {
         const kids = (g.children || []).map((cid) => byId.get(cid)).filter((c) => c && !skipIds.has(c.id));
         const gfold = isGroupFold(g.id);   // 真 L2 组单独折叠（双击该组只折该组，不波及其他 L2 组）
+        html += looseRows('group:' + g.id);   // 锚定于该真组卡之前的游离行
         html += groupRowHtml(g, kids, cat, gfold, false);
         if (!gfold) for (const c of kids) html += layerRowHtml(c, openId, selId, true, cat);
       }
@@ -425,7 +454,27 @@ export function renderLayerList() {
       }
     }
   }
+  // CB-42：其后再无卡组的游离行 → 列表末（所有卡之后）
+  if (looseTail.length) html += looseTail.map((l) => skipIds.has(l.id) ? '' : layerRowHtml(l, openId, selId, false, 'loose')).join('');
   list.innerHTML = html;
+
+  // CB-42：列表空白处 drop（行/卡以外）→ 拖出为独立（loose）图层。容器常驻 → 只绑一次（dataset 门闩防重绑）。
+  if (!list.dataset.looseDropWired) {
+    list.dataset.looseDropWired = '1';
+    list.addEventListener('dragover', (e) => { if (_dragId) e.preventDefault(); });
+    list.addEventListener('drop', (e) => {
+      if (!_dragId) return;
+      if (e.target.closest && e.target.closest('.layer-row, .layer-group, .layer-subgroup')) return;   // 元素级 handler 已处理（stopPropagation 兜底）
+      e.preventDefault();
+      assignLayerCard(_dragId, 'loose');
+      reorderLayers(_dragId, null);
+      reorderAllZ();
+      _dragId = null; _dragCat = null; _dragGroupId = null;
+      clearDropHints();
+      renderLayerList();
+      toast.info('已拖出为独立图层');
+    });
+  }
 
   // wire button events (eye / del / feat / group-eye / category-eye / collapse)
   list.querySelectorAll('[data-eye]').forEach((b) =>
@@ -505,14 +554,28 @@ export function renderLayerList() {
       e.dataTransfer.setData('text/plain', _dragId || _dragCat);
     });
     el.addEventListener('dragend', () => { el.classList.remove('is-dragging'); clearDropHints(); _dragId = null; _dragCat = null; _dragGroupId = null; });
-    el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('is-drop-over'); });
-    el.addEventListener('dragleave', () => el.classList.remove('is-drop-over'));
+    // CB-42 拖放指示：层行=上/下缘插入线（落点半区）；卡组头（拖层时）=整卡「入组」高亮；组卡拖拽（段重排）=顶缘线
+    el.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (el.classList.contains('layer-row') && _dragId) {
+        const rect = el.getBoundingClientRect();
+        const after = (e.clientY - rect.top) > rect.height / 2;
+        el.classList.toggle('is-drop-after', after);
+        el.classList.toggle('is-drop-before', !after);
+      } else if (el.classList.contains('layer-group') && _dragId) {
+        el.classList.add('is-drop-in');
+      } else {
+        el.classList.add('is-drop-over');
+      }
+    });
+    el.addEventListener('dragleave', () => el.classList.remove('is-drop-over', 'is-drop-before', 'is-drop-after', 'is-drop-in'));
     el.addEventListener('drop', (e) => {
       e.preventDefault(); e.stopPropagation();
       const tIsGroup = el.classList.contains('layer-group');
       const tCat = el.dataset.cat;
       const tId = el.dataset.id;
       let moved = false;
+      let _movedMsg = '';   // CB-42：迁移类操作给具体反馈（入组/跨卡/独立），排序仍用默认文案
       if (_dragCat && tIsGroup) {
         const rect = el.getBoundingClientRect();
         const before = (e.clientY - rect.top) <= rect.height / 2;
@@ -541,24 +604,60 @@ export function renderLayerList() {
           moved = true;
         }
       } else if (_dragId && !tIsGroup && _dragId !== tId) {
-        // layer drag → within same category only (cross-category move deferred)
+        // LAYER ROW DRAG v2（CB-42 卡组策略）：目标真组成员=入组 / 目标游离行=拖出独立 /
+        // 同卡=纯排序（freeze 保手动序）/ 异卡=跨卡组迁移（_cardCat 覆写·默认归集不动）
         const src = getLayer(_dragId);
-        if (src && categoryOf(src) === tCat) {
+        const tgt = getLayer(tId);
+        if (src && tgt) {
           const rect = el.getBoundingClientRect();
           const after = (e.clientY - rect.top) > rect.height / 2;
           const ls = getLayers();
           const idx = ls.findIndex((x) => x.id === tId);
           const toId = after ? (ls[idx + 1] ? ls[idx + 1].id : null) : tId;
-          reorderLayers(_dragId, toId);
-          freezeCategoryOrder(tCat);   // 手动 within-cat 重排 → 冻结，防 applyGroupOrder 覆盖
-          reorderAllZ();
-          moved = true;
+          if (tgt.parentId) {
+            moved = moveLayerIntoGroup(_dragId, tgt.parentId, tId);
+            _movedMsg = '已移入图层组';
+          } else if (tCat === 'loose') {
+            moved = assignLayerCard(_dragId, 'loose');
+            reorderLayers(_dragId, toId);
+            _movedMsg = '已拖出为独立图层';
+          } else if (cardOfLayer(src) === tCat) {
+            reorderLayers(_dragId, toId);
+            moved = true;
+          } else {
+            moved = assignLayerCard(_dragId, tCat);
+            reorderLayers(_dragId, toId);
+            _movedMsg = '已移入卡组';
+          }
+          if (moved) { freezeCategoryOrder(tCat && tCat !== 'loose' ? tCat : undefined); reorderAllZ(); }
+        }
+      } else if (_dragId && tIsGroup) {
+        // LAYER ROW → 卡组头（CB-42 新增落点）：虚拟卡=入该卡组（上半=段首/下半=段末）；真组卡=入组末位；ai 卡=入 Copilot 工作区组
+        const src = getLayer(_dragId);
+        if (src && src.kind !== 'group') {
+          if (tId) {
+            moved = moveLayerIntoGroup(_dragId, tId, null);
+            _movedMsg = '已移入图层组';
+            if (moved) reorderAllZ();
+          } else if (tCat === 'ai') {
+            const aiGroup = getLayers().find((x) => x.kind === 'group' && x.name === 'EmotionMap Copilot');
+            if (aiGroup) { moved = moveLayerIntoGroup(_dragId, aiGroup.id, null); _movedMsg = '已移入 Copilot 工作区'; if (moved) reorderAllZ(); }
+          } else if (tCat) {
+            const rect = el.getBoundingClientRect();
+            const before = (e.clientY - rect.top) <= rect.height / 2;
+            const members = getLayers().filter((x) => !x.parentId && x._cardCat !== 'loose' && cardOfLayer(x) === tCat);
+            if (before && members.length) reorderLayers(_dragId, members[0].id);
+            else reorderLayers(_dragId, null);   // 段末近似：先到列表末·applyGroupOrder 归位目标段（freeze 保位）
+            moved = assignLayerCard(_dragId, tCat);
+            _movedMsg = '已移入卡组';
+            if (moved) { freezeCategoryOrder(tCat); reorderAllZ(); }
+          }
         }
       }
       _dragId = null; _dragCat = null; _dragGroupId = null;
       clearDropHints();
       renderLayerList();
-      if (moved) toast.info('图层顺序已更新');
+      if (moved) toast.info(_movedMsg || '图层顺序已更新');
     });
   });
 
@@ -580,7 +679,8 @@ export function renderLayerList() {
 }
 
 function clearDropHints() {
-  document.querySelectorAll('.layer-row.is-drop-over, .layer-group.is-drop-over').forEach((r) => r.classList.remove('is-drop-over'));
+  document.querySelectorAll('.layer-row.is-drop-over, .layer-group.is-drop-over, .layer-row.is-drop-before, .layer-row.is-drop-after, .layer-group.is-drop-in')
+    .forEach((r) => r.classList.remove('is-drop-over', 'is-drop-before', 'is-drop-after', 'is-drop-in'));
 }
 
 /** Select a layer row → 选中 + 弹右栏 + 按"当前面板状态"路由（Overview/Table/折叠默认 Overview）。
@@ -630,10 +730,11 @@ function toggleGroupEye(groupId) {
   toast.info(`${showAll ? '显示' : '隐藏'}全部子图层`);
 }
 
-/** Virtual category eye: toggle every layer in the category at once
- *  (any hidden → show all; all visible → hide all). */
+/** Virtual category eye: toggle every layer RENDERED in that card at once
+ *  (any hidden → show all; all visible → hide all). CB-42：按渲染卡成员算（cardOfLayer·
+ *  含跨卡迁入层·排除真组成员与游离层）——与卡上计数/列表所见一致。 */
 function toggleCategoryEye(cat) {
-  const members = getLayers().filter((l) => categoryOf(l) === cat);
+  const members = getLayers().filter((l) => !l.parentId && l._cardCat !== 'loose' && cardOfLayer(l) === cat);
   if (!members.length) return;
   const showAll = !members.some((c) => c.visible);
   for (const l of members) {

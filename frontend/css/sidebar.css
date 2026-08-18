@@ -797,6 +797,14 @@ button.layer-kind:hover { background: var(--geojson-color-gray-200); color: var(
 .layer-row.is-selected:hover { background: color-mix(in srgb, var(--geojson-color-brand-primary) 18%, transparent); }
 .layer-row.is-drop-over { box-shadow: inset 0 2px 0 var(--geojson-color-brand-primary, #4285F4); }
 .layer-row.is-dragging { opacity: 0.5; }
+/* ── CB-42 卡组策略拖放指示：行级上/下缘插入线（落点半区精确反馈）；卡组「入组」高亮；游离行左缘灰条 ── */
+.layer-row.is-drop-before { box-shadow: inset 0 2px 0 var(--geojson-color-brand-primary, #4285F4); }
+.layer-row.is-drop-after { box-shadow: inset 0 -2px 0 var(--geojson-color-brand-primary, #4285F4); }
+.layer-group.is-drop-in {
+  box-shadow: inset 0 0 0 2px var(--geojson-color-brand-primary, #4285F4);
+  background: color-mix(in srgb, var(--geojson-color-brand-primary) 8%, transparent);
+}
+.layer-row.is-loose { box-shadow: inset 3px 0 0 var(--geojson-color-gray-300, #c9ced6); margin-top: 4px; }
 
 .layer-grip {
   flex: 0 0 14px;
