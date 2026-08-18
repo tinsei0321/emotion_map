@@ -1,5 +1,7 @@
 # EMC harness 架构借鉴 dsh（DeepSeek Harness）· 专题讨论底稿
 
+> **勘误注记（2026-08-18·PT-CB1/T3a 归档批）**：本文 G6-G9 已被形态3 系列裁定吸收/改道：G6→平台 eval（C10）、G7→并入 CB-39 D1 批、G8→拆 G8a/G8b、G9→停投；详见 PT 总计划 v1.0（`CB41-EMC平台化转型_实施计划草案_zcode-2026-08-18.md`）。本稿仅存研读价值。
+
 > 整理：zcode组（ZCode + GLM 5.3）· 2026-08-16。性质：**专题讨论输入（用户已定另开会话深入讨论）·零实施**。
 > 缘起：用户提出想法——「让 EMC 也用 harness+LLM+plugin 的形式运作，模仿 dsh 重构 EMC，是否能让 EMC 更智能、更灵活？」本底稿 = zcode 在线研读 dsh 核心文档后与 EMC 现状的对照梳理，供专题会话作讨论基础。
 > dsh 研读范围（2026-08-16 在线）：README + `docs/architecture.md` + `docs/agent-lifecycle.md` + `docs/tool-execution-pipeline.md`。仓库：https://github.com/deepseek-ai/deepseek-harness（MIT·开发者预览·~124k stars·TypeScript+Python pnpm monorepo）。
