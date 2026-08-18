@@ -182,24 +182,36 @@ def test_tool_alias_derived():
 
 
 def test_geo_catalog_guard_fields_report():
-    """G8a 报告项（不 fail）：paradigm guard 4 字段（scale/preconditions/failure_modes/examples）
-    与 contracts 的差异清单。该 4 字段手写属 diagnose prompt 内容（永不动红线）——
-    差异不阻塞，但必须可见：改 contracts 这些字段时须显式决定是否同步 paradigm（走 prompt 豁免流程）。"""
+    """G8a 冻结清单（Codex T2 审计观察①采纳·2026-08-19）：paradigm guard 4 字段
+    （scale/preconditions/failure_modes/examples）与 contracts 的差异**冻结为固定清单**——
+    该 4 字段手写属 diagnose prompt 内容（永不动红线）：清单内差异=已知豁免区；
+    **清单外新漂移 → fail**（改 contracts 这些字段须走 prompt 豁免流程并更新本清单）；
+    清单内差异消失 → 也 fail（提示同步收紧冻结清单·防静默腐烂）。"""
+    _FROZEN = {
+        '[extract_feature].preconditions', '[extract_feature].failure_modes', '[extract_feature].examples',
+        '[clip].preconditions', '[merge].failure_modes', '[zonal_stats].examples',
+        '[lookup_place].failure_modes', '[lookup_place].examples',
+    }
     derived = {d['name']: d for d in derive_geo_catalog()}
-    diffs = []
+    diffs = set()
     for t in P.GEO_TOOL_CATALOG:
         d = derived.get(t['name'])
         if not d:
             continue
         for k in ('scale', 'preconditions', 'failure_modes', 'examples'):
             if d.get(k) != t.get(k):
-                diffs.append(f"[{t['name']}].{k}")
-    if diffs:
-        print(f"\n[G8a][报告] paradigm guard 字段与 contracts 差异 {len(diffs)} 处（prompt 红线保护区·改动须豁免流程）：")
-        for x in diffs:
-            print(f"  {x}")
-    else:
-        print("\n[G8a][报告] paradigm guard 字段与 contracts 全一致")
+                diffs.add(f"[{t['name']}].{k}")
+    new_drift = diffs - _FROZEN
+    assert not new_drift, (
+        'paradigm guard 字段出现清单外新漂移（diagnose prompt 红线保护区·须走豁免流程）：'
+        + '; '.join(sorted(new_drift))
+    )
+    thawed = _FROZEN - diffs
+    assert not thawed, (
+        '冻结清单条目已不再漂移——请同步收紧 _FROZEN（防清单腐烂）：'
+        + '; '.join(sorted(thawed))
+    )
+    print(f"\n[G8a][冻结清单] paradigm guard 字段豁免差异 {len(diffs)} 处（红线保护区·与 2026-08-19 冻结清单一致）")
 
 
 def test_panel_source_report():

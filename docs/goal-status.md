@@ -32,7 +32,7 @@
 | G5 | 时间轴专题 | ⬜ 就绪 | 插空可开（1.5-2 天）；gate=manifest 生成用户授权 |
 | G6 | dsh 借鉴·session log 可重放 | ✅ 已裁定→降权为**平台 eval（C10）**·工具面版 trace（形态3·精髓 E1） | PT 阶段二 G10 批内落地 |
 | G7 | dsh 借鉴·守卫管线化 | ✅ 已裁定→**并入 CB-39 D1 批**（post-execute 四态·精髓 E4 本体吸收） | 原排期不变 |
-| G8 | 契约全自动派生 | 🔄 **拆 G8a/G8b·G8a=PT-CB1 T2 即刻开工**（0.5d）·G8b 挂 B1 | PT 阶段二 |
+| G8 | 契约全自动派生 | 🔄 G8a ✅（PT-CB1 T2·审计过·stages.js 手写镜像退役+freshness 断言）；G8b 挂 B1（PT-CB2 T1 后） | PT 阶段二 |
 | G9 | CPD delegated turn | ⛔ 停投（形态3 裁定·多步循环由宿主 harness 承担） | — |
 
 ## 维护记录
