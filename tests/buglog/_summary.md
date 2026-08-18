@@ -1,6 +1,6 @@
 # EMC Bug 修复工程日志
 
-> 自动生成（`py tests/buglog/_gen_index.py`）·勿手改 · 最后更新：2026-08-18 10:27
+> 自动生成（`py tests/buglog/_gen_index.py`）·勿手改 · 最后更新：2026-08-18 11:08
 > 条目 **13** · OPEN **5** · RESOLVED **8** · P0 阻塞 **2** · 修复已提交 **4**
 > 飞轮：27 用例 · 最近报告：report-2026-08-08-05-llm (92%·24/26)
 
@@ -44,14 +44,14 @@
 ### B012 · 网格/地形悬停社区行张冠李戴——按格中心单点归属而非指针位置，跨界格显示邻居社区
 
 - **严重度**：MED | **模块**：UI | **复现**：3×
-- **修复进度**：待修复（CB-38 E1·方向候选：A 鼠标 lngLat 实时归属+空间索引节流 / B 跨界格并列显示 / C 现状+文案标注） (-)
+- **修复进度**：CB-41 实施修复（zcode·组合方案）：① 聚合社区面层（grid analysis=zonal / zonal 层）tip 社区行**直读 `feature.properties.name`**（零查找·与 Table 同源·34/174 错配根治）② 标准网格/terrain 社区归属改**鼠标 lngLat 实时空间归属**（原=要素中心·B012 机制源头）+ 指针位移 <4px 节流 ③ point 分支早退前清空 `#tp-community`（dsh 发现的残留连带） (`126537)
 - **问句**：「鼠标悬停网格/地形层时，tip 社区行显示的社区为什么是错的？」(community tip wrong attribution on hover)」
 - **关联**：[entry](open/B012-community-tip-wrong-attribution.md) · CB-38
 
 ### B013 · L0 点层聚合 choropleth 色带反语义——点数越多颜色越浅、零点社区落最深红
 
 - **严重度**：HIGH | **模块**：UI | **复现**：2×
-- **修复进度**：待修复（CB-41 双 bug 专题·排查中） (-)
+- **修复进度**：CB-41 实施修复（zcode）：① grid 对话框「着色语义」显式分叉（点数(临时)/极性·默认随数据轨 L0/L1→点数·L2→极性·手选锁定）② `_count_norm=log1p(pc)/log1p(max)` 计数着色·grid-warm 反转（低浅高深·点数越多越深）③ 零点面域透明不填色（`zeroIsNoData` case 特判）④ zonal-tool UI 自动分叉（rows 无极性→点数·toast 提示）⑤ 图例/层名/tip 指标行点数模式适配 ⑥ ForAI 契约零变化（generateGridForAI 不传 semantic=旧行为）·新测 `tests/test_zonal_count_semantic.py` 3 passed (`126537)
 - **问句**：「城市体检点（民生+安全两方面合并）聚合到 174 社区，为什么点数密集的社区颜色反而浅？」(L0 count choropleth inverted ramp)」
 - **关联**：[entry](open/B013-count-choropleth-ramp-inverted.md) · CB-41
 
@@ -89,9 +89,9 @@
 | 2026-07-29 | 8e5e76f | P0-4 v2 治本：① tools.js 五工具观测诚实化（count=0 不说"已生成"）② harness.js ... | B002 |
 | 2026-07-29 | 3a97e19 | P0-4 v3 根治：① _autoExpandOverlays 代码自动扩展多步骤 ② D057 修订允许多 tool... | B002 |
 | 2026-07-29 | adef900 | ① 按钮迁至右上角 sticky（原右下）② 透明磨砂背景+细绿边框（原深色填充）③ 文本 '↓'（原'回到底部 ↓'） | B009/B010/B011 |
+| 08-18 | `126537 | CB-41 实施修复（zcode·组合方案）：① 聚合社区面层（grid analysis=zonal / zonal ... | B012/B013 |
 | 07-28 | 1320e7c | M1 `_norm_where` 拆逗号（支持 `in` 多值列表） | B001/B001 |
 | 07-28 | f68f61c | M3 契约 `extract_feature` 去「单要素」误导（`when`=FC description·上游根因） | B001 |
-| - | - | 待修复（CB-38 E1·方向候选：A 鼠标 lngLat 实时归属+空间索引节流 / B 跨界格并列显示 / C 现状... | B012/B013 |
 
 ## 复发趋势（repro ≥ 2）
 

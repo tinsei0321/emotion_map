@@ -37,4 +37,4 @@ last_repro: 2026-08-18
 
 | 日期 | 操作 | commit |
 |------|------|--------|
-| - | 待修复（CB-38 E1·方向候选：A 鼠标 lngLat 实时归属+空间索引节流 / B 跨界格并列显示 / C 现状+文案标注） | - |
+| 08-18 | CB-41 实施修复（zcode·组合方案）：① 聚合社区面层（grid analysis=zonal / zonal 层）tip 社区行**直读 `feature.properties.name`**（零查找·与 Table 同源·34/174 错配根治）② 标准网格/terrain 社区归属改**鼠标 lngLat 实时空间归属**（原=要素中心·B012 机制源头）+ 指针位移 <4px 节流 ③ point 分支早退前清空 `#tp-community`（dsh 发现的残留连带） | `126537eb`（**待用户验收后关账**） |

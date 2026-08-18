@@ -36,4 +36,4 @@ last_repro: 2026-08-18
 
 | 日期 | 操作 | commit |
 |------|------|--------|
-| - | 待修复（CB-41 双 bug 专题·排查中） | - |
+| 08-18 | CB-41 实施修复（zcode）：① grid 对话框「着色语义」显式分叉（点数(临时)/极性·默认随数据轨 L0/L1→点数·L2→极性·手选锁定）② `_count_norm=log1p(pc)/log1p(max)` 计数着色·grid-warm 反转（低浅高深·点数越多越深）③ 零点面域透明不填色（`zeroIsNoData` case 特判）④ zonal-tool UI 自动分叉（rows 无极性→点数·toast 提示）⑤ 图例/层名/tip 指标行点数模式适配 ⑥ ForAI 契约零变化（generateGridForAI 不传 semantic=旧行为）·新测 `tests/test_zonal_count_semantic.py` 3 passed | `126537eb`（**待用户验收后关账**） |
