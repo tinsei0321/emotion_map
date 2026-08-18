@@ -239,6 +239,14 @@
 
 ---
 
+## R17（2026-08-19 早）分支策略纠正 + T2 完成
+
+- **用户纠正**：实施应在分支上·不在 main——主手 08-18 晚 T1 的「快进并轨+实施回归主干」为越权误判（主手认账）。处置：EMC_harness_dsh 快进至 3dc5db18 后切回为实施分支·T2 未提交改动无损随行；main 停止直推（已被推至 3dc5db18·纯增量：讨论文档+08-17 数据工作+CB1 记录·是否回退 main 由用户裁定·建议不回退（回退需 force-push 共享分支·风险大于收益））；三文档分支表述更正（cb-index/开工档/PT 总计划）。
+- **T2 G8a 静态契约派生完成（分支上）**：新增 `tools/gen_stages_mirror.py`（单一源→前端镜像生成器）+ `frontend/js/ai_qa/contract_mirror.generated.js`（SKILL_DEFS 18 技能+TOOL_ALIAS 15 工具·@generated 禁手改）；stages.js 手写 SKILL_DEFS/双层别名表永久退役（改 import+re-export·normalizeParams 全按工具派生别名——顺手根治旧通用层 `field_name→'field'` 无主映射漂移 bug·lookup_place.name→q 归位）；守卫升级：真身解析改指向生成文件+新增 mirror_freshness（派生 diff=0）/tool_alias_derived/guard_fields_report（paradigm 红线保护区差异报告·不 fail）三断言；validate_generate_point_layer 正则适配生成文件。**验收：375 passed+3 skipped（基线 372+3+新增 3·零退化）·零新增追踪 ID**。node --check 双 JS 通过。
+- T2 待 Codex（+claude 如回归）按审计位章程复审（读 diff 对照白名单/验 freshness 断言/跑基线/核零新增 ID/落盘报告）。
+
+---
+
 ## 附：用户指令记录（累计）
 
 | 日期 | 指令 |
@@ -265,4 +273,4 @@
 - 同日用户要求先看详细计划：Codex 产出 `EMC平台化与主线治理_总开工计划_通俗版预览_Codex-2026-08-18.md`（三阶段 11-14 工作日·五项决策与计划关系）。
 - **用户指示：全部材料打包交 zcode 推进下一步**——本索引+台账更新+commit push；zcode 任务=一致性核查/统一拍板清单/CB-41 预案（三件套）。
 
-> 台账维护：zcode组·每轮更新（PT 期兼记 PT-CB 轮）。最后更新：2026-08-18 深夜（R16=PT-CB1 T3/T4 收敛）。
+> 台账维护：zcode组·每轮更新（PT 期兼记 PT-CB 轮）。最后更新：2026-08-19 早（R17 分支纠正+T2 完成·待审计复审）。
