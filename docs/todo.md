@@ -20,6 +20,7 @@
 - **B012 第 3 次复现+修复**（tip 社区错名）：归属点=要素 bbox 中心而非鼠标位置 → **34/174 精确清单**。**修复 `126537eb`**：社区面聚合层 tip 直读 properties.name（零查找）+ 网格/terrain 鼠标 lngLat 归属+节流 + point 分支清残留
 - **边界**：ForAI 契约（generateGridForAI/generateZonalForAI）零变化·L2 极性色带/`_grid_h` 高度不动（dsh 排查报告三数字可信+三增量全采纳·收敛定稿 10 条裁定）
 - 测试：新 `tests/test_zonal_count_semantic.py` 3 passed；全量 368 passed+3 skipped（1 failed 为 test_sandbox 既有脆弱性·与本次无关·单跑通过）
+- **全局调试记忆库已建**（5.261·应用户要求）：`docs/debug-memory.md` R1-R10 踩坑规则·四挂载（AGENTS.md 知识源表+排查纪律 / KNOWLEDGE §1 红线×2+§2 卡 / context-map / dev-notes）·多组共享
 - **待用户验收**（**先重启前端/后端进程**——8000 端口旧后端仍载旧码）：体检两方面合并点 174 社区聚合 → ① 中央密集社区（五龙/润城/深圳路）**深红且有点数** ② 零点社区（30 个）无填充仅描边 ③ 悬停 34 清单社区 tip=Table 行名·显「点数·N」 ④ 情绪 L2 极性图与 AI 入口如旧。验收通过后 B012/B013/B014 关账
 - 编号账：CB-38 叙述的「B013=range tooltip」从未登记，本号归聚合着色；range tooltip 问题并入 CB-41 §2.4
 - **用户拍板已入文档 §六**（5.258）：着色语义 UI 显式分叉（无极性→点数·有极性→极性·至少提示或可选·不静默切换）；无极性模式=临时分析出图（不做标准图例·不接 EMC 出口·ForAI 契约不动）
