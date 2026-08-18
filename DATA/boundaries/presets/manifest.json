@@ -133,6 +133,27 @@
     "note": "3' B4 双轨密度叠加·两轨均高格（p75·1km·500m buffer）·2025体检×2024 12345·不消费 board"
    },
    {
+    "id": "qty_合并",
+    "label": "量化-两大类合并·全覆盖（2296点）",
+    "file": "checkup_qty_合并.geojson",
+    "nameField": "指标",
+    "note": "体检全覆盖点（08-17 扩域口径·page7 客观线源）·zonal/grid 聚合分析源·与按类 8 量化预设同组·灰点参考层（needsAnalysis）"
+   },
+   {
+    "id": "qty_安全_合并",
+    "label": "量化-安全韧性·合并全覆盖（1350点）",
+    "file": "checkup_qty_安全_合并.geojson",
+    "nameField": "指标",
+    "note": "体检全覆盖点（08-17 扩域口径·page7 客观线源）·zonal/grid 聚合分析源·与按类 8 量化预设同组·灰点参考层（needsAnalysis）"
+   },
+   {
+    "id": "qty_民生_合并",
+    "label": "量化-民生基础·合并全覆盖（946点）",
+    "file": "checkup_qty_民生_合并.geojson",
+    "nameField": "指标",
+    "note": "体检全覆盖点（08-17 扩域口径·page7 客观线源）·zonal/grid 聚合分析源·与按类 8 量化预设同组·灰点参考层（needsAnalysis）"
+   },
+   {
     "id": "qty_安全_住房",
     "label": "量化-安全-住房(结构/围护)（496点）",
     "file": "checkup_qty_安全_住房.geojson",

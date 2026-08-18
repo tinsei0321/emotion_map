@@ -13,6 +13,11 @@
 
 > 接 claude 交接（4 commit 待用户 push·对账无漂移·自检全过：生成器幂等 + presets 3 passed）。用户指派双 bug 修复线：① 体检点聚合着色反语义 ② tip 社区归属错乱。
 
+### ✅ 体检点全覆盖三图层入 Range 库（revision-log 5.262）
+
+- `qty_合并`（2296 点）/`qty_安全_合并`（1350）/`qty_民生_合并`（946）→ 体检控件对象组·按类 8 量化预设块首；nameField=指标；灰点参考层流（grid/zonal 聚合源）
+- 生成脚本 `SCRIPT/gen_checkup_point_presets.py` 幂等 + 口径锁定断言（点数/board 纯度）；`load_preset` 后端核验 ✓；presets 测试 3 passed
+
 ### 🔄 CB-41 双 bug 根因定位 + 台账 + dsh 排查发起（revision-log 5.257-5.260·**三轮修复已实施·待用户验收**）
 
 - **B014 新立+修复**（08-18 增补·用户复测暴露）：`/spatial/aggregate` membership 值匹配静默丢点（异构属性点文件 74% NaN 被整行丢弃·2296→600·136/174 社区清零=中央无填充）。**修复**：混合策略（有值→值匹配/空值非 region→回退 sjoin/空值 region→丢弃）·CB-23 语义不变·12345 口径回归一致·pytest 372 passed
