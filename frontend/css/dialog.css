@@ -101,6 +101,43 @@
   border-radius: var(--geojson-radius-xs);
   border: 1px solid var(--geojson-color-border-default);
 }
+
+/* ── CB-43 底图淡化（白罩层总调节器）：与 bm-cell 同卡语言·滑条复用 .set-range / 数字框复用 .buf-num ── */
+.bm-veil {
+  margin-top: var(--geojson-spacing-3);
+  padding-top: var(--geojson-spacing-3);
+  border-top: 1px solid var(--geojson-color-border-default);
+}
+.bm-veil-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--geojson-spacing-2);
+}
+.bm-veil-label {
+  font-size: var(--geojson-typography-size-xs);
+  color: var(--geojson-color-text-secondary);
+}
+.bm-veil-val {
+  min-width: 38px;
+  padding: 1px 6px;
+  font-size: var(--geojson-typography-size-2xs, 11px);
+  font-weight: var(--geojson-typography-weight-bold);
+  color: var(--geojson-color-text-primary);
+  text-align: right;
+  background: var(--geojson-color-gray-100);
+  border: 1px solid var(--geojson-color-border-default);
+  border-radius: var(--geojson-radius-xs);
+  cursor: pointer;   /* 双击归零（title 提示） */
+}
+.bm-veil-val:hover { border-color: var(--geojson-color-brand-primary); }
+.bm-veil-row {
+  display: flex;
+  align-items: center;
+  gap: var(--geojson-spacing-2);
+}
+.bm-veil-slider { flex: 1; }
+.bm-veil-num { width: 52px; text-align: center; }
 .bm-sat     { background: linear-gradient(135deg, #2d3a2e, #4a5d3a); }   /* 影像（深绿卫星） */
 .bm-esriimg { background: linear-gradient(135deg, #1d2b1e, #3a4d33 55%, #7a6a4f); }   /* Esri 高清影像（深绿+土褐·Maxar 拼接感） */
 .bm-vec     { background: linear-gradient(135deg, #eef3ee, #d6e3dc); }   /* 天地图矢量带注记（暖白绿） */

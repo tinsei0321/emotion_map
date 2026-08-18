@@ -157,6 +157,7 @@ export function initMap(container = 'map') {
   const _onStyleLoad = () => {
     if (map.setLight) map.setLight({ anchor: 'viewport', position: [1.5, 45, 60], color: '#ffffff', intensity: 0.5 });
     _loadDarkMatter();
+    _ensureVeilLayer();   // CB-43：setStyle（切底图/2D↔3D）吞层后重敷罩层（携带路径之外的权威兜底·幂等）
   };
   map.on('style.load', _onStyleLoad);
   map.on('pitch', _onPitch);   // 3D 视角全局触发暗色遮罩（setView3D / map-controls 等任何 pitch 变化）
@@ -329,15 +330,72 @@ export async function setBasemap(key) {
     transformStyle: (prev, next) => {
       const carrySources = {};
       for (const [id, spec] of Object.entries(prev?.sources || {})) {
-        if (id.startsWith('lyr-') || id.startsWith('emotion-') || id.startsWith('dm-')) carrySources[id] = spec;
+        if (id.startsWith('lyr-') || id.startsWith('emotion-') || id.startsWith('dm-') || id.startsWith('basemap-veil')) carrySources[id] = spec;
       }
-      // 携带 dm 层 + 数据层（prev 顺序：dm 在数据前 → next: 底图 < dm < 数据），visibility 沿用（3D 态切底图不闪）
-      const carryLayers = (prev?.layers || []).filter((l) => l.id.startsWith('lyr-') || l.id.startsWith('emotion-') || l.id.startsWith('dm-'));
+      // 携带 veil 罩层 + dm 层 + 数据层（prev 顺序：dm/veil 在数据前 → next: 底图 < dm < veil < 数据），visibility 沿用（3D 态/淡化态切底图不闪）
+      const carryLayers = (prev?.layers || []).filter((l) => l.id.startsWith('lyr-') || l.id.startsWith('emotion-') || l.id.startsWith('dm-') || l.id.startsWith('basemap-veil'));
       return { ...next, sources: { ...(next.sources || {}), ...carrySources }, layers: [...(next.layers || []), ...carryLayers] };
     },
   });
   document.dispatchEvent(new CustomEvent('basemap:switched', { detail: { key } }));
 }
+
+// ═══ 底图淡化 veil（CB-43·出图场景：弱化背景底图、凸出分析层）══════════════════
+// 原理：底图之上、数据层之下的白色填充罩层；淡化度 = 罩层不透明度（0=完全透明=默认零行为变化，
+// 100=纯白底出图模式）。一层通吃全部底图（天地图×4/Esri×4/dark-matter）；切底图 transformStyle
+// 携带（basemap-veil 前缀）+ style.load 重敷双保险（同光源/dark-matter 模式）。
+// 交互归属：restackZ 只动 lyr-*（罩层位置天然稳定）；classifyMapClick/hover 只认 lyr-*（零交互干扰）。
+// 状态口径：模块级 _veilOpacity(0-1) 单一状态源；UI 百分比口径在 toolbar.js（setBasemapVeil 收 0-100）。
+const VEIL_LAYER_ID = 'basemap-veil';
+const VEIL_SOURCE_ID = 'basemap-veil-src';
+const VEIL_STORAGE_KEY = 'emc-basemap-veil';   // localStorage 0-100（出图工作流连续性·下次打开保持）
+const VEIL_WORLD_RING = [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]]];   // 世界 bbox（fill 铺满视口·2D/3D 均覆盖地面）
+
+let _veilOpacity = _veilReadStored();
+
+function _veilReadStored() {
+  try {
+    const v = Number(localStorage.getItem(VEIL_STORAGE_KEY));
+    return Number.isFinite(v) ? Math.min(100, Math.max(0, v)) / 100 : 0;
+  } catch (_) { return 0; }   // 隐私模式等存储不可用 → 默认全透·仅会话内生效
+}
+function _veilWriteStored(pct) {
+  try { localStorage.setItem(VEIL_STORAGE_KEY, String(Math.round(pct))); } catch (_) { /* 同上·静默 */ }
+}
+
+/** 幂等敷罩层：锚在首个数据层（lyr- 或 emotion- 前缀）之前 = 所有底图内容之上、分析层之下。 */
+function _ensureVeilLayer() {
+  if (!map || map.getLayer(VEIL_LAYER_ID)) return;
+  try {
+    if (!map.getSource(VEIL_SOURCE_ID)) {
+      map.addSource(VEIL_SOURCE_ID, { type: 'geojson',
+        data: { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: VEIL_WORLD_RING } } });
+    }
+    const firstData = (map.getStyle().layers || []).find((l) => l.id.startsWith('lyr-') || l.id.startsWith('emotion-'));
+    map.addLayer({
+      id: VEIL_LAYER_ID, type: 'fill', source: VEIL_SOURCE_ID,
+      layout: { visibility: _veilOpacity > 0 ? 'visible' : 'none' },
+      paint: { 'fill-color': '#ffffff', 'fill-opacity': _veilOpacity },
+    }, firstData ? firstData.id : undefined);
+  } catch (e) { console.warn('[map] veil 敷层失败', e); }
+}
+
+/** 设置底图淡化（入参 0-100 整数·钳制容错；返回生效值）。
+ *  live=true 仅改图不落存储（滑条拖动即时预览·每帧不写 localStorage）；live=false 提交并持久化（change/Enter）。 */
+export function setBasemapVeil(pct, { live = false } = {}) {
+  const p = Math.min(100, Math.max(0, Math.round(Number(pct) || 0)));
+  _veilOpacity = p / 100;
+  if (!live) _veilWriteStored(p);
+  _ensureVeilLayer();
+  if (map && map.getLayer(VEIL_LAYER_ID)) {
+    map.setPaintProperty(VEIL_LAYER_ID, 'fill-opacity', _veilOpacity);
+    map.setLayoutProperty(VEIL_LAYER_ID, 'visibility', _veilOpacity > 0 ? 'visible' : 'none');
+  }
+  return p;
+}
+
+/** 当前淡化百分比（0-100·UI 初始化同步用）。 */
+export function getBasemapVeilPct() { return Math.round(_veilOpacity * 100); }
 
 /** 预载暗底图层（Esri Dark Gray raster，dm- 前缀避冲突，插在首个数据层前；visibility none，2D 不显）。
  *  自适应（CB-31）：Esri Dark Gray 国内常不可达 → 先探活；不可达则不加载 dm 层，_applyDark3D 仅设深色背景（3D 暗态不灰屏）。

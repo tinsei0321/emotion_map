@@ -1036,6 +1036,17 @@
       <button class="bm-cell is-active" data-basemap="tianditu-img-nolabel"><span class="bm-swatch bm-sat"></span>影像（无注记·天地图）</button>
       <button class="bm-cell" data-basemap="esri-imagery"><span class="bm-swatch bm-esriimg"></span>高清影像（Esri·Maxar）</button>
     </div>
+    <!-- CB-43 底图淡化（全局总调节器·出图弱化背景）：白罩层不透明度·0=默认全透·100=纯白底出图 -->
+    <div class="bm-veil" id="bm-veil">
+      <div class="bm-veil-head">
+        <span class="bm-veil-label" title="在底图上叠加白色罩层弱化背景、凸出分析层（0=不淡化·100=纯白底）。设置会记忆，双击数值归零。">底图淡化</span>
+        <button type="button" class="bm-veil-val" id="bm-veil-val" title="双击归零">0%</button>
+      </div>
+      <div class="bm-veil-row">
+        <input type="range" class="set-range bm-veil-slider" id="bm-veil-slider" min="0" max="100" step="1" value="0" aria-label="底图淡化程度（百分比）">
+        <input type="number" class="buf-num bm-veil-num" id="bm-veil-num" min="0" max="100" step="1" value="0" aria-label="底图淡化百分比（0-100）">
+      </div>
+    </div>
   </div>
 
   <!-- B4: settings/heatmap/buffer 参数控件已迁入 #param-panel（见 #app-main 内） -->

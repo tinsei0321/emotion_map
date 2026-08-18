@@ -1,4 +1,5 @@
 // ═══ toolbar.js — draw-tool select, Import/Export/M actions, basemap popover ═══
+import { setBasemapVeil, getBasemapVeilPct } from './map.js';   // CB-43 底图淡化（地图域控件·popover 属主在此接线）
 
 /**
  * @param {object}  handlers
@@ -74,6 +75,25 @@ export function initToolbar({ onTool, onImport, onExport, onBasemap } = {}) {
     if (pop.hidden) return;
     if (!pop.contains(e.target) && !e.target.closest('[data-action="basemap"]')) pop.hidden = true;
   });
+
+  // ── CB-43 底图淡化（全局总调节器·白罩层不透明度）：滑条拖动=即时预览不落盘(input)、松手持久化(change)；
+  //    数字框=Enter/失焦提交并钳制 0-100；双击数值=归零。UI 三件套（滑条/数字/百分比）单向同步自 setBasemapVeil 返回的生效值。 ──
+  const veilSlider = document.getElementById('bm-veil-slider');
+  const veilNum = document.getElementById('bm-veil-num');
+  const veilVal = document.getElementById('bm-veil-val');
+  const syncVeilUi = (pct) => {
+    if (veilVal) veilVal.textContent = `${pct}%`;
+    if (veilSlider && Number(veilSlider.value) !== pct) veilSlider.value = String(pct);
+    if (veilNum && Number(veilNum.value) !== pct) veilNum.value = String(pct);
+  };
+  syncVeilUi(getBasemapVeilPct());   // 初始化：恢复记忆值（map 侧已按存储值敷罩）
+  veilSlider?.addEventListener('input', () => { syncVeilUi(setBasemapVeil(veilSlider.value, { live: true })); });
+  veilSlider?.addEventListener('change', () => { setBasemapVeil(veilSlider.value); });
+  veilNum?.addEventListener('change', () => { syncVeilUi(setBasemapVeil(veilNum.value)); });
+  veilNum?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); veilNum.blur(); }   // Enter 即提交（触发 change·钳制在 setBasemapVeil）
+  });
+  veilVal?.addEventListener('dblclick', () => { syncVeilUi(setBasemapVeil(0)); });
 
   // ── Modal close buttons (Export + Info) ──
   document.querySelectorAll('[data-close]').forEach((b) =>
