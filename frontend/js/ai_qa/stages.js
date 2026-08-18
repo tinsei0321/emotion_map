@@ -6,32 +6,22 @@
 import { streamChat, streamFcDiagnose } from './api.js';
 import { DOMAIN_KW } from './emc-patterns.js';   // CB-10 分歧2 词表集中
 
+/** G8a（PT-CB1 T2·2026-08-18）：入参别名与技能槽位镜像改由契约单一源自动生成。
+ *  单一源 = ai_qa/tool_contracts.py；镜像 = ./contract_mirror.generated.js（禁手改）。
+ *  再生成：py tools/gen_stages_mirror.py；CI 守护：validate_skill_params.py::test_mirror_freshness（派生 diff=0）。
+ *  承重纪律承袭（见生成文件头注）：rank/buffer/clip/zonal 不硬默认 layer——防绕过 resolvePointLayer 可见过滤。 */
+import { SKILL_DEFS, TOOL_ALIAS } from './contract_mirror.generated.js';
+
+export { SKILL_DEFS };
+
 /** 入参别名规整：模型常把 invert 写成 inverse、as 写成 output_layer、radius_m 写成 radius，
  *  导致执行报错→空转→退化为叙述。此处统一规整为各工具的规范入参名，模型怎么写都能执行。
- *  仅收编实测出现的漂移别名，保守不过度映射（避免误伤合法字段）。 */
-/** 通用参数别名（所有工具生效）。radius_meters/buffer_radius/distance→radius_m 留此（皆 buffer 语义，不冲突 density 的 radius）。
- *  `radius→radius_m` 曾在此全局生效→误伤 density（规范名即 radius，被改名后丢失）·CB-04 P1b 移到 _TOOL_ALIAS.buffer。 */
-const _PARAM_ALIAS = {
-  inverse: 'invert', output_layer: 'as', output: 'as', layer_name: 'as', named: 'as', name: 'as',
-  radius_meters: 'radius_m', buffer_radius: 'radius_m', distance: 'radius_m',
-  value: 'value_col', column: 'value_col', field_name: 'field',
-  top: 'top_n', limit: 'top_n', n: 'top_n',
-  // P1 扩（实测漂移别名；保守映射，避跨工具冲突——where/filter 不映射：extract_feature 用 where、其余用 pre_filter）
-  point: 'center', center_point: 'center',
-  zone: 'boundary', region: 'boundary',
-  regions: 'boundaries', areas: 'boundaries',
-  sort: 'by', sort_by: 'by', criteria: 'by',
-  target_layer: 'target', target_poi: 'target',
-  mode: 'how',
-};
-/** 工具专属别名（仅对该 tool 生效·CB-04 治 P1b）。key = tool name（SKILL_DEFS[*].tool / harness 传 def.tool）。 */
-const _TOOL_ALIAS = {
-  buffer: { radius: 'radius_m' },          // buffer 规范名 radius_m；Flash 填 radius → 映射（不波及 density）
-  density: { bandwidth_m: 'radius', cell_size_m: 'cell_size', value_col: 'weightField' },  // CB-04 P1a：旧 prompt 漂移别名收编
-};
+ *  G8a 起全部别名按工具派生（旧「通用 _PARAM_ALIAS + 专属 _TOOL_ALIAS」两层手写退役）：
+ *  按工具隔离后同名别名不再互扰（lookup_place.name→q 与出图层工具.name→as 各归其位；
+ *  旧通用层 field_name→'field' 为无主映射漂移 bug·现按 contracts 正确归位 hotspot.field_name→value_col）。 */
 export function normalizeParams(name, params) {
   if (!params || typeof params !== 'object') return {};
-  const alias = { ..._PARAM_ALIAS, ...(_TOOL_ALIAS[name] || {}) };   // 通用 + 工具专属（CB-04 按工具区分·治 P1b 全局 radius→radius_m 误伤 density）
+  const alias = TOOL_ALIAS[name] || {};   // 每工具全量别名（contracts params[].alias 派生）
   const out = {};
   for (const k of Object.keys(params)) {
     const canon = alias[k] || k;
@@ -39,31 +29,6 @@ export function normalizeParams(name, params) {
   }
   return out;
 }
-
-/** P1 技能槽位镜像（前端校验用，与后端 ai_qa/paradigm.py TEMPLATE_REGISTRY 的 tool/category/required_slots/optional_defaults 同步）。
- *  仿 field_dictionary 两份字典模式：改后端必同步此处。仅校验/填默认所需字段，不含 voice/triggers（那些只进 prompt）。 */
-export const SKILL_DEFS = {
-  concept:  { tool: null,          category: 'concept',  required_slots: [],                     optional_defaults: {} },
-  density:  { tool: 'density',     category: 'single',   required_slots: [],                     optional_defaults: { mode: '2d', radius: 300, weightField: 'emotion_intensity', cell_size: 600, polarity: 'overall' } },
-  // 承重（数据可见纪律）：rank/buffer/clip/zonal 不硬默认 layer——该默认经 validateParams 合并后绕过
-  // resolvePointLayer 的 visible 过滤，致"只传 L1·T1 却跑 L2"（5.92 Track 1 核心保证漏）。改走可见点层选源（同 density）。
-  rank:     { tool: 'rank',        category: 'single',   required_slots: [],                     optional_defaults: { by: 'worst', top_n: 5 } },
-  buffer:   { tool: 'buffer',      category: 'single',   required_slots: ['center'],              optional_defaults: { radius_m: 500, agg_cols: ['score'] } },
-  lookup_place: { tool: 'lookup_place', category: 'single', required_slots: [],                    optional_defaults: {} },   // CB-15 P1：查地点（q 或坐标）
-  generate_point_layer: { tool: 'generate_point_layer', category: 'single', required_slots: ['names'], optional_defaults: {} },   // CB-22d：批量地名→点位图层（names 必填）
-  clip:     { tool: 'clip',        category: 'single',   required_slots: ['range'],               optional_defaults: {} },
-  overlay:  { tool: 'overlay',     category: 'single',   required_slots: ['layer_a', 'layer_b'],  optional_defaults: { how: 'intersection' } },
-  zonal:           { tool: 'zonal_stats',     category: 'single', required_slots: ['boundary'],          optional_defaults: { agg_cols: ['score'] } },
-  compare:         { tool: 'compare_regions', category: 'single', required_slots: ['boundaries'],        optional_defaults: { agg_cols: ['score', 'polarity_index'] } },   // CB-39 P0-2：真身解析守卫抓出漂移（contracts=权威·此前手抄镜像掩盖）
-  extract_feature: { tool: 'extract_feature', category: 'single', required_slots: ['layer'],             optional_defaults: {} },
-  area_stats:      { tool: 'area_stats',      category: 'single', required_slots: ['boundary'],          optional_defaults: {} },
-  merge:           { tool: 'merge',           category: 'single', required_slots: [],                     optional_defaults: {} },   // CB-11：boundary|layers 二选一（one-of·tools.js guard 校验）
-  nearest:         { tool: 'nearest',         category: 'single', required_slots: ['target'],            optional_defaults: { k: 1 } },
-  hotspot:         { tool: 'hotspot',         category: 'single', required_slots: [],                    optional_defaults: { value_col: 'score', threshold: 1.96, soft_threshold: 1.0 } },
-  filter_attr:     { tool: 'filter_attr',     category: 'single', required_slots: ['pre_filter'],        optional_defaults: {} },
-  multi:    { tool: null,          category: 'multi',    required_slots: [],                     optional_defaults: {} },
-  unknown:  { tool: null,          category: 'unknown',  required_slots: [],                     optional_defaults: {} },
-};
 
 /** E1 多步链注册表（纯前端·chain_id 由 harness _deriveChainId 派生·不进 diagnose prompt·非 Flash 选）。
  *  标准 multi 链走 runChainPath（0 中间 LLM 轮·确定性执行）·治 C3 多步超时（INT-008~017）。

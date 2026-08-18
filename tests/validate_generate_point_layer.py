@@ -57,10 +57,10 @@ def test_template_registry_mirror():
 
 
 def test_skill_defs_mirror():
-    """前端 stages.js SKILL_DEFS 含 generate_point_layer + names required_slots。"""
-    js = _read('frontend/js/ai_qa/stages.js')
-    assert re.search(r"generate_point_layer:\s*\{[^}]*required_slots:\s*\['names'\]", js), \
-        'stages.js SKILL_DEFS 缺 generate_point_layer 或 names required_slots'
+    """前端 SKILL_DEFS 含 generate_point_layer + names required_slots（G8a 起真身在生成文件）。"""
+    js = _read('frontend/js/ai_qa/contract_mirror.generated.js')
+    assert re.search(r"generate_point_layer:\s*\{[^}]*\"required_slots\":\s*\[\"names\"\]", js), \
+        'contract_mirror.generated.js SKILL_DEFS 缺 generate_point_layer 或 names required_slots'
 
 
 def test_tools_impl_exists():

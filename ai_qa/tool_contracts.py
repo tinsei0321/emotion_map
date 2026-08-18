@@ -3,8 +3,11 @@
 # 消灭"density 参数契约四处分裂"（prompts.py / paradigm GEO_TOOL_CATALOG / TEMPLATE_REGISTRY / 前端 SKILL_DEFS+TOOLS 各一份不一致·
 # 致"消极热力图出综合彩虹图"·CB-04 根因①）。每工具的参数契约只写一次于此：
 #   - paradigm.py GEO_TOOL_CATALOG / TEMPLATE_REGISTRY → derive_geo_catalog() / derive_template_registry() 派生
-#   - 前端 stages.js SKILL_DEFS.optional_defaults + _PARAM_ALIAS → 镜像（开发时同步·validate_skill_params 校验）
-#   - prompts.py 工具段 → 手写（eval 安全）但须与 contracts 一致（validate 守护）
+#     （GEO_TOOL_CATALOG 的 when/params/yields/contributes 导入时同步；scale/preconditions/failure_modes/examples
+#      手写保留=diagnose prompt 红线保护区·差异由 validate 第 6 项报告）
+#   - 前端 SKILL_DEFS / TOOL_ALIAS → G8a（PT-CB1 T2）起自动生成：tools/gen_stages_mirror.py
+#     → frontend/js/ai_qa/contract_mirror.generated.js（stages.js 手写镜像永久退役·freshness 守护派生 diff=0）
+#   - prompts.py 工具段 → 由 paradigm 派生文本注入（D026·geo_tool_catalog_text/template_registry_text）
 #
 # 最高纪律（CLAUDE.md 第 5 条 / AGENTS.md 铁律 11）：
 #   - EMC 分析图复用 Toolbox 参数面板（dialog）已有色板/参数，不造新内容

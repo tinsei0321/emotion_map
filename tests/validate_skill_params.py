@@ -1,20 +1,25 @@
 # ════════════ CB-04 L2 · 参数契约一致性校验（SCAN Phase 3.1）════════════
 #
-# 守护"单一真相源 = ai_qa/tool_contracts.py"与各镜像（paradigm GEO_TOOL_CATALOG/TEMPLATE_REGISTRY
-# + 前端 SKILL_DEFS optional_defaults）一致。漂移即报红（pytest 失败）。
+# 守护"单一真相源 = ai_qa/tool_contracts.py"与各镜像一致。漂移即报红（pytest 失败）。
 #
 # 校验项：
 #   1. contracts derive_geo_catalog() == paradigm.GEO_TOOL_CATALOG（name/when/params/yields 等价）
 #   2. contracts derive_template_registry() optional_defaults == paradigm.TEMPLATE_REGISTRY
-#   3. contracts _derive_defaults == 前端 SKILL_DEFS optional_defaults（静态清单·JS 无法 import）
-#   4. panel_missing 清单打印（L3 提醒开发者补齐参数面板·PANEL_MISSING）
+#   3. contracts defaults == 前端 SKILL_DEFS.optional_defaults（G8a 起解析生成文件真身）
+#   4. （G8a 新增）镜像新鲜度：contract_mirror.generated.js == gen_stages_mirror.render()（派生 diff=0）
+#   5. （G8a 新增）TOOL_ALIAS 派生等价：生成文件别名表 == contracts params[].alias 按工具派生
+#   6. （G8a 新增·报告项）paradigm guard 字段（scale/preconditions/failure_modes/examples）
+#      与 contracts 差异清单——只报告不 fail（diagnose prompt 红线：该 4 字段手写属 prompt 内容，
+#      改动须走豁免流程；报告=让漂移可见、不静默）
+#   7. panel_missing 清单打印（L3 提醒开发者补齐参数面板·PANEL_MISSING）
 #
 # 运行：py -m pytest tests/validate_skill_params.py -q  或  py tests/validate_skill_params.py
 #
-# 为什么不派生（paradigm=derive）而用校验：
-#   diagnose prompt 是 eval 红线（永不动）。派生改"怎么生成"虽保内容等价，但大段重构 + 派生格式微差
-#   可能破坏 Flash eval。务实版用"真相(contracts)+镜像(paradigm/SKILL_DEFS)+守护(validate)"达防分裂目的，
-#   不触 eval 红线。加参数时改 contracts（真相）+ 同步镜像，validate 报漂移。
+# G8a（PT-CB1 T2·2026-08-18）后格局：
+#   前端 stages.js 手写镜像永久退役 -> tools/gen_stages_mirror.py 自动生成
+#   frontend/js/ai_qa/contract_mirror.generated.js（SKILL_DEFS + TOOL_ALIAS）。
+#   paradigm 侧：when/params/yields/contributes 导入时派生同步（运行时等价）；
+#   guard 4 字段手写保留（diagnose prompt 永不动红线·差异见第 6 项报告）。
 
 import sys, os, json, re
 from pathlib import Path
@@ -23,9 +28,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ai_qa.tool_contracts import derive_geo_catalog, derive_template_registry, panel_missing, TOOL_CONTRACTS
 import ai_qa.paradigm as P
 
-# CB-39 P0-2（D4 裁定 b）：手抄镜像 → stages.js 真身解析（铁律 11 单一源·漂移自动报红）。
-# 首战果：compare optional_defaults 漂移（contracts=agg_cols 两列·stages.js 曾为 {}·被手抄镜像掩盖）。
-_STAGES_JS = Path(__file__).resolve().parent.parent / 'frontend' / 'js' / 'ai_qa' / 'stages.js'
+# CB-39 P0-2（D4 裁定 b）：手抄镜像 → 真身解析（铁律 11 单一源·漂移自动报红）。
+# G8a：真身从 stages.js 迁至自动生成文件 contract_mirror.generated.js。
+_MIRROR_JS = Path(__file__).resolve().parent.parent / 'frontend' / 'js' / 'ai_qa' / 'contract_mirror.generated.js'
 
 
 def _strip_js_comments(text):
@@ -51,10 +56,23 @@ def _strip_js_comments(text):
 
 
 def _load_skill_defs():
-    """解析 stages.js `export const SKILL_DEFS = {...}` 真身 → dict（19 技能全量）。"""
-    text = _strip_js_comments(_STAGES_JS.read_text(encoding='utf-8'))
+    """解析生成文件 `export const SKILL_DEFS = {...}` 真身 → dict（18 技能全量·G8a 起真身在生成文件）。"""
+    text = _strip_js_comments(_MIRROR_JS.read_text(encoding='utf-8'))
     m = re.search(r'export const SKILL_DEFS\s*=\s*\{', text)
-    assert m, 'stages.js 未找到 SKILL_DEFS 导出'
+    assert m, 'contract_mirror.generated.js 未找到 SKILL_DEFS 导出'
+    return _parse_js_object(text, m)
+
+
+def _load_tool_alias():
+    """解析生成文件 `export const TOOL_ALIAS = {...}` 真身 → dict。"""
+    text = _strip_js_comments(_MIRROR_JS.read_text(encoding='utf-8'))
+    m = re.search(r'export const TOOL_ALIAS\s*=\s*\{', text)
+    assert m, 'contract_mirror.generated.js 未找到 TOOL_ALIAS 导出'
+    return _parse_js_object(text, m)
+
+
+def _parse_js_object(text, m):
+    """从 re.match 处提取完整花括号对象并 JSON 化（键引号补齐/单引号/尾逗号容错）。"""
     depth, end, start = 0, None, m.end() - 1
     for i in range(start, len(text)):
         if text[i] == '{':
@@ -63,7 +81,7 @@ def _load_skill_defs():
             depth -= 1
             if depth == 0:
                 end = i; break
-    assert end is not None, 'SKILL_DEFS 花括号不配对（stages.js 语法异常？）'
+    assert end is not None, '花括号不配对（生成文件语法异常？）'
     block = text[start:end + 1]
     block = re.sub(r"(?<=[{,\n])\s*([A-Za-z_$][\w$]*)\s*:", lambda mm: '"' + mm.group(1) + '":', block)
     block = block.replace("'", '"')
@@ -114,7 +132,7 @@ def test_template_registry_defaults():
 
 
 def test_skill_defs_mirror():
-    """contracts defaults == 前端 SKILL_DEFS.optional_defaults（静态镜像）。"""
+    """contracts defaults == 前端 SKILL_DEFS.optional_defaults（G8a 真身=生成文件）。"""
     errs = []
     for skill, js_defaults in SKILL_DEFS_DEFAULTS.items():
         cd = _contracts_defaults(skill)
@@ -122,8 +140,66 @@ def test_skill_defs_mirror():
             errs.append(f"contracts 缺 skill={skill}")
             continue
         if cd != js_defaults:
-            errs.append(f"[{skill}] contracts={cd} ≠ 前端SKILL_DEFS={js_defaults}（改 stages.js 后须同步 SKILL_DEFS_DEFAULTS）")
+            errs.append(f"[{skill}] contracts={cd} ≠ 前端SKILL_DEFS={js_defaults}（改 contracts 后须 py tools/gen_stages_mirror.py 再生成）")
     assert not errs, '\n'.join(errs)
+
+
+def test_mirror_freshness():
+    """G8a：生成文件新鲜度——磁盘内容 == 生成器渲染（派生 diff=0·PT-CB1 T2 验收项）。"""
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'tools'))
+    import gen_stages_mirror
+    committed = _MIRROR_JS.read_text(encoding='utf-8')
+    rendered = gen_stages_mirror.render()
+    assert committed == rendered, (
+        'contract_mirror.generated.js 与 tool_contracts.py 派生结果不一致——'
+        '改契约后须执行 `py tools/gen_stages_mirror.py` 再生成并提交（禁手改生成文件）'
+    )
+
+
+def test_tool_alias_derived():
+    """G8a：TOOL_ALIAS == contracts 各工具 params[].alias 按工具派生（禁手改/漏项）。"""
+    js_alias = _load_tool_alias()
+    expected = {}
+    for c in TOOL_CONTRACTS:
+        tool = c.get('tool')
+        if not tool:
+            continue
+        m = {}
+        for p in c.get('params', []):
+            for a in p.get('alias', []):
+                m[a] = p['name']
+        if m:
+            expected[tool] = m
+    errs = []
+    for tool, exp_map in expected.items():
+        got = js_alias.get(tool)
+        if got != exp_map:
+            errs.append(f"[{tool}] contracts={exp_map} ≠ 生成文件={got}")
+    extra = set(js_alias) - set(expected)
+    if extra:
+        errs.append(f"生成文件多出无契约工具: {sorted(extra)}")
+    assert not errs, '\n'.join(errs)
+
+
+def test_geo_catalog_guard_fields_report():
+    """G8a 报告项（不 fail）：paradigm guard 4 字段（scale/preconditions/failure_modes/examples）
+    与 contracts 的差异清单。该 4 字段手写属 diagnose prompt 内容（永不动红线）——
+    差异不阻塞，但必须可见：改 contracts 这些字段时须显式决定是否同步 paradigm（走 prompt 豁免流程）。"""
+    derived = {d['name']: d for d in derive_geo_catalog()}
+    diffs = []
+    for t in P.GEO_TOOL_CATALOG:
+        d = derived.get(t['name'])
+        if not d:
+            continue
+        for k in ('scale', 'preconditions', 'failure_modes', 'examples'):
+            if d.get(k) != t.get(k):
+                diffs.append(f"[{t['name']}].{k}")
+    if diffs:
+        print(f"\n[G8a][报告] paradigm guard 字段与 contracts 差异 {len(diffs)} 处（prompt 红线保护区·改动须豁免流程）：")
+        for x in diffs:
+            print(f"  {x}")
+    else:
+        print("\n[G8a][报告] paradigm guard 字段与 contracts 全一致")
 
 
 def test_panel_source_report():
@@ -146,6 +222,9 @@ if __name__ == '__main__':
         ('geo_catalog_equivalent', test_geo_catalog_equivalent),
         ('template_registry_defaults', test_template_registry_defaults),
         ('skill_defs_mirror', test_skill_defs_mirror),
+        ('mirror_freshness', test_mirror_freshness),
+        ('tool_alias_derived', test_tool_alias_derived),
+        ('geo_catalog_guard_fields_report', test_geo_catalog_guard_fields_report),
         ('panel_source_report', test_panel_source_report),
     ]:
         try:
