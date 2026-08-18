@@ -13,6 +13,13 @@
 
 > 接 claude 交接（4 commit 待用户 push·对账无漂移·自检全过：生成器幂等 + presets 3 passed）。用户指派双 bug 修复线：① 体检点聚合着色反语义 ② tip 社区归属错乱。
 
+### ✅ 底图淡化 veil（revision-log 5.264·commit `2b2b3fe7`·数字框/双击路径待用户验收）
+
+- 白罩层 `basemap-veil`（底图之上/分析层之下·世界 bbox 白填充）·0=默认全透·100=纯白底出图
+- 控件：底图 popover 底部（滑条+数字框+百分比+双击归零）·localStorage 记忆；切底图携带+style.load 重敷双保险
+- 踩坑 R11 入 debug-memory：块注释内 `*/` 提前闭合注释 → ESM SyntaxError 白屏（.mjs 强制解析才可检出）
+- 机检：启动 ✓/滑条端到端 ✓（60%→opacity 0.6）/刷新恢复 ✓
+
 ### ✅ Layers 图层卡组策略 v2（revision-log 5.263·commit `5770ba5b`·拖拽视觉验收待用户）
 
 - **模型**：渲染卡归属三级判定（真组成员 > `_cardCat` 覆写 > categoryOf 默认归集）——新层默认归集不变，拖拽=写可逆覆写；排序/z 序恒随 `_layers` 序
