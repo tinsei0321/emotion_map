@@ -9,6 +9,19 @@
 
 ---
 
+## 📅 2026-08-18（page7 TOP10 图层 + EMC×dsh 拍板待启 · claude · 分支 `EMC_harness_dsh`）
+
+> 交接卡对账无漂移（`15468f62` 已推送·工作树净）；专题卡在「等用户三组拍板」（E4 形态3 / 并轨排期 / 外挂大脑）→ 拍板后出 CB-41。
+
+### ✅ page7 数据图层：12345 两方面诉求总量 TOP10 社区（revision-log 5.255，commit `f672f0a8` · **用户手动 push**）
+
+- 两方面（民生基础+安全韧性）合计总量 TOP10 = 主观表头部 10 社区（朝阳路 594→宝联 156·含新区东城）；拆分点级核验（民生 5 类/安全 4 类）
+- `DATA/boundaries/presets/12345_top10_社区.geojson`：**10 社区单面不合并**·属性含 排名/诉求总量/两方拆分/每周约件数；presets 注册 `page7_12345_top10`
+- 生成脚本 `SCRIPT/gen_12345_top10_layer.py` 带对账断言（锁主观表头部·防口径漂移）；`test_range_selector_presets` 3 passed
+- 踩坑复用：RAG 索引重建须 `HF_HUB_OFFLINE=1`（裸跑联网卡死 25min+·5.253 已记）；索引为本地产物（gitignore）
+
+---
+
 ## 📅 2026-08-17（EMC×dsh 合体讨论 R0-R3 · zcode·家 · 分支 `EMC_harness_dsh` · 纯讨论零实施）
 
 > 用户设想「情绪地图整体寄生进 dsh」→ 四轮讨论后纠偏：真痛点 = EMC 入口聪明度不足。全部落盘 `discuss/EMC-dsh整体合体_讨论过程台账.md`（R0-R3）。
