@@ -64,3 +64,6 @@ docs/*.pdf
 
 # 浏览器测试截图产物（Playwright 输出·可重跑再生·不入库）
 tests/browser/out/
+
+# dsh harness local runtime artifacts (PT-CB1)
+.dsh-meow/
