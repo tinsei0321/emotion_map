@@ -223,7 +223,7 @@
    {
     "id": "qty_民生_公服设施",
     "label": "量化-民生-公服设施(问题类6项)（111点）",
-    "file": "checkup_qty_民生_公服设施_问题类.geojson",
+    "file": "checkup_qty_民生_公服设施.geojson",
     "nameField": "指标",
     "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）",
     "usage": "input"

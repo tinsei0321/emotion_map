@@ -73,6 +73,16 @@
 
 ---
 
+## 📅 2026-08-18~19（PT 平台化转型开工：CB1 开工轮→回口 / CB2 B1 批 T1 · zcode 主手+dsh 副手+Codex/claude 审计 · 分支 `EMC_harness_dsh`·main 冻结）
+
+> 用户新协作体系（08-18 晚令）：zcode 主手（设计/拆解/派发/攻坚）·dsh 通用副手（非长思考任务·代码强）·Codex+claude 审计协助；每轮回收→收敛→拆解→派发→执行；新命名=任务代号+CB 轮次（PT-CB{n}·旧 CB 编号封存·CB-41 撞号化解）。
+
+- [x] **PT-CB1 开工轮**：拍板生效落账/三日志（goal-status 增产品入口维度·G6-G9 改道）/CB41 草案转正 PT 总计划 v1.0/勘误归档批（dsh·12 项中 11 项销号）/审计章程+B6 反转主手认账（25% 实出自 CB-40 zcode 发起文档）/基线重录 372+3
+- [x] **T2 G8a 契约派生**：stages.js 手写镜像退役→gen_stages_mirror.py+contract_mirror.generated.js；freshness diff=0 断言+别名派生等价+guard 差异冻结 8 项断言；根治 field_name→'field' 漂移 bug；375+3 零退化零新增 ID；Codex 审计零打回
+- [x] **分支策略纠正**（用户）：实施一律走分支·main 冻结不动（08-18 晚误并已纠正认账）；全组切分支通知
+- [x] **PT-CB2 开工（B1 批）+T1 回收**：dsh manifest 注册四件套（5→8 组/38→57 层/19 新注册/usage 45+12 全覆盖）+主手四裁决+qty 存量路径修复；审计顺延下轮（用户裁定）
+- [ ] **office 续点**：①到岗 `git checkout EMC_harness_dsh && git pull`+`git push hub --all` 补推 ②PT-CB2 T2=usage 白名单消费点（geo_routes 输入校验+toolbox 链·zcode 攻坚·白名单开工前细化）③T1+裁决+T2 一并送审 ④之后 PT-CB3=B2 版本对账+B3 口径注册表/check_caliber（F_020 起取号）
+
 ## 📅 2026-08-17（EMC×dsh 合体讨论 R0-R3 · zcode·家 · 分支 `EMC_harness_dsh` · 纯讨论零实施）
 
 > 用户设想「情绪地图整体寄生进 dsh」→ 四轮讨论后纠偏：真痛点 = EMC 入口聪明度不足。全部落盘 `discuss/EMC-dsh整体合体_讨论过程台账.md`（R0-R3）。

@@ -1,6 +1,6 @@
 ## PT-CB2 · 2026-08-19（数据治理批 B1·zcode 主手·dsh 承接 T1 注册四件套）
 
-PT 总计划阶段一首批。T1=manifest 注册补全四件套+usage 字段（dsh·清单明确）；T2=usage 白名单消费点 geo_routes+toolbox 校验链（zcode 攻坚·依赖 T1）；T3=验收包（zcode）。B2 对账裁决/B3 口径注册表+check_caliber 留 PT-CB3（判裁与 F_020 取号不派发）。开工档 `PT-CB2-开工与拆解_zcode-2026-08-19.md`。
+PT 总计划阶段一首批。T1=manifest 注册补全四件套+usage 字段（dsh·清单明确）；T2=usage 白名单消费点 geo_routes+toolbox 校验链（zcode 攻坚·依赖 T1）；T3=验收包（zcode）。B2 对账裁决/B3 口径注册表+check_caliber 留 PT-CB3（判裁与 F_020 取号不派发）。开工档 `PT-CB2-开工与拆解_zcode-2026-08-19.md`。**T1 已回收（08-19 凌晨）**：dsh 四件全销号（8 groups/57 items·19 新注册·usage 45+12 全覆盖·pytest 375+3 稳定）·主手四裁决（聚合面维持 input 留 B3 复核/三结论层补标采纳/18村单注册采纳/存量 qty 路径 bug 主手已修）·审计顺延下轮开工（用户裁定）。**下一步=T2 usage 白名单消费点（zcode·office）。**
 
 ---
 
