@@ -1,16 +1,23 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：08月18日 下午（**EMC×dsh 可行性深挖收工 · 等用户回家确认五项决策**·Codex）| 分支 `EMC_harness_dsh`
+> 最后更新：08月19日 凌晨（**PT 平台化转型实施中 · CB1 已回口/CB2-T1 已回收**·zcode 主手收工）| 分支 `EMC_harness_dsh`（**main 冻结勿动**）
 >
 > CB 入口：`docs/catch-ball/_cb-index.md`
-> 回家第一读：`docs/catch-ball/discuss/EMC-dsh可行性深挖_收工报告_通俗版_Codex-2026-08-18.md`
-> 角色：Codex = 主开发与本轮回收抽验·dsh组 = dsh 侧技术事实方·zcode/claude组 = 后续评审协作方
+> 接手第一读：`_handoff/HOME.md` 收工快照 + `discuss/EMC-dsh整体合体_讨论过程台账.md` R20 + `discuss/PT-CB2-开工与拆解_zcode-2026-08-19.md`
+> 角色（08-18 晚用户新令）：**zcode = 主手**（设计/拆解/派发/攻坚）·**dsh = 通用副手**（非长思考任务·白名单内 git）·**Codex+claude组 = 审计协助**（零实施）
 > 换机卡片：`_handoff/HOME.md`（家）+ `OFFICE.md`（公司）
 
 ---
 
-## 当前节点：EMC×dsh 可行性深挖收工 · 零实施 · 等用户确认
+## 当前节点：PT 平台化转型 · 实施中（office 续点=PT-CB2 T2）
+
+- **已完成**：PT-CB1 全轮回口（T2 G8a 契约派生·Codex 审计零打回·pytest 基线 375+3）；PT-CB2 T1 回收（dsh manifest 注册四件套：8 组 57 层·19 新注册·usage 45+12 全覆盖=铁律7 数据侧就位；主手四裁决+qty 存量路径修复·审计顺延下轮）。
+- **office 到岗动作**：①`git checkout EMC_harness_dsh && git pull origin EMC_harness_dsh` ②`git push hub --all` 补推盘仓（hub 在 office）③**开工 PT-CB2 T2**=usage 白名单消费点（`api/geo_routes.py` 输入校验拒 `analysis_output` + 前端 toolbox 链·spec=CB39 计划 §四 B1 Z4 条款·白名单开工前细化）④T1+裁决+T2 一并送审 ⑤之后 PT-CB3（B2 对账裁决+B3 口径注册表/check_caliber·F_020 起取号）。
+- **纪律**：一切在分支（main 冻结）；dsh 白名单制；门禁 375+3（上浮须注明）；追踪 ID 连续不跳号。
+- 历史段（08-18 下午前）见下方旧节点与 git 历史。
+
+### 旧节点：EMC×dsh 可行性深挖收工 · 零实施 · 等用户确认
 
 ### 一、本轮完成（2026-08-18 下午）
 

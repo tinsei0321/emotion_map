@@ -42,3 +42,5 @@
 | 2026-08-16 | CB-40 | 首轮建立（四维基线+画像距离+G1-G9 全景） | zcode（用户授权收敛） |
 | 2026-08-16 | CB-40 P1/P2 执行 | JS 计数定稿 52（excl vendor·含 toolbox 7）；G1 前置输入① 5 份真件补齐（2 份源新于 manifest·待 Codex 刷新）；requirements 补 openpyxl；vitest 选型记录入 G2 | zcode |
 | 2026-08-18 | PT-CB1 开工轮 | 新增「产品入口」维度（演示级冻结壳）；G6-G9 状态按形态3 裁定改道（G6→C10/G7→并入 D1/G8 拆批开工/G9 停投）；B 变体（外接大脑）挂观察项 | zcode（用户开工令） |
+| 2026-08-19 | PT-CB1 回口+PT-CB2 开工 | T2 审计零打回（观察①采纳=guard 差异冻结 8 项断言）；分支策略用户纠正（实施走分支·main 冻结）；PT-CB2=B1 批（T1 dsh 四件套/T2 zcode usage 消费点） | zcode |
+| 2026-08-19 凌晨 | PT-CB2 T1 回收 | B1 注册四件套完成（manifest 8 组 57 层·19 新注册·usage 全覆盖=铁律7 机械化数据侧就位）；主手四裁决+存量 qty 路径修复；审计顺延下轮；T2（usage 消费点）office 开工 | zcode |
