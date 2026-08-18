@@ -227,22 +227,23 @@ export function refreshLegend() {
     const pol = ui.terrainPol || ui.polarity;   // terrain 存 terrainPol；grid 存 polarity
     const isTerrain = ui.tool === 'terrain';
     const isDensity = ui.tool === 'density';
-    const polLabel = isDensity ? '情绪得分密度' : ({ overall: '综合', positive: '积极', negative: '消极', neutral: '中性' }[pol] || (isTerrain ? '地形' : '网格'));
+    const isCount = ui.semantic === 'count';   // CB-41 B013：点数模式（临时分析图）——不套情绪三段标签
+    const polLabel = isCount ? '点数（临时）' : (isDensity ? '情绪得分密度' : ({ overall: '综合', positive: '积极', negative: '消极', neutral: '中性' }[pol] || (isTerrain ? '地形' : '网格')));
     const tEl = document.getElementById('legend-grid-title');
-    if (tEl) tEl.textContent = `${isTerrain ? '情绪地形' : isDensity ? '情绪密度' : '网格'} · ${polLabel}`;
+    if (tEl) tEl.textContent = `${isCount ? '点数' : isTerrain ? '情绪地形' : isDensity ? '情绪密度' : '网格'} · ${polLabel}`;
     const rampEl = document.getElementById('legend-grid-ramp');
     const stops = grid.paint.gridStops || [];
     if (rampEl && stops.length) {
       rampEl.style.background = '';   // 清旧 linear-gradient（#legend-grid-ramp 已是 .legend-heat-ramp flex 容器）
       rampEl.innerHTML = stops.map(([, c]) => `<span class="legend-heat-seg" style="background:${c}"></span>`).join('');
     }
-    // 标签：L2 综合发散（terrain-9 红→蓝→绿）= 消极/中性/积极；单色占比 / L1 热度 = 低/高
+    // 标签：L2 综合发散（terrain-9 红→蓝→绿）= 消极/中性/积极；单色占比 / L1 热度 = 低/高；CB-41 点数 = 少/多（零点无填充）
     const labEl = document.querySelector('#legend-grid .legend-ramp-labels');
     if (labEl) {
-      const isOverall = grid.paint._ui.polarity === 'overall' && grid.paint._ui.level === 'L2';
+      const isOverall = !isCount && grid.paint._ui.polarity === 'overall' && grid.paint._ui.level === 'L2';
       labEl.innerHTML = isOverall
         ? '<span>消极</span><span>中性</span><span>积极</span>'
-        : '<span>低</span><span>高</span>';
+        : (isCount ? '<span>点少</span><span>点多</span>' : '<span>低</span><span>高</span>');
     }
   }
 }

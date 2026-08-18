@@ -76,9 +76,14 @@ function normStops(rampKey) {
 
 /** 层级 + 极性 → {field, stops, rampKey, name}。 */
 /** CB-23 2026-08-12：色板可选手选（palette）+ 反向（reverse·高值深色/低值浅色·用户觉得默认「高浅黄低深红」怪）。 */
-function gridStyle(level, polarity, palette, reverse) {
+function gridStyle(level, polarity, palette, reverse, semantic) {
   let rampKey, field, name;
-  if (level !== 'L2') {
+  if (semantic === 'count') {
+    // CB-41 B013：点数语义（临时分析图）——_count_norm 计数归一 + grid-warm 反转（低浅高深·点数越多越深）
+    rampKey = palette || 'grid-warm'; field = '_count_norm';
+    name = '点数（浅→深）';
+    reverse = !reverse;   // 基向反转=默认高值深色；用户手选「反向」在此之上再翻转（单一反向控件）
+  } else if (level !== 'L2') {
     rampKey = palette || L1_RAMP; field = '_grid_h';
     name = rampKey === L1_RAMP ? '舆论热度·点数（暗红→金黄）' : rampKey;
   } else {
@@ -92,6 +97,16 @@ function gridStyle(level, polarity, palette, reverse) {
     stops = stops.map(([d], i) => [d, colors[i]]);
   }
   return { field, stops, rampKey, name, reverse };
+}
+
+/** CB-41：点数模式色带 stops（toolbox/shared.defaultPaint 共用·与 gridStyle 同源归一）。 */
+export function countStops(palette, reverse) {
+  let stops = normStops(palette || 'grid-warm');
+  if (!reverse) {                      // 默认反转（低浅高深）·reverse=true 时维持原向（用户手选反向）
+    const colors = stops.map(([, c]) => c).reverse();
+    stops = stops.map(([d], i) => [d, colors[i]]);
+  }
+  return stops;
 }
 
 // ── 数据源收集（点层：L2 group 合并极性子层 + L1/L2 单点层） ──
@@ -196,9 +211,11 @@ function preprocessGrid(fc) {
   };
   const maxOf = (arr) => { arr.sort((a, b) => a - b); return arr.length ? arr[arr.length - 1] : 0; };
   const maxAll = maxOf(counts), maxPos = maxOf(countsPos), maxNeg = maxOf(countsNeg), maxNeu = maxOf(countsNeu);
+  const countDenom = Math.log1p(maxAll) || 1;   // CB-41 B013：全零层防除零
   for (const f of fc.features) {
     const p = f.properties;
     p._grid_h = heightOf(p.point_count || 0, maxAll);
+    p._count_norm = Math.log1p(p.point_count || 0) / countDenom;   // 点数语义归一（零点=0·渲染层特判透明）
     p._grid_h_pos = heightOf(p._grid_n_pos || 0, maxPos);
     p._grid_h_neg = heightOf(p._grid_n_neg || 0, maxNeg);
     p._grid_h_neu = heightOf(p._grid_n_neu || 0, maxNeu);
@@ -298,6 +315,7 @@ function renderRampPreview(dlg, level, polarity) {
   const menu = dlg.querySelector('#grid-palette-menu');
   const current = dlg.querySelector('#grid-palette-current');
   const trigger = dlg.querySelector('#grid-palette-trigger');
+  const semantic = selectedSemantic(dlg);   // CB-41：点数/极性语义（预览与实际色带同向）
 
   // 首次填充下拉（渐变条·无文字·分组；「自动」为模式非颜色，保留短标签）
   if (menu && !menu.dataset.ready) {
@@ -325,14 +343,15 @@ function renderRampPreview(dlg, level, polarity) {
 
   const palette = sel ? (sel.dataset.value || '') : '';
   const reverse = dlg.querySelector('#grid-reverse')?.dataset.reverse === '1';
-  const style = gridStyle(level, polarity, palette || undefined, reverse);
+  const style = gridStyle(level, polarity, palette || undefined, reverse, semantic);
   const ramp = HEATMAP_RAMPS[style.rampKey];
-  const segs = ramp ? rampDisplaySegs(style.rampKey, ramp) : style.stops.map(([, c]) => c);
-  const dispSegs = reverse ? [...segs].reverse() : segs;
+  let segs = ramp ? rampDisplaySegs(style.rampKey, ramp) : style.stops.map(([, c]) => c);
+  // CB-41：count 语义基向已反转（低浅高深）——预览须与 style.stops 同向（用户「反向」再翻一次）
+  if (semantic === 'count' ? !reverse : reverse) segs = [...segs].reverse();
 
-  if (current) current.style.background = `linear-gradient(90deg, ${dispSegs.join(',')})`;
+  if (current) current.style.background = `linear-gradient(90deg, ${segs.join(',')})`;
   if (wrap) {
-    const segHtml = dispSegs.map((c) => `<span class="hm-style-seg" style="background:${c}"></span>`).join('');
+    const segHtml = segs.map((c) => `<span class="hm-style-seg" style="background:${c}"></span>`).join('');
     wrap.innerHTML = `<div class="hm-style-preview"><span class="hm-style-bar">${segHtml}</span></div>`;
   }
   if (menu) menu.querySelectorAll('.hm-ramp-item').forEach((b) => b.classList.toggle('is-sel', b.dataset.value === palette));
@@ -341,10 +360,11 @@ function renderRampPreview(dlg, level, polarity) {
 /** 随 analysis + level 切 square/zonal/polarity 显隐 + 色板预览。 */
 function constrainParams(dlg) {
   const analysis = selectedAnalysis(dlg);
-  const level = dlg.querySelector('#grid-level')?.value || 'L1';
+  const level = levelOfSource(dlg.querySelector('#grid-level')?.value) || 'L0';
   setHidden(dlg, '#grid-cell-section', analysis !== 'square');
   setHidden(dlg, '#grid-zonal-section', analysis !== 'zonal');
   setHidden(dlg, '#grid-namecol-section', analysis !== 'zonal');
+  applySemanticDefault(dlg, level);   // CB-41：随源推导默认语义（用户手选锁定则不动）
   renderRampPreview(dlg, level, selectedPolarity(dlg));
 }
 
@@ -353,6 +373,21 @@ function selectedAnalysis(dlg) {
 }
 function selectedPolarity(dlg) {
   return 'overall';   // 极性入口已移除（Toolbox 不直生成极性网格；极性视图由 Overview·极性深读 paint 切换）
+}
+
+// ── CB-41 §六：着色语义分叉（count=点数·临时分析图 / polarity=极性·情绪轨）──
+/** 默认按数据轨推导：L2（有极性）→极性；L0/L1（无极性）→点数。 */
+function semanticDefaultOf(level) { return level === 'L2' ? 'polarity' : 'count'; }
+function selectedSemantic(dlg) {
+  return dlg.querySelector('#grid-semantic .buf-cap.is-sel')?.dataset.semantic || 'count';
+}
+/** 随源推导默认语义；用户手选后锁定（data-locked）·换源不覆盖（§六「用户选择优先」）。 */
+function applySemanticDefault(dlg, level, force = false) {
+  const box = dlg.querySelector('#grid-semantic');
+  if (!box) return;
+  if (!force && box.dataset.locked === '1') return;
+  const def = semanticDefaultOf(level);
+  box.querySelectorAll('.buf-cap').forEach((c) => c.classList.toggle('is-sel', c.dataset.semantic === def));
 }
 function setHidden(dlg, sel, hidden) { const el = dlg.querySelector(sel); if (el) el.hidden = hidden; }
 
@@ -390,6 +425,7 @@ function readParams(dlg) {
     extrusionOpacity: Number(dlg.querySelector('#grid-extrusion-opacity')?.value ?? 1),
     palette: dlg.querySelector('#grid-palette')?.dataset.value || '',   // 色板手选（空=自动）
     reverse: dlg.querySelector('#grid-reverse')?.dataset.reverse === '1',   // 颜色反向
+    semantic: selectedSemantic(dlg),   // CB-41：着色语义（点数/极性·§六分叉）
   };
 }
 
@@ -410,6 +446,14 @@ export function openGridDialog(layerId, preset = null) {
   // 预设范围（Range tab 按钮）：analysis 走 preset（默认 zonal）；否则 seed 或 DEFAULTS
   const params = seed || (preset ? { ...DEFAULTS, analysis: preset.analysis || 'zonal' } : DEFAULTS);
   applyParams(dlg, params);   // 回填 analysis/cell/polarity/mode/extrusion（含卡片选中态）
+  // CB-41：编辑态回填着色语义（无 seed 则随源推导默认·applySemanticDefault 在 constrainParams）
+  if (seed && seed.semantic) {
+    const box = dlg.querySelector('#grid-semantic');
+    if (box) {
+      box.dataset.locked = '1';
+      box.querySelectorAll('.buf-cap').forEach((c) => c.classList.toggle('is-sel', c.dataset.semantic === seed.semantic));
+    }
+  }
 
   // 编辑态：回填点层 / 面域层（触发 name_col 填充）
   if (seed) {
@@ -545,7 +589,7 @@ async function generateGrid() {
   try {
     let fc, paint;
     const analysisLabel = { square: '标准网格', zonal: '指定单元' }[p.analysis];
-    const polLabel = p.level === 'L2' ? (POLARITY_LABEL[p.polarity] || '综合') : '热度';
+    const polLabel = p.semantic === 'count' ? '点数' : (p.level === 'L2' ? (POLARITY_LABEL[p.polarity] || '综合') : '热度');
     const modeLabel = p.mode === '3d' ? '3D' : '2D';
     const sizeTag = p.analysis === 'square' ? `${p.cellSize}m` : '面域';
 
@@ -559,10 +603,10 @@ async function generateGrid() {
       if (fc.features.length > 2000) toast.info(`已生成 ${fc.features.length} 个格，数量较多；3D 渲染可能偏慢`, 4500);
       preprocessGrid(fc);   // _grid_*（极性归一化，MapLibre 着色）+ _grid_h/_grid_h_pos…（offset+sqrt 高度）
       filterPolarityZero(fc, p.level, p.polarity);   // L2 极性网格去该极性点数=0 的格（不渲染空格）
-      const style = gridStyle(p.level, p.polarity, p.palette, p.reverse);
+      const style = gridStyle(p.level, p.polarity, p.palette, p.reverse, p.semantic);
       paint = { fillOn: true, _ui: { tool: 'grid', analysis: 'square', level: p.level, source: p.source,
-                                     cellSize: p.cellSize, polarity: p.polarity, mode: p.mode, heightField: (p.level === 'L2' && POLARITY_HF[p.polarity]) ? POLARITY_HF[p.polarity] : '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity, palette: p.palette || '', reverse: !!p.reverse },
-                gridField: style.field, gridStops: style.stops, fillOpacity: p.extrusionOpacity };   // 显式 fillOpacity 绕开 addLayer 默认 0.3（修 2D 首次透明）
+                                     cellSize: p.cellSize, polarity: p.polarity, semantic: p.semantic, mode: p.mode, heightField: (p.level === 'L2' && POLARITY_HF[p.polarity]) ? POLARITY_HF[p.polarity] : '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity, palette: p.palette || '', reverse: !!p.reverse },
+                gridField: style.field, gridStops: style.stops, fillOpacity: p.extrusionOpacity, zeroIsNoData: p.semantic === 'count' };   // 显式 fillOpacity 绕开 addLayer 默认 0.3（修 2D 首次透明）；CB-41 count 模式零点不填色
     } else {
       // zonal：后端精确面域聚合 + MapLibre 渲染（deck.gl GridLayer 是方格聚合，不适合固定面域 zonal）
       const poly = getLayer(p.polygonLayer);
@@ -577,11 +621,11 @@ async function generateGrid() {
       const hasPolarity = preprocessGrid(fc);
       filterPolarityZero(fc, p.level, p.polarity);   // L2 极性网格去该极性点数=0 的格（不渲染空格）
       if (!hasPolarity && p.level === 'L2') toast.info('该点层缺少极性字段，按分数比例近似降级', 4500);
-      const style = gridStyle(p.level, p.polarity, p.palette, p.reverse);
+      const style = gridStyle(p.level, p.polarity, p.palette, p.reverse, p.semantic);
       paint = { fillOn: true, _ui: { tool: 'grid', analysis: 'zonal', level: p.level, source: p.source,
                                      polygonLayer: p.polygonLayer, nameCol: p.nameCol,
-                                     polarity: p.polarity, mode: p.mode, heightField: (p.level === 'L2' && POLARITY_HF[p.polarity]) ? POLARITY_HF[p.polarity] : '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity, palette: p.palette || '', reverse: !!p.reverse },
-                gridField: style.field, gridStops: style.stops, fillOpacity: p.extrusionOpacity };   // 显式 fillOpacity 绕开 addLayer 默认 0.3（修 2D 首次透明）
+                                     polarity: p.polarity, semantic: p.semantic, mode: p.mode, heightField: (p.level === 'L2' && POLARITY_HF[p.polarity]) ? POLARITY_HF[p.polarity] : '_grid_h', maxHeight: p.maxHeight, extrusionOpacity: p.extrusionOpacity, palette: p.palette || '', reverse: !!p.reverse },
+                gridField: style.field, gridStops: style.stops, fillOpacity: p.extrusionOpacity, zeroIsNoData: p.semantic === 'count' };   // 显式 fillOpacity 绕开 addLayer 默认 0.3（修 2D 首次透明）；CB-41 count 模式零点不填色
     }
 
     // 备份综合态 paint（极性深读 paint 就地切换的还原锚点；含 heightField 颜色+高度同源切）
@@ -640,6 +684,16 @@ export function initGridTool() {
   // ② 数据选择 → 联动：换源 → 重置极性/参数/色板（CB-23：level 由源推导·不再按层级过滤）
   dlg.querySelector('#grid-level').addEventListener('change', () => {
     constrainParams(dlg);
+  });
+  // CB-41 §六：着色语义分叉（点数=临时分析图 / 极性=情绪轨）——显式选择·手选即锁定
+  dlg.querySelector('#grid-semantic')?.addEventListener('click', (e) => {
+    const b = e.target.closest('.buf-cap');
+    if (!b) return;
+    const box = dlg.querySelector('#grid-semantic');
+    box.dataset.locked = '1';
+    box.querySelectorAll('.buf-cap').forEach((x) => x.classList.remove('is-sel'));
+    b.classList.add('is-sel');
+    renderRampPreview(dlg, levelOfSource(dlg.querySelector('#grid-level')?.value) || 'L0', 'overall');
   });
   // 色板手选已在 renderRampPreview 内绑到渐变条下拉（CB-32 2026-08-13），此处不再绑 change。
   dlg.querySelector('#grid-reverse')?.addEventListener('click', () => {

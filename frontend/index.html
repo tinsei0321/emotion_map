@@ -675,6 +675,15 @@
                     <select class="sec-select" id="grid-level"></select>
                   </div>
 
+                  <!-- CB-41 §六：着色语义显式分叉（默认随数据轨推导：无极性→点数·有极性→极性；手选即锁定） -->
+                  <div class="hm-section">
+                    <div class="hm-label">着色语义 <span class="hm-info" data-tip="点数=按落在面内的点数着色（越多越深·零点不填色·临时分析图，不进情绪图例/EMC 出口）；极性=情绪正负发散色带（红=消极·绿=积极）。默认随所选数据推导，可手动改。">i</span></div>
+                    <div class="buf-capsules" id="grid-semantic">
+                      <button type="button" class="buf-cap is-sel" data-semantic="count">点数（临时）</button>
+                      <button type="button" class="buf-cap" data-semantic="polarity">极性</button>
+                    </div>
+                  </div>
+
                   <!-- 标准网格：方格边长（square 时显示） -->
                   <div class="hm-section" id="grid-cell-section">
                     <div class="hm-label buf-dist-label">

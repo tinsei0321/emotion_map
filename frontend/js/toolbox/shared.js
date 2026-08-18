@@ -11,7 +11,7 @@ import { renderLayerList, refreshLegend, showLayerManager } from '../sidebar.js'
 import { fcBBox } from '../import.js';
 import { landuseLayerPaint, landuseFillColorExpr, dominantDLMC } from '../landuse_colors.js';
 import { fetchRangePresets, fetchRangePreset } from '../api.js';
-import { piToNorm, polarityStops } from '../grid-tool.js';
+import { piToNorm, polarityStops, countStops } from '../grid-tool.js';
 
 // geoPost 实现于 api.js（通用 /api/v1/geo/* POST），此处 re-export 供 toolbox 模块单点引用。
 export { geoPost } from '../api.js';
@@ -38,9 +38,11 @@ export function normalizeGeoNames(geo) {
 /** P1（v1.4）：rows + boundary geojson → 合成聚合 polygon FC（每 feature 注入 _grid_norm/polarity_index 供 choropleth 着色）。
  *  仅当 boundary 解析为 GeoJSON（中文名）时合成；preset_id（无 geojson）返 null（只给表格 rows）。
  *  （自 tools.js _buildZonalFc :218 迁移）
- *  v2.1 修：空名特征不再 fuzzy 命中首行（s='' 时 includes('') 恒真→全部特征拿首行极性·数据错误放大器）；
- *  调用方应先用 normalizeGeoNames 补名（zonal/rank 模块已接）。 */
-export function buildZonalFc(rows, boundary) {
+ *  v2.1 修：空名特征不再 fuzzy 命中首行（s='' 时 includes(''） 恒真→全部特征拿首行极性·数据错误放大器）；
+ *  调用方应先用 normalizeGeoNames 补名（zonal/rank 模块已接）。
+ *  CB-41 B013：semantic='count'（无极性点层·临时分析图）→ 按 rows 的 point_count 写 _count_norm
+ *  （log1p 归一·零点=0·渲染层 zeroIsNoData 特判透明）；不传 semantic = 旧极性行为（ForAI 契约不动）。 */
+export function buildZonalFc(rows, boundary, semantic) {
   const feats = !boundary ? [] : (boundary.type === 'FeatureCollection' ? boundary.features : (boundary.type === 'Feature' ? [boundary] : []));
   if (!feats.length) return null;
   const findRow = (nm) => {
@@ -49,16 +51,20 @@ export function buildZonalFc(rows, boundary) {
     return rows.find((r) => String(r.name || '').trim() === s)
       || rows.find((r) => { const rn = String(r.name || '').trim(); return rn && (rn.includes(s) || s.includes(rn)); });
   };
+  const countDenom = semantic === 'count'
+    ? (Math.log1p(Math.max(0, ...rows.map((r) => Number(r.point_count) || 0))) || 1) : 1;
   const out = [];
   for (const f of feats) {
     const nm = (f.properties && f.properties.name) || '';
     const row = findRow(nm);
     const pi = row && row.polarity_index != null && !isNaN(Number(row.polarity_index)) ? Number(row.polarity_index) : null;
+    const pc = row ? (Number(row.point_count) || 0) : 0;
     out.push({
       ...f,
       properties: {
         ...(f.properties || {}), name: nm || (row && row.name) || '',
         polarity_index: pi, _grid_norm: pi != null ? piToNorm(pi) : 0.5,
+        _count_norm: semantic === 'count' ? Math.log1p(pc) / countDenom : undefined,   // CB-41：点数语义归一（零点=0）
         point_count: row ? (row.point_count || 0) : 0,
         domain_top: row ? row.domain_top : null, element_top: row ? row.element_top : null,
         issue_label: row ? row.issue_label : null,
@@ -126,10 +132,16 @@ export function toolContentSig(fc) {
 /** A2 paint 统一：落图层确定性默认（设计语言单一来源·样式不再散落各工具）。
  *  kind=line → 关联连线（#ff9000 标注色·非数据编码）；tool=zonal/rank → 极性 choropleth（复用 grid 着色管线）；
  *  其余面结果 → 浅填充描边。buffer 等带 _ui 元数据的工具自行展开合并（{...defaultPaint(...), _ui}）。
- *  （自 tools.js _defaultPaint :437-447 迁移） */
-export function defaultPaint(tool, kind) {
+ *  （自 tools.js _defaultPaint :437-447 迁移）
+ *  CB-41 B013：semantic='count' → 点数顺序色带（grid-warm 反转·低浅高深·零点透明）·临时分析图；
+ *  不传 semantic = 旧极性行为（ForAI 契约不动）。 */
+export function defaultPaint(tool, kind, semantic) {
   if (kind === 'line') return { color: '#ff9000', lineWidth: 2 };
   if (tool === 'zonal' || tool === 'rank') {
+    if (semantic === 'count') {
+      return { _ui: { tool: 'zonal' }, fillOn: true, fillOpacity: 0.72, lineWidth: 1, lineOpacity: 0.6,
+        gridField: '_count_norm', gridStops: countStops(), zeroIsNoData: true };
+    }
     return { _ui: { tool: 'zonal' }, fillOn: true, fillOpacity: 0.72, lineWidth: 1, lineOpacity: 0.6,
       gridField: '_grid_norm', gridStops: polarityStops('overall') || [] };
   }

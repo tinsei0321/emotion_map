@@ -715,12 +715,17 @@ function addPointPaint(layer, sid, lid) {
 
 /** Grid 极性色带 → MapLibre fill-color 表达式。
  *  p.gridField='_grid_norm'|'_grid_pos'|'_grid_neg'；p.gridStops=[[0,c0],...,[1,cN]]（归一化 0~1，无透明）。
- *  返回 interpolate(linear, get(field), ...)；无有效 stops → null（落回单色）。 */
+ *  返回 interpolate(linear, get(field), ...)；无有效 stops → null（落回单色）。
+ *  CB-41 B013：p.zeroIsNoData（点数模式）→ 字段=0（零点面域）特判透明——无数据不得落最深色端。 */
 function _gridColorExpr(p) {
   if (!p.gridField || !Array.isArray(p.gridStops) || !p.gridStops.length) return null;
   const stops = [];
   for (const [d, c] of p.gridStops) stops.push(d, c);
-  return ['interpolate', ['linear'], ['get', p.gridField], ...stops];
+  const base = ['interpolate', ['linear'], ['get', p.gridField], ...stops];
+  if (p.zeroIsNoData) {
+    return ['case', ['==', ['get', p.gridField], 0], 'rgba(0,0,0,0)', base];
+  }
+  return base;
 }
 
 /** 就地替换 grid 层 source data（不动 layer/paint/bindings）。

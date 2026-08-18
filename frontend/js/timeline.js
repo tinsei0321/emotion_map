@@ -324,7 +324,7 @@ function _renderFrame(snapA, snapB, barsT, kpiT) {
   //   若 lerp 穿越 0 → cell 闪烁；保持 snapA 值让 filter 稳定，高度/色用 _grid_h_* 平滑过渡）。
   const fa = snapA.fc.features, fb = snapB.fc.features;
   const lerped = new Array(fa.length);
-  const flds = ['_grid_h', '_grid_h_pos', '_grid_h_neg', '_grid_h_neu', '_grid_norm', 'polarity_index', 'point_count'];
+  const flds = ['_grid_h', '_grid_h_pos', '_grid_h_neg', '_grid_h_neu', '_grid_norm', '_count_norm', 'polarity_index', 'point_count'];
   for (let i = 0; i < fa.length; i++) {
     const pa = fa[i].properties || {}, pb = (fb[i] && fb[i].properties) || {};
     const props = {};

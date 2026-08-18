@@ -21,6 +21,7 @@ const _geoCache = new Map();       // key=`lng,lat` → { zone_name, nearest_poi
 const _inflight = new Set();       // 正在请求的 key（防同格重复发）
 let _lastCellKey = null;           // 当前显示的格质心 key（同格不重发反查）
 let _lastHoverKey = null;          // 当前高亮 cell key（同格不重敷 hover 层）
+let _lastCommScan = null;          // CB-41 B012：最近一次社区归属扫描的指针位置（px·位移节流 <4px 不重扫）
 
 const el = () => document.getElementById('tip-popup');
 
@@ -96,7 +97,8 @@ export function bindTipPopup(layer, lid, uiOverride) {
     const f = hl ? hl.feature : ((ui.kind === 'point') ? (e.features && e.features[0]) : pickCellFeature(e.features || []));
     if (!f) return;
     _lastPt = evtClientPt(e);
-    fillContent(f, liveUi());
+    _lastCommScan = null;   // CB-41：enter 重置节流锚（新要素必重扫社区）
+    fillContent(f, liveUi(), e.lngLat);
     showEl();
     if (_lastPt) positionCard();   // mouseenter 即定位，防首帧停在左上角
     maybeCellHover(f, ui, layer);
@@ -106,7 +108,7 @@ export function bindTipPopup(layer, lid, uiOverride) {
     const f = hl ? hl.feature : ((ui.kind === 'point') ? (e.features && e.features[0]) : pickCellFeature(e.features || []));
     if (!f) return;
     _lastPt = evtClientPt(e);
-    fillContent(f, liveUi());
+    fillContent(f, liveUi(), e.lngLat);
     showEl();          // mousemove 也确保显示（mouseenter 可能因鼠标已在层内未触发）
     schedulePos();
     maybeCellHover(f, ui, layer);
@@ -126,6 +128,7 @@ export function hideTipPopup() {
   if (node) node.hidden = true;
   _lastPt = null;
   _lastCellKey = null;
+  _lastCommScan = null;   // CB-41：隐藏即重置社区扫描锚（下次显示必重扫）
   _rafPending = false;
   // 不清 cell 高亮：cell:selected（点击）时卡片隐但柱体保持升起，仅 mouseleave 缩回
 }
@@ -399,8 +402,9 @@ function fillCommunity(lng, lat) {
   });
 }
 
-/** 4 行：地点(异步,纯文本) / 极性判断(cell 有 polarity_index 时,同步) / 口径(同步,HTML) / 边长(同步,HTML) */
-function fillContent(feat, ui) {
+/** 4 行：地点(异步,纯文本) / 极性判断(cell 有 polarity_index 时,同步) / 口径(同步,HTML) / 边长(同步,HTML)
+ *  CB-41 B012：lngLat = 鼠标事件经纬度——社区行归属用鼠标位置（原=要素中心·跨界格/弓形社区错配 34/174）。 */
+function fillContent(feat, ui, lngLat) {
   const p = (feat.properties || {});
   document.getElementById('tp-metric').innerHTML = metricText(p, ui);
   document.getElementById('tp-size').innerHTML = sizeText(p, ui);
@@ -425,16 +429,36 @@ function fillContent(feat, ui) {
   // point：点位用同步属性（点多不宜逐点 geocode）；cell 走异步质心反查
   if (ui.kind === 'point') {
     _lastCellKey = null;
+    // CB-41 B012 连带（dsh 发现）：point 分支早退前清社区行——防残留上一轮 polygon 悬停的社区名
+    const elC0 = document.getElementById('tp-community');
+    if (elC0) { elC0.hidden = true; elC0.innerHTML = ''; }
     const z = (p.zone_name && p.zone_name !== '通用市区') ? p.zone_name : '';
     document.getElementById('tp-loc').textContent = z || p.area || p.area_seed || '—';
     return;
   }
 
-  // CB-23 2026-08-12：社区字段（配置库社区 193·质心空间查询·用户需求：tip 街办与地点之间加社区）
-  const c0 = centroidOf(feat);
-  if (c0) fillCommunity(c0[0], c0[1]);
+  // CB-41 B012：社区行归属——①聚合社区面（grid analysis='zonal'/zonal 层）= 要素本身就是社区，
+  // 直读 properties.name（零查找·与 Table 同源·34/174 错配根治）；
+  // ②标准网格/等值环 = 鼠标 lngLat 实时空间归属（原=要素 bbox/格中心·错配机制见 B012）+ 位移节流（<4px 不重扫）。
+  const _elC = document.getElementById('tp-community');
+  if (_elC) {
+    const ownName = (ui.analysis === 'zonal' || ui.tool === 'zonal')
+      ? String((feat.properties && feat.properties.name) || '') : '';
+    if (ownName) {
+      _elC.hidden = false;
+      _elC.innerHTML = `<i class="tp-vk">社区</i><b class="tp-vv">${ownName}</b>`;
+    } else if (lngLat && _lastPt) {
+      const dx = _lastPt.x - (_lastCommScan ? _lastCommScan.x : -1e9);
+      const dy = _lastPt.y - (_lastCommScan ? _lastCommScan.y : -1e9);
+      if (Math.hypot(dx, dy) >= 4) {
+        _lastCommScan = { x: _lastPt.x, y: _lastPt.y };
+        fillCommunity(lngLat.lng, lngLat.lat);
+      }
+    }
+  }
 
   // 地点：按质心 key 去重——同格只发一次 reverseGeocode（cache/inflight），切格才发新
+  const c0 = centroidOf(feat);
   const c = c0;
   const key = c ? `${c[0].toFixed(5)},${c[1].toFixed(5)}` : null;
   if (key === _lastCellKey) return;        // 同格：地点已填/在填，不重发
@@ -483,6 +507,10 @@ function metricText(p, ui) {
   if (ui.kind === 'point') return pointMetric(p, ui);
   const level = ui.level;
   const pc = p.point_count ?? 0;
+  // CB-41 B013：点数模式（临时分析图）——指标行显真实点数（原 L0 落「积极/中性/消极 0/0/0」无意义）
+  if (ui.semantic === 'count') {
+    return `<span class="tp-k">点数</span><b class="tp-v">${pc}</b>`;
+  }
   if (level === 'L1') {
     return `<span class="tp-k">热度</span><b class="tp-v">${pc}</b>`;
   }

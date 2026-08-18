@@ -141,19 +141,25 @@ async function _execute(params, { editLayerId = '', silent = true } = {}) {
   const rows = r.rows || [];
   if (!rows.length) return { layerId: null, layerName: null, featureCount: 0, fc: null, rows, sortBy: r.sort_by, boundaryLabel: params.boundaryLabel };
   const geo = typeof params.boundary === 'object' ? params.boundary : await resolveBoundaryGeo(params.boundary);
-  const fc = buildZonalFc(rows, _normalizeGeoNames(geo));
+  // CB-41 §六：着色语义分叉——semantic='count'（显式点数·临时分析图）| 'auto'（UI 路径：rows 无极性→自动点数）；
+  // 不传/其他 = 旧行为（极性 choropleth）——ForAI（generateZonalForAI）不传 → 契约与默认行为零变化。
+  const noPol = rows.length > 0 && rows.every((x) => x.polarity_index == null || x.polarity_index === '');
+  const semantic = params.semantic === 'count' ? 'count'
+    : (params.semantic === 'auto' && noPol ? 'count' : undefined);
+  const fc = buildZonalFc(rows, _normalizeGeoNames(geo), semantic);
   const label = params.boundaryLabel || (typeof params.boundary === 'string' ? params.boundary
     : ((((geo && geo.features) || [])[0] || {}).properties || {}).name) || '面域';
-  const name = params.as || `聚合·${label}`;
+  const name = params.as || (semantic === 'count' ? `点数·聚合·${label}` : `聚合·${label}`);
   let L = null;
   if (fc && fc.features.length) {
     const ui = { tool: 'zonal', mode: 'aggregate', boundaryId: params.boundaryId, boundaryLabel: label,
-      sourceId: params.sourceId, level: params.level, pre_filter: params.pre_filter };
+      sourceId: params.sourceId, level: params.level, pre_filter: params.pre_filter,
+      ...(semantic ? { semantic } : {}) };
     L = placeToolLayer({ name, kind: 'polygon', fc,
-      paint: { ...defaultPaint('zonal', 'polygon'), _ui: ui }, editLayerId, silent });
+      paint: { ...defaultPaint('zonal', 'polygon', semantic), _ui: ui }, editLayerId, silent });
   }
   return { layerId: L && L.id, layerName: L ? name : null, featureCount: fc ? fc.features.length : 0,
-    fc, rows, sortBy: r.sort_by, boundaryLabel: label };
+    fc, rows, sortBy: r.sort_by, boundaryLabel: label, semantic };
 }
 
 /** EMC 委托唯一接口（§4.1 契约）。 */
@@ -224,13 +230,15 @@ async function generateZonal() {
       if (r.okCount < 2) { toast.error(`区域对比仅 ${r.okCount} 区有结果`); return; }
       if (!r.layerId) { toast.info('对比完成，但边界无法成图（仅表格结果）'); return; }
     } else {
+      // CB-41 §六：semantic='auto'——rows 无极性字段时自动转「点数」着色（检测在 _execute 内·拿到 rows 判定）
       r = await _execute({ mode, layer: src.fc, boundary: bnd.presetId || bnd.fc, boundaryLabel: bnd.cleanLabel,
-        boundaryId: bnd.value, pre_filter, sourceId: src.value, level: src.level }, { editLayerId: dlg.dataset.editLayerId, silent: false });
+        boundaryId: bnd.value, pre_filter, sourceId: src.value, level: src.level, semantic: 'auto' }, { editLayerId: dlg.dataset.editLayerId, silent: false });
+      if (r.semantic === 'count') toast.info('源点层无极性字段 → 按点数着色（越多越深·零点不填色·临时分析图）', 4500);
       if (!r.rows.length) { toast.info(`面域聚合（${bnd.cleanLabel}）无结果`); return; }
       if (!r.layerId) { toast.info('聚合完成，但边界无法解析成图（仅表格结果）'); return; }
     }
     closeParamPanel();
-    toast.success(`已生成图层「${r.layerName}」（${r.featureCount} 个单元·极性 choropleth）`);
+    toast.success(`已生成图层「${r.layerName}」（${r.featureCount} 个单元·${r.semantic === 'count' ? '点数 choropleth（临时）' : '极性 choropleth'}）`);
   } catch (e) {
     console.error('[zonal]', e);
     toast.error(`面域聚合失败：${e.message || e}（确认后端已启动：uvicorn api.main:app --port 8000）`);
