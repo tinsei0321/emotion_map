@@ -1,7 +1,7 @@
 # EMC Bug 修复工程日志
 
-> 自动生成（`py tests/buglog/_gen_index.py`）·勿手改 · 最后更新：2026-08-18 11:08
-> 条目 **13** · OPEN **5** · RESOLVED **8** · P0 阻塞 **2** · 修复已提交 **4**
+> 自动生成（`py tests/buglog/_gen_index.py`）·勿手改 · 最后更新：2026-08-18 11:44
+> 条目 **14** · OPEN **6** · RESOLVED **8** · P0 阻塞 **3** · 修复已提交 **5**
 > 飞轮：27 用例 · 最近报告：report-2026-08-08-05-llm (92%·24/26)
 
 ---
@@ -10,13 +10,13 @@
 
 | 指标 | 值 |
 |------|-----|
-| 总条目 | 13 |
-| OPEN（未解决） | 5 |
+| 总条目 | 14 |
+| OPEN（未解决） | 6 |
 | RESOLVED（已解决） | 8 |
-| P0 阻塞 | 2（B002/B004）|
+| P0 阻塞 | 3（B002/B004/B014）|
 | P1 高优先 | 2（B012/B013）|
 | P2 中优先 | 1（B008）|
-| 修复已提交 | 4 |
+| 修复已提交 | 5 |
 | 飞轮用例 | 27 |
 | 最近飞轮报告 | report-2026-08-08-05-llm (92%·24/26) |
 
@@ -38,6 +38,13 @@
 - **问句**：「将西陵区范围内的积极情绪点筛选出来单独显示。」
 - **同根因**：B002
 - **关联**：[entry](open/B004-finalstep-fake-conclusion-point-filter.md) · [rootcause](../../docs/catch-ball/rootcause/2026-07-28-hallucination-finalstep.md) · TC-23 · CB-09
+
+### B014 · membership 值匹配静默丢点——异构属性点文件空值列触发整行丢弃（/spatial/aggregate 计数大错）
+
+- **严重度**：HIGH | **模块**：数据识别 | **复现**：2×
+- **修复进度**：CB-41 增补修复（zcode）：混合策略——值匹配（不变）+ 空值非 region 回退 sjoin（仅取面 geometry·防列污染）+ 空值 region 丢弃；真实数据验证 sum 2283/非零 144/TOP8=客观表头部逐字吻合；12345 民生基础 6487/148 社区与 5.251 口径一致；CB-23 老测试同步新规范（region 判别收紧为显式 `geocode_status` 标记）；pytest 全量 372 passed (见 5.260)
+- **问句**：「体检两方面合并点做 174 社区聚合，为什么中间密集社区的点像没识别到（计数为零）？」(membership silent point drop on heterogeneous geojson)」
+- **关联**：[entry](open/B014-membership-silent-point-drop.md) · CB-41
 
 ## P1 · 高优先
 
@@ -90,6 +97,7 @@
 | 2026-07-29 | 3a97e19 | P0-4 v3 根治：① _autoExpandOverlays 代码自动扩展多步骤 ② D057 修订允许多 tool... | B002 |
 | 2026-07-29 | adef900 | ① 按钮迁至右上角 sticky（原右下）② 透明磨砂背景+细绿边框（原深色填充）③ 文本 '↓'（原'回到底部 ↓'） | B009/B010/B011 |
 | 08-18 | `126537 | CB-41 实施修复（zcode·组合方案）：① 聚合社区面层（grid analysis=zonal / zonal ... | B012/B013 |
+| 08-18 | 见 5.260 | CB-41 增补修复（zcode）：混合策略——值匹配（不变）+ 空值非 region 回退 sjoin（仅取面 geo... | B014 |
 | 07-28 | 1320e7c | M1 `_norm_where` 拆逗号（支持 `in` 多值列表） | B001/B001 |
 | 07-28 | f68f61c | M3 契约 `extract_feature` 去「单要素」误导（`when`=FC description·上游根因） | B001 |
 
@@ -102,6 +110,7 @@
 - **B003** · LLM 推理螺旋 — 简单查询耗时异常（复现） — 2× 复现（resolved）
 - **B004** · finalStep 假结论 — 筛选点图层"只说不做"（复现） — 2× 复现（open）
 - **B013** · L0 点层聚合 choropleth 色带反语义——点数越多颜色越浅、零点社区落最深红 — 2× 复现（open）
+- **B014** · membership 值匹配静默丢点——异构属性点文件空值列触发整行丢弃（/spatial/aggregate 计数大错） — 2× 复现（open）
 
 ---
 

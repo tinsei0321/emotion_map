@@ -128,14 +128,19 @@ def test_aggregate_by_polygons_membership_avoids_region_misassign():
                       Point(111.26, 30.70), Point(111.28, 30.72)]},
         crs='EPSG:4326',
     )
-    # 区级质心点：membership 为空，但几何恰落在 A 社区面内，应被剔除而非计入 A 社区
+    # 区级质心点：membership 空 + geocode_status=region 显式标记，几何恰落在 A 社区面内，应被剔除而非计入。
+    # CB-41 B014 规范修订：空 membership 的判别从「一律视为区级点丢弃」收紧为「geocode_status=region
+    # 显式标记才丢弃」——异构属性点文件（部分要素带 社区 列）的空值=未富集的精确点，须回退 sjoin，
+    # 否则 2296 点静默丢 1696（08-18 实测）。12345 全系点文件均带 geocode_status 列，保护不受影响。
     region_pts = gpd.GeoDataFrame(
         {'社区': [None] * 4,
+         'geocode_status': ['region'] * 4,
          'geometry': [Point(111.22, 30.70)] * 4},
         crs='EPSG:4326',
     )
     all_pts = gpd.GeoDataFrame(
         {'社区': list(pts['社区']) + [None] * 4,
+         'geocode_status': ['ok'] * 5 + ['region'] * 4,
          'geometry': list(pts.geometry) + list(region_pts.geometry)},
         crs='EPSG:4326',
     )

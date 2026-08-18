@@ -67,5 +67,54 @@ def test_with_polarity_still_produces_index():
     assert float(merged.set_index('name').loc['A', 'polarity_index']) == 0.0  # (1-1)/2
 
 
+# ── CB-41 B014：membership 值匹配混合策略（空值回退 sjoin·区级质心点丢弃）──
+
+def _polys_named():
+    return gpd.GeoDataFrame(
+        {'社区': ['A社区', 'B社区']},
+        geometry=[box(0, 0, 0.5, 0.5), box(0.6, 0.6, 1, 1)],
+        crs='EPSG:4326',
+    )
+
+
+def test_membership_null_falls_back_to_sjoin():
+    """membership 列存在但值缺失（异构属性 NaN）→ 几何 sjoin 回退，不得静默丢点（B014 主断言）。"""
+    pts = gpd.GeoDataFrame(
+        {'社区': ['A社区', None, 'B社区']},   # 第 2 点几何在 A 内但 membership 空
+        geometry=[Point(0.1, 0.1), Point(0.2, 0.2), Point(0.8, 0.8)],
+        crs='EPSG:4326',
+    )
+    merged = aggregate_by_polygons(pts, _polys_named(), agg_cols=[], polygon_name_col=None)
+    by = merged.set_index('社区')
+    assert int(by.loc['A社区', 'point_count']) == 2   # 值匹配 1 + 空值 sjoin 回退 1
+    assert int(by.loc['B社区', 'point_count']) == 1
+
+
+def test_membership_value_wins_over_geometry():
+    """membership 有值 → 值匹配优先于几何（CB-23 语义不变：区级质心点不误配）。"""
+    pts = gpd.GeoDataFrame(
+        {'社区': ['A社区']},                       # 几何落在 B 面内·但值声明 A
+        geometry=[Point(0.8, 0.8)],
+        crs='EPSG:4326',
+    )
+    merged = aggregate_by_polygons(pts, _polys_named(), agg_cols=[], polygon_name_col=None)
+    by = merged.set_index('社区')
+    assert int(by.loc['A社区', 'point_count']) == 1
+    assert int(by.loc['B社区', 'point_count']) == 0
+
+
+def test_membership_null_region_point_dropped():
+    """membership 空 + geocode_status=region → 丢弃（质心坐标无定位意义·CB-23 保护延续）。"""
+    pts = gpd.GeoDataFrame(
+        {'社区': [None, None], 'geocode_status': ['region', 'ok']},
+        geometry=[Point(0.1, 0.1), Point(0.2, 0.2)],
+        crs='EPSG:4326',
+    )
+    merged = aggregate_by_polygons(pts, _polys_named(), agg_cols=[], polygon_name_col=None)
+    by = merged.set_index('社区')
+    assert int(by.loc['A社区', 'point_count']) == 1   # 仅 ok 点计入；region 点被丢弃
+    assert int(merged.point_count.sum()) == 1
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-q'])

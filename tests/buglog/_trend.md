@@ -12,3 +12,4 @@
 | B003 | LLM 推理螺旋 — 简单查询耗时异常（复现） | [2](resolved/B003-llm-reasoning-spiral-simple-query.md) | FC诊断 | [RESOLVED] | 2026-07-29 | [2026-07-28-multi-extract-reasoning-spiral.md](../../docs/catch-ball/rootcause/2026-07-28-multi-extract-reasoning-spiral.md) |
 | B004 | finalStep 假结论 — 筛选点图层"只说不做"（复现） | [2](open/B004-finalstep-fake-conclusion-point-filter.md) | finalStep | [OPEN] | 2026-07-29 | [2026-07-28-hallucination-finalstep.md](../../docs/catch-ball/rootcause/2026-07-28-hallucination-finalstep.md) |
 | B013 | L0 点层聚合 choropleth 色带反语义——点数越多颜色越浅、零点社区落最深红 | [2](open/B013-count-choropleth-ramp-inverted.md) | UI | [OPEN] | 2026-08-18 | — |
+| B014 | membership 值匹配静默丢点——异构属性点文件空值列触发整行丢弃（/spatial/aggregate 计数大错） | [2](open/B014-membership-silent-point-drop.md) | 数据识别 | [OPEN] | 2026-08-18 | — |

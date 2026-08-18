@@ -271,18 +271,40 @@ def aggregate_by_polygons(
     # 空间连接：点层若自带与面 name 同名的 membership 列（如「社区」），
     # 优先按值匹配聚合——避免区级质心点（geocode_status=region）被几何 sjoin
     # 误配到质心所在社区，导致艾家嘴/夷陵路等被虚高（CB-23 主开发修复）。
+    # CB-41 B014（08-18）：异构属性点文件（部分要素带 社区 列、部分不带——from_features
+    # 联合成列后 74% NaN）曾在这里被整行静默丢弃（2296 点只剩 600·136/174 社区清零）。
+    # 修正为混合策略：① membership 有值 → 值匹配（CB-23 语义不变）；
+    # ② membership 空值（NaN/''）且非区级质心点 → 回退几何 sjoin（空值不含归属信息，几何是唯一依据）；
+    # ③ membership 空值且 geocode_status=region → 丢弃（质心坐标无定位意义·CB-23 保护延续）。
     _poly_name = polygon_name_col or find_boundary_name_column(polygons_gdf.columns)
     _membership_col = _poly_name if (_poly_name and _poly_name in points_gdf.columns) else None
+
+    def _norm_membership(v):
+        if v is None or (isinstance(v, float) and pd.isna(v)):
+            return None
+        s = str(v).strip()
+        return s if s and s.lower() not in ('nan', 'none') else None
 
     if _membership_col and polygons_gdf[_membership_col].astype(str).str.strip().is_unique:
         _poly_names = polygons_gdf[_membership_col].astype(str).str.strip()
         _name_to_idx = {v: i for i, v in _poly_names.items()}
         joined = points_gdf.copy()
-        joined['_membership'] = joined[_membership_col].astype(str).str.strip()
-        joined = joined[joined['_membership'].isin(_name_to_idx)]
-        joined['index_right'] = joined['_membership'].map(_name_to_idx)
-        joined = joined.drop(columns=['_membership'])
-        joined = gpd.GeoDataFrame(joined, geometry='geometry', crs=points_gdf.crs)
+        joined['_membership'] = joined[_membership_col].map(_norm_membership)
+        _has_val = joined['_membership'].notna()
+        matched = joined[_has_val & joined['_membership'].isin(_name_to_idx)].copy()
+        matched['index_right'] = matched['_membership'].map(_name_to_idx)
+        matched = matched.drop(columns=['_membership'])
+        # 空值点：区级质心丢弃、其余回退 sjoin（仅取面 geometry，避免面属性列并入污染点表）
+        rest = joined[~_has_val].drop(columns=['_membership'])
+        if 'geocode_status' in rest.columns:
+            _is_region = rest['geocode_status'].astype(str).str.strip().str.lower() == 'region'
+            rest = rest[~_is_region]
+        if len(rest):
+            sj = gpd.sjoin(rest, polygons_gdf[['geometry']], how='inner', predicate='within')
+            parts = [matched, sj] if len(matched) else [sj]
+        else:
+            parts = [matched]
+        joined = gpd.GeoDataFrame(pd.concat(parts), geometry='geometry', crs=points_gdf.crs) if parts else matched
     else:
         joined = gpd.sjoin(points_gdf, polygons_gdf, how='inner', predicate='within')
 
