@@ -131,6 +131,8 @@
    - **三组环境就绪（08-09 自检）**：glm组 7/7 OK 全能力；Codex 5 OK + 2 WARN（SessionStart hook 已补 `.codex/hooks.json`·多模态 Key 缺失 → 多模态/OCR 类用例 Codex 不承接·claude组/glm 承接）。报告：`discuss/CB环境自检_回应_Codex-GPT5_2026-08-09.md` + `_handoff/CB环境自检_glm组_2026-08-09.md`
    - **session 标签纪律（glm 实测·08-09 采）**：`EMOTION_TRACE_SESSION` **仅 B3/e2e 浏览器用例需要带**（走真实问答链路 FC→工具→finalStep·产 trace）；**pytest 单测/静态核验不产 trace·无需带**（glm 实测带 session 跑单测·trace 查询返 0 行）——分配任务时标注测试类型决定是否带标签。
 
+6. **用户沟通纪律（2026-08-18 用户反馈·全局生效）**：面向用户的决策说明必须按「非程序开发者」沟通——① 专业人员先系统讲解背景/选项/代价/推荐，不只抛结论；② 禁裸用内部编号（G10、B1、P3、B 变体、C11 等），首次必须用业务名称或「业务名称（内部编号：XXX）」；③ 决策问题要说明接受/不接受意味着什么、现在是否执行、时间与演示影响，并给推荐答案。技术细节放附录或链接。
+
 ## §6 Auto-Check 清单（/cb step 5 加载·数据驱动，CB-03 建议2）
 
 每次 counter-evaluation 必须执行（可追加，不删除）：
