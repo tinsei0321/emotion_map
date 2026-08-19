@@ -342,6 +342,14 @@
 
 ---
 
+## R29（2026-08-19 深夜）T3 G10 改派：主手设计+副手执行
+
+- 用户令：开工 G10·zcode 专注写详细计划·具体执行交 dsh。
+- zcode 执行：核实五 backing 锚点真身签名（aiqa_routes post_outlet_card/rag_search·spatial_analysis.aggregate_by_polygons:237·buffer_analysis.create_buffer:18·geo_registry resolve 族）→ 派发单落盘（七工具逐一规格：输入 schema/三步 backing 链/caliber 对象逐工具映射 refs 指向 K 卡/体积纪律 rows≤20/依赖 mcp/测试 8-10 用例/五判据答辩/F_021-F_027 连续取号/白名单四文件/红线=纯只读+签名不符即停）。
+- 设计决策（v1 诚实降级两处）：rag synthesize=True 不调 LLM 返 guidance+deferred_v2 标记；buffer fc 仅小要素返回否则 fc_omitted。
+
+---
+
 ## 附：用户指令记录（累计）
 
 | 日期 | 指令 |
@@ -356,6 +364,7 @@
 | 2026-08-17（R7） | 不急落盘 plan；讨论原文落盘成纪要（可润色）；出 prompt 邀 claude/Codex；dsh 另给专项 prompt（未来用 dsh 与 EMC 合体） |
 | 2026-08-17（R8） | 三组已完成；把讨论过程、原文与三组落盘情况全部落盘成详细文档，提交给 Codex |
 | 2026-08-18（R9） | 外挂大脑链路三组讨论（朋友「Codex 经 MCP 遥控 dsh」思路）——zcode 以应答组身份参与 |
+| 2026-08-19（深夜·R29） | G10 开工·zcode 写详细计划·执行交 dsh |
 | 2026-08-19（深夜·R27） | 开工 PT-CB5 插座批 |
 | 2026-08-19（深夜·R26） | 裁定二：架子先行——先搭架子再丰富 RAG；数据治理不必先行 |
 | 2026-08-19（晚·R22） | 重心纠偏：数据内容≠资产·契约卡=资产；勿在行级核对耗时；每批须产出契约条目 |
@@ -372,4 +381,4 @@
 - 同日用户要求先看详细计划：Codex 产出 `EMC平台化与主线治理_总开工计划_通俗版预览_Codex-2026-08-18.md`（三阶段 11-14 工作日·五项决策与计划关系）。
 - **用户指示：全部材料打包交 zcode 推进下一步**——本索引+台账更新+commit push；zcode 任务=一致性核查/统一拍板清单/CB-41 预案（三件套）。
 
-> 台账维护：zcode组·每轮更新（PT 期兼记 PT-CB 轮）。最后更新：2026-08-19 深夜（R28=PT-CB5 T5 回收·待 T3 G10）。
+> 台账维护：zcode组·每轮更新（PT 期兼记 PT-CB 轮）。最后更新：2026-08-19 深夜（R29=G10 派发单落盘待投递）。
