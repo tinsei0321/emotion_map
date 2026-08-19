@@ -73,7 +73,7 @@ def test_render_spec_writes_inbox_file_with_contract(monkeypatch, tmp_path):
     monkeypatch.setattr('core.geo_registry.list_point_layers', lambda: [])
     out = mse.render_spec(kind='choropleth', name='情绪最差三区',
                           dataset_id='base_18village_area', value_field='polarity_index',
-                          source_tool='rank')
+                          source_tool='rank', community_caliber=174)
     assert out['ok'] is True and out['spec_id']
     fp = out['inbox_path']
     assert os.path.isfile(fp)
@@ -82,6 +82,9 @@ def test_render_spec_writes_inbox_file_with_contract(monkeypatch, tmp_path):
     assert spec['kind'] == 'choropleth'
     assert spec['origin']['source_tool'] == 'rank'
     assert spec['caliber_lite']['usage'] == 'analysis_output'
+    assert spec['caliber_lite']['data_nature'] == 'real'
+    assert spec['caliber_lite']['community'] == 174
+    assert spec['style']['scheme'] == 'community_choropleth_v1'
     assert _caliber_ok(out['caliber'])
 
 
@@ -99,6 +102,42 @@ def test_render_spec_inline_limit_and_missing_data(monkeypatch, tmp_path):
 
     out = mse.render_spec(kind='point', name='缺数据')
     assert out['ok'] is False and '二选一' in out['hint']
+
+
+def test_list_data_data_nature_and_preset_passthrough(monkeypatch, tmp_path):
+    _patch_render_globals(monkeypatch, tmp_path, [
+        {'id': 'demo_preset', 'label': '演示面', 'file': 'a.geojson',
+         'nameField': 'name', 'usage': 'input', 'data_nature': 'demo'},
+    ])
+    monkeypatch.setattr('core.geo_registry.list_point_layers', lambda: [
+        {'id': 'yichang_l2_t1', 'label': '演示层', 'level': 'L2',
+         'fields': ['score'], 'dtypes': {'score': 'float64'}, 'crs': 'EPSG:4326',
+         'available': True},
+        {'id': 'checkup_12345_2024', 'label': '真实 12345', 'level': 'CHECKUP',
+         'fields': ['办件编号'], 'dtypes': {}, 'crs': 'EPSG:4326',
+         'available': True},
+    ])
+    out = mse.list_data()
+    by_id = {p['id']: p for p in out['point_layers']}
+    assert by_id['yichang_l2_t1']['data_nature'] == 'demo'
+    assert by_id['checkup_12345_2024']['data_nature'] == 'real'
+    preset = next(p for p in out['presets'] if p['id'] == 'demo_preset')
+    assert preset['data_nature'] == 'demo'
+
+
+def test_render_spec_scheme_registry_and_inline_nature(monkeypatch, tmp_path):
+    _patch_render_globals(monkeypatch, tmp_path, [])
+    out = mse.render_spec(kind='choropleth', name='未知样式', geojson={
+        'type': 'FeatureCollection', 'features': []}, scheme='nope')
+    assert out['ok'] is False and 'scheme 未注册' in out['hint']
+
+    fc = {'type': 'FeatureCollection', 'features': [
+        {'type': 'Feature', 'geometry': Point(111, 30).__geo_interface__, 'properties': {}}]}
+    out = mse.render_spec(kind='point', name='演示点', geojson=fc, data_nature='demo')
+    assert out['ok'] is True
+    spec = json.loads(open(out['inbox_path'], encoding='utf-8').read())
+    assert spec['style']['scheme'] == 'point_default_v1'
+    assert spec['caliber_lite']['data_nature'] == 'demo'
 
 
 def test_render_spec_dataset_validation(monkeypatch, tmp_path):

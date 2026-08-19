@@ -38,6 +38,9 @@ register_track_id('MOD_AIQA.F_028', 'MCP render_spec（图层图纸：dataset/in
 
 MANIFEST = os.path.join(REPO, 'DATA', 'boundaries', 'presets', 'manifest.json')
 
+# P+ scheme 受管样式词表（前端按名解析·未知即拒）
+SCHEMES = ('community_choropleth_v1', 'point_default_v1')
+
 CALIBERS = {
     'list_data': {
         'scale': '数据资产清单',
@@ -180,12 +183,23 @@ def list_data(include_demo: bool = False) -> dict:
     Args:
         include_demo: 兼容保留（F1 起清单恒为可解析集）。
     """
-    from core.geo_registry import list_point_layers
+    from core.config import PERFORMANCE_DIR
+    from core.geo_registry import _POINT_LAYERS, _layer_path, list_point_layers
 
     point_layers = []
     for p in list_point_layers():
         if not p.get('available'):
             continue
+        data_nature = 'real'
+        entry = _POINT_LAYERS.get(p.get('id'))
+        if entry is not None:
+            try:
+                path = os.path.normpath(_layer_path(entry))
+                data_nature = 'demo' if path.startswith(os.path.normpath(PERFORMANCE_DIR) + os.sep) else 'real'
+            except Exception:
+                data_nature = 'demo' if str(p.get('level', '')).upper() != 'CHECKUP' else 'real'
+        else:
+            data_nature = 'demo' if str(p.get('level', '')).upper() != 'CHECKUP' else 'real'
         point_layers.append({
             'id': p.get('id'),
             'label': p.get('label'),
@@ -194,6 +208,7 @@ def list_data(include_demo: bool = False) -> dict:
             'dtypes': p.get('dtypes', {}),
             'crs': p.get('crs', 'EPSG:4326'),
             'usage': 'input',
+            'data_nature': data_nature,
         })
 
     try:
@@ -215,6 +230,7 @@ def list_data(include_demo: bool = False) -> dict:
                 'geometry': geometry,
                 'usage': it.get('usage', 'input'),
                 'name_field': it.get('nameField'),
+                'data_nature': it.get('data_nature', 'real'),
             })
 
     return {
@@ -459,21 +475,28 @@ def rank(by: str = 'worst', layer: str = 'yichang_l2_t1',
     return out
 
 
-def _dataset_usage(dataset_id):
-    """dataset_id → usage（preset 读 manifest·点层按 geo_registry·未知 None）。"""
+def _dataset_meta(dataset_id):
+    """dataset_id → {usage, data_nature}（preset 读 manifest·点层按池路径·未知 None）。"""
     try:
         with open(MANIFEST, 'r', encoding='utf-8') as fh:
             for group in json.load(fh):
                 for it in group.get('items', []):
                     if it.get('id') == dataset_id:
-                        return it.get('usage', 'input')
+                        return {'usage': it.get('usage', 'input'),
+                                'data_nature': it.get('data_nature', 'real')}
     except Exception:
         pass
     try:
-        from core.geo_registry import list_point_layers
+        from core.config import PERFORMANCE_DIR
+        from core.geo_registry import _POINT_LAYERS, _layer_path, list_point_layers
         for p in list_point_layers():
             if p.get('id') == dataset_id and p.get('available'):
-                return 'input'
+                entry = _POINT_LAYERS.get(dataset_id)
+                nature = 'real'
+                if entry is not None:
+                    path = os.path.normpath(_layer_path(entry))
+                    nature = 'demo' if path.startswith(os.path.normpath(PERFORMANCE_DIR) + os.sep) else 'real'
+                return {'usage': 'input', 'data_nature': nature}
     except Exception:
         pass
     return None
@@ -481,9 +504,10 @@ def _dataset_usage(dataset_id):
 
 @track('MOD_AIQA.F_028', track_args=False)
 def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None,
-                value_field: str = 'polarity_index', ramp_hint: str = '',
-                zoom_to: bool = True, producer: str = 'dsh',
-                source_tool: str = 'manual') -> dict:
+                scheme: str = '', value_field: str = 'polarity_index',
+                ramp_hint: str = '', zoom_to: bool = True, producer: str = 'dsh',
+                source_tool: str = 'manual', data_nature: str = 'real',
+                community_caliber: int = 0) -> dict:
     """图层图纸（render spec v1）：dataset 引用或内联 GeoJSON → 收件箱 JSON。
 
     产物经 8080 前端显示屏呈现（需浏览器已打开情绪地图页面）；
@@ -494,11 +518,14 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
         name: 图层名（现实内容·前端加 [dsh] 前缀）。
         dataset_id: preset 或点层 id（与 geojson 二选一·同时给以 dataset_id 为准）。
         geojson: 内联 FeatureCollection（要素 ≤60）。
+        scheme: community_choropleth_v1 | point_default_v1（缺省按 kind 推导）。
         value_field: choropleth 取值字段（默认 polarity_index）。
         ramp_hint: worst_first 可选（其余省略）。
         zoom_to: True 前端铺层后缩放至图层。
         producer: 生产者标识（默认 dsh）。
         source_tool: 来源工具（rank | zonal_stats | manual）。
+        data_nature: real | demo（inline 由调用方声明·dataset 由池路径判定）。
+        community_caliber: 社区口径（174|154|118|130…·填则入 caliber_lite.community）。
     """
     if kind not in ('point', 'choropleth'):
         return {'ok': False, 'hint': f'kind 非法: {kind!r}（仅 point|choropleth）',
@@ -507,14 +534,23 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
         return {'ok': False, 'hint': 'name 必填（现实内容命名）',
                 'caliber': CALIBERS['render_spec']}
 
+    # P+ scheme 受管词表（旧 token 机制不再产出）
+    resolved_scheme = scheme or ('point_default_v1' if kind == 'point' else 'community_choropleth_v1')
+    if resolved_scheme not in SCHEMES:
+        return {'ok': False, 'hint': f'scheme 未注册: {resolved_scheme}（词表: {", ".join(SCHEMES)}）',
+                'caliber': CALIBERS['render_spec']}
+
     fixes = []
     usage = 'input'
+    nature = data_nature if data_nature in ('real', 'demo') else 'real'
     data = {}
     if dataset_id:
-        usage = _dataset_usage(dataset_id)
-        if usage is None:
+        meta = _dataset_meta(dataset_id)
+        if meta is None:
             return {'ok': False, 'hint': f'未知 dataset_id: {dataset_id}（调用 list_data 查看清单）',
                     'caliber': CALIBERS['render_spec']}
+        usage = meta['usage']
+        nature = meta['data_nature']
         data = {'dataset_id': dataset_id}
         if geojson is not None:
             fixes.append('dataset_id 与 geojson 同时给·以 dataset_id 为准')
@@ -535,9 +571,13 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
         return {'ok': False, 'hint': 'choropleth 须 value_field 非空',
                 'caliber': CALIBERS['render_spec']}
 
-    style = {'token': kind, 'value_field': value_field}
+    style = {'scheme': resolved_scheme, 'value_field': value_field}
     if ramp_hint:
         style['ramp_hint'] = ramp_hint
+
+    caliber_lite = {'usage': usage, 'data_nature': nature, 'note': '; '.join(fixes)}
+    if community_caliber:
+        caliber_lite['community'] = int(community_caliber)
 
     spec_id = f'{int(time.time() * 1000)}-{random.randint(1000, 9999)}'
     spec = {
@@ -548,7 +588,7 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
         'style': style,
         'ui': {'name': str(name).strip(), 'zoom_to': bool(zoom_to)},
         'origin': {'producer': producer, 'source_tool': source_tool},
-        'caliber_lite': {'usage': usage, 'note': '; '.join(fixes)},
+        'caliber_lite': caliber_lite,
     }
 
     inbox_dir = os.path.join(REPO, 'DATA', 'exports', 'render_inbox')
