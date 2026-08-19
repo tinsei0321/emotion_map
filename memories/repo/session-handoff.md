@@ -10,11 +10,13 @@
 
 ---
 
-## 当前节点：PT 平台化转型 · 实施中（office 续点=PT-CB2 T2）
+## 当前节点：PT 平台化转型 · B1 批完工送审 + 下轮 PT-CB4 就绪（2026-08-19 下午）
 
-- **已完成**：PT-CB1 全轮回口（T2 G8a 契约派生·Codex 审计零打回·pytest 基线 375+3）；PT-CB2 T1 回收（dsh manifest 注册四件套：8 组 57 层·19 新注册·usage 45+12 全覆盖=铁律7 数据侧就位；主手四裁决+qty 存量路径修复·审计顺延下轮）。
-- **office 到岗动作**：①`git checkout EMC_harness_dsh && git pull origin EMC_harness_dsh` ②`git push hub --all` 补推盘仓（hub 在 office）③**开工 PT-CB2 T2**=usage 白名单消费点（`api/geo_routes.py` 输入校验拒 `analysis_output` + 前端 toolbox 链·spec=CB39 计划 §四 B1 Z4 条款·白名单开工前细化）④T1+裁决+T2 一并送审 ⑤之后 PT-CB3（B2 对账裁决+B3 口径注册表/check_caliber·F_020 起取号）。
-- **纪律**：一切在分支（main 冻结）；dsh 白名单制；门禁 375+3（上浮须注明）；追踪 ID 连续不跳号。
+- **已完成（08-19 本班）**：PT-CB2 全批——T1 图层注册四件套（dsh·8 组 57 层·usage 45+12）+ T2 usage 消费点（zcode·守卫 F_004/D_002·后端十端点+前端 ref() 双侧·门禁 387+3 上浮 12）+ T3 验收包（check_manifest 0err/2warn·冒烟三链路·R7 变体入档）；PT-CB3 学习线两轮回应（守卫四态→T2 / Cordis 八节→A5/A6 纪律+C3 克制+D3 修正）；AGENTS v2.4 学习新规（报告必讨论必落盘）；**PT 命名令编号纠正**（学习线=PT-CB3·下轮=PT-CB4·CB-42 字样零残留）。
+- **进行中**：送审 Codex（通知已落盘 `PT-CB2-送审通知_zcode-2026-08-19.md`·四件套+审计要点+PT-CB3 补答 11/12/14 一并交代）——**等 Codex 审计报告**。
+- **下轮就绪**：PT-CB4（B2 对账裁决+B3 口径注册表+check_caliber·F_020 取号）——拆解文档已备 `PT-CB4-开工与拆解_zcode-2026-08-19.md`，**待用户开工令**（与审计回收可并行·用户定）。
+- **待用户确认存量**：MCP 排 B/C 线后（PT-CB3 回应 §六·2）；hub 盘仓路径未提供（office 机器无 hub remote·推送走码云无损）。
+- **纪律**：一切在分支（main 冻结）；dsh 白名单制；门禁 387+3（上浮须注明）；追踪 ID 连续不跳号；新任务一律 PT 编号（08-19 用户令·不再 CB-xx）。
 - 历史段（08-18 下午前）见下方旧节点与 git 历史。
 
 ### 旧节点：EMC×dsh 可行性深挖收工 · 零实施 · 等用户确认
