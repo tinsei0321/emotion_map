@@ -66,4 +66,4 @@ ijson>=3.2        # 流式读大三调用地 GeoJSON（ingest_landuse_preset.py�
 openpyxl==3.1.5
 
 # ── MCP server SDK（PT-CB5 T3·EMC 标准插座 FastMCP stdio）──
-mcp
+mcp>=1.0.0,<2.0.0    # FastMCP 位于 mcp.server.fastmcp；2.0 移除该模块故锁 1.x
