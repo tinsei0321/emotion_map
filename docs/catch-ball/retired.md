@@ -75,3 +75,5 @@
 | `frontend/css/timeline.css` | 旧侧栏时间轴 widget 样式（.tl-wrap/.tl-track/.tl-stop/.tl-btn，5.29 任务2） | 5.142 timeline.js 改 headless 引擎 + retire 旧侧栏 widget（底部 time-bar 接管），index.html 已去 link；零活引用 | git 历史 |
 
 **删除前核验**：`grep -rn "timeline\.css" frontend/` = 零活引用（仅 timeline.css 自身首行注释）。time-bar.css 已接管时间 UI 样式。
+
+| 2026-08-19 | PT-CB4 T1 对账裁决 | `DATA/performance/77项_社区占比表.csv` / `77项_社区11类占比矩阵.csv` / `12345_事件类型.csv` → `DATA/analysis/_retired/`（git mv 保史） | 三对同名 B2 四证据法裁决输家：126<137 社区旧版/193 含村旧口径/仅差 BOM 冗余——裁决表见 `DATA/analysis/_总账.md` 文末 |
