@@ -12,6 +12,18 @@
 - **去 office 续点**：读 `_handoff/OFFICE.md`；S7 回收判读，将三个显示面缺陷并入 PT-CB6 缺陷清单。
 - 详细进度：`docs/todo.md` 2026-08-20 段 + `memories/repo/session-handoff.md` 当前节点。
 
+## ⚠️ office 侧 dsh 问答测试准备（跨机四件套·zcode 补记 08-20）
+
+**git pull 只带回仓库侧（八工具/渲染通道/数据/配置指引文档）——dsh 的 profile 配置在家机 `~/.dsh/profiles/emc-test/`，不在 git 里。office 要复测须补四件（约 10-15 分钟）：**
+
+1. **python 依赖**：`pip install "mcp>=1.0.0,<2.0.0"`（office 环境未装此新依赖）；
+2. **RAG 索引重建**：`py tools/rag_index.py --build`（索引不入 git·每环境必建）；
+3. **.env 确认**：`py tools/verify_keys.py` 验 DeepSeek/AMAP key（office 历史应已有）；
+4. **dsh profile 重建**：按 `docs/catch-ball/discuss/PT-CB6-dsh侧MCP配置指引_dsh-2026-08-20.md` 照做（语法全带 file:line 实证）。**前提注意**：指引依赖用 `link:D:/Github/dsh/packages/mcp/mcp-client`——要求 office 有 dsh 本地 checkout；**没有 checkout 的变体**：依赖改 npm registry 版（去 `link:` 前缀装正式包 `@deepseek-ai/dsh-mcp-client`），其余不变（到岗让 office 的 dsh 顺手在指引文档补此变体一节）。另确认 office 已装 npm 全局 dsh + 3080 端口占用情况。
+
+**到岗顺序**：`git pull`（gitee 可达）→ `git push hub --all` 补推盘仓 → 四件准备 → 起 `py frontend/serve.py 8080` + 浏览器开页 → `dsh --profile emc-test` → 问「12345 热线诉求最密集的 10 个社区是哪些？把结果铺到地图上」看 8080 亮 `[dsh] [真实]` 图层。
+**长期解**：在家跑「一键离开」会把 `~/.dsh` 快照进 hub 盘（六平台含 dsh）——以后 dsh 配置随盘走免手配；今晚收工记得跑。
+
 ## 旧：到岗快照（08-19 office 班收工·home 续接）
 
 - **office 班完成**：①Codex 审计 B1 判 FAIL→七项修复完毕→**送复审**（prompt 在 `PT-CB2-送审通知_zcode-2026-08-19.md` §六·**待用户转发 Codex**）·门禁 389+3 ②dsh 两批六任务全销号·两条真发现（place_name 内嵌真实身份证→蒸馏强校验入 B4；qty 层两份物理拷贝→入 T1 裁决）③PT-CB3 意图外置终收敛 v2 定稿（EMC=契约集合体·四类+两补充契约·首个实施触点=PT-CB4 T2）④PT 命名令（PT-CB3=学习线/PT-CB4=下轮实施批）⑤AGENTS v2.4 学习必落盘 ⑥`tools/check_server_freshness.py` 上线。
