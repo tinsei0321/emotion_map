@@ -86,3 +86,31 @@ node --check 两 js；pytest 全绿（416+3+新增·注明）。
 ## 八 白名单与产出
 
 白名单七件：`tools/mcp_server_emc.py`、`api/render_routes.py`（新）、`api/main.py`（唯二行）、`frontend/js/render_client.js`（新）、`frontend/index.html`（唯一行）、`tests/test_render_channel.py`（新）、执行记录 md（`PT-CB6-P执行记录_dsh-{日期}.md`：三砖销号+grep 所得真身签名记录+演示截图说明/命令回执+待主手裁决项）。量级预估 1.75-2.25d。
+
+
+---
+
+## 九 增补件（2026-08-20·用户定验收场景+主手六建议·dsh 下次 pull 生效）
+
+### 9.1 spec 契约修订：style 升级为受管样式预设（scheme）
+
+`style` 字段改为 `{ "scheme": "<受管预设名>", "value_field": "...", "ramp_hint": "..." }`；v1 受管词表两个：
+- `community_choropleth_v1`（社区面分层着色·value_field 连续分级·复用现有社区 choropleth 色带+图例）
+- `point_default_v1`（点层默认 circle 样式）
+前端按 scheme 名解析（词表注册在前端·渲染器为权威）；未知 scheme → 拒渲染+控制台提示词表名。render_spec 校验 scheme ∈ 词表。**此修订覆盖 §一 契约与 §二 校验相应条目。**
+
+### 9.2 验收场景 v2（替换"最差3区"演示·真实数据）
+
+1. **热线最密集社区**：`zonal_stats(layer=checkup_12345_2024, boundary=<174社区面 preset>, top_n=10, layer_output=True)` → `render_spec(kind=choropleth, scheme=community_choropleth_v1, value_field=point_count, name='12345热线诉求最密集社区(真实)', ...)`；
+2. **两大方面分布**：安全/民生社区点层分别 zonal → 两张 choropleth（真实）；
+3. **9 类细分布**：v1 以表格/文字结论（消费 `12345_社区x9类_全覆盖.csv` 既有矩阵）；细图列 v2（join 能力）；
+4. 知识问答：先 `py tools/rag_index.py --build` 重建索引再演示 rag_query。
+
+### 9.3 新增白名单两件
+
+- `tools/demo_pioneer.py`（新·演示脚本：无 dsh 先验证三砖·顺序调用+回执打印）；
+- F2 顺修并入：list_data/render spec/前端徽标三处 `demo/real` 数据性质透传（点层按 performance 池路径判 sim；真实层标 real·前端图层名徽标 `[演示]|[真实]`——涉及 mcp_server_emc.py/render_client.js 已在白名单内·测试补两用例）。
+
+### 9.4 验收增"读图三问"
+
+图例是否用户体系（scheme 解析）？口径标注可读（caliber_lite 含社区口径数·防 174/154/118 混配）？数据性质徽标在？
