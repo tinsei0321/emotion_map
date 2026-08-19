@@ -454,9 +454,64 @@ _PARAM_RANGES = {
 }
 
 
-def _param_to_json_schema(p):
+# ════════════ G8b（PT-CB5 T2·2026-08-19）动态开卷定参 ════════════
+# source 型参数（layer/boundary/range/center/...）注入实时数据清单枚举——治「闭卷填参」
+# （CB-08 实证：FC 选型 12/12 全对·瓶颈在参数填充）。拍板清单第 4 项（数据说明书/开卷）批准机制。
+# 红线口径：本机制只改 schema 的 enum/description（契约派生链内）·diagnose prompt 文本零接触。
+# 源（三源取二·均带兜底）：①core/geo_registry 点层 id ②presets manifest（仅 usage=input·G-2/铁律7：
+# analysis_output 结论层禁作空间操作输入——枚举层硬过滤）③analysis 总账（v2 再接·当前两层已够 v1）。
+
+import json as _json
+from pathlib import Path as _Path
+
+_PRESET_MANIFEST = _Path(__file__).resolve().parent.parent / 'DATA' / 'boundaries' / 'presets' / 'manifest.json'
+
+# source 参数 → 枚举桶（point=点层 id·preset=边界/面层 preset id）
+_SOURCE_ENUM_PARAM = {
+    'layer': 'point', 'boundary': 'preset', 'boundaries': 'preset', 'range': 'preset',
+    'center': 'preset', 'target': 'preset', 'layer_a': 'preset', 'layer_b': 'preset', 'layers': 'preset',
+}
+
+
+def _preset_input_ids():
+    """manifest 中 usage=input 的 preset id（G-2 过滤·铁律7 机械化）。清单不可用→None（静态兜底）。"""
+    try:
+        ids = []
+        for _g in _json.loads(_PRESET_MANIFEST.read_text(encoding='utf-8')):
+            for _it in _g.get('items', []):
+                if _it.get('usage') == 'input':
+                    ids.append(_it['id'])
+        return sorted(ids) if ids else None
+    except Exception:
+        return None
+
+
+def _point_layer_ids():
+    """geo_registry 点层 id（惰性导入·失败→None）。只取 id 不做文件 overview（免重 IO）。"""
+    try:
+        from core import geo_registry as _gr
+        ids = sorted(_gr._POINT_LAYERS.keys())
+        return ids if ids else None
+    except Exception:
+        return None
+
+
+def derive_dynamic_enums():
+    """G8b：source 参数实时枚举（开卷定参）。返回 {param_name: [ids, ...]}；源缺失的参数不出现在结果里
+    （contracts_to_tools_schema 对缺失项走静态 schema——零崩溃兜底）。"""
+    buckets = {'preset': _preset_input_ids(), 'point': _point_layer_ids()}
+    out = {}
+    for _p, _b in _SOURCE_ENUM_PARAM.items():
+        _ids = buckets.get(_b)
+        if _ids:
+            out[_p] = list(_ids)
+    return out
+
+
+def _param_to_json_schema(p, live_enum=None):
     """单个 contracts param → JSON Schema property（含 enum/range/描述）。
-    v3 H2：数值参数加 minimum/maximum（治 LLM 填 radius=1 或 99999）。"""
+    v3 H2：数值参数加 minimum/maximum（治 LLM 填 radius=1 或 99999）。
+    G8b：source 型参数可注入实时枚举（live_enum={param: ids}）+ 清单规模描述（开卷）。"""
     prop = {'type': _JSON_TYPE_MAP.get(p.get('type', 'str'), 'string')}
     hint = p.get('hint', '')
     if hint:
@@ -470,10 +525,16 @@ def _param_to_json_schema(p):
         lo, hi = _PARAM_RANGES[p['name']]
         prop['minimum'] = lo
         prop['maximum'] = hi
+    # G8b：source 型参数实时枚举（仅当无静态 enum 时注入·不覆盖手写枚举）
+    if live_enum and p['name'] in live_enum and 'enum' not in prop:
+        ids = live_enum[p['name']]
+        prop['enum'] = list(ids)
+        _extra = f'实时数据清单 {len(ids)} 项可选（如 {", ".join(ids[:3])}…）——从中选择·勿臆造'
+        prop['description'] = (prop.get('description', '') + '；' + _extra) if prop.get('description') else _extra
     return prop
 
 
-def contracts_to_tools_schema(exclude_categories=('concept',)):
+def contracts_to_tools_schema(exclude_categories=('concept',), live_enums=True):
     """TOOL_CONTRACTS → DeepSeek V4 function calling tools 参数（D052）。
 
     返 [{type:'function', function:{name, description, strict:true,
@@ -484,7 +545,10 @@ def contracts_to_tools_schema(exclude_categories=('concept',)):
     - strict:true（D043·标记保留·实测不强制但无害）
     - 参数名以工具实际读取为准（D061·buffer radius_m / density radius）
     - enum 值从 contracts params 的 enum 字段派生（如 polarity=overall/positive/...）
+    - G8b：live_enums=True 时 source 型参数注入实时数据清单枚举（开卷定参·拍板清单第 4 项；
+      源不可用自动静态兜底——schema 结构不变只是无动态 enum）
     """
+    dyn = derive_dynamic_enums() if live_enums else None
     schemas = []
     for c in TOOL_CONTRACTS:
         tool_name = c.get('tool')
@@ -496,7 +560,7 @@ def contracts_to_tools_schema(exclude_categories=('concept',)):
         properties = {}
         required = []
         for p in params:
-            properties[p['name']] = _param_to_json_schema(p)
+            properties[p['name']] = _param_to_json_schema(p, live_enum=dyn)
             if p.get('required'):
                 required.append(p['name'])
         # description：优先 when（给 LLM 的工具说明）·fallback voice
