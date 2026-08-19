@@ -1,7 +1,8 @@
 ## PT-CB6 · 2026-08-20（外挂大脑批·先行件三砖·进行中）
 
 - [x] 用户裁定三（R36）：B 变体升主线；追问定序=轻量先行版优先（dsh 入口+8080 显示屏·跳过 ACP 桥与薄壳）+归类澄清（先行版非 B 变体·渲染契约=平台共享资产）
-- [x] **三砖回收通过（本体）**：P1 render_spec F_028+layer_output/P2 通道 F_029-F_030/P3 loader（grep 真身复用：addToolboxLayer/defaultPaint/piToNorm/fitBounds）——425+2 全绿·render_spec 端到端实测落盘 ✓；**增补件未随做（dsh 旧版开工）→ P+ 增补批任务书落盘派发**（scheme 词表/sequential 计数着色/F2 徽标/demo 脚本/口径字段）
+- [x] **P+ 增补批回收通过（76a82a15）——先行件全链完成**：scheme 词表（sequential 计数着色·log1p 归一·未用 piToNorm）/F2 徽标三处/demo_pioneer（174 边界实查=checkup_cfg_community·主手实跑 3/3 spec·形态全对：scheme/data_nature=real/community=174/producer=dsh）/skip 翻转原因=exports 目录诞生（合理）。**427+2**。待用户浏览器实测亮图（backlog 自动补推 3 张）
+- [x] 三砖回收通过（本体）：P1 render_spec F_028+layer_output/P2 通道 F_029-F_030/P3 loader（grep 真身复用：addToolboxLayer/defaultPaint/piToNorm/fitBounds）——425+2 全绿·render_spec 端到端实测落盘 ✓；**增补件未随做（dsh 旧版开工）→ P+ 增补批任务书落盘派发**（scheme 词表/sequential 计数着色/F2 徽标/demo 脚本/口径字段）
 - [x] 先行件任务书落盘（`PT-CB6-P先行件任务书_zcode-2026-08-20.md`）：render spec 契约 v1（第 6 张平台契约·schema 定死）+三砖函数级规格（P1 render_spec F_028+P1b zonal/rank layer_output/P2 收件箱+SSE+dataset 端点 F_029/F_030/P3 前端 loader·令牌解析权威留 JS）+测试 6 组+演示验收三步+白名单七件——交 dsh 执行
 
 ## PT-CB5 · 2026-08-19 深夜（插座批·架子先行首轮·进行中）
