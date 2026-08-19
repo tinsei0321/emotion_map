@@ -120,6 +120,8 @@ def list_boundaries() -> list:
                 'available': bool(it.get('available')),
                 # 暴露名称字段：AI 据此构造 where（如 admin_district 的 MC、renewal_unit 的编号）
                 'name_field': it.get('nameField'),
+                # PT-CB2 T2：透出 manifest usage（input=分析原料 | analysis_output=结论层·禁作空间操作输入）
+                'usage': it.get('usage'),
             })
     return flat
 

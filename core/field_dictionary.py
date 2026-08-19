@@ -314,15 +314,81 @@ def validate_llm_roles(inferred):
     return out
 
 
+# ════════════ 图层 usage 语义守卫（PT-CB2 T2·铁律7 机械化）════════════
+# manifest.json 每个 item 带 usage：input（分析原料）| analysis_output（分析结论）。
+# 结论层禁作空间操作输入（api/geo_routes 全端点 + 前端工具链 ref() 双侧接同一守卫——单一权威=manifest）。
+
+class UsageGuardError(ValueError):
+    """结论层（usage=analysis_output）被用作空间操作输入 → 语义化拒绝（三段式：是什么/为何拒/可用替代）。"""
+
+
+_USAGE_INDEX = None   # id → {usage, label, group}（首查构建；manifest 变更后 clear_layer_usage_cache 重建）
+
+
+def clear_layer_usage_cache():
+    """清 usage 索引缓存（manifest 更新/测试隔离用）。"""
+    global _USAGE_INDEX
+    _USAGE_INDEX = None
+
+
+def get_layer_usage(preset_id):
+    """查 manifest 图层的 usage。返回 'input' | 'analysis_output' | None（不在 manifest，如点层 id/控制参数）。"""
+    global _USAGE_INDEX
+    if preset_id is None or not isinstance(preset_id, str):
+        return None
+    if _USAGE_INDEX is None:
+        from core.range_selector import list_presets   # 函数内 import 防 field_dictionary↔range_selector 循环
+        idx = {}
+        for g in list_presets() or []:
+            for it in g.get('items', []):
+                idx[it.get('id')] = {'usage': it.get('usage'), 'label': it.get('label'), 'group': g.get('group')}
+        _USAGE_INDEX = idx
+    hit = _USAGE_INDEX.get(preset_id)
+    return hit.get('usage') if hit else None
+
+
+@track("MOD_FIELD.F_004", track_args=False)
+def validate_input_usage(preset_id, arg_name='layer'):
+    """空间操作输入守卫（承重入口）：preset_id 为结论层 → raise UsageGuardError（三段式文案）；
+    input / 未注册（GeoJSON send-in·点层 id·控制参数）→ 静默放行（由各端点既有语义处理）。
+
+    替代建议 = 同 group 的 input 层优先；不足 3 个时补全局 input 边界层（前 3）——帮 AI 一步纠错。"""
+    usage = get_layer_usage(preset_id)
+    if usage != 'analysis_output':
+        return
+    info = _USAGE_INDEX.get(preset_id) or {}
+    label, group = info.get('label') or preset_id, info.get('group') or ''
+    # 同 group input 替代；不足补全局（排除自身）
+    alts = [
+        f"{it['label']}({pid})"
+        for pid, it in _USAGE_INDEX.items()
+        if it.get('usage') == 'input' and it.get('group') == group
+    ][:3]
+    if len(alts) < 3:
+        alts += [
+            f"{it['label']}({pid})"
+            for pid, it in _USAGE_INDEX.items()
+            if it.get('usage') == 'input' and it.get('group') != group
+        ][:3 - len(alts)]
+    suggest = '；'.join(alts) if alts else '或上传标准边界资料'
+    trace_log('MOD_FIELD.D_002',
+              f'usage-guard rejected arg={arg_name} id={preset_id} group={group}', status='WARN')
+    raise UsageGuardError(
+        f'「{label}」({preset_id}) 是分析结论层（usage=analysis_output），不能作空间操作输入'
+        f'（结论不当原料·铁律7）。可改用分析原料层：{suggest}')
+
+
 # ════════════ MOD_FIELD 追踪 ID 注册 ════════════
-# 仅 track 承重入口（resolve_field_alias/find_boundary_name_column/validate_llm_roles）；
-# resolve_role + is_self_produced/is_render_contract/is_internal_field/role_label 为热路径 helper
+# 仅 track 承重入口（resolve_field_alias/find_boundary_name_column/validate_llm_roles/validate_input_usage）；
+# resolve_role + is_self_produced/is_render_contract/is_internal_field/role_label + get_layer_usage 为热路径 helper
 # （resolve_role 在 resolve_field_alias 内按列循环调用、谓词在 _fieldSamples 过滤热路径），@track 会刷爆
 # trace 日志，故不 track——与 spatial_analysis.py「只 track 主入口非每个谓词」同 convention。
 register_track_id("MOD_FIELD.F_001", "resolve_field_alias（⑤② 承重：field→实际列名 alias 解析，全域调用）")
 register_track_id("MOD_FIELD.F_002", "find_boundary_name_column（面层 nameField 优先级推断）")
 register_track_id("MOD_FIELD.F_003", "validate_llm_roles（FIELD_INFER choke point：LLM role 校验）")
+register_track_id("MOD_FIELD.F_004", "validate_input_usage（PT-CB2 T2 承重：铁律7 守卫——结论层拒绝作空间操作输入）")
 register_track_id("MOD_FIELD.D_001", "LLM role 因低置信(<0.3)/无效被丢弃（不承重，防误导）")
+register_track_id("MOD_FIELD.D_002", "usage-guard 拒绝（结论层作空间操作输入·PT-CB2 T2 铁律7 机械化）")
 
 
 if __name__ == '__main__':

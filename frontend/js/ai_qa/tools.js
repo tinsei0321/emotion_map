@@ -47,12 +47,33 @@ export function getGeoCatalog() {
   _geoCatalogPromise = fetch('/api/v1/geo/catalog')
     .then((r) => (r.ok ? r.json() : null))
     .catch(() => null)
-    .then((c) => c || null);
+    .then((c) => { _buildUsageBlocked(c); return c || null; });
   return _geoCatalogPromise;
 }
 
 /** 上传/激活新边界预设后失效目录缓存 → 下一轮 AI 即可见新预设（不必刷新页面）。 */
-export function invalidateGeoCatalog() { _geoCatalogPromise = null; }
+export function invalidateGeoCatalog() { _geoCatalogPromise = null; _usageBlocked = null; }
+
+// PT-CB2 T2·铁律7 前置守卫：catalog 投影——结论层（usage=analysis_output）id→label 集合。
+// 数据源=后端 /geo/catalog（manifest 单一权威的投影，非第二份名单）；catalog 未就绪时跳过→后端
+// validate_input_usage 权威兜底。覆盖通道：① preset_id 直传；② 已加载 preset 层（l.presetId 标记）。
+let _usageBlocked = null;
+function _buildUsageBlocked(cat) {
+  _usageBlocked = null;
+  if (!cat || !Array.isArray(cat.boundaries)) return;
+  const m = new Map();
+  for (const b of cat.boundaries) {
+    if (b && b.usage === 'analysis_output') m.set(b.id, b.label || b.id);
+  }
+  _usageBlocked = m;
+}
+function _guardUsageRef(v) {
+  if (typeof v !== 'string' || v === '' || _usageBlocked === null) return;
+  const label = _usageBlocked.get(v);
+  if (label != null) {
+    throw new Error(`「${label}」(${v}) 是分析结论层（usage=analysis_output），不能作空间操作输入（结论不当原料·铁律7）。请改用分析原料层（usage=input）或上传标准边界资料`);
+  }
+}
 
 /** GET /api/v1/aiqa/wisdom（模块级缓存，buildContext 增列 L2 答问智慧用）。 */
 export function getWisdom() {
@@ -205,10 +226,11 @@ function ref(v) {
     const fc = _stepResults[idx];
     if (fc) {
       if (_resultIdByStep[idx]) _consumedIds.add(_resultIdByStep[idx]);   // $n 引用 → 标中间产物
-      return fc;
+      return fc;   // 多步链中间结果：排序/呈现类设计内用法，不拦（主手裁决 08-19）
     }
   }
   if (typeof v === 'string' && v) {
+    _guardUsageRef(v);   // PT-CB2 T2：preset_id 直传 → 结论层拒绝（铁律7）
     const all = getLayers().filter((x) => x.fc && x.fc.features && x.fc.features.length);
     // 1. 精确匹配 layer id
     let l = all.find((x) => x.id === v);
@@ -220,6 +242,7 @@ function ref(v) {
       if (inc.length === 1) l = inc[0];
     }
     if (l) {
+      if (l.presetId) _guardUsageRef(l.presetId);   // PT-CB2 T2：已加载 preset 层（fc 直传绕 id）→ 按 presetId 拒绝
       if (_resultIdByStep.includes(l.id)) _consumedIds.add(l.id);
       return l.fc;
     }
@@ -1048,7 +1071,9 @@ export const TOOLS = {
     const boundaries = [];
     for (const b of bs.slice(0, 4)) {
       try {
-        boundaries.push({ label: b, geo: await resolveBoundaryInput(b) });   // 中文名(西陵区)→GeoJSON；preset_id 直通（§3.3① 委托层预解析）
+        const _g = await resolveBoundaryInput(b);   // 中文名(西陵区)→GeoJSON；preset_id 直通（§3.3① 委托层预解析）
+        if (typeof _g === 'string') _guardUsageRef(_g);   // PT-CB2 T2：compare 边界不经 ref() 的直传位 → 补挂铁律7 守卫
+        boundaries.push({ label: b, geo: _g });
       } catch (e) {
         // PRM-07（CB-19）：法定功能区黑名单拒识 → 诚实 request_upload（非 ERR）
         if (String(e.message || e).includes('法定功能区')) {

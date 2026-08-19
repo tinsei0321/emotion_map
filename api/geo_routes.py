@@ -27,6 +27,7 @@ from core.geo_registry import (
 )
 from core.spatial_analysis import aggregate_by_polygons, hot_spot_analysis
 from core.field_dictionary import resolve_field_alias, resolve_role   # P1 字段语义层·alias 解析
+from core.field_dictionary import validate_input_usage   # PT-CB2 T2·铁律7 守卫（结论层拒绝作空间操作输入）
 from shapely.geometry import Point as _Point, box as _box   # CB-16 Wave 2：grid_pois 格几何重建
 
 geo_router = APIRouter()
@@ -57,6 +58,18 @@ async def geo_catalog():
 
 
 # ════════════ 共享预处理：解析 layer → 点 GeoDataFrame，应用 range clip + attr filter ════════════
+def _guard_usage_refs(*refs):
+    """PT-CB2 T2·铁律7 闸门：扫描入参中的图层引用（str preset_id / list[str]），结论层（usage=analysis_output）
+    → raise UsageGuardError（ValueError 子类·三段式文案），被各端点 except ValueError 分支转 400。
+    GeoJSON dict / 非 manifest 字符串（点层 id、控制参数）→ 静默放行（多步链 $n 产物与用户上传不受限）。"""
+    for r in refs:
+        vals = r if isinstance(r, list) else [r]
+        for v in vals:
+            if isinstance(v, str):
+                validate_input_usage(v)
+
+
+
 def _prepare_points(layer, rng, pre_filter) -> gpd.GeoDataFrame:
     """解析点层 → 范围裁剪 → 属性过滤。"""
     pts = resolve_points(layer)   # KeyError/FileNotFoundError 向上抛 → 调用方包 400/500
@@ -168,6 +181,7 @@ class FilterAttrRequest(_GeoBase):
 async def filter_attr(req: FilterAttrRequest):
     """按属性筛（用地/极性/domain/element/时点）。返回筛选后点 GeoJSON（截断+总数）。"""
     try:
+        _guard_usage_refs(req.layer, req.range)
         if not req.pre_filter:
             raise ValueError('filter_attr 需 pre_filter {field, op, value}')
         pts = resolve_points(req.layer)
@@ -194,6 +208,7 @@ async def clip(req: ClipRequest):
     if req.range is None:
         raise HTTPException(status_code=400, detail='clip 需 range(preset_id|geojson)')
     try:
+        _guard_usage_refs(req.layer, req.range)
         pts = resolve_points(req.layer)
         pts = gpd.clip(pts, resolve_boundary(req.range))
         if req.pre_filter:
@@ -222,6 +237,7 @@ async def extract_feature(req: ExtractFeatureRequest):
     if req.layer is None:
         raise HTTPException(status_code=400, detail='extract_feature 需 layer(preset_id|geojson)')
     try:
+        _guard_usage_refs(req.layer)
         polys = resolve_boundary(req.layer)
         if req.where:
             pf = _norm_where(req.where)
@@ -253,6 +269,7 @@ async def merge(req: MergeRequest):
     if req.boundary is None and req.layers is None:
         raise HTTPException(status_code=400, detail='merge 需 boundary 或 layers（二选一）')
     try:
+        _guard_usage_refs(req.boundary, req.layers)
         if req.layers:
             # CB-11 P6（Codex）：layers 字符串→数组防御（LLM 单字符串 422）
             if isinstance(req.layers, str):
@@ -312,6 +329,7 @@ async def area_stats(req: AreaStatsRequest):
     if req.boundary is None:
         raise HTTPException(status_code=400, detail='area_stats 需 boundary')
     try:
+        _guard_usage_refs(req.boundary)
         polys = resolve_boundary(req.boundary)
         proj = polys.to_crs(_PROJECT_CRS)
         df = polys.drop(columns='geometry').copy() if hasattr(polys, 'drop') else pd.DataFrame()
@@ -351,6 +369,7 @@ async def zonal_stats(req: ZonalStatsRequest):
     if req.boundary is None:
         raise HTTPException(status_code=400, detail='zonal_stats 需 boundary(preset_id|geojson)')
     try:
+        _guard_usage_refs(req.layer, req.range, req.boundary)
         pts = _prepare_points(req.layer, req.range, req.pre_filter)
         polys = resolve_boundary(req.boundary)
         # CB-12 P1'（glm组）：zonal_stats 诊断日志（PRM-07 夷陵 0 层定位）——boundary geometry/点数/overlap
@@ -499,6 +518,7 @@ async def grid_pois(req: GridPoisRequest):
 async def rank(req: RankRequest):
     """按极性/4×5 找 Top N 单元。boundary 给定→点聚合后排序；空→对已聚合 layer 直接排序。"""
     try:
+        _guard_usage_refs(req.layer, req.range, req.boundary)
         if req.boundary is not None:
             pts = _prepare_points(req.layer, req.range, req.pre_filter)
             polys = resolve_boundary(req.boundary)
@@ -558,6 +578,7 @@ async def buffer(req: BufferRequest):
     """生成中心要素的缓冲区（米制精确）。返回缓冲面域 GeoJSON + 面积；传 layer 时焊上圈内点聚合
    （point_count/polarity_index/domain_top/...，消除 buffer→zonal 断点）。省略 layer → 逐字节同原（向后兼容）。"""
     try:
+        _guard_usage_refs(req.center, req.layer, req.range)
         center = resolve_boundary(req.center)
     except (FileNotFoundError, ValueError):
         # CB-15 P1（A）：str center 非 preset → 尝试中文名 search_place 取坐标（AI/前端共用一处）
@@ -608,6 +629,7 @@ class OverlayRequest(BaseModel):
 async def overlay(req: OverlayRequest):
     """两个面域图层的叠置（交/并/差/对称差）。返回结果面域 GeoJSON + 面积。"""
     try:
+        _guard_usage_refs(req.layer_a, req.layer_b)
         a = resolve_boundary(req.layer_a)
         b = resolve_boundary(req.layer_b)
         if req.how not in ('intersection', 'union', 'difference', 'symmetric_difference'):
@@ -638,6 +660,7 @@ class NearestRequest(BaseModel):
 async def nearest(req: NearestRequest):
     """对每个 target 点，找 layer 中最近的 k 个点 + 距离（米）。返回配对表。"""
     try:
+        _guard_usage_refs(req.layer, req.target)
         pts = resolve_points(req.layer)
         target = resolve_boundary(req.target)
         # layer 必须为点；target 可为点（点-点最近邻）或面（每个面找最近点，如"每个行政区离最近的负面点"）
