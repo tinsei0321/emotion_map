@@ -45,3 +45,4 @@
 | 2026-08-19 | PT-CB1 回口+PT-CB2 开工 | T2 审计零打回（观察①采纳=guard 差异冻结 8 项断言）；分支策略用户纠正（实施走分支·main 冻结）；PT-CB2=B1 批（T1 dsh 四件套/T2 zcode usage 消费点） | zcode |
 | 2026-08-19 凌晨 | PT-CB2 T1 回收 | B1 注册四件套完成（manifest 8 组 57 层·19 新注册·usage 全覆盖=铁律7 机械化数据侧就位）；主手四裁决+存量 qty 路径修复；审计顺延下轮；T2（usage 消费点）office 开工 | zcode |
 | 2026-08-19 | PT-CB2 T2+T3 完工 | usage 消费点双侧落地（后端十端点守卫 F_004/D_002 三段式拒绝+前端 ref() 单点守卫·通道B presetId 标记）；catalog 透 usage（接缝投影）；12 新用例门禁 387+3；T3 验收包过（check_manifest 0err/2warn 存量+冒烟三链路+R7 变体入档）；PT-CB3 学习线 zcode 回应落盘（MCP 排 B/C 线后）——**B1 批全完工待送审** | zcode |
+| 2026-08-19 晚 | office 收工班 | Codex 审计 FAIL→七项修复送复审（门禁 389+3）；dsh 六任务两批派发回收全销号（两真发现：PII 嵌文本入 B4、qty 双头入 T1）；PT-CB3 意图外置终收敛 v2（零思考壳子论·契约集合体定稿·实施触点=PT-CB4 T2）；PT 命名令+AGENTS v2.4 | zcode |
