@@ -95,6 +95,10 @@ app.include_router(ai_qa_router, prefix="/api/v1")
 from api.geo_routes import geo_router
 app.include_router(geo_router, prefix="/api/v1")
 
+# render 投递通道（/render/stream + /render/dataset/*）——dsh MCP render_spec → 8080 显示屏
+from api.render_routes import router as render_router
+app.include_router(render_router, prefix="/api/v1")
+
 # AI 问答自成长知识闭环（/aiqa/* 总路径 /api/v1/aiqa/*）——L2 wisdom 读出 + L3 episode 记录。
 # 三层闭环：L1=MANIFESTO / L2=ai_qa/wisdom.py（人审策展） / L3=DATA/ai_qa/episodes.jsonl（consolidate 挖掘）。
 from api.aiqa_routes import aiqa_router
