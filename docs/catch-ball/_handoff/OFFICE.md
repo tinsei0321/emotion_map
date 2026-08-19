@@ -1,28 +1,34 @@
 # 公司 · 工作交接卡
 
-> **位置**：公司 | **最后更新**：2026-08-19 晚（**收工**·zcode 主手） | **同步**：随 `EMC_harness_dsh` 推送（f5b30ac1+）。回家读 `HOME.md` 续接。
+> **位置**：公司 | **最后更新**：2026-08-20 凌晨（home 收工·office 到岗续接） | **同步**：随 `EMC_harness_dsh` 推送。
+> **到岗第一读**：`memories/repo/session-handoff.md` 当前节点 + `docs/todo.md` 2026-08-20 段 + `discuss/PT-CB6-大脑实测记录_dsh-2026-08-20.md` §四。
 
-## 收工快照（08-19 office 班）
+## 收工快照（08-20 凌晨 home 班）
 
-- **B1 批（数据治理第一批）**：Codex 审计判 FAIL→七项修复完毕（前端守卫随层标记/hotspot 补挂/手动工具箱过滤/门禁 389+3）→**送复审**（prompt 已备送审通知§六·待用户转发）。
-- **dsh 副手两批六任务**：全部交付并回收销号。两条真发现：①checkup_12345_2024.csv 的 place_name 内嵌真实身份证（暴露面现状零·蒸馏强校验入 B4）②qty 层两份物理拷贝（analysis _全覆盖新名 vs presets 旧名副本·入 T1 裁决）。
-- **PT-CB3 意图外置线**：用户"零思考壳子论"→三方讨论→**终收敛 v2 定稿**（EMC=契约集合体·四类+两补充契约·零思考操作性定义·结构化打回·em:mode 分流器·方法论契约双写·过渡四步+切换判据四条）。首个实施触点=PT-CB4 T2。
-- **编号体系**：用户 PT 命名令生效——新任务一律 PT 编号（PT-CB3=学习线·PT-CB4=下轮实施批）。
-- **AGENTS v2.4**：学习报告必讨论必落盘规则（第 6 条）。
-- 服务核查工具 `tools/check_server_freshness.py` 上线（R7 预防·验证前先跑）。
+- **PT-CB6 S6 用户复测通过**：Q2「12345 热线诉求最密集的 10 个社区是哪些？把结果铺到地图上」端到端成图；用户确认正常。
+- **渲染通道三坑修复**（重要，office 勿再踩）：
+  1. `frontend/serve.py` 单线程 TCPServer 被 SSE 占死 → 已改 `ThreadingTCPServer` + `daemon_threads=True`。
+  2. `frontend/js/render_client.js` 缺 `spec_id` 去重 → 已加 `_seenSpecIds`，SSE 重连不再循环增删图层。
+  3. `DATA/exports/render_inbox/` 旧测试 spec 积压 → 15 个移入 `_backup/`，根目录仅留内联 TOP10 spec `1787161960132-3411.json`。
+- 最终图层：`[dsh] [真实] 12345热线诉求最密集TOP10社区(真实)`（内联 GeoJSON·community_choropleth_v1·value_field=诉求总量·community=174）。
 
-## 回家入口
+## office 到岗动作
 
-1. `memories/repo/session-handoff.md`（当前节点=home 续点 T1 对账裁决）
-2. `PT-CB4-开工与拆解_zcode-2026-08-19.md`（T1/T2/T3 拆解）+ 六任务产出（discuss/PT-CB4-*_dsh-*）
-3. `PT-CB3-意图外置终收敛v2_zcode-2026-08-19.md`（v2 定稿·T2 设计依据）
-4. **Cordis 通俗讲义**（`discuss/PT-CB3-Cordis通俗讲义_claude-2026-08-19.md`）：8 课全落盘（第 1~5 课已讲完打卡、第 6~8 课完整内容已写入，检查题待答）——home 可续学（第 6 课效应/第 7 课生命周期/第 8 课全书串讲），答完检查题后回 office 打卡结课。
+1. `git pull origin EMC_harness_dsh`。
+2. 读 `docs/todo.md` 2026-08-20 段 + `discuss/PT-CB6-大脑实测记录_dsh-2026-08-20.md` §四。
+3. **S7 回收判读**（zcode 主手）：将新增三个显示面缺陷并入 PT-CB6 缺陷清单：
+   - serve.py 单线程 SSE 阻塞；
+   - render_client 缺 spec_id 去重；
+   - render_inbox 积压旧 spec 重放。
+   裁决是否补测、是否修工具描述/文档。
+4. 按主手排期决定是否继续 Q3/Q4 用户复测或进入下一批。
 
-## 待办移交
+## 待办/风险
 
-- **用户**：转发 Codex 复审 prompt；home 续班说「开工 T1」。
-- **home zcode**：T1 对账裁决→T2 注册表→T3 派 dsh（F_020 取号）。
+- `render_inbox/_backup/` 15 个旧 spec 未删，确认无用后可清。
+- `tests/_tmp_*` 临时调试文件未提交，确认后可删。
+- main 冻结勿动；一切在 `EMC_harness_dsh`。
 
 ## 禁止事项
 
-- main 冻结勿动；未裁决不 mv 数据文件（T1 实事求是条款）；白名单外禁碰；Excel 锁文件不提交。
+- main 冻结勿动；白名单外禁碰；Excel 锁文件不提交；未裁决不 mv 数据文件。

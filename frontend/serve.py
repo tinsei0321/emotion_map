@@ -447,8 +447,9 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         sys.stderr.write(f'[serve] {self.address_string()} - {fmt % args}\n')
 
 
-class ReuseTCPServer(socketserver.TCPServer):
+class ReuseTCPServer(socketserver.ThreadingTCPServer):
     allow_reuse_address = True   # 重启不报 "Address already in use"
+    daemon_threads = True        # SSE 长连接不再占死唯一请求线程
 
 
 def _free_port(port):

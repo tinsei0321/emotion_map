@@ -1,4 +1,4 @@
-﻿# 开发追踪 (Tracker)
+# 开发追踪 (Tracker)
 
 > 每日 = TODO List + 开发日志。倒序排列。  
 > 状态：⬜ 待办 / 🔄 进行中 / ✅ 完成 / ⏸️ 暂缓
@@ -6,6 +6,46 @@
 > 📦 周归档机制：按自然周（周一~周日）归档历史内容至 `todo-archive/`；本周（含）留本文件，历史周已移归档。
 > 📝 详版历史 = [revision-log §5](revision-log.md#L226)（永久审计底）·本文件只记当前 + 计划。
 > 📌 **架构版本**：v1（三阶段 5.231-5.242）→ **v2（单次 LLM + FC·5.243-5.245b·第三方实施）** → **v3（v2 做对·5.246-657c2e3·GLM 修复）** → **v3.1**（reg.filter 崩溃修复 + SCAN P1）→ **v3.2**（CB-09 bug 修复·D057 修订·代码自动扩展·全自动多步执行·fix/emc-buglog 分支 7 commit）→ **v3.5**（CB-10/CB-11 系列·merge 多图层 + 只说不做根治）
+
+---
+
+## 📅 2026-08-20（PT-CB6 用户交互复测 + render 通道排障 · dsh · 分支 `EMC_harness_dsh`）
+
+> 凌晨 home 班：用户亲测 Q2「12345 热线诉求最密集的 10 个社区是哪些？把结果铺到地图上」；端到端打通并修复渲染通道三个坑。
+
+### ✅ Q2 端到端成图（用户复测通过）
+
+- 结果：TOP10 社区（朝阳路 594 / 万达 501 / 港务 417 / 建设 372 / 岳湾路 225 / 大学路 222 / 伍临路 221 / 东城 191 / 张家湾 187 / 宝联 156）
+- 铺图：`render_spec` 投递 `[dsh] [真实] 12345热线诉求最密集TOP10社区(真实)`（community_choropleth_v1·value_field=诉求总量·community=174）
+- 最终采用**内联 GeoJSON**（`DATA/boundaries/presets/12345_top10_社区.geojson`）而不是 dataset_id 引用，避免浏览器二次取数排队
+
+### ✅ 修复：前端 serve 单线程被 SSE 占死（严重）
+
+- 现象：8080 页面能显示默认地图但一直转圈；`/api/v1/render/dataset/*` 全部 502/超时
+- 根因：`frontend/serve.py` 用 `socketserver.TCPServer` 单线程；`render_client.js` 的 EventSource 长连接占死唯一请求线程
+- 修复：`ReuseTCPServer` 改为 `socketserver.ThreadingTCPServer` + `daemon_threads=True`
+- 验证：改后 8080 静态页、API、SSE 可并发响应
+
+### ✅ 修复：SSE 重连重放 backlog 导致图层循环跳动（严重）
+
+- 现象：8~9 个图层反复“删除→重建→缩放”，一直不停
+- 根因：`render_client.js` 未按 `spec_id` 去重；EventSource 断线重连会把收件箱 backlog 重放，同批 spec 被反复应用
+- 修复：`frontend/js/render_client.js` 增加页面会话级 `_seenSpecIds`，同一 spec_id 只应用一次
+- 验证：无头浏览器连续 12s 采样，dsh 图层恒为 1 个，不再跳动
+
+### ✅ 清理：render_inbox 历史测试 spec 移入 _backup
+
+- 收件箱根目录原有 16 个 spec（含历史测试图层），全部重放造成图层爆炸
+- 处理：除当前 TOP10 内联 spec `1787161960132-3411.json` 外，15 个旧 spec 移到 `DATA/exports/render_inbox/_backup/`（未删除）
+- 验证：SSE backlog 只含 1 条 spec；页面只出现 1 个 `[dsh] [真实] 12345热线诉求最密集TOP10社区(真实)`
+
+### ⚠️ 踩坑备忘（office 必读）
+
+1. **单线程 HTTP 服务器不能挂 SSE 长连接**：serve.py 必须 ThreadingTCPServer；若再遇“页面转圈但静态可开”，先查 8080 是否被 SSE 占死。
+2. **SSE backlog 重放必须客户端按 spec_id 去重**：否则重连即循环增删图层/缩放跳动。
+3. **render_inbox 是运行时垃圾场**：测试 spec 会积压并在下次连 SSE 时全部重放；演示前应清空/移走旧 spec。
+4. **zonal_stats 默认按 polarity_index 排序**，不是 point_count；“最密集/件数”类问题不要直接拿 zonal_stats top_n 当结论（PT-CB6 D1 已记）。
+5. **dataset_id 引用在大图层/多 spec 并发时会排队超时**；关键演示图层优先用内联 GeoJSON（≤60 要素）。
 
 ---
 

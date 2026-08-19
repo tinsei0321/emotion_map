@@ -1,11 +1,18 @@
 # 家里 · 工作交接卡
 
-> **位置**：家 | **最后更新**：2026-08-19 晚（**到岗刷新**·zcode——修复 office 期间 HOME 卡被旧基覆盖的断链） | **同步**：分支 `EMC_harness_dsh`（main 冻结勿动）。
+> **位置**：家 | **最后更新**：2026-08-20 凌晨（**home 收工**·dsh——PT-CB6 用户复测通过 + render 通道三坑修复） | **同步**：分支 `EMC_harness_dsh`（main 冻结勿动）。
 > **回家第一读**：本卡 + `memories/repo/session-handoff.md` 当前节点（office 收工·权威）。
 
 ---
 
-## 到岗快照（08-19 office 班收工·home 续接）
+## home 收工快照（08-20 凌晨）
+
+- **PT-CB6 S6 用户复测通过**：Q2 端到端成图，用户确认正常。
+- **渲染通道三坑修复**：serve.py 单线程 SSE 阻塞 / render_client 缺 spec_id 去重 / render_inbox 旧 spec 积压重放。
+- **去 office 续点**：读 `_handoff/OFFICE.md`；S7 回收判读，将三个显示面缺陷并入 PT-CB6 缺陷清单。
+- 详细进度：`docs/todo.md` 2026-08-20 段 + `memories/repo/session-handoff.md` 当前节点。
+
+## 旧：到岗快照（08-19 office 班收工·home 续接）
 
 - **office 班完成**：①Codex 审计 B1 判 FAIL→七项修复完毕→**送复审**（prompt 在 `PT-CB2-送审通知_zcode-2026-08-19.md` §六·**待用户转发 Codex**）·门禁 389+3 ②dsh 两批六任务全销号·两条真发现（place_name 内嵌真实身份证→蒸馏强校验入 B4；qty 层两份物理拷贝→入 T1 裁决）③PT-CB3 意图外置终收敛 v2 定稿（EMC=契约集合体·四类+两补充契约·首个实施触点=PT-CB4 T2）④PT 命名令（PT-CB3=学习线/PT-CB4=下轮实施批）⑤AGENTS v2.4 学习必落盘 ⑥`tools/check_server_freshness.py` 上线。
 - **home 续点（按序）**：①`git pull` ✅ ②**开工 PT-CB4 T1 对账裁决**（zcode 判裁·输入=A 证据包 5 对+E qty 双头·裁决表并入 `_总账.md`·输家 mv `_retired/`+retired.md 登记·**证据冲突挂起待用户不硬拍**）③T2 口径注册表 ④T3 check_caliber 派 dsh（**F_020 取号主手先行**）。

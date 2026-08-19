@@ -10,7 +10,26 @@
 
 ---
 
-## 当前节点：office 收工 · B1 修复送复审 + PT-CB4 就绪（home 续点=T1 对账裁决）
+## 当前节点：home 凌晨收工 · PT-CB6 S6 用户复测通过 · render 通道三坑已修（office 续点=S7 回收判读）
+
+- **08-20 凌晨 home 班完成**：
+  1. 用户亲测 Q2「12345 热线诉求最密集的 10 个社区是哪些？把结果铺到地图上」→ 端到端成图，用户确认正常。
+  2. 修复渲染通道三个坑：
+     - `frontend/serve.py` 单线程 TCPServer 被 SSE 长连接占死 → 改 `ThreadingTCPServer` + `daemon_threads=True`（页面转圈/API 502 根因）。
+     - `frontend/js/render_client.js` 缺 spec_id 去重 → SSE 重连重放 backlog 导致 8~9 个图层循环跳动；新增 `_seenSpecIds`。
+     - `DATA/exports/render_inbox/` 积压 15 个旧测试 spec → 移入 `_backup/`，根目录只留内联 TOP10 spec `1787161960132-3411.json`。
+  3. 最终图层：`[dsh] [真实] 12345热线诉求最密集TOP10社区(真实)`（community_choropleth_v1·value_field=诉求总量·community=174）。
+- **office 到岗动作**：
+  1. `git pull origin EMC_harness_dsh`（本卡随 commit 推送）。
+  2. 读 `docs/catch-ball/discuss/PT-CB6-大脑实测记录_dsh-2026-08-20.md` §四 + `docs/todo.md` 2026-08-20 段。
+  3. **S7 回收判读**（zcode 主手）：把本次新增三个显示面缺陷（serve 单线程 SSE 阻塞 / render_client 缺去重 / render_inbox 积压重放）并入 PT-CB6 缺陷清单，裁决是否补测/修工具描述。
+  4. 若继续 PT-CB6：可安排用户复测 Q3/Q4；或按主手排期进入下一批。
+- **待办/风险**：
+  - `render_inbox/_backup/` 里 15 个旧 spec 未删除，只移出渲染通道；确认无用后可清。
+  - `tests/_tmp_*` 临时调试文件留在工作区，未提交；确认后可删。
+  - main 仍冻结；一切在 `EMC_harness_dsh`。
+
+## 旧节点：office 收工 · B1 修复送复审 + PT-CB4 就绪（home 续点=T1 对账裁决）
 
 - **08-19 office 班完成**：①PT 命名令编号纠正（学习线=PT-CB3/下轮=PT-CB4·CB-42 字样清零）②送审 Codex（通知+审计要点五项+prompt）③Codex 审计判 FAIL→七项修复（H1 前端守卫随层标记/H2 hotspot 补挂/M1 边界源全入口过滤/L1-L4）·门禁 389+3·实战复验过④dsh 两批六任务派发+回收全销号（A 证据 5 对/B 素材 57 层/C PII 扫描/D 服务核查工具/E 总账对账/F 指路候选；两条真发现：place_name 内嵌真实身份证→蒸馏强校验入 B4；qty 层两份物理拷贝双头→入 T1 裁决）⑤PT-CB3 意图外置线：收敛 v1→用户"零思考壳子论"质疑→dsh 实现者评价→**终收敛 v2 定稿**（EMC=契约集合体四类+两补充·结构化打回·em:mode·双写·切换判据四条）⑥AGENTS v2.4 学习必落盘规则。
 - **home 到岗动作**：①`git pull origin EMC_harness_dsh` ②**开工 PT-CB4 T1 对账裁决**（zcode 判裁·输入=A 证据包 5 对+E qty 双头·产出裁决表并入 _总账.md·输家 mv _retired/+retired.md·证据冲突挂起待用户不硬拍）③T2 口径注册表（B 素材+F 候选+v2 意图卡/口径契约字段·落位 00-宜昌专项/_口径注册表.md）④T3 check_caliber 派 dsh（**F_020 取号主手先行**）⑤环境：home 自起服务（R7：先跑 tools/check_server_freshness.py 核查）；hub 盘仓 remote 仅 office 计划未配（home 无需）。

@@ -5,6 +5,9 @@
 import { addToolboxLayer, defaultPaint } from './toolbox/shared.js';
 
 const PREFIX = '[dsh] ';
+// 同一页面会话内按 spec_id 去重：SSE 断线重连会重放 backlog，若不去重会导致
+// 同一批图层反复“删除→重建→缩放”，表现为图层在 8~9 个之间循环跳动。
+const _seenSpecIds = new Set();
 const SCHEMES = {
   // sequential 计数着色（复用社区面按件数分层机制：_count_norm + countStops·勿用 piToNorm）
   community_choropleth_v1: 'community_choropleth_v1',
@@ -105,7 +108,10 @@ function _connect() {
   const es = new EventSource('/api/v1/render/stream');
   es.addEventListener('spec', (e) => {
     try {
-      _apply(JSON.parse(e.data));
+      const spec = JSON.parse(e.data);
+      if (!spec || !spec.spec_id || _seenSpecIds.has(spec.spec_id)) return;
+      _seenSpecIds.add(spec.spec_id);
+      _apply(spec);
     } catch (err) {
       console.warn('[dsh] render spec 解析失败:', err);
     }
