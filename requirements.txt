@@ -64,3 +64,6 @@ ijson>=3.2        # 流式读大三调用地 GeoJSON（ingest_landuse_preset.py�
 # openpyxl：实装未登记的依赖漂移补正——3 个先例脚本已用（gen_tidian_mapping_xlsx.py /
 # update_page46_excel_westlian.py / CB-35 审计），G1 行业表格式导出（xlsx 路线）复用。
 openpyxl==3.1.5
+
+# ── MCP server SDK（PT-CB5 T3·EMC 标准插座 FastMCP stdio）──
+mcp
