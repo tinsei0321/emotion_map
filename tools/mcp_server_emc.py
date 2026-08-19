@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""PT-CB5 T3 · G10 七件标准插座（MCP server·只读）。
+"""PT-CB5 T3 · G10 标准插座（MCP server）——七件分析工具 + PT-CB6 render_spec 第 8 插座。
 
-把 EMC 七个既有后端能力包装为 MCP 工具，供 zcode/claude/codex/dsh 等
-通用助手经协议即插即用。v1 纯只读：零写盘、零副作用、零 LLM 调用。
+把 EMC 既有后端能力包装为 MCP 工具，供 zcode/claude/codex/dsh 等
+通用助手经协议即插即用。分析七工具纯只读、零 LLM；render_spec 仅写
+收件箱 spec JSON（DATA/exports/render_inbox·前端显示屏消费）。
 
 用法：
   py tools/mcp_server_emc.py        # stdio 启动（Ctrl+C 退出）
 
 纪律：
   - 重依赖（geopandas/rag 等）全部函数体内惰性导入，启动轻快；
-  - 每个工具一个追踪号 MOD_AIQA.F_021-F_027（F_023 kb_facts 按主手
-    裁决直映真身签名 query/keyword/topic/limit）；
+  - 每个工具一个追踪号 MOD_AIQA.F_021-F_028（F_023 kb_facts 按主手
+    裁决直映真身签名 query/keyword/topic/limit；F_028=render_spec）；
   - print 走 _safe_print；代码禁 emoji；
   - 返回值必带 caliber 对象（口径/语义/禁用边界/注册表卡引用）。
 """
 import json
 import os
+import random
 import sys
+import time
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
@@ -31,6 +34,7 @@ register_track_id('MOD_AIQA.F_024', 'MCP outlet_card（行业出口卡·确定�
 register_track_id('MOD_AIQA.F_025', 'MCP zonal_stats（单元聚合·宏观/中观结论）')
 register_track_id('MOD_AIQA.F_026', 'MCP buffer（缓冲影响圈·中观）')
 register_track_id('MOD_AIQA.F_027', 'MCP rank（排序评价·最差/最好 Top-N）')
+register_track_id('MOD_AIQA.F_028', 'MCP render_spec（图层图纸：dataset/inline→spec 落收件箱）')
 
 MANIFEST = os.path.join(REPO, 'DATA', 'boundaries', 'presets', 'manifest.json')
 
@@ -76,6 +80,12 @@ CALIBERS = {
         'semantics': '按极性指数的单元排序（最差/最好 Top-N）',
         'limits': '排序基于聚合指标非原始诉求逐条复核；"最差"为统计表述',
         'refs': ['K-01'],
+    },
+    'render_spec': {
+        'scale': '呈现层',
+        'semantics': '图层图纸（数据引用+样式令牌）——由前端解析渲染',
+        'limits': 'v1 语义令牌（无解析副本·场景S 双载留 v2）；非分析操作',
+        'refs': ['G-2(显示徽标)', '渲染契约v1'],
     },
 }
 
@@ -149,6 +159,14 @@ def _gdf_rows(gdf, agg_cols=None):
             item[c] = v
         rows.append(item)
     return rows
+
+
+def _layer_output_geojson(gdf, top_n, value_col):
+    """layer_output=True 时：仅 top_n 行对应多边形 → FeatureCollection（properties 含统计值+value）。"""
+    subset = gdf.head(int(top_n)).copy()
+    if value_col in subset.columns:
+        subset['value'] = subset[value_col]
+    return json.loads(subset.to_json())
 
 
 @track('MOD_AIQA.F_021', track_args=False)
@@ -298,7 +316,8 @@ def outlet_card(question: str = '', result: dict = None, diagnose: dict = None) 
 
 @track('MOD_AIQA.F_025', track_args=False)
 def zonal_stats(boundary: str, layer: str = 'yichang_l2_t1',
-                agg_cols: list = None, top_n: int = 10) -> dict:
+                agg_cols: list = None, top_n: int = 10,
+                layer_output: bool = False) -> dict:
     """单元聚合：情绪点按边界单元统计（首次调用含 geopandas 冷启动约 10-20s）。
 
     Args:
@@ -306,6 +325,7 @@ def zonal_stats(boundary: str, layer: str = 'yichang_l2_t1',
         layer: 点层 id（默认 yichang_l2_t1）。
         agg_cols: 聚合数值列（默认 ['score']）。
         top_n: 返回 Top-N 行（1-20，rows 硬顶 20）。
+        layer_output: True 时返回值增 geojson（仅 top_n 行多边形）。
     """
     try:
         from core.geo_registry import resolve_boundary, resolve_points
@@ -327,14 +347,19 @@ def zonal_stats(boundary: str, layer: str = 'yichang_l2_t1',
             ascending=False, kind='stable')
         row_count = int(len(merged))
         top_n = max(1, min(int(top_n), 20))
-        rows = _gdf_rows(merged.head(top_n), cols)
+        top_rows = merged.head(top_n)
+        rows = _gdf_rows(top_rows, cols)
+        out_geojson = _layer_output_geojson(merged, top_n, sort_col) if layer_output else None
     except (KeyError, FileNotFoundError):
         return {'ok': False, 'hint': _UNKNOWN_HINT, 'caliber': CALIBERS['zonal_stats']}
     except Exception as exc:
         return {'ok': False, 'hint': f'zonal_stats 失败: {exc}', 'caliber': CALIBERS['zonal_stats']}
 
-    return {'rows': rows, 'row_count': row_count, 'truncated': row_count > len(rows),
-            'caliber': CALIBERS['zonal_stats']}
+    out = {'rows': rows, 'row_count': row_count, 'truncated': row_count > len(rows),
+           'caliber': CALIBERS['zonal_stats']}
+    if layer_output:
+        out['geojson'] = out_geojson
+    return out
 
 
 @track('MOD_AIQA.F_026', track_args=False)
@@ -386,7 +411,8 @@ def buffer(center: str, radius_m: int = 500, layer: str = 'yichang_l2_t1',
 
 @track('MOD_AIQA.F_027', track_args=False)
 def rank(by: str = 'worst', layer: str = 'yichang_l2_t1',
-         boundary: str = '', top_n: int = 5) -> dict:
+         boundary: str = '', top_n: int = 5,
+         layer_output: bool = False) -> dict:
     """排序评价：按极性指数找最差/最好 Top-N 单元（先聚合再排）。
 
     Args:
@@ -394,6 +420,7 @@ def rank(by: str = 'worst', layer: str = 'yichang_l2_t1',
         layer: 点层 id。
         boundary: 边界 preset id。
         top_n: 返回行数（1-20）。
+        layer_output: True 时返回值增 geojson（仅 top_n 行多边形）。
     """
     if not boundary:
         return {'ok': False, 'hint': 'rank 需 boundary（先 zonal 聚合再排）',
@@ -418,20 +445,127 @@ def rank(by: str = 'worst', layer: str = 'yichang_l2_t1',
         merged = merged.sort_values('polarity_index', ascending=ascending, kind='stable')
         row_count = int(len(merged))
         top_n = max(1, min(int(top_n), 20))
-        rows = _gdf_rows(merged.head(top_n), cols)
+        top_rows = merged.head(top_n)
+        rows = _gdf_rows(top_rows, cols)
+        out_geojson = _layer_output_geojson(merged, top_n, 'polarity_index') if layer_output else None
     except (KeyError, FileNotFoundError):
         return {'ok': False, 'hint': _UNKNOWN_HINT, 'caliber': CALIBERS['rank']}
     except Exception as exc:
         return {'ok': False, 'hint': f'rank 失败: {exc}', 'caliber': CALIBERS['rank']}
 
-    return {'rows': rows, 'row_count': row_count, 'caliber': CALIBERS['rank']}
+    out = {'rows': rows, 'row_count': row_count, 'caliber': CALIBERS['rank']}
+    if layer_output:
+        out['geojson'] = out_geojson
+    return out
+
+
+def _dataset_usage(dataset_id):
+    """dataset_id → usage（preset 读 manifest·点层按 geo_registry·未知 None）。"""
+    try:
+        with open(MANIFEST, 'r', encoding='utf-8') as fh:
+            for group in json.load(fh):
+                for it in group.get('items', []):
+                    if it.get('id') == dataset_id:
+                        return it.get('usage', 'input')
+    except Exception:
+        pass
+    try:
+        from core.geo_registry import list_point_layers
+        for p in list_point_layers():
+            if p.get('id') == dataset_id and p.get('available'):
+                return 'input'
+    except Exception:
+        pass
+    return None
+
+
+@track('MOD_AIQA.F_028', track_args=False)
+def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None,
+                value_field: str = 'polarity_index', ramp_hint: str = '',
+                zoom_to: bool = True, producer: str = 'dsh',
+                source_tool: str = 'manual') -> dict:
+    """图层图纸（render spec v1）：dataset 引用或内联 GeoJSON → 收件箱 JSON。
+
+    产物经 8080 前端显示屏呈现（需浏览器已打开情绪地图页面）；
+    写盘 = DATA/exports/render_inbox/<spec_id>.json（毫秒级·不渲染）。
+
+    Args:
+        kind: point | choropleth。
+        name: 图层名（现实内容·前端加 [dsh] 前缀）。
+        dataset_id: preset 或点层 id（与 geojson 二选一·同时给以 dataset_id 为准）。
+        geojson: 内联 FeatureCollection（要素 ≤60）。
+        value_field: choropleth 取值字段（默认 polarity_index）。
+        ramp_hint: worst_first 可选（其余省略）。
+        zoom_to: True 前端铺层后缩放至图层。
+        producer: 生产者标识（默认 dsh）。
+        source_tool: 来源工具（rank | zonal_stats | manual）。
+    """
+    if kind not in ('point', 'choropleth'):
+        return {'ok': False, 'hint': f'kind 非法: {kind!r}（仅 point|choropleth）',
+                'caliber': CALIBERS['render_spec']}
+    if not name or not str(name).strip():
+        return {'ok': False, 'hint': 'name 必填（现实内容命名）',
+                'caliber': CALIBERS['render_spec']}
+
+    fixes = []
+    usage = 'input'
+    data = {}
+    if dataset_id:
+        usage = _dataset_usage(dataset_id)
+        if usage is None:
+            return {'ok': False, 'hint': f'未知 dataset_id: {dataset_id}（调用 list_data 查看清单）',
+                    'caliber': CALIBERS['render_spec']}
+        data = {'dataset_id': dataset_id}
+        if geojson is not None:
+            fixes.append('dataset_id 与 geojson 同时给·以 dataset_id 为准')
+    elif geojson is not None:
+        if not isinstance(geojson, dict) or geojson.get('type') != 'FeatureCollection':
+            return {'ok': False, 'hint': 'geojson 必须是 FeatureCollection',
+                    'caliber': CALIBERS['render_spec']}
+        feats = geojson.get('features') or []
+        if len(feats) > 60:
+            return {'ok': False, 'hint': '内联要素 >60·请改用 dataset_id 引用',
+                    'caliber': CALIBERS['render_spec']}
+        data = {'geojson': geojson}
+    else:
+        return {'ok': False, 'hint': 'data 二选一必填：dataset_id 或 geojson',
+                'caliber': CALIBERS['render_spec']}
+
+    if kind == 'choropleth' and not value_field:
+        return {'ok': False, 'hint': 'choropleth 须 value_field 非空',
+                'caliber': CALIBERS['render_spec']}
+
+    style = {'token': kind, 'value_field': value_field}
+    if ramp_hint:
+        style['ramp_hint'] = ramp_hint
+
+    spec_id = f'{int(time.time() * 1000)}-{random.randint(1000, 9999)}'
+    spec = {
+        'spec_version': 1,
+        'spec_id': spec_id,
+        'kind': kind,
+        'data': data,
+        'style': style,
+        'ui': {'name': str(name).strip(), 'zoom_to': bool(zoom_to)},
+        'origin': {'producer': producer, 'source_tool': source_tool},
+        'caliber_lite': {'usage': usage, 'note': '; '.join(fixes)},
+    }
+
+    inbox_dir = os.path.join(REPO, 'DATA', 'exports', 'render_inbox')
+    os.makedirs(inbox_dir, exist_ok=True)
+    inbox_path = os.path.join(inbox_dir, f'{spec_id}.json')
+    with open(inbox_path, 'w', encoding='utf-8', newline='') as fh:
+        json.dump(spec, fh, ensure_ascii=False)
+
+    return {'ok': True, 'spec_id': spec_id, 'inbox_path': inbox_path,
+            'caliber': CALIBERS['render_spec']}
 
 
 def build_server():
     """惰性装配 FastMCP（mcp 包仅在真正启动 server 时 import）。"""
     from mcp.server.fastmcp import FastMCP
 
-    server = FastMCP('EMC 标准插座（只读七件套）')
+    server = FastMCP('EMC 标准插座（分析七件套 + render_spec）')
     server.tool()(list_data)
     server.tool()(rag_query)
     server.tool()(kb_facts)
@@ -439,6 +573,7 @@ def build_server():
     server.tool()(zonal_stats)
     server.tool()(buffer)
     server.tool()(rank)
+    server.tool()(render_spec)
     return server
 
 
