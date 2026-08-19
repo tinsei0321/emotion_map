@@ -16,6 +16,7 @@
 1. `memories/repo/session-handoff.md`（当前节点=home 续点 T1 对账裁决）
 2. `PT-CB4-开工与拆解_zcode-2026-08-19.md`（T1/T2/T3 拆解）+ 六任务产出（discuss/PT-CB4-*_dsh-*）
 3. `PT-CB3-意图外置终收敛v2_zcode-2026-08-19.md`（v2 定稿·T2 设计依据）
+4. **Cordis 通俗讲义**（`discuss/PT-CB3-Cordis通俗讲义_claude-2026-08-19.md`）：8 课全落盘（第 1~5 课已讲完打卡、第 6~8 课完整内容已写入，检查题待答）——home 可续学（第 6 课效应/第 7 课生命周期/第 8 课全书串讲），答完检查题后回 office 打卡结课。
 
 ## 待办移交
 
