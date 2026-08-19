@@ -2,7 +2,8 @@
 
 - [x] T1 开工拆解（R26 裁定后·C 线后移）
 - [x] **T2 G8b 动态开卷定参**：`derive_dynamic_enums()`（源=geo_registry 点层 id+presets manifest usage=input 项）→ `contracts_to_tools_schema(live_enums=True)` source 参数实时枚举+清单描述；静态兜底+手写枚举不覆盖；**5 测试含铁律7 硬断言（analysis_output 零漏入）**；401+3 零退化。契约产出=开卷参数契约（param→数据类映射+G-2 过滤机制化）
-- [ ] T3 G10 七件插座（zcode·下一动作）T4 考试 T5 dsh 顺修包（派发单已出）
+- [x] **T5 dsh 顺修包回收通过**：T5a GBK 自适配（字节级自适应解码）/T5b 两卡补值锚点（7 处）/T5c 全角变体 v2（+2 测试·实测无新误报）；四 commit 白名单零越界；**403+3**（+2 注明）
+- [ ] T3 G10 七件插座（zcode·下一动作）→T4 考试
 
 ## PT-CB4 · 2026-08-19 深夜【已回口】（T1+T2+T3·Codex 审计零打回）
 
