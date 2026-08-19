@@ -79,6 +79,21 @@ CALIBERS = {
     },
 }
 
+
+def _reject_analysis_output(preset_id, param, caliber):
+    """G-2/铁律7 服务端强制：analysis_output 结论层禁作空间操作输入（PT-CB5 审计发现即修）。"""
+    try:
+        with open(MANIFEST, encoding='utf-8') as _fp:
+            for _g in json.load(_fp):
+                for _it in _g.get('items', []):
+                    if _it.get('id') == preset_id and _it.get('usage') == 'analysis_output':
+                        return {'ok': False, 'hint': (
+                            f'{param}={preset_id} 是结论层（usage=analysis_output·铁律7 禁作分析输入）；'
+                            '请改用 input 层（调用 list_data 查看清单与 usage 标记）'), 'caliber': caliber}
+    except Exception:
+        pass   # manifest 不可用时不阻塞（G8b 枚举层仍有引导）
+    return None
+
 _UNKNOWN_HINT = '未知层 id·调用 list_data 查看清单'
 
 
@@ -296,6 +311,9 @@ def zonal_stats(boundary: str, layer: str = 'yichang_l2_t1',
         from core.geo_registry import resolve_boundary, resolve_points
         from core.spatial_analysis import aggregate_by_polygons
 
+        _g = _reject_analysis_output(boundary, 'boundary', CALIBERS['zonal_stats'])
+        if _g:
+            return _g
         points = resolve_points(layer)
         polys = resolve_boundary(boundary)
         cols = agg_cols or (['score'] if 'score' in points.columns else [])
@@ -336,6 +354,9 @@ def buffer(center: str, radius_m: int = 500, layer: str = 'yichang_l2_t1',
         from shapely.geometry import shape
 
         radius_m = max(50, min(int(radius_m), 3000))
+        _g = _reject_analysis_output(center, 'center', CALIBERS['buffer'])
+        if _g:
+            return _g
         center_gdf = resolve_boundary(center)
         fc, area_km2 = create_buffer(center_gdf.__geo_interface__, radius_m, dissolve)
 
@@ -381,6 +402,9 @@ def rank(by: str = 'worst', layer: str = 'yichang_l2_t1',
         from core.geo_registry import resolve_boundary, resolve_points
         from core.spatial_analysis import aggregate_by_polygons
 
+        _g = _reject_analysis_output(boundary, 'boundary', CALIBERS['rank'])
+        if _g:
+            return _g
         points = resolve_points(layer)
         polys = resolve_boundary(boundary)
         cols = ['score'] if 'score' in points.columns else []

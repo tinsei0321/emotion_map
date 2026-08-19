@@ -226,3 +226,15 @@ def test_buffer_large_fc_omitted(monkeypatch):
     assert out.get('fc_omitted') is True
     assert 'buffer_fc' not in out
     assert _caliber_keys(out['caliber'])
+
+
+def test_analysis_output_rejected_three_tools():
+    """PT-CB5 审计发现即修：结论层（usage=analysis_output）禁作空间操作输入——三工具服务端强制。"""
+    import tools.mcp_server_emc as m
+    for fn, kw in [(m.zonal_stats, {'boundary': 'base_174_aggregate_area'}),
+                   (m.rank, {'boundary': 'base_18village_area'}),
+                   (m.buffer, {'center': 'page7_dual_high'})]:
+        r = fn(layer='yichang_l2_t1', **kw)
+        assert r.get('ok') is False and 'analysis_output' in r.get('hint', ''), f'{fn.__name__} 未拒绝结论层: {str(r)[:80]}'
+    r = m.zonal_stats(boundary='admin_district', layer='yichang_l2_t1', top_n=3)
+    assert r.get('rows'), '正常 input 层被误伤'
