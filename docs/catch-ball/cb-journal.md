@@ -1,7 +1,8 @@
 ## PT-CB6 · 2026-08-20（外挂大脑批·先行件三砖·进行中）
 
 - [x] 用户裁定三（R36）：B 变体升主线；追问定序=轻量先行版优先（dsh 入口+8080 显示屏·跳过 ACP 桥与薄壳）+归类澄清（先行版非 B 变体·渲染契约=平台共享资产）
-- [~] **大脑实测任务书落盘**（`PT-CB6-大脑实测任务书_zcode-2026-08-20.md`）——五层递进验证模型（L0 配置/L1 单工具/L2 旗舰全链/L3 组合/L4 对抗防错）+七步分工（dsh 配置实证/预检/自测答卷→用户交互复测→zcode 回收分析）+考卷 Q1-Q4（Q2=主验收端到端成图·Q4=G-2 对抗题测自纠）——交 dsh 执行
+- [x] **大脑实测回收+S7 判读（df942798）**：L0 ✓（八工具挂载）/L1 ✓（首工具对·Q1 观察=有 fs 的宿主直读文件绕过 rag_query）/L2 **链路通·走法偏离**（大脑发现 zonal 按 polarity 排序≠件数→自纠改用成熟结论层 page7_12345_top10 铺图——聪明但暴露 D1 根因）/L3 ✓（两图+对比·scheme 选 point 属观察）/L4 守卫实测生效+大脑自述铁律7 并绕行（严格对抗样本留用户复测）。**主验收 Q2 端到端成答+成 spec**（8080 亮图待用户复测确认）
+- [x] 大脑实测任务书落盘（`PT-CB6-大脑实测任务书_zcode-2026-08-20.md`）——五层递进验证模型（L0 配置/L1 单工具/L2 旗舰全链/L3 组合/L4 对抗防错）+七步分工（dsh 配置实证/预检/自测答卷→用户交互复测→zcode 回收分析）+考卷 Q1-Q4（Q2=主验收端到端成图·Q4=G-2 对抗题测自纠）——交 dsh 执行
 - [x] P+ 增补批回收通过（76a82a15）——先行件全链完成**：scheme 词表（sequential 计数着色·log1p 归一·未用 piToNorm）/F2 徽标三处/demo_pioneer（174 边界实查=checkup_cfg_community·主手实跑 3/3 spec·形态全对：scheme/data_nature=real/community=174/producer=dsh）/skip 翻转原因=exports 目录诞生（合理）。**427+2**。待用户浏览器实测亮图（backlog 自动补推 3 张）
 - [x] 三砖回收通过（本体）：P1 render_spec F_028+layer_output/P2 通道 F_029-F_030/P3 loader（grep 真身复用：addToolboxLayer/defaultPaint/piToNorm/fitBounds）——425+2 全绿·render_spec 端到端实测落盘 ✓；**增补件未随做（dsh 旧版开工）→ P+ 增补批任务书落盘派发**（scheme 词表/sequential 计数着色/F2 徽标/demo 脚本/口径字段）
 - [x] 先行件任务书落盘（`PT-CB6-P先行件任务书_zcode-2026-08-20.md`）：render spec 契约 v1（第 6 张平台契约·schema 定死）+三砖函数级规格（P1 render_spec F_028+P1b zonal/rank layer_output/P2 收件箱+SSE+dataset 端点 F_029/F_030/P3 前端 loader·令牌解析权威留 JS）+测试 6 组+演示验收三步+白名单七件——交 dsh 执行
