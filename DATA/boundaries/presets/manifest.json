@@ -467,7 +467,7 @@
     "file": "../../analysis/12345主观/12345_西陵+伍家岗.geojson",
     "nameField": "社区",
     "usage": "input",
-    "note": "A3 归位后路径·12345 聚合面；usage 暂按 input，待主手裁决是否应 analysis_output"
+    "note": "A3 归位后路径·12345 聚合面；usage=input 已裁决维持（PT-CB2 主手裁决·2026-08-19·可复用面域筛选结果非结论层），口径复核留 PT-CB4 口径注册表"
    }
   ]
  },

@@ -153,6 +153,15 @@ def test_api_control_string_not_blocked():
     assert r.status_code != 400 or 'analysis_output' not in r.json().get('detail', '')
 
 
+def test_api_hotspot_rejects_conclusion_range():
+    """复审修复 H2（Codex 审计）：hotspot(range=结论层) → 400（首轮漏挂·实测曾 200）。"""
+    r = client.post('/api/v1/geo/hotspot',
+                    json={'layer': _L2, 'range': _CONCLUSION_AREA, 'value_col': 'score'})
+    assert r.status_code == 400
+    d = r.json().get('detail', '')
+    assert 'analysis_output' in d and '铁律7' in d
+
+
 # ════════════ catalog 透出（前端守卫的权威投影）════════════
 
 def test_catalog_boundaries_expose_usage():

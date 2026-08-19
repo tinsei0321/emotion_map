@@ -99,8 +99,8 @@ def main():
             f = it.get('file', '')
             full = os.path.normpath(os.path.join(presets_dir, f))
             if not os.path.isfile(full):
-                note = (it.get('note') or '')
-                tag = 'reference_only' if 'reference' in note else ('标 missing' if 'missing' in note else '文件缺失')
+                # 复审修复 L2：读显式布尔字段（reference_only/missing·Codex 审计），不依赖 note 字符串
+                tag = 'reference_only' if it.get('reference_only') else ('标 missing' if it.get('missing') else '文件缺失')
                 _warn(f'{iid}: file 不存在（{tag}）: {f}')
 
     total = sum(len(g.get('items', [])) for g in data if isinstance(g.get('items'), list))

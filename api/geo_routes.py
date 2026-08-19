@@ -708,6 +708,7 @@ class HotspotRequest(_GeoBase):
 async def hotspot(req: HotspotRequest):
     """Gi* 热点分析：识别情绪冷热点空间聚类。返回点 + Gi_Z/hotspot 五档分类（截断）。"""
     try:
+        _guard_usage_refs(req.layer, req.range)   # 复审修复 H2：首轮漏挂（Codex 审计·实测 200 反例）
         pts = _prepare_points(req.layer, req.range, req.pre_filter)
         if req.value_col not in pts.columns:
             raise ValueError(f'value_col {req.value_col} 不存在（可用 {list(pts.columns)[:20]}…）')

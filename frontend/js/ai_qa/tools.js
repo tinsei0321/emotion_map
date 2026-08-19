@@ -242,7 +242,12 @@ function ref(v) {
       if (inc.length === 1) l = inc[0];
     }
     if (l) {
-      if (l.presetId) _guardUsageRef(l.presetId);   // PT-CB2 T2：已加载 preset 层（fc 直传绕 id）→ 按 presetId 拒绝
+      // 复审修复 H1（Codex 审计）：已加载层的拒绝改判 l.presetUsage（加载时随层持久·range-presets 4 处写入），
+      // 不依赖 _usageBlocked 缓存——getGeoCatalog 当前无调用方，catalog 路径守卫运行时不生效。
+      if (l.presetUsage === 'analysis_output') {
+        throw new Error(`「${l.name || l.presetId}」(${l.presetId}) 是分析结论层（usage=analysis_output），不能作空间操作输入（结论不当原料·铁律7）。请改用分析原料层（usage=input）或上传标准边界资料`);
+      }
+      if (l.presetId) _guardUsageRef(l.presetId);   // catalog 就绪时的增强前置（可选·未就绪静默）
       if (_resultIdByStep.includes(l.id)) _consumedIds.add(l.id);
       return l.fc;
     }

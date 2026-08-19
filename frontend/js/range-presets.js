@@ -109,14 +109,14 @@ async function loadPresetRange(item) {
           if (!sub.length) return;
           const tag = mode === 'l2-positive' ? '积极' : mode === 'l2-negative' ? '消极' : '中性';
           const L = addLayer({ name: `${tag}·${item.label}`, kind: 'point', parentId: group.id, colorMode: mode, fc: fcOf(sub), paint });
-          L.srcName = name; L.presetId = item.id;   // PT-CB2 T2：preset 来源标记（ref() usage 守卫用） renderLayer(L);
+          L.srcName = name; L.presetId = item.id; L.presetUsage = item.usage || null;   // 复审修复 H1：usage 随层持久（不依赖 catalog 初始化·Codex 方案1） renderLayer(L);
         };
         mk(pos, 'l2-positive'); mk(neu, 'l2-neutral'); mk(neg, 'l2-negative');
       } else {
         // confidence（orange ramp·进工具）或 needsAnalysis（灰点参考层）
         const paint = needsAnalysis ? { color: '#4a4a4a', opacity: 0.80, radius: 4 } : undefined;
         const L = addLayer({ name, kind: 'point', fc: pfc, needsAnalysis, colorMode, paint });
-        L.srcName = name; L.presetId = item.id;   // PT-CB2 T2：preset 来源标记（ref() usage 守卫用） renderLayer(L);
+        L.srcName = name; L.presetId = item.id; L.presetUsage = item.usage || null;   // 复审修复 H1：usage 随层持久（不依赖 catalog 初始化·Codex 方案1） renderLayer(L);
         regId = L.id;
       }
       data_registry.register({ name, kind: 'point', source: 'preset', fc, layerId: regId });
@@ -127,7 +127,7 @@ async function loadPresetRange(item) {
     }
     if (firstGeom === 'LineString' || firstGeom === 'MultiLineString') {
       const L = addLayer({ name, kind: 'line', fc });
-      L.srcName = name; L.presetId = item.id;   // PT-CB2 T2：preset 来源标记（ref() usage 守卫用）
+      L.srcName = name; L.presetId = item.id; L.presetUsage = item.usage || null;   // 复审修复 H1：usage 随层持久（不依赖 catalog 初始化·Codex 方案1）
       data_registry.register({ name, kind: 'line', source: 'preset', fc, layerId: L.id });
       renderLayer(L);
       renderLayerList(); refreshLegend(); reorderAllZ();
@@ -147,7 +147,7 @@ async function loadPresetRange(item) {
         color: item.id === 'admin_district' ? '#d8d8d8' : (_isLand ? landuseColorForFc(fc, item.label) : undefined),
       },
     });
-    L.srcName = name; L.presetId = item.id;   // PT-CB2 T2：preset 来源标记（ref() usage 守卫用）
+    L.srcName = name; L.presetId = item.id; L.presetUsage = item.usage || null;   // 复审修复 H1：usage 随层持久（不依赖 catalog 初始化·Codex 方案1）
     data_registry.register({ name, kind: 'polygon', source: 'preset', fc, layerId: L.id });   // R2：登记预设面域（registry 标来源）
     renderLayer(L);
     renderLayerList(); refreshLegend(); reorderAllZ();

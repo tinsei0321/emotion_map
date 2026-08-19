@@ -283,16 +283,22 @@ export function collectPointSources() {
   return sources;
 }
 
-/** 聚合边界源（已载 Range 面层 + 预设库合并；preset 的 GeoJSON 懒取 boundarySourceGeo）。 */
+/** 聚合边界源（已载 Range 面层 + 预设库合并；preset 的 GeoJSON 懒取 boundarySourceGeo）。
+ *  复审修复 M1（Codex 审计·主手裁定铁律7全入口生效）：结论层（usage=analysis_output）不作边界源——
+ *  preset 按 manifest usage 过滤；已载面层按加载时写入的 l.presetUsage 过滤（H1 修复的随层标记）。
+ *  单点过滤，四个消费工具（zonal/rank/area-stats/vector）无感知受益；匿名上传层不受限（设计内）。 */
 export async function collectBoundarySources() {
   const out = getLayers()
     .filter((l) => l.kind === 'polygon' && isRangeLayer(l) && l.fc && l.fc.features && l.fc.features.length)
+    .filter((l) => l.presetUsage !== 'analysis_output')
     .map((l) => ({ value: `layer:${l.id}`, label: l.name, fc: l.fc }));
   try {
     const groups = await fetchRangePresets();
     for (const g of (groups || [])) {
       for (const it of (g.items || [])) {
-        if (it.available) out.push({ value: `preset:${it.id}`, label: `${it.label || it.id}（预设）`, presetId: it.id });
+        if (it.available && it.usage !== 'analysis_output') {
+          out.push({ value: `preset:${it.id}`, label: `${it.label || it.id}（预设）`, presetId: it.id });
+        }
       }
     }
   } catch (_) { /* 预设库不可达 → 仅用已载面层 */ }
