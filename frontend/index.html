@@ -1245,6 +1245,8 @@
 
   <!-- App scripts (ES modules) -->
   <script type="module" src="js/main.js"></script>
+  <!-- dsh 显示屏客户端（render spec → SSE → 自动铺层·PT-CB6 P3） -->
+  <script type="module" src="js/render_client.js"></script>
   <!-- E2E test seam：仅 ?e2e=1 时 dynamic-load e2e-seam.js（生产永不加载，main.js 零 test 代码）-->
   <script>if(new URLSearchParams(location.search).get('e2e')==='1'){import('./js/e2e-seam.js').catch(e=>console.error('[e2e] seam load failed',e));}</script>
   <!-- 测试飞轮：?test=1 时加载 test-board.js + css + e2e-seam（生产永不加载）-->
