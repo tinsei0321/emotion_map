@@ -122,6 +122,23 @@ def test_rag_query_index_missing_no_raise(monkeypatch):
     assert _caliber_keys(out['caliber'])
 
 
+def test_kb_facts_true_signature_mapping(monkeypatch):
+    """主手裁决：kb_facts 直映真身签名（query/keyword/topic/limit），domain 作废。"""
+    captured = {}
+
+    def fake(query='', city='宜昌', topic=None, keyword=None, limit=5):
+        captured.update(query=query, topic=topic, keyword=keyword, limit=limit)
+        return [{'id': 'CHK-1', 'name': '体检事实', 'detail': 'd',
+                 'year': '2025', 'source': 's.md', 'topic': 'issue'}]
+
+    monkeypatch.setattr('ai_qa.outlet_kb.urban_renewal_knowledge.query_knowledge_base', fake)
+    out = mse.kb_facts(query='体检', keyword='安全', topic='issue', limit=99)
+    assert captured['limit'] == 20
+    assert captured['topic'] == 'issue' and captured['keyword'] == '安全'
+    assert out['count'] == 1 and out['facts'][0]['id'] == 'CHK-1'
+    assert _caliber_keys(out['caliber'])
+
+
 # ════════════ outlet_card ════════════
 
 def test_outlet_card_empty_inputs_no_crash():

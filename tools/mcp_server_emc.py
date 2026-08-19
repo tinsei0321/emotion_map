@@ -10,8 +10,8 @@
 
 纪律：
   - 重依赖（geopandas/rag 等）全部函数体内惰性导入，启动轻快；
-  - 每个工具一个追踪号 MOD_AIQA.F_021-F_027（F_023 为 kb_facts 预留·
-    真实签名与派发单不符·待主手裁决）；
+  - 每个工具一个追踪号 MOD_AIQA.F_021-F_027（F_023 kb_facts 按主手
+    裁决直映真身签名 query/keyword/topic/limit）；
   - print 走 _safe_print；代码禁 emoji；
   - 返回值必带 caliber 对象（口径/语义/禁用边界/注册表卡引用）。
 """
@@ -26,7 +26,7 @@ from core.tracker import register_track_id, track
 
 register_track_id('MOD_AIQA.F_021', 'MCP list_data（数据说明书：点层+边界层目录·开卷定参）')
 register_track_id('MOD_AIQA.F_022', 'MCP rag_query（带来源知识检索·v1 综合降级 deferred_v2）')
-register_track_id('MOD_AIQA.F_023', 'MCP kb_facts（预留待主手裁决：query_knowledge_base 真实签名无 domain 参数）')
+register_track_id('MOD_AIQA.F_023', 'MCP kb_facts（行业事实卡·真身签名直映 query/keyword/topic/limit）')
 register_track_id('MOD_AIQA.F_024', 'MCP outlet_card（行业出口卡·确定性组装·对话级）')
 register_track_id('MOD_AIQA.F_025', 'MCP zonal_stats（单元聚合·宏观/中观结论）')
 register_track_id('MOD_AIQA.F_026', 'MCP buffer（缓冲影响圈·中观）')
@@ -45,6 +45,12 @@ CALIBERS = {
         'scale': '知识检索',
         'semantics': '本地知识库向量检索（非穷尽）·结果为素材非结论',
         'limits': 'Top-K 召回非全量；结论须综合并注来源；勿将倾向表述为精确值',
+        'refs': ['K-01'],
+    },
+    'kb_facts': {
+        'scale': '事实卡',
+        'semantics': '本地蒸馏的权威事实（带来源年份）',
+        'limits': '事实卡非实时数据；引用须带来源',
         'refs': ['K-01'],
     },
     'outlet_card': {
@@ -230,6 +236,29 @@ def rag_query(query: str, k: int = 5, synthesize: bool = False) -> dict:
     return out
 
 
+@track('MOD_AIQA.F_023', track_args=False)
+def kb_facts(query: str = '', keyword: str = '', topic: str = '',
+             limit: int = 5) -> dict:
+    """行业事实卡：确定性查询（关键词精确 WHERE·非向量·CB-22f D5 兜底）。
+
+    Args:
+        query: 问题短句（真身按 keywords/region 反查命中）。
+        keyword: 关键词（空格分词·精确命中加权）。
+        topic: 事实卡主题过滤（metric/issue/project 等）。
+        limit: 返回条数（1-20）。
+    """
+    limit = max(1, min(int(limit), 20))
+    try:
+        from ai_qa.outlet_kb.urban_renewal_knowledge import query_knowledge_base
+        facts = query_knowledge_base(query=query or '', city='宜昌',
+                                     topic=topic or None, keyword=keyword or None,
+                                     limit=limit)
+    except Exception as exc:
+        return {'ok': False, 'hint': f'kb_facts 失败: {exc}',
+                'facts': [], 'count': 0, 'caliber': CALIBERS['kb_facts']}
+    return {'facts': facts, 'count': len(facts), 'caliber': CALIBERS['kb_facts']}
+
+
 @track('MOD_AIQA.F_024', track_args=False)
 def outlet_card(question: str = '', result: dict = None, diagnose: dict = None) -> dict:
     """行业出口卡（对话级·确定性组装·零 LLM）。
@@ -378,6 +407,7 @@ def build_server():
     server = FastMCP('EMC 标准插座（只读七件套）')
     server.tool()(list_data)
     server.tool()(rag_query)
+    server.tool()(kb_facts)
     server.tool()(outlet_card)
     server.tool()(zonal_stats)
     server.tool()(buffer)
