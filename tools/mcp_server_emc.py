@@ -140,15 +140,18 @@ def _gdf_rows(gdf, agg_cols=None):
 def list_data(include_demo: bool = False) -> dict:
     """数据说明书：列出可分析点层与边界 preset（字段/类型/usage·不含样例值）。
 
+    清单口径（F1）：点层 = resolve 可解析集（list_point_layers 的 available 项），
+    不再按 level 过滤——保证与 zonal_stats 等工具的实际解析能力一致。
+    include_demo 参数保留兼容，当前不改变清单口径。
+
     Args:
-        include_demo: 默认 False 不列演示层；True 时一并列出。
+        include_demo: 兼容保留（F1 起清单恒为可解析集）。
     """
     from core.geo_registry import list_point_layers
 
     point_layers = []
     for p in list_point_layers():
-        is_demo = str(p.get('level', '')).upper() != 'CHECKUP'
-        if is_demo and not include_demo:
+        if not p.get('available'):
             continue
         point_layers.append({
             'id': p.get('id'),

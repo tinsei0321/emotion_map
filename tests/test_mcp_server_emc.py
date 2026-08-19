@@ -70,26 +70,42 @@ def test_track_ids_f021_to_f027_registered():
 
 # ════════════ list_data ════════════
 
-def test_list_data_hides_samples_demo_default_and_usage(monkeypatch):
+def test_list_data_available_set_hides_samples_and_usage(monkeypatch):
+    """F1：点层=available（resolve 可解析）集，不再按 level 过滤；仍不含样例值。"""
     fake = [
-        {'id': 'demo_l2', 'label': '演示层', 'level': 'L2',
+        {'id': 'yichang_l2_t1', 'label': '演示层', 'level': 'L2',
          'fields': ['score'], 'samples': {'score': '9.9'},
-         'dtypes': {'score': 'float64'}, 'crs': 'EPSG:4326'},
+         'dtypes': {'score': 'float64'}, 'crs': 'EPSG:4326',
+         'available': True},
         {'id': 'checkup_12345_2024', 'label': '真实 12345', 'level': 'CHECKUP',
          'fields': ['办件编号'], 'samples': {'办件编号': '0000'},
-         'dtypes': {'办件编号': 'object'}, 'crs': 'EPSG:4326'},
+         'dtypes': {'办件编号': 'object'}, 'crs': 'EPSG:4326',
+         'available': True},
+        {'id': 'missing_layer', 'label': '缺文件层', 'level': 'L2',
+         'fields': [], 'dtypes': {}, 'crs': 'EPSG:4326',
+         'available': False},
     ]
     monkeypatch.setattr('core.geo_registry.list_point_layers', lambda: fake)
 
     out = mse.list_data()
-    assert [p['id'] for p in out['point_layers']] == ['checkup_12345_2024']
-    assert 'samples' not in out['point_layers'][0]
-    assert out['point_layers'][0]['usage'] == 'input'
+    assert [p['id'] for p in out['point_layers']] == ['yichang_l2_t1', 'checkup_12345_2024']
+    assert all('samples' not in p for p in out['point_layers'])
+    assert all(p['usage'] == 'input' for p in out['point_layers'])
     assert _caliber_keys(out['caliber'])
     assert any(p['usage'] == 'analysis_output' for p in out['presets'])
 
     out_demo = mse.list_data(include_demo=True)
-    assert [p['id'] for p in out_demo['point_layers']] == ['demo_l2', 'checkup_12345_2024']
+    assert [p['id'] for p in out_demo['point_layers']] == ['yichang_l2_t1', 'checkup_12345_2024']
+
+
+def test_list_data_real_registry_includes_yichang_l2_t1():
+    """F1 回归：真实注册表清单必须含 yichang_l2_t1 等 resolve 可解析层。"""
+    from core.geo_registry import list_point_layers
+    expected = {p['id'] for p in list_point_layers() if p.get('available')}
+
+    out = mse.list_data()
+    assert 'yichang_l2_t1' in {p['id'] for p in out['point_layers']}
+    assert {p['id'] for p in out['point_layers']} == expected
 
 
 # ════════════ rag_query ════════════
