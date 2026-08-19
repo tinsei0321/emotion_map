@@ -4,7 +4,8 @@
 
 用途：
   读 `docs/urban-renewal-plan/00-宜昌专项/_口径注册表.md` 的 X-01 作废值表，
-  解析出作废值清单（含书写变体：千分位 5,615 与 5615、87.9% 与 87.9 等），
+  解析出作废值清单（含书写变体：千分位 5,615 与 5615、87.9% 与 87.9、
+  全角数字 ８７．９ 与全角逗号千分位 ５，６１５ 等），
   扫描待蒸馏素材（默认 DATA/analysis + docs/urban-renewal-plan），
   命中即输出 文件/行号/命中值/所属卡 ID 并 exit 1；干净则 exit 0。
 
@@ -38,6 +39,17 @@ DEFAULT_TARGETS = [
 ]
 TEXT_EXTS = {'.md', '.csv', '.txt', '.geojson', '.json', '.py'}
 CARD_ID = 'X-01'
+
+# 全角数字/标点 → 半角（v2：８７．９％ / ５，６１５ 与半角写法同义）
+_FULLWIDTH_MAP = str.maketrans({
+    '０': '0', '１': '1', '２': '2', '３': '3', '４': '4',
+    '５': '5', '６': '6', '７': '7', '８': '8', '９': '9',
+    '，': ',', '．': '.', '％': '%',
+})
+
+
+def _normalize_width(text):
+    return text.translate(_FULLWIDTH_MAP)
 
 
 def _safe_print(msg):
@@ -76,8 +88,8 @@ def _parse_x01_values(registry_path):
 
 
 def _variants_for(raw):
-    """为一个作废值生成匹配变体（千分位/百分比/空格/斜杠复合写法）。"""
-    v = raw.strip()
+    """为一个作废值生成匹配变体（千分位/百分比/全角/空格/斜杠复合写法）。"""
+    v = _normalize_width(raw.strip())
     out = {v}
     no_comma = re.sub(r'(?<=\d),(?=\d)', '', v)
     out.add(no_comma)
@@ -171,6 +183,7 @@ def _scan_file(path, groups):
     try:
         with open(path, 'r', encoding='utf-8', errors='replace') as fh:
             for lineno, line in enumerate(fh, 1):
+                line = _normalize_width(line)
                 for group in groups:
                     matched = None
                     for variant, pattern in group['patterns']:

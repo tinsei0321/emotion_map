@@ -123,3 +123,29 @@ def test_numeric_boundary_no_false_positive(tmp_path, capsys):
 
     assert _run(cc, mat, reg) == 0
     assert '0 命中' in capsys.readouterr().out
+
+
+def test_fullwidth_material_variants_hit(tmp_path, capsys):
+    """素材全角数字/全角逗号千分位（５，６１５ / ８７．９％）与半角登记同义命中。"""
+    reg = _make_registry(tmp_path / 'reg.md', ['5,615', '87.9%'])
+    mat = tmp_path / 'full.md'
+    _write(mat, '旧值 ５，６１５ 件\n旧占比 ８７．９％\n')
+
+    assert _run(cc, mat, reg) == 1
+
+    out = capsys.readouterr().out
+    assert 'full.md:1' in out and '5,615' in out
+    assert 'full.md:2' in out and '87.9%' in out
+
+
+def test_fullwidth_registry_values_normalized(tmp_path, capsys):
+    """注册表作废值本身为全角写法时，半角素材同样命中。"""
+    reg = _make_registry(tmp_path / 'reg.md', ['５，６１５', '８７．９％'])
+    mat = tmp_path / 'half.md'
+    _write(mat, '旧值 5615 件\n旧占比 87.9\n')
+
+    assert _run(cc, mat, reg) == 1
+
+    out = capsys.readouterr().out
+    assert 'half.md:1' in out and '5615' in out
+    assert 'half.md:2' in out and '87.9' in out
