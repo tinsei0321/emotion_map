@@ -109,12 +109,20 @@ def _reject_analysis_output(preset_id, param, caliber):
 
 _UNKNOWN_HINT = '未知层 id·调用 list_data 查看清单'
 
+# K-C1 社区口径枚举（inline 校验）与已知 dataset 自动 scope（PT-CB6 D11）
+K_C1_COMMUNITY_SCOPES = (174, 154, 118, 193, 130)
+_KNOWN_COMMUNITY_SCOPE = {
+    'page7_12345_top10': 154,
+    'page7_12345_top20': 154,
+    'base_174_aggregate_area': 174,
+}
 
-def _safe_print(msg):
+
+def _safe_print(msg, file=None):
     try:
-        print(msg)
+        print(msg, file=file)
     except UnicodeEncodeError:
-        print(msg.encode('gbk', 'replace').decode('gbk'))
+        print(msg.encode('gbk', 'replace').decode('gbk'), file=file)
 
 
 def _jsonable(value):
@@ -245,6 +253,11 @@ def list_data(include_demo: bool = False) -> dict:
 def rag_query(query: str, k: int = 5, synthesize: bool = False) -> dict:
     """带来源知识检索：返回 Top-K 素材与维度分布（v1 不调 LLM 综合）。
 
+    差异化说明：
+    - 策展来源：本地治理知识库（非通用联网搜索）；
+    - 检索维度：知识类、非空间（口径/规则/背景问答·非空间分析）；
+    - 适用场景：口径·规则·背景问答，不做空间分析。
+
     Args:
         query: 检索问题（开放语义）。
         k: Top-K（1-10，自动夹取）。
@@ -333,8 +346,11 @@ def outlet_card(question: str = '', result: dict = None, diagnose: dict = None) 
 @track('MOD_AIQA.F_025', track_args=False)
 def zonal_stats(boundary: str, layer: str = 'yichang_l2_t1',
                 agg_cols: list = None, top_n: int = 10,
-                layer_output: bool = False) -> dict:
+                layer_output: bool = False,
+                sort_by: str = 'polarity_index') -> dict:
     """单元聚合：情绪点按边界单元统计（首次调用含 geopandas 冷启动约 10-20s）。
+
+    layer_output=True 返回 geojson 可直接 render_spec 内联铺图（推荐用于出图链）。
 
     Args:
         boundary: 边界 preset id（先经 list_data 查询）。
@@ -342,6 +358,7 @@ def zonal_stats(boundary: str, layer: str = 'yichang_l2_t1',
         agg_cols: 聚合数值列（默认 ['score']）。
         top_n: 返回 Top-N 行（1-20，rows 硬顶 20）。
         layer_output: True 时返回值增 geojson（仅 top_n 行多边形）。
+        sort_by: 排序字段（point_count|polarity_index|score_mean，默认 polarity_index 向后兼容）。
     """
     try:
         from core.geo_registry import resolve_boundary, resolve_points
@@ -355,8 +372,18 @@ def zonal_stats(boundary: str, layer: str = 'yichang_l2_t1',
         cols = agg_cols or (['score'] if 'score' in points.columns else [])
         merged = aggregate_by_polygons(points, polys, agg_cols=cols,
                                        polygon_name_col='name')
-        sort_col = 'polarity_index' if 'polarity_index' in merged.columns else next(
-            (f'{c}_sum' for c in cols if f'{c}_sum' in merged.columns), 'point_count')
+        _SORT_ALLOWED = ('point_count', 'polarity_index', 'score_mean')
+        if sort_by not in _SORT_ALLOWED:
+            return {'ok': False, 'hint': f'sort_by 非法: {sort_by!r}（可选 {_SORT_ALLOWED}）',
+                    'caliber': CALIBERS['zonal_stats']}
+        if sort_by == 'point_count':
+            sort_col = 'point_count'
+        elif sort_by == 'score_mean':
+            sort_col = 'score_mean' if 'score_mean' in merged.columns else (
+                'polarity_index' if 'polarity_index' in merged.columns else 'point_count')
+        else:
+            sort_col = 'polarity_index' if 'polarity_index' in merged.columns else next(
+                (f'{c}_sum' for c in cols if f'{c}_sum' in merged.columns), 'point_count')
         merged = merged.sort_values(
             by=sort_col,
             key=(lambda s: s.abs() if sort_col == 'polarity_index' else s),
@@ -428,7 +455,8 @@ def buffer(center: str, radius_m: int = 500, layer: str = 'yichang_l2_t1',
 @track('MOD_AIQA.F_027', track_args=False)
 def rank(by: str = 'worst', layer: str = 'yichang_l2_t1',
          boundary: str = '', top_n: int = 5,
-         layer_output: bool = False) -> dict:
+         layer_output: bool = False,
+         sort_by: str = 'polarity_index') -> dict:
     """排序评价：按极性指数找最差/最好 Top-N 单元（先聚合再排）。
 
     Args:
@@ -437,6 +465,7 @@ def rank(by: str = 'worst', layer: str = 'yichang_l2_t1',
         boundary: 边界 preset id。
         top_n: 返回行数（1-20）。
         layer_output: True 时返回值增 geojson（仅 top_n 行多边形）。
+        sort_by: 排序字段（point_count|polarity_index|score_mean，默认 polarity_index 向后兼容）。
     """
     if not boundary:
         return {'ok': False, 'hint': 'rank 需 boundary（先 zonal 聚合再排）',
@@ -453,17 +482,27 @@ def rank(by: str = 'worst', layer: str = 'yichang_l2_t1',
         cols = ['score'] if 'score' in points.columns else []
         merged = aggregate_by_polygons(points, polys, agg_cols=cols,
                                        polygon_name_col='name')
-        if 'polarity_index' not in merged.columns:
+        _SORT_ALLOWED = ('point_count', 'polarity_index', 'score_mean')
+        if sort_by not in _SORT_ALLOWED:
+            return {'ok': False, 'hint': f'sort_by 非法: {sort_by!r}（可选 {_SORT_ALLOWED}）',
+                    'caliber': CALIBERS['rank']}
+        if sort_by == 'polarity_index' and 'polarity_index' not in merged.columns:
             return {'ok': False, 'hint': 'rank 需层含 polarity_index（先 zonal_stats 聚合）',
                     'caliber': CALIBERS['rank']}
-        by = (by or 'worst').lower()
-        ascending = (by == 'worst')
-        merged = merged.sort_values('polarity_index', ascending=ascending, kind='stable')
+        if sort_by == 'point_count':
+            merged = merged.sort_values('point_count', ascending=False, kind='stable')
+        elif sort_by == 'score_mean':
+            merged = merged.sort_values('score_mean', ascending=False, kind='stable')
+        else:
+            by = (by or 'worst').lower()
+            ascending = (by == 'worst')
+            merged = merged.sort_values('polarity_index', ascending=ascending, kind='stable')
+        sort_col = 'point_count' if sort_by == 'point_count' else ('score_mean' if sort_by == 'score_mean' else 'polarity_index')
         row_count = int(len(merged))
         top_n = max(1, min(int(top_n), 20))
         top_rows = merged.head(top_n)
         rows = _gdf_rows(top_rows, cols)
-        out_geojson = _layer_output_geojson(merged, top_n, 'polarity_index') if layer_output else None
+        out_geojson = _layer_output_geojson(merged, top_n, sort_col) if layer_output else None
     except (KeyError, FileNotFoundError):
         return {'ok': False, 'hint': _UNKNOWN_HINT, 'caliber': CALIBERS['rank']}
     except Exception as exc:
@@ -576,8 +615,31 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
         style['ramp_hint'] = ramp_hint
 
     caliber_lite = {'usage': usage, 'data_nature': nature, 'note': '; '.join(fixes)}
-    if community_caliber:
-        caliber_lite['community'] = int(community_caliber)
+    # K-C1 社区口径校验（PT-CB6 D11）
+    if dataset_id:
+        known_scope = _KNOWN_COMMUNITY_SCOPE.get(dataset_id)
+        if known_scope is not None:
+            auto_community = known_scope
+            if community_caliber and int(community_caliber) != auto_community:
+                caliber_lite['community_warning'] = (
+                    f'调用方声明 community={int(community_caliber)}，'
+                    f'但 dataset {dataset_id} 已知 scope={auto_community}（K-C1）')
+            caliber_lite['community'] = auto_community
+        elif community_caliber:
+            cc = int(community_caliber)
+            if cc not in K_C1_COMMUNITY_SCOPES:
+                return {'ok': False,
+                        'hint': f'community_caliber 非法: {cc}（K-C1 可选 {K_C1_COMMUNITY_SCOPES}）',
+                        'caliber': CALIBERS['render_spec']}
+            caliber_lite['community'] = cc
+    elif community_caliber:
+        cc = int(community_caliber)
+        if cc not in K_C1_COMMUNITY_SCOPES:
+            return {'ok': False,
+                    'hint': f'community_caliber 非法: {cc}（K-C1 可选 {K_C1_COMMUNITY_SCOPES}）',
+                    'caliber': CALIBERS['render_spec']}
+        caliber_lite['community'] = cc
+
 
     spec_id = f'{int(time.time() * 1000)}-{random.randint(1000, 9999)}'
     spec = {
@@ -598,6 +660,7 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
         json.dump(spec, fh, ensure_ascii=False)
 
     return {'ok': True, 'spec_id': spec_id, 'inbox_path': inbox_path,
+            'caliber_lite': caliber_lite,
             'caliber': CALIBERS['render_spec']}
 
 
@@ -618,7 +681,7 @@ def build_server():
 
 
 def main():
-    _safe_print('[OK] EMC MCP server stdio 启动（Ctrl+C 退出）')
+    _safe_print('[OK] EMC MCP server stdio 启动（Ctrl+C 退出）', file=sys.stderr)
     build_server().run()
 
 
