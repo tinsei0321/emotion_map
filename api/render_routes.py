@@ -3,9 +3,13 @@
 
 通道语义：
   dsh 会话（MCP render_spec）→ 写 DATA/exports/render_inbox/<spec_id>.json
-  → 本模块后台 watcher 线程扫描新文件（按 spec_id 文件名排序·last_seen 去重）
+  → 本模块后台 watcher 线程扫描新文件（按 spec_id 文件名排序·推送后归档）
   → queue.Queue 推给 SSE 连接（先补最近 20 条 backlog·再持续流式）
   → 8080 前端 render_client.js 消费 spec 取数渲染。
+
+PT-CB7 T16：spec 推送成功后移入 applied/ 归档（glob 只扫一级 *.json）——
+  治历史图层残留：_SEEN 是内存态，serve 重启（start.bat 杀旧起新）后首轮扫描
+  会把存量 spec 全量重推进 backlog → 新页面复活历史层；归档后重启不再重放。
 
 纪律：
   - 纯只读（dataset 端点只解析/降级·不写盘）；
@@ -54,7 +58,7 @@ def _sse_event(spec):
 
 
 def scan_inbox(inbox_dir, seen, out_queue, backlog):
-    """扫描收件箱新文件→入队+backlog（坏文件 log 后跳过）。返回本次入队数。"""
+    """扫描收件箱新文件→入队+backlog，推送成功即归档 applied/（T16：重启不重放）。坏文件 log 后跳过。返回本次入队数。"""
     os.makedirs(inbox_dir, exist_ok=True)
     files = sorted(glob.glob(os.path.join(inbox_dir, '*.json')))
     pushed = 0
@@ -79,6 +83,13 @@ def scan_inbox(inbox_dir, seen, out_queue, backlog):
         backlog.append(spec)
         del backlog[:-20]
         pushed += 1
+        # T16：推送成功后归档（一级 glob 不再扫到·serve 重启不重放·留痕可查）
+        try:
+            applied_dir = os.path.join(inbox_dir, 'applied')
+            os.makedirs(applied_dir, exist_ok=True)
+            os.replace(fp, os.path.join(applied_dir, base))
+        except OSError as exc:
+            _safe_print(f'[WARN] render_inbox 归档失败（不阻塞）: {base}: {exc}', file=sys.stderr)
     return pushed
 
 

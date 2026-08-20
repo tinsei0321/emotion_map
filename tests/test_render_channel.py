@@ -195,6 +195,23 @@ def test_watcher_scan_order_and_bad_json_skip(tmp_path):
     assert len(backlog) == 2
 
 
+def test_scan_inbox_archives_applied_no_replay_on_restart(tmp_path):
+    """PT-CB7 T16：推送成功的 spec 归档 applied/——serve 重启（seen 清零）不重放历史层。"""
+    inbox = tmp_path / 'inbox'
+    _write(inbox / '01.json', json.dumps(
+        {'spec_version': 1, 'kind': 'point', 'origin': {'producer': 'dsh'}}))
+    _write(inbox / '02.json', json.dumps(
+        {'spec_version': 1, 'kind': 'choropleth', 'origin': {'producer': 'dsh'}}))
+
+    q = queue.Queue()
+    assert render_routes.scan_inbox(str(inbox), set(), q, []) == 2
+    # 归档：一级目录清空，applied/ 留痕
+    assert sorted(p.name for p in inbox.glob('*.json')) == []
+    assert sorted(p.name for p in (inbox / 'applied').glob('*.json')) == ['01.json', '02.json']
+    # 重启模拟：全新 seen 集合，无重放
+    assert render_routes.scan_inbox(str(inbox), set(), queue.Queue(), []) == 0
+
+
 # ════════════ dataset 端点 ════════════
 
 def test_render_dataset_preset_returns_fc(monkeypatch):
