@@ -42,6 +42,13 @@ _SEEN = set()
 _UNKNOWN_HINT = '未知层 id·调用 list_data 查看清单'
 
 
+def _safe_print(msg, file=None):
+    try:
+        print(msg, file=file)
+    except UnicodeEncodeError:
+        print(msg.encode('gbk', 'replace').decode('gbk'), file=file)
+
+
 def _sse_event(spec):
     return f'event: spec\ndata: {json.dumps(spec, ensure_ascii=False)}\n\n'
 
@@ -65,7 +72,7 @@ def scan_inbox(inbox_dir, seen, out_queue, backlog):
             if not isinstance(spec.get('origin'), dict):
                 raise ValueError('origin 缺失')
         except Exception as exc:
-            print(f'[WARN] render_inbox 坏文件跳过: {base}: {exc}', file=sys.stderr)
+            _safe_print(f'[WARN] render_inbox 坏文件跳过: {base}: {exc}', file=sys.stderr)
             continue
         seen.add(base)
         out_queue.put(spec)
@@ -80,7 +87,7 @@ def _watch_loop():
         try:
             scan_inbox(INBOX_DIR, _SEEN, _SPEC_QUEUE, _BACKLOG)
         except Exception as exc:
-            print(f'[WARN] render watcher 扫描异常: {exc}', file=sys.stderr)
+            _safe_print(f'[WARN] render watcher 扫描异常: {exc}', file=sys.stderr)
         time.sleep(1)
 
 
