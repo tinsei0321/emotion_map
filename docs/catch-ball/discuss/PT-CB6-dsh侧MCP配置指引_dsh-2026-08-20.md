@@ -88,3 +88,17 @@
   mcp__emc__zonal_stats
   ```
 - 额外复验：Python `mcp` SDK stdio client 连 `py tools/mcp_server_emc.py` → `list_tools` 同样 8 工具（说明 server 侧 L0 独立可证）。
+
+
+## 附：office 侧复建实录（zcode·2026-08-20）
+
+四件套核验/补齐结果（对照 HOME 卡备测节）：
+
+1. **python 依赖**：office pip 默认源被网络阻断（`from versions: none`）——`pip install -i https://pypi.tuna.tsinghua.edu.cn/simple "mcp>=1.0.0,<2.0.0"` 装得 **mcp-1.29.0**（符合锁）。
+2. **密钥**：`py tools/verify_keys.py` 全过（DeepSeek/AMAP [OK]·无需处理）。
+3. **dsh profile 重建**：照本指引 §1.2-1.4 建 `emc-test`（web 版）+ `emc-test-headless`（自测版）。**两处 office 适配差异**：
+   - 依赖协议 `link:` → **`file:`**（office 用 npm·不认 link: 协议报 EUNSUPPORTEDPROTOCOL；家机为 pnpm。`file:D:/Github/dsh/packages/mcp/mcp-client` 等效·npm install 通过）；
+   - `agent-presets: minimal-windows` 家机专属预设 office 的 dsh checkout 不存在（仅 code/cordis/minimal/standard）——headless 的 settings.yaml 暂只配 flash 模型，如需缩短轮次再查键名补 `minimal`。
+4. **端到端验证**：stdio 冒烟（initialize+tools/list）8 工具列全；`dsh --profile emc-test-headless "仅列出 mcp__emc 开头工具"` 实测输出 **8 个 mcp__emc__* 工具**（server [OK] 启动行入 stderr·D4 修复生效）。
+
+> 注：RAG 预热会阻塞 stdio 响应数秒——冒烟脚本需先 sleep ≥3s 再发 initialize（首次排障曾误判空列表）。
