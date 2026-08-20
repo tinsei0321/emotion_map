@@ -57,7 +57,8 @@ def _load_preset_fc(preset_id):
 
 def _zonal_and_render(boundary, layer, name, fc_loader=None):
     pts = fc_loader() if fc_loader else layer
-    z = mcp.zonal_stats(boundary=boundary, layer=pts, top_n=10, layer_output=True)
+    z = mcp.zonal_stats(boundary=boundary, layer=pts, top_n=10, layer_output=True,
+                        sort_by='point_count')
     if not z.get('geojson'):
         _safe_print(f'[ERR] zonal_stats 失败（{name}）: {z.get("hint")}')
         return False
