@@ -497,6 +497,15 @@
 - **R41 遗留观察项**（F3 悬停 tip/F4 参数面板识别/F5 着色机制/F6 内容正确性）——随用户复测 Q3/Q4 一并观察，不单独立项。
 - **下一步建议**（待用户定）：A) D1-D4 打磨批派 dsh（白名单：tools/mcp_server_emc.py 描述+stderr、api 排序支持核实）；B) 用户复测 Q3/Q4（Q4 题面明写 base_174_aggregate_area 采集对抗样本）；C) B1 复审挂账处置——建议并入 PT-CB6 期一次审计（B1 修复已被 CB4-CB6 全量门禁持续回归覆盖，单独复审轮次性价比低·用户定）。
 
+## R46（2026-08-20）D 批打磨回收（zcode·office 班）
+
+- **8 件全销号**（dsh 四组五提交 aba7d8f7/eaa53e2d/be66b5f2/f8c94607/1fe05881）：D1 sort_by 枚举（默认 polarity_index 向后兼容·非法值语义化）/D2-D3 描述引导/D4 stdout→stderr/D10 着色分派/D11 K-C1 校验/D12 显式 point_count/D13 _safe_print。
+- **主手抽验全过**：D10 同源实证（piToNorm/polarityStops 自 grid-tool.js 导入·非自造·极性路径 _grid_norm+gridStops）；D11 混配断言到位（声明 174→自动纠正 154+community_warning 字段）；D1 默认排序零退化。
+- **门禁复跑**：434 passed + 2 skipped（427+2 上浮 7·test_d_batch 新用例·dsh 执行记录已注明）。
+- 白名单零越界（五文件+测试+记录）；零新增追踪 ID。
+- **缺陷清单收官**：D1-D13 全部销号（D9 豁免裁决除外·纪律条款待固化入 tracker 纪律）。挂账顺修 6 项不动。
+- 状态：PT-CB6 工具面打磨收官；剩余收口=用户 Q3/Q4 复测（Q4 对抗样本）+ 挂账顺修 6 项下批。
+
 ---
 
 | 2026-08-20（R42） | 优先配 dsh 测大脑跑通路径·F3F4 缓·设计要深思考详细拆解交 dsh |
