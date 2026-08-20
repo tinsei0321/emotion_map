@@ -1,7 +1,34 @@
 # 家里 · 工作交接卡
 
-> **位置**：家 | **最后更新**：2026-08-20 晚（**收工**·Codex——EMC 入口插件 + 入口重定义 + dsh web 启动修复） | **同步**：分支 `EMC_harness_dsh`（main 冻结勿动）。
+> **位置**：家 | **最后更新**：2026-08-21（**到岗续点**·ZCode——dsh 更新 rc.8 + synapse 删除 + EMC 入口插件重建恢复） | **同步**：分支 `EMC_harness_dsh`（main 冻结勿动）。
 > **回家第一读**：本卡 + `memories/repo/session-handoff.md` 当前节点。
+
+---
+
+## 到岗快照（08-21 · dsh rc.8 + 会话地图删除 + EMC 入口恢复）
+
+### 今日完成（ZCode 代执行）
+
+1. **dsh 更新至上游 rc.8**：`D:/Github/dsh` merge deepseek-ai/deepseek-harness upstream/master（536 提交，rc.8 发布）→ 本地 14 提交全保留（handover/task-board/usage-monitor/web auto-session fix）；4 冲突文件手工合并（remotes package.json/client/index.ts、web-app package.json、pnpm-lock 取上游后全量重生成）；commit `8258d567c4`（merge）+ `92ae8734ee`（lockfile 刷新）；备份分支 `backup-pre-rc8`。**已跑全量 `build:lib:host` + `build:lib:client`**（上游新包 typert 产物补齐）。⚠️ 未 push（gitee origin 有 1 个新提交未拉，下次顺手 `git pull --rebase` + push）。
+2. **"会话地图"插件 = dsh-synapse 已永久删除**：web profile 的 package.json（dependencies + bundles）、node_modules/dsh-synapse、`~/.dsh/synapse/` 数据目录（5.3MB workspaces.json）全删；备份 `package.json.bak-rm-synapse`。web 重启后生效（本轮重启已含此变更）。
+3. **EMC 入口插件完整重建**（源码目录 `D:/Github/dsh-emc-entry/` 丢失后按任务书+复盘重建）：
+   - 新实现（rc.8 机制）：`workspaces.startSession()` 新建会话 + 欢迎卡挂 `conversation.input.dock`（默认展开，可关闭）+ `workspaces.openPath(start.bat)` 独立终端起 8080 + 8080 就绪后 `openPath` Edge 开图；probe 保留 `no-cors` 修复（resolve=可达/reject=不可达）；零硬编码 hex（`--dsw-alias-*`）。
+   - rc.8 构建链适配：**需要 `D:/Github/dsh/packages/emc/emc-entry/` 登记 stub**（纯 manifest + tsdown.config.ts `entry:''` 跳过，未 commit）+ 插件目录 node_modules junction → dsh/node_modules + node 半必须导出 `apply`（空壳）。
+   - 接入 web profile（dependencies link: + bundles + junction；备份 `package.json.bak-emcentry`）。
+   - **验证通过**：web 重启后稳定运行，`GET /plugins/dsh-emc-entry/client.js` → **200**（7639B，含 no-cors/startSession/欢迎卡）。
+
+### 待办（浏览器验收）
+
+- **T4 视觉验收**（需浏览器）：硬刷新 3080 页面 → 左下角「EMC 情绪地图」按钮在位；8080 未开时置灰+title 提示；点击 → 新会话 + 欢迎卡展开 + 终端弹 start.bat + Edge 开地图页；无 double-mount。欢迎卡"新会话自动出现"细节若未完全达标，改 `src/client/components.tsx` + 重建 bundle（tsdown.CMD）。
+- EMC 人设 system prompt 未配（身份卡已加）：配 system prompt + `py tools/rag_index.py --build`。
+- node-pty `AttachConsole failed` → 记 debug-memory R13。
+- 收工时：`git push hub --all` 补推盘仓；考虑跑「一键离开」快照 `~/.dsh` 到 hub 盘。
+
+### 注意
+
+- **rc.8 之后**：仓外插件构建必须走登记 stub（packages/emc/emc-entry）+ 独立 tsdown；web profile 禁裸 npm install（R12 依旧）；dsh 全量构建命令 `npm run build:lib:host` / `build:lib:client`。
+- `D:/Github/dsh/packages/emc/emc-entry/` 为构建登记（未 commit，可随交接卡说明保留或删除重建）。
+- dsh 相关文件在仓外（`D:/Github/dsh-emc-entry/` + `~/.dsh/profiles/web/`），不入本仓 git。
 
 ---
 
