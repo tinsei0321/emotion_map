@@ -3,6 +3,7 @@
 // 复用现有 addToolboxLayer / defaultPaint 铺层。
 // 红线：不改任何既有 js；本文件为纯新增 ES module。
 import { addToolboxLayer, defaultPaint } from './toolbox/shared.js';
+import { piToNorm, polarityStops } from './grid-tool.js';
 
 const PREFIX = '[dsh] ';
 // 同一页面会话内按 spec_id 去重：SSE 断线重连会重放 backlog，若不去重会导致
@@ -96,8 +97,26 @@ async function _apply(spec) {
 
   if (scheme === SCHEMES.community_choropleth_v1) {
     const valueField = (spec.style && spec.style.value_field) || 'point_count';
-    const normalized = _normCommunityCount(fc, valueField);
-    const paint = defaultPaint('zonal', 'polygon', 'count');
+    const isPolarity = valueField.includes('polarity') || valueField === 'score_mean';
+    let normalized;
+    let paint;
+    if (isPolarity) {
+      normalized = {
+        ...fc,
+        features: (fc.features || []).map((f) => {
+          const props = { ...(f.properties || {}) };
+          const pi = Number(props[valueField]);
+          props._grid_norm = (pi != null && !Number.isNaN(pi)) ? piToNorm(pi) : 0.5;
+          return { ...f, properties: props };
+        }),
+      };
+      paint = { ...defaultPaint('zonal', 'polygon'), gridStops: polarityStops('overall') || [] };
+    } else {
+      normalized = _normCommunityCount(fc, valueField);
+      paint = defaultPaint('zonal', 'polygon', 'count');
+    }
+
+
     const L = addToolboxLayer({ name, kind: 'polygon', fc: normalized, paint, fit: zoom });
     _attachMeta(L, spec);
     return;
