@@ -267,9 +267,20 @@ METRICS_SYSTEM = [
 ]
 
 
+# ── EMC 身份卡（PT-CB6 EMC 入口重定义 · 2026-08-20）──────────────
+IDENTITY = [
+    {'id': 'EMC-IDENTITY-01', 'city': '宜昌', 'region': '全局', 'topic': 'identity',
+     'name': 'EmotionMap Copilot（EMC 情绪地图助手）',
+     'detail': '你好，我是 EmotionMap Copilot。用情绪地图看懂市民心声——问区域情绪、做空间分析、追原因与建议。',
+     'dimension': '平台身份', 'year': '2026', 'keywords': '你是谁 EmotionMap Copilot EMC 情绪地图 身份 自我介绍 能力',
+     'source': 'PT-CB6 EMC 入口重定义任务书（Codex 设计·2026-08-20）'},
+]
+
+
+
 def all_facts():
     """全部事实卡（供 query_knowledge_base / rag_index 检索）。"""
-    return (PROJECTS + INDICATORS + CHECKUP_ISSUES + CHECKUP_FACTS + PANELS + CASES + POLICIES + METRICS_SYSTEM)
+    return (IDENTITY + PROJECTS + INDICATORS + CHECKUP_ISSUES + CHECKUP_FACTS + PANELS + CASES + POLICIES + METRICS_SYSTEM)
 
 
 @track("MOD_AIQA.F_018", track_args=False)

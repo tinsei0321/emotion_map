@@ -1,7 +1,7 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：08月19日 凌晨（**PT 平台化转型实施中 · CB1 已回口/CB2-T1 已回收**·zcode 主手收工）| 分支 `EMC_harness_dsh`（**main 冻结勿动**）
+> 最后更新：08月20日 晚（**EMC 入口插件 + 重定义 + dsh web 启动修复收工**·Codex）| 分支 `EMC_harness_dsh`（**main 冻结勿动**）
 >
 > CB 入口：`docs/catch-ball/_cb-index.md`
 > 接手第一读：`_handoff/HOME.md` 收工快照 + `discuss/EMC-dsh整体合体_讨论过程台账.md` R20 + `discuss/PT-CB2-开工与拆解_zcode-2026-08-19.md`
@@ -10,7 +10,19 @@
 
 ---
 
-## 当前节点：home 凌晨收工 · PT-CB6 S6 用户复测通过 · render 通道三坑已修（office 续点=S7 回收判读）
+## 当前节点：08-20 晚收工 · EMC 入口插件 + 重定义 + dsh web 启动修复（home 续点=修入口小问题 + 人设/身份卡）
+
+- **08-20 晚完成（Codex 代做）**：
+  1. dsh web 启动修复：`@dsh-external/dsh-super-injector` 未登记 package.json 被 npm install 修剪 → web 崩「Failed to load plugins」；修 = 登记依赖 + junction + 清误产 npm 锁（debug-memory R12）。
+  2. EMC 入口插件 `dsh-emc-entry` 构建、接入、加载验证（左下角入口 + 8080 探测 + token 纪律）。
+  3. 入口重定义任务书：点击入口 = 开新会话(standard)+欢迎卡 + host 跑 start.bat + 外部 Edge 开 8080；随后 EMC 人设+身份卡。
+  4. spawn msedge 崩溃修复：改 `cmd /c start "" url` + `safeSpawn` 挂 error 兜底。
+  5. dsh 已落地：身份卡（IDENTITY）、`start.bat --open=none`、新 preset `checkup_12345_comm174_all`、新工具 `tools/grid_export.py`。
+- **home 到岗续点（待修小问题）**：①入口欢迎卡/新会话细节（改 `D:/Github/dsh-emc-entry/src/client/index.ts` + 重建 bundle）②EMC 人设 system prompt + `py tools/rag_index.py --build` 重建 RAG ③node-pty 崩溃建议记 R13 ④grid_export.py 非正式（F_029 待立项）。
+- **注意**：main 冻结勿动；工作区 dsh 改动已一并提交；`docs/debug-memory.md` 双 R11 撞号待主手合并；dsh 文件在仓外（`D:/Github/dsh-emc-entry/` + `~/.dsh/profiles/web/`）。
+- **相关文档**：`discuss/PT-CB6-EMC入口插件执行记录_dsh-2026-08-20.md`、`discuss/PT-CB6-EMC入口插件_问题复盘与审计交接_Codex-2026-08-20.md`、`discuss/PT-CB6-EMC入口重定义任务书_Codex-2026-08-20.md`。
+
+## 旧节点：home 凌晨收工 · PT-CB6 S6 用户复测通过 · render 通道三坑已修（office 续点=S7 回收判读）
 
 - **08-20 凌晨 home 班完成**：
   1. 用户亲测 Q2「12345 热线诉求最密集的 10 个社区是哪些？把结果铺到地图上」→ 端到端成图，用户确认正常。

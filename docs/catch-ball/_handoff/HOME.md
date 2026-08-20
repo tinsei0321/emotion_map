@@ -1,7 +1,33 @@
 # 家里 · 工作交接卡
 
-> **位置**：家 | **最后更新**：2026-08-20 凌晨（**home 收工**·dsh——PT-CB6 用户复测通过 + render 通道三坑修复） | **同步**：分支 `EMC_harness_dsh`（main 冻结勿动）。
-> **回家第一读**：本卡 + `memories/repo/session-handoff.md` 当前节点（office 收工·权威）。
+> **位置**：家 | **最后更新**：2026-08-20 晚（**收工**·Codex——EMC 入口插件 + 入口重定义 + dsh web 启动修复） | **同步**：分支 `EMC_harness_dsh`（main 冻结勿动）。
+> **回家第一读**：本卡 + `memories/repo/session-handoff.md` 当前节点。
+
+---
+
+## 收工快照（08-20 晚 · EMC 入口插件 + 重定义 + dsh web 启动修复）
+
+### 今日完成
+
+1. **dsh web 启动修复**：`cordis.patch.yml` 引用的 `@dsh-external/dsh-super-injector` 未登记进 package.json，被上轮 `npm install` 当 extraneous 修剪 → web 崩「Failed to load plugins」。修 = 登记依赖 + junction 恢复 + 清误产 npm 锁；坑记 `docs/debug-memory.md` R12（dsh profile 是 pnpm 管·插件须登记 package.json·禁裸 npm install）。
+2. **EMC 入口插件 dsh-emc-entry**：建包 `D:/Github/dsh-emc-entry/`（左下角 `sidebar.footer.action` 按钮 + 8080 探测 + 零硬编码 token 纪律）→ 构建 client bundle → 接入 web profile → 加载验证（`/plugins/dsh-emc-entry/client.js` 200 + boot 清单在位）。
+3. **入口重定义任务书**（`discuss/PT-CB6-EMC入口重定义任务书_Codex-2026-08-20.md`）：点击入口 = 开新会话（standard）+ 欢迎卡 + host 跑 start.bat + 外部 Edge 开 8080；随后 EMC 人设 + 身份卡。
+4. **spawn 崩溃修复**：dsh 实现 host 时 `spawn('msedge')` 报 ENOENT 且未挂 error 监听 → 带崩 web。修 = 改 `cmd /c start "" url`（默认浏览器=Edge）+ `safeSpawn` 挂 error 兜底（源码 `src/index.ts` 与产物 `lib/index.js` 都改了）。
+5. dsh 已落地：身份卡（`urban_renewal_knowledge.py` 的 IDENTITY 卡）、`start.bat --open=none`、新 preset `checkup_12345_comm174_all`（manifest.json + geojson）、新工具 `tools/grid_export.py`。
+
+### 待修「小问题」（home 到岗续点）
+
+1. 用户反馈入口仍有小问题（欢迎卡展开 / 新会话行为细节未完全达标）——先复现再定位，改 `D:/Github/dsh-emc-entry/src/client/index.ts` + 重建 client bundle。
+2. EMC 人设 system prompt 未确认是否已配（身份卡已加，但「你是谁」仍走 dsh 默认人设；需配 system prompt + `py tools/rag_index.py --build` 重建 RAG）。
+3. node-pty `AttachConsole failed` 崩溃（隐藏窗口起服务时 dsh 用终端会崩）——建议记 debug-memory R13（插件宿主 spawn 外部程序必须挂 error 兜底 + Windows 开浏览器用 `cmd /c start`）。
+4. `tools/grid_export.py` 是「非正式工具 · F_029 待立项」，勿当正式插座。
+
+### 注意
+
+- 工作区混有 dsh 执行任务的改动（manifest.json + 12345_诉求_社区174全量.geojson + grid_export.py + urban_renewal_knowledge.py + start.bat），本次已一并提交；**main 冻结勿动，一切在 `EMC_harness_dsh`**。
+- `docs/debug-memory.md` 有两个 R11 撞号（CB-43 块注释 与 PT-CB6 SSE 三坑），已新增 R12，撞号待主手合并。
+- dsh 相关文件在仓外（`D:/Github/dsh-emc-entry/` + `~/.dsh/profiles/web/`），不入本仓 git。
+- 相关日志：`discuss/PT-CB6-EMC入口插件执行记录_dsh-2026-08-20.md`、`discuss/PT-CB6-EMC入口插件_问题复盘与审计交接_Codex-2026-08-20.md`、`discuss/PT-CB6-EMC入口重定义任务书_Codex-2026-08-20.md`。
 
 ---
 

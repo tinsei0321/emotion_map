@@ -95,6 +95,19 @@
 - **检查动作**：演示前跑一遍无头采样（图层数恒定）；新投递通道设计时三问（服务器线程模型？重连重放去重键？inbox 清理责任方？）。
 - **附带两条语义坑**（同轮记录）：zonal_stats 默认按极性指数排序**不是件数**——"最密集"类问题需显式 point_count 口径（D1 缺陷）；大图层 dataset_id 引用在浏览器连接池会排队超时，关键演示图层优先内联 GeoJSON（≤60 要素）。
 
+## R12 · dsh web profile 是 pnpm 管——插件必须登记进 package.json，禁裸 npm install（PT-CB6 EMC 入口插件·2026-08-20）
+
+- **规则**：
+  - dsh 的 `~/.dsh/profiles/web/` 用 **pnpm**（`pnpm-workspace.yaml`·`nodeLinker: hoisted`），安装走 `dsh plugin --profile web add <tgz>`，**不是 `npm install`**。
+  - 任何被 `cordis.patch.yml` 引用的插件（尤其 `@dsh-external/dsh-super-injector` 这类 `file:`/`link:` 本地插件）**必须同时登记进 package.json 的 dependencies**，否则 `npm/pnpm install` 会把它当 extraneous 修剪掉 → web 启动 `ERR_MODULE_NOT_FOUND` → 浏览器端只剩一句「Failed to load plugins」。
+  - super-injector 运行时注入的插件（dsh-ds-web / dsh-git 等，源在 `D:/Github/dsh-plugins`）**不在** patch.yml/package.json，靠注入器重启自愈，勿手动登记。
+  - 勿在 pnpm profile 上跑 `npm install`：会生成带 `extraneous` 标记的畸形 `package-lock.json`，npm 11 arborist 解析 `dsh-better-sidebar` 依赖树时崩 `Cannot read properties of null (reading 'children')`。
+- **案例**：PT-CB6 EMC 入口插件 T1——任务书写的 `npm install` 把未登记的 super-injector junction 修剪掉，3080 起即崩；浏览器只见「Failed to load plugins」（client.js 拉取失败）。修复 = 把 super-injector 登记回 package.json（file: 源路径）+ junction 恢复 + 移除误产 npm package-lock.json。
+- **违反后果**：dsh web 全站打不开（3080 崩溃），但错误藏在隐藏窗口（`dsh-web.vbs` 无日志），浏览器只给模糊的插件加载失败——极易误判成「前端缓存/插件坏」。
+- **检查动作**：
+  - web 起不来先 `netstat -ano | findstr :3080` 看有无 LISTENING；无则手工跑 `node --import tsx/esm apps/cli/src/bin.ts web`（cwd=`D:\Github\dsh`）抓 stderr 的 `ERR_MODULE_NOT_FOUND` 定位是哪个包缺失。
+  - 对照 `cordis.patch.yml` 每个插件 id 与 package.json dependencies 是否一一登记；`npm ls --depth=0` 看 extraneous 项（未登记会被修剪的雷）。
+
 ## 附：本库首建背景（CB-41 · 2026-08-18）
 
 用户经历三轮修复仍未根治（着色浅→着色反→无填充），zcode 接手后经「发起→dsh 排查→收敛→实施→用户复测暴露 B014→增补修复」闭环。三个台账：B012（tip 归属）/ B013（着色语义）/ B014（membership 静默丢点）·完整链条见 `docs/catch-ball/discuss/CB41-*` 三件套 + revision-log 5.257-5.260。

@@ -499,5 +499,18 @@
     "note": "page7 点版三组之一·结论层（铁律7）禁作空间操作输入"
    }
   ]
+ },
+ {
+  "group": "12345 诉求聚合（174社区全量）",
+  "items": [
+   {
+    "id": "checkup_12345_comm174_all",
+    "label": "12345诉求-社区174全量（聚合·18130点）",
+    "file": "12345_诉求_社区174全量.geojson",
+    "nameField": "社区",
+    "usage": "analysis_output",
+    "note": "dsh render 出图用·zonal_stats 同源聚合（aggregate_by_polygons·12345_2024×社区174）·属性含 point_count/score_mean/polarity_index·结论层禁作空间操作输入"
+   }
+  ]
  }
 ]
