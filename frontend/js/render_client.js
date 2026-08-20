@@ -3,6 +3,8 @@
 // 复用现有 addToolboxLayer / defaultPaint 铺层。
 // 红线：不改任何既有 js；本文件为纯新增 ES module。
 import { addToolboxLayer, defaultPaint } from './toolbox/shared.js';
+import { getLayers, removeLayer } from './state.js';
+import { removeLayerFromMap } from './map.js';
 import { piToNorm, polarityStops } from './grid-tool.js';
 
 const PREFIX = '[dsh] ';
@@ -71,6 +73,23 @@ function _normCommunityCount(fc, valueField) {
   };
 }
 
+/** PT-CB7 T1：铺新层前移除所有 [dsh] 前缀既有层（治异名 spec 叠层残留）。
+ *  移除失败仅 log 不阻塞新层铺设（A9：具体捕获+console.warn，不静默吞错）。 */
+function _clearDshLayers() {
+  let removed = 0;
+  for (const l of getLayers()) {
+    if (typeof l.name !== 'string' || !l.name.startsWith(PREFIX)) continue;
+    try {
+      removeLayerFromMap(l.id);
+      removeLayer(l.id);
+      removed += 1;
+    } catch (err) {
+      console.warn('[dsh] 图层清理单项失败（继续铺新层）:', l.name, err);
+    }
+  }
+  return removed;
+}
+
 async function _apply(spec) {
   if (!spec || !spec.ui || !spec.ui.name) return;
   const scheme = _resolveScheme(spec);
@@ -89,6 +108,9 @@ async function _apply(spec) {
   const nature = (spec.caliber_lite && spec.caliber_lite.data_nature) || 'real';
   const natureBadge = nature === 'demo' ? '[演示] ' : (nature === 'real' ? '[真实] ' : '');
   const name = PREFIX + natureBadge + spec.ui.name;
+
+  // PT-CB7 T1：同会话内 [dsh] 图层只保留最新一张（D-R1 语义裁定·见主执行前审计）
+  _clearDshLayers();
 
   if (scheme === SCHEMES.point_default_v1) {
     const paint = { _ui: { tool: 'dsh-render' }, radius: 7, color: '#ff9000', opacity: 0.9 };

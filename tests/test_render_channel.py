@@ -213,3 +213,23 @@ def test_render_dataset_unknown_returns_hint(monkeypatch):
     out = render_routes.render_dataset('nope')
     assert out['ok'] is False
     assert 'list_data' in out['hint']
+
+
+# ════════════ PT-CB7 T1 · [dsh] 图层残留自清理（前端静态契约断言） ════════════
+# M2（主执行前审计）：图层列表属 JS 运行时态，pytest 面不可驱动；
+# 本用例断言 render_client.js 的清理契约结构，运行时实测移交浏览器实测清单。
+
+def test_render_client_clears_dsh_layers_before_apply():
+    with open(os.path.join(ROOT, 'frontend', 'js', 'render_client.js'), encoding='utf-8') as fh:
+        src = fh.read()
+    # ① 图层管理真身 import 在位（state.js/map.js 直 import·shared.js 未转出）
+    assert 'removeLayer' in src and 'removeLayerFromMap' in src and 'getLayers' in src
+    # ② 清理函数存在：按 [dsh] 前缀遍历移除 + try/catch 包裹 + warn 不阻塞（A9）
+    assert '_clearDshLayers' in src
+    assert 'startsWith(PREFIX)' in src
+    assert 'console.warn' in src
+    # ③ 顺序契约：清理调用必须位于 _apply 体内、首个 addToolboxLayer 之前
+    i_apply = src.index('async function _apply(spec)')
+    i_clear = src.index('_clearDshLayers();', i_apply)
+    i_add = src.index('addToolboxLayer(', i_apply)
+    assert i_apply < i_clear < i_add
