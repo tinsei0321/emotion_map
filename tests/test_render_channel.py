@@ -212,6 +212,27 @@ def test_scan_inbox_archives_applied_no_replay_on_restart(tmp_path):
     assert render_routes.scan_inbox(str(inbox), set(), queue.Queue(), []) == 0
 
 
+def test_sse_fanout_broadcasts_to_all_connections():
+    """PT-CB7 T21：多个地图页（SSE 连接）都能收到同一 spec（治单队列争用·F5 才见）。"""
+    render_routes._SUBSCRIBERS.clear()
+    q1, q2 = queue.Queue(), queue.Queue()
+    with render_routes._SUB_LOCK:
+        render_routes._SUBSCRIBERS.extend([q1, q2])
+    spec = {'spec_version': 1, 'kind': 'point', 'spec_id': 'fanout-x',
+            'origin': {'producer': 'dsh'}}
+    render_routes._publish(spec)
+    assert q1.get_nowait()['spec_id'] == 'fanout-x'
+    assert q2.get_nowait()['spec_id'] == 'fanout-x'
+    # 断开连接（finally 摘除）后不再收到广播
+    with render_routes._SUB_LOCK:
+        render_routes._SUBSCRIBERS.remove(q1)
+    render_routes._publish({'spec_version': 1, 'kind': 'point',
+                            'spec_id': 'fanout-y', 'origin': {'producer': 'dsh'}})
+    assert q1.empty()
+    assert q2.get_nowait()['spec_id'] == 'fanout-y'
+    render_routes._SUBSCRIBERS.clear()
+
+
 # ════════════ dataset 端点 ════════════
 
 def test_render_dataset_preset_returns_fc(monkeypatch):

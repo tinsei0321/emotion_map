@@ -38,10 +38,14 @@ register_track_id('MOD_AIQA.F_030', 'render dataset 取数：preset/点层→Fea
 router = APIRouter()
 
 INBOX_DIR = os.path.join(REPO, 'DATA', 'exports', 'render_inbox')
-_SPEC_QUEUE = queue.Queue()
 _BACKLOG = []
 _BACKLOG_LOCK = threading.Lock()
 _SEEN = set()
+# PT-CB7 T21：SSE 扇出——每个连接独立队列，watcher 向全体广播。
+# 治单队列争用：多个地图页共用一个 queue 时，spec 只被其中一个连接消费，
+# 用户当前页永收不到新图（只能 F5 重连后 backlog 重放才见）。
+_SUBSCRIBERS = []
+_SUB_LOCK = threading.Lock()
 
 _UNKNOWN_HINT = '未知层 id·调用 list_data 查看清单'
 
@@ -93,26 +97,50 @@ def scan_inbox(inbox_dir, seen, out_queue, backlog):
     return pushed
 
 
+def _publish(spec):
+    """T21：向所有活跃 SSE 连接广播 spec（死队列即摘除）。"""
+    with _SUB_LOCK:
+        dead = []
+        for q in _SUBSCRIBERS:
+            try:
+                q.put_nowait(spec)
+            except Exception:
+                dead.append(q)
+        for q in dead:
+            _SUBSCRIBERS.remove(q)
+
+
 def _watch_loop():
     while True:
         try:
-            scan_inbox(INBOX_DIR, _SEEN, _SPEC_QUEUE, _BACKLOG)
+            collect = queue.Queue()
+            scan_inbox(INBOX_DIR, _SEEN, collect, _BACKLOG)
+            while not collect.empty():
+                _publish(collect.get_nowait())
         except Exception as exc:
             _safe_print(f'[WARN] render watcher 扫描异常: {exc}', file=sys.stderr)
         time.sleep(1)
 
 
 def _sse_stream():
-    with _BACKLOG_LOCK:
-        for spec in list(_BACKLOG):
+    my_q = queue.Queue()
+    with _SUB_LOCK:
+        _SUBSCRIBERS.append(my_q)
+    try:
+        with _BACKLOG_LOCK:
+            for spec in list(_BACKLOG):
+                yield _sse_event(spec)
+        while True:
+            try:
+                spec = my_q.get(timeout=15)
+            except queue.Empty:
+                yield ': ping\n\n'
+                continue
             yield _sse_event(spec)
-    while True:
-        try:
-            spec = _SPEC_QUEUE.get(timeout=15)
-        except queue.Empty:
-            yield ': ping\n\n'
-            continue
-        yield _sse_event(spec)
+    finally:
+        with _SUB_LOCK:
+            if my_q in _SUBSCRIBERS:
+                _SUBSCRIBERS.remove(my_q)
 
 
 @router.get('/render/stream')

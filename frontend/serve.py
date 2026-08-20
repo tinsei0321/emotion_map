@@ -276,7 +276,10 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
             rheaders = list(resp.getheaders())
             ct = next((v for k, v in rheaders if k.lower() == 'content-type'), '') or ''
             if 'text/event-stream' in ct.lower():
-                self._send_streamed(resp.getcode(), rheaders, resp)   # SSE 分块流式（渐进 token）
+                # PT-CB7 T21：render SSE 为长驻流（后端 15s 心跳保证不挂死），豁免反代 50s 超时；
+                # LLM 流式仍受 Timer 保护（CB-22i 原语义不变）。
+                _exempt = self.path.split('?')[0] == '/api/v1/render/stream'
+                self._send_streamed(resp.getcode(), rheaders, resp, exempt_timer=_exempt)
             else:
                 self._send_buffered(resp.getcode(), rheaders, resp.read())   # 其余缓冲
         finally:
@@ -298,9 +301,10 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(rbody)
 
-    def _send_streamed(self, status, rheaders, resp):
+    def _send_streamed(self, status, rheaders, resp, exempt_timer=False):
         """SSE 流式：分块转发（WS1 F1.4 + Hotfix R2 S1）。不设 Content-Length·Connection: close（浏览器读到 EOF）。
-        read1 绕 BufferedReader（实测 read(4096) 攒到 ≥4096B/EOF 才返·read1 逐 chunk 返）+ TCP_NODELAY 禁 Nagle。"""
+        read1 绕 BufferedReader（实测 read(4096) 攒到 ≥4096B/EOF 才返·read1 逐 chunk 返）+ TCP_NODELAY 禁 Nagle。
+        exempt_timer（PT-CB7 T21）：render SSE 长驻流豁免 50s 超时（后端自带 15s 心跳）。"""
         try:
             import socket as _sock
             self.connection.setsockopt(_sock.IPPROTO_TCP, _sock.TCP_NODELAY, 1)   # 禁 Nagle·小包即发
@@ -316,14 +320,17 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         #   会拖死 serve 单线程（后续请求排队）·Timer 到时强制 close resp 中断阻塞·返 502 → 前端降级。
         #   50s 比前端 45s abort 略宽（前端降级先行·serve 线程随后释放·不拖死后续请求）。
         import threading as _th
-        _proxy_timer = _th.Timer(50.0, lambda: resp.close())
-        _proxy_timer.start()
+        if exempt_timer:
+            _proxy_timer = None
+        else:
+            _proxy_timer = _th.Timer(50.0, lambda: resp.close())
+            _proxy_timer.start()
         try:
             while True:
                 try:
                     chunk = resp.fp.read1(4096)   # 绕 BufferedReader·逐 chunk（实测：read 攒包·read1 流式）
                 except Exception:
-                    chunk = resp.read(4096)        # 兜底（resp.fp 非公开 API·个别环境不可用→回退缓冲读）
+                    chunk = resp.read(4096)        # 兑底（resp.fp 非公开 API·个别环境不可用→回退缓冲读）
                 if not chunk:
                     break
                 self.wfile.write(chunk)
@@ -331,7 +338,8 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         except Exception:
             pass   # 客户端断开等·静默
         finally:
-            _proxy_timer.cancel()   # 正常完成·取消 Timer
+            if _proxy_timer is not None:
+                _proxy_timer.cancel()   # 正常完成·取消 Timer
 
     def _test_reports_dir(self):
         """测试报告固定落盘目录：<repo>/tests/reports/（不存在则建）。"""
