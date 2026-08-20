@@ -124,3 +124,20 @@
   - 仓外插件 tsdown 报清单错误 → 查 `packages/*/*/` 两层 glob 是否覆盖该包名；
   - dsh web 页面黑屏/白屏 → 先查插件模块有无 `export const inject`；再对照 `apps/web/dist/assets/` 文件时间戳与 merge 时间（gitignored，git 状态看不到，必须看 mtime）；
   - 服务端验证绿 ≠ 浏览器验证绿：客户端插件改动必须过浏览器 DOM 快照（IAB/headless）才算交付。
+
+## R14 · dsh-better-sidebar 会拦截 `ctx.workspaces.openPath`——插件想开终端/外部浏览器必须直连 host RPC（PT-CB6 home 定稿修复·2026-08-21）
+
+- **规则**：
+  - **dsh-better-sidebar（≥0.12，config `interceptOpenPath: true` 默认开）在 client 侧 monkey-patch `ctx.workspaces.openPath`**：聊天文件链接改在侧边栏打开（fs.read → 文档标签），不再走系统默认应用。任何插件经 `ctx.workspaces.openPath` 打开 .bat/URL 都会被改道：
+    - `.bat/.cmd` → 当文档在侧边栏打开（editor chunk 还可能加载失败），**不执行 → 独立终端永远不弹**；
+    - `http(s)://` URL → 被 `resolveWorkspacePath` 当 workspace-relative 拼成 `<cwd>/http:\localhost:8080\...` → `fs.read` ENOENT 400，**外部浏览器永不打开**。
+  - **解法：直连 host RPC 绕过 client patch**：`fetch('/api/host.openPath', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ type:'client-request', rpcId: crypto.randomUUID(), method:'host.openPath', payload:{ path } }) })`——原生 `openNativePath`（Windows `Invoke-Item`，.bat 会弹 cmd 窗口执行）。URL 因 `Invoke-Item` 不认 URL，插件侧用用户手势内同步 `window.open('about:blank')` + 就绪后 `popup.location.href` 兜底（await 后再 open 会被弹窗拦截）。
+  - **启动探测状态必须自愈**：探测驱动置灰（`aria-disabled`）若由 60s tick 独占，启动窗口期探测失败后按钮会滞留禁用（切会话也不恢复，模块级 store）。修 = 按钮仅"启动中"禁用（防重入）；`waitForEmc` 成功/失败都回写探测结果；`launch` 的 `finally` 里立即重探。
+  - **start.bat 重启 8080 含 RAG 预热（20-30s）**：`waitForEmc` 超时不能 10s，须 ≥40s，否则"点击→开图"在冷启动时必失败。
+  - **8080 未跑时按钮不应禁用点击**：任务书语义是"点击即启动 8080"，置灰只做视觉提示（`data-probe-up`），不可点状态只属于"启动中"防重入。
+- **案例**：2026-08-21 定稿修复——用户报 ①点击后新会话跳标准模式（实测=host 默认 settings 的 router-standard，未复现）②点击一次后按钮禁用不恢复 ③终端不弹。根因链：better-sidebar 拦截 openPath → .bat 当文档开（不执行）+ URL 相对路径 ENOENT；探测状态无自愈 → 按钮滞留禁用；`waitForEmc` 10s < RAG 预热。修 = 插件直连 `host.openPath`（终端）+ `window.open` 手势段开图 + launching 状态机 + 40s 探测，浏览器实测冷启动全链路通过。
+- **违反后果**：服务端 200、按钮在位、点击无感（console 静默 catch）——"点击了但什么都没发生"类问题，先查 console 的 `fs.read 400` 与底部侧边栏是否把 .bat/URL 当文档开了标签。
+- **检查动作**：
+  - 点 EMC 按钮后底部面板出现 `start.bat`/`index.html` 文档标签 → openPath 被 better-sidebar 拦截，改直连 `/api/host.openPath`；
+  - 按钮点击一次后置灰不恢复 → 检查探测结果是否在 `waitForEmc`/`finally` 回写；
+  - 冷启动点开链路失败 → 检查 `waitForEmc` 超时是否覆盖 RAG 预热（≥40s）。

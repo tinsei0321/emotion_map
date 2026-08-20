@@ -14,6 +14,8 @@ const SCHEMES = {
   community_choropleth_v1: 'community_choropleth_v1',
   // 点层 circle 样式照旧（needsAnalysis 单色橙）
   point_default_v1: 'point_default_v1',
+  // 范围/边界面层：浅填充描边（defaultPaint 非 zonal 兜底同款·非数据编码）
+  boundary_fill_v1: 'boundary_fill_v1',
 };
 
 function _resolveScheme(spec) {
@@ -91,6 +93,14 @@ async function _apply(spec) {
   if (scheme === SCHEMES.point_default_v1) {
     const paint = { _ui: { tool: 'dsh-render' }, radius: 7, color: '#ff9000', opacity: 0.9 };
     const L = addToolboxLayer({ name, kind: 'point', fc, paint, colorMode: 'needsAnalysis', fit: zoom });
+    _attachMeta(L, spec);
+    return;
+  }
+
+  if (scheme === SCHEMES.boundary_fill_v1) {
+    // 范围/边界面：浅填充描边（与 defaultPaint('', 'polygon') 兜底同款·不渲染数据编码）
+    const paint = { fillOn: true, lineWidth: 2, fillOpacity: 0.2 };
+    const L = addToolboxLayer({ name, kind: 'polygon', fc, paint, fit: zoom });
     _attachMeta(L, spec);
     return;
   }
