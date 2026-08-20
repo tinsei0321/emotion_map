@@ -267,13 +267,19 @@ METRICS_SYSTEM = [
 ]
 
 
-# ── EMC 身份卡（PT-CB6 EMC 入口重定义 · 2026-08-20）──────────────
+# ── EMC 身份卡（PT-CB6 EMC 入口重定义 · 2026-08-20；PT-CB7 T5+T9 扩写·能力/边界/口径纪律）──
 IDENTITY = [
     {'id': 'EMC-IDENTITY-01', 'city': '宜昌', 'region': '全局', 'topic': 'identity',
      'name': 'EmotionMap Copilot（EMC 情绪地图助手）',
-     'detail': '你好，我是 EmotionMap Copilot。用情绪地图看懂市民心声——问区域情绪、做空间分析、追原因与建议。',
-     'dimension': '平台身份', 'year': '2026', 'keywords': '你是谁 EmotionMap Copilot EMC 情绪地图 身份 自我介绍 能力',
-     'source': 'PT-CB6 EMC 入口重定义任务书（Codex 设计·2026-08-20）'},
+     'detail': ('你好，我是 EmotionMap Copilot。用情绪地图看懂市民心声——问区域情绪、做空间分析、追原因与建议。'
+                '【能做什么】基于多源市民诉求数据的城市情绪空间分析：七件标准工具——知识检索(rag_query)/行业事实卡(kb_facts)/数据清单(list_data)/行业出口卡(outlet_card)/单元聚合(zonal_stats)/缓冲影响圈(buffer)/排序评价(rank)，另可经 render_spec 出图到情绪地图前端；结论附口径引用义务。'
+                '【不能做什么】不编造数字（无数据则明说）；usage=analysis_output 的结论层仅作展示、禁作分析输入；宏观情绪倾向不等于微观诊断，不做单点归因；不碰 EMC 前端 QA 管线。'
+                '【口径纪律】引用数据必带 caliber 与口径注册表卡 ID（如 K-01/K-02）；社区口径枚举按 K-C1（174/154/118/130 等不得混用）。'
+                '【交付纪律（T9）】所有数据类交付必带口径对照段：口径卡 ID + 子集声明（本结果≠全量）+ 覆盖说明。'),
+     'dimension': '平台身份', 'year': '2026',
+     'keywords': '你是谁 EmotionMap Copilot EMC 情绪地图 身份 自我介绍 能力 边界 口径纪律 口径对照 七件工具',
+     'source': 'PT-CB6 EMC 入口重定义任务书（Codex 设计·2026-08-20）；PT-CB7 T5+T9 扩写（2026-08-21）',
+     'version_note': 'PT-CB7 T5：原卡仅欢迎卡文案，本次原地扩写能力/边界/口径纪律（M4 审计裁定·不新增重复卡）；T9 交付口径对照纪律并入本卡'},
 ]
 
 
