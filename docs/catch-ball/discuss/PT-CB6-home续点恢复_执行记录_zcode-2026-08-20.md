@@ -1,7 +1,7 @@
-# PT-CB6 · home 续点恢复 · 执行记录（zcode · 2026-08-21）
+# PT-CB6 · home 续点恢复 · 执行记录（zcode · 2026-08-20）
 
 > 性质：home 到岗续点执行记录——dsh 更新 rc.8 + "会话地图"删除 + EMC 入口插件重建恢复 + 黑屏修复 + Codex 配置修复。
-> 送审件：本记录 + `PT-CB6-home续点恢复_送审通知_zcode-2026-08-21.md`（含转发 Codex 的审计 prompt）。
+> 送审件：本记录 + `PT-CB6-home续点恢复_送审通知_zcode-2026-08-20.md`（含转发 Codex 的审计 prompt）。
 > 纪律：EMC 仓只写文档（本记录/送审/交接卡/debug-memory）；`D:/Github/dsh/` 改动 = merge rc.8 + 构建登记 stub（详见 §一）；插件源码在仓外 `D:/Github/dsh-emc-entry/`。
 
 ---
@@ -79,4 +79,4 @@
 - debug-memory 两个 R11 撞号待合并；node-pty AttachConsole 坑待记。
 - dsh 未 push（gitee behind 1）。
 
-> zcode · 2026-08-21 · home 到岗续点完成，送审。
+> zcode · 2026-08-20 · home 到岗续点完成，送审。

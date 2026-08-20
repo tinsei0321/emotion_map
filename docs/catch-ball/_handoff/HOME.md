@@ -1,11 +1,11 @@
 # 家里 · 工作交接卡
 
-> **位置**：家 | **最后更新**：2026-08-21（**到岗续点收工**·ZCode——dsh 更新 rc.8 + synapse 删除 + EMC 入口插件重建恢复 + 黑屏修复 + 送审 Codex） | **同步**：分支 `EMC_harness_dsh`（main 冻结勿动）。
-> **回家第一读**：本卡 + `memories/repo/session-handoff.md` 当前节点 + `discuss/PT-CB6-home续点恢复_执行记录_zcode-2026-08-21.md`。
+> **位置**：家 | **最后更新**：2026-08-20（**到岗续点收工**·ZCode——dsh 更新 rc.8 + synapse 删除 + EMC 入口插件重建恢复 + 黑屏修复 + 送审 Codex） | **同步**：分支 `EMC_harness_dsh`（main 冻结勿动）。
+> **回家第一读**：本卡 + `memories/repo/session-handoff.md` 当前节点 + `discuss/PT-CB6-home续点恢复_执行记录_zcode-2026-08-20.md`。
 
 ---
 
-## 到岗快照（08-21 · dsh rc.8 + 会话地图删除 + EMC 入口恢复 + 黑屏修复 + 送审）
+## 到岗快照（08-20 · dsh rc.8 + 会话地图删除 + EMC 入口恢复 + 黑屏修复 + 送审）
 
 ### 今日完成（ZCode 代执行）
 
@@ -22,10 +22,10 @@
 
 ### 待办（主手回收）
 
-- **转发送审 prompt 至 Codex**：`discuss/PT-CB6-home续点恢复_送审通知_zcode-2026-08-21.md` §四 的 prompt（审计六项，产出 `PT-CB6-home续点恢复_审计_Codex-2026-08-21.md`）。
-- **T4 视觉验收**（需浏览器 + 8080 运行）：点击入口 → 新会话 + 欢迎卡展开 + 终端弹 start.bat + Edge 开地图页；无 double-mount。欢迎卡细节未达标则改 `src/client/components.tsx` 重建。
-- EMC 人设 system prompt 未配（身份卡已加）：配 system prompt + `py tools/rag_index.py --build`。
-- node-pty `AttachConsole failed` 坑待记 debug-memory（R13 已用，新编号 R14）。
+- **✅ 送审已完成**：双审计（Qoder+Codex）已核毕落盘 `discuss/PT-CB6-home续点恢复_审计_Codex-2026-08-21.md`（无 CRITICAL）；用户新发现 B1/B2/B3 已由 Codex 修复并浏览器实测；本文件为收工卡，详细状态以审计报告 §D 定稿待修清单为准。
+- **T4 视觉验收**：B2/B3 已有等价浏览器实测证据，四截图待主手补档；剩余排期项 = D2 欢迎卡绑定目标会话 / EMC 人设 + RAG 重建 / start.bat banner（F8 需授权）。
+- node-pty `AttachConsole failed` 坑已记 debug-memory **R15**（08-20 晚实测触发：无控制台启动的 web 实例被崩掉）。
+- synapse 残留 M1 已闭环：pnpm-lock 已在定稿修复中修剪干净（08-20 23:37），pnpm-workspace.yaml allowBuilds 行 08-20 晚已删。
 - dsh 未 push：`git pull --rebase` + push；收工时 `git push hub --all` 补推盘仓。
 
 ### 注意

@@ -1,7 +1,7 @@
-# PT-CB6 · home 续点恢复 · 送审通知（zcode → Codex · 2026-08-21）
+# PT-CB6 · home 续点恢复 · 送审通知（zcode → Codex · 2026-08-20）
 
 > 送审方：zcode（主手）。审计方：Codex（审计协助·零实施·一切只读）。性质：home 到岗续点完工送审（dsh rc.8 更新 + synapse 删除 + EMC 入口插件重建 + 黑屏修复）。
-> 纪律：分支 `EMC_harness_dsh`（main 冻结勿动）；审计组只读；报告落盘 `PT-CB6-home续点恢复_审计_Codex-2026-08-21.md`。
+> 纪律：分支 `EMC_harness_dsh`（main 冻结勿动）；审计组只读；报告落盘 `PT-CB6-home续点恢复_审计_Codex-2026-08-20.md`。
 > 基线：无 pytest 变化（本轮 EMC 仓零触碰生产代码，仅文档写入）。
 
 ---
@@ -10,7 +10,7 @@
 
 | # | 送审件 | 位置 | 要点 |
 |---|---|---|---|
-| 1 | 执行记录 | `docs/catch-ball/discuss/PT-CB6-home续点恢复_执行记录_zcode-2026-08-21.md` | 五节：dsh rc.8 merge（536 提交/4 冲突/双面构建）、synapse 删除（4 处）、EMC 入口插件重建（rc.8 机制 + 构建链两约束）、黑屏双根因、Codex config 修复 |
+| 1 | 执行记录 | `docs/catch-ball/discuss/PT-CB6-home续点恢复_执行记录_zcode-2026-08-20.md` | 五节：dsh rc.8 merge（536 提交/4 冲突/双面构建）、synapse 删除（4 处）、EMC 入口插件重建（rc.8 机制 + 构建链两约束）、黑屏双根因、Codex config 修复 |
 | 2 | 插件源码（仓外，git 不入库） | `D:/Github/dsh-emc-entry/`（src/client/index.ts + components.tsx + tsdown.config.ts + package.json + cordis.patch.yml + README.md） | 重建实现全量；构建产物 `lib/client.js`（7.63KB） |
 | 3 | dsh 仓改动 | `D:/Github/dsh`（merge `8258d567c4` + `92ae8734ee` + `ec5c5e725c`；未 push） | 登记 stub `packages/emc/emc-entry/`；备份分支 `backup-pre-rc8` |
 | 4 | 设计依据 | `PT-CB6-EMC入口重定义任务书_Codex-2026-08-20.md` + `PT-CB6-EMC入口插件_问题复盘与审计交接_Codex-2026-08-20.md` | 需求规格（欢迎卡文案逐字/新会话/外部 Edge）与问题 C（no-cors 探测）出处 |
@@ -29,10 +29,10 @@
 - 服务端证据已备（client.js 200 / 页面 DOM 完整渲染 / 预加载清单无 synapse 含 emc-entry）；**浏览器点击链路验收（T4 四项）待主手**，审计组如需可要求复现但零实施。
 - dsh 未 push：审计 gitee 远端时以本地 master 为准（ahead 539 / behind 1 已记录）。
 
-## 四、送审 prompt（用户直接转发 Codex · 2026-08-21）
+## 四、送审 prompt（用户直接转发 Codex · 2026-08-20）
 
 ```text
-【送审指令 · PT-CB6 home 续点恢复审计】（zcode 主手交付 · 2026-08-21）
+【送审指令 · PT-CB6 home 续点恢复审计】（zcode 主手交付 · 2026-08-20）
 
 你是 Codex 审计组（审计协助·零实施·一切只读）。
 
@@ -40,8 +40,8 @@
 
 一、环境
 1. git checkout EMC_harness_dsh && git pull origin EMC_harness_dsh（main 冻结勿动）
-2. 先读：docs/catch-ball/discuss/PT-CB6-home续点恢复_送审通知_zcode-2026-08-21.md（含审计要点六项）
-3. 再读：docs/catch-ball/discuss/PT-CB6-home续点恢复_执行记录_zcode-2026-08-21.md
+2. 先读：docs/catch-ball/discuss/PT-CB6-home续点恢复_送审通知_zcode-2026-08-20.md（含审计要点六项）
+3. 再读：docs/catch-ball/discuss/PT-CB6-home续点恢复_执行记录_zcode-2026-08-20.md
 4. 仓外证据（只读）：D:/Github/dsh-emc-entry/（插件源码+构建产物）；D:/Github/dsh（本地 master，merge 三提交，未 push）；C:/Users/Hi/.codex/config.toml 与 models.json（Codex 接入配置）
 
 二、审计范围（按送审通知 §二 六项逐条）
@@ -53,11 +53,11 @@
 6. Codex 接入配置：wire_api="responses" + supports_search_tool=false 是否符合 Codex 0.145.0 与 DeepSeek Responses API 文档
 
 三、交付
-1. 产出 docs/catch-ball/discuss/PT-CB6-home续点恢复_审计_Codex-2026-08-21.md：逐条 agree/disagree/partial + 证据（file:line 或实测）+ 待修清单（分级）
+1. 产出 docs/catch-ball/discuss/PT-CB6-home续点恢复_审计_Codex-2026-08-20.md：逐条 agree/disagree/partial + 证据（file:line 或实测）+ 待修清单（分级）
 2. 零实施：不改任何代码/配置，只出报告
 3. 若判定有 CRITICAL：在报告开头标注，等主手裁定后再排修复
 ```
 
 ---
 
-> zcode · 2026-08-21 · 送审。用户转发上方 prompt 至 Codex。
+> zcode · 2026-08-20 · 送审。用户转发上方 prompt 至 Codex。

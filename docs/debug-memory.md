@@ -112,20 +112,20 @@
 
 用户经历三轮修复仍未根治（着色浅→着色反→无填充），zcode 接手后经「发起→dsh 排查→收敛→实施→用户复测暴露 B014→增补修复」闭环。三个台账：B012（tip 归属）/ B013（着色语义）/ B014（membership 静默丢点）·完整链条见 `docs/catch-ball/discuss/CB41-*` 三件套 + revision-log 5.257-5.260。
 
-## R13 · dsh rc.8 三约束——仓外插件构建需登记 stub · client 模块必须导出 inject · merge 后必须 build:web（PT-CB6 home 续点·2026-08-21）
+## R13 · dsh rc.8 三约束——仓外插件构建需登记 stub · client 模块必须导出 inject · merge 后必须 build:web（PT-CB6 home 续点·2026-08-20）
 
 - **规则**：
   - **① 仓外插件构建需登记 stub**：rc.8 构建链（`packages/client/tsdown.client.ts` 的 `workspaceManifest`）要求插件名出现在 `packages/*/*/package.json` 清单中，否则 tsdown 报 `no packages/*/*/package.json declares the name <id>`（两层 glob，`packages/<组>/<包>/package.json`）。仓外插件（如 `D:/Github/dsh-emc-entry/`）解法：在 dsh 仓建纯登记 stub（仅 package.json 声明 name + `dsh.client`，加 `tsdown.config.ts` 内容 `export default { entry: '' }` 跳过 workspace 构建）。
   - **② client 插件模块必须导出 `inject`**：cordis 客户端插件的服务依赖声明 = 模块导出 `export const inject = ['slots','sessions','workspaces',...]`（蓝本 `packages/client/ui-task-board/src/client/index.ts:60`）。缺失时 `apply()` 内首次触碰 ctx 服务即抛"服务未声明"，**客户端启动树整体崩溃 → 整页黑屏**。node 半也必须导出 `apply`（空壳可），否则 loader 报 `invalid plugin, expect function or object with an "apply" method`。
   - **③ dsh merge 上游后必须跑 build:web**：`apps/web/dist/` 的 `/assets/index-*.js` 是前端应用本体（vite 构建产物，gitignored）。merge 后只跑 `build:lib:*` 会导致前端仍是旧版本构建，与 rc.8 新插件 bundle 版本错配 → 启动崩溃黑屏。标准动作：merge → `pnpm install` → `npm run build:lib:host` + `build:lib:client` + `build:web` → 重启 web。
-- **案例**：2026-08-21 home 续点——dsh merge rc.8 后重建 dsh-emc-entry 插件，web 重启"成功"但页面黑屏：根因 A = 插件缺 `export const inject`（客户端树崩溃）；根因 B = 未跑 build:web（前端 assets 08-18 旧构建 vs rc.8 新 bundle）。修 = 补 inject + build:web，浏览器 DOM 快照确认完整渲染。
+- **案例**：2026-08-20 home 续点——dsh merge rc.8 后重建 dsh-emc-entry 插件，web 重启"成功"但页面黑屏：根因 A = 插件缺 `export const inject`（客户端树崩溃）；根因 B = 未跑 build:web（前端 assets 08-18 旧构建 vs rc.8 新 bundle）。修 = 补 inject + build:web，浏览器 DOM 快照确认完整渲染。
 - **违反后果**：web 服务端 200、插件 bundle 200、页面 DOM 却是黑的——服务端证据全绿 ≠ 页面正常，极易误判为"前端缓存问题"。
 - **检查动作**：
   - 仓外插件 tsdown 报清单错误 → 查 `packages/*/*/` 两层 glob 是否覆盖该包名；
   - dsh web 页面黑屏/白屏 → 先查插件模块有无 `export const inject`；再对照 `apps/web/dist/assets/` 文件时间戳与 merge 时间（gitignored，git 状态看不到，必须看 mtime）；
   - 服务端验证绿 ≠ 浏览器验证绿：客户端插件改动必须过浏览器 DOM 快照（IAB/headless）才算交付。
 
-## R14 · dsh-better-sidebar 会拦截 `ctx.workspaces.openPath`——插件想开终端/外部浏览器必须直连 host RPC（PT-CB6 home 定稿修复·2026-08-21）
+## R14 · dsh-better-sidebar 会拦截 `ctx.workspaces.openPath`——插件想开终端/外部浏览器必须直连 host RPC（PT-CB6 home 定稿修复·2026-08-20）
 
 - **规则**：
   - **dsh-better-sidebar（≥0.12，config `interceptOpenPath: true` 默认开）在 client 侧 monkey-patch `ctx.workspaces.openPath`**：聊天文件链接改在侧边栏打开（fs.read → 文档标签），不再走系统默认应用。任何插件经 `ctx.workspaces.openPath` 打开 .bat/URL 都会被改道：
@@ -135,9 +135,16 @@
   - **启动探测状态必须自愈**：探测驱动置灰（`aria-disabled`）若由 60s tick 独占，启动窗口期探测失败后按钮会滞留禁用（切会话也不恢复，模块级 store）。修 = 按钮仅"启动中"禁用（防重入）；`waitForEmc` 成功/失败都回写探测结果；`launch` 的 `finally` 里立即重探。
   - **start.bat 重启 8080 含 RAG 预热（20-30s）**：`waitForEmc` 超时不能 10s，须 ≥40s，否则"点击→开图"在冷启动时必失败。
   - **8080 未跑时按钮不应禁用点击**：任务书语义是"点击即启动 8080"，置灰只做视觉提示（`data-probe-up`），不可点状态只属于"启动中"防重入。
-- **案例**：2026-08-21 定稿修复——用户报 ①点击后新会话跳标准模式（实测=host 默认 settings 的 router-standard，未复现）②点击一次后按钮禁用不恢复 ③终端不弹。根因链：better-sidebar 拦截 openPath → .bat 当文档开（不执行）+ URL 相对路径 ENOENT；探测状态无自愈 → 按钮滞留禁用；`waitForEmc` 10s < RAG 预热。修 = 插件直连 `host.openPath`（终端）+ `window.open` 手势段开图 + launching 状态机 + 40s 探测，浏览器实测冷启动全链路通过。
+- **案例**：2026-08-20 定稿修复——用户报 ①点击后新会话跳标准模式（实测=host 默认 settings 的 router-standard，未复现）②点击一次后按钮禁用不恢复 ③终端不弹。根因链：better-sidebar 拦截 openPath → .bat 当文档开（不执行）+ URL 相对路径 ENOENT；探测状态无自愈 → 按钮滞留禁用；`waitForEmc` 10s < RAG 预热。修 = 插件直连 `host.openPath`（终端）+ `window.open` 手势段开图 + launching 状态机 + 40s 探测，浏览器实测冷启动全链路通过。
 - **违反后果**：服务端 200、按钮在位、点击无感（console 静默 catch）——"点击了但什么都没发生"类问题，先查 console 的 `fs.read 400` 与底部侧边栏是否把 .bat/URL 当文档开了标签。
 - **检查动作**：
   - 点 EMC 按钮后底部面板出现 `start.bat`/`index.html` 文档标签 → openPath 被 better-sidebar 拦截，改直连 `/api/host.openPath`；
   - 按钮点击一次后置灰不恢复 → 检查探测结果是否在 `waitForEmc`/`finally` 回写；
   - 冷启动点开链路失败 → 检查 `waitForEmc` 超时是否覆盖 RAG 预热（≥40s）。
+
+## R15 · dsh web 必须从真实控制台窗口启动——无控制台环境会触发 node-pty AttachConsole 崩溃（PT-CB6 home 续点·2026-08-20 晚）
+
+- **规则**：dsh web（3080）的终端功能依赖 node-pty；**在无控制台环境（后台任务/沙箱/隐藏窗口）启动 web 时，node-pty 的 `conpty_console_list_agent` 子进程执行 `AttachConsole` 会失败 → 整个 web 进程崩溃退出（exit 127，日志以 `Error: AttachConsole failed` 收尾）**。因此 dsh web 必须从真实控制台窗口启动（桌面快捷方式 / `cmd /c start` 可见窗口），勿从无控制台的后台/沙箱环境起服务。同理，插件宿主 spawn 任何外部程序必须挂 error 兜底（沿用交接卡原建议）。
+- **案例**：2026-08-20 晚——zcode 后台任务起的 web 实例（`node --import tsx/esm apps/cli/src/bin.ts web --no-open`，无控制台）运行约 2 小时后崩于此错，3080 下线；用户/Codex 从常规窗口起的实例不受影响。
+- **违反后果**：web 服务"无预警死亡"——崩溃前服务端一切正常，故障只在终端功能被触发时爆发，且 exit 127 极易被误读为"命令未找到"。
+- **检查动作**：3080 突然无 LISTENING → 查 web 进程日志尾部是否有 `AttachConsole failed`；确认启动方式的控制台归属（后台/沙箱起的实例一律换真实窗口重启）。
