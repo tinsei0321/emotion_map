@@ -1,516 +1,537 @@
 [
- {
-  "group": "行政区划",
-  "items": [
-   {
-    "id": "admin_district",
-    "label": "行政区",
-    "file": "行政区.geojson",
-    "nameField": "MC",
-    "usage": "input"
-   },
-   {
-    "id": "admin_street",
-    "label": "街办（官方·SSX聚合）",
-    "file": "admin_street_official.geojson",
-    "nameField": "SSX",
-    "note": "CB-23 官方数据：村社区行政界限 SSX 聚合 113 街道（中心城区 25 含 16 街办·2026-08-11）",
-    "usage": "input"
-   },
-   {
-    "id": "admin_community",
-    "label": "社区（官方·大文件引用）",
-    "file": "admin_community_official.geojson",
-    "nameField": "NAME",
-    "reference_only": true,
-    "note": "CB-23 官方 1682 村社区·94MB 只引用（中转站 02_空间数据集/行政区划_官方/）·不入 git·如需要可精简入",
-    "usage": "input"
-   },
-   {
-    "id": "admin_county",
-    "label": "县区（官方·14）",
-    "file": "admin_county_official.geojson",
-    "nameField": "MC",
-    "note": "CB-23 官方市域县级行政区划·14县区·EPSG:4525→WGS84",
-    "usage": "input"
-   }
-  ]
- },
- {
-  "group": "城市更新单元",
-  "items": [
-   {
-    "id": "renewal_unit",
-    "label": "更新单元",
-    "file": "更新单元.geojson",
-    "nameField": "编号",
-    "missing": true,
-    "note": "CB-23 漂移修：磁盘无 更新单元.geojson·待 zcode 查组团/片区面层后移除标记",
-    "usage": "input"
-   },
-   {
-    "id": "damanmen_area",
-    "label": "大南门·二马路滨江片区",
-    "file": "大南门二马路滨江片区.geojson",
-    "nameField": "name",
-    "usage": "input"
-   }
-  ]
- },
- {
-  "group": "用地筛选（三调）",
-  "items": [
-   {
-    "id": "land_commercial",
-    "label": "商业",
-    "file": "用地_商业.geojson",
-    "nameField": "DLMC",
-    "usage": "input"
-   },
-   {
-    "id": "land_park",
-    "label": "公园广场",
-    "file": "用地_公园广场.geojson",
-    "nameField": "DLMC",
-    "usage": "input"
-   },
-   {
-    "id": "land_residential",
-    "label": "居住",
-    "file": "用地_居住.geojson",
-    "nameField": "DLMC",
-    "usage": "input"
-   }
-  ]
- },
- {
-  "group": "checkup 项目（点/线·CB-23 项目端）",
-  "items": [
-   {
-    "id": "checkup_project_point",
-    "label": "城市更新重点项目（点）",
-    "file": "checkup_project_project_point.geojson",
-    "nameField": "XMMC",
-    "note": "gdb 导出·WGS84·183 项目(185点要素)·字段 XMMC/XZQ/TZE/MJ",
-    "usage": "input"
-   },
-   {
-    "id": "checkup_project_line",
-    "label": "城市更新重点项目（线）",
-    "file": "checkup_project_project_line.geojson",
-    "nameField": "XMMC",
-    "note": "gdb 导出·WGS84·102 线要素·字段 XMMC/XZQ/TZE/MJ",
-    "usage": "input"
-   }
-  ]
- },
- {
-  "group": "体检控件对象（3'分析·B1）",
-  "items": [
-   {
-    "id": "checkup_ctrl_house",
-    "label": "体检-住房控件（8面·1023栋）",
-    "file": "checkup_控件_住房.geojson",
-    "nameField": "指标",
-    "note": "3' 客观落位·住房维度控件对象（结构/围护/楼道/燃气/管线/数字化/适老化/非成套）·属性含 board/落位能力",
-    "usage": "input"
-   },
-   {
-    "id": "checkup_ctrl_community",
-    "label": "体检-小区控件（11点·707小区）",
-    "file": "checkup_控件_小区.geojson",
-    "nameField": "指标",
-    "note": "3' 客观落位·小区维度控件对象（停车/学位/充电桩/养老/托育/幼儿园/物业/活动场地/步行道等）",
-    "usage": "input"
-   },
-   {
-    "id": "checkup_ctrl_block",
-    "label": "体检-街区控件（6面·1477单元）",
-    "file": "checkup_控件_街区.geojson",
-    "nameField": "指标",
-    "note": "3' 客观落位·街区维度控件对象（中学覆盖/公园覆盖/菜市场/乱停乱放/运动场地）",
-    "usage": "input"
-   },
-   {
-    "id": "checkup_12345_center",
-    "label": "12345投诉点（中心城区·high+medium）",
-    "file": "checkup_12345_中心城区.geojson",
-    "nameField": "topic",
-    "note": "3' B2 主观轨·2024 12345 中心城区 9421 点（属性 board/topic/issue_label/polarity）·L1 强度分析（橙色图例·极性可选过滤）",
-    "l1": true,
-    "usage": "input"
-   },
-   {
-    "id": "checkup_dual_high",
-    "label": "双高区（体检×12345·16格）",
-    "file": "checkup_双高区.geojson",
-    "nameField": "双高区",
-    "note": "3' B4 双轨密度叠加·两轨均高格（p75·1km·500m buffer）·2025体检×2024 12345·不消费 board",
-    "usage": "analysis_output"
-   },
-   {
-    "id": "qty_合并",
-    "label": "量化-两大类合并·全覆盖（2296点）",
-    "file": "checkup_qty_合并.geojson",
-    "nameField": "指标",
-    "note": "体检全覆盖点（08-17 扩域口径·page7 客观线源）·zonal/grid 聚合分析源·与按类 8 量化预设同组·灰点参考层（needsAnalysis）",
-    "usage": "input"
-   },
-   {
-    "id": "qty_安全_合并",
-    "label": "量化-安全韧性·合并全覆盖（1350点）",
-    "file": "checkup_qty_安全_合并.geojson",
-    "nameField": "指标",
-    "note": "体检全覆盖点（08-17 扩域口径·page7 客观线源）·zonal/grid 聚合分析源·与按类 8 量化预设同组·灰点参考层（needsAnalysis）",
-    "usage": "input"
-   },
-   {
-    "id": "qty_民生_合并",
-    "label": "量化-民生基础·合并全覆盖（946点）",
-    "file": "checkup_qty_民生_合并.geojson",
-    "nameField": "指标",
-    "note": "体检全覆盖点（08-17 扩域口径·page7 客观线源）·zonal/grid 聚合分析源·与按类 8 量化预设同组·灰点参考层（needsAnalysis）",
-    "usage": "input"
-   },
-   {
-    "id": "qty_安全_住房",
-    "label": "量化-安全-住房(结构/围护)（496点）",
-    "file": "checkup_qty_安全_住房.geojson",
-    "nameField": "指标",
-    "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）",
-    "usage": "input"
-   },
-   {
-    "id": "qty_安全_安全消防",
-    "label": "量化-安全-安全消防(楼道)（240点）",
-    "file": "checkup_qty_安全_安全消防.geojson",
-    "nameField": "指标",
-    "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）",
-    "usage": "input"
-   },
-   {
-    "id": "qty_安全_市政管网",
-    "label": "量化-安全-市政管网(燃气/管线)（192点）",
-    "file": "checkup_qty_安全_市政管网.geojson",
-    "nameField": "指标",
-    "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）",
-    "usage": "input"
-   },
-   {
-    "id": "qty_民生_交通设施",
-    "label": "量化-民生-交通设施(步行道)（24点）",
-    "file": "checkup_qty_民生_交通设施.geojson",
-    "nameField": "指标",
-    "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）",
-    "usage": "input"
-   },
-   {
-    "id": "qty_民生_住房",
-    "label": "量化-民生-住房(非成套/适老化)（70点）",
-    "file": "checkup_qty_民生_住房.geojson",
-    "nameField": "指标",
-    "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）",
-    "usage": "input"
-   },
-   {
-    "id": "qty_民生_停车设施",
-    "label": "量化-民生-停车设施(3项)（274点）",
-    "file": "checkup_qty_民生_停车设施.geojson",
-    "nameField": "指标",
-    "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）",
-    "usage": "input"
-   },
-   {
-    "id": "qty_民生_公服设施",
-    "label": "量化-民生-公服设施(问题类6项)（111点）",
-    "file": "checkup_qty_民生_公服设施.geojson",
-    "nameField": "指标",
-    "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）",
-    "usage": "input"
-   },
-   {
-    "id": "qty_民生_物业街面",
-    "label": "量化-民生-物业街面(2项)（278点）",
-    "file": "checkup_qty_民生_物业街面.geojson",
-    "nameField": "指标",
-    "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）",
-    "usage": "input"
-   },
-   {
-    "id": "checkup_cfg_street",
-    "label": "体检配置-街办（22·拼合）",
-    "file": "checkup_配置_街道.geojson",
-    "nameField": "JDMC",
-    "note": "配置数据库 2025+2026 拼合·全覆盖",
-    "usage": "input"
-   },
-   {
-    "id": "checkup_cfg_community",
-    "label": "体检配置-社区（174·去村·聚合边界）",
-    "file": "checkup_配置_社区.geojson",
-    "nameField": "社区",
-    "note": "配置数据库社区 2025+2026 拼合·去 19 村·城市社区 174·聚合口径（zonal 边界）；社区三口径对照：体检对象_社区_面=193 含村(SQMC) / checkup_cfg_community=174 去村 / 体检对象_西陵+伍家岗=130",
-    "usage": "input"
-   },
-   {
-    "id": "checkup_cfg_community_bld",
-    "label": "体检配置-小区（1562）",
-    "file": "checkup_配置_小区.geojson",
-    "nameField": "XQMC",
-    "note": "配置数据库小区",
-    "usage": "input"
-   },
-   {
-    "id": "checkup_cfg_building",
-    "label": "体检配置-楼栋（26426·大文件）",
-    "file": "checkup_配置_楼栋.geojson",
-    "nameField": "LDMC",
-    "note": "配置数据库楼栋·26k 要素·加载较慢·控件对象可对楼栋",
-    "usage": "input"
-   },
-   {
-    "id": "checkup_cfg_community174",
-    "label": "体检-社区174（去村·聚合用）",
-    "file": "checkup_配置_社区174.geojson",
-    "nameField": "社区",
-    "note": "聚合边界 174 城市社区（去 19 村·zonal/面积统计用）",
-    "usage": "input"
-   },
-   {
-    "id": "checkup_cfg_community_xlwj",
-    "label": "体检对象-西陵+伍家岗（130社区）",
-    "file": "体检对象_西陵+伍家岗.geojson",
-    "nameField": "社区",
-    "note": "174 城市社区中属于西陵+伍家岗的部分（体检 2025 已调研范围）；社区三口径对照：体检对象_社区_面=193 含村(SQMC) / checkup_cfg_community=174 去村 / 体检对象_西陵+伍家岗=130",
-    "usage": "input"
-   },
-   {
-    "id": "page7_dual_high",
-    "label": "page7-双高社区（5）",
-    "file": "page7_双高社区面.geojson",
-    "nameField": "社区",
-    "note": "page7 三类社区·双高（体检高+诉求高）5社区·剪裁自130社区面",
-    "usage": "analysis_output"
-   },
-   {
-    "id": "page7_obj_high",
-    "label": "page7-问题指标高社区（8）",
-    "file": "page7_问题指标高社区面.geojson",
-    "nameField": "社区",
-    "note": "page7 三类社区·问题指标高（体检高·诉求未暴露）8社区·剪裁自130社区面",
-    "usage": "analysis_output"
-   },
-   {
-    "id": "page7_sub_high",
-    "label": "page7-诉求呼声高社区（7）",
-    "file": "page7_诉求呼声高社区面.geojson",
-    "nameField": "社区",
-    "note": "page7 三类社区·诉求呼声高（诉求高·体检未印证）7社区·剪裁自130社区面",
-    "usage": "analysis_output"
-   },
-   {
-    "id": "page7_12345_top10",
-    "label": "12345-诉求总量TOP10社区（10·两方面合计）",
-    "file": "12345_top10_社区.geojson",
-    "nameField": "社区",
-    "note": "page7·12345 两方面（民生基础+安全韧性）诉求总量 TOP10 社区·ok 精确点口径与两表一致（08-17 扩域版）·单社区面不合并",
-    "usage": "analysis_output"
-   },
-   {
-    "id": "page7_12345_top20",
-    "label": "12345-诉求总量TOP20社区（20·两方面合计）",
-    "file": "12345_top20_社区.geojson",
-    "nameField": "社区",
-    "note": "page7·12345 两方面（民生基础+安全韧性）诉求总量 TOP20 社区·ok 精确点口径与两表一致（08-17 扩域版）·单社区面不合并",
-    "usage": "analysis_output"
-   }
-  ]
- },
- {
-  "group": "城市体检底座",
-  "items": [
-   {
-    "id": "base_residential_point",
-    "label": "体检对象-住宅点（底座快照）",
-    "file": "../../analysis/体检对象_住宅_点.geojson",
-    "nameField": "LDMC",
-    "snapshot": true,
-    "usage": "input",
-    "note": "根 12 底座之一·物理不动·snapshot 防双头权威；住宅点 26426 要素"
-   },
-   {
-    "id": "base_xiaoqu_area",
-    "label": "体检对象-小区面（底座快照）",
-    "file": "../../analysis/体检对象_小区_面.geojson",
-    "nameField": "XQMC",
-    "snapshot": true,
-    "usage": "input",
-    "note": "根 12 底座之一·物理不动·snapshot 防双头权威；小区面 1562 要素"
-   },
-   {
-    "id": "base_community_area",
-    "label": "体检对象-社区面（底座快照·193 含村）",
-    "file": "../../analysis/体检对象_社区_面.geojson",
-    "nameField": "SQMC",
-    "snapshot": true,
-    "usage": "input",
-    "note": "根 12 底座之一·物理不动·snapshot 防双头权威；社区面 193 含村（字段 SQMC）；社区三口径对照：体检对象_社区_面=193 含村(SQMC) / checkup_cfg_community=174 去村 / 体检对象_西陵+伍家岗=130"
-   },
-   {
-    "id": "base_street_area",
-    "label": "体检对象-街办面（底座快照）",
-    "file": "../../analysis/体检对象_街办_面.geojson",
-    "nameField": "JDMC",
-    "snapshot": true,
-    "usage": "input",
-    "note": "根 12 底座之一·物理不动·snapshot 防双头权威；街办面 22 要素"
-   },
-   {
-    "id": "base_174_aggregate_area",
-    "label": "聚合范围-174城市社区（结论层）",
-    "file": "../../analysis/聚合范围_174城市社区.geojson",
-    "nameField": "社区",
-    "snapshot": true,
-    "usage": "analysis_output",
-    "note": "根 12 底座之一·物理不动·snapshot 防双头权威；结论层（铁律7）禁作空间操作输入"
-   },
-   {
-    "id": "base_xlwj_merge_area",
-    "label": "西陵伍家-合并范围（结论层）",
-    "file": "../../analysis/西陵伍家_合并范围.geojson",
-    "nameField": "MC",
-    "snapshot": true,
-    "usage": "analysis_output",
-    "note": "根 12 底座之一·物理不动·snapshot 防双头权威；结论层（铁律7）禁作空间操作输入"
-   },
-   {
-    "id": "base_18village_area",
-    "label": "18村-面范围（结论层）",
-    "file": "../../analysis/18村_面范围.geojson",
-    "nameField": "SQMC",
-    "snapshot": true,
-    "usage": "analysis_output",
-    "note": "根 12 底座之一·物理不动·snapshot 防双头权威；结论层（铁律7）禁作空间操作输入"
-   }
-  ]
- },
- {
-  "group": "12345 主观轨（点层）",
-  "items": [
-   {
-    "id": "subj_12345_safety_district_point",
-    "label": "12345-安全韧性-区级点",
-    "file": "../../analysis/12345主观/12345_安全韧性_区级点.geojson",
-    "nameField": "事件",
-    "usage": "input",
-    "note": "A3 归位后路径·12345 主观轨点层"
-   },
-   {
-    "id": "subj_12345_safety_community_point",
-    "label": "12345-安全韧性-社区点",
-    "file": "../../analysis/12345主观/12345_安全韧性_社区点.geojson",
-    "nameField": "事件",
-    "usage": "input",
-    "note": "A3 归位后路径·12345 主观轨点层"
-   },
-   {
-    "id": "subj_12345_safety_geocoded_point",
-    "label": "12345-安全韧性-有坐标点",
-    "file": "../../analysis/12345主观/12345_安全韧性_有坐标点.geojson",
-    "nameField": "事件",
-    "usage": "input",
-    "note": "A3 归位后路径·12345 主观轨点层"
-   },
-   {
-    "id": "subj_12345_safety_xlwj_point",
-    "label": "12345-安全韧性-西陵伍家点",
-    "file": "../../analysis/12345主观/12345_安全韧性_西陵伍家点.geojson",
-    "nameField": "事件",
-    "usage": "input",
-    "note": "A3 归位后路径·12345 主观轨点层"
-   },
-   {
-    "id": "subj_12345_livelihood_district_point",
-    "label": "12345-民生基础-区级点",
-    "file": "../../analysis/12345主观/12345_民生基础_区级点.geojson",
-    "nameField": "事件",
-    "usage": "input",
-    "note": "A3 归位后路径·12345 主观轨点层"
-   },
-   {
-    "id": "subj_12345_livelihood_community_point",
-    "label": "12345-民生基础-社区点",
-    "file": "../../analysis/12345主观/12345_民生基础_社区点.geojson",
-    "nameField": "事件",
-    "usage": "input",
-    "note": "A3 归位后路径·12345 主观轨点层"
-   },
-   {
-    "id": "subj_12345_livelihood_geocoded_point",
-    "label": "12345-民生基础-有坐标点",
-    "file": "../../analysis/12345主观/12345_民生基础_有坐标点.geojson",
-    "nameField": "事件",
-    "usage": "input",
-    "note": "A3 归位后路径·12345 主观轨点层"
-   },
-   {
-    "id": "subj_12345_livelihood_xlwj_point",
-    "label": "12345-民生基础-西陵伍家点",
-    "file": "../../analysis/12345主观/12345_民生基础_西陵伍家点.geojson",
-    "nameField": "事件",
-    "usage": "input",
-    "note": "A3 归位后路径·12345 主观轨点层"
-   },
-   {
-    "id": "subj_12345_xlwj_aggregate_area",
-    "label": "12345-西陵+伍家岗聚合面",
-    "file": "../../analysis/12345主观/12345_西陵+伍家岗.geojson",
-    "nameField": "社区",
-    "usage": "input",
-    "note": "A3 归位后路径·12345 聚合面；usage=input 已裁决维持（PT-CB2 主手裁决·2026-08-19·可复用面域筛选结果非结论层），口径复核留 PT-CB4 口径注册表"
-   }
-  ]
- },
- {
-  "group": "page7 结论层（点版）",
-  "items": [
-   {
-    "id": "page7_dual_high_point",
-    "label": "page7-双高点（点版）",
-    "file": "../../analysis/page7小结/page7_双高点.geojson",
-    "nameField": "社区",
-    "usage": "analysis_output",
-    "note": "page7 点版三组之一·结论层（铁律7）禁作空间操作输入"
-   },
-   {
-    "id": "page7_obj_high_point",
-    "label": "page7-问题指标高点（点版）",
-    "file": "../../analysis/page7小结/page7_问题指标高点.geojson",
-    "nameField": "社区",
-    "usage": "analysis_output",
-    "note": "page7 点版三组之一·结论层（铁律7）禁作空间操作输入"
-   },
-   {
-    "id": "page7_sub_high_point",
-    "label": "page7-诉求呼声高点（点版）",
-    "file": "../../analysis/page7小结/page7_诉求呼声高点.geojson",
-    "nameField": "社区",
-    "usage": "analysis_output",
-    "note": "page7 点版三组之一·结论层（铁律7）禁作空间操作输入"
-   }
-  ]
- },
- {
-  "group": "12345 诉求聚合（174社区全量）",
-  "items": [
-   {
-    "id": "checkup_12345_comm174_all",
-    "label": "12345诉求-社区174全量（聚合·18130点）",
-    "file": "12345_诉求_社区174全量.geojson",
-    "nameField": "社区",
-    "usage": "analysis_output",
-    "note": "dsh render 出图用·zonal_stats 同源聚合（aggregate_by_polygons·12345_2024×社区174）·属性含 point_count/score_mean/polarity_index·结论层禁作空间操作输入"
-   }
-  ]
- }
+  {
+    "group": "行政区划",
+    "items": [
+      {
+        "id": "admin_district",
+        "label": "行政区",
+        "file": "行政区.geojson",
+        "nameField": "MC",
+        "usage": "input"
+      },
+      {
+        "id": "admin_street",
+        "label": "街办（官方·SSX聚合）",
+        "file": "admin_street_official.geojson",
+        "nameField": "SSX",
+        "note": "CB-23 官方数据：村社区行政界限 SSX 聚合 113 街道（中心城区 25 含 16 街办·2026-08-11）",
+        "usage": "input"
+      },
+      {
+        "id": "admin_community",
+        "label": "社区（官方·大文件引用）",
+        "file": "admin_community_official.geojson",
+        "nameField": "NAME",
+        "reference_only": true,
+        "note": "CB-23 官方 1682 村社区·94MB 只引用（中转站 02_空间数据集/行政区划_官方/）·不入 git·如需要可精简入",
+        "usage": "input"
+      },
+      {
+        "id": "admin_county",
+        "label": "县区（官方·14）",
+        "file": "admin_county_official.geojson",
+        "nameField": "MC",
+        "note": "CB-23 官方市域县级行政区划·14县区·EPSG:4525→WGS84",
+        "usage": "input"
+      }
+    ]
+  },
+  {
+    "group": "城市更新单元",
+    "items": [
+      {
+        "id": "renewal_unit",
+        "label": "更新单元",
+        "file": "更新单元.geojson",
+        "nameField": "编号",
+        "missing": true,
+        "note": "CB-23 漂移修：磁盘无 更新单元.geojson·待 zcode 查组团/片区面层后移除标记",
+        "usage": "input"
+      },
+      {
+        "id": "damanmen_area",
+        "label": "大南门·二马路滨江片区",
+        "file": "大南门二马路滨江片区.geojson",
+        "nameField": "name",
+        "usage": "input"
+      }
+    ]
+  },
+  {
+    "group": "用地筛选（三调）",
+    "items": [
+      {
+        "id": "land_commercial",
+        "label": "商业",
+        "file": "用地_商业.geojson",
+        "nameField": "DLMC",
+        "usage": "input"
+      },
+      {
+        "id": "land_park",
+        "label": "公园广场",
+        "file": "用地_公园广场.geojson",
+        "nameField": "DLMC",
+        "usage": "input"
+      },
+      {
+        "id": "land_residential",
+        "label": "居住",
+        "file": "用地_居住.geojson",
+        "nameField": "DLMC",
+        "usage": "input"
+      }
+    ]
+  },
+  {
+    "group": "checkup 项目（点/线·CB-23 项目端）",
+    "items": [
+      {
+        "id": "checkup_project_point",
+        "label": "城市更新重点项目（点）",
+        "file": "checkup_project_project_point.geojson",
+        "nameField": "XMMC",
+        "note": "gdb 导出·WGS84·183 项目(185点要素)·字段 XMMC/XZQ/TZE/MJ",
+        "usage": "input"
+      },
+      {
+        "id": "checkup_project_line",
+        "label": "城市更新重点项目（线）",
+        "file": "checkup_project_project_line.geojson",
+        "nameField": "XMMC",
+        "note": "gdb 导出·WGS84·102 线要素·字段 XMMC/XZQ/TZE/MJ",
+        "usage": "input"
+      }
+    ]
+  },
+  {
+    "group": "体检控件对象（3'分析·B1）",
+    "items": [
+      {
+        "id": "checkup_ctrl_house",
+        "label": "体检-住房控件（8面·1023栋）",
+        "file": "checkup_控件_住房.geojson",
+        "nameField": "指标",
+        "note": "3' 客观落位·住房维度控件对象（结构/围护/楼道/燃气/管线/数字化/适老化/非成套）·属性含 board/落位能力",
+        "usage": "input"
+      },
+      {
+        "id": "checkup_ctrl_community",
+        "label": "体检-小区控件（11点·707小区）",
+        "file": "checkup_控件_小区.geojson",
+        "nameField": "指标",
+        "note": "3' 客观落位·小区维度控件对象（停车/学位/充电桩/养老/托育/幼儿园/物业/活动场地/步行道等）",
+        "usage": "input"
+      },
+      {
+        "id": "checkup_ctrl_block",
+        "label": "体检-街区控件（6面·1477单元）",
+        "file": "checkup_控件_街区.geojson",
+        "nameField": "指标",
+        "note": "3' 客观落位·街区维度控件对象（中学覆盖/公园覆盖/菜市场/乱停乱放/运动场地）",
+        "usage": "input"
+      },
+      {
+        "id": "checkup_12345_center",
+        "label": "12345投诉点（中心城区·high+medium）",
+        "file": "checkup_12345_中心城区.geojson",
+        "nameField": "topic",
+        "note": "3' B2 主观轨·2024 12345 中心城区 9421 点（属性 board/topic/issue_label/polarity）·L1 强度分析（橙色图例·极性可选过滤）",
+        "l1": true,
+        "usage": "input"
+      },
+      {
+        "id": "checkup_dual_high",
+        "label": "双高区（体检×12345·16格）",
+        "file": "checkup_双高区.geojson",
+        "nameField": "双高区",
+        "note": "3' B4 双轨密度叠加·两轨均高格（p75·1km·500m buffer）·2025体检×2024 12345·不消费 board",
+        "usage": "analysis_output"
+      },
+      {
+        "id": "qty_合并",
+        "label": "量化-两大类合并·全覆盖（2296点）",
+        "file": "checkup_qty_合并.geojson",
+        "nameField": "指标",
+        "note": "体检全覆盖点（08-17 扩域口径·page7 客观线源）·zonal/grid 聚合分析源·与按类 8 量化预设同组·灰点参考层（needsAnalysis）",
+        "usage": "input"
+      },
+      {
+        "id": "qty_安全_合并",
+        "label": "量化-安全韧性·合并全覆盖（1350点）",
+        "file": "checkup_qty_安全_合并.geojson",
+        "nameField": "指标",
+        "note": "体检全覆盖点（08-17 扩域口径·page7 客观线源）·zonal/grid 聚合分析源·与按类 8 量化预设同组·灰点参考层（needsAnalysis）",
+        "usage": "input"
+      },
+      {
+        "id": "qty_民生_合并",
+        "label": "量化-民生基础·合并全覆盖（946点）",
+        "file": "checkup_qty_民生_合并.geojson",
+        "nameField": "指标",
+        "note": "体检全覆盖点（08-17 扩域口径·page7 客观线源）·zonal/grid 聚合分析源·与按类 8 量化预设同组·灰点参考层（needsAnalysis）",
+        "usage": "input"
+      },
+      {
+        "id": "qty_安全_住房",
+        "label": "量化-安全-住房(结构/围护)（496点）",
+        "file": "checkup_qty_安全_住房.geojson",
+        "nameField": "指标",
+        "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）",
+        "usage": "input"
+      },
+      {
+        "id": "qty_安全_安全消防",
+        "label": "量化-安全-安全消防(楼道)（240点）",
+        "file": "checkup_qty_安全_安全消防.geojson",
+        "nameField": "指标",
+        "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）",
+        "usage": "input"
+      },
+      {
+        "id": "qty_安全_市政管网",
+        "label": "量化-安全-市政管网(燃气/管线)（192点）",
+        "file": "checkup_qty_安全_市政管网.geojson",
+        "nameField": "指标",
+        "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）",
+        "usage": "input"
+      },
+      {
+        "id": "qty_民生_交通设施",
+        "label": "量化-民生-交通设施(步行道)（24点）",
+        "file": "checkup_qty_民生_交通设施.geojson",
+        "nameField": "指标",
+        "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）",
+        "usage": "input"
+      },
+      {
+        "id": "qty_民生_住房",
+        "label": "量化-民生-住房(非成套/适老化)（70点）",
+        "file": "checkup_qty_民生_住房.geojson",
+        "nameField": "指标",
+        "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）",
+        "usage": "input"
+      },
+      {
+        "id": "qty_民生_停车设施",
+        "label": "量化-民生-停车设施(3项)（274点）",
+        "file": "checkup_qty_民生_停车设施.geojson",
+        "nameField": "指标",
+        "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）",
+        "usage": "input"
+      },
+      {
+        "id": "qty_民生_公服设施",
+        "label": "量化-民生-公服设施(问题类6项)（111点）",
+        "file": "checkup_qty_民生_公服设施.geojson",
+        "nameField": "指标",
+        "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）",
+        "usage": "input"
+      },
+      {
+        "id": "qty_民生_物业街面",
+        "label": "量化-民生-物业街面(2项)（278点）",
+        "file": "checkup_qty_民生_物业街面.geojson",
+        "nameField": "指标",
+        "note": "3' 量化落图·grid 分析源（两板块分析框架·街办占比表配套 DATA/performance/77项_街办占比表.csv）",
+        "usage": "input"
+      },
+      {
+        "id": "checkup_cfg_street",
+        "label": "体检配置-街办（22·拼合）",
+        "file": "checkup_配置_街道.geojson",
+        "nameField": "JDMC",
+        "note": "配置数据库 2025+2026 拼合·全覆盖",
+        "usage": "input"
+      },
+      {
+        "id": "checkup_cfg_community",
+        "label": "体检配置-社区（174·去村·聚合边界）",
+        "file": "checkup_配置_社区.geojson",
+        "nameField": "社区",
+        "note": "配置数据库社区 2025+2026 拼合·去 19 村·城市社区 174·聚合口径（zonal 边界）；社区三口径对照：体检对象_社区_面=193 含村(SQMC) / checkup_cfg_community=174 去村 / 体检对象_西陵+伍家岗=130",
+        "usage": "input"
+      },
+      {
+        "id": "checkup_cfg_community_bld",
+        "label": "体检配置-小区（1562）",
+        "file": "checkup_配置_小区.geojson",
+        "nameField": "XQMC",
+        "note": "配置数据库小区",
+        "usage": "input"
+      },
+      {
+        "id": "checkup_cfg_building",
+        "label": "体检配置-楼栋（26426·大文件）",
+        "file": "checkup_配置_楼栋.geojson",
+        "nameField": "LDMC",
+        "note": "配置数据库楼栋·26k 要素·加载较慢·控件对象可对楼栋",
+        "usage": "input"
+      },
+      {
+        "id": "checkup_cfg_community174",
+        "label": "体检-社区174（去村·聚合用）",
+        "file": "checkup_配置_社区174.geojson",
+        "nameField": "社区",
+        "note": "聚合边界 174 城市社区（去 19 村·zonal/面积统计用）",
+        "usage": "input"
+      },
+      {
+        "id": "checkup_cfg_community_xlwj",
+        "label": "体检对象-西陵+伍家岗（130社区）",
+        "file": "体检对象_西陵+伍家岗.geojson",
+        "nameField": "社区",
+        "note": "174 城市社区中属于西陵+伍家岗的部分（体检 2025 已调研范围）；社区三口径对照：体检对象_社区_面=193 含村(SQMC) / checkup_cfg_community=174 去村 / 体检对象_西陵+伍家岗=130",
+        "usage": "input"
+      },
+      {
+        "id": "page7_dual_high",
+        "label": "page7-双高社区（5）",
+        "file": "page7_双高社区面.geojson",
+        "nameField": "社区",
+        "note": "page7 三类社区·双高（体检高+诉求高）5社区·剪裁自130社区面",
+        "usage": "analysis_output"
+      },
+      {
+        "id": "page7_obj_high",
+        "label": "page7-问题指标高社区（8）",
+        "file": "page7_问题指标高社区面.geojson",
+        "nameField": "社区",
+        "note": "page7 三类社区·问题指标高（体检高·诉求未暴露）8社区·剪裁自130社区面",
+        "usage": "analysis_output"
+      },
+      {
+        "id": "page7_sub_high",
+        "label": "page7-诉求呼声高社区（7）",
+        "file": "page7_诉求呼声高社区面.geojson",
+        "nameField": "社区",
+        "note": "page7 三类社区·诉求呼声高（诉求高·体检未印证）7社区·剪裁自130社区面",
+        "usage": "analysis_output"
+      },
+      {
+        "id": "page7_12345_top10",
+        "label": "12345-诉求总量TOP10社区（10·两方面合计）",
+        "file": "12345_top10_社区.geojson",
+        "nameField": "社区",
+        "note": "page7·12345 两方面（民生基础+安全韧性）诉求总量 TOP10 社区·ok 精确点口径与两表一致（08-17 扩域版）·单社区面不合并",
+        "usage": "analysis_output"
+      },
+      {
+        "id": "page7_12345_top20",
+        "label": "12345-诉求总量TOP20社区（20·两方面合计）",
+        "file": "12345_top20_社区.geojson",
+        "nameField": "社区",
+        "note": "page7·12345 两方面（民生基础+安全韧性）诉求总量 TOP20 社区·ok 精确点口径与两表一致（08-17 扩域版）·单社区面不合并",
+        "usage": "analysis_output"
+      },
+      {
+        "id": "page7_12345_bottom10",
+        "label": "12345-诉求总量最少10社区（10·两方面合计）",
+        "file": "12345_bottom10_社区.geojson",
+        "nameField": "社区",
+        "note": "page7·12345 两方面（民生基础+安全韧性）诉求总量最少 10 社区·ok 精确点口径与两表一致（08-17 扩域版）·单社区面不合并",
+        "usage": "analysis_output"
+      }
+    ]
+  },
+  {
+    "group": "城市体检底座",
+    "items": [
+      {
+        "id": "base_residential_point",
+        "label": "体检对象-住宅点（底座快照）",
+        "file": "../../analysis/体检对象_住宅_点.geojson",
+        "nameField": "LDMC",
+        "snapshot": true,
+        "usage": "input",
+        "note": "根 12 底座之一·物理不动·snapshot 防双头权威；住宅点 26426 要素"
+      },
+      {
+        "id": "base_xiaoqu_area",
+        "label": "体检对象-小区面（底座快照）",
+        "file": "../../analysis/体检对象_小区_面.geojson",
+        "nameField": "XQMC",
+        "snapshot": true,
+        "usage": "input",
+        "note": "根 12 底座之一·物理不动·snapshot 防双头权威；小区面 1562 要素"
+      },
+      {
+        "id": "base_community_area",
+        "label": "体检对象-社区面（底座快照·193 含村）",
+        "file": "../../analysis/体检对象_社区_面.geojson",
+        "nameField": "SQMC",
+        "snapshot": true,
+        "usage": "input",
+        "note": "根 12 底座之一·物理不动·snapshot 防双头权威；社区面 193 含村（字段 SQMC）；社区三口径对照：体检对象_社区_面=193 含村(SQMC) / checkup_cfg_community=174 去村 / 体检对象_西陵+伍家岗=130"
+      },
+      {
+        "id": "base_street_area",
+        "label": "体检对象-街办面（底座快照）",
+        "file": "../../analysis/体检对象_街办_面.geojson",
+        "nameField": "JDMC",
+        "snapshot": true,
+        "usage": "input",
+        "note": "根 12 底座之一·物理不动·snapshot 防双头权威；街办面 22 要素"
+      },
+      {
+        "id": "base_174_aggregate_area",
+        "label": "聚合范围-174城市社区（结论层）",
+        "file": "../../analysis/聚合范围_174城市社区.geojson",
+        "nameField": "社区",
+        "snapshot": true,
+        "usage": "analysis_output",
+        "note": "根 12 底座之一·物理不动·snapshot 防双头权威；结论层（铁律7）禁作空间操作输入"
+      },
+      {
+        "id": "base_xlwj_merge_area",
+        "label": "西陵伍家-合并范围（结论层）",
+        "file": "../../analysis/西陵伍家_合并范围.geojson",
+        "nameField": "MC",
+        "snapshot": true,
+        "usage": "analysis_output",
+        "note": "根 12 底座之一·物理不动·snapshot 防双头权威；结论层（铁律7）禁作空间操作输入"
+      },
+      {
+        "id": "base_18village_area",
+        "label": "18村-面范围（结论层）",
+        "file": "../../analysis/18村_面范围.geojson",
+        "nameField": "SQMC",
+        "snapshot": true,
+        "usage": "analysis_output",
+        "note": "根 12 底座之一·物理不动·snapshot 防双头权威；结论层（铁律7）禁作空间操作输入"
+      }
+    ]
+  },
+  {
+    "group": "12345 主观轨（点层）",
+    "items": [
+      {
+        "id": "subj_12345_safety_district_point",
+        "label": "12345-安全韧性-区级点",
+        "file": "../../analysis/12345主观/12345_安全韧性_区级点.geojson",
+        "nameField": "事件",
+        "usage": "input",
+        "note": "A3 归位后路径·12345 主观轨点层"
+      },
+      {
+        "id": "subj_12345_safety_community_point",
+        "label": "12345-安全韧性-社区点",
+        "file": "../../analysis/12345主观/12345_安全韧性_社区点.geojson",
+        "nameField": "事件",
+        "usage": "input",
+        "note": "A3 归位后路径·12345 主观轨点层"
+      },
+      {
+        "id": "subj_12345_safety_geocoded_point",
+        "label": "12345-安全韧性-有坐标点",
+        "file": "../../analysis/12345主观/12345_安全韧性_有坐标点.geojson",
+        "nameField": "事件",
+        "usage": "input",
+        "note": "A3 归位后路径·12345 主观轨点层"
+      },
+      {
+        "id": "subj_12345_safety_xlwj_point",
+        "label": "12345-安全韧性-西陵伍家点",
+        "file": "../../analysis/12345主观/12345_安全韧性_西陵伍家点.geojson",
+        "nameField": "事件",
+        "usage": "input",
+        "note": "A3 归位后路径·12345 主观轨点层"
+      },
+      {
+        "id": "subj_12345_livelihood_district_point",
+        "label": "12345-民生基础-区级点",
+        "file": "../../analysis/12345主观/12345_民生基础_区级点.geojson",
+        "nameField": "事件",
+        "usage": "input",
+        "note": "A3 归位后路径·12345 主观轨点层"
+      },
+      {
+        "id": "subj_12345_livelihood_community_point",
+        "label": "12345-民生基础-社区点",
+        "file": "../../analysis/12345主观/12345_民生基础_社区点.geojson",
+        "nameField": "事件",
+        "usage": "input",
+        "note": "A3 归位后路径·12345 主观轨点层"
+      },
+      {
+        "id": "subj_12345_livelihood_geocoded_point",
+        "label": "12345-民生基础-有坐标点",
+        "file": "../../analysis/12345主观/12345_民生基础_有坐标点.geojson",
+        "nameField": "事件",
+        "usage": "input",
+        "note": "A3 归位后路径·12345 主观轨点层"
+      },
+      {
+        "id": "subj_12345_livelihood_xlwj_point",
+        "label": "12345-民生基础-西陵伍家点",
+        "file": "../../analysis/12345主观/12345_民生基础_西陵伍家点.geojson",
+        "nameField": "事件",
+        "usage": "input",
+        "note": "A3 归位后路径·12345 主观轨点层"
+      },
+      {
+        "id": "subj_12345_xlwj_aggregate_area",
+        "label": "12345-西陵+伍家岗聚合面",
+        "file": "../../analysis/12345主观/12345_西陵+伍家岗.geojson",
+        "nameField": "社区",
+        "usage": "input",
+        "note": "A3 归位后路径·12345 聚合面；usage=input 已裁决维持（PT-CB2 主手裁决·2026-08-19·可复用面域筛选结果非结论层），口径复核留 PT-CB4 口径注册表"
+      }
+    ]
+  },
+  {
+    "group": "page7 结论层（点版）",
+    "items": [
+      {
+        "id": "page7_dual_high_point",
+        "label": "page7-双高点（点版）",
+        "file": "../../analysis/page7小结/page7_双高点.geojson",
+        "nameField": "社区",
+        "usage": "analysis_output",
+        "note": "page7 点版三组之一·结论层（铁律7）禁作空间操作输入"
+      },
+      {
+        "id": "page7_obj_high_point",
+        "label": "page7-问题指标高点（点版）",
+        "file": "../../analysis/page7小结/page7_问题指标高点.geojson",
+        "nameField": "社区",
+        "usage": "analysis_output",
+        "note": "page7 点版三组之一·结论层（铁律7）禁作空间操作输入"
+      },
+      {
+        "id": "page7_sub_high_point",
+        "label": "page7-诉求呼声高点（点版）",
+        "file": "../../analysis/page7小结/page7_诉求呼声高点.geojson",
+        "nameField": "社区",
+        "usage": "analysis_output",
+        "note": "page7 点版三组之一·结论层（铁律7）禁作空间操作输入"
+      }
+    ]
+  },
+  {
+    "group": "12345 诉求聚合（174社区全量）",
+    "items": [
+      {
+        "id": "checkup_12345_comm174_all",
+        "label": "12345诉求-社区174全量（聚合·18130点）",
+        "file": "12345_诉求_社区174全量.geojson",
+        "nameField": "社区",
+        "usage": "analysis_output",
+        "note": "dsh render 出图用·zonal_stats 同源聚合（aggregate_by_polygons·12345_2024×社区174）·属性含 point_count/score_mean/polarity_index·结论层禁作空间操作输入"
+      }
+    ]
+  },
+  {
+    "group": "dsh 临时渲染（render_file 自动登记）",
+    "items": [
+      {
+        "id": "tmp_render_1787246545",
+        "label": "12345热线·核密度（KDE等值面）",
+        "file": "../../exports/12345_kde/12345_中心城区_核密度_KDE等值面.geojson",
+        "nameField": "name",
+        "usage": "analysis_output",
+        "note": "PT-CB7 render_file 自动登记（源 DATA\\exports\\12345_kde\\12345_中心城区_核密度_KDE等值面.geojson）"
+      }
+    ]
+  }
 ]
