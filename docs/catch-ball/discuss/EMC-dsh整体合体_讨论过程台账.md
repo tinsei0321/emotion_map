@@ -479,6 +479,16 @@
 | 2026-08-18（R9） | 外挂大脑链路三组讨论（朋友「Codex 经 MCP 遥控 dsh」思路）——zcode 以应答组身份参与 |
 | 2026-08-19（深夜·R30） | MCP vs FC 之问：选 MCP 更极致·FC 效果差——答：上下游非对手+零自有FC倾向记录 |
 | 2026-08-20（R43） | dsh 已完成——S7 判读：五层判定+D1-D5 清单+两裁决 |
+
+## R44（2026-08-20）S7 增量判读·S6 后（zcode·office 班）
+
+- **S6 三显示面缺陷验收**：✅①serve.py 单线程 SSE 阻塞（ThreadingTCPServer 修复·并发验证过）②render_client 缺 spec_id 去重（_seenSpecIds·12s 采样图层恒 1）③render_inbox 积压重放（15 旧 spec 移 _backup·backlog 仅 1）。三坑均修均验，**并入缺陷清单为 D6-D8（已修销号）**；踩坑六条沉淀 debug-memory **R11**（含 zonal 排序语义/内联优先两条语义坑）。
+- **缺陷清单现状（D 批·工具面打磨）**：D1 zonal/rank 缺 point_count 排序（P1·待派）；D2 layer_output 引导不足（P2·待派）；D3 rag_query 差异化描述（P2·待派）；D4 stdout→stderr（P1 小修·已裁决待做）；D5 patch 语法（已销）；D6-D8 显示面（已修销号）。
+- **R41 遗留观察项**（F3 悬停 tip/F4 参数面板识别/F5 着色机制/F6 内容正确性）——随用户复测 Q3/Q4 一并观察，不单独立项。
+- **下一步建议**（待用户定）：A) D1-D4 打磨批派 dsh（白名单：tools/mcp_server_emc.py 描述+stderr、api 排序支持核实）；B) 用户复测 Q3/Q4（Q4 题面明写 base_174_aggregate_area 采集对抗样本）；C) B1 复审挂账处置——建议并入 PT-CB6 期一次审计（B1 修复已被 CB4-CB6 全量门禁持续回归覆盖，单独复审轮次性价比低·用户定）。
+
+---
+
 | 2026-08-20（R42） | 优先配 dsh 测大脑跑通路径·F3F4 缓·设计要深思考详细拆解交 dsh |
 | 2026-08-20（R41） | 浏览器实测：注入链通过+F3-F6 登记；确认本轮非测 dsh 解答能力（正确） |
 | 2026-08-20（R40） | dsh 完工——P+ 回收·先行件全链完成·待浏览器亮图 |
