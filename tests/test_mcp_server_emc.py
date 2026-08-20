@@ -108,6 +108,24 @@ def test_list_data_real_registry_includes_yichang_l2_t1():
     assert {p['id'] for p in out['point_layers']} == expected
 
 
+def test_list_data_render_section_contract():
+    """PT-CB7 T10: list_data must carry the render capability section (schemes/paradigm/tip fields/limits)."""
+    out = mse.list_data()
+    r = out['render']
+    assert set(r['schemes']) == {'community_choropleth_v1', 'point_default_v1', 'boundary_fill_v1'}
+    assert 'dataset_id' in r['paradigm'] and 'render-contract' in r['paradigm']
+    assert r['tip_required_fields'] == ['name']
+    assert r['limits'] == {'inline_features_max': 60, 'zonal_top_n_max': 20}
+
+
+def test_render_scheme_vocabulary_and_contract_pointer():
+    """PT-CB7 T10: MCP scheme vocabulary includes boundary_fill_v1 (aligned with render_client);
+    render_spec/list_data docstrings point to the render contract doc."""
+    assert 'boundary_fill_v1' in mse.SCHEMES
+    assert 'render-contract' in (mse.render_spec.__doc__ or '')
+    assert 'render-contract' in (mse.list_data.__doc__ or '')
+
+
 # ════════════ rag_query ════════════
 
 def test_rag_query_clamp_dim_counts_and_deferred_synthesize(monkeypatch):

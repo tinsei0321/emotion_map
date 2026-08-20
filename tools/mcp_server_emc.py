@@ -39,7 +39,7 @@ register_track_id('MOD_AIQA.F_028', 'MCP render_spec（图层图纸：dataset/in
 MANIFEST = os.path.join(REPO, 'DATA', 'boundaries', 'presets', 'manifest.json')
 
 # P+ scheme 受管样式词表（前端按名解析·未知即拒）
-SCHEMES = ('community_choropleth_v1', 'point_default_v1')
+SCHEMES = ('community_choropleth_v1', 'point_default_v1', 'boundary_fill_v1')
 
 CALIBERS = {
     'list_data': {
@@ -182,9 +182,9 @@ def _layer_output_geojson(gdf, top_n, value_col):
 
 @track('MOD_AIQA.F_021', track_args=False)
 def list_data(include_demo: bool = False) -> dict:
-    """数据说明书：列出可分析点层与边界 preset（字段/类型/usage/数据性质·不含样例值）。
+    """数据说明书：列出可分析点层与边界 preset（字段/类型/usage/数据性质·不含样例值），并附 render 出图能力段（scheme 词表/三档范式/tip 字段/上限）。
     参数：include_demo 兼容保留（清单恒为 resolve 可解析集·F1）。
-    限制：分析前必查（layer/boundary 取 id 的唯一入口）；返回带 caliber 口径标。"""
+    限制：分析前必查（layer/boundary 取 id 的唯一入口）；返回带 caliber 口径标；出图前读 render 段或 docs/render-contract.md。"""
     from core.config import PERFORMANCE_DIR
     from core.geo_registry import _POINT_LAYERS, _layer_path, list_point_layers
 
@@ -239,6 +239,17 @@ def list_data(include_demo: bool = False) -> dict:
         'point_layers': point_layers,
         'presets': presets,
         'count': len(point_layers) + len(presets),
+        # PT-CB7 T10：出图能力段（契约权威 = docs/render-contract.md）
+        'render': {
+            'schemes': list(SCHEMES),
+            'paradigm': ('三档出图范式：①inline（geojson ≤60 要素）'
+                         '②dataset_id（引用已注册数据源·无体量限制）'
+                         '③脚本全量+manifest 注册后走②（超限唯一正道）；详见 docs/render-contract.md'),
+            'tip_required_fields': ['name'],
+            'tip_recommended_fields': ['point_count', 'polarity_index'],
+            'limits': {'inline_features_max': 60, 'zonal_top_n_max': 20},
+            'caliber_lite_required': ['usage', 'data_nature'],
+        },
         'caliber': CALIBERS['list_data'],
     }
 
@@ -504,7 +515,7 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
                 community_caliber: int = 0) -> dict:
     """图层图纸：dataset 引用或内联 GeoJSON → render_inbox spec，经 8080 前端显示屏呈现。
     参数：kind=point|choropleth；name 必填；dataset_id 与 geojson（要素≤60）二选一；value_field 默认 polarity_index；scheme 缺省自动；community_caliber 可选 K-C1 枚举。
-    限制：写盘毫秒级不渲染；需浏览器已开情绪地图页；新 spec 覆盖旧 [dsh] 图层（T1）。"""
+    限制：写盘毫秒级不渲染；需浏览器已开情绪地图页；新 spec 覆盖旧 [dsh] 图层（T1）；三档出图范式（inline/dataset_id/脚本+注册）见 docs/render-contract.md。"""
     if kind not in ('point', 'choropleth'):
         return {'ok': False, 'hint': f'kind 非法: {kind!r}（仅 point|choropleth）',
                 'caliber': CALIBERS['render_spec']}
