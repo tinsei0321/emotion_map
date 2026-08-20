@@ -111,3 +111,16 @@
 ## 附：本库首建背景（CB-41 · 2026-08-18）
 
 用户经历三轮修复仍未根治（着色浅→着色反→无填充），zcode 接手后经「发起→dsh 排查→收敛→实施→用户复测暴露 B014→增补修复」闭环。三个台账：B012（tip 归属）/ B013（着色语义）/ B014（membership 静默丢点）·完整链条见 `docs/catch-ball/discuss/CB41-*` 三件套 + revision-log 5.257-5.260。
+
+## R13 · dsh rc.8 三约束——仓外插件构建需登记 stub · client 模块必须导出 inject · merge 后必须 build:web（PT-CB6 home 续点·2026-08-21）
+
+- **规则**：
+  - **① 仓外插件构建需登记 stub**：rc.8 构建链（`packages/client/tsdown.client.ts` 的 `workspaceManifest`）要求插件名出现在 `packages/*/*/package.json` 清单中，否则 tsdown 报 `no packages/*/*/package.json declares the name <id>`（两层 glob，`packages/<组>/<包>/package.json`）。仓外插件（如 `D:/Github/dsh-emc-entry/`）解法：在 dsh 仓建纯登记 stub（仅 package.json 声明 name + `dsh.client`，加 `tsdown.config.ts` 内容 `export default { entry: '' }` 跳过 workspace 构建）。
+  - **② client 插件模块必须导出 `inject`**：cordis 客户端插件的服务依赖声明 = 模块导出 `export const inject = ['slots','sessions','workspaces',...]`（蓝本 `packages/client/ui-task-board/src/client/index.ts:60`）。缺失时 `apply()` 内首次触碰 ctx 服务即抛"服务未声明"，**客户端启动树整体崩溃 → 整页黑屏**。node 半也必须导出 `apply`（空壳可），否则 loader 报 `invalid plugin, expect function or object with an "apply" method`。
+  - **③ dsh merge 上游后必须跑 build:web**：`apps/web/dist/` 的 `/assets/index-*.js` 是前端应用本体（vite 构建产物，gitignored）。merge 后只跑 `build:lib:*` 会导致前端仍是旧版本构建，与 rc.8 新插件 bundle 版本错配 → 启动崩溃黑屏。标准动作：merge → `pnpm install` → `npm run build:lib:host` + `build:lib:client` + `build:web` → 重启 web。
+- **案例**：2026-08-21 home 续点——dsh merge rc.8 后重建 dsh-emc-entry 插件，web 重启"成功"但页面黑屏：根因 A = 插件缺 `export const inject`（客户端树崩溃）；根因 B = 未跑 build:web（前端 assets 08-18 旧构建 vs rc.8 新 bundle）。修 = 补 inject + build:web，浏览器 DOM 快照确认完整渲染。
+- **违反后果**：web 服务端 200、插件 bundle 200、页面 DOM 却是黑的——服务端证据全绿 ≠ 页面正常，极易误判为"前端缓存问题"。
+- **检查动作**：
+  - 仓外插件 tsdown 报清单错误 → 查 `packages/*/*/` 两层 glob 是否覆盖该包名；
+  - dsh web 页面黑屏/白屏 → 先查插件模块有无 `export const inject`；再对照 `apps/web/dist/assets/` 文件时间戳与 merge 时间（gitignored，git 状态看不到，必须看 mtime）；
+  - 服务端验证绿 ≠ 浏览器验证绿：客户端插件改动必须过浏览器 DOM 快照（IAB/headless）才算交付。

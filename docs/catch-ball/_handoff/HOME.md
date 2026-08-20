@@ -1,34 +1,38 @@
 # 家里 · 工作交接卡
 
-> **位置**：家 | **最后更新**：2026-08-21（**到岗续点**·ZCode——dsh 更新 rc.8 + synapse 删除 + EMC 入口插件重建恢复） | **同步**：分支 `EMC_harness_dsh`（main 冻结勿动）。
-> **回家第一读**：本卡 + `memories/repo/session-handoff.md` 当前节点。
+> **位置**：家 | **最后更新**：2026-08-21（**到岗续点收工**·ZCode——dsh 更新 rc.8 + synapse 删除 + EMC 入口插件重建恢复 + 黑屏修复 + 送审 Codex） | **同步**：分支 `EMC_harness_dsh`（main 冻结勿动）。
+> **回家第一读**：本卡 + `memories/repo/session-handoff.md` 当前节点 + `discuss/PT-CB6-home续点恢复_执行记录_zcode-2026-08-21.md`。
 
 ---
 
-## 到岗快照（08-21 · dsh rc.8 + 会话地图删除 + EMC 入口恢复）
+## 到岗快照（08-21 · dsh rc.8 + 会话地图删除 + EMC 入口恢复 + 黑屏修复 + 送审）
 
 ### 今日完成（ZCode 代执行）
 
-1. **dsh 更新至上游 rc.8**：`D:/Github/dsh` merge deepseek-ai/deepseek-harness upstream/master（536 提交，rc.8 发布）→ 本地 14 提交全保留（handover/task-board/usage-monitor/web auto-session fix）；4 冲突文件手工合并（remotes package.json/client/index.ts、web-app package.json、pnpm-lock 取上游后全量重生成）；commit `8258d567c4`（merge）+ `92ae8734ee`（lockfile 刷新）；备份分支 `backup-pre-rc8`。**已跑全量 `build:lib:host` + `build:lib:client`**（上游新包 typert 产物补齐）。⚠️ 未 push（gitee origin 有 1 个新提交未拉，下次顺手 `git pull --rebase` + push）。
-2. **"会话地图"插件 = dsh-synapse 已永久删除**：web profile 的 package.json（dependencies + bundles）、node_modules/dsh-synapse、`~/.dsh/synapse/` 数据目录（5.3MB workspaces.json）全删；备份 `package.json.bak-rm-synapse`。web 重启后生效（本轮重启已含此变更）。
+1. **dsh 更新至上游 rc.8**：`D:/Github/dsh` merge deepseek-ai/deepseek-harness upstream/master（536 提交，rc.8 发布）→ 本地 14 提交全保留（handover/task-board/usage-monitor/web auto-session fix）；4 冲突文件手工合并（remotes package.json/client/index.ts、web-app package.json、pnpm-lock 取上游后全量重生成）；commit `8258d567c4`（merge）+ `92ae8734ee`（lockfile 刷新）+ `ec5c5e725c`（构建登记 stub）；备份分支 `backup-pre-rc8`。**已跑全量 `build:lib:host` + `build:lib:client` + `build:web`**。⚠️ 未 push（gitee origin 有 1 个新提交未拉，下次顺手 `git pull --rebase` + push）。
+2. **"会话地图"插件 = dsh-synapse 已永久删除**：web profile 的 package.json（dependencies + bundles）、node_modules/dsh-synapse、`~/.dsh/synapse/` 数据目录（5.3MB workspaces.json）全删；备份 `package.json.bak-rm-synapse`。已验证页面预加载清单无 synapse。
 3. **EMC 入口插件完整重建**（源码目录 `D:/Github/dsh-emc-entry/` 丢失后按任务书+复盘重建）：
-   - 新实现（rc.8 机制）：`workspaces.startSession()` 新建会话 + 欢迎卡挂 `conversation.input.dock`（默认展开，可关闭）+ `workspaces.openPath(start.bat)` 独立终端起 8080 + 8080 就绪后 `openPath` Edge 开图；probe 保留 `no-cors` 修复（resolve=可达/reject=不可达）；零硬编码 hex（`--dsw-alias-*`）。
-   - rc.8 构建链适配：**需要 `D:/Github/dsh/packages/emc/emc-entry/` 登记 stub**（纯 manifest + tsdown.config.ts `entry:''` 跳过，未 commit）+ 插件目录 node_modules junction → dsh/node_modules + node 半必须导出 `apply`（空壳）。
+   - 新实现（rc.8 机制）：`workspaces.startSession()` 新建会话 + 欢迎卡挂 `conversation.input.dock`（默认展开，可关闭，文案逐字）+ `workspaces.openPath(start.bat)` 独立终端起 8080 + 8080 就绪后 `openPath` Edge 开图；probe 保留 `no-cors` 修复（resolve=可达/reject=不可达）；零硬编码 hex（`--dsw-alias-*`）；client 模块导出 `inject = ['slots','sessions','workspaces']`。
+   - rc.8 构建链适配：**登记 stub `D:/Github/dsh/packages/emc/emc-entry/`**（纯 manifest + tsdown.config.ts `entry:''` 跳过，已 commit `ec5c5e725c`）+ 插件目录 node_modules junction → dsh/node_modules + node 半导出 `apply` 空壳。
    - 接入 web profile（dependencies link: + bundles + junction；备份 `package.json.bak-emcentry`）。
-   - **验证通过**：web 重启后稳定运行，`GET /plugins/dsh-emc-entry/client.js` → **200**（7639B，含 no-cors/startSession/欢迎卡）。
+   - **验证通过**：web 重启后稳定运行，`GET /plugins/dsh-emc-entry/client.js` → **200**（7639B）；浏览器 DOM 快照确认左下角按钮在位（8080 停时置灰正确）。
+4. **黑屏修复（双根因）**：根因 A = 插件缺 `export const inject` 服务声明（客户端启动树崩溃）；根因 B = merge 后未跑 `build:web`（前端 assets 08-18 旧构建 vs rc.8 新 bundle 版本错配）。修后浏览器实测页面完整渲染。坑记 debug-memory **R13**。
+5. **Codex 接入修复（附带）**：`config.toml` DeepSeek provider 改回 `wire_api = "responses"`（DeepSeek V4 原生支持 Responses API，实测 200）；`models.json` 两个模型的 `supports_search_tool` → false（防 Codex 0.145.0 MCP 工具静默隐藏 bug）。重启 Codex 客户端生效。
+6. **落盘**：执行记录 + 送审通知（含转发 Codex 的审计 prompt）+ 本卡 + R13 + session-handoff 节点，随 commit 推送。
 
-### 待办（浏览器验收）
+### 待办（主手回收）
 
-- **T4 视觉验收**（需浏览器）：硬刷新 3080 页面 → 左下角「EMC 情绪地图」按钮在位；8080 未开时置灰+title 提示；点击 → 新会话 + 欢迎卡展开 + 终端弹 start.bat + Edge 开地图页；无 double-mount。欢迎卡"新会话自动出现"细节若未完全达标，改 `src/client/components.tsx` + 重建 bundle（tsdown.CMD）。
+- **转发送审 prompt 至 Codex**：`discuss/PT-CB6-home续点恢复_送审通知_zcode-2026-08-21.md` §四 的 prompt（审计六项，产出 `PT-CB6-home续点恢复_审计_Codex-2026-08-21.md`）。
+- **T4 视觉验收**（需浏览器 + 8080 运行）：点击入口 → 新会话 + 欢迎卡展开 + 终端弹 start.bat + Edge 开地图页；无 double-mount。欢迎卡细节未达标则改 `src/client/components.tsx` 重建。
 - EMC 人设 system prompt 未配（身份卡已加）：配 system prompt + `py tools/rag_index.py --build`。
-- node-pty `AttachConsole failed` → 记 debug-memory R13。
-- 收工时：`git push hub --all` 补推盘仓；考虑跑「一键离开」快照 `~/.dsh` 到 hub 盘。
+- node-pty `AttachConsole failed` 坑待记 debug-memory（R13 已用，新编号 R14）。
+- dsh 未 push：`git pull --rebase` + push；收工时 `git push hub --all` 补推盘仓。
 
 ### 注意
 
-- **rc.8 之后**：仓外插件构建必须走登记 stub（packages/emc/emc-entry）+ 独立 tsdown；web profile 禁裸 npm install（R12 依旧）；dsh 全量构建命令 `npm run build:lib:host` / `build:lib:client`。
-- `D:/Github/dsh/packages/emc/emc-entry/` 为构建登记（未 commit，可随交接卡说明保留或删除重建）。
+- **rc.8 之后**：仓外插件构建必须走登记 stub（packages/emc/emc-entry）+ 独立 tsdown；client 插件必须导出 `inject`；merge 上游后必须 `build:web`；web profile 禁裸 npm install（R12 依旧）。
 - dsh 相关文件在仓外（`D:/Github/dsh-emc-entry/` + `~/.dsh/profiles/web/`），不入本仓 git。
+- debug-memory 两个 R11 撞号待主手合并。
 
 ---
 

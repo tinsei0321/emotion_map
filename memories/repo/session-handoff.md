@@ -1,16 +1,28 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：08月20日 晚（**EMC 入口插件 + 重定义 + dsh web 启动修复收工**·Codex）| 分支 `EMC_harness_dsh`（**main 冻结勿动**）
+> 最后更新：08月21日（**home 到岗续点收工**·ZCode——dsh rc.8 + synapse 删除 + EMC 入口恢复 + 黑屏修复 + 送审）| 分支 `EMC_harness_dsh`（**main 冻结勿动**）
 >
 > CB 入口：`docs/catch-ball/_cb-index.md`
-> 接手第一读：`_handoff/HOME.md` 收工快照 + `discuss/EMC-dsh整体合体_讨论过程台账.md` R20 + `discuss/PT-CB2-开工与拆解_zcode-2026-08-19.md`
+> 接手第一读：`_handoff/HOME.md` 到岗快照 + `discuss/PT-CB6-home续点恢复_执行记录_zcode-2026-08-21.md` + `discuss/PT-CB6-home续点恢复_送审通知_zcode-2026-08-21.md`
 > 角色（08-18 晚用户新令）：**zcode = 主手**（设计/拆解/派发/攻坚）·**dsh = 通用副手**（非长思考任务·白名单内 git）·**Codex+claude组 = 审计协助**（零实施）
 > 换机卡片：`_handoff/HOME.md`（家）+ `OFFICE.md`（公司）
 
 ---
 
-## 当前节点：08-20 晚收工 · EMC 入口插件 + 重定义 + dsh web 启动修复（home 续点=修入口小问题 + 人设/身份卡）
+## 当前节点：08-21 home 到岗续点收工 · dsh rc.8 + synapse 删除 + EMC 入口恢复 + 黑屏修复（送审 Codex）
+
+- **08-21 完成（ZCode 主手）**：
+  1. dsh 更新 rc.8：merge upstream 536 提交，4 冲突并集合并，`build:lib:host/client + build:web` 全过；commit `8258d567c4`/`92ae8734ee`/`ec5c5e725c`；备份分支 `backup-pre-rc8`；**未 push**（gitee behind 1）。
+  2. "会话地图" = dsh-synapse 永久删除（profile 登记/node_modules/`~/.dsh/synapse` 数据目录）。
+  3. EMC 入口插件重建（`D:/Github/dsh-emc-entry/` 源码丢失→按任务书+复盘重建，rc.8 机制 + no-cors 探测 + 欢迎卡 + openPath 启动链）；构建链登记 stub `D:/Github/dsh/packages/emc/emc-entry/`。
+  4. 黑屏双根因修复：插件缺 `export const inject` 服务声明 + merge 后未跑 build:web（前端旧构建版本错配）；坑记 debug-memory **R13**。
+  5. Codex 接入修复：`wire_api="responses"`（DeepSeek V4 原生 Responses API）+ `supports_search_tool=false`（防 MCP 隐藏 bug）。
+- **待办（主手回收）**：①转发送审 prompt 至 Codex（送审通知 §四，审计六项）②T4 浏览器点击链路验收（8080 运行时）③EMC 人设 system prompt + RAG 重建④node-pty 坑记 R14⑤dsh push。
+- **注意**：rc.8 后仓外插件构建需登记 stub + 导出 inject + merge 后必须 build:web；dsh 文件在仓外（`D:/Github/dsh-emc-entry/` + `~/.dsh/profiles/web/`）。
+- **相关文档**：`discuss/PT-CB6-home续点恢复_执行记录_zcode-2026-08-21.md`、`discuss/PT-CB6-home续点恢复_送审通知_zcode-2026-08-21.md`。
+
+## 旧节点：08-20 晚收工 · EMC 入口插件 + 重定义 + dsh web 启动修复（home 续点=修入口小问题 + 人设/身份卡）
 
 - **08-20 晚完成（Codex 代做）**：
   1. dsh web 启动修复：`@dsh-external/dsh-super-injector` 未登记 package.json 被 npm install 修剪 → web 崩「Failed to load plugins」；修 = 登记依赖 + junction + 清误产 npm 锁（debug-memory R12）。
