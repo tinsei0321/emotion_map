@@ -1,38 +1,26 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：08月20日（**home 到岗续点收工**·ZCode——dsh rc.8 + synapse 删除 + EMC 入口恢复 + 黑屏修复 + 送审）| 分支 `EMC_harness_dsh`（**main 冻结勿动**）
+> 最后更新：08月21日（**PT-CB7 主执行收工**·Qoder——审计先行+T1-T21 大半销号+用户实测五连修·明晨 office 续点）| 分支 `EMC_harness_dsh`（**main 冻结勿动**）
 >
 > CB 入口：`docs/catch-ball/_cb-index.md`
-> 接手第一读：`_handoff/HOME.md` 到岗快照 + `discuss/PT-CB6-home续点恢复_执行记录_zcode-2026-08-20.md` + `discuss/PT-CB6-home续点恢复_送审通知_zcode-2026-08-20.md`
-> 角色（08-18 晚用户新令）：**zcode = 主手**（设计/拆解/派发/攻坚）·**dsh = 通用副手**（非长思考任务·白名单内 git）·**Codex+claude组 = 审计协助**（零实施）
+> 接手第一读：`_handoff/HOME.md` 收工快照 + `discuss/PT-CB7-主执行记录_Qoder-2026-08-21.md` + `discuss/PT-CB7-增补批T14-T17_入口体验与结果契约_Qoder-2026-08-21.md`
+> 角色（08-21 用户令）：**Qoder = PT-CB7 主执行**（白名单内 git）·**zcode = 主手**（回收验收/裁决）·**dsh = 协助**（批派发）·**Codex+claude组 = 终审**
 > 换机卡片：`_handoff/HOME.md`（家）+ `OFFICE.md`（公司）
 
 ---
 
-## 当前节点：08-20 home 到岗续点收工 · dsh rc.8 + synapse 删除 + EMC 入口恢复 + 黑屏修复（送审 Codex）
+## 当前节点：08-21 PT-CB7「稳定与灵魂」批主执行收工 · Qoder · 明晨 office 续点
 
-- **08-20 完成（ZCode 主手）**：
-  1. dsh 更新 rc.8：merge upstream 536 提交，4 冲突并集合并，`build:lib:host/client + build:web` 全过；commit `8258d567c4`/`92ae8734ee`/`ec5c5e725c`；备份分支 `backup-pre-rc8`；**未 push**（gitee behind 1）。
-  2. "会话地图" = dsh-synapse 永久删除（profile 登记/node_modules/`~/.dsh/synapse` 数据目录）。
-  3. EMC 入口插件重建（`D:/Github/dsh-emc-entry/` 源码丢失→按任务书+复盘重建，rc.8 机制 + no-cors 探测 + 欢迎卡 + openPath 启动链）；构建链登记 stub `D:/Github/dsh/packages/emc/emc-entry/`。
-  4. 黑屏双根因修复：插件缺 `export const inject` 服务声明 + merge 后未跑 build:web（前端旧构建版本错配）；坑记 debug-memory **R13**。
-  5. Codex 接入修复：`wire_api="responses"`（DeepSeek V4 原生 Responses API）+ `supports_search_tool=false`（防 MCP 隐藏 bug）。
-- **待办（主手回收）**：①转发送审 prompt 至 Codex（送审通知 §四，审计六项）②T4 浏览器点击链路验收（8080 运行时）③EMC 人设 system prompt + RAG 重建④node-pty 坑记 R14⑤dsh push。
-- **注意**：rc.8 后仓外插件构建需登记 stub + 导出 inject + merge 后必须 build:web；dsh 文件在仓外（`D:/Github/dsh-emc-entry/` + `~/.dsh/profiles/web/`）。
-- **相关文档**：`discuss/PT-CB6-home续点恢复_执行记录_zcode-2026-08-20.md`、`discuss/PT-CB6-home续点恢复_送审通知_zcode-2026-08-20.md`。
-
-## 旧节点：08-20 晚收工 · EMC 入口插件 + 重定义 + dsh web 启动修复（home 续点=修入口小问题 + 人设/身份卡）
-
-- **08-20 晚完成（Codex 代做）**：
-  1. dsh web 启动修复：`@dsh-external/dsh-super-injector` 未登记 package.json 被 npm install 修剪 → web 崩「Failed to load plugins」；修 = 登记依赖 + junction + 清误产 npm 锁（debug-memory R12）。
-  2. EMC 入口插件 `dsh-emc-entry` 构建、接入、加载验证（左下角入口 + 8080 探测 + token 纪律）。
-  3. 入口重定义任务书：点击入口 = 开新会话(standard)+欢迎卡 + host 跑 start.bat + 外部 Edge 开 8080；随后 EMC 人设+身份卡。
-  4. spawn msedge 崩溃修复：改 `cmd /c start "" url` + `safeSpawn` 挂 error 兜底。
-  5. dsh 已落地：身份卡（IDENTITY）、`start.bat --open=none`、新 preset `checkup_12345_comm174_all`、新工具 `tools/grid_export.py`。
-- **home 到岗续点（待修小问题）**：①入口欢迎卡/新会话细节（改 `D:/Github/dsh-emc-entry/src/client/index.ts` + 重建 bundle）②EMC 人设 system prompt + `py tools/rag_index.py --build` 重建 RAG ③node-pty 崩溃建议记 R13 ④grid_export.py 非正式（F_029 待立项）。
-- **注意**：main 冻结勿动；工作区 dsh 改动已一并提交；`docs/debug-memory.md` 双 R11 撞号待主手合并；dsh 文件在仓外（`D:/Github/dsh-emc-entry/` + `~/.dsh/profiles/web/`）。
-- **相关文档**：`discuss/PT-CB6-EMC入口插件执行记录_dsh-2026-08-20.md`、`discuss/PT-CB6-EMC入口插件_问题复盘与审计交接_Codex-2026-08-20.md`、`discuss/PT-CB6-EMC入口重定义任务书_Codex-2026-08-20.md`。
+- **08-21 完成（Qoder 主执行）**：
+  1. 审计先行：T1-T9 全文审计（M1-M4 修正随执行生效）+ 任务拆解（复杂自执/简单派 dsh 三批）+ WIP 复核。
+  2. EMC 仓六 commit（基线 442 passed/2 skipped）：T1 图层自清 `97fb95bd` / T6 MCP 描述紧凑 `0d752150` / T8 脚本参数化+口径对照 `9e7ca1dc` / T5+T9 身份卡扩写+RAG `c6013cf8` / T14 结果呈现契约 `1dc80123` / T10 出图范式契约 render-contract.md `a8a697e5`。
+  3. 用户实测五连修：T18 render_file 第 9 插座 `3d80d2cd`（治长思维+误入 Range）/ T16 历史图层残留根治 `8608ff14` / T19 /emc-ready 真就绪 gate+快通道+杀窗守卫 `23888cb3`（治“加载一半失效”）/ T21 SSE 扇出广播+50s 豁免 `691676ab`（治“F5 才见”）/ T15 start_silent.vbs 隐藏启动+对话气泡首屏卡 `fa661192`。
+  4. dsh 两批回收：批 1（T2 terminal chunk 修复/T4 计时取证/F1-F4 复核）；批 2（人设 prompt 落地生效·「你是谁」自述实测通过；T17 timeout 120s 无效——根因=MCP 冷启动 >120s 需服务端预热）。记录+截图在 `discuss/PT-CB7-dsh协助批{1,2}记录_dsh-2026-08-21.md`。
+  5. 仓外插件 dsh-emc-entry 多轮改造已重建（bundle 18,977B）；当前 8080/8000 新 serve 运行中（/emc-ready 200+ACAO）。
+- **office 续点（按序）**：①git pull + office dsh 环境四件套（同 08-20 卡）+ 批 2 同款补三件（人设文件复制/toolCallTimeoutMs 120000/start_silent.vbs 路径免改）②优先验证五项用户实测（快通道/冷启动气泡卡/免 F5 铺层/render_file/身份自述）③待办优先级：T17 服务端预热真修 → T7 双模预设落地+≤2min 验收（批 3）→ zcode 回收+《Qoder 执行效果评估》。
+- **待裁决/观察**：T11 被 render_file 吸收待销项确认；D2 欢迎卡绑定目标会话未做；render_file 临时 dataset 累积列观察；debug-memory 双 R11 撞号待主手合并。
+- **注意**：dsh 文件在仓外（`D:/Github/dsh-emc-entry/` + `~/.dsh/`）不入本仓；人设改动在 `~/.dsh/.agent-presets/router-standard-subagent/`（批 2 记录 A-2 有全文与备份名）。
 
 ## 旧节点：home 凌晨收工 · PT-CB6 S6 用户复测通过 · render 通道三坑已修（office 续点=S7 回收判读）
 

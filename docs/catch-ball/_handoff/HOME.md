@@ -1,7 +1,35 @@
 # 家里 · 工作交接卡
 
-> **位置**：家 | **最后更新**：2026-08-20（**到岗续点收工**·ZCode——dsh 更新 rc.8 + synapse 删除 + EMC 入口插件重建恢复 + 黑屏修复 + 送审 Codex） | **同步**：分支 `EMC_harness_dsh`（main 冻结勿动）。
-> **回家第一读**：本卡 + `memories/repo/session-handoff.md` 当前节点 + `discuss/PT-CB6-home续点恢复_执行记录_zcode-2026-08-20.md`。
+> **位置**：家 | **最后更新**：2026-08-21（**PT-CB7 主执行收工**·Qoder——审计先行+T1-T21 大半销号+用户实测五连修·明晨 office 续点） | **同步**：分支 `EMC_harness_dsh`（main 冻结勿动）。
+> **到岗第一读**：本卡当前节 + `discuss/PT-CB7-主执行记录_Qoder-2026-08-21.md` + `discuss/PT-CB7-增补批T14-T17_入口体验与结果契约_Qoder-2026-08-21.md`。
+
+---
+
+## 收工快照（08-21 · PT-CB7 「稳定与灵魂」批 · Qoder 主执行 · 明晨 office 续点）
+
+### 今日完成
+
+1. **审计先行 + 拆解**：T1-T9 全文审计（M1-M4 修正随执行生效）；任务拆解（复杂自执/简单派 dsh 三批）落盘；WIP 复核（boundary_fill_v1 保留/R14 为 T3 资产）。
+2. **EMC 仓六 commit**（基线 442 passed / 2 skipped·显式路径提交·禁 add -A）：
+   - T1 `97fb95bd` [dsh] 图层叠层自清理；T6 `0d752150` MCP 描述紧凑化；T8 `9e7ca1dc` 800m 脚本参数化+口径对照段+inbox 自清；T5+T9 `c6013cf8` 身份卡扩写+RAG 364 条；T14 `1dc80123` 结果呈现契约§七；T10 `a8a697e5` 出图范式契约 render-contract.md。
+   - 用户实测五连修：T18 `3d80d2cd` render_file 第 9 插座（“显示到地图”一步到位·治长思维+误入 Range）；T16 `8608ff14` 历史图层残留根治（applied/ 归档）；T19 `23888cb3` /emc-ready 真就绪端点+插件快通道/杀窗守卫（治“加载一半失效”）；T21 `691676ab` SSE 扇出广播+50s 豁免（治“F5 才见”）；T15 `fa661192` start_silent.vbs 隐藏启动+对话式首屏卡。
+3. **dsh 两批回收**：批 1（T2 terminal chunk=lock 失配 0.14.0→pnpm install 收敛 0.12.3；T4 计时取证 headless 110s/4 步 vs web 61s/17 步；F1-F4 复核）；批 2（人设 prompt 落地生效——「你是谁」自述 EMC 身份实测通过；T17 timeout 120s **无效**——根因=MCP 冷启动 >120s，需服务端预热）。记录+截图在 `discuss/PT-CB7-dsh协助批{1,2}记录_dsh-2026-08-21.md`。
+4. **仓外插件 dsh-emc-entry** 多轮改造已重建（bundle 18,977B·服务端验证在位）：真就绪 gate（/emc-ready 读真实 status+旧 serve 降级）+快通道（已就绪不杀不重启）+杀窗守卫+对话气泡首屏卡（欢迎+加载状态同卡）+内嵌 tab 降级可选。
+5. **当前运行态**：8080/8000 新 serve 已起（/emc-ready 200+ACAO 实测）；dsh web 3080 人设生效；全量 442 passed。
+
+### office 到岗续点（按序）
+
+1. `git pull`（gitee）；**office dsh 环境四件套**（同 08-20 卡§⚠：mcp 依赖/RAG 重建/verify_keys/profile 重建）+ **批 2 同款补三件**：①人设改动按 `PT-CB7-dsh协助批2记录` A-2 复制（`.agent-presets/router-standard-subagent/{agent.cordis.yml,router-bootstrap-v1.mjs}` 的 persona/RL_PERSONA）；②emc-test 系 profile `toolCallTimeoutMs: 120000`；③`start_silent.vbs` 内绝对路径两机盘符一致（D:），无需改。
+2. **优先验证（用户实测项）**：① EMC 按钮快通道（已就绪直接开图·无终端无半载）；② 冷启动气泡卡三态；③ 出图免 F5 实时铺层（多页同收）；④ render_file“显示到地图”一步成图；⑤ 「你是谁」身份自述。
+3. **待办优先级**：T17 改服务端预热（MCP 冷启动 >120s 的真修·方案=server 启动即预载 geo/RAG，设计后派 dsh）→ T7 双模预设落地+≤2min 验收（批 3）→ zcode 回收验收+《Qoder 执行效果评估》。
+
+### 待裁决/观察
+
+- T11 register_dataset 独立插座已被 render_file 吸收（自动登记内置）——保留或销项待主手一句话。
+- D2 欢迎卡绑定目标会话（全局可见）仍未做——气泡卡形态下观感是否可接受待用户反馈。
+- render_file 临时 dataset（tmp_render_* 组）在 manifest 缓慢累积——同源复用已防重，定期清理列观察。
+- 工作区带入了 dsh 测试任务产物（SCRIPT/gen_12345_bottom10_layer.py + bottom10 geojson×2 + manifest/素材表改动）——随收工提交一并入库（先例同 08-20）；_tmp/gen_12345_kde.py 为他人实验残留未动。
+- debug-memory 双 R11 撞号仍待主手合并。
 
 ---
 
