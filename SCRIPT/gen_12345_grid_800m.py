@@ -1,18 +1,28 @@
 # -*- coding: utf-8 -*-
-"""12345 热线 800m 方格网空间聚合（可复现）。
+"""12345 热线方格网空间聚合（PT-CB7 T8 参数化模板·可复现）。
 
-口径：
+用法：
+  py SCRIPT/gen_12345_grid_800m.py                       # 默认口径=原 800m 复现
+  py SCRIPT/gen_12345_grid_800m.py --grid-size 500       # 改格尺寸
+  py SCRIPT/gen_12345_grid_800m.py --source <geojson>    # 换源数据（须含 geocode_status）
+  py SCRIPT/gen_12345_grid_800m.py --region-caliber xw_174 --out-dir <dir>
+
+口径（默认）：
 - 源数据 = DATA/analysis/12345主观/12345_有坐标点.geojson（治理后有坐标点）
 - 仅取 geocode_status == 'ok' 的精确坐标点（区级质心 region 点不参与网格聚合）
-- 聚合 = core.spatial_analysis.create_square_grid(cell_size=800, unit='m')
-  （EPSG:4546 量度 800m，snap-to-grid 仅生成有点的格，结果回 EPSG:4326）
+- 聚合 = core.spatial_analysis.create_square_grid(cell_size=<grid_size>, unit='m')
+  （EPSG:4546 量度，snap-to-grid 仅生成有点的格，结果回 EPSG:4326）
+- region_caliber：xw_174（默认·西陵伍家+174社区双范围）/ none（不做区域统计）
 
-产出：
-- DATA/exports/12345_800m方格/12345_800m方格聚合.geojson
-- DATA/exports/12345_800m方格/12345_800m方格聚合_统计.csv
-- DATA/exports/12345_800m方格/12345_800m方格聚合_分析.md
-- DATA/exports/render_inbox/<spec_id>.json（前端 choropleth spec）
+产出（默认落 DATA/exports/12345_<N>m方格/）：
+- 12345_<N>m方格聚合.geojson / _统计.csv / summary.json（含 caliber_compare 口径对照段）
+- render_inbox/<spec_id>.json（前端 choropleth spec·重跑前先自清本脚本旧 spec）
+
+输出 schema 清理（PT-CB7 T8）：core.create_square_grid 会自附 poi_names/place_name 等
+下钻链字段（CB-16 Wave 2 有意设计），本脚本输出前删除（12345 交付不需要），
+其出处在口径对照段声明；render_inbox spec 用裁剪后的 fc。
 """
+import argparse
 import json
 import os
 import random
@@ -29,11 +39,20 @@ from shapely.ops import unary_union
 from core.spatial_analysis import create_square_grid
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SUBJ = os.path.join(ROOT, "DATA", "analysis", "12345主观")
-OUT_DIR = os.path.join(ROOT, "DATA", "exports", "12345_800m方格")
+DEFAULT_SOURCE = os.path.join(ROOT, "DATA", "analysis", "12345主观", "12345_有坐标点.geojson")
 INBOX = os.path.join(ROOT, "DATA", "exports", "render_inbox")
 XW = os.path.join(ROOT, "DATA", "analysis", "西陵伍家_合并范围.geojson")
 COMM174 = os.path.join(ROOT, "DATA", "boundaries", "presets", "checkup_配置_社区174.geojson")
+SPEC_SOURCE_TOOL = "gen_12345_grid_800m"   # 同时作 render_inbox 自清标记
+
+# core.create_square_grid 自附的下钻链字段（CB-16 Wave 2）——本交付不需要·输出前删除
+_CORE_DROP_COLS = ["poi_names", "poi_count", "place_name", "place_name_source",
+                   "topic_top"]
+
+# 口径对照锚点（只读引用 _口径注册表.md·禁改卡 ID 体系）：
+#   K-01 12345 管理口径（市域全量 42,871）· K-02 board 双口径（全量 49,192/8,046）
+FULL_COUNT_K01 = 42871
+FULL_COUNT_K02 = 49192
 
 ASPECTS = ["民生基础", "安全韧性"]
 CLASS9 = ["噪声", "住宅", "物业", "停车", "出行", "管网安全", "出行安全", "消防安全", "环境安全", "其他"]
@@ -52,19 +71,53 @@ def load_gj(path):
         return json.load(f)
 
 
-def main():
-    os.makedirs(OUT_DIR, exist_ok=True)
+def _clean_inbox_specs():
+    """PT-CB7 T8：重跑前删除本脚本产生的旧 render_inbox spec（治多 spec 残留·CB 评估 R2）。"""
+    removed = 0
+    for fn in os.listdir(INBOX) if os.path.isdir(INBOX) else []:
+        if not fn.endswith(".json"):
+            continue
+        try:
+            with open(os.path.join(INBOX, fn), encoding="utf-8") as fh:
+                spec = json.load(fh)
+        except (OSError, ValueError):
+            continue
+        if (spec.get("origin") or {}).get("source_tool") == SPEC_SOURCE_TOOL:
+            os.remove(os.path.join(INBOX, fn))
+            removed += 1
+    if removed:
+        _safe_print(f"[OK] render_inbox 自清旧 spec {removed} 份")
+
+
+def parse_args(argv=None):
+    ap = argparse.ArgumentParser(description="12345 热线方格网聚合（参数化模板）")
+    ap.add_argument("--grid-size", type=int, default=800, help="方格边长（米·默认 800）")
+    ap.add_argument("--source", default=DEFAULT_SOURCE,
+                    help="源点 geojson 路径（须含 geocode_status 字段）")
+    ap.add_argument("--region-caliber", choices=["xw_174", "none"], default="xw_174",
+                    help="区域统计口径：xw_174=西陵伍家+174社区（默认）/ none=不做")
+    ap.add_argument("--out-dir", default="",
+                    help="输出目录（默认 DATA/exports/12345_<N>m方格）")
+    return ap.parse_args(argv)
+
+
+def main(argv=None):
+    args = parse_args(argv)
+    n = args.grid_size
+    out_dir = args.out_dir or os.path.join(ROOT, "DATA", "exports", f"12345_{n}m方格")
+    os.makedirs(out_dir, exist_ok=True)
     os.makedirs(INBOX, exist_ok=True)
 
     # ── 源点：治理后有坐标点，仅精确坐标 ok ──
-    src = load_gj(os.path.join(SUBJ, "12345_有坐标点.geojson"))
+    src = load_gj(args.source)
     feats = [f for f in src["features"] if f["properties"].get("geocode_status") == "ok"]
     pts = gpd.GeoDataFrame.from_features(feats, crs="EPSG:4326")
-    _safe_print(f"[OK] 12345 ok 精确点 {len(pts)}")
+    src_total = len(src["features"])
+    _safe_print(f"[OK] 12345 ok 精确点 {len(pts)}（源含坐标点总数 {src_total}）")
 
-    # ── 800m 方格聚合（核心）──
-    grid = create_square_grid(pts, cell_size=800, unit="m")
-    _safe_print(f"[OK] 800m 网格数 {len(grid)}，覆盖点数 {int(grid['point_count'].sum())}，最大格 {int(grid['point_count'].max())}")
+    # ── Nm 方格聚合（核心）──
+    grid = create_square_grid(pts, cell_size=n, unit="m")
+    _safe_print(f"[OK] {n}m 网格数 {len(grid)}，覆盖点数 {int(grid['point_count'].sum())}，最大格 {int(grid['point_count'].max())}")
 
     # ── 点 → 格归属（用于分类计数）──
     # 与 create_square_grid 内部一致：在 EPSG:4546 米制下做 within，避免回投影后边界点漂移漏配
@@ -76,17 +129,22 @@ def main():
         _safe_print(f"[WARN] {miss} 点未落入网格（不应发生）")
     joined = joined[joined["cell_id"].notna()].copy()
 
-    # 点级区域归属：西陵伍家合并范围 / 174社区范围（EPSG:4546 量度）
-    with open(XW, encoding="utf-8") as f:
-        xw = json.load(f)
-    xw_geom_4326 = unary_union([shape(feature["geometry"]) for feature in xw["features"]])
-    xw_geom = gpd.GeoSeries([xw_geom_4326], crs="EPSG:4326").to_crs("EPSG:4546").iloc[0]
-    with open(COMM174, encoding="utf-8") as f:
-        c174 = json.load(f)
-    c174_geom_4326 = unary_union([shape(feature["geometry"]) for feature in c174["features"]])
-    c174_geom = gpd.GeoSeries([c174_geom_4326], crs="EPSG:4326").to_crs("EPSG:4546").iloc[0]
-    joined["in_xw_pt"] = joined.geometry.within(xw_geom) | joined.geometry.covers(xw_geom)
-    joined["in_174_pt"] = joined.geometry.within(c174_geom) | joined.geometry.covers(c174_geom)
+    # 点级区域归属：西陵伍家合并范围 / 174社区范围（EPSG:4546 量度·region-caliber 可选）
+    use_region = args.region_caliber == "xw_174"
+    if use_region:
+        with open(XW, encoding="utf-8") as f:
+            xw = json.load(f)
+        xw_geom_4326 = unary_union([shape(feature["geometry"]) for feature in xw["features"]])
+        xw_geom = gpd.GeoSeries([xw_geom_4326], crs="EPSG:4326").to_crs("EPSG:4546").iloc[0]
+        with open(COMM174, encoding="utf-8") as f:
+            c174 = json.load(f)
+        c174_geom_4326 = unary_union([shape(feature["geometry"]) for feature in c174["features"]])
+        c174_geom = gpd.GeoSeries([c174_geom_4326], crs="EPSG:4326").to_crs("EPSG:4546").iloc[0]
+        joined["in_xw_pt"] = joined.geometry.within(xw_geom) | joined.geometry.covers(xw_geom)
+        joined["in_174_pt"] = joined.geometry.within(c174_geom) | joined.geometry.covers(c174_geom)
+    else:
+        joined["in_xw_pt"] = False
+        joined["in_174_pt"] = False
 
     # 方面计数
     asp = joined.groupby("cell_id")["方面"].value_counts().unstack(fill_value=0)
@@ -145,16 +203,20 @@ def main():
             grid[c] = 0
         grid[c] = pd.to_numeric(grid[c], errors="coerce").fillna(0).astype(int)
 
-    # 区域标识：西陵伍家合并范围 / 174社区范围（按格质心）
-    with open(XW, encoding="utf-8") as f:
-        xw = json.load(f)
-    xw_geom = unary_union([shape(feature["geometry"]) for feature in xw["features"]])
-    with open(COMM174, encoding="utf-8") as f:
-        c174 = json.load(f)
-    c174_geom = unary_union([shape(feature["geometry"]) for feature in c174["features"]])
-    cents = grid.geometry.centroid
-    grid["in_xw"] = cents.within(xw_geom) | cents.covers(xw_geom)
-    grid["in_174"] = cents.within(c174_geom) | cents.covers(c174_geom)
+    # 区域标识：西陵伍家合并范围 / 174社区范围（按格质心·region-caliber 可选）
+    if use_region:
+        with open(XW, encoding="utf-8") as f:
+            xw = json.load(f)
+        xw_geom = unary_union([shape(feature["geometry"]) for feature in xw["features"]])
+        with open(COMM174, encoding="utf-8") as f:
+            c174 = json.load(f)
+        c174_geom = unary_union([shape(feature["geometry"]) for feature in c174["features"]])
+        cents = grid.geometry.centroid
+        grid["in_xw"] = cents.within(xw_geom) | cents.covers(xw_geom)
+        grid["in_174"] = cents.within(c174_geom) | cents.covers(c174_geom)
+    else:
+        grid["in_xw"] = False
+        grid["in_174"] = False
 
     # 主导类9 / 主导方面
     cls_cols = [f"n_{c}" for c in CLASS9]
@@ -163,19 +225,23 @@ def main():
     asp_cols = [f"n_{c}" for c in ASPECTS]
     grid["top_aspect"] = grid[asp_cols].idxmax(axis=1).str.replace("n_", "", regex=False)
 
+    # 输出 schema 清理：删除 core 自附的下钻链字段（出处见口径对照段）
+    grid = grid.drop(columns=[c for c in _CORE_DROP_COLS if c in grid.columns])
+
     # 输出 GeoJSON（保留中文）
-    out_gj = os.path.join(OUT_DIR, "12345_800m方格聚合.geojson")
+    out_gj = os.path.join(out_dir, f"12345_{n}m方格聚合.geojson")
     fc = json.loads(grid.to_json())
     with open(out_gj, "w", encoding="utf-8") as f:
         json.dump(fc, f, ensure_ascii=False)
     _safe_print(f"[OK] {out_gj}（{len(fc['features'])} 格）")
 
     # 输出 CSV
-    out_csv = os.path.join(OUT_DIR, "12345_800m方格聚合_统计.csv")
+    out_csv = os.path.join(out_dir, f"12345_{n}m方格聚合_统计.csv")
     grid.drop(columns=["geometry"]).to_csv(out_csv, index=False, encoding="utf-8-sig")
     _safe_print(f"[OK] {out_csv}")
 
-    # 输出 render_inbox spec（前端 choropleth）
+    # 输出 render_inbox spec（前端 choropleth·先自清旧 spec）
+    _clean_inbox_specs()
     spec_id = f"{int(time.time() * 1000)}-{random.randint(1000, 9999)}"
     spec = {
         "spec_version": 1,
@@ -183,12 +249,12 @@ def main():
         "kind": "choropleth",
         "data": {"geojson": fc},
         "style": {"scheme": "community_choropleth_v1", "value_field": "point_count"},
-        "ui": {"name": "12345热线800m方格聚合（ok精确点）", "zoom_to": True},
-        "origin": {"producer": "dsh", "source_tool": "gen_12345_grid_800m"},
+        "ui": {"name": f"12345热线{n}m方格聚合（ok精确点）", "zoom_to": True},
+        "origin": {"producer": "dsh", "source_tool": SPEC_SOURCE_TOOL},
         "caliber_lite": {
             "usage": "input",
             "data_nature": "real",
-            "note": "12345 2024 ok 精确点 800m 方格聚合（create_square_grid·仅有点的格）",
+            "note": f"12345 2024 ok 精确点 {n}m 方格聚合（create_square_grid·仅有点的格）",
         },
     }
     spec_path = os.path.join(INBOX, f"{spec_id}.json")
@@ -224,7 +290,21 @@ def main():
     summary["aspect"] = {c: int(grid[f"n_{c}"].sum()) for c in ASPECTS}
     if ev is not None:
         summary["event"] = {c: int(grid[f"n_ev_{c}"].sum()) for c in EVENTS}
-    summary_path = os.path.join(OUT_DIR, "summary.json")
+    # 口径对照段（PT-CB7 T8/T9：所有数据类交付必带·注册表卡 ID 只读引用）
+    ok_n = int(grid["point_count"].sum())
+    summary["caliber_compare"] = {
+        "this_result": f"12345 2024 geocode_status=ok 精确坐标点 {ok_n} 件（{n}m 方格聚合）",
+        "source_total_with_coords": int(src_total),
+        "landing_rate_vs_source": round(ok_n / src_total * 100, 1) if src_total else None,
+        "full_k01": {"count": FULL_COUNT_K01, "note": "K-01 12345 管理口径·市域全量（含无坐标/region 点）"},
+        "full_k02": {"count": FULL_COUNT_K02, "note": "K-02 board 双口径·全量（含客观轨）"},
+        "subset_declaration": "本结果 = ok 精确落点子集，非全量；地理落点可得性与诉求类型相关（子集偏差声明）",
+        "registry_ref": "docs/urban-renewal-plan/00-宜昌专项/_口径注册表.md K-01/K-02",
+        "dropped_core_fields": _CORE_DROP_COLS,
+        "dropped_fields_note": "poi_names/place_name 等为 core.create_square_grid 自附下钻链字段（CB-16 Wave 2），本交付不需要已删除",
+        "region_caliber": args.region_caliber,
+    }
+    summary_path = os.path.join(out_dir, "summary.json")
     with open(summary_path, "w", encoding="utf-8") as f:
         json.dump(summary, f, ensure_ascii=False, indent=2)
     _safe_print(f"[OK] {summary_path}")

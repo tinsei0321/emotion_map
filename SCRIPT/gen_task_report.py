@@ -3,14 +3,21 @@
 
 读取当前会话 session.jsonl.zstd，解析 turn/step/reasoning/tool-call/tool-result/usage，
 生成一份面向分析团队的完整 Loop 报告。机器可读中间产物另存 session_parse.json。
+
+用法（PT-CB7 T8 会话路径参数化·缺省=首次任务原路径）：
+  py SCRIPT/gen_task_report.py --log <session.jsonl.zstd> [--out-md <路径>] [--out-json <路径>]
 """
+import argparse
 import json
 import os
 import zstandard
 
-LOG = r"C:\Users\Hi\.dsh\sessions\--D-Github-dsh_test--\session-f49179a1-21f8-454e-b2ed-da1c1b2b49a4\session.jsonl.zstd"
-OUT_MD = r"D:\Github\emotion_map\DATA\exports\12345_800m方格\任务过程与成本报告.md"
-OUT_JSON = r"D:\Github\emotion_map\DATA\exports\12345_800m方格\session_parse.json"
+DEFAULT_LOG = r"C:\Users\Hi\.dsh\sessions\--D-Github-dsh_test--\session-f49179a1-21f8-454e-b2ed-da1c1b2b49a4\session.jsonl.zstd"
+DEFAULT_OUT_DIR = r"D:\Github\emotion_map\DATA\exports\12345_800m方格"
+# 以下三个由 main() 的 argparse 覆写（保留模块常量供兼容引用）
+LOG = DEFAULT_LOG
+OUT_MD = os.path.join(DEFAULT_OUT_DIR, "任务过程与成本报告.md")
+OUT_JSON = os.path.join(DEFAULT_OUT_DIR, "session_parse.json")
 
 
 def load_events(path):
@@ -41,7 +48,17 @@ def code_block(text, max_len=None):
     return "```text\n" + text + "\n```"
 
 
-def main():
+def main(argv=None):
+    global LOG, OUT_MD, OUT_JSON
+    ap = argparse.ArgumentParser(description="DSH 会话日志 → 任务过程与成本报告")
+    ap.add_argument("--log", default=DEFAULT_LOG, help="session.jsonl.zstd 路径")
+    ap.add_argument("--out-md", default="", help="报告 md 输出路径（缺省=默认输出目录）")
+    ap.add_argument("--out-json", default="", help="session_parse.json 输出路径（缺省=默认输出目录）")
+    args = ap.parse_args(argv)
+    LOG = args.log
+    out_md = args.out_md or os.path.join(DEFAULT_OUT_DIR, "任务过程与成本报告.md")
+    out_json = args.out_json or os.path.join(DEFAULT_OUT_DIR, "session_parse.json")
+    OUT_MD, OUT_JSON = out_md, out_json
     events = load_events(LOG)
 
     # 元信息
