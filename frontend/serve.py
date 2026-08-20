@@ -158,6 +158,10 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         self.close_connection = True   # 每响应后关连接·单线程服务不阻塞·SSE 仍按 Connection:close 流式
 
     def do_GET(self):
+        # PT-CB7 T19：跨源就绪 gate（dsh 入口插件探测）——仅当后端 health 真可达才 200，
+        # 带 Access-Control-Allow-Origin:*（插件需读真实 status；no-cors opaque 无法区分 502）。
+        if self.path.split('?')[0] == '/emc-ready':
+            return self._emc_ready()
         # /api/* → 反代后端（同源，消除浏览器跨域这一跳）
         if self.path.split('?')[0].startswith('/api/'):
             return self._proxy_api()
@@ -220,6 +224,25 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         if path.startswith('/api/'):
             return self._proxy_api()
         self.send_error(405, 'Method Not Allowed')
+
+    def _emc_ready(self):
+        """PT-CB7 T19：真就绪探针——serve 自己查后端 :8000 health，通了才 200（否则 503）。
+        治入口插件 no-cors 误判：opaque 送达对 502 也 resolve，导致预热未完即开页。"""
+        import urllib.request
+        try:
+            resp = urllib.request.urlopen(BACKEND_ORIGIN + '/api/v1/health', timeout=3)
+            code = resp.getcode()
+            resp.close()
+        except Exception:
+            code = 503
+        ready = (code == 200)
+        body = (b'{"ready": true}' if ready else b'{"ready": false}')
+        self.send_response(200 if ready else 503)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def _proxy_api(self):
         """同源 /api/* → 后端 :8000 透传。SSE（text/event-stream）分块流式转发（WS1 F1.4·渐进 token）；
