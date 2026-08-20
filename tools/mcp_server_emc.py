@@ -182,15 +182,9 @@ def _layer_output_geojson(gdf, top_n, value_col):
 
 @track('MOD_AIQA.F_021', track_args=False)
 def list_data(include_demo: bool = False) -> dict:
-    """数据说明书：列出可分析点层与边界 preset（字段/类型/usage·不含样例值）。
-
-    清单口径（F1）：点层 = resolve 可解析集（list_point_layers 的 available 项），
-    不再按 level 过滤——保证与 zonal_stats 等工具的实际解析能力一致。
-    include_demo 参数保留兼容，当前不改变清单口径。
-
-    Args:
-        include_demo: 兼容保留（F1 起清单恒为可解析集）。
-    """
+    """数据说明书：列出可分析点层与边界 preset（字段/类型/usage/数据性质·不含样例值）。
+    参数：include_demo 兼容保留（清单恒为 resolve 可解析集·F1）。
+    限制：分析前必查（layer/boundary 取 id 的唯一入口）；返回带 caliber 口径标。"""
     from core.config import PERFORMANCE_DIR
     from core.geo_registry import _POINT_LAYERS, _layer_path, list_point_layers
 
@@ -251,18 +245,9 @@ def list_data(include_demo: bool = False) -> dict:
 
 @track('MOD_AIQA.F_022', track_args=False)
 def rag_query(query: str, k: int = 5, synthesize: bool = False) -> dict:
-    """带来源知识检索：返回 Top-K 素材与维度分布（v1 不调 LLM 综合）。
-
-    差异化说明：
-    - 策展来源：本地治理知识库（非通用联网搜索）；
-    - 检索维度：知识类、非空间（口径/规则/背景问答·非空间分析）；
-    - 适用场景：口径·规则·背景问答，不做空间分析。
-
-    Args:
-        query: 检索问题（开放语义）。
-        k: Top-K（1-10，自动夹取）。
-        synthesize: True 时 v1 诚实降级 deferred_v2（附宿主综合指引）。
-    """
+    """带来源知识检索：本地治理知识库 Top-K 素材+维度分布（非联网·非空间分析）。
+    参数：query 必填；k 1-10；synthesize=True 时 v1 诚实降级 deferred_v2（附宿主综合指引）。
+    限制：索引未建时报提示（py tools/rag_index.py --build）；适用口径/规则/背景问答。"""
     if not query or not str(query).strip():
         return {'ok': False, 'hint': 'query 不能为空', 'caliber': CALIBERS['rag_query']}
 
@@ -304,14 +289,9 @@ def rag_query(query: str, k: int = 5, synthesize: bool = False) -> dict:
 @track('MOD_AIQA.F_023', track_args=False)
 def kb_facts(query: str = '', keyword: str = '', topic: str = '',
              limit: int = 5) -> dict:
-    """行业事实卡：确定性查询（关键词精确 WHERE·非向量·CB-22f D5 兜底）。
-
-    Args:
-        query: 问题短句（真身按 keywords/region 反查命中）。
-        keyword: 关键词（空格分词·精确命中加权）。
-        topic: 事实卡主题过滤（metric/issue/project 等）。
-        limit: 返回条数（1-20）。
-    """
+    """行业事实卡：确定性查询（关键词精确命中·非向量·CB-22f D5 兜底）。
+    参数：query/keyword 至少给一；topic 可选（metric/issue/project/identity 等）；limit 1-20。
+    限制：固定 city=宜昌；命中按 keywords/region 反查加权。"""
     limit = max(1, min(int(limit), 20))
     try:
         from ai_qa.outlet_kb.urban_renewal_knowledge import query_knowledge_base
@@ -326,13 +306,9 @@ def kb_facts(query: str = '', keyword: str = '', topic: str = '',
 
 @track('MOD_AIQA.F_024', track_args=False)
 def outlet_card(question: str = '', result: dict = None, diagnose: dict = None) -> dict:
-    """行业出口卡（对话级·确定性组装·零 LLM）。
-
-    Args:
-        question: 原始问题。
-        result: 分析结果对象（可缺字段）。
-        diagnose: 诊断对象（scale/domain_lens/outlet）。
-    """
+    """行业出口卡：确定性组装的对话级行业接口卡（零 LLM）。
+    参数：question 原始问题；result 分析结果对象；diagnose 诊断对象（scale/domain_lens/outlet）；字段均可缺。
+    限制：组装失败返回 ok=False+hint；不产新数据。"""
     try:
         from ai_qa.outlet_kb.build_outlet_schema import build_outlet_schema
         cards = build_outlet_schema(diagnose or {}, result or {}, question or '')
@@ -348,18 +324,9 @@ def zonal_stats(boundary: str, layer: str = 'yichang_l2_t1',
                 agg_cols: list = None, top_n: int = 10,
                 layer_output: bool = False,
                 sort_by: str = 'polarity_index') -> dict:
-    """单元聚合：情绪点按边界单元统计（首次调用含 geopandas 冷启动约 10-20s）。
-
-    layer_output=True 返回 geojson 可直接 render_spec 内联铺图（推荐用于出图链）。
-
-    Args:
-        boundary: 边界 preset id（先经 list_data 查询）。
-        layer: 点层 id（默认 yichang_l2_t1）。
-        agg_cols: 聚合数值列（默认 ['score']）。
-        top_n: 返回 Top-N 行（1-20，rows 硬顶 20）。
-        layer_output: True 时返回值增 geojson（仅 top_n 行多边形）。
-        sort_by: 排序字段（point_count|polarity_index|score_mean，默认 polarity_index 向后兼容）。
-    """
+    """单元聚合：情绪点按边界单元统计（宏观/中观结论）。
+    参数：boundary 必填（先 list_data）；layer 默认 yichang_l2_t1；sort_by=point_count|polarity_index|score_mean；top_n 1-20；layer_output=True 增 geojson 供 render_spec 内联铺图。
+    限制：首次调用 geopandas 冷启动约 10-20s；rows 硬顶 20。"""
     try:
         from core.geo_registry import resolve_boundary, resolve_points
         from core.spatial_analysis import aggregate_by_polygons
@@ -409,13 +376,8 @@ def zonal_stats(boundary: str, layer: str = 'yichang_l2_t1',
 def buffer(center: str, radius_m: int = 500, layer: str = 'yichang_l2_t1',
            dissolve: bool = True) -> dict:
     """缓冲影响圈：设施周边半径范围 + 圈内情绪点计数。
-
-    Args:
-        center: 中心 preset id（先经 list_data 查询）。
-        radius_m: 半径米（50-3000）。
-        layer: 圈内点计数用点层 id。
-        dissolve: True 合并为单一覆盖区。
-    """
+    参数：center 必填（先 list_data）；radius_m 50-3000；layer 计数点层；dissolve=True 合并覆盖区。
+    限制：几何过大（>5 要素或 >100KB）省略 buffer_fc 改用前端渲染。"""
     try:
         from core.buffer_analysis import create_buffer
         from core.geo_registry import resolve_boundary, resolve_points
@@ -458,15 +420,8 @@ def rank(by: str = 'worst', layer: str = 'yichang_l2_t1',
          layer_output: bool = False,
          sort_by: str = 'polarity_index') -> dict:
     """排序评价：按极性指数找最差/最好 Top-N 单元（先聚合再排）。
-
-    Args:
-        by: worst（最负在前）| best（最正在前）。
-        layer: 点层 id。
-        boundary: 边界 preset id。
-        top_n: 返回行数（1-20）。
-        layer_output: True 时返回值增 geojson（仅 top_n 行多边形）。
-        sort_by: 排序字段（point_count|polarity_index|score_mean，默认 polarity_index 向后兼容）。
-    """
+    参数：boundary 必填；by=worst|best；sort_by=point_count|polarity_index|score_mean；top_n 1-20；layer_output=True 增 geojson。
+    限制：首次调用冷启动同 zonal_stats；层无 polarity_index 时报提示。"""
     if not boundary:
         return {'ok': False, 'hint': 'rank 需 boundary（先 zonal 聚合再排）',
                 'caliber': CALIBERS['rank']}
@@ -547,25 +502,9 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
                 ramp_hint: str = '', zoom_to: bool = True, producer: str = 'dsh',
                 source_tool: str = 'manual', data_nature: str = 'real',
                 community_caliber: int = 0) -> dict:
-    """图层图纸（render spec v1）：dataset 引用或内联 GeoJSON → 收件箱 JSON。
-
-    产物经 8080 前端显示屏呈现（需浏览器已打开情绪地图页面）；
-    写盘 = DATA/exports/render_inbox/<spec_id>.json（毫秒级·不渲染）。
-
-    Args:
-        kind: point | choropleth。
-        name: 图层名（现实内容·前端加 [dsh] 前缀）。
-        dataset_id: preset 或点层 id（与 geojson 二选一·同时给以 dataset_id 为准）。
-        geojson: 内联 FeatureCollection（要素 ≤60）。
-        scheme: community_choropleth_v1 | point_default_v1（缺省按 kind 推导）。
-        value_field: choropleth 取值字段（默认 polarity_index）。
-        ramp_hint: worst_first 可选（其余省略）。
-        zoom_to: True 前端铺层后缩放至图层。
-        producer: 生产者标识（默认 dsh）。
-        source_tool: 来源工具（rank | zonal_stats | manual）。
-        data_nature: real | demo（inline 由调用方声明·dataset 由池路径判定）。
-        community_caliber: 社区口径（174|154|118|130…·填则入 caliber_lite.community）。
-    """
+    """图层图纸：dataset 引用或内联 GeoJSON → render_inbox spec，经 8080 前端显示屏呈现。
+    参数：kind=point|choropleth；name 必填；dataset_id 与 geojson（要素≤60）二选一；value_field 默认 polarity_index；scheme 缺省自动；community_caliber 可选 K-C1 枚举。
+    限制：写盘毫秒级不渲染；需浏览器已开情绪地图页；新 spec 覆盖旧 [dsh] 图层（T1）。"""
     if kind not in ('point', 'choropleth'):
         return {'ok': False, 'hint': f'kind 非法: {kind!r}（仅 point|choropleth）',
                 'caliber': CALIBERS['render_spec']}
