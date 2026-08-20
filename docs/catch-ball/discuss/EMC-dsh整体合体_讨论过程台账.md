@@ -480,6 +480,16 @@
 | 2026-08-19（深夜·R30） | MCP vs FC 之问：选 MCP 更极致·FC 效果差——答：上下游非对手+零自有FC倾向记录 |
 | 2026-08-20（R43） | dsh 已完成——S7 判读：五层判定+D1-D5 清单+两裁决 |
 
+## R45（2026-08-20）Codex 全量审计回收 + D 批签发（zcode·office 班）
+
+- **四线总裁定**：PT-CB6 主体通过（新缺陷 D9-D13·均 P2/P3 无 P1）/ PT-CB5 补审通过（G-2 穿透洞独立复测全拒·利益冲突四项成立·A9 固化无复发）/ PT-CB4 抽验通过（T1 两组复现·T2 三卡·presets 同步批挂账在档）/ **B1 复审通过·正式销号**（七项修复全部在位·三轮门禁 389+3→427+2 佐证）。
+- **主手抽验**：D9-D13 五缺陷代码事实全部复核成立（D10 无条件计数着色·D11 口径混配实证·D12 名不副实·D13 两处裸 print·D9 仅注册无 @track）。
+- **主手裁决**：D9=豁免（高频 1s 扫描免 @track·与 field_dictionary 热路径惯例一致·纪律条款待固化）；D10-D13 入 D 批。
+- **D 批签发**（8 件：D1-D4+D10-D13）：组 A mcp_server 5 件（D1 sort_by 枚举/D2-D3 描述/D4 stderr/D11 K-C1 校验）·组 B render_client D10 着色分派（规格主手定稿：polarity 系→piToNorm+polarityStops 同源·禁自造）·组 C demo_pioneer D12 名实相符·组 D render_routes D13 _safe_print。白名单四文件+测试；门禁 427+2；零新追踪 ID。
+- **挂账顺修**（不派本轮）：A9 fail-open 收窄/inbox TTL/_count_norm 抽公共函数/dataset 字段白名单/K-C1 补 118/demo 点层 preset 注册。
+- 状态：Codex 报告+任务书+派发单随 commit 入库；D 批待用户转发 dsh；Q3/Q4 用户复测（Q4 题面明写 base_174_aggregate_area）与 D 批回收一并收口。
+
+
 ## R44（2026-08-20）S7 增量判读·S6 后（zcode·office 班）
 
 - **S6 三显示面缺陷验收**：✅①serve.py 单线程 SSE 阻塞（ThreadingTCPServer 修复·并发验证过）②render_client 缺 spec_id 去重（_seenSpecIds·12s 采样图层恒 1）③render_inbox 积压重放（15 旧 spec 移 _backup·backlog 仅 1）。三坑均修均验，**并入缺陷清单为 D6-D8（已修销号）**；踩坑六条沉淀 debug-memory **R11**（含 zonal 排序语义/内联优先两条语义坑）。
