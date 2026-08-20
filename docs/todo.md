@@ -9,6 +9,27 @@
 
 ---
 
+## 📅 2026-08-21（PT-CB7「稳定与灵魂」批主执行 · Qoder · 分支 `EMC_harness_dsh` · home 收工待 office 续点）
+
+> 全天 home 班：审计先行 + T1-T21 大半销号 + 用户实测五连修 + dsh 两批回收；基线 442 passed/2 skipped；收工卡 `_handoff/HOME.md`。
+
+### ✅ 已销号（commit 链 97fb95bd→28f78c63）
+
+- ✅ T1 图层叠层自清理（`97fb95bd`）· T6 MCP 描述紧凑化（`0d752150`）· T8 800m 脚本参数化+口径对照段（`9e7ca1dc`）· T5+T9 身份卡扩写+RAG 364 条（`c6013cf8`）· T14 结果呈现契约§七（`1dc80123`）· T10 出图范式契约 render-contract.md（`a8a697e5`）。
+- ✅ 用户实测五连修：T18 render_file 第 9 插座（“显示到地图”一步到位·治长思维+误入 Range·`3d80d2cd`）· T16 历史图层残留根治（applied/ 归档·`8608ff14`）· T19 /emc-ready 真就绪 gate+快通道+杀窗守卫（治“加载一半失效”·`23888cb3`）· T21 SSE 扇出广播+50s 豁免（治“F5 才见”·`691676ab`）· T15 start_silent.vbs 隐藏启动+对话气泡首屏卡（`fa661192`）。
+- ✅ dsh 两批回收：批 1（T2 terminal chunk/T4 计时取证/F1-F4）；批 2（人设 prompt 落地生效·「你是谁」实测通过；T17 timeout 120s 无效→根因=MCP 冷启动 >120s）。
+
+### 🔄 进行中 / ⬜ 待办（office 续点按序）
+
+- ⬜ T17 服务端预热真修（MCP server 启动即预载 geo/RAG·设计后派 dsh）——第一优先。
+- ⬜ T7 双模预设落地（emc-analysis 默认 low+工具子集 / emc-research max）+ ≤2min 验收跑（批 3）。
+- ⬜ 五项用户实测验证（快通道/冷启动气泡卡/免 F5 铺层/render_file/身份自述）。
+- ⬜ zcode 回收验收 + 《Qoder 执行效果评估》（对照 dsh 前几批）。
+- ⏸️ 待裁决：T11 被 render_file 吸收待销项确认；D2 欢迎卡绑定目标会话；debug-memory 双 R11 撞号合并。
+- ⏸️ 观察：render_file 临时 dataset（tmp_render_*）manifest 累积节奏。
+
+---
+
 ## 📅 2026-08-20（PT-CB6 用户交互复测 + render 通道排障 · dsh · 分支 `EMC_harness_dsh`）
 
 > 凌晨 home 班：用户亲测 Q2「12345 热线诉求最密集的 10 个社区是哪些？把结果铺到地图上」；端到端打通并修复渲染通道三个坑。
@@ -48,24 +69,6 @@
 5. **dataset_id 引用在大图层/多 spec 并发时会排队超时**；关键演示图层优先用内联 GeoJSON（≤60 要素）。
 
 ---
-
-### ✅ D 批打磨回收（office 班·zcode）
-
-- 8 件全销号；主手抽验全过（D10 同源/D11 混配断言/D1 默认零退化）；门禁 434+2（上浮 7 注明）。
-- **缺陷清单 D1-D13 收官**（D9 豁免裁决）。剩余收口=用户 Q3/Q4 复测+挂账顺修 6 项。
-
-### ✅ Codex 全量审计回收 + D 批签发（office 班·zcode）
-
-- 四线通过：CB6 主体（D9-D13 新缺陷·全 P2/P3）/ CB5 补审 / CB4 抽验 / **B1 正式销号**。
-- 主手抽验五缺陷成立；D9 豁免裁决；D10 着色分派规格主手定稿（polarity→piToNorm 同源）。
-- D 批 8 件签发（派发单 PT-CB6-D批派发单_zcode-2026-08-20.md·待转发 dsh）。
-- 挂账顺修 6 项。
-
-### ✅ S7 增量判读（office 班·zcode）
-
-- D6-D8 三显示面缺陷验收通过并入清单（已修销号）；踩坑沉淀 debug-memory R11。
-- 缺陷清单现状：D1-D3 待派、D4 待做、D5/D6-D8 已销。
-- 下一步三选（用户定）：D 批打磨派发 / 用户复测 Q3-Q4 / B1 复审并入 CB6 期审计。
 
 ## 📅 2026-08-18（CB-41 体检点聚合双 bug 排查发起 · zcode · 分支 `EMC_harness_dsh`）
 
