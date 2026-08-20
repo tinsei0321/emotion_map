@@ -35,6 +35,7 @@ register_track_id('MOD_AIQA.F_025', 'MCP zonal_stats（单元聚合·宏观/中�
 register_track_id('MOD_AIQA.F_026', 'MCP buffer（缓冲影响圈·中观）')
 register_track_id('MOD_AIQA.F_027', 'MCP rank（排序评价·最差/最好 Top-N）')
 register_track_id('MOD_AIQA.F_028', 'MCP render_spec（图层图纸：dataset/inline→spec 落收件箱）')
+register_track_id('MOD_AIQA.F_031', 'MCP render_file（把文件现在显示到地图：服务端读取·≤60 内联/>60 自动登记临时 dataset·一步到位）')
 
 MANIFEST = os.path.join(REPO, 'DATA', 'boundaries', 'presets', 'manifest.json')
 
@@ -244,7 +245,8 @@ def list_data(include_demo: bool = False) -> dict:
             'schemes': list(SCHEMES),
             'paradigm': ('三档出图范式：①inline（geojson ≤60 要素）'
                          '②dataset_id（引用已注册数据源·无体量限制）'
-                         '③脚本全量+manifest 注册后走②（超限唯一正道）；详见 docs/render-contract.md'),
+                         '③脚本全量+manifest 注册后走②（超限唯一正道）；'
+                         '把已有文件显示到地图用 render_file（自动选档）；详见 docs/render-contract.md'),
             'tip_required_fields': ['name'],
             'tip_recommended_fields': ['point_count', 'polarity_index'],
             'limits': {'inline_features_max': 60, 'zonal_top_n_max': 20},
@@ -480,11 +482,13 @@ def rank(by: str = 'worst', layer: str = 'yichang_l2_t1',
     return out
 
 
-def _dataset_meta(dataset_id):
+def _dataset_meta(dataset_id, groups=None):
     """dataset_id → {usage, data_nature}（preset 读 manifest·点层按池路径·未知 None）。"""
     try:
-        with open(MANIFEST, 'r', encoding='utf-8') as fh:
-            for group in json.load(fh):
+        if groups is None:
+            with open(MANIFEST, 'r', encoding='utf-8') as fh:
+                groups = json.load(fh)
+        for group in groups:
                 for it in group.get('items', []):
                     if it.get('id') == dataset_id:
                         return {'usage': it.get('usage', 'input'),
@@ -614,6 +618,85 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
             'caliber': CALIBERS['render_spec']}
 
 
+# PT-CB7 T18：render_file 自动登记临时 dataset 的 manifest 分组
+TMP_RENDER_GROUP = 'dsh 临时渲染（render_file 自动登记）'
+
+
+def _find_tmp_dataset(groups, rel_file):
+    """同源文件已有临时登记则复用 id（防重复登记膨胀 manifest）。"""
+    for group in groups:
+        for it in group.get('items', []):
+            if str(it.get('id', '')).startswith('tmp_render_') and it.get('file') == rel_file:
+                return it.get('id')
+    return None
+
+
+@track('MOD_AIQA.F_031', track_args=False)
+def render_file(file: str, name: str = '', kind: str = '',
+                value_field: str = 'point_count') -> dict:
+    """把 geojson 文件现在显示到地图：服务端读取，≤60 要素内联，>60 自动登记临时 dataset 并引用（无需手工注册）。
+    参数：file 仓内路径（白名单根目录·相对或绝对）；name 缺省取文件名；kind 缺省自动判 point/choropleth；value_field 默认 point_count。
+    限制：仅收 FeatureCollection；「把 X 显示到地图上」的唯一正路——直接渲染，不做进 Range 等用户点击。"""
+    cal = CALIBERS['render_spec']
+    # 路径安全：白名单 = 仓根（防路径穿越读外部文件）
+    p = os.path.abspath(file if os.path.isabs(file) else os.path.join(REPO, file))
+    if not p.startswith(REPO + os.sep):
+        return {'ok': False, 'hint': 'file 必须在仓内（路径白名单）', 'caliber': cal}
+    if not os.path.isfile(p):
+        return {'ok': False, 'hint': f'文件不存在: {os.path.relpath(p, REPO)}', 'caliber': cal}
+    try:
+        with open(p, 'r', encoding='utf-8') as fh:
+            fc = json.load(fh)
+    except Exception as exc:
+        return {'ok': False, 'hint': f'geojson 解析失败: {exc}', 'caliber': cal}
+    if not isinstance(fc, dict) or fc.get('type') != 'FeatureCollection':
+        return {'ok': False, 'hint': '文件必须是 FeatureCollection', 'caliber': cal}
+    feats = fc.get('features') or []
+    if not feats:
+        return {'ok': False, 'hint': 'geojson 无要素', 'caliber': cal}
+
+    if not kind:
+        gtype = str((feats[0].get('geometry') or {}).get('type', ''))
+        kind = 'point' if gtype == 'Point' else 'choropleth'
+    layer_name = name.strip() or os.path.splitext(os.path.basename(p))[0]
+
+    # ≤ 60 要素：直接内联（范式①）
+    if len(feats) <= 60:
+        out = render_spec(kind=kind, name=layer_name, geojson=fc,
+                          value_field=value_field)
+        out['mode'] = 'inline'
+        return out
+
+    # > 60 要素：自动登记临时 dataset（同源复用）→ dataset_id 引用（范式②③自动合体）
+    try:
+        with open(MANIFEST, 'r', encoding='utf-8') as fh:
+            groups = json.load(fh)
+    except Exception as exc:
+        return {'ok': False, 'hint': f'manifest 读取失败: {exc}', 'caliber': cal}
+    rel = os.path.relpath(p, os.path.dirname(MANIFEST)).replace(os.sep, '/')
+    ds_id = _find_tmp_dataset(groups, rel)
+    if ds_id is None:
+        ds_id = f'tmp_render_{int(time.time())}'
+        entry = {'id': ds_id, 'label': layer_name, 'file': rel,
+                 'nameField': 'name', 'usage': 'analysis_output',
+                 'note': f'PT-CB7 render_file 自动登记（源 {os.path.relpath(p, REPO)}）'}
+        target = next((g for g in groups if g.get('group') == TMP_RENDER_GROUP), None)
+        if target is None:
+            target = {'group': TMP_RENDER_GROUP, 'items': []}
+            groups.append(target)
+        target['items'].append(entry)
+        try:
+            with open(MANIFEST, 'w', encoding='utf-8', newline='') as fh:
+                json.dump(groups, fh, ensure_ascii=False, indent=2)
+        except Exception as exc:
+            return {'ok': False, 'hint': f'manifest 写入失败: {exc}', 'caliber': cal}
+    out = render_spec(kind=kind, name=layer_name, dataset_id=ds_id,
+                      value_field=value_field)
+    out['mode'] = 'dataset'
+    out['dataset_id'] = ds_id
+    return out
+
+
 def build_server():
     """惰性装配 FastMCP（mcp 包仅在真正启动 server 时 import）。"""
     from mcp.server.fastmcp import FastMCP
@@ -627,6 +710,7 @@ def build_server():
     server.tool()(buffer)
     server.tool()(rank)
     server.tool()(render_spec)
+    server.tool()(render_file)
     return server
 
 

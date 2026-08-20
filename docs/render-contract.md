@@ -37,6 +37,8 @@ tip 内容取自 feature.properties——**tip 缺信息 = properties 缺字段�
 | ② dataset_id | 已注册数据源（preset/点层） | `render_spec(kind, name, dataset_id='<id>')` | 前端经 `/api/v1/render/dataset/<id>` 自取数·无体量限制 |
 | ③ 脚本+注册 | 全量/超限（如 174 社区全量、800m 方格全量） | 脚本调 core 聚合 → geojson 落 `DATA/boundaries/presets/`（或 analysis 目录）→ manifest 注册 → 回到②档 | zonal_stats top_n≤20 / inline≤60 均不放宽——超限走本档 |
 
+**直入口（PT-CB7 T18）：「把某文件显示到地图上」= `render_file(file='<仓内路径>')` 一步到位**——服务端读取、自动判 kind、≤60 内联/>60 自动登记临时 dataset 并引用（同源复用·usage=analysis_output）。**零思考、零手工注册、不进 Range**。
+
 **③档注册要求**（manifest.json 条目字段）：
 - `id`：`checkup_`/`subj_` 前缀按轨道；`usage`：脚本聚合产物**默认 `analysis_output`**（结论层·防误作分析输入），确为原料才 `input`；
 - `nameField`：tip 与列表用的名称字段；`note`：注明来源/口径/生成脚本；
@@ -67,12 +69,13 @@ tip 内容取自 feature.properties——**tip 缺信息 = properties 缺字段�
 3. **tip 空白/缺名**：properties 没带 `name`（聚合时 polygon_name_col 未指定或源数据无名）。
 4. **同会话重复出图叠层**：PT-CB7 T1 后 render_client 铺新层前自清全部 `[dsh]` 层——同会话仅存最新一张（多图并存需求回主手裁定）。
 5. **结论层回灌**：usage=analysis_output 的 dataset 再作 zonal/buffer 输入会被 `_reject_analysis_output` 拒绝——这是红线不是 bug。
+6. **「显示到地图」误入 Range**（PT-CB7 T18 实录）：用户说「显示/展示/放到地图上」= 立即 render_file 直接渲染（zoom_to 默认开·地图跟随）；**不是**注册成 preset/Range 条目等用户自己点——交互地图的跟随显示是 EMC 体验核心，把动作留给用户 = 理解错误。
 
 ## 七 结果呈现契约（行为义务·PT-CB7 T14）
 
 > 面向对象：EMC 人设下的 agent（dsh/Codex 等外部宿主同适用）。与 §一~六（机制契约）配套：机制说「怎么出图」，本节说「何时必须出图」。
 
-1. **凡工具可成图必出图**：分析类问题（聚合/排序/缓冲/分布）的答案凡有空间载体，必须经 render_spec 出图（按 §三 选档），不得只给文字/表格；纯知识问答（口径/背景）除外。
+1. **凡工具可成图必出图**：分析类问题（聚合/排序/缓冲/分布）的答案凡有空间载体，必须经 render_spec/render_file 出图（按 §三 选档），不得只给文字/表格；纯知识问答（口径/背景）除外。**地图是答案的画布：问答通过地图的跟随显示才是交互体验的核心（EMC 初衷）。**
 2. **图文并茂双交付**：图（render_spec）+ 文字结论同轮交付；文字结论必带口径对照段（口径卡 ID + 子集声明「本结果≠全量」+ 覆盖说明），与身份卡 T9 纪律同源。
 3. **出图前提自查**：properties 必带 `name`（§二）；聚合时指定名称字段；无图可出时明说原因（无空间载体/数据缺口），不静默降级为纯文本。
 4. **结论层只展示**：本轮产出的 analysis_output 图仅用于呈现，禁作后续分析输入（§六-5 同律）。

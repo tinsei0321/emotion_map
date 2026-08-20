@@ -10,6 +10,7 @@
 7. buffer：小几何返回 buffer_fc、大几何 fc_omitted；
 8. 未知层 id 返回语义化 hint。
 """
+import json
 import os
 import sys
 
@@ -124,6 +125,71 @@ def test_render_scheme_vocabulary_and_contract_pointer():
     assert 'boundary_fill_v1' in mse.SCHEMES
     assert 'render-contract' in (mse.render_spec.__doc__ or '')
     assert 'render-contract' in (mse.list_data.__doc__ or '')
+
+
+# ════ PT-CB7 T18: render_file ════
+
+def _fc_points(n):
+    return {'type': 'FeatureCollection', 'features': [
+        {'type': 'Feature', 'geometry': {'type': 'Point', 'coordinates': [111.2 + i * 0.001, 30.6]},
+         'properties': {'name': f'p{i}', 'point_count': i + 1}} for i in range(n)]}
+
+
+def _fc_polys(n):
+    return {'type': 'FeatureCollection', 'features': [
+        {'type': 'Feature',
+         'geometry': {'type': 'Polygon', 'coordinates': [
+             [[111.2 + i * 0.01, 30.6], [111.21 + i * 0.01, 30.6],
+              [111.21 + i * 0.01, 30.61], [111.2 + i * 0.01, 30.6]]]},
+         'properties': {'name': f'u{i}', 'point_count': i + 1}} for i in range(n)]}
+
+
+def test_render_file_small_inline(monkeypatch, tmp_path):
+    """≤60 要素走内联：spec 落收件箱，mode=inline。"""
+    monkeypatch.setattr(mse, 'REPO', str(tmp_path))
+    src = tmp_path / 'DATA' / 'out'
+    src.mkdir(parents=True)
+    f = src / 'my_layer.geojson'
+    f.write_text(json.dumps(_fc_points(3)), encoding='utf-8')
+
+    out = mse.render_file(file='DATA/out/my_layer.geojson')
+    assert out['ok'] is True and out['mode'] == 'inline'
+    inbox = tmp_path / 'DATA' / 'exports' / 'render_inbox'
+    assert len(list(inbox.glob('*.json'))) == 1
+
+
+def test_render_file_large_auto_register_and_reuse(monkeypatch, tmp_path):
+    """>60 要素自动登记临时 dataset（同源复用 id）→ dataset_id 引用。"""
+    monkeypatch.setattr(mse, 'REPO', str(tmp_path))
+    manifest = tmp_path / 'manifest.json'
+    manifest.write_text(json.dumps([{'group': 'g', 'items': []}], ensure_ascii=False), encoding='utf-8')
+    monkeypatch.setattr(mse, 'MANIFEST', str(manifest))
+    src = tmp_path / 'DATA'
+    src.mkdir(parents=True)
+    f = src / 'big.geojson'
+    f.write_text(json.dumps(_fc_polys(70)), encoding='utf-8')
+
+    out1 = mse.render_file(file='DATA/big.geojson')
+    assert out1['ok'] is True and out1['mode'] == 'dataset'
+    ds_id = out1['dataset_id']
+    assert ds_id.startswith('tmp_render_')
+    groups = json.loads(manifest.read_text(encoding='utf-8'))
+    tmp_group = next(g for g in groups if g['group'] == mse.TMP_RENDER_GROUP)
+    assert len(tmp_group['items']) == 1 and tmp_group['items'][0]['usage'] == 'analysis_output'
+
+    out2 = mse.render_file(file='DATA/big.geojson')
+    assert out2['ok'] is True and out2['dataset_id'] == ds_id
+    groups = json.loads(manifest.read_text(encoding='utf-8'))
+    tmp_group = next(g for g in groups if g['group'] == mse.TMP_RENDER_GROUP)
+    assert len(tmp_group['items']) == 1  # 同源复用，不重复登记
+
+
+def test_render_file_path_whitelist(monkeypatch, tmp_path):
+    """路径白名单：仓外绝对路径拒绝（防穿越）。"""
+    monkeypatch.setattr(mse, 'REPO', str(tmp_path))
+    outside = tmp_path.parent / 'outside.geojson'
+    out = mse.render_file(file=str(outside))
+    assert out['ok'] is False and '白名单' in out['hint']
 
 
 # ════════════ rag_query ════════════
