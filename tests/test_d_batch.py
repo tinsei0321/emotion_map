@@ -118,7 +118,7 @@ def test_render_client_d10_source_dispatch():
         src = f.read()
     # 极性分支：同源 piToNorm + polarityStops('overall')
     assert 'piToNorm' in src
-    assert "polarityStops('overall')" in src
+    assert "polarityStops('overall'" in src   # PT-CB11 C3②：增 ramp_hint 第二参（受管色带透传）·前缀判据不变
     # 计数分支：维持 _normCommunityCount + count 着色
     assert '_normCommunityCount' in src
     # PT-CB10 C2-3：断言随 F4 裁决（f75aee58·显式字面量 paint 去 _ui.tool 标记·禁 defaultPaint 借用）

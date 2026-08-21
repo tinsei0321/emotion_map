@@ -6,10 +6,11 @@
 //   • line                 → (no popover; marker non-interactive)
 // Live: control change → setLayerPaint + renderLayer (re-renders that layer).
 
-import { getLayer, setLayerPaint, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS, HOTNESS_RAMP, PRESET_COLORS, RANGE_GRADIENTS } from './state.js';
+import { getLayer, setLayerPaint, L2_POSITIVE, L2_NEGATIVE, L2_NEUTRAL_COLOR, HEATMAP_NEGATIVE_STOPS, HEATMAP_RAMPS, HOTNESS_RAMP, PRESET_COLORS, RANGE_GRADIENTS, GRID_PALETTE_GROUPS, rampDisplaySegs } from './state.js';
 import { renderLayer, effectivePointRadius } from './map.js';
 import { refreshPopupForLayer } from './popup.js';
 import { openParamPanel, closeParamPanel } from './param-panel.js';
+import { normStops } from './grid-tool.js';
 
 // ── Presets ────────────────────────────────────────────────────────────────
 const PRESET_RAMPS = [
@@ -98,10 +99,10 @@ function build(layer) {
       body = `<div class="set-note">颜色：由极性决定</div>` + sectionPointSize(layer) + sectionOpacity(p.opacity ?? 0.9);
     }
   } else if (layer.kind === 'polygon') {
-    // PT-CB11 B3-5：数据驱动着色层（gridField·dsh 注入）fill 恒为色带表达式，拾色器改了无效=误导——
-    //   换提示文案替代拾色器（换色走重投递 spec = render-contract.md §七-7 既定契约）；面开关/线宽/透明度仍可调。
+    // PT-CB11 C3①：数据驱动着色层（gridField·dsh 注入/Toolbox 产物）——B3-5 止血提示升级为
+    //   本地色带编辑器（normStops 重算 gridStops → renderLayer 即时生效·零服务端往返）。
     const colorSec = p.gridField
-      ? `<div class="set-note">数据驱动着色·换色请重投递 spec</div>`
+      ? sectionGridRampEditor(p)
       : sectionColor(p.color || '#0c1c2e');
     body = sectionFill(p.fillOn) + colorSec + sectionLineWidth(p.lineWidth ?? 1) + sectionLineStyle(p.lineStyle || 'solid') + sectionFillOpacity(p.fillOpacity ?? 0.15, p.fillOn);
   } else if (layer.kind === 'heatmap') {
@@ -133,6 +134,38 @@ function sectionColor(currentColor) {
     <div class="set-label">颜色 / Color</div>
     <div class="color-host" data-color-host></div>
   </div>`;
+}
+
+/** C3①：数据驱动 choropleth（gridField）的本地色带编辑器——复用 grid dialog 的
+ * hm-ramp-item 渐变条按钮 + hm-ramp-group-label 分组（零新视觉 token）。
+ * 按 paint.semantic 分组排序与默认色带（count=单色系先·oranges；polarity=发散系置顶·terrain-9）；
+ * 已有受管 paint.rampKey 则如实回显「当前所用」。反向/零值显隐同 grid dialog 的 buf-cap 交互。 */
+function sectionGridRampEditor(p) {
+  const semantic = p.semantic || '';
+  const current = (p.rampKey && HEATMAP_RAMPS[p.rampKey]) ? p.rampKey
+    : (semantic === 'count' ? 'oranges' : semantic === 'polarity' ? 'terrain-9' : 'grid-warm');
+  const groups = semantic === 'polarity' ? [...GRID_PALETTE_GROUPS].reverse() : GRID_PALETTE_GROUPS;
+  let html = '';
+  for (const g of groups) {
+    html += `<div class="hm-ramp-group-label">${g.label}</div>`;
+    for (const k of g.keys) {
+      const ramp = HEATMAP_RAMPS[k];
+      if (!ramp) continue;
+      const segs = rampDisplaySegs(k, ramp);
+      html += `<button type="button" class="hm-ramp-item${k === current ? ' is-sel' : ''}" data-gridramp="${k}" title="${ramp.name}" role="option"><span class="hm-ramp-item-bar" style="background:linear-gradient(90deg, ${segs.join(',')})"></span></button>`;
+    }
+  }
+  const zeroHidden = p.zeroIsNoData === true;
+  return `<div class="set-section">
+      <div class="set-label">色带 / Color（数据驱动·本地即时）</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:2px;">${html}</div>
+    </div>
+    <div class="set-section">
+      <div class="buf-capsules">
+        <button type="button" class="buf-cap" data-gridreverse data-reverse="${p.reverse ? '1' : '0'}" title="颜色反向（高值↔低值）">⇅ 反向</button>
+        <button type="button" class="buf-cap${zeroHidden ? '' : ' is-sel'}" data-gridzero data-zero="${zeroHidden ? '1' : '0'}" title="零值/无数据格显隐">${zeroHidden ? '零值隐藏' : '零值显示'}</button>
+      </div>
+    </div>`;
 }
 
 /** 渲染「颜色」色段取色器到 host：每条色板 = 一行离散色段（复用参数面板 ③ 显示样式的
@@ -233,6 +266,46 @@ function wire(layer) {
   if (colorHost) renderColorPicker(colorHost, {
     current: layer.paint && layer.paint.color,
     onPick: (hex) => applyPaint({ color: hex }, true),
+  });
+
+  // PT-CB11 C3①：数据驱动色带（gridField）——normStops 重算 gridStops 本地即时
+  pop.querySelectorAll('[data-gridramp]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const k = b.dataset.gridramp;
+      if (!HEATMAP_RAMPS[k]) return;
+      const revBtn = pop.querySelector('[data-gridreverse]');
+      const rev = revBtn ? revBtn.dataset.reverse === '1' : false;
+      const l0 = getLayer(_layerId);
+      const semantic = (l0 && l0.paint && l0.paint.semantic) || '';
+      const baseReverse = semantic === 'count';   // count 基向反转（与投递链 countStops 默认同向·低浅高深）
+      let stops = normStops(k);
+      if (baseReverse !== rev) {
+        const colors = stops.map(([, c]) => c).reverse();
+        stops = stops.map(([d], i) => [d, colors[i]]);
+      }
+      applyPaint({ gridStops: stops, rampKey: k }, true);
+      pop.querySelectorAll('[data-gridramp]').forEach((x) => x.classList.toggle('is-sel', x === b));
+    });
+  });
+  // 反向：就地翻转当前 gridStops 高低端（语义同 grid dialog）
+  pop.querySelector('[data-gridreverse]')?.addEventListener('click', (e) => {
+    const btn = e.currentTarget;
+    const next = btn.dataset.reverse === '1' ? '0' : '1';
+    btn.dataset.reverse = next;
+    const l = getLayer(_layerId);
+    const cur = (l && l.paint && l.paint.gridStops) || [];
+    if (!cur.length) return;
+    const colors = cur.map(([, c]) => c).reverse();
+    applyPaint({ gridStops: cur.map(([d], i) => [d, colors[i]]), reverse: next === '1' }, true);
+  });
+  // 零值显隐：就地翻转 zeroIsNoData（无数据格显/隐）
+  pop.querySelector('[data-gridzero]')?.addEventListener('click', (e) => {
+    const btn = e.currentTarget;
+    const hide = btn.dataset.zero === '1';
+    btn.dataset.zero = hide ? '0' : '1';
+    btn.classList.toggle('is-sel', hide);   // is-sel = 显示中（点击旧隐藏→新显示时点亮）
+    btn.textContent = hide ? '零值显示' : '零值隐藏';
+    applyPaint({ zeroIsNoData: !hide }, true);
   });
 
   // line style (range polygon) — 实线 / 点划线；点划线区别于缓冲面域的短虚线

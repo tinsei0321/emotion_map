@@ -67,7 +67,7 @@ export function polarityStops(pol, palette, reverse) {
 }
 
 /** HEATMAP_RAMPS[key].stops 去 density 0 透明首段，归一化到 0~1（方格 fill 不能透明）。 */
-function normStops(rampKey) {
+export function normStops(rampKey) {
   const all = HEATMAP_RAMPS[rampKey].stops.filter(([d]) => d > 0);
   const dMin = all[0][0], dMax = all[all.length - 1][0];
   const span = dMax - dMin || 1;

@@ -134,6 +134,9 @@ async function _apply(spec) {
   if (scheme === SCHEMES.community_choropleth_v1) {
     const valueField = (spec.style && spec.style.value_field) || 'point_count';
     const isPolarity = valueField.includes('polarity') || valueField === 'score_mean';
+    // PT-CB11 C3②：语义 + rampKey 透传——参数面板色带编辑器据此分组排序/如实回显当前色带。
+    const rampHint = (spec.style && spec.style.ramp_hint) || '';
+    const rampKey = HEATMAP_RAMPS[rampHint] ? rampHint : '';
     let normalized;
     let paint;
     if (isPolarity) {
@@ -150,15 +153,17 @@ async function _apply(spec) {
       // 「zonal 工具归属」标记会把要素按钮点击路由进 zonal 分析对话框（该层无分析上下文→空面板）。
       // gridField/gridStops 保留（数据驱动着色·与工具归属无关）。
       paint = { fillOn: true, fillOpacity: 0.72, lineWidth: 1, lineOpacity: 0.6,
-                gridField: '_grid_norm', gridStops: polarityStops('overall') || [], valueField };   // valueField：B3-4 悬停 tip 取原始值字段名
+                gridField: '_grid_norm',
+                gridStops: polarityStops('overall', rampKey || undefined) || [],
+                semantic: 'polarity', ...(rampKey ? { rampKey } : {}), valueField };   // valueField：B3-4 悬停 tip 取原始值字段名
     } else {
       normalized = _normCommunityCount(fc, valueField);
       // PT-CB8 色板透传：spec.style.ramp_hint 命中受管词表（HEATMAP_RAMPS）则用之，
       // 否则回落默认 grid-warm（countStops 默认反转·低浅高深）。面板手选色带由此通道生效。
-      const rampHint = (spec.style && spec.style.ramp_hint) || '';
       const palette = HEATMAP_RAMPS[rampHint] ? rampHint : '';
       paint = { fillOn: true, fillOpacity: 0.72, lineWidth: 1, lineOpacity: 0.6,
-                gridField: '_count_norm', gridStops: countStops(palette), zeroIsNoData: true, valueField };   // valueField：B3-4 悬停 tip 取原始值字段名
+                gridField: '_count_norm', gridStops: countStops(palette), zeroIsNoData: true,
+                semantic: 'count', ...(palette ? { rampKey: palette } : {}), valueField };   // valueField：B3-4 悬停 tip 取原始值字段名
     }
 
 

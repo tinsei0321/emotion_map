@@ -277,6 +277,52 @@ def test_render_client_clears_dsh_layers_before_apply():
     assert i_apply < i_clear < i_add
 
 
+# ════════════ PT-CB11 C3 · 数据驱动图层样式面板（静态契约断言） ════════════
+# 运行时行为（换色带/反向/零值显隐即时生效·图例跟随·图例双入口）移交浏览器实测清单。
+
+def test_style_panel_local_ramp_editor_contract():
+    """C3①：settings.js 对 gridField 层渲染 hm-ramp-item 色带编辑器 + normStops 应用链。"""
+    with open(os.path.join(ROOT, 'frontend', 'js', 'settings.js'), encoding='utf-8') as fh:
+        src = fh.read()
+    assert 'sectionGridRampEditor' in src and 'hm-ramp-item' in src
+    assert 'hm-ramp-group-label' in src                     # 复用 grid dialog 分组结构（零新 token）
+    assert "normStops" in src and "from './grid-tool.js'" in src
+    assert "'count'" in src and "'polarity'" in src          # semantic 分支（默认 oranges / terrain-9）
+    assert 'oranges' in src and 'terrain-9' in src
+    assert 'data-gridramp' in src and 'data-gridreverse' in src and 'data-gridzero' in src
+    assert 'gridStops' in src and 'rampKey' in src            # 应用链：重算 stops→paint
+    assert 'zeroIsNoData' in src
+
+
+def test_render_client_passes_semantic_and_ramp_key():
+    """C3②：_apply 两分支透传 semantic + 受管 ramp_hint 落 rampKey。"""
+    with open(os.path.join(ROOT, 'frontend', 'js', 'render_client.js'), encoding='utf-8') as fh:
+        src = fh.read()
+    assert "semantic: 'count'" in src and "semantic: 'polarity'" in src
+    assert 'rampKey' in src and 'ramp_hint' in src
+    assert 'HEATMAP_RAMPS[rampHint]' in src                   # 受管词表内才透传（未注册回落不设）
+
+
+def test_grid_tool_exports_norm_stops():
+    """C3③：normStops 导出（settings 面板复用·归一化单源）。"""
+    with open(os.path.join(ROOT, 'frontend', 'js', 'grid-tool.js'), encoding='utf-8') as fh:
+        src = fh.read()
+    assert 'export function normStops' in src
+
+
+def test_legend_ramp_dual_entry_and_contract_doc():
+    """C3④⑤：图例色带条双入口（点击开同一 popover）+ 契约 §七-7 本地可调新口径。"""
+    with open(os.path.join(ROOT, 'frontend', 'js', 'sidebar.js'), encoding='utf-8') as fh:
+        src = fh.read()
+    assert "rampEl.onclick = () => openSettingsPopover(grid)" in src
+    assert "'调整色带'" in src
+    with open(os.path.join(ROOT, 'docs', 'render-contract.md'), encoding='utf-8') as fh:
+        doc = fh.read()
+    assert '样式本地可调·数据变更才重投递' in doc
+    assert '色带/反向/零值显隐/透明度/线样式' in doc
+    assert '重新投递' in doc
+
+
 # ════════════ PT-CB11 B3-1/B3-2 · 渲染通道字段政策 + value_field 服务端校验 ════════════
 
 def test_render_policy_preset_render_fields_manifest():

@@ -243,6 +243,10 @@ export function refreshLegend() {
     if (rampEl && stops.length) {
       rampEl.style.background = '';   // 清旧 linear-gradient（#legend-grid-ramp 已是 .legend-heat-ramp flex 容器）
       rampEl.innerHTML = stops.map(([, c]) => `<span class="legend-heat-seg" style="background:${c}"></span>`).join('');
+      // PT-CB11 C3④：图例双入口——点色带条打开该层样式面板（同一 settings popover 组件实例）
+      rampEl.style.cursor = 'pointer';
+      rampEl.title = '调整色带';
+      rampEl.onclick = () => openSettingsPopover(grid);
     }
     // 标签：L2 综合发散（terrain-9 红→蓝→绿）= 消极/中性/积极；单色占比 / L1 热度 = 低/高；CB-41 点数 = 少/多（零点无填充）
     const labEl = document.querySelector('#legend-grid .legend-ramp-labels');
