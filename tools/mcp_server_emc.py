@@ -36,6 +36,7 @@ register_track_id('MOD_AIQA.F_026', 'MCP buffer（缓冲影响圈·中观）')
 register_track_id('MOD_AIQA.F_027', 'MCP rank（排序评价·最差/最好 Top-N）')
 register_track_id('MOD_AIQA.F_028', 'MCP render_spec（图层图纸：dataset/inline→spec 落收件箱）')
 register_track_id('MOD_AIQA.F_031', 'MCP render_file（把文件现在显示到地图：服务端读取·≤60 内联/>60 自动登记临时 dataset·一步到位）')
+register_track_id('MOD_AIQA.F_032', 'MCP emc_status（8080 地图服务就绪探测·入口向导流程轮询用·临时测试件）')
 
 MANIFEST = os.path.join(REPO, 'DATA', 'boundaries', 'presets', 'manifest.json')
 
@@ -711,7 +712,28 @@ def build_server():
     server.tool()(rank)
     server.tool()(render_spec)
     server.tool()(render_file)
+    server.tool()(emc_status)
     return server
+
+
+def emc_status() -> dict:
+    """探测 8080 地图服务（前端+渲染显示屏）就绪状态。入口向导流程专用（临时测试件）。
+    用法：轮询本工具直至 ready=True（建议间隔 3-5s；服务预热含 RAG 模型加载约 30-60s）。
+    ready=False 且 phase='starting' 时正在预热——继续轮询勿重复启动；phase='down' 时服务未运行。"""
+    import urllib.request
+    try:
+        with urllib.request.urlopen('http://127.0.0.1:8080/emc-ready', timeout=3) as r:
+            ready = (r.status == 200)
+        return {'ok': True, 'ready': ready,
+                'phase': 'ready' if ready else 'starting',
+                'hint': '' if ready else '服务预热中（RAG 模型加载约 30-60s），继续轮询',
+                'caliber': {'scale': 'meta', 'semantics': '服务状态', 'limits': '仅探测不分析',
+                            'refs': ['PT-CB8 入口向导']}}
+    except Exception:
+        return {'ok': True, 'ready': False, 'phase': 'down',
+                'hint': '8080 服务未运行（需经 start_silent.vbs 启动后轮询）',
+                'caliber': {'scale': 'meta', 'semantics': '服务状态', 'limits': '仅探测不分析',
+                            'refs': ['PT-CB8 入口向导']}}
 
 
 def _warmup():
