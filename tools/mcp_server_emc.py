@@ -789,6 +789,11 @@ def _warmup():
 
 
 def main():
+    # MCP stdio 协议纯度（PT-CB10 A-3）：stdout 专属 JSON-RPC 帧——一切 trace/debug 走 stderr。
+    # 环境变量逃生门 EMC_MCP_STDIO=0 可关闭重定向（调试/测试场景直接看 stdout）。
+    import os as _os
+    if _os.environ.get('EMC_MCP_STDIO', '1') != '0':
+        sys.stdout = sys.stderr
     _safe_print('[OK] EMC MCP server stdio 启动（Ctrl+C 退出）', file=sys.stderr)
     _warmup()
     build_server().run()
