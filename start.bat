@@ -48,6 +48,17 @@ echo.
 echo ------------------------------------------------------------
 py frontend/serve.py 8080 --open=main
 
+REM ---- 4. Start dsh web (port 3080) from EMCxDSH workspace ----
+netstat -ano | findstr ":3080.*LISTENING" >nul 2>&1
+if %errorlevel%==0 (
+    echo [OK] dsh web already running (3080)
+) else (
+    echo [LOAD] Starting dsh web from EMCxDSH...
+    cd /d D:\Github\EMCxDSH
+    start "dsh web (3080)" /min dsh web
+    cd /d D:\Github\emotion_map
+)
+
 echo.
 echo [ERR] serve.py exited (if you did not press Ctrl+C, check the error above).
 pause
