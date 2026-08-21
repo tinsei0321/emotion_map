@@ -46,7 +46,7 @@ echo.
 echo [WAIT] 预计 20-30s 就绪（含 BGE RAG 模型同步预热~15s：启动慢是有意设计·换首问稳定）
 echo.
 echo ------------------------------------------------------------
-py frontend/serve.py 8080 --open=none
+py frontend/serve.py 8080 --open=main
 
 echo.
 echo [ERR] serve.py exited (if you did not press Ctrl+C, check the error above).
