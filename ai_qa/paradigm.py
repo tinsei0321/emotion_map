@@ -330,6 +330,17 @@ GEO_TOOL_CATALOG = [
         'failure_modes': '与 hotspot 混——density=连续密度面/热力图（聚合强度）；要逐点显著冷热分类用 hotspot',
         'examples': '正:核密度分析 / 正:哪里最集中 / 误:显著冷热点分类(→hotspot)',
     },
+    {
+        'name': 'trend_analysis',
+        'when': '时序对比：L2 情绪点 T1/T2/T3 三期按可选 boundary 聚合后对比（升/降/平+幅度）。三期=采集批次非等间隔日历期',
+        'params': 'boundary(preset_id·可选), metric(polarity_index|point_count|score_mean), periods(默认 T1,T2,T3)',
+        'yields': '三期对比表+方向（升/降/平）+变化幅度',
+        'contributes': '"情绪变好还是变差"的时序结论（C 赛道时序主干）',
+        'scale': '宏观/中观（三期聚合对比）',
+        'preconditions': 'L2 三期点层（yichang_l2_t1/t2/t3）；boundary 可选 preset',
+        'failure_modes': '三期≠等间隔日历期——勿算速率/环比；趋势为聚合口径非个体追踪；单期深挖用 zonal/hotspot',
+        'examples': '正:情绪三期变化 / 正:T3 比 T1 好了吗 / 误:每月环比(非日历期)',
+    },
 ]
 
 
@@ -441,6 +452,11 @@ TEMPLATE_REGISTRY = [
      'tool': 'hotspot', 'required_slots': [],
      'optional_defaults': {'value_col': 'score', 'threshold': 1.96, 'soft_threshold': 1.0},
      'planning_common': '点层走可见层选源（不硬默认）；value_col=score（invert 默认负面为热）；产五档显著聚集点图层（soft_threshold=1.0 倾向档·诚实标84%置信）'},
+    {'skill': 'trend', 'name': '时序对比', 'category': 'single',
+     'voice': '我对比 T1/T2/T3 三期情绪变化，给升降方向与幅度', 'triggers': '变化/趋势/比之前/三期/前后对比',
+     'tool': 'trend_analysis', 'required_slots': [],
+     'optional_defaults': {'metric': 'polarity_index'},
+     'planning_common': 'boundary 缺省=全城整体；periods 可取子集（≥2 期）；metric 默认 polarity_index'},
     {'skill': 'generate_point_layer', 'name': '批量地名标点', 'category': 'single',
      'voice': '我把一批项目/地点名标记到地图上，生成点位图层', 'triggers': '标记/标到地图/在地图上/点位/位置/把项目标出来',
      'tool': 'generate_point_layer', 'required_slots': ['names'],

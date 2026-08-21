@@ -620,6 +620,156 @@ def test_hotspot_analysis_layer_output_geojson(monkeypatch):
     assert _caliber_keys(out['caliber'])
 
 
+# ════════════ PT-CB11 P2 Phase 2 · trend / report_assemble / guard ════════════
+
+def _trend_layer(polarity_labels, scores):
+    n = len(polarity_labels)
+    return gpd.GeoDataFrame(
+        {'score': scores, 'polarity': polarity_labels},
+        geometry=[Point(111.3 + i * 0.001, 30.7) for i in range(n)])
+
+
+def _patch_trend(monkeypatch, layers):
+    def _resolve(layer):
+        if layer in layers:
+            return layers[layer]
+        raise KeyError('未知')
+
+    monkeypatch.setattr('core.geo_registry.resolve_points', _resolve)
+
+
+def test_trend_analysis_citywide_direction_and_steps(monkeypatch):
+    _patch_trend(monkeypatch, {
+        'yichang_l2_t1': _trend_layer(['Very Negative'] * 2 + ['Negative'] * 2, [1.0] * 4),
+        'yichang_l2_t2': _trend_layer(['Neutral'] * 4, [2.0] * 4),
+        'yichang_l2_t3': _trend_layer(['Very Positive'] * 2 + ['Positive'] * 2, [3.0] * 4),
+    })
+    out = mse.trend_analysis()
+    assert out['metric'] == 'polarity_index' and out['direction'] == 'up'
+    assert out['delta'] == 3.0  # -1.5 -> +1.5
+    assert [r['period'] for r in out['rows']] == ['T1', 'T2', 'T3']
+    assert out['steps'][0]['from'] == 'T1' and out['steps'][-1]['to'] == 'T3'
+    assert _caliber_keys(out['caliber'])
+    sm = mse.trend_analysis(metric='score_mean')
+    assert sm['delta'] == 2.0 and sm['direction'] == 'up'
+
+
+def test_trend_analysis_metric_and_periods_validation(monkeypatch):
+    _patch_trend(monkeypatch, {})
+    bad = mse.trend_analysis(metric='bad')
+    assert bad['ok'] is False and 'metric 非法' in bad['hint']
+    one = mse.trend_analysis(periods=['T1'])
+    assert one['ok'] is False and '≥2 期' in one['hint']
+    t4 = mse.trend_analysis(periods=['T1', 'T4'])
+    assert t4['ok'] is False and 'T4' in t4['hint']
+
+
+def test_trend_analysis_periods_subset_and_string(monkeypatch):
+    _patch_trend(monkeypatch, {
+        'yichang_l2_t1': _trend_layer(['Negative'] * 4, [1.0] * 4),
+        'yichang_l2_t3': _trend_layer(['Positive'] * 4, [3.0] * 4),
+    })
+    out = mse.trend_analysis(periods='t1|t3', metric='score_mean')
+    assert out['period_count'] == 2 and out['direction'] == 'up'
+
+
+def test_trend_analysis_empty_layer_semantic_reject(monkeypatch):
+    _patch_trend(monkeypatch, {
+        'yichang_l2_t1': _trend_layer(['Negative'] * 4, [1.0] * 4),
+        'yichang_l2_t2': gpd.GeoDataFrame({'score': [], 'polarity': []}, geometry=[]),
+        'yichang_l2_t3': _trend_layer(['Positive'] * 4, [3.0] * 4),
+    })
+    out = mse.trend_analysis()
+    assert out['ok'] is False and '点层为空' in out['hint']
+    assert _caliber_keys(out['caliber'])
+
+
+def test_trend_analysis_boundary_aggregate_path(monkeypatch):
+    _patch_trend(monkeypatch, {
+        lid: _trend_layer(['Negative'] * 4, [1.0] * 4)
+        for lid in ('yichang_l2_t1', 'yichang_l2_t2', 'yichang_l2_t3')
+    })
+    monkeypatch.setattr('core.geo_registry.resolve_boundary',
+                        lambda boundary: gpd.GeoDataFrame(geometry=[Polygon(
+                            [(111, 30), (111.1, 30), (111.1, 30.1), (111, 30.1), (111, 30)])]))
+
+    def _agg(points, polys, agg_cols=None, polygon_name_col=None):
+        return pd.DataFrame({'name': ['整体'], 'point_count': [4], 'score_mean': [1.0]})
+
+    monkeypatch.setattr('core.spatial_analysis.aggregate_by_polygons', _agg)
+    out = mse.trend_analysis(boundary='admin_district', metric='score_mean')
+    assert out['period_count'] == 3 and all(r['score_mean'] == 1.0 for r in out['rows'])
+    assert out['direction'] == 'flat'
+
+
+def test_trend_analysis_boundary_guard_rejects_analysis_output():
+    out = mse.trend_analysis(boundary='base_174_aggregate_area')
+    assert out.get('ok') is False and 'analysis_output' in out.get('hint', '')
+
+
+def test_report_assemble_empty_results_semantic_reject():
+    out = mse.report_assemble(question='q', results=[])
+    assert out['ok'] is False and 'results' in out['hint']
+    assert _caliber_keys(out['caliber'])
+
+
+def test_report_assemble_sections_refs_dedupe():
+    r1 = {'rows': [], 'row_count': 3, 'caliber': {'refs': ['K-C1']}}
+    r2 = {'pairs': [], 'row_count': 2, 'caliber': {'refs': ['K-C1', 'K-01']}}
+    out = mse.report_assemble(question='哪里差', results=[r1, r2])
+    assert set(out['sections']) == {'conclusion', 'evidence', 'caliber', 'suggestion'}
+    assert out['sections']['caliber']['refs'] == ['K-C1', 'K-01']
+    assert out['sections']['caliber']['missing_caliber_count'] == 0
+    assert '汇总 2/2 项有效结果' in out['sections']['conclusion']
+    assert isinstance(out['sections']['suggestion'], str)
+    assert _caliber_keys(out['caliber'])
+
+
+def test_report_assemble_missing_caliber_marked_not_fabricated():
+    out = mse.report_assemble(results=[{'rows': [], 'row_count': 1}, 'garbage'])
+    ev = out['sections']['evidence']
+    assert ev[0]['scale'] == '口径缺失' and ev[1]['scale'] == '口径缺失'
+    assert out['sections']['caliber']['missing_caliber_count'] == 2
+    assert '口径缺失' in out['sections']['conclusion']
+    assert out['sections']['caliber']['refs'] == []
+
+
+def test_report_assemble_suggestion_from_rows_and_filter():
+    r = {'rows': [{'suggestion': '补设施'}, {'suggestion': '优交通'}, {'suggestion': '第3'},
+                  {'suggestion': '不取'}],
+         'row_count': 4, 'caliber': {'refs': ['K-C1']}}
+    out = mse.report_assemble(results=[r])
+    assert out['sections']['suggestion'] == ['补设施', '优交通', '第3']  # 每结果前 3 行
+    only = mse.report_assemble(results=[r], sections=['caliber'])
+    assert set(only['sections']) == {'caliber'}
+
+
+def test_guard_check_rejects_and_passes():
+    cal = {'scale': 's', 'semantics': 'm', 'limits': 'l', 'refs': ['K-C1']}
+    bad = mse._guard_check('trend_analysis', {'boundary': 'base_174_aggregate_area'}, cal)
+    assert bad is not None and bad['ok'] is False and 'analysis_output' in bad['hint']
+    assert mse._guard_check('trend_analysis', {'boundary': 'admin_district'}, cal) is None
+    assert mse._guard_check('not_a_tool', {'boundary': 'x'}, cal) is None
+    assert mse._guard_check('trend_analysis', {}, cal) is None
+
+
+def test_audit_input_surfaces_warns_on_spec_drift(monkeypatch):
+    captured = []
+    monkeypatch.setattr(mse, '_safe_print', lambda msg, file=None: captured.append(msg))
+    original = dict(mse._GUARD_SPECS)
+    drifted = dict(mse._GUARD_SPECS)
+    drifted['trend_analysis'] = {'usage_params': ('not_a_param',)}
+    monkeypatch.setattr(mse, '_GUARD_SPECS', drifted)
+    mse._audit_input_surfaces()
+    assert any('not_a_param' in m and 'WARN' in m for m in captured)
+    assert any('B4 输入面核对' in m for m in captured)
+
+    captured.clear()
+    monkeypatch.setattr(mse, '_GUARD_SPECS', original)
+    mse._audit_input_surfaces()
+    assert not any('WARN' in m for m in captured)
+
+
 # ════════════ area_stats（PT-CB11 F_037·Kimi）════════════
 
 def _fake_area_boundary(n=3, groups=None):

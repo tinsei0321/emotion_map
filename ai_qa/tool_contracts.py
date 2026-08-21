@@ -170,6 +170,23 @@ TOOL_CONTRACTS = [
         ],
     },
     {
+        'skill': 'trend', 'tool': 'trend_analysis', 'category': 'single', 'name_cn': '时序对比',
+        'voice': '我对比 T1/T2/T3 三期情绪变化，给升降方向与幅度', 'triggers_str': '变化/趋势/比之前/三期/前后对比',
+        'when': '时序对比：L2 情绪点 T1/T2/T3 三期按可选 boundary 聚合后对比（升/降/平+幅度）。三期=采集批次非等间隔日历期',
+        'params_str': 'boundary(preset_id·可选), metric(polarity_index|point_count|score_mean), periods(默认 T1,T2,T3)',
+        'yields': '三期对比表+方向（升/降/平）+变化幅度', 'contributes': '"情绪变好还是变差"的时序结论（C 赛道时序主干）',
+        'scale': '宏观/中观（三期聚合对比）', 'preconditions': 'L2 三期点层（yichang_l2_t1/t2/t3）；boundary 可选 preset',
+        'failure_modes': '三期≠等间隔日历期——勿算速率/环比；趋势为聚合口径非个体追踪；单期深挖用 zonal/hotspot',
+        'examples': '正:情绪三期变化 / 正:T3 比 T1 好了吗 / 误:每月环比(非日历期)',
+        'required_slots': [],
+        'planning_common': 'boundary 缺省=全城整体；periods 可取子集（≥2 期）；metric 默认 polarity_index；panel_source=EMC-only（无 Toolbox dialog·AI 执行）',
+        'params': [
+            {'name': 'boundary', 'type': 'source', 'default': None, 'required': False, 'alias': ['zone'], 'hint': 'preset_id（缺省全城）', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'metric', 'type': 'enum', 'enum': ['polarity_index', 'point_count', 'score_mean'], 'default': 'polarity_index', 'required': False, 'alias': [], 'hint': '对比指标', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+            {'name': 'periods', 'type': 'list', 'default': None, 'required': False, 'alias': [], 'hint': '期子集（如 ["T1","T3"]·默认全三期）', 'panel_source': 'EMC-only（无 Toolbox dialog·AI 执行）'},
+        ],
+    },
+    {
         'skill': 'extract_feature', 'tool': 'extract_feature', 'category': 'single', 'name_cn': '要素抽取',
         'voice': '我从面边界按属性抽要素为独立面（裁出某区/某类用地·支持 in 多值一次抽多个如多行政区）', 'triggers_str': '抽某/裁出某/单独裁出/提取某',
         'when': '从**单个面层内**按属性抽要素（同一图层内的 where 过滤·如"从行政区划中抽西陵区"·where="字段/in/值"一次多值）。CB-12 P2："筛选出/筛选某类用地"→ 本工具。⚠️ 仅用于同一图层内属性过滤！跨图层空间裁剪（如"西陵区内的商业用地"=两个不同图层∩）必须用 overlay intersection，严禁用本工具',

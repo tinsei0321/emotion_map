@@ -43,6 +43,8 @@ register_track_id('MOD_AIQA.F_035', 'MCP hotspot_analysis（Gi* 逐点显著聚�
 register_track_id('MOD_AIQA.F_036', 'MCP nearest_analysis（最近邻锚定·k 近邻配对+投影米距）')
 register_track_id('MOD_AIQA.F_037', 'MCP area_stats（面积占比统计·group_by 分组·km2）')
 register_track_id('MOD_AIQA.F_038', 'MCP overlay_analysis（叠置交叉·面∩/∪/差/对称差+面积）')
+register_track_id('MOD_AIQA.F_039', 'MCP trend_analysis（T1/T2/T3 三期时序对比·方向+幅度）')
+register_track_id('MOD_AIQA.F_040', 'MCP report_assemble（综合报告组装·确定性零 LLM·四段结构）')
 
 MANIFEST = os.path.join(REPO, 'DATA', 'boundaries', 'presets', 'manifest.json')
 
@@ -970,6 +972,252 @@ def overlay_analysis(layer_a: str, layer_b: str, how: str = 'intersection',
     return out
 
 
+# ── PT-CB11 P2③ · guard 迁 server 侧（_reject_analysis_output 泛化） ──────────
+
+_GUARD_SPECS = {
+    'zonal_stats': {'usage_params': ('boundary',)},
+    'rank': {'usage_params': ('boundary',)},
+    'buffer': {'usage_params': ('center',)},
+    'grid_aggregate': {'usage_params': ('boundary',)},
+    'nearest_analysis': {'usage_params': ('target',), 'pair_budget': 5 * 10 ** 7},
+    'overlay_analysis': {'usage_params': ('layer_a', 'layer_b')},
+    'trend_analysis': {'usage_params': ('boundary',)},
+}
+
+
+def _guard_check(tool: str, args: dict, caliber: dict = None) -> dict | None:
+    """工具前置校验（G-2 usage 泛化 + 步数预算占位 + 审批策略占位）。
+
+    - usage：对 spec.usage_params 逐参过 _reject_analysis_output（结论层禁作分析输入）；
+    - 步数预算占位：pair_budget 声明位（nearest 已在函数体内置 _PAIR_BUDGET 守卫，
+      此处为未来新工具的统一接线挂点·避免各自散落）；
+    - 审批策略占位：写操作类工具未来接入（当前 server 工具全只读·无审批需求）。
+    返回 None=放行；dict=语义化拒绝（带工具 caliber）。"""
+    spec = _GUARD_SPECS.get(tool)
+    if not spec:
+        return None
+    _cal = caliber or {'scale': 'guard', 'semantics': '工具前置校验',
+                       'limits': 'usage 拒绝', 'refs': ['G-2']}
+    for param in spec.get('usage_params', ()):
+        value = args.get(param)
+        if isinstance(value, str) and value:
+            _g = _reject_analysis_output(value, param, _cal)
+            if _g:
+                return _g
+    # 步数预算占位（统一挂点·当前由各工具内置守卫承担，新工具接线在此扩展）
+    return None
+
+
+def _audit_input_surfaces():
+    """B4 白名单差集自动核对（服务启动一次·log 警告不阻塞）：
+    ① _GUARD_SPECS 声明的 usage 参数与工具真实签名差集 → 提示 spec 漂移；
+    ② manifest 可见面与可接受输入面（usage=input）差集 = analysis_output 集
+    （按设计拒绝·仅记数留痕，供 B4 差集审计对账）。"""
+    import inspect
+
+    for tool, spec in _GUARD_SPECS.items():
+        fn = globals().get(tool)
+        if not callable(fn):
+            _safe_print(f'[WARN] B4 差集核对: {tool} 不存在（_GUARD_SPECS 漂移）', file=sys.stderr)
+            continue
+        try:
+            sig = inspect.signature(fn)
+        except (TypeError, ValueError):
+            continue
+        for p in spec.get('usage_params', ()):
+            if p not in sig.parameters:
+                _safe_print(f'[WARN] B4 差集核对: {tool} 守卫参数 {p} 不在函数签名——请核对 _GUARD_SPECS',
+                            file=sys.stderr)
+    try:
+        with open(MANIFEST, encoding='utf-8') as _fp:
+            _groups = json.load(_fp)
+        _ids = [it.get('id') for g in _groups for it in g.get('items', [])]
+        _rejected = sum(1 for g in _groups for it in g.get('items', [])
+                        if it.get('usage') == 'analysis_output')
+        _safe_print(f'[OK] B4 输入面核对: manifest {len(_ids)} preset·拒绝面 {_rejected}'
+                    '（analysis_output·按设计）', file=sys.stderr)
+    except Exception:
+        pass
+
+
+# ── PT-CB11 P2① · trend_analysis（F_039·时序对比） ────────────────────────────
+
+_TREND_LAYERS = {'T1': 'yichang_l2_t1', 'T2': 'yichang_l2_t2', 'T3': 'yichang_l2_t3'}
+_TREND_METRICS = ('polarity_index', 'point_count', 'score_mean')
+
+
+@track('MOD_AIQA.F_039', track_args=False)
+def trend_analysis(boundary: str = '', metric: str = 'polarity_index',
+                   periods: list = None) -> dict:
+    """三期时序对比：L2 情绪点 T1/T2/T3 按可选 boundary 聚合→对比表+方向+幅度。
+    参数：boundary 可选 preset（缺省=全城整体聚合）；metric=polarity_index|point_count|score_mean；periods 默认全三期（可取子集·≥2）。
+    限制：三期=采集批次非等间隔日历期——勿算速率/环比；趋势为聚合口径非个体追踪；单期深挖用 zonal/hotspot。
+    R23 两问：非 Point 几何仅出现在 boundary（面层·走 aggregate_by_polygons 的 sjoin 通道·无 .geometry.x 假设）；
+    最坏规模=三期各约 2.2 万点的 O(n) 统计 + boundary sjoin O(n log n)——无配对矩阵·空点层/区内零点语义化拒绝。"""
+    caliber = {'scale': '宏观/中观（三期聚合对比）',
+               'semantics': 'T1/T2/T3 三期同口径聚合对比+方向（升/降/平）+幅度',
+               'limits': '三期=采集批次非等间隔日历期——勿算速率/环比；趋势为聚合口径非个体追踪；单期深挖用 zonal/hotspot',
+               'refs': ['K-C1']}
+    if metric not in _TREND_METRICS:
+        return {'ok': False, 'hint': f'metric 非法: {metric!r}（可选 {_TREND_METRICS}）',
+                'caliber': caliber}
+    if periods is None:
+        keys = ['T1', 'T2', 'T3']
+    elif isinstance(periods, str):
+        keys = [s.strip().upper() for s in periods.replace('|', ',').split(',') if s.strip()]
+    elif isinstance(periods, (list, tuple)):
+        keys = [str(p).strip().upper() for p in periods if str(p).strip()]
+    else:
+        keys = []
+    bad = [k for k in keys if k not in _TREND_LAYERS]
+    if bad or len(keys) < 2:
+        return {'ok': False,
+                'hint': f'periods 需 ≥2 期且取自 {list(_TREND_LAYERS)}（收到 {periods!r}'
+                        f'{"·未知期 " + str(bad) if bad else ""}）',
+                'caliber': caliber}
+    try:
+        from core.geo_registry import resolve_boundary, resolve_points
+        from core.spatial_analysis import aggregate_by_polygons
+
+        polys = None
+        if boundary:
+            _g = _guard_check('trend_analysis', {'boundary': boundary}, caliber)
+            if _g:
+                return _g
+            polys = resolve_boundary(boundary)
+            polys = polys[['geometry']].dissolve()
+            polys['name'] = '整体'
+        rows = []
+        for key in keys:
+            layer_id = _TREND_LAYERS[key]
+            pts = resolve_points(layer_id)
+            if pts is None or len(pts) == 0:
+                return {'ok': False,
+                        'hint': f'{key} 点层为空（{layer_id}）——三期对比需各期有点',
+                        'caliber': caliber}
+            if polys is not None:
+                cols = ['score'] if metric == 'score_mean' else []
+                merged = aggregate_by_polygons(pts, polys, agg_cols=cols,
+                                                polygon_name_col='name')
+                if len(merged) == 0:
+                    return {'ok': False,
+                            'hint': f'{key} 在 boundary 内零点——聚合结果为空（请换 boundary 或检查点分布）',
+                            'caliber': caliber}
+                row = {'period': key, 'layer': layer_id,
+                       'point_count': int(merged['point_count'].iloc[0])}
+                row[metric] = (_jsonable(merged[metric].iloc[0])
+                               if metric in merged.columns else None)
+            else:
+                import pandas as pd
+                row = {'period': key, 'layer': layer_id, 'point_count': int(len(pts))}
+                if metric == 'score_mean':
+                    s = (pd.to_numeric(pts['score'], errors='coerce')
+                         if 'score' in pts.columns else None)
+                    row[metric] = (round(float(s.mean()), 4)
+                                   if s is not None and s.notna().any() else None)
+                elif metric == 'polarity_index':
+                    if 'polarity' in pts.columns:
+                        vc = pts['polarity'].astype(str).str.strip()
+                        row[metric] = round(float(
+                            (vc.eq('Very Positive') * 2 + vc.eq('Positive') * 1
+                             + vc.eq('Negative') * -1 + vc.eq('Very Negative') * -2).sum()
+                            / max(len(pts), 1)), 4)
+                    else:
+                        row[metric] = None
+            rows.append(row)
+        values = [r.get(metric) for r in rows]
+        first, last = values[0], values[-1]
+        if first is None or last is None:
+            direction, delta = None, None
+        else:
+            delta = round(float(last) - float(first), 4)
+            direction = 'flat' if abs(delta) < 0.01 else ('up' if delta > 0 else 'down')
+        steps = []
+        for i in range(len(rows) - 1):
+            a, b = values[i], values[i + 1]
+            steps.append({'from': rows[i]['period'], 'to': rows[i + 1]['period'],
+                          'delta': (round(float(b) - float(a), 4)
+                                    if a is not None and b is not None else None)})
+    except (KeyError, FileNotFoundError):
+        return {'ok': False, 'hint': _UNKNOWN_HINT, 'caliber': caliber}
+    except Exception as exc:
+        return {'ok': False, 'hint': f'trend_analysis 失败: {exc}', 'caliber': caliber}
+
+    return {'rows': rows, 'metric': metric, 'direction': direction, 'delta': delta,
+            'steps': steps, 'period_count': len(rows), 'caliber': caliber}
+
+
+# ── PT-CB11 P2② · report_assemble（F_040·综合报告组装·零 LLM） ────────────────
+
+@track('MOD_AIQA.F_040', track_args=False)
+def report_assemble(question: str = '', results: list = None,
+                    sections: list = None) -> dict:
+    """综合报告组装：把各工具返回 dict 确定性组装为四段（零 LLM·不产生新结论）。
+    参数：question 原问题；results=各工具返回 dict 列表（宿主链式传入·≥1 项）；sections 可选过滤（conclusion/evidence/caliber/suggestion）。
+    段：conclusion=问题+有效结果计数确定性拼接；evidence=各结果 caliber 摘要+规模；caliber=refs 去重；suggestion=各结果行级 suggestion 汇总（无则诚实占位）。
+    限制：组装不产生新结论——只汇总输入结果；输入无 caliber 的段落标注「口径缺失」不编造。"""
+    caliber = {'scale': '答案级（综合报告）',
+               'semantics': '确定性组装输入结果（零 LLM·不产生新结论）',
+               'limits': '组装不产生新结论——只汇总输入结果；输入无 caliber 的段落标注「口径缺失」不编造',
+               'refs': ['K-03']}
+    if not isinstance(results, list) or len(results) == 0:
+        return {'ok': False,
+                'hint': 'report_assemble 需 results（各工具返回 dict 列表·≥1 项）——空输入无法组装',
+                'caliber': caliber}
+    _SECTION_ALLOWED = ('conclusion', 'evidence', 'caliber', 'suggestion')
+    want = [s for s in (sections or _SECTION_ALLOWED) if s in _SECTION_ALLOWED]
+    if not want:
+        want = list(_SECTION_ALLOWED)
+
+    evidence = []
+    refs = []
+    missing = 0
+    for idx, r in enumerate(results):
+        if not isinstance(r, dict):
+            evidence.append({'index': idx + 1, 'scale': '口径缺失',
+                             'semantics': '非 dict 输入', 'size': None})
+            missing += 1
+            continue
+        cal = r.get('caliber') if isinstance(r.get('caliber'), dict) else None
+        if cal is None:
+            missing += 1
+        size = next((r.get(k) for k in ('row_count', 'count', 'pair_count', 'result_count')
+                     if r.get(k) is not None), None)
+        evidence.append({
+            'index': idx + 1,
+            'scale': (cal.get('scale') if cal else None) or '口径缺失',
+            'semantics': (cal.get('semantics') if cal else None) or '口径缺失',
+            'size': size,
+        })
+        rrefs = cal.get('refs') if cal else None
+        if isinstance(rrefs, list):
+            refs.extend(str(x) for x in rrefs)
+        elif rrefs:
+            refs.append(str(rrefs))
+    refs = list(dict.fromkeys(refs))
+    valid = [r for r in results if isinstance(r, dict) and r.get('ok') is not False]
+    conclusion = (f"问题：{question or '（未提供）'}；汇总 {len(valid)}/{len(results)} 项有效结果"
+                  + (f"；其中 {missing} 项口径缺失（已标注·不编造）" if missing else "；全部结果带口径"))
+    tips = []
+    for r in valid:
+        for row in (r.get('rows') or [])[:3]:
+            if isinstance(row, dict) and row.get('suggestion'):
+                tips.append(str(row['suggestion']))
+    suggestion = tips if tips else '（输入结果未携带建议字段——本工具不产生新结论，建议需结合现场复核）'
+
+    out_sections = {}
+    if 'conclusion' in want:
+        out_sections['conclusion'] = conclusion
+    if 'evidence' in want:
+        out_sections['evidence'] = evidence
+    if 'caliber' in want:
+        out_sections['caliber'] = {'refs': refs, 'missing_caliber_count': missing}
+    if 'suggestion' in want:
+        out_sections['suggestion'] = suggestion
+    return {'question': question, 'sections': out_sections,
+            'result_count': len(results), 'caliber': caliber}
+
+
 def _dataset_meta(dataset_id, groups=None):
     """dataset_id → {usage, data_nature}（preset 读 manifest·点层按池路径·未知 None）。"""
     try:
@@ -1237,9 +1485,12 @@ def build_server():
     server.tool()(area_stats)
     server.tool()(nearest_analysis)
     server.tool()(overlay_analysis)
+    server.tool()(trend_analysis)
+    server.tool()(report_assemble)
     server.tool()(render_spec)
     server.tool()(render_file)
     server.tool()(emc_status)
+    _audit_input_surfaces()
     return server
 
 
