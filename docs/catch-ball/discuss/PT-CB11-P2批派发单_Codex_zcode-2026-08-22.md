@@ -1,7 +1,7 @@
 # PT-CB11 · P2 批派发单（Codex·两阶段·函数级规格）
 
 > 主手：zcode。执行：Codex。分支 `EMC_harness_dsh`（main 冻结）。commit 前缀 `PT-CB11(C2):`。
-> 开工前 `git pull origin EMC_harness_dsh`（基线 ≥ f74dfb72·预计上午再有 zcode 收档案 commit·pull 最新即可）。
+> **git 政策（用户令 08-22）**：**本地仓即最新·零 pull 零 push**——直接开工；只做显式路径 commit+执行记录，push 由主手回收时统一。
 > 沿 P1 派发单架构铁则八条（纯只读/惰性导入/caliber 四键/体积纪律/G-2 守卫/五判据/测试/`_safe_print` 禁 emoji）——不重复·违者退回。
 > **新增模板条目（claude 审计建议·即刻生效）**：每件新工具测试默认含 **1 例空集边界**（空输入/裁剪零点→语义化拒绝·非模糊错误）。
 
@@ -81,6 +81,6 @@ def overlay_analysis(layer_a: str, layer_b: str, how: str = 'intersection',
 - [ ] 每件：8-11 用例（含空集边界 1 例）+ 五判据一行答辩 + F 号连续（F_036/F_038/F_039/F_040）
 - [ ] Phase 1 完成即 commit+执行记录（`PT-CB11-P2执行记录_Codex-2026-08-22.md`）→ 通知主手回收 → 开 Phase 2
 - [ ] `python -m pytest tests/ -q`：457 绿+7 存量环境失败（不新增失败）
-- [ ] 显式路径 commit·push 经授权
+- [ ] 显式路径 commit（零 pull 零 push·主手回收时统一 push）
 
 > zcode 主手 · 2026-08-22 上午 · P2 两阶段派发
