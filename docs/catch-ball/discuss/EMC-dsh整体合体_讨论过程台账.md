@@ -617,6 +617,16 @@
 
 ---
 
+## R63（2026-08-21 深夜·接续会话）PT-CB11 任务书落盘（zcode）
+
+- 新会话接续（上一会话上下文耗尽落盘后即接）。dsh 重装验证全链路已通过（用户 PowerShell 实测 Top5 社区+落图成功）·图层残留根治（backlog 20→1）·layer_output 体积控制（775KB→41KB）·start.bat 一键三服务（MCP 8600+Web 8080+dsh web 3080）均已在上一会话尾段 commit。
+- **B-3 根因实锤**（主手调查·子代理广搜）：注入层灰框=数据断裂（preset 中文属性 × value_field 默认 point_count × 后端白名单只放英文键→properties 只剩{来源:2025}）→全零→zeroIsNoData 透明=无填充；gridField 描边恒灰=灰框；图例/tip 判定按 _ui.tool 白名单→注入层无 _ui 全缺。**裁决走方向 A（补链）非方向 B（伪造 _ui）**——B 语义错配且不治本。
+- **PT-CB11 任务书落盘**：`PT-CB11-MCP工具丰富化与注入链路补全_任务书_zcode-2026-08-21.md`。P1=B-3 治本 6 件（后端 2 件 zcode 直改+前端 4 件 Kimi 首件）+3 件高频工具（grid_aggregate F_033/compare_regions F_034/hotspot F_035）；P2=5 件（F_036-F_040）+guard 迁 server+A-4 徽章。取号已核 F_021-F_032 占用。基线 444。
+- 待用户拍板三项：批次拆分/Kimi 首件=B-3 前端/P1 执行手 Codex or dsh。
+- 杂项：stray `nul` 文件已删（21:56 bad redirect 产物）；dsh 测试产物 2 geojson 随本批入库（先例 08-20）。
+
+---
+
 ## 附：用户指令记录（累计）
 
 | 日期 | 指令 |
