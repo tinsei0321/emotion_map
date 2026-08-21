@@ -26,6 +26,16 @@
 | 4 | render_file 第 9 插座 | ✅ stdio 冒烟 9 工具全列 |
 | 5 | 身份自述 | ⚠️ 家机已验（rc.8）；office=rc.7 版本差异项（见上） |
 
+## 📅 2026-08-21（EMC×dsh 避坑沉淀 · Codex · 用户直派）
+
+### ✅ debug-log 资产化（沉淀报告 + 记忆库固化）
+
+- 报告落盘：`discuss/PT-CB8-EMC-dsh避坑沉淀报告_Codex-2026-08-21.md`——收集 08-18~21 EMC×dsh 全部踩坑 → 三族 19 规则盘点 + 六条元模式 + 业界对照（无责复盘/5 Whys/清单/经验库）+ 持续更新机制 + T1-T6 调优建议。
+- debug-memory：双 R12 撞号修正（R13-R16 顺号）+ 新增 R17（就绪探测验真依赖）/R18（重量资产启动预热）/R19（跨机复刻先取装成机器实录）+ 文末「维护协议」（蒸馏触发器·四件套门槛·编号纪律·载体分工·收口通知·除草）。
+- 全局落点：用户级全局 AGENTS 新增「调试资产化」习惯（Harness 工作方式第 6 条）；项目 AGENTS/context-map 更新至 R1-R19；cb-index + EMC-dsh 台账 R50 登记，全组当轮四档回应待收（无回应不销号·AGENTS v2.4）。
+
+---
+
 ## 📅 2026-08-21（PT-CB7「稳定与灵魂」批主执行 · Qoder · 分支 `EMC_harness_dsh` · home 收工待 office 续点）
 
 > 全天 home 班：审计先行 + T1-T21 大半销号 + 用户实测五连修 + dsh 两批回收；基线 442 passed/2 skipped；收工卡 `_handoff/HOME.md`。
@@ -42,7 +52,7 @@
 - ⬜ T7 双模预设落地（emc-analysis 默认 low+工具子集 / emc-research max）+ ≤2min 验收跑（批 3）。
 - ⬜ 五项用户实测验证（快通道/冷启动气泡卡/免 F5 铺层/render_file/身份自述）。
 - ⬜ zcode 回收验收 + 《Qoder 执行效果评估》（对照 dsh 前几批）。
-- ⏸️ 待裁决：T11 被 render_file 吸收待销项确认；D2 欢迎卡绑定目标会话；debug-memory 双 R11 撞号合并。
+- ⏸️ 待裁决：T11 被 render_file 吸收待销项确认；D2 欢迎卡绑定目标会话。（debug-memory 撞号已清：E2 合并双 R11 + 08-21 Codex 修残留双 R12·重编号 R13-R16）
 - ⏸️ 观察：render_file 临时 dataset（tmp_render_*）manifest 累积节奏。
 
 ---
@@ -946,4 +956,3 @@ R7 修复发实施后检查 → 两组 SCAN：**claude组 P0 发现** `lastIndex
 - CPD-L01/L02 测试基建 1 行修复（CSV 改 resolvePoints('L1-T1')）+ CPD-L03 硬断言
 - 发版候选评估（B3 88.5% 达标上沿·整体评估）
 - MOD_PLACE 渲染风暴 + fallback 重试（backlog）
-

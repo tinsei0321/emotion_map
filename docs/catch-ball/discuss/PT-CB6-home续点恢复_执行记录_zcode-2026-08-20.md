@@ -76,7 +76,7 @@
 - 点击入口的完整链路（新会话+欢迎卡+终端 start.bat+Edge 开图）需 8080 运行时浏览器实测（T4 截图四项）。
 - 欢迎卡"新会话自动出现"细节若未达标，改 `D:/Github/dsh-emc-entry/src/client/components.tsx` 重建。
 - EMC 人设 system prompt 未配；身份卡后需 `py tools/rag_index.py --build`。
-- debug-memory 两个 R11 撞号待合并；node-pty AttachConsole 坑待记。
+- debug-memory 两个 R11 撞号待合并（✅ 已清：E2 合并 + 08-21 Codex 修残留双 R12·重编号）；node-pty AttachConsole 坑待记（✅ 已记 R16·08-21 重编号）。
 - dsh 未 push（gitee behind 1）。
 
 > zcode · 2026-08-20 · home 到岗续点完成，送审。

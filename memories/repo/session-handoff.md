@@ -19,7 +19,7 @@
   4. dsh 两批回收：批 1（T2 terminal chunk 修复/T4 计时取证/F1-F4 复核）；批 2（人设 prompt 落地生效·「你是谁」自述实测通过；T17 timeout 120s 无效——根因=MCP 冷启动 >120s 需服务端预热）。记录+截图在 `discuss/PT-CB7-dsh协助批{1,2}记录_dsh-2026-08-21.md`。
   5. 仓外插件 dsh-emc-entry 多轮改造已重建（bundle 18,977B）；当前 8080/8000 新 serve 运行中（/emc-ready 200+ACAO）。
 - **office 续点（按序）**：①git pull + office dsh 环境四件套（同 08-20 卡）+ 批 2 同款补三件（人设文件复制/toolCallTimeoutMs 120000/start_silent.vbs 路径免改）②优先验证五项用户实测（快通道/冷启动气泡卡/免 F5 铺层/render_file/身份自述）③待办优先级：T17 服务端预热真修 → T7 双模预设落地+≤2min 验收（批 3）→ zcode 回收+《Qoder 执行效果评估》。
-- **待裁决/观察**：T11 被 render_file 吸收待销项确认；D2 欢迎卡绑定目标会话未做；render_file 临时 dataset 累积列观察；debug-memory 双 R11 撞号待主手合并。
+- **待裁决/观察**：T11 被 render_file 吸收待销项确认；D2 欢迎卡绑定目标会话未做；render_file 临时 dataset 累积列观察；debug-memory 撞号已清（E2 合并双 R11 + Codex 08-21 修残留双 R12·重编号 R13-R16·新增 R17-R19 与维护协议·详见 `discuss/PT-CB8-EMC-dsh避坑沉淀报告_Codex-2026-08-21.md`）。
 - **注意**：dsh 文件在仓外（`D:/Github/dsh-emc-entry/` + `~/.dsh/`）不入本仓；人设改动在 `~/.dsh/.agent-presets/router-standard-subagent/`（批 2 记录 A-2 有全文与备份名）。
 
 ## 旧节点：home 凌晨收工 · PT-CB6 S6 用户复测通过 · render 通道三坑已修（office 续点=S7 回收判读）

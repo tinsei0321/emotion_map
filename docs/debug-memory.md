@@ -3,7 +3,7 @@
 > **多组共享的踩坑规则库**（claude组 / zcode组 / dsh组 / Codex 通用·CB-41 首建 2026-08-18）。
 > 修复中踩过的坑 → 蒸馏为可执行规则。**新会话排查前读一遍；修复提交前对照 R1/R2/R8 自查；CB 评估引用规则编号（如 debug-memory R2）。**
 > 姊妹载体：按轮流水 = `catch-ball/cb-journal.md`；按 bug 台账 = `tests/buglog/`；本文件 = **按规则蒸馏**（互补不重复）。
-> 维护：每次「修了 N 轮才好 / 修好又出新症状」的复盘，新规则追加于此（编号 R+ 连续）+ `docs/context-map.md` 已登记。
+> 维护：见文末「维护协议」（蒸馏触发器·四件套·编号纪律·通知·除草·2026-08-21 固化）。
 
 ---
 
@@ -89,13 +89,13 @@
 
 ## R12 · 渲染投递通道三坑——SSE 长连接 × 单线程服务器 × 重放不去重（PT-CB6 S6·2026-08-20·原误编 R11 已改号）
 
-- **规则**：① SSE 长连接**不得挂在单线程 HTTP 服务器**上（一个 EventSource 占死唯一工作线程→静态页能开但 API 全 502——serve.py 必须 ThreadingTCPServer+daemon_threads）；② SSE 断线重连会**重放 backlog**，客户端必须按业务键（spec_id）会话级去重，否则"增删图层循环跳动"；③ 投递收件箱（render_inbox）是**运行时垃圾场**——测试产物会积压并在下次连 SSE 时全部重放，演示前清空/移走。
+- **规则**：① SSE 长连接**不得挂在单线程 HTTP 服务器**上（一个 EventSource 占死唯一工作线程→静态页能开但 API 全 502——serve.py 必须 ThreadingTCPServer+daemon_threads）；② SSE 断线重连会**重放 backlog**，客户端必须按业务键（spec_id）会话级去重，否则"增删图层循环跳动"；③ 投递收件箱（render_inbox）是**运行时垃圾场**——测试产物会积压并在下次连 SSE 时全部重放，演示前清空/移走（**已根治·PT-CB7 T16·2026-08-21**：推送成功即归档 `applied/`，serve 重启 `_seen` 清零不再全量重放，留痕可查；另 T21 把单队列改**每连接独立队列扇出广播**，治多地图页争用）。
 - **案例**：PT-CB6 S6 用户复测——页面转圈（单线程阻塞）→修后 8~9 图层循环跳动（无去重重放）→修后仍重放 15 个历史 spec（inbox 积压）。三坑连环，一次暴露。
 - **违反后果**：演示现场"地图抽风"；且三坑症状互相掩盖（第一坑不修，二三坑根本看不到）。
 - **检查动作**：演示前跑一遍无头采样（图层数恒定）；新投递通道设计时三问（服务器线程模型？重连重放去重键？inbox 清理责任方？）。
 - **附带两条语义坑**（同轮记录）：zonal_stats 默认按极性指数排序**不是件数**——"最密集"类问题需显式 point_count 口径（D1 缺陷）；大图层 dataset_id 引用在浏览器连接池会排队超时，关键演示图层优先内联 GeoJSON（≤60 要素）。
 
-## R12 · dsh web profile 是 pnpm 管——插件必须登记进 package.json，禁裸 npm install（PT-CB6 EMC 入口插件·2026-08-20）
+## R13 · dsh web profile 是 pnpm 管——插件必须登记进 package.json，禁裸 npm install（PT-CB6 EMC 入口插件·2026-08-20）
 
 - **规则**：
   - dsh 的 `~/.dsh/profiles/web/` 用 **pnpm**（`pnpm-workspace.yaml`·`nodeLinker: hoisted`），安装走 `dsh plugin --profile web add <tgz>`，**不是 `npm install`**。
@@ -108,11 +108,7 @@
   - web 起不来先 `netstat -ano | findstr :3080` 看有无 LISTENING；无则手工跑 `node --import tsx/esm apps/cli/src/bin.ts web`（cwd=`D:\Github\dsh`）抓 stderr 的 `ERR_MODULE_NOT_FOUND` 定位是哪个包缺失。
   - 对照 `cordis.patch.yml` 每个插件 id 与 package.json dependencies 是否一一登记；`npm ls --depth=0` 看 extraneous 项（未登记会被修剪的雷）。
 
-## 附：本库首建背景（CB-41 · 2026-08-18）
-
-用户经历三轮修复仍未根治（着色浅→着色反→无填充），zcode 接手后经「发起→dsh 排查→收敛→实施→用户复测暴露 B014→增补修复」闭环。三个台账：B012（tip 归属）/ B013（着色语义）/ B014（membership 静默丢点）·完整链条见 `docs/catch-ball/discuss/CB41-*` 三件套 + revision-log 5.257-5.260。
-
-## R13 · dsh rc.8 三约束——仓外插件构建需登记 stub · client 模块必须导出 inject · merge 后必须 build:web（PT-CB6 home 续点·2026-08-20）
+## R14 · dsh rc.8 三约束——仓外插件构建需登记 stub · client 模块必须导出 inject · merge 后必须 build:web（PT-CB6 home 续点·2026-08-20）
 
 - **规则**：
   - **① 仓外插件构建需登记 stub**：rc.8 构建链（`packages/client/tsdown.client.ts` 的 `workspaceManifest`）要求插件名出现在 `packages/*/*/package.json` 清单中，否则 tsdown 报 `no packages/*/*/package.json declares the name <id>`（两层 glob，`packages/<组>/<包>/package.json`）。仓外插件（如 `D:/Github/dsh-emc-entry/`）解法：在 dsh 仓建纯登记 stub（仅 package.json 声明 name + `dsh.client`，加 `tsdown.config.ts` 内容 `export default { entry: '' }` 跳过 workspace 构建）。
@@ -125,7 +121,7 @@
   - dsh web 页面黑屏/白屏 → 先查插件模块有无 `export const inject`；再对照 `apps/web/dist/assets/` 文件时间戳与 merge 时间（gitignored，git 状态看不到，必须看 mtime）；
   - 服务端验证绿 ≠ 浏览器验证绿：客户端插件改动必须过浏览器 DOM 快照（IAB/headless）才算交付。
 
-## R14 · dsh-better-sidebar 会拦截 `ctx.workspaces.openPath`——插件想开终端/外部浏览器必须直连 host RPC（PT-CB6 home 定稿修复·2026-08-20）
+## R15 · dsh-better-sidebar 会拦截 `ctx.workspaces.openPath`——插件想开终端/外部浏览器必须直连 host RPC（PT-CB6 home 定稿修复·2026-08-20）
 
 - **规则**：
   - **dsh-better-sidebar（≥0.12，config `interceptOpenPath: true` 默认开）在 client 侧 monkey-patch `ctx.workspaces.openPath`**：聊天文件链接改在侧边栏打开（fs.read → 文档标签），不再走系统默认应用。任何插件经 `ctx.workspaces.openPath` 打开 .bat/URL 都会被改道：
@@ -142,9 +138,45 @@
   - 按钮点击一次后置灰不恢复 → 检查探测结果是否在 `waitForEmc`/`finally` 回写；
   - 冷启动点开链路失败 → 检查 `waitForEmc` 超时是否覆盖 RAG 预热（≥40s）。
 
-## R15 · dsh web 必须从真实控制台窗口启动——无控制台环境会触发 node-pty AttachConsole 崩溃（PT-CB6 home 续点·2026-08-20 晚）
+## R16 · dsh web 必须从真实控制台窗口启动——无控制台环境会触发 node-pty AttachConsole 崩溃（PT-CB6 home 续点·2026-08-20 晚）
 
 - **规则**：dsh web（3080）的终端功能依赖 node-pty；**在无控制台环境（后台任务/沙箱/隐藏窗口）启动 web 时，node-pty 的 `conpty_console_list_agent` 子进程执行 `AttachConsole` 会失败 → 整个 web 进程崩溃退出（exit 127，日志以 `Error: AttachConsole failed` 收尾）**。因此 dsh web 必须从真实控制台窗口启动（桌面快捷方式 / `cmd /c start` 可见窗口），勿从无控制台的后台/沙箱环境起服务。同理，插件宿主 spawn 任何外部程序必须挂 error 兜底（沿用交接卡原建议）。
 - **案例**：2026-08-20 晚——zcode 后台任务起的 web 实例（`node --import tsx/esm apps/cli/src/bin.ts web --no-open`，无控制台）运行约 2 小时后崩于此错，3080 下线；用户/Codex 从常规窗口起的实例不受影响。
 - **违反后果**：web 服务"无预警死亡"——崩溃前服务端一切正常，故障只在终端功能被触发时爆发，且 exit 127 极易被误读为"命令未找到"。
 - **检查动作**：3080 突然无 LISTENING → 查 web 进程日志尾部是否有 `AttachConsole failed`；确认启动方式的控制台归属（后台/沙箱起的实例一律换真实窗口重启）。
+
+## R17 · 就绪探测必须验「真依赖」——no-cors opaque 探测对 502 也 resolve（PT-CB7 T19·2026-08-21）
+
+- **规则**：跨源探测「服务起没起来」时，禁用 `fetch(url, {mode:'no-cors'})` 的 resolve/reject 当结论——**opaque 响应对 HTTP 502/504 也 resolve**，会把「反代没起/后端挂了」误判成就绪。就绪门必须是一个**自查过真实依赖的后端端点**（如 `/emc-ready`：后端先自查 health/预热状态，真通才 200），并带 `Access-Control-Allow-Origin: *` 供跨源读真实状态码；客户端拿到 200 才放行开页。
+- **案例**：PT-CB7 T19——入口插件用 no-cors 探测 8080，把反代 502 误判为就绪，冷启动期提前开页 →「8080 加载一半失效」。修 = serve 增 `/emc-ready` 真就绪门（自查后端 health 真通才 200）+ 插件快通道（已就绪不杀不重启直接开图，治旧实例放行后被杀竞态）+ 杀窗守卫 + 旧 serve 兼容降级。
+- **违反后果**：用户看到页面开一半然后白/断（「加载一半失效」类体验）；且插件侧日志全绿，极易误判为前端缓存问题。
+- **检查动作**：任何「等服务起来」逻辑，先问探测的是什么（opaque？真状态码？依赖自查？）；新就绪门自问「这个 200 背后验证了哪些真实依赖」。
+
+## R18 · 重量级只读资产在服务启动时预热——请求期/进程级重复加载不是常态路径（PT-CB8 T17·2026-08-21）
+
+- **规则**：RAG 模型/索引/边界层/大点层这类**只读重量资产**，加载一次处处可用，必须挂在**进程启动生命周期**（serve / mcp server 起来时加载完成），不得把「每次请求、每次进程拉起都重复加载」当常态。冷热路径差可达百倍级（实测 13.8s → 0.02s）；加大 timeout 只是缓解不是根治。
+- **案例**：PT-CB8 T17——MCP server 每次被拉起重复做 RAG 模型加载（>120s·此前的 timeout 120s 只是缓解）。真修 = 主线程同步预热（RAG 模型+索引+174 边界+12345 点层），实测启动 12.5s 全就绪、预热后首调 0.02s（约 690 倍）。线程预热方案实测 import 死锁卡死，弃用留档。
+- **违反后果**：超时/降智/用户等待；症状表现为「偶发首调慢」，散布难归因，timeout 越调越大掩盖根因。
+- **检查动作**：新增重量资产三问（进程内单例？启动即载？冷热差多大）；看到「偶发慢」先查是否冷路径。
+
+## R19 · 跨机环境复刻先取「装成机器」的安装步骤实录（PT-CB8 E1·2026-08-21）
+
+- **规则**：在 B 机器复刻 A 机器已装好的复杂环境（如 dsh rc.8），第一步**不是照文档重装**，而是先取 A 机器（装成的那台）的**实际安装步骤/顺序/定制点实录**，逐条对齐再动手。安装器隐式行为（pnpm install 定向删除某目录）与镜像遗漏（zip 静默漏子包）只有对着实录才可定位。
+- **案例**：PT-CB8 E1——office 复刻家机 rc.8：robocopy 镜像 zip 静默漏 `packages/attachment/attachment`（手动补齐）+ `pnpm install` 反复定向删除 `packages/api/gateway/`（根因不明·嫌疑安装期钩子）+ npmmirror 网络抖动，三重阻断后止损回 rc.7；重启条件 = 上游澄清删除行为 or 家机导出安装步骤对比。
+- **违反后果**：排障一下午 + 环境回退 + 特性顺延（本轮实际发生）；根因不明项会反复消耗后续批次。
+- **检查动作**：跨机复刻前先列「源机实录清单」（怎么装的/装了什么/改了什么/跳过了什么）；阻断超 2 重即止损回滚，不硬刚。
+
+## 附：本库首建背景（CB-41 · 2026-08-18）
+
+用户经历三轮修复仍未根治（着色浅→着色反→无填充），zcode 接手后经「发起→dsh 排查→收敛→实施→用户复测暴露 B014→增补修复」闭环。三个台账：B012（tip 归属）/ B013（着色语义）/ B014（membership 静默丢点）·完整链条见 `docs/catch-ball/discuss/CB41-*` 三件套 + revision-log 5.257-5.260。
+
+## 维护协议（资产化飞轮 · 2026-08-21 用户令固化）
+
+> 目标：让本库从「修完就忘的 log」变成「越用越准的避坑资产」。完整方法论、业界对照与调优建议见 `docs/catch-ball/discuss/PT-CB8-EMC-dsh避坑沉淀报告_Codex-2026-08-21.md`。
+
+1. **强制蒸馏触发器**（满足任一即当轮新增规则，不留到"以后再说"）：① 同一 bug 修 ≥2 轮才好；② 修好后又出新症状（症状迁移）；③ 同族 bug 复发（buglog `repro_count ≥ 2`）；④ 宿主/环境/工具链隐式契约踩坑（pnpm/cordis/Windows/浏览器/包管理器）；⑤ 取证破案（排障 >30min 卡壳后靠 trace/netstat/mtime 翻案）。
+2. **四件套质量门槛**：规则（动作语言·可执行）/ 案例（带 CB·PT 编号可溯）/ 违反后果 / 检查动作（交付前怎么自查）。缺一件不成条。
+3. **编号纪律**：R+ 连续、唯一、不跳号不撞号；新增规则当轮登记 `docs/context-map.md`；他文引用必须带库名（如 debug-memory R2），防与前端 R 系列规则混淆。
+4. **载体分工**：按轮流水 = `catch-ball/cb-journal.md`（含 EMC-dsh 台账）；按 bug 台账 = `tests/buglog/`（AI-QA 功能 bug·索引由脚本算）；按规则蒸馏 = 本文件（含基建/环境/宿主坑）。同一事件三处只存指针，不复制正文。
+5. **收口与通知**：批次收工复盘必核对「本轮新坑是否已蒸馏」；新规则/沉淀报告 → `_cb-index.md` 登记 → 全组当轮回应（吸收/并入排期/暂缓/反对四档·AGENTS v2.4 学习规则）。
+6. **除草**：随 `/garden` 季度扫描——失效规则标 `[retired YYYY-MM]` 留档不删；案例引用的文档消失时补 git commit 锚点。

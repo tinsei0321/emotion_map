@@ -14,7 +14,7 @@
 │
 ├─ 主干 · 任务与账本（按需读顶）
 │  ├─ docs/revision-log.md ★ 任务路线图（ASCII 树 ✅🔄⬜⏸❌）+ §5 最新动态（倒序置顶）
-│  └─ docs/todo.md — 日段任务（倒序）；docs/dev-notes.md — 技术心得；docs/decisions.md — ADR；docs/debug-memory.md — **全局调试记忆（R1-R10 踩坑规则库·多组共享·CB-41 建）**
+│  └─ docs/todo.md — 日段任务（倒序）；docs/dev-notes.md — 技术心得；docs/decisions.md — ADR；docs/debug-memory.md — **全局调试记忆（R1-R19 踩坑规则库·多组共享·CB-41 建·含维护协议与 dsh 宿主坑·2026-08-21 资产化）**
 │
 ├─ 分支 · 隐规则记忆（索引全量注入、子文件按需）
 │  └─ ~/.claude/projects/d--Github-emotion-map/memory/ — MEMORY.md 索引 + 原子 .md（feedback/project/reference）

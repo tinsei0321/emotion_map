@@ -142,7 +142,7 @@ Agent 启动时根据下表选择性阅读知识源：
 | 任务追踪 | `docs/todo.md` | 当前任务、开发日志 |
 | 架构文档 | `docs/architecture.md` | 系统架构说明（含 frontend/MapLibre 前端层） |
 | 开发笔记 | `docs/dev-notes.md` | 历史踩坑记录 |
-| **全局调试记忆** | `docs/debug-memory.md` | **踩坑规则库（R1-R10·多组共享·CB-41 首建）——排查前必读；修复提交前对照 R1（多入口逐入口验证）/R2（列值匹配显式处理空值·禁静默丢数据）/R8（验证忌与实现同构）自查** |
+| **全局调试记忆** | `docs/debug-memory.md` | **踩坑规则库（R1-R19·多组共享·CB-41 首建）——排查前必读；修复提交前对照 R1（多入口逐入口验证）/R2（列值匹配显式处理空值·禁静默丢数据）/R8（验证忌与实现同构）自查；修 ≥2 轮/症状迁移/宿主契约坑 → 当轮蒸馏新规则（维护协议见文末）** |
 | 决策记录 | `docs/decisions.md` | 架构决策 (ADR) |
 | MCP 策略 | `docs/mcp-strategy.md` | MCP 路由手册、智谱优先、清单与测试日志 |
 | CB 评估规则 | `docs/catch-ball/RULES.md` | Catch-Ball 第三方评估流程、文档编号规范、CB 权限约束；**所有 CB/第三方评估文件统一放入 `docs/catch-ball/`，其中 SCAN 类评估报告放入 `docs/catch-ball/report/`** |
@@ -227,7 +227,7 @@ Agent 启动时根据下表选择性阅读知识源：
 报错 → 看 [TRACE] 日志 → 定位出错决策 ID → 跳转代码 → 精准修复
 ```
 
-**Debug 排查纪律**（细则见 `docs/debug-memory.md`·R1-R10·多组共享）：
+**Debug 排查纪律**（细则见 `docs/debug-memory.md`·R1-R19·多组共享·含 dsh 宿主坑与维护协议）：
 1. 显示/聚合类 bug 先判层：**数据 → 映射 → 渲染**（R3），第一步做数值对账；
 2. 纸面推演穷尽即转实证：trace_query + netstat 取证（R6）；
 3. 多入口功能逐入口验证，验证路径忌与实现同构（R1/R8）；

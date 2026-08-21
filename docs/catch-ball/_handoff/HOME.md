@@ -9,7 +9,7 @@
 
 ### 今日完成
 
-1. **审计先行 + 拆解**：T1-T9 全文审计（M1-M4 修正随执行生效）；任务拆解（复杂自执/简单派 dsh 三批）落盘；WIP 复核（boundary_fill_v1 保留/R14 为 T3 资产）。
+1. **审计先行 + 拆解**：T1-T9 全文审计（M1-M4 修正随执行生效）；任务拆解（复杂自执/简单派 dsh 三批）落盘；WIP 复核（boundary_fill_v1 保留/R15 为 T3 资产·08-21 重编号）。
 2. **EMC 仓六 commit**（基线 442 passed / 2 skipped·显式路径提交·禁 add -A）：
    - T1 `97fb95bd` [dsh] 图层叠层自清理；T6 `0d752150` MCP 描述紧凑化；T8 `9e7ca1dc` 800m 脚本参数化+口径对照段+inbox 自清；T5+T9 `c6013cf8` 身份卡扩写+RAG 364 条；T14 `1dc80123` 结果呈现契约§七；T10 `a8a697e5` 出图范式契约 render-contract.md。
    - 用户实测五连修：T18 `3d80d2cd` render_file 第 9 插座（“显示到地图”一步到位·治长思维+误入 Range）；T16 `8608ff14` 历史图层残留根治（applied/ 归档）；T19 `23888cb3` /emc-ready 真就绪端点+插件快通道/杀窗守卫（治“加载一半失效”）；T21 `691676ab` SSE 扇出广播+50s 豁免（治“F5 才见”）；T15 `fa661192` start_silent.vbs 隐藏启动+对话式首屏卡。
@@ -29,7 +29,7 @@
 - D2 欢迎卡绑定目标会话（全局可见）仍未做——气泡卡形态下观感是否可接受待用户反馈。
 - render_file 临时 dataset（tmp_render_* 组）在 manifest 缓慢累积——同源复用已防重，定期清理列观察。
 - 工作区带入了 dsh 测试任务产物（SCRIPT/gen_12345_bottom10_layer.py + bottom10 geojson×2 + manifest/素材表改动）——随收工提交一并入库（先例同 08-20）；_tmp/gen_12345_kde.py 为他人实验残留未动。
-- debug-memory 双 R11 撞号仍待主手合并。
+- debug-memory 撞号已清：双 R11 已合并（E2·08-21）；残留双 R12 已由 Codex 修正（R13-R16 顺号·08-21 避坑沉淀报告）。
 
 ---
 
@@ -44,23 +44,23 @@
    - rc.8 构建链适配：**登记 stub `D:/Github/dsh/packages/emc/emc-entry/`**（纯 manifest + tsdown.config.ts `entry:''` 跳过，已 commit `ec5c5e725c`）+ 插件目录 node_modules junction → dsh/node_modules + node 半导出 `apply` 空壳。
    - 接入 web profile（dependencies link: + bundles + junction；备份 `package.json.bak-emcentry`）。
    - **验证通过**：web 重启后稳定运行，`GET /plugins/dsh-emc-entry/client.js` → **200**（7639B）；浏览器 DOM 快照确认左下角按钮在位（8080 停时置灰正确）。
-4. **黑屏修复（双根因）**：根因 A = 插件缺 `export const inject` 服务声明（客户端启动树崩溃）；根因 B = merge 后未跑 `build:web`（前端 assets 08-18 旧构建 vs rc.8 新 bundle 版本错配）。修后浏览器实测页面完整渲染。坑记 debug-memory **R13**。
+4. **黑屏修复（双根因）**：根因 A = 插件缺 `export const inject` 服务声明（客户端启动树崩溃）；根因 B = merge 后未跑 `build:web`（前端 assets 08-18 旧构建 vs rc.8 新 bundle 版本错配）。修后浏览器实测页面完整渲染。坑记 debug-memory **R14**（08-21 重编号）。
 5. **Codex 接入修复（附带）**：`config.toml` DeepSeek provider 改回 `wire_api = "responses"`（DeepSeek V4 原生支持 Responses API，实测 200）；`models.json` 两个模型的 `supports_search_tool` → false（防 Codex 0.145.0 MCP 工具静默隐藏 bug）。重启 Codex 客户端生效。
-6. **落盘**：执行记录 + 送审通知（含转发 Codex 的审计 prompt）+ 本卡 + R13 + session-handoff 节点，随 commit 推送。
+6. **落盘**：执行记录 + 送审通知（含转发 Codex 的审计 prompt）+ 本卡 + R14（08-21 重编号）+ session-handoff 节点，随 commit 推送。
 
 ### 待办（主手回收）
 
 - **✅ 送审已完成**：双审计（Qoder+Codex）已核毕落盘 `discuss/PT-CB6-home续点恢复_审计_Codex-2026-08-21.md`（无 CRITICAL）；用户新发现 B1/B2/B3 已由 Codex 修复并浏览器实测；本文件为收工卡，详细状态以审计报告 §D 定稿待修清单为准。
 - **T4 视觉验收**：B2/B3 已有等价浏览器实测证据，四截图待主手补档；剩余排期项 = D2 欢迎卡绑定目标会话 / EMC 人设 + RAG 重建 / start.bat banner（F8 需授权）。
-- node-pty `AttachConsole failed` 坑已记 debug-memory **R15**（08-20 晚实测触发：无控制台启动的 web 实例被崩掉）。
+- node-pty `AttachConsole failed` 坑已记 debug-memory **R16**（08-21 重编号·08-20 晚实测触发：无控制台启动的 web 实例被崩掉）。
 - synapse 残留 M1 已闭环：pnpm-lock 已在定稿修复中修剪干净（08-20 23:37），pnpm-workspace.yaml allowBuilds 行 08-20 晚已删。
 - dsh 未 push：`git pull --rebase` + push；收工时 `git push hub --all` 补推盘仓。
 
 ### 注意
 
-- **rc.8 之后**：仓外插件构建必须走登记 stub（packages/emc/emc-entry）+ 独立 tsdown；client 插件必须导出 `inject`；merge 上游后必须 `build:web`；web profile 禁裸 npm install（R12 依旧）。
+- **rc.8 之后**：仓外插件构建必须走登记 stub（packages/emc/emc-entry）+ 独立 tsdown；client 插件必须导出 `inject`；merge 上游后必须 `build:web`；web profile 禁裸 npm install（R13·08-21 重编号）。
 - dsh 相关文件在仓外（`D:/Github/dsh-emc-entry/` + `~/.dsh/profiles/web/`），不入本仓 git。
-- debug-memory 两个 R11 撞号待主手合并。
+- debug-memory 撞号已清（E2 合并双 R11 + Codex 08-21 修残留双 R12·重编号 R13-R16·详见避坑沉淀报告）。
 
 ---
 
@@ -68,7 +68,7 @@
 
 ### 今日完成
 
-1. **dsh web 启动修复**：`cordis.patch.yml` 引用的 `@dsh-external/dsh-super-injector` 未登记进 package.json，被上轮 `npm install` 当 extraneous 修剪 → web 崩「Failed to load plugins」。修 = 登记依赖 + junction 恢复 + 清误产 npm 锁；坑记 `docs/debug-memory.md` R12（dsh profile 是 pnpm 管·插件须登记 package.json·禁裸 npm install）。
+1. **dsh web 启动修复**：`cordis.patch.yml` 引用的 `@dsh-external/dsh-super-injector` 未登记进 package.json，被上轮 `npm install` 当 extraneous 修剪 → web 崩「Failed to load plugins」。修 = 登记依赖 + junction 恢复 + 清误产 npm 锁；坑记 `docs/debug-memory.md` R13（08-21 重编号·dsh profile 是 pnpm 管·插件须登记 package.json·禁裸 npm install）。
 2. **EMC 入口插件 dsh-emc-entry**：建包 `D:/Github/dsh-emc-entry/`（左下角 `sidebar.footer.action` 按钮 + 8080 探测 + 零硬编码 token 纪律）→ 构建 client bundle → 接入 web profile → 加载验证（`/plugins/dsh-emc-entry/client.js` 200 + boot 清单在位）。
 3. **入口重定义任务书**（`discuss/PT-CB6-EMC入口重定义任务书_Codex-2026-08-20.md`）：点击入口 = 开新会话（standard）+ 欢迎卡 + host 跑 start.bat + 外部 Edge 开 8080；随后 EMC 人设 + 身份卡。
 4. **spawn 崩溃修复**：dsh 实现 host 时 `spawn('msedge')` 报 ENOENT 且未挂 error 监听 → 带崩 web。修 = 改 `cmd /c start "" url`（默认浏览器=Edge）+ `safeSpawn` 挂 error 兜底（源码 `src/index.ts` 与产物 `lib/index.js` 都改了）。
@@ -78,7 +78,7 @@
 
 1. 用户反馈入口仍有小问题（欢迎卡展开 / 新会话行为细节未完全达标）——先复现再定位，改 `D:/Github/dsh-emc-entry/src/client/index.ts` + 重建 client bundle。
 2. EMC 人设 system prompt 未确认是否已配（身份卡已加，但「你是谁」仍走 dsh 默认人设；需配 system prompt + `py tools/rag_index.py --build` 重建 RAG）。
-3. node-pty `AttachConsole failed` 崩溃（隐藏窗口起服务时 dsh 用终端会崩）——建议记 debug-memory R13（插件宿主 spawn 外部程序必须挂 error 兜底 + Windows 开浏览器用 `cmd /c start`）。
+3. node-pty `AttachConsole failed` 崩溃（隐藏窗口起服务时 dsh 用终端会崩）——已记 debug-memory R16（08-21 重编号·含插件宿主 spawn 外部程序 error 兜底建议）。
 4. `tools/grid_export.py` 是「非正式工具 · F_029 待立项」，勿当正式插座。
 
 ### 注意
