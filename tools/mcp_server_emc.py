@@ -714,8 +714,43 @@ def build_server():
     return server
 
 
+def _warmup():
+    """PT-CB8 T17 · 冷启动预热线程：把惰性重资产在后台提前加载——
+    ① RAG embedding 模型+索引（实测首调 13.8s → 热 0.02s·timeout 根因）
+    ② 常用数据层（174 聚合边界 + 12345 点层）进 geo_registry 缓存
+    ③ manifest usage 索引首建。失败无害（log 不静默·不倒 server）。主线程同步执行（见下修正注记）。"""
+
+    def _task():
+        try:
+            from tools.rag_index import search
+            search('预热', k=1)
+            _safe_print('[OK] 预热: RAG 模型+索引就绪', file=sys.stderr)
+        except Exception as exc:  # 预热失败不阻断服务（A9：log 不静默）
+            _safe_print(f'[WARN] 预热 RAG 失败(不阻断): {exc}', file=sys.stderr)
+        try:
+            from core.geo_registry import resolve_boundary, get_layer_points
+            resolve_boundary('checkup_cfg_community174')
+            get_layer_points('checkup_12345_2024')
+            _safe_print('[OK] 预热: 常用数据层就绪', file=sys.stderr)
+        except Exception as exc:
+            _safe_print(f'[WARN] 预热数据层失败(不阻断): {exc}', file=sys.stderr)
+        try:
+            from core.field_dictionary import get_layer_usage
+            get_layer_usage('admin_district')
+        except Exception:
+            pass  # usage 索引毫秒级·失败无感
+
+    # 主线程同步预热（T17 实测修正）：子线程 import 在 server 事件循环进程内会卡死
+    # （独立进程正常·根因疑为主线程已部分加载的重库+子线程续载 DLL 交互），改主线程
+    # 顺序预热：启动期约 +15s，换取 initialize 后全工具热调（client 超时 120s 保险）。
+    _safe_print('[OK] 预热开始（约 15s·主线程同步）', file=sys.stderr)
+    _task()
+    _safe_print('[OK] 预热完成', file=sys.stderr)
+
+
 def main():
     _safe_print('[OK] EMC MCP server stdio 启动（Ctrl+C 退出）', file=sys.stderr)
+    _warmup()
     build_server().run()
 
 
