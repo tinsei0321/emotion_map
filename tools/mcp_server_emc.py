@@ -37,6 +37,9 @@ register_track_id('MOD_AIQA.F_027', 'MCP rank（排序评价·最差/最好 Top-
 register_track_id('MOD_AIQA.F_028', 'MCP render_spec（图层图纸：dataset/inline→spec 落收件箱）')
 register_track_id('MOD_AIQA.F_031', 'MCP render_file（把文件现在显示到地图：服务端读取·≤60 内联/>60 自动登记临时 dataset·一步到位）')
 register_track_id('MOD_AIQA.F_032', 'MCP emc_status（8080 地图服务就绪探测·入口向导流程轮询用·临时测试件）')
+register_track_id('MOD_AIQA.F_033', 'MCP grid_aggregate（方格网空间聚合·参数化替代 T8 脚本）')
+register_track_id('MOD_AIQA.F_034', 'MCP compare_regions（≥2 区域同口径并排+差异·契约 boundaries 参数）')
+register_track_id('MOD_AIQA.F_035', 'MCP hotspot_analysis（Gi* 逐点显著聚集·五档分类）')
 
 MANIFEST = os.path.join(REPO, 'DATA', 'boundaries', 'presets', 'manifest.json')
 
@@ -537,6 +540,184 @@ def rank(by: str = 'worst', layer: str = 'yichang_l2_t1',
     return out
 
 
+@track('MOD_AIQA.F_033', track_args=False)
+def grid_aggregate(layer: str = 'yichang_l2_t1', cell_size: int = 800,
+                   value_col: str = '', boundary: str = '',
+                   top_n: int = 10, layer_output: bool = False) -> dict:
+    """方格网空间聚合：点层按固定边长方格统计（中观·规则格）。
+    参数：cell_size 格边长米（默认 800·语义同 Grid dialog cellSize=格边长非带宽）；value_col 空=只计数·给值则同时算 _sum/_mean；boundary 可选 preset 裁剪；top_n 1-20；layer_output=True 增 geojson。
+    限制：方格≠行政单元——社区级结论用 zonal_stats；geopandas 冷启动 10-20s。"""
+    caliber = {'scale': '中观（规则方格·边长 cell_size m）',
+               'semantics': '方格网聚合强度（规则格·非行政单元）',
+               'limits': '方格≠社区/行政区——勿把格结论说成社区结论；行政单元归因用 zonal_stats',
+               'refs': ['K-C1']}
+    try:
+        from core.geo_registry import resolve_boundary, resolve_points
+        from core.spatial_analysis import create_square_grid
+
+        points = resolve_points(layer)
+        if value_col and value_col not in points.columns:
+            return {'ok': False, 'hint': f'value_col 不存在: {value_col!r}（该层可用列: {list(points.columns)}）',
+                    'caliber': caliber}
+        if boundary:
+            _g = _reject_analysis_output(boundary, 'boundary', caliber)
+            if _g:
+                return _g
+            import geopandas as gpd
+            polys = resolve_boundary(boundary)
+            points = gpd.clip(points, polys.unary_union)
+        merged = create_square_grid(points, cell_size,
+                                    agg_cols=([value_col] if value_col else []))
+        sort_col = (f'{value_col}_mean' if value_col and f'{value_col}_mean' in merged.columns
+                    else 'point_count')
+        merged = merged.sort_values(sort_col, ascending=False, kind='stable')
+        row_count = int(len(merged))
+        top_n = max(1, min(int(top_n), 20))
+        rows = _gdf_rows(merged.head(top_n), [value_col] if value_col else None)
+        out_geojson = _layer_output_geojson(merged, top_n, sort_col) if layer_output else None
+    except (KeyError, FileNotFoundError):
+        return {'ok': False, 'hint': _UNKNOWN_HINT, 'caliber': caliber}
+    except Exception as exc:
+        return {'ok': False, 'hint': f'grid_aggregate 失败: {exc}', 'caliber': caliber}
+
+    stats = {'total_cells': row_count,
+             'nonzero_cells': int((merged['point_count'] > 0).sum()),
+             'max_count': int(merged['point_count'].max())}
+    out = {'rows': rows, 'stats': stats, 'row_count': row_count,
+           'truncated': row_count > len(rows), 'caliber': caliber}
+    if layer_output:
+        out['geojson'] = out_geojson
+    return out
+
+
+@track('MOD_AIQA.F_034', track_args=False)
+def compare_regions(boundaries: list, layer: str = 'yichang_l2_t1',
+                    agg_cols: list = None) -> dict:
+    """区域对比：≥2 个 boundary preset 同口径并排聚合+差异方向（谁更高/差多少/几倍）。
+    参数：boundaries 必填 list（≥2·≤5·超5截断标注）；agg_cols 默认 ['score']（沿 zonal_stats）；layer 默认 yichang_l2_t1。
+    限制：跨 layer/agg_cols 的对比无意义；单区归因用 zonal_stats。"""
+    caliber = {'scale': '宏观/中观（区域对比）',
+               'semantics': '≥2 区域同口径并排+差异方向',
+               'limits': '区数 2-5；同 layer 同 agg_cols 才可比；单区归因用 zonal_stats',
+               'refs': ['K-C1']}
+    if isinstance(boundaries, str):
+        items = [s.strip() for s in boundaries.replace('|', ',').split(',') if s.strip()]
+    elif isinstance(boundaries, (list, tuple)):
+        items = [str(b).strip() for b in boundaries if str(b).strip()]
+    else:
+        return {'ok': False,
+                'hint': 'boundaries 需为 preset id 列表（≥2 区·对齐契约 failure_modes）',
+                'caliber': caliber}
+    truncated = len(items) > 5
+    items = items[:5]
+    if len(items) < 2:
+        return {'ok': False,
+                'hint': 'compare_regions 需 ≥2 区（对齐契约 failure_modes·boundaries 为 list 或 "a|b" 分隔串）',
+                'caliber': caliber}
+    try:
+        import pandas as pd
+        from core.geo_registry import list_boundaries, resolve_boundary, resolve_points
+        from core.spatial_analysis import aggregate_by_polygons
+
+        label_map = {}
+        try:
+            label_map = {b.get('id'): (b.get('label') or b.get('id')) for b in list_boundaries()}
+        except Exception:
+            pass
+        frames = []
+        for b in items:
+            _g = _reject_analysis_output(b, 'boundary', caliber)
+            if _g:
+                return _g
+            polys = resolve_boundary(b)
+            g = polys[['geometry']].dissolve()
+            g['name'] = label_map.get(b, b)
+            frames.append(g)
+        combined = pd.concat(frames, ignore_index=True)
+        points = resolve_points(layer)
+        cols = agg_cols if agg_cols else (['score'] if 'score' in points.columns else [])
+        merged = aggregate_by_polygons(points, combined, agg_cols=cols,
+                                       polygon_name_col='name')
+        rows = _gdf_rows(merged, cols)
+        diff = {}
+        metric_cols = ['point_count']
+        for c in ('polarity_index', 'score_mean', *(f'{c}_mean' for c in cols)):
+            if c in merged.columns:
+                metric_cols.append(c)
+        for m in metric_cols:
+            key = merged[m].abs() if m == 'polarity_index' else merged[m]
+            max_i, min_i = key.idxmax(), key.idxmin()
+            max_v, min_v = float(merged.at[max_i, m]), float(merged.at[min_i, m])
+            diff[m] = {
+                'max_region': merged.at[max_i, 'name'],
+                'min_region': merged.at[min_i, 'name'],
+                'gap': round(max_v - min_v, 4),
+                'ratio': round(max_v / min_v, 3) if min_v > 0 else None,
+            }
+    except (KeyError, FileNotFoundError):
+        return {'ok': False, 'hint': _UNKNOWN_HINT, 'caliber': caliber}
+    except Exception as exc:
+        return {'ok': False, 'hint': f'compare_regions 失败: {exc}', 'caliber': caliber}
+
+    return {'regions': rows, 'count': len(rows), 'truncated': truncated,
+            'diff': diff, 'caliber': caliber}
+
+
+@track('MOD_AIQA.F_035', track_args=False)
+def hotspot_analysis(layer: str = 'yichang_l2_t1', value_col: str = 'score',
+                     invert: bool = True, threshold: float = 1.96,
+                     soft_threshold: float = 1.0, top_n: int = 10,
+                     layer_output: bool = False) -> dict:
+    """显著聚集识别：逐点 Gi* Z-score 五档分类（hot/tend_hot/ns/tend_cold/cold）。
+    参数：value_col 默认 score；invert=True 负面为热（契约默认）；threshold 1.96=95%（1.65=90/2.58=99）；soft_threshold 1.0=倾向档；top_n 1-20。
+    限制：显著=统计显著性非业务重要性；连续密度面用 density；score 为 U 形离散分布·ns 占多属正常（P1 修正口径）。"""
+    caliber = {'scale': '微观（逐点 Gi*）',
+               'semantics': '逐点 Gi* Z-score 五档显著聚集分类',
+               'limits': '显著=统计显著性非业务重要性；连续热度分布用 density；threshold 对应置信度（1.65→90%/1.96→95%/2.58→99%）',
+               'refs': ['K-C1']}
+    try:
+        from core.geo_registry import resolve_points
+        from core.spatial_analysis import hot_spot_analysis
+
+        points = resolve_points(layer)
+        if value_col not in points.columns:
+            import pandas as pd
+            try:
+                numeric = [c for c in points.columns
+                           if c != 'geometry' and pd.api.types.is_numeric_dtype(points[c])]
+            except Exception:
+                numeric = [c for c in points.columns if c != 'geometry']
+            return {'ok': False,
+                    'hint': f'value_col 不存在: {value_col!r}（可用数值列: {numeric}；连续热度分布请用 density·勿混用）',
+                    'caliber': caliber}
+        result = hot_spot_analysis(points, value_col=value_col, invert=invert,
+                                   threshold=threshold, soft_threshold=soft_threshold)
+        tiers = ('hot', 'tend_hot', 'ns', 'tend_cold', 'cold')
+        counts = {t: int((result['hotspot_tier'] == t).sum()) for t in tiers}
+        tier_rank = {'hot': 0, 'cold': 1, 'tend_hot': 2, 'tend_cold': 3, 'ns': 4}
+        result = result.assign(_tier_rank=result['hotspot_tier'].map(tier_rank),
+                               _abs_z=result['Gi_Z'].abs())
+        ordered = result.sort_values(['_tier_rank', '_abs_z'],
+                                     ascending=[True, False], kind='stable')
+        row_count = int(len(ordered))
+        top_n = max(1, min(int(top_n), 20))
+        row_cols = [c for c in ('place_name', 'Gi_Z', 'Gi_P', 'hotspot_tier')
+                    if c in ordered.columns]
+        rows = [{c: _jsonable(row[c]) for c in row_cols}
+                for _, row in ordered.head(top_n).iterrows()]
+        out_geojson = _layer_output_geojson(result, top_n, 'Gi_Z') if layer_output else None
+    except (KeyError, FileNotFoundError):
+        return {'ok': False, 'hint': _UNKNOWN_HINT, 'caliber': caliber}
+    except Exception as exc:
+        return {'ok': False, 'hint': f'hotspot_analysis 失败: {exc}', 'caliber': caliber}
+
+    out = {'counts': counts, 'rows': rows, 'row_count': row_count,
+           'truncated': row_count > len(rows), 'caliber': caliber}
+    if layer_output:
+        out['geojson'] = out_geojson
+    return out
+
+
 def _dataset_meta(dataset_id, groups=None):
     """dataset_id → {usage, data_nature}（preset 读 manifest·点层按池路径·未知 None）。"""
     try:
@@ -797,6 +978,9 @@ def build_server():
     server.tool()(zonal_stats)
     server.tool()(buffer)
     server.tool()(rank)
+    server.tool()(grid_aggregate)
+    server.tool()(compare_regions)
+    server.tool()(hotspot_analysis)
     server.tool()(render_spec)
     server.tool()(render_file)
     server.tool()(emc_status)
