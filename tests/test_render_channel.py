@@ -70,6 +70,8 @@ def test_render_spec_writes_inbox_file_with_contract(monkeypatch, tmp_path):
         {'id': 'base_18village_area', 'label': '18村', 'file': 'a.geojson',
          'nameField': 'SQMC', 'usage': 'analysis_output'},
     ])
+    # PT-CB11 B3-2：render_policy 读真 manifest——同步隔离（fake 文件不存在→降级政策校验）
+    monkeypatch.setattr('core.range_selector._PRESETS_MANIFEST', mse.MANIFEST)
     monkeypatch.setattr('core.geo_registry.list_point_layers', lambda: [])
     out = mse.render_spec(kind='choropleth', name='情绪最差三区',
                           dataset_id='base_18village_area', value_field='polarity_index',
@@ -145,6 +147,8 @@ def test_render_spec_dataset_validation(monkeypatch, tmp_path):
         {'id': 'base_18village_area', 'label': '18村', 'file': 'a.geojson',
          'nameField': 'SQMC', 'usage': 'analysis_output'},
     ])
+    # PT-CB11 B3-2：同上——隔离真 manifest（fake 文件不存在→降级政策校验）
+    monkeypatch.setattr('core.range_selector._PRESETS_MANIFEST', mse.MANIFEST)
     monkeypatch.setattr('core.geo_registry.list_point_layers', lambda: [])
     out = mse.render_spec(kind='choropleth', name='未知', dataset_id='nope')
     assert out['ok'] is False and '未知 dataset_id' in out['hint']
@@ -271,3 +275,101 @@ def test_render_client_clears_dsh_layers_before_apply():
     i_clear = src.index('_clearDshLayers();', i_apply)
     i_add = src.index('addToolboxLayer(', i_apply)
     assert i_apply < i_clear < i_add
+
+
+# ════════════ PT-CB11 B3-1/B3-2 · 渲染通道字段政策 + value_field 服务端校验 ════════════
+
+def test_render_policy_preset_render_fields_manifest():
+    """B3-1：manifest 声明字段（nameField 自动 + renderFields 显式）能查到。"""
+    from core import render_policy as rp
+    fields = rp.preset_render_fields('page7_12345_top20')
+    assert '社区' in fields             # nameField 自动放行
+    assert '诉求总量' in fields         # renderFields 显式声明
+    assert rp.field_allowed('诉求总量', 'page7_12345_top20')
+    assert not rp.field_allowed('办件编号', 'page7_12345_top20')   # 准标识字段默认拒
+    assert rp.preset_render_fields('___nope___') == set()
+
+
+def test_render_policy_dataset_field_names_reads_file():
+    """B3-2 地面真相：preset 文件首要素属性 = 实际字段（top20 无 point_count·有中文指标）。"""
+    from core import render_policy as rp
+    actual = rp.dataset_field_names('page7_12345_top20')
+    assert actual is not None
+    assert '诉求总量' in actual and 'point_count' not in actual
+    assert rp.dataset_field_names('___nope___') is None
+
+
+def test_filter_dataset_props_extra_keys_and_quasi_id_dropped():
+    fc = {'features': [{'properties': {'社区': '甲', '诉求总量': 12,
+                                       '办件编号': 'X1', 'point_count': 3}}]}
+    dropped = render_routes._filter_dataset_props(fc, extra_keys={'诉求总量'})
+    assert fc['features'][0]['properties'] == {'社区': '甲', '诉求总量': 12, 'point_count': 3}
+    assert dropped == {'办件编号'}
+
+
+def test_render_dataset_endpoint_passes_preset_render_fields(monkeypatch):
+    """B3-1 端点集成：preset 声明的中文指标字段随 dataset 响应透传·准标识仍剔除。"""
+    gdf = gpd.GeoDataFrame(
+        {'社区': ['甲'], '诉求总量': [12], '办件编号': ['X1']},
+        geometry=[Polygon([(111.2, 30.6), (111.3, 30.6), (111.3, 30.7), (111.2, 30.6)])],
+        crs='EPSG:4326')
+    monkeypatch.setattr('core.geo_registry.list_boundaries',
+                        lambda: [{'id': 'page7_12345_top20'}])
+    monkeypatch.setattr('core.geo_registry.resolve_boundary', lambda bid: gdf)
+    out = render_routes.render_dataset('page7_12345_top20')
+    assert out['ok'] is True
+    props = out['geojson']['features'][0]['properties']
+    assert props['诉求总量'] == 12 and props['社区'] == '甲'
+    assert '办件编号' not in props
+
+
+def test_render_spec_value_field_validation(monkeypatch, tmp_path):
+    """B3-2 三类语义化拒绝（dataset 错配/policy 剔除/inline 缺字段）+ 正确字段放行。"""
+    gdir = tmp_path / 'presets'
+    gdir.mkdir()
+    fc = {'type': 'FeatureCollection', 'features': [
+        {'type': 'Feature',
+         'geometry': {'type': 'Polygon',
+                      'coordinates': [[[111.2, 30.6], [111.25, 30.6],
+                                       [111.25, 30.65], [111.2, 30.6]]]},
+         'properties': {'社区': f'c{i}', '诉求总量': i + 1, '内部编号': f'N{i}'}}
+        for i in range(3)]}
+    (gdir / 'b3.geojson').write_text(json.dumps(fc, ensure_ascii=False), encoding='utf-8')
+    items = [{'id': 'b3_preset', 'label': 'B3', 'file': 'b3.geojson',
+              'nameField': '社区', 'renderFields': ['诉求总量'],
+              'usage': 'analysis_output'}]
+    fake_manifest = _fake_manifest(tmp_path, items)
+    monkeypatch.setattr(mse, 'MANIFEST', fake_manifest)
+    monkeypatch.setattr(mse, 'REPO', str(tmp_path))
+    monkeypatch.setattr('core.range_selector._PRESETS_MANIFEST', fake_manifest)
+    monkeypatch.setattr('core.range_selector._PRESETS_DIR', str(gdir))
+    monkeypatch.setattr('core.geo_registry.list_point_layers', lambda: [])
+
+    # ① dataset 错配：point_count 不在实际字段 → 拒绝并提示可用字段（宿主自纠）
+    out = mse.render_spec(kind='choropleth', name='错配', dataset_id='b3_preset',
+                          value_field='point_count')
+    assert out['ok'] is False
+    assert '不在 dataset' in out['hint'] and '诉求总量' in out['hint']
+
+    # ② policy 剔除：字段在实际文件里但未被声明 → 拒绝（前端收不到=全零透明）
+    out = mse.render_spec(kind='choropleth', name='未声明', dataset_id='b3_preset',
+                          value_field='内部编号')
+    assert out['ok'] is False and '字段政策' in out['hint']
+
+    # ③ inline 缺字段：要素属性并集里没有 → 拒绝
+    fc2 = {'type': 'FeatureCollection', 'features': [
+        {'type': 'Feature', 'geometry': {'type': 'Polygon',
+                                         'coordinates': [[[111.2, 30.6], [111.25, 30.6],
+                                                          [111.25, 30.65], [111.2, 30.6]]]},
+         'properties': {'社区': 'x', 'point_count': 5}}]}
+    out = mse.render_spec(kind='choropleth', name='inline 错', geojson=fc2,
+                          value_field='nope')
+    assert out['ok'] is False and 'geojson 要素属性' in out['hint']
+
+    # ④ 正确字段放行（dataset 声明字段 / inline 存在字段）
+    out = mse.render_spec(kind='choropleth', name='对', dataset_id='b3_preset',
+                          value_field='诉求总量')
+    assert out['ok'] is True
+    out = mse.render_spec(kind='choropleth', name='inline 对', geojson=fc2,
+                          value_field='point_count')
+    assert out['ok'] is True

@@ -55,20 +55,11 @@ _UNKNOWN_HINT = '未知层 id·调用 list_data 查看清单'
 _APPLIED_TTL_DAYS = 7
 # C2-4：dataset 端点属性白名单（默认拒绝）——只放行名称/极性/领域/指标类字段，
 #   禁办件编号等准标识字段随渲染通道外流（脱敏铁律 7 同源）。
-_DATASET_PROP_KEYS = {
-    # 名称类（边界/要素可读名）
-    'name', 'Name', 'NAME', 'MC', '区名', '社区', '街道', '行政区', '单元',
-    # 极性/情绪类
-    'polarity', 'polarity_hint', 'polarity_index', 'score', 'score_mean',
-    'l1_confidence', 'emotion_intensity',
-    # 领域/归因类
-    'domain', 'domain_top', 'element', 'element_top', 'topic', 'issue_label',
-    # 指标/地点类
-    'point_count', 'place_name', 'place_name_source', 'poi_names', 'poi_count',
-    # 口径类（K-02 全覆盖口径必备 来源 字段）
-    '来源',
-}
-_DATASET_PROP_PREFIXES = ('polarity', 'score', 'domain', 'element', 'poi', 'place')
+#   PT-CB11 B3-1：键表与前缀迁入 core/render_policy.py（单一权威源·与 MCP 侧校验共用）；
+#   preset 的 nameField/renderFields 声明字段按 dataset 增量放行（含中文指标字段·治注入层灰框根因①）。
+from core.render_policy import DATASET_PROP_KEYS as _DATASET_PROP_KEYS
+from core.render_policy import DATASET_PROP_PREFIXES as _DATASET_PROP_PREFIXES
+from core.render_policy import preset_render_fields
 
 
 def _safe_print(msg, file=None):
@@ -135,8 +126,12 @@ def _cleanup_applied(inbox_dir, ttl_days=_APPLIED_TTL_DAYS):
     return removed
 
 
-def _filter_dataset_props(fc):
-    """C2-4：dataset 属性白名单过滤（默认拒绝·几何不动）。返回被剔除的字段名集合（可观测）。"""
+def _filter_dataset_props(fc, extra_keys=None):
+    """C2-4+B3-1：dataset 属性白名单过滤（默认拒绝·几何不动）。
+
+    extra_keys=preset 声明字段（nameField+renderFields·含中文指标）增量放行。
+    返回被剔除的字段名集合（可观测）。"""
+    extra = set(extra_keys or ())
     dropped = set()
     for f in fc.get('features') or []:
         props = f.get('properties')
@@ -144,7 +139,8 @@ def _filter_dataset_props(fc):
             continue
         kept = {}
         for k, v in props.items():
-            if k in _DATASET_PROP_KEYS or k.startswith(_DATASET_PROP_PREFIXES):
+            if (k in _DATASET_PROP_KEYS or k in extra
+                    or k.startswith(_DATASET_PROP_PREFIXES)):
                 kept[k] = v
             else:
                 dropped.add(k)
@@ -234,7 +230,8 @@ def render_dataset(dataset_id: str):
             return {'ok': False, 'hint': '要素过多·请用分析工具聚合后再渲'}
         fc = gdf.__geo_interface__
         # C2-4：属性白名单过滤（办件编号等准标识字段不外流·被剔除字段名可观测）。
-        dropped = _filter_dataset_props(fc)
+        # B3-1：preset 声明字段（nameField+renderFields）增量放行——治中文指标字段被误剔。
+        dropped = _filter_dataset_props(fc, extra_keys=preset_render_fields(dataset_id))
         if dropped:
             _safe_print(f'[OK] render dataset {dataset_id}: 白名单外字段已剔除 {sorted(dropped)}', file=sys.stderr)
         return {'ok': True, 'dataset_id': dataset_id, 'geojson': fc, 'count': count}

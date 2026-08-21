@@ -573,7 +573,7 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
                 source_tool: str = 'manual', data_nature: str = 'real',
                 community_caliber: int = 0) -> dict:
     """图层图纸：dataset 引用或内联 GeoJSON → render_inbox spec，经 8080 前端显示屏呈现。
-    参数：kind=point|choropleth；name 必填；dataset_id 与 geojson（要素≤60）二选一；value_field 默认 polarity_index；scheme 缺省自动；community_caliber 可选 K-C1 枚举。
+    参数：kind=point|choropleth；name 必填；dataset_id 与 geojson（要素≤60）二选一；value_field 默认 polarity_index（错配/被字段政策剔除→语义化拒绝·B3-2）；scheme 缺省自动；community_caliber 可选 K-C1 枚举。
     限制：写盘毫秒级不渲染；需浏览器已开情绪地图页；新 spec 覆盖旧 [dsh] 图层（T1）；三档出图范式（inline/dataset_id/脚本+注册）见 docs/render-contract.md。"""
     if kind not in ('point', 'choropleth'):
         return {'ok': False, 'hint': f'kind 非法: {kind!r}（仅 point|choropleth）',
@@ -618,6 +618,37 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
     if kind == 'choropleth' and not value_field:
         return {'ok': False, 'hint': 'choropleth 须 value_field 非空',
                 'caliber': CALIBERS['render_spec']}
+
+    # PT-CB11 B3-2：value_field 服务端校验（治注入层灰框根因①——字段错配→归一全零→透明无填充）。
+    # dataset 路径双层：实际字段（读文件首要素）+ 渲染通道政策（core/render_policy 单一权威源）；
+    # inline 路径：要素属性并集。读不到实际字段时降级为仅政策校验（不硬拒）。
+    if kind == 'choropleth':
+        from core.render_policy import dataset_field_names, field_allowed, renderable_fields
+        if dataset_id:
+            actual = dataset_field_names(dataset_id)
+            if actual is not None and value_field not in actual:
+                usable = sorted(renderable_fields(dataset_id))
+                return {'ok': False,
+                        'hint': (f'value_field {value_field!r} 不在 dataset {dataset_id} 要素属性中'
+                                 f'（可渲染字段: {usable[:12]}）——错配会全零透明'),
+                        'caliber': CALIBERS['render_spec']}
+            if not field_allowed(value_field, dataset_id):
+                usable = sorted(renderable_fields(dataset_id))
+                return {'ok': False,
+                        'hint': (f'value_field {value_field!r} 会被渲染通道字段政策剔除'
+                                 f'（preset 可在 manifest 声明 renderFields·当前可渲染: {usable[:12]}）'),
+                        'caliber': CALIBERS['render_spec']}
+        elif geojson is not None:
+            keys = set()
+            for f in (geojson.get('features') or []):
+                props = f.get('properties')
+                if isinstance(props, dict):
+                    keys.update(props.keys())
+            if keys and value_field not in keys:
+                return {'ok': False,
+                        'hint': (f'value_field {value_field!r} 不在 geojson 要素属性中'
+                                 f'（可用: {sorted(keys)[:12]}）'),
+                        'caliber': CALIBERS['render_spec']}
 
     style = {'scheme': resolved_scheme, 'value_field': value_field}
     if ramp_hint:

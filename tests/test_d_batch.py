@@ -86,15 +86,17 @@ def _small_fc():
         'features': [{
             'type': 'Feature',
             'geometry': {'type': 'Polygon', 'coordinates': [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]},
-            'properties': {'name': 'x'},
+            # PT-CB11 B3-2：inline choropleth 须 value_field 在属性中（默认 polarity_index）
+            'properties': {'name': 'x', 'polarity_index': 0.5},
         }],
     }
 
 
 def test_render_spec_dataset_mismatch_warning(monkeypatch, tmp_path):
     monkeypatch.setattr(mse, 'REPO', str(tmp_path))
+    # B3-2：top10 数据无 polarity_index——用其真实指标字段 诉求总量（renderFields 已声明）
     out = mse.render_spec(kind='choropleth', name='测试', dataset_id='page7_12345_top10',
-                          community_caliber=174)
+                          value_field='诉求总量', community_caliber=174)
     assert out.get('ok') is True
     assert out['caliber_lite']['community'] == 154
     assert 'community_warning' in out['caliber_lite']

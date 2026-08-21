@@ -623,6 +623,9 @@
 - **B-3 根因实锤**（主手调查·子代理广搜）：注入层灰框=数据断裂（preset 中文属性 × value_field 默认 point_count × 后端白名单只放英文键→properties 只剩{来源:2025}）→全零→zeroIsNoData 透明=无填充；gridField 描边恒灰=灰框；图例/tip 判定按 _ui.tool 白名单→注入层无 _ui 全缺。**裁决走方向 A（补链）非方向 B（伪造 _ui）**——B 语义错配且不治本。
 - **PT-CB11 任务书落盘**：`PT-CB11-MCP工具丰富化与注入链路补全_任务书_zcode-2026-08-21.md`。P1=B-3 治本 6 件（后端 2 件 zcode 直改+前端 4 件 Kimi 首件）+3 件高频工具（grid_aggregate F_033/compare_regions F_034/hotspot F_035）；P2=5 件（F_036-F_040）+guard 迁 server+A-4 徽章。取号已核 F_021-F_032 占用。基线 444。
 - 待用户拍板三项：批次拆分/Kimi 首件=B-3 前端/P1 执行手 Codex or dsh。
+- **拍板结果（同深夜）**：①两批拆分✅ ②Kimi 两件都派（B-3 前端四件+area_stats F_037 提前）③Codex 执行 P1 三件。**并行结构裁定**：非承接式·三线并行（zcode 后端/Kimi 前端+工具/Codex 三工具）·唯一协调点=mcp_server_emc.py 同文件分区（冲突面数行·后到者 rebase）。
+- **派发两文件落盘**：`PT-CB11-P1三件工具派发单_Codex_zcode-2026-08-21.md`（函数级规格·F_033-F_035）+ `PT-CB11-Kimi派发prompt_zcode-2026-08-21.md`（B3-3~B3-6+area_stats F_037·fenced code block 转发体）。
+- **B3-1/B3-2 完成（zcode 直改）**：新建 `core/render_policy.py`（渲染通道字段政策单一权威源：静态键表+前缀+manifest nameField/renderFields 声明+实际字段读取·纯常量模块）；render_routes `_filter_dataset_props` 接 extra_keys（preset 声明字段透传）；manifest 三个 page7_12345 preset 增 renderFields 声明（SQMC/SSJD/类型/排名/诉求总量/民生基础件/安全韧性件/每周约件数）；render_spec 增 value_field 双层校验（dataset=实际字段+政策·inline=属性并集·错配语义化拒绝带可用字段清单——宿主可自纠）。测试 +5 新用例+3 存量适配（真 manifest 隔离/真实指标字段）。冒烟实测：top20+point_count →拒绝提示 诉求总量；top20+诉求总量 →通过。存量失败 7 件（sandbox×3+rag_material×4·stash 对比确认与本批无关）。
 - 杂项：stray `nul` 文件已删（21:56 bad redirect 产物）；dsh 测试产物 2 geojson 随本批入库（先例 08-20）。
 
 ---
