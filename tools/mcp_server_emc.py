@@ -190,12 +190,50 @@ def _gdf_rows(gdf, agg_cols=None):
     return rows
 
 
-def _layer_output_geojson(gdf, top_n, value_col):
-    """layer_output=True 时：仅 top_n 行对应多边形 → FeatureCollection（properties 含统计值+value）。"""
-    subset = gdf.head(int(top_n)).copy()
+def _layer_output_geojson(gdf, top_n, value_col, max_features=20, max_kb=200):
+    """layer_output=True 时：仅 top_n 行对应多边形 → FeatureCollection（properties 含统计值+value）。
+    体积控制（治 dsh spill 崩溃·775KB→<200KB）：
+    1. 几何简化：多边形顶点 >100 时 shapely simplify（保持拓扑）
+    2. 体积硬顶：序列化后 >max_kb 则逐级简化至达标或砍要素数
+    """
+    subset = gdf.head(min(int(top_n), max_features)).copy()
     if value_col in subset.columns:
         subset['value'] = subset[value_col]
-    return json.loads(subset.to_json())
+
+    def _try_simplify(gdf_in, tol):
+        """shapely simplify：跳过 None/非几何列·tol=0 原样"""
+        if tol <= 0:
+            return gdf_in
+        simplified = gdf_in.copy()
+        try:
+            simplified.geometry = simplified.geometry.simplify(tolerance=tol, preserve_topology=True)
+        except Exception:
+            pass   # 简化失败不阻塞（返回原几何）
+        return simplified
+
+    # 第一轮：正常输出
+    result = json.loads(subset.to_json())
+    size = len(json.dumps(result))
+
+    # 逐级简化（0.001→0.005→0.01→0.05 度·约 100m-5km）
+    if size > max_kb * 1024:
+        for tol in (0.001, 0.005, 0.01, 0.05):
+            simplified = _try_simplify(subset, tol)
+            result = json.loads(simplified.to_json())
+            size = len(json.dumps(result))
+            if size <= max_kb * 1024:
+                break
+
+    # 仍超则砍要素数（20→10→5）
+    if size > max_kb * 1024:
+        for n in (10, 5, 3):
+            smaller = subset.head(n)
+            result = json.loads(smaller.to_json())
+            size = len(json.dumps(result))
+            if size <= max_kb * 1024:
+                break
+
+    return result
 
 
 @track('MOD_AIQA.F_021', track_args=False)
