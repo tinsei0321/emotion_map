@@ -31,6 +31,10 @@
 - 工作区带入了 dsh 测试任务产物（SCRIPT/gen_12345_bottom10_layer.py + bottom10 geojson×2 + manifest/素材表改动）——随收工提交一并入库（先例同 08-20）；_tmp/gen_12345_kde.py 为他人实验残留未动。
 - debug-memory 撞号已清：双 R11 已合并（E2·08-21）；残留双 R12 已由 Codex 修正（R13-R16 顺号·08-21 避坑沉淀报告）。
 
+### 📌 家机到岗补一件（zcode · 08-21 E3 部署令 D5）
+
+- 用户级全局 `C:\Users\<用户>\.codex\AGENTS.md` →「## Harness 工作方式」列表末尾（第 5 条后）补第 6 条「调试资产化」——**补丁文本照抄 `discuss/PT-CB8-E3回收与全局部署派发_Codex-2026-08-21.md` 附录 A**（office 已写·两机对齐·一分钟手工活）。项目级规范（AGENTS/context-map/debug-memory R1-R19+维护协议）已随 `git pull` 自动生效。若用户偏好仅项目级，可一句话撤销此件。
+
 ---
 
 ## 到岗快照（08-20 · dsh rc.8 + 会话地图删除 + EMC 入口恢复 + 黑屏修复 + 送审）
