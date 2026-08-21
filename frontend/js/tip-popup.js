@@ -94,7 +94,7 @@ export function bindTipPopup(layer, lid, uiOverride) {
   const onEnter = (e) => {
     _map.getCanvas().classList.add('is-pointer');
     const hl = (ui.kind !== 'point') ? pickHLCell(e.point) : null;   // 橙柱优先：命中橙色聚焦柱用其精确格
-    const f = hl ? hl.feature : ((ui.kind === 'point') ? (e.features && e.features[0]) : pickCellFeature(e.features || []));
+    const f = hl ? hl.feature : ((ui.kind === 'point' || ui.choropleth) ? (e.features && e.features[0]) : pickCellFeature(e.features || []));   // PT-CB11 B3-4：choropleth 注入层事件只含本层要素——直取首项（pickCellFeature 按 _ui.tool 白名单过滤会漏注入层）
     if (!f) return;
     _lastPt = evtClientPt(e);
     _lastCommScan = null;   // CB-41：enter 重置节流锚（新要素必重扫社区）
@@ -105,7 +105,7 @@ export function bindTipPopup(layer, lid, uiOverride) {
   };
   const onMove = (e) => {
     const hl = (ui.kind !== 'point') ? pickHLCell(e.point) : null;
-    const f = hl ? hl.feature : ((ui.kind === 'point') ? (e.features && e.features[0]) : pickCellFeature(e.features || []));
+    const f = hl ? hl.feature : ((ui.kind === 'point' || ui.choropleth) ? (e.features && e.features[0]) : pickCellFeature(e.features || []));   // PT-CB11 B3-4：choropleth 注入层事件只含本层要素——直取首项（pickCellFeature 按 _ui.tool 白名单过滤会漏注入层）
     if (!f) return;
     _lastPt = evtClientPt(e);
     fillContent(f, liveUi(), e.lngLat);
@@ -505,6 +505,11 @@ function pointMetric(p, ui) {
 /** L1→`热度 · {点数}`；L2 综合→`积极/中性/消极 · {pos}/{neu}/{neg}`；L2 极性网格→`{极性}点数 · {n}`（该极性聚合程度） */
 function metricText(p, ui) {
   if (ui.kind === 'point') return pointMetric(p, ui);
+  // PT-CB11 B3-4：dsh 注入 choropleth（无 _ui 工具归属）——指标行=原始值字段（勿走 L2 极性兜底显 0/0/0 误导）
+  if (ui.choropleth) {
+    const v = ui.valueField != null ? p[ui.valueField] : undefined;
+    return `<span class="tp-k">${ui.valueField || '数值'}</span><b class="tp-v">${v != null ? v : '—'}</b>`;
+  }
   const level = ui.level;
   const pc = p.point_count ?? 0;
   // CB-41 B013：点数模式（临时分析图）——指标行显真实点数（原 L0 落「积极/中性/消极 0/0/0」无意义）
@@ -539,6 +544,11 @@ function pointSize(p) {
 /** grid→`{cell}×{cell}m`；terrain→`等值环 L{_level}` */
 function sizeText(p, ui) {
   if (ui.kind === 'point') return pointSize(p);
+  // PT-CB11 B3-4：注入 choropleth——次行=要素可读名（name/社区 等），不显示「网格边长 —」误导
+  if (ui.choropleth) {
+    const n = p.name || p['社区'] || p.SQMC || '';
+    return `<span class="tp-k">名称</span><b class="tp-v">${n || '—'}</b>`;
+  }
   if (ui.tool === 'terrain') {
     const lvl = p._level != null ? Number(p._level).toFixed(2) : '—';
     return `<span class="tp-k">等值环</span><b class="tp-v">L${lvl}</b>`;

@@ -647,9 +647,13 @@ export function renderLayer(layer) {
     addPolygonPaint(layer, sid, lid, lineLid, hitLid);
     const _ui = layer.paint && layer.paint._ui;
     const _tool = _ui && _ui.tool;
-    if (_tool === 'grid' || _tool === 'terrain') {
+    // PT-CB11 B3-4：dsh 注入数据驱动层（paint.gridField·刻意无 _ui 标记）同样绑 tip-popup 富悬停卡；
+    //   判据与 addPolygonPaint F4 修复同源（gridField 即数据驱动），density 等有 _ui 的层维持原路由不变。
+    const _injected = !_tool && !!layer.paint.gridField;
+    if (_tool === 'grid' || _tool === 'terrain' || _injected) {
       // 工具层（聚合单元）：悬停 → tip-popup 统一浮动卡（自适应方位），不走 range/terrain dark tooltip
-      bindTipPopup(layer, _ui.mode === '3d' ? extruLid : lid);   // 3D=fill-extrusion 柱/环；2D=fill 格
+      bindTipPopup(layer, (_ui && _ui.mode === '3d') ? extruLid : lid,   // 3D=fill-extrusion 柱/环；2D=fill 格
+        _injected ? { choropleth: true, valueField: layer.paint.valueField } : undefined);
     } else {
       bindRangeInteractions(layer, hitLid, lineLid);
     }

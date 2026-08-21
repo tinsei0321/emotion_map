@@ -83,6 +83,7 @@ tip 内容取自 feature.properties——**tip 缺信息 = properties 缺字段�
 4. **结论层只展示**：本轮产出的 analysis_output 图仅用于呈现，禁作后续分析输入（§六-5 同律）。
 5. **交付闭环声明**：答案末尾注明已出的图层名（[dsh] 前缀）与打开方式，便于用户在地图核对。
 7. **样式调参走渲染参数·不面板改色**（PT-CB8 F4 修复口径）：`[dsh]` 投递图层（render_spec/render_file）的**配色是受管语义色带**（scheme 词表：polarityStops/countStops·口径一致性的机器保证）。前端要素按钮（样式面板）对这类层可调**面开关/线宽/透明度**；**换颜色/换色带/换语义**必须改 render_spec 的 scheme/value_field 参数重新投递——面板单色改动对数据驱动着色层不生效且可能误导。设计原则：渲染契约权威样式（EMC×dsh 路线第 4 条「图层同源」·临时测试件同样受管）。
+8. **注入层图例/悬停/面板判定 = gridField 语义·非 _ui.tool 白名单**（PT-CB11 B3-3~B3-5）：注入层刻意不带 `_ui.tool` 标记（PT-CB8 F4 修复——防要素按钮误入 zonal 分析对话框），因此前端三处对「数据驱动 choropleth」的识别一律以 `paint.gridField` 存在为准（与 map.js 着色/线色 F4 判据同源）：①左侧色带图例（legend-grid）按 gridField 显示·标题取层名·标签订低/高；②悬停 tip-popup 按 gridField 绑定·指标行显 value_field 原始值·次行显要素 name（勿走 L2 极性兜底）；③参数面板对 gridField 层隐藏拾色器并提示「数据驱动着色·换色请重投递 spec」（本条 §七-7 的 UI 落地）。**禁回退到 _ui.tool 白名单判定**——那会让注入层全部漏判（灰框期症状：无图例/无 tip/误导性线框图例）。
 
 ## 八 待开发工具登记机制（PT-CB10 C2-9）
 

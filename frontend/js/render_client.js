@@ -61,6 +61,11 @@ function _normCommunityCount(fc, valueField) {
     const n = Number((f.properties || {})[valueField]) || 0;
     if (n > max) max = n;
   }
+  // PT-CB11 B3-6 全零可观测：归一恒零即告警（字段断裂嫌疑=properties 缺该字段/字段名错配/真全零）——下次断裂 30 秒定位
+  if ((fc.features || []).length && max === 0) {
+    console.warn('[dsh] choropleth 归一全零（字段断裂嫌疑）: value_field =', valueField,
+      '| 要素数 =', fc.features.length, '| 请核对要素 properties 是否含此字段（值缺失/字段名错配）');
+  }
   return {
     ...fc,
     features: (fc.features || []).map((f) => {
@@ -145,7 +150,7 @@ async function _apply(spec) {
       // 「zonal 工具归属」标记会把要素按钮点击路由进 zonal 分析对话框（该层无分析上下文→空面板）。
       // gridField/gridStops 保留（数据驱动着色·与工具归属无关）。
       paint = { fillOn: true, fillOpacity: 0.72, lineWidth: 1, lineOpacity: 0.6,
-                gridField: '_grid_norm', gridStops: polarityStops('overall') || [] };
+                gridField: '_grid_norm', gridStops: polarityStops('overall') || [], valueField };   // valueField：B3-4 悬停 tip 取原始值字段名
     } else {
       normalized = _normCommunityCount(fc, valueField);
       // PT-CB8 色板透传：spec.style.ramp_hint 命中受管词表（HEATMAP_RAMPS）则用之，
@@ -153,7 +158,7 @@ async function _apply(spec) {
       const rampHint = (spec.style && spec.style.ramp_hint) || '';
       const palette = HEATMAP_RAMPS[rampHint] ? rampHint : '';
       paint = { fillOn: true, fillOpacity: 0.72, lineWidth: 1, lineOpacity: 0.6,
-                gridField: '_count_norm', gridStops: countStops(palette), zeroIsNoData: true };
+                gridField: '_count_norm', gridStops: countStops(palette), zeroIsNoData: true, valueField };   // valueField：B3-4 悬停 tip 取原始值字段名
     }
 
 

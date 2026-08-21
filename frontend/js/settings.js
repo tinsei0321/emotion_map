@@ -98,7 +98,12 @@ function build(layer) {
       body = `<div class="set-note">颜色：由极性决定</div>` + sectionPointSize(layer) + sectionOpacity(p.opacity ?? 0.9);
     }
   } else if (layer.kind === 'polygon') {
-    body = sectionFill(p.fillOn) + sectionColor(p.color || '#0c1c2e') + sectionLineWidth(p.lineWidth ?? 1) + sectionLineStyle(p.lineStyle || 'solid') + sectionFillOpacity(p.fillOpacity ?? 0.15, p.fillOn);
+    // PT-CB11 B3-5：数据驱动着色层（gridField·dsh 注入）fill 恒为色带表达式，拾色器改了无效=误导——
+    //   换提示文案替代拾色器（换色走重投递 spec = render-contract.md §七-7 既定契约）；面开关/线宽/透明度仍可调。
+    const colorSec = p.gridField
+      ? `<div class="set-note">数据驱动着色·换色请重投递 spec</div>`
+      : sectionColor(p.color || '#0c1c2e');
+    body = sectionFill(p.fillOn) + colorSec + sectionLineWidth(p.lineWidth ?? 1) + sectionLineStyle(p.lineStyle || 'solid') + sectionFillOpacity(p.fillOpacity ?? 0.15, p.fillOn);
   } else if (layer.kind === 'heatmap') {
     // Full parameter set: Color (ramp legend) + Radius + Opacity + Intensity
     const rampName = (HEATMAP_RAMPS[p.rampKey] && HEATMAP_RAMPS[p.rampKey].name) || '消极红';

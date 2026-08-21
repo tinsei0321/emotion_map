@@ -201,7 +201,8 @@ export function refreshLegend() {
   // range = 上传/行政边界等「纯面/线」（无 _ui.tool）；任何 _ui.tool 标记的层都是 EMC/Toolbox 分析产物
   //   （grid/terrain/buffer/overlay/area_stats/merge…），不是 range，不应显 range 假图例（承重：density 死码一并收掉）。
   const isRange = (l) => (l.kind === 'polygon' || l.kind === 'line')
-    && !(l.paint && l.paint._ui && l.paint._ui.tool);
+    && !(l.paint && l.paint._ui && l.paint._ui.tool)
+    && !(l.paint && l.paint.gridField);   // PT-CB11 B3-3：注入数据驱动层（gridField）非 range——防误显线框图例
   const range = (sel && isRange(sel) && sel.visible) ? sel : vis.find(isRange);
   sethidden('legend-range', !range);
   if (range) {
@@ -219,18 +220,24 @@ export function refreshLegend() {
   }
 
   // grid/terrain/density — 横向色带 + 极性标题（参考 Kepler/Martin 连续色带图例）
-  const grid = vis.find((l) => l.kind === 'polygon' && l.paint && l.paint._ui
-    && (l.paint._ui.tool === 'grid' || l.paint._ui.tool === 'terrain' || l.paint._ui.tool === 'density'));
+  // PT-CB11 B3-3：判据改语义——paint.gridField 存在即数据驱动 choropleth（与 map.js:810/:841 F4 修复同判据），
+  //   dsh 注入层（刻意无 _ui.tool 标记）同样显色带图例；_ui.tool 白名单保留以兼容 Toolbox 工具层。
+  const grid = vis.find((l) => l.kind === 'polygon' && l.paint
+    && (l.paint.gridField || (l.paint._ui
+      && (l.paint._ui.tool === 'grid' || l.paint._ui.tool === 'terrain' || l.paint._ui.tool === 'density'))));
   sethidden('legend-grid', !grid);
   if (grid) {
-    const ui = grid.paint._ui;
+    const ui = grid.paint._ui || {};   // B3-3：注入层无 _ui（PT-CB8 F4 刻意去标记）——空对象兜底防 TypeError
     const pol = ui.terrainPol || ui.polarity;   // terrain 存 terrainPol；grid 存 polarity
     const isTerrain = ui.tool === 'terrain';
     const isDensity = ui.tool === 'density';
     const isCount = ui.semantic === 'count';   // CB-41 B013：点数模式（临时分析图）——不套情绪三段标签
+    const injected = !ui.tool;   // B3-3：dsh 注入数据驱动层（无工具归属标记）——标题直用层名
     const polLabel = isCount ? '点数（临时）' : (isDensity ? '情绪得分密度' : ({ overall: '综合', positive: '积极', negative: '消极', neutral: '中性' }[pol] || (isTerrain ? '地形' : '网格')));
     const tEl = document.getElementById('legend-grid-title');
-    if (tEl) tEl.textContent = `${isCount ? '点数' : isTerrain ? '情绪地形' : isDensity ? '情绪密度' : '网格'} · ${polLabel}`;
+    if (tEl) tEl.textContent = injected
+      ? (grid.name || '数据图')
+      : `${isCount ? '点数' : isTerrain ? '情绪地形' : isDensity ? '情绪密度' : '网格'} · ${polLabel}`;
     const rampEl = document.getElementById('legend-grid-ramp');
     const stops = grid.paint.gridStops || [];
     if (rampEl && stops.length) {
@@ -240,7 +247,7 @@ export function refreshLegend() {
     // 标签：L2 综合发散（terrain-9 红→蓝→绿）= 消极/中性/积极；单色占比 / L1 热度 = 低/高；CB-41 点数 = 少/多（零点无填充）
     const labEl = document.querySelector('#legend-grid .legend-ramp-labels');
     if (labEl) {
-      const isOverall = !isCount && grid.paint._ui.polarity === 'overall' && grid.paint._ui.level === 'L2';
+      const isOverall = !isCount && ui.polarity === 'overall' && ui.level === 'L2';   // B3-3：走 ui 兜底对象（注入层 _ui 缺省不抛错）
       labEl.innerHTML = isOverall
         ? '<span>消极</span><span>中性</span><span>积极</span>'
         : (isCount ? '<span>点少</span><span>点多</span>' : '<span>低</span><span>高</span>');
