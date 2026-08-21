@@ -189,9 +189,11 @@ def _sse_stream():
     with _SUB_LOCK:
         _SUBSCRIBERS.append(my_q)
     try:
+        # 根治图层残留（用户反复报告）：连接时只推最新 1 条 spec（非 20 条全量重放）
+        # ——前端 _clearDshLayers 会清旧层再铺这条·页面刷新只恢复最新图不复活历史
         with _BACKLOG_LOCK:
-            for spec in list(_BACKLOG):
-                yield _sse_event(spec)
+            if _BACKLOG:
+                yield _sse_event(_BACKLOG[-1])
         while True:
             try:
                 spec = my_q.get(timeout=15)
