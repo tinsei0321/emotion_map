@@ -40,7 +40,9 @@ register_track_id('MOD_AIQA.F_032', 'MCP emc_status（8080 地图服务就绪探
 register_track_id('MOD_AIQA.F_033', 'MCP grid_aggregate（方格网空间聚合·参数化替代 T8 脚本）')
 register_track_id('MOD_AIQA.F_034', 'MCP compare_regions（≥2 区域同口径并排+差异·契约 boundaries 参数）')
 register_track_id('MOD_AIQA.F_035', 'MCP hotspot_analysis（Gi* 逐点显著聚集·五档分类）')
+register_track_id('MOD_AIQA.F_036', 'MCP nearest_analysis（最近邻锚定·k 近邻配对+投影米距）')
 register_track_id('MOD_AIQA.F_037', 'MCP area_stats（面积占比统计·group_by 分组·km2）')
+register_track_id('MOD_AIQA.F_038', 'MCP overlay_analysis（叠置交叉·面∩/∪/差/对称差+面积）')
 
 MANIFEST = os.path.join(REPO, 'DATA', 'boundaries', 'presets', 'manifest.json')
 
@@ -569,10 +571,14 @@ def grid_aggregate(layer: str = 'yichang_l2_t1', cell_size: int = 800,
             points = gpd.clip(points, polys.unary_union)
         merged = create_square_grid(points, cell_size,
                                     agg_cols=([value_col] if value_col else []))
+        row_count = int(len(merged))
+        if row_count == 0 or 'point_count' not in merged.columns:
+            return {'ok': False,
+                    'hint': '聚合结果为空（点层为空或 boundary 裁剪后零点）——请换 boundary 或检查点层',
+                    'caliber': caliber}
         sort_col = (f'{value_col}_mean' if value_col and f'{value_col}_mean' in merged.columns
                     else 'point_count')
         merged = merged.sort_values(sort_col, ascending=False, kind='stable')
-        row_count = int(len(merged))
         top_n = max(1, min(int(top_n), 20))
         rows = _gdf_rows(merged.head(top_n), [value_col] if value_col else None)
         out_geojson = _layer_output_geojson(merged, top_n, sort_col) if layer_output else None
@@ -639,6 +645,10 @@ def compare_regions(boundaries: list, layer: str = 'yichang_l2_t1',
         cols = agg_cols if agg_cols else (['score'] if 'score' in points.columns else [])
         merged = aggregate_by_polygons(points, combined, agg_cols=cols,
                                        polygon_name_col='name')
+        if len(merged) == 0:
+            return {'ok': False,
+                    'hint': '聚合结果为空（点层为空或所选区内零点）——请换 layer 或检查区内点分布',
+                    'caliber': caliber}
         rows = _gdf_rows(merged, cols)
         diff = {}
         metric_cols = ['point_count']
@@ -781,6 +791,169 @@ def area_stats(boundary: str, group_by: str = '', top_n: int = 10,
     return out
 
 
+@track('MOD_AIQA.F_036', track_args=False)
+def nearest_analysis(layer: str = 'yichang_l2_t1', target: str = '',
+                     k: int = 1, top_n: int = 10, layer_output: bool = False) -> dict:
+    """最近邻锚定：每个锚点找目标层最近的 k 个（微观·POI 锚定）。
+    参数：target 必填（preset_id：先试点层、解析失败再作面层；契约 required_slots）；k 默认 1·cap 5；top_n 1-20；layer_output=True 增连线 geojson。
+    限制：邻近≠因果；距离为 EPSG:4546 投影平面距离（<1% 级误差·照 area_stats 先例）。"""
+    caliber = {'scale': '微观（POI 锚定）',
+               'semantics': '最近邻配对（锚点×目标）+投影米距',
+               'limits': '邻近≠因果；距离为投影平面距离（<1% 级误差）；k≤5 cap',
+               'refs': ['K-C1']}
+    if not target:
+        return {'ok': False, 'hint': 'nearest_analysis 需 target（preset_id·契约 required_slots）',
+                'caliber': caliber}
+    k = max(1, min(int(k), 5))
+    try:
+        import numpy as np
+        from core.geo_registry import resolve_boundary, resolve_points
+
+        anchor = resolve_points(layer)
+        if anchor is None or len(anchor) == 0:
+            return {'ok': False,
+                    'hint': '锚点层为空——nearest 无配对可算（请检查 layer 或换点层）',
+                    'caliber': caliber}
+        try:
+            targets = resolve_points(target)
+        except Exception:
+            targets = None
+        if targets is None:
+            _g = _reject_analysis_output(target, 'target', caliber)
+            if _g:
+                return _g
+            targets = resolve_boundary(target)
+        if len(targets) == 0:
+            return {'ok': False,
+                    'hint': '目标层为空——nearest 无配对可算（请换 target）',
+                    'caliber': caliber}
+
+        def _to_metric(gdf):
+            g = gdf if gdf.crs is not None else gdf.set_crs('EPSG:4326')
+            return g.to_crs('EPSG:4546')
+
+        a = _to_metric(anchor)
+        t = _to_metric(targets)
+        ax = np.column_stack([a.geometry.x.values, a.geometry.y.values])
+        tx = np.column_stack([t.geometry.x.values, t.geometry.y.values])
+        # 投影平面距离矩阵 n_a×n_t（EMC 点层千级×目标百级=1e6 float·内存可控）。
+        # 派发单 backing 的 sjoin_nearest 为 k=1 特例；此处统一矩阵法覆盖 k≤5，语义一致。
+        dist = np.sqrt(((ax[:, None, :] - tx[None, :, :]) ** 2).sum(axis=-1))
+        k_eff = min(k, len(t))
+        take = np.argsort(dist, axis=1, kind='stable')[:, :k_eff]
+
+        anchor_name = 'place_name' if 'place_name' in a.columns else None
+        target_name = ('name' if 'name' in t.columns
+                       else 'place_name' if 'place_name' in t.columns else None)
+        anchor_orig = anchor.reset_index(drop=True)
+        target_orig = t.to_crs('EPSG:4326').reset_index(drop=True)
+        pairs = []
+        lines = []
+        for i in range(len(a)):
+            for j in take[i]:
+                item = {'anchor': (_jsonable(anchor_orig.at[i, anchor_name])
+                                   if anchor_name else f'anchor_{i}'),
+                        'target': (_jsonable(target_orig.at[j, target_name])
+                                   if target_name else f'target_{j}'),
+                        'dist_m': round(float(dist[i, j]), 2)}
+                pairs.append(item)
+                from shapely.geometry import LineString
+                lines.append({'type': 'Feature',
+                              'geometry': LineString([anchor_orig.geometry.iat[i],
+                                                      target_orig.geometry.iat[j]]).__geo_interface__,
+                              'properties': item})
+        pairs.sort(key=lambda p: p['dist_m'])
+        all_dists = [p['dist_m'] for p in pairs]
+        top_n = max(1, min(int(top_n), 20))
+        shown = pairs[:top_n]
+        out_geojson = ({'type': 'FeatureCollection', 'features': lines[:top_n]}
+                       if layer_output else None)
+    except (KeyError, FileNotFoundError):
+        return {'ok': False, 'hint': _UNKNOWN_HINT, 'caliber': caliber}
+    except Exception as exc:
+        return {'ok': False, 'hint': f'nearest_analysis 失败: {exc}', 'caliber': caliber}
+
+    out = {'pairs': shown,
+           'stats': {'mean_dist': round(sum(all_dists) / len(all_dists), 2) if all_dists else None,
+                     'max_dist': round(max(all_dists), 2) if all_dists else None,
+                     'pair_count': len(pairs)},
+           'row_count': len(pairs), 'truncated': len(pairs) > len(shown),
+           'caliber': caliber}
+    if layer_output:
+        out['geojson'] = out_geojson
+    return out
+
+
+@track('MOD_AIQA.F_038', track_args=False)
+def overlay_analysis(layer_a: str, layer_b: str, how: str = 'intersection',
+                     top_n: int = 10, layer_output: bool = False) -> dict:
+    """叠置交叉：两个面层做交集/并集/差集/对称差（面∩面正解）。
+    参数：layer_a/layer_b 必填 preset id（先 list_data）；how=intersection|union|difference|symmetric（默认 intersection·契约同）；top_n 1-20；layer_output=True 增 geojson。
+    限制：面∩面运算——点层裁剪勿用（无意义·取点用 zonal/clip）；结果要素可能 explode 多块（按面积降序 top）。"""
+    caliber = {'scale': '中观（跨图层面）',
+               'semantics': '两图层面叠置交叉+面积统计',
+               'limits': '面∩面运算——点层裁剪勿用（无意义）；结果要素可能 explode 多块（按面积降序 top）',
+               'refs': ['K-C1']}
+    _HOW_ALLOWED = ('intersection', 'union', 'difference', 'symmetric')
+    if how not in _HOW_ALLOWED:
+        return {'ok': False, 'hint': f'how 非法: {how!r}（可选 {_HOW_ALLOWED}）',
+                'caliber': caliber}
+    if not layer_a or not layer_b:
+        return {'ok': False, 'hint': 'overlay_analysis 需 layer_a 与 layer_b（两个面层 preset id）',
+                'caliber': caliber}
+    try:
+        import geopandas as gpd
+        from core.geo_registry import resolve_boundary
+
+        _ga = _reject_analysis_output(layer_a, 'layer_a', caliber)
+        if _ga:
+            return _ga
+        _gb = _reject_analysis_output(layer_b, 'layer_b', caliber)
+        if _gb:
+            return _gb
+        a_raw = resolve_boundary(layer_a)
+        b_raw = resolve_boundary(layer_b)
+        if len(a_raw) == 0 or len(b_raw) == 0:
+            return {'ok': False,
+                    'hint': '叠置输入为空——layer_a/layer_b 无要素（请换面层）',
+                    'caliber': caliber}
+        # 只带 geometry+规范名进 overlay（防同名列后缀冲突·输出稳定 name_a/name_b）
+        a = a_raw[['geometry']].copy()
+        a['name_a'] = (a_raw['name'] if 'name' in a_raw.columns
+                       else ('a_1' if len(a_raw) == 1 else 'a'))
+        b = b_raw[['geometry']].copy()
+        b['name_b'] = (b_raw['name'] if 'name' in b_raw.columns
+                       else ('b_1' if len(b_raw) == 1 else 'b'))
+        result = gpd.overlay(a, b, how=how)
+        if len(result) == 0:
+            return {'ok': False,
+                    'hint': '叠置结果为空——两图层无交集/差集为空（请换 how 或检查图层范围）',
+                    'caliber': caliber}
+        if result.crs is None:
+            result = result.set_crs('EPSG:4326')
+        rm = result.to_crs('EPSG:4546')
+        result['area_km2'] = (rm.geometry.area / 1e6).round(4)
+        result = result.sort_values('area_km2', ascending=False, kind='stable')
+        row_count = int(len(result))
+        top_n = max(1, min(int(top_n), 20))
+        rows = [{'name_a': _jsonable(r['name_a']) if 'name_a' in result.columns else '',
+                 'name_b': _jsonable(r['name_b']) if 'name_b' in result.columns else '',
+                 'area_km2': _jsonable(r['area_km2'])}
+                for _, r in result.head(top_n).iterrows()]
+        out_geojson = _layer_output_geojson(result, top_n, 'area_km2') if layer_output else None
+    except (KeyError, FileNotFoundError):
+        return {'ok': False, 'hint': _UNKNOWN_HINT, 'caliber': caliber}
+    except Exception as exc:
+        return {'ok': False, 'hint': f'overlay_analysis 失败: {exc}', 'caliber': caliber}
+
+    out = {'rows': rows, 'result_count': row_count,
+           'stats': {'total_area_km2': round(float(result['area_km2'].sum()), 4)},
+           'truncated': row_count > len(rows), 'caliber': caliber}
+    if layer_output:
+        out['geojson'] = out_geojson
+    return out
+
+
 def _dataset_meta(dataset_id, groups=None):
     """dataset_id → {usage, data_nature}（preset 读 manifest·点层按池路径·未知 None）。"""
     try:
@@ -874,13 +1047,13 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
                 usable = sorted(renderable_fields(dataset_id))
                 return {'ok': False,
                         'hint': (f'value_field {value_field!r} 不在 dataset {dataset_id} 要素属性中'
-                                 f'（可渲染字段: {usable[:12]}）——错配会全零透明'),
+                                 f'（可渲染字段: {usable[:12]}·部分字段可能未列出）——错配会全零透明'),
                         'caliber': CALIBERS['render_spec']}
             if not field_allowed(value_field, dataset_id):
                 usable = sorted(renderable_fields(dataset_id))
                 return {'ok': False,
                         'hint': (f'value_field {value_field!r} 会被渲染通道字段政策剔除'
-                                 f'（preset 可在 manifest 声明 renderFields·当前可渲染: {usable[:12]}）'),
+                                 f'（preset 可在 manifest 声明 renderFields·当前可渲染: {usable[:12]}·部分字段可能未列出）'),
                         'caliber': CALIBERS['render_spec']}
         elif geojson is not None:
             keys = set()
@@ -968,7 +1141,8 @@ def render_file(file: str, name: str = '', kind: str = '',
                 value_field: str = 'point_count') -> dict:
     """把 geojson 文件现在显示到地图：服务端读取，≤60 要素内联，>60 自动登记临时 dataset 并引用（无需手工注册）。
     参数：file 仓内路径（白名单根目录·相对或绝对）；name 缺省取文件名；kind 缺省自动判 point/choropleth；value_field 默认 point_count。
-    限制：仅收 FeatureCollection；「把 X 显示到地图上」的唯一正路——直接渲染，不做进 Range 等用户点击。"""
+    限制：仅收 FeatureCollection；面文件默认 value_field=point_count 多半不适用——显式传该文件真实指标字段；
+    「把 X 显示到地图上」的唯一正路——直接渲染，不做进 Range 等用户点击。"""
     cal = CALIBERS['render_spec']
     # 路径安全：白名单 = 仓根（防路径穿越读外部文件）
     p = os.path.abspath(file if os.path.isabs(file) else os.path.join(REPO, file))
@@ -1045,6 +1219,8 @@ def build_server():
     server.tool()(compare_regions)
     server.tool()(hotspot_analysis)
     server.tool()(area_stats)
+    server.tool()(nearest_analysis)
+    server.tool()(overlay_analysis)
     server.tool()(render_spec)
     server.tool()(render_file)
     server.tool()(emc_status)

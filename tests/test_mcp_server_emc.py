@@ -461,6 +461,165 @@ def test_hotspot_analysis_unknown_layer_and_missing_value_col(monkeypatch):
     assert out['ok'] is False and 'value_col' in out['hint'] and 'density' in out['hint']
 
 
+# ════════════ PT-CB11 P2 · 空集补丁 + nearest/overlay + 顺手件 ════════════
+
+def test_grid_aggregate_empty_result_semantic_reject(monkeypatch):
+    monkeypatch.setattr('core.geo_registry.resolve_points', lambda layer: _FakePoints(inside=0))
+    monkeypatch.setattr('core.spatial_analysis.create_square_grid',
+                        lambda points, cell_size, agg_cols=None:
+                        gpd.GeoDataFrame(columns=['point_count'], geometry=[]))
+    out = mse.grid_aggregate()
+    assert out['ok'] is False and '聚合结果为空' in out['hint']
+    assert _caliber_keys(out['caliber'])
+
+
+def test_grid_aggregate_missing_point_count_column_reject(monkeypatch):
+    monkeypatch.setattr('core.geo_registry.resolve_points', lambda layer: _FakePoints(inside=2))
+    monkeypatch.setattr('core.spatial_analysis.create_square_grid',
+                        lambda points, cell_size, agg_cols=None:
+                        gpd.GeoDataFrame({'score_mean': [0.1]}, geometry=[Polygon(
+                            [(111, 30), (111.01, 30), (111.01, 30.01), (111, 30.01), (111, 30)])]))
+    out = mse.grid_aggregate()
+    assert out['ok'] is False and '聚合结果为空' in out['hint']
+
+
+def test_compare_regions_empty_merge_semantic_reject(monkeypatch):
+    _patch_compare(monkeypatch, merged=pd.DataFrame(columns=['name', 'point_count']))
+    out = mse.compare_regions(['a_district', 'b_district'])
+    assert out['ok'] is False and '聚合结果为空' in out['hint']
+    assert _caliber_keys(out['caliber'])
+
+
+def _nearest_layers(monkeypatch, anchors=3, pois=2):
+    anchor_gdf = gpd.GeoDataFrame(
+        {'place_name': [f'锚{i}' for i in range(anchors)]},
+        geometry=[Point(111.30 + i * 0.01, 30.70) for i in range(anchors)])
+    poi_gdf = gpd.GeoDataFrame(
+        {'name': [f'POI{j}' for j in range(pois)]},
+        geometry=[Point(111.301 + j * 0.02, 30.70) for j in range(pois)])
+
+    def _resolve(layer):
+        if layer == 'anchors':
+            return anchor_gdf
+        if layer == 'pois':
+            return poi_gdf
+        raise KeyError('未知')
+
+    monkeypatch.setattr('core.geo_registry.resolve_points', _resolve)
+    return anchor_gdf, poi_gdf
+
+
+def test_nearest_analysis_requires_target(monkeypatch):
+    out = mse.nearest_analysis(layer='anchors', target='')
+    assert out['ok'] is False and 'target' in out['hint']
+    assert _caliber_keys(out['caliber'])
+
+
+def test_nearest_analysis_k1_pairs_sorted(monkeypatch):
+    _nearest_layers(monkeypatch, anchors=3, pois=2)
+    out = mse.nearest_analysis(layer='anchors', target='pois', k=1)
+    assert out.get('ok') is not False and len(out['pairs']) == 3
+    assert out['pairs'] == sorted(out['pairs'], key=lambda p: p['dist_m'])
+    assert out['stats']['pair_count'] == 3 and out['stats']['max_dist'] >= out['stats']['mean_dist']
+    assert all('POI' in p['target'] for p in out['pairs'])
+    assert _caliber_keys(out['caliber'])
+
+
+def test_nearest_analysis_k3_cap_and_top_n(monkeypatch):
+    _nearest_layers(monkeypatch, anchors=5, pois=6)
+    out = mse.nearest_analysis(layer='anchors', target='pois', k=9, top_n=99)
+    assert out['stats']['pair_count'] == 5 * 5  # k cap 5
+    assert len(out['pairs']) <= 20  # top_n cap 20
+    assert out['truncated'] is True
+
+
+def test_nearest_analysis_empty_anchor_semantic_reject(monkeypatch):
+    _nearest_layers(monkeypatch, anchors=0, pois=2)
+    out = mse.nearest_analysis(layer='anchors', target='pois')
+    assert out['ok'] is False and '锚点层为空' in out['hint']
+
+
+def test_nearest_analysis_layer_output_lines(monkeypatch):
+    _nearest_layers(monkeypatch, anchors=2, pois=2)
+    out = mse.nearest_analysis(layer='anchors', target='pois', k=1, layer_output=True)
+    assert out['geojson']['type'] == 'FeatureCollection'
+    assert all(f['geometry']['type'] == 'LineString' for f in out['geojson']['features'])
+    assert _caliber_keys(out['caliber'])
+
+
+def test_nearest_analysis_unknown_layer_hint(monkeypatch):
+    _nearest_layers(monkeypatch)
+    out = mse.nearest_analysis(layer='missing', target='pois')
+    assert out['ok'] is False and 'list_data' in out['hint']
+
+
+_POLY_A = Polygon([(111.30, 30.70), (111.36, 30.70), (111.36, 30.76), (111.30, 30.76), (111.30, 30.70)])
+_POLY_B = Polygon([(111.33, 30.73), (111.40, 30.73), (111.40, 30.80), (111.33, 30.80), (111.33, 30.73)])
+_POLY_FAR = Polygon([(112.5, 31.5), (112.6, 31.5), (112.6, 31.6), (112.5, 31.6), (112.5, 31.5)])
+
+
+def _patch_overlay(monkeypatch):
+    def _resolve(boundary):
+        if boundary == 'poly_a':
+            return gpd.GeoDataFrame({'name': ['A 面']}, geometry=[_POLY_A], crs='EPSG:4326')
+        if boundary == 'poly_b':
+            return gpd.GeoDataFrame({'name': ['B 面']}, geometry=[_POLY_B], crs='EPSG:4326')
+        if boundary == 'poly_far':
+            return gpd.GeoDataFrame({'name': ['远面']}, geometry=[_POLY_FAR], crs='EPSG:4326')
+        raise KeyError('未知')
+
+    monkeypatch.setattr('core.geo_registry.resolve_boundary', _resolve)
+
+
+def test_overlay_analysis_requires_layers_and_valid_how(monkeypatch):
+    _patch_overlay(monkeypatch)
+    miss = mse.overlay_analysis('', 'poly_b')
+    assert miss['ok'] is False and 'layer_a' in miss['hint']
+    bad = mse.overlay_analysis('poly_a', 'poly_b', how='xor')
+    assert bad['ok'] is False and 'how 非法' in bad['hint']
+    assert _caliber_keys(bad['caliber'])
+
+
+def test_overlay_analysis_intersection_rows_and_stats(monkeypatch):
+    _patch_overlay(monkeypatch)
+    out = mse.overlay_analysis('poly_a', 'poly_b', how='intersection')
+    assert out['result_count'] == 1
+    assert out['rows'][0]['name_a'] == 'A 面' and out['rows'][0]['name_b'] == 'B 面'
+    assert out['stats']['total_area_km2'] > 0
+    assert _caliber_keys(out['caliber'])
+
+
+def test_overlay_analysis_empty_intersection_semantic_reject(monkeypatch):
+    _patch_overlay(monkeypatch)
+    out = mse.overlay_analysis('poly_a', 'poly_far', how='intersection')
+    assert out['ok'] is False and '叠置结果为空' in out['hint']
+    assert _caliber_keys(out['caliber'])
+
+
+def test_overlay_analysis_union_layer_output(monkeypatch):
+    _patch_overlay(monkeypatch)
+    out = mse.overlay_analysis('poly_a', 'poly_b', how='union', top_n=99, layer_output=True)
+    assert len(out['rows']) <= 20
+    assert out['geojson']['type'] == 'FeatureCollection'
+    assert _caliber_keys(out['caliber'])
+
+
+def test_overlay_analysis_analysis_output_rejected(monkeypatch):
+    _patch_overlay(monkeypatch)
+    out = mse.overlay_analysis('base_174_aggregate_area', 'poly_b')
+    assert out.get('ok') is False and 'analysis_output' in out.get('hint', '')
+
+
+def test_hotspot_analysis_layer_output_geojson(monkeypatch):
+    monkeypatch.setattr('core.geo_registry.resolve_points', lambda layer: _FakePoints(inside=12))
+    monkeypatch.setattr('core.spatial_analysis.hot_spot_analysis',
+                        lambda gdf, value_col, invert, threshold, soft_threshold: _fake_hotspot())
+    out = mse.hotspot_analysis(layer_output=True)
+    assert out['geojson']['type'] == 'FeatureCollection'
+    assert all('value' in f['properties'] for f in out['geojson']['features'])
+    assert _caliber_keys(out['caliber'])
+
+
 # ════════════ area_stats（PT-CB11 F_037·Kimi）════════════
 
 def _fake_area_boundary(n=3, groups=None):
