@@ -9,6 +9,23 @@
 
 ---
 
+## 📅 2026-08-21（office 续班 · PT-CB7 环境补齐+五项验证 · zcode）
+
+### ✅ 环境补齐（交接卡续点①）
+
+- 四件套全过（mcp 1.29.0/密钥/三 profile/dsh-emc-entry 插件目录）。
+- 补三件结果：**timeout 120000 ✅**（三处 profile·T17 缓解）；**start_silent.vbs ✅**（仓内 pull 自带·路径免改验证过）；**人设 ⚠️ office 机制差异**——rc.7 的 preset/persona 管线与家机 rc.8 不同：自建专用 preset（persona 行+RL_PERSONA 双改·照批 2 同款）实测不进 system prompt（硬验证：模型逐字引用仍为原生 coding agent 段）；~/.dsh/.agent-presets 展开目录在 rc.7 的加载路径未定位。处置：无效尝试已清理（emc-copilot 删除·router-standard 恢复原版·headless 绑定还原·零残留）；web patch 的 persona 定稿文案保留（无害）；**判定=版本对齐项（待 rc.8 对齐或上游冻结解除后处理），家机验收（批 2 记录+截图）为准**。
+
+### ✅ 五项用户实测验证（续点②）
+
+| # | 项 | 结果 |
+|---|---|---|
+| 1 | 快通道/就绪门 | ✅ /emc-ready 200+ACAO（R7 核查后起服·预热 30s+ 符合设计语义） |
+| 2 | 冷启动气泡卡 | ✅ API 层（就绪门）通过；视觉层家机批 2 截图在案（office 留浏览器目验） |
+| 3 | 免 F5 铺层 | ✅ SSE 扇出广播实测出流（连接即收 backlog spec 广播·bottom10 产物）+442 门禁含扇出回归 |
+| 4 | render_file 第 9 插座 | ✅ stdio 冒烟 9 工具全列 |
+| 5 | 身份自述 | ⚠️ 家机已验（rc.8）；office=rc.7 版本差异项（见上） |
+
 ## 📅 2026-08-21（PT-CB7「稳定与灵魂」批主执行 · Qoder · 分支 `EMC_harness_dsh` · home 收工待 office 续点）
 
 > 全天 home 班：审计先行 + T1-T21 大半销号 + 用户实测五连修 + dsh 两批回收；基线 442 passed/2 skipped；收工卡 `_handoff/HOME.md`。
