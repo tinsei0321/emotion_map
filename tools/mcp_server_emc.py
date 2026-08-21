@@ -1036,8 +1036,9 @@ def _audit_input_surfaces():
                         if it.get('usage') == 'analysis_output')
         _safe_print(f'[OK] B4 输入面核对: manifest {len(_ids)} preset·拒绝面 {_rejected}'
                     '（analysis_output·按设计）', file=sys.stderr)
-    except Exception:
-        pass
+    except Exception as _exc:
+        # A9：守卫/审计类禁静默吞——核对失败必须留痕（不阻塞启动）
+        _safe_print(f'[WARN] B4 输入面核对跳过: {_exc}', file=sys.stderr)
 
 
 # ── PT-CB11 P2① · trend_analysis（F_039·时序对比） ────────────────────────────
