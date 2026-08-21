@@ -57,6 +57,10 @@ EMC 情绪地图的 dsh web 入口插件（PT-CB8 · 临时测试件 · 最小�
 3. `cd ~/.dsh/profiles/web && pnpm install`
 4. 构建后同步 node_modules 副本（pnpm file: 非 symlink）并硬刷新浏览器。
 
+路径规则：插件从当前 dsh Workspace 的 `path` 推导 EMC 仓根目录，再拼接
+`start_silent.vbs` 与 `vendor/dsh-emc-entry/emc-open.html`，不写死用户目录；
+office/home 只要 Workspace 指向各自 EMC 仓即可。
+
 ## 构建
 
 node 半（`lib/index.js`）为最小空插件，直接落盘。client 半用 dsh checkout 的

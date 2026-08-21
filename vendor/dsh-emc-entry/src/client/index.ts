@@ -3,9 +3,9 @@
  * 左下角（sidebar.footer.action）「EMC 情绪地图」入口：
  *  - 点击 → 新建对话 + IConversation.send(固定文本)：模型轮询 emc_status
  *    当向导（工具活动 = 实时进度；预热中提示含预计时长）；
- *  - 并行探测 8080：down → host.openPath(start_silent.vbs) 静默拉起；
- *  - 自身并行轮询 /emc-ready（2s）→ 就绪 → host.openPath(emc-open.html)
- *    弹系统默认浏览器并跳转 8080（禁内嵌 tab 自动开——预热期乱码教训）；
+ *  - 并行探测 8080：down → host.openPath(workspace/start_silent.vbs) 静默拉起；
+ *  - 自身并行轮询 /emc-ready（2s）→ 就绪 → host.openPath(仓内跳转 HTML)
+ *    弹系统默认浏览器（禁内嵌 tab 自动开——预热期乱码教训）；
  *  - 按钮进行中态：点击至就绪置灰/转圈（防重复开多对话），就绪或 90s 超时恢复；
  *    超时不另弹错，对话流自然呈现模型侧的未就绪说明。
  * 设计 token 纪律：颜色全部 var(--dsw-alias-*)，零硬编码 hex。
@@ -13,10 +13,6 @@
 import { createElement as h, useState } from 'react'
 
 const EMC_READY_URL = 'http://127.0.0.1:8080/emc-ready'
-const EMC_LAUNCHER_PATH = 'D:/Github/emotion_map/start_silent.vbs'
-// 本机（office）Invoke-Item 对 URL 静默无效：改开本地跳转页（默认浏览器的文件
-// 关联打开 .html → 0s 跳转 8080）。home 机直开 URL 亦可（T15 实证）。
-const EMC_MAP_OPEN_PATH = 'D:/Github/dsh-emc-entry/emc-open.html'
 const SEND_TEXT = '请打开 EMC 情绪地图：用 emc_status 轮询 8080 服务状态（每 5 秒一次，预热约 30-60 秒），就绪(ready=true)后用一两句话欢迎我（可引 kb_facts 的 EMC 身份卡），并告诉我地图已在浏览器打开。'
 const PROBE_TIMEOUT_MS = 2000
 const POLL_INTERVAL_MS = 2000
@@ -26,6 +22,7 @@ export const inject = ['slots']
 
 interface WorkspaceItemLike {
   workspaceId: string
+  path: string
 }
 
 interface WorkspacesLike {
@@ -86,19 +83,32 @@ async function openViaHost(ctx: any, path: string): Promise<void> {
  * 唯一正规接口——无伪造 assistant 消息的 API，模型回应即真实助手消息）。
  */
 async function startConversation(ctx: any): Promise<void> {
-  const workspaces = ctx.get('workspaces') as WorkspacesLike | undefined
+  const workspace = currentWorkspace(ctx)
   const sessions = ctx.get('sessions') as SessionsLike | undefined
-  const snap = workspaces?.list?.getSnapshot?.()
-  const wid = snap?.recentWorkspaceId || snap?.items?.[0]?.workspaceId
-  if (!wid || !workspaces?.connectWorkspace || !sessions?.open) {
+  if (!workspace || !sessions?.open) {
     throw new Error('dsh 会话服务不可用（无 workspace 或服务缺失）')
   }
-  const sid = await workspaces.connectWorkspace(wid)
+  const workspaces = ctx.get('workspaces') as WorkspacesLike | undefined
+  if (!workspaces?.connectWorkspace) throw new Error('workspaces.connectWorkspace 服务不可用')
+  const sid = await workspaces.connectWorkspace(workspace.workspaceId)
   sessions.open(sid)
   const scoped = sessions.scope?.(sid)
   const conversation = scoped?.get?.('conversation')
   if (!conversation?.send) throw new Error('conversation 服务不可用（会话作用域解析失败）')
   await conversation.send(SEND_TEXT)
+}
+
+/** 当前 Workspace 即 EMC 仓；路径由 Host 提供，不在插件内写死用户目录。 */
+function currentWorkspace(ctx: any): WorkspaceItemLike | undefined {
+  const workspaces = ctx.get('workspaces') as WorkspacesLike | undefined
+  const snap = workspaces?.list?.getSnapshot?.()
+  return snap?.items?.find((item) => item.workspaceId === snap?.recentWorkspaceId)
+    ?? snap?.items?.[0]
+}
+
+function joinWorkspacePath(workspace: WorkspaceItemLike, ...parts: string[]): string {
+  const root = String(workspace.path).replace(/\\/g, '/').replace(/\/+$/, '')
+  return [root, ...parts].join('/')
 }
 
 /** 模块级进行中标志：跨组件重挂载防重复开多对话（连点守卫第二道）。 */
@@ -119,6 +129,11 @@ async function runEntry(ctx: any, settleUi: () => void): Promise<void> {
     settleUi()
   }
   const deadline = setTimeout(settle, BUSY_TIMEOUT_MS)
+  const workspace = currentWorkspace(ctx)
+  const launcherPath = workspace ? joinWorkspacePath(workspace, 'start_silent.vbs') : ''
+  const mapOpenPath = workspace
+    ? joinWorkspacePath(workspace, 'vendor', 'dsh-emc-entry', 'emc-open.html')
+    : ''
 
   // ① 新建对话 + 固定文本注入（模型当向导；失败诚实记 console，不另弹错）
   startConversation(ctx).catch((err: unknown) => {
@@ -129,11 +144,11 @@ async function runEntry(ctx: any, settleUi: () => void): Promise<void> {
   const state = await probeReady()
   console.log('[dsh-emc-entry] probe =', state)
   if (state === 'down') {
-    openViaHost(ctx, EMC_LAUNCHER_PATH).catch((err: unknown) => {
+    openViaHost(ctx, launcherPath).catch((err: unknown) => {
       console.warn('[dsh-emc-entry] 拉起 EMC 失败:', err)
     })
   } else if (state === 'ready') {
-    await openViaHost(ctx, EMC_MAP_OPEN_PATH).catch((err: unknown) => {
+    await openViaHost(ctx, mapOpenPath).catch((err: unknown) => {
       console.warn('[dsh-emc-entry] 打开浏览器失败:', err)
     })
     settle()
@@ -144,7 +159,7 @@ async function runEntry(ctx: any, settleUi: () => void): Promise<void> {
   poll = setInterval(() => {
     void probeReady().then((s) => {
       if (s !== 'ready' || settled) return
-      void openViaHost(ctx, EMC_MAP_OPEN_PATH).then(settle, settle)
+      void openViaHost(ctx, mapOpenPath).then(settle, settle)
     })
   }, POLL_INTERVAL_MS)
 }
