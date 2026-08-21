@@ -5,11 +5,23 @@ REM ---- MCP server (port 8600) ----
 netstat -ano | findstr ":8600.*LISTENING" >nul 2>&1
 if %errorlevel%==0 (
     echo [OK] MCP server already running ^(8600^)
-    goto WEB_START
+) else (
+    echo [LOAD] Starting MCP server ^(8600^)...
+    start "EMC MCP ^(8600^)" /min py tools\mcp_server_emc.py --http --port 8600
+    echo [OK] MCP server starting in background
 )
-echo [LOAD] Starting MCP server ^(8600^)...
-start "EMC MCP ^(8600^)" /min py tools\mcp_server_emc.py --http --port 8600
-echo [OK] MCP server starting in background
+
+REM ---- dsh web (port 3080) from EMCxDSH workspace ----
+REM PT-CB11 修复(08-22)：本段原在 serve.py(前台阻塞)之后=永不执行；移到前面·并把 MCP 段的 goto 改 if/else 防 skipped
+netstat -ano | findstr ":3080.*LISTENING" >nul 2>&1
+if %errorlevel%==0 (
+    echo [OK] dsh web already running ^(3080^)
+) else (
+    echo [LOAD] Starting dsh web from EMCxDSH...
+    cd /d D:\Github\EMCxDSH
+    start "dsh web ^(3080^)" /min dsh web
+    cd /d "%~dp0"
+)
 
 :WEB_START
 echo.
@@ -47,17 +59,6 @@ echo [WAIT] 预计 20-30s 就绪（含 BGE RAG 模型同步预热~15s：启动�
 echo.
 echo ------------------------------------------------------------
 py frontend/serve.py 8080 --open=main
-
-REM ---- 4. Start dsh web (port 3080) from EMCxDSH workspace ----
-netstat -ano | findstr ":3080.*LISTENING" >nul 2>&1
-if %errorlevel%==0 (
-    echo [OK] dsh web already running (3080)
-) else (
-    echo [LOAD] Starting dsh web from EMCxDSH...
-    cd /d D:\Github\EMCxDSH
-    start "dsh web (3080)" /min dsh web
-    cd /d D:\Github\emotion_map
-)
 
 echo.
 echo [ERR] serve.py exited (if you did not press Ctrl+C, check the error above).
