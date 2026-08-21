@@ -830,13 +830,29 @@ def nearest_analysis(layer: str = 'yichang_l2_t1', target: str = '',
 
         def _to_metric(gdf):
             g = gdf if gdf.crs is not None else gdf.set_crs('EPSG:4326')
-            return g.to_crs('EPSG:4546')
+            g = g.to_crs('EPSG:4546')
+            # PT-CB11 P1 修复（zcode 协同顺手修）：面/线目标 .geometry.x 只支持点——
+            # 非 Point 几何先取 representative_point()（落在面内·比 centroid 稳·防凹多边形外心）
+            if not g.geometry.geom_type.isin(('Point',)).all():
+                g = g.copy()
+                g.geometry = g.geometry.apply(
+                    lambda gm: gm if gm.geom_type == 'Point' else gm.representative_point())
+            return g
+
+        # PT-CB11 P2 守卫：距离矩阵 O(n_a×n_t)——超预算语义化拒绝（防 GB 级中间矩阵拖垮宿主）
+        _PAIR_BUDGET = 5 * 10 ** 7
+        if len(anchor) * len(targets) > _PAIR_BUDGET:
+            return {'ok': False,
+                    'hint': (f'配对规模超预算: {len(anchor)}×{len(targets)}'
+                             f'>{_PAIR_BUDGET}——请先用 grid_aggregate/zonal_stats 降密度，'
+                             '或换更小的 target 层'),
+                    'caliber': caliber}
 
         a = _to_metric(anchor)
         t = _to_metric(targets)
         ax = np.column_stack([a.geometry.x.values, a.geometry.y.values])
         tx = np.column_stack([t.geometry.x.values, t.geometry.y.values])
-        # 投影平面距离矩阵 n_a×n_t（EMC 点层千级×目标百级=1e6 float·内存可控）。
+        # 投影平面距离矩阵 n_a×n_t（配对预算 _PAIR_BUDGET 内·中间 (n,m,2) float64）。
         # 派发单 backing 的 sjoin_nearest 为 k=1 特例；此处统一矩阵法覆盖 k≤5，语义一致。
         dist = np.sqrt(((ax[:, None, :] - tx[None, :, :]) ** 2).sum(axis=-1))
         k_eff = min(k, len(t))

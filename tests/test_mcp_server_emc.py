@@ -714,3 +714,34 @@ def test_area_stats_zero_area_rejected(monkeypatch):
     out = mse.area_stats('fake_boundary')
     assert out['ok'] is False and '面积合计为 0' in out['hint']
     assert _caliber_keys(out['caliber'])
+
+
+# ════════════ PT-CB11 P2 Phase1 · nearest 修复回归（zcode 协同顺手修） ════════════
+
+def test_nearest_polygon_target_representative_point(monkeypatch):
+    """面 target 不再崩 .geometry.x——representative_point() 适配（P1 修复回归）。"""
+    import geopandas as gpd
+    from shapely.geometry import Point, Polygon
+    anchor = gpd.GeoDataFrame({'score': [1.0]}, geometry=[Point(111.25, 30.62)], crs='EPSG:4326')
+    polys = gpd.GeoDataFrame(
+        {'name': ['伍家岗区']},
+        geometry=[Polygon([(111.3, 30.6), (111.4, 30.6), (111.4, 30.7), (111.3, 30.6)])],
+        crs='EPSG:4326')
+    monkeypatch.setattr('core.geo_registry.resolve_points',
+                        lambda layer: anchor if layer == 'yichang_l2_t1' else (_ for _ in ()).throw(KeyError))
+    monkeypatch.setattr('core.geo_registry.resolve_boundary', lambda t: polys)
+    out = mse.nearest_analysis(layer='yichang_l2_t1', target='admin_district', k=1, top_n=3)
+    assert 'pairs' in out and out['pairs'][0]['target'] == '伍家岗区'
+    assert out['pairs'][0]['dist_m'] > 0
+
+
+def test_nearest_pair_budget_guard(monkeypatch):
+    """配对规模超预算语义化拒绝（防 GB 级中间矩阵·P2 守卫）。"""
+    import geopandas as gpd
+    from shapely.geometry import Point
+    big = gpd.GeoDataFrame({'score': [1.0] * 8000},
+                           geometry=[Point(111.2 + i * 1e-5, 30.6) for i in range(8000)],
+                           crs='EPSG:4326')
+    monkeypatch.setattr('core.geo_registry.resolve_points', lambda layer: big)
+    out = mse.nearest_analysis(layer='yichang_l2_t1', target='yichang_l1_t1', k=1)
+    assert out.get('ok') is False and '配对规模超预算' in out['hint']
