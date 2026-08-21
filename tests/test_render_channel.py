@@ -386,3 +386,13 @@ def test_version_endpoint_returns_commit_branch_startup():
     assert out['branch']
     datetime.fromisoformat(out['startup'])             # ISO 时间可解析
     assert render_routes.version() is out              # 缓存契约：同一 dict·不重复 subprocess
+
+
+def test_render_policy_prefix_wildcard_retired():
+    """P2-2 收紧：前缀通配退役——未知 poi_*/place_* 后缀字段默认拒绝（显式枚举才放行）。"""
+    from core import render_policy as rp
+    assert not rp.field_allowed('poi_private_note', '')
+    assert not rp.field_allowed('place_internal_id', '')
+    assert not rp.field_allowed('domain_raw_dump', '')
+    assert rp.field_allowed('score_sum', '')          # 聚合衍生列入枚举
+    assert rp.field_allowed('polarity_score_5', '')   # 体检轨字段入枚举

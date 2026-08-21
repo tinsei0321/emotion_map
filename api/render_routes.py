@@ -60,7 +60,6 @@ _APPLIED_TTL_DAYS = 7
 #   PT-CB11 B3-1：键表与前缀迁入 core/render_policy.py（单一权威源·与 MCP 侧校验共用）；
 #   preset 的 nameField/renderFields 声明字段按 dataset 增量放行（含中文指标字段·治注入层灰框根因①）。
 from core.render_policy import DATASET_PROP_KEYS as _DATASET_PROP_KEYS
-from core.render_policy import DATASET_PROP_PREFIXES as _DATASET_PROP_PREFIXES
 from core.render_policy import preset_render_fields
 
 
@@ -141,8 +140,7 @@ def _filter_dataset_props(fc, extra_keys=None):
             continue
         kept = {}
         for k, v in props.items():
-            if (k in _DATASET_PROP_KEYS or k in extra
-                    or k.startswith(_DATASET_PROP_PREFIXES)):
+            if (k in _DATASET_PROP_KEYS or k in extra):
                 kept[k] = v
             else:
                 dropped.add(k)

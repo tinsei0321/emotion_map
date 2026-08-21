@@ -6,7 +6,9 @@
   - tools/mcp_server_emc.py：render_spec 的 value_field 服务端校验（错配→语义化拒绝）
 
 政策三层：
-  1. 静态键集 _DATASET_PROP_KEYS + 前缀通配 _DATASET_PROP_PREFIXES（默认拒绝·防办件编号等准标识字段外流）
+  1. 静态键集 DATASET_PROP_KEYS 显式枚举（默认拒绝·防办件编号等准标识字段外流）——
+     PT-CB11 P2-2 收紧（claude 审计·08-22）：原前缀通配（poi_*/place_* 等任意后缀自动放行）
+     改为已知字段全集枚举（实测仅 polarity_score_5 依赖前缀·已入枚举）；新增字段须显式声明。
   2. manifest 声明：nameField 自动放行（可读名·图例/tip 必需）+ renderFields 显式声明
      （契约优先：preset 想被渲染通道消费的指标字段必须显式声明·未声明默认拒绝）
   3. 实际字段（dataset_field_names 读文件首要素属性——校验 value_field 错配的地面真相）
@@ -30,7 +32,8 @@ DATASET_PROP_KEYS = {
     # 口径类（K-02 全覆盖口径必备 来源 字段）
     '来源',
 }
-DATASET_PROP_PREFIXES = ('polarity', 'score', 'domain', 'element', 'poi', 'place')
+# P2-2 收紧：前缀通配退役——聚合衍生列（score_sum/score_std）与体检轨 polarity_score_5 显式入枚举
+DATASET_PROP_KEYS |= {'score_sum', 'score_std', 'polarity_score_5'}
 
 # 大文件防炸：超过该体积不做全量 json.load（首要素块解码兜底·再失败返回 None 降级）
 _FULL_LOAD_LIMIT_MB = 25
@@ -132,7 +135,7 @@ def field_allowed(field, dataset_id=''):
     """字段能否经渲染通道透传（静态键/前缀/preset 声明三层并集）。"""
     if not field:
         return False
-    if field in DATASET_PROP_KEYS or field.startswith(DATASET_PROP_PREFIXES):
+    if field in DATASET_PROP_KEYS:
         return True
     return field in preset_render_fields(dataset_id)
 
