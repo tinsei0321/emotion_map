@@ -1,34 +1,28 @@
 # 公司 · 工作交接卡
 
-> **位置**：公司 | **最后更新**：2026-08-20 凌晨（home 收工·office 到岗续接） | **同步**：随 `EMC_harness_dsh` 推送。
-> **到岗第一读**：`memories/repo/session-handoff.md` 当前节点 + `docs/todo.md` 2026-08-20 段 + `discuss/PT-CB6-大脑实测记录_dsh-2026-08-20.md` §四。
+> **位置**：公司 | **最后更新**：2026-08-21 晚（**收工**·zcode 主手） | **同步**：随 `EMC_harness_dsh` 推送（7a848dfd+）。
 
-## 收工快照（08-20 凌晨 home 班）
+## 收工快照（08-21 office 晚班）
 
-- **PT-CB6 S6 用户复测通过**：Q2「12345 热线诉求最密集的 10 个社区是哪些？把结果铺到地图上」端到端成图；用户确认正常。
-- **渲染通道三坑修复**（重要，office 勿再踩）：
-  1. `frontend/serve.py` 单线程 TCPServer 被 SSE 占死 → 已改 `ThreadingTCPServer` + `daemon_threads=True`。
-  2. `frontend/js/render_client.js` 缺 `spec_id` 去重 → 已加 `_seenSpecIds`，SSE 重连不再循环增删图层。
-  3. `DATA/exports/render_inbox/` 旧测试 spec 积压 → 15 个移入 `_backup/`，根目录仅留内联 TOP10 spec `1787161960132-3411.json`。
-- 最终图层：`[dsh] [真实] 12345热线诉求最密集TOP10社区(真实)`（内联 GeoJSON·community_choropleth_v1·value_field=诉求总量·community=174）。
+- **收口批进度**：C1 入口 v2 ✅ / C3 评估 ✅ / C2 九件 ✅（Qoder 收编·442+2 转绿）·**在途= C2-7+C5+C1b**（Qoder 换组暂停·交接记录详尽·执行手待定）。
+- **openPath 劫持已修**（主手直改·host.openPath 绕过 better-sidebar）——系统浏览器弹出待用户目验。
+- **双评估已落盘待收敛**（用户先自行阅读·home 定稿）：
+  - Kimi 新人视角：`docs/catch-ball/discuss/PT-CB10-Kimi任务设计书_Kimi-2026-08-21.md`（462 行）
+  - dsh 宿主视角：`docs/catch-ball/discuss/PT-CB10-dsh任务设计书_dsh-2026-08-21.md`（356 行）
+- **Kimi 目标清单 v3**（十轮全景·想法库 84 条·小目标 42 个）：`PT-CB10-Kimi预期目标清单_zcode-2026-08-21.md`。
+- 日志：todo（Qoder 执行包段+收口批状态）·台账 R55-R57 ·session-handoff（home 续点）已同步。
 
-## office 到岗动作
+## 回家入口
 
-1. `git pull origin EMC_harness_dsh`。
-2. 读 `docs/todo.md` 2026-08-20 段 + `discuss/PT-CB6-大脑实测记录_dsh-2026-08-20.md` §四。
-3. **S7 回收判读**（zcode 主手）：将新增三个显示面缺陷并入 PT-CB6 缺陷清单：
-   - serve.py 单线程 SSE 阻塞；
-   - render_client 缺 spec_id 去重；
-   - render_inbox 积压旧 spec 重放。
-   裁决是否补测、是否修工具描述/文档。
-4. 按主手排期决定是否继续 Q3/Q4 用户复测或进入下一批。
+1. `memories/repo/session-handoff.md`（当前节点=home 续点：双评估收敛定稿+收口批续做）
+2. 两份评估链接（见上）——用户先看
+3. `PT-CB10-Kimi预期目标清单_zcode-2026-08-21.md`（v3 全貌）
 
-## 待办/风险
+## 待办移交
 
-- `render_inbox/_backup/` 15 个旧 spec 未删，确认无用后可清。
-- `tests/_tmp_*` 临时调试文件未提交，确认后可删。
-- main 冻结勿动；一切在 `EMC_harness_dsh`。
+- **home zcode**：双评估交叉回收+四档裁决→定稿落盘→收口批 C2-7/C5/C1b 续做（执行手待定）→C4 清账→claude 审计首用→阶段 B。
+- **用户**：看两份评估 / 色板复测（刷新 8080） / 入口 v2 目验 / 堆积会话清理确认 / PT-CB9 Q-A/Q-B / M1-M3 立项。
 
 ## 禁止事项
 
-- main 冻结勿动；白名单外禁碰；Excel 锁文件不提交；未裁决不 mv 数据文件。
+main 冻结；零实施未收敛不启动新批次；Kimi/dsh 评估只读；未 push 不算交付。

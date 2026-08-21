@@ -10,44 +10,12 @@
 
 ---
 
-## 当前节点：08-21 PT-CB7「稳定与灵魂」批主执行收工 · Qoder · 明晨 office 续点
+## 当前节点：office 收工 · PT-CB10 收口批进行中 + 双评估待收敛（home 续点=定稿落盘）
 
-- **08-21 完成（Qoder 主执行）**：
-  1. 审计先行：T1-T9 全文审计（M1-M4 修正随执行生效）+ 任务拆解（复杂自执/简单派 dsh 三批）+ WIP 复核。
-  2. EMC 仓六 commit（基线 442 passed/2 skipped）：T1 图层自清 `97fb95bd` / T6 MCP 描述紧凑 `0d752150` / T8 脚本参数化+口径对照 `9e7ca1dc` / T5+T9 身份卡扩写+RAG `c6013cf8` / T14 结果呈现契约 `1dc80123` / T10 出图范式契约 render-contract.md `a8a697e5`。
-  3. 用户实测五连修：T18 render_file 第 9 插座 `3d80d2cd`（治长思维+误入 Range）/ T16 历史图层残留根治 `8608ff14` / T19 /emc-ready 真就绪 gate+快通道+杀窗守卫 `23888cb3`（治“加载一半失效”）/ T21 SSE 扇出广播+50s 豁免 `691676ab`（治“F5 才见”）/ T15 start_silent.vbs 隐藏启动+对话气泡首屏卡 `fa661192`。
-  4. dsh 两批回收：批 1（T2 terminal chunk 修复/T4 计时取证/F1-F4 复核）；批 2（人设 prompt 落地生效·「你是谁」自述实测通过；T17 timeout 120s 无效——根因=MCP 冷启动 >120s 需服务端预热）。记录+截图在 `discuss/PT-CB7-dsh协助批{1,2}记录_dsh-2026-08-21.md`。
-  5. 仓外插件 dsh-emc-entry 多轮改造已重建（bundle 18,977B）；当前 8080/8000 新 serve 运行中（/emc-ready 200+ACAO）。
-- **office 续点（按序）**：①git pull + office dsh 环境四件套（同 08-20 卡）+ 批 2 同款补三件（人设文件复制/toolCallTimeoutMs 120000/start_silent.vbs 路径免改）②优先验证五项用户实测（快通道/冷启动气泡卡/免 F5 铺层/render_file/身份自述）③待办优先级：T17 服务端预热真修 → T7 双模预设落地+≤2min 验收（批 3）→ zcode 回收+《Qoder 执行效果评估》。
-- **待裁决/观察**：T11 被 render_file 吸收待销项确认；D2 欢迎卡绑定目标会话未做；render_file 临时 dataset 累积列观察；debug-memory 撞号已清（E2 合并双 R11 + Codex 08-21 修残留双 R12·重编号 R13-R16·新增 R17-R19 与维护协议·详见 `discuss/PT-CB8-EMC-dsh避坑沉淀报告_Codex-2026-08-21.md`）。
-- **注意**：dsh 文件在仓外（`D:/Github/dsh-emc-entry/` + `~/.dsh/`）不入本仓；人设改动在 `~/.dsh/.agent-presets/router-standard-subagent/`（批 2 记录 A-2 有全文与备份名）。
-
-## 旧节点：home 凌晨收工 · PT-CB6 S6 用户复测通过 · render 通道三坑已修（office 续点=S7 回收判读）
-
-- **08-20 凌晨 home 班完成**：
-  1. 用户亲测 Q2「12345 热线诉求最密集的 10 个社区是哪些？把结果铺到地图上」→ 端到端成图，用户确认正常。
-  2. 修复渲染通道三个坑：
-     - `frontend/serve.py` 单线程 TCPServer 被 SSE 长连接占死 → 改 `ThreadingTCPServer` + `daemon_threads=True`（页面转圈/API 502 根因）。
-     - `frontend/js/render_client.js` 缺 spec_id 去重 → SSE 重连重放 backlog 导致 8~9 个图层循环跳动；新增 `_seenSpecIds`。
-     - `DATA/exports/render_inbox/` 积压 15 个旧测试 spec → 移入 `_backup/`，根目录只留内联 TOP10 spec `1787161960132-3411.json`。
-  3. 最终图层：`[dsh] [真实] 12345热线诉求最密集TOP10社区(真实)`（community_choropleth_v1·value_field=诉求总量·community=174）。
-- **office 到岗动作**：
-  1. `git pull origin EMC_harness_dsh`（本卡随 commit 推送）。
-  2. 读 `docs/catch-ball/discuss/PT-CB6-大脑实测记录_dsh-2026-08-20.md` §四 + `docs/todo.md` 2026-08-20 段。
-  3. **S7 回收判读**（zcode 主手）：把本次新增三个显示面缺陷（serve 单线程 SSE 阻塞 / render_client 缺去重 / render_inbox 积压重放）并入 PT-CB6 缺陷清单，裁决是否补测/修工具描述。
-  4. 若继续 PT-CB6：可安排用户复测 Q3/Q4；或按主手排期进入下一批。
-- **待办/风险**：
-  - `render_inbox/_backup/` 里 15 个旧 spec 未删除，只移出渲染通道；确认无用后可清。
-  - `tests/_tmp_*` 临时调试文件留在工作区，未提交；确认后可删。
-  - main 仍冻结；一切在 `EMC_harness_dsh`。
-
-## 旧节点：office 收工 · B1 修复送复审 + PT-CB4 就绪（home 续点=T1 对账裁决）
-
-- **08-19 office 班完成**：①PT 命名令编号纠正（学习线=PT-CB3/下轮=PT-CB4·CB-42 字样清零）②送审 Codex（通知+审计要点五项+prompt）③Codex 审计判 FAIL→七项修复（H1 前端守卫随层标记/H2 hotspot 补挂/M1 边界源全入口过滤/L1-L4）·门禁 389+3·实战复验过④dsh 两批六任务派发+回收全销号（A 证据 5 对/B 素材 57 层/C PII 扫描/D 服务核查工具/E 总账对账/F 指路候选；两条真发现：place_name 内嵌真实身份证→蒸馏强校验入 B4；qty 层两份物理拷贝双头→入 T1 裁决）⑤PT-CB3 意图外置线：收敛 v1→用户"零思考壳子论"质疑→dsh 实现者评价→**终收敛 v2 定稿**（EMC=契约集合体四类+两补充·结构化打回·em:mode·双写·切换判据四条）⑥AGENTS v2.4 学习必落盘规则。
-- **home 到岗动作**：①`git pull origin EMC_harness_dsh` ②**开工 PT-CB4 T1 对账裁决**（zcode 判裁·输入=A 证据包 5 对+E qty 双头·产出裁决表并入 _总账.md·输家 mv _retired/+retired.md·证据冲突挂起待用户不硬拍）③T2 口径注册表（B 素材+F 候选+v2 意图卡/口径契约字段·落位 00-宜昌专项/_口径注册表.md）④T3 check_caliber 派 dsh（**F_020 取号主手先行**）⑤环境：home 自起服务（R7：先跑 tools/check_server_freshness.py 核查）；hub 盘仓 remote 仅 office 计划未配（home 无需）。
-- **等用户动作**：转发 Codex 复审 prompt（送审通知§六·PT-CB2-送审通知_zcode-2026-08-19.md）——复审回后 B1 销号+学习线收敛+PT-CB3 v2 补审三重点（分流器枚举/打回率阈值/双写维护成本）。
-- **Cordis 学习线（home 可续）**：通俗讲义 8 课全落盘（`discuss/PT-CB3-Cordis通俗讲义_claude-2026-08-19.md`）——第 1~5 课已讲完（含打卡：编排器类比/重装浪费/同步异步/订阅制广播），第 6~8 课（效应/生命周期/全书串讲）完整内容已写入、检查题待答；home 续学入口=讲义文件，答完检查题回 office 打卡结课。
-- **纪律**：一切在分支（main 冻结）；dsh 白名单制；门禁 389+3（上浮须注明）；追踪 ID 连续不跳号；新任务一律 PT 编号；AGENTS v2.4 学习报告必讨论必落盘。
+- **08-21 office 晚班完成**：①C1 入口 v2 全件回收（五截图+执行记录）②C3 Qoder 评估尾段=优+ ③openPath 劫持修复（方式 B 主手直改·host.openPath 绕过 better-sidebar 劫持·实测无内置弹出·系统浏览器弹出待用户目验）④Qoder 执行包 C2 九件收编（异常三分/TTL/公共函数/白名单/K-C1 补 118/demo 注册/D9 纪律/两登记机制·门禁 442+2 转绿·两处白名单外连带抽验认可）⑤日志全同步（todo/t台账 R55-R57）⑥**Kimi 目标清单 v3 十轮全景版**（十轮全景表+想法库 84 条+小目标 10 组 42 个+资产清单+教训 Top12）⑦**Kimi+dsh 双评估派发**（Kimi 新人视角 462 行+dsh 宿主视角 356 行·均已落盘·**未收敛·用户要先自行阅读**）。
+- **home 到岗动作**：①`git pull origin EMC_harness_dsh` ②读两份评估（链接见 OFFICE 卡）③**双评估交叉回收+四档裁决**（吸收/并入排期/暂缓/反对）→ 采纳结果与在途件排期 → 定稿落盘 ④收口批续做：C2-7（guard 8→10·归 C5 纪律）+C5 四件（双模处置）+C1b 四件（会话归置 emc-lab）——执行手待定（原 Qoder 换组暂停·交接记录详尽）⑤C4 清账+claude 审计首用→收口批销号→阶段 B（PT-CB9 RAG 重建·待用户 Q-A/Q-B 拍板）。
+- **待用户**：①看两份评估报告（链接在 OFFICE 卡）②色板复测（刷新 8080 页面·验证层自动出现红色系）③入口 v2 目验（系统浏览器应弹地图）④堆积 EMC 测试会话清理确认 ⑤PT-CB9 Q-A/Q-B 拍板 ⑥M1-M3 立项。
+- **纪律**：main 冻结；规则七（未 push 不算交付·差异适配五类）；阶段门（先定稿再开工·未销号不进下一批）；门禁 442+2；Kimi/dsh 评估零实施只读。
 
 ### 旧节点：EMC×dsh 可行性深挖收工 · 零实施 · 等用户确认
 
