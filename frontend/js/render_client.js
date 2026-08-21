@@ -2,10 +2,10 @@
 // 后端 SSE /api/v1/render/stream 推 render spec → 取数 → scheme 受管样式解析（权威在此）→
 // 复用现有 addToolboxLayer / defaultPaint 铺层。
 // 红线：不改任何既有 js；本文件为纯新增 ES module。
-import { addToolboxLayer, defaultPaint } from './toolbox/shared.js';
+import { addToolboxLayer } from './toolbox/shared.js';
 import { getLayers, removeLayer } from './state.js';
 import { removeLayerFromMap } from './map.js';
-import { piToNorm, polarityStops } from './grid-tool.js';
+import { countStops, piToNorm, polarityStops } from './grid-tool.js';
 
 const PREFIX = '[dsh] ';
 // 同一页面会话内按 spec_id 去重：SSE 断线重连会重放 backlog，若不去重会导致
@@ -142,10 +142,15 @@ async function _apply(spec) {
           return { ...f, properties: props };
         }),
       };
-      paint = { ...defaultPaint('zonal', 'polygon'), gridStops: polarityStops('overall') || [] };
+      // PT-CB8 F4 修复：显式构造纯样式画笔（禁 _ui.tool 标记）——borrowed defaultPaint('zonal') 带
+      // 「zonal 工具归属」标记会把要素按钮点击路由进 zonal 分析对话框（该层无分析上下文→空面板）。
+      // gridField/gridStops 保留（数据驱动着色·与工具归属无关）。
+      paint = { fillOn: true, fillOpacity: 0.72, lineWidth: 1, lineOpacity: 0.6,
+                gridField: '_grid_norm', gridStops: polarityStops('overall') || [] };
     } else {
       normalized = _normCommunityCount(fc, valueField);
-      paint = defaultPaint('zonal', 'polygon', 'count');
+      paint = { fillOn: true, fillOpacity: 0.72, lineWidth: 1, lineOpacity: 0.6,
+                gridField: '_count_norm', gridStops: countStops(), zeroIsNoData: true };
     }
 
 

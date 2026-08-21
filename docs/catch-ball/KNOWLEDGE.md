@@ -33,6 +33,7 @@
 
 - **L0 获取 = 未来走购买途径**（非自采 Scrapy）；sim 当下有意为之且充分 → 数据管道成熟度评估勿把 sim 当缺陷。[[l0-acquisition-purchase-strategy]]
 - **不派 subagent**（用户全局铁律）：AGENTS.md 8/9 Agent 是**概念框架非运行时机制**，主线程直接干 → 调用次数/SOP spawn 类建议常前提不成立。
+- **EMC×dsh 核心路线（2026-08-21 用户工程预期）**：测试期 dsh=外置实验驾驶舱，经 EMC 标准插座消费数据/RAG/注册 Toolbox/render 契约并控制 8080 出图；稳定期 EMC 作为产品壳吸收测试链路。EMC 恒为数据、口径、知识、工具语义、样式与渲染权威源；dsh 不复制业务逻辑、不自建样式、不绕过插座直读。跨机开发必须区分仓库/`~/.dsh`/可重建缓存/外部资料，环境配方与沉淀登记见 `discuss/EMC-dsh工程预期与双环境同步核心思想_Codex-2026-08-21.md`。
 - **4×5 = 归因落点矩阵（非指标分类清单）**：跨领域×要素多归属。勿用"官方指标完备性"质疑 4×5（错标尺）。[[project-design-philosophy]]
 - **eval 空 context ≠ 运行时**（C6）：Flash eval 用 `build_diagnose_prompt('')` 空 context 模拟，不反映已加载层；路由分歧验路由须带 grounding 或 browser，别只信空 context eval。[[emc-eval-empty-context-vs-runtime]]
 - **唯一真短板 = 前端测试薄**（34 JS 文件零单测）；非数据、非架构（数据管道 sim 充分、架构七层稳）。

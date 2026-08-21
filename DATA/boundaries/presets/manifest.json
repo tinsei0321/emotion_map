@@ -531,6 +531,14 @@
         "nameField": "name",
         "usage": "analysis_output",
         "note": "PT-CB7 render_file 自动登记（源 DATA\\exports\\12345_kde\\12345_中心城区_核密度_KDE等值面.geojson）"
+      },
+      {
+        "id": "tmp_render_1787278083",
+        "label": "12345诉求·社区174全量",
+        "file": "12345_诉求_社区174全量.geojson",
+        "nameField": "name",
+        "usage": "analysis_output",
+        "note": "PT-CB7 render_file 自动登记（源 DATA\\boundaries\\presets\\12345_诉求_社区174全量.geojson）"
       }
     ]
   }

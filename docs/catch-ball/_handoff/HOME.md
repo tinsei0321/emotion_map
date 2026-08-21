@@ -101,6 +101,18 @@
 - **去 office 续点**：读 `_handoff/OFFICE.md`；S7 回收判读，将三个显示面缺陷并入 PT-CB6 缺陷清单。
 - 详细进度：`docs/todo.md` 2026-08-20 段 + `memories/repo/session-handoff.md` 当前节点。
 
+
+
+## ⚠️ 插件入仓同步提醒（08-21 office 班·PT-CB8）
+
+- **dsh-emc-entry 插件已迁入 EMC 仓** `vendor/dsh-emc-entry/`（office 版基线·含 v2 探索痕迹 docs/v2-os-desktop-check.png 等）；office 依赖已改指 `file:D:/Github/emotion_map/vendor/dsh-emc-entry` 并重启验证（dump-config 行在位）。
+- **home 到家动作**（按序）：
+  1. `git pull origin EMC_harness_dsh`（vendor 目录随之到位）；
+  2. **权威版本合并决策**：home 本地 `D:/Github/dsh-emc-entry` 是 08-20 晚多轮改造版（bundle 18,977B vs office 基线 lib/client.js 5,554B）——**对比两份**：以改造版为准覆盖仓内 vendor 并 commit（一次性合并·之后仓为唯一权威），或确认 office 版已含改造后删本地目录；
+  3. 改 home profile 依赖行 → `file:D:/Github/emotion_map/vendor/dsh-emc-entry`，pnpm/npm 重装，重启 web；
+  4. office 原目录已改名 `dsh-emc-entry.local-backup-20260821`（保留 3 天供对比·确认后可删）。
+- 口径：**插件改动今后只做一次**（改仓内 vendor→commit→两端 pull+重装）；~/.dsh 配置类仍走复刻清单模式。
+
 ## ⚠️ office 侧 dsh 问答测试准备（跨机四件套·zcode 补记 08-20）
 
 **git pull 只带回仓库侧（八工具/渲染通道/数据/配置指引文档）——dsh 的 profile 配置在家机 `~/.dsh/profiles/emc-test/`，不在 git 里。office 要复测须补四件（约 10-15 分钟）：**

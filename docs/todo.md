@@ -24,6 +24,21 @@
 
 ---
 
+## 📅 2026-08-21（office 续班 · PT-CB8 F4 修复 + 插件迁移 · zcode）
+
+### ✅ F4 参数面板空面板修复（根因+代码层验证）
+
+- **根因**：dsh choropleth 层借用 defaultPaint('zonal') 带入 `_ui.tool='zonal'` 工具归属标记——要素按钮点击被 sidebar 路由进 zonal 分析对话框（无上下文→空面板）。点层/边界层无此问题。
+- **修复**：render_client.js choropleth 两分支（极性/计数）改显式字面量 paint（去 `_ui` 标记·保留 gridField/gridStops 数据驱动着色）；顺清未用 import。
+- **口径**：render-contract.md §七-7「样式调参走渲染参数·不面板改色」——[dsh] 层可调面开关/线宽/透明度；换色带必改 render_spec scheme/value_field 重投递（图层同源原则）。
+- **验证层级**：JS 语法过/路由链路逐行确认（sidebar 只拦 7 种 tool 标记→必走 openSettingsPopover→build(polygon) 五 section）/相关测试 31 过；**浏览器端到端受阻**（SSE 层未推至页面+浏览器 tab 激活故障·环境问题非修复问题）——留用户复测点：点 [dsh] choropleth 层要素按钮应见面板内容。
+
+### ✅ 插件迁移完成（office）
+
+- dsh-emc-entry 迁入 `vendor/dsh-emc-entry/`（1MB·排除 tmp-*）；依赖改指仓内 file: 路径；npm 重装（node_modules 内容=仓内验证过）；web 重启+dump-config 行在位。
+- 原目录备份 `dsh-emc-entry.local-backup-20260821`；HOME 卡已写 home 到家四步（pull→权威版本合并决策→依赖改指+重装→备份处置）。
+- 口径：插件改动今后只做一次（仓内 vendor=唯一权威·两端 pull+重装）；~/.dsh 配置类仍复刻清单模式。
+
 ## 📅 2026-08-21（office 续班 · PT-CB7 环境补齐+五项验证 · zcode）
 
 ### ✅ 环境补齐（交接卡续点①）
