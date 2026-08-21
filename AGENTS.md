@@ -235,6 +235,7 @@ Agent 启动时根据下表选择性阅读知识源：
 - I/O 操作（文件读写/API/DB）→ 必须埋点
 - 数据管道步骤 → 记录 in_n / out_n
 - except 块 → `trace_error()`
+- **高频循环扫描类豁免（PT-CB10 C2-8·D9 纪律固化）**：周期 ≥1s 的常驻扫描/轮询函数（如 watcher 循环）免 `@track`（防 [TRACE] 刷屏淹没有效信号）；但**必须**在其功能 ID 的 `register_track_id` 注册表描述中注明「高频扫描·免埋点」，使豁免可审计可追溯（先例：MOD_AIQA.F_029 render 收件箱 watcher）。
 
 **Debug 工作流**：
 ```

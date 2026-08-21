@@ -96,17 +96,33 @@ CALIBERS = {
 
 
 def _reject_analysis_output(preset_id, param, caliber):
-    """G-2/铁律7 服务端强制：analysis_output 结论层禁作空间操作输入（PT-CB5 审计发现即修）。"""
+    """G-2/铁律7 服务端强制：analysis_output 结论层禁作空间操作输入（PT-CB5 审计发现即修）。
+
+    PT-CB10 C2-1（A9 收窄）：manifest 读取按异常类型区分处置，禁宽 except fail-open——
+    - FileNotFoundError/OSError（文件缺失）：G8b 枚举层仍有引导 → 显式放行（返 None）并 stderr 留痕；
+    - json.JSONDecodeError（内容损坏）：usage 无法判定=防穿洞风险 → 拒绝该输入并说明原因；
+    - 其他异常：拒绝 + 异常摘要（宁可诚实拒绝，不可静默放行结论层）。
+    """
     try:
         with open(MANIFEST, encoding='utf-8') as _fp:
-            for _g in json.load(_fp):
-                for _it in _g.get('items', []):
-                    if _it.get('id') == preset_id and _it.get('usage') == 'analysis_output':
-                        return {'ok': False, 'hint': (
-                            f'{param}={preset_id} 是结论层（usage=analysis_output·铁律7 禁作分析输入）；'
-                            '请改用 input 层（调用 list_data 查看清单与 usage 标记）'), 'caliber': caliber}
-    except Exception:
-        pass   # manifest 不可用时不阻塞（G8b 枚举层仍有引导）
+            _manifest_groups = json.load(_fp)
+    except (FileNotFoundError, OSError) as exc:
+        _safe_print(f'[WARN] G-2 守卫: manifest 不可读·放行本次并依赖 G8b 枚举引导: {exc}', file=sys.stderr)
+        return None
+    except json.JSONDecodeError as exc:
+        return {'ok': False, 'hint': (
+            f'{param} 的 usage 判定失败：manifest 内容损坏（{exc}）·G-2 守卫拒绝该输入'
+            '（请修复 DATA/boundaries/presets/manifest.json 后重试）'), 'caliber': caliber}
+    except Exception as exc:
+        return {'ok': False, 'hint': (
+            f'{param} 的 usage 判定失败：manifest 读取异常（{type(exc).__name__}: {str(exc)[:80]}）'
+            '·G-2 守卫拒绝该输入'), 'caliber': caliber}
+    for _g in _manifest_groups:
+        for _it in _g.get('items', []):
+            if _it.get('id') == preset_id and _it.get('usage') == 'analysis_output':
+                return {'ok': False, 'hint': (
+                    f'{param}={preset_id} 是结论层（usage=analysis_output·铁律7 禁作分析输入）；'
+                    '请改用 input 层（调用 list_data 查看清单与 usage 标记）'), 'caliber': caliber}
     return None
 
 _UNKNOWN_HINT = '未知层 id·调用 list_data 查看清单'

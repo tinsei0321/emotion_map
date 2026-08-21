@@ -119,6 +119,9 @@ def test_render_client_d10_source_dispatch():
     assert "polarityStops('overall')" in src
     # 计数分支：维持 _normCommunityCount + count 着色
     assert '_normCommunityCount' in src
-    assert "defaultPaint('zonal', 'polygon', 'count')" in src
+    # PT-CB10 C2-3：断言随 F4 裁决（f75aee58·显式字面量 paint 去 _ui.tool 标记·禁 defaultPaint 借用）
+    # 与 C2-3 单源化（归一公式抽 shared.js countNorm）更新——同源判据=归一/色带均引共享函数而非自写公式。
+    assert 'countNorm(' in src
+    assert 'countStops(' in src
     # 分派条件：polarity 子串或 score_mean
     assert "valueField.includes('polarity')" in src

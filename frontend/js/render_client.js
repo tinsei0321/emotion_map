@@ -2,7 +2,7 @@
 // 后端 SSE /api/v1/render/stream 推 render spec → 取数 → scheme 受管样式解析（权威在此）→
 // 复用现有 addToolboxLayer / defaultPaint 铺层。
 // 红线：不改任何既有 js；本文件为纯新增 ES module。
-import { addToolboxLayer } from './toolbox/shared.js';
+import { addToolboxLayer, countNorm } from './toolbox/shared.js';
 import { getLayers, removeLayer, HEATMAP_RAMPS } from './state.js';
 import { removeLayerFromMap } from './map.js';
 import { countStops, piToNorm, polarityStops } from './grid-tool.js';
@@ -54,20 +54,19 @@ async function _loadData(spec) {
   return null;
 }
 
-/** 计数型 sequential 归一：每 feature 写 _count_norm = log1p(count)/log1p(max)。 */
+/** 计数型 sequential 归一：每 feature 写 _count_norm（C2-3：公式单源 shared.js countNorm·与 buildZonalFc 同款）。 */
 function _normCommunityCount(fc, valueField) {
   let max = 0;
   for (const f of (fc.features || [])) {
     const n = Number((f.properties || {})[valueField]) || 0;
     if (n > max) max = n;
   }
-  const denom = Math.log1p(max) || 1;
   return {
     ...fc,
     features: (fc.features || []).map((f) => {
       const props = { ...(f.properties || {}) };
       const n = Number(props[valueField]) || 0;
-      props._count_norm = Math.log1p(n) / denom;
+      props._count_norm = countNorm(n, max);
       return { ...f, properties: props };
     }),
   };

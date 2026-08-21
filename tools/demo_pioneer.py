@@ -5,13 +5,11 @@
 三步演示（按任务书 §七 同款语义）：
   1. zonal_stats(12345 真实点层 × 174 社区面, layer_output=True)
   2. render_spec(community_choropleth_v1·value_field=point_count·inline 路)
-  3. 安全/民生社区点层各一张同法（经 manifest 现路径读 GeoJSON 直传
-     zonal_stats 的 layer 位——这两个点层 preset 不在 geo_registry 点层注册表，
-     故走 resolve_points 的 dict send-in 路径，能力本体不变）。
+  3. 安全/民生社区点层各一张同法（PT-CB10 C2-6：双点层已注册进 geo_registry
+     点层表·直接传层 id，与全部点层同通道；不再走 manifest 现路径 dict send-in）。
 
 产物：DATA/exports/render_inbox 落三张 spec；前端 8080 EventSource 自动消费。
 """
-import json
 import os
 import sys
 
@@ -42,22 +40,8 @@ def _find_174_preset():
     return None
 
 
-def _load_preset_fc(preset_id):
-    with open(mcp.MANIFEST, 'r', encoding='utf-8') as fh:
-        groups = json.load(fh)
-    for group in groups:
-        for it in group.get('items', []):
-            if it.get('id') == preset_id:
-                rel = it.get('file', '')
-                path = os.path.normpath(os.path.join(os.path.dirname(mcp.MANIFEST), rel))
-                with open(path, 'r', encoding='utf-8') as f2:
-                    return json.load(f2)
-    return None
-
-
-def _zonal_and_render(boundary, layer, name, fc_loader=None):
-    pts = fc_loader() if fc_loader else layer
-    z = mcp.zonal_stats(boundary=boundary, layer=pts, top_n=10, layer_output=True,
+def _zonal_and_render(boundary, layer, name):
+    z = mcp.zonal_stats(boundary=boundary, layer=layer, top_n=10, layer_output=True,
                         sort_by='point_count')
     if not z.get('geojson'):
         _safe_print(f'[ERR] zonal_stats 失败（{name}）: {z.get("hint")}')
@@ -84,11 +68,9 @@ def main():
     ok += _zonal_and_render(boundary, 'checkup_12345_2024',
                             '12345热线诉求最密集社区(真实)')
     ok += _zonal_and_render(boundary, 'subj_12345_safety_community_point',
-                            '12345安全韧性最密集社区(真实)',
-                            fc_loader=lambda: _load_preset_fc('subj_12345_safety_community_point'))
+                            '12345安全韧性最密集社区(真实)')
     ok += _zonal_and_render(boundary, 'subj_12345_livelihood_community_point',
-                            '12345民生基础最密集社区(真实)',
-                            fc_loader=lambda: _load_preset_fc('subj_12345_livelihood_community_point'))
+                            '12345民生基础最密集社区(真实)')
 
     _safe_print(f'[OK] 演示完成：{ok}/3 张 spec 已落 render_inbox')
     _safe_print('提示：起 serve 后开 8080·EventSource 自动消费（py frontend/serve.py 8080）')

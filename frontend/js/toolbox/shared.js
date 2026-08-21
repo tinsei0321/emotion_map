@@ -35,6 +35,13 @@ export function normalizeGeoNames(geo) {
   }) };
 }
 
+/** C2-3 单源：计数型 sequential 归一（单要素）：norm = log1p(count)/log1p(max)（零点=0·max=0 时分母兜底 1）。
+ *  buildZonalFc（toolbox 聚合面）与 render_client._normCommunityCount（dsh 渲染通道）共用此式·禁各自另写（CB-41 B013 同源纪律）。 */
+export function countNorm(count, maxCount) {
+  const denom = Math.log1p(Math.max(0, Number(maxCount) || 0)) || 1;
+  return Math.log1p(Math.max(0, Number(count) || 0)) / denom;
+}
+
 /** P1（v1.4）：rows + boundary geojson → 合成聚合 polygon FC（每 feature 注入 _grid_norm/polarity_index 供 choropleth 着色）。
  *  仅当 boundary 解析为 GeoJSON（中文名）时合成；preset_id（无 geojson）返 null（只给表格 rows）。
  *  （自 tools.js _buildZonalFc :218 迁移）
@@ -51,8 +58,8 @@ export function buildZonalFc(rows, boundary, semantic) {
     return rows.find((r) => String(r.name || '').trim() === s)
       || rows.find((r) => { const rn = String(r.name || '').trim(); return rn && (rn.includes(s) || s.includes(rn)); });
   };
-  const countDenom = semantic === 'count'
-    ? (Math.log1p(Math.max(0, ...rows.map((r) => Number(r.point_count) || 0))) || 1) : 1;
+  const countMax = semantic === 'count'
+    ? Math.max(0, ...rows.map((r) => Number(r.point_count) || 0)) : 0;
   const out = [];
   for (const f of feats) {
     const nm = (f.properties && f.properties.name) || '';
@@ -64,7 +71,7 @@ export function buildZonalFc(rows, boundary, semantic) {
       properties: {
         ...(f.properties || {}), name: nm || (row && row.name) || '',
         polarity_index: pi, _grid_norm: pi != null ? piToNorm(pi) : 0.5,
-        _count_norm: semantic === 'count' ? Math.log1p(pc) / countDenom : undefined,   // CB-41：点数语义归一（零点=0）
+        _count_norm: semantic === 'count' ? countNorm(pc, countMax) : undefined,   // CB-41：点数语义归一（零点=0·C2-3 单源 countNorm）
         point_count: row ? (row.point_count || 0) : 0,
         domain_top: row ? row.domain_top : null, element_top: row ? row.element_top : null,
         issue_label: row ? row.issue_label : null,

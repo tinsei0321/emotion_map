@@ -42,6 +42,11 @@ _POINT_LAYERS = {
     # 注：checkup_* 层隔离（Codex G6 whitelist·sim 层零引用）·level='CHECKUP' 零 level 检查·极性负偏平台特性（观点以强度为主）
     # CB-39 A2/E16：真实数据迁出演示池 → DATA/analysis/12345主观/（第 4 元素=repo 相对子目录·缺省走 PERFORMANCE_DIR）
     'checkup_12345_2024': ('checkup_12345_2024.csv', '12345 投诉 2024（主观轨·体检医生·中心城区+县市）', 'CHECKUP', 'DATA/analysis/12345主观'),
+    # PT-CB10 C2-6（D 批挂账销号）：demo_pioneer 演示双点层注册进点层表——原走 manifest 现路径 dict send-in，
+    #   现注册后与全部点层同通道（list_data 可见/resolve_points 可引）；GeoJSON 格式·get_layer_points 按扩展名分支读。
+    #   数据=12345 主观轨真实点（安全韧性/民生基础两类·社区层）·level='CHECKUP' 同族。
+    'subj_12345_safety_community_point': ('12345_安全韧性_社区点.geojson', '12345 安全韧性点·社区层（主观轨·演示双用）', 'CHECKUP', 'DATA/analysis/12345主观'),
+    'subj_12345_livelihood_community_point': ('12345_民生基础_社区点.geojson', '12345 民生基础点·社区层（主观轨·演示双用）', 'CHECKUP', 'DATA/analysis/12345主观'),
 }
 
 
@@ -69,7 +74,11 @@ def _point_layer_overview(fname: str) -> dict:
     ov = {'fields': [], 'samples': {}, 'dtypes': {}, 'field_cards': {}}
     if os.path.isfile(path):
         try:
-            df = pd.read_csv(path, nrows=2)
+            # PT-CB10 C2-6：GeoJSON 点层同样走 overview（gpd 读·与 CSV 同口径暴露字段/样例/role）。
+            if str(fname).lower().endswith(('.geojson', '.json')):
+                df = gpd.read_file(path, rows=2)
+            else:
+                df = pd.read_csv(path, nrows=2)
             fields = list(df.columns)
             # 优先给有 canonical role 的字段样例值（resolve_role 命中=polarity/score/text/name/...）
             key = [c for c in fields if resolve_role(c)] or fields[:8]
@@ -138,6 +147,16 @@ def get_layer_points(layer_id: str) -> gpd.GeoDataFrame:
     path = _layer_path(_POINT_LAYERS[layer_id])
     if not os.path.isfile(path):
         raise FileNotFoundError(f'点层文件缺失: {path}')
+
+    # PT-CB10 C2-6：GeoJSON 点层分支（演示双点层·无 lon/lat 列·几何直读；属性按文件原样保留）。
+    if path.lower().endswith(('.geojson', '.json')):
+        gdf = gpd.read_file(path)
+        if gdf.crs is None:
+            gdf = gdf.set_crs('EPSG:4326')
+        else:
+            gdf = gdf.to_crs('EPSG:4326')
+        _CACHE[layer_id] = gdf
+        return gdf
 
     df = pd.read_csv(path)
     # 坐标列兼容（L1/L2 均含 lon/lat；缺失则报错）
