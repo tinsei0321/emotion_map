@@ -55,6 +55,8 @@ tip 内容取自 feature.properties——**tip 缺信息 = properties 缺字段�
 
 未知 scheme 拒渲染（render_client.js 词表校验）。
 
+**色带透传（PT-CB8 色板通道）**：计数分支支持 `style.ramp_hint` 指定色带——命中 `HEATMAP_RAMPS` 词表（如 `red-3`/`ylorrd`/`terrain-9`/`classify-7` 等，含多色系 viridis/magma/plasma/ylorrd/ylgnbu/bugn/rainbow）则用该色带（countStops 默认反转·低浅高深），无效或缺失回落默认 `grid-warm`。调用形态：`render_spec(..., value_field='point_count', ramp_hint='red-3')`。极性分支仍走 `polarityStops`（不受 ramp_hint 影响）。
+
 ## 五 caliber_lite 义务（每 spec 必带）
 
 - `usage`：input / analysis_output（dataset 由注册表判定·inline 由调用方声明）；

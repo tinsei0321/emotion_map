@@ -3,7 +3,7 @@
 // 复用现有 addToolboxLayer / defaultPaint 铺层。
 // 红线：不改任何既有 js；本文件为纯新增 ES module。
 import { addToolboxLayer } from './toolbox/shared.js';
-import { getLayers, removeLayer } from './state.js';
+import { getLayers, removeLayer, HEATMAP_RAMPS } from './state.js';
 import { removeLayerFromMap } from './map.js';
 import { countStops, piToNorm, polarityStops } from './grid-tool.js';
 
@@ -149,8 +149,12 @@ async function _apply(spec) {
                 gridField: '_grid_norm', gridStops: polarityStops('overall') || [] };
     } else {
       normalized = _normCommunityCount(fc, valueField);
+      // PT-CB8 色板透传：spec.style.ramp_hint 命中受管词表（HEATMAP_RAMPS）则用之，
+      // 否则回落默认 grid-warm（countStops 默认反转·低浅高深）。面板手选色带由此通道生效。
+      const rampHint = (spec.style && spec.style.ramp_hint) || '';
+      const palette = HEATMAP_RAMPS[rampHint] ? rampHint : '';
       paint = { fillOn: true, fillOpacity: 0.72, lineWidth: 1, lineOpacity: 0.6,
-                gridField: '_count_norm', gridStops: countStops(), zeroIsNoData: true };
+                gridField: '_count_norm', gridStops: countStops(palette), zeroIsNoData: true };
     }
 
 

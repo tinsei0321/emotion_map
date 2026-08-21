@@ -568,6 +568,8 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
     style = {'scheme': resolved_scheme, 'value_field': value_field}
     if ramp_hint:
         style['ramp_hint'] = ramp_hint
+        # 词表校验在前端 HEATMAP_RAMPS（单一权威·后端不复制）·未注册将回落默认 grid-warm
+        fixes.append(f'ramp_hint={ramp_hint} 已透传·未注册则前端回落默认色带（受管词表见 render-contract §四）')
 
     caliber_lite = {'usage': usage, 'data_nature': nature, 'note': '; '.join(fixes)}
     # K-C1 社区口径校验（PT-CB6 D11）

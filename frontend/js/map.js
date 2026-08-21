@@ -804,7 +804,10 @@ function addPolygonPaint(layer, sid, lid, lineLid, hitLid) {
   const isTool = tool === 'grid' || tool === 'terrain' || tool === 'density' || tool === 'zonal';   // grid/terrain 共用极性色带+fill-extrusion；density 仅 2D；zonal（P1）行政区聚合 choropleth 2D 着色（无 extrusion）
   const isTool3d = isTool && p._ui.mode === '3d';
   const color = p.color || NAVY;
-  const fillExpr = isTool ? _gridColorExpr(p) : null;
+  // PT-CB8 F4 回归修复：dsh 投递层（render_client 纯样式画笔·无 _ui.tool）同样须走数据驱动色带——
+  // 判定以 paint 内容为准（p.gridField 存在即数据驱动着色），不再绑定工具归属标记。
+  // （F4 曾禁 _ui.tool 防要素按钮误入 zonal 面板，但着色条件仍查 isTool → 色带表达式恒 null → 单色渲染）
+  const fillExpr = (isTool || p.gridField) ? _gridColorExpr(p) : null;
   // 高度字段：grid=_grid_h（preprocessGrid 点数幂次 γ=1.3），terrain=_level（后端 KDE 等值面级）。maxHeight 绝对米（默认 1000）。
   const heightField = (p._ui && p._ui.heightField) || '_grid_h';
   const maxHeight = (p._ui && p._ui.maxHeight) || 1000;
@@ -835,7 +838,7 @@ function addPolygonPaint(layer, sid, lid, lineLid, hitLid) {
   // visible outline；3D 去线框（只 2D 加浅灰细线，区分 buffer 实线 / Range 点划线）
   if (!isTool3d) {
     const _isDensity = tool === 'density';
-    const lineColor = isTool ? '#666' : color;
+    const lineColor = (isTool || p.gridField) ? '#666' : color;   // dsh 数据驱动层同 Toolbox 网格线色（F4 回归修复·与 fillExpr 同判据）
     // density 2D 去格线（密网格灰线成莫尔噪点，热力图本不需格线）；grid/terrain 保留 0.5px 浅灰
     const linePaint = { 'line-color': lineColor,
       'line-width': p.lineWidth ?? (isTool ? (_isDensity ? 0 : 0.5) : 1),

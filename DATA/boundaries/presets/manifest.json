@@ -539,6 +539,14 @@
         "nameField": "name",
         "usage": "analysis_output",
         "note": "PT-CB7 render_file 自动登记（源 DATA\\boundaries\\presets\\12345_诉求_社区174全量.geojson）"
+      },
+      {
+        "id": "tmp_render_1787287589",
+        "label": "西陵区·12345·400m网格（ok精确点）",
+        "file": "../../exchange/xiling_grid_400m_12345.geojson",
+        "nameField": "name",
+        "usage": "analysis_output",
+        "note": "PT-CB7 render_file 自动登记（源 DATA\\exchange\\xiling_grid_400m_12345.geojson）"
       }
     ]
   }
