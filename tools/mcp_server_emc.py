@@ -788,10 +788,30 @@ def _warmup():
     _safe_print('[OK] 预热完成', file=sys.stderr)
 
 
-def main():
+def main(mode='stdio', port=8600):
+    """MCP server 启动入口。
+
+    stdio 模式：dsh 经 stdin/stdout 管道通信（终端须保持打开）。
+    http 模式：常驻 HTTP 服务（终端可随意开关·多会话共享）。
+    """
+    import argparse
+    parser = argparse.ArgumentParser(description='EMC MCP Server')
+    parser.add_argument('--http', action='store_true', help='HTTP 模式（常驻服务·默认 stdio）')
+    parser.add_argument('--port', type=int, default=port, help='HTTP 端口（默认 8600）')
+    args = parser.parse_args()
+
+    if args.http:
+        _safe_print(f'[OK] EMC MCP server HTTP 模式启动 (port={args.port})', file=sys.stderr)
+        _warmup()
+        _safe_print('[OK] 预热完成·开始监听', file=sys.stderr)
+        _srv = build_server()
+        _srv.settings.host = '127.0.0.1'
+        _srv.settings.port = args.port
+        _srv.run(transport='streamable-http')
+        return
+
+    # stdio 模式（原有逻辑）
     _safe_print('[OK] EMC MCP server stdio 启动（Ctrl+C 退出）', file=sys.stderr)
-    # A-3 修正版：预热期间临时把 stdout→stderr（trace 不污染 JSON-RPC 流），
-    # 预热完恢复 stdout 给 FastMCP 用——不能永久重定向（会把 JSON-RPC 响应也发到 stderr）。
     import os as _os
     if _os.environ.get('EMC_MCP_STDIO', '1') != '0':
         _orig_stdout = sys.stdout
