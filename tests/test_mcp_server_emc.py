@@ -459,3 +459,99 @@ def test_hotspot_analysis_unknown_layer_and_missing_value_col(monkeypatch):
     monkeypatch.setattr('core.geo_registry.resolve_points', lambda layer: _FakePoints(inside=5))
     out = mse.hotspot_analysis(value_col='missing_col')
     assert out['ok'] is False and 'value_col' in out['hint'] and 'density' in out['hint']
+
+
+# ════════════ area_stats（PT-CB11 F_037·Kimi）════════════
+
+def _fake_area_boundary(n=3, groups=None):
+    """n 个方格面（宜昌附近·EPSG:4326）：第 i 格边长 0.01*(i+1) → 面积比 1:4:9:16..."""
+    geoms = []
+    for i in range(n):
+        x0, y0 = 111.0 + i * 0.08, 30.0
+        s = 0.01 * (i + 1)
+        geoms.append(Polygon([(x0, y0), (x0 + s, y0), (x0 + s, y0 + s),
+                              (x0, y0 + s), (x0, y0)]))
+    data = {'name': [f'单元{i}' for i in range(n)]}
+    if groups:
+        data['DLMC'] = groups
+    return gpd.GeoDataFrame(data, geometry=geoms, crs='EPSG:4326')
+
+
+def test_track_id_f037_registered():
+    from core.tracker import _TRACKING_REGISTRY
+    assert 'MOD_AIQA.F_037' in _TRACKING_REGISTRY
+
+
+def test_area_stats_happy_path_rows_order_and_caliber(monkeypatch):
+    monkeypatch.setattr('core.geo_registry.resolve_boundary',
+                        lambda boundary: _fake_area_boundary(3))
+    out = mse.area_stats('fake_boundary')
+    assert out['row_count'] == 3 and out['truncated'] is False
+    assert [r['name'] for r in out['rows']] == ['单元2', '单元1', '单元0']   # 面积降序
+    # 边长比 1:2:3 → 面积比 1:4:9 → 首行占比 ≈ 9/14
+    assert abs(out['rows'][0]['share_pct'] - 900 / 14) < 1.0
+    assert abs(sum(r['share_pct'] for r in out['rows']) - 100.0) < 0.5
+    assert out['total_km2'] > 0
+    assert _caliber_keys(out['caliber'])
+
+
+def test_area_stats_numeric_area_value(monkeypatch):
+    """面积数值断言：0.01° 方格（111E/30N）测地约 1.067 km²——投影差须 <6%（口径卡 <1% 级的工程容差）。"""
+    monkeypatch.setattr('core.geo_registry.resolve_boundary',
+                        lambda boundary: _fake_area_boundary(1))
+    out = mse.area_stats('fake_boundary')
+    assert 1.0 <= out['rows'][0]['area_km2'] <= 1.13
+    assert out['rows'][0]['share_pct'] == 100.0
+    assert out['rows'][0]['area_km2'] == out['total_km2']
+
+
+def test_area_stats_group_by_dissolve_share(monkeypatch):
+    monkeypatch.setattr('core.geo_registry.resolve_boundary',
+                        lambda boundary: _fake_area_boundary(4, groups=['甲', '甲', '乙', '乙']))
+    out = mse.area_stats('fake_boundary', group_by='DLMC')
+    assert out['row_count'] == 2
+    assert out['rows'][0]['DLMC'] == '乙'   # 9+16=25 > 1+4=5
+    assert abs(out['rows'][0]['share_pct'] - 25 / 30 * 100) < 1.0
+    assert abs(sum(r['share_pct'] for r in out['rows']) - 100.0) < 0.5
+    assert _caliber_keys(out['caliber'])
+
+
+def test_area_stats_group_by_missing_col_semantic(monkeypatch):
+    monkeypatch.setattr('core.geo_registry.resolve_boundary',
+                        lambda boundary: _fake_area_boundary(3, groups=['甲', '甲', '乙']))
+    out = mse.area_stats('fake_boundary', group_by='缺列')
+    assert out['ok'] is False
+    assert 'group_by' in out['hint'] and 'DLMC' in out['hint']   # 语义化拒绝带可用列
+    assert _caliber_keys(out['caliber'])
+
+
+def test_area_stats_top_n_cap_and_layer_output(monkeypatch):
+    monkeypatch.setattr('core.geo_registry.resolve_boundary',
+                        lambda boundary: _fake_area_boundary(25))
+    out = mse.area_stats('fake_boundary', top_n=99, layer_output=True)
+    assert len(out['rows']) <= 20 and out['row_count'] == 25 and out['truncated'] is True
+    assert out['geojson']['type'] == 'FeatureCollection'
+    assert len(out['geojson']['features']) <= 20
+    assert _caliber_keys(out['caliber'])
+
+
+def test_area_stats_analysis_output_rejected():
+    out = mse.area_stats('base_174_aggregate_area')
+    assert out.get('ok') is False and 'analysis_output' in out.get('hint', '')
+
+
+def test_area_stats_unknown_boundary_hint(monkeypatch):
+    monkeypatch.setattr('core.geo_registry.resolve_boundary',
+                        lambda boundary: (_ for _ in ()).throw(FileNotFoundError('未知')))
+    out = mse.area_stats('missing_preset')
+    assert out['ok'] is False and 'list_data' in out['hint']
+    assert _caliber_keys(out['caliber'])
+
+
+def test_area_stats_zero_area_rejected(monkeypatch):
+    geoms = [Polygon([(111.0, 30.0), (111.01, 30.0), (111.01, 30.0), (111.0, 30.0)])]   # 退化面·面积 0
+    gdf = gpd.GeoDataFrame({'name': ['退化']}, geometry=geoms, crs='EPSG:4326')
+    monkeypatch.setattr('core.geo_registry.resolve_boundary', lambda boundary: gdf)
+    out = mse.area_stats('fake_boundary')
+    assert out['ok'] is False and '面积合计为 0' in out['hint']
+    assert _caliber_keys(out['caliber'])

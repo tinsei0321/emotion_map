@@ -40,6 +40,7 @@ register_track_id('MOD_AIQA.F_032', 'MCP emc_status（8080 地图服务就绪探
 register_track_id('MOD_AIQA.F_033', 'MCP grid_aggregate（方格网空间聚合·参数化替代 T8 脚本）')
 register_track_id('MOD_AIQA.F_034', 'MCP compare_regions（≥2 区域同口径并排+差异·契约 boundaries 参数）')
 register_track_id('MOD_AIQA.F_035', 'MCP hotspot_analysis（Gi* 逐点显著聚集·五档分类）')
+register_track_id('MOD_AIQA.F_037', 'MCP area_stats（面积占比统计·group_by 分组·km2）')
 
 MANIFEST = os.path.join(REPO, 'DATA', 'boundaries', 'presets', 'manifest.json')
 
@@ -718,6 +719,68 @@ def hotspot_analysis(layer: str = 'yichang_l2_t1', value_col: str = 'score',
     return out
 
 
+@track('MOD_AIQA.F_037', track_args=False)
+def area_stats(boundary: str, group_by: str = '', top_n: int = 10,
+               layer_output: bool = False) -> dict:
+    """面积占比统计：面层按要素/分组字段算面积与占比（结构量化·非情绪归因）。
+    参数：boundary 必填 preset id（先 list_data）；group_by 给出则按该字段 dissolve 分组汇总；top_n 1-20；layer_output=True 增 geojson。
+    限制：只算面积结构——情绪结论用 zonal_stats/rank；投影面积与椭球面积差异 <1% 级。"""
+    caliber = {'scale': '宏观/中观（面积结构）',
+               'semantics': '面积与占比统计（结构量化）',
+               'limits': '非情绪归因——情绪结论用 zonal_stats/rank；投影差异 <1%',
+               'refs': ['K-C1']}
+    try:
+        from core.geo_registry import resolve_boundary
+
+        _g = _reject_analysis_output(boundary, 'boundary', caliber)
+        if _g:
+            return _g
+        g = resolve_boundary(boundary)
+        if group_by and group_by not in g.columns:
+            usable = [c for c in g.columns if c != 'geometry']
+            return {'ok': False,
+                    'hint': f'group_by 字段不存在: {group_by!r}（该层可用列: {usable}）',
+                    'caliber': caliber}
+        if g.crs is None:
+            g = g.set_crs('EPSG:4326')
+        # 面积：投影到米制 CRS 再算（照抄 create_square_grid 的 target_crs=EPSG:4546·宜昌 CM 111E）
+        gm = g.to_crs('EPSG:4546')
+        if group_by:
+            gm = gm.dissolve(by=group_by, as_index=False)
+        gm['area_km2'] = gm.geometry.area / 1e6
+        total_km2 = float(gm['area_km2'].sum())
+        if total_km2 <= 0:
+            return {'ok': False, 'hint': '面积合计为 0——几何为空或异常，无法算占比',
+                    'caliber': caliber}
+        gm['share_pct'] = (gm['area_km2'] / total_km2 * 100).round(2)
+        gm['area_km2'] = gm['area_km2'].round(4)
+        gm = gm.sort_values('area_km2', ascending=False, kind='stable')
+        row_count = int(len(gm))
+        top_n = max(1, min(int(top_n), 20))
+        # rows：area_km2/share_pct 不在 _gdf_rows 固定列白名单——沿 hotspot 先例逐格 _jsonable
+        label_col = group_by if group_by else ('name' if 'name' in gm.columns else None)
+        rows = []
+        for _, row in gm.head(top_n).iterrows():
+            item = {}
+            if label_col:
+                item[label_col] = _jsonable(row.get(label_col, ''))
+            item['area_km2'] = _jsonable(row['area_km2'])
+            item['share_pct'] = _jsonable(row['share_pct'])
+            rows.append(item)
+        out_geojson = (_layer_output_geojson(gm.to_crs('EPSG:4326'), top_n, 'area_km2')
+                       if layer_output else None)
+    except (KeyError, FileNotFoundError):
+        return {'ok': False, 'hint': _UNKNOWN_HINT, 'caliber': caliber}
+    except Exception as exc:
+        return {'ok': False, 'hint': f'area_stats 失败: {exc}', 'caliber': caliber}
+
+    out = {'rows': rows, 'total_km2': round(total_km2, 4), 'row_count': row_count,
+           'truncated': row_count > len(rows), 'caliber': caliber}
+    if layer_output:
+        out['geojson'] = out_geojson
+    return out
+
+
 def _dataset_meta(dataset_id, groups=None):
     """dataset_id → {usage, data_nature}（preset 读 manifest·点层按池路径·未知 None）。"""
     try:
@@ -981,6 +1044,7 @@ def build_server():
     server.tool()(grid_aggregate)
     server.tool()(compare_regions)
     server.tool()(hotspot_analysis)
+    server.tool()(area_stats)
     server.tool()(render_spec)
     server.tool()(render_file)
     server.tool()(emc_status)
