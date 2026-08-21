@@ -373,3 +373,16 @@ def test_render_spec_value_field_validation(monkeypatch, tmp_path):
     out = mse.render_spec(kind='choropleth', name='inline 对', geojson=fc2,
                           value_field='point_count')
     assert out['ok'] is True
+
+
+# ════════════ PT-CB11 A-4 · /version 版本徽章端点 ════════════
+
+def test_version_endpoint_returns_commit_branch_startup():
+    """A-4a：/version 含 commit/branch/startup 三字段；启动时缓存（两次调用同一对象·不每请求跑 git）。"""
+    from datetime import datetime
+    out = render_routes.version()
+    assert {'commit', 'branch', 'startup'} <= set(out)
+    assert out['commit'] and len(out['commit']) >= 7   # 仓内运行·git 可用
+    assert out['branch']
+    datetime.fromisoformat(out['startup'])             # ISO 时间可解析
+    assert render_routes.version() is out              # 缓存契约：同一 dict·不重复 subprocess

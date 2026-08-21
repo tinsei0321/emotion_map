@@ -22,9 +22,11 @@ import glob
 import json
 import os
 import queue
+import subprocess
 import sys
 import threading
 import time
+from datetime import datetime, timezone
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
@@ -239,6 +241,37 @@ def render_dataset(dataset_id: str):
         return {'ok': False, 'hint': f'{_UNKNOWN_HINT}（{exc}）'}
     except Exception as exc:
         return {'ok': False, 'hint': f'render dataset 失败: {exc}'}
+
+
+# ── PT-CB11 A-4a：/version 版本徽章端点（治「修没修好」自查·页面角标数据源）──
+def _build_version_info():
+    """git commit/branch 于启动时解析一次（subprocess·不每请求跑 git）。
+
+    不可用降级为空串 + stderr WARN（A9：具体捕获 OSError/SubprocessError·不静默吞）。
+    """
+    info = {'commit': '', 'branch': '',
+            'startup': datetime.now(timezone.utc).astimezone().isoformat(timespec='seconds')}
+    for key, args in (('commit', ['git', 'rev-parse', '--short', 'HEAD']),
+                      ('branch', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'])):
+        try:
+            r = subprocess.run(args, cwd=REPO, capture_output=True, text=True, timeout=5)
+            if r.returncode == 0:
+                info[key] = r.stdout.strip()
+            else:
+                _safe_print(f'[WARN] /version {key} 获取失败（rc={r.returncode}·降级空串）: {r.stderr.strip()[:80]}',
+                            file=sys.stderr)
+        except (OSError, subprocess.SubprocessError) as exc:
+            _safe_print(f'[WARN] /version {key} 获取异常（降级空串）: {exc}', file=sys.stderr)
+    return info
+
+
+_VERSION_INFO = _build_version_info()   # 启动时缓存一次（模块导入即服务装配期）
+
+
+@router.get('/version')
+def version():
+    """版本徽章：{"commit","branch","startup"}——commit/branch 启动时缓存，startup 为本次进程启动时间。"""
+    return _VERSION_INFO
 
 
 # 模块导入即起后台 watcher（daemon·目录不存在自动建）。

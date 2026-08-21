@@ -185,3 +185,49 @@ function _connect() {
 }
 
 _connect();
+
+// ── PT-CB11 A-4b/A-4c：版本角标 + 服务更新横幅 ─────────────────────
+//  A-4b：fetch /api/v1/version → #map 左下角（左下控件上方）v<commit前7位> 小字角标；
+//        服务不可达/无 commit 静默降级不显示（A9：catch 即退·不 warn 刷屏）。
+//  A-4c：commit 与 localStorage 上次记录不同 → 黄底横幅「服务已更新·建议硬刷新」，
+//        点击关闭；首访只记录不打扰。
+async function _initVersionBadge() {
+  let info;
+  try {
+    const r = await fetch('/api/v1/version');
+    info = await r.json();
+  } catch (err) {
+    return;   // 静默降级（后端未起/端点不存在）
+  }
+  if (!info || !info.commit) return;
+
+  const mapEl = document.getElementById('map');
+  if (mapEl && !document.getElementById('emc-version-badge')) {
+    const b = document.createElement('div');
+    b.id = 'emc-version-badge';
+    b.textContent = `v${String(info.commit).slice(0, 7)}`;
+    b.title = `commit ${info.commit} · 分支 ${info.branch || '?'} · 启动 ${info.startup || '?'}`;
+    b.style.cssText = 'position:absolute;left:10px;bottom:96px;z-index:12;'
+      + 'font:10px/1.5 ui-monospace,Consolas,monospace;color:#5a6b7e;'
+      + 'background:rgba(255,255,255,0.72);padding:1px 6px;border-radius:3px;';
+    mapEl.appendChild(b);
+  }
+
+  const KEY = 'emc_version_commit';
+  const prev = localStorage.getItem(KEY);
+  if (prev !== info.commit) {
+    if (prev !== null && !document.getElementById('emc-version-banner')) {
+      const bar = document.createElement('div');
+      bar.id = 'emc-version-banner';
+      bar.textContent = '服务已更新·建议硬刷新（Ctrl+Shift+R）';
+      bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;'
+        + 'background:#fff3cd;color:#664d03;text-align:center;cursor:pointer;'
+        + 'font:13px/34px system-ui,sans-serif;';
+      bar.addEventListener('click', () => bar.remove());
+      document.body.appendChild(bar);
+    }
+    localStorage.setItem(KEY, info.commit);
+  }
+}
+
+_initVersionBadge();
