@@ -1,7 +1,37 @@
 # 家里 · 工作交接卡
 
-> **位置**：家 | **最后更新**：2026-08-21 深夜（**会话上下文耗尽·完整计划落盘**·zcode 主手） | **同步**：分支 `EMC_harness_dsh`（main 冻结）。
-> **新会话第一步**：读 `discuss/会话交接_完整计划落盘_zcode-2026-08-21.md`（完整计划+术语+纪律）——全部在途状态和下一步都在里面。
+> **位置**：家 | **最后更新**：2026-08-22 凌晨 00:10（**收工·PT-CB11 P1 全件合入**·zcode 主手） | **同步**：分支 `EMC_harness_dsh`（main 冻结）。
+> **上午第一读**：本卡 §收工快照 → `discuss/EMC-dsh整体合体_讨论过程台账.md` R64 → `docs/catch-ball/用户复测滚动清单.md`（阶段 1 统一测试已就绪）。
+
+---
+
+## 收工快照（08-22 凌晨 · PT-CB11 P1 全件合入 · 上午 CB 收口）
+
+### 今晚完成（五线交付）
+
+1. **zcode**：B3-1/B3-2 注入灰框治本后端（0fb5d604·render_policy 单一权威源+value_field 双层校验+manifest renderFields）。
+2. **Codex**：三件工具 grid_aggregate/compare_regions/hotspot_analysis F_033-F_035（3f9e55a4）——主手审计**通过**（57e7bffe·真身独立核实+真实链路复测）。
+3. **Kimi 首批双件**：K1 前端四件 B3-3~B3-6（d9685861·图例/tip/面板/全零告警+render-contract §七第8条·**playwright 四口径自测过**）；K2 area_stats F_037（99521515·9 用例）。
+4. **claude 独立审计**：报告落盘 `PT-CB11-P1审计_claude-2026-08-21.md`——A(zcode)通过 / B(Codex)**有条件通过**（条件=P2-2 空集边界语义化 5-8 行补丁）；P2-1 前缀通配张力+P3×5 不阻塞；**独立审计价值实证**（空集边界 Codex mock 与主手真链双侧都漏）。
+5. **用户令固化**：人工测试=阶段统一安排（`docs/catch-ball/用户复测滚动清单.md`·T1-T4 入队·阶段 1 就绪）；派发=落盘+回复内一键复制 prompt 两处齐备（入长期记忆）。
+
+### 门禁收工态
+
+**457 passed + 7 failed（存量环境缺依赖 matplotlib/sentence_transformers·Ops 挂账待用户定）+ 5 skipped**。
+
+### 上午任务队列（CB 收口·按序）
+
+1. **Kimi 件正式回收**：四口径证据核验（_tmp 截图 4 张+脚本是否移 docs 留证）+9 用例抽验+「_gdf_rows 不含面积列→逐格 _jsonable」待裁决项裁定。
+2. **claude 审计终裁**：P2-2 补丁派发（建议 Codex 5 分钟件或随 P2 批）+P2-1/P3×5 处置入档。
+3. **阶段 1 统一测试指引发用户**（复测清单 T1-T4·一次起三服务全测）。
+4. CB 正式件：cb-journal/_cb-index 更新。
+5. **P2 批排期**：nearest/overlay/trend/report_assemble 四件（F_036/F_038-F_040）+guard 迁 server 侧+A-4 版本徽章+P2-2 顺修。
+
+### 注意
+
+- claude 审计报告与 Kimi 记录（WorkBuddy 格式化）随收工 commit 入库。
+- `_tmp/` Kimi 自测截图 4 张+脚本未入库（上午裁决）。
+- dsh_test 目录仍待重启电脑后手动删（遗留）。
 
 ---
 
