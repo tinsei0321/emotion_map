@@ -71,11 +71,21 @@ async function probeReady(): Promise<'ready' | 'starting' | 'down'> {
 
 /** 经 host.openPath 的正规通道（workspaces 服务）打开路径/URL。 */
 async function openViaHost(ctx: any, path: string): Promise<void> {
-  console.log('[dsh-emc-entry] openPath ->', path)
+  // PT-CB10 修复（方式B·主手直改）：better-sidebar 劫持 workspaces.openPath 为侧边栏打开
+  // （实测地图被内置弹出且空白）→ 优先走 host 服务原生 openPath（绕过劫持·弹系统浏览器）；
+  // rc.7 无 host.openPath 则回退 workspaces.openPath（诚实降级·日志标明通道）。
+  const host = ctx.get('host') as any
+  if (host && typeof host.openPath === 'function') {
+    console.log('[dsh-emc-entry] host.openPath ->', path)
+    await host.openPath(path)
+    console.log('[dsh-emc-entry] host.openPath ok <-', path)
+    return
+  }
+  console.log('[dsh-emc-entry] workspaces.openPath ->', path)
   const workspaces = ctx.get('workspaces') as WorkspacesLike | undefined
   if (!workspaces?.openPath) throw new Error('workspaces.openPath 服务不可用')
   await workspaces.openPath(path)
-  console.log('[dsh-emc-entry] openPath ok <-', path)
+  console.log('[dsh-emc-entry] workspaces.openPath ok <-', path)
 }
 
 /**
