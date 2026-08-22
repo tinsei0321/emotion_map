@@ -1,0 +1,356 @@
+{
+ "docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#0": {
+  "ctx_prefix": "本文档主题为宜昌市2025年城市体检整合梳理，本节汇总指标、结果、问题清单及空间落位，数据为2026年8月梳理口径。",
+  "text_hash": "6d52005751dc2e25",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#1": {
+  "ctx_prefix": "本文为城市体检工作总览，介绍体检组成、指标体系、评价方法及范围，数据时点为2024年12月31日。",
+  "text_hash": "240fe4102e34f124",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#2": {
+  "ctx_prefix": "本文档为77项指标总表，本节列出住房、小区、街区及城区维度指标，含2025年体检值与评价。",
+  "text_hash": "5c1ab5c3c53e516c",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#3": {
+  "ctx_prefix": "本文档为城市体检问题指标逐项详表；本节为住房维度9项指标8类问题，含体检结果、问题明细与空间落位；数据为本次体检口径。",
+  "text_hash": "3e1bb5bc10eaf2c9",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#4": {
+  "ctx_prefix": "本文为城市体检报告空间分布专题，解读住宅安全、学位、中学覆盖及问题叠加区域的空间特征，基于本次体检数据。",
+  "text_hash": "a86c1c6e929d0c0e",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#5": {
+  "ctx_prefix": "本文档为2025年城市体检报告编制说明；本节介绍综合、片区、专项三类报告的结构与重点；含2024年整治评估数据及2025年指标口径。",
+  "text_hash": "3755a861b8897fa2",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#6": {
+  "ctx_prefix": "本文为城市体检报告，本节为四维度指标—问题—空间对照总览，展示各维度指标与问题空间分布；数据含三套体检口径，不可直接相加。",
+  "text_hash": "1d73cf328f47c54c",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/00-宜昌专项/03-10_宜昌体检2026补充_全覆盖点数据_RAG可检索版摘要.md#0": {
+  "ctx_prefix": "本文档主题为宜昌市城市体检2026补充数据全覆盖点数据；本节说明数据来源、处理时间及产出路径；数据时点为2026年。",
+  "text_hash": "4df0a26f43e0004b",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/00-宜昌专项/03-10_宜昌体检2026补充_全覆盖点数据_RAG可检索版摘要.md#1": {
+  "ctx_prefix": "本文档为城市体检数据笔记，本节为数据更新总览，说明2026-08-17起采用市辖区全覆盖新口径，并声明口径优先级。",
+  "text_hash": "5848a48275cd7819",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/00-宜昌专项/03-10_宜昌体检2026补充_全覆盖点数据_RAG可检索版摘要.md#2": {
+  "ctx_prefix": "城市体检问题点数据说明：本节介绍2026年新增点要素与2025年空间互斥及合并相加规则；时点2026年，口径沿用2025年排除规则。",
+  "text_hash": "f321cacfca69c7b9",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/00-宜昌专项/03-10_宜昌体检2026补充_全覆盖点数据_RAG可检索版摘要.md#3": {
+  "ctx_prefix": "本文档主题为城市体检问题点数据，本节汇总安全韧性与民生需求两大类问题点及指标级全域体检值，数据时点为2025+2026合计口径。",
+  "text_hash": "a47c3eae9f88ffb2",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/00-宜昌专项/03-10_宜昌体检2026补充_全覆盖点数据_RAG可检索版摘要.md#4": {
+  "ctx_prefix": "「12345主观轨扩域文档；本节为174社区范围内安全与民生诉求分布及社区TOP，数据2026-08-17重算，区级质心点不计入社区矩阵。」",
+  "text_hash": "16426d3ef03150c1",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/00-宜昌专项/03-10_宜昌体检2026补充_全覆盖点数据_RAG可检索版摘要.md#5": {
+  "ctx_prefix": "本文档介绍社区问题一览图两表口径，含客观/主观线阈值及重叠社区，数据为2026-08-17用户定稿口径。",
+  "text_hash": "9f7c7a12a8e7c60a",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/00-宜昌专项/03-10_宜昌体检2026补充_全覆盖点数据_RAG可检索版摘要.md#6": {
+  "ctx_prefix": "本文为城市体检数据分析文件指引，本节列明各分析用数据文件路径、图层及矩阵内容，数据含2025体检与2026补充口径。",
+  "text_hash": "17f65d21e43e5fcb",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/00-宜昌专项/03-10_宜昌体检2026补充_全覆盖点数据_RAG可检索版摘要.md#7": {
+  "ctx_prefix": "本文档为城市治理数据报告，本节声明口径边界与引用须知，含2026图层缺失、2025报告值及分母变化等数据状态。",
+  "text_hash": "f3c18c43b52266a2",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/77项_大中小类结构_2026-08-12.md#0": {
+  "ctx_prefix": "本文档为城市更新体检指标分类体系，本节展示77项指标的大中小类结构及板块落位，口径为CB-23 v2对标。",
+  "text_hash": "6fcbcf7c1b44e704",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/77项_大中小类结构_2026-08-12.md#1": {
+  "ctx_prefix": "本文为“安全韧性底线”指标清单，涵盖危房及城市安全韧性（市政管网、消防、交通）17项；数据状态部分精准、多数暂无法获取。",
+  "text_hash": "ca649ec45378118c",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/77项_大中小类结构_2026-08-12.md#2": {
+  "ctx_prefix": "本文档主题为城市体检指标库，本节列出民生基础需求29项，含老旧小区、完整社区等分类，标注数据可得性分级（精准/大致/无法）。",
+  "text_hash": "ace8de3641a2e393",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/77项_大中小类结构_2026-08-12.md#3": {
+  "ctx_prefix": "本文档为城市体检指标库；本节列举“其他”类30项指标，涵盖城市功能、完整社区、生态、更新及历史文化；多数数据暂无法获取，仅个别精准或大致。",
+  "text_hash": "4a3d5d3c4227e0de",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/77项_大中小类结构_2026-08-12.md#4": {
+  "ctx_prefix": "本文档主题为问题整治工作；本节介绍整治成效评估效果，指标为问题整治完成率；数据口径为整治类，时点未明确。",
+  "text_hash": "d600223c6cae985e",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/77项_社区11类占比矩阵_2026-08-12.md#0": {
+  "ctx_prefix": "本文为77项量化指标矩阵，展示各社区在11类安全民生项的点数与占比，数据时点2026-08-12，口径为193社区拼合。",
+  "text_hash": "3b0dc9e37993f864",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/77项_社区占比表_2026-08-12.md#0": {
+  "ctx_prefix": "两板块分析框架v2文档；本节展示77项量化指标社区占比表；数据时点为2025+2026拼合的193个社区，替代街办SSX聚合。",
+  "text_hash": "f0b8e0be174456a1",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/77项_社区占比表_2026-08-12.md#1": {
+  "ctx_prefix": "本文档为社区安全韧性隐患排查统计，分市政管网、消防、住房四类隐患点及社区分布，数据时点未注明。",
+  "text_hash": "9b73a5854695d606",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/77项_社区占比表_2026-08-12.md#2": {
+  "ctx_prefix": "本文档为民生基础需求专题，本节统计公服设施及住房未达标/缺口社区分布，数据为现状摸底、未注明年份。",
+  "text_hash": "1bd0c86df93610f0",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/77项_街办占比表_2026-08-12.md#0": {
+  "ctx_prefix": "本文档为77项量化指标街办占比表（两板块分析框架），本节列16街办占比及排序，口径2026-08-12，已废弃仅历史参考。",
+  "text_hash": "747a210c80d03e77",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/77项_街办占比表_2026-08-12.md#1": {
+  "ctx_prefix": "本文档为安全韧性底线排查，本节含市政管网、消防、住房五类隐患的街道分布统计，数据未注时点，为分街道计数占比口径。",
+  "text_hash": "a1099539f8f7d029",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/77项_街办占比表_2026-08-12.md#2": {
+  "ctx_prefix": "本文档为公共服务设施评估数据，本节展示各街道养老、托育、幼儿园等配建达标及覆盖率情况，数据时点未注明，按分区统计。",
+  "text_hash": "d421fc767216bfd9",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/B1_客观落位_交付_2026-08-12.md#0": {
+  "ctx_prefix": "本文档主题为城市体检客观落位交付；本节说明框架③可量化客观轨中77项指标的空间落位；数据时点2025年，2026-08-12交付。",
+  "text_hash": "00e7e149d7087f5b",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/B1_客观落位_交付_2026-08-12.md#1": {
+  "ctx_prefix": "所属文档主题：城市体检指标库；本节内容：中类项目类型分布总览；数据口径：T3·G8双口径（全量及聚焦两板块）。",
+  "text_hash": "436c67932500ab55",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/B1_客观落位_交付_2026-08-12.md#2": {
+  "ctx_prefix": "本文档为城市体检，本节为安全韧性底线生命财产域17项指标明细，数据为体检值，消防/应急为城区级宏观总量、无空间层。",
+  "text_hash": "31ac1ab9cc98943b",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/B1_客观落位_交付_2026-08-12.md#3": {
+  "ctx_prefix": "本文档为城市体检民生评估，本节列出29项急难愁盼民生指标及缺口数据，数据为体检口径，时点未注明。",
+  "text_hash": "e242b75b0a235626",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/B1_客观落位_交付_2026-08-12.md#4": {
+  "ctx_prefix": "本文档系城市体检数据质量编目，本节说明T4·G7三级图例分级及占比，数据为当前评估静态口径。",
+  "text_hash": "455d197981c8720c",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/B1_客观落位_交付_2026-08-12.md#5": {
+  "ctx_prefix": "本文档为平台图层操作说明，本节讲住房/小区/街区体检控件一键落图及属性口径，数据为当前平台配置。",
+  "text_hash": "4c2c41ea7c019b80",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/B1_客观落位_交付_2026-08-12.md#6": {
+  "ctx_prefix": "城市民生设施评估文档；本节为G7落位图建议，涉及控件叠加、配色及网格聚合；图层已注册、表已落库，观点草稿待确认。",
+  "text_hash": "4f661bf4e3e09cb9",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/B2_主观落位_交付_2026-08-12.md#0": {
+  "ctx_prefix": "本文档主题为框架④可感知主观轨交付；本节为B2主观落位，基于2024年12345热线数据（中转站06，57,265行）。",
+  "text_hash": "a1a478749a65c78f",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/B2_主观落位_交付_2026-08-12.md#1": {
+  "ctx_prefix": "本文为市民诉求数据分析，本节展示事件类型分布及投诉主导特征，数据按工单行数统计，未注明具体时点。",
+  "text_hash": "98b71519da6f9f15",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/B2_主观落位_交付_2026-08-12.md#2": {
+  "ctx_prefix": "本文档为城市运行诉求数据分类统计，本节展示中类（项目类型）分布，数据为T5·G4全量57,265行。",
+  "text_hash": "9753b087df03e0aa",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/B2_主观落位_交付_2026-08-12.md#3": {
+  "ctx_prefix": "本文为城市治理投诉分析·小结宏观诊断信号，概括民生与安全类诉求占比及空间指向，口径为平台投诉数据。",
+  "text_hash": "da512da99d951517",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/B2_主观落位_交付_2026-08-12.md#4": {
+  "ctx_prefix": "本文为GIS平台操作手册，本节介绍平台图层的Range tab一键加载功能，数据为投诉点high/medium口径。",
+  "text_hash": "6b90ac1689974e5b",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/B2_主观落位_交付_2026-08-12.md#5": {
+  "ctx_prefix": "12345投诉分析文档中，本节介绍G5/G6落位图及密度面、柱状图表达建议；数据已注册、表已落库，观点草稿待确认。",
+  "text_hash": "f829b01bc68141e4",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/B3B4_归纳与落图_交付_2026-08-12.md#0": {
+  "ctx_prefix": "本文档为B3+B4双板块归纳与落图交付，说明框架2①+2②的归纳结果与落图，数据基于B1/B2及双轨密度管线，时点2026-08-12。",
+  "text_hash": "108a3d28de5d51df",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/B3B4_归纳与落图_交付_2026-08-12.md#1": {
+  "ctx_prefix": "本文档为城市体检与12345热线分析，本节归纳双环占比及双轨对照证据，含2024热线与2025体检双口径数据。",
+  "text_hash": "2edc94befb44e133",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/B3B4_归纳与落图_交付_2026-08-12.md#2": {
+  "ctx_prefix": "本文为城市体检与12345热线融合；本节讲双高区识别、项目聚拢和片区统筹；口径2025体检×2024热线，片区边界待定。",
+  "text_hash": "e90954b1e61f55d9",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/B3B4_归纳与落图_交付_2026-08-12.md#3": {
+  "ctx_prefix": "本文档为城市体检平台图层说明，本节列出已注册图层分类及数量，含体检、12345投诉、双高区等，数据为已注册状态。",
+  "text_hash": "ac5364a46a61c2ce",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/B3B4_归纳与落图_交付_2026-08-12.md#4": {
+  "ctx_prefix": "项目交付进展说明：本节列平台验证及图数表定稿待办，B1-B4已完成，数据图层注册，待用户验证及边界提供。",
+  "text_hash": "f2ee06394d9a651e",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/分析计划与内容_总纲_2026-08-12.md#0": {
+  "ctx_prefix": "本文档为体检问题清单分析计划总纲，按用户框架逐段说明分析内容、数据、产出与状态，数据截至2026-08-12，以图例标注就绪/待出图/待后续。",
+  "text_hash": "34265ae528853ac4",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/分析计划与内容_总纲_2026-08-12.md#1": {
+  "ctx_prefix": "本文档为城市体检问题清单编目说明；本节交代任务逻辑闭环、数据基础及红线口径；数据含2025体检77项、2024热线57265行及2025+2026拼合全量。",
+  "text_hash": "1f48c4998828133a",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/分析计划与内容_总纲_2026-08-12.md#2": {
+  "ctx_prefix": "本文档为城市体检数据分析报告，本节总览三年体检范围、指标体系及客观/主观数据落图，数据为2024-2026年全覆盖全量样本。",
+  "text_hash": "3937bf7d2355bbd6",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/分析计划与内容_总纲_2026-08-12.md#3": {
+  "ctx_prefix": "本文档主题为数据综合叠加归纳；本节汇总问题与需求，含双轨互证、双高区及片区统筹；数据时点2025体检×2024 12345，片区边界待定。",
+  "text_hash": "12a4cae4b40cadba",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/分析计划与内容_总纲_2026-08-12.md#4": {
+  "ctx_prefix": "本文档为「平台操作指引」，本节讲解混合模式下的操作流程，含启动、加载图层、交互查看及工具箱使用；数据基于已离线化的BGE与宜昌城区图层。",
+  "text_hash": "35930f678f6a9f59",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/分析计划与内容_总纲_2026-08-12.md#5": {
+  "ctx_prefix": "本文为分析计划总纲「当前进度」节，逐项列出数据准备与落图渲染状态；数据层已全部就绪，出图、确认及片区边界为当前推进项。",
+  "text_hash": "3e293a87fbda8463",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/占比表_安全_住房_社区_2026-08-12.md#0": {
+  "ctx_prefix": "本文档为安全韧性底线住房指标社区排序表，展示结构及围护安全隐患占比，数据为总496点、覆盖61社区，时点未注明。",
+  "text_hash": "603b441d5694cb74",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/占比表_安全_安全消防_社区_2026-08-12.md#0": {
+  "ctx_prefix": "本文档为社区安全韧性评估，本节列出安全消防指标下36社区得分排名与楼道隐患占比，数据时点未注明。",
+  "text_hash": "c90cdfd8487ab391",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/占比表_安全_市政管网_社区_2026-08-12.md#0": {
+  "ctx_prefix": "本文档为市政管网安全韧性评估，本节列出36社区192个隐患点分布及燃气、破损占比，数据时点未注明。",
+  "text_hash": "43b142a956f336ee",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/占比表_民生_交通设施_社区_2026-08-12.md#0": {
+  "ctx_prefix": "本文为民生基础需求主题，本节统计交通设施1项指标，共24点覆盖14社区，含各社区点位数及不达标步行道长占比，数据时点未注明。",
+  "text_hash": "9f4c3e22e36b85f2",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/占比表_民生_住房_社区_2026-08-12.md#0": {
+  "ctx_prefix": "本文档为社区民生基础需求评估，本节为住房指标排序与占比，覆盖17个社区，数据时点未注明。",
+  "text_hash": "016980fa1e4a86df",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/占比表_民生_停车设施_社区_2026-08-12.md#0": {
+  "ctx_prefix": "《民生基础需求·停车设施》3项指标覆盖64社区，列示274点缺口分布；数据未注时点，按现状口径编录。",
+  "text_hash": "42f7f88dce7baef4",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/占比表_民生_公服设施_社区_2026-08-12.md#0": {
+  "ctx_prefix": "本文档主题为民生基础需求公服设施评估；本节按8项指标列出各社区服务点分布与未达标情况；未注时点，统计口径为1068点覆盖136社区。",
+  "text_hash": "71c92b694a1e6587",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ },
+ "docs/urban-renewal-plan/3prime/占比表_民生_物业街面_社区_2026-08-12.md#0": {
+  "ctx_prefix": "本文为民生基础需求物业街面指标统计，展示73社区278个问题点排名及未实施物业、乱停放占比，数据时点未注明。",
+  "text_hash": "3526d60f8fd1840f",
+  "model": "deepseek-flash@2026-08",
+  "lineage": null
+ }
+}

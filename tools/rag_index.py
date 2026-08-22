@@ -69,8 +69,12 @@ def _infer_dim(text):
 #   grep 实证：作废值 87.9%/5,615/港务1,153/双高各代/page7 密度版在语料内仅见于
 #   _口径注册表（未被索引）与 03-10（新口径文档）；3prime 数据文件=旧口径载体本身。
 #   待裁不改：3prime/分析计划与内容_总纲（计划文档非数据口径）——见执行记录 §待裁清单。
-_SUPERSEDED_FILE_PREFIX = 'docs/urban-renewal-plan/3prime/'
-_SUPERSEDED_EXEMPT_PREFIX = 'docs/urban-renewal-plan/3prime/分析计划与内容_总纲'
+# 主手裁决（08-22·L1 回收）：原按 03-10§一 把 3prime 全域标 superseded 系语义误读——
+#   03-10 原文=「2026 补充数据·新区增量·空间互斥（与 2025 体检对象零重叠·直接相加）」
+#   = 增量并存非取代。占比表族（2025 域分析）与 03-10（2026 增量）均现行 active。
+#   机制保留（前缀规则表）·真正作废应逐 chunk 依 X-01 作废数字定位后显式登记（后续批）。
+_SUPERSEDED_FILE_PREFIX = ''    # 空=无文件级压旧（回滚误标·38 chunk 回 active）
+_SUPERSEDED_EXEMPT_PREFIX = ''
 
 # lineage 同源谱系（'src:<上游文件>#<节>'·节=loader 位置序号·只标注不删档）。
 # 逐卡经 token 验证（distinctive 数字/专名在目标小节 verbatim 命中）·67/68 事实卡；
@@ -165,9 +169,13 @@ def _load_notes():
     chunks = []
     if not NOTES_DIR.exists():
         return chunks
+    # 下划线知识本体白名单（主手裁决 08-22·L2 收口）：注册表/素材表是业务口径知识本体
+    # （RAG 最该答的「数字怎么算」），非治理台账——下划线排除本意挡 _INDEX/_PATHS/_提炼模板。
+    _KNOWLEDGE_UNDERSCORE_WHITELIST = {'_口径注册表.md', '_图层素材表.md'}
     for md in sorted(NOTES_DIR.rglob('*.md')):
-        # 跳过索引/README/模板
-        if md.name.startswith('_') or 'README' in md.name or '模板' in md.name:
+        # 跳过索引/README/模板（下划线默认排除·知识本体白名单放行）
+        if (md.name.startswith('_') and md.name not in _KNOWLEDGE_UNDERSCORE_WHITELIST) \
+                or 'README' in md.name or '模板' in md.name:
             continue
         text = md.read_text(encoding='utf-8', errors='ignore')
         # 按 ## 小节切分（~200-500 字/段）
@@ -274,7 +282,26 @@ def load_chunks():
     superseded 默认过滤由检索层做（search 预置·字段缺失=active 兼容）——loader 只填字段不过滤。
     顺序与 build_index 既有内联序一致（facts+notes+cases+concepts）——泳道②换挂零漂移。
     """
-    return _load_facts() + _load_notes() + _load_cases() + _load_concepts()
+    chunks = _load_facts() + _load_notes() + _load_cases() + _load_concepts()
+    # PT-CB9 A1：前注注入（map=git 权威源·_ctx_prefix_map.json；护栏：正文 hash 不符不注入）
+    import hashlib as _hl
+    _map_path = Path(REPO) / 'docs' / 'urban-renewal-plan' / '_ctx_prefix_map.json'
+    if _map_path.exists():
+        try:
+            _pm = json.loads(_map_path.read_text(encoding='utf-8'))
+        except Exception:
+            _pm = {}
+        for _c in chunks:
+            _e = _pm.get(_c['source'])
+            if not _e:
+                continue
+            _th = _hl.sha256(_c['text'].encode('utf-8')).hexdigest()[:16]
+            if _e.get('text_hash') != _th:
+                continue   # 正文已变·前注待重生成（护栏：不注入失配前注）
+            _c['ctx_prefix'] = _e['ctx_prefix']
+            _c['ctx_prefix_model'] = _e.get('model')
+            _c['ctx_prefix_hash'] = _hl.sha256(_e['ctx_prefix'].encode('utf-8')).hexdigest()[:16]
+    return chunks
 
 
 def _embed_texts(model, texts):
@@ -292,20 +319,18 @@ def build_index():
     _tag(True, f'加载模型 {MODEL_NAME}（首次下载 ~40s·需 HF 镜像）...')
     model = SentenceTransformer(MODEL_NAME)
 
-    # 收集向量化对象（事实卡 + 笔记段落 + 方法论案例 + 概念卡·CB-22 P1）
-    facts = _load_facts()
-    notes = _load_notes()
-    cases = _load_cases()
-    concepts = _load_concepts()
-    all_chunks = facts + notes + cases + concepts
-    _tag(True, f'向量化对象: 事实卡 {len(facts)} + 笔记段落 {len(notes)} + 案例 {len(cases)} + 概念卡 {len(concepts)} = {len(all_chunks)}')
+    # 收集向量化对象——走 load_chunks() 单源（loader 契约·治理字段+前注唯一注入点·主手合流 08-22）
+    all_chunks = load_chunks()
+    _tag(True, f'向量化对象: {len(all_chunks)} chunk（经 load_chunks·含治理/前注字段）')
 
     if not all_chunks:
         _tag(False, '无向量化对象')
         return
 
-    texts = [c['text'] for c in all_chunks]
-    _tag(True, f'编码 {len(texts)} 条...')
+    # PT-CB9 A1 消融层（主手合流）：编码输入 = ctx_prefix + 正文（限定域 chunk 有前注）
+    texts = [((c.get('ctx_prefix') or '') + '\n' + c['text']) if c.get('ctx_prefix') else c['text']
+             for c in all_chunks]
+    _tag(True, f'编码 {len(texts)} 条·前注覆盖 {sum(1 for c in all_chunks if c.get("ctx_prefix"))} 条...')
     vectors = _embed_texts(model, texts)
     _tag(True, f'编码完成·维度 {vectors.shape[1]}')
 
@@ -333,6 +358,12 @@ def build_index():
             'topic': c.get('topic', ''),
             'year': c.get('year', ''),
             'keywords': c.get('keywords', ''),
+            # PT-CB9 L1+A1 合流（主手）：治理与前注字段随 meta 持久化（search 过滤/BM25 拼接消费面）
+            'status': c.get('status', 'active'),
+            'lineage': c.get('lineage'),
+            'ctx_prefix': c.get('ctx_prefix'),
+            'ctx_prefix_model': c.get('ctx_prefix_model'),
+            'ctx_prefix_hash': c.get('ctx_prefix_hash'),
         })
 
     # 原子写（防崩溃不一致·np.save 自动加 .npy·临时名用 .npy 结尾）

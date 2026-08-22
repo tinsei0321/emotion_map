@@ -63,16 +63,16 @@ def test_status_enum_all_chunks():
 
 
 def test_status_superseded_batch_3prime():
+    """主手裁决改写（08-22·L1 回收）：3prime 批量压旧系对 03-10§一 的语义误读——
+    原文=「新区增量·空间互斥·直接相加」非取代→占比表族回 active·规则表清空（机制保留）。
+    本测试现断言回滚态：全域 active·规则表位在（空=无文件级压旧）。"""
     chunks = _all_chunks()
     sup = [c for c in chunks if c.get('status') == 'superseded']
-    files = {c['source'].split('#')[0] for c in sup}
-    assert len(files) == 15, f'superseded 文件数 {len(files)} != 15'
-    assert all(f.startswith('docs/urban-renewal-plan/3prime/') for f in files)
-    # 待裁豁免：总纲（计划文档非数据口径）保持 active
-    guide = [c for c in chunks
-             if c['source'].startswith('docs/urban-renewal-plan/3prime/分析计划与内容_总纲')]
-    assert guide and all(c.get('status') == 'active' for c in guide)
-    # 事实卡/案例/概念卡全部 active（grep 实证三库无作废口径值）
+    assert not sup, f'回滚后不应有 superseded chunk（现存 {len(sup)}·如为 X-01 作废定位请显式登记规则表）'
+    # 机制保留：规则表常量在（空=无文件级压旧·真正作废走逐 chunk 显式登记）
+    from tools import rag_index as _ri
+    assert hasattr(_ri, '_SUPERSEDED_FILE_PREFIX')
+    # 三库全部 active
     assert all(c.get('status') == 'active'
                for c in chunks if c['type'] in ('fact', 'case', 'concept'))
 

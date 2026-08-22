@@ -98,7 +98,8 @@ def test_rag_search_hits_urp_p11_not_p01():
     k=8（URP-P11 在 Top-5~8 区间·0.57·与 00-02 笔记同源正确）。
     """
     from tools.rag_index import search
-    r = search('43 个完整社区', 8)
+    # PT-CB9 L2 后注：RRF 使 URP-P11 升至 Top-1（旧 k=8 是排不进前五的拐杖）——k=5 即满足双断言
+    r = search('43 个完整社区', 5)
     assert r.get('ok'), f'检索失败: {r.get("error")}'
     sources = [x['source'] for x in r['results']]
     assert any('URP-P11' in s for s in sources), f'「43 个完整社区」未命中 URP-P11（00-02 老版）: {sources}'

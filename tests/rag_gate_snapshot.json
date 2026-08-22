@@ -1,8 +1,8 @@
 {
- "corpus_head": "011024c1",
+ "corpus_head": "475cc3df",
  "k": 5,
  "n": 60,
- "recall": 0.8333333333333334,
+ "recall": 0.9666666666666667,
  "entries": [
   {
    "id": "C01",
@@ -14,13 +14,13 @@
    "id": "C02",
    "category": "caliber",
    "query": "情绪得分 score 是怎么计算的",
-   "hit": false
+   "hit": true
   },
   {
    "id": "C03",
    "category": "caliber",
    "query": "极性指数 polarity_index 是什么口径",
-   "hit": false
+   "hit": true
   },
   {
    "id": "C04",
@@ -62,7 +62,7 @@
    "id": "C10",
    "category": "caliber",
    "query": "图层能力目录有哪些素材",
-   "hit": false
+   "hit": true
   },
   {
    "id": "C11",
@@ -80,7 +80,7 @@
    "id": "C13",
    "category": "caliber",
    "query": "社区口径卡 K-C1 讲什么",
-   "hit": false
+   "hit": true
   },
   {
    "id": "C14",
@@ -158,7 +158,7 @@
    "id": "N10",
    "category": "noun",
    "query": "安全消防体检指标",
-   "hit": false
+   "hit": true
   },
   {
    "id": "N11",
@@ -188,7 +188,7 @@
    "id": "U01",
    "category": "checkup",
    "query": "2024 年度城市体检主要结论",
-   "hit": false
+   "hit": true
   },
   {
    "id": "U02",
@@ -206,7 +206,7 @@
    "id": "U04",
    "category": "checkup",
    "query": "住房类体检指标覆盖多少点",
-   "hit": false
+   "hit": true
   },
   {
    "id": "U05",
@@ -224,7 +224,7 @@
    "id": "U07",
    "category": "checkup",
    "query": "交通设施体检点数",
-   "hit": false
+   "hit": true
   },
   {
    "id": "U08",
