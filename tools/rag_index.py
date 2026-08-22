@@ -247,7 +247,21 @@ def load_index():
 # 模块级模型单例（lru_cache·防每次 search 冷加载 16-23s）
 _model_cache = None
 _bm25_cache = None       # (bm25 实例, 活跃 chunk 下标数组)——运行时构建（364 段 <1s·零索引格式变更）
-_BM25_MODE = os.environ.get('RAG_SEARCH_MODE', 'dense')   # dense|bm25|rrf——消融开关·默认 dense（渐进切换）
+_BM25_MODE = os.environ.get('RAG_SEARCH_MODE', 'rrf')     # dense|bm25|rrf——消融开关·默认 rrf（融合终态）
+_RRF_K = 60             # RRF 常数（业界标准起步·观测参数·系数不拍死）
+_RRF_W_DENSE = 1.0      # 稠密路权重（消融观测参数）
+_RRF_W_BM25 = 0.5       # BM25 路权重（等权=1.0 时 noun -7.2pp·降半权防稀释）
+
+
+def _hub_penalty(m):
+    """语义枢纽 chunk 降权系数（基线 §2.2 实证：身份卡 10/10 miss 的 top1 占位者）。
+
+    EMC-IDENTITY-* 身份卡含「情绪地图/得分/指标」高频词——稠密与 BM25 双路都吸。
+    它是库的「关于页」不是专项答案源；降权不排除（叙述类仍可用）。"""
+    src = m.get('source', '')
+    if 'EMC-IDENTITY' in src:
+        return 0.2
+    return 1.0
 
 
 def _get_model():
@@ -345,6 +359,45 @@ def search(query, k=5):
     for i, m in enumerate(metas):
         if m.get('type') == 'fact':
             scores[i] = float(scores[i]) * 1.2
+        scores[i] = float(scores[i]) * _hub_penalty(m)
+
+    if _BM25_MODE == 'rrf':
+        # RRF 融合（Reciprocal Rank Fusion·k=60·两路等权起步）
+        # 稠密路=余弦+fact×1.2（既有加权保留）；BM25 路=字面精确；overfetch k*4。
+        bm25, bm25_active = _get_bm25(metas)
+        if bm25 is None:
+            return {'ok': False, 'error': 'BM25 语料为空（无法 RRF 融合）'}
+        import jieba
+        q_tokens = list(jieba.cut_for_search(query))
+        bm25_scores = bm25.get_scores(q_tokens)
+        dense_ranked = sorted(active_idx, key=lambda i: scores[i], reverse=True)[:k * 4]
+        bm25_ranked_pos = sorted(range(len(bm25_active)),
+                                 key=lambda j: bm25_scores[j], reverse=True)[:k * 4]
+        fused = {}
+        for rank, i in enumerate(dense_ranked):
+            fused[i] = fused.get(i, 0.0) + _RRF_W_DENSE / (_RRF_K + rank + 1)
+        for rank, j in enumerate(bm25_ranked_pos):
+            i = bm25_active[j]
+            fused[i] = fused.get(i, 0.0) + _RRF_W_BM25 / (_RRF_K + rank + 1)
+        # 枢纽降权在融合分上做（RRF rank-based·稠密路乘常数不改序·此处才有效）
+        for i in list(fused):
+            fused[i] *= _hub_penalty(metas[i])
+        top_idx = sorted(fused, key=fused.get, reverse=True)[:k]
+        results = []
+        for i in top_idx:
+            results.append({
+                'score': round(float(fused[i]), 6),
+                'source': metas[i].get('source', ''),
+                'type': metas[i].get('type', ''),
+                'data_dim': metas[i].get('data_dim', '社区'),
+                'text': metas[i].get('text', ''),
+                'region': metas[i].get('region', ''),
+                'topic': metas[i].get('topic', ''),
+                'year': metas[i].get('year', ''),
+                'keywords': metas[i].get('keywords', ''),
+            })
+        return {'ok': True, 'results': results, 'count': len(results)}
+
     # superseded 过滤后的稠密排序（active_idx 白名单内取 top-k）
     order = sorted(active_idx, key=lambda i: scores[i], reverse=True)[:k]
     top_idx = order
