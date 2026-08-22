@@ -1,7 +1,7 @@
 # 上下文地图（Context Map）
 
 > 一页看清本项目的「上下文树」——你和 Claude 都能一眼定位「去哪深挖」。对应 OpenAI《Harness Engineering》「地图而非说明书」。按需读，不自动注入。
-> 维护：结构变了才更；新鲜度自检跑 `/garden`。最后更新：2026-07-16。
+> 维护：结构变了才更；新鲜度自检跑 `/garden`。最后更新：2026-08-22（增 discuss 归档卷宗层）。
 
 ## 树形
 
@@ -44,6 +44,7 @@
 │  └─ docs/catch-ball/ — RULES（CB 规范）/ KNOWLEDGE（CB 记忆库·跨轮蒸馏）/ cb-journal（按轮轨迹）/ retired（退役台账）/ SCAN_DeepSeek_{NN}（第三方报告·只读）/ discuss/（跨组讨论输入·如 EMC体验评估讨论报告_2026-08-01；**EMC×dsh 核心路线 = `EMC-dsh工程预期与双环境同步核心思想_Codex-2026-08-21.md`（v1.1）**）/ _handoff/（换机卡 HOME/OFFICE + CB恢复记忆卡_2026-08-03·Codex/glm 换环境恢复 + glm组记忆_RAG环境补链_2026-08-09·glm组 侧 RAG 补链 learning 镜像 KNOWLEDGE §2）
 │     · 触发：新 SCAN → on_session_start hook 一行提示 → /cb 命令编排反评价（主线程，不派 subagent）
 │     · 记忆共享：KNOWLEDGE 登记本图 + AutoMemory（cb-knowledge-base 指针），不孤岛（见「记忆共享通则」）
+│     · discuss 归档（主题卷宗制·2026-08-22）：结论稿常驻顶层 + 已收官过程稿按主题下沉 archive/<卷宗>/（卷一 城市体检专项 134 件已归）——入口 discuss/_INDEX.md（活跃索引）+ 机制 _ARCHIVE.md + 各卷 _DIGEST.md（导览指向权威源·不复制）；在途 EMC×dsh/RAG 永不自动归档；AutoMemory 指针 discuss-archive-index
 │
 └─ 运行时 · 决策可回溯
    └─ core/tracker.py — @track + _REGISTRY（18 模块 / 510+ 引用）；[TRACE] 日志 → ID → 代码 O(1)

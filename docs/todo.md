@@ -9,6 +9,15 @@
 
 ---
 
+## 📅 2026-08-22（claude·discuss 归档机制 + 消费桩）
+
+### ✅ discuss 主题卷宗归档机制 + 批一 + 五桩播种（commit `011024c1` + 本日续）
+
+- **机制**：`discuss/_ARCHIVE.md`（五卷宗·结论稿常驻顶层+过程稿按主题下沉 `archive/<卷宗>/`）+ `discuss/_INDEX.md` 活跃索引 + 卷一 `_DIGEST.md` 导览（只指针不复制·防双头）。
+- **批一**：卷一 城市体检专项 134 件（CB23 系+CB24-37+散件）→ `discuss/archive/城市体检专项/`；cb-journal 6 处引用同步；**在途 EMC×dsh/RAG 不动**（用户明示）。
+- **五桩**：CLAUDE.md 参考文档索引 / AGENTS.md 知识源表 / context-map 登记 / KNOWLEDGE §2 蒸馏 / AutoMemory 指针——查 CB 结论先 `discuss/_INDEX.md`，权威口径认注册表/CLAUDE.md/总账。
+- 批二~四先观察不急（用户定）。
+
 ## 📅 2026-08-21（Qoder 执行包 C1b+C2+C5 · zcode 主手）
 
 ### 📥 HUB 同步机制评估落盘（Kimi·待进 CB 评估）

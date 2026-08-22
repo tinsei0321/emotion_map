@@ -75,6 +75,7 @@
 - **serve 反代 + 前端 fetch 双重挂死兜底（CB-22i·2026-08-10）**：后端 uvicorn 挂死→serve 反代 `urlopen(timeout=60)` 同款心跳陷阱也挂→前端 `await fetch` 等响应头被卡·abort 的 TCP FIN 因 serve 单线程阻塞延迟处理→读秒 5 分半。**修 = 三层兜底**：① 后端 LLM Timer 主动中断（根治阻塞源）② serve 反代 `_send_streamed` Timer 强制 close（50s·防 serve 拖死）③ 前端 `Promise.race` fetch 总超时（45s+5s·防 abort 延迟）。**流式链路任一层挂死都须有独立总超时兜底**。← CB-22i
 - **用户 tab 常驻旧 JS（CB-22i Codex·2026-08-10）**：ES module 页面加载时一次性拉取·**常驻页面内存·serve 重启/文件更新不刷新已打开页面**——三次修复若用户 tab 未刷新·全部落空（"没有任何变化"最简解释）。serve `?v=mtime` + no-store 都正常·**刷新即新 JS**。**排查"修复无效"先让用户强刷（Ctrl+Shift+R）/重开标签页**。← CB-22i
 - **`JSON.parse(...).slice` 对对象报错（CB-22i 追问标记崩溃根因·2026-08-10）**：panel.js `_distillTurn` extracted 回灌写 `JSON.parse(JSON.stringify(_ext)).slice(0, 5)`——但 `_ext` 是 **`{geo,attrs}` 对象·无 `.slice` 方法** → `PAGEERROR: JSON.parse(...).slice is not a function` → 追问消费 `priorTurn.extracted` 时链路崩（用户「追问标记没反应」直接根因·Playwright 抓 console 定位）。修 = 对象属性限制（`geo` 数组 slice ≤5·`attrs` slice ≤8·深拷贝）。**截断须作用于数组字段·非对象本身**·排查前端崩溃先抓 console PAGEERROR。← CB-22i
+- **discuss 归档机制已立（主题卷宗制·2026-08-22 用户交办）**：CB 轮收官（终审通过）→ 收敛方顺手归当轮过程稿（四步：`git mv` 进 `archive/<卷宗>/` → `_INDEX.md` 更新 → 卷宗 `_DIGEST.md` 补行 → 全仓 grep 同步引用路径）——防 550 文件堆积重演；定稿/终审/拍板版常驻顶层。**在途保护**：EMC×dsh/RAG 相关永不自动归档（清单必带排除表+日期上限）。查历史 CB 结论 → `discuss/_INDEX.md`；卷宗 `_DIGEST.md` 只导览（每主题一行结论→指向权威源·**不复制内容防双头**）。机制全文 `discuss/_ARCHIVE.md`·AutoMemory 指针 `discuss-archive-index`。← 2026-08-22 批一落盘（卷一 城市体检专项 134 件·commit 011024c1）
 
 ## §3 SCAN 标尺纠正模式（SCAN 倾向 → 正确标尺）
 

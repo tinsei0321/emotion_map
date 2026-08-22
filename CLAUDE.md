@@ -302,6 +302,7 @@ Agent 在工作过程中自动记录的隐形知识：
 | **用地分类标准** | `ai_qa/landuse_codes_2023.py` | 国标用地用海分类（2023.11）权威源：24 一级/111 二级/40 三级 + 代码 + 查询函数。**读 .py 勿再读 PDF**；概览见 `docs/landuse-classification-2023.md` |
 | **行业知识库** | `ai_qa/industry_kb/` | 全项目行业知识基础设施：四领域（规划·设计/更新/运营/治理）权威源 + 项目聚焦 + 案例 + 情绪归因 + 4×5 矩阵多归属映射；概览 `docs/industry-knowledge-base.md`。设计哲学见上方「项目设计哲学」节 |
 | **trace.log 指南** | `docs/trace-log-guide.md` | 追踪日志使用（业界级）：核心 ID 速查（F_002 while-loop/F_003 final/F_005 FC）+ `tools/trace_query.py` 查询 + 各组协作规范（跑测试带 session·根因分析先 --stats） |
+| **CB 讨论索引** | `docs/catch-ball/discuss/_INDEX.md` | CB 讨论入口：在途组（EMC×dsh/RAG·勿归档）+ 常驻结论稿；已收官过程稿按主题归档 `discuss/archive/<卷宗>/`（机制 `_ARCHIVE.md`·导览各卷 `_DIGEST.md`）。查结论先 _INDEX·权威口径认注册表/CLAUDE.md/总账 |
 
 ## 沟通方式
 

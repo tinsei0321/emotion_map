@@ -160,6 +160,7 @@ Agent 启动时根据下表选择性阅读知识源：
 | 决策记录 | `docs/decisions.md` | 架构决策 (ADR) |
 | MCP 策略 | `docs/mcp-strategy.md` | MCP 路由手册、智谱优先、清单与测试日志 |
 | CB 评估规则 | `docs/catch-ball/RULES.md` | Catch-Ball 第三方评估流程、文档编号规范、CB 权限约束；**所有 CB/第三方评估文件统一放入 `docs/catch-ball/`，其中 SCAN 类评估报告放入 `docs/catch-ball/report/`** |
+| CB 讨论索引 | `docs/catch-ball/discuss/_INDEX.md` | CB 讨论入口：在途组（EMC×dsh/RAG·勿归档）+ 常驻结论稿；已收官过程稿按主题归档 `discuss/archive/<卷宗>/`（机制 `discuss/_ARCHIVE.md`·导览 `_DIGEST.md`）。查历史 CB 结论从这里进 |
 
 ### 按角色推荐阅读
 

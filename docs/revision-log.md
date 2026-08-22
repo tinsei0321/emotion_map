@@ -25,7 +25,7 @@ emotion_map（根）
 │  ├─ 数据采集 Scrapy ✅  框架就绪
 │  ├─ 数据管道 L0→L4 🔄  L0→L1→L2 sim 跑通（**L0 未来走购买途径**·sim 当下充分；L1 待 DeepSeek key 常规验证）｜L3/L4 backend ⬜（EMC 分析时归因 deep_attribution + Sim L3/L4 生成器功能覆盖，非 pipeline 级）
 │  ├─ Harness · MCP/Agent ✅  v2.1：9 Agent 编排（含 sim，概念框架·调用次数优先·默认主线程）+ 7 MCP（智谱优先）
-│  └─ Catch-Ball 闭环 ✅  RULES（CB 规范）+ /cb 命令（反评价编排）+ hook 检测（新 SCAN 提示）+ KNOWLEDGE（跨轮记忆库）+ cb-journal/retired + SCAN_{NN}（第三方·只读）｜CB-03 后转低频维护（每 5-10 commit 一次 SCAN）
+│  └─ Catch-Ball 闭环 ✅  RULES（CB 规范）+ /cb 命令（反评价编排）+ hook 检测（新 SCAN 提示）+ KNOWLEDGE（跨轮记忆库）+ cb-journal/retired + SCAN_{NN}（第三方·只读）+ discuss 归档卷宗（主题卷宗制·_INDEX/_ARCHIVE/_DIGEST·08-22）｜CB-03 后转低频维护（每 5-10 commit 一次 SCAN）
 │
 ├─ 分支 · 功能模块
 │  ├─ 导航架构重塑（Martin）🔄  B0 色彩(#4285F4/#384555) ✅｜B1 单层顶栏 ✅｜B2 3 按钮集 ✅｜B3 左端栏三区 ✅（B6 随动复核通过）｜B4 左端弹出栏 ⬜｜B5 色板圆角 ⬜ ◆
@@ -225,8 +225,10 @@ flowchart TD
 
 >
 > - **08-16 CB-38 主线回归与数据沉淀·讨论发起（claude·家·commit `e1de81ac`·用户意图：紧急任务 PPT page1-7 全部完成收官·回归 RAG+EMC 主线·「先讨论清楚再开工·以后都不要急着动手」·今天任务全进 CB）**：① **任务① 数据沉淀梳理**——实测盘点 DATA/analysis 93 文件（6 子目录+根12）按六数据族给初步留/删/再处理意见（空间底座/体检专题/主观轨/page7 产物/成文分析/更新专题）+ 五讨论焦点（F1 留删/F2 RAG 层级·体检更新分域/F3 大文件边界·geojson 不进 RAG/F4 口径漂移防线/F5 红线复核 PII+sim禁入+铁律7）+ **用户新口径铁律：体检（=找问题需求）与更新（=规建营项目）分开** ② **任务② EMC bug 清单**——用户点名 E1 社区 tip 错误（实测 buglog/todo 零书面记录·需先建条目补复现信息）/E2 office 底图只剩天地图（CB-31 自适应双轨·Esri BLOCKED·讨论国内源+自托管方向）+ 发起方补充 E3-E7（time-source manifest 404 预存/buglog open 3+deferred 2 待定位/CB 索引停在 CB-23·journal 停在 CB-27/28 登记债/tmp 脚本规范化/office 周一 Gitee 换绑）③ **任务③ 下周排期**——城市体检时间轴工程（自由时间点逻辑·弃 T1~T3 三段式·重构整个时间轴·本轮只排期）④ **dsh组首次全程参与**——onboarding 上下文（项目/产品本质/出口抽象层/EMC 内核+四组分工）入 CB38 文档第四节 ⑤ **纪律重申**：本轮零实施·收敛后 Codex 出实施计划再走 CB。**§0 拓扑 N/A**。
-> 📍 **最新动态（08月21日 · PT-CB9 RAG 重建评估回应 · claude组）** · 本节按板块分组，组内倒序；最新工作 = **研判两大裁决复核成立（双机基线 9/10 一致）+ E1-E7 逐条复现 + 计划 v1 三处缺陷（门禁开门红/验收动靶/白名单自违）+ 泳道②③认领**。最近：
+> 📍 **最新动态（08月22日 · discuss 主题卷宗归档机制+批一+消费桩 · claude）** · 本节按板块分组，组内倒序；最新工作 = **归档机制立（卷一 城市体检专项 134 件下沉 `archive/城市体检专项/`·commit `011024c1`）+ 五桩播种（CLAUDE.md/AGENTS.md/context-map/KNOWLEDGE/AutoMemory）通知全局消费**。最近：
 >
+>
+> - **5.267 discuss 主题卷宗归档机制 + 批一 134 件 + 全局消费桩播种（claude·家·commit `011024c1` + 本条 commit·用户意图：discuss 讨论稿太多·参考业界按内容归档（非按时间）·建索引+摘要·原文归档·EMC×dsh/RAG 在途不动·归档后通知全局方便任务消费）**：① **机制**（`discuss/_ARCHIVE.md`·主题卷宗制五卷——结论稿〔定稿/终审/拍板版〕常驻顶层 + 过程稿随主题生命周期〔定稿+实施完+零待办〕下沉 `archive/<卷宗>/`·触发=CB 轮收官时收敛方顺手归当轮过程稿·四步动作=git mv→`_INDEX.md` 更新→卷宗 `_DIGEST.md` 补行→全仓 grep 同步引用·digest 只导览指向权威源不复制内容·防双头）② **批一执行**（卷一 城市体检专项 134 件=CB23 系+CB24-CB37+散件≤08-17·git mv 保 rename 100% 识别·cb-journal 6 处路径引用同步·账目平 550→395 顶层·排除表实际拦下 2 个 08-21 DSH 件）③ **索引三件套**（`discuss/_INDEX.md` 活跃索引：在途组 EMC×dsh/RAG+常驻结论+早期候选；卷一 `_DIGEST.md`：7 条活着的关键结论→权威源指针〔83.3% 口径/board 四值/铁律7/page7 排序/双轨方法论等〕+ 4 条作废口径防误用〔87.9%/5,615/合并双高26/密度版 page7〕）④ **五桩播种通知全局**（原则=指针不广播内容）：CLAUDE.md 参考文档索引表 + AGENTS.md 共享知识库表各 +1 行 `discuss/_INDEX.md` 入口·context-map.md CB 领域分支登记+最后更新日期刷新·KNOWLEDGE.md §2 蒸馏「轮收官→归档四步」纪律·AutoMemory `discuss-archive-index` 指针条目+MEMORY.md 索引行 ⑤ **在途保护**（用户明示）：卷四 EMC×dsh/卷五 RAG 永不自动归档·归档清单必带排除表+日期上限。批二~四（PT 系/CB-38~41/早期 CB09-21）待用户触发·先观察。**§0 拓扑 N/A（纯 docs 组织·零代码）**。
 >
 > - **5.266 PT-CB9 RAG 重建·claude组 评估回应（用户令：复核 zcode 研判+评估分工计划 v1·回应后与 zcode 分工执行 RAG 重建）**：① **两大核心裁决复核均成立**——P2/P3 对调（内容先行·重排序条件触发）：家机基线复跑与 office 机**双机一致 9/10**·另补研判未用的证据（当前唯一未命中题失败模式=Top-5 全 fact·BM25+权重可观测化即可解·与重排序无关=对调打在实测痛点上）；「重排序不违笨中间」：内核禁的是 LLM 推理/动态决策非「含神经网络权重」·cross-encoder 与在层的 BGE embedding 同类·附 4 条护栏（纯打分不进控制流/零 LLM API/可关路径同受回归/模型版本入 build meta）② **E1-E7 逐条命令复现 6.5 属实+0.5 精修**（E7 实测 .py 47KB·报告 40KB 低估·zcode 60KB 疑含 pyc；E5 门禁排除链三环全证含手跑 FAILED 16.7s）③ **计划 v1 三处需修**——修-1：P0-3 门禁「断言动态化」会开门即红（现状 9/10+扩容新题 BM25 前必挂→红旗疲劳）·改基线相对制（对 docs/rag-baseline.md 零退化+刚性 100%·满分断言留收口批）；修-2：泳道②验收动靶（①②并行语料膨胀中测不准）·双层验收（开发期索引快照+合流后重测·验收数字标注语料时点）；修-3：泳道③白名单跨泳道缺口（X1/X2/X3 落点三文件均只列②·③按文执行即越权）·补三文件注「②收口后独占」④ **泳道②③认领**+任务书补充十条（R-1 三件成组原子 build_id/R-2 权重语义 spec+封顶条款/R-3 消融纪律+同义词表落数据文件/E-1 出口卡链路字节级保三 API（grep 实证 build_outlet_schema 被 api+mcp 双消费）/E-3 X2 阈值挂余弦非 RRF 分/新 loader 全文纪律 CB-22 防回归）⑤ **盲点四条**（C-D 39 md 与 282 蒸馏笔记同源重复竞争·口径优先级声明扩散到新入库 md·browser e2e 显式写进②验收防 E5 链重演·test_rag_gate 须两态 skipif 索引+依赖）⑥ 落盘 `discuss/PT-CB9-RAG重建_回应_claude组-2026-08-21.md`（四档裁决：零反对·2 问待用户裁决=门禁快慢两档/验收封顶条款）。
 >
