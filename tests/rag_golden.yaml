@@ -5,7 +5,7 @@
 # 依据：docs/catch-ball/discuss/PT-CB9-RAG重建计划v1.2-pre_zcode-2026-08-22.md
 
 caliber:
-  - {id: C01, query: 社区口径到底是 174 还是 193 怎么定的, expect: ["00-宜昌专项/_口径注册表.md"]}
+  - {id: C01, query: 社区口径到底是 174 还是 193 怎么定的, expect: ["00-宜昌专项/_口径注册表.md", "00-宜昌专项/03-10"], lineage: 03-10 全覆盖点数据含社区口径数字}
   - {id: C02, query: 情绪得分 score 是怎么计算的, expect: ["00-宜昌专项/_口径注册表.md"]}
   - {id: C03, query: 极性指数 polarity_index 是什么口径, expect: ["00-宜昌专项/_口径注册表.md"]}
   - {id: C04, query: 12345 诉求数据的统计口径是什么, expect: ["00-宜昌专项/_口径注册表.md", "_笔记/12345治理方法论"]}
@@ -24,9 +24,9 @@ caliber:
 
 noun:
   - {id: N01, query: 汉宜村片区更新方案内容, expect: ["00-宜昌专项/00-06"]}
-  - {id: N02, query: 葛洲坝片区体检结论, expect: ["00-宜昌专项/03-05"]}
+  - {id: N02, query: 葛洲坝片区体检结论, expect: ["00-宜昌专项/03-05", "outlet_kb/urban_renewal_knowledge.py"], lineage: URP-C01 系 03-05 蒸馏}
   - {id: N03, query: 什么是完整社区, expect: ["outlet_kb/urban_renewal_knowledge.py"]}
-  - {id: N04, query: 留改拆是什么意思, expect: ["_笔记/codex_政策文件", "outlet_kb/concept_knowledge.py"]}
+  - {id: N04, query: 留改拆是什么意思, expect: ["_笔记/codex_政策文件", "outlet_kb/concept_knowledge.py", "outlet_kb/urban_renewal_knowledge.py"], lineage: URP-L02 留改拆政策同源}
   - {id: N05, query: 伍家岗危旧房改造项目, expect: ["outlet_kb/urban_renewal_knowledge.py"]}
   - {id: N06, query: 静态交通停车设施改造, expect: ["outlet_kb/urban_renewal_knowledge.py"]}
   - {id: N07, query: 什么是情绪地图, expect: ["outlet_kb/concept_knowledge.py", "outlet_kb/urban_renewal_knowledge.py"]}
@@ -41,9 +41,9 @@ noun:
 checkup:
   - {id: U01, query: 2024 年度城市体检主要结论, expect: ["00-宜昌专项/03-06"]}
   - {id: U02, query: 2025 体检全维度整合梳理内容, expect: ["00-宜昌专项/03-07"]}
-  - {id: U03, query: 葛洲坝片区体检发现哪些问题, expect: ["00-宜昌专项/03-05"]}
+  - {id: U03, query: 葛洲坝片区体检发现哪些问题, expect: ["00-宜昌专项/03-05", "outlet_kb/urban_renewal_knowledge.py"], lineage: URP-C01 系 03-05 蒸馏}
   - {id: U04, query: 住房类体检指标覆盖多少点, expect: ["3prime/占比表_安全_住房"]}
-  - {id: U05, query: 停车设施体检结果如何, expect: ["3prime/占比表_民生_停车设施"]}
+  - {id: U05, query: 停车设施体检结果如何, expect: ["3prime/占比表_民生_停车设施", "outlet_kb/urban_renewal_knowledge.py"], lineage: URP-I07 停车泊位系占比表蒸馏}
   - {id: U06, query: 公服设施 8 项指标结果, expect: ["3prime/占比表_民生_公服设施"]}
   - {id: U07, query: 交通设施体检点数, expect: ["3prime/占比表_民生_交通设施"]}
   - {id: U08, query: 物业街面类指标情况, expect: ["3prime/占比表_民生_物业街面"]}
