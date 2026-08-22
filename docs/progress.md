@@ -1,13 +1,12 @@
 # EMC 进度（人读版）
 
-> 数据源 `_board.yaml`·确定性生成（`py tools/gen_progress.py`）·generated from fe466c55。
+> 数据源 `_board.yaml`·确定性生成（`py tools/gen_progress.py`）·generated from 9fb9a32e。
 
 ## 待用户（唯一要盯的）
 
-1. 阶段1 复测挂账 T1-T5 暂缓后的排期裁定（docs/用户复测滚动清单.md）
-2. PT-CB9 RAG v1.2 六增补拍板（A1 前注护栏/A3 重排选型/ctx_prefix 契约）（docs/catch-ball/discuss/PT-CB9-RAG重构CB讨论发起_zcode-2026-08-22.md）
-3. PT-CB8 避坑沉淀报告全组回应收敛（zcode 已派全局部署·待收）（docs/catch-ball/discuss/PT-CB8-E3回收与全局部署派发_Codex-2026-08-21.md）
-4. Q-A/Q-B 已按推荐执行·可补正式裁决入档（docs/catch-ball/discuss/PT-CB9-RAG重建实施计划_分工版_v1.1定稿_zcode-2026-08-21.md）
+1. 阶段1 统一复测 T1-T5（暂缓中·测试窗口用户定）
+2. PT-CB9 RAG v1.2-pre 已定稿（Q-A/Q-B 按推荐执行）——P0 判决数据出来后 v1.2 终版补三判决（A1 作用域/A3 开否/A2 观察基线）
+3. 下一批排期（RAG 泳道①②③开工时点/其他批候选）
 
 ## 阶段进度
 
