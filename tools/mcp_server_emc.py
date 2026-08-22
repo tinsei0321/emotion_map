@@ -36,7 +36,7 @@ register_track_id('MOD_AIQA.F_026', 'MCP buffer（缓冲影响圈·中观）')
 register_track_id('MOD_AIQA.F_027', 'MCP rank（排序评价·最差/最好 Top-N）')
 register_track_id('MOD_AIQA.F_028', 'MCP render_spec（图层图纸：dataset/inline→spec 落收件箱）')
 register_track_id('MOD_AIQA.F_031', 'MCP render_file（把文件现在显示到地图：服务端读取·≤60 内联/>60 自动登记临时 dataset·一步到位）')
-register_track_id('MOD_AIQA.F_032', 'MCP emc_status（8080 地图服务就绪探测·入口向导流程轮询用·临时测试件）')
+register_track_id('MOD_AIQA.F_032', 'MCP emc_status（8080 地图服务就绪探测·入口向导流程轮询用·临时测试件·无 @track 明文豁免——轻探测件非业务逻辑·先例 F_029 豁免条·终审 N2 成文）')
 register_track_id('MOD_AIQA.F_033', 'MCP grid_aggregate（方格网空间聚合·参数化替代 T8 脚本）')
 register_track_id('MOD_AIQA.F_034', 'MCP compare_regions（≥2 区域同口径并排+差异·契约 boundaries 参数）')
 register_track_id('MOD_AIQA.F_035', 'MCP hotspot_analysis（Gi* 逐点显著聚集·五档分类）')
@@ -974,6 +974,8 @@ def overlay_analysis(layer_a: str, layer_b: str, how: str = 'intersection',
 
 # ── PT-CB11 P2③ · guard 迁 server 侧（_reject_analysis_output 泛化） ──────────
 
+# PT-CB11 终审 N1 注记：本表 = B4 核对清单 + _guard_check 试点接线位——**挂表不等于自动守卫**·
+#   各工具仍需体内调用 _guard_check（现仅 trend_analysis 接线·其余为体内守卫）——统一接线列下批第一顺位。
 _GUARD_SPECS = {
     'zonal_stats': {'usage_params': ('boundary',)},
     'rank': {'usage_params': ('boundary',)},
