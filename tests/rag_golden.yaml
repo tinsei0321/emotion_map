@@ -1,0 +1,73 @@
+# PT-CB9 P0-1 · RAG 黄金集（核心集 60 条·v1.2-pre §5.2 分层式）
+# 结构：id/category(query 分类)/query(用户自然问法)/expect_sources(file 级前缀·OR 语义任一命中即 Recall 命中)/lineage(同源谱系·C-D 去重铺路·null=无同源)
+# 类别：caliber=口径类 | noun=精确名词类 | checkup=体检域类 | narrative=叙述类
+# 维护：新增专题入库时配套加「增量集」条目（追加到对应类节·id 续号）；门禁快档跑核心集。
+# 依据：docs/catch-ball/discuss/PT-CB9-RAG重建计划v1.2-pre_zcode-2026-08-22.md
+
+caliber:
+  - {id: C01, query: 社区口径到底是 174 还是 193 怎么定的, expect: ["00-宜昌专项/_口径注册表.md"]}
+  - {id: C02, query: 情绪得分 score 是怎么计算的, expect: ["00-宜昌专项/_口径注册表.md"]}
+  - {id: C03, query: 极性指数 polarity_index 是什么口径, expect: ["00-宜昌专项/_口径注册表.md"]}
+  - {id: C04, query: 12345 诉求数据的统计口径是什么, expect: ["00-宜昌专项/_口径注册表.md", "_笔记/12345治理方法论"]}
+  - {id: C05, query: 43 个完整社区和 55 个项目是什么关系, expect: ["outlet_kb/urban_renewal_knowledge.py"]}
+  - {id: C06, query: 77 项体检指标怎么分大中小类, expect: ["3prime/77项_大中小类结构"]}
+  - {id: C07, query: 中心城区范围怎么界定的, expect: ["outlet_kb/urban_renewal_knowledge.py", "00-宜昌专项/03-06"]}
+  - {id: C08, query: 全覆盖点数据是什么口径, expect: ["00-宜昌专项/03-10"]}
+  - {id: C09, query: 分析的尺度体系怎么分级, expect: ["outlet_kb/concept_knowledge.py", "00-宜昌专项/_口径注册表.md"]}
+  - {id: C10, query: 图层能力目录有哪些素材, expect: ["00-宜昌专项/_图层素材表.md"]}
+  - {id: C11, query: 12345 全量点数据 18130 点怎么构成, expect: ["00-宜昌专项/03-10", "00-宜昌专项/_口径注册表.md"]}
+  - {id: C12, query: 安全韧性和民生基础两板块怎么划分, expect: ["3prime/分析计划与内容_总纲"]}
+  - {id: C13, query: 社区口径卡 K-C1 讲什么, expect: ["00-宜昌专项/_口径注册表.md"]}
+  - {id: C14, query: 2025 体检主报告和 2026 补充数据什么关系, expect: ["00-宜昌专项/03-09", "00-宜昌专项/03-10"]}
+  - {id: C15, query: 4x5 归因落点矩阵是什么, expect: ["outlet_kb/concept_knowledge.py"]}
+  - {id: C16, query: 客观轨和主观轨怎么区分, expect: ["3prime/B1_客观落位", "3prime/B2_主观落位"]}
+
+noun:
+  - {id: N01, query: 汉宜村片区更新方案内容, expect: ["00-宜昌专项/00-06"]}
+  - {id: N02, query: 葛洲坝片区体检结论, expect: ["00-宜昌专项/03-05"]}
+  - {id: N03, query: 什么是完整社区, expect: ["outlet_kb/urban_renewal_knowledge.py"]}
+  - {id: N04, query: 留改拆是什么意思, expect: ["_笔记/codex_政策文件", "outlet_kb/concept_knowledge.py"]}
+  - {id: N05, query: 伍家岗危旧房改造项目, expect: ["outlet_kb/urban_renewal_knowledge.py"]}
+  - {id: N06, query: 静态交通停车设施改造, expect: ["outlet_kb/urban_renewal_knowledge.py"]}
+  - {id: N07, query: 什么是情绪地图, expect: ["outlet_kb/concept_knowledge.py", "outlet_kb/urban_renewal_knowledge.py"]}
+  - {id: N08, query: 三支柱指什么, expect: ["outlet_kb/concept_knowledge.py"]}
+  - {id: N09, query: 四态出口契约是什么, expect: ["outlet_kb/concept_knowledge.py"]}
+  - {id: N10, query: 安全消防体检指标, expect: ["3prime/占比表_安全_安全消防"]}
+  - {id: N11, query: 市政管网指标包含什么, expect: ["3prime/占比表_安全_市政管网"]}
+  - {id: N12, query: 红星路二马路历史片区, expect: ["outlet_kb/urban_renewal_knowledge.py"]}
+  - {id: N13, query: 城市双修指什么, expect: ["_笔记/", "outlet_kb/"]}
+  - {id: N14, query: 伍家岗十五五规划要点, expect: ["_笔记/codex_伍家岗十五五"]}
+
+checkup:
+  - {id: U01, query: 2024 年度城市体检主要结论, expect: ["00-宜昌专项/03-06"]}
+  - {id: U02, query: 2025 体检全维度整合梳理内容, expect: ["00-宜昌专项/03-07"]}
+  - {id: U03, query: 葛洲坝片区体检发现哪些问题, expect: ["00-宜昌专项/03-05"]}
+  - {id: U04, query: 住房类体检指标覆盖多少点, expect: ["3prime/占比表_安全_住房"]}
+  - {id: U05, query: 停车设施体检结果如何, expect: ["3prime/占比表_民生_停车设施"]}
+  - {id: U06, query: 公服设施 8 项指标结果, expect: ["3prime/占比表_民生_公服设施"]}
+  - {id: U07, query: 交通设施体检点数, expect: ["3prime/占比表_民生_交通设施"]}
+  - {id: U08, query: 物业街面类指标情况, expect: ["3prime/占比表_民生_物业街面"]}
+  - {id: U09, query: 社区 11 类占比矩阵, expect: ["3prime/77项_社区11类占比矩阵"]}
+  - {id: U10, query: 街办层面指标占比, expect: ["3prime/77项_街办占比表"]}
+  - {id: U11, query: 体检问题清单怎么形成的, expect: ["3prime/分析计划与内容_总纲"]}
+  - {id: U12, query: B1 客观落位交付了什么, expect: ["3prime/B1_客观落位"]}
+  - {id: U13, query: B2 主观落位方法是什么, expect: ["3prime/B2_主观落位"]}
+  - {id: U14, query: B3 B4 归纳落图内容, expect: ["3prime/B3B4_归纳与落图"]}
+  - {id: U15, query: 2026 体检补充数据有哪些内容, expect: ["00-宜昌专项/03-10"]}
+  - {id: U16, query: 体检报告材料通读摘要要点, expect: ["00-宜昌专项/03-08"]}
+
+narrative:
+  - {id: R01, query: 12345 数据治理方法论怎么做, expect: ["_笔记/12345治理方法论"]}
+  - {id: R02, query: 上海城市更新有什么可借鉴经验, expect: ["04-案例资料/01-上海", "outlet_kb/case_library.py", "_笔记/codex_上海分享"], lineage: 上海分享笔记与考察报告同源}
+  - {id: R03, query: 宜昌老城中心更新做法, expect: ["outlet_kb/urban_renewal_knowledge.py"]}
+  - {id: R04, query: EMC 和 RAG 是什么关系, expect: ["outlet_kb/concept_knowledge.py"]}
+  - {id: R05, query: 演示逻辑链是什么, expect: ["outlet_kb/concept_knowledge.py"]}
+  - {id: R06, query: 尺度方法范式怎么理解, expect: ["outlet_kb/concept_knowledge.py"]}
+  - {id: R07, query: 情绪地图能做什么不能做什么, expect: ["outlet_kb/concept_knowledge.py"]}
+  - {id: R08, query: 意图判断为什么要用大模型, expect: ["outlet_kb/concept_knowledge.py"]}
+  - {id: R09, query: GIS 图层对照关系, expect: ["_笔记/claude_GIS图层对照"]}
+  - {id: R10, query: 政策文件核心内容有哪些, expect: ["_笔记/codex_政策文件", "outlet_kb/urban_renewal_knowledge.py"], lineage: 事实库URP-L03系本笔记蒸馏}
+  - {id: R11, query: 湖北省级政策对宜昌什么要求, expect: ["_笔记/codex_湖北", "outlet_kb/urban_renewal_knowledge.py"], lineage: 事实库URP-M02系本笔记蒸馏}
+  - {id: R12, query: 体检附件材料要点, expect: ["_笔记/codex_体检附件", "outlet_kb/urban_renewal_knowledge.py"], lineage: 事实库CHK-P01系本笔记蒸馏}
+  - {id: R13, query: 案例参考有哪些城市经验, expect: ["_笔记/codex_案例", "outlet_kb/case_library.py", "outlet_kb/urban_renewal_knowledge.py"], lineage: 事实库URP-L01系本笔记蒸馏}
+  - {id: R14, query: 专项规划阶段性成果结论, expect: ["_笔记/codex_0819_260713", "outlet_kb/urban_renewal_knowledge.py"], lineage: 事实库URP-L03系本笔记蒸馏}
