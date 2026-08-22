@@ -753,6 +753,16 @@ def test_guard_check_rejects_and_passes():
     assert mse._guard_check('trend_analysis', {}, cal) is None
 
 
+def test_guard_check_undeclared_tool_passes_documented_behavior():
+    """PT-CB12 T1⑥：未声明工具调 _guard_check → 放行（None）。
+
+    这是文档化行为（fail-open 到「无守卫」而非报错）：新工具漏登记 _GUARD_SPECS 不会崩，
+    但也意味着无 usage 守卫——防线是 _audit_input_surfaces 启动核对（B4 差集 WARN）
+    与本批全量接线约定（新带面输入工具必须同步登记 + 入口调 _guard_check）。"""
+    assert mse._guard_check('brand_new_tool', {'boundary': 'base_174_aggregate_area'}) is None
+    assert 'brand_new_tool' not in mse._GUARD_SPECS
+
+
 def test_audit_input_surfaces_warns_on_spec_drift(monkeypatch):
     captured = []
     monkeypatch.setattr(mse, '_safe_print', lambda msg, file=None: captured.append(msg))

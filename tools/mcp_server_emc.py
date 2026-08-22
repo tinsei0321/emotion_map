@@ -407,7 +407,7 @@ def zonal_stats(boundary: str, layer: str = 'yichang_l2_t1',
         from core.geo_registry import resolve_boundary, resolve_points
         from core.spatial_analysis import aggregate_by_polygons
 
-        _g = _reject_analysis_output(boundary, 'boundary', CALIBERS['zonal_stats'])
+        _g = _guard_check('zonal_stats', {'boundary': boundary}, CALIBERS['zonal_stats'])
         if _g:
             return _g
         points = resolve_points(layer)
@@ -460,7 +460,7 @@ def buffer(center: str, radius_m: int = 500, layer: str = 'yichang_l2_t1',
         from shapely.geometry import shape
 
         radius_m = max(50, min(int(radius_m), 3000))
-        _g = _reject_analysis_output(center, 'center', CALIBERS['buffer'])
+        _g = _guard_check('buffer', {'center': center}, CALIBERS['buffer'])
         if _g:
             return _g
         center_gdf = resolve_boundary(center)
@@ -505,7 +505,7 @@ def rank(by: str = 'worst', layer: str = 'yichang_l2_t1',
         from core.geo_registry import resolve_boundary, resolve_points
         from core.spatial_analysis import aggregate_by_polygons
 
-        _g = _reject_analysis_output(boundary, 'boundary', CALIBERS['rank'])
+        _g = _guard_check('rank', {'boundary': boundary}, CALIBERS['rank'])
         if _g:
             return _g
         points = resolve_points(layer)
@@ -565,7 +565,7 @@ def grid_aggregate(layer: str = 'yichang_l2_t1', cell_size: int = 800,
             return {'ok': False, 'hint': f'value_col 不存在: {value_col!r}（该层可用列: {list(points.columns)}）',
                     'caliber': caliber}
         if boundary:
-            _g = _reject_analysis_output(boundary, 'boundary', caliber)
+            _g = _guard_check('grid_aggregate', {'boundary': boundary}, caliber)
             if _g:
                 return _g
             import geopandas as gpd
@@ -635,7 +635,7 @@ def compare_regions(boundaries: list, layer: str = 'yichang_l2_t1',
             pass
         frames = []
         for b in items:
-            _g = _reject_analysis_output(b, 'boundary', caliber)
+            _g = _guard_check('compare_regions', {'boundaries': b}, caliber)
             if _g:
                 return _g
             polys = resolve_boundary(b)
@@ -744,7 +744,7 @@ def area_stats(boundary: str, group_by: str = '', top_n: int = 10,
     try:
         from core.geo_registry import resolve_boundary
 
-        _g = _reject_analysis_output(boundary, 'boundary', caliber)
+        _g = _guard_check('area_stats', {'boundary': boundary}, caliber)
         if _g:
             return _g
         g = resolve_boundary(boundary)
@@ -821,7 +821,7 @@ def nearest_analysis(layer: str = 'yichang_l2_t1', target: str = '',
         except Exception:
             targets = None
         if targets is None:
-            _g = _reject_analysis_output(target, 'target', caliber)
+            _g = _guard_check('nearest_analysis', {'target': target}, caliber)
             if _g:
                 return _g
             targets = resolve_boundary(target)
@@ -923,12 +923,9 @@ def overlay_analysis(layer_a: str, layer_b: str, how: str = 'intersection',
         import geopandas as gpd
         from core.geo_registry import resolve_boundary
 
-        _ga = _reject_analysis_output(layer_a, 'layer_a', caliber)
+        _ga = _guard_check('overlay_analysis', {'layer_a': layer_a, 'layer_b': layer_b}, caliber)
         if _ga:
             return _ga
-        _gb = _reject_analysis_output(layer_b, 'layer_b', caliber)
-        if _gb:
-            return _gb
         a_raw = resolve_boundary(layer_a)
         b_raw = resolve_boundary(layer_b)
         if len(a_raw) == 0 or len(b_raw) == 0:
@@ -974,13 +971,16 @@ def overlay_analysis(layer_a: str, layer_b: str, how: str = 'intersection',
 
 # ── PT-CB11 P2③ · guard 迁 server 侧（_reject_analysis_output 泛化） ──────────
 
-# PT-CB11 终审 N1 注记：本表 = B4 核对清单 + _guard_check 试点接线位——**挂表不等于自动守卫**·
-#   各工具仍需体内调用 _guard_check（现仅 trend_analysis 接线·其余为体内守卫）——统一接线列下批第一顺位。
+# PT-CB12 T1 · 全量接线完成：9 件带面输入工具入口统一调 _guard_check（本表=单一守卫通路）。
+#   _audit_input_surfaces 启动时核对声明参数 vs 函数签名（B4 差集兜底·漂移即 WARN）。
+#   未声明工具调 _guard_check → 放行（None）——新工具必须同步登记本表（test 有文档化断言防漏）。
 _GUARD_SPECS = {
     'zonal_stats': {'usage_params': ('boundary',)},
     'rank': {'usage_params': ('boundary',)},
     'buffer': {'usage_params': ('center',)},
     'grid_aggregate': {'usage_params': ('boundary',)},
+    'compare_regions': {'usage_params': ('boundaries',)},
+    'area_stats': {'usage_params': ('boundary',)},
     'nearest_analysis': {'usage_params': ('target',), 'pair_budget': 5 * 10 ** 7},
     'overlay_analysis': {'usage_params': ('layer_a', 'layer_b')},
     'trend_analysis': {'usage_params': ('boundary',)},
