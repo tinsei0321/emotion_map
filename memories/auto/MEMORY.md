@@ -61,6 +61,7 @@
 - [force-graph UMD 大写+new](force-graph-umd-uppercase-new.md) — vasturiano force-graph 全局名 ForceGraph(大写F非小写)+需 new ForceGraph(el)(无 new 静默不渲染 canvas 无报错)+CDN // 协议相对在 http 页降级被 jsdelivr 拒→vendor 本地；Obsidian graph 同款引擎，拓扑图用
 - [L0 购买策略](l0-acquisition-purchase-strategy.md) — L0 未来走购买途径非自采；sim 当下充分非风险；勿把 sim/自采未贯通当短板（曾被我+SCAN 误判）；唯一真短板=前端测试薄
 - [CB 记忆库指针](cb-knowledge-base.md) — 指向 docs/catch-ball/KNOWLEDGE.md（跨轮蒸馏：承重合并/SCAN 标尺纠正/decline 模式）；/cb 命令载入；登记 context-map，不孤岛
+- [Discuss archive index](discuss-archive-index.md) — CB讨论归档已立(主题卷宗制·按内容不按时间·卷一城市体检134件)；查结论先discuss/_INDEX.md·digest只导览防双头·在途EMC×dsh/RAG不动(2026-08-22)
 - [沟通风格：框架+条目+总结](communication-style-framework-items-synthesis.md) — 技术交流用「逻辑框架+条目化要点+总结/归纳」；禁"一句话版/口诀/汇报体"与长篇大论
 - [拓扑图同步纪律](topo-sync-discipline.md) — 新子系统 → 加 revision-log §0 分支 + topo_scanner 语义边（auto-in-topology），防拓扑图漂移
 - [全局时间轴架构](global-time-axis.md) — time 一等公民(manifest 驱动)；time-bar(UI)+timeline(headless 引擎)+time-source(数据) 三分；applyTime silent=gridBound() 避 Overview 抢刷；阶段 lerp/点层边界换源
