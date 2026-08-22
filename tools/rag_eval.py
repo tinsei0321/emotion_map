@@ -108,9 +108,39 @@ def evaluate(k=5, as_json=False):
     return report
 
 
+def write_snapshot(path=None):
+    """P0-3：写基线快照（逐条 hit 状态+分类+语料时点）——门禁零退化的对照资产·进 git。"""
+    import subprocess
+    try:
+        head = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], cwd=str(REPO),
+                              capture_output=True, text=True).stdout.strip()
+    except Exception:
+        head = ''
+    golden = load_golden_yaml()
+    rows = []
+    for cat, items in golden.items():
+        for it in items:
+            res = search(it['query'], k=5)
+            got = [r.get('source', '') for r in (res.get('results') or [])]
+            norm = [g.replace('docs/urban-renewal-plan/', '', 1).replace('ai_qa/', '', 1) for g in got]
+            hit = any(any(g.startswith(pfx) for pfx in it['expect']) for g in norm)
+            rows.append({'id': it['id'], 'category': cat, 'query': it['query'], 'hit': hit})
+    snap = {'corpus_head': head, 'k': 5, 'n': len(rows),
+            'recall': sum(r['hit'] for r in rows) / max(1, len(rows)), 'entries': rows}
+    out = Path(path) if path else REPO / 'tests' / 'rag_gate_snapshot.json'
+    with io.open(out, 'w', encoding='utf-8') as fh:
+        json.dump(snap, fh, ensure_ascii=False, indent=1)
+    print(f'[OK] snapshot -> {out} (recall={snap["recall"]:.1%}·n={snap["n"]})')
+    return snap
+
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--k', type=int, default=5)
     ap.add_argument('--json', action='store_true')
+    ap.add_argument('--snapshot', action='store_true', help='写基线快照（P0-3 门禁对照）')
     args = ap.parse_args()
-    evaluate(k=args.k, as_json=args.json)
+    if args.snapshot:
+        write_snapshot()
+    else:
+        evaluate(k=args.k, as_json=args.json)

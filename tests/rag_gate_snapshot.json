@@ -1,0 +1,368 @@
+{
+ "corpus_head": "011024c1",
+ "k": 5,
+ "n": 60,
+ "recall": 0.8333333333333334,
+ "entries": [
+  {
+   "id": "C01",
+   "category": "caliber",
+   "query": "社区口径到底是 174 还是 193 怎么定的",
+   "hit": true
+  },
+  {
+   "id": "C02",
+   "category": "caliber",
+   "query": "情绪得分 score 是怎么计算的",
+   "hit": false
+  },
+  {
+   "id": "C03",
+   "category": "caliber",
+   "query": "极性指数 polarity_index 是什么口径",
+   "hit": false
+  },
+  {
+   "id": "C04",
+   "category": "caliber",
+   "query": "12345 诉求数据的统计口径是什么",
+   "hit": true
+  },
+  {
+   "id": "C05",
+   "category": "caliber",
+   "query": "43 个完整社区和 55 个项目是什么关系",
+   "hit": true
+  },
+  {
+   "id": "C06",
+   "category": "caliber",
+   "query": "77 项体检指标怎么分大中小类",
+   "hit": true
+  },
+  {
+   "id": "C07",
+   "category": "caliber",
+   "query": "中心城区范围怎么界定的",
+   "hit": true
+  },
+  {
+   "id": "C08",
+   "category": "caliber",
+   "query": "全覆盖点数据是什么口径",
+   "hit": true
+  },
+  {
+   "id": "C09",
+   "category": "caliber",
+   "query": "分析的尺度体系怎么分级",
+   "hit": true
+  },
+  {
+   "id": "C10",
+   "category": "caliber",
+   "query": "图层能力目录有哪些素材",
+   "hit": false
+  },
+  {
+   "id": "C11",
+   "category": "caliber",
+   "query": "12345 全量点数据 18130 点怎么构成",
+   "hit": true
+  },
+  {
+   "id": "C12",
+   "category": "caliber",
+   "query": "安全韧性和民生基础两板块怎么划分",
+   "hit": false
+  },
+  {
+   "id": "C13",
+   "category": "caliber",
+   "query": "社区口径卡 K-C1 讲什么",
+   "hit": false
+  },
+  {
+   "id": "C14",
+   "category": "caliber",
+   "query": "2025 体检主报告和 2026 补充数据什么关系",
+   "hit": true
+  },
+  {
+   "id": "C15",
+   "category": "caliber",
+   "query": "4x5 归因落点矩阵是什么",
+   "hit": true
+  },
+  {
+   "id": "C16",
+   "category": "caliber",
+   "query": "客观轨和主观轨怎么区分",
+   "hit": true
+  },
+  {
+   "id": "N01",
+   "category": "noun",
+   "query": "汉宜村片区更新方案内容",
+   "hit": true
+  },
+  {
+   "id": "N02",
+   "category": "noun",
+   "query": "葛洲坝片区体检结论",
+   "hit": true
+  },
+  {
+   "id": "N03",
+   "category": "noun",
+   "query": "什么是完整社区",
+   "hit": true
+  },
+  {
+   "id": "N04",
+   "category": "noun",
+   "query": "留改拆是什么意思",
+   "hit": true
+  },
+  {
+   "id": "N05",
+   "category": "noun",
+   "query": "伍家岗危旧房改造项目",
+   "hit": true
+  },
+  {
+   "id": "N06",
+   "category": "noun",
+   "query": "静态交通停车设施改造",
+   "hit": true
+  },
+  {
+   "id": "N07",
+   "category": "noun",
+   "query": "什么是情绪地图",
+   "hit": true
+  },
+  {
+   "id": "N08",
+   "category": "noun",
+   "query": "三支柱指什么",
+   "hit": true
+  },
+  {
+   "id": "N09",
+   "category": "noun",
+   "query": "四态出口契约是什么",
+   "hit": true
+  },
+  {
+   "id": "N10",
+   "category": "noun",
+   "query": "安全消防体检指标",
+   "hit": false
+  },
+  {
+   "id": "N11",
+   "category": "noun",
+   "query": "市政管网指标包含什么",
+   "hit": true
+  },
+  {
+   "id": "N12",
+   "category": "noun",
+   "query": "红星路二马路历史片区",
+   "hit": true
+  },
+  {
+   "id": "N13",
+   "category": "noun",
+   "query": "城市双修指什么",
+   "hit": true
+  },
+  {
+   "id": "N14",
+   "category": "noun",
+   "query": "伍家岗十五五规划要点",
+   "hit": true
+  },
+  {
+   "id": "U01",
+   "category": "checkup",
+   "query": "2024 年度城市体检主要结论",
+   "hit": false
+  },
+  {
+   "id": "U02",
+   "category": "checkup",
+   "query": "2025 体检全维度整合梳理内容",
+   "hit": true
+  },
+  {
+   "id": "U03",
+   "category": "checkup",
+   "query": "葛洲坝片区体检发现哪些问题",
+   "hit": true
+  },
+  {
+   "id": "U04",
+   "category": "checkup",
+   "query": "住房类体检指标覆盖多少点",
+   "hit": false
+  },
+  {
+   "id": "U05",
+   "category": "checkup",
+   "query": "停车设施体检结果如何",
+   "hit": true
+  },
+  {
+   "id": "U06",
+   "category": "checkup",
+   "query": "公服设施 8 项指标结果",
+   "hit": false
+  },
+  {
+   "id": "U07",
+   "category": "checkup",
+   "query": "交通设施体检点数",
+   "hit": false
+  },
+  {
+   "id": "U08",
+   "category": "checkup",
+   "query": "物业街面类指标情况",
+   "hit": true
+  },
+  {
+   "id": "U09",
+   "category": "checkup",
+   "query": "社区 11 类占比矩阵",
+   "hit": true
+  },
+  {
+   "id": "U10",
+   "category": "checkup",
+   "query": "街办层面指标占比",
+   "hit": true
+  },
+  {
+   "id": "U11",
+   "category": "checkup",
+   "query": "体检问题清单怎么形成的",
+   "hit": true
+  },
+  {
+   "id": "U12",
+   "category": "checkup",
+   "query": "B1 客观落位交付了什么",
+   "hit": true
+  },
+  {
+   "id": "U13",
+   "category": "checkup",
+   "query": "B2 主观落位方法是什么",
+   "hit": true
+  },
+  {
+   "id": "U14",
+   "category": "checkup",
+   "query": "B3 B4 归纳落图内容",
+   "hit": true
+  },
+  {
+   "id": "U15",
+   "category": "checkup",
+   "query": "2026 体检补充数据有哪些内容",
+   "hit": true
+  },
+  {
+   "id": "U16",
+   "category": "checkup",
+   "query": "体检报告材料通读摘要要点",
+   "hit": true
+  },
+  {
+   "id": "R01",
+   "category": "narrative",
+   "query": "12345 数据治理方法论怎么做",
+   "hit": true
+  },
+  {
+   "id": "R02",
+   "category": "narrative",
+   "query": "上海城市更新有什么可借鉴经验",
+   "hit": true
+  },
+  {
+   "id": "R03",
+   "category": "narrative",
+   "query": "宜昌老城中心更新做法",
+   "hit": true
+  },
+  {
+   "id": "R04",
+   "category": "narrative",
+   "query": "EMC 和 RAG 是什么关系",
+   "hit": true
+  },
+  {
+   "id": "R05",
+   "category": "narrative",
+   "query": "演示逻辑链是什么",
+   "hit": true
+  },
+  {
+   "id": "R06",
+   "category": "narrative",
+   "query": "尺度方法范式怎么理解",
+   "hit": true
+  },
+  {
+   "id": "R07",
+   "category": "narrative",
+   "query": "情绪地图能做什么不能做什么",
+   "hit": true
+  },
+  {
+   "id": "R08",
+   "category": "narrative",
+   "query": "意图判断为什么要用大模型",
+   "hit": true
+  },
+  {
+   "id": "R09",
+   "category": "narrative",
+   "query": "GIS 图层对照关系",
+   "hit": true
+  },
+  {
+   "id": "R10",
+   "category": "narrative",
+   "query": "政策文件核心内容有哪些",
+   "hit": true
+  },
+  {
+   "id": "R11",
+   "category": "narrative",
+   "query": "湖北省级政策对宜昌什么要求",
+   "hit": true
+  },
+  {
+   "id": "R12",
+   "category": "narrative",
+   "query": "体检附件材料要点",
+   "hit": true
+  },
+  {
+   "id": "R13",
+   "category": "narrative",
+   "query": "案例参考有哪些城市经验",
+   "hit": true
+  },
+  {
+   "id": "R14",
+   "category": "narrative",
+   "query": "专项规划阶段性成果结论",
+   "hit": true
+  }
+ ]
+}
