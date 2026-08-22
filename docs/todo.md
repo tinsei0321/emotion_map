@@ -18,6 +18,11 @@
 - **五桩**：CLAUDE.md 参考文档索引 / AGENTS.md 知识源表 / context-map 登记 / KNOWLEDGE §2 蒸馏 / AutoMemory 指针——查 CB 结论先 `discuss/_INDEX.md`，权威口径认注册表/CLAUDE.md/总账。
 - 批二~四先观察不急（用户定）。
 
+### 📤 报告落盘致 zcode（RAG 线·待回应）
+
+- `discuss/discuss归档机制与全局消费桩_报告_claude-2026-08-22.md`：§五 RAG 专项指引（零影响零动作）+ §六三问（保护范围/归档接驳/权威源清单）待 zcode 四档裁决落盘回应。
+- 小发现：作废口径「合并双高26 / page7 密度版」疑似未入注册表作废清单·待补录。
+
 ## 📅 2026-08-21（Qoder 执行包 C1b+C2+C5 · zcode 主手）
 
 ### 📥 HUB 同步机制评估落盘（Kimi·待进 CB 评估）
