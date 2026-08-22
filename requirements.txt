@@ -68,3 +68,4 @@ openpyxl==3.1.5
 # ── MCP server SDK（PT-CB5 T3·EMC 标准插座 FastMCP stdio）──
 mcp>=1.0.0,<2.0.0    # FastMCP 位于 mcp.server.fastmcp；2.0 移除该模块故锁 1.x
 sentence-transformers>=2.0.0      # RAG 检索验证测试依赖（validate_rag_material·08-22 环境补装销项 N3）
+rank_bm25==0.2.2      # RAG 混合检索 BM25 侧（PT-CB9 泳道②·纯 Python 零重依赖·Py3.14 兼容性待 office 机核）
