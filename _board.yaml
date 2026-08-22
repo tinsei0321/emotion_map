@@ -27,7 +27,7 @@ stages:
     summary: EMC×dsh 避坑沉淀报告（R1-R19+六元模式）已落盘·全组当轮回应待收
     docs: docs/catch-ball/discuss/PT-CB8-EMC-dsh避坑沉淀报告_Codex-2026-08-21.md
   - batch: PT-CB9
-    status: in_progress
+    status: in_lanes
     summary: RAG 重构 v1.2 候选讨论中（业界适配+Harness 接轨·六增补待拍板）
     docs: docs/catch-ball/discuss/PT-CB9-RAG重构CB讨论发起_zcode-2026-08-22.md
   - batch: PT-CB10
@@ -70,9 +70,9 @@ goals:
     note: 用户令 08-22 暂缓·滚动清单待排期
 
 awaiting_user:
+  - item: PT-CB9 全量验收窗口（office 双机基线+全量 60 题手动档+用户真实问题试问·rag_query 三泳道已收口 96.7%）
+    docs: docs/catch-ball/_handoff/HOME.md
   - item: 阶段1 统一复测 T1-T5（暂缓中·测试窗口用户定）
     docs: docs/catch-ball/用户复测滚动清单.md
-  - item: PT-CB9 RAG v1.2-pre 已定稿（Q-A/Q-B 按推荐执行）——P0 判决数据出来后 v1.2 终版补三判决（A1 作用域/A3 开否/A2 观察基线）
-    docs: docs/catch-ball/discuss/PT-CB9-RAG重建计划v1.2-pre_zcode-2026-08-22.md
-  - item: 下一批排期（RAG 泳道①②③开工时点/其他批候选）
-    docs: docs/catch-ball/discuss/PT-CB9-RAG重建计划v1.2-pre_zcode-2026-08-22.md
+  - item: 下批排期（RAG 增量运营/M2-M3 环境配方/guard 挂账小件·三选）
+    docs: docs/catch-ball/_handoff/HOME.md

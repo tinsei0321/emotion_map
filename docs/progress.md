@@ -1,12 +1,12 @@
 # EMC 进度（人读版）
 
-> 数据源 `_board.yaml`·确定性生成（`py tools/gen_progress.py`）·generated from 011024c1。
+> 数据源 `_board.yaml`·确定性生成（`py tools/gen_progress.py`）·generated from 4b291a50。
 
 ## 待用户（唯一要盯的）
 
-1. 阶段1 统一复测 T1-T5（暂缓中·测试窗口用户定）
-2. PT-CB9 RAG v1.2-pre 已定稿（Q-A/Q-B 按推荐执行）——P0 判决数据出来后 v1.2 终版补三判决（A1 作用域/A3 开否/A2 观察基线）
-3. 下一批排期（RAG 泳道①②③开工时点/其他批候选）
+1. PT-CB9 全量验收窗口（office 双机基线+全量 60 题手动档+用户真实问题试问·rag_query 三泳道已收口 96.7%）
+2. 阶段1 统一复测 T1-T5（暂缓中·测试窗口用户定）
+3. 下批排期（RAG 增量运营/M2-M3 环境配方/guard 挂账小件·三选）
 
 ## 阶段进度
 
@@ -18,7 +18,7 @@
 | PT-CB6 | 完成 | 外挂大脑批·render_spec 契约+大脑实测 L0-L4+入口重定义+home 续点修复 | docs/catch-ball/cb-journal.md |
 | PT-CB7 | 完成 | render 通道与体验件（按 journal 记录收口） | docs/catch-ball/cb-journal.md |
 | PT-CB8 | 待回收 | EMC×dsh 避坑沉淀报告（R1-R19+六元模式）已落盘·全组当轮回应待收 | docs/catch-ball/discuss/PT-CB8-EMC-dsh避坑沉淀报告_Codex-2026-08-21.md |
-| PT-CB9 | 进行中 | RAG 重构 v1.2 候选讨论中（业界适配+Harness 接轨·六增补待拍板） | docs/catch-ball/discuss/PT-CB9-RAG重构CB讨论发起_zcode-2026-08-22.md |
+| PT-CB9 | in_lanes | RAG 重构 v1.2 候选讨论中（业界适配+Harness 接轨·六增补待拍板） | docs/catch-ball/discuss/PT-CB9-RAG重构CB讨论发起_zcode-2026-08-22.md |
 | PT-CB10 | 完成 | 双评估交叉回收+四档裁决定稿·进度契约合并版裁定（R59·本批载体） | docs/catch-ball/discuss/PT-CB10-双评估交叉回收与四档裁决定稿_zcode-2026-08-21.md |
 | PT-CB11 | 完成 | MCP 工具丰富化+注入链路补全全收口·工具面 10->18（F_021-F_040）·C3 样式面板 | docs/catch-ball/cb-journal.md |
 | PT-CB12 | 进行中 | guard 统一接线（T1 完成待回收）+ ACP 契约 v1（T2 已落盘）·收口中 | docs/catch-ball/discuss/PT-CB12-T1执行记录_Codex-2026-08-22.md |
