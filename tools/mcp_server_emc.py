@@ -103,6 +103,50 @@ CALIBERS = {
 }
 
 
+def _derive_followup_cues(results, top_dim):
+    """H1 followup_cue 确定性派生（D2 四红线·零 LLM·三张小表 ai_qa/rag_cues.json）。
+
+    价值序：维度相邻 > 口径关联 > 小节邻接；疑问句方向零事实断言；
+    目标库内真实存在才发；无 cue = 省略字段（不返回空数组）。"""
+    import json as _json
+    import os as _os
+
+    cues_path = _os.path.join(REPO, 'ai_qa', 'rag_cues.json')
+    try:
+        with open(cues_path, encoding='utf-8') as _fh:
+            tables = _json.load(_fh)
+    except Exception:
+        return []
+
+    dims_in_results = {res.get('data_dim', '') for res in results if res.get('data_dim')}
+    neighbors = tables.get('dim_neighbors', {})
+    translations = tables.get('caliber_translations', {})
+    blacklist = set(tables.get('section_blacklist', []))
+
+    out = []
+    # ①维度相邻（top_dim 的邻居·非当前结果已含维度）
+    for nb in neighbors.get(top_dim, [])[:2]:
+        if nb not in dims_in_results:
+            out.append(f'要对比{nb}维度的情况吗？（可换用相邻维度数据交叉验证）')
+
+    # ②口径关联（命中含 K-C/K-G 的 source·文案翻译·禁裸编号）
+    for res in results:
+        src = res.get('source', '')
+        for k_id, cn_text in translations.items():
+            if k_id in src and k_id not in [c for c in out if k_id in c]:
+                out.append(f'{cn_text}的适用范围是什么？（可用 kb_facts 精确查）')
+                break
+
+    # ③小节邻接（同文档相邻小节·黑名单过滤）——当前结果源去重后取首文档
+    if results:
+        src0 = results[0].get('source', '')
+        base = src0.split('#')[0] if '#' in src0 else ''
+        if base and not any(b in base for b in blacklist):
+            out.append(f'{base.split("/")[-1]}的上下文背景是什么？（可查同文档相邻小节）')
+
+    return out[:3]   # 2-3 条·价值序
+
+
 def _reject_analysis_output(preset_id, param, caliber):
     """G-2/铁律7 服务端强制：analysis_output 结论层禁作空间操作输入（PT-CB5 审计发现即修）。
 
@@ -323,11 +367,14 @@ def list_data(include_demo: bool = False) -> dict:
 def rag_query(query: str, k: int = 5, synthesize: bool = False) -> dict:
     """带来源知识检索：本地治理知识库 Top-K 素材+维度分布（非联网·非空间分析）。
     参数：query 必填；k 1-10；synthesize=True 时 v1 诚实降级 deferred_v2（附宿主综合指引）。
-    限制：索引未建时报提示（py tools/rag_index.py --build）；适用口径/规则/背景问答。"""
+    限制：索引未建时报提示（py tools/rag_index.py --build）；适用叙述/方法/对比问答。
+    路由分工（A2）：精确名词/口径数字优先 kb_facts（注册表直查）；叙述/方法/对比用 rag_query。"""
     if not query or not str(query).strip():
         return {'ok': False, 'hint': 'query 不能为空', 'caliber': CALIBERS['rag_query']}
 
     k = max(1, min(int(k), 10))
+    import time as _time
+    _t0 = _time.perf_counter()
     try:
         from tools.rag_index import search
         r = search(str(query), k)
@@ -346,15 +393,38 @@ def rag_query(query: str, k: int = 5, synthesize: bool = False) -> dict:
     for res in r.get('results', []):
         d = res.get('data_dim', '社区')
         dim_counts[d] = dim_counts.get(d, 0) + 1
+    elapsed_ms = round((_time.perf_counter() - _t0) * 1000, 1)
+    top_dim = max(dim_counts, key=dim_counts.get) if dim_counts else ''
+
+    # A2 路由改道（窄面）：命中口径类 chunk（type=fact 且 source 指向口径注册表）时附 caliber_ref
+    caliber_hit = next((res for res in r.get('results', [])
+                        if res.get('type') == 'fact'
+                        and any(k in res.get('source', '') for k in ('K-C', 'K-G', 'caliber'))), None)
+    if caliber_hit:
+        _safe_print(f'[A2] rag_query caliber_ref emitted: {caliber_hit.get("topic", "")[:40]}',
+                    file=sys.stderr)
+
+    # H1 followup_cue（确定性派生·零 LLM·三张小表 ai_qa/rag_cues.json）
+    followup_cues = _derive_followup_cues(r.get('results', []), top_dim)
 
     out = {
         'ok': True,
         'results': r.get('results', []),
         'count': r.get('count', 0),
         'dim_counts': dim_counts,
+        'top_dim': top_dim,
+        'elapsed_ms': elapsed_ms,
         'synthesize': False,
         'caliber': CALIBERS['rag_query'],
     }
+    if caliber_hit:
+        out['caliber_ref'] = {
+            'kind': 'caliber_class',
+            'suggest': 'kb_facts',
+            'topic': caliber_hit.get('topic', ''),
+        }
+    if followup_cues:
+        out['followup_cues'] = followup_cues
     if synthesize:
         out['synthesize'] = 'deferred_v2'
         out['guidance'] = ('v1 未接后端综合：请宿主基于以上带来源素材综合，'
@@ -367,7 +437,8 @@ def kb_facts(query: str = '', keyword: str = '', topic: str = '',
              limit: int = 5) -> dict:
     """行业事实卡：确定性查询（关键词精确命中·非向量·CB-22f D5 兜底）。
     参数：query/keyword 至少给一；topic 可选（metric/issue/project/identity 等）；limit 1-20。
-    限制：固定 city=宜昌；命中按 keywords/region 反查加权。"""
+    限制：固定 city=宜昌；命中按 keywords/region 反查加权。
+    路由分工（A2）：精确名词/口径数字优先本工具（注册表直查·零向量碰运气）；叙述/方法/对比用 rag_query。"""
     limit = max(1, min(int(limit), 20))
     try:
         from ai_qa.outlet_kb.urban_renewal_knowledge import query_knowledge_base

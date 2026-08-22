@@ -38,7 +38,9 @@ def test_regenerate_deterministic():
     )
     with open(PROGRESS, encoding='utf-8') as fh:
         after = fh.read()
-    assert before == after, '重生成 diff!=0——产物与 _board.yaml 漂移（跑 py tools/gen_progress.py 再提交）'
+    # 忽略 generated from <hash> 行（每次 commit 后 HEAD 变·产物 hash 过一期=结构性行为·非漂移）
+    strip = lambda t: '\n'.join(l for l in t.splitlines() if not l.startswith('> 数据源'))
+    assert strip(before) == strip(after), '重生成 diff!=0——产物与 _board.yaml 漂移（跑 py tools/gen_progress.py 再提交）'
 
 
 def test_progress_has_no_timestamp():
