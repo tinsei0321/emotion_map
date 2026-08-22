@@ -63,6 +63,103 @@ def _infer_dim(text):
     return max(score, key=score.get)
 
 
+# ── PT-CB9 L1 · 治理字段规则表（泳道①·数据侧权威源·rag-loader-contract §一）──
+# status='superseded'：X-01 作废口径关联 chunk。依据 03-10 §一声明：
+#   「3prime/ 系列（2026-08-12·77 项占比表、双高区等）均为西陵伍家旧口径/密度旧口径」。
+#   grep 实证：作废值 87.9%/5,615/港务1,153/双高各代/page7 密度版在语料内仅见于
+#   _口径注册表（未被索引）与 03-10（新口径文档）；3prime 数据文件=旧口径载体本身。
+#   待裁不改：3prime/分析计划与内容_总纲（计划文档非数据口径）——见执行记录 §待裁清单。
+_SUPERSEDED_FILE_PREFIX = 'docs/urban-renewal-plan/3prime/'
+_SUPERSEDED_EXEMPT_PREFIX = 'docs/urban-renewal-plan/3prime/分析计划与内容_总纲'
+
+# lineage 同源谱系（'src:<上游文件>#<节>'·节=loader 位置序号·只标注不删档）。
+# 逐卡经 token 验证（distinctive 数字/专名在目标小节 verbatim 命中）·67/68 事实卡；
+# EMC-IDENTITY-01 上游为 PT-CB 文档（非语料）·不标。不确定项入执行记录 §待裁清单。
+_LINEAGE_MAP = {
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-P01': 'src:docs/urban-renewal-plan/_笔记/codex_0819_260713_2026-08-09.md#2',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-P02': 'src:docs/urban-renewal-plan/_笔记/codex_0819_260713_2026-08-09.md#2',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-P03': 'src:docs/urban-renewal-plan/_笔记/codex_伍家岗十五五_2026-08-09.md#2',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-P04': 'src:docs/urban-renewal-plan/_笔记/codex_伍家岗十五五_2026-08-09.md#2',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-P05': 'src:docs/urban-renewal-plan/00-宜昌专项/00-02_宜昌城市更新专项规划阶段性成果0610.md#5',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-P06': 'src:docs/urban-renewal-plan/_笔记/codex_0819_260713_2026-08-09.md#2',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-P07': 'src:docs/urban-renewal-plan/_笔记/codex_伍家岗十五五_2026-08-09.md#2',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-P08': 'src:docs/urban-renewal-plan/_笔记/codex_伍家岗十五五_2026-08-09.md#2',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-P09': 'src:docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#5',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-P10': 'src:docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-P11': 'src:docs/urban-renewal-plan/城市更新专项规划资料集_总览报告.md#4',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-P12': 'src:docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-I01': 'src:docs/urban-renewal-plan/_笔记/codex_体检附件_2026-08-09.md#2',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-I02': 'src:docs/urban-renewal-plan/_笔记/codex_体检附件_2026-08-09.md#2',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-I03': 'src:docs/urban-renewal-plan/_笔记/claude_GIS图层对照_2026-08-09.md#2',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-I04': 'src:docs/urban-renewal-plan/_笔记/codex_体检附件_2026-08-09.md#4',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-I05': 'src:docs/urban-renewal-plan/_笔记/codex_体检附件_2026-08-09.md#4',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-I06': 'src:docs/urban-renewal-plan/00-宜昌专项/03-05_宜昌葛洲坝片区体检报告.md#4',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-I07': 'src:docs/urban-renewal-plan/00-宜昌专项/03-08_宜昌2025年城市体检报告_材料通读摘要.md#5',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-I08': 'src:docs/urban-renewal-plan/00-宜昌专项/03-05_宜昌葛洲坝片区体检报告.md#6',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-I09': 'src:docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-I10': 'src:docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-I11': 'src:docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#4',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-I12': 'src:docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-I13': 'src:docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-I14': 'src:docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-I15': 'src:docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-I16': 'src:docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-C01': 'src:docs/urban-renewal-plan/00-宜昌专项/03-05_宜昌葛洲坝片区体检报告.md#4',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-C02': 'src:docs/urban-renewal-plan/00-宜昌专项/03-05_宜昌葛洲坝片区体检报告.md#4',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-C03': 'src:docs/urban-renewal-plan/_笔记/claude_GIS图层对照_2026-08-09.md#2',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-C04': 'src:docs/urban-renewal-plan/00-宜昌专项/03-06_宜昌2024年度国土空间规划城市体检报告.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-C05': 'src:docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#4',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-C06': 'src:docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#4',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-C07': 'src:docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#5',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-A01': 'src:docs/urban-renewal-plan/_笔记/codex_0819_260713_2026-08-09.md#2',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-A02': 'src:docs/urban-renewal-plan/00-宜昌专项/00-01_宜昌市中心城区城市更新专项规划修编0809.md#2',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-A03': 'src:docs/urban-renewal-plan/_笔记/codex_伍家岗十五五_2026-08-09.md#1',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-K01': 'src:ai_qa/outlet_kb/case_library.py#yichang_wangzhou',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-K02': 'src:ai_qa/outlet_kb/case_library.py#shanghai_satisfaction',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-K03': 'src:ai_qa/outlet_kb/case_library.py#nanjing_bigdata',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-K04': 'src:ai_qa/outlet_kb/case_library.py#guangzhou_satisfaction',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-K05': 'src:ai_qa/outlet_kb/case_library.py#ningxia_guideline',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-L01': 'src:docs/urban-renewal-plan/城市更新专项规划资料集_总览报告.md#2',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-L02': 'src:docs/urban-renewal-plan/_笔记/codex_部委文件_2026-08-09.md#1',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-L03': 'src:docs/urban-renewal-plan/_笔记/glm_05编制导则_2026-08-09.md#0',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-L04': 'src:docs/urban-renewal-plan/城市更新专项规划资料集_总览报告.md#2',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-M01': 'src:docs/urban-renewal-plan/00-宜昌专项/03-05_宜昌葛洲坝片区体检报告.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-M02': 'src:docs/urban-renewal-plan/_笔记/codex_伍家岗十五五_2026-08-09.md#2',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-M03': 'src:docs/urban-renewal-plan/00-宜昌专项/00-04_宜昌城市更新专项规划说明书0714.md#0',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-M04': 'src:docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#URP-M05': 'src:docs/urban-renewal-plan/00-宜昌专项/03-07_宜昌2025年度城市体检全维度整合梳理.md#1',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#CHK-I01': 'src:docs/urban-renewal-plan/00-宜昌专项/03-08_宜昌2025年城市体检报告_材料通读摘要.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#CHK-I02': 'src:docs/urban-renewal-plan/00-宜昌专项/03-08_宜昌2025年城市体检报告_材料通读摘要.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#CHK-I03': 'src:docs/urban-renewal-plan/00-宜昌专项/03-08_宜昌2025年城市体检报告_材料通读摘要.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#CHK-I04': 'src:docs/urban-renewal-plan/00-宜昌专项/03-08_宜昌2025年城市体检报告_材料通读摘要.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#CHK-I05': 'src:docs/urban-renewal-plan/00-宜昌专项/03-08_宜昌2025年城市体检报告_材料通读摘要.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#CHK-I06': 'src:docs/urban-renewal-plan/00-宜昌专项/03-08_宜昌2025年城市体检报告_材料通读摘要.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#CHK-I07': 'src:docs/urban-renewal-plan/00-宜昌专项/03-08_宜昌2025年城市体检报告_材料通读摘要.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#CHK-I08': 'src:docs/urban-renewal-plan/00-宜昌专项/03-08_宜昌2025年城市体检报告_材料通读摘要.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#CHK-I09': 'src:docs/urban-renewal-plan/00-宜昌专项/03-08_宜昌2025年城市体检报告_材料通读摘要.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#CHK-I10': 'src:docs/urban-renewal-plan/00-宜昌专项/03-08_宜昌2025年城市体检报告_材料通读摘要.md#4',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#CHK-I11': 'src:docs/urban-renewal-plan/00-宜昌专项/03-08_宜昌2025年城市体检报告_材料通读摘要.md#4',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#CHK-P01': 'src:docs/urban-renewal-plan/00-宜昌专项/03-08_宜昌2025年城市体检报告_材料通读摘要.md#3',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#CHK-P02': 'src:docs/urban-renewal-plan/00-宜昌专项/03-08_宜昌2025年城市体检报告_材料通读摘要.md#4',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#CHK-P03': 'src:docs/urban-renewal-plan/00-宜昌专项/03-08_宜昌2025年城市体检报告_材料通读摘要.md#5',
+    'ai_qa/outlet_kb/urban_renewal_knowledge.py#CHK-P04': 'src:docs/urban-renewal-plan/00-宜昌专项/03-08_宜昌2025年城市体检报告_材料通读摘要.md#10',
+}
+
+
+def _governance(source):
+    """治理字段填充（PT-CB9 L1）：返回 (status, lineage)。
+
+    status：3prime 旧口径批次（豁免总纲待裁件）→ 'superseded'，其余 'active'；
+    lineage：_LINEAGE_MAP 直查·无同源 → None。字段缺失=active 兼容（契约 §四红线）。
+    """
+    file_part = source.split('#', 1)[0]
+    status = 'active'
+    if (file_part.startswith(_SUPERSEDED_FILE_PREFIX)
+            and not file_part.startswith(_SUPERSEDED_EXEMPT_PREFIX)):
+        status = 'superseded'
+    return status, _LINEAGE_MAP.get(source)
+
+
 def _load_notes():
     """读 L0 提炼笔记（按小节切分·段落级向量·标注数据维度）。"""
     chunks = []
@@ -81,11 +178,15 @@ def _load_notes():
         for i, p in enumerate(parts):
             if len(p) < 20:
                 continue
+            src = f'docs/urban-renewal-plan/{md.relative_to(NOTES_DIR).as_posix()}#{i}'
+            st, lin = _governance(src)   # PT-CB9 L1：3prime 旧口径标 superseded·谱系查表
             chunks.append({
                 'text': p[:2000],
-                'source': f'docs/urban-renewal-plan/{md.relative_to(NOTES_DIR).as_posix()}#{i}',
+                'source': src,
                 'type': 'note',
                 'dim': _infer_dim(p),  # 数据维度标注
+                'status': st,
+                'lineage': lin,
             })
     return chunks
 
@@ -99,11 +200,14 @@ def _load_cases():
         for key, c in CASES.items():
             # 案例 = 方法论参考（做法/路径/机制）·不引用他城具体数据（原则 2·防张冠李戴）
             text = f"{c.get('city','')}·{c.get('project','')}：{c.get('point','')}（方法论参考·做法/路径/机制·不引用他城具体数值）"
+            st, lin = _governance(f'ai_qa/outlet_kb/case_library.py#{key}')   # PT-CB9 L1
             chunks.append({
                 'text': text[:2000],
                 'source': f'ai_qa/outlet_kb/case_library.py#{key}',
                 'type': 'case',
                 'dim': '方法论',  # 案例 = 方法论参考·非数据维度
+                'status': st,
+                'lineage': lin,
             })
         return chunks
     except Exception as e:
@@ -118,9 +222,11 @@ def _load_facts():
         from ai_qa.outlet_kb.urban_renewal_knowledge import all_facts
         chunks = []
         for f in all_facts():
+            src = f"ai_qa/outlet_kb/urban_renewal_knowledge.py#{f['id']}"
+            st, lin = _governance(src)   # PT-CB9 L1：事实卡全 active·67/68 带同源谱系
             chunks.append({
                 'text': f"{f['city']}·{f['region']}·{f['name']}：{f['detail']}（{f['keywords']}）",
-                'source': f"ai_qa/outlet_kb/urban_renewal_knowledge.py#{f['id']}",
+                'source': src,
                 'type': 'fact',
                 'dim': f.get('dimension', '社区'),  # 数据维度（事实卡已标注）
                 # CB-22f D3（Codex 富矿）：透传 fact 结构化字段——识别层零 LLM 组装 ctx.extracted 用
@@ -130,6 +236,8 @@ def _load_facts():
                 'topic': f.get('topic', ''),
                 'year': f.get('year', ''),
                 'keywords': f.get('keywords', ''),
+                'status': st,
+                'lineage': lin,
             })
         return chunks
     except Exception as e:
@@ -144,16 +252,29 @@ def _load_concepts():
         from ai_qa.outlet_kb.concept_knowledge import all_concepts
         chunks = []
         for c in all_concepts():
+            src = f"ai_qa/outlet_kb/concept_knowledge.py#{c['id']}"
+            st, lin = _governance(src)   # PT-CB9 L1
             chunks.append({
                 'text': f"{c['name']}：{c['detail']}（{c['keywords']}）",
-                'source': f"ai_qa/outlet_kb/concept_knowledge.py#{c['id']}",
+                'source': src,
                 'type': 'concept',
                 'dim': '方法论',  # 概念卡 = 定义/背景/边界（静态）·非数据维度
+                'status': st,
+                'lineage': lin,
             })
         return chunks
     except Exception as e:
         _tag(False, f'概念卡读取失败: {str(e)[:60]}')
         return []
+
+
+def load_chunks():
+    """全量 chunk（含治理字段 status/lineage·PT-CB9 L1·rag-loader-contract §二签名）。
+
+    superseded 默认过滤由检索层做（search 预置·字段缺失=active 兼容）——loader 只填字段不过滤。
+    顺序与 build_index 既有内联序一致（facts+notes+cases+concepts）——泳道②换挂零漂移。
+    """
+    return _load_facts() + _load_notes() + _load_cases() + _load_concepts()
 
 
 def _embed_texts(model, texts):
