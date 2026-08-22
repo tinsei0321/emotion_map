@@ -63,18 +63,21 @@ def _infer_dim(text):
     return max(score, key=score.get)
 
 
-# ── PT-CB9 L1 · 治理字段规则表（泳道①·数据侧权威源·rag-loader-contract §一）──
-# status='superseded'：X-01 作废口径关联 chunk。依据 03-10 §一声明：
-#   「3prime/ 系列（2026-08-12·77 项占比表、双高区等）均为西陵伍家旧口径/密度旧口径」。
-#   grep 实证：作废值 87.9%/5,615/港务1,153/双高各代/page7 密度版在语料内仅见于
-#   _口径注册表（未被索引）与 03-10（新口径文档）；3prime 数据文件=旧口径载体本身。
-#   待裁不改：3prime/分析计划与内容_总纲（计划文档非数据口径）——见执行记录 §待裁清单。
-# 主手裁决（08-22·L1 回收）：原按 03-10§一 把 3prime 全域标 superseded 系语义误读——
-#   03-10 原文=「2026 补充数据·新区增量·空间互斥（与 2025 体检对象零重叠·直接相加）」
-#   = 增量并存非取代。占比表族（2025 域分析）与 03-10（2026 增量）均现行 active。
-#   机制保留（前缀规则表）·真正作废应逐 chunk 依 X-01 作废数字定位后显式登记（后续批）。
-_SUPERSEDED_FILE_PREFIX = ''    # 空=无文件级压旧（回滚误标·38 chunk 回 active）
-_SUPERSEDED_EXEMPT_PREFIX = ''
+# ── PT-CB9 L3 · X-01 作废 chunk 显式登记（chunk source 级·替代 L1 文件级前缀机制）──
+# R24 红线：每条登记必附原文引句（禁主题/时间推断——L1 误读 03-10§一 把 38 chunk 误标的教训）。
+# 判定口径（派发单）：「以作废数字为现行结论」→ superseded；
+#   「历史叙述/清单登记提及」（治理卡自身/变更链/资产清册/计划状态记述）→ 登记但 active
+#   ——active 登记项与引句见执行记录 PT-CB9-L3执行记录 §三逐条表；待裁同表。
+_SUPERSEDED_SOURCES = {
+    # [1] X-01「公服设施 1,068 点」（菜市场 422+中学 535 误计）——引句：「民生基础需求 · 公服设施
+    #     （8 项指标·总 1068 点·覆盖 136 社区）」——以误计值为现行总量结论（全表占比以其为分母）。
+    #     替代：全覆盖版 165 点（K-04）。
+    'docs/urban-renewal-plan/3prime/占比表_民生_公服设施_社区_2026-08-12.md#0',
+    # [2] X-01「双高 16/32/3/26（各代·双高概念整体取消）」——引句：「① 双高区（G10·重头·16 格·
+    #     管线已验证）」「观点：双高区 = 最急难愁盼（市民声音×客观指标双证聚焦）」——作废概念
+    #     各代值 16 格作现行分析结论。替代：K-03 两表。
+    'docs/urban-renewal-plan/3prime/B3B4_归纳与落图_交付_2026-08-12.md#2',
+}
 
 # lineage 同源谱系（'src:<上游文件>#<节>'·节=loader 位置序号·只标注不删档）。
 # 逐卡经 token 验证（distinctive 数字/专名在目标小节 verbatim 命中）·67/68 事实卡；
@@ -151,16 +154,12 @@ _LINEAGE_MAP = {
 
 
 def _governance(source):
-    """治理字段填充（PT-CB9 L1）：返回 (status, lineage)。
+    """治理字段填充（PT-CB9 L1/L3）：返回 (status, lineage)。
 
-    status：3prime 旧口径批次（豁免总纲待裁件）→ 'superseded'，其余 'active'；
+    status：_SUPERSEDED_SOURCES 显式登记（X-01 逐条·R24 引句）→ 'superseded'，其余 'active'；
     lineage：_LINEAGE_MAP 直查·无同源 → None。字段缺失=active 兼容（契约 §四红线）。
     """
-    file_part = source.split('#', 1)[0]
-    status = 'active'
-    if (file_part.startswith(_SUPERSEDED_FILE_PREFIX)
-            and not file_part.startswith(_SUPERSEDED_EXEMPT_PREFIX)):
-        status = 'superseded'
+    status = 'superseded' if source in _SUPERSEDED_SOURCES else 'active'
     return status, _LINEAGE_MAP.get(source)
 
 
@@ -319,6 +318,17 @@ def build_index():
     _tag(True, f'加载模型 {MODEL_NAME}（首次下载 ~40s·需 HF 镜像）...')
     model = SentenceTransformer(MODEL_NAME)
 
+    # 护栏 4（PT-CB9 L3）：重建命令一体化——前注增量生成内串（禁手工两步·双机重建一条命令）。
+    #   限定域 chunk 缺失/正文 hash 不符才调 LLM·未变更零调用；失败不阻塞构建（已有前注不受影响）。
+    _pfx = {'made': 0, 'skipped': 0, 'map_total': 0}
+    try:
+        from tools.rag_ctx_prefix import generate as _gen_ctx_prefix
+        _pfx = _gen_ctx_prefix() or _pfx
+    except (ImportError, OSError) as exc:
+        _tag(False, f'前注增量生成不可用（继续构建·已有前注不受影响）: {str(exc)[:60]}')
+    except Exception as exc:
+        _tag(False, f'前注增量生成失败（继续构建·已有前注不受影响）: {type(exc).__name__}: {str(exc)[:60]}')
+
     # 收集向量化对象——走 load_chunks() 单源（loader 契约·治理字段+前注唯一注入点·主手合流 08-22）
     all_chunks = load_chunks()
     _tag(True, f'向量化对象: {len(all_chunks)} chunk（经 load_chunks·含治理/前注字段）')
@@ -339,7 +349,9 @@ def build_index():
     import time
     metas = []
     for c, vec in zip(all_chunks, vectors):
-        h = hashlib.sha256(c['text'].encode('utf-8')).hexdigest()
+        # 护栏 3（PT-CB9 L3）：content_hash 覆盖「正文+前注」整体——前注变而正文未变→hash 变→快照可检测；
+        #   ctx_prefix_hash 分离保留（loader 契约三字段不变·用于正文变→前注必重算的校验方向）。
+        h = hashlib.sha256((c['text'] + (c.get('ctx_prefix') or '')).encode('utf-8')).hexdigest()
         metas.append({
             'source': c['source'],
             'type': c['type'],
@@ -376,6 +388,11 @@ def build_index():
     os.replace(str(tmp_v), str(VECTORS))
     os.replace(str(tmp_m), str(META))
     _tag(True, f'索引已写: {VECTORS} ({len(metas)} 条·原子写)')
+    # 护栏 4（PT-CB9 L3）：构建摘要——chunk 总数/前注覆盖/前注新生成/跳过（未变更）/superseded 数
+    _cov = sum(1 for c in all_chunks if c.get('ctx_prefix'))
+    _sup = sum(1 for c in all_chunks if c.get('status') == 'superseded')
+    _tag(True, f'构建摘要: chunk {len(all_chunks)}·前注覆盖 {_cov}·前注新生成 {_pfx["made"]}'
+               f'·跳过(未变更) {_pfx["skipped"]}·superseded {_sup}')
 
 
 def load_index():

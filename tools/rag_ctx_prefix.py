@@ -100,6 +100,8 @@ def generate():
         print(f'[OK] {src[:58]} -> {prefix[:44]}...')
     _save_map(m)
     print(f'=== 生成 {made} 条·跳过（未变更）{skipped} 条·map 总 {len(m)} ===')
+    # PT-CB9 L3（护栏 4）：返回计数供 --build 一体化摘要（禁手工两步·双机一条命令）
+    return {'made': made, 'skipped': skipped, 'map_total': len(m)}
 
 
 def stats():
