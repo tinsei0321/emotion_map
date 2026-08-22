@@ -246,6 +246,8 @@ def load_index():
 
 # 模块级模型单例（lru_cache·防每次 search 冷加载 16-23s）
 _model_cache = None
+_bm25_cache = None       # (bm25 实例, 活跃 chunk 下标数组)——运行时构建（364 段 <1s·零索引格式变更）
+_BM25_MODE = os.environ.get('RAG_SEARCH_MODE', 'dense')   # dense|bm25|rrf——消融开关·默认 dense（渐进切换）
 
 
 def _get_model():
@@ -256,6 +258,27 @@ def _get_model():
         # 否则启动时 HEAD hf-mirror.com 超时重试 5 次（~30-60s+·2026-08-12 实测）·网络不通则启动卡死
         _model_cache = SentenceTransformer(MODEL_NAME, local_files_only=True)
     return _model_cache
+
+
+def _get_bm25(metas):
+    """运行时构建 BM25（jieba 分词·superseded 预置过滤·缓存复用）。
+
+    PT-CB9 泳道②件①：字面精确匹配路——治「精确术语被语义枢纽身份卡顶位」
+    （基线 10 miss 中 5 条该模式）。小语料 364 段构建 <1s，故选运行时构建零索引格式变更。
+    superseded 过滤（loader 契约：检索层职责·字段缺失=active 兼容）。"""
+    global _bm25_cache
+    if _bm25_cache is not None and _bm25_cache[2] == id(metas):
+        return _bm25_cache[0], _bm25_cache[1]
+    import jieba
+    from rank_bm25 import BM25Okapi
+
+    active = [i for i, m in enumerate(metas) if m.get('status', 'active') == 'active']
+    corpus = [list(jieba.cut_for_search(
+        metas[i].get('text', '') + ' ' + (metas[i].get('ctx_prefix') or '')))
+        for i in active]
+    bm25 = BM25Okapi(corpus) if corpus else None
+    _bm25_cache = (bm25, active, id(metas))
+    return bm25, active
 
 
 def warmup():
@@ -274,12 +297,45 @@ def warmup():
 
 @track('MOD_AIQA.F_015', track_args=False)
 def search(query, k=5):
-    """检索 Top-K（余弦相似度·返回片段 + 来源·含数据维度）。"""
+    """检索 Top-K（余弦相似度 + BM25 字面路·返回片段 + 来源·含数据维度）。
+
+    消融开关 RAG_SEARCH_MODE：dense（默认·纯稠密）/ bm25（纯字面）/ rrf（两路融合·件②）。
+    superseded chunk 预置过滤（loader 契约·字段缺失=active 兼容）。"""
     import numpy as np
 
     vectors, metas = load_index()
     if vectors is None or len(metas) == 0:
         return {'ok': False, 'error': '检索暂不可用（索引未构建·跑 py tools/rag_index.py --build）'}
+
+    # superseded 预置过滤（两路共用·检索层职责）
+    active_idx = [i for i, m in enumerate(metas) if m.get('status', 'active') == 'active']
+    if not active_idx:
+        return {'ok': False, 'error': '检索语料为空（全部 chunk 为 superseded）'}
+
+    if _BM25_MODE == 'bm25':
+        bm25, bm25_active = _get_bm25(metas)
+        if bm25 is None:
+            return {'ok': False, 'error': 'BM25 语料为空'}
+        import jieba
+        q_tokens = list(jieba.cut_for_search(query))
+        scores = bm25.get_scores(q_tokens)
+        order = sorted(range(len(bm25_active)), key=lambda j: scores[j], reverse=True)[:k]
+        top_idx = [bm25_active[j] for j in order]
+        top_scores = [float(scores[j]) for j in order]
+        results = []
+        for rank, i in enumerate(top_idx):
+            results.append({
+                'score': top_scores[rank],
+                'source': metas[i].get('source', ''),
+                'type': metas[i].get('type', ''),
+                'data_dim': metas[i].get('data_dim', '社区'),
+                'text': metas[i].get('text', ''),
+                'region': metas[i].get('region', ''),
+                'topic': metas[i].get('topic', ''),
+                'year': metas[i].get('year', ''),
+                'keywords': metas[i].get('keywords', ''),
+            })
+        return {'ok': True, 'results': results, 'count': len(results)}
 
     model = _get_model()
     qvec = _embed_texts(model, [query])[0]
@@ -289,7 +345,9 @@ def search(query, k=5):
     for i, m in enumerate(metas):
         if m.get('type') == 'fact':
             scores[i] = float(scores[i]) * 1.2
-    top_idx = np.argsort(scores)[::-1][:k]
+    # superseded 过滤后的稠密排序（active_idx 白名单内取 top-k）
+    order = sorted(active_idx, key=lambda i: scores[i], reverse=True)[:k]
+    top_idx = order
     results = []
     for i in top_idx:
         results.append({
