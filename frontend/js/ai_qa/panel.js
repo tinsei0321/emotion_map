@@ -1,7 +1,8 @@
 // ═══ panel.js — AI 问答 UI（底部滑出 · agent loop · 历史持久化 · 思考深度开关 · 动态状态）═══
 import { orchestrate, getTemplateStats } from './harness.js';
 import { createAcpChannel, ACP_FAMILY } from './acp-channel.js';   // S3：壳对话框架事件化（hooks→ACP bus）
-import { isAcpMockOn, runAcpMockPeer } from './acp-mock-peer.js';   // S3 主体：mock 对端（S4 后端未到·?acp-mock=1 启用·默认零副作用）
+import { runAcpMockPeer } from './acp-mock-peer.js';   // S3 主体：mock 对端（?engine=mock / ?acp-mock=1 启用·默认零副作用）
+import { getEngineMode, runDshEngine } from './brain-adapter-dsh.js';   // 壳二期 BA：dsh headless 引擎（?engine=dsh·三引擎切换·降级形态 synthesized）
 import { buildContext, buildOptimizeContext, TOOLS, resetStepResults, resetCurrentResults, cleanupConsumedResults, getFig } from './tools.js';
 import { initCpdState, subscribe, getCurStepIdx, CPD_STEPS, relayoutFloats } from './cpd-state.js';
 import { initCpdGuide, recomputeGuidance, refreshGuidance, suppressGuidance } from './cpd-guide.js';   // CPD：引导引擎（依赖注入，零反向 import）
@@ -1748,17 +1749,18 @@ async function send(text, capsule) {
   }
   let settled = false;
   try {
-    // S3 主体：mock 对端分支——仍走 buildHooks 接渲染订阅（bus 在其闭包内创建），
-    // 但不经 orchestrate/emitter，由 mock 对端按 wire schema 造事件直注 shell._acp.bus
-    // （远端引擎形态预演·壳渲染零改动；正常链路 orchestrate 零改动·eval-anchor 不碰）。
-    // S4 发射层：正常链路改传 ACP 通道（{bus, turn_id}）——引擎侧原生 wire 发射（legacy emitter 退役为兼容层）。
+    // 引擎分发（壳二期 BA·三引擎可切换）：light=轻循环引擎（默认·?engine 缺省即此·零退化红线）/
+    // dsh=BrainAdapter headless（降级形态·synthesized 桩事件）/ mock=S3 mock 对端（?acp-mock=1 回兼容）。
+    // 三路均先走 buildHooks 接渲染订阅（bus 在其闭包内创建），再各自驱动事件流——send 尾部零改动。
     let _result;
-    if (isAcpMockOn()) {
-      buildHooks(shell);
+    buildHooks(shell);
+    const _engine = getEngineMode();
+    if (_engine === 'dsh') {
+      _result = await runDshEngine(shell._acp, ctx);
+    } else if (_engine === 'mock') {
       _result = await runAcpMockPeer(shell._acp, ctx);
     } else {
-      buildHooks(shell);
-      _result = await orchestrate(ctx, shell._acp);
+      _result = await orchestrate(ctx, shell._acp);   // S4：传 ACP 通道·引擎侧原生 wire 发射
     }
     settled = true;
     if (_curTrace && _result) { _curTrace.exit = _result.exit || _curTrace.exit; _curTrace.newLayerCount = _result.newLayerCount; if (_result.defense) _curTrace.defense = _result.defense; }

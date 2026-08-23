@@ -7,9 +7,30 @@
 // 权威：frontend/js/ai_qa/acp-channel.js / acp-mock-peer.js / tests/acp_schema/schemas/*.schema.json
 import { createAcpChannel, createEngineEmitter, isAcpChannel, ACP_FAMILY } from 'file:///D:/Github/emotion_map/frontend/js/ai_qa/acp-channel.js';
 import { wireToBusAdapter, runAcpMockPeer, isAcpMockOn } from 'file:///D:/Github/emotion_map/frontend/js/ai_qa/acp-mock-peer.js';
+import { getEngineMode, runDshEngine } from 'file:///D:/Github/emotion_map/frontend/js/ai_qa/brain-adapter-dsh.js';
 
 let _fail = 0;
 function ok(cond, msg) { if (!cond) { _fail++; console.error(`[FAIL] ${msg}`); } else { console.log(`[OK] ${msg}`); } }
+
+// wire 严格校验（S4 ④与 BA ⑤共用）：必填齐 + 键集白名单（additionalProperties:false 纪律）+ 字符串非空 + 枚举
+const WIRE_SPEC = {
+  msg_delta: { req: ['kind', 'delta', 'session_id', 'turn_id'], opt: ['seq'], enums: { kind: ['reason', 'content'] } },
+  tool_begin: { req: ['toolcall_id', 'verb', 'session_id', 'turn_id'], opt: ['params_summary'], enums: {} },
+  tool_end: { req: ['toolcall_id', 'verb', 'session_id', 'turn_id'], opt: ['result_summary', 'caliber'], enums: {} },
+  error: { req: ['code', 'message', 'session_id'], opt: ['hint', 'turn_id'], enums: {} },
+};
+function wireStrict(family, w) {
+  if (!w || typeof w !== 'object') return false;
+  const spec = WIRE_SPEC[family];
+  const keys = Object.keys(w);
+  if (!spec.req.every((k) => keys.includes(k))) return false;
+  if (!keys.every((k) => spec.req.includes(k) || spec.opt.includes(k))) return false;   // 键集白名单
+  for (const k of [...spec.req, ...spec.opt]) {
+    if (w[k] !== undefined && typeof w[k] === 'string' && !w[k]) return false;   // minLength:1
+  }
+  for (const [k, vals] of Object.entries(spec.enums)) if (!vals.includes(w[k])) return false;
+  return true;
+}
 
 // ═══ ① 14 hooks → 事件映射（emitter 路径·harness 零改动的翻译层）═══
 {
@@ -140,26 +161,6 @@ function ok(cond, msg) { if (!cond) { _fail++; console.error(`[FAIL] ${msg}`); }
 
 // ═══ ④ S4 引擎发射器（wire 严格造型 + toolcall 配对 + bus 载荷向后兼容）═══
 {
-  // wire 严格校验：必填齐 + 键集白名单（additionalProperties:false 纪律）+ 字符串非空 + 枚举
-  const WIRE_SPEC = {
-    msg_delta: { req: ['kind', 'delta', 'session_id', 'turn_id'], opt: ['seq'], enums: { kind: ['reason', 'content'] } },
-    tool_begin: { req: ['toolcall_id', 'verb', 'session_id', 'turn_id'], opt: ['params_summary'], enums: {} },
-    tool_end: { req: ['toolcall_id', 'verb', 'session_id', 'turn_id'], opt: ['result_summary', 'caliber'], enums: {} },
-    error: { req: ['code', 'message', 'session_id'], opt: ['hint', 'turn_id'], enums: {} },
-  };
-  const wireStrict = (family, w) => {
-    if (!w || typeof w !== 'object') return false;
-    const spec = WIRE_SPEC[family];
-    const keys = Object.keys(w);
-    if (!spec.req.every((k) => keys.includes(k))) return false;
-    if (!keys.every((k) => spec.req.includes(k) || spec.opt.includes(k))) return false;   // 键集白名单
-    for (const k of [...spec.req, ...spec.opt]) {
-      if (w[k] !== undefined && typeof w[k] === 'string' && !w[k]) return false;   // minLength:1
-    }
-    for (const [k, vals] of Object.entries(spec.enums)) if (!vals.includes(w[k])) return false;
-    return true;
-  };
-
   const ch = createAcpChannel();
   const eng = createEngineEmitter(ch);
   const events = [];
@@ -220,6 +221,72 @@ function ok(cond, msg) { if (!cond) { _fail++; console.error(`[FAIL] ${msg}`); }
 
   // 通道判别器：harness 发射层入口依据
   ok(isAcpChannel(ch3) && !isAcpChannel({}) && !isAcpChannel(null) && !isAcpChannel({ bus: {} }), 'isAcpChannel 判别（channel 真伪）');
+}
+
+// ═══ ⑤ 壳二期 BA：dsh headless 适配器（stub+ping+批量结果·synthesized 红线）═══
+{
+  ok(getEngineMode() === 'light', 'getEngineMode：node 环境默认 light（无 window/location）');
+
+  // 成功路径：fake fetch 延迟返回 → 期间应有 ping 桩 → 返回后批量发全文
+  {
+    const ch = createAcpChannel();
+    const events = [];
+    ch.bus.on('*', (e) => events.push(e));
+    let _calls = 0;
+    const fetchImpl = async () => {
+      _calls++;
+      await new Promise((r) => setTimeout(r, 60));   // 跨 ≥3 个 ping 周期（10ms·实测事件循环节律下稳定 ≥3）
+      return { json: async () => ({ ok: true, output: '留改拆是城市更新的三种处置方式合称。', elapsed: 1.2 }) };
+    };
+    const res = await runDshEngine(ch, { question: '什么是留改拆？', signal: null }, { fetchImpl, pingMs: 10 });
+
+    ok(_calls === 1 && res.exit === 'final' && res.diagnose.engine === 'dsh' && res.newLayerCount === 0,
+      'BA 成功：返回 orchestrate 同形结果（exit=final·engine=dsh）');
+    const fams = events.map((e) => e.family);
+    const firstTb = events.findIndex((e) => e.family === 'tool.begin');
+    ok(events[0].phase === 'diagnose' && events[0].card.engine === 'dsh', 'BA：诊断卡显式 dsh 引擎身份（降级形态不藏）');
+    ok(firstTb > 0 && events[firstTb].name === 'dsh_brain' && events[firstTb].provenance === 'synthesized'
+      && wireStrict('tool_begin', events[firstTb].wire), 'BA：tool.begin 桩（dsh_brain·synthesized·wire 严格造型）');
+    const pings = events.filter((e) => e.family === 'msg.delta' && e.kind === 'reason');
+    ok(pings.length >= 3 && pings.every((e) => /思考中·已 \d+s/.test(e.token) && e.provenance === 'synthesized'
+      && wireStrict('msg_delta', e.wire)), `BA：等待期 ping 桩 ≥3 次（实 ${pings.length}·均 synthesized·「已 Ns」步进非思考流）`);
+    const te = events.find((e) => e.family === 'tool.end');
+    ok(te && te.toolcall_id === events[firstTb].wire.toolcall_id && wireStrict('tool_end', te.wire),
+      'BA：tool.end 与桩同 toolcall_id 配对（wire 严格造型）');
+    const contents = events.filter((e) => e.family === 'msg.delta' && e.kind === 'content');
+    ok(contents.length === 1 && contents[0].token.includes('留改拆') && contents[0].provenance === 'synthesized'
+      && wireStrict('msg_delta', contents[0].wire), 'BA：msg.delta content 一次性全文（不伪装逐字流·synthesized）');
+    const seal = events.find((e) => e.verb === 'seal');
+    ok(!!seal && seal.text === contents[0].token, 'BA：seal 定稿=全文');
+    ok(events.filter((e) => e.family === 'msg.delta').every((e) => e.provenance === 'synthesized'),
+      'BA 诚实性红线：全部 msg.delta 恒 synthesized（契约 §三-3）');
+    ok(fams.includes('turn') && fams.includes('tool.begin') && fams.includes('tool.end') && fams.includes('msg.delta'),
+      'BA 事件族齐：turn/tool.begin/tool.end/msg.delta（过程五族除 approval 外全覆盖）');
+  }
+
+  // 失败路径：fetch 拋错 → error.degraded 降级卡（诚实告知·不伪造答案）
+  {
+    const ch = createAcpChannel();
+    const events = [];
+    ch.bus.on('*', (e) => events.push(e));
+    const fetchImpl = async () => { throw new Error('boom'); };
+    const res = await runDshEngine(ch, { question: 'q', signal: null }, { fetchImpl, pingMs: 10 });
+    const err = events.find((e) => e.family === 'error');
+    ok(res.exit === 'gap' && res.diagnose.degraded === true, 'BA 失败：exit=gap·diagnose.degraded 如实标记');
+    ok(!!err && err.kind === 'degraded' && err.provenance === 'synthesized' && wireStrict('error', err.wire)
+      && err.wire.code === 'DSH_ENGINE_FAIL', 'BA 失败：error.degraded（wire code=DSH_ENGINE_FAIL·严格造型）');
+    ok(!events.some((e) => e.verb === 'seal'), 'BA 失败：无 seal（不伪造答案）');
+  }
+
+  // 中止路径：AbortError → 静默退出（无降级卡——用户主动停止非故障）
+  {
+    const ch = createAcpChannel();
+    const events = [];
+    ch.bus.on('*', (e) => events.push(e));
+    const fetchImpl = async () => { const e = new Error('stopped'); e.name = 'AbortError'; throw e; };
+    const res = await runDshEngine(ch, { question: 'q', signal: null }, { fetchImpl, pingMs: 10 });
+    ok(res.exit === 'gap' && !events.some((e) => e.family === 'error'), 'BA 中止：exit=gap·无降级卡（主动停止非故障）');
+  }
 }
 
 console.log(_fail ? `\n${_fail} FAIL` : '\nALL PASS');

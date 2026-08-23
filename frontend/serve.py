@@ -257,7 +257,10 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         req = urllib.request.Request(BACKEND_ORIGIN + self.path, data=body,
                                      method=self.command, headers=fwd)
         try:
-            resp = urllib.request.urlopen(req, timeout=60)   # 不用 with·SSE 分支边读边转（WS1 F1.5：60s）
+            # SHELL2(BA)：dsh_engine 单 POST 同步跑 dsh headless（后端预算 ≤240s）——代理读超时定向放宽 300s；
+            # 其余路由（含 SSE）维持 60s（WS1 F1.5 语义不变）。
+            _tmo = 300 if '/aiqa/dsh_engine' in self.path else 60
+            resp = urllib.request.urlopen(req, timeout=_tmo)   # 不用 with·SSE 分支边读边转（WS1 F1.5：60s）
         except urllib.error.HTTPError as e:   # 后端 4xx/5xx 透传（缓冲）
             self._send_buffered(e.code, list(e.headers.items()), e.read())
             return

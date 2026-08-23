@@ -21,6 +21,7 @@ from ai_qa.episode import log_episode
 from ai_qa.llm import LLMError, chat_with_fallback, search_chat
 
 register_track_id('MOD_AIQA.F_017', 'post_rag_search（RAG 知识检索端点·开放语义·返回 Top-K + dim_counts）')
+register_track_id('MOD_AIQA.F_041', 'post_dsh_engine（壳二期 BA：dsh headless 引擎端点·spawn dsh --profile emc-test 一次性问答·stdout 全量返回·无流式降级形态）')
 from ai_qa.prompts import build_field_infer_prompt, build_deep_attribution_prompt
 from core.field_dictionary import validate_llm_roles
 
@@ -78,6 +79,82 @@ def post_episode(ep: EpisodeIn):
         defense=ep.defense, ok=ep.ok, extra=ep.extra, capsule_clicked=ep.capsule_clicked,
     )
     return {'ok': saved}
+
+
+class DshEngineIn(BaseModel):
+    """壳二期 BA：dsh headless 引擎入参（降级形态·无真流式——契约 docs/brain-adapter.md §二）。"""
+    question: str = ''
+    timeout_s: int = 240
+
+
+@track('MOD_AIQA.F_041', track_args=False)
+@aiqa_router.post('/aiqa/dsh_engine')
+def post_dsh_engine(body: DshEngineIn):
+    """壳二期 BrainAdapter：spawn dsh headless（`dsh --profile emc-test "<q>"`）一次性问答。
+
+    返回 {ok, output, elapsed, returncode, stderr_tail}——output=stdout 全量（无流式·
+    等待期进度桩事件由前端 BA 发：tool.begin + 周期 ping·均 synthesized·不伪装逐字流）。
+    安全：优先解析 npm shim 直调 node + bin.js（argv 传参·零 shell 拼接防注入）；
+    解析失败回退 cmd /c 全引号包裹（问句内引号双写转义）。
+    """
+    import os
+    import shutil
+    import subprocess
+    import time as _time
+
+    q = (body.question or '').strip()
+    if not q:
+        return {'ok': False, 'error': 'empty question'}
+    timeout_s = max(30, min(int(body.timeout_s or 240), 600))
+
+    def _resolve_cmd():
+        """dsh 调用命令解析：node 直调优先（无 cmd.exe 重解析·零注入面）→ 全引号命令行回退。"""
+        exe = shutil.which('dsh')
+        if not exe:
+            return None, "dsh not found in PATH（本机未装 dsh——装 dsh 后可用·双机差异注记）"
+        low = exe.lower()
+        if low.endswith(('.cmd', '.bat')):
+            # npm shim 结构固定：node "<dp0>\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js" %* ——直调 bin.js
+            dp0 = os.path.dirname(exe)
+            bin_js = os.path.join(dp0, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+            if os.path.isfile(bin_js):
+                node_exe = os.path.join(dp0, 'node.exe')
+                node = node_exe if os.path.isfile(node_exe) else (shutil.which('node') or 'node')
+                return [node, bin_js], None
+            # 回退：cmd /c + 全引号问句（内引号双写转义·& | 等元字符在引号内为字面量）
+            q_esc = '"' + q.replace('"', '""') + '"'
+            return None, ('fallback-cmd', [exe, '--profile', 'emc-test', q_esc])
+        return [exe], None
+
+    resolved, info = _resolve_cmd()
+    if isinstance(info, str) and resolved is None:
+        return {'ok': False, 'error': info}
+    if isinstance(info, tuple):   # 回退形态：手动拼命令行（subprocess string 形态·我们控制全部引号）
+        _exe, _q_esc = info[1][0], info[1][3]
+        cmdline = f'"{_exe}" --profile emc-test {_q_esc}'
+        t0 = _time.time()
+        try:
+            proc = subprocess.run(cmdline, capture_output=True, text=True, encoding='utf-8',
+                                  errors='replace', timeout=timeout_s, shell=False)
+        except subprocess.TimeoutExpired:
+            return {'ok': False, 'error': f'dsh timeout ({timeout_s}s)', 'elapsed': round(_time.time() - t0, 1)}
+    else:
+        cmd = resolved + ['--profile', 'emc-test', q]
+        t0 = _time.time()
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8',
+                                  errors='replace', timeout=timeout_s, shell=False)
+        except subprocess.TimeoutExpired:
+            return {'ok': False, 'error': f'dsh timeout ({timeout_s}s)', 'elapsed': round(_time.time() - t0, 1)}
+
+    out = (proc.stdout or '').strip()
+    err = (proc.stderr or '').strip()
+    ok = proc.returncode == 0 and bool(out)
+    resp = {'ok': ok, 'output': out, 'elapsed': round(_time.time() - t0, 1),
+            'returncode': proc.returncode, 'stderr_tail': err[-400:]}
+    if not ok:
+        resp['error'] = err[-400:] or f'dsh returncode={proc.returncode} / empty stdout'
+    return resp
 
 
 class OutletCardIn(BaseModel):
