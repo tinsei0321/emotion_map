@@ -22,17 +22,19 @@
 - **日常链路可用**：status/log/commit/push 全部正常·工作树零损失·分支已对齐 origin（本日双 commit 已推）。
 - **历史链路受损**：`git show`/`git diff` 旧 commit、`git log --stat` 涉旧树操作会失败；受影响 commit 横跨 main 与 EMC_harness_dsh 两支（样本见 §四）。
 - **gc/repack 高危**：multi-pack-index 引用 3 个不可加载 pack + 18 个已删 pack + 2 个 274MB 截断残件——**此刻任何 gc/repack 可能再产出残缺 pack 或失败**（与 R25 预防四条「多组并发仓禁窗口期 gc」一致）。
+- **实测（08-23 晚）**：本组 commit 时 git 自动跑 `maintenance` geometric-repack **失败**（`fatal: bad tree object 00874e25` → `task 'geometric-repack' failed`）——commit/push 本身不受影响（repack 失败即中止·不改 packs）·但**每次 commit 都会触发一次失败告警**。`gc.auto=0` 只挡 `git gc --auto`·挡不住 maintenance 任务。
 
 ## 三 清理清单（报主手·建议序·**本组只报不实操**）
 
 | # | 动作 | 命令/说明 | 风险 |
 |---|---|---|---|
+| 0 | **止血：关 auto-maintenance** | `git maintenance unregister`（或 `git config maintenance.auto false`）——commit 触发 geometric-repack 失败告警的开关·清完仓再开 | 无 |
 | 1 | 清 tmp_pack 残件 | 删 `.git/objects/pack/tmp_pack_PxzNld`、`tmp_pack_recover.pack`（各 274MB·截断物） | 无（无 idx 引用） |
 | 2 | 清 idx-only 残件 + 重建 midx | 删 18 个 `.idx`（对应 `.pack` 已灭失者）→ `git multi-pack-index expire` + `git multi-pack-index write` | 低·纯索引层 |
 | 3 | reflog 清洗 | `git reflog expire --expire=now --all`（清 23 条 invalid 行） | 低·仅日志 |
 | 4 | **历史对象补全** | 关键点：**`git fetch origin` 不会自动补**——18 个 idx 残件让 git 误判「对象已持有」→ 必须先做完 #2 清 idx，再 `git fetch origin`（重谈缺失对象）→ `git fsck` 复检 | 中·务必先 #2 |
 | 5 | 兜底方案 | 若 #4 后仍有 missing → 全新 `git clone` + 工作树迁移（R25 恢复六步法·`_tmp/pack_quarantine/` 内 pack-064a3518.pack 为参照物·勿删） | 中·耗时可观 |
-| 6 | 终验 | `git fsck` 零 error + `git log --stat --oneline | head` 抽查旧 commit 可读 + 一次 push 往返正常 | — |
+| 6 | 终验 | `git fsck` 零 error + `git log --stat --oneline`（head 截取）抽查旧 commit 可读 + 一次 push 往返正常 | — |
 
 **时机建议**：月度独占 gc 窗口内执行（R25 预防四条）·执行前确认无其他组在仓（并发仓禁窗口期 gc 已两轮教训）。
 
