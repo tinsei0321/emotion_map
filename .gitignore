@@ -67,3 +67,6 @@ tests/browser/out/
 
 # dsh harness local runtime artifacts (PT-CB1)
 .dsh-meow/
+# pytest 临时目录（各次运行产物·不入库）
+# _tmp/ 实验脚本与隔离区（pack_quarantine=git事件隔离包·保留一周）
+_tmp/
