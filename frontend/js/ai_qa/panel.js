@@ -3,6 +3,7 @@ import { orchestrate, getTemplateStats } from './harness.js';
 import { createAcpChannel, ACP_FAMILY } from './acp-channel.js';   // S3：壳对话框架事件化（hooks→ACP bus）
 import { runAcpMockPeer } from './acp-mock-peer.js';   // S3 主体：mock 对端（?engine=mock / ?acp-mock=1 启用·默认零副作用）
 import { getEngineMode, runDshEngine } from './brain-adapter-dsh.js';   // 壳二期 BA：dsh headless 引擎（?engine=dsh·三引擎切换·降级形态 synthesized）
+import { normalizeFollowupCues, pickFollowupSource } from './followup.js';   // SHELL2(FIX) FIX-09：追问纯逻辑（可单测·语义与原内联逐字一致）
 import { buildContext, buildOptimizeContext, TOOLS, resetStepResults, resetCurrentResults, cleanupConsumedResults, getFig } from './tools.js';
 import { initCpdState, subscribe, getCurStepIdx, CPD_STEPS, relayoutFloats } from './cpd-state.js';
 import { initCpdGuide, recomputeGuidance, refreshGuidance, suppressGuidance } from './cpd-guide.js';   // CPD：引导引擎（依赖注入，零反向 import）
@@ -720,6 +721,14 @@ function _followUps(t) {
       { tag: '周边分析', text: '滨江公园周边 500 米情绪如何？' },
     ];
   }
+  // SHELL2(FIX) FIX-11：dsh 引擎轮兜底追问（知识类·不与静态情绪分析问法混调）
+  if (intent === 'dsh') {
+    return [
+      { tag: '深问', text: '把刚才回答里的关键概念再展开讲讲' },
+      { tag: '求据', text: '这个结论有哪些依据或出处？' },
+      { tag: '本地分析', text: '哪些区域情绪最差？为什么？' },
+    ];
+  }
   if (intent === 'gis_operation') {
     return [
       { tag: '叠加分析', text: '把刚才的结果与周边情绪点叠置分析' },
@@ -740,18 +749,17 @@ function renderSuggest(t) {
   const el = document.getElementById('aiq-suggest');
   if (!el) return;
   _guidanceCardShown = false;   // 答案后 胶囊/_followUps 接管，清引导卡片标志
-  // S5 追问建议（契约 v1.1 §5-3）：tool.end 确定性 followup_cues 最优先——真实追问线索 > LLM 胶囊 > 静态兜底。
-  //   交互 = 点击回填输入框（不直发·用户确认/编辑后自发送·导游不代决定）；ask 轮选项已在答案区·底部不重复。
-  const _cues = (t && t.exit !== 'ask' && Array.isArray(t.followupCues)) ? t.followupCues : [];
-  if (_cues.length) {
+  // SHELL2(FIX) FIX-09：追问源选择纯函数化——优先级不变（cues > 胶囊 > 静态兜底·ask 互斥）。
+  const _src = pickFollowupSource(t);
+  if (_src.kind === 'cues') {
     el.hidden = false;
     el.innerHTML = '<span class="aiq-suggest-label">追问建议</span>'
-      + _cues.map((c) => `<button type="button" class="aiq-suggest-chip" data-followup-cue="1">${escapeHtml(c)}</button>`).join('');
+      + _src.items.map((c) => `<button type="button" class="aiq-suggest-chip" data-followup-cue="1">${escapeHtml(c)}</button>`).join('');
     el.querySelectorAll('.aiq-suggest-chip').forEach((b) => b.addEventListener('click', () => _fillInput(b.textContent)));
     return;
   }
   // CB-09 D020：优先动态胶囊（LLM 产·trace.defense.capsules·{label,level,skill,params}）·无则静态 _followUps 兜底（gap/ask/general）
-  const capsules = (t && t.defense && Array.isArray(t.defense.capsules)) ? t.defense.capsules : [];
+  const capsules = (_src.kind === 'capsules') ? _src.items : [];
   let chipHtml;
   if (capsules.length) {
     chipHtml = capsules.map((c, i) => `<button type="button" class="aiq-suggest-chip aiq-capsule" data-capsule-idx="${i}"><span class="aiq-suggest-tag">${escapeHtml(c.level || 'L1')}</span>${escapeHtml(c.label)}</button>`).join('');
@@ -1549,9 +1557,11 @@ function buildHooks(shell) {
       renderToolCard(shell.stepsEl, round, null, null, obs);
       if (_curTrace && _curTrace.steps.length) _curTrace.steps[_curTrace.steps.length - 1].observation = obs;
       // S5 追问 chips：tool.end 载荷 followup_cues（契约 v1.1 §5-3·过程通道·确定性追问线索·零 LLM）
-      //   → 存 trace·答案完毕后 renderSuggest 优先渲染为「追问建议」条（点击回填输入框·不直发）。
-      if (Array.isArray(e.followup_cues) && e.followup_cues.length && _curTrace) {
-        _curTrace.followupCues = e.followup_cues.map((c) => String(c).trim()).filter(Boolean).slice(0, 3);
+      //   存 trace·答案完毕后 renderSuggest 优先渲染为「追问建议」条（点击回填输入框·不直发）
+      //   SHELL2(FIX) FIX-09：归一化改走纯函数（非数组/非串/空串/超 3 条统一处理）
+      const _cuesNorm = normalizeFollowupCues(e.followup_cues);
+      if (_cuesNorm.length && _curTrace) {
+        _curTrace.followupCues = _cuesNorm;
       }
       setPhase('思考');   // Feature 3：工具结果属"思考"阶段（原"检索"并入思考·检索非独立步骤）
       const _lc = (() => { try { return document.querySelectorAll('#layer-list .layer-row').length - _layerBase; } catch (_) { return 0; } })();
@@ -1626,11 +1636,16 @@ function buildHooks(shell) {
     if (e.kind !== 'degraded') return;
       cancelStream();
       stopThinking();
+      // SHELL2(FIX) FIX-10：白名单原因行（非裸文本）——按错误码映射固定文案·未知码归通用行；
+      // 原始 hint 只存 trace 供调试（不显 UI）·保持「永不裸输原始错误」红线。
+      const _REASON_LABEL = { 'DEGRADED_PARSE': '模型输出未能解析为可执行动作', 'DSH_ENGINE_FAIL': '外部大脑（dsh 引擎）暂不可用' };
+      const _code = (e.wire && e.wire.code) || '';
+      const _reasonLine = `> 原因：${_REASON_LABEL[_code] || '处理过程中出现异常'}（自动诊断）\n\n`;
       // 永不裸输原始 token（根治代码块/计划文泄漏）：固定降级卡，忽略传入的 raw 文本
       const _degradedText = '## 暂未能完成此分析\n\n模型输出未能解析为可执行动作，且最终结论生成失败。\n\n**建议**：换一种问法或缩小范围（指定某区、某类用地、某时点）后重试；若反复失败，可上传更明确的数据范围。';
-      shell.answerEl.innerHTML = renderAnswer(_degradedText, getValidRefNames());
+      shell.answerEl.innerHTML = renderAnswer(_reasonLine + _degradedText, getValidRefNames());
       enhanceCodeBlocks(shell.answerEl);
-      if (_curTrace) { _curTrace.exit = 'gap'; _curTrace.final = _degradedText; }
+      if (_curTrace) { _curTrace.exit = 'gap'; _curTrace.final = _degradedText; _curTrace.degradeReason = _code || 'unknown'; if (e.hint) _curTrace.degradeHint = String(e.hint).slice(0, 200); }
       shell._finalMd = _degradedText;
       finalizeReason();   // 降级前已流式的思考也结构化（无思考内容则藏 reason 块）
   });

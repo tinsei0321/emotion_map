@@ -263,6 +263,59 @@ def track(
     return decorator
 
 
+def track_async(
+    track_id: str,
+    track_args: bool = False,
+    track_result: bool = False,
+    level: str = "INFO",
+):
+    """
+    异步函数追踪装饰器（SHELL2(FIX) FIX-01 配套·加法新增）。
+
+    与 track() 同语义，仅对 async def 目标生效（await 包夹 enter/exit）。
+    既有 track() 零改动·同步面全部不受影响。
+    """
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            t = get_tracker()
+            if not t.enabled:
+                return await func(*args, **kwargs)
+
+            input_info = ""
+            if track_args:
+                arg_parts = []
+                for i, a in enumerate(args):
+                    if i == 0 and (inspect.ismethod(func) or (args and str(args[0]) == 'self')):
+                        continue
+                    arg_parts.append(_summarize(a))
+                for k, v in kwargs.items():
+                    arg_parts.append(f"{k}={_summarize(v)}")
+                input_info = ", ".join(arg_parts) if arg_parts else ""
+
+            t.enter(track_id, input_info=input_info)
+            t_start = time.time()
+
+            try:
+                result = await func(*args, **kwargs)
+                elapsed = (time.time() - t_start) * 1000
+
+                output_info = ""
+                if track_result:
+                    output_info = _summarize(result)
+
+                t.exit(track_id, output_info=output_info, elapsed_ms=elapsed)
+                return result
+
+            except Exception as e:
+                elapsed = (time.time() - t_start) * 1000
+                t.error(track_id, f"exception after {elapsed:.1f}ms", exception=e)
+                raise
+
+        return wrapper
+    return decorator
+
+
 # ── 上下文管理器 ──
 
 class TrackContext:

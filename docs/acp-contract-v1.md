@@ -53,7 +53,7 @@ toolcall:{ id, turn_id, verb(MCP tool name), status: begin|end|error, caliber? }
 
 ### 5-2 tool.end 载荷结构模式（非固定字段集）
 
-载荷 = **工具特定摘要对象 + 必带 caliber 摘要（scale/refs）**；各工具的载荷 schema **按工具注册**（沿 `ai_qa/tool_contracts.py` 单一权威源模式·与铁律 11 契约三处同步同律）。示例：
+载荷 = **工具特定摘要对象 + 有则带 caliber 摘要（scale/refs）**（SHELL2(FIX) FIX-12 修订：caliber 由「必带」降为「有则带」——发射侧无工具结果口径源时不硬造·各工具确有口径时仍按此结构带）；各工具的载荷 schema **按工具注册**（沿 `ai_qa/tool_contracts.py` 单一权威源模式·与铁律 11 契约三处同步同律）。示例：
 
 | 工具 | 载荷摘要字段（除 caliber 外） |
 |---|---|
@@ -61,7 +61,7 @@ toolcall:{ id, turn_id, verb(MCP tool name), status: begin|end|error, caliber? }
 | zonal_stats | `row_count` / `sort_by` |
 | render_spec | `spec_id` / `mode`（inline\|dataset） |
 
-**设计理由**：写死单一字段集会让异构工具的事件载荷无处安放；模式条款保证「必带口径摘要」的统一性，字段面留工具自治。
+**设计理由**：写死单一字段集会让异构工具的事件载荷无处安放；模式条款保证「口径摘要有则带·带则统一结构」，字段面留工具自治。
 
 ### 5-3 followup_cue 渲染语义（过程通道）
 

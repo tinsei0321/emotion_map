@@ -35,6 +35,7 @@ export async function runDshEngine(acp, ctx, deps) {
   const q = (ctx && ctx.question) || '';
   const fetchImpl = (deps && deps.fetchImpl) || ((typeof window !== 'undefined' && window.fetch) || null);
   const pingMs = (deps && deps.pingMs) || 3000;
+  const timeoutMs = (deps && deps.timeoutMs) || 330000;   // SHELL2(FIX) FIX-04：前端总超时护栏（330s > 代理 300s > 后端 240s）
   const signal = (ctx && ctx.signal) || null;
   let _seq = 0;
   const wireDelta = (kind, delta) => ({ kind, delta, session_id: _WIRE_SESSION, turn_id, seq: _seq++ });
@@ -59,20 +60,24 @@ export async function runDshEngine(acp, ctx, deps) {
       provenance: 'synthesized', wire: wireDelta('reason', `dsh 思考中 ${sec}s`) });
   }, pingMs);
 
-  // ③ 调后端（spawn dsh headless·无流式·返回后批量发）——fetch 缺省（极端环境）按引擎不可用降级
+  // ③ 调后端（spawn dsh headless·无流式·返回后批量发）——fetch 缺省（极端环境）按引擎不可用降级。
+  // FIX-04：Promise.race 总超时护栏——后端/代理哑死时主动降级，不无限转 ping。
   let resp = null, fail = null;
+  let _watchdog = null;
   try {
     if (!fetchImpl) throw new Error('no fetch');
-    const r = await fetchImpl('/api/v1/aiqa/dsh_engine', {
+    const _timeoutP = new Promise((_, rej) => { _watchdog = setTimeout(() => rej(new Error('dsh 前端总超时')), timeoutMs); });
+    const r = await Promise.race([fetchImpl('/api/v1/aiqa/dsh_engine', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question: q, timeout_s: 240 }), signal,
-    });
+    }), _timeoutP]);
     resp = await r.json();
     if (!resp || !resp.ok || !resp.output) fail = (resp && resp.error) || 'dsh 空输出';
   } catch (e) {
     fail = (e && e.name === 'AbortError') ? 'abort' : ((e && e.message) || String(e));
   } finally {
     clearInterval(pingTimer);
+    if (_watchdog) clearTimeout(_watchdog);   // 成功/失败均在看门狗（防定时器泄漏）
   }
 
   // ④a 失败/中止：error 族降级卡（诚实告知·不伪造答案）；中止（用户停止）静默退出

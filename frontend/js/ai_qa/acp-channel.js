@@ -92,9 +92,16 @@ export function createEngineEmitter(channel) {
     return delta ? { kind, delta, session_id: _WIRE_SESSION, turn_id, seq: _seq++ } : null;   // 空串不造型（minLength:1）
   };
   const _summary = (obs) => {
+    // SHELL2(FIX) FIX-06：廉价判长——按类型先截（避免万行级观察值全量 stringify 后再截的 GC 压力）
     try {
-      const s = typeof obs === 'string' ? obs : JSON.stringify(obs);
-      return (s && s.slice(0, 200)) || null;
+      if (obs == null) return null;
+      if (typeof obs === 'string') return obs.slice(0, 200) || null;
+      if (Array.isArray(obs)) return obs.length ? `[${obs.length} 行结果]` : null;
+      if (typeof obs === 'object') {
+        const keys = Object.keys(obs);
+        return keys.length ? `{${keys.slice(0, 6).join(',')}}` : null;   // 键名列表即摘要·不序列化值域
+      }
+      return String(obs).slice(0, 200) || null;
     } catch (_) { return null; }
   };
 
@@ -133,8 +140,8 @@ export function createEngineEmitter(channel) {
     onRoundStart: (round) => bus.emit({ family: ACP_FAMILY.TURN, verb: 'step', phase: 'round.start', round, provenance: 'real' }),
     onRound: (round) => bus.emit({ family: ACP_FAMILY.TURN, verb: 'step', phase: 'round.tick', round, provenance: 'real' }),
     onFinalDone: (text) => bus.emit({ family: ACP_FAMILY.TURN, verb: 'seal', text, provenance: 'real' }),
-    // ── error：wire 语义化错误码（degraded=解析失败兑底）──
-    onDegraded: (text) => bus.emit({ family: ACP_FAMILY.ERROR, kind: 'degraded', hint: text, wire: { code: 'DEGRADED_PARSE', message: '模型输出未能解析为可执行动作', session_id: _WIRE_SESSION, turn_id } }),
+    // ── error：wire 语义化错误码（degraded=解析失败兑底）；FIX-10①：wire 补 hint 字段（schema 可选位·与信封同值）
+    onDegraded: (text) => bus.emit({ family: ACP_FAMILY.ERROR, kind: 'degraded', hint: text, provenance: 'real', wire: { code: 'DEGRADED_PARSE', message: '模型输出未能解析为可执行动作', session_id: _WIRE_SESSION, turn_id, hint: String(text == null ? '' : text).slice(0, 200) || undefined } }),
     // ── content lane：render 族（渲染语义·分层红线·不进 ACP）──
     onAskUser: (action, round) => bus.emit({ family: ACP_FAMILY.RENDER, kind: 'ask_user', action, round }),
     onResultStruct: (struct) => bus.emit({ family: ACP_FAMILY.RENDER, kind: 'result.struct', struct }),

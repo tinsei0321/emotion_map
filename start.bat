@@ -1,6 +1,13 @@
 @echo off
 cd /d "%~dp0"
 
+REM ---- SHELL2(FIX) FIX-07: dsh engine dependency note ----
+REM The EMC dsh engine (?engine=dsh in the chat panel) calls dsh headless, whose
+REM emc-test profile consumes EMC tools via MCP over HTTP at http://127.0.0.1:8600/mcp.
+REM Without 8600 running, dsh degrades to tool-less pure QA (knowledge answers only,
+REM no map linkage). This launcher starts 8600 below BEFORE the web app, so the
+REM dependency is satisfied. Health check: netstat -ano | findstr ":8600.*LISTENING"
+
 REM ---- MCP server (port 8600) ----
 netstat -ano | findstr ":8600.*LISTENING" >nul 2>&1
 if %errorlevel%==0 (
