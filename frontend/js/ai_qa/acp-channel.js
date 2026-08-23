@@ -50,7 +50,8 @@ export function createAcpChannel() {
     // ── process lane：tool.begin/end（工具条目起止·v1.1 §5-2 载荷结构模式由消费方解）──
     onThought: (thought, round) => emit({ family: ACP_FAMILY.TOOL_BEGIN, sub: 'thought', thought, round }),
     onAction: (action, round) => emit({ family: ACP_FAMILY.TOOL_BEGIN, sub: 'call', name: action && action.name, params: (action && action.params) || {}, action, round }),   // action 全量随行（trace 保真·type 字段不丢）
-    onObservation: (observation, round) => emit({ family: ACP_FAMILY.TOOL_END, observation, round }),
+    // S5：第三参 followup_cues（可选·契约 v1.1 §5-3 tool.end 载荷）——legacy 两参签名不变·S4 引擎发射层透传
+    onObservation: (observation, round, followup_cues) => emit({ family: ACP_FAMILY.TOOL_END, observation, round, followup_cues }),
     // ── process lane：turn 生命周期（四动词 step/seal·diagnose 归 step 相位）──
     onDiagnose: (card) => emit({ family: ACP_FAMILY.TURN, verb: 'step', phase: 'diagnose', card }),
     onRoundStart: (round) => emit({ family: ACP_FAMILY.TURN, verb: 'step', phase: 'round.start', round }),

@@ -1,6 +1,7 @@
 // ═══ panel.js — AI 问答 UI（底部滑出 · agent loop · 历史持久化 · 思考深度开关 · 动态状态）═══
 import { orchestrate, getTemplateStats } from './harness.js';
 import { createAcpChannel, ACP_FAMILY } from './acp-channel.js';   // S3：壳对话框架事件化（hooks→ACP bus）
+import { isAcpMockOn, runAcpMockPeer } from './acp-mock-peer.js';   // S3 主体：mock 对端（S4 后端未到·?acp-mock=1 启用·默认零副作用）
 import { buildContext, buildOptimizeContext, TOOLS, resetStepResults, resetCurrentResults, cleanupConsumedResults, getFig } from './tools.js';
 import { initCpdState, subscribe, getCurStepIdx, CPD_STEPS, relayoutFloats } from './cpd-state.js';
 import { initCpdGuide, recomputeGuidance, refreshGuidance, suppressGuidance } from './cpd-guide.js';   // CPD：引导引擎（依赖注入，零反向 import）
@@ -738,6 +739,16 @@ function renderSuggest(t) {
   const el = document.getElementById('aiq-suggest');
   if (!el) return;
   _guidanceCardShown = false;   // 答案后 胶囊/_followUps 接管，清引导卡片标志
+  // S5 追问建议（契约 v1.1 §5-3）：tool.end 确定性 followup_cues 最优先——真实追问线索 > LLM 胶囊 > 静态兜底。
+  //   交互 = 点击回填输入框（不直发·用户确认/编辑后自发送·导游不代决定）；ask 轮选项已在答案区·底部不重复。
+  const _cues = (t && t.exit !== 'ask' && Array.isArray(t.followupCues)) ? t.followupCues : [];
+  if (_cues.length) {
+    el.hidden = false;
+    el.innerHTML = '<span class="aiq-suggest-label">追问建议</span>'
+      + _cues.map((c) => `<button type="button" class="aiq-suggest-chip" data-followup-cue="1">${escapeHtml(c)}</button>`).join('');
+    el.querySelectorAll('.aiq-suggest-chip').forEach((b) => b.addEventListener('click', () => _fillInput(b.textContent)));
+    return;
+  }
   // CB-09 D020：优先动态胶囊（LLM 产·trace.defense.capsules·{label,level,skill,params}）·无则静态 _followUps 兜底（gap/ask/general）
   const capsules = (t && t.defense && Array.isArray(t.defense.capsules)) ? t.defense.capsules : [];
   let chipHtml;
@@ -1536,6 +1547,11 @@ function buildHooks(shell) {
     { const obs = e.observation, round = e.round;
       renderToolCard(shell.stepsEl, round, null, null, obs);
       if (_curTrace && _curTrace.steps.length) _curTrace.steps[_curTrace.steps.length - 1].observation = obs;
+      // S5 追问 chips：tool.end 载荷 followup_cues（契约 v1.1 §5-3·过程通道·确定性追问线索·零 LLM）
+      //   → 存 trace·答案完毕后 renderSuggest 优先渲染为「追问建议」条（点击回填输入框·不直发）。
+      if (Array.isArray(e.followup_cues) && e.followup_cues.length && _curTrace) {
+        _curTrace.followupCues = e.followup_cues.map((c) => String(c).trim()).filter(Boolean).slice(0, 3);
+      }
       setPhase('思考');   // Feature 3：工具结果属"思考"阶段（原"检索"并入思考·检索非独立步骤）
       const _lc = (() => { try { return document.querySelectorAll('#layer-list .layer-row').length - _layerBase; } catch (_) { return 0; } })();
       const _t = dockEl() && dockEl().querySelector('.aiq-thinking-text');   // E2：dock 显"已生成 N 层"（增量落图·图在长感知）
@@ -1732,7 +1748,16 @@ async function send(text, capsule) {
   }
   let settled = false;
   try {
-    const _result = await orchestrate(ctx, buildHooks(shell));
+    // S3 主体：mock 对端分支——仍走 buildHooks 接渲染订阅（bus 在其闭包内创建），
+    // 但不经 orchestrate/emitter，由 mock 对端按 wire schema 造事件直注 shell._acp.bus
+    // （远端引擎形态预演·壳渲染零改动；正常链路 orchestrate 零改动·eval-anchor 不碰）。
+    let _result;
+    if (isAcpMockOn()) {
+      buildHooks(shell);
+      _result = await runAcpMockPeer(shell._acp, ctx);
+    } else {
+      _result = await orchestrate(ctx, buildHooks(shell));
+    }
     settled = true;
     if (_curTrace && _result) { _curTrace.exit = _result.exit || _curTrace.exit; _curTrace.newLayerCount = _result.newLayerCount; if (_result.defense) _curTrace.defense = _result.defense; }
     // CB-22d P0-0-4：quick-rag 轮知识问答标记——orchestrate 返回的 diagnose 含 rag:true（_assembleKnowledgeQA）

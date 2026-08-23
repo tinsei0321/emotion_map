@@ -72,3 +72,12 @@ rank_bm25==0.2.2      # RAG 混合检索 BM25 侧（PT-CB9 泳道②·纯 Python
 
 # ── ACP schema 校验（壳阶段 S6·2026-08-23）──
 jsonschema>=4.0      # tests/acp_schema JSON Schema 校验桩（draft 2020-12·双机重建声明·本机已装 4.26）
+
+# ── 浏览器 E2E（tests/browser/·壳阶段 S7·2026-08-23 新增）──
+playwright>=1.61.0   # E2E 冒烟（sync API 直跑·非 pytest 插件）；office 到岗补装 = pip install playwright + playwright install chromium
+
+# ── 双机环境差异注记（office 到岗补装清单·2026-08-23 刷新）──
+# home（家机·本机）：py3.14 全量可跑·pytest 517+2；jsonschema 4.26 已装（S6 校验桩）；rank_bm25 混合检索已实测通过（PT-CB9 泳道②）
+# office：pytest 515+4（pypinyin 可选依赖差异·Qoder F-04 已注记·可选不影响主链路）；
+#   到岗补装待办 = mcp>=1.0.0,<2.0.0（08-20 四件套·若仍未装）/ sentence-transformers（RAG 检索验证·N3 销项）
+#     / jsonschema>=4.0（S6 校验桩）/ playwright+chromium（S7 E2E）/ rank_bm25 Py3.14 兼容性核验

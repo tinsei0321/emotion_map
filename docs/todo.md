@@ -9,6 +9,16 @@
 
 ---
 
+## 📅 2026-08-23（claude·壳阶段简单件批量 SHELL(C)）
+
+### ✅ S5 追问 chips + S7 E2E 冒烟骨架 + git 对象库体检 + requirements 注记
+
+- **S5 追问 chips**：`panel.js` tool.end `followup_cues`（契约 v1.1 §5-3 过程通道）→ 答案后「追问建议」条最优先渲染·**点击回填输入框不直发**；emitter 加可选第三参（S4 引擎透传位）+ mock 对端携 cues（?acp-mock=1 可测）。分层守：cue=过程通道字段·chips=前端内容通道。
+- **S7 E2E 冒烟**：`tests/browser/test_shell_smoke.py` 三场景（壳对话闭环 ACP 全链 / S5 追问 chips 三断言 / C3 样式面板零退化）·`REAL_ENGINE_READY` 切换位（S4 收口置 True）·隔离栈 8090/8009——实测 **PASS**（零 pageerror·场景 2 顺带验 S5）。
+- **git 对象库体检**：事件后首次全量 fsck——broken link 1,636 全在 HEAD 可达历史（双分支实证）+ dangling 1,543 + idx-only 残件 18 + tmp_pack 残件 2×274MB——**清理清单落盘 `discuss/git对象库体检_bad-tree清理清单_claude-2026-08-23.md` 报主手·零 prune/repack 实操**（关键点：fetch 不自动补·先清 idx 残件再 fetch）。
+- **requirements.txt**：+playwright>=1.61.0（S7 新依赖）+ 双机差异注记块（office 到岗补装清单：mcp/sentence-transformers/jsonschema/playwright+chromium/rank_bm25 核验）。
+- 待办：S4 收口后 `REAL_ENGINE_READY=True` 复跑 S7；git 清理清单待主手裁决（月度独占窗口）。
+
 ## 📅 2026-08-22~23（zcode·RAG 重建全流程 + Harness 架构裁定 + 多组协同）
 
 ### ✅ PT-CB13 进度契约（Codex·收口）
