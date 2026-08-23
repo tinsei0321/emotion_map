@@ -127,6 +127,7 @@
 
 - **rc.8 之后**：仓外插件构建必须走登记 stub（packages/emc/emc-entry）+ 独立 tsdown；client 插件必须导出 `inject`；merge 上游后必须 `build:web`；web profile 禁裸 npm install（R13·08-21 重编号）。
 - dsh 相关文件在仓外（`D:/Github/dsh-emc-entry/` + `~/.dsh/profiles/web/`），不入本仓 git。
+- **home 机 dsh 开机自启已取消**（08-23 用户指令）：删 HKCU Run `DSH Web UI`（guardian 看门狗）+ 移走启动文件夹 `DeepSeek Harness.lnk`（Edge 弹 3080 窗口）；备份在 `C:\Users\Hi\dsh-launcher\disabled-autostart-20260820\`（lnk + hkcu-run-backup.reg，导入 .reg + lnk 移回 Startup 可恢复）。**到岗后 3080 不会自动起**，需手动：`cd D:\Github\dsh && node --import tsx/esm apps/cli/src/bin.ts web`（真实控制台窗口，勿后台/沙箱起，R16）。
 - debug-memory 撞号已清（E2 合并双 R11 + Codex 08-21 修残留双 R12·重编号 R13-R16·详见避坑沉淀报告）。
 
 ---
