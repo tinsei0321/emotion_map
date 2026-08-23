@@ -11,8 +11,27 @@ if %errorlevel%==0 (
     echo [OK] MCP server starting in background
 )
 
+REM ---- wait for MCP (8600) ready ----
+REM 时序坑修复(08-23)：dsh web 的 mcp-emc 插件 failOnStartupError=true，8600 未监听就起 3080
+REM 会 ECONNREFUSED 崩掉（PT-CB11 段竞态：spawn 8600 后立即起 dsh web，而 MCP 预热 15-30s 含 RAG 模型加载）。
+REM 轮询等待 8600 LISTENING，最多 40s；超时警告后继续（dsh web 若仍崩，等 MCP 起来后重跑 start.bat 即可）。
+set /a _mcp_wait=0
+:MCP_WAIT
+netstat -ano | findstr ":8600.*LISTENING" >nul 2>&1
+if %errorlevel%==0 goto MCP_READY
+set /a _mcp_wait+=1
+if %_mcp_wait% GEQ 40 (
+    echo [WARN] MCP 8600 not ready after 40s - starting dsh web anyway ^(may crash, rerun start.bat after MCP is up^)
+    goto DSH_CHECK
+)
+ping -n 2 127.0.0.1 >nul 2>&1
+goto MCP_WAIT
+:MCP_READY
+if %_mcp_wait% GTR 0 echo [OK] MCP server ready on 8600 ^(waited %_mcp_wait%s^)
+
 REM ---- dsh web (port 3080) from EMCxDSH workspace ----
 REM PT-CB11 修复(08-22)：本段原在 serve.py(前台阻塞)之后=永不执行；移到前面·并把 MCP 段的 goto 改 if/else 防 skipped
+:DSH_CHECK
 netstat -ano | findstr ":3080.*LISTENING" >nul 2>&1
 if %errorlevel%==0 (
     echo [OK] dsh web already running ^(3080^)
