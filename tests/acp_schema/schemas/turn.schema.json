@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emc.local/acp/v1/turn.schema.json",
+  "$comment": "ACP v1 状态对象（契约 §三·最小字段）·壳阶段 S6 校验器权威文件。版本注记位：v1.1（S2 未定稿）待补=provenance 相关字段面·按 tests/acp_schema/README.md 版本登记表补。",
+  "title": "ACP turn · 轮状态对象（thinking|acting|sealing|done）",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "session_id", "status"],
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "session_id": {"type": "string", "minLength": 1},
+    "intent": {"type": "string", "description": "意图（可选·diagnose 语义）"},
+    "status": {"type": "string", "enum": ["thinking", "acting", "sealing", "done"]}
+  }
+}

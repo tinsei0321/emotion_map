@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emc.local/acp/v1/session.schema.json",
+  "$comment": "ACP v1 状态对象（契约 §三·最小字段）·壳阶段 S6 校验器权威文件。版本注记位：v1.1（S2 未定稿）待补=provenance 相关字段面·按 tests/acp_schema/README.md 版本登记表补。",
+  "title": "ACP session · 会话状态对象（open|sealed|closed）",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "opened_at", "status"],
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "topic": {"type": "string", "description": "会话主题（可选）"},
+    "opened_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+      "description": "RFC3339 时点（format 供元数据·pattern 硬校验——jsonschema 的 format 检查依赖可选包·不可靠故双保险）"
+    },
+    "status": {"type": "string", "enum": ["open", "sealed", "closed"]}
+  }
+}

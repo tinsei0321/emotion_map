@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emc.local/acp/v1/error.schema.json",
+  "$comment": "ACP v1 骨架（契约 §二·每错误粒度）·壳阶段 S6 校验器权威文件。版本注记位：v1.1（S2 未定稿）待补=provenance 字段面·按 tests/acp_schema/README.md 版本登记表补。",
+  "title": "ACP error · 错误（语义化错误码+hint·ok:False+hint 惯例升级）",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["code", "message", "session_id"],
+  "properties": {
+    "code": {"type": "string", "minLength": 1, "description": "语义化错误码"},
+    "message": {"type": "string", "minLength": 1},
+    "hint": {"type": "string", "description": "恢复指引（可选）"},
+    "session_id": {"type": "string", "minLength": 1},
+    "turn_id": {"type": "string", "minLength": 1, "description": "轮级错误时附（可选）"},
+    "toolcall_id": {"type": "string", "minLength": 1, "description": "工具级错误时附（可选）"}
+  }
+}

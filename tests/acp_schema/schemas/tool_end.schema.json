@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emc.local/acp/v1/tool_end.schema.json",
+  "$comment": "ACP v1 骨架（契约 §二·果摘要→口径标签）·壳阶段 S6 校验器权威文件。版本注记位：v1.1（S2 未定稿）载荷结构模式——载荷改为「工具特定摘要对象+必带 caliber 摘要(scale/refs)·按工具注册（沿 ai_qa/tool_contracts.py 单一权威源模式）」+followup_cue 载荷字段（过程通道·渲染语义归前端内容通道）——S2 落地后按 tests/acp_schema/README.md 版本登记表补 schema 增量。",
+  "title": "ACP tool.end · 工具条目结束（果摘要/口径标签）",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["toolcall_id", "verb", "session_id", "turn_id"],
+  "properties": {
+    "toolcall_id": {"type": "string", "minLength": 1},
+    "verb": {"type": "string", "minLength": 1, "description": "MCP 工具名（工具面归 MCP 不归 ACP）"},
+    "session_id": {"type": "string", "minLength": 1},
+    "turn_id": {"type": "string", "minLength": 1},
+    "result_summary": {"type": "string", "description": "果摘要（可选）"},
+    "caliber": {
+      "type": "object",
+      "description": "口径标签摘要（scale/refs·内层允许工具特定增补·v1.1 载荷结构模式收紧为必带）",
+      "additionalProperties": true,
+      "required": ["refs"],
+      "properties": {
+        "scale": {"type": "string"},
+        "refs": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+      }
+    }
+  }
+}

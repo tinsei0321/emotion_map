@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emc.local/acp/v1/msg_delta.schema.json",
+  "$comment": "ACP v1 骨架（契约 docs/acp-contract-v1.md §二）·壳阶段 S6 校验器权威文件。版本注记位：v1.1（S2 未定稿）待补增量=provenance('real'|'synthesized'·缺省 real·降级形态诚实性标记)+kind 子类型细化——S2 落地后按 tests/acp_schema/README.md 版本登记表补 schema 增量·不修本文件历史语义。",
+  "title": "ACP msg.delta · 消息增量（正文/思考链分 kind·粒度下限逐 token）",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "delta", "session_id", "turn_id"],
+  "properties": {
+    "kind": {"type": "string", "enum": ["reason", "content"]},
+    "delta": {"type": "string", "minLength": 1},
+    "session_id": {"type": "string", "minLength": 1},
+    "turn_id": {"type": "string", "minLength": 1},
+    "seq": {"type": "integer", "minimum": 0, "description": "逐 token 序号（可选）"}
+  }
+}

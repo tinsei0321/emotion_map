@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emc.local/acp/v1/approval_req.schema.json",
+  "$comment": "ACP v1 骨架（契约 §二·写面操作放行·EMC 工具全只读·可选族）·壳阶段 S6 校验器权威文件。版本注记位：v1.1 接线注记（S2）——壳阶段轻循环默认全放行·首个真实消费者=RAG 支柱二 kb_inbox 写入（三级审批）——接线点落地后按 tests/acp_schema/README.md 版本登记表补 schema 增量。",
+  "title": "ACP approval.req · 审批请求（写面操作放行）",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "action", "session_id"],
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "action": {"type": "string", "minLength": 1, "description": "待放行的写面操作（如 kb_inbox 写入）"},
+    "session_id": {"type": "string", "minLength": 1},
+    "turn_id": {"type": "string", "minLength": 1},
+    "toolcall_id": {"type": "string", "minLength": 1},
+    "reason": {"type": "string", "description": "放行理由/影响面说明（可选）"}
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emc.local/acp/v1/tool_begin.schema.json",
+  "$comment": "ACP v1 骨架（契约 §二·工具条目起止·每次调用粒度）·壳阶段 S6 校验器权威文件。版本注记位：v1.1（S2 未定稿）待补=provenance 字段面·按 tests/acp_schema/README.md 版本登记表补。",
+  "title": "ACP tool.begin · 工具条目开始（名/参摘要）",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["toolcall_id", "verb", "session_id", "turn_id"],
+  "properties": {
+    "toolcall_id": {"type": "string", "minLength": 1},
+    "verb": {"type": "string", "minLength": 1, "description": "MCP 工具名（工具面归 MCP 不归 ACP·契约红线）"},
+    "session_id": {"type": "string", "minLength": 1},
+    "turn_id": {"type": "string", "minLength": 1},
+    "params_summary": {"type": "string", "description": "参数摘要（可选·不携完整敏感参数）"}
+  }
+}
