@@ -1,5 +1,6 @@
 // ═══ panel.js — AI 问答 UI（底部滑出 · agent loop · 历史持久化 · 思考深度开关 · 动态状态）═══
 import { orchestrate, getTemplateStats } from './harness.js';
+import { createAcpChannel, ACP_FAMILY } from './acp-channel.js';   // S3：壳对话框架事件化（hooks→ACP bus）
 import { buildContext, buildOptimizeContext, TOOLS, resetStepResults, resetCurrentResults, cleanupConsumedResults, getFig } from './tools.js';
 import { initCpdState, subscribe, getCurStepIdx, CPD_STEPS, relayoutFloats } from './cpd-state.js';
 import { initCpdGuide, recomputeGuidance, refreshGuidance, suppressGuidance } from './cpd-guide.js';   // CPD：引导引擎（依赖注入，零反向 import）
@@ -1450,8 +1451,13 @@ function buildHooks(shell) {
     }
   }
 
-  return {
-    onDiagnose: (card) => {
+  // ── S3 事件化：hooks 回调面 → ACP bus 订阅（渲染器注册于本闭包·状态共享；emitter 保持 legacy 签名·harness 零改动）──
+  const _acp = createAcpChannel();
+  shell._acp = _acp;   // S7 E2E/BrainAdapter 注入点预留（远端引擎未来直注事件·壳渲染零改动）
+  const _bus = _acp.bus;
+
+  _bus.on(ACP_FAMILY.TURN, (e) => {
+    if (e.phase === 'diagnose') { const card = e.card;
       if (_curTrace) _curTrace.diagnose = card;
       // H1 信号源：派发 diagnose 卡可观测面，飞轮/调试工具据此抓 template（生产零副作用·无人听则空转）。
       // 替代「抓 /chat 请求体」——diagnose 是后端响应产物，请求体（ChatRequest）本无此字段。
@@ -1459,13 +1465,14 @@ function buildHooks(shell) {
       renderDiagnoseCard(shell.diagnoseEl, card);
       _markReasonDone();   // Feature 2：理解节点完成（灰·折叠）·FC 推理告一段落
       if (card && !card.degraded) setPhase('思考');
-    },
-    onRoundStart: (round) => {
+    } else if (e.phase === 'round.start') { const round = e.round;
       if (isFlash) return;
       _ensureReasonStarted();
       ensureSeg(round);
-    },
-    onReason: (tok, round) => {
+    }
+  });
+  _bus.on(ACP_FAMILY.MSG_DELTA, (e) => {
+    if (e.kind === 'reason') { const tok = e.token, round = e.round;
       // Hotfix R2 S6：去 isFlash 门——Flash 默认下也渲染 reason（逐 token RAF drain）。
       // Feature 2：首 token（经 _ensureReasonStarted 幂等）启动读秒 + 头显"正在推理…"。
       _ensureReasonStarted();
@@ -1482,22 +1489,24 @@ function buildHooks(shell) {
         flushReasonSegs();
         autoScroll();
       });
-    },
-    onRound: () => {},
-    onThought: (thought, round) => {
+    }
+  });
+  _bus.on(ACP_FAMILY.TOOL_BEGIN, (e) => {
+    if (e.sub === 'thought') { const thought = e.thought, round = e.round;
       shell.stepsEl.hidden = false;
       renderToolCard(shell.stepsEl, round, thought, null, null);
       if (_curTrace) _curTrace.steps.push({ round, thought, action: null, observation: null });
       setPhase('思考');
       autoScroll();
-    },
-    onAction: (action, round) => {
+    } else { const action = e.action, round = e.round;
       renderToolCard(shell.stepsEl, round, null, action, null);
       if (_curTrace && _curTrace.steps.length) _curTrace.steps[_curTrace.steps.length - 1].action = action;
       const _cn = action && _TOOL_CN[action.name];   // E2：dock 显"正在执行·CN"（治 C9 跑到哪）
       if (_cn) { const _t = dockEl() && dockEl().querySelector('.aiq-thinking-text'); if (_t) _t.textContent = `正在执行·${_cn}…`; }
-    },
-    onAskUser: (action, round) => {
+    }
+  });
+  _bus.on(ACP_FAMILY.RENDER, (e) => {
+    if (e.kind === 'ask_user') { const action = e.action, round = e.round;
       // P1 主动问澄清：步骤卡显"问澄清"+问题摘要；答案区渲染问题 + 选项胶囊（复用 aiq-suggest-chip）；用户点选项 → send 续作。
       cancelStream();
       stopThinking();
@@ -1521,8 +1530,10 @@ function buildHooks(shell) {
       shell._finalMd = q;
       finalizeReason();
       autoScroll();
-    },
-    onObservation: (obs, round) => {
+    }
+  });
+  _bus.on(ACP_FAMILY.TOOL_END, (e) => {
+    { const obs = e.observation, round = e.round;
       renderToolCard(shell.stepsEl, round, null, null, obs);
       if (_curTrace && _curTrace.steps.length) _curTrace.steps[_curTrace.steps.length - 1].observation = obs;
       setPhase('思考');   // Feature 3：工具结果属"思考"阶段（原"检索"并入思考·检索非独立步骤）
@@ -1530,19 +1541,25 @@ function buildHooks(shell) {
       const _t = dockEl() && dockEl().querySelector('.aiq-thinking-text');   // E2：dock 显"已生成 N 层"（增量落图·图在长感知）
       if (_t) _t.textContent = _lc > 0 ? `已生成 ${_lc} 层·继续…` : '整合结果中…';
       autoScroll();
-    },
-    onFinal: (tok) => {
+    }
+  });
+  _bus.on(ACP_FAMILY.MSG_DELTA, (e) => {
+    if (e.kind === 'content') { const tok = e.token;
       if (!streamAcc) { _markReasonDone(); _setFinalState('streaming'); }   // Feature 2：首 token→理解节点完成 + 生成节点激活（绿脉动流式）
       setPhase('生成');
       streamAcc += tok;
       if (_curTrace) _curTrace.final = streamAcc;
       if (!streamRaf) streamRaf = requestAnimationFrame(drainStream);
-    },
-    // 出口三段式 P0：结果结构化（harness 确定性组装·先于 onFinalDone 派发·onFinalDone 统一渲染）
-    onResultStruct: (struct) => {
+    }
+  });
+  // 出口三段式 P0：结果结构化（harness 确定性组装·先于 seal 派发·seal 统一渲染）
+  _bus.on(ACP_FAMILY.RENDER, (e) => {
+    if (e.kind === 'result.struct') { const struct = e.struct;
       _pendingStruct = struct || null;
-    },
-    onFinalDone: (text) => {
+    }
+  });
+  _bus.on(ACP_FAMILY.TURN, (e) => {
+    if (e.verb === 'seal') { const text = e.text;
       cancelStream();
       streamAcc = text || '';
       stopThinking();
@@ -1568,22 +1585,28 @@ function buildHooks(shell) {
       _setFinalState('done');   // Feature 2：生成节点完成（灰）
       if (_curTrace) _curTrace.final = text;
       shell._finalMd = text;   // 供页脚「复制回答」取最终 markdown
-      // CB-09 D024：onFinalDone 即完成（defense 不显 UI·renderReview 永隐）；history 在 send 末尾统一持久化
-    },
-    // CB-16 Wave 0/3：出口卡片（结果范式 agent·第三段）·确定性 JSON → 纯模板渲染（Wave 3 多卡循环）
-    onOutletCard: (cards) => {
+      // CB-09 D024：seal 即完成（defense 不显 UI·renderReview 永隐）；history 在 send 末尾统一持久化
+    }
+  });
+  // CB-16 Wave 0/3：出口卡片（结果范式 agent·第三段）·确定性 JSON → 纯模板渲染（Wave 3 多卡循环）
+  _bus.on(ACP_FAMILY.RENDER, (e) => {
+    if (e.kind === 'outlet.card') { const cards = e.cards;
       if (!cards) return;
       const list = Array.isArray(cards) ? cards : [cards];   // 兼容单卡（旧端点 d.card）
       if (!list.length) return;
       if (_curTrace) _curTrace.outlet_card = list;
       for (const c of list) { try { renderOutletCard(c); } catch (_) { /* 渲染失败不阻塞 */ } }
-    },
-    // CB-09 D024：质量防线结果（取代旧 onReview）·供 episode 自成长·不显 UI（renderReview 永隐）
-    onDefense: (defense) => {
+    }
+  });
+  // CB-09 D024：质量防线结果（取代旧 onReview）·供 episode 自成长·不显 UI（renderReview 永隐）
+  _bus.on(ACP_FAMILY.RENDER, (e) => {
+    if (e.kind === 'defense') { const defense = e.defense;
       if (_curTrace) _curTrace.defense = defense;
       renderReview(shell.reviewEl);
-    },
-    onDegraded: (_text) => {
+    }
+  });
+  _bus.on(ACP_FAMILY.ERROR, (e) => {
+    if (e.kind !== 'degraded') return;
       cancelStream();
       stopThinking();
       // 永不裸输原始 token（根治代码块/计划文泄漏）：固定降级卡，忽略传入的 raw 文本
@@ -1593,8 +1616,8 @@ function buildHooks(shell) {
       if (_curTrace) { _curTrace.exit = 'gap'; _curTrace.final = _degradedText; }
       shell._finalMd = _degradedText;
       finalizeReason();   // 降级前已流式的思考也结构化（无思考内容则藏 reason 块）
-    },
-  };
+  });
+  return _acp.emitter;
 }
 
 /** 蒸馏单个 assistant trace → 一轮上下文摘要（intent/method/已做/缺口/strategy）。 */
