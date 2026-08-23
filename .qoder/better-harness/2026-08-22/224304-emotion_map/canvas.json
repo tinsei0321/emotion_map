@@ -1,0 +1,71 @@
+{
+  "kind": "better-harness.report",
+  "version": 1,
+  "meta": {
+    "project": "emotion_map",
+    "title": "Harness 实践分析 — 情绪地图",
+    "analyzedAt": "2026-08-22 22:43",
+    "branch": "main",
+    "sources": [
+      "CLAUDE.md",
+      "AGENTS.md (v2.5)",
+      ".claude/settings.json + hooks/ (5 hooks)",
+      ".codex/config.toml + hooks.json",
+      ".mcp.json + docs/mcp-strategy.md",
+      ".agents/skills/ (44) + .claude/SKILLS_INDEX.md + skills-lock.json",
+      ".githooks/pre-commit",
+      "docs/debug-memory.md (R1-R19)",
+      "core/tracker.py (决策追踪)",
+      "MEMORY.md / memories/repo/ (三层记忆)"
+    ]
+  },
+  "sections": [
+    {
+      "id": "overview",
+      "title": "总览",
+      "type": "summary",
+      "items": [
+        "4 宿主并存：Claude Code (.claude) / Codex (.codex) / Qoder (.agents/skills) / dsh (.dsh-meow)，以 AGENTS.md 为跨工具统一行为规范。",
+        "成熟度判断：治理密度罕见地高——问题集中在配置漂移与指针断裂，而非实践缺失。",
+        "2 高危 / 3 中危 / 3 低危，共 8 项保留问题。"
+      ]
+    },
+    {
+      "id": "strengths",
+      "title": "亮点（可迁移的 Harness 实践）",
+      "type": "cards",
+      "items": [
+        { "id": "S1", "title": "三层记忆 + 渐进式披露", "detail": "明规则全量注入 / 隐规则按需 / 专项文档场景触发，上下文成本显式分层。" },
+        { "id": "S2", "title": "可观测性下沉 runtime", "detail": "tracker.py 决策追踪，bug 定位 O(n)→O(1)；harness 纪律与产品代码双向锚定。" },
+        { "id": "S3", "title": "失败飞轮三件套", "detail": "规则蒸馏 / bug 台账 / 轮次流水，互补不重复，有维护协议。" },
+        { "id": "S4", "title": "Hook 边界纪律", "detail": "毫秒级动作才进 hook；重启/pytest 显式留给人触发。" },
+        { "id": "S5", "title": "MCP 错层 + 降级链", "detail": "智谱优先，项目级只放专属 server，全局栈不重复。" },
+        { "id": "S6", "title": "Skills 主动治理", "detail": "464→~50 精简 + 黑名单 + 外部 skill hash 锁定。" },
+        { "id": "S7", "title": "双机同步完成定义", "detail": "commit+push 才算交付；仓外资产必须带配方；判据=另一机可无脑照做。" }
+      ]
+    },
+    {
+      "id": "findings",
+      "title": "保留问题",
+      "type": "findings",
+      "items": [
+        { "id": "F1", "severity": "high", "title": "记忆索引指向不存在的用户路径", "evidence": "MEMORY.md 指 C:\\Users\\admin\\...，本机用户为 Hi，第二层记忆静默断裂。", "fix": "改占位路径并入到岗体检。" },
+        { "id": "F2", "severity": "high", "title": "Codex hooks 硬编码绝对路径", "evidence": ".codex/hooks.json 硬编码 d:\\Github\\emotion_map\\...，违反自身全局规则五。", "fix": "相对路径或登记差异注记。" },
+        { "id": "F3", "severity": "medium", "title": "指令层双写漂移", "evidence": "铁律 11 条双写；Agent 数量口径 8 vs 9；版本节奏 v2.0 vs v2.5。", "fix": "收敛单一权威源 + 指针。" },
+        { "id": "F4", "severity": "medium", "title": "Skills 索引与实体脱节", "evidence": "索引列 ifly-*/daymade-*/agent-patterns-* 等，实际目录多数不存在。", "fix": "按实际目录/lock 文件刷新索引。" },
+        { "id": "F5", "severity": "medium", "title": "pre-commit 门禁无启用校验", "evidence": "hooksPath 依赖每机手动一次性配置，无体检核验。", "fix": "并入 SessionStart 自检。" },
+        { "id": "F6", "severity": "low", "title": "Hook 解释器混用", "evidence": "settings.json 中 python 与 py 混用，与 CLAUDE.md 口径不一。", "fix": "统一 py。" },
+        { "id": "F7", "severity": "low", "title": "角色卡片仍诱导运行时误读", "evidence": "『可调用』列与自动路由图和『非执行单元』声明张力未消（CB-01 前车之鉴）。", "fix": "列更名/移附录 + 图加标注。" },
+        { "id": "F8", "severity": "low", "title": "蒸馏触发器无机制兜底", "evidence": "『修≥2轮→当轮蒸馏』靠自觉，无 checklist/CI 校验。", "fix": "加轻量自检项。" }
+      ]
+    },
+    {
+      "id": "insight",
+      "title": "一句话洞察",
+      "type": "quote",
+      "items": [
+        "该项目最强的 Harness 创新不是配置文件，而是把『规则可验证』做到了三处闭环：runtime（tracker ID）、流程（CB 回应销号）、纪律（双机完成定义）——但它自己的文档指针和宿主配置还没被同样的闭环覆盖，修复方向是把 harness 自身也纳入其已经建立的自检机制。"
+      ]
+    }
+  ]
+}

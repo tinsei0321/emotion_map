@@ -1,0 +1,119 @@
+{
+  "project": "emotion_map",
+  "branch": "main (single-branch, direct-commit workflow)",
+  "analyzedAt": "2026-08-22T22:43:04+08:00",
+  "scope": "AI coding harness practices: multi-host configs (.claude/.codex/.agents/dsh), instruction layering, hooks, skills governance, MCP routing, memory system, decision-tracking infra, failure flywheel, dual-machine sync discipline",
+  "verdict": "Mature, unusually well-governed harness. Strengths: layered memory + progressive disclosure, runtime decision-tracking (tracker.py), failure distillation flywheel, explicit hook boundaries. Retained issues concentrate on config drift across hosts and index/pointer breakage rather than missing practices.",
+  "metrics": {
+    "harnessHosts": 4,
+    "hookTypes": 5,
+    "installedSkills": 44,
+    "lockedExternalSkills": 2,
+    "debugRules": "R1-R19",
+    "trackedModules": "13 instrumented + 9 planned",
+    "instructionDocs": { "CLAUDE.md": "354 lines", "AGENTS.md": "v2.5, 9-agent concept framework" }
+  },
+  "strengths": [
+    {
+      "id": "S1",
+      "title": "三层记忆体系 + 渐进式披露",
+      "detail": "CLAUDE.md 全量明规则 / AutoMemory 按需隐规则 / 专项参考文档按场景触发（brand-visual、api-conventions 等），上下文成本与规则覆盖显式分层。"
+    },
+    {
+      "id": "S2",
+      "title": "Harness 可观测性下沉到产品代码",
+      "detail": "core/tracker.py 决策追踪（@track/TrackContext + 运行时 ID 注册表），bug 定位从 O(n) 代码搜索降为 O(1) 决策 ID 跳转——把 harness 纪律锚定进 runtime，规则与代码双向绑定。"
+    },
+    {
+      "id": "S3",
+      "title": "失败飞轮三件套分工明确",
+      "detail": "debug-memory.md（按规则蒸馏 R1-R19）/ tests/buglog/（按条目台账）/ catch-ball cb-journal（按轮流水），互补不重复，且有明确维护协议与蒸馏触发器。"
+    },
+    {
+      "id": "S4",
+      "title": "Hook 边界纪律",
+      "detail": "耗时操作（重启服务、pytest）显式排除在 hook 外由人触发；hook 只做毫秒级动作（emoji 拦截 exit 2、pyc 缓存清理），防拖慢交互。"
+    },
+    {
+      "id": "S5",
+      "title": "MCP 错层配置 + 降级链",
+      "detail": "智谱优先路由（视觉/搜索/读仓各带备选链），项目级 .mcp.json 只放项目专属 server，用户全局栈不重复塞——错层边界有明文。"
+    },
+    {
+      "id": "S6",
+      "title": "Skills 主动治理",
+      "detail": "464 精简到 ~50，含黑名单清单；外部 skill 以 hash 锁定（skills-lock.json）；项目自有能力优先于 marketplace，防重复造轮子。"
+    },
+    {
+      "id": "S7",
+      "title": "双环境同步的完成定义",
+      "detail": "进 git 必须 commit+push 才算交付；仓外资产须产出复刻清单/配方模板；差异适配五分法（路径/盘符/版本/插件/配置结构），判据=『另一机可无脑照做』。"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "high",
+      "title": "记忆索引指向不存在的用户路径",
+      "evidence": "MEMORY.md 声明权威记忆树为 C:\\Users\\admin\\.claude\\projects\\d--Github-emotion-map\\memory\\MEMORY.md，但当前机器用户为 C:\\Users\\Hi——第二层 AutoMemory 索引静默断裂。",
+      "impact": "跨用户/跨机场景下第二层记忆整层失效，且无任何告警；与项目自身『记忆共享通则·防孤岛』规则冲突。",
+      "recommendation": "MEMORY.md 改为按当前用户推导的占位路径（如 %USERPROFILE%\\.claude\\projects\\...）或提供到岗体检脚本校验指针有效性。"
+    },
+    {
+      "id": "F2",
+      "severity": "high",
+      "title": "Codex hooks 硬编码绝对路径",
+      "evidence": ".codex/hooks.json 三条 hook 均硬编码 d:\\Github\\emotion_map\\...，直接违反项目自身『双环境差异适配·禁硬编码绝对路径与用户名』全局规则五。",
+      "impact": "换机（盘符/路径不同）即失效，且属『只在单机生效且无配方』项——按项目判据本身即未达完成定义。",
+      "recommendation": "改为相对路径（Codex 支持工作目录相对引用时优先）或在环境差异注记表中登记该差异点。"
+    },
+    {
+      "id": "F3",
+      "severity": "medium",
+      "title": "指令层双写漂移",
+      "evidence": "编码铁律 11 条在 CLAUDE.md 与 AGENTS.md 双写；Agent 数量口径不一（CLAUDE.md 写『8 Agent 自动编排』，AGENTS.md v2.5 为 9 Agent）；两文件版本节奏不同（v2.0 vs v2.5）。",
+      "impact": "规则改动需双处同步，漏改即产生权威源分叉——这正是项目自己反复强调要避免的『非单一权威源』问题。",
+      "recommendation": "铁律正文收敛到单一权威源（如 AGENTS.md），CLAUDE.md 只留指针；或建立 revision 联动检查。"
+    },
+    {
+      "id": "F4",
+      "severity": "medium",
+      "title": "SKILLS_INDEX.md 索引与实体脱节",
+      "evidence": "索引列出 ifly-*、byted-deepsearch、daymade-*、agent-patterns-*、documentation-plugin-* 等 skill，但 .agents/skills/ 实际 44 个目录中多数不存在（如 ifly-translate、deep-research、prompt-optimizer 均无实体）。",
+      "impact": "索引充当 skill 路由依据时会产生无效触发指引；『464→50 精简』的成果没有落到索引一致性上。",
+      "recommendation": "以 skills-lock.json/实际目录为准刷新索引，或注明『索引含未安装项·按需安装』。"
+    },
+    {
+      "id": "F5",
+      "severity": "medium",
+      "title": "pre-commit 门禁无启用校验",
+      "evidence": ".githooks/pre-commit 设计合理（离线、免依赖、失败阻断），但启用依赖每机一次性手动 git config core.hooksPath .githooks，项目无到岗体检脚本核验该配置。",
+      "impact": "双机纪律『有规则无验证』——某机忘配即测试门禁静默缺失，违背项目『判据可体检』精神。",
+      "recommendation": "将 hooksPath 检查并入 SessionStart hook 或到岗体检清单。"
+    },
+    {
+      "id": "F6",
+      "severity": "low",
+      "title": "Hook 解释器混用",
+      "evidence": "settings.json 中 SessionStart/SessionEnd 用 python 前缀，PreCompact/Pre/PostToolUse 用 py；CLAUDE.md 口径为『hook 命令用 py（Windows launcher）』。",
+      "impact": "在无 python 别名（仅 py launcher）的机器上前两条 hook 静默失效。",
+      "recommendation": "统一为 py。"
+    },
+    {
+      "id": "F7",
+      "severity": "low",
+      "title": "角色卡片结构仍诱导运行时误读",
+      "evidence": "AGENTS.md 已加『概念框架非运行时 spawn 机制』声明（CB-01 教训），但表格保留『可调用』列与三管线自动路由图，声明与结构张力未消。",
+      "impact": "第三方仍可能据表计算调用次数；对人类读者的认知负担也高（需先读懂免责声明再用表）。",
+      "recommendation": "『可调用』列更名或移入附录；路由图标注『逻辑流程·非进程拓扑』。"
+    },
+    {
+      "id": "F8",
+      "severity": "low",
+      "title": "蒸馏触发器靠自觉无机制兜底",
+      "evidence": "debug-memory 维护协议要求『修 ≥2 轮/症状迁移 → 当轮蒸馏新规则』，但无 checklist/CI/评审项强制校验。",
+      "impact": "飞轮转速依赖纪律，换工具或换人后协议易空转。",
+      "recommendation": "在 pre-commit 或 CB 回应规范中加一条轻量自检（本轮修复轮次 ≥2？是→蒸馏）。"
+    }
+  ]
+}
