@@ -224,6 +224,7 @@
 - **案例**：PT-CB9 L1/L2 合流（08-22）：Kimi 标注语义误读 + Codex 的 superseded 过滤/ctx_prefix 拼接读了 meta 里从未存在过的字段——两个正确件合流时互相暴露了对方的隐性假设。
 - **违反后果**：治理规则静默失效（字段填了没人读）或误杀现行答案（recall 大跌）；且因「各自单测都绿」极难发现——只有合流+全量重测才暴露。
 - **检查动作**：治理标注 PR 必附原文引句；契约函数上线后 grep 全仓直调底层实现的位置（旁路=违规）；双件合流时必跑「字段端到端存在性」断言（loader 填的字段在索引 meta 里真实出现）。
+- **追注（08-23·claude 发现）**：`gc.auto=0` **挡不住** `git maintenance` 后台任务（geometric-repack 照跑）——并发仓的 gc 预防须**双管齐下**：`git config gc.auto 0` + `git maintenance unregister`（后者是本机刚实锤的坑）。
 
 ## R25 · 多 Agent 并发仓的 git gc 是高危操作——死锁中断会连锁炸掉 refs+对象库（git 对象库损坏事件·2026-08-23）
 
