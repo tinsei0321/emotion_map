@@ -218,10 +218,30 @@ async function _initVersionBadge() {
     mapEl.appendChild(b);
   }
 
-  const KEY = 'emc_version_commit';
-  const prev = localStorage.getItem(KEY);
-  if (prev !== info.commit) {
-    if (prev !== null && !document.getElementById('emc-version-banner')) {
+  // A-4c 修订(08-23)：原实现加载期比对 localStorage——「上次访问后服务换过版本」即弹横幅。
+  // 但页面经 no-cache 服务加载，拿到的本就是当前代码，横幅属误报（start.bat 自动开页必弹）。
+  // 「服务已更新·需硬刷新」只在标签页长开、服务在页面之下换了版本时才真成立——
+  // 改为：加载时静默记录；运行期每 30s + 标签页重新可见时复检，commit 真变了才弹（此时刷新是刚需）。
+  let lastCommit = info.commit;
+  try { localStorage.setItem('emc_version_commit', info.commit); } catch (e) { /* 无 localStorage 环境静默 */ }
+
+  async function _recheckVersion() {
+    let cur;
+    try {
+      const r = await fetch('/api/v1/version', { cache: 'no-store' });
+      cur = await r.json();
+    } catch (err) {
+      return;   // 服务重启窗口期——静默，下轮再查
+    }
+    if (!cur || !cur.commit || cur.commit === lastCommit) return;
+    lastCommit = cur.commit;
+    try { localStorage.setItem('emc_version_commit', cur.commit); } catch (e) {}
+    const badge = document.getElementById('emc-version-badge');
+    if (badge) {
+      badge.textContent = `v${String(cur.commit).slice(0, 7)}`;
+      badge.title = `commit ${cur.commit} · 分支 ${cur.branch || '?'} · 启动 ${cur.startup || '?'}`;
+    }
+    if (!document.getElementById('emc-version-banner')) {
       const bar = document.createElement('div');
       bar.id = 'emc-version-banner';
       bar.textContent = '服务已更新·建议硬刷新（Ctrl+Shift+R）';
@@ -231,8 +251,12 @@ async function _initVersionBadge() {
       bar.addEventListener('click', () => bar.remove());
       document.body.appendChild(bar);
     }
-    localStorage.setItem(KEY, info.commit);
   }
+
+  setInterval(_recheckVersion, 30000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void _recheckVersion();
+  });
 }
 
 _initVersionBadge();
