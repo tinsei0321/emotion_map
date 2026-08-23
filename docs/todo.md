@@ -19,6 +19,12 @@
 - **requirements.txt**：+playwright>=1.61.0（S7 新依赖）+ 双机差异注记块（office 到岗补装清单：mcp/sentence-transformers/jsonschema/playwright+chromium/rank_bm25 核验）。
 - 待办：S4 收口后 `REAL_ENGINE_READY=True` 复跑 S7；git 清理清单待主手裁决（月度独占窗口）。
 
+### ✅ SHELL(S8) 壳架构知识卡（zcode 派发·纯 docs 收官件）
+
+- **产出**：`docs/shell-architecture.md` 一页卡五段——白话摘要（医院比喻·三保障）/ 四层 ASCII 架构图 / 三保障实现指针（brain-adapter.md·acp-channel.js·acp-contract-v1.md）/ 五红线照抄+现状注记 / 垂域切换位（→vertical-profile.md）；卡内声明**不入 RAG 语料**（PT-CB9 收敛裁定）。
+- **验证**：全量 pytest **554 passed+2 skipped**（总数 556 与基线持平·passed+2·不降）；零代码改动。
+- 执行记录：`discuss/SHELL-S8执行记录_claude-2026-08-23.md`。壳阶段 S1-S8 主体完成·S9 待 zcode 排期。
+
 ## 📅 2026-08-22~23（zcode·RAG 重建全流程 + Harness 架构裁定 + 多组协同）
 
 ### ✅ PT-CB13 进度契约（Codex·收口）
