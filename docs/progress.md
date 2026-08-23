@@ -1,12 +1,12 @@
 # EMC 进度（人读版）
 
-> 数据源 `_board.yaml`·确定性生成（`py tools/gen_progress.py`）·generated from 7ee8a25。
+> 数据源 `_board.yaml`·确定性生成（`py tools/gen_progress.py`）·generated from d3be02b。
 
 ## 待用户（唯一要盯的）
 
-1. 您的验收窗口 T1-T5（30-45 分钟·清单就绪）——测完即现行链路合格·体检医生专题可开
-2. 壳阶段实施中（Qoder S4→Kimi S3 主体→claude 短包·含 git 清理）
-3. office 到岗：git fsck 体检（R25）+双机基线复测
+1. 明日 office 验收（T1-T7 全套·~45 分钟·清单 docs/catch-ball/用户复测滚动清单.md）——测完即现行链路合格·体检医生专题开门
+2. RAG 支柱二实施（kb_inbox 代码+SOP 执行·SOP 文档已就位）
+3. office 到岗三件：git fsck 体检(R25)+环境配齐(requirements 注记)+双机基线
 
 ## 阶段进度
 

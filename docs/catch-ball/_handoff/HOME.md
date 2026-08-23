@@ -1,7 +1,25 @@
 # 家里 · 工作交接卡
 
 > **位置**：家 | **最后更新**：2026-08-23 16:54（**收工·壳阶段开建+RAG 双支柱**·zcode 纯编排角色） | **同步**：分支 `EMC_harness_dsh`（已 push·git 事件已恢复）。
-> **续点第一读**：本卡 §最新收工快照 → 台账 R68 → docs/progress-report-plain.md（白话全景）。
+> **续点第一读**：本卡 §最新收工快照 → docs/catch-ball/用户复测滚动清单.md（T1-T7·明日验收全套）。
+
+---
+
+## 最新收工快照（08-23 深夜·壳二期完成）
+
+### 里程碑：EMC 一个窗口·三个引擎·可切换
+- **壳 S1-S9 全完成** + **BrainAdapter dsh 适配器跑通**（?engine=dsh 首次端到端七断言全绿）
+- **知识管线 SOP 落盘**（三级审批+kb_inbox+事实级查重）
+- 引擎三态：`?engine=light`（默认·轻量）| `?engine=dsh`（dsh headless）| `?engine=mock`（测试）
+- F_041 注册（api 层首例·格式合规）
+- 门禁 557 绿·RAG 96.7% 零退化
+
+### 明日 office 按序
+1. `git fsck --no-progress | head` 体检（R25·3 秒）
+2. 环境配齐（requirements 注记 office 补装清单·含 jsonschema/playwright）
+3. `python -m pytest tests/ -q` 全量基线确认
+4. **T1-T7 验收测试**（~45 分钟·走 3080 + 8080 双窗口三引擎）
+5. 测完→体检医生专题开门
 > **续点第一读**：本卡 §最新收工快照 → 台账 R66/R67 → `docs/rag-baseline.md`。
 
 ---

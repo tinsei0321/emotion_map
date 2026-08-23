@@ -70,9 +70,9 @@ goals:
     note: 用户令 08-22 暂缓·滚动清单待排期
 
 awaiting_user:
-  - item: 您的验收窗口 T1-T5（30-45 分钟·清单就绪）——测完即现行链路合格·体检医生专题可开
+  - item: 明日 office 验收（T1-T7 全套·~45 分钟·清单 docs/catch-ball/用户复测滚动清单.md）——测完即现行链路合格·体检医生专题开门
     docs: docs/catch-ball/用户复测滚动清单.md
-  - item: 壳阶段实施中（Qoder S4→Kimi S3 主体→claude 短包·含 git 清理）
-    docs: docs/catch-ball/discuss/壳阶段联合任务书v1.0_zcode+Qoder-2026-08-23.md
-  - item: office 到岗：git fsck 体检（R25）+双机基线复测
-    docs: docs/catch-ball/_handoff/HOME.md
+  - item: RAG 支柱二实施（kb_inbox 代码+SOP 执行·SOP 文档已就位）
+    docs: docs/kb-pipeline-sop.md
+  - item: office 到岗三件：git fsck 体检(R25)+环境配齐(requirements 注记)+双机基线
+    docs: docs/catch-ball/_handoff/OFFICE.md
