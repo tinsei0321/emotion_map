@@ -14,7 +14,7 @@
 │
 ├─ 主干 · 任务与账本（按需读顶）
 │  ├─ docs/revision-log.md ★ 任务路线图（ASCII 树 ✅🔄⬜⏸❌）+ §5 最新动态（倒序置顶）
-│  └─ docs/todo.md — 日段任务（倒序）；docs/dev-notes.md — 技术心得；docs/decisions.md — ADR；docs/debug-memory.md — **全局调试记忆（R1-R23 踩坑规则库+R7.3/R8.1 补充·多组共享·CB-41 建·含维护协议与 dsh 宿主坑·08-22 增 R20 batch 顺序/R21 跨 shell CRLF 与引号/R22 全局配置静默改写/R8.1 验证矩阵三路/R23 空间工具输入假设守卫）**
+│  └─ docs/todo.md — 日段任务（倒序）；docs/dev-notes.md — 技术心得；docs/decisions.md — ADR；docs/debug-memory.md — **全局调试记忆（R1-R23 踩坑规则库+R7.3/R8.1 补充·多组共享·CB-41 建·含维护协议与 dsh 宿主坑·08-22 增 R20 batch 顺序/R21 跨 shell CRLF 与引号/R22 全局配置静默改写/R8.1 验证矩阵三路/R23 空间工具输入假设守卫/R24 治理标注原文语义·契约唯一消费点/R25 并发仓git gc高危·死锁恢复六步）**
 │
 ├─ 分支 · 隐规则记忆（索引全量注入、子文件按需）
 │  └─ ~/.claude/projects/d--Github-emotion-map/memory/ — MEMORY.md 索引 + 原子 .md（feedback/project/reference）

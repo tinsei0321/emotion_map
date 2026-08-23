@@ -225,6 +225,13 @@
 - **违反后果**：治理规则静默失效（字段填了没人读）或误杀现行答案（recall 大跌）；且因「各自单测都绿」极难发现——只有合流+全量重测才暴露。
 - **检查动作**：治理标注 PR 必附原文引句；契约函数上线后 grep 全仓直调底层实现的位置（旁路=违规）；双件合流时必跑「字段端到端存在性」断言（loader 填的字段在索引 meta 里真实出现）。
 
+## R25 · 多 Agent 并发仓的 git gc 是高危操作——死锁中断会连锁炸掉 refs+对象库（git 对象库损坏事件·2026-08-23）
+
+- **规则**：①多组共用一个本地仓时**禁自动 gc**（`git config gc.auto 0`·改人工独占窗口跑）——gc 策略=「先收全部松散对象进新包再删旧」·中途被杀=refs 已清+新包截断+旧对象已删三重创伤；②**commit 后尽快 push**——未推提交是唯一副本·本事件 2 笔全靠工作树救回；③换机到岗第一动作=`git fsck --no-progress | head` 体检（3 秒）；④git 状态异常（unknown revision/no commits yet）时**先只读取证勿 panic clone**：`tail .git/logs/HEAD`（reflog 有全部 hash+message）+`cat .git/ORIG_HEAD`+`git cat-file -t <sha>` 探对象——再决定 update-ref/fetch 恢复路径；⑤恢复中索引残留死 blob（commit 报 invalid object for <path>）=**`git read-tree HEAD` 整体重建索引**+个别顽固条目 `git rm --cached <path> && touch <path> && git add <path>` 强制重哈希；⑥在途重要件**仓外双写**（本事件 Kimi 的 _emc_rescue_backup 救了 S3 全件）。
+- **案例**：2026-08-23 gc 死锁（gc.pid=38676·疑多窗口并发或被杀）→ refs/heads 清空+274MB tmp_pack 截断+08-22 晚后 commit 对象整链缺失。恢复链=Kimi unpack-objects 救 11,744 松散对象+zcode fetch+update-ref+read-tree+三笔重建 commit（be30774a/5c0b593e 消息从 reflog 逐字复原）——**工作树零损失·内容零丢失**。事件记录=`discuss/事件记录-git对象库损坏与恢复指引_2026-08-23.md`。
+- **违反后果**：未推提交对象永久丢失（若工作树也被覆盖则真丢）+全组停摆半小时起+恢复需绕索引死 blob 多坑。
+- **检查动作**：本仓已设 gc.auto=0（08-23·双机到岗各自设）；派发单默认加「commit 后报主手即 push」；到岗体检入 _handoff 模板；月度人工 gc 独占窗口跑（跑前确认无他组在途）。
+
 > 目标：让本库从「修完就忘的 log」变成「越用越准的避坑资产」。完整方法论、业界对照与调优建议见 `docs/catch-ball/discuss/PT-CB8-EMC-dsh避坑沉淀报告_Codex-2026-08-21.md`。
 
 0. **自动蒸馏基线（用户令·2026-08-22）**：每次审计或 bug 修复完成后，执行方/主手**主动**过一遍「有无 ≥1 条可迁移的坑」——有即当轮入册（不等触发器·不等用户提醒）；回收/执行记录注明「已蒸馏 Rx」或「无新坑」。
