@@ -25,6 +25,12 @@
 - **验证**：全量 pytest **554 passed+2 skipped**（总数 556 与基线持平·passed+2·不降）；零代码改动。
 - 执行记录：`discuss/SHELL-S8执行记录_claude-2026-08-23.md`。壳阶段 S1-S8 主体完成·S9 待 zcode 排期。
 
+### ✅ SHELL2(KP) 知识写入管线 SOP（壳二期件②·纯 docs）
+
+- **产出**：`docs/kb-pipeline-sop.md` 六段——白话摘要（图书馆规矩）/ 三级审批分流表（CB 收敛 §二照抄：L1 派生自动/L2 事实全审/L3 待裁 + D3 四决策）/ 频率分层（周=数据禁入 RAG·月季快审·年全审+X-01）/ kb_inbox 草拟层设计（draft 模板四件：verbatim+来源+三分法+B2 三问）/ 事实级查重（冲突 grep→人审队列）/ 垂域通用声明。
+- **扩展**：rag-corpus-map.md 五步第 2 步入库步挂三级审批+频率分层引用。
+- 执行记录：`discuss/SHELL2-KP执行记录_claude-2026-08-23.md`；kb_inbox 实施 + approval.req 接线随 PT-CB9R C 件。
+
 ## 📅 2026-08-22~23（zcode·RAG 重建全流程 + Harness 架构裁定 + 多组协同）
 
 ### ✅ PT-CB13 进度契约（Codex·收口）
