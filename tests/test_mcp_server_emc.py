@@ -240,6 +240,76 @@ def test_kb_facts_true_signature_mapping(monkeypatch):
     assert _caliber_keys(out['caliber'])
 
 
+# ════════════ PT-CB9R A-2 · 信号字段族 ════════════
+
+def _fake_results(scores_dims):
+    """构造 (dense_score, data_dim) 对的伪检索结果。"""
+    return [{'score': 0.02, 'dense_score': s, 'source': f's{i}.md', 'type': 'note',
+             'data_dim': d, 'text': 't'} for i, (s, d) in enumerate(scores_dims)]
+
+
+def test_a2_signal_fields_existence_rag_query_and_kb_facts(monkeypatch):
+    """A-2 ①字段存在性：rag_query 恒有 confidence/thin_result·kb_facts 同；高置信无 retry_cue。"""
+    monkeypatch.setattr('tools.rag_index.search', lambda query, k: {
+        'ok': True, 'count': 3,
+        'results': _fake_results([(0.84, '社区'), (0.80, '小区'), (0.75, '住房')])})
+    out = mse.rag_query('城市体检', k=3)
+    assert out['confidence'] == '高' and out['thin_result'] is False
+    assert 'retry_cue' not in out and 'coverage_hint' not in out
+    assert 'caliber_ref' not in out   # 高置信且未命中口径类 → 不改道
+
+    monkeypatch.setattr('ai_qa.outlet_kb.urban_renewal_knowledge.query_knowledge_base',
+                        lambda **kw: [{'id': 'X', 'name': 'n'}])
+    out2 = mse.kb_facts(keyword='体检')
+    assert out2['confidence'] == '高' and out2['thin_result'] is False
+    assert 'retry_cue' not in out2
+
+
+def test_a2_confidence_three_tiers_and_low_emits_retry(monkeypatch):
+    """A-2 ②三档判定：0.84→高 / 0.56→中 / 0.44→低；低置信发 retry_cue + caliber_ref 改道。"""
+    def _run(top1):
+        monkeypatch.setattr('tools.rag_index.search', lambda query, k: {
+            'ok': True, 'count': 2,
+            'results': _fake_results([(top1, '社区'), (top1 - 0.01, '社区')])})
+        return mse.rag_query('q', k=5)   # count 2 < k 5 → thin 恒真·不影响档位判定
+
+    assert _run(0.84)['confidence'] == '高'
+    assert _run(0.56)['confidence'] == '中'
+    low = _run(0.44)
+    assert low['confidence'] == '低' and low['thin_result'] is True
+    assert any('kb_facts' in c for c in low['retry_cue'])
+    assert low['caliber_ref']['kind'] == 'low_confidence'
+    assert low['caliber_ref']['suggest'] == 'kb_facts'
+
+    # 零命中 kb_facts → 低置信 + 改道 rag_query
+    monkeypatch.setattr('ai_qa.outlet_kb.urban_renewal_knowledge.query_knowledge_base',
+                        lambda **kw: [])
+    miss = mse.kb_facts(keyword='不存在词')
+    assert miss['confidence'] == '低' and miss['thin_result'] is True
+    assert miss['caliber_ref']['suggest'] == 'rag_query'
+
+
+def test_a2_signals_zero_llm_deterministic(monkeypatch):
+    """A-2 ③零 LLM 断言：信号派生只读结果字段+本地 json——
+    禁止任何 LLM/网络调用混入党发逻辑（patch 哨兵·被调即炸）。"""
+    def _boom(*a, **kw):
+        raise AssertionError('信号派生不得触发 LLM/网络调用')
+
+    monkeypatch.setattr('tools.rag_index.search', lambda query, k: {
+        'ok': True, 'count': 1,
+        'results': _fake_results([(0.44, '社区')])})
+    # 常见 LLM 入口全部埋雷（若 _derive_* 误入任何其一即失败）
+    for mod_name, attr in (('tools.rag_index', '_get_model'),
+                           ('tools.rag_index', '_embed_texts')):
+        monkeypatch.setattr(f'{mod_name}.{attr}', _boom)
+    out1 = mse.rag_query('离题主题', k=5)
+    assert out1['confidence'] == '低' and out1['retry_cue']
+    # 直接调派生函数（不经过 search）亦确定性可复算——同输入同输出
+    s1 = mse._derive_retrieval_signals(_fake_results([(0.56, '社区')]), 5, '社区', {'社区': 1})
+    s2 = mse._derive_retrieval_signals(_fake_results([(0.56, '社区')]), 5, '社区', {'社区': 1})
+    assert s1 == s2 and s1['confidence'] == '中'
+
+
 # ════════════ outlet_card ════════════
 
 def test_outlet_card_empty_inputs_no_crash():

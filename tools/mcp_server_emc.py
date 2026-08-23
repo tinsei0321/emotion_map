@@ -147,6 +147,84 @@ def _derive_followup_cues(results, top_dim):
     return out[:3]   # 2-3 条·价值序
 
 
+# ── PT-CB9R A-2 · 检索信号字段族阈值（可观测参数·沿 fact ×1.2「系数作观测起步·不拍死」先例）──
+# 校准依据（2026-08-23 实测·默认 rrf 模式）：相关查询 dense top1 余弦 0.64-0.84·离题 0.44-0.45。
+# dense_score=加权前原始余弦（RRF 融合分为秩分不承载语义近度·故置信读 dense_score 不读 score）。
+_RAG_SIG = {
+    'dense_high': 0.62,   # top1 dense_score ≥ 此 → 高置信
+    'dense_low': 0.50,    # top1 dense_score < 此 → 低置信
+    'bm25_high': 8.0,     # 消融模式（bm25）粗校·观测起步（未实测校准）
+    'bm25_low': 3.0,
+    'narrow_share': 0.6,  # top_dim 占比 > 此（且结果≥3 条）→ 查询面窄
+}
+
+
+def _derive_retrieval_signals(results, k, top_dim, dim_counts):
+    """PT-CB9R A-2 信号字段族确定性派生（零 LLM·零二次检索·「告知不足·不替外脑补救」）。
+
+    confidence 三档：top1 dense_score 绝对值定档（margin 只调文案不调档——
+      实测离题查询亦可有大 margin·margin 降档会冤杀「一强多弱」正常命中）；
+    coverage_hint：top_dim 占比 >60%（结果≥3 条才判·防 1/1=100% 噪声）→ 查询面窄提示；
+    thin_result：命中数 < k 或低置信；
+    retry_cue：低置信/thin 时发——相邻维度词复用 rag_cues.json dim_neighbors 表。
+    返回 dict：confidence/thin_result 恒在；coverage_hint/retry_cue 按需省略（H1 同律）。"""
+    count = len(results)
+    top1 = 0.0
+    margin = 0.0
+    if count:
+        def _ds(res):
+            v = res.get('dense_score')
+            return v if v is not None else res.get('score', 0.0)
+        top1 = _ds(results[0])
+        margin = (top1 - _ds(results[1])) if count > 1 else top1
+
+    from tools import rag_index as _ri
+    if _ri._BM25_MODE == 'bm25':
+        hi, lo = _RAG_SIG['bm25_high'], _RAG_SIG['bm25_low']
+    else:
+        hi, lo = _RAG_SIG['dense_high'], _RAG_SIG['dense_low']
+
+    if not count or top1 < lo:
+        confidence = '低'
+    elif top1 >= hi:
+        confidence = '高'
+    else:
+        confidence = '中'
+
+    thin = (count < k) or (confidence == '低')
+    sig = {'confidence': confidence, 'thin_result': thin}
+
+    # 查询面窄：单维占比 >60%（结果≥3 条才判）
+    if count >= 3 and top_dim and dim_counts.get(top_dim, 0) / count > _RAG_SIG['narrow_share']:
+        sig['coverage_hint'] = (f'结果集中于「{top_dim}」单一维度（{dim_counts[top_dim]}/{count}）'
+                                '——查询面偏窄：精确口径建议 kb_facts·或换相邻维度查询')
+
+    # retry_cue（低置信或 thin 才发·文案分流用 margin）
+    if thin:
+        cues = []
+        if confidence == '低':
+            if count and margin > 0.02:
+                cues.append('命中相关度整体偏低——建议细化关键词（加维度词/地名）或改精确查询 kb_facts')
+            else:
+                cues.append('语料未覆盖该主题或关键词过泛——建议换精确名词/口径数字查 kb_facts')
+        else:
+            cues.append(f'命中 {count} 条不足 k={k}——建议放宽关键词或改精确查询 kb_facts')
+        # 相邻维度提示（复用 rag_cues.json dim_neighbors 骨架）
+        if top_dim:
+            import json as _json2
+            import os as _os2
+            try:
+                with open(_os2.path.join(REPO, 'ai_qa', 'rag_cues.json'), encoding='utf-8') as _fh2:
+                    _nb = _json2.load(_fh2).get('dim_neighbors', {})
+            except (FileNotFoundError, OSError, ValueError):
+                _nb = {}
+            for nb in _nb.get(top_dim, [])[:1]:
+                if nb not in dim_counts:
+                    cues.append(f'可换相邻维度「{nb}」重查验证')
+        sig['retry_cue'] = cues
+    return sig
+
+
 def _reject_analysis_output(preset_id, param, caliber):
     """G-2/铁律7 服务端强制：analysis_output 结论层禁作空间操作输入（PT-CB5 审计发现即修）。
 
@@ -368,7 +446,8 @@ def rag_query(query: str, k: int = 5, synthesize: bool = False) -> dict:
     """带来源知识检索：本地治理知识库 Top-K 素材+维度分布（非联网·非空间分析）。
     参数：query 必填；k 1-10；synthesize=True 时 v1 诚实降级 deferred_v2（附宿主综合指引）。
     限制：索引未建时报提示（py tools/rag_index.py --build）；适用叙述/方法/对比问答。
-    路由分工（A2）：精确名词/口径数字优先 kb_facts（注册表直查）；叙述/方法/对比用 rag_query。"""
+    路由分工（A2）：精确名词/口径数字优先 kb_facts（注册表直查）；叙述/方法/对比用 rag_query。
+    B3：顶层 suppressed_count（被 superseded 过滤条数）；条目不对称治理标注（历史叙述类带 caliber_note·现行零标签）。"""
     if not query or not str(query).strip():
         return {'ok': False, 'hint': 'query 不能为空', 'caliber': CALIBERS['rag_query']}
 
@@ -407,6 +486,9 @@ def rag_query(query: str, k: int = 5, synthesize: bool = False) -> dict:
     # H1 followup_cue（确定性派生·零 LLM·三张小表 ai_qa/rag_cues.json）
     followup_cues = _derive_followup_cues(r.get('results', []), top_dim)
 
+    # PT-CB9R A-2 信号字段族（确定性·零 LLM·零二次检索——告知不足·不替外脑补救）
+    signals = _derive_retrieval_signals(r.get('results', []), k, top_dim, dim_counts)
+
     out = {
         'ok': True,
         'results': r.get('results', []),
@@ -416,12 +498,21 @@ def rag_query(query: str, k: int = 5, synthesize: bool = False) -> dict:
         'elapsed_ms': elapsed_ms,
         'synthesize': False,
         'caliber': CALIBERS['rag_query'],
+        'suppressed_count': r.get('suppressed_count', 0),   # PT-CB9R-B3：search 过滤处观测透传
     }
+    out.update(signals)
     if caliber_hit:
         out['caliber_ref'] = {
             'kind': 'caliber_class',
             'suggest': 'kb_facts',
             'topic': caliber_hit.get('topic', ''),
+        }
+    elif signals['confidence'] == '低':
+        # A2 改道承载：低置信 → 结构化建议换 kb_facts（精确名词/口径数字走注册表直查）
+        out['caliber_ref'] = {
+            'kind': 'low_confidence',
+            'suggest': 'kb_facts',
+            'topic': str(query)[:40],
         }
     if followup_cues:
         out['followup_cues'] = followup_cues
@@ -438,7 +529,8 @@ def kb_facts(query: str = '', keyword: str = '', topic: str = '',
     """行业事实卡：确定性查询（关键词精确命中·非向量·CB-22f D5 兜底）。
     参数：query/keyword 至少给一；topic 可选（metric/issue/project/identity 等）；limit 1-20。
     限制：固定 city=宜昌；命中按 keywords/region 反查加权。
-    路由分工（A2）：精确名词/口径数字优先本工具（注册表直查·零向量碰运气）；叙述/方法/对比用 rag_query。"""
+    路由分工（A2）：精确名词/口径数字优先本工具（注册表直查·零向量碰运气）；叙述/方法/对比用 rag_query。
+    B3：条目不对称治理标注（X-01 关联历史叙述类带 caliber_note·现行零标签·确定性零 LLM）。"""
     limit = max(1, min(int(limit), 20))
     try:
         from ai_qa.outlet_kb.urban_renewal_knowledge import query_knowledge_base
@@ -448,7 +540,31 @@ def kb_facts(query: str = '', keyword: str = '', topic: str = '',
     except Exception as exc:
         return {'ok': False, 'hint': f'kb_facts 失败: {exc}',
                 'facts': [], 'count': 0, 'caliber': CALIBERS['kb_facts']}
-    return {'facts': facts, 'count': len(facts), 'caliber': CALIBERS['kb_facts']}
+    # PT-CB9R-B3：不对称治理标注（现行零标签·X-01 关联历史叙述类带 caliber_note·确定性零 LLM）
+    #   kb_facts 条目=事实卡·判定走 _LINEAGE_MAP 谱系（直接命中/链式命中·当前语料均零标签·机制就位）。
+    try:
+        from tools.rag_index import _history_note, _LINEAGE_MAP
+        for _f in facts:
+            _src = f"ai_qa/outlet_kb/urban_renewal_knowledge.py#{_f.get('id')}"
+            _note = _history_note(_src, _LINEAGE_MAP.get(_src))
+            if _note:
+                _f['caliber_note'] = _note
+    except Exception as _exc:
+        _safe_print(f'[WARN] kb_facts 治理标注降级（非阻塞）: {type(_exc).__name__}',
+                    file=sys.stderr)
+    # PT-CB9R A-2 信号字段族（kb_facts 侧=确定性关键词命中语义·无向量分数）：
+    #   有命中=高置信（精确匹配即答案）；零命中=低置信+thin+retry_cue（改 rag_query 叙述路）。
+    out = {'facts': facts, 'count': len(facts), 'caliber': CALIBERS['kb_facts']}
+    if facts:
+        out['confidence'] = '高'
+        out['thin_result'] = False
+    else:
+        out['confidence'] = '低'
+        out['thin_result'] = True
+        out['retry_cue'] = ['事实卡未命中该精确词——叙述/方法/对比类问题建议改 rag_query']
+        out['caliber_ref'] = {'kind': 'no_hit', 'suggest': 'rag_query',
+                              'topic': (keyword or query or topic)[:40]}
+    return out
 
 
 @track('MOD_AIQA.F_024', track_args=False)

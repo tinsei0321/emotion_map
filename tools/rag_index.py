@@ -152,6 +152,47 @@ _LINEAGE_MAP = {
     'ai_qa/outlet_kb/urban_renewal_knowledge.py#CHK-P04': 'src:docs/urban-renewal-plan/00-宜昌专项/03-08_宜昌2025年城市体检报告_材料通读摘要.md#10',
 }
 
+# ── PT-CB9R-B3：X-01 关联集替代指针（返回结构不对称标注·判定数据=本表+_SUPERSEDED_SOURCES+_LINEAGE_MAP）──
+# 历史叙述类 = L3 执行记录登记表（PT-CB9-L3执行记录 §三）判定三分法 A 行/待裁→主手裁定 active 行·登记但 active。
+# 逐条对应（R24：chunk 级·原文引句核验在案·执行记录 PT-CB9R-D 附逐条映射）：
+#   口径注册表#3 = L3 行 1/2/3/13/14（L3 表写 #4·实测作废数字卡在 loader 第 3 节·已报主手纠错）；
+#   B3B4#0 = 行 5（数据源/管线记述）·B3B4#3 = 行 6（交付清单事实登记）；
+#   总纲#3/#4 = 行 8 + 主手 08-23 裁定（#5 由 Qoder F-03 补入·均判 active 登记·计划状态记述）。
+#   03-10（行 10）为现行口径文档（自带取消声明）→ 零标签不入本表；素材表#0（行 7/12）chunk 截断处
+#   无作废值行（loader 2000 字截断）→ 零标签不入本表·详见执行记录待裁清单。
+_X01_HISTORICAL_NARRATIVE = {
+    'docs/urban-renewal-plan/00-宜昌专项/_口径注册表.md#3': 'X-01 卡替代列（K-01/K-02/K-03/K-04 等）',
+    'docs/urban-renewal-plan/3prime/B3B4_归纳与落图_交付_2026-08-12.md#0': 'K-03 两表',
+    'docs/urban-renewal-plan/3prime/B3B4_归纳与落图_交付_2026-08-12.md#3': 'K-03 两表',
+    'docs/urban-renewal-plan/3prime/分析计划与内容_总纲_2026-08-12.md#3': 'K-03 两表',
+    'docs/urban-renewal-plan/3prime/分析计划与内容_总纲_2026-08-12.md#4': 'K-03 两表',
+    'docs/urban-renewal-plan/3prime/分析计划与内容_总纲_2026-08-12.md#5': 'K-03 两表',
+}
+
+# superseded 行的替代指针（chunk 本身已被检索层滤除·供 lineage 谱系链式命中反查——
+# 未来事实卡 lineage 指向作废源时按此注记·当前语料无此类命中·机制就位）。
+_X01_SUPERSEDED_POINTERS = {
+    'docs/urban-renewal-plan/3prime/占比表_民生_公服设施_社区_2026-08-12.md#0': 'K-04 全覆盖版 165 点',
+    'docs/urban-renewal-plan/3prime/B3B4_归纳与落图_交付_2026-08-12.md#2': 'K-03 两表',
+}
+
+
+def _history_note(source, lineage=None):
+    """PT-CB9R-B3：X-01 关联历史叙述类不对称标注（确定性零 LLM·现行条目返回 None=零标签）。
+
+    判定：①直接命中 _X01_HISTORICAL_NARRATIVE（登记但 active 的历史叙述类 chunk）→ 注记；
+    ②谱系链式——lineage 非空且目标 ∈ X-01 关联集（含 superseded 源）→ 注记（当前语料无命中·机制就位）。
+    返回格式：'历史口径·现行见<替代指针>'（替代指针逐条来自 L3 执行记录登记表）。
+    """
+    if source in _X01_HISTORICAL_NARRATIVE:
+        return f'历史口径·现行见{_X01_HISTORICAL_NARRATIVE[source]}'
+    if lineage:
+        _tgt = lineage[4:] if lineage.startswith('src:') else lineage
+        _ptr = _X01_SUPERSEDED_POINTERS.get(_tgt) or _X01_HISTORICAL_NARRATIVE.get(_tgt)
+        if _ptr:
+            return f'历史口径·现行见{_ptr}'
+    return None
+
 
 def _governance(source):
     """治理字段填充（PT-CB9 L1/L3）：返回 (status, lineage)。
@@ -483,7 +524,10 @@ def search(query, k=5):
     """检索 Top-K（余弦相似度 + BM25 字面路·返回片段 + 来源·含数据维度）。
 
     消融开关 RAG_SEARCH_MODE：dense（默认·纯稠密）/ bm25（纯字面）/ rrf（两路融合·件②）。
-    superseded chunk 预置过滤（loader 契约·字段缺失=active 兼容）。"""
+    superseded chunk 预置过滤（loader 契约·字段缺失=active 兼容）。
+    PT-CB9R-B3：返回顶层带 suppressed_count（本次被 superseded 过滤条数·active_idx 过滤处观测·纯计数不改过滤）；
+    条目不对称治理标注——X-01 关联历史叙述类带 caliber_note·现行条目零标签（确定性零 LLM·不改排序）。
+    """
     import numpy as np
 
     vectors, metas = load_index()
@@ -494,6 +538,9 @@ def search(query, k=5):
     active_idx = [i for i, m in enumerate(metas) if m.get('status', 'active') == 'active']
     if not active_idx:
         return {'ok': False, 'error': '检索语料为空（全部 chunk 为 superseded）'}
+
+    # PT-CB9R-B3：suppressed_count 观测（仅计数·过滤行为零改动）
+    _suppressed = len(metas) - len(active_idx)
 
     if _BM25_MODE == 'bm25':
         bm25, bm25_active = _get_bm25(metas)
@@ -507,7 +554,7 @@ def search(query, k=5):
         top_scores = [float(scores[j]) for j in order]
         results = []
         for rank, i in enumerate(top_idx):
-            results.append({
+            _entry = {
                 'score': top_scores[rank],
                 'source': metas[i].get('source', ''),
                 'type': metas[i].get('type', ''),
@@ -517,12 +564,18 @@ def search(query, k=5):
                 'topic': metas[i].get('topic', ''),
                 'year': metas[i].get('year', ''),
                 'keywords': metas[i].get('keywords', ''),
-            })
-        return {'ok': True, 'results': results, 'count': len(results)}
+            }
+            _note = _history_note(_entry['source'], metas[i].get('lineage'))   # PT-CB9R-B3
+            if _note:
+                _entry['caliber_note'] = _note
+            results.append(_entry)
+        return {'ok': True, 'results': results, 'count': len(results),
+                'suppressed_count': _suppressed}
 
     model = _get_model()
     qvec = _embed_texts(model, [query])[0]
     scores = vectors @ qvec
+    raw_cos = scores.copy()   # PT-CB9R A-2：加权/枢纽降权前的原始余弦（dense_score 透传·消费方置信信号用·纯增量不改排序）
     # CB-22f D5（glm/Codex 共识·P1）：混合检索 fact 加权 ×1.2——fact 短文本向量信号弱·加权提升命中率·
     #   可观测参数（黄金集 Recall@5 跟踪·不拍死·Codex「系数作观测起步」）。
     for i, m in enumerate(metas):
@@ -554,8 +607,9 @@ def search(query, k=5):
         top_idx = sorted(fused, key=fused.get, reverse=True)[:k]
         results = []
         for i in top_idx:
-            results.append({
+            _entry = {
                 'score': round(float(fused[i]), 6),
+                'dense_score': round(float(raw_cos[i]), 6),   # PT-CB9R A-2：原始余弦（置信信号·RRF 分为秩融合分不承载语义）
                 'source': metas[i].get('source', ''),
                 'type': metas[i].get('type', ''),
                 'data_dim': metas[i].get('data_dim', '社区'),
@@ -564,16 +618,22 @@ def search(query, k=5):
                 'topic': metas[i].get('topic', ''),
                 'year': metas[i].get('year', ''),
                 'keywords': metas[i].get('keywords', ''),
-            })
-        return {'ok': True, 'results': results, 'count': len(results)}
+            }
+            _note = _history_note(_entry['source'], metas[i].get('lineage'))   # PT-CB9R-B3
+            if _note:
+                _entry['caliber_note'] = _note
+            results.append(_entry)
+        return {'ok': True, 'results': results, 'count': len(results),
+                'suppressed_count': _suppressed}
 
     # superseded 过滤后的稠密排序（active_idx 白名单内取 top-k）
     order = sorted(active_idx, key=lambda i: scores[i], reverse=True)[:k]
     top_idx = order
     results = []
     for i in top_idx:
-        results.append({
+        _entry = {
             'score': float(scores[i]),
+            'dense_score': round(float(raw_cos[i]), 6),   # PT-CB9R A-2：原始余弦（置信信号·score 含 fact×1.2/枢纽降权）
             'source': metas[i].get('source', ''),
             'type': metas[i].get('type', ''),
             'data_dim': metas[i].get('data_dim', '社区'),  # 数据维度（住房/小区/社区/街区/城区/城中村/方法论）
@@ -584,8 +644,13 @@ def search(query, k=5):
             'topic': metas[i].get('topic', ''),
             'year': metas[i].get('year', ''),
             'keywords': metas[i].get('keywords', ''),
-        })
-    return {'ok': True, 'results': results, 'count': len(results)}
+        }
+        _note = _history_note(_entry['source'], metas[i].get('lineage'))   # PT-CB9R-B3
+        if _note:
+            _entry['caliber_note'] = _note
+        results.append(_entry)
+    return {'ok': True, 'results': results, 'count': len(results),
+            'suppressed_count': _suppressed}
 
 
 def stats():
