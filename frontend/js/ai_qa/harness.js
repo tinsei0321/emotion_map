@@ -8,6 +8,7 @@ import { TOOLS, setToolContext, formatRegistry, getArtifacts, deriveAvailable, r
 import { getLayers, getLayer } from '../state.js';
 import { CONCEPT_KW, INVENTORY_KW, GREETING_KW, GEO_VERB_KW, REGION_KW, POLARITY_KW, LANDUSE_KW, SEARCH_KW, SEARCH_EVIDENCE_RE, OUTLET_TRIGGER_KW, OUTLET_UI_EXCLUDE_KW, RAG_QUERY_KW, RAG_KNOWLEDGE_RE, ACTION_CHAIN_KW } from './emc-patterns.js';   // CB-10 分歧2 词表集中 + G6b SEARCH_KW/SEARCH_EVIDENCE_RE + CB-16 OUTLET 触发词 + CB-22 RAG 触发词 + CB-22f 衔接词表（DRY·单一源 emc-patterns）
 import { buildResultStruct } from './result-struct.js';   // 出口三段式 P0：结果结构化（观点/4要点·确定性组装·结论段不解析 draft markdown）
+import { createEngineEmitter, isAcpChannel } from './acp-channel.js';   // S4 发射层：ACP 通道入参→引擎侧原生 wire 发射（legacy hooks 入参兼容）
 
 const MAX_ROUNDS_GIS = 10;      // intent-aware 轮数上限（P0 降温）：B 纯GIS操作=10（保多步完整性，如3次overlay需8轮：1查询+6执行+1answer）
 const MAX_ROUNDS_OTHER = 4;    // A 通用 / C 情绪=4（远紧于 16，配合 temp 0.4 降概率链 p^N）
@@ -1091,6 +1092,9 @@ function deriveDiagnoseMethod(template, params) {
  * @returns {Promise<{ok, degraded?, rounds?, final?, defense?}>}
  */
 export async function orchestrate(ctx, hooks = {}) {
+  // S4 发射层：入参可为 ACP 通道（{bus, turn_id}·壳新契约）——引擎侧原生发射 wire 造型事件（信封 wire 字段·S6 pytest 可验）；
+  // legacy hooks 对象继续兼容（e2e-seam 直测口传 {} / 裸 hooks）。循环控制流零改动（eval-anchor 红线·只动发射层）。
+  if (isAcpChannel(hooks)) hooks = createEngineEmitter(hooks);
   // CB-16 Wave 1 检查（Codex P1）：跨轮重置 rows 缓存——防 turn1 zonal rows 附 turn2 出口卡（陈旧数据）
   _lastToolRows = null;
   // CB-12 P1（glm）：B3 飞轮清 gate（?test=1 冷启动·防跨 session 累积 miss 干扰测试基线）

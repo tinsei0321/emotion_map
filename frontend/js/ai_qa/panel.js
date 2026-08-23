@@ -1751,12 +1751,14 @@ async function send(text, capsule) {
     // S3 主体：mock 对端分支——仍走 buildHooks 接渲染订阅（bus 在其闭包内创建），
     // 但不经 orchestrate/emitter，由 mock 对端按 wire schema 造事件直注 shell._acp.bus
     // （远端引擎形态预演·壳渲染零改动；正常链路 orchestrate 零改动·eval-anchor 不碰）。
+    // S4 发射层：正常链路改传 ACP 通道（{bus, turn_id}）——引擎侧原生 wire 发射（legacy emitter 退役为兼容层）。
     let _result;
     if (isAcpMockOn()) {
       buildHooks(shell);
       _result = await runAcpMockPeer(shell._acp, ctx);
     } else {
-      _result = await orchestrate(ctx, buildHooks(shell));
+      buildHooks(shell);
+      _result = await orchestrate(ctx, shell._acp);
     }
     settled = true;
     if (_curTrace && _result) { _curTrace.exit = _result.exit || _curTrace.exit; _curTrace.newLayerCount = _result.newLayerCount; if (_result.defense) _curTrace.defense = _result.defense; }

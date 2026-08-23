@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib
 from emc_helpers import emc_session, inject_points, send_prompt, wait_answer_done
 
 # ── S4 就绪切换位 ──────────────────────────────────────────────
-REAL_ENGINE_READY = False   # S4 收口后置 True：场景 1/2 走真实引擎（emitter 透传 followup_cues 同字段）
+REAL_ENGINE_READY = False   # S4 代码侧已收口（SHELL(S4)·createEngineEmitter）·2026-08-23 离线机翻位实测：DeepSeek 外网不可达→定稿缺失/工具卡空，回退 False；有外网机器（office/家机联网时）可置 True 走真实引擎
 
 PORT, BACKEND_PORT = 8090, 8009   # 隔离栈（与 Qoder S3 E2E 同口·避撞用户日常 8080/8000）
 BASE = f'http://localhost:{PORT}'

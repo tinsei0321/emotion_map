@@ -1,10 +1,11 @@
-// S3 单测：ACP 事件通道 + mock 对端（node 直跑·无浏览器依赖）
+// S3 单测：ACP 事件通道 + mock 对端 + S4 引擎发射层（node 直跑·无浏览器依赖）
 // 跑法：node tests/acp_channel.test.mjs
 // 覆盖：① acp-channel 14 hooks → ACP 事件映射 + 过程/内容分层（process 10 / content 4）
 //      ② mock 对端 wireToBus 适配器（wire schema 字段映射·provenance=synthesized）
 //      ③ runAcpMockPeer 全剧本（诊断→工具→思考→正文→定稿·turn_id 贯穿）
+//      ④ S4 引擎发射器 createEngineEmitter（wire 严格 schema 造型·toolcall 配对·bus 载荷向后兼容）
 // 权威：frontend/js/ai_qa/acp-channel.js / acp-mock-peer.js / tests/acp_schema/schemas/*.schema.json
-import { createAcpChannel, ACP_FAMILY } from 'file:///D:/Github/emotion_map/frontend/js/ai_qa/acp-channel.js';
+import { createAcpChannel, createEngineEmitter, isAcpChannel, ACP_FAMILY } from 'file:///D:/Github/emotion_map/frontend/js/ai_qa/acp-channel.js';
 import { wireToBusAdapter, runAcpMockPeer, isAcpMockOn } from 'file:///D:/Github/emotion_map/frontend/js/ai_qa/acp-mock-peer.js';
 
 let _fail = 0;
@@ -135,6 +136,90 @@ function ok(cond, msg) { if (!cond) { _fail++; console.error(`[FAIL] ${msg}`); }
   ok(!!seal && seal.text.includes('mock 对端'), '剧本：seal 定稿含 mock 标记');
   ok(events.some((e) => e.family === 'render' && e.kind === 'result.struct' && e.lane === 'content'), '剧本：result.struct 走 content lane（分层红线）');
   ok(events.filter((e) => e.lane === 'content').every((e) => e.family === 'render'), '分层：content lane 只承载 render 族');
+}
+
+// ═══ ④ S4 引擎发射器（wire 严格造型 + toolcall 配对 + bus 载荷向后兼容）═══
+{
+  // wire 严格校验：必填齐 + 键集白名单（additionalProperties:false 纪律）+ 字符串非空 + 枚举
+  const WIRE_SPEC = {
+    msg_delta: { req: ['kind', 'delta', 'session_id', 'turn_id'], opt: ['seq'], enums: { kind: ['reason', 'content'] } },
+    tool_begin: { req: ['toolcall_id', 'verb', 'session_id', 'turn_id'], opt: ['params_summary'], enums: {} },
+    tool_end: { req: ['toolcall_id', 'verb', 'session_id', 'turn_id'], opt: ['result_summary', 'caliber'], enums: {} },
+    error: { req: ['code', 'message', 'session_id'], opt: ['hint', 'turn_id'], enums: {} },
+  };
+  const wireStrict = (family, w) => {
+    if (!w || typeof w !== 'object') return false;
+    const spec = WIRE_SPEC[family];
+    const keys = Object.keys(w);
+    if (!spec.req.every((k) => keys.includes(k))) return false;
+    if (!keys.every((k) => spec.req.includes(k) || spec.opt.includes(k))) return false;   // 键集白名单
+    for (const k of [...spec.req, ...spec.opt]) {
+      if (w[k] !== undefined && typeof w[k] === 'string' && !w[k]) return false;   // minLength:1
+    }
+    for (const [k, vals] of Object.entries(spec.enums)) if (!vals.includes(w[k])) return false;
+    return true;
+  };
+
+  const ch = createAcpChannel();
+  const eng = createEngineEmitter(ch);
+  const events = [];
+  ch.bus.on('*', (e) => events.push(e));
+
+  // 与 ① 同序模拟一轮引擎调用（含 S5 第三参 cues）
+  eng.onDiagnose({ template: 'zonal', intent: 'emotion_analysis' });
+  eng.onRoundStart(1);
+  eng.onThought('先看分布', 1);
+  eng.onAction({ type: 'tool', name: 'zonal_stats', params: { boundary: 'b1' } }, 1);
+  eng.onObservation({ rows: 5 }, 1, ['想对比另一个范围吗？']);
+  eng.onReason('思考中', 1);
+  eng.onFinal('## 结论');
+  eng.onResultStruct({ insight: '观点' });
+  eng.onFinalDone('## 结论');
+  eng.onAskUser({ question: '哪个区？', options: ['西陵'] }, 2);
+  eng.onOutletCard([{ kind: 'card' }]);
+  eng.onDefense({ fixes: [] });
+  eng.onDegraded('raw');
+  eng.onRound(1);
+
+  ok(events.length === 14, `引擎发射器 14 事件（实 ${events.length}）`);
+  // bus 载荷向后兼容（渲染订阅零改动的证据）——与 ① legacy 断言同字段
+  ok(events[0].family === 'turn' && events[0].phase === 'diagnose' && events[0].card.template === 'zonal' && events[0].provenance === 'real', '引擎路径：diagnose 载荷兼容 + provenance=real');
+  ok(events[3].sub === 'call' && events[3].name === 'zonal_stats' && events[3].action.type === 'tool' && events[3].params.boundary === 'b1', '引擎路径：onAction 载荷兼容（name/params/action 全量）');
+  ok(events[4].observation && events[4].observation.rows === 5 && String(events[4].followup_cues[0]).includes('对比'), '引擎路径：onObservation 载荷兼容 + cues 透传（bus 层）');
+  ok(events[5].kind === 'reason' && events[5].token === '思考中' && events[5].round === 1, '引擎路径：msg.delta reason 载荷兼容');
+  ok(events[8].verb === 'seal' && events[8].text === '## 结论', '引擎路径：seal 载荷兼容');
+  ok(events[12].family === 'error' && events[12].kind === 'degraded', '引擎路径：error.degraded 载荷兼容');
+  ok(events.filter((e) => e.lane === 'content').length === 4, '引擎路径：分层计数不变（content 4）');
+
+  // wire 严格造型（四族 schema 镜像）
+  ok(wireStrict('msg_delta', events[5].wire) && wireStrict('msg_delta', events[6].wire), 'wire msg_delta 严格造型（必填+键白名单+枚举+非空）');
+  ok(wireStrict('tool_begin', events[3].wire) && wireStrict('tool_end', events[4].wire) && wireStrict('error', events[12].wire), 'wire tool_begin/tool_end/error 严格造型');
+  ok(events[5].wire.delta === '思考中' && events[5].wire.seq < events[6].wire.seq, 'wire delta 保真 + seq 单调（跨 reason/content）');
+  ok(events[3].wire.toolcall_id === events[4].wire.toolcall_id && events[3].wire.verb === 'zonal_stats' && events[4].wire.verb === 'zonal_stats', 'wire toolcall 配对（begin/end 同 id 同 verb）');
+  ok(events[4].wire.result_summary.includes('rows'), 'wire result_summary 摘要（对象观察序列化截断）');
+  ok(events[4].wire.followup_cues === undefined, 'wire 不带 followup_cues（schema additionalProperties:false·S2 增补前红线）');
+  ok(events[12].wire.code === 'DEGRADED_PARSE' && events[12].wire.message, 'wire error 语义化错误码');
+  ok([0, 1, 2, 7, 8, 9, 10, 11, 13].every((i) => events[i].wire === undefined), 'turn/render 族不带 wire（schema 未定稿族·bus 直发）');
+
+  // 边界：空 token 不造型 wire 但 bus 照发（渲染不断流）
+  const ch2 = createAcpChannel();
+  const eng2 = createEngineEmitter(ch2);
+  const edge = [];
+  ch2.bus.on('msg.delta', (e) => edge.push(e));
+  eng2.onFinal('');
+  eng2.onFinal('好');
+  ok(edge.length === 2 && edge[0].wire == null && wireStrict('msg_delta', edge[1].wire), '空 token：wire 不造型（minLength 纪律）·bus 照发（载荷兼容优先）');
+
+  // 配对边界：observation 无前置 call → 不造型 wire（诚实：无 id 可归）
+  const ch3 = createAcpChannel();
+  const eng3 = createEngineEmitter(ch3);
+  let orphan = null;
+  ch3.bus.on('tool.end', (e) => { orphan = e; });
+  eng3.onObservation(' stray obs ', 1);
+  ok(orphan && orphan.wire == null && orphan.observation === ' stray obs ', '孤立 observation：wire 不造型·bus 载荷照发');
+
+  // 通道判别器：harness 发射层入口依据
+  ok(isAcpChannel(ch3) && !isAcpChannel({}) && !isAcpChannel(null) && !isAcpChannel({ bus: {} }), 'isAcpChannel 判别（channel 真伪）');
 }
 
 console.log(_fail ? `\n${_fail} FAIL` : '\nALL PASS');
