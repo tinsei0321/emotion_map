@@ -1,12 +1,12 @@
 # EMC 进度（人读版）
 
-> 数据源 `_board.yaml`·确定性生成（`py tools/gen_progress.py`）·generated from 4b291a50。
+> 数据源 `_board.yaml`·确定性生成（`py tools/gen_progress.py`）·generated from 7ee8a25。
 
 ## 待用户（唯一要盯的）
 
-1. PT-CB9 全量验收窗口（office 双机基线+全量 60 题手动档+用户真实问题试问·rag_query 三泳道已收口 96.7%）
-2. 阶段1 统一复测 T1-T5（暂缓中·测试窗口用户定）
-3. 下批排期（RAG 增量运营/M2-M3 环境配方/guard 挂账小件·三选）
+1. 您的验收窗口 T1-T5（30-45 分钟·清单就绪）——测完即现行链路合格·体检医生专题可开
+2. 壳阶段实施中（Qoder S4→Kimi S3 主体→claude 短包·含 git 清理）
+3. office 到岗：git fsck 体检（R25）+双机基线复测
 
 ## 阶段进度
 
