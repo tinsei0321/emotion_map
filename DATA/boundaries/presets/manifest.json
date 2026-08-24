@@ -585,6 +585,14 @@
         "nameField": "name",
         "usage": "analysis_output",
         "note": "PT-CB7 render_file 自动登记（源 DATA\\analysis\\聚合范围_174城市社区.geojson）"
+      },
+      {
+        "id": "tmp_render_1787569867",
+        "label": "停车泊位缺口小区（140个·2025体检）",
+        "file": "../../analysis/checkup_qty_停车泊位缺口_140点.geojson",
+        "nameField": "name",
+        "usage": "analysis_output",
+        "note": "PT-CB7 render_file 自动登记（源 DATA\\analysis\\checkup_qty_停车泊位缺口_140点.geojson）"
       }
     ]
   }

@@ -35,7 +35,7 @@ export async function runDshEngine(acp, ctx, deps) {
   const q = (ctx && ctx.question) || '';
   const fetchImpl = (deps && deps.fetchImpl) || ((typeof window !== 'undefined' && window.fetch) || null);
   const pingMs = (deps && deps.pingMs) || 3000;
-  const timeoutMs = (deps && deps.timeoutMs) || 330000;   // SHELL2(FIX) FIX-04：前端总超时护栏（330s > 代理 300s > 后端 240s）
+  const timeoutMs = (deps && deps.timeoutMs) || 630000;   // PT-CB14 修复批回收：总护栏 630s（> 代理 600s > 后端 240s×2 重试）——300s 时代截断实证后同步放宽
   const signal = (ctx && ctx.signal) || null;
   let _seq = 0;
   const wireDelta = (kind, delta) => ({ kind, delta, session_id: _WIRE_SESSION, turn_id, seq: _seq++ });
@@ -86,7 +86,7 @@ export async function runDshEngine(acp, ctx, deps) {
       bus.emit({ family: 'tool.end', observation: '（已停止）', round: 1, toolcall_id, provenance: 'synthesized' });
       return { exit: 'gap', diagnose: null, newLayerCount: 0 };
     }
-    bus.emit({ family: 'error', kind: 'degraded', hint: `dsh 引擎不可用：${String(fail).slice(0, 120)}`,
+    bus.emit({ family: 'error', kind: 'degraded', hint: `[dsh引擎] 端点不可用：${String(fail).slice(0, 120)}`,
       provenance: 'synthesized',
       wire: { code: 'DSH_ENGINE_FAIL', message: String(fail).slice(0, 200), session_id: _WIRE_SESSION, turn_id } });
     return { exit: 'gap', diagnose: { intent: 'dsh', engine: 'dsh', degraded: true }, newLayerCount: 0 };

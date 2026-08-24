@@ -110,7 +110,7 @@ async function _apply(spec) {
 
   const zoom = spec.ui.zoom_to !== false;
   const nature = (spec.caliber_lite && spec.caliber_lite.data_nature) || 'real';
-  const natureBadge = nature === 'demo' ? '[演示] ' : (nature === 'real' ? '[真实] ' : '');
+  const natureBadge = nature === 'demo' ? '[演示] ' : (nature === 'test' ? '[测试] ' : (nature === 'real' ? '[真实] ' : ''));
   const name = PREFIX + natureBadge + spec.ui.name;
 
   // PT-CB7 T1：同会话内 [dsh] 图层只保留最新一张（D-R1 语义裁定·见主执行前审计）

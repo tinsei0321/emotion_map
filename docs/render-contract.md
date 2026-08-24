@@ -60,7 +60,7 @@ tip 内容取自 feature.properties——**tip 缺信息 = properties 缺字段�
 ## 五 caliber_lite 义务（每 spec 必带）
 
 - `usage`：input / analysis_output（dataset 由注册表判定·inline 由调用方声明）；
-- `data_nature`：real / demo；
+- `data_nature`：real / demo / test（PT-CB14 C3：test = 测试 spec·前端徽标 [测试]·**清理纪律：测试投递用毕即删**——测试 spec 不得留在地图/渲染流中占位，验证完清除或覆写正式 spec）；
 - `community`：社区口径（dataset 按注册表自动·inline 按 community_caliber 入参·K-C1 校验不符给 community_warning）；
 - `note`：修正/口径说明。
 

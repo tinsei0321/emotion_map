@@ -111,6 +111,8 @@ def test_list_data_data_nature_and_preset_passthrough(monkeypatch, tmp_path):
         {'id': 'demo_preset', 'label': '演示面', 'file': 'a.geojson',
          'nameField': 'name', 'usage': 'input', 'data_nature': 'demo'},
     ])
+    # PT-CB14 C2（D-1 销号）：presets 段 available 过滤（manifest 登记≠落盘）——demo_preset 需真实落盘才进清单
+    _write(tmp_path / 'a.geojson', '{}')
     monkeypatch.setattr('core.geo_registry.list_point_layers', lambda: [
         {'id': 'yichang_l2_t1', 'label': '演示层', 'level': 'L2',
          'fields': ['score'], 'dtypes': {'score': 'float64'}, 'crs': 'EPSG:4326',

@@ -10,6 +10,7 @@ L3=ai_qa/episode.py 写 DATA/ai_qa/episodes.jsonl（被 ai_qa/consolidate.py 周
 挂载：api/main.py `app.include_router(aiqa_router, prefix='/api/v1')` → 总路径 /api/v1/aiqa/*。
 """
 import json
+import sys
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
@@ -94,6 +95,19 @@ import asyncio
 _dsh_semaphore = asyncio.Semaphore(2)
 
 _DSH_MAX_OUTPUT = 200 * 1024   # FIX-05：stdout 上限 200KB（dsh 异常喷长日志时保护内存/响应体积）
+# PT-CB14 D-3 Q4 迭代史（实测固化）：
+#   v1：单次预算压 140s 为重试留余量 → 多工具链（实测 50-366s）全超时回归（top10 0/3）——预算不可压；
+#   v2：仅快速失败重试 → 丢失任务书「超时重试」语义（发散为概率性·同题第二遍可能收敛，zcode 对照实验 2成1败）；
+#   v3（现行）：除 OSError（问句过长·重试无益）外全部失败重试一次（间隔 2s）·预算保调用方原值。
+#   注：最坏总时长 240+2+240=482s > 代理 300s——第一遍超时后代理可能先断，但第二遍仍在后台跑完：
+#   出图副作用（render_spec 写盘→SSE 推图）与 HTTP 响应解耦，重试对用户体验仍有正收益。
+
+
+def _safe_print(msg, file=None):
+    try:
+        print(msg, file=file)
+    except UnicodeEncodeError:
+        print(msg.encode('gbk', 'replace').decode('gbk'), file=file)
 
 
 def _run_dsh_sync(q: str, timeout_s: int) -> Dict[str, Any]:
@@ -101,6 +115,8 @@ def _run_dsh_sync(q: str, timeout_s: int) -> Dict[str, Any]:
 
     命令解析 fail-closed（FIX-03）：npm shim→node 直调 bin.js（argv 传参零注入）；
     dsh 非 .cmd（POSIX 软链）→直调；其余布局（含 bin.js 缺失）→语义化拒绝·不留死路径。
+    PT-CB14 D-3 Q4（v3）：除 OSError（问句过长·重试无益）外，失败（超时/非零返回/空 stdout）自动重试一次（间隔 2s）；
+    响应恒带 retried 字段；单次尝试预算保调用方原值（v1 压缩致回归·教训见模块头注释）。
     """
     import os
     import shutil
@@ -122,26 +138,43 @@ def _run_dsh_sync(q: str, timeout_s: int) -> Dict[str, Any]:
     else:
         cmd = [exe, '--profile', 'emc-test', q]
 
-    t0 = _time.time()
-    try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8',
-                              errors='replace', timeout=timeout_s, shell=False)
-    except subprocess.TimeoutExpired:
-        return {'ok': False, 'error': f'dsh timeout ({timeout_s}s)', 'elapsed': round(_time.time() - t0, 1)}
-    except OSError as e:   # FIX-02：超长问句/系统限制（如 WinError 206）——语义化降级·不 500
-        return {'ok': False, 'error': f'问句过长或系统限制：{e}', 'elapsed': round(_time.time() - t0, 1)}
+    attempt_budget = timeout_s   # Q4v2：预算不压——多工具链需 50-185s，压缩致回归（实测）
+    retried = False
+    for _attempt in range(2):
+        t0 = _time.time()
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8',
+                                  errors='replace', timeout=attempt_budget, shell=False)
+        except subprocess.TimeoutExpired:
+            if _attempt == 0:   # Q4v3：超时重试（发散概率性·同题第二遍可能收敛·任务书语义）
+                retried = True
+                _safe_print(f'[WARN] dsh_engine 超时({attempt_budget}s)·2s 后自动重试一次（PT-CB14 D-3 Q4v3）', file=sys.stderr)
+                _time.sleep(2)
+                continue
+            return {'ok': False, 'error': f'dsh timeout ({attempt_budget}s x2 attempts)',
+                    'elapsed': round(_time.time() - t0, 1), 'retried': True}
+        except OSError as e:   # FIX-02：超长问句/系统限制（如 WinError 206）——语义化降级·不 500·重试无益不重跑
+            return {'ok': False, 'error': f'问句过长或系统限制：{e}', 'elapsed': round(_time.time() - t0, 1),
+                    'retried': retried}
 
-    out = (proc.stdout or '').strip()
-    err = (proc.stderr or '').strip()
-    truncated = len(out) > _DSH_MAX_OUTPUT   # FIX-05：输出截断标记（前端按需提示）
-    if truncated:
-        out = out[:_DSH_MAX_OUTPUT]
-    ok = proc.returncode == 0 and bool(out)
-    resp = {'ok': ok, 'output': out, 'elapsed': round(_time.time() - t0, 1),
-            'returncode': proc.returncode, 'stderr_tail': err[-400:], 'truncated': truncated}
-    if not ok:
-        resp['error'] = err[-400:] or f'dsh returncode={proc.returncode} / empty stdout'
-    return resp
+        out = (proc.stdout or '').strip()
+        err = (proc.stderr or '').strip()
+        ok = proc.returncode == 0 and bool(out)
+        if not ok and _attempt == 0:   # Q4v3：非零返回/空 stdout → 重试一次（含慢败·出图副作用与响应解耦）
+            retried = True
+            _safe_print(f'[WARN] dsh_engine rc={proc.returncode}/空输出·2s 后自动重试一次（PT-CB14 D-3 Q4v3）', file=sys.stderr)
+            _time.sleep(2)
+            continue
+        truncated = len(out) > _DSH_MAX_OUTPUT   # FIX-05：输出截断标记（前端按需提示）
+        if truncated:
+            out = out[:_DSH_MAX_OUTPUT]
+        resp = {'ok': ok, 'output': out, 'elapsed': round(_time.time() - t0, 1),
+                'returncode': proc.returncode, 'stderr_tail': err[-400:], 'truncated': truncated,
+                'retried': retried}
+        if not ok:
+            resp['error'] = err[-400:] or f'dsh returncode={proc.returncode} / empty stdout'
+        return resp
+    return {'ok': False, 'error': 'dsh 重试流程异常', 'retried': retried}
 
 
 @track_async('MOD_AIQA.F_041', track_args=False)

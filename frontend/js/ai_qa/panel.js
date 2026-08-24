@@ -1638,7 +1638,7 @@ function buildHooks(shell) {
       stopThinking();
       // SHELL2(FIX) FIX-10：白名单原因行（非裸文本）——按错误码映射固定文案·未知码归通用行；
       // 原始 hint 只存 trace 供调试（不显 UI）·保持「永不裸输原始错误」红线。
-      const _REASON_LABEL = { 'DEGRADED_PARSE': '模型输出未能解析为可执行动作', 'DSH_ENGINE_FAIL': '外部大脑（dsh 引擎）暂不可用' };
+      const _REASON_LABEL = { 'DEGRADED_PARSE': '模型输出未能解析为可执行动作', 'DSH_ENGINE_FAIL': '[dsh引擎] 端点暂不可用（已自动诊断）' };
       const _code = (e.wire && e.wire.code) || '';
       const _reasonLine = `> 原因：${_REASON_LABEL[_code] || '处理过程中出现异常'}（自动诊断）\n\n`;
       // 永不裸输原始 token（根治代码块/计划文泄漏）：固定降级卡，忽略传入的 raw 文本
@@ -2211,9 +2211,34 @@ function _setupCpdBar() {
   }
 }
 
+/** PT-CB14 C4（D-7 销号）：8080 对话框常驻引擎徽标——chat-head 内常驻显示当前 engine 模式
+ * （light/dsh/mock·?engine 或 window.__EMC_ENGINE_MODE__ 决定·getEngineMode 单一权威）。 */
+function _initEngineBadge() {
+  const emc = document.getElementById('emc-panel');
+  if (!emc || emc.querySelector('.emc-engine-badge')) return;
+  const head = emc.querySelector('.chat-head');
+  if (!head) return;
+  const MODES = {
+    light: { txt: '引擎·light', c: '#8fa0b5', bg: 'rgba(143,160,181,0.16)' },
+    dsh: { txt: '引擎·dsh', c: '#d97757', bg: 'rgba(217,119,87,0.16)' },
+    mock: { txt: '引擎·mock', c: '#9a8fd8', bg: 'rgba(154,143,216,0.16)' },
+  };
+  const m = MODES[getEngineMode()] || MODES.light;
+  const b = document.createElement('span');
+  b.className = 'emc-engine-badge';
+  b.textContent = m.txt;
+  b.title = '当前引擎模式（?engine=light|dsh|mock）';
+  b.style.cssText = `font:10px/1.5 ui-monospace,Consolas,monospace;color:${m.c};`
+    + `background:${m.bg};padding:1px 7px;border-radius:3px;`;
+  const spacer = head.querySelector('.chat-head-spacer');
+  if (spacer) head.insertBefore(b, spacer);   // 徽标贴标题右缘（spacer 撑开其余）
+  else head.appendChild(b);
+}
+
 export function initChatPanel() {
   _setupEmcFloat();   // CPD Phase 1b：reparent EMC 到 #map 浮窗 + 恢复尺寸（先于事件绑定）
   _setupCpdBar();     // CPD Phase 2a：顶部进度条 + 摘要 chip（软折叠）
+  _initEngineBadge();   // PT-CB14 C4（D-7 销号）：引擎徽标常驻（light/dsh/mock 跟随）
   // CPD Phase 3b：主题切换（仅 #emc-panel scope，chrome 保持 Light）。localStorage 持久化。
   const _applyTheme = (t) => {
     document.documentElement.setAttribute('data-theme', t);

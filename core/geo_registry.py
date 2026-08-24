@@ -47,6 +47,20 @@ _POINT_LAYERS = {
     #   数据=12345 主观轨真实点（安全韧性/民生基础两类·社区层）·level='CHECKUP' 同族。
     'subj_12345_safety_community_point': ('12345_安全韧性_社区点.geojson', '12345 安全韧性点·社区层（主观轨·演示双用）', 'CHECKUP', 'DATA/analysis/12345主观'),
     'subj_12345_livelihood_community_point': ('12345_民生基础_社区点.geojson', '12345 民生基础点·社区层（主观轨·演示双用）', 'CHECKUP', 'DATA/analysis/12345主观'),
+    # PT-CB14 C1（D-4 销号）：checkup qty 体检量化点层 11 层注册进点层表——文件在 DATA/boundaries/presets（非 analysis）·
+    #   照 subj_12345 先例（第 4 元素=子目录·level='CHECKUP'·GeoJSON 分支 get_layer_points 直读几何）。
+    #   数据=客观轨 77 项量化（指标/中类/board 属性·无极性）·id 与验收口径一致（qty_民生_停车设施 等）。
+    'qty_合并': ('checkup_qty_合并.geojson', '体检 qty 量化 · 合并（客观轨·77 项）', 'CHECKUP', 'DATA/boundaries/presets'),
+    'qty_安全_住房': ('checkup_qty_安全_住房.geojson', '体检 qty 量化 · 安全·住房（客观轨）', 'CHECKUP', 'DATA/boundaries/presets'),
+    'qty_安全_合并': ('checkup_qty_安全_合并.geojson', '体检 qty 量化 · 安全·合并（客观轨）', 'CHECKUP', 'DATA/boundaries/presets'),
+    'qty_安全_安全消防': ('checkup_qty_安全_安全消防.geojson', '体检 qty 量化 · 安全·安全消防（客观轨）', 'CHECKUP', 'DATA/boundaries/presets'),
+    'qty_安全_市政管网': ('checkup_qty_安全_市政管网.geojson', '体检 qty 量化 · 安全·市政管网（客观轨）', 'CHECKUP', 'DATA/boundaries/presets'),
+    'qty_民生_交通设施': ('checkup_qty_民生_交通设施.geojson', '体检 qty 量化 · 民生·交通设施（客观轨）', 'CHECKUP', 'DATA/boundaries/presets'),
+    'qty_民生_住房': ('checkup_qty_民生_住房.geojson', '体检 qty 量化 · 民生·住房（客观轨）', 'CHECKUP', 'DATA/boundaries/presets'),
+    'qty_民生_停车设施': ('checkup_qty_民生_停车设施.geojson', '体检 qty 量化 · 民生·停车设施（客观轨）', 'CHECKUP', 'DATA/boundaries/presets'),
+    'qty_民生_公服设施': ('checkup_qty_民生_公服设施.geojson', '体检 qty 量化 · 民生·公服设施（客观轨）', 'CHECKUP', 'DATA/boundaries/presets'),
+    'qty_民生_合并': ('checkup_qty_民生_合并.geojson', '体检 qty 量化 · 民生·合并（客观轨）', 'CHECKUP', 'DATA/boundaries/presets'),
+    'qty_民生_物业街面': ('checkup_qty_民生_物业街面.geojson', '体检 qty 量化 · 民生·物业街面（客观轨）', 'CHECKUP', 'DATA/boundaries/presets'),
 }
 
 
@@ -192,8 +206,20 @@ def resolve_boundary(boundary) -> gpd.GeoDataFrame:
     if isinstance(boundary, str):
         loaded = load_preset(boundary)
         if not loaded.get('available'):
+            # PT-CB14 C2（D-1 销号）：报错语义改「文件未落盘」（manifest 已登记≠文件已上传）·带需上传文件名
+            fname = ''
+            try:
+                with open(os.path.join(_PRESETS_DIR, 'manifest.json'), encoding='utf-8') as _fh:
+                    for _g in json.load(_fh):
+                        for _it in _g.get('items', []):
+                            if _it.get('id') == boundary:
+                                fname = str(_it.get('file', ''))
+                                break
+            except Exception:
+                pass
             avail = [b['id'] for b in list_boundaries() if b.get('available')]
-            raise FileNotFoundError(f'边界 preset 不可用: {boundary}（文件未上传）。可用 preset: {avail}')
+            raise FileNotFoundError(
+                f'边界 preset 不可用: {boundary}（文件未落盘·需上传：{fname}（manifest 已登记））。可用 preset: {avail}')
         gj = loaded.get('geojson') or {}
         feats = gj.get('features') if isinstance(gj, dict) else None
         if not feats:

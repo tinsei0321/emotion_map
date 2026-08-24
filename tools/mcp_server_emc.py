@@ -406,9 +406,15 @@ def list_data(include_demo: bool = False) -> dict:
         return {'ok': False, 'hint': f'manifest 读取失败: {exc}', 'caliber': CALIBERS['list_data']}
 
     presets = []
+    presets_dir = os.path.dirname(MANIFEST)
     for group in groups:
         for it in group.get('items', []):
             fname = str(it.get('file', ''))
+            # PT-CB14 C2（D-1 销号）：presets 段加 available 过滤（与点层段同纪律）——
+            #   manifest 已登记 ≠ 文件已落盘（如 admin_community）·清单恒为 resolve 可解析集（F1 同口径）
+            available = bool(fname) and os.path.isfile(os.path.join(presets_dir, fname))
+            if not available:
+                continue
             geometry = 'unknown'
             if fname.lower().endswith('.geojson'):
                 geometry = 'polygon' if it.get('nameField') else 'point'
@@ -419,6 +425,7 @@ def list_data(include_demo: bool = False) -> dict:
                 'usage': it.get('usage', 'input'),
                 'name_field': it.get('nameField'),
                 'data_nature': it.get('data_nature', 'real'),
+                'available': True,
             })
 
     return {
@@ -1461,7 +1468,8 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
 
     fixes = []
     usage = 'input'
-    nature = data_nature if data_nature in ('real', 'demo') else 'real'
+    # PT-CB14 C3（D-6 销号）：data_nature 增 'test' 值（测试 spec 显式标记·前端徽标 [测试]·用毕清理纪律见 render-contract §五）
+    nature = data_nature if data_nature in ('real', 'demo', 'test') else 'real'
     data = {}
     if dataset_id:
         meta = _dataset_meta(dataset_id)
@@ -1469,7 +1477,9 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
             return {'ok': False, 'hint': f'未知 dataset_id: {dataset_id}（调用 list_data 查看清单）',
                     'caliber': CALIBERS['render_spec']}
         usage = meta['usage']
-        nature = meta['data_nature']
+        # PT-CB14 C3：data_nature='test' 为测试投递显式标记·不被 dataset meta 覆盖（real/demo 仍以 dataset 为准）
+        if nature != 'test':
+            nature = meta['data_nature']
         data = {'dataset_id': dataset_id}
         if geojson is not None:
             fixes.append('dataset_id 与 geojson 同时给·以 dataset_id 为准')
