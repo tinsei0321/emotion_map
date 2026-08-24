@@ -712,6 +712,16 @@
 
 ---
 
+## R72（2026-08-25 凌晨 00:47·home 收工）Codex 换脑 spike 全链闭环·转正批完工
+
+- **分支更替**（用户令）：EMC_harness_dsh 合流 main（282 提交·标签 emc-dsh-milestone）→ 三处删旧 → **EMC_Codex_Harness** 开新。
+- **PT-CB15 全链**：CB 三组讨论→Qoder spike 四问全通（Codex app-server 桥·真流式 34-155ms/批·多轮·18 工具·出图管线全通）→ 三方审计（zcode/claude/kimi·零重叠互补）→ 转正批 14 件全修（P1 看门狗+P2 十一件+P3 两件·595+4 绿）。
+- **四引擎**：light|dsh|codex|mock——EMC 壳里完整 Harness 体验（?engine=codex·真流式+多轮）就此解锁。
+- **避坑**：R26 看门狗有流量即续命+R27 跨进程桥六坑（蒸馏当日）。
+- **office 到岗**：T1-T8 用户实测（T8=?engine=codex）+转正批复验。
+
+---
+
 ## 附：用户指令记录（累计）
 
 | 日期 | 指令 |

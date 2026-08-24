@@ -70,9 +70,7 @@ goals:
     note: 用户令 08-22 暂缓·滚动清单待排期
 
 awaiting_user:
-  - item: office 到岗验收（T1-T7 全套·~45 分钟·git fsck 体检→环境→基线→三引擎测试）——测完即现行链路合格·体检医生专题开门
-    docs: docs/catch-ball/用户复测滚动清单.md
-  - item: BA 二轮挂账五件（N1-N4+X-1·P3 纯顺手级）
-    docs: docs/catch-ball/discuss/SHELL2-FIX终裁_zcode-2026-08-24.md
-  - item: RAG 支柱二实施（kb_inbox 代码·SOP 文档已就位）
-    docs: docs/kb-pipeline-sop.md
+  - item: office T1-T8 用户实测（T8=?engine=codex·EMC 壳里完整 Harness 首测·逐字流式+多轮+工具+出图）
+    docs: docs/catch-ball/_handoff/OFFICE.md
+  - item: Codex 引擎正式化残项（用量计量/自测卡/P3 五件）
+    docs: docs/catch-ball/discuss/PT-CB15转正批派发_zcode-2026-08-24.md

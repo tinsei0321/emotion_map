@@ -1,12 +1,11 @@
 # EMC 进度（人读版）
 
-> 数据源 `_board.yaml`·确定性生成（`py tools/gen_progress.py`）·generated from 6d089391。
+> 数据源 `_board.yaml`·确定性生成（`py tools/gen_progress.py`）·generated from 7a71ca3。
 
 ## 待用户（唯一要盯的）
 
-1. office 到岗验收（T1-T7 全套·~45 分钟·git fsck 体检→环境→基线→三引擎测试）——测完即现行链路合格·体检医生专题开门
-2. BA 二轮挂账五件（N1-N4+X-1·P3 纯顺手级）
-3. RAG 支柱二实施（kb_inbox 代码·SOP 文档已就位）
+1. office T1-T8 用户实测（T8=?engine=codex·EMC 壳里完整 Harness 首测·逐字流式+多轮+工具+出图）
+2. Codex 引擎正式化残项（用量计量/自测卡/P3 五件）
 
 ## 阶段进度
 

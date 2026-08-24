@@ -31,6 +31,21 @@
 - **扩展**：rag-corpus-map.md 五步第 2 步入库步挂三级审批+频率分层引用。
 - 执行记录：`discuss/SHELL2-KP执行记录_claude-2026-08-23.md`；kb_inbox 实施 + approval.req 接线随 PT-CB9R C 件。
 
+## 📅 2026-08-24~25（Codex Harness 融合启动·spike 验证+三方审计+转正批）
+
+### ✅ 分支更替（用户令）
+- EMC×dsh 完整链路合流 main（282 提交快进·标签 emc-dsh-milestone）→ 旧分支三处删除 → 新分支 **EMC_Codex_Harness**。
+
+### ✅ PT-CB15 Codex 替换 dsh（CB 讨论→spike→审计→转正）
+- 三组 CB 讨论（Kimi/claude/Qoder·六议题）→ Qoder spike 四问全通（工具/流式/壳/全链路·真流式 34-155ms/批）→ **三方审计**（zcode 独立+claude+kimi·零重叠互补：P1 看门狗靠 zcode/零测试靠 claude/用户面靠 kimi）→ **转正批 14 件全修**（看门狗/配对/硬编码×3/诊断面/seq/补测 16 件/竞态重试/竞争锁/SSE CRLF）。
+- 四引擎就位：light|dsh|codex|mock（?engine 切换·codex=真流式全量形态）。
+- 门禁 **595+4 绿·RAG 96.7% 零退化**。
+- 避坑蒸馏：R26（看门狗有流量即续命）+R27（跨进程桥六坑）实时入册。
+
+### 在途
+- office 到岗：T1-T7 用户实测（含新增 T8=?engine=codex 体验——EMC 壳里完整 Harness 首测）+ 转正批复验。
+- 挂账：Q4 残留已修入转正批（竞态重试/竞争锁）·五件 P3 随正式化。
+
 ## 📅 2026-08-23~24（zcode 纯编排·壳工程全链闭环 + BA 换脑 + 深度审计 + RAG 方向）
 
 ### ✅ RAG 方向 CB 收敛（当日闭环·96.7%）

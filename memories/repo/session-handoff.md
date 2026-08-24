@@ -10,7 +10,11 @@
 
 ---
 
-## 当前节点：分支更替完成 · PT-CB15 Codex 融合讨论中（Qoder 回应待收）
+## 当前节点：home 收工 · Codex 换脑 spike 全链闭环+转正批完工（office 到岗=T1-T8 实测）
+
+- **08-24 晚 home**：分支更替（main 合流+新分支 EMC_Codex_Harness）→ PT-CB15 全链（三组 CB→spike 四问全通→三方审计→转正批 14 件全修·595+4 绿）→ 四引擎就位·EMC 壳里完整 Harness 体验解锁。
+- **office 到岗**：T1-T8 用户实测（T8=?engine=codex 首测）+转正批复验。
+- **纪律**：分支 EMC_Codex_Harness；EMC 恒 flash；R25/R26/R27。
 
 - **08-24 晚 home**：EMC_harness_dsh 合流 main（282 提交快进·用户授权）→ 旧分支三处删除 → 新分支 `EMC_Codex_Harness`。
 - **在途**：PT-CB15 Codex 替换 dsh CB 讨论——计划书+Kimi/claude 两回应已入库·Qoder 回应待收→zcode 收敛→用户终裁→Qoder 执行。

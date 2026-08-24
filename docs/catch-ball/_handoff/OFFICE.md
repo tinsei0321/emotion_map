@@ -1,6 +1,16 @@
 # 公司 · 工作交接卡
 
-> **位置**：公司 | **最后更新**：2026-08-24（**收工**·zcode 主手） | **同步**：随 `EMC_harness_dsh` 推送（8212a2be）。
+> **位置**：公司 | **最后更新**：2026-08-25 凌晨（**home 预置·office 到岗续点**·zcode） | **同步**：分支 `EMC_Codex_Harness`（⚠ 已更替·旧分支删除）。
+
+## office 到岗清单（08-25·zcode 预置）
+
+1. `git fetch + git switch EMC_Codex_Harness`（⚠ 分支已更替·旧 EMC_harness_dsh 已删）→ `git fsck --no-progress | head` 体检（R25）
+2. 环境差异注记：codex 桥依赖 codex-cli（npm i -g @openai/codex·0.149.1）·model 配置经环境变量（CODEX_MODEL_PROVIDER/CODEX_MODEL·默认 deepseek）·复刻清单在 PT-CB15-PROMOTE执行记录
+3. 基线确认：python -m pytest tests/ -q（应 595+4）
+4. **T1-T8 用户实测**——T8 新增=?engine=codex（EMC 壳里完整 Harness 首测·逐字流式+多轮+工具+出图）
+5. 转正批复验（Qoder 14 件修复的 office 侧复测）
+
+---
 
 ## 收工快照（08-24 office 班·PT-CB14 全轮）
 
