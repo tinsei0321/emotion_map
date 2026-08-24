@@ -87,13 +87,20 @@
 - **Q2 特例回写机制**：`_ARCHIVE.md` §二 触发时机补长泳道特例（PT-CB9 泳道合流+终审后一次性归·执行者=收敛方）——裁决与机制权威源一致。
 - 本轮（归档机制报告→回应）闭环·_INDEX 已登记；两文档暂留顶层（批二~四观察期一并定）。
 
+### ✅ PT-CB14 全轮闭环+全局 flash（08-24 office 收工·zcode）
+
+- 测试→审查→修复→回收→验证一轮闭环（详见台账）；**基线 584→581+2 上浮 7**。
+- 全局切 flash（三处·用户令）·初验含出图；**home 续点=flash+max ×3 补验 → T1-T7 重跑或专题开门**。
+- R25 测试纪律入册；当日五份定稿文档（审查/测试记录/复核/回收裁决/flash 切换）入库。
+
 ## 📅 2026-08-24（office 到岗 · HOME 五步+T1-T7 验收+体检医生专题 · zcode）
 
 ### ✅ 到岗五步（1-3 完成）
 
 - fsck 体检过（dangling 无害）· 环境配齐（补装 rank_bm25+jieba=RAG 泳道新依赖）· **基线 574+2 与 home 一致**。
 - 主手预检三绿：MCP 8600 streamable-http 握手（需 Accept 双头）/ 8080 health 三引擎 / dsh_engine 端到端（hi→8.3s ok:true）。
-- 同步报告（H:\DEV-SYNC-HUBeports6-08-24-office-EMC-dsh对接同步报告.md）读毕：office 对齐 home 六维一致·dsh 0.1.1-rc.2 官方纯净·18 工具·三引擎·遗留六项（hub 黄灯口径/交接仓 2commit/备份/render_inbox 坏件/思维链补丁/profile 复刻）。
+- 同步报告（H:\DEV-SYNC-HUB
+eports6-08-24-office-EMC-dsh对接同步报告.md）读毕：office 对齐 home 六维一致·dsh 0.1.1-rc.2 官方纯净·18 工具·三引擎·遗留六项（hub 黄灯口径/交接仓 2commit/备份/render_inbox 坏件/思维链补丁/profile 复刻）。
 
 ### 🎯 T1-T7 用户验收进行中（指引已交·3080+8080 双窗口三引擎）
 
