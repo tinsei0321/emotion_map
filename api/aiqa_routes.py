@@ -222,6 +222,8 @@ async def post_codex_engine(body: CodexEngineIn):
         bridge = get_bridge()
         try:
             async for evt in bridge.ask(q, timeout_s=max(30, min(int(body.timeout_s or 300), 600))):
+                # SSE 帧分隔约定（PT-CB15 P2-11）：event 行 + data 行 + 空行（\n\n 分帧·LF）；
+                # 前端解析端须兼容 CRLF（见 brain-adapter-codex.js 归一化）。
                 yield f"event: {evt.get('event', 'msg')}\ndata: {json.dumps(evt, ensure_ascii=False)}\n\n"
         except Exception as e:   # 桥层未捕获异常兑底：error 事件收口（SSE 已开流·不 500）
             yield f"event: error\ndata: {json.dumps({'event': 'error', 'code': 'CODEX_ENDPOINT', 'message': str(e)[:200]}, ensure_ascii=False)}\n\n"

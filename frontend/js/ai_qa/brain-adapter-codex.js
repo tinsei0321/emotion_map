@@ -6,6 +6,9 @@
 //   → POST SSE（后端 core/codex_bridge.py 常驻 app-server·stdio JSONL）→ bus 事件流。
 // 编排权：引擎层（Codex agent loop）——本适配器是翻译层非编排层（契约红线·不调 MCP 工具）。
 // 与 dsh 版差异：SSE 流式消费（fetch→ReadableStream）非一次性 POST；真 msg.delta 非桩。
+// SSE 帧分隔约定（PT-CB15 P2-11）：后端帧 = `event: <名>\ndata: <JSON>\n\n`（LF）·本端解析前归一化 CRLF。
+
+import { parseSseFrames } from './sse-parse.mjs';   // P2-7：解析纯函数抽出（离线可测·node 单测驱动）
 
 const _WIRE_SESSION = 'emc-shell';   // 与 S4 引擎发射层同源（session 对象 v1 不建·占位）
 
@@ -19,6 +22,8 @@ export async function runCodexEngine(acp, ctx, deps) {
   let _seq = 0;
   const wireDelta = (kind, delta) => ({ kind, delta, session_id: _WIRE_SESSION, turn_id, seq: _seq++ });
   const toolcallId = (name) => `tc-${turn_id}-${String(name).replace(/[^a-zA-Z0-9_]/g, '').slice(0, 30)}-${_seq}`;
+  const toolcallByItemId = new Map();   // P2-1（Z-02）：item_id→toolcall_id 配对（begin/end 复用同 id·防并行工具错配）
+  let lastN = 0;                        // P2-6（Z-06）：wire n 连续性检测基准
 
   // ① 诊断卡（codex 引擎身份·全量形态非降级）
   bus.emit({ family: 'turn', verb: 'step', phase: 'diagnose',
@@ -49,20 +54,27 @@ export async function runCodexEngine(acp, ctx, deps) {
     const dec = new TextDecoder('utf-8');
     let buf = '';
 
-    // ③ SSE 逐帧解析（event: X\ndata: {...}\n\n）→ bus 事件（真流式·恒 real）
+    // ③ SSE 逐帧解析（parseSseFrames·P2-7 抽出离线可测·P2-11 CRLF 归一化内含）→ bus 事件（真流式·恒 real）
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
       buf += dec.decode(value, { stream: true });
-      let sep;
-      while ((sep = buf.indexOf('\n\n')) >= 0) {
-        const frame = buf.slice(0, sep); buf = buf.slice(sep + 2);
-        const evLine = (frame.match(/^event:\s*(.+)$/m) || [])[1] || '';
-        const dataLine = (frame.match(/^data:\s*(.+)$/m) || [])[1] || '';
+      const parsed = parseSseFrames(buf);
+      buf = parsed.rest;
+      for (const fr of parsed.frames) {
+        const evLine = fr.ev;
         let evt = null;
-        try { evt = JSON.parse(dataLine); } catch (_) { continue; }
+        try { evt = JSON.parse(fr.data); } catch (_) { continue; }
         if (!evt) continue;
         if (evLine === 'delta' && evt.delta) {
+          // P2-6（Z-06）：wire n 连续性检测——跳号发 error 事件（不中断渲染·诚实可观测）
+          if (evt.n && evt.n !== lastN + 1) {
+            bus.emit({ family: 'error', kind: 'degraded',
+              hint: `[codex引擎] 流序号跳变 ${lastN}→${evt.n}`, provenance: 'real',
+              wire: { code: 'CODEX_SEQ_GAP', message: `seq gap ${lastN}->${evt.n}`,
+                session_id: _WIRE_SESSION, turn_id } });
+          }
+          if (evt.n) lastN = evt.n;
           full += evt.delta;
           bus.emit({ family: 'msg.delta', kind: evt.kind === 'reason' ? 'reason' : 'content',
             token: evt.delta, round: 1, provenance: 'real',
@@ -70,16 +82,18 @@ export async function runCodexEngine(acp, ctx, deps) {
         } else if (evLine === 'tool') {
           if (evt.phase === 'begin') {
             const tc = toolcallId(evt.name);
+            if (evt.item_id) toolcallByItemId.set(evt.item_id, tc);   // P2-1：按 item_id 记配对
             bus.emit({ family: 'tool.begin', sub: 'call', name: String(evt.name || '').slice(0, 40),
               params: { summary: `server=${evt.server || ''}` }, round: 1, toolcall_id: tc,
               provenance: 'real',
               wire: { toolcall_id: tc, verb: String(evt.name || '').slice(0, 40),
                 session_id: _WIRE_SESSION, turn_id, params_summary: `server=${evt.server || ''}` } });
           } else if (evt.phase === 'end') {
+            const tc = (evt.item_id && toolcallByItemId.get(evt.item_id)) || '';
             bus.emit({ family: 'tool.end',
               observation: evt.ok ? `${evt.name} 完成` : `${evt.name} 失败${evt.error ? '：' + evt.error : ''}`,
-              round: 1, provenance: 'real',
-              wire: { toolcall_id: '', verb: String(evt.name || '').slice(0, 40),
+              round: 1, toolcall_id: tc, provenance: 'real',
+              wire: { toolcall_id: tc, verb: String(evt.name || '').slice(0, 40),
                 session_id: _WIRE_SESSION, turn_id,
                 result_summary: evt.ok ? 'OK' : ('FAIL ' + String(evt.error || '')).slice(0, 120) } });
           }

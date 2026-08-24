@@ -53,6 +53,53 @@ _SUB_LOCK = threading.Lock()
 
 _UNKNOWN_HINT = '未知层 id·调用 list_data 查看清单'
 
+# ── PT-CB15 PROMOTE P2-9（C-4）：watcher 竞争锁——同机只允许一个实例消费 inbox ──
+# 根因：双后端实例（8000/8001）的 watcher 同扫一个 render_inbox，spec 被先到者消费
+# 推给它自己的 SSE 订阅者 → 另一实例的页面永远收不到（spike Q4 实证「图亮在隔壁屏幕」）。
+# 修法（最轻量）：pidfile 锁——锁文件记持有者 pid·pid 死则抢占；未持有者不扫描不消费，
+# 消费源全局唯一 → 错向根治。评审注记：跨进程扇出需 IPC·重方案不采；
+# pid 复用风险可接受（锁持有者死→1s 内重抢·误判窗口极小）。
+_PIDLOCK = os.path.join(INBOX_DIR, '.watcher.pid')
+
+
+def _pid_alive(pid):
+    if pid <= 0:
+        return False
+    if os.name == 'nt':
+        import ctypes
+        h = ctypes.windll.kernel32.OpenProcess(0x1000, False, pid)   # PROCESS_QUERY_LIMITED_INFORMATION
+        if h:
+            ctypes.windll.kernel32.CloseHandle(h)
+            return True
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def _try_claim_watch():
+    """竞争锁持有判定：锁空/自持/持锁者已死 → 抢占并返 True；他活实例持锁 → False（本实例让出）。"""
+    try:
+        os.makedirs(INBOX_DIR, exist_ok=True)
+        if os.path.isfile(_PIDLOCK):
+            try:
+                with open(_PIDLOCK, 'r') as fh:
+                    held = int((fh.read() or '0').strip() or 0)
+            except Exception:
+                held = 0
+            if held and held != os.getpid() and _pid_alive(held):
+                return False
+        tmp = f'{_PIDLOCK}.tmp.{os.getpid()}'
+        with open(tmp, 'w') as fh:
+            fh.write(str(os.getpid()))
+        os.replace(tmp, _PIDLOCK)
+        return True
+    except OSError as exc:
+        _safe_print(f'[WARN] render watcher 竞争锁异常（按持有处理）: {exc}', file=sys.stderr)
+        return True
+
 # C2-2：applied/ 归档保留天数（超期即清·留痕窗口足够回溯又不无限堆积）。
 _APPLIED_TTL_DAYS = 7
 # C2-4：dataset 端点属性白名单（默认拒绝）——只放行名称/极性/领域/指标类字段，
@@ -165,6 +212,14 @@ def _watch_loop():
     ticks = 0
     while True:
         try:
+            # P2-9：竞争锁——同机已有活实例持有消费权则本实例让出（每轮重查·持锁者死 1s 内接管）
+            if not _try_claim_watch():
+                ticks += 1
+                if ticks % 60 == 1:   # 1s 周期·每分钟提醒一次（运维纪律：同机只跑一个后端）
+                    _safe_print('[WARN] render watcher 让出消费权（另一后端实例持锁）——同机只跑一个后端（PT-CB15 P2-9）',
+                                file=sys.stderr)
+                time.sleep(1)
+                continue
             collect = queue.Queue()
             scan_inbox(INBOX_DIR, _SEEN, collect, _BACKLOG)
             while not collect.empty():

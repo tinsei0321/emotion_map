@@ -31,7 +31,7 @@ close()                           # 关闭（留痕归档）
 |---|---|---|---|
 | **轻循环引擎**（内置·首引擎） | ai_qa 四阶段直发 ACP 事件（`ai_qa/prompts.py` 既有管线·只动事件发射层） | 恒 `real` | 壳阶段主路（S4） |
 | **dsh 降级形态** | headless 调用 + 壳侧进度桩事件模拟（无真流式） | **桩事件必带 `synthesized`**（前端渲染为「步进进度」非「思考流」·ACP v1.1 §五-1 诚实性标记） | 接口位预留·按需实现 |
-| **Codex 全量形态**（注记） | app-server 官方「自建 UI」路径 + Python/TS SDK——事件映射沿 ACP v1.1 §四宿主映射表 | 恒 `real` | 契约成熟后启用（用户裁定：暂 dsh·后测 Codex） |
+| **Codex 全量形态**（注记） | app-server 官方「自建 UI」路径（`codex app-server --stdio` JSON-RPC·桥 `core/codex_bridge.py`·SSE 端点 `/aiqa/codex_engine`）——事件映射沿 ACP v1.1 §四宿主映射表 | 恒 `real` | **PT-CB15 已验证转正**（2026-08-24·四问实测·引擎第四态 `?engine=codex`）——运维见 `docs/codex-harness-ops.md` |
 
 ## 三 验收（未来怎么审）
 

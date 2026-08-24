@@ -637,6 +637,18 @@ export function renderLayer(layer) {
   } catch (e) {
     console.warn('[render] addSource 失败:', layer.id, e.message);
     layer._renderState = 'failed';
+    // PT-CB15 P2-8（C-1 既有 bug）：style 未就绪竞态——SSE spec 早于底图样式加载完成时 addSource
+    // 抛 "Style is not done loading" 且原逻辑直接 return（用户需手动隐藏→显示才恢复）。
+    // 修法：styledata 就绪后自动重试一次（_styleRetry 门闸防无限环）+ 告警日志。
+    if (/not done loading/i.test(String(e.message)) && !layer._styleRetry) {
+      layer._styleRetry = true;
+      map.once('styledata', () => {
+        if (layer._renderState === 'failed' && layer.visible) {
+          console.warn('[render] P2-8 style 竞态重试:', layer.id);
+          renderLayer(layer);
+        }
+      });
+    }
     return;
   }
   layer._renderState = 'ok';
