@@ -250,7 +250,7 @@
 ## R27 · 跨进程桥（JSONL/SSE）边界六坑——硬编码/行上限/取证工具/帧分隔/诊断面/配对透传（PT-CB15 Codex spike·2026-08-24）
 
 - **规则**：子进程常驻桥（spawn→JSONL 读写→SSE 转发）六个边界坑·逐一默认设防：
-  ①**路径硬编码**：cwd/exe vendor/model 配置**全部**占位符化（{REPO} 同级推导/多候选探测/仓外 config）——spike 第一天就守双机纪律（本案 _SPIKE_CWD 写死 `D:\Github\` 被三方审计全抓）；
+  ①**路径硬编码**：cwd/exe vendor/model 配置**全部**占位符化（{REPO} 同级推导/多候选探测/仓外 config）——spike 第一天就守双机纪律（本案 _SPIKE_CWD 写死 D:/Github 被三方审计全抓）；
   ②**StreamReader 默认 64KB 单行上限**：大 JSON 单行（如 render 大结果）必须 `limit=` 显式放大（本案 16MB·否则 readline 抛 Separator not found）；
   ③**超长 JSONL 取证禁 PowerShell 管道**（GBK 编码毁坏超长行·0 命中假象）——取证用 Python 直读；
   ④**SSE 帧分隔两端约定**（`
