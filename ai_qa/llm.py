@@ -21,7 +21,7 @@ from core.tracker import trace_log, trace_warn, trace_error, register_track_id
 DEFAULT_BASE_URL = 'https://api.deepseek.com/v1'
 MODEL_FLASH = 'deepseek-v4-flash'     # 快速经济（继 chat）
 MODEL_PRO = 'deepseek-v4-pro'         # 旗舰推理（继 reasoner，1M 上下文）
-DEFAULT_MODEL = MODEL_PRO             # 默认 Pro（用户要求 v4-pro，深度思考）
+DEFAULT_MODEL = MODEL_FLASH           # 默认 Flash（2026-08-24 用户令：全局 flash·不需要 pro——EMC 使用恒 flash；前端 CB-12 已强制 flash 与此对齐）
 MODEL_ENV = 'DEEPSEEK_MODEL'          # env 覆盖（优先级最高）
 DEFAULT_KEY_ENV = 'DEEPSEEK_API_KEY'
 
