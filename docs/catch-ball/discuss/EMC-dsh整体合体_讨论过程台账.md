@@ -704,6 +704,14 @@
 
 ---
 
+## R71（2026-08-24 晚·home）EMC×dsh 合流 main·分支更替·Codex 时代开启
+
+- **分支手术（用户令）**：EMC×dsh 完成为节点——`EMC_harness_dsh` **快进合并入 main**（282 提交·零分叉·用户授权解冻）→ 旧分支本地+gitee+github 三处删除（hub 仅历史备份引用保留）→ 新分支 **`EMC_Codex_Harness`** 自 main 开出并推送。
+- **新阶段**：Codex Harness 融合（热拔插）——PT-CB15 计划书+CB 讨论（Kimi/claude 回应已入库·Qoder 待收）·zcode 收敛→用户终裁→Qoder 执行。
+- **纪律更新**：`EMC_harness_dsh` 分支名退役·后续一切提交走 `EMC_Codex_Harness`；main=稳定里程碑（本节点=EMC×dsh 完整链路版）。
+
+---
+
 ## 附：用户指令记录（累计）
 
 | 日期 | 指令 |

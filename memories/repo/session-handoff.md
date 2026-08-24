@@ -1,7 +1,7 @@
 # 会话交接卡
 
 > 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：08月21日（**PT-CB7 主执行收工**·Qoder——审计先行+T1-T21 大半销号+用户实测五连修·明晨 office 续点）| 分支 `EMC_harness_dsh`（**main 冻结勿动**）
+> 最后更新：08月24日（**分支更替·Codex 时代开启**·zcode）| 分支 **`EMC_Codex_Harness`**（main=稳定里程碑·08-24 EMC×dsh 完整链路已合流）
 >
 > CB 入口：`docs/catch-ball/_cb-index.md`
 > 接手第一读：`_handoff/HOME.md` 收工快照 + `discuss/PT-CB7-主执行记录_Qoder-2026-08-21.md` + `discuss/PT-CB7-增补批T14-T17_入口体验与结果契约_Qoder-2026-08-21.md`
@@ -10,7 +10,13 @@
 
 ---
 
-## 当前节点：office 收工 · PT-CB14 测试+修复批+全局flash完成（home 续点=T1-T7 重跑或体检医生专题）
+## 当前节点：分支更替完成 · PT-CB15 Codex 融合讨论中（Qoder 回应待收）
+
+- **08-24 晚 home**：EMC_harness_dsh 合流 main（282 提交快进·用户授权）→ 旧分支三处删除 → 新分支 `EMC_Codex_Harness`。
+- **在途**：PT-CB15 Codex 替换 dsh CB 讨论——计划书+Kimi/claude 两回应已入库·Qoder 回应待收→zcode 收敛→用户终裁→Qoder 执行。
+- **纪律**：一切提交走 `EMC_Codex_Harness`；main 仅稳定里程碑；EMC 恒 flash；R25。
+
+### 旧节点：office 收工 · PT-CB14 测试+修复批+全局flash完成（home 续点=T1-T7 重跑或体检医生专题）
 
 - **08-24 office 班完成**：①HOME 到岗五步 1-3（fsck/补装 rank_bm25+jieba/基线 574+2）+主手预检三绿②PT-CB14 完整测试（Qoder L1 5/5+L2 18/18+守卫 2/2·用户实测四问题→审查报告+Qoder 独立复核→回收裁决三分歧定谳：top5=Qoder 测试件/RAG hits=我检查代码读错字段 hits→results·诚实更正/措辞修正）③修复批两包（claude 四件：qty 11 层注册+清单一致性+test 标+引擎徽标·门禁 581+2；Qoder 五子件：effort=max 定档实证+persona v2 出图直出 9 轮 0 反问+重试 v3）+主手裁决性小修（代理超时 600s+看门狗 630s）+跨包验证出图实证（停车 140 小区图层投递）④**全局切 flash**（用户令 EMC 恒 flash：后端 DEFAULT+dsh 全局+emc-test 三处 pro→flash·初验一次通过含出图）⑤测试纪律 R25 入册（通道≠行为×3+检查代码自验字段）。
 - **home 到岗动作**：①`git pull origin EMC_harness_dsh`②**flash+max 稳定性 ×3 补验**（真实分析题×3 次·R25 纪律）③二选一推进：**T1-T7 用户重跑**（Qoder 重出指引·新口径=地图见图为成功）或**体检医生专题开门**（方向框架已备·推荐②四象限先锋·D-2 区级边界随专题）④D-5 取证待用户时间点。
