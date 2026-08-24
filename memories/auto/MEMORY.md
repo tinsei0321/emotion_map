@@ -68,3 +68,4 @@
 - [批4 Swipe 卷帘架构](batch4-swipe-compare.md) — 时间对比双 map(mapA+mapB)+manual sync+clip divider+grid-only mirror+A/B 分片；cycle 约束(time-bar 编排)；治前vs治后 grid 演变
 - [EMC 复用 Toolbox 参数面板](emc-reuse-toolbox-panel.md) — ForAI=dialog 镜像·不造新色板/参数·缺失提醒开发者补·CB-04 H1（致"消极热力图出综合彩虹图"）
 - [双环境 schema 分叉](dual-env-schema-divergence.md) — ZCode+VSCode 并行编辑同子系统会格式分叉（buglog YAML vs 表格）；新子系统须在 skill 锁死 schema 契约，跨环境遵循
+- [用证据挑战用户假设](challenge-user-assumptions-with-evidence.md) — 假设与数据实测冲突必须当场指出再开工；数据治理先实证合并键语义；任务无对象如实汇报不硬造（2026-08-24）
