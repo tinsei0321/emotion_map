@@ -14,15 +14,18 @@ import sys
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from core.tracker import track, track_async, register_track_id
+from core.codex_bridge import get_bridge
 from ai_qa.wisdom import wisdom_text, retrieve_wisdom
 from ai_qa.episode import log_episode
 from ai_qa.llm import LLMError, chat_with_fallback, search_chat
 
 register_track_id('MOD_AIQA.F_017', 'post_rag_search（RAG 知识检索端点·开放语义·返回 Top-K + dim_counts）')
 register_track_id('MOD_AIQA.F_041', 'post_dsh_engine（壳二期 BA：dsh headless 引擎端点·spawn dsh --profile emc-test 一次性问答·stdout 全量返回·无流式降级形态）')
+register_track_id('MOD_AIQA.F_043', 'post_codex_engine（PT-CB15 SPIKE：Codex app-server SSE 引擎端点·bridge 事件流→text/event-stream·真流式 msg.delta 源）')
 from ai_qa.prompts import build_field_infer_prompt, build_deep_attribution_prompt
 from core.field_dictionary import validate_llm_roles
 
@@ -192,6 +195,39 @@ async def post_dsh_engine(body: DshEngineIn):
     timeout_s = max(30, min(int(body.timeout_s or 240), 600))
     async with _dsh_semaphore:
         return await asyncio.to_thread(_run_dsh_sync, q, timeout_s)
+
+
+class CodexEngineIn(BaseModel):
+    """PT-CB15 SPIKE：Codex 引擎入参（全量形态·真流式——契约 docs/brain-adapter.md §二）。"""
+    question: str = Field(default='', max_length=4000)
+    timeout_s: int = 300
+
+
+@track_async('MOD_AIQA.F_043', track_args=False)
+@aiqa_router.post('/aiqa/codex_engine')
+async def post_codex_engine(body: CodexEngineIn):
+    """PT-CB15 SPIKE：Codex app-server 引擎端点（SSE 流式）。
+
+    事件流（text/event-stream·bridge 逐事件转发）：
+      delta {kind:content|reason, delta, n} / tool {phase:begin|end, name, ok} /
+      ping {elapsed}（15s 心跳·防反代读超时）/ done {status, n_delta, elapsed} /
+      error {code, message}（fail-closed 语义化·不伪造答案）。
+    出图：Codex 经 MCP 8600 调 render_spec 写盘→SSE 推图（与 HTTP 响应解耦·与 dsh 同源先例）。
+    """
+    q = (body.question or '').strip()
+    if not q:
+        return {'ok': False, 'error': 'empty question'}
+
+    async def _gen():
+        bridge = get_bridge()
+        try:
+            async for evt in bridge.ask(q, timeout_s=max(30, min(int(body.timeout_s or 300), 600))):
+                yield f"event: {evt.get('event', 'msg')}\ndata: {json.dumps(evt, ensure_ascii=False)}\n\n"
+        except Exception as e:   # 桥层未捕获异常兑底：error 事件收口（SSE 已开流·不 500）
+            yield f"event: error\ndata: {json.dumps({'event': 'error', 'code': 'CODEX_ENDPOINT', 'message': str(e)[:200]}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(_gen(), media_type='text/event-stream',
+                             headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
 
 class OutletCardIn(BaseModel):

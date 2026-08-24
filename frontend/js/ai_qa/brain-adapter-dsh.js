@@ -10,7 +10,7 @@
 
 const _WIRE_SESSION = 'emc-shell';   // 与 S4 引擎发射层同源（session 对象 v1 不建·占位）
 
-/** 引擎选择：?engine=light|dsh|mock（默认 light）·?acp-mock=1 回兼容映射 mock（S3/S7 资产）·window 旗标测试位。 */
+/** 引擎选择：?engine=light|dsh|codex|mock（默认 light）·?acp-mock=1 回兼容映射 mock（S3/S7 资产）·window 旗标测试位。 */
 export function getEngineMode() {
   let m = '';
   try {
@@ -20,7 +20,7 @@ export function getEngineMode() {
       m = (q.get('engine') || '').trim() || (q.has('acp-mock') ? 'mock' : '');
     }
   } catch (_) { /* 非浏览器（node 单测）：默认 light */ }
-  return (m === 'dsh' || m === 'mock') ? m : 'light';
+  return (m === 'dsh' || m === 'codex' || m === 'mock') ? m : 'light';
 }
 
 /**

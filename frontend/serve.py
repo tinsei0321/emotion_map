@@ -260,7 +260,8 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
             # SHELL2(BA)：dsh_engine 单 POST 同步跑 dsh headless——代理读超时定向 600s（PT-CB14 修复批回收
             # 裁决放宽：后端预算 240s+重试一次最坏 482s，300s 硬顶截断客户端响应（Qoder Q5 实证·出图副作用
             # 虽解耦但用户拿不到答案）；600s 覆盖最坏链路。其余路由（含 SSE）维持 60s（WS1 F1.5 语义不变）。
-            _tmo = 600 if '/aiqa/dsh_engine' in self.path else 60
+            # PT-CB15 SPIKE：codex_engine 同列 600s（SSE 长驻·后端 15s 心跳保读不超时·总时长预算同 dsh 慢侧）。
+            _tmo = 600 if ('/aiqa/dsh_engine' in self.path or '/aiqa/codex_engine' in self.path) else 60
             resp = urllib.request.urlopen(req, timeout=_tmo)   # 不用 with·SSE 分支边读边转（WS1 F1.5：60s）
         except urllib.error.HTTPError as e:   # 后端 4xx/5xx 透传（缓冲）
             self._send_buffered(e.code, list(e.headers.items()), e.read())
@@ -282,7 +283,8 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
             if 'text/event-stream' in ct.lower():
                 # PT-CB7 T21：render SSE 为长驻流（后端 15s 心跳保证不挂死），豁免反代 50s 超时；
                 # LLM 流式仍受 Timer 保护（CB-22i 原语义不变）。
-                _exempt = self.path.split('?')[0] == '/api/v1/render/stream'
+                # PT-CB15 SPIKE：codex_engine 同豁免（agent loop 多工具链 50-366s 实测·50s Timer 必切）。
+                _exempt = self.path.split('?')[0] in ('/api/v1/render/stream', '/api/v1/aiqa/codex_engine')
                 self._send_streamed(resp.getcode(), rheaders, resp, exempt_timer=_exempt)
             else:
                 self._send_buffered(resp.getcode(), rheaders, resp.read())   # 其余缓冲

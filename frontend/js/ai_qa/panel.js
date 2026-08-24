@@ -3,6 +3,7 @@ import { orchestrate, getTemplateStats } from './harness.js';
 import { createAcpChannel, ACP_FAMILY } from './acp-channel.js';   // S3：壳对话框架事件化（hooks→ACP bus）
 import { runAcpMockPeer } from './acp-mock-peer.js';   // S3 主体：mock 对端（?engine=mock / ?acp-mock=1 启用·默认零副作用）
 import { getEngineMode, runDshEngine } from './brain-adapter-dsh.js';   // 壳二期 BA：dsh headless 引擎（?engine=dsh·三引擎切换·降级形态 synthesized）
+import { runCodexEngine } from './brain-adapter-codex.js';   // PT-CB15 SPIKE：Codex app-server 引擎（?engine=codex·全量形态真流式）
 import { normalizeFollowupCues, pickFollowupSource } from './followup.js';   // SHELL2(FIX) FIX-09：追问纯逻辑（可单测·语义与原内联逐字一致）
 import { buildContext, buildOptimizeContext, TOOLS, resetStepResults, resetCurrentResults, cleanupConsumedResults, getFig } from './tools.js';
 import { initCpdState, subscribe, getCurStepIdx, CPD_STEPS, relayoutFloats } from './cpd-state.js';
@@ -1772,6 +1773,8 @@ async function send(text, capsule) {
     const _engine = getEngineMode();
     if (_engine === 'dsh') {
       _result = await runDshEngine(shell._acp, ctx);
+    } else if (_engine === 'codex') {   // PT-CB15 SPIKE：第四引擎（SSE 真流式·恒 real）
+      _result = await runCodexEngine(shell._acp, ctx);
     } else if (_engine === 'mock') {
       _result = await runAcpMockPeer(shell._acp, ctx);
     } else {
@@ -2221,13 +2224,14 @@ function _initEngineBadge() {
   const MODES = {
     light: { txt: '引擎·light', c: '#8fa0b5', bg: 'rgba(143,160,181,0.16)' },
     dsh: { txt: '引擎·dsh', c: '#d97757', bg: 'rgba(217,119,87,0.16)' },
+    codex: { txt: '引擎·codex', c: '#10a37f', bg: 'rgba(16,163,127,0.16)' },
     mock: { txt: '引擎·mock', c: '#9a8fd8', bg: 'rgba(154,143,216,0.16)' },
   };
   const m = MODES[getEngineMode()] || MODES.light;
   const b = document.createElement('span');
   b.className = 'emc-engine-badge';
   b.textContent = m.txt;
-  b.title = '当前引擎模式（?engine=light|dsh|mock）';
+  b.title = '当前引擎模式（?engine=light|dsh|codex|mock）';
   b.style.cssText = `font:10px/1.5 ui-monospace,Consolas,monospace;color:${m.c};`
     + `background:${m.bg};padding:1px 7px;border-radius:3px;`;
   const spacer = head.querySelector('.chat-head-spacer');
