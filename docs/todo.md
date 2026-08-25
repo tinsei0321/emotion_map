@@ -9,6 +9,48 @@
 
 ---
 
+## 📅 2026-08-26（Kimi · PT-CB19 cdh 综合修复计划收敛 · office 推进清单）
+
+### ✅ 已收敛（home 机）
+
+- 三报告合一（Kimi 思维链评估 / claude 机制对照 / codex 复测 7 项）→ 五问题域：P-A 思维链慢 / P-B 出图契约缺口 / P-C 色带归一缺失 / P-D 知识权威分级未落调用面 / P-E 验收方法学；
+- 计划书落盘 `docs/catch-ball/discuss/PT-CB19-cdh综合修复计划书_Kimi收敛-2026-08-26.md`：W1-W11 三批次 · Kimi 7 件 / Codex 4 件 · 验收标准按 codex 修正口径（项 3 三要件同验·项 6 移出验收改验 130 拒绝纠偏）；
+- Codex 组派发 prompt 已在对话交用户（不落盘·08-26 令）。
+
+### ⬜ 待用户拍板（四裁决 · 计划书 §五白话版）
+
+1. 推理档 high→medium：建议先 W9 对拍拿数据再定；
+2. 130 口径：建议硬拒绝+纠偏 193；
+3. 快路径共存（W11）：建议看 W10 三引擎对拍数据再拍；
+4. 批次一 W1-W4：建议立即开工（两组可并行）。
+
+### ⬜ office 环境待执行（拍板后按序）
+
+1. Kimi 组批次一：W2 行政区过滤参数（zonal_stats/rank/aggregate_export 加 region）→ W3 render_spec 意图锁（scope 声明+要素数守卫）→ W4 cdh AGENTS.md 任务方法论段（标准路径/Top-N 纪律/色带速查/130 纪律改写）；
+2. Codex 组：W1 色带归一表+未命中告警（可与 Kimi 并行）→ W5 批次一验收复测（三要件同验）；
+3. 批次二（Kimi）：W6 数据四层短答入 RAG / W7 130 硬约束 / W8 口径段权威分级——rag_eval 96.7% 门禁零退化；
+4. 批次三：W9 推理档对拍（Codex）→ W10 三引擎同题对拍（Codex 执行·Kimi 收敛）→ W11 快路径方案进 CB。
+
+## 📅 2026-08-26（Kimi · PT-CB18 工作方式优化批收口 · office 待执行清单）
+
+### ✅ 已收口（home 机）
+
+- PT-CB18 W1/W2 执行+验收通过：手册 309→91 行（双阈值 150/200）、STATE.md 单一状态源（首行时间+HEAD 哈希）、GLOSSARY.md 编号翻译表、一事一档（RULES §4.8）、评审三档、派发/白话模板；门禁 621+3 零失败，5 commit 在本地。
+- 工作方式新基线六条已入 workspace `MEMORY.md` 全局段；全组通知 prompt 已在对话交用户。
+
+### ⬜ office 环境待执行（到岗后按序）
+
+1. **git pull 后先跑生成器**重建 STATE.md / GLOSSARY.md（用首行哈希判新旧），再开工——别拿 home 机旧状态当真；
+2. **用户 push** 五批 PT-CB18 commit（dc1e8e2/2311b15/6ae6bf6/bb0199b/90b3250 均在本地未推）；
+3. **全组通知下发**（08-26 对话内 prompt，复制发各组）；
+4. **用户拍板**：W3-2（自家档案喂 RAG）是否派发 Qoder——验收已裁定具备启动条件；
+5. W3 队列按序：W3-2 → W3-5（RTK 评估）→ W3-1 / W3-3 / W3-4（W1/W2 验证复核后另起）；
+6. 观察项执行件：`_board.yaml` awaiting_user 标 deprecated 迁移（decisions 唯一来源）；`gate_baseline` 改「零失败」口径（并入 W3-1）；debug-memory 双 R25 改号（规则库维护顺手件）；CLAUDE.md 353 行瘦身（入 W3-3 候选，同判据 A-D 自证）。
+
+### ⬜ 待诊断（用户 08-26 反馈）
+
+- **todo.md 机制「老是卡住」**——具体症状待用户补充再立项。候选方向：周归档靠手工易忘 / 倒序维护成本 / 多会话同写覆盖（实证：今日 .workbuddy 日志已被并行会话覆盖一次，写前必读回）。
+
 ## 📅 2026-08-26（claude·Codex Harness 配置隔离修复）
 
 ### ✅ Codex 配置隔离——冲突二次复发根治（revision-log 5.128，commit ef93247 · 已推 origin）
