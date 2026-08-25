@@ -242,6 +242,39 @@ def _load_notes():
     return chunks
 
 
+def _load_data_readmes():
+    """读 DATA 分层文档（PT-CB17 B4）：DATA/README.md（分层单一权威）+ DATA/THEME/**/README.md。
+
+    根因：DATA 重组（权威 AUTHORITY/注册 REGISTRY/专题 THEME/产物 Export 四层 taxonomy）
+    的权威文档不在 RAG 语料内——模型检索「数据分层/权威/专题」只能命中无关旧文档。
+    治本源进语料（单一权威保持在 DATA/README.md·索引为只读镜像·不另写副本防双头）。
+    切分/治理字段与 _load_notes 同纪律（## 小节·<20 丢弃·2000 截断·lineage=src）。"""
+    chunks = []
+    candidates = [REPO / 'DATA' / 'README.md']
+    theme_dir = REPO / 'DATA' / 'THEME'
+    if theme_dir.exists():
+        candidates.extend(sorted(theme_dir.rglob('README.md')))
+    for md in candidates:
+        if not md.exists() or '_Retired' in str(md):
+            continue
+        text = md.read_text(encoding='utf-8', errors='ignore')
+        parts = [b.strip() for b in text.split('\n## ') if b.strip()]
+        for i, p in enumerate(parts):
+            if len(p) < 20:
+                continue
+            src = f'{md.relative_to(REPO).as_posix()}#{i}'
+            st, lin = _governance(src)
+            chunks.append({
+                'text': p[:2000],
+                'source': src,
+                'type': 'note',
+                'dim': '数据分层',
+                'status': st,
+                'lineage': lin,
+            })
+    return chunks
+
+
 def _load_cases():
     """读 case_library（案例块·只取方法论 point·不引他城数据·标注为方法论参考）。"""
     try:
@@ -325,7 +358,8 @@ def load_chunks():
     superseded 默认过滤由检索层做（search 预置·字段缺失=active 兼容）——loader 只填字段不过滤。
     顺序与 build_index 既有内联序一致（facts+notes+cases+concepts）——泳道②换挂零漂移。
     """
-    chunks = _load_facts() + _load_notes() + _load_cases() + _load_concepts()
+    chunks = (_load_facts() + _load_notes() + _load_data_readmes()
+              + _load_cases() + _load_concepts())
     # PT-CB9 A1：前注注入（map=git 权威源·_ctx_prefix_map.json；护栏：正文 hash 不符不注入）
     import hashlib as _hl
     _map_path = Path(REPO) / 'docs' / 'urban-renewal-plan' / '_ctx_prefix_map.json'

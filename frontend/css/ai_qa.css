@@ -839,3 +839,40 @@
 [data-theme="light"] .outlet-card { box-shadow: 0 3px 12px rgba(20,58,53,0.10); }
 /* CB-22 素材术语/来源排版：回答内来源标注弱化（小号+浅灰·随文不换行·与 .outlet-source 同参数统一排版） */
 .answer-source { font-size: 0.85em; color: var(--geojson-color-text-tertiary, #707070); font-weight: normal; opacity: 0.7; }
+
+/* ── PT-CB17 B3：回答正文 markdown 表格规范化（交互·美观层）──
+   对齐 dsh 时代「标准表格」范式：网格线/表头底色/斑马纹/紧凑内边距。 */
+.chat-bubble table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 8px 0;
+  font-size: 0.92em;
+  line-height: 1.45;
+}
+.chat-bubble thead th {
+  background: var(--geojson-color-table-header-bg, #f5f5f5);
+  border: 1px solid var(--geojson-color-table-border, #d9d9d9);
+  padding: 6px 10px;
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.chat-bubble tbody td {
+  border: 1px solid var(--geojson-color-table-border, #d9d9d9);
+  padding: 5px 10px;
+  vertical-align: top;
+}
+.chat-bubble tbody tr:nth-child(even) td {
+  background: rgba(0, 0, 0, 0.025);   /* 斑马纹·长表可读性 */
+}
+.chat-bubble tbody tr:hover td {
+  background: rgba(64, 128, 255, 0.06);
+}
+/* 三段式范式配套：小标题紧凑化（结论句→证据段→口径段的层次） */
+.chat-bubble h1, .chat-bubble h2, .chat-bubble h3 {
+  margin: 10px 0 4px;
+  line-height: 1.35;
+}
+.chat-bubble h3 { font-size: 1.02em; }
+.chat-bubble p { margin: 4px 0; }
+.chat-bubble ul, .chat-bubble ol { margin: 4px 0; padding-left: 20px; }

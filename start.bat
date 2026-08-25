@@ -1,6 +1,12 @@
 @echo off
 cd /d "%~dp0"
 
+REM ---- PT-CB17: cdh 产品层 AGENTS.md 同步（仓内权威副本 docs/cdh/AGENTS.md → Codex 工作目录）----
+REM 双机纪律：权威副本在仓内，_codex_cwd 为派生位置；每次启动强制同步（防两处漂移）。
+if not exist "..\_codex_cwd" mkdir "..\_codex_cwd" >nul 2>&1
+copy /Y "docs\cdh\AGENTS.md" "..\_codex_cwd\AGENTS.md" >nul 2>&1
+if %errorlevel%==0 (echo [OK] cdh AGENTS.md synced to ..\_codex_cwd) else (echo [WARN] cdh AGENTS.md sync failed - using existing copy)
+
 REM ---- SHELL2(FIX) FIX-07: dsh engine dependency note ----
 REM The EMC dsh engine (?engine=dsh in the chat panel) calls dsh headless, whose
 REM emc-test profile consumes EMC tools via MCP over HTTP at http://127.0.0.1:8600/mcp.

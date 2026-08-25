@@ -109,11 +109,21 @@ def test_lineage_facts_coverage_and_exemption():
 
 
 def test_load_chunks_order_and_total():
-    """load_chunks 契约：四类齐·总条数与四 loader 和一致（泳道②换挂零漂移）。"""
+    """load_chunks 契约：五类齐·总条数与各 loader 和一致（泳道②换挂零漂移·PT-CB17 增 DATA 分层源）。"""
     chunks = _all_chunks()
     assert len(chunks) == (len(rag_index._load_facts()) + len(rag_index._load_notes())
+                           + len(rag_index._load_data_readmes())
                            + len(rag_index._load_cases()) + len(rag_index._load_concepts()))
     assert [c['type'] for c in chunks[:1]] == ['fact']
+
+
+def test_load_data_readmes_source_and_dim():
+    """PT-CB17 B4：DATA 分层源入库——DATA/README.md 在位·dim=数据分层·谱系齐。"""
+    chunks = rag_index._load_data_readmes()
+    assert chunks, 'DATA README 源应非空'
+    assert any(c['source'].startswith('DATA/README.md#') for c in chunks)
+    assert all(c['dim'] == '数据分层' for c in chunks)
+    assert all(c.get('status') == 'active' for c in chunks)
 
 
 # ════════════ 4 · A1 前注质量门禁（PT-CB9 L3·护栏 5） ════════════

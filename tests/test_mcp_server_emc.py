@@ -1088,3 +1088,49 @@ def test_zonal_rank_output_has_followup_actions(monkeypatch):
     assert any('cue_text' in a and 'tool' not in a for a in actions), '提示级 cue 仅 cue_text'
     out_r = mse.rank(boundary='admin_district', top_n=2)
     assert out_r['followup_actions'][0]['params']['top_n'] == 3
+
+
+# ════════════ PT-CB17 B2 · aggregate_export（③档工具化） ════════════
+
+def test_aggregate_export_registers_and_returns_dataset(monkeypatch, tmp_path):
+    """全量导出：落盘+永久分组注册（非 tmp_render TTL）+ 返回 dataset_id/feature_count。"""
+    import geopandas as gpd
+    from shapely.geometry import Polygon
+    merged = gpd.GeoDataFrame({
+        'name': [f'社区{i}' for i in range(25)],
+        'point_count': list(range(1, 26)),
+        'polarity_index': [0.1] * 25,
+    }, geometry=[Polygon([(111.2 + i * 0.001, 30.6), (111.21 + i * 0.001, 30.6),
+                          (111.21 + i * 0.001, 30.61), (111.2 + i * 0.001, 30.6)])
+                 for i in range(25)], crs='EPSG:4326')
+    monkeypatch.setattr('core.geo_registry.resolve_points', lambda layer: _FakePoints())
+    monkeypatch.setattr('core.geo_registry.resolve_boundary', lambda boundary: _FakeBoundary())
+    monkeypatch.setattr('core.spatial_analysis.aggregate_by_polygons',
+                        lambda points, polys, agg_cols=None, polygon_name_col=None: merged)
+    _patch_persist(monkeypatch, tmp_path)
+    monkeypatch.setattr(mse, 'REPO', str(tmp_path))
+    out = mse.aggregate_export('admin_district', name='全量测试')
+    ds = out.get('dataset_id')
+    assert ds and ds.startswith('agg_export_'), '永久分组 id 前缀'
+    assert out['feature_count'] == 25, '全量无截断（>20 不截）'
+    assert 'render_hint' in out and 'render_spec' in out['render_hint']
+    # 落盘文件 + manifest 注册（AGG_EXPORT_GROUP·非 tmp TTL 组）
+    files = list((tmp_path / 'DATA' / 'Export' / 'analysis').glob('agg_export-*.geojson'))
+    assert len(files) == 1
+    groups = json.loads((tmp_path / 'manifest.json').read_text(encoding='utf-8'))
+    grp = [g for g in groups if g.get('group') == mse.AGG_EXPORT_GROUP]
+    assert grp and grp[0]['items'][0]['id'] == ds
+    assert grp[0]['items'][0]['usage'] == 'analysis_output'
+    assert 'value' in grp[0]['items'][0].get('renderFields', [])
+
+
+def test_aggregate_export_empty_result_hint(monkeypatch, tmp_path):
+    """空聚合 → 语义化 hint（不落盘不注册）。"""
+    import geopandas as gpd
+    monkeypatch.setattr('core.geo_registry.resolve_points', lambda layer: _FakePoints())
+    monkeypatch.setattr('core.geo_registry.resolve_boundary', lambda boundary: _FakeBoundary())
+    monkeypatch.setattr('core.spatial_analysis.aggregate_by_polygons',
+                        lambda points, polys, agg_cols=None, polygon_name_col=None: gpd.GeoDataFrame({'name': []}, geometry=[]))
+    _patch_persist(monkeypatch, tmp_path)
+    out = mse.aggregate_export('admin_district')
+    assert out.get('ok') is False and '为空' in out.get('hint', '')

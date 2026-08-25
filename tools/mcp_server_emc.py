@@ -47,6 +47,7 @@ register_track_id('MOD_AIQA.F_037', 'MCP area_stats（面积占比统计·group_
 register_track_id('MOD_AIQA.F_038', 'MCP overlay_analysis（叠置交叉·面∩/∪/差/对称差+面积）')
 register_track_id('MOD_AIQA.F_039', 'MCP trend_analysis（T1/T2/T3 三期时序对比·方向+幅度）')
 register_track_id('MOD_AIQA.F_040', 'MCP report_assemble（综合报告组装·确定性零 LLM·四段结构）')
+register_track_id('MOD_AIQA.F_044', 'MCP aggregate_export（全量聚合导出·③档工具化：服务端聚合+落盘+注册→dataset_id·治 cdh 只读沙箱脚本路径不可用）')
 
 MANIFEST = os.path.join(REPO, 'DATA', 'REGISTRY', 'presets', 'manifest.json')
 
@@ -511,7 +512,8 @@ def list_data(include_demo: bool = False) -> dict:
             'paradigm': ('分析结果出图正道：分析工具 layer_output=True 返回 render_dataset_id'
                          ' → render_spec(dataset_id=...) 引用（几何服务端直传·勿手抄坐标·手抄必抽稀）；'
                          '①inline 仅限模型自造小几何示意（≤60 要素）②dataset_id 引用已注册数据源'
-                         '③脚本全量+manifest 注册后走②；把已有文件显示到地图用 render_file；'
+                         '③全量/超限用 aggregate_export（服务端聚合+落盘+注册·禁跑脚本造文件·只读沙箱必失败）；'
+                         '把已有文件显示到地图用 render_file；'
                          '详见 docs/render-contract.md'),
             'boundary_guidance': ('12345 社区级分析默认边界=base_community_area（193 含村·SQMC·现行权威）；'
                                   'checkup_cfg_community_xlwj=130 为西陵+伍家岗历史调研范围·显式点名才用；'
@@ -656,8 +658,7 @@ def kb_facts(query: str = '', keyword: str = '', topic: str = '',
     return out
 
 
-# ── PT-CB16 C2-3 · scale 确定性倒推（交互契约 §三·判据表冻结）──
-# 数据源：本 server 进程内工具调用序列（宿主每次连接一个进程·天然会话边界）。
+# ── PT-CB16 C2-3 · scale 确定性倒推（交互契约 §三·判据表冻结）──# 数据源：本 server 进程内工具调用序列（宿主每次连接一个进程·天然会话边界）。
 # 「爆发段」定义：相邻调用间隔 >120s 即切新段——倒推只取当前段（防跨问题累计误判）。
 _TOOL_CALL_LOG = []
 _SCALE_BURST_GAP_S = 120
@@ -883,6 +884,94 @@ def rank(by: str = 'worst', layer: str = 'yichang_l2_t1',
     if layer_output:
         _attach_render_ref(out, 'rank', out_fc, sort_col)
     return out
+
+
+# PT-CB17 B2：aggregate_export 自动登记分组（永久产物·非 tmp_render 7 天 TTL）
+AGG_EXPORT_GROUP = 'aggregate_export 自动登记（全量聚合产物）'
+
+
+def _register_dataset(group_name, id_prefix, abs_path, label, render_fields=None):
+    """落盘文件登记进 manifest 指定分组（同文件复用既有 id）→ dataset_id。
+
+    与 _register_tmp_dataset 的差别：永久产物登记（id 非 tmp_render_ 前缀·
+    _cleanup_tmp_render 的 TTL 不清理）。同名文件复用防重复登记。"""
+    with open(MANIFEST, 'r', encoding='utf-8') as fh:
+        groups = json.load(fh)
+    rel = os.path.relpath(abs_path, os.path.dirname(MANIFEST)).replace(os.sep, '/')
+    for g in groups:
+        for it in g.get('items', []):
+            if str(it.get('id', '')).startswith(id_prefix) and it.get('file') == rel:
+                return it['id']
+    ds_id = f'{id_prefix}{int(time.time() * 1000)}'
+    entry = {'id': ds_id, 'label': label, 'file': rel,
+             'nameField': 'name', 'usage': 'analysis_output',
+             'note': 'aggregate_export 自动登记（全量聚合产物·服务端生成）'}
+    if render_fields:
+        entry['renderFields'] = [f for f in render_fields if f]
+    target = next((g for g in groups if g.get('group') == group_name), None)
+    if target is None:
+        target = {'group': group_name, 'items': []}
+        groups.append(target)
+    target['items'].append(entry)
+    with open(MANIFEST, 'w', encoding='utf-8', newline='') as fh:
+        json.dump(groups, fh, ensure_ascii=False, indent=2)
+    return ds_id
+
+
+@track('MOD_AIQA.F_044', track_args=False)
+def aggregate_export(boundary: str, layer: str = 'yichang_l2_t1', agg_cols: list = None,
+                     sort_by: str = 'point_count', name: str = '') -> dict:
+    """全量聚合导出：zonal 同源聚合（无 top_n 截断）→ geojson 落盘 DATA/Export/analysis/
+    + manifest 注册（usage=analysis_output·nameField=name）→ dataset_id。
+    参数：boundary 必填（先 list_data）；layer/sort_by 同 zonal_stats；name 图层名（缺省自动生成）。
+    限制：>20 要素出图的唯一正路（cdh 只读沙箱下「脚本造文件」路径不可用·禁模型跑脚本）；
+    本工具是分析产物落盘的工具化入口；返回后 render_spec(dataset_id, value_field=sort_by) 出图。"""
+    _note_call('aggregate_export')   # PT-CB16 C2-3 scale 倒推埋点
+    caliber = {'scale': '全量（无截断聚合导出）',
+               'semantics': 'zonal 同源全量聚合 → 落盘注册 → dataset_id 引用',
+               'limits': '产物=analysis_output 结论层（禁回灌分析输入）；全量出图用·TOP-N 小结果走 layer_output',
+               'refs': ['K-C1']}
+    try:
+        from core.geo_registry import resolve_boundary, resolve_points
+        from core.spatial_analysis import aggregate_by_polygons
+
+        _g = _guard_check('aggregate_export', {'boundary': boundary}, caliber)
+        if _g:
+            return _g
+        points = resolve_points(layer)
+        polys = resolve_boundary(boundary)
+        cols = agg_cols or (['score'] if 'score' in points.columns else [])
+        merged = aggregate_by_polygons(points, polys, agg_cols=cols,
+                                       polygon_name_col='name')
+        if len(merged) == 0:
+            return {'ok': False,
+                    'hint': '聚合结果为空（点层为空或所选区内零点）——请换 layer 或检查区内点分布',
+                    'caliber': caliber}
+        _SORT_ALLOWED = ('point_count', 'polarity_index', 'score_mean')
+        sort_col = sort_by if sort_by in _SORT_ALLOWED else 'point_count'
+        if sort_col not in merged.columns:
+            sort_col = 'point_count'
+        merged = merged.sort_values(sort_col, ascending=False, kind='stable')
+        if sort_col in merged.columns:
+            merged['value'] = merged[sort_col]
+        fc = json.loads(merged.to_json())
+        layer_name = (name or '').strip() or f'{boundary} × {layer} 全量聚合'
+        out_dir = os.path.join(REPO, 'DATA', 'Export', 'analysis')
+        os.makedirs(out_dir, exist_ok=True)
+        fp = os.path.join(out_dir, f'agg_export-{int(time.time() * 1000)}.geojson')
+        with open(fp, 'w', encoding='utf-8', newline='') as fh:
+            json.dump(fc, fh, ensure_ascii=False)
+        ds_id = _register_dataset(
+            AGG_EXPORT_GROUP, 'agg_export_', fp, layer_name,
+            render_fields=['value', sort_col, 'point_count', 'polarity_index', 'score_mean'])
+    except (KeyError, FileNotFoundError):
+        return {'ok': False, 'hint': _UNKNOWN_HINT, 'caliber': caliber}
+    except Exception as exc:
+        return {'ok': False, 'hint': f'aggregate_export 失败: {exc}', 'caliber': caliber}
+    return {'dataset_id': ds_id, 'feature_count': len(fc.get('features', [])),
+            'render_hint': (f'出图：render_spec(kind=choropleth, name={layer_name!r}, '
+                            f'dataset_id={ds_id!r}, value_field={sort_col!r})'),
+            'caliber': caliber}
 
 
 @track('MOD_AIQA.F_033', track_args=False)
@@ -1335,6 +1424,7 @@ _GUARD_SPECS = {
     'nearest_analysis': {'usage_params': ('target',), 'pair_budget': 5 * 10 ** 7},
     'overlay_analysis': {'usage_params': ('layer_a', 'layer_b')},
     'trend_analysis': {'usage_params': ('boundary',)},
+    'aggregate_export': {'usage_params': ('boundary',)},
 }
 
 
@@ -1889,6 +1979,7 @@ def build_server():
     server.tool()(overlay_analysis)
     server.tool()(trend_analysis)
     server.tool()(report_assemble)
+    server.tool()(aggregate_export)
     server.tool()(render_spec)
     server.tool()(render_file)
     server.tool()(emc_status)

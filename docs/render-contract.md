@@ -39,7 +39,7 @@ tip 内容取自 feature.properties——**tip 缺信息 = properties 缺字段�
 | ⓪ 分析直传（首选） | 分析工具的出图（Top-N/聚合/叠置等） | `render_spec(dataset_id=<layer_output 返回的 render_dataset_id>)` | 几何零转录·边界 100% 保真 |
 | ① inline | 模型自造小几何示意（非分析工具产物） | `render_spec(kind, name, geojson={...})` | 60 要素硬顶；带统计字段的面要素均顶点 <30 触发抽稀软警告（K4） |
 | ② dataset_id | 已注册数据源（preset/点层） | `render_spec(kind, name, dataset_id='<id>')` | 前端经 `/api/v1/render/dataset/<id>` 自取数·无体量限制 |
-| ③ 脚本+注册 | 全量/超限（如 193 社区全量、800m 方格全量） | 脚本调 core 聚合 → geojson 落 `DATA/Export/analysis/`（或 REGISTRY）→ manifest 注册 → 回到②档 | zonal_stats top_n≤20 / inline≤60 均不放宽——超限走本档 |
+| ③ 全量导出（aggregate_export） | 全量/超限（如 193 社区全量、800m 方格全量） | `aggregate_export(boundary, layer, sort_by)` → 服务端聚合+落盘+注册 → 返回 `dataset_id` → 回到②档 | zonal_stats top_n≤20 / inline≤60 均不放宽——超限走本档（**PT-CB17：③档由「脚本+注册」工具化——cdh 只读沙箱下模型跑脚本造文件必失败，一律走本工具**） |
 
 **边界默认指引（PT-CB15 K6·用户拍板）**：12345 社区级分析默认边界 = `base_community_area`（**193 含村·SQMC·现行权威**）；`checkup_cfg_community_xlwj`（130）= 西陵+伍家岗**历史调研范围**，显式点名才用；`checkup_cfg_community174`（174）= 去村统计口径。
 
