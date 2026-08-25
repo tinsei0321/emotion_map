@@ -9,6 +9,7 @@
 | `AUTHORITY/` | 权威范围/点/线数据（RAG 权威层；`boundaries_`/`points_`/`lines_` 前缀） |
 | `THEME/` | 专题数据（`themes_point/polygon/line_主题_数量`；城市体检 + 12345 政务热线） |
 | `RAG/` | RAG 索引与自成长记录（`rag_index/` + `ai_qa/`） |
+| `REGISTRY/` | 预设注册表（`presets/manifest.json` 与图层文件；boundaries 已退休） |
 | `RAW/` 或 `raw/` | 原始输入（购买/自采） |
 | `SIM/` 或 `sim/` | 模拟数据 |
 | `performance/` | 展演/演示池 |

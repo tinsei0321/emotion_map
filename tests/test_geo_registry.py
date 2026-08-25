@@ -56,7 +56,7 @@ def test_damanmen_preset_available():
     """大南门边界已登记 preset 且文件已复制进 presets/（available=True）。"""
     p = load_preset('damanmen_area')
     assert p is not None, 'damanmen_area 未登记 manifest'
-    assert p['available'], 'damanmen_area 应 available（文件须在 DATA/boundaries/presets/）'
+    assert p['available'], 'damanmen_area 应 available（文件须在 DATA/REGISTRY/presets/）'
     assert p.get('nameField') == 'name'
 
 

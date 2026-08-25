@@ -163,7 +163,7 @@ window.__emcTest = {
     if (getLayers().some((l) => l.kind === 'polygon' && l.srcName === 'e2e_range' && l.name === label)) {
       return { ok: true, count: 0, reused: true };
     }
-    const fc = await fetch('/DATA/boundaries/' + name).then((r) => r.json());
+    const fc = await fetch('/DATA/REGISTRY/presets/' + name).then((r) => r.json());
     const { polygons } = splitByGeometry(fc);
     if (polygons.features.length) {
       const L = addLayer({ name: label, kind: 'polygon', fc: polygons, paint: { fillOn: false, lineWidth: 1.5, fillOpacity: 0.1 } });

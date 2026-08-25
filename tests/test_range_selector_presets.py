@@ -103,7 +103,7 @@ def test_admin_district_fixture_mc_in_whitelist():
     ③w6 用户拍板清理（9→4 法定功能区删除）·此守卫防未来数据更新时法定功能区重新混入。
     """
     # 直接读 preset 文件（白名单镜像 tools.js FIXED_ADMIN_DISTRICTS·避免 import 前端 JS）
-    preset_path = os.path.join(_ROOT, 'DATA', 'boundaries', 'presets', '行政区.geojson')
+    preset_path = os.path.join(_ROOT, 'DATA', 'REGISTRY', 'presets', '行政区.geojson')
     if not os.path.isfile(preset_path):
         pytest.skip('行政区 preset 未随仓分发（本地数据）')
     d = json.load(open(preset_path, encoding='utf-8-sig'))   # 保 BOM（EF BB BF）·utf-8-sig 解码

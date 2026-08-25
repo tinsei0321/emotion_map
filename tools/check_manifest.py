@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """PT-CB2 T3 · manifest 登记表一次性校验脚本（B1 验收项）。
 
-校验 DATA/boundaries/presets/manifest.json（图层户口登记表）：
+校验 DATA/REGISTRY/presets/manifest.json（图层户口登记表）：
   1. JSON 可解析 + 顶层结构（list of {group, items[]}）          [ERR]
   2. item 必填字段 id/label/file                                 [ERR]
   3. id 跨组唯一                                                 [ERR]
@@ -32,7 +32,7 @@ import os
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DEFAULT = os.path.join(REPO, 'DATA', 'boundaries', 'presets', 'manifest.json')
+DEFAULT = os.path.join(REPO, 'DATA', 'REGISTRY', 'presets', 'manifest.json')
 
 _ERR, _WARN = 0, 0
 

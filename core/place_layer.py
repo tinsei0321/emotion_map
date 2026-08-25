@@ -237,8 +237,8 @@ _LANDMARK_POI_PATH = os.path.join(_ROOT, 'SCRIPT', 'poi_data', 'landmarks_wgs84.
 # CB-16 Wave 2（CB-15 P0）：3220 高德 POI（DATA/POI/yichang_pois_wgs84.geojson·GeoJSON FeatureCollection）
 #   与 SCRIPT/poi_data/amap_poi_wgs84.json（1270）同源 poi_id·作下钻链地点清单补充（中心城区外围覆盖）
 _YICHANG_POIS_GEOJSON = os.path.join(_ROOT, 'DATA', 'POI', 'yichang_pois_wgs84.geojson')
-_MAIN_BOUNDARY = os.path.join(_ROOT, 'DATA', 'boundaries', '西陵伍家核心主城.geojson')
-_WATER_POLY_PATH = os.path.join(_ROOT, 'DATA', 'boundaries', '现状水系.geojson')
+_MAIN_BOUNDARY = os.path.join(_ROOT, 'DATA', 'AUTHORITY', 'boundaries_核心主城_西陵伍家_1.geojson')
+_WATER_POLY_PATH = os.path.join(_ROOT, 'DATA', 'AUTHORITY', 'boundaries_现状水系.geojson')
 
 # 近邻计数半径：reverse 返回 500m 半径内 POI 计数（popup「等N处」语境 = 步行近邻范围）。
 # 与格 cellSize 无关（reverse 不接收 cellSize）——作稳定可读的「近邻」语义。

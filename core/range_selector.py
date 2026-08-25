@@ -18,9 +18,9 @@ from core.field_dictionary import find_boundary_name_column   # P1 字段语义�
 
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_BOUNDARIES_DIR = os.path.join(_PROJECT_ROOT, 'DATA', 'boundaries')
+_BOUNDARIES_DIR = os.path.join(_PROJECT_ROOT, 'DATA', 'REGISTRY')
 os.makedirs(_BOUNDARIES_DIR, exist_ok=True)
-# 预设范围库（行政区/街办/社区/更新单元/用地等）：manifest 声明 button→file 映射，用户上传文件到此目录即激活
+# 预设范围库（行政区/街办/社区/更新单元/专题等）：manifest 声明 button→file 映射，用户上传文件到此目录即激活
 _PRESETS_DIR = os.path.join(_BOUNDARIES_DIR, 'presets')
 _PRESETS_MANIFEST = os.path.join(_PRESETS_DIR, 'manifest.json')
 os.makedirs(_PRESETS_DIR, exist_ok=True)

@@ -46,7 +46,7 @@ register_track_id('MOD_AIQA.F_038', 'MCP overlay_analysis（叠置交叉·面∩
 register_track_id('MOD_AIQA.F_039', 'MCP trend_analysis（T1/T2/T3 三期时序对比·方向+幅度）')
 register_track_id('MOD_AIQA.F_040', 'MCP report_assemble（综合报告组装·确定性零 LLM·四段结构）')
 
-MANIFEST = os.path.join(REPO, 'DATA', 'boundaries', 'presets', 'manifest.json')
+MANIFEST = os.path.join(REPO, 'DATA', 'REGISTRY', 'presets', 'manifest.json')
 
 # P+ scheme 受管样式词表（前端按名解析·未知即拒）
 SCHEMES = ('community_choropleth_v1', 'point_default_v1', 'boundary_fill_v1')
@@ -242,7 +242,7 @@ def _reject_analysis_output(preset_id, param, caliber):
     except json.JSONDecodeError as exc:
         return {'ok': False, 'hint': (
             f'{param} 的 usage 判定失败：manifest 内容损坏（{exc}）·G-2 守卫拒绝该输入'
-            '（请修复 DATA/boundaries/presets/manifest.json 后重试）'), 'caliber': caliber}
+            '（请修复 DATA/REGISTRY/presets/manifest.json 后重试）'), 'caliber': caliber}
     except Exception as exc:
         return {'ok': False, 'hint': (
             f'{param} 的 usage 判定失败：manifest 读取异常（{type(exc).__name__}: {str(exc)[:80]}）'

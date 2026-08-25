@@ -141,6 +141,9 @@ _SERVE_ALLOWED_PREFIXES = (
     '/_test/',              # dev-only flywheel dashboard (?test=1 drawer)
     '/DATA/performance/',   # data pool read directly by frontend (panel.js etc.)
     '/DATA/boundaries/',    # boundary geojson (e2e-seam / range presets)
+    '/DATA/REGISTRY/',      # 预设注册表（boundaries 退役后 preset 落点）
+    '/DATA/AUTHORITY/',     # 权威范围/点/线数据
+    '/DATA/THEME/',         # 专题数据
 )
 
 

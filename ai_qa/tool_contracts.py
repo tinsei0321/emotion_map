@@ -481,7 +481,7 @@ _PARAM_RANGES = {
 import json as _json
 from pathlib import Path as _Path
 
-_PRESET_MANIFEST = _Path(__file__).resolve().parent.parent / 'DATA' / 'boundaries' / 'presets' / 'manifest.json'
+_PRESET_MANIFEST = _Path(__file__).resolve().parent.parent / 'DATA' / 'REGISTRY' / 'presets' / 'manifest.json'
 
 # source 参数 → 枚举桶（point=点层 id·preset=边界/面层 preset id）
 _SOURCE_ENUM_PARAM = {
