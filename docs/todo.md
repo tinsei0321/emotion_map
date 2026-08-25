@@ -9,6 +9,15 @@
 
 ---
 
+## 📅 2026-08-26（claude·Codex Harness 配置隔离修复）
+
+### ✅ Codex 配置隔离——冲突二次复发根治（revision-log 5.128，commit ef93247 · 已推 origin）
+
+- **根因**：EMC harness 与桌面 Codex 工具共用 `~/.codex/config.toml`——emc `required=true` 在共享配置里，家机 8600 未起时桌面工具全部工具调用快速失败；桌面应用升级/model 切换持续改写该文件 → 手工补丁必被冲掉（复发机制）。
+- **隔离**：桥自备 CODEX_HOME（`_codex_cwd/.codex`·`_ensure_harness_home` F_045 自愈生成：锁定 deepseek-v4-flash 不可切换 + emc required 迁入 + models.json Deferred 补丁自动化 + 密钥运行时复制不进仓）；桌面配置摘除 emc 段（备份 bak-20260826·flash/pro 可切换保留）。
+- **验证**：initialize 响应 codexHome 指向注入目录（CODEX_HOME 100% 生效）；618 passed + 1 skipped 门禁绿。
+- 附带：git fetch 报 geometric repack 失败（reflog 无效条目）→ 已设 `maintenance.auto=false` 仓库级绕行；根治（reflog expire + gc）待用户裁决。
+
 ## 📅 2026-08-23（claude·壳阶段简单件批量 SHELL(C)）
 
 ### ✅ S5 追问 chips + S7 E2E 冒烟骨架 + git 对象库体检 + requirements 注记
