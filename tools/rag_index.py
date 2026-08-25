@@ -349,15 +349,43 @@ def _embed_texts(model, texts):
     return model.encode(texts, normalize_embeddings=True)
 
 
+def _load_st_model(**kwargs):
+    """加载 BGE 模型（transformers 5.x 兼容兜底·PT-CB15 K7）。
+
+    bge-small-zh-v1.5 旧模型卡无 processor 配置：transformers 5.x 的
+    AutoProcessor.from_pretrained 直接抛 ValueError（Unrecognized processing class），
+    而 st 的 tokenizer 属性原生支持「processor 即 tokenizer 实例」——回退 AutoTokenizer 即可。
+    只在命中该特定错误时安装兜底（一次性·加载后恢复原方法·A9 不静默吞其他错误）。"""
+    from sentence_transformers import SentenceTransformer
+    try:
+        return SentenceTransformer(MODEL_NAME, **kwargs)
+    except ValueError as exc:
+        if 'processing class' not in str(exc):
+            raise
+        from transformers import AutoProcessor, AutoTokenizer
+        _orig = AutoProcessor.from_pretrained
+
+        def _fallback(name_or_path, *a, **kw):
+            try:
+                return _orig(name_or_path, *a, **kw)
+            except ValueError:
+                return AutoTokenizer.from_pretrained(name_or_path, *a, **kw)
+
+        AutoProcessor.from_pretrained = _fallback
+        try:
+            return SentenceTransformer(MODEL_NAME, **kwargs)
+        finally:
+            AutoProcessor.from_pretrained = _orig
+
+
 @track('MOD_AIQA.F_014', track_args=False)
 def build_index():
     """构建向量索引（原子写 + embed_hash）。"""
     import numpy as np
-    from sentence_transformers import SentenceTransformer
 
     RAG_DIR.mkdir(parents=True, exist_ok=True)
     _tag(True, f'加载模型 {MODEL_NAME}（首次下载 ~40s·需 HF 镜像）...')
-    model = SentenceTransformer(MODEL_NAME)
+    model = _load_st_model()
 
     # 护栏 4（PT-CB9 L3）：重建命令一体化——前注增量生成内串（禁手工两步·双机重建一条命令）。
     #   限定域 chunk 缺失/正文 hash 不符才调 LLM·未变更零调用；失败不阻塞构建（已有前注不受影响）。
@@ -477,10 +505,9 @@ def _hub_penalty(m):
 def _get_model():
     global _model_cache
     if _model_cache is None:
-        from sentence_transformers import SentenceTransformer
         # local_files_only=True：模型已缓存（~/.cache/huggingface/hub·92M）·禁联网检查——
         # 否则启动时 HEAD hf-mirror.com 超时重试 5 次（~30-60s+·2026-08-12 实测）·网络不通则启动卡死
-        _model_cache = SentenceTransformer(MODEL_NAME, local_files_only=True)
+        _model_cache = _load_st_model(local_files_only=True)
     return _model_cache
 
 

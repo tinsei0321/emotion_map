@@ -102,6 +102,11 @@ def _try_claim_watch():
 
 # C2-2：applied/ 归档保留天数（超期即清·留痕窗口足够回溯又不无限堆积）。
 _APPLIED_TTL_DAYS = 7
+# PT-CB15 收尾（Kimi 复核件 F1·迟到 spec TTL）：spec 落盘超过该秒数才首次被扫到 →
+# 直接归档不推送（stderr 留痕）。根因：后台任务（旧 turn/超时重试）延迟完成写 inbox，
+# watcher 无差别广播 → 「EMC 文本已结束，旧图层突然推回」。闭包规则（查 mtime·零思考合规）；
+# 300s = 快分析档实测约 30s 的 10 倍余量（不拍死·10x 惯例）。
+_SPEC_STALE_SECONDS = 300
 # C2-4：dataset 端点属性白名单（默认拒绝）——只放行名称/极性/领域/指标类字段，
 #   禁办件编号等准标识字段随渲染通道外流（脱敏铁律 7 同源）。
 #   PT-CB11 B3-1：键表与前缀迁入 core/render_policy.py（单一权威源·与 MCP 侧校验共用）；
@@ -122,7 +127,8 @@ def _sse_event(spec):
 
 
 def scan_inbox(inbox_dir, seen, out_queue, backlog):
-    """扫描收件箱新文件→入队+backlog，推送成功即归档 applied/（T16：重启不重放）。坏文件 log 后跳过。返回本次入队数。"""
+    """扫描收件箱新文件→入队+backlog，推送成功即归档 applied/（T16：重启不重放）。坏文件 log 后跳过。
+    PT-CB15：落盘超 _SPEC_STALE_SECONDS 的迟到 spec 直接归档不推送（防旧 turn 幽灵图层）。返回本次入队数。"""
     os.makedirs(inbox_dir, exist_ok=True)
     files = sorted(glob.glob(os.path.join(inbox_dir, '*.json')))
     pushed = 0
@@ -143,6 +149,21 @@ def scan_inbox(inbox_dir, seen, out_queue, backlog):
             _safe_print(f'[WARN] render_inbox 坏文件跳过: {base}: {exc}', file=sys.stderr)
             continue
         seen.add(base)
+        # PT-CB15 迟到 TTL：落盘超期首扫即归档不推（旧 turn/重试延迟产物永不上屏）
+        try:
+            age = time.time() - os.path.getmtime(fp)
+        except OSError:
+            age = 0.0
+        if age > _SPEC_STALE_SECONDS:
+            _safe_print(f'[WARN] render_inbox 迟到 spec 归档不推（落盘 {int(age)}s 前·TTL {_SPEC_STALE_SECONDS}s）: {base}',
+                        file=sys.stderr)
+            try:
+                applied_dir = os.path.join(inbox_dir, 'applied')
+                os.makedirs(applied_dir, exist_ok=True)
+                os.replace(fp, os.path.join(applied_dir, base))
+            except OSError as exc:
+                _safe_print(f'[WARN] render_inbox 归档失败（不阻塞）: {base}: {exc}', file=sys.stderr)
+            continue
         out_queue.put(spec)
         backlog.append(spec)
         del backlog[:-20]

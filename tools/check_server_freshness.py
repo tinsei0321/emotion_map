@@ -5,11 +5,15 @@
 用途：检查当前 8000/8080 端口服务进程是否晚于最新代码提交。
 若服务早于最新提交，提示“载旧码风险”，建议重启（R7）。
 
+PT-CB15 K8（R2-6）：新增 RAG 索引新鲜度段——索引构建时间 vs 知识源最新改动，
+陈旧即告警（治「DATA 整理了但索引没重建·AI 读旧知识」类事故）。
+
 纯报告型：不杀进程、不重启、不修改任何文件。
 铁律：ASCII 标记 [OK]/[WARN]；所有 print 走 _safe_print。
 """
 
 import datetime
+import os
 import re
 import subprocess
 import sys
@@ -99,6 +103,50 @@ def _get_latest_commit_time():
         return None
 
 
+def check_rag_index_freshness(repo=REPO):
+    """RAG 索引新鲜度（PT-CB15 K8）：vectors.npy mtime vs 知识源最新 mtime。
+
+    知识源范围 = rag_index 实际扫描面（docs/urban-renewal-plan + DATA/THEME 的 md
+    + ai_qa/outlet_kb 的 py 事实卡）。索引不存在/源不存在均显式报告，不静默。
+    返回 0=新鲜 1=陈旧或异常。"""
+    idx = os.path.join(repo, "DATA", "RAG", "rag_index", "vectors.npy")
+    _safe_print("=== RAG 索引新鲜度 ===")
+    if not os.path.isfile(idx):
+        _safe_print("[WARN] 索引不存在（跑 py tools/rag_index.py --build）")
+        return 1
+    idx_m = os.path.getmtime(idx)
+    newest_src, newest_t = None, 0.0
+    for rel, pat in (("docs/urban-renewal-plan", ".md"), ("DATA/THEME", ".md"),
+                     ("ai_qa/outlet_kb", ".py")):
+        root = os.path.join(repo, rel)
+        for dirpath, _dirs, files in os.walk(root):
+            if "_Retired" in dirpath or "_retired" in dirpath:
+                continue
+            for fn in files:
+                if not fn.endswith(pat):
+                    continue
+                fp = os.path.join(dirpath, fn)
+                try:
+                    mt = os.path.getmtime(fp)
+                except OSError:
+                    continue
+                if mt > newest_t:
+                    newest_t, newest_src = mt, fp
+    idx_s = datetime.datetime.fromtimestamp(idx_m).isoformat(timespec="seconds")
+    _safe_print(f"索引构建时间: {idx_s}")
+    if not newest_src:
+        _safe_print("[WARN] 知识源扫描为空（目录结构变了？）")
+        return 1
+    src_s = datetime.datetime.fromtimestamp(newest_t).isoformat(timespec="seconds")
+    if newest_t > idx_m:
+        hours = int((newest_t - idx_m) // 3600)
+        _safe_print(f"[WARN] 知识源比索引新 {hours} 小时——最新改动: {newest_src}（{src_s}）"
+                    "·建议 py tools/rag_index.py --rebuild")
+        return 1
+    _safe_print(f"[OK] 索引新于全部知识源（最新源: {os.path.basename(newest_src)} {src_s}）")
+    return 0
+
+
 def main():
     _safe_print("=== 服务新旧核查 ===")
     pids = _get_listening_pids()
@@ -127,7 +175,8 @@ def main():
             _safe_print(
                 f"[WARN] 服务早于最新提交 {minutes} 分钟——载旧码风险，建议重启（R7）（PID {pid}）"
             )
-    return 0
+    rag_rc = check_rag_index_freshness()
+    return rag_rc
 
 
 if __name__ == "__main__":

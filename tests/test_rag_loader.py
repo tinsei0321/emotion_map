@@ -182,3 +182,20 @@ def test_ctx_prefix_quality_gate_sample_6():
                 _has_section_element(prefix, src),
                 any(t in prefix for t in _CALIBER_TOKENS)]
         assert sum(hits) >= 2, f'{src} 前注出处要素不足（{hits}）: {prefix[:60]}'
+
+
+# ════════════ 6 · transformers 5.x 兼容兜底（PT-CB15 K7·审计 C6） ════════════
+
+def test_load_st_model_compat_fallback():
+    """_load_st_model 在当前环境可加载并编码（transformers 5.x 时走 AutoTokenizer 兜底·
+    4.x 时走原生路径——两态都应通过）。无 sentence_transformers 或模型缓存缺失时跳过。"""
+    import pytest
+    pytest.importorskip('sentence_transformers')
+    if not rag_index.RAG_DIR.exists():
+        pytest.skip('RAG 目录不存在')
+    try:
+        model = rag_index._load_st_model(local_files_only=True)
+    except Exception as exc:  # 模型缓存缺失等环境因素 → skip 不红（A9：显式跳过非静默）
+        pytest.skip(f'模型不可用（{type(exc).__name__}: {str(exc)[:60]}）')
+    vec = model.encode(['口径测试'], normalize_embeddings=True)
+    assert vec.shape[-1] == 512, 'bge-small-zh 向量维度应为 512'

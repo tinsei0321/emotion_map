@@ -22,6 +22,7 @@ import random
 import re
 import sys
 import time
+import glob
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
@@ -321,50 +322,93 @@ def _gdf_rows(gdf, agg_cols=None):
     return rows
 
 
-def _layer_output_geojson(gdf, top_n, value_col, max_features=20, max_kb=200):
-    """layer_output=True 时：仅 top_n 行对应多边形 → FeatureCollection（properties 含统计值+value）。
-    体积控制（治 dsh spill 崩溃·775KB→<200KB）：
-    1. 几何简化：多边形顶点 >100 时 shapely simplify（保持拓扑）
-    2. 体积硬顶：序列化后 >max_kb 则逐级简化至达标或砍要素数
-    """
+def _layer_output_fc(gdf, top_n, value_col, max_features=20):
+    """layer_output 取 top_n 子集 + value 统一统计值列 → FeatureCollection dict。
+
+    PT-CB15 K2（R1-1）：simplify 阶梯（>200KB 才启动的 0.001-0.05 度简化）**退役**——
+    产物改服务端落盘直传（_persist_layer_output），不再穿 MCP payload，无体积约束，
+    几何保真优先。根治「转录抽稀」：实测模型手抄内联 geojson 时 2297 顶点只剩 80 个
+    （100% 源顶点子集·非幻觉），边界粗糙如随手画。"""
     subset = gdf.head(min(int(top_n), max_features)).copy()
     if value_col in subset.columns:
         subset['value'] = subset[value_col]
+    return json.loads(subset.to_json())
 
-    def _try_simplify(gdf_in, tol):
-        """shapely simplify：跳过 None/非几何列·tol=0 原样"""
-        if tol <= 0:
-            return gdf_in
-        simplified = gdf_in.copy()
-        try:
-            simplified.geometry = simplified.geometry.simplify(tolerance=tol, preserve_topology=True)
-        except Exception:
-            pass   # 简化失败不阻塞（返回原几何）
-        return simplified
 
-    # 第一轮：正常输出
-    result = json.loads(subset.to_json())
-    size = len(json.dumps(result))
+# ── PT-CB15 K2/K3（R1-1/R1-4）：layer_output 服务端落盘 + tmp_render 生命周期 ──
+# 设计：大宗几何不过模型上下文——工具落盘 tmp_render/*.geojson 并登记临时 dataset，
+# 模型只传 dataset_id（render_spec 引用）。「快递贴单号，不让 AI 手搬」。
+TMP_RENDER_DIR = os.path.join(REPO, 'DATA', 'Export', 'exports', 'tmp_render')
+_TMP_RENDER_TTL_DAYS = 7
 
-    # 逐级简化（0.001→0.005→0.01→0.05 度·约 100m-5km）
-    if size > max_kb * 1024:
-        for tol in (0.001, 0.005, 0.01, 0.05):
-            simplified = _try_simplify(subset, tol)
-            result = json.loads(simplified.to_json())
-            size = len(json.dumps(result))
-            if size <= max_kb * 1024:
-                break
 
-    # 仍超则砍要素数（20→10→5）
-    if size > max_kb * 1024:
-        for n in (10, 5, 3):
-            smaller = subset.head(n)
-            result = json.loads(smaller.to_json())
-            size = len(json.dumps(result))
-            if size <= max_kb * 1024:
-                break
+def _cleanup_tmp_render():
+    """tmp_render 生命周期（R1-4）：删超期文件 + 摘除 manifest 中 file 已失的
+    tmp_render_ 登记条目。幂等；单点失败仅 stderr 留痕不阻塞（A9 具体捕获）。"""
+    removed_files = 0
+    try:
+        os.makedirs(TMP_RENDER_DIR, exist_ok=True)
+        cutoff = time.time() - _TMP_RENDER_TTL_DAYS * 86400
+        for fp in glob.glob(os.path.join(TMP_RENDER_DIR, '*.geojson')):
+            try:
+                if os.path.getmtime(fp) < cutoff:
+                    os.remove(fp)
+                    removed_files += 1
+            except OSError as exc:
+                _safe_print(f'[WARN] tmp_render 文件清理失败（不阻塞）: {fp}: {exc}', file=sys.stderr)
+    except OSError as exc:
+        _safe_print(f'[WARN] tmp_render 目录异常（不阻塞）: {exc}', file=sys.stderr)
+    pruned = 0
+    try:
+        with open(MANIFEST, 'r', encoding='utf-8') as fh:
+            groups = json.load(fh)
+        base = os.path.dirname(MANIFEST)
+        dirty = False
+        for g in groups:
+            keep = []
+            for it in g.get('items', []):
+                if str(it.get('id', '')).startswith('tmp_render_'):
+                    rel = str(it.get('file', ''))
+                    if not rel or not os.path.isfile(os.path.normpath(os.path.join(base, rel))):
+                        pruned += 1
+                        dirty = True
+                        continue
+                keep.append(it)
+            g['items'] = keep
+        if dirty:
+            with open(MANIFEST, 'w', encoding='utf-8', newline='') as fh:
+                json.dump(groups, fh, ensure_ascii=False, indent=2)
+    except (OSError, ValueError) as exc:
+        _safe_print(f'[WARN] tmp_render 登记摘链失败（不阻塞）: {exc}', file=sys.stderr)
+    if removed_files or pruned:
+        _safe_print(f'[OK] tmp_render 清理：超期文件 {removed_files} 件·失链登记摘除 {pruned} 条',
+                    file=sys.stderr)
 
-    return result
+
+def _persist_layer_output(tool, fc, value_col):
+    """分析结果出图直传：fc 落盘 tmp_render + 登记临时 dataset（renderFields 声明
+    value/value_col 防渲染通道字段政策误剔）→ dataset_id。几何全程不过模型上下文。"""
+    _cleanup_tmp_render()
+    fp = os.path.join(TMP_RENDER_DIR, f'{tool}-{int(time.time() * 1000)}.geojson')
+    with open(fp, 'w', encoding='utf-8', newline='') as fh:
+        json.dump(fc, fh, ensure_ascii=False)
+    return _register_tmp_dataset(fp, f'{tool} 分析结果', render_fields=['value', value_col])
+
+
+def _attach_render_ref(out, tool, fc, value_col):
+    """layer_output 统一出口：落盘+登记+挂 render_dataset_id/render_hint。
+    落盘失败降级为 render_hint 说明（不拖垮已成功的分析结果·A9）。"""
+    try:
+        ds_id = _persist_layer_output(tool, fc, value_col)
+    except (OSError, ValueError) as exc:
+        _safe_print(f'[WARN] {tool} layer_output 落盘失败（分析结果不受影响）: {exc}',
+                    file=sys.stderr)
+        out['render_hint'] = f'出图落盘失败（{exc}）——可重试或改用 render_file'
+        return out
+    out['render_dataset_id'] = ds_id
+    out['render_hint'] = (f'出图：render_spec(dataset_id={ds_id!r}, value_field={value_col!r})'
+                          '——几何服务端直传·勿手抄坐标（手抄必抽稀）')
+    return out
 
 
 @track('MOD_AIQA.F_021', track_args=False)
@@ -437,12 +481,17 @@ def list_data(include_demo: bool = False) -> dict:
         'presets': presets,
         'count': len(point_layers) + len(presets),
         # PT-CB7 T10：出图能力段（契约权威 = docs/render-contract.md）
+        # PT-CB15 K5/K6：paradigm 改写（内联档收窄）+ 边界默认指引（12345 社区级=193 层）
         'render': {
             'schemes': list(SCHEMES),
-            'paradigm': ('三档出图范式：①inline（geojson ≤60 要素）'
-                         '②dataset_id（引用已注册数据源·无体量限制）'
-                         '③脚本全量+manifest 注册后走②（超限唯一正道）；'
-                         '把已有文件显示到地图用 render_file（自动选档）；详见 docs/render-contract.md'),
+            'paradigm': ('分析结果出图正道：分析工具 layer_output=True 返回 render_dataset_id'
+                         ' → render_spec(dataset_id=...) 引用（几何服务端直传·勿手抄坐标·手抄必抽稀）；'
+                         '①inline 仅限模型自造小几何示意（≤60 要素）②dataset_id 引用已注册数据源'
+                         '③脚本全量+manifest 注册后走②；把已有文件显示到地图用 render_file；'
+                         '详见 docs/render-contract.md'),
+            'boundary_guidance': ('12345 社区级分析默认边界=base_community_area（193 含村·SQMC·现行权威）；'
+                                  'checkup_cfg_community_xlwj=130 为西陵+伍家岗历史调研范围·显式点名才用；'
+                                  'checkup_cfg_community174=去村统计口径（174）'),
             'tip_required_fields': ['name'],
             'tip_recommended_fields': ['point_count', 'polarity_index'],
             'limits': {'inline_features_max': 60, 'zonal_top_n_max': 20},
@@ -599,7 +648,7 @@ def zonal_stats(boundary: str, layer: str = 'yichang_l2_t1',
                 layer_output: bool = False,
                 sort_by: str = 'polarity_index') -> dict:
     """单元聚合：情绪点按边界单元统计（宏观/中观结论）。
-    参数：boundary 必填（先 list_data）；layer 默认 yichang_l2_t1；sort_by=point_count|polarity_index|score_mean；top_n 1-20；layer_output=True 增 geojson 供 render_spec 内联铺图。
+    参数：boundary 必填（先 list_data）；layer 默认 yichang_l2_t1；sort_by=point_count|polarity_index|score_mean；top_n 1-20；layer_output=True 落盘登记临时 dataset 返回 render_dataset_id（几何服务端直传·render_spec 以 dataset_id 引用·PT-CB15 K2）。
     限制：首次调用 geopandas 冷启动约 10-20s；rows 硬顶 20。"""
     try:
         from core.geo_registry import resolve_boundary, resolve_points
@@ -633,7 +682,7 @@ def zonal_stats(boundary: str, layer: str = 'yichang_l2_t1',
         top_n = max(1, min(int(top_n), 20))
         top_rows = merged.head(top_n)
         rows = _gdf_rows(top_rows, cols)
-        out_geojson = _layer_output_geojson(merged, top_n, sort_col) if layer_output else None
+        out_fc = _layer_output_fc(merged, top_n, sort_col) if layer_output else None
     except (KeyError, FileNotFoundError):
         return {'ok': False, 'hint': _UNKNOWN_HINT, 'caliber': CALIBERS['zonal_stats']}
     except Exception as exc:
@@ -642,7 +691,7 @@ def zonal_stats(boundary: str, layer: str = 'yichang_l2_t1',
     out = {'rows': rows, 'row_count': row_count, 'truncated': row_count > len(rows),
            'caliber': CALIBERS['zonal_stats']}
     if layer_output:
-        out['geojson'] = out_geojson
+        _attach_render_ref(out, 'zonal_stats', out_fc, sort_col)
     return out
 
 
@@ -694,7 +743,7 @@ def rank(by: str = 'worst', layer: str = 'yichang_l2_t1',
          layer_output: bool = False,
          sort_by: str = 'polarity_index') -> dict:
     """排序评价：按极性指数找最差/最好 Top-N 单元（先聚合再排）。
-    参数：boundary 必填；by=worst|best；sort_by=point_count|polarity_index|score_mean；top_n 1-20；layer_output=True 增 geojson。
+    参数：boundary 必填；by=worst|best；sort_by=point_count|polarity_index|score_mean；top_n 1-20；layer_output=True 落盘登记临时 dataset 返回 render_dataset_id（几何服务端直传·PT-CB15 K2）。
     限制：首次调用冷启动同 zonal_stats；层无 polarity_index 时报提示。"""
     if not boundary:
         return {'ok': False, 'hint': 'rank 需 boundary（先 zonal 聚合再排）',
@@ -731,7 +780,7 @@ def rank(by: str = 'worst', layer: str = 'yichang_l2_t1',
         top_n = max(1, min(int(top_n), 20))
         top_rows = merged.head(top_n)
         rows = _gdf_rows(top_rows, cols)
-        out_geojson = _layer_output_geojson(merged, top_n, sort_col) if layer_output else None
+        out_fc = _layer_output_fc(merged, top_n, sort_col) if layer_output else None
     except (KeyError, FileNotFoundError):
         return {'ok': False, 'hint': _UNKNOWN_HINT, 'caliber': CALIBERS['rank']}
     except Exception as exc:
@@ -739,7 +788,7 @@ def rank(by: str = 'worst', layer: str = 'yichang_l2_t1',
 
     out = {'rows': rows, 'row_count': row_count, 'caliber': CALIBERS['rank']}
     if layer_output:
-        out['geojson'] = out_geojson
+        _attach_render_ref(out, 'rank', out_fc, sort_col)
     return out
 
 
@@ -748,7 +797,7 @@ def grid_aggregate(layer: str = 'yichang_l2_t1', cell_size: int = 800,
                    value_col: str = '', boundary: str = '',
                    top_n: int = 10, layer_output: bool = False) -> dict:
     """方格网空间聚合：点层按固定边长方格统计（中观·规则格）。
-    参数：cell_size 格边长米（默认 800·语义同 Grid dialog cellSize=格边长非带宽）；value_col 空=只计数·给值则同时算 _sum/_mean；boundary 可选 preset 裁剪；top_n 1-20；layer_output=True 增 geojson。
+    参数：cell_size 格边长米（默认 800·语义同 Grid dialog cellSize=格边长非带宽）；value_col 空=只计数·给值则同时算 _sum/_mean；boundary 可选 preset 裁剪；top_n 1-20；layer_output=True 落盘登记临时 dataset 返回 render_dataset_id（几何服务端直传·PT-CB15 K2）。
     限制：方格≠行政单元——社区级结论用 zonal_stats；geopandas 冷启动 10-20s。"""
     caliber = {'scale': '中观（规则方格·边长 cell_size m）',
                'semantics': '方格网聚合强度（规则格·非行政单元）',
@@ -781,7 +830,7 @@ def grid_aggregate(layer: str = 'yichang_l2_t1', cell_size: int = 800,
         merged = merged.sort_values(sort_col, ascending=False, kind='stable')
         top_n = max(1, min(int(top_n), 20))
         rows = _gdf_rows(merged.head(top_n), [value_col] if value_col else None)
-        out_geojson = _layer_output_geojson(merged, top_n, sort_col) if layer_output else None
+        out_fc = _layer_output_fc(merged, top_n, sort_col) if layer_output else None
     except (KeyError, FileNotFoundError):
         return {'ok': False, 'hint': _UNKNOWN_HINT, 'caliber': caliber}
     except Exception as exc:
@@ -793,7 +842,7 @@ def grid_aggregate(layer: str = 'yichang_l2_t1', cell_size: int = 800,
     out = {'rows': rows, 'stats': stats, 'row_count': row_count,
            'truncated': row_count > len(rows), 'caliber': caliber}
     if layer_output:
-        out['geojson'] = out_geojson
+        _attach_render_ref(out, 'grid_aggregate', out_fc, sort_col)
     return out
 
 
@@ -916,7 +965,7 @@ def hotspot_analysis(layer: str = 'yichang_l2_t1', value_col: str = 'score',
                     if c in ordered.columns]
         rows = [{c: _jsonable(row[c]) for c in row_cols}
                 for _, row in ordered.head(top_n).iterrows()]
-        out_geojson = _layer_output_geojson(result, top_n, 'Gi_Z') if layer_output else None
+        out_fc = _layer_output_fc(result, top_n, 'Gi_Z') if layer_output else None
     except (KeyError, FileNotFoundError):
         return {'ok': False, 'hint': _UNKNOWN_HINT, 'caliber': caliber}
     except Exception as exc:
@@ -925,7 +974,7 @@ def hotspot_analysis(layer: str = 'yichang_l2_t1', value_col: str = 'score',
     out = {'counts': counts, 'rows': rows, 'row_count': row_count,
            'truncated': row_count > len(rows), 'caliber': caliber}
     if layer_output:
-        out['geojson'] = out_geojson
+        _attach_render_ref(out, 'hotspot_analysis', out_fc, 'Gi_Z')
     return out
 
 
@@ -933,7 +982,7 @@ def hotspot_analysis(layer: str = 'yichang_l2_t1', value_col: str = 'score',
 def area_stats(boundary: str, group_by: str = '', top_n: int = 10,
                layer_output: bool = False) -> dict:
     """面积占比统计：面层按要素/分组字段算面积与占比（结构量化·非情绪归因）。
-    参数：boundary 必填 preset id（先 list_data）；group_by 给出则按该字段 dissolve 分组汇总；top_n 1-20；layer_output=True 增 geojson。
+    参数：boundary 必填 preset id（先 list_data）；group_by 给出则按该字段 dissolve 分组汇总；top_n 1-20；layer_output=True 落盘登记临时 dataset 返回 render_dataset_id（几何服务端直传·PT-CB15 K2）。
     限制：只算面积结构——情绪结论用 zonal_stats/rank；投影面积与椭球面积差异 <1% 级。"""
     caliber = {'scale': '宏观/中观（面积结构）',
                'semantics': '面积与占比统计（结构量化）',
@@ -977,8 +1026,8 @@ def area_stats(boundary: str, group_by: str = '', top_n: int = 10,
             item['area_km2'] = _jsonable(row['area_km2'])
             item['share_pct'] = _jsonable(row['share_pct'])
             rows.append(item)
-        out_geojson = (_layer_output_geojson(gm.to_crs('EPSG:4326'), top_n, 'area_km2')
-                       if layer_output else None)
+        out_fc = (_layer_output_fc(gm.to_crs('EPSG:4326'), top_n, 'area_km2')
+                  if layer_output else None)
     except (KeyError, FileNotFoundError):
         return {'ok': False, 'hint': _UNKNOWN_HINT, 'caliber': caliber}
     except Exception as exc:
@@ -987,7 +1036,7 @@ def area_stats(boundary: str, group_by: str = '', top_n: int = 10,
     out = {'rows': rows, 'total_km2': round(total_km2, 4), 'row_count': row_count,
            'truncated': row_count > len(rows), 'caliber': caliber}
     if layer_output:
-        out['geojson'] = out_geojson
+        _attach_render_ref(out, 'area_stats', out_fc, 'area_km2')
     return out
 
 
@@ -995,7 +1044,7 @@ def area_stats(boundary: str, group_by: str = '', top_n: int = 10,
 def nearest_analysis(layer: str = 'yichang_l2_t1', target: str = '',
                      k: int = 1, top_n: int = 10, layer_output: bool = False) -> dict:
     """最近邻锚定：每个锚点找目标层最近的 k 个（微观·POI 锚定）。
-    参数：target 必填（preset_id：先试点层、解析失败再作面层；契约 required_slots）；k 默认 1·cap 5；top_n 1-20；layer_output=True 增连线 geojson。
+    参数：target 必填（preset_id：先试点层、解析失败再作面层；契约 required_slots）；k 默认 1·cap 5；top_n 1-20；layer_output=True 增连线 geojson（微几何 ≤40 顶点·内联例外·PT-CB15 K2 注记）。
     限制：邻近≠因果；距离为 EPSG:4546 投影平面距离（<1% 级误差·照 area_stats 先例）。"""
     caliber = {'scale': '微观（POI 锚定）',
                'semantics': '最近邻配对（锚点×目标）+投影米距',
@@ -1104,7 +1153,7 @@ def nearest_analysis(layer: str = 'yichang_l2_t1', target: str = '',
 def overlay_analysis(layer_a: str, layer_b: str, how: str = 'intersection',
                      top_n: int = 10, layer_output: bool = False) -> dict:
     """叠置交叉：两个面层做交集/并集/差集/对称差（面∩面正解）。
-    参数：layer_a/layer_b 必填 preset id（先 list_data）；how=intersection|union|difference|symmetric（默认 intersection·契约同）；top_n 1-20；layer_output=True 增 geojson。
+    参数：layer_a/layer_b 必填 preset id（先 list_data）；how=intersection|union|difference|symmetric（默认 intersection·契约同）；top_n 1-20；layer_output=True 落盘登记临时 dataset 返回 render_dataset_id（几何服务端直传·PT-CB15 K2）。
     限制：面∩面运算——点层裁剪勿用（无意义·取点用 zonal/clip）；结果要素可能 explode 多块（按面积降序 top）。"""
     caliber = {'scale': '中观（跨图层面）',
                'semantics': '两图层面叠置交叉+面积统计',
@@ -1153,7 +1202,7 @@ def overlay_analysis(layer_a: str, layer_b: str, how: str = 'intersection',
                  'name_b': _jsonable(r['name_b']) if 'name_b' in result.columns else '',
                  'area_km2': _jsonable(r['area_km2'])}
                 for _, r in result.head(top_n).iterrows()]
-        out_geojson = _layer_output_geojson(result, top_n, 'area_km2') if layer_output else None
+        out_fc = _layer_output_fc(result, top_n, 'area_km2') if layer_output else None
     except (KeyError, FileNotFoundError):
         return {'ok': False, 'hint': _UNKNOWN_HINT, 'caliber': caliber}
     except Exception as exc:
@@ -1163,7 +1212,7 @@ def overlay_analysis(layer_a: str, layer_b: str, how: str = 'intersection',
            'stats': {'total_area_km2': round(float(result['area_km2'].sum()), 4)},
            'truncated': row_count > len(rows), 'caliber': caliber}
     if layer_output:
-        out['geojson'] = out_geojson
+        _attach_render_ref(out, 'overlay_analysis', out_fc, 'area_km2')
     return out
 
 
@@ -1420,7 +1469,7 @@ def report_assemble(question: str = '', results: list = None,
 
 
 def _dataset_meta(dataset_id, groups=None):
-    """dataset_id → {usage, data_nature}（preset 读 manifest·点层按池路径·未知 None）。"""
+    """dataset_id → {usage, data_nature, note}（preset 读 manifest·点层按池路径·未知 None）。"""
     try:
         if groups is None:
             with open(MANIFEST, 'r', encoding='utf-8') as fh:
@@ -1429,7 +1478,8 @@ def _dataset_meta(dataset_id, groups=None):
                 for it in group.get('items', []):
                     if it.get('id') == dataset_id:
                         return {'usage': it.get('usage', 'input'),
-                                'data_nature': it.get('data_nature', 'real')}
+                                'data_nature': it.get('data_nature', 'real'),
+                                'note': it.get('note', '')}
     except Exception:
         pass
     try:
@@ -1482,7 +1532,13 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
                     'caliber': CALIBERS['render_spec']}
         usage = meta['usage']
         # P1-B：引用预注册结论层/临时层时软警示，提示模型核对是否与本轮答案口径一致（不硬拒）
-        if usage == 'analysis_output' or dataset_id.startswith('tmp_render_') or re.match(r'page7_.*_top\d+', dataset_id):
+        # PT-CB15 K2 豁免：tmp_render_ 且 note 含「layer_output 自动登记」= 本轮分析直传产物，
+        # 正是推荐路径——警示会误报，改为中性确认句。
+        _is_layer_output_ref = (dataset_id.startswith('tmp_render_')
+                                and 'layer_output' in str(meta.get('note', '')))
+        if _is_layer_output_ref:
+            fixes.append(f'引用 layer_output 直传产物 dataset_id={dataset_id}——确认 value_field 与统计口径一致即可')
+        elif usage == 'analysis_output' or dataset_id.startswith('tmp_render_') or re.match(r'page7_.*_top\d+', dataset_id):
             fixes.append(f'引用预注册层 dataset_id={dataset_id}（usage={usage}）非本轮计算结果——若答案指定 Top-N/口径，请核对图层要素是否一致')
         # PT-CB14 C3：data_nature='test' 为测试投递显式标记·不被 dataset meta 覆盖（real/demo 仍以 dataset 为准）
         if nature != 'test':
@@ -1499,6 +1555,28 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
             return {'ok': False, 'hint': '内联要素 >60·请改用 dataset_id 引用',
                     'caliber': CALIBERS['render_spec']}
         data = {'geojson': geojson}
+        # PT-CB15 K4（R1-2）：内联几何抽稀软校验（提示级·不阻断·守软校验红线）——
+        # 面要素带统计字段但面均外环顶点 <30：疑似模型转录抽稀（TOP7 实测源 2297 顶点被手抄成 80），
+        # 提示改用分析工具 layer_output 返回的 render_dataset_id 直传（几何不过上下文）。
+        if kind == 'choropleth' and feats:
+            _STATS_KEYS = ('point_count', 'polarity_index', 'value', 'score_mean')
+            has_stats = any(any(k in (f.get('properties') or {}) for k in _STATS_KEYS)
+                            for f in feats)
+            ring_counts = []
+            for f in feats:
+                geom = f.get('geometry') or {}
+                coords = geom.get('coordinates') or []
+                try:
+                    if geom.get('type') == 'Polygon' and coords:
+                        ring_counts.append(len(coords[0]))
+                    elif geom.get('type') == 'MultiPolygon' and coords and coords[0]:
+                        ring_counts.append(len(coords[0][0]))
+                except (TypeError, IndexError):
+                    continue
+            if has_stats and ring_counts and sum(ring_counts) / len(ring_counts) < 30:
+                fixes.append(
+                    f'内联几何疑似被压缩（面均外环顶点 {sum(ring_counts) // len(ring_counts)}·源数据通常数百）'
+                    '——分析结果出图请改用 layer_output 返回的 render_dataset_id 直传（几何不过上下文）')
     else:
         return {'ok': False, 'hint': 'data 二选一必填：dataset_id 或 geojson',
                 'caliber': CALIBERS['render_spec']}
@@ -1607,6 +1685,33 @@ def _find_tmp_dataset(groups, rel_file):
     return None
 
 
+def _register_tmp_dataset(abs_path, label, render_fields=None):
+    """落盘文件登记进 manifest TMP_RENDER_GROUP（同源文件复用既有 id）→ dataset_id。
+
+    PT-CB15 K2 抽公共：render_file 与 layer_output 落盘共用本登记通道。
+    render_fields：声明可经渲染通道透传的字段（render_policy 政策层·防 value/指标字段被白名单误剔）。
+    manifest 读写异常抛给调用方处置（render_file 语义化拒绝 / _attach_render_ref 降级）。"""
+    with open(MANIFEST, 'r', encoding='utf-8') as fh:
+        groups = json.load(fh)
+    rel = os.path.relpath(abs_path, os.path.dirname(MANIFEST)).replace(os.sep, '/')
+    ds_id = _find_tmp_dataset(groups, rel)
+    if ds_id is None:
+        ds_id = f'tmp_render_{int(time.time() * 1000)}'
+        entry = {'id': ds_id, 'label': label, 'file': rel,
+                 'nameField': 'name', 'usage': 'analysis_output',
+                 'note': 'render_file/layer_output 自动登记（临时渲染·7 天 TTL·PT-CB15 K3）'}
+        if render_fields:
+            entry['renderFields'] = [f for f in render_fields if f]
+        target = next((g for g in groups if g.get('group') == TMP_RENDER_GROUP), None)
+        if target is None:
+            target = {'group': TMP_RENDER_GROUP, 'items': []}
+            groups.append(target)
+        target['items'].append(entry)
+        with open(MANIFEST, 'w', encoding='utf-8', newline='') as fh:
+            json.dump(groups, fh, ensure_ascii=False, indent=2)
+    return ds_id
+
+
 @track('MOD_AIQA.F_031', track_args=False)
 def render_file(file: str, name: str = '', kind: str = '',
                 value_field: str = 'point_count') -> dict:
@@ -1646,27 +1751,9 @@ def render_file(file: str, name: str = '', kind: str = '',
 
     # > 60 要素：自动登记临时 dataset（同源复用）→ dataset_id 引用（范式②③自动合体）
     try:
-        with open(MANIFEST, 'r', encoding='utf-8') as fh:
-            groups = json.load(fh)
-    except Exception as exc:
-        return {'ok': False, 'hint': f'manifest 读取失败: {exc}', 'caliber': cal}
-    rel = os.path.relpath(p, os.path.dirname(MANIFEST)).replace(os.sep, '/')
-    ds_id = _find_tmp_dataset(groups, rel)
-    if ds_id is None:
-        ds_id = f'tmp_render_{int(time.time())}'
-        entry = {'id': ds_id, 'label': layer_name, 'file': rel,
-                 'nameField': 'name', 'usage': 'analysis_output',
-                 'note': f'PT-CB7 render_file 自动登记（源 {os.path.relpath(p, REPO)}）'}
-        target = next((g for g in groups if g.get('group') == TMP_RENDER_GROUP), None)
-        if target is None:
-            target = {'group': TMP_RENDER_GROUP, 'items': []}
-            groups.append(target)
-        target['items'].append(entry)
-        try:
-            with open(MANIFEST, 'w', encoding='utf-8', newline='') as fh:
-                json.dump(groups, fh, ensure_ascii=False, indent=2)
-        except Exception as exc:
-            return {'ok': False, 'hint': f'manifest 写入失败: {exc}', 'caliber': cal}
+        ds_id = _register_tmp_dataset(p, layer_name)
+    except (OSError, ValueError) as exc:
+        return {'ok': False, 'hint': f'manifest 登记失败: {exc}', 'caliber': cal}
     out = render_spec(kind=kind, name=layer_name, dataset_id=ds_id,
                       value_field=value_field)
     out['mode'] = 'dataset'

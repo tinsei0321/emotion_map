@@ -161,27 +161,127 @@ def test_render_spec_dataset_validation(monkeypatch, tmp_path):
     assert out['caliber']['refs'][0] == 'G-2(显示徽标)'
 
 
-# ════════════ zonal / rank layer_output ════════════
+# ════════════ zonal / rank layer_output（PT-CB15 K2：服务端落盘+render_dataset_id） ════════════
 
-def test_zonal_layer_output_geojson_topn_and_default_no_key(monkeypatch):
+def _patch_persist(monkeypatch, tmp_path):
+    """layer_output 落盘隔离：tmp manifest + tmp 落盘目录（不写真仓）。"""
+    _patch_render_globals(monkeypatch, tmp_path, [])
+    monkeypatch.setattr(mse, 'TMP_RENDER_DIR', str(tmp_path / 'tmp_render'))
+
+
+def _assert_persisted(out, tmp_path, tool, expect_feats):
+    """落盘直传链路公共断言：dataset_id 登记/文件保真/manifest 收录。"""
+    assert 'geojson' not in out, 'geojson 键应已移除（几何不过上下文）'
+    ds = out.get('render_dataset_id')
+    assert ds and ds.startswith('tmp_render_')
+    assert 'render_hint' in out and 'dataset_id' in out['render_hint']
+    files = list((tmp_path / 'tmp_render').glob(f'{tool}-*.geojson'))
+    assert len(files) == 1, f'落盘文件应唯一: {files}'
+    fc = json.loads(files[0].read_text(encoding='utf-8'))
+    assert len(fc['features']) == expect_feats
+    assert 'value' in fc['features'][0]['properties']
+    groups = json.loads((tmp_path / 'manifest.json').read_text(encoding='utf-8'))
+    ids = [it['id'] for g in groups for it in g.get('items', [])]
+    assert ds in ids
+    return ds
+
+
+def test_zonal_layer_output_persist_and_default_off(monkeypatch, tmp_path):
     _patch_geo(monkeypatch, _fake_merged(5))
+    _patch_persist(monkeypatch, tmp_path)
     out = mse.zonal_stats('admin_district', top_n=3, layer_output=True)
-    assert out['geojson']['type'] == 'FeatureCollection'
-    assert len(out['geojson']['features']) == 3
-    assert 'value' in out['geojson']['features'][0]['properties']
+    _assert_persisted(out, tmp_path, 'zonal_stats', 3)
 
     out_off = mse.zonal_stats('admin_district', top_n=3)
-    assert 'geojson' not in out_off
+    assert 'geojson' not in out_off and 'render_dataset_id' not in out_off
 
 
-def test_rank_layer_output_geojson_topn(monkeypatch):
+def test_rank_layer_output_persist(monkeypatch, tmp_path):
     _patch_geo(monkeypatch, _fake_merged(5))
+    _patch_persist(monkeypatch, tmp_path)
     out = mse.rank(boundary='admin_district', top_n=2, layer_output=True)
-    assert len(out['geojson']['features']) == 2
+    _assert_persisted(out, tmp_path, 'rank', 2)
     assert len(out['rows']) == 2
 
 
+def test_render_spec_inline_thinned_geometry_soft_warning(monkeypatch, tmp_path):
+    """PT-CB15 K4：带统计字段的面要素均外环顶点 <30 → note 软警告（提示级·不阻断）。"""
+    _patch_render_globals(monkeypatch, tmp_path, [])
+    monkeypatch.setattr('core.range_selector._PRESETS_MANIFEST', mse.MANIFEST)
+    monkeypatch.setattr('core.geo_registry.list_point_layers', lambda: [])
+    thin_fc = {'type': 'FeatureCollection', 'features': [
+        {'type': 'Feature',
+         'geometry': {'type': 'Polygon',
+                      'coordinates': [[[111.2, 30.6], [111.3, 30.6], [111.3, 30.7], [111.2, 30.6]]]},
+         'properties': {'name': 'x', 'point_count': 5}}]}
+    out = mse.render_spec(kind='choropleth', name='抽稀示意', geojson=thin_fc,
+                          value_field='point_count')
+    assert out['ok'] is True   # 软校验不阻断
+    assert '疑似被压缩' in (out.get('caliber_lite') or {}).get('note', '')
+    # 对照：顶点充足的面要素不告警
+    dense_ring = [[111.2 + i * 0.001, 30.6 + (i % 5) * 0.001] for i in range(40)]
+    dense_ring.append(dense_ring[0])
+    dense_fc = {'type': 'FeatureCollection', 'features': [
+        {'type': 'Feature', 'geometry': {'type': 'Polygon', 'coordinates': [dense_ring]},
+         'properties': {'name': 'y', 'point_count': 5}}]}
+    out2 = mse.render_spec(kind='choropleth', name='正常示意', geojson=dense_fc,
+                           value_field='point_count')
+    assert out2['ok'] is True
+    assert '疑似被压缩' not in (out2.get('caliber_lite') or {}).get('note', '')
+
+
+def test_tmp_render_ttl_cleanup(monkeypatch, tmp_path):
+    """PT-CB15 K3（R1-4）：超期文件删除 + 失链 tmp_render_ 登记摘除。"""
+    import time as _t
+    _patch_persist(monkeypatch, tmp_path)
+    tdir = tmp_path / 'tmp_render'
+    tdir.mkdir(exist_ok=True)
+    old = tdir / 'old_expired.geojson'
+    _write(old, '{"type":"FeatureCollection","features":[]}')
+    old_ts = _t.time() - 8 * 86400
+    os.utime(str(old), (old_ts, old_ts))
+    fresh = tdir / 'fresh.geojson'
+    _write(fresh, '{"type":"FeatureCollection","features":[]}')
+    _write(tmp_path / 'manifest.json', json.dumps([{'group': 'g', 'items': [
+        {'id': 'tmp_render_dead', 'file': 'gone.geojson'},
+        {'id': 'tmp_render_alive', 'file': os.path.relpath(str(fresh), str(tmp_path)).replace(os.sep, '/')},
+        {'id': 'normal_layer', 'file': 'gone_too.geojson'},
+    ]}], ensure_ascii=False))
+    mse._cleanup_tmp_render()
+    assert not old.exists(), '超期 8 天文件应删除'
+    assert fresh.exists(), '未超期文件保留'
+    items = [it for g in json.loads((tmp_path / 'manifest.json').read_text(encoding='utf-8'))
+             for it in g.get('items', [])]
+    ids = [it['id'] for it in items]
+    assert 'tmp_render_dead' not in ids, '失链 tmp 登记应摘除'
+    assert 'tmp_render_alive' in ids
+    assert 'normal_layer' in ids, '非 tmp_render_ 条目不摘（即使断链·交主手裁决）'
+
+
 # ════════════ watcher ════════════
+
+def test_watcher_stale_spec_archived_not_pushed(tmp_path):
+    """PT-CB15 收尾（watcher 迟到 TTL）：落盘超 300s 的 spec 首扫即归档·不推队列。"""
+    import time as _t
+    inbox = tmp_path / 'inbox'
+    stale = inbox / '01-stale.json'
+    _write(stale, json.dumps(
+        {'spec_version': 1, 'kind': 'point', 'origin': {'producer': 'dsh', 'source_tool': 'manual'}}))
+    old_ts = _t.time() - 400
+    os.utime(str(stale), (old_ts, old_ts))
+    fresh = inbox / '02-fresh.json'
+    _write(fresh, json.dumps(
+        {'spec_version': 1, 'kind': 'choropleth', 'origin': {'producer': 'dsh', 'source_tool': 'rank'}}))
+
+    seen = set()
+    q = queue.Queue()
+    backlog = []
+    pushed = render_routes.scan_inbox(str(inbox), seen, q, backlog)
+    assert pushed == 1, '迟到 spec 不计入推送'
+    assert q.get()['kind'] == 'choropleth'
+    assert (inbox / 'applied' / '01-stale.json').exists(), '迟到 spec 应归档留痕'
+    assert not (inbox / '01-stale.json').exists()
+
 
 def test_watcher_scan_order_and_bad_json_skip(tmp_path):
     inbox = tmp_path / 'inbox'

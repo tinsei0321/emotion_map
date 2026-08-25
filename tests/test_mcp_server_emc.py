@@ -29,6 +29,30 @@ def _caliber_keys(caliber):
     return all(k in caliber for k in ('scale', 'semantics', 'limits', 'refs'))
 
 
+def _patch_persist(monkeypatch, tmp_path):
+    """PT-CB15 K2：layer_output 落盘隔离（tmp manifest + tmp 落盘目录·不写真仓）。"""
+    mpath = tmp_path / 'manifest.json'
+    mpath.write_text('[]', encoding='utf-8')
+    monkeypatch.setattr(mse, 'MANIFEST', str(mpath))
+    monkeypatch.setattr(mse, 'TMP_RENDER_DIR', str(tmp_path / 'tmp_render'))
+
+
+def _assert_render_ref(out, tmp_path, tool):
+    """落盘直传公共断言：geojson 键移除 + render_dataset_id + 文件落盘 + manifest 登记。"""
+    assert 'geojson' not in out
+    ds = out.get('render_dataset_id')
+    assert ds and ds.startswith('tmp_render_')
+    assert 'render_hint' in out
+    files = list((tmp_path / 'tmp_render').glob(f'{tool}-*.geojson'))
+    assert len(files) == 1
+    fc = json.loads(files[0].read_text(encoding='utf-8'))
+    assert fc.get('type') == 'FeatureCollection'
+    groups = json.loads((tmp_path / 'manifest.json').read_text(encoding='utf-8'))
+    ids = [it['id'] for g in groups for it in g.get('items', [])]
+    assert ds in ids
+    return fc
+
+
 class _FakePoints:
     def __init__(self, inside=2, outside=0):
         self.columns = ['score']
@@ -424,13 +448,14 @@ def test_grid_aggregate_rows_stats_and_caliber(monkeypatch):
     assert _caliber_keys(out['caliber'])
 
 
-def test_grid_aggregate_top_n_cap_and_layer_output(monkeypatch):
+def test_grid_aggregate_top_n_cap_and_layer_output(monkeypatch, tmp_path):
     monkeypatch.setattr('core.geo_registry.resolve_points', lambda layer: _FakePoints(inside=3))
     monkeypatch.setattr('core.spatial_analysis.create_square_grid',
                         lambda points, cell_size, agg_cols=None: _fake_grid(30))
+    _patch_persist(monkeypatch, tmp_path)
     out = mse.grid_aggregate(top_n=99, layer_output=True)
-    assert len(out['rows']) <= 20 and 'geojson' in out
-    assert out['geojson']['type'] == 'FeatureCollection'
+    assert len(out['rows']) <= 20
+    _assert_render_ref(out, tmp_path, 'grid_aggregate')
     assert _caliber_keys(out['caliber'])
 
 
@@ -666,11 +691,12 @@ def test_overlay_analysis_empty_intersection_semantic_reject(monkeypatch):
     assert _caliber_keys(out['caliber'])
 
 
-def test_overlay_analysis_union_layer_output(monkeypatch):
+def test_overlay_analysis_union_layer_output(monkeypatch, tmp_path):
     _patch_overlay(monkeypatch)
+    _patch_persist(monkeypatch, tmp_path)
     out = mse.overlay_analysis('poly_a', 'poly_b', how='union', top_n=99, layer_output=True)
     assert len(out['rows']) <= 20
-    assert out['geojson']['type'] == 'FeatureCollection'
+    _assert_render_ref(out, tmp_path, 'overlay_analysis')
     assert _caliber_keys(out['caliber'])
 
 
@@ -680,13 +706,14 @@ def test_overlay_analysis_analysis_output_rejected(monkeypatch):
     assert out.get('ok') is False and 'analysis_output' in out.get('hint', '')
 
 
-def test_hotspot_analysis_layer_output_geojson(monkeypatch):
+def test_hotspot_analysis_layer_output_geojson(monkeypatch, tmp_path):
     monkeypatch.setattr('core.geo_registry.resolve_points', lambda layer: _FakePoints(inside=12))
     monkeypatch.setattr('core.spatial_analysis.hot_spot_analysis',
                         lambda gdf, value_col, invert, threshold, soft_threshold: _fake_hotspot())
+    _patch_persist(monkeypatch, tmp_path)
     out = mse.hotspot_analysis(layer_output=True)
-    assert out['geojson']['type'] == 'FeatureCollection'
-    assert all('value' in f['properties'] for f in out['geojson']['features'])
+    fc = _assert_render_ref(out, tmp_path, 'hotspot_analysis')
+    assert all('value' in f['properties'] for f in fc['features'])
     assert _caliber_keys(out['caliber'])
 
 
@@ -914,13 +941,14 @@ def test_area_stats_group_by_missing_col_semantic(monkeypatch):
     assert _caliber_keys(out['caliber'])
 
 
-def test_area_stats_top_n_cap_and_layer_output(monkeypatch):
+def test_area_stats_top_n_cap_and_layer_output(monkeypatch, tmp_path):
     monkeypatch.setattr('core.geo_registry.resolve_boundary',
                         lambda boundary: _fake_area_boundary(25))
+    _patch_persist(monkeypatch, tmp_path)
     out = mse.area_stats('fake_boundary', top_n=99, layer_output=True)
     assert len(out['rows']) <= 20 and out['row_count'] == 25 and out['truncated'] is True
-    assert out['geojson']['type'] == 'FeatureCollection'
-    assert len(out['geojson']['features']) <= 20
+    fc = _assert_render_ref(out, tmp_path, 'area_stats')
+    assert len(fc['features']) <= 20
     assert _caliber_keys(out['caliber'])
 
 

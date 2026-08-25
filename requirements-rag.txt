@@ -2,3 +2,6 @@
 # 版本锁定：Py3.14 wheel 已实测兼容（2026-08-09）
 sentence-transformers==5.7.0
 torch==2.13.0+cpu
+# 注记（PT-CB15 K7·2026-08-25）：transformers 未锁——5.x（实测 5.14.1）对 bge-small-zh-v1.5
+# 旧模型卡抛 AutoProcessor「Unrecognized processing class」；tools/rag_index.py 的
+# _load_st_model 已内置 AutoTokenizer 兼容兜底（5.x/4.x 均可）。若降级 transformers<5 亦可，二选一。
