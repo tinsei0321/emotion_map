@@ -15,6 +15,9 @@
 ## 编码铁律
 - 用 _safe_print 替代裸 print；规范埋点；遵守 AGENTS.md 铁律与 debug-memory（R1/R2/R8 自查）。
 - 新追踪 ID 注册 core/tracker.py；交付物必须「可双机同步」——进 git 须 commit+push 才算完成，仓外资产须有复刻清单/配方（禁硬编码绝对路径）。
+- **Windows .bat 三铁律（2026-08-25 三次踩坑）**：①编码必须 GBK（非 UTF-8·cmd 按 ANSI 解析）；②行尾必须 CRLF（纯 LF 遇 goto 标签闪退）；③写完必须实跑验证（静态 lint 不算数）——Edit/Write 工具默认产出 UTF-8+LF，必踩。
+- **重启服务进程必须用独立进程方式**（PowerShell Start-Process / cmd start）——在工具 shell 里后台拉起的进程会随会话结束被杀（8600 被误杀实证·2026-08-25）。
+- **面向用户的交付物过「非技术视角」审一遍**：用户看不懂的输出=不合格（devcheck 技术名词堆砌被点名·改人话版）；验证脚本先核实键名/字段假设再下结论（「0% 吻合=编造」误判实证）；改注册表字段前 grep 消费方（renewal_unit nameField 实证）。
 
 ## 当前在途（2026-08-25 更新）
 - **战略定向（用户令 08-25）**：本分支聚焦 Codex Harness（cdh）；**dsh 后期大概率退役，只留一个 harness 落地（大概率 cdh）**——cdh 侧工作权重上调，dsh 专属件降优先。

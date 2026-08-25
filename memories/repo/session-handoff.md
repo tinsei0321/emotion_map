@@ -1,121 +1,64 @@
-# 会话交接卡
+# Session Handoff · 2026-08-25 晚（office → home）
 
-> 单份当前快照，每次交接覆写「当前节点」，旧的删；历史在 `docs/revision-log.md` + git。
-> 最后更新：08月24日（**分支更替·Codex 时代开启**·zcode）| 分支 **`EMC_Codex_Harness`**（main=稳定里程碑·08-24 EMC×dsh 完整链路已合流）
->
-> CB 入口：`docs/catch-ball/_cb-index.md`
-> 接手第一读：`_handoff/HOME.md` 收工快照 + `discuss/PT-CB7-主执行记录_Qoder-2026-08-21.md` + `discuss/PT-CB7-增补批T14-T17_入口体验与结果契约_Qoder-2026-08-21.md`
-> 角色（08-21 用户令）：**Qoder = PT-CB7 主执行**（白名单内 git）·**zcode = 主手**（回收验收/裁决）·**dsh = 协助**（批派发）·**Codex+claude组 = 终审**
-> 换机卡片：`_handoff/HOME.md`（家）+ `OFFICE.md`（公司）
+> 读我即可恢复全部上下文。分支：`EMC_Codex_Harness` · 门禁基线 **616 passed + 1 skipped** · 待推送 11 批。
+
+## 今日成果（全部已 commit·待 push）
+
+| 批次 | 内容 |
+|---|---|
+| PT-CB15(K1) | 出图双 Bug 治本：几何零转录（layer_output 服务端落盘→render_dataset_id）、manifest 24 断链修复、193 层（含村）入消费面成默认边界、「两个方面」叙事退役、RAG 索引重建 375 chunk、watcher 迟到 TTL、tmp_render 7 天 TTL、transformers 5.x 兼容兜底 |
+| PT-CB16(C1C3) | E2E 测试骨架（tests/e2e·真实数据顶点保真）+ SSE 多页面订阅身份/定向投递（render_spec target） |
+| PT-CB16(S1) | Codex 侧：环境配方 M1-M3（docs/dsh-environment/）+ 索引半自动重建 |
+| PT-CB16(D1→C2) | 交互三机制定稿+实施：会接话（followup_actions 两级 resolved_params）/会请示（身份卡分支请示纪律）/会看大小（scale 确定性倒推·outlet_card scale_check）；契约 docs/interaction-contract.md |
+| PT-CB17(B1B4) | cdh 产品层四问题治本：AGENTS.md 身份纪律+回答范式+只读沙箱纪律（仓内权威副本 docs/cdh/AGENTS.md·start.bat 同步）、aggregate_export 全量导出工具（F_044·③档脚本路径退役）、表格 CSS 规范化、RAG 语料扩 DATA 分层（385 chunk·96.7% 门禁零退化） |
+| R7+ 防旧码体系 | start.bat 三进程全重置（8000/8080/8600 先杀旧再起新）、devcheck.bat 人话版自检（tools/devcheck.py）、serve.py 启动自检、emc_status 进程自证戳、bat 三铁律（GBK+CRLF+实跑） |
+
+## home 机开工五步（照做即可）
+
+1. `git pull --rebase origin EMC_Codex_Harness`（office 的 11 批要先 push 成功才有得拉）；
+2. **重建 RAG 索引**（双机纪律·索引不入仓）：`HF_HUB_OFFLINE=1 py tools/rag_index.py --rebuild`（首次可能需联网下 BGE 模型 92M·加 HF_ENDPOINT=https://hf-mirror.com）；
+3. 双击 `start.bat`（三进程全重置+启动自检）；
+4. 双击 `devcheck.bat` 确认全绿（人话版·只答能不能测）；
+5. 按下面「复测清单」逐项过。
+
+## 复测清单（今日修复的验收口径）
+
+1. 问「你是谁/能做什么」→ 应答 EMC 产品身份，**无「读代码/改文件/跑命令」**；
+2. 问「数据分哪几类」→ 应答 权威 AUTHORITY/注册 REGISTRY/专题 THEME/产物 Export 四层；
+3. 「投诉 TOP12 社区紫色渲染」→ 图层为**真边界**（万达≈66 顶点量级·非手绘 5-20 点）；全量 20+ 走 aggregate_export 不报沙箱错；
+4. 数据类回答 → 三段式（加粗结论+表格+口径段）·表格有网格线/斑马纹；
+5. 追问「那第 8 个呢」→ 直接答不重述背景（followup_actions 生效）；
+6. 用 130 层口径提问 → AI 应先请示口径（130 历史 vs 193 现行）；
+7. 连开两个地图页 → render_spec 带 target 仅目标页上屏，不带则两页同上。
+
+## TODO（按优先级）
+
+| # | 事项 | 负责 | 备注 |
+|---|---|---|---|
+| T1 | **push 11 批** | 用户（本地终端） | `git push origin EMC_Codex_Harness`；冲突先 pull --rebase |
+| T2 | home 机 RAG 索引重建 | 用户/Kimi(home) | 见开工五步-2 |
+| T3 | 复测清单 7 项 | 用户 | 异常直接发我 |
+| T4 | 口径/身份卡文案过目 | 用户 | manifest 5 条+口径注册表 K-C1/K-01+身份卡两纪律段（措辞均为草案） |
+| T5 | C2-4 裁决：cdh 侧胶囊/选项 UI（bridge 透传 1 天） | 主手/用户 | 评估件 docs/catch-ball/discuss/PT-CB16-C2-4评估_cdh侧交互UI载体_Kimi-2026-08-25.md·建议下一批首件 |
+| T6 | 浏览器级 E2E 栈验 | Kimi | tests/browser/ptcb16_render_e2e.py（隔离栈 8090/8009·约 2 分钟） |
+| T7 | 身份问答观察 | 用户 | 若仍串味→下一步 adapter 层身份直答短路（零 LLM） |
+| T8 | 「迎客第一句+首问预热」 | 待立项 | 20:02 汇报建议·可并入 C2-4 |
+
+## 关键环境事实（home 机注意）
+
+- 三进程独立载码：8000 后端/8080 前端/8600 MCP 插座——「重启」=start.bat 全重置，怀疑旧码=devcheck.bat；
+- office 网络：github.com 不可直连·push 用 origin（gitee 或用户终端）；
+- transformers 5.x 已由 _load_st_model 兼容兜底（rag_index.py）·无需降级；
+- RAG 重建命令须加 `HF_HUB_OFFLINE=1`（office 代理环境防 37 分钟联网重试）；
+- 本机沙箱 os.remove 拦截：跑 pytest 用 `PYTHONPATH=` 前缀旁路；
+- Codex 侧配置在 ~/.codex/config.toml（[mcp_servers.emc] → 8600）·**AGENTS.md 权威副本在 docs/cdh/AGENTS.md**（start.bat 自动同步到 ../_codex_cwd/）。
+
+## 在途协作状态
+
+- Codex：S1/S2 已提交（环境配方+索引半自动）·K1 批次审计已收敛（条件通过·条件项已闭环）；
+- Qoder：D1 评审已收敛（四点调整全吸收）；
+- 下一批候选：C2-4（bridge 透传）> T6 浏览器栈验 > 迎客第一句。
 
 ---
 
-## 当前节点：home 收工 · Codex 换脑 spike 全链闭环+转正批完工（office 到岗=T1-T8 实测）
-
-- **08-24 晚 home**：分支更替（main 合流+新分支 EMC_Codex_Harness）→ PT-CB15 全链（三组 CB→spike 四问全通→三方审计→转正批 14 件全修·595+4 绿）→ 四引擎就位·EMC 壳里完整 Harness 体验解锁。
-- **office 到岗**：T1-T8 用户实测（T8=?engine=codex 首测）+转正批复验。
-- **08-25 DATA 重构（全组通知已落盘）**：AUTHORITY/THEME/REGISTRY/RAG/POI/Export/_Retired 重组完成；`DATA/boundaries` 与顶层 `DATA/exports` 已退休/删除；代码常量与测试同步（597 passed / 2 skipped）。下次任务派发时各组先读 `docs/catch-ball/discuss/PT-CB15-数据目录与代码映射重构_全组通知_Codex-2026-08-25.md`。
-- **纪律**：分支 EMC_Codex_Harness；EMC 恒 flash；R25/R26/R27。
-
-- **08-24 晚 home**：EMC_harness_dsh 合流 main（282 提交快进·用户授权）→ 旧分支三处删除 → 新分支 `EMC_Codex_Harness`。
-- **在途**：PT-CB15 Codex 替换 dsh CB 讨论——计划书+Kimi/claude 两回应已入库·Qoder 回应待收→zcode 收敛→用户终裁→Qoder 执行。
-- **纪律**：一切提交走 `EMC_Codex_Harness`；main 仅稳定里程碑；EMC 恒 flash；R25。
-
-### 旧节点：office 收工 · PT-CB14 测试+修复批+全局flash完成（home 续点=T1-T7 重跑或体检医生专题）
-
-- **08-24 office 班完成**：①HOME 到岗五步 1-3（fsck/补装 rank_bm25+jieba/基线 574+2）+主手预检三绿②PT-CB14 完整测试（Qoder L1 5/5+L2 18/18+守卫 2/2·用户实测四问题→审查报告+Qoder 独立复核→回收裁决三分歧定谳：top5=Qoder 测试件/RAG hits=我检查代码读错字段 hits→results·诚实更正/措辞修正）③修复批两包（claude 四件：qty 11 层注册+清单一致性+test 标+引擎徽标·门禁 581+2；Qoder 五子件：effort=max 定档实证+persona v2 出图直出 9 轮 0 反问+重试 v3）+主手裁决性小修（代理超时 600s+看门狗 630s）+跨包验证出图实证（停车 140 小区图层投递）④**全局切 flash**（用户令 EMC 恒 flash：后端 DEFAULT+dsh 全局+emc-test 三处 pro→flash·初验一次通过含出图）⑤测试纪律 R25 入册（通道≠行为×3+检查代码自验字段）。
-- **home 到岗动作**：①`git pull origin EMC_harness_dsh`②**flash+max 稳定性 ×3 补验**（真实分析题×3 次·R25 纪律）③二选一推进：**T1-T7 用户重跑**（Qoder 重出指引·新口径=地图见图为成功）或**体检医生专题开门**（方向框架已备·推荐②四象限先锋·D-2 区级边界随专题）④D-5 取证待用户时间点。
-- **当前基线：581+2**（574→581 上浮 7·修复批新增测试）。
-- **待办挂账**：D-5（light gap 取证）/D-2（区级边界·随专题）/rc.8 遗留六项（hub 黄灯口径等）/堆积 EMC 会话清理确认。
-- **纪律**：main 冻结；规则七；R25（通道≠行为·真实题×3）；EMC 恒 flash（08-24 用户令·三处已切）。
-
-### 旧节点：EMC×dsh 可行性深挖收工 · 零实施 · 等用户确认
-
-### 一、本轮完成（2026-08-18 下午）
-
-1. **专题会话启动包**：汇总 R0-R9、形态3、外接大脑、材料索引、可行性问题与风险清单。
-2. **dsh组专项深挖**：完成独立回应，给出 dsh 侧工程事实、限制与推荐排序。
-3. **Codex 回收抽验**：
-   - 强吸收三项：结果口径标签、数据说明书、知识综合；
-   - 纠正 dsh 事实口径：旧仓库残留、破坏性变更计数、权限文件引用；
-   - 建议外接大脑降为零维护观察。
-4. **用户沟通修正**：
-   - 用户反馈内部代号和抽象问题难以理解；
-   - 已形成全局沟通纪律：面向用户先系统讲解、用业务名称、给例子、说明代价与推荐；
-   - 已写入用户全局 AGENTS、项目 AGENTS 与 CB KNOWLEDGE。
-5. **通俗报告**：
-   - 五项决策说明；
-   - 收工详细报告；
-   - 回家继续顺序；
-   - 向朋友索取实际演示的话术。
-
-### 二、当前共识（主文口径）
-
-- 不做“情绪地图整体搬进 dsh”。
-- 主路是把情绪地图资产做成标准插座，供 Codex / Claude / ZCode / dsh 等通用助手消费。
-- 第一版插座必须带：
-  1. 结果口径标签；
-  2. 数据说明书；
-  3. 带来源的知识综合。
-- 外接大脑只作为用户工作流观察项，不进产品排期。
-- 以后若研究外接大脑，必须用专用干净环境和最小权限。
-- 朋友每天使用 Codex+dsh 已确认；下一步先评审朋友现有链路，不从零开发。
-
-### 三、五项决策状态
-
-| 决策 | 建议 | 状态 |
-|---|---|---|
-| 三张说明标签 | 接受 | 待确认 |
-| 新插座考试标准 | 接受 | 用户初步表示应该接受 |
-| 外接大脑 | 不排期、不专门维护，只观察 | 待确认 |
-| 朋友实践 | 先评审现有链路 | 已确认朋友每天在用 |
-| 专用干净环境 | 接受，作为硬条件 | 待确认 |
-
-### 四、回家继续动作
-
-1. 读 `EMC-dsh可行性深挖_收工报告_通俗版_Codex-2026-08-18.md`。
-2. 若同意推荐，回复：**“1、3、5 都按推荐记录。”**
-3. 向朋友要：
-   - 启动方式；
-   - Codex 连接方式；
-   - 权限确认机制；
-   - 真实任务演示；
-   - 日志或记录；
-   - 可分享配置/代码示例。
-4. 确认前：**零实施、不出正式开工计划**。
-5. 确认后再讨论平台化方向与标准插座实施顺序。
-
-### 五、关键文件
-
-| 文件 | 用途 |
-|---|---|
-| `discuss/EMC-dsh可行性深挖_收工报告_通俗版_Codex-2026-08-18.md` | 回家第一读 |
-| `discuss/EMC-dsh可行性深挖_用户沟通版五项决策_Codex-2026-08-18.md` | 五项决策通俗解释 |
-| `discuss/EMC-dsh可行性深挖_回应_dsh组-2026-08-18.md` | dsh组 技术原文 |
-| `discuss/EMC-dsh可行性深挖_回收抽验_Codex-2026-08-18.md` | Codex 抽验与修正 |
-| `discuss/EMC-dsh可行性深挖_专题会话启动包_Codex-2026-08-18.md` | 专题背景包 |
-| `discuss/EMC-dsh整体合体_讨论过程台账.md` | R0-R9 过程台账 |
-
-### 六、dsh 事实修正（勿再误传）
-
-1. 当前 dsh 仓库：`D:\Github\dsh` @ `f1e10a678e`。
-2. `D:\Github\dsh_test` 目录仍存在，但不是 git 仓库，仅剩残留文件。
-3. 当前历史可查 16 个 `!:` 与 13 个 BREAKING 相关提交；旧“600 commit 内 16 个”不可复现。
-4. 更稳证据：8 月 11 日至 17 日六天 10 个候选版本。
-5. dsh 审批没有“会话级全放行”；每次放行只对当前操作有效。
-
-### 七、工作区与其他线
-
-- 本轮未改生产代码。
-- Excel 临时锁文件 `~$...xlsx` 不要提交。
-- main 上 CB-39 / CB-41 等实施线以各自文档和 git 为准。
-- 收工 commit 与本卡一起推送；回家先 `git fetch` / 对账，再读报告。
-
-## 红线
-
-- 面向用户沟通禁裸用内部编号。
-- 未拍板前不实施、不出正式计划。
-- 不写第二份工具 schema。
-- 工具输出必须脱敏、带口径、可追溯。
-- 外接大脑不得绕过情绪地图工具面直取数据。
-- 不把产品入口绑死在 dsh。
+> Kimi · 2026-08-25 22:20 · office 收工。门禁 616+1 绿·三服务全绿·home 见。
