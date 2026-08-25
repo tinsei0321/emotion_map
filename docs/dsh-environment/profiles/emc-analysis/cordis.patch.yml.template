@@ -1,0 +1,14 @@
+# emc-analysis profile patch 模板（PT-CB16 S1）
+# 复制到 {DSH_HOME}/profiles/emc-analysis/cordis.patch.yml，替换 {DSH_HOME}
+- insert:
+    - id: mcp-emc
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: emc
+        transport: streamable-http
+        url: 'http://127.0.0.1:8600/mcp'
+        toolCallTimeoutMs: 120000
+        failOnStartupError: true
+- id: settings
+  config:
+    path: '{DSH_HOME}/profiles/emc-analysis/settings.yaml'

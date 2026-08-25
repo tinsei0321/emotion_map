@@ -104,39 +104,20 @@ def _get_latest_commit_time():
 
 
 def check_rag_index_freshness(repo=REPO):
-    """RAG 索引新鲜度（PT-CB15 K8）：vectors.npy mtime vs 知识源最新 mtime。
-
-    知识源范围 = rag_index 实际扫描面（docs/urban-renewal-plan + DATA/THEME 的 md
-    + ai_qa/outlet_kb 的 py 事实卡）。索引不存在/源不存在均显式报告，不静默。
-    返回 0=新鲜 1=陈旧或异常。"""
-    idx = os.path.join(repo, "DATA", "RAG", "rag_index", "vectors.npy")
+    """RAG 索引新鲜度（PT-CB15 K8 + PT-CB16 S2 共用 _index_freshness）。"""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from rag_index import _index_freshness
     _safe_print("=== RAG 索引新鲜度 ===")
-    if not os.path.isfile(idx):
+    idx_m, _srcs, newest = _index_freshness(repo)
+    if idx_m is None:
         _safe_print("[WARN] 索引不存在（跑 py tools/rag_index.py --build）")
         return 1
-    idx_m = os.path.getmtime(idx)
-    newest_src, newest_t = None, 0.0
-    for rel, pat in (("docs/urban-renewal-plan", ".md"), ("DATA/THEME", ".md"),
-                     ("ai_qa/outlet_kb", ".py")):
-        root = os.path.join(repo, rel)
-        for dirpath, _dirs, files in os.walk(root):
-            if "_Retired" in dirpath or "_retired" in dirpath:
-                continue
-            for fn in files:
-                if not fn.endswith(pat):
-                    continue
-                fp = os.path.join(dirpath, fn)
-                try:
-                    mt = os.path.getmtime(fp)
-                except OSError:
-                    continue
-                if mt > newest_t:
-                    newest_t, newest_src = mt, fp
     idx_s = datetime.datetime.fromtimestamp(idx_m).isoformat(timespec="seconds")
     _safe_print(f"索引构建时间: {idx_s}")
-    if not newest_src:
+    if not newest:
         _safe_print("[WARN] 知识源扫描为空（目录结构变了？）")
         return 1
+    newest_src, newest_t = newest
     src_s = datetime.datetime.fromtimestamp(newest_t).isoformat(timespec="seconds")
     if newest_t > idx_m:
         hours = int((newest_t - idx_m) // 3600)
@@ -189,4 +170,3 @@ if __name__ == "__main__":
 # [WARN] 服务早于最新提交 16 分钟——载旧码风险，建议重启（R7）（PID 5548）
 # PID 25696: 启动时间 2026-08-19T14:30:31
 # [WARN] 服务早于最新提交 16 分钟——载旧码风险，建议重启（R7）（PID 25696）
-

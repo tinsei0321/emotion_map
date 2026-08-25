@@ -1,0 +1,5 @@
+# EMC Analyst preset 模板（PT-CB16 S1）
+# 复制到 {DSH_HOME}/.agent-presets/emc-analyst/preset.yml
+name: EMC Analyst
+description: EMC headless persona（list_data 优先 + 口径纪律 + 出图不回问）
+order: 10

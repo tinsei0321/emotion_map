@@ -1,0 +1,15 @@
+# EMC 服务启动脚本模板（PT-CB16 S1）
+# 占位符 {REPO} 替换为仓库根；DSH_HOME 默认当前用户 .dsh
+param(
+  [string]$Repo = "{REPO}"
+)
+$DshHome = Join-Path $env:USERPROFILE ".dsh"
+if (-not (Test-Path $Repo)) { Write-Error "REPO 不存在: $Repo"; exit 1 }
+
+Write-Host "[OK] 启动 8600 MCP"
+Start-Process py -ArgumentList "tools/mcp_server_emc.py","--http","--port","8600" -WorkingDirectory $Repo -WindowStyle Hidden
+
+Write-Host "[OK] 启动 8080/8000"
+Start-Process py -ArgumentList "frontend/serve.py","8080","--open=none" -WorkingDirectory $Repo -WindowStyle Hidden
+
+Write-Host "[OK] 已启动；等待 health 后访问 http://localhost:8080/frontend/index.html?engine=codex"

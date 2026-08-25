@@ -8,6 +8,7 @@
   py tools/rag_index.py --query "葛洲坝有哪些更新项目"   # 检索 Top-K（试运行）
   py tools/rag_index.py --rebuild        # 全量重建（换模型/损坏）
   py tools/rag_index.py --stats          # 索引统计（向量数/维度/来源分布）
+  py tools/rag_index.py --rebuild-if-stale  # 知识源新于索引才重建，否则报 OK（PT-CB16 S2）
 
 纯函数·ASCII 标记（[OK]/[ERR]·禁 emoji）·不调 LLM。
 track：MOD_AIQA.F_014（build_rag_index）/ F_015（rag_search）
@@ -26,6 +27,8 @@ register_track_id('MOD_AIQA.F_015', 'rag_search（RAG 向量检索·余弦 Top-K
 
 # HF 镜像（国内网络·不覆盖用户显式配置）
 os.environ.setdefault('HF_ENDPOINT', 'https://hf-mirror.com')
+# 模型已缓存（~/.cache/huggingface/hub）——默认离线，避免构建时联网重试卡死（PT-CB16 S2）
+os.environ.setdefault('HF_HUB_OFFLINE', '1')
 
 REPO = Path(__file__).resolve().parents[1]
 RAG_DIR = REPO / 'DATA' / 'RAG' / 'rag_index'
@@ -692,16 +695,58 @@ def stats():
     _tag(True, f'向量数 {len(metas)}·维度 {vectors.shape[1]}·类型 {types}')
 
 
+def _knowledge_sources(repo=REPO):
+    """扫描 RAG 知识源文件（与 check_server_freshness 共用·PT-CB16 S2 抽公共函数）。"""
+    out = []
+    for rel, pat in (("docs/urban-renewal-plan", ".md"), ("DATA/THEME", ".md"),
+                     ("ai_qa/outlet_kb", ".py")):
+        root = os.path.join(str(repo), rel)
+        for dirpath, _dirs, files in os.walk(root):
+            if "_Retired" in dirpath or "_retired" in dirpath:
+                continue
+            for fn in files:
+                if not fn.endswith(pat):
+                    continue
+                fp = os.path.join(dirpath, fn)
+                try:
+                    out.append((fp, os.path.getmtime(fp)))
+                except OSError:
+                    continue
+    return out
+
+
+def _index_freshness(repo=REPO):
+    """返回 (索引 mtime, 知识源列表, 最新知识源) ；索引缺失时首项 None。"""
+    idx = os.path.join(str(repo), 'DATA', 'RAG', 'rag_index', 'vectors.npy')
+    if not os.path.isfile(idx):
+        return None, [], None
+    idx_m = os.path.getmtime(idx)
+    srcs = _knowledge_sources(repo)
+    newest = max(srcs, key=lambda s: s[1], default=None)
+    return idx_m, srcs, newest
+
+
 def main():
     ap = argparse.ArgumentParser(description='RAG 向量索引工具')
     ap.add_argument('--build', action='store_true', help='构建索引')
     ap.add_argument('--rebuild', action='store_true', help='全量重建')
+    ap.add_argument('--rebuild-if-stale', action='store_true', help='知识源新于索引才重建（PT-CB16 S2）')
     ap.add_argument('--query', type=str, help='检索 Top-K')
     ap.add_argument('--stats', action='store_true', help='索引统计')
     ap.add_argument('--k', type=int, default=5, help='Top-K')
     args = ap.parse_args()
 
-    if args.build or args.rebuild:
+    if args.rebuild_if_stale:
+        idx_m, _srcs, newest = _index_freshness()
+        if idx_m is None:
+            _tag(False, '索引不存在——开始重建')
+            build_index()
+        elif newest and newest[1] > idx_m:
+            _tag(True, f'知识源较新（{os.path.basename(newest[0])}）——开始重建')
+            build_index()
+        else:
+            _tag(True, '索引新鲜（知识源无更新）·跳过重建')
+    elif args.build or args.rebuild:
         build_index()
     elif args.query:
         r = search(args.query, args.k)

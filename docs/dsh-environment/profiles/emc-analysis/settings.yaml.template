@@ -1,0 +1,8 @@
+# emc-analysis profile 设置模板（PT-CB16 S1）
+# 复制到 {DSH_HOME}/profiles/emc-analysis/settings.yaml 后按需改模型档位
+agent-default-model:
+  provider: deepseek-official
+  model: deepseek-v4-flash
+  reasoningEffort: max
+agent-presets:
+  default: emc-analyst
