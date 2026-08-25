@@ -1,8 +1,8 @@
 @echo off
 cd /d "%~dp0"
 
-REM ---- PT-CB17: cdh äº§å“å±‚ AGENTS.md åŒæ­¥ï¼ˆä»“å†…æƒå¨å‰¯æœ¬ docs/cdh/AGENTS.md â†’ Codex å·¥ä½œç›®å½•ï¼‰----
-REM åŒæœºçºªå¾‹ï¼šæƒå¨å‰¯æœ¬åœ¨ä»“å†…ï¼Œ_codex_cwd ä¸ºæ´¾ç”Ÿä½ç½®ï¼›æ¯æ¬¡å¯åŠ¨å¼ºåˆ¶åŒæ­¥ï¼ˆé˜²ä¸¤å¤„æ¼‚ç§»ï¼‰ã€‚
+REM ---- PT-CB17: cdh ²úÆ·²ã AGENTS.md Í¬²½£¨²ÖÄÚÈ¨Íş¸±±¾ docs/cdh/AGENTS.md ¡ú Codex ¹¤×÷Ä¿Â¼£©----
+REM Ë«»ú¼ÍÂÉ£ºÈ¨Íş¸±±¾ÔÚ²ÖÄÚ£¬_codex_cwd ÎªÅÉÉúÎ»ÖÃ£»Ã¿´ÎÆô¶¯Ç¿ÖÆÍ¬²½£¨·ÀÁ½´¦Æ¯ÒÆ£©¡£
 if not exist "..\_codex_cwd" mkdir "..\_codex_cwd" >nul 2>&1
 copy /Y "docs\cdh\AGENTS.md" "..\_codex_cwd\AGENTS.md" >nul 2>&1
 if %errorlevel%==0 (echo [OK] cdh AGENTS.md synced to ..\_codex_cwd) else (echo [WARN] cdh AGENTS.md sync failed - using existing copy)
@@ -15,8 +15,8 @@ REM no map linkage). This launcher starts 8600 below BEFORE the web app, so the
 REM dependency is satisfied. Health check: netstat -ano | findstr ":8600.*LISTENING"
 
 REM ---- MCP server (port 8600) ----
-REM PT-CB17 æ²»æœ¬ï¼ˆ21:15 æ—§ç—…å¤å‘æ¡ˆï¼‰ï¼šæ—§é€»è¾‘ã€Œ8600 åœ¨å¬å°±è·³è¿‡ã€= å·¥å…·è¿›ç¨‹æ°¸è¿œè½½æ—§ç 
-REM ï¼ˆ8000/8080 é‡å¯äº†ä½†å·¥å…·æ˜¯ 8600 ä¾›çš„â€”â€”ä¿®å¤ä¸ç”Ÿæ•ˆçš„æ ¹å› ï¼‰ã€‚æ”¹ä¸ºä¸ 8000 åŒæ¬¾ï¼šå…ˆæ€æ—§å†èµ·æ–°ã€‚
+REM PT-CB17 ÖÎ±¾£¨21:15 ¾É²¡¸´·¢°¸£©£º¾ÉÂß¼­¡¸8600 ÔÚÌı¾ÍÌø¹ı¡¹= ¹¤¾ß½ø³ÌÓÀÔ¶ÔØ¾ÉÂë
+REM £¨8000/8080 ÖØÆôÁËµ«¹¤¾ßÊÇ 8600 ¹©µÄ¡ª¡ªĞŞ¸´²»ÉúĞ§µÄ¸ùÒò£©¡£¸ÄÎªÓë 8000 Í¬¿î£ºÏÈÉ±¾ÉÔÙÆğĞÂ¡£
 netstat -ano | findstr ":8600.*LISTENING" >nul 2>&1
 if %errorlevel%==0 (
     echo [LOAD] Killing stale MCP server ^(8600^) to load latest code...
@@ -31,9 +31,9 @@ start "EMC MCP ^(8600^)" /min py tools\mcp_server_emc.py --http --port 8600
 echo [OK] MCP server starting in background
 
 REM ---- wait for MCP (8600) ready ----
-REM æ—¶åºå‘ä¿®å¤(08-23)ï¼šdsh web çš„ mcp-emc æ’ä»¶ failOnStartupError=trueï¼Œ8600 æœªç›‘å¬å°±èµ· 3080
-REM ä¼š ECONNREFUSED å´©æ‰ï¼ˆPT-CB11 æ®µç«æ€ï¼šspawn 8600 åç«‹å³èµ· dsh webï¼Œè€Œ MCP é¢„çƒ­ 15-30s å« RAG æ¨¡å‹åŠ è½½ï¼‰ã€‚
-REM è½®è¯¢ç­‰å¾… 8600 LISTENINGï¼Œæœ€å¤š 40sï¼›è¶…æ—¶è­¦å‘Šåç»§ç»­ï¼ˆdsh web è‹¥ä»å´©ï¼Œç­‰ MCP èµ·æ¥åé‡è·‘ start.bat å³å¯ï¼‰ã€‚
+REM Ê±Ğò¿ÓĞŞ¸´(08-23)£ºdsh web µÄ mcp-emc ²å¼ş failOnStartupError=true£¬8600 Î´¼àÌı¾ÍÆğ 3080
+REM »á ECONNREFUSED ±Àµô£¨PT-CB11 ¶Î¾ºÌ¬£ºspawn 8600 ºóÁ¢¼´Æğ dsh web£¬¶ø MCP Ô¤ÈÈ 15-30s º¬ RAG Ä£ĞÍ¼ÓÔØ£©¡£
+REM ÂÖÑ¯µÈ´ı 8600 LISTENING£¬×î¶à 40s£»³¬Ê±¾¯¸æºó¼ÌĞø£¨dsh web ÈôÈÔ±À£¬µÈ MCP ÆğÀ´ºóÖØÅÜ start.bat ¼´¿É£©¡£
 set /a _mcp_wait=0
 :MCP_WAIT
 netstat -ano | findstr ":8600.*LISTENING" >nul 2>&1
@@ -49,7 +49,7 @@ goto MCP_WAIT
 if %_mcp_wait% GTR 0 echo [OK] MCP server ready on 8600 ^(waited %_mcp_wait%s^)
 
 REM ---- dsh web (port 3080) from EMCxDSH workspace ----
-REM PT-CB11 ä¿®å¤(08-22)ï¼šæœ¬æ®µåŸåœ¨ serve.py(å‰å°é˜»å¡)ä¹‹å=æ°¸ä¸æ‰§è¡Œï¼›ç§»åˆ°å‰é¢Â·å¹¶æŠŠ MCP æ®µçš„ goto æ”¹ if/else é˜² skipped
+REM PT-CB11 ĞŞ¸´(08-22)£º±¾¶ÎÔ­ÔÚ serve.py(Ç°Ì¨×èÈû)Ö®ºó=ÓÀ²»Ö´ĞĞ£»ÒÆµ½Ç°Ãæ¡¤²¢°Ñ MCP ¶ÎµÄ goto ¸Ä if/else ·À skipped
 :DSH_CHECK
 netstat -ano | findstr ":3080.*LISTENING" >nul 2>&1
 if %errorlevel%==0 (
@@ -70,7 +70,7 @@ echo  emotion-map launcher (single instance: auto-cleans old ones)
 echo  [NEW] auto-opens MAIN + TEST pages when serve is ready
 echo ============================================================
 echo.
-echo  æœ¬æœºæœ€æ–°æäº¤ï¼ˆæœ¬æ¬¡å°†è¿è¡Œçš„ä»£ç ï¼‰ï¼š
+echo  ±¾»ú×îĞÂÌá½»£¨±¾´Î½«ÔËĞĞµÄ´úÂë£©£º
 git log -1 --format="    %%h  %%cI  %%s"
 echo.
 echo [WAIT] Killing old serve.py / backend (PIDs on 8080 / 8000)...
@@ -97,8 +97,8 @@ echo      Stop: press Ctrl+C in this window (stops frontend + backend)
 echo      After code edits: hard-reload browser (Ctrl+Shift+R),
 echo             check the build stamp time (bottom-right) updated.
 echo.
-echo [WAIT] é¢„è®¡ 20-30s å°±ç»ªï¼ˆå« BGE RAG æ¨¡å‹åŒæ­¥é¢„çƒ­~15sï¼šå¯åŠ¨æ…¢æ˜¯æœ‰æ„è®¾è®¡Â·æ¢é¦–é—®ç¨³å®šï¼‰
-echo      æ€€ç–‘æ’æ—§ç æ—¶ï¼šåŒå‡» devcheck.bat ä¸€é”®æ ¸å¯¹ä¸‰è¿›ç¨‹è½½ç æ–°æ—§
+echo [WAIT] Ô¤¼Æ 20-30s ¾ÍĞ÷£¨º¬ BGE RAG Ä£ĞÍÍ¬²½Ô¤ÈÈ~15s£ºÆô¶¯ÂıÊÇÓĞÒâÉè¼Æ¡¤»»Ê×ÎÊÎÈ¶¨£©
+echo      »³ÒÉ×²¾ÉÂëÊ±£ºË«»÷ devcheck.bat Ò»¼üºË¶ÔÈı½ø³ÌÔØÂëĞÂ¾É
 echo.
 echo ------------------------------------------------------------
 py frontend/serve.py 8080 --open=codex

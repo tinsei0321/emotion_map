@@ -631,6 +631,16 @@ def main():
         print(f'[OK] frontend serve on http://{host}:{port} (no-cache + ?v auto-inject + path whitelist)')
         print('     访问 http://localhost:{}/frontend/index.html'.format(port))
         print('     Ctrl+C 停止' + ('（同时停后端）' if backend_proc else ''))
+        # PT-CB17 R7+：启动顺带自检（用户令 21:33·devcheck 折进启动）——
+        # 直跑 serve.py（绕过 start.bat）时 8600 MCP 可能载旧码，此处必核三进程+RAG 新鲜度。
+        try:
+            import subprocess as _sp
+            _r = _sp.run([sys.executable, os.path.join(repo_root, 'tools', 'check_server_freshness.py')],
+                         capture_output=True, text=True, timeout=30)
+            for _ln in (_r.stdout or '').splitlines():
+                print('     [自检]', _ln)
+        except Exception as _e:
+            print(f'     [自检] 跳过（{type(_e).__name__}）——可随时双击 devcheck.bat 手动核对')
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
