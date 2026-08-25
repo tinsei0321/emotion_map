@@ -45,6 +45,9 @@
 | 变量 | 默认 | 说明 |
 |---|---|---|
 | `CODEX_MODEL_PROVIDER` | `deepseek` | 桥 spawn `-c model_provider=` 覆盖（用户令 08-24：DeepSeek Flash） |
-| `CODEX_MODEL` | `deepseek-chat` | 桥 spawn `-c model=` 覆盖 |
+| `CODEX_MODEL` | `deepseek-v4-flash` | 桥 spawn `-c model=` 覆盖（官方最新规则：弃用 `deepseek-chat` 旧别名，用规范名） |
+| `CODEX_REASONING_EFFORT` | `high` | 桥 spawn `-c model_reasoning_effort=` 覆盖（v4-flash 默认思考模式） |
 
 > 只作用于 COH 桥进程·用户桌面 Codex 顶层配置不受影响。
+
+> **DeepSeek 规范名 + MCP 工具可见性（必读）**：`~/.codex/models.json` 里 `deepseek-v4-flash` / `deepseek-v4-pro` 若为 `"supports_search_tool": true` 且 `"tool_mode": null`，Codex 会把全部 MCP 工具设为 Deferred，导致 `list_data`/`zonal_stats`/`render_spec` 等 emc 工具在模型工具面中静默消失（只见 `list_mcp_resources`）。到岗/换机时必须把这两条模型的 `supports_search_tool` 改为 `false`；改后重启后端并跑一次 codex_engine 工具链验证。

@@ -16,7 +16,8 @@ SSE 帧分隔约定（P2-11）：事件帧 = `event: <名>\ndata: <JSON>\n\n`（
   P2-1（Z-02）tool begin/end 透传 item.id（前端配对用）；
   P2-2 cwd 改 {REPO} 同级推导（去硬编码盘符·仍仓外隔离）；
   P2-3（Z-04）codex.exe 多候选探测（PATH→APPDATA npm→npm root -g·glob 多 triplet）；
-  P2-4（B-4）model/provider 读环境变量（CODEX_MODEL_PROVIDER/CODEX_MODEL·默认 deepseek+deepseek-chat）；
+  P2-4（B-4）model/provider/reasoning_effort 读环境变量（CODEX_MODEL_PROVIDER/CODEX_MODEL/CODEX_REASONING_EFFORT·
+  默认 deepseek+deepseek-v4-flash+high·官方最新规则：弃用 deepseek-chat 旧别名·规范名 v4-flash·默认思考模式）；
   P2-5（Z-05/B-5）stderr 环形缓冲末 4KB·error 事件随带（诊断面不再弃流）；
   P3（Z-07）握手 wait_for 30s；Z-08（_reason_sent 每 turn 重置——ask 局部变量天然满足·验证在案）。
 
@@ -159,15 +160,18 @@ class CodexBridge:
             raise RuntimeError('codex.exe 未找到（npm i -g @openai/codex 后可用·双机差异注记）')
         if not os.path.isdir(_CODEX_CWD):
             os.makedirs(_CODEX_CWD, exist_ok=True)
-        # P2-4：model/provider 读环境变量（默认 deepseek+deepseek-chat·用户令 08-24）。
-        # -c 定向覆盖只作用于本进程（用户桌面 Codex 的顶层配置不受影响）。
+        # P2-4：model/provider/reasoning_effort 读环境变量（官方最新规则：规范名 deepseek-v4-flash·
+        #   思考模式默认开·effort 默认 high；deepseek-chat 旧别名已弃用，不再作默认）。
+        #   -c 定向覆盖只作用于本进程（用户桌面 Codex 的顶层配置不受影响）。
         provider = os.environ.get('CODEX_MODEL_PROVIDER', 'deepseek')
-        model = os.environ.get('CODEX_MODEL', 'deepseek-chat')
+        model = os.environ.get('CODEX_MODEL', 'deepseek-v4-flash')
+        reasoning_effort = os.environ.get('CODEX_REASONING_EFFORT', 'high')
         self._stderr_buf = bytearray()
         self._proc = await asyncio.create_subprocess_exec(
             exe, 'app-server', '--stdio',
             '-c', f'model_provider="{provider}"',
             '-c', f'model="{model}"',
+            '-c', f'model_reasoning_effort="{reasoning_effort}"',
             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,   # P2-5：抽进环形缓冲（末 4KB·随 error 事件携带）
             cwd=_CODEX_CWD,
