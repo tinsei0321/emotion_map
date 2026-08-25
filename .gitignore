@@ -10,6 +10,7 @@ apps/static/tianditu_*.json
 #   amap_poi_centralcity_wgs84.json  sim_centralcity_poi.py 产出（fallback POI）
 # 注：DATA/performance/ 已入库（家/办同步，演示数据最终版）；换机 git pull 即得，无需重跑引擎。
 DATA/baidu-heatpoints/
+DATA/POI/baidu-heatpoints/
 SCRIPT/poi_data/amap_poi_centralcity_wgs84.json
 # 三调用地源矢量（用户私有，ingest_landuse_preset.py 输入，不入库）：
 DATA/raw/landuse/
@@ -17,8 +18,13 @@ DATA/raw/landuse/
 .claude/settings.local.json
 # RAG 向量索引（本地构建·可 py tools/rag_index.py --rebuild 重建·不入库）
 data/rag_index/
+DATA/RAG/rag_index/
+DATA/RAG/ai_qa/
 # CB-39 A2/D2：新分析导出=运行产物（可重算·不入库；演示最终版有意入库时放 DATA/performance/）
 DATA/exports/
+DATA/Export/exports/
+DATA/Export/render_inbox/
+DATA/_Retired/敏感数据_用地建成区/
 design/tokens.py
 design/tokens.css
 .claude/.last-session

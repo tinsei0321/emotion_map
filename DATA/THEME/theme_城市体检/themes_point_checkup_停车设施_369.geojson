@@ -1,0 +1,5540 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.296357,
+     30.696726
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.288358,
+     30.708491
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.293021,
+     30.725234
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.309816,
+     30.706365
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29217,
+     30.733531
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.297034,
+     30.708713
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.294518,
+     30.690903
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.278259,
+     30.715184
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.355258,
+     30.644507
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.290318,
+     30.712872
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.303175,
+     30.685193
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.303773,
+     30.689757
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29451,
+     30.698231
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.303056,
+     30.719281
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.297422,
+     30.705311
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.275057,
+     30.714095
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.279288,
+     30.707016
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.325671,
+     30.713098
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.34016,
+     30.646974
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.288262,
+     30.695898
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.289771,
+     30.722479
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.287297,
+     30.710647
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.297135,
+     30.731504
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.292515,
+     30.709968
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.296584,
+     30.692886
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.295307,
+     30.713781
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.280028,
+     30.71498
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29222,
+     30.712349
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.353922,
+     30.64478
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.34048,
+     30.722079
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.293244,
+     30.709305
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.292285,
+     30.708549
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.294437,
+     30.734705
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.279302,
+     30.704197
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.286851,
+     30.709671
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29217,
+     30.733531
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.292413,
+     30.697069
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.289672,
+     30.707959
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.288004,
+     30.698995
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.288455,
+     30.737538
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.290457,
+     30.700587
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.292985,
+     30.712984
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.309804,
+     30.70856
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.278105,
+     30.728902
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.306026,
+     30.695871
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.312347,
+     30.699467
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.294591,
+     30.713609
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.297961,
+     30.696291
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.307187,
+     30.706028
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.308865,
+     30.688489
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.290855,
+     30.694923
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.279444,
+     30.712777
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.290953,
+     30.723558
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.292134,
+     30.691672
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.294009,
+     30.724647
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.284594,
+     30.704764
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.287577,
+     30.726115
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.278401,
+     30.729845
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.288257,
+     30.709844
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29151,
+     30.707344
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.323412,
+     30.669757
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.300736,
+     30.706532
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.302914,
+     30.690356
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.293664,
+     30.714153
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.300234,
+     30.696097
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.293173,
+     30.726343
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.272369,
+     30.722415
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.290335,
+     30.714678
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.294203,
+     30.70894
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.296145,
+     30.697403
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.288081,
+     30.718235
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.316395,
+     30.692181
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.327371,
+     30.661534
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.270888,
+     30.720106
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.290318,
+     30.712872
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.291553,
+     30.69013
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.345888,
+     30.651303
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.28583,
+     30.722554
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.280231,
+     30.713963
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.295331,
+     30.708059
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.276475,
+     30.723355
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.276543,
+     30.728945
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.315848,
+     30.706132
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.290378,
+     30.709765
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.287992,
+     30.718202
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.292654,
+     30.712194
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.322824,
+     30.671353
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.306013,
+     30.711371
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.290432,
+     30.724727
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29217,
+     30.733531
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.292148,
+     30.712641
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.296596,
+     30.696805
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.281201,
+     30.70561
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.280687,
+     30.705573
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.288943,
+     30.72094
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.277839,
+     30.705758
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.296516,
+     30.697615
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.319826,
+     30.715112
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.299348,
+     30.697686
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.313919,
+     30.673953
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.307849,
+     30.705801
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.287427,
+     30.706934
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.280703,
+     30.699948
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.288879,
+     30.72527
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.290949,
+     30.708519
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.288262,
+     30.695898
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.274769,
+     30.728262
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.314064,
+     30.693117
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.279379,
+     30.709007
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.308873,
+     30.690367
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.310886,
+     30.724414
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.292612,
+     30.688706
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.30918,
+     30.74205
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.310886,
+     30.724414
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.279024,
+     30.72859
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.293672,
+     30.69412
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.30174,
+     30.692597
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.327574,
+     30.670243
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.312825,
+     30.688433
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.345046,
+     30.644634
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.296558,
+     30.709928
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.321441,
+     30.715656
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.301614,
+     30.705943
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.283478,
+     30.693816
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.277229,
+     30.726965
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.292686,
+     30.713849
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.287379,
+     30.708493
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.276502,
+     30.711097
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.317135,
+     30.685492
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.288262,
+     30.695898
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.31196,
+     30.707365
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.290951,
+     30.711785
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29844,
+     30.733975
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.319967,
+     30.715572
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.296151,
+     30.716585
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.310836,
+     30.676345
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29105,
+     30.72251
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.310286,
+     30.702701
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.30796,
+     30.702215
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.28037,
+     30.710975
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.308888,
+     30.690555
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.294437,
+     30.734705
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.293917,
+     30.701331
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.294753,
+     30.730022
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.283477,
+     30.693653
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.278132,
+     30.729108
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.279187,
+     30.727977
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.292884,
+     30.712959
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29101,
+     30.711799
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.292502,
+     30.709975
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.33662,
+     30.725962
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.290343,
+     30.70958
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.278153,
+     30.714991
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.292151,
+     30.712766
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.288516,
+     30.70921
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.280679,
+     30.705578
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.311588,
+     30.676116
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.303152,
+     30.73445
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.2905,
+     30.701589
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.2765,
+     30.723363
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.288262,
+     30.695898
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.290199,
+     30.724853
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.288262,
+     30.695898
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29217,
+     30.733531
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.284594,
+     30.704764
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.347777,
+     30.644913
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.293623,
+     30.714146
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.276926,
+     30.727162
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.279007,
+     30.728554
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.306851,
+     30.688558
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.288262,
+     30.695898
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.293088,
+     30.691474
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.340199,
+     30.647718
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.296899,
+     30.731722
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.287288,
+     30.710708
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.289589,
+     30.707966
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.272503,
+     30.722438
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.277839,
+     30.705758
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.290335,
+     30.714678
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.290977,
+     30.722535
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.292968,
+     30.697911
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.281091,
+     30.705602
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.287883,
+     30.699131
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.310886,
+     30.724413
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29544,
+     30.713868
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.278762,
+     30.729616
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.296096,
+     30.716586
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.290898,
+     30.727272
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.292714,
+     30.712244
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.275304,
+     30.730845
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.272039,
+     30.722225
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.310886,
+     30.724414
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.287518,
+     30.706955
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.276497,
+     30.711097
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29067,
+     30.710664
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.354255,
+     30.644871
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.31245,
+     30.688749
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.294544,
+     30.713506
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.287417,
+     30.707959
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.288951,
+     30.720854
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.276073,
+     30.722603
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.279666,
+     30.703542
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.290913,
+     30.723559
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.339492,
+     30.721821
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.327974,
+     30.732613
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.323518,
+     30.669744
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.296189,
+     30.734809
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.286798,
+     30.709734
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.284628,
+     30.717624
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.288718,
+     30.709185
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.291883,
+     30.691661
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.275777,
+     30.714343
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.288479,
+     30.737576
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.286828,
+     30.717006
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.301773,
+     30.69291
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.31419,
+     30.693092
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.293198,
+     30.708559
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.288699,
+     30.724856
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.288262,
+     30.695898
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.280268,
+     30.710926
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.306915,
+     30.704515
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.286972,
+     30.717926
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.323901,
+     30.664886
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.294522,
+     30.690946
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.287914,
+     30.694485
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.300467,
+     30.707559
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.296189,
+     30.734817
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.293864,
+     30.713448
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32835,
+     30.732881
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.283485,
+     30.693742
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.293416,
+     30.700185
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.293156,
+     30.70113
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.289427,
+     30.702796
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.290042,
+     30.718507
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.311016,
+     30.676167
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.310886,
+     30.724414
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.299311,
+     30.708826
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.321921,
+     30.740377
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.323141,
+     30.73751
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.278868,
+     30.704115
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.294148,
+     30.708957
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.28776,
+     30.720442
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.312467,
+     30.699448
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.2872,
+     30.728171
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.293765,
+     30.70749
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.294137,
+     30.701566
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.288262,
+     30.695898
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.289015,
+     30.692013
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29153,
+     30.707335
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.310886,
+     30.724414
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.294769,
+     30.730056
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.294604,
+     30.713531
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.291775,
+     30.700898
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.28022,
+     30.713999
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.322509,
+     30.734689
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.313935,
+     30.673894
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29078,
+     30.700411
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.295477,
+     30.728019
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.292741,
+     30.713823
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.300512,
+     30.706456
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.296302,
+     30.716455
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.292277,
+     30.696398
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29234,
+     30.707766
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.284594,
+     30.704764
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.293129,
+     30.726286
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.342599,
+     30.645881
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.289175,
+     30.703745
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.28993,
+     30.703392
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29217,
+     30.733531
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.308943,
+     30.690471
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.305839,
+     30.696197
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.314123,
+     30.693127
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.294326,
+     30.731214
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.292186,
+     30.712324
+    ]
+   },
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2025体检"
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32920454200007,
+     30.78148258400006
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.33051154400005,
+     30.779103081000073
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32985405500006,
+     30.779343063000056
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32360007500006,
+     30.768363875000034
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.31760974200006,
+     30.767660070000034
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32204350800004,
+     30.770201677000045
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.30338821000004,
+     30.768635475000053
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.30463421000007,
+     30.767405156000052
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.28292232000007,
+     30.677222723000057
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.28305919800005,
+     30.67711808100006
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.28225010000006,
+     30.67759681700005
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.28362191600007,
+     30.677392766000025
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.39832781000007,
+     30.567580761000045
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.44523833600005,
+     30.552872501000024
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.34020201500005,
+     30.74770435000005
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.45094162100008,
+     30.557809280000072
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.33845134800004,
+     30.76754650500004
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.26580047800007,
+     30.66593467900003
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.41243819200008,
+     30.588635225000075
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32497444400008,
+     30.785901384000056
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32912948700005,
+     30.785507625000037
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.33570860600008,
+     30.779978353000047
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32568113500008,
+     30.786212292000073
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.33831080300007,
+     30.78112099200007
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.33994602600006,
+     30.753312608000044
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.42143337400006,
+     30.534464600000035
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.34484097000006,
+     30.793668523000065
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.27277025000006,
+     30.677256723000028
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.26920591100009,
+     30.677953639000066
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.26288521300006,
+     30.67571126400003
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.25619515300008,
+     30.67628902100006
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.27547073300008,
+     30.679875065000033
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.30181687300006,
+     30.770890575000067
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29970994500007,
+     30.772199252000064
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29901408500007,
+     30.768431514000042
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.30246361300004,
+     30.77064461300006
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.30253410000006,
+     30.76990731500007
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.30239734900005,
+     30.771079602000043
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29739206500005,
+     30.769922826000027
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.30184750200004,
+     30.77159444800003
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.30118372100009,
+     30.768380827000044
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.30235954800008,
+     30.771541055000057
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.45100618800006,
+     30.49538511700007
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32531869000007,
+     30.773261971000068
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32582545000008,
+     30.784610056000076
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32478250500009,
+     30.785336938000057
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32716979400004,
+     30.785056202000078
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32573431700007,
+     30.78522481600004
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29567617700008,
+     30.770227567000063
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29463029600004,
+     30.76722630300003
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29495588200007,
+     30.766782541000055
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.42943164700006,
+     30.545062462000033
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "停车泊位缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.26054265400006,
+     30.69863893200005
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.41246417400004,
+     30.52922039400005
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.33676693300004,
+     30.779303088000063
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.44535891100008,
+     30.55277929500005
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.35854438600006,
+     30.763846796000053
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.33864300700009,
+     30.76793552500004
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.27107842500004,
+     30.673210268000048
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32497926300005,
+     30.785897910000074
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32883527000007,
+     30.788815380000074
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.33019583200007,
+     30.78474118300005
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32900172400008,
+     30.78551207000004
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.43570868400008,
+     30.545720981000045
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.33945748800005,
+     30.759913416000074
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.34325950300007,
+     30.760815310000055
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.34165389900005,
+     30.75884427300008
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.34239067000004,
+     30.76076752800003
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.34587585900005,
+     30.79396242100006
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29292474400006,
+     30.765709565000066
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.26766888400005,
+     30.674823453000045
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.30211903800006,
+     30.770831362000024
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.30185247400004,
+     30.77156668400005
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.30118372100009,
+     30.76833256200007
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.29962089600008,
+     30.772782649000078
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.30253609800008,
+     30.769914179000068
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32583381700005,
+     30.78461724400006
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "新能源汽车充电桩缺口数（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32573431700007,
+     30.78520463500007
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32270906500008,
+     30.768713697000067
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32195229700005,
+     30.77003902100006
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.33975612800003,
+     30.778377050000074
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.44522884200006,
+     30.55276529400004
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.27117191800005,
+     30.663812693000068
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.41262837900007,
+     30.58866220500005
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.33181522400008,
+     30.787591647000056
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32908993400008,
+     30.785476886000026
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.33553298600009,
+     30.780025753000075
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.33770600300005,
+     30.752023892000068
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.42169033000005,
+     30.534543745000065
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.27516453300007,
+     30.680118149000066
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.26956885400006,
+     30.677769098000056
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.30179778900003,
+     30.771609398000066
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.30238939700007,
+     30.77110920800004
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.30245301100007,
+     30.770619561000046
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "类型": "停车设施",
+    "问题描述": "未配建电动自行车充电设施的小区数量（个）",
+    "来源": "2026补充"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     111.32704115200005,
+     30.785062019000065
+    ]
+   }
+  }
+ ]
+}

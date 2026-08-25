@@ -40,7 +40,7 @@ from core.spatial_analysis import create_square_grid
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_SOURCE = os.path.join(ROOT, "DATA", "analysis", "12345主观", "12345_有坐标点.geojson")
-INBOX = os.path.join(ROOT, "DATA", "exports", "render_inbox")
+INBOX = os.path.join(ROOT, "DATA", "Export", "exports", "render_inbox")
 XW = os.path.join(ROOT, "DATA", "analysis", "西陵伍家_合并范围.geojson")
 COMM174 = os.path.join(ROOT, "DATA", "boundaries", "presets", "checkup_配置_社区174.geojson")
 SPEC_SOURCE_TOOL = "gen_12345_grid_800m"   # 同时作 render_inbox 自清标记

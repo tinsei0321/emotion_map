@@ -19,7 +19,7 @@ from core.config import PERFORMANCE_DIR
 client = TestClient(app)
 
 _L2 = 'yichang_l2_t1'
-_L2_FILE = os.path.join(PERFORMANCE_DIR, 'yichang_L2_T1_L2_result_csv.csv')
+_L2_FILE = os.path.join(PERFORMANCE_DIR, 'yichang_L2_T1_L2_result_geojson.geojson')
 
 # 整组依赖真实数据；缺失即 skip
 pytestmark = pytest.mark.skipif(

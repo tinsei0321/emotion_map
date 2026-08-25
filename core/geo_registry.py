@@ -27,40 +27,40 @@ _CACHE: dict = {}
 # ── 点层 id → (文件名, 标签, 层级) ──
 # L2 含 score/polarity（情绪主用）；L1 含 domain/element/topic（治理要素，无 score）。
 _POINT_LAYERS = {
-    'yichang_l2_t1': ('yichang_L2_T1_L2_result_csv.csv', '宜昌 L2 · T1（中心城区情绪·初）', 'L2'),
-    'yichang_l2_t2': ('yichang_L2_T2_L2_result_csv.csv', '宜昌 L2 · T2（中心城区情绪·中）', 'L2'),
-    'yichang_l2_t3': ('yichang_L2_T3_L2_result_csv.csv', '宜昌 L2 · T3（中心城区情绪·末）', 'L2'),
-    'yichang_l1_t1': ('yichang_L1_T1_result_csv.csv', '宜昌 L1 · T1（全域治理点·初）', 'L1'),
-    'yichang_l1_t2': ('yichang_L1_T2_result_csv.csv', '宜昌 L1 · T2（全域治理点·中）', 'L1'),
-    'yichang_l1_t3': ('yichang_L1_T3_result_csv.csv', '宜昌 L1 · T3（全域治理点·末）', 'L1'),
+    'yichang_l2_t1': ('yichang_L2_T1_L2_result_geojson.geojson', '宜昌 L2 · T1（中心城区情绪·初）', 'L2'),
+    'yichang_l2_t2': ('yichang_L2_T2_L2_result_geojson.geojson', '宜昌 L2 · T2（中心城区情绪·中）', 'L2'),
+    'yichang_l2_t3': ('yichang_L2_T3_L2_result_geojson.geojson', '宜昌 L2 · T3（中心城区情绪·末）', 'L2'),
+    'yichang_l1_t1': ('yichang_L1_T1_result_csv.csv.geojson', '宜昌 L1 · T1（全域治理点·初）', 'L1'),
+    'yichang_l1_t2': ('yichang_L1_T2_result_geojson.geojson', '宜昌 L1 · T2（全域治理点·中）', 'L1'),
+    'yichang_l1_t3': ('yichang_L1_T3_result_geojson.geojson', '宜昌 L1 · T3（全域治理点·末）', 'L1'),
     # 大南门·二马路历史街区 L3+L4（ABSA 富归因·CB-16 数据专题接入·坐标经 backfill_ermawu_coords 补齐）
     # 注：level='L3L4' 数据层零 level 检查（resolve_points/get_layer_points 只读 CSV+lon/lat）·仅 R5 胶囊防线（UI 追问）不含
-    'ermawu_l3l4_t1': ('ermawu_l3l4_T1_result_csv.csv', '大南门·二马路 L3L4 · T1（历史街区·开街扰扰）', 'L3L4'),
-    'ermawu_l3l4_t2': ('ermawu_l3l4_T2_result_csv.csv', '大南门·二马路 L3L4 · T2（历史街区·暑假打卡）', 'L3L4'),
-    'ermawu_l3l4_t3': ('ermawu_l3l4_T3_result_csv.csv', '大南门·二马路 L3L4 · T3（历史街区·文旅爆满）', 'L3L4'),
+    'ermawu_l3l4_t1': ('ermawu_l3l4_T1_result_geojson.geojson', '大南门·二马路 L3L4 · T1（历史街区·开街扰扰）', 'L3L4'),
+    'ermawu_l3l4_t2': ('ermawu_l3l4_T2_result_geojson.geojson', '大南门·二马路 L3L4 · T2（历史街区·暑假打卡）', 'L3L4'),
+    'ermawu_l3l4_t3': ('ermawu_l3l4_T3_result_geojson.geojson', '大南门·二马路 L3L4 · T3（历史街区·文旅爆满）', 'L3L4'),
     # CB-23 checkup 主观轨：12345 治理版（2024·57265 行·geocode 回填 32% 坐标·中心城区+县市）
     # 注：checkup_* 层隔离（Codex G6 whitelist·sim 层零引用）·level='CHECKUP' 零 level 检查·极性负偏平台特性（观点以强度为主）
     # CB-39 A2/E16：真实数据迁出演示池 → DATA/analysis/12345主观/（第 4 元素=repo 相对子目录·缺省走 PERFORMANCE_DIR）
-    'checkup_12345_2024': ('checkup_12345_2024.csv', '12345 投诉 2024（主观轨·体检医生·中心城区+县市）', 'CHECKUP', 'DATA/analysis/12345主观'),
+    'checkup_12345_2024': ('checkup_12345_2024.csv', '12345 投诉 2024（主观轨·体检医生·中心城区+县市）', 'CHECKUP', 'DATA/THEME/theme_城市体检/12345_政务热线_城市体检分析'),
     # PT-CB10 C2-6（D 批挂账销号）：demo_pioneer 演示双点层注册进点层表——原走 manifest 现路径 dict send-in，
     #   现注册后与全部点层同通道（list_data 可见/resolve_points 可引）；GeoJSON 格式·get_layer_points 按扩展名分支读。
     #   数据=12345 主观轨真实点（安全韧性/民生基础两类·社区层）·level='CHECKUP' 同族。
-    'subj_12345_safety_community_point': ('12345_安全韧性_社区点.geojson', '12345 安全韧性点·社区层（主观轨·演示双用）', 'CHECKUP', 'DATA/analysis/12345主观'),
-    'subj_12345_livelihood_community_point': ('12345_民生基础_社区点.geojson', '12345 民生基础点·社区层（主观轨·演示双用）', 'CHECKUP', 'DATA/analysis/12345主观'),
+    'subj_12345_safety_community_point': ('12345_安全韧性_社区点.geojson', '12345 安全韧性点·社区层（主观轨·演示双用）', 'CHECKUP', 'DATA/THEME/theme_城市体检/12345_政务热线_城市体检分析'),
+    'subj_12345_livelihood_community_point': ('12345_民生基础_社区点.geojson', '12345 民生基础点·社区层（主观轨·演示双用）', 'CHECKUP', 'DATA/THEME/theme_城市体检/12345_政务热线_城市体检分析'),
     # PT-CB14 C1（D-4 销号）：checkup qty 体检量化点层 11 层注册进点层表——文件在 DATA/boundaries/presets（非 analysis）·
     #   照 subj_12345 先例（第 4 元素=子目录·level='CHECKUP'·GeoJSON 分支 get_layer_points 直读几何）。
     #   数据=客观轨 77 项量化（指标/中类/board 属性·无极性）·id 与验收口径一致（qty_民生_停车设施 等）。
-    'qty_合并': ('checkup_qty_合并.geojson', '体检 qty 量化 · 合并（客观轨·77 项）', 'CHECKUP', 'DATA/boundaries/presets'),
-    'qty_安全_住房': ('checkup_qty_安全_住房.geojson', '体检 qty 量化 · 安全·住房（客观轨）', 'CHECKUP', 'DATA/boundaries/presets'),
-    'qty_安全_合并': ('checkup_qty_安全_合并.geojson', '体检 qty 量化 · 安全·合并（客观轨）', 'CHECKUP', 'DATA/boundaries/presets'),
-    'qty_安全_安全消防': ('checkup_qty_安全_安全消防.geojson', '体检 qty 量化 · 安全·安全消防（客观轨）', 'CHECKUP', 'DATA/boundaries/presets'),
-    'qty_安全_市政管网': ('checkup_qty_安全_市政管网.geojson', '体检 qty 量化 · 安全·市政管网（客观轨）', 'CHECKUP', 'DATA/boundaries/presets'),
-    'qty_民生_交通设施': ('checkup_qty_民生_交通设施.geojson', '体检 qty 量化 · 民生·交通设施（客观轨）', 'CHECKUP', 'DATA/boundaries/presets'),
-    'qty_民生_住房': ('checkup_qty_民生_住房.geojson', '体检 qty 量化 · 民生·住房（客观轨）', 'CHECKUP', 'DATA/boundaries/presets'),
-    'qty_民生_停车设施': ('checkup_qty_民生_停车设施.geojson', '体检 qty 量化 · 民生·停车设施（客观轨）', 'CHECKUP', 'DATA/boundaries/presets'),
-    'qty_民生_公服设施': ('checkup_qty_民生_公服设施.geojson', '体检 qty 量化 · 民生·公服设施（客观轨）', 'CHECKUP', 'DATA/boundaries/presets'),
-    'qty_民生_合并': ('checkup_qty_民生_合并.geojson', '体检 qty 量化 · 民生·合并（客观轨）', 'CHECKUP', 'DATA/boundaries/presets'),
-    'qty_民生_物业街面': ('checkup_qty_民生_物业街面.geojson', '体检 qty 量化 · 民生·物业街面（客观轨）', 'CHECKUP', 'DATA/boundaries/presets'),
+    'qty_合并': ('themes_point_checkup_全量问题点_2296.geojson', '体检 qty 量化 · 全量问题点（客观轨·77 项）', 'CHECKUP', 'DATA/THEME/theme_城市体检'),
+    'qty_安全_住房': ('themes_point_checkup_住房安全_670.geojson', '体检 qty 量化 · 住房安全（客观轨）', 'CHECKUP', 'DATA/THEME/theme_城市体检'),
+    'qty_安全_合并': ('themes_point_checkup_安全合并_1350.geojson', '体检 qty 量化 · 安全合并（客观轨）', 'CHECKUP', 'DATA/THEME/theme_城市体检'),
+    'qty_安全_安全消防': ('themes_point_checkup_消防安全_421.geojson', '体检 qty 量化 · 消防安全（客观轨）', 'CHECKUP', 'DATA/THEME/theme_城市体检'),
+    'qty_安全_市政管网': ('themes_point_checkup_市政管网_259.geojson', '体检 qty 量化 · 市政管网（客观轨）', 'CHECKUP', 'DATA/THEME/theme_城市体检'),
+    'qty_民生_交通设施': ('themes_point_checkup_不达标步行道_35.geojson', '体检 qty 量化 · 不达标步行道（客观轨）', 'CHECKUP', 'DATA/THEME/theme_城市体检'),
+    'qty_民生_住房': ('themes_point_checkup_住房保障_97.geojson', '体检 qty 量化 · 住房保障（客观轨）', 'CHECKUP', 'DATA/THEME/theme_城市体检'),
+    'qty_民生_停车设施': ('themes_point_checkup_停车设施_369.geojson', '体检 qty 量化 · 停车设施（客观轨）', 'CHECKUP', 'DATA/THEME/theme_城市体检'),
+    'qty_民生_公服设施': ('themes_point_checkup_公服设施_165.geojson', '体检 qty 量化 · 公服设施（客观轨）', 'CHECKUP', 'DATA/THEME/theme_城市体检'),
+    'qty_民生_合并': ('themes_point_checkup_民生合并_946.geojson', '体检 qty 量化 · 民生合并（客观轨）', 'CHECKUP', 'DATA/THEME/theme_城市体检'),
+    'qty_民生_物业街面': ('themes_point_checkup_物业街面_280.geojson', '体检 qty 量化 · 物业街面（客观轨）', 'CHECKUP', 'DATA/THEME/theme_城市体检'),
 }
 
 
@@ -165,6 +165,10 @@ def get_layer_points(layer_id: str) -> gpd.GeoDataFrame:
     # PT-CB10 C2-6：GeoJSON 点层分支（演示双点层·无 lon/lat 列·几何直读；属性按文件原样保留）。
     if path.lower().endswith(('.geojson', '.json')):
         gdf = gpd.read_file(path)
+        # GeoJSON 中的日期字符串会被 pyogrio 解析成 datetime/Timestamp，序列化时需还原为字符串
+        for col in gdf.columns:
+            if pd.api.types.is_datetime64_any_dtype(gdf[col]):
+                gdf[col] = gdf[col].astype(str)
         if gdf.crs is None:
             gdf = gdf.set_crs('EPSG:4326')
         else:

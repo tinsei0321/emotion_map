@@ -1576,7 +1576,7 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
         'caliber_lite': caliber_lite,
     }
 
-    inbox_dir = os.path.join(REPO, 'DATA', 'exports', 'render_inbox')
+    inbox_dir = os.path.join(REPO, 'DATA', 'Export', 'exports', 'render_inbox')
     os.makedirs(inbox_dir, exist_ok=True)
     inbox_path = os.path.join(inbox_dir, f'{spec_id}.json')
     with open(inbox_path, 'w', encoding='utf-8', newline='') as fh:

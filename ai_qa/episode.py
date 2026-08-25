@@ -9,7 +9,7 @@ import json
 import os
 import time
 
-_EPISODE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'DATA', 'ai_qa')
+_EPISODE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'DATA', 'RAG', 'ai_qa')
 _EPISODE_PATH = os.path.join(_EPISODE_DIR, 'episodes.jsonl')
 
 _FINAL_EXCERPT = 360   # final 答文 excerpt 长度（控制 jsonl 体积；全文留 trace/历史，不进 episode）

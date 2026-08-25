@@ -26,7 +26,7 @@ from core.field_dictionary import (
 client = TestClient(app)
 
 _L2 = 'yichang_l2_t1'
-_L2_FILE = os.path.join(PERFORMANCE_DIR, 'yichang_L2_T1_L2_result_csv.csv')
+_L2_FILE = os.path.join(PERFORMANCE_DIR, 'yichang_L2_T1_L2_result_geojson.geojson')
 
 # PT-CB2 T1 落地的结论层样本（manifest analysis_output 12 项中取代表：面/点/聚合面）
 _CONCLUSION_AREA = 'base_174_aggregate_area'      # 城市体检底座·聚合范围快照

@@ -226,7 +226,7 @@ def _match_score(q, name, p):
     return None, s
 
 # ── 路径常量（相对项目根，不硬编码绝对路径） ──
-_PLACE_DIR = os.path.join(_ROOT, 'DATA', 'place')
+_PLACE_DIR = os.path.join(_ROOT, 'DATA', 'POI', 'place')
 _PLACE_DICT_PATH = os.path.join(_PLACE_DIR, 'yichang_places.txt')   # CB-22e P1.2：宜昌专名词典（jieba 独立实例用）
 _ZONE_TYPE_PATH = os.path.join(_PLACE_DIR, 'zone_typology.json')
 _PLACE_KW_PATH = os.path.join(_PLACE_DIR, 'place_keywords.json')

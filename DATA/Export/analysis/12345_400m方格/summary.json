@@ -1,0 +1,158 @@
+{
+  "total_points": 11207,
+  "grid_count": 750,
+  "max_count": 811,
+  "mean_count": 14.9,
+  "in_xw_grids": 380,
+  "in_xw_points": 9004,
+  "in_174_grids": 421,
+  "in_174_points": 7656,
+  "top10": [
+    {
+      "cell_id": "grid_400_8489_1323",
+      "point_count": 811,
+      "top_class9": "噪声",
+      "top_aspect": "民生基础",
+      "top_community": "万达社区",
+      "in_xw": true,
+      "lon": 111.30683,
+      "lat": 30.68237
+    },
+    {
+      "cell_id": "grid_400_8500_1330",
+      "point_count": 547,
+      "top_class9": "噪声",
+      "top_aspect": "民生基础",
+      "top_community": "朝阳路社区",
+      "in_xw": true,
+      "lon": 111.33619,
+      "lat": 30.72199
+    },
+    {
+      "cell_id": "grid_400_8478_1336",
+      "point_count": 348,
+      "top_class9": "噪声",
+      "top_aspect": "民生基础",
+      "top_community": "八一路社区",
+      "in_xw": true,
+      "lon": 111.36095,
+      "lat": 30.64254
+    },
+    {
+      "cell_id": "grid_400_8487_1326",
+      "point_count": 307,
+      "top_class9": "住宅",
+      "top_aspect": "民生基础",
+      "top_community": "宝联社区",
+      "in_xw": true,
+      "lon": 111.31933,
+      "lat": 30.67512
+    },
+    {
+      "cell_id": "grid_400_8490_1322",
+      "point_count": 247,
+      "top_class9": "噪声",
+      "top_aspect": "民生基础",
+      "top_community": "建设社区",
+      "in_xw": true,
+      "lon": 111.30266,
+      "lat": 30.68599
+    },
+    {
+      "cell_id": "grid_400_8489_1329",
+      "point_count": 240,
+      "top_class9": "噪声",
+      "top_aspect": "民生基础",
+      "top_community": "中南路社区",
+      "in_xw": true,
+      "lon": 111.33187,
+      "lat": 30.68231
+    },
+    {
+      "cell_id": "grid_400_8488_1329",
+      "point_count": 156,
+      "top_class9": "噪声",
+      "top_aspect": "民生基础",
+      "top_community": "岳湾路社区",
+      "in_xw": true,
+      "lon": 111.33186,
+      "lat": 30.6787
+    },
+    {
+      "cell_id": "grid_400_8478_1334",
+      "point_count": 128,
+      "top_class9": "住宅",
+      "top_aspect": "民生基础",
+      "top_community": "伍临路社区",
+      "in_xw": true,
+      "lon": 111.3526,
+      "lat": 30.64257
+    },
+    {
+      "cell_id": "grid_400_8488_1328",
+      "point_count": 121,
+      "top_class9": "噪声",
+      "top_aspect": "民生基础",
+      "top_community": "胡家冲社区",
+      "in_xw": true,
+      "lon": 111.32769,
+      "lat": 30.67871
+    },
+    {
+      "cell_id": "grid_400_8502_1324",
+      "point_count": 120,
+      "top_class9": "噪声",
+      "top_aspect": "民生基础",
+      "top_community": "大学路社区",
+      "in_xw": true,
+      "lon": 111.31115,
+      "lat": 30.72926
+    }
+  ],
+  "class9": {
+    "噪声": 3177,
+    "住宅": 2159,
+    "物业": 1683,
+    "停车": 1389,
+    "出行": 1082,
+    "管网安全": 867,
+    "出行安全": 642,
+    "消防安全": 182,
+    "环境安全": 22,
+    "其他": 4
+  },
+  "aspect": {
+    "民生基础": 9490,
+    "安全韧性": 1713
+  },
+  "event": {
+    "投诉": 9106,
+    "求助": 1654,
+    "建议": 440,
+    "其他": 7
+  },
+  "caliber_compare": {
+    "this_result": "12345 2024 geocode_status=ok 精确坐标点 11207 件（400m 方格聚合）",
+    "source_total_with_coords": 18130,
+    "landing_rate_vs_source": 61.8,
+    "full_k01": {
+      "count": 42871,
+      "note": "K-01 12345 管理口径·市域全量（含无坐标/region 点）"
+    },
+    "full_k02": {
+      "count": 49192,
+      "note": "K-02 board 双口径·全量（含客观轨）"
+    },
+    "subset_declaration": "本结果 = ok 精确落点子集，非全量；地理落点可得性与诉求类型相关（子集偏差声明）",
+    "registry_ref": "docs/urban-renewal-plan/00-宜昌专项/_口径注册表.md K-01/K-02",
+    "dropped_core_fields": [
+      "poi_names",
+      "poi_count",
+      "place_name",
+      "place_name_source",
+      "topic_top"
+    ],
+    "dropped_fields_note": "poi_names/place_name 等为 core.create_square_grid 自附下钻链字段（CB-16 Wave 2），本交付不需要已删除",
+    "region_caliber": "xw_174"
+  }
+}

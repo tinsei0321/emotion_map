@@ -30,7 +30,7 @@ def test_c1_qty_layers_registered_and_readable():
         assert lid in _POINT_LAYERS, f'{lid} 未注册'
         entry = _POINT_LAYERS[lid]
         assert entry[2] == 'CHECKUP'
-        assert entry[3] == 'DATA/boundaries/presets'
+        assert entry[3] == 'DATA/THEME/theme_城市体检'
         assert os.path.isfile(_layer_path(entry)), f'{lid} 文件未落盘: {_layer_path(entry)}'
     gdf = get_layer_points('qty_民生_停车设施')
     assert len(gdf) > 0

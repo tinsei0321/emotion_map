@@ -65,7 +65,7 @@ def main():
             'note': f'{args.cell:.0f}m 方格网格聚合（create_square_grid·仅有点的格）',
         },
     }
-    inbox = os.path.join(REPO, 'DATA', 'exports', 'render_inbox')
+    inbox = os.path.join(REPO, 'DATA', 'Export', 'exports', 'render_inbox')
     os.makedirs(inbox, exist_ok=True)
     inbox_path = os.path.join(inbox, f'{spec_id}.json')
     with open(inbox_path, 'w', encoding='utf-8', newline='') as fh:

@@ -28,7 +28,7 @@ register_track_id('MOD_AIQA.F_015', 'rag_search（RAG 向量检索·余弦 Top-K
 os.environ.setdefault('HF_ENDPOINT', 'https://hf-mirror.com')
 
 REPO = Path(__file__).resolve().parents[1]
-RAG_DIR = REPO / 'data' / 'rag_index'
+RAG_DIR = REPO / 'DATA' / 'RAG' / 'rag_index'
 VECTORS = RAG_DIR / 'vectors.npy'
 META = RAG_DIR / 'meta.jsonl'
 MODEL_NAME = 'BAAI/bge-small-zh-v1.5'

@@ -41,7 +41,7 @@ register_track_id('MOD_AIQA.F_030', 'render dataset 取数：preset/点层→Fea
 
 router = APIRouter()
 
-INBOX_DIR = os.path.join(REPO, 'DATA', 'exports', 'render_inbox')
+INBOX_DIR = os.path.join(REPO, 'DATA', 'Export', 'exports', 'render_inbox')
 _BACKLOG = []
 _BACKLOG_LOCK = threading.Lock()
 _SEEN = set()

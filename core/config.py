@@ -11,7 +11,7 @@ import os as _os
 PROJECT_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 _PROJECT_ROOT = PROJECT_ROOT   # 向后兼容别名
 RAW_DIR = _os.path.join(_PROJECT_ROOT, 'DATA', 'raw')
-PROCESSED_DIR = _os.path.join(_PROJECT_ROOT, 'DATA', 'exports')
+PROCESSED_DIR = _os.path.join(_PROJECT_ROOT, 'DATA', 'Export', 'exports')
 # CB-39 A2/D2 数据池归一（单源收敛）：
 #   - 旧 DATA/processed 已手工迁为 performance（07-24）且空目录已删——常量不再指向死路径；
 #   - performance = 演示池（sim 演进最终版·E16 后仅剩 sim·禁入真实数据）；
@@ -25,7 +25,7 @@ BOUNDARY_SHP = _os.path.join(_PROJECT_ROOT, 'DATA', 'boundaries', '规划范围'
 # ── 文件夹选项 ──
 FOLDER_OPTIONS = {
     '[DATA] raw（原始数据）': RAW_DIR,
-    '[DATA] exports（分析导出·运行产物）': PROCESSED_DIR,
+    '[DATA] Export/exports（分析导出·运行产物）': PROCESSED_DIR,
     '[DATA] performance（演示池·sim 最终版）': PERFORMANCE_DIR,
 }
 

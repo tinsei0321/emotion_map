@@ -1,6 +1,6 @@
 # EMC 进度（人读版）
 
-> 数据源 `_board.yaml`·确定性生成（`py tools/gen_progress.py`）·generated from 2742f733。
+> 数据源 `_board.yaml`·确定性生成（`py tools/gen_progress.py`）·generated from 25fc511f。
 
 ## 待用户（唯一要盯的）
 

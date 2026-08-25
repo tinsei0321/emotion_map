@@ -155,7 +155,7 @@ def test_render_file_small_inline(monkeypatch, tmp_path):
 
     out = mse.render_file(file='DATA/out/my_layer.geojson')
     assert out['ok'] is True and out['mode'] == 'inline'
-    inbox = tmp_path / 'DATA' / 'exports' / 'render_inbox'
+    inbox = tmp_path / 'DATA' / 'Export' / 'exports' / 'render_inbox'
     assert len(list(inbox.glob('*.json'))) == 1
 
 

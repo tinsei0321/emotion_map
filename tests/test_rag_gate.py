@@ -20,7 +20,7 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / 'tools'))
 
-_INDEX = REPO / 'data' / 'rag_index'
+_INDEX = REPO / 'DATA' / 'RAG' / 'rag_index'
 if not (_INDEX / 'vectors.npy').exists():
     pytest.skip('RAG 索引未构建（py tools/rag_index.py --build）', allow_module_level=True)
 st = pytest.importorskip('sentence_transformers', reason='sentence-transformers 未安装')
