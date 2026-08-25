@@ -1,5 +1,13 @@
 # PT-CB13 进度契约（R59 裁定合并版·数据源=本文件·人读版由 tools/gen_progress.py 确定性生成）
 # 维护：各批次状态变化时手改本文件 → py tools/gen_progress.py 再生成 docs/progress.md（禁手改产物）。
+#
+# PT-CB18(W1-1) 新增两区：
+# decisions:（待拍板决策区·收敛者每批维护·消费方=STATE.md「待拍板项」栏）结构示例：
+#   - id: D-001
+#     item: 事项一句话（禁裸编号·首次出现带业务名）
+#     candidates: 候选A / 候选B（各自后果）
+#     status: awaiting | decided | dropped（decided 须补结论一行）
+# gate_baseline:（门禁基线·收尾批更新·消费方=STATE.md「门禁基线」栏）
 
 stages:
   - batch: PT-CB1
@@ -43,9 +51,29 @@ stages:
     summary: guard 统一接线（T1 完成待回收）+ ACP 契约 v1（T2 已落盘）·收口中
     docs: docs/catch-ball/discuss/PT-CB12-T1执行记录_Codex-2026-08-22.md
   - batch: PT-CB13
-    status: in_progress
-    summary: 进度契约落地（本批·_board.yaml+gen_progress.py+门禁四断言）
+    status: done
+    summary: 进度契约落地（_board.yaml+gen_progress.py+门禁四断言）
     docs: docs/catch-ball/discuss/PT-CB13-执行记录_Codex-2026-08-22.md
+  - batch: PT-CB14
+    status: done
+    summary: 复测闭环+修复批两包全收+EMC 恒 flash 全局切换（基线 581+2）
+    docs: docs/catch-ball/discuss/PT-CB14-修复批回收裁决_zcode-2026-08-24.md
+  - batch: PT-CB15
+    status: done
+    summary: Codex 转正批（Spike 四问/转正 14 件/双 Bug 治本 K1·RAG 375 chunk·门禁 602+1）
+    docs: docs/catch-ball/discuss/PT-CB15转正批派发_zcode-2026-08-24.md
+  - batch: PT-CB16
+    status: done
+    summary: 交互三机制（C1C3+C2 实施+Codex S1S2·接口锁版本化·门禁 613+1）
+    docs: docs/catch-ball/discuss/PT-CB16-C2实施记录_Kimi-2026-08-25.md
+  - batch: PT-CB17
+    status: done
+    summary: 测试撞旧码治本+devcheck 人话版（三进程载码核对·门禁 616+1）
+    docs: docs/catch-ball/discuss/PT-CB17-cdh产品层四问题治本执行记录_Kimi-2026-08-25.md
+  - batch: PT-CB18
+    status: in_progress
+    summary: 工作方式优化批（单一交接文档/手册瘦身/术语表/规范模板·Qoder 执行 W1/W2 中）
+    docs: docs/catch-ball/discuss/PT-CB18-工作方式优化任务书_v1.0定稿-2026-08-26.md
 
 goals:
   - id: G-platform
@@ -74,3 +102,20 @@ awaiting_user:
     docs: docs/catch-ball/_handoff/OFFICE.md
   - item: Codex 引擎正式化残项（用量计量/自测卡/P3 五件）
     docs: docs/catch-ball/discuss/PT-CB15转正批派发_zcode-2026-08-24.md
+
+# PT-CB18(W1-1) 待拍板决策区（收敛者每批维护·结构见文件头注释）
+decisions:
+  - id: D-001
+    item: RAG 重构 v1.2 讨论（PT-CB9）六增补采纳与否（业界适配+Harness 接轨）
+    candidates: 全采纳 / 甄别后修订采纳 / 暂缓待 RAG 框架另定
+    status: awaiting
+  - id: D-002
+    item: 工作方式优化批（PT-CB18）后续四件（档案喂检索等）启动时点
+    candidates: W1/W2 验证复核通过即启动 / 待用户 push 完成后启动
+    status: awaiting
+
+# PT-CB18(W1-1) 门禁基线（收尾批更新·不随每个小批变）
+gate_baseline:
+  pytest: '618 通过 + 1 跳过（零失败）'
+  updated: '2026-08-26'
+  commit: ef93247

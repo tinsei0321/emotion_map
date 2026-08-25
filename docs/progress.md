@@ -1,6 +1,6 @@
 # EMC 进度（人读版）
 
-> 数据源 `_board.yaml`·确定性生成（`py tools/gen_progress.py`）·generated from dfa98173。
+> 数据源 `_board.yaml`·确定性生成（`py tools/gen_progress.py`）·generated from a87ae50。
 
 ## 待用户（唯一要盯的）
 
@@ -21,7 +21,12 @@
 | PT-CB10 | 完成 | 双评估交叉回收+四档裁决定稿·进度契约合并版裁定（R59·本批载体） | docs/catch-ball/discuss/PT-CB10-双评估交叉回收与四档裁决定稿_zcode-2026-08-21.md |
 | PT-CB11 | 完成 | MCP 工具丰富化+注入链路补全全收口·工具面 10->18（F_021-F_040）·C3 样式面板 | docs/catch-ball/cb-journal.md |
 | PT-CB12 | 进行中 | guard 统一接线（T1 完成待回收）+ ACP 契约 v1（T2 已落盘）·收口中 | docs/catch-ball/discuss/PT-CB12-T1执行记录_Codex-2026-08-22.md |
-| PT-CB13 | 进行中 | 进度契约落地（本批·_board.yaml+gen_progress.py+门禁四断言） | docs/catch-ball/discuss/PT-CB13-执行记录_Codex-2026-08-22.md |
+| PT-CB13 | 完成 | 进度契约落地（_board.yaml+gen_progress.py+门禁四断言） | docs/catch-ball/discuss/PT-CB13-执行记录_Codex-2026-08-22.md |
+| PT-CB14 | 完成 | 复测闭环+修复批两包全收+EMC 恒 flash 全局切换（基线 581+2） | docs/catch-ball/discuss/PT-CB14-修复批回收裁决_zcode-2026-08-24.md |
+| PT-CB15 | 完成 | Codex 转正批（Spike 四问/转正 14 件/双 Bug 治本 K1·RAG 375 chunk·门禁 602+1） | docs/catch-ball/discuss/PT-CB15转正批派发_zcode-2026-08-24.md |
+| PT-CB16 | 完成 | 交互三机制（C1C3+C2 实施+Codex S1S2·接口锁版本化·门禁 613+1） | docs/catch-ball/discuss/PT-CB16-C2实施记录_Kimi-2026-08-25.md |
+| PT-CB17 | 完成 | 测试撞旧码治本+devcheck 人话版（三进程载码核对·门禁 616+1） | docs/catch-ball/discuss/PT-CB17-cdh产品层四问题治本执行记录_Kimi-2026-08-25.md |
+| PT-CB18 | 进行中 | 工作方式优化批（单一交接文档/手册瘦身/术语表/规范模板·Qoder 执行 W1/W2 中） | docs/catch-ball/discuss/PT-CB18-工作方式优化任务书_v1.0定稿-2026-08-26.md |
 
 ## 小目标
 

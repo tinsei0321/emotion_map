@@ -1,5 +1,7 @@
 # Session Handoff · 2026-08-25 晚（office → home）
 
+> ⛔ **已冻结（2026-08-26·PT-CB18 W1-1）**：本卡停止更新，只作历史参考；在途状态唯一落点 = 仓根 `STATE.md`（`py tools/gen_state.py` 生成）+ 阶段交接段模板 `docs/state-handoff-template.md`。观察一阶段后退役。
+
 > 读我即可恢复全部上下文。分支：`EMC_Codex_Harness` · 门禁基线 **616 passed + 1 skipped** · 待推送 11 批。
 
 ## 今日成果（全部已 commit·待 push）
