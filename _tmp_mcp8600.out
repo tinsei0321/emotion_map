@@ -1,0 +1,358 @@
+[TRACE] 14:07:56 | MOD_AIQA.F_015 | [enter] | session=sess-26468-1787638076
+[TRACE] 14:08:12 | MOD_AIQA.F_015 | [exit] | 15743.8ms | session=sess-26468-1787638076
+[TRACE] 14:08:12 | MOD_RANGE.F_014 | [enter] | in: 'checkup_cfg_community174' | session=sess-26468-1787638076
+[TRACE] 14:08:12 | MOD_RANGE.F_014 | [exit] | 195.6ms | session=sess-26468-1787638076
+[TRACE] 14:08:13 | MOD_RANGE.F_013 | [enter] | session=sess-26468-1787638076
+[TRACE] 14:08:13 | MOD_RANGE.F_013 | [exit] | 1.2ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:61419 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61426 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:61426 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56802 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56802 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 14:16:46 | MOD_AIQA.F_021 | [enter] | session=sess-26468-1787638076
+[TRACE] 14:16:49 | MOD_AIQA.F_021 | [exit] | 2831.0ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:49809 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 14:17:04 | MOD_AIQA.F_025 | [enter] | session=sess-26468-1787638076
+  [TRACE] 14:17:04 | MOD_RANGE.F_014 | [enter] | in: 'checkup_cfg_community_xlwj' | session=sess-26468-1787638076
+  [TRACE] 14:17:04 | MOD_RANGE.F_014 | [exit] | 91.1ms | session=sess-26468-1787638076
+  [TRACE] 14:17:04 | MOD_SPATIAL.F_003 | [enter] | session=sess-26468-1787638076
+    [TRACE] 14:17:04 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 14:17:04 | MOD_FIELD.F_001 | [exit] | 0.7ms | session=sess-26468-1787638076
+    [TRACE] 14:17:04 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 14:17:04 | MOD_FIELD.F_001 | [exit] | 0.7ms | session=sess-26468-1787638076
+    [TRACE] 14:17:04 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 14:17:04 | MOD_FIELD.F_001 | [exit] | 0.7ms | session=sess-26468-1787638076
+    [TRACE] 14:17:04 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 14:17:04 | MOD_FIELD.F_001 | [exit] | 0.8ms | session=sess-26468-1787638076
+    [TRACE] 14:17:04 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 14:17:04 | MOD_FIELD.F_001 | [exit] | 0.7ms | session=sess-26468-1787638076
+    [TRACE] 14:17:04 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 14:17:04 | MOD_FIELD.F_001 | [exit] | 0.7ms | session=sess-26468-1787638076
+    [TRACE] 14:17:04 | MOD_PLACE.F_001 | [enter] | session=sess-26468-1787638076
+[LOAD] place_layer: in_water POIs=14/4342
+[LOAD] place_layer: zones=12, seed_pois=157, amap_pois=4490, landmark_pois=7
+    [TRACE] 14:17:08 | MOD_PLACE.F_001 | [exit] | 4189.0ms | session=sess-26468-1787638076
+  [TRACE] 14:17:08 | MOD_SPATIAL.F_003 | [exit] | 4585.1ms | session=sess-26468-1787638076
+[TRACE] 14:17:09 | MOD_AIQA.F_025 | [exit] | 4743.4ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:49809 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 14:17:09 | MOD_AIQA.F_025 | [enter] | session=sess-26468-1787638076
+  [TRACE] 14:17:09 | MOD_RANGE.F_014 | [enter] | in: 'checkup_cfg_community_xlwj' | session=sess-26468-1787638076
+  [TRACE] 14:17:09 | MOD_RANGE.F_014 | [exit] | 85.8ms | session=sess-26468-1787638076
+  [TRACE] 14:17:09 | MOD_SPATIAL.F_003 | [enter] | session=sess-26468-1787638076
+    [TRACE] 14:17:09 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 14:17:09 | MOD_FIELD.F_001 | [exit] | 0.7ms | session=sess-26468-1787638076
+    [TRACE] 14:17:09 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 14:17:09 | MOD_FIELD.F_001 | [exit] | 0.7ms | session=sess-26468-1787638076
+    [TRACE] 14:17:09 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 14:17:09 | MOD_FIELD.F_001 | [exit] | 0.8ms | session=sess-26468-1787638076
+    [TRACE] 14:17:09 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 14:17:09 | MOD_FIELD.F_001 | [exit] | 0.7ms | session=sess-26468-1787638076
+    [TRACE] 14:17:09 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 14:17:09 | MOD_FIELD.F_001 | [exit] | 0.7ms | session=sess-26468-1787638076
+    [TRACE] 14:17:09 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 14:17:09 | MOD_FIELD.F_001 | [exit] | 0.7ms | session=sess-26468-1787638076
+  [TRACE] 14:17:09 | MOD_SPATIAL.F_003 | [exit] | 175.9ms | session=sess-26468-1787638076
+[TRACE] 14:17:09 | MOD_AIQA.F_025 | [exit] | 394.3ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:57687 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 14:17:41 | MOD_AIQA.F_028 | [enter] | session=sess-26468-1787638076
+[TRACE] 14:17:41 | MOD_AIQA.F_028 | [exit] | 2.2ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:63603 - "GET /mcp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49391 - "GET /mcp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59421 - "DELETE /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59496 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62327 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:62327 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62330 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64314 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 20:08:43 | MOD_AIQA.F_021 | [enter] | session=sess-26468-1787638076
+[TRACE] 20:08:43 | MOD_AIQA.F_021 | [exit] | 6.2ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:62380 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 20:11:25 | MOD_AIQA.F_025 | [enter] | session=sess-26468-1787638076
+  [TRACE] 20:11:25 | MOD_RANGE.F_014 | [enter] | in: 'checkup_cfg_community_xlwj' | session=sess-26468-1787638076
+  [TRACE] 20:11:25 | MOD_RANGE.F_014 | [exit] | 246.9ms | session=sess-26468-1787638076
+  [TRACE] 20:11:25 | MOD_SPATIAL.F_003 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:11:25 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:11:25 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:11:25 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:11:25 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:11:25 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:11:25 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:11:25 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:11:25 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:11:25 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:11:25 | MOD_FIELD.F_001 | [exit] | 2.5ms | session=sess-26468-1787638076
+    [TRACE] 20:11:25 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:11:25 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=sess-26468-1787638076
+  [TRACE] 20:11:26 | MOD_SPATIAL.F_003 | [exit] | 931.1ms | session=sess-26468-1787638076
+[TRACE] 20:11:26 | MOD_AIQA.F_025 | [exit] | 1285.1ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:54335 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 20:14:05 | MOD_AIQA.F_027 | [enter] | session=sess-26468-1787638076
+  [TRACE] 20:14:05 | MOD_RANGE.F_014 | [enter] | in: 'checkup_cfg_community_xlwj' | session=sess-26468-1787638076
+  [TRACE] 20:14:05 | MOD_RANGE.F_014 | [exit] | 163.3ms | session=sess-26468-1787638076
+  [TRACE] 20:14:05 | MOD_SPATIAL.F_003 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:05 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:05 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:06 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:06 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:06 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:06 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:06 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:06 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:06 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:06 | MOD_FIELD.F_001 | [exit] | 1.2ms | session=sess-26468-1787638076
+    [TRACE] 20:14:06 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:06 | MOD_FIELD.F_001 | [exit] | 0.1ms | session=sess-26468-1787638076
+  [TRACE] 20:14:06 | MOD_SPATIAL.F_003 | [exit] | 792.8ms | session=sess-26468-1787638076
+[TRACE] 20:14:06 | MOD_AIQA.F_027 | [exit] | 1036.4ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:62815 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 20:14:30 | MOD_AIQA.F_025 | [enter] | session=sess-26468-1787638076
+  [TRACE] 20:14:30 | MOD_RANGE.F_014 | [enter] | in: 'checkup_cfg_community_xlwj' | session=sess-26468-1787638076
+  [TRACE] 20:14:30 | MOD_RANGE.F_014 | [exit] | 156.3ms | session=sess-26468-1787638076
+  [TRACE] 20:14:30 | MOD_SPATIAL.F_003 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:30 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:30 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:31 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:31 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:31 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:31 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:31 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:31 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:31 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:31 | MOD_FIELD.F_001 | [exit] | 2.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:31 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:31 | MOD_FIELD.F_001 | [exit] | 0.1ms | session=sess-26468-1787638076
+  [TRACE] 20:14:31 | MOD_SPATIAL.F_003 | [exit] | 752.3ms | session=sess-26468-1787638076
+[TRACE] 20:14:31 | MOD_AIQA.F_025 | [exit] | 952.2ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:62815 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 20:14:31 | MOD_AIQA.F_025 | [enter] | session=sess-26468-1787638076
+  [TRACE] 20:14:31 | MOD_RANGE.F_014 | [enter] | in: 'checkup_cfg_community_xlwj' | session=sess-26468-1787638076
+  [TRACE] 20:14:31 | MOD_RANGE.F_014 | [exit] | 152.8ms | session=sess-26468-1787638076
+  [TRACE] 20:14:31 | MOD_SPATIAL.F_003 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:31 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:31 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:31 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:31 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:31 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:31 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:31 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:31 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:32 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:32 | MOD_FIELD.F_001 | [exit] | 1.1ms | session=sess-26468-1787638076
+    [TRACE] 20:14:32 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:32 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=sess-26468-1787638076
+  [TRACE] 20:14:32 | MOD_SPATIAL.F_003 | [exit] | 809.2ms | session=sess-26468-1787638076
+[TRACE] 20:14:32 | MOD_AIQA.F_025 | [exit] | 1025.3ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:52696 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 20:14:56 | MOD_AIQA.F_025 | [enter] | session=sess-26468-1787638076
+  [TRACE] 20:14:56 | MOD_RANGE.F_014 | [enter] | in: 'checkup_cfg_community_xlwj' | session=sess-26468-1787638076
+  [TRACE] 20:14:56 | MOD_RANGE.F_014 | [exit] | 157.7ms | session=sess-26468-1787638076
+  [TRACE] 20:14:56 | MOD_SPATIAL.F_003 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:56 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:56 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:56 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:56 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:56 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:56 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:56 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:56 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:56 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:56 | MOD_FIELD.F_001 | [exit] | 1.8ms | session=sess-26468-1787638076
+    [TRACE] 20:14:56 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:56 | MOD_FIELD.F_001 | [exit] | 0.3ms | session=sess-26468-1787638076
+  [TRACE] 20:14:57 | MOD_SPATIAL.F_003 | [exit] | 815.1ms | session=sess-26468-1787638076
+[TRACE] 20:14:57 | MOD_AIQA.F_025 | [exit] | 1019.3ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:52696 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 20:14:57 | MOD_AIQA.F_025 | [enter] | session=sess-26468-1787638076
+  [TRACE] 20:14:57 | MOD_RANGE.F_014 | [enter] | in: 'checkup_cfg_community_xlwj' | session=sess-26468-1787638076
+  [TRACE] 20:14:57 | MOD_RANGE.F_014 | [exit] | 153.6ms | session=sess-26468-1787638076
+  [TRACE] 20:14:57 | MOD_SPATIAL.F_003 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:57 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:57 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:57 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:57 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:57 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:57 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:57 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:57 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:14:57 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:57 | MOD_FIELD.F_001 | [exit] | 1.9ms | session=sess-26468-1787638076
+    [TRACE] 20:14:57 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:14:57 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=sess-26468-1787638076
+  [TRACE] 20:14:58 | MOD_SPATIAL.F_003 | [exit] | 799.6ms | session=sess-26468-1787638076
+[TRACE] 20:14:58 | MOD_AIQA.F_025 | [exit] | 1006.4ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:59353 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 20:15:20 | MOD_AIQA.F_027 | [enter] | session=sess-26468-1787638076
+  [TRACE] 20:15:20 | MOD_RANGE.F_014 | [enter] | in: 'checkup_cfg_community_xlwj' | session=sess-26468-1787638076
+  [TRACE] 20:15:20 | MOD_RANGE.F_014 | [exit] | 175.8ms | session=sess-26468-1787638076
+  [TRACE] 20:15:20 | MOD_SPATIAL.F_003 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:20 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:20 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:15:20 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:20 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:15:20 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:20 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:15:20 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:20 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:15:20 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:20 | MOD_FIELD.F_001 | [exit] | 1.2ms | session=sess-26468-1787638076
+    [TRACE] 20:15:20 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:20 | MOD_FIELD.F_001 | [exit] | 0.1ms | session=sess-26468-1787638076
+  [TRACE] 20:15:21 | MOD_SPATIAL.F_003 | [exit] | 822.0ms | session=sess-26468-1787638076
+[TRACE] 20:15:21 | MOD_AIQA.F_027 | [exit] | 1042.5ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:57131 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 20:15:41 | MOD_AIQA.F_025 | [enter] | session=sess-26468-1787638076
+  [TRACE] 20:15:41 | MOD_RANGE.F_014 | [enter] | in: 'checkup_cfg_community_xlwj' | session=sess-26468-1787638076
+  [TRACE] 20:15:41 | MOD_RANGE.F_014 | [exit] | 161.9ms | session=sess-26468-1787638076
+  [TRACE] 20:15:41 | MOD_SPATIAL.F_003 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:41 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:41 | MOD_FIELD.F_001 | [exit] | 0.1ms | session=sess-26468-1787638076
+    [TRACE] 20:15:41 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:41 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:15:41 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:41 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:15:41 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:41 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:15:42 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:42 | MOD_FIELD.F_001 | [exit] | 2.0ms | session=sess-26468-1787638076
+    [TRACE] 20:15:42 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:42 | MOD_FIELD.F_001 | [exit] | 0.1ms | session=sess-26468-1787638076
+  [TRACE] 20:15:42 | MOD_SPATIAL.F_003 | [exit] | 918.0ms | session=sess-26468-1787638076
+[TRACE] 20:15:42 | MOD_AIQA.F_025 | [exit] | 1121.1ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:57131 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 20:15:42 | MOD_AIQA.F_025 | [enter] | session=sess-26468-1787638076
+  [TRACE] 20:15:42 | MOD_RANGE.F_014 | [enter] | in: 'checkup_cfg_community_xlwj' | session=sess-26468-1787638076
+  [TRACE] 20:15:42 | MOD_RANGE.F_014 | [exit] | 132.1ms | session=sess-26468-1787638076
+  [TRACE] 20:15:42 | MOD_SPATIAL.F_003 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:42 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:42 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:15:43 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:43 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:15:43 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:43 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:15:43 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:43 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:15:43 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:43 | MOD_FIELD.F_001 | [exit] | 2.0ms | session=sess-26468-1787638076
+    [TRACE] 20:15:43 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:15:43 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=sess-26468-1787638076
+  [TRACE] 20:15:43 | MOD_SPATIAL.F_003 | [exit] | 810.9ms | session=sess-26468-1787638076
+[TRACE] 20:15:43 | MOD_AIQA.F_025 | [exit] | 997.2ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:51731 - "DELETE /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51739 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51740 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:51739 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51741 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52801 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52801 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:52801 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52805 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55354 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 20:55:16 | MOD_AIQA.F_021 | [enter] | session=sess-26468-1787638076
+[TRACE] 20:55:16 | MOD_AIQA.F_021 | [exit] | 3.8ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:59809 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 20:55:26 | MOD_AIQA.F_025 | [enter] | session=sess-26468-1787638076
+  [TRACE] 20:55:26 | MOD_RANGE.F_014 | [enter] | in: 'checkup_cfg_community_xlwj' | session=sess-26468-1787638076
+  [TRACE] 20:55:27 | MOD_RANGE.F_014 | [exit] | 128.1ms | session=sess-26468-1787638076
+  [TRACE] 20:55:27 | MOD_SPATIAL.F_003 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:55:27 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:55:27 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:55:27 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:55:27 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:55:27 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:55:27 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:55:27 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:55:27 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:55:27 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:55:27 | MOD_FIELD.F_001 | [exit] | 1.6ms | session=sess-26468-1787638076
+    [TRACE] 20:55:27 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:55:27 | MOD_FIELD.F_001 | [exit] | 0.1ms | session=sess-26468-1787638076
+  [TRACE] 20:55:27 | MOD_SPATIAL.F_003 | [exit] | 397.2ms | session=sess-26468-1787638076
+[TRACE] 20:55:27 | MOD_AIQA.F_025 | [exit] | 583.5ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:62564 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 20:55:53 | MOD_AIQA.F_028 | [enter] | session=sess-26468-1787638076
+[TRACE] 20:55:53 | MOD_AIQA.F_028 | [exit] | 0.1ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:50848 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 20:56:47 | MOD_AIQA.F_025 | [enter] | session=sess-26468-1787638076
+  [TRACE] 20:56:47 | MOD_RANGE.F_014 | [enter] | in: 'checkup_cfg_community_xlwj' | session=sess-26468-1787638076
+  [TRACE] 20:56:47 | MOD_RANGE.F_014 | [exit] | 107.8ms | session=sess-26468-1787638076
+  [TRACE] 20:56:47 | MOD_SPATIAL.F_003 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:56:47 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:56:47 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:56:47 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:56:47 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:56:47 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:56:47 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:56:47 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:56:47 | MOD_FIELD.F_001 | [exit] | 0.0ms | session=sess-26468-1787638076
+    [TRACE] 20:56:47 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:56:47 | MOD_FIELD.F_001 | [exit] | 1.2ms | session=sess-26468-1787638076
+    [TRACE] 20:56:47 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 20:56:47 | MOD_FIELD.F_001 | [exit] | 0.2ms | session=sess-26468-1787638076
+  [TRACE] 20:56:47 | MOD_SPATIAL.F_003 | [exit] | 459.7ms | session=sess-26468-1787638076
+[TRACE] 20:56:47 | MOD_AIQA.F_025 | [exit] | 605.7ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:50616 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 20:57:59 | MOD_AIQA.F_028 | [enter] | session=sess-26468-1787638076
+[TRACE] 20:57:59 | MOD_AIQA.F_028 | [exit] | 2.3ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:61521 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 21:06:41 | MOD_AIQA.F_028 | [enter] | session=sess-26468-1787638076
+[TRACE] 21:06:41 | MOD_AIQA.F_028 | [exit] | 1.6ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:55508 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50851 - "POST /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:60156 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60157 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 21:11:54 | MOD_AIQA.F_025 | [enter] | session=sess-26468-1787638076
+  [TRACE] 21:11:54 | MOD_RANGE.F_014 | [enter] | in: 'base_community_area' | session=sess-26468-1787638076
+  [TRACE] 21:11:54 | MOD_RANGE.F_014 | [exit] | 277.7ms | session=sess-26468-1787638076
+  [TRACE] 21:11:54 | MOD_SPATIAL.F_003 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:11:54 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:11:54 | MOD_FIELD.F_001 | [exit] | 1.1ms | session=sess-26468-1787638076
+    [TRACE] 21:11:54 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:11:54 | MOD_FIELD.F_001 | [exit] | 1.0ms | session=sess-26468-1787638076
+    [TRACE] 21:11:54 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:11:54 | MOD_FIELD.F_001 | [exit] | 1.2ms | session=sess-26468-1787638076
+    [TRACE] 21:11:54 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:11:54 | MOD_FIELD.F_001 | [exit] | 1.6ms | session=sess-26468-1787638076
+    [TRACE] 21:11:54 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:11:54 | MOD_FIELD.F_001 | [exit] | 1.1ms | session=sess-26468-1787638076
+    [TRACE] 21:11:55 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:11:55 | MOD_FIELD.F_001 | [exit] | 0.9ms | session=sess-26468-1787638076
+  [TRACE] 21:11:55 | MOD_SPATIAL.F_003 | [exit] | 305.8ms | session=sess-26468-1787638076
+[TRACE] 21:11:55 | MOD_AIQA.F_025 | [exit] | 635.4ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:60832 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 21:12:11 | MOD_AIQA.F_025 | [enter] | session=sess-26468-1787638076
+  [TRACE] 21:12:11 | MOD_RANGE.F_014 | [enter] | in: 'base_community_area' | session=sess-26468-1787638076
+  [TRACE] 21:12:11 | MOD_RANGE.F_014 | [exit] | 186.8ms | session=sess-26468-1787638076
+  [TRACE] 21:12:11 | MOD_SPATIAL.F_003 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:12:11 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:12:11 | MOD_FIELD.F_001 | [exit] | 0.9ms | session=sess-26468-1787638076
+    [TRACE] 21:12:11 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:12:11 | MOD_FIELD.F_001 | [exit] | 0.9ms | session=sess-26468-1787638076
+    [TRACE] 21:12:11 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:12:11 | MOD_FIELD.F_001 | [exit] | 0.9ms | session=sess-26468-1787638076
+    [TRACE] 21:12:11 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:12:11 | MOD_FIELD.F_001 | [exit] | 0.9ms | session=sess-26468-1787638076
+    [TRACE] 21:12:11 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:12:11 | MOD_FIELD.F_001 | [exit] | 0.8ms | session=sess-26468-1787638076
+    [TRACE] 21:12:11 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:12:11 | MOD_FIELD.F_001 | [exit] | 0.9ms | session=sess-26468-1787638076
+  [TRACE] 21:12:11 | MOD_SPATIAL.F_003 | [exit] | 288.4ms | session=sess-26468-1787638076
+[TRACE] 21:12:11 | MOD_AIQA.F_025 | [exit] | 515.8ms | session=sess-26468-1787638076
+INFO:     127.0.0.1:62698 - "POST /mcp HTTP/1.1" 200 OK
+[TRACE] 21:12:30 | MOD_AIQA.F_025 | [enter] | session=sess-26468-1787638076
+  [TRACE] 21:12:30 | MOD_RANGE.F_014 | [enter] | in: 'base_community_area' | session=sess-26468-1787638076
+  [TRACE] 21:12:30 | MOD_RANGE.F_014 | [exit] | 208.0ms | session=sess-26468-1787638076
+  [TRACE] 21:12:30 | MOD_SPATIAL.F_003 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:12:30 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:12:30 | MOD_FIELD.F_001 | [exit] | 0.9ms | session=sess-26468-1787638076
+    [TRACE] 21:12:30 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:12:30 | MOD_FIELD.F_001 | [exit] | 0.8ms | session=sess-26468-1787638076
+    [TRACE] 21:12:30 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:12:30 | MOD_FIELD.F_001 | [exit] | 1.1ms | session=sess-26468-1787638076
+    [TRACE] 21:12:30 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:12:30 | MOD_FIELD.F_001 | [exit] | 1.1ms | session=sess-26468-1787638076
+    [TRACE] 21:12:30 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:12:30 | MOD_FIELD.F_001 | [exit] | 1.0ms | session=sess-26468-1787638076
+    [TRACE] 21:12:30 | MOD_FIELD.F_001 | [enter] | session=sess-26468-1787638076
+    [TRACE] 21:12:30 | MOD_FIELD.F_001 | [exit] | 1.0ms | session=sess-26468-1787638076
+  [TRACE] 21:12:30 | MOD_SPATIAL.F_003 | [exit] | 305.3ms | session=sess-26468-1787638076
+[TRACE] 21:12:30 | MOD_AIQA.F_025 | [exit] | 564.9ms | session=sess-26468-1787638076

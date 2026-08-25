@@ -526,6 +526,31 @@
   },
   {
     "group": "dsh 临时渲染（render_file 自动登记）",
-    "items": []
+    "items": [
+      {
+        "id": "tmp_render_1787663798753",
+        "label": "zonal_stats 分析结果",
+        "file": "../../Export/exports/tmp_render/zonal_stats-1787663798750.geojson",
+        "nameField": "name",
+        "usage": "analysis_output",
+        "note": "render_file/layer_output 自动登记（临时渲染·7 天 TTL·PT-CB15 K3）",
+        "renderFields": [
+          "value",
+          "point_count"
+        ]
+      },
+      {
+        "id": "tmp_render_1787666720114",
+        "label": "zonal_stats 分析结果",
+        "file": "../../Export/exports/tmp_render/zonal_stats-1787666720097.geojson",
+        "nameField": "name",
+        "usage": "analysis_output",
+        "note": "render_file/layer_output 自动登记（临时渲染·7 天 TTL·PT-CB15 K3）",
+        "renderFields": [
+          "value",
+          "point_count"
+        ]
+      }
+    ]
   }
 ]

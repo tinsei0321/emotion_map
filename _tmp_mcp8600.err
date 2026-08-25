@@ -1,0 +1,198 @@
+[OK] EMC MCP server HTTP 模式启动 (port=8600)
+[OK] 预热开始（约 15s·主线程同步）
+Loading weights:   0%|          | 0/71 [00:00<?, ?it/s]Loading weights: 100%|██████████| 71/71 [00:00<00:00, 9811.40it/s]
+Building prefix dict from the default dictionary ...
+Loading model from cache C:\Users\ADMINI~1\AppData\Local\Temp\jieba.cache
+Loading model cost 0.427 seconds.
+Prefix dict has been built successfully.
+[OK] 预热: RAG 模型+索引就绪
+[OK] 预热: 常用数据层就绪
+[OK] 预热完成
+[OK] 预热完成·开始监听
+C:\Users\Administrator\AppData\Local\Programs\Python\Python314\Lib\site-packages\pydantic_settings\sources\utils.py:47: IncompleteFieldDefinitionWarning: Field 'lifespan' has an incomplete definition: its annotation contains an unresolved forward reference, so settings sources may fail to correctly resolve its value. Call `model_rebuild()` on the model where the field is defined, once all the referenced types are defined.
+  warnings.warn(
+[OK] B4 输入面核对: manifest 61 preset·拒绝面 19（analysis_output·按设计）
+INFO:     Started server process [26468]
+INFO:     Waiting for application startup.
+[08/25/26 14:08:13] INFO     StreamableHTTP      streamable_http_manager.py:143
+                             session manager                                   
+                             started                                           
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8600 (Press CTRL+C to quit)
+[08/25/26 14:16:43] INFO     Created new         streamable_http_manager.py:301
+                             transport with                                    
+                             session ID:                                       
+                             a1cf00e1301247beaac                               
+                             a5a485f7ae564                                     
+                    ERROR    Exception in callback          base_events.py:1886
+                             _ProactorBasePipeTransport._ca                    
+                             ll_connection_lost()                              
+                             handle: <Handle                                   
+                             _ProactorBasePipeTransport._ca                    
+                             ll_connection_lost()>                             
+                             +- Traceback (most recent ca-+                    
+                             | C:\Users\Administrator\App |                    
+                             | Data\Local\Programs\Python |                    
+                             | \Python314\Lib\asyncio\eve |                    
+                             | nts.py:94 in _run          |                    
+                             |                            |                    
+                             |    91                      |                    
+                             |    92     def _run(self):  |                    
+                             |    93         try:         |                    
+                             | >  94             self._co |                    
+                             |    95         except (Syst |                    
+                             |    96             raise    |                    
+                             |    97         except BaseE |                    
+                             |                            |                    
+                             | C:\Users\Administrator\App |                    
+                             | Data\Local\Programs\Python |                    
+                             | \Python314\Lib\asyncio\pro |                    
+                             | actor_events.py:165 in     |                    
+                             | _call_connection_lost      |                    
+                             |                            |                    
+                             |   162             # just c |                    
+                             |   163             # cure i |                    
+                             |   164             if hasat |                    
+                             | > 165                 self |                    
+                             |   166             self._so |                    
+                             |   167             self._so |                    
+                             |   168             server = |                    
+                             +----------------------------+                    
+                             ConnectionResetError:                             
+                             [WinError 10054]                                  
+                             远程主机强迫关闭了一个现有的连                    
+                             接。                                              
+                    INFO     Processing request of type           server.py:733
+                             ListToolsRequest                                  
+[08/25/26 14:16:46] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 14:16:49] INFO     Warning: UserWarning: Could not      server.py:723
+                             parse column 'narrative_zone' as                  
+                             JSON; leaving as string                           
+                    INFO     Warning: UserWarning: Could not      server.py:723
+                             parse column 'topic' as JSON;                     
+                             leaving as string                                 
+[08/25/26 14:17:04] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 14:17:09] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 14:17:41] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 20:05:39] INFO     Terminating session:        streamable_http.py:788
+                             a1cf00e1301247beaaca5a485f7                       
+                             ae564                                             
+[08/25/26 20:06:14] INFO     Created new         streamable_http_manager.py:301
+                             transport with                                    
+                             session ID:                                       
+                             abbeaefc77fa4f04b72                               
+                             8cfd0904f8559                                     
+                    ERROR    Exception in callback          base_events.py:1886
+                             _ProactorBasePipeTransport._ca                    
+                             ll_connection_lost()                              
+                             handle: <Handle                                   
+                             _ProactorBasePipeTransport._ca                    
+                             ll_connection_lost()>                             
+                             +- Traceback (most recent ca-+                    
+                             | C:\Users\Administrator\App |                    
+                             | Data\Local\Programs\Python |                    
+                             | \Python314\Lib\asyncio\eve |                    
+                             | nts.py:94 in _run          |                    
+                             |                            |                    
+                             |    91                      |                    
+                             |    92     def _run(self):  |                    
+                             |    93         try:         |                    
+                             | >  94             self._co |                    
+                             |    95         except (Syst |                    
+                             |    96             raise    |                    
+                             |    97         except BaseE |                    
+                             |                            |                    
+                             | C:\Users\Administrator\App |                    
+                             | Data\Local\Programs\Python |                    
+                             | \Python314\Lib\asyncio\pro |                    
+                             | actor_events.py:165 in     |                    
+                             | _call_connection_lost      |                    
+                             |                            |                    
+                             |   162             # just c |                    
+                             |   163             # cure i |                    
+                             |   164             if hasat |                    
+                             | > 165                 self |                    
+                             |   166             self._so |                    
+                             |   167             self._so |                    
+                             |   168             server = |                    
+                             +----------------------------+                    
+                             ConnectionResetError:                             
+                             [WinError 10054]                                  
+                             远程主机强迫关闭了一个现有的连                    
+                             接。                                              
+[08/25/26 20:06:15] INFO     Processing request of type           server.py:733
+                             ListToolsRequest                                  
+[08/25/26 20:08:43] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 20:11:25] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 20:14:05] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 20:14:30] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 20:14:31] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 20:14:56] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 20:14:57] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 20:15:20] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 20:15:41] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 20:15:42] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 20:53:09] INFO     Terminating session:        streamable_http.py:788
+                             abbeaefc77fa4f04b728cfd0904                       
+                             f8559                                             
+[08/25/26 20:53:12] INFO     Created new         streamable_http_manager.py:301
+                             transport with                                    
+                             session ID:                                       
+                             5ca01a98d487473fbed                               
+                             a1930e24b2a71                                     
+                    INFO     Processing request of type           server.py:733
+                             ListToolsRequest                                  
+[08/25/26 20:53:53] INFO     Created new         streamable_http_manager.py:301
+                             transport with                                    
+                             session ID:                                       
+                             7d1676c2829e47cdbb1                               
+                             e8d86c46e78d4                                     
+                    INFO     Processing request of type           server.py:733
+                             ListToolsRequest                                  
+[08/25/26 20:55:16] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 20:55:26] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 20:55:53] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 20:56:47] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 20:57:59] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 21:06:41] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 21:10:50] INFO     Created new         streamable_http_manager.py:301
+                             transport with                                    
+                             session ID:                                       
+                             e2ce623076274a99924                               
+                             ffd0ed3d5a7aa                                     
+[08/25/26 21:11:28] INFO     Created new         streamable_http_manager.py:301
+                             transport with                                    
+                             session ID:                                       
+                             e0875d443a2a4cff865                               
+                             9d19d405af23b                                     
+[08/25/26 21:11:53] INFO     Created new         streamable_http_manager.py:301
+                             transport with                                    
+                             session ID:                                       
+                             46c6b29eea9742a1b8d                               
+                             07870671c67d5                                     
+[08/25/26 21:11:54] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 21:12:11] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[08/25/26 21:12:30] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
