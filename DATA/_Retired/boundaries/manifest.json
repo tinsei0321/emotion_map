@@ -1,0 +1,36 @@
+[
+ {
+  "group": "行政区划",
+  "items": [
+   {
+    "id": "admin_district",
+    "label": "行政区",
+    "file": "行政区.geojson",
+    "nameField": "MC"
+   },
+   {
+    "id": "admin_street",
+    "label": "街道",
+    "file": "街道.geojson",
+    "nameField": "街道"
+   },
+   {
+    "id": "admin_community",
+    "label": "社区",
+    "file": "社区.geojson",
+    "nameField": "社区"
+   }
+  ]
+ },
+ {
+  "group": "城市更新单元",
+  "items": [
+   {
+    "id": "renewal_unit",
+    "label": "更新单元",
+    "file": "更新单元.geojson",
+    "nameField": "编号"
+   }
+  ]
+ }
+]

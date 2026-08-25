@@ -1,0 +1,41 @@
+{
+  "type": "FeatureCollection",
+  "name": "宜昌市医疗点",
+  "features": [
+    {"type":"Feature","properties":{"name":"宜昌市第一人民医院","type":"三级医院","district":"西陵区"},"geometry":{"type":"Point","coordinates":[111.270,30.713]}},
+    {"type":"Feature","properties":{"name":"宜昌市第二人民医院","type":"三级医院","district":"西陵区"},"geometry":{"type":"Point","coordinates":[111.289,30.722]}},
+    {"type":"Feature","properties":{"name":"三峡大学附属仁济医院","type":"三级医院","district":"西陵区"},"geometry":{"type":"Point","coordinates":[111.282,30.703]}},
+    {"type":"Feature","properties":{"name":"宜昌市中医医院","type":"专科医院","district":"西陵区"},"geometry":{"type":"Point","coordinates":[111.262,30.711]}},
+    {"type":"Feature","properties":{"name":"宜昌市妇幼保健院","type":"专科医院","district":"西陵区"},"geometry":{"type":"Point","coordinates":[111.278,30.706]}},
+    {"type":"Feature","properties":{"name":"葛洲坝中心医院","type":"三级医院","district":"西陵区"},"geometry":{"type":"Point","coordinates":[111.238,30.702]}},
+    {"type":"Feature","properties":{"name":"国药葛洲坝总医院","type":"三级医院","district":"西陵区"},"geometry":{"type":"Point","coordinates":[111.248,30.695]}},
+    {"type":"Feature","properties":{"name":"西陵街道社区卫生服务中心","type":"社区卫生服务中心","district":"西陵区"},"geometry":{"type":"Point","coordinates":[111.268,30.718]}},
+    {"type":"Feature","properties":{"name":"云集街道社区卫生服务中心","type":"社区卫生服务中心","district":"西陵区"},"geometry":{"type":"Point","coordinates":[111.275,30.710]}},
+    {"type":"Feature","properties":{"name":"夜明珠街道社区卫生服务中心","type":"社区卫生服务中心","district":"西陵区"},"geometry":{"type":"Point","coordinates":[111.245,30.715]}},
+    {"type":"Feature","properties":{"name":"学院街道社区卫生服务中心","type":"社区卫生服务中心","district":"西陵区"},"geometry":{"type":"Point","coordinates":[111.286,30.716]}},
+    {"type":"Feature","properties":{"name":"宜昌口腔医院","type":"专科医院","district":"西陵区"},"geometry":{"type":"Point","coordinates":[111.272,30.705]}},
+    {"type":"Feature","properties":{"name":"宜昌爱尔眼科医院","type":"专科医院","district":"西陵区"},"geometry":{"type":"Point","coordinates":[111.285,30.708]}},
+
+    {"type":"Feature","properties":{"name":"宜昌市中心人民医院","type":"三级医院","district":"伍家岗区"},"geometry":{"type":"Point","coordinates":[111.363,30.670]}},
+    {"type":"Feature","properties":{"name":"宜昌市第三人民医院","type":"三级医院","district":"伍家岗区"},"geometry":{"type":"Point","coordinates":[111.318,30.685]}},
+    {"type":"Feature","properties":{"name":"宜昌市优抚医院","type":"三级医院","district":"伍家岗区"},"geometry":{"type":"Point","coordinates":[111.348,30.668]}},
+    {"type":"Feature","properties":{"name":"伍家岗街道社区卫生服务中心","type":"社区卫生服务中心","district":"伍家岗区"},"geometry":{"type":"Point","coordinates":[111.345,30.675]}},
+    {"type":"Feature","properties":{"name":"大公桥街道社区卫生服务中心","type":"社区卫生服务中心","district":"伍家岗区"},"geometry":{"type":"Point","coordinates":[111.330,30.688]}},
+    {"type":"Feature","properties":{"name":"万寿桥街道社区卫生服务中心","type":"社区卫生服务中心","district":"伍家岗区"},"geometry":{"type":"Point","coordinates":[111.355,30.682]}},
+    {"type":"Feature","properties":{"name":"宝塔河街道社区卫生服务中心","type":"社区卫生服务中心","district":"伍家岗区"},"geometry":{"type":"Point","coordinates":[111.362,30.690]}},
+    {"type":"Feature","properties":{"name":"宜昌现代妇产医院","type":"专科医院","district":"伍家岗区"},"geometry":{"type":"Point","coordinates":[111.338,30.678]}},
+
+    {"type":"Feature","properties":{"name":"点军区人民医院","type":"区级医院","district":"点军区"},"geometry":{"type":"Point","coordinates":[111.318,30.672]}},
+    {"type":"Feature","properties":{"name":"点军街道社区卫生服务中心","type":"社区卫生服务中心","district":"点军区"},"geometry":{"type":"Point","coordinates":[111.305,30.665]}},
+    {"type":"Feature","properties":{"name":"桥边镇卫生院","type":"乡镇卫生院","district":"点军区"},"geometry":{"type":"Point","coordinates":[111.328,30.658]}},
+
+    {"type":"Feature","properties":{"name":"猇亭区人民医院","type":"区级医院","district":"猇亭区"},"geometry":{"type":"Point","coordinates":[111.428,30.542]}},
+    {"type":"Feature","properties":{"name":"猇亭古老背街道社区卫生服务中心","type":"社区卫生服务中心","district":"猇亭区"},"geometry":{"type":"Point","coordinates":[111.422,30.548]}},
+
+    {"type":"Feature","properties":{"name":"夷陵医院","type":"区级医院","district":"夷陵区"},"geometry":{"type":"Point","coordinates":[111.165,30.780]}},
+    {"type":"Feature","properties":{"name":"夷陵小溪塔街道社区卫生服务中心","type":"社区卫生服务中心","district":"夷陵区"},"geometry":{"type":"Point","coordinates":[111.170,30.785]}},
+    {"type":"Feature","properties":{"name":"夷陵开发区社区卫生服务中心","type":"社区卫生服务中心","district":"夷陵区"},"geometry":{"type":"Point","coordinates":[111.185,30.772]}},
+
+    {"type":"Feature","properties":{"name":"高新区南苑社区卫生服务中心","type":"社区卫生服务中心","district":"高新区"},"geometry":{"type":"Point","coordinates":[111.305,30.695]}}
+  ]
+}
