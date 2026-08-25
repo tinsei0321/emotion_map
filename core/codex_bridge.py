@@ -19,7 +19,10 @@ SSE 帧分隔约定（P2-11）：事件帧 = `event: <名>\ndata: <JSON>\n\n`（
   P2-4（B-4）model/provider/reasoning_effort 读环境变量（CODEX_MODEL_PROVIDER/CODEX_MODEL/CODEX_REASONING_EFFORT·
   默认 deepseek+deepseek-v4-flash+high·官方最新规则：弃用 deepseek-chat 旧别名·规范名 v4-flash·默认思考模式）；
   P2-5（Z-05/B-5）stderr 环形缓冲末 4KB·error 事件随带（诊断面不再弃流）；
-  P3（Z-07）握手 wait_for 30s；Z-08（_reason_sent 每 turn 重置——ask 局部变量天然满足·验证在案）。
+  P3（Z-07）握手 wait_for 30s；Z-08（_reason_sent 每 turn 重置——ask 局部变量天然满足·验证在案）；
+  2026-08-26 配置隔离：harness 独立 CODEX_HOME 自愈——与桌面 Codex 工具彻底分离（共享
+  ~/.codex 被桌面应用改写致冲突反复）；模型锁定 deepseek-v4-flash 全局不可切换（用户令·
+  P2-4 环境变量切换退役）；models.json Deferred 补丁自动化；emc required 迁出桌面配置。
 
 spike 边界（诚实标注·转正保留）：并发=每请求占一 turn（app-server 单进程串行处理
 turn·并发请求排队——低频场景可接受）；进程死→下轮 ensure 自动重建。
@@ -41,10 +44,23 @@ register_track_id(
     'item/agentMessage/delta→SSE 事件流·thread 续用支持多轮·cwd 仓外隔离·'
     '每行预算看门狗+stderr 诊断面+item.id 配对）')
 
+register_track_id(
+    'MOD_AIQA.F_045',
+    'codex_bridge _ensure_harness_home（2026-08-26 配置隔离：harness 自备 CODEX_HOME 自愈生成——'
+    '与桌面 Codex 工具彻底分离·锁定 deepseek-v4-flash 全局不可切换·'
+    'models.json Deferred 补丁自动化·密钥运行时复制不进仓）')
+
 # P2-2：cwd 隔离目录 = {REPO} 的同级目录（仓外·防本仓 9-Agent 协作规范 AGENTS.md 注入 Codex 上下文）。
 # 原硬编码盘符已废（三组全抓）——双机/换盘自适应·复刻清单登记。
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _CODEX_CWD = str(_REPO_ROOT.parent / '_codex_cwd')
+
+# 配置隔离：harness 自备 CODEX_HOME（_codex_cwd/.codex·机器生成自愈）——与桌面 Codex 工具的
+# ~/.codex 配置彻底分离：桌面应用升级/model 切换会持续改写共享配置（曾致冲突反复），
+# 且 emc MCP required=true 放桌面配置会让桌面工具在 8600 未起时全部工具调用快速失败。
+# 隔离后：桌面配置禁放 [mcp_servers.emc]·harness 配置永不被桌面改写。
+_CODEX_HOME = str(Path(_CODEX_CWD) / '.codex')
+_DESKTOP_CODEX_HOME = str(Path.home() / '.codex')
 
 _HEARTBEAT_S = 15          # SSE 心跳周期（对齐 render SSE 先例·防反代 60s 读超时）
 _TURN_TIMEOUT_S = 300      # 单 turn 看门狗（PT-CB14 实证多工具链 50-366s·取慢侧上浮）
@@ -83,6 +99,122 @@ def _resolve_codex_exe():
             if os.path.isfile(cand):
                 return cand
     return None
+
+
+def _load_desktop_config():
+    """读桌面 Codex 配置（仅提取 [model_providers.*]·密钥运行时复制·不进仓）。"""
+    path = os.path.join(_DESKTOP_CODEX_HOME, 'config.toml')
+    if not os.path.isfile(path):
+        return {}
+    try:
+        import tomllib
+        with open(path, 'rb') as f:
+            return tomllib.load(f)
+    except Exception:
+        return {}
+
+
+def _fallback_providers():
+    """桌面配置无 providers 时退环境变量 DEEPSEEK_API_KEY（L1 管线同源·若无返 None）。"""
+    key = os.environ.get('DEEPSEEK_API_KEY', '')
+    if not key:
+        return None
+    return {'deepseek': {'name': 'deepseek',
+                         'base_url': 'https://api.deepseek.com/',
+                         'wire_api': 'responses',
+                         'experimental_bearer_token': key}}
+
+
+def _harness_config_text(providers):
+    """harness config.toml 文本（机器生成·每次自愈重写）。
+
+    模型锁定 deepseek-v4-flash（用户令 2026-08-26：全局不可切换·P2-4 环境变量切换退役）；
+    emc MCP required=true 迁入本配置（fail-fast 保留·桌面配置摘除后不再误伤桌面工具）。
+    """
+    catalog = _CODEX_HOME.replace('\\', '/') + '/models.json'
+    lines = [
+        '# EMC Codex Harness 专用配置（机器生成·勿手改·每次桥启动自愈重写）',
+        '# 配置隔离：本文件与桌面 ~/.codex/config.toml 互不影响（见 docs/codex-harness-ops.md 纪律 3）',
+        'model = "deepseek-v4-flash"',
+        'model_provider = "deepseek"',
+        'model_reasoning_effort = "high"',
+        'model_catalog_json = "%s"' % catalog,
+        '',
+        '[mcp_servers.emc]',
+        'url = "http://127.0.0.1:8600/mcp"',
+        'startup_timeout_sec = 60',
+        'tool_timeout_sec = 120',
+        'required = true',
+        'default_tools_approval_mode = "approve"',
+        '',
+    ]
+    for name, pv in (providers or {}).items():
+        lines.append('[model_providers.%s]' % name)
+        for k, v in pv.items():
+            if isinstance(v, bool):
+                lines.append('%s = %s' % (k, 'true' if v else 'false'))
+            elif isinstance(v, str):
+                lines.append('%s = %s' % (k, json.dumps(v, ensure_ascii=False)))
+            else:
+                lines.append('%s = %s' % (k, json.dumps(v)))
+        lines.append('')
+    return '\n'.join(lines)
+
+
+def _patch_models_json(path):
+    """防 Deferred 工具陷阱（ops 纪律·配置隔离起自动化）：deepseek 系模型若
+    supports_search_tool=true 且 tool_mode=null，Codex 会把全部 MCP 工具设 Deferred，
+    emc 工具在模型工具面中静默消失。强制置 false（幂等·每次自愈）。"""
+    try:
+        with open(path, encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception:
+        return
+    changed = False
+    for m in data.get('models', []):
+        if str(m.get('slug') or '').startswith('deepseek') \
+                and m.get('supports_search_tool') is not False:
+            m['supports_search_tool'] = False
+            changed = True
+    if changed:
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _ensure_harness_home():
+    """配置隔离（MOD_AIQA.F_045）：自愈生成 harness 独立 CODEX_HOME（{REPO}/../_codex_cwd/.codex）。
+
+    1) config.toml 每次重写（机器生成·锁定 flash + emc required）——桌面应用升级/model
+       切换改写的是 ~/.codex，本文件不受影响；
+    2) models.json：源（桌面版）缺失/更新时复制，并强制 deepseek 系
+       supports_search_tool=false（Deferred 陷阱补丁）；
+    3) auth.json：缺失时从桌面复制（不改写）。
+    桌面 providers 缺失且无 DEEPSEEK_API_KEY → RuntimeError（fail-closed·语义化）。
+    """
+    home = Path(_CODEX_HOME)
+    home.mkdir(parents=True, exist_ok=True)
+
+    providers = _load_desktop_config().get('model_providers')
+    if not providers:
+        providers = _fallback_providers()
+    if not providers:
+        raise RuntimeError('桌面 ~/.codex/config.toml 无 model_providers 且未设 '
+                           'DEEPSEEK_API_KEY——harness 无法启动')
+    (home / 'config.toml').write_text(_harness_config_text(providers), encoding='utf-8')
+
+    src_models = os.path.join(_DESKTOP_CODEX_HOME, 'models.json')
+    dst_models = home / 'models.json'
+    if os.path.isfile(src_models) and (
+            not dst_models.exists()
+            or os.path.getmtime(src_models) > dst_models.stat().st_mtime):
+        shutil.copyfile(src_models, dst_models)
+    _patch_models_json(dst_models)
+
+    src_auth = os.path.join(_DESKTOP_CODEX_HOME, 'auth.json')
+    dst_auth = home / 'auth.json'
+    if os.path.isfile(src_auth) and not dst_auth.exists():
+        shutil.copyfile(src_auth, dst_auth)
+    return _CODEX_HOME
 
 
 class CodexBridge:
@@ -171,23 +303,23 @@ class CodexBridge:
         exe = _resolve_codex_exe()
         if not exe:
             raise RuntimeError('codex.exe 未找到（npm i -g @openai/codex 后可用·双机差异注记）')
+        # 配置隔离：harness 自备 CODEX_HOME（配置隔离桌面工具·锁定 deepseek-v4-flash·
+        #   详见 _ensure_harness_home）——P2-4 的 -c 环境变量切换已退役（全局 flash 不可切换）。
+        try:
+            _ensure_harness_home()
+        except Exception as e:
+            raise RuntimeError(f'harness CODEX_HOME 自愈失败: {e}')
         if not os.path.isdir(_CODEX_CWD):
             os.makedirs(_CODEX_CWD, exist_ok=True)
-        # P2-4：model/provider/reasoning_effort 读环境变量（官方最新规则：规范名 deepseek-v4-flash·
-        #   思考模式默认开·effort 默认 high；deepseek-chat 旧别名已弃用，不再作默认）。
-        #   -c 定向覆盖只作用于本进程（用户桌面 Codex 的顶层配置不受影响）。
-        provider = os.environ.get('CODEX_MODEL_PROVIDER', 'deepseek')
-        model = os.environ.get('CODEX_MODEL', 'deepseek-v4-flash')
-        reasoning_effort = os.environ.get('CODEX_REASONING_EFFORT', 'high')
         self._stderr_buf = bytearray()
+        env = dict(os.environ)
+        env['CODEX_HOME'] = _CODEX_HOME
         self._proc = await asyncio.create_subprocess_exec(
             exe, 'app-server', '--stdio',
-            '-c', f'model_provider="{provider}"',
-            '-c', f'model="{model}"',
-            '-c', f'model_reasoning_effort="{reasoning_effort}"',
             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,   # P2-5：抽进环形缓冲（末 4KB·随 error 事件携带）
             cwd=_CODEX_CWD,
+            env=env,
             limit=16 * 1024 * 1024)   # Q4 坑修复：单行 JSONL 上限（默认 64KB）——render_spec 大结果
             #   的 mcpToolCall.completed 单行可达数百 KB·readline 超限抛
             #   'Separator is not found, and chunk exceed the limit'（spike 第四问实测）

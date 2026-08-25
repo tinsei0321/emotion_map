@@ -13,8 +13,13 @@
 2. **MCP 8600 必须在位**：codex 引擎 `required=true`——8600 未起时工具调用快速失败
    （不静默退化）。`start.bat` 第一段已保证；手工起后端时先确认
    `netstat -ano | findstr ":8600.*LISTENING"`。
-3. **Codex 配置仓外**：`~/.codex/config.toml` / `auth.json` 不入仓·密钥不入档；
-   双机按复刻清单各配（spike 记录 §八）。
+3. **Codex 配置隔离（2026-08-26 配置隔离）**：harness 自备 CODEX_HOME
+   （`{REPO}/../_codex_cwd/.codex`·桥启动自愈生成：config.toml/auth.json/models.json
+   均不入仓·密钥运行时从桌面 `~/.codex` 复制）。
+   **桌面 `~/.codex/config.toml` 禁放 `[mcp_servers.emc]`**——emc `required=true` 在共享配置里
+   会让桌面 Codex 工具在 8600 未起时全部工具调用快速失败（冲突反复的根因·2026-08-26 第二次复发后隔离）。
+   双机复刻清单简化为：装 codex CLI + 桌面配置保留 `[model_providers.deepseek]`
+   （或环境变量 `DEEPSEEK_API_KEY`），其余桥自愈。
 4. **cwd 隔离**：桥恒用 `{REPO}` 同级 `_codex_cwd`（P2-2 推导·勿改回本仓内——
    防 9-Agent 协作规范 AGENTS.md 注入 Codex 上下文）。
 5. **升级纪律**：Codex CLI 升级 → 先 `codex app-server generate-json-schema --out` 重建
@@ -41,14 +46,16 @@
 | 出图页面无反应 | 纪律 1——是否两个后端并存；看哪个后端日志有「watcher 让出消费权」 |
 | turn 超时 | 复杂工具链 50-366s 正常区间；超 300s 收口为 `CODEX_TURN_TIMEOUT`（含 stderr_tail 诊断·P2-5） |
 
-## 三 环境变量（P2-4）
+## 三 模型锁定（2026-08-26 配置隔离起）
 
-| 变量 | 默认 | 说明 |
-|---|---|---|
-| `CODEX_MODEL_PROVIDER` | `deepseek` | 桥 spawn `-c model_provider=` 覆盖（用户令 08-24：DeepSeek Flash） |
-| `CODEX_MODEL` | `deepseek-v4-flash` | 桥 spawn `-c model=` 覆盖（官方最新规则：弃用 `deepseek-chat` 旧别名，用规范名） |
-| `CODEX_REASONING_EFFORT` | `high` | 桥 spawn `-c model_reasoning_effort=` 覆盖（v4-flash 默认思考模式） |
+Harness 模型**锁定 deepseek-v4-flash（全局不可切换·用户令 2026-08-26）**——由 harness
+config.toml 单源控制（桥每次自愈重写·顶层 `model`/`model_provider`/`model_reasoning_effort` 三行）。
+P2-4 的 `CODEX_MODEL_PROVIDER`/`CODEX_MODEL`/`CODEX_REASONING_EFFORT` 环境变量切换**已退役**。
+桌面 Codex 工具的模型（flash/pro 可切换）由桌面自身配置控制——两者配置隔离、互不影响。
 
-> 只作用于 COH 桥进程·用户桌面 Codex 顶层配置不受影响。
-
-> **DeepSeek 规范名 + MCP 工具可见性（必读）**：`~/.codex/models.json` 里 `deepseek-v4-flash` / `deepseek-v4-pro` 若为 `"supports_search_tool": true` 且 `"tool_mode": null`，Codex 会把全部 MCP 工具设为 Deferred，导致 `list_data`/`zonal_stats`/`render_spec` 等 emc 工具在模型工具面中静默消失（只见 `list_mcp_resources`）。到岗/换机时必须把这两条模型的 `supports_search_tool` 改为 `false`；改后重启后端并跑一次 codex_engine 工具链验证。
+> **DeepSeek 规范名 + MCP 工具可见性（必读）**：`models.json` 里 `deepseek-v4-flash` / `deepseek-v4-pro`
+> 若为 `"supports_search_tool": true` 且 `"tool_mode": null`，Codex 会把全部 MCP 工具设为 Deferred，导致
+> `list_data`/`zonal_stats`/`render_spec` 等 emc 工具在模型工具面中静默消失（只见 `list_mcp_resources`）。
+> **配置隔离起 harness 侧已自动化**：桥每次自愈把 harness models.json 的 deepseek 系
+> `supports_search_tool` 强制置 `false`——无需再手动补。桌面侧若桌面应用改写 `~/.codex/models.json`
+> 复现该陷阱，仍需手动补（桌面工具自身问题·与 harness 无关）。

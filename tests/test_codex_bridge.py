@@ -181,3 +181,52 @@ def test_bridge_start_fail(monkeypatch):
     evts = _run(_collect(br))
     assert len(evts) == 1
     assert evts[0]['event'] == 'error' and evts[0]['code'] == 'CODEX_BRIDGE_START'
+
+
+# ── 8. 配置隔离：harness CODEX_HOME 自愈——config 锁定 flash + emc required + providers 复制 ──
+def test_harness_home_config_generation(monkeypatch, tmp_path):
+    import core.codex_bridge as cb
+    monkeypatch.setattr(cb, '_CODEX_HOME', str(tmp_path / '.codex'))
+    monkeypatch.setattr(cb, '_DESKTOP_CODEX_HOME', str(tmp_path / 'desktop'))
+    (tmp_path / 'desktop').mkdir()
+    (tmp_path / 'desktop' / 'config.toml').write_text(
+        '[model_providers.deepseek]\n'
+        'name = "deepseek"\n'
+        'base_url = "https://api.deepseek.com/"\n'
+        'wire_api = "responses"\n'
+        'experimental_bearer_token = "sk-test"\n', encoding='utf-8')
+    out = cb._ensure_harness_home()
+    assert out == str(tmp_path / '.codex')
+    cfg = (tmp_path / '.codex' / 'config.toml').read_text(encoding='utf-8')
+    # 锁定 deepseek-v4-flash（用户令：全局不可切换）
+    assert 'model = "deepseek-v4-flash"' in cfg
+    assert 'model_provider = "deepseek"' in cfg
+    assert 'model_reasoning_effort = "high"' in cfg
+    # emc MCP required 迁入 harness 配置（fail-fast 保留）
+    assert '[mcp_servers.emc]' in cfg
+    assert 'required = true' in cfg
+    assert 'url = "http://127.0.0.1:8600/mcp"' in cfg
+    # 桌面 providers（密钥）运行时复制·不进仓
+    assert '[model_providers.deepseek]' in cfg
+    assert 'experimental_bearer_token = "sk-test"' in cfg
+    # 桌面配置不受影响（隔离铁律）
+    assert '[mcp_servers.emc]' not in (tmp_path / 'desktop' / 'config.toml').read_text(
+        encoding='utf-8')
+
+
+# ── 9. 配置隔离：models.json Deferred 补丁（deepseek 系 supports_search_tool=false）──
+def test_harness_models_json_patch(tmp_path):
+    import core.codex_bridge as cb
+    models = {'models': [
+        {'slug': 'deepseek-v4-flash', 'supports_search_tool': True, 'tool_mode': None},
+        {'slug': 'deepseek-v4-pro', 'supports_search_tool': None, 'tool_mode': None},
+        {'slug': 'glm-5.3', 'supports_search_tool': None, 'tool_mode': None},
+    ]}
+    p = tmp_path / 'models.json'
+    p.write_text(json.dumps(models), encoding='utf-8')
+    cb._patch_models_json(str(p))
+    data = json.loads(p.read_text(encoding='utf-8'))
+    flags = {m['slug']: m.get('supports_search_tool') for m in data['models']}
+    assert flags['deepseek-v4-flash'] is False, 'deepseek 系必须置 False（防 Deferred 工具陷阱）'
+    assert flags['deepseek-v4-pro'] is False
+    assert flags['glm-5.3'] is None, '非 deepseek 模型不动'
