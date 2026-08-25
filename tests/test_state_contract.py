@@ -63,10 +63,17 @@ def test_state_branch_and_head_match_git():
         text = fh.read()
     branch = _git('rev-parse', '--abbrev-ref', 'HEAD')
     assert f'`{branch}`' in text, f'STATE.md 分支栏与 git 不一致（应为 {branch}）'
-    head = _git('rev-parse', '--short', 'HEAD')
-    assert head in text, 'STATE.md 未携带当前 HEAD 短哈希'
-    latest = _git('log', '--oneline', '-1')
-    assert latest in text, f'STATE.md「最近 5 提交」未含最新提交 {latest}'
+    # HEAD 允许滞后于当前提交（产物在提交后必过一期·同 progress 先例），但必须是当前历史的祖先——防伪造/串台
+    m = re.search(r'from (\w+) -->', text)
+    assert m, 'STATE.md 首行缺 HEAD 短哈希'
+    state_head = m.group(1)
+    anc = subprocess.run(
+        ['git', 'merge-base', '--is-ancestor', state_head, 'HEAD'],
+        cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace',
+    )
+    assert anc.returncode == 0, f'STATE.md HEAD {state_head} 不在当前历史链上（串台或伪造），重跑 py tools/gen_state.py'
+    sec = text.split('## 最近 5 提交')[1].split('##')[0]
+    assert re.search(r'- `[0-9a-f]{7,} ', sec), 'STATE.md「最近 5 提交」栏缺提交行'
 
 
 def test_decisions_zone_drives_pending():
