@@ -70,3 +70,5 @@
 - [双环境 schema 分叉](dual-env-schema-divergence.md) — ZCode+VSCode 并行编辑同子系统会格式分叉（buglog YAML vs 表格）；新子系统须在 skill 锁死 schema 契约，跨环境遵循
 - [用证据挑战用户假设](challenge-user-assumptions-with-evidence.md) — 假设与数据实测冲突必须当场指出再开工；数据治理先实证合并键语义；任务无对象如实汇报不硬造（2026-08-24）
 - [codex=CB组员 vs cdh=外置大脑](codex-cb-member-vs-cdh-brain.md) — codex 是 CB 组员（审计走 CB 流程）；cdh 是 EMC 外置大脑（运行时·重点是 Harness）·两身份勿混（2026-08-25）
+- [codex Harness 配置隔离](codex-harness-config-isolation.md) — harness 自备 CODEX_HOME(_codex_cwd/.codex·桥自愈生成·锁 deepseek-v4-flash)；桌面 ~/.codex 禁放 [mcp_servers.emc]（8600 未起桌面工具全挂=冲突根因·二次复发后根治 2026-08-26）
+- [Claude Code 默认模型全档 flash](claude-code-model-default-flash.md) — settings.json 三项 pro→flash[1m]（2026-08-26·扣费异常后拍板）；要 pro 手动 /model；备份 bak-20260826
