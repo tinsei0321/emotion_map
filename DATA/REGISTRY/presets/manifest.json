@@ -526,51 +526,6 @@
   },
   {
     "group": "dsh 临时渲染（render_file 自动登记）",
-    "items": [
-      {
-        "id": "tmp_render_1787278083",
-        "label": "12345诉求·社区174全量",
-        "file": "12345_诉求_社区174全量.geojson",
-        "nameField": "name",
-        "usage": "analysis_output",
-        "note": "PT-CB7 render_file 自动登记（源 DATA\\boundaries\\presets\\12345_诉求_社区174全量.geojson）"
-      },
-      {
-        "id": "tmp_render_1787287589",
-        "label": "西陵区·12345·400m网格（ok精确点）",
-        "file": "../../Export/exchange/xiling_grid_400m_12345.geojson",
-        "nameField": "name",
-        "usage": "analysis_output",
-        "note": "PT-CB7 render_file 自动登记（源 DATA\\exchange\\xiling_grid_400m_12345.geojson）"
-      },
-      {
-        "id": "tmp_render_1787540931",
-        "label": "PT-CB14 L2 render_file test",
-        "file": "../../Export/analysis/聚合范围_174城市社区.geojson",
-        "nameField": "name",
-        "usage": "analysis_output",
-        "note": "PT-CB7 render_file 自动登记（源 DATA\\analysis\\聚合范围_174城市社区.geojson）"
-      },
-      {
-        "id": "tmp_render_1787569867",
-        "label": "停车泊位缺口小区（140个·2025体检）",
-        "file": "../../Export/analysis/checkup_qty_停车泊位缺口_140点.geojson",
-        "nameField": "name",
-        "usage": "analysis_output",
-        "note": "PT-CB7 render_file 自动登记（源 DATA\\analysis\\checkup_qty_停车泊位缺口_140点.geojson）"
-      },
-      {
-        "id": "tmp_render_1787652028393",
-        "label": "zonal_stats 分析结果",
-        "file": "../../Export/exports/tmp_render/zonal_stats-1787652028390.geojson",
-        "nameField": "name",
-        "usage": "analysis_output",
-        "note": "render_file/layer_output 自动登记（临时渲染·7 天 TTL·PT-CB15 K3）",
-        "renderFields": [
-          "value",
-          "polarity_index"
-        ]
-      }
-    ]
+    "items": []
   }
 ]
