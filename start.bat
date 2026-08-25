@@ -15,14 +15,20 @@ REM no map linkage). This launcher starts 8600 below BEFORE the web app, so the
 REM dependency is satisfied. Health check: netstat -ano | findstr ":8600.*LISTENING"
 
 REM ---- MCP server (port 8600) ----
+REM PT-CB17 治本（21:15 旧病复发案）：旧逻辑「8600 在听就跳过」= 工具进程永远载旧码
+REM （8000/8080 重启了但工具是 8600 供的——修复不生效的根因）。改为与 8000 同款：先杀旧再起新。
 netstat -ano | findstr ":8600.*LISTENING" >nul 2>&1
 if %errorlevel%==0 (
-    echo [OK] MCP server already running ^(8600^)
-) else (
-    echo [LOAD] Starting MCP server ^(8600^)...
-    start "EMC MCP ^(8600^)" /min py tools\mcp_server_emc.py --http --port 8600
-    echo [OK] MCP server starting in background
+    echo [LOAD] Killing stale MCP server ^(8600^) to load latest code...
+    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":8600.*LISTENING"') do (
+        echo       - killed PID %%a ^(port 8600^)
+        taskkill /F /PID %%a >nul 2>&1
+    )
+    ping -n 2 127.0.0.1 >nul 2>&1
 )
+echo [LOAD] Starting MCP server ^(8600^)...
+start "EMC MCP ^(8600^)" /min py tools\mcp_server_emc.py --http --port 8600
+echo [OK] MCP server starting in background
 
 REM ---- wait for MCP (8600) ready ----
 REM 时序坑修复(08-23)：dsh web 的 mcp-emc 插件 failOnStartupError=true，8600 未监听就起 3080

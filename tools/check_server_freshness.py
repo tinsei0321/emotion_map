@@ -23,7 +23,7 @@ try:
 except Exception:
     pass
 
-PORTS = (8000, 8080)
+PORTS = (8000, 8080, 8600)   # PT-CB17：8600=MCP 工具插座（工具代码由它供·漏检=修复不生效复发案根因）
 REPO = r"D:\Github\emotion_map"
 
 
