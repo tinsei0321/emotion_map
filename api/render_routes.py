@@ -217,16 +217,21 @@ def _filter_dataset_props(fc, extra_keys=None):
 
 
 def _publish(spec):
-    """T21：向所有活跃 SSE 连接广播 spec（死队列即摘除）。"""
+    """T21：向活跃 SSE 连接广播 spec（死队列即摘除）。
+    PT-CB16 C3：spec 带 `target`（页面订阅 id）时仅投递给该订阅——多开页面不串台；
+    无 target 一律按现状广播（宽松规则·不破坏 dsh/脚本等既有生产者）。"""
+    target = spec.get('target') if isinstance(spec, dict) else None
     with _SUB_LOCK:
         dead = []
-        for q in _SUBSCRIBERS:
+        for q, sub_id in _SUBSCRIBERS:
+            if target and sub_id != target:
+                continue
             try:
                 q.put_nowait(spec)
             except Exception:
-                dead.append(q)
-        for q in dead:
-            _SUBSCRIBERS.remove(q)
+                dead.append((q, sub_id))
+        for item in dead:
+            _SUBSCRIBERS.remove(item)
 
 
 def _watch_loop():
@@ -256,10 +261,10 @@ def _watch_loop():
         time.sleep(1)
 
 
-def _sse_stream():
+def _sse_stream(sub_id=''):
     my_q = queue.Queue()
     with _SUB_LOCK:
-        _SUBSCRIBERS.append(my_q)
+        _SUBSCRIBERS.append((my_q, sub_id))   # PT-CB16 C3：订阅身份（空串=匿名·仍可收广播）
     try:
         # 2026-08-25 用户令：连接时不再重放 backlog，避免硬刷新后弹出上次测试/上一问题的残留图层。
         # P0-B：首帧 hello——前端以此判定连接已建立，hello 前到达的 spec 一律视为残留/重放并拒染。
@@ -273,15 +278,17 @@ def _sse_stream():
             yield _sse_event(spec)
     finally:
         with _SUB_LOCK:
-            if my_q in _SUBSCRIBERS:
-                _SUBSCRIBERS.remove(my_q)
+            for item in list(_SUBSCRIBERS):
+                if item[0] is my_q:
+                    _SUBSCRIBERS.remove(item)
 
 
 @router.get('/render/stream')
-def render_stream():
-    """SSE 规格流：先推 backlog（最近 20 条）再持续推新 spec；每 15s 心跳注释。"""
+def render_stream(sub: str = ''):
+    """SSE 规格流：hello 首帧后持续推新 spec（不重放）；每 15s 心跳。
+    PT-CB16 C3：`?sub=<页面订阅id>` 登记订阅身份——带 target 的 spec 仅投递给同名订阅。"""
     return StreamingResponse(
-        _sse_stream(),
+        _sse_stream(sub_id=sub),
         media_type='text/event-stream',
         headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'},
     )

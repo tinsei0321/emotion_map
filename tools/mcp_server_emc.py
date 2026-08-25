@@ -1503,10 +1503,10 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
                 scheme: str = '', value_field: str = 'polarity_index',
                 ramp_hint: str = '', zoom_to: bool = True, producer: str = 'dsh',
                 source_tool: str = 'manual', data_nature: str = 'real',
-                community_caliber: int = 0) -> dict:
+                community_caliber: int = 0, target: str = '') -> dict:
     """图层图纸：dataset 引用或内联 GeoJSON → render_inbox spec，经 8080 前端显示屏呈现。
-    参数：kind=point|choropleth；name 必填；dataset_id 与 geojson（要素≤60）二选一；value_field 默认 polarity_index（错配/被字段政策剔除→语义化拒绝·B3-2）；scheme 缺省自动；community_caliber 可选 K-C1 枚举。
-    限制：写盘毫秒级不渲染；需浏览器已开情绪地图页；新 spec 覆盖旧 [dsh] 图层（T1）；三档出图范式（inline/dataset_id/脚本+注册）见 docs/render-contract.md。"""
+    参数：kind=point|choropleth；name 必填；dataset_id 与 geojson（要素≤60）二选一；value_field 默认 polarity_index（错配/被字段政策剔除→语义化拒绝·B3-2）；scheme 缺省自动；community_caliber 可选 K-C1 枚举；target 可选页面订阅 id（PT-CB16 C3·缺省广播全部地图页）。
+    限制：写盘毫秒级不渲染；需浏览器已开情绪地图页；新 spec 覆盖旧 [dsh] 图层（T1）；出图档位（分析直传/inline/dataset_id/脚本+注册）见 docs/render-contract.md。"""
     if kind not in ('point', 'choropleth'):
         return {'ok': False, 'hint': f'kind 非法: {kind!r}（仅 point|choropleth）',
                 'caliber': CALIBERS['render_spec']}
@@ -1660,6 +1660,9 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
         'origin': {'producer': producer, 'source_tool': source_tool},
         'caliber_lite': caliber_lite,
     }
+    if target and str(target).strip():
+        # PT-CB16 C3：定向投递（仅目标订阅页上屏·缺省不写字段=广播·兼容既有消费方）
+        spec['target'] = str(target).strip()
 
     inbox_dir = os.path.join(REPO, 'DATA', 'Export', 'exports', 'render_inbox')
     os.makedirs(inbox_dir, exist_ok=True)

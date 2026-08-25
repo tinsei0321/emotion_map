@@ -173,8 +173,21 @@ async function _apply(spec) {
   }
 }
 
+// PT-CB16 C3：页面订阅身份（多开页面不串台）——sessionStorage 级 id（每标签页独立·
+// 关页即销）；spec 带 target 时仅同名订阅消费，无 target 广播照旧（宽松规则·兼容既有生产者）。
+const _subId = (() => {
+  try {
+    let id = sessionStorage.getItem('emc_render_sub');
+    if (!id) {
+      id = 'sub-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+      sessionStorage.setItem('emc_render_sub', id);
+    }
+    return id;
+  } catch (e) { return ''; }   // 无 sessionStorage 环境=匿名（仅收广播）
+})();
+
 function _connect() {
-  const es = new EventSource('/api/v1/render/stream');
+  const es = new EventSource('/api/v1/render/stream' + (_subId ? '?sub=' + encodeURIComponent(_subId) : ''));
   let _helloSeen = false;
   es.addEventListener('hello', () => { _helloSeen = true; });
   es.addEventListener('spec', (e) => {
@@ -185,13 +198,18 @@ function _connect() {
         return;
       }
       if (!spec || !spec.spec_id || _seenSpecIds.has(spec.spec_id)) return;
+      // C3：定向 spec 非本订阅 → 拒收（服务端已过滤一层·前端防御纵深）
+      if (spec.target && _subId && spec.target !== _subId) {
+        console.log('[dsh] 定向 spec 非本订阅·忽略:', spec.spec_id, '→', spec.target);
+        return;
+      }
       _seenSpecIds.add(spec.spec_id);
       _apply(spec);
     } catch (err) {
       console.warn('[dsh] render spec 解析失败:', err);
     }
   });
-  es.onopen = () => console.log('[dsh] render stream 已连接');
+  es.onopen = () => console.log('[dsh] render stream 已连接' + (_subId ? '（订阅 ' + _subId + '）' : ''));
   es.onerror = () => console.warn('[dsh] render stream 连接中断（浏览器自动重连）');
 }
 

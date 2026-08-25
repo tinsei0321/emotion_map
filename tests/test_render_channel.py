@@ -258,6 +258,40 @@ def test_tmp_render_ttl_cleanup(monkeypatch, tmp_path):
     assert 'normal_layer' in ids, '非 tmp_render_ 条目不摘（即使断链·交主手裁决）'
 
 
+# ════════════ C3 · 定向投递（PT-CB16 多页面不串台） ════════════
+
+def test_publish_targeted_only_reaches_matching_sub():
+    """_publish：带 target 的 spec 仅进同名订阅队列；无 target 广播全体。"""
+    import queue as _q
+    qa, qb, qanon = _q.Queue(), _q.Queue(), _q.Queue()
+    saved = list(render_routes._SUBSCRIBERS)
+    try:
+        render_routes._SUBSCRIBERS[:] = [(qa, 'sub-A'), (qb, 'sub-B'), (qanon, '')]
+        render_routes._publish({'spec_id': 't1', 'target': 'sub-A'})
+        assert qa.qsize() == 1 and qb.qsize() == 0 and qanon.qsize() == 0
+        render_routes._publish({'spec_id': 't2'})   # 无 target=广播
+        assert qa.qsize() == 2 and qb.qsize() == 1 and qanon.qsize() == 1
+    finally:
+        render_routes._SUBSCRIBERS[:] = saved
+
+
+def test_render_spec_target_param_written(monkeypatch, tmp_path):
+    """render_spec：target 参数写入 spec；缺省不写字段（兼容既有消费方）。"""
+    _patch_render_globals(monkeypatch, tmp_path, [])
+    monkeypatch.setattr('core.range_selector._PRESETS_MANIFEST', mse.MANIFEST)
+    monkeypatch.setattr('core.geo_registry.list_point_layers', lambda: [])
+    fc = {'type': 'FeatureCollection', 'features': [
+        {'type': 'Feature', 'geometry': {'type': 'Point', 'coordinates': [111.3, 30.7]},
+         'properties': {'name': 'p'}}]}
+    out = mse.render_spec(kind='point', name='定向测试', geojson=fc, target='sub-A')
+    assert out['ok'] is True
+    spec = json.loads(open(out['inbox_path'], encoding='utf-8').read())
+    assert spec.get('target') == 'sub-A'
+    out2 = mse.render_spec(kind='point', name='广播测试', geojson=fc)
+    spec2 = json.loads(open(out2['inbox_path'], encoding='utf-8').read())
+    assert 'target' not in spec2
+
+
 # ════════════ watcher ════════════
 
 def test_watcher_stale_spec_archived_not_pushed(tmp_path):
@@ -323,7 +357,7 @@ def test_sse_fanout_broadcasts_to_all_connections():
     render_routes._SUBSCRIBERS.clear()
     q1, q2 = queue.Queue(), queue.Queue()
     with render_routes._SUB_LOCK:
-        render_routes._SUBSCRIBERS.extend([q1, q2])
+        render_routes._SUBSCRIBERS.extend([(q1, ''), (q2, '')])
     spec = {'spec_version': 1, 'kind': 'point', 'spec_id': 'fanout-x',
             'origin': {'producer': 'dsh'}}
     render_routes._publish(spec)
@@ -331,7 +365,7 @@ def test_sse_fanout_broadcasts_to_all_connections():
     assert q2.get_nowait()['spec_id'] == 'fanout-x'
     # 断开连接（finally 摘除）后不再收到广播
     with render_routes._SUB_LOCK:
-        render_routes._SUBSCRIBERS.remove(q1)
+        render_routes._SUBSCRIBERS.remove((q1, ''))
     render_routes._publish({'spec_version': 1, 'kind': 'point',
                             'spec_id': 'fanout-y', 'origin': {'producer': 'dsh'}})
     assert q1.empty()
