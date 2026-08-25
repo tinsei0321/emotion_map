@@ -41,7 +41,7 @@
 ### ⬜ office 环境待执行（到岗后按序）
 
 1. **git pull 后先跑生成器**重建 STATE.md / GLOSSARY.md（用首行哈希判新旧），再开工——别拿 home 机旧状态当真；
-2. **用户 push** 五批 PT-CB18 commit（dc1e8e2/2311b15/6ae6bf6/bb0199b/90b3250 均在本地未推）；
+2. ~~**用户 push** 五批 PT-CB18 commit~~ ✅ 已在远程（08-26 核实 origin 已含至 90b3250）；**新增待推**：PT-CB19 三批（49a39e0/3f3b9dd/07c512a·home 机沙箱无 gitee 凭证）——用户终端执行 `git push origin EMC_Codex_Harness`；
 3. **全组通知下发**（08-26 对话内 prompt，复制发各组）；
 4. **用户拍板**：W3-2（自家档案喂 RAG）是否派发 Qoder——验收已裁定具备启动条件；
 5. W3 队列按序：W3-2 → W3-5（RTK 评估）→ W3-1 / W3-3 / W3-4（W1/W2 验证复核后另起）；
