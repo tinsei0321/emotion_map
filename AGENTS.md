@@ -1,12 +1,28 @@
 # Emotion Map — Agent 协作规范
 
-> v2.5 | 9 Agent + 自动编排 + MCP 外挂 + CB 闭环 + 持续学习 + EMC×dsh 核心路线 | 2026-08-21
+> v3.0（PT-CB18 瘦身版·2026-08-26）| 全局纪律留根 + 专项细则入参考库 | 双阈值：150 行工作上限 / 200 行报警线（超即除草）
 >
-> 🔗 **CB 入口**：`docs/catch-ball/_cb-index.md` — ZCode/VS Code 双环境统一入口。启动时先读此文件了解 CB 全貌（当前轮次、最新报告、换机指引）。
->
-> 🏠🏢 **换机交接**：`docs/catch-ball/_handoff/HOME.md` + `OFFICE.md` — 家/办公室各存当前进展，git 同步。
->
-> ⚠️ **概念框架声明（CB-02 讨论1）**：本文件为 AI 行为约束参考 + 新人 onboarding，**不描述运行时 Agent spawn 机制**。实际任务由 Claude Code 主线程直接执行（用户全局「不派 subagent」铁律），SOP 分级指导执行深度而非触发独立 Agent。9 个 Agent 定义 = 角色卡片，非独立执行单元。**避免第三方基于本文件做运行时误判**（CB-01 曾据 AGENTS.md 理论 SOP 模型算调用次数，与实际"主线程直接干"不符）。
+> ⚠️ **概念框架声明**：本文件为 AI 行为约束参考 + 新人 onboarding，**不描述运行时 Agent spawn 机制**。实际任务由主线程直接执行（用户全局「不派 subagent」铁律），SOP 分级指导执行深度而非触发独立 Agent。角色卡 = 角色定义，非独立执行单元。
+
+## 状态指针（先读这里）
+
+- **当前状态唯一落点** = 仓根 `STATE.md`（`py tools/gen_state.py` 生成：分支/在途批次/待拍板/门禁基线/最近提交 + 手写交接区）。
+- 阶段交接按 `docs/state-handoff-template.md` 八字段写进 `STATE.md` 手写区；里程碑才手写，小批只跑生成器。
+- 批次台账手改 `_board.yaml` → `py tools/gen_progress.py` 再生成 `docs/progress.md`（禁手改产物）。
+- 换机环境事实：`docs/catch-ball/_handoff/HOME.md` / `OFFICE.md`；CB 全貌：`docs/catch-ball/_cb-index.md`。
+- 编号看不懂：仓根 `GLOSSARY.md`（`py tools/gen_glossary.py` 生成）。
+
+## 参考库清单（何时读哪个）
+
+| 参考库 | 路径 | 何时读 |
+|--------|------|--------|
+| Agent 花名册 + 编排 + MCP 路由 | `docs/agents-roster.md` | 需要角色分工/编排流程时（完整 MCP 路由另有 `docs/mcp-strategy.md`） |
+| SOP 风险分级详表 + 角色阅读表 | `docs/sop-risk-grading.md` | 判断任务走哪档流程时 |
+| 追踪编号全表 + 埋点规则 | `docs/tracking-ids.md` | 埋点/查编号/加追踪 ID 时 |
+| 运维手册（回滚/换机/数据目录） | `docs/runbook.md` | 回滚、换机启动、动 DATA 目录时 |
+| 全局调试记忆（R 规则库） | `docs/debug-memory.md` | **排查前必读**；修复提交前对照 R1/R2/R8 自查 |
+| 产品规范 / 架构模式 / 决策记录 | `docs/spec.md` / `docs/architecture-pattern.md` / `docs/decisions.md` | 开发/审查按角色必读（表见 `docs/sop-risk-grading.md`） |
+| CB 评估规则 / 讨论索引 | `docs/catch-ball/RULES.md` / `docs/catch-ball/discuss/_INDEX.md` | 派发/评估/查历史结论时 |
 
 ## 用户沟通纪律（跨组全局 · 2026-08-18）
 
@@ -22,11 +38,11 @@
 3. **与工作方向联动**：学习报告必须附「对当前工作方向和内容的调优建议」，供 zcode / Codex 等组评估；重要方向调整进入 CB 深入讨论，不悄悄改变排期。
 4. **普及到各开发组**：所有组收到此类学习报告后，应阅读并评估是否影响自身工作；若认可，应把结论同步到对应文档/排期/规范。
 5. **不增加无谓排期**：学习输出以「并入现有批次/文档」为主，不强行新开大工程；确有新专项时按正常 CB 流程立项。
-6. **每份学习报告必讨论、必落盘**（2026-08-19 用户令）：每份学习报告（含对既有报告的追加深化章节）发布后，相关组必须**当轮**进行讨论并落盘回应文档（对齐 CB 回应规范，给出吸收/并入排期/暂缓/反对四档裁决），用于调优工作思路与执行内容；**无回应不收敛、不销号**。报告追加内容视同新报告（如 PT-CB3 学习线第八节 Cordis 深化）。
+6. **每份学习报告必讨论、必落盘**（2026-08-19 用户令·频率调整 08-26）：学习报告（含追加深化章节）发布后，相关组必须讨论并落盘回应文档（四档裁决：吸收/并入排期/暂缓/反对）；**无回应不收敛、不销号**。频率自 2026-08-26 起改**月度批量回应**（当月报告汇总一次回应；紧急方向性报告可当轮；定义见 `docs/catch-ball/templates/review-tiers.md`）。报告追加内容视同新报告。
 
 ## EMC × dsh 核心路线（跨组全局 · 2026-08-21 用户工程预期）
 
-> 权威报告：`docs/catch-ball/discuss/EMC-dsh工程预期与双环境同步核心思想_Codex-2026-08-21.md`（**v1.1 收敛版·2026-08-21·Qoder 评估五缺口/两事实/两表述吸收·接口锁双写 PT-CB9**）。涉及 EMC×dsh 的设计、实施、审计、交接必须先读。
+> 权威报告：`docs/catch-ball/discuss/EMC-dsh工程预期与双环境同步核心思想_Codex-2026-08-21.md`（v1.1 收敛版·含差异适配五类细则原文）。涉及 EMC×dsh 的设计、实施、审计、交接必须先读。
 
 1. **两阶段路线**：测试阶段 dsh 是外置实验驾驶舱，通过 EMC 标准插座消费数据、RAG/知识、注册 Toolbox 和渲染契约，并控制 8080 出图；测试稳定且 RAG 重构框架确定后，EMC 作为产品壳吸收测试链路，具体实现另阶段讨论。
 2. **权威源不变**：数据、口径、知识、工具语义、样式和渲染规则归 EMC；dsh 只调度能力，不复制业务逻辑，不自建样式，不绕过插座直读敏感数据。
@@ -34,276 +50,42 @@
 4. **图层同源**：8080 图层由 EMC 渲染契约生成，样式必须消费 Toolbox/参数面板权威样式，禁止 dsh 另做一套视觉。
 5. **跨机同步**：仓库与沉淀走 git/HUB；`~/.dsh`、RAG 缓存、依赖和进程状态不能靠手工复制，必须逐步形成环境 manifest、可重建配置模板和到岗体检脚本。
 6. **沉淀纪律**：权威资产进仓库，派生资产可重建，秘密资产安全迁移，外部原始资产至少登记来源与衍生关系；没有路径、来源、口径和重建方式的内容不算沉淀。
-
-7. **双环境同步机制考量（2026-08-21 用户令·全局规则五）**：任何任务拆解/执行前必答「本改动能否在双环境同步前提下进行」——①进 git 的必须 commit+push 才算交付（未 push 不算完成）；②仓外本机的（~/.dsh/插件依赖/进程状态）必须同时产出「复刻清单」或「配方模板」进仓，否则判为不可同步任务退回重设计；③可重建的（索引/缓存/依赖）只记重建命令与版本·禁手工搬。判据：交付物出现「只在单机生效且无配方」的项=未达完成定义。目的：避免跨机重复配置的累积成本。
-   **差异适配（2026-08-21 用户补令）**：双环境的配置、盘符、配置文件、安装插件等内容**天然不同**——同步机制必须显式考虑并给出方案：①**路径差异**：所有配方/清单/命令禁止硬编码绝对路径与用户名，一律用占位符（如 `{DSH_HOME}`/`{REPO}`）或按当前用户推导，落地时各机自行替换；②**盘符差异**：涉及跨盘引用（如 node_modules junction、插件依赖源）在配方中标注「依赖来源 + 创建命令」，由各机按本机盘符执行创建，不复制实体；③**版本差异**：dsh/Node/Python/MCP client 等版本两机可能不同（如 office rc.8 vs home 待装）——清单记录版本号+兼容性注记，配置按版本分支（版本不同的项单独标注·升级后合并）；④**插件差异**：两机已装插件集可能不同——复刻清单按「本机既有插件列表 + 本批新增插件」两段记录，新增项注明「增量·不覆盖既有」；⑤**配置结构差异**：两机 profile/配置目录结构若不同（家机 pnpm vs office npm 等）——配方附「环境差异注记」表（实测两机结构差异入档，如 08-21 已记 link:/file: 协议差异·minimal-windows 预设缺失），落地时按注记适配。判据升级：交付物不仅「可同步」，还要「按差异注记可在另一机无脑照做」——做不到的差异点必须显式列入待解决清单。
-
-## 核心理念
-
-**Claude Code 主线程 = PM**。你不再需要手动 `@agent` 切换。给我一个任务，我在内部自动编排合适的 Agent 完成开发→审查→测试→文档的全流程，你只看到最终结果。
-
-## Agent 清单（9 个）
-
-| Agent | 文件 | 职责 | 可调用 |
-|-------|------|------|--------|
-| 🛠 Developer | `.claude/agents/developer.agent.md` | 编写代码 + 诊断修复 bug + 决策追踪埋点 | gis-developer |
-| 🔍 Reviewer | `.claude/agents/reviewer.agent.md` | 审查代码质量、架构合规、追踪点完整性 | — |
-| 🧪 Tester | `.claude/agents/tester.agent.md` | 运行测试、验证功能、CRS 交叉核实 | gis-developer |
-| 📡 Data | `.claude/agents/data.agent.md` | L0 多源数据采集 + L1 数据治理 | developer, gis-developer |
-| 🎨 Designer | `.claude/agents/designer.agent.md` | UI 视觉设计 + 交互优化 + 设计自审 | — |
-| 🗺 GIS Dev | `.claude/agents/gis-developer.agent.md` | 地理空间数据处理、坐标系转换、空间分析 | — |
-| 📝 Docs | `.claude/agents/docs.agent.md` | 维护文档体系、更新开发日志、记录 ADR | — |
-| 🖥 Ops | `.claude/agents/ops.agent.md` | 环境诊断、依赖同步、requirements.txt 维护 | — |
-| 🎯 Sim | `.claude/agents/sim-emotion-data.agent.md` | 演示数据模拟（百度热力点为底座，从演示目的逆推生成 L0~L4） | — |
-
-> **v1.0 → v2.0 变化**：
-> - 🐛 Debugger 并入 Developer — Developer 现在同时具备开发和诊断能力
-> - 👁 Design Reviewer 并入 Designer — Designer 交付前通过自审清单自行把关
-> - 📋 PM 不再作为独立 Agent — Claude Code 主线程承担编排角色；`pm.agent.md` 保留在 `.claude/agents/` 目录作为行为指南参考，未注册到 Agent 列表
-> - 🔄 从手动 `@agent` 切换 → Claude 自动编排
-
-## 自动编排流程
-
-你只需要说一句话，我来拆解并自动执行：
-
-```
-你说: "实现 XX 功能"
-        ↓
-我自动:  ① 拆解任务（PM 视角）
-         ② 按需 spawn Developer/Designer/Data/GIS Agent
-         ③ 自动 spawn Reviewer 审查
-         ④ 自动 spawn Tester 验证
-         ⑤ 汇总结果汇报给你
-```
-
-### 三管线自动路由
-
-| 任务类型 | 自动执行流程 |
-|----------|-------------|
-| **纯逻辑** | 拆解 → Developer(编码) → Reviewer(审查) → Tester(测试) → Docs(同步) |
-| **纯 UI** | 拆解 → Designer(设计+自审) → 汇报 |
-| **逻辑+UI** | 拆解 → Designer(出设计稿) → Developer(按稿编码) → Reviewer(审查) → Tester(测试) → Designer(复审还原度) |
-
-### MCP 能力外挂（v2.1 | 2026-06-17）
-
-Agent 在任何阶段可按需调用 MCP 扩充能力，**同类优先智谱**（完整路由见 `docs/mcp-strategy.md`）：
-
-| Agent / 场景 | 首选 MCP | 备注 |
-|--------------|----------|------|
-| Developer / GIS — 理解开源依赖、读第三方仓库 | `zread` | zread 未收录的仓退 github MCP / 直接 clone |
-| Developer — 查最新 API 用法、库变更 | `web-search-prime` | |
-| Developer — 读某个文档/网页 URL | `web-reader` | 勿用下划线重复项 `web_reader` |
-| Designer / Reviewer — 看设计稿、报错截图、UI 比对 | `zai-mcp-server` | 智谱主；不通退 `vision-bridge`（火山引擎） |
-| Tester — 前端 E2E、异步/数据流隐患验证 | `playwright` | 按 CLAUDE.md 验证节奏，非常规改动不滥用 |
-| Docs / Ops — GitHub Issue/PR 操作 | `github` MCP | 当前 PAT 失效，修复前用 `gh` CLI |
-
-> 选型铁律：同类功能优先智谱（`zai`/`web-search-prime`/`web-reader`/`zread`），连不上再退备选。
-
-### 何时走 SOP
-
-以下情况自动走 SOP，但按风险等级区分流程深度：
-
-#### SOP 风险分级（v2.1 | 2026-06-16）
-
-| 等级 | 触发条件 | 流程 | 示例 |
-|------|----------|------|------|
-| **轻量** | 仅 UI/CSS/文案修改、单文件格式调整、注释修改 | Developer 直出 + Reviewer 快速扫（不 spawn Tester） | 改按钮颜色、调间距、修拼写 |
-| **标准** | 涉及 2+ 文件、I/O 操作、函数签名修改 | Developer → Reviewer → Tester | 新增 API 端点、修改数据加载逻辑 |
-| **严格** | 控制流修改（if/else/loop/try-except）、核心管道、追踪基础设施 | Developer → Reviewer → Tester → Reviewer 复审 | 修改 data_governance.py、tracker.py、分析算法 |
-
-**严格模式附加要求：**
-- 必须通过 `python -m pytest tests/ -q` 全部测试
-- 必须验证端到端管道（L0→L1→L2）不退化
-- 追踪 ID 变更必须在 PR 描述中列出
-
-#### 触发条件详情
-
-以下情况自动走**标准 SOP** 或以上：
-- 新增或删除函数 / 类
-- 修改函数签名（参数 / 返回值）
-- **任何控制流逻辑修改（if/else/for/while/try-except）** → 严格
-- 涉及 I/O 操作（文件读写 / API 调用）
-- 涉及 2 个及以上文件
-- 修改 `core/tracker.py` 或追踪基础设施 → 严格
-
-### 何时跳过（直接 Developer 执行）
-
-- 仅修改注释 / 文档字符串
-- 变量 / 函数重命名（不改变签名）
-- 单文件内的格式化 / 代码风格调整
-- 修复明显的拼写错误
+7. **双环境同步机制考量（用户令 08-21·全局规则五）**：任何任务拆解/执行前必答「本改动能否在双环境同步前提下进行」——①进 git 的必须 commit+push 才算交付（未 push 不算完成）；②仓外本机的必须同时产出「复刻清单」或「配方模板」进仓，否则判为不可同步任务退回重设计；③可重建的（索引/缓存/依赖）只记重建命令与版本·禁手工搬。判据：交付物出现「只在单机生效且无配方」的项=未达完成定义。**差异适配五条**（路径占位符/盘符标注依赖来源/版本分支记录/插件增量记录/配置结构差异注记表）原文见权威报告；判据升级：交付物要「按差异注记可在另一机无脑照做」。
 
 ## 完成定义 (Definition of Done)
 
 任务标记完成前必须全部满足：
 
-- [ ] 代码通过 Reviewer 审查（审查报告结论为"通过"）
-- [ ] 测试全部通过（Tester 报告结论为"通过"）
-- [ ] 新增追踪 ID 已注册到 `core/tracker.py` 注册表
-- [ ] 相关文档已更新（Docs Agent 确认）
+- [ ] 代码通过审查（审查结论为"通过"）
+- [ ] 测试全部通过（`py -m pytest tests/ -q` 零失败）
+- [ ] 新增追踪 ID 已注册到 `core/tracker.py` 注册表（编号连续不跳号）
+- [ ] 相关文档已更新
 - [ ] **用户验收**：用真实数据跑一遍，确认效果满足预期
 - [ ] 无未提交的调试代码 / 临时文件残留
 
-## 共享知识库
+## 编码铁律（所有角色必守·审查重点）
 
-Agent 启动时根据下表选择性阅读知识源：
+1. **禁用 emoji**：代码中只允许 ASCII 标记 `[OK]` `[WARN]` `[LOAD]` `[ERR]`。
+2. **安全打印**：所有 `print()` 必须通过 `_safe_print()` 调用。
+3. **禁止劫持 builtins.print**：不得重新绑定 `builtins.print`。
+4. **入口统一**：前端主界面 = `frontend/`（MapLibre GL JS，`py frontend/serve.py 8080`，自起 uvicorn 后端 + Ctrl+C 同停；`apps/` Streamlit 已于 2026-07-18 退役）。
+5. **分析逻辑共用**：所有入口调用同一个 `run_analysis_task()`。
+6. **导出命名**：`{name}_{L1|L2|L3|L4}_result_csv.csv`。
+7. **数据脱敏**：输出的分析结果中禁止包含用户名/用户ID等个人身份信息。
+8. **空间范围优先**：数据采集以指定范围 Polygon 为第一过滤条件，关键词仅作辅助。
+9. **决策追踪必埋点**：每个公开函数必须 `@track()`，每个关键决策分支必须 `TrackContext`（细则与编号全表见 `docs/tracking-ids.md`）。
+10. **追踪 ID 必注册**：所有追踪 ID 必须在 `core/tracker.py` 注册表登记，编号连续不跳号。
+11. **Toolbox AI 入口与手动 UI 同构**（CB-04）：新增/修改 `generate*ForAI` 须同步契约三处——①`ai_qa/tool_contracts.py`（单一权威源）②前端 `SKILL_DEFS` 镜像 ③`prompts.py` 工具描述（参数可少不可多·可漏不可错）。**ForAI 入口 = dialog 入口镜像**：色板/参数映射必须复用 dialog 路径同一函数（`computeStyle`/`terrainRampOf`），不得自带默认另搞一套。`PANEL_MISSING` 能力 → 提醒开发者补齐，EMC 侧不自行造。**极性值域统一全词**（overall/positive/negative/neutral），入口 `_normalizePolarity` 归一。
 
-| 知识源 | 路径 | 内容 |
-|--------|------|------|
-| 产品需求 | `docs/prd.md` | 产品愿景、用户画像、功能优先级、验收标准 |
-| 产品规范 | `docs/spec.md` | 技术实现规范、数据管道字段定义、性能预算 |
-| 架构规范 | `docs/architecture-pattern.md` | 七层架构、入口统一、路由规则、决策追踪体系、前端/frontend 迁移 |
-| 追踪基础设施 | `core/tracker.py` | 决策追踪系统 API、ID 注册表、使用示例 |
-| 任务追踪 | `docs/todo.md` | 当前任务、开发日志 |
-| 架构文档 | `docs/architecture.md` | 系统架构说明（含 frontend/MapLibre 前端层） |
-| 开发笔记 | `docs/dev-notes.md` | 历史踩坑记录 |
-| **全局调试记忆** | `docs/debug-memory.md` | **踩坑规则库（R1-R19·多组共享·CB-41 首建）——排查前必读；修复提交前对照 R1（多入口逐入口验证）/R2（列值匹配显式处理空值·禁静默丢数据）/R8（验证忌与实现同构）自查；修 ≥2 轮/症状迁移/宿主契约坑 → 当轮蒸馏新规则（维护协议见文末）** |
-| 决策记录 | `docs/decisions.md` | 架构决策 (ADR) |
-| MCP 策略 | `docs/mcp-strategy.md` | MCP 路由手册、智谱优先、清单与测试日志 |
-| CB 评估规则 | `docs/catch-ball/RULES.md` | Catch-Ball 第三方评估流程、文档编号规范、CB 权限约束；**所有 CB/第三方评估文件统一放入 `docs/catch-ball/`，其中 SCAN 类评估报告放入 `docs/catch-ball/report/`** |
-| CB 讨论索引 | `docs/catch-ball/discuss/_INDEX.md` | CB 讨论入口：在途组（EMC×dsh/RAG·勿归档）+ 常驻结论稿；已收官过程稿按主题归档 `discuss/archive/<卷宗>/`（机制 `discuss/_ARCHIVE.md`·导览 `_DIGEST.md`）。查历史 CB 结论从这里进 |
+## Debug 排查纪律（细则见 `docs/debug-memory.md` R1-R27）
 
-### 按角色推荐阅读
-
-| Agent | 必读 | 选读 |
-|-------|------|------|
-| **Developer** | `spec.md`, `architecture-pattern.md`, `tracker.py` | `decisions.md`, `dev-notes.md` |
-| **Reviewer** | `spec.md`, `architecture-pattern.md`, `tracker.py` | `decisions.md`, `docs/catch-ball/RULES.md`（CB 评估文件规范） |
-| **Tester** | `spec.md`, `architecture-pattern.md` | `tracker.py`, `dev-notes.md` |
-| **Data** | `spec.md`（数据管道章节）, `architecture-pattern.md` | `decisions.md` |
-| **GIS Dev** | `spec.md`（坐标规范章节）, `architecture-pattern.md` | `tracker.py` |
-| **Designer** | `spec.md`（UI 组件章节）, `design/tokens.css` | — |
-| **Docs** | `architecture-pattern.md`, `decisions.md` | `dev-notes.md`, `tracker.py`, `docs/catch-ball/RULES.md`（CB 评估文件规范） |
-| **Ops** | `requirements.txt`, `spec.md`（依赖章节） | — |
-
-## 编码铁律
-
-以下规则所有 Agent 必须遵守，Reviewer 重点检查：
-
-1. **禁用 emoji**：代码中只允许 ASCII 标记 `[OK]` `[WARN]` `[LOAD]` `[ERR]`
-2. **安全打印**：所有 `print()` 必须通过 `_safe_print()` 调用
-3. **禁止劫持 builtins.print**：不得重新绑定 `builtins.print`
-4. **入口统一**：前端主界面 = `frontend/`（MapLibre GL JS，`py frontend/serve.py 8080`，自起 uvicorn 后端 + Ctrl+C 同停；`apps/` Streamlit 已于 2026-07-18 退役）
-5. **分析逻辑共用**：所有入口调用同一个 `run_analysis_task()`
-6. **导出命名**：`{name}_{L1|L2|L3|L4}_result_csv.csv`
-7. **数据脱敏**：输出的分析结果中禁止包含用户名/用户ID等个人身份信息
-8. **空间范围优先**：数据采集以指定范围 Polygon 为第一过滤条件，关键词仅作辅助
-9. **决策追踪必埋点**：每个公开函数必须 `@track()`，每个关键决策分支必须 `TrackContext`
-10. **追踪 ID 必注册**：所有追踪 ID 必须在 `core/tracker.py` 注册表登记，编号连续不跳号
-11. **Toolbox AI 入口与手动 UI 同构**（CB-04·SCAN Phase 3.2）：每新增/修改 `generate*ForAI` 函数须同步契约三处——① `ai_qa/tool_contracts.py`（单一权威源·L2）② 前端 `SKILL_DEFS` 镜像 ③ `prompts.py` 工具描述（参数集为 AI 入口实参的超集·可少不可多·可漏不可错）。**ForAI 入口 = dialog 入口镜像**：色板/参数映射必须复用 dialog 路径同一函数（`computeStyle`/`terrainRampOf`），不得自带默认另搞一套（CB-04 H1：generateHeatmapForAI 硬编码 rainbow 绕过 computeStyle 致"消极热力图出综合彩虹图"）。参数面板缺的能力（`PANEL_MISSING`）→ 提醒开发者补齐+标准化+本地化，EMC 侧不自行造。**极性值域统一全词**（overall/positive/negative/neutral），入口 `_normalizePolarity` 归一。
-
-### 决策追踪系统说明（铁律 9 & 10）
-
-**目的**：让 bug 定位从 O(n) 全量代码搜索降为 O(1) 决策 ID 精准跳转。
-
-**基础设施**：`core/tracker.py` — 提供 `@track()` 装饰器 / `TrackContext` 上下文管理器 / `trace_*()` 快捷函数。
-
-**模块 ID 分配**：
-
-| 状态 | 模块 ID | 文件 |
-|------|---------|------|
-| ✅ | `MOD_GOV` | `SCRIPT/data_governance.py` |
-| ✅ | `MOD_ANA` | `SCRIPT/emotion_analysis_v1.py` |
-| ✅ | `MOD_REL` | `SCRIPT/relevance_filter.py` |
-| ✅ | `MOD_RUN` | `SCRIPT/run_analysis.py` |
-| ✅ | `MOD_GEN` | `SCRIPT/generate_l1_mock.py` |
-| ✅ | `MOD_PERF` | `SCRIPT/sim_performance_data.py` |
-| ✅ | `MOD_SCRAPER` | `SCRAPER/spiders/` |
-| ✅ | `MOD_GEOCODE` | `core/geocode.py` |
-| ✅ | `MOD_LLM` | `ai_qa/llm.py` |
-| ✅ | `MOD_AIQA` | `ai_qa/paradigm.py` + `ai_qa/prompts.py`（select_template 路由 + 5 build_*_prompt；manifesto.py 纯常量） |
-| 🔧 | `MOD_CHECKUP` | `SCRIPT/checkup_ingest.py`（体检数据直通适配器·阶段 1' 规划·2026-08-11 定稿 D5 决策·F_001 起） |
-| ✅ | `MOD_SPATIAL` | `core/spatial_analysis.py` + `core/buffer_analysis.py` |
-| ✅ | `MOD_FIELD` | `core/field_dictionary.py` |
-| ❌ retired | `MOD_APP` | ~~`apps/`~~ 2026-07-18 整层退役（`frontend/` 接管） |
-| ⬜ | `MOD_LOADER` | `core/data_loader.py` |
-| ⬜ | `MOD_MAP` | `core/map_engine.py` |
-| ⬜ | `MOD_TRANSFORM` | `core/coord_transform.py` |
-| ⬜ | `MOD_RANGE` | `core/range_selector.py` |
-| ⬜ | `MOD_EXPORT` | `core/export.py` |
-| ⬜ | `MOD_MM` | `SCRIPT/multimodal_analysis.py` |
-| ⬜ | `MOD_UTILS` | `core/utils.py` |
-| ⬜ | `MOD_PLACE` | `core/place_layer.py` |
-| ⬜ | `MOD_UI` | `core/ui_components.py`（仅 `design/backups/` 残留引用） |
-| 🔧 | `MOD_TRACKER` | `core/tracker.py`（infra 本体，非业务模块） |
-
-> **状态图例**：✅ 已埋点+`register_track_id` 注册 / ⬜ 占位待埋点（保留规划意图，不删） / 🔧 追踪 infra 本体。**注册机制** = 各模块 `register_track_id()` 在 import 时调用，运行时填充 `core/tracker.py` 的 `_TRACKING_REGISTRY`（**非** tracker.py 内静态 dict）。
->
-> **5.x 主力**：`MOD_SPATIAL` / `MOD_LLM` / `MOD_FIELD` / `MOD_AIQA` 均已正式分配 ✅（ai_qa broader paradigm+prompts 已埋点；manifesto.py 纯常量无函数）。仍待埋点：上表 9 个 ⬜ 模块。**低优先，勿擅自加 ID**（守 `_TRACKING_REGISTRY` 编号连续不跳号红线——待正式分配时整体规划）。
-
-**埋点规则**：
-- 公开函数（非 `_` 前缀）→ `@track("MOD_XXX.F_NNN")`
-- 关键分支（>5 行 if/else/循环体）→ `with TrackContext("MOD_XXX.D_NNN", ...):`
-- I/O 操作（文件读写/API/DB）→ 必须埋点
-- 数据管道步骤 → 记录 in_n / out_n
-- except 块 → `trace_error()`
-- **高频循环扫描类豁免（PT-CB10 C2-8·D9 纪律固化）**：周期 ≥1s 的常驻扫描/轮询函数（如 watcher 循环）免 `@track`（防 [TRACE] 刷屏淹没有效信号）；但**必须**在其功能 ID 的 `register_track_id` 注册表描述中注明「高频扫描·免埋点」，使豁免可审计可追溯（先例：MOD_AIQA.F_029 render 收件箱 watcher）。
-
-**Debug 工作流**：
-```
-报错 → 看 [TRACE] 日志 → 定位出错决策 ID → 跳转代码 → 精准修复
-```
-
-**Debug 排查纪律**（细则见 `docs/debug-memory.md`·R1-R19·多组共享·含 dsh 宿主坑与维护协议）：
 1. 显示/聚合类 bug 先判层：**数据 → 映射 → 渲染**（R3），第一步做数值对账；
 2. 纸面推演穷尽即转实证：trace_query + netstat 取证（R6）；
 3. 多入口功能逐入口验证，验证路径忌与实现同构（R1/R8）；
-4. 修复交付口径必含「重启三服务」（R7 扩展·2026-08-25）：8000 后端/8080 前端/8600 MCP 插座**三进程独立载码**——「重启了后端」≠「工具进程也新了」（8600 手绘图复发案实证）。动作口径：全量重置=start.bat（三进程先杀旧再起新）；怀疑撞旧码=devcheck.bat（三进程载码 vs 最新提交+RAG 索引新鲜度一键核对）；进程自证=8000 `/api/v1/version`、8080 构建戳角标、8600 `emc_status.version`。
+4. 修复交付口径必含「重启三服务」（R7 扩展·2026-08-25）：8000 后端/8080 前端/8600 MCP 插座**三进程独立载码**——「重启了后端」≠「工具进程也新了」。动作口径：全量重置=`start.bat`（三进程先杀旧再起新）；怀疑撞旧码=`devcheck.bat`；进程自证=8000 `/api/v1/version`、8080 构建戳角标、8600 `emc_status.version`。
 
-## 跨机协作（办公室 ↔ 家里）
+## 流程与快速启动
 
-### 换机启动
-在新机器上告诉我"同步上下文"，我会：
-1. 读取 `memories/repo/session-handoff.md` 恢复上次会话上下文
-2. 调用 Ops Agent 执行环境自检
-3. 汇报当前任务状态 + 今日计划
-
-### 下班交接
-告诉我"下班交接"，我会：
-1. 汇总今日完成 + 关键决策 + 待办
-2. 更新 `memories/repo/session-handoff.md`
-3. 提醒你 git commit + push
-
-### 原理
-| 同步方式 | 内容 |
-|----------|------|
-| **Git** | 代码 + docs/ + requirements.txt + `memories/repo/`（会话交接卡） |
-| **pip** | `pip install -r requirements.txt`（ops 自检） |
-
-## 紧急回滚流程
-
-```
-发现问题 → 判断严重程度
-              ↙           ↘
-          紧急回滚        标准修复
-           ↓                ↓
-     git revert          走 SOP 流程
-     + Tester 验证       (Developer → Reviewer → Tester)
-     + Reviewer 快速审
-```
-
-> 紧急回滚标准：系统无法启动、核心功能崩溃、数据损坏。
-
-## 数据目录与 RAG 规则（2026-08-25 重构）
-
-> 权威入口：`DATA/README.md`；全组通知：`docs/catch-ball/discuss/PT-CB15-数据目录与代码映射重构_全组通知_Codex-2026-08-25.md`。
-
-- 预设/上传一律走 `DATA/REGISTRY/presets/`；权威数据读 `DATA/AUTHORITY/`；专题读 `DATA/THEME/`；导出读/写 `DATA/Export/`。
-- `DATA/boundaries` 与顶层 `DATA/exports` 已退休/删除，禁止再引用。
-- RAG 索引位于 `DATA/RAG/rag_index/`，重建命令 `py tools/rag_index.py --build`；episode 记录位于 `DATA/RAG/ai_qa/`。
-- 用地数据、建成区数据：禁止入库/RAG；仅用户一次性上传，不落盘。
-- 同名多格式文件：`.csv` 副格式统一放 `DATA/others/`，代码优先读 GeoJSON。
-
-## 快速启动
-
-向我直接描述任务即可，无需 `@agent` 前缀：
-
-```
-实现 XXX 功能
-```
-
-或指定具体任务：
-
-```
-开始处理 docs/todo.md 中今天的任务
-```
+- **SOP 风险分级**：轻量（纯 UI/文案·直出+快扫）/ 标准（2+ 文件·I/O·签名变更）/ 严格（控制流·核心管道·追踪基建·加复审）——触发详表见 `docs/sop-risk-grading.md`。
+- **紧急回滚 / 换机 / 数据目录**：见 `docs/runbook.md`。
+- 直接描述任务即可（无需 `@agent` 前缀），如「实现 XXX 功能」「开始处理 docs/todo.md 中今天的任务」。
