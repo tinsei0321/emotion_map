@@ -577,7 +577,7 @@ def _spawn_backend(repo_root, backend_port=8000):
 
 
 def _open_browser(which, port):
-    """serve 就绪后自动开浏览器（main / test / both）。后台线程延迟开，socket 已 listen 必连得上。"""
+    """serve 就绪后自动开浏览器（main / test / codex / both）。后台线程延迟开，socket 已 listen 必连得上。"""
     import threading, webbrowser
     base = f'http://localhost:{port}'
 
@@ -585,6 +585,9 @@ def _open_browser(which, port):
         time.sleep(0.6)
         if which in ('main', 'both'):
             try: webbrowser.open(f'{base}/frontend/index.html')
+            except Exception: pass
+        if which == 'codex':   # 2026-08-25 用户令：start.bat 默认打开 cdh（codex 引擎）页——启动器带参·引擎默认 light 零退化不破
+            try: webbrowser.open(f'{base}/frontend/index.html?engine=codex')
             except Exception: pass
         if which in ('test', 'both'):
             time.sleep(0.5)
@@ -605,7 +608,7 @@ def main():
             backend_port = int(args[_i + 1])
     global BACKEND_ORIGIN
     BACKEND_ORIGIN = f'http://127.0.0.1:{backend_port}'
-    # --open=both|main|test|none：serve 就绪后自动开浏览器（start.bat 用 both；直接 py serve 默认 none 不开）
+    # --open=both|main|test|codex|none：serve 就绪后自动开浏览器（start.bat 用 codex——cdh 默认页；直接 py serve 默认 none 不开）
     open_what = 'none'
     for _a in args:
         if _a.startswith('--open='):

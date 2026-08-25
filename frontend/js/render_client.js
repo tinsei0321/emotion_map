@@ -175,9 +175,15 @@ async function _apply(spec) {
 
 function _connect() {
   const es = new EventSource('/api/v1/render/stream');
+  let _helloSeen = false;
+  es.addEventListener('hello', () => { _helloSeen = true; });
   es.addEventListener('spec', (e) => {
     try {
       const spec = JSON.parse(e.data);
+      if (!_helloSeen) {
+        console.warn('[dsh] 拒收 hello 前到达的 spec（疑似 backlog 重放回归）:', spec.spec_id);
+        return;
+      }
       if (!spec || !spec.spec_id || _seenSpecIds.has(spec.spec_id)) return;
       _seenSpecIds.add(spec.spec_id);
       _apply(spec);

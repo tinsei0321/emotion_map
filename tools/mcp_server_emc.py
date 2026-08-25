@@ -19,6 +19,7 @@
 import json
 import os
 import random
+import re
 import sys
 import time
 
@@ -409,6 +410,9 @@ def list_data(include_demo: bool = False) -> dict:
     presets_dir = os.path.dirname(MANIFEST)
     for group in groups:
         for it in group.get('items', []):
+            # P1-B：临时 render 产物不进清单（防模型把历史 tmp_render 当本轮分析结果随手引用）
+            if str(it.get('id', '')).startswith('tmp_render_'):
+                continue
             fname = str(it.get('file', ''))
             # PT-CB14 C2（D-1 销号）：presets 段加 available 过滤（与点层段同纪律）——
             #   manifest 已登记 ≠ 文件已落盘（如 admin_community）·清单恒为 resolve 可解析集（F1 同口径）
@@ -1477,6 +1481,9 @@ def render_spec(kind: str, name: str, dataset_id: str = '', geojson: dict = None
             return {'ok': False, 'hint': f'未知 dataset_id: {dataset_id}（调用 list_data 查看清单）',
                     'caliber': CALIBERS['render_spec']}
         usage = meta['usage']
+        # P1-B：引用预注册结论层/临时层时软警示，提示模型核对是否与本轮答案口径一致（不硬拒）
+        if usage == 'analysis_output' or dataset_id.startswith('tmp_render_') or re.match(r'page7_.*_top\d+', dataset_id):
+            fixes.append(f'引用预注册层 dataset_id={dataset_id}（usage={usage}）非本轮计算结果——若答案指定 Top-N/口径，请核对图层要素是否一致')
         # PT-CB14 C3：data_nature='test' 为测试投递显式标记·不被 dataset meta 覆盖（real/demo 仍以 dataset 为准）
         if nature != 'test':
             nature = meta['data_nature']

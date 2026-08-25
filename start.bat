@@ -75,8 +75,9 @@ ping -n 2 127.0.0.1 >nul 2>&1
 
 echo.
 echo [OK] Starting serve.py (auto-opens browser when ready) ...
-echo      Main: http://localhost:8080/frontend/index.html
-echo      Test: http://localhost:8080/frontend/index.html?test=1
+echo      Main(cdh): http://localhost:8080/frontend/index.html?engine=codex
+echo      Light:     http://localhost:8080/frontend/index.html
+echo      Test:      http://localhost:8080/frontend/index.html?test=1
 echo      Stop: press Ctrl+C in this window (stops frontend + backend)
 echo      After code edits: hard-reload browser (Ctrl+Shift+R),
 echo             check the build stamp time (bottom-right) updated.
@@ -84,7 +85,7 @@ echo.
 echo [WAIT] 预计 20-30s 就绪（含 BGE RAG 模型同步预热~15s：启动慢是有意设计·换首问稳定）
 echo.
 echo ------------------------------------------------------------
-py frontend/serve.py 8080 --open=main
+py frontend/serve.py 8080 --open=codex
 
 echo.
 echo [ERR] serve.py exited (if you did not press Ctrl+C, check the error above).

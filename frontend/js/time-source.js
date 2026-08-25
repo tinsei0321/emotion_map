@@ -34,7 +34,16 @@ export function loadManifest() {
   _manifestLoading = fetch(MANIFEST_URL, { cache: 'force-cache' })
     .then((r) => { if (!r.ok) throw new Error('manifest HTTP ' + r.status); return r.json(); })
     .then((m) => { _manifest = m; return m; })
-    .catch((e) => { console.error('[time-source] manifest 拉取失败：', e); _manifestLoading = null; throw e; });
+    .catch((e) => {
+      const is404 = /404/.test(String(e && e.message || e));
+      if (is404) {
+        _manifest = { datasets: [] };
+        _manifestLoading = null;
+        console.info('[time-source] 时间片 manifest 未配置（404）·时间过滤休眠（待数据侧生成）');
+        return _manifest;
+      }
+      console.error('[time-source] manifest 拉取失败：', e); _manifestLoading = null; throw e;
+    });
   return _manifestLoading;
 }
 

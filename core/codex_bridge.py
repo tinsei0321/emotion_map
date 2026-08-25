@@ -99,6 +99,7 @@ class CodexBridge:
         self._lock = asyncio.Lock()        # turn 串行闸（app-server 单进程·防交错）
         self._stderr_buf = bytearray()     # P2-5：stderr 环形缓冲（末 4KB）
         self._stderr_task = None
+        self._active_turn_id = None        # P0-A：当前 turn id（供非正常收口时 interrupt）
 
     async def _drain_stderr(self):
         """P2-5：后台抽 stderr 进环形缓冲（原 DEVNULL 弃流·error 时无诊断面——Z-05/B-5）。"""
@@ -116,6 +117,18 @@ class CodexBridge:
 
     def _stderr_tail(self):
         return self._stderr_buf[-_STDERR_KEEP:].decode('utf-8', 'replace')
+
+    async def _interrupt_turn(self):
+        """P0-A：非正常收口时通知 app-server 中断当前 turn（best-effort·失败仅静默）。"""
+        tid = getattr(self, '_active_turn_id', None)
+        if not tid or not self._proc or self._proc.returncode is not None:
+            return
+        try:
+            rid = await self._next_id()
+            await self._send({'method': 'turn/interrupt', 'id': rid, 'params': {
+                'threadId': self._thread_id, 'turnId': tid}})
+        except Exception:
+            pass
 
     async def _send(self, obj):
         self._proc.stdin.write(json.dumps(obj, ensure_ascii=False).encode('utf-8') + b'\n')
@@ -225,6 +238,7 @@ class CodexBridge:
                     line = await asyncio.wait_for(self._proc.stdout.readline(), _HEARTBEAT_S)
                 except asyncio.TimeoutError:
                     if time.time() - t0 > budget:
+                        await self._interrupt_turn()
                         yield {'event': 'error', 'code': 'CODEX_TURN_TIMEOUT',
                                'message': f'Codex turn 超时（{budget}s）·本轮已中止',
                                'stderr_tail': self._stderr_tail()}
@@ -236,6 +250,7 @@ class CodexBridge:
                            'message': f'JSONL 单行超限: {e}', 'stderr_tail': self._stderr_tail()}
                     return
                 if not line:
+                    await self._interrupt_turn()
                     yield {'event': 'error', 'code': 'CODEX_PROC_EOF',
                            'message': 'app-server 进程退出（stdout EOF）——下轮将自动重建',
                            'stderr_tail': self._stderr_tail()}
@@ -245,6 +260,7 @@ class CodexBridge:
                 # P1-1（Z-01）：看门狗「有流量即续命」——预算检查在**每行到达即查**，
                 # 不止静默超时分支：持续吐行（哪怕合法事件）也必在预算到达时收口。
                 if time.time() - t0 > budget:
+                    await self._interrupt_turn()
                     yield {'event': 'error', 'code': 'CODEX_TURN_TIMEOUT',
                            'message': f'Codex turn 超时（{budget}s·有流量仍超预算）·本轮已中止',
                            'stderr_tail': self._stderr_tail()}
@@ -253,6 +269,12 @@ class CodexBridge:
                     msg = json.loads(line)
                 except Exception:
                     continue   # 非 JSON 行（噪音）容错跳过
+
+                if msg.get('id') == rid:
+                    result = msg.get('result') or {}
+                    turn = result.get('turn') or {}
+                    self._active_turn_id = turn.get('id') or self._active_turn_id
+                    continue
 
                 m = msg.get('method', '')
                 p = msg.get('params') or {}

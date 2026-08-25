@@ -2215,23 +2215,17 @@ function _setupCpdBar() {
 }
 
 /** PT-CB14 C4（D-7 销号）：8080 对话框常驻引擎徽标——chat-head 内常驻显示当前 engine 模式
- * （light/dsh/mock·?engine 或 window.__EMC_ENGINE_MODE__ 决定·getEngineMode 单一权威）。 */
+  * （恒 codex Harness·getEngineMode 单一权威）。 */
 function _initEngineBadge() {
   const emc = document.getElementById('emc-panel');
   if (!emc || emc.querySelector('.emc-engine-badge')) return;
   const head = emc.querySelector('.chat-head');
   if (!head) return;
-  const MODES = {
-    light: { txt: '引擎·light', c: '#8fa0b5', bg: 'rgba(143,160,181,0.16)' },
-    dsh: { txt: '引擎·dsh', c: '#d97757', bg: 'rgba(217,119,87,0.16)' },
-    codex: { txt: '引擎·codex', c: '#10a37f', bg: 'rgba(16,163,127,0.16)' },
-    mock: { txt: '引擎·mock', c: '#9a8fd8', bg: 'rgba(154,143,216,0.16)' },
-  };
-  const m = MODES[getEngineMode()] || MODES.light;
+  const m = { txt: '引擎·Codex Harness', c: '#10a37f', bg: 'rgba(16,163,127,0.16)' };
   const b = document.createElement('span');
   b.className = 'emc-engine-badge';
   b.textContent = m.txt;
-  b.title = '当前引擎模式（?engine=light|dsh|codex|mock）';
+  b.title = '当前引擎模式：Codex Harness';
   b.style.cssText = `font:10px/1.5 ui-monospace,Consolas,monospace;color:${m.c};`
     + `background:${m.bg};padding:1px 7px;border-radius:3px;`;
   const spacer = head.querySelector('.chat-head-spacer');
@@ -2242,6 +2236,16 @@ function _initEngineBadge() {
 export function initChatPanel() {
   _setupEmcFloat();   // CPD Phase 1b：reparent EMC 到 #map 浮窗 + 恢复尺寸（先于事件绑定）
   _setupCpdBar();     // CPD Phase 2a：顶部进度条 + 摘要 chip（软折叠）
+  // 测试页（?test=1）自动清空上次会话残留（用户令 2026-08-25：防上轮对话/图层/上下文泄漏污染新测试）
+  try {
+    if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('test') === '1' && _history.length) {
+      _history = [];
+      _archive = [];
+      saveHistory();
+      saveArchive();
+      restoreHistory();
+    }
+  } catch (_) {}
   _initEngineBadge();   // PT-CB14 C4（D-7 销号）：引擎徽标常驻（light/dsh/mock 跟随）
   // CPD Phase 3b：主题切换（仅 #emc-panel scope，chrome 保持 Light）。localStorage 持久化。
   const _applyTheme = (t) => {

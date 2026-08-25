@@ -241,6 +241,8 @@ def _sse_stream():
         _SUBSCRIBERS.append(my_q)
     try:
         # 2026-08-25 用户令：连接时不再重放 backlog，避免硬刷新后弹出上次测试/上一问题的残留图层。
+        # P0-B：首帧 hello——前端以此判定连接已建立，hello 前到达的 spec 一律视为残留/重放并拒染。
+        yield f'event: hello\ndata: {json.dumps({"ok": True, "inbox": INBOX_DIR}, ensure_ascii=False)}\n\n'
         while True:
             try:
                 spec = my_q.get(timeout=15)

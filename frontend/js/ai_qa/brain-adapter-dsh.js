@@ -10,17 +10,9 @@
 
 const _WIRE_SESSION = 'emc-shell';   // 与 S4 引擎发射层同源（session 对象 v1 不建·占位）
 
-/** 引擎选择：?engine=light|dsh|codex|mock（默认 light）·?acp-mock=1 回兼容映射 mock（S3/S7 资产）·window 旗标测试位。 */
+/** 引擎选择：恒为 codex Harness（2026-08-25 用户令：去掉 light/其他引擎，只保留默认 Codex）。 */
 export function getEngineMode() {
-  let m = '';
-  try {
-    if (typeof window !== 'undefined' && window.__EMC_ENGINE_MODE__) m = String(window.__EMC_ENGINE_MODE__);
-    else if (typeof location !== 'undefined') {
-      const q = new URLSearchParams(location.search);
-      m = (q.get('engine') || '').trim() || (q.has('acp-mock') ? 'mock' : '');
-    }
-  } catch (_) { /* 非浏览器（node 单测）：默认 light */ }
-  return (m === 'dsh' || m === 'codex' || m === 'mock') ? m : 'light';
+  return 'codex';
 }
 
 /**

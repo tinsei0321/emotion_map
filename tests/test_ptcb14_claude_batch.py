@@ -115,7 +115,7 @@ def test_c4_engine_badge_and_dsh_prefix_source():
         panel = f.read()
     assert '_initEngineBadge' in panel
     assert 'emc-engine-badge' in panel
-    assert '引擎·dsh' in panel
+    assert '引擎·Codex Harness' in panel
     with open(os.path.join(ROOT, 'frontend', 'js', 'ai_qa', 'brain-adapter-dsh.js'), encoding='utf-8') as f:
         dsh = f.read()
     assert '[dsh引擎]' in dsh
