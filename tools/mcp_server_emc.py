@@ -51,6 +51,41 @@ register_track_id('MOD_AIQA.F_044', 'MCP aggregate_export（全量聚合导出·
 
 MANIFEST = os.path.join(REPO, 'DATA', 'REGISTRY', 'presets', 'manifest.json')
 
+# ── PT-CB17+ 进程自证戳（治「测试撞旧码」R7 类问题）──
+# MCP 进程版本必须机器可查（8000 有 /version·8080 有构建戳·8600 此前无任何自证）。
+_PROC_START_TS = time.time()
+_stamp_cache = {'ts': 0.0, 'data': None}
+
+
+def _version_stamp():
+    """本进程版本自证：进程启动时间 + 代码 commit + 是否落后于仓内最新提交。
+    git 调用 60s 缓存（探测工具不可变慢）；git 不可用降级为仅启动时间。"""
+    import subprocess
+    now = time.time()
+    if _stamp_cache['data'] and now - _stamp_cache['ts'] < 60:
+        return dict(_stamp_cache['data'])
+    stamp = {'process_started': time.strftime('%Y-%m-%dT%H:%M:%S', time.localtime(_PROC_START_TS)),
+             'uptime_s': int(now - _PROC_START_TS)}
+    try:
+        latest = subprocess.run(['git', '-C', REPO, 'log', '-1', '--format=%h|%cI'],
+                                capture_output=True, text=True, timeout=10)
+        parts = (latest.stdout or '').strip().split('|')
+        if len(parts) == 2:
+            stamp['latest_commit'] = parts[0]
+            stamp['latest_commit_time'] = parts[1]
+            import datetime as _dt
+            commit_dt = _dt.datetime.fromisoformat(parts[1].replace('Z', '+00:00'))
+            stale_s = commit_dt.timestamp() - _PROC_START_TS
+            stamp['stale'] = stale_s > 0
+            stamp['stale_by_s'] = max(0, int(stale_s))
+    except Exception as exc:
+        stamp['stale'] = None
+        stamp['note'] = f'git 不可用（仅启动时间可证）: {type(exc).__name__}'
+    _stamp_cache['ts'] = now
+    _stamp_cache['data'] = stamp
+    return dict(stamp)
+
+
 # P+ scheme 受管样式词表（前端按名解析·未知即拒）
 SCHEMES = ('community_choropleth_v1', 'point_default_v1', 'boundary_fill_v1')
 
@@ -1992,17 +2027,20 @@ def emc_status() -> dict:
     用法：轮询本工具直至 ready=True（建议间隔 3-5s；服务预热含 RAG 模型加载约 30-60s）。
     ready=False 且 phase='starting' 时正在预热——继续轮询勿重复启动；phase='down' 时服务未运行。"""
     import urllib.request
+    stamp = _version_stamp()   # PT-CB17+：每次探测顺带自证版本（8600 进程新旧机器可查）
     try:
         with urllib.request.urlopen('http://127.0.0.1:8080/emc-ready', timeout=3) as r:
             ready = (r.status == 200)
         return {'ok': True, 'ready': ready,
                 'phase': 'ready' if ready else 'starting',
                 'hint': '' if ready else '服务预热中（RAG 模型加载约 30-60s），继续轮询',
+                'version': stamp,
                 'caliber': {'scale': 'meta', 'semantics': '服务状态', 'limits': '仅探测不分析',
                             'refs': ['PT-CB8 入口向导']}}
     except Exception:
         return {'ok': True, 'ready': False, 'phase': 'down',
                 'hint': '8080 服务未运行（需经 start_silent.vbs 启动后轮询）',
+                'version': stamp,
                 'caliber': {'scale': 'meta', 'semantics': '服务状态', 'limits': '仅探测不分析',
                             'refs': ['PT-CB8 入口向导']}}
 

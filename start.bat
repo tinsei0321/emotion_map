@@ -70,6 +70,9 @@ echo  emotion-map launcher (single instance: auto-cleans old ones)
 echo  [NEW] auto-opens MAIN + TEST pages when serve is ready
 echo ============================================================
 echo.
+echo  本机最新提交（本次将运行的代码）：
+git log -1 --format="    %%h  %%cI  %%s"
+echo.
 echo [WAIT] Killing old serve.py / backend (PIDs on 8080 / 8000)...
 set _killed=0
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr /C:":8080 " ^| findstr /C:"LISTENING"') do (
@@ -95,6 +98,7 @@ echo      After code edits: hard-reload browser (Ctrl+Shift+R),
 echo             check the build stamp time (bottom-right) updated.
 echo.
 echo [WAIT] 预计 20-30s 就绪（含 BGE RAG 模型同步预热~15s：启动慢是有意设计·换首问稳定）
+echo      怀疑撞旧码时：双击 devcheck.bat 一键核对三进程载码新旧
 echo.
 echo ------------------------------------------------------------
 py frontend/serve.py 8080 --open=codex
