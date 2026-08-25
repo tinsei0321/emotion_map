@@ -385,6 +385,29 @@ def _cleanup_tmp_render():
                     file=sys.stderr)
 
 
+def _action_cues(tool, params, extra=None):
+    """参数级 followup_actions 派生（PT-CB16 C2-1·交互契约 §一：确定性零 LLM·
+    params 全量自包含 resolved_params——重放不依赖历史·与 dataset_id 单号同思想）。
+    extra=提示级 cue（跨工具建议·仅 cue_text·不强行推断参数）。≤3 条价值序。"""
+    cues = []
+    p = dict(params)
+    tn = p.get('top_n')
+    if isinstance(tn, int) and tn < 20:
+        q = dict(p)
+        q['top_n'] = tn + 1
+        cues.append({'cue_text': f'那第 {tn + 1} 个呢？（top_n {tn}→{tn + 1} 重跑）',
+                     'tool': tool, 'params': q})
+    if tool == 'rank':
+        by = str(p.get('by', 'worst'))
+        flip = 'best' if by == 'worst' else 'worst'
+        q = dict(p)
+        q['by'] = flip
+        cues.append({'cue_text': f'反过来看呢？（by={flip} 重排）', 'tool': tool, 'params': q})
+    if extra:
+        cues.extend(extra)
+    return cues[:3]
+
+
 def _persist_layer_output(tool, fc, value_col):
     """分析结果出图直传：fc 落盘 tmp_render + 登记临时 dataset（renderFields 声明
     value/value_col 防渲染通道字段政策误剔）→ dataset_id。几何全程不过模型上下文。"""
@@ -416,6 +439,7 @@ def list_data(include_demo: bool = False) -> dict:
     """数据说明书：列出可分析点层与边界 preset（字段/类型/usage/数据性质·不含样例值），并附 render 出图能力段（scheme 词表/三档范式/tip 字段/上限）。
     参数：include_demo 兼容保留（清单恒为 resolve 可解析集·F1）。
     限制：分析前必查（layer/boundary 取 id 的唯一入口）；返回带 caliber 口径标；出图前读 render 段或 docs/render-contract.md。"""
+    _note_call('list_data')   # PT-CB16 C2-3 scale 倒推埋点
     from core.config import PERFORMANCE_DIR
     from core.geo_registry import _POINT_LAYERS, _layer_path, list_point_layers
 
@@ -508,6 +532,7 @@ def rag_query(query: str, k: int = 5, synthesize: bool = False) -> dict:
     限制：索引未建时报提示（py tools/rag_index.py --build）；适用叙述/方法/对比问答。
     路由分工（A2）：精确名词/口径数字优先 kb_facts（注册表直查）；叙述/方法/对比用 rag_query。
     B3：顶层 suppressed_count（被 superseded 过滤条数）；条目不对称治理标注（历史叙述类带 caliber_note·现行零标签）。"""
+    _note_call('rag_query')   # PT-CB16 C2-3 scale 倒推埋点
     if not query or not str(query).strip():
         return {'ok': False, 'hint': 'query 不能为空', 'caliber': CALIBERS['rag_query']}
 
@@ -576,6 +601,9 @@ def rag_query(query: str, k: int = 5, synthesize: bool = False) -> dict:
         }
     if followup_cues:
         out['followup_cues'] = followup_cues
+        # PT-CB16 C2-1 接口锁版本化：followup_actions（对象数组·两级 schema）与旧键并存过渡——
+        # 叙述/跨工具类 cue 属提示级（仅 cue_text·不强行推断参数·交互契约 §1.1）
+        out['followup_actions'] = [{'cue_text': c} for c in followup_cues]
     if synthesize:
         out['synthesize'] = 'deferred_v2'
         out['guidance'] = ('v1 未接后端综合：请宿主基于以上带来源素材综合，'
@@ -591,6 +619,7 @@ def kb_facts(query: str = '', keyword: str = '', topic: str = '',
     限制：固定 city=宜昌；命中按 keywords/region 反查加权。
     路由分工（A2）：精确名词/口径数字优先本工具（注册表直查·零向量碰运气）；叙述/方法/对比用 rag_query。
     B3：条目不对称治理标注（X-01 关联历史叙述类带 caliber_note·现行零标签·确定性零 LLM）。"""
+    _note_call('kb_facts')   # PT-CB16 C2-3 scale 倒推埋点
     limit = max(1, min(int(limit), 20))
     try:
         from ai_qa.outlet_kb.urban_renewal_knowledge import query_knowledge_base
@@ -627,6 +656,53 @@ def kb_facts(query: str = '', keyword: str = '', topic: str = '',
     return out
 
 
+# ── PT-CB16 C2-3 · scale 确定性倒推（交互契约 §三·判据表冻结）──
+# 数据源：本 server 进程内工具调用序列（宿主每次连接一个进程·天然会话边界）。
+# 「爆发段」定义：相邻调用间隔 >120s 即切新段——倒推只取当前段（防跨问题累计误判）。
+_TOOL_CALL_LOG = []
+_SCALE_BURST_GAP_S = 120
+
+
+def _note_call(tool):
+    _TOOL_CALL_LOG.append((time.time(), tool))
+    del _TOOL_CALL_LOG[:-200]
+
+
+def _current_burst():
+    now = time.time()
+    burst = []
+    for ts, name in reversed(_TOOL_CALL_LOG):
+        if burst and (burst[-1][0] - ts) > _SCALE_BURST_GAP_S:
+            break
+        if now - ts > 600:   # 超 10 分钟的一律不算当前段
+            break
+        burst.append((ts, name))
+    burst.reverse()
+    return burst
+
+
+def infer_scale(declared='brief'):
+    """确定性倒推实际规模并与声明比对（零 LLM·交互契约 §3.2 判据表）。
+    返回 None=判对静默；mismatch 时返回注记 dict（软提示·不阻断）。"""
+    burst = _current_burst()
+    calls = len(burst)
+    kinds = len({n for _, n in burst})
+    elapsed = (burst[-1][0] - burst[0][0]) if len(burst) > 1 else 0.0
+    if calls <= 2 and kinds <= 2 and elapsed < 60:
+        inferred = 'brief'
+    elif calls <= 6 and kinds <= 4 and elapsed < 180:
+        inferred = 'analysis'
+    else:
+        inferred = 'research'
+    order = {'brief': 0, 'analysis': 1, 'research': 2}
+    if order.get(inferred, 0) <= order.get(declared, 0):
+        return None   # 实际 ≤ 声明=判对（向下不告警·防降级滥用语义之外不打扰）
+    return {'declared': declared, 'inferred': inferred,
+            'calls': calls, 'tool_kinds': kinds, 'elapsed_s': round(elapsed),
+            'note': (f'本次实际调用 {calls} 件工具（{kinds} 类·约 {int(elapsed)}s），规模接近 '
+                     f'{inferred}——若需更快可收窄问题，若需更深可转研究档')}
+
+
 @track('MOD_AIQA.F_024', track_args=False)
 def outlet_card(question: str = '', result: dict = None, diagnose: dict = None) -> dict:
     """行业出口卡：确定性组装的对话级行业接口卡（零 LLM）。
@@ -638,8 +714,13 @@ def outlet_card(question: str = '', result: dict = None, diagnose: dict = None) 
     except Exception as exc:
         return {'ok': False, 'hint': f'outlet_card 组装失败: {exc}', 'cards': [],
                 'card': None, 'caliber': CALIBERS['outlet_card']}
-    return {'cards': cards, 'card': cards[0] if cards else None,
-            'caliber': CALIBERS['outlet_card']}
+    out = {'cards': cards, 'card': cards[0] if cards else None,
+           'caliber': CALIBERS['outlet_card']}
+    # PT-CB16 C2-3：scale_check（确定性倒推·判对静默·判错软提示一条·交互契约 §3.2）
+    _sc = infer_scale(declared=str((diagnose or {}).get('scale', 'brief')))
+    if _sc:
+        out['scale_check'] = _sc
+    return out
 
 
 @track('MOD_AIQA.F_025', track_args=False)
@@ -649,7 +730,9 @@ def zonal_stats(boundary: str, layer: str = 'yichang_l2_t1',
                 sort_by: str = 'polarity_index') -> dict:
     """单元聚合：情绪点按边界单元统计（宏观/中观结论）。
     参数：boundary 必填（先 list_data）；layer 默认 yichang_l2_t1；sort_by=point_count|polarity_index|score_mean；top_n 1-20；layer_output=True 落盘登记临时 dataset 返回 render_dataset_id（几何服务端直传·render_spec 以 dataset_id 引用·PT-CB15 K2）。
-    限制：首次调用 geopandas 冷启动约 10-20s；rows 硬顶 20。"""
+    限制：首次调用 geopandas 冷启动约 10-20s；rows 硬顶 20。
+    请示纪律（PT-CB16）：12345 社区级默认边界=base_community_area（193）；130/174 亦可合法时属口径分叉——先请示再跑（单轮 ≤1 次）。"""
+    _note_call('zonal_stats')   # PT-CB16 C2-3 scale 倒推埋点
     try:
         from core.geo_registry import resolve_boundary, resolve_points
         from core.spatial_analysis import aggregate_by_polygons
@@ -690,6 +773,10 @@ def zonal_stats(boundary: str, layer: str = 'yichang_l2_t1',
 
     out = {'rows': rows, 'row_count': row_count, 'truncated': row_count > len(rows),
            'caliber': CALIBERS['zonal_stats']}
+    out['followup_actions'] = _action_cues(
+        'zonal_stats',
+        {'boundary': boundary, 'layer': layer, 'top_n': top_n, 'sort_by': sort_by},
+        extra=[{'cue_text': '想看方格分布？（可用 grid_aggregate 同边界重算）'}])
     if layer_output:
         _attach_render_ref(out, 'zonal_stats', out_fc, sort_col)
     return out
@@ -701,6 +788,7 @@ def buffer(center: str, radius_m: int = 500, layer: str = 'yichang_l2_t1',
     """缓冲影响圈：设施周边半径范围 + 圈内情绪点计数。
     参数：center 必填（先 list_data）；radius_m 50-3000；layer 计数点层；dissolve=True 合并覆盖区。
     限制：几何过大（>5 要素或 >100KB）省略 buffer_fc 改用前端渲染。"""
+    _note_call('buffer')   # PT-CB16 C2-3 scale 倒推埋点
     try:
         from core.buffer_analysis import create_buffer
         from core.geo_registry import resolve_boundary, resolve_points
@@ -745,6 +833,7 @@ def rank(by: str = 'worst', layer: str = 'yichang_l2_t1',
     """排序评价：按极性指数找最差/最好 Top-N 单元（先聚合再排）。
     参数：boundary 必填；by=worst|best；sort_by=point_count|polarity_index|score_mean；top_n 1-20；layer_output=True 落盘登记临时 dataset 返回 render_dataset_id（几何服务端直传·PT-CB15 K2）。
     限制：首次调用冷启动同 zonal_stats；层无 polarity_index 时报提示。"""
+    _note_call('rank')   # PT-CB16 C2-3 scale 倒推埋点
     if not boundary:
         return {'ok': False, 'hint': 'rank 需 boundary（先 zonal 聚合再排）',
                 'caliber': CALIBERS['rank']}
@@ -787,6 +876,10 @@ def rank(by: str = 'worst', layer: str = 'yichang_l2_t1',
         return {'ok': False, 'hint': f'rank 失败: {exc}', 'caliber': CALIBERS['rank']}
 
     out = {'rows': rows, 'row_count': row_count, 'caliber': CALIBERS['rank']}
+    out['followup_actions'] = _action_cues(
+        'rank',
+        {'boundary': boundary, 'layer': layer, 'by': by, 'top_n': top_n, 'sort_by': sort_by},
+        extra=[{'cue_text': '想看方格分布？（可用 grid_aggregate 同边界重算）'}])
     if layer_output:
         _attach_render_ref(out, 'rank', out_fc, sort_col)
     return out
@@ -799,6 +892,7 @@ def grid_aggregate(layer: str = 'yichang_l2_t1', cell_size: int = 800,
     """方格网空间聚合：点层按固定边长方格统计（中观·规则格）。
     参数：cell_size 格边长米（默认 800·语义同 Grid dialog cellSize=格边长非带宽）；value_col 空=只计数·给值则同时算 _sum/_mean；boundary 可选 preset 裁剪；top_n 1-20；layer_output=True 落盘登记临时 dataset 返回 render_dataset_id（几何服务端直传·PT-CB15 K2）。
     限制：方格≠行政单元——社区级结论用 zonal_stats；geopandas 冷启动 10-20s。"""
+    _note_call('grid_aggregate')   # PT-CB16 C2-3 scale 倒推埋点
     caliber = {'scale': '中观（规则方格·边长 cell_size m）',
                'semantics': '方格网聚合强度（规则格·非行政单元）',
                'limits': '方格≠社区/行政区——勿把格结论说成社区结论；行政单元归因用 zonal_stats',
@@ -841,6 +935,11 @@ def grid_aggregate(layer: str = 'yichang_l2_t1', cell_size: int = 800,
              'max_count': int(merged['point_count'].max())}
     out = {'rows': rows, 'stats': stats, 'row_count': row_count,
            'truncated': row_count > len(rows), 'caliber': caliber}
+    out['followup_actions'] = _action_cues(
+        'grid_aggregate',
+        {'layer': layer, 'cell_size': cell_size, 'value_col': value_col,
+         'boundary': boundary, 'top_n': top_n},
+        extra=[{'cue_text': '想换成社区单元看？（可用 zonal_stats 同层重算）'}])
     if layer_output:
         _attach_render_ref(out, 'grid_aggregate', out_fc, sort_col)
     return out
@@ -852,6 +951,7 @@ def compare_regions(boundaries: list, layer: str = 'yichang_l2_t1',
     """区域对比：≥2 个 boundary preset 同口径并排聚合+差异方向（谁更高/差多少/几倍）。
     参数：boundaries 必填 list（≥2·≤5·超5截断标注）；agg_cols 默认 ['score']（沿 zonal_stats）；layer 默认 yichang_l2_t1。
     限制：跨 layer/agg_cols 的对比无意义；单区归因用 zonal_stats。"""
+    _note_call('compare_regions')   # PT-CB16 C2-3 scale 倒推埋点
     caliber = {'scale': '宏观/中观（区域对比）',
                'semantics': '≥2 区域同口径并排+差异方向',
                'limits': '区数 2-5；同 layer 同 agg_cols 才可比；单区归因用 zonal_stats',
@@ -931,6 +1031,7 @@ def hotspot_analysis(layer: str = 'yichang_l2_t1', value_col: str = 'score',
     """显著聚集识别：逐点 Gi* Z-score 五档分类（hot/tend_hot/ns/tend_cold/cold）。
     参数：value_col 默认 score；invert=True 负面为热（契约默认）；threshold 1.96=95%（1.65=90/2.58=99）；soft_threshold 1.0=倾向档；top_n 1-20。
     限制：显著=统计显著性非业务重要性；连续密度面用 density；score 为 U 形离散分布·ns 占多属正常（P1 修正口径）。"""
+    _note_call('hotspot_analysis')   # PT-CB16 C2-3 scale 倒推埋点
     caliber = {'scale': '微观（逐点 Gi*）',
                'semantics': '逐点 Gi* Z-score 五档显著聚集分类',
                'limits': '显著=统计显著性非业务重要性；连续热度分布用 density；threshold 对应置信度（1.65→90%/1.96→95%/2.58→99%）',
@@ -984,6 +1085,7 @@ def area_stats(boundary: str, group_by: str = '', top_n: int = 10,
     """面积占比统计：面层按要素/分组字段算面积与占比（结构量化·非情绪归因）。
     参数：boundary 必填 preset id（先 list_data）；group_by 给出则按该字段 dissolve 分组汇总；top_n 1-20；layer_output=True 落盘登记临时 dataset 返回 render_dataset_id（几何服务端直传·PT-CB15 K2）。
     限制：只算面积结构——情绪结论用 zonal_stats/rank；投影面积与椭球面积差异 <1% 级。"""
+    _note_call('area_stats')   # PT-CB16 C2-3 scale 倒推埋点
     caliber = {'scale': '宏观/中观（面积结构）',
                'semantics': '面积与占比统计（结构量化）',
                'limits': '非情绪归因——情绪结论用 zonal_stats/rank；投影差异 <1%',
@@ -1046,6 +1148,7 @@ def nearest_analysis(layer: str = 'yichang_l2_t1', target: str = '',
     """最近邻锚定：每个锚点找目标层最近的 k 个（微观·POI 锚定）。
     参数：target 必填（preset_id：先试点层、解析失败再作面层；契约 required_slots）；k 默认 1·cap 5；top_n 1-20；layer_output=True 增连线 geojson（微几何 ≤40 顶点·内联例外·PT-CB15 K2 注记）。
     限制：邻近≠因果；距离为 EPSG:4546 投影平面距离（<1% 级误差·照 area_stats 先例）。"""
+    _note_call('nearest_analysis')   # PT-CB16 C2-3 scale 倒推埋点
     caliber = {'scale': '微观（POI 锚定）',
                'semantics': '最近邻配对（锚点×目标）+投影米距',
                'limits': '邻近≠因果；距离为投影平面距离（<1% 级误差）；k≤5 cap',
@@ -1155,6 +1258,7 @@ def overlay_analysis(layer_a: str, layer_b: str, how: str = 'intersection',
     """叠置交叉：两个面层做交集/并集/差集/对称差（面∩面正解）。
     参数：layer_a/layer_b 必填 preset id（先 list_data）；how=intersection|union|difference|symmetric（默认 intersection·契约同）；top_n 1-20；layer_output=True 落盘登记临时 dataset 返回 render_dataset_id（几何服务端直传·PT-CB15 K2）。
     限制：面∩面运算——点层裁剪勿用（无意义·取点用 zonal/clip）；结果要素可能 explode 多块（按面积降序 top）。"""
+    _note_call('overlay_analysis')   # PT-CB16 C2-3 scale 倒推埋点
     caliber = {'scale': '中观（跨图层面）',
                'semantics': '两图层面叠置交叉+面积统计',
                'limits': '面∩面运算——点层裁剪勿用（无意义）；结果要素可能 explode 多块（按面积降序 top）',
@@ -1304,6 +1408,7 @@ def trend_analysis(boundary: str = '', metric: str = 'polarity_index',
     限制：三期=采集批次非等间隔日历期——勿算速率/环比；趋势为聚合口径非个体追踪；单期深挖用 zonal/hotspot。
     R23 两问：非 Point 几何仅出现在 boundary（面层·走 aggregate_by_polygons 的 sjoin 通道·无 .geometry.x 假设）；
     最坏规模=三期各约 2.2 万点的 O(n) 统计 + boundary sjoin O(n log n)——无配对矩阵·空点层/区内零点语义化拒绝。"""
+    _note_call('trend_analysis')   # PT-CB16 C2-3 scale 倒推埋点
     caliber = {'scale': '宏观/中观（三期聚合对比）',
                'semantics': 'T1/T2/T3 三期同口径聚合对比+方向（升/降/平）+幅度',
                'limits': '三期=采集批次非等间隔日历期——勿算速率/环比；趋势为聚合口径非个体追踪；单期深挖用 zonal/hotspot',

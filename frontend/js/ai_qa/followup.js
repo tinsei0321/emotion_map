@@ -4,10 +4,15 @@
 //   归一化：非数组→空 / 逐条 String+trim / 滤空串 / 截 3 条；
 //   优先级：确定性 cues（tool.end）> LLM 胶囊 > 静态兜底；ask 轮互斥（选项已在答案区）。
 
-/** 归一化 tool.end 载荷的 followup_cues：非数组→[]·逐项 String+trim·滤空·截前 3 条。 */
+/** 归一化 tool.end 载荷的 followup_cues：非数组→[]·逐项 String+trim·滤空·截前 3 条。
+ *  PT-CB16 C2-1 兼容：对象形态 cue（followup_actions 两级 schema）取 cue_text——
+ *  防对象被 String 化成 [object Object]；action 载荷（tool/params）本层不透传（UI 一键重放归 C2-4 评估件）。 */
 export function normalizeFollowupCues(raw) {
   if (!Array.isArray(raw)) return [];
-  return raw.map((c) => String(c == null ? '' : c).trim()).filter(Boolean).slice(0, 3);
+  return raw.map((c) => {
+    if (c && typeof c === 'object') return String(c.cue_text || '').trim();
+    return String(c == null ? '' : c).trim();
+  }).filter(Boolean).slice(0, 3);
 }
 
 /** 追问源选择：{kind:'cues'|'capsules'|'static'|'none', items}。

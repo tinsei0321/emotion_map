@@ -1003,3 +1003,88 @@ def test_nearest_pair_budget_guard(monkeypatch):
     monkeypatch.setattr('core.geo_registry.resolve_points', lambda layer: big)
     out = mse.nearest_analysis(layer='yichang_l2_t1', target='yichang_l1_t1', k=1)
     assert out.get('ok') is False and '配对规模超预算' in out['hint']
+
+
+# ════════════ PT-CB16 C2-3 · scale 确定性倒推 ════════════
+
+def _reset_call_log(monkeypatch):
+    monkeypatch.setattr(mse, '_TOOL_CALL_LOG', [])
+
+
+def test_infer_scale_quiet_when_brief(monkeypatch):
+    """brief 声明 + 单工具少量调用 → 判对静默（None）。"""
+    _reset_call_log(monkeypatch)
+    mse._note_call('list_data')
+    mse._note_call('zonal_stats')
+    assert mse.infer_scale('brief') is None
+
+
+def test_infer_scale_warns_on_undershoot(monkeypatch):
+    """声明 brief 却跑了 5 件工具 4 类 → 判错软提示（含计数与文案）。"""
+    _reset_call_log(monkeypatch)
+    for name in ('list_data', 'zonal_stats', 'rank', 'kb_facts', 'kb_facts'):
+        mse._note_call(name)
+    sc = mse.infer_scale('brief')
+    assert sc is not None
+    assert sc['inferred'] == 'analysis' and sc['declared'] == 'brief'
+    assert sc['calls'] == 5 and sc['tool_kinds'] == 4
+    assert '规模接近' in sc['note']
+    # 声明 analysis 同场景 → 判对静默
+    assert mse.infer_scale('analysis') is None
+
+
+def test_infer_scale_burst_split(monkeypatch):
+    """间隔 >120s 的旧调用不计入当前段（防跨问题累计误判）。"""
+    _reset_call_log(monkeypatch)
+    import time as _t
+    old = _t.time() - 300
+    for name in ('zonal_stats', 'rank', 'grid_aggregate', 'hotspot_analysis', 'area_stats'):
+        mse._TOOL_CALL_LOG.append((old, name))
+        old += 10
+    mse._note_call('list_data')   # 当前段仅 1 件
+    assert mse.infer_scale('brief') is None
+
+
+def test_outlet_card_scale_check_field(monkeypatch):
+    """outlet_card：判错时挂 scale_check；判对不挂（静音条件）。"""
+    _reset_call_log(monkeypatch)
+    for name in ('list_data', 'zonal_stats', 'rank', 'kb_facts', 'rag_query'):
+        mse._note_call(name)
+    out = mse.outlet_card(question='q', result={}, diagnose={'scale': 'brief'})
+    assert 'scale_check' in out and out['scale_check']['inferred'] in ('analysis', 'research')
+    _reset_call_log(monkeypatch)
+    out2 = mse.outlet_card(question='q', result={}, diagnose={})
+    assert 'scale_check' not in out2
+
+
+# ════════════ PT-CB16 C2-1 · followup_actions 两级结构 ════════════
+
+def test_action_cues_param_level_resolved_params():
+    """参数级 cue：top_n 增量携带完整参数集（resolved_params 自包含·不依赖历史）。"""
+    cues = mse._action_cues('rank', {'boundary': 'b', 'layer': 'l', 'by': 'worst',
+                                     'top_n': 7, 'sort_by': 'point_count'})
+    assert cues and cues[0]['tool'] == 'rank'
+    assert cues[0]['params']['top_n'] == 8
+    # 完整性：除 top_n 外其余参数原样携带
+    assert cues[0]['params']['boundary'] == 'b' and cues[0]['params']['by'] == 'worst'
+    # rank 附加 by 翻转 cue
+    flips = [c for c in cues if c['params'].get('by') == 'best']
+    assert flips, 'rank 应有 by 翻转 cue'
+    # top_n=20 到顶不出增量 cue
+    cues_max = mse._action_cues('rank', {'boundary': 'b', 'top_n': 20, 'by': 'worst'})
+    assert all(c['params'].get('top_n') != 21 for c in cues_max)
+
+
+def test_zonal_rank_output_has_followup_actions(monkeypatch):
+    """zonal/rank 输出带 followup_actions（参数级+提示级）。"""
+    merged = _fake_merged(5)
+    monkeypatch.setattr('core.geo_registry.resolve_points', lambda layer: _FakePoints())
+    monkeypatch.setattr('core.geo_registry.resolve_boundary', lambda boundary: _FakeBoundary())
+    monkeypatch.setattr('core.spatial_analysis.aggregate_by_polygons',
+                        lambda points, polys, agg_cols=None, polygon_name_col=None: merged)
+    out = mse.zonal_stats('admin_district', top_n=3)
+    actions = out.get('followup_actions')
+    assert actions and actions[0]['params']['top_n'] == 4
+    assert any('cue_text' in a and 'tool' not in a for a in actions), '提示级 cue 仅 cue_text'
+    out_r = mse.rank(boundary='admin_district', top_n=2)
+    assert out_r['followup_actions'][0]['params']['top_n'] == 3
