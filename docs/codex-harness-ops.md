@@ -37,6 +37,7 @@
 |---|---|
 | 「Codex 桥启动失败」 | `codex --version`（未装：`npm i -g @openai/codex --registry=https://registry.npmmirror.com`） |
 | 工具调用被拒/要求审批 | 走的是 app-server 主路？（exec 通道有独立审批语义·见 spike 记录 K-1） |
+| 模型回答「数据状况待确认」/不调 emc 工具 | 数据目录或路径变更后未重启 8600/8000/8080；先杀旧进程再重启三服务 |
 | 出图页面无反应 | 纪律 1——是否两个后端并存；看哪个后端日志有「watcher 让出消费权」 |
 | turn 超时 | 复杂工具链 50-366s 正常区间；超 300s 收口为 `CODEX_TURN_TIMEOUT`（含 stderr_tail 诊断·P2-5） |
 
