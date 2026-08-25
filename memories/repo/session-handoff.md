@@ -14,6 +14,7 @@
 
 - **08-24 晚 home**：分支更替（main 合流+新分支 EMC_Codex_Harness）→ PT-CB15 全链（三组 CB→spike 四问全通→三方审计→转正批 14 件全修·595+4 绿）→ 四引擎就位·EMC 壳里完整 Harness 体验解锁。
 - **office 到岗**：T1-T8 用户实测（T8=?engine=codex 首测）+转正批复验。
+- **08-25 DATA 重构（全组通知已落盘）**：AUTHORITY/THEME/REGISTRY/RAG/POI/Export/_Retired 重组完成；`DATA/boundaries` 与顶层 `DATA/exports` 已退休/删除；代码常量与测试同步（597 passed / 2 skipped）。下次任务派发时各组先读 `docs/catch-ball/discuss/PT-CB15-数据目录与代码映射重构_全组通知_Codex-2026-08-25.md`。
 - **纪律**：分支 EMC_Codex_Harness；EMC 恒 flash；R25/R26/R27。
 
 - **08-24 晚 home**：EMC_harness_dsh 合流 main（282 提交快进·用户授权）→ 旧分支三处删除 → 新分支 `EMC_Codex_Harness`。

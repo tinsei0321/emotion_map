@@ -284,6 +284,16 @@ Agent 启动时根据下表选择性阅读知识源：
 
 > 紧急回滚标准：系统无法启动、核心功能崩溃、数据损坏。
 
+## 数据目录与 RAG 规则（2026-08-25 重构）
+
+> 权威入口：`DATA/README.md`；全组通知：`docs/catch-ball/discuss/PT-CB15-数据目录与代码映射重构_全组通知_Codex-2026-08-25.md`。
+
+- 预设/上传一律走 `DATA/REGISTRY/presets/`；权威数据读 `DATA/AUTHORITY/`；专题读 `DATA/THEME/`；导出读/写 `DATA/Export/`。
+- `DATA/boundaries` 与顶层 `DATA/exports` 已退休/删除，禁止再引用。
+- RAG 索引位于 `DATA/RAG/rag_index/`，重建命令 `py tools/rag_index.py --build`；episode 记录位于 `DATA/RAG/ai_qa/`。
+- 用地数据、建成区数据：禁止入库/RAG；仅用户一次性上传，不落盘。
+- 同名多格式文件：`.csv` 副格式统一放 `DATA/others/`，代码优先读 GeoJSON。
+
 ## 快速启动
 
 向我直接描述任务即可，无需 `@agent` 前缀：
